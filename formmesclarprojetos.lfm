@@ -1,0 +1,104 @@
+object FrmMesclarProjetos: TFrmMesclarProjetos
+  Left = 439
+  Height = 516
+  Top = 122
+  Width = 283
+  Caption = 'Mesclar projetos'
+  ClientHeight = 516
+  ClientWidth = 283
+  LCLVersion = '1.0.8.0'
+  object CheckListBox1: TCheckListBox
+    Left = 8
+    Height = 416
+    Top = 40
+    Width = 128
+    Items.Strings = (
+      'Mateus'
+      'Marcos'
+      'Lucas'
+      'João'
+      'Atos'
+      'Romanos'
+      '1 Coríntios'
+      '2 Coríntios'
+      'Gálatas'
+      'Efésios'
+      'Filipenses'
+      'Colossenses'
+      '1 Tessalonicenses'
+      '2 Tessalonicenses'
+      '1 Timóteo'
+      '2 Timóteo'
+      'Tito'
+      'Filemon'
+      'Hebreus'
+      'Tiago'
+      '1 Pedro'
+      '2 Pedro'
+      '1 João'
+      '2 João'
+      '3 João'
+      'Judas'
+      'Apocalipse'
+    )
+    ItemHeight = 19
+    OnClickCheck = CheckListBox1ClickCheck
+    TabOrder = 0
+    Data = {
+      1B000000000000000000000000000000000000000000000000000000000000
+    }
+  end
+  object CheckListBox2: TCheckListBox
+    Left = 144
+    Height = 416
+    Top = 40
+    Width = 128
+    Items.Strings = (
+      'Mateus'
+      'Marcos'
+      'Lucas'
+      'João'
+      'Atos'
+      'Romanos'
+      '1 Coríntios'
+      '2 Coríntios'
+      'Gálatas'
+      'Efésios'
+      'Filipenses'
+      'Colossenses'
+      '1 Tessalonicenses'
+      '2 Tessalonicenses'
+      '1 Timóteo'
+      '2 Timóteo'
+      'Tito'
+      'Filemon'
+      'Hebreus'
+      'Tiago'
+      '1 Pedro'
+      '2 Pedro'
+      '1 João'
+      '2 João'
+      '3 João'
+      'Judas'
+      'Apocalipse'
+    )
+    ItemHeight = 19
+    OnClickCheck = CheckListBox2ClickCheck
+    TabOrder = 1
+    Data = {
+      1B000000000000000000000000000000000000000000000000000000000000
+    }
+  end
+  object Button1: TButton
+    Left = 197
+    Height = 25
+    Top = 480
+    Width = 75
+    Caption = 'Button1'
+    TabOrder = 2
+  end
+  object OpenDialog1: TOpenDialog
+    left = 304
+    top = 384
+  end
+end

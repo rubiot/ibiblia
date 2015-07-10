@@ -1,0 +1,47 @@
+object frmDictionaryPopup: TfrmDictionaryPopup
+  Left = 533
+  Height = 418
+  Top = 204
+  Width = 425
+  BorderIcons = []
+  BorderStyle = bsSizeToolWin
+  BorderWidth = 1
+  Caption = 'Dicionário'
+  ClientHeight = 418
+  ClientWidth = 425
+  FormStyle = fsStayOnTop
+  KeyPreview = True
+  OnCreate = FormCreate
+  OnDestroy = FormDestroy
+  OnHide = FormHide
+  OnKeyDown = FormKeyDown
+  OnShow = FormShow
+  LCLVersion = '1.0.8.0'
+  object Panel1: TPanel
+    Left = 1
+    Height = 297
+    Top = 1
+    Width = 423
+    Align = alClient
+    BorderStyle = bsSingle
+    TabOrder = 0
+  end
+  object Panel2: TPanel
+    Left = 1
+    Height = 114
+    Top = 303
+    Width = 423
+    Align = alBottom
+    BorderStyle = bsSingle
+    TabOrder = 1
+  end
+  object Splitter1: TSplitter
+    Cursor = crVSplit
+    Left = 1
+    Height = 5
+    Top = 298
+    Width = 423
+    Align = alBottom
+    ResizeAnchor = akBottom
+  end
+end

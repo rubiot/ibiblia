@@ -1,0 +1,75 @@
+object FrmEscolherVerseRules: TFrmEscolherVerseRules
+  Left = 382
+  Height = 454
+  Top = 213
+  Width = 1171
+  Caption = 'Escolher verse.rules'
+  ClientHeight = 454
+  ClientWidth = 1171
+  OnCreate = FormCreate
+  OnDestroy = FormDestroy
+  Position = poOwnerFormCenter
+  LCLVersion = '1.2.0.3'
+  object ckgVerseRules: TCheckGroup
+    Left = 0
+    Height = 192
+    Top = 0
+    Width = 1171
+    Align = alTop
+    Anchors = [akTop, akLeft, akRight, akBottom]
+    AutoFill = True
+    Caption = 'Escolha as regras que deseja aplicar'
+    ChildSizing.LeftRightSpacing = 6
+    ChildSizing.TopBottomSpacing = 6
+    ChildSizing.EnlargeHorizontal = crsHomogenousChildResize
+    ChildSizing.EnlargeVertical = crsHomogenousChildResize
+    ChildSizing.ShrinkHorizontal = crsScaleChilds
+    ChildSizing.ShrinkVertical = crsHomogenousSpaceResize
+    ChildSizing.Layout = cclLeftToRightThenTopToBottom
+    ChildSizing.ControlsPerLine = 1
+    OnClick = ckgVerseRulesClick
+    TabOrder = 0
+  end
+  object Button1: TButton
+    Left = 942
+    Height = 25
+    Top = 417
+    Width = 75
+    Anchors = [akRight, akBottom]
+    Cancel = True
+    Caption = '&Cancelar'
+    ModalResult = 2
+    TabOrder = 1
+  end
+  object Button2: TButton
+    Left = 1063
+    Height = 25
+    Top = 417
+    Width = 75
+    Anchors = [akRight, akBottom]
+    Caption = 'OK'
+    Default = True
+    ModalResult = 1
+    TabOrder = 2
+  end
+  object lbDe: TListBox
+    Left = 9
+    Height = 192
+    Top = 206
+    Width = 551
+    ItemHeight = 0
+    MultiSelect = True
+    OnSelectionChange = lbDeSelectionChange
+    TabOrder = 3
+  end
+  object lbPara: TListBox
+    Left = 568
+    Height = 192
+    Top = 206
+    Width = 592
+    ItemHeight = 0
+    MultiSelect = True
+    OnSelectionChange = lbParaSelectionChange
+    TabOrder = 4
+  end
+end

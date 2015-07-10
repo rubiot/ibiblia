@@ -1,0 +1,538 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <ProjectOptions>
+    <Version Value="9"/>
+    <PathDelim Value="\"/>
+    <General>
+      <MainUnit Value="0"/>
+      <Title Value="iBiblia"/>
+      <UseXPManifest Value="True"/>
+      <Icon Value="0"/>
+      <ActiveWindowIndexAtStart Value="1"/>
+    </General>
+    <VersionInfo>
+      <UseVersionInfo Value="True"/>
+      <AutoIncrementBuild Value="True"/>
+      <MajorVersionNr Value="1"/>
+      <BuildNr Value="35"/>
+      <Language Value="0416"/>
+      <StringTable CompanyName="Rúbio R. C. Terra (rubio.terra@gmail.com)" FileDescription="Ferramenta para associação de textos bíblicos" ProductName="iBiblia" ProductVersion="0.0.0.0"/>
+    </VersionInfo>
+    <BuildModes Count="2" Active="Debug">
+      <Item1 Name="Debug" Default="True"/>
+      <Item2 Name="Release">
+        <CompilerOptions>
+          <Version Value="11"/>
+          <PathDelim Value="\"/>
+          <Target>
+            <Filename Value="iBiblia"/>
+          </Target>
+          <SearchPaths>
+            <IncludeFiles Value="$(ProjOutDir)"/>
+            <OtherUnitFiles Value="$(LazarusDir)\components\custom"/>
+            <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
+          </SearchPaths>
+          <CodeGeneration>
+            <TargetCPU Value="x86_64"/>
+            <TargetOS Value="linux"/>
+            <Optimizations>
+              <OptimizationLevel Value="3"/>
+            </Optimizations>
+          </CodeGeneration>
+          <Linking>
+            <Debugging>
+              <GenerateDebugInfo Value="False"/>
+              <UseLineInfoUnit Value="False"/>
+            </Debugging>
+            <Options>
+              <Win32>
+                <GraphicApplication Value="True"/>
+              </Win32>
+            </Options>
+          </Linking>
+        </CompilerOptions>
+      </Item2>
+    </BuildModes>
+    <PublishOptions>
+      <Version Value="2"/>
+      <IncludeFileFilter Value="*.(pas|pp|inc|lfm|lpr|lrs|lpi|lpk|sh|xml)"/>
+      <ExcludeFileFilter Value="*.(bak|ppu|o|so);*~;backup"/>
+    </PublishOptions>
+    <RunParams>
+      <local>
+        <FormatVersion Value="1"/>
+        <LaunchingApplication PathPlusParams="\usr\X11R6\bin\xterm -T 'Lazarus Run Output' -e $(LazarusDir)\tools\runwait.sh $(TargetCmdLine)"/>
+      </local>
+    </RunParams>
+    <RequiredPackages Count="2">
+      <Item1>
+        <PackageName Value="LCLBase"/>
+        <MinVersion Major="1" Release="1" Valid="True"/>
+      </Item1>
+      <Item2>
+        <PackageName Value="LCL"/>
+      </Item2>
+    </RequiredPackages>
+    <Units Count="27">
+      <Unit0>
+        <Filename Value="iBiblia.lpr"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="1"/>
+        <WindowIndex Value="1"/>
+        <CursorPos Y="25"/>
+        <UsageCount Value="207"/>
+        <Loaded Value="True"/>
+      </Unit0>
+      <Unit1>
+        <Filename Value="formprincipal.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmPrincipal"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="formPrincipal"/>
+        <EditorIndex Value="4"/>
+        <WindowIndex Value="1"/>
+        <TopLine Value="479"/>
+        <CursorPos Y="498"/>
+        <UsageCount Value="207"/>
+        <Loaded Value="True"/>
+        <LoadedDesigner Value="True"/>
+      </Unit1>
+      <Unit2>
+        <Filename Value="versiculo.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="Versiculo"/>
+        <EditorIndex Value="6"/>
+        <WindowIndex Value="1"/>
+        <TopLine Value="60"/>
+        <CursorPos Y="79"/>
+        <ExtraEditorCount Value="1"/>
+        <ExtraEditor1>
+          <WindowIndex Value="1"/>
+          <TopLine Value="1338"/>
+          <CursorPos X="26" Y="1359"/>
+        </ExtraEditor1>
+        <UsageCount Value="207"/>
+        <Loaded Value="True"/>
+      </Unit2>
+      <Unit3>
+        <Filename Value="ibibliaxml.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="iBibliaXML"/>
+        <EditorIndex Value="9"/>
+        <WindowIndex Value="1"/>
+        <UsageCount Value="207"/>
+        <Loaded Value="True"/>
+      </Unit3>
+      <Unit4>
+        <Filename Value="projeto.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="Projeto"/>
+        <IsVisibleTab Value="True"/>
+        <ExtraEditorCount Value="1"/>
+        <ExtraEditor1>
+          <EditorIndex Value="5"/>
+          <WindowIndex Value="1"/>
+          <TopLine Value="600"/>
+          <CursorPos Y="615"/>
+        </ExtraEditor1>
+        <UsageCount Value="207"/>
+        <Loaded Value="True"/>
+      </Unit4>
+      <Unit5>
+        <Filename Value="sugestao.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="Sugestao"/>
+        <EditorIndex Value="8"/>
+        <WindowIndex Value="1"/>
+        <TopLine Value="118"/>
+        <CursorPos X="36" Y="146"/>
+        <UsageCount Value="207"/>
+        <Loaded Value="True"/>
+      </Unit5>
+      <Unit6>
+        <Filename Value="C:\lazarus\fpc\2.4.3\source\packages\fcl-db\src\base\db.pas"/>
+        <TopLine Value="1954"/>
+        <CursorPos Y="1980"/>
+        <UsageCount Value="13"/>
+      </Unit6>
+      <Unit7>
+        <Filename Value="C:\lazarus\fpc\2.4.3\source\packages\fcl-db\src\base\dataset.inc"/>
+        <TopLine Value="1997"/>
+        <CursorPos Y="2024"/>
+        <UsageCount Value="9"/>
+      </Unit7>
+      <Unit8>
+        <Filename Value="formnovoprojeto.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="FormNovoProjeto"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UsageCount Value="205"/>
+      </Unit8>
+      <Unit9>
+        <Filename Value="C:\lazarus\lcl\graphics.pp"/>
+        <TopLine Value="281"/>
+        <CursorPos X="14" Y="296"/>
+        <UsageCount Value="9"/>
+      </Unit9>
+      <Unit10>
+        <Filename Value="formpopup.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmDictionaryPopup"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="formpopup"/>
+        <EditorIndex Value="12"/>
+        <WindowIndex Value="1"/>
+        <CursorPos X="11" Y="10"/>
+        <UsageCount Value="201"/>
+        <Loaded Value="True"/>
+        <LoadedDesigner Value="True"/>
+      </Unit10>
+      <Unit11>
+        <Filename Value="rtfedit.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="RTFEdit"/>
+        <EditorIndex Value="16"/>
+        <WindowIndex Value="1"/>
+        <TopLine Value="55"/>
+        <CursorPos X="21" Y="55"/>
+        <UsageCount Value="201"/>
+        <Loaded Value="True"/>
+      </Unit11>
+      <Unit12>
+        <Filename Value="C:\lazarus\components\synedit\syncompletion.pas"/>
+        <TopLine Value="10"/>
+        <UsageCount Value="29"/>
+      </Unit12>
+      <Unit13>
+        <Filename Value="C:\lazarus\ide\codecontextform.pas"/>
+        <TopLine Value="792"/>
+        <CursorPos X="3" Y="742"/>
+        <UsageCount Value="29"/>
+      </Unit13>
+      <Unit14>
+        <Filename Value="C:\lazarus\lcl\include\control.inc"/>
+        <TopLine Value="1669"/>
+        <CursorPos Y="1684"/>
+        <UsageCount Value="26"/>
+      </Unit14>
+      <Unit15>
+        <Filename Value="C:\lazarus\fpc\2.4.3\source\packages\fcl-db\src\base\fields.inc"/>
+        <TopLine Value="2391"/>
+        <CursorPos Y="2418"/>
+        <UsageCount Value="9"/>
+      </Unit15>
+      <Unit16>
+        <Filename Value="formpropprojeto.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="FormPropProjeto"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="formpropprojeto"/>
+        <EditorIndex Value="11"/>
+        <WindowIndex Value="1"/>
+        <TopLine Value="31"/>
+        <CursorPos X="19" Y="60"/>
+        <UsageCount Value="204"/>
+        <Loaded Value="True"/>
+        <LoadedDesigner Value="True"/>
+      </Unit16>
+      <Unit17>
+        <Filename Value="C:\lazarus\lcl\lclproc.pas"/>
+        <TopLine Value="301"/>
+        <CursorPos X="31" Y="346"/>
+        <UsageCount Value="41"/>
+      </Unit17>
+      <Unit18>
+        <Filename Value="memoversiculo.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="MemoVersiculo"/>
+        <EditorIndex Value="10"/>
+        <WindowIndex Value="1"/>
+        <CursorPos X="57" Y="8"/>
+        <UsageCount Value="224"/>
+        <Loaded Value="True"/>
+      </Unit18>
+      <Unit19>
+        <Filename Value="pcre_dll.pas"/>
+        <UnitName Value="pcre_dll"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="3"/>
+        <WindowIndex Value="1"/>
+        <TopLine Value="656"/>
+        <CursorPos X="6" Y="662"/>
+        <UsageCount Value="51"/>
+        <Loaded Value="True"/>
+      </Unit19>
+      <Unit20>
+        <Filename Value="PCRE.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="PCRE"/>
+        <EditorIndex Value="2"/>
+        <WindowIndex Value="1"/>
+        <TopLine Value="48"/>
+        <CursorPos X="51" Y="61"/>
+        <UsageCount Value="208"/>
+        <Loaded Value="True"/>
+      </Unit20>
+      <Unit21>
+        <Filename Value="formexportar.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmExportarProjeto"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="formexportar"/>
+        <EditorIndex Value="14"/>
+        <WindowIndex Value="1"/>
+        <TopLine Value="20"/>
+        <CursorPos X="21" Y="49"/>
+        <UsageCount Value="203"/>
+        <Loaded Value="True"/>
+        <LoadedDesigner Value="True"/>
+      </Unit21>
+      <Unit22>
+        <Filename Value="exportarprojeto.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="ExportarProjeto"/>
+        <EditorIndex Value="7"/>
+        <WindowIndex Value="1"/>
+        <TopLine Value="328"/>
+        <CursorPos X="5" Y="347"/>
+        <UsageCount Value="203"/>
+        <Loaded Value="True"/>
+      </Unit22>
+      <Unit23>
+        <Filename Value="formmesclarprojetos.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="FrmMesclarProjetos"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="formmesclarprojetos"/>
+        <EditorIndex Value="15"/>
+        <WindowIndex Value="1"/>
+        <CursorPos X="21" Y="30"/>
+        <UsageCount Value="213"/>
+        <Loaded Value="True"/>
+        <LoadedDesigner Value="True"/>
+      </Unit23>
+      <Unit24>
+        <Filename Value="C:\lazarus\fpc\2.6.2\source\rtl\objpas\strutils.pp"/>
+        <TopLine Value="203"/>
+        <CursorPos Y="14"/>
+        <UsageCount Value="54"/>
+      </Unit24>
+      <Unit25>
+        <Filename Value="C:\lazarus\fpc\2.6.2\source\rtl\objpas\classes\classesh.inc"/>
+        <TopLine Value="315"/>
+        <CursorPos X="42" Y="330"/>
+        <UsageCount Value="4"/>
+      </Unit25>
+      <Unit26>
+        <Filename Value="formverserules.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="FrmEscolherVerseRules"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="formverserules"/>
+        <EditorIndex Value="13"/>
+        <WindowIndex Value="1"/>
+        <TopLine Value="71"/>
+        <CursorPos X="5" Y="100"/>
+        <UsageCount Value="150"/>
+        <Loaded Value="True"/>
+        <LoadedDesigner Value="True"/>
+      </Unit26>
+    </Units>
+    <JumpHistory Count="30" HistoryIndex="29">
+      <Position1>
+        <Filename Value="pcre_dll.pas"/>
+        <Caret Line="699" Column="54" TopLine="675"/>
+      </Position1>
+      <Position2>
+        <Filename Value="pcre_dll.pas"/>
+        <Caret Line="700" Column="59" TopLine="676"/>
+      </Position2>
+      <Position3>
+        <Filename Value="pcre_dll.pas"/>
+        <Caret Line="702" Column="41" TopLine="678"/>
+      </Position3>
+      <Position4>
+        <Filename Value="pcre_dll.pas"/>
+        <Caret Line="703" Column="41" TopLine="679"/>
+      </Position4>
+      <Position5>
+        <Filename Value="pcre_dll.pas"/>
+        <Caret Line="704" Column="42" TopLine="680"/>
+      </Position5>
+      <Position6>
+        <Filename Value="pcre_dll.pas"/>
+        <Caret Line="705" Column="42" TopLine="681"/>
+      </Position6>
+      <Position7>
+        <Filename Value="pcre_dll.pas"/>
+        <Caret Line="707" Column="58" TopLine="683"/>
+      </Position7>
+      <Position8>
+        <Filename Value="pcre_dll.pas"/>
+        <Caret Line="708" Column="45" TopLine="684"/>
+      </Position8>
+      <Position9>
+        <Filename Value="pcre_dll.pas"/>
+        <Caret Line="709" Column="59" TopLine="685"/>
+      </Position9>
+      <Position10>
+        <Filename Value="pcre_dll.pas"/>
+        <Caret Line="710" Column="58" TopLine="686"/>
+      </Position10>
+      <Position11>
+        <Filename Value="pcre_dll.pas"/>
+        <Caret Line="711" Column="55" TopLine="687"/>
+      </Position11>
+      <Position12>
+        <Filename Value="pcre_dll.pas"/>
+        <Caret Line="712" Column="62" TopLine="688"/>
+      </Position12>
+      <Position13>
+        <Filename Value="pcre_dll.pas"/>
+        <Caret Line="713" Column="60" TopLine="689"/>
+      </Position13>
+      <Position14>
+        <Filename Value="pcre_dll.pas"/>
+        <Caret Line="714" Column="61" TopLine="690"/>
+      </Position14>
+      <Position15>
+        <Filename Value="pcre_dll.pas"/>
+        <Caret Line="663" Column="18" TopLine="650"/>
+      </Position15>
+      <Position16>
+        <Filename Value="pcre_dll.pas"/>
+        <Caret Line="658" Column="29" TopLine="646"/>
+      </Position16>
+      <Position17>
+        <Filename Value="pcre_dll.pas"/>
+        <Caret Line="662" Column="22" TopLine="642"/>
+      </Position17>
+      <Position18>
+        <Filename Value="pcre_dll.pas"/>
+        <Caret Line="388" Column="22" TopLine="369"/>
+      </Position18>
+      <Position19>
+        <Filename Value="pcre_dll.pas"/>
+        <Caret Line="532" Column="30" TopLine="518"/>
+      </Position19>
+      <Position20>
+        <Filename Value="pcre_dll.pas"/>
+        <Caret Line="534" Column="27" TopLine="518"/>
+      </Position20>
+      <Position21>
+        <Filename Value="pcre_dll.pas"/>
+        <Caret Line="535" Column="30" TopLine="518"/>
+      </Position21>
+      <Position22>
+        <Filename Value="pcre_dll.pas"/>
+        <Caret Line="706" Column="41" TopLine="688"/>
+      </Position22>
+      <Position23>
+        <Filename Value="iBiblia.lpr"/>
+        <Caret Line="4" Column="36"/>
+      </Position23>
+      <Position24>
+        <Filename Value="pcre_dll.pas"/>
+        <Caret Line="722" Column="2" TopLine="697"/>
+      </Position24>
+      <Position25>
+        <Filename Value="pcre_dll.pas"/>
+        <Caret Line="734" TopLine="721"/>
+      </Position25>
+      <Position26>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="493" Column="16" TopLine="480"/>
+      </Position26>
+      <Position27>
+        <Filename Value="projeto.pas"/>
+      </Position27>
+      <Position28>
+        <Filename Value="PCRE.pas"/>
+        <Caret Line="303" Column="31" TopLine="288"/>
+      </Position28>
+      <Position29>
+        <Filename Value="PCRE.pas"/>
+        <Caret Line="1988" Column="15" TopLine="1967"/>
+      </Position29>
+      <Position30>
+        <Filename Value="iBiblia.lpr"/>
+        <Caret Line="25"/>
+      </Position30>
+    </JumpHistory>
+  </ProjectOptions>
+  <CompilerOptions>
+    <Version Value="11"/>
+    <PathDelim Value="\"/>
+    <Target>
+      <Filename Value="iBiblia"/>
+    </Target>
+    <SearchPaths>
+      <IncludeFiles Value="$(ProjOutDir)"/>
+      <Libraries Value="\usr\lib64\"/>
+      <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
+    </SearchPaths>
+    <CodeGeneration>
+      <TargetCPU Value="x86_64"/>
+    </CodeGeneration>
+    <Linking>
+      <Debugging>
+        <DebugInfoType Value="dsDwarf2Set"/>
+      </Debugging>
+      <Options>
+        <Win32>
+          <GraphicApplication Value="True"/>
+        </Win32>
+      </Options>
+    </Linking>
+  </CompilerOptions>
+  <Debugging>
+    <BreakPoints Count="2">
+      <Item1>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="sugestao.pas"/>
+        <Line Value="551"/>
+      </Item1>
+      <Item2>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="PCRE.pas"/>
+        <Line Value="1709"/>
+      </Item2>
+    </BreakPoints>
+    <Watches Count="3">
+      <Item1>
+        <Expression Value="result"/>
+      </Item1>
+      <Item2>
+        <Expression Value="a"/>
+      </Item2>
+      <Item3>
+        <Expression Value="b"/>
+      </Item3>
+    </Watches>
+    <Exceptions Count="4">
+      <Item1>
+        <Name Value="EAbort"/>
+      </Item1>
+      <Item2>
+        <Name Value="ECodetoolError"/>
+      </Item2>
+      <Item3>
+        <Name Value="EFOpenError"/>
+      </Item3>
+      <Item4>
+        <Name Value="EConvertError"/>
+      </Item4>
+    </Exceptions>
+  </Debugging>
+</CONFIG>

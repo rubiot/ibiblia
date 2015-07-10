@@ -1,0 +1,221 @@
+object FormPropProjeto: TFormPropProjeto
+  Left = 329
+  Height = 565
+  Top = 128
+  Width = 553
+  Caption = 'Propriedades'
+  ClientHeight = 565
+  ClientWidth = 553
+  OnCreate = FormCreate
+  Position = poMainFormCenter
+  LCLVersion = '1.2.0.3'
+  object GroupBox2: TGroupBox
+    Left = 0
+    Height = 82
+    Top = 6
+    Width = 546
+    Caption = 'Propriedades'
+    ClientHeight = 64
+    ClientWidth = 542
+    TabOrder = 0
+    object EditNomeProjeto: TLabeledEdit
+      Left = 15
+      Height = 23
+      Top = 22
+      Width = 519
+      EditLabel.AnchorSideLeft.Control = EditNomeProjeto
+      EditLabel.AnchorSideRight.Control = EditNomeProjeto
+      EditLabel.AnchorSideRight.Side = asrBottom
+      EditLabel.AnchorSideBottom.Control = EditNomeProjeto
+      EditLabel.Left = 15
+      EditLabel.Height = 15
+      EditLabel.Top = 4
+      EditLabel.Width = 519
+      EditLabel.Caption = 'Nome'
+      EditLabel.ParentColor = False
+      TabOrder = 0
+    end
+  end
+  object BitBtn1: TBitBtn
+    Left = 462
+    Height = 30
+    Top = 528
+    Width = 83
+    Caption = '&OK'
+    Default = True
+    Kind = bkOK
+    ModalResult = 1
+    OnClick = BitBtn1Click
+    TabOrder = 1
+  end
+  object BitBtn2: TBitBtn
+    Left = 353
+    Height = 30
+    Top = 528
+    Width = 91
+    Cancel = True
+    Caption = 'Cancelar'
+    Kind = bkCancel
+    ModalResult = 2
+    TabOrder = 2
+  end
+  object TabControl1: TTabControl
+    Left = 6
+    Height = 416
+    Top = 104
+    Width = 539
+    TabStop = False
+    OnChange = ActionMudancaAbaExecute
+    TabIndex = 0
+    Tabs.Strings = (
+      'Original'
+      'Destino'
+      'Referência 1'
+      'Referência 2'
+    )
+    TabOrder = 3
+    object leDicStrong: TLabeledEdit
+      Left = 11
+      Height = 23
+      Top = 107
+      Width = 430
+      EditLabel.AnchorSideLeft.Control = leDicStrong
+      EditLabel.AnchorSideRight.Control = leDicStrong
+      EditLabel.AnchorSideRight.Side = asrBottom
+      EditLabel.AnchorSideBottom.Control = leDicStrong
+      EditLabel.Left = 11
+      EditLabel.Height = 15
+      EditLabel.Top = 89
+      EditLabel.Width = 430
+      EditLabel.Caption = 'Dicionário Strong'
+      EditLabel.ParentColor = False
+      TabOrder = 1
+      OnChange = leDicStrongChange
+    end
+    object leDicMorfo: TLabeledEdit
+      Left = 11
+      Height = 23
+      Top = 155
+      Width = 430
+      EditLabel.AnchorSideLeft.Control = leDicMorfo
+      EditLabel.AnchorSideRight.Control = leDicMorfo
+      EditLabel.AnchorSideRight.Side = asrBottom
+      EditLabel.AnchorSideBottom.Control = leDicMorfo
+      EditLabel.Left = 11
+      EditLabel.Height = 15
+      EditLabel.Top = 137
+      EditLabel.Width = 430
+      EditLabel.Caption = 'Dicionário Morfologia'
+      EditLabel.ParentColor = False
+      TabOrder = 2
+      OnChange = leDicMorfoChange
+    end
+    object BitBtn3: TBitBtn
+      Left = 11
+      Height = 27
+      Top = 48
+      Width = 167
+      Action = ActionCarregarTexto
+      TabOrder = 3
+    end
+    object BitBtn4: TBitBtn
+      Left = 448
+      Height = 23
+      Top = 107
+      Width = 75
+      Action = ActionSelecionarStrong
+      TabOrder = 4
+    end
+    object BitBtn8: TBitBtn
+      Left = 448
+      Height = 23
+      Top = 152
+      Width = 75
+      Action = ActionSelecionarMorfo
+      TabOrder = 5
+    end
+    object BitBtn9: TBitBtn
+      Left = 194
+      Height = 27
+      Top = 48
+      Width = 166
+      Action = ActionLimparTexto
+      TabOrder = 6
+    end
+    object MemoFonte: TMemo
+      Left = 11
+      Height = 194
+      Top = 205
+      Width = 430
+      Lines.Strings = (
+        'MemoFonte'
+      )
+      ReadOnly = True
+      ScrollBars = ssAutoVertical
+      TabOrder = 7
+    end
+    object Label2: TLabel
+      Left = 11
+      Height = 15
+      Top = 187
+      Width = 30
+      Caption = 'Fonte'
+      ParentColor = False
+    end
+    object Button2: TButton
+      Left = 448
+      Height = 25
+      Top = 200
+      Width = 75
+      Action = ActionSelecionarFonte
+      TabOrder = 8
+    end
+  end
+  object ProgressBar1: TProgressBar
+    Left = 6
+    Height = 20
+    Top = 528
+    Width = 340
+    TabOrder = 4
+    Visible = False
+  end
+  object OpenDialog1: TOpenDialog
+    InitialDir = './data'
+    left = 110
+    top = 422
+  end
+  object ActionList1: TActionList
+    left = 23
+    top = 424
+    object ActionCarregarTexto: TAction
+      Caption = 'Carregar novo texto'
+      OnExecute = ActionCarregarTextoExecute
+    end
+    object ActionLimparTexto: TAction
+      Caption = 'Limpar texto'
+      OnExecute = ActionLimparTextoExecute
+    end
+    object ActionSelecionarStrong: TAction
+      Caption = 'Selecionar'
+      OnExecute = ActionSelecionarStrongExecute
+    end
+    object ActionSelecionarMorfo: TAction
+      Caption = 'Selecionar'
+      OnExecute = ActionSelecionarMorfoExecute
+    end
+    object ActionSelecionarFonte: TAction
+      Caption = 'Selecionar'
+      OnExecute = ActionSelecionarFonteExecute
+    end
+    object ActionMudancaAba: TAction
+      Caption = 'ActionMudancaAba'
+      OnExecute = ActionMudancaAbaExecute
+    end
+  end
+  object FontDialog1: TFontDialog
+    MinFontSize = 0
+    MaxFontSize = 0
+    left = 186
+    top = 424
+  end
+end

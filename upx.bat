@@ -1,0 +1,1 @@
+C:\Utilities\upx309w\upx.exe --best -v iBiblia.exe

@@ -1,0 +1,188 @@
+object FormNovoProjeto: TFormNovoProjeto
+  Left = 242
+  Height = 398
+  Top = 132
+  Width = 459
+  Caption = 'Novo projeto...'
+  ClientHeight = 398
+  ClientWidth = 459
+  OnClose = FormClose
+  OnCloseQuery = FormCloseQuery
+  Position = poMainFormCenter
+  LCLVersion = '1.2.0.3'
+  object GroupBox1: TGroupBox
+    Left = 6
+    Height = 231
+    Top = 112
+    Width = 450
+    Caption = 'Textos'
+    ClientHeight = 213
+    ClientWidth = 446
+    TabOrder = 0
+    object EditTextoOrigem: TLabeledEdit
+      Left = 8
+      Height = 23
+      Top = 24
+      Width = 384
+      EditLabel.AnchorSideLeft.Control = EditTextoOrigem
+      EditLabel.AnchorSideRight.Control = EditTextoOrigem
+      EditLabel.AnchorSideRight.Side = asrBottom
+      EditLabel.AnchorSideBottom.Control = EditTextoOrigem
+      EditLabel.Left = 8
+      EditLabel.Height = 15
+      EditLabel.Top = 6
+      EditLabel.Width = 384
+      EditLabel.Caption = 'Idioma original'
+      EditLabel.ParentColor = False
+      ReadOnly = True
+      TabOrder = 0
+    end
+    object EditTextoDestino: TLabeledEdit
+      Left = 8
+      Height = 23
+      Top = 72
+      Width = 384
+      EditLabel.AnchorSideLeft.Control = EditTextoDestino
+      EditLabel.AnchorSideRight.Control = EditTextoDestino
+      EditLabel.AnchorSideRight.Side = asrBottom
+      EditLabel.AnchorSideBottom.Control = EditTextoDestino
+      EditLabel.Left = 8
+      EditLabel.Height = 15
+      EditLabel.Top = 54
+      EditLabel.Width = 384
+      EditLabel.Caption = 'Idioma destino'
+      EditLabel.ParentColor = False
+      ReadOnly = True
+      TabOrder = 1
+    end
+    object EditTextoRef1: TLabeledEdit
+      Left = 8
+      Height = 23
+      Top = 120
+      Width = 384
+      EditLabel.AnchorSideLeft.Control = EditTextoRef1
+      EditLabel.AnchorSideRight.Control = EditTextoRef1
+      EditLabel.AnchorSideRight.Side = asrBottom
+      EditLabel.AnchorSideBottom.Control = EditTextoRef1
+      EditLabel.Left = 8
+      EditLabel.Height = 15
+      EditLabel.Top = 102
+      EditLabel.Width = 384
+      EditLabel.Caption = 'Texto referência 1'
+      EditLabel.ParentColor = False
+      ReadOnly = True
+      TabOrder = 2
+    end
+    object EditTextoRef2: TLabeledEdit
+      Left = 8
+      Height = 23
+      Top = 168
+      Width = 384
+      EditLabel.AnchorSideLeft.Control = EditTextoRef2
+      EditLabel.AnchorSideRight.Control = EditTextoRef2
+      EditLabel.AnchorSideRight.Side = asrBottom
+      EditLabel.AnchorSideBottom.Control = EditTextoRef2
+      EditLabel.Left = 8
+      EditLabel.Height = 15
+      EditLabel.Top = 150
+      EditLabel.Width = 384
+      EditLabel.Caption = 'Texto referência 2'
+      EditLabel.ParentColor = False
+      ReadOnly = True
+      TabOrder = 3
+    end
+    object BitBtn1: TBitBtn
+      Left = 396
+      Height = 25
+      Top = 24
+      Width = 38
+      Caption = '...'
+      OnClick = BitBtn1Click
+      TabOrder = 4
+    end
+    object BitBtn2: TBitBtn
+      Left = 396
+      Height = 25
+      Top = 72
+      Width = 38
+      Caption = '...'
+      OnClick = BitBtn2Click
+      TabOrder = 5
+    end
+    object BitBtn3: TBitBtn
+      Left = 396
+      Height = 25
+      Top = 120
+      Width = 38
+      Caption = '...'
+      OnClick = BitBtn3Click
+      TabOrder = 6
+    end
+    object BitBtn4: TBitBtn
+      Left = 396
+      Height = 25
+      Top = 168
+      Width = 38
+      Caption = '...'
+      OnClick = BitBtn4Click
+      TabOrder = 7
+    end
+  end
+  object BitBtn5: TBitBtn
+    Left = 8
+    Height = 30
+    Top = 360
+    Width = 119
+    Caption = '&OK'
+    Default = True
+    Kind = bkOK
+    ModalResult = 1
+    OnClick = BitBtn5Click
+    TabOrder = 1
+  end
+  object BitBtn6: TBitBtn
+    Left = 144
+    Height = 30
+    Top = 360
+    Width = 119
+    Cancel = True
+    Caption = 'Cancelar'
+    Kind = bkCancel
+    ModalResult = 2
+    TabOrder = 2
+  end
+  object GroupBox2: TGroupBox
+    Left = 6
+    Height = 82
+    Top = 6
+    Width = 450
+    Caption = 'Propriedades'
+    ClientHeight = 64
+    ClientWidth = 446
+    TabOrder = 3
+    object EditNomeProjeto: TLabeledEdit
+      Left = 8
+      Height = 23
+      Top = 22
+      Width = 384
+      EditLabel.AnchorSideLeft.Control = EditNomeProjeto
+      EditLabel.AnchorSideRight.Control = EditNomeProjeto
+      EditLabel.AnchorSideRight.Side = asrBottom
+      EditLabel.AnchorSideBottom.Control = EditNomeProjeto
+      EditLabel.Left = 8
+      EditLabel.Height = 15
+      EditLabel.Top = 4
+      EditLabel.Width = 384
+      EditLabel.Caption = 'Nome'
+      EditLabel.ParentColor = False
+      TabOrder = 0
+    end
+  end
+  object OpenDialog1: TOpenDialog
+    Title = 'Escolha um módulo do theWord'
+    Filter = 'Módulos de Bíblia do theWord (*.ont, *.nt)|*.ont;*.nt'
+    InitialDir = 'C:\Utilities\The Word\Bibles'
+    left = 192
+    top = 120
+  end
+end

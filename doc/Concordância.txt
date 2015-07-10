@@ -1,0 +1,80 @@
+select * 
+from locucoes_origem, traducoes, locucoes_destino
+where lori_locucao like '%<WG1096>%'
+  and trad_lori_id = lori_id
+  and trad_ldes_id = ldes_id
+order by lori_qtde_sintagmas desc, trad_ocorrencias desc;
+
+TW links in Bible modules (rtf format)
+======================================
+This is a small tutorial of how to make Bible links in RTF (the format used mostly for non-Bible modules).
+The information applies to people that build manually modules with RTF (TW provides many more ways to auto-detect verse references in the modules itself.
+
+A link in rtf takes the form:
+Code:
+{\field{\*\fldinst{HYPERLINK "[THIS-IS-THE-TARGET]"}}{\fldrslt [LINKED-TEXT]}}
+
+This is equivalent with the html link:
+Code:
+<a href="[THIS-IS-THE-TARGET">[LINKED-TEXT]</a>
+
+
+Let me give an example:
+In html:
+Code:
+<a href="http://www.theword.gr">The Word Site</a>
+
+In RTF:
+Code:
+{\field{\*\fldinst{HYPERLINK "http://www.theword.gr"}}{\fldrslt The Word Site}}
+
+
+Having said this, the only thing i need to explain is the exact format of the target that TW recognizes. After that, you are able to link to everything you want (for now i will only describe links to Bible passages, but in TW you can have links to other modules as well, to specific topics, commentary entries, etc).
+
+Links to verses
+The main format is:
+Code:
+tw://[bible.][<module name>|*]?id=b1.c1.v1[-b2.c2.v2]
+
+
+Notes:
+What is between brackets can be ommited.
+The "|" means OR.
+Current version is a bit restrictive, next will be more flexible.
+
+So, let me give examples:
+Code:
+tw://bible.*?id=1.1.1 -> Genesis 1:1
+tw://bible.*?id=40.1.1 -> Mt 1:1 (Matthew is book number 40)
+tw://bible.*?id=1.1.1-1.1.2 -> Gen. 1:1-2 (notice that the ending verse must be fully defined, e.g. 1.1.2)
+
+
+The new build will be more flexible in the following areas:
+Code:
+1. The * can be replaced by a module, e.g. tw://bible.darby?id=1.1.1 -> Gen 1:1 from the Darby translation. If not present the default will be used
+2. tw://*?id=1.1.1 -> Gen. 1:1 (the word "bible" is the default, can be ommited)
+3. tw://*?id=1.1.1-2 -> Gen 1:1-2 (the ending verse can be specified partly, e.g. only 2 and not 1.1.2)
+4. tw://*?id=1.1.1-1.1 -> Gen 1:1-Ex 1:1 (the ending book can be ommited)
+5. tw://*?id=1.1 -> Gen 1 (verse can be ommited, the whole chapter is assumed)
+
+
+But thinks can get simpler than this. You can ask TW to try to parse the [LINKED-TEXT] directly and find out what is the verse reference you refer to.
+For example, you want to make a link to Gen 1:1 but you also want the linked text to be "Gen 1:1" (this is the mose usual case). So, you can write:
+Code:
+{\field{\*\fldinst{HYPERLINK}}{\fldrslt Gen 1:1-2}}
+
+Notice that in that case you don't specify the TARGET at all. TW will try to parse the actual [LINKED-TEXT] (in that case "Gen 1:1-2") and automatically guess what is the verse reference. Maybe this is the simpler way...
+
+One more case that is very interesting:
+TW allows you to specify only the [TARGET] and let it create the verse reference text. For example:
+Code:
+{\field{\*\fldinst HYPERLINK "tw://bible.*?id=10.3.4"}{\fldrslt\cf2 [vref]}}
+
+Notice that in this URL, you specify the target (2Sam 3:4 - 2Sam=10th book) but instead of writing the actual [LINKED-TEXT] you specify [vref]. This means that TW will automatically create the verse reference (e.g. 2Sam. 3:4) and display it. The advantage with this technique is that TW will create the verse reference text in the current language! So, if the user uses Greek or German, he will see the link with the Greek or German book names and conventions.
+
+The last 2 cases are of course restrictive, in the sense that you cannot have a different [LINKED TEXT]. The first case is more generic.
+
+If all the above seem confusing, just take the case that you feel more comfortable with and go ahead.
+
+Hope this helps and is clear,
+Costas
