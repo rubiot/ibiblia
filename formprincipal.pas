@@ -462,7 +462,7 @@ end;
 procedure TFrmPrincipal.FormCreate(Sender: TObject);
 begin
   ProjetoAtual := nil;
-  opts := TIniFile.Create('.\iBiblia.ini');
+  opts := TIniFile.Create('iBiblia.ini');
 
   Width  := opts.ReadInteger('leiaute', 'principal.largura',  Width);
   Height := opts.ReadInteger('leiaute', 'principal.altura',   Height);

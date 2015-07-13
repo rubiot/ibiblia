@@ -14,7 +14,7 @@
       <UseVersionInfo Value="True"/>
       <AutoIncrementBuild Value="True"/>
       <MajorVersionNr Value="1"/>
-      <BuildNr Value="35"/>
+      <BuildNr Value="36"/>
       <Language Value="0416"/>
       <StringTable CompanyName="Rúbio R. C. Terra (rubio.terra@gmail.com)" FileDescription="Ferramenta para associação de textos bíblicos" ProductName="iBiblia" ProductVersion="0.0.0.0"/>
     </VersionInfo>
@@ -90,10 +90,11 @@
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="formPrincipal"/>
+        <IsVisibleTab Value="True"/>
         <EditorIndex Value="4"/>
         <WindowIndex Value="1"/>
-        <TopLine Value="479"/>
-        <CursorPos Y="498"/>
+        <TopLine Value="452"/>
+        <CursorPos X="28" Y="465"/>
         <UsageCount Value="207"/>
         <Loaded Value="True"/>
         <LoadedDesigner Value="True"/>
@@ -258,7 +259,6 @@
       <Unit19>
         <Filename Value="pcre_dll.pas"/>
         <UnitName Value="pcre_dll"/>
-        <IsVisibleTab Value="True"/>
         <EditorIndex Value="3"/>
         <WindowIndex Value="1"/>
         <TopLine Value="656"/>
@@ -348,122 +348,122 @@
     <JumpHistory Count="30" HistoryIndex="29">
       <Position1>
         <Filename Value="pcre_dll.pas"/>
-        <Caret Line="699" Column="54" TopLine="675"/>
+        <Caret Line="700" Column="59" TopLine="676"/>
       </Position1>
       <Position2>
         <Filename Value="pcre_dll.pas"/>
-        <Caret Line="700" Column="59" TopLine="676"/>
+        <Caret Line="702" Column="41" TopLine="678"/>
       </Position2>
       <Position3>
         <Filename Value="pcre_dll.pas"/>
-        <Caret Line="702" Column="41" TopLine="678"/>
+        <Caret Line="703" Column="41" TopLine="679"/>
       </Position3>
       <Position4>
         <Filename Value="pcre_dll.pas"/>
-        <Caret Line="703" Column="41" TopLine="679"/>
+        <Caret Line="704" Column="42" TopLine="680"/>
       </Position4>
       <Position5>
         <Filename Value="pcre_dll.pas"/>
-        <Caret Line="704" Column="42" TopLine="680"/>
+        <Caret Line="705" Column="42" TopLine="681"/>
       </Position5>
       <Position6>
         <Filename Value="pcre_dll.pas"/>
-        <Caret Line="705" Column="42" TopLine="681"/>
+        <Caret Line="707" Column="58" TopLine="683"/>
       </Position6>
       <Position7>
         <Filename Value="pcre_dll.pas"/>
-        <Caret Line="707" Column="58" TopLine="683"/>
+        <Caret Line="708" Column="45" TopLine="684"/>
       </Position7>
       <Position8>
         <Filename Value="pcre_dll.pas"/>
-        <Caret Line="708" Column="45" TopLine="684"/>
+        <Caret Line="709" Column="59" TopLine="685"/>
       </Position8>
       <Position9>
         <Filename Value="pcre_dll.pas"/>
-        <Caret Line="709" Column="59" TopLine="685"/>
+        <Caret Line="710" Column="58" TopLine="686"/>
       </Position9>
       <Position10>
         <Filename Value="pcre_dll.pas"/>
-        <Caret Line="710" Column="58" TopLine="686"/>
+        <Caret Line="711" Column="55" TopLine="687"/>
       </Position10>
       <Position11>
         <Filename Value="pcre_dll.pas"/>
-        <Caret Line="711" Column="55" TopLine="687"/>
+        <Caret Line="712" Column="62" TopLine="688"/>
       </Position11>
       <Position12>
         <Filename Value="pcre_dll.pas"/>
-        <Caret Line="712" Column="62" TopLine="688"/>
+        <Caret Line="713" Column="60" TopLine="689"/>
       </Position12>
       <Position13>
         <Filename Value="pcre_dll.pas"/>
-        <Caret Line="713" Column="60" TopLine="689"/>
+        <Caret Line="714" Column="61" TopLine="690"/>
       </Position13>
       <Position14>
         <Filename Value="pcre_dll.pas"/>
-        <Caret Line="714" Column="61" TopLine="690"/>
+        <Caret Line="663" Column="18" TopLine="650"/>
       </Position14>
       <Position15>
         <Filename Value="pcre_dll.pas"/>
-        <Caret Line="663" Column="18" TopLine="650"/>
+        <Caret Line="658" Column="29" TopLine="646"/>
       </Position15>
       <Position16>
         <Filename Value="pcre_dll.pas"/>
-        <Caret Line="658" Column="29" TopLine="646"/>
+        <Caret Line="662" Column="22" TopLine="642"/>
       </Position16>
       <Position17>
         <Filename Value="pcre_dll.pas"/>
-        <Caret Line="662" Column="22" TopLine="642"/>
+        <Caret Line="388" Column="22" TopLine="369"/>
       </Position17>
       <Position18>
         <Filename Value="pcre_dll.pas"/>
-        <Caret Line="388" Column="22" TopLine="369"/>
+        <Caret Line="532" Column="30" TopLine="518"/>
       </Position18>
       <Position19>
         <Filename Value="pcre_dll.pas"/>
-        <Caret Line="532" Column="30" TopLine="518"/>
+        <Caret Line="534" Column="27" TopLine="518"/>
       </Position19>
       <Position20>
         <Filename Value="pcre_dll.pas"/>
-        <Caret Line="534" Column="27" TopLine="518"/>
+        <Caret Line="535" Column="30" TopLine="518"/>
       </Position20>
       <Position21>
         <Filename Value="pcre_dll.pas"/>
-        <Caret Line="535" Column="30" TopLine="518"/>
+        <Caret Line="706" Column="41" TopLine="688"/>
       </Position21>
       <Position22>
-        <Filename Value="pcre_dll.pas"/>
-        <Caret Line="706" Column="41" TopLine="688"/>
-      </Position22>
-      <Position23>
         <Filename Value="iBiblia.lpr"/>
         <Caret Line="4" Column="36"/>
+      </Position22>
+      <Position23>
+        <Filename Value="pcre_dll.pas"/>
+        <Caret Line="722" Column="2" TopLine="697"/>
       </Position23>
       <Position24>
         <Filename Value="pcre_dll.pas"/>
-        <Caret Line="722" Column="2" TopLine="697"/>
+        <Caret Line="734" TopLine="721"/>
       </Position24>
       <Position25>
-        <Filename Value="pcre_dll.pas"/>
-        <Caret Line="734" TopLine="721"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="493" Column="16" TopLine="480"/>
       </Position25>
       <Position26>
         <Filename Value="projeto.pas"/>
-        <Caret Line="493" Column="16" TopLine="480"/>
       </Position26>
       <Position27>
-        <Filename Value="projeto.pas"/>
+        <Filename Value="PCRE.pas"/>
+        <Caret Line="303" Column="31" TopLine="288"/>
       </Position27>
       <Position28>
         <Filename Value="PCRE.pas"/>
-        <Caret Line="303" Column="31" TopLine="288"/>
+        <Caret Line="1988" Column="15" TopLine="1967"/>
       </Position28>
       <Position29>
-        <Filename Value="PCRE.pas"/>
-        <Caret Line="1988" Column="15" TopLine="1967"/>
-      </Position29>
-      <Position30>
         <Filename Value="iBiblia.lpr"/>
         <Caret Line="25"/>
+      </Position29>
+      <Position30>
+        <Filename Value="formprincipal.pas"/>
+        <Caret Line="486" Column="43" TopLine="480"/>
       </Position30>
     </JumpHistory>
   </ProjectOptions>
