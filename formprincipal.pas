@@ -7,14 +7,20 @@ unit formPrincipal;
 interface
 
 uses
+  {$IFDEF WINDOWS}
+  windows,
+  {$ELSE}
+  lclintf,
+  {$ENDIF}
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, Menus,
-  ActnList, ComCtrls, ExtCtrls, StdCtrls, Projeto, IniFiles;
+  ActnList, ComCtrls, ExtCtrls, StdCtrls, Projeto, IniFiles, twAutomate;
 
 type
 
   { TFrmPrincipal }
 
   TFrmPrincipal = class(TForm)
+    ActionSyncTheWord: TAction;
     ActionRecriarBaseSugestoes: TAction;
     ActionMesclarProjetos: TAction;
     ActionExportar: TAction;
@@ -57,6 +63,7 @@ type
     MenuItem21: TMenuItem;
     MenuItem22: TMenuItem;
     MenuItem23: TMenuItem;
+    MenuItemSyncTheWord: TMenuItem;
     MenuItem3: TMenuItem;
     MenuItem4: TMenuItem;
     MenuItem5: TMenuItem;
@@ -109,6 +116,7 @@ type
     procedure ActionSalvarProjetoComoExecute(Sender: TObject);
     procedure ActionSalvarProjetoExecute(Sender: TObject);
     procedure ActionSugerirAssociacaoExecute(Sender: TObject);
+    procedure ActionSyncTheWordExecute(Sender: TObject);
     procedure ActionVersoAnteriorExecute(Sender: TObject);
     procedure ActionVersoPrimeiroExecute(Sender: TObject);
     procedure ActionVersoSeguinteExecute(Sender: TObject);
@@ -122,6 +130,7 @@ type
     procedure MenuItem22Click(Sender: TObject);
     procedure AbrirRecenteClick(Sender: TObject);
     procedure MenuItem24Click(Sender: TObject);
+    procedure MenuItemSyncTheWordClick(Sender: TObject);
     procedure QuandoNovoVersiculo(Sender: TProjeto);
     procedure QuandoAlterarVersiculo;
     procedure AtualizarMRU(m: TMenuItem);
@@ -130,6 +139,7 @@ type
     procedure ToolBar1Click(Sender: TObject);
   private
     { private declarations }
+    synctw: boolean;
   public
     { public declarations }
   end; 
@@ -154,6 +164,44 @@ implementation
 uses formnovoprojeto, formpropprojeto, formexportar, formmesclarprojetos;
 
 {$R *.lfm}
+
+{------------------------------------------------------------------------------}
+function RestoreTheWord(RestoreWindow: Boolean = True): THandle;
+begin
+  Result := twAutomate.TWAutomateUtils.IsTwRunning;
+  if Result <> 0 then begin
+    if RestoreWindow then begin
+      if IsIconic(Result) then
+        SendMessage(Result, WM_SYSCOMMAND, SC_RESTORE, 0);
+      if Result <> GetForegroundWindow then begin
+        BringWindowToTop(Result);
+        SetForegroundWindow(Result);
+      end;
+    end;
+  end;
+end;
+{------------------------------------------------------------------------------}
+procedure SyncTheWord(ref: string);
+var
+  twHWND: THandle;
+  CData : TCopyDataStruct;
+  bcv: TBCV_A;
+  b, c, v: integer;
+begin
+  twHWND := RestoreTheWord(False);
+  if twHWND <> 0 then begin
+    SScanf(ref,'%d,%d,%d',[@b, @c, @v]);
+    bcv.bi := b;
+    bcv.ci := c;
+    bcv.vi := v;
+    bcv.span := 0;
+
+    CData.dwData := twAutomate.COPYDATA_OP_GOTOVERSE;
+    CData.lpData := @bcv;
+    CData.cbData := SizeOf(bcv);
+    SendMessage(twHWND, WM_COPYDATA, 0, DWORD(@CData));
+  end;
+end;
 
 { TFrmPrincipal }
 
@@ -382,6 +430,7 @@ begin
   begin
     Caption := 'iBiblia - [' + ProjetoAtual.ObterInfo('descricao') + '] - ' +  ProjetoAtual.Referencia;
     RadioGroup1.SetFocus;
+    ActionSyncTheWordExecute(Sender);
   end;
 end;
 
@@ -430,6 +479,12 @@ begin
     ProjetoAtual.SugerirAssociacao;
 end;
 
+procedure TFrmPrincipal.ActionSyncTheWordExecute(Sender: TObject);
+begin
+  if synctw and (ProjetoAtual <> nil) then
+    SyncTheWord(ProjetoAtual.ID);
+end;
+
 procedure TFrmPrincipal.ActionVersoAnteriorExecute(Sender: TObject);
 begin
   if ProjetoAtual <> nil then
@@ -468,6 +523,7 @@ begin
   Height := opts.ReadInteger('leiaute', 'principal.altura',   Height);
   MenuItem21.Checked := opts.ReadBool('opcoes', 'definicoes.com.ctrl', true);
   MenuItem22.Checked := opts.ReadBool('opcoes', 'sugestoes.automaticas', false);
+  MenuItemSyncTheWord.Checked := opts.ReadBool('opcoes', 'synctheword', false);
   CarregarMRU(MenuItem23);
 
   TreeView1.Width := opts.ReadInteger('leiaute', 'principal.treeview.largura', TreeView1.Width);
@@ -486,6 +542,7 @@ begin
   opts.WriteInteger('leiaute', 'principal.splitter4.topo', Splitter4.Top);
   opts.WriteBool('opcoes', 'definicoes.com.ctrl', MenuItem21.Checked);
   opts.WriteBool('opcoes', 'sugestoes.automaticas', MenuItem22.Checked);
+  opts.WriteBool('opcoes', 'synctheword', MenuItemSyncTheWord.Checked);
   opts.Free;
 end;
 
@@ -543,6 +600,12 @@ end;
 
 procedure TFrmPrincipal.MenuItem24Click(Sender: TObject);
 begin
+end;
+
+procedure TFrmPrincipal.MenuItemSyncTheWordClick(Sender: TObject);
+begin
+  TMenuItem(Sender).Checked := not TMenuItem(Sender).Checked;
+  synctw := TMenuItem(Sender).Checked;
 end;
 
 procedure TFrmPrincipal.QuandoNovoVersiculo(Sender: TProjeto);

@@ -14,7 +14,7 @@ object frmPrincipal: TfrmPrincipal
   OnKeyPress = FormKeyPress
   OnShow = FormShow
   Position = poDesktopCenter
-  LCLVersion = '1.2.0.3'
+  LCLVersion = '1.4.2.0'
   object StatusBar1: TStatusBar
     Left = 0
     Height = 23
@@ -117,8 +117,8 @@ object frmPrincipal: TfrmPrincipal
         Height = 117
         Top = 1
         Width = 735
-        HorzScrollBar.Page = 731
-        VertScrollBar.Page = 113
+        HorzScrollBar.Page = 1
+        VertScrollBar.Page = 1
         Align = alTop
         Anchors = [akTop, akLeft, akRight, akBottom]
         Constraints.MinHeight = 40
@@ -136,8 +136,8 @@ object frmPrincipal: TfrmPrincipal
         Height = 114
         Top = 123
         Width = 735
-        HorzScrollBar.Page = 731
-        VertScrollBar.Page = 110
+        HorzScrollBar.Page = 1
+        VertScrollBar.Page = 1
         Anchors = [akTop, akLeft, akRight, akBottom]
         Constraints.MinHeight = 40
         Constraints.MinWidth = 100
@@ -154,8 +154,8 @@ object frmPrincipal: TfrmPrincipal
         Height = 110
         Top = 242
         Width = 735
-        HorzScrollBar.Page = 731
-        VertScrollBar.Page = 106
+        HorzScrollBar.Page = 1
+        VertScrollBar.Page = 1
         Anchors = [akTop, akLeft, akRight, akBottom]
         Constraints.MinHeight = 40
         Constraints.MinWidth = 100
@@ -171,8 +171,8 @@ object frmPrincipal: TfrmPrincipal
         Height = 130
         Top = 357
         Width = 735
-        HorzScrollBar.Page = 731
-        VertScrollBar.Page = 126
+        HorzScrollBar.Page = 1
+        VertScrollBar.Page = 1
         Align = alBottom
         Anchors = [akTop, akLeft, akRight, akBottom]
         Constraints.MinHeight = 40
@@ -226,7 +226,6 @@ object frmPrincipal: TfrmPrincipal
       Top = 1
       Width = 138
       Align = alLeft
-      DefaultItemHeight = 18
       Enabled = False
       Images = ImageListTreeView
       ReadOnly = True
@@ -259,7 +258,7 @@ object frmPrincipal: TfrmPrincipal
     ChildSizing.ShrinkVertical = crsScaleChilds
     ChildSizing.Layout = cclLeftToRightThenTopToBottom
     ChildSizing.ControlsPerLine = 1
-    ClientHeight = 92
+    ClientHeight = 88
     ClientWidth = 113
     Enabled = False
     ItemIndex = 0
@@ -352,6 +351,10 @@ object frmPrincipal: TfrmPrincipal
       object MenuItem22: TMenuItem
         Caption = 'Sugerir associações automaticamente'
         OnClick = MenuItem22Click
+      end
+      object MenuItemSyncTheWord: TMenuItem
+        Caption = 'Sincronizar versículo no theWord'
+        OnClick = MenuItemSyncTheWordClick
       end
     end
   end
@@ -488,6 +491,10 @@ object frmPrincipal: TfrmPrincipal
     object ActionRecriarBaseSugestoes: TAction
       Caption = 'Recriar base de sugestões...'
       OnExecute = ActionRecriarBaseSugestoesExecute
+    end
+    object ActionSyncTheWord: TAction
+      Caption = 'ActionSyncTheWord'
+      OnExecute = ActionSyncTheWordExecute
     end
   end
   object OpenDialog1: TOpenDialog
