@@ -658,11 +658,15 @@ implementation
 
 const
   PCRE_DLL_NAME =
-{$IFDEF UNIX}
+{$ifdef UNIX}
     'libpcre.so'
-{$ELSE}
-    'pcre.dll'
-{$ENDIF}
+{$endif}
+{$ifdef Win32}
+    'pcre32.dll'
+{$endif}
+{$ifdef Win64}
+    'pcre64.dll'
+{$endif}
   ;
 
 
