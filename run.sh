@@ -1,3 +1,3 @@
 #! /bin/bash
 
-export LD_LIBRARY_PATH=`pwd` && ./iBiblia
+env LD_LIBRARY_PATH=`pwd` ./iBiblia
