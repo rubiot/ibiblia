@@ -8,12 +8,12 @@ interface
 
 uses
   {$IFDEF WINDOWS}
-  windows,
+  windows, twAutomate
   {$ELSE}
   lclintf,
   {$ENDIF}
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, Menus,
-  ActnList, ComCtrls, ExtCtrls, StdCtrls, Projeto, IniFiles, twAutomate;
+  ActnList, ComCtrls, ExtCtrls, StdCtrls, Projeto, IniFiles;
 
 type
 
@@ -165,6 +165,7 @@ uses formnovoprojeto, formpropprojeto, formexportar, formmesclarprojetos;
 
 {$R *.lfm}
 
+{$IFDEF WINDOWS}
 {------------------------------------------------------------------------------}
 function RestoreTheWord(RestoreWindow: Boolean = True): THandle;
 begin
@@ -202,6 +203,7 @@ begin
     SendMessage(twHWND, WM_COPYDATA, 0, DWORD(@CData));
   end;
 end;
+{$ENDIF}
 
 { TFrmPrincipal }
 
@@ -481,8 +483,10 @@ end;
 
 procedure TFrmPrincipal.ActionSyncTheWordExecute(Sender: TObject);
 begin
+  {$IFDEF WINDOWS}
   if synctw and (ProjetoAtual <> nil) then
     SyncTheWord(ProjetoAtual.ID);
+  {$ENDIF}
 end;
 
 procedure TFrmPrincipal.ActionVersoAnteriorExecute(Sender: TObject);
