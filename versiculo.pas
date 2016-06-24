@@ -77,6 +77,7 @@ type
     procedure InverterSelecao;
     procedure Desassociar;
     procedure DesassociarPares;
+    function GetProximo: TSintagma;
     function GetChaveSugestao(t: TTipoListaPares): string;
     property Strong: TStringList read FStrong write FStrong;
     property Morf: TStringList read FMorf write FMorf;
@@ -1331,8 +1332,35 @@ begin
 end;
 
 procedure TSintagma.DoOnRightClick(Sender: TObject; Shift: TShiftState);
+var
+  UltimoSelecionado: TSintagma;
 begin
+  DesassociarPares;
+  if (VersiculoRef.Selecao.Count > 0) then
+    VersiculoRef.Selecao.Itens[0].DesassociarPares;
 
+  if not (ssCtrl in Shift) then // Ctrl não pressionado
+    VersiculoRef.LimparSelecao;
+
+  InverterSelecao;
+
+  if Assigned(VersiculoRef.VersiculoPar) and
+     (VersiculoRef.VersiculoPar.Selecao.Count > 0) and
+     (VersiculoRef.Selecao.Count > 0) then
+  begin
+    VersiculoRef.AssociarSintagmas;
+    VersiculoRef.Modificado:=true;
+    VersiculoRef.VersiculoPar.Modificado:=true;
+  end;
+
+  if not (ssCtrl in Shift) and (VersiculoRef.VersiculoPar.Selecao.Count > 0) then
+  begin
+    UltimoSelecionado := VersiculoRef.VersiculoPar.Selecao[VersiculoRef.VersiculoPar.Selecao.Count-1];
+    VersiculoRef.LimparSelecao;
+    VersiculoRef.VersiculoPar.LimparSelecao;
+    if Assigned(UltimoSelecionado) and Assigned(UltimoSelecionado.GetProximo) then
+      UltimoSelecionado.GetProximo.SelecaoMais;
+  end;
 end;
 
 function TSintagma.GetChaveSugestao(t: TTipoListaPares): string;
@@ -1554,6 +1582,25 @@ begin
   end;
 
   Desassociar;
+end;
+
+function TSintagma.GetProximo: TSintagma;
+var
+  i: Integer;
+begin
+  result := nil;
+  i := VersiculoRef.Sintagmas.IndexOf(Self);
+  if (i >= 0) and (i < VersiculoRef.Sintagmas.Count) then
+  begin
+    for i := i+1 to VersiculoRef.Sintagmas.Count-1 do
+    begin
+      if VersiculoRef.Sintagmas[i].Tipo = tsSintagma then
+      begin
+        result := VersiculoRef.Sintagmas[i];
+        break;
+      end;
+    end;
+  end;
 end;
 
 procedure TSintagma.Desassociar;
