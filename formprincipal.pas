@@ -8,7 +8,7 @@ interface
 
 uses
   {$IFDEF WINDOWS}
-  windows, twAutomate
+  windows, twAutomate,
   {$ELSE}
   lclintf,
   {$ENDIF}
