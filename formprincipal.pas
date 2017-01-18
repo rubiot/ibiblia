@@ -281,7 +281,7 @@ var
 begin
   if ProjetoAtual <> nil then
   begin
-    salvar := true;
+    salvar := false;
     if ProjetoAtual.Modificado then
     begin
       case MessageDlg('Fechar projeto', 'Deseja salvar as alterações?', mtConfirmation, [mbYes, mbNo, mbCancel], 0) of
@@ -625,7 +625,8 @@ end;
 procedure TFrmPrincipal.AtualizarMRU(m: TMenuItem);
 var
   f: TStringList;
-  i, j: Integer;
+  j, k: Integer;
+  found: Boolean;
 begin
   f := TStringList.Create;
 
@@ -633,8 +634,18 @@ begin
     f.Add(ProjetoAtual.Caminho);
 
     for j:=0 to m.Count-1 do
-      if not f.Find(m.Items[j].Caption, i) then
+    begin
+      // find stopped working on unsorted lists. Bug or implementation change...?
+      found := false;
+      for k:=0 to f.Count-1 do
+        if f.Strings[k] = m.Items[j].Caption then
+        begin
+          found := true;
+          break;
+        end;
+      if not found then
         f.Add(m.Items[j].Caption);
+    end;
 
     m.Clear;
 
@@ -670,6 +681,9 @@ var
 begin
   for j:=0 to m.Count-1 do
     opts.WriteString('projetos', format('recente.%d', [j]), m.Items[j].Caption);
+
+  for j:=m.Count to MAX_MRU-1 do
+    opts.DeleteKey('projetos', format('recente.%d', [j]));
 end;
 
 procedure TFrmPrincipal.ToolBar1Click(Sender: TObject);
