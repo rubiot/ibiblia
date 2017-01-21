@@ -60,6 +60,7 @@ type
   private
     FMemoVersiculo: TMemoVersiculo;
     FAtivo: boolean;
+    FExportando: boolean;
     FOnAlterarVersiculo: TOnAlterarVersiculoEvent;
     FSugerirAssociacaoAuto: boolean;
     FExibirDefComCtrl: boolean;
@@ -1322,7 +1323,7 @@ procedure TProjeto.VersiculoSeguinte;
 begin
   if not FTblPares.EOF then
     FTblPares.Next;
-  if SugerirAssociacaoAutomaticamente and (FRadioGroupSituacao.ItemIndex = 0) then
+  if not FExportando and SugerirAssociacaoAutomaticamente and (FRadioGroupSituacao.ItemIndex = 0) then
     SugerirAssociacao;
 end;
 
@@ -1330,7 +1331,7 @@ procedure TProjeto.VersiculoAnterior;
 begin
   if not FTblPares.BOF then
     FTblPares.Prior;
-  if SugerirAssociacaoAutomaticamente and (FRadioGroupSituacao.ItemIndex = 0) then
+  if not FExportando and SugerirAssociacaoAutomaticamente and (FRadioGroupSituacao.ItemIndex = 0) then
     SugerirAssociacao;
 end;
 
@@ -1338,7 +1339,7 @@ procedure TProjeto.VersiculoInicial;
 begin
   if not FTblPares.BOF then
     FTblPares.First;
-  if SugerirAssociacaoAutomaticamente and (FRadioGroupSituacao.ItemIndex = 0) then
+  if not FExportando and SugerirAssociacaoAutomaticamente and (FRadioGroupSituacao.ItemIndex = 0) then
     SugerirAssociacao;
 end;
 
@@ -1346,7 +1347,7 @@ procedure TProjeto.VersiculoFinal;
 begin
   if not FTblPares.EOF then
     FTblPares.Last;
-  if SugerirAssociacaoAutomaticamente and (FRadioGroupSituacao.ItemIndex = 0) then
+  if not FExportando and SugerirAssociacaoAutomaticamente and (FRadioGroupSituacao.ItemIndex = 0) then
     SugerirAssociacao;
 end;
 
@@ -1627,6 +1628,7 @@ begin
     end;
     FAVersiculo[tbOrigem].Ativo := false;
     FAVersiculo[tbDestino].Ativo := false;
+    FExportando := true;
     ONT := TStringList.Create;
     PreRolagemVersiculo(nil);
 
@@ -1691,6 +1693,7 @@ begin
     ONT.Destroy;
     FAVersiculo[tbOrigem].Ativo := true;
     FAVersiculo[tbDestino].Ativo := true;
+    FExportando := false;
     PosRolagemVersiculo(nil);
     if assigned(pb) then
       pb.Visible := false;
@@ -1722,6 +1725,7 @@ begin
     end;
     FAVersiculo[tbOrigem].Ativo := false;
     FAVersiculo[tbDestino].Ativo := false;
+    FExportando := true;
     ONT := TStringList.Create;
     PreRolagemVersiculo(nil);
 
@@ -1774,6 +1778,7 @@ begin
     ONT.Destroy;
     FAVersiculo[tbOrigem].Ativo := true;
     FAVersiculo[tbDestino].Ativo := true;
+    FExportando := false;
     PosRolagemVersiculo(nil);
     if assigned(pb) then
       pb.Visible := false;
@@ -1829,6 +1834,7 @@ begin
 
     FAVersiculo[tbOrigem].Ativo := false;
     FAVersiculo[tbDestino].Ativo := false;
+    FExportando := true;
     PreRolagemVersiculo(nil);
 
     DesabilitarEventosRolagem;
@@ -1878,6 +1884,7 @@ begin
     Concordancia.Free;
     FAVersiculo[tbOrigem].Ativo := true;
     FAVersiculo[tbDestino].Ativo := true;
+    FExportando := false;
     IrPara(marcador);
     HabilitarEventosRolagem;
     PosRolagemVersiculo(nil);
