@@ -1106,7 +1106,12 @@ begin
   if (s >= Sintagmas.Count) or (Sintagmas.Itens[s].Tipo <> tsSintagma) then
   begin
     if FExibirErro then
-       MessageDlg('Erro', 'Dados inconsistentes, algumas associações serão perdidas', mtError, [mbOK], 0);
+       MessageDlg('Erro', 'Dados inconsistentes, algumas associações serão perdidas.'#13#10 +
+                          'Isso pode ocorrer por várias razões:'#13#10 +
+                          ' 1. O texto origem e/ou destino foi editado fora do iBiblia'#13#10 +
+                          ' 2. Você carregou um novo texto origem/destino'#13#10 +
+                          ' 3. O projeto foi criado/editado numa versão diferente do iBiblia'#13#10 +
+                          ' 4. Pode ser um bug no iBiblia, por favor, relatar no github.', mtError, [mbOK], 0);
     FExibirErro := false;
     VersiculoPar.FExibirErro:=false;
   end
