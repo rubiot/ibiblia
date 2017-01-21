@@ -642,9 +642,11 @@ end;
 
 procedure TFrmPrincipal.QuandoPalavraClicada(Sender: TSintagma);
 begin
+  {$IFDEF WINDOWS}
   if not synctw or (Sender.Strong.Count = 0) then
     exit;
   SyncTheWordDict(Sender.Strong.Strings[0]);
+  {$ENDIF}
 end;
 
 procedure TFrmPrincipal.QuandoAlterarVersiculo;
