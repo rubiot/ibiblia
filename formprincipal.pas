@@ -550,6 +550,7 @@ begin
   MenuItem21.Checked := opts.ReadBool('opcoes', 'definicoes.com.ctrl', true);
   MenuItem22.Checked := opts.ReadBool('opcoes', 'sugestoes.automaticas', false);
   MenuItemSyncTheWord.Checked := opts.ReadBool('opcoes', 'synctheword', false);
+  synctw := MenuItemSyncTheWord.Checked;
   CarregarMRU(MenuItem23);
 
   TreeView1.Width := opts.ReadInteger('leiaute', 'principal.treeview.largura', TreeView1.Width);
