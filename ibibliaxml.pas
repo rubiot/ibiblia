@@ -234,7 +234,7 @@ function TVarredorXML.LerSintagma(var s: TTagSintagma): TTipoSintagma;
       result := tsEspaco
     else if Contido(c, [ord('"'), ord('.'), ord(','), ord(';'), ord(':'),
                         ord('!'), ord('?'), ord('('), ord(')'),
-                        183, 903, 8220, 8221{, ord('-')}])
+                        183, 903, 8220, 8221{, ord('-')}]) // hack para ··“”
     then
       result := tsPontuacao;
   end;
@@ -251,7 +251,7 @@ begin
     tsPontuacao:
       lerEnquanto(s, [ord('"'), ord('.'), ord(','), ord(';'), ord(':'),
                       ord('!'), ord('?'), ord('('), ord(')'),
-                      183, 903, 8220, 8221{, ord('-')}]); {·, “, ”}
+                      183, 903, 8220, 8221{, ord('-')}]); // hack para ··“”
     tsTag:
       lerAteInclusive(s, [ord('>')]);
   else
@@ -264,7 +264,7 @@ begin
 
     lerAte(s, [ord('<'), ord(#32), ord(#9), ord('|'), ord('"'), ord('.'),
                ord(','), ord(';'), ord(':'), ord('!'), ord('?'), ord('-'),
-               ord('('), ord(')'), 183, 903, 8220, 8221]);
+               ord('('), ord(')'), 183, 903, 8220, 8221]);  // hack para ··“”
     s.valor := hifen + s.valor;
   end;
 
