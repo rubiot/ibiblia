@@ -13,14 +13,14 @@ uses
   lclintf,
   {$ENDIF}
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, Menus,
-  ActnList, ComCtrls, ExtCtrls, StdCtrls, Projeto, IniFiles;
+  ActnList, ComCtrls, ExtCtrls, StdCtrls, Projeto, IniFiles, Versiculo, Math;
 
 type
 
   { TFrmPrincipal }
 
   TFrmPrincipal = class(TForm)
-    ActionSyncTheWord: TAction;
+    ActionSyncTheWordVerse: TAction;
     ActionRecriarBaseSugestoes: TAction;
     ActionMesclarProjetos: TAction;
     ActionExportar: TAction;
@@ -116,7 +116,7 @@ type
     procedure ActionSalvarProjetoComoExecute(Sender: TObject);
     procedure ActionSalvarProjetoExecute(Sender: TObject);
     procedure ActionSugerirAssociacaoExecute(Sender: TObject);
-    procedure ActionSyncTheWordExecute(Sender: TObject);
+    procedure ActionSyncTheWordVerseExecute(Sender: TObject);
     procedure ActionVersoAnteriorExecute(Sender: TObject);
     procedure ActionVersoPrimeiroExecute(Sender: TObject);
     procedure ActionVersoSeguinteExecute(Sender: TObject);
@@ -132,6 +132,7 @@ type
     procedure MenuItem24Click(Sender: TObject);
     procedure MenuItemSyncTheWordClick(Sender: TObject);
     procedure QuandoNovoVersiculo(Sender: TProjeto);
+    procedure QuandoPalavraClicada(Sender: TSintagma);
     procedure QuandoAlterarVersiculo;
     procedure AtualizarMRU(m: TMenuItem);
     procedure CarregarMRU(m: TMenuItem);
@@ -182,7 +183,7 @@ begin
   end;
 end;
 {------------------------------------------------------------------------------}
-procedure SyncTheWord(ref: string);
+procedure SyncTheWordVerse(ref: string);
 var
   twHWND: THandle;
   CData : TCopyDataStruct;
@@ -201,6 +202,26 @@ begin
     CData.lpData := @bcv;
     CData.cbData := SizeOf(bcv);
     SendMessage(twHWND, WM_COPYDATA, 0, DWORD(@CData));
+  end;
+end;
+
+procedure SyncTheWordDict(ref: string);
+var
+  twHWND: THandle;
+  CData : TCopyDataStruct;
+  CD: TCopyData_Op_DctWordLookup;
+  ws: WideString;
+begin
+  twHWND := RestoreTheWord(False);
+  if twHWND <> 0 then begin
+    ws := ref;
+
+    CData.dwData := twAutomate.COPYDATA_OP_DCTWORDLOOKUP;
+    FillChar(CD.phrase[1], 0, Length(CD.phrase)*2); //zero fill the array first, VERY IMPORTANT
+    Move(ws[1], CD.phrase[1], 2*Math.max(Length(ws), Length(CD.phrase)));
+    CData.lpData := @CD;
+    CData.cbData := SizeOf(TCopyData_Op_DctWordLookup);
+    SendMessage(twHWND, WM_COPYDATA, 0, DWORD(@CData) );
   end;
 end;
 {$ENDIF}
@@ -230,6 +251,7 @@ begin
   ProjetoAtual := TProjeto.Criar([ScrollBox1, ScrollBox2, ScrollBox3, ScrollBox4], TreeView1, RadioGroup1, Memo1);
   ProjetoAtual.OnNovoVersiculo := @QuandoNovoVersiculo;
   ProjetoAtual.OnAlterarVersiculo := @QuandoAlterarVersiculo;
+  ProjetoAtual.OnSintagmaClick := @QuandoPalavraClicada;
   //ProjetoAtual.AtribuirDicStrong('.\dados\dbs.dct.twm', [tbOrigem]);
   //ProjetoAtual.AtribuirDicMorfo('.\dados\camr.dct.twm', [tbOrigem]);
   ProjetoAtual.Abrir(OpenDialog1.FileName);
@@ -432,7 +454,7 @@ begin
   begin
     Caption := 'iBiblia - [' + ProjetoAtual.ObterInfo('descricao') + '] - ' +  ProjetoAtual.Referencia;
     RadioGroup1.SetFocus;
-    ActionSyncTheWordExecute(Sender);
+    ActionSyncTheWordVerseExecute(Sender);
   end;
 end;
 
@@ -481,11 +503,11 @@ begin
     ProjetoAtual.SugerirAssociacao;
 end;
 
-procedure TFrmPrincipal.ActionSyncTheWordExecute(Sender: TObject);
+procedure TFrmPrincipal.ActionSyncTheWordVerseExecute(Sender: TObject);
 begin
   {$IFDEF WINDOWS}
   if synctw and (ProjetoAtual <> nil) then
-    SyncTheWord(ProjetoAtual.ID);
+    SyncTheWordVerse(ProjetoAtual.ID);
   {$ENDIF}
 end;
 
@@ -615,6 +637,13 @@ end;
 procedure TFrmPrincipal.QuandoNovoVersiculo(Sender: TProjeto);
 begin
   ActionQuandoNovoVersiculoExecute(nil);
+end;
+
+procedure TFrmPrincipal.QuandoPalavraClicada(Sender: TSintagma);
+begin
+  if not synctw or (Sender.Strong.Count = 0) then
+    exit;
+  SyncTheWordDict(Sender.Strong.Strings[0]);
 end;
 
 procedure TFrmPrincipal.QuandoAlterarVersiculo;

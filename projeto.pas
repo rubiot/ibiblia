@@ -45,6 +45,7 @@ type
   TOpcoesExportacao = set of TOpcaoExportacao;
 
   TOnNovoVersiculoEvent = procedure (Sender: TProjeto) of object;
+  TOnSintagmaClickEvent = procedure (Sender: TSintagma) of object;
   //TOnAlterarVersiculoEvent = procedure (Sender: TProjeto) of object;
 
   AVersiculo = array[tbOrigem..tbConsulta2] of TVersiculo;
@@ -76,6 +77,7 @@ type
     FTemporizador: TTimer;
     FAtrasoExibicao: Cardinal;
     FOnNovoVersiculo: TOnNovoVersiculoEvent;
+    FOnSintagmaClick: TOnSintagmaClickEvent;
     function GetCaminho: string;
     function GetComentarios: string;
     function GetID: string;
@@ -87,6 +89,7 @@ type
     procedure SetComentarios(const AValue: string);
     procedure SetOnAlterarVersiculo(const AValue: TOnAlterarVersiculoEvent);
     procedure SetOnNovoVersiculo(const AValue: TOnNovoVersiculoEvent);
+    procedure SetOnSintagmaClick(const AValue: TOnSintagmaClickEvent);
     procedure SetSituacao(const AValue: Integer);
   protected
     procedure CopiarArquivo(origem, destino: string);
@@ -165,6 +168,7 @@ type
     property Arvore: TTreeView read FArvore write SetArvore;
     property OnAlterarVersiculo: TOnAlterarVersiculoEvent read FOnAlterarVersiculo write SetOnAlterarVersiculo;
     property OnNovoVersiculo: TOnNovoVersiculoEvent read FOnNovoVersiculo write SetOnNovoVersiculo;
+    property OnSintagmaClick: TOnSintagmaClickEvent read FOnSintagmaClick write SetOnSintagmaClick;
     property AtrasoExibicaoDefinicao: Cardinal read FAtrasoExibicao write SetAtrasoExibicao;
     property Ativo: boolean read FAtivo;
     property Caminho: string read GetCaminho;
@@ -304,6 +308,12 @@ procedure TProjeto.SetOnNovoVersiculo(const AValue: TOnNovoVersiculoEvent);
 begin
   if FOnNovoVersiculo = AValue then exit;
   FOnNovoVersiculo := AValue;
+end;
+
+procedure TProjeto.SetOnSintagmaClick(const AValue: TOnSintagmaClickEvent);
+begin
+  if FOnSintagmaClick = AValue then exit;
+  FOnSintagmaClick := AValue;
 end;
 
 procedure TProjeto.SetSituacao(const AValue: Integer);
@@ -631,7 +641,11 @@ end;
 
 procedure TProjeto.SintagmaOnClick(Sender: TSintagma);
 begin
-  if assigned(FAVersiculo[tbOrigem]) then
+  if assigned(FOnSintagmaClick) then
+    FOnSintagmaClick(Sender);
+
+  if assigned(FAVersiculo[tbOrigem]) and
+     ((Sender.VersiculoRef = FAVersiculo[tbOrigem]) or (Sender.VersiculoRef = FAVersiculo[tbDestino])) then
   begin
     if (FRadioGroupSituacao.ItemIndex = 0) and (FAVersiculo[tbOrigem].AndamentoAssociacao > 0) then
       FRadioGroupSituacao.ItemIndex := 1 // associando
@@ -1573,11 +1587,10 @@ begin
   owner.Tag := ptrint(FAVersiculo[texto]);
   owner.OnResize := @OnRedimensionarVersiculo;
   owner.OnDblClick := @OnDblClickVersiculo;
+  FAVersiculo[texto].OnClick := @SintagmaOnClick;
 
   //FAVersiculo[texto].MostrarDicas := true;
-  if texto in [tbOrigem, tbDestino] then
-    FAVersiculo[texto].OnClick := @SintagmaOnClick
-  else if texto in [tbConsulta1, tbConsulta2] then
+  if texto in [tbConsulta1, tbConsulta2] then
     FAVersiculo[texto].CorDesassociado := clWindowText;
 
   //if texto = tbOrigem then
