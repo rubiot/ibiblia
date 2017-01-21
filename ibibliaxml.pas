@@ -97,13 +97,20 @@ var
   c: integer;
 begin
   c := 0;
-  while (FPXML^ in [{'''',} '"', '.', ',', ';', ':', '!', '?', {'-',} '(', ')']) or (pos(#194#183, FPXML) = 1) or (pos(#226#128#156, FPXML) = 1) or (pos(#226#128#157, FPXML) = 1) do
+  while (FPXML^ in [{'''',} '"', '.', ',', ';', ':', '!', '?', {'-',} '(', ')']) or
+        (pos(#194#183, FPXML) = 1) or      // ·
+        (pos(#226#128#156, FPXML) = 1) or  // “
+        (pos(#226#128#157, FPXML) = 1) or  // ”
+        (pos(#206#135, FPXML) = 1)         // ·
+  do
   begin
-    if AnsiStartsStr(#194#183, FPXML) then // hack para sinal de pontuação grego, ponto centralizado
+    if AnsiStartsStr(#194#183, FPXML) or
+       AnsiStartsStr(#206#135, FPXML) then // hack para sinais de pontuação gregos
     begin
       inc(FPXML, 2);
       inc(c, 2);
-    end else if AnsiStartsStr(#226#128#156, FPXML) or AnsiStartsStr(#226#128#157, FPXML) then // hack para “ e ”
+    end else if AnsiStartsStr(#226#128#156, FPXML) or
+                AnsiStartsStr(#226#128#157, FPXML) then // hack para “ e ”
     begin
       inc(FPXML, 3);
       inc(c, 3);
@@ -150,7 +157,11 @@ begin
   c := 0;
   while not (FPXML^ in [#0, #32, #9, '|', '<', {'''',} '"', '.', ',', ';', ':', '!', '?', {'-',} '(', ')']) do
   begin
-    if AnsiStartsStr(#194#183, FPXML) or AnsiStartsStr(#226#128#156, FPXML) or AnsiStartsStr(#226#128#157, FPXML) then // hack para sinal de pontuação grego, ponto centralizado e “”
+    if AnsiStartsStr(#194#183, FPXML) or     // ·
+       AnsiStartsStr(#226#128#156, FPXML) or // “
+       AnsiStartsStr(#226#128#157, FPXML) or // ”
+       AnsiStartsStr(#206#135, FPXML)        // ·
+    then // hack para wide chars
       break;
 
     inc(c);
@@ -211,15 +222,20 @@ function TVarredorXML.LerSintagma(var s: TTagSintagma): TTipoSintagma;
   function tipoChar: TTipoSintagma;
   var
     t: integer;
+    c: Cardinal;
   begin
     result := tsSintagma;
-    if UTF8CharacterToUnicode(FPXML, t) = 0 then
+    c := UTF8CharacterToUnicode(FPXML, t);
+    if c = 0 then
       result := tsNulo
-    else if UTF8CharacterToUnicode(FPXML, t) = ord('<') then
+    else if c = ord('<') then
       result := tsTag
-    else if Contido(UTF8CharacterToUnicode(FPXML, t), [ord(#32), ord(#9), ord('|')]) then
+    else if Contido(c, [ord(#32), ord(#9), ord('|')]) then
       result := tsEspaco
-    else if Contido(UTF8CharacterToUnicode(FPXML, t), [ord('"'), ord('.'), ord(','), ord(';'), ord(':'), ord('!'), ord('?'), ord('('), ord(')'), 183, 8220, 8221{, ord('-')}]) then
+    else if Contido(c, [ord('"'), ord('.'), ord(','), ord(';'), ord(':'),
+                        ord('!'), ord('?'), ord('('), ord(')'),
+                        183, 903, 8220, 8221{, ord('-')}])
+    then
       result := tsPontuacao;
   end;
 var
@@ -233,7 +249,9 @@ begin
     tsEspaco:
       lerEnquanto(s, [ord(#32), ord(#9), ord('|')]);
     tsPontuacao:
-      lerEnquanto(s, [ord('"'), ord('.'), ord(','), ord(';'), ord(':'), ord('!'), ord('?'), ord('('), ord(')'), 183, 8220, 8221{, ord('-')}]); {·, “, ”}
+      lerEnquanto(s, [ord('"'), ord('.'), ord(','), ord(';'), ord(':'),
+                      ord('!'), ord('?'), ord('('), ord(')'),
+                      183, 903, 8220, 8221{, ord('-')}]); {·, “, ”}
     tsTag:
       lerAteInclusive(s, [ord('>')]);
   else
@@ -244,7 +262,9 @@ begin
     end else
       hifen := '';
 
-    lerAte(s, [ord('<'), ord(#32), ord(#9), ord('|'), ord('"'), ord('.'), ord(','), ord(';'), ord(':'), ord('!'), ord('?'), ord('-'), ord('('), ord(')'), 183, 8220, 8221]);
+    lerAte(s, [ord('<'), ord(#32), ord(#9), ord('|'), ord('"'), ord('.'),
+               ord(','), ord(';'), ord(':'), ord('!'), ord('?'), ord('-'),
+               ord('('), ord(')'), 183, 903, 8220, 8221]);
     s.valor := hifen + s.valor;
   end;
 
