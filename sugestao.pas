@@ -46,6 +46,7 @@ type
     function InserirTraducao(lori_id, ldes_id: integer): boolean;
     function IdentificarVerbo(forma: string): boolean;
     function NormalizarVerbo(locucao: string): string;
+    function ObterSugestoes(chave: string): TSQLQuery;
   public
     constructor Criar(Owner: TComponent; conn: TSQLConnection);
     constructor Criar(db: string);
@@ -402,6 +403,25 @@ begin
   end;
 end;
 
+function TGerSugestoes.ObterSugestoes(chave: string): TSQLQuery;
+begin
+  FQrySugestoes.Close;
+  FQrySugestoes.Params[0].AsString := chave; //AnsiReplaceStr(stg.ChaveSugestao, '''', '''''');
+  FQrySugestoes.Open;
+  DebugLn('%d sugestoes de traducao encontradas na busca com morfologia', [FQrySugestoes.RecordCount]);
+  result := FQrySugestoes;
+  if FQrySugestoes.RecordCount = 0 then
+  begin
+    result := FQrySugestoesSemMorfo;
+
+    chave := FRETirarMorfo.Replace(chave, '');
+    FQrySugestoesSemMorfo.Close;
+    FQrySugestoesSemMorfo.Params[0].AsString := chave + '%'; //AnsiReplaceStr(stg.ChaveSugestao, '''', '''''');
+    FQrySugestoesSemMorfo.Open;
+    DebugLn('%d sugestoes de traducao encontradas na busca sem morfologia', [FQrySugestoesSemMorfo.RecordCount]);
+  end;
+end;
+
 procedure TGerSugestoes.SugerirAssociacoes(v1: TVersiculo);
   function compararDestino(a, b: string): boolean;
   var a1, b1: string;
@@ -452,7 +472,6 @@ procedure TGerSugestoes.SugerirAssociacoes(v1: TVersiculo);
 var
   s1, s2, o, d, d1, d2: smallint;
   stg: TSintagma;
-  ch: string; // chave busca idioma origem
   v2: TVersiculo;
   associado: boolean;
   QSugestoes: TSQLQuery;
@@ -487,22 +506,7 @@ begin
 
     DebugLn('novo sintagma origem sem associacao: %s', [stg.Texto]);
 
-    ch := stg.GetChaveSugestao(tlMetaDados);
-    FQrySugestoes.Close;
-    FQrySugestoes.Params[0].AsString := ch; //AnsiReplaceStr(stg.ChaveSugestao, '''', '''''');
-    FQrySugestoes.Open;
-    DebugLn('%d sugestoes de traducao encontradas na busca com morfologia', [FQrySugestoes.RecordCount]);
-    QSugestoes := FQrySugestoes;
-    if FQrySugestoes.RecordCount = 0 then
-    begin
-      QSugestoes := FQrySugestoesSemMorfo;
-
-      ch := FRETirarMorfo.Replace(ch, '');
-      FQrySugestoesSemMorfo.Close;
-      FQrySugestoesSemMorfo.Params[0].AsString := ch+'%'; //AnsiReplaceStr(stg.ChaveSugestao, '''', '''''');
-      FQrySugestoesSemMorfo.Open;
-      DebugLn('%d sugestoes de traducao encontradas na busca sem morfologia', [FQrySugestoesSemMorfo.RecordCount]);
-    end;
+    QSugestoes := ObterSugestoes(stg.GetChaveSugestao(tlMetaDados));
 
     while not QSugestoes.EOF do
     begin
