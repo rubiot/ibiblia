@@ -1,22 +1,24 @@
 object FrmEscolherVerseRules: TFrmEscolherVerseRules
   Left = 382
-  Height = 454
+  Height = 450
   Top = 213
   Width = 1171
+  HorzScrollBar.Page = 1160
+  VertScrollBar.Page = 398
+  AutoScroll = True
   Caption = 'Escolher verse.rules'
-  ClientHeight = 454
+  ClientHeight = 450
   ClientWidth = 1171
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   Position = poOwnerFormCenter
-  LCLVersion = '1.2.0.3'
+  LCLVersion = '1.6.2.0'
   object ckgVerseRules: TCheckGroup
     Left = 0
-    Height = 192
+    Height = 450
     Top = 0
     Width = 1171
-    Align = alTop
-    Anchors = [akTop, akLeft, akRight, akBottom]
+    Align = alClient
     AutoFill = True
     Caption = 'Escolha as regras que deseja aplicar'
     ChildSizing.LeftRightSpacing = 6
@@ -31,9 +33,9 @@ object FrmEscolherVerseRules: TFrmEscolherVerseRules
     TabOrder = 0
   end
   object Button1: TButton
-    Left = 942
+    Left = 964
     Height = 25
-    Top = 417
+    Top = 416
     Width = 75
     Anchors = [akRight, akBottom]
     Cancel = True
@@ -42,9 +44,9 @@ object FrmEscolherVerseRules: TFrmEscolherVerseRules
     TabOrder = 1
   end
   object Button2: TButton
-    Left = 1063
+    Left = 1085
     Height = 25
-    Top = 417
+    Top = 416
     Width = 75
     Anchors = [akRight, akBottom]
     Caption = 'OK'
@@ -61,6 +63,7 @@ object FrmEscolherVerseRules: TFrmEscolherVerseRules
     MultiSelect = True
     OnSelectionChange = lbDeSelectionChange
     TabOrder = 3
+    Visible = False
   end
   object lbPara: TListBox
     Left = 568
@@ -71,5 +74,6 @@ object FrmEscolherVerseRules: TFrmEscolherVerseRules
     MultiSelect = True
     OnSelectionChange = lbParaSelectionChange
     TabOrder = 4
+    Visible = False
   end
 end

@@ -51,7 +51,7 @@ object frmPrincipal: TfrmPrincipal
       Action = ActionNovoProjeto
     end
     object ToolButton4: TToolButton
-      Left = 181
+      Left = 253
       Top = 2
       Action = ActionSalvarProjeto
     end
@@ -61,12 +61,12 @@ object frmPrincipal: TfrmPrincipal
       Action = ActionSalvarProjetoComo
     end
     object ToolButton6: TToolButton
-      Left = 217
+      Left = 289
       Top = 2
       Action = ActionSugerirAssociacao
     end
     object ToolButton7: TToolButton
-      Left = 289
+      Left = 181
       Top = 2
       Action = ActionLimparAssociacoes
     end
@@ -81,7 +81,7 @@ object frmPrincipal: TfrmPrincipal
       Action = ActionVersoSeguinte
     end
     object ToolButton10: TToolButton
-      Left = 253
+      Left = 217
       Top = 2
       Action = ActionReverterAssociacoes
     end
