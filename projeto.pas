@@ -1401,45 +1401,54 @@ begin
   FSugeridor.LimparBaseAssociacoes;
 
   try
-    if assigned(pb) then
-    begin
-      pb.Position := 0;
-      pb.Min := 0;
-      pb.Max := 7956;
-      pb.Step := 1;
-      pb.Visible := true;
-    end;
-
-    FAVersiculo[tbOrigem].Ativo := false;
-    FAVersiculo[tbDestino].Ativo := false;
-    PreRolagemVersiculo(nil);
-
-    DesabilitarEventosRolagem;
-    marcador := GetID;
-    VersiculoInicial;
-    while not FTblPares.EOF do
-    begin
-      if length(FTblPares.FieldByName('pare_pares').AsString) > 0 then
-      begin
-        FAVersiculo[tbOrigem].Texto := FTblPares.Fields[FACamposTexto[tbOrigem]].AsString;
-        FAVersiculo[tbDestino].Texto := FTblPares.Fields[FACamposTexto[tbDestino]].AsString;
-        FAVersiculo[tbOrigem].Pares := FTblPares.FieldByName('pare_pares').AsString;
-
-        pares := FAVersiculo[tbOrigem].GetListaPares(tlMetaDados);
-
-        for p:=0 to pares.Count-1 do
-          if (p mod 2) = 0 then // pares estão alternados na lista
-            FSugeridor.InserirPar(pares.Strings[p], pares.Strings[p+1]);
-
-        pares.Free;
-      end;
+    try
       if assigned(pb) then
       begin
-         pb.StepIt;
-         if (pb.Position mod 50) = 0 then
-           Application.ProcessMessages;
+        pb.Position := 0;
+        pb.Min := 0;
+        pb.Max := 7956;
+        pb.Step := 1;
+        pb.Visible := true;
       end;
-      VersiculoSeguinte;
+
+      FAVersiculo[tbOrigem].Ativo := false;
+      FAVersiculo[tbDestino].Ativo := false;
+      FExportando := true;
+      PreRolagemVersiculo(nil);
+
+      DesabilitarEventosRolagem;
+      marcador := GetID;
+      VersiculoInicial;
+      while not FTblPares.EOF do
+      begin
+        if length(FTblPares.FieldByName('pare_pares').AsString) > 0 then
+        begin
+          FAVersiculo[tbOrigem].Texto := FTblPares.Fields[FACamposTexto[tbOrigem]].AsString;
+          FAVersiculo[tbDestino].Texto := FTblPares.Fields[FACamposTexto[tbDestino]].AsString;
+          FAVersiculo[tbOrigem].Pares := FTblPares.FieldByName('pare_pares').AsString;
+
+          pares := FAVersiculo[tbOrigem].GetListaPares(tlMetaDados);
+
+          for p:=0 to pares.Count-1 do
+            if (p mod 2) = 0 then // pares estão alternados na lista
+              FSugeridor.InserirPar(pares.Strings[p], pares.Strings[p+1]);
+
+          pares.Free;
+        end;
+        if assigned(pb) then
+        begin
+           pb.StepIt;
+           if (pb.Position mod 50) = 0 then
+             Application.ProcessMessages;
+        end;
+        VersiculoSeguinte;
+      end;
+    except
+      on E: Exception do
+         ShowMessage( 'Error: '+ E.ClassName + #13#10 + E.Message + #13#10#13#10 +
+                      'Referência: ' + GetID + #13#10 +
+                      'Par1: ' + pares.Strings[p] + #13#10 +
+                      'Par2: ' + pares.Strings[p+1] + #13#10);
     end;
   finally
     FAVersiculo[tbOrigem].Ativo := true;
@@ -1447,6 +1456,7 @@ begin
     IrPara(marcador);
     HabilitarEventosRolagem;
     PosRolagemVersiculo(nil);
+    FExportando := false;
     if assigned(pb) then
        pb.Visible := false;
   end;
