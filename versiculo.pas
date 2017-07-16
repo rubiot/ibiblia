@@ -484,8 +484,8 @@ begin
     end;
   end;
 
-  if c > 0 then
-    Modificado := true;
+  //if c > 0 then
+  //  Modificado := true;
   {
   if FOn <> nil then
   begin
