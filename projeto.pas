@@ -1835,7 +1835,7 @@ begin
     begin
       pb.Position := 0;
       pb.Min := 0;
-      pb.Max := 7956;
+      pb.Max := 7957 + 5624; // versículos do NT + qtde de strongs
       pb.Step := 1;
       pb.Visible := true;
     end;
@@ -1865,7 +1865,7 @@ begin
       if assigned(pb) then
       begin
         pb.StepIt;
-        if (pb.Position mod 10) = 0 then
+        if (pb.Position mod 20) = 0 then
           Application.ProcessMessages;
       end;
       VersiculoSeguinte;
@@ -1885,9 +1885,18 @@ begin
         tblConteudo.Post;
       end;
 
+      if assigned(pb) then
+      begin
+        pb.StepIt;
+        if (pb.Position mod 20) = 0 then
+          Application.ProcessMessages;
+      end;
+
       tblTopicos.Next;
     end;
   finally
+    //ShowMessage('Position: ' + IntToStr(pb.Position));
+    Application.ProcessMessages;
     tblConteudo.ApplyUpdates;
     tblConteudo.Close;
     tblTopicos.Close;
