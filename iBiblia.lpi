@@ -1,22 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CONFIG>
   <ProjectOptions>
-    <Version Value="10"/>
+    <Version Value="9"/>
     <PathDelim Value="\"/>
     <General>
       <MainUnit Value="0"/>
       <Title Value="iBiblia"/>
       <UseXPManifest Value="True"/>
-      <XPManifest>
-        <DpiAware Value="True"/>
-      </XPManifest>
       <Icon Value="0"/>
+      <ActiveWindowIndexAtStart Value="-1"/>
     </General>
     <VersionInfo>
       <UseVersionInfo Value="True"/>
       <AutoIncrementBuild Value="True"/>
       <MajorVersionNr Value="1"/>
-      <BuildNr Value="43"/>
+      <BuildNr Value="42"/>
       <Language Value="0416"/>
       <StringTable CompanyName="Rúbio R. C. Terra (rubio.terra@gmail.com)" FileDescription="Ferramenta para associação de textos bíblicos" ProductName="iBiblia" ProductVersion="0.0.0.0"/>
     </VersionInfo>
@@ -63,12 +61,11 @@
           </Target>
           <SearchPaths>
             <IncludeFiles Value="$(ProjOutDir)"/>
+            <Libraries Value="\usr\lib64"/>
             <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
           </SearchPaths>
           <CodeGeneration>
-            <TargetProcessor Value="80386"/>
             <TargetCPU Value="i386"/>
-            <TargetOS Value="win32"/>
           </CodeGeneration>
           <Linking>
             <Debugging>
@@ -134,15 +131,14 @@
         <PackageName Value="LCL"/>
       </Item2>
     </RequiredPackages>
-    <Units Count="49">
+    <Units Count="25">
       <Unit0>
         <Filename Value="iBiblia.lpr"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="1"/>
+        <EditorIndex Value="-1"/>
         <WindowIndex Value="1"/>
-        <CursorPos X="60" Y="22"/>
+        <CursorPos Y="25"/>
         <UsageCount Value="207"/>
-        <Loaded Value="True"/>
       </Unit0>
       <Unit1>
         <Filename Value="formprincipal.pas"/>
@@ -151,562 +147,232 @@
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="formPrincipal"/>
-        <EditorIndex Value="3"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="-1"/>
         <WindowIndex Value="1"/>
-        <TopLine Value="703"/>
-        <CursorPos X="58" Y="541"/>
+        <TopLine Value="193"/>
+        <CursorPos Y="226"/>
         <UsageCount Value="207"/>
-        <Loaded Value="True"/>
-        <LoadedDesigner Value="True"/>
       </Unit1>
       <Unit2>
         <Filename Value="versiculo.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="Versiculo"/>
-        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="-1"/>
         <WindowIndex Value="1"/>
-        <TopLine Value="1160"/>
-        <CursorPos Y="1162"/>
+        <TopLine Value="1369"/>
+        <CursorPos Y="1382"/>
         <ExtraEditorCount Value="1"/>
         <ExtraEditor1>
-          <EditorIndex Value="7"/>
+          <EditorIndex Value="-1"/>
           <WindowIndex Value="1"/>
-          <CursorPos X="62" Y="11"/>
+          <TopLine Value="1309"/>
+          <CursorPos X="52" Y="1327"/>
+          <FoldState Value=" TL!d47)"/>
         </ExtraEditor1>
         <UsageCount Value="207"/>
-        <Loaded Value="True"/>
       </Unit2>
       <Unit3>
         <Filename Value="ibibliaxml.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="iBibliaXML"/>
-        <EditorIndex Value="10"/>
+        <EditorIndex Value="-1"/>
         <WindowIndex Value="1"/>
-        <CursorPos X="20" Y="14"/>
+        <TopLine Value="240"/>
+        <CursorPos Y="273"/>
         <UsageCount Value="207"/>
-        <Loaded Value="True"/>
       </Unit3>
       <Unit4>
         <Filename Value="projeto.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="Projeto"/>
-        <EditorIndex Value="6"/>
-        <WindowIndex Value="1"/>
-        <TopLine Value="1321"/>
-        <CursorPos X="30" Y="1334"/>
+        <EditorIndex Value="-1"/>
+        <WindowIndex Value="-1"/>
         <ExtraEditorCount Value="1"/>
         <ExtraEditor1>
           <EditorIndex Value="-1"/>
-          <WindowIndex Value="-1"/>
+          <WindowIndex Value="1"/>
+          <TopLine Value="717"/>
+          <CursorPos Y="738"/>
         </ExtraEditor1>
         <UsageCount Value="207"/>
-        <Loaded Value="True"/>
       </Unit4>
       <Unit5>
         <Filename Value="sugestao.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="Sugestao"/>
-        <EditorIndex Value="9"/>
+        <EditorIndex Value="-1"/>
         <WindowIndex Value="1"/>
         <TopLine Value="262"/>
         <CursorPos X="9" Y="281"/>
         <UsageCount Value="207"/>
-        <Loaded Value="True"/>
       </Unit5>
       <Unit6>
         <Filename Value="C:\lazarus\fpc\2.4.3\source\packages\fcl-db\src\base\db.pas"/>
         <TopLine Value="1954"/>
         <CursorPos Y="1980"/>
-        <UsageCount Value="5"/>
+        <UsageCount Value="4"/>
       </Unit6>
       <Unit7>
-        <Filename Value="C:\lazarus\fpc\2.4.3\source\packages\fcl-db\src\base\dataset.inc"/>
-        <TopLine Value="1997"/>
-        <CursorPos Y="2024"/>
-        <UsageCount Value="1"/>
-      </Unit7>
-      <Unit8>
         <Filename Value="formnovoprojeto.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="FormNovoProjeto"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UsageCount Value="205"/>
-      </Unit8>
-      <Unit9>
-        <Filename Value="C:\lazarus\lcl\graphics.pp"/>
-        <TopLine Value="281"/>
-        <CursorPos X="14" Y="296"/>
-        <UsageCount Value="1"/>
-      </Unit9>
-      <Unit10>
+      </Unit7>
+      <Unit8>
         <Filename Value="formpopup.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="frmDictionaryPopup"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <EditorIndex Value="14"/>
+        <EditorIndex Value="-1"/>
         <WindowIndex Value="1"/>
         <CursorPos X="11" Y="10"/>
         <UsageCount Value="201"/>
-        <Loaded Value="True"/>
-        <LoadedDesigner Value="True"/>
-      </Unit10>
-      <Unit11>
+      </Unit8>
+      <Unit9>
         <Filename Value="rtfedit.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="RTFEdit"/>
-        <EditorIndex Value="18"/>
+        <EditorIndex Value="-1"/>
         <WindowIndex Value="1"/>
         <TopLine Value="55"/>
-        <CursorPos X="27" Y="83"/>
+        <CursorPos X="21" Y="55"/>
         <UsageCount Value="201"/>
-        <Loaded Value="True"/>
-      </Unit11>
-      <Unit12>
+      </Unit9>
+      <Unit10>
         <Filename Value="C:\lazarus\components\synedit\syncompletion.pas"/>
         <TopLine Value="10"/>
-        <UsageCount Value="21"/>
-      </Unit12>
-      <Unit13>
+        <UsageCount Value="10"/>
+      </Unit10>
+      <Unit11>
         <Filename Value="C:\lazarus\ide\codecontextform.pas"/>
         <TopLine Value="792"/>
         <CursorPos X="3" Y="742"/>
-        <UsageCount Value="21"/>
-      </Unit13>
-      <Unit14>
+        <UsageCount Value="10"/>
+      </Unit11>
+      <Unit12>
         <Filename Value="C:\lazarus\lcl\include\control.inc"/>
         <TopLine Value="1669"/>
         <CursorPos Y="1684"/>
-        <UsageCount Value="18"/>
-      </Unit14>
-      <Unit15>
-        <Filename Value="C:\lazarus\fpc\2.4.3\source\packages\fcl-db\src\base\fields.inc"/>
-        <TopLine Value="2391"/>
-        <CursorPos Y="2418"/>
-        <UsageCount Value="1"/>
-      </Unit15>
-      <Unit16>
+        <UsageCount Value="7"/>
+      </Unit12>
+      <Unit13>
         <Filename Value="formpropprojeto.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="FormPropProjeto"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <EditorIndex Value="13"/>
+        <EditorIndex Value="-1"/>
         <WindowIndex Value="1"/>
-        <TopLine Value="46"/>
-        <CursorPos X="3" Y="60"/>
+        <TopLine Value="31"/>
+        <CursorPos X="19" Y="60"/>
         <UsageCount Value="204"/>
-        <Loaded Value="True"/>
-        <LoadedDesigner Value="True"/>
-      </Unit16>
-      <Unit17>
+      </Unit13>
+      <Unit14>
         <Filename Value="C:\lazarus\lcl\lclproc.pas"/>
         <TopLine Value="301"/>
         <CursorPos X="31" Y="346"/>
-        <UsageCount Value="33"/>
-      </Unit17>
-      <Unit18>
+        <UsageCount Value="22"/>
+      </Unit14>
+      <Unit15>
         <Filename Value="memoversiculo.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="MemoVersiculo"/>
-        <EditorIndex Value="12"/>
+        <EditorIndex Value="-1"/>
         <WindowIndex Value="1"/>
-        <CursorPos X="57" Y="8"/>
+        <TopLine Value="22"/>
+        <CursorPos X="16" Y="51"/>
         <UsageCount Value="224"/>
-        <Loaded Value="True"/>
-      </Unit18>
-      <Unit19>
+      </Unit15>
+      <Unit16>
         <Filename Value="pcre_dll.pas"/>
         <EditorIndex Value="-1"/>
         <WindowIndex Value="1"/>
         <TopLine Value="25"/>
         <CursorPos X="51" Y="45"/>
-        <UsageCount Value="91"/>
-      </Unit19>
-      <Unit20>
+        <UsageCount Value="43"/>
+      </Unit16>
+      <Unit17>
         <Filename Value="PCRE.pas"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="2"/>
+        <EditorIndex Value="-1"/>
         <WindowIndex Value="1"/>
-        <TopLine Value="72"/>
-        <CursorPos X="3" Y="87"/>
+        <TopLine Value="48"/>
+        <CursorPos X="7" Y="57"/>
         <UsageCount Value="208"/>
-        <Loaded Value="True"/>
-      </Unit20>
-      <Unit21>
+      </Unit17>
+      <Unit18>
         <Filename Value="formexportar.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="frmExportarProjeto"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <EditorIndex Value="16"/>
+        <EditorIndex Value="-1"/>
         <WindowIndex Value="1"/>
-        <TopLine Value="20"/>
-        <CursorPos X="21" Y="49"/>
+        <TopLine Value="49"/>
+        <CursorPos Y="66"/>
         <UsageCount Value="203"/>
-        <Loaded Value="True"/>
-        <LoadedDesigner Value="True"/>
-      </Unit21>
-      <Unit22>
+      </Unit18>
+      <Unit19>
         <Filename Value="exportarprojeto.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="ExportarProjeto"/>
-        <EditorIndex Value="8"/>
+        <EditorIndex Value="-1"/>
         <WindowIndex Value="1"/>
-        <CursorPos X="63" Y="8"/>
+        <TopLine Value="359"/>
+        <CursorPos X="84" Y="394"/>
         <UsageCount Value="203"/>
-        <Loaded Value="True"/>
-      </Unit22>
-      <Unit23>
+      </Unit19>
+      <Unit20>
         <Filename Value="formmesclarprojetos.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="FrmMesclarProjetos"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <EditorIndex Value="17"/>
+        <EditorIndex Value="-1"/>
         <WindowIndex Value="1"/>
         <CursorPos X="21" Y="30"/>
         <UsageCount Value="213"/>
-        <Loaded Value="True"/>
-        <LoadedDesigner Value="True"/>
-      </Unit23>
-      <Unit24>
+      </Unit20>
+      <Unit21>
         <Filename Value="C:\lazarus\fpc\2.6.2\source\rtl\objpas\strutils.pp"/>
         <TopLine Value="203"/>
         <CursorPos Y="14"/>
-        <UsageCount Value="46"/>
-      </Unit24>
-      <Unit25>
+        <UsageCount Value="35"/>
+      </Unit21>
+      <Unit22>
         <Filename Value="formverserules.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="FrmEscolherVerseRules"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <EditorIndex Value="15"/>
-        <WindowIndex Value="1"/>
-        <TopLine Value="71"/>
-        <CursorPos X="5" Y="100"/>
-        <UsageCount Value="228"/>
-        <Loaded Value="True"/>
-      </Unit25>
-      <Unit26>
-        <Filename Value="C:\lazarus\fpc\2.6.4\source\rtl\win\wininc\ascdef.inc"/>
         <EditorIndex Value="-1"/>
         <WindowIndex Value="1"/>
-        <TopLine Value="164"/>
-        <CursorPos X="10" Y="183"/>
-        <UsageCount Value="2"/>
-      </Unit26>
-      <Unit27>
-        <Filename Value="C:\lazarus\fpc\2.6.4\source\rtl\win\wininc\base.inc"/>
-        <EditorIndex Value="-1"/>
-        <WindowIndex Value="1"/>
-        <TopLine Value="80"/>
-        <CursorPos X="6" Y="99"/>
-        <UsageCount Value="2"/>
-      </Unit27>
-      <Unit28>
-        <Filename Value="C:\lazarus\fpc\2.6.4\source\rtl\win\sysosh.inc"/>
-        <EditorIndex Value="-1"/>
-        <WindowIndex Value="1"/>
-        <TopLine Value="3"/>
-        <CursorPos X="3" Y="22"/>
-        <UsageCount Value="2"/>
-      </Unit28>
-      <Unit29>
+        <TopLine Value="18"/>
+        <CursorPos X="5" Y="30"/>
+        <UsageCount Value="283"/>
+      </Unit22>
+      <Unit23>
         <Filename Value="twAutomate.pas"/>
-        <IsPartOfProject Value="True"/>
-        <EditorIndex Value="4"/>
-        <WindowIndex Value="1"/>
-        <TopLine Value="164"/>
-        <CursorPos X="23" Y="117"/>
-        <UsageCount Value="55"/>
-        <Loaded Value="True"/>
-      </Unit29>
-      <Unit30>
-        <Filename Value="C:\lazarus\fpc\2.6.4\source\rtl\objpas\sysutils\sysstrh.inc"/>
         <EditorIndex Value="-1"/>
         <WindowIndex Value="1"/>
-        <TopLine Value="202"/>
-        <CursorPos X="10" Y="221"/>
-        <UsageCount Value="2"/>
-      </Unit30>
-      <Unit31>
-        <Filename Value="C:\lazarus\fpc\2.6.4\source\rtl\objpas\sysutils\sysstr.inc"/>
+        <TopLine Value="2"/>
+        <CursorPos X="33" Y="41"/>
+        <UsageCount Value="108"/>
+      </Unit23>
+      <Unit24>
+        <Filename Value="C:\tools\lazarus\fpc\3.0.0\source\packages\rtl-objpas\src\inc\strutils.pp"/>
         <EditorIndex Value="-1"/>
         <WindowIndex Value="1"/>
-        <TopLine Value="2959"/>
-        <CursorPos X="5" Y="2999"/>
-        <UsageCount Value="2"/>
-      </Unit31>
-      <Unit32>
-        <Filename Value="twsyncthread.pas"/>
-        <IsPartOfProject Value="True"/>
-        <UnitName Value="twSyncThread"/>
-        <EditorIndex Value="5"/>
-        <WindowIndex Value="1"/>
-        <TopLine Value="29"/>
-        <CursorPos Y="44"/>
-        <UsageCount Value="102"/>
-        <Loaded Value="True"/>
-      </Unit32>
-      <Unit33>
-        <Filename Value="C:\tools\lazarus\fpc\3.0.0\source\rtl\objpas\classes\classesh.inc"/>
-        <EditorIndex Value="-1"/>
-        <WindowIndex Value="1"/>
-        <TopLine Value="918"/>
-        <CursorPos X="17" Y="939"/>
-        <UsageCount Value="20"/>
-      </Unit33>
-      <Unit34>
-        <Filename Value="C:\tools\lazarus\fpc\3.0.0\source\rtl\win\tthread.inc"/>
-        <EditorIndex Value="-1"/>
-        <WindowIndex Value="1"/>
-        <TopLine Value="83"/>
-        <CursorPos X="3" Y="86"/>
-        <UsageCount Value="19"/>
-      </Unit34>
-      <Unit35>
-        <Filename Value="C:\tools\lazarus\fpc\3.0.0\source\rtl\win\wininc\ascdef.inc"/>
-        <EditorIndex Value="-1"/>
-        <WindowIndex Value="1"/>
-        <TopLine Value="50"/>
-        <CursorPos X="127" Y="71"/>
-        <UsageCount Value="14"/>
-      </Unit35>
-      <Unit36>
-        <Filename Value="C:\tools\lazarus\fpc\3.0.0\source\rtl\win\wininc\redef.inc"/>
-        <EditorIndex Value="-1"/>
-        <WindowIndex Value="1"/>
-        <TopLine Value="192"/>
-        <CursorPos X="63" Y="211"/>
-        <UsageCount Value="14"/>
-      </Unit36>
-      <Unit37>
-        <Filename Value="C:\tools\lazarus\fpc\3.0.0\source\packages\winunits-jedi\src\jwatlhelp32.pas"/>
-        <UnitName Value="JwaTlHelp32"/>
-        <EditorIndex Value="-1"/>
-        <WindowIndex Value="1"/>
-        <TopLine Value="223"/>
-        <CursorPos X="3" Y="228"/>
-        <UsageCount Value="13"/>
-      </Unit37>
-      <Unit38>
-        <Filename Value="C:\tools\lazarus\fpc\3.0.0\source\rtl\win\wininc\func.inc"/>
-        <EditorIndex Value="-1"/>
-        <WindowIndex Value="1"/>
-        <TopLine Value="96"/>
-        <CursorPos X="10" Y="116"/>
-        <UsageCount Value="13"/>
-      </Unit38>
-      <Unit39>
-        <Filename Value="C:\tools\lazarus\fpc\3.0.0\source\packages\fcl-base\src\inifiles.pp"/>
-        <UnitName Value="IniFiles"/>
-        <EditorIndex Value="-1"/>
-        <WindowIndex Value="1"/>
-        <TopLine Value="217"/>
-        <CursorPos X="20" Y="230"/>
-        <UsageCount Value="7"/>
-      </Unit39>
-      <Unit40>
-        <Filename Value="C:\tools\lazarus\lcl\include\customform.inc"/>
-        <EditorIndex Value="-1"/>
-        <WindowIndex Value="1"/>
-        <TopLine Value="921"/>
-        <CursorPos Y="935"/>
-        <UsageCount Value="11"/>
-      </Unit40>
-      <Unit41>
-        <Filename Value="C:\tools\lazarus\lcl\include\application.inc"/>
-        <EditorIndex Value="-1"/>
-        <WindowIndex Value="1"/>
-        <TopLine Value="2180"/>
-        <CursorPos Y="2198"/>
-        <UsageCount Value="11"/>
-      </Unit41>
-      <Unit42>
-        <Filename Value="C:\tools\lazarus\fpc\3.0.0\source\rtl\objpas\classes\stringl.inc"/>
-        <EditorIndex Value="-1"/>
-        <WindowIndex Value="1"/>
-        <TopLine Value="896"/>
-        <CursorPos X="29" Y="900"/>
-        <UsageCount Value="7"/>
-      </Unit42>
-      <Unit43>
-        <Filename Value="C:\tools\lazarus\fpc\3.0.0\source\rtl\objpas\classes\streams.inc"/>
-        <EditorIndex Value="-1"/>
-        <WindowIndex Value="1"/>
-        <TopLine Value="551"/>
-        <CursorPos X="3" Y="554"/>
-        <UsageCount Value="7"/>
-      </Unit43>
-      <Unit44>
-        <Filename Value="C:\tools\lazarus\components\lazutils\lazutf8.pas"/>
-        <UnitName Value="LazUTF8"/>
-        <EditorIndex Value="11"/>
-        <WindowIndex Value="1"/>
-        <TopLine Value="93"/>
-        <CursorPos X="23" Y="122"/>
-        <UsageCount Value="13"/>
-        <Loaded Value="True"/>
-      </Unit44>
-      <Unit45>
-        <Filename Value="C:\tools\lazarus\fpc\3.0.4\source\rtl\inc\objpas.inc"/>
-        <EditorIndex Value="-1"/>
-        <WindowIndex Value="1"/>
-        <TopLine Value="542"/>
-        <CursorPos Y="556"/>
-        <UsageCount Value="11"/>
-      </Unit45>
-      <Unit46>
-        <Filename Value="C:\tools\lazarus\lcl\menus.pp"/>
-        <UnitName Value="Menus"/>
-        <EditorIndex Value="-1"/>
-        <WindowIndex Value="1"/>
-        <TopLine Value="138"/>
-        <CursorPos X="14" Y="151"/>
-        <UsageCount Value="10"/>
-      </Unit46>
-      <Unit47>
-        <Filename Value="C:\tools\lazarus\lcl\include\menuitem.inc"/>
-        <EditorIndex Value="-1"/>
-        <WindowIndex Value="1"/>
-        <TopLine Value="407"/>
-        <CursorPos X="3" Y="416"/>
-        <UsageCount Value="10"/>
-      </Unit47>
-      <Unit48>
-        <Filename Value="C:\tools\lazarus\fpc\3.0.4\source\rtl\inc\objpash.inc"/>
-        <EditorIndex Value="-1"/>
-        <WindowIndex Value="1"/>
-        <TopLine Value="180"/>
-        <CursorPos X="23" Y="194"/>
-        <UsageCount Value="10"/>
-      </Unit48>
+        <TopLine Value="26"/>
+        <CursorPos X="21" Y="43"/>
+        <UsageCount Value="100"/>
+      </Unit24>
     </Units>
-    <JumpHistory Count="30" HistoryIndex="29">
-      <Position1>
-        <Filename Value="versiculo.pas"/>
-        <Caret Line="1181" TopLine="1167"/>
-      </Position1>
-      <Position2>
-        <Filename Value="versiculo.pas"/>
-        <Caret Line="1184" TopLine="1167"/>
-      </Position2>
-      <Position3>
-        <Filename Value="versiculo.pas"/>
-        <Caret Line="1154" Column="8" TopLine="1143"/>
-      </Position3>
-      <Position4>
-        <Filename Value="versiculo.pas"/>
-        <Caret Line="1147" TopLine="1142"/>
-      </Position4>
-      <Position5>
-        <Filename Value="versiculo.pas"/>
-        <Caret Line="1188" Column="7" TopLine="1140"/>
-      </Position5>
-      <Position6>
-        <Filename Value="versiculo.pas"/>
-        <Caret Line="1147" TopLine="1140"/>
-      </Position6>
-      <Position7>
-        <Filename Value="versiculo.pas"/>
-        <Caret Line="1148" TopLine="1140"/>
-      </Position7>
-      <Position8>
-        <Filename Value="versiculo.pas"/>
-        <Caret Line="1149" TopLine="1140"/>
-      </Position8>
-      <Position9>
-        <Filename Value="versiculo.pas"/>
-        <Caret Line="1152" TopLine="1140"/>
-      </Position9>
-      <Position10>
-        <Filename Value="versiculo.pas"/>
-        <Caret Line="1193" Column="19" TopLine="1175"/>
-      </Position10>
-      <Position11>
-        <Filename Value="versiculo.pas"/>
-        <Caret Line="1147" TopLine="1132"/>
-      </Position11>
-      <Position12>
-        <Filename Value="versiculo.pas"/>
-        <Caret Line="1205" TopLine="1192"/>
-      </Position12>
-      <Position13>
-        <Filename Value="versiculo.pas"/>
-        <Caret Line="1147" TopLine="1132"/>
-      </Position13>
-      <Position14>
-        <Filename Value="versiculo.pas"/>
-        <Caret Line="1148" TopLine="1132"/>
-      </Position14>
-      <Position15>
-        <Filename Value="versiculo.pas"/>
-        <Caret Line="1149" TopLine="1140"/>
-      </Position15>
-      <Position16>
-        <Filename Value="versiculo.pas"/>
-        <Caret Line="1152" TopLine="1140"/>
-      </Position16>
-      <Position17>
-        <Filename Value="versiculo.pas"/>
-        <Caret Line="1154" TopLine="1140"/>
-      </Position17>
-      <Position18>
-        <Filename Value="versiculo.pas"/>
-        <Caret Line="1155" TopLine="1140"/>
-      </Position18>
-      <Position19>
-        <Filename Value="versiculo.pas"/>
-        <Caret Line="1154" TopLine="1140"/>
-      </Position19>
-      <Position20>
-        <Filename Value="versiculo.pas"/>
-        <Caret Line="1156" TopLine="1140"/>
-      </Position20>
-      <Position21>
-        <Filename Value="versiculo.pas"/>
-        <Caret Line="1157" TopLine="1140"/>
-      </Position21>
-      <Position22>
-        <Filename Value="versiculo.pas"/>
-        <Caret Line="1158" TopLine="1140"/>
-      </Position22>
-      <Position23>
-        <Filename Value="versiculo.pas"/>
-        <Caret Line="1159" TopLine="1140"/>
-      </Position23>
-      <Position24>
-        <Filename Value="versiculo.pas"/>
-        <Caret Line="1160" TopLine="1140"/>
-      </Position24>
-      <Position25>
-        <Filename Value="versiculo.pas"/>
-        <Caret Line="1164" TopLine="1140"/>
-      </Position25>
-      <Position26>
-        <Filename Value="versiculo.pas"/>
-        <Caret Line="1165" TopLine="1152"/>
-      </Position26>
-      <Position27>
-        <Filename Value="versiculo.pas"/>
-        <Caret Line="1167" TopLine="1152"/>
-      </Position27>
-      <Position28>
-        <Filename Value="versiculo.pas"/>
-        <Caret Line="1184" TopLine="1170"/>
-      </Position28>
-      <Position29>
-        <Filename Value="versiculo.pas"/>
-        <Caret Line="1188" TopLine="1170"/>
-      </Position29>
-      <Position30>
-        <Filename Value="versiculo.pas"/>
-        <Caret Line="1147" TopLine="1132"/>
-      </Position30>
-    </JumpHistory>
+    <JumpHistory HistoryIndex="-1"/>
   </ProjectOptions>
   <CompilerOptions>
     <Version Value="11"/>
@@ -734,7 +400,7 @@
     </Linking>
   </CompilerOptions>
   <Debugging>
-    <BreakPoints Count="4">
+    <BreakPoints Count="2">
       <Item1>
         <Kind Value="bpkSource"/>
         <WatchScope Value="wpsLocal"/>
@@ -746,30 +412,22 @@
         <Kind Value="bpkSource"/>
         <WatchScope Value="wpsLocal"/>
         <WatchKind Value="wpkWrite"/>
-        <Source Value="projeto.pas"/>
-        <Line Value="1426"/>
+        <Source Value="versiculo.pas"/>
+        <Line Value="1176"/>
+      </Item2>
+    </BreakPoints>
+    <Watches Count="3">
+      <Item1>
+        <Expression Value="result"/>
+      </Item1>
+      <Item2>
+        <Expression Value="a"/>
       </Item2>
       <Item3>
-        <Kind Value="bpkSource"/>
-        <WatchScope Value="wpsLocal"/>
-        <WatchKind Value="wpkWrite"/>
-        <Source Value="versiculo.pas"/>
-        <Line Value="1147"/>
+        <Expression Value="b"/>
       </Item3>
-      <Item4>
-        <Kind Value="bpkSource"/>
-        <WatchScope Value="wpsLocal"/>
-        <WatchKind Value="wpkWrite"/>
-        <Source Value="versiculo.pas"/>
-        <Line Value="1189"/>
-      </Item4>
-    </BreakPoints>
-    <Watches Count="1">
-      <Item1>
-        <Expression Value="mtBook.Groups"/>
-      </Item1>
     </Watches>
-    <Exceptions Count="5">
+    <Exceptions Count="4">
       <Item1>
         <Name Value="EAbort"/>
       </Item1>
@@ -782,9 +440,6 @@
       <Item4>
         <Name Value="EConvertError"/>
       </Item4>
-      <Item5>
-        <Name Value="ERegexException"/>
-      </Item5>
     </Exceptions>
   </Debugging>
 </CONFIG>

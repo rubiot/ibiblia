@@ -605,7 +605,8 @@ begin
       begin
         varredorXML.LerAteTag(s, '<Ts>');
         s.tipo := tsMetaDado;
-      end else if AnsiStartsStr('<WG', s.valor) and assigned(sintagma) and assigned(sintagma.FStrong) then // atualizar sintagma anterior
+      end else if (AnsiStartsStr('<WG', s.valor) or AnsiStartsStr('<WH', s.valor)) and
+                  assigned(sintagma) and assigned(sintagma.FStrong) then // atualizar sintagma anterior
       begin
         sintagma.FStrong.Add(copy(s.valor, 3, length(s.valor)-3));
         sintagma.FTextoCru := sintagma.FTextoCru + s.valor;
@@ -865,11 +866,12 @@ function TVersiculo.GetLinhaONT(morfo: boolean; autoitalico: boolean; strongsreu
 var
   linha: TStringStream;
   stg, prox: TSintagma;
-  s, p, m: smallint;
-  ls: TList;
+  s, p, m, i: smallint;
+  ls, str_irmaos: TList;
 begin
   result := '';
   ls := TList.Create; // usado para armazenar os Strongs utilizados no versículo
+  str_irmaos := TList.Create; // lista de strongs de todos os irmãos do sintagma
   prox := nil;
   try
     linha := TStringStream.Create('');
@@ -909,6 +911,26 @@ begin
           if (prox <> nil) and (stg.Irmaos.IndexOf(prox) >= 0) then // o próximo sintagma é irmão deste?
             continue;
         end;
+
+        // armazenando os strongs de todos os irmãos deste sintagma
+        {
+        if strongsreutilizados
+        begin
+          str_irmaos.Clear;
+          for i:=0 to stg.Irmaos.Itens.Count-1 do
+          begin
+            prox := stg.Irmaos.Itens[i];
+            for p:=0 to prox.Pares.Count-1 do
+            begin
+              for m:=0 to prox.Pares.Itens[p].Strong.Count-1 do
+              begin
+                str_irmaos.Add(prox.Pares.Itens[p].Strong.Itens[m]);
+              end;
+            end;
+          end;
+        end;
+        }
+
         prox := nil;
         for p:=0 to stg.Pares.Count-1 do
         begin // pares
@@ -1303,18 +1325,21 @@ begin
   if not assigned(Hint) then
     Hint := THintWindow.Create(Self.LabelRef);
 
-  //if FStrong.Count > 0 then
-  //begin
+  if FStrong.Count > 0 then
+  begin
     txt := '';
+    for i:=0 to FStrong.Count-1 do // strongs
+      txt := Concat(txt, format('<W%s>', [FStrong.Strings[i]]));
     //if assigned(VersiculoRef.OnStrong) then
     //  txt := VersiculoRef.OnStrong(FStrong); //FStrong + #13#10 + FMorf;
-
+    {
     txt := 'Pares:';
     for i:=0 to Pares.Count-1 do
       txt := Concat(txt, #13#10, Pares[i].LabelRef.Caption);
     txt := Concat(txt, #13#10#13#10'Irmãos:');
     for i:=0 to Irmaos.Count-1 do
       txt := Concat(txt, #13#10, Irmaos[i].LabelRef.Caption);
+    }
 
     if length(txt) > 0 then
     begin
@@ -1327,7 +1352,7 @@ begin
 
       Hint.ActivateHint(Rect, txt);
     end;
-  //end;
+  end;
 end;
 
 procedure TSintagma.DoOnMouseLeave(Sender: TObject);
