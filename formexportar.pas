@@ -92,6 +92,11 @@ begin
   FProjeto.AtribuirInfo('opcoes.exportar.strongs.reutilizados', bool2string(cbStrongsReutilizados.Checked));
   FProjeto.AtribuirInfo('opcoes.exportar.strongs.nao.traduzidos', bool2string(cbStrongsNaoTraduzidos.Checked));
 
+  {$DEFINE OT}
+  {$IFDEF OT}
+  SaveDialog1.DefaultExt := '.ot';
+  SaveDialog1.Filter := 'Módulo do theWord (*.ot)|*.ot';
+  {$ENDIF}
   if SaveDialog1.Execute then
   begin
     try

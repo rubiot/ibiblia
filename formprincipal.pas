@@ -324,7 +324,7 @@ begin
     ProjetoAtual.Fechar(salvar);
     ProjetoAtual.Destruir;
     ProjetoAtual := nil;
-    Caption := 'iBiblia';
+    Caption := 'iBibliaVT';
 
     ActionSalvarProjeto.Enabled := false;
     ActionSalvarProjetoComo.Enabled := false;
@@ -455,7 +455,7 @@ procedure TFrmPrincipal.ActionQuandoNovoVersiculoExecute(Sender: TObject);
 begin
   if ProjetoAtual <> nil then
   begin
-    Caption := 'iBiblia - [' + ProjetoAtual.ObterInfo('descricao') + '] - ' +  ProjetoAtual.Referencia;
+    Caption := 'iBibliaVT - [' + ProjetoAtual.ObterInfo('descricao') + '] - ' +  ProjetoAtual.Referencia;
     RadioGroup1.SetFocus;
     ActionSyncTheWordVerseExecute(Sender);
   end;

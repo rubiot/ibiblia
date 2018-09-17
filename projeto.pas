@@ -185,6 +185,7 @@ type
 
 const
 {$IFDEF OT}
+MaxLines: smallint = 23145;
 QLivros: array[1..39] of string = (
   'Gênesis','Êxodo','Levítico','Números','Deuteronômio','Josué','Juízes','Rute',
   '1 Samuel','2 Samuel','1 Reis','2 Reis','1 Crônicas','2 Crônicas','Esdras',
@@ -240,6 +241,8 @@ QVersiculos: array[1..929] of smallint = (
   17,18,6
 );
 {$ELSE}
+  MaxLines: smallint = 7956;
+
   QLivros: array[1..27] of string = (
     'Mateus','Marcos','Lucas','João','Atos dos apóstolos','Romanos',
     '1 Coríntios','2 Coríntios','Gálatas','Efésios',
@@ -1490,7 +1493,7 @@ begin
       begin
         pb.Position := 0;
         pb.Min := 0;
-        pb.Max := 7956;
+        pb.Max := MaxLines;
         pb.Step := 1;
         pb.Visible := true;
       end;
@@ -1556,7 +1559,7 @@ procedure TProjeto.ImportarModuloTheWord(arquivo: string;
   texto: TTipoTextoBiblico; pb: TProgressBar);
 var
   modulo: TStringList;
-  i, offset, lines: smallint;
+  i, offset: smallint;
   reVazio, reComments, {reShortTitle,} reVerseRules, reVerseRule: IRegex;
   mtVerseRules: IMatch;
   verseRulesDe: TList;
@@ -1565,11 +1568,9 @@ var
   m: smallint;
 begin
 {$IFDEF OT}
-  lines := 23145;
   if AnsiEndsText('.ont', arquivo) or AnsiEndsText('.ot', arquivo) then
     offset := 0 // saltando o velho testamento
 {$ELSE}
-  lines := 7956;
   if AnsiEndsText('.ont', arquivo) then
     offset := 23145 // saltando o velho testamento
   else if AnsiEndsText('.nt', arquivo) then
@@ -1582,9 +1583,9 @@ begin
     modulo := TStringList.Create;
     modulo.LoadFromFile(arquivo);
 
-    if modulo.Count < lines then
+    if modulo.Count < MaxLines then
     begin
-      MessageDlg('Erro', 'Arquivo inválido, precisa ter ao menos 7956 linhas', mtError, [mbOK], 0);
+      MessageDlg('Erro', 'Arquivo inválido, precisa ter ao menos 7956 linhas para NT e 25145 para OT', mtError, [mbOK], 0);
       exit;
     end;
 
@@ -1597,7 +1598,7 @@ begin
     verseRulesPara := TStringList.Create;
 
     propriedades := TStringStream.Create('');
-    for i:=offset+lines+1 to modulo.Count-1 do
+    for i:=offset+MaxLines+1 to modulo.Count-1 do
     begin
       { eliminando comentários }
       modulo.Strings[i] := reComments.Replace(modulo.Strings[i], '');
@@ -1648,14 +1649,14 @@ begin
     begin
       pb.Position := 0;
       pb.Min := 0;
-      pb.Max := lines;
+      pb.Max := MaxLines;
       pb.Step := 1;
       pb.Visible := true;
     end;
 
     DesabilitarEventosRolagem;
     VersiculoInicial;
-    for i:=offset to offset + lines do
+    for i:=offset to offset + MaxLines - 1 do
     begin
       { aplicando verse.rules }
       for m:=0 to verseRulesDe.Count-1 do
@@ -1723,7 +1724,7 @@ begin
     begin
       pb.Position := 0;
       pb.Min := 0;
-      pb.Max := 7956;
+      pb.Max := MaxLines;
       pb.Step := 1;
       pb.Visible := true;
     end;
@@ -1820,7 +1821,7 @@ begin
     begin
       pb.Position := 0;
       pb.Min := 0;
-      pb.Max := 7956;
+      pb.Max := MaxLines;
       pb.Step := 1;
       pb.Visible := true;
     end;
@@ -1926,7 +1927,7 @@ begin
     begin
       pb.Position := 0;
       pb.Min := 0;
-      pb.Max := 7957 + 5624; // versículos do NT + qtde de strongs
+      pb.Max := MaxLines + 5624; // versículos do NT + qtde de strongs
       pb.Step := 1;
       pb.Visible := true;
     end;
