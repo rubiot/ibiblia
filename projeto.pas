@@ -64,6 +64,7 @@ type
     FExportando: boolean;
     FOnAlterarVersiculo: TOnAlterarVersiculoEvent;
     FSugerirAssociacaoAuto: boolean;
+    FPalavrasComStrongEmNegrito: boolean;
     FExibirDefComCtrl: boolean;
     FTblPares: TSqlite3Dataset;
     FTblInfo: TSqlite3Dataset;
@@ -92,6 +93,7 @@ type
     procedure SetOnAlterarVersiculo(const AValue: TOnAlterarVersiculoEvent);
     procedure SetOnNovoVersiculo(const AValue: TOnNovoVersiculoEvent);
     procedure SetOnSintagmaClick(const AValue: TOnSintagmaClickEvent);
+    procedure SetPalavrasComStrongEmNegrito(AValue: boolean);
     procedure SetSituacao(const AValue: Integer);
   protected
     procedure CopiarArquivo(origem, destino: string);
@@ -180,6 +182,7 @@ type
     property RadioGroupSituacao: TRadioGroup read FRadioGroupSituacao write FRadioGroupSituacao;
     property ExibirDefinicoesSoComCtrl: boolean read FExibirDefComCtrl write FExibirDefComCtrl;
     property SugerirAssociacaoAutomaticamente: boolean read FSugerirAssociacaoAuto write FSugerirAssociacaoAuto;
+    property PalavrasComStrongEmNegrito: boolean read FPalavrasComStrongEmNegrito write SetPalavrasComStrongEmNegrito;
   end;
 
 const
@@ -316,6 +319,17 @@ procedure TProjeto.SetOnSintagmaClick(const AValue: TOnSintagmaClickEvent);
 begin
   if FOnSintagmaClick = AValue then exit;
   FOnSintagmaClick := AValue;
+end;
+
+procedure TProjeto.SetPalavrasComStrongEmNegrito(AValue: boolean);
+var
+  v: TTipoTextoBiblico;
+begin
+  if FPalavrasComStrongEmNegrito=AValue then Exit;
+  FPalavrasComStrongEmNegrito:=AValue;
+  for v:=low(FAVersiculo) to high(FAVersiculo) do
+    if assigned(FAVersiculo[v]) then
+      FAVersiculo[v].PalavrasComStrongEmNegrito := AValue;
 end;
 
 procedure TProjeto.SetSituacao(const AValue: Integer);

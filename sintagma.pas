@@ -408,12 +408,10 @@ procedure TSintagma.Renderizar(TheOwner: TObject{TVersiculo});
 begin
   FVersiculo := TheOwner;
 
-  if assigned(FLabel) then
-    exit;
-
   if not (FTipo in [tsMetaDado, tsTag]) or (FTexto = '<FI>') or (FTexto = '<Fi>') then
   begin
-    FLabel := TLabel.Create(TVersiculo(TheOwner).Painel);
+    if not assigned(FLabel) then
+      FLabel := TLabel.Create(TVersiculo(TheOwner).Painel);
 
     FLabel.Caption     := FTexto;
     if FTexto = '<FI>' then
@@ -427,7 +425,9 @@ begin
     FLabel.AutoSize    := true;
     if FSobrescrito then
       FLabel.Font.Size := round(FLabel.Font.Size * 0.7);
-    Correlacionado     := false;
+    if TVersiculo(FVersiculo).PalavrasComStrongEmNegrito then
+      FLabel.Font.Bold := (FStrong <> nil) and (FStrong.Count > 0);
+    Correlacionado     := FPares.Count > 0;
   end else
     FLabel := nil;
 

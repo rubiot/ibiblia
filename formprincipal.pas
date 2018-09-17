@@ -63,6 +63,7 @@ type
     MenuItem20: TMenuItem;
     MenuItem21: TMenuItem;
     MenuItem22: TMenuItem;
+    MenuItemStrongNegrito: TMenuItem;
     MenuItemRecent: TMenuItem;
     MenuItemSynciBiblia: TMenuItem;
     MenuItemSyncTheWord: TMenuItem;
@@ -131,6 +132,7 @@ type
     procedure MenuItem21Click(Sender: TObject);
     procedure MenuItem22Click(Sender: TObject);
     procedure AbrirRecenteClick(Sender: TObject);
+    procedure MenuItemStrongNegritoClick(Sender: TObject);
     procedure MenuItemSynciBibliaClick(Sender: TObject);
     procedure MenuItemSyncTheWordClick(Sender: TObject);
     procedure QuandoNovoVersiculo(Sender: TProjeto);
@@ -552,14 +554,10 @@ begin
   MenuItem22.Checked := opts.ReadBool('opcoes', 'sugestoes.automaticas', false);
   MenuItemSyncTheWord.Checked := opts.ReadBool('opcoes', 'synctheword', false);
   MenuItemSynciBiblia.Checked := opts.ReadBool('opcoes', 'syncibiblia', false);
+  MenuItemStrongNegrito.Checked := opts.ReadBool('opcoes', 'boldstrongs', false);
 
   CarregarMRU(MenuItemRecent);
   TreeView1.Width := opts.ReadInteger('leiaute', 'principal.treeview.largura', TreeView1.Width);
-
-  //opts.Free; ainda será usado em FormShow e FormDestroy
-
-  //Application.AddOnActivateHandler(@FormActivate);
-  //Application.AddOnDeactivateHandler(@FormDeactivate);
 
   syncTw2iBiblia := MenuItemSyncTheWord.Checked;
   synciBiblia2Tw := MenuItemSynciBiblia.Checked;
@@ -581,6 +579,7 @@ begin
   opts.WriteBool('opcoes', 'sugestoes.automaticas', MenuItem22.Checked);
   opts.WriteBool('opcoes', 'synctheword', MenuItemSyncTheWord.Checked);
   opts.WriteBool('opcoes', 'syncibiblia', MenuItemSynciBiblia.Checked);
+  opts.WriteBool('opcoes', 'boldstrongs', MenuItemStrongNegrito.Checked);
   opts.Free;
 end;
 
@@ -634,6 +633,13 @@ procedure TFrmPrincipal.AbrirRecenteClick(Sender: TObject);
 begin
   if TMenuItem(Sender).Caption <> '(-)' then
      ActionAbrirProjetoExecute(Sender);
+end;
+
+procedure TFrmPrincipal.MenuItemStrongNegritoClick(Sender: TObject);
+begin
+  TMenuItem(Sender).Checked := not TMenuItem(Sender).Checked;
+  if assigned(ProjetoAtual) then
+    ProjetoAtual.PalavrasComStrongEmNegrito := TMenuItem(Sender).Checked;
 end;
 
 procedure TFrmPrincipal.MenuItemSynciBibliaClick(Sender: TObject);

@@ -34,6 +34,7 @@ type
     FAtivo: boolean;
     FDestruindo: boolean;
     FExibirErro: boolean;
+    FPalavrasComStrongEmNegrito: boolean;
     //FFontePadrao: TFont;
     FCorAssociado: TColor;
     FCorDesassociado: TColor;
@@ -52,6 +53,7 @@ type
     procedure SetAtivo(const AValue: boolean);
     procedure SetFonte(const AValue: TFont);
     procedure SetModificado(const AValue: boolean);
+    procedure SetPalavrasComStrongEmNegrito(AValue: boolean);
     procedure SetPares(const AValue: string);
     procedure SetTexto(_XML: string);
     function GetTexto: string;
@@ -109,6 +111,7 @@ type
     property AndamentoAssociacao: Single read GetAndamentoAssociacao;
     property Fonte: TFont read GetFonte write SetFonte;
     property Edit: TEdit read FEdit write FEdit;
+    property PalavrasComStrongEmNegrito: boolean read FPalavrasComStrongEmNegrito write SetPalavrasComStrongEmNegrito;
  published
     { Published declarations }
   end;
@@ -728,6 +731,13 @@ begin
   FModificado := AValue;
   if assigned(FOnAlterarVersiculo) and FModificado then
      FOnAlterarVersiculo;
+end;
+
+procedure TVersiculo.SetPalavrasComStrongEmNegrito(AValue: boolean);
+begin
+  if FPalavrasComStrongEmNegrito=AValue then Exit;
+  FPalavrasComStrongEmNegrito:=AValue;
+  Renderizar;
 end;
 
 procedure TVersiculo.OrganizarSintagmas;

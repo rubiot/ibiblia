@@ -360,6 +360,10 @@ object frmPrincipal: TfrmPrincipal
         Caption = 'Sincronizar iBiblia com versículo do TheWord'
         OnClick = MenuItemSynciBibliaClick
       end
+      object MenuItemStrongNegrito: TMenuItem
+        Caption = 'Exibir palavras com tags de strong em negrito'
+        OnClick = MenuItemStrongNegritoClick
+      end
     end
   end
   object ActionList1: TActionList
