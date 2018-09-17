@@ -1050,6 +1050,8 @@ begin
       s.LabelRef.Show;
       inc(x, s.LabelRef.Width);
     end;
+
+    s.LabelRef.Font.Bold := (s.FStrong <> nil) and (s.FStrong.Count > 0);
   end;
 end;
 
