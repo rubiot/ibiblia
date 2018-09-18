@@ -66,6 +66,7 @@ type
     procedure DoOnLeftClick(Sender: TObject; Shift: TShiftState);
     procedure DoOnRightClick(Sender: TObject; Shift: TShiftState);
     function GetCorrelacionado: boolean;
+    function GetTemStrong: boolean;
     procedure SetApontado(const AValue: boolean);
     procedure SetCorrelacionado(const AValue: boolean);
   public
@@ -86,6 +87,7 @@ type
     property VersiculoRef: TVersiculo read FVersiculo write FVersiculo;
     property Selecionado: boolean read FSelecionado;
     property Correlacionado: boolean read GetCorrelacionado write SetCorrelacionado;
+    property TemStrongs: boolean read GetTemStrong;
     property Apontado: boolean write SetApontado;
     property Texto: string read FTexto write FTexto;
     //property ChaveSugestao: string read GetChaveSugestao;
@@ -153,6 +155,7 @@ type
     procedure DesassociarPares;
     procedure LimparAssociacoes;
     procedure OrganizarSintagmas;
+    procedure MarcarSintagmasComStrongs;
     procedure SelecionarSintagmas(s: TSintagmaList);
     function GetListaPares(tipo: TTipoListaPares): TStringList;
 
@@ -651,6 +654,7 @@ begin
   { !! associar sintagmas conforme armazenado !! }
   Modificado := false;
   FXMLModificado := false;
+
   OrganizarSintagmas;
 end;
 
@@ -1023,6 +1027,8 @@ begin
   if not Ativo or FDestruindo then
     exit;
 
+  MarcarSintagmasComStrongs;
+
   x := 5;
   y := 0;
   a := 0;
@@ -1052,6 +1058,21 @@ begin
     end;
 
     s.LabelRef.Font.Bold := (s.FStrong <> nil) and (s.FStrong.Count > 0);
+  end;
+end;
+
+procedure TVersiculo.MarcarSintagmasComStrongs;
+var
+  i: smallint;
+  s: TSintagma;
+begin
+  for i:=0 to FSintagmas.Count-1 do
+  begin
+    s := FSintagmas.Itens[i];
+    if s.LabelRef <> nil then
+    begin
+      s.LabelRef.Font.Bold := (s.FStrong <> nil) and (s.FStrong.Count > 0);
+    end;
   end;
 end;
 
@@ -1453,6 +1474,11 @@ begin
   result := FVersiculo.Ativo and (Pares.Count > 0){ (not FLabel.Font.Italic)};
 end;
 
+function TSintagma.GetTemStrong: boolean;
+begin
+  result := FStrong.Count > 0;
+end;
+
 procedure TSintagma.SetApontado(const AValue: boolean);
 begin
   if AValue then
@@ -1633,6 +1659,7 @@ end;
 function TSintagma.GetProximo: TSintagma;
 var
   i: Integer;
+  s: TSintagma;
 begin
   result := nil;
   i := VersiculoRef.Sintagmas.IndexOf(Self);
@@ -1640,9 +1667,12 @@ begin
   begin
     for i := i+1 to VersiculoRef.Sintagmas.Count-1 do
     begin
-      if VersiculoRef.Sintagmas[i].Tipo = tsSintagma then
+      s := VersiculoRef.Sintagmas[i];
+      if (s.Tipo = tsSintagma) and
+         (s.TemStrongs) and
+         (not s.Correlacionado) then
       begin
-        result := VersiculoRef.Sintagmas[i];
+        result := s;
         break;
       end;
     end;
