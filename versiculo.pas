@@ -66,6 +66,7 @@ type
     procedure DoOnLeftClick(Sender: TObject; Shift: TShiftState);
     procedure DoOnRightClick(Sender: TObject; Shift: TShiftState);
     function GetCorrelacionado: boolean;
+    function GetStrongsList: TStringList;
     function GetTemStrong: boolean;
     procedure SetApontado(const AValue: boolean);
     procedure SetCorrelacionado(const AValue: boolean);
@@ -90,6 +91,7 @@ type
     property TemStrongs: boolean read GetTemStrong;
     property Apontado: boolean write SetApontado;
     property Texto: string read FTexto write FTexto;
+    property GetStrongs: TStringList read GetStrongsList;
     //property ChaveSugestao: string read GetChaveSugestao;
     property Tipo: TTipoSintagma read FTipo write FTipo;
     property Italico: boolean read FItalico;
@@ -1331,7 +1333,7 @@ var
   rect: TRect;
   pos: TPoint;
   txt: string;
-  i: smallint;
+  i, p: smallint;
 begin
   SetApontado(true);
 
@@ -1348,9 +1350,9 @@ begin
   if not assigned(Hint) then
     Hint := THintWindow.Create(Self.LabelRef);
 
+  txt := '';
   if FStrong.Count > 0 then
   begin
-    txt := '';
     for i:=0 to FStrong.Count-1 do // strongs
       txt := Concat(txt, format('<W%s>', [FStrong.Strings[i]]));
     //if assigned(VersiculoRef.OnStrong) then
@@ -1363,18 +1365,24 @@ begin
     for i:=0 to Irmaos.Count-1 do
       txt := Concat(txt, #13#10, Irmaos[i].LabelRef.Caption);
     }
+  end
+  else
+  begin
+    for p:=0 to Pares.Count-1 do
+      for i:=0 to Pares[p].FStrong.Count-1 do // strongs
+        txt := Concat(txt, format('<W%s>', [Pares[p].FStrong.Strings[i]]));
+  end;
 
-    if length(txt) > 0 then
-    begin
-      Rect := Hint.CalcHintRect(0, txt, nil);  // no maxwidth
-      Pos := Mouse.CursorPos;
-      Rect.Left := Pos.X+10;
-      Rect.Top := Pos.Y+5;
-      Rect.Right := Rect.Left + Rect.Right;
-      Rect.Bottom := Rect.Top + Rect.Bottom;
+  if length(txt) > 0 then
+  begin
+    Rect := Hint.CalcHintRect(0, txt, nil);  // no maxwidth
+    Pos := Mouse.CursorPos;
+    Rect.Left := Pos.X+10;
+    Rect.Top := Pos.Y+5;
+    Rect.Right := Rect.Left + Rect.Right;
+    Rect.Bottom := Rect.Top + Rect.Bottom;
 
-      Hint.ActivateHint(Rect, txt);
-    end;
+    Hint.ActivateHint(Rect, txt);
   end;
 end;
 
@@ -1472,6 +1480,18 @@ end;
 function TSintagma.GetCorrelacionado: boolean;
 begin
   result := FVersiculo.Ativo and (Pares.Count > 0){ (not FLabel.Font.Italic)};
+end;
+
+function TSintagma.GetStrongsList: TStringList;
+var
+  i, p: smallint;
+begin
+  if FStrong <> nil then
+    result := FStrong
+  else
+    for p:=0 to Pares.Count-1 do
+      for i:=0 to Pares[p].FStrong.Count-1 do // strongs
+        result.Add(Pares[p].FStrong.Strings[i]);
 end;
 
 function TSintagma.GetTemStrong: boolean;
