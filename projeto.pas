@@ -99,7 +99,7 @@ type
     function InserirInfo(info, valor: string): boolean;
     function AtualizarInfo(info, valor: string): boolean;
     function ResgatarInfo(info: string): string;
-    function ObterDefinicaoStrong(strong: string; texto: TTipoTextoBiblico): string;
+    function ObterDefinicaoStrong(strongs: TStringList; texto: TTipoTextoBiblico): string;
     function ObterDefinicaoMorfo(morfo: string; texto: TTipoTextoBiblico): string;
     procedure InserirVersiculoTexto(versiculo: string; texto: TTipoTextoBiblico);
     procedure PreRolagemVersiculo(DataSet: TDataSet);
@@ -490,47 +490,67 @@ begin
   {result := FTblInfo.QuickQuery(format('select valor from info where id = ''%s''', [AnsiReplaceStr(info, '''', '''''')]));}
 end;
 
-function TProjeto.ObterDefinicaoStrong(strong: string; texto: TTipoTextoBiblico
+function TProjeto.ObterDefinicaoStrong(strongs: TStringList; texto: TTipoTextoBiblico
   ): string;
+
+  function BuscarDefinicao(strong: string): string;
+  begin
+    with FADicStrong[texto] do
+    begin
+      Close;
+      Params.ParamByName('strong').AsString := strong;
+      Open;
+      result := Fields[0].AsString;
+    end;
+  end;
+
+var
+  definicao, definicoes: string;
+  i, p: smallint;
 begin
-  if (FADicStrong[texto] = nil) or (strong = '') then
+  if (FADicStrong[texto] = nil) or (strongs.Count = 0) then
   begin
     result := ''; //'{\rtf1\ansi\ansicpg1252\deff0\deflang1046{\fonttbl{\f0\fswiss\fcharset0 Arial;}}\viewkind4\uc1\pard\f0\fs20\par}';
     exit;
   end;
 
-  with FADicStrong[texto] do
+  for i:=0 to strongs.Count-1 do
   begin
-    Close;
-    Params.ParamByName('strong').AsString := strong;
-    Open;
-    if AnsiStartsStr('{\rtf1', Fields[0].AsString) then
-      result := Fields[0].AsString
-    else
-      result := '{\rtf1\ansi\ansicpg1252\deff0\deflang1033{\fonttbl{\f0\fnil\fcharset0 Tahoma;}' +
-        '{\f1\fswiss\fprq2\fcharset0 Tahoma;}{\f2\fswiss\fcharset0 Arial;}}' +
-
-        '{\colortbl ;' +
-            '\red0\green0\blue0;' +
-            '\red0\green0\blue255;' +
-            '\red150\green60\blue100;' + //maroon;
-            '\red0\green255\blue0;' +
-            '\red255\green0\blue255;' +
-            '\red255\green0\blue0;' +
-            '\red255\green255\blue0;' +
-            '\red255\green255\blue255;' +
-            '\red0\green0\blue128;' +
-            '\red0\green128\blue128;' +
-            '\red255\green0\blue0;' + //dark green
-            '\red128\green0\blue128;' +
-            '\red128\green0\blue0;' +
-            '\red128\green128\blue0;' +
-            '\red128\green128\blue128;' +
-            '\red192\green192\blue192;}' +
-
-        '\viewkind4\uc1\pard\lang1046\f0\fs20 ' +
-        Fields[0].AsString + '}';
+    definicao := BuscarDefinicao(strongs[i]);
+    if AnsiStartsStr('{\rtf1', definicao) then
+    begin
+      p := pos('\pard', definicao);
+      definicao := copy(definicao, p, length(definicao) - p);
+    end;
+    definicoes := definicoes + definicao + '\par';
   end;
+
+  if AnsiStartsStr('{\rtf1', definicoes) then
+    result := definicoes
+  else
+    result := '{\rtf1\ansi\ansicpg1252\deff0\deflang1033{\fonttbl{\f0\fnil\fcharset0 Tahoma;}' +
+      '{\f1\fswiss\fprq2\fcharset0 Tahoma;}{\f2\fswiss\fcharset0 Arial;}}' +
+
+      '{\colortbl ;' +
+          '\red0\green0\blue0;' +
+          '\red0\green0\blue255;' +
+          '\red150\green60\blue100;' + //maroon;
+          '\red0\green255\blue0;' +
+          '\red255\green0\blue255;' +
+          '\red255\green0\blue0;' +
+          '\red255\green255\blue0;' +
+          '\red255\green255\blue255;' +
+          '\red0\green0\blue128;' +
+          '\red0\green128\blue128;' +
+          '\red255\green0\blue0;' + //dark green
+          '\red128\green0\blue128;' +
+          '\red128\green0\blue0;' +
+          '\red128\green128\blue0;' +
+          '\red128\green128\blue128;' +
+          '\red192\green192\blue192;}' +
+
+      '\viewkind4\uc1\pard\lang1046\f0\fs20 ' +
+      definicoes + '}';
 end;
 
 function TProjeto.ObterDefinicaoMorfo(morfo: string; texto: TTipoTextoBiblico
@@ -822,7 +842,7 @@ begin
 
       if s.Strong.Count > 0 then
       begin
-        frmDictionaryPopup.Strong1 := ObterDefinicaoStrong(s.Strong.Strings[0], v);
+        frmDictionaryPopup.Strong1 := ObterDefinicaoStrong(s.Strong, v);
         p := s.LabelRef.ClientToScreen(s.LabelRef.ClientRect.BottomRight);
         //frmDictionaryPopup.Left := p.x;
         //frmDictionaryPopup.Top := p.y;
@@ -1212,7 +1232,7 @@ begin
 
   FTemporizador          := TTimer.Create(nil);
   FTemporizador.Enabled  := false;
-  FTemporizador.Interval := 600;
+  FTemporizador.Interval := 200;
   FTemporizador.OnTimer  := @OnExibirDefinicao;
 
   FMemoVersiculo := TMemoVersiculo.Criar;
