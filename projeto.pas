@@ -1301,7 +1301,8 @@ end;
 
 procedure TProjeto.IrPara(Referencia: string);
 begin
-  FTblPares.Locate('pare_id', Referencia, []);
+  if ID <> Referencia then
+    FTblPares.Locate('pare_id', Referencia, []);
 end;
 
 procedure TProjeto.VersiculoSeguinte;

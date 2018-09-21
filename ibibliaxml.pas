@@ -5,7 +5,7 @@ unit iBibliaXML;
 interface
 
 uses
-  Classes, SysUtils, StrUtils, LCLProc, Dialogs;
+  Classes, SysUtils, StrUtils, LCLProc, Dialogs, LazUTF8;
 
 type
   Simbolos = array of cardinal;

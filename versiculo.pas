@@ -8,7 +8,7 @@ interface
 
 uses
   Classes, SysUtils, StrUtils, ExtCtrls, StdCtrls, Controls, Graphics,
-  iBibliaXML, Forms, LCLType, Math, LCLProc, Dialogs;
+  iBibliaXML, Forms, LCLType, Math, LCLProc, Dialogs, LazUTF8;
 
 type
   TSintagma = class;
