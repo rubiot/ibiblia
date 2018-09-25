@@ -8,13 +8,12 @@ interface
 
 uses
   {$IFDEF WINDOWS}
-  windows, twAutomate,
+  windows, twAutomate, TwSyncThread,
   {$ELSE}
   lclintf,
   {$ENDIF}
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, Menus,
-  ActnList, ComCtrls, ExtCtrls, StdCtrls, Projeto, IniFiles, Versiculo, Math,
-  twAutomate, TwSyncThread;
+  ActnList, ComCtrls, ExtCtrls, StdCtrls, Projeto, IniFiles, Versiculo, Math;
 
 type
 
@@ -511,7 +510,7 @@ procedure TFrmPrincipal.ActionSyncTheWordVerseExecute(Sender: TObject);
 begin
   {$IFDEF WINDOWS}
   if syncTw2iBiblia and (ProjetoAtual <> nil) then
-    SyncTheWord(ProjetoAtual.ID);
+    SyncTheWordVerse(ProjetoAtual.ID);
   {$ENDIF}
 end;
 
@@ -674,7 +673,7 @@ end;
 procedure TFrmPrincipal.QuandoPalavraClicada(Sender: TSintagma);
 begin
   {$IFDEF WINDOWS}
-  if not synctw or (Sender.Strong.Count = 0) then
+  if not syncTw2iBiblia or (Sender.Strong.Count = 0) then
     exit;
   SyncTheWordDict(Sender.Strong.Strings[0]);
   {$ENDIF}
