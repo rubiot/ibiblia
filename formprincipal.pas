@@ -13,7 +13,8 @@ uses
   lclintf,
   {$ENDIF}
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, Menus,
-  ActnList, ComCtrls, ExtCtrls, StdCtrls, Projeto, IniFiles, Versiculo, Math;
+  ActnList, ComCtrls, ExtCtrls, StdCtrls, Projeto, IniFiles, Versiculo, Math,
+  twAutomate, TwSyncThread;
 
 type
 
@@ -62,7 +63,8 @@ type
     MenuItem20: TMenuItem;
     MenuItem21: TMenuItem;
     MenuItem22: TMenuItem;
-    MenuItem23: TMenuItem;
+    MenuItemRecent: TMenuItem;
+    MenuItemSynciBiblia: TMenuItem;
     MenuItemSyncTheWord: TMenuItem;
     MenuItem3: TMenuItem;
     MenuItem4: TMenuItem;
@@ -121,8 +123,10 @@ type
     procedure ActionVersoPrimeiroExecute(Sender: TObject);
     procedure ActionVersoSeguinteExecute(Sender: TObject);
     procedure ActionVersoUltimoExecute(Sender: TObject);
+    procedure FormActivate(Sender: TObject);
     procedure FormClose(Sender: TObject; var CloseAction: TCloseAction);
     procedure FormCreate(Sender: TObject);
+    procedure FormDeactivate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure FormKeyPress(Sender: TObject; var Key: char);
     procedure FormShow(Sender: TObject);
@@ -130,6 +134,7 @@ type
     procedure MenuItem22Click(Sender: TObject);
     procedure AbrirRecenteClick(Sender: TObject);
     procedure MenuItem24Click(Sender: TObject);
+    procedure MenuItemSynciBibliaClick(Sender: TObject);
     procedure MenuItemSyncTheWordClick(Sender: TObject);
     procedure QuandoNovoVersiculo(Sender: TProjeto);
     procedure QuandoPalavraClicada(Sender: TSintagma);
@@ -137,10 +142,13 @@ type
     procedure AtualizarMRU(m: TMenuItem);
     procedure CarregarMRU(m: TMenuItem);
     procedure DescarregarMRU(m: TMenuItem);
-    procedure ToolBar1Click(Sender: TObject);
   private
     { private declarations }
-    synctw: boolean;
+    syncTw2iBiblia: boolean;
+    synciBiblia2Tw: boolean;
+    TwSyncThread: TTwSyncThread;
+    procedure SyncToTwRef(Ref: string);
+    procedure SetUpSyncThread;
   public
     { public declarations }
   end; 
@@ -148,7 +156,6 @@ type
 type
   TParametroThread = record
     texto: TTipoTextoBiblico;
-    //edit: TLabeledEdit;
     pb: TProgressBar;
   end;
 
@@ -252,8 +259,6 @@ begin
   ProjetoAtual.OnNovoVersiculo := @QuandoNovoVersiculo;
   ProjetoAtual.OnAlterarVersiculo := @QuandoAlterarVersiculo;
   ProjetoAtual.OnSintagmaClick := @QuandoPalavraClicada;
-  //ProjetoAtual.AtribuirDicStrong('.\dados\dbs.dct.twm', [tbOrigem]);
-  //ProjetoAtual.AtribuirDicMorfo('.\dados\camr.dct.twm', [tbOrigem]);
   ProjetoAtual.Abrir(OpenDialog1.FileName);
   ProjetoAtual.ExibirDefinicoesSoComCtrl := MenuItem21.Checked;
   ProjetoAtual.SugerirAssociacaoAutomaticamente := MenuItem22.Checked;
@@ -273,6 +278,8 @@ begin
   //ActionExportarDestinoComStrongs.Enabled := true;
   //ActionExportarTextoInterlinear.Enabled := true;
   StatusBar1.SimpleText := '';
+
+  SetUpSyncThread;
 end;
 
 procedure TFrmPrincipal.ActionExportarExecute(Sender: TObject);
@@ -313,7 +320,7 @@ begin
       end;
     end;
 
-    AtualizarMRU(MenuItem23);
+    AtualizarMRU(MenuItemRecent);
 
     ProjetoAtual.Fechar(salvar);
     ProjetoAtual.Destruir;
@@ -412,9 +419,6 @@ begin
     end;
     StatusBar1.Caption:='';
 
-    //ProjetoAtual.AtribuirDicStrong('.\dados\dbs.dct.twm', [tbOrigem]);
-    //ProjetoAtual.AtribuirDicMorfo('.\dados\camr.dct.twm', [tbOrigem]);
-
     ProjetoAtual.Commit;
     ProjetoAtual.Atualizar;
 
@@ -506,8 +510,8 @@ end;
 procedure TFrmPrincipal.ActionSyncTheWordVerseExecute(Sender: TObject);
 begin
   {$IFDEF WINDOWS}
-  if synctw and (ProjetoAtual <> nil) then
-    SyncTheWordVerse(ProjetoAtual.ID);
+  if syncTw2iBiblia and (ProjetoAtual <> nil) then
+    SyncTheWord(ProjetoAtual.ID);
   {$ENDIF}
 end;
 
@@ -535,6 +539,11 @@ begin
     ProjetoAtual.VersiculoFinal;
 end;
 
+procedure TFrmPrincipal.FormActivate(Sender: TObject);
+begin
+
+end;
+
 procedure TFrmPrincipal.FormClose(Sender: TObject; var CloseAction: TCloseAction);
 begin
   ActionFecharProjetoExecute(Sender);
@@ -550,15 +559,29 @@ begin
   MenuItem21.Checked := opts.ReadBool('opcoes', 'definicoes.com.ctrl', true);
   MenuItem22.Checked := opts.ReadBool('opcoes', 'sugestoes.automaticas', false);
   MenuItemSyncTheWord.Checked := opts.ReadBool('opcoes', 'synctheword', false);
-  synctw := MenuItemSyncTheWord.Checked;
-  CarregarMRU(MenuItem23);
+  MenuItemSynciBiblia.Checked := opts.ReadBool('opcoes', 'syncibiblia', false);
 
+  CarregarMRU(MenuItemRecent);
   TreeView1.Width := opts.ReadInteger('leiaute', 'principal.treeview.largura', TreeView1.Width);
+
+  //opts.Free; ainda será usado em FormShow e FormDestroy
+
+  //Application.AddOnActivateHandler(@FormActivate);
+  //Application.AddOnDeactivateHandler(@FormDeactivate);
+
+  syncTw2iBiblia := MenuItemSyncTheWord.Checked;
+  synciBiblia2Tw := MenuItemSynciBiblia.Checked;
+  SetUpSyncThread;
+end;
+
+procedure TFrmPrincipal.FormDeactivate(Sender: TObject);
+begin
+
 end;
 
 procedure TFrmPrincipal.FormDestroy(Sender: TObject);
 begin
-  DescarregarMRU(MenuItem23);
+  DescarregarMRU(MenuItemRecent);
   opts.WriteInteger('leiaute', 'principal.largura', Width);
   opts.WriteInteger('leiaute', 'principal.altura', Height);
   opts.WriteInteger('leiaute', 'principal.topo', Top);
@@ -570,6 +593,7 @@ begin
   opts.WriteBool('opcoes', 'definicoes.com.ctrl', MenuItem21.Checked);
   opts.WriteBool('opcoes', 'sugestoes.automaticas', MenuItem22.Checked);
   opts.WriteBool('opcoes', 'synctheword', MenuItemSyncTheWord.Checked);
+  opts.WriteBool('opcoes', 'syncibiblia', MenuItemSynciBiblia.Checked);
   opts.Free;
 end;
 
@@ -629,10 +653,17 @@ procedure TFrmPrincipal.MenuItem24Click(Sender: TObject);
 begin
 end;
 
+procedure TFrmPrincipal.MenuItemSynciBibliaClick(Sender: TObject);
+begin
+  TMenuItem(Sender).Checked := not TMenuItem(Sender).Checked;
+  synciBiblia2Tw := TMenuItem(Sender).Checked;
+  SetUpSyncThread;
+end;
+
 procedure TFrmPrincipal.MenuItemSyncTheWordClick(Sender: TObject);
 begin
   TMenuItem(Sender).Checked := not TMenuItem(Sender).Checked;
-  synctw := TMenuItem(Sender).Checked;
+  syncTw2iBiblia := TMenuItem(Sender).Checked;
 end;
 
 procedure TFrmPrincipal.QuandoNovoVersiculo(Sender: TProjeto);
@@ -661,6 +692,7 @@ var
   found: Boolean;
 begin
   f := TStringList.Create;
+  f.Sorted:=true;
 
   try
     f.Add(ProjetoAtual.Caminho);
@@ -718,9 +750,30 @@ begin
     opts.DeleteKey('projetos', format('recente.%d', [j]));
 end;
 
-procedure TFrmPrincipal.ToolBar1Click(Sender: TObject);
+procedure TFrmPrincipal.SyncToTwRef(Ref: string);
 begin
+  if (ProjetoAtual <> nil) then
+    ProjetoAtual.IrPara(Ref);
+end;
 
+procedure TFrmPrincipal.SetUpSyncThread;
+begin
+  if synciBiblia2Tw then
+  begin
+    if TwSyncThread = nil then
+    begin
+      TwSyncThread := TTwSyncThread.Create(true);
+      TwSyncThread.OnRefChange := @SyncToTwRef;
+      TwSyncThread.Start;
+    end;
+  end else
+  begin
+    if TwSyncThread <> nil then
+    begin
+      TwSyncThread.Terminate;
+      TwSyncThread := nil;
+    end;
+  end;
 end;
 
 end.

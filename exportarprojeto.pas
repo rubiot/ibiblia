@@ -5,7 +5,7 @@ unit ExportarProjeto;
 interface
 
 uses
-  Classes, SysUtils, LCLProc, contnrs, strutils, PCRE;
+  Classes, SysUtils, LCLProc, contnrs, strutils, PCRE, LazUTF8;
 
 type
 
