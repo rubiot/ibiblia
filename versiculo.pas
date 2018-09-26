@@ -48,7 +48,6 @@ type
     FTextoCru: string;
     FPares: TSintagmaList;
     FIrmaos: TSintagmaList;
-    FIndice: Smallint;
     FLabel: TLabel;
     FSelecionado: boolean;
     FVersiculo: TVersiculo;
@@ -645,7 +644,6 @@ begin
       continue;
     end;
     sintagma := TSintagma.Criar(self, s);
-    sintagma.FIndice := FSintagmas.Count;
     FSintagmas.Add(sintagma);
   end;
   varredorXML.Destruir;
@@ -1141,56 +1139,63 @@ procedure TVersiculo.EditConfirm;
 var
   s: TTagSintagma;
   varredorXML: TVarredorXML;
-  sintagma: TSintagma;
+  sintagma, novo: TSintagma;
   i, offset, j: integer;
 begin
   sintagma := TSintagma(FEdit.Tag);
-  i := sintagma.FIndice;
+  i := FSintagmas.IndexOf(sintagma);
+  FSintagmas.Remove(sintagma);
+  FSelecao.Remove(sintagma);
   offset := 0;
-  sintagma.Texto := '.';
+  novo := nil;
 
-  { varredura simplificada do texto editado do sintagma para quebrar as palavras - sem suporte a tags }
+  { varredura simplificada do texto editado do sintagma para quebrar as palavras - suporte a tags incompleto }
   varredorXML := TVarredorXML.Criar(FEdit.Caption);
   while varredorXML.LerSintagma(s) <> tsNulo do
   begin
     if (s.tipo = tsEspaco) and (s.valor = '|') then
     begin
-      if assigned(sintagma) then
-        sintagma.FTextoCru := sintagma.FTextoCru + s.valor;
+      if assigned(novo) then
+        novo.FTextoCru := novo.FTextoCru + s.valor;
       continue;
     end;
 
-    if sintagma.Texto = '.' then
-    begin // atualizando o sintagma existente (que foi clicado)
-      sintagma.FTexto         := s.valor;
-      sintagma.FTextoCru      := s.valor;
-      sintagma.FTipo          := s.tipo;
-      sintagma.FLabel.Caption := s.valor;
-    end else
-    begin // criando novo sintagma
-      sintagma := TSintagma.Criar(self, s);
-      Inc(i); Inc(Offset);
-      sintagma.FIndice := i;
-      FSintagmas.Insert(i, sintagma);
-    end;
+    novo := TSintagma.Criar(self, s);
+    FSintagmas.Insert(i, novo);
+    Inc(i); Inc(Offset);
   end;
   varredorXML.Destruir;
 
-  for j:=(i-offset+1) to FSintagmas.Count-1 do
-  begin // corrigindo FIndice dos sintagmas posteriores ao editado
-    FSintagmas[j].FIndice := FSintagmas[j].FIndice + offset;
+  { copiando dados do sintagma clicado para o primeiro sintagma parseado }
+  for j:=(i-Offset) to i+Offset do
+  begin
+    novo := FSintagmas[j];
+    if novo.Tipo = tsSintagma then
+    begin
+      for i:=0 to sintagma.Irmaos.Count-1 do
+      begin
+        novo.Irmaos.Add(sintagma.Irmaos[i]);
+        sintagma.Irmaos[i].Irmaos.Remove(sintagma);
+        sintagma.Irmaos[i].Irmaos.Add(novo);
+      end;
+      for i:=0 to sintagma.Pares.Count-1 do
+      begin
+        novo.SetCorrelacionado(true);
+        novo.Pares.Add(sintagma.Pares[i]);
+        sintagma.Pares[i].Pares.Remove(sintagma);
+        sintagma.Pares[i].Pares.Add(novo);
+      end;
+      break;
+    end;
   end;
 
+  sintagma.Destruir;
+
+  // atualizando o texto do versículo com o texto editado
   FXML := '';
   for j:=0 to FSintagmas.Count-1 do
-  begin // atualizando o texto do versículo com o texto editado
     FXML := FXML + FSintagmas[j].FTextoCru;
-  end;
 
-  ////////
-  //s.Texto := FEdit.Caption;
-  //s.FLabel.Caption := FEdit.Caption;
-  //Texto := GetTexto;
   EditExit(Self);
   OrganizarSintagmas;
   FXMLModificado := true;
