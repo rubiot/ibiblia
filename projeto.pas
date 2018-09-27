@@ -713,9 +713,7 @@ begin
   for v:=low(FAVersiculo) to high(FAVersiculo) do
     if FAVersiculo[v] = Sender.Versiculo then
     begin
-      Sender.Versiculo.DesassociarPares;
-      //Sender.Versiculo.Texto := Sender.Texto;
-      Sender.Versiculo.Texto := Sender.Texto;
+      Sender.Versiculo.AlterarTexto(Sender.Texto);
       FTblPares.Edit;
       FTblPares.Fields[FACamposTexto[v]].AsString := Sender.Texto;
       FTblPares.Post;

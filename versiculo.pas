@@ -68,8 +68,10 @@ type
     function GetCorrelacionado: boolean;
     procedure SetApontado(const AValue: boolean);
     procedure SetCorrelacionado(const AValue: boolean);
+    function Equals(other : TSintagma): boolean;
   public
     constructor Criar(TheOwner: TVersiculo; s: TTagSintagma);
+    constructor Criar(TheOwner: TVersiculo; s: TSintagma);
     destructor Destruir;
     procedure SelecaoMais;
     procedure SelecaoMenos;
@@ -141,6 +143,7 @@ type
     procedure EditKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure EditExit(Sender: TObject);
     procedure EditConfirm;
+    procedure VarrerXML(XML: string; var sintagmas: TSintagmaList);
   protected
     { Protected declarations }
   public
@@ -154,6 +157,7 @@ type
     procedure LimparAssociacoes;
     procedure OrganizarSintagmas;
     procedure SelecionarSintagmas(s: TSintagmaList);
+    procedure AlterarTexto(_XML: string);
     function GetListaPares(tipo: TTipoListaPares): TStringList;
 
     function GetLinhaInterlinear: string;
@@ -651,6 +655,85 @@ begin
   Modificado := false;
   FXMLModificado := false;
   OrganizarSintagmas;
+end;
+
+{ Tenta substituir o texto do versículo mantendo as associações existentes }
+procedure TVersiculo.AlterarTexto(_XML: string);
+var
+  new: TSintagmaList;
+  firstNew, lastNew, firstOld, lastOld: TSintagma;
+  i, j, insertPoint, firstOldIdx, lastOldIdx: integer;
+begin
+  new := TSintagmaList.Create;
+  Ativo := false; // para não criar labels
+  VarrerXML(_XML, new);
+  Ativo := true;
+
+  { calculando quantos sintagmas continuam iguais no início }
+  for i:=0 to new.Count do
+  begin
+    if i >= FSintagmas.Count then
+      break;
+    if not new[i].Equals(FSintagmas[i]) then
+      break;
+  end;
+  firstNew := new[i];
+  firstOld := FSintagmas[i];
+  insertPoint := i;
+
+  { calculando quantos sintagmas continuam iguais no fim }
+  j := FSintagmas.Count - 1;
+  for i:=new.Count-1 downto 0 do
+  begin
+    if not new[i].Equals(FSintagmas[j]) then
+      break;
+    dec(j);
+  end;
+  lastNew := new[i];
+  lastOld := FSintagmas[j];
+
+  { inserindo sintagmas novos }
+  for i:= new.IndexOf(firstNew) to new.IndexOf(lastNew) do
+  begin
+    FSintagmas.Insert(insertPoint, TSintagma.Criar(Self, new[i]));
+    new[i].Destroy;
+    inc(insertPoint);
+  end;
+
+  { removendo trecho modificado }
+  firstOldIdx := FSintagmas.IndexOf(firstOld);
+  lastOldIdx := FSintagmas.IndexOf(lastOld);
+  for i:= firstOldIdx to lastOldIdx do
+  begin
+    Selecao.Remove(FSintagmas[i]);
+    for j:=0 to FSintagmas[i].Irmaos.Count-1 do
+      FSintagmas[i].Irmaos[j].Irmaos.Remove(FSintagmas[i]);
+    for j:=0 to FSintagmas[i].Pares.Count-1 do
+      with FSintagmas[i].Pares[j] do
+      begin
+        Pares.Remove(FSintagmas[i]);
+        if Pares.Count = 0 then
+          SetCorrelacionado(false);
+      end;
+  end;
+
+  for i:= firstOldIdx to lastOldIdx do
+  begin
+    FSintagmas[firstOldIdx].LabelRef.Destroy();
+    FSintagmas[firstOldIdx].Destroy;
+    FSintagmas.Delete(firstOldIdx);
+  end;
+
+  new.Destroy;
+
+  { atualizando o texto do versículo com o texto editado }
+  FXML := '';
+  for i:=0 to FSintagmas.Count-1 do
+    FXML := FXML + FSintagmas[i].FTextoCru;
+
+  OrganizarSintagmas;
+  FXMLModificado := true;
+  FModificado := true;
 end;
 
 function TVersiculo.GetTexto: string;
@@ -1201,6 +1284,66 @@ begin
   FXMLModificado := true;
 end;
 
+procedure TVersiculo.VarrerXML(XML: string; var sintagmas: TSintagmaList);
+var
+  varredorXML: TVarredorXML;
+  s: TTagSintagma;
+  sintagma: TSintagma;
+begin
+  sintagma := nil;
+  varredorXML := TVarredorXML.Criar(XML);
+  while varredorXML.LerSintagma(s) <> tsNulo do
+  begin
+    if s.tipo = tsTag then
+    begin
+      if s.valor = '<RF>' then
+      begin
+        varredorXML.LerAteTag(s, '<Rf>');
+        s.tipo := tsMetaDado;
+      end else if AnsiStartsStr('<TS', s.valor) then
+      begin
+        varredorXML.LerAteTag(s, '<Ts>');
+        s.tipo := tsMetaDado;
+      end else if AnsiStartsStr('<WG', s.valor) and assigned(sintagma) and assigned(sintagma.FStrong) then // atualizar sintagma anterior
+      begin
+        sintagma.FStrong.Add(copy(s.valor, 3, length(s.valor)-3));
+        sintagma.FTextoCru := sintagma.FTextoCru + s.valor;
+        continue;
+      end else if AnsiStartsStr('<WT', s.valor) and assigned(sintagma) and assigned(sintagma.FMorf) then // atualizar sintagma anterior
+      begin
+        sintagma.FMorf.Add(copy(s.valor, 4, length(s.valor)-4));
+        sintagma.FTextoCru := sintagma.FTextoCru + s.valor;
+        continue;
+      end else if AnsiStartsStr('<font color', s.valor) then
+      begin
+        FTmpCor := HTML2Color(varredorXML.LerPropriedadeTag('color', s));
+      end else if s.valor = '</font>' then
+      begin
+        FTmpCor := clDefault;
+      end else if s.valor = '<sup>' then
+      begin
+        FTmpSobrescrito := true;
+      end else if s.valor = '</sup>' then
+      begin
+        FTmpSobrescrito := false;
+      end else if (s.valor = '<FI>') or (s.valor = '<Fi>') then
+      begin
+        FTmpItalico := s.valor[3] = 'I';
+        // nada a fazer. Para <FI> e <Fi>, queremos criar o label
+      end else
+        s.tipo := tsMetaDado;
+    end else if (s.tipo = tsEspaco) and (s.valor = '|') then
+    begin
+      if assigned(sintagma) then
+        sintagma.FTextoCru := sintagma.FTextoCru + s.valor;
+      continue;
+    end;
+    sintagma := TSintagma.Criar(self, s);
+    sintagmas.Add(sintagma);
+  end;
+  varredorXML.Destruir;
+end;
+
 { TSintagma }
 
 procedure TSintagma.DoOnLeftClick(Sender: TObject; Shift: TShiftState);
@@ -1470,6 +1613,12 @@ begin
   end;
 end;
 
+function TSintagma.Equals(other: TSintagma): boolean;
+begin
+  result := (FTipo = other.FTipo) and
+            (FTextoCru = other.FTextoCru);
+end;
+
 constructor TSintagma.Criar(TheOwner : TVersiculo; s : TTagSintagma);
 begin
   FVersiculo   := TheOwner;
@@ -1524,6 +1673,15 @@ begin
     FStrong := nil;
     FMorf   := nil;
   end;
+end;
+
+constructor TSintagma.Criar(TheOwner: TVersiculo; s: TSintagma);
+var
+  token: TTagSintagma;
+begin
+  token.tipo := s.Tipo;
+  token.valor:= s.Texto;
+  Criar(TheOwner, token);
 end;
 
 destructor TSintagma.Destruir;
