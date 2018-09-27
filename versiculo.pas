@@ -34,9 +34,9 @@ type
   protected
     function GetS(Index: Integer): TSintagma;
     procedure PutS(Index: Integer; Item: TSintagma);
-  public // a diferença com o método original ficou bem sutil, mas tudo bem...
+  public
     property Itens[Index: Integer]: TSintagma read GetS write PutS; default;
-    Procedure AddList(AList : TList); //override;
+    Procedure AddList(AList : TSintagmaList); //override;
   end;
 
   { TSintagma }
@@ -429,7 +429,7 @@ begin
   FDestruindo := true;
 
   for i:=0 to FSintagmas.Count-1 do
-    FSintagmas.Itens[i].Destruir;
+    FSintagmas[i].Destruir;
 
   FSintagmas.free;
   FSelecao.free;
@@ -442,7 +442,7 @@ var
   i: smallint;
 begin
   for i:=0 to FSintagmas.Count-1 do
-    FSintagmas.Itens[i].Destruir;
+    FSintagmas[i].Destruir;
 
   FSintagmas.Clear;
   FSelecao.Clear;
@@ -458,14 +458,14 @@ begin
   c := 0;
   for i:=0 to Selecao.Count-1 do
   begin
-    with Selecao.Itens[i] do
+    with Selecao[i] do
     begin
       Pares.Clear;
       Pares.AddList(VersiculoPar.Selecao);
       Correlacionado:=true;
       Irmaos.Clear;
       Irmaos.AddList(Selecao);
-      Irmaos.Remove(Selecao.Itens[i]);
+      Irmaos.Remove(Selecao[i]);
       inc(c);
     end;
   end;
@@ -490,8 +490,8 @@ begin
   begin
     t := TStrings.Create;
 
-    for i:=0 to Pares.Itens.Count-1 do
-      t.Add(Pares.Itens[i].FLabel.Caption);
+    for i:=0 to Pares.Count-1 do
+      t.Add(Pares[i].FLabel.Caption);
 
     FOnRemoverAssociacao(FLabel.Caption, t);
     t.Destroy;
@@ -513,10 +513,10 @@ begin
   VersiculoPar.LimparSelecao;
 
   for i:=0 to FSintagmas.Count-1 do
-    FSintagmas.Itens[i].Desassociar;
+    FSintagmas[i].Desassociar;
 
   for i:=0 to VersiculoPar.FSintagmas.Count-1 do
-    VersiculoPar.FSintagmas.Itens[i].Desassociar;
+    VersiculoPar.FSintagmas[i].Desassociar;
 end;
 
 procedure TVersiculo.LimparAssociacoes;
@@ -525,7 +525,7 @@ var
 begin
   for s:=0 to Sintagmas.Count-1 do
   begin
-    if (Sintagmas.Itens[s].Pares.Count > 0) then
+    if (Sintagmas[s].Pares.Count > 0) then
     begin // desassociar somente se houver associacoes, para evitar falsos 'modificado = true'
       DesassociarPares;
       Modificado := true;
@@ -539,7 +539,7 @@ var
   i: smallint;
 begin
   for i:=0 to s.Count-1 do
-    s.Itens[i].SelecaoMais;
+    s[i].SelecaoMais;
 end;
 
 function TVersiculo.GetListaPares(tipo: TTipoListaPares): TStringList;
@@ -554,22 +554,22 @@ begin
   tmp := TSintagmaList.Create;
   for s:=0 to Sintagmas.Count-1 do
   begin
-    stg := Sintagmas.Itens[s];
+    stg := Sintagmas[s];
     if (stg.Pares.Count > 0) and (tmp.IndexOf(stg) < 0) then
     begin
       t := stg.GetChaveSugestao(tipo);
       tmp.Add(stg);
       for p:=0 to stg.Irmaos.Count-1 do
       begin
-        t := t + ';' + stg.Irmaos.Itens[p].GetChaveSugestao(tipo);
-        tmp.Add(stg.Irmaos.Itens[p]);
+        t := t + ';' + stg.Irmaos[p].GetChaveSugestao(tipo);
+        tmp.Add(stg.Irmaos[p]);
       end;
       result.Add(t);
       t := '';
       for p:=0 to stg.Pares.Count-1 do
       begin
-        //par := stg.Pares.Itens[p];
-        t := t + stg.Pares.Itens[p].GetChaveSugestao(tipo);
+        //par := stg.Pares[p];
+        t := t + stg.Pares[p].GetChaveSugestao(tipo);
         if p <> stg.Pares.Count-1 then
           t := t + ';';
       end;
@@ -662,7 +662,7 @@ begin
   try
     linha := TStringStream.Create('');
     for s:=0 to Sintagmas.Count-1 do
-      linha.WriteString(Sintagmas.Itens[s].Texto);
+      linha.WriteString(Sintagmas[s].Texto);
   finally
     result := linha.DataString;
     linha.Destroy;
@@ -712,20 +712,20 @@ begin
   tmp := TSintagmaList.Create;
   for s:=0 to Sintagmas.Count-1 do
   begin
-    stg := Sintagmas.Itens[s];
+    stg := Sintagmas[s];
     if (stg.Pares.Count > 0) and (tmp.IndexOf(stg) < 0) then
     begin
       _xml.WriteString(Format('<par a="%d', [s]));
       tmp.Add(stg);
       for p:=0 to stg.Irmaos.Count-1 do
       begin
-        _xml.WriteString(Format(',%d', [stg.VersiculoRef.Sintagmas.IndexOf(stg.Irmaos.Itens[p])]));
-        tmp.Add(stg.Irmaos.Itens[p]);
+        _xml.WriteString(Format(',%d', [stg.VersiculoRef.Sintagmas.IndexOf(stg.Irmaos[p])]));
+        tmp.Add(stg.Irmaos[p]);
       end;
       _xml.WriteString('" b="');
       for p:=0 to stg.Pares.Count-1 do
       begin
-        par := stg.Pares.Itens[p];
+        par := stg.Pares[p];
         _xml.WriteString(Format('%d', [par.VersiculoRef.Sintagmas.IndexOf(par)]));
         if p <> stg.Pares.Count-1 then
           _xml.WriteString(',');
@@ -748,8 +748,8 @@ begin
   try
     linha := TStringStream.Create('');
     for s:=0 to Sintagmas.Count-1 do
-      if Sintagmas.Itens[s].Tipo in [tsEspaco, tsSintagma, tsPontuacao] then
-        linha.WriteString(Sintagmas.Itens[s].Texto);
+      if Sintagmas[s].Tipo in [tsEspaco, tsSintagma, tsPontuacao] then
+        linha.WriteString(Sintagmas[s].Texto);
   finally
     result := linha.DataString;
     linha.Destroy;
@@ -775,10 +775,10 @@ begin
   result := 0;
 
   for s:=0 to Sintagmas.Count-1 do
-    if Sintagmas.Itens[s].Tipo = tsSintagma then
+    if Sintagmas[s].Tipo = tsSintagma then
     begin
       inc(t);
-      if Sintagmas.Itens[s].Correlacionado then
+      if Sintagmas[s].Correlacionado then
         inc(p);
     end;
 
@@ -799,7 +799,7 @@ begin
 
     for s:=0 to Sintagmas.Count-1 do
     begin
-      stg := Sintagmas.Itens[s];
+      stg := Sintagmas[s];
       linha.WriteString(stg.Texto);
       if (assigned(stg.Strong) and (stg.Strong.Count > 0)) or (assigned(stg.Morf) and (stg.Morf.Count > 0)) then
       begin // se este texto contém strongs
@@ -811,10 +811,10 @@ begin
       begin // caso contrário, tentemos o texto relacionado
         for p:=0 to stg.Pares.Count-1 do
         begin
-          for m:=0 to stg.Pares.Itens[p].Strong.Count-1 do // strongs
-            linha.WriteString(format('<W%s>', [stg.Pares.Itens[p].Strong.Strings[m]]));
-          for m:=0 to stg.Pares.Itens[p].Morf.Count-1 do   // morfologia
-            linha.WriteString(format('<WT%s>', [stg.Pares.Itens[p].Morf.Strings[m]]));
+          for m:=0 to stg.Pares[p].Strong.Count-1 do // strongs
+            linha.WriteString(format('<W%s>', [stg.Pares[p].Strong.Strings[m]]));
+          for m:=0 to stg.Pares[p].Morf.Count-1 do   // morfologia
+            linha.WriteString(format('<WT%s>', [stg.Pares[p].Morf.Strings[m]]));
         end;
       end;
 
@@ -824,9 +824,9 @@ begin
         prox := nil;
         for m:=s+1 to Sintagmas.Count-1 do
         begin // procurando o próximo sintagma (saltando espaços, pontuação, etc.)
-          if Sintagmas.Itens[m].Tipo = tsSintagma then
+          if Sintagmas[m].Tipo = tsSintagma then
           begin
-            prox := Sintagmas.Itens[m];
+            prox := Sintagmas[m];
             break;
           end;
         end;
@@ -836,7 +836,7 @@ begin
 
       for p:=0 to stg.Pares.Count-1 do
       begin // pares
-        linha.WriteString('<sup>' + stg.Pares.Itens[p].Texto + '</sup> ');
+        linha.WriteString('<sup>' + stg.Pares[p].Texto + '</sup> ');
       end;
     end;
 
@@ -876,7 +876,7 @@ begin
 
     for s:=0 to Sintagmas.Count-1 do
     begin // sintagmas
-      stg := Sintagmas.Itens[s];
+      stg := Sintagmas[s];
 
       if (prox = nil) and (stg.Pares.Count > 0) then
         linha.WriteString('<wt>');
@@ -900,9 +900,9 @@ begin
           prox := nil;
           for m:=s+1 to Sintagmas.Count-1 do
           begin // procurando o próximo sintagma (saltando espaços, pontuação, etc.)
-            if Sintagmas.Itens[m].Tipo = tsSintagma then
+            if Sintagmas[m].Tipo = tsSintagma then
             begin
-              prox := Sintagmas.Itens[m];
+              prox := Sintagmas[m];
               break;
             end;
           end;
@@ -912,20 +912,20 @@ begin
         prox := nil;
         for p:=0 to stg.Pares.Count-1 do
         begin // pares
-          for m:=0 to stg.Pares.Itens[p].Strong.Count-1 do // strongs
+          for m:=0 to stg.Pares[p].Strong.Count-1 do // strongs
           begin
-            if not strongsreutilizados or (ls.IndexOf(stg.Pares.Itens[p].Strong) = -1) then // este Strong já foi utilizado antes?
+            if not strongsreutilizados or (ls.IndexOf(stg.Pares[p].Strong) = -1) then // este Strong já foi utilizado antes?
             begin // não
-              linha.WriteString(format('<W%s>', [stg.Pares.Itens[p].Strong.Strings[m]]));
-              ls.Add(stg.Pares.Itens[p].Strong)
+              linha.WriteString(format('<W%s>', [stg.Pares[p].Strong.Strings[m]]));
+              ls.Add(stg.Pares[p].Strong)
             end else // strong reutilizado
-              linha.WriteString(format('<W%ss>', [stg.Pares.Itens[p].Strong.Strings[m]]));
+              linha.WriteString(format('<W%ss>', [stg.Pares[p].Strong.Strings[m]]));
           end;
 
           if not morfo then continue;
 
-          for m:=0 to stg.Pares.Itens[p].Morf.Count-1 do   // morfologia
-            linha.WriteString(format('<WT%s>', [stg.Pares.Itens[p].Morf.Strings[m]]));
+          for m:=0 to stg.Pares[p].Morf.Count-1 do   // morfologia
+            linha.WriteString(format('<WT%s>', [stg.Pares[p].Morf.Strings[m]]));
         end;
       end;
     end;
@@ -935,7 +935,7 @@ begin
       // verificando se ficaram palavras do original que não foram traduzidas
       for s:=0 to VersiculoPar.Sintagmas.Count-1 do
       begin // sintagmas
-        stg := VersiculoPar.Sintagmas.Itens[s];
+        stg := VersiculoPar.Sintagmas[s];
         if assigned(stg.Strong) and (ls.IndexOf(stg.Strong) = -1) then
           for m:=0 to stg.Strong.Count-1 do // strongs
             linha.WriteString(format('<W%sx>', [stg.Strong.Strings[m]]));
@@ -971,7 +971,7 @@ begin
   FPanel.Font := AValue;
   for i:=0 to FSintagmas.Count-1 do
   begin
-    with FSintagmas.Itens[i] do
+    with FSintagmas[i] do
     begin
       if not assigned(FLabel) then
          continue;
@@ -1006,7 +1006,7 @@ begin
   a := 0;
   for i:=0 to FSintagmas.Count-1 do
   begin
-    s := FSintagmas.Itens[i];
+    s := FSintagmas[i];
 
     if not assigned(s.LabelRef) then //s.Tipo in [tsMetaDado, tsTag] then
       continue;
@@ -1048,8 +1048,8 @@ procedure TVersiculo.SelecionarListaSintagmas(lst: string);
     h := 0;
     while (h < i) do
     begin
-      //t := s.Itens[j].Texto;
-      if AnsiContainsStr(s.Itens[j].Texto, '-') then
+      //t := s[j].Texto;
+      if AnsiContainsStr(s[j].Texto, '-') then
       begin
         if (h+2) < i then
           inc(h, 2)
@@ -1080,7 +1080,7 @@ begin
     if lst[i] = ',' then
     begin
       s := StrToInt(copy(lst, ini, i-ini));
-      if (s >= Sintagmas.Count) or (Sintagmas.Itens[s].Tipo <> tsSintagma) then
+      if (s >= Sintagmas.Count) or (Sintagmas[s].Tipo <> tsSintagma) then
       begin
         if FExibirErro then
            MessageDlg('Erro', 'Dados inconsistentes, algumas associações serão perdidas.'#13#10 +
@@ -1095,15 +1095,15 @@ begin
         VersiculoPar.FExibirErro:=false;
       end
       else
-        Sintagmas.Itens[s].SelecaoMais;
-      //Sintagmas.Itens[indiceTmp(Sintagmas, StrToInt(copy(lst, ini, i-ini)))].SelecaoMais;
+        Sintagmas[s].SelecaoMais;
+      //Sintagmas[indiceTmp(Sintagmas, StrToInt(copy(lst, ini, i-ini)))].SelecaoMais;
       ini := i+1;
     end;
     inc(i);
   end;
-  //Sintagmas.Itens[indiceTmp(Sintagmas, StrToInt(copy(lst, ini, i-ini)))].SelecaoMais;
+  //Sintagmas[indiceTmp(Sintagmas, StrToInt(copy(lst, ini, i-ini)))].SelecaoMais;
   s := StrToInt(copy(lst, ini, i-ini));
-  if (s >= Sintagmas.Count) or (Sintagmas.Itens[s].Tipo <> tsSintagma) then
+  if (s >= Sintagmas.Count) or (Sintagmas[s].Tipo <> tsSintagma) then
   begin
     if FExibirErro then
        MessageDlg('Erro', 'Dados inconsistentes, algumas associações serão perdidas.'#13#10 +
@@ -1118,7 +1118,7 @@ begin
     VersiculoPar.FExibirErro:=false;
   end
   else
-    Sintagmas.Itens[s].SelecaoMais;
+    Sintagmas[s].SelecaoMais;
 end;
 
 procedure TVersiculo.EditKeyDown(Sender: TObject; var Key: Word;
@@ -1212,7 +1212,7 @@ begin
   begin
     DesassociarPares;
     if (VersiculoRef.Selecao.Count > 0) then
-      VersiculoRef.Selecao.Itens[0].DesassociarPares;
+      VersiculoRef.Selecao[0].DesassociarPares;
   end;
   if not (ssCtrl in Shift) then // Ctrl não pressionado
     VersiculoRef.LimparSelecao;
@@ -1234,7 +1234,7 @@ begin
     VersiculoRef.VersiculoPar.LimparSelecao;
     if Pares.Count > 0 then
     begin
-      //VersiculoRef.SelecionarSintagmas(Pares.Itens[0].Pares);
+      //VersiculoRef.SelecionarSintagmas(Pares[0].Pares);
       VersiculoRef.SelecionarSintagmas(Irmaos);
       VersiculoRef.VersiculoPar.SelecionarSintagmas(Pares);
     end;
@@ -1291,9 +1291,9 @@ begin
   SetApontado(true);
 
   for i:=0 to Pares.Count-1 do
-    Pares.Itens[i].SetApontado(true);
+    Pares[i].SetApontado(true);
   for i:=0 to Irmaos.Count-1 do
-    Irmaos.Itens[i].SetApontado(true);
+    Irmaos[i].SetApontado(true);
 
   if assigned(VersiculoRef.FOnSintagmaMouseEnter) then
     VersiculoRef.FOnSintagmaMouseEnter(self);
@@ -1311,10 +1311,10 @@ begin
 
     txt := 'Pares:';
     for i:=0 to Pares.Count-1 do
-      txt := Concat(txt, #13#10, Pares.Itens[i].LabelRef.Caption);
+      txt := Concat(txt, #13#10, Pares[i].LabelRef.Caption);
     txt := Concat(txt, #13#10#13#10'Irmãos:');
     for i:=0 to Irmaos.Count-1 do
-      txt := Concat(txt, #13#10, Irmaos.Itens[i].LabelRef.Caption);
+      txt := Concat(txt, #13#10, Irmaos[i].LabelRef.Caption);
 
     if length(txt) > 0 then
     begin
@@ -1336,9 +1336,9 @@ var
 begin
   SetApontado(False);
   for i:=0 to Pares.Count-1 do
-    Pares.Itens[i].SetApontado(False);
+    Pares[i].SetApontado(False);
   for i:=0 to Irmaos.Count-1 do
-    Irmaos.Itens[i].SetApontado(False);
+    Irmaos[i].SetApontado(False);
 
   if assigned(Hint) then
   begin
@@ -1356,7 +1356,7 @@ var
 begin
   DesassociarPares;
   if (VersiculoRef.Selecao.Count > 0) then
-    VersiculoRef.Selecao.Itens[0].DesassociarPares;
+    VersiculoRef.Selecao[0].DesassociarPares;
 
   if not (ssCtrl in Shift) then // Ctrl não pressionado
     VersiculoRef.LimparSelecao;
@@ -1583,21 +1583,21 @@ begin
     t := TStringList.Create;
 
     for i:=0 to Pares.Count-1 do
-      t.Add(Pares.Itens[i].Texto);
+      t.Add(Pares[i].Texto);
 
     VersiculoRef.FOnRemoverAssociacao(Texto, t);
     t.Destroy;
   end;}
 
   for i:=0 to Irmaos.Count-1 do
-    Irmaos.Itens[i].Desassociar;
+    Irmaos[i].Desassociar;
 
   if Pares.Count > 0 then
   begin
-    for i:=0 to Pares.Itens[0].Irmaos.Count-1 do
-      Pares.Itens[0].Irmaos.Itens[i].Desassociar;
+    for i:=0 to Pares[0].Irmaos.Count-1 do
+      Pares[0].Irmaos[i].Desassociar;
 
-    Pares.Itens[0].Desassociar;
+    Pares[0].Desassociar;
   end;
 
   Desassociar;
@@ -1643,10 +1643,10 @@ end;
 procedure TSintagmaList.PutS(Index: Integer; Item: TSintagma);
 begin
   if IndexOf(Item) = -1 then  // evitando duplicatas
-    Put(Index, Pointer(Item));
+    Put(Index, Item);
 end;
 
-procedure TSintagmaList.AddList(AList: TList);
+procedure TSintagmaList.AddList(AList: TSintagmaList);
 var
   i: smallint;
 begin

@@ -497,7 +497,7 @@ begin
     associado := false;
     inc(s1);
     v1.LimparSelecao;
-    stg := v1.Sintagmas.Itens[s1];
+    stg := v1.Sintagmas[s1];
 
     if (stg.Tipo <> tsSintagma) or (stg.Pares.Count > 0) then
       continue;
@@ -521,12 +521,12 @@ begin
       while (s2 < v1.Sintagmas.Count)
         and (o < loc1.Count) do
       begin
-        if (v1.Sintagmas.Itens[s2].Tipo = tsSintagma) and (v1.Sintagmas.Itens[s2].Italico = false) then
+        if (v1.Sintagmas[s2].Tipo = tsSintagma) and (v1.Sintagmas[s2].Italico = false) then
         begin
-          if not compararOrigem(v1.Sintagmas.Itens[s2].GetChaveSugestao(tlMetaDados), loc1.Strings[o]) then
+          if not compararOrigem(v1.Sintagmas[s2].GetChaveSugestao(tlMetaDados), loc1.Strings[o]) then
             break;
 
-          v1.Sintagmas.Itens[s2].SelecaoMais;
+          v1.Sintagmas[s2].SelecaoMais;
           inc(o);
         end;
         inc(s2);
@@ -540,7 +540,7 @@ begin
         for d1:=0 to v2.Sintagmas.Count-1 do
         begin
           v2.LimparSelecao;
-          stg := v2.Sintagmas.Itens[d1];
+          stg := v2.Sintagmas[d1];
           if (stg.Tipo <> tsSintagma) or stg.Italico or (stg.Pares.Count > 0) then
             continue;
 
@@ -554,13 +554,13 @@ begin
             DebugLn('    procurando demais termos da locução %s', [loc2.DelimitedText]);
             while (d2 < v2.Sintagmas.Count)
               and (d < loc2.Count) do
-              //and ((v2.Sintagmas.Itens[d2].Tipo <> tsSintagma) or comparar(v2.Sintagmas.Itens[d2].GetChaveSugestao(tlStrong), FStrList.Strings[d])) do
+              //and ((v2.Sintagmas[d2].Tipo <> tsSintagma) or comparar(v2.Sintagmas[d2].GetChaveSugestao(tlStrong), FStrList.Strings[d])) do
             begin
-              if (v2.Sintagmas.Itens[d2].Tipo = tsSintagma) then
+              if (v2.Sintagmas[d2].Tipo = tsSintagma) then
               begin
                 DebugLn('    procurando termo da locução: %s', [loc2.Strings[d]]);
-                if compararDestino(v2.Sintagmas.Itens[d2].GetChaveSugestao(tlMetaDados), loc2.Strings[d]) then
-                  v2.Sintagmas.Itens[d2].SelecaoMais
+                if compararDestino(v2.Sintagmas[d2].GetChaveSugestao(tlMetaDados), loc2.Strings[d]) then
+                  v2.Sintagmas[d2].SelecaoMais
                 else
                   break;
                 inc(d);
