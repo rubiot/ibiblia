@@ -5,8 +5,8 @@ unit Sugestao;
 interface
 
 uses
-  Classes, SysUtils, StrUtils, sqldb, sqlite3conn, Versiculo, iBibliaXML, Dialogs,
-  LazLogger, PCRE;
+  Classes, SysUtils, StrUtils, sqldb, sqlite3conn, Versiculo, iBibliaXML,
+  Dialogs, LazLogger, PCRE, Sintagma, ONTTokenizer;
 
 type
 

@@ -8,94 +8,13 @@ interface
 
 uses
   Classes, SysUtils, StrUtils, ExtCtrls, StdCtrls, Controls, Graphics,
-  iBibliaXML, Forms, LCLType, Math, LCLProc, Dialogs, LazUTF8;
+  ONTTokenizer, Sintagma, Forms, LCLType, Math, LCLProc, Dialogs, LazUTF8,
+  ONTParser;
 
 type
-  TSintagma = class;
-  TVersiculo = class;
-
-  PSintagma = ^TSintagma;
-  PVersiculo = ^TVersiculo;
 
   TOnSintagmaEvent = procedure (Sender: TSintagma) of object;
   TOnAlterarVersiculoEvent = procedure () of object;
-
-  TTipoListaPares =
-  (
-    tlMetaDados, // somente metadados. Ex.: "<WG1><WTADJ-NSM>"
-    tlStrong,    // somente strong#.   Ex.: "<WG1>"
-    tlTexto,     // somente texto.     Ex.: "Jesus"
-    tlTudo       // texto e metadados. Ex.: "Jesus<WG1088><WTNPI>"
-  );
-
-  { TSintagmaList }
-
-  TSintagmaList = class(TList)
-  protected
-    function GetS(Index: Integer): TSintagma;
-    procedure PutS(Index: Integer; Item: TSintagma);
-  public
-    property Itens[Index: Integer]: TSintagma read GetS write PutS; default;
-    Procedure AddList(AList : TSintagmaList); //override;
-  end;
-
-  { TSintagma }
-
-  TSintagma = class
-  private
-    FTipo: TTipoSintagma;
-    FTexto: string;
-    FTextoCru: string;
-    FPares: TSintagmaList;
-    FIrmaos: TSintagmaList;
-    FLabel: TLabel;
-    FSelecionado: boolean;
-    FVersiculo: TVersiculo;
-    FStrong: TStringList;
-    FMorf: TStringList;
-    FCor: TColor;
-    FSobrescrito: boolean;
-    FItalico: boolean;
-    procedure DoOnDblClick(Sender: TObject);
-    procedure DoOnMouseDown(Sender: TObject; Button: TMouseButton;
-              Shift: TShiftState; X, Y: Integer);
-    procedure DoOnMouseUp(Sender: TObject; Button: TMouseButton;
-              Shift: TShiftState; X, Y: Integer);
-    procedure DoOnMouseEnter(Sender: TObject);
-    procedure DoOnMouseLeave(Sender: TObject);
-    procedure DoOnLeftClick(Sender: TObject; Shift: TShiftState);
-    procedure DoOnRightClick(Sender: TObject; Shift: TShiftState);
-    function GetCorrelacionado: boolean;
-    procedure SetApontado(const AValue: boolean);
-    procedure SetCorrelacionado(const AValue: boolean);
-    function Equals(other : TSintagma): boolean;
-  public
-    constructor Criar(TheOwner: TVersiculo; s: TTagSintagma);
-    constructor Criar(TheOwner: TVersiculo; s: TSintagma);
-    destructor Destruir;
-    procedure SelecaoMais;
-    procedure SelecaoMenos;
-    procedure InverterSelecao;
-    procedure Desassociar;
-    procedure DesassociarPares;
-    function GetProximo: TSintagma;
-    function GetChaveSugestao(t: TTipoListaPares): string;
-    property Strong: TStringList read FStrong write FStrong;
-    property Morf: TStringList read FMorf write FMorf;
-    property LabelRef: TLabel read FLabel write FLabel;
-    property Pares: TSintagmaList read FPares write FPares;
-    property Irmaos: TSintagmaList read FIrmaos write FIrmaos;
-    property VersiculoRef: TVersiculo read FVersiculo write FVersiculo;
-    property Selecionado: boolean read FSelecionado;
-    property Correlacionado: boolean read GetCorrelacionado write SetCorrelacionado;
-    property Apontado: boolean write SetApontado;
-    property Texto: string read FTexto write FTexto;
-    //property ChaveSugestao: string read GetChaveSugestao;
-    property Tipo: TTipoSintagma read FTipo write FTipo;
-    property Italico: boolean read FItalico;
-  published
-
-  end;
 
   { TVersiculo }
 
@@ -116,15 +35,13 @@ type
     FDestruindo: boolean;
     FExibirErro: boolean;
     //FFontePadrao: TFont;
-    FTmpCor: TColor;
-    FTmpSobrescrito: boolean;
-    FTmpItalico: boolean;
     FCorAssociado: TColor;
     FCorDesassociado: TColor;
     FOnSintagmaClick: TOnSintagmaEvent;
     FOnSintagmaMouseEnter: TOnSintagmaEvent;
     FOnSintagmaMouseLeave: TOnSintagmaEvent;
     FXML: string;
+    FONTParser: TONTParser;
     //FOnNovaAssociacao: TOnAssociacaoEvent;
     //FOnRemoverAssociacao: TOnAssociacaoEvent;
     function GetAndamentoAssociacao: Single;
@@ -143,7 +60,8 @@ type
     procedure EditKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure EditExit(Sender: TObject);
     procedure EditConfirm;
-    procedure VarrerXML(XML: string; var sintagmas: TSintagmaList);
+    procedure AtualizarXMLInterno;
+    procedure Renderizar;
   protected
     { Protected declarations }
   public
@@ -190,205 +108,12 @@ type
     //property StrongMorfoComoChave: boolean read FStrongMorfoComoChave write FStrongMorfoComoChave;
     property AndamentoAssociacao: Single read GetAndamentoAssociacao;
     property Fonte: TFont read GetFonte write SetFonte;
+    property Edit: TEdit read FEdit write FEdit;
  published
     { Published declarations }
   end;
 
 implementation
-
-type
-  RColor = record
-    Name: String;
-    Value: Integer;
-  end;
-
-const
-  // the following list shows 140 basic html color names and their corresponding
-  // HTML hex-values
-  ColorTable: array[0..140] of RColor = (
-    (Name: 'aliceblue';            Value: $F0F8FF),
-    (Name: 'antiquewhite';         Value: $FAEBD7),
-    (Name: 'aqua';                 Value: $00FFFF),
-    (Name: 'aquamarine';           Value: $7FFFD4),
-    (Name: 'azure';                Value: $F0FFFF),
-    (Name: 'beige';                Value: $F5F5DC),
-    (Name: 'bisque';               Value: $FFE4C4),
-    (Name: 'black';                Value: $000000),
-    (Name: 'blanchedalmond';       Value: $FFFFCD),
-    (Name: 'blue';                 Value: $0000FF),
-    (Name: 'blueviolet';           Value: $8A2BE2),
-    (Name: 'brown';                Value: $A52A2A),
-    (Name: 'burlywood';            Value: $DEB887),
-    (Name: 'cadetblue';            Value: $5F9EA0),
-    (Name: 'chartreuse';           Value: $7FFF00),
-    (Name: 'chocolate';            Value: $D2691E),
-    (Name: 'coral';                Value: $FF7F50),
-    (Name: 'cornflowerblue';       Value: $6495ED),
-    (Name: 'cornsilk';             Value: $FFF8DC),
-    (Name: 'crimson';              Value: $DC143C),
-    (Name: 'cyan';                 Value: $00FFFF),
-    (Name: 'darkblue';             Value: $00008B),
-    (Name: 'darkcyan';             Value: $008B8B),
-    (Name: 'darkgoldenrod';        Value: $B8860B),
-    (Name: 'darkgray';             Value: $A9A9A9),
-    (Name: 'darkgreen';            Value: $006400),
-    (Name: 'darkkhaki';            Value: $BDB76B),
-    (Name: 'darkmagenta';          Value: $8B008B),
-    (Name: 'darkolivegreen';       Value: $556B2F),
-    (Name: 'darkorange';           Value: $FF8C00),
-    (Name: 'darkorchid';           Value: $9932CC),
-    (Name: 'darkred';              Value: $8B0000),
-    (Name: 'darksalmon';           Value: $E9967A),
-    (Name: 'darkseagreen';         Value: $8FBC8F),
-    (Name: 'darkslateblue';        Value: $483D8B),
-    (Name: 'darkslategray';        Value: $2F4F4F),
-    (Name: 'darkturquoise';        Value: $00CED1),
-    (Name: 'darkviolet';           Value: $9400D3),
-    (Name: 'deeppink';             Value: $FF1493),
-    (Name: 'deepskyblue';          Value: $00BFFF),
-    (Name: 'dimgray';              Value: $696969),
-    (Name: 'dodgerblue';           Value: $1E90FF),
-    (Name: 'firebrick';            Value: $B22222),
-    (Name: 'floralwhite';          Value: $FFFAF0),
-    (Name: 'forestgreen';          Value: $228B22),
-    (Name: 'fuchsia';              Value: $FF00FF),
-    (Name: 'gainsboro';            Value: $DCDCDC),
-    (Name: 'ghostwhite';           Value: $F8F8FF),
-    (Name: 'gold';                 Value: $FFD700),
-    (Name: 'goldenrod';            Value: $DAA520),
-    (Name: 'gray';                 Value: $808080),
-    (Name: 'green';                Value: $008000),
-    (Name: 'greenyellow';          Value: $ADFF2F),
-    (Name: 'honeydew';             Value: $F0FFF0),
-    (Name: 'hotpink';              Value: $FF69B4),
-    (Name: 'indianred';            Value: $CD5C5C),
-    (Name: 'indigo';               Value: $4B0082),
-    (Name: 'ivory';                Value: $FFF0F0),
-    (Name: 'khaki';                Value: $F0E68C),
-    (Name: 'lavender';             Value: $E6E6FA),
-    (Name: 'lavenderblush';        Value: $FFF0F5),
-    (Name: 'lawngreen';            Value: $7CFC00),
-    (Name: 'lemonchiffon';         Value: $FFFACD),
-    (Name: 'lightblue';            Value: $ADD8E6),
-    (Name: 'lightcoral';           Value: $F08080),
-    (Name: 'lightcyan';            Value: $E0FFFF),
-    (Name: 'lightgoldenrodyellow'; Value: $FAFAD2),
-    (Name: 'lightgreen';           Value: $90EE90),
-    (Name: 'lightgrey';            Value: $D3D3D3),
-    (Name: 'lightpink';            Value: $FFB6C1),
-    (Name: 'lightsalmon';          Value: $FFA07A),
-    (Name: 'lightseagreen';        Value: $20B2AA),
-    (Name: 'lightskyblue';         Value: $87CEFA),
-    (Name: 'lightslategray';       Value: $778899),
-    (Name: 'lightsteelblue';       Value: $B0C4DE),
-    (Name: 'lightyellow';          Value: $FFFFE0),
-    (Name: 'lime';                 Value: $00FF00),
-    (Name: 'limegreen';            Value: $32CD32),
-    (Name: 'linen';                Value: $FAF0E6),
-    (Name: 'magenta';              Value: $FF00FF),
-    (Name: 'maroon';               Value: $800000),
-    (Name: 'mediumaquamarine';     Value: $66CDAA),
-    (Name: 'mediumblue';           Value: $0000CD),
-    (Name: 'mediumorchid';         Value: $BA55D3),
-    (Name: 'mediumpurple';         Value: $9370DB),
-    (Name: 'mediumseagreen';       Value: $3CB371),
-    (Name: 'mediumpurple';         Value: $9370DB),
-    (Name: 'mediumslateblue';      Value: $7B68EE),
-    (Name: 'mediumspringgreen';    Value: $00FA9A),
-    (Name: 'mediumturquoise';      Value: $48D1CC),
-    (Name: 'mediumvioletred';      Value: $C71585),
-    (Name: 'midnightblue';         Value: $191970),
-    (Name: 'mintcream';            Value: $F5FFFA),
-    (Name: 'mistyrose';            Value: $FFE4E1),
-    (Name: 'moccasin';             Value: $FFE4B5),
-    (Name: 'navajowhite';          Value: $FFDEAD),
-    (Name: 'navy';                 Value: $000080),
-    (Name: 'oldlace';              Value: $FDF5E6),
-    (Name: 'olive';                Value: $808000),
-    (Name: 'olivedrab';            Value: $6B8E23),
-    (Name: 'orange';               Value: $FFA500),
-    (Name: 'orangered';            Value: $FF4500),
-    (Name: 'orchid';               Value: $DA70D6),
-    (Name: 'palegoldenrod';        Value: $EEE8AA),
-    (Name: 'palegreen';            Value: $98FB98),
-    (Name: 'paleturquoise';        Value: $AFEEEE),
-    (Name: 'palevioletred';        Value: $DB7093),
-    (Name: 'papayawhip';           Value: $FFEFD5),
-    (Name: 'peachpuff';            Value: $FFDBBD),
-    (Name: 'peru';                 Value: $CD853F),
-    (Name: 'pink';                 Value: $FFC0CB),
-    (Name: 'plum';                 Value: $DDA0DD),
-    (Name: 'powderblue';           Value: $B0E0E6),
-    (Name: 'purple';               Value: $800080),
-    (Name: 'red';                  Value: $FF0000),
-    (Name: 'rosybrown';            Value: $BC8F8F),
-    (Name: 'royalblue';            Value: $4169E1),
-    (Name: 'saddlebrown';          Value: $8B4513),
-    (Name: 'salmon';               Value: $FA8072),
-    (Name: 'sandybrown';           Value: $F4A460),
-    (Name: 'seagreen';             Value: $2E8B57),
-    (Name: 'seashell';             Value: $FFF5EE),
-    (Name: 'sienna';               Value: $A0522D),
-    (Name: 'silver';               Value: $C0C0C0),
-    (Name: 'skyblue';              Value: $87CEEB),
-    (Name: 'slateblue';            Value: $6A5ACD),
-    (Name: 'slategray';            Value: $708090),
-    (Name: 'snow';                 Value: $FFFAFA),
-    (Name: 'springgreen';          Value: $00FF7F),
-    (Name: 'steelblue';            Value: $4682B4),
-    (Name: 'tan';                  Value: $D2B48C),
-    (Name: 'teal';                 Value: $008080),
-    (Name: 'thistle';              Value: $D8BFD8),
-    (Name: 'tomato';               Value: $FD6347),
-    (Name: 'turquoise';            Value: $40E0D0),
-    (Name: 'violet';               Value: $EE82EE),
-    (Name: 'wheat';                Value: $F5DEB3),
-    (Name: 'white';                Value: $FFFFFF),
-    (Name: 'whitesmoke';           Value: $F5F5F5),
-    (Name: 'yellow';               Value: $FFFF00),
-    (Name: 'yellowgreen';          Value: $9ACD32)
-  );
-
-var Hint: THintWindow;
-
-function TranslateColorName(Name: String): Integer;
-var
-  I: Integer;
-begin
-  Result := 0;
-  for I := Low(ColorTable) to High(ColorTable) do
-    // find matching color name
-    if ColorTable[I].Name = Name then
-    begin
-      // return RGB colors
-      Result :=
-        Byte(ColorTable[I].Value shr 16) +
-        Byte(ColorTable[I].Value shr 8) shl 8 +
-        Byte(ColorTable[I].Value) shl 16;
-      Break;
-    end;
-end;
-
-function HTML2Color(const HTML: String): Integer;
-var
-  Offset: Integer;
-begin
-  try
-    // check for leading '#'
-    if Copy(HTML, 1, 1) = '#' then
-      Offset := 1
-    else
-      Offset := 0;
-    // convert hexa-decimal values to RGB
-    Result :=
-      Integer(StrToInt('$' + Copy(HTML, Offset + 1, 2))) +
-      Integer(StrToInt('$' + Copy(HTML, Offset + 3, 2))) shl 8 +
-      Integer(StrToInt('$' + Copy(HTML, Offset + 5, 2))) shl 16;
-  except
-    // try for color names
-    Result := TranslateColorName(LowerCase(HTML));
-  end;
-end;
 
 { TVersiculo }
 
@@ -411,7 +136,6 @@ begin
   FOnSintagmaMouseLeave := nil;
   FModificado           := false;
   FXMLModificado        := false;
-  FSintagmas            := TSintagmaList.Create;
   FSelecao              := TSintagmaList.Create;
   FAtivo                := true;
   FMostrarDicas         := false;
@@ -419,11 +143,9 @@ begin
   //FFontePadrao.Assign(TheOwner.Font);
   FCorAssociado         := clWindowText;
   FCorDesassociado      := clGrayText;
-  FTmpCor               := clDefault;
-  FTmpSobrescrito       := false;
-  FTmpItalico           := false;
   //FStrongMorfoComoChave := false;
   FDestruindo           := false;
+  FONTParser := TONTParser.Create;
 end;
 
 destructor TVersiculo.Destruir;
@@ -432,12 +154,16 @@ var
 begin
   FDestruindo := true;
 
-  for i:=0 to FSintagmas.Count-1 do
-    FSintagmas[i].Destruir;
+  if assigned(FSintagmas) then
+  begin
+    for i:=0 to FSintagmas.Count-1 do
+      FSintagmas[i].Destruir;
+    FSintagmas.free;
+  end;
 
-  FSintagmas.free;
   FSelecao.free;
   FEdit.free;
+  FONTParser.Destroy;
   //FFontePadrao.Free;
 end;
 
@@ -445,10 +171,12 @@ procedure TVersiculo.LimparSintagmas;
 var
   i: smallint;
 begin
-  for i:=0 to FSintagmas.Count-1 do
-    FSintagmas[i].Destruir;
-
-  FSintagmas.Clear;
+  if assigned(FSintagmas) then
+  begin
+    for i:=0 to FSintagmas.Count-1 do
+      FSintagmas[i].Destruir;
+    FSintagmas.Clear;
+  end;
   FSelecao.Clear;
 end;
 
@@ -559,7 +287,7 @@ begin
   for s:=0 to Sintagmas.Count-1 do
   begin
     stg := Sintagmas[s];
-    if (stg.Pares.Count > 0) and (tmp.IndexOf(stg) < 0) then
+    if assigned(stg.Pares) and (tmp.IndexOf(stg) < 0) then
     begin
       t := stg.GetChaveSugestao(tipo);
       tmp.Add(stg);
@@ -587,77 +315,16 @@ begin
 end;
 
 procedure TVersiculo.SetTexto(_XML: string);
-var
-  varredorXML: TVarredorXML;
-  s: TTagSintagma;
-  sintagma: TSintagma;
-  //valor : string;
 begin
-  sintagma := nil;
   FXML := _XML;
   LimparSintagmas;
-  varredorXML := TVarredorXML.Criar(_XML);
-  while varredorXML.LerSintagma(s) <> tsNulo do
-  begin
-    if s.tipo = tsTag then
-    begin
-      if s.valor = '<RF>' then
-      begin
-        varredorXML.LerAteTag(s, '<Rf>');
-        s.tipo := tsMetaDado;
-      end else if AnsiStartsStr('<TS', s.valor) then
-      begin
-        varredorXML.LerAteTag(s, '<Ts>');
-        s.tipo := tsMetaDado;
-      end else if AnsiStartsStr('<WG', s.valor) and assigned(sintagma) and assigned(sintagma.FStrong) then // atualizar sintagma anterior
-      begin
-        sintagma.FStrong.Add(copy(s.valor, 3, length(s.valor)-3));
-        sintagma.FTextoCru := sintagma.FTextoCru + s.valor;
-        continue;
-      end else if AnsiStartsStr('<WT', s.valor) and assigned(sintagma) and assigned(sintagma.FMorf) then // atualizar sintagma anterior
-      begin
-        sintagma.FMorf.Add(copy(s.valor, 4, length(s.valor)-4));
-        sintagma.FTextoCru := sintagma.FTextoCru + s.valor;
-        continue;
-      end else if AnsiStartsStr('<font color', s.valor) then
-      begin
-        FTmpCor := HTML2Color(varredorXML.LerPropriedadeTag('color', s));
-        //continue;
-      end else if s.valor = '</font>' then
-      begin
-        FTmpCor := clDefault;
-        //continue;
-      end else if s.valor = '<sup>' then
-      begin
-        FTmpSobrescrito := true;
-        //continue;
-      end else if s.valor = '</sup>' then
-      begin
-        FTmpSobrescrito := false;
-        //continue;
-      end else if (s.valor = '<FI>') or (s.valor = '<Fi>') then
-      begin
-        FTmpItalico := s.valor[3] = 'I';
-        // nada a fazer. Para <FI> e <Fi>, queremos criar o label
-      end else
-        s.tipo := tsMetaDado;
-    end else if (s.tipo = tsEspaco) and (s.valor = '|') then
-    begin
-      if assigned(sintagma) then
-        sintagma.FTextoCru := sintagma.FTextoCru + s.valor;
-      continue;
-    end;
-    sintagma := TSintagma.Criar(self, s);
-    FSintagmas.Add(sintagma);
-  end;
-  varredorXML.Destruir;
-  { !! associar sintagmas conforme armazenado !! }
+  FSintagmas := FONTParser.ParseLine(FXML);
+  Renderizar;
   Modificado := false;
   FXMLModificado := false;
-  OrganizarSintagmas;
 end;
 
-{ Tenta substituir o texto do versículo mantendo as associações existentes }
+{ Substitui o texto do versículo mantendo as associações existentes }
 procedure TVersiculo.AlterarTexto(_XML: string);
 var
   new: TSintagmaList;
@@ -665,18 +332,21 @@ var
   i, j, insertPoint, firstOldIdx, lastOldIdx: integer;
 begin
   new := TSintagmaList.Create;
-  Ativo := false; // para não criar labels
-  VarrerXML(_XML, new);
-  Ativo := true;
+  new := FONTParser.ParseLine(_XML);
 
   { calculando quantos sintagmas continuam iguais no início }
   for i:=0 to new.Count do
   begin
     if i >= FSintagmas.Count then
       break;
-    if not new[i].Equals(FSintagmas[i]) then
+    if not new[i].Igual(FSintagmas[i]) then
       break;
+    new[i].Destruir; // liberando sintagma que não será utilizado
   end;
+
+  if i = new.Count then // o texto não foi alterado
+    exit;
+
   firstNew := new[i];
   firstOld := FSintagmas[i];
   insertPoint := i;
@@ -685,9 +355,10 @@ begin
   j := FSintagmas.Count - 1;
   for i:=new.Count-1 downto 0 do
   begin
-    if not new[i].Equals(FSintagmas[j]) then
+    if not new[i].Igual(FSintagmas[j]) then
       break;
     dec(j);
+    new[i].Destruir; // liberando sintagma que não será utilizado
   end;
   lastNew := new[i];
   lastOld := FSintagmas[j];
@@ -695,8 +366,7 @@ begin
   { inserindo sintagmas novos }
   for i:= new.IndexOf(firstNew) to new.IndexOf(lastNew) do
   begin
-    FSintagmas.Insert(insertPoint, TSintagma.Criar(Self, new[i]));
-    new[i].Destroy;
+    FSintagmas.Insert(insertPoint, new[i]);
     inc(insertPoint);
   end;
 
@@ -713,27 +383,24 @@ begin
       begin
         Pares.Remove(FSintagmas[i]);
         if Pares.Count = 0 then
-          SetCorrelacionado(false);
+          Correlacionado := false;
       end;
   end;
 
   for i:= firstOldIdx to lastOldIdx do
   begin
-    FSintagmas[firstOldIdx].LabelRef.Destroy();
-    FSintagmas[firstOldIdx].Destroy;
+    FSintagmas[firstOldIdx].Destruir;
     FSintagmas.Delete(firstOldIdx);
   end;
 
   new.Destroy;
 
-  { atualizando o texto do versículo com o texto editado }
-  FXML := '';
-  for i:=0 to FSintagmas.Count-1 do
-    FXML := FXML + FSintagmas[i].FTextoCru;
-
-  OrganizarSintagmas;
+  FXML := _XML;
   FXMLModificado := true;
   FModificado := true;
+  VersiculoPar.Modificado := true;
+
+  Renderizar;
 end;
 
 function TVersiculo.GetTexto: string;
@@ -754,7 +421,7 @@ end;
 
 procedure TVersiculo.SetPares(const AValue: string);
 var
-  varredorXML: TVarredorXML;
+  varredorXML: TONTTokenizer;
   s: TTagSintagma;
 begin
   if not (assigned(VersiculoPar)) or (length(AValue) = 0) then
@@ -763,7 +430,7 @@ begin
   FExibirErro := true;
   VersiculoPar.FExibirErro := true;
 
-  varredorXML := TVarredorXML.Criar(AValue);
+  varredorXML := TONTTokenizer.Criar(AValue);
   while varredorXML.LerSintagma(s) <> tsNulo do
   begin
     if AnsiStartsStr('<par ', s.valor) then
@@ -802,14 +469,14 @@ begin
       tmp.Add(stg);
       for p:=0 to stg.Irmaos.Count-1 do
       begin
-        _xml.WriteString(Format(',%d', [stg.VersiculoRef.Sintagmas.IndexOf(stg.Irmaos[p])]));
+        _xml.WriteString(Format(',%d', [TVersiculo(stg.VersiculoRef).Sintagmas.IndexOf(stg.Irmaos[p])]));
         tmp.Add(stg.Irmaos[p]);
       end;
       _xml.WriteString('" b="');
       for p:=0 to stg.Pares.Count-1 do
       begin
         par := stg.Pares[p];
-        _xml.WriteString(Format('%d', [par.VersiculoRef.Sintagmas.IndexOf(par)]));
+        _xml.WriteString(Format('%d', [TVersiculo(par.VersiculoRef).Sintagmas.IndexOf(par)]));
         if p <> stg.Pares.Count-1 then
           _xml.WriteString(',');
       end;
@@ -1052,20 +719,23 @@ var
   i: smallint;
 begin
   FPanel.Font := AValue;
+
+  {
   for i:=0 to FSintagmas.Count-1 do
   begin
     with FSintagmas[i] do
     begin
-      if not assigned(FLabel) then
+      if not assigned(LabelRef) then
          continue;
 
       LabelRef.ParentFont := true;
-      if FSobrescrito then
+      if Sobrescrito then
          LabelRef.Font.Size := round(LabelRef.Font.Size * 0.7);
       Correlacionado := Correlacionado; // remarcando sintagmas correlacionados
     end;
   end;
   OrganizarSintagmas;
+  }
 end;
 
 procedure TVersiculo.SetModificado(const AValue: boolean);
@@ -1081,7 +751,7 @@ var
   s: TSintagma;
   x, y, i, a: smallint;
 begin
-  if not Ativo or FDestruindo then
+  if not Ativo or FDestruindo or not assigned(FSintagmas) then
     exit;
 
   x := 5;
@@ -1219,12 +889,13 @@ begin
 end;
 
 procedure TVersiculo.EditConfirm;
-var
+{var
   s: TTagSintagma;
-  varredorXML: TVarredorXML;
+  varredorXML: TONTTokenizer;
   sintagma, novo: TSintagma;
-  i, offset, j: integer;
+  i, offset, j: integer;}
 begin
+  {
   sintagma := TSintagma(FEdit.Tag);
   i := FSintagmas.IndexOf(sintagma);
   FSintagmas.Remove(sintagma);
@@ -1232,14 +903,13 @@ begin
   offset := 0;
   novo := nil;
 
-  { varredura simplificada do texto editado do sintagma para quebrar as palavras - suporte a tags incompleto }
-  varredorXML := TVarredorXML.Criar(FEdit.Caption);
+  varredorXML := TONTTokenizer.Criar(FEdit.Caption);
   while varredorXML.LerSintagma(s) <> tsNulo do
   begin
     if (s.tipo = tsEspaco) and (s.valor = '|') then
     begin
       if assigned(novo) then
-        novo.FTextoCru := novo.FTextoCru + s.valor;
+        novo.TextoBruto := novo.TextoBruto + s.valor;
       continue;
     end;
 
@@ -1263,7 +933,7 @@ begin
       end;
       for i:=0 to sintagma.Pares.Count-1 do
       begin
-        novo.SetCorrelacionado(true);
+        novo.Correlacionado := true;
         novo.Pares.Add(sintagma.Pares[i]);
         sintagma.Pares[i].Pares.Remove(sintagma);
         sintagma.Pares[i].Pares.Add(novo);
@@ -1273,545 +943,38 @@ begin
   end;
 
   sintagma.Destruir;
-
-  // atualizando o texto do versículo com o texto editado
-  FXML := '';
-  for j:=0 to FSintagmas.Count-1 do
-    FXML := FXML + FSintagmas[j].FTextoCru;
-
+  AtualizarXMLInterno;
   EditExit(Self);
   OrganizarSintagmas;
+  }
+end;
+
+{ Atualiza o XML interno a partir do texto dos sintagmas }
+procedure TVersiculo.AtualizarXMLInterno;
+var
+  i: integer;
+begin
+  FXML := '';
+  for i:=0 to FSintagmas.Count-1 do
+    FXML := FXML + FSintagmas[i].TextoBruto;
+
   FXMLModificado := true;
+  FModificado := true;
 end;
 
-procedure TVersiculo.VarrerXML(XML: string; var sintagmas: TSintagmaList);
+procedure TVersiculo.Renderizar;
 var
-  varredorXML: TVarredorXML;
-  s: TTagSintagma;
-  sintagma: TSintagma;
+  i: integer;
 begin
-  sintagma := nil;
-  varredorXML := TVarredorXML.Criar(XML);
-  while varredorXML.LerSintagma(s) <> tsNulo do
-  begin
-    if s.tipo = tsTag then
-    begin
-      if s.valor = '<RF>' then
-      begin
-        varredorXML.LerAteTag(s, '<Rf>');
-        s.tipo := tsMetaDado;
-      end else if AnsiStartsStr('<TS', s.valor) then
-      begin
-        varredorXML.LerAteTag(s, '<Ts>');
-        s.tipo := tsMetaDado;
-      end else if AnsiStartsStr('<WG', s.valor) and assigned(sintagma) and assigned(sintagma.FStrong) then // atualizar sintagma anterior
-      begin
-        sintagma.FStrong.Add(copy(s.valor, 3, length(s.valor)-3));
-        sintagma.FTextoCru := sintagma.FTextoCru + s.valor;
-        continue;
-      end else if AnsiStartsStr('<WT', s.valor) and assigned(sintagma) and assigned(sintagma.FMorf) then // atualizar sintagma anterior
-      begin
-        sintagma.FMorf.Add(copy(s.valor, 4, length(s.valor)-4));
-        sintagma.FTextoCru := sintagma.FTextoCru + s.valor;
-        continue;
-      end else if AnsiStartsStr('<font color', s.valor) then
-      begin
-        FTmpCor := HTML2Color(varredorXML.LerPropriedadeTag('color', s));
-      end else if s.valor = '</font>' then
-      begin
-        FTmpCor := clDefault;
-      end else if s.valor = '<sup>' then
-      begin
-        FTmpSobrescrito := true;
-      end else if s.valor = '</sup>' then
-      begin
-        FTmpSobrescrito := false;
-      end else if (s.valor = '<FI>') or (s.valor = '<Fi>') then
-      begin
-        FTmpItalico := s.valor[3] = 'I';
-        // nada a fazer. Para <FI> e <Fi>, queremos criar o label
-      end else
-        s.tipo := tsMetaDado;
-    end else if (s.tipo = tsEspaco) and (s.valor = '|') then
-    begin
-      if assigned(sintagma) then
-        sintagma.FTextoCru := sintagma.FTextoCru + s.valor;
-      continue;
-    end;
-    sintagma := TSintagma.Criar(self, s);
-    sintagmas.Add(sintagma);
-  end;
-  varredorXML.Destruir;
-end;
-
-{ TSintagma }
-
-procedure TSintagma.DoOnLeftClick(Sender: TObject; Shift: TShiftState);
-//var
-//  d: string;
-begin
-  //d := format('selecao: %d, ' + 'sel par: %d, ' + 'irmaos : %d, ' + 'pares  : %d', [VersiculoRef.Selecao.Count, VersiculoRef.VersiculoPar.Selecao.Count, Irmaos.Count, Pares.Count]);
-  if (ssShift in Shift) and Assigned(VersiculoRef.VersiculoPar) then
-  begin
-    DesassociarPares;
-    if (VersiculoRef.Selecao.Count > 0) then
-      VersiculoRef.Selecao[0].DesassociarPares;
-  end;
-  if not (ssCtrl in Shift) then // Ctrl não pressionado
-    VersiculoRef.LimparSelecao;
-
-  //d := format('selecao: %d, ' + 'sel par: %d, ' + 'irmaos : %d, ' + 'pares  : %d', [VersiculoRef.Selecao.Count, VersiculoRef.VersiculoPar.Selecao.Count, Irmaos.Count, Pares.Count]);
-  InverterSelecao;
-  //d := format('selecao: %d, ' + 'sel par: %d, ' + 'irmaos : %d, ' + 'pares  : %d', [VersiculoRef.Selecao.Count, VersiculoRef.VersiculoPar.Selecao.Count, Irmaos.Count, Pares.Count]);
-
-  if (ssShift in Shift) and (Assigned(VersiculoRef.VersiculoPar)) and
-     (VersiculoRef.VersiculoPar.Selecao.Count > 0) and
-     (VersiculoRef.Selecao.Count > 0) then // Shift pressionado
-  begin
-    VersiculoRef.AssociarSintagmas;
-    VersiculoRef.Modificado:=true;
-    VersiculoRef.VersiculoPar.Modificado:=true;
-  end
-  else if Assigned(VersiculoRef.VersiculoPar) then // Shift não pressionado
-  begin
-    VersiculoRef.VersiculoPar.LimparSelecao;
-    if Pares.Count > 0 then
-    begin
-      //VersiculoRef.SelecionarSintagmas(Pares[0].Pares);
-      VersiculoRef.SelecionarSintagmas(Irmaos);
-      VersiculoRef.VersiculoPar.SelecionarSintagmas(Pares);
-    end;
-  end;
-
-  VersiculoRef.OrganizarSintagmas;
-
-  if assigned(VersiculoRef.FOnSintagmaClick) then
-    VersiculoRef.FOnSintagmaClick(self);
-end;
-
-procedure TSintagma.DoOnDblClick(Sender: TObject);
-begin
-  if (FVersiculo.Ativo) then
-  begin
-    //LabelRef.Font.StrikeTrough := not LabelRef.Font.StrikeTrough;
-    with FVersiculo.FEdit do
-    begin
-      Tag       := PtrInt(Self);
-      Top       := FLabel.Top;
-      Left      := FLabel.Left;
-      Height    := FLabel.Height + 5;
-      Width     := FLabel.Width + 15;
-      Text      := FLabel.Caption;
-      Visible   := true;
-      SetFocus;
-    end;
-  end;
-end;
-
-procedure TSintagma.DoOnMouseDown(Sender: TObject; Button: TMouseButton;
-  Shift: TShiftState; X, Y: Integer);
-begin
-  VersiculoRef.FEdit.OnExit(Self);
-  if Button = mbRight then
-    DoOnRightClick(Sender, Shift)
-  else if Button = mbLeft then
-    DoOnLeftClick(Sender, Shift);
-end;
-
-procedure TSintagma.DoOnMouseUp(Sender: TObject; Button: TMouseButton;
-  Shift: TShiftState; X, Y: Integer);
-begin
-
-end;
-
-procedure TSintagma.DoOnMouseEnter(Sender: TObject);
-var
-  rect: TRect;
-  pos: TPoint;
-  txt: string;
-  i: smallint;
-begin
-  SetApontado(true);
-
-  for i:=0 to Pares.Count-1 do
-    Pares[i].SetApontado(true);
-  for i:=0 to Irmaos.Count-1 do
-    Irmaos[i].SetApontado(true);
-
-  if assigned(VersiculoRef.FOnSintagmaMouseEnter) then
-    VersiculoRef.FOnSintagmaMouseEnter(self);
-
-  if not VersiculoRef.MostrarDicas then exit;
-
-  if not assigned(Hint) then
-    Hint := THintWindow.Create(Self.LabelRef);
-
-  //if FStrong.Count > 0 then
-  //begin
-    txt := '';
-    //if assigned(VersiculoRef.OnStrong) then
-    //  txt := VersiculoRef.OnStrong(FStrong); //FStrong + #13#10 + FMorf;
-
-    txt := 'Pares:';
-    for i:=0 to Pares.Count-1 do
-      txt := Concat(txt, #13#10, Pares[i].LabelRef.Caption);
-    txt := Concat(txt, #13#10#13#10'Irmãos:');
-    for i:=0 to Irmaos.Count-1 do
-      txt := Concat(txt, #13#10, Irmaos[i].LabelRef.Caption);
-
-    if length(txt) > 0 then
-    begin
-      Rect := Hint.CalcHintRect(0, txt, nil);  // no maxwidth
-      Pos := Mouse.CursorPos;
-      Rect.Left := Pos.X+10;
-      Rect.Top := Pos.Y+5;
-      Rect.Right := Rect.Left + Rect.Right;
-      Rect.Bottom := Rect.Top + Rect.Bottom;
-
-      Hint.ActivateHint(Rect, txt);
-    end;
-  //end;
-end;
-
-procedure TSintagma.DoOnMouseLeave(Sender: TObject);
-var
-  i: smallint;
-begin
-  SetApontado(False);
-  for i:=0 to Pares.Count-1 do
-    Pares[i].SetApontado(False);
-  for i:=0 to Irmaos.Count-1 do
-    Irmaos[i].SetApontado(False);
-
-  if assigned(Hint) then
-  begin
-    Hint.Destroy;
-    Hint := nil;
-  end;
-
-  if assigned(VersiculoRef.FOnSintagmaMouseLeave) then
-    VersiculoRef.FOnSintagmaMouseLeave(self);
-end;
-
-procedure TSintagma.DoOnRightClick(Sender: TObject; Shift: TShiftState);
-var
-  UltimoSelecionado: TSintagma;
-begin
-  DesassociarPares;
-  if (VersiculoRef.Selecao.Count > 0) then
-    VersiculoRef.Selecao[0].DesassociarPares;
-
-  if not (ssCtrl in Shift) then // Ctrl não pressionado
-    VersiculoRef.LimparSelecao;
-
-  InverterSelecao;
-
-  if Assigned(VersiculoRef.VersiculoPar) and
-     (VersiculoRef.VersiculoPar.Selecao.Count > 0) and
-     (VersiculoRef.Selecao.Count > 0) then
-  begin
-    VersiculoRef.AssociarSintagmas;
-    VersiculoRef.Modificado:=true;
-    VersiculoRef.VersiculoPar.Modificado:=true;
-  end;
-
-  if not (ssCtrl in Shift) and (VersiculoRef.VersiculoPar.Selecao.Count > 0) then
-  begin
-    UltimoSelecionado := VersiculoRef.VersiculoPar.Selecao[VersiculoRef.VersiculoPar.Selecao.Count-1];
-    VersiculoRef.LimparSelecao;
-    VersiculoRef.VersiculoPar.LimparSelecao;
-    if Assigned(UltimoSelecionado) and Assigned(UltimoSelecionado.GetProximo) then
-      UltimoSelecionado.GetProximo.SelecaoMais;
-  end;
-end;
-
-function TSintagma.GetChaveSugestao(t: TTipoListaPares): string;
-var
-  s: smallint;
-begin
-  result := '';
-
-  if t in [tlTexto, tlTudo] then
-    result := Texto;
-
-  if t <> tlTexto then
-  //if FVersiculo.StrongMorfoComoChave then
-  begin
-    //result := '';
-
-    if assigned(Strong) and assigned(Morf) then
-    begin
-      for s:=0 to max(Strong.Count, Morf.Count) do
-      begin
-        if s < Strong.Count then
-          result := format('%s<W%s>', [result, Strong.Strings[s]]);
-        if (t <> tlStrong) and (s < Morf.Count) then
-          result := format('%s<WT%s>', [result, Morf.Strings[s]]);
-      end;
-
-      {for s:=0 to Strong.Count-1 do // strongs
-        result := format('%s<W%s>', [result, Strong.Strings[s]]);
-      for s:=0 to Morf.Count-1 do // morfologia
-        result := format('%s<WT%s>', [result, Morf.Strings[s]]);}
-
-      if result = '' then
-        result := Texto;
-    end;
-  end;
-  //else
-  //  result := Texto;
-
-  result := UTF8LowerCase(result); //lowercase(result);
-end;
-
-function TSintagma.GetCorrelacionado: boolean;
-begin
-  result := FVersiculo.Ativo and (Pares.Count > 0){ (not FLabel.Font.Italic)};
-end;
-
-procedure TSintagma.SetApontado(const AValue: boolean);
-begin
-  if AValue then
-  begin // apontado
-    FLabel.Font.Underline := true;
-    if not Selecionado then
-      FLabel.Color:= clHighlight;//clInfoBk;
-    //FLabel.Color:= clMoneyGreen; // clInfoBk;
-    //FLabel.Font.Color := clRed;
-  end
-  else
-  begin // não apontado
-    FLabel.Font.Underline := false;
-    if Selecionado then
-      FLabel.Color:= clYellow
-    else
-      FLabel.Color:= clDefault;
-    //Correlacionado := Correlacionado; // é isso mesmo que queremos
-  end;
-end;
-
-procedure TSintagma.SetCorrelacionado(const AValue: boolean);
-begin
-  if (not FVersiculo.Ativo) then
+  if not FAtivo then
     exit;
 
-  if AValue then // correlacionado
-  begin
-    //FLabel.Font.Italic := false;
-    //FLabel.Font.Color := FCor; //clWindowText;
-    if FCor = clDefault then
-      FLabel.Font.Color := FVersiculo.FCorAssociado //clGrayText
-    else
-      FLabel.Font.Color := FCor;
-  end else // nao correlacionado
-  begin
-    //FLabel.Font.Italic := true;
-    if FCor = clDefault then
-      FLabel.Font.Color := FVersiculo.FCorDesassociado //clGrayText
-    else
-      FLabel.Font.Color := FCor;
-  end;
+  for i:=0 to FSintagmas.Count-1 do
+    FSintagmas[i].Renderizar(self);
+
+  OrganizarSintagmas;
 end;
 
-function TSintagma.Equals(other: TSintagma): boolean;
-begin
-  result := (FTipo = other.FTipo) and
-            (FTextoCru = other.FTextoCru);
-end;
-
-constructor TSintagma.Criar(TheOwner : TVersiculo; s : TTagSintagma);
-begin
-  FVersiculo   := TheOwner;
-  FPares       := TSintagmaList.Create;
-  FIrmaos      := TSintagmaList.Create;
-  FTexto       := s.valor;
-  FTextoCru    := s.valor;
-  FTipo        := s.tipo;
-  FCor         := FVersiculo.FTmpCor;
-  FSobrescrito := FVersiculo.FTmpSobrescrito;
-  FItalico     :=  FVersiculo.FTmpItalico;
-
-  if (FVersiculo.Ativo) and
-     (not (FTipo in [tsMetaDado, tsTag]) or (s.valor = '<FI>') or (s.valor = '<Fi>')) then
-  begin
-    FLabel := TLabel.Create(TheOwner.Painel);
-    FLabel.Caption     := FTexto;
-    if FTexto = '<FI>' then
-      FLabel.Caption := '['
-    else if FTexto = '<Fi>' then
-      FLabel.Caption := ']';
-    FLabel.ParentColor := false;
-    FLabel.ParentFont  := true;
-    FLabel.Parent      := TheOwner.Painel;
-    FLabel.AutoSize    := true;
-    if FSobrescrito then
-    begin
-      FLabel.Font.Size := round(FLabel.Font.Size * 0.7);
-    end;
-    //FLabel.Font        := TheOwner.Painel.Font;
-    Correlacionado     := false;
-    //FLabel.Font.Color  := clGrayText;
-    //FLabel.Font.Italic := true;
-  end else
-    FLabel := nil;
-
-  if s.tipo = tsSintagma then
-  begin
-    FStrong := TStringList.Create;
-    FMorf   := TStringList.Create;
-    if (FVersiculo.Ativo) then
-    begin
-      //FLabel.OnClick     := @DoOnClick;
-      FLabel.OnDblClick  := @DoOnDblClick;
-      FLabel.OnMouseDown := @DoOnMouseDown;
-      FLabel.OnMouseUp   := @DoOnMouseUp;
-      FLabel.OnMouseEnter:= @DoOnMouseEnter;
-      FLabel.OnMouseLeave:= @DoOnMouseLeave;
-    end;
-  end else
-  begin
-    FStrong := nil;
-    FMorf   := nil;
-  end;
-end;
-
-constructor TSintagma.Criar(TheOwner: TVersiculo; s: TSintagma);
-var
-  token: TTagSintagma;
-begin
-  token.tipo := s.Tipo;
-  token.valor:= s.Texto;
-  Criar(TheOwner, token);
-end;
-
-destructor TSintagma.Destruir;
-begin
-  if assigned(FLabel) then
-  begin
-    FLabel.Destroy;
-    FLabel := nil;
-  end;
-  FPares.Destroy;
-  FPares := nil;
-  FIrmaos.Destroy;
-  FIrmaos := nil;
-  if assigned(FStrong) then
-  begin
-     FStrong.Destroy;
-     FStrong := nil;
-  end;
-  if assigned(FMorf) then
-  begin
-    FMorf.Destroy;
-    FMorf := nil;
-  end;
-end;
-
-procedure TSintagma.SelecaoMais;
-begin
-  FSelecionado := true;
-  if FVersiculo.Ativo and assigned(FLabel) then
-    FLabel.Color:= clYellow;
-  VersiculoRef.Selecao.Add(Self);
-end;
-
-procedure TSintagma.SelecaoMenos;
-begin
-  FSelecionado := false;
-  if FVersiculo.Ativo and assigned(FLabel) then
-    FLabel.Color:= clWindow;
-  VersiculoRef.Selecao.Remove(Self);
-end;
-
-procedure TSintagma.InverterSelecao;
-begin
-  if Selecionado then
-    SelecaoMenos
-  else
-    SelecaoMais;
-end;
-
-procedure TSintagma.DesassociarPares;
-var
-  i: smallint;
-  //t: TStringList;
-begin
-  {if VersiculoRef.FOnRemoverAssociacao <> nil then
-  begin
-    t := TStringList.Create;
-
-    for i:=0 to Pares.Count-1 do
-      t.Add(Pares[i].Texto);
-
-    VersiculoRef.FOnRemoverAssociacao(Texto, t);
-    t.Destroy;
-  end;}
-
-  for i:=0 to Irmaos.Count-1 do
-    Irmaos[i].Desassociar;
-
-  if Pares.Count > 0 then
-  begin
-    for i:=0 to Pares[0].Irmaos.Count-1 do
-      Pares[0].Irmaos[i].Desassociar;
-
-    Pares[0].Desassociar;
-  end;
-
-  Desassociar;
-end;
-
-function TSintagma.GetProximo: TSintagma;
-var
-  i: Integer;
-begin
-  result := nil;
-  i := VersiculoRef.Sintagmas.IndexOf(Self);
-  if (i >= 0) and (i < VersiculoRef.Sintagmas.Count) then
-  begin
-    for i := i+1 to VersiculoRef.Sintagmas.Count-1 do
-    begin
-      if VersiculoRef.Sintagmas[i].Tipo = tsSintagma then
-      begin
-        result := VersiculoRef.Sintagmas[i];
-        break;
-      end;
-    end;
-  end;
-end;
-
-procedure TSintagma.Desassociar;
-begin
-  if FTipo <> tsSintagma then
-    exit;
-
-  Correlacionado := false;
-  Apontado := false;
-  Irmaos.Clear;
-  Pares.Clear;
-end;
-
-{ TSintagmaList }
-
-function TSintagmaList.GetS(Index: Integer): TSintagma;
-begin
-  result := TSintagma(Get(Index));
-end;
-
-procedure TSintagmaList.PutS(Index: Integer; Item: TSintagma);
-begin
-  if IndexOf(Item) = -1 then  // evitando duplicatas
-    Put(Index, Item);
-end;
-
-procedure TSintagmaList.AddList(AList: TSintagmaList);
-var
-  i: smallint;
-begin
-  for i:=0 to AList.Count-1 do
-    if IndexOf(AList[i]) = -1 then
-       Add(AList[i]);
-end;
 
 end.
 

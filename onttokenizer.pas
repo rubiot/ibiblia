@@ -1,11 +1,11 @@
-unit iBibliaXML;
+unit ONTTokenizer;
 
 {$mode objfpc}{$H+}
 
 interface
 
 uses
-  Classes, SysUtils, StrUtils, LCLProc, Dialogs, LazUTF8;
+  Classes, SysUtils, StrUtils, LCLProc, Dialogs, LazUTF8, Graphics;
 
 type
   Simbolos = array of cardinal;
@@ -17,11 +17,14 @@ type
   TTagSintagma = record
     tipo: TTipoSintagma;
     valor: string;
+    cor: TColor;
+    sobrescrito: boolean;
+    italico: boolean;
   end;
 
-  { TVarredorXML }
+  { TONTTokenizer }
 
-  TVarredorXML = class
+  TONTTokenizer = class
   private
     FXML: PChar;
     FPXML: PChar;
@@ -42,12 +45,12 @@ type
 
 implementation
 
-constructor TVarredorXML.Criar(XML: string);
+constructor TONTTokenizer.Criar(XML: string);
 begin
   Criar(Pchar(XML));
 end;
 
-constructor TVarredorXML.Criar(XML: PChar);
+constructor TONTTokenizer.Criar(XML: PChar);
 begin
   FXML := XML;
   FPXML := FXML;
@@ -55,12 +58,12 @@ begin
      inc(FPXML, 3);
 end;
 
-destructor TVarredorXML.Destruir;
+destructor TONTTokenizer.Destruir;
 begin
 
 end;
 
-procedure TVarredorXML.PularEspacos;
+procedure TONTTokenizer.PularEspacos;
 begin
   while (FPXML^ in [#13, #10, #32, #9, '|']) do
   begin
@@ -68,7 +71,7 @@ begin
   end;
 end;
 
-procedure TVarredorXML.PularTagAtual;
+procedure TONTTokenizer.PularTagAtual;
 begin
   while (FPXML^ <> #0) and (FPXML^ <> '>') do
   begin
@@ -78,7 +81,7 @@ begin
     inc(FPXML);
 end;
 
-procedure TVarredorXML.LerEspacos(var s: TTagSintagma);
+procedure TONTTokenizer.LerEspacos(var s: TTagSintagma);
 var
   c: integer;
 begin
@@ -92,7 +95,7 @@ begin
   s.tipo  := tsEspaco;
 end;
 
-procedure TVarredorXML.LerPontuacao(var s: TTagSintagma);
+procedure TONTTokenizer.LerPontuacao(var s: TTagSintagma);
 var
   c: integer;
 begin
@@ -124,7 +127,7 @@ begin
   s.tipo  := tsPontuacao;
 end;
 
-procedure TVarredorXML.LerTag(var s: TTagSintagma);
+procedure TONTTokenizer.LerTag(var s: TTagSintagma);
 var
   c: integer;
 begin
@@ -150,7 +153,7 @@ begin
   //  s.valor := ']';
 end;
 
-procedure TVarredorXML.LerTexto(var s: TTagSintagma);
+procedure TONTTokenizer.LerTexto(var s: TTagSintagma);
 var
   c: integer;
 begin
@@ -171,7 +174,7 @@ begin
   s.tipo  := tsSintagma;
 end;
 
-function TVarredorXML.LerSintagma(var s: TTagSintagma): TTipoSintagma;
+function TONTTokenizer.LerSintagma(var s: TTagSintagma): TTipoSintagma;
 
   function Contido(c: cardinal; v: array of cardinal): boolean;
   var
@@ -241,10 +244,12 @@ function TVarredorXML.LerSintagma(var s: TTagSintagma): TTipoSintagma;
 var
   hifen: string;
 begin
-  s.tipo:=tsNulo;
-  s.valor:='';
+  s.valor      := '';
+  s.cor        := clDefault;
+  s.italico    := false;
+  s.sobrescrito:= false;
+  s.tipo       := tipoChar;
 
-  s.tipo := tipoChar;
   case s.tipo of
     tsEspaco:
       lerEnquanto(s, [ord(#32), ord(#9), ord('|')]);
@@ -272,7 +277,7 @@ begin
   result := s.tipo;
 end;
 
-function TVarredorXML.LerPropriedadeTag(p: string; s: TTagSintagma): string;
+function TONTTokenizer.LerPropriedadeTag(p: string; s: TTagSintagma): string;
 var
   i, f: smallint;
   //quote: boolean;
@@ -305,7 +310,7 @@ begin
   result := copy(s.valor, i, f-i);
 end;
 
-procedure TVarredorXML.LerAteTag(var s: TTagSintagma; AteTag: string);
+procedure TONTTokenizer.LerAteTag(var s: TTagSintagma; AteTag: string);
 var
   valor: string;
 begin

@@ -13,7 +13,8 @@ uses
   lclintf,
   {$ENDIF}
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, Menus,
-  ActnList, ComCtrls, ExtCtrls, StdCtrls, Projeto, IniFiles, Versiculo, Math;
+  ActnList, ComCtrls, ExtCtrls, StdCtrls, Projeto, IniFiles, Versiculo, Math,
+  Sintagma;
 
 type
 
@@ -122,17 +123,14 @@ type
     procedure ActionVersoPrimeiroExecute(Sender: TObject);
     procedure ActionVersoSeguinteExecute(Sender: TObject);
     procedure ActionVersoUltimoExecute(Sender: TObject);
-    procedure FormActivate(Sender: TObject);
     procedure FormClose(Sender: TObject; var CloseAction: TCloseAction);
     procedure FormCreate(Sender: TObject);
-    procedure FormDeactivate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure FormKeyPress(Sender: TObject; var Key: char);
     procedure FormShow(Sender: TObject);
     procedure MenuItem21Click(Sender: TObject);
     procedure MenuItem22Click(Sender: TObject);
     procedure AbrirRecenteClick(Sender: TObject);
-    procedure MenuItem24Click(Sender: TObject);
     procedure MenuItemSynciBibliaClick(Sender: TObject);
     procedure MenuItemSyncTheWordClick(Sender: TObject);
     procedure QuandoNovoVersiculo(Sender: TProjeto);
@@ -538,11 +536,6 @@ begin
     ProjetoAtual.VersiculoFinal;
 end;
 
-procedure TFrmPrincipal.FormActivate(Sender: TObject);
-begin
-
-end;
-
 procedure TFrmPrincipal.FormClose(Sender: TObject; var CloseAction: TCloseAction);
 begin
   ActionFecharProjetoExecute(Sender);
@@ -571,11 +564,6 @@ begin
   syncTw2iBiblia := MenuItemSyncTheWord.Checked;
   synciBiblia2Tw := MenuItemSynciBiblia.Checked;
   SetUpSyncThread;
-end;
-
-procedure TFrmPrincipal.FormDeactivate(Sender: TObject);
-begin
-
 end;
 
 procedure TFrmPrincipal.FormDestroy(Sender: TObject);
@@ -646,10 +634,6 @@ procedure TFrmPrincipal.AbrirRecenteClick(Sender: TObject);
 begin
   if TMenuItem(Sender).Caption <> '(-)' then
      ActionAbrirProjetoExecute(Sender);
-end;
-
-procedure TFrmPrincipal.MenuItem24Click(Sender: TObject);
-begin
 end;
 
 procedure TFrmPrincipal.MenuItemSynciBibliaClick(Sender: TObject);

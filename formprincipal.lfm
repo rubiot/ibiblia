@@ -1,17 +1,15 @@
 object frmPrincipal: TfrmPrincipal
-  Left = 331
-  Height = 688
-  Top = 171
+  Left = 333
+  Height = 697
+  Top = 139
   Width = 880
   Caption = 'iBiblia'
-  ClientHeight = 672
-  ClientWidth = 881
+  ClientHeight = 677
+  ClientWidth = 880
   KeyPreview = True
   Menu = MainMenu1
-  OnActivate = FormActivate
   OnClose = FormClose
   OnCreate = FormCreate
-  OnDeactivate = FormDeactivate
   OnDestroy = FormDestroy
   OnKeyPress = FormKeyPress
   OnShow = FormShow
@@ -20,8 +18,8 @@ object frmPrincipal: TfrmPrincipal
   object StatusBar1: TStatusBar
     Left = 0
     Height = 28
-    Top = 644
-    Width = 881
+    Top = 649
+    Width = 880
     Panels = <>
   end
   object ToolBar1: TToolBar
@@ -95,30 +93,30 @@ object frmPrincipal: TfrmPrincipal
   end
   object Panel1: TPanel
     Left = 0
-    Height = 490
+    Height = 495
     Top = 33
-    Width = 881
+    Width = 880
     Anchors = [akTop, akLeft, akRight, akBottom]
     Caption = 'Panel1'
-    ClientHeight = 490
-    ClientWidth = 882
+    ClientHeight = 495
+    ClientWidth = 880
     TabOrder = 2
     object Panel2: TPanel
       Left = 144
-      Height = 488
+      Height = 493
       Top = 1
-      Width = 736
+      Width = 735
       Align = alClient
       Caption = 'Panel2'
-      ClientHeight = 488
-      ClientWidth = 737
+      ClientHeight = 493
+      ClientWidth = 735
       TabOrder = 0
       object ScrollBox1: TScrollBox
         AnchorSideBottom.Control = Splitter2
         Left = 1
         Height = 117
         Top = 1
-        Width = 734
+        Width = 733
         HorzScrollBar.Page = 1
         VertScrollBar.Page = 1
         Align = alTop
@@ -137,7 +135,7 @@ object frmPrincipal: TfrmPrincipal
         Left = 1
         Height = 114
         Top = 123
-        Width = 734
+        Width = 732
         HorzScrollBar.Page = 1
         VertScrollBar.Page = 1
         Anchors = [akTop, akLeft, akRight, akBottom]
@@ -155,7 +153,7 @@ object frmPrincipal: TfrmPrincipal
         Left = 1
         Height = 110
         Top = 242
-        Width = 734
+        Width = 732
         HorzScrollBar.Page = 1
         VertScrollBar.Page = 1
         Anchors = [akTop, akLeft, akRight, akBottom]
@@ -170,9 +168,9 @@ object frmPrincipal: TfrmPrincipal
         AnchorSideTop.Control = Splitter4
         AnchorSideTop.Side = asrBottom
         Left = 1
-        Height = 130
+        Height = 135
         Top = 357
-        Width = 734
+        Width = 733
         HorzScrollBar.Page = 1
         VertScrollBar.Page = 1
         Align = alBottom
@@ -190,7 +188,7 @@ object frmPrincipal: TfrmPrincipal
         Left = 1
         Height = 5
         Top = 118
-        Width = 734
+        Width = 732
         Align = alNone
         Anchors = [akTop, akLeft, akRight]
         ResizeAnchor = akTop
@@ -200,7 +198,7 @@ object frmPrincipal: TfrmPrincipal
         Left = 1
         Height = 5
         Top = 237
-        Width = 734
+        Width = 732
         Align = alNone
         Anchors = [akTop, akLeft, akRight]
         ResizeAnchor = akBottom
@@ -210,7 +208,7 @@ object frmPrincipal: TfrmPrincipal
         Left = 1
         Height = 5
         Top = 352
-        Width = 734
+        Width = 732
         Align = alNone
         Anchors = [akTop, akLeft, akRight]
         ResizeAnchor = akTop
@@ -218,17 +216,16 @@ object frmPrincipal: TfrmPrincipal
     end
     object Splitter1: TSplitter
       Left = 139
-      Height = 488
+      Height = 493
       Top = 1
       Width = 5
     end
     object TreeView1: TTreeView
       Left = 1
-      Height = 488
+      Height = 493
       Top = 1
       Width = 138
       Align = alLeft
-      DefaultItemHeight = 22
       Enabled = False
       Images = ImageListTreeView
       ReadOnly = True
@@ -239,16 +236,16 @@ object frmPrincipal: TfrmPrincipal
   object Memo1: TMemo
     Left = 0
     Height = 103
-    Top = 531
-    Width = 754
+    Top = 536
+    Width = 753
     Anchors = [akLeft, akRight, akBottom]
     Enabled = False
     TabOrder = 3
   end
   object RadioGroup1: TRadioGroup
-    Left = 760
+    Left = 759
     Height = 110
-    Top = 531
+    Top = 536
     Width = 117
     Anchors = [akRight, akBottom]
     AutoFill = True
@@ -276,8 +273,8 @@ object frmPrincipal: TfrmPrincipal
   object ProgressBar1: TProgressBar
     Left = 0
     Height = 20
-    Top = 624
-    Width = 881
+    Top = 629
+    Width = 880
     Align = alBottom
     TabOrder = 5
     Visible = False

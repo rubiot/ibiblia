@@ -16,7 +16,8 @@ uses
   {$ENDIF}
   SysUtils, Sqlite3DS, sqlite3conn, sqldb, db, StrUtils,
   ExtCtrls, Controls, ComCtrls, StdCtrls, Graphics, Forms, Versiculo, Sugestao,
-  MemoVersiculo, iBibliaXML, Dialogs, dos, PCRE, ExportarProjeto, LazLogger;
+  MemoVersiculo, ONTTokenizer, Dialogs, dos, PCRE, ExportarProjeto, LazLogger,
+  Sintagma;
 
 type
 
@@ -2022,13 +2023,13 @@ end;
 function TProjeto.ObterTextoSimplesVersiculo(Referencia: string;
   texto: TTipoTextoBiblico): string;
 var
-  varredorXML: TVarredorXML;
+  varredorXML: TONTTokenizer;
   s: TTagSintagma;
 begin
   result := FAVersiculo[texto].TextoSimples;
   exit;
   result := '';
-  varredorXML := TVarredorXML.Criar(FTblPares.Fields[FACamposTexto[texto]].AsString);
+  varredorXML := TONTTokenizer.Criar(FTblPares.Fields[FACamposTexto[texto]].AsString);
   while varredorXML.LerSintagma(s) <> tsNulo do
   begin
     if s.tipo = tsTag then
