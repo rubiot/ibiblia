@@ -715,9 +715,6 @@ begin
     if FAVersiculo[v] = Sender.Versiculo then
     begin
       Sender.Versiculo.AlterarTexto(Sender.Texto);
-      FTblPares.Edit;
-      FTblPares.Fields[FACamposTexto[v]].AsString := Sender.Texto;
-      FTblPares.Post;
       break;
     end;
   //MessageDlg('Versículo modificado', format('Versiculo modificado: %s', [Sender.Texto]), mtError, [mbOK], 0);

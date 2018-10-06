@@ -65,7 +65,8 @@ begin
   if FModificado then
   begin
     case MessageDlg('Alterar versículo?',
-        'Alterar o texto do versículo?'#13#10'Isto fará com que toda associação deste versículo seja perdida.',
+        'Você confirma a alteração do texto do versículo?'#13#10 +
+        'Algumas associações deste versículo talvez sejam perdidas.',
         mtConfirmation, [mbYes, mbNo, mbCancel], 0) of
       mrYes:
         if assigned(FEventoTextoModificado) then

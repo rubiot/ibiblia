@@ -354,7 +354,9 @@ end;
 
 procedure TSintagma.SetCorrelacionado(const AValue: boolean);
 begin
-  if (not TVersiculo(FVersiculo).Ativo) or (not assigned(FLabel)) then
+  if (not assigned(FVersiculo)) or
+     (not TVersiculo(FVersiculo).Ativo) or
+     (not assigned(FLabel)) then
     exit;
 
   if AValue then // correlacionado
@@ -387,6 +389,7 @@ end;
 { cria uma instância básica do sintagma, sem label, eventos, etc. }
 constructor TSintagma.Criar(s: TTagSintagma);
 begin
+  FVersiculo   := nil;
   FTexto       := s.valor;
   FTextoCru    := s.valor;
   FTipo        := s.tipo;
@@ -445,6 +448,7 @@ end;
 
 destructor TSintagma.Destruir;
 begin
+  DesassociarPares;
   if assigned(FLabel) then
   begin
     FLabel.Destroy;

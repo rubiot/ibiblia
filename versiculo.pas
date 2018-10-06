@@ -327,73 +327,57 @@ end;
 { Substitui o texto do versículo mantendo as associações existentes }
 procedure TVersiculo.AlterarTexto(_XML: string);
 var
-  new: TSintagmaList;
-  firstNew, lastNew, firstOld, lastOld: TSintagma;
-  i, j, insertPoint, firstOldIdx, lastOldIdx: integer;
+  new, result: TSintagmaList;
+  found: boolean;
+  i, j: integer;
 begin
   new := TSintagmaList.Create;
   new := FONTParser.ParseLine(_XML);
 
-  { calculando quantos sintagmas continuam iguais no início }
-  for i:=0 to new.Count do
+  LimparSelecao;
+  result := TSintagmaList.Create;
+  for i:=0 to max(new.Count, FSintagmas.Count)-1 do
   begin
-    if i >= FSintagmas.Count then
-      break;
-    if not new[i].Igual(FSintagmas[i]) then
-      break;
-    new[i].Destruir; // liberando sintagma que não será utilizado
-  end;
-
-  if i = new.Count then // o texto não foi alterado
-    exit;
-
-  firstNew := new[i];
-  firstOld := FSintagmas[i];
-  insertPoint := i;
-
-  { calculando quantos sintagmas continuam iguais no fim }
-  j := FSintagmas.Count - 1;
-  for i:=new.Count-1 downto 0 do
-  begin
-    if not new[i].Igual(FSintagmas[j]) then
-      break;
-    dec(j);
-    new[i].Destruir; // liberando sintagma que não será utilizado
-  end;
-  lastNew := new[i];
-  lastOld := FSintagmas[j];
-
-  { inserindo sintagmas novos }
-  for i:= new.IndexOf(firstNew) to new.IndexOf(lastNew) do
-  begin
-    FSintagmas.Insert(insertPoint, new[i]);
-    inc(insertPoint);
-  end;
-
-  { removendo trecho modificado }
-  firstOldIdx := FSintagmas.IndexOf(firstOld);
-  lastOldIdx := FSintagmas.IndexOf(lastOld);
-  for i:= firstOldIdx to lastOldIdx do
-  begin
-    Selecao.Remove(FSintagmas[i]);
-    for j:=0 to FSintagmas[i].Irmaos.Count-1 do
-      FSintagmas[i].Irmaos[j].Irmaos.Remove(FSintagmas[i]);
-    for j:=0 to FSintagmas[i].Pares.Count-1 do
-      with FSintagmas[i].Pares[j] do
+    if new.Count = 0 then
+    begin
+      FSintagmas[0].Destruir;
+      FSintagmas.Delete(0);
+    end
+    else
+    if FSintagmas.Count = 0 then
+    begin
+     result.Add(new[0]);
+     new.Delete(0);
+    end
+    else
+    if new[0].Igual(FSintagmas[0]) then
+    begin
+      result.Add(FSintagmas[0]);
+      FSintagmas.Delete(0);
+      new[0].Destruir;
+      new.Delete(0);
+    end
+    else
+    begin
+      // verificando se o velho sintagma ainda será usado
+      found := false;
+      for j:=0 to new.Count-1 do
+        if new[j].Igual(FSintagmas[0]) then
+        begin
+          found := true;
+          break;
+        end;
+      if not found then // não será utilizado, apagando-o
       begin
-        Pares.Remove(FSintagmas[i]);
-        if Pares.Count = 0 then
-          Correlacionado := false;
+        FSintagmas[0].Destruir;
+        FSintagmas.Delete(0);
       end;
+      result.Add(new[0]);
+      new.Delete(0);
+    end;
   end;
-
-  for i:= firstOldIdx to lastOldIdx do
-  begin
-    FSintagmas[firstOldIdx].Destruir;
-    FSintagmas.Delete(firstOldIdx);
-  end;
-
-  new.Destroy;
+  FSintagmas.Destroy;
+  FSintagmas := result;
 
   FXML := _XML;
   FXMLModificado := true;
@@ -715,8 +699,8 @@ begin
 end;
 
 procedure TVersiculo.SetFonte(const AValue: TFont);
-var
-  i: smallint;
+//var
+//  i: smallint;
 begin
   FPanel.Font := AValue;
 
