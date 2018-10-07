@@ -1,22 +1,20 @@
 object FormNovoProjeto: TFormNovoProjeto
   Left = 242
-  Height = 398
+  Height = 437
   Top = 132
   Width = 459
   Caption = 'Novo projeto...'
-  ClientHeight = 398
+  ClientHeight = 437
   ClientWidth = 459
-  OnClose = FormClose
-  OnCloseQuery = FormCloseQuery
   Position = poMainFormCenter
-  LCLVersion = '1.2.0.3'
+  LCLVersion = '1.8.4.0'
   object GroupBox1: TGroupBox
     Left = 6
     Height = 231
-    Top = 112
+    Top = 152
     Width = 450
     Caption = 'Textos'
-    ClientHeight = 213
+    ClientHeight = 211
     ClientWidth = 446
     TabOrder = 0
     object EditTextoOrigem: TLabeledEdit
@@ -131,7 +129,7 @@ object FormNovoProjeto: TFormNovoProjeto
   object BitBtn5: TBitBtn
     Left = 8
     Height = 30
-    Top = 360
+    Top = 396
     Width = 119
     Caption = '&OK'
     Default = True
@@ -143,7 +141,7 @@ object FormNovoProjeto: TFormNovoProjeto
   object BitBtn6: TBitBtn
     Left = 144
     Height = 30
-    Top = 360
+    Top = 396
     Width = 119
     Cancel = True
     Caption = 'Cancelar'
@@ -153,11 +151,11 @@ object FormNovoProjeto: TFormNovoProjeto
   end
   object GroupBox2: TGroupBox
     Left = 6
-    Height = 82
-    Top = 6
+    Height = 80
+    Top = 8
     Width = 450
     Caption = 'Propriedades'
-    ClientHeight = 64
+    ClientHeight = 60
     ClientWidth = 446
     TabOrder = 3
     object EditNomeProjeto: TLabeledEdit
@@ -178,11 +176,36 @@ object FormNovoProjeto: TFormNovoProjeto
       TabOrder = 0
     end
   end
+  object RadioGroupEscopo: TRadioGroup
+    Left = 7
+    Height = 49
+    Top = 97
+    Width = 449
+    AutoFill = True
+    Caption = 'Escopo'
+    ChildSizing.LeftRightSpacing = 6
+    ChildSizing.EnlargeHorizontal = crsHomogenousChildResize
+    ChildSizing.EnlargeVertical = crsHomogenousChildResize
+    ChildSizing.ShrinkHorizontal = crsScaleChilds
+    ChildSizing.ShrinkVertical = crsScaleChilds
+    ChildSizing.Layout = cclTopToBottomThenLeftToRight
+    ChildSizing.ControlsPerLine = 1
+    ClientHeight = 29
+    ClientWidth = 445
+    ColumnLayout = clVerticalThenHorizontal
+    Columns = 2
+    ItemIndex = 1
+    Items.Strings = (
+      'Velho Testamento'
+      'Novo Testamento'
+    )
+    TabOrder = 4
+  end
   object OpenDialog1: TOpenDialog
     Title = 'Escolha um módulo do theWord'
     Filter = 'Módulos de Bíblia do theWord (*.ont, *.nt)|*.ont;*.nt'
     InitialDir = 'C:\Utilities\The Word\Bibles'
     left = 192
-    top = 120
+    top = 156
   end
 end

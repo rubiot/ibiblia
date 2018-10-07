@@ -386,6 +386,14 @@ procedure TFrmPrincipal.ActionNovoProjetoExecute(Sender: TObject);
     end;
   end;
 
+  function QualEscopo: TEscopoTexto;
+  begin
+    if FormNovoProjeto1.RadioGroupEscopo.ItemIndex = 0 then
+      result := etOT
+    else
+      result := etNT;
+  end;
+
 var
   v: TTipoTextoBiblico;
   ParThread: TParametroThread;
@@ -400,6 +408,7 @@ begin
   if (FormNovoProjeto1.ShowModal = mrOK) and SaveDialog1.Execute then
   begin
     ProjetoAtual := TProjeto.Criar([ScrollBox1, ScrollBox2, ScrollBox3, ScrollBox4], TreeView1, RadioGroup1, Memo1);
+    ProjetoAtual.Escopo := QualEscopo;
     ProjetoAtual.OnNovoVersiculo := @QuandoNovoVersiculo;
     ProjetoAtual.OnAlterarVersiculo := @QuandoAlterarVersiculo;
     ProjetoAtual.Novo(SaveDialog1.FileName, FormNovoProjeto1.EditNomeProjeto.Text);

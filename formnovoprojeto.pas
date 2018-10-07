@@ -27,18 +27,16 @@ type
     EditTextoRef2: TLabeledEdit;
     EditNomeProjeto: TLabeledEdit;
     OpenDialog1: TOpenDialog;
+    RadioGroupEscopo: TRadioGroup;
     procedure BitBtn1Click(Sender: TObject);
     procedure BitBtn2Click(Sender: TObject);
     procedure BitBtn3Click(Sender: TObject);
     procedure BitBtn4Click(Sender: TObject);
     procedure BitBtn5Click(Sender: TObject);
-    procedure FormClose(Sender: TObject; var CloseAction: TCloseAction);
-    procedure FormCloseQuery(Sender: TObject; var CanClose: boolean);
   private
     { private declarations }
     procedure SelecionarTexto(edit: TLabeledEdit);
   public
-
     { public declarations }
   end; 
 
@@ -72,12 +70,6 @@ begin
   //Close;
 end;
 
-procedure TFormNovoProjeto.FormClose(Sender: TObject;
-  var CloseAction: TCloseAction);
-begin
-
-end;
-
 procedure TFormNovoProjeto.BitBtn1Click(Sender: TObject);
 begin
   SelecionarTexto(EditTextoOrigem);
@@ -96,12 +88,6 @@ end;
 procedure TFormNovoProjeto.BitBtn4Click(Sender: TObject);
 begin
   SelecionarTexto(EditTextoRef2);
-end;
-
-procedure TFormNovoProjeto.FormCloseQuery(Sender: TObject; var CanClose: boolean
-  );
-begin
-
 end;
 
 procedure TFormNovoProjeto.SelecionarTexto(edit: TLabeledEdit);

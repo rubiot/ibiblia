@@ -7,7 +7,7 @@ object frmExportarProjeto: TfrmExportarProjeto
   ClientHeight = 427
   ClientWidth = 789
   Position = poMainFormCenter
-  LCLVersion = '1.2.0.3'
+  LCLVersion = '1.8.4.0'
   object PageControl1: TPageControl
     Left = 8
     Height = 360

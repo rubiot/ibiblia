@@ -33,6 +33,8 @@ type
     tbConsulta2
   );
 
+  TEscopoTexto = (etOT, etNT, etNone);
+
   TOpcaoExportacao =
   (
     oeExportarMorfologia,      // incluir morfologia
@@ -79,6 +81,7 @@ type
     FRadioGroupSituacao: TRadioGroup;
     FTemporizador: TTimer;
     FAtrasoExibicao: Cardinal;
+    FEscopo: TEscopoTexto;
     FOnNovoVersiculo: TOnNovoVersiculoEvent;
     FOnSintagmaClick: TOnSintagmaClickEvent;
     function GetCaminho: string;
@@ -87,7 +90,7 @@ type
     function GetModificado: boolean;
     function GetReferencia: string;
     function GetSituacao: Integer;
-    procedure SetArvore(const AValue: TTreeView);
+    procedure PreencherArvore;
     procedure SetAtrasoExibicao(const AValue: Cardinal);
     procedure SetComentarios(const AValue: string);
     procedure SetOnAlterarVersiculo(const AValue: TOnAlterarVersiculoEvent);
@@ -169,7 +172,7 @@ type
     property Referencia: string read GetReferencia;
     property ID: string read GetID;
     property Modificado: boolean read GetModificado;
-    property Arvore: TTreeView read FArvore write SetArvore;
+    property Arvore: TTreeView read FArvore write FArvore;
     property OnAlterarVersiculo: TOnAlterarVersiculoEvent read FOnAlterarVersiculo write SetOnAlterarVersiculo;
     property OnNovoVersiculo: TOnNovoVersiculoEvent read FOnNovoVersiculo write SetOnNovoVersiculo;
     property OnSintagmaClick: TOnSintagmaClickEvent read FOnSintagmaClick write SetOnSintagmaClick;
@@ -183,24 +186,85 @@ type
     property ExibirDefinicoesSoComCtrl: boolean read FExibirDefComCtrl write FExibirDefComCtrl;
     property SugerirAssociacaoAutomaticamente: boolean read FSugerirAssociacaoAuto write FSugerirAssociacaoAuto;
     property PalavrasComStrongEmNegrito: boolean read FPalavrasComStrongEmNegrito write SetPalavrasComStrongEmNegrito;
+    property Escopo: TEscopoTexto read FEscopo write FEscopo;
   end;
 
 const
-  QLivros: array[1..27] of string = (
+  NLivrosVT: array[1..39] of string = (
+    'Gênesis','Êxodo','Levítico','Números','Deuteronômio','Josué','Juízes','Rute',
+    '1 Samuel','2 Samuel','1 Reis','2 Reis','1 Crônicas','2 Crônicas','Esdras',
+    'Neemias','Ester','Jó','Salmos','Provérbios','Eclesiastes','Cantares de Salomão',
+    'Isaías','Jeremias','Lamentações','Ezequiel','Daniel','Oseias','Joel','Amós',
+    'Obadias','Jonas','Miqueias','Naum','Habacuque','Sofonias','Ageu','Zacarias',
+    'Malaquias'
+  );
+  NLivrosNT: array[1..27] of string = (
     'Mateus','Marcos','Lucas','João','Atos dos apóstolos','Romanos',
     '1 Coríntios','2 Coríntios','Gálatas','Efésios',
     'Filipenses','Colossensses','1 Tessalonicenses','2 Tessalonicenses',
     '1 Timóteo','2 Timóteo','Tito','Filemon','Hebreus','Tiago',
     '1 Pedro','2 Pedro','1 João','2 João','3 João','Judas','Apocalipse'
   );
-  QCapitulos: array[1..27] of smallint = (
+  NLivros: array[etOT..etNT] of ^string = (@NLivrosVT, @NLivrosNT);
+
+  QCapitulosVT: array[1..39] of smallint = (
+    50,40,27,36,34,24,21,4,31,24,22,25,29,36,10,13,10,42,150,31,12,8,66,
+    52,5,48,12,14,3,9,1,4,7,3,3,3,2,14,4
+  );
+  QCapitulosNT: array[1..27] of smallint = (
     28,16,24,21,28,16,16,13,6,6,4,4,5,3,6,4,3,1,13,5,5,3,5,1,1,1,22
   );
-  QCapLivros: array[1..27] of smallint = (
+  QCapitulos: array[etOT..etNT] of ^smallint = (@QCapitulosVT, @QCapitulosNT);
+
+  QCapLivrosVT: array[1..39] of smallint = (
+    1,51,91,118,154,188,212,233,237,268,292,314,339,368,404,414,427,437,479,629,
+    660,672,680,746,798,803,851,863,877,880,889,890,894,901,904,907,910,912,926
+  );
+  QCapLivrosNT: array[1..27] of smallint = (
     1,29,45,69,90,118,134,150,163,169,175,179,183,188,191,197,201,204,205,218,
     223,228,231,236,237,238,239
   );
-  QVersiculos: array[1..260] of smallint = (
+  QCapLivros: array[etOT..etNT] of ^smallint = (@QCapLivrosVT, @QCapLivrosNT);
+
+  QVersiculosVT: array[1..929] of smallint = (
+    31,25,24,26,32,22,24,22,29,32,32,20,18,24,21,16,27,33,38,18,34,24,20,67,34,35,
+    46,22,35,43,55,32,20,31,29,43,36,30,23,23,57,38,34,34,28,34,31,22,33,26,22,25,
+    22,31,23,30,25,32,35,29,10,51,22,31,27,36,16,27,25,26,36,31,33,18,40,37,21,43,
+    46,38,18,35,23,35,35,38,29,31,43,38,17,16,17,35,19,30,38,36,24,20,47,8,59,57,
+    33,34,16,30,37,27,24,33,44,23,55,46,34,54,34,51,49,31,27,89,26,23,36,35,16,33,
+    45,41,50,13,32,22,29,35,41,30,25,18,65,23,31,40,16,54,42,56,29,34,13,46,37,29,
+    49,33,25,26,20,29,22,32,32,18,29,23,22,20,22,21,20,23,30,25,22,19,19,26,68,29,
+    20,30,52,29,12,18,24,17,24,15,27,26,35,27,43,23,24,33,15,63,10,18,28,51,9,45,
+    34,16,33,36,23,31,24,31,40,25,35,57,18,40,15,25,20,20,31,13,31,30,48,25,22,23,
+    18,22,28,36,21,22,12,21,17,22,27,27,15,25,23,52,35,23,58,30,24,42,15,23,29,22,
+    44,25,12,25,11,31,13,27,32,39,12,25,23,29,18,13,19,27,31,39,33,37,23,29,33,43,
+    26,22,51,39,25,53,46,28,34,18,38,51,66,28,29,43,33,34,31,34,34,24,46,21,43,29,
+    53,18,25,27,44,27,33,20,29,37,36,21,21,25,29,38,20,41,37,37,21,26,20,37,20,30,
+    54,55,24,43,26,81,40,40,44,14,47,40,14,17,29,43,27,17,19,8,30,19,32,31,31,32,
+    34,21,30,17,18,17,22,14,42,22,18,31,19,23,16,22,15,19,14,19,34,11,37,20,12,21,
+    27,28,23,9,27,36,27,21,33,25,33,27,23,11,70,13,24,17,22,28,36,15,44,11,20,32,
+    23,19,19,73,18,38,39,36,47,31,22,23,15,17,14,14,10,17,32,3,22,13,26,21,27,30,
+    21,22,35,22,20,25,28,22,35,22,16,21,29,29,34,30,17,25,6,14,23,28,25,31,40,22,
+    33,37,16,33,24,41,30,24,34,17,6,12,8,8,12,10,17,9,20,18,7,8,6,7,5,11,15,50,14,
+    9,13,31,6,10,22,12,14,9,11,12,24,11,22,22,28,12,40,22,13,17,13,11,5,26,17,11,
+    9,14,20,23,19,9,6,7,23,13,11,11,17,12,8,12,11,10,13,20,7,35,36,5,24,20,28,23,
+    10,12,20,72,13,19,16,8,18,12,13,17,7,18,52,17,16,15,5,23,11,13,12,9,9,5,8,28,
+    22,35,45,48,43,13,31,7,10,10,9,8,18,19,2,29,176,7,8,9,4,8,5,6,5,6,8,8,3,18,3,
+    3,21,26,9,8,24,13,10,7,12,15,21,10,20,14,9,6,33,22,35,27,23,35,27,36,18,32,31,
+    28,25,35,33,33,28,24,29,30,31,29,35,34,28,28,27,28,27,33,31,18,26,22,16,20,12,
+    29,17,18,20,10,14,17,17,11,16,16,13,13,14,31,22,26,6,30,13,25,22,21,34,16,6,
+    22,32,9,14,14,7,25,6,17,25,18,23,12,21,13,29,24,33,9,20,24,17,10,22,38,22,8,
+    31,29,25,28,28,25,13,15,22,26,11,23,15,12,17,13,12,21,14,21,22,11,12,19,12,25,
+    24,19,37,25,31,31,30,34,22,26,25,23,17,27,22,21,21,27,23,15,18,14,30,40,10,38,
+    24,22,17,32,24,40,44,26,22,19,32,21,28,18,16,18,22,13,30,5,28,7,47,39,46,64,
+    34,22,22,66,22,22,28,10,27,17,17,14,27,18,11,22,25,28,23,23,8,63,24,32,14,49,
+    32,31,49,27,17,21,36,26,21,26,18,32,33,31,15,38,28,23,29,49,26,20,27,31,25,24,
+    23,35,21,49,30,37,31,28,28,27,27,21,45,13,11,23,5,19,15,11,16,14,17,15,12,14,
+    16,9,20,32,21,15,16,15,13,27,14,17,14,15,21,17,10,10,11,16,13,12,13,15,16,20,
+    15,13,19,17,20,19,18,15,20,15,23,21,13,10,14,11,15,14,23,17,12,17,14,9,21,14,
+    17,18,6
+  );
+  QVersiculosNT: array[1..260] of smallint = (
     25,23,17,25,48,34,29,34,38,42,30,50,58,36,39,28,27,35,30,34,46,46,39,51,46,
     75,66,20,45,28,35,41,43,56,37,38,50,52,33,44,37,72,47,20,80,52,38,44,39,49,
     50,56,62,42,54,59,35,35,32,31,37,43,48,47,38,71,56,53,51,25,36,54,47,71,53,
@@ -213,6 +277,14 @@ const
     19,14,21,22,18,10,29,24,21,21,13,14,25,20,29,22,11,14,17,17,13,21,11,19,17,
     18,20,8,21,18,24,21,15,27,21
   );
+  QVersiculos: array[etOT..etNT] of ^smallint = (@QVersiculosVT, @QVersiculosNT);
+
+  QLivros: array[etOT..etNT] of smallint = (39, 27);
+  OffsetLivros: array[etOT..etNT] of smallint = (0, 39);
+  QLinhas: array[etOT..etNT] of smallint = (23145, 7957);
+  QStrongs: array[etOT..etNT] of smallint = (8674, 5624);
+  ProjetoModelo: array[etOT..etNT] of string = ( '.\projeto-ot.modelo', '.\projeto.modelo');
+  ConcordanciaModelo: array[etOT..etNT] of string = ( '.\concordancia-ot.modelo', '.\concordancia.modelo');
 
 implementation
 
@@ -221,8 +293,9 @@ uses formpopup, formverserules;
 { TProjeto }
 
 procedure TProjeto.Novo(nomedb, descricao: string);
+
 begin
-  Novo('.\projeto.modelo', nomedb, descricao);
+  Novo(ProjetoModelo[FEscopo], nomedb, descricao);
 end;
 
 procedure TProjeto.Novo(nomedbvelho, nomedbnovo, descricao: string);
@@ -232,7 +305,7 @@ begin
   Abrir(nomedbnovo);
 
   AtribuirInfo('descricao', descricao);
-  AtribuirInfo('marcador', '40,1,1');
+  AtribuirInfo('marcador', format('%d,1,1', [OffsetLivros[FEscopo] + 1]));
   FExibirDefComCtrl := false;  //FTblInfo.ExecuteDirect('COMMIT;');
   Commit;
 end;
@@ -247,38 +320,29 @@ begin
   result := FTblPares.FieldByName('pare_situacao').AsInteger;
 end;
 
-procedure TProjeto.SetArvore(const AValue: TTreeView);
+procedure TProjeto.PreencherArvore;
 var
-  l, c, v{, id}: smallint;
+  l, c, v: smallint;
   nl, nc, nv: TTreeNode;
 begin
-  if FArvore = AValue then exit;
-  FArvore := AValue;
-
   if FArvore.Items.Count = 0 then // evitando preencher outra vez a mesma árvore
   begin // preenchendo árvore
     FArvore.Visible := false;
-    //id := 0;
-    for l:=low(QLivros) to high(QLivros) do
+    for l:=0 to QLivros[FEscopo]-1 do
     begin
-      nl := FArvore.Items.Add(nil, QLivros[l]);
+      nl := FArvore.Items.Add(nil, NLivros[FEscopo][l]);
       nl.ImageIndex := 0; nl.SelectedIndex := nl.ImageIndex + 4;
-      //nl.Data := Pointer(id);
-      for c:=1 to QCapitulos[l] do
+      for c:=0 to QCapitulos[FEscopo][l]-1 do
       begin
-        nc := FArvore.Items.AddChild(nl, IntToStr(c));
+        nc := FArvore.Items.AddChild(nl, IntToStr(c+1));
         nc.ImageIndex := 0; nc.SelectedIndex := nc.ImageIndex + 4;
-        //nc.Data := Pointer(id);
-        for v:=1 to QVersiculos[QCapLivros[l] + c - 1] do
+        for v:=0 to QVersiculos[FEscopo][QCapLivros[FEscopo][l] + c - 1]-1 do
         begin
-          nv := FArvore.Items.AddChild(nc, IntToStr(v));
+          nv := FArvore.Items.AddChild(nc, IntToStr(v+1));
           nv.ImageIndex := 0; nv.SelectedIndex := nv.ImageIndex + 4;
-          //nv.Data := Pointer(id);
-          //inc(id);
         end;
       end;
     end;
-    //FArvore.SaveToFile('.\arvore.txt');
     FArvore.Visible := true;
   end;
 
@@ -674,7 +738,6 @@ end;
 
 procedure TProjeto.OnMudancaVersiculo(Sender: TObject; Node: TTreeNode);
 var
-  //l, c, v, id: smallint;
   l, c, v: TTreeNode;
   i: smallint;
 begin
@@ -699,26 +762,11 @@ begin
     l := c.Parent;
   end;
 
-  for i:=low(QLivros) to high(QLivros) do
-    if QLivros[i] = l.Text then
+  for i:=0 to QLivros[FEscopo]-1 do
+    if NLivros[FEscopo][i] = l.Text then
       break;
 
-  IrPara(format('%d,%s,%s', [i+39, c.Text, v.Text]));
-
-  {
-  id := 0;
-  for l:=low(QLivros) to high(QLivros) do
-    for c:=1 to QCapitulos[l] do
-      for v:=1 to QVersiculos[QCapLivros[l] + c - 1] do
-      begin
-        if id = Integer(Node.Data) then
-        begin
-          IrPara(format('%d,%d,%d', [l+39, c, v]));
-          exit;
-        end;
-        inc(id);
-      end;
-  }
+  IrPara(format('%d,%s,%s', [i+1+OffsetLivros[FEscopo], c.Text, v.Text]));
 end;
 
 procedure TProjeto.OnAlterarTextoVersiculo(Sender: TMemoVersiculo);
@@ -881,13 +929,13 @@ var
 begin
   if not assigned(FArvore) then exit;
   n := FArvore.TopItem.GetFirstChild.GetFirstChild; // nó versículo atual
-  l := 40; // livro atual
+  l := OffsetLivros[FEscopo] + 1; // livro atual
   c := 1;  // capítulo atual
   v := 1;  // versículo atual
   ul := FArvore.TopItem; // nó do livro atual
   uc := FArvore.TopItem.GetFirstChild; // nó do capítulo atual
-  qv := 1; // índice no vetor QVersiculos
-  qc := 1; // índice no vetor QCapitulos
+  qv := 0; // índice no vetor QVersiculos
+  qc := 0; // índice no vetor QCapitulos
 
   sc[0] := 0;  // contagem de versículos por situação no capítulo
   sc[1] := 0;
@@ -905,14 +953,14 @@ begin
 
   while not FTblPares.EOF do
   begin
-    if v > QVersiculos[qv] then // novo capítulo
+    if v > QVersiculos[FEscopo][qv] then // novo capítulo
     begin
       { atualizando nó do capítulo }
       //if qv = 69 then
       //  MessageDlg('sc', format('[%d][%d][%d][%d] - QVersiculos[%d]=%d', [sc[0],sc[1],sc[2],sc[3], qv, QVersiculos[qv]]), mtInformation, [mbOK], 0);
       b := false;
       for s:=0 to 3 do // todos os versículos estão na mesma situação?
-        if sc[s] = QVersiculos[qv] then
+        if sc[s] = QVersiculos[FEscopo][qv] then
         begin
           uc.ImageIndex := s; uc.SelectedIndex := uc.ImageIndex + 4;
           b := true;
@@ -934,14 +982,14 @@ begin
 
       v := 1;
       inc(c);
-      if c > QCapitulos[qc] then // novo livro
+      if c > QCapitulos[FEscopo][qc] then // novo livro
       begin
         { atualizando nó do livro }
         //if qc = 27 then
         //  MessageDlg('sl', format('[%d][%d][%d][%d] - [%d]', [sl[0],sl[1],sl[2],sl[3], QCapitulos[qc]]), mtInformation, [mbOK], 0);
         b := false;
         for s:=0 to 3 do // todos os capítulos estão na mesma situação?
-          if sl[s] = QCapitulos[qc] then
+          if sl[s] = QCapitulos[FEscopo][qc] then
           begin
             ul.ImageIndex := s; ul.SelectedIndex := ul.ImageIndex + 4;
             b := true;
@@ -983,7 +1031,7 @@ begin
   { atualizando o último capítulo - Apocalipse 22 }
   b := false;
   for s:=0 to 3 do // todos os versículos estão na mesma situação?
-    if sc[s] = QVersiculos[qv] then
+    if sc[s] = QVersiculos[FEscopo][qv] then
     begin
       uc.ImageIndex := s; uc.SelectedIndex := uc.ImageIndex + 4;
       b := true;
@@ -1004,7 +1052,7 @@ begin
   inc(sl[Situacao]);
   //MessageDlg('sl', format('[%d][%d][%d][%d] - [%d]', [sl[0],sl[1],sl[2],sl[3], QCapitulos[qc]]), mtInformation, [mbOK], 0);
   for s:=0 to 3 do // todos os capítulos estão na mesma situação?
-    if sl[s] = QCapitulos[qc] then
+    if sl[s] = QCapitulos[FEscopo][qc] then
     begin
       ul.ImageIndex := s; ul.SelectedIndex := ul.ImageIndex + 4;
       b := true;
@@ -1039,7 +1087,7 @@ begin
   ac[0] := 0; ac[1] := 0; ac[2] := 0; ac[3] := 0;
 
   nl := FArvore.Items[0];
-  for i:=l-39-1 downto 1 do
+  for i:=l-OffsetLivros[FEscopo]-1 downto 1 do
     nl := nl.GetNextSibling;
 
   nc := nl.GetFirstChild;
@@ -1071,7 +1119,7 @@ begin
     b := false;
     for i:=0 to 3 do // todos os versículos estão na mesma situação?
     begin
-      if ac[i] = QVersiculos[ QCapLivros[l-39]+c-1 ] then
+      if ac[i] = QVersiculos[FEscopo][ QCapLivros[FEscopo][l-OffsetLivros[FEscopo]]+c-1 ] then
       begin
         nc.ImageIndex := i; nc.SelectedIndex := nc.ImageIndex + 4;
         b := true;
@@ -1097,7 +1145,7 @@ begin
     b := false;
     for i:=0 to 3 do // todos os versículos estão na mesma situação?
     begin
-      if al[i] = QCapitulos[l-39] then
+      if al[i] = QCapitulos[FEscopo][l-OffsetLivros[FEscopo]] then
       begin
         nl.ImageIndex := i; nl.SelectedIndex := nl.ImageIndex + 4;
         b := true;
@@ -1133,6 +1181,7 @@ begin
   FSugeridor          := nil;
   FTblPares           := nil;
   FTblInfo            := nil;
+  FEscopo             := etNone;
 
   FTemporizador          := TTimer.Create(nil);
   FTemporizador.Enabled  := false;
@@ -1198,6 +1247,16 @@ begin
 end;
 
 procedure TProjeto.Abrir(Nome: string);
+  function IdentificarEscopo(marcador: string): TEscopoTexto;
+  var
+    livro: integer;
+  begin
+    livro := StrToInt(copy(marcador, 1, pos(',', marcador) - 1));
+    if livro < 40 then
+      result := etOT
+    else
+      result := etNT;
+  end;
 var
   t: TTipoTextoBiblico;
   s: string;
@@ -1246,8 +1305,12 @@ begin
   FACamposTexto[tbConsulta1] := FTblPares.FindField('pare_texto_consulta1').Index;
   FACamposTexto[tbConsulta2] := FTblPares.FindField('pare_texto_consulta2').Index;
 
+  if FEscopo = etNone then
+    FEscopo := IdentificarEscopo(ObterInfo('marcador'));
+
   if assigned(FArvore) then
   begin
+    PreencherArvore;
     AtualizarArvore;
     //FArvore.FullCollapse;
     FArvore.Enabled := true;
@@ -1417,7 +1480,7 @@ begin
       begin
         pb.Position := 0;
         pb.Min := 0;
-        pb.Max := 7956;
+        pb.Max := QLinhas[FEscopo];
         pb.Step := 1;
         pb.Visible := true;
       end;
@@ -1492,19 +1555,32 @@ var
   m: smallint;
 begin
   if AnsiEndsText('.ont', arquivo) then
-    offset := 23145 // saltando o velho testamento
+  begin
+    if FEscopo = etNT then
+      offset := QLinhas[etOT] // saltando o velho testamento
+    else
+      offset := 0;
+  end
   else if AnsiEndsText('.nt', arquivo) then
-    offset := 0
-  else
+  begin
+    if FEscopo = etOT then
+      exit;
+    offset := 0;
+  end
+  else if AnsiEndsText('.ot', arquivo) then
+  begin
+    if FEscopo = etNT then
+      exit;
+  end else
     exit; // não parece ser um módulo do theWord
 
   try
     modulo := TStringList.Create;
     modulo.LoadFromFile(arquivo);
 
-    if modulo.Count < 7956 then
+    if modulo.Count < QLinhas[FEscopo] then
     begin
-      MessageDlg('Erro', 'Arquivo inválido, precisa ter ao menos 7956 linhas', mtError, [mbOK], 0);
+      MessageDlg('Erro', format('Arquivo inválido, precisa ter ao menos %d linhas', [QLinhas[FEscopo]]), mtError, [mbOK], 0);
       exit;
     end;
 
@@ -1517,7 +1593,7 @@ begin
     verseRulesPara := TStringList.Create;
 
     propriedades := TStringStream.Create('');
-    for i:=offset+7956+1 to modulo.Count-1 do
+    for i:=offset+QLinhas[FEscopo] to modulo.Count-1 do
     begin
       { eliminando comentários }
       modulo.Strings[i] := reComments.Replace(modulo.Strings[i], '');
@@ -1568,14 +1644,14 @@ begin
     begin
       pb.Position := 0;
       pb.Min := 0;
-      pb.Max := 7956;
+      pb.Max := QLinhas[FEscopo];
       pb.Step := 1;
       pb.Visible := true;
     end;
 
     DesabilitarEventosRolagem;
     VersiculoInicial;
-    for i:=offset to offset + 7956 do
+    for i:=offset to offset + QLinhas[FEscopo] do
     begin
       { aplicando verse.rules }
       for m:=0 to verseRulesDe.Count-1 do
@@ -1643,7 +1719,7 @@ begin
     begin
       pb.Position := 0;
       pb.Min := 0;
-      pb.Max := 7956;
+      pb.Max := QLinhas[FEscopo];
       pb.Step := 1;
       pb.Visible := true;
     end;
@@ -1740,7 +1816,7 @@ begin
     begin
       pb.Position := 0;
       pb.Min := 0;
-      pb.Max := 7956;
+      pb.Max := QLinhas[FEscopo];
       pb.Step := 1;
       pb.Visible := true;
     end;
@@ -1825,7 +1901,7 @@ begin
   if not FileExists(arquivo) then
   begin
     try
-      CopiarArquivo('concordancia.modelo', arquivo);
+      CopiarArquivo(ConcordanciaModelo[FEscopo], arquivo);
       //CopiarArquivo('D:\Dropbox\Programas\iBiblia\concordancia.modelo', arquivo);
     except
       MessageDlg('Erro', 'Falha na criação do arquivo:'#13#10 + arquivo, mtError, [mbOK], 0);
@@ -1846,7 +1922,7 @@ begin
     begin
       pb.Position := 0;
       pb.Min := 0;
-      pb.Max := 7957 + 5624; // versículos do NT + qtde de strongs
+      pb.Max := QLinhas[FEscopo] + QStrongs[FEscopo]; // versículos do NT + qtde de strongs
       pb.Step := 1;
       pb.Visible := true;
     end;

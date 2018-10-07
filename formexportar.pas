@@ -92,6 +92,19 @@ begin
   FProjeto.AtribuirInfo('opcoes.exportar.strongs.reutilizados', bool2string(cbStrongsReutilizados.Checked));
   FProjeto.AtribuirInfo('opcoes.exportar.strongs.nao.traduzidos', bool2string(cbStrongsNaoTraduzidos.Checked));
 
+  case FProjeto.Escopo of
+    etOT:
+    begin
+      SaveDialog1.DefaultExt:='.ot';
+      SaveDialog1.Filter    := 'Módulo do theWord (*.ot)|*.ot';
+    end;
+    etNT:
+    begin
+      SaveDialog1.DefaultExt:='.nt';
+      SaveDialog1.Filter    := 'Módulo do theWord (*.nt)|*.nt';
+    end;
+  end;
+
   if SaveDialog1.Execute then
   begin
     try
