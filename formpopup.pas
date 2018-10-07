@@ -44,6 +44,8 @@ type
     procedure Ocultar;
     property ZoomStrong: smallint read FZoomStrong write FZoomStrong;
     property ZoomMorfo: smallint read FZoomMorfo write FZoomMorfo;
+    property Strongs: TStringList read FStrongs;
+    property Morfos: TStringList read FMorfos;
   end;
 
 var

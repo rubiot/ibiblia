@@ -800,29 +800,48 @@ var
   v: TTipoTextoBiblico;
   p: TPoint;
   s: TSintagma;
-  i: integer;
+  i, j: integer;
 begin
   if frmDictionaryPopup.Visible then
     exit;
 
   s := TSintagma(TTimer(Sender).Tag);
   for v:=low(FAVersiculo) to high(FAVersiculo) do
-    if (FAVersiculo[v] = s.VersiculoRef) and
-       (FADicStrong[v] <> nil) and
-       s.TemStrongs then
+    if (FAVersiculo[v] = s.VersiculoRef) then
     begin
-      for i:=0 to s.Morf.Count-1 do
-        FrmDictionaryPopup.AdicionarMorfo(s.Morf[i], ObterDefinicaoMorfo(s.Morf[i], v));
+      if assigned(FADicMorfo[v]) then
+      begin
+        if s.Morf.Count > 0 then
+          for i:=0 to s.Morf.Count-1 do
+            FrmDictionaryPopup.AdicionarMorfo(s.Morf[i], ObterDefinicaoMorfo(s.Morf[i], v))
+        else
+        begin // não tem morfo, vejamos se os pares têm
+          for i:=0 to s.Pares.Count-1 do
+            for j:=0 to s.Pares[i].Morf.Count-1 do
+              FrmDictionaryPopup.AdicionarMorfo(s.Pares[i].Morf[j], ObterDefinicaoMorfo(s.Pares[i].Morf[j], v));
+        end;
+      end;
 
-      for i:=0 to s.Strong.Count-1 do
-        frmDictionaryPopup.AdicionarStrong(s.Strong[i], ObterDefinicaoStrong(s.Strong[i], v));
+      if assigned(FADicStrong[v]) then
+      begin
+        if s.Strong.Count > 0 then
+          for i:=0 to s.Strong.Count-1 do
+            frmDictionaryPopup.AdicionarStrong(s.Strong[i], ObterDefinicaoStrong(s.Strong[i], v))
+        else
+        begin // não tem strongs, vejamos se os pares têm
+          for i:=0 to s.Pares.Count-1 do
+            for j:=0 to s.Pares[i].Strong.Count-1 do
+              FrmDictionaryPopup.AdicionarStrong(s.Pares[i].Strong[j], ObterDefinicaoStrong(s.Pares[i].Strong[j], v));
+        end;
+      end;
 
-      if (s.Strong.Count > 0) or (s.Morf.Count > 0) then
+      if (FrmDictionaryPopup.Strongs.Count > 0) or (FrmDictionaryPopup.Morfos.Count > 0) then
       begin
         p := s.LabelRef.ClientToScreen(s.LabelRef.ClientRect.BottomRight);
         frmDictionaryPopup.Caption := s.Texto;
         frmDictionaryPopup.MostrarEm(p.x, p.y);
       end;
+      break;
     end;
 end;
 
