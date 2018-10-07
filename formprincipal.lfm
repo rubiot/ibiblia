@@ -1,7 +1,7 @@
 object frmPrincipal: TfrmPrincipal
-  Left = 333
+  Left = 318
   Height = 697
-  Top = 139
+  Top = 142
   Width = 880
   Caption = 'iBiblia'
   ClientHeight = 677
@@ -363,6 +363,10 @@ object frmPrincipal: TfrmPrincipal
       object MenuItemStrongNegrito: TMenuItem
         Caption = 'Exibir palavras com tags de strong em negrito'
         OnClick = MenuItemStrongNegritoClick
+      end
+      object MenuItemStrongsCount: TMenuItem
+        Caption = 'Exibir contagem de palavras com tags de strong'
+        OnClick = MenuItemStrongsCountClick
       end
     end
   end

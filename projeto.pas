@@ -82,6 +82,7 @@ type
     FTemporizador: TTimer;
     FAtrasoExibicao: Cardinal;
     FEscopo: TEscopoTexto;
+    FMostrarQtdStrongs: boolean;
     FOnNovoVersiculo: TOnNovoVersiculoEvent;
     FOnSintagmaClick: TOnSintagmaClickEvent;
     function GetCaminho: string;
@@ -93,6 +94,7 @@ type
     procedure PreencherArvore;
     procedure SetAtrasoExibicao(const AValue: Cardinal);
     procedure SetComentarios(const AValue: string);
+    procedure SetMostrarQtdStrongs(AValue: boolean);
     procedure SetOnAlterarVersiculo(const AValue: TOnAlterarVersiculoEvent);
     procedure SetOnNovoVersiculo(const AValue: TOnNovoVersiculoEvent);
     procedure SetOnSintagmaClick(const AValue: TOnSintagmaClickEvent);
@@ -187,6 +189,7 @@ type
     property SugerirAssociacaoAutomaticamente: boolean read FSugerirAssociacaoAuto write FSugerirAssociacaoAuto;
     property PalavrasComStrongEmNegrito: boolean read FPalavrasComStrongEmNegrito write SetPalavrasComStrongEmNegrito;
     property Escopo: TEscopoTexto read FEscopo write FEscopo;
+    property MostrarQtdStrongs: boolean read FMostrarQtdStrongs write SetMostrarQtdStrongs;
   end;
 
 const
@@ -363,8 +366,18 @@ begin
   FTblPares.Post;
 end;
 
-procedure TProjeto.SetOnAlterarVersiculo(const AValue: TOnAlterarVersiculoEvent
-  );
+procedure TProjeto.SetMostrarQtdStrongs(AValue: boolean);
+var
+  v: TTipoTextoBiblico;
+begin
+  if FMostrarQtdStrongs=AValue then Exit;
+  FMostrarQtdStrongs:=AValue;
+  for v:=low(FAVersiculo) to high(FAVersiculo) do
+    if assigned(FAVersiculo[v]) then
+      FAVersiculo[v].MostrarQtdStrongs := AValue;
+end;
+
+procedure TProjeto.SetOnAlterarVersiculo(const AValue: TOnAlterarVersiculoEvent);
 begin
   if FOnAlterarVersiculo = AValue then exit;
   FOnAlterarVersiculo := AValue;
@@ -1294,6 +1307,7 @@ begin
     end;
     FAVersiculo[t].Fonte := f;
     FAVersiculo[t].PalavrasComStrongEmNegrito := FPalavrasComStrongEmNegrito;
+    FAVersiculo[t].MostrarQtdStrongs := FMostrarQtdStrongs;
 
     { definindo dicionários }
     AtribuirDicStrong(ObterInfo(format('dicstrong%d', [t])), t);

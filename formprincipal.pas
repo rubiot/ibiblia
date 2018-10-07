@@ -63,6 +63,7 @@ type
     MenuItem20: TMenuItem;
     MenuItem21: TMenuItem;
     MenuItem22: TMenuItem;
+    MenuItemStrongsCount: TMenuItem;
     MenuItemStrongNegrito: TMenuItem;
     MenuItemRecent: TMenuItem;
     MenuItemSynciBiblia: TMenuItem;
@@ -133,6 +134,7 @@ type
     procedure MenuItem22Click(Sender: TObject);
     procedure AbrirRecenteClick(Sender: TObject);
     procedure MenuItemStrongNegritoClick(Sender: TObject);
+    procedure MenuItemStrongsCountClick(Sender: TObject);
     procedure MenuItemSynciBibliaClick(Sender: TObject);
     procedure MenuItemSyncTheWordClick(Sender: TObject);
     procedure QuandoNovoVersiculo(Sender: TProjeto);
@@ -259,6 +261,7 @@ begin
   ProjetoAtual.OnAlterarVersiculo := @QuandoAlterarVersiculo;
   ProjetoAtual.OnSintagmaClick := @QuandoPalavraClicada;
   ProjetoAtual.PalavrasComStrongEmNegrito := MenuItemStrongNegrito.Checked;
+  ProjetoAtual.MostrarQtdStrongs := MenuItemStrongsCount.Checked;
   ProjetoAtual.Abrir(OpenDialog1.FileName);
   ProjetoAtual.ExibirDefinicoesSoComCtrl := MenuItem21.Checked;
   ProjetoAtual.SugerirAssociacaoAutomaticamente := MenuItem22.Checked;
@@ -411,6 +414,7 @@ begin
     ProjetoAtual := TProjeto.Criar([ScrollBox1, ScrollBox2, ScrollBox3, ScrollBox4], TreeView1, RadioGroup1, Memo1);
     ProjetoAtual.Escopo := QualEscopo;
     ProjetoAtual.PalavrasComStrongEmNegrito := MenuItemStrongNegrito.Checked;
+    ProjetoAtual.MostrarQtdStrongs := MenuItemStrongsCount.Checked;
     ProjetoAtual.OnNovoVersiculo := @QuandoNovoVersiculo;
     ProjetoAtual.OnAlterarVersiculo := @QuandoAlterarVersiculo;
     ProjetoAtual.Novo(SaveDialog1.FileName, FormNovoProjeto1.EditNomeProjeto.Text);
@@ -566,6 +570,7 @@ begin
   MenuItemSyncTheWord.Checked := opts.ReadBool('opcoes', 'synctheword', false);
   MenuItemSynciBiblia.Checked := opts.ReadBool('opcoes', 'syncibiblia', false);
   MenuItemStrongNegrito.Checked := opts.ReadBool('opcoes', 'boldstrongs', false);
+  MenuItemStrongsCount.Checked := opts.ReadBool('opcoes', 'showstrongscount', false);
 
   CarregarMRU(MenuItemRecent);
   TreeView1.Width := opts.ReadInteger('leiaute', 'principal.treeview.largura', TreeView1.Width);
@@ -591,6 +596,7 @@ begin
   opts.WriteBool('opcoes', 'synctheword', MenuItemSyncTheWord.Checked);
   opts.WriteBool('opcoes', 'syncibiblia', MenuItemSynciBiblia.Checked);
   opts.WriteBool('opcoes', 'boldstrongs', MenuItemStrongNegrito.Checked);
+  opts.WriteBool('opcoes', 'showstrongscount', MenuItemStrongsCount.Checked);
   opts.Free;
 end;
 
@@ -651,6 +657,13 @@ begin
   TMenuItem(Sender).Checked := not TMenuItem(Sender).Checked;
   if assigned(ProjetoAtual) then
     ProjetoAtual.PalavrasComStrongEmNegrito := TMenuItem(Sender).Checked;
+end;
+
+procedure TFrmPrincipal.MenuItemStrongsCountClick(Sender: TObject);
+begin
+  TMenuItem(Sender).Checked := not TMenuItem(Sender).Checked;
+  if assigned(ProjetoAtual) then
+    ProjetoAtual.MostrarQtdStrongs := TMenuItem(Sender).Checked;
 end;
 
 procedure TFrmPrincipal.MenuItemSynciBibliaClick(Sender: TObject);

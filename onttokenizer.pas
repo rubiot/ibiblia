@@ -11,7 +11,7 @@ type
   Simbolos = array of cardinal;
 
 type
-  TTipoSintagma = (tsNulo, tsSintagma, tsTag, tsEspaco, tsPontuacao, tsMetaDado);
+  TTipoSintagma = (tsNulo, tsSintagma, tsTag, tsEspaco, tsPontuacao, tsMetaDado, tsStrongCount);
 
 type
   TTagSintagma = record

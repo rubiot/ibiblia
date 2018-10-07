@@ -35,6 +35,7 @@ type
     FDestruindo: boolean;
     FExibirErro: boolean;
     FPalavrasComStrongEmNegrito: boolean;
+    FMostrarQtdStrongs: boolean;
     //FFontePadrao: TFont;
     FCorAssociado: TColor;
     FCorDesassociado: TColor;
@@ -64,6 +65,7 @@ type
     procedure EditConfirm;
     procedure AtualizarXMLInterno;
     procedure Renderizar;
+    procedure IncluirStrongCount;
   protected
     { Protected declarations }
   public
@@ -112,6 +114,7 @@ type
     property Fonte: TFont read GetFonte write SetFonte;
     property Edit: TEdit read FEdit write FEdit;
     property PalavrasComStrongEmNegrito: boolean read FPalavrasComStrongEmNegrito write SetPalavrasComStrongEmNegrito;
+    property MostrarQtdStrongs: boolean read FMostrarQtdStrongs write FMostrarQtdStrongs;
  published
     { Published declarations }
   end;
@@ -322,6 +325,8 @@ begin
   FXML := _XML;
   LimparSintagmas;
   FSintagmas := FONTParser.ParseLine(FXML);
+  if FMostrarQtdStrongs then
+    IncluirStrongCount;
   Renderizar;
   Modificado := false;
   FXMLModificado := false;
@@ -332,14 +337,21 @@ procedure TVersiculo.AlterarTexto(_XML: string);
 var
   new, result: TSintagmaList;
   found: boolean;
-  i, j: integer;
+  j: integer;
 begin
   new := TSintagmaList.Create;
   new := FONTParser.ParseLine(_XML);
 
   LimparSelecao;
+
+  if FSintagmas[FSintagmas.Count-1].Tipo = tsStrongCount then
+  begin
+    FSintagmas[FSintagmas.Count-1].Destruir;
+    FSintagmas.Delete(FSintagmas.Count-1);
+  end;
+
   result := TSintagmaList.Create;
-  for i:=0 to max(new.Count, FSintagmas.Count)-1 do
+  while (new.Count > 0) or (FSintagmas.Count > 0) do
   begin
     if new.Count = 0 then
     begin
@@ -379,8 +391,18 @@ begin
       new.Delete(0);
     end;
   end;
+
+  if new.Count > 0 then
+    raise Exception.Create('Ainda há sintagmas novos que não foram liberados!');
+
+  if FSintagmas.Count > 0 then
+    raise Exception.Create('Ainda há sintagmas antigos que não foram liberados!');
+
   FSintagmas.Destroy;
   FSintagmas := result;
+
+  if FMostrarQtdStrongs then
+    IncluirStrongCount;
 
   FXML := _XML;
   FXMLModificado := true;
@@ -399,7 +421,8 @@ begin
   try
     linha := TStringStream.Create('');
     for s:=0 to Sintagmas.Count-1 do
-      linha.WriteString(Sintagmas[s].Texto);
+      if Sintagmas[s].Tipo <> tsStrongCount then
+        linha.WriteString(Sintagmas[s].Texto);
   finally
     result := linha.DataString;
     linha.Destroy;
@@ -614,6 +637,9 @@ begin
     for s:=0 to Sintagmas.Count-1 do
     begin // sintagmas
       stg := Sintagmas[s];
+
+      if stg.Tipo = tsStrongCount then
+        continue;
 
       if (prox = nil) and (stg.Pares.Count > 0) then
         linha.WriteString('<wt>');
@@ -967,6 +993,30 @@ begin
     FSintagmas[i].Renderizar(self);
 
   OrganizarSintagmas;
+end;
+
+procedure TVersiculo.IncluirStrongCount;
+var
+  s: TTagSintagma;
+  count, i: integer;
+begin
+  if FSintagmas.Count = 0 then
+    exit;
+
+  count := 0;
+  for i:=0 to FSintagmas.Count-1 do
+    if FSintagmas[i].TemStrongs then
+      inc(count);
+
+  with s do
+  begin
+    tipo       := tsStrongCount;
+    valor      := format(' (%d strongs)', [count]);
+    cor        := clRed;
+    sobrescrito:= true;
+    italico    := false;
+  end;
+  FSintagmas.Add(TSintagma.Criar(s));
 end;
 
 
