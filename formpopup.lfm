@@ -15,31 +15,48 @@ object frmDictionaryPopup: TfrmDictionaryPopup
   OnDestroy = FormDestroy
   OnHide = FormHide
   OnKeyDown = FormKeyDown
-  OnShow = FormShow
-  LCLVersion = '1.6.2.0'
-  object Panel1: TPanel
+  LCLVersion = '1.8.4.0'
+  object TabControlStrongs: TTabControl
     Left = 1
-    Height = 297
+    Height = 261
     Top = 1
     Width = 423
+    OnChange = TabControlStrongsChange
     Align = alClient
-    BorderStyle = bsSingle
     TabOrder = 0
+    object Panel1: TPanel
+      Left = 2
+      Height = 256
+      Top = 3
+      Width = 419
+      Align = alClient
+      Anchors = [akTop, akLeft, akRight]
+      TabOrder = 1
+    end
   end
-  object Panel2: TPanel
+  object TabControlMorfos: TTabControl
     Left = 1
-    Height = 114
-    Top = 303
+    Height = 150
+    Top = 267
     Width = 423
+    OnChange = TabControlMorfosChange
     Align = alBottom
-    BorderStyle = bsSingle
     TabOrder = 1
+    object Panel2: TPanel
+      Left = 2
+      Height = 145
+      Top = 3
+      Width = 419
+      Align = alClient
+      BorderStyle = bsSingle
+      TabOrder = 1
+    end
   end
   object Splitter1: TSplitter
     Cursor = crVSplit
     Left = 1
     Height = 5
-    Top = 298
+    Top = 262
     Width = 423
     Align = alBottom
     ResizeAnchor = akBottom

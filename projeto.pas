@@ -729,7 +729,7 @@ procedure TProjeto.SintagmaOnMouseLeave(Sender: TSintagma);
 begin
   FTemporizador.Enabled := false;
   if (GetKeyState(VK_CONTROL) and $8000) = 0 then
-    frmDictionaryPopup.Visible := false;
+    frmDictionaryPopup.Ocultar;
 end;
 
 procedure TProjeto.SintagmaOnClick(Sender: TSintagma);
@@ -800,27 +800,27 @@ var
   v: TTipoTextoBiblico;
   p: TPoint;
   s: TSintagma;
+  i: integer;
 begin
   if frmDictionaryPopup.Visible then
-     exit;
+    exit;
 
   s := TSintagma(TTimer(Sender).Tag);
   for v:=low(FAVersiculo) to high(FAVersiculo) do
     if (FAVersiculo[v] = s.VersiculoRef) and
        (FADicStrong[v] <> nil) and
-       (s.Strong.Count > 0) then
+       s.TemStrongs then
     begin
-      if s.Morf.Count > 0 then
-        frmDictionaryPopup.Morfo1 := ObterDefinicaoMorfo(s.Morf.Strings[0], v);
+      for i:=0 to s.Morf.Count-1 do
+        FrmDictionaryPopup.AdicionarMorfo(s.Morf[i], ObterDefinicaoMorfo(s.Morf[i], v));
 
-      if s.Strong.Count > 0 then
+      for i:=0 to s.Strong.Count-1 do
+        frmDictionaryPopup.AdicionarStrong(s.Strong[i], ObterDefinicaoStrong(s.Strong[i], v));
+
+      if (s.Strong.Count > 0) or (s.Morf.Count > 0) then
       begin
-        frmDictionaryPopup.Strong1 := ObterDefinicaoStrong(s.Strong.Strings[0], v);
         p := s.LabelRef.ClientToScreen(s.LabelRef.ClientRect.BottomRight);
-        //frmDictionaryPopup.Left := p.x;
-        //frmDictionaryPopup.Top := p.y;
         frmDictionaryPopup.Caption := s.Texto;
-        //frmDictionaryPopup.Visible := true;
         frmDictionaryPopup.MostrarEm(p.x, p.y);
       end;
     end;
@@ -1198,7 +1198,7 @@ begin
 
   FTemporizador          := TTimer.Create(nil);
   FTemporizador.Enabled  := false;
-  FTemporizador.Interval := 600;
+  FTemporizador.Interval := 200;
   FTemporizador.OnTimer  := @OnExibirDefinicao;
 
   FMemoVersiculo := TMemoVersiculo.Criar;

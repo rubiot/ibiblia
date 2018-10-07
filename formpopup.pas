@@ -11,34 +11,37 @@ uses
   {$ELSE}
   Windows,
   {$ENDIF}
-  ExtCtrls, RTFEdit;
+  ExtCtrls, ComCtrls, RTFEdit;
 
 type
-
   { TFrmDictionaryPopup }
 
   TFrmDictionaryPopup = class(TForm)
     Panel1: TPanel;
     Panel2: TPanel;
     Splitter1: TSplitter;
+    TabControlStrongs: TTabControl;
+    TabControlMorfos: TTabControl;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure FormHide(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-    procedure FormShow(Sender: TObject);
+    procedure TabControlMorfosChange(Sender: TObject);
+    procedure TabControlStrongsChange(Sender: TObject);
   private
     { private declarations }
     FZoomStrong: smallint;
     FZoomMorfo: smallint;
-    FRTFEditStrong1: TRTFEdit;
-    FRTFEditMorfo1: TRTFEdit;
-    procedure SetStrong1(const AValue: string);
-    procedure SetMorfo1(const AValue: string);
+    FStrongs: TStringList;
+    FMorfos: TStringList;
+    FEditStrong: TRTFEdit;
+    FEditMorfo: TRTFEdit;
   public
     { public declarations }
+    procedure AdicionarStrong(const strong: string; const definition: string);
+    procedure AdicionarMorfo(const morfo: string; const definition: string);
     procedure MostrarEm(x: Integer; y: Integer);
-    property Strong1: string write SetStrong1;
-    property Morfo1: string write SetMorfo1;
+    procedure Ocultar;
     property ZoomStrong: smallint read FZoomStrong write FZoomStrong;
     property ZoomMorfo: smallint read FZoomMorfo write FZoomMorfo;
   end;
@@ -54,8 +57,11 @@ uses formPrincipal;
 
 procedure TFrmDictionaryPopup.FormCreate(Sender: TObject);
 begin
-  FRTFEditStrong1 := TRTFEdit.Criar(Panel1);
-  FRTFEditMorfo1 := TRTFEdit.Criar(Panel2);
+  FEditStrong := TRTFEdit.Criar(Panel1);
+  FEditMorfo  := TRTFEdit.Criar(Panel2);
+
+  FStrongs := TStringList.Create;
+  FMorfos := TStringList.Create;
 
   ZoomStrong := opts.ReadInteger('leiaute', 'popup.zoom.strong', 100);
   ZoomMorfo  := opts.ReadInteger('leiaute', 'popup.zoom.morfo', 100);
@@ -65,6 +71,8 @@ begin
 end;
 
 procedure TFrmDictionaryPopup.FormDestroy(Sender: TObject);
+var
+  i: integer;
 begin
   opts.WriteInteger('leiaute', 'popup.largura', Width);
   opts.WriteInteger('leiaute', 'popup.altura', Height);
@@ -72,14 +80,20 @@ begin
   opts.WriteInteger('leiaute', 'popup.zoom.strong', ZoomStrong);
   opts.WriteInteger('leiaute', 'popup.zoom.morfo', ZoomMorfo);
 
-  FRTFEditStrong1.Destruir;
-  FRTFEditMorfo1.Destruir;
+  FEditStrong.Destruir;
+  FEditMorfo.Destruir;
+  FStrongs.Destroy;
+  FMorfos.Destroy;
 end;
 
 procedure TFrmDictionaryPopup.FormHide(Sender: TObject);
 begin
-  ZoomStrong := FRTFEditStrong1.Zoom;
-  ZoomMorfo := FRTFEditMorfo1.Zoom;
+  ZoomStrong := FEditStrong.Zoom;
+  ZoomMorfo := FEditMorfo.Zoom;
+  FStrongs.Clear;
+  FMorfos.Clear;
+  TabControlStrongs.Tabs.Clear;
+  TabControlMorfos.Tabs.Create;
 end;
 
 procedure TFrmDictionaryPopup.FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState
@@ -92,35 +106,43 @@ begin
   end;
 end;
 
-procedure TFrmDictionaryPopup.FormShow(Sender: TObject);
+procedure TFrmDictionaryPopup.TabControlMorfosChange(Sender: TObject);
 begin
-
+  FEditMorfo.RTF := FMorfos[TabControlMorfos.TabIndex];
 end;
 
-procedure TFrmDictionaryPopup.SetStrong1(const AValue: string);
+procedure TFrmDictionaryPopup.TabControlStrongsChange(Sender: TObject);
 begin
-  if length(AValue) > 0 then
-  begin
-    FRTFEditStrong1.RTF := AValue;
-    FRTFEditStrong1.Zoom := ZoomStrong;
-  end
-  else
-    FRTFEditStrong1.Texto := ' ';
+  FEditStrong.RTF := FStrongs[TabControlStrongs.TabIndex];
 end;
 
-procedure TFrmDictionaryPopup.SetMorfo1(const AValue: string);
+procedure TFrmDictionaryPopup.AdicionarStrong(const strong: string; const definition: string);
 begin
-  if length(AValue) > 0 then
-  begin
-    FRTFEditMorfo1.RTF := AValue;
-    FRTFEditMorfo1.Zoom := ZoomMorfo;
-  end
-  else
-    FRTFEditMorfo1.Texto := ' ';
+  FStrongs.Add(definition);
+  TabControlStrongs.Tabs.Add(strong);
+end;
+
+procedure TFrmDictionaryPopup.AdicionarMorfo(const morfo: string; const definition: string);
+begin
+  FMorfos.Add(definition);
+  TabControlMorfos.Tabs.Add(morfo);
 end;
 
 procedure TFrmDictionaryPopup.MostrarEm(x: Integer; y: Integer);
 begin
+  if FStrongs.Count > 0 then
+  begin
+    TabControlStrongs.TabIndex := 0;
+    FEditStrong.RTF  := FStrongs[0];
+    FEditStrong.Zoom := ZoomMorfo;
+  end;
+  if FMorfos.Count > 0 then
+  begin
+    TabControlMorfos.TabIndex := 0;
+    FEditMorfo.RTF  := FMorfos[0];
+    FEditMorfo.Zoom := ZoomMorfo;
+  end;
+
   if x + self.Width > Screen.Width then
   begin
     self.left := x - self.Width;
@@ -138,6 +160,15 @@ begin
     self.top := y;
 
   self.visible := true;
+end;
+
+procedure TFrmDictionaryPopup.Ocultar;
+begin
+  self.Visible := false;
+  TabControlStrongs.Tabs.Clear;
+  TabControlMorfos.Tabs.Clear;
+  FEditStrong.RTF := ' ';
+  FEditMorfo.RTF := ' ';
 end;
 
 initialization
