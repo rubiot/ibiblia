@@ -960,7 +960,7 @@ procedure TVersiculo.Renderizar;
 var
   i: integer;
 begin
-  if not FAtivo then
+  if not FAtivo or not assigned(FSintagmas) then
     exit;
 
   for i:=0 to FSintagmas.Count-1 do

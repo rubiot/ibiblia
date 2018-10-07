@@ -258,6 +258,7 @@ begin
   ProjetoAtual.OnNovoVersiculo := @QuandoNovoVersiculo;
   ProjetoAtual.OnAlterarVersiculo := @QuandoAlterarVersiculo;
   ProjetoAtual.OnSintagmaClick := @QuandoPalavraClicada;
+  ProjetoAtual.PalavrasComStrongEmNegrito := MenuItemStrongNegrito.Checked;
   ProjetoAtual.Abrir(OpenDialog1.FileName);
   ProjetoAtual.ExibirDefinicoesSoComCtrl := MenuItem21.Checked;
   ProjetoAtual.SugerirAssociacaoAutomaticamente := MenuItem22.Checked;
@@ -409,6 +410,7 @@ begin
   begin
     ProjetoAtual := TProjeto.Criar([ScrollBox1, ScrollBox2, ScrollBox3, ScrollBox4], TreeView1, RadioGroup1, Memo1);
     ProjetoAtual.Escopo := QualEscopo;
+    ProjetoAtual.PalavrasComStrongEmNegrito := MenuItemStrongNegrito.Checked;
     ProjetoAtual.OnNovoVersiculo := @QuandoNovoVersiculo;
     ProjetoAtual.OnAlterarVersiculo := @QuandoAlterarVersiculo;
     ProjetoAtual.Novo(SaveDialog1.FileName, FormNovoProjeto1.EditNomeProjeto.Text);

@@ -1293,6 +1293,7 @@ begin
       f.Size := StrToInt(s);
     end;
     FAVersiculo[t].Fonte := f;
+    FAVersiculo[t].PalavrasComStrongEmNegrito := FPalavrasComStrongEmNegrito;
 
     { definindo dicionários }
     AtribuirDicStrong(ObterInfo(format('dicstrong%d', [t])), t);
