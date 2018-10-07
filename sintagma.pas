@@ -57,6 +57,7 @@ type
     procedure DoOnLeftClick(Sender: TObject; Shift: TShiftState);
     procedure DoOnRightClick(Sender: TObject; Shift: TShiftState);
     function GetCorrelacionado: boolean;
+    function GetTemStrongs: boolean;
     procedure SetApontado(const AValue: boolean);
     procedure SetCorrelacionado(const AValue: boolean);
   public
@@ -86,6 +87,7 @@ type
     property Tipo: TTipoSintagma read FTipo write FTipo;
     property Italico: boolean read FItalico;
     property Sobrescrito: boolean read FSobrescrito;
+    property TemStrongs: boolean read GetTemStrongs;
   published
 
   end;
@@ -328,6 +330,11 @@ begin
   result := TVersiculo(FVersiculo).Ativo and assigned(Pares) and (Pares.Count > 0){ (not FLabel.Font.Italic)};
 end;
 
+function TSintagma.GetTemStrongs: boolean;
+begin
+  result := assigned(FStrong) and (FStrong.Count > 0);
+end;
+
 procedure TSintagma.SetApontado(const AValue: boolean);
 begin
   if not assigned(FLabel) then
@@ -426,7 +433,7 @@ begin
     if FSobrescrito then
       FLabel.Font.Size := round(FLabel.Font.Size * 0.7);
     if TVersiculo(FVersiculo).PalavrasComStrongEmNegrito then
-      FLabel.Font.Bold := (FStrong <> nil) and (FStrong.Count > 0);
+      FLabel.Font.Bold := TemStrongs;
     Correlacionado     := FPares.Count > 0;
   end else
     FLabel := nil;
@@ -535,15 +542,20 @@ var
   i: Integer;
 begin
   result := nil;
-  i := TVersiculo(FVersiculo).Sintagmas.IndexOf(Self);
-  if (i >= 0) and (i < TVersiculo(FVersiculo).Sintagmas.Count) then
+  with TVersiculo(FVersiculo) do
   begin
-    for i := i+1 to TVersiculo(FVersiculo).Sintagmas.Count-1 do
+    i := Sintagmas.IndexOf(Self);
+    if (i >= 0) and (i < Sintagmas.Count) then
     begin
-      if TVersiculo(FVersiculo).Sintagmas[i].Tipo = tsSintagma then
+      for i := i+1 to Sintagmas.Count-1 do
       begin
-        result := TVersiculo(FVersiculo).Sintagmas[i];
-        break;
+        if (Sintagmas[i].Tipo = tsSintagma) and
+           Sintagmas[i].TemStrongs and
+           (not Sintagmas[i].Correlacionado) then
+        begin
+          result := Sintagmas[i];
+          break;
+        end;
       end;
     end;
   end;
