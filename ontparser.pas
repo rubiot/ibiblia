@@ -242,7 +242,8 @@ begin
       begin
         tokenizer.LerAteTag(token, '<Ts>');
         token.tipo := tsMetaDado;
-      end else if AnsiStartsStr('<WG', token.valor) and assigned(sintagma) and assigned(sintagma.Strong) then // atualizar sintagma anterior
+      end else if (AnsiStartsStr('<WG', token.valor) or AnsiStartsStr('<WH', token.valor)) and
+                   assigned(sintagma) and assigned(sintagma.Strong) then // atualizar sintagma anterior
       begin
         sintagma.Strong.Add(copy(token.valor, 3, length(token.valor)-3));
         sintagma.TextoBruto := sintagma.TextoBruto + token.valor;
