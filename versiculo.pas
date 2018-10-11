@@ -9,7 +9,7 @@ interface
 uses
   Classes, SysUtils, StrUtils, ExtCtrls, StdCtrls, Controls, Graphics,
   ONTTokenizer, Sintagma, Forms, LCLType, Math, LCLProc, Dialogs, LazUTF8,
-  ONTParser;
+  ONTParser, dbugintf;
 
 type
 
@@ -54,6 +54,7 @@ type
     procedure SetAtivo(const AValue: boolean);
     procedure SetFonte(const AValue: TFont);
     procedure SetModificado(const AValue: boolean);
+    procedure SetMostrarQtdStrongs(AValue: boolean);
     procedure SetPalavrasComStrongEmNegrito(AValue: boolean);
     procedure SetPares(const AValue: string);
     procedure SetTexto(_XML: string);
@@ -65,7 +66,8 @@ type
     procedure EditConfirm;
     procedure AtualizarXMLInterno;
     procedure Renderizar;
-    procedure IncluirStrongCount;
+    procedure AtualizarStrongCount;
+    function GetTokens: string;
   protected
     { Protected declarations }
   public
@@ -114,7 +116,8 @@ type
     property Fonte: TFont read GetFonte write SetFonte;
     property Edit: TEdit read FEdit write FEdit;
     property PalavrasComStrongEmNegrito: boolean read FPalavrasComStrongEmNegrito write SetPalavrasComStrongEmNegrito;
-    property MostrarQtdStrongs: boolean read FMostrarQtdStrongs write FMostrarQtdStrongs;
+    property MostrarQtdStrongs: boolean read FMostrarQtdStrongs write SetMostrarQtdStrongs;
+    property DebugTokens: string read GetTokens;
  published
     { Published declarations }
   end;
@@ -324,9 +327,7 @@ procedure TVersiculo.SetTexto(_XML: string);
 begin
   FXML := _XML;
   LimparSintagmas;
-  FSintagmas := FONTParser.ParseLine(FXML);
-  if FMostrarQtdStrongs then
-    IncluirStrongCount;
+  FSintagmas := FONTParser.ParseLine(FXML, self);
   Renderizar;
   Modificado := false;
   FXMLModificado := false;
@@ -340,7 +341,7 @@ var
   j: integer;
 begin
   new := TSintagmaList.Create;
-  new := FONTParser.ParseLine(_XML);
+  new := FONTParser.ParseLine(_XML, self);
 
   LimparSelecao;
 
@@ -401,9 +402,6 @@ begin
   FSintagmas.Destroy;
   FSintagmas := result;
 
-  if FMostrarQtdStrongs then
-    IncluirStrongCount;
-
   FXML := _XML;
   FXMLModificado := true;
   FModificado := true;
@@ -445,6 +443,7 @@ begin
   begin
     if AnsiStartsStr('<par ', s.valor) then
     begin
+      DebugLn('selecionando par: %s', [s.valor]);
       SelecionarListaSintagmas(varredorXML.LerPropriedadeTag('a', s));
       VersiculoPar.SelecionarListaSintagmas(varredorXML.LerPropriedadeTag('b', s));
       AssociarSintagmas;
@@ -732,7 +731,7 @@ procedure TVersiculo.SetFonte(const AValue: TFont);
 //  i: smallint;
 begin
   FPanel.Font := AValue;
-
+  Renderizar;
   {
   for i:=0 to FSintagmas.Count-1 do
   begin
@@ -757,6 +756,14 @@ begin
   FModificado := AValue;
   if assigned(FOnAlterarVersiculo) and FModificado then
      FOnAlterarVersiculo;
+end;
+
+procedure TVersiculo.SetMostrarQtdStrongs(AValue: boolean);
+begin
+  if FMostrarQtdStrongs = AValue
+     then Exit;
+  FMostrarQtdStrongs:=AValue;
+  Renderizar;
 end;
 
 procedure TVersiculo.SetPalavrasComStrongEmNegrito(AValue: boolean);
@@ -812,86 +819,70 @@ begin
 end;
 
 procedure TVersiculo.SelecionarListaSintagmas(lst: string);
-  function indiceTmp(s: TSintagmaList; i: smallint): smallint;
-  var
-    j, h: smallint;
-    //t: string;
-  begin
-    j := 0;
-    h := 0;
-    while (h < i) do
-    begin
-      //t := s[j].Texto;
-      if AnsiContainsStr(s[j].Texto, '-') then
-      begin
-        if (h+2) < i then
-          inc(h, 2)
-        else
-          h := i;
-        //if h = i then
-        //begin
-        //  dec(h);
-        //  break;
-        //end;
-      end
-      else
-        inc(h);
-
-      inc(j);
-    end;
-
-    result := j;
-  end;
-
 var
-  ini, i, s: smallint;
+  tokens: TStringList;
+  i, s: smallint;
 begin
-  ini := 1;
-  i   := 1;
-  while i <= length(lst) do
+  tokens := TStringList.Create;
+  tokens.DelimitedText := lst;
+  for i:=0 to tokens.Count-1 do
   begin
-    if lst[i] = ',' then
+    s := StrToInt(tokens[i]);
+    if (s >= Sintagmas.Count) or (Sintagmas[s].Tipo <> tsSintagma) then
     begin
-      s := StrToInt(copy(lst, ini, i-ini));
-      if (s >= Sintagmas.Count) or (Sintagmas[s].Tipo <> tsSintagma) then
-      begin
-        if FExibirErro then
-           MessageDlg('Erro', 'Dados inconsistentes, algumas associações serão perdidas.'#13#10 +
-                              'Isso pode ocorrer por várias razões:'#13#10 +
-                              ' 1. O texto origem e/ou destino foi editado fora do iBiblia'#13#10 +
-                              ' 2. Você carregou um novo texto origem/destino'#13#10 +
-                              ' 3. O projeto foi criado/editado numa versão diferente do iBiblia'#13#10 +
-                              ' 4. Pode ser um bug no iBiblia, por favor, relatar no github.'#13#10#13#10 +
-                              TextoSimples + #13#10#13#10 +
-                              VersiculoPar.TextoSimples, mtError, [mbOK], 0);
-        FExibirErro := false;
-        VersiculoPar.FExibirErro:=false;
-      end
-      else
-        Sintagmas[s].SelecaoMais;
-      //Sintagmas[indiceTmp(Sintagmas, StrToInt(copy(lst, ini, i-ini)))].SelecaoMais;
-      ini := i+1;
-    end;
-    inc(i);
+      raise Exception.Create(format('Índice %d inválido: %s', [s, Sintagmas[s].Gist]));
+      {
+      SendDebug(format('Índice %d inválido', [s]));
+      for s:=0 to Sintagmas.Count-1 do
+        SendDebug(Sintagmas[s].Gist);
+      SendDebug('');
+      for s:=0 to VersiculoPar.Sintagmas.Count-1 do
+        SendDebug(VersiculoPar.Sintagmas[s].Gist);
+      SendDebug('----');
+
+      if FExibirErro then
+         MessageDlg('Erro', 'Dados inconsistentes, algumas associações serão perdidas.'#13#10 +
+                            'Isso pode ocorrer por várias razões:'#13#10 +
+                            ' 1. O texto origem e/ou destino foi editado fora do iBiblia'#13#10 +
+                            ' 2. Você carregou um novo texto origem/destino'#13#10 +
+                            ' 3. O projeto foi criado/editado numa versão diferente do iBiblia'#13#10 +
+                            ' 4. Pode ser um bug no iBiblia, por favor, relatar no github.'#13#10#13#10 +
+                            FReferencia, mtError, [mbOK], 0);
+      FExibirErro := false;
+      VersiculoPar.FExibirErro:=false;}
+    end
+    else
+      Sintagmas[s].SelecaoMais;
   end;
+  tokens.Destroy;
+  {
   //Sintagmas[indiceTmp(Sintagmas, StrToInt(copy(lst, ini, i-ini)))].SelecaoMais;
   s := StrToInt(copy(lst, ini, i-ini));
   if (s >= Sintagmas.Count) or (Sintagmas[s].Tipo <> tsSintagma) then
   begin
     if FExibirErro then
-       MessageDlg('Erro', 'Dados inconsistentes, algumas associações serão perdidas.'#13#10 +
-                          'Isso pode ocorrer por várias razões:'#13#10 +
-                          ' 1. O texto origem e/ou destino foi editado fora do iBiblia'#13#10 +
-                          ' 2. Você carregou um novo texto origem/destino'#13#10 +
-                          ' 3. O projeto foi criado/editado numa versão diferente do iBiblia'#13#10 +
-                          ' 4. Pode ser um bug no iBiblia, por favor, relatar no github.'#13#10#13#10 +
-                          TextoSimples + #13#10#13#10 +
-                          VersiculoPar.TextoSimples, mtError, [mbOK], 0);
+    begin
+      DebugLn('Índice %d inválido'#13#10, [s]);
+      for s:=0 to Sintagmas.Count-1 do
+        DebugLn('%02d[%s] ', [s, Sintagmas[s].Texto]);
+      DebugLn(#13#10#13#10);
+      for s:=0 to VersiculoPar.Sintagmas.Count-1 do
+        DebugLn('%02d[%s] ', [s, VersiculoPar.Sintagmas[s].Texto]);
+      DebugLn('----'#13#10);
+
+      MessageDlg('Erro', 'Dados inconsistentes, algumas associações serão perdidas.'#13#10 +
+                         'Isso pode ocorrer por várias razões:'#13#10 +
+                         ' 1. O texto origem e/ou destino foi editado fora do iBiblia'#13#10 +
+                         ' 2. Você carregou um novo texto origem/destino'#13#10 +
+                         ' 3. O projeto foi criado/editado numa versão diferente do iBiblia'#13#10 +
+                         ' 4. Pode ser um bug no iBiblia, por favor, relatar no github.'#13#10#13#10 +
+                         FReferencia + #13#10, mtError, [mbOK], 0);
+    end;
     FExibirErro := false;
     VersiculoPar.FExibirErro:=false;
   end
   else
-    Sintagmas[s].SelecaoMais;
+    Sintagmas[s].SelecaoMais;}
 end;
 
 procedure TVersiculo.EditKeyDown(Sender: TObject; var Key: Word;
@@ -989,18 +980,29 @@ begin
   if not FAtivo or not assigned(FSintagmas) then
     exit;
 
+  AtualizarStrongCount;
+
   for i:=0 to FSintagmas.Count-1 do
-    FSintagmas[i].Renderizar(self);
+    FSintagmas[i].Renderizar;
 
   OrganizarSintagmas;
 end;
 
-procedure TVersiculo.IncluirStrongCount;
+procedure TVersiculo.AtualizarStrongCount;
 var
   s: TTagSintagma;
   count, i: integer;
 begin
   if FSintagmas.Count = 0 then
+    exit;
+
+  if FSintagmas[FSintagmas.Count-1].Tipo = tsStrongCount then
+  begin
+    FSintagmas[FSintagmas.Count-1].Destruir;
+    FSintagmas.Delete(FSintagmas.Count-1);
+  end;
+
+  if not FMostrarQtdStrongs then
     exit;
 
   count := 0;
@@ -1016,7 +1018,19 @@ begin
     sobrescrito:= true;
     italico    := false;
   end;
-  FSintagmas.Add(TSintagma.Criar(s));
+  FSintagmas.Add(TSintagma.Criar(s, self));
+end;
+
+function TVersiculo.GetTokens: string;
+var
+  i: integer;
+  s: TStringStream;
+begin
+  s := TStringStream.Create('');
+  for i:=0 to FSintagmas.Count-1 do
+    s.WriteString(FSintagmas[i].Gist);
+  result:= s.DataString;
+  s.Destroy;
 end;
 
 

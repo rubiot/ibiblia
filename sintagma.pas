@@ -60,9 +60,10 @@ type
     function GetTemStrongs: boolean;
     procedure SetApontado(const AValue: boolean);
     procedure SetCorrelacionado(const AValue: boolean);
+    function GetGist: string;
   public
-    constructor Criar(s: TTagSintagma);
-    procedure Renderizar(TheOwner: TObject{TVersiculo});
+    constructor Criar(s: TTagSintagma; owner: TObject);
+    procedure Renderizar;
     destructor Destruir;
     procedure SelecaoMais;
     procedure SelecaoMenos;
@@ -88,6 +89,7 @@ type
     property Italico: boolean read FItalico;
     property Sobrescrito: boolean read FSobrescrito;
     property TemStrongs: boolean read GetTemStrongs;
+    property Gist: string read GetGist;
   published
 
   end;
@@ -384,6 +386,24 @@ begin
   end;
 end;
 
+function TSintagma.GetGist: string;
+  function TipoStr(t: TTipoSintagma): string;
+  begin
+    case t of
+      tsNulo:     result := 'tsNulo';
+      tsSintagma: result := 'tsSintagma';
+      tsTag:      result := 'tsTag';
+      tsEspaco:   result := 'tsEspaco';
+      tsPontuacao:result := 'tsPontuacao';
+      tsMetaDado: result := 'tsMetaDado';
+      tsStrongCount: result := 'tsStrongCount';
+    end;
+  end;
+begin
+  result := format('{indice:%d,tipo:%s,texto:"%s"}',
+    [TVersiculo(FVersiculo).Sintagmas.IndexOf(self), TipoStr(FTipo), FTexto]);
+end;
+
 function TSintagma.Igual(other: TSintagma): boolean;
 begin
   result := (FTipo = other.FTipo) and
@@ -394,9 +414,9 @@ begin
 end;
 
 { cria uma instância básica do sintagma, sem label, eventos, etc. }
-constructor TSintagma.Criar(s: TTagSintagma);
+constructor TSintagma.Criar(s: TTagSintagma; owner: TObject);
 begin
-  FVersiculo   := nil;
+  FVersiculo   := owner;
   FTexto       := s.valor;
   FTextoCru    := s.valor;
   FTipo        := s.tipo;
@@ -411,14 +431,12 @@ begin
 end;
 
 { Instancia a parte visual do sintagma (Label) }
-procedure TSintagma.Renderizar(TheOwner: TObject{TVersiculo});
+procedure TSintagma.Renderizar;
 begin
-  FVersiculo := TheOwner;
-
   if not (FTipo in [tsMetaDado, tsTag]) or (FTexto = '<FI>') or (FTexto = '<Fi>') then
   begin
     if not assigned(FLabel) then
-      FLabel := TLabel.Create(TVersiculo(TheOwner).Painel);
+      FLabel := TLabel.Create(TVersiculo(FVersiculo).Painel);
 
     FLabel.Caption     := FTexto;
     if FTexto = '<FI>' then
@@ -427,8 +445,8 @@ begin
       FLabel.Caption := ']';
     FLabel.ParentColor := false;
     FLabel.Font.Color  := FCor;
+    FLabel.Parent      := TVersiculo(FVersiculo).Painel;
     FLabel.ParentFont  := true;
-    FLabel.Parent      := TVersiculo(TheOwner).Painel;
     FLabel.AutoSize    := true;
     if FSobrescrito then
       FLabel.Font.Size := round(FLabel.Font.Size * 0.7);

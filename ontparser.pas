@@ -15,7 +15,7 @@ type
   private
   public
     constructor Create;
-    function ParseLine(line: string): TSintagmaList;
+    function ParseLine(line: string; owner: TObject): TSintagmaList;
   end;
 
 implementation
@@ -214,7 +214,7 @@ const
 
 { TONTParser }
 
-function TONTParser.ParseLine(line: string): TSintagmaList;
+function TONTParser.ParseLine(line: string; owner: TObject): TSintagmaList;
 var
   tokenizer: TONTTokenizer;
   token: TTagSintagma; // token
@@ -243,8 +243,11 @@ begin
         tokenizer.LerAteTag(token, '<Ts>');
         token.tipo := tsMetaDado;
       end else if (AnsiStartsStr('<WG', token.valor) or AnsiStartsStr('<WH', token.valor)) and
-                   assigned(sintagma) and assigned(sintagma.Strong) then // atualizar sintagma anterior
+                   assigned(sintagma) and assigned(sintagma.Strong) and
+                   (sintagma.Tipo = tsSintagma) then // atualizar sintagma anterior
       begin
+        //if (sintagma.Tipo <> tsSintagma) then
+        //  raise Exception.Create(sintagma.Gist);
         sintagma.Strong.Add(copy(token.valor, 3, length(token.valor)-3));
         sintagma.TextoBruto := sintagma.TextoBruto + token.valor;
         continue;
@@ -280,7 +283,7 @@ begin
     token.cor         := FTmpCor;
     token.italico     := FTmpItalico;
     token.sobrescrito := FTmpSobrescrito;
-    sintagma := TSintagma.Criar(token);
+    sintagma := TSintagma.Criar(token, owner);
     sintagmas.Add(sintagma);
   end;
   tokenizer.Destruir;

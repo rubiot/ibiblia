@@ -628,7 +628,23 @@ begin
 
   if assigned(FAVersiculo[tbOrigem]) and assigned(FAVersiculo[tbOrigem]) then
   begin
-    FAVersiculo[tbOrigem].Pares := FTblPares.FieldByName('pare_pares').AsString;
+    try
+      FAVersiculo[tbOrigem].Pares := FTblPares.FieldByName('pare_pares').AsString;
+    except
+      on E: Exception do
+      MessageDlg('Erro', 'Dados inconsistentes, algumas associações serão perdidas.'#13#10 +
+           'Isso pode ocorrer por várias razões:'#13#10 +
+           ' 1. O texto origem e/ou destino foi editado fora do iBiblia'#13#10 +
+           ' 2. Você carregou um novo texto origem/destino'#13#10 +
+           ' 3. O projeto foi criado/editado numa versão diferente do iBiblia'#13#10 +
+           ' 4. Pode ser um bug no iBiblia, por favor, relatar no github.'#13#10#13#10 +
+           Referencia + #13#10 +
+           format('%s'#13#10'pares: %s'#13#10'%s'#13#10'%s',
+                  [E.Message, FTblPares.FieldByName('pare_pares').AsString,
+                  FAVersiculo[tbOrigem].DebugTokens, FAVersiculo[tbDestino].DebugTokens]),
+           mtError, [mbOK], 0);
+
+    end;
     FParesAntigos := FAVersiculo[tbOrigem].GetListaPares(tlMetaDados);
   end;
 
@@ -1761,7 +1777,7 @@ begin
     FAVersiculo[tbDestino].Ativo := false;
     FExportando := true;
     ONT := TStringList.Create;
-    PreRolagemVersiculo(nil);
+    //PreRolagemVersiculo(nil);
 
     with FTblPares do
     begin
@@ -1776,7 +1792,22 @@ begin
         begin
           FAVersiculo[tbOrigem].Texto := FTblPares.Fields[FACamposTexto[tbOrigem]].AsString;
           FAVersiculo[tbDestino].Texto := FTblPares.Fields[FACamposTexto[tbDestino]].AsString;
-          FAVersiculo[tbOrigem].Pares := FTblPares.FieldByName('pare_pares').AsString;
+          try
+            FAVersiculo[tbOrigem].Pares := FTblPares.FieldByName('pare_pares').AsString;
+          except
+            on E: Exception do
+              MessageDlg('Erro', 'Dados inconsistentes, algumas associações serão perdidas.'#13#10 +
+                   'Isso pode ocorrer por várias razões:'#13#10 +
+                   ' 1. O texto origem e/ou destino foi editado fora do iBiblia'#13#10 +
+                   ' 2. Você carregou um novo texto origem/destino'#13#10 +
+                   ' 3. O projeto foi criado/editado numa versão diferente do iBiblia'#13#10 +
+                   ' 4. Pode ser um bug no iBiblia, por favor, relatar no github.'#13#10#13#10 +
+                   Referencia + #13#10 +
+                   format('%s'#13#10'pares: %s'#13#10'%s'#13#10'%s',
+                          [E.Message, FTblPares.FieldByName('pare_pares').AsString,
+                          FAVersiculo[tbOrigem].DebugTokens, FAVersiculo[tbDestino].DebugTokens]),
+                   mtError, [mbOK], 0);
+          end;
           ONT.Add(FAVersiculo[tbDestino].GetLinhaONT(
             (oeExportarMorfologia in opcoes),
             (oeExportarNAComoItalicos in opcoes),
