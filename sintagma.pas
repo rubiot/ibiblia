@@ -19,15 +19,28 @@ type
     tlTudo       // texto e metadados. Ex.: "Jesus<WG1088><WTNPI>"
   );
 
+  { TSintagmaListEnumerator }
+
+  TSintagmaListEnumerator = class(TListEnumerator)
+  private
+    function GetCurrentSintagma: TSintagma;
+  public
+    property Current: TSintagma read GetCurrentSintagma;
+  end;
+
   { TSintagmaList }
 
   TSintagmaList = class(TList)
+  private
+    function GetEmpty: boolean;
   protected
     function GetS(Index: Integer): TSintagma;
     procedure PutS(Index: Integer; Item: TSintagma);
   public
+    function GetEnumerator: TSintagmaListEnumerator;
     property Itens[Index: Integer]: TSintagma read GetS write PutS; default;
-    Procedure AddList(AList : TSintagmaList); //override;
+    property Empty: boolean read GetEmpty;
+    procedure AddList(AList : TSintagmaList); //override;
   end;
 
   { TSintagma }
@@ -99,6 +112,13 @@ implementation
 uses Versiculo;
 
 var Hint: THintWindow;
+
+{ TSintagmaListEnumerator }
+
+function TSintagmaListEnumerator.GetCurrentSintagma: TSintagma;
+begin
+  result := TSintagma(GetCurrent);
+end;
 
 { TSintagma }
 
@@ -527,28 +547,15 @@ end;
 
 procedure TSintagma.DesassociarPares;
 var
-  i: smallint;
-  //t: TStringList;
+  s: TSintagma;
 begin
-  {if VersiculoRef.FOnRemoverAssociacao <> nil then
-  begin
-    t := TStringList.Create;
-
-    for i:=0 to Pares.Count-1 do
-      t.Add(Pares[i].Texto);
-
-    VersiculoRef.FOnRemoverAssociacao(Texto, t);
-    t.Destroy;
-  end;}
-
-  for i:=0 to Irmaos.Count-1 do
-    Irmaos[i].Desassociar;
+  for s in Irmaos do
+    s.Desassociar;
 
   if Pares.Count > 0 then
   begin
-    for i:=0 to Pares[0].Irmaos.Count-1 do
-      Pares[0].Irmaos[i].Desassociar;
-
+    for s in Pares[0].Irmaos do
+      s.Desassociar;
     Pares[0].Desassociar;
   end;
 
@@ -592,6 +599,11 @@ end;
 
 { TSintagmaList }
 
+function TSintagmaList.GetEmpty: boolean;
+begin
+  result := Count = 0;
+end;
+
 function TSintagmaList.GetS(Index: Integer): TSintagma;
 begin
   result := TSintagma(Get(Index));
@@ -601,6 +613,11 @@ procedure TSintagmaList.PutS(Index: Integer; Item: TSintagma);
 begin
   if IndexOf(Item) = -1 then  // evitando duplicatas
     Put(Index, Item);
+end;
+
+function TSintagmaList.GetEnumerator: TSintagmaListEnumerator;
+begin
+  Result := TSintagmaListEnumerator.Create(Self);
 end;
 
 procedure TSintagmaList.AddList(AList: TSintagmaList);

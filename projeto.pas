@@ -559,24 +559,26 @@ var
   m: string;
   //p, l: sizeint;
 begin
+  result := '';
   if (not assigned(FADicMorfo[texto])) or (morfo = '') then
-  begin
-    result := ''; //'{\rtf1\ansi\ansicpg1252\deff0\deflang1046{\fonttbl{\f0\fswiss\fcharset0 Arial;}}\viewkind4\uc1\pard\f0\fs20\par}';
     exit;
-  end;
 
   // tratar morfologia com lema <WTXXXXX l="yyyyyy">
   m := morfo;
   //p := pos(' ', m);
   //l := length(m);
   if pos(' ', m) > 1 then
-     m := copy(m, 1, pos(' ', m)-1);
+    m := copy(m, 1, pos(' ', m)-1);
 
   with FADicMorfo[texto] do
   begin
     Close;
     Params.ParamByName('morf').AsString := m;
     Open;
+
+    if Fields[0].AsString = '' then
+      exit;
+
     result :=
       '{\rtf1\ansi\ansicpg1252\deff0\deflang1033{\fonttbl{\f0\fnil\fcharset0 Tahoma;}' +
       '{\f1\fswiss\fprq2\fcharset0 Tahoma;}{\f2\fswiss\fcharset0 Arial;}}' +
