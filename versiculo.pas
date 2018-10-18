@@ -329,6 +329,7 @@ begin
   end;
 
   result := TSintagmaList.Create;
+
   while not (new.Empty and FSintagmas.Empty) do
   begin
     if new.Count = 0 then

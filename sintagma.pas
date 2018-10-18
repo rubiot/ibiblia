@@ -10,6 +10,7 @@ uses
 
 type
   TSintagma = class;
+  TSintagmaList = class;
 
   TTipoListaPares =
   (
@@ -28,6 +29,19 @@ type
     property Current: TSintagma read GetCurrentSintagma;
   end;
 
+  { TSintagmaListReverseEnumerator }
+
+  TSintagmaListReverseEnumerator = class
+  private
+    FList: TSintagmaList;
+    FPosition: integer;
+    function GetCurrent: TSintagma;
+  public
+    constructor Create(AList: TSintagmaList);
+    function MoveNext: Boolean;
+    property Current: TSintagma read GetCurrent;
+  end;
+
   { TSintagmaList }
 
   TSintagmaList = class(TList)
@@ -38,6 +52,7 @@ type
     procedure PutS(Index: Integer; Item: TSintagma);
   public
     function GetEnumerator: TSintagmaListEnumerator;
+    function GetReverseEnumerator: TSintagmaListReverseEnumerator;
     property Itens[Index: Integer]: TSintagma read GetS write PutS; default;
     property Empty: boolean read GetEmpty;
     procedure AddList(AList : TSintagmaList); //override;
@@ -112,6 +127,26 @@ implementation
 uses Versiculo;
 
 var Hint: THintWindow;
+
+{ TSintagmaListReverseEnumerator }
+
+function TSintagmaListReverseEnumerator.GetCurrent: TSintagma;
+begin
+  Result := FList[FPosition];
+end;
+
+constructor TSintagmaListReverseEnumerator.Create(AList: TSintagmaList);
+begin
+  inherited Create;
+  FList := AList;
+  FPosition := FList.Count;
+end;
+
+function TSintagmaListReverseEnumerator.MoveNext: Boolean;
+begin
+  Dec(FPosition);
+  Result := (FPosition >= 0) and (FPosition < FList.Count);
+end;
 
 { TSintagmaListEnumerator }
 
@@ -618,6 +653,11 @@ end;
 function TSintagmaList.GetEnumerator: TSintagmaListEnumerator;
 begin
   Result := TSintagmaListEnumerator.Create(Self);
+end;
+
+function TSintagmaList.GetReverseEnumerator: TSintagmaListReverseEnumerator;
+begin
+  Result := TSintagmaListReverseEnumerator.Create(Self);
 end;
 
 procedure TSintagmaList.AddList(AList: TSintagmaList);

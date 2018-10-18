@@ -816,9 +816,9 @@ end;
 procedure TProjeto.OnExibirDefinicao(Sender: TObject);
 var
   v: TTipoTextoBiblico;
-  p: TPoint;
-  s: TSintagma;
-  i, j: integer;
+  point: TPoint;
+  s, p: TSintagma;
+  m: string;
 begin
   if frmDictionaryPopup.Visible then
     exit;
@@ -830,34 +830,34 @@ begin
       if assigned(FADicMorfo[v]) then
       begin
         if s.Morf.Count > 0 then
-          for i:=0 to s.Morf.Count-1 do
-            FrmDictionaryPopup.AdicionarMorfo(s.Morf[i], ObterDefinicaoMorfo(s.Morf[i], v))
+          for m in s.Morf do
+            FrmDictionaryPopup.AdicionarMorfo(m, ObterDefinicaoMorfo(m, v))
         else
         begin // não tem morfo, vejamos se os pares têm
-          for i:=0 to s.Pares.Count-1 do
-            for j:=0 to s.Pares[i].Morf.Count-1 do
-              FrmDictionaryPopup.AdicionarMorfo(s.Pares[i].Morf[j], ObterDefinicaoMorfo(s.Pares[i].Morf[j], v));
+          for p in s.Pares do
+            for m in p.Morf do
+              FrmDictionaryPopup.AdicionarMorfo(m, ObterDefinicaoMorfo(m, v));
         end;
       end;
 
       if assigned(FADicStrong[v]) then
       begin
         if s.Strong.Count > 0 then
-          for i:=0 to s.Strong.Count-1 do
-            frmDictionaryPopup.AdicionarStrong(s.Strong[i], ObterDefinicaoStrong(s.Strong[i], v))
+          for m in s.Strong do
+            frmDictionaryPopup.AdicionarStrong(m, ObterDefinicaoStrong(m, v))
         else
         begin // não tem strongs, vejamos se os pares têm
-          for i:=0 to s.Pares.Count-1 do
-            for j:=0 to s.Pares[i].Strong.Count-1 do
-              FrmDictionaryPopup.AdicionarStrong(s.Pares[i].Strong[j], ObterDefinicaoStrong(s.Pares[i].Strong[j], v));
+          for p in s.Pares do
+            for m in p.Strong do
+              FrmDictionaryPopup.AdicionarStrong(m, ObterDefinicaoStrong(m, v));
         end;
       end;
 
       if (FrmDictionaryPopup.Strongs.Count > 0) or (FrmDictionaryPopup.Morfos.Count > 0) then
       begin
-        p := s.LabelRef.ClientToScreen(s.LabelRef.ClientRect.BottomRight);
+        point := s.LabelRef.ClientToScreen(s.LabelRef.ClientRect.BottomRight);
         frmDictionaryPopup.Caption := s.Texto;
-        frmDictionaryPopup.MostrarEm(p.x, p.y);
+        frmDictionaryPopup.MostrarEm(point.x, point.y);
       end;
       break;
     end;
@@ -1969,7 +1969,6 @@ begin
   begin
     try
       CopiarArquivo(ConcordanciaModelo[FEscopo], arquivo);
-      //CopiarArquivo('D:\Dropbox\Programas\iBiblia\concordancia.modelo', arquivo);
     except
       MessageDlg('Erro', 'Falha na criação do arquivo:'#13#10 + arquivo, mtError, [mbOK], 0);
       exit;
