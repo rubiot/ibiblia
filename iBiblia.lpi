@@ -164,10 +164,11 @@
         <Filename Value="versiculo.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="Versiculo"/>
+        <IsVisibleTab Value="True"/>
         <EditorIndex Value="8"/>
         <WindowIndex Value="1"/>
-        <TopLine Value="314"/>
-        <CursorPos Y="334"/>
+        <TopLine Value="356"/>
+        <CursorPos Y="341"/>
         <ExtraEditorCount Value="1"/>
         <ExtraEditor1>
           <EditorIndex Value="-1"/>
@@ -402,11 +403,10 @@
         <Filename Value="sintagma.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="Sintagma"/>
-        <IsVisibleTab Value="True"/>
         <EditorIndex Value="9"/>
         <WindowIndex Value="1"/>
-        <TopLine Value="640"/>
-        <CursorPos X="55" Y="665"/>
+        <TopLine Value="631"/>
+        <CursorPos Y="650"/>
         <UsageCount Value="202"/>
         <Loaded Value="True"/>
       </Unit22>
@@ -431,9 +431,9 @@
         <Filename Value="C:\tools\lazarus\fpc\3.0.4\source\rtl\objpas\classes\classesh.inc"/>
         <EditorIndex Value="10"/>
         <WindowIndex Value="1"/>
-        <TopLine Value="273"/>
+        <TopLine Value="277"/>
         <CursorPos X="9" Y="289"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="11"/>
         <Loaded Value="True"/>
       </Unit25>
       <Unit26>
@@ -442,130 +442,130 @@
         <WindowIndex Value="1"/>
         <TopLine Value="548"/>
         <CursorPos X="3" Y="568"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="11"/>
         <Loaded Value="True"/>
       </Unit26>
     </Units>
     <JumpHistory Count="30" HistoryIndex="29">
       <Position1>
-        <Filename Value="projeto.pas"/>
-        <Caret Line="756" Column="14" TopLine="747"/>
-      </Position1>
-      <Position2>
-        <Filename Value="projeto.pas"/>
-        <Caret Line="87" Column="21" TopLine="70"/>
-      </Position2>
-      <Position3>
-        <Filename Value="projeto.pas"/>
-        <Caret Line="180" Column="74" TopLine="150"/>
-      </Position3>
-      <Position4>
-        <Filename Value="projeto.pas"/>
-        <Caret Line="397" Column="22" TopLine="365"/>
-      </Position4>
-      <Position5>
-        <Filename Value="projeto.pas"/>
-        <Caret Line="398" Column="19" TopLine="366"/>
-      </Position5>
-      <Position6>
-        <Filename Value="projeto.pas"/>
-        <Caret Line="755" Column="31" TopLine="723"/>
-      </Position6>
-      <Position7>
-        <Filename Value="projeto.pas"/>
-        <Caret Line="756" Column="21" TopLine="724"/>
-      </Position7>
-      <Position8>
-        <Filename Value="projeto.pas"/>
-        <Caret Line="87" Column="21" TopLine="70"/>
-      </Position8>
-      <Position9>
-        <Filename Value="projeto.pas"/>
-        <Caret Line="180" Column="99" TopLine="150"/>
-      </Position9>
-      <Position10>
-        <Filename Value="projeto.pas"/>
-        <Caret Line="395" Column="69" TopLine="363"/>
-      </Position10>
-      <Position11>
-        <Filename Value="projeto.pas"/>
-        <Caret Line="397" Column="22" TopLine="365"/>
-      </Position11>
-      <Position12>
-        <Filename Value="projeto.pas"/>
-        <Caret Line="398" Column="19" TopLine="366"/>
-      </Position12>
-      <Position13>
-        <Filename Value="projeto.pas"/>
-        <Caret Line="755" Column="31" TopLine="723"/>
-      </Position13>
-      <Position14>
-        <Filename Value="projeto.pas"/>
-        <Caret Line="756" Column="21" TopLine="724"/>
-      </Position14>
-      <Position15>
-        <Filename Value="formprincipal.pas"/>
-        <Caret Line="286" TopLine="267"/>
-      </Position15>
-      <Position16>
         <Filename Value="formprincipal.pas"/>
         <Caret Line="262" Column="56" TopLine="244"/>
-      </Position16>
-      <Position17>
+      </Position1>
+      <Position2>
         <Filename Value="formprincipal.pas"/>
         <Caret Line="687" Column="45" TopLine="669"/>
-      </Position17>
-      <Position18>
+      </Position2>
+      <Position3>
         <Filename Value="sintagma.pas"/>
         <Caret Line="24" Column="40" TopLine="14"/>
-      </Position18>
-      <Position19>
+      </Position3>
+      <Position4>
         <Filename Value="sintagma.pas"/>
         <Caret Line="35" TopLine="15"/>
-      </Position19>
-      <Position20>
+      </Position4>
+      <Position5>
         <Filename Value="C:\tools\lazarus\fpc\3.0.4\source\rtl\objpas\classes\classesh.inc"/>
         <Caret Line="294" Column="18" TopLine="277"/>
-      </Position20>
-      <Position21>
+      </Position5>
+      <Position6>
         <Filename Value="C:\tools\lazarus\fpc\3.0.4\source\rtl\objpas\classes\classesh.inc"/>
         <Caret Line="293" Column="18" TopLine="277"/>
-      </Position21>
-      <Position22>
+      </Position6>
+      <Position7>
         <Filename Value="C:\tools\lazarus\fpc\3.0.4\source\rtl\objpas\classes\lists.inc"/>
         <Caret Line="559" Column="50" TopLine="556"/>
-      </Position22>
-      <Position23>
+      </Position7>
+      <Position8>
         <Filename Value="C:\tools\lazarus\fpc\3.0.4\source\rtl\objpas\classes\classesh.inc"/>
         <Caret Line="293" Column="17" TopLine="273"/>
+      </Position8>
+      <Position9>
+        <Filename Value="sintagma.pas"/>
+        <Caret Line="131" Column="13" TopLine="111"/>
+      </Position9>
+      <Position10>
+        <Filename Value="sintagma.pas"/>
+        <Caret Line="41" Column="41" TopLine="36"/>
+      </Position10>
+      <Position11>
+        <Filename Value="sintagma.pas"/>
+        <Caret Line="134" TopLine="128"/>
+      </Position11>
+      <Position12>
+        <Filename Value="sintagma.pas"/>
+        <Caret Line="13" Column="25" TopLine="10"/>
+      </Position12>
+      <Position13>
+        <Filename Value="sintagma.pas"/>
+        <Caret Line="37" Column="14" TopLine="30"/>
+      </Position13>
+      <Position14>
+        <Filename Value="sintagma.pas"/>
+        <Caret Line="151" TopLine="129"/>
+      </Position14>
+      <Position15>
+        <Filename Value="sintagma.pas"/>
+        <Caret Line="55" Column="67" TopLine="24"/>
+      </Position15>
+      <Position16>
+        <Filename Value="sintagma.pas"/>
+        <Caret Line="665" Column="55" TopLine="640"/>
+      </Position16>
+      <Position17>
+        <Filename Value="sintagma.pas"/>
+        <Caret Line="151" TopLine="132"/>
+      </Position17>
+      <Position18>
+        <Filename Value="versiculo.pas"/>
+        <Caret Line="334" TopLine="314"/>
+      </Position18>
+      <Position19>
+        <Filename Value="versiculo.pas"/>
+        <Caret Line="84" Column="15" TopLine="66"/>
+      </Position19>
+      <Position20>
+        <Filename Value="versiculo.pas"/>
+        <Caret Line="361" TopLine="336"/>
+      </Position20>
+      <Position21>
+        <Filename Value="versiculo.pas"/>
+        <Caret Line="350" Column="22" TopLine="331"/>
+      </Position21>
+      <Position22>
+        <Filename Value="sintagma.pas"/>
+        <Caret Line="138" TopLine="124"/>
+      </Position22>
+      <Position23>
+        <Filename Value="versiculo.pas"/>
+        <Caret Line="350" Column="22" TopLine="331"/>
       </Position23>
       <Position24>
         <Filename Value="sintagma.pas"/>
-        <Caret Line="131" Column="13" TopLine="111"/>
+        <Caret Line="41" Column="21" TopLine="25"/>
       </Position24>
       <Position25>
         <Filename Value="sintagma.pas"/>
-        <Caret Line="41" Column="41" TopLine="36"/>
+        <Caret Line="143" Column="9" TopLine="136"/>
       </Position25>
       <Position26>
         <Filename Value="sintagma.pas"/>
-        <Caret Line="134" TopLine="128"/>
+        <Caret Line="40" Column="18" TopLine="34"/>
       </Position26>
       <Position27>
         <Filename Value="sintagma.pas"/>
-        <Caret Line="13" Column="25" TopLine="10"/>
+        <Caret Line="142" Column="27" TopLine="138"/>
       </Position27>
       <Position28>
         <Filename Value="sintagma.pas"/>
-        <Caret Line="37" Column="14" TopLine="30"/>
+        <Caret Line="43" Column="42" TopLine="30"/>
       </Position28>
       <Position29>
         <Filename Value="sintagma.pas"/>
-        <Caret Line="151" TopLine="129"/>
+        <Caret Line="154" Column="18" TopLine="152"/>
       </Position29>
       <Position30>
         <Filename Value="sintagma.pas"/>
-        <Caret Line="55" Column="67" TopLine="24"/>
+        <Caret Line="650" TopLine="631"/>
       </Position30>
     </JumpHistory>
   </ProjectOptions>

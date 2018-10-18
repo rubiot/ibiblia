@@ -40,6 +40,7 @@ type
     constructor Create(AList: TSintagmaList);
     function MoveNext: Boolean;
     property Current: TSintagma read GetCurrent;
+    function GetEnumerator: TSintagmaListReverseEnumerator;
   end;
 
   { TSintagmaList }
@@ -146,6 +147,11 @@ function TSintagmaListReverseEnumerator.MoveNext: Boolean;
 begin
   Dec(FPosition);
   Result := (FPosition >= 0) and (FPosition < FList.Count);
+end;
+
+function TSintagmaListReverseEnumerator.GetEnumerator: TSintagmaListReverseEnumerator;
+begin
+  Result := Self;
 end;
 
 { TSintagmaListEnumerator }

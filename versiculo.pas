@@ -314,6 +314,9 @@ end;
 procedure TVersiculo.AlterarTexto(_XML: string);
 var
   new, result: TSintagmaList;
+  fwd_new: TSintagmaListEnumerator;
+  rev_new: TSintagmaListReverseEnumerator;
+  middle: integer;
   s: TSintagma;
   found: boolean;
 begin
@@ -330,6 +333,40 @@ begin
 
   result := TSintagmaList.Create;
 
+  { reaproveitando sintagmas não modificados do início }
+  fwd_new := new.GetEnumerator;
+  for s in FSintagmas do
+  begin
+    if not fwd_new.MoveNext then
+      break;
+    if s.Igual(new[0]) then
+    begin
+      result.Add(s);
+      FSintagmas.Delete(0);
+      new[0].Destruir;
+      new.Delete(0);
+    end
+    else
+      break;
+  end;
+
+  middle := result.Count;
+  { reaproveitando sintagmas não modificados do fim }
+  rev_new := new.GetReverseEnumerator;
+  for s in FSintagmas.GetReverseEnumerator do
+  begin
+    if not rev_new.MoveNext then
+      break;
+    if s.Igual(new[new.Count-1]) then
+    begin
+      result.Insert(middle, s);
+      FSintagmas.Remove(s);
+      new[new.Count-1].Destruir;
+      new.Delete(new.Count-1);
+    end;
+  end;
+
+  { tentando reaproveitar os sintagmas do meio }
   while not (new.Empty and FSintagmas.Empty) do
   begin
     if new.Count = 0 then
@@ -340,13 +377,13 @@ begin
     else
     if FSintagmas.Count = 0 then
     begin
-     result.Add(new[0]);
+     result.Insert(middle, new[0]);
      new.Delete(0);
     end
     else
     if new[0].Igual(FSintagmas[0]) then
     begin
-      result.Add(FSintagmas[0]);
+      result.Insert(middle, FSintagmas[0]);
       FSintagmas.Delete(0);
       new[0].Destruir;
       new.Delete(0);
@@ -366,9 +403,10 @@ begin
         FSintagmas[0].Destruir;
         FSintagmas.Delete(0);
       end;
-      result.Add(new[0]);
+      result.Insert(middle, new[0]);
       new.Delete(0);
     end;
+    Inc(middle);
   end;
 
   if new.Count > 0 then
