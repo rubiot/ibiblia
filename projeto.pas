@@ -1779,7 +1779,7 @@ begin
     FAVersiculo[tbDestino].Ativo := false;
     FExportando := true;
     ONT := TStringList.Create;
-    //PreRolagemVersiculo(nil);
+    PreRolagemVersiculo(nil);
 
     with FTblPares do
     begin

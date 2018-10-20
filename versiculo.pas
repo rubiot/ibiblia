@@ -349,6 +349,7 @@ begin
     else
       break;
   end;
+  fwd_new.Destroy;
 
   middle := result.Count;
   { reaproveitando sintagmas não modificados do fim }
@@ -365,6 +366,7 @@ begin
       new.Delete(new.Count-1);
     end;
   end;
+  rev_new.Destroy;
 
   { tentando reaproveitar os sintagmas do meio }
   while not (new.Empty and FSintagmas.Empty) do
@@ -642,11 +644,14 @@ begin
   result := '';
   ls := TList.Create; // usado para armazenar os Strongs utilizados no versículo
   prox := nil;
+
   try
     linha := TStringStream.Create('');
 
+    s := -1;
     for stg in FSintagmas do
     begin // sintagmas
+      Inc(s);
       if stg.Tipo = tsStrongCount then
         continue;
 
@@ -688,16 +693,16 @@ begin
           begin
             if not strongsreutilizados or (ls.IndexOf(stg.Pares[p].Strong) = -1) then // este Strong já foi utilizado antes?
             begin // não
-              linha.WriteString(format('<W%s>', [stg.Pares[p].Strong.Strings[m]]));
+              linha.WriteString(format('<W%s>', [stg.Pares[p].Strong[m]]));
               ls.Add(stg.Pares[p].Strong)
             end else // strong reutilizado
-              linha.WriteString(format('<W%ss>', [stg.Pares[p].Strong.Strings[m]]));
+              linha.WriteString(format('<W%ss>', [stg.Pares[p].Strong[m]]));
           end;
 
           if not morfo then continue;
 
           for m:=0 to stg.Pares[p].Morf.Count-1 do   // morfologia
-            linha.WriteString(format('<WT%s>', [stg.Pares[p].Morf.Strings[m]]));
+            linha.WriteString(format('<WT%s>', [stg.Pares[p].Morf[m]]));
         end;
       end;
     end;
@@ -710,7 +715,7 @@ begin
         stg := VersiculoPar.Sintagmas[s];
         if assigned(stg.Strong) and (ls.IndexOf(stg.Strong) = -1) then
           for m:=0 to stg.Strong.Count-1 do // strongs
-            linha.WriteString(format('<W%sx>', [stg.Strong.Strings[m]]));
+            linha.WriteString(format('<W%sx>', [stg.Strong[m]]));
       end;
     end;
   finally
@@ -933,7 +938,7 @@ procedure TVersiculo.AtualizarStrongCount;
 var
   token: TTagSintagma;
   s: TSintagma;
-  count, i: integer;
+  count: integer;
 begin
   if FSintagmas.Empty then
     exit;
