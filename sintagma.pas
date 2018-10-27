@@ -85,7 +85,9 @@ type
     procedure DoOnMouseLeave(Sender: TObject);
     procedure DoOnLeftClick(Sender: TObject; Shift: TShiftState);
     procedure DoOnRightClick(Sender: TObject; Shift: TShiftState);
+    procedure DoOnMiddleClick(Sender: TObject; Shift: TShiftState);
     function GetCorrelacionado: boolean;
+    function GetTags: string;
     function GetTemStrongs: boolean;
     procedure SetApontado(const AValue: boolean);
     procedure SetCorrelacionado(const AValue: boolean);
@@ -104,6 +106,7 @@ type
     function Igual(other : TSintagma): boolean;
     property Strong: TStringList read FStrong write FStrong;
     property Morf: TStringList read FMorf write FMorf;
+    property Tags: string read GetTags;
     property LabelRef: TLabel read FLabel write FLabel;
     property Pares: TSintagmaList read FPares write FPares;
     property Irmaos: TSintagmaList read FIrmaos write FIrmaos;
@@ -211,6 +214,7 @@ end;
 
 procedure TSintagma.DoOnDblClick(Sender: TObject);
 begin
+  {
   if (TVersiculo(FVersiculo).Ativo) then
   begin
     //LabelRef.Font.StrikeTrough := not LabelRef.Font.StrikeTrough;
@@ -226,6 +230,7 @@ begin
       SetFocus;
     end;
   end;
+  }
 end;
 
 procedure TSintagma.DoOnMouseDown(Sender: TObject; Button: TMouseButton;
@@ -235,7 +240,9 @@ begin
   if Button = mbRight then
     DoOnRightClick(Sender, Shift)
   else if Button = mbLeft then
-    DoOnLeftClick(Sender, Shift);
+    DoOnLeftClick(Sender, Shift)
+  else if Button = mbMiddle then
+    DoOnMiddleClick(Sender, Shift);
 end;
 
 procedure TSintagma.DoOnMouseUp(Sender: TObject; Button: TMouseButton;
@@ -320,8 +327,18 @@ var
   UltimoSelecionado: TSintagma;
   versiculo: TVersiculo;
 begin
-  DesassociarPares;
+  {if ssShift in Shift then
+  begin
+    TVersiculo(FVersiculo).OnSintagmaPopupMenu(self);
+    exit;
+  end;
+  }
+
   versiculo := TVersiculo(VersiculoRef);
+  if not assigned(versiculo.VersiculoPar) then
+    exit;
+
+  DesassociarPares;
   if (versiculo.Selecao.Count > 0) then
     versiculo.Selecao[0].DesassociarPares;
 
@@ -347,6 +364,11 @@ begin
     if Assigned(UltimoSelecionado) and Assigned(UltimoSelecionado.GetProximo) then
       UltimoSelecionado.GetProximo.SelecaoMais;
   end;
+end;
+
+procedure TSintagma.DoOnMiddleClick(Sender: TObject; Shift: TShiftState);
+begin
+  TVersiculo(FVersiculo).OnSintagmaPopupMenu(self);
 end;
 
 function TSintagma.GetChaveSugestao(t: TTipoListaPares): string;
@@ -391,6 +413,26 @@ end;
 function TSintagma.GetCorrelacionado: boolean;
 begin
   result := TVersiculo(FVersiculo).Ativo and assigned(Pares) and (Pares.Count > 0){ (not FLabel.Font.Italic)};
+end;
+
+function TSintagma.GetTags: string;
+var
+  tagsstr: TStringStream;
+  t: string;
+begin
+  result := '';
+  try
+    tagsstr := TStringStream.Create('');
+    if assigned(FStrong) then
+      for t in FStrong do
+        tagsstr.WriteString(t);
+    if assigned(FMorf) then
+      for t in FMorf do
+        tagsstr.WriteString(t);
+  finally
+    result := tagsstr.DataString;
+    tagsstr.Destroy;
+  end;
 end;
 
 function TSintagma.GetTemStrongs: boolean;

@@ -705,7 +705,6 @@ var
   found: Boolean;
 begin
   f := TStringList.Create;
-  f.Sorted:=true;
 
   try
     f.Add(ProjetoAtual.Caminho);

@@ -9,7 +9,7 @@ interface
 uses
   Classes, SysUtils, StrUtils, ExtCtrls, StdCtrls, Controls, Graphics,
   ONTTokenizer, Sintagma, Forms, LCLType, Math, LCLProc, Dialogs, LazUTF8,
-  ONTParser, dbugintf;
+  ONTParser, dbugintf, Menus, Clipbrd;
 
 type
 
@@ -44,6 +44,7 @@ type
     FOnSintagmaMouseLeave: TOnSintagmaEvent;
     FXML: string;
     FONTParser: TONTParser;
+    FContextPopup: TPopupMenu;
     //FOnNovaAssociacao: TOnAssociacaoEvent;
     //FOnRemoverAssociacao: TOnAssociacaoEvent;
     function GetAndamentoAssociacao: Single;
@@ -68,6 +69,8 @@ type
     procedure Renderizar;
     procedure AtualizarStrongCount;
     function GetTokens: string;
+    procedure OnCopiarTagsSintagma(Sender: TObject);
+    procedure OnColarTagsSintagma(Sender: TObject);
   protected
     { Protected declarations }
   public
@@ -83,6 +86,7 @@ type
     procedure SelecionarSintagmas(list: TSintagmaList);
     procedure AlterarTexto(_XML: string);
     function GetListaPares(tipo: TTipoListaPares): TStringList;
+    procedure OnSintagmaPopupMenu(s: TSintagma);
 
     function GetLinhaInterlinear: string;
     function GetLinhaONT: string;
@@ -124,13 +128,31 @@ type
 
 implementation
 
+var
+  SintagmaClipboard: TSintagma;
+
 { TVersiculo }
 
 constructor TVersiculo.Criar(TheOwner : TScrollBox);
+var
+  item: TMenuItem;
 begin
   FPanel           := TheOwner;
   FPanel.Color     := clWindow;
   FPanel.Caption   := '';
+
+  FContextPopup    := TPopupMenu.Create(FPanel);
+  FContextPopup.Parent := FPanel;
+
+  Item := TMenuItem.Create(FContextPopup);
+  Item.Caption := '&Copiar tags';
+  Item.OnClick := @OnCopiarTagsSintagma;
+  FContextPopup.Items.Add(Item);
+
+  Item := TMenuItem.Create(FContextPopup);
+  Item.Caption := 'Co&lar tags';
+  Item.OnClick := @OnColarTagsSintagma;
+  FContextPopup.Items.Add(Item);
 
   FEdit            := TEdit.Create(FPanel);
   FEdit.Visible    := false;
@@ -170,8 +192,9 @@ begin
     FSintagmas.free;
   end;
 
-  FSelecao.free;
-  FEdit.free;
+  FSelecao.Destroy;
+  FEdit.Destroy;
+  FContextPopup.Destroy;
   FONTParser.Destroy;
   //FFontePadrao.Free;
 end;
@@ -300,6 +323,15 @@ begin
   tmp.Destroy;
 end;
 
+procedure TVersiculo.OnSintagmaPopupMenu(s: TSintagma);
+var
+  p: TPoint;
+begin
+  FContextPopup.Tag := PtrInt(s);
+  p := s.LabelRef.ClientToScreen(s.LabelRef.ClientRect.BottomRight);
+  FContextPopup.PopUp(p.x, p.y);
+end;
+
 procedure TVersiculo.SetTexto(_XML: string);
 begin
   FXML := _XML;
@@ -308,6 +340,7 @@ begin
   Renderizar;
   Modificado := false;
   FXMLModificado := false;
+  SintagmaClipboard := nil;
 end;
 
 { Substitui o texto do versículo mantendo as associações existentes }
@@ -424,6 +457,7 @@ begin
   FXMLModificado := true;
   FModificado := true;
   VersiculoPar.Modificado := true;
+  SintagmaClipboard := nil;
 
   Renderizar;
 end;
@@ -913,7 +947,8 @@ var
 begin
   FXML := '';
   for s in FSintagmas do
-    FXML := FXML + s.TextoBruto;
+    if s.tipo <> tsStrongCount then
+      FXML := FXML + s.TextoBruto;
 
   FXMLModificado := true;
   FModificado := true;
@@ -978,6 +1013,35 @@ begin
     tokens.WriteString(s.Gist);
   result:= tokens.DataString;
   tokens.Destroy;
+end;
+
+procedure TVersiculo.OnCopiarTagsSintagma(Sender: TObject);
+begin
+  SintagmaClipboard := TSintagma(FContextPopup.Tag);
+end;
+
+procedure TVersiculo.OnColarTagsSintagma(Sender: TObject);
+var
+  s: TSintagma;
+  t: string;
+begin
+  if not assigned(SintagmaClipboard) then
+    exit;
+
+  s := TSintagma(FContextPopup.Tag);
+
+  s.Strong.Clear;
+  for t in SintagmaClipboard.Strong do
+    s.Strong.Add(t);
+
+  s.Morf.Clear;
+  for t in SintagmaClipboard.Morf do;
+    s.Morf.Add(t);
+
+  AtualizarXMLInterno;
+  FModificado := true;
+  VersiculoPar.Modificado := true;
+  Renderizar;
 end;
 
 
