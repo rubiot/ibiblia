@@ -87,6 +87,7 @@ type
     procedure DoOnRightClick(Sender: TObject; Shift: TShiftState);
     procedure DoOnMiddleClick(Sender: TObject; Shift: TShiftState);
     function GetCorrelacionado: boolean;
+    function GetParesTemStrongs: boolean;
     function GetTags: string;
     function GetTemStrongs: boolean;
     procedure SetApontado(const AValue: boolean);
@@ -121,6 +122,7 @@ type
     property Italico: boolean read FItalico;
     property Sobrescrito: boolean read FSobrescrito;
     property TemStrongs: boolean read GetTemStrongs;
+    property ParesTemStrongs: boolean read GetParesTemStrongs;
     property Gist: string read GetGist;
   published
 
@@ -206,7 +208,8 @@ begin
     end;
   end;
 
-  versiculo.OrganizarSintagmas;
+  versiculo.Renderizar;
+  //versiculo.VersiculoPar.Renderizar;
 
   if assigned(versiculo.OnClick) then
     versiculo.OnClick(self);
@@ -364,6 +367,8 @@ begin
     if Assigned(UltimoSelecionado) and Assigned(UltimoSelecionado.GetProximo) then
       UltimoSelecionado.GetProximo.SelecaoMais;
   end;
+
+  versiculo.Renderizar;
 end;
 
 procedure TSintagma.DoOnMiddleClick(Sender: TObject; Shift: TShiftState);
@@ -415,6 +420,19 @@ begin
   result := TVersiculo(FVersiculo).Ativo and assigned(Pares) and (Pares.Count > 0){ (not FLabel.Font.Italic)};
 end;
 
+function TSintagma.GetParesTemStrongs: boolean;
+var
+  p: TSintagma;
+begin
+  for p in Pares do
+    if p.TemStrongs then
+    begin
+      result := true;
+      exit;
+    end;
+  result := false;
+end;
+
 function TSintagma.GetTags: string;
 var
   tagsstr: TStringStream;
@@ -425,10 +443,10 @@ begin
     tagsstr := TStringStream.Create('');
     if assigned(FStrong) then
       for t in FStrong do
-        tagsstr.WriteString(t);
+        tagsstr.WriteString(format('<W%s>', [t]));
     if assigned(FMorf) then
       for t in FMorf do
-        tagsstr.WriteString(t);
+        tagsstr.WriteString(format('<W%s>', [t]));
   finally
     result := tagsstr.DataString;
     tagsstr.Destroy;

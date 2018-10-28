@@ -66,7 +66,6 @@ type
     procedure EditExit(Sender: TObject);
     procedure EditConfirm;
     procedure AtualizarXMLInterno;
-    procedure Renderizar;
     procedure AtualizarStrongCount;
     function GetTokens: string;
     procedure OnCopiarTagsSintagma(Sender: TObject);
@@ -82,6 +81,7 @@ type
     procedure LimparSelecao;
     procedure DesassociarPares;
     procedure LimparAssociacoes;
+    procedure Renderizar;
     procedure OrganizarSintagmas;
     procedure SelecionarSintagmas(list: TSintagmaList);
     procedure AlterarTexto(_XML: string);
@@ -502,12 +502,12 @@ begin
 
       LimparSelecao;
       VersiculoPar.LimparSelecao;
-
-      OrganizarSintagmas;
-      VersiculoPar.OrganizarSintagmas;
     end;
   end;
   varredorXML.Destruir;
+
+  Renderizar;
+  VersiculoPar.Renderizar;
 end;
 
 function TVersiculo.GetPares: string;
@@ -972,8 +972,9 @@ end;
 procedure TVersiculo.AtualizarStrongCount;
 var
   token: TTagSintagma;
-  s: TSintagma;
+  s, p: TSintagma;
   count: integer;
+  unique: TSintagmaList;
 begin
   if FSintagmas.Empty then
     exit;
@@ -988,9 +989,19 @@ begin
     exit;
 
   count := 0;
+  unique := TSintagmaList.Create;
   for s in FSintagmas do
+  begin
     if s.TemStrongs then
+      inc(count)
+    else if s.ParesTemStrongs and (unique.IndexOf(s) = -1) then
+    begin
       inc(count);
+      for p in s.Irmaos do
+        unique.Add(p);
+    end;
+  end;
+  unique.Destroy;
 
   with token do
   begin
@@ -1035,8 +1046,10 @@ begin
     s.Strong.Add(t);
 
   s.Morf.Clear;
-  for t in SintagmaClipboard.Morf do;
+  for t in SintagmaClipboard.Morf do
     s.Morf.Add(t);
+
+  s.TextoBruto := s.Texto + s.Tags;
 
   AtualizarXMLInterno;
   FModificado := true;

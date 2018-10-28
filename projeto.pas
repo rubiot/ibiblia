@@ -865,7 +865,7 @@ end;
 
 procedure TProjeto.OnRedimensionarVersiculo(Sender: TObject);
 begin
-  TVersiculo(TScrollBox(Sender).Tag).OrganizarSintagmas;
+  TVersiculo(TScrollBox(Sender).Tag).Renderizar;
 end;
 
 procedure TProjeto.OnDblClickVersiculo(Sender: TObject);
