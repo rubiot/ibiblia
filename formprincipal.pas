@@ -21,6 +21,7 @@ type
   { TFrmPrincipal }
 
   TFrmPrincipal = class(TForm)
+    ActionMostrarTags: TAction;
     ActionSyncTheWordVerse: TAction;
     ActionRecriarBaseSugestoes: TAction;
     ActionMesclarProjetos: TAction;
@@ -111,6 +112,7 @@ type
     procedure ActionFecharProjetoExecute(Sender: TObject);
     procedure ActionLimparAssociacoesExecute(Sender: TObject);
     procedure ActionMesclarProjetosExecute(Sender: TObject);
+    procedure ActionMostrarTagsExecute(Sender: TObject);
     procedure ActionNovoProjetoExecute(Sender: TObject);
     procedure ActionPropProjetoExecute(Sender: TObject);
     procedure ActionQuandoNovoVersiculoExecute(Sender: TObject);
@@ -358,6 +360,12 @@ procedure TFrmPrincipal.ActionMesclarProjetosExecute(Sender: TObject);
 begin
   FrmMesclarProjetos.InicializarForm;
   FrmMesclarProjetos.ShowModal;
+end;
+
+procedure TFrmPrincipal.ActionMostrarTagsExecute(Sender: TObject);
+begin
+  if assigned(ProjetoAtual) then
+    ProjetoAtual.ToggleMostrarTags;
 end;
 
 function CarregarTexto(par: pointer): ptrint;

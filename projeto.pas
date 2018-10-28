@@ -63,6 +63,7 @@ type
   private
     FMemoVersiculo: TMemoVersiculo;
     FAtivo: boolean;
+    FMostrandoTags: boolean;
     FExportando: boolean;
     FOnAlterarVersiculo: TOnAlterarVersiculoEvent;
     FSugerirAssociacaoAuto: boolean;
@@ -171,6 +172,7 @@ type
     function ObterTextoVersiculo(Referencia: string; texto: TTipoTextoBiblico): string;
     function ObterTextoSimplesVersiculo(texto: TTipoTextoBiblico): string;
     function ObterTextoSimplesVersiculo(Referencia: string; texto: TTipoTextoBiblico): string;
+    procedure ToggleMostrarTags;
     property Referencia: string read GetReferencia;
     property ID: string read GetID;
     property Modificado: boolean read GetModificado;
@@ -1378,6 +1380,7 @@ begin
   HabilitarEventosRolagem;
 
   FAtivo := true;
+  FMostrandoTags := false;
 end;
 
 procedure TProjeto.Fechar(_Commit: boolean);
@@ -2203,6 +2206,21 @@ begin
       result := result + s.valor;
   end;
   varredorXML.Destruir;
+end;
+
+procedure TProjeto.ToggleMostrarTags;
+var
+  t: TTipoTextoBiblico;
+begin
+  FMostrandoTags := not FMostrandoTags;
+
+  for t:=low(TTipoTextoBiblico) to high(TTipoTextoBiblico) do
+  begin
+    if FMostrandoTags then
+      FAVersiculo[t].MostrarTags
+    else
+      FAVersiculo[t].Painel.Refresh;
+  end;
 end;
 
 end.

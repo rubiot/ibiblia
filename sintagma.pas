@@ -467,9 +467,7 @@ begin
   begin // apontado
     FLabel.Font.Underline := true;
     if not Selecionado then
-      FLabel.Color:= clHighlight;//clInfoBk;
-    //FLabel.Color:= clMoneyGreen; // clInfoBk;
-    //FLabel.Font.Color := clRed;
+      FLabel.Color:= clHighlight;
   end
   else
   begin // não apontado
@@ -478,7 +476,6 @@ begin
       FLabel.Color:= clYellow
     else
       FLabel.Color:= clDefault;
-    //Correlacionado := Correlacionado; // é isso mesmo que queremos
   end;
 end;
 

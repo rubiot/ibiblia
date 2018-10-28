@@ -508,6 +508,11 @@ object frmPrincipal: TfrmPrincipal
       Caption = 'ActionSyncTheWordVerse'
       OnExecute = ActionSyncTheWordVerseExecute
     end
+    object ActionMostrarTags: TAction
+      Caption = 'ActionMostrarTags'
+      OnExecute = ActionMostrarTagsExecute
+      ShortCut = 119
+    end
   end
   object OpenDialog1: TOpenDialog
     Title = 'Abrir projeto existente'

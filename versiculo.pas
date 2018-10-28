@@ -87,6 +87,7 @@ type
     procedure AlterarTexto(_XML: string);
     function GetListaPares(tipo: TTipoListaPares): TStringList;
     procedure OnSintagmaPopupMenu(s: TSintagma);
+    procedure MostrarTags;
 
     function GetLinhaInterlinear: string;
     function GetLinhaONT: string;
@@ -330,6 +331,31 @@ begin
   FContextPopup.Tag := PtrInt(s);
   p := s.LabelRef.ClientToScreen(s.LabelRef.ClientRect.BottomRight);
   FContextPopup.PopUp(p.x, p.y);
+end;
+
+procedure TVersiculo.MostrarTags;
+var
+  s: TSintagma;
+  p: TPoint;
+  tags: string;
+begin
+  for s in FSintagmas do
+  begin
+    if not assigned(s.LabelRef) or not s.TemStrongs then
+      continue;
+    p := s.LabelRef.ClientToParent(s.LabelRef.ClientRect.TopLeft, FPanel);
+    tags := s.Strong.CommaText;
+    with FPanel.Canvas do
+    begin
+      // Link para solução overriding Paint: http://forum.lazarus.freepascal.org/index.php?topic=23894.0
+      Brush.Color := clYellow;
+      Font.Size   := round(s.LabelRef.Font.Size * 0.5);;
+      Font.Color  := RGBToColor(0,0,0);
+      Rectangle(p.x, p.y, p.x + TextWidth(tags) + 4, p.y + TextHeight(tags));
+      Brush.Style := bsClear;
+      TextOut(p.x+2, p.y, tags);
+    end;
+  end;
 end;
 
 procedure TVersiculo.SetTexto(_XML: string);
@@ -997,6 +1023,7 @@ begin
     else if s.ParesTemStrongs and (unique.IndexOf(s) = -1) then
     begin
       inc(count);
+      { contando várias palavras associadas a um strong como uma apenas }
       for p in s.Irmaos do
         unique.Add(p);
     end;
