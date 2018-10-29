@@ -88,6 +88,7 @@ type
     function GetListaPares(tipo: TTipoListaPares): TStringList;
     procedure OnSintagmaPopupMenu(s: TSintagma);
     procedure MostrarTags;
+    procedure OcultarTags;
 
     function GetLinhaInterlinear: string;
     function GetLinhaONT: string;
@@ -356,6 +357,11 @@ begin
       TextOut(p.x+2, p.y, tags);
     end;
   end;
+end;
+
+procedure TVersiculo.OcultarTags;
+begin
+  FPanel.Refresh;
 end;
 
 procedure TVersiculo.SetTexto(_XML: string);

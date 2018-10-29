@@ -460,6 +460,8 @@ end;
 
 procedure TSintagma.SetApontado(const AValue: boolean);
 begin
+  //TVersiculo(FVersiculo).Painel.Refresh; // ocultando tags, se estiverem sendo exibidas
+
   if not assigned(FLabel) then
     exit;
 

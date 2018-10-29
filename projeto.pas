@@ -2219,7 +2219,7 @@ begin
     if FMostrandoTags then
       FAVersiculo[t].MostrarTags
     else
-      FAVersiculo[t].Painel.Refresh;
+      FAVersiculo[t].OcultarTags;
   end;
 end;
 
