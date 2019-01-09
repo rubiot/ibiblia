@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
-  StdCtrls, ExtCtrls, Buttons;
+  StdCtrls, ExtCtrls, Buttons, LCLTranslator;
 
 type
 
@@ -43,6 +43,11 @@ type
 var
   FormNovoProjeto1: TFormNovoProjeto;
 
+resourcestring
+  SNewProject = 'New project';
+  SChooseAName = 'Please choose a name for your project';
+  SChooseAtLeastTwoTexts = 'Please choose at least one source and one destination texts';
+
 implementation
 
 { TFormNovoProjeto }
@@ -54,14 +59,14 @@ begin
   if EditNomeProjeto.Text = '' then
   begin
     ModalResult:=mrNone;
-    MessageDlg('Novo projeto', 'Escolha um nome para o projeto', mtWarning, [mbOK], 0);
+    MessageDlg(SNewProject, SChooseAName, mtWarning, [mbOK], 0);
     exit;
   end;
 
   if (EditTextoOrigem.Text = '') or (EditTextoDestino.Text = '') then
   begin
     ModalResult:=mrNone;
-    MessageDlg('Novo projeto', 'Escolha pelo menos um texto origem e um texto destino', mtWarning, [mbOK], 0);
+    MessageDlg(SNewProject, SChooseAtLeastTwoTexts, mtWarning, [mbOK], 0);
     exit;
   end;
 

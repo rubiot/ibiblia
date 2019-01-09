@@ -194,21 +194,97 @@ type
     property MostrarQtdStrongs: boolean read FMostrarQtdStrongs write SetMostrarQtdStrongs;
   end;
 
+resourcestring
+  SGenesis = 'Genesis';
+  SExodus = 'Exodus';
+  SLeviticus = 'Leviticus';
+  SNumbers = 'Numbers';
+  SDeuteronomy = 'Deuteronomy';
+  SJoshua = 'Joshua';
+  SJudges = 'Judges';
+  SRuth = 'Ruth';
+  S1Samuel = '1 Samuel';
+  S2Samuel = '2 Samuel';
+  S1Kings = '1 Kings';
+  S2Kings = '2 Kings';
+  S1Chronicles = '1 Chronicles';
+  S2Chronicles = '2 Chronicles';
+  SEzra = 'Ezra';
+  SNehemiah = 'Nehemiah';
+  SEsther = 'Esther';
+  SJob = 'Job';
+  SPsalms = 'Psalms';
+  SProverbs = 'Proverbs';
+  SEcclesiastes = 'Ecclesiastes';
+  SSongOfSolomon = 'Song of Solomon';
+  SIsaiah = 'Isaiah';
+  SJeremiah = 'Jeremiah';
+  SLamentations = 'Lamentations';
+  SEzekiel = 'Ezekiel';
+  SDaniel = 'Daniel';
+  SHosea = 'Hosea';
+  SJoel = 'Joel';
+  SAmos = 'Amos';
+  SObadiah = 'Obadiah';
+  SJohah = 'Jonah';
+  SMicah = 'Micah';
+  SNahum = 'Nahum';
+  SHabakkuk = 'Habakkuk';
+  SZephaniah = 'Zephaniah';
+  SHaggai = 'Haggai';
+  SZechariah = 'Zecariah';
+  SMalachi = 'Malachi';
+  SMatthew = 'Matthew';
+  SMark = 'Mark';
+  SLuke = 'Luke';
+  SJohn = 'John';
+  SActs = 'Acts';
+  SRomans = 'Romans';
+  S1Corinthians = '1 Corinthians';
+  S2Corinthians = '2 Corinthians';
+  SGalatians = 'Galatians';
+  SEphesians = 'Ephesians';
+  SPhilippians = 'Philippians';
+  SColossians = 'Colossians';
+  S1Thessalonians = '1 Thessalonians';
+  S2Thessalonians = '2 Thessalonians';
+  S1Timothy = '1 Timothy';
+  S2Timothy = '2 Timothy';
+  STitus = 'Titus';
+  SPhilemon = 'Philemon';
+  SHebrew = 'Hebrews';
+  SJames = 'James';
+  S1Peter = '1 Peter';
+  S2Peter = '2 Peter';
+  S1John = '1 John';
+  S2John = '2 John';
+  S3John = '3 John';
+  SJude = 'Jude';
+  SRevelation = 'Revelation';
+
+  SError = 'Error';
+  SCorruptedData = 'Corrupted data, some associations may be lost.';
+  SStrongDictionary = 'Strong''s Dictionary';
+  SDictionaryDoesntExist = 'The selected dictionary doesn''t exist: %s';
+  SMorphologyDictionary = 'Morphology Dictionary';
+  SOpenProject = 'Open project';
+  SProjectDoesntExist = 'The selected project doesn''t exist: %s';
+  SInvalidLineCount = 'Invalid file, it must have at least %d lines';
+  SFailedToCreateFile = 'Failed to create file: %s';
+
 const
   NLivrosVT: array[1..39] of string = (
-    'Gênesis','Êxodo','Levítico','Números','Deuteronômio','Josué','Juízes','Rute',
-    '1 Samuel','2 Samuel','1 Reis','2 Reis','1 Crônicas','2 Crônicas','Esdras',
-    'Neemias','Ester','Jó','Salmos','Provérbios','Eclesiastes','Cantares de Salomão',
-    'Isaías','Jeremias','Lamentações','Ezequiel','Daniel','Oseias','Joel','Amós',
-    'Obadias','Jonas','Miqueias','Naum','Habacuque','Sofonias','Ageu','Zacarias',
-    'Malaquias'
+    SGenesis, SExodus, SLeviticus, SNumbers, SDeuteronomy, SJoshua, SJudges, SRuth,
+    S1Samuel, S2Samuel, S1Kings, S2Kings, S1Chronicles, S2Chronicles, SEzra, SNehemiah,
+    SEsther, SJob, SPsalms, SProverbs, SEcclesiastes, SSongOfSolomon, SIsaiah,
+    SJeremiah, SLamentations, SEzekiel, SDaniel, SHosea, SJoel, SAmos, SObadiah,
+    SJohah, SMicah, SNahum, SHabakkuk, SZephaniah, SHaggai, SZechariah, SMalachi
   );
   NLivrosNT: array[1..27] of string = (
-    'Mateus','Marcos','Lucas','João','Atos dos apóstolos','Romanos',
-    '1 Coríntios','2 Coríntios','Gálatas','Efésios',
-    'Filipenses','Colossensses','1 Tessalonicenses','2 Tessalonicenses',
-    '1 Timóteo','2 Timóteo','Tito','Filemon','Hebreus','Tiago',
-    '1 Pedro','2 Pedro','1 João','2 João','3 João','Judas','Apocalipse'
+    SMatthew, SMark, SLuke, SJohn, SActs, SRomans, S1Corinthians, S2Corinthians,
+    SGalatians, SEphesians, SPhilippians, SColossians, S1Thessalonians, S2Thessalonians,
+    S1Timothy, S2Timothy, STitus, SPhilemon, SHebrew, SJames, S1Peter, S2Peter,
+    S1John, S2John, S3John, SJude, SRevelation
   );
   NLivros: array[etOT..etNT] of ^string = (@NLivrosVT, @NLivrosNT);
 
@@ -636,7 +712,7 @@ begin
       FAVersiculo[tbOrigem].Pares := FTblPares.FieldByName('pare_pares').AsString;
     except
       on E: Exception do
-      MessageDlg('Erro', 'Dados inconsistentes, algumas associações serão perdidas.'#13#10 +
+      MessageDlg(SError, SCorruptedData + #13#10 +
            'Isso pode ocorrer por várias razões:'#13#10 +
            ' 1. O texto origem e/ou destino foi editado fora do iBiblia'#13#10 +
            ' 2. Você carregou um novo texto origem/destino'#13#10 +
@@ -887,7 +963,7 @@ begin
 
   if not FileExists(dic) then
   begin
-    MessageDlg('Dicionário de Strong', format('O dicionário selecionado não existe: %s', [FExpand(dic)]), mtError, [mbOK], 0);
+    MessageDlg(SStrongDictionary, format(SDictionaryDoesntExist, [FExpand(dic)]), mtError, [mbOK], 0);
     exit;
   end;
 
@@ -934,7 +1010,7 @@ begin
 
   if not FileExists(dic) then
   begin
-    MessageDlg('Dicionário de Morfologia', format('O dicionário selecionado não existe: %s', [FExpand(dic)]), mtError, [mbOK], 0);
+    MessageDlg(SMorphologyDictionary, format(SDictionaryDoesntExist, [FExpand(dic)]), mtError, [mbOK], 0);
     exit;
   end;
 
@@ -1316,7 +1392,7 @@ var
 begin
   if not FileExists(Nome) then
   begin
-    MessageDlg('Abrir projeto', format('O projeto selecionado não existe: %s', [Nome]), mtError, [mbOK], 0);
+      MessageDlg(SOpenProject, format(SProjectDoesntExist, [Nome]), mtError, [mbOK], 0);
     exit;
   end;
 
@@ -1575,7 +1651,7 @@ begin
     except
       on E: Exception do
          ShowMessage( 'Error: '+ E.ClassName + #13#10 + E.Message + #13#10#13#10 +
-                      'Referência: ' + GetID + #13#10 +
+                      'Ref: ' + GetID + #13#10 +
                       'Par1: ' + pares.Strings[p] + #13#10 +
                       'Par2: ' + pares.Strings[p+1] + #13#10);
     end;
@@ -1635,7 +1711,7 @@ begin
 
     if modulo.Count < QLinhas[FEscopo] then
     begin
-      MessageDlg('Erro', format('Arquivo inválido, precisa ter ao menos %d linhas', [QLinhas[FEscopo]]), mtError, [mbOK], 0);
+      MessageDlg(SError, format(SInvalidLineCount, [QLinhas[FEscopo]]), mtError, [mbOK], 0);
       exit;
     end;
 
@@ -1801,7 +1877,7 @@ begin
             FAVersiculo[tbOrigem].Pares := FTblPares.FieldByName('pare_pares').AsString;
           except
             on E: Exception do
-              MessageDlg('Erro', 'Dados inconsistentes, algumas associações serão perdidas.'#13#10 +
+              MessageDlg(SError, SCorruptedData + #13#10 +
                    'Isso pode ocorrer por várias razões:'#13#10 +
                    ' 1. O texto origem e/ou destino foi editado fora do iBiblia'#13#10 +
                    ' 2. Você carregou um novo texto origem/destino'#13#10 +
@@ -1973,7 +2049,7 @@ begin
     try
       CopiarArquivo(ConcordanciaModelo[FEscopo], arquivo);
     except
-      MessageDlg('Erro', 'Falha na criação do arquivo:'#13#10 + arquivo, mtError, [mbOK], 0);
+      MessageDlg(SError, format(SFailedToCreateFile, [arquivo]), mtError, [mbOK], 0);
       exit;
     end;
   end;

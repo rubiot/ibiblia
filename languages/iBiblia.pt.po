@@ -1,0 +1,890 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Project-Id-Version: \n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: pt\n"
+"X-Generator: Poedit 2.2\n"
+
+#: formexportar.sanalyticalconcordance
+msgid "AnalyticalConcordance"
+msgstr "ConcordanciaAnalitica"
+
+#: formexportar.ssynteticconcordance
+msgid "SynteticConcordance"
+msgstr "ConcordanciaSintetica"
+
+#: formexportar.sthewordntmodule
+msgid "theWord module (*.nt)"
+msgstr "Módulo do theWord (*.nt)"
+
+#: formexportar.sthewordotmodule
+msgid "theWord module (*.ot)"
+msgstr "Módulo do theWord (*.ot)"
+
+#: formnovoprojeto.schooseaname
+msgid "Please choose a name for your project"
+msgstr "Escolha um nome para o projeto"
+
+#: formnovoprojeto.schooseatleasttwotexts
+msgid "Please choose at least one source and one destination texts"
+msgstr "Escolha pelo menos um texto origem e um texto destino"
+
+#: formnovoprojeto.snewproject
+msgid "New project"
+msgstr "Novo projecto"
+
+#: formprincipal.schanged
+msgid "changed"
+msgstr "modificado"
+
+#: formprincipal.scloseproject
+msgid "Close project"
+msgstr "Fechar projeto"
+
+#: formprincipal.sdestination
+msgid "destination"
+msgstr "destino"
+
+#: formprincipal.sloadingfile
+msgid "Loading %s..."
+msgstr "Carregando %s..."
+
+#: formprincipal.snewassociationproject
+msgid "New association project"
+msgstr "Novo projeto de associação"
+
+#: formprincipal.sopenproject
+msgctxt "formprincipal.sopenproject"
+msgid "Open project"
+msgstr "Abrir projeto"
+
+#: formprincipal.sprojectfiledoesnotexist
+msgid ""
+"The selected project file doesn't exist:\n"
+"%s\n"
+msgstr "O arquivo de projeto selecionado não existe: %s"
+
+#: formprincipal.sreference1
+msgid "reference 1"
+msgstr "referência 1"
+
+#: formprincipal.sreference2
+msgid "reference 2"
+msgstr "referência 2"
+
+#: formprincipal.ssavechanges
+msgid "Would you like to save your changes?"
+msgstr "Deseja salvar as alterações?"
+
+#: formprincipal.ssource
+msgid "source"
+msgstr "origem"
+
+#: formpropprojeto.schangetextconfirmation
+msgid "Are you sure you want to load this new text?"
+msgstr "Tem certeza de que quer substituir o texto atual por outro?"
+
+#: formpropprojeto.schooseabiblemodule
+msgid "Please choose a theWord module file..."
+msgstr "Escolha um módulo do theWord..."
+
+#: formpropprojeto.schooseanothertext
+msgid "Change text"
+msgstr "Trocar texto"
+
+#: formpropprojeto.schoosedictionary
+msgctxt "formpropprojeto.schoosedictionary"
+msgid "Choose"
+msgstr "Selecionar"
+
+#: formpropprojeto.scleartext
+msgctxt "formpropprojeto.scleartext"
+msgid "Clear text"
+msgstr "Limpar texto"
+
+#: formpropprojeto.scleartextconfirmation
+msgid "Are you sure you want to clear this text?"
+msgstr "Tem certeza de que deseja limpar este texto?"
+
+#: formpropprojeto.sopendictionary
+msgid "Please choose a theWord dictionary module..."
+msgstr "Escolha um módulo de dicionário do theWord"
+
+#: formpropprojeto.ssetdictionary
+msgid "Set"
+msgstr "Atribuir"
+
+#: memoversiculo.schangeverse
+msgid "Change verse text?"
+msgstr "Alterar o texto do versículo?"
+
+#: memoversiculo.schangeverseconfirmation
+msgid "Are you sure you want to change the verse text? Some associations may be lost."
+msgstr "Tem certeza de que quer alterar o texto deste versículo? Algumas alterações podem ser perdidas."
+
+#: projeto.s1chronicles
+msgid "1 Chronicles"
+msgstr "1 Crônicas"
+
+#: projeto.s1corinthians
+msgid "1 Corinthians"
+msgstr "1 Coríntios"
+
+#: projeto.s1john
+msgid "1 John"
+msgstr "1 João"
+
+#: projeto.s1kings
+msgid "1 Kings"
+msgstr "1 Reis"
+
+#: projeto.s1peter
+msgid "1 Peter"
+msgstr "1 Pedro"
+
+#: projeto.s1samuel
+msgid "1 Samuel"
+msgstr "1 Samuel"
+
+#: projeto.s1thessalonians
+msgid "1 Thessalonians"
+msgstr "1 Tessalonicenses"
+
+#: projeto.s1timothy
+msgid "1 Timothy"
+msgstr "1 Timóteo"
+
+#: projeto.s2chronicles
+msgid "2 Chronicles"
+msgstr "2 Crônicas"
+
+#: projeto.s2corinthians
+msgid "2 Corinthians"
+msgstr "2 Coríntios"
+
+#: projeto.s2john
+msgid "2 John"
+msgstr "2 João"
+
+#: projeto.s2kings
+msgid "2 Kings"
+msgstr "2 Reis"
+
+#: projeto.s2peter
+msgid "2 Peter"
+msgstr "2 Pedro"
+
+#: projeto.s2samuel
+msgid "2 Samuel"
+msgstr "2 Samuel"
+
+#: projeto.s2thessalonians
+msgid "2 Thessalonians"
+msgstr "2 Tessalonicenses"
+
+#: projeto.s2timothy
+msgid "2 Timothy"
+msgstr "2 Timóteo"
+
+#: projeto.s3john
+msgid "3 John"
+msgstr "3 João"
+
+#: projeto.sacts
+msgid "Acts"
+msgstr "Atos dos apóstolos"
+
+#: projeto.samos
+msgid "Amos"
+msgstr "Amós"
+
+#: projeto.scolossians
+msgid "Colossians"
+msgstr "Colossenses"
+
+#: projeto.scorrupteddata
+msgid "Corrupted data, some associations may be lost."
+msgstr "Dados inconsistentes, algumas associações podem ser perdidas."
+
+#: projeto.sdaniel
+msgid "Daniel"
+msgstr "Daniel"
+
+#: projeto.sdeuteronomy
+msgid "Deuteronomy"
+msgstr "Deuteronômio"
+
+#: projeto.sdictionarydoesntexist
+msgid "The selected dictionary doesn't exist: %s"
+msgstr "O dicionário selecionado não existe: %s"
+
+#: projeto.secclesiastes
+msgid "Ecclesiastes"
+msgstr "Eclesiastes"
+
+#: projeto.sephesians
+msgid "Ephesians"
+msgstr "Efésios"
+
+#: projeto.serror
+msgid "Error"
+msgstr "Erro"
+
+#: projeto.sesther
+msgid "Esther"
+msgstr "Ester"
+
+#: projeto.sexodus
+msgid "Exodus"
+msgstr "Êxodo"
+
+#: projeto.sezekiel
+msgid "Ezekiel"
+msgstr "Ezequiel"
+
+#: projeto.sezra
+msgid "Ezra"
+msgstr "Esdras"
+
+#: projeto.sfailedtocreatefile
+msgid "Failed to create file: %s"
+msgstr "Falha ao criar arquivo: %s"
+
+#: projeto.sgalatians
+msgid "Galatians"
+msgstr "Gálatas"
+
+#: projeto.sgenesis
+msgid "Genesis"
+msgstr "Gênesis"
+
+#: projeto.shabakkuk
+msgid "Habakkuk"
+msgstr "Habacuque"
+
+#: projeto.shaggai
+msgid "Haggai"
+msgstr "Ageu"
+
+#: projeto.shebrew
+msgid "Hebrews"
+msgstr "Hebreus"
+
+#: projeto.shosea
+msgid "Hosea"
+msgstr "Oseias"
+
+#: projeto.sinvalidlinecount
+msgid "Invalid file, it must have at least %d lines"
+msgstr "Arquivo inválido, ele precisa ter ao menos %d linhas"
+
+#: projeto.sisaiah
+msgid "Isaiah"
+msgstr "Isaías"
+
+#: projeto.sjames
+msgid "James"
+msgstr "Tiago"
+
+#: projeto.sjeremiah
+msgid "Jeremiah"
+msgstr "Jeremias"
+
+#: projeto.sjob
+msgid "Job"
+msgstr "Jó"
+
+#: projeto.sjoel
+msgid "Joel"
+msgstr "Joel"
+
+#: projeto.sjohah
+msgid "Jonah"
+msgstr "Jonas"
+
+#: projeto.sjohn
+msgid "John"
+msgstr "João"
+
+#: projeto.sjoshua
+msgid "Joshua"
+msgstr "Josué"
+
+#: projeto.sjude
+msgid "Jude"
+msgstr "Judas"
+
+#: projeto.sjudges
+msgid "Judges"
+msgstr "Juízes"
+
+#: projeto.slamentations
+msgid "Lamentations"
+msgstr "Lamentações"
+
+#: projeto.sleviticus
+msgid "Leviticus"
+msgstr "Levítico"
+
+#: projeto.sluke
+msgid "Luke"
+msgstr "Lucas"
+
+#: projeto.smalachi
+msgid "Malachi"
+msgstr "Malaquias"
+
+#: projeto.smark
+msgid "Mark"
+msgstr "Marcos"
+
+#: projeto.smatthew
+msgid "Matthew"
+msgstr "Mateus"
+
+#: projeto.smicah
+msgid "Micah"
+msgstr "Miqueias"
+
+#: projeto.smorphologydictionary
+msgid "Morphology Dictionary"
+msgstr "Dicionário de morfologia"
+
+#: projeto.snahum
+msgid "Nahum"
+msgstr "Naum"
+
+#: projeto.snehemiah
+msgid "Nehemiah"
+msgstr "Neemias"
+
+#: projeto.snumbers
+msgid "Numbers"
+msgstr "Números"
+
+#: projeto.sobadiah
+msgid "Obadiah"
+msgstr "Obadias"
+
+#: projeto.sopenproject
+msgctxt "projeto.sopenproject"
+msgid "Open project"
+msgstr "Abrir projeto"
+
+#: projeto.sphilemon
+msgid "Philemon"
+msgstr "Filemon"
+
+#: projeto.sphilippians
+msgid "Philippians"
+msgstr "Filipenses"
+
+#: projeto.sprojectdoesntexist
+msgid "The selected project doesn't exist: %s"
+msgstr "O projeto selecionado não existe: %s"
+
+#: projeto.sproverbs
+msgid "Proverbs"
+msgstr "Provérbios"
+
+#: projeto.spsalms
+msgid "Psalms"
+msgstr "Salmos"
+
+#: projeto.srevelation
+msgid "Revelation"
+msgstr "Apocalipse"
+
+#: projeto.sromans
+msgid "Romans"
+msgstr "Romanos"
+
+#: projeto.sruth
+msgid "Ruth"
+msgstr "Rute"
+
+#: projeto.ssongofsolomon
+msgid "Song of Solomon"
+msgstr "Cântico dos cânticos"
+
+#: projeto.sstrongdictionary
+msgid "Strong's Dictionary"
+msgstr "Dicionário de Strong"
+
+#: projeto.stitus
+msgid "Titus"
+msgstr "Tito"
+
+#: projeto.szechariah
+msgid "Zecariah"
+msgstr "Zacarias"
+
+#: projeto.szephaniah
+msgid "Zephaniah"
+msgstr "Sofonias"
+
+#: tformnovoprojeto.bitbtn1.caption
+msgctxt "tformnovoprojeto.bitbtn1.caption"
+msgid "..."
+msgstr "..."
+
+#: tformnovoprojeto.bitbtn2.caption
+msgctxt "tformnovoprojeto.bitbtn2.caption"
+msgid "..."
+msgstr "..."
+
+#: tformnovoprojeto.bitbtn3.caption
+msgctxt "tformnovoprojeto.bitbtn3.caption"
+msgid "..."
+msgstr "..."
+
+#: tformnovoprojeto.bitbtn4.caption
+msgctxt "tformnovoprojeto.bitbtn4.caption"
+msgid "..."
+msgstr "..."
+
+#: tformnovoprojeto.bitbtn5.caption
+msgctxt "tformnovoprojeto.bitbtn5.caption"
+msgid "&OK"
+msgstr "&OK"
+
+#: tformnovoprojeto.bitbtn6.caption
+msgctxt "tformnovoprojeto.bitbtn6.caption"
+msgid "Cancel"
+msgstr "Cancelar"
+
+#: tformnovoprojeto.caption
+msgid "New project..."
+msgstr "Novo projeto..."
+
+#: tformnovoprojeto.editnomeprojeto.editlabel.caption
+msgctxt "tformnovoprojeto.editnomeprojeto.editlabel.caption"
+msgid "Name"
+msgstr "Nome"
+
+#: tformnovoprojeto.edittextodestino.editlabel.caption
+msgid "Destination"
+msgstr "Destino"
+
+#: tformnovoprojeto.edittextoorigem.editlabel.caption
+msgid "Source"
+msgstr "Origem"
+
+#: tformnovoprojeto.edittextoref1.editlabel.caption
+msgid "Reference 1"
+msgstr "Referência 1"
+
+#: tformnovoprojeto.edittextoref2.editlabel.caption
+msgid "Reference 2"
+msgstr "Referência 2"
+
+#: tformnovoprojeto.groupbox1.caption
+msgid "Texts"
+msgstr "Textos"
+
+#: tformnovoprojeto.groupbox2.caption
+msgctxt "tformnovoprojeto.groupbox2.caption"
+msgid "Properties"
+msgstr "Propriedades"
+
+#: tformnovoprojeto.opendialog1.title
+msgid "Choose a theWord bible module"
+msgstr "Escolha um módulo de bíblia do theWord"
+
+#: tformnovoprojeto.radiogroupescopo.caption
+msgid "Scope"
+msgstr "Escopo"
+
+#: tformpropprojeto.actioncarregartexto.caption
+msgid "Load new text"
+msgstr "Carregar novo texto"
+
+#: tformpropprojeto.actionlimpartexto.caption
+msgctxt "tformpropprojeto.actionlimpartexto.caption"
+msgid "Clear text"
+msgstr "Limpar texto"
+
+#: tformpropprojeto.actionmudancaaba.caption
+msgid "ActionMudancaAba"
+msgstr "ActionMudancaAba"
+
+#: tformpropprojeto.actionselecionarfonte.caption
+msgctxt "tformpropprojeto.actionselecionarfonte.caption"
+msgid "Choose"
+msgstr "Selecionar"
+
+#: tformpropprojeto.actionselecionarmorfo.caption
+msgctxt "tformpropprojeto.actionselecionarmorfo.caption"
+msgid "Choose"
+msgstr "Selecionar"
+
+#: tformpropprojeto.actionselecionarstrong.caption
+msgctxt "tformpropprojeto.actionselecionarstrong.caption"
+msgid "Choose"
+msgstr "Selecionar"
+
+#: tformpropprojeto.bitbtn1.caption
+msgctxt "tformpropprojeto.bitbtn1.caption"
+msgid "&OK"
+msgstr "&OK"
+
+#: tformpropprojeto.bitbtn2.caption
+msgctxt "tformpropprojeto.bitbtn2.caption"
+msgid "Cancel"
+msgstr "Cancelar"
+
+#: tformpropprojeto.caption
+msgctxt "tformpropprojeto.caption"
+msgid "Properties"
+msgstr "Propriedades"
+
+#: tformpropprojeto.editnomeprojeto.editlabel.caption
+msgctxt "tformpropprojeto.editnomeprojeto.editlabel.caption"
+msgid "Name"
+msgstr "Nome"
+
+#: tformpropprojeto.groupbox2.caption
+msgctxt "tformpropprojeto.groupbox2.caption"
+msgid "Properties"
+msgstr "Propriedades"
+
+#: tformpropprojeto.label2.caption
+msgid "Font"
+msgstr "Fonte"
+
+#: tformpropprojeto.ledicmorfo.editlabel.caption
+msgid "Morphology dictionary"
+msgstr "Dicionário de morfologia"
+
+#: tformpropprojeto.ledicstrong.editlabel.caption
+msgid "Strong's dictionary"
+msgstr "Dicionário de Strong"
+
+#: tfrmescolherverserules.button1.caption
+msgid "&Cancel"
+msgstr "&Cancelar"
+
+#: tfrmescolherverserules.button2.caption
+msgid "OK"
+msgstr "OK"
+
+#: tfrmescolherverserules.caption
+msgid "Choose verse rules"
+msgstr "Escolher verse rules"
+
+#: tfrmescolherverserules.ckgverserules.caption
+msgid "Choose verse rules you'd like to apply"
+msgstr "Marque as verse rules que você deseja aplicar"
+
+#: tfrmexportarprojeto.btexportar.caption
+msgid "Export"
+msgstr "Exportar"
+
+#: tfrmexportarprojeto.button2.caption
+msgctxt "tfrmexportarprojeto.button2.caption"
+msgid "Cancel"
+msgstr "Cancelar"
+
+#: tfrmexportarprojeto.caption
+msgid "Export association"
+msgstr "Exportar associação"
+
+#: tfrmexportarprojeto.cbconcordanciadetalhada.caption
+msgid "Group by inflectioned forms"
+msgstr "Agrupar por formas flexionadas"
+
+#: tfrmexportarprojeto.cbexportarcomentarios.caption
+msgid "Export comments as translator notes"
+msgstr "Exportar comentários como notas"
+
+#: tfrmexportarprojeto.cbexportarmorfologia.caption
+msgid "Export morphology tags"
+msgstr "Exportar morfologia"
+
+#: tfrmexportarprojeto.cbexportarnacomoitalicos.caption
+msgid "Export unassociated words as added words (italics)"
+msgstr "Exportar palavras não associadas como itálicos"
+
+#: tfrmexportarprojeto.cbstrongsnaotraduzidos.caption
+msgid "Mark unused strongs"
+msgstr "Sinalizar strongs não utilizados"
+
+#: tfrmexportarprojeto.cbstrongsreutilizados.caption
+msgid "Mark reused strongs"
+msgstr "Sinalizar strongs reutilizados"
+
+#: tfrmexportarprojeto.label1.caption
+msgctxt "tfrmexportarprojeto.label1.caption"
+msgid "Module properties"
+msgstr "Propriedades do módulo"
+
+#: tfrmexportarprojeto.label2.caption
+msgctxt "tfrmexportarprojeto.label2.caption"
+msgid "Module properties"
+msgstr "Propriedades do módulo"
+
+#: tfrmexportarprojeto.leabreviacao.editlabel.caption
+msgid "Abbreviation"
+msgstr "Abreviação"
+
+#: tfrmexportarprojeto.savedialog1.title
+msgctxt "tfrmexportarprojeto.savedialog1.title"
+msgid "Salvar módulo como..."
+msgstr "Salvar módulo como..."
+
+#: tfrmexportarprojeto.savedialogconcordancia.title
+msgctxt "tfrmexportarprojeto.savedialogconcordancia.title"
+msgid "Salvar módulo como..."
+msgstr "Salvar módulo como..."
+
+#: tfrmexportarprojeto.tabsheet1.caption
+msgid "Tagged destination text"
+msgstr "Texto destino enriquecido"
+
+#: tfrmexportarprojeto.tabsheet2.caption
+msgid "Interlinear source text"
+msgstr "Texto origem interlinear"
+
+#: tfrmexportarprojeto.tabsheet3.caption
+msgid "Strong's concordance"
+msgstr "Concordância de strong"
+
+#: tfrmprincipal.actionabrirprojeto.caption
+msgid "Open..."
+msgstr "Abrir..."
+
+#: tfrmprincipal.actionabrirprojeto.hint
+msgid "Open an existent project"
+msgstr "Abrir um projeto existente"
+
+#: tfrmprincipal.actionexportar.caption
+msgid "Export..."
+msgstr "Exportar"
+
+#: tfrmprincipal.actionexportardestinocomstrongs.caption
+msgid "Export destination text"
+msgstr "Exportar texto destino"
+
+#: tfrmprincipal.actionexportartextointerlinear.caption
+msgid "Export interlinear text"
+msgstr "Exportar texto interlinear"
+
+#: tfrmprincipal.actionfecharprojeto.caption
+msgid "Close"
+msgstr "Fechar"
+
+#: tfrmprincipal.actionfecharprojeto.hint
+msgid "Close current project"
+msgstr "Fechar o projeto atual"
+
+#: tfrmprincipal.actionlimparassociacoes.caption
+msgid "Clear"
+msgstr "Limpar"
+
+#: tfrmprincipal.actionlimparassociacoes.hint
+msgid "Clear verse associations"
+msgstr "Limpar as associações do versículo"
+
+#: tfrmprincipal.actionmesclarprojetos.caption
+msgid "Merge projects..."
+msgstr "Mesclar projetos..."
+
+#: tfrmprincipal.actionmostrartags.caption
+msgid "ActionMostrarTags"
+msgstr "ActionsMostrarTags"
+
+#: tfrmprincipal.actionnovoprojeto.caption
+msgid "New..."
+msgstr "Novo..."
+
+#: tfrmprincipal.actionnovoprojeto.hint
+msgid "Create new association project"
+msgstr "Criar novo projeto de associação"
+
+#: tfrmprincipal.actionpropprojeto.caption
+msgid "Settings..."
+msgstr "Propriedades..."
+
+#: tfrmprincipal.actionpropprojeto.hint
+msgid "Current project settings..."
+msgstr "Propriedades do projeto atual..."
+
+#: tfrmprincipal.actionquandonovoversiculo.caption
+msgid "ActionQuandoNovoVersiculo"
+msgstr "ActionQuandoNovoVersiculo"
+
+#: tfrmprincipal.actionrecriarbasesugestoes.caption
+msgid "Recreate association memory"
+msgstr "Recriar base de sugestões"
+
+#: tfrmprincipal.actionreverterassociacoes.caption
+msgid "Rollback"
+msgstr "Reverter"
+
+#: tfrmprincipal.actionreverterassociacoes.hint
+msgid "Rollback changes"
+msgstr "Reverter para alterações salvas"
+
+#: tfrmprincipal.actionsair.caption
+msgid "Exit"
+msgstr "Sair"
+
+#: tfrmprincipal.actionsair.hint
+msgid "Exit the program"
+msgstr "Sair do programa"
+
+#: tfrmprincipal.actionsalvarprojeto.caption
+msgid "Save"
+msgstr "Salvar"
+
+#: tfrmprincipal.actionsalvarprojeto.hint
+msgid "Save changes"
+msgstr "Salvar alterações"
+
+#: tfrmprincipal.actionsalvarprojetocomo.caption
+msgid "Save as..."
+msgstr "Salvar como..."
+
+#: tfrmprincipal.actionsalvarprojetocomo.hint
+msgid "Save as a new project"
+msgstr "Salvar como um novo projeto"
+
+#: tfrmprincipal.actionsugerirassociacao.caption
+msgid "Auto-associate"
+msgstr "Sugerir associações"
+
+#: tfrmprincipal.actionsugerirassociacao.hint
+msgid "Auto associate verse"
+msgstr "Sugerir associações do versículo"
+
+#: tfrmprincipal.actionsyncthewordverse.caption
+msgid "ActionSyncTheWordVerse"
+msgstr "ActionSyncTheWordVerse"
+
+#: tfrmprincipal.actionversoanterior.caption
+msgid "Previous"
+msgstr "Anterior"
+
+#: tfrmprincipal.actionversoanterior.hint
+msgid "Previous verse"
+msgstr "Versículo anterior"
+
+#: tfrmprincipal.actionversoprimeiro.caption
+msgid "First"
+msgstr "Primeiro"
+
+#: tfrmprincipal.actionversoprimeiro.hint
+msgid "Go to first verse"
+msgstr "Ir para o primeiro versículo"
+
+#: tfrmprincipal.actionversoseguinte.caption
+msgid "Next"
+msgstr "Próximo"
+
+#: tfrmprincipal.actionversoseguinte.hint
+msgid "Next verse"
+msgstr "Próximo versículo"
+
+#: tfrmprincipal.actionversoultimo.caption
+msgid "Last"
+msgstr "Último"
+
+#: tfrmprincipal.actionversoultimo.hint
+msgid "Go to last verse"
+msgstr "Ir par o último versículo"
+
+#: tfrmprincipal.caption
+msgid "iBiblia"
+msgstr "iBiblia"
+
+#: tfrmprincipal.menuitem1.caption
+msgid "Project"
+msgstr "Projeto"
+
+#: tfrmprincipal.menuitem10.caption
+msgid "Edit"
+msgstr "Editar"
+
+#: tfrmprincipal.menuitem20.caption
+msgid "Options"
+msgstr "Opções"
+
+#: tfrmprincipal.menuitem21.caption
+msgid "Show dictionary popup when CTRL is pressed"
+msgstr "Mostrar definições com CTRL pressionado"
+
+#: tfrmprincipal.menuitem22.caption
+msgid "Automatically auto-associate verses"
+msgstr "Sugerir associações automaticamente"
+
+#: tfrmprincipal.menuitem23.caption
+msgid "Language"
+msgstr ""
+
+#: tfrmprincipal.menuitem24.caption
+msgid "English"
+msgstr ""
+
+#: tfrmprincipal.menuitem25.caption
+msgid "Português"
+msgstr ""
+
+#: tfrmprincipal.menuitem5.caption
+msgid "Navigation"
+msgstr "Navegação"
+
+#: tfrmprincipal.menuitemrecent.caption
+msgid "Open recent"
+msgstr "Abrir recente"
+
+#: tfrmprincipal.menuitemstrongnegrito.caption
+msgid "Show words with strong tags in bold"
+msgstr "Exibir palavras com strongs em negrito"
+
+#: tfrmprincipal.menuitemstrongscount.caption
+msgid "Show count for words having strong tags"
+msgstr "Exibir contagem de palavras com strongs"
+
+#: tfrmprincipal.menuitemsyncibiblia.caption
+msgid "Sync iBiblia to theWord verse"
+msgstr "Sincronizar iBiblia com o versículo do theWord"
+
+#: tfrmprincipal.menuitemsynctheword.caption
+msgid "Sync theWord to iBiblia verse"
+msgstr "Sincronizar theWord com o versículo do iBiblia"
+
+#: tfrmprincipal.opendialog1.title
+msgid "Open existing association project"
+msgstr "Abrir projeto de associação existente"
+
+#: tfrmprincipal.panel1.caption
+msgid "Panel1"
+msgstr "Panel1"
+
+#: tfrmprincipal.panel2.caption
+msgid "Panel2"
+msgstr "Panel2"
+
+#: tfrmprincipal.radiogroup1.caption
+msgid "Status"
+msgstr "Andamento"
+
+#: tfrmprincipal.savedialog1.title
+msgid "Save project as..."
+msgstr "Salvar projeto como..."
+
+#: tfrmprincipal.savedialog2.title
+msgctxt "tfrmprincipal.savedialog2.title"
+msgid "Save module as..."
+msgstr "Salvar módulo como..."
+
+#: tfrmprincipal.toolbar1.caption
+msgid "ToolBar1"
+msgstr "ToolBar1"
+

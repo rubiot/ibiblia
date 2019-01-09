@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
-  ExtCtrls, StdCtrls, PCRE;
+  ExtCtrls, StdCtrls, PCRE, LCLTranslator;
 
 type
 
@@ -18,11 +18,9 @@ type
     ckgVerseRules: TCheckGroup;
     lbDe: TListBox;
     lbPara: TListBox;
-    procedure ckgVerseRulesClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure lbDeSelectionChange(Sender: TObject; User: boolean);
-    procedure lbParaSelectionChange(Sender: TObject; User: boolean);
   private
     { private declarations }
     FVerseRulesDe: TStringList;
@@ -49,11 +47,6 @@ begin
   FVerseRulesDe := TStringList.Create;
   FVerseRulesPara := TStringList.Create;
   FCorrigirAspas:= RegexCreate('""');
-end;
-
-procedure TFrmEscolherVerseRules.ckgVerseRulesClick(Sender: TObject);
-begin
-
 end;
 
 procedure TFrmEscolherVerseRules.CarregarVerseRules(rulesDe: TStringList;
@@ -98,12 +91,6 @@ procedure TFrmEscolherVerseRules.lbDeSelectionChange(Sender: TObject;
   User: boolean);
 begin
   //lbPara.Selected[lbDe.ItemIndex] := lbDe.Selected[lbDe.ItemIndex];
-end;
-
-procedure TFrmEscolherVerseRules.lbParaSelectionChange(Sender: TObject;
-  User: boolean);
-begin
-
 end;
 
 initialization

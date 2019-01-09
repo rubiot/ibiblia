@@ -17,8 +17,8 @@ object frmPrincipal: TfrmPrincipal
   LCLVersion = '1.8.4.0'
   object StatusBar1: TStatusBar
     Left = 0
-    Height = 28
-    Top = 649
+    Height = 23
+    Top = 654
     Width = 880
     Panels = <>
   end
@@ -249,7 +249,7 @@ object frmPrincipal: TfrmPrincipal
     Width = 117
     Anchors = [akRight, akBottom]
     AutoFill = True
-    Caption = 'Situação'
+    Caption = 'Status'
     ChildSizing.LeftRightSpacing = 6
     ChildSizing.TopBottomSpacing = 6
     ChildSizing.EnlargeHorizontal = crsHomogenousChildResize
@@ -263,17 +263,17 @@ object frmPrincipal: TfrmPrincipal
     Enabled = False
     ItemIndex = 0
     Items.Strings = (
-      'Por associar'
-      'Associando'
-      'Rever'
-      'Associado!'
+      'Unassociated'
+      'Associating'
+      'Review'
+      'Associated!'
     )
     TabOrder = 4
   end
   object ProgressBar1: TProgressBar
     Left = 0
     Height = 20
-    Top = 629
+    Top = 634
     Width = 880
     Align = alBottom
     TabOrder = 5
@@ -283,7 +283,7 @@ object frmPrincipal: TfrmPrincipal
     left = 160
     top = 192
     object MenuItem1: TMenuItem
-      Caption = 'Projeto'
+      Caption = 'Project'
       object MenuItem2: TMenuItem
         Action = ActionNovoProjeto
       end
@@ -291,7 +291,7 @@ object frmPrincipal: TfrmPrincipal
         Action = ActionAbrirProjeto
       end
       object MenuItemRecent: TMenuItem
-        Caption = 'Abrir recente'
+        Caption = 'Open recent'
       end
       object MenuItem9: TMenuItem
         Action = ActionSalvarProjeto
@@ -316,7 +316,7 @@ object frmPrincipal: TfrmPrincipal
       end
     end
     object MenuItem10: TMenuItem
-      Caption = 'Editar'
+      Caption = 'Edit'
       object MenuItem12: TMenuItem
         Action = ActionReverterAssociacoes
       end
@@ -328,7 +328,7 @@ object frmPrincipal: TfrmPrincipal
       end
     end
     object MenuItem5: TMenuItem
-      Caption = 'Navegar'
+      Caption = 'Navigation'
       object MenuItem6: TMenuItem
         Action = ActionVersoAnterior
       end
@@ -343,30 +343,41 @@ object frmPrincipal: TfrmPrincipal
       end
     end
     object MenuItem20: TMenuItem
-      Caption = 'Opções'
+      Caption = 'Options'
       object MenuItem21: TMenuItem
-        Caption = 'Exibir definições com CTRL pressionado'
+        Caption = 'Show dictionary popup when CTRL is pressed'
         OnClick = MenuItem21Click
       end
       object MenuItem22: TMenuItem
-        Caption = 'Sugerir associações automaticamente'
+        Caption = 'Automatically auto-associate verses'
         OnClick = MenuItem22Click
       end
       object MenuItemSyncTheWord: TMenuItem
-        Caption = 'Sincronizar TheWord com versículo do iBiblia'
+        Caption = 'Sync theWord to iBiblia verse'
         OnClick = MenuItemSyncTheWordClick
       end
       object MenuItemSynciBiblia: TMenuItem
-        Caption = 'Sincronizar iBiblia com versículo do TheWord'
+        Caption = 'Sync iBiblia to theWord verse'
         OnClick = MenuItemSynciBibliaClick
       end
       object MenuItemStrongNegrito: TMenuItem
-        Caption = 'Exibir palavras com tags de strong em negrito'
+        Caption = 'Show words with strong tags in bold'
         OnClick = MenuItemStrongNegritoClick
       end
       object MenuItemStrongsCount: TMenuItem
-        Caption = 'Exibir contagem de palavras com tags de strong'
+        Caption = 'Show count for words having strong tags'
         OnClick = MenuItemStrongsCountClick
+      end
+      object MenuItem23: TMenuItem
+        Caption = 'Language'
+        object MenuItem24: TMenuItem
+          Caption = 'English'
+          OnClick = MenuItem24Click
+        end
+        object MenuItem25: TMenuItem
+          Caption = 'Português'
+          OnClick = MenuItem25Click
+        end
       end
     end
   end
@@ -374,79 +385,79 @@ object frmPrincipal: TfrmPrincipal
     left = 40
     top = 192
     object ActionNovoProjeto: TAction
-      Caption = 'Novo...'
-      Hint = 'Criar novo projeto de associação'
+      Caption = 'New...'
+      Hint = 'Create new association project'
       ImageIndex = 6
       OnExecute = ActionNovoProjetoExecute
       ShortCut = 16462
     end
     object ActionSalvarProjetoComo: TAction
-      Caption = 'Salvar como'
+      Caption = 'Save as...'
       Enabled = False
-      Hint = 'Salvar como novo projeto'
+      Hint = 'Save as a new project'
       ImageIndex = 3
       OnExecute = ActionSalvarProjetoComoExecute
     end
     object ActionAbrirProjeto: TAction
-      Caption = 'Abrir...'
-      Hint = 'Abrir um projeto existente'
+      Caption = 'Open...'
+      Hint = 'Open an existent project'
       ImageIndex = 0
       OnExecute = ActionAbrirProjetoExecute
       ShortCut = 16449
     end
     object ActionFecharProjeto: TAction
-      Caption = 'Fechar'
+      Caption = 'Close'
       Enabled = False
-      Hint = 'Fechar o projeto'
+      Hint = 'Close current project'
       ImageIndex = 1
       OnExecute = ActionFecharProjetoExecute
       ShortCut = 16499
     end
     object ActionPropProjeto: TAction
-      Caption = 'Propriedades...'
+      Caption = 'Settings...'
       Enabled = False
-      Hint = 'Propriedades do projeto'
+      Hint = 'Current project settings...'
       OnExecute = ActionPropProjetoExecute
       ShortCut = 16464
     end
     object ActionSair: TAction
-      Caption = 'Sair'
-      Hint = 'Sair do programa'
+      Caption = 'Exit'
+      Hint = 'Exit the program'
       ImageIndex = 10
       OnExecute = ActionSairExecute
     end
     object ActionVersoPrimeiro: TAction
-      Caption = 'Primeiro'
+      Caption = 'First'
       Enabled = False
-      Hint = 'Ir para o primeiro versículo'
+      Hint = 'Go to first verse'
       OnExecute = ActionVersoPrimeiroExecute
     end
     object ActionVersoUltimo: TAction
-      Caption = 'Último'
+      Caption = 'Last'
       Enabled = False
-      Hint = 'Ir para o último versículo'
+      Hint = 'Go to last verse'
       OnExecute = ActionVersoUltimoExecute
     end
     object ActionVersoSeguinte: TAction
-      Caption = 'Próximo'
+      Caption = 'Next'
       Enabled = False
-      Hint = 'Próximo versículo'
+      Hint = 'Next verse'
       ImageIndex = 8
       OnExecute = ActionVersoSeguinteExecute
       ShortCut = 34
     end
     object ActionVersoAnterior: TAction
-      Caption = 'Anterior'
+      Caption = 'Previous'
       Enabled = False
-      Hint = 'Versículo anterior'
+      Hint = 'Previous verse'
       ImageIndex = 7
       OnExecute = ActionVersoAnteriorExecute
       ShortCut = 33
     end
     object ActionSugerirAssociacao: TAction
-      Caption = 'Sugerir'
+      Caption = 'Auto-associate'
       Enabled = False
-      Hint = 'Sugerir associações'
+      Hint = 'Auto associate verse'
       ImageIndex = 4
       OnExecute = ActionSugerirAssociacaoExecute
       ShortCut = 114
@@ -456,52 +467,52 @@ object frmPrincipal: TfrmPrincipal
       OnExecute = ActionQuandoNovoVersiculoExecute
     end
     object ActionSalvarProjeto: TAction
-      Caption = 'Salvar'
+      Caption = 'Save'
       Enabled = False
-      Hint = 'Salvar alterações do projeto'
+      Hint = 'Save changes'
       ImageIndex = 2
       OnExecute = ActionSalvarProjetoExecute
       ShortCut = 16467
     end
     object ActionReverterAssociacoes: TAction
-      Caption = 'Reverter'
+      Caption = 'Rollback'
       Enabled = False
-      Hint = 'Recarregar associações salvas'
+      Hint = 'Rollback changes'
       ImageIndex = 9
       OnExecute = ActionReverterAssociacoesExecute
       ShortCut = 116
     end
     object ActionLimparAssociacoes: TAction
-      Caption = 'Limpar'
+      Caption = 'Clear'
       Enabled = False
-      Hint = 'Limpar associações do versículo'
+      Hint = 'Clear verse associations'
       ImageIndex = 5
       OnExecute = ActionLimparAssociacoesExecute
       ShortCut = 113
     end
     object ActionExportarDestinoComStrongs: TAction
-      Caption = 'Idioma destino com dados gramaticais'
+      Caption = 'Export destination text'
       Enabled = False
       OnExecute = ActionExportarDestinoComStrongsExecute
     end
     object ActionExportarTextoInterlinear: TAction
-      Caption = 'Texto interlinear'
+      Caption = 'Export interlinear text'
       Enabled = False
       OnExecute = ActionExportarTextoInterlinearExecute
     end
     object ActionExportar: TAction
-      Caption = 'Exportar...'
+      Caption = 'Export...'
       Enabled = False
       OnExecute = ActionExportarExecute
       ShortCut = 16453
     end
     object ActionMesclarProjetos: TAction
-      Caption = 'Mesclar projetos...'
+      Caption = 'Merge projects...'
       Enabled = False
       OnExecute = ActionMesclarProjetosExecute
     end
     object ActionRecriarBaseSugestoes: TAction
-      Caption = 'Recriar base de sugestões...'
+      Caption = 'Recreate association memory'
       OnExecute = ActionRecriarBaseSugestoesExecute
     end
     object ActionSyncTheWordVerse: TAction
@@ -515,27 +526,27 @@ object frmPrincipal: TfrmPrincipal
     end
   end
   object OpenDialog1: TOpenDialog
-    Title = 'Abrir projeto existente'
+    Title = 'Open existing association project'
     DefaultExt = '.bib'
-    Filter = 'Projeto de associação (*.bib)|*.bib'
+    Filter = 'Association project (*.bib)|*.bib'
     InitialDir = '.\dados'
     Options = [ofFileMustExist, ofEnableSizing, ofViewDetail]
     left = 400
     top = 192
   end
   object SaveDialog1: TSaveDialog
-    Title = 'Salvar projeto como...'
+    Title = 'Save project as...'
     DefaultExt = '.bib'
     FileName = 'projeto1'
-    Filter = 'Projetos de associação (*.bib)|*.bib'
+    Filter = 'Association projects (*.bib)|*.bib'
     InitialDir = '.\dados'
     left = 544
     top = 192
   end
   object SaveDialog2: TSaveDialog
-    Title = 'Salvar módulo como...'
+    Title = 'Save module as...'
     DefaultExt = '.nt'
-    Filter = 'Módulo do theWord (*.nt)|*.nt'
+    Filter = 'theWord module (*.nt)|*.nt'
     left = 664
     top = 192
   end

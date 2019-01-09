@@ -3,19 +3,19 @@ object FormPropProjeto: TFormPropProjeto
   Height = 565
   Top = 128
   Width = 553
-  Caption = 'Propriedades'
+  Caption = 'Properties'
   ClientHeight = 565
   ClientWidth = 553
   OnCreate = FormCreate
   Position = poMainFormCenter
-  LCLVersion = '1.2.0.3'
+  LCLVersion = '1.8.4.0'
   object GroupBox2: TGroupBox
     Left = 0
     Height = 82
     Top = 6
     Width = 546
-    Caption = 'Propriedades'
-    ClientHeight = 64
+    Caption = 'Properties'
+    ClientHeight = 62
     ClientWidth = 542
     TabOrder = 0
     object EditNomeProjeto: TLabeledEdit
@@ -31,7 +31,7 @@ object FormPropProjeto: TFormPropProjeto
       EditLabel.Height = 15
       EditLabel.Top = 4
       EditLabel.Width = 519
-      EditLabel.Caption = 'Nome'
+      EditLabel.Caption = 'Name'
       EditLabel.ParentColor = False
       TabOrder = 0
     end
@@ -45,7 +45,6 @@ object FormPropProjeto: TFormPropProjeto
     Default = True
     Kind = bkOK
     ModalResult = 1
-    OnClick = BitBtn1Click
     TabOrder = 1
   end
   object BitBtn2: TBitBtn
@@ -54,7 +53,7 @@ object FormPropProjeto: TFormPropProjeto
     Top = 528
     Width = 91
     Cancel = True
-    Caption = 'Cancelar'
+    Caption = 'Cancel'
     Kind = bkCancel
     ModalResult = 2
     TabOrder = 2
@@ -68,10 +67,10 @@ object FormPropProjeto: TFormPropProjeto
     OnChange = ActionMudancaAbaExecute
     TabIndex = 0
     Tabs.Strings = (
-      'Original'
-      'Destino'
-      'Referência 1'
-      'Referência 2'
+      'Source'
+      'Destination'
+      'Reference 1'
+      'Reference 2'
     )
     TabOrder = 3
     object leDicStrong: TLabeledEdit
@@ -87,7 +86,7 @@ object FormPropProjeto: TFormPropProjeto
       EditLabel.Height = 15
       EditLabel.Top = 89
       EditLabel.Width = 430
-      EditLabel.Caption = 'Dicionário Strong'
+      EditLabel.Caption = 'Strong''s dictionary'
       EditLabel.ParentColor = False
       TabOrder = 1
       OnChange = leDicStrongChange
@@ -105,7 +104,7 @@ object FormPropProjeto: TFormPropProjeto
       EditLabel.Height = 15
       EditLabel.Top = 137
       EditLabel.Width = 430
-      EditLabel.Caption = 'Dicionário Morfologia'
+      EditLabel.Caption = 'Morphology dictionary'
       EditLabel.ParentColor = False
       TabOrder = 2
       OnChange = leDicMorfoChange
@@ -158,8 +157,8 @@ object FormPropProjeto: TFormPropProjeto
       Left = 11
       Height = 15
       Top = 187
-      Width = 30
-      Caption = 'Fonte'
+      Width = 24
+      Caption = 'Font'
       ParentColor = False
     end
     object Button2: TButton
@@ -188,23 +187,23 @@ object FormPropProjeto: TFormPropProjeto
     left = 23
     top = 424
     object ActionCarregarTexto: TAction
-      Caption = 'Carregar novo texto'
+      Caption = 'Load new text'
       OnExecute = ActionCarregarTextoExecute
     end
     object ActionLimparTexto: TAction
-      Caption = 'Limpar texto'
+      Caption = 'Clear text'
       OnExecute = ActionLimparTextoExecute
     end
     object ActionSelecionarStrong: TAction
-      Caption = 'Selecionar'
+      Caption = 'Choose'
       OnExecute = ActionSelecionarStrongExecute
     end
     object ActionSelecionarMorfo: TAction
-      Caption = 'Selecionar'
+      Caption = 'Choose'
       OnExecute = ActionSelecionarMorfoExecute
     end
     object ActionSelecionarFonte: TAction
-      Caption = 'Selecionar'
+      Caption = 'Choose'
       OnExecute = ActionSelecionarFonteExecute
     end
     object ActionMudancaAba: TAction

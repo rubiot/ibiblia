@@ -1,9 +1,9 @@
 object FormNovoProjeto: TFormNovoProjeto
-  Left = 242
+  Left = 290
   Height = 437
-  Top = 132
+  Top = 137
   Width = 459
-  Caption = 'Novo projeto...'
+  Caption = 'New project...'
   ClientHeight = 437
   ClientWidth = 459
   Position = poMainFormCenter
@@ -13,7 +13,7 @@ object FormNovoProjeto: TFormNovoProjeto
     Height = 231
     Top = 152
     Width = 450
-    Caption = 'Textos'
+    Caption = 'Texts'
     ClientHeight = 211
     ClientWidth = 446
     TabOrder = 0
@@ -30,7 +30,7 @@ object FormNovoProjeto: TFormNovoProjeto
       EditLabel.Height = 15
       EditLabel.Top = 6
       EditLabel.Width = 384
-      EditLabel.Caption = 'Idioma original'
+      EditLabel.Caption = 'Source'
       EditLabel.ParentColor = False
       ReadOnly = True
       TabOrder = 0
@@ -48,7 +48,7 @@ object FormNovoProjeto: TFormNovoProjeto
       EditLabel.Height = 15
       EditLabel.Top = 54
       EditLabel.Width = 384
-      EditLabel.Caption = 'Idioma destino'
+      EditLabel.Caption = 'Destination'
       EditLabel.ParentColor = False
       ReadOnly = True
       TabOrder = 1
@@ -66,7 +66,7 @@ object FormNovoProjeto: TFormNovoProjeto
       EditLabel.Height = 15
       EditLabel.Top = 102
       EditLabel.Width = 384
-      EditLabel.Caption = 'Texto referência 1'
+      EditLabel.Caption = 'Reference 1'
       EditLabel.ParentColor = False
       ReadOnly = True
       TabOrder = 2
@@ -84,7 +84,7 @@ object FormNovoProjeto: TFormNovoProjeto
       EditLabel.Height = 15
       EditLabel.Top = 150
       EditLabel.Width = 384
-      EditLabel.Caption = 'Texto referência 2'
+      EditLabel.Caption = 'Reference 2'
       EditLabel.ParentColor = False
       ReadOnly = True
       TabOrder = 3
@@ -144,7 +144,7 @@ object FormNovoProjeto: TFormNovoProjeto
     Top = 396
     Width = 119
     Cancel = True
-    Caption = 'Cancelar'
+    Caption = 'Cancel'
     Kind = bkCancel
     ModalResult = 2
     TabOrder = 2
@@ -154,7 +154,7 @@ object FormNovoProjeto: TFormNovoProjeto
     Height = 80
     Top = 8
     Width = 450
-    Caption = 'Propriedades'
+    Caption = 'Properties'
     ClientHeight = 60
     ClientWidth = 446
     TabOrder = 3
@@ -171,7 +171,7 @@ object FormNovoProjeto: TFormNovoProjeto
       EditLabel.Height = 15
       EditLabel.Top = 4
       EditLabel.Width = 384
-      EditLabel.Caption = 'Nome'
+      EditLabel.Caption = 'Name'
       EditLabel.ParentColor = False
       TabOrder = 0
     end
@@ -182,7 +182,7 @@ object FormNovoProjeto: TFormNovoProjeto
     Top = 97
     Width = 449
     AutoFill = True
-    Caption = 'Escopo'
+    Caption = 'Scope'
     ChildSizing.LeftRightSpacing = 6
     ChildSizing.EnlargeHorizontal = crsHomogenousChildResize
     ChildSizing.EnlargeVertical = crsHomogenousChildResize
@@ -196,14 +196,14 @@ object FormNovoProjeto: TFormNovoProjeto
     Columns = 2
     ItemIndex = 1
     Items.Strings = (
-      'Velho Testamento'
-      'Novo Testamento'
+      'Old Testament'
+      'New Testament'
     )
     TabOrder = 4
   end
   object OpenDialog1: TOpenDialog
-    Title = 'Escolha um módulo do theWord'
-    Filter = 'Módulos de Bíblia do theWord (*.ont, *.nt)|*.ont;*.nt'
+    Title = 'Choose a theWord bible module'
+    Filter = 'theWord bible modules (*.ont, *.nt)|*.ont;*.nt'
     InitialDir = 'C:\Utilities\The Word\Bibles'
     left = 192
     top = 156

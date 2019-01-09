@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
-  ComCtrls, StdCtrls, ExtCtrls, Projeto;
+  ComCtrls, StdCtrls, ExtCtrls, Projeto, LCLTranslator;
 
 type
 
@@ -47,6 +47,12 @@ type
 
 var
   frmExportarProjeto: TFrmExportarProjeto;
+
+resourcestring
+  STheWordOTModule = 'theWord module (*.ot)';
+  STheWordNTModule = 'theWord module (*.nt)';
+  SAnalyticalConcordance = 'AnalyticalConcordance';
+  SSynteticConcordance = 'SynteticConcordance';
 
 implementation
 
@@ -96,12 +102,12 @@ begin
     etOT:
     begin
       SaveDialog1.DefaultExt:='.ot';
-      SaveDialog1.Filter    := 'Módulo do theWord (*.ot)|*.ot';
+      SaveDialog1.Filter    := STheWordOTModule + '|*.ot';
     end;
     etNT:
     begin
       SaveDialog1.DefaultExt:='.nt';
-      SaveDialog1.Filter    := 'Módulo do theWord (*.nt)|*.nt';
+      SaveDialog1.Filter    := STheWordNTModule + '|*.nt';
     end;
   end;
 
@@ -156,9 +162,9 @@ begin
   if abrev = '' then
   begin
     if oeConcordDetalhada in opcoes then
-      abrev := 'ConcordanciaAnalitica'
+      abrev := SAnalyticalConcordance
     else
-      abrev := 'ConcordanciaSintetica';
+      abrev := SSynteticConcordance;
   end;
 
   {if oeConcordDetalhada in opcoes then

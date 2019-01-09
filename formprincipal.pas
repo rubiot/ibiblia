@@ -14,7 +14,7 @@ uses
   {$ENDIF}
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, Menus,
   ActnList, ComCtrls, ExtCtrls, StdCtrls, Projeto, IniFiles, Versiculo, Math,
-  Sintagma;
+  Sintagma, LCLTranslator;
 
 type
 
@@ -64,6 +64,9 @@ type
     MenuItem20: TMenuItem;
     MenuItem21: TMenuItem;
     MenuItem22: TMenuItem;
+    MenuItem23: TMenuItem;
+    MenuItem24: TMenuItem;
+    MenuItem25: TMenuItem;
     MenuItemStrongsCount: TMenuItem;
     MenuItemStrongNegrito: TMenuItem;
     MenuItemRecent: TMenuItem;
@@ -135,6 +138,8 @@ type
     procedure MenuItem21Click(Sender: TObject);
     procedure MenuItem22Click(Sender: TObject);
     procedure AbrirRecenteClick(Sender: TObject);
+    procedure MenuItem24Click(Sender: TObject);
+    procedure MenuItem25Click(Sender: TObject);
     procedure MenuItemStrongNegritoClick(Sender: TObject);
     procedure MenuItemStrongsCountClick(Sender: TObject);
     procedure MenuItemSynciBibliaClick(Sender: TObject);
@@ -236,6 +241,19 @@ begin
 end;
 {$ENDIF}
 
+resourcestring
+  SOpenProject = 'Open project';
+  SProjectFileDoesNotExist = 'The selected project file doesn''t exist:'#13#10'%s';
+  SCloseProject = 'Close project';
+  SSaveChanges = 'Would you like to save your changes?';
+  SSource = 'source';
+  SDestination = 'destination';
+  SReference1 = 'reference 1';
+  SReference2 = 'reference 2';
+  SNewAssociationProject = 'New association project';
+  SLoadingFile = 'Loading %s...';
+  SChanged = 'changed';
+
 { TFrmPrincipal }
 
 procedure TFrmPrincipal.ActionAbrirProjetoExecute(Sender: TObject);
@@ -254,7 +272,7 @@ begin
 
   if not FileExists(OpenDialog1.FileName) then
   begin
-    MessageDlg('Abrir projeto', format('O projeto selecionado não existe:'#13#10'%s', [OpenDialog1.FileName]), mtError, [mbOK], 0);
+    MessageDlg(SOpenProject, format(SProjectFileDoesNotExist, [OpenDialog1.FileName]), mtError, [mbOK], 0);
     exit;
   end;
 
@@ -318,7 +336,7 @@ begin
     salvar := false;
     if ProjetoAtual.Modificado then
     begin
-      case MessageDlg('Fechar projeto', 'Deseja salvar as alterações?', mtConfirmation, [mbYes, mbNo, mbCancel], 0) of
+      case MessageDlg(SCloseProject, SSaveChanges, mtConfirmation, [mbYes, mbNo, mbCancel], 0) of
         mrYes: salvar := true;
         mrNo: salvar := false;
         mrCancel: exit;
@@ -391,10 +409,10 @@ procedure TFrmPrincipal.ActionNovoProjetoExecute(Sender: TObject);
   function QualTexto(v: TTipoTextoBiblico): string;
   begin
     case v of
-      tbOrigem: result := 'origem';
-      tbDestino: result := 'destino';
-      tbConsulta1: result := 'referência 1';
-      tbConsulta2: result := 'referência 2';
+      tbOrigem: result := SSource;
+      tbDestino: result := SDestination;
+      tbConsulta1: result := SReference1;
+      tbConsulta2: result := SReference2;
     end;
   end;
 
@@ -415,7 +433,7 @@ begin
   if ProjetoAtual <> nil then
     exit;
 
-  FormNovoProjeto1.EditNomeProjeto.Text := 'Novo projeto de associação';
+  FormNovoProjeto1.EditNomeProjeto.Text := SNewAssociationProject;
 
   if (FormNovoProjeto1.ShowModal = mrOK) and SaveDialog1.Execute then
   begin
@@ -432,7 +450,7 @@ begin
     //ParThread.pb := ProgressBar1;
     for v:=low(TTipoTextoBiblico) to high(TTipoTextoBiblico) do
     begin
-      StatusBar1.Caption := Format('Carregando %s...', [QualTexto(v)]);
+      StatusBar1.Caption := Format(SLoadingFile, [QualTexto(v)]);
       ParThread.texto := v;
       ParThread.pb := ProgressBar1;
       Application.ProcessMessages;
@@ -660,6 +678,16 @@ begin
      ActionAbrirProjetoExecute(Sender);
 end;
 
+procedure TFrmPrincipal.MenuItem24Click(Sender: TObject);
+begin
+  SetDefaultLang('en');
+end;
+
+procedure TFrmPrincipal.MenuItem25Click(Sender: TObject);
+begin
+  SetDefaultLang('pt');
+end;
+
 procedure TFrmPrincipal.MenuItemStrongNegritoClick(Sender: TObject);
 begin
   TMenuItem(Sender).Checked := not TMenuItem(Sender).Checked;
@@ -703,7 +731,7 @@ end;
 
 procedure TFrmPrincipal.QuandoAlterarVersiculo;
 begin
-  StatusBar1.SimpleText := 'modificado';
+  StatusBar1.SimpleText := SChanged;
 end;
 
 procedure TFrmPrincipal.AtualizarMRU(m: TMenuItem);

@@ -39,6 +39,10 @@ type
     property QuandoModificarVersiculo: TEventoTextoModificado read FEventoTextoModificado write FEventoTextoModificado;
   end;
 
+resourcestring
+  SChangeVerse = 'Change verse text?';
+  SChangeVerseConfirmation = 'Are you sure you want to change the verse text? Some associations may be lost.';
+
 implementation
 
 { TMemoVersiculo }
@@ -64,10 +68,7 @@ procedure TMemoVersiculo.ConfirmarAlteracao;
 begin
   if FModificado then
   begin
-    case MessageDlg('Alterar versículo?',
-        'Você confirma a alteração do texto do versículo?'#13#10 +
-        'Algumas associações deste versículo talvez sejam perdidas.',
-        mtConfirmation, [mbYes, mbNo, mbCancel], 0) of
+    case MessageDlg(SChangeVerse, SChangeVerseConfirmation, mtConfirmation, [mbYes, mbNo, mbCancel], 0) of
       mrYes:
         if assigned(FEventoTextoModificado) then
           FEventoTextoModificado(self);

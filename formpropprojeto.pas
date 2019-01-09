@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
-  StdCtrls, ExtCtrls, Buttons, ComCtrls, ActnList, Projeto;
+  StdCtrls, ExtCtrls, Buttons, ComCtrls, ActnList, Projeto, LCLTranslator;
 
 type
 
@@ -44,7 +44,6 @@ type
     procedure ActionSelecionarFonteExecute(Sender: TObject);
     procedure ActionSelecionarMorfoExecute(Sender: TObject);
     procedure ActionSelecionarStrongExecute(Sender: TObject);
-    procedure BitBtn1Click(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure leDicMorfoChange(Sender: TObject);
     procedure leDicStrongChange(Sender: TObject);
@@ -59,6 +58,16 @@ type
 var
   FormPropProjeto1: TFormPropProjeto;
 
+resourcestring
+  SSetDictionary = 'Set';
+  SChooseABibleModule = 'Please choose a theWord module file...';
+  SChooseAnotherText = 'Change text';
+  SChangeTextConfirmation = 'Are you sure you want to load this new text?';
+  SClearText = 'Clear text';
+  SClearTextConfirmation = 'Are you sure you want to clear this text?';
+  SChooseDictionary = 'Choose';
+  SOpenDictionary = 'Please choose a theWord dictionary module...';
+
 implementation
 
 { TFormPropProjeto }
@@ -70,22 +79,22 @@ end;
 
 procedure TFormPropProjeto.leDicMorfoChange(Sender: TObject);
 begin
-  BitBtn8.Caption := 'Atribuir';
+  BitBtn8.Caption := SSetDictionary;
 end;
 
 procedure TFormPropProjeto.leDicStrongChange(Sender: TObject);
 begin
-  BitBtn4.Caption := 'Atribuir';
+  BitBtn4.Caption := SSetDictionary;
 end;
 
 procedure TFormPropProjeto.ActionCarregarTextoExecute(Sender: TObject);
 begin
   OpenDialog1.Filter := '*.nt; *.ont';
-  OpenDialog1.Title  := 'Selecione um módulo do theWord...';
+  OpenDialog1.Title  := SChooseABibleModule;
   if OpenDialog1.Execute then
   begin
     //leTexto.Text := OpenDialog1.FileName;
-    if MessageDlg('Substituir texto', 'Tem certeza de que deseja substituir o texto atual?', mtConfirmation, [mbYes, mbCancel], 0) = mrYes then
+    if MessageDlg(SChooseAnotherText, SChangeTextConfirmation, mtConfirmation, [mbYes, mbCancel], 0) = mrYes then
     begin
       FProjeto.ImportarModuloTheWord(OpenDialog1.FileName, TTipoTextoBiblico(TabControl1.TabIndex), ProgressBar1);
     end;
@@ -94,7 +103,7 @@ end;
 
 procedure TFormPropProjeto.ActionLimparTextoExecute(Sender: TObject);
 begin
-  if MessageDlg('Limpar texto', 'Tem certeza de que deseja limpar o texto atual?', mtConfirmation, [mbYes, mbCancel], 0) = mrYes then
+  if MessageDlg(SClearText, SClearTextConfirmation, mtConfirmation, [mbYes, mbCancel], 0) = mrYes then
   begin
     FProjeto.LimparTexto(TTipoTextoBiblico(TabControl1.TabIndex));
   end;
@@ -104,8 +113,8 @@ procedure TFormPropProjeto.ActionMudancaAbaExecute(Sender: TObject);
 begin
   leDicStrong.Text := FProjeto.ObterInfo(format('dicstrong%d', [TabControl1.TabIndex]));
   leDicMorfo.Text  := FProjeto.ObterInfo(format('dicmorfo%d', [TabControl1.TabIndex]));
-  BitBtn4.Caption  := 'Selecionar'; // seleção Strong
-  BitBtn8.Caption  := 'Selecionar'; // seleção Morfo
+  BitBtn4.Caption  := SChooseDictionary; // seleção Strong
+  BitBtn8.Caption  := SChooseDictionary; // seleção Morfo
   MemoFonte.Text   := FProjeto.ObterTextoSimplesVersiculo(TTipoTextoBiblico(TabControl1.TabIndex));
   MemoFonte.Font   := FProjeto.ObterFonteTexto(TTipoTextoBiblico(TabControl1.TabIndex));
 end;
@@ -126,8 +135,8 @@ var
 begin
   //OpenDialog1.Filter := '*.nt; *.ont';
   OpenDialog1.FileName := leDicMorfo.Text;
-  OpenDialog1.Title  := 'Selecione um módulo de dicionário do theWord...';
-  if (BitBtn8.Caption = 'Atribuir') or OpenDialog1.Execute then
+  OpenDialog1.Title  := SOpenDictionary;
+  if (BitBtn8.Caption = SSetDictionary) or OpenDialog1.Execute then
   begin
     { utilizando caminho relativo sempre que possível }
     GetDir(0, d);
@@ -138,7 +147,7 @@ begin
       leDicMorfo.Text := OpenDialog1.FileName;
     FProjeto.AtribuirDicMorfo(leDicMorfo.Text, [TTipoTextoBiblico(TabControl1.TabIndex)]);
   end;
-  BitBtn8.Caption := 'Selecionar';
+  BitBtn8.Caption := SChooseDictionary;
 end;
 
 procedure TFormPropProjeto.ActionSelecionarStrongExecute(Sender: TObject);
@@ -147,8 +156,8 @@ var
 begin
   //OpenDialog1.Filter := '*.nt; *.ont';
   OpenDialog1.FileName := leDicStrong.Text;
-  OpenDialog1.Title  := 'Selecione um módulo de dicionário do theWord...';
-  if (BitBtn4.Caption = 'Atribuir') or OpenDialog1.Execute then
+  OpenDialog1.Title  := SOpenDictionary;
+  if (BitBtn4.Caption = SSetDictionary) or OpenDialog1.Execute then
   begin
     { utilizando caminho relativo sempre que possível }
     GetDir(0, d);
@@ -159,12 +168,7 @@ begin
       leDicStrong.Text := OpenDialog1.FileName;
     FProjeto.AtribuirDicStrong(leDicStrong.Text, [TTipoTextoBiblico(TabControl1.TabIndex)]);
   end;
-  BitBtn4.Caption := 'Selecionar';
-end;
-
-procedure TFormPropProjeto.BitBtn1Click(Sender: TObject);
-begin
-
+  BitBtn4.Caption := SChooseDictionary;
 end;
 
 procedure TFormPropProjeto.SetProjeto(p: TProjeto);
