@@ -5,8 +5,8 @@ msgstr "Content-Type: text/plain; charset=UTF-8"
 msgid "AnalyticalConcordance"
 msgstr ""
 
-#: formexportar.ssynteticconcordance
-msgid "SynteticConcordance"
+#: formexportar.ssyntheticconcordance
+msgid "SyntheticConcordance"
 msgstr ""
 
 #: formexportar.sthewordntmodule

@@ -155,7 +155,6 @@
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="formPrincipal"/>
-        <IsVisibleTab Value="True"/>
         <EditorIndex Value="2"/>
         <WindowIndex Value="1"/>
         <TopLine Value="686"/>
@@ -195,8 +194,8 @@
         <UnitName Value="Projeto"/>
         <EditorIndex Value="5"/>
         <WindowIndex Value="1"/>
-        <TopLine Value="238"/>
-        <CursorPos X="16" Y="239"/>
+        <TopLine Value="403"/>
+        <CursorPos X="3" Y="409"/>
         <ExtraEditorCount Value="1"/>
         <ExtraEditor1>
           <EditorIndex Value="-1"/>
@@ -304,10 +303,10 @@
         <ComponentName Value="frmExportarProjeto"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
+        <IsVisibleTab Value="True"/>
         <EditorIndex Value="18"/>
         <WindowIndex Value="1"/>
-        <TopLine Value="145"/>
-        <CursorPos X="36" Y="164"/>
+        <TopLine Value="45"/>
         <UsageCount Value="203"/>
         <Loaded Value="True"/>
         <LoadedDesigner Value="True"/>
@@ -318,7 +317,7 @@
         <UnitName Value="ExportarProjeto"/>
         <EditorIndex Value="12"/>
         <WindowIndex Value="1"/>
-        <TopLine Value="363"/>
+        <TopLine Value="362"/>
         <CursorPos X="29" Y="284"/>
         <UsageCount Value="203"/>
         <Loaded Value="True"/>
@@ -363,6 +362,7 @@
         <UnitName Value="twSyncThread"/>
         <EditorIndex Value="4"/>
         <WindowIndex Value="1"/>
+        <TopLine Value="19"/>
         <CursorPos Y="44"/>
         <UsageCount Value="212"/>
         <Loaded Value="True"/>
@@ -428,123 +428,123 @@
     <JumpHistory Count="30" HistoryIndex="29">
       <Position1>
         <Filename Value="sintagma.pas"/>
-        <Caret Line="98" Column="15" TopLine="80"/>
+        <Caret Line="573" Column="57" TopLine="554"/>
       </Position1>
       <Position2>
-        <Filename Value="versiculo.pas"/>
-        <Caret Line="351" Column="30" TopLine="332"/>
+        <Filename Value="sintagma.pas"/>
+        <Caret Line="91" Column="14" TopLine="74"/>
       </Position2>
       <Position3>
         <Filename Value="sintagma.pas"/>
-        <Caret Line="573" Column="57" TopLine="554"/>
+        <Caret Line="457" Column="62" TopLine="444"/>
       </Position3>
       <Position4>
-        <Filename Value="sintagma.pas"/>
-        <Caret Line="91" Column="14" TopLine="74"/>
+        <Filename Value="ontparser.pas"/>
+        <Caret Line="256" TopLine="231"/>
       </Position4>
       <Position5>
         <Filename Value="sintagma.pas"/>
-        <Caret Line="457" Column="62" TopLine="444"/>
+        <Caret Line="736" TopLine="698"/>
       </Position5>
       <Position6>
-        <Filename Value="ontparser.pas"/>
-        <Caret Line="256" TopLine="231"/>
+        <Filename Value="sintagma.pas"/>
+        <Caret Line="93" Column="15" TopLine="76"/>
       </Position6>
       <Position7>
         <Filename Value="sintagma.pas"/>
-        <Caret Line="736" TopLine="698"/>
+        <Caret Line="463" Column="40" TopLine="461"/>
       </Position7>
       <Position8>
-        <Filename Value="sintagma.pas"/>
-        <Caret Line="93" Column="15" TopLine="76"/>
+        <Filename Value="versiculo.pas"/>
+        <Caret Line="342" Column="37" TopLine="332"/>
       </Position8>
       <Position9>
-        <Filename Value="sintagma.pas"/>
-        <Caret Line="463" Column="40" TopLine="461"/>
+        <Filename Value="versiculo.pas"/>
+        <Caret Line="1090" TopLine="910"/>
       </Position9>
       <Position10>
         <Filename Value="versiculo.pas"/>
-        <Caret Line="342" Column="37" TopLine="332"/>
+        <Caret Line="90" Column="15" TopLine="72"/>
       </Position10>
       <Position11>
         <Filename Value="versiculo.pas"/>
-        <Caret Line="1090" TopLine="910"/>
+        <Caret Line="336" Column="3" TopLine="328"/>
       </Position11>
       <Position12>
         <Filename Value="versiculo.pas"/>
-        <Caret Line="90" Column="15" TopLine="72"/>
+        <Caret Line="91" Column="27" TopLine="72"/>
       </Position12>
       <Position13>
-        <Filename Value="versiculo.pas"/>
-        <Caret Line="336" Column="3" TopLine="328"/>
-      </Position13>
-      <Position14>
-        <Filename Value="versiculo.pas"/>
-        <Caret Line="91" Column="27" TopLine="72"/>
-      </Position14>
-      <Position15>
         <Filename Value="sintagma.pas"/>
         <Caret Line="463" Column="5" TopLine="461"/>
+      </Position13>
+      <Position14>
+        <Filename Value="formprincipal.pas"/>
+        <Caret Line="580" Column="26" TopLine="569"/>
+      </Position14>
+      <Position15>
+        <Filename Value="formnovoprojeto.pas"/>
+        <Caret Line="23" Column="67" TopLine="18"/>
       </Position15>
       <Position16>
         <Filename Value="formprincipal.pas"/>
-        <Caret Line="580" Column="26" TopLine="569"/>
+        <Caret Line="428" Column="67" TopLine="411"/>
       </Position16>
       <Position17>
-        <Filename Value="formnovoprojeto.pas"/>
-        <Caret Line="23" Column="67" TopLine="18"/>
-      </Position17>
-      <Position18>
-        <Filename Value="formprincipal.pas"/>
-        <Caret Line="428" Column="67" TopLine="411"/>
-      </Position18>
-      <Position19>
         <Filename Value="projeto.pas"/>
         <Caret Line="216" TopLine="181"/>
-      </Position19>
-      <Position20>
-        <Filename Value="projeto.pas"/>
-        <Caret Line="2042" TopLine="2254"/>
-      </Position20>
-      <Position21>
+      </Position17>
+      <Position18>
         <Filename Value="projeto.pas"/>
         <Caret Line="266" Column="3" TopLine="239"/>
-      </Position21>
-      <Position22>
+      </Position18>
+      <Position19>
         <Filename Value="versiculo.pas"/>
         <Caret Line="1089" Column="86" TopLine="1058"/>
+      </Position19>
+      <Position20>
+        <Filename Value="formprincipal.pas"/>
+        <Caret Line="429" Column="67" TopLine="413"/>
+      </Position20>
+      <Position21>
+        <Filename Value="memoversiculo.pas"/>
+        <Caret Line="44" TopLine="26"/>
+      </Position21>
+      <Position22>
+        <Filename Value="formprincipal.pas"/>
+        <Caret Line="785" Column="3" TopLine="775"/>
       </Position22>
       <Position23>
         <Filename Value="formprincipal.pas"/>
-        <Caret Line="429" Column="67" TopLine="413"/>
+        <Caret Line="786" Column="3" TopLine="776"/>
       </Position23>
       <Position24>
-        <Filename Value="memoversiculo.pas"/>
-        <Caret Line="70" TopLine="85"/>
+        <Filename Value="formprincipal.pas"/>
+        <Caret Line="787" Column="3" TopLine="777"/>
       </Position24>
       <Position25>
-        <Filename Value="memoversiculo.pas"/>
-        <Caret Line="44" TopLine="26"/>
+        <Filename Value="formprincipal.pas"/>
+        <Caret Line="794" Column="3" TopLine="784"/>
       </Position25>
       <Position26>
         <Filename Value="formprincipal.pas"/>
-        <Caret Line="785" Column="3" TopLine="775"/>
+        <Caret Line="683" Column="24" TopLine="681"/>
       </Position26>
       <Position27>
-        <Filename Value="formprincipal.pas"/>
-        <Caret Line="786" Column="3" TopLine="776"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="140" Column="16" TopLine="129"/>
       </Position27>
       <Position28>
-        <Filename Value="formprincipal.pas"/>
-        <Caret Line="787" Column="3" TopLine="777"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="1443" Column="17" TopLine="1418"/>
       </Position28>
       <Position29>
-        <Filename Value="formprincipal.pas"/>
-        <Caret Line="794" Column="3" TopLine="784"/>
+        <Filename Value="twsyncthread.pas"/>
+        <Caret Line="44" TopLine="19"/>
       </Position29>
       <Position30>
-        <Filename Value="formprincipal.pas"/>
-        <Caret Line="683" Column="24" TopLine="681"/>
+        <Filename Value="formexportar.pas"/>
+        <Caret Line="167" Column="22" TopLine="148"/>
       </Position30>
     </JumpHistory>
   </ProjectOptions>

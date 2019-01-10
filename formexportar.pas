@@ -52,7 +52,7 @@ resourcestring
   STheWordOTModule = 'theWord module (*.ot)';
   STheWordNTModule = 'theWord module (*.nt)';
   SAnalyticalConcordance = 'AnalyticalConcordance';
-  SSynteticConcordance = 'SynteticConcordance';
+  SSyntheticConcordance = 'SyntheticConcordance';
 
 implementation
 
@@ -164,7 +164,7 @@ begin
     if oeConcordDetalhada in opcoes then
       abrev := SAnalyticalConcordance
     else
-      abrev := SSynteticConcordance;
+      abrev := SSyntheticConcordance;
   end;
 
   {if oeConcordDetalhada in opcoes then

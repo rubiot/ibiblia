@@ -15,8 +15,8 @@ msgstr ""
 msgid "AnalyticalConcordance"
 msgstr "ConcordanciaAnalitica"
 
-#: formexportar.ssynteticconcordance
-msgid "SynteticConcordance"
+#: formexportar.ssyntheticconcordance
+msgid "SyntheticConcordance"
 msgstr "ConcordanciaSintetica"
 
 #: formexportar.sthewordntmodule
@@ -68,7 +68,9 @@ msgstr "Abrir projeto"
 msgid ""
 "The selected project file doesn't exist:\n"
 "%s\n"
-msgstr "O arquivo de projeto selecionado não existe: %s"
+msgstr ""
+"O arquivo de projeto selecionado não existe:\n"
+"%s\n"
 
 #: formprincipal.sreference1
 msgid "reference 1"
@@ -114,7 +116,7 @@ msgstr "Tem certeza de que deseja limpar este texto?"
 
 #: formpropprojeto.sopendictionary
 msgid "Please choose a theWord dictionary module..."
-msgstr "Escolha um módulo de dicionário do theWord"
+msgstr "Escolha um módulo de dicionário do theWord..."
 
 #: formpropprojeto.ssetdictionary
 msgid "Set"
@@ -665,7 +667,7 @@ msgstr "Abrir um projeto existente"
 
 #: tfrmprincipal.actionexportar.caption
 msgid "Export..."
-msgstr "Exportar"
+msgstr "Exportar..."
 
 #: tfrmprincipal.actionexportardestinocomstrongs.caption
 msgid "Export destination text"
@@ -887,4 +889,3 @@ msgstr "Salvar módulo como..."
 #: tfrmprincipal.toolbar1.caption
 msgid "ToolBar1"
 msgstr "ToolBar1"
-
