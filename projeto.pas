@@ -392,8 +392,11 @@ begin
 end;
 
 function TProjeto.GetReferencia: string;
+var
+  b, c, v: integer;
 begin
-  result := FTblPares.FieldByName('pare_ref').AsString;
+  sscanf(GetID(), '%d,%d,%d', [@b, @c, @v]);
+  result := format('%s %d:%d', [NLivros[FEscopo][b-OffsetLivros[FEscopo]-1], c, v]);
 end;
 
 function TProjeto.GetSituacao: Integer;
