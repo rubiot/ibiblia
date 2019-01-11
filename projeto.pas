@@ -1782,7 +1782,7 @@ begin
 
     DesabilitarEventosRolagem;
     VersiculoInicial;
-    for i:=offset to offset + QLinhas[FEscopo] do
+    for i:=offset to offset + QLinhas[FEscopo] - 1 do
     begin
       { aplicando verse.rules }
       for m:=0 to verseRulesDe.Count-1 do

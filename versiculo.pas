@@ -390,105 +390,113 @@ begin
 
   LimparSelecao;
 
-  if FSintagmas[FSintagmas.Count-1].Tipo = tsStrongCount then
+  if FSintagmas.Count = 0 then
   begin
-    FSintagmas[FSintagmas.Count-1].Destruir;
-    FSintagmas.Delete(FSintagmas.Count-1);
-  end;
-
-  result := TSintagmaList.Create;
-
-  { reaproveitando sintagmas não modificados do início }
-  fwd_new := new.GetEnumerator;
-  for s in FSintagmas do
+    FSintagmas := new;
+  end
+  else
   begin
-    if not fwd_new.MoveNext then
-      break;
-    if s.Igual(new[0]) then
+    if FSintagmas[FSintagmas.Count-1].Tipo = tsStrongCount then
     begin
-      result.Add(s);
-      FSintagmas.Delete(0);
-      new[0].Destruir;
-      new.Delete(0);
-    end
-    else
-      break;
-  end;
-  fwd_new.Destroy;
-
-  middle := result.Count;
-  { reaproveitando sintagmas não modificados do fim }
-  rev_new := new.GetReverseEnumerator;
-  for s in FSintagmas.GetReverseEnumerator do
-  begin
-    if not rev_new.MoveNext then
-      break;
-    if s.Igual(new[new.Count-1]) then
-    begin
-      result.Insert(middle, s);
-      FSintagmas.Remove(s);
-      new[new.Count-1].Destruir;
-      new.Delete(new.Count-1);
+      FSintagmas[FSintagmas.Count-1].Destruir;
+      FSintagmas.Delete(FSintagmas.Count-1);
     end;
-  end;
-  rev_new.Destroy;
 
-  { tentando reaproveitar os sintagmas do meio }
-  while not (new.Empty and FSintagmas.Empty) do
-  begin
-    if new.Count = 0 then
+    result := TSintagmaList.Create;
+
+    { reaproveitando sintagmas não modificados do início }
+    fwd_new := new.GetEnumerator;
+    for s in FSintagmas do
     begin
-      FSintagmas[0].Destruir;
-      FSintagmas.Delete(0);
-    end
-    else
-    if FSintagmas.Count = 0 then
+      if not fwd_new.MoveNext then
+        break;
+      if s.Igual(new[0]) then
+      begin
+        result.Add(s);
+        FSintagmas.Delete(0);
+        new[0].Destruir;
+        new.Delete(0);
+      end
+      else
+        break;
+    end;
+    fwd_new.Destroy;
+
+    middle := result.Count;
+    { reaproveitando sintagmas não modificados do fim }
+    rev_new := new.GetReverseEnumerator;
+    for s in FSintagmas.GetReverseEnumerator do
     begin
-     result.Insert(middle, new[0]);
-     new.Delete(0);
-    end
-    else
-    if new[0].Igual(FSintagmas[0]) then
+      if not rev_new.MoveNext then
+        break;
+      if s.Igual(new[new.Count-1]) then
+      begin
+        result.Insert(middle, s);
+        FSintagmas.Remove(s);
+        new[new.Count-1].Destruir;
+        new.Delete(new.Count-1);
+      end;
+    end;
+    rev_new.Destroy;
+
+    { tentando reaproveitar os sintagmas do meio }
+    while not (new.Empty and FSintagmas.Empty) do
     begin
-      result.Insert(middle, FSintagmas[0]);
-      FSintagmas.Delete(0);
-      new[0].Destruir;
-      new.Delete(0);
-    end
-    else
-    begin
-      // verificando se o velho sintagma ainda será usado
-      found := false;
-      for s in new do
-        if s.Igual(FSintagmas[0]) then
-        begin
-          found := true;
-          break;
-        end;
-      if not found then // não será utilizado, apagando-o
+      if new.Count = 0 then
       begin
         FSintagmas[0].Destruir;
         FSintagmas.Delete(0);
+      end
+      else
+      if FSintagmas.Count = 0 then
+      begin
+       result.Insert(middle, new[0]);
+       new.Delete(0);
+      end
+      else
+      if new[0].Igual(FSintagmas[0]) then
+      begin
+        result.Insert(middle, FSintagmas[0]);
+        FSintagmas.Delete(0);
+        new[0].Destruir;
+        new.Delete(0);
+      end
+      else
+      begin
+        // verificando se o velho sintagma ainda será usado
+        found := false;
+        for s in new do
+          if s.Igual(FSintagmas[0]) then
+          begin
+            found := true;
+            break;
+          end;
+        if not found then // não será utilizado, apagando-o
+        begin
+          FSintagmas[0].Destruir;
+          FSintagmas.Delete(0);
+        end;
+        result.Insert(middle, new[0]);
+        new.Delete(0);
       end;
-      result.Insert(middle, new[0]);
-      new.Delete(0);
+      Inc(middle);
     end;
-    Inc(middle);
+
+    if new.Count > 0 then
+      raise Exception.Create('Ainda há sintagmas novos que não foram liberados!');
+
+    if FSintagmas.Count > 0 then
+      raise Exception.Create('Ainda há sintagmas antigos que não foram liberados!');
+
+    FSintagmas.Destroy;
+    FSintagmas := result;
   end;
-
-  if new.Count > 0 then
-    raise Exception.Create('Ainda há sintagmas novos que não foram liberados!');
-
-  if FSintagmas.Count > 0 then
-    raise Exception.Create('Ainda há sintagmas antigos que não foram liberados!');
-
-  FSintagmas.Destroy;
-  FSintagmas := result;
 
   FXML := _XML;
   FXMLModificado := true;
   FModificado := true;
-  VersiculoPar.Modificado := true;
+  if assigned(VersiculoPar) then
+    VersiculoPar.Modificado := true;
   SintagmaClipboard := nil;
 
   Renderizar;
