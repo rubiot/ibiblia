@@ -246,6 +246,15 @@ msgstr "Ester"
 msgid "Exodus"
 msgstr "Êxodo"
 
+#: projeto.sexporttofileerror
+msgid ""
+"iBiblia found and error while exporting the module file.\n"
+"Please check if theWord is using the file, then close it and try again.\n"
+msgstr ""
+"iBiblia encontrou um erro ao salvar o módulo.\n"
+"Verifique se o theWord está usando o arquivo. Se sim,\n"
+"feche-o, e tente exportar novamente.\n"
+
 #: projeto.sezekiel
 msgid "Ezekiel"
 msgstr "Ezequiel"
@@ -827,15 +836,15 @@ msgstr "Sugerir associações automaticamente"
 
 #: tfrmprincipal.menuitem23.caption
 msgid "Language"
-msgstr ""
+msgstr "Language/Idioma"
 
 #: tfrmprincipal.menuitem24.caption
 msgid "English"
-msgstr ""
+msgstr "English"
 
 #: tfrmprincipal.menuitem25.caption
 msgid "Português"
-msgstr ""
+msgstr "Português"
 
 #: tfrmprincipal.menuitem5.caption
 msgid "Navigation"

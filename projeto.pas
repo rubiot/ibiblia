@@ -271,6 +271,8 @@ resourcestring
   SProjectDoesntExist = 'The selected project doesn''t exist: %s';
   SInvalidLineCount = 'Invalid file, it must have at least %d lines';
   SFailedToCreateFile = 'Failed to create file: %s';
+  SExportToFileError = 'iBiblia found and error while exporting the module file.'#13#10 +
+                       'Please check if theWord is using the file, then close it and try again.';
 
 const
   NLivrosVT: array[1..39] of string = (
@@ -1920,21 +1922,14 @@ begin
       ONT.Strings[0] := ONT.Strings[0] + '<_MORPH_>';
 
     ONT.Add('');
-
     ONT.Add(ResgatarInfo('propriedades.destino'));
-    //ONT.Add('lang=por');
-    //ONT.Add('short.title=ACF2007+');
-    //ONT.Add('description=Almeida Corrigida Fiel Edição 2007, com números de Strong e morfologia');
-    //ONT.Add('version.major=1');
-    //ONT.Add('version.minor=0');
-    //ONT.Add('version.date=2011-01-24');
-    //ONT.Add('creator=Costas Stergiou (root@theword.gr), Rúbio Terra (rubio.terra@gmail.com)');
-    //ONT.Add('font=Gentium,GentiumAlt,TITUS Cyberbit Basic,Vusillys,Cardo,Georgia Greek,Galatia SIL,Galilee Unicode Gk,@Code2000,Palatino Linotype,Athena Unicode,Athena');
-
-    //ONT.Add('verse.rule="([^\s<>]+)(<W(G[^>]+)>(?:<WT([^>]+)>)?)(<W(G[^>]+)><WT([^>]+)>)?" "<wt><a href=_ORIGWORD_$1|_STRONG_$3|_MORPH_$4|_STRONG2_$6|_MORPH2_$7|_NOLINK_>$1</a>$2$5"');
-
     ONT.Strings[0] := #239#187#191 + ONT.Strings[0]; // adicionando BOM
-    ONT.SaveToFile(arquivo);
+
+    try
+      ONT.SaveToFile(arquivo);
+    except
+      on E: Exception do MessageDlg(SError, SExportToFileError, mtError, [mbOK], 0);
+    end;
   finally
     ONT.Destroy;
     FAVersiculo[tbOrigem].Ativo := true;
@@ -2004,22 +1999,14 @@ begin
     end;
 
     ONT.Add('');
-
     ONT.Add(ResgatarInfo('propriedades.origem'));
-
-    //ONT.Add('lang=por');
-    //ONT.Add('short.title=ACF2007i');
-    //ONT.Add('description=Almeida Corrigida Fiel Edição 2007, interlinear');
-    //ONT.Add('version.major=1');
-    //ONT.Add('version.minor=0');
-    ////ONT.Add('version.date=2011-01-24');
-    ////ONT.Add('creator=Costas Stergiou (root@theword.gr), Rúbio Terra (rubio.terra@gmail.com)');
-    //ONT.Add('font=Gentium,GentiumAlt,TITUS Cyberbit Basic,Vusillys,Cardo,Georgia Greek,Galatia SIL,Galilee Unicode Gk,@Code2000,Palatino Linotype,Athena Unicode,Athena');
-    //ONT.Add('verse.rule="((^|(\ ))([αβγδεζηθικλμνξοπρστυφχψως\[\]]+))" "$3<wt>$4"');
-    //ONT.Add('verse.rule="<wt>([αβγδεζηθικλμνξοπρστυφχψως\[\]]+)(.*?)(<W(G\d+)>)?(<W(G\d+)>)?(<W(G\d+)>)?(<WT([^\ >]+)>)" "<wt><a href=_ORIGWORD_$1|_MORPH_$10|_STRONG_$4|_STRONG2_$6|_STRONG3_$8|_NOLINK_>$1</a>$2$3$5$7$9"');
-
     ONT.Strings[0] := #239#187#191 + ONT.Strings[0]; // adicionando BOM
-    ONT.SaveToFile(arquivo);
+
+    try
+      ONT.SaveToFile(arquivo);
+    except
+      on E: Exception do MessageDlg(SError, SExportToFileError, mtError, [mbOK], 0);
+    end;
   finally
     ONT.Destroy;
     FAVersiculo[tbOrigem].Ativo := true;

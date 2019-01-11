@@ -234,6 +234,12 @@ msgstr ""
 msgid "Exodus"
 msgstr ""
 
+#: projeto.sexporttofileerror
+msgid ""
+"iBiblia found and error while exporting the module file.\n"
+"Please check if theWord is using the file, then close it and try again.\n"
+msgstr ""
+
 #: projeto.sezekiel
 msgid "Ezekiel"
 msgstr ""
