@@ -107,6 +107,7 @@ type
     function CriarObjetoQuery(db: string): TSQLQuery;
     function InserirInfo(info, valor: string): boolean;
     function AtualizarInfo(info, valor: string): boolean;
+    function AtualizarConfig(table: TSqlite3Dataset; name, value: string): boolean;
     function ResgatarInfo(info: string): string;
     function ObterDefinicaoStrong(strong: string; texto: TTipoTextoBiblico): string;
     function ObterDefinicaoMorfo(morfo: string; texto: TTipoTextoBiblico): string;
@@ -159,8 +160,8 @@ type
     procedure ExportarTextoDestinoComStrongs(arquivo: string; pb: TProgressBar; opcoes: TOpcoesExportacao);
     procedure ExportarTextoInterlinear(arquivo: string; opcoes: TOpcoesExportacao);
     procedure ExportarTextoInterlinear(arquivo: string; pb: TProgressBar; opcoes: TOpcoesExportacao);
-    procedure ExportarConcordancia(arquivo: string; opcoes: TOpcoesExportacao);
-    procedure ExportarConcordancia(arquivo: string; pb: TProgressBar; opcoes: TOpcoesExportacao);
+    procedure ExportarConcordancia(arquivo: string; opcoes: TOpcoesExportacao; abbreviation: string);
+    procedure ExportarConcordancia(arquivo: string; pb: TProgressBar; opcoes: TOpcoesExportacao; abbreviation: string);
     procedure AtribuirFonteTexto(fonte: TFont; textos: STextosBiblicos);
     procedure LimparTexto(texto: TTipoTextoBiblico);
     function ObterFonteTexto(texto: TTipoTextoBiblico): TFont;
@@ -262,6 +263,9 @@ resourcestring
   SJude = 'Jude';
   SRevelation = 'Revelation';
 
+  SAnalyticalConcordance = 'Anaytical Concordance';
+  SSyntheticConcordance = 'Synthetic Concordance';
+  SLanguageId = 'en';
   SError = 'Error';
   SCorruptedData = 'Corrupted data, some associations may be lost.';
   SStrongDictionary = 'Strong''s Dictionary';
@@ -585,11 +589,23 @@ begin
   result := FTblInfo.RowsAffected = 1;}
 end;
 
+function TProjeto.AtualizarConfig(table: TSqlite3Dataset; name, value: string): boolean;
+begin
+  result := table.Locate('name', name, []);
+
+  if result then
+  begin
+    table.Edit;
+    table.Fields[1].AsString := value;
+    table.Post;
+  end;
+end;
+
 function TProjeto.ResgatarInfo(info: string): string;
 begin
   result := '';
   if FTblInfo.Locate('id', info, []) then
-    result := FTblInfo.Fields[1].AsString;
+    result := FTblInfo.Fields[1].AsString
   {result := FTblInfo.QuickQuery(format('select valor from info where id = ''%s''', [AnsiReplaceStr(info, '''', '''''')]));}
 end;
 
@@ -2019,21 +2035,25 @@ begin
 end;
 
 procedure TProjeto.ExportarConcordancia(arquivo: string;
-  opcoes: TOpcoesExportacao);
+  opcoes: TOpcoesExportacao; abbreviation: string);
 begin
-  ExportarConcordancia(arquivo, nil, opcoes);
+  ExportarConcordancia(arquivo, nil, opcoes, abbreviation);
 end;
 
 procedure TProjeto.ExportarConcordancia(arquivo: string;
-  pb: TProgressBar; opcoes: TOpcoesExportacao);
+  pb: TProgressBar; opcoes: TOpcoesExportacao; abbreviation: string);
 var
   Concordancia: TConcordancia;
   tblTopicos: TSqlite3Dataset;
   tblConteudo: TSqlite3Dataset;
+  tblConfig: TSqlite3Dataset;
   marcador: string;
   pares: TStringList;
   s: string;
 begin
+  if (FAVersiculo[tbOrigem] = nil) or (FAVersiculo[tbDestino] = nil) then
+    exit;
+
   if not FileExists(arquivo) then
   begin
     try
@@ -2048,9 +2068,16 @@ begin
   tblConteudo.Open;
   tblTopicos := CriarObjetoTabela(arquivo, 'topics', 'id');
   tblTopicos.Open;
+  tblConfig := CriarObjetoTabela(arquivo, 'config', 'name');
+  tblConfig.Open;
 
-  if (FAVersiculo[tbOrigem] = nil) or (FAVersiculo[tbDestino] = nil) then
-    exit;
+  AtualizarConfig(tblConfig, 'title',               format('%s %s', [abbreviation, IfThen(oeConcordDetalhada in opcoes, SAnalyticalConcordance, SSyntheticConcordance)]));
+  AtualizarConfig(tblConfig, 'lang',                SLanguageId);
+  AtualizarConfig(tblConfig, 'description.english', format('%s %s', [abbreviation, IfThen(oeConcordDetalhada in opcoes, 'Analytical Concordance', 'Synthetic Concordance')]));
+  AtualizarConfig(tblConfig, 'title.english',       format('%s %s', [abbreviation, IfThen(oeConcordDetalhada in opcoes, 'Analytical Concordance', 'Synthetic Concordance')]));
+  AtualizarConfig(tblConfig, 'version.date',        FormatDateTime('YYYY-MM-DD', Now));
+  AtualizarConfig(tblConfig, 'description',         format('%s %s', [abbreviation, IfThen(oeConcordDetalhada in opcoes, SAnalyticalConcordance, SSyntheticConcordance)]));
+  AtualizarConfig(tblConfig, 'abbrev',              abbreviation);
 
   try
     if assigned(pb) then
@@ -2121,6 +2148,8 @@ begin
     Application.ProcessMessages;
     tblConteudo.ApplyUpdates;
     tblConteudo.Close;
+    tblConfig.ApplyUpdates;
+    tblConfig.Close;
     tblTopicos.Close;
     Concordancia.Free;
     FAVersiculo[tbOrigem].Ativo := true;

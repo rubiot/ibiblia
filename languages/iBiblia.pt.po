@@ -206,6 +206,10 @@ msgstr "Atos dos apóstolos"
 msgid "Amos"
 msgstr "Amós"
 
+#: projeto.sanalyticalconcordance
+msgid "Anaytical Concordance"
+msgstr "Concordância Analítica"
+
 #: projeto.scolossians
 msgid "Colossians"
 msgstr "Colossenses"
@@ -339,6 +343,10 @@ msgstr "Juízes"
 msgid "Lamentations"
 msgstr "Lamentações"
 
+#: projeto.slanguageid
+msgid "en"
+msgstr "pt"
+
 #: projeto.sleviticus
 msgid "Leviticus"
 msgstr "Levítico"
@@ -427,6 +435,10 @@ msgstr "Cântico dos cânticos"
 #: projeto.sstrongdictionary
 msgid "Strong's Dictionary"
 msgstr "Dicionário de Strong"
+
+#: projeto.ssyntheticconcordance
+msgid "Synthetic Concordance"
+msgstr "Concordância Sintética"
 
 #: projeto.stitus
 msgid "Titus"

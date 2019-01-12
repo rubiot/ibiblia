@@ -176,11 +176,13 @@ begin
   begin
     try
        self.Enabled:=false;
-       FProjeto.ExportarConcordancia(SaveDialogConcordancia.FileName, ProgressBar1, opcoes);
+       FProjeto.ExportarConcordancia(SaveDialogConcordancia.FileName, ProgressBar1, opcoes, leAbreviacao.Text);
     finally
       self.Enabled:=true;
     end;
   end;
+
+  FProjeto.AtribuirInfo('propriedades.abbrev', leAbreviacao.Text);
 end;
 
 procedure TFrmExportarProjeto.SetProjeto(projeto: TProjeto);
@@ -188,6 +190,7 @@ begin
   FProjeto := projeto;
   MemoRodapeOrigem.Text := FProjeto.ObterInfo('propriedades.origem');
   MemoRodapeDestino.Text := FProjeto.ObterInfo('propriedades.destino');
+  leAbreviacao.Text := FProjeto.ObterInfo('propriedades.abbrev');
   cbExportarComentarios.Checked := FProjeto.ObterInfo('opcoes.exportar.comentarios') = '1';
   cbExportarMorfologia.Checked := FProjeto.ObterInfo('opcoes.exportar.morfologia') = '1';
   cbExportarNAComoItalicos.Checked := FProjeto.ObterInfo('opcoes.exportar.na.como.italicos') = '1';

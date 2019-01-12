@@ -194,6 +194,10 @@ msgstr ""
 msgid "Amos"
 msgstr ""
 
+#: projeto.sanalyticalconcordance
+msgid "Anaytical Concordance"
+msgstr ""
+
 #: projeto.scolossians
 msgid "Colossians"
 msgstr ""
@@ -324,6 +328,10 @@ msgstr ""
 msgid "Lamentations"
 msgstr ""
 
+#: projeto.slanguageid
+msgid "en"
+msgstr ""
+
 #: projeto.sleviticus
 msgid "Leviticus"
 msgstr ""
@@ -411,6 +419,10 @@ msgstr ""
 
 #: projeto.sstrongdictionary
 msgid "Strong's Dictionary"
+msgstr ""
+
+#: projeto.ssyntheticconcordance
+msgid "Synthetic Concordance"
 msgstr ""
 
 #: projeto.stitus

@@ -17,8 +17,8 @@ object frmPrincipal: TfrmPrincipal
   LCLVersion = '1.8.4.0'
   object StatusBar1: TStatusBar
     Left = 0
-    Height = 23
-    Top = 654
+    Height = 28
+    Top = 649
     Width = 880
     Panels = <>
   end
@@ -263,9 +263,9 @@ object frmPrincipal: TfrmPrincipal
     Enabled = False
     ItemIndex = 0
     Items.Strings = (
-      'Unassociated'
+      'Not associated'
       'Associating'
-      'Review'
+      'Needs review'
       'Associated!'
     )
     TabOrder = 4
@@ -273,7 +273,7 @@ object frmPrincipal: TfrmPrincipal
   object ProgressBar1: TProgressBar
     Left = 0
     Height = 20
-    Top = 634
+    Top = 629
     Width = 880
     Align = alBottom
     TabOrder = 5
