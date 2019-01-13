@@ -196,8 +196,8 @@
         <IsVisibleTab Value="True"/>
         <EditorIndex Value="6"/>
         <WindowIndex Value="1"/>
-        <TopLine Value="1225"/>
-        <CursorPos X="39" Y="1232"/>
+        <TopLine Value="249"/>
+        <CursorPos X="32" Y="273"/>
         <ExtraEditorCount Value="1"/>
         <ExtraEditor1>
           <EditorIndex Value="-1"/>
@@ -454,126 +454,125 @@
         <UsageCount Value="10"/>
       </Unit27>
     </Units>
-    <JumpHistory Count="30" HistoryIndex="29">
+    <JumpHistory Count="30" HistoryIndex="27">
       <Position1>
-        <Filename Value="formprincipal.pas"/>
-        <Caret Line="724" TopLine="692"/>
-      </Position1>
-      <Position2>
-        <Filename Value="formprincipal.pas"/>
-        <Caret Line="429" Column="40" TopLine="410"/>
-      </Position2>
-      <Position3>
-        <Filename Value="formprincipal.pas"/>
-        <Caret Line="134" Column="15" TopLine="116"/>
-      </Position3>
-      <Position4>
-        <Filename Value="formnovoprojeto.pas"/>
-        <Caret Line="53" Column="34" TopLine="53"/>
-      </Position4>
-      <Position5>
-        <Filename Value="formprincipal.pas"/>
-        <Caret Line="616" TopLine="595"/>
-      </Position5>
-      <Position6>
-        <Filename Value="C:\tools\lazarus\lcl\include\treeview.inc"/>
-        <Caret Line="520" TopLine="501"/>
-      </Position6>
-      <Position7>
         <Filename Value="projeto.pas"/>
         <Caret Line="1300" TopLine="1282"/>
+      </Position1>
+      <Position2>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="1486" TopLine="1466"/>
+      </Position2>
+      <Position3>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="719" TopLine="701"/>
+      </Position3>
+      <Position4>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="1486" TopLine="1466"/>
+      </Position4>
+      <Position5>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="719" TopLine="701"/>
+      </Position5>
+      <Position6>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="1300" TopLine="1281"/>
+      </Position6>
+      <Position7>
+        <Filename Value="C:\tools\lazarus\lcl\include\treeview.inc"/>
+        <Caret Line="520" TopLine="501"/>
       </Position7>
       <Position8>
-        <Filename Value="projeto.pas"/>
-        <Caret Line="1486" TopLine="1466"/>
+        <Filename Value="formpropprojeto.pas"/>
+        <Caret Line="54" Column="15" TopLine="42"/>
       </Position8>
       <Position9>
-        <Filename Value="projeto.pas"/>
-        <Caret Line="719" TopLine="701"/>
+        <Filename Value="formprincipal.pas"/>
+        <Caret Line="616" TopLine="595"/>
       </Position9>
       <Position10>
-        <Filename Value="projeto.pas"/>
-        <Caret Line="1486" TopLine="1466"/>
+        <Filename Value="formprincipal.pas"/>
+        <Caret Line="141" Column="22" TopLine="116"/>
       </Position10>
       <Position11>
-        <Filename Value="projeto.pas"/>
-        <Caret Line="719" TopLine="701"/>
+        <Filename Value="formpropprojeto.pas"/>
+        <Caret Line="59" TopLine="49"/>
       </Position11>
       <Position12>
         <Filename Value="projeto.pas"/>
-        <Caret Line="1300" TopLine="1281"/>
+        <Caret Line="719" TopLine="700"/>
       </Position12>
       <Position13>
-        <Filename Value="C:\tools\lazarus\lcl\include\treeview.inc"/>
-        <Caret Line="520" TopLine="501"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="1486" TopLine="1466"/>
       </Position13>
       <Position14>
-        <Filename Value="formpropprojeto.pas"/>
-        <Caret Line="54" Column="15" TopLine="42"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="1300" TopLine="1282"/>
       </Position14>
       <Position15>
-        <Filename Value="formprincipal.pas"/>
-        <Caret Line="616" TopLine="595"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="719" TopLine="700"/>
       </Position15>
       <Position16>
-        <Filename Value="formprincipal.pas"/>
-        <Caret Line="141" Column="22" TopLine="116"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="1486" TopLine="1466"/>
       </Position16>
       <Position17>
-        <Filename Value="formpropprojeto.pas"/>
-        <Caret Line="59" TopLine="49"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="719" TopLine="692"/>
       </Position17>
       <Position18>
         <Filename Value="projeto.pas"/>
-        <Caret Line="719" TopLine="700"/>
+        <Caret Line="1486" TopLine="1467"/>
       </Position18>
       <Position19>
-        <Filename Value="projeto.pas"/>
-        <Caret Line="1486" TopLine="1466"/>
+        <Filename Value="formprincipal.pas"/>
+        <Caret Line="356" TopLine="337"/>
       </Position19>
       <Position20>
         <Filename Value="projeto.pas"/>
-        <Caret Line="1300" TopLine="1282"/>
+        <Caret Line="1486" TopLine="1467"/>
       </Position20>
       <Position21>
         <Filename Value="projeto.pas"/>
-        <Caret Line="719" TopLine="700"/>
+        <Caret Line="137" Column="18" TopLine="132"/>
       </Position21>
       <Position22>
         <Filename Value="projeto.pas"/>
-        <Caret Line="1486" TopLine="1466"/>
+        <Caret Line="1336" Column="32" TopLine="1315"/>
       </Position22>
       <Position23>
         <Filename Value="projeto.pas"/>
-        <Caret Line="719" TopLine="692"/>
+        <Caret Line="1526" Column="21" TopLine="1485"/>
       </Position23>
       <Position24>
         <Filename Value="projeto.pas"/>
-        <Caret Line="1486" TopLine="1467"/>
+        <Caret Line="720" Column="10" TopLine="699"/>
       </Position24>
       <Position25>
-        <Filename Value="formprincipal.pas"/>
-        <Caret Line="356" TopLine="337"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="1232" Column="39" TopLine="1225"/>
       </Position25>
       <Position26>
         <Filename Value="projeto.pas"/>
-        <Caret Line="1486" TopLine="1467"/>
+        <Caret Line="164" Column="15" TopLine="147"/>
       </Position26>
       <Position27>
         <Filename Value="projeto.pas"/>
-        <Caret Line="137" Column="18" TopLine="132"/>
+        <Caret Line="2064" Column="30" TopLine="2051"/>
       </Position27>
       <Position28>
         <Filename Value="projeto.pas"/>
-        <Caret Line="1336" Column="32" TopLine="1315"/>
+        <Caret Line="270" Column="67" TopLine="249"/>
       </Position28>
       <Position29>
         <Filename Value="projeto.pas"/>
-        <Caret Line="1526" Column="21" TopLine="1485"/>
+        <Caret Line="2065" Column="28" TopLine="2046"/>
       </Position29>
       <Position30>
         <Filename Value="projeto.pas"/>
-        <Caret Line="720" Column="10" TopLine="699"/>
       </Position30>
     </JumpHistory>
   </ProjectOptions>
@@ -616,7 +615,7 @@
         <WatchScope Value="wpsLocal"/>
         <WatchKind Value="wpkWrite"/>
         <Source Value="projeto.pas"/>
-        <Line Value="905"/>
+        <Line Value="907"/>
       </Item2>
       <Item3>
         <Kind Value="bpkSource"/>

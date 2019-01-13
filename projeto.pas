@@ -267,8 +267,10 @@ resourcestring
 
   SAnalyticalConcordance = 'Anaytical Concordance';
   SSyntheticConcordance = 'Synthetic Concordance';
+  SOTConcordanceNotImplementedYet = 'Old Testament concordance is not implemented yet';
   SLanguageId = 'en';
   SError = 'Error';
+  SInformation = 'Information';
   SCorruptedData = 'Corrupted data, some associations may be lost.';
   SStrongDictionary = 'Strong''s Dictionary';
   SDictionaryDoesntExist = 'The selected dictionary doesn''t exist: %s';
@@ -2058,6 +2060,12 @@ var
 begin
   if (FAVersiculo[tbOrigem] = nil) or (FAVersiculo[tbDestino] = nil) then
     exit;
+
+  if FEscopo = etOT then
+  begin
+    MessageDlg(SInformation, SOTConcordanceNotImplementedYet, mtInformation, [mbOK], 0);
+    exit;
+  end;
 
   if not FileExists(arquivo) then
   begin

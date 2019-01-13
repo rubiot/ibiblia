@@ -324,6 +324,10 @@ msgstr ""
 msgid "Hosea"
 msgstr ""
 
+#: projeto.sinformation
+msgid "Information"
+msgstr ""
+
 #: projeto.sinvalidlinecount
 msgid "Invalid file, it must have at least %d lines"
 msgstr ""
@@ -423,6 +427,10 @@ msgstr ""
 #: projeto.sopenproject
 msgctxt "projeto.sopenproject"
 msgid "Open project"
+msgstr ""
+
+#: projeto.sotconcordancenotimplementedyet
+msgid "Old Testament concordance is not implemented yet"
 msgstr ""
 
 #: projeto.sphilemon
