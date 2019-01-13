@@ -673,6 +673,9 @@ begin
   Splitter2.Top := opts.ReadInteger('leiaute', 'principal.splitter2.topo', Splitter2.Top);
   Splitter3.Top := opts.ReadInteger('leiaute', 'principal.splitter3.topo', Splitter3.Top);
   Splitter4.Top := opts.ReadInteger('leiaute', 'principal.splitter4.topo', Splitter4.Top);
+
+  if (MenuItemRecent.Count > 0) and FileExists(MenuItemRecent.Items[0].Caption) then
+    ActionAbrirProjetoExecute(MenuItemRecent.Items[0]);
 end;
 
 procedure TFrmPrincipal.MenuItem21Click(Sender: TObject);

@@ -14,7 +14,7 @@ uses
   {$ELSE}
   Windows,
   {$ENDIF}
-  SysUtils, Sqlite3DS, sqlite3conn, sqldb, db, StrUtils,
+  SysUtils, Sqlite3DS, sqlite3conn, sqldb, db, StrUtils, math,
   ExtCtrls, Controls, ComCtrls, StdCtrls, Graphics, Forms, Versiculo, Sugestao,
   MemoVersiculo, ONTTokenizer, Dialogs, dos, PCRE, ExportarProjeto, LazLogger,
   Sintagma;
@@ -1307,10 +1307,7 @@ begin
     end;
     if not b then // várias situações diferentes
     begin
-      if al[2] > 0 then
-        nl.ImageIndex := 2
-      else
-        nl.ImageIndex := 1;
+      nl.ImageIndex := IfThen(al[2] > 0, 2, 1);
       nl.SelectedIndex := nl.ImageIndex + 4;
     end;
   end;
