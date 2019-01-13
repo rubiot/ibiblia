@@ -12,6 +12,8 @@ type
 
   { TFrmPropProjeto }
 
+  { TFormPropProjeto }
+
   TFormPropProjeto = class(TForm)
     ActionSelecionarMorfo: TAction;
     ActionMudancaAba: TAction;
@@ -53,7 +55,8 @@ type
     { public declarations }
     procedure SetProjeto(p: TProjeto);
     procedure AplicarAlteracoes;
-  end; 
+    procedure Translate;
+  end;
 
 var
   FormPropProjeto1: TFormPropProjeto;
@@ -67,6 +70,10 @@ resourcestring
   SClearTextConfirmation = 'Are you sure you want to clear this text?';
   SChooseDictionary = 'Choose';
   SOpenDictionary = 'Please choose a theWord dictionary module...';
+  SSourceTab = 'Source';
+  SDestinationTab = 'Destination';
+  SReference1Tab = 'Reference 1';
+  SReference2Tab = 'Reference 2';
 
 implementation
 
@@ -75,6 +82,7 @@ implementation
 procedure TFormPropProjeto.FormCreate(Sender: TObject);
 begin
   FProjeto := nil;
+  Translate;
 end;
 
 procedure TFormPropProjeto.leDicMorfoChange(Sender: TObject);
@@ -85,6 +93,14 @@ end;
 procedure TFormPropProjeto.leDicStrongChange(Sender: TObject);
 begin
   BitBtn4.Caption := SSetDictionary;
+end;
+
+procedure TFormPropProjeto.Translate;
+begin
+  TabControl1.Tabs[0] := SSourceTab;
+  TabControl1.Tabs[1] := SDestinationTab;
+  TabControl1.Tabs[2] := SReference1Tab;
+  TabControl1.Tabs[3] := SReference2Tab;
 end;
 
 procedure TFormPropProjeto.ActionCarregarTextoExecute(Sender: TObject);

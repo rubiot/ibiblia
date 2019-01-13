@@ -39,6 +39,14 @@ msgstr "Escolha pelo menos um texto origem e um texto destino"
 msgid "New project"
 msgstr "Novo projecto"
 
+#: formnovoprojeto.snewtestament
+msgid "New Testament"
+msgstr "Novo Testamento"
+
+#: formnovoprojeto.soldtestament
+msgid "Old Testament"
+msgstr "Velho Testamento"
+
 #: formprincipal.schanged
 msgid "changed"
 msgstr "modificado"
@@ -88,6 +96,22 @@ msgstr "Deseja salvar as alterações?"
 msgid "source"
 msgstr "origem"
 
+#: formprincipal.sstatusassociated
+msgid "Associated!"
+msgstr "Associado!"
+
+#: formprincipal.sstatusassociating
+msgid "Associating"
+msgstr "Associando..."
+
+#: formprincipal.sstatusneedsreview
+msgid "Needs review"
+msgstr "Rever"
+
+#: formprincipal.sstatusnotassociated
+msgid "Not associated"
+msgstr "Não associado"
+
 #: formpropprojeto.schangetextconfirmation
 msgid "Are you sure you want to load this new text?"
 msgstr "Tem certeza de que quer substituir o texto atual por outro?"
@@ -114,13 +138,33 @@ msgstr "Limpar texto"
 msgid "Are you sure you want to clear this text?"
 msgstr "Tem certeza de que deseja limpar este texto?"
 
+#: formpropprojeto.sdestinationtab
+msgctxt "formpropprojeto.sdestinationtab"
+msgid "Destination"
+msgstr "Destino"
+
 #: formpropprojeto.sopendictionary
 msgid "Please choose a theWord dictionary module..."
 msgstr "Escolha um módulo de dicionário do theWord..."
 
+#: formpropprojeto.sreference1tab
+msgctxt "formpropprojeto.sreference1tab"
+msgid "Reference 1"
+msgstr "Referência 1"
+
+#: formpropprojeto.sreference2tab
+msgctxt "formpropprojeto.sreference2tab"
+msgid "Reference 2"
+msgstr "Referência 2"
+
 #: formpropprojeto.ssetdictionary
 msgid "Set"
 msgstr "Atribuir"
+
+#: formpropprojeto.ssourcetab
+msgctxt "formpropprojeto.ssourcetab"
+msgid "Source"
+msgstr "Origem"
 
 #: memoversiculo.schangeverse
 msgid "Change verse text?"
@@ -492,18 +536,22 @@ msgid "Name"
 msgstr "Nome"
 
 #: tformnovoprojeto.edittextodestino.editlabel.caption
+msgctxt "tformnovoprojeto.edittextodestino.editlabel.caption"
 msgid "Destination"
 msgstr "Destino"
 
 #: tformnovoprojeto.edittextoorigem.editlabel.caption
+msgctxt "tformnovoprojeto.edittextoorigem.editlabel.caption"
 msgid "Source"
 msgstr "Origem"
 
 #: tformnovoprojeto.edittextoref1.editlabel.caption
+msgctxt "tformnovoprojeto.edittextoref1.editlabel.caption"
 msgid "Reference 1"
 msgstr "Referência 1"
 
 #: tformnovoprojeto.edittextoref2.editlabel.caption
+msgctxt "tformnovoprojeto.edittextoref2.editlabel.caption"
 msgid "Reference 2"
 msgstr "Referência 2"
 
@@ -520,7 +568,8 @@ msgstr "Propriedades"
 msgid "Choose a theWord bible module"
 msgstr "Escolha um módulo de bíblia do theWord"
 
-#: tformnovoprojeto.radiogroupescopo.caption
+#: tformnovoprojeto.radiogroupscope.caption
+msgctxt "tformnovoprojeto.radiogroupscope.caption"
 msgid "Scope"
 msgstr "Escopo"
 
@@ -850,17 +899,19 @@ msgstr "Sugerir associações automaticamente"
 msgid "Language"
 msgstr "Language/Idioma"
 
-#: tfrmprincipal.menuitem24.caption
-msgid "English"
-msgstr "English"
-
-#: tfrmprincipal.menuitem25.caption
-msgid "Português"
-msgstr "Português"
-
 #: tfrmprincipal.menuitem5.caption
 msgid "Navigation"
 msgstr "Navegação"
+
+#: tfrmprincipal.menuitemlangen.caption
+msgctxt "tfrmprincipal.menuitemlangen.caption"
+msgid "English"
+msgstr "English"
+
+#: tfrmprincipal.menuitemlangpt.caption
+msgctxt "tfrmprincipal.menuitemlangpt.caption"
+msgid "Português"
+msgstr "Português"
 
 #: tfrmprincipal.menuitemrecent.caption
 msgid "Open recent"
@@ -894,7 +945,8 @@ msgstr "Panel1"
 msgid "Panel2"
 msgstr "Panel2"
 
-#: tfrmprincipal.radiogroup1.caption
+#: tfrmprincipal.radiogroupstatus.caption
+msgctxt "tfrmprincipal.radiogroupstatus.caption"
 msgid "Status"
 msgstr "Andamento"
 

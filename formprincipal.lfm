@@ -242,7 +242,7 @@ object frmPrincipal: TfrmPrincipal
     Enabled = False
     TabOrder = 3
   end
-  object RadioGroup1: TRadioGroup
+  object RadioGroupStatus: TRadioGroup
     Left = 759
     Height = 110
     Top = 536
@@ -344,6 +344,17 @@ object frmPrincipal: TfrmPrincipal
     end
     object MenuItem20: TMenuItem
       Caption = 'Options'
+      object MenuItem23: TMenuItem
+        Caption = 'Language'
+        object MenuItemLangEn: TMenuItem
+          Caption = 'English'
+          OnClick = MenuItemLangEnClick
+        end
+        object MenuItemLangPt: TMenuItem
+          Caption = 'Português'
+          OnClick = MenuItemLangPtClick
+        end
+      end
       object MenuItem21: TMenuItem
         Caption = 'Show dictionary popup when CTRL is pressed'
         OnClick = MenuItem21Click
@@ -367,17 +378,6 @@ object frmPrincipal: TfrmPrincipal
       object MenuItemStrongsCount: TMenuItem
         Caption = 'Show count for words having strong tags'
         OnClick = MenuItemStrongsCountClick
-      end
-      object MenuItem23: TMenuItem
-        Caption = 'Language'
-        object MenuItem24: TMenuItem
-          Caption = 'English'
-          OnClick = MenuItem24Click
-        end
-        object MenuItem25: TMenuItem
-          Caption = 'Português'
-          OnClick = MenuItem25Click
-        end
       end
     end
   end

@@ -86,6 +86,7 @@ type
     FMostrarQtdStrongs: boolean;
     FOnNovoVersiculo: TOnNovoVersiculoEvent;
     FOnSintagmaClick: TOnSintagmaClickEvent;
+    FClosing: boolean;
     function GetCaminho: string;
     function GetComentarios: string;
     function GetID: string;
@@ -173,6 +174,7 @@ type
     function ObterTextoVersiculo(Referencia: string; texto: TTipoTextoBiblico): string;
     function ObterTextoSimplesVersiculo(texto: TTipoTextoBiblico): string;
     function ObterTextoSimplesVersiculo(Referencia: string; texto: TTipoTextoBiblico): string;
+    procedure Translate;
     procedure ToggleMostrarTags;
     property Referencia: string read GetReferencia;
     property ID: string read GetID;
@@ -1227,7 +1229,7 @@ var
   nl, nc, nv, n: TTreeNode;
   b: boolean;
 begin
-  if not assigned(FArvore) then
+  if not assigned(FArvore) or FClosing then
     exit;
 
   SScanf(id, '%d,%d,%d', [@l, @c, @v]);
@@ -1331,6 +1333,7 @@ begin
   FTblPares           := nil;
   FTblInfo            := nil;
   FEscopo             := etNone;
+  FClosing            := false;
 
   FTemporizador          := TTimer.Create(nil);
   FTemporizador.Enabled  := false;
@@ -1482,6 +1485,7 @@ end;
 
 procedure TProjeto.Fechar(_Commit: boolean);
 begin
+  FClosing := true;
   PreRolagemVersiculo(nil);
 
   if _Commit then
@@ -1519,6 +1523,7 @@ begin
     FRadioGroupSituacao.ItemIndex := 0;
   end;
 
+  FClosing := false;
   FAtivo := false;
 end;
 
@@ -2301,6 +2306,21 @@ begin
       result := result + s.valor;
   end;
   varredorXML.Destruir;
+end;
+
+procedure TProjeto.Translate;
+var
+  l: integer;
+  node: TTreeNode;
+begin
+  if not assigned(FArvore) then
+    exit;
+  node := FArvore.Items[0];
+  for l:=0 to QLivros[FEscopo]-1 do
+  begin
+    node.Text := NLivros[FEscopo][l];
+    node := node.GetNextSibling;
+  end;
 end;
 
 procedure TProjeto.ToggleMostrarTags;

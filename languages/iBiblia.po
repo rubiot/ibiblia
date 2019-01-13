@@ -29,6 +29,14 @@ msgstr ""
 msgid "New project"
 msgstr ""
 
+#: formnovoprojeto.snewtestament
+msgid "New Testament"
+msgstr ""
+
+#: formnovoprojeto.soldtestament
+msgid "Old Testament"
+msgstr ""
+
 #: formprincipal.schanged
 msgid "changed"
 msgstr ""
@@ -76,6 +84,22 @@ msgstr ""
 msgid "source"
 msgstr ""
 
+#: formprincipal.sstatusassociated
+msgid "Associated!"
+msgstr ""
+
+#: formprincipal.sstatusassociating
+msgid "Associating"
+msgstr ""
+
+#: formprincipal.sstatusneedsreview
+msgid "Needs review"
+msgstr ""
+
+#: formprincipal.sstatusnotassociated
+msgid "Not associated"
+msgstr ""
+
 #: formpropprojeto.schangetextconfirmation
 msgid "Are you sure you want to load this new text?"
 msgstr ""
@@ -102,12 +126,32 @@ msgstr ""
 msgid "Are you sure you want to clear this text?"
 msgstr ""
 
+#: formpropprojeto.sdestinationtab
+msgctxt "formpropprojeto.sdestinationtab"
+msgid "Destination"
+msgstr ""
+
 #: formpropprojeto.sopendictionary
 msgid "Please choose a theWord dictionary module..."
 msgstr ""
 
+#: formpropprojeto.sreference1tab
+msgctxt "formpropprojeto.sreference1tab"
+msgid "Reference 1"
+msgstr ""
+
+#: formpropprojeto.sreference2tab
+msgctxt "formpropprojeto.sreference2tab"
+msgid "Reference 2"
+msgstr ""
+
 #: formpropprojeto.ssetdictionary
 msgid "Set"
+msgstr ""
+
+#: formpropprojeto.ssourcetab
+msgctxt "formpropprojeto.ssourcetab"
+msgid "Source"
 msgstr ""
 
 #: memoversiculo.schangeverse
@@ -477,18 +521,22 @@ msgid "Name"
 msgstr ""
 
 #: tformnovoprojeto.edittextodestino.editlabel.caption
+msgctxt "tformnovoprojeto.edittextodestino.editlabel.caption"
 msgid "Destination"
 msgstr ""
 
 #: tformnovoprojeto.edittextoorigem.editlabel.caption
+msgctxt "tformnovoprojeto.edittextoorigem.editlabel.caption"
 msgid "Source"
 msgstr ""
 
 #: tformnovoprojeto.edittextoref1.editlabel.caption
+msgctxt "tformnovoprojeto.edittextoref1.editlabel.caption"
 msgid "Reference 1"
 msgstr ""
 
 #: tformnovoprojeto.edittextoref2.editlabel.caption
+msgctxt "tformnovoprojeto.edittextoref2.editlabel.caption"
 msgid "Reference 2"
 msgstr ""
 
@@ -505,7 +553,8 @@ msgstr ""
 msgid "Choose a theWord bible module"
 msgstr ""
 
-#: tformnovoprojeto.radiogroupescopo.caption
+#: tformnovoprojeto.radiogroupscope.caption
+msgctxt "tformnovoprojeto.radiogroupscope.caption"
 msgid "Scope"
 msgstr ""
 
@@ -835,16 +884,18 @@ msgstr ""
 msgid "Language"
 msgstr ""
 
-#: tfrmprincipal.menuitem24.caption
+#: tfrmprincipal.menuitem5.caption
+msgid "Navigation"
+msgstr ""
+
+#: tfrmprincipal.menuitemlangen.caption
+msgctxt "tfrmprincipal.menuitemlangen.caption"
 msgid "English"
 msgstr ""
 
-#: tfrmprincipal.menuitem25.caption
+#: tfrmprincipal.menuitemlangpt.caption
+msgctxt "tfrmprincipal.menuitemlangpt.caption"
 msgid "Português"
-msgstr ""
-
-#: tfrmprincipal.menuitem5.caption
-msgid "Navigation"
 msgstr ""
 
 #: tfrmprincipal.menuitemrecent.caption
@@ -879,7 +930,8 @@ msgstr ""
 msgid "Panel2"
 msgstr ""
 
-#: tfrmprincipal.radiogroup1.caption
+#: tfrmprincipal.radiogroupstatus.caption
+msgctxt "tfrmprincipal.radiogroupstatus.caption"
 msgid "Status"
 msgstr ""
 

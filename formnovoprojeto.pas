@@ -27,17 +27,19 @@ type
     EditTextoRef2: TLabeledEdit;
     EditNomeProjeto: TLabeledEdit;
     OpenDialog1: TOpenDialog;
-    RadioGroupEscopo: TRadioGroup;
+    RadioGroupScope: TRadioGroup;
     procedure BitBtn1Click(Sender: TObject);
     procedure BitBtn2Click(Sender: TObject);
     procedure BitBtn3Click(Sender: TObject);
     procedure BitBtn4Click(Sender: TObject);
     procedure BitBtn5Click(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
   private
     { private declarations }
     procedure SelecionarTexto(edit: TLabeledEdit);
   public
     { public declarations }
+    procedure Translate;
   end; 
 
 var
@@ -47,6 +49,8 @@ resourcestring
   SNewProject = 'New project';
   SChooseAName = 'Please choose a name for your project';
   SChooseAtLeastTwoTexts = 'Please choose at least one source and one destination texts';
+  SOldTestament = 'Old Testament';
+  SNewTestament = 'New Testament';
 
 implementation
 
@@ -75,6 +79,11 @@ begin
   //Close;
 end;
 
+procedure TFormNovoProjeto.FormCreate(Sender: TObject);
+begin
+  Translate;
+end;
+
 procedure TFormNovoProjeto.BitBtn1Click(Sender: TObject);
 begin
   SelecionarTexto(EditTextoOrigem);
@@ -99,6 +108,16 @@ procedure TFormNovoProjeto.SelecionarTexto(edit: TLabeledEdit);
 begin
   if OpenDialog1.Execute then
     edit.Text := OpenDialog1.FileName;
+end;
+
+procedure TFormNovoProjeto.Translate;
+begin
+  with RadioGroupScope.Items do
+  begin
+    Clear;
+    Add(SOldTestament);
+    Add(SNewTestament);
+  end;
 end;
 
 initialization

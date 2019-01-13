@@ -65,8 +65,8 @@ type
     MenuItem21: TMenuItem;
     MenuItem22: TMenuItem;
     MenuItem23: TMenuItem;
-    MenuItem24: TMenuItem;
-    MenuItem25: TMenuItem;
+    MenuItemLangEn: TMenuItem;
+    MenuItemLangPt: TMenuItem;
     MenuItemStrongsCount: TMenuItem;
     MenuItemStrongNegrito: TMenuItem;
     MenuItemRecent: TMenuItem;
@@ -83,7 +83,7 @@ type
     Panel1: TPanel;
     Panel2: TPanel;
     ProgressBar1: TProgressBar;
-    RadioGroup1: TRadioGroup;
+    RadioGroupStatus: TRadioGroup;
     SaveDialog1: TSaveDialog;
     SaveDialog2: TSaveDialog;
     ScrollBox1: TScrollBox;
@@ -138,8 +138,8 @@ type
     procedure MenuItem21Click(Sender: TObject);
     procedure MenuItem22Click(Sender: TObject);
     procedure AbrirRecenteClick(Sender: TObject);
-    procedure MenuItem24Click(Sender: TObject);
-    procedure MenuItem25Click(Sender: TObject);
+    procedure MenuItemLangEnClick(Sender: TObject);
+    procedure MenuItemLangPtClick(Sender: TObject);
     procedure MenuItemStrongNegritoClick(Sender: TObject);
     procedure MenuItemStrongsCountClick(Sender: TObject);
     procedure MenuItemSynciBibliaClick(Sender: TObject);
@@ -157,8 +157,10 @@ type
     TwSyncThread: TTwSyncThread;
     procedure SyncToTwRef(Ref: string);
     procedure SetUpSyncThread;
+    procedure TranslateStatusRadioGroup;
   public
     { public declarations }
+    language: string;
   end; 
 
 type
@@ -174,6 +176,12 @@ var
 
 const
   MAX_MRU = 10;
+
+resourcestring
+  SStatusNotAssociated = 'Not associated';
+  SStatusAssociating = 'Associating';
+  SStatusNeedsReview = 'Needs review';
+  SStatusAssociated = 'Associated!';
 
 implementation
 
@@ -276,7 +284,7 @@ begin
     exit;
   end;
 
-  ProjetoAtual := TProjeto.Criar([ScrollBox1, ScrollBox2, ScrollBox3, ScrollBox4], TreeView1, RadioGroup1, Memo1);
+  ProjetoAtual := TProjeto.Criar([ScrollBox1, ScrollBox2, ScrollBox3, ScrollBox4], TreeView1, RadioGroupStatus, Memo1);
   ProjetoAtual.OnNovoVersiculo := @QuandoNovoVersiculo;
   ProjetoAtual.OnAlterarVersiculo := @QuandoAlterarVersiculo;
   ProjetoAtual.OnSintagmaClick := @QuandoPalavraClicada;
@@ -418,7 +426,7 @@ procedure TFrmPrincipal.ActionNovoProjetoExecute(Sender: TObject);
 
   function QualEscopo: TEscopoTexto;
   begin
-    if FormNovoProjeto1.RadioGroupEscopo.ItemIndex = 0 then
+    if FormNovoProjeto1.RadioGroupScope.ItemIndex = 0 then
       result := etOT
     else
       result := etNT;
@@ -437,7 +445,7 @@ begin
 
   if (FormNovoProjeto1.ShowModal = mrOK) and SaveDialog1.Execute then
   begin
-    ProjetoAtual := TProjeto.Criar([ScrollBox1, ScrollBox2, ScrollBox3, ScrollBox4], TreeView1, RadioGroup1, Memo1);
+    ProjetoAtual := TProjeto.Criar([ScrollBox1, ScrollBox2, ScrollBox3, ScrollBox4], TreeView1, RadioGroupStatus, Memo1);
     ProjetoAtual.Escopo := QualEscopo;
     ProjetoAtual.PalavrasComStrongEmNegrito := MenuItemStrongNegrito.Checked;
     ProjetoAtual.MostrarQtdStrongs := MenuItemStrongsCount.Checked;
@@ -497,7 +505,7 @@ begin
   if ProjetoAtual <> nil then
   begin
     Caption := 'iBiblia - [' + ProjetoAtual.ObterInfo('descricao') + '] - ' +  ProjetoAtual.Referencia;
-    RadioGroup1.SetFocus;
+    RadioGroupStatus.SetFocus;
     ActionSyncTheWordVerseExecute(Sender);
   end;
 end;
@@ -598,6 +606,14 @@ begin
   MenuItemStrongNegrito.Checked := opts.ReadBool('opcoes', 'boldstrongs', false);
   MenuItemStrongsCount.Checked := opts.ReadBool('opcoes', 'showstrongscount', false);
 
+  language := opts.ReadString('opcoes', 'language', 'pt');
+  SetDefaultLang(language);
+  if language = 'en' then
+    MenuItemLangEn.Checked:=true
+  else if language = 'pt' then
+    MenuItemLangPt.Checked:=true;
+  TranslateStatusRadioGroup;
+
   CarregarMRU(MenuItemRecent);
   TreeView1.Width := opts.ReadInteger('leiaute', 'principal.treeview.largura', TreeView1.Width);
 
@@ -623,13 +639,14 @@ begin
   opts.WriteBool('opcoes', 'syncibiblia', MenuItemSynciBiblia.Checked);
   opts.WriteBool('opcoes', 'boldstrongs', MenuItemStrongNegrito.Checked);
   opts.WriteBool('opcoes', 'showstrongscount', MenuItemStrongsCount.Checked);
+  opts.WriteString('opcoes', 'language', language);
   opts.Free;
 end;
 
 procedure TFrmPrincipal.FormKeyPress(Sender: TObject; var Key: char);
 begin
   case Key of
-    '1', '2', '3', '4': if assigned(ProjetoAtual) then RadioGroup1.ItemIndex := Ord(Key) - Ord('0') - 1;
+    '1', '2', '3', '4': if assigned(ProjetoAtual) then RadioGroupStatus.ItemIndex := Ord(Key) - Ord('0') - 1;
   end;
 end;
 
@@ -678,14 +695,36 @@ begin
      ActionAbrirProjetoExecute(Sender);
 end;
 
-procedure TFrmPrincipal.MenuItem24Click(Sender: TObject);
+procedure TFrmPrincipal.MenuItemLangEnClick(Sender: TObject);
 begin
+  if language = 'en' then
+    exit;
+
+  language := 'en';
   SetDefaultLang('en');
+  TMenuItem(Sender).Checked:=true;
+  MenuItemLangPt.Checked:=false;
+  TranslateStatusRadioGroup;
+  formnovoprojeto1.Translate;
+  FormPropProjeto1.Translate;
+  if assigned(ProjetoAtual) then
+    ProjetoAtual.Translate;
 end;
 
-procedure TFrmPrincipal.MenuItem25Click(Sender: TObject);
+procedure TFrmPrincipal.MenuItemLangPtClick(Sender: TObject);
 begin
+  if language = 'pt' then
+    exit;
+
+  language := 'pt';
   SetDefaultLang('pt');
+  TMenuItem(Sender).Checked:=true;
+  MenuItemLangEn.Checked:=false;
+  TranslateStatusRadioGroup;
+  formnovoprojeto1.Translate;
+  FormPropProjeto1.Translate;
+  if assigned(ProjetoAtual) then
+    ProjetoAtual.Translate;
 end;
 
 procedure TFrmPrincipal.MenuItemStrongNegritoClick(Sender: TObject);
@@ -821,6 +860,18 @@ begin
       TwSyncThread.Terminate;
       TwSyncThread := nil;
     end;
+  end;
+end;
+
+procedure TFrmPrincipal.TranslateStatusRadioGroup;
+begin
+  with RadioGroupStatus.Items do
+  begin
+    Clear;
+    Add(SStatusNotAssociated);
+    Add(SStatusAssociating);
+    Add(SStatusNeedsReview);
+    Add(SStatusAssociated);
   end;
 end;
 

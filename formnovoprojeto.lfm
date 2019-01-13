@@ -6,6 +6,7 @@ object FormNovoProjeto: TFormNovoProjeto
   Caption = 'New project...'
   ClientHeight = 437
   ClientWidth = 459
+  OnCreate = FormCreate
   Position = poMainFormCenter
   LCLVersion = '1.8.4.0'
   object GroupBox1: TGroupBox
@@ -176,7 +177,7 @@ object FormNovoProjeto: TFormNovoProjeto
       TabOrder = 0
     end
   end
-  object RadioGroupEscopo: TRadioGroup
+  object RadioGroupScope: TRadioGroup
     Left = 7
     Height = 49
     Top = 97
