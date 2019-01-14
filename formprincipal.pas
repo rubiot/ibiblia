@@ -266,7 +266,6 @@ resourcestring
 
 procedure TFrmPrincipal.ActionAbrirProjetoExecute(Sender: TObject);
 begin
-  //OpenDialog1.Options := OpenDialog1.Options;
   if Sender is TMenuItem then
      OpenDialog1.FileName := TMenuItem(Sender).Caption
   else if not OpenDialog1.Execute then
@@ -339,41 +338,41 @@ procedure TFrmPrincipal.ActionFecharProjetoExecute(Sender: TObject);
 var
   salvar: boolean;
 begin
-  if ProjetoAtual <> nil then
+  if ProjetoAtual = nil then
+    exit;
+
+  salvar := false;
+  if ProjetoAtual.Modificado then
   begin
-    salvar := false;
-    if ProjetoAtual.Modificado then
-    begin
-      case MessageDlg(SCloseProject, SSaveChanges, mtConfirmation, [mbYes, mbNo, mbCancel], 0) of
-        mrYes: salvar := true;
-        mrNo: salvar := false;
-        mrCancel: exit;
-      end;
+    case MessageDlg(SCloseProject, SSaveChanges, mtConfirmation, [mbYes, mbNo, mbCancel], 0) of
+      mrYes: salvar := true;
+      mrNo: salvar := false;
+      mrCancel: exit;
     end;
-
-    AtualizarMRU(MenuItemRecent);
-
-    ProjetoAtual.Fechar(salvar);
-    ProjetoAtual.Destruir;
-    ProjetoAtual := nil;
-    Caption := 'iBiblia';
-
-    ActionSalvarProjeto.Enabled := false;
-    ActionSalvarProjetoComo.Enabled := false;
-    ActionFecharProjeto.Enabled := false;
-    ActionPropProjeto.Enabled := false;
-    ActionVersoPrimeiro.Enabled := false;
-    ActionVersoUltimo.Enabled := false;
-    ActionVersoSeguinte.Enabled := false;
-    ActionVersoAnterior.Enabled := false;
-    ActionSugerirAssociacao.Enabled := false;
-    ActionReverterAssociacoes.Enabled := false;
-    ActionLimparAssociacoes.Enabled := false;
-    ActionExportar.Enabled := false;
-    //ActionExportarDestinoComStrongs.Enabled := false;
-    //ActionExportarTextoInterlinear.Enabled := false;
-    StatusBar1.SimpleText := '';
   end;
+
+  AtualizarMRU(MenuItemRecent);
+
+  ProjetoAtual.Fechar(salvar);
+  ProjetoAtual.Destruir;
+  ProjetoAtual := nil;
+  Caption := 'iBiblia';
+
+  ActionSalvarProjeto.Enabled := false;
+  ActionSalvarProjetoComo.Enabled := false;
+  ActionFecharProjeto.Enabled := false;
+  ActionPropProjeto.Enabled := false;
+  ActionVersoPrimeiro.Enabled := false;
+  ActionVersoUltimo.Enabled := false;
+  ActionVersoSeguinte.Enabled := false;
+  ActionVersoAnterior.Enabled := false;
+  ActionSugerirAssociacao.Enabled := false;
+  ActionReverterAssociacoes.Enabled := false;
+  ActionLimparAssociacoes.Enabled := false;
+  ActionExportar.Enabled := false;
+  //ActionExportarDestinoComStrongs.Enabled := false;
+  //ActionExportarTextoInterlinear.Enabled := false;
+  StatusBar1.SimpleText := '';
 end;
 
 procedure TFrmPrincipal.ActionLimparAssociacoesExecute(Sender: TObject);

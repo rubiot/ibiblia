@@ -553,7 +553,8 @@ end;
 { Instancia a parte visual do sintagma (Label) }
 procedure TSintagma.Renderizar;
 begin
-  if not (FTipo in [tsMetaDado, tsTag]) or (FTexto = '<FI>') or (FTexto = '<Fi>') then
+  if (FTipo in [tsSintagma, tsEspaco, tsPontuacao, tsStrongCount]) or
+     (FTexto = '<FI>') or (FTexto = '<Fi>') then
   begin
     if not assigned(FLabel) then
       FLabel := TLabel.Create(TVersiculo(FVersiculo).Painel);

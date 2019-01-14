@@ -875,7 +875,7 @@ var
   l, c, v: TTreeNode;
   i: smallint;
 begin
-  if not assigned(FTblPares) then
+  if not assigned(FTblPares) or FClosing then
     exit;
 
   if Node.HasChildren then // capítulo ou livro
@@ -1485,6 +1485,14 @@ end;
 procedure TProjeto.Fechar(_Commit: boolean);
 begin
   FClosing := true;
+
+  if assigned(FArvore) then
+  begin
+    //FArvore.FullCollapse;
+    FArvore.Enabled := false;
+    FArvore.Items.Clear;
+  end;
+
   PreRolagemVersiculo(nil);
 
   if _Commit then
@@ -1505,12 +1513,6 @@ begin
 
   FMemoVersiculo.Desativar;
 
-  if assigned(FArvore) then
-  begin
-    //FArvore.FullCollapse;
-    FArvore.Enabled := false;
-    FArvore.Items.Clear;
-  end;
   if assigned(FMemoComentarios) then
   begin
     FMemoComentarios.Enabled := false;

@@ -189,8 +189,10 @@ begin
 
   if assigned(FSintagmas) then
   begin
+    FPanel.DisableAutoSizing;
     for s in FSintagmas do
       s.Destruir;
+    FPanel.EnableAutoSizing;
     FSintagmas.free;
   end;
 
@@ -207,8 +209,10 @@ var
 begin
   if assigned(FSintagmas) then
   begin
+    FPanel.DisableAutoSizing;
     for s in FSintagmas do
       s.Destruir;
+    FPanel.EnableAutoSizing;
     FSintagmas.Clear;
   end;
   FSelecao.Clear;
