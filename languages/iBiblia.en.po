@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Language: en\n"
-"X-Generator: Poedit 2.2\n"
+"X-Generator: Poedit 2.2.1\n"
 
 #: formexportar.sanalyticalconcordance
 msgid "AnalyticalConcordance"
@@ -87,6 +87,15 @@ msgstr "reference 1"
 #: formprincipal.sreference2
 msgid "reference 2"
 msgstr "reference 2"
+
+#: formprincipal.srollbackchanges
+msgctxt "formprincipal.srollbackchanges"
+msgid "Rollback changes"
+msgstr "Rollback changes"
+
+#: formprincipal.srollbackchangesconfirmation
+msgid "Are you sure you want to rollback all changes to this verse?"
+msgstr "Are you sure you want to rollback all changes to this verse?"
 
 #: formprincipal.ssavechanges
 msgid "Would you like to save your changes?"
@@ -807,6 +816,7 @@ msgid "Rollback"
 msgstr "Rollback"
 
 #: tfrmprincipal.actionreverterassociacoes.hint
+msgctxt "tfrmprincipal.actionreverterassociacoes.hint"
 msgid "Rollback changes"
 msgstr "Rollback changes"
 

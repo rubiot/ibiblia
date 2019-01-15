@@ -76,6 +76,15 @@ msgstr ""
 msgid "reference 2"
 msgstr ""
 
+#: formprincipal.srollbackchanges
+msgctxt "formprincipal.srollbackchanges"
+msgid "Rollback changes"
+msgstr ""
+
+#: formprincipal.srollbackchangesconfirmation
+msgid "Are you sure you want to rollback all changes to this verse?"
+msgstr ""
+
 #: formprincipal.ssavechanges
 msgid "Would you like to save your changes?"
 msgstr ""
@@ -793,6 +802,7 @@ msgid "Rollback"
 msgstr ""
 
 #: tfrmprincipal.actionreverterassociacoes.hint
+msgctxt "tfrmprincipal.actionreverterassociacoes.hint"
 msgid "Rollback changes"
 msgstr ""
 

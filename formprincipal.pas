@@ -182,6 +182,8 @@ resourcestring
   SStatusAssociating = 'Associating';
   SStatusNeedsReview = 'Needs review';
   SStatusAssociated = 'Associated!';
+  SRollbackChanges = 'Rollback changes';
+  SRollbackChangesConfirmation = 'Are you sure you want to rollback all changes to this verse?';
 
 implementation
 
@@ -517,7 +519,9 @@ end;
 
 procedure TFrmPrincipal.ActionReverterAssociacoesExecute(Sender: TObject);
 begin
-  if ProjetoAtual <> nil then
+  if ProjetoAtual = nil then
+    exit;
+  if MessageDlg(SRollbackChanges, SRollbackChangesConfirmation, mtConfirmation, [mbYes, mbCancel], 0) = mrYes then
     ProjetoAtual.Atualizar;
 end;
 
