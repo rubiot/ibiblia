@@ -216,8 +216,7 @@ constructor TRTFEdit.Criar(Conteiner: TPanel);
 begin
   {$IFNDEF UNIX}
   if LoadLibrary(PChar('Msftedit.dll')) = 0 then
-    MessageBox(TForm(Conteiner.Owner).Handle, PChar('RichEdit 4.1 not found!!'), PChar('Error'),
-      MB_OK);
+    MessageBox(TForm(Conteiner.Owner).Handle, PChar('RichEdit 4.1 not found!!'), PChar('Error'), MB_OK);
 
   FHandle := CreateWindowEx(0, MSFTEDIT_CLASS, PChar(''),
     ES_MULTILINE or WS_VISIBLE or WS_CHILD {or WS_BORDER} or WS_TABSTOP or

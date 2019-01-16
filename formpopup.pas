@@ -73,8 +73,6 @@ begin
 end;
 
 procedure TFrmDictionaryPopup.FormDestroy(Sender: TObject);
-var
-  i: integer;
 begin
   opts.WriteInteger('leiaute', 'popup.largura', Width);
   opts.WriteInteger('leiaute', 'popup.altura', Height);
@@ -166,6 +164,8 @@ end;
 
 procedure TFrmDictionaryPopup.Ocultar;
 begin
+  if not self.Visible then
+    exit;
   self.Visible := false;
   TabControlStrongs.Tabs.Clear;
   TabControlMorfos.Tabs.Clear;

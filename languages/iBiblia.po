@@ -640,6 +640,10 @@ msgstr ""
 msgid "Strong's dictionary"
 msgstr ""
 
+#: tfrmdictionarypopup.caption
+msgid "Dictionary"
+msgstr ""
+
 #: tfrmescolherverserules.button1.caption
 msgid "&Cancel"
 msgstr ""
@@ -891,7 +895,7 @@ msgid "Options"
 msgstr ""
 
 #: tfrmprincipal.menuitem21.caption
-msgid "Show dictionary popup when CTRL is pressed"
+msgid "Show dictionary popup when only with Alt pressed"
 msgstr ""
 
 #: tfrmprincipal.menuitem22.caption

@@ -654,6 +654,10 @@ msgstr "Morphology dictionary"
 msgid "Strong's dictionary"
 msgstr "Strong's dictionary"
 
+#: tfrmdictionarypopup.caption
+msgid "Dictionary"
+msgstr "Dictionary"
+
 #: tfrmescolherverserules.button1.caption
 msgid "&Cancel"
 msgstr "&Cancel"
@@ -905,8 +909,9 @@ msgid "Options"
 msgstr "Options"
 
 #: tfrmprincipal.menuitem21.caption
-msgid "Show dictionary popup when CTRL is pressed"
-msgstr "Show dictionary popup when CTRL is pressed"
+#| msgid "Show dictionary popup when CTRL is pressed"
+msgid "Show dictionary popup when only with Alt pressed"
+msgstr "Show dictionary popup when only with Alt pressed"
 
 #: tfrmprincipal.menuitem22.caption
 msgid "Automatically auto-associate verses"

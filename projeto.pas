@@ -834,11 +834,11 @@ begin
   //if (GetKeyState(VK_CAPITAL) and 1) <> 0 then // capslock ativo?
   if not FExibirDefComCtrl or ((
   {$IFDEF UNIX}
-  LCLIntf.GetKeyState(VK_CONTROL)
+  LCLIntf.GetKeyState(VK_MENU)
   {$ELSE}
-  GetKeyState(VK_CONTROL)
+  GetKeyState(VK_MENU)
   {$ENDIF}
-  and $8000) <> 0) then // CONTROL pressionado?
+  and $8000) <> 0) then // Alt pressionado?
   begin
     FTemporizador.Enabled := false;
     FTemporizador.Tag := PtrInt(Sender);
@@ -849,7 +849,7 @@ end;
 procedure TProjeto.SintagmaOnMouseLeave(Sender: TSintagma);
 begin
   FTemporizador.Enabled := false;
-  if (GetKeyState(VK_CONTROL) and $8000) = 0 then
+  if (GetKeyState(VK_MENU) and $8000) = 0 then
     frmDictionaryPopup.Ocultar;
 end;
 

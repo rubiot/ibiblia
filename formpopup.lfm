@@ -6,7 +6,7 @@ object frmDictionaryPopup: TfrmDictionaryPopup
   BorderIcons = []
   BorderStyle = bsSizeToolWin
   BorderWidth = 1
-  Caption = 'Dicionário'
+  Caption = 'Dictionary'
   ClientHeight = 418
   ClientWidth = 425
   FormStyle = fsStayOnTop
