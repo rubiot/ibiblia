@@ -5,8 +5,8 @@ unit Sugestao;
 interface
 
 uses
-  Classes, SysUtils, StrUtils, sqldb, sqlite3conn, Versiculo, iBibliaXML,
-  Dialogs, LazLogger, PCRE, Sintagma, ONTTokenizer;
+  Classes, SysUtils, StrUtils, sqldb, sqlite3conn, Versiculo,
+  Dialogs, LazLogger, PCRE, Sintagma, ONTTokenizer, ExportarProjeto;
 
 type
 
@@ -58,6 +58,7 @@ type
     procedure LimparBaseAssociacoes;
     procedure Commit;
     procedure Rollback;
+    function GetTranslationAlternatives(syntagm: TSintagma): string;
   end;
 
 
@@ -585,6 +586,7 @@ begin
       QSugestoes.Next;
     end;
   end;
+  QSugestoes.Close;
   v1.LimparSelecao;
   v2.LimparSelecao;
   loc1.Free;
@@ -629,6 +631,47 @@ procedure TGerSugestoes.Rollback;
 begin
   FConn.Transaction.Rollback;
   FConn.StartTransaction;
+end;
+
+{*
+function TGerSugestoes.GetTranslationAlternatives(syntagm: TSintagma): string;
+var
+  QSugestoes: TSQLQuery;
+  locucao, key: string;
+begin
+  result := '';
+  key := syntagm.GetChaveSugestao(tlMetaDados);
+  if key.IsEmpty then
+    exit;
+
+  QSugestoes := ObterSugestoes(syntagm.GetChaveSugestao(tlMetaDados));
+  while not QSugestoes.EOF do
+  begin
+    locucao := AnsiReplaceStr(QSugestoes.Fields[1].AsString, ';', ' ');
+    result := format('%s%s%s', [result, IfThen(result.Length = 0, '', '; '), locucao]);
+    QSugestoes.Next;
+  end;
+  QSugestoes.Close;
+end;
+*}
+function TGerSugestoes.GetTranslationAlternatives(syntagm: TSintagma): string;
+var
+  QSugestoes: TSQLQuery;
+  locucao, key: string;
+begin
+  result := '';
+  key := syntagm.GetChaveSugestao(tlMetaDados);
+  if key.IsEmpty then
+    exit;
+
+  QSugestoes := ObterSugestoes(syntagm.GetChaveSugestao(tlMetaDados));
+  while not QSugestoes.EOF do
+  begin
+    locucao := AnsiReplaceStr(QSugestoes.Fields[1].AsString, ';', ' ');
+    result := format('%s\par\li0 {\b\''95  } %s', [result, UnicodeToRTF(locucao)]);
+    QSugestoes.Next;
+  end;
+  QSugestoes.Close;
 end;
 
 end.

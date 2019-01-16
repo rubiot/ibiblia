@@ -112,6 +112,7 @@ type
     function ResgatarInfo(info: string): string;
     function ObterDefinicaoStrong(strong: string; texto: TTipoTextoBiblico): string;
     function ObterDefinicaoMorfo(morfo: string; texto: TTipoTextoBiblico): string;
+    function FormatRTF(rtf: string): string;
     procedure InserirVersiculoTexto(versiculo: string; texto: TTipoTextoBiblico);
     procedure PreRolagemVersiculo(DataSet: TDataSet);
     procedure PosRolagemVersiculo(DataSet: TDataSet);
@@ -133,6 +134,7 @@ type
     procedure AtribuirDicMorfo(dic: string; t: TTipoTextoBiblico);
     procedure AtualizarArvore;
     procedure AtualizarArvore(id: string);
+    procedure ShowTranslationAlternatives(syntagm: TSintagma);
   public
     constructor Criar;
     constructor Criar(paineis: array of TScrollbox; navegador: TTreeView; rsituacao: TRadioGroup; rcomentarios: TMemo);
@@ -174,6 +176,7 @@ type
     function ObterTextoVersiculo(Referencia: string; texto: TTipoTextoBiblico): string;
     function ObterTextoSimplesVersiculo(texto: TTipoTextoBiblico): string;
     function ObterTextoSimplesVersiculo(Referencia: string; texto: TTipoTextoBiblico): string;
+    function GetTranslationSuggestions(syntagm: TSintagma): string;
     procedure Translate;
     procedure ToggleMostrarTags;
     property Referencia: string read GetReferencia;
@@ -627,32 +630,7 @@ begin
     Close;
     Params.ParamByName('strong').AsString := strong;
     Open;
-    if AnsiStartsStr('{\rtf1', Fields[0].AsString) then
-      result := Fields[0].AsString
-    else
-      result := '{\rtf1\ansi\ansicpg1252\deff0\deflang1033{\fonttbl{\f0\fnil\fcharset0 Tahoma;}' +
-        '{\f1\fswiss\fprq2\fcharset0 Tahoma;}{\f2\fswiss\fcharset0 Arial;}}' +
-
-        '{\colortbl ;' +
-            '\red0\green0\blue0;' +
-            '\red0\green0\blue255;' +
-            '\red150\green60\blue100;' + //maroon;
-            '\red0\green255\blue0;' +
-            '\red255\green0\blue255;' +
-            '\red255\green0\blue0;' +
-            '\red255\green255\blue0;' +
-            '\red255\green255\blue255;' +
-            '\red0\green0\blue128;' +
-            '\red0\green128\blue128;' +
-            '\red255\green0\blue0;' + //dark green
-            '\red128\green0\blue128;' +
-            '\red128\green0\blue0;' +
-            '\red128\green128\blue0;' +
-            '\red128\green128\blue128;' +
-            '\red192\green192\blue192;}' +
-
-        '\viewkind4\uc1\pard\lang1046\f0\fs20 ' +
-        Fields[0].AsString + '}';
+    result := FormatRTF(Fields[0].AsString);
   end;
 end;
 
@@ -682,12 +660,42 @@ begin
     if Fields[0].AsString = '' then
       exit;
 
-    result :=
-      '{\rtf1\ansi\ansicpg1252\deff0\deflang1033{\fonttbl{\f0\fnil\fcharset0 Tahoma;}' +
-      '{\f1\fswiss\fprq2\fcharset0 Tahoma;}{\f2\fswiss\fcharset0 Arial;}}' +
-      '{\colortbl ;\red128\green0\blue64;\red128\green0\blue0;}\viewkind4\uc1\pard\lang1046\f0\fs20 ' +
-      Fields[0].AsString + '}';
+    result := FormatRTF(Fields[0].AsString);
   end;
+end;
+
+function TProjeto.FormatRTF(rtf: string): string;
+begin
+  result := '';
+  if rtf.IsEmpty then
+    exit;
+
+  if AnsiStartsStr('{\rtf1', rtf) then
+    result := rtf
+  else
+    result := '{\rtf1\ansi\ansicpg1252\deff0\deflang1033{\fonttbl{\f0\fnil\fcharset0 Tahoma;}' +
+      '{\f1\fswiss\fprq2\fcharset0 Tahoma;}{\f2\fswiss\fcharset0 Arial;}}' +
+
+      '{\colortbl ;' +
+          '\red0\green0\blue0;' +
+          '\red0\green0\blue255;' +
+          '\red150\green60\blue100;' + //maroon;
+          '\red0\green255\blue0;' +
+          '\red255\green0\blue255;' +
+          '\red255\green0\blue0;' +
+          '\red255\green255\blue0;' +
+          '\red255\green255\blue255;' +
+          '\red0\green0\blue128;' +
+          '\red0\green128\blue128;' +
+          '\red255\green0\blue0;' + //dark green
+          '\red128\green0\blue128;' +
+          '\red128\green0\blue0;' +
+          '\red128\green128\blue0;' +
+          '\red128\green128\blue128;' +
+          '\red192\green192\blue192;}' +
+
+      '\viewkind4\uc1\pard\lang1046\f0\fs20 ' +
+      rtf + '}';
 end;
 
 procedure TProjeto.InserirVersiculoTexto(versiculo: string;
@@ -855,6 +863,11 @@ end;
 
 procedure TProjeto.SintagmaOnClick(Sender: TSintagma);
 begin
+  if (GetKeyState(VK_MENU) and $8000) <> 0 then // is Alt pressed?
+  begin
+    ShowTranslationAlternatives(Sender);
+    exit;
+  end;
   if assigned(FOnSintagmaClick) then
     FOnSintagmaClick(Sender);
 
@@ -1311,6 +1324,23 @@ begin
       nl.SelectedIndex := nl.ImageIndex + 4;
     end;
   end;
+end;
+
+procedure TProjeto.ShowTranslationAlternatives(syntagm: TSintagma);
+var
+  point: TPoint;
+  rtf: string;
+begin
+  frmDictionaryPopup.Ocultar;
+  rtf := FormatRTF(FSugeridor.GetTranslationAlternatives(syntagm));
+  if rtf.IsEmpty then
+    exit;
+
+  frmDictionaryPopup.AdicionarStrong('', rtf);
+
+  point := syntagm.LabelRef.ClientToScreen(syntagm.LabelRef.ClientRect.BottomRight);
+  frmDictionaryPopup.Caption := syntagm.Texto;
+  frmDictionaryPopup.MostrarEm(point.x, point.y);
 end;
 
 constructor TProjeto.Criar;
@@ -2313,6 +2343,11 @@ begin
       result := result + s.valor;
   end;
   varredorXML.Destruir;
+end;
+
+function TProjeto.GetTranslationSuggestions(syntagm: TSintagma): string;
+begin
+  result := FSugeridor.GetTranslationAlternatives(syntagm);
 end;
 
 procedure TProjeto.Translate;

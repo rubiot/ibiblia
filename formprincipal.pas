@@ -767,8 +767,9 @@ end;
 
 procedure TFrmPrincipal.QuandoPalavraClicada(Sender: TSintagma);
 begin
+  //StatusBar1.SimpleText := ProjetoAtual.GetTranslationSuggestions(Sender);
   {$IFDEF WINDOWS}
-  if not syncTw2iBiblia or (Sender.Strong.Count = 0) then
+  if not syncTw2iBiblia or not Sender.TemStrongs then
     exit;
   SyncTheWordDict(Sender.Strong.Strings[0]);
   {$ENDIF}

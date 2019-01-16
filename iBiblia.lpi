@@ -20,11 +20,11 @@
       <UseVersionInfo Value="True"/>
       <AutoIncrementBuild Value="True"/>
       <MajorVersionNr Value="1"/>
-      <BuildNr Value="48"/>
+      <BuildNr Value="49"/>
       <Language Value="0416"/>
       <StringTable CompanyName="Rúbio R. C. Terra (rubio.terra@gmail.com)" FileDescription="Ferramenta para associação de textos bíblicos" ProductName="iBiblia" ProductVersion="0.0.0.0"/>
     </VersionInfo>
-    <BuildModes Count="4" Active="Debug32">
+    <BuildModes Count="4" Active="Release32">
       <Item1 Name="Debug" Default="True"/>
       <Item2 Name="Release">
         <CompilerOptions>
@@ -144,7 +144,7 @@
         <Filename Value="iBiblia.lpr"/>
         <IsPartOfProject Value="True"/>
         <WindowIndex Value="1"/>
-        <CursorPos Y="25"/>
+        <CursorPos Y="26"/>
         <UsageCount Value="207"/>
         <Loaded Value="True"/>
       </Unit0>
@@ -157,8 +157,8 @@
         <UnitName Value="formPrincipal"/>
         <EditorIndex Value="2"/>
         <WindowIndex Value="1"/>
-        <TopLine Value="172"/>
-        <CursorPos X="95" Y="186"/>
+        <TopLine Value="760"/>
+        <CursorPos X="5" Y="770"/>
         <UsageCount Value="207"/>
         <Loaded Value="True"/>
         <LoadedDesigner Value="True"/>
@@ -169,8 +169,8 @@
         <UnitName Value="Versiculo"/>
         <EditorIndex Value="9"/>
         <WindowIndex Value="1"/>
-        <TopLine Value="182"/>
-        <CursorPos X="29" Y="195"/>
+        <TopLine Value="63"/>
+        <CursorPos X="15" Y="80"/>
         <ExtraEditorCount Value="1"/>
         <ExtraEditor1>
           <EditorIndex Value="-1"/>
@@ -187,7 +187,7 @@
         <EditorIndex Value="-1"/>
         <WindowIndex Value="1"/>
         <CursorPos X="18"/>
-        <UsageCount Value="130"/>
+        <UsageCount Value="129"/>
       </Unit3>
       <Unit4>
         <Filename Value="projeto.pas"/>
@@ -195,8 +195,8 @@
         <UnitName Value="Projeto"/>
         <EditorIndex Value="5"/>
         <WindowIndex Value="1"/>
-        <TopLine Value="825"/>
-        <CursorPos X="30" Y="844"/>
+        <TopLine Value="1311"/>
+        <CursorPos X="30" Y="1329"/>
         <ExtraEditorCount Value="1"/>
         <ExtraEditor1>
           <EditorIndex Value="-1"/>
@@ -211,8 +211,9 @@
         <UnitName Value="Sugestao"/>
         <EditorIndex Value="14"/>
         <WindowIndex Value="1"/>
-        <TopLine Value="406"/>
-        <CursorPos X="3" Y="413"/>
+        <TopLine Value="621"/>
+        <CursorPos X="25" Y="671"/>
+        <FoldState Value=" TLvX0KY"/>
         <UsageCount Value="207"/>
         <Loaded Value="True"/>
       </Unit5>
@@ -239,8 +240,8 @@
         <IsVisibleTab Value="True"/>
         <EditorIndex Value="11"/>
         <WindowIndex Value="1"/>
-        <TopLine Value="114"/>
-        <CursorPos Y="133"/>
+        <TopLine Value="117"/>
+        <CursorPos X="48" Y="144"/>
         <UsageCount Value="201"/>
         <Loaded Value="True"/>
         <LoadedDesigner Value="True"/>
@@ -287,7 +288,7 @@
         <WindowIndex Value="1"/>
         <TopLine Value="25"/>
         <CursorPos X="51" Y="45"/>
-        <UsageCount Value="3"/>
+        <UsageCount Value="2"/>
       </Unit11>
       <Unit12>
         <Filename Value="PCRE.pas"/>
@@ -307,7 +308,7 @@
         <ResourceBaseClass Value="Form"/>
         <EditorIndex Value="6"/>
         <WindowIndex Value="1"/>
-        <TopLine Value="49"/>
+        <TopLine Value="75"/>
         <CursorPos Y="64"/>
         <UsageCount Value="203"/>
         <Loaded Value="True"/>
@@ -319,8 +320,7 @@
         <UnitName Value="ExportarProjeto"/>
         <EditorIndex Value="13"/>
         <WindowIndex Value="1"/>
-        <TopLine Value="362"/>
-        <CursorPos X="29" Y="284"/>
+        <CursorPos Y="12"/>
         <UsageCount Value="203"/>
         <Loaded Value="True"/>
       </Unit14>
@@ -375,8 +375,7 @@
         <UnitName Value="LazUTF8"/>
         <EditorIndex Value="-1"/>
         <WindowIndex Value="1"/>
-        <TopLine Value="93"/>
-        <CursorPos X="23" Y="122"/>
+        <TopLine Value="19"/>
         <UsageCount Value="43"/>
       </Unit19>
       <Unit20>
@@ -385,7 +384,8 @@
         <UnitName Value="ONTTokenizer"/>
         <EditorIndex Value="7"/>
         <WindowIndex Value="1"/>
-        <CursorPos X="95" Y="14"/>
+        <TopLine Value="91"/>
+        <CursorPos X="12" Y="110"/>
         <UsageCount Value="202"/>
         <Loaded Value="True"/>
       </Unit20>
@@ -395,8 +395,8 @@
         <UnitName Value="ONTParser"/>
         <EditorIndex Value="8"/>
         <WindowIndex Value="1"/>
-        <TopLine Value="262"/>
-        <CursorPos Y="291"/>
+        <TopLine Value="228"/>
+        <CursorPos X="23" Y="241"/>
         <UsageCount Value="202"/>
         <Loaded Value="True"/>
       </Unit21>
@@ -406,8 +406,8 @@
         <UnitName Value="Sintagma"/>
         <EditorIndex Value="10"/>
         <WindowIndex Value="1"/>
-        <TopLine Value="581"/>
-        <CursorPos Y="600"/>
+        <TopLine Value="68"/>
+        <CursorPos X="15" Y="84"/>
         <UsageCount Value="202"/>
         <Loaded Value="True"/>
       </Unit22>
@@ -416,7 +416,7 @@
         <EditorIndex Value="-1"/>
         <WindowIndex Value="1"/>
         <TopLine Value="81"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="9"/>
       </Unit23>
       <Unit24>
         <Filename Value="C:\tools\lazarus\fpc\3.0.4\source\packages\fcl-db\src\base\dataset.inc"/>
@@ -424,7 +424,7 @@
         <WindowIndex Value="1"/>
         <TopLine Value="1886"/>
         <CursorPos X="3" Y="1889"/>
-        <UsageCount Value="3"/>
+        <UsageCount Value="2"/>
       </Unit24>
       <Unit25>
         <Filename Value="C:\tools\lazarus\lcl\lcltranslator.pas"/>
@@ -433,7 +433,7 @@
         <WindowIndex Value="1"/>
         <TopLine Value="549"/>
         <CursorPos X="69" Y="504"/>
-        <UsageCount Value="21"/>
+        <UsageCount Value="20"/>
       </Unit25>
       <Unit26>
         <Filename Value="C:\tools\lazarus\lcl\include\treeview.inc"/>
@@ -441,7 +441,7 @@
         <WindowIndex Value="1"/>
         <TopLine Value="5297"/>
         <CursorPos Y="5316"/>
-        <UsageCount Value="22"/>
+        <UsageCount Value="21"/>
       </Unit26>
       <Unit27>
         <Filename Value="C:\tools\lazarus\lcl\comctrls.pp"/>
@@ -450,7 +450,7 @@
         <WindowIndex Value="1"/>
         <TopLine Value="2873"/>
         <CursorPos X="5" Y="2892"/>
-        <UsageCount Value="7"/>
+        <UsageCount Value="6"/>
       </Unit27>
       <Unit28>
         <Filename Value="C:\tools\lazarus\fpc\3.0.4\source\packages\fcl-db\src\sqlite\customsqliteds.pas"/>
@@ -459,7 +459,7 @@
         <WindowIndex Value="1"/>
         <TopLine Value="1159"/>
         <CursorPos Y="1178"/>
-        <UsageCount Value="9"/>
+        <UsageCount Value="8"/>
       </Unit28>
       <Unit29>
         <Filename Value="C:\tools\lazarus\fpc\3.0.4\source\rtl\objpas\classes\lists.inc"/>
@@ -467,7 +467,7 @@
         <WindowIndex Value="1"/>
         <TopLine Value="617"/>
         <CursorPos Y="636"/>
-        <UsageCount Value="8"/>
+        <UsageCount Value="7"/>
       </Unit29>
       <Unit30>
         <Filename Value="C:\tools\lazarus\lcl\customtimer.pas"/>
@@ -476,7 +476,7 @@
         <WindowIndex Value="1"/>
         <TopLine Value="125"/>
         <CursorPos Y="144"/>
-        <UsageCount Value="19"/>
+        <UsageCount Value="18"/>
       </Unit30>
       <Unit31>
         <Filename Value="C:\tools\lazarus\lcl\include\font.inc"/>
@@ -484,7 +484,7 @@
         <WindowIndex Value="1"/>
         <TopLine Value="1326"/>
         <CursorPos Y="1351"/>
-        <UsageCount Value="19"/>
+        <UsageCount Value="18"/>
       </Unit31>
       <Unit32>
         <Filename Value="C:\tools\lazarus\lcl\include\customlabel.inc"/>
@@ -492,7 +492,7 @@
         <WindowIndex Value="1"/>
         <TopLine Value="59"/>
         <CursorPos Y="78"/>
-        <UsageCount Value="19"/>
+        <UsageCount Value="18"/>
       </Unit32>
       <Unit33>
         <Filename Value="C:\tools\lazarus\fpc\3.0.4\source\packages\fcl-image\src\fphelper.inc"/>
@@ -500,7 +500,7 @@
         <WindowIndex Value="1"/>
         <TopLine Value="49"/>
         <CursorPos Y="68"/>
-        <UsageCount Value="19"/>
+        <UsageCount Value="18"/>
       </Unit33>
       <Unit34>
         <Filename Value="C:\tools\lazarus\lcl\include\graphiccontrol.inc"/>
@@ -508,7 +508,7 @@
         <WindowIndex Value="1"/>
         <TopLine Value="17"/>
         <CursorPos Y="36"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="9"/>
       </Unit34>
       <Unit35>
         <Filename Value="C:\tools\lazarus\lcl\include\control.inc"/>
@@ -516,7 +516,7 @@
         <WindowIndex Value="1"/>
         <TopLine Value="5014"/>
         <CursorPos Y="5033"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="9"/>
       </Unit35>
       <Unit36>
         <Filename Value="C:\tools\lazarus\lcl\include\wincontrol.inc"/>
@@ -524,7 +524,7 @@
         <WindowIndex Value="1"/>
         <TopLine Value="6315"/>
         <CursorPos Y="6334"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="9"/>
       </Unit36>
       <Unit37>
         <Filename Value="C:\tools\lazarus\lcl\include\scrollingwincontrol.inc"/>
@@ -532,7 +532,7 @@
         <WindowIndex Value="1"/>
         <TopLine Value="38"/>
         <CursorPos Y="57"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="9"/>
       </Unit37>
       <Unit38>
         <Filename Value="C:\tools\lazarus\fpc\3.0.4\source\packages\winunits-base\src\richedit.pp"/>
@@ -540,7 +540,7 @@
         <WindowIndex Value="1"/>
         <TopLine Value="131"/>
         <CursorPos X="5" Y="150"/>
-        <UsageCount Value="11"/>
+        <UsageCount Value="10"/>
       </Unit38>
       <Unit39>
         <Filename Value="C:\tools\lazarus\fpc\3.0.4\source\rtl\win\wininc\func.inc"/>
@@ -551,123 +551,99 @@
         <UsageCount Value="10"/>
       </Unit39>
     </Units>
-    <JumpHistory Count="29" HistoryIndex="28">
+    <JumpHistory Count="23" HistoryIndex="22">
       <Position1>
-        <Filename Value="rtfedit.pas"/>
-        <Caret Line="96" TopLine="77"/>
+        <Filename Value="sintagma.pas"/>
+        <Caret Line="86" Column="15" TopLine="69"/>
       </Position1>
       <Position2>
-        <Filename Value="rtfedit.pas"/>
-        <Caret Line="97" TopLine="77"/>
+        <Filename Value="sintagma.pas"/>
+        <Caret Line="215" Column="18" TopLine="182"/>
       </Position2>
       <Position3>
-        <Filename Value="rtfedit.pas"/>
-        <Caret Line="100" TopLine="77"/>
+        <Filename Value="sintagma.pas"/>
+        <Caret Line="84" Column="15" TopLine="67"/>
       </Position3>
       <Position4>
-        <Filename Value="formpopup.pas"/>
-        <Caret Line="92" TopLine="73"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="798" Column="41" TopLine="770"/>
       </Position4>
       <Position5>
-        <Filename Value="rtfedit.pas"/>
-        <Caret Line="96" TopLine="77"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="129" Column="15" TopLine="178"/>
       </Position5>
       <Position6>
-        <Filename Value="rtfedit.pas"/>
-        <Caret Line="97" TopLine="77"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="136" Column="15" TopLine="118"/>
       </Position6>
       <Position7>
-        <Filename Value="rtfedit.pas"/>
-        <Caret Line="100" TopLine="77"/>
+        <Filename Value="sugestao.pas"/>
+        <Caret Line="226" Column="22" TopLine="229"/>
       </Position7>
       <Position8>
-        <Filename Value="rtfedit.pas"/>
-        <Caret Line="200" TopLine="181"/>
+        <Filename Value="sugestao.pas"/>
+        <Caret Line="621" Column="32" TopLine="621"/>
       </Position8>
       <Position9>
-        <Filename Value="rtfedit.pas"/>
-        <Caret Line="202" TopLine="181"/>
+        <Filename Value="exportarprojeto.pas"/>
+        <Caret Line="392" Column="90" TopLine="363"/>
       </Position9>
       <Position10>
-        <Filename Value="rtfedit.pas"/>
-        <Caret Line="182" TopLine="176"/>
+        <Filename Value="sugestao.pas"/>
+        <Caret Line="671" Column="74" TopLine="621"/>
       </Position10>
       <Position11>
-        <Filename Value="rtfedit.pas"/>
-        <Caret Line="129" TopLine="110"/>
+        <Filename Value="exportarprojeto.pas"/>
+        <Caret Line="87" Column="8" TopLine="59"/>
       </Position11>
       <Position12>
-        <Filename Value="rtfedit.pas"/>
-        <Caret Line="200" TopLine="180"/>
+        <Filename Value="exportarprojeto.pas"/>
+        <Caret Line="68" Column="16" TopLine="61"/>
       </Position12>
       <Position13>
-        <Filename Value="rtfedit.pas"/>
-        <Caret Line="130" TopLine="112"/>
+        <Filename Value="exportarprojeto.pas"/>
+        <Caret Line="13" Column="3"/>
       </Position13>
       <Position14>
-        <Filename Value="rtfedit.pas"/>
-        <Caret Line="200" TopLine="180"/>
+        <Filename Value="exportarprojeto.pas"/>
+        <Caret Line="12"/>
       </Position14>
       <Position15>
-        <Filename Value="rtfedit.pas"/>
-        <Caret Line="202" TopLine="180"/>
+        <Filename Value="formpopup.pas"/>
+        <Caret Line="145" TopLine="125"/>
       </Position15>
       <Position16>
-        <Filename Value="rtfedit.pas"/>
-        <Caret Line="200" TopLine="180"/>
+        <Filename Value="formpopup.pas"/>
+        <Caret Line="141" Column="21" TopLine="125"/>
       </Position16>
       <Position17>
-        <Filename Value="rtfedit.pas"/>
-        <Caret Line="129" TopLine="111"/>
+        <Filename Value="formpopup.pas"/>
+        <Caret Line="175" Column="19" TopLine="143"/>
       </Position17>
       <Position18>
-        <Filename Value="rtfedit.pas"/>
-        <Caret Line="137" TopLine="110"/>
+        <Filename Value="formpopup.pas"/>
+        <Caret Line="24" Column="21" TopLine="5"/>
       </Position18>
       <Position19>
         <Filename Value="formpopup.pas"/>
-        <Caret Line="173" TopLine="142"/>
+        <Caret Line="29" Column="31" TopLine="5"/>
       </Position19>
       <Position20>
-        <Filename Value="projeto.pas"/>
-        <Caret Line="853" TopLine="833"/>
+        <Filename Value="formpopup.pas"/>
+        <Caret Line="96" Column="19" TopLine="64"/>
       </Position20>
       <Position21>
         <Filename Value="formpopup.pas"/>
-        <Caret Line="133" TopLine="114"/>
+        <Caret Line="109" Column="47" TopLine="77"/>
       </Position21>
       <Position22>
-        <Filename Value="rtfedit.pas"/>
-        <Caret Line="200" TopLine="181"/>
+        <Filename Value="formpopup.pas"/>
+        <Caret Line="111" Column="45" TopLine="79"/>
       </Position22>
       <Position23>
-        <Filename Value="rtfedit.pas"/>
-        <Caret Line="202" TopLine="181"/>
+        <Filename Value="formpopup.pas"/>
+        <Caret Line="128" Column="19" TopLine="96"/>
       </Position23>
-      <Position24>
-        <Filename Value="rtfedit.pas"/>
-        <Caret Line="200" TopLine="181"/>
-      </Position24>
-      <Position25>
-        <Filename Value="rtfedit.pas"/>
-        <Caret Line="96" TopLine="77"/>
-      </Position25>
-      <Position26>
-        <Filename Value="rtfedit.pas"/>
-        <Caret Line="97" TopLine="77"/>
-      </Position26>
-      <Position27>
-        <Filename Value="rtfedit.pas"/>
-        <Caret Line="100" TopLine="77"/>
-      </Position27>
-      <Position28>
-        <Filename Value="projeto.pas"/>
-        <Caret Line="853" TopLine="825"/>
-      </Position28>
-      <Position29>
-        <Filename Value="projeto.pas"/>
-        <Caret Line="841" Column="28" TopLine="825"/>
-      </Position29>
     </JumpHistory>
   </ProjectOptions>
   <CompilerOptions>
@@ -709,7 +685,7 @@
         <WatchScope Value="wpsLocal"/>
         <WatchKind Value="wpkWrite"/>
         <Source Value="projeto.pas"/>
-        <Line Value="907"/>
+        <Line Value="920"/>
       </Item2>
       <Item3>
         <Kind Value="bpkSource"/>

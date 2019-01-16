@@ -7,6 +7,8 @@ interface
 uses
   Classes, SysUtils, LCLProc, contnrs, strutils, PCRE, LazUTF8;
 
+function UnicodeToRTF(s: string): string;
+
 type
 
   TConcordancia = class;

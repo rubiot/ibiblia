@@ -141,6 +141,10 @@ begin
     TabControlMorfos.TabIndex := 0;
     FEditMorfo.RTF  := FMorfos[0];
     FEditMorfo.Zoom := ZoomMorfo;
+    TabControlMorfos.Visible:=true;
+  end else
+  begin
+    TabControlMorfos.Visible:=false;
   end;
 
   if x + self.Width > Screen.Width then
