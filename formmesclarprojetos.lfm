@@ -1,12 +1,12 @@
 object FrmMesclarProjetos: TFrmMesclarProjetos
-  Left = 439
+  Left = 988
   Height = 516
-  Top = 122
+  Top = 201
   Width = 283
   Caption = 'Mesclar projetos'
   ClientHeight = 516
   ClientWidth = 283
-  LCLVersion = '1.0.8.0'
+  LCLVersion = '1.8.4.0'
   object CheckListBox1: TCheckListBox
     Left = 8
     Height = 416
@@ -41,7 +41,7 @@ object FrmMesclarProjetos: TFrmMesclarProjetos
       'Judas'
       'Apocalipse'
     )
-    ItemHeight = 19
+    ItemHeight = 15
     OnClickCheck = CheckListBox1ClickCheck
     TabOrder = 0
     Data = {
@@ -82,7 +82,7 @@ object FrmMesclarProjetos: TFrmMesclarProjetos
       'Judas'
       'Apocalipse'
     )
-    ItemHeight = 19
+    ItemHeight = 15
     OnClickCheck = CheckListBox2ClickCheck
     TabOrder = 1
     Data = {
@@ -101,4 +101,4 @@ object FrmMesclarProjetos: TFrmMesclarProjetos
     left = 304
     top = 384
   end
-end
+end

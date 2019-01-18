@@ -24,7 +24,7 @@
       <Language Value="0416"/>
       <StringTable CompanyName="Rúbio R. C. Terra (rubio.terra@gmail.com)" FileDescription="Ferramenta para associação de textos bíblicos" ProductName="iBiblia" ProductVersion="0.0.0.0"/>
     </VersionInfo>
-    <BuildModes Count="4" Active="Release32">
+    <BuildModes Count="4" Active="Debug32">
       <Item1 Name="Debug" Default="True"/>
       <Item2 Name="Release">
         <CompilerOptions>
@@ -155,10 +155,11 @@
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="formPrincipal"/>
+        <IsVisibleTab Value="True"/>
         <EditorIndex Value="2"/>
         <WindowIndex Value="1"/>
-        <TopLine Value="760"/>
-        <CursorPos X="5" Y="770"/>
+        <TopLine Value="600"/>
+        <CursorPos X="78" Y="613"/>
         <UsageCount Value="207"/>
         <Loaded Value="True"/>
         <LoadedDesigner Value="True"/>
@@ -195,8 +196,8 @@
         <UnitName Value="Projeto"/>
         <EditorIndex Value="5"/>
         <WindowIndex Value="1"/>
-        <TopLine Value="1311"/>
-        <CursorPos X="30" Y="1329"/>
+        <TopLine Value="1563"/>
+        <CursorPos Y="1580"/>
         <ExtraEditorCount Value="1"/>
         <ExtraEditor1>
           <EditorIndex Value="-1"/>
@@ -213,7 +214,6 @@
         <WindowIndex Value="1"/>
         <TopLine Value="621"/>
         <CursorPos X="25" Y="671"/>
-        <FoldState Value=" TLvX0KY"/>
         <UsageCount Value="207"/>
         <Loaded Value="True"/>
       </Unit5>
@@ -237,7 +237,6 @@
         <ComponentName Value="frmDictionaryPopup"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <IsVisibleTab Value="True"/>
         <EditorIndex Value="11"/>
         <WindowIndex Value="1"/>
         <TopLine Value="117"/>
@@ -308,7 +307,7 @@
         <ResourceBaseClass Value="Form"/>
         <EditorIndex Value="6"/>
         <WindowIndex Value="1"/>
-        <TopLine Value="75"/>
+        <TopLine Value="74"/>
         <CursorPos Y="64"/>
         <UsageCount Value="203"/>
         <Loaded Value="True"/>
@@ -551,99 +550,127 @@
         <UsageCount Value="10"/>
       </Unit39>
     </Units>
-    <JumpHistory Count="23" HistoryIndex="22">
+    <JumpHistory Count="30" HistoryIndex="29">
       <Position1>
         <Filename Value="sintagma.pas"/>
-        <Caret Line="86" Column="15" TopLine="69"/>
+        <Caret Line="215" Column="18" TopLine="182"/>
       </Position1>
       <Position2>
         <Filename Value="sintagma.pas"/>
-        <Caret Line="215" Column="18" TopLine="182"/>
+        <Caret Line="84" Column="15" TopLine="67"/>
       </Position2>
       <Position3>
-        <Filename Value="sintagma.pas"/>
-        <Caret Line="84" Column="15" TopLine="67"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="798" Column="41" TopLine="770"/>
       </Position3>
       <Position4>
         <Filename Value="projeto.pas"/>
-        <Caret Line="798" Column="41" TopLine="770"/>
+        <Caret Line="136" Column="15" TopLine="118"/>
       </Position4>
       <Position5>
-        <Filename Value="projeto.pas"/>
-        <Caret Line="129" Column="15" TopLine="178"/>
+        <Filename Value="sugestao.pas"/>
+        <Caret Line="621" Column="32" TopLine="621"/>
       </Position5>
       <Position6>
-        <Filename Value="projeto.pas"/>
-        <Caret Line="136" Column="15" TopLine="118"/>
+        <Filename Value="exportarprojeto.pas"/>
+        <Caret Line="392" Column="90" TopLine="363"/>
       </Position6>
       <Position7>
         <Filename Value="sugestao.pas"/>
-        <Caret Line="226" Column="22" TopLine="229"/>
+        <Caret Line="671" Column="74" TopLine="621"/>
       </Position7>
       <Position8>
-        <Filename Value="sugestao.pas"/>
-        <Caret Line="621" Column="32" TopLine="621"/>
+        <Filename Value="exportarprojeto.pas"/>
+        <Caret Line="87" Column="8" TopLine="59"/>
       </Position8>
       <Position9>
         <Filename Value="exportarprojeto.pas"/>
-        <Caret Line="392" Column="90" TopLine="363"/>
+        <Caret Line="68" Column="16" TopLine="61"/>
       </Position9>
       <Position10>
-        <Filename Value="sugestao.pas"/>
-        <Caret Line="671" Column="74" TopLine="621"/>
+        <Filename Value="exportarprojeto.pas"/>
+        <Caret Line="13" Column="3"/>
       </Position10>
       <Position11>
         <Filename Value="exportarprojeto.pas"/>
-        <Caret Line="87" Column="8" TopLine="59"/>
+        <Caret Line="12"/>
       </Position11>
       <Position12>
-        <Filename Value="exportarprojeto.pas"/>
-        <Caret Line="68" Column="16" TopLine="61"/>
+        <Filename Value="formpopup.pas"/>
+        <Caret Line="145" TopLine="125"/>
       </Position12>
       <Position13>
-        <Filename Value="exportarprojeto.pas"/>
-        <Caret Line="13" Column="3"/>
+        <Filename Value="formpopup.pas"/>
+        <Caret Line="141" Column="21" TopLine="125"/>
       </Position13>
       <Position14>
-        <Filename Value="exportarprojeto.pas"/>
-        <Caret Line="12"/>
+        <Filename Value="formpopup.pas"/>
+        <Caret Line="175" Column="19" TopLine="143"/>
       </Position14>
       <Position15>
         <Filename Value="formpopup.pas"/>
-        <Caret Line="145" TopLine="125"/>
+        <Caret Line="24" Column="21" TopLine="5"/>
       </Position15>
       <Position16>
         <Filename Value="formpopup.pas"/>
-        <Caret Line="141" Column="21" TopLine="125"/>
+        <Caret Line="29" Column="31" TopLine="5"/>
       </Position16>
       <Position17>
         <Filename Value="formpopup.pas"/>
-        <Caret Line="175" Column="19" TopLine="143"/>
+        <Caret Line="96" Column="19" TopLine="64"/>
       </Position17>
       <Position18>
         <Filename Value="formpopup.pas"/>
-        <Caret Line="24" Column="21" TopLine="5"/>
+        <Caret Line="109" Column="47" TopLine="77"/>
       </Position18>
       <Position19>
         <Filename Value="formpopup.pas"/>
-        <Caret Line="29" Column="31" TopLine="5"/>
+        <Caret Line="111" Column="45" TopLine="79"/>
       </Position19>
       <Position20>
         <Filename Value="formpopup.pas"/>
-        <Caret Line="96" Column="19" TopLine="64"/>
+        <Caret Line="128" Column="19" TopLine="96"/>
       </Position20>
       <Position21>
-        <Filename Value="formpopup.pas"/>
-        <Caret Line="109" Column="47" TopLine="77"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="1329" Column="30" TopLine="1311"/>
       </Position21>
       <Position22>
-        <Filename Value="formpopup.pas"/>
-        <Caret Line="111" Column="45" TopLine="79"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="128" Column="33" TopLine="117"/>
       </Position22>
       <Position23>
-        <Filename Value="formpopup.pas"/>
-        <Caret Line="128" Column="19" TopLine="96"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="916" Column="5" TopLine="905"/>
       </Position23>
+      <Position24>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="148" Column="15" TopLine="136"/>
+      </Position24>
+      <Position25>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="1580" Column="17" TopLine="1569"/>
+      </Position25>
+      <Position26>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="1578" Column="27" TopLine="1565"/>
+      </Position26>
+      <Position27>
+        <Filename Value="formprincipal.pas"/>
+        <Caret Line="770" TopLine="760"/>
+      </Position27>
+      <Position28>
+        <Filename Value="formprincipal.pas"/>
+        <Caret Line="777" TopLine="767"/>
+      </Position28>
+      <Position29>
+        <Filename Value="formprincipal.pas"/>
+        <Caret Line="715" TopLine="694"/>
+      </Position29>
+      <Position30>
+        <Filename Value="formprincipal.pas"/>
+        <Caret Line="135" Column="15" TopLine="123"/>
+      </Position30>
     </JumpHistory>
   </ProjectOptions>
   <CompilerOptions>

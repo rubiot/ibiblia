@@ -1,7 +1,7 @@
 object frmDictionaryPopup: TfrmDictionaryPopup
-  Left = 533
+  Left = 1007
   Height = 418
-  Top = 204
+  Top = 302
   Width = 425
   BorderIcons = []
   BorderStyle = bsSizeToolWin

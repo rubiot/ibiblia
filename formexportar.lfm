@@ -1,7 +1,7 @@
 object frmExportarProjeto: TfrmExportarProjeto
-  Left = 272
+  Left = 612
   Height = 427
-  Top = 174
+  Top = 287
   Width = 789
   Caption = 'Export association'
   ClientHeight = 427
@@ -18,7 +18,7 @@ object frmExportarProjeto: TfrmExportarProjeto
     TabOrder = 0
     object TabSheet1: TTabSheet
       Caption = 'Tagged destination text'
-      ClientHeight = 332
+      ClientHeight = 334
       ClientWidth = 768
       object MemoRodapeDestino: TMemo
         Left = 13
@@ -40,49 +40,49 @@ object frmExportarProjeto: TfrmExportarProjeto
       end
       object Label1: TLabel
         Left = 13
-        Height = 15
+        Height = 13
         Top = 89
-        Width = 97
+        Width = 86
         Caption = 'Module properties'
         ParentColor = False
       end
       object cbExportarNAComoItalicos: TCheckBox
         Left = 13
-        Height = 19
+        Height = 17
         Top = 9
-        Width = 286
+        Width = 266
         Caption = 'Export unassociated words as added words (italics)'
         TabOrder = 1
       end
       object cbExportarMorfologia: TCheckBox
         Left = 13
-        Height = 19
+        Height = 17
         Top = 33
-        Width = 147
+        Width = 135
         Caption = 'Export morphology tags'
         TabOrder = 2
       end
       object cbExportarComentarios: TCheckBox
         Left = 13
-        Height = 19
+        Height = 17
         Top = 57
-        Width = 212
+        Width = 197
         Caption = 'Export comments as translator notes'
         TabOrder = 3
       end
       object cbStrongsReutilizados: TCheckBox
         Left = 372
-        Height = 19
+        Height = 17
         Top = 9
-        Width = 127
+        Width = 118
         Caption = 'Mark reused strongs'
         TabOrder = 4
       end
       object cbStrongsNaoTraduzidos: TCheckBox
         Left = 372
-        Height = 19
+        Height = 17
         Top = 33
-        Width = 131
+        Width = 120
         Caption = 'Mark unused strongs'
         TabOrder = 5
       end

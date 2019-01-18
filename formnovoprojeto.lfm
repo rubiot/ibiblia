@@ -1,7 +1,7 @@
 object FormNovoProjeto: TFormNovoProjeto
-  Left = 290
+  Left = 653
   Height = 437
-  Top = 137
+  Top = 226
   Width = 459
   Caption = 'New project...'
   ClientHeight = 437
@@ -15,12 +15,12 @@ object FormNovoProjeto: TFormNovoProjeto
     Top = 152
     Width = 450
     Caption = 'Texts'
-    ClientHeight = 211
+    ClientHeight = 213
     ClientWidth = 446
     TabOrder = 0
     object EditTextoOrigem: TLabeledEdit
       Left = 8
-      Height = 23
+      Height = 21
       Top = 24
       Width = 384
       EditLabel.AnchorSideLeft.Control = EditTextoOrigem
@@ -28,8 +28,8 @@ object FormNovoProjeto: TFormNovoProjeto
       EditLabel.AnchorSideRight.Side = asrBottom
       EditLabel.AnchorSideBottom.Control = EditTextoOrigem
       EditLabel.Left = 8
-      EditLabel.Height = 15
-      EditLabel.Top = 6
+      EditLabel.Height = 13
+      EditLabel.Top = 8
       EditLabel.Width = 384
       EditLabel.Caption = 'Source'
       EditLabel.ParentColor = False
@@ -38,7 +38,7 @@ object FormNovoProjeto: TFormNovoProjeto
     end
     object EditTextoDestino: TLabeledEdit
       Left = 8
-      Height = 23
+      Height = 21
       Top = 72
       Width = 384
       EditLabel.AnchorSideLeft.Control = EditTextoDestino
@@ -46,8 +46,8 @@ object FormNovoProjeto: TFormNovoProjeto
       EditLabel.AnchorSideRight.Side = asrBottom
       EditLabel.AnchorSideBottom.Control = EditTextoDestino
       EditLabel.Left = 8
-      EditLabel.Height = 15
-      EditLabel.Top = 54
+      EditLabel.Height = 13
+      EditLabel.Top = 56
       EditLabel.Width = 384
       EditLabel.Caption = 'Destination'
       EditLabel.ParentColor = False
@@ -56,7 +56,7 @@ object FormNovoProjeto: TFormNovoProjeto
     end
     object EditTextoRef1: TLabeledEdit
       Left = 8
-      Height = 23
+      Height = 21
       Top = 120
       Width = 384
       EditLabel.AnchorSideLeft.Control = EditTextoRef1
@@ -64,8 +64,8 @@ object FormNovoProjeto: TFormNovoProjeto
       EditLabel.AnchorSideRight.Side = asrBottom
       EditLabel.AnchorSideBottom.Control = EditTextoRef1
       EditLabel.Left = 8
-      EditLabel.Height = 15
-      EditLabel.Top = 102
+      EditLabel.Height = 13
+      EditLabel.Top = 104
       EditLabel.Width = 384
       EditLabel.Caption = 'Reference 1'
       EditLabel.ParentColor = False
@@ -74,7 +74,7 @@ object FormNovoProjeto: TFormNovoProjeto
     end
     object EditTextoRef2: TLabeledEdit
       Left = 8
-      Height = 23
+      Height = 21
       Top = 168
       Width = 384
       EditLabel.AnchorSideLeft.Control = EditTextoRef2
@@ -82,8 +82,8 @@ object FormNovoProjeto: TFormNovoProjeto
       EditLabel.AnchorSideRight.Side = asrBottom
       EditLabel.AnchorSideBottom.Control = EditTextoRef2
       EditLabel.Left = 8
-      EditLabel.Height = 15
-      EditLabel.Top = 150
+      EditLabel.Height = 13
+      EditLabel.Top = 152
       EditLabel.Width = 384
       EditLabel.Caption = 'Reference 2'
       EditLabel.ParentColor = False
@@ -156,12 +156,12 @@ object FormNovoProjeto: TFormNovoProjeto
     Top = 8
     Width = 450
     Caption = 'Properties'
-    ClientHeight = 60
+    ClientHeight = 62
     ClientWidth = 446
     TabOrder = 3
     object EditNomeProjeto: TLabeledEdit
       Left = 8
-      Height = 23
+      Height = 21
       Top = 22
       Width = 384
       EditLabel.AnchorSideLeft.Control = EditNomeProjeto
@@ -169,8 +169,8 @@ object FormNovoProjeto: TFormNovoProjeto
       EditLabel.AnchorSideRight.Side = asrBottom
       EditLabel.AnchorSideBottom.Control = EditNomeProjeto
       EditLabel.Left = 8
-      EditLabel.Height = 15
-      EditLabel.Top = 4
+      EditLabel.Height = 13
+      EditLabel.Top = 6
       EditLabel.Width = 384
       EditLabel.Caption = 'Name'
       EditLabel.ParentColor = False
@@ -191,7 +191,7 @@ object FormNovoProjeto: TFormNovoProjeto
     ChildSizing.ShrinkVertical = crsScaleChilds
     ChildSizing.Layout = cclTopToBottomThenLeftToRight
     ChildSizing.ControlsPerLine = 1
-    ClientHeight = 29
+    ClientHeight = 31
     ClientWidth = 445
     ColumnLayout = clVerticalThenHorizontal
     Columns = 2

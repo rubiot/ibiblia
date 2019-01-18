@@ -65,6 +65,7 @@ type
     MenuItem21: TMenuItem;
     MenuItem22: TMenuItem;
     MenuItem23: TMenuItem;
+    MenuItemAlwaysOnTop: TMenuItem;
     MenuItemLangEn: TMenuItem;
     MenuItemLangPt: TMenuItem;
     MenuItemStrongsCount: TMenuItem;
@@ -138,6 +139,7 @@ type
     procedure MenuItem21Click(Sender: TObject);
     procedure MenuItem22Click(Sender: TObject);
     procedure AbrirRecenteClick(Sender: TObject);
+    procedure MenuItemAlwaysOnTopClick(Sender: TObject);
     procedure MenuItemLangEnClick(Sender: TObject);
     procedure MenuItemLangPtClick(Sender: TObject);
     procedure MenuItemStrongNegritoClick(Sender: TObject);
@@ -609,6 +611,10 @@ begin
   MenuItemStrongNegrito.Checked := opts.ReadBool('opcoes', 'boldstrongs', false);
   MenuItemStrongsCount.Checked := opts.ReadBool('opcoes', 'showstrongscount', false);
 
+  MenuItemAlwaysOnTop.Checked := opts.ReadBool('opcoes', 'alwaysontop', false);
+  if MenuItemAlwaysOnTop.Checked then
+    FormStyle := fsSystemStayOnTop;
+
   language := opts.ReadString('opcoes', 'language', 'pt');
   SetDefaultLang(language);
   if language = 'en' then
@@ -643,6 +649,7 @@ begin
   opts.WriteBool('opcoes', 'boldstrongs', MenuItemStrongNegrito.Checked);
   opts.WriteBool('opcoes', 'showstrongscount', MenuItemStrongsCount.Checked);
   opts.WriteString('opcoes', 'language', language);
+  opts.WriteBool('opcoes', 'alwaysontop', MenuItemAlwaysOnTop.Checked);
   opts.Free;
 end;
 
@@ -699,6 +706,18 @@ procedure TFrmPrincipal.AbrirRecenteClick(Sender: TObject);
 begin
   if TMenuItem(Sender).Caption <> '(-)' then
      ActionAbrirProjetoExecute(Sender);
+end;
+
+procedure TFrmPrincipal.MenuItemAlwaysOnTopClick(Sender: TObject);
+var
+  m: TMenuItem;
+begin
+  m := TMenuItem(Sender);
+  m.Checked := not m.Checked;
+  if m.Checked then
+    FormStyle := fsSystemStayOnTop
+  else
+    FormStyle := fsNormal;
 end;
 
 procedure TFrmPrincipal.MenuItemLangEnClick(Sender: TObject);

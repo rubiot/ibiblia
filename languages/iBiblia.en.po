@@ -747,6 +747,14 @@ msgstr "Interlinear source text"
 msgid "Strong's concordance"
 msgstr "Strong's concordance"
 
+#: tfrmmesclarprojetos.button1.caption
+msgid "Button1"
+msgstr ""
+
+#: tfrmmesclarprojetos.caption
+msgid "Mesclar projetos"
+msgstr ""
+
 #: tfrmprincipal.actionabrirprojeto.caption
 msgid "Open..."
 msgstr "Open..."
@@ -924,6 +932,10 @@ msgstr "Language"
 #: tfrmprincipal.menuitem5.caption
 msgid "Navigation"
 msgstr "Navigation"
+
+#: tfrmprincipal.menuitemalwaysontop.caption
+msgid "Keep iBiblia always on top of other windows"
+msgstr "Keep iBiblia always on top of other windows"
 
 #: tfrmprincipal.menuitemlangen.caption
 msgctxt "tfrmprincipal.menuitemlangen.caption"
