@@ -771,6 +771,9 @@ begin
 
   if assigned(OnNovoVersiculo) then
     OnNovoVersiculo(self);
+
+  if FTblPares.Fields[FACamposTexto[tbDestino]].AsString.IsEmpty then // open verse to edition if is empty
+    OnDblClickVersiculo(FAVersiculo[tbDestino].Painel);
 end;
 
 procedure TProjeto.SalvarPares;
