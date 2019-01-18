@@ -305,9 +305,6 @@ object frmPrincipal: TfrmPrincipal
       object MenuItem16: TMenuItem
         Action = ActionExportar
       end
-      object MenuItem17: TMenuItem
-        Action = ActionMesclarProjetos
-      end
       object MenuItem18: TMenuItem
         Action = ActionRecriarBaseSugestoes
       end
