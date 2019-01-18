@@ -711,6 +711,8 @@ begin
   if FAVersiculo[tbOrigem] = nil then
     exit;
 
+  FMemoVersiculo.Desativar; // hide and save verse edit if necessary
+
   if FAVersiculo[tbOrigem].Modificado then
   begin
     SalvarAssociacoes;
@@ -863,6 +865,7 @@ end;
 
 procedure TProjeto.SintagmaOnClick(Sender: TSintagma);
 begin
+  FMemoVersiculo.Desativar; // saving eventual changes on verse edit
   if (GetKeyState(VK_MENU) and $8000) <> 0 then // is Alt pressed?
   begin
     ShowTranslationAlternatives(Sender);

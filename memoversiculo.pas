@@ -66,6 +66,7 @@ end;
 
 procedure TMemoVersiculo.ConfirmarAlteracao;
 begin
+  {
   if FModificado then
   begin
     case MessageDlg(SChangeVerse, SChangeVerseConfirmation, mtConfirmation, [mbYes, mbNo, mbCancel], 0) of
@@ -76,6 +77,7 @@ begin
       mrCancel: exit;
     end;
   end;
+  }
   Desativar;
 end;
 
@@ -117,7 +119,11 @@ end;
 
 procedure TMemoVersiculo.Desativar;
 begin
+  if not FMemo.Visible then
+    exit;
   FMemo.Visible := False;
+  if assigned(FEventoTextoModificado) then
+    FEventoTextoModificado(self);
 end;
 
 end.
