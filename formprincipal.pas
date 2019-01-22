@@ -98,7 +98,7 @@ type
     ToolBar1: TToolBar;
     ToolButton1: TToolButton;
     ToolButton10: TToolButton;
-    ToolButton11: TToolButton;
+    ToolButtonExit: TToolButton;
     ToolButton2: TToolButton;
     ToolButton3: TToolButton;
     ToolButton4: TToolButton;
@@ -151,6 +151,7 @@ type
     procedure AtualizarMRU(m: TMenuItem);
     procedure CarregarMRU(m: TMenuItem);
     procedure DescarregarMRU(m: TMenuItem);
+    procedure ToolButtonExitClick(Sender: TObject);
   private
     { private declarations }
     syncTw2iBiblia: boolean;
@@ -594,6 +595,8 @@ end;
 procedure TFrmPrincipal.FormClose(Sender: TObject; var CloseAction: TCloseAction);
 begin
   ActionFecharProjetoExecute(Sender);
+  if ProjetoAtual <> nil then
+    CloseAction := caNone;
 end;
 
 procedure TFrmPrincipal.FormCreate(Sender: TObject);
@@ -860,6 +863,11 @@ begin
 
   for j:=m.Count to MAX_MRU-1 do
     opts.DeleteKey('projetos', format('recente.%d', [j]));
+end;
+
+procedure TFrmPrincipal.ToolButtonExitClick(Sender: TObject);
+begin
+  Close;
 end;
 
 procedure TFrmPrincipal.SyncToTwRef(Ref: string);
