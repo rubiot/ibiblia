@@ -52,6 +52,7 @@ type
   //TOnAlterarVersiculoEvent = procedure (Sender: TProjeto) of object;
 
   AVersiculo = array[tbOrigem..tbConsulta2] of TVersiculo;
+  ATmpVerse = array[tbOrigem..tbDestino] of TVersiculo;
   ACamposTexto = array[tbOrigem..tbConsulta2] of integer;
   ADicStrong = array[tbOrigem..tbConsulta2] of TSQLQuery;
   ADicMorfo = array[tbOrigem..tbConsulta2] of TSQLQuery;
@@ -72,6 +73,7 @@ type
     FTblPares: TSqlite3Dataset;
     FTblInfo: TSqlite3Dataset;
     FAVersiculo: AVersiculo;
+    FATmpVerse: ATmpVerse;
     FACamposTexto: ACamposTexto;
     FADicStrong: ADicStrong;
     FADicMorfo: ADicMorfo;
@@ -113,7 +115,7 @@ type
     function ObterDefinicaoStrong(strong: string; texto: TTipoTextoBiblico): string;
     function ObterDefinicaoMorfo(morfo: string; texto: TTipoTextoBiblico): string;
     function FormatRTF(rtf: string): string;
-    procedure InserirVersiculoTexto(versiculo: string; texto: TTipoTextoBiblico);
+    procedure SetVerseText(versiculo: string; texto: TTipoTextoBiblico; replace: boolean);
     procedure PreRolagemVersiculo(DataSet: TDataSet);
     procedure PosRolagemVersiculo(DataSet: TDataSet);
     procedure SalvarPares;
@@ -156,8 +158,8 @@ type
     procedure SugerirAssociacao;
     procedure RecriarBaseSugestoes;
     procedure RecriarBaseSugestoes(pb: TProgressBar);
-    procedure ImportarModuloTheWord(arquivo: string; texto: TTipoTextoBiblico);
-    procedure ImportarModuloTheWord(arquivo: string; texto: TTipoTextoBiblico; pb: TProgressBar);
+    procedure ImportarModuloTheWord(arquivo: string; texto: TTipoTextoBiblico; replace: boolean);
+    procedure ImportarModuloTheWord(arquivo: string; texto: TTipoTextoBiblico; pb: TProgressBar; replace: boolean);
     procedure NovoObjetoVersiculo(owner: TScrollBox; texto: TTipoTextoBiblico);
     procedure ExportarTextoDestinoComStrongs(arquivo: string; opcoes: TOpcoesExportacao);
     procedure ExportarTextoDestinoComStrongs(arquivo: string; pb: TProgressBar; opcoes: TOpcoesExportacao);
@@ -274,7 +276,11 @@ resourcestring
   SLanguageId = 'en';
   SError = 'Error';
   SInformation = 'Information';
-  SCorruptedData = 'Corrupted data, some associations may be lost.';
+  SCorruptedData = 'Corrupted data, some associations may be lost.' +
+                   'This can happen for several reasons:'#13#10 +
+                   ' 1. The project file was modified outside iBiblia'#13#10 +
+                   ' 2. The project was created/edited on an incompatible iBiblia version'#13#10 +
+                   ' 3. This can be a bug in iBiblia. In this case, please file a bug in Github project page.';
   SStrongDictionary = 'Strong''s Dictionary';
   SDictionaryDoesntExist = 'The selected dictionary doesn''t exist: %s';
   SMorphologyDictionary = 'Morphology Dictionary';
@@ -698,11 +704,29 @@ begin
       rtf + '}';
 end;
 
-procedure TProjeto.InserirVersiculoTexto(versiculo: string;
-  texto: TTipoTextoBiblico);
+procedure TProjeto.SetVerseText(versiculo: string;
+  texto: TTipoTextoBiblico; replace: boolean);
 begin
   FTblPares.Edit;
+
+   // try to keep associations and update pairs
+  if replace and (texto in [tbOrigem, tbDestino]) and not FTblPares.FieldByName('pare_pares').AsString.IsEmpty then
+  begin
+    FATmpVerse[tbOrigem ].Texto := FTblPares.Fields[FACamposTexto[tbOrigem ]].AsString;
+    FATmpVerse[tbDestino].Texto := FTblPares.Fields[FACamposTexto[tbDestino]].AsString;
+    FATmpVerse[tbOrigem ].Pares := FTblPares.FieldByName('pare_pares').AsString;
+    FATmpVerse[texto].AlterarTexto(versiculo);
+    FTblPares.FieldByName('pare_pares').AsString := FATmpVerse[tbOrigem].Pares;
+    FTblPares.FieldByName('pare_situacao').AsInteger := 2; // needs review
+  end;
+
   FTblPares.Fields[FACamposTexto[texto]].AsString := versiculo;
+  if not replace and (texto in [tbOrigem, tbDestino]) then // clearing associations to avoid inconsistencies
+  begin
+    FTblPares.FieldByName('pare_pares').AsString := '';
+    FTblPares.FieldByName('pare_situacao').AsInteger := 0; // not associated
+  end;
+
   FTblPares.Post;
 end;
 
@@ -1489,6 +1513,11 @@ begin
   end;
   f.free;
 
+  FATmpVerse[tbOrigem ] := TVersiculo.Criar;
+  FATmpVerse[tbDestino] := TVersiculo.Criar;
+  FATmpVerse[tbOrigem ].VersiculoPar := FATmpVerse[tbDestino];
+  FATmpVerse[tbDestino].VersiculoPar := FATmpVerse[tbOrigem ];
+
   FACamposTexto[tbOrigem]    := FTblPares.FindField('pare_texto_origem').Index;
   FACamposTexto[tbDestino]   := FTblPares.FindField('pare_texto_destino').Index;
   FACamposTexto[tbConsulta1] := FTblPares.FindField('pare_texto_consulta1').Index;
@@ -1548,6 +1577,9 @@ begin
   FTblInfo := nil;
 
   FMemoVersiculo.Desativar;
+
+  FATmpVerse[tbOrigem ].Destruir;
+  FATmpVerse[tbDestino].Destruir;
 
   if assigned(FMemoComentarios) then
   begin
@@ -1627,7 +1659,13 @@ end;
 procedure TProjeto.Limpar;
 begin
   if assigned(FAVersiculo[tbOrigem]) then
+  begin
     FAVersiculo[tbOrigem].LimparAssociacoes;
+    SalvarAssociacoes;
+    SalvarPares;
+    if assigned(FRadioGroupSituacao) then
+      FRadioGroupSituacao.ItemIndex := 0; // not associated
+  end;
 end;
 
 procedure TProjeto.Salvar;
@@ -1731,13 +1769,13 @@ begin
 end;
 
 procedure TProjeto.ImportarModuloTheWord(arquivo: string;
-  texto: TTipoTextoBiblico);
+  texto: TTipoTextoBiblico; replace: boolean);
 begin
-  ImportarModuloTheWord(arquivo, texto, nil);
+  ImportarModuloTheWord(arquivo, texto, nil, replace);
 end;
 
 procedure TProjeto.ImportarModuloTheWord(arquivo: string;
-  texto: TTipoTextoBiblico; pb: TProgressBar);
+  texto: TTipoTextoBiblico; pb: TProgressBar; replace: boolean);
 var
   modulo: TStringList;
   i, offset: smallint;
@@ -1747,6 +1785,8 @@ var
   verseRulesPara: TStringList;
   propriedades: TStringStream;
   m: smallint;
+  marker: string;
+  //line: string;
 begin
   if AnsiEndsText('.ont', arquivo) then
   begin
@@ -1789,17 +1829,18 @@ begin
     propriedades := TStringStream.Create('');
     for i:=offset+QLinhas[FEscopo] to modulo.Count-1 do
     begin
+      //line := modulo[i];
       { eliminando comentários }
-      modulo.Strings[i] := reComments.Replace(modulo.Strings[i], '');
+      modulo[i] := reComments.Replace(modulo[i], '');
 
       //modulo.Strings[i] := reShortTitle.Replace(modulo.Strings[i], '$1=$2i');
 
-      if reVazio.IsMatch(modulo.Strings[i]) then
+      if reVazio.IsMatch(modulo[i]) then
         continue;
 
-      propriedades.WriteString(modulo.Strings[i] + #13#10);
+      propriedades.WriteString(modulo[i] + #13#10);
 
-      mtVerseRules := reVerseRules.Match(modulo.Strings[i]);
+      mtVerseRules := reVerseRules.Match(modulo[i]);
       if mtVerseRules.Success then
          FrmEscolherVerseRules.AddVerseRule(mtVerseRules.Groups[1].Value, mtVerseRules.Groups[2].Value);
 
@@ -1843,15 +1884,20 @@ begin
       pb.Visible := true;
     end;
 
+    FExportando := true;
     DesabilitarEventosRolagem;
+    marker := GetID;
     VersiculoInicial;
     for i:=offset to offset + QLinhas[FEscopo] - 1 do
     begin
+      //line := modulo[i];
+
       { aplicando verse.rules }
       for m:=0 to verseRulesDe.Count-1 do
         modulo[i] := IRegex(verseRulesDe[m]^).Replace(modulo[i], verseRulesPara[m]);
 
-      InserirVersiculoTexto(modulo[i], texto);
+      SetVerseText(modulo[i], texto, replace);
+
       VersiculoSeguinte;
       if assigned(pb) then
       begin
@@ -1860,8 +1906,13 @@ begin
            Application.ProcessMessages;
       end;
     end;
-    VersiculoInicial;
     HabilitarEventosRolagem;
+    FExportando := false;
+    if replace then
+    begin
+      IrPara(marker);
+      AtualizarArvore(marker);
+    end;
   finally
     modulo.Free;
     if assigned(pb) then
@@ -1917,8 +1968,6 @@ begin
       pb.Step := 1;
       pb.Visible := true;
     end;
-    FAVersiculo[tbOrigem].Ativo := false;
-    FAVersiculo[tbDestino].Ativo := false;
     FExportando := true;
     ONT := TStringList.Create;
     PreRolagemVersiculo(nil);
@@ -1934,25 +1983,19 @@ begin
           ONT.Add(FTblPares.Fields[FACamposTexto[tbDestino]].AsString)
         else
         begin
-          FAVersiculo[tbOrigem].Texto := FTblPares.Fields[FACamposTexto[tbOrigem]].AsString;
-          FAVersiculo[tbDestino].Texto := FTblPares.Fields[FACamposTexto[tbDestino]].AsString;
+          FATmpVerse[tbOrigem ].Texto := FTblPares.Fields[FACamposTexto[tbOrigem ]].AsString;
+          FATmpVerse[tbDestino].Texto := FTblPares.Fields[FACamposTexto[tbDestino]].AsString;
           try
-            FAVersiculo[tbOrigem].Pares := FTblPares.FieldByName('pare_pares').AsString;
+            FATmpVerse[tbOrigem].Pares := FTblPares.FieldByName('pare_pares').AsString;
           except
             on E: Exception do
-              MessageDlg(SError, SCorruptedData + #13#10 +
-                   'Isso pode ocorrer por várias razões:'#13#10 +
-                   ' 1. O texto origem e/ou destino foi editado fora do iBiblia'#13#10 +
-                   ' 2. Você carregou um novo texto origem/destino'#13#10 +
-                   ' 3. O projeto foi criado/editado numa versão diferente do iBiblia'#13#10 +
-                   ' 4. Pode ser um bug no iBiblia, por favor, relatar no github.'#13#10#13#10 +
-                   Referencia + #13#10 +
+              MessageDlg(SError, SCorruptedData + #13#10#13#10 + Referencia + #13#10 +
                    format('%s'#13#10'pares: %s'#13#10'%s'#13#10'%s',
                           [E.Message, FTblPares.FieldByName('pare_pares').AsString,
-                          FAVersiculo[tbOrigem].DebugTokens, FAVersiculo[tbDestino].DebugTokens]),
+                          FATmpVerse[tbOrigem].DebugTokens, FATmpVerse[tbDestino].DebugTokens]),
                    mtError, [mbOK], 0);
           end;
-          ONT.Add(FAVersiculo[tbDestino].GetLinhaONT(
+          ONT.Add(FATmpVerse[tbDestino].GetLinhaONT(
             (oeExportarMorfologia in opcoes),
             (oeExportarNAComoItalicos in opcoes),
             (oeStrongsReutilizados in opcoes),
@@ -1960,8 +2003,8 @@ begin
           );
         end;
 
-        if (oeExportarComentarios in opcoes) and (length(FTblPares.FieldByName('pare_comentarios').AsString) > 0) then
-          ONT.Strings[ONT.Count-1] := ONT.Strings[ONT.Count-1] + '<RF>' +
+        if (oeExportarComentarios in opcoes) and not FTblPares.FieldByName('pare_comentarios').AsString.isEmpty then
+          ONT[ONT.Count-1] := ONT[ONT.Count-1] + '<RF>' +
             AnsiReplaceStr(FTblPares.FieldByName('pare_comentarios').AsString, #13#10, '<CM>') + '<Rf>';
 
         if assigned(pb) then
@@ -1976,12 +2019,12 @@ begin
       HabilitarEventosRolagem;
     end;
 
-    if pos(ONT.Strings[0], '<WG') = 0 then { adicionando tag inócua para que o theWord exiba definições mesmo sem associações no primeiro versículo }
-      ONT.Strings[0] := ONT.Strings[0] + '<_MORPH_>';
+    if pos(ONT[0], '<WG') = 0 then { adicionando tag inócua para que o theWord exiba definições mesmo sem associações no primeiro versículo }
+      ONT[0] := ONT[0] + '<_MORPH_>';
 
     ONT.Add('');
     ONT.Add(ResgatarInfo('propriedades.destino'));
-    ONT.Strings[0] := #239#187#191 + ONT.Strings[0]; // adicionando BOM
+    ONT[0] := #239#187#191 + ONT.Strings[0]; // adicionando BOM
 
     try
       ONT.SaveToFile(arquivo);
@@ -1990,8 +2033,6 @@ begin
     end;
   finally
     ONT.Destroy;
-    FAVersiculo[tbOrigem].Ativo := true;
-    FAVersiculo[tbDestino].Ativo := true;
     FExportando := false;
     PosRolagemVersiculo(nil);
     if assigned(pb) then
@@ -2004,6 +2045,7 @@ begin
   ExportarTextoInterlinear(arquivo, nil, opcoes);
 end;
 
+{ TODO: Unify this code with ExportarTextoDestinoComStrongs() }
 procedure TProjeto.ExportarTextoInterlinear(arquivo: string;
   pb: TProgressBar; opcoes: TOpcoesExportacao);
 var
@@ -2022,8 +2064,6 @@ begin
       pb.Step := 1;
       pb.Visible := true;
     end;
-    FAVersiculo[tbOrigem].Ativo := false;
-    FAVersiculo[tbDestino].Ativo := false;
     FExportando := true;
     ONT := TStringList.Create;
     PreRolagemVersiculo(nil);
@@ -2039,10 +2079,19 @@ begin
           ONT.Add(FTblPares.Fields[FACamposTexto[tbOrigem]].AsString)
         else
         begin
-          FAVersiculo[tbOrigem].Texto := FTblPares.Fields[FACamposTexto[tbOrigem]].AsString;
-          FAVersiculo[tbDestino].Texto := FTblPares.Fields[FACamposTexto[tbDestino]].AsString;
-          FAVersiculo[tbOrigem].Pares := FTblPares.FieldByName('pare_pares').AsString;
-          ONT.Add(FAVersiculo[tbOrigem].GetLinhaInterlinear);
+          FATmpVerse[tbOrigem ].Texto := FTblPares.Fields[FACamposTexto[tbOrigem] ].AsString;
+          FATmpVerse[tbDestino].Texto := FTblPares.Fields[FACamposTexto[tbDestino]].AsString;
+          try
+            FATmpVerse[tbOrigem ].Pares := FTblPares.FieldByName('pare_pares').AsString;
+          except
+            on E: Exception do
+              MessageDlg(SError, SCorruptedData + #13#10#13#10 + Referencia + #13#10 +
+                   format('%s'#13#10'pares: %s'#13#10'%s'#13#10'%s',
+                          [E.Message, FTblPares.FieldByName('pare_pares').AsString,
+                          FATmpVerse[tbOrigem].DebugTokens, FATmpVerse[tbDestino].DebugTokens]),
+                   mtError, [mbOK], 0);
+          end;
+          ONT.Add(FATmpVerse[tbOrigem].GetLinhaInterlinear);
         end;
         if pb <> nil then
         begin
@@ -2058,7 +2107,7 @@ begin
 
     ONT.Add('');
     ONT.Add(ResgatarInfo('propriedades.origem'));
-    ONT.Strings[0] := #239#187#191 + ONT.Strings[0]; // adicionando BOM
+    ONT[0] := #239#187#191 + ONT[0]; // adicionando BOM
 
     try
       ONT.SaveToFile(arquivo);
@@ -2067,8 +2116,6 @@ begin
     end;
   finally
     ONT.Destroy;
-    FAVersiculo[tbOrigem].Ativo := true;
-    FAVersiculo[tbDestino].Ativo := true;
     FExportando := false;
     PosRolagemVersiculo(nil);
     if assigned(pb) then
@@ -2139,8 +2186,6 @@ begin
     Concordancia := TConcordancia.Create;
     Concordancia.Detalhada := oeConcordDetalhada in opcoes;
 
-    FAVersiculo[tbOrigem].Ativo := false;
-    FAVersiculo[tbDestino].Ativo := false;
     FExportando := true;
     PreRolagemVersiculo(nil);
 
@@ -2151,11 +2196,19 @@ begin
     begin
       if length(FTblPares.FieldByName('pare_pares').AsString) > 0 then
       begin
-        FAVersiculo[tbOrigem].Texto := FTblPares.Fields[FACamposTexto[tbOrigem]].AsString;
-        FAVersiculo[tbDestino].Texto := FTblPares.Fields[FACamposTexto[tbDestino]].AsString;
-        FAVersiculo[tbOrigem].Pares := FTblPares.FieldByName('pare_pares').AsString;
-
-        pares := FAVersiculo[tbOrigem].GetListaPares(tlTudo);
+        FATmpVerse[tbOrigem ].Texto := FTblPares.Fields[FACamposTexto[tbOrigem ]].AsString;
+        FATmpVerse[tbDestino].Texto := FTblPares.Fields[FACamposTexto[tbDestino]].AsString;
+        try
+          FATmpVerse[tbOrigem].Pares := FTblPares.FieldByName('pare_pares').AsString;
+        except
+          on E: Exception do
+            MessageDlg(SError, SCorruptedData + #13#10#13#10 + Referencia + #13#10 +
+                 format('%s'#13#10'pares: %s'#13#10'%s'#13#10'%s',
+                        [E.Message, FTblPares.FieldByName('pare_pares').AsString,
+                        FATmpVerse[tbOrigem].DebugTokens, FATmpVerse[tbDestino].DebugTokens]),
+                 mtError, [mbOK], 0);
+        end;
+        pares := FATmpVerse[tbOrigem].GetListaPares(tlTudo);
         Concordancia.AdicionarLocucao(pares, GetID);
         pares.Free;
       end;
@@ -2200,8 +2253,6 @@ begin
     tblConfig.Close;
     tblTopicos.Close;
     Concordancia.Free;
-    FAVersiculo[tbOrigem].Ativo := true;
-    FAVersiculo[tbDestino].Ativo := true;
     FExportando := false;
     IrPara(marcador);
     HabilitarEventosRolagem;
@@ -2233,9 +2284,7 @@ begin
     VersiculoInicial;
     while not FTblPares.EOF do
     begin
-      FTblPares.Edit;
-      FTblPares.Fields[FACamposTexto[texto]].AsString := '';
-      FTblPares.Post;
+      SetVerseText('', texto, false);
       VersiculoSeguinte;
     end;
     HabilitarEventosRolagem;

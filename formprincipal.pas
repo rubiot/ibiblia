@@ -411,7 +411,7 @@ begin
   end;
 
   if edit.Text <> '' then
-    ProjetoAtual.ImportarModuloTheWord(edit.Text, p.texto, p.pb);
+    ProjetoAtual.ImportarModuloTheWord(edit.Text, p.texto, p.pb, false);
 
   result := 0;
 end;

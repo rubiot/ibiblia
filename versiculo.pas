@@ -74,6 +74,7 @@ type
     { Protected declarations }
   public
     { Public declarations }
+    constructor Criar;
     constructor Criar(TheOwner: TScrollBox);
     destructor Destruir;
     procedure LimparSintagmas;
@@ -139,29 +140,33 @@ constructor TVersiculo.Criar(TheOwner : TScrollBox);
 var
   item: TMenuItem;
 begin
-  FPanel           := TheOwner;
-  FPanel.Color     := clWindow;
-  FPanel.Caption   := '';
+  FPanel := TheOwner;
+  FAtivo := assigned(FPanel);
 
-  FContextPopup    := TPopupMenu.Create(FPanel);
-  FContextPopup.Parent := FPanel;
+  if (FAtivo) then
+  begin
+    FPanel.Color   := clWindow;
+    FPanel.Caption := '';
+    FContextPopup    := TPopupMenu.Create(FPanel);
+    FContextPopup.Parent := FPanel;
 
-  Item := TMenuItem.Create(FContextPopup);
-  Item.Caption := '&Copiar tags';
-  Item.OnClick := @OnCopiarTagsSintagma;
-  FContextPopup.Items.Add(Item);
+    Item := TMenuItem.Create(FContextPopup);
+    Item.Caption := '&Copiar tags';
+    Item.OnClick := @OnCopiarTagsSintagma;
+    FContextPopup.Items.Add(Item);
 
-  Item := TMenuItem.Create(FContextPopup);
-  Item.Caption := 'Co&lar tags';
-  Item.OnClick := @OnColarTagsSintagma;
-  FContextPopup.Items.Add(Item);
+    Item := TMenuItem.Create(FContextPopup);
+    Item.Caption := 'Co&lar tags';
+    Item.OnClick := @OnColarTagsSintagma;
+    FContextPopup.Items.Add(Item);
 
-  FEdit            := TEdit.Create(FPanel);
-  FEdit.Visible    := false;
-  FEdit.AutoSize   := false;
-  FEdit.OnKeyDown  := @EditKeyDown;
-  FEdit.OnExit     := @EditExit;
-  FPanel.InsertControl(FEdit);
+    FEdit            := TEdit.Create(FPanel);
+    FEdit.Visible    := false;
+    FEdit.AutoSize   := false;
+    FEdit.OnKeyDown  := @EditKeyDown;
+    FEdit.OnExit     := @EditExit;
+    FPanel.InsertControl(FEdit);
+  end;
 
   FVersiculoRef         := nil;
   FOnSintagmaClick      := nil;
@@ -170,7 +175,6 @@ begin
   FModificado           := false;
   FXMLModificado        := false;
   FSelecao              := TSintagmaList.Create;
-  FAtivo                := true;
   FMostrarDicas         := false;
   //FFontePadrao          := TFont.Create;
   //FFontePadrao.Assign(TheOwner.Font);
@@ -182,23 +186,16 @@ begin
 end;
 
 destructor TVersiculo.Destruir;
-var
-  s: TSintagma;
 begin
   FDestruindo := true;
-
-  if assigned(FSintagmas) then
-  begin
-    FPanel.DisableAutoSizing;
-    for s in FSintagmas do
-      s.Destruir;
-    FPanel.EnableAutoSizing;
-    FSintagmas.free;
-  end;
-
+  LimparSintagmas;
+  FSintagmas.Free;
   FSelecao.Destroy;
-  FEdit.Destroy;
-  FContextPopup.Destroy;
+  if assigned(FPanel) then
+  begin
+    FEdit.Destroy;
+    FContextPopup.Destroy;
+  end;
   FONTParser.Destroy;
   //FFontePadrao.Free;
 end;
@@ -209,10 +206,12 @@ var
 begin
   if assigned(FSintagmas) then
   begin
-    FPanel.DisableAutoSizing;
+    if FAtivo then
+      FPanel.DisableAutoSizing;
     for s in FSintagmas do
       s.Destruir;
-    FPanel.EnableAutoSizing;
+    if FAtivo then
+      FPanel.EnableAutoSizing;
     FSintagmas.Clear;
   end;
   FSelecao.Clear;
@@ -344,6 +343,8 @@ var
   p: TPoint;
   tags: string;
 begin
+  if not FAtivo then
+    exit;
   for s in FSintagmas do
   begin
     if not assigned(s.LabelRef) or not s.TemStrongs then
@@ -365,7 +366,8 @@ end;
 
 procedure TVersiculo.OcultarTags;
 begin
-  FPanel.Refresh;
+  if FAtivo then
+    FPanel.Refresh;
 end;
 
 procedure TVersiculo.SetTexto(_XML: string);
@@ -528,7 +530,7 @@ var
   varredorXML: TONTTokenizer;
   s: TTagSintagma;
 begin
-  if not (assigned(VersiculoPar)) or (length(AValue) = 0) then
+  if not assigned(VersiculoPar) or AValue.IsEmpty then
     exit;
 
   FExibirErro := true;
@@ -615,7 +617,10 @@ end;
 
 function TVersiculo.GetFonte: TFont;
 begin
-  result := FPanel.Font;
+  if FAtivo then
+    result := FPanel.Font
+  else
+    result := nil;
 end;
 
 function TVersiculo.GetAndamentoAssociacao: Single;
@@ -821,6 +826,8 @@ end;
 
 procedure TVersiculo.SetFonte(const AValue: TFont);
 begin
+  if not FAtivo then
+    exit;
   FPanel.Font := AValue;
   Renderizar;
 end;
@@ -1100,6 +1107,11 @@ begin
   FModificado := true;
   VersiculoPar.Modificado := true;
   Renderizar;
+end;
+
+constructor TVersiculo.Criar;
+begin
+  Criar(nil);
 end;
 
 

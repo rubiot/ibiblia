@@ -6,7 +6,8 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
-  StdCtrls, ExtCtrls, Buttons, ComCtrls, ActnList, Projeto, LCLTranslator;
+  StdCtrls, ExtCtrls, Buttons, ComCtrls, ActnList, Projeto, LCLTranslator,
+  StrUtils;
 
 type
 
@@ -64,10 +65,15 @@ var
 resourcestring
   SSetDictionary = 'Set';
   SChooseABibleModule = 'Please choose a theWord module file...';
-  SChooseAnotherText = 'Change text';
-  SChangeTextConfirmation = 'Are you sure you want to load this new text?';
+  SChooseAnotherText = 'Replace text';
+  SChangeTextConfirmation = 'Are you sure you want to replace this text with a new one?';
+  SChangeTextConfirmationAssociation = 'Loading a new text will cause all your existing associations to be discarded. ' +
+                                       'But, if you click ''Yes'', iBiblia can try to keep existing associations for you.'#13#10#13#10 +
+                                       'Would you like iBiblia to do that?';
   SClearText = 'Clear text';
   SClearTextConfirmation = 'Are you sure you want to clear this text?';
+  SClearTextConfirmationAssociation = 'Are you sure you want to clear this text?'#13#10 +
+                                      'All your associations will be lost!';
   SChooseDictionary = 'Choose';
   SOpenDictionary = 'Please choose a theWord dictionary module...';
   SSourceTab = 'Source';
@@ -104,25 +110,37 @@ begin
 end;
 
 procedure TFormPropProjeto.ActionCarregarTextoExecute(Sender: TObject);
+var
+  replace: boolean;
 begin
+  if TTipoTextoBiblico(TabControl1.TabIndex) in [tbOrigem, tbDestino] then
+  begin
+    case MessageDlg(SChooseAnotherText, SChangeTextConfirmationAssociation, mtConfirmation, [mbYes, mbNo, mbCancel], 0) of
+      mrYes: replace := true;
+      mrNo: replace := false;
+      mrCancel: exit;
+    end;
+  end else
+  begin
+    if MessageDlg(SChooseAnotherText, SChangeTextConfirmation, mtConfirmation, [mbYes, mbCancel], 0) = mrCancel then
+      exit;
+    replace := false;
+  end;
+
   OpenDialog1.Filter := '*.nt; *.ont';
   OpenDialog1.Title  := SChooseABibleModule;
   if OpenDialog1.Execute then
-  begin
-    //leTexto.Text := OpenDialog1.FileName;
-    if MessageDlg(SChooseAnotherText, SChangeTextConfirmation, mtConfirmation, [mbYes, mbCancel], 0) = mrYes then
-    begin
-      FProjeto.ImportarModuloTheWord(OpenDialog1.FileName, TTipoTextoBiblico(TabControl1.TabIndex), ProgressBar1);
-    end;
-  end;
+    FProjeto.ImportarModuloTheWord(OpenDialog1.FileName, TTipoTextoBiblico(TabControl1.TabIndex), ProgressBar1, replace);
 end;
 
 procedure TFormPropProjeto.ActionLimparTextoExecute(Sender: TObject);
+var
+  msg: string;
 begin
-  if MessageDlg(SClearText, SClearTextConfirmation, mtConfirmation, [mbYes, mbCancel], 0) = mrYes then
-  begin
+  msg := IfThen(TTipoTextoBiblico(TabControl1.TabIndex) in [tbOrigem, tbDestino],
+                SClearTextConfirmationAssociation, SClearTextConfirmation);
+  if MessageDlg(SClearText, msg, mtConfirmation, [mbYes, mbCancel], 0) = mrYes then
     FProjeto.LimparTexto(TTipoTextoBiblico(TabControl1.TabIndex));
-  end;
 end;
 
 procedure TFormPropProjeto.ActionMudancaAbaExecute(Sender: TObject);
