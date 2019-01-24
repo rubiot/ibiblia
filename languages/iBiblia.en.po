@@ -537,6 +537,10 @@ msgstr "Synthetic Concordance"
 msgid "Titus"
 msgstr "Titus"
 
+#: projeto.stranslationmemory
+msgid "Translation memory"
+msgstr "Translation memory"
+
 #: projeto.szechariah
 msgid "Zecariah"
 msgstr "Zecariah"

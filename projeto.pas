@@ -136,7 +136,6 @@ type
     procedure AtribuirDicMorfo(dic: string; t: TTipoTextoBiblico);
     procedure AtualizarArvore;
     procedure AtualizarArvore(id: string);
-    procedure ShowTranslationAlternatives(syntagm: TSintagma);
   public
     constructor Criar;
     constructor Criar(paineis: array of TScrollbox; navegador: TTreeView; rsituacao: TRadioGroup; rcomentarios: TMemo);
@@ -290,6 +289,7 @@ resourcestring
   SFailedToCreateFile = 'Failed to create file: %s';
   SExportToFileError = 'iBiblia found and error while exporting the module file.'#13#10 +
                        'Please check if theWord is using the file, then close it and try again.';
+  STranslationMemory = 'Translation memory';
 
 const
   NLivrosVT: array[1..39] of string = (
@@ -681,27 +681,24 @@ begin
   else
     result := '{\rtf1\ansi\ansicpg1252\deff0\deflang1033{\fonttbl{\f0\fnil\fcharset0 Tahoma;}' +
       '{\f1\fswiss\fprq2\fcharset0 Tahoma;}{\f2\fswiss\fcharset0 Arial;}}' +
-
       '{\colortbl ;' +
-          '\red0\green0\blue0;' +
-          '\red0\green0\blue255;' +
-          '\red150\green60\blue100;' + //maroon;
-          '\red0\green255\blue0;' +
-          '\red255\green0\blue255;' +
-          '\red255\green0\blue0;' +
-          '\red255\green255\blue0;' +
-          '\red255\green255\blue255;' +
-          '\red0\green0\blue128;' +
-          '\red0\green128\blue128;' +
-          '\red255\green0\blue0;' + //dark green
-          '\red128\green0\blue128;' +
-          '\red128\green0\blue0;' +
-          '\red128\green128\blue0;' +
-          '\red128\green128\blue128;' +
-          '\red192\green192\blue192;}' +
-
-      '\viewkind4\uc1\pard\lang1046\f0\fs20 ' +
-      rtf + '}';
+        '\red0\green0\blue0;' +
+        '\red0\green0\blue255;' +
+        '\red150\green60\blue100;' + //maroon;
+        '\red0\green255\blue0;' +
+        '\red255\green0\blue255;' +
+        '\red255\green0\blue0;' +
+        '\red255\green255\blue0;' +
+        '\red255\green255\blue255;' +
+        '\red0\green0\blue128;' +
+        '\red0\green128\blue128;' +
+        '\red255\green0\blue0;' + //dark green
+        '\red128\green0\blue128;' +
+        '\red128\green0\blue0;' +
+        '\red128\green128\blue0;' +
+        '\red128\green128\blue128;' +
+        '\red192\green192\blue192;}' +
+      '\viewkind4\uc1\pard\lang1046\f0\fs20 ' + rtf + '}';
 end;
 
 procedure TProjeto.SetVerseText(versiculo: string;
@@ -893,11 +890,7 @@ end;
 procedure TProjeto.SintagmaOnClick(Sender: TSintagma);
 begin
   FMemoVersiculo.Desativar; // saving eventual changes on verse edit
-  if (GetKeyState(VK_MENU) and $8000) <> 0 then // is Alt pressed?
-  begin
-    ShowTranslationAlternatives(Sender);
-    exit;
-  end;
+
   if assigned(FOnSintagmaClick) then
     FOnSintagmaClick(Sender);
 
@@ -964,13 +957,14 @@ var
   v: TTipoTextoBiblico;
   point: TPoint;
   s, p: TSintagma;
-  m: string;
+  m, rtf: string;
 begin
   if frmDictionaryPopup.Visible then
     exit;
 
   s := TSintagma(TTimer(Sender).Tag);
   for v:=low(FAVersiculo) to high(FAVersiculo) do
+  begin
     if (FAVersiculo[v] = s.VersiculoRef) then
     begin
       if assigned(FADicMorfo[v]) then
@@ -999,6 +993,13 @@ begin
         end;
       end;
 
+      if v = tbOrigem then
+      begin
+        rtf := FormatRTF(FSugeridor.GetTranslationAlternatives(s));
+        if not rtf.IsEmpty then
+          frmDictionaryPopup.AdicionarStrong(STranslationMemory, rtf);
+      end;
+
       if (FrmDictionaryPopup.Strongs.Count > 0) or (FrmDictionaryPopup.Morfos.Count > 0) then
       begin
         point := s.LabelRef.ClientToScreen(s.LabelRef.ClientRect.BottomRight);
@@ -1007,6 +1008,7 @@ begin
       end;
       break;
     end;
+  end;
 end;
 
 procedure TProjeto.OnRedimensionarVersiculo(Sender: TObject);
@@ -1354,23 +1356,6 @@ begin
       nl.SelectedIndex := nl.ImageIndex + 4;
     end;
   end;
-end;
-
-procedure TProjeto.ShowTranslationAlternatives(syntagm: TSintagma);
-var
-  point: TPoint;
-  rtf: string;
-begin
-  frmDictionaryPopup.Ocultar;
-  rtf := FormatRTF(FSugeridor.GetTranslationAlternatives(syntagm));
-  if rtf.IsEmpty then
-    exit;
-
-  frmDictionaryPopup.AdicionarStrong('', rtf);
-
-  point := syntagm.LabelRef.ClientToScreen(syntagm.LabelRef.ClientRect.BottomRight);
-  frmDictionaryPopup.Caption := syntagm.Texto;
-  frmDictionaryPopup.MostrarEm(point.x, point.y);
 end;
 
 constructor TProjeto.Criar;
