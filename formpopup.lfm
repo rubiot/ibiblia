@@ -1,5 +1,5 @@
 object frmDictionaryPopup: TfrmDictionaryPopup
-  Left = 1007
+  Left = 574
   Height = 418
   Top = 302
   Width = 425

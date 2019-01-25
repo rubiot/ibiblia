@@ -20,7 +20,7 @@
       <UseVersionInfo Value="True"/>
       <AutoIncrementBuild Value="True"/>
       <MajorVersionNr Value="1"/>
-      <BuildNr Value="51"/>
+      <BuildNr Value="52"/>
       <Language Value="0416"/>
       <StringTable CompanyName="Rúbio R. C. Terra (rubio.terra@gmail.com)" FileDescription="Ferramenta para associação de textos bíblicos" ProductName="iBiblia" ProductVersion="0.0.0.0"/>
     </VersionInfo>
@@ -167,7 +167,7 @@
         <Filename Value="versiculo.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="Versiculo"/>
-        <EditorIndex Value="10"/>
+        <EditorIndex Value="9"/>
         <WindowIndex Value="1"/>
         <TopLine Value="707"/>
         <CursorPos Y="727"/>
@@ -194,7 +194,7 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="Projeto"/>
         <IsVisibleTab Value="True"/>
-        <EditorIndex Value="6"/>
+        <EditorIndex Value="5"/>
         <WindowIndex Value="1"/>
         <TopLine Value="2371"/>
         <CursorPos X="3" Y="2377"/>
@@ -210,7 +210,7 @@
         <Filename Value="sugestao.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="Sugestao"/>
-        <EditorIndex Value="15"/>
+        <EditorIndex Value="14"/>
         <WindowIndex Value="1"/>
         <TopLine Value="633"/>
         <CursorPos X="25" Y="671"/>
@@ -223,7 +223,7 @@
         <ComponentName Value="FormNovoProjeto"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <EditorIndex Value="13"/>
+        <EditorIndex Value="12"/>
         <WindowIndex Value="1"/>
         <TopLine Value="82"/>
         <CursorPos X="13" Y="84"/>
@@ -237,7 +237,7 @@
         <ComponentName Value="frmDictionaryPopup"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <EditorIndex Value="12"/>
+        <EditorIndex Value="11"/>
         <WindowIndex Value="1"/>
         <TopLine Value="117"/>
         <CursorPos X="48" Y="144"/>
@@ -249,7 +249,7 @@
         <Filename Value="rtfedit.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="RTFEdit"/>
-        <EditorIndex Value="18"/>
+        <EditorIndex Value="17"/>
         <WindowIndex Value="1"/>
         <TopLine Value="199"/>
         <CursorPos X="13" Y="216"/>
@@ -262,7 +262,7 @@
         <ComponentName Value="FormPropProjeto"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <EditorIndex Value="17"/>
+        <EditorIndex Value="16"/>
         <WindowIndex Value="1"/>
         <TopLine Value="52"/>
         <CursorPos X="66" Y="71"/>
@@ -274,7 +274,7 @@
         <Filename Value="memoversiculo.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="MemoVersiculo"/>
-        <EditorIndex Value="16"/>
+        <EditorIndex Value="15"/>
         <WindowIndex Value="1"/>
         <TopLine Value="103"/>
         <CursorPos Y="123"/>
@@ -287,7 +287,7 @@
         <WindowIndex Value="1"/>
         <TopLine Value="25"/>
         <CursorPos X="51" Y="45"/>
-        <UsageCount Value="0"/>
+        <UsageCount Value="10"/>
       </Unit11>
       <Unit12>
         <Filename Value="PCRE.pas"/>
@@ -305,7 +305,7 @@
         <ComponentName Value="frmExportarProjeto"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <EditorIndex Value="7"/>
+        <EditorIndex Value="6"/>
         <WindowIndex Value="1"/>
         <TopLine Value="94"/>
         <CursorPos Y="118"/>
@@ -317,7 +317,7 @@
         <Filename Value="exportarprojeto.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="ExportarProjeto"/>
-        <EditorIndex Value="14"/>
+        <EditorIndex Value="13"/>
         <WindowIndex Value="1"/>
         <CursorPos Y="12"/>
         <UsageCount Value="203"/>
@@ -329,7 +329,7 @@
         <ComponentName Value="FrmMesclarProjetos"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <EditorIndex Value="20"/>
+        <EditorIndex Value="19"/>
         <WindowIndex Value="1"/>
         <TopLine Value="17"/>
         <CursorPos X="3" Y="30"/>
@@ -343,7 +343,7 @@
         <ComponentName Value="FrmEscolherVerseRules"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <EditorIndex Value="19"/>
+        <EditorIndex Value="18"/>
         <WindowIndex Value="1"/>
         <CursorPos X="42" Y="9"/>
         <UsageCount Value="228"/>
@@ -352,7 +352,7 @@
       <Unit17>
         <Filename Value="twAutomate.pas"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="4"/>
+        <EditorIndex Value="3"/>
         <WindowIndex Value="1"/>
         <TopLine Value="71"/>
         <CursorPos X="50" Y="179"/>
@@ -363,7 +363,7 @@
         <Filename Value="twsyncthread.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="twSyncThread"/>
-        <EditorIndex Value="5"/>
+        <EditorIndex Value="4"/>
         <WindowIndex Value="1"/>
         <TopLine Value="17"/>
         <CursorPos Y="44"/>
@@ -382,7 +382,7 @@
         <Filename Value="onttokenizer.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="ONTTokenizer"/>
-        <EditorIndex Value="8"/>
+        <EditorIndex Value="7"/>
         <WindowIndex Value="1"/>
         <TopLine Value="91"/>
         <CursorPos X="12" Y="110"/>
@@ -393,7 +393,7 @@
         <Filename Value="ontparser.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="ONTParser"/>
-        <EditorIndex Value="9"/>
+        <EditorIndex Value="8"/>
         <WindowIndex Value="1"/>
         <TopLine Value="228"/>
         <CursorPos X="23" Y="241"/>
@@ -404,7 +404,7 @@
         <Filename Value="sintagma.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="Sintagma"/>
-        <EditorIndex Value="11"/>
+        <EditorIndex Value="10"/>
         <WindowIndex Value="1"/>
         <TopLine Value="510"/>
         <CursorPos Y="534"/>
@@ -424,7 +424,7 @@
         <WindowIndex Value="1"/>
         <TopLine Value="1886"/>
         <CursorPos X="3" Y="1889"/>
-        <UsageCount Value="0"/>
+        <UsageCount Value="10"/>
       </Unit24>
       <Unit25>
         <Filename Value="C:\tools\lazarus\lcl\lcltranslator.pas"/>
@@ -553,12 +553,11 @@
       <Unit40>
         <Filename Value="C:\tools\lazarus\lcl\forms.pp"/>
         <UnitName Value="Forms"/>
-        <EditorIndex Value="3"/>
+        <EditorIndex Value="-1"/>
         <WindowIndex Value="1"/>
         <TopLine Value="50"/>
         <CursorPos X="3" Y="69"/>
         <UsageCount Value="18"/>
-        <Loaded Value="True"/>
       </Unit40>
       <Unit41>
         <Filename Value="C:\tools\lazarus\fpc\3.0.4\source\rtl\objpas\math.pp"/>

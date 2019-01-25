@@ -1038,3 +1038,4 @@ msgstr "Sair"
 msgctxt "tfrmprincipal.toolbuttonexit.hint"
 msgid "Exit the program"
 msgstr "Sair do programa"
+

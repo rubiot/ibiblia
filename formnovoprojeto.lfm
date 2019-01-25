@@ -1,5 +1,5 @@
 object FormNovoProjeto: TFormNovoProjeto
-  Left = 653
+  Left = 506
   Height = 437
   Top = 226
   Width = 459

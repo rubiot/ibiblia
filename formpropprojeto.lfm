@@ -1,5 +1,5 @@
 object FormPropProjeto: TFormPropProjeto
-  Left = 740
+  Left = 318
   Height = 565
   Top = 155
   Width = 553
@@ -15,12 +15,12 @@ object FormPropProjeto: TFormPropProjeto
     Top = 6
     Width = 546
     Caption = 'Properties'
-    ClientHeight = 62
+    ClientHeight = 64
     ClientWidth = 542
     TabOrder = 0
     object EditNomeProjeto: TLabeledEdit
       Left = 15
-      Height = 23
+      Height = 21
       Top = 22
       Width = 519
       EditLabel.AnchorSideLeft.Control = EditNomeProjeto
@@ -28,8 +28,8 @@ object FormPropProjeto: TFormPropProjeto
       EditLabel.AnchorSideRight.Side = asrBottom
       EditLabel.AnchorSideBottom.Control = EditNomeProjeto
       EditLabel.Left = 15
-      EditLabel.Height = 15
-      EditLabel.Top = 4
+      EditLabel.Height = 13
+      EditLabel.Top = 6
       EditLabel.Width = 519
       EditLabel.Caption = 'Name'
       EditLabel.ParentColor = False
@@ -75,7 +75,7 @@ object FormPropProjeto: TFormPropProjeto
     TabOrder = 3
     object leDicStrong: TLabeledEdit
       Left = 11
-      Height = 23
+      Height = 21
       Top = 107
       Width = 430
       EditLabel.AnchorSideLeft.Control = leDicStrong
@@ -83,8 +83,8 @@ object FormPropProjeto: TFormPropProjeto
       EditLabel.AnchorSideRight.Side = asrBottom
       EditLabel.AnchorSideBottom.Control = leDicStrong
       EditLabel.Left = 11
-      EditLabel.Height = 15
-      EditLabel.Top = 89
+      EditLabel.Height = 13
+      EditLabel.Top = 91
       EditLabel.Width = 430
       EditLabel.Caption = 'Strong''s dictionary'
       EditLabel.ParentColor = False
@@ -93,7 +93,7 @@ object FormPropProjeto: TFormPropProjeto
     end
     object leDicMorfo: TLabeledEdit
       Left = 11
-      Height = 23
+      Height = 21
       Top = 155
       Width = 430
       EditLabel.AnchorSideLeft.Control = leDicMorfo
@@ -101,8 +101,8 @@ object FormPropProjeto: TFormPropProjeto
       EditLabel.AnchorSideRight.Side = asrBottom
       EditLabel.AnchorSideBottom.Control = leDicMorfo
       EditLabel.Left = 11
-      EditLabel.Height = 15
-      EditLabel.Top = 137
+      EditLabel.Height = 13
+      EditLabel.Top = 139
       EditLabel.Width = 430
       EditLabel.Caption = 'Morphology dictionary'
       EditLabel.ParentColor = False
@@ -155,9 +155,9 @@ object FormPropProjeto: TFormPropProjeto
     end
     object Label2: TLabel
       Left = 11
-      Height = 15
+      Height = 13
       Top = 187
-      Width = 24
+      Width = 22
       Caption = 'Font'
       ParentColor = False
     end

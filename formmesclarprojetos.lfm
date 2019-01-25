@@ -1,5 +1,5 @@
 object FrmMesclarProjetos: TFrmMesclarProjetos
-  Left = 988
+  Left = 858
   Height = 516
   Top = 201
   Width = 283

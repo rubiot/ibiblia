@@ -507,6 +507,10 @@ msgstr ""
 msgid "Titus"
 msgstr ""
 
+#: projeto.stranslationmemory
+msgid "Translation memory"
+msgstr ""
+
 #: projeto.szechariah
 msgid "Zecariah"
 msgstr ""

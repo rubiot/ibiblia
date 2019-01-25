@@ -1,11 +1,11 @@
 object frmExportarProjeto: TfrmExportarProjeto
-  Left = 612
+  Left = 0
   Height = 427
   Top = 287
-  Width = 789
+  Width = 712
   Caption = 'Export association'
   ClientHeight = 427
-  ClientWidth = 789
+  ClientWidth = 712
   Position = poMainFormCenter
   LCLVersion = '1.8.4.0'
   object PageControl1: TPageControl

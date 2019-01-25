@@ -424,6 +424,9 @@ function TSintagma.GetParesTemStrongs: boolean;
 var
   p: TSintagma;
 begin
+  if not assigned(Pares) then
+    exit;
+
   for p in Pares do
     if p.TemStrongs then
     begin

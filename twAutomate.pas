@@ -141,7 +141,7 @@ begin
   BooksMap := TBooksMap.Create;
   for i:=0 to lines.Count - 1 do
   begin
-    mtBook := reBook.Match(lines.Strings[i]);
+    mtBook := reBook.Match(lines[i]);
     if mtBook.Success then
       BooksMap[mtBook.Groups[2].Value] := mtBook.Groups[1].Value;
   end;
@@ -177,7 +177,7 @@ begin
 
   for i:=0 to lines.Count - 1 do
   begin
-    line := lines.Strings[i];
+    line := lines[i];
     matches := reLang.Match(line);
     if matches.Success then
     begin
@@ -186,7 +186,6 @@ begin
     end;
   end;
   lines.Free;
-
 end;
 
 end.

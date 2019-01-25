@@ -1045,3 +1045,4 @@ msgstr "Exit"
 msgctxt "tfrmprincipal.toolbuttonexit.hint"
 msgid "Exit the program"
 msgstr "Exit the program"
+
