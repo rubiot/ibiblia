@@ -988,8 +988,8 @@ msgid "Show words with strong tags in bold"
 msgstr "Exibir palavras com strongs em negrito"
 
 #: tfrmprincipal.menuitemstrongscount.caption
-msgid "Show count for words having strong tags"
-msgstr "Exibir contagem de palavras com strongs"
+msgid "Show strongs count"
+msgstr "Exibir contagem de strongs"
 
 #: tfrmprincipal.menuitemsyncibiblia.caption
 msgid "Sync iBiblia to theWord verse"
@@ -1038,4 +1038,3 @@ msgstr "Sair"
 msgctxt "tfrmprincipal.toolbuttonexit.hint"
 msgid "Exit the program"
 msgstr "Sair do programa"
-

@@ -964,7 +964,7 @@ msgid "Show words with strong tags in bold"
 msgstr ""
 
 #: tfrmprincipal.menuitemstrongscount.caption
-msgid "Show count for words having strong tags"
+msgid "Show strongs count"
 msgstr ""
 
 #: tfrmprincipal.menuitemsyncibiblia.caption
