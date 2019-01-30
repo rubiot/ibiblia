@@ -772,14 +772,8 @@ begin
       FAVersiculo[tbOrigem].Pares := FTblPares.FieldByName('pare_pares').AsString;
     except
       on E: Exception do
-      MessageDlg(SError, SCorruptedData + #13#10 +
-           'Isso pode ocorrer por várias razões:'#13#10 +
-           ' 1. O texto origem e/ou destino foi editado fora do iBiblia'#13#10 +
-           ' 2. Você carregou um novo texto origem/destino'#13#10 +
-           ' 3. O projeto foi criado/editado numa versão diferente do iBiblia'#13#10 +
-           ' 4. Pode ser um bug no iBiblia, por favor, relatar no github.'#13#10#13#10 +
-           Referencia + #13#10 +
-           format('%s'#13#10'pares: %s'#13#10'%s'#13#10'%s',
+      MessageDlg(SError, SCorruptedData + #13#10#13#10 + Referencia + #13#10#13#10 +
+           format('%s'#13#10#13#10'pares: %s'#13#10'%s'#13#10'%s',
                   [E.Message, FTblPares.FieldByName('pare_pares').AsString,
                   FAVersiculo[tbOrigem].DebugTokens, FAVersiculo[tbDestino].DebugTokens]),
            mtError, [mbOK], 0);
@@ -890,6 +884,7 @@ var
   hide: boolean;
 begin
   FTemporizador.Enabled := false;
+  hide := true;
 
   case FPopupTrigger of
     ptMouseHover:     hide := GetKeyState(VK_CONTROL) and $8000 = 0;
