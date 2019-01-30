@@ -1022,10 +1022,14 @@ begin
   if not FAtivo or not assigned(FSintagmas) then
     exit;
 
+  FPanel.DisableAutoSizing;
+
   for s in FSintagmas do
     s.Renderizar;
-
   RenderizarStrongCount;
+
+  FPanel.EnableAutoSizing;
+
   OrganizarSintagmas;
 end;
 
