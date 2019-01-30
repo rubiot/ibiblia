@@ -26,6 +26,7 @@ type
     //FStrongMorfoComoChave: boolean;
     FVersiculoRef: TVersiculo;
     FSintagmas: TSintagmaList;
+    FStrongCount: TSintagma;
     FSelecao: TSintagmaList;
     FModificado: boolean;
     FXMLModificado: boolean;
@@ -83,6 +84,8 @@ type
     procedure DesassociarPares;
     procedure LimparAssociacoes;
     procedure Renderizar;
+    procedure RenderizarStrongCount;
+    procedure ClearStrongCount;
     procedure OrganizarSintagmas;
     procedure SelecionarSintagmas(list: TSintagmaList);
     procedure AlterarTexto(_XML: string);
@@ -168,6 +171,7 @@ begin
     FPanel.InsertControl(FEdit);
   end;
 
+  FStrongCount          := nil;
   FVersiculoRef         := nil;
   FOnSintagmaClick      := nil;
   FOnSintagmaMouseEnter := nil;
@@ -208,8 +212,12 @@ begin
   begin
     if FAtivo then
       FPanel.DisableAutoSizing;
+
     for s in FSintagmas do
       s.Destruir;
+
+    ClearStrongCount;
+
     if FAtivo then
       FPanel.EnableAutoSizing;
     FSintagmas.Clear;
@@ -391,6 +399,9 @@ var
   s: TSintagma;
   found: boolean;
 begin
+  if FXML = _XML then
+    exit;
+
   new := TSintagmaList.Create;
   new := FONTParser.ParseLine(_XML, self);
 
@@ -402,12 +413,6 @@ begin
   end
   else
   begin
-    if FSintagmas[FSintagmas.Count-1].Tipo = tsStrongCount then
-    begin
-      FSintagmas[FSintagmas.Count-1].Destruir;
-      FSintagmas.Delete(FSintagmas.Count-1);
-    end;
-
     result := TSintagmaList.Create;
 
     { reaproveitando sintagmas não modificados do início }
@@ -494,6 +499,7 @@ begin
     if FSintagmas.Count > 0 then
       raise Exception.Create('Ainda há sintagmas antigos que não foram liberados!');
 
+    LimparSintagmas;
     FSintagmas.Destroy;
     FSintagmas := result;
   end;
@@ -517,8 +523,7 @@ begin
   try
     linha := TStringStream.Create('');
     for s in FSintagmas do
-      if s.Tipo <> tsStrongCount then
-        linha.WriteString(s.Texto);
+      linha.WriteString(s.Texto);
   finally
     result := linha.DataString;
     linha.Destroy;
@@ -735,8 +740,6 @@ begin
     for stg in FSintagmas do
     begin // sintagmas
       Inc(s);
-      if stg.Tipo = tsStrongCount then
-        continue;
 
       if (prox = nil) and (stg.Pares.Count > 0) then
         linha.WriteString('<wt>');
@@ -856,21 +859,9 @@ begin
 end;
 
 procedure TVersiculo.OrganizarSintagmas;
-var
-  s: TSintagma;
-  x, y, a: smallint;
-begin
-  if not Ativo or FDestruindo or not assigned(FSintagmas) then
-    exit;
 
-  x := 5;
-  y := 0;
-  a := 0;
-  for s in FSintagmas do
+  procedure PositionSyntagm(s: TSintagma; var x, y, a: smallint);
   begin
-    if not assigned(s.LabelRef) then //s.Tipo in [tsMetaDado, tsTag] then
-      continue;
-
     a := max(a, s.LabelRef.Height);
     if (x > 0) and (s.Tipo <> tsPontuacao) and ((x + s.LabelRef.Width) > (Painel.Width-15)) then
     begin
@@ -889,6 +880,26 @@ begin
       inc(x, s.LabelRef.Width);
     end;
   end;
+
+var
+  s: TSintagma;
+  x, y, a: smallint;
+begin
+  if not Ativo or FDestruindo or not assigned(FSintagmas) then
+    exit;
+
+  x := 5;
+  y := 0;
+  a := 0;
+  for s in FSintagmas do
+  begin
+    if not assigned(s.LabelRef) then //s.Tipo in [tsMetaDado, tsTag] then
+      continue;
+    PositionSyntagm(s, x, y, a);
+  end;
+
+  if FMostrarQtdStrongs and assigned(FStrongCount) then
+    PositionSyntagm(FStrongCount, x, y, a);
 end;
 
 procedure TVersiculo.SetVersiculoPar(Par: TVersiculo);
@@ -998,8 +1009,7 @@ var
 begin
   FXML := '';
   for s in FSintagmas do
-    if s.tipo <> tsStrongCount then
-      FXML := FXML + s.TextoBruto;
+    FXML := FXML + s.TextoBruto;
 
   FXMLModificado := true;
   FModificado := true;
@@ -1012,12 +1022,32 @@ begin
   if not FAtivo or not assigned(FSintagmas) then
     exit;
 
-  AtualizarStrongCount;
-
   for s in FSintagmas do
     s.Renderizar;
 
+  RenderizarStrongCount;
   OrganizarSintagmas;
+end;
+
+procedure TVersiculo.RenderizarStrongCount;
+begin
+  ClearStrongCount;
+  if not FMostrarQtdStrongs then
+    exit;
+  if FSintagmas.Empty then
+    exit;
+
+  AtualizarStrongCount;
+  FStrongCount.Renderizar;
+end;
+
+procedure TVersiculo.ClearStrongCount;
+begin
+  if not assigned(FStrongCount) then
+    exit;
+
+  FStrongCount.Destruir;
+  FStrongCount := nil;
 end;
 
 procedure TVersiculo.AtualizarStrongCount;
@@ -1027,18 +1057,6 @@ var
   count: integer;
   unique: TSintagmaList;
 begin
-  if FSintagmas.Empty then
-    exit;
-
-  if FSintagmas[FSintagmas.Count-1].Tipo = tsStrongCount then
-  begin
-    FSintagmas[FSintagmas.Count-1].Destruir;
-    FSintagmas.Delete(FSintagmas.Count-1);
-  end;
-
-  if not FMostrarQtdStrongs then
-    exit;
-
   count := 0;
   unique := TSintagmaList.Create;
   for s in FSintagmas do
@@ -1049,8 +1067,9 @@ begin
     begin
       inc(count);
       { contando várias palavras associadas a um strong como uma apenas }
-      for p in s.Irmaos do
-        unique.Add(p);
+      if assigned(s.Irmaos) then
+        for p in s.Irmaos do
+          unique.Add(p);
     end;
   end;
   unique.Destroy;
@@ -1063,7 +1082,7 @@ begin
     sobrescrito:= true;
     italico    := false;
   end;
-  FSintagmas.Add(TSintagma.Criar(token, self));
+  FStrongCount := TSintagma.Criar(token, self);
 end;
 
 function TVersiculo.GetTokens: string;
