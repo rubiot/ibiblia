@@ -1,7 +1,7 @@
 object frmPrincipal: TfrmPrincipal
-  Left = 282
+  Left = 284
   Height = 697
-  Top = 99
+  Top = 109
   Width = 712
   Caption = 'iBiblia'
   ClientHeight = 677
@@ -355,9 +355,20 @@ object frmPrincipal: TfrmPrincipal
           OnClick = MenuItemLangPtClick
         end
       end
-      object MenuItem21: TMenuItem
-        Caption = 'Show dictionary popup when only with Alt pressed'
-        OnClick = MenuItem21Click
+      object MenuItemDictPopup: TMenuItem
+        Caption = 'Show dictionary popup on...'
+        object MenuItemMouseHover: TMenuItem
+          Caption = 'Mouse hover'
+          OnClick = MenuItemPopupTriggerClick
+        end
+        object MenuItemAltMouseHover: TMenuItem
+          Caption = 'Alt + Mouse hover'
+          OnClick = MenuItemPopupTriggerClick
+        end
+        object MenuItemCtrlMouseHover: TMenuItem
+          Caption = 'Ctrl + Mouse hover'
+          OnClick = MenuItemPopupTriggerClick
+        end
       end
       object MenuItem22: TMenuItem
         Caption = 'Automatically auto-associate verses'

@@ -35,6 +35,8 @@ type
 
   TEscopoTexto = (etOT, etNT, etNone);
 
+  TPopupTrigger = (ptMouseHover, ptAltMouseHover, ptCtrlMouseHover);
+
   TOpcaoExportacao =
   (
     oeExportarMorfologia,      // incluir morfologia
@@ -85,6 +87,7 @@ type
     FTemporizador: TTimer;
     FAtrasoExibicao: Cardinal;
     FEscopo: TEscopoTexto;
+    FPopupTrigger: TPopupTrigger;
     FMostrarQtdStrongs: boolean;
     FOnNovoVersiculo: TOnNovoVersiculoEvent;
     FOnSintagmaClick: TOnSintagmaClickEvent;
@@ -199,6 +202,7 @@ type
     property PalavrasComStrongEmNegrito: boolean read FPalavrasComStrongEmNegrito write SetPalavrasComStrongEmNegrito;
     property Escopo: TEscopoTexto read FEscopo write FEscopo;
     property MostrarQtdStrongs: boolean read FMostrarQtdStrongs write SetMostrarQtdStrongs;
+    property PopupTrigger: TPopupTrigger read FPopupTrigger write FPopupTrigger;
   end;
 
 resourcestring
@@ -864,15 +868,16 @@ begin
 end;
 
 procedure TProjeto.SintagmaOnMouseEnter(Sender: TSintagma);
+var
+  show: boolean;
 begin
-  //if (GetKeyState(VK_CAPITAL) and 1) <> 0 then // capslock ativo?
-  if not FExibirDefComCtrl or ((
-  {$IFDEF UNIX}
-  LCLIntf.GetKeyState(VK_MENU)
-  {$ELSE}
-  GetKeyState(VK_MENU)
-  {$ENDIF}
-  and $8000) <> 0) then // Alt pressionado?
+  case FPopupTrigger of
+    ptMouseHover:     show := true;
+    ptAltMouseHover:  show := GetKeyState(VK_MENU   ) and $8000 <> 0;
+    ptCtrlMouseHover: show := GetKeyState(VK_CONTROL) and $8000 <> 0;
+  end;
+
+  if show then
   begin
     FTemporizador.Enabled := false;
     FTemporizador.Tag := PtrInt(Sender);
@@ -881,9 +886,18 @@ begin
 end;
 
 procedure TProjeto.SintagmaOnMouseLeave(Sender: TSintagma);
+var
+  hide: boolean;
 begin
   FTemporizador.Enabled := false;
-  if (GetKeyState(VK_MENU) and $8000) = 0 then
+
+  case FPopupTrigger of
+    ptMouseHover:     hide := GetKeyState(VK_CONTROL) and $8000 = 0;
+    ptAltMouseHover:  hide := GetKeyState(VK_MENU   ) and $8000 = 0;
+    ptCtrlMouseHover: hide := GetKeyState(VK_CONTROL) and $8000 = 0;
+  end;
+
+  if hide then
     frmDictionaryPopup.Ocultar;
 end;
 

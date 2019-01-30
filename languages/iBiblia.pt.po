@@ -949,10 +949,6 @@ msgstr "Editar"
 msgid "Options"
 msgstr "Opções"
 
-#: tfrmprincipal.menuitem21.caption
-msgid "Show dictionary popup when only with Alt pressed"
-msgstr "Mostrar definições com Alt pressionado"
-
 #: tfrmprincipal.menuitem22.caption
 msgid "Automatically auto-associate verses"
 msgstr "Sugerir associações automaticamente"
@@ -965,9 +961,21 @@ msgstr "Language/Idioma"
 msgid "Navigation"
 msgstr "Navegação"
 
+#: tfrmprincipal.menuitemaltmousehover.caption
+msgid "Alt + Mouse hover"
+msgstr "Alt + apontar palavra"
+
 #: tfrmprincipal.menuitemalwaysontop.caption
 msgid "Keep iBiblia always on top of other windows"
 msgstr "Manter janela do iBiblia sempre no topo"
+
+#: tfrmprincipal.menuitemctrlmousehover.caption
+msgid "Ctrl + Mouse hover"
+msgstr "Ctrl + apontar palavra"
+
+#: tfrmprincipal.menuitemdictpopup.caption
+msgid "Show dictionary popup on..."
+msgstr "Mostrar definição da palavra quando..."
 
 #: tfrmprincipal.menuitemlangen.caption
 msgctxt "tfrmprincipal.menuitemlangen.caption"
@@ -978,6 +986,10 @@ msgstr "English"
 msgctxt "tfrmprincipal.menuitemlangpt.caption"
 msgid "Português"
 msgstr "Português"
+
+#: tfrmprincipal.menuitemmousehover.caption
+msgid "Mouse hover"
+msgstr "Apontar palavra"
 
 #: tfrmprincipal.menuitemrecent.caption
 msgid "Open recent"

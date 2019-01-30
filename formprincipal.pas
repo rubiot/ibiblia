@@ -57,13 +57,16 @@ type
     MenuItem14: TMenuItem;
     MenuItem15: TMenuItem;
     MenuItem16: TMenuItem;
+    MenuItemMouseHover: TMenuItem;
     MenuItem18: TMenuItem;
     MenuItem19: TMenuItem;
     MenuItem2: TMenuItem;
     MenuItem20: TMenuItem;
-    MenuItem21: TMenuItem;
+    MenuItemDictPopup: TMenuItem;
     MenuItem22: TMenuItem;
     MenuItem23: TMenuItem;
+    MenuItemAltMouseHover: TMenuItem;
+    MenuItemCtrlMouseHover: TMenuItem;
     MenuItemAlwaysOnTop: TMenuItem;
     MenuItemLangEn: TMenuItem;
     MenuItemLangPt: TMenuItem;
@@ -135,12 +138,12 @@ type
     procedure FormDestroy(Sender: TObject);
     procedure FormKeyPress(Sender: TObject; var Key: char);
     procedure FormShow(Sender: TObject);
-    procedure MenuItem21Click(Sender: TObject);
     procedure MenuItem22Click(Sender: TObject);
     procedure AbrirRecenteClick(Sender: TObject);
     procedure MenuItemAlwaysOnTopClick(Sender: TObject);
     procedure MenuItemLangEnClick(Sender: TObject);
     procedure MenuItemLangPtClick(Sender: TObject);
+    procedure MenuItemPopupTriggerClick(Sender: TObject);
     procedure MenuItemStrongNegritoClick(Sender: TObject);
     procedure MenuItemStrongsCountClick(Sender: TObject);
     procedure MenuItemSynciBibliaClick(Sender: TObject);
@@ -157,6 +160,7 @@ type
     syncTw2iBiblia: boolean;
     synciBiblia2Tw: boolean;
     TwSyncThread: TTwSyncThread;
+    FPopupTrigger: TPopupTrigger;
     procedure SyncToTwRef(Ref: string);
     procedure SetUpSyncThread;
     procedure TranslateStatusRadioGroup;
@@ -294,8 +298,9 @@ begin
   ProjetoAtual.PalavrasComStrongEmNegrito := MenuItemStrongNegrito.Checked;
   ProjetoAtual.MostrarQtdStrongs := MenuItemStrongsCount.Checked;
   ProjetoAtual.Abrir(OpenDialog1.FileName);
-  ProjetoAtual.ExibirDefinicoesSoComCtrl := MenuItem21.Checked;
+  ProjetoAtual.ExibirDefinicoesSoComCtrl := MenuItemDictPopup.Checked;
   ProjetoAtual.SugerirAssociacaoAutomaticamente := MenuItem22.Checked;
+  ProjetoAtual.PopupTrigger := FPopupTrigger;
 
   ActionSalvarProjeto.Enabled := true;
   ActionSalvarProjetoComo.Enabled := true;
@@ -455,8 +460,9 @@ begin
     ProjetoAtual.OnNovoVersiculo := @QuandoNovoVersiculo;
     ProjetoAtual.OnAlterarVersiculo := @QuandoAlterarVersiculo;
     ProjetoAtual.Novo(SaveDialog1.FileName, FormNovoProjeto1.EditNomeProjeto.Text);
-    ProjetoAtual.ExibirDefinicoesSoComCtrl := MenuItem21.Checked;
+    ProjetoAtual.ExibirDefinicoesSoComCtrl := MenuItemDictPopup.Checked;
     ProjetoAtual.SugerirAssociacaoAutomaticamente := MenuItem22.Checked;
+    ProjetoAtual.PopupTrigger := FPopupTrigger;
 
     //ParThread.pb := ProgressBar1;
     for v:=low(TTipoTextoBiblico) to high(TTipoTextoBiblico) do
@@ -606,12 +612,14 @@ begin
 
   Width  := opts.ReadInteger('leiaute', 'principal.largura',  Width);
   Height := opts.ReadInteger('leiaute', 'principal.altura',   Height);
-  MenuItem21.Checked := opts.ReadBool('opcoes', 'definicoes.com.ctrl', true);
   MenuItem22.Checked := opts.ReadBool('opcoes', 'sugestoes.automaticas', false);
   MenuItemSyncTheWord.Checked := opts.ReadBool('opcoes', 'synctheword', false);
   MenuItemSynciBiblia.Checked := opts.ReadBool('opcoes', 'syncibiblia', false);
   MenuItemStrongNegrito.Checked := opts.ReadBool('opcoes', 'boldstrongs', false);
   MenuItemStrongsCount.Checked := opts.ReadBool('opcoes', 'showstrongscount', false);
+
+  FPopupTrigger := TPopupTrigger(opts.ReadInteger('opcoes', 'popuptrigger', LongInt(ptMouseHover)));
+  MenuItemPopupTriggerClick(MenuItemDictPopup.Items[integer(FPopupTrigger)]);
 
   MenuItemAlwaysOnTop.Checked := opts.ReadBool('opcoes', 'alwaysontop', false);
   if MenuItemAlwaysOnTop.Checked then
@@ -644,7 +652,6 @@ begin
   opts.WriteInteger('leiaute', 'principal.splitter2.topo', Splitter2.Top);
   opts.WriteInteger('leiaute', 'principal.splitter3.topo', Splitter3.Top);
   opts.WriteInteger('leiaute', 'principal.splitter4.topo', Splitter4.Top);
-  opts.WriteBool('opcoes', 'definicoes.com.ctrl', MenuItem21.Checked);
   opts.WriteBool('opcoes', 'sugestoes.automaticas', MenuItem22.Checked);
   opts.WriteBool('opcoes', 'synctheword', MenuItemSyncTheWord.Checked);
   opts.WriteBool('opcoes', 'syncibiblia', MenuItemSynciBiblia.Checked);
@@ -652,6 +659,7 @@ begin
   opts.WriteBool('opcoes', 'showstrongscount', MenuItemStrongsCount.Checked);
   opts.WriteString('opcoes', 'language', language);
   opts.WriteBool('opcoes', 'alwaysontop', MenuItemAlwaysOnTop.Checked);
+  opts.WriteInteger('opcoes', 'popuptrigger', LongInt(FPopupTrigger));
   opts.Free;
 end;
 
@@ -688,13 +696,6 @@ begin
 
   if (MenuItemRecent.Count > 0) and FileExists(MenuItemRecent.Items[0].Caption) then
     ActionAbrirProjetoExecute(MenuItemRecent.Items[0]);
-end;
-
-procedure TFrmPrincipal.MenuItem21Click(Sender: TObject);
-begin
-  TMenuItem(Sender).Checked := not TMenuItem(Sender).Checked;
-  if assigned(ProjetoAtual) then
-    ProjetoAtual.ExibirDefinicoesSoComCtrl := TMenuItem(Sender).Checked;
 end;
 
 procedure TFrmPrincipal.MenuItem22Click(Sender: TObject);
@@ -752,6 +753,23 @@ begin
   FormPropProjeto1.Translate;
   if assigned(ProjetoAtual) then
     ProjetoAtual.Translate;
+end;
+
+procedure TFrmPrincipal.MenuItemPopupTriggerClick(Sender: TObject);
+var
+  m: TPopupTrigger;
+begin
+  for m:=low(TPopupTrigger) to high(TPopupTrigger) do
+  begin
+    if Sender = MenuItemDictPopup.Items[integer(m)] then
+    begin
+      FPopupTrigger := m;
+      TMenuItem(Sender).Checked := true;
+      if assigned(ProjetoAtual) then
+        ProjetoAtual.PopupTrigger := FPopupTrigger;
+    end else
+      MenuItemDictPopup.Items[integer(m)].Checked := false;
+  end;
 end;
 
 procedure TFrmPrincipal.MenuItemStrongNegritoClick(Sender: TObject);
