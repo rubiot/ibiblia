@@ -1782,18 +1782,16 @@ var
   marker: string;
   //line: string;
 begin
+  offset := 0;
   if AnsiEndsText('.ont', arquivo) then
   begin
     if FEscopo = etNT then
       offset := QLinhas[etOT] // saltando o velho testamento
-    else
-      offset := 0;
   end
   else if AnsiEndsText('.nt', arquivo) then
   begin
     if FEscopo = etOT then
       exit;
-    offset := 0;
   end
   else if AnsiEndsText('.ot', arquivo) then
   begin
