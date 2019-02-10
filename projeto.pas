@@ -920,7 +920,7 @@ var
   l, c, v: TTreeNode;
   i: smallint;
 begin
-  if not assigned(FTblPares) or FClosing then
+  if not assigned(FTblPares) or FClosing or not assigned(Node) then
     exit;
 
   if Node.HasChildren then // capítulo ou livro
@@ -1823,7 +1823,6 @@ begin
       //line := modulo[i];
       { eliminando comentários }
       modulo[i] := reComments.Replace(modulo[i], '');
-
       //modulo.Strings[i] := reShortTitle.Replace(modulo.Strings[i], '$1=$2i');
 
       if reVazio.IsMatch(modulo[i]) then
