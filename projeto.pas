@@ -1773,10 +1773,9 @@ procedure TProjeto.ImportarModuloTheWord(arquivo: string;
 var
   modulo: TStringList;
   i, offset: smallint;
-  reVazio, reComments, {reShortTitle,} reVerseRules, reVerseRule: IRegex;
+  reVazio, reComments, {reShortTitle,} reVerseRules, verseRule: IRegex;
   mtVerseRules: IMatch;
-  verseRulesDe: TList;
-  verseRulesPara: TStringList;
+  verseRulesDe, verseRulesPara: TStringList;
   propriedades: TStringStream;
   m: smallint;
   marker: string;
@@ -1813,9 +1812,9 @@ begin
     reVazio        := RegexCreate('^\s*$', [rcoUTF8]);
     reComments     := RegexCreate('#.*$', [rcoUTF8]);
     //reShortTitle   := RegexCreate('(short.title)\s*=\s*(.*)$', [rcoUTF8]);
-    reVerseRules   := RegexCreate('^\s*verse.rule\s*=\s*"(.*)"(?!")\s*"(.*)"(?!")', [rcoUTF8]);
+    reVerseRules   := RegexCreate('^\s*verse.rule\s*=\s*"(.*?)(?<!")"(?!")\s+"(.*?)"(?=\s*$|\s+"(.*?)(?<!")"(?!"))', [rcoUTF8]);
     FrmEscolherVerseRules.Reset;
-    verseRulesDe   := TList.Create;
+    verseRulesDe   := TStringList.Create;
     verseRulesPara := TStringList.Create;
 
     propriedades := TStringStream.Create('');
@@ -1835,14 +1834,6 @@ begin
       mtVerseRules := reVerseRules.Match(modulo[i]);
       if mtVerseRules.Success then
          FrmEscolherVerseRules.AddVerseRule(mtVerseRules.Groups[1].Value, mtVerseRules.Groups[2].Value);
-
-      //if mtVerseRules.Success {and AnsiStartsStr('^', mtVerseRules.Groups[2])} then
-      //begin
-      //  verseRulesDe.Add(RegexCreate(mtVerseRules.Groups[1].Value, [rcoUTF8]));
-      //  verseRulesPara.Add(mtVerseRules.Groups[2].Value);
-      //  //for m:=0 to mtVerseRules.Groups.Count-1 do
-      //  //  MessageDlg('Erro', format('%d:%s', [m, mtVerseRules.Groups[m].Value]), mtError, [mbOK], 0);
-      //end;
     end;
 
     if ((texto = tbOrigem)  and (ObterInfo('propriedades.origem')  = '')) or // não importar propriedades quando já existem
@@ -1860,8 +1851,7 @@ begin
       for m:=0 to FrmEscolherVerseRules.ckgVerseRules.Items.Count-1 do
         if FrmEscolherVerseRules.ckgVerseRules.Checked[m] then
         begin
-          reVerseRule := RegexCreate(FrmEscolherVerseRules.VerseRuleDe[m], [rcoUTF8]);
-          verseRulesDe.Add( @reVerseRule );
+          verseRulesDe.Add(FrmEscolherVerseRules.VerseRuleDe[m]);
           verseRulesPara.Add( FrmEscolherVerseRules.VerseRulePara[m] );
           DebugLn('regex criado (%s -------- %s)', [FrmEscolherVerseRules.VerseRuleDe[m], FrmEscolherVerseRules.VerseRulePara[m]]);
         end;
@@ -1883,10 +1873,12 @@ begin
     for i:=offset to offset + QLinhas[FEscopo] - 1 do
     begin
       //line := modulo[i];
-
       { aplicando verse.rules }
       for m:=0 to verseRulesDe.Count-1 do
-        modulo[i] := IRegex(verseRulesDe[m]^).Replace(modulo[i], verseRulesPara[m]);
+      begin
+        verseRule := RegexCreate(verseRulesDe[m], [rcoUTF8]);
+        modulo[i] := verseRule.Replace(modulo[i], verseRulesPara[m]);
+      end;
 
       SetVerseText(modulo[i], texto, replace);
 
@@ -1908,7 +1900,7 @@ begin
   finally
     modulo.Free;
     if assigned(pb) then
-       pb.Visible:=false;
+       pb.Visible := false;
     verseRulesDe.Free;
     verseRulesPara.Free;
   end;

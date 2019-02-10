@@ -65,7 +65,7 @@ begin
   para := FCorrigirAspas.Replace(para, '"');
   FVerseRulesDe.Add(de);
   FVerseRulesPara.Add(para);
-  ckgVerseRules.Items.Add(Format('%s → %s', [de, para]));
+  ckgVerseRules.Items.Add(Format('[%s] → [%s]', [de, para]));
   ckgVerseRules.Checked[ ckgVerseRules.Items.Count-1 ] := true;
 
   lbDe.Items.Add(de);
