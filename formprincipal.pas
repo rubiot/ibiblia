@@ -516,7 +516,7 @@ procedure TFrmPrincipal.ActionQuandoNovoVersiculoExecute(Sender: TObject);
 begin
   if ProjetoAtual <> nil then
   begin
-    Caption := 'iBiblia - [' + ProjetoAtual.ObterInfo('descricao') + '] - ' +  ProjetoAtual.Referencia;
+    Caption := format('iBiblia | %s | %s (%s)', [ProjetoAtual.Referencia, ProjetoAtual.ObterInfo('descricao'), ProjetoAtual.FileName]);
     RadioGroupStatus.SetFocus;
     ActionSyncTheWordVerseExecute(Sender);
   end;

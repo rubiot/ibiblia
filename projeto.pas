@@ -64,6 +64,7 @@ type
 
   TProjeto = class
   private
+    FFileName: string;
     FMemoVersiculo: TMemoVersiculo;
     FAtivo: boolean;
     FMostrandoTags: boolean;
@@ -183,6 +184,7 @@ type
     function GetTranslationSuggestions(syntagm: TSintagma): string;
     procedure Translate;
     procedure ToggleMostrarTags;
+    property FileName: string read FFileName;
     property Referencia: string read GetReferencia;
     property ID: string read GetID;
     property Modificado: boolean read GetModificado;
@@ -1473,6 +1475,7 @@ begin
     exit;
   end;
 
+  FFileName := Nome;
   FTblPares := CriarObjetoTabela(Nome, 'pares', 'pare_id');
   FTblInfo  := CriarObjetoTabela(Nome, 'info', 'id');
   DesabilitarEventosRolagem;
