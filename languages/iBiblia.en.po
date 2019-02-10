@@ -549,6 +549,27 @@ msgstr "Zecariah"
 msgid "Zephaniah"
 msgstr "Zephaniah"
 
+#: tformabout.caption
+msgid "About iBiblia"
+msgstr "About iBiblia"
+
+#: tformabout.label1.caption
+msgctxt "tformabout.label1.caption"
+msgid "iBiblia"
+msgstr "iBiblia"
+
+#: tformabout.label2.caption
+msgid "Copyright Rúbio R. C. Terra <rubio.terra@gmail.com>"
+msgstr "Copyright Rúbio R. C. Terra <rubio.terra@gmail.com>"
+
+#: tformabout.label3.caption
+msgid "https://github.com/rubiot/ibiblia"
+msgstr "https://github.com/rubiot/ibiblia"
+
+#: tformabout.labelversion.caption
+msgid "iBiblia version"
+msgstr "iBiblia version"
+
 #: tformnovoprojeto.bitbtn1.caption
 msgctxt "tformnovoprojeto.bitbtn1.caption"
 msgid "..."
@@ -940,6 +961,7 @@ msgid "Go to last verse"
 msgstr "Go to last verse"
 
 #: tfrmprincipal.caption
+msgctxt "tfrmprincipal.caption"
 msgid "iBiblia"
 msgstr "iBiblia"
 
@@ -950,6 +972,10 @@ msgstr "Project"
 #: tfrmprincipal.menuitem10.caption
 msgid "Edit"
 msgstr "Edit"
+
+#: tfrmprincipal.menuitem17.caption
+msgid "Help"
+msgstr "Help"
 
 #: tfrmprincipal.menuitem20.caption
 msgid "Options"
@@ -966,6 +992,10 @@ msgstr "Language"
 #: tfrmprincipal.menuitem5.caption
 msgid "Navigation"
 msgstr "Navigation"
+
+#: tfrmprincipal.menuitemabout.caption
+msgid "About..."
+msgstr "About..."
 
 #: tfrmprincipal.menuitemaltmousehover.caption
 msgid "Alt + Mouse hover"

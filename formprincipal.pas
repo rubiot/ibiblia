@@ -14,7 +14,7 @@ uses
   {$ENDIF}
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, Menus,
   ActnList, ComCtrls, ExtCtrls, StdCtrls, Projeto, IniFiles, Versiculo, Math,
-  Sintagma, LCLTranslator;
+  Sintagma, LCLTranslator, unitabout;
 
 type
 
@@ -57,6 +57,8 @@ type
     MenuItem14: TMenuItem;
     MenuItem15: TMenuItem;
     MenuItem16: TMenuItem;
+    MenuItem17: TMenuItem;
+    MenuItemAbout: TMenuItem;
     MenuItemMouseHover: TMenuItem;
     MenuItem18: TMenuItem;
     MenuItem19: TMenuItem;
@@ -140,6 +142,7 @@ type
     procedure FormShow(Sender: TObject);
     procedure MenuItem22Click(Sender: TObject);
     procedure AbrirRecenteClick(Sender: TObject);
+    procedure MenuItemAboutClick(Sender: TObject);
     procedure MenuItemAlwaysOnTopClick(Sender: TObject);
     procedure MenuItemLangEnClick(Sender: TObject);
     procedure MenuItemLangPtClick(Sender: TObject);
@@ -709,6 +712,11 @@ procedure TFrmPrincipal.AbrirRecenteClick(Sender: TObject);
 begin
   if TMenuItem(Sender).Caption <> '(-)' then
      ActionAbrirProjetoExecute(Sender);
+end;
+
+procedure TFrmPrincipal.MenuItemAboutClick(Sender: TObject);
+begin
+  FormAbout.ShowModal;
 end;
 
 procedure TFrmPrincipal.MenuItemAlwaysOnTopClick(Sender: TObject);

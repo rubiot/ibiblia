@@ -395,6 +395,13 @@ object frmPrincipal: TfrmPrincipal
         OnClick = MenuItemAlwaysOnTopClick
       end
     end
+    object MenuItem17: TMenuItem
+      Caption = 'Help'
+      object MenuItemAbout: TMenuItem
+        Caption = 'About...'
+        OnClick = MenuItemAboutClick
+      end
+    end
   end
   object ActionList1: TActionList
     left = 40

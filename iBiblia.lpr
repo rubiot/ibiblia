@@ -10,7 +10,7 @@ uses
   Forms, formPrincipal, Versiculo, ONTTokenizer, Projeto, Sugestao, RTFEdit,
   memoversiculo, PCRE, exportarprojeto, formverserules, formmesclarprojetos,
   formpopup, formnovoprojeto, formpropprojeto, formexportar, twAutomate,
-  twSyncThread, ONTParser, Sintagma;
+  twSyncThread, ONTParser, Sintagma, unitabout;
 
 {$R *.res}
 
@@ -22,6 +22,7 @@ begin
   Application.CreateForm(TFormNovoProjeto, FormNovoProjeto1);
   Application.CreateForm(TFrmEscolherVerseRules, FrmEscolherVerseRules);
   Application.CreateForm(TfrmExportarProjeto, frmExportarProjeto);
+  Application.CreateForm(TFormAbout, FormAbout);
   Application.Run;
 end.
 
