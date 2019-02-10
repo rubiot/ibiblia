@@ -1891,11 +1891,8 @@ begin
     end;
     HabilitarEventosRolagem;
     FExportando := false;
-    if replace then
-    begin
-      IrPara(marker);
-      AtualizarArvore(marker);
-    end;
+    IrPara(marker);
+    AtualizarArvore(marker);
   finally
     modulo.Free;
     if assigned(pb) then
