@@ -517,6 +517,9 @@ end;
 
 procedure TProjeto.SetSituacao(const AValue: Integer);
 begin
+  if (AValue < 0) or (AValue > 3) then
+    raise Exception.Create(format('Invalid status index (%d) on %s!', [AValue, Referencia]));
+
   FTblPares.Edit;
   FTblPares.FieldByName('pare_situacao').AsInteger := AValue;
   FTblPares.Post;
@@ -1157,7 +1160,7 @@ begin
   sl[3] := 0;
 
   //DesabilitarEventosRolagem;
-  marcador := FTblPares.FieldByName('pare_id').AsString;
+  marcador := GetID;
   VersiculoInicial;
 
   while not FTblPares.EOF do
