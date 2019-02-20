@@ -1,11 +1,11 @@
 object frmPrincipal: TfrmPrincipal
   Left = 284
-  Height = 697
+  Height = 681
   Top = 109
-  Width = 712
+  Width = 943
   Caption = 'iBiblia'
-  ClientHeight = 677
-  ClientWidth = 712
+  ClientHeight = 661
+  ClientWidth = 943
   KeyPreview = True
   Menu = MainMenu1
   OnClose = FormClose
@@ -17,16 +17,16 @@ object frmPrincipal: TfrmPrincipal
   LCLVersion = '1.8.4.0'
   object StatusBar1: TStatusBar
     Left = 0
-    Height = 23
-    Top = 654
-    Width = 712
+    Height = 28
+    Top = 633
+    Width = 943
     Panels = <>
   end
   object ToolBar1: TToolBar
     Left = 0
     Height = 34
     Top = 0
-    Width = 712
+    Width = 943
     AutoSize = True
     ButtonHeight = 32
     ButtonWidth = 32
@@ -96,30 +96,30 @@ object frmPrincipal: TfrmPrincipal
   end
   object Panel1: TPanel
     Left = 0
-    Height = 495
+    Height = 578
     Top = 33
-    Width = 712
+    Width = 943
     Anchors = [akTop, akLeft, akRight, akBottom]
     Caption = 'Panel1'
-    ClientHeight = 495
-    ClientWidth = 712
+    ClientHeight = 578
+    ClientWidth = 943
     TabOrder = 2
     object Panel2: TPanel
       Left = 144
-      Height = 493
+      Height = 576
       Top = 1
-      Width = 567
+      Width = 798
       Align = alClient
       Caption = 'Panel2'
-      ClientHeight = 493
-      ClientWidth = 567
+      ClientHeight = 576
+      ClientWidth = 798
       TabOrder = 0
       object ScrollBox1: TScrollBox
         AnchorSideBottom.Control = Splitter2
         Left = 1
         Height = 117
         Top = 1
-        Width = 565
+        Width = 796
         HorzScrollBar.Page = 1
         VertScrollBar.Page = 1
         Align = alTop
@@ -138,7 +138,7 @@ object frmPrincipal: TfrmPrincipal
         Left = 1
         Height = 114
         Top = 123
-        Width = 564
+        Width = 795
         HorzScrollBar.Page = 1
         VertScrollBar.Page = 1
         Anchors = [akTop, akLeft, akRight, akBottom]
@@ -154,9 +154,9 @@ object frmPrincipal: TfrmPrincipal
         AnchorSideTop.Side = asrBottom
         AnchorSideBottom.Control = Splitter4
         Left = 1
-        Height = 110
+        Height = 126
         Top = 242
-        Width = 564
+        Width = 795
         HorzScrollBar.Page = 1
         VertScrollBar.Page = 1
         Anchors = [akTop, akLeft, akRight, akBottom]
@@ -171,9 +171,9 @@ object frmPrincipal: TfrmPrincipal
         AnchorSideTop.Control = Splitter4
         AnchorSideTop.Side = asrBottom
         Left = 1
-        Height = 135
-        Top = 357
-        Width = 565
+        Height = 83
+        Top = 373
+        Width = 796
         HorzScrollBar.Page = 1
         VertScrollBar.Page = 1
         Align = alBottom
@@ -191,7 +191,7 @@ object frmPrincipal: TfrmPrincipal
         Left = 1
         Height = 5
         Top = 118
-        Width = 564
+        Width = 795
         Align = alNone
         Anchors = [akTop, akLeft, akRight]
         ResizeAnchor = akTop
@@ -201,31 +201,92 @@ object frmPrincipal: TfrmPrincipal
         Left = 1
         Height = 5
         Top = 237
-        Width = 564
+        Width = 795
         Align = alNone
         Anchors = [akTop, akLeft, akRight]
         ResizeAnchor = akBottom
       end
       object Splitter4: TSplitter
         Cursor = crVSplit
-        Left = 1
+        Left = 0
         Height = 5
-        Top = 352
-        Width = 564
+        Top = 368
+        Width = 795
         Align = alNone
         Anchors = [akTop, akLeft, akRight]
         ResizeAnchor = akTop
       end
+      object Panel3: TPanel
+        Left = 1
+        Height = 114
+        Top = 461
+        Width = 796
+        Align = alBottom
+        Caption = 'Panel3'
+        ClientHeight = 114
+        ClientWidth = 796
+        TabOrder = 7
+        object Memo1: TMemo
+          Left = 1
+          Height = 112
+          Top = 1
+          Width = 680
+          Align = alClient
+          Enabled = False
+          TabOrder = 0
+        end
+        object RadioGroupStatus: TRadioGroup
+          Left = 681
+          Height = 112
+          Top = 1
+          Width = 114
+          Align = alRight
+          Anchors = [akRight, akBottom]
+          AutoFill = True
+          AutoSize = True
+          Caption = 'Status'
+          ChildSizing.LeftRightSpacing = 6
+          ChildSizing.TopBottomSpacing = 6
+          ChildSizing.VerticalSpacing = 1
+          ChildSizing.EnlargeHorizontal = crsHomogenousChildResize
+          ChildSizing.EnlargeVertical = crsHomogenousChildResize
+          ChildSizing.ShrinkHorizontal = crsScaleChilds
+          ChildSizing.Layout = cclTopToBottomThenLeftToRight
+          ChildSizing.ControlsPerLine = 4
+          ClientHeight = 92
+          ClientWidth = 110
+          ColumnLayout = clVerticalThenHorizontal
+          Enabled = False
+          ItemIndex = 0
+          Items.Strings = (
+            'Not associated'
+            'Associating'
+            'Needs review'
+            'Associated!'
+          )
+          TabOrder = 1
+        end
+      end
+      object Splitter5: TSplitter
+        Cursor = crVSplit
+        Left = 1
+        Height = 5
+        Top = 456
+        Width = 796
+        Align = alBottom
+        Anchors = [akLeft, akBottom]
+        ResizeAnchor = akBottom
+      end
     end
     object Splitter1: TSplitter
       Left = 139
-      Height = 493
+      Height = 576
       Top = 1
       Width = 5
     end
     object TreeView1: TTreeView
       Left = 1
-      Height = 493
+      Height = 576
       Top = 1
       Width = 138
       Align = alLeft
@@ -236,50 +297,13 @@ object frmPrincipal: TfrmPrincipal
       Options = [tvoAutoItemHeight, tvoHideSelection, tvoKeepCollapsedNodes, tvoReadOnly, tvoShowButtons, tvoShowLines, tvoShowRoot, tvoToolTips, tvoThemedDraw]
     end
   end
-  object Memo1: TMemo
-    Left = 0
-    Height = 103
-    Top = 536
-    Width = 585
-    Anchors = [akLeft, akRight, akBottom]
-    Enabled = False
-    TabOrder = 3
-  end
-  object RadioGroupStatus: TRadioGroup
-    Left = 591
-    Height = 110
-    Top = 536
-    Width = 117
-    Anchors = [akRight, akBottom]
-    AutoFill = True
-    Caption = 'Status'
-    ChildSizing.LeftRightSpacing = 6
-    ChildSizing.TopBottomSpacing = 6
-    ChildSizing.EnlargeHorizontal = crsHomogenousChildResize
-    ChildSizing.EnlargeVertical = crsHomogenousChildResize
-    ChildSizing.ShrinkHorizontal = crsScaleChilds
-    ChildSizing.ShrinkVertical = crsScaleChilds
-    ChildSizing.Layout = cclLeftToRightThenTopToBottom
-    ChildSizing.ControlsPerLine = 1
-    ClientHeight = 90
-    ClientWidth = 113
-    Enabled = False
-    ItemIndex = 0
-    Items.Strings = (
-      'Not associated'
-      'Associating'
-      'Needs review'
-      'Associated!'
-    )
-    TabOrder = 4
-  end
   object ProgressBar1: TProgressBar
     Left = 0
     Height = 20
-    Top = 634
-    Width = 712
+    Top = 613
+    Width = 943
     Align = alBottom
-    TabOrder = 5
+    TabOrder = 3
     Visible = False
   end
   object MainMenu1: TMainMenu

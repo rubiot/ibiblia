@@ -1049,6 +1049,10 @@ msgstr ""
 msgid "Panel2"
 msgstr ""
 
+#: tfrmprincipal.panel3.caption
+msgid "Panel3"
+msgstr ""
+
 #: tfrmprincipal.radiogroupstatus.caption
 msgctxt "tfrmprincipal.radiogroupstatus.caption"
 msgid "Status"

@@ -1080,6 +1080,10 @@ msgstr "Panel1"
 msgid "Panel2"
 msgstr "Panel2"
 
+#: tfrmprincipal.panel3.caption
+msgid "Panel3"
+msgstr ""
+
 #: tfrmprincipal.radiogroupstatus.caption
 msgctxt "tfrmprincipal.radiogroupstatus.caption"
 msgid "Status"
@@ -1107,3 +1111,4 @@ msgstr "Exit"
 msgctxt "tfrmprincipal.toolbuttonexit.hint"
 msgid "Exit the program"
 msgstr "Exit the program"
+

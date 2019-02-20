@@ -87,6 +87,7 @@ type
     OpenDialog1: TOpenDialog;
     Panel1: TPanel;
     Panel2: TPanel;
+    Panel3: TPanel;
     ProgressBar1: TProgressBar;
     RadioGroupStatus: TRadioGroup;
     SaveDialog1: TSaveDialog;
@@ -99,6 +100,7 @@ type
     Splitter2: TSplitter;
     Splitter3: TSplitter;
     Splitter4: TSplitter;
+    Splitter5: TSplitter;
     StatusBar1: TStatusBar;
     ToolBar1: TToolBar;
     ToolButton1: TToolButton;
@@ -655,6 +657,7 @@ begin
   opts.WriteInteger('leiaute', 'principal.splitter2.topo', Splitter2.Top);
   opts.WriteInteger('leiaute', 'principal.splitter3.topo', Splitter3.Top);
   opts.WriteInteger('leiaute', 'principal.splitter4.topo', Splitter4.Top);
+  opts.WriteInteger('leiaute', 'principal.panel3.height', Panel3.Height);
   opts.WriteBool('opcoes', 'sugestoes.automaticas', MenuItem22.Checked);
   opts.WriteBool('opcoes', 'synctheword', MenuItemSyncTheWord.Checked);
   opts.WriteBool('opcoes', 'syncibiblia', MenuItemSynciBiblia.Checked);
@@ -696,6 +699,7 @@ begin
   Splitter2.Top := opts.ReadInteger('leiaute', 'principal.splitter2.topo', Splitter2.Top);
   Splitter3.Top := opts.ReadInteger('leiaute', 'principal.splitter3.topo', Splitter3.Top);
   Splitter4.Top := opts.ReadInteger('leiaute', 'principal.splitter4.topo', Splitter4.Top);
+  Panel3.Height := opts.ReadInteger('leiaute', 'principal.panel3.height', Panel3.Height);
 
   if (MenuItemRecent.Count > 0) and FileExists(MenuItemRecent.Items[0].Caption) then
     ActionAbrirProjetoExecute(MenuItemRecent.Items[0]);
