@@ -218,9 +218,10 @@ begin
 
     ClearStrongCount;
 
+    FSintagmas.Clear;
+
     if FAtivo then
       FPanel.EnableAutoSizing;
-    FSintagmas.Clear;
   end;
   FSelecao.Clear;
 end;
