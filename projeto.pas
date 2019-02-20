@@ -1516,7 +1516,6 @@ begin
   FATmpVerse[tbOrigem ] := TVersiculo.Criar;
   FATmpVerse[tbDestino] := TVersiculo.Criar;
   FATmpVerse[tbOrigem ].VersiculoPar := FATmpVerse[tbDestino];
-  FATmpVerse[tbDestino].VersiculoPar := FATmpVerse[tbOrigem ];
 
   FACamposTexto[tbOrigem]    := FTblPares.FindField('pare_texto_origem').Index;
   FACamposTexto[tbDestino]   := FTblPares.FindField('pare_texto_destino').Index;

@@ -888,9 +888,9 @@ begin
   if not Ativo or FDestruindo or not assigned(FSintagmas) then
     exit;
 
-  x := 5;
-  y := 0;
-  a := 0;
+  x := 5; // start x position
+  y := 0; // y position
+  a := 0; // line width
   for s in FSintagmas do
   begin
     if not assigned(s.LabelRef) then //s.Tipo in [tsMetaDado, tsTag] then

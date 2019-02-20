@@ -43,9 +43,19 @@ msgstr "Novo projecto"
 msgid "New Testament"
 msgstr "Novo Testamento"
 
+#: formnovoprojeto.snewtestamentfilter
+msgctxt "formnovoprojeto.snewtestamentfilter"
+msgid "theWord bible modules (*.ont, *.nt)|*.ont;*.nt"
+msgstr "Módulos de Bíblia do theWord (*.ont, *.nt)|*.ont;*.nt"
+
 #: formnovoprojeto.soldtestament
 msgid "Old Testament"
 msgstr "Velho Testamento"
+
+#: formnovoprojeto.soldtestamentfilter
+msgctxt "formnovoprojeto.soldtestamentfilter"
+msgid "theWord bible modules (*.ont, *.ot)|*.ont;*.ot"
+msgstr "Módulos de Bíblia do theWord (*.ont, *.ot)|*.ont;*.ot"
 
 #: formprincipal.schanged
 msgid "changed"
@@ -169,6 +179,16 @@ msgstr ""
 msgctxt "formpropprojeto.sdestinationtab"
 msgid "Destination"
 msgstr "Destino"
+
+#: formpropprojeto.snewtestamentfilter
+msgctxt "formpropprojeto.snewtestamentfilter"
+msgid "theWord bible modules (*.ont, *.nt)|*.ont;*.nt"
+msgstr "Módulos de Bíblia do theWord (*.ont, *.nt)|*.ont;*.nt"
+
+#: formpropprojeto.soldtestamentfilter
+msgctxt "formpropprojeto.soldtestamentfilter"
+msgid "theWord bible modules (*.ont, *.ot)|*.ont;*.ot"
+msgstr "Módulos de Bíblia do theWord (*.ont, *.ot)|*.ont;*.ot"
 
 #: formpropprojeto.sopendictionary
 msgid "Please choose a theWord dictionary module..."

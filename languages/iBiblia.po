@@ -33,8 +33,18 @@ msgstr ""
 msgid "New Testament"
 msgstr ""
 
+#: formnovoprojeto.snewtestamentfilter
+msgctxt "formnovoprojeto.snewtestamentfilter"
+msgid "theWord bible modules (*.ont, *.nt)|*.ont;*.nt"
+msgstr ""
+
 #: formnovoprojeto.soldtestament
 msgid "Old Testament"
+msgstr ""
+
+#: formnovoprojeto.soldtestamentfilter
+msgctxt "formnovoprojeto.soldtestamentfilter"
+msgid "theWord bible modules (*.ont, *.ot)|*.ont;*.ot"
 msgstr ""
 
 #: formprincipal.schanged
@@ -151,6 +161,16 @@ msgstr ""
 #: formpropprojeto.sdestinationtab
 msgctxt "formpropprojeto.sdestinationtab"
 msgid "Destination"
+msgstr ""
+
+#: formpropprojeto.snewtestamentfilter
+msgctxt "formpropprojeto.snewtestamentfilter"
+msgid "theWord bible modules (*.ont, *.nt)|*.ont;*.nt"
+msgstr ""
+
+#: formpropprojeto.soldtestamentfilter
+msgctxt "formpropprojeto.soldtestamentfilter"
+msgid "theWord bible modules (*.ont, *.ot)|*.ont;*.ot"
 msgstr ""
 
 #: formpropprojeto.sopendictionary

@@ -51,6 +51,8 @@ resourcestring
   SChooseAtLeastTwoTexts = 'Please choose at least one source and one destination texts';
   SOldTestament = 'Old Testament';
   SNewTestament = 'New Testament';
+  SNewTestamentFilter = 'theWord bible modules (*.ont, *.nt)|*.ont;*.nt';
+  SOldTestamentFilter = 'theWord bible modules (*.ont, *.ot)|*.ont;*.ot';
 
 implementation
 
@@ -106,17 +108,22 @@ end;
 
 procedure TFormNovoProjeto.SelecionarTexto(edit: TLabeledEdit);
 begin
+  case RadioGroupScope.ItemIndex of
+    0: OpenDialog1.Filter := SOldTestamentFilter;
+    1: OpenDialog1.Filter := SNewTestamentFilter;
+  end;
   if OpenDialog1.Execute then
     edit.Text := OpenDialog1.FileName;
 end;
 
 procedure TFormNovoProjeto.Translate;
 begin
-  with RadioGroupScope.Items do
+  with RadioGroupScope do
   begin
-    Clear;
-    Add(SOldTestament);
-    Add(SNewTestament);
+    Items.Clear;
+    Items.Add(SOldTestament);
+    Items.Add(SNewTestament);
+    ItemIndex := 1;
   end;
 end;
 

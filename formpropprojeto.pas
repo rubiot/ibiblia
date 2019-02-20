@@ -80,6 +80,8 @@ resourcestring
   SDestinationTab = 'Destination';
   SReference1Tab = 'Reference 1';
   SReference2Tab = 'Reference 2';
+  SNewTestamentFilter = 'theWord bible modules (*.ont, *.nt)|*.ont;*.nt';
+  SOldTestamentFilter = 'theWord bible modules (*.ont, *.ot)|*.ont;*.ot';
 
 implementation
 
@@ -127,7 +129,11 @@ begin
     replace := false;
   end;
 
-  OpenDialog1.Filter := '*.nt; *.ont';
+  case FProjeto.Escopo of
+    etOT: OpenDialog1.Filter := SOldTestamentFilter;
+    etNT: OpenDialog1.Filter := SNewTestamentFilter;
+  end;
+
   OpenDialog1.Title  := SChooseABibleModule;
   if OpenDialog1.Execute then
     FProjeto.ImportarModuloTheWord(OpenDialog1.FileName, TTipoTextoBiblico(TabControl1.TabIndex), ProgressBar1, replace);
