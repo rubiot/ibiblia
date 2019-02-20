@@ -517,11 +517,8 @@ end;
 
 procedure TProjeto.SetSituacao(const AValue: Integer);
 begin
-  if (AValue < 0) or (AValue > 3) then
-    raise Exception.Create(format('Invalid status index (%d) on %s!', [AValue, Referencia]));
-
   FTblPares.Edit;
-  FTblPares.FieldByName('pare_situacao').AsInteger := AValue;
+  FTblPares.FieldByName('pare_situacao').AsInteger := IfThen((AValue < 0) or (AValue > 3), 1, AValue);
   FTblPares.Post;
 end;
 
