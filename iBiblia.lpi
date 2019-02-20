@@ -20,7 +20,7 @@
       <UseVersionInfo Value="True"/>
       <AutoIncrementBuild Value="True"/>
       <MajorVersionNr Value="1"/>
-      <BuildNr Value="53"/>
+      <BuildNr Value="54"/>
       <StringTable CompanyName="Rúbio R. C. Terra (rubio.terra@gmail.com)" FileDescription="Ferramenta para associação de textos bíblicos" ProductName="iBiblia" ProductVersion="0.0.0.0"/>
     </VersionInfo>
     <BuildModes Count="4" Active="Debug32">
@@ -154,9 +154,8 @@
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="formPrincipal"/>
-        <IsVisibleTab Value="True"/>
-        <TopLine Value="671"/>
-        <CursorPos X="68" Y="702"/>
+        <TopLine Value="679"/>
+        <CursorPos X="59" Y="704"/>
         <UsageCount Value="207"/>
         <Loaded Value="True"/>
         <LoadedDesigner Value="True"/>
@@ -166,8 +165,8 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="Versiculo"/>
         <EditorIndex Value="10"/>
-        <TopLine Value="1006"/>
-        <CursorPos Y="1028"/>
+        <TopLine Value="201"/>
+        <CursorPos Y="222"/>
         <ExtraEditorCount Value="1"/>
         <ExtraEditor1>
           <EditorIndex Value="-1"/>
@@ -190,9 +189,10 @@
         <Filename Value="projeto.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="Projeto"/>
+        <IsVisibleTab Value="True"/>
         <EditorIndex Value="3"/>
         <TopLine Value="500"/>
-        <CursorPos Y="521"/>
+        <CursorPos Y="520"/>
         <ExtraEditorCount Value="1"/>
         <ExtraEditor1>
           <EditorIndex Value="-1"/>
@@ -413,7 +413,7 @@
         <ResourceBaseClass Value="Form"/>
         <EditorIndex Value="1"/>
         <CursorPos X="20" Y="41"/>
-        <UsageCount Value="115"/>
+        <UsageCount Value="116"/>
         <Loaded Value="True"/>
         <LoadedDesigner Value="True"/>
       </Unit25>
@@ -421,123 +421,123 @@
     <JumpHistory Count="30" HistoryIndex="29">
       <Position1>
         <Filename Value="projeto.pas"/>
-        <Caret Line="1084" Column="25" TopLine="1061"/>
+        <Caret Line="1417" Column="35" TopLine="1383"/>
       </Position1>
       <Position2>
-        <Filename Value="formnovoprojeto.pas"/>
-        <Caret Line="89" Column="12" TopLine="62"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="1538" Column="34" TopLine="1505"/>
       </Position2>
       <Position3>
-        <Filename Value="formprincipal.pas"/>
-        <Caret Line="280" TopLine="259"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="1539" Column="24" TopLine="1506"/>
       </Position3>
       <Position4>
-        <Filename Value="formprincipal.pas"/>
-        <Caret Line="415" Column="38" TopLine="393"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="1588" Column="34" TopLine="1555"/>
       </Position4>
       <Position5>
-        <Filename Value="formnovoprojeto.pas"/>
-        <Caret Line="112" Column="53" TopLine="86"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="1590" Column="24" TopLine="1557"/>
       </Position5>
       <Position6>
-        <Filename Value="formnovoprojeto.pas"/>
-        <Caret Line="55" TopLine="33"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="1591" Column="24" TopLine="1558"/>
       </Position6>
       <Position7>
-        <Filename Value="formnovoprojeto.pas"/>
-        <Caret Line="133" TopLine="82"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="1625" Column="83" TopLine="1591"/>
       </Position7>
       <Position8>
-        <Filename Value="formnovoprojeto.pas"/>
-        <Caret Line="112" Column="35" TopLine="90"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="1633" Column="83" TopLine="1599"/>
       </Position8>
       <Position9>
-        <Filename Value="formpropprojeto.pas"/>
-        <Caret Line="127" Column="18" TopLine="112"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="1641" Column="83" TopLine="1607"/>
       </Position9>
       <Position10>
-        <Filename Value="formnovoprojeto.pas"/>
-        <Caret Line="113" Column="49" TopLine="90"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="1649" Column="83" TopLine="1615"/>
       </Position10>
       <Position11>
-        <Filename Value="formpropprojeto.pas"/>
-        <Caret Line="132" Column="52" TopLine="112"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="1665" Column="36" TopLine="1631"/>
       </Position11>
       <Position12>
-        <Filename Value="formprincipal.pas"/>
-        <Caret Line="415" Column="38" TopLine="393"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="1666" Column="26" TopLine="1632"/>
       </Position12>
       <Position13>
-        <Filename Value="formprincipal.pas"/>
-        <Caret Line="416" Column="38" TopLine="394"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="1688" Column="26" TopLine="1654"/>
       </Position13>
       <Position14>
-        <Filename Value="formprincipal.pas"/>
-        <Caret Line="417" Column="38" TopLine="395"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="1689" Column="24" TopLine="1655"/>
       </Position14>
       <Position15>
-        <Filename Value="formprincipal.pas"/>
-        <Caret Line="416" Column="38" TopLine="394"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="87" Column="24" TopLine="68"/>
       </Position15>
       <Position16>
-        <Filename Value="formprincipal.pas"/>
-        <Caret Line="417" Column="38" TopLine="395"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="101" Column="25" TopLine="69"/>
       </Position16>
       <Position17>
-        <Filename Value="formprincipal.pas"/>
-        <Caret Line="416" Column="38" TopLine="394"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="110" Column="26" TopLine="78"/>
       </Position17>
       <Position18>
-        <Filename Value="formprincipal.pas"/>
-        <Caret Line="417" Column="38" TopLine="395"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="145" Column="84" TopLine="112"/>
       </Position18>
       <Position19>
-        <Filename Value="formprincipal.pas"/>
-        <Caret Line="416" Column="38" TopLine="394"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="198" Column="66" TopLine="166"/>
       </Position19>
       <Position20>
-        <Filename Value="formprincipal.pas"/>
-        <Caret Line="417" Column="38" TopLine="395"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="201" Column="96" TopLine="169"/>
       </Position20>
       <Position21>
-        <Filename Value="formprincipal.pas"/>
-        <Caret Line="416" Column="38" TopLine="394"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="427" Column="30" TopLine="393"/>
       </Position21>
       <Position22>
-        <Filename Value="formprincipal.pas"/>
-        <Caret Line="418" Column="38" TopLine="396"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="429" Column="49" TopLine="395"/>
       </Position22>
       <Position23>
-        <Filename Value="formprincipal.pas"/>
-        <Caret Line="818" Column="80" TopLine="801"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="518" Column="31" TopLine="484"/>
       </Position23>
       <Position24>
-        <Filename Value="formprincipal.pas"/>
-        <Caret Line="815" TopLine="801"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="524" Column="39" TopLine="490"/>
       </Position24>
       <Position25>
         <Filename Value="projeto.pas"/>
-        <Caret Line="1030" TopLine="1009"/>
+        <Caret Line="726" Column="41" TopLine="692"/>
       </Position25>
       <Position26>
-        <Filename Value="formprincipal.pas"/>
-        <Caret Line="815" TopLine="801"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="733" Column="41" TopLine="699"/>
       </Position26>
       <Position27>
-        <Filename Value="formprincipal.pas"/>
-        <Caret Line="817" TopLine="801"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="759" Column="34" TopLine="725"/>
       </Position27>
       <Position28>
-        <Filename Value="formprincipal.pas"/>
-        <Caret Line="811" TopLine="801"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="761" Column="17" TopLine="758"/>
       </Position28>
       <Position29>
-        <Filename Value="formprincipal.pas"/>
-        <Caret Line="702" Column="68" TopLine="671"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="198" Column="14" TopLine="179"/>
       </Position29>
       <Position30>
-        <Filename Value="sintagma.pas"/>
-        <Caret Line="560" TopLine="539"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="521" Column="18" TopLine="512"/>
       </Position30>
     </JumpHistory>
   </ProjectOptions>
