@@ -570,7 +570,7 @@ begin
     FLabel.ParentColor := false;
     FLabel.Font.Color  := FCor;
     FLabel.Parent      := TVersiculo(FVersiculo).Painel;
-    FLabel.ParentFont  := true;
+    FLabel.ParentFont  := FTipo <> tsStrongCount;
     FLabel.AutoSize    := true;
     if FSobrescrito then
       FLabel.Font.Size := round(FLabel.Font.Size * 0.7);
