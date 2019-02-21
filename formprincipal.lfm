@@ -1,5 +1,5 @@
 object frmPrincipal: TfrmPrincipal
-  Left = 284
+  Left = 325
   Height = 681
   Top = 109
   Width = 943
@@ -96,22 +96,23 @@ object frmPrincipal: TfrmPrincipal
   end
   object Panel1: TPanel
     Left = 0
-    Height = 578
+    Height = 588
     Top = 33
     Width = 943
+    Align = alBottom
     Anchors = [akTop, akLeft, akRight, akBottom]
     Caption = 'Panel1'
-    ClientHeight = 578
+    ClientHeight = 588
     ClientWidth = 943
     TabOrder = 2
     object Panel2: TPanel
       Left = 144
-      Height = 576
+      Height = 586
       Top = 1
       Width = 798
       Align = alClient
       Caption = 'Panel2'
-      ClientHeight = 576
+      ClientHeight = 586
       ClientWidth = 798
       TabOrder = 0
       object ScrollBox1: TScrollBox
@@ -154,7 +155,7 @@ object frmPrincipal: TfrmPrincipal
         AnchorSideTop.Side = asrBottom
         AnchorSideBottom.Control = Splitter4
         Left = 1
-        Height = 126
+        Height = 110
         Top = 242
         Width = 795
         HorzScrollBar.Page = 1
@@ -171,8 +172,8 @@ object frmPrincipal: TfrmPrincipal
         AnchorSideTop.Control = Splitter4
         AnchorSideTop.Side = asrBottom
         Left = 1
-        Height = 83
-        Top = 373
+        Height = 109
+        Top = 357
         Width = 796
         HorzScrollBar.Page = 1
         VertScrollBar.Page = 1
@@ -210,7 +211,7 @@ object frmPrincipal: TfrmPrincipal
         Cursor = crVSplit
         Left = 0
         Height = 5
-        Top = 368
+        Top = 352
         Width = 795
         Align = alNone
         Anchors = [akTop, akLeft, akRight]
@@ -219,7 +220,7 @@ object frmPrincipal: TfrmPrincipal
       object Panel3: TPanel
         Left = 1
         Height = 114
-        Top = 461
+        Top = 471
         Width = 796
         Align = alBottom
         Caption = 'Panel3'
@@ -251,6 +252,7 @@ object frmPrincipal: TfrmPrincipal
           ChildSizing.EnlargeHorizontal = crsHomogenousChildResize
           ChildSizing.EnlargeVertical = crsHomogenousChildResize
           ChildSizing.ShrinkHorizontal = crsScaleChilds
+          ChildSizing.ShrinkVertical = crsScaleChilds
           ChildSizing.Layout = cclTopToBottomThenLeftToRight
           ChildSizing.ControlsPerLine = 4
           ClientHeight = 92
@@ -271,7 +273,7 @@ object frmPrincipal: TfrmPrincipal
         Cursor = crVSplit
         Left = 1
         Height = 5
-        Top = 456
+        Top = 466
         Width = 796
         Align = alBottom
         Anchors = [akLeft, akBottom]
@@ -280,13 +282,13 @@ object frmPrincipal: TfrmPrincipal
     end
     object Splitter1: TSplitter
       Left = 139
-      Height = 576
+      Height = 586
       Top = 1
       Width = 5
     end
     object TreeView1: TTreeView
       Left = 1
-      Height = 576
+      Height = 586
       Top = 1
       Width = 138
       Align = alLeft
@@ -299,8 +301,8 @@ object frmPrincipal: TfrmPrincipal
   end
   object ProgressBar1: TProgressBar
     Left = 0
-    Height = 20
-    Top = 613
+    Height = 12
+    Top = 621
     Width = 943
     Align = alBottom
     TabOrder = 3
