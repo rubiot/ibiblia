@@ -1,127 +1,140 @@
 msgid ""
-msgstr "Content-Type: text/plain; charset=UTF-8"
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Project-Id-Version: \n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: en\n"
+"X-Generator: Poedit 2.2.1\n"
 
 #: formexportar.sanalyticalconcordance
 msgid "AnalyticalConcordance"
-msgstr ""
+msgstr "AnalyticalConcordance"
 
 #: formexportar.ssyntheticconcordance
 msgid "SyntheticConcordance"
-msgstr ""
+msgstr "SyntheticConcordance"
 
 #: formexportar.sthewordntmodule
 msgid "theWord module (*.nt)"
-msgstr ""
+msgstr "theWord module (*.nt)"
 
 #: formexportar.sthewordotmodule
 msgid "theWord module (*.ot)"
-msgstr ""
+msgstr "theWord module (*.ot)"
 
 #: formnovoprojeto.schooseaname
 msgid "Please choose a name for your project"
-msgstr ""
+msgstr "Please choose a name for your project"
 
 #: formnovoprojeto.schooseatleastonetext
 msgid "Please choose at least one source text"
-msgstr ""
+msgstr "Please choose at least one source text"
 
 #: formnovoprojeto.snewproject
 msgid "New project"
-msgstr ""
+msgstr "New project"
 
 #: formnovoprojeto.snewtestament
 msgid "New Testament"
-msgstr ""
+msgstr "New Testament"
 
 #: formnovoprojeto.snewtestamentfilter
 msgctxt "formnovoprojeto.snewtestamentfilter"
 msgid "theWord bible modules (*.ont, *.nt)|*.ont;*.nt"
-msgstr ""
+msgstr "theWord bible modules (*.ont, *.nt)|*.ont;*.nt"
 
 #: formnovoprojeto.soldtestament
 msgid "Old Testament"
-msgstr ""
+msgstr "Old Testament"
 
 #: formnovoprojeto.soldtestamentfilter
 msgctxt "formnovoprojeto.soldtestamentfilter"
 msgid "theWord bible modules (*.ont, *.ot)|*.ont;*.ot"
-msgstr ""
+msgstr "theWord bible modules (*.ont, *.ot)|*.ont;*.ot"
 
 #: formprincipal.schanged
 msgid "changed"
-msgstr ""
+msgstr "changed"
 
 #: formprincipal.scloseproject
 msgid "Close project"
-msgstr ""
+msgstr "Close project"
 
 #: formprincipal.sdestination
 msgid "destination"
-msgstr ""
+msgstr "destination"
 
 #: formprincipal.sloadingfile
 msgid "Loading %s..."
-msgstr ""
+msgstr "Loading %s..."
 
 #: formprincipal.snewassociationproject
 msgid "New association project"
-msgstr ""
+msgstr "New association project"
 
 #: formprincipal.sopenproject
 msgctxt "formprincipal.sopenproject"
 msgid "Open project"
-msgstr ""
+msgstr "Open project"
 
 #: formprincipal.sprojectfiledoesnotexist
 msgid ""
 "The selected project file doesn't exist:\n"
 "%s\n"
 msgstr ""
+"The selected project file doesn't exist:\n"
+"%s\n"
 
 #: formprincipal.sreference1
 msgid "reference 1"
-msgstr ""
+msgstr "reference 1"
 
 #: formprincipal.sreference2
 msgid "reference 2"
-msgstr ""
+msgstr "reference 2"
 
 #: formprincipal.srollbackchanges
 msgctxt "formprincipal.srollbackchanges"
 msgid "Rollback changes"
-msgstr ""
+msgstr "Rollback changes"
 
 #: formprincipal.srollbackchangesconfirmation
 msgid "Are you sure you want to rollback all changes to this verse?"
-msgstr ""
+msgstr "Are you sure you want to rollback all changes to this verse?"
 
 #: formprincipal.ssavechanges
 msgid "Would you like to save your changes?"
-msgstr ""
+msgstr "Would you like to save your changes?"
 
 #: formprincipal.ssource
 msgid "source"
-msgstr ""
+msgstr "source"
 
 #: formprincipal.sstatusassociated
 msgid "Associated!"
-msgstr ""
+msgstr "Associated!"
 
 #: formprincipal.sstatusassociating
 msgid "Associating"
-msgstr ""
+msgstr "Associating"
 
 #: formprincipal.sstatusneedsreview
 msgid "Needs review"
-msgstr ""
+msgstr "Needs review"
 
 #: formprincipal.sstatusnotassociated
 msgid "Not associated"
-msgstr ""
+msgstr "Not associated"
 
 #: formpropprojeto.schangetextconfirmation
+#| msgid "Are you sure you want to load this new text?"
 msgid "Are you sure you want to replace this text with a new one?"
-msgstr ""
+msgstr "Are you sure you want to replace this text with a new one?"
 
 #: formpropprojeto.schangetextconfirmationassociation
 msgid ""
@@ -129,955 +142,972 @@ msgid ""
 "\n"
 "Would you like iBiblia to do that?\n"
 msgstr ""
+"Loading a new text will cause all your existing associations to be discarded. But, if you click 'Yes', iBiblia can try to keep existing associations for you.\n"
+"\n"
+"Would you like iBiblia to do that?\n"
 
 #: formpropprojeto.schooseabiblemodule
 msgid "Please choose a theWord module file..."
-msgstr ""
+msgstr "Please choose a theWord module file..."
 
 #: formpropprojeto.schooseanothertext
+#| msgid "Change text"
 msgid "Replace text"
-msgstr ""
+msgstr "Replace text"
 
 #: formpropprojeto.schoosedictionary
 msgctxt "formpropprojeto.schoosedictionary"
 msgid "Choose"
-msgstr ""
+msgstr "Choose"
 
 #: formpropprojeto.scleartext
 msgctxt "formpropprojeto.scleartext"
 msgid "Clear text"
-msgstr ""
+msgstr "Clear text"
 
 #: formpropprojeto.scleartextconfirmation
 msgid "Are you sure you want to clear this text?"
-msgstr ""
+msgstr "Are you sure you want to clear this text?"
 
 #: formpropprojeto.scleartextconfirmationassociation
 msgid ""
 "Are you sure you want to clear this text?\n"
 "All your associations will be lost!\n"
 msgstr ""
+"Are you sure you want to clear this text?\n"
+"All your associations will be lost!\n"
 
 #: formpropprojeto.sdestinationtab
 msgctxt "formpropprojeto.sdestinationtab"
 msgid "Destination"
-msgstr ""
+msgstr "Destination"
 
 #: formpropprojeto.snewtestamentfilter
 msgctxt "formpropprojeto.snewtestamentfilter"
 msgid "theWord bible modules (*.ont, *.nt)|*.ont;*.nt"
-msgstr ""
+msgstr "theWord bible modules (*.ont, *.nt)|*.ont;*.nt"
 
 #: formpropprojeto.soldtestamentfilter
 msgctxt "formpropprojeto.soldtestamentfilter"
 msgid "theWord bible modules (*.ont, *.ot)|*.ont;*.ot"
-msgstr ""
+msgstr "theWord bible modules (*.ont, *.ot)|*.ont;*.ot"
 
 #: formpropprojeto.sopendictionary
 msgid "Please choose a theWord dictionary module..."
-msgstr ""
+msgstr "Please choose a theWord dictionary module..."
 
 #: formpropprojeto.sreference1tab
 msgctxt "formpropprojeto.sreference1tab"
 msgid "Reference 1"
-msgstr ""
+msgstr "Reference 1"
 
 #: formpropprojeto.sreference2tab
 msgctxt "formpropprojeto.sreference2tab"
 msgid "Reference 2"
-msgstr ""
+msgstr "Reference 2"
 
 #: formpropprojeto.ssetdictionary
 msgid "Set"
-msgstr ""
+msgstr "Set"
 
 #: formpropprojeto.ssourcetab
 msgctxt "formpropprojeto.ssourcetab"
 msgid "Source"
-msgstr ""
+msgstr "Source"
 
 #: memoversiculo.schangeverse
 msgid "Change verse text?"
-msgstr ""
+msgstr "Change verse text?"
 
 #: memoversiculo.schangeverseconfirmation
 msgid "Are you sure you want to change the verse text? Some associations may be lost."
-msgstr ""
+msgstr "Are you sure you want to change the verse text? Some associations may be lost."
 
 #: projeto.s1chronicles
 msgid "1 Chronicles"
-msgstr ""
+msgstr "1 Chronicles"
 
 #: projeto.s1corinthians
 msgid "1 Corinthians"
-msgstr ""
+msgstr "1 Corinthians"
 
 #: projeto.s1john
 msgid "1 John"
-msgstr ""
+msgstr "1 John"
 
 #: projeto.s1kings
 msgid "1 Kings"
-msgstr ""
+msgstr "1 Kings"
 
 #: projeto.s1peter
 msgid "1 Peter"
-msgstr ""
+msgstr "1 Peter"
 
 #: projeto.s1samuel
 msgid "1 Samuel"
-msgstr ""
+msgstr "1 Samuel"
 
 #: projeto.s1thessalonians
 msgid "1 Thessalonians"
-msgstr ""
+msgstr "1 Thessalonians"
 
 #: projeto.s1timothy
 msgid "1 Timothy"
-msgstr ""
+msgstr "1 Timothy"
 
 #: projeto.s2chronicles
 msgid "2 Chronicles"
-msgstr ""
+msgstr "2 Chronicles"
 
 #: projeto.s2corinthians
 msgid "2 Corinthians"
-msgstr ""
+msgstr "2 Corinthians"
 
 #: projeto.s2john
 msgid "2 John"
-msgstr ""
+msgstr "2 John"
 
 #: projeto.s2kings
 msgid "2 Kings"
-msgstr ""
+msgstr "2 Kings"
 
 #: projeto.s2peter
 msgid "2 Peter"
-msgstr ""
+msgstr "2 Peter"
 
 #: projeto.s2samuel
 msgid "2 Samuel"
-msgstr ""
+msgstr "2 Samuel"
 
 #: projeto.s2thessalonians
 msgid "2 Thessalonians"
-msgstr ""
+msgstr "2 Thessalonians"
 
 #: projeto.s2timothy
 msgid "2 Timothy"
-msgstr ""
+msgstr "2 Timothy"
 
 #: projeto.s3john
 msgid "3 John"
-msgstr ""
+msgstr "3 John"
 
 #: projeto.sacts
 msgid "Acts"
-msgstr ""
+msgstr "Acts"
 
 #: projeto.samos
 msgid "Amos"
-msgstr ""
+msgstr "Amos"
 
 #: projeto.sanalyticalconcordance
 msgid "Anaytical Concordance"
-msgstr ""
+msgstr "Anaytical Concordance"
 
 #: projeto.scolossians
 msgid "Colossians"
-msgstr ""
+msgstr "Colossians"
 
 #: projeto.scorrupteddata
+#| msgid ""
+#| "Corrupted data, some associations may be lost.This can happen for several reasons:\n"
+#| " 1. The project file was modified outside iBiblia\n"
+#| " 2. The project was created/edited on a differente iBiblia version\n"
+#| " 3. This can be a bug in iBiblia. In this case, please file a bug in Github project page.\n"
 msgid ""
 "Corrupted data, some associations may be lost.This can happen for several reasons:\n"
 " 1. The project file was modified outside iBiblia\n"
 " 2. The project was created/edited on an incompatible iBiblia version\n"
 " 3. This can be a bug in iBiblia. In this case, please file a bug in Github project page.\n"
 msgstr ""
+"Corrupted data, some associations may be lost.This can happen for several reasons:\n"
+" 1. The project file was modified outside iBiblia\n"
+" 2. The project was created/edited on an incompatible iBiblia version\n"
+" 3. This can be a bug in iBiblia. In this case, please file a bug in Github project page.\n"
 
 #: projeto.sdaniel
 msgid "Daniel"
-msgstr ""
+msgstr "Daniel"
 
 #: projeto.sdeuteronomy
 msgid "Deuteronomy"
-msgstr ""
+msgstr "Deuteronomy"
 
 #: projeto.sdictionarydoesntexist
 msgid "The selected dictionary doesn't exist: %s"
-msgstr ""
+msgstr "The selected dictionary doesn't exist: %s"
 
 #: projeto.secclesiastes
 msgid "Ecclesiastes"
-msgstr ""
+msgstr "Ecclesiastes"
 
 #: projeto.sephesians
 msgid "Ephesians"
-msgstr ""
+msgstr "Ephesians"
 
 #: projeto.serror
 msgid "Error"
-msgstr ""
+msgstr "Error"
 
 #: projeto.sesther
 msgid "Esther"
-msgstr ""
+msgstr "Esther"
 
 #: projeto.sexodus
 msgid "Exodus"
-msgstr ""
+msgstr "Exodus"
 
 #: projeto.sexporttofileerror
 msgid ""
 "iBiblia found and error while exporting the module file.\n"
 "Please check if theWord is using the file, then close it and try again.\n"
 msgstr ""
+"iBiblia found and error while exporting the module file.\n"
+"Please check if theWord is using the file, then close it and try again.\n"
 
 #: projeto.sezekiel
 msgid "Ezekiel"
-msgstr ""
+msgstr "Ezekiel"
 
 #: projeto.sezra
 msgid "Ezra"
-msgstr ""
+msgstr "Ezra"
 
 #: projeto.sfailedtocreatefile
 msgid "Failed to create file: %s"
-msgstr ""
+msgstr "Failed to create file: %s"
 
 #: projeto.sgalatians
 msgid "Galatians"
-msgstr ""
+msgstr "Galatians"
 
 #: projeto.sgenesis
 msgid "Genesis"
-msgstr ""
+msgstr "Genesis"
 
 #: projeto.shabakkuk
 msgid "Habakkuk"
-msgstr ""
+msgstr "Habakkuk"
 
 #: projeto.shaggai
 msgid "Haggai"
-msgstr ""
+msgstr "Haggai"
 
 #: projeto.shebrew
 msgid "Hebrews"
-msgstr ""
+msgstr "Hebrews"
 
 #: projeto.shosea
 msgid "Hosea"
-msgstr ""
+msgstr "Hosea"
 
 #: projeto.sinformation
 msgid "Information"
-msgstr ""
+msgstr "Information"
 
 #: projeto.sinvalidlinecount
 msgid "Invalid file, it must have at least %d lines"
-msgstr ""
+msgstr "Invalid file, it must have at least %d lines"
 
 #: projeto.sisaiah
 msgid "Isaiah"
-msgstr ""
+msgstr "Isaiah"
 
 #: projeto.sjames
 msgid "James"
-msgstr ""
+msgstr "James"
 
 #: projeto.sjeremiah
 msgid "Jeremiah"
-msgstr ""
+msgstr "Jeremiah"
 
 #: projeto.sjob
 msgid "Job"
-msgstr ""
+msgstr "Job"
 
 #: projeto.sjoel
 msgid "Joel"
-msgstr ""
+msgstr "Joel"
 
 #: projeto.sjohah
 msgid "Jonah"
-msgstr ""
+msgstr "Jonah"
 
 #: projeto.sjohn
 msgid "John"
-msgstr ""
+msgstr "John"
 
 #: projeto.sjoshua
 msgid "Joshua"
-msgstr ""
+msgstr "Joshua"
 
 #: projeto.sjude
 msgid "Jude"
-msgstr ""
+msgstr "Jude"
 
 #: projeto.sjudges
 msgid "Judges"
-msgstr ""
+msgstr "Judges"
 
 #: projeto.slamentations
 msgid "Lamentations"
-msgstr ""
+msgstr "Lamentations"
 
 #: projeto.slanguageid
 msgid "en"
-msgstr ""
+msgstr "en"
 
 #: projeto.sleviticus
 msgid "Leviticus"
-msgstr ""
+msgstr "Leviticus"
 
 #: projeto.sluke
 msgid "Luke"
-msgstr ""
+msgstr "Luke"
 
 #: projeto.smalachi
 msgid "Malachi"
-msgstr ""
+msgstr "Malachi"
 
 #: projeto.smark
 msgid "Mark"
-msgstr ""
+msgstr "Mark"
 
 #: projeto.smatthew
 msgid "Matthew"
-msgstr ""
+msgstr "Matthew"
 
 #: projeto.smicah
 msgid "Micah"
-msgstr ""
+msgstr "Micah"
 
 #: projeto.smorphologydictionary
 msgid "Morphology Dictionary"
-msgstr ""
+msgstr "Morphology Dictionary"
 
 #: projeto.snahum
 msgid "Nahum"
-msgstr ""
+msgstr "Nahum"
 
 #: projeto.snehemiah
 msgid "Nehemiah"
-msgstr ""
+msgstr "Nehemiah"
 
 #: projeto.snumbers
 msgid "Numbers"
-msgstr ""
+msgstr "Numbers"
 
 #: projeto.sobadiah
 msgid "Obadiah"
-msgstr ""
+msgstr "Obadiah"
 
 #: projeto.sopenproject
 msgctxt "projeto.sopenproject"
 msgid "Open project"
-msgstr ""
+msgstr "Open project"
 
 #: projeto.sotconcordancenotimplementedyet
 msgid "Old Testament concordance is not implemented yet"
-msgstr ""
+msgstr "Old Testament concordance is not implemented yet"
 
 #: projeto.sphilemon
 msgid "Philemon"
-msgstr ""
+msgstr "Philemon"
 
 #: projeto.sphilippians
 msgid "Philippians"
-msgstr ""
+msgstr "Philippians"
 
 #: projeto.sprojectdoesntexist
 msgid "The selected project doesn't exist: %s"
-msgstr ""
+msgstr "The selected project doesn't exist: %s"
 
 #: projeto.sproverbs
 msgid "Proverbs"
-msgstr ""
+msgstr "Proverbs"
 
 #: projeto.spsalms
 msgid "Psalms"
-msgstr ""
+msgstr "Psalms"
 
 #: projeto.srevelation
 msgid "Revelation"
-msgstr ""
+msgstr "Revelation"
 
 #: projeto.sromans
 msgid "Romans"
-msgstr ""
+msgstr "Romans"
 
 #: projeto.sruth
 msgid "Ruth"
-msgstr ""
+msgstr "Ruth"
 
 #: projeto.ssongofsolomon
 msgid "Song of Solomon"
-msgstr ""
+msgstr "Song of Solomon"
 
 #: projeto.sstrongdictionary
 msgid "Strong's Dictionary"
-msgstr ""
+msgstr "Strong's Dictionary"
 
 #: projeto.ssyntheticconcordance
 msgid "Synthetic Concordance"
-msgstr ""
+msgstr "Synthetic Concordance"
 
 #: projeto.stitus
 msgid "Titus"
-msgstr ""
+msgstr "Titus"
 
 #: projeto.stranslationmemory
 msgid "Translation memory"
-msgstr ""
+msgstr "Translation memory"
 
 #: projeto.szechariah
 msgid "Zecariah"
-msgstr ""
+msgstr "Zecariah"
 
 #: projeto.szephaniah
 msgid "Zephaniah"
-msgstr ""
+msgstr "Zephaniah"
 
 #: tformabout.caption
 msgid "About iBiblia"
-msgstr ""
+msgstr "About iBiblia"
 
 #: tformabout.label1.caption
 msgctxt "tformabout.label1.caption"
 msgid "iBiblia"
-msgstr ""
+msgstr "iBiblia"
 
 #: tformabout.label2.caption
 msgid "Copyright Rúbio R. C. Terra <rubio.terra@gmail.com>"
-msgstr ""
+msgstr "Copyright Rúbio R. C. Terra <rubio.terra@gmail.com>"
 
 #: tformabout.label3.caption
 msgid "https://github.com/rubiot/ibiblia"
-msgstr ""
+msgstr "https://github.com/rubiot/ibiblia"
 
 #: tformabout.labelversion.caption
 msgid "iBiblia version"
-msgstr ""
+msgstr "iBiblia version"
 
 #: tformnovoprojeto.bitbtn1.caption
 msgctxt "tformnovoprojeto.bitbtn1.caption"
 msgid "..."
-msgstr ""
+msgstr "..."
 
 #: tformnovoprojeto.bitbtn2.caption
 msgctxt "tformnovoprojeto.bitbtn2.caption"
 msgid "..."
-msgstr ""
+msgstr "..."
 
 #: tformnovoprojeto.bitbtn3.caption
 msgctxt "tformnovoprojeto.bitbtn3.caption"
 msgid "..."
-msgstr ""
+msgstr "..."
 
 #: tformnovoprojeto.bitbtn4.caption
 msgctxt "tformnovoprojeto.bitbtn4.caption"
 msgid "..."
-msgstr ""
+msgstr "..."
 
 #: tformnovoprojeto.bitbtn5.caption
 msgctxt "tformnovoprojeto.bitbtn5.caption"
 msgid "&OK"
-msgstr ""
+msgstr "&OK"
 
 #: tformnovoprojeto.bitbtn6.caption
 msgctxt "tformnovoprojeto.bitbtn6.caption"
 msgid "Cancel"
-msgstr ""
+msgstr "Cancel"
 
 #: tformnovoprojeto.caption
 msgid "New project..."
-msgstr ""
+msgstr "New project..."
 
 #: tformnovoprojeto.editnomeprojeto.editlabel.caption
 msgctxt "tformnovoprojeto.editnomeprojeto.editlabel.caption"
 msgid "Name"
-msgstr ""
+msgstr "Name"
 
 #: tformnovoprojeto.edittextodestino.editlabel.caption
 msgctxt "tformnovoprojeto.edittextodestino.editlabel.caption"
 msgid "Destination"
-msgstr ""
+msgstr "Destination"
 
 #: tformnovoprojeto.edittextoorigem.editlabel.caption
 msgctxt "tformnovoprojeto.edittextoorigem.editlabel.caption"
 msgid "Source"
-msgstr ""
+msgstr "Source"
 
 #: tformnovoprojeto.edittextoref1.editlabel.caption
 msgctxt "tformnovoprojeto.edittextoref1.editlabel.caption"
 msgid "Reference 1"
-msgstr ""
+msgstr "Reference 1"
 
 #: tformnovoprojeto.edittextoref2.editlabel.caption
 msgctxt "tformnovoprojeto.edittextoref2.editlabel.caption"
 msgid "Reference 2"
-msgstr ""
+msgstr "Reference 2"
 
 #: tformnovoprojeto.groupbox1.caption
 msgid "Texts"
-msgstr ""
+msgstr "Texts"
 
 #: tformnovoprojeto.groupbox2.caption
 msgctxt "tformnovoprojeto.groupbox2.caption"
 msgid "Properties"
-msgstr ""
+msgstr "Properties"
 
 #: tformnovoprojeto.opendialog1.title
 msgid "Choose a theWord bible module"
-msgstr ""
+msgstr "Choose a theWord bible module"
 
 #: tformnovoprojeto.radiogroupscope.caption
 msgctxt "tformnovoprojeto.radiogroupscope.caption"
 msgid "Scope"
-msgstr ""
+msgstr "Scope"
 
 #: tformpropprojeto.actioncarregartexto.caption
 msgid "Load new text"
-msgstr ""
+msgstr "Load new text"
 
 #: tformpropprojeto.actionlimpartexto.caption
 msgctxt "tformpropprojeto.actionlimpartexto.caption"
 msgid "Clear text"
-msgstr ""
+msgstr "Clear text"
 
 #: tformpropprojeto.actionmudancaaba.caption
 msgid "ActionMudancaAba"
-msgstr ""
+msgstr "ActionMudancaAba"
 
 #: tformpropprojeto.actionselecionarfonte.caption
 msgctxt "tformpropprojeto.actionselecionarfonte.caption"
 msgid "Choose"
-msgstr ""
+msgstr "Choose"
 
 #: tformpropprojeto.actionselecionarmorfo.caption
 msgctxt "tformpropprojeto.actionselecionarmorfo.caption"
 msgid "Choose"
-msgstr ""
+msgstr "Choose"
 
 #: tformpropprojeto.actionselecionarstrong.caption
 msgctxt "tformpropprojeto.actionselecionarstrong.caption"
 msgid "Choose"
-msgstr ""
+msgstr "Choose"
 
 #: tformpropprojeto.bitbtn1.caption
 msgctxt "tformpropprojeto.bitbtn1.caption"
 msgid "&OK"
-msgstr ""
+msgstr "&OK"
 
 #: tformpropprojeto.bitbtn2.caption
 msgctxt "tformpropprojeto.bitbtn2.caption"
 msgid "Cancel"
-msgstr ""
+msgstr "Cancel"
 
 #: tformpropprojeto.caption
 msgctxt "tformpropprojeto.caption"
 msgid "Properties"
-msgstr ""
+msgstr "Properties"
 
 #: tformpropprojeto.editnomeprojeto.editlabel.caption
 msgctxt "tformpropprojeto.editnomeprojeto.editlabel.caption"
 msgid "Name"
-msgstr ""
+msgstr "Name"
 
 #: tformpropprojeto.groupbox2.caption
 msgctxt "tformpropprojeto.groupbox2.caption"
 msgid "Properties"
-msgstr ""
+msgstr "Properties"
 
 #: tformpropprojeto.label2.caption
 msgid "Font"
-msgstr ""
+msgstr "Font"
 
 #: tformpropprojeto.ledicmorfo.editlabel.caption
 msgid "Morphology dictionary"
-msgstr ""
+msgstr "Morphology dictionary"
 
 #: tformpropprojeto.ledicstrong.editlabel.caption
 msgid "Strong's dictionary"
-msgstr ""
+msgstr "Strong's dictionary"
 
 #: tfrmdictionarypopup.caption
 msgid "Dictionary"
-msgstr ""
+msgstr "Dictionary"
 
 #: tfrmescolherverserules.button1.caption
 msgid "&Cancel"
-msgstr ""
+msgstr "&Cancel"
 
 #: tfrmescolherverserules.button2.caption
 msgid "OK"
-msgstr ""
+msgstr "OK"
 
 #: tfrmescolherverserules.caption
 msgid "Choose verse rules"
-msgstr ""
+msgstr "Choose verse rules"
 
 #: tfrmescolherverserules.ckgverserules.caption
 msgid "Choose verse rules you'd like to apply"
-msgstr ""
+msgstr "Choose verse rules you'd like to apply"
 
 #: tfrmexportarprojeto.btexportar.caption
 msgid "Export"
-msgstr ""
+msgstr "Export"
 
 #: tfrmexportarprojeto.button2.caption
 msgctxt "tfrmexportarprojeto.button2.caption"
 msgid "Cancel"
-msgstr ""
+msgstr "Cancel"
 
 #: tfrmexportarprojeto.caption
 msgid "Export association"
-msgstr ""
+msgstr "Export association"
 
 #: tfrmexportarprojeto.cbconcordanciadetalhada.caption
 msgid "Group by inflectioned forms"
-msgstr ""
+msgstr "Group by inflectioned forms"
 
 #: tfrmexportarprojeto.cbexportarcomentarios.caption
 msgid "Export comments as translator notes"
-msgstr ""
+msgstr "Export comments as translator notes"
 
 #: tfrmexportarprojeto.cbexportarmorfologia.caption
 msgid "Export morphology tags"
-msgstr ""
+msgstr "Export morphology tags"
 
 #: tfrmexportarprojeto.cbexportarnacomoitalicos.caption
 msgid "Export unassociated words as added words (italics)"
-msgstr ""
+msgstr "Export unassociated words as added words (italics)"
 
 #: tfrmexportarprojeto.cbstrongsnaotraduzidos.caption
 msgid "Mark unused strongs"
-msgstr ""
+msgstr "Mark unused strongs"
 
 #: tfrmexportarprojeto.cbstrongsreutilizados.caption
 msgid "Mark reused strongs"
-msgstr ""
+msgstr "Mark reused strongs"
 
 #: tfrmexportarprojeto.label1.caption
 msgctxt "tfrmexportarprojeto.label1.caption"
 msgid "Module properties"
-msgstr ""
+msgstr "Module properties"
 
 #: tfrmexportarprojeto.label2.caption
 msgctxt "tfrmexportarprojeto.label2.caption"
 msgid "Module properties"
-msgstr ""
+msgstr "Module properties"
 
 #: tfrmexportarprojeto.leabreviacao.editlabel.caption
 msgid "Abbreviation"
-msgstr ""
+msgstr "Abbreviation"
 
 #: tfrmexportarprojeto.savedialog1.title
 msgctxt "tfrmexportarprojeto.savedialog1.title"
 msgid "Salvar módulo como..."
-msgstr ""
+msgstr "Salvar módulo como..."
 
 #: tfrmexportarprojeto.savedialogconcordancia.title
 msgctxt "tfrmexportarprojeto.savedialogconcordancia.title"
 msgid "Salvar módulo como..."
-msgstr ""
+msgstr "Salvar módulo como..."
 
 #: tfrmexportarprojeto.tabsheet1.caption
 msgid "Tagged destination text"
-msgstr ""
+msgstr "Tagged destination text"
 
 #: tfrmexportarprojeto.tabsheet2.caption
 msgid "Interlinear source text"
-msgstr ""
+msgstr "Interlinear source text"
 
 #: tfrmexportarprojeto.tabsheet3.caption
 msgid "Strong's concordance"
-msgstr ""
+msgstr "Strong's concordance"
 
 #: tfrmmesclarprojetos.button1.caption
 msgid "Button1"
-msgstr ""
+msgstr "Button1"
 
 #: tfrmmesclarprojetos.caption
 msgid "Mesclar projetos"
-msgstr ""
+msgstr "Mesclar projetos"
 
 #: tfrmprincipal.actionabrirprojeto.caption
 msgid "Open..."
-msgstr ""
+msgstr "Open..."
 
 #: tfrmprincipal.actionabrirprojeto.hint
 msgid "Open an existent project"
-msgstr ""
+msgstr "Open an existent project"
 
 #: tfrmprincipal.actionexportar.caption
 msgid "Export..."
-msgstr ""
+msgstr "Export..."
 
 #: tfrmprincipal.actionexportardestinocomstrongs.caption
 msgid "Export destination text"
-msgstr ""
+msgstr "Export destination text"
 
 #: tfrmprincipal.actionexportartextointerlinear.caption
 msgid "Export interlinear text"
-msgstr ""
+msgstr "Export interlinear text"
 
 #: tfrmprincipal.actionfecharprojeto.caption
 msgid "Close"
-msgstr ""
+msgstr "Close"
 
 #: tfrmprincipal.actionfecharprojeto.hint
 msgid "Close current project"
-msgstr ""
+msgstr "Close current project"
 
 #: tfrmprincipal.actionlimparassociacoes.caption
 msgid "Clear"
-msgstr ""
+msgstr "Clear"
 
 #: tfrmprincipal.actionlimparassociacoes.hint
 msgid "Clear verse associations"
-msgstr ""
+msgstr "Clear verse associations"
 
 #: tfrmprincipal.actionmesclarprojetos.caption
 msgid "Merge projects..."
-msgstr ""
+msgstr "Merge projects..."
 
 #: tfrmprincipal.actionmostrartags.caption
 msgid "ActionMostrarTags"
-msgstr ""
+msgstr "ActionMostrarTags"
 
 #: tfrmprincipal.actionnovoprojeto.caption
 msgid "New..."
-msgstr ""
+msgstr "New..."
 
 #: tfrmprincipal.actionnovoprojeto.hint
 msgid "Create new association project"
-msgstr ""
+msgstr "Create new association project"
 
 #: tfrmprincipal.actionpropprojeto.caption
 msgid "Settings..."
-msgstr ""
+msgstr "Settings..."
 
 #: tfrmprincipal.actionpropprojeto.hint
 msgid "Current project settings..."
-msgstr ""
+msgstr "Current project settings..."
 
 #: tfrmprincipal.actionquandonovoversiculo.caption
 msgid "ActionQuandoNovoVersiculo"
-msgstr ""
+msgstr "ActionQuandoNovoVersiculo"
 
 #: tfrmprincipal.actionrecriarbasesugestoes.caption
 msgid "Recreate association memory"
-msgstr ""
+msgstr "Recreate association memory"
 
 #: tfrmprincipal.actionreverterassociacoes.caption
 msgid "Rollback"
-msgstr ""
+msgstr "Rollback"
 
 #: tfrmprincipal.actionreverterassociacoes.hint
 msgctxt "tfrmprincipal.actionreverterassociacoes.hint"
 msgid "Rollback changes"
-msgstr ""
+msgstr "Rollback changes"
 
 #: tfrmprincipal.actionsair.caption
 msgctxt "tfrmprincipal.actionsair.caption"
 msgid "Exit"
-msgstr ""
+msgstr "Exit"
 
 #: tfrmprincipal.actionsair.hint
 msgctxt "tfrmprincipal.actionsair.hint"
 msgid "Exit the program"
-msgstr ""
+msgstr "Exit the program"
 
 #: tfrmprincipal.actionsalvarprojeto.caption
 msgid "Save"
-msgstr ""
+msgstr "Save"
 
 #: tfrmprincipal.actionsalvarprojeto.hint
 msgid "Save changes"
-msgstr ""
+msgstr "Save changes"
 
 #: tfrmprincipal.actionsalvarprojetocomo.caption
 msgid "Save as..."
-msgstr ""
+msgstr "Save as..."
 
 #: tfrmprincipal.actionsalvarprojetocomo.hint
 msgid "Save as a new project"
-msgstr ""
+msgstr "Save as a new project"
 
 #: tfrmprincipal.actionsugerirassociacao.caption
 msgid "Auto-associate"
-msgstr ""
+msgstr "Auto-associate"
 
 #: tfrmprincipal.actionsugerirassociacao.hint
 msgid "Auto associate verse"
-msgstr ""
+msgstr "Auto associate verse"
 
 #: tfrmprincipal.actionsyncthewordverse.caption
 msgid "ActionSyncTheWordVerse"
-msgstr ""
+msgstr "ActionSyncTheWordVerse"
 
 #: tfrmprincipal.actionversoanterior.caption
 msgid "Previous"
-msgstr ""
+msgstr "Previous"
 
 #: tfrmprincipal.actionversoanterior.hint
 msgid "Previous verse"
-msgstr ""
+msgstr "Previous verse"
 
 #: tfrmprincipal.actionversoprimeiro.caption
 msgid "First"
-msgstr ""
+msgstr "First"
 
 #: tfrmprincipal.actionversoprimeiro.hint
 msgid "Go to first verse"
-msgstr ""
+msgstr "Go to first verse"
 
 #: tfrmprincipal.actionversoseguinte.caption
 msgid "Next"
-msgstr ""
+msgstr "Next"
 
 #: tfrmprincipal.actionversoseguinte.hint
 msgid "Next verse"
-msgstr ""
+msgstr "Next verse"
 
 #: tfrmprincipal.actionversoultimo.caption
 msgid "Last"
-msgstr ""
+msgstr "Last"
 
 #: tfrmprincipal.actionversoultimo.hint
 msgid "Go to last verse"
-msgstr ""
+msgstr "Go to last verse"
 
 #: tfrmprincipal.caption
 msgctxt "tfrmprincipal.caption"
 msgid "iBiblia"
-msgstr ""
+msgstr "iBiblia"
 
 #: tfrmprincipal.menuitem1.caption
 msgid "Project"
-msgstr ""
+msgstr "Project"
 
 #: tfrmprincipal.menuitem10.caption
 msgid "Edit"
-msgstr ""
+msgstr "Edit"
 
 #: tfrmprincipal.menuitem17.caption
 msgid "Help"
-msgstr ""
+msgstr "Help"
 
 #: tfrmprincipal.menuitem20.caption
 msgid "Options"
-msgstr ""
+msgstr "Options"
 
 #: tfrmprincipal.menuitem22.caption
 msgid "Automatically auto-associate verses"
-msgstr ""
+msgstr "Automatically auto-associate verses"
 
 #: tfrmprincipal.menuitem23.caption
 msgid "Language"
-msgstr ""
+msgstr "Language"
 
 #: tfrmprincipal.menuitem5.caption
 msgid "Navigation"
-msgstr ""
+msgstr "Navigation"
 
 #: tfrmprincipal.menuitemabout.caption
 msgid "About..."
-msgstr ""
+msgstr "About..."
 
 #: tfrmprincipal.menuitemaltmousehover.caption
 msgid "Alt + Mouse hover"
-msgstr ""
+msgstr "Alt + Mouse hover"
 
 #: tfrmprincipal.menuitemalwaysontop.caption
 msgid "Keep iBiblia always on top of other windows"
-msgstr ""
+msgstr "Keep iBiblia always on top of other windows"
 
 #: tfrmprincipal.menuitemctrlmousehover.caption
 msgid "Ctrl + Mouse hover"
-msgstr ""
+msgstr "Ctrl + Mouse hover"
 
 #: tfrmprincipal.menuitemdictpopup.caption
 msgid "Show dictionary popup on..."
-msgstr ""
+msgstr "Show dictionary popup on..."
 
 #: tfrmprincipal.menuitemlangen.caption
 msgctxt "tfrmprincipal.menuitemlangen.caption"
 msgid "English"
-msgstr ""
+msgstr "English"
 
 #: tfrmprincipal.menuitemlangpt.caption
 msgctxt "tfrmprincipal.menuitemlangpt.caption"
 msgid "Português"
-msgstr ""
+msgstr "Português"
 
 #: tfrmprincipal.menuitemmousehover.caption
 msgid "Mouse hover"
-msgstr ""
+msgstr "Mouse hover"
 
 #: tfrmprincipal.menuitemrecent.caption
 msgid "Open recent"
-msgstr ""
+msgstr "Open recent"
 
 #: tfrmprincipal.menuitemstrongnegrito.caption
 msgid "Show words with strong tags in bold"
-msgstr ""
+msgstr "Show words with strong tags in bold"
 
 #: tfrmprincipal.menuitemstrongscount.caption
+#| msgid "Show count for words having strong tags"
 msgid "Show strongs count"
-msgstr ""
+msgstr "Show strongs count"
 
 #: tfrmprincipal.menuitemsyncibiblia.caption
 msgid "Sync iBiblia to theWord verse"
-msgstr ""
+msgstr "Sync iBiblia to theWord verse"
 
 #: tfrmprincipal.menuitemsynctheword.caption
 msgid "Sync theWord to iBiblia verse"
-msgstr ""
+msgstr "Sync theWord to iBiblia verse"
 
 #: tfrmprincipal.opendialog1.title
 msgid "Open existing association project"
-msgstr ""
+msgstr "Open existing association project"
 
 #: tfrmprincipal.panel1.caption
 msgid "Panel1"
-msgstr ""
+msgstr "Panel1"
 
 #: tfrmprincipal.panel2.caption
 msgid "Panel2"
-msgstr ""
+msgstr "Panel2"
 
 #: tfrmprincipal.panel3.caption
 msgid "Panel3"
-msgstr ""
+msgstr "Panel3"
 
 #: tfrmprincipal.radiogroupstatus.caption
 msgctxt "tfrmprincipal.radiogroupstatus.caption"
 msgid "Status"
-msgstr ""
+msgstr "Status"
 
 #: tfrmprincipal.savedialog1.title
 msgid "Save project as..."
-msgstr ""
+msgstr "Save project as..."
 
 #: tfrmprincipal.savedialog2.title
 msgctxt "tfrmprincipal.savedialog2.title"
 msgid "Save module as..."
-msgstr ""
+msgstr "Save module as..."
 
 #: tfrmprincipal.toolbar1.caption
 msgid "ToolBar1"
-msgstr ""
+msgstr "ToolBar1"
 
 #: tfrmprincipal.toolbuttonexit.caption
 msgctxt "tfrmprincipal.toolbuttonexit.caption"
 msgid "Exit"
-msgstr ""
+msgstr "Exit"
 
 #: tfrmprincipal.toolbuttonexit.hint
 msgctxt "tfrmprincipal.toolbuttonexit.hint"
 msgid "Exit the program"
-msgstr ""
-
+msgstr "Exit the program"

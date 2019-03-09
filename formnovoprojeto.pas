@@ -48,7 +48,7 @@ var
 resourcestring
   SNewProject = 'New project';
   SChooseAName = 'Please choose a name for your project';
-  SChooseAtLeastTwoTexts = 'Please choose at least one source and one destination texts';
+  SChooseAtLeastOneText = 'Please choose at least one source text';
   SOldTestament = 'Old Testament';
   SNewTestament = 'New Testament';
   SNewTestamentFilter = 'theWord bible modules (*.ont, *.nt)|*.ont;*.nt';
@@ -69,10 +69,10 @@ begin
     exit;
   end;
 
-  if (EditTextoOrigem.Text = '') or (EditTextoDestino.Text = '') then
+  if EditTextoOrigem.Text = '' then
   begin
     ModalResult:=mrNone;
-    MessageDlg(SNewProject, SChooseAtLeastTwoTexts, mtWarning, [mbOK], 0);
+    MessageDlg(SNewProject, SChooseAtLeastOneText, mtWarning, [mbOK], 0);
     exit;
   end;
 
