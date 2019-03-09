@@ -32,6 +32,7 @@ type
     FQryAtualizarTrad: TSQLQuery;
     FQrySugestoes: TSQLQuery;
     FQrySugestoesSemMorfo: TSQLQuery;
+    FQryTranslationMemory: TSQLQuery;
     FStrList: TStringList;
     FVerbosList: TStringList;
     FRecFormasVerbais: boolean;
@@ -47,6 +48,7 @@ type
     function IdentificarVerbo(forma: string): boolean;
     function NormalizarVerbo(locucao: string): string;
     function ObterSugestoes(chave: string): TSQLQuery;
+    function GetTranslationMemory(key: string): TSQLQuery;
   public
     constructor Criar(Owner: TComponent; conn: TSQLConnection);
     constructor Criar(db: string);
@@ -144,6 +146,15 @@ begin
       '  and slor_lori_id = lori_id and trad_ldes_id = ldes_id ' +
       'order by lori_qtde_sintagmas desc, trad_ocorrencias desc';
   FQrySugestoesSemMorfo.Prepare;
+
+  FQryTranslationMemory := TSQLQuery.Create(Owner);
+  FQryTranslationMemory.DataBase := FConn;
+  FQryTranslationMemory.SQL.Text := 'select ldes_locucao, count(*) ' +
+      'from sintagmas_locucoes_origem, traducoes, locucoes_origem, locucoes_destino ' +
+      'where slor_sori_id like :sori and slor_ordem = 0 and slor_lori_id = trad_lori_id' +
+      '  and slor_lori_id = lori_id and trad_ldes_id = ldes_id ' +
+      'group by ldes_locucao order by 2 desc';
+  FQryTranslationMemory.Prepare;
 
   if FileExists('formas_verbos.db3') then
   begin
@@ -423,6 +434,14 @@ begin
   end;
 end;
 
+function TGerSugestoes.GetTranslationMemory(key: string): TSQLQuery;
+begin
+  result := FQryTranslationMemory;
+  FQryTranslationMemory.Close;
+  FQryTranslationMemory.Params[0].AsString := key + '%';
+  FQryTranslationMemory.Open;
+end;
+
 procedure TGerSugestoes.SugerirAssociacoes(v1: TVersiculo);
   function compararDestino(a, b: string): boolean;
   var a1, b1: string;
@@ -664,10 +683,11 @@ begin
   if key.IsEmpty then
     exit;
 
-  QSugestoes := ObterSugestoes(syntagm.GetChaveSugestao(tlMetaDados));
+  QSugestoes := GetTranslationMemory(syntagm.GetChaveSugestao(tlStrong));
   while not QSugestoes.EOF do
   begin
-    locucao := AnsiReplaceStr(QSugestoes.Fields[1].AsString, ';', ' ');
+    locucao := AnsiReplaceStr(QSugestoes.Fields[0].AsString, ';', ' ') +
+               format(' (%d)', [QSugestoes.Fields[1].AsInteger]);
     result := format('%s\par\li0 {\b\''95  } %s', [result, UnicodeToRTF(locucao)]);
     QSugestoes.Next;
   end;
