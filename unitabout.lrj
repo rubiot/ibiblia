@@ -1,0 +1,7 @@
+{"version":1,"strings":[
+{"hash":169432273,"name":"tformabout.caption","sourcebytes":[65,98,111,117,116,32,105,66,105,98,108,105,97],"value":"About iBiblia"},
+{"hash":227512977,"name":"tformabout.label1.caption","sourcebytes":[105,66,105,98,108,105,97],"value":"iBiblia"},
+{"hash":56296110,"name":"tformabout.labelversion.caption","sourcebytes":[105,66,105,98,108,105,97,32,118,101,114,115,105,111,110],"value":"iBiblia version"},
+{"hash":239996526,"name":"tformabout.label2.caption","sourcebytes":[67,111,112,121,114,105,103,104,116,32,82,195,186,98,105,111,32,82,46,32,67,46,32,84,101,114,114,97,32,60,114,117,98,105,111,46,116,101,114,114,97,64,103,109,97,105,108,46,99,111,109,62],"value":"Copyright R\u00FAbio R. C. Terra <rubio.terra@gmail.com>"},
+{"hash":133707649,"name":"tformabout.label3.caption","sourcebytes":[104,116,116,112,115,58,47,47,103,105,116,104,117,98,46,99,111,109,47,114,117,98,105,111,116,47,105,98,105,98,108,105,97],"value":"https://github.com/rubiot/ibiblia"}
+]}
