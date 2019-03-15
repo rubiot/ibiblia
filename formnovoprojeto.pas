@@ -48,11 +48,11 @@ var
 resourcestring
   SNewProject = 'New project';
   SChooseAName = 'Please choose a name for your project';
-  SChooseAtLeastOneText = 'Please choose at least one source text';
+  SChooseAtLeastOneText = 'Please choose a source Bible text';
   SOldTestament = 'Old Testament';
   SNewTestament = 'New Testament';
-  SNewTestamentFilter = 'theWord bible modules (*.ont, *.nt)|*.ont;*.nt';
-  SOldTestamentFilter = 'theWord bible modules (*.ont, *.ot)|*.ont;*.ot';
+  SNewTestamentFilter = 'theWord Bible modules (*.ont, *.nt)|*.ont;*.nt';
+  SOldTestamentFilter = 'theWord Bible modules (*.ont, *.ot)|*.ont;*.ot';
 
 implementation
 

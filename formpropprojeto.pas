@@ -64,15 +64,15 @@ var
 
 resourcestring
   SSetDictionary = 'Set';
-  SChooseABibleModule = 'Please choose a theWord module file...';
+  SChooseABibleModule = 'Please choose a theWord Bible module file...';
   SChooseAnotherText = 'Replace text';
-  SChangeTextConfirmation = 'Are you sure you want to replace this text with a new one?';
-  SChangeTextConfirmationAssociation = 'Loading a new text will cause all your existing associations to be discarded. ' +
+  SChangeTextConfirmation = 'Are you sure you want to replace this Bible text with a new one?';
+  SChangeTextConfirmationAssociation = 'Loading a new Bible text will cause all your existing associations to be discarded. ' +
                                        'But, if you click ''Yes'', iBiblia can try to keep existing associations for you.'#13#10#13#10 +
                                        'Would you like iBiblia to do that?';
-  SClearText = 'Clear text';
-  SClearTextConfirmation = 'Are you sure you want to clear this text?';
-  SClearTextConfirmationAssociation = 'Are you sure you want to clear this text?'#13#10 +
+  SClearText = 'Clear Bible text';
+  SClearTextConfirmation = 'Are you sure you want to clear this Bible text?';
+  SClearTextConfirmationAssociation = 'Are you sure you want to clear this Bible text?'#13#10 +
                                       'All your associations will be lost!';
   SChooseDictionary = 'Choose';
   SOpenDictionary = 'Please choose a theWord dictionary module...';
@@ -80,8 +80,8 @@ resourcestring
   SDestinationTab = 'Destination';
   SReference1Tab = 'Reference 1';
   SReference2Tab = 'Reference 2';
-  SNewTestamentFilter = 'theWord bible modules (*.ont, *.nt)|*.ont;*.nt';
-  SOldTestamentFilter = 'theWord bible modules (*.ont, *.ot)|*.ont;*.ot';
+  SNewTestamentFilter = 'theWord Bible modules (*.ont, *.nt)|*.ont;*.nt';
+  SOldTestamentFilter = 'theWord Bible modules (*.ont, *.ot)|*.ont;*.ot';
 
 implementation
 
