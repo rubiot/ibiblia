@@ -286,7 +286,7 @@ resourcestring
                    ' 1. The project file was modified outside iBiblia'#13#10 +
                    ' 2. The project was created/edited on an incompatible iBiblia version'#13#10 +
                    ' 3. This can be a bug in iBiblia.'#13#10 +
-                   '    If this is the case, please file a bug in the Github project page' +
+                   '    If this is the case, please file a bug in the Github project page'#13#10 +
                    '    at https://github.com/rubiot/ibiblia.';
   SStrongDictionary = 'Strong''s Dictionary';
   SDictionaryDoesntExist = 'The selected dictionary doesn''t exist: %s';
@@ -295,7 +295,7 @@ resourcestring
   SProjectDoesntExist = 'The selected project doesn''t exist: %s';
   SInvalidLineCount = 'Invalid file, it must have at least %d lines';
   SFailedToCreateFile = 'Failed to create file: %s';
-  SExportToFileError = 'iBiblia found and error while exporting the Bible module file.'#13#10 +
+  SExportToFileError = 'iBiblia found an error while exporting the Bible module file.'#13#10 +
                        'Please check if theWord is using the file, then close it and try again.';
   STranslationMemory = 'Translation memory';
 

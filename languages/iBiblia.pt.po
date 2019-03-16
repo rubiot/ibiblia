@@ -32,7 +32,7 @@ msgid "Please choose a name for your project"
 msgstr "Escolha um nome para o projeto"
 
 #: formnovoprojeto.schooseatleastonetext
-msgid "Please choose at least one source text"
+msgid "Please choose a source Bible text"
 msgstr "Escolha pelo menos um texto origem"
 
 #: formnovoprojeto.snewproject
@@ -45,7 +45,7 @@ msgstr "Novo Testamento"
 
 #: formnovoprojeto.snewtestamentfilter
 msgctxt "formnovoprojeto.snewtestamentfilter"
-msgid "theWord bible modules (*.ont, *.nt)|*.ont;*.nt"
+msgid "theWord Bible modules (*.ont, *.nt)|*.ont;*.nt"
 msgstr "Módulos de Bíblia do theWord (*.ont, *.nt)|*.ont;*.nt"
 
 #: formnovoprojeto.soldtestament
@@ -54,7 +54,7 @@ msgstr "Velho Testamento"
 
 #: formnovoprojeto.soldtestamentfilter
 msgctxt "formnovoprojeto.soldtestamentfilter"
-msgid "theWord bible modules (*.ont, *.ot)|*.ont;*.ot"
+msgid "theWord Bible modules (*.ont, *.ot)|*.ont;*.ot"
 msgstr "Módulos de Bíblia do theWord (*.ont, *.ot)|*.ont;*.ot"
 
 #: formprincipal.schanged
@@ -132,12 +132,12 @@ msgid "Not associated"
 msgstr "Não associado"
 
 #: formpropprojeto.schangetextconfirmation
-msgid "Are you sure you want to replace this text with a new one?"
+msgid "Are you sure you want to replace this Bible text with a new one?"
 msgstr "Tem certeza de que quer substituir o texto atual por outro?"
 
 #: formpropprojeto.schangetextconfirmationassociation
 msgid ""
-"Loading a new text will cause all your existing associations to be discarded. But, if you click 'Yes', iBiblia can try to keep existing associations for you.\n"
+"Loading a new Bible text will cause all your existing associations to be discarded. But, if you click 'Yes', iBiblia can try to keep existing associations for you.\n"
 "\n"
 "Would you like iBiblia to do that?\n"
 msgstr ""
@@ -146,7 +146,7 @@ msgstr ""
 "Você gostaria que o iBiblia fizesse isso?\n"
 
 #: formpropprojeto.schooseabiblemodule
-msgid "Please choose a theWord module file..."
+msgid "Please choose a theWord Bible module file..."
 msgstr "Escolha um módulo do theWord..."
 
 #: formpropprojeto.schooseanothertext
@@ -160,16 +160,16 @@ msgstr "Selecionar"
 
 #: formpropprojeto.scleartext
 msgctxt "formpropprojeto.scleartext"
-msgid "Clear text"
+msgid "Clear Bible text"
 msgstr "Limpar texto"
 
 #: formpropprojeto.scleartextconfirmation
-msgid "Are you sure you want to clear this text?"
+msgid "Are you sure you want to clear this Bible text?"
 msgstr "Tem certeza de que deseja limpar este texto?"
 
 #: formpropprojeto.scleartextconfirmationassociation
 msgid ""
-"Are you sure you want to clear this text?\n"
+"Are you sure you want to clear this Bible text?\n"
 "All your associations will be lost!\n"
 msgstr ""
 "Tem certeza de que quer limpar este texto?\n"
@@ -182,12 +182,12 @@ msgstr "Destino"
 
 #: formpropprojeto.snewtestamentfilter
 msgctxt "formpropprojeto.snewtestamentfilter"
-msgid "theWord bible modules (*.ont, *.nt)|*.ont;*.nt"
+msgid "theWord Bible modules (*.ont, *.nt)|*.ont;*.nt"
 msgstr "Módulos de Bíblia do theWord (*.ont, *.nt)|*.ont;*.nt"
 
 #: formpropprojeto.soldtestamentfilter
 msgctxt "formpropprojeto.soldtestamentfilter"
-msgid "theWord bible modules (*.ont, *.ot)|*.ont;*.ot"
+msgid "theWord Bible modules (*.ont, *.ot)|*.ont;*.ot"
 msgstr "Módulos de Bíblia do theWord (*.ont, *.ot)|*.ont;*.ot"
 
 #: formpropprojeto.sopendictionary
@@ -310,7 +310,9 @@ msgid ""
 "Corrupted data, some associations may be lost.This can happen for several reasons:\n"
 " 1. The project file was modified outside iBiblia\n"
 " 2. The project was created/edited on an incompatible iBiblia version\n"
-" 3. This can be a bug in iBiblia. In this case, please file a bug in Github project page.\n"
+" 3. This can be a bug in iBiblia.\n"
+"    If this is the case, please file a bug in the Github project page\n"
+"    at https://github.com/rubiot/ibiblia.\n"
 msgstr ""
 "Dados inconsistentes, algumas associações podem ser perdidas. Isso pode ocorrer por várias razões:\n"
 "1. O projeto foi modificado fora do iBiblia\n"
@@ -351,7 +353,7 @@ msgstr "Êxodo"
 
 #: projeto.sexporttofileerror
 msgid ""
-"iBiblia found and error while exporting the module file.\n"
+"iBiblia found an error while exporting the Bible module file.\n"
 "Please check if theWord is using the file, then close it and try again.\n"
 msgstr ""
 "iBiblia encontrou um erro ao salvar o módulo.\n"
