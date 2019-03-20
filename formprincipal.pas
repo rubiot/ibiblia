@@ -159,6 +159,7 @@ type
     procedure AtualizarMRU(m: TMenuItem);
     procedure CarregarMRU(m: TMenuItem);
     procedure DescarregarMRU(m: TMenuItem);
+    procedure RadioGroupStatusSelectionChanged(Sender: TObject);
     procedure ToolButtonExitClick(Sender: TObject);
   private
     { private declarations }
@@ -893,6 +894,12 @@ begin
 
   for j:=m.Count to MAX_MRU-1 do
     opts.DeleteKey('projetos', format('recente.%d', [j]));
+end;
+
+procedure TFrmPrincipal.RadioGroupStatusSelectionChanged(Sender: TObject);
+begin
+  if ProjetoAtual <> nil then
+    ProjetoAtual.Situacao := RadioGroupStatus.ItemIndex;
 end;
 
 procedure TFrmPrincipal.ToolButtonExitClick(Sender: TObject);

@@ -266,6 +266,7 @@ object frmPrincipal: TfrmPrincipal
             'Needs review'
             'Associated!'
           )
+          OnSelectionChanged = RadioGroupStatusSelectionChanged
           TabOrder = 1
         end
       end

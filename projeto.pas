@@ -140,6 +140,7 @@ type
     procedure AtribuirDicMorfo(dic: string; t: TTipoTextoBiblico);
     procedure AtualizarArvore;
     procedure AtualizarArvore(id: string);
+    procedure SelectTreeNode(id: string);
   public
     constructor Criar;
     constructor Criar(paineis: array of TScrollbox; navegador: TTreeView; rsituacao: TRadioGroup; rcomentarios: TMemo);
@@ -519,9 +520,12 @@ end;
 
 procedure TProjeto.SetSituacao(const AValue: Integer);
 begin
+  if FClosing then
+    exit;
   FTblPares.Edit;
   FTblPares.FieldByName('pare_situacao').AsInteger := IfThen((AValue < 0) or (AValue > 3), 1, AValue);
   FTblPares.Post;
+  AtualizarArvore(ID);
 end;
 
 function TProjeto.GetModificado: boolean;
@@ -754,12 +758,6 @@ begin
 
   if assigned(FMemoComentarios) then
     Comentarios := FMemoComentarios.Text;
-
-  if assigned(FRadioGroupSituacao) then
-  begin
-    Situacao := FRadioGroupSituacao.ItemIndex;
-    AtualizarArvore(ID);
-  end;
 end;
 
 procedure TProjeto.PosRolagemVersiculo(DataSet: TDataSet);
@@ -785,6 +783,8 @@ begin
     end;
     FParesAntigos := FAVersiculo[tbOrigem].GetListaPares(tlMetaDados);
   end;
+
+  SelectTreeNode(ID);
 
   if assigned(FMemoComentarios) then
     FMemoComentarios.Text := Comentarios;
@@ -1369,6 +1369,31 @@ begin
       nl.SelectedIndex := nl.ImageIndex + 4;
     end;
   end;
+end;
+
+procedure TProjeto.SelectTreeNode(id: string);
+var
+  b, c, v, i: smallint;
+  node: TTreeNode;
+begin
+  if not assigned(FArvore) or FClosing then
+    exit;
+
+  SScanf(id, '%d,%d,%d', [@b, @c, @v]);
+
+  node := FArvore.Items[0];
+  for i:=b-OffsetLivros[FEscopo]-1 downto 1 do
+    node := node.GetNextSibling;
+
+  node := node.GetFirstChild;
+  for i:=c-1 downto 1 do
+    node := node.GetNextSibling;
+
+  node := node.GetFirstChild;
+  for i:=v-1 downto 1 do
+    node := node.GetNextSibling;
+
+  node.Selected := true;
 end;
 
 constructor TProjeto.Criar;
