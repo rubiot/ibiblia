@@ -51,7 +51,7 @@ resourcestring
   SChooseAtLeastOneText = 'Please choose a source Bible text';
   SOldTestament = 'Old Testament';
   SNewTestament = 'New Testament';
-  SNewTestamentFilter = 'theWord Bible modules (*.ont, *.nt)|*.ont;*.nt';
+  SNewTestamentFilter = 'theWord Bible modules (*.nt)|*.nt';
   SOldTestamentFilter = 'theWord Bible modules (*.ont, *.ot)|*.ont;*.ot';
 
 implementation

@@ -159,6 +159,7 @@ type
     procedure AtualizarMRU(m: TMenuItem);
     procedure CarregarMRU(m: TMenuItem);
     procedure DescarregarMRU(m: TMenuItem);
+    procedure sourcertlClick(Sender: TObject);
     procedure ToolButtonExitClick(Sender: TObject);
   private
     { private declarations }
@@ -191,7 +192,7 @@ const
 resourcestring
   SStatusNotAssociated = 'Not associated';
   SStatusAssociating = 'Associating';
-  SStatusNeedsReview = 'Needs review';
+  SStatusNeedsReview = 'Needs reviewed';
   SStatusAssociated = 'Associated!';
   SRollbackChanges = 'Rollback changes';
   SRollbackChangesConfirmation = 'Are you sure you want to rollback all changes to this verse?';
@@ -893,6 +894,11 @@ begin
 
   for j:=m.Count to MAX_MRU-1 do
     opts.DeleteKey('projetos', format('recente.%d', [j]));
+end;
+
+procedure TFrmPrincipal.sourcertlClick(Sender: TObject);
+begin
+
 end;
 
 procedure TFrmPrincipal.ToolButtonExitClick(Sender: TObject);

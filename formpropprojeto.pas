@@ -80,7 +80,7 @@ resourcestring
   SDestinationTab = 'Destination';
   SReference1Tab = 'Reference 1';
   SReference2Tab = 'Reference 2';
-  SNewTestamentFilter = 'theWord Bible modules (*.ont, *.nt)|*.ont;*.nt';
+  SNewTestamentFilter = 'theWord Bible modules (*.nt)|*.nt';
   SOldTestamentFilter = 'theWord Bible modules (*.ont, *.ot)|*.ont;*.ot';
 
 implementation
