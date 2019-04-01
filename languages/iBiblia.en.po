@@ -15,17 +15,23 @@ msgstr ""
 msgid "AnalyticalConcordance"
 msgstr "AnalyticalConcordance"
 
+#: formexportar.smyswordmodule
+msgid "MySword Bible module (*.bbl.mybible)"
+msgstr "MySword Bible module (*.bbl.mybible)"
+
 #: formexportar.ssyntheticconcordance
 msgid "SyntheticConcordance"
 msgstr "SyntheticConcordance"
 
 #: formexportar.sthewordntmodule
-msgid "theWord module (*.nt)"
-msgstr "theWord module (*.nt)"
+#| msgid "theWord module (*.nt)"
+msgid "theWord Bible module (*.nt)"
+msgstr "theWord Bible module (*.nt)"
 
 #: formexportar.sthewordotmodule
-msgid "theWord module (*.ot)"
-msgstr "theWord module (*.ot)"
+#| msgid "theWord module (*.ot)"
+msgid "theWord Bible module (*.ot)"
+msgstr "theWord Bible module (*.ot)"
 
 #: formnovoprojeto.schooseaname
 msgid "Please choose a name for your project"
@@ -221,6 +227,14 @@ msgstr "Change verse text?"
 #: memoversiculo.schangeverseconfirmation
 msgid "Are you sure you want to change the verse text? Some associations may be lost."
 msgstr "Are you sure you want to change the verse text? Some associations may be lost."
+
+#: myswordmodule.screatemyswordbibleerror
+msgid "Unable to create new MySword module file"
+msgstr "Unable to create new MySword module file"
+
+#: myswordmodule.soverrideerror
+msgid "MySword Bible module exists and cannot be overwritten"
+msgstr "MySword Bible module exists and cannot be overwritten"
 
 #: projeto.s1chronicles
 msgid "1 Chronicles"
@@ -831,14 +845,6 @@ msgstr "Interlinear source text"
 #: tfrmexportarprojeto.tabsheet3.caption
 msgid "Strong's concordance"
 msgstr "Strong's concordance"
-
-#: tfrmmesclarprojetos.button1.caption
-msgid "Button1"
-msgstr "Button1"
-
-#: tfrmmesclarprojetos.caption
-msgid "Mesclar projetos"
-msgstr "Mesclar projetos"
 
 #: tfrmprincipal.actionabrirprojeto.caption
 msgid "Open..."

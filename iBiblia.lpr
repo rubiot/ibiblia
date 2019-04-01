@@ -10,7 +10,7 @@ uses
   Forms, formPrincipal, Versiculo, ONTTokenizer, Projeto, Sugestao, RTFEdit,
   memoversiculo, PCRE, exportarprojeto, formverserules, formmesclarprojetos,
   formpopup, formnovoprojeto, formpropprojeto, formexportar, twAutomate,
-  twSyncThread, ONTParser, Sintagma, unitabout;
+  twSyncThread, ONTParser, Sintagma, unitabout, MySwordModule;
 
 {$R *.res}
 

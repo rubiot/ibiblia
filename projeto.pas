@@ -17,7 +17,7 @@ uses
   SysUtils, Sqlite3DS, sqlite3conn, sqldb, db, StrUtils, math,
   ExtCtrls, Controls, ComCtrls, StdCtrls, Graphics, Forms, Versiculo, Sugestao,
   MemoVersiculo, ONTTokenizer, Dialogs, dos, PCRE, ExportarProjeto, LazLogger,
-  Sintagma;
+  Sintagma, MySwordModule;
 
 type
 
@@ -108,6 +108,8 @@ type
     procedure SetOnSintagmaClick(const AValue: TOnSintagmaClickEvent);
     procedure SetPalavrasComStrongEmNegrito(AValue: boolean);
     procedure SetSituacao(const AValue: Integer);
+    procedure ExportTheWordBible(verses: TStringList; filename: string; props: string);
+    procedure ExportMySwordBible(verses: TStringList; filename: string; props: string);
   protected
     procedure CopiarArquivo(origem, destino: string);
     function CriarObjetoTabela(db, tabela, chave: string): TSqlite3Dataset;
@@ -526,6 +528,33 @@ begin
   FTblPares.FieldByName('pare_situacao').AsInteger := IfThen((AValue < 0) or (AValue > 3), 1, AValue);
   FTblPares.Post;
   AtualizarArvore(ID);
+end;
+
+procedure TProjeto.ExportTheWordBible(verses: TStringList; filename: string;
+  props: string);
+begin
+  verses.Add('');
+  verses.Add(props);
+  verses[0] := #239#187#191 + verses.Strings[0]; // adicionando BOM
+  verses.SaveToFile(filename);
+end;
+
+procedure TProjeto.ExportMySwordBible(verses: TStringList; filename: string; props: string);
+var
+  module: TMySwordModule;
+  b, c, v, i: smallint;
+begin
+  module := TMySwordModule.Create(filename, FEscopo = etOT, FEscopo = etNT, true, props);
+  i := 0;
+  for b:=0 to QLivros[FEscopo]-1 do
+    for c:=0 to QCapitulos[FEscopo][b]-1 do
+      for v:=0 to QVersiculos[FEscopo][QCapLivros[FEscopo][b] + c - 1]-1 do
+      begin
+        module.AddVerse(verses[i], b+OffsetLivros[FEscopo]+1, c+1, v+1);
+        Inc(i);
+      end;
+  module.Commit;
+  module.Free;
 end;
 
 function TProjeto.GetModificado: boolean;
@@ -1962,7 +1991,7 @@ end;
 procedure TProjeto.ExportarTextoDestinoComStrongs(arquivo: string;
   pb: TProgressBar; opcoes: TOpcoesExportacao);
 var
-  ONT: TStringList;
+  lines: TStringList;
   marcador: string;
 begin
   if not assigned(FAVersiculo[tbOrigem]) or not assigned(FAVersiculo[tbDestino]) then
@@ -1978,7 +2007,7 @@ begin
       pb.Visible := true;
     end;
     FExportando := true;
-    ONT := TStringList.Create;
+    lines := TStringList.Create;
     PreRolagemVersiculo(nil);
 
     with FTblPares do
@@ -1989,7 +2018,7 @@ begin
       while not FTblPares.EOF do
       begin
         if length(FTblPares.FieldByName('pare_pares').AsString) = 0 then
-          ONT.Add(FTblPares.Fields[FACamposTexto[tbDestino]].AsString)
+          lines.Add(FTblPares.Fields[FACamposTexto[tbDestino]].AsString)
         else
         begin
           FATmpVerse[tbOrigem ].Texto := FTblPares.Fields[FACamposTexto[tbOrigem ]].AsString;
@@ -2004,7 +2033,7 @@ begin
                           FATmpVerse[tbOrigem].DebugTokens, FATmpVerse[tbDestino].DebugTokens]),
                    mtError, [mbOK], 0);
           end;
-          ONT.Add(FATmpVerse[tbDestino].GetLinhaONT(
+          lines.Add(FATmpVerse[tbDestino].GetLinhaONT(
             (oeExportarMorfologia in opcoes),
             (oeExportarNAComoItalicos in opcoes),
             (oeStrongsReutilizados in opcoes),
@@ -2013,7 +2042,7 @@ begin
         end;
 
         if (oeExportarComentarios in opcoes) and not FTblPares.FieldByName('pare_comentarios').AsString.isEmpty then
-          ONT[ONT.Count-1] := ONT[ONT.Count-1] + '<RF>' +
+          lines[lines.Count-1] := lines[lines.Count-1] + '<RF>' +
             AnsiReplaceStr(FTblPares.FieldByName('pare_comentarios').AsString, #13#10, '<CM>') + '<Rf>';
 
         if assigned(pb) then
@@ -2028,20 +2057,19 @@ begin
       HabilitarEventosRolagem;
     end;
 
-    if pos(ONT[0], '<WG') = 0 then { adicionando tag inócua para que o theWord exiba definições mesmo sem associações no primeiro versículo }
-      ONT[0] := ONT[0] + '<_MORPH_>';
-
-    ONT.Add('');
-    ONT.Add(ResgatarInfo('propriedades.destino'));
-    ONT[0] := #239#187#191 + ONT.Strings[0]; // adicionando BOM
+    if pos(lines[0], '<WG') = 0 then { adicionando tag inócua para que o theWord exiba definições mesmo sem associações no primeiro versículo }
+      lines[0] := lines[0] + '<_MORPH_>';
 
     try
-      ONT.SaveToFile(arquivo);
+      if arquivo.EndsWith('.mybible') then // MySword module?
+        ExportMySwordBible(lines, arquivo, ResgatarInfo('propriedades.destino'))
+      else
+        ExportTheWordBible(lines, arquivo, ResgatarInfo('propriedades.destino'));
     except
       on E: Exception do MessageDlg(SError, SExportToFileError, mtError, [mbOK], 0);
     end;
   finally
-    ONT.Destroy;
+    lines.Destroy;
     FExportando := false;
     PosRolagemVersiculo(nil);
     if assigned(pb) then
@@ -2058,7 +2086,7 @@ end;
 procedure TProjeto.ExportarTextoInterlinear(arquivo: string;
   pb: TProgressBar; opcoes: TOpcoesExportacao);
 var
-  ONT: TStringList;
+  lines: TStringList;
   marcador: string;
 begin
   if (FAVersiculo[tbOrigem] = nil) or (FAVersiculo[tbDestino] = nil) then
@@ -2074,7 +2102,7 @@ begin
       pb.Visible := true;
     end;
     FExportando := true;
-    ONT := TStringList.Create;
+    lines := TStringList.Create;
     PreRolagemVersiculo(nil);
 
     with FTblPares do
@@ -2085,7 +2113,7 @@ begin
       while not FTblPares.EOF do
       begin
         if length(FTblPares.FieldByName('pare_pares').AsString) = 0 then
-          ONT.Add(FTblPares.Fields[FACamposTexto[tbOrigem]].AsString)
+          lines.Add(FTblPares.Fields[FACamposTexto[tbOrigem]].AsString)
         else
         begin
           FATmpVerse[tbOrigem ].Texto := FTblPares.Fields[FACamposTexto[tbOrigem] ].AsString;
@@ -2100,7 +2128,9 @@ begin
                           FATmpVerse[tbOrigem].DebugTokens, FATmpVerse[tbDestino].DebugTokens]),
                    mtError, [mbOK], 0);
           end;
-          ONT.Add(FATmpVerse[tbOrigem].GetLinhaInterlinear);
+          lines.Add(IfThen(arquivo.EndsWith('.mybible'),
+                           FATmpVerse[tbOrigem].GetMySwordInterlinearLine,
+                           FATmpVerse[tbOrigem].GetTheWordInterlinearLine));
         end;
         if pb <> nil then
         begin
@@ -2114,17 +2144,20 @@ begin
       HabilitarEventosRolagem;
     end;
 
-    ONT.Add('');
-    ONT.Add(ResgatarInfo('propriedades.origem'));
-    ONT[0] := #239#187#191 + ONT[0]; // adicionando BOM
+    //lines.Add('');
+    //lines.Add(ResgatarInfo('propriedades.origem'));
+    //lines[0] := #239#187#191 + lines[0]; // adicionando BOM
 
     try
-      ONT.SaveToFile(arquivo);
+      if arquivo.EndsWith('.mybible') then // MySword module?
+        ExportMySwordBible(lines, arquivo, ResgatarInfo('propriedades.origem'))
+      else
+        ExportTheWordBible(lines, arquivo, ResgatarInfo('propriedades.origem'));
     except
       on E: Exception do MessageDlg(SError, SExportToFileError, mtError, [mbOK], 0);
     end;
   finally
-    ONT.Destroy;
+    lines.Destroy;
     FExportando := false;
     PosRolagemVersiculo(nil);
     if assigned(pb) then

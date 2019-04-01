@@ -94,7 +94,8 @@ type
     procedure MostrarTags;
     procedure OcultarTags;
 
-    function GetLinhaInterlinear: string;
+    function GetTheWordInterlinearLine: string;
+    function GetMySwordInterlinearLine: string;
     function GetLinhaONT: string;
     function GetLinhaONT(morfo: boolean; autoitalico: boolean; strongsreutilizados: boolean;
           strongsnaotraduzidos: boolean): string;
@@ -650,7 +651,7 @@ begin
     result := p/t;
 end;
 
-function TVersiculo.GetLinhaInterlinear: string;
+function TVersiculo.GetTheWordInterlinearLine: string;
 var
   linha: TStringStream;
   s, p, prox: TSintagma;
@@ -713,6 +714,60 @@ begin
                 ), '</sup>', '</font></sup>'
               );
     linha.Destroy;
+  end;
+end;
+
+function TVersiculo.GetMySwordInterlinearLine: string;
+var
+  line: TStringStream;
+  s, p: TSintagma;
+  m: string;
+begin
+  result := '';
+
+  {Sample: <TS>The Creation<Ts><Q><wg>εν<WG1722><E> In<e><q> <Q><wg>αρχή<WG746><E> <FI>the<Fi> beginning<e><q>}
+  try
+    line := TStringStream.Create('');
+
+    for s in FSintagmas do
+    begin
+      case s.Tipo of
+        tsSintagma:
+        begin
+          line.WriteString('<Q>');
+          line.WriteString(s.Texto);
+
+          for m in s.Strong do
+            line.WriteString(format('<W%s>', [m]));
+          for m in s.Morf do
+            line.WriteString(format('<WT%s>', [m]));
+
+          if s.Pares.Count > 0 then
+          begin
+            line.WriteString('<T>');
+            if (s.Irmaos.Count = 0) or (FSintagmas.IndexOf(s) < FSintagmas.IndexOf(s.Irmaos[0])) then
+            begin // no siblings of the first sibling
+              for p in s.Pares do
+              begin
+                if p <> s.Pares[0] then
+                  line.WriteString(' ');
+                line.WriteString(p.Texto);
+              end;
+            end else // not a first sibling
+              line.WriteString('←');
+            line.WriteString('<t>');
+          end;
+          line.WriteString('<q>');
+        end;
+        tsTag:       line.WriteString(s.TextoBruto);
+        tsEspaco:    line.WriteString(s.TextoBruto);
+        tsPontuacao: line.WriteString(s.TextoBruto);
+        tsMetaDado:  if s.Texto <> '<wt>' then line.WriteString(s.TextoBruto);
+      end;
+    end;
+  finally
+    result := line.DataString;
+    line.Free;
   end;
 end;
 

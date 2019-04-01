@@ -1,13 +1,13 @@
 object frmExportarProjeto: TfrmExportarProjeto
-  Left = 0
+  Left = 504
   Height = 427
-  Top = 287
-  Width = 712
+  Top = 263
+  Width = 788
   Caption = 'Export association'
   ClientHeight = 427
-  ClientWidth = 712
+  ClientWidth = 788
   Position = poMainFormCenter
-  LCLVersion = '1.8.4.0'
+  LCLVersion = '2.0.0.4'
   object PageControl1: TPageControl
     Left = 8
     Height = 360
@@ -18,7 +18,7 @@ object frmExportarProjeto: TfrmExportarProjeto
     TabOrder = 0
     object TabSheet1: TTabSheet
       Caption = 'Tagged destination text'
-      ClientHeight = 334
+      ClientHeight = 332
       ClientWidth = 768
       object MemoRodapeDestino: TMemo
         Left = 13
@@ -40,49 +40,49 @@ object frmExportarProjeto: TfrmExportarProjeto
       end
       object Label1: TLabel
         Left = 13
-        Height = 13
+        Height = 15
         Top = 89
-        Width = 86
+        Width = 97
         Caption = 'Module properties'
         ParentColor = False
       end
       object cbExportarNAComoItalicos: TCheckBox
         Left = 13
-        Height = 17
+        Height = 19
         Top = 9
-        Width = 266
+        Width = 286
         Caption = 'Export unassociated words as added words (italics)'
         TabOrder = 1
       end
       object cbExportarMorfologia: TCheckBox
         Left = 13
-        Height = 17
+        Height = 19
         Top = 33
-        Width = 135
+        Width = 147
         Caption = 'Export morphology tags'
         TabOrder = 2
       end
       object cbExportarComentarios: TCheckBox
         Left = 13
-        Height = 17
+        Height = 19
         Top = 57
-        Width = 197
+        Width = 212
         Caption = 'Export comments as translator notes'
         TabOrder = 3
       end
       object cbStrongsReutilizados: TCheckBox
         Left = 372
-        Height = 17
+        Height = 19
         Top = 9
-        Width = 118
+        Width = 127
         Caption = 'Mark reused strongs'
         TabOrder = 4
       end
       object cbStrongsNaoTraduzidos: TCheckBox
         Left = 372
-        Height = 17
+        Height = 19
         Top = 33
-        Width = 120
+        Width = 131
         Caption = 'Mark unused strongs'
         TabOrder = 5
       end
@@ -136,13 +136,7 @@ object frmExportarProjeto: TfrmExportarProjeto
         Height = 23
         Top = 56
         Width = 264
-        EditLabel.AnchorSideLeft.Control = leAbreviacao
-        EditLabel.AnchorSideRight.Control = leAbreviacao
-        EditLabel.AnchorSideRight.Side = asrBottom
-        EditLabel.AnchorSideBottom.Control = leAbreviacao
-        EditLabel.Left = 12
         EditLabel.Height = 15
-        EditLabel.Top = 38
         EditLabel.Width = 264
         EditLabel.Caption = 'Abbreviation'
         EditLabel.ParentColor = False

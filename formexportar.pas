@@ -49,8 +49,9 @@ var
   frmExportarProjeto: TFrmExportarProjeto;
 
 resourcestring
-  STheWordOTModule = 'theWord module (*.ot)';
-  STheWordNTModule = 'theWord module (*.nt)';
+  STheWordOTModule = 'theWord Bible module (*.ot)';
+  STheWordNTModule = 'theWord Bible module (*.nt)';
+  SMySwordModule   = 'MySword Bible module (*.bbl.mybible)';
   SAnalyticalConcordance = 'AnalyticalConcordance';
   SSyntheticConcordance = 'SyntheticConcordance';
 
@@ -102,22 +103,22 @@ begin
     etOT:
     begin
       SaveDialog1.DefaultExt:='.ot';
-      SaveDialog1.Filter    := STheWordOTModule + '|*.ot';
+      SaveDialog1.Filter    := STheWordOTModule + '|*.ot' + '|' + SMySwordModule + '|*.bbl.mybible';
     end;
     etNT:
     begin
       SaveDialog1.DefaultExt:='.nt';
-      SaveDialog1.Filter    := STheWordNTModule + '|*.nt';
+      SaveDialog1.Filter    := STheWordNTModule + '|*.nt' + '|' + SMySwordModule + '|*.bbl.mybible';
     end;
   end;
 
   if SaveDialog1.Execute then
   begin
     try
-       self.Enabled:=false;
+       self.Enabled := false;
        FProjeto.ExportarTextoDestinoComStrongs(SaveDialog1.FileName, ProgressBar1, opcoes);
     finally
-      self.Enabled:=true;
+      self.Enabled := true;
     end;
   end;
 end;
@@ -127,17 +128,20 @@ var
   opcoes: TOpcoesExportacao;
 begin
   opcoes := [];
-  //if cbExportarNAComoItalicos.Checked then
-  //  opcoes := opcoes + [oeExportarNAComoItalicos];
-  //if cbExportarComentarios.Checked then
-  //  opcoes := opcoes + [oeExportarComentarios];
-  //if cbExportarMorfologia.Checked then
-  //  opcoes := opcoes + [oeExportarMorfologia];
-
   FProjeto.AtribuirInfo('propriedades.origem', MemoRodapeOrigem.Text);
-  //FProjeto.AtribuirInfo('opcoes.exportar.comentarios', bool2string(cbExportarComentarios.Checked));
-  //FProjeto.AtribuirInfo('opcoes.exportar.morfologia', bool2string(cbExportarMorfologia.Checked));
-  //FProjeto.AtribuirInfo('opcoes.exportar.na.como.italicos', bool2string(cbExportarNAComoItalicos.Checked));
+
+  case FProjeto.Escopo of
+    etOT:
+    begin
+      SaveDialog1.DefaultExt:='.ot';
+      SaveDialog1.Filter    := STheWordOTModule + '|*.ot' + '|' + SMySwordModule + '|*.bbl.mybible';
+    end;
+    etNT:
+    begin
+      SaveDialog1.DefaultExt:='.nt';
+      SaveDialog1.Filter    := STheWordNTModule + '|*.nt' + '|' + SMySwordModule + '|*.bbl.mybible';
+    end;
+  end;
 
   if SaveDialog1.Execute then
   begin

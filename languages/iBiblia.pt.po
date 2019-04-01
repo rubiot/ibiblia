@@ -15,17 +15,21 @@ msgstr ""
 msgid "AnalyticalConcordance"
 msgstr "ConcordanciaAnalitica"
 
+#: formexportar.smyswordmodule
+msgid "MySword Bible module (*.bbl.mybible)"
+msgstr "Módulo de Bíblia do MySword (*.bb.mybible)"
+
 #: formexportar.ssyntheticconcordance
 msgid "SyntheticConcordance"
 msgstr "ConcordanciaSintetica"
 
 #: formexportar.sthewordntmodule
-msgid "theWord module (*.nt)"
-msgstr "Módulo do theWord (*.nt)"
+msgid "theWord Bible module (*.nt)"
+msgstr "Módulo de Bíblia do theWord (*.nt)"
 
 #: formexportar.sthewordotmodule
-msgid "theWord module (*.ot)"
-msgstr "Módulo do theWord (*.ot)"
+msgid "theWord Bible module (*.ot)"
+msgstr "Módulo de Bíblia do theWord (*.ot)"
 
 #: formnovoprojeto.schooseaname
 msgid "Please choose a name for your project"
@@ -220,6 +224,14 @@ msgstr "Alterar o texto do versículo?"
 #: memoversiculo.schangeverseconfirmation
 msgid "Are you sure you want to change the verse text? Some associations may be lost."
 msgstr "Tem certeza de que quer alterar o texto deste versículo? Algumas alterações podem ser perdidas."
+
+#: myswordmodule.screatemyswordbibleerror
+msgid "Unable to create new MySword module file"
+msgstr "Erro ao criar novo módulo de Bíblia do MySword"
+
+#: myswordmodule.soverrideerror
+msgid "MySword Bible module exists and cannot be overwritten"
+msgstr "Este módulo de Bíblia do MySword já existe e não pode ser sobrescrito."
 
 #: projeto.s1chronicles
 msgid "1 Chronicles"
@@ -820,14 +832,6 @@ msgstr "Texto origem interlinear"
 #: tfrmexportarprojeto.tabsheet3.caption
 msgid "Strong's concordance"
 msgstr "Concordância de strong"
-
-#: tfrmmesclarprojetos.button1.caption
-msgid "Button1"
-msgstr "Button1"
-
-#: tfrmmesclarprojetos.caption
-msgid "Mesclar projetos"
-msgstr "Mesclar projetos"
 
 #: tfrmprincipal.actionabrirprojeto.caption
 msgid "Open..."

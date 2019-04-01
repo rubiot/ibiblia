@@ -5,16 +5,20 @@ msgstr "Content-Type: text/plain; charset=UTF-8"
 msgid "AnalyticalConcordance"
 msgstr ""
 
+#: formexportar.smyswordmodule
+msgid "MySword Bible module (*.bbl.mybible)"
+msgstr ""
+
 #: formexportar.ssyntheticconcordance
 msgid "SyntheticConcordance"
 msgstr ""
 
 #: formexportar.sthewordntmodule
-msgid "theWord module (*.nt)"
+msgid "theWord Bible module (*.nt)"
 msgstr ""
 
 #: formexportar.sthewordotmodule
-msgid "theWord module (*.ot)"
+msgid "theWord Bible module (*.ot)"
 msgstr ""
 
 #: formnovoprojeto.schooseaname
@@ -202,6 +206,14 @@ msgstr ""
 
 #: memoversiculo.schangeverseconfirmation
 msgid "Are you sure you want to change the verse text? Some associations may be lost."
+msgstr ""
+
+#: myswordmodule.screatemyswordbibleerror
+msgid "Unable to create new MySword module file"
+msgstr ""
+
+#: myswordmodule.soverrideerror
+msgid "MySword Bible module exists and cannot be overwritten"
 msgstr ""
 
 #: projeto.s1chronicles
@@ -795,14 +807,6 @@ msgstr ""
 
 #: tfrmexportarprojeto.tabsheet3.caption
 msgid "Strong's concordance"
-msgstr ""
-
-#: tfrmmesclarprojetos.button1.caption
-msgid "Button1"
-msgstr ""
-
-#: tfrmmesclarprojetos.caption
-msgid "Mesclar projetos"
 msgstr ""
 
 #: tfrmprincipal.actionabrirprojeto.caption
