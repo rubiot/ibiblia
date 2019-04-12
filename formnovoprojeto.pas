@@ -34,6 +34,7 @@ type
     procedure BitBtn4Click(Sender: TObject);
     procedure BitBtn5Click(Sender: TObject);
     procedure FormCreate(Sender: TObject);
+    procedure RadioGroupScopeClick(Sender: TObject);
   private
     { private declarations }
     procedure SelecionarTexto(edit: TLabeledEdit);
@@ -51,8 +52,10 @@ resourcestring
   SChooseAtLeastOneText = 'Please choose a source Bible text';
   SOldTestament = 'Old Testament';
   SNewTestament = 'New Testament';
+  SWholeBible = 'Whole Bible';
   SNewTestamentFilter = 'theWord Bible modules (*.ont, *.nt)|*.ont;*.nt';
   SOldTestamentFilter = 'theWord Bible modules (*.ont, *.ot)|*.ont;*.ot';
+  SWholeBibleFilter = 'theWord Bible modules (*.ont)|*.ont';
 
 implementation
 
@@ -86,6 +89,11 @@ begin
   Translate;
 end;
 
+procedure TFormNovoProjeto.RadioGroupScopeClick(Sender: TObject);
+begin
+
+end;
+
 procedure TFormNovoProjeto.BitBtn1Click(Sender: TObject);
 begin
   SelecionarTexto(EditTextoOrigem);
@@ -111,6 +119,7 @@ begin
   case RadioGroupScope.ItemIndex of
     0: OpenDialog1.Filter := SOldTestamentFilter;
     1: OpenDialog1.Filter := SNewTestamentFilter;
+    2: OpenDialog1.Filter := SWholeBibleFilter;
   end;
   if OpenDialog1.Execute then
     edit.Text := OpenDialog1.FileName;
@@ -123,6 +132,7 @@ begin
     Items.Clear;
     Items.Add(SOldTestament);
     Items.Add(SNewTestament);
+    Items.Add(SWholeBible);
     ItemIndex := 1;
   end;
 end;

@@ -82,6 +82,7 @@ resourcestring
   SReference2Tab = 'Reference 2';
   SNewTestamentFilter = 'theWord Bible modules (*.ont, *.nt)|*.ont;*.nt';
   SOldTestamentFilter = 'theWord Bible modules (*.ont, *.ot)|*.ont;*.ot';
+  SWholeBibleFilter = 'theWord Bible modules (*.ont)|*.ont';
 
 implementation
 
@@ -132,6 +133,7 @@ begin
   case FProjeto.Escopo of
     etOT: OpenDialog1.Filter := SOldTestamentFilter;
     etNT: OpenDialog1.Filter := SNewTestamentFilter;
+    etONT: OpenDialog1.Filter := SWholeBibleFilter;
   end;
 
   OpenDialog1.Title  := SChooseABibleModule;

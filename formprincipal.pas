@@ -440,10 +440,11 @@ procedure TFrmPrincipal.ActionNovoProjetoExecute(Sender: TObject);
 
   function QualEscopo: TEscopoTexto;
   begin
-    if FormNovoProjeto1.RadioGroupScope.ItemIndex = 0 then
-      result := etOT
-    else
-      result := etNT;
+    case FormNovoProjeto1.RadioGroupScope.ItemIndex of
+      0: result := etOT;
+      1: result := etNT;
+      2: result := etONT;
+    end;
   end;
 
 var

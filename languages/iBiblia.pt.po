@@ -61,6 +61,15 @@ msgctxt "formnovoprojeto.soldtestamentfilter"
 msgid "theWord Bible modules (*.ont, *.ot)|*.ont;*.ot"
 msgstr "Módulos de Bíblia do theWord (*.ont, *.ot)|*.ont;*.ot"
 
+#: formnovoprojeto.swholebible
+msgid "Whole Bible"
+msgstr "Bíblia completa"
+
+#: formnovoprojeto.swholebiblefilter
+msgctxt "formnovoprojeto.swholebiblefilter"
+msgid "theWord Bible modules (*.ont)|*.ont"
+msgstr "Módulos de Bíblia do theWord (*.ont)|*.ont"
+
 #: formprincipal.schanged
 msgid "changed"
 msgstr "modificado"
@@ -217,6 +226,11 @@ msgctxt "formpropprojeto.ssourcetab"
 msgid "Source"
 msgstr "Origem"
 
+#: formpropprojeto.swholebiblefilter
+msgctxt "formpropprojeto.swholebiblefilter"
+msgid "theWord Bible modules (*.ont)|*.ont"
+msgstr "Módulos de Bíblia do theWord (*.ont)|*.ont"
+
 #: memoversiculo.schangeverse
 msgid "Change verse text?"
 msgstr "Alterar o texto do versículo?"
@@ -232,6 +246,10 @@ msgstr "Erro ao criar novo módulo de Bíblia do MySword"
 #: myswordmodule.soverrideerror
 msgid "MySword Bible module exists and cannot be overwritten"
 msgstr "Este módulo de Bíblia do MySword já existe e não pode ser sobrescrito."
+
+#: myswordmodule.sprojectoverrideerror
+msgid "A project with this name already exists. Delete it first or choose another name"
+msgstr "Já existe um projeto com este nome. Apague-o ou escolha outro nome"
 
 #: projeto.s1chronicles
 msgid "1 Chronicles"

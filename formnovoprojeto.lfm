@@ -2,13 +2,13 @@ object FormNovoProjeto: TFormNovoProjeto
   Left = 506
   Height = 437
   Top = 226
-  Width = 459
+  Width = 464
   Caption = 'New project...'
   ClientHeight = 437
-  ClientWidth = 459
+  ClientWidth = 464
   OnCreate = FormCreate
   Position = poMainFormCenter
-  LCLVersion = '1.8.4.0'
+  LCLVersion = '2.0.0.4'
   object GroupBox1: TGroupBox
     Left = 6
     Height = 231
@@ -23,13 +23,7 @@ object FormNovoProjeto: TFormNovoProjeto
       Height = 23
       Top = 24
       Width = 384
-      EditLabel.AnchorSideLeft.Control = EditTextoOrigem
-      EditLabel.AnchorSideRight.Control = EditTextoOrigem
-      EditLabel.AnchorSideRight.Side = asrBottom
-      EditLabel.AnchorSideBottom.Control = EditTextoOrigem
-      EditLabel.Left = 8
       EditLabel.Height = 15
-      EditLabel.Top = 6
       EditLabel.Width = 384
       EditLabel.Caption = 'Source'
       EditLabel.ParentColor = False
@@ -41,13 +35,7 @@ object FormNovoProjeto: TFormNovoProjeto
       Height = 23
       Top = 72
       Width = 384
-      EditLabel.AnchorSideLeft.Control = EditTextoDestino
-      EditLabel.AnchorSideRight.Control = EditTextoDestino
-      EditLabel.AnchorSideRight.Side = asrBottom
-      EditLabel.AnchorSideBottom.Control = EditTextoDestino
-      EditLabel.Left = 8
       EditLabel.Height = 15
-      EditLabel.Top = 54
       EditLabel.Width = 384
       EditLabel.Caption = 'Destination'
       EditLabel.ParentColor = False
@@ -59,13 +47,7 @@ object FormNovoProjeto: TFormNovoProjeto
       Height = 23
       Top = 120
       Width = 384
-      EditLabel.AnchorSideLeft.Control = EditTextoRef1
-      EditLabel.AnchorSideRight.Control = EditTextoRef1
-      EditLabel.AnchorSideRight.Side = asrBottom
-      EditLabel.AnchorSideBottom.Control = EditTextoRef1
-      EditLabel.Left = 8
       EditLabel.Height = 15
-      EditLabel.Top = 102
       EditLabel.Width = 384
       EditLabel.Caption = 'Reference 1'
       EditLabel.ParentColor = False
@@ -77,13 +59,7 @@ object FormNovoProjeto: TFormNovoProjeto
       Height = 23
       Top = 168
       Width = 384
-      EditLabel.AnchorSideLeft.Control = EditTextoRef2
-      EditLabel.AnchorSideRight.Control = EditTextoRef2
-      EditLabel.AnchorSideRight.Side = asrBottom
-      EditLabel.AnchorSideBottom.Control = EditTextoRef2
-      EditLabel.Left = 8
       EditLabel.Height = 15
-      EditLabel.Top = 150
       EditLabel.Width = 384
       EditLabel.Caption = 'Reference 2'
       EditLabel.ParentColor = False
@@ -164,13 +140,7 @@ object FormNovoProjeto: TFormNovoProjeto
       Height = 23
       Top = 22
       Width = 384
-      EditLabel.AnchorSideLeft.Control = EditNomeProjeto
-      EditLabel.AnchorSideRight.Control = EditNomeProjeto
-      EditLabel.AnchorSideRight.Side = asrBottom
-      EditLabel.AnchorSideBottom.Control = EditNomeProjeto
-      EditLabel.Left = 8
       EditLabel.Height = 15
-      EditLabel.Top = 4
       EditLabel.Width = 384
       EditLabel.Caption = 'Name'
       EditLabel.ParentColor = False
@@ -194,12 +164,14 @@ object FormNovoProjeto: TFormNovoProjeto
     ClientHeight = 29
     ClientWidth = 445
     ColumnLayout = clVerticalThenHorizontal
-    Columns = 2
+    Columns = 3
     ItemIndex = 1
     Items.Strings = (
       'Old Testament'
       'New Testament'
+      'Whole Bible'
     )
+    OnClick = RadioGroupScopeClick
     TabOrder = 4
   end
   object OpenDialog1: TOpenDialog

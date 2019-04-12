@@ -30,6 +30,7 @@ type
   TPropsMap = specialize TMap<string, string, TStrLess>;
 
 resourcestring
+  SProjectOverrideError = 'A project with this name already exists. Delete it first or choose another name';
   SOverrideError = 'MySword Bible module exists and cannot be overwritten';
   SCreateMySwordBibleError = 'Unable to create new MySword module file';
 

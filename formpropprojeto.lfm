@@ -8,7 +8,7 @@ object FormPropProjeto: TFormPropProjeto
   ClientWidth = 553
   OnCreate = FormCreate
   Position = poMainFormCenter
-  LCLVersion = '1.8.4.0'
+  LCLVersion = '2.0.0.4'
   object GroupBox2: TGroupBox
     Left = 0
     Height = 82
@@ -23,13 +23,7 @@ object FormPropProjeto: TFormPropProjeto
       Height = 23
       Top = 22
       Width = 519
-      EditLabel.AnchorSideLeft.Control = EditNomeProjeto
-      EditLabel.AnchorSideRight.Control = EditNomeProjeto
-      EditLabel.AnchorSideRight.Side = asrBottom
-      EditLabel.AnchorSideBottom.Control = EditNomeProjeto
-      EditLabel.Left = 15
       EditLabel.Height = 15
-      EditLabel.Top = 4
       EditLabel.Width = 519
       EditLabel.Caption = 'Name'
       EditLabel.ParentColor = False
@@ -78,13 +72,7 @@ object FormPropProjeto: TFormPropProjeto
       Height = 23
       Top = 107
       Width = 430
-      EditLabel.AnchorSideLeft.Control = leDicStrong
-      EditLabel.AnchorSideRight.Control = leDicStrong
-      EditLabel.AnchorSideRight.Side = asrBottom
-      EditLabel.AnchorSideBottom.Control = leDicStrong
-      EditLabel.Left = 11
       EditLabel.Height = 15
-      EditLabel.Top = 89
       EditLabel.Width = 430
       EditLabel.Caption = 'Strong''s dictionary'
       EditLabel.ParentColor = False
@@ -96,13 +84,7 @@ object FormPropProjeto: TFormPropProjeto
       Height = 23
       Top = 155
       Width = 430
-      EditLabel.AnchorSideLeft.Control = leDicMorfo
-      EditLabel.AnchorSideRight.Control = leDicMorfo
-      EditLabel.AnchorSideRight.Side = asrBottom
-      EditLabel.AnchorSideBottom.Control = leDicMorfo
-      EditLabel.Left = 11
       EditLabel.Height = 15
-      EditLabel.Top = 137
       EditLabel.Width = 430
       EditLabel.Caption = 'Morphology dictionary'
       EditLabel.ParentColor = False
