@@ -13,8 +13,8 @@ uses
   lclintf,
   {$ENDIF}
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, Menus,
-  ActnList, ComCtrls, ExtCtrls, StdCtrls, Projeto, IniFiles, Versiculo, Math,
-  Sintagma, LCLTranslator, unitabout;
+  ActnList, ComCtrls, ExtCtrls, StdCtrls, Projeto, IniFiles, Math,
+  Sintagma, LCLTranslator, unitabout, PCRE;
 
 type
 
@@ -819,12 +819,31 @@ begin
 end;
 
 procedure TFrmPrincipal.QuandoPalavraClicada(Sender: TSintagma);
+var
+  re: IRegex;
+  match: IMatch;
+  morpho: string;
 begin
   //StatusBar1.SimpleText := ProjetoAtual.GetTranslationSuggestions(Sender);
   {$IFDEF WINDOWS}
-  if not syncTw2iBiblia or not Sender.TemStrongs then
+  if not syncTw2iBiblia then
     exit;
-  SyncTheWordDict(Sender.Strong.Strings[0]);
+
+  if Sender.TemMorfs then
+  begin
+    re := RegexCreate('^(\S+)( l="(.*?)")?$', [rcoUTF8]);
+    morpho := Sender.Morf[0];
+    match := re.Match(morpho);
+    if match.Success then
+    begin
+      SyncTheWordDict(match.Groups[1].Value); // morphology
+      if match.Groups.Count > 1 then
+        SyncTheWordDict(match.Groups[3].Value); // lemma
+    end;
+  end;
+
+  if Sender.TemStrongs then
+    SyncTheWordDict(Sender.Strong[0]); // strong#
   {$ENDIF}
 end;
 

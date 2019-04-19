@@ -90,6 +90,7 @@ type
     function GetParesTemStrongs: boolean;
     function GetTags: string;
     function GetTemStrongs: boolean;
+    function GetTemMorfo: boolean;
     procedure SetApontado(const AValue: boolean);
     procedure SetCorrelacionado(const AValue: boolean);
     function GetGist: string;
@@ -122,6 +123,7 @@ type
     property Italico: boolean read FItalico;
     property Sobrescrito: boolean read FSobrescrito;
     property TemStrongs: boolean read GetTemStrongs;
+    property TemMorfs: boolean read GetTemMorfo;
     property ParesTemStrongs: boolean read GetParesTemStrongs;
     property Gist: string read GetGist;
   published
@@ -459,6 +461,11 @@ end;
 function TSintagma.GetTemStrongs: boolean;
 begin
   result := assigned(FStrong) and (FStrong.Count > 0);
+end;
+
+function TSintagma.GetTemMorfo: boolean;
+begin
+    result := assigned(FMorf) and (FMorf.Count > 0);
 end;
 
 procedure TSintagma.SetApontado(const AValue: boolean);
