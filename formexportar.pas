@@ -51,6 +51,7 @@ var
 resourcestring
   STheWordOTModule = 'theWord Bible module (*.ot)';
   STheWordNTModule = 'theWord Bible module (*.nt)';
+  STheWordONTModule = 'theWord Bible module (*.ont)';
   SMySwordModule   = 'MySword Bible module (*.bbl.mybible)';
   SAnalyticalConcordance = 'AnalyticalConcordance';
   SSyntheticConcordance = 'SyntheticConcordance';
@@ -110,6 +111,11 @@ begin
       SaveDialog1.DefaultExt:='.nt';
       SaveDialog1.Filter    := STheWordNTModule + '|*.nt' + '|' + SMySwordModule + '|*.bbl.mybible';
     end;
+    etONT:
+    begin
+      SaveDialog1.DefaultExt:='.ont';
+      SaveDialog1.Filter    := STheWordONTModule + '|*.ont' + '|' + SMySwordModule + '|*.bbl.mybible';
+    end;
   end;
 
   if SaveDialog1.Execute then
@@ -140,6 +146,11 @@ begin
     begin
       SaveDialog1.DefaultExt:='.nt';
       SaveDialog1.Filter    := STheWordNTModule + '|*.nt' + '|' + SMySwordModule + '|*.bbl.mybible';
+    end;
+    etONT:
+    begin
+      SaveDialog1.DefaultExt:='.ont';
+      SaveDialog1.Filter    := STheWordONTModule + '|*.ont' + '|' + SMySwordModule + '|*.bbl.mybible';
     end;
   end;
 

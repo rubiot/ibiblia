@@ -17,6 +17,10 @@ msgstr ""
 msgid "theWord Bible module (*.nt)"
 msgstr ""
 
+#: formexportar.sthewordontmodule
+msgid "theWord Bible module (*.ont)"
+msgstr ""
+
 #: formexportar.sthewordotmodule
 msgid "theWord Bible module (*.ot)"
 msgstr ""

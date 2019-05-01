@@ -28,6 +28,10 @@ msgstr "SyntheticConcordance"
 msgid "theWord Bible module (*.nt)"
 msgstr "theWord Bible module (*.nt)"
 
+#: formexportar.sthewordontmodule
+msgid "theWord Bible module (*.ont)"
+msgstr "theWord Bible module (*.ont)"
+
 #: formexportar.sthewordotmodule
 #| msgid "theWord module (*.ot)"
 msgid "theWord Bible module (*.ot)"
