@@ -93,6 +93,8 @@ type
     procedure OnSintagmaPopupMenu(s: TSintagma);
     procedure MostrarTags;
     procedure OcultarTags;
+    procedure EnableStrongHighlight(strong: string);
+    procedure DisableStrongHighlight;
 
     function GetTheWordInterlinearLine: string;
     function GetMySwordInterlinearLine: string;
@@ -378,6 +380,22 @@ procedure TVersiculo.OcultarTags;
 begin
   if FAtivo then
     FPanel.Refresh;
+end;
+
+procedure TVersiculo.EnableStrongHighlight(strong: string);
+var
+  s: TSintagma;
+begin
+  for s in FSintagmas do
+    s.HighlightStrong(strong);
+end;
+
+procedure TVersiculo.DisableStrongHighlight;
+var
+  s: TSintagma;
+begin
+  for s in FSintagmas do
+    s.ToggleStrongHighlight(false);
 end;
 
 procedure TVersiculo.SetTexto(_XML: string);

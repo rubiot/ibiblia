@@ -985,6 +985,16 @@ begin
     FTemporizador.Tag := PtrInt(Sender);
     FTemporizador.Enabled := true;
   end;
+
+  if Sender.TemStrongs then
+  begin
+    if Sender.VersiculoRef <> FAVersiculo[tbOrigem] then
+      FAVersiculo[tbOrigem].HighlightStrong(Sender.Strong[0]);
+    if Sender.VersiculoRef <> FAVersiculo[tbConsulta1] then
+      FAVersiculo[tbConsulta1].HighlightStrong(Sender.Strong[0]);
+    if Sender.VersiculoRef <> FAVersiculo[tbConsulta2] then
+      FAVersiculo[tbConsulta2].HighlightStrong(Sender.Strong[0]);
+  end;
 end;
 
 procedure TProjeto.SintagmaOnMouseLeave(Sender: TSintagma);
@@ -1002,6 +1012,16 @@ begin
 
   if hide then
     frmDictionaryPopup.Ocultar;
+
+  if Sender.TemStrongs then
+  begin
+    if Sender.VersiculoRef <> FAVersiculo[tbOrigem] then
+      FAVersiculo[tbOrigem].HideStrongHighlight;
+    if Sender.VersiculoRef <> FAVersiculo[tbConsulta1] then
+      FAVersiculo[tbConsulta1].HideStrongHighlight;
+    if Sender.VersiculoRef <> FAVersiculo[tbConsulta2] then
+      FAVersiculo[tbConsulta2].HideStrongHighlight;
+  end;
 end;
 
 procedure TProjeto.SintagmaOnClick(Sender: TSintagma);

@@ -103,6 +103,8 @@ type
     procedure InverterSelecao;
     procedure Desassociar;
     procedure DesassociarPares;
+    procedure HighlightStrong(strong: string);
+    procedure ToggleStrongHighlight(enable: boolean);
     function GetProximo: TSintagma;
     function GetChaveSugestao(t: TTipoListaPares): string;
     function Igual(other : TSintagma): boolean;
@@ -534,6 +536,14 @@ begin
     [TVersiculo(FVersiculo).Sintagmas.IndexOf(self), TipoStr(FTipo), FTexto]);
 end;
 
+procedure TSintagma.ToggleStrongHighlight(enable: boolean);
+begin
+  if not assigned(FLabel) then
+    exit;
+
+  FLabel.Font.Underline := enable;
+end;
+
 function TSintagma.Igual(other: TSintagma): boolean;
 begin
   result := (FTipo = other.FTipo) and
@@ -671,6 +681,18 @@ begin
   end;
 
   Desassociar;
+end;
+
+procedure TSintagma.HighlightStrong(strong: string);
+var
+  s: string;
+begin
+  if not assigned(FStrong) then
+    exit;
+
+  for s in FStrong do
+    if s = strong then
+      ToggleStrongHighlight(true);
 end;
 
 function TSintagma.GetProximo: TSintagma;
