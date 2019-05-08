@@ -9,8 +9,11 @@ uses
   Interfaces, // this includes the LCL widgetset
   Forms, formPrincipal, Versiculo, ONTTokenizer, Projeto, Sugestao, RTFEdit,
   memoversiculo, PCRE, exportarprojeto, formverserules, formmesclarprojetos,
-  formpopup, formnovoprojeto, formpropprojeto, formexportar, twAutomate,
-  twSyncThread, ONTParser, Sintagma, unitabout, MySwordModule;
+  formpopup, formnovoprojeto, formpropprojeto, formexportar,
+  {$IFDEF WINDOWS}
+  twAutomate, twSyncThread,
+  {$ENDIF}
+  ONTParser, Sintagma, unitabout, MySwordModule;
 
 {$R *.res}
 

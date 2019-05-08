@@ -163,12 +163,14 @@ type
     procedure ToolButtonExitClick(Sender: TObject);
   private
     { private declarations }
+    {$IFDEF WINDOWS}
     syncTw2iBiblia: boolean;
     synciBiblia2Tw: boolean;
     TwSyncThread: TTwSyncThread;
-    FPopupTrigger: TPopupTrigger;
     procedure SyncToTwRef(Ref: string);
     procedure SetUpSyncThread;
+    {$ENDIF}
+    FPopupTrigger: TPopupTrigger;
     procedure TranslateStatusRadioGroup;
   public
     { public declarations }
@@ -324,7 +326,9 @@ begin
   //ActionExportarTextoInterlinear.Enabled := true;
   StatusBar1.SimpleText := '';
 
+  {$IFDEF WINDOWS}
   SetUpSyncThread;
+  {$ENDIF}
 end;
 
 procedure TFrmPrincipal.ActionExportarExecute(Sender: TObject);
@@ -643,9 +647,11 @@ begin
   CarregarMRU(MenuItemRecent);
   TreeView1.Width := opts.ReadInteger('leiaute', 'principal.treeview.largura', TreeView1.Width);
 
+  {$IFDEF WINDOWS}
   syncTw2iBiblia := MenuItemSyncTheWord.Checked;
   synciBiblia2Tw := MenuItemSynciBiblia.Checked;
   SetUpSyncThread;
+  {$ENDIF}
 end;
 
 procedure TFrmPrincipal.FormDestroy(Sender: TObject);
@@ -802,15 +808,19 @@ end;
 
 procedure TFrmPrincipal.MenuItemSynciBibliaClick(Sender: TObject);
 begin
+  {$IFDEF WINDOWS}
   TMenuItem(Sender).Checked := not TMenuItem(Sender).Checked;
   synciBiblia2Tw := TMenuItem(Sender).Checked;
   SetUpSyncThread;
+  {$ENDIF}
 end;
 
 procedure TFrmPrincipal.MenuItemSyncTheWordClick(Sender: TObject);
 begin
+  {$IFDEF WINDOWS}
   TMenuItem(Sender).Checked := not TMenuItem(Sender).Checked;
   syncTw2iBiblia := TMenuItem(Sender).Checked;
+  {$ENDIF}
 end;
 
 procedure TFrmPrincipal.QuandoNovoVersiculo(Sender: TProjeto);
@@ -927,6 +937,7 @@ begin
   Close;
 end;
 
+{$IFDEF WINDOWS}
 procedure TFrmPrincipal.SyncToTwRef(Ref: string);
 begin
   if (ProjetoAtual <> nil) then
@@ -952,6 +963,7 @@ begin
     end;
   end;
 end;
+{$ENDIF}
 
 procedure TFrmPrincipal.TranslateStatusRadioGroup;
 begin
