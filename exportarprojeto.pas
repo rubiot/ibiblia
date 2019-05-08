@@ -5,7 +5,7 @@ unit ExportarProjeto;
 interface
 
 uses
-  Classes, SysUtils, LCLProc, contnrs, strutils, PCRE, LazUTF8;
+  Classes, SysUtils, LCLProc, contnrs, strutils, PCRE, LazUTF8, NaturalSortUnit;
 
 function UnicodeToRTF(s: string): string;
 
@@ -46,20 +46,23 @@ type
   private
     FHashLocucoes: TFPHashList;
     FDetalhada: boolean;
+    reRemoveMorfo: IRegex;
+    reUnicodeChars: IRegex;
+    reSintagma: IRegex;
+    reStrong: IRegex;
+    reWord: IRegex;
+
     function GetChave(i: Integer): string;
     function GetItem(i: Integer): TLocucao;
     function GetLocucao(chave: string): TLocucao;
     function GetQtde: integer;
     procedure PutLocucao(chave: string; const AValue: TLocucao);
   public
-    reRemoveMorfo: IRegex;
-    reUnicodeChars: IRegex;
-    reSintagma: IRegex;
-  public
     constructor Create;
     destructor Destroy; override;
     //property Locucoes[chave: string]: TLocucao read GetLocucao write PutLocucao; default;
     function GetStrongRTF(lema: string; s: string): string;
+    function GetSortedKeys: TStringList;
     //property Strong[s: string]: string read GetStrongRTF;
     property Chaves[i: Integer]: string read GetChave;
     property Items[i: Integer]: TLocucao read GetItem;
@@ -81,7 +84,7 @@ begin
   result := '';
   p:=PChar(s);
   repeat
-    unicode:=UTF8CharacterToUnicode(p,CharLen);
+    unicode := UTF8CodepointToUnicode(p, charLen); //UTF8CharacterToUnicode(p,CharLen);
     if unicode > 127 then
       result := result + format('\u%d?', [unicode])
     else if unicode > 0 then
@@ -101,7 +104,7 @@ begin
   tag := false;
   p:=PChar(s);
   repeat
-    unicode:=UTF8CharacterToUnicode(p,CharLen);
+    unicode := UTF8CodepointToUnicode(p, CharLen); //UTF8CharacterToUnicode(p,CharLen);
     if not tag and (CharLen = 1) and (chr(unicode) = '<') then
       tag := true;
 
@@ -133,7 +136,7 @@ begin
   tag := false;
   p:=PChar(s);
   repeat
-    unicode:=UTF8CharacterToUnicode(p,CharLen);
+    unicode := UTF8CodepointToUnicode(p, CharLen); //UTF8CharacterToUnicode(p,CharLen);
     if not tag and (CharLen = 1) and (chr(unicode) = '<') then
       tag := true;
 
@@ -190,18 +193,16 @@ function TConcordancia.GetStrongRTF(lema: string; s: string): string;
 var
   l, p, r, u, c: integer;
   locucao: TLocucao;
-  st, ultima: string;
+  strong, ultima: string;
 begin
-  if not AnsiStartsText('g', s) then
-    exit;
-
   c := 0;
-  st := format('<W%s>', [s]);
-  result := format('{\field{\*\fldinst HYPERLINK "tw://[strong]?%s"}{\fldrslt\cf2\b %s}} (__OCORRENCIAS__)\par', [s, UnicodeToRTF(lema)]);
+  strong := format('<W%s>', [s]).ToLower;
+  result := format('{\field{\*\fldinst HYPERLINK "tw://[strong]?%s"}{\fldrslt%s\b %s}} (__OCORRENCIAS__)\par',
+                   [s, IfThen(s.StartsWith('G'), '\f1', '\f2'), UnicodeToRTF(lema)]);
 
   for l:=0 to FHashLocucoes.Count-1 do
   begin
-    if AnsiContainsText(Self.Chaves[l], st) then
+    if Chaves[l].Contains(strong) then
     begin
       locucao := Self.Items[l];
       result := result + locucao.GetLocucaoRTF;
@@ -209,7 +210,7 @@ begin
       for p:=0 to locucao.Qtde-1 do
       begin
         result := result +
-               format('{\i %s (%d)} \par\li500 ', [UnicodeToRTF(AnsiReplaceText(locucao.ChavesFmt[p],';',' ')), locucao.Items[p].Count]);
+               format('{\i %s (%d)} \par\li500 ', [UnicodeToRTF(locucao.ChavesFmt[p].Replace(';',' ')), locucao.Items[p].Count]);
         ultima := '';
         u := 0;
 
@@ -232,7 +233,17 @@ begin
       end;
     end;
   end;
-  result := AnsiReplaceStr(result, '__OCORRENCIAS__', IntToStr(c));
+  result := result.Replace('__OCORRENCIAS__', IntToStr(c));
+end;
+
+function TConcordancia.GetSortedKeys: TStringList;
+var
+  i: integer;
+begin
+  result := TStringList.Create;
+  for i:=0 to Qtde-1 do
+    result.Add(Chaves[i]);
+  result.CustomSort(@UTF8NaturalCompareList);
 end;
 
 procedure TConcordancia.PutLocucao(chave: string; const AValue: TLocucao);
@@ -244,8 +255,10 @@ constructor TConcordancia.Create;
 begin
   FHashLocucoes  := TFPHashList.Create;
   reRemoveMorfo  := RegexCreate('<WT[^>]+>', [rcoUTF8,rcoIgnoreCase]);
-  reSintagma     := RegexCreate('(^|;)([^<]+)(<W(G\d+)>)(<W(G\d+)>)?(<W(G\d+)>)?(<WT([^\ >]+)>)?(<W(G\d+)>)?(<WT([^\ >]+)>)?', [rcoUTF8,rcoIgnoreCase]);
+  reSintagma     := RegexCreate('(^|;)([^<]+)(<W([HG]\d+)>)(<W([HG]\d+)>)?(<W([HG]\d+)>)?(<WT([^\ >]+)>)?(<W([HG]\d+)>)?(<WT([^\ >]+)>)?', [rcoUTF8,rcoIgnoreCase]);
+  reWord         := RegexCreate('^([^<]+)', [rcoUTF8]);
   reUnicodeChars := RegexCreate('[^[:ascii:]]', [rcoUTF8]);
+  reStrong       := RegexCreate('(<W[GH][0-9]+>)', [rcoUTF8, rcoIgnoreCase]);
   FDetalhada     := true;
 end;
 
@@ -262,22 +275,25 @@ end;
 
 procedure TConcordancia.AdicionarLocucao(pares: TStringList; ref: string);
 var
-  p: smallint;
-  s1, s2: string;
+  p, i: smallint;
+  src, dst, word: string;
+  mstrongs: IMatchCollection;
+  mword: IMatch;
 begin
   for p:=0 to pares.Count-1 do
     if (p mod 2) = 0 then // pares estão alternados na lista
     begin
-      s1 := pares.Strings[p];     // grego<wg1492><wtv-2aap-nsm>
-      s2 := pares.Strings[p+1];   // portugues
+      src := pares.Strings[p];     // grego<wg1492><wtv-2aap-nsm>
+      dst := pares.Strings[p+1];   // portugues
 
       if not FDetalhada then
-        s1 := reRemoveMorfo.Replace(s1, '');
+        src := reRemoveMorfo.Replace(src, '');
 
-      GetLocucao(s1)[s2].Add(ref);
-      //GetLocucao(ExtrairTags(s1), ExtrairTexto(s1))[s2].Add(ref);
-      //GetLocucao(reRemoveMorfo.Replace(s1, ''), s3)[s2].Add(ref);
-      //Self[ reRemoveMorfo.Replace(s1, '') ][ s2 ].Add(ref);
+      mword := reWord.Match(src);
+      word := mword.Groups[1].GetValue;
+      mstrongs := reStrong.Matches(src);
+      for i:=0 to mstrongs.Count-1 do
+        GetLocucao(word + mstrongs[i].Groups[1].GetValue)[dst].Add(ref);
     end;
 end;
 
@@ -324,30 +340,29 @@ end;
 
 function TLocucao.GetChaveFmt(index: Integer): string;
 begin
-  result := Self.Chaves[index];
-  result := AnsiReplaceText(result, ';', ' ');
-
-  // pronomes átonos
-  result := AnsiReplaceText(result, '- ','-');
-  result := AnsiReplaceText(result, ' -','-');
-  // mesóclises
-  result := AnsiReplaceText(result, '-ei', 'ei');
-  result := AnsiReplaceText(result, '-ás', 'ás');
-  result := AnsiReplaceText(result, '-á', 'á');
-  result := AnsiReplaceText(result, '-emos', 'emos');
-  result := AnsiReplaceText(result, '-eis', 'eis');
-  result := AnsiReplaceText(result, '-ão', 'ão');
-  result := AnsiReplaceText(result, '-ia', 'ia');
-  result := AnsiReplaceText(result, '-ias', 'ias');
-  result := AnsiReplaceText(result, '-íamos', 'íamos');
-  result := AnsiReplaceText(result, '-íeis', 'íeis');
-  result := AnsiReplaceText(result, '-iam', 'iam');
-  // ênclises
-  //result := AnsiReplaceText(result, 'á-l', 'ar-l');
-  //result := AnsiReplaceText(result, 'ê-l', 'er-l');
-  //result := AnsiReplaceText(result, 'i-l', 'ir-l');
-  //result := AnsiReplaceText(result, 'ô-l', 'or-l');
-
+  result := Self.Chaves[index]
+              .Replace(';', ' ')
+              // pronomes átonos
+              .Replace('- ','-')
+              .Replace(' -','-')
+              // mesóclises
+              .Replace('-ei', 'ei')
+              .Replace('-ás', 'ás')
+              .Replace('-á', 'á')
+              .Replace('-emos', 'emos')
+              .Replace('-eis', 'eis')
+              .Replace('-ão', 'ão')
+              .Replace('-ia', 'ia')
+              .Replace('-ias', 'ias')
+              .Replace('-íamos', 'íamos')
+              .Replace('-íeis', 'íeis')
+              .Replace('-iam', 'iam')
+              // ênclises
+              //.Replace('á-l', 'ar-l')
+              //.Replace('ê-l', 'er-l')
+              //.Replace('i-l', 'ir-l')
+              //.Replace('ô-l', 'or-l')
+              ;
 end;
 
 procedure TLocucao.PutRef(chave: string; const AValue: TStringList);
@@ -389,12 +404,12 @@ begin
   m := FPai.reSintagma.Matches(FLocucao);
   for i:=0 to m.Count-1 do
   begin
-    if m.Items[i].Groups.Items[4].GetMatched then // strong
+    if m[i].Groups[4].GetMatched then // strong
       result := result + format('{\field{\*\fldinst HYPERLINK "tw://[strong]?%s"}{\fldrslt\cf2 %s }}',
-             [ UpperCase(m.Items[i].Groups.Items[4].GetValue), iif(FPai.Detalhada, UnicodeToRTF(m.Items[i].Groups.Items[2].GetValue), UpperCase(m.Items[i].Groups.Items[4].GetValue)+ ' ') ]);
-    if m.Items[i].Groups.Items[10].GetMatched then // morfologia
+             [ UpperCase(m[i].Groups[4].GetValue), iif(FPai.Detalhada, UnicodeToRTF(m[i].Groups[2].GetValue), UpperCase(m[i].Groups[4].GetValue)+ ' ') ]);
+    if m[i].Groups[10].GetMatched then // morfologia
       result := result + format(' {\super {\field{\*\fldinst HYPERLINK "tw://[morph]?%s"}{\fldrslt\cf6 %s}}} ',
-             [ UpperCase(m.Items[i].Groups.Items[10].GetValue), UpperCase(m.Items[i].Groups.Items[10].GetValue) ]);
+             [ UpperCase(m[i].Groups[10].GetValue), UpperCase(m[i].Groups[10].GetValue) ]);
   end;
   result := result + '\par\li250 ';
 end;

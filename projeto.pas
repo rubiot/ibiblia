@@ -17,7 +17,7 @@ uses
   SysUtils, Sqlite3DS, sqlite3conn, sqldb, db, StrUtils, math,
   ExtCtrls, Controls, ComCtrls, StdCtrls, Graphics, Forms, Versiculo, Sugestao,
   MemoVersiculo, ONTTokenizer, Dialogs, dos, PCRE, ExportarProjeto, LazLogger,
-  Sintagma, MySwordModule;
+  Sintagma, MySwordModule, TheWordDictionary;
 
 type
 
@@ -466,8 +466,7 @@ const
   OffsetLivros: array[etOT..etONT] of smallint = (0, 39, 0);
   QLinhas: array[etOT..etONT] of smallint = (23145, 7957, 31102);
   QStrongs: array[etOT..etONT] of smallint = (8674, 5624, 14298);
-  ProjetoModelo: array[etOT..etONT] of string = ( '.\projeto-ot.modelo', '.\projeto.modelo', '.\projeto-ont.modelo');
-  ConcordanciaModelo: array[etOT..etONT] of string = ( '.\concordancia-ot.modelo', '.\concordancia.modelo', '.\concordancia-ont.modelo');
+  ProjetoModelo: array[etOT..etONT] of string = ('projeto-ot.modelo', 'projeto.modelo', 'projeto-ont.modelo');
 
 implementation
 
@@ -476,7 +475,6 @@ uses formpopup, formverserules;
 { TProjeto }
 
 procedure TProjeto.Novo(nomedb, descricao: string);
-
 begin
   Novo(ProjetoModelo[FEscopo], nomedb, descricao);
 end;
@@ -1612,7 +1610,7 @@ begin
 end;
 
 procedure TProjeto.Abrir(Nome: string);
-  function IdentificarEscopo(marcador: string): TEscopoTexto;
+  function IdentificarEscopo: TEscopoTexto;
   begin
     FTblPares.First;
     if FTblPares.FieldByName('pare_id').AsString = '40,1,1' then
@@ -1683,7 +1681,7 @@ begin
   FACamposTexto[tbConsulta2] := FTblPares.FindField('pare_texto_consulta2').Index;
 
   if FEscopo = etNone then
-    FEscopo := IdentificarEscopo(ObterInfo('marcador'));
+    FEscopo := IdentificarEscopo;
 
   if assigned(FArvore) then
   begin
@@ -2282,46 +2280,15 @@ procedure TProjeto.ExportarConcordancia(arquivo: string;
   pb: TProgressBar; opcoes: TOpcoesExportacao; abbreviation: string);
 var
   Concordancia: TConcordancia;
-  tblTopicos: TSqlite3Dataset;
-  tblConteudo: TSqlite3Dataset;
-  tblConfig: TSqlite3Dataset;
+  entries: TStringList;
+  dictionary: TTheWordDictionary;
+  rxStrong: IRegex;
   marcador: string;
   pares: TStringList;
-  s: string;
+  strong, entry: string;
 begin
   if (FAVersiculo[tbOrigem] = nil) or (FAVersiculo[tbDestino] = nil) then
     exit;
-
-  if FEscopo in [etOT, etONT] then
-  begin
-    MessageDlg(SInformation, SOTConcordanceNotImplementedYet, mtInformation, [mbOK], 0);
-    exit;
-  end;
-
-  if not FileExists(arquivo) then
-  begin
-    try
-      CopiarArquivo(ConcordanciaModelo[FEscopo], arquivo);
-    except
-      MessageDlg(SError, format(SFailedToCreateFile, [arquivo]), mtError, [mbOK], 0);
-      exit;
-    end;
-  end;
-
-  tblConteudo := CriarObjetoTabela(arquivo, 'content', 'topic_id');
-  tblConteudo.Open;
-  tblTopicos := CriarObjetoTabela(arquivo, 'topics', 'id');
-  tblTopicos.Open;
-  tblConfig := CriarObjetoTabela(arquivo, 'config', 'name');
-  tblConfig.Open;
-
-  AtualizarConfig(tblConfig, 'title',               format('%s %s', [abbreviation, IfThen(oeConcordDetalhada in opcoes, SAnalyticalConcordance, SSyntheticConcordance)]));
-  AtualizarConfig(tblConfig, 'lang',                SLanguageId);
-  AtualizarConfig(tblConfig, 'description.english', format('%s %s', [abbreviation, IfThen(oeConcordDetalhada in opcoes, 'Analytical Concordance', 'Synthetic Concordance')]));
-  AtualizarConfig(tblConfig, 'title.english',       format('%s %s', [abbreviation, IfThen(oeConcordDetalhada in opcoes, 'Analytical Concordance', 'Synthetic Concordance')]));
-  AtualizarConfig(tblConfig, 'version.date',        FormatDateTime('YYYY-MM-DD', Now));
-  AtualizarConfig(tblConfig, 'description',         format('%s %s', [abbreviation, IfThen(oeConcordDetalhada in opcoes, SAnalyticalConcordance, SSyntheticConcordance)]));
-  AtualizarConfig(tblConfig, 'abbrev',              abbreviation);
 
   try
     if assigned(pb) then
@@ -2332,8 +2299,21 @@ begin
       pb.Step := 1;
       pb.Visible := true;
     end;
+
     Concordancia := TConcordancia.Create;
     Concordancia.Detalhada := oeConcordDetalhada in opcoes;
+
+    dictionary := TTheWordDictionary.Create(arquivo, true);
+    with dictionary do
+    begin
+      Title        := format('%s %s', [abbreviation, IfThen(oeConcordDetalhada in opcoes, SAnalyticalConcordance, SSyntheticConcordance)]);
+      TitleEnglish := format('%s %s', [abbreviation, IfThen(oeConcordDetalhada in opcoes, 'Analytical Concordance', 'Synthetic Concordance')]);
+      Language     := SLanguageId;
+      Description  := format('%s %s', [abbreviation, IfThen(oeConcordDetalhada in opcoes, SAnalyticalConcordance, SSyntheticConcordance)]);
+      EnglishDescription := format('%s %s', [abbreviation, IfThen(oeConcordDetalhada in opcoes, 'Analytical Concordance', 'Synthetic Concordance')]);
+      VersionDate  := FormatDateTime('YYYY-MM-DD', Now);
+      Abbrev       := abbreviation;
+    end;
 
     FExportando := true;
     PreRolagemVersiculo(nil);
@@ -2341,6 +2321,7 @@ begin
     DesabilitarEventosRolagem;
     marcador := GetID;
     VersiculoInicial;
+
     while not FTblPares.EOF do
     begin
       if length(FTblPares.FieldByName('pare_pares').AsString) > 0 then
@@ -2370,38 +2351,21 @@ begin
       VersiculoSeguinte;
     end;
 
-    tblTopicos.First;
-    while not tblTopicos.EOF do
+    rxStrong := RegexCreate('<W([HG][0-9]+)>', [rcoUTF8]);
+    entries := Concordancia.GetSortedKeys;
+    for entry in entries do
     begin
-      if not tblConteudo.Locate('topic_id', tblTopicos.FieldByName('id').AsInteger, []) then
-        continue;
-
-      s := Concordancia.GetStrongRTF(tblTopicos.FieldByName('strong_orig_word').AsString, tblTopicos.FieldByName('subject').AsString);
-      if s <> '' then
-      begin
-        tblConteudo.Edit;
-        tblConteudo.FieldByName('data').AsString := s;
-        tblConteudo.Post;
-      end;
-
-      if assigned(pb) then
-      begin
-        pb.StepIt;
-        if (pb.Position mod 20) = 0 then
-          Application.ProcessMessages;
-      end;
-
-      tblTopicos.Next;
+      strong := rxStrong.Replace(entry.ToUpper, '$1');
+      dictionary.AddEntry(strong, Concordancia.GetStrongRTF(dictionary.FindLemma(strong), strong));
     end;
+    entries.Free;
+
+    dictionary.Commit;
   finally
     //ShowMessage('Position: ' + IntToStr(pb.Position));
     Application.ProcessMessages;
-    tblConteudo.ApplyUpdates;
-    tblConteudo.Close;
-    tblConfig.ApplyUpdates;
-    tblConfig.Close;
-    tblTopicos.Close;
     Concordancia.Free;
+    dictionary.Free;
     FExportando := false;
     IrPara(marcador);
     HabilitarEventosRolagem;
