@@ -1185,6 +1185,11 @@ begin
   AtualizarXMLInterno;
   FModificado := true;
   VersiculoPar.Modificado := true;
+
+  LimparSelecao;
+  VersiculoPar.LimparSelecao;;
+  s.SelecaoMais;
+
   Renderizar;
 end;
 
