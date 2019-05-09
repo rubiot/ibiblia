@@ -972,6 +972,7 @@ end;
 procedure TProjeto.SintagmaOnMouseEnter(Sender: TSintagma);
 var
   show: boolean;
+  strong: string;
 begin
   case FPopupTrigger of
     ptMouseHover:     show := true;
@@ -986,14 +987,20 @@ begin
     FTemporizador.Enabled := true;
   end;
 
+  strong := '';
   if Sender.TemStrongs then
+    strong := Sender.Strong[0]
+  else if Sender.ParesTemStrongs then
+    strong := Sender.Pares[0].Strong[0];
+
+  if not strong.IsEmpty then
   begin
     if Sender.VersiculoRef <> FAVersiculo[tbOrigem] then
-      FAVersiculo[tbOrigem].HighlightStrong(Sender.Strong[0]);
+      FAVersiculo[tbOrigem].EnableStrongHighlight(strong);
     if Sender.VersiculoRef <> FAVersiculo[tbConsulta1] then
-      FAVersiculo[tbConsulta1].HighlightStrong(Sender.Strong[0]);
+      FAVersiculo[tbConsulta1].EnableStrongHighlight(strong);
     if Sender.VersiculoRef <> FAVersiculo[tbConsulta2] then
-      FAVersiculo[tbConsulta2].HighlightStrong(Sender.Strong[0]);
+      FAVersiculo[tbConsulta2].EnableStrongHighlight(strong);
   end;
 end;
 
@@ -1013,14 +1020,14 @@ begin
   if hide then
     frmDictionaryPopup.Ocultar;
 
-  if Sender.TemStrongs then
+  if Sender.TemStrongs or Sender.ParesTemStrongs then
   begin
     if Sender.VersiculoRef <> FAVersiculo[tbOrigem] then
-      FAVersiculo[tbOrigem].HideStrongHighlight;
+      FAVersiculo[tbOrigem].DisableStrongHighlight;
     if Sender.VersiculoRef <> FAVersiculo[tbConsulta1] then
-      FAVersiculo[tbConsulta1].HideStrongHighlight;
+      FAVersiculo[tbConsulta1].DisableStrongHighlight;
     if Sender.VersiculoRef <> FAVersiculo[tbConsulta2] then
-      FAVersiculo[tbConsulta2].HideStrongHighlight;
+      FAVersiculo[tbConsulta2].DisableStrongHighlight;
   end;
 end;
 
