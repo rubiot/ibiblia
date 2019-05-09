@@ -592,7 +592,7 @@ end;
 
 procedure TProjeto.SetSituacao(const AValue: Integer);
 begin
-  if FClosing then
+  if FClosing or (FTblPares.FieldByName('pare_situacao').AsInteger = AValue) then
     exit;
   FTblPares.Edit;
   FTblPares.FieldByName('pare_situacao').AsInteger := IfThen((AValue < 0) or (AValue > 3), 1, AValue);
@@ -629,7 +629,9 @@ end;
 
 function TProjeto.GetModificado: boolean;
 begin
-  result := FTblPares.UpdatesPending or FTblInfo.UpdatesPending or (assigned(FAVersiculo[tbOrigem]) and FAVersiculo[tbOrigem].Modificado);
+  result := FTblPares.UpdatesPending or
+            FTblInfo.UpdatesPending or
+            (assigned(FAVersiculo[tbOrigem]) and FAVersiculo[tbOrigem].Modificado);
 end;
 
 function TProjeto.GetCaminho: string;
@@ -1638,11 +1640,13 @@ begin
 
   FFileName := Nome;
   FTblPares := CriarObjetoTabela(Nome, 'pares', 'pare_id');
+
   FTblInfo  := CriarObjetoTabela(Nome, 'info', 'id');
   DesabilitarEventosRolagem;
   FSugeridor := TGerSugestoes.Criar(Nome);
 
   FTblPares.Open;
+
   FTblInfo.Open;
 
   f := TFont.Create;
@@ -1718,12 +1722,12 @@ begin
   PreRolagemVersiculo(nil);
 
   if _Commit then
+  begin
+    AtribuirInfo('marcador', FTblPares.FieldByName('pare_id').AsString);
     Commit
+  end
   else
     Rollback;
-
-  AtribuirInfo('marcador', FTblPares.FieldByName('pare_id').AsString);
-  Commit;
 
   FTblPares.Close;
   FTblPares.Free;
