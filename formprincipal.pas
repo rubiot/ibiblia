@@ -163,6 +163,7 @@ type
     procedure ToolButtonExitClick(Sender: TObject);
   private
     { private declarations }
+    FPopupTrigger: TPopupTrigger;
     {$IFDEF WINDOWS}
     syncTw2iBiblia: boolean;
     synciBiblia2Tw: boolean;
@@ -170,7 +171,6 @@ type
     procedure SyncToTwRef(Ref: string);
     procedure SetUpSyncThread;
     {$ENDIF}
-    FPopupTrigger: TPopupTrigger;
     procedure TranslateStatusRadioGroup;
   public
     { public declarations }
