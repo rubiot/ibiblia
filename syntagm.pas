@@ -114,6 +114,7 @@ type
     function GetPrevVisible: TSyntagm;
     function GetSuggestionKey(t: TPairsListType): string;
     function IsEqualTo(other : TSyntagm): boolean;
+    function ContainedInRect(rect: TRect): boolean;
     property Strong: TStringList read FStrong write FStrong;
     property Morph: TStringList read FMorph write FMorph;
     property Tags: string read GetTags;
@@ -255,7 +256,10 @@ procedure TSyntagm.DoOnMouseDown(Sender: TObject; Button: TMouseButton;
 begin
   TVersiculo(FVerse).Edit.OnExit(Self);
   if Button = mbRight then
+  begin
+    TVersiculo(FVerse).OnMouseDownVerse(Sender, Button, Shift, FLabel.Left+x, FLabel.Top+y);
     DoOnRightClick(Sender, Shift)
+  end
   else if Button = mbLeft then
     DoOnLeftClick(Sender, Shift)
   else if Button = mbMiddle then
@@ -265,7 +269,8 @@ end;
 procedure TSyntagm.DoOnMouseUp(Sender: TObject; Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
 begin
-
+  if Button = mbRight then
+    TVersiculo(FVerse).OnMouseUpVerse(Sender, Button, Shift, FLabel.Left+x, FLabel.Top+y);
 end;
 
 procedure TSyntagm.DoOnMouseEnter(Sender: TObject);
@@ -624,6 +629,21 @@ begin
             (FItalic = other.FItalic);
 end;
 
+function TSyntagm.ContainedInRect(rect: TRect): boolean;
+var
+  topLeft, bottomRight: TPoint;
+begin
+  result := false;
+  if assigned(FLabel) then
+  begin
+    topLeft.x := FLabel.Left;
+    topLeft.y := FLabel.Top;
+    bottomRight.x := FLabel.Left + FLabel.Width;
+    bottomRight.y := FLabel.Top + FLabel.Height;
+    result := rect.Contains(topLeft) or rect.Contains(bottomRight);
+  end;
+end;
+
 { creates a basic instance of a syntagm, no label, no event handlers, etc. }
 constructor TSyntagm.Create(s: TTagSintagma; owner: TObject);
 begin
@@ -715,8 +735,10 @@ end;
 procedure TSyntagm.AddToSelection;
 begin
   FSelected := true;
-  if TVersiculo(FVerse).Ativo and assigned(FLabel) then
-    FLabel.Color:= clYellow;
+  if TVersiculo(FVerse).Ativo and
+     assigned(FLabel) and
+     (not TVersiculo(FVerse).IsDragging or (FKind = tsSintagma)) then
+    FLabel.Color := clYellow;
   TVersiculo(FVerse).Selecao.Add(Self);
 end;
 
