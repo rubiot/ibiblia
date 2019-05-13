@@ -46,6 +46,9 @@ type
     FXML: string;
     FONTParser: TONTParser;
     FContextPopup: TPopupMenu;
+    FDragRect: TRect;
+    FDragging: boolean;
+
     //FOnNovaAssociacao: TOnAssociacaoEvent;
     //FOnRemoverAssociacao: TOnAssociacaoEvent;
     function GetAndamentoAssociacao: Single;
@@ -71,6 +74,7 @@ type
     function GetTokens: string;
     procedure OnCopiarTagsSintagma(Sender: TObject);
     procedure OnColarTagsSintagma(Sender: TObject);
+
   protected
     { Protected declarations }
   public
@@ -101,6 +105,10 @@ type
     function GetLinhaONT: string;
     function GetLinhaONT(morfo: boolean; autoitalico: boolean; strongsreutilizados: boolean;
           strongsnaotraduzidos: boolean): string;
+
+    procedure OnMouseDownVerse(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+    procedure OnMouseUpVerse(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+    procedure OnMouseMoveVerse(Sender: TObject; Shift: TShiftState; X, Y: Integer);
 
     property VersiculoPar: TVersiculo read FVersiculoRef write SetVersiculoPar;
     property XML: string read FXML;
@@ -172,6 +180,10 @@ begin
     FEdit.OnKeyDown  := @EditKeyDown;
     FEdit.OnExit     := @EditExit;
     FPanel.InsertControl(FEdit);
+
+    FPanel.OnMouseDown := @OnMouseDownVerse;
+    FPanel.OnMouseUp   := @OnMouseUpVerse;
+    FPanel.OnMouseMove := @OnMouseMoveVerse;
   end;
 
   FStrongCount          := nil;
@@ -190,6 +202,11 @@ begin
   //FStrongMorfoComoChave := false;
   FDestruindo           := false;
   FONTParser := TONTParser.Create;
+
+  FDragRect.TopLeft.x := 0;
+  FDragRect.TopLeft.y := 0;
+  FDragRect.BottomRight := FDragRect.TopLeft;
+  FDragging := false;
 end;
 
 destructor TVersiculo.Destruir;
@@ -1209,6 +1226,63 @@ begin
   s.SelecaoMais;
 
   Renderizar;
+end;
+
+procedure TVersiculo.OnMouseDownVerse(Sender: TObject; Button: TMouseButton;
+  Shift: TShiftState; X, Y: Integer);
+begin
+  if Button = mbRight then
+  begin
+    FDragRect.TopLeft.x := X;
+    FDragRect.TopLeft.y := y;
+    FDragRect.BottomRight := FDragRect.TopLeft;
+    FDragging := true;
+  end;
+end;
+
+procedure TVersiculo.OnMouseUpVerse(Sender: TObject; Button: TMouseButton;
+  Shift: TShiftState; X, Y: Integer);
+var
+  s: TSintagma;
+begin
+  if Button = mbRight then
+  begin
+    for s in FSintagmas do
+      if assigned(s.LabelRef) and (not s.Selecionado) and s.ContainedInRect(FDragRect) then
+        s.SelecaoMais;
+
+    FPanel.Invalidate;
+    FDragRect.TopLeft.x := 0;
+    FDragRect.TopLeft.y := 0;
+    FDragRect.BottomRight := FDragRect.TopLeft;
+    FDragging := false;
+  end;
+end;
+
+procedure TVersiculo.OnMouseMoveVerse(Sender: TObject; Shift: TShiftState; X, Y: Integer);
+var
+  p: TPoint;
+begin
+  if FDragging then
+  begin
+    FPanel.Invalidate;
+
+    with FDragRect do
+    begin
+      BottomRight.x := X;
+      BottomRight.y := Y;
+
+      if BottomRight.x < TopLeft.x then
+      begin
+          p := TopLeft;
+          TopLeft.x     := X;
+          BottomRight.x := p.x;
+      end;
+    end;
+
+    FPanel.Canvas.Brush.Color := clRed;
+    FPanel.Canvas.FrameRect(FDragRect);
+  end;
 end;
 
 constructor TVersiculo.Criar;

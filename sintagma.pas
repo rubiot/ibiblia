@@ -108,6 +108,8 @@ type
     function GetProximo: TSintagma;
     function GetChaveSugestao(t: TTipoListaPares): string;
     function Igual(other : TSintagma): boolean;
+    function ContainedInRect(rect: TRect): boolean;
+
     property Strong: TStringList read FStrong write FStrong;
     property Morf: TStringList read FMorf write FMorf;
     property Tags: string read GetTags;
@@ -245,7 +247,10 @@ procedure TSintagma.DoOnMouseDown(Sender: TObject; Button: TMouseButton;
 begin
   TVersiculo(FVersiculo).Edit.OnExit(Self);
   if Button = mbRight then
+  begin
+    TVersiculo(FVersiculo).OnMouseDownVerse(Sender, Button, Shift, FLabel.Left+x, FLabel.Top+y);
     DoOnRightClick(Sender, Shift)
+  end
   else if Button = mbLeft then
     DoOnLeftClick(Sender, Shift)
   else if Button = mbMiddle then
@@ -255,7 +260,8 @@ end;
 procedure TSintagma.DoOnMouseUp(Sender: TObject; Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
 begin
-
+  if Button = mbRight then
+    TVersiculo(FVersiculo).OnMouseUpVerse(Sender, Button, Shift, FLabel.Left+x, FLabel.Top+y);
 end;
 
 procedure TSintagma.DoOnMouseEnter(Sender: TObject);
@@ -553,6 +559,21 @@ begin
             (FItalico = other.FItalico);
 end;
 
+function TSintagma.ContainedInRect(rect: TRect): boolean;
+var
+  topLeft, bottomRight: TPoint;
+begin
+  result := false;
+  if assigned(FLabel) then
+  begin
+    topLeft.x := FLabel.Left;
+    topLeft.y := FLabel.Top;
+    bottomRight.x := FLabel.Left + FLabel.Width;
+    bottomRight.y := FLabel.Top + FLabel.Height;
+    result := rect.Contains(topLeft) or rect.Contains(bottomRight);
+  end;
+end;
+
 { cria uma instância básica do sintagma, sem label, eventos, etc. }
 constructor TSintagma.Criar(s: TTagSintagma; owner: TObject);
 begin
@@ -644,10 +665,12 @@ end;
 
 procedure TSintagma.SelecaoMais;
 begin
-  FSelecionado := true;
-  if TVersiculo(FVersiculo).Ativo and assigned(FLabel) then
+  if (Tipo = tsSintagma) and TVersiculo(FVersiculo).Ativo and assigned(FLabel) then
+  begin
+    FSelecionado := true;
     FLabel.Color:= clYellow;
-  TVersiculo(FVersiculo).Selecao.Add(Self);
+    TVersiculo(FVersiculo).Selecao.Add(Self);
+  end;
 end;
 
 procedure TSintagma.SelecaoMenos;
