@@ -2286,10 +2286,11 @@ var
   Concordancia: TConcordancia;
   entries: TStringList;
   dictionary: TTheWordDictionary;
-  rxStrong: IRegex;
+  rxLemma: IRegex;
+  match: IMatch;
   marcador: string;
   pares: TStringList;
-  strong, entry: string;
+  entry, strong, lemma: string;
 begin
   if (FAVersiculo[tbOrigem] = nil) or (FAVersiculo[tbDestino] = nil) then
     exit;
@@ -2355,12 +2356,26 @@ begin
       VersiculoSeguinte;
     end;
 
-    rxStrong := RegexCreate('<W([HG][0-9]+)>', [rcoUTF8]);
-    entries := Concordancia.GetSortedKeys;
+    entries := TStringList.Create;
+    entries.LoadFromFile('lemmas.dat');
+    rxLemma := RegexCreate('^(.*?),(.*?)$', [rcoUTF8]);
     for entry in entries do
     begin
-      strong := rxStrong.Replace(entry.ToUpper, '$1');
-      dictionary.AddEntry(strong, Concordancia.GetStrongRTF(dictionary.FindLemma(strong), strong));
+      match := rxLemma.Match(entry);
+
+      if match.Success then
+      begin
+        strong := match.Groups[1].Value;
+        lemma  := match.Groups[2].Value;
+        dictionary.AddEntry(strong, lemma, Concordancia.GetStrongRTF(lemma, strong));
+      end;
+
+      if assigned(pb) then
+      begin
+        pb.StepIt;
+        if (pb.Position mod 20) = 0 then
+          Application.ProcessMessages;
+      end;
     end;
     entries.Free;
 

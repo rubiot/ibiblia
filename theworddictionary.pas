@@ -9,9 +9,6 @@ uses
 
 type
 
-TStrLess = specialize TLess<string>;
-TLemmaMap = specialize TMap<string, string, TStrLess>;
-
 { TTheWordDictionary }
 
 TTheWordDictionary = class
@@ -35,7 +32,6 @@ TTheWordDictionary = class
     FVersionDate: string;
     FVersionMajor: string;
     FVersionMinor: string;
-    FLemmaMap: TLemmaMap;
 
     function CreateQuery(statement: string): TSQLQuery;
     procedure SetAbbrev(AValue: string);
@@ -53,17 +49,15 @@ TTheWordDictionary = class
     procedure SetVersionDate(AValue: string);
     procedure SetVersionMajor(AValue: string);
     procedure SetVersionMinor(AValue: string);
-    function CreateTopic(topic: string): integer;
+    function CreateTopic(topic: string; lemma: string): integer;
     procedure CreateContent(topic_id: integer; content: string);
     function GetCurrentTopicID: integer;
     function GetNextTopicID: integer;
-    procedure InitLemmas;
   public
     constructor Create(filename: string; strongs: boolean);
     destructor Destroy; override;
-    procedure AddEntry(topic: string; content: string);
+    procedure AddEntry(topic: string; lemma: string; content: string);
     procedure Commit;
-    function FindLemma(strong: string): string;
 
     property Abbrev: string read FAbbrev write SetAbbrev;
     property Title: string read FTitle write SetTitle;
@@ -82,8 +76,6 @@ TTheWordDictionary = class
 end;
 
 resourcestring
-  SProjectOverrideError = 'A project with this name already exists. Delete it first or choose another name';
-  SOverrideError = 'A dictionary module exists with this name and cannot be overwritten';
   SCreateTheWordDictionaryError = 'Unable to create new TheWord module file';
 
 implementation
@@ -203,12 +195,12 @@ begin
   SetProperty('version.minor', AValue);
 end;
 
-function TTheWordDictionary.CreateTopic(topic: string): integer;
+function TTheWordDictionary.CreateTopic(topic: string; lemma: string): integer;
 begin
   FInsertTopic.Params.ParamByName('id').AsInteger := GetNextTopicID;
   FInsertTopic.Params.ParamByName('subject').AsString := topic;
   FInsertTopic.Params.ParamByName('order').AsInteger := GetCurrentTopicID;
-  FInsertTopic.Params.ParamByName('lemma').AsString := FindLemma(topic);
+  FInsertTopic.Params.ParamByName('lemma').AsString := lemma;
   FInsertTopic.ExecSQL;
 
   result := GetCurrentTopicID;
@@ -232,44 +224,11 @@ begin
   result := FTopicID;
 end;
 
-function TTheWordDictionary.FindLemma(strong: string): string;
-begin
-  result := '';
-  if assigned(FLemmaMap) then
-    FLemmaMap.TryGetValue(strong, result);
-end;
-
-procedure TTheWordDictionary.InitLemmas;
-var
-  lines: TStringList;
-  line: string;
-  rx: IRegex;
-  match: IMatch;
-begin
-  FLemmaMap := TLemmaMap.Create;
-  lines := TStringList.Create;
-  lines.LoadFromFile('lemmas.dat');
-  rx := RegexCreate('^(.*?),(.*?)$', [rcoUTF8]);
-  for line in lines do
-  begin
-    match := rx.Match(line);
-    if match.Success then
-      FLemmaMap[match.Groups[1].Value] := match.Groups[2].Value;
-  end;
-  lines.Free;
-end;
-
 constructor TTheWordDictionary.Create(filename: string; strongs: boolean);
+var
+  existed: boolean;
 begin
-  if FileExists(filename) then
-  begin
-    try
-      DeleteFile(filename);
-    except
-      raise Exception.Create(SOverrideError);
-    end;
-  end;
-
+  existed := FileExists(filename);
   FConnection := TSQLite3Connection.Create(nil);
   FConnection.DatabaseName := filename;
   FConnection.Transaction := TSQLTransaction.Create(nil);
@@ -279,10 +238,20 @@ begin
     FConnection.Open;
     FConnection.Transaction.Active := true;
 
-    FConnection.ExecuteDirect('CREATE TABLE config(name text, value text)');
-    FConnection.ExecuteDirect('CREATE TABLE content(topic_id integer primary key, data text, data2 blob)');
-    FConnection.ExecuteDirect('CREATE TABLE topics(id integer primary key, pid integer default 0, subject text, rel_order, content_type text, strong_orig_word text)');
-    FConnection.ExecuteDirect('CREATE INDEX idx_topics_subject on topics(subject)');
+    if existed then
+    begin
+      FConnection.ExecuteDirect('DELETE FROM config');
+      FConnection.ExecuteDirect('DELETE FROM content');
+      FConnection.ExecuteDirect('DELETE FROM topics');
+      FConnection.ExecuteDirect('DROP TABLE IF EXISTS topics_wordindex');
+    end
+    else
+    begin
+      FConnection.ExecuteDirect('CREATE TABLE config(name text, value text)');
+      FConnection.ExecuteDirect('CREATE TABLE content(topic_id integer primary key, data text, data2 blob)');
+      FConnection.ExecuteDirect('CREATE TABLE topics(id integer primary key, pid integer default 0, subject text, rel_order, content_type text, strong_orig_word text)');
+      FConnection.ExecuteDirect('CREATE INDEX idx_topics_subject on topics(subject)');
+    end;
 
     FInsertConfig  := CreateQuery('INSERT INTO config  VALUES (:name, :value)');
     FInsertContent := CreateQuery('INSERT INTO content VALUES (:topic_id, :data, NULL)');
@@ -297,20 +266,12 @@ begin
     raise Exception.Create(SCreateTheWordDictionaryError);
   end;
 
-  if strongs then
-    InitLemmas
-  else
-    FLemmaMap := nil;
-
   FTopicID := 0;
 end;
 
 destructor TTheWordDictionary.Destroy;
 begin
   inherited Destroy;
-
-  if assigned(FLemmaMap) then
-    FLemmaMap.Free;
 
   FInsertConfig.Free;
   FInsertContent.Free;
@@ -320,9 +281,13 @@ begin
   FConnection.Free;
 end;
 
-procedure TTheWordDictionary.AddEntry(topic: string; content: string);
+procedure TTheWordDictionary.AddEntry(topic: string; lemma: string;
+  content: string);
 begin
-  CreateContent(CreateTopic(topic), content);
+  if content.IsEmpty then
+    exit;
+
+  CreateContent(CreateTopic(topic, lemma), content);
 end;
 
 procedure TTheWordDictionary.Commit;

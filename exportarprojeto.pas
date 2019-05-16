@@ -5,7 +5,7 @@ unit ExportarProjeto;
 interface
 
 uses
-  Classes, SysUtils, LCLProc, contnrs, strutils, PCRE, LazUTF8, NaturalSortUnit;
+  Classes, SysUtils, LCLProc, contnrs, strutils, PCRE, LazUTF8;
 
 function UnicodeToRTF(s: string): string;
 
@@ -49,20 +49,17 @@ type
     reRemoveMorfo: IRegex;
     reUnicodeChars: IRegex;
     reSintagma: IRegex;
-    reStrong: IRegex;
-    reWord: IRegex;
-
     function GetChave(i: Integer): string;
     function GetItem(i: Integer): TLocucao;
     function GetLocucao(chave: string): TLocucao;
     function GetQtde: integer;
     procedure PutLocucao(chave: string; const AValue: TLocucao);
+
   public
     constructor Create;
     destructor Destroy; override;
     //property Locucoes[chave: string]: TLocucao read GetLocucao write PutLocucao; default;
     function GetStrongRTF(lema: string; s: string): string;
-    function GetSortedKeys: TStringList;
     //property Strong[s: string]: string read GetStrongRTF;
     property Chaves[i: Integer]: string read GetChave;
     property Items[i: Integer]: TLocucao read GetItem;
@@ -84,7 +81,7 @@ begin
   result := '';
   p:=PChar(s);
   repeat
-    unicode := UTF8CodepointToUnicode(p, charLen); //UTF8CharacterToUnicode(p,CharLen);
+    unicode:=UTF8CodepointToUnicode(p,CharLen);
     if unicode > 127 then
       result := result + format('\u%d?', [unicode])
     else if unicode > 0 then
@@ -104,7 +101,7 @@ begin
   tag := false;
   p:=PChar(s);
   repeat
-    unicode := UTF8CodepointToUnicode(p, CharLen); //UTF8CharacterToUnicode(p,CharLen);
+    unicode:=UTF8CodepointToUnicode(p,CharLen);
     if not tag and (CharLen = 1) and (chr(unicode) = '<') then
       tag := true;
 
@@ -136,7 +133,7 @@ begin
   tag := false;
   p:=PChar(s);
   repeat
-    unicode := UTF8CodepointToUnicode(p, CharLen); //UTF8CharacterToUnicode(p,CharLen);
+    unicode:=UTF8CodepointToUnicode(p,CharLen);
     if not tag and (CharLen = 1) and (chr(unicode) = '<') then
       tag := true;
 
@@ -233,17 +230,11 @@ begin
       end;
     end;
   end;
-  result := result.Replace('__OCORRENCIAS__', IntToStr(c));
-end;
 
-function TConcordancia.GetSortedKeys: TStringList;
-var
-  i: integer;
-begin
-  result := TStringList.Create;
-  for i:=0 to Qtde-1 do
-    result.Add(Chaves[i]);
-  result.CustomSort(@UTF8NaturalCompareList);
+  if c > 0 then
+    result := result.Replace('__OCORRENCIAS__', IntToStr(c))
+  else
+    result := '';
 end;
 
 procedure TConcordancia.PutLocucao(chave: string; const AValue: TLocucao);
@@ -256,9 +247,7 @@ begin
   FHashLocucoes  := TFPHashList.Create;
   reRemoveMorfo  := RegexCreate('<WT[^>]+>', [rcoUTF8,rcoIgnoreCase]);
   reSintagma     := RegexCreate('(^|;)([^<]+)(<W([HG]\d+)>)(<W([HG]\d+)>)?(<W([HG]\d+)>)?(<WT([^\ >]+)>)?(<W([HG]\d+)>)?(<WT([^\ >]+)>)?', [rcoUTF8,rcoIgnoreCase]);
-  reWord         := RegexCreate('^([^<]+)', [rcoUTF8]);
   reUnicodeChars := RegexCreate('[^[:ascii:]]', [rcoUTF8]);
-  reStrong       := RegexCreate('(<W[GH][0-9]+>)', [rcoUTF8, rcoIgnoreCase]);
   FDetalhada     := true;
 end;
 
@@ -275,25 +264,19 @@ end;
 
 procedure TConcordancia.AdicionarLocucao(pares: TStringList; ref: string);
 var
-  p, i: smallint;
-  src, dst, word: string;
-  mstrongs: IMatchCollection;
-  mword: IMatch;
+  p: smallint;
+  s1, s2: string;
 begin
   for p:=0 to pares.Count-1 do
     if (p mod 2) = 0 then // pares estão alternados na lista
     begin
-      src := pares.Strings[p];     // grego<wg1492><wtv-2aap-nsm>
-      dst := pares.Strings[p+1];   // portugues
+      s1 := pares.Strings[p];     // grego<wg1492><wtv-2aap-nsm>
+      s2 := pares.Strings[p+1];   // portugues
 
       if not FDetalhada then
-        src := reRemoveMorfo.Replace(src, '');
+        s1 := reRemoveMorfo.Replace(s1, '');
 
-      mword := reWord.Match(src);
-      word := mword.Groups[1].GetValue;
-      mstrongs := reStrong.Matches(src);
-      for i:=0 to mstrongs.Count-1 do
-        GetLocucao(word + mstrongs[i].Groups[1].GetValue)[dst].Add(ref);
+      GetLocucao(s1)[s2].Add(ref);
     end;
 end;
 
