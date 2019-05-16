@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Language: pt\n"
-"X-Generator: Poedit 2.2.1\n"
+"X-Generator: Poedit 2.2.2\n"
 
 #: formexportar.sanalyticalconcordance
 msgid "AnalyticalConcordance"
@@ -541,7 +541,7 @@ msgstr "A concordância do Velho Testamento ainda não está implementada"
 
 #: projeto.sphilemon
 msgid "Philemon"
-msgstr "Filemon"
+msgstr "Filemom"
 
 #: projeto.sphilippians
 msgid "Philippians"
