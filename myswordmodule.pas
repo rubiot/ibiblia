@@ -139,19 +139,13 @@ end;
 
 constructor TMySwordModule.Create(filename: string; ot: boolean; nt: boolean;
   strongs: boolean; props: string);
+var
+  existed: boolean;
 begin
   FOT := ot;
   FNT := nt;
   FStrongs := strongs;
-
-  if FileExists(filename) then
-  begin
-    try
-      DeleteFile(filename);
-    except
-      raise Exception.Create(SOverrideError);
-    end;
-  end;
+  existed  := FileExists(filename);
 
   FConnection := TSQLite3Connection.Create(nil);
   FConnection.DatabaseName := filename;
@@ -162,9 +156,17 @@ begin
     FConnection.Open;
     FConnection.Transaction.Active := true;
 
-    FConnection.ExecuteDirect('CREATE TABLE "Bible" ("Book" INT,"Chapter" INT,"Verse" INT,"Scripture" TEXT)');
-    FConnection.ExecuteDirect('CREATE UNIQUE INDEX "bible_key" ON "Bible" ("Book" ASC, "Chapter" ASC, "Verse" ASC)');
-    FConnection.ExecuteDirect('CREATE TABLE "Details" ("Title" NVARCHAR(255), "Description" TEXT, "Abbreviation" NVARCHAR(50), "Comments" TEXT, "Version" TEXT, "VersionDate" DATETIME, "PublishDate" DATETIME, "Publisher" TEXT, "Author" TEXT, "Creator" TEXT, "Source" TEXT, "EditorialComments" TEXT, "Language" NVARCHAR(3), "RightToLeft" BOOL, "OT" BOOL, "NT" BOOL, "Strong" BOOL, "VerseRules" TEXT)');
+    if existed then
+    begin
+      FConnection.ExecuteDirect('DELETE FROM Bible');
+      FConnection.ExecuteDirect('DELETE FROM Details');
+    end
+    else
+    begin
+      FConnection.ExecuteDirect('CREATE TABLE "Bible" ("Book" INT,"Chapter" INT,"Verse" INT,"Scripture" TEXT)');
+      FConnection.ExecuteDirect('CREATE UNIQUE INDEX "bible_key" ON "Bible" ("Book" ASC, "Chapter" ASC, "Verse" ASC)');
+      FConnection.ExecuteDirect('CREATE TABLE "Details" ("Title" NVARCHAR(255), "Description" TEXT, "Abbreviation" NVARCHAR(50), "Comments" TEXT, "Version" TEXT, "VersionDate" DATETIME, "PublishDate" DATETIME, "Publisher" TEXT, "Author" TEXT, "Creator" TEXT, "Source" TEXT, "EditorialComments" TEXT, "Language" NVARCHAR(3), "RightToLeft" BOOL, "OT" BOOL, "NT" BOOL, "Strong" BOOL, "VerseRules" TEXT)');
+    end;
 
     SetProperties(props);
     FConnection.Transaction.Commit;
