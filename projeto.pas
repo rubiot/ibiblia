@@ -110,6 +110,7 @@ type
     procedure SetSituacao(const AValue: Integer);
     procedure ExportTheWordBible(verses: TStringList; filename: string; props: string);
     procedure ExportMySwordBible(verses: TStringList; filename: string; props: string);
+    procedure HighlightStrongs(syntagm: TSintagma);
   protected
     procedure CopiarArquivo(origem, destino: string);
     function CriarObjetoTabela(db, tabela, chave: string): TSqlite3Dataset;
@@ -627,6 +628,30 @@ begin
   module.Free;
 end;
 
+procedure TProjeto.HighlightStrongs(syntagm: TSintagma);
+var
+  v: TTipoTextoBiblico;
+  strongs: TStringList;
+  strong: string;
+begin
+  strongs := nil;
+  if syntagm.TemStrongs then
+    strongs := syntagm.Strong
+  else if syntagm.ParesTemStrongs then
+    strongs := syntagm.Pares[0].Strong;
+
+  if not assigned(strongs) then
+    exit;
+
+  for v:=low(FAVersiculo) to high(FAVersiculo) do
+  begin
+    if not assigned(FAVersiculo[v]) then
+      continue;
+    for strong in strongs do
+      FAVersiculo[v].EnableStrongHighlight(strong);
+  end;
+end;
+
 function TProjeto.GetModificado: boolean;
 begin
   result := FTblPares.UpdatesPending or
@@ -972,7 +997,6 @@ end;
 procedure TProjeto.SintagmaOnMouseEnter(Sender: TSintagma);
 var
   show: boolean;
-  strong: string;
 begin
   case FPopupTrigger of
     ptMouseHover:     show := true;
@@ -987,26 +1011,13 @@ begin
     FTemporizador.Enabled := true;
   end;
 
-  strong := '';
-  if Sender.TemStrongs then
-    strong := Sender.Strong[0]
-  else if Sender.ParesTemStrongs then
-    strong := Sender.Pares[0].Strong[0];
-
-  if not strong.IsEmpty then
-  begin
-    if Sender.VersiculoRef <> FAVersiculo[tbOrigem] then
-      FAVersiculo[tbOrigem].EnableStrongHighlight(strong);
-    if Sender.VersiculoRef <> FAVersiculo[tbConsulta1] then
-      FAVersiculo[tbConsulta1].EnableStrongHighlight(strong);
-    if Sender.VersiculoRef <> FAVersiculo[tbConsulta2] then
-      FAVersiculo[tbConsulta2].EnableStrongHighlight(strong);
-  end;
+  HighlightStrongs(Sender);
 end;
 
 procedure TProjeto.SintagmaOnMouseLeave(Sender: TSintagma);
 var
   hide: boolean;
+  v: TTipoTextoBiblico;
 begin
   FTemporizador.Enabled := false;
   hide := true;
@@ -1020,15 +1031,10 @@ begin
   if hide then
     frmDictionaryPopup.Ocultar;
 
-  if Sender.TemStrongs or Sender.ParesTemStrongs then
-  begin
-    if Sender.VersiculoRef <> FAVersiculo[tbOrigem] then
-      FAVersiculo[tbOrigem].DisableStrongHighlight;
-    if Sender.VersiculoRef <> FAVersiculo[tbConsulta1] then
-      FAVersiculo[tbConsulta1].DisableStrongHighlight;
-    if Sender.VersiculoRef <> FAVersiculo[tbConsulta2] then
-      FAVersiculo[tbConsulta2].DisableStrongHighlight;
-  end;
+  { hide strong hightlights }
+  for v:=low(FAVersiculo) to high(FAVersiculo) do
+    if assigned(FAVersiculo[v]) then
+        FAVersiculo[v].DisableStrongHighlight;
 end;
 
 procedure TProjeto.SintagmaOnClick(Sender: TSintagma);
