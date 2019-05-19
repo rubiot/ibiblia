@@ -409,7 +409,7 @@ end;
 procedure TFrmPrincipal.ActionMostrarTagsExecute(Sender: TObject);
 begin
   if assigned(ProjetoAtual) then
-    ProjetoAtual.ToggleMostrarTags;
+    ProjetoAtual.ToggleDisplayTags;
 end;
 
 function CarregarTexto(par: pointer): ptrint;

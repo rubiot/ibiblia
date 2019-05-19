@@ -67,9 +67,9 @@ type
     FFileName: string;
     FMemoVersiculo: TMemoVersiculo;
     FAtivo: boolean;
-    FMostrandoTags: boolean;
     FExportando: boolean;
     FOnAlterarVersiculo: TOnAlterarVersiculoEvent;
+    FDisplayTags: boolean;
     FSugerirAssociacaoAuto: boolean;
     FPalavrasComStrongEmNegrito: boolean;
     FExibirDefComCtrl: boolean;
@@ -102,6 +102,7 @@ type
     procedure PreencherArvore;
     procedure SetAtrasoExibicao(const AValue: Cardinal);
     procedure SetComentarios(const AValue: string);
+    procedure SetDisplayTags(AValue: boolean);
     procedure SetMostrarQtdStrongs(AValue: boolean);
     procedure SetOnAlterarVersiculo(const AValue: TOnAlterarVersiculoEvent);
     procedure SetOnNovoVersiculo(const AValue: TOnNovoVersiculoEvent);
@@ -187,7 +188,7 @@ type
     function ObterTextoSimplesVersiculo(Referencia: string; texto: TTipoTextoBiblico): string;
     function GetTranslationSuggestions(syntagm: TSintagma): string;
     procedure Translate;
-    procedure ToggleMostrarTags;
+    procedure ToggleDisplayTags;
     property FileName: string read FFileName;
     property Referencia: string read GetReferencia;
     property ID: string read GetID;
@@ -209,6 +210,7 @@ type
     property Escopo: TEscopoTexto read FEscopo write FEscopo;
     property MostrarQtdStrongs: boolean read FMostrarQtdStrongs write SetMostrarQtdStrongs;
     property PopupTrigger: TPopupTrigger read FPopupTrigger write FPopupTrigger;
+    property DisplayTags: boolean read FDisplayTags write SetDisplayTags;
   end;
 
 resourcestring
@@ -546,6 +548,24 @@ begin
   FTblPares.Edit;
   FTblPares.FieldByName('pare_comentarios').AsString := AValue;
   FTblPares.Post;
+end;
+
+procedure TProjeto.SetDisplayTags(AValue: boolean);
+var
+  t: TTipoTextoBiblico;
+begin
+  if FDisplayTags = AValue then
+    Exit;
+
+  FDisplayTags := AValue;
+
+  for t:=low(TTipoTextoBiblico) to high(TTipoTextoBiblico) do
+  begin
+    if FDisplayTags then
+      FAVersiculo[t].MostrarTags
+    else
+      FAVersiculo[t].OcultarTags;
+  end;
 end;
 
 procedure TProjeto.SetMostrarQtdStrongs(AValue: boolean);
@@ -1012,6 +1032,7 @@ begin
   end;
 
   HighlightStrongs(Sender);
+  SetDisplayTags(false);
 end;
 
 procedure TProjeto.SintagmaOnMouseLeave(Sender: TSintagma);
@@ -1711,7 +1732,7 @@ begin
   HabilitarEventosRolagem;
 
   FAtivo := true;
-  FMostrandoTags := false;
+  FDisplayTags := false;
 end;
 
 procedure TProjeto.Fechar(_Commit: boolean);
@@ -2558,19 +2579,9 @@ begin
   end;
 end;
 
-procedure TProjeto.ToggleMostrarTags;
-var
-  t: TTipoTextoBiblico;
+procedure TProjeto.ToggleDisplayTags;
 begin
-  FMostrandoTags := not FMostrandoTags;
-
-  for t:=low(TTipoTextoBiblico) to high(TTipoTextoBiblico) do
-  begin
-    if FMostrandoTags then
-      FAVersiculo[t].MostrarTags
-    else
-      FAVersiculo[t].OcultarTags;
-  end;
+  SetDisplayTags(not DisplayTags);
 end;
 
 end.
