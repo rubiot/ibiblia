@@ -235,8 +235,8 @@ procedure TGerSugestoes.InserirPar(origem, destino: string);
 var
   lori_id, ldes_id : integer;
 begin
-  lori_id := ObterLocucaoOrigem(lowercase(AnsiReplaceStr(origem, '''', '''''')));
-  ldes_id := ObterLocucaoDestino(lowercase(AnsiReplaceStr(destino, '''', '''''')));
+  lori_id := ObterLocucaoOrigem(origem.ToLower);
+  ldes_id := ObterLocucaoDestino(destino.ToLower);
 
   if not AtualizarTraducao(lori_id, ldes_id) then
     InserirTraducao(lori_id, ldes_id);
@@ -246,8 +246,8 @@ procedure TGerSugestoes.RemoverPar(origem, destino: string);
 var
   lori_id, ldes_id : integer;
 begin
-  lori_id := ObterLocucaoOrigem(lowercase(AnsiReplaceStr(origem, '''', '''''')));
-  ldes_id := ObterLocucaoDestino(lowercase(AnsiReplaceStr(destino, '''', '''''')));
+  lori_id := ObterLocucaoOrigem(origem.ToLower);
+  ldes_id := ObterLocucaoDestino(destino.ToLower);
 
   if (lori_id > 0) and (ldes_id > 0) then
   begin
