@@ -1199,6 +1199,9 @@ procedure TProjeto.AtribuirDicStrong(dic: string; t: TTipoTextoBiblico);
 //var
 //  t1: TTipoTextoBiblico;
 begin
+  FAVersiculo[t].OnMouseEnter := @SintagmaOnMouseEnter;
+  FAVersiculo[t].OnMouseLeave := @SintagmaOnMouseLeave;
+
   if dic = '' then
     exit;
 
@@ -1237,9 +1240,6 @@ begin
     FADicStrong[t].Prepare;
     FADicStrong[t].Tag := 1;
   end;
-
-  FAVersiculo[t].OnMouseEnter := @SintagmaOnMouseEnter;
-  FAVersiculo[t].OnMouseLeave := @SintagmaOnMouseLeave;
 end;
 
 procedure TProjeto.AtribuirDicMorfo(dic: string; t: TTipoTextoBiblico);
