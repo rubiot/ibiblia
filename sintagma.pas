@@ -88,6 +88,7 @@ type
     procedure DoOnMiddleClick(Sender: TObject; Shift: TShiftState);
     function GetCorrelacionado: boolean;
     function GetParesTemStrongs: boolean;
+    function GetStrongsCount: integer;
     function GetTags: string;
     function GetTemStrongs: boolean;
     function GetTemMorfo: boolean;
@@ -125,6 +126,7 @@ type
     property Italico: boolean read FItalico;
     property Sobrescrito: boolean read FSobrescrito;
     property TemStrongs: boolean read GetTemStrongs;
+    property StrongsCount: integer read GetStrongsCount;
     property TemMorfs: boolean read GetTemMorfo;
     property ParesTemStrongs: boolean read GetParesTemStrongs;
     property Gist: string read GetGist;
@@ -213,7 +215,7 @@ begin
   end;
 
   versiculo.Renderizar;
-  //versiculo.VersiculoPar.Renderizar;
+  versiculo.VersiculoPar.Renderizar;
 
   if assigned(versiculo.OnClick) then
     versiculo.OnClick(self);
@@ -438,6 +440,18 @@ begin
       exit;
     end;
   result := false;
+end;
+
+function TSintagma.GetStrongsCount: integer;
+var
+  s: TSintagma;
+begin
+  result := 0;
+  if TemStrongs then
+    result := FStrong.Count
+  else if ParesTemStrongs then
+    for s in Pares do
+      inc(result, s.StrongsCount);
 end;
 
 function TSintagma.GetTags: string;

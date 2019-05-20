@@ -280,6 +280,9 @@ begin
 
   for s in VersiculoPar.FSintagmas do
     s.Desassociar;
+
+  Renderizar;
+  VersiculoPar.Renderizar;
 end;
 
 procedure TVersiculo.LimparAssociacoes;
@@ -1139,16 +1142,13 @@ begin
   unique := TSintagmaList.Create;
   for s in FSintagmas do
   begin
-    if s.TemStrongs then
-      inc(count)
-    else if s.ParesTemStrongs and (unique.IndexOf(s) = -1) then
-    begin
-      inc(count);
-      { contando várias palavras associadas a um strong como uma apenas }
-      if assigned(s.Irmaos) then
-        for p in s.Irmaos do
-          unique.Add(p);
-    end;
+    if unique.IndexOf(s) <> -1 then
+      continue;
+    inc(count, s.StrongsCount);
+    { contando várias palavras associadas a um strong como uma apenas }
+    if not s.TemStrongs and assigned(s.Irmaos) then
+      for p in s.Irmaos do
+        unique.Add(p);
   end;
   unique.Destroy;
 

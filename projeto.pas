@@ -1875,7 +1875,10 @@ begin
   FSugeridor.SugerirAssociacoes(FAVersiculo[tbOrigem]);
 
   if (FRadioGroupSituacao.ItemIndex = 0) and (FAVersiculo[tbOrigem].AndamentoAssociacao > 0) then
-    FRadioGroupSituacao.ItemIndex := 1 // associando
+    FRadioGroupSituacao.ItemIndex := 1; // associando
+
+  FAVersiculo[tbOrigem].Renderizar;
+  FAVersiculo[tbDestino].Renderizar;
 end;
 
 procedure TProjeto.RecriarBaseSugestoes;
