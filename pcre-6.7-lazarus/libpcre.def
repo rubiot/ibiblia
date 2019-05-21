@@ -18,3 +18,4 @@ pcre_fullinfo
 pcre_maketables
 pcre_study
 pcre_version
+pcre_free_ex

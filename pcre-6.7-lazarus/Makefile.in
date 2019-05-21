@@ -75,8 +75,8 @@ POSIX_LOBJ = @POSIX_LOBJ@
 
 CC = @CC@
 CXX = @CXX@
-CFLAGS = @CFLAGS@
-CXXFLAGS = @CXXFLAGS@
+CFLAGS = @CFLAGS@ -fPIC
+CXXFLAGS = @CXXFLAGS@ -fPIC
 LDFLAGS = @LDFLAGS@
 CXXLDFLAGS = @CXXLDFLAGS@
 
@@ -140,6 +140,7 @@ OBJ = pcre_chartables.@OBJEXT@ \
   pcre_valid_utf8.@OBJEXT@ \
   pcre_version.@OBJEXT@ \
   pcre_xclass.@OBJEXT@ \
+  pcre_helpers.@OBJEXT@ \
   $(POSIX_OBJ)
 
 LOBJ = pcre_chartables.lo \
@@ -161,6 +162,7 @@ LOBJ = pcre_chartables.lo \
   pcre_valid_utf8.lo \
   pcre_version.lo \
   pcre_xclass.lo \
+  pcre_helpers.@OBJEXT@ \
   $(POSIX_LOBJ)
 
 CPPOBJ = pcrecpp.@OBJEXT@ \
@@ -182,10 +184,10 @@ all:            libpcre.la @POSIX_LIB@ pcretest@EXEEXT@ pcregrep@EXEEXT@ \
 pcregrep@EXEEXT@: libpcre.la pcregrep.@OBJEXT@ @ON_WINDOWS@ winshared
 		$(LINK) -o pcregrep@EXEEXT@ pcregrep.@OBJEXT@ libpcre.la
 
-pcretest@EXEEXT@: libpcre.la @POSIX_LIB@ pcretest.@OBJEXT@ \
+pcretest@EXEEXT@: libpcre.la @POSIX_LIB@ pcre_helpers.@OBJEXT@ pcretest.@OBJEXT@ \
 		@ON_WINDOWS@ winshared
 		$(LINK) $(PURIFY) $(EFENCE) -o pcretest@EXEEXT@  \
-		pcretest.@OBJEXT@ \
+		pcretest.@OBJEXT@ pcre_helpers.@OBJEXT@ \
 		libpcre.la @POSIX_LIB@
 
 pcrecpp_unittest@EXEEXT@: libpcrecpp.la pcrecpp_unittest.@OBJEXT@ \
