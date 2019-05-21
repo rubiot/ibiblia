@@ -1,0 +1,91 @@
+/^[\w]+/
+    *** Failers
+    École
+
+/^[\w]+/Lfr
+    École
+
+/^[\w]+/
+    *** Failers
+    École
+
+/^[\W]+/
+    École
+
+/^[\W]+/Lfr
+    *** Failers
+    École
+
+/[\b]/
+    \b
+    *** Failers
+    a
+
+/[\b]/Lfr
+    \b
+    *** Failers
+    a
+
+/^\w+/
+    *** Failers
+    École
+
+/^\w+/Lfr
+    École
+
+/(.+)\b(.+)/
+    École
+
+/(.+)\b(.+)/Lfr
+    *** Failers
+    École
+
+/École/i
+    École
+    *** Failers
+    école
+
+/École/iLfr
+    École
+    école
+
+/\w/IS
+
+/\w/ISLfr
+
+/^[\xc8-\xc9]/iLfr
+    École
+    école
+
+/^[\xc8-\xc9]/Lfr
+    École
+    *** Failers 
+    école
+
+/\W+/Lfr
+    >>>\xaa<<<
+    >>>\xba<<< 
+
+/[\W]+/Lfr
+    >>>\xaa<<<
+    >>>\xba<<< 
+
+/[^[:alpha:]]+/Lfr
+    >>>\xaa<<<
+    >>>\xba<<< 
+
+/\w+/Lfr
+    >>>\xaa<<<
+    >>>\xba<<< 
+
+/[\w]+/Lfr
+    >>>\xaa<<<
+    >>>\xba<<< 
+
+/[[:alpha:]]+/Lfr
+    >>>\xaa<<<
+    >>>\xba<<< 
+    
+/[[:alpha:]][[:lower:]][[:upper:]]/DLfr 
+
+/ End of testinput3 /
