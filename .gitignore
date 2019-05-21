@@ -4,5 +4,16 @@ lib/
 iBiblia.exe
 iBiblia.ini
 iBiblia
+pcre-6.7-lazarus/.libs
+pcre-6.7-lazarus/*.o
+pcre-6.7-lazarus/*.l[ao]
+pcre-6.7-lazarus/*_unittest
+pcre-6.7-lazarus/pcregrep
+pcre-6.7-lazarus/pcretest
+pcre-6.7-lazarus/Makefile
+pcre-6.7-lazarus/RunTest
+pcre-6.7-lazarus/config.log
+pcre-6.7-lazarus/config.status
+pcre-6.7-lazarus/dftables
 
 *.sw[nop]
