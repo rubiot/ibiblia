@@ -215,7 +215,8 @@ begin
   end;
 
   versiculo.Renderizar;
-  versiculo.VersiculoPar.Renderizar;
+  if  assigned(Versiculo.VersiculoPar) then
+    versiculo.VersiculoPar.Renderizar;
 
   if assigned(versiculo.OnClick) then
     versiculo.OnClick(self);
