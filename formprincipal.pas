@@ -847,7 +847,7 @@ begin
     if match.Success then
     begin
       SyncTheWordDict(match.Groups[1].Value); // morphology
-      if match.Groups.Count > 1 then
+      if match.Groups.Count > 2 then
         SyncTheWordDict(match.Groups[3].Value); // lemma
     end;
   end;
