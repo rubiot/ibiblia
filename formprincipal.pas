@@ -165,6 +165,7 @@ type
     { private declarations }
     FPopupTrigger: TPopupTrigger;
     {$IFDEF WINDOWS}
+    FRxMorpho: IRegex;
     syncTw2iBiblia: boolean;
     synciBiblia2Tw: boolean;
     TwSyncThread: TTwSyncThread;
@@ -648,6 +649,7 @@ begin
   TreeView1.Width := opts.ReadInteger('leiaute', 'principal.treeview.largura', TreeView1.Width);
 
   {$IFDEF WINDOWS}
+  FRxMorpho := RegexCreate('^(\S+)( l="(.*?)")?$', [rcoUTF8]);
   syncTw2iBiblia := MenuItemSyncTheWord.Checked;
   synciBiblia2Tw := MenuItemSynciBiblia.Checked;
   SetUpSyncThread;
@@ -830,20 +832,15 @@ end;
 
 procedure TFrmPrincipal.QuandoPalavraClicada(Sender: TSintagma);
 var
-  re: IRegex;
   match: IMatch;
-  morpho: string;
 begin
-  //StatusBar1.SimpleText := ProjetoAtual.GetTranslationSuggestions(Sender);
   {$IFDEF WINDOWS}
   if not syncTw2iBiblia then
     exit;
 
   if Sender.TemMorfs then
   begin
-    re := RegexCreate('^(\S+)( l="(.*?)")?$', [rcoUTF8]);
-    morpho := Sender.Morf[0];
-    match := re.Match(morpho);
+    match := FRxMorpho.Match(Sender.Morf[0]);
     if match.Success then
     begin
       SyncTheWordDict(match.Groups[1].Value); // morphology
