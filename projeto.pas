@@ -867,12 +867,21 @@ procedure TProjeto.SetVerseText(versiculo: string;
 begin
   FTblPares.Edit;
 
-   // try to keep associations and update pairs
+  // try to keep associations and update pairs
   if replace and (texto in [tbOrigem, tbDestino]) and not FTblPares.FieldByName('pare_pares').AsString.IsEmpty then
   begin
     FATmpVerse[tbOrigem ].Texto := FTblPares.Fields[FACamposTexto[tbOrigem ]].AsString;
     FATmpVerse[tbDestino].Texto := FTblPares.Fields[FACamposTexto[tbDestino]].AsString;
-    FATmpVerse[tbOrigem ].Pares := FTblPares.FieldByName('pare_pares').AsString;
+    try
+      FATmpVerse[tbOrigem ].Pares := FTblPares.FieldByName('pare_pares').AsString;
+    except
+      on E: Exception do
+        MessageDlg(SError, SCorruptedData + #13#10#13#10 + Referencia + #13#10 +
+             format('%s'#13#10'pares: %s'#13#10'%s'#13#10'%s',
+                    [E.Message, FTblPares.FieldByName('pare_pares').AsString,
+                    FATmpVerse[tbOrigem].DebugTokens, FATmpVerse[tbDestino].DebugTokens]),
+             mtError, [mbOK], 0);
+    end;
     FATmpVerse[texto].AlterarTexto(versiculo);
     FTblPares.FieldByName('pare_pares').AsString := FATmpVerse[tbOrigem].Pares;
     FTblPares.FieldByName('pare_situacao').AsInteger := 2; // needs review

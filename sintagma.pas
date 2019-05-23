@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, ONTTokenizer, StdCtrls, Controls, Graphics, Forms, Math,
-  LazUTF8;
+  LazUTF8, LazLogger;
 
 type
   TSintagma = class;
@@ -688,10 +688,11 @@ begin
   for s in Irmaos do
     s.Desassociar;
 
-  if Pares.Count > 0 then
+  if not Pares.Empty then
   begin
-    for s in Pares[0].Irmaos do
-      s.Desassociar;
+    if assigned(Pares[0].Irmaos) then
+      for s in Pares[0].Irmaos do
+        s.Desassociar;
     Pares[0].Desassociar;
   end;
 

@@ -569,7 +569,7 @@ begin
   begin
     if AnsiStartsStr('<par ', s.valor) then
     begin
-      DebugLn('selecionando par: %s', [s.valor]);
+      //DebugLn('selecionando par: %s', [s.valor]);
       SelecionarListaSintagmas(varredorXML.LerPropriedadeTag('a', s));
       VersiculoPar.SelecionarListaSintagmas(varredorXML.LerPropriedadeTag('b', s));
       AssociarSintagmas;
@@ -596,19 +596,19 @@ begin
   tmp := TSintagmaList.Create;
   for s in FSintagmas do
   begin
-    if (s.Pares.Count > 0) and (tmp.IndexOf(s) < 0) then
+    if not s.Pares.Empty and (tmp.IndexOf(s) < 0) then
     begin
       _xml.WriteString(Format('<par a="%d', [FSintagmas.IndexOf(s)]));
       tmp.Add(s);
       for p in s.Irmaos do
       begin
-        _xml.WriteString(Format(',%d', [TVersiculo(s.VersiculoRef).Sintagmas.IndexOf(p)]));
+        _xml.WriteString(Format(',%d', [FSintagmas.IndexOf(p)]));
         tmp.Add(p);
       end;
       _xml.WriteString('" b="');
       for p in s.Pares do
       begin
-        _xml.WriteString(Format('%d', [TVersiculo(p.VersiculoRef).Sintagmas.IndexOf(p)]));
+        _xml.WriteString(Format('%d', [FVersiculoRef.Sintagmas.IndexOf(p)]));
         if s.Pares.IndexOf(p) <> s.Pares.Count-1 then
           _xml.WriteString(',');
       end;
@@ -996,8 +996,8 @@ begin
   for i:=0 to tokens.Count-1 do
   begin
     s := StrToInt(tokens[i]);
-    if (s >= Sintagmas.Count) or (Sintagmas[s].Tipo <> tsSintagma) then
-      raise Exception.Create(format('Índice %d inválido: %s', [s, Sintagmas[s].Gist]))
+    if (s < 0) or (s >= Sintagmas.Count) or (Sintagmas[s].Tipo <> tsSintagma) then
+      raise Exception.Create(format('Invalid syntagm index: %d', [s]))
     else
       Sintagmas[s].SelecaoMais;
   end;
