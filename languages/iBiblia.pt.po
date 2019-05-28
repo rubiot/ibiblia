@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Language: pt\n"
-"X-Generator: Poedit 2.2.2\n"
+"X-Generator: Poedit 2.2.3\n"
 
 #: formexportar.sanalyticalconcordance
 msgid "AnalyticalConcordance"
@@ -1024,8 +1024,12 @@ msgid "Options"
 msgstr "Opções"
 
 #: tfrmprincipal.menuitem22.caption
-msgid "Automatically auto-associate verses"
+msgid "Auto-associate unassociated verses"
 msgstr "Sugerir associações automaticamente"
+
+#: tfrmprincipal.menuitem22.hint
+msgid "Run the auto-association whenever you navigate to an unassociated verse"
+msgstr "Sugerir associações automaticamente sempre que um versículo não tiver associações"
 
 #: tfrmprincipal.menuitem23.caption
 msgid "Language"
@@ -1043,17 +1047,29 @@ msgstr "Sobre..."
 msgid "Alt + Mouse hover"
 msgstr "Alt + apontar palavra"
 
+#: tfrmprincipal.menuitemaltmousehover.hint
+msgid "Activate the popup dictionary whenever you hover the mouse pointer over a word while holding the Alt key"
+msgstr "Ativar o popup do dicionário sempre que você parar o mouse sobre uma palavra com a tecla Alt pressionada"
+
 #: tfrmprincipal.menuitemalwaysontop.caption
-msgid "Keep iBiblia always on top of other windows"
-msgstr "Manter janela do iBiblia sempre no topo"
+msgid "Always on top"
+msgstr "Sempre visível"
+
+#: tfrmprincipal.menuitemalwaysontop.hint
+msgid "Keep iBiblia window always on top of other windows"
+msgstr "Manter a janela do iBiblia sempre visível"
 
 #: tfrmprincipal.menuitemctrlmousehover.caption
 msgid "Ctrl + Mouse hover"
 msgstr "Ctrl + apontar palavra"
 
+#: tfrmprincipal.menuitemctrlmousehover.hint
+msgid "Activate the popup dictionary whenever you hover the mouse pointer over a word while holding the Ctrl key"
+msgstr "Ativar o popup do dicionário sempre que você parar o mouse sobre uma palavra com a tecla Ctrl pressionada"
+
 #: tfrmprincipal.menuitemdictpopup.caption
-msgid "Show dictionary popup on..."
-msgstr "Mostrar definição da palavra quando..."
+msgid "Dictionary popup trigger..."
+msgstr "Ativar definição da palavra com..."
 
 #: tfrmprincipal.menuitemlangen.caption
 msgctxt "tfrmprincipal.menuitemlangen.caption"
@@ -1069,25 +1085,65 @@ msgstr "Português"
 msgid "Mouse hover"
 msgstr "Apontar palavra"
 
+#: tfrmprincipal.menuitemmousehover.hint
+msgid "Activate the popup dictionary whenever you hover the mouse pointer over a word"
+msgstr "Ativar o popup do dicionário sempre que você parar o mouse sobre uma palavra"
+
 #: tfrmprincipal.menuitemrecent.caption
 msgid "Open recent"
 msgstr "Abrir recente"
 
 #: tfrmprincipal.menuitemstrongnegrito.caption
-msgid "Show words with strong tags in bold"
-msgstr "Exibir palavras com strongs em negrito"
+msgid "Words with strongs in bold"
+msgstr "Palavras com strongs em negrito"
+
+#: tfrmprincipal.menuitemstrongnegrito.hint
+msgid "Words with associated strong's tags are displayed in bold font"
+msgstr "Palavras com strongs associados serão exibidas em negrito"
 
 #: tfrmprincipal.menuitemstrongscount.caption
-msgid "Show strongs count"
-msgstr "Exibir contagem de strongs"
+msgid "Strongs count"
+msgstr "Contagem de strongs"
+
+#: tfrmprincipal.menuitemstrongscountnone.caption
+msgid "Hide"
+msgstr "Ocultar"
+
+#: tfrmprincipal.menuitemstrongscountnone.hint
+msgid "Don't show any count"
+msgstr "Não exibir nenhuma contagem de strongs"
+
+#: tfrmprincipal.menuitemstrongscountstrongs.caption
+msgid "Count Strong's tags"
+msgstr "Contagem de strongs"
+
+#: tfrmprincipal.menuitemstrongscountstrongs.hint
+msgid "Show a count of all strong's tags in verse"
+msgstr "Mostrar a contagem de todos os strongs do versículo"
+
+#: tfrmprincipal.menuitemstrongscountwords.caption
+msgid "Count words"
+msgstr "Contagem de palavras com strongs"
+
+#: tfrmprincipal.menuitemstrongscountwords.hint
+msgid "Show a count of words having strong's tags"
+msgstr "Mostrar a contagem de palavras que contêm strongs"
 
 #: tfrmprincipal.menuitemsyncibiblia.caption
 msgid "Sync iBiblia to theWord verse"
 msgstr "Sincronizar iBiblia com o versículo do theWord"
 
+#: tfrmprincipal.menuitemsyncibiblia.hint
+msgid "Keeps iBiblia synchronized to theWord's current verse"
+msgstr "Manter o iBiblia sincronizado com o versículo atual do theWord"
+
 #: tfrmprincipal.menuitemsynctheword.caption
 msgid "Sync theWord to iBiblia verse"
 msgstr "Sincronizar theWord com o versículo do iBiblia"
+
+#: tfrmprincipal.menuitemsynctheword.hint
+msgid "Keeps theWord synchronized to iBiblia's current verse, and current word's strong, morphology and lemma."
+msgstr "Manter o theWord sincronizado com o versículo atual do iBiblia e sincronizar os dicionários do theWord às informações de strong, lemma e morfologia da palavra selecionada"
 
 #: tfrmprincipal.opendialog1.title
 msgid "Open existing association project"

@@ -1000,7 +1000,11 @@ msgid "Options"
 msgstr ""
 
 #: tfrmprincipal.menuitem22.caption
-msgid "Automatically auto-associate verses"
+msgid "Auto-associate unassociated verses"
+msgstr ""
+
+#: tfrmprincipal.menuitem22.hint
+msgid "Run the auto-association whenever you navigate to an unassociated verse"
 msgstr ""
 
 #: tfrmprincipal.menuitem23.caption
@@ -1019,16 +1023,28 @@ msgstr ""
 msgid "Alt + Mouse hover"
 msgstr ""
 
+#: tfrmprincipal.menuitemaltmousehover.hint
+msgid "Activate the popup dictionary whenever you hover the mouse pointer over a word while holding the Alt key"
+msgstr ""
+
 #: tfrmprincipal.menuitemalwaysontop.caption
-msgid "Keep iBiblia always on top of other windows"
+msgid "Always on top"
+msgstr ""
+
+#: tfrmprincipal.menuitemalwaysontop.hint
+msgid "Keep iBiblia window always on top of other windows"
 msgstr ""
 
 #: tfrmprincipal.menuitemctrlmousehover.caption
 msgid "Ctrl + Mouse hover"
 msgstr ""
 
+#: tfrmprincipal.menuitemctrlmousehover.hint
+msgid "Activate the popup dictionary whenever you hover the mouse pointer over a word while holding the Ctrl key"
+msgstr ""
+
 #: tfrmprincipal.menuitemdictpopup.caption
-msgid "Show dictionary popup on..."
+msgid "Dictionary popup trigger..."
 msgstr ""
 
 #: tfrmprincipal.menuitemlangen.caption
@@ -1045,24 +1061,64 @@ msgstr ""
 msgid "Mouse hover"
 msgstr ""
 
+#: tfrmprincipal.menuitemmousehover.hint
+msgid "Activate the popup dictionary whenever you hover the mouse pointer over a word"
+msgstr ""
+
 #: tfrmprincipal.menuitemrecent.caption
 msgid "Open recent"
 msgstr ""
 
 #: tfrmprincipal.menuitemstrongnegrito.caption
-msgid "Show words with strong tags in bold"
+msgid "Words with strongs in bold"
+msgstr ""
+
+#: tfrmprincipal.menuitemstrongnegrito.hint
+msgid "Words with associated strong's tags are displayed in bold font"
 msgstr ""
 
 #: tfrmprincipal.menuitemstrongscount.caption
-msgid "Show strongs count"
+msgid "Strongs count"
+msgstr ""
+
+#: tfrmprincipal.menuitemstrongscountnone.caption
+msgid "Hide"
+msgstr ""
+
+#: tfrmprincipal.menuitemstrongscountnone.hint
+msgid "Don't show any count"
+msgstr ""
+
+#: tfrmprincipal.menuitemstrongscountstrongs.caption
+msgid "Count Strong's tags"
+msgstr ""
+
+#: tfrmprincipal.menuitemstrongscountstrongs.hint
+msgid "Show a count of all strong's tags in verse"
+msgstr ""
+
+#: tfrmprincipal.menuitemstrongscountwords.caption
+msgid "Count words"
+msgstr ""
+
+#: tfrmprincipal.menuitemstrongscountwords.hint
+msgid "Show a count of words having strong's tags"
 msgstr ""
 
 #: tfrmprincipal.menuitemsyncibiblia.caption
 msgid "Sync iBiblia to theWord verse"
 msgstr ""
 
+#: tfrmprincipal.menuitemsyncibiblia.hint
+msgid "Keeps iBiblia synchronized to theWord's current verse"
+msgstr ""
+
 #: tfrmprincipal.menuitemsynctheword.caption
 msgid "Sync theWord to iBiblia verse"
+msgstr ""
+
+#: tfrmprincipal.menuitemsynctheword.hint
+msgid "Keeps theWord synchronized to iBiblia's current verse, and current word's strong, morphology and lemma."
 msgstr ""
 
 #: tfrmprincipal.opendialog1.title

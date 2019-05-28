@@ -670,8 +670,6 @@ begin
 end;
 
 procedure TFrmPrincipal.FormDestroy(Sender: TObject);
-var
-  m: TMenuItem;
 begin
   DescarregarMRU(MenuItemRecent);
   opts.WriteInteger('leiaute', 'principal.largura', Width);
