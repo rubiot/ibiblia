@@ -90,6 +90,7 @@ type
     function GetCorrelacionado: boolean;
     function GetParesTemStrongs: boolean;
     function GetStrongsCount: integer;
+    function GetStrongWordsCount: integer;
     function GetTags: string;
     function GetTemStrongs: boolean;
     function GetTemMorfo: boolean;
@@ -128,6 +129,7 @@ type
     property Sobrescrito: boolean read FSobrescrito;
     property TemStrongs: boolean read GetTemStrongs;
     property StrongsCount: integer read GetStrongsCount;
+    property StrongsWordsCount: integer read GetStrongWordsCount;
     property TemMorfs: boolean read GetTemMorfo;
     property ParesTemStrongs: boolean read GetParesTemStrongs;
     property Gist: string read GetGist;
@@ -454,6 +456,19 @@ begin
   else if ParesTemStrongs then
     for s in Pares do
       inc(result, s.StrongsCount);
+end;
+
+function TSintagma.GetStrongWordsCount: integer;
+var
+  s: TSintagma;
+begin
+  result := 0;
+  if TemStrongs then
+    result := 1
+  else if ParesTemStrongs then
+    for s in Pares do
+      if s.TemStrongs then
+        inc(result);
 end;
 
 function TSintagma.GetTags: string;

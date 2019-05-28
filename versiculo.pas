@@ -16,6 +16,8 @@ type
   TOnSintagmaEvent = procedure (Sender: TSintagma) of object;
   TOnAlterarVersiculoEvent = procedure () of object;
 
+  TStrongsCountMode = (scNone, scCountWords, scCountStrongs);
+
   { TVersiculo }
 
   TVersiculo = class
@@ -36,7 +38,7 @@ type
     FDestruindo: boolean;
     FExibirErro: boolean;
     FPalavrasComStrongEmNegrito: boolean;
-    FMostrarQtdStrongs: boolean;
+    FStrongsCountMode: TStrongsCountMode;
     //FFontePadrao: TFont;
     FCorAssociado: TColor;
     FCorDesassociado: TColor;
@@ -56,7 +58,7 @@ type
     procedure SetAtivo(const AValue: boolean);
     procedure SetFonte(const AValue: TFont);
     procedure SetModificado(const AValue: boolean);
-    procedure SetMostrarQtdStrongs(AValue: boolean);
+    procedure SetStrongsCountMode(AValue: TStrongsCountMode);
     procedure SetPalavrasComStrongEmNegrito(AValue: boolean);
     procedure SetPares(const AValue: string);
     procedure SetTexto(_XML: string);
@@ -129,7 +131,7 @@ type
     property Fonte: TFont read GetFonte write SetFonte;
     property Edit: TEdit read FEdit write FEdit;
     property PalavrasComStrongEmNegrito: boolean read FPalavrasComStrongEmNegrito write SetPalavrasComStrongEmNegrito;
-    property MostrarQtdStrongs: boolean read FMostrarQtdStrongs write SetMostrarQtdStrongs;
+    property StrongsCountMode: TStrongsCountMode read FStrongsCountMode write SetStrongsCountMode;
     property DebugTokens: string read GetTokens;
  published
     { Published declarations }
@@ -175,6 +177,7 @@ begin
   end;
 
   FStrongCount          := nil;
+  FStrongsCountMode     := scNone;
   FVersiculoRef         := nil;
   FOnSintagmaClick      := nil;
   FOnSintagmaMouseEnter := nil;
@@ -903,11 +906,11 @@ begin
      FOnAlterarVersiculo;
 end;
 
-procedure TVersiculo.SetMostrarQtdStrongs(AValue: boolean);
+procedure TVersiculo.SetStrongsCountMode(AValue: TStrongsCountMode);
 begin
-  if FMostrarQtdStrongs = AValue
+  if FStrongsCountMode = AValue
      then Exit;
-  FMostrarQtdStrongs:=AValue;
+  FStrongsCountMode := AValue;
   Renderizar;
 end;
 
@@ -958,7 +961,7 @@ begin
     PositionSyntagm(s, x, y, a);
   end;
 
-  if FMostrarQtdStrongs and assigned(FStrongCount) then
+  if (FStrongsCountMode <> scNone) and assigned(FStrongCount) then
     PositionSyntagm(FStrongCount, x, y, a);
 end;
 
@@ -1096,7 +1099,7 @@ end;
 procedure TVersiculo.RenderizarStrongCount;
 begin
   ClearStrongCount;
-  if not FMostrarQtdStrongs then
+  if FStrongsCountMode = scNone then
     exit;
   if FSintagmas.Empty then
     exit;
@@ -1115,6 +1118,19 @@ begin
 end;
 
 procedure TVersiculo.AtualizarStrongCount;
+
+  function GetStrongsCount(s: TSintagma): integer;
+  begin
+    case FStrongsCountMode of
+      scNone:
+        result := 0;
+      scCountStrongs:
+        result := s.StrongsCount;
+      scCountWords:
+        result := s.StrongsWordsCount;
+    end;
+  end;
+
 var
   token: TTagSintagma;
   s, p: TSintagma;
@@ -1125,13 +1141,15 @@ begin
   unique := TSintagmaList.Create;
   for s in FSintagmas do
   begin
+    if s.Tipo <> tsSintagma then
+      continue;
     if unique.IndexOf(s) <> -1 then
       continue;
-    inc(count, s.StrongsCount);
-    { contando várias palavras associadas a um strong como uma apenas }
+    inc(count, GetStrongsCount(s));
     if not s.TemStrongs and assigned(s.Irmaos) then
       for p in s.Irmaos do
-        unique.Add(p);
+        if not p.TemStrongs then
+          unique.Add(p);
   end;
   unique.Destroy;
 

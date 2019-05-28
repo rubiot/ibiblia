@@ -89,7 +89,7 @@ type
     FAtrasoExibicao: Cardinal;
     FEscopo: TEscopoTexto;
     FPopupTrigger: TPopupTrigger;
-    FMostrarQtdStrongs: boolean;
+    FVerseStrongsCountMode: TStrongsCountMode;
     FOnNovoVersiculo: TOnNovoVersiculoEvent;
     FOnSintagmaClick: TOnSintagmaClickEvent;
     FClosing: boolean;
@@ -103,7 +103,7 @@ type
     procedure SetAtrasoExibicao(const AValue: Cardinal);
     procedure SetComentarios(const AValue: string);
     procedure SetDisplayTags(AValue: boolean);
-    procedure SetMostrarQtdStrongs(AValue: boolean);
+    procedure SetVerseStrongsCountMode(AValue: TStrongsCountMode);
     procedure SetOnAlterarVersiculo(const AValue: TOnAlterarVersiculoEvent);
     procedure SetOnNovoVersiculo(const AValue: TOnNovoVersiculoEvent);
     procedure SetOnSintagmaClick(const AValue: TOnSintagmaClickEvent);
@@ -208,7 +208,7 @@ type
     property SugerirAssociacaoAutomaticamente: boolean read FSugerirAssociacaoAuto write FSugerirAssociacaoAuto;
     property PalavrasComStrongEmNegrito: boolean read FPalavrasComStrongEmNegrito write SetPalavrasComStrongEmNegrito;
     property Escopo: TEscopoTexto read FEscopo write FEscopo;
-    property MostrarQtdStrongs: boolean read FMostrarQtdStrongs write SetMostrarQtdStrongs;
+    property MostrarQtdStrongs: TStrongsCountMode read FVerseStrongsCountMode write SetVerseStrongsCountMode;
     property PopupTrigger: TPopupTrigger read FPopupTrigger write FPopupTrigger;
     property DisplayTags: boolean read FDisplayTags write SetDisplayTags;
   end;
@@ -568,15 +568,16 @@ begin
   end;
 end;
 
-procedure TProjeto.SetMostrarQtdStrongs(AValue: boolean);
+procedure TProjeto.SetVerseStrongsCountMode(AValue: TStrongsCountMode);
 var
   v: TTipoTextoBiblico;
 begin
-  if FMostrarQtdStrongs=AValue then Exit;
-  FMostrarQtdStrongs:=AValue;
+  if FVerseStrongsCountMode = AValue
+     then Exit;
+  FVerseStrongsCountMode := AValue;
   for v:=low(FAVersiculo) to high(FAVersiculo) do
     if assigned(FAVersiculo[v]) then
-      FAVersiculo[v].MostrarQtdStrongs := AValue;
+      FAVersiculo[v].StrongsCountMode := AValue;
 end;
 
 procedure TProjeto.SetOnAlterarVersiculo(const AValue: TOnAlterarVersiculoEvent);
@@ -1585,6 +1586,7 @@ begin
   FTblInfo            := nil;
   FEscopo             := etNone;
   FClosing            := false;
+  FVerseStrongsCountMode := scNone;
 
   FTemporizador          := TTimer.Create(nil);
   FTemporizador.Enabled  := false;
@@ -1705,7 +1707,7 @@ begin
     end;
     FAVersiculo[t].Fonte := f;
     FAVersiculo[t].PalavrasComStrongEmNegrito := FPalavrasComStrongEmNegrito;
-    FAVersiculo[t].MostrarQtdStrongs := FMostrarQtdStrongs;
+    FAVersiculo[t].StrongsCountMode := FVerseStrongsCountMode;
 
     { definindo dicionários }
     AtribuirDicStrong(ObterInfo(format('dicstrong%d', [t])), t);

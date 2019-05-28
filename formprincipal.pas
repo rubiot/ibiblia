@@ -14,7 +14,7 @@ uses
   {$ENDIF}
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, Menus,
   ActnList, ComCtrls, ExtCtrls, StdCtrls, Projeto, IniFiles, Math,
-  Sintagma, LCLTranslator, unitabout, PCRE;
+  Sintagma, LCLTranslator, unitabout, PCRE, Versiculo;
 
 type
 
@@ -58,6 +58,9 @@ type
     MenuItem15: TMenuItem;
     MenuItem16: TMenuItem;
     MenuItem17: TMenuItem;
+    MenuItemStrongsCountNone: TMenuItem;
+    MenuItemStrongsCountWords: TMenuItem;
+    MenuItemStrongsCountStrongs: TMenuItem;
     MenuItemAbout: TMenuItem;
     MenuItemMouseHover: TMenuItem;
     MenuItem18: TMenuItem;
@@ -188,6 +191,7 @@ var
   FrmPrincipal: TFrmPrincipal;
   ProjetoAtual: TProjeto;
   opts: TIniFile;
+  FStrongsCountMode: TStrongsCountMode;
 
 const
   MAX_MRU = 10;
@@ -305,7 +309,7 @@ begin
   ProjetoAtual.OnAlterarVersiculo := @QuandoAlterarVersiculo;
   ProjetoAtual.OnSintagmaClick := @QuandoPalavraClicada;
   ProjetoAtual.PalavrasComStrongEmNegrito := MenuItemStrongNegrito.Checked;
-  ProjetoAtual.MostrarQtdStrongs := MenuItemStrongsCount.Checked;
+  ProjetoAtual.MostrarQtdStrongs := FStrongsCountMode;
   ProjetoAtual.Abrir(OpenDialog1.FileName);
   ProjetoAtual.ExibirDefinicoesSoComCtrl := MenuItemDictPopup.Checked;
   ProjetoAtual.SugerirAssociacaoAutomaticamente := MenuItem22.Checked;
@@ -468,7 +472,7 @@ begin
     ProjetoAtual := TProjeto.Criar([ScrollBox1, ScrollBox2, ScrollBox3, ScrollBox4], TreeView1, RadioGroupStatus, Memo1);
     ProjetoAtual.Escopo := QualEscopo;
     ProjetoAtual.PalavrasComStrongEmNegrito := MenuItemStrongNegrito.Checked;
-    ProjetoAtual.MostrarQtdStrongs := MenuItemStrongsCount.Checked;
+    ProjetoAtual.MostrarQtdStrongs := FStrongsCountMode;
     ProjetoAtual.OnNovoVersiculo := @QuandoNovoVersiculo;
     ProjetoAtual.OnAlterarVersiculo := @QuandoAlterarVersiculo;
     ProjetoAtual.Novo(SaveDialog1.FileName, FormNovoProjeto1.EditNomeProjeto.Text);
@@ -618,6 +622,8 @@ begin
 end;
 
 procedure TFrmPrincipal.FormCreate(Sender: TObject);
+var
+  m: integer;
 begin
   ProjetoAtual := nil;
   opts := TIniFile.Create('iBiblia.ini');
@@ -628,7 +634,14 @@ begin
   MenuItemSyncTheWord.Checked := opts.ReadBool('opcoes', 'synctheword', false);
   MenuItemSynciBiblia.Checked := opts.ReadBool('opcoes', 'syncibiblia', false);
   MenuItemStrongNegrito.Checked := opts.ReadBool('opcoes', 'boldstrongs', false);
-  MenuItemStrongsCount.Checked := opts.ReadBool('opcoes', 'showstrongscount', false);
+
+  MenuItemStrongsCountNone.Tag    := Integer(scNone);
+  MenuItemStrongsCountWords.Tag   := Integer(scCountWords);
+  MenuItemStrongsCountStrongs.Tag := Integer(scCountStrongs);
+  FStrongsCountMode := TStrongsCountMode(opts.ReadInteger('opcoes', 'strongscountmode', Integer(scNone)));
+  for m:=0 to MenuItemStrongsCount.Count-1 do
+    if MenuItemStrongsCount.Items[m].Tag = Integer(FStrongsCountMode) then
+      MenuItemStrongsCount.Items[m].Checked := true;
 
   FPopupTrigger := TPopupTrigger(opts.ReadInteger('opcoes', 'popuptrigger', LongInt(ptMouseHover)));
   MenuItemPopupTriggerClick(MenuItemDictPopup.Items[integer(FPopupTrigger)]);
@@ -657,6 +670,8 @@ begin
 end;
 
 procedure TFrmPrincipal.FormDestroy(Sender: TObject);
+var
+  m: TMenuItem;
 begin
   DescarregarMRU(MenuItemRecent);
   opts.WriteInteger('leiaute', 'principal.largura', Width);
@@ -672,7 +687,7 @@ begin
   opts.WriteBool('opcoes', 'synctheword', MenuItemSyncTheWord.Checked);
   opts.WriteBool('opcoes', 'syncibiblia', MenuItemSynciBiblia.Checked);
   opts.WriteBool('opcoes', 'boldstrongs', MenuItemStrongNegrito.Checked);
-  opts.WriteBool('opcoes', 'showstrongscount', MenuItemStrongsCount.Checked);
+  opts.WriteInteger('opcoes', 'strongscountmode', Integer(FStrongsCountMode));
   opts.WriteString('opcoes', 'language', language);
   opts.WriteBool('opcoes', 'alwaysontop', MenuItemAlwaysOnTop.Checked);
   opts.WriteInteger('opcoes', 'popuptrigger', LongInt(FPopupTrigger));
@@ -802,10 +817,22 @@ begin
 end;
 
 procedure TFrmPrincipal.MenuItemStrongsCountClick(Sender: TObject);
+var
+  i: integer;
+  m: TMenuItem;
 begin
-  TMenuItem(Sender).Checked := not TMenuItem(Sender).Checked;
-  if assigned(ProjetoAtual) then
-    ProjetoAtual.MostrarQtdStrongs := TMenuItem(Sender).Checked;
+  for i:=0 to MenuItemStrongsCount.Count-1 do
+  begin
+    m := MenuItemStrongsCount.Items[i];
+    if m = Sender then
+    begin
+      m.Checked := true;
+      FStrongsCountMode := TStrongsCountMode(m.Tag);
+      if assigned(ProjetoAtual) then
+        ProjetoAtual.MostrarQtdStrongs := TStrongsCountMode(m.Tag);
+    end else
+      m.Checked := false;
+  end;
 end;
 
 procedure TFrmPrincipal.MenuItemSynciBibliaClick(Sender: TObject);
