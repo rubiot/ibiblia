@@ -872,8 +872,11 @@ begin
   begin
     FATmpVerse[tbOrigem ].Texto := FTblPares.Fields[FACamposTexto[tbOrigem ]].AsString;
     FATmpVerse[tbDestino].Texto := FTblPares.Fields[FACamposTexto[tbDestino]].AsString;
+
     try
       FATmpVerse[tbOrigem ].Pares := FTblPares.FieldByName('pare_pares').AsString;
+      FATmpVerse[texto].AlterarTexto(versiculo);
+      FTblPares.FieldByName('pare_pares').AsString := FATmpVerse[tbOrigem].Pares;
     except
       on E: Exception do
         MessageDlg(SError, SCorruptedData + #13#10#13#10 + Referencia + #13#10 +
@@ -882,8 +885,7 @@ begin
                     FATmpVerse[tbOrigem].DebugTokens, FATmpVerse[tbDestino].DebugTokens]),
              mtError, [mbOK], 0);
     end;
-    FATmpVerse[texto].AlterarTexto(versiculo);
-    FTblPares.FieldByName('pare_pares').AsString := FATmpVerse[tbOrigem].Pares;
+
     FTblPares.FieldByName('pare_situacao').AsInteger := 2; // needs review
   end;
 

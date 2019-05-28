@@ -412,13 +412,32 @@ begin
   SintagmaClipboard := nil;
 end;
 
-{ Substitui o texto do versículo mantendo as associações existentes }
+{ Replaces the verse text trying to keep existing associations }
 procedure TVersiculo.AlterarTexto(_XML: string);
+
+  procedure DeleteSyntagm(i: integer; newlist: TSintagmaList);
+  var
+    s, s1, pair: TSintagma;
+  begin
+    s := FSintagmas[i];
+    if assigned(s.Pares) then
+    begin
+      for pair in FVersiculoRef.Sintagmas do
+        pair.Pares.Remove(s);
+      s.Pares.Clear;
+    end;
+
+    if s.Tipo = tsSintagma then
+      for s1 in newlist do
+        if assigned(s1.Irmaos) then
+          s1.Irmaos.Remove(s);
+
+    s.Destruir;
+    FSintagmas.Delete(i);
+  end;
+
 var
   new, result: TSintagmaList;
-  fwd_new: TSintagmaListEnumerator;
-  rev_new: TSintagmaListReverseEnumerator;
-  middle: integer;
   s: TSintagma;
   found: boolean;
 begin
@@ -430,96 +449,56 @@ begin
 
   LimparSelecao;
 
-  if FSintagmas.Count = 0 then
-  begin
-    FSintagmas := new;
-  end
+  if FSintagmas.Empty then
+    FSintagmas := new
   else
   begin
     result := TSintagmaList.Create;
 
-    { reaproveitando sintagmas não modificados do início }
-    fwd_new := new.GetEnumerator;
-    for s in FSintagmas do
-    begin
-      if not fwd_new.MoveNext then
-        break;
-      if s.Igual(new[0]) then
-      begin
-        result.Add(s);
-        FSintagmas.Delete(0);
-        new[0].Destruir;
-        new.Delete(0);
-      end
-      else
-        break;
-    end;
-    fwd_new.Destroy;
-
-    middle := result.Count;
-    { reaproveitando sintagmas não modificados do fim }
-    rev_new := new.GetReverseEnumerator;
-    for s in FSintagmas.GetReverseEnumerator do
-    begin
-      if not rev_new.MoveNext then
-        break;
-      if s.Igual(new[new.Count-1]) then
-      begin
-        result.Insert(middle, s);
-        FSintagmas.Remove(s);
-        new[new.Count-1].Destruir;
-        new.Delete(new.Count-1);
-      end;
-    end;
-    rev_new.Destroy;
-
-    { tentando reaproveitar os sintagmas do meio }
     while not (new.Empty and FSintagmas.Empty) do
     begin
-      if new.Count = 0 then
+      if new.Empty then
+        DeleteSyntagm(0, result)
+      else if FSintagmas.Empty then
       begin
-        FSintagmas[0].Destruir;
-        FSintagmas.Delete(0);
-      end
-      else
-      if FSintagmas.Count = 0 then
-      begin
-       result.Insert(middle, new[0]);
+       result.Add(new[0]);
        new.Delete(0);
       end
-      else
-      if new[0].Igual(FSintagmas[0]) then
+      else if FSintagmas.First.Tipo <> tsSintagma then
+        DeleteSyntagm(0, result)
+      else if new.First.Tipo <> tsSintagma then
       begin
-        result.Insert(middle, FSintagmas[0]);
+        result.Add(new[0]);
+        new.Delete(0);
+      end
+      else if new.First.Igual(FSintagmas.First) then
+      begin
+        result.Add(FSintagmas.First);
         FSintagmas.Delete(0);
-        new[0].Destruir;
+        new.First.Destruir;
         new.Delete(0);
       end
       else
       begin
-        // verificando se o velho sintagma ainda será usado
+        { checking if the old syntagm will be used in the future }
         found := false;
         for s in new do
-          if s.Igual(FSintagmas[0]) then
+          if FSintagmas.First.Igual(s) then
           begin
+            result.Add(new[0]);
+            new.Delete(0);
             found := true;
             break;
           end;
-        if not found then // não será utilizado, apagando-o
-        begin
-          FSintagmas[0].Destruir;
-          FSintagmas.Delete(0);
-        end;
-        result.Insert(middle, new[0]);
-        new.Delete(0);
+        if not found then { nope, wasting it }
+          DeleteSyntagm(0, result);
       end;
-      Inc(middle);
     end;
 
-    if new.Count > 0 then
+    if not new.Empty then
       raise Exception.Create('Ainda há sintagmas novos que não foram liberados!');
 
-    if FSintagmas.Count > 0 then
+    if not FSintagmas.Empty then
       raise Exception.Create('Ainda há sintagmas antigos que não foram liberados!');
 
     LimparSintagmas;
@@ -586,6 +565,7 @@ end;
 
 function TVersiculo.GetPares: string;
 var
+  b: integer;
   s, p: TSintagma;
   _xml: TStringStream;
   tmp: TSintagmaList;
@@ -608,7 +588,10 @@ begin
       _xml.WriteString('" b="');
       for p in s.Pares do
       begin
-        _xml.WriteString(Format('%d', [FVersiculoRef.Sintagmas.IndexOf(p)]));
+        b := FVersiculoRef.Sintagmas.IndexOf(p);
+        if b < 0 then
+           raise exception.Create('Pair not found in other verse');
+        _xml.WriteString(Format('%d', [b]));
         if s.Pares.IndexOf(p) <> s.Pares.Count-1 then
           _xml.WriteString(',');
       end;

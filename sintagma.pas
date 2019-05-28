@@ -52,6 +52,7 @@ type
     function GetS(Index: Integer): TSintagma;
     procedure PutS(Index: Integer; Item: TSintagma);
   public
+    function First: TSintagma;
     function GetEnumerator: TSintagmaListEnumerator;
     function GetReverseEnumerator: TSintagmaListReverseEnumerator;
     property Itens[Index: Integer]: TSintagma read GetS write PutS; default;
@@ -762,6 +763,11 @@ procedure TSintagmaList.PutS(Index: Integer; Item: TSintagma);
 begin
   if IndexOf(Item) = -1 then  // evitando duplicatas
     Put(Index, Item);
+end;
+
+function TSintagmaList.First: TSintagma;
+begin
+  Result := GetS(0);
 end;
 
 function TSintagmaList.GetEnumerator: TSintagmaListEnumerator;
