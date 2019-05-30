@@ -797,11 +797,11 @@ end;
 
 procedure TSintagmaList.AddList(AList: TSintagmaList);
 var
-  i: smallint;
+  s: TSintagma;
 begin
-  for i:=0 to AList.Count-1 do
-    if IndexOf(AList[i]) = -1 then
-       Add(AList[i]);
+  for s in AList do
+    if IndexOf(s) = -1 then
+       Add(s);
 end;
 
 end.
