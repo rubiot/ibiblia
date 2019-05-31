@@ -17,6 +17,8 @@ type
     verse2: TVersiculo;
 
     procedure MakeTwoAssociatedWords;
+    procedure AssertSyntagmListEquals(list: TSintagmaList; const values: array of const);
+    procedure AssertPairsAndSiblings(syntagm: TSintagma; const pairs, siblings: array of const);
   protected
     procedure SetUp; override;
     procedure TearDown; override;
@@ -283,30 +285,10 @@ begin
 
   verse1.AlterarTexto('original1 original2');
 
-  with original1 do
-  begin
-    AssertEquals(1, Pares.Count);
-    AssertTrue(Pares[0] = translation1);
-    AssertEquals(0, Irmaos.Count);
-  end;
-  with original2 do
-  begin
-    AssertEquals(1, Pares.Count);
-    AssertTrue(Pares[0] = translation2);
-    AssertEquals(0, Irmaos.Count);
-  end;
-  with translation1 do
-  begin
-    AssertEquals(1, Pares.Count);
-    AssertTrue(Pares[0] = original1);
-    AssertEquals(0, Irmaos.Count);
-  end;
-  with translation2 do
-  begin
-    AssertEquals(1, Pares.Count);
-    AssertTrue(Pares[0] = original2);
-    AssertEquals(0, Irmaos.Count);
-  end;
+  AssertPairsAndSiblings(original1,    [translation1], []);
+  AssertPairsAndSiblings(original2,    [translation2], []);
+  AssertPairsAndSiblings(translation1, [original1   ], []);
+  AssertPairsAndSiblings(translation2, [original2   ], []);
 end;
 
 procedure TVerseTests.ReplaceTextChangeBeginning;
@@ -328,37 +310,13 @@ begin
   neworiginal1 := verse1.Sintagmas[2];
   neworiginal2 := verse1.Sintagmas[4];
 
-  with neworiginal3 do
-  begin
-    AssertEquals(0, Pares.Count);
-    AssertEquals(0, Irmaos.Count);
-  end;
-  with neworiginal1 do
-  begin
-    AssertTrue(neworiginal1 = original1);
-    AssertEquals(1, Pares.Count);
-    AssertTrue(Pares[0] = translation1);
-    AssertEquals(0, Irmaos.Count);
-  end;
-  with neworiginal2 do
-  begin
-    AssertTrue(neworiginal2 = original2);
-    AssertEquals(1, Pares.Count);
-    AssertTrue(Pares[0] = translation2);
-    AssertEquals(0, Irmaos.Count);
-  end;
-  with translation1 do
-  begin
-    AssertEquals(1, Pares.Count);
-    AssertTrue(Pares[0] = original1);
-    AssertEquals(0, Irmaos.Count);
-  end;
-  with translation2 do
-  begin
-    AssertEquals(1, Pares.Count);
-    AssertTrue(Pares[0] = original2);
-    AssertEquals(0, Irmaos.Count);
-  end;
+  AssertTrue(neworiginal1 = original1);
+  AssertTrue(neworiginal2 = original2);
+  AssertPairsAndSiblings(neworiginal1, [translation1], []);
+  AssertPairsAndSiblings(neworiginal2, [translation2], []);
+  AssertPairsAndSiblings(neworiginal3, [], []);
+  AssertPairsAndSiblings(translation1, [neworiginal1], []);
+  AssertPairsAndSiblings(translation2, [neworiginal2], []);
 end;
 
 procedure TVerseTests.ReplaceTextChangeEnd;
@@ -380,37 +338,13 @@ begin
   neworiginal2 := verse1.Sintagmas[2];
   neworiginal3 := verse1.Sintagmas[4];
 
-  with neworiginal3 do
-  begin
-    AssertEquals(0, Pares.Count);
-    AssertEquals(0, Irmaos.Count);
-  end;
-  with neworiginal1 do
-  begin
-    AssertTrue(neworiginal1 = original1);
-    AssertEquals(1, Pares.Count);
-    AssertTrue(Pares[0] = translation1);
-    AssertEquals(0, Irmaos.Count);
-  end;
-  with neworiginal2 do
-  begin
-    AssertTrue(neworiginal2 = original2);
-    AssertEquals(1, Pares.Count);
-    AssertTrue(Pares[0] = translation2);
-    AssertEquals(0, Irmaos.Count);
-  end;
-  with translation1 do
-  begin
-    AssertEquals(1, Pares.Count);
-    AssertTrue(Pares[0] = original1);
-    AssertEquals(0, Irmaos.Count);
-  end;
-  with translation2 do
-  begin
-    AssertEquals(1, Pares.Count);
-    AssertTrue(Pares[0] = original2);
-    AssertEquals(0, Irmaos.Count);
-  end;
+  AssertTrue(neworiginal1 = original1);
+  AssertTrue(neworiginal2 = original2);
+  AssertPairsAndSiblings(neworiginal1, [translation1], []);
+  AssertPairsAndSiblings(neworiginal2, [translation2], []);
+  AssertPairsAndSiblings(neworiginal3, [], []);
+  AssertPairsAndSiblings(translation1, [neworiginal1], []);
+  AssertPairsAndSiblings(translation2, [neworiginal2], []);
 end;
 
 procedure TVerseTests.ReplaceTextChangeMiddle;
@@ -432,37 +366,13 @@ begin
   neworiginal3 := verse1.Sintagmas[2];
   neworiginal2 := verse1.Sintagmas[4];
 
-  with neworiginal3 do
-  begin
-    AssertEquals(0, Pares.Count);
-    AssertEquals(0, Irmaos.Count);
-  end;
-  with neworiginal1 do
-  begin
-    AssertTrue(neworiginal1 = original1);
-    AssertEquals(1, Pares.Count);
-    AssertTrue(Pares[0] = translation1);
-    AssertEquals(0, Irmaos.Count);
-  end;
-  with neworiginal2 do
-  begin
-    AssertTrue(neworiginal2 = original2);
-    AssertEquals(1, Pares.Count);
-    AssertTrue(Pares[0] = translation2);
-    AssertEquals(0, Irmaos.Count);
-  end;
-  with translation1 do
-  begin
-    AssertEquals(1, Pares.Count);
-    AssertTrue(Pares[0] = original1);
-    AssertEquals(0, Irmaos.Count);
-  end;
-  with translation2 do
-  begin
-    AssertEquals(1, Pares.Count);
-    AssertTrue(Pares[0] = original2);
-    AssertEquals(0, Irmaos.Count);
-  end;
+  AssertTrue(neworiginal1 = original1);
+  AssertTrue(neworiginal2 = original2);
+  AssertPairsAndSiblings(neworiginal1, [translation1], []);
+  AssertPairsAndSiblings(neworiginal2, [translation2], []);
+  AssertPairsAndSiblings(neworiginal3, [], []);
+  AssertPairsAndSiblings(translation1, [neworiginal1], []);
+  AssertPairsAndSiblings(translation2, [neworiginal2], []);
 end;
 
 procedure TVerseTests.MakeTwoAssociatedWords;
@@ -487,6 +397,21 @@ begin
   original2.SelecaoMais;
   translation2.SelecaoMais;
   verse1.AssociarSintagmas;
+end;
+
+procedure TVerseTests.AssertSyntagmListEquals(list: TSintagmaList; const values: array of const);
+var
+  i: integer;
+begin
+  AssertEquals(High(values) + 1, list.Count);
+  for i := 0 to High(values) do
+    AssertTrue(TSintagma(values[i].VPointer) = list[i]);
+end;
+
+procedure TVerseTests.AssertPairsAndSiblings(syntagm: TSintagma; const pairs, siblings: array of const);
+begin
+  AssertSyntagmListEquals(syntagm.Pares, pairs);
+  AssertSyntagmListEquals(syntagm.Irmaos, siblings);
 end;
 
 procedure TVerseTests.SetUp;
