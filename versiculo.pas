@@ -441,7 +441,7 @@ procedure TVersiculo.AlterarTexto(_XML: string);
 
 var
   new, result: TSintagmaList;
-  s: TSintagma;
+  s, old: TSintagma;
   found: boolean;
 begin
   if FXML = _XML then
@@ -485,14 +485,18 @@ begin
       begin
         { checking if the old syntagm will be used in the future }
         found := false;
-        for s in new do
-          if FSintagmas.First.Igual(s) then
-          begin
-            result.Add(new[0]);
-            new.Delete(0);
-            found := true;
-            break;
-          end;
+        old := FSintagmas.First;
+        if not old.Pares.Empty then // does it have associations?
+        begin
+          for s in new do
+            if old.Igual(s) then
+            begin
+              result.Add(new[0]);
+              new.Delete(0);
+              found := true;
+              break;
+            end;
+        end;
         if not found then { nope, wasting it }
           DeleteSyntagm(0, result);
       end;
