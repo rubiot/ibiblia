@@ -134,7 +134,7 @@ begin
   begin
     TabControlStrongs.TabIndex := 0;
     FEditStrong.RTF  := FStrongs[0];
-    FEditStrong.Zoom := ZoomMorfo;
+    FEditStrong.Zoom := ZoomStrong;
   end;
   if FMorfos.Count > 0 then
   begin
@@ -171,6 +171,7 @@ begin
   if not self.Visible then
     exit;
   self.Visible := false;
+  self.FormHide(self);
   TabControlStrongs.Tabs.Clear;
   TabControlMorfos.Tabs.Clear;
   FEditStrong.RTF := ' ';
