@@ -886,8 +886,6 @@ begin
                     FATmpVerse[tbOrigem].DebugTokens, FATmpVerse[tbDestino].DebugTokens]),
              mtError, [mbOK], 0);
     end;
-
-    FTblPares.FieldByName('pare_situacao').AsInteger := 2; // needs review
   end;
 
   FTblPares.Fields[FACamposTexto[texto]].AsString := versiculo;
