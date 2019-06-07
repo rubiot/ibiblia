@@ -13,8 +13,11 @@ uses
 
 type
 
+  TVersiculo = class;
+
   TOnSintagmaEvent = procedure (Sender: TSintagma) of object;
   TOnAlterarVersiculoEvent = procedure () of object;
+  TOnExportTextEvent = procedure (Sender: TVersiculo) of object;
 
   TStrongsCountMode = (scNone, scCountWords, scCountStrongs);
 
@@ -45,9 +48,11 @@ type
     FOnSintagmaClick: TOnSintagmaEvent;
     FOnSintagmaMouseEnter: TOnSintagmaEvent;
     FOnSintagmaMouseLeave: TOnSintagmaEvent;
+    FOnExportText: TOnExportTextEvent;
     FXML: string;
     FONTParser: TONTParser;
-    FContextPopup: TPopupMenu;
+    FSyntagmPopupMenu: TPopupMenu;
+    FVersePopupMenu: TPopupMenu;
     //FOnNovaAssociacao: TOnAssociacaoEvent;
     //FOnRemoverAssociacao: TOnAssociacaoEvent;
     function GetAndamentoAssociacao: Single;
@@ -73,6 +78,10 @@ type
     function GetTokens: string;
     procedure OnCopiarTagsSintagma(Sender: TObject);
     procedure OnColarTagsSintagma(Sender: TObject);
+    procedure OnSaveTextToFile(Sender: TObject);
+    procedure OnVerseMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+    procedure InitSyntagmPopupMenu;
+    procedure InitVersePopupMenu;
   protected
     { Protected declarations }
   public
@@ -116,6 +125,7 @@ type
     property OnClick: TOnSintagmaEvent read FOnSintagmaClick write FOnSintagmaClick;
     property OnMouseEnter: TOnSintagmaEvent read FOnSintagmaMouseEnter write FOnSintagmaMouseEnter;
     property OnMouseLeave: TOnSintagmaEvent read FOnSintagmaMouseLeave write FOnSintagmaMouseLeave;
+    property OnExportText: TOnExportTextEvent read FOnExportText write FOnExportText;
     property OnAlterarVersiculo: TOnAlterarVersiculoEvent read FOnAlterarVersiculo write FOnAlterarVersiculo;
     //property OnNovaAssociacao: TOnAssociacaoEvent read FOnNovaAssociacao write FOnNovaAssociacao;
     //property OnRemoverAssociacao: TOnAssociacaoEvent read FOnRemoverAssociacao write FOnRemoverAssociacao;
@@ -137,6 +147,11 @@ type
     { Published declarations }
   end;
 
+resourcestring
+  SCopyTags ='&Copy tags';
+  SPasteTags = '&Paste tags';
+  SSaveToFile = '&Save text to file...';
+
 implementation
 
 var
@@ -145,8 +160,6 @@ var
 { TVersiculo }
 
 constructor TVersiculo.Criar(TheOwner : TScrollBox);
-var
-  item: TMenuItem;
 begin
   FPanel := TheOwner;
   FAtivo := assigned(FPanel);
@@ -155,18 +168,9 @@ begin
   begin
     FPanel.Color   := clWindow;
     FPanel.Caption := '';
-    FContextPopup    := TPopupMenu.Create(FPanel);
-    FContextPopup.Parent := FPanel;
 
-    Item := TMenuItem.Create(FContextPopup);
-    Item.Caption := '&Copiar tags';
-    Item.OnClick := @OnCopiarTagsSintagma;
-    FContextPopup.Items.Add(Item);
-
-    Item := TMenuItem.Create(FContextPopup);
-    Item.Caption := 'Co&lar tags';
-    Item.OnClick := @OnColarTagsSintagma;
-    FContextPopup.Items.Add(Item);
+    InitSyntagmPopupMenu;
+    InitVersePopupMenu;
 
     FEdit            := TEdit.Create(FPanel);
     FEdit.Visible    := false;
@@ -174,6 +178,7 @@ begin
     FEdit.OnKeyDown  := @EditKeyDown;
     FEdit.OnExit     := @EditExit;
     FPanel.InsertControl(FEdit);
+    FPanel.OnMouseDown := @OnVerseMouseDown;
   end;
 
   FStrongCount          := nil;
@@ -203,8 +208,9 @@ begin
   FSelecao.Destroy;
   if assigned(FPanel) then
   begin
-    FEdit.Destroy;
-    FContextPopup.Destroy;
+    FEdit.Free;
+    FSyntagmPopupMenu.Free;
+    FVersePopupMenu.Free;
   end;
   FONTParser.Destroy;
   //FFontePadrao.Free;
@@ -350,9 +356,9 @@ procedure TVersiculo.OnSintagmaPopupMenu(s: TSintagma);
 var
   p: TPoint;
 begin
-  FContextPopup.Tag := PtrInt(s);
+  FSyntagmPopupMenu.Tag := PtrInt(s);
   p := s.LabelRef.ClientToScreen(s.LabelRef.ClientRect.BottomRight);
-  FContextPopup.PopUp(p.x, p.y);
+  FSyntagmPopupMenu.PopUp(p.x, p.y);
 end;
 
 procedure TVersiculo.MostrarTags;
@@ -1182,7 +1188,7 @@ end;
 
 procedure TVersiculo.OnCopiarTagsSintagma(Sender: TObject);
 begin
-  SintagmaClipboard := TSintagma(FContextPopup.Tag);
+  SintagmaClipboard := TSintagma(FSyntagmPopupMenu.Tag);
 end;
 
 procedure TVersiculo.OnColarTagsSintagma(Sender: TObject);
@@ -1193,7 +1199,7 @@ begin
   if not assigned(SintagmaClipboard) then
     exit;
 
-  s := TSintagma(FContextPopup.Tag);
+  s := TSintagma(FSyntagmPopupMenu.Tag);
 
   s.Strong.Clear;
   for t in SintagmaClipboard.Strong do
@@ -1214,6 +1220,51 @@ begin
   s.SelecaoMais;
 
   Renderizar;
+end;
+
+procedure TVersiculo.OnSaveTextToFile(Sender: TObject);
+begin
+  if assigned(FOnExportText) then
+     FOnExportText(Self);
+end;
+
+procedure TVersiculo.OnVerseMouseDown(Sender: TObject; Button: TMouseButton;
+  Shift: TShiftState; X, Y: Integer);
+begin
+  if Button = mbRight then
+    FVersePopupMenu.PopUp;
+end;
+
+procedure TVersiculo.InitSyntagmPopupMenu;
+var
+  Item: TMenuItem;
+begin
+  FSyntagmPopupMenu := TPopupMenu.Create(FPanel);
+  FSyntagmPopupMenu.Parent := FPanel;
+
+  Item := TMenuItem.Create(FSyntagmPopupMenu);
+  Item.Caption := SCopyTags;
+  Item.OnClick := @OnCopiarTagsSintagma;
+  FSyntagmPopupMenu.Items.Add(Item);
+
+  Item := TMenuItem.Create(FSyntagmPopupMenu);
+  Item.Caption := SPasteTags;
+  Item.OnClick := @OnColarTagsSintagma;
+  FSyntagmPopupMenu.Items.Add(Item);
+end;
+
+procedure TVersiculo.InitVersePopupMenu;
+var
+  Item: TMenuItem;
+begin
+  FVersePopupMenu := TPopupMenu.Create(FPanel);
+  FVersePopupMenu.Parent := FPanel;
+  FVersePopupMenu.Tag := PtrInt(Self);
+
+  Item := TMenuItem.Create(FVersePopupMenu);
+  Item.Caption := SSaveToFile;
+  Item.OnClick := @OnSaveTextToFile;
+  FVersePopupMenu.Items.Add(Item);
 end;
 
 constructor TVersiculo.Criar;

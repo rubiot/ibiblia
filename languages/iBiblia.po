@@ -364,6 +364,10 @@ msgstr ""
 msgid "Exodus"
 msgstr ""
 
+#: projeto.sexporttextsavedlgtitle
+msgid "Please choose a destination file"
+msgstr ""
+
 #: projeto.sexporttofileerror
 msgid ""
 "iBiblia found an error while exporting the Bible module file.\n"
@@ -1163,5 +1167,21 @@ msgstr ""
 #: tfrmprincipal.toolbuttonexit.hint
 msgctxt "tfrmprincipal.toolbuttonexit.hint"
 msgid "Exit the program"
+msgstr ""
+
+#: theworddictionary.screatetheworddictionaryerror
+msgid "Unable to create new TheWord module file"
+msgstr ""
+
+#: versiculo.scopytags
+msgid "&Copy tags"
+msgstr ""
+
+#: versiculo.spastetags
+msgid "&Paste tags"
+msgstr ""
+
+#: versiculo.ssavetofile
+msgid "&Save text to file..."
 msgstr ""
 

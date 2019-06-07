@@ -93,7 +93,7 @@ begin
   FStrongs.Clear;
   FMorfos.Clear;
   TabControlStrongs.Tabs.Clear;
-  TabControlMorfos.Tabs.Create;
+  TabControlMorfos.Tabs.Clear;
 end;
 
 procedure TFrmDictionaryPopup.FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState

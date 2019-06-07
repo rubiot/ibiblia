@@ -385,6 +385,10 @@ msgstr "Ester"
 msgid "Exodus"
 msgstr "Êxodo"
 
+#: projeto.sexporttextsavedlgtitle
+msgid "Please choose a destination file"
+msgstr "Escolha o arquivo de destino"
+
 #: projeto.sexporttofileerror
 msgid ""
 "iBiblia found an error while exporting the Bible module file.\n"
@@ -1029,7 +1033,7 @@ msgstr "Sugerir associações automaticamente"
 
 #: tfrmprincipal.menuitem22.hint
 msgid "Run the auto-association whenever you navigate to an unassociated verse"
-msgstr "Sugerir associações automaticamente sempre que um versículo não tiver associações"
+msgstr "Fazer a associação automática sempre que um versículo não tiver associações"
 
 #: tfrmprincipal.menuitem23.caption
 msgid "Language"
@@ -1049,7 +1053,7 @@ msgstr "Alt + apontar palavra"
 
 #: tfrmprincipal.menuitemaltmousehover.hint
 msgid "Activate the popup dictionary whenever you hover the mouse pointer over a word while holding the Alt key"
-msgstr "Ativar o popup do dicionário sempre que você parar o mouse sobre uma palavra com a tecla Alt pressionada"
+msgstr "Ativar a janela de definição apontando o mouse e segurando a tecla Alt"
 
 #: tfrmprincipal.menuitemalwaysontop.caption
 msgid "Always on top"
@@ -1065,7 +1069,7 @@ msgstr "Ctrl + apontar palavra"
 
 #: tfrmprincipal.menuitemctrlmousehover.hint
 msgid "Activate the popup dictionary whenever you hover the mouse pointer over a word while holding the Ctrl key"
-msgstr "Ativar o popup do dicionário sempre que você parar o mouse sobre uma palavra com a tecla Ctrl pressionada"
+msgstr "Ativar a janela de definição apontando o mouse e segurando a tecla Ctrl"
 
 #: tfrmprincipal.menuitemdictpopup.caption
 msgid "Dictionary popup trigger..."
@@ -1087,7 +1091,7 @@ msgstr "Apontar palavra"
 
 #: tfrmprincipal.menuitemmousehover.hint
 msgid "Activate the popup dictionary whenever you hover the mouse pointer over a word"
-msgstr "Ativar o popup do dicionário sempre que você parar o mouse sobre uma palavra"
+msgstr "Ativar a janela de definição apontando o mouse para a palavra"
 
 #: tfrmprincipal.menuitemrecent.caption
 msgid "Open recent"
@@ -1099,7 +1103,7 @@ msgstr "Palavras com strongs em negrito"
 
 #: tfrmprincipal.menuitemstrongnegrito.hint
 msgid "Words with associated strong's tags are displayed in bold font"
-msgstr "Palavras com strongs associados serão exibidas em negrito"
+msgstr "Exibir em negrito palavras que contêm strongs associados"
 
 #: tfrmprincipal.menuitemstrongscount.caption
 msgid "Strongs count"
@@ -1135,7 +1139,7 @@ msgstr "Sincronizar iBiblia com o versículo do theWord"
 
 #: tfrmprincipal.menuitemsyncibiblia.hint
 msgid "Keeps iBiblia synchronized to theWord's current verse"
-msgstr "Manter o iBiblia sincronizado com o versículo atual do theWord"
+msgstr "Manter o iBiblia sincronizado com o versículo do theWord"
 
 #: tfrmprincipal.menuitemsynctheword.caption
 msgid "Sync theWord to iBiblia verse"
@@ -1143,7 +1147,7 @@ msgstr "Sincronizar theWord com o versículo do iBiblia"
 
 #: tfrmprincipal.menuitemsynctheword.hint
 msgid "Keeps theWord synchronized to iBiblia's current verse, and current word's strong, morphology and lemma."
-msgstr "Manter o theWord sincronizado com o versículo atual do iBiblia e sincronizar os dicionários do theWord às informações de strong, lemma e morfologia da palavra selecionada"
+msgstr "Manter o theWord sincronizado com o versículo atual do iBiblia, além de sincronizar a definição de palavras clicadas."
 
 #: tfrmprincipal.opendialog1.title
 msgid "Open existing association project"
@@ -1188,3 +1192,19 @@ msgstr "Sair"
 msgctxt "tfrmprincipal.toolbuttonexit.hint"
 msgid "Exit the program"
 msgstr "Sair do programa"
+
+#: theworddictionary.screatetheworddictionaryerror
+msgid "Unable to create new TheWord module file"
+msgstr "Não foi possível criar o novo módulo do theWord"
+
+#: versiculo.scopytags
+msgid "&Copy tags"
+msgstr "&Copiar tags"
+
+#: versiculo.spastetags
+msgid "&Paste tags"
+msgstr "Co&lar tags"
+
+#: versiculo.ssavetofile
+msgid "&Save text to file..."
+msgstr "&Exportar texto para arquivo..."

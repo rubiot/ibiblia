@@ -396,6 +396,10 @@ msgstr "Esther"
 msgid "Exodus"
 msgstr "Exodus"
 
+#: projeto.sexporttextsavedlgtitle
+msgid "Please choose a destination file"
+msgstr "Please choose a destination file"
+
 #: projeto.sexporttofileerror
 #| msgid ""
 #| "iBiblia found and error while exporting the Bible module file.\n"
@@ -1037,12 +1041,10 @@ msgid "Options"
 msgstr "Options"
 
 #: tfrmprincipal.menuitem22.caption
-#| msgid "Auto-associate verses on navigation"
 msgid "Auto-associate unassociated verses"
 msgstr "Auto-associate unassociated verses"
 
 #: tfrmprincipal.menuitem22.hint
-#| msgid "Run the auto-association whenever you navigate to a verse with no associations"
 msgid "Run the auto-association whenever you navigate to an unassociated verse"
 msgstr "Run the auto-association whenever you navigate to an unassociated verse"
 
@@ -1067,7 +1069,6 @@ msgid "Activate the popup dictionary whenever you hover the mouse pointer over a
 msgstr "Activate the popup dictionary whenever you hover the mouse pointer over a word while holding the Alt key"
 
 #: tfrmprincipal.menuitemalwaysontop.caption
-#| msgid "Keep iBiblia always on top of other windows"
 msgid "Always on top"
 msgstr "Always on top"
 
@@ -1084,7 +1085,6 @@ msgid "Activate the popup dictionary whenever you hover the mouse pointer over a
 msgstr "Activate the popup dictionary whenever you hover the mouse pointer over a word while holding the Ctrl key"
 
 #: tfrmprincipal.menuitemdictpopup.caption
-#| msgid "Activate dictionary popup when..."
 msgid "Dictionary popup trigger..."
 msgstr "Dictionary popup trigger..."
 
@@ -1111,7 +1111,6 @@ msgid "Open recent"
 msgstr "Open recent"
 
 #: tfrmprincipal.menuitemstrongnegrito.caption
-#| msgid "Show words with strong tags in bold"
 msgid "Words with strongs in bold"
 msgstr "Words with strongs in bold"
 
@@ -1207,3 +1206,19 @@ msgstr "Exit"
 msgctxt "tfrmprincipal.toolbuttonexit.hint"
 msgid "Exit the program"
 msgstr "Exit the program"
+
+#: theworddictionary.screatetheworddictionaryerror
+msgid "Unable to create new TheWord module file"
+msgstr "Unable to create new TheWord module file"
+
+#: versiculo.scopytags
+msgid "&Copy tags"
+msgstr "&Copy tags"
+
+#: versiculo.spastetags
+msgid "&Paste tags"
+msgstr "&Paste tags"
+
+#: versiculo.ssavetofile
+msgid "&Save text to file..."
+msgstr "&Save text to file..."

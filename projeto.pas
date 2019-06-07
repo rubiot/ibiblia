@@ -30,7 +30,8 @@ type
     tbOrigem,
     tbDestino,
     tbConsulta1,
-    tbConsulta2
+    tbConsulta2,
+    tbNone
   );
 
   TEscopoTexto = (etOT, etNT, etONT, etNone);
@@ -135,6 +136,7 @@ type
     procedure SintagmaOnMouseEnter(Sender: TSintagma);
     procedure SintagmaOnMouseLeave(Sender: TSintagma);
     procedure SintagmaOnClick(Sender: TSintagma);
+    procedure OnExportText(Sender: TVersiculo);
     procedure OnMudancaVersiculo(Sender: TObject; Node: TTreeNode);
     procedure OnAlterarTextoVersiculo(Sender: TMemoVersiculo);
     procedure OnExibirDefinicao(Sender: TObject);
@@ -304,6 +306,7 @@ resourcestring
   SExportToFileError = 'iBiblia found an error while exporting the Bible module file.'#13#10 +
                        'Please check if theWord is using the file, then close it and try again.';
   STranslationMemory = 'Translation memory';
+  SExportTextSaveDlgTitle = 'Please choose a destination file';
 
 const
   NLivrosVT: array[1..39] of string = (
@@ -1085,6 +1088,56 @@ begin
     else if (FRadioGroupSituacao.ItemIndex = 1) and ((FAVersiculo[tbOrigem].AndamentoAssociacao = 1) or (FAVersiculo[tbDestino].AndamentoAssociacao = 1)) then
       FRadioGroupSituacao.ItemIndex := 3; // associado
   end;
+end;
+
+procedure TProjeto.OnExportText(Sender: TVersiculo);
+var
+  lines: TStringList;
+  marker: string;
+  v, text: TTipoTextoBiblico;
+  SaveDlg: TSaveDialog;
+  destination: string;
+begin
+  SaveDlg := TSaveDialog.Create(nil);
+  SaveDlg.DefaultExt := '.txt';
+  SaveDlg.Title := SExportTextSaveDlgTitle;
+  destination := '';
+  if SaveDlg.Execute then
+    destination := SaveDlg.FileName;
+  SaveDlg.Free;
+
+  if destination.IsEmpty then
+    exit;
+
+  lines := TStringList.Create;
+
+  text := tbNone;
+  for v:=low(FAVersiculo) to high(FAVersiculo) do
+    if Sender = FAVersiculo[v] then
+    begin
+      text := v;
+      break;
+    end;
+
+  if text = tbNone then
+     raise Exception.Create('Invalid text type in OnVersePopup');
+
+  PreRolagemVersiculo(nil);
+  with FTblPares do
+  begin
+    DesabilitarEventosRolagem;
+    marker := GetID;
+    VersiculoInicial;
+    while not FTblPares.EOF do
+    begin
+      lines.Add(FTblPares.Fields[FACamposTexto[text]].AsString);
+      VersiculoSeguinte;
+    end;
+    IrPara(marker);
+    HabilitarEventosRolagem;
+  end;
+  lines.SaveToFile(destination);
+  lines.Free;
 end;
 
 procedure TProjeto.OnMudancaVersiculo(Sender: TObject; Node: TTreeNode);
@@ -2119,6 +2172,7 @@ begin
   owner.OnResize := @OnRedimensionarVersiculo;
   owner.OnDblClick := @OnDblClickVersiculo;
   FAVersiculo[texto].OnClick := @SintagmaOnClick;
+  FAVersiculo[texto].OnExportText := @OnExportText;
 
   //FAVersiculo[texto].MostrarDicas := true;
   if texto in [tbConsulta1, tbConsulta2] then

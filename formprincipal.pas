@@ -13,7 +13,7 @@ uses
   lclintf,
   {$ENDIF}
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, Menus,
-  ActnList, ComCtrls, ExtCtrls, StdCtrls, Projeto, IniFiles, Math,
+  ActnList, ComCtrls, ExtCtrls, StdCtrls, Projeto, IniFiles,
   Sintagma, LCLTranslator, unitabout, PCRE, Versiculo;
 
 type
