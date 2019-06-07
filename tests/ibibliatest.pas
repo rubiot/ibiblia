@@ -16,7 +16,7 @@ type
     verse1: TVersiculo;
     verse2: TVersiculo;
 
-    procedure MakeTwoAssociatedWords;
+    procedure Associate(const source: array of const; const dest: array of const);
     procedure AssertSyntagmListEquals(list: TSintagmaList; const values: array of const);
     procedure AssertPairsAndSiblings(syntagm: TSintagma; const pairs, siblings: array of const);
   protected
@@ -36,6 +36,7 @@ type
     procedure ReplaceTextChangeBeginning;
     procedure ReplaceTextChangeEnd;
     procedure ReplaceTextChangeMiddle;
+    procedure ReplaceTextTwice;
   end;
 
 implementation
@@ -122,21 +123,13 @@ var
 begin
   verse1.Texto := 'original';
   verse2.Texto := 'translation';
+  Associate([0], [0]);
 
   original    := verse1.Sintagmas.First;
   translation := verse2.Sintagmas.First;
 
-  original.SelecaoMais;
-  translation.SelecaoMais;
-
-  verse1.AssociarSintagmas;
-
-  AssertEquals(1, original.Pares.Count);
-  AssertEquals(1, translation.Pares.Count);
-  AssertTrue(original.Pares.First = translation);
-  AssertTrue(translation.Pares.First = original);
-  AssertTrue(original.Irmaos.Empty);
-  AssertTrue(translation.Irmaos.Empty);
+  AssertPairsAndSiblings(original,    [translation], []);
+  AssertPairsAndSiblings(translation, [original   ], []);
 end;
 
 procedure TVerseTests.AssociationOneToMany;
@@ -145,38 +138,15 @@ var
 begin
   verse1.Texto := 'original';
   verse2.Texto := 'translation1 translation2';
+  Associate([0], [0, 2]);
 
   original     := verse1.Sintagmas[0];
   translation1 := verse2.Sintagmas[0];
   translation2 := verse2.Sintagmas[2];
 
-  original.SelecaoMais;
-  translation1.SelecaoMais;
-  translation2.SelecaoMais;
-
-  verse1.AssociarSintagmas;
-
-  with original do
-  begin
-    AssertEquals(2, Pares.Count);
-    AssertTrue(Pares[0] = translation1);
-    AssertTrue(Pares[1] = translation2);
-    AssertEquals(0, Irmaos.Count);
-  end;
-  with translation1 do
-  begin
-    AssertEquals(1, Pares.Count);
-    AssertTrue(Pares.First = original);
-    AssertEquals(1, Irmaos.Count);
-    AssertTrue(Irmaos[0] = translation2); // 1 is the space
-  end;
-  with translation2 do
-  begin
-    AssertEquals(1, Pares.Count);
-    AssertTrue(Pares.First = original);
-    AssertEquals(1, Irmaos.Count);
-    AssertTrue(Irmaos[0] = translation1);
-  end;
+  AssertPairsAndSiblings(original,     [translation1, translation2], []);
+  AssertPairsAndSiblings(translation1, [original], [translation2]);
+  AssertPairsAndSiblings(translation2, [original], [translation1]);
 end;
 
 procedure TVerseTests.AssociationManyToOne;
@@ -185,38 +155,15 @@ var
 begin
   verse1.Texto := 'original1 original2';
   verse2.Texto := 'translation1';
+  Associate([0,2], [0]);
 
   original1    := verse1.Sintagmas[0];
   original2    := verse1.Sintagmas[2];
   translation1 := verse2.Sintagmas[0];
 
-  original1.SelecaoMais;
-  original2.SelecaoMais;
-  translation1.SelecaoMais;
-
-  verse1.AssociarSintagmas;
-
-  with original1 do
-  begin
-    AssertEquals(1, Pares.Count);
-    AssertTrue(Pares.First = translation1);
-    AssertEquals(1, Irmaos.Count);
-    AssertTrue(Irmaos[0] = original2); // 1 is the space
-  end;
-  with original2 do
-  begin
-    AssertEquals(1, Pares.Count);
-    AssertTrue(Pares.First = translation1);
-    AssertEquals(1, Irmaos.Count);
-    AssertTrue(Irmaos[0] = original1);
-  end;
-  with translation1 do
-  begin
-    AssertEquals(2, Pares.Count);
-    AssertTrue(Pares[0] = original1);
-    AssertTrue(Pares[1] = original2);
-    AssertEquals(0, Irmaos.Count);
-  end;
+  AssertPairsAndSiblings(original1,    [translation1], [original2]);
+  AssertPairsAndSiblings(original2,    [translation1], [original1]);
+  AssertPairsAndSiblings(translation1, [original1, original2], []);
 end;
 
 procedure TVerseTests.AssociationManyToMany;
@@ -225,58 +172,27 @@ var
 begin
   verse1.Texto := 'original1 original2';
   verse2.Texto := 'translation1 translation2';
+  Associate([0,2], [0,2]);
 
   original1    := verse1.Sintagmas[0];
   original2    := verse1.Sintagmas[2];
   translation1 := verse2.Sintagmas[0];
   translation2 := verse2.Sintagmas[2];
 
-  original1.SelecaoMais;
-  original2.SelecaoMais;
-  translation1.SelecaoMais;
-  translation2.SelecaoMais;
-
-  verse1.AssociarSintagmas;
-
-  with original1 do
-  begin
-    AssertEquals(2, Pares.Count);
-    AssertTrue(Pares[0] = translation1);
-    AssertTrue(Pares[1] = translation2);
-    AssertEquals(1, Irmaos.Count);
-    AssertTrue(Irmaos[0] = original2); // 1 is the space
-  end;
-  with original2 do
-  begin
-    AssertEquals(2, Pares.Count);
-    AssertTrue(Pares[0] = translation1);
-    AssertTrue(Pares[1] = translation2);
-    AssertEquals(1, Irmaos.Count);
-    AssertTrue(Irmaos[0] = original1);
-  end;
-  with translation1 do
-  begin
-    AssertEquals(2, Pares.Count);
-    AssertTrue(Pares[0] = original1);
-    AssertTrue(Pares[1] = original2);
-    AssertEquals(1, Irmaos.Count);
-    AssertTrue(Irmaos[0] = translation2);
-  end;
-  with translation2 do
-  begin
-    AssertEquals(2, Pares.Count);
-    AssertTrue(Pares[0] = original1);
-    AssertTrue(Pares[1] = original2);
-    AssertEquals(1, Irmaos.Count);
-    AssertTrue(Irmaos[0] = translation1);
-  end;
+  AssertPairsAndSiblings(original1,    [translation1, translation2], [original2]);
+  AssertPairsAndSiblings(original2,    [translation1, translation2], [original1]);
+  AssertPairsAndSiblings(translation1, [original1, original2], [translation2]);
+  AssertPairsAndSiblings(translation2, [original1, original2], [translation1]);
 end;
 
 procedure TVerseTests.ReplaceTextSameText;
 var
   original1, original2, translation1, translation2: TSintagma;
 begin
-  MakeTwoAssociatedWords;
+  verse1.Texto := 'original1 original2';
+  verse2.Texto := 'translation1 translation2';
+  Associate([0],[0]);
+  Associate([2],[2]);
 
   original1    := verse1.Sintagmas[0];
   original2    := verse1.Sintagmas[2];
@@ -296,7 +212,10 @@ var
   original1, original2, translation1, translation2: TSintagma;
   neworiginal1, neworiginal2, neworiginal3: TSintagma;
 begin
-  MakeTwoAssociatedWords;
+  verse1.Texto := 'original1 original2';
+  verse2.Texto := 'translation1 translation2';
+  Associate([0],[0]);
+  Associate([2],[2]);
 
   original1    := verse1.Sintagmas[0];
   original2    := verse1.Sintagmas[2];
@@ -324,7 +243,10 @@ var
   original1, original2, translation1, translation2: TSintagma;
   neworiginal1, neworiginal2, neworiginal3: TSintagma;
 begin
-  MakeTwoAssociatedWords;
+  verse1.Texto := 'original1 original2';
+  verse2.Texto := 'translation1 translation2';
+  Associate([0],[0]);
+  Associate([2],[2]);
 
   original1    := verse1.Sintagmas[0];
   original2    := verse1.Sintagmas[2];
@@ -352,7 +274,10 @@ var
   original1, original2, translation1, translation2: TSintagma;
   neworiginal1, neworiginal2, neworiginal3: TSintagma;
 begin
-  MakeTwoAssociatedWords;
+  verse1.Texto := 'original1 original2';
+  verse2.Texto := 'translation1 translation2';
+  Associate([0],[0]);
+  Associate([2],[2]);
 
   original1    := verse1.Sintagmas[0];
   original2    := verse1.Sintagmas[2];
@@ -375,27 +300,64 @@ begin
   AssertPairsAndSiblings(translation2, [neworiginal2], []);
 end;
 
-procedure TVerseTests.MakeTwoAssociatedWords;
+procedure TVerseTests.ReplaceTextTwice;
 var
-  original1, original2, translation1, translation2: TSintagma;
+  s, d: TSintagmaList;
+begin           // 0 2 4 6
+  verse1.Texto := 'a b c d';
+  verse2.Texto := 'a b c d';
+  Associate([0],[0]);
+  Associate([2],[2]);
+  Associate([4],[4]);
+  Associate([6],[6]);
+                    // 0 2 4 6 8
+  verse2.AlterarTexto('a b e c d');
+
+  s := verse1.Sintagmas;
+  d := verse2.Sintagmas;
+
+  AssertPairsAndSiblings(s[0], [d[0]], []);
+  AssertPairsAndSiblings(s[2], [d[2]], []);
+  AssertPairsAndSiblings(s[4], [d[6]], []);
+  AssertPairsAndSiblings(s[6], [d[8]], []);
+
+  AssertPairsAndSiblings(d[0], [s[0]], []);
+  AssertPairsAndSiblings(d[2], [s[2]], []);
+  AssertPairsAndSiblings(d[4], [],     []);
+  AssertPairsAndSiblings(d[6], [s[4]], []);
+  AssertPairsAndSiblings(d[8], [s[6]], []);
+                    // 0 2 4 6 8
+  verse2.AlterarTexto('a b c e d');
+
+  s := verse1.Sintagmas;
+  d := verse2.Sintagmas;
+
+  AssertPairsAndSiblings(s[0], [d[0]], []);
+  AssertPairsAndSiblings(s[2], [d[2]], []);
+  AssertPairsAndSiblings(s[4], [d[4]], []);
+  AssertPairsAndSiblings(s[6], [d[8]], []);
+
+  AssertPairsAndSiblings(d[0], [s[0]], []);
+  AssertPairsAndSiblings(d[2], [s[2]], []);
+  AssertPairsAndSiblings(d[4], [s[4]], []);
+  AssertPairsAndSiblings(d[6], [    ], []);
+  AssertPairsAndSiblings(d[8], [s[6]], []);
+end;
+
+procedure TVerseTests.Associate(const source: array of const;
+  const dest: array of const);
+var
+  i: integer;
 begin
-  verse1.Texto := 'original1 original2';
-  verse2.Texto := 'translation1 translation2';
-
-  original1    := verse1.Sintagmas[0];
-  original2    := verse1.Sintagmas[2];
-  translation1 := verse2.Sintagmas[0];
-  translation2 := verse2.Sintagmas[2];
-
-  original1.SelecaoMais;
-  translation1.SelecaoMais;
-  verse1.AssociarSintagmas;
-
   verse1.LimparSelecao;
   verse2.LimparSelecao;
 
-  original2.SelecaoMais;
-  translation2.SelecaoMais;
+  for i := 0 to High(source) do
+    verse1.Sintagmas[source[i].VInteger].SelecaoMais;
+
+  for i := 0 to High(dest) do
+    verse2.Sintagmas[dest[i].VInteger].SelecaoMais;
+
   verse1.AssociarSintagmas;
 end;
 
