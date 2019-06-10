@@ -1747,15 +1747,16 @@ begin
        continue;
 
     { definindo fontes }
+    f.Name := 'default';
+    f.Size := 12;
+
     s := ObterInfo(format('fonte%d.tamanho', [t]));
-    if s = '' then
-    begin
-      f.Name := 'default';
-      f.Size := 12;
-    end else begin
-      f.Name := ObterInfo(format('fonte%d.nome', [t]));
+    if not s.IsEmpty then
       f.Size := StrToInt(s);
-    end;
+    s := ObterInfo(format('fonte%d.nome', [t]));
+    if not s.IsEmpty then
+      f.Name := s;
+
     FAVersiculo[t].Fonte := f;
     FAVersiculo[t].PalavrasComStrongEmNegrito := FPalavrasComStrongEmNegrito;
     FAVersiculo[t].StrongsCountMode := FVerseStrongsCountMode;
