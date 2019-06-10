@@ -197,15 +197,19 @@ msgctxt "formpropprojeto.sdestinationtab"
 msgid "Destination"
 msgstr "Destino"
 
+#: formpropprojeto.sdictionaryfilter
+msgid "theWord dictionary modules (*.dct.twm)|*.dct.twm|All files|*.*"
+msgstr "Dicionários do theWord (*.dct.twm)|*.dct.twm|Todos os arquivos|*.*"
+
 #: formpropprojeto.snewtestamentfilter
 msgctxt "formpropprojeto.snewtestamentfilter"
-msgid "theWord Bible modules (*.ont, *.nt)|*.ont;*.nt"
-msgstr "Módulos de Bíblia do theWord (*.ont, *.nt)|*.ont;*.nt"
+msgid "theWord Bible modules (*.ont, *.nt)|*.ont;*.nt|All files|*.*"
+msgstr "Módulos de Bíblia do theWord (*.ont, *.nt)|*.ont;*.nt|Todos os arquivos|*.*"
 
 #: formpropprojeto.soldtestamentfilter
 msgctxt "formpropprojeto.soldtestamentfilter"
-msgid "theWord Bible modules (*.ont, *.ot)|*.ont;*.ot"
-msgstr "Módulos de Bíblia do theWord (*.ont, *.ot)|*.ont;*.ot"
+msgid "theWord Bible modules (*.ont, *.ot)|*.ont;*.ot|All files|*.*"
+msgstr "Módulos de Bíblia do theWord (*.ont, *.ot)|*.ont;*.ot|Todos os arquivos|*.*"
 
 #: formpropprojeto.sopendictionary
 msgid "Please choose a theWord dictionary module..."
@@ -232,8 +236,8 @@ msgstr "Origem"
 
 #: formpropprojeto.swholebiblefilter
 msgctxt "formpropprojeto.swholebiblefilter"
-msgid "theWord Bible modules (*.ont)|*.ont"
-msgstr "Módulos de Bíblia do theWord (*.ont)|*.ont"
+msgid "theWord Bible modules (*.ont)|*.ont|All files|*.*"
+msgstr "Módulos de Bíblia do theWord (*.ont)|*.ont|Todos os arquivos|*.*"
 
 #: memoversiculo.schangeverse
 msgid "Change verse text?"

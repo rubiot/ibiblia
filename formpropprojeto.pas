@@ -80,9 +80,10 @@ resourcestring
   SDestinationTab = 'Destination';
   SReference1Tab = 'Reference 1';
   SReference2Tab = 'Reference 2';
-  SNewTestamentFilter = 'theWord Bible modules (*.ont, *.nt)|*.ont;*.nt';
-  SOldTestamentFilter = 'theWord Bible modules (*.ont, *.ot)|*.ont;*.ot';
-  SWholeBibleFilter = 'theWord Bible modules (*.ont)|*.ont';
+  SNewTestamentFilter = 'theWord Bible modules (*.ont, *.nt)|*.ont;*.nt|All files|*.*';
+  SOldTestamentFilter = 'theWord Bible modules (*.ont, *.ot)|*.ont;*.ot|All files|*.*';
+  SWholeBibleFilter = 'theWord Bible modules (*.ont)|*.ont|All files|*.*';
+  SDictionaryFilter = 'theWord dictionary modules (*.dct.twm)|*.dct.twm|All files|*.*';
 
 implementation
 
@@ -175,7 +176,7 @@ procedure TFormPropProjeto.ActionSelecionarMorfoExecute(Sender: TObject);
 var
   d: string;
 begin
-  //OpenDialog1.Filter := '*.nt; *.ont';
+  OpenDialog1.Filter := SDictionaryFilter;
   OpenDialog1.FileName := leDicMorfo.Text;
   OpenDialog1.Title  := SOpenDictionary;
   if (BitBtn8.Caption = SSetDictionary) or OpenDialog1.Execute then
@@ -196,7 +197,7 @@ procedure TFormPropProjeto.ActionSelecionarStrongExecute(Sender: TObject);
 var
   d: string;
 begin
-  //OpenDialog1.Filter := '*.nt; *.ont';
+  OpenDialog1.Filter := SDictionaryFilter;
   OpenDialog1.FileName := leDicStrong.Text;
   OpenDialog1.Title  := SOpenDictionary;
   if (BitBtn4.Caption = SSetDictionary) or OpenDialog1.Execute then

@@ -200,15 +200,21 @@ msgctxt "formpropprojeto.sdestinationtab"
 msgid "Destination"
 msgstr "Destination"
 
+#: formpropprojeto.sdictionaryfilter
+msgid "theWord dictionary modules (*.dct.twm)|*.dct.twm|All files|*.*"
+msgstr "theWord dictionary modules (*.dct.twm)|*.dct.twm|All files|*.*"
+
 #: formpropprojeto.snewtestamentfilter
+#| msgid "theWord Bible modules (*.ont, *.nt)|*.ont;*.nt"
 msgctxt "formpropprojeto.snewtestamentfilter"
-msgid "theWord Bible modules (*.ont, *.nt)|*.ont;*.nt"
-msgstr "theWord bible modules (*.ont, *.nt)|*.ont;*.nt"
+msgid "theWord Bible modules (*.ont, *.nt)|*.ont;*.nt|All files|*.*"
+msgstr "theWord Bible modules (*.ont, *.nt)|*.ont;*.nt|All files|*.*"
 
 #: formpropprojeto.soldtestamentfilter
+#| msgid "theWord Bible modules (*.ont, *.ot)|*.ont;*.ot"
 msgctxt "formpropprojeto.soldtestamentfilter"
-msgid "theWord Bible modules (*.ont, *.ot)|*.ont;*.ot"
-msgstr "theWord bible modules (*.ont, *.ot)|*.ont;*.ot"
+msgid "theWord Bible modules (*.ont, *.ot)|*.ont;*.ot|All files|*.*"
+msgstr "theWord Bible modules (*.ont, *.ot)|*.ont;*.ot|All files|*.*"
 
 #: formpropprojeto.sopendictionary
 msgid "Please choose a theWord dictionary module..."
@@ -234,9 +240,10 @@ msgid "Source"
 msgstr "Source"
 
 #: formpropprojeto.swholebiblefilter
+#| msgid "theWord Bible modules (*.ont)|*.ont"
 msgctxt "formpropprojeto.swholebiblefilter"
-msgid "theWord Bible modules (*.ont)|*.ont"
-msgstr "theWord Bible modules (*.ont)|*.ont"
+msgid "theWord Bible modules (*.ont)|*.ont|All files|*.*"
+msgstr "theWord Bible modules (*.ont)|*.ont|All files|*.*"
 
 #: memoversiculo.schangeverse
 msgid "Change verse text?"

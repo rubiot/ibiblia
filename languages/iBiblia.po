@@ -180,14 +180,18 @@ msgctxt "formpropprojeto.sdestinationtab"
 msgid "Destination"
 msgstr ""
 
+#: formpropprojeto.sdictionaryfilter
+msgid "theWord dictionary modules (*.dct.twm)|*.dct.twm|All files|*.*"
+msgstr ""
+
 #: formpropprojeto.snewtestamentfilter
 msgctxt "formpropprojeto.snewtestamentfilter"
-msgid "theWord Bible modules (*.ont, *.nt)|*.ont;*.nt"
+msgid "theWord Bible modules (*.ont, *.nt)|*.ont;*.nt|All files|*.*"
 msgstr ""
 
 #: formpropprojeto.soldtestamentfilter
 msgctxt "formpropprojeto.soldtestamentfilter"
-msgid "theWord Bible modules (*.ont, *.ot)|*.ont;*.ot"
+msgid "theWord Bible modules (*.ont, *.ot)|*.ont;*.ot|All files|*.*"
 msgstr ""
 
 #: formpropprojeto.sopendictionary
@@ -215,7 +219,7 @@ msgstr ""
 
 #: formpropprojeto.swholebiblefilter
 msgctxt "formpropprojeto.swholebiblefilter"
-msgid "theWord Bible modules (*.ont)|*.ont"
+msgid "theWord Bible modules (*.ont)|*.ont|All files|*.*"
 msgstr ""
 
 #: memoversiculo.schangeverse
