@@ -95,6 +95,7 @@ type
     FOnSintagmaClick: TOnSintagmaClickEvent;
     FClosing: boolean;
     function GetCaminho: string;
+    function GetChapterText: TStringList;
     function GetComentarios: string;
     function GetID: string;
     function GetModificado: boolean;
@@ -213,6 +214,7 @@ type
     property MostrarQtdStrongs: TStrongsCountMode read FVerseStrongsCountMode write SetVerseStrongsCountMode;
     property PopupTrigger: TPopupTrigger read FPopupTrigger write FPopupTrigger;
     property DisplayTags: boolean read FDisplayTags write SetDisplayTags;
+    property ChapterText: TStringList read GetChapterText;
   end;
 
 resourcestring
@@ -688,6 +690,30 @@ begin
   result := '';
   if FTblInfo.Active then
     result := FTblInfo.FileName;
+end;
+
+function TProjeto.GetChapterText: TStringList;
+var
+  b, c, v: integer;
+  marker, chapter: string;
+begin
+  marker := GetID();
+  sscanf(marker, '%d,%d,%d', [@b, @c, @v]);
+  chapter := Format('%d,%d,', [b, c]);
+  IrPara(Format('%d,%d,1', [b, c]));
+
+  result := TStringList.Create;
+  with FTblPares do
+  begin
+    DesabilitarEventosRolagem;
+    while not FTblPares.EOF and GetID().StartsWith(chapter) do
+    begin
+      result.Add(FTblPares.Fields[FACamposTexto[tbDestino]].AsString); // hard-coded text type for now
+      VersiculoSeguinte;
+    end;
+    IrPara(marker);
+    HabilitarEventosRolagem;
+  end;
 end;
 
 function TProjeto.GetComentarios: string;

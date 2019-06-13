@@ -206,7 +206,7 @@ resourcestring
 
 implementation
 
-uses formnovoprojeto, formpropprojeto, formexportar, formmesclarprojetos;
+uses formnovoprojeto, formpropprojeto, formexportar, formmesclarprojetos, formchapterview;
 
 {$R *.lfm}
 
@@ -695,7 +695,12 @@ end;
 procedure TFrmPrincipal.FormKeyPress(Sender: TObject; var Key: char);
 begin
   case Key of
-    '1', '2', '3', '4': if assigned(ProjetoAtual) then RadioGroupStatus.ItemIndex := Ord(Key) - Ord('0') - 1;
+    '1', '2', '3', '4':
+      if assigned(ProjetoAtual) then
+        RadioGroupStatus.ItemIndex := Ord(Key) - Ord('0') - 1;
+    '5':
+      if assigned(ProjetoAtual) then
+        FrmChapterView.LoadChapter(ProjetoAtual.ChapterText);
   end;
 end;
 
