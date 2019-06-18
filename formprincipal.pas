@@ -13,8 +13,9 @@ uses
   lclintf,
   {$ENDIF}
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, Menus,
-  ActnList, ComCtrls, ExtCtrls, StdCtrls, Projeto, IniFiles,
-  Sintagma, LCLTranslator, unitabout, PCRE, Versiculo;
+  ActnList, ComCtrls, ExtCtrls, StdCtrls, Projeto, IniFiles, StrUtils,
+  Sintagma, LCLTranslator, unitabout, PCRE, Versiculo, RichMemo, RichMemoUtils,
+  ONTTokenizer;
 
 type
 
@@ -89,21 +90,24 @@ type
     MenuItem9: TMenuItem;
     OpenDialog1: TOpenDialog;
     Panel1: TPanel;
-    Panel2: TPanel;
-    Panel3: TPanel;
+    CenterPanel: TPanel;
+    BottomPanel: TPanel;
+    ContextPanel: TPanel;
     ProgressBar1: TProgressBar;
     RadioGroupStatus: TRadioGroup;
+    RichMemo1: TRichMemo;
     SaveDialog1: TSaveDialog;
     SaveDialog2: TSaveDialog;
-    ScrollBox1: TScrollBox;
-    ScrollBox2: TScrollBox;
-    ScrollBox3: TScrollBox;
-    ScrollBox4: TScrollBox;
+    ScrollBoxSrcVerse: TScrollBox;
+    ScrollBoxDstVerse: TScrollBox;
+    ScrollBoxRef1Verse: TScrollBox;
+    ScrollBoxRef2Verse: TScrollBox;
     Splitter1: TSplitter;
     Splitter2: TSplitter;
     Splitter3: TSplitter;
     Splitter4: TSplitter;
     Splitter5: TSplitter;
+    Splitter6: TSplitter;
     StatusBar1: TStatusBar;
     ToolBar1: TToolBar;
     ToolButton1: TToolButton;
@@ -167,6 +171,8 @@ type
   private
     { private declarations }
     FPopupTrigger: TPopupTrigger;
+    FTokenizer: TONTTokenizer;
+    FCurrentRef: string;
     {$IFDEF WINDOWS}
     FRxMorpho: IRegex;
     syncTw2iBiblia: boolean;
@@ -176,6 +182,10 @@ type
     procedure SetUpSyncThread;
     {$ENDIF}
     procedure TranslateStatusRadioGroup;
+    procedure RenderChapter(verses: TStringList);
+    procedure RenderVerse(txt: string);
+    procedure LoadChapter(verses: TStringList);
+    procedure UpdateChapterView;
   public
     { public declarations }
     language: string;
@@ -304,7 +314,7 @@ begin
     exit;
   end;
 
-  ProjetoAtual := TProjeto.Criar([ScrollBox1, ScrollBox2, ScrollBox3, ScrollBox4], TreeView1, RadioGroupStatus, Memo1);
+  ProjetoAtual := TProjeto.Criar([ScrollBoxSrcVerse, ScrollBoxDstVerse, ScrollBoxRef1Verse, ScrollBoxRef2Verse], TreeView1, RadioGroupStatus, Memo1);
   ProjetoAtual.OnNovoVersiculo := @QuandoNovoVersiculo;
   ProjetoAtual.OnAlterarVersiculo := @QuandoAlterarVersiculo;
   ProjetoAtual.OnSintagmaClick := @QuandoPalavraClicada;
@@ -381,6 +391,9 @@ begin
   ProjetoAtual.Destruir;
   ProjetoAtual := nil;
   Caption := 'iBiblia';
+
+  FCurrentRef := '';
+  RichMemo1.Clear;
 
   ActionSalvarProjeto.Enabled := false;
   ActionSalvarProjetoComo.Enabled := false;
@@ -469,7 +482,7 @@ begin
 
   if (FormNovoProjeto1.ShowModal = mrOK) and SaveDialog1.Execute then
   begin
-    ProjetoAtual := TProjeto.Criar([ScrollBox1, ScrollBox2, ScrollBox3, ScrollBox4], TreeView1, RadioGroupStatus, Memo1);
+    ProjetoAtual := TProjeto.Criar([ScrollBoxSrcVerse, ScrollBoxDstVerse, ScrollBoxRef1Verse, ScrollBoxRef2Verse], TreeView1, RadioGroupStatus, Memo1);
     ProjetoAtual.Escopo := QualEscopo;
     ProjetoAtual.PalavrasComStrongEmNegrito := MenuItemStrongNegrito.Checked;
     ProjetoAtual.MostrarQtdStrongs := FStrongsCountMode;
@@ -532,6 +545,7 @@ begin
     Caption := format('iBiblia | %s | %s (%s)', [ProjetoAtual.Referencia, ProjetoAtual.ObterInfo('descricao'), ProjetoAtual.FileName]);
     RadioGroupStatus.SetFocus;
     ActionSyncTheWordVerseExecute(Sender);
+    UpdateChapterView();
   end;
 end;
 
@@ -680,7 +694,7 @@ begin
   opts.WriteInteger('leiaute', 'principal.splitter2.topo', Splitter2.Top);
   opts.WriteInteger('leiaute', 'principal.splitter3.topo', Splitter3.Top);
   opts.WriteInteger('leiaute', 'principal.splitter4.topo', Splitter4.Top);
-  opts.WriteInteger('leiaute', 'principal.panel3.height', Panel3.Height);
+  opts.WriteInteger('leiaute', 'principal.panel3.height', BottomPanel.Height);
   opts.WriteBool('opcoes', 'sugestoes.automaticas', MenuItem22.Checked);
   opts.WriteBool('opcoes', 'synctheword', MenuItemSyncTheWord.Checked);
   opts.WriteBool('opcoes', 'syncibiblia', MenuItemSynciBiblia.Checked);
@@ -698,9 +712,6 @@ begin
     '1', '2', '3', '4':
       if assigned(ProjetoAtual) then
         RadioGroupStatus.ItemIndex := Ord(Key) - Ord('0') - 1;
-    '5':
-      if assigned(ProjetoAtual) then
-        FrmChapterView.LoadChapter(ProjetoAtual.ChapterText);
   end;
 end;
 
@@ -727,7 +738,7 @@ begin
   Splitter2.Top := opts.ReadInteger('leiaute', 'principal.splitter2.topo', Splitter2.Top);
   Splitter3.Top := opts.ReadInteger('leiaute', 'principal.splitter3.topo', Splitter3.Top);
   Splitter4.Top := opts.ReadInteger('leiaute', 'principal.splitter4.topo', Splitter4.Top);
-  Panel3.Height := opts.ReadInteger('leiaute', 'principal.panel3.height', Panel3.Height);
+  BottomPanel.Height := opts.ReadInteger('leiaute', 'principal.panel3.height', BottomPanel.Height);
 
   if (MenuItemRecent.Count > 0) and FileExists(MenuItemRecent.Items[0].Caption) then
     ActionAbrirProjetoExecute(MenuItemRecent.Items[0]);
@@ -861,8 +872,10 @@ begin
 end;
 
 procedure TFrmPrincipal.QuandoPalavraClicada(Sender: TSintagma);
+{$IFDEF WINDOWS}
 var
   match: IMatch;
+{$ENDIF}
 begin
   {$IFDEF WINDOWS}
   if not syncTw2iBiblia then
@@ -1002,6 +1015,114 @@ begin
     Add(SStatusNeedsReview);
     Add(SStatusAssociated);
   end;
+end;
+
+procedure TFrmPrincipal.RenderChapter(verses: TStringList);
+var
+  verse: string;
+begin
+  RichMemo1.Lines.Clear;
+  RichMemo1.Lines.BeginUpdate;
+  for verse in verses do
+    RenderVerse(verse);
+  RichMemo1.Lines.EndUpdate;
+end;
+
+procedure TFrmPrincipal.RenderVerse(txt: string);
+var
+  token: TTagSintagma;
+  fmt: TFontParams;
+begin
+  fmt := GetFontParams(RichMemo1.Font);
+
+  if RichMemo1.Lines.Count > 0 then
+    InsertFontText(RichMemo1, ' ', fmt);
+
+  FTokenizer := TONTTokenizer.Criar(txt);
+  while FTokenizer.LerSintagma(token) <> tsNulo do
+  begin
+    case token.tipo of
+      tsEspaco, tsPontuacao, tsSintagma:
+        ;
+      tsTag:
+        if token.valor.StartsWith('<TS') then
+        begin
+          fmt.Style := [fsBold, fsItalic];
+          token.valor := IfThen(RichMemo1.Lines.Count > 0, #13#10, '');
+        end else if token.valor = '<Ts>' then
+        begin
+          fmt.Style := [];
+          token.valor := #13;
+        end
+        else if token.valor.StartsWith('<RF') then
+        begin
+          FTokenizer.LerAteTag(token, '<Rf>');
+          token.valor := '*';
+        end
+        else if token.valor.StartsWith('<FI>') then
+        begin
+          fmt.Style := [fsItalic];
+          fmt.Color := clGray;
+          token.valor := '';
+        end else if token.valor = '<Fi>' then
+        begin
+          fmt.Style := [];
+          fmt.Color := clBlack;
+          token.valor := '';
+        end else if token.valor.StartsWith('<FR>') then
+        begin
+          fmt.Color := clRed;
+          token.valor := '';
+        end else if token.valor = '<Fi>' then
+        begin
+          fmt.Color := clBlack;
+          token.valor := '';
+        end
+        else if token.valor.StartsWith('<FO>') then
+        begin
+          fmt.Style := [fsBold];
+          token.valor := '';
+        end else if token.valor = '<Fo>' then
+        begin
+          fmt.Style := [];
+          token.valor := '';
+        end
+        else if token.valor = '<CM>' then
+        begin
+          token.valor := #13#10;
+        end else
+          token.valor := '';
+        // else raise Exception.Create(Format('Unhandled tag: %s', [token.valor]));
+      tsMetaDado:
+        token.valor := '';
+    end;
+    if not token.valor.IsEmpty then
+      InsertFontText(RichMemo1, token.valor, fmt);
+  end;
+  FreeAndNil(FTokenizer);
+end;
+
+procedure TFrmPrincipal.LoadChapter(verses: TStringList);
+begin
+  try
+    RenderChapter(verses);
+  finally
+    FreeAndNil(verses);
+  end;
+end;
+
+procedure TFrmPrincipal.UpdateChapterView;
+var
+  bk, ch, vs: integer;
+begin
+  if not FCurrentRef.IsEmpty then
+  begin
+    SScanf(FCurrentRef, '%d,%d,%d', [@bk, @ch, @vs]);
+    if ProjetoAtual.ID.StartsWith(Format('%d,%d,', [bk, ch])) then // same chapter
+      exit;
+  end;
+  FCurrentRef := ProjetoAtual.ID;
+  LoadChapter(ProjetoAtual.ChapterText);
 end;
 
 end.

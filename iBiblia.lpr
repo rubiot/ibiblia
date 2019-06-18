@@ -13,7 +13,7 @@ uses
   {$IFDEF WINDOWS}
   twAutomate, twSyncThread,
   {$ENDIF}
-  ONTParser, Sintagma, unitabout, MySwordModule, TheWordDictionary, formChapterView;
+  ONTParser, Sintagma, unitabout, MySwordModule, TheWordDictionary;
 
 {$R *.res}
 
@@ -26,7 +26,6 @@ begin
   Application.CreateForm(TFrmEscolherVerseRules, FrmEscolherVerseRules);
   Application.CreateForm(TfrmExportarProjeto, frmExportarProjeto);
   Application.CreateForm(TFormAbout, FormAbout);
-  Application.CreateForm(TFormChapterView, FrmChapterView);
   Application.Run;
 end.
 

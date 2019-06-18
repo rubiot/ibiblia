@@ -708,7 +708,7 @@ begin
     DesabilitarEventosRolagem;
     while not FTblPares.EOF and GetID().StartsWith(chapter) do
     begin
-      result.Add(FTblPares.Fields[FACamposTexto[tbDestino]].AsString); // hard-coded text type for now
+      result.Add(FTblPares.Fields[FACamposTexto[tbDestino]].AsString); // using hard-coded text type for now
       VersiculoSeguinte;
     end;
     IrPara(marker);
@@ -740,8 +740,7 @@ begin
   end;
 end;
 
-function TProjeto.CriarObjetoTabela(db, tabela, chave: string
-  ): TSqlite3Dataset;
+function TProjeto.CriarObjetoTabela(db, tabela, chave: string): TSqlite3Dataset;
 begin
   result := TSqlite3Dataset.Create(nil);
   result.FileName := db;
@@ -980,8 +979,8 @@ begin
   if assigned(FRadioGroupSituacao) then
     FRadioGroupSituacao.ItemIndex := Situacao;
 
-  if assigned(OnNovoVersiculo) then
-    OnNovoVersiculo(self);
+  if assigned(FOnNovoVersiculo) then
+    FOnNovoVersiculo(self);
 
   if FTblPares.Fields[FACamposTexto[tbDestino]].AsString.IsEmpty then // open verse to edition if is empty
     OnDblClickVersiculo(FAVersiculo[tbDestino].Painel);
