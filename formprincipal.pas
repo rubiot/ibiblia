@@ -1046,8 +1046,7 @@ var
   verse: string;
 begin
   RichMemo1.Lines.BeginUpdate;
-  //RichMemo1.Lines.Clear; { doesn't work on Linux! }
-  RichMemo1.Rtf := '';
+  RichMemo1.Rtf := ''; { RichMemo1.Lines.Clear doesn't work on Linux }
   for verse in verses do
   begin
     Application.ProcessMessages;

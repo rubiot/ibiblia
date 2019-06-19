@@ -715,14 +715,12 @@ begin
   DesabilitarEventosRolagem;
   IrPara(Format('%s1', [bkch]));
   with FTblPares do
-  begin
     while not FTblPares.EOF and GetID().StartsWith(bkch) do
     begin
-      result.Add(Format('%d ', [Verse]) + FTblPares.Fields[FACamposTexto[tbDestino]].AsString); // using hard-coded text type for now
+      result.Add(Format('%d ', [Verse]) + FTblPares.Fields[FACamposTexto[tbDestino]].AsString.Replace(#239#187#191, ''));
       VersiculoSeguinte;
     end;
-    IrPara(marker);
-  end;
+  IrPara(marker);
   HabilitarEventosRolagem;
 end;
 
