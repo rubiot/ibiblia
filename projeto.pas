@@ -23,6 +23,13 @@ type
 
   TProjeto = class;
 
+   TReference = record
+    Book: string;
+    BookID: integer;
+    Chapter: integer;
+    Verse: integer;
+  end;
+
   { TTipoTextoBiblico }
 
   TTipoTextoBiblico =
@@ -65,9 +72,11 @@ type
 
   TProjeto = class
   private
+    FReference: TReference;
     FFileName: string;
     FMemoVersiculo: TMemoVersiculo;
     FAtivo: boolean;
+    FScrollEvents: boolean;
     FExportando: boolean;
     FOnAlterarVersiculo: TOnAlterarVersiculoEvent;
     FDisplayTags: boolean;
@@ -99,7 +108,7 @@ type
     function GetComentarios: string;
     function GetID: string;
     function GetModificado: boolean;
-    function GetReferencia: string;
+    function GetFormattedReference: string;
     function GetSituacao: Integer;
     procedure PreencherArvore;
     procedure SetAtrasoExibicao(const AValue: Cardinal);
@@ -193,7 +202,8 @@ type
     procedure Translate;
     procedure ToggleDisplayTags;
     property FileName: string read FFileName;
-    property Referencia: string read GetReferencia;
+    property FormattedReference: string read GetFormattedReference;
+    property Reference: TReference read FReference;
     property ID: string read GetID;
     property Modificado: boolean read GetModificado;
     property Arvore: TTreeView read FArvore write FArvore;
@@ -215,6 +225,10 @@ type
     property PopupTrigger: TPopupTrigger read FPopupTrigger write FPopupTrigger;
     property DisplayTags: boolean read FDisplayTags write SetDisplayTags;
     property ChapterText: TStringList read GetChapterText;
+    property BookID: integer read FReference.BookID;
+    property Book: string read FReference.Book;
+    property Chapter: integer read FReference.Chapter;
+    property Verse: integer read FReference.Verse;
   end;
 
 resourcestring
@@ -499,12 +513,9 @@ begin
   Commit;
 end;
 
-function TProjeto.GetReferencia: string;
-var
-  b, c, v: integer;
+function TProjeto.GetFormattedReference: string;
 begin
-  sscanf(GetID(), '%d,%d,%d', [@b, @c, @v]);
-  result := format('%s %d:%d', [NLivros[FEscopo][b-OffsetLivros[FEscopo]-1], c, v]);
+  result := format('%s %d:%d', [Book, Chapter, Verse]);
 end;
 
 function TProjeto.GetSituacao: Integer;
@@ -694,26 +705,25 @@ end;
 
 function TProjeto.GetChapterText: TStringList;
 var
-  b, c, v: integer;
-  marker, chapter: string;
+  marker, bkch: string;
 begin
   marker := GetID();
-  sscanf(marker, '%d,%d,%d', [@b, @c, @v]);
-  chapter := Format('%d,%d,', [b, c]);
-  IrPara(Format('%d,%d,1', [b, c]));
+  bkch := Format('%d,%d,', [BookID, Chapter]);
 
   result := TStringList.Create;
+
+  DesabilitarEventosRolagem;
+  IrPara(Format('%s1', [bkch]));
   with FTblPares do
   begin
-    DesabilitarEventosRolagem;
-    while not FTblPares.EOF and GetID().StartsWith(chapter) do
+    while not FTblPares.EOF and GetID().StartsWith(bkch) do
     begin
-      result.Add(FTblPares.Fields[FACamposTexto[tbDestino]].AsString); // using hard-coded text type for now
+      result.Add(Format('%d ', [Verse]) + FTblPares.Fields[FACamposTexto[tbDestino]].AsString); // using hard-coded text type for now
       VersiculoSeguinte;
     end;
     IrPara(marker);
-    HabilitarEventosRolagem;
   end;
+  HabilitarEventosRolagem;
 end;
 
 function TProjeto.GetComentarios: string;
@@ -908,7 +918,7 @@ begin
       FTblPares.FieldByName('pare_pares').AsString := FATmpVerse[tbOrigem].Pares;
     except
       on E: Exception do
-        MessageDlg(SError, SCorruptedData + #13#10#13#10 + Referencia + #13#10 +
+        MessageDlg(SError, SCorruptedData + #13#10#13#10 + FormattedReference + #13#10 +
              format('%s'#13#10'pares: %s'#13#10'%s'#13#10'%s',
                     [E.Message, FTblPares.FieldByName('pare_pares').AsString,
                     FATmpVerse[tbOrigem].DebugTokens, FATmpVerse[tbDestino].DebugTokens]),
@@ -928,7 +938,7 @@ end;
 
 procedure TProjeto.PreRolagemVersiculo(DataSet: TDataSet);
 begin
-  if FAVersiculo[tbOrigem] = nil then
+  if not FScrollEvents or not Assigned(FAVersiculo[tbOrigem]) then
     exit;
 
   FMemoVersiculo.Desativar; // hide and save verse edit if necessary
@@ -951,6 +961,13 @@ procedure TProjeto.PosRolagemVersiculo(DataSet: TDataSet);
 var
   v: TTipoTextoBiblico;
 begin
+  // updating current reference
+  Sscanf(GetID(), '%d,%d,%d', [@FReference.BookID, @FReference.Chapter, @FReference.Verse]);
+  FReference.Book := NLivros[FEscopo][FReference.BookID-OffsetLivros[FEscopo]-1];
+
+  if not FScrollEvents then
+    exit;
+
   for v:=low(FAVersiculo) to high(FAVersiculo) do
     if assigned(FAVersiculo[v]) then
       FAVersiculo[v].Texto := FTblPares.Fields[FACamposTexto[v]].AsString;
@@ -961,7 +978,7 @@ begin
       FAVersiculo[tbOrigem].Pares := FTblPares.FieldByName('pare_pares').AsString;
     except
       on E: Exception do
-      MessageDlg(SError, SCorruptedData + #13#10#13#10 + Referencia + #13#10#13#10 +
+      MessageDlg(SError, SCorruptedData + #13#10#13#10 + FormattedReference + #13#10#13#10 +
            format('%s'#13#10#13#10'pares: %s'#13#10'%s'#13#10'%s',
                   [E.Message, FTblPares.FieldByName('pare_pares').AsString,
                   FAVersiculo[tbOrigem].DebugTokens, FAVersiculo[tbDestino].DebugTokens]),
@@ -979,11 +996,11 @@ begin
   if assigned(FRadioGroupSituacao) then
     FRadioGroupSituacao.ItemIndex := Situacao;
 
-  if assigned(FOnNovoVersiculo) then
-    FOnNovoVersiculo(self);
-
   if FTblPares.Fields[FACamposTexto[tbDestino]].AsString.IsEmpty then // open verse to edition if is empty
     OnDblClickVersiculo(FAVersiculo[tbDestino].Painel);
+
+  if assigned(FOnNovoVersiculo) then
+    FOnNovoVersiculo(self);
 end;
 
 procedure TProjeto.SalvarPares;
@@ -1040,16 +1057,12 @@ end;
 
 procedure TProjeto.HabilitarEventosRolagem;
 begin
-  FTblPares.BeforeScroll := @PreRolagemVersiculo;
-  FTblPares.AfterScroll  := @PosRolagemVersiculo;
-  FArvore.OnChange       := @OnMudancaVersiculo;
+  FScrollEvents := true;
 end;
 
 procedure TProjeto.DesabilitarEventosRolagem;
 begin
-  FTblPares.BeforeScroll := nil;
-  FTblPares.AfterScroll  := nil;
-  FArvore.OnChange       := nil;
+  FScrollEvents := false;
 end;
 
 procedure TProjeto.SintagmaOnMouseEnter(Sender: TSintagma);
@@ -1170,7 +1183,7 @@ var
   l, c, v: TTreeNode;
   i: smallint;
 begin
-  if not assigned(FTblPares) or FClosing or not assigned(Node) then
+  if not FScrollEvents or not assigned(FTblPares) or FClosing or not assigned(Node) then
     exit;
 
   if Node.HasChildren then // capítulo ou livro
@@ -1530,7 +1543,7 @@ end;
 
 procedure TProjeto.AtualizarArvore(id: string);
 var
-  l, c, v, i: smallint;
+  i: smallint;
   al, ac: array[0..3] of smallint;
   nl, nc, nv, n: TTreeNode;
   b: boolean;
@@ -1538,24 +1551,22 @@ begin
   if not assigned(FArvore) or FClosing then
     exit;
 
-  SScanf(id, '%d,%d,%d', [@l, @c, @v]);
-
   al[0] := 0; al[1] := 0; al[2] := 0; al[3] := 0;
   ac[0] := 0; ac[1] := 0; ac[2] := 0; ac[3] := 0;
 
   nl := FArvore.Items[0];
-  for i:=l-OffsetLivros[FEscopo]-1 downto 1 do
+  for i:=BookID-OffsetLivros[FEscopo]-1 downto 1 do
     nl := nl.GetNextSibling;
 
   nc := nl.GetFirstChild;
-  for i:=c-1 downto 1 do
+  for i:=Chapter-1 downto 1 do
   begin
     inc(al[nc.ImageIndex]);
     nc := nc.GetNextSibling;
   end;
 
   nv := nc.GetFirstChild;
-  for i:=v-1 downto 1 do
+  for i:=Verse-1 downto 1 do
   begin
     inc(ac[nv.ImageIndex]);
     nv := nv.GetNextSibling;
@@ -1576,7 +1587,7 @@ begin
     b := false;
     for i:=0 to 3 do // todos os versículos estão na mesma situação?
     begin
-      if ac[i] = QVersiculos[FEscopo][ QCapLivros[FEscopo][l-OffsetLivros[FEscopo]]+c-1 ] then
+      if ac[i] = QVersiculos[FEscopo][ QCapLivros[FEscopo][BookID-OffsetLivros[FEscopo]]+Chapter-1 ] then
       begin
         nc.ImageIndex := i; nc.SelectedIndex := nc.ImageIndex + 4;
         b := true;
@@ -1602,7 +1613,7 @@ begin
     b := false;
     for i:=0 to 3 do // todos os versículos estão na mesma situação?
     begin
-      if al[i] = QCapitulos[FEscopo][l-OffsetLivros[FEscopo]] then
+      if al[i] = QCapitulos[FEscopo][BookID-OffsetLivros[FEscopo]] then
       begin
         nl.ImageIndex := i; nl.SelectedIndex := nl.ImageIndex + 4;
         b := true;
@@ -1758,11 +1769,9 @@ begin
   FTblPares := CriarObjetoTabela(Nome, 'pares', 'pare_id');
 
   FTblInfo  := CriarObjetoTabela(Nome, 'info', 'id');
-  DesabilitarEventosRolagem;
   FSugeridor := TGerSugestoes.Criar(Nome);
 
   FTblPares.Open;
-
   FTblInfo.Open;
 
   f := TFont.Create;
@@ -1817,9 +1826,13 @@ begin
   if assigned(FRadioGroupSituacao) then
     FRadioGroupSituacao.Enabled := true;
 
-  IrPara(ObterInfo('marcador'));
-  PosRolagemVersiculo(nil);
+  FTblPares.BeforeScroll := @PreRolagemVersiculo;
+  FTblPares.AfterScroll  := @PosRolagemVersiculo;
+  FArvore.OnChange       := @OnMudancaVersiculo;
+
   HabilitarEventosRolagem;
+  IrPara(ObterInfo('marcador'));
+  //PosRolagemVersiculo(nil);
 
   FAtivo := true;
   FDisplayTags := false;
@@ -2257,7 +2270,7 @@ begin
             FATmpVerse[tbOrigem].Pares := FTblPares.FieldByName('pare_pares').AsString;
           except
             on E: Exception do
-              MessageDlg(SError, SCorruptedData + #13#10#13#10 + Referencia + #13#10 +
+              MessageDlg(SError, SCorruptedData + #13#10#13#10 + FormattedReference + #13#10 +
                    format('%s'#13#10'pares: %s'#13#10'%s'#13#10'%s',
                           [E.Message, FTblPares.FieldByName('pare_pares').AsString,
                           FATmpVerse[tbOrigem].DebugTokens, FATmpVerse[tbDestino].DebugTokens]),
@@ -2352,7 +2365,7 @@ begin
             FATmpVerse[tbOrigem ].Pares := FTblPares.FieldByName('pare_pares').AsString;
           except
             on E: Exception do
-              MessageDlg(SError, SCorruptedData + #13#10#13#10 + Referencia + #13#10 +
+              MessageDlg(SError, SCorruptedData + #13#10#13#10 + FormattedReference + #13#10 +
                    format('%s'#13#10'pares: %s'#13#10'%s'#13#10'%s',
                           [E.Message, FTblPares.FieldByName('pare_pares').AsString,
                           FATmpVerse[tbOrigem].DebugTokens, FATmpVerse[tbDestino].DebugTokens]),
@@ -2458,7 +2471,7 @@ begin
           FATmpVerse[tbOrigem].Pares := FTblPares.FieldByName('pare_pares').AsString;
         except
           on E: Exception do
-            MessageDlg(SError, SCorruptedData + #13#10#13#10 + Referencia + #13#10 +
+            MessageDlg(SError, SCorruptedData + #13#10#13#10 + FormattedReference + #13#10 +
                  format('%s'#13#10'pares: %s'#13#10'%s'#13#10'%s',
                         [E.Message, FTblPares.FieldByName('pare_pares').AsString,
                         FATmpVerse[tbOrigem].DebugTokens, FATmpVerse[tbDestino].DebugTokens]),

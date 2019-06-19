@@ -13,7 +13,7 @@ uses
   lclintf,
   {$ENDIF}
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, Menus,
-  ActnList, ComCtrls, ExtCtrls, StdCtrls, Projeto, IniFiles, StrUtils,
+  ActnList, ComCtrls, ExtCtrls, StdCtrls, Projeto, IniFiles, StrUtils, Math,
   Sintagma, LCLTranslator, unitabout, PCRE, Versiculo, RichMemo, RichMemoUtils,
   ONTTokenizer;
 
@@ -49,7 +49,7 @@ type
     ImageList64x64: TImageList;
     ImageListTreeView: TImageList;
     MainMenu1: TMainMenu;
-    Memo1: TMemo;
+    CommentsMemo: TMemo;
     MenuItem1: TMenuItem;
     MenuItem10: TMenuItem;
     MenuItem11: TMenuItem;
@@ -167,14 +167,16 @@ type
     procedure CarregarMRU(m: TMenuItem);
     procedure DescarregarMRU(m: TMenuItem);
     procedure RadioGroupStatusSelectionChanged(Sender: TObject);
+    procedure RichMemo1KeyDown(Sender: TObject; var Key: Word;
+      Shift: TShiftState);
     procedure ToolButtonExitClick(Sender: TObject);
   private
     { private declarations }
     FPopupTrigger: TPopupTrigger;
-    FTokenizer: TONTTokenizer;
     FCurrentRef: string;
     {$IFDEF WINDOWS}
     FRxMorpho: IRegex;
+    FRxVerseHeading: IRegex;
     syncTw2iBiblia: boolean;
     synciBiblia2Tw: boolean;
     TwSyncThread: TTwSyncThread;
@@ -184,12 +186,11 @@ type
     procedure TranslateStatusRadioGroup;
     procedure RenderChapter(verses: TStringList);
     procedure RenderVerse(txt: string);
-    procedure LoadChapter(verses: TStringList);
     procedure UpdateChapterView;
   public
     { public declarations }
     language: string;
-  end; 
+  end;
 
 type
   TParametroThread = record
@@ -216,7 +217,7 @@ resourcestring
 
 implementation
 
-uses formnovoprojeto, formpropprojeto, formexportar, formmesclarprojetos, formchapterview;
+uses formnovoprojeto, formpropprojeto, formexportar, formmesclarprojetos;
 
 {$R *.lfm}
 
@@ -314,7 +315,7 @@ begin
     exit;
   end;
 
-  ProjetoAtual := TProjeto.Criar([ScrollBoxSrcVerse, ScrollBoxDstVerse, ScrollBoxRef1Verse, ScrollBoxRef2Verse], TreeView1, RadioGroupStatus, Memo1);
+  ProjetoAtual := TProjeto.Criar([ScrollBoxSrcVerse, ScrollBoxDstVerse, ScrollBoxRef1Verse, ScrollBoxRef2Verse], TreeView1, RadioGroupStatus, CommentsMemo);
   ProjetoAtual.OnNovoVersiculo := @QuandoNovoVersiculo;
   ProjetoAtual.OnAlterarVersiculo := @QuandoAlterarVersiculo;
   ProjetoAtual.OnSintagmaClick := @QuandoPalavraClicada;
@@ -337,6 +338,7 @@ begin
   ActionReverterAssociacoes.Enabled := true;
   ActionLimparAssociacoes.Enabled := true;
   ActionExportar.Enabled := true;
+  RichMemo1.Enabled := true;
   //ActionExportarDestinoComStrongs.Enabled := true;
   //ActionExportarTextoInterlinear.Enabled := true;
   StatusBar1.SimpleText := '';
@@ -407,6 +409,7 @@ begin
   ActionReverterAssociacoes.Enabled := false;
   ActionLimparAssociacoes.Enabled := false;
   ActionExportar.Enabled := false;
+  RichMemo1.Enabled := false;
   //ActionExportarDestinoComStrongs.Enabled := false;
   //ActionExportarTextoInterlinear.Enabled := false;
   StatusBar1.SimpleText := '';
@@ -482,7 +485,7 @@ begin
 
   if (FormNovoProjeto1.ShowModal = mrOK) and SaveDialog1.Execute then
   begin
-    ProjetoAtual := TProjeto.Criar([ScrollBoxSrcVerse, ScrollBoxDstVerse, ScrollBoxRef1Verse, ScrollBoxRef2Verse], TreeView1, RadioGroupStatus, Memo1);
+    ProjetoAtual := TProjeto.Criar([ScrollBoxSrcVerse, ScrollBoxDstVerse, ScrollBoxRef1Verse, ScrollBoxRef2Verse], TreeView1, RadioGroupStatus, CommentsMemo);
     ProjetoAtual.Escopo := QualEscopo;
     ProjetoAtual.PalavrasComStrongEmNegrito := MenuItemStrongNegrito.Checked;
     ProjetoAtual.MostrarQtdStrongs := FStrongsCountMode;
@@ -521,6 +524,7 @@ begin
     ActionReverterAssociacoes.Enabled := true;
     ActionLimparAssociacoes.Enabled := true;
     ActionExportar.Enabled := true;
+    RichMemo1.Enabled := true;
     //ActionExportarDestinoComStrongs.Enabled := true;
     //ActionExportarTextoInterlinear.Enabled := true;
 
@@ -542,7 +546,7 @@ procedure TFrmPrincipal.ActionQuandoNovoVersiculoExecute(Sender: TObject);
 begin
   if ProjetoAtual <> nil then
   begin
-    Caption := format('iBiblia | %s | %s (%s)', [ProjetoAtual.Referencia, ProjetoAtual.ObterInfo('descricao'), ProjetoAtual.FileName]);
+    Caption := format('iBiblia | %s | %s (%s)', [ProjetoAtual.FormattedReference, ProjetoAtual.ObterInfo('descricao'), ProjetoAtual.FileName]);
     RadioGroupStatus.SetFocus;
     ActionSyncTheWordVerseExecute(Sender);
     UpdateChapterView();
@@ -648,6 +652,7 @@ begin
   MenuItemSyncTheWord.Checked := opts.ReadBool('opcoes', 'synctheword', false);
   MenuItemSynciBiblia.Checked := opts.ReadBool('opcoes', 'syncibiblia', false);
   MenuItemStrongNegrito.Checked := opts.ReadBool('opcoes', 'boldstrongs', false);
+  RichMemo1.ZoomFactor := opts.ReadInteger('leiaute', 'principal.chapterview.zoom', 10) / 10.0;
 
   MenuItemStrongsCountNone.Tag    := Integer(scNone);
   MenuItemStrongsCountWords.Tag   := Integer(scCountWords);
@@ -681,6 +686,8 @@ begin
   synciBiblia2Tw := MenuItemSynciBiblia.Checked;
   SetUpSyncThread;
   {$ENDIF}
+
+  FRxVerseHeading := RegexCreate('^(\d+) (<TS.*?<Ts>)?', [rcoUTF8]);
 end;
 
 procedure TFrmPrincipal.FormDestroy(Sender: TObject);
@@ -695,6 +702,8 @@ begin
   opts.WriteInteger('leiaute', 'principal.splitter3.topo', Splitter3.Top);
   opts.WriteInteger('leiaute', 'principal.splitter4.topo', Splitter4.Top);
   opts.WriteInteger('leiaute', 'principal.panel3.height', BottomPanel.Height);
+  opts.WriteInteger('leiaute', 'principal.contextpanel.width', ContextPanel.Width);
+  opts.WriteInteger('leiaute', 'principal.chapterview.zoom', Trunc(RichMemo1.ZoomFactor * 10));
   opts.WriteBool('opcoes', 'sugestoes.automaticas', MenuItem22.Checked);
   opts.WriteBool('opcoes', 'synctheword', MenuItemSyncTheWord.Checked);
   opts.WriteBool('opcoes', 'syncibiblia', MenuItemSynciBiblia.Checked);
@@ -739,6 +748,7 @@ begin
   Splitter3.Top := opts.ReadInteger('leiaute', 'principal.splitter3.topo', Splitter3.Top);
   Splitter4.Top := opts.ReadInteger('leiaute', 'principal.splitter4.topo', Splitter4.Top);
   BottomPanel.Height := opts.ReadInteger('leiaute', 'principal.panel3.height', BottomPanel.Height);
+  ContextPanel.Width := opts.ReadInteger('leiaute', 'principal.contextpanel.width', ContextPanel.Width);
 
   if (MenuItemRecent.Count > 0) and FileExists(MenuItemRecent.Items[0].Caption) then
     ActionAbrirProjetoExecute(MenuItemRecent.Items[0]);
@@ -972,6 +982,20 @@ begin
     ProjetoAtual.Situacao := RadioGroupStatus.ItemIndex;
 end;
 
+procedure TFrmPrincipal.RichMemo1KeyDown(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+begin
+  if (ssCtrl in Shift) and (Key in [VK_SUBTRACT, VK_OEM_MINUS]) and (RichMemo1.ZoomFactor > 0.1) then
+    RichMemo1.ZoomFactor := RichMemo1.ZoomFactor - 0.1
+  else if (ssCtrl in Shift) and (Key in [VK_ADD, VK_OEM_PLUS]) then
+    RichMemo1.ZoomFactor := RichMemo1.ZoomFactor + 0.1
+  else if (ssCtrl in Shift) and (Key in [VK_A]) then
+  begin
+    RichMemo1.SelectAll;
+    Key := 0;
+  end;
+end;
+
 procedure TFrmPrincipal.ToolButtonExitClick(Sender: TObject);
 begin
   Close;
@@ -1021,19 +1045,34 @@ procedure TFrmPrincipal.RenderChapter(verses: TStringList);
 var
   verse: string;
 begin
-  RichMemo1.Lines.Clear;
   RichMemo1.Lines.BeginUpdate;
+  RichMemo1.Lines.Clear;
   for verse in verses do
+  begin
+    Application.ProcessMessages;
     RenderVerse(verse);
+  end;
   RichMemo1.Lines.EndUpdate;
+  RichMemo1.ZoomFactor := RichMemo1.ZoomFactor;
 end;
 
 procedure TFrmPrincipal.RenderVerse(txt: string);
 var
+  FTokenizer: TONTTokenizer;
   token: TTagSintagma;
   fmt: TFontParams;
 begin
-  fmt := GetFontParams(RichMemo1.Font);
+  fmt := GetFontParams(ScrollBoxDstVerse.Font);
+  fmt.Size := 10;
+
+  if txt.StartsWith(Format('%d ', [ProjetoAtual.Verse])) then
+  begin
+    fmt.BkColor  := clLtGray;
+    fmt.HasBkClr := true;
+    //RichMemo1.ScrollBy();
+  end;
+
+  txt := FRxVerseHeading.Replace(txt, '$2<b>$1</b> ');
 
   if RichMemo1.Lines.Count > 0 then
     InsertFontText(RichMemo1, ' ', fmt);
@@ -1042,6 +1081,8 @@ begin
   while FTokenizer.LerSintagma(token) <> tsNulo do
   begin
     case token.tipo of
+      tsMetaDado:
+        token.valor := '';
       tsEspaco, tsPontuacao, tsSintagma:
         ;
       tsTag:
@@ -1087,14 +1128,20 @@ begin
           fmt.Style := [];
           token.valor := '';
         end
+        else if token.valor.StartsWith('<b>') then
+        begin
+          fmt.Style := [fsBold];
+          token.valor := '';
+        end else if token.valor = '</b>' then
+        begin
+          fmt.Style := [];
+          token.valor := '';
+        end
         else if token.valor = '<CM>' then
         begin
           token.valor := #13#10;
         end else
           token.valor := '';
-        // else raise Exception.Create(Format('Unhandled tag: %s', [token.valor]));
-      tsMetaDado:
-        token.valor := '';
     end;
     if not token.valor.IsEmpty then
       InsertFontText(RichMemo1, token.valor, fmt);
@@ -1102,27 +1149,19 @@ begin
   FreeAndNil(FTokenizer);
 end;
 
-procedure TFrmPrincipal.LoadChapter(verses: TStringList);
+procedure TFrmPrincipal.UpdateChapterView;
+var
+  verses: TStringList;
 begin
+  if not assigned(ProjetoAtual) or (ContextPanel.Width < 2) then
+    exit;
+
+  verses := ProjetoAtual.ChapterText;
   try
     RenderChapter(verses);
   finally
     FreeAndNil(verses);
   end;
-end;
-
-procedure TFrmPrincipal.UpdateChapterView;
-var
-  bk, ch, vs: integer;
-begin
-  if not FCurrentRef.IsEmpty then
-  begin
-    SScanf(FCurrentRef, '%d,%d,%d', [@bk, @ch, @vs]);
-    if ProjetoAtual.ID.StartsWith(Format('%d,%d,', [bk, ch])) then // same chapter
-      exit;
-  end;
-  FCurrentRef := ProjetoAtual.ID;
-  LoadChapter(ProjetoAtual.ChapterText);
 end;
 
 end.
