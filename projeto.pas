@@ -1830,9 +1830,9 @@ begin
   FTblPares.AfterScroll  := @PosRolagemVersiculo;
   FArvore.OnChange       := @OnMudancaVersiculo;
 
-  HabilitarEventosRolagem;
   IrPara(ObterInfo('marcador'));
-  //PosRolagemVersiculo(nil);
+  HabilitarEventosRolagem;
+  PosRolagemVersiculo(nil);
 
   FAtivo := true;
   FDisplayTags := false;

@@ -15,7 +15,7 @@ uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, Menus,
   ActnList, ComCtrls, ExtCtrls, StdCtrls, Projeto, IniFiles, StrUtils, Math,
   Sintagma, LCLTranslator, unitabout, PCRE, Versiculo, RichMemo, RichMemoUtils,
-  ONTTokenizer;
+  ONTTokenizer, LCLType;
 
 type
 
@@ -174,9 +174,9 @@ type
     { private declarations }
     FPopupTrigger: TPopupTrigger;
     FCurrentRef: string;
+    FRxVerseHeading: IRegex;
     {$IFDEF WINDOWS}
     FRxMorpho: IRegex;
-    FRxVerseHeading: IRegex;
     syncTw2iBiblia: boolean;
     synciBiblia2Tw: boolean;
     TwSyncThread: TTwSyncThread;
@@ -1046,13 +1046,15 @@ var
   verse: string;
 begin
   RichMemo1.Lines.BeginUpdate;
-  RichMemo1.Lines.Clear;
+  //RichMemo1.Lines.Clear; { doesn't work on Linux! }
+  RichMemo1.Rtf := '';
   for verse in verses do
   begin
     Application.ProcessMessages;
     RenderVerse(verse);
   end;
   RichMemo1.Lines.EndUpdate;
+  { TRichMemo bug: Current zoom factor doesn't apply automatically }
   RichMemo1.ZoomFactor := RichMemo1.ZoomFactor;
 end;
 
@@ -1069,7 +1071,6 @@ begin
   begin
     fmt.BkColor  := clLtGray;
     fmt.HasBkClr := true;
-    //RichMemo1.ScrollBy();
   end;
 
   txt := FRxVerseHeading.Replace(txt, '$2<b>$1</b> ');
