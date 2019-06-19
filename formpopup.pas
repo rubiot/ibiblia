@@ -11,7 +11,7 @@ uses
   {$ELSE}
   Windows,
   {$ENDIF}
-  ExtCtrls, ComCtrls, RTFEdit;
+  ExtCtrls, ComCtrls, RichMemo;
 
 type
   { TFrmDictionaryPopup }
@@ -19,6 +19,8 @@ type
   TFrmDictionaryPopup = class(TForm)
     Panel1: TPanel;
     Panel2: TPanel;
+    RichMemoStrong: TRichMemo;
+    RichMemoMorpho: TRichMemo;
     Splitter1: TSplitter;
     TabControlStrongs: TTabControl;
     TabControlMorfos: TTabControl;
@@ -34,8 +36,6 @@ type
     FZoomMorfo: smallint;
     FStrongs: TStringList;
     FMorfos: TStringList;
-    FEditStrong: TRTFEdit;
-    FEditMorfo: TRTFEdit;
   public
     { public declarations }
     procedure AdicionarStrong(const strong: string; const definition: string);
@@ -59,9 +59,6 @@ uses formPrincipal;
 
 procedure TFrmDictionaryPopup.FormCreate(Sender: TObject);
 begin
-  FEditStrong := TRTFEdit.Criar(Panel1);
-  FEditMorfo  := TRTFEdit.Criar(Panel2);
-
   FStrongs := TStringList.Create;
   FMorfos := TStringList.Create;
 
@@ -80,24 +77,21 @@ begin
   opts.WriteInteger('leiaute', 'popup.zoom.strong', ZoomStrong);
   opts.WriteInteger('leiaute', 'popup.zoom.morfo', ZoomMorfo);
 
-  FEditStrong.Destruir;
-  FEditMorfo.Destruir;
   FStrongs.Destroy;
   FMorfos.Destroy;
 end;
 
 procedure TFrmDictionaryPopup.FormHide(Sender: TObject);
 begin
-  ZoomStrong := FEditStrong.Zoom;
-  ZoomMorfo := FEditMorfo.Zoom;
+  ZoomStrong := Trunc(RichMemoStrong.ZoomFactor * 10);
+  ZoomMorfo := Trunc(RichMemoMorpho.ZoomFactor * 10);
   FStrongs.Clear;
   FMorfos.Clear;
   TabControlStrongs.Tabs.Clear;
   TabControlMorfos.Tabs.Clear;
 end;
 
-procedure TFrmDictionaryPopup.FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState
-  );
+procedure TFrmDictionaryPopup.FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
   if Key = VK_ESCAPE then
   begin
@@ -108,12 +102,12 @@ end;
 
 procedure TFrmDictionaryPopup.TabControlMorfosChange(Sender: TObject);
 begin
-  FEditMorfo.RTF := FMorfos[TabControlMorfos.TabIndex];
+  RichMemoMorpho.Rtf := FMorfos[TabControlMorfos.TabIndex];
 end;
 
 procedure TFrmDictionaryPopup.TabControlStrongsChange(Sender: TObject);
 begin
-  FEditStrong.RTF := FStrongs[TabControlStrongs.TabIndex];
+  RichMemoStrong.Rtf := FStrongs[TabControlStrongs.TabIndex];
 end;
 
 procedure TFrmDictionaryPopup.AdicionarStrong(const strong: string; const definition: string);
@@ -133,18 +127,18 @@ begin
   if FStrongs.Count > 0 then
   begin
     TabControlStrongs.TabIndex := 0;
-    FEditStrong.RTF  := FStrongs[0];
-    FEditStrong.Zoom := ZoomStrong;
+    RichMemoStrong.Rtf         := FStrongs[0];
+    RichMemoStrong.ZoomFactor  := ZoomStrong / 10.0;
   end;
   if FMorfos.Count > 0 then
   begin
-    TabControlMorfos.TabIndex := 0;
-    FEditMorfo.RTF  := FMorfos[0];
-    FEditMorfo.Zoom := ZoomMorfo;
-    TabControlMorfos.Visible:=true;
+    TabControlMorfos.TabIndex  := 0;
+    RichMemoMorpho.Rtf         := FMorfos[0];
+    RichMemoMorpho.ZoomFactor  := ZoomMorfo / 10.0;
+    TabControlMorfos.Visible   :=true;
   end else
   begin
-    TabControlMorfos.Visible:=false;
+    TabControlMorfos.Visible   := false;
   end;
 
   if x + self.Width > Screen.Width then
@@ -174,8 +168,8 @@ begin
   self.FormHide(self);
   TabControlStrongs.Tabs.Clear;
   TabControlMorfos.Tabs.Clear;
-  FEditStrong.RTF := ' ';
-  FEditMorfo.RTF := ' ';
+  RichMemoStrong.Rtf := '';
+  RichMemoMorpho.Rtf := '';
 end;
 
 initialization
