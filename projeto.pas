@@ -76,7 +76,8 @@ type
     FFileName: string;
     FMemoVersiculo: TMemoVersiculo;
     FAtivo: boolean;
-    FScrollEvents: boolean;
+    FMarker: string;
+    FScrollEventsEnabled: boolean;
     FExportando: boolean;
     FOnAlterarVersiculo: TOnAlterarVersiculoEvent;
     FDisplayTags: boolean;
@@ -141,8 +142,6 @@ type
     procedure SalvarTexto;
     procedure SalvarAssociacoes;
     procedure RemoverAssociacoes;
-    procedure HabilitarEventosRolagem;
-    procedure DesabilitarEventosRolagem;
     procedure SintagmaOnMouseEnter(Sender: TSintagma);
     procedure SintagmaOnMouseLeave(Sender: TSintagma);
     procedure SintagmaOnClick(Sender: TSintagma);
@@ -201,6 +200,8 @@ type
     function GetTranslationSuggestions(syntagm: TSintagma): string;
     procedure Translate;
     procedure ToggleDisplayTags;
+    procedure StartScrollingSession;
+    procedure FinishScrollingSession;
     property FileName: string read FFileName;
     property FormattedReference: string read GetFormattedReference;
     property Reference: TReference read FReference;
@@ -229,6 +230,7 @@ type
     property Book: string read FReference.Book;
     property Chapter: integer read FReference.Chapter;
     property Verse: integer read FReference.Verse;
+    property ScrollEventsEnabled: boolean read FScrollEventsEnabled write FScrollEventsEnabled;
   end;
 
 resourcestring
@@ -705,14 +707,13 @@ end;
 
 function TProjeto.GetChapterText: TStringList;
 var
-  marker, bkch: string;
+  bkch: string;
 begin
-  marker := GetID();
   bkch := Format('%d,%d,', [BookID, Chapter]);
 
   result := TStringList.Create;
 
-  DesabilitarEventosRolagem;
+  StartScrollingSession;
   IrPara(Format('%s1', [bkch]));
   with FTblPares do
     while not FTblPares.EOF and GetID().StartsWith(bkch) do
@@ -720,8 +721,7 @@ begin
       result.Add(Format('%d ', [Verse]) + FTblPares.Fields[FACamposTexto[tbDestino]].AsString.Replace(#239#187#191, ''));
       VersiculoSeguinte;
     end;
-  IrPara(marker);
-  HabilitarEventosRolagem;
+  FinishScrollingSession;
 end;
 
 function TProjeto.GetComentarios: string;
@@ -936,7 +936,7 @@ end;
 
 procedure TProjeto.PreRolagemVersiculo(DataSet: TDataSet);
 begin
-  if not FScrollEvents or not Assigned(FAVersiculo[tbOrigem]) then
+  if not FScrollEventsEnabled or not Assigned(FAVersiculo[tbOrigem]) then
     exit;
 
   FMemoVersiculo.Desativar; // hide and save verse edit if necessary
@@ -963,7 +963,7 @@ begin
   Sscanf(GetID(), '%d,%d,%d', [@FReference.BookID, @FReference.Chapter, @FReference.Verse]);
   FReference.Book := NLivros[FEscopo][FReference.BookID-OffsetLivros[FEscopo]-1];
 
-  if not FScrollEvents then
+  if not FScrollEventsEnabled then
     exit;
 
   for v:=low(FAVersiculo) to high(FAVersiculo) do
@@ -1053,16 +1053,6 @@ begin
       FSugeridor.RemoverPar(FParesAntigos.Strings[p], FParesAntigos.Strings[p+1]);
 end;
 
-procedure TProjeto.HabilitarEventosRolagem;
-begin
-  FScrollEvents := true;
-end;
-
-procedure TProjeto.DesabilitarEventosRolagem;
-begin
-  FScrollEvents := false;
-end;
-
 procedure TProjeto.SintagmaOnMouseEnter(Sender: TSintagma);
 var
   show: boolean;
@@ -1129,7 +1119,6 @@ end;
 procedure TProjeto.OnExportText(Sender: TVersiculo);
 var
   lines: TStringList;
-  marker: string;
   v, text: TTipoTextoBiblico;
   SaveDlg: TSaveDialog;
   destination: string;
@@ -1161,16 +1150,14 @@ begin
   PreRolagemVersiculo(nil);
   with FTblPares do
   begin
-    DesabilitarEventosRolagem;
-    marker := GetID;
+    StartScrollingSession;
     VersiculoInicial;
     while not FTblPares.EOF do
     begin
       lines.Add(FTblPares.Fields[FACamposTexto[text]].AsString);
       VersiculoSeguinte;
     end;
-    IrPara(marker);
-    HabilitarEventosRolagem;
+    FinishScrollingSession;
   end;
   lines.SaveToFile(destination);
   lines.Free;
@@ -1181,7 +1168,7 @@ var
   l, c, v: TTreeNode;
   i: smallint;
 begin
-  if not FScrollEvents or not assigned(FTblPares) or FClosing or not assigned(Node) then
+  if not FScrollEventsEnabled or not assigned(FTblPares) or FClosing or not assigned(Node) then
     exit;
 
   if Node.HasChildren then // capítulo ou livro
@@ -1392,7 +1379,6 @@ var
   n, ul, uc: TTreeNode;
   qv, qc, l, c, v, s: smallint;
   sl, sc: array[0..3] of smallint;
-  marcador: string;
   b: boolean;
 begin
   if not assigned(FArvore) then exit;
@@ -1415,8 +1401,7 @@ begin
   sl[2] := 0;
   sl[3] := 0;
 
-  //DesabilitarEventosRolagem;
-  marcador := GetID;
+  StartScrollingSession;
   VersiculoInicial;
 
   while not FTblPares.EOF do
@@ -1535,8 +1520,7 @@ begin
     ul.SelectedIndex := ul.ImageIndex + 4;
   end;
 
-  IrPara(marcador);
-  //HabilitarEventosRolagem;
+  FinishScrollingSession;
 end;
 
 procedure TProjeto.AtualizarArvore(id: string);
@@ -1829,7 +1813,7 @@ begin
   FArvore.OnChange       := @OnMudancaVersiculo;
 
   IrPara(ObterInfo('marcador'));
-  HabilitarEventosRolagem;
+  ScrollEventsEnabled := true;
   PosRolagemVersiculo(nil);
 
   FAtivo := true;
@@ -1989,7 +1973,6 @@ end;
 
 procedure TProjeto.RecriarBaseSugestoes(pb: TProgressBar);
 var
-  marcador: string;
   pares: TStringList;
   p: smallint;
 begin
@@ -2014,8 +1997,7 @@ begin
       FExportando := true;
       PreRolagemVersiculo(nil);
 
-      DesabilitarEventosRolagem;
-      marcador := GetID;
+      StartScrollingSession;
       VersiculoInicial;
       while not FTblPares.EOF do
       begin
@@ -2051,8 +2033,7 @@ begin
   finally
     FAVersiculo[tbOrigem].Ativo := true;
     FAVersiculo[tbDestino].Ativo := true;
-    IrPara(marcador);
-    HabilitarEventosRolagem;
+    FinishScrollingSession;
     PosRolagemVersiculo(nil);
     FExportando := false;
     if assigned(pb) then
@@ -2076,7 +2057,6 @@ var
   verseRulesDe, verseRulesPara: TStringList;
   propriedades: TStringStream;
   m: smallint;
-  marker: string;
   //line: string;
 begin
   offset := 0;
@@ -2164,8 +2144,7 @@ begin
     end;
 
     FExportando := true;
-    DesabilitarEventosRolagem;
-    marker := GetID;
+    StartScrollingSession;
     VersiculoInicial;
     for i:=offset to offset + QLinhas[FEscopo] - 1 do
     begin
@@ -2187,10 +2166,9 @@ begin
            Application.ProcessMessages;
       end;
     end;
-    HabilitarEventosRolagem;
+    FinishScrollingSession;
     FExportando := false;
-    IrPara(marker);
-    AtualizarArvore(marker);
+    AtualizarArvore(FMarker);
   finally
     modulo.Free;
     if assigned(pb) then
@@ -2233,7 +2211,6 @@ procedure TProjeto.ExportarTextoDestinoComStrongs(arquivo: string;
   pb: TProgressBar; opcoes: TOpcoesExportacao);
 var
   lines: TStringList;
-  marcador: string;
 begin
   if not assigned(FAVersiculo[tbOrigem]) or not assigned(FAVersiculo[tbDestino]) then
     exit;
@@ -2251,10 +2228,9 @@ begin
     lines := TStringList.Create;
     PreRolagemVersiculo(nil);
 
+    StartScrollingSession;
     with FTblPares do
     begin
-      DesabilitarEventosRolagem;
-      marcador := GetID;
       VersiculoInicial;
       while not FTblPares.EOF do
       begin
@@ -2294,9 +2270,8 @@ begin
         end;
         VersiculoSeguinte;
       end;
-      IrPara(marcador);
-      HabilitarEventosRolagem;
     end;
+    FinishScrollingSession;
 
     if pos(lines[0], '<WG') = 0 then { adicionando tag inócua para que o theWord exiba definições mesmo sem associações no primeiro versículo }
       lines[0] := lines[0] + '<_MORPH_>';
@@ -2328,7 +2303,6 @@ procedure TProjeto.ExportarTextoInterlinear(arquivo: string;
   pb: TProgressBar; opcoes: TOpcoesExportacao);
 var
   lines: TStringList;
-  marcador: string;
 begin
   if (FAVersiculo[tbOrigem] = nil) or (FAVersiculo[tbDestino] = nil) then
     exit;
@@ -2346,10 +2320,9 @@ begin
     lines := TStringList.Create;
     PreRolagemVersiculo(nil);
 
+    StartScrollingSession;
     with FTblPares do
     begin
-      DesabilitarEventosRolagem;
-      marcador := GetID;
       VersiculoInicial;
       while not FTblPares.EOF do
       begin
@@ -2381,9 +2354,8 @@ begin
         end;
         VersiculoSeguinte;
       end;
-      IrPara(marcador);
-      HabilitarEventosRolagem;
     end;
+    FinishScrollingSession;
 
     //lines.Add('');
     //lines.Add(ResgatarInfo('propriedades.origem'));
@@ -2420,7 +2392,6 @@ var
   dictionary: TTheWordDictionary;
   rxLemma: IRegex;
   match: IMatch;
-  marcador: string;
   pares: TStringList;
   entry, strong, lemma: string;
 begin
@@ -2455,8 +2426,7 @@ begin
     FExportando := true;
     PreRolagemVersiculo(nil);
 
-    DesabilitarEventosRolagem;
-    marcador := GetID;
+    StartScrollingSession;
     VersiculoInicial;
 
     while not FTblPares.EOF do
@@ -2518,8 +2488,7 @@ begin
     Concordancia.Free;
     dictionary.Free;
     FExportando := false;
-    IrPara(marcador);
-    HabilitarEventosRolagem;
+    FinishScrollingSession;
     PosRolagemVersiculo(nil);
     if assigned(pb) then
       pb.Visible := false;
@@ -2544,14 +2513,14 @@ procedure TProjeto.LimparTexto(texto: TTipoTextoBiblico);
 begin
   with FTblPares do
   begin
-    DesabilitarEventosRolagem;
+    ScrollEventsEnabled := false;
     VersiculoInicial;
     while not FTblPares.EOF do
     begin
       SetVerseText('', texto, false);
       VersiculoSeguinte;
     end;
-    HabilitarEventosRolagem;
+    ScrollEventsEnabled := true;
   end;
 end;
 
@@ -2608,23 +2577,18 @@ begin
 end;
 
 function TProjeto.ObterTextoVersiculo(Referencia: string; texto: TTipoTextoBiblico): string;
-var
-  marcador: string;
 begin
   if Referencia <> '' then
   begin
-    DesabilitarEventosRolagem;
-    marcador := FTblPares.FieldByName('pare_id').AsString;
+    StartScrollingSession;
     IrPara(Referencia);
   end;
 
   result := FTblPares.Fields[FACamposTexto[texto]].AsString;
 
   if Referencia <> '' then
-  begin
-    IrPara(marcador);
-    HabilitarEventosRolagem;
-  end;
+    FinishScrollingSession;
+
 end;
 
 function TProjeto.ObterTextoSimplesVersiculo(texto: TTipoTextoBiblico): string;
@@ -2687,6 +2651,18 @@ end;
 procedure TProjeto.ToggleDisplayTags;
 begin
   SetDisplayTags(not DisplayTags);
+end;
+
+procedure TProjeto.StartScrollingSession;
+begin
+  FMarker := ID;
+  ScrollEventsEnabled := false;
+end;
+
+procedure TProjeto.FinishScrollingSession;
+begin
+  IrPara(FMarker);
+  ScrollEventsEnabled := true;
 end;
 
 end.
