@@ -184,8 +184,8 @@ type
     procedure SetUpSyncThread;
     {$ENDIF}
     procedure TranslateStatusRadioGroup;
-    procedure RenderChapter(verses: TStringList);
-    procedure RenderVerse(txt: string);
+    procedure RenderChapter(verses: TStringList; current: integer);
+    procedure RenderVerse(txt: string; isCurrent: boolean);
     procedure UpdateChapterView;
   public
     { public declarations }
@@ -1041,23 +1041,26 @@ begin
   end;
 end;
 
-procedure TFrmPrincipal.RenderChapter(verses: TStringList);
+procedure TFrmPrincipal.RenderChapter(verses: TStringList; current: integer);
 var
   verse: string;
+  v: integer;
 begin
   RichMemo1.Lines.BeginUpdate;
   RichMemo1.Rtf := ''; { RichMemo1.Lines.Clear doesn't work on Linux }
+  v := 0;
   for verse in verses do
   begin
+    Inc(v);
+    RenderVerse(verse, v = current);
     Application.ProcessMessages;
-    RenderVerse(verse);
   end;
   RichMemo1.Lines.EndUpdate;
   { TRichMemo bug: Current zoom factor doesn't apply automatically }
   RichMemo1.ZoomFactor := RichMemo1.ZoomFactor;
 end;
 
-procedure TFrmPrincipal.RenderVerse(txt: string);
+procedure TFrmPrincipal.RenderVerse(txt: string; isCurrent: boolean);
 var
   FTokenizer: TONTTokenizer;
   token: TTagSintagma;
@@ -1066,16 +1069,16 @@ begin
   fmt := GetFontParams(ScrollBoxDstVerse.Font);
   fmt.Size := 10;
 
-  if txt.StartsWith(Format('%d ', [ProjetoAtual.Verse])) then
+  if RichMemo1.Lines.Count > 0 then
+    InsertFontText(RichMemo1, ' ', fmt);
+
+  if isCurrent then
   begin
     fmt.BkColor  := clLtGray;
     fmt.HasBkClr := true;
   end;
 
   txt := FRxVerseHeading.Replace(txt, '$2<b>$1</b> ');
-
-  if RichMemo1.Lines.Count > 0 then
-    InsertFontText(RichMemo1, ' ', fmt);
 
   FTokenizer := TONTTokenizer.Criar(txt);
   while FTokenizer.LerSintagma(token) <> tsNulo do
@@ -1158,7 +1161,7 @@ begin
 
   verses := ProjetoAtual.ChapterText;
   try
-    RenderChapter(verses);
+    RenderChapter(verses, ProjetoAtual.Verse);
   finally
     FreeAndNil(verses);
   end;
