@@ -622,8 +622,7 @@ begin
     FLabel.AutoSize    := true;
     if FSobrescrito then
       FLabel.Font.Size := round(FLabel.Font.Size * 0.7);
-    if TVersiculo(FVersiculo).PalavrasComStrongEmNegrito then
-      FLabel.Font.Bold := TemStrongs;
+    FLabel.Font.Bold := FLabel.Font.Bold or (TVersiculo(FVersiculo).PalavrasComStrongEmNegrito and TemStrongs);
     Correlacionado     := FPares.Count > 0;
   end else
     FLabel := nil;

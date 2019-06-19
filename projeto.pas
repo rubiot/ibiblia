@@ -1772,6 +1772,9 @@ begin
     s := ObterInfo(format('fonte%d.nome', [t]));
     if not s.IsEmpty then
       f.Name := s;
+    s := ObterInfo(format('fonte%d.bold', [t]));
+    if not s.IsEmpty then
+      f.Bold := Boolean(StrToInt(s));
 
     FAVersiculo[t].Fonte := f;
     FAVersiculo[t].PalavrasComStrongEmNegrito := FPalavrasComStrongEmNegrito;
@@ -2503,9 +2506,9 @@ begin
     if t in textos then
     begin
       FAVersiculo[t].Fonte := fonte;
-      //PosRolagemVersiculo(nil);
       AtribuirInfo(format('fonte%d.nome', [t]), fonte.Name);
       AtribuirInfo(format('fonte%d.tamanho', [t]), IntToStr(fonte.Size));
+      AtribuirInfo(format('fonte%d.bold', [t]), IntToStr(Ord(fonte.Bold)));
     end;
 end;
 
