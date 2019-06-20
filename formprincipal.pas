@@ -13,9 +13,9 @@ uses
   lclintf,
   {$ENDIF}
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, Menus,
-  ActnList, ComCtrls, ExtCtrls, StdCtrls, Projeto, IniFiles, StrUtils, Math,
+  ActnList, ComCtrls, ExtCtrls, StdCtrls, Projeto, IniFiles, Math,
   Sintagma, LCLTranslator, unitabout, PCRE, Versiculo, RichMemo, RichMemoUtils,
-  ONTTokenizer, LCLType, Character, LazUTF8;
+  LCLType, LazUTF8, ChapterView;
 
 type
 
@@ -95,7 +95,6 @@ type
     ContextPanel: TPanel;
     ProgressBar1: TProgressBar;
     RadioGroupStatus: TRadioGroup;
-    RichMemo1: TRichMemo;
     SaveDialog1: TSaveDialog;
     SaveDialog2: TSaveDialog;
     ScrollBoxSrcVerse: TScrollBox;
@@ -167,21 +166,12 @@ type
     procedure CarregarMRU(m: TMenuItem);
     procedure DescarregarMRU(m: TMenuItem);
     procedure RadioGroupStatusSelectionChanged(Sender: TObject);
-    procedure RichMemo1KeyDown(Sender: TObject; var Key: Word;
-      Shift: TShiftState);
-    procedure RichMemo1LinkAction(Sender: TObject; ALinkAction: TLinkAction;
-      const info: TLinkMouseInfo; LinkStart, LinkLen: Integer);
-    procedure RichMemo1MouseMove(Sender: TObject; Shift: TShiftState; X,
-      Y: Integer);
     procedure ToolButtonExitClick(Sender: TObject);
   private
     { private declarations }
     FPopupTrigger: TPopupTrigger;
     FCurrentRef: string;
-    FRxVerseHeading: IRegex;
-    ChapterNotes: TStringList;
-    NoteID: integer;
-    FHint: THintWindow;
+    FChapterView: TChapterView;
     {$IFDEF WINDOWS}
     FRxMorpho: IRegex;
     syncTw2iBiblia: boolean;
@@ -191,11 +181,6 @@ type
     procedure SetUpSyncThread;
     {$ENDIF}
     procedure TranslateStatusRadioGroup;
-    procedure RenderChapter(verses: TStringList; current: integer);
-    procedure RenderVerse(txt: string; verse: string; isCurrent: boolean);
-    procedure RenderSpan(txt: string; fmt: TFontParams);
-    procedure RenderNotes;
-    procedure UpdateChapterView;
   public
     { public declarations }
     language: string;
@@ -330,6 +315,10 @@ begin
   ProjetoAtual.OnSintagmaClick := @QuandoPalavraClicada;
   ProjetoAtual.PalavrasComStrongEmNegrito := MenuItemStrongNegrito.Checked;
   ProjetoAtual.MostrarQtdStrongs := FStrongsCountMode;
+
+  FChapterView.Enabled := true;
+  FChapterView.Project := ProjetoAtual;
+
   ProjetoAtual.Abrir(OpenDialog1.FileName);
   ProjetoAtual.ExibirDefinicoesSoComCtrl := MenuItemDictPopup.Checked;
   ProjetoAtual.SugerirAssociacaoAutomaticamente := MenuItem22.Checked;
@@ -347,7 +336,6 @@ begin
   ActionReverterAssociacoes.Enabled := true;
   ActionLimparAssociacoes.Enabled := true;
   ActionExportar.Enabled := true;
-  RichMemo1.Enabled := true;
   //ActionExportarDestinoComStrongs.Enabled := true;
   //ActionExportarTextoInterlinear.Enabled := true;
   StatusBar1.SimpleText := '';
@@ -404,7 +392,6 @@ begin
   Caption := 'iBiblia';
 
   FCurrentRef := '';
-  RichMemo1.Clear;
 
   ActionSalvarProjeto.Enabled := false;
   ActionSalvarProjetoComo.Enabled := false;
@@ -418,7 +405,8 @@ begin
   ActionReverterAssociacoes.Enabled := false;
   ActionLimparAssociacoes.Enabled := false;
   ActionExportar.Enabled := false;
-  RichMemo1.Enabled := false;
+  FChapterView.Enabled := false;
+  FChapterView.Clear;
   //ActionExportarDestinoComStrongs.Enabled := false;
   //ActionExportarTextoInterlinear.Enabled := false;
   StatusBar1.SimpleText := '';
@@ -533,9 +521,8 @@ begin
     ActionReverterAssociacoes.Enabled := true;
     ActionLimparAssociacoes.Enabled := true;
     ActionExportar.Enabled := true;
-    RichMemo1.Enabled := true;
-    //ActionExportarDestinoComStrongs.Enabled := true;
-    //ActionExportarTextoInterlinear.Enabled := true;
+    FChapterView.Enabled := true;
+    FChapterView.Project := ProjetoAtual;
 
     StatusBar1.SimpleText := '';
   end;
@@ -558,7 +545,6 @@ begin
     Caption := format('iBiblia | %s | %s (%s)', [ProjetoAtual.FormattedReference, ProjetoAtual.ObterInfo('descricao'), ProjetoAtual.FileName]);
     RadioGroupStatus.SetFocus;
     ActionSyncTheWordVerseExecute(Sender);
-    UpdateChapterView();
   end;
 end;
 
@@ -661,7 +647,13 @@ begin
   MenuItemSyncTheWord.Checked := opts.ReadBool('opcoes', 'synctheword', false);
   MenuItemSynciBiblia.Checked := opts.ReadBool('opcoes', 'syncibiblia', false);
   MenuItemStrongNegrito.Checked := opts.ReadBool('opcoes', 'boldstrongs', false);
-  RichMemo1.ZoomFactor := opts.ReadInteger('leiaute', 'principal.chapterview.zoom', 10) / 10.0;
+
+  FChapterView := TChapterView.Create(ContextPanel);
+  FChapterView.ParentWindow := ContextPanel.Handle;
+  FChapterView.BorderStyle  := bsNone;
+  FChapterView.Align        := alClient;
+  FChapterView.ScrollBars   := ssAutoVertical;
+  FChapterView.ZoomFactor   := opts.ReadInteger('leiaute', 'principal.chapterview.zoom', 10) / 10.0;;
 
   MenuItemStrongsCountNone.Tag    := Integer(scNone);
   MenuItemStrongsCountWords.Tag   := Integer(scCountWords);
@@ -695,12 +687,6 @@ begin
   synciBiblia2Tw := MenuItemSynciBiblia.Checked;
   SetUpSyncThread;
   {$ENDIF}
-
-  FRxVerseHeading := RegexCreate('^((?:<TS[0-7]?>.*?<Ts>)*)(.*?)$', [rcoUTF8]);
-  ChapterNotes := TStringList.Create;
-  FHint := THintWindow.Create(RichMemo1);
-  FHint.Font.Size := 10;
-  FHint.Color := $E0FFFF;
 end;
 
 procedure TFrmPrincipal.FormDestroy(Sender: TObject);
@@ -716,7 +702,7 @@ begin
   opts.WriteInteger('leiaute', 'principal.splitter4.topo', Splitter4.Top);
   opts.WriteInteger('leiaute', 'principal.panel3.height', BottomPanel.Height);
   opts.WriteInteger('leiaute', 'principal.contextpanel.width', ContextPanel.Width);
-  opts.WriteInteger('leiaute', 'principal.chapterview.zoom', Trunc(RichMemo1.ZoomFactor * 10));
+  opts.WriteInteger('leiaute', 'principal.chapterview.zoom', Trunc(FChapterView.ZoomFactor * 10));
   opts.WriteBool('opcoes', 'sugestoes.automaticas', MenuItem22.Checked);
   opts.WriteBool('opcoes', 'synctheword', MenuItemSyncTheWord.Checked);
   opts.WriteBool('opcoes', 'syncibiblia', MenuItemSynciBiblia.Checked);
@@ -727,8 +713,7 @@ begin
   opts.WriteInteger('opcoes', 'popuptrigger', LongInt(FPopupTrigger));
   opts.Free;
 
-  ChapterNotes.Free;
-  FHint.Free;
+  FChapterView.Free;
 end;
 
 procedure TFrmPrincipal.FormKeyPress(Sender: TObject; var Key: char);
@@ -998,83 +983,6 @@ begin
     ProjetoAtual.Situacao := RadioGroupStatus.ItemIndex;
 end;
 
-procedure TFrmPrincipal.RichMemo1KeyDown(Sender: TObject; var Key: Word;
-  Shift: TShiftState);
-begin
-  if (ssCtrl in Shift) and (Key in [VK_SUBTRACT, VK_OEM_MINUS]) and (RichMemo1.ZoomFactor > 0.1) then
-    RichMemo1.ZoomFactor := RichMemo1.ZoomFactor - 0.1
-  else if (ssCtrl in Shift) and (Key in [VK_ADD, VK_OEM_PLUS]) then
-    RichMemo1.ZoomFactor := RichMemo1.ZoomFactor + 0.1
-  else if (ssCtrl in Shift) and (Key in [VK_A]) then
-  begin
-    RichMemo1.SelectAll;
-    Key := 0;
-  end;
-end;
-
-procedure TFrmPrincipal.RichMemo1LinkAction(Sender: TObject;
-  ALinkAction: TLinkAction; const info: TLinkMouseInfo; LinkStart,
-  LinkLen: Integer);
-var
-  Verse: string;
-begin
-  Verse := RichMemo1.GetText(LinkStart, LinkLen);
-  ProjetoAtual.IrPara(Format('%d,%d,%s', [ProjetoAtual.BookID, ProjetoAtual.Chapter, Verse]));
-end;
-
-procedure TFrmPrincipal.RichMemo1MouseMove(Sender: TObject; Shift: TShiftState;
-  X, Y: Integer);
-var
-  iCharIndex, iCharOffset, i, j: Integer;
-  s, note: string;
-  attr: TFontParams;
-  rect: TRect;
-  pos: TPoint;
-begin
-  Exit; { TRichMemo.GetText causes unsolicited scrolling, disabling it }
-
-  iCharIndex := RichMemo1.CharAtPos(X, Y);
-  if iCharIndex < 0
-    then Exit;
-
-  if not RichMemo1.GetTextAttributes(iCharIndex, attr) or
-     (attr.VScriptPos <> vpSuperScript) then
-  begin
-    FHint.Hide;
-    exit;
-  end;
-
-  { GetText causes the whole memo to scroll to the cursor position }
-  RichMemo1.Lines.BeginUpdate;
-  s := RichMemo1.GetText(Max(iCharIndex - 3, 0), 6);
-  RichMemo1.Lines.EndUpdate;
-
-  iCharOffset := iCharIndex - Max(iCharIndex - 3, 0);
-  i := iCharOffset + 1;
-  while (i > 0) and IsDigit(s[i]) do Dec(i);
-  j := iCharOffset + 1;
-  while (j <= Length(s)) and IsDigit(s[j]) do Inc(j);
-  note := Copy(s, i, j - i);
-
-  if note.IsEmpty then
-  begin
-    FHint.Hide;
-    exit;
-  end;
-
-  if FHint.Visible then
-    exit;
-
-  note := ChapterNotes[note.ToInteger - 1];
-  Rect := FHint.CalcHintRect(500, note, nil);
-  Pos := Mouse.CursorPos;
-  Rect.Left := Pos.X+10;
-  Rect.Top := Pos.Y+5;
-  Rect.Right := Rect.Left + Rect.Right;
-  Rect.Bottom := Rect.Top + Rect.Bottom;
-  FHint.ActivateHint(Rect, note);
-end;
-
 procedure TFrmPrincipal.ToolButtonExitClick(Sender: TObject);
 begin
   Close;
@@ -1117,200 +1025,6 @@ begin
     Add(SStatusAssociating);
     Add(SStatusNeedsReview);
     Add(SStatusAssociated);
-  end;
-end;
-
-procedure TFrmPrincipal.RenderChapter(verses: TStringList; current: integer);
-var
-  verse: string;
-  v: integer;
-begin
-  RichMemo1.Lines.BeginUpdate;
-  RichMemo1.Rtf := ''; { RichMemo1.Lines.Clear doesn't work on Linux }
-
-  NoteID := 1;
-  ChapterNotes.Clear;
-  ChapterNotes := TStringList.Create;
-
-  v := 0;
-  for verse in verses do
-  begin
-    Application.ProcessMessages;
-    Inc(v);
-    RenderVerse(verse, v.ToString, v = current);
-  end;
-  RenderNotes;
-  RichMemo1.Lines.EndUpdate;
-
-  { TRichMemo bug: Current zoom factor doesn't apply automatically }
-  RichMemo1.ZoomFactor := RichMemo1.ZoomFactor;
-end;
-
-procedure TFrmPrincipal.RenderVerse(txt: string; verse: string;
-  isCurrent: boolean);
-var
-  fmt: TFontParams;
-  pos: PtrInt;
-  mtHeading: IMatch;
-begin
-  fmt := GetFontParams(ScrollBoxDstVerse.Font);
-  fmt.Size := 10;
-
-  if RichMemo1.Lines.Count > 0 then
-    InsertFontText(RichMemo1, ' ', fmt);
-
-  if isCurrent then
-  begin
-    fmt.BkColor  := clLtGray;
-    fmt.HasBkClr := true;
-  end;
-
-  mtHeading := FRxVerseHeading.Match(txt);
-  if not mtHeading.Success then
-    raise Exception.Create(Format('Unmatched verse: <%s>', [txt]));
-
-  { rendering titles before the verse number }
-  RenderSpan(mtHeading.Groups[1].Value, fmt);
-  txt := mtHeading.Groups[2].Value;
-  { rendering verse number and making it a link }
-  InsertFontText(RichMemo1, verse + ' ', fmt);
-  pos := UTF8Length(RichMemo1.Text) - UTF8Length(verse) - 1;
-  RichMemo1.SetLink(pos, UTF8Length(verse), true, verse);
-  { rendering the verse text }
-  RenderSpan(txt, fmt);
-end;
-
-procedure TFrmPrincipal.RenderSpan(txt: string; fmt: TFontParams);
-var
-  FTokenizer: TONTTokenizer;
-  token: TTagSintagma;
-begin
-  FTokenizer := TONTTokenizer.Criar(txt);
-  while FTokenizer.LerSintagma(token) <> tsNulo do
-  begin
-    case token.tipo of
-      tsMetaDado:
-        token.valor := '';
-      tsEspaco, tsPontuacao, tsSintagma:
-        ;
-      tsTag:
-        if token.valor.StartsWith('<TS') then
-        begin
-          fmt.Style := [fsBold, fsItalic];
-          token.valor := IfThen(RichMemo1.Lines.Count > 0, #13#10, '');
-        end else if token.valor = '<Ts>' then
-        begin
-          fmt.Style := [];
-          token.valor := #13;
-        end
-        else if token.valor.StartsWith('<RF') then
-        begin
-          token.valor := '';
-          FTokenizer.LerAteTag(token, '<Rf>');
-          token.valor := token.valor.Replace('<Rf>',  '');
-          //token.valor := token.valor.Replace('<br/>', #13, [rfReplaceAll]);
-          //token.valor := token.valor.Replace('<b>',   '',  [rfReplaceAll]);
-          //token.valor := token.valor.Replace('</b>',  '',  [rfReplaceAll]);
-          //token.valor := token.valor.Replace('<i>',   '',  [rfReplaceAll]);
-          //token.valor := token.valor.Replace('</i>',  '',  [rfReplaceAll]);
-          ChapterNotes.Add(token.valor);
-
-          fmt.VScriptPos := vpSuperScript;
-          InsertFontText(RichMemo1, Format(' %d ', [NoteID]), fmt);
-          fmt.VScriptPos := vpNormal;
-
-          inc(NoteID);
-          token.valor := '';
-        end
-        else if token.valor.StartsWith('<FI>') then
-        begin
-          fmt.Style := [fsItalic];
-          fmt.Color := clGray;
-          token.valor := '';
-        end else if token.valor = '<Fi>' then
-        begin
-          fmt.Style := [];
-          fmt.Color := clBlack;
-          token.valor := '';
-        end else if token.valor.StartsWith('<FR>') then
-        begin
-          fmt.Color := clRed;
-          token.valor := '';
-        end else if token.valor = '<Fi>' then
-        begin
-          fmt.Color := clBlack;
-          token.valor := '';
-        end
-        else if token.valor.StartsWith('<FO>') then
-        begin
-          fmt.Style := [fsBold];
-          token.valor := '';
-        end else if token.valor = '<Fo>' then
-        begin
-          fmt.Style := [];
-          token.valor := '';
-        end
-        else if token.valor.StartsWith('<b>') then
-        begin
-          fmt.Style := [fsBold];
-          token.valor := '';
-        end else if token.valor = '</b>' then
-        begin
-          fmt.Style := [];
-          token.valor := '';
-        end
-        else if token.valor = '<CM>' then
-        begin
-          token.valor := #13#10;
-        end else if token.valor = '<br/>' then
-        begin
-          token.valor := ' ';
-        end else
-          token.valor := '';
-    end;
-    if not token.valor.IsEmpty then
-      InsertFontText(RichMemo1, token.valor, fmt);
-  end;
-  FreeAndNil(FTokenizer);
-end;
-
-procedure TFrmPrincipal.RenderNotes;
-var
-  i: integer;
-  fmt: TFontParams;
-  par: TParaNumbering;
-  start: PtrInt;
-begin
-  fmt := GetFontParams(ScrollBoxDstVerse.Font);
-  fmt.Size := 9;
-
-  InsertFontText(RichMemo1, #13#10#13#10, fmt);
-
-  RichMemo1.GetParaNumbering(0, par);
-  par.NumberStart := 1;
-  par.Indent      := 10;
-  par.Style       := pnNumber;
-
-  for i:=0 to ChapterNotes.Count-1 do
-  begin
-    start := UTF8Length(RichMemo1.Text) + 1;
-    RenderSpan(Format('%s<CM>', [ChapterNotes[i]]), fmt);
-    RichMemo1.SetParaNumbering(start, UTF8Length(RichMemo1.Text) - start, par);
-  end;
-end;
-
-procedure TFrmPrincipal.UpdateChapterView;
-var
-  verses: TStringList;
-begin
-  if not assigned(ProjetoAtual) or (ContextPanel.Width < 2) then
-    exit;
-
-  verses := ProjetoAtual.ChapterText;
-  try
-    RenderChapter(verses, ProjetoAtual.Verse);
-  finally
-    FreeAndNil(verses);
   end;
 end;
 

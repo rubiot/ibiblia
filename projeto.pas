@@ -17,7 +17,7 @@ uses
   SysUtils, Sqlite3DS, sqlite3conn, sqldb, db, StrUtils, math,
   ExtCtrls, Controls, ComCtrls, StdCtrls, Graphics, Forms, Versiculo, Sugestao,
   MemoVersiculo, ONTTokenizer, Dialogs, dos, PCRE, ExportarProjeto, LazLogger,
-  Sintagma, MySwordModule, TheWordDictionary;
+  Sintagma, MySwordModule, TheWordDictionary, fgl;
 
 type
 
@@ -58,6 +58,7 @@ type
   TOpcoesExportacao = set of TOpcaoExportacao;
 
   TOnNovoVersiculoEvent = procedure (Sender: TProjeto) of object;
+  TOnNovoVersiculoEvents = specialize TFPGList<TOnNovoVersiculoEvent>;
   TOnSintagmaClickEvent = procedure (Sender: TSintagma) of object;
   //TOnAlterarVersiculoEvent = procedure (Sender: TProjeto) of object;
 
@@ -101,7 +102,7 @@ type
     FEscopo: TEscopoTexto;
     FPopupTrigger: TPopupTrigger;
     FVerseStrongsCountMode: TStrongsCountMode;
-    FOnNovoVersiculo: TOnNovoVersiculoEvent;
+    FOnNovoVersiculo: TOnNovoVersiculoEvents;
     FOnSintagmaClick: TOnSintagmaClickEvent;
     FClosing: boolean;
     function GetCaminho: string;
@@ -209,7 +210,7 @@ type
     property Modificado: boolean read GetModificado;
     property Arvore: TTreeView read FArvore write FArvore;
     property OnAlterarVersiculo: TOnAlterarVersiculoEvent read FOnAlterarVersiculo write SetOnAlterarVersiculo;
-    property OnNovoVersiculo: TOnNovoVersiculoEvent read FOnNovoVersiculo write SetOnNovoVersiculo;
+    property OnNovoVersiculo: TOnNovoVersiculoEvent write SetOnNovoVersiculo;
     property OnSintagmaClick: TOnSintagmaClickEvent read FOnSintagmaClick write SetOnSintagmaClick;
     property AtrasoExibicaoDefinicao: Cardinal read FAtrasoExibicao write SetAtrasoExibicao;
     property Ativo: boolean read FAtivo;
@@ -609,8 +610,8 @@ end;
 
 procedure TProjeto.SetOnNovoVersiculo(const AValue: TOnNovoVersiculoEvent);
 begin
-  if FOnNovoVersiculo = AValue then exit;
-  FOnNovoVersiculo := AValue;
+  if FOnNovoVersiculo.IndexOf(AValue) = -1 then
+    FOnNovoVersiculo.Add(AValue);
 end;
 
 procedure TProjeto.SetOnSintagmaClick(const AValue: TOnSintagmaClickEvent);
@@ -960,6 +961,7 @@ end;
 procedure TProjeto.PosRolagemVersiculo(DataSet: TDataSet);
 var
   v: TTipoTextoBiblico;
+  e: TOnNovoVersiculoEvent;
 begin
   // updating current reference
   Sscanf(GetID(), '%d,%d,%d', [@FReference.BookID, @FReference.Chapter, @FReference.Verse]);
@@ -999,8 +1001,8 @@ begin
   if FTblPares.Fields[FACamposTexto[tbDestino]].AsString.IsEmpty then // open verse to edition if is empty
     OnDblClickVersiculo(FAVersiculo[tbDestino].Painel);
 
-  if assigned(FOnNovoVersiculo) then
-    FOnNovoVersiculo(self);
+  for e in FOnNovoVersiculo do
+    e(self);
 end;
 
 procedure TProjeto.SalvarPares;
@@ -1650,7 +1652,7 @@ begin
   end;
 
   FParesAntigos       := nil;
-  FOnNovoVersiculo    := nil;
+  FOnNovoVersiculo    := TOnNovoVersiculoEvents.Create;
   FOnAlterarVersiculo := nil;
   FSugeridor          := nil;
   FTblPares           := nil;
@@ -1717,6 +1719,7 @@ begin
   if assigned(FParesAntigos) then
     FParesAntigos.Free;
 
+  FOnNovoVersiculo.Free;
   FSugeridor.Free;
   FTemporizador.Free;
   FMemoVersiculo.Destruir;
@@ -1947,6 +1950,8 @@ begin
 end;
 
 procedure TProjeto.Salvar;
+var
+  e: TOnNovoVersiculoEvent;
 begin
   PreRolagemVersiculo(nil);
   AtribuirInfo('marcador', FTblPares.FieldByName('pare_id').AsString);
@@ -1958,6 +1963,8 @@ begin
     FAVersiculo[tbDestino].Modificado := false;
   end;
   //AtualizarArvore;
+  for e in FOnNovoVersiculo do
+    e(Self);
 end;
 
 procedure TProjeto.SugerirAssociacao;

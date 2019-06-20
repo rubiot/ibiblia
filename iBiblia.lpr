@@ -13,7 +13,7 @@ uses
   {$IFDEF WINDOWS}
   twAutomate, twSyncThread,
   {$ENDIF}
-  ONTParser, Sintagma, unitabout, MySwordModule, TheWordDictionary;
+  ONTParser, Sintagma, unitabout, MySwordModule, TheWordDictionary, ChapterView;
 
 {$R *.res}
 

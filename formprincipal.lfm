@@ -316,27 +316,8 @@ object frmPrincipal: TfrmPrincipal
       Width = 150
       Align = alRight
       BorderStyle = bsSingle
-      ClientHeight = 587
-      ClientWidth = 146
       ParentColor = False
       TabOrder = 4
-      object RichMemo1: TRichMemo
-        Left = 1
-        Height = 585
-        Top = 1
-        Width = 144
-        Align = alClient
-        BorderStyle = bsNone
-        Enabled = False
-        HideSelection = False
-        OnKeyDown = RichMemo1KeyDown
-        OnLinkAction = RichMemo1LinkAction
-        OnMouseMove = RichMemo1MouseMove
-        ReadOnly = True
-        ScrollBars = ssAutoVertical
-        TabOrder = 0
-        ZoomFactor = 1
-      end
     end
   end
   object ProgressBar1: TProgressBar
