@@ -707,7 +707,7 @@ end;
 
 function TProjeto.GetChapterText: TStringList;
 var
-  bkch: string;
+  bkch, text, comments: string;
 begin
   bkch := Format('%d,%d,', [BookID, Chapter]);
 
@@ -718,7 +718,9 @@ begin
   with FTblPares do
     while not FTblPares.EOF and GetID().StartsWith(bkch) do
     begin
-      result.Add(Format('%d ', [Verse]) + FTblPares.Fields[FACamposTexto[tbDestino]].AsString.Replace(#239#187#191, ''));
+      text     := FTblPares.Fields[FACamposTexto[tbDestino]].AsString.Replace(#239#187#191, '');
+      comments := Comentarios.Replace(#13#10, '<br/>', [rfReplaceAll]);
+      result.Add(Format('%s%s', [text, IfThen(comments.IsEmpty, '', Format('<RF>%s<Rf>', [comments]))]));
       VersiculoSeguinte;
     end;
   FinishScrollingSession;

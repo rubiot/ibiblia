@@ -229,7 +229,7 @@ object frmPrincipal: TfrmPrincipal
         ClientHeight = 114
         ClientWidth = 641
         TabOrder = 7
-        object Memo1: TMemo
+        object CommentsMemo: TMemo
           Left = 1
           Height = 112
           Top = 1
@@ -330,6 +330,8 @@ object frmPrincipal: TfrmPrincipal
         Enabled = False
         HideSelection = False
         OnKeyDown = RichMemo1KeyDown
+        OnLinkAction = RichMemo1LinkAction
+        OnMouseMove = RichMemo1MouseMove
         ReadOnly = True
         ScrollBars = ssAutoVertical
         TabOrder = 0
