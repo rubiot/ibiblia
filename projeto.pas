@@ -1151,7 +1151,6 @@ begin
   if text = tbNone then
      raise Exception.Create('Invalid text type in OnVersePopup');
 
-  PreRolagemVersiculo(nil);
   with FTblPares do
   begin
     StartScrollingSession;
@@ -1407,7 +1406,6 @@ begin
   sl[2] := 0;
   sl[3] := 0;
 
-  StartScrollingSession;
   VersiculoInicial;
 
   while not FTblPares.EOF do
@@ -2009,7 +2007,6 @@ begin
       FAVersiculo[tbOrigem].Ativo := false;
       FAVersiculo[tbDestino].Ativo := false;
       FExportando := true;
-      PreRolagemVersiculo(nil);
 
       StartScrollingSession;
       VersiculoInicial;
@@ -2240,7 +2237,6 @@ begin
     end;
     FExportando := true;
     lines := TStringList.Create;
-    PreRolagemVersiculo(nil);
 
     StartScrollingSession;
     with FTblPares do
@@ -2332,7 +2328,6 @@ begin
     end;
     FExportando := true;
     lines := TStringList.Create;
-    PreRolagemVersiculo(nil);
 
     StartScrollingSession;
     with FTblPares do
@@ -2438,7 +2433,6 @@ begin
     end;
 
     FExportando := true;
-    PreRolagemVersiculo(nil);
 
     StartScrollingSession;
     VersiculoInicial;
@@ -2670,6 +2664,7 @@ end;
 procedure TProjeto.StartScrollingSession;
 begin
   FMarker := ID;
+  PreRolagemVersiculo(nil);
   ScrollEventsEnabled := false;
 end;
 
