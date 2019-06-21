@@ -1207,7 +1207,10 @@ begin
   for v:=low(FAVersiculo) to high(FAVersiculo) do
     if FAVersiculo[v] = Sender.Versiculo then
     begin
-      Sender.Versiculo.AlterarTexto(Sender.Texto);
+      if Assigned(Sender.Versiculo.VersiculoPar) then
+        Sender.Versiculo.AlterarTexto(Sender.Texto)
+      else // reference text
+        Sender.Versiculo.Texto := Sender.Texto;
       break;
     end;
   //MessageDlg('Versículo modificado', format('Versiculo modificado: %s', [Sender.Texto]), mtError, [mbOK], 0);
