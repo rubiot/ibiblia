@@ -86,7 +86,10 @@ begin
     case token.tipo of
       tsMetaDado:
         token.valor := '';
-      tsEspaco, tsPontuacao, tsSintagma:
+      tsEspaco:
+        if token.valor = '|' then
+          token.valor := '';
+      tsPontuacao, tsSintagma:
         ;
       tsTag:
         if token.valor.StartsWith('<TS') then
