@@ -6,9 +6,11 @@ interface
 
 uses
   Classes, SysUtils, Forms, RichMemo, RichMemoUtils, Graphics, StrUtils,
-  ONTTokenizer, LCLType, LazUTF8, Projeto, PCRE, Math, Character, Controls;
+  ONTTokenizer, LCLType, LazUTF8, Projeto, PCRE, Math, Character, Controls,
+  Menus;
 
 type
+  TVerseMode = (vmParagraph, vmVersePerLine);
 
   { TChapterView }
 
@@ -19,6 +21,9 @@ type
     FChapterNotes: TStringList;
     FNoteID: integer;
     FHint: THintWindow;
+    FParagraphModeItem: TMenuItem;
+    FVersePerLineItem: TMenuItem;
+    FVerseMode: TVerseMode;
 
     procedure RenderVerse(txt: string; verse: string; isCurrent: boolean);
     procedure RenderSpan(txt: string; fmt: TFontParams);
@@ -28,13 +33,22 @@ type
     procedure HandleMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
     procedure HandleLinkAction(Sender: TObject; ALinkAction: TLinkAction; const info: TLinkMouseInfo; LinkStart, LinkLen: Integer);
     procedure HandleMouseWheel(Sender: TObject; Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
+    procedure HandleParagraphMode(Sender: TObject);
+    procedure HandleVersePerLineMode(Sender: TObject);
     procedure SetProject(AValue: TProjeto);
+    procedure InitPopupMenu;
+    procedure SetVerseMode(AValue: TVerseMode);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure RenderChapter(verses: TStringList; current: integer);
     property Project: TProjeto read FProject write SetProject;
+    property VerseMode: TVerseMode read FVerseMode write SetVerseMode;
   end;
+
+resourcestring
+  SParagraphMode ='&Paragraph mode';
+  SVersePerLineMode = '&Verse per line mode';
 
 implementation
 
@@ -50,7 +64,7 @@ begin
   fmt := GetFontParams(Font);
   fmt.Size := 10;
 
-  if Lines.Count > 0 then
+  if (FVerseMode = vmParagraph) and (Lines.Count > 0) then
     InsertFontText(Self, ' ', fmt);
 
   mtHeading := FRxVerseHeading.Match(txt);
@@ -68,11 +82,15 @@ begin
   end;
 
   { rendering verse number and making it a link }
-  InsertFontText(Self, verse + ' ', fmt);
+  RenderSpan(Format('<b>%s</b> ', [verse]), fmt);
   pos := UTF8Length(Text) - UTF8Length(verse) - 1;
   SetLink(pos, UTF8Length(verse), true, verse);
+
   { rendering the verse text }
   RenderSpan(txt, fmt);
+
+  if FVerseMode = vmVersePerLine then
+    InsertFontText(Self, #13#10, fmt);
 end;
 
 procedure TChapterView.RenderSpan(txt: string; fmt: TFontParams);
@@ -199,7 +217,7 @@ begin
         end
         else if token.valor = '<CM>' then
         begin
-          token.valor := #13#10;
+          token.valor := IfThen(FVerseMode = vmParagraph, #13#10, '');
         end else if token.valor.ToLower = '<br/>' then
         begin
           token.valor := ' ';
@@ -335,11 +353,56 @@ begin
   end;
 end;
 
+procedure TChapterView.HandleParagraphMode(Sender: TObject);
+begin
+  VerseMode := vmParagraph;
+end;
+
+procedure TChapterView.HandleVersePerLineMode(Sender: TObject);
+begin
+  VerseMode := vmVersePerLine;
+end;
+
 procedure TChapterView.SetProject(AValue: TProjeto);
 begin
   if FProject = AValue then Exit;
   FProject := AValue;
   FProject.OnNovoVersiculo := @HandleVerseChange;
+end;
+
+procedure TChapterView.InitPopupMenu;
+begin
+  PopupMenu := TPopupMenu.Create(Self);
+  PopupMenu.Parent := Self;
+
+  FParagraphModeItem := TMenuItem.Create(PopupMenu);
+  with FParagraphModeItem do
+  begin
+    Caption := SParagraphMode;
+    OnClick := @HandleParagraphMode;
+    Enabled := False;
+  end;
+  PopupMenu.Items.Add(FParagraphModeItem);
+
+  FVersePerLineItem := TMenuItem.Create(PopupMenu);
+  with FVersePerLineItem do
+  begin
+    Caption := SVersePerLineMode;
+    OnClick := @HandleVersePerLineMode;
+    Enabled := True;
+  end;
+  PopupMenu.Items.Add(FVersePerLineItem);
+end;
+
+procedure TChapterView.SetVerseMode(AValue: TVerseMode);
+begin
+  if FVerseMode = AValue
+    then Exit;
+
+  FVerseMode := AValue;
+  FParagraphModeItem.Enabled := FVerseMode <> vmParagraph;
+  FVersePerLineItem.Enabled  := FVerseMode <> vmVersePerLine;
+  HandleVerseChange(FProject);
 end;
 
 constructor TChapterView.Create(AOwner: TComponent);
@@ -353,11 +416,13 @@ begin
   { TRichMemo.GetText causes unsolicited scrolling, disabling it }
   //OnMouseMove  := @HandleMouseMove;
   FProject     := nil;
+  FVerseMode   := vmParagraph;
   FRxVerseHeading := RegexCreate('^((?:<TS[0-7]?>.*?<Ts>)*)(.*?)$', [rcoUTF8]);
   FChapterNotes := TStringList.Create;
   FHint := THintWindow.Create(Self);
   FHint.Font.Size := 10;
   FHint.Color := $E0FFFF;
+  InitPopupMenu;
 end;
 
 destructor TChapterView.Destroy;

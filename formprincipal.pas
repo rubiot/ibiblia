@@ -649,11 +649,15 @@ begin
   MenuItemStrongNegrito.Checked := opts.ReadBool('opcoes', 'boldstrongs', false);
 
   FChapterView := TChapterView.Create(ContextPanel);
-  FChapterView.ParentWindow := ContextPanel.Handle;
-  FChapterView.BorderStyle  := bsNone;
-  FChapterView.Align        := alClient;
-  FChapterView.ScrollBars   := ssAutoVertical;
-  FChapterView.ZoomFactor   := opts.ReadInteger('leiaute', 'principal.chapterview.zoom', 10) / 10.0;;
+  with FChapterView do
+  begin
+    ParentWindow := ContextPanel.Handle;
+    BorderStyle  := bsNone;
+    Align        := alClient;
+    ScrollBars   := ssAutoVertical;
+    ZoomFactor   := opts.ReadInteger('leiaute', 'principal.chapterview.zoom', 10) / 10.0;
+    VerseMode    := TVerseMode(opts.ReadInteger('opcoes', 'chapterview.versemode', Ord(vmParagraph)));
+  end;
 
   MenuItemStrongsCountNone.Tag    := Integer(scNone);
   MenuItemStrongsCountWords.Tag   := Integer(scCountWords);
@@ -703,6 +707,7 @@ begin
   opts.WriteInteger('leiaute', 'principal.panel3.height', BottomPanel.Height);
   opts.WriteInteger('leiaute', 'principal.contextpanel.width', ContextPanel.Width);
   opts.WriteInteger('leiaute', 'principal.chapterview.zoom', Trunc(FChapterView.ZoomFactor * 10));
+  opts.WriteInteger('opcoes', 'chapterview.versemode', Ord(FChapterView.VerseMode));
   opts.WriteBool('opcoes', 'sugestoes.automaticas', MenuItem22.Checked);
   opts.WriteBool('opcoes', 'synctheword', MenuItemSyncTheWord.Checked);
   opts.WriteBool('opcoes', 'syncibiblia', MenuItemSynciBiblia.Checked);
