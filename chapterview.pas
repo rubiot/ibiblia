@@ -27,6 +27,7 @@ type
     procedure HandleKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure HandleMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
     procedure HandleLinkAction(Sender: TObject; ALinkAction: TLinkAction; const info: TLinkMouseInfo; LinkStart, LinkLen: Integer);
+    procedure HandleMouseWheel(Sender: TObject; Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
     procedure SetProject(AValue: TProjeto);
   public
     constructor Create(AOwner: TComponent); override;
@@ -237,7 +238,7 @@ procedure TChapterView.HandleVerseChange(Sender: TProjeto);
 var
   verses: TStringList;
 begin
-  if {not assigned(FProject) or} Width < 2 then
+  if not assigned(FProject) or (Width < 2) then
     exit;
 
   verses := Sender.ChapterText;
@@ -321,6 +322,16 @@ begin
   FProject.IrPara(Format('%d,%d,%s', [FProject.BookID, FProject.Chapter, Verse]));
 end;
 
+procedure TChapterView.HandleMouseWheel(Sender: TObject; Shift: TShiftState;
+  WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
+begin
+  if ssCtrl in Shift then
+  begin
+    TRichMemo(Sender).ZoomFactor := Max(TRichMemo(Sender).ZoomFactor + Sign(WheelDelta)*0.1, 0.1);
+    Handled := true;
+  end;
+end;
+
 procedure TChapterView.SetProject(AValue: TProjeto);
 begin
   if FProject = AValue then Exit;
@@ -335,7 +346,10 @@ begin
   ReadOnly     := true;
   OnKeyDown    := @HandleKeyDown;
   OnLinkAction := @HandleLinkAction;
-  //OnMouseMove  := @HandleMouseMove;  { TRichMemo.GetText causes unsolicited scrolling, disabling it }
+  OnMouseWheel := @HandleMouseWheel;
+  { TRichMemo.GetText causes unsolicited scrolling, disabling it }
+  //OnMouseMove  := @HandleMouseMove;
+  FProject     := nil;
   FRxVerseHeading := RegexCreate('^((?:<TS[0-7]?>.*?<Ts>)*)(.*?)$', [rcoUTF8]);
   FChapterNotes := TStringList.Create;
   FHint := THintWindow.Create(Self);
@@ -347,6 +361,7 @@ destructor TChapterView.Destroy;
 begin
   FChapterNotes.Free;
   FHint.Free;
+  { For correctness we should unsubscribe from TProjeto.OnNovoVersiculo... }
   inherited Destroy;
 end;
 
