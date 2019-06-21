@@ -8,7 +8,7 @@ object FormPropProjeto: TFormPropProjeto
   ClientWidth = 553
   OnCreate = FormCreate
   Position = poMainFormCenter
-  LCLVersion = '2.0.0.4'
+  LCLVersion = '2.0.2.0'
   object GroupBox2: TGroupBox
     Left = 0
     Height = 82
@@ -71,9 +71,9 @@ object FormPropProjeto: TFormPropProjeto
       Left = 11
       Height = 23
       Top = 107
-      Width = 430
+      Width = 420
       EditLabel.Height = 15
-      EditLabel.Width = 430
+      EditLabel.Width = 420
       EditLabel.Caption = 'Strong''s dictionary'
       EditLabel.ParentColor = False
       TabOrder = 1
@@ -83,9 +83,9 @@ object FormPropProjeto: TFormPropProjeto
       Left = 11
       Height = 23
       Top = 155
-      Width = 430
+      Width = 420
       EditLabel.Height = 15
-      EditLabel.Width = 430
+      EditLabel.Width = 420
       EditLabel.Caption = 'Morphology dictionary'
       EditLabel.ParentColor = False
       TabOrder = 2
@@ -100,18 +100,18 @@ object FormPropProjeto: TFormPropProjeto
       TabOrder = 3
     end
     object BitBtn4: TBitBtn
-      Left = 448
+      Left = 440
       Height = 23
       Top = 107
-      Width = 75
+      Width = 83
       Action = ActionSelecionarStrong
       TabOrder = 4
     end
     object BitBtn8: TBitBtn
-      Left = 448
+      Left = 440
       Height = 23
       Top = 152
-      Width = 75
+      Width = 83
       Action = ActionSelecionarMorfo
       TabOrder = 5
     end
@@ -127,7 +127,7 @@ object FormPropProjeto: TFormPropProjeto
       Left = 11
       Height = 194
       Top = 205
-      Width = 430
+      Width = 420
       Lines.Strings = (
         'MemoFonte'
       )
@@ -144,10 +144,10 @@ object FormPropProjeto: TFormPropProjeto
       ParentColor = False
     end
     object Button2: TButton
-      Left = 448
+      Left = 440
       Height = 25
       Top = 200
-      Width = 75
+      Width = 83
       Action = ActionSelecionarFonte
       TabOrder = 8
     end
