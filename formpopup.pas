@@ -54,9 +54,8 @@ uses formPrincipal;
 procedure TFrmDictionaryPopup.FormCreate(Sender: TObject);
 begin
   fCompStyle := csHintWindow;
-  //Color := clInfoBk;
   Canvas.Brush.Style := bsClear;
-  BorderStyle := bsNone;
+  //BorderStyle := bsNone; // bsNone, bsSingle, bsSizeable, bsDialog, bsToolWindow, bsSizeToolWin; // bsNone;
   Caption := '';
   with GetControlClassDefaultSize do
     SetInitialBounds(0, 0, CX, CY);
