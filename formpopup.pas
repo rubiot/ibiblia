@@ -6,12 +6,8 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
-  {$IFDEF UNIX}
-  LCLType,
-  {$ELSE}
-  Windows,
-  {$ENDIF}
-  ExtCtrls, ComCtrls, RichMemo;
+  {$IFDEF WINDOWS}Windows,{$ENDIF}
+  ExtCtrls, ComCtrls, LCLType, RichMemo, Types, Math;
 
 type
   { TFrmDictionaryPopup }
@@ -28,12 +24,12 @@ type
     procedure FormDestroy(Sender: TObject);
     procedure FormHide(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure RichMemoMouseWheel(Sender: TObject; Shift: TShiftState;
+      WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
     procedure TabControlMorfosChange(Sender: TObject);
     procedure TabControlStrongsChange(Sender: TObject);
   private
     { private declarations }
-    FZoomStrong: smallint;
-    FZoomMorfo: smallint;
     FStrongs: TStringList;
     FMorfos: TStringList;
   public
@@ -42,8 +38,6 @@ type
     procedure AdicionarMorfo(const morfo: string; const definition: string);
     procedure MostrarEm(x: Integer; y: Integer);
     procedure Ocultar;
-    property ZoomStrong: smallint read FZoomStrong write FZoomStrong;
-    property ZoomMorfo: smallint read FZoomMorfo write FZoomMorfo;
     property Strongs: TStringList read FStrongs;
     property Morfos: TStringList read FMorfos;
   end;
@@ -59,11 +53,19 @@ uses formPrincipal;
 
 procedure TFrmDictionaryPopup.FormCreate(Sender: TObject);
 begin
-  FStrongs := TStringList.Create;
-  FMorfos := TStringList.Create;
+  fCompStyle := csHintWindow;
+  //Color := clInfoBk;
+  Canvas.Brush.Style := bsClear;
+  BorderStyle := bsNone;
+  Caption := '';
+  with GetControlClassDefaultSize do
+    SetInitialBounds(0, 0, CX, CY);
 
-  ZoomStrong := opts.ReadInteger('leiaute', 'popup.zoom.strong', 100);
-  ZoomMorfo  := opts.ReadInteger('leiaute', 'popup.zoom.morfo', 100);
+  FStrongs := TStringList.Create;
+  FMorfos  := TStringList.Create;
+
+  RichMemoStrong.ZoomFactor := opts.ReadInteger('leiaute', 'popup.zoom.strong', 10) / 10.0;
+  RichMemoMorpho.ZoomFactor := opts.ReadInteger('leiaute', 'popup.zoom.morfo',  10) / 10.0;
   Width  := opts.ReadInteger('leiaute', 'popup.largura', Width);
   Height := opts.ReadInteger('leiaute', 'popup.altura', Height);
   Panel2.Height := opts.ReadInteger('leiaute', 'popup.panel2.altura', Panel2.Height);
@@ -74,8 +76,8 @@ begin
   opts.WriteInteger('leiaute', 'popup.largura', Width);
   opts.WriteInteger('leiaute', 'popup.altura', Height);
   opts.WriteInteger('leiaute', 'popup.panel2.altura', Panel2.Height);
-  opts.WriteInteger('leiaute', 'popup.zoom.strong', ZoomStrong);
-  opts.WriteInteger('leiaute', 'popup.zoom.morfo', ZoomMorfo);
+  opts.WriteInteger('leiaute', 'popup.zoom.strong', Trunc(RichMemoStrong.ZoomFactor * 10));
+  opts.WriteInteger('leiaute', 'popup.zoom.morfo',  Trunc(RichMemoMorpho.ZoomFactor * 10));
 
   FStrongs.Destroy;
   FMorfos.Destroy;
@@ -83,8 +85,6 @@ end;
 
 procedure TFrmDictionaryPopup.FormHide(Sender: TObject);
 begin
-  ZoomStrong := Trunc(RichMemoStrong.ZoomFactor * 10);
-  ZoomMorfo := Trunc(RichMemoMorpho.ZoomFactor * 10);
   FStrongs.Clear;
   FMorfos.Clear;
   TabControlStrongs.Tabs.Clear;
@@ -96,7 +96,18 @@ begin
   if Key = VK_ESCAPE then
   begin
     Visible := false;
-    frmPrincipal.SetFocus;
+    FrmPrincipal.SetFocus;
+  end;
+end;
+
+procedure TFrmDictionaryPopup.RichMemoMouseWheel(Sender: TObject;
+  Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint;
+  var Handled: Boolean);
+begin
+  if ssCtrl in Shift then
+  begin
+    TRichMemo(Sender).ZoomFactor := Max(TRichMemo(Sender).ZoomFactor + Sign(WheelDelta)*0.1, 0.1);
+    Handled := true;
   end;
 end;
 
@@ -128,44 +139,44 @@ begin
   begin
     TabControlStrongs.TabIndex := 0;
     RichMemoStrong.Rtf         := FStrongs[0];
-    RichMemoStrong.ZoomFactor  := ZoomStrong / 10.0;
+    RichMemoStrong.ZoomFactor  := RichMemoStrong.ZoomFactor; { circunventing bug... }
   end;
   if FMorfos.Count > 0 then
   begin
     TabControlMorfos.TabIndex  := 0;
     RichMemoMorpho.Rtf         := FMorfos[0];
-    RichMemoMorpho.ZoomFactor  := ZoomMorfo / 10.0;
-    TabControlMorfos.Visible   :=true;
+    RichMemoMorpho.ZoomFactor  := RichMemoMorpho.ZoomFactor; { circunventing bug... }
+    TabControlMorfos.Visible   := true;
   end else
   begin
     TabControlMorfos.Visible   := false;
   end;
 
-  if x + self.Width > Screen.Width then
+  if x + Width > Screen.Width then
   begin
-    self.left := x - self.Width;
-    if self.Left < 0 then self.Left := 0;
+    Left := x - Width;
+    if Left < 0 then Left := 0;
   end
   else
-    self.left := x;
+    Left := x;
 
-  if y + self.Height > Screen.Height then
+  if y + Height > Screen.Height then
   begin
-    self.top := y - self.Height;
-    if self.top < 0 then self.top := 0;
+    Top := y - Height;
+    if Top < 0 then Top := 0;
   end
   else
-    self.top := y;
+    Top := y;
 
-  self.visible := true;
+  Visible := True;
 end;
 
 procedure TFrmDictionaryPopup.Ocultar;
 begin
-  if not self.Visible then
+  if not Visible then
     exit;
-  self.Visible := false;
-  self.FormHide(self);
+  Visible := false;
+  FormHide(self);
   TabControlStrongs.Tabs.Clear;
   TabControlMorfos.Tabs.Clear;
   RichMemoStrong.Rtf := '';

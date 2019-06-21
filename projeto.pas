@@ -1264,7 +1264,6 @@ begin
       if (FrmDictionaryPopup.Strongs.Count > 0) or (FrmDictionaryPopup.Morfos.Count > 0) then
       begin
         point := s.LabelRef.ClientToScreen(s.LabelRef.ClientRect.BottomRight);
-        frmDictionaryPopup.Caption := s.Texto;
         frmDictionaryPopup.MostrarEm(point.x, point.y);
       end;
       break;
@@ -1663,7 +1662,7 @@ begin
 
   FTemporizador          := TTimer.Create(nil);
   FTemporizador.Enabled  := false;
-  FTemporizador.Interval := 200;
+  FTemporizador.Interval := 300;
   FTemporizador.OnTimer  := @OnExibirDefinicao;
 
   FMemoVersiculo := TMemoVersiculo.Criar;
