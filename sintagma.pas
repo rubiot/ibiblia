@@ -578,7 +578,7 @@ end;
 function TSintagma.Igual(other: TSintagma): boolean;
 begin
   result := (FTipo = other.FTipo) and
-            (FTextoCru = other.FTextoCru) and
+            (FTexto = other.FTexto) and
             (FCor = other.FCor) and
             (FSobrescrito = other.FSobrescrito) and
             (FItalico = other.FItalico);
