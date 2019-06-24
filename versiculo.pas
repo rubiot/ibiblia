@@ -482,6 +482,15 @@ begin
       end
       else if new.First.Igual(FSintagmas.First) then
       begin
+        with FSintagmas.First do
+        begin
+          Strong.Free;
+          Morf.Free;
+          Strong := new.First.Strong;
+          Morf   := new.First.Morf;
+          new.First.Strong := nil;
+          new.First.Morf   := nil;
+        end;
         result.Add(FSintagmas.First);
         FSintagmas.Delete(0);
         new.First.Destruir;
