@@ -32,11 +32,18 @@ type
     procedure AssociationOneToMany;
     procedure AssociationManyToOne;
     procedure AssociationManyToMany;
-    procedure ReplaceTextSameText;
-    procedure ReplaceTextChangeBeginning;
-    procedure ReplaceTextChangeEnd;
-    procedure ReplaceTextChangeMiddle;
+    procedure ReplaceSourceTextSameText;
+    procedure ReplaceDestinationTextSameText;
+    procedure ReplaceSourceTextChangeBeginning;
+    procedure ReplaceDestinationTextChangeBeginning;
+    procedure ReplaceSourceTextChangeEnd;
+    procedure ReplaceDestinationTextChangeEnd;
+    procedure ReplaceSourceTextChangeMiddle;
+    procedure ReplaceDestinationTextChangeMiddle;
     procedure ReplaceTextTwice;
+    procedure ReplaceSourceTextVerticalBar;
+    procedure ReplaceDestinationTextVerticalBar;
+    procedure ReplaceSourceTextAddPunctuation;
   end;
 
 implementation
@@ -60,7 +67,7 @@ end;
 
 procedure TVerseTests.SyntagmsParsing;
 begin
-  verse1.Texto := 'Sample<WG1><WTPREP> verse<WH100><WH11><WTPREP l="verse"> <FI>text<Fi>.';
+  verse1.Texto := 'Sample<WG1><WTPREP> verse<WH100><WH11><WTPREP l="verse"> <FI>text<Fi> x|z.';
   AssertTrue(verse1.Sintagmas[0].Texto = 'Sample');
   AssertTrue(verse1.Sintagmas[1].Texto = ' ');
   AssertTrue(verse1.Sintagmas[2].Texto = 'verse');
@@ -68,7 +75,10 @@ begin
   AssertTrue(verse1.Sintagmas[4].Texto = '<FI>');
   AssertTrue(verse1.Sintagmas[5].Texto = 'text');
   AssertTrue(verse1.Sintagmas[6].Texto = '<Fi>');
-  AssertTrue(verse1.Sintagmas[7].Texto = '.');
+  AssertTrue(verse1.Sintagmas[7].Texto = ' ');
+  AssertTrue(verse1.Sintagmas[8].Texto = 'x');
+  AssertTrue(verse1.Sintagmas[9].Texto = 'z');
+  AssertTrue(verse1.Sintagmas[10].Texto = '.');
 end;
 
 procedure TVerseTests.StrongsParsing;
@@ -185,7 +195,7 @@ begin
   AssertPairsAndSiblings(translation2, [original1, original2], [translation1]);
 end;
 
-procedure TVerseTests.ReplaceTextSameText;
+procedure TVerseTests.ReplaceSourceTextSameText;
 var
   original1, original2, translation1, translation2: TSintagma;
 begin
@@ -207,7 +217,29 @@ begin
   AssertPairsAndSiblings(translation2, [original2   ], []);
 end;
 
-procedure TVerseTests.ReplaceTextChangeBeginning;
+procedure TVerseTests.ReplaceDestinationTextSameText;
+var
+  original1, original2, translation1, translation2: TSintagma;
+begin
+  verse1.Texto := 'translation1 translation2';
+  verse2.Texto := 'original1 original2';
+  Associate([0],[0]);
+  Associate([2],[2]);
+
+  translation1 := verse1.Sintagmas[0];
+  translation2 := verse1.Sintagmas[2];
+  original1    := verse2.Sintagmas[0];
+  original2    := verse2.Sintagmas[2];
+
+  verse2.AlterarTexto('original1 original2');
+
+  AssertPairsAndSiblings(original1,    [translation1], []);
+  AssertPairsAndSiblings(original2,    [translation2], []);
+  AssertPairsAndSiblings(translation1, [original1   ], []);
+  AssertPairsAndSiblings(translation2, [original2   ], []);
+end;
+
+procedure TVerseTests.ReplaceSourceTextChangeBeginning;
 var
   original1, original2, translation1, translation2: TSintagma;
   neworiginal1, neworiginal2, neworiginal3: TSintagma;
@@ -238,7 +270,38 @@ begin
   AssertPairsAndSiblings(translation2, [neworiginal2], []);
 end;
 
-procedure TVerseTests.ReplaceTextChangeEnd;
+procedure TVerseTests.ReplaceDestinationTextChangeBeginning;
+var
+  original1, original2, translation1, translation2: TSintagma;
+  neworiginal1, neworiginal2, neworiginal3: TSintagma;
+begin
+  verse1.Texto := 'translation1 translation2';
+  verse2.Texto := 'original1 original2';
+  Associate([0],[0]);
+  Associate([2],[2]);
+
+  original1    := verse2.Sintagmas[0];
+  original2    := verse2.Sintagmas[2];
+  translation1 := verse1.Sintagmas[0];
+  translation2 := verse1.Sintagmas[2];
+
+  //                   0         2         4
+  verse2.AlterarTexto('original3 original1 original2');
+
+  neworiginal3 := verse2.Sintagmas[0];
+  neworiginal1 := verse2.Sintagmas[2];
+  neworiginal2 := verse2.Sintagmas[4];
+
+  AssertTrue(neworiginal1 = original1);
+  AssertTrue(neworiginal2 = original2);
+  AssertPairsAndSiblings(neworiginal1, [translation1], []);
+  AssertPairsAndSiblings(neworiginal2, [translation2], []);
+  AssertPairsAndSiblings(neworiginal3, [], []);
+  AssertPairsAndSiblings(translation1, [neworiginal1], []);
+  AssertPairsAndSiblings(translation2, [neworiginal2], []);
+end;
+
+procedure TVerseTests.ReplaceSourceTextChangeEnd;
 var
   original1, original2, translation1, translation2: TSintagma;
   neworiginal1, neworiginal2, neworiginal3: TSintagma;
@@ -269,7 +332,38 @@ begin
   AssertPairsAndSiblings(translation2, [neworiginal2], []);
 end;
 
-procedure TVerseTests.ReplaceTextChangeMiddle;
+procedure TVerseTests.ReplaceDestinationTextChangeEnd;
+var
+  original1, original2, translation1, translation2: TSintagma;
+  neworiginal1, neworiginal2, neworiginal3: TSintagma;
+begin
+  verse1.Texto := 'translation1 translation2';
+  verse2.Texto := 'original1 original2';
+  Associate([0],[0]);
+  Associate([2],[2]);
+
+  translation1 := verse1.Sintagmas[0];
+  translation2 := verse1.Sintagmas[2];
+  original1    := verse2.Sintagmas[0];
+  original2    := verse2.Sintagmas[2];
+
+  //                   0         2         4
+  verse2.AlterarTexto('original1 original2 original3');
+
+  neworiginal1 := verse2.Sintagmas[0];
+  neworiginal2 := verse2.Sintagmas[2];
+  neworiginal3 := verse2.Sintagmas[4];
+
+  AssertTrue(neworiginal1 = original1);
+  AssertTrue(neworiginal2 = original2);
+  AssertPairsAndSiblings(neworiginal1, [translation1], []);
+  AssertPairsAndSiblings(neworiginal2, [translation2], []);
+  AssertPairsAndSiblings(neworiginal3, [], []);
+  AssertPairsAndSiblings(translation1, [neworiginal1], []);
+  AssertPairsAndSiblings(translation2, [neworiginal2], []);
+end;
+
+procedure TVerseTests.ReplaceSourceTextChangeMiddle;
 var
   original1, original2, translation1, translation2: TSintagma;
   neworiginal1, neworiginal2, neworiginal3: TSintagma;
@@ -290,6 +384,37 @@ begin
   neworiginal1 := verse1.Sintagmas[0];
   neworiginal3 := verse1.Sintagmas[2];
   neworiginal2 := verse1.Sintagmas[4];
+
+  AssertTrue(neworiginal1 = original1);
+  AssertTrue(neworiginal2 = original2);
+  AssertPairsAndSiblings(neworiginal1, [translation1], []);
+  AssertPairsAndSiblings(neworiginal2, [translation2], []);
+  AssertPairsAndSiblings(neworiginal3, [], []);
+  AssertPairsAndSiblings(translation1, [neworiginal1], []);
+  AssertPairsAndSiblings(translation2, [neworiginal2], []);
+end;
+
+procedure TVerseTests.ReplaceDestinationTextChangeMiddle;
+var
+  original1, original2, translation1, translation2: TSintagma;
+  neworiginal1, neworiginal2, neworiginal3: TSintagma;
+begin
+  verse1.Texto := 'translation1 translation2';
+  verse2.Texto := 'original1 original2';
+  Associate([0],[0]);
+  Associate([2],[2]);
+
+  translation1 := verse1.Sintagmas[0];
+  translation2 := verse1.Sintagmas[2];
+  original1    := verse2.Sintagmas[0];
+  original2    := verse2.Sintagmas[2];
+
+  //                   0         2         4
+  verse2.AlterarTexto('original1 original3 original2');
+
+  neworiginal1 := verse2.Sintagmas[0];
+  neworiginal3 := verse2.Sintagmas[2];
+  neworiginal2 := verse2.Sintagmas[4];
 
   AssertTrue(neworiginal1 = original1);
   AssertTrue(neworiginal2 = original2);
@@ -344,6 +469,166 @@ begin           // 0 2 4 6
   AssertPairsAndSiblings(d[8], [s[6]], []);
 end;
 
+procedure TVerseTests.ReplaceSourceTextVerticalBar;
+var
+  s, d: TSintagmaList;
+begin           // 0 2 3 5
+  verse1.Texto := 'a b|c d';
+                // 0 2 4 6
+  verse2.Texto := 'a b c d';
+  Associate([0],[0]);
+  Associate([2],[2]);
+  Associate([3],[4]);
+  Associate([5],[6]);
+
+  s := verse1.Sintagmas;
+  d := verse2.Sintagmas;
+
+  AssertPairsAndSiblings(s[0], [d[0]], []);
+  AssertPairsAndSiblings(s[1], [],     []);
+  AssertPairsAndSiblings(s[2], [d[2]], []);
+  AssertPairsAndSiblings(s[3], [d[4]], []);
+  AssertPairsAndSiblings(s[4], [],     []);
+  AssertPairsAndSiblings(s[5], [d[6]], []);
+
+  AssertPairsAndSiblings(d[0], [s[0]], []);
+  AssertPairsAndSiblings(d[1], [],     []);
+  AssertPairsAndSiblings(d[2], [s[2]], []);
+  AssertPairsAndSiblings(d[3], [],     []);
+  AssertPairsAndSiblings(d[4], [s[3]], []);
+  AssertPairsAndSiblings(d[5], [],     []);
+  AssertPairsAndSiblings(d[6], [s[5]], []);
+                    // 0 2 4 6
+  verse1.AlterarTexto('a b c d');
+
+  s := verse1.Sintagmas;
+  d := verse2.Sintagmas;
+
+  AssertPairsAndSiblings(s[0], [d[0]], []);
+  AssertPairsAndSiblings(s[1], [],     []);
+  AssertPairsAndSiblings(s[2], [d[2]], []);
+  AssertPairsAndSiblings(s[3], [],     []);
+  AssertPairsAndSiblings(s[4], [d[4]], []);
+  AssertPairsAndSiblings(s[5], [],     []);
+  AssertPairsAndSiblings(s[6], [d[6]], []);
+
+  AssertPairsAndSiblings(d[0], [s[0]], []);
+  AssertPairsAndSiblings(d[1], [],     []);
+  AssertPairsAndSiblings(d[2], [s[2]], []);
+  AssertPairsAndSiblings(d[3], [],     []);
+  AssertPairsAndSiblings(d[4], [s[4]], []);
+  AssertPairsAndSiblings(d[5], [],     []);
+  AssertPairsAndSiblings(d[6], [s[6]], []);
+end;
+
+procedure TVerseTests.ReplaceDestinationTextVerticalBar;
+var
+  s, d: TSintagmaList;
+begin
+                // 0 2 4 6
+  verse1.Texto := 'a b c d';
+                // 0 2 3 5
+  verse2.Texto := 'a b|c d';
+  Associate([0],[0]);
+  Associate([2],[2]);
+  Associate([4],[3]);
+  Associate([6],[5]);
+
+  s := verse1.Sintagmas;
+  d := verse2.Sintagmas;
+
+  AssertPairsAndSiblings(s[0], [d[0]], []);
+  AssertPairsAndSiblings(s[1], [],     []);
+  AssertPairsAndSiblings(s[2], [d[2]], []);
+  AssertPairsAndSiblings(s[3], [],     []);
+  AssertPairsAndSiblings(s[4], [d[3]], []);
+  AssertPairsAndSiblings(s[5], [],     []);
+  AssertPairsAndSiblings(s[6], [d[5]], []);
+
+  AssertPairsAndSiblings(d[0], [s[0]], []);
+  AssertPairsAndSiblings(d[1], [],     []);
+  AssertPairsAndSiblings(d[2], [s[2]], []);
+  AssertPairsAndSiblings(d[3], [s[4]], []);
+  AssertPairsAndSiblings(d[4], [],     []);
+  AssertPairsAndSiblings(d[5], [s[6]], []);
+                    // 0 2 4 6
+  verse2.AlterarTexto('a b c d');
+
+  s := verse1.Sintagmas;
+  d := verse2.Sintagmas;
+
+  AssertPairsAndSiblings(s[0], [d[0]], []);
+  AssertPairsAndSiblings(s[1], [],     []);
+  AssertPairsAndSiblings(s[2], [d[2]], []);
+  AssertPairsAndSiblings(s[3], [],     []);
+  AssertPairsAndSiblings(s[4], [d[4]], []);
+  AssertPairsAndSiblings(s[5], [],     []);
+  AssertPairsAndSiblings(s[6], [d[6]], []);
+
+  AssertPairsAndSiblings(d[0], [s[0]], []);
+  AssertPairsAndSiblings(d[1], [],     []);
+  AssertPairsAndSiblings(d[2], [s[2]], []);
+  AssertPairsAndSiblings(d[3], [],     []);
+  AssertPairsAndSiblings(d[4], [s[4]], []);
+  AssertPairsAndSiblings(d[5], [],     []);
+  AssertPairsAndSiblings(d[6], [s[6]], []);
+end;
+
+procedure TVerseTests.ReplaceSourceTextAddPunctuation;
+var
+  s, d: TSintagmaList;
+begin
+                // 0 2 4 6
+  verse1.Texto := 'a b c d';
+  verse2.Texto := 'a b c d';
+  Associate([0],[0]);
+  Associate([2],[2]);
+  Associate([4],[4]);
+  Associate([6],[6]);
+
+  s := verse1.Sintagmas;
+  d := verse2.Sintagmas;
+
+  AssertPairsAndSiblings(s[0], [d[0]], []);
+  AssertPairsAndSiblings(s[1], [],     []);
+  AssertPairsAndSiblings(s[2], [d[2]], []);
+  AssertPairsAndSiblings(s[3], [],     []);
+  AssertPairsAndSiblings(s[4], [d[4]], []);
+  AssertPairsAndSiblings(s[5], [],     []);
+  AssertPairsAndSiblings(s[6], [d[6]], []);
+
+  AssertPairsAndSiblings(d[0], [s[0]], []);
+  AssertPairsAndSiblings(d[1], [],     []);
+  AssertPairsAndSiblings(d[2], [s[2]], []);
+  AssertPairsAndSiblings(d[3], [],     []);
+  AssertPairsAndSiblings(d[4], [s[4]], []);
+  AssertPairsAndSiblings(d[5], [],     []);
+  AssertPairsAndSiblings(d[6], [s[6]], []);
+
+                    // 0 2  5 7
+  verse1.AlterarTexto('a b, c d');
+
+  s := verse1.Sintagmas;
+  d := verse2.Sintagmas;
+
+  AssertPairsAndSiblings(s[0], [d[0]], []);
+  AssertPairsAndSiblings(s[1], [],     []);
+  AssertPairsAndSiblings(s[2], [d[2]], []);
+  AssertPairsAndSiblings(s[3], [],     []);
+  AssertPairsAndSiblings(s[4], [],     []);
+  AssertPairsAndSiblings(s[5], [d[4]], []);
+  AssertPairsAndSiblings(s[6], [],     []);
+  AssertPairsAndSiblings(s[7], [d[6]], []);
+
+  AssertPairsAndSiblings(d[0], [s[0]], []);
+  AssertPairsAndSiblings(d[1], [],     []);
+  AssertPairsAndSiblings(d[2], [s[2]], []);
+  AssertPairsAndSiblings(d[3], [],     []);
+  AssertPairsAndSiblings(d[4], [s[5]], []);
+  AssertPairsAndSiblings(d[5], [],     []);
+  AssertPairsAndSiblings(d[6], [s[7]], []);
+end;
+
 procedure TVerseTests.Associate(const source: array of const;
   const dest: array of const);
 var
@@ -367,7 +652,8 @@ var
 begin
   AssertEquals(High(values) + 1, list.Count);
   for i := 0 to High(values) do
-    AssertTrue(TSintagma(values[i].VPointer) = list[i]);
+    AssertTrue(Format('[%s]=[%s]', [TSintagma(values[i].VPointer).TextoBruto, list[i].TextoBruto]),
+               TSintagma(values[i].VPointer) = list[i]);
 end;
 
 procedure TVerseTests.AssertPairsAndSiblings(syntagm: TSintagma; const pairs, siblings: array of const);
