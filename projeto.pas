@@ -203,6 +203,7 @@ type
     procedure ToggleDisplayTags;
     procedure StartScrollingSession;
     procedure FinishScrollingSession;
+    procedure RewindChapter;
     property FileName: string read FFileName;
     property FormattedReference: string read GetFormattedReference;
     property Reference: TReference read FReference;
@@ -711,11 +712,10 @@ var
   bkch, text, comments: string;
 begin
   bkch := Format('%d,%d,', [BookID, Chapter]);
-
   result := TStringList.Create;
 
   StartScrollingSession;
-  IrPara(Format('%s1', [bkch]));
+  RewindChapter;
   with FTblPares do
     while not FTblPares.EOF and GetID().StartsWith(bkch) do
     begin
@@ -2672,6 +2672,12 @@ procedure TProjeto.FinishScrollingSession;
 begin
   IrPara(FMarker);
   ScrollEventsEnabled := true;
+end;
+
+procedure TProjeto.RewindChapter;
+begin
+  if Verse <> 1 then
+    IrPara(Format('%d,%d,%d', [BookID, Chapter, 1]));
 end;
 
 end.
