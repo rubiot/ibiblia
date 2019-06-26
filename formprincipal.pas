@@ -15,7 +15,7 @@ uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, Menus,
   ActnList, ComCtrls, ExtCtrls, StdCtrls, Projeto, IniFiles, Math,
   Sintagma, LCLTranslator, unitabout, PCRE, Versiculo, RichMemo, RichMemoUtils,
-  LCLType, LazUTF8, ChapterView;
+  LCLType, LazUTF8, ChapterView, RTFChapterView;
 
 type
 
@@ -171,7 +171,8 @@ type
     { private declarations }
     FPopupTrigger: TPopupTrigger;
     FCurrentRef: string;
-    FChapterView: TChapterView;
+    //FChapterView: TChapterView;
+    FChapterView: TRTFChapterView;
     {$IFDEF WINDOWS}
     FRxMorpho: IRegex;
     syncTw2iBiblia: boolean;
@@ -648,15 +649,16 @@ begin
   MenuItemSynciBiblia.Checked := opts.ReadBool('opcoes', 'syncibiblia', false);
   MenuItemStrongNegrito.Checked := opts.ReadBool('opcoes', 'boldstrongs', false);
 
-  FChapterView := TChapterView.Create(ContextPanel);
+  FChapterView := TRTFChapterView.Create(ContextPanel);
   with FChapterView do
   begin
     ParentWindow := ContextPanel.Handle;
     BorderStyle  := bsNone;
     Align        := alClient;
-    ScrollBars   := ssAutoVertical;
-    ZoomFactor   := opts.ReadInteger('leiaute', 'principal.chapterview.zoom', 10) / 10.0;
-    VerseMode    := TVerseMode(opts.ReadInteger('opcoes', 'chapterview.versemode', Ord(vmParagraph)));
+    VScrollVisible := true;
+    //ScrollBars   := ssAutoVertical;
+    //ZoomFactor   := opts.ReadInteger('leiaute', 'principal.chapterview.zoom', 10) / 10.0;
+    VerseMode    := TViewMode(opts.ReadInteger('opcoes', 'chapterview.versemode', Ord(vmxParagraph)));
   end;
 
   MenuItemStrongsCountNone.Tag    := Integer(scNone);
@@ -706,7 +708,7 @@ begin
   opts.WriteInteger('leiaute', 'principal.splitter4.topo', Splitter4.Top);
   opts.WriteInteger('leiaute', 'principal.panel3.height', BottomPanel.Height);
   opts.WriteInteger('leiaute', 'principal.contextpanel.width', ContextPanel.Width);
-  opts.WriteInteger('leiaute', 'principal.chapterview.zoom', Trunc(FChapterView.ZoomFactor * 10));
+  //opts.WriteInteger('leiaute', 'principal.chapterview.zoom', Trunc(FChapterView.ZoomFactor * 10));
   opts.WriteInteger('opcoes', 'chapterview.versemode', Ord(FChapterView.VerseMode));
   opts.WriteBool('opcoes', 'sugestoes.automaticas', MenuItem22.Checked);
   opts.WriteBool('opcoes', 'synctheword', MenuItemSyncTheWord.Checked);

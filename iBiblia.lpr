@@ -13,7 +13,8 @@ uses
   {$IFDEF WINDOWS}
   twAutomate, twSyncThread,
   {$ENDIF}
-  ONTParser, Sintagma, unitabout, MySwordModule, TheWordDictionary, ChapterView;
+  ONTParser, Sintagma, unitabout, MySwordModule, TheWordDictionary, ChapterView,
+  RTFChapterView, lazrichview;
 
 {$R *.res}
 
