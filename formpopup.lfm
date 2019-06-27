@@ -26,23 +26,23 @@ object frmDictionaryPopup: TfrmDictionaryPopup
     TabOrder = 0
     object Panel1: TPanel
       Left = 2
-      Height = 258
-      Top = 3
+      Height = 232
+      Top = 29
       Width = 419
       Align = alClient
       Anchors = [akTop, akLeft, akRight]
       BevelOuter = bvNone
-      ClientHeight = 258
+      ClientHeight = 232
       ClientWidth = 419
       TabOrder = 1
       object RichMemoStrong: TRichMemo
         Left = 0
-        Height = 258
+        Height = 232
         Top = 0
         Width = 419
         Align = alClient
         BorderStyle = bsNone
-        Color = clInfoBk
+        Color = 13433851
         HideSelection = False
         OnMouseWheel = RichMemoMouseWheel
         ReadOnly = True
@@ -62,22 +62,22 @@ object frmDictionaryPopup: TfrmDictionaryPopup
     TabOrder = 1
     object Panel2: TPanel
       Left = 2
-      Height = 145
-      Top = 3
+      Height = 119
+      Top = 29
       Width = 419
       Align = alClient
       BevelOuter = bvNone
-      ClientHeight = 145
+      ClientHeight = 119
       ClientWidth = 419
       TabOrder = 1
       object RichMemoMorpho: TRichMemo
         Left = 0
-        Height = 145
+        Height = 119
         Top = 0
         Width = 419
         Align = alClient
         BorderStyle = bsNone
-        Color = clInfoBk
+        Color = 13433851
         HideSelection = False
         OnMouseWheel = RichMemoMouseWheel
         ReadOnly = True
