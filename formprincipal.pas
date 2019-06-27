@@ -655,7 +655,7 @@ begin
     BorderStyle  := bsNone;
     Align        := alClient;
     VScrollVisible := true;
-    //ZoomFactor   := opts.ReadInteger('leiaute', 'principal.chapterview.zoom', 10) / 10.0;
+    ZoomLevel    := opts.ReadInteger('leiaute', 'principal.chapterview.zoom', 0);
     VerseMode    := TViewMode(opts.ReadInteger('opcoes', 'chapterview.versemode', Ord(vmParagraph)));
   end;
 
@@ -706,7 +706,7 @@ begin
   opts.WriteInteger('leiaute', 'principal.splitter4.topo', Splitter4.Top);
   opts.WriteInteger('leiaute', 'principal.panel3.height', BottomPanel.Height);
   opts.WriteInteger('leiaute', 'principal.contextpanel.width', ContextPanel.Width);
-  //opts.WriteInteger('leiaute', 'principal.chapterview.zoom', Trunc(FChapterView.ZoomFactor * 10));
+  opts.WriteInteger('leiaute', 'principal.chapterview.zoom', FChapterView.ZoomLevel);
   opts.WriteInteger('opcoes', 'chapterview.versemode', Ord(FChapterView.VerseMode));
   opts.WriteBool('opcoes', 'sugestoes.automaticas', MenuItem22.Checked);
   opts.WriteBool('opcoes', 'synctheword', MenuItemSyncTheWord.Checked);

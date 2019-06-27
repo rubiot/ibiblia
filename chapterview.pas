@@ -32,6 +32,7 @@ type
     FNoteJumps: TIntegerList;
     FJumps: integer;
     FFromNewLine: boolean;
+    FZoomLevel: integer;
 
     procedure RenderVerse(txt: string; verse: integer; isCurrent: boolean);
     procedure RenderSpan(txt: string);
@@ -50,6 +51,7 @@ type
     procedure InitStyles;
     procedure SetVerseMode(AValue: TViewMode);
     procedure AppendText(s: string; StyleNo: Integer);
+    procedure SetZoomLevel(AValue: integer);
   protected
     procedure SetEnabled(Value: Boolean); override;
   public
@@ -58,7 +60,11 @@ type
     procedure RenderChapter(verses: TStringList; current: integer);
     property Project: TProjeto read FProject write SetProject;
     property VerseMode: TViewMode read FVerseMode write SetVerseMode;
+    property ZoomLevel: integer read FZoomLevel write SetZoomLevel;
   end;
+
+const
+  DefaultFontSize = 10;
 
 var
   rvsFI: integer;
@@ -382,25 +388,13 @@ begin
 end;
 
 procedure TChapterView.HandleZoomIn(Sender: TObject);
-var
-  s: integer;
 begin
-  for s:=0 to Style.TextStyles.Count-1 do
-    Style.TextStyles[s].Size := Style.TextStyles[s].Size+1;
-  Format;
-  Repaint;
+  SetZoomLevel(FZoomLevel + 1);
 end;
 
 procedure TChapterView.HandleZoomOut(Sender: TObject);
-var
-  s: integer;
 begin
-  if Style.TextStyles[rvsNormal].Size < 2 then
-    exit;
-  for s:=0 to Style.TextStyles.Count-1 do
-    Style.TextStyles[s].Size := Style.TextStyles[s].Size-1;
-  Format;
-  Repaint;
+  SetZoomLevel(FZoomLevel - 1);
 end;
 
 procedure TChapterView.SetProject(AValue: TProjeto);
@@ -455,75 +449,75 @@ procedure TChapterView.InitStyles;
 begin
   Style := TRVStyle.Create(Self);
 
-  Style.TextStyles[rvsNormal].Size := 12;
+  Style.TextStyles[rvsNormal].Size := DefaultFontSize;
 
   rvsFI := Style.AddTextStyle();
-  Style.TextStyles[Style.TextStyles.Count-1].Size := 12;
+  Style.TextStyles[Style.TextStyles.Count-1].Size := DefaultFontSize;
   Style.TextStyles[Style.TextStyles.Count-1].Style := [fsItalic];
   Style.TextStyles[Style.TextStyles.Count-1].Color := clGrayText;
 
   rvsFO := Style.AddTextStyle();
-  Style.TextStyles[Style.TextStyles.Count-1].Size := 12;
+  Style.TextStyles[Style.TextStyles.Count-1].Size := DefaultFontSize;
   Style.TextStyles[Style.TextStyles.Count-1].Style := [fsBold];
 
   rvsFR := Style.AddTextStyle();
-  Style.TextStyles[Style.TextStyles.Count-1].Size := 12;
+  Style.TextStyles[Style.TextStyles.Count-1].Size := DefaultFontSize;
   Style.TextStyles[Style.TextStyles.Count-1].Color := clRed;
 
   rvsBold := Style.AddTextStyle();
-  Style.TextStyles[Style.TextStyles.Count-1].Size := 12;
+  Style.TextStyles[Style.TextStyles.Count-1].Size := DefaultFontSize;
   Style.TextStyles[Style.TextStyles.Count-1].Style := [fsBold];
 
   rvsItalic := Style.AddTextStyle();
-  Style.TextStyles[Style.TextStyles.Count-1].Size := 12;
+  Style.TextStyles[Style.TextStyles.Count-1].Size := DefaultFontSize;
   Style.TextStyles[Style.TextStyles.Count-1].Style := [fsItalic];
 
   rvsUnderline := Style.AddTextStyle();
-  Style.TextStyles[Style.TextStyles.Count-1].Size := 12;
+  Style.TextStyles[Style.TextStyles.Count-1].Size := DefaultFontSize;
   Style.TextStyles[Style.TextStyles.Count-1].Style := [fsUnderline];
 
   rvsSuperscript := Style.AddTextStyle();
-  Style.TextStyles[Style.TextStyles.Count-1].Size := 12;
+  Style.TextStyles[Style.TextStyles.Count-1].Size := DefaultFontSize;
 
   rvsSubscript := Style.AddTextStyle();
-  Style.TextStyles[Style.TextStyles.Count-1].Size := 12;
+  Style.TextStyles[Style.TextStyles.Count-1].Size := DefaultFontSize;
 
   rvsBoldItalic := Style.AddTextStyle();
-  Style.TextStyles[Style.TextStyles.Count-1].Size := 12;
+  Style.TextStyles[Style.TextStyles.Count-1].Size := DefaultFontSize;
   Style.TextStyles[Style.TextStyles.Count-1].Style := [fsBold, fsItalic];
 
   rvsTS0 := Style.AddTextStyle();
-  Style.TextStyles[Style.TextStyles.Count-1].Size := 14;
+  Style.TextStyles[Style.TextStyles.Count-1].Size := DefaultFontSize;
   Style.TextStyles[Style.TextStyles.Count-1].Style := [fsBold, fsItalic];
   Style.TextStyles[Style.TextStyles.Count-1].Color := clGrayText;
 
   rvsTS1 := Style.AddTextStyle();
-  Style.TextStyles[Style.TextStyles.Count-1].Size := 13;
+  Style.TextStyles[Style.TextStyles.Count-1].Size := DefaultFontSize;
   Style.TextStyles[Style.TextStyles.Count-1].Style := [fsBold, fsItalic];
 
   rvsTS2 := Style.AddTextStyle();
-  Style.TextStyles[Style.TextStyles.Count-1].Size := 12;
+  Style.TextStyles[Style.TextStyles.Count-1].Size := DefaultFontSize;
   Style.TextStyles[Style.TextStyles.Count-1].Style := [fsBold, fsItalic];
 
   rvsTS3 := Style.AddTextStyle();
-  Style.TextStyles[Style.TextStyles.Count-1].Size := 12;
+  Style.TextStyles[Style.TextStyles.Count-1].Size := DefaultFontSize;
   Style.TextStyles[Style.TextStyles.Count-1].Style := [fsItalic];
 
   rvsStrikeout := Style.AddTextStyle();
-  Style.TextStyles[Style.TextStyles.Count-1].Size := 12;
+  Style.TextStyles[Style.TextStyles.Count-1].Size := DefaultFontSize;
   Style.TextStyles[Style.TextStyles.Count-1].Style := [fsStrikeOut];
 
   rvsVerseNumber := Style.AddTextStyle();
-  Style.TextStyles[Style.TextStyles.Count-1].Size := 12;
+  Style.TextStyles[Style.TextStyles.Count-1].Size := DefaultFontSize;
   Style.TextStyles[Style.TextStyles.Count-1].Style := [fsBold];
   Style.TextStyles[Style.TextStyles.Count-1].Color := clMaroon;
 
   rvsCurrentVerseNumber := Style.AddTextStyle();
-  Style.TextStyles[Style.TextStyles.Count-1].Size := 12;
+  Style.TextStyles[Style.TextStyles.Count-1].Size := DefaultFontSize;
   Style.TextStyles[Style.TextStyles.Count-1].Style := [fsBold, fsUnderline];
   Style.TextStyles[Style.TextStyles.Count-1].Color := clMaroon;
 
-  Style.TextStyles[rvsJump1].Size := 12;
+  Style.TextStyles[rvsJump1].Size := DefaultFontSize;
   Style.TextStyles[rvsJump1].Color := clMaroon;
   Style.TextStyles[rvsJump1].Style := [fsBold];
 end;
@@ -546,6 +540,20 @@ begin
   else
     AddText(s, StyleNo);
   FFromNewLine:=false;
+end;
+
+procedure TChapterView.SetZoomLevel(AValue: integer);
+var
+  s: integer;
+begin
+  if (FZoomLevel = AValue) or ((DefaultFontSize + FZoomLevel) < 1) then Exit;
+  FZoomLevel := AValue;
+
+  for s:=0 to Style.TextStyles.Count-1 do
+    Style.TextStyles[s].Size := DefaultFontSize + FZoomLevel;
+
+  Format;
+  Repaint;
 end;
 
 procedure TChapterView.SetEnabled(Value: Boolean);
