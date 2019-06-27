@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, RichView, RVStyle, Graphics, ONTTokenizer, LCLType,
-  LazUTF8, Projeto, PCRE, Controls, Menus, fgl;
+  LazUTF8, Projeto, PCRE, Controls, Menus, fgl, Dialogs;
 
 type
 
@@ -17,22 +17,22 @@ type
 
   TChapterView = class(TRichView)
   private
+    FFontName: string;
+    FFontSize: integer;
     FProject: TProjeto;
     FRxVerseHeading: IRegex;
     FChapterNotes: TStringList;
     FNoteID: integer;
     FHint: THintWindow;
+    FFontItem: TMenuItem;
     FParagraphModeItem: TMenuItem;
     FVersePerLineItem: TMenuItem;
-    FZoomInItem: TMenuItem;
-    FZoomOutItem: TMenuItem;
     FVerseMode: TViewMode;
     FStyles: TRVStyle;
     FVerseJumps: TIntegerList;
     FNoteJumps: TIntegerList;
     FJumps: integer;
     FFromNewLine: boolean;
-    FZoomLevel: integer;
 
     procedure RenderVerse(txt: string; verse: integer; isCurrent: boolean);
     procedure RenderSpan(txt: string);
@@ -42,16 +42,16 @@ type
     procedure HandleKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure HandleMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
     procedure HandleMouseWheel(Sender: TObject; Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
+    procedure HandleSetFont(Sender: TObject);
     procedure HandleParagraphMode(Sender: TObject);
     procedure HandleVersePerLineMode(Sender: TObject);
-    procedure HandleZoomIn(Sender: TObject);
-    procedure HandleZoomOut(Sender: TObject);
     procedure SetProject(AValue: TProjeto);
     procedure InitPopupMenu;
     procedure InitStyles;
     procedure SetVerseMode(AValue: TViewMode);
     procedure AppendText(s: string; StyleNo: Integer);
-    procedure SetZoomLevel(AValue: integer);
+    procedure SetFontSize(AValue: integer);
+    procedure SetFontName(AValue: string);
   protected
     procedure SetEnabled(Value: Boolean); override;
   public
@@ -60,11 +60,9 @@ type
     procedure RenderChapter(verses: TStringList; current: integer);
     property Project: TProjeto read FProject write SetProject;
     property VerseMode: TViewMode read FVerseMode write SetVerseMode;
-    property ZoomLevel: integer read FZoomLevel write SetZoomLevel;
+    property FontSize: integer read FFontSize write SetFontSize;
+    property FontName: string read FFontName write SetFontName;
   end;
-
-const
-  DefaultFontSize = 10;
 
 var
   rvsFI: integer;
@@ -85,10 +83,9 @@ var
   rvsCurrentVerseNumber: integer;
 
 resourcestring
+  SSetFont = 'Choose &font...';
   SParagraphMode = '&Paragraph mode';
   SVersePerLineMode = '&Verse per line mode';
-  SZoomIn = 'Zoom in';
-  SZoomOut = 'Zoom out';
 
 implementation
 
@@ -274,6 +271,7 @@ begin
     exit;
 
   AddBreak;
+  FFromNewLine := false;
   for i:=0 to FChapterNotes.Count-1 do
   begin
     AddFromNewLine(SysUtils.Format('%d ', [i + 1]), rvsJump2);
@@ -377,6 +375,21 @@ begin
   end;}
 end;
 
+procedure TChapterView.HandleSetFont(Sender: TObject);
+var
+  dialog: TFontDialog;
+begin
+  dialog := TFontDialog.Create(self);
+  dialog.Font.Name := FFontName;
+  dialog.Font.Size := FFontSize;
+  if dialog.Execute then
+  begin
+    FontName := dialog.Font.Name;
+    FontSize := dialog.Font.Size;
+  end;
+  dialog.Free;
+end;
+
 procedure TChapterView.HandleParagraphMode(Sender: TObject);
 begin
   VerseMode := vmParagraph;
@@ -385,16 +398,6 @@ end;
 procedure TChapterView.HandleVersePerLineMode(Sender: TObject);
 begin
   VerseMode := vmVersePerLine;
-end;
-
-procedure TChapterView.HandleZoomIn(Sender: TObject);
-begin
-  SetZoomLevel(FZoomLevel + 1);
-end;
-
-procedure TChapterView.HandleZoomOut(Sender: TObject);
-begin
-  SetZoomLevel(FZoomLevel - 1);
 end;
 
 procedure TChapterView.SetProject(AValue: TProjeto);
@@ -408,6 +411,17 @@ procedure TChapterView.InitPopupMenu;
 begin
   PopupMenu := TPopupMenu.Create(Self);
   PopupMenu.Parent := Self;
+
+  FFontItem := TMenuItem.Create(PopupMenu);
+  with FFontItem do
+  begin
+    Caption := SSetFont;
+    OnClick := @HandleSetFont;
+    Enabled := True;
+  end;
+  PopupMenu.Items.Add(FFontItem);
+
+  PopupMenu.Items.AddSeparator;
 
   FParagraphModeItem := TMenuItem.Create(PopupMenu);
   with FParagraphModeItem do
@@ -426,98 +440,64 @@ begin
     Enabled := True;
   end;
   PopupMenu.Items.Add(FVersePerLineItem);
-
-  PopupMenu.Items.AddSeparator;
-  FZoomInItem := TMenuItem.Create(PopupMenu);
-  with FZoomInItem do
-  begin
-    Caption := SZoomIn;
-    OnClick := @HandleZoomIn;
-  end;
-  PopupMenu.Items.Add(FZoomInItem);
-
-  FZoomOutItem := TMenuItem.Create(PopupMenu);
-  with FZoomOutItem do
-  begin
-    Caption := SZoomOut;
-    OnClick := @HandleZoomOut;
-  end;
-  PopupMenu.Items.Add(FZoomOutItem);
 end;
 
 procedure TChapterView.InitStyles;
 begin
   Style := TRVStyle.Create(Self);
 
-  Style.TextStyles[rvsNormal].Size := DefaultFontSize;
+  Style.TextStyles[rvsNormal].Size := FFontSize;
 
   rvsFI := Style.AddTextStyle();
-  Style.TextStyles[Style.TextStyles.Count-1].Size := DefaultFontSize;
   Style.TextStyles[Style.TextStyles.Count-1].Style := [fsItalic];
   Style.TextStyles[Style.TextStyles.Count-1].Color := clGrayText;
 
   rvsFO := Style.AddTextStyle();
-  Style.TextStyles[Style.TextStyles.Count-1].Size := DefaultFontSize;
   Style.TextStyles[Style.TextStyles.Count-1].Style := [fsBold];
 
   rvsFR := Style.AddTextStyle();
-  Style.TextStyles[Style.TextStyles.Count-1].Size := DefaultFontSize;
   Style.TextStyles[Style.TextStyles.Count-1].Color := clRed;
 
   rvsBold := Style.AddTextStyle();
-  Style.TextStyles[Style.TextStyles.Count-1].Size := DefaultFontSize;
   Style.TextStyles[Style.TextStyles.Count-1].Style := [fsBold];
 
   rvsItalic := Style.AddTextStyle();
-  Style.TextStyles[Style.TextStyles.Count-1].Size := DefaultFontSize;
   Style.TextStyles[Style.TextStyles.Count-1].Style := [fsItalic];
 
   rvsUnderline := Style.AddTextStyle();
-  Style.TextStyles[Style.TextStyles.Count-1].Size := DefaultFontSize;
   Style.TextStyles[Style.TextStyles.Count-1].Style := [fsUnderline];
 
   rvsSuperscript := Style.AddTextStyle();
-  Style.TextStyles[Style.TextStyles.Count-1].Size := DefaultFontSize;
 
   rvsSubscript := Style.AddTextStyle();
-  Style.TextStyles[Style.TextStyles.Count-1].Size := DefaultFontSize;
 
   rvsBoldItalic := Style.AddTextStyle();
-  Style.TextStyles[Style.TextStyles.Count-1].Size := DefaultFontSize;
   Style.TextStyles[Style.TextStyles.Count-1].Style := [fsBold, fsItalic];
 
   rvsTS0 := Style.AddTextStyle();
-  Style.TextStyles[Style.TextStyles.Count-1].Size := DefaultFontSize;
   Style.TextStyles[Style.TextStyles.Count-1].Style := [fsBold, fsItalic];
   Style.TextStyles[Style.TextStyles.Count-1].Color := clGrayText;
 
   rvsTS1 := Style.AddTextStyle();
-  Style.TextStyles[Style.TextStyles.Count-1].Size := DefaultFontSize;
   Style.TextStyles[Style.TextStyles.Count-1].Style := [fsBold, fsItalic];
 
   rvsTS2 := Style.AddTextStyle();
-  Style.TextStyles[Style.TextStyles.Count-1].Size := DefaultFontSize;
   Style.TextStyles[Style.TextStyles.Count-1].Style := [fsBold, fsItalic];
 
   rvsTS3 := Style.AddTextStyle();
-  Style.TextStyles[Style.TextStyles.Count-1].Size := DefaultFontSize;
   Style.TextStyles[Style.TextStyles.Count-1].Style := [fsItalic];
 
   rvsStrikeout := Style.AddTextStyle();
-  Style.TextStyles[Style.TextStyles.Count-1].Size := DefaultFontSize;
   Style.TextStyles[Style.TextStyles.Count-1].Style := [fsStrikeOut];
 
   rvsVerseNumber := Style.AddTextStyle();
-  Style.TextStyles[Style.TextStyles.Count-1].Size := DefaultFontSize;
   Style.TextStyles[Style.TextStyles.Count-1].Style := [fsBold];
   Style.TextStyles[Style.TextStyles.Count-1].Color := clMaroon;
 
   rvsCurrentVerseNumber := Style.AddTextStyle();
-  Style.TextStyles[Style.TextStyles.Count-1].Size := DefaultFontSize;
   Style.TextStyles[Style.TextStyles.Count-1].Style := [fsBold, fsUnderline];
   Style.TextStyles[Style.TextStyles.Count-1].Color := clMaroon;
 
-  Style.TextStyles[rvsJump1].Size := DefaultFontSize;
   Style.TextStyles[rvsJump1].Color := clMaroon;
   Style.TextStyles[rvsJump1].Style := [fsBold];
 end;
@@ -542,15 +522,29 @@ begin
   FFromNewLine:=false;
 end;
 
-procedure TChapterView.SetZoomLevel(AValue: integer);
+procedure TChapterView.SetFontSize(AValue: integer);
 var
   s: integer;
 begin
-  if (FZoomLevel = AValue) or ((DefaultFontSize + FZoomLevel) < 1) then Exit;
-  FZoomLevel := AValue;
+  if (FFontSize = AValue) or (AValue < 1) then Exit;
+  FFontSize := AValue;
 
   for s:=0 to Style.TextStyles.Count-1 do
-    Style.TextStyles[s].Size := DefaultFontSize + FZoomLevel;
+    Style.TextStyles[s].Size := FFontSize;
+
+  Format;
+  Repaint;
+end;
+
+procedure TChapterView.SetFontName(AValue: string);
+var
+  s: integer;
+begin
+  if (FFontName = AValue) then Exit;
+  FFontName := AValue;
+
+  for s:=0 to Style.TextStyles.Count-1 do
+    Style.TextStyles[s].FontName := FFontName;
 
   Format;
   Repaint;
@@ -576,6 +570,8 @@ begin
   { TRichMemo.GetText causes unsolicited scrolling, disabling it }
   //OnMouseMove  := @HandleMouseMove;
   OnJump          := @HandleJump;
+  FFontName       := 'default';
+  FFontSize       := 10;
   FProject        := nil;
   FVerseMode      := vmParagraph;
   FRxVerseHeading := RegexCreate('^((?:<TS[0-7]?>.*?<Ts>)*)(.*?)$', [rcoUTF8]);
@@ -629,9 +625,9 @@ begin
 
   Format;
   Repaint;
-  ScrollTo(GetJumpPointY(current));
-  { TRichMemo bug: Current zoom factor doesn't apply automatically }
-  //ZoomFactor := ZoomFactor;
+
+  if current > 1 then
+    ScrollTo(GetJumpPointY(FVerseJumps[current-1]));
 end;
 
 end.

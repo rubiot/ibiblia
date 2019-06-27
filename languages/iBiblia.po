@@ -6,19 +6,13 @@ msgctxt "chapterview.sparagraphmode"
 msgid "&Paragraph mode"
 msgstr ""
 
+#: chapterview.ssetfont
+msgid "Choose &font..."
+msgstr ""
+
 #: chapterview.sverseperlinemode
 msgctxt "chapterview.sverseperlinemode"
 msgid "&Verse per line mode"
-msgstr ""
-
-#: chapterview.szoomin
-msgctxt "chapterview.szoomin"
-msgid "Zoom in"
-msgstr ""
-
-#: chapterview.szoomout
-msgctxt "chapterview.szoomout"
-msgid "Zoom out"
 msgstr ""
 
 #: formexportar.sanalyticalconcordance
