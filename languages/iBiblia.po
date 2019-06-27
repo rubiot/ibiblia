@@ -1,6 +1,26 @@
 msgid ""
 msgstr "Content-Type: text/plain; charset=UTF-8"
 
+#: chapterview.sparagraphmode
+msgctxt "chapterview.sparagraphmode"
+msgid "&Paragraph mode"
+msgstr ""
+
+#: chapterview.sverseperlinemode
+msgctxt "chapterview.sverseperlinemode"
+msgid "&Verse per line mode"
+msgstr ""
+
+#: chapterview.szoomin
+msgctxt "chapterview.szoomin"
+msgid "Zoom in"
+msgstr ""
+
+#: chapterview.szoomout
+msgctxt "chapterview.szoomout"
+msgid "Zoom out"
+msgstr ""
+
 #: formexportar.sanalyticalconcordance
 msgid "AnalyticalConcordance"
 msgstr ""
@@ -986,9 +1006,17 @@ msgstr ""
 msgid "Go to last verse"
 msgstr ""
 
+#: tfrmprincipal.bottompanel.caption
+msgid "BottomPanel"
+msgstr ""
+
 #: tfrmprincipal.caption
 msgctxt "tfrmprincipal.caption"
 msgid "iBiblia"
+msgstr ""
+
+#: tfrmprincipal.centerpanel.caption
+msgid "CenterPanel"
 msgstr ""
 
 #: tfrmprincipal.menuitem1.caption
@@ -1137,14 +1165,6 @@ msgstr ""
 msgid "Panel1"
 msgstr ""
 
-#: tfrmprincipal.panel2.caption
-msgid "Panel2"
-msgstr ""
-
-#: tfrmprincipal.panel3.caption
-msgid "Panel3"
-msgstr ""
-
 #: tfrmprincipal.radiogroupstatus.caption
 msgctxt "tfrmprincipal.radiogroupstatus.caption"
 msgid "Status"
@@ -1171,10 +1191,6 @@ msgstr ""
 #: tfrmprincipal.toolbuttonexit.hint
 msgctxt "tfrmprincipal.toolbuttonexit.hint"
 msgid "Exit the program"
-msgstr ""
-
-#: theworddictionary.screatetheworddictionaryerror
-msgid "Unable to create new TheWord module file"
 msgstr ""
 
 #: versiculo.scopytags

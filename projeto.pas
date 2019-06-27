@@ -118,7 +118,6 @@ type
     procedure SetDisplayTags(AValue: boolean);
     procedure SetVerseStrongsCountMode(AValue: TStrongsCountMode);
     procedure SetOnAlterarVersiculo(const AValue: TOnAlterarVersiculoEvent);
-    procedure SetOnNovoVersiculo(const AValue: TOnNovoVersiculoEvent);
     procedure SetOnSintagmaClick(const AValue: TOnSintagmaClickEvent);
     procedure SetPalavrasComStrongEmNegrito(AValue: boolean);
     procedure SetSituacao(const AValue: Integer);
@@ -204,6 +203,9 @@ type
     procedure StartScrollingSession;
     procedure FinishScrollingSession;
     procedure RewindChapter;
+    procedure OnNewVerseSubscribe(const AValue: TOnNovoVersiculoEvent);
+    procedure OnNewVerseUnsubscribe(const AValue: TOnNovoVersiculoEvent);
+
     property FileName: string read FFileName;
     property FormattedReference: string read GetFormattedReference;
     property Reference: TReference read FReference;
@@ -211,7 +213,6 @@ type
     property Modificado: boolean read GetModificado;
     property Arvore: TTreeView read FArvore write FArvore;
     property OnAlterarVersiculo: TOnAlterarVersiculoEvent read FOnAlterarVersiculo write SetOnAlterarVersiculo;
-    property OnNovoVersiculo: TOnNovoVersiculoEvent write SetOnNovoVersiculo;
     property OnSintagmaClick: TOnSintagmaClickEvent read FOnSintagmaClick write SetOnSintagmaClick;
     property AtrasoExibicaoDefinicao: Cardinal read FAtrasoExibicao write SetAtrasoExibicao;
     property Ativo: boolean read FAtivo;
@@ -609,10 +610,15 @@ begin
     FAVersiculo[tbOrigem].OnAlterarVersiculo := OnAlterarVersiculo;
 end;
 
-procedure TProjeto.SetOnNovoVersiculo(const AValue: TOnNovoVersiculoEvent);
+procedure TProjeto.OnNewVerseSubscribe(const AValue: TOnNovoVersiculoEvent);
 begin
   if FOnNovoVersiculo.IndexOf(AValue) = -1 then
     FOnNovoVersiculo.Add(AValue);
+end;
+
+procedure TProjeto.OnNewVerseUnsubscribe(const AValue: TOnNovoVersiculoEvent);
+begin
+  FOnNovoVersiculo.Remove(AValue);
 end;
 
 procedure TProjeto.SetOnSintagmaClick(const AValue: TOnSintagmaClickEvent);

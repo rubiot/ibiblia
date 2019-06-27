@@ -11,6 +11,26 @@ msgstr ""
 "Language: en\n"
 "X-Generator: Poedit 2.2.3\n"
 
+#: chapterview.sparagraphmode
+msgctxt "chapterview.sparagraphmode"
+msgid "&Paragraph mode"
+msgstr "&Paragraph mode"
+
+#: chapterview.sverseperlinemode
+msgctxt "chapterview.sverseperlinemode"
+msgid "&Verse per line mode"
+msgstr "&Verse per line mode"
+
+#: chapterview.szoomin
+msgctxt "chapterview.szoomin"
+msgid "Zoom in"
+msgstr "Zoom in"
+
+#: chapterview.szoomout
+msgctxt "chapterview.szoomout"
+msgid "Zoom out"
+msgstr "Zoom out"
+
 #: formexportar.sanalyticalconcordance
 msgid "AnalyticalConcordance"
 msgstr "AnalyticalConcordance"
@@ -1026,10 +1046,18 @@ msgstr "Last"
 msgid "Go to last verse"
 msgstr "Go to last verse"
 
+#: tfrmprincipal.bottompanel.caption
+msgid "BottomPanel"
+msgstr "BottomPanel"
+
 #: tfrmprincipal.caption
 msgctxt "tfrmprincipal.caption"
 msgid "iBiblia"
 msgstr "iBiblia"
+
+#: tfrmprincipal.centerpanel.caption
+msgid "CenterPanel"
+msgstr "CenterPanel"
 
 #: tfrmprincipal.menuitem1.caption
 msgid "Project"
@@ -1178,14 +1206,6 @@ msgstr "Open existing association project"
 msgid "Panel1"
 msgstr "Panel1"
 
-#: tfrmprincipal.panel2.caption
-msgid "Panel2"
-msgstr "Panel2"
-
-#: tfrmprincipal.panel3.caption
-msgid "Panel3"
-msgstr "Panel3"
-
 #: tfrmprincipal.radiogroupstatus.caption
 msgctxt "tfrmprincipal.radiogroupstatus.caption"
 msgid "Status"
@@ -1213,10 +1233,6 @@ msgstr "Exit"
 msgctxt "tfrmprincipal.toolbuttonexit.hint"
 msgid "Exit the program"
 msgstr "Exit the program"
-
-#: theworddictionary.screatetheworddictionaryerror
-msgid "Unable to create new TheWord module file"
-msgstr "Unable to create new TheWord module file"
 
 #: versiculo.scopytags
 msgid "&Copy tags"

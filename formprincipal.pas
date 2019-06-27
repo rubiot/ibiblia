@@ -14,8 +14,8 @@ uses
   {$ENDIF}
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, Menus,
   ActnList, ComCtrls, ExtCtrls, StdCtrls, Projeto, IniFiles, Math,
-  Sintagma, LCLTranslator, unitabout, PCRE, Versiculo, RichMemo, RichMemoUtils,
-  LCLType, LazUTF8, ChapterView, RTFChapterView;
+  Sintagma, LCLTranslator, unitabout, PCRE, Versiculo,
+  LCLType, LazUTF8, ChapterView;
 
 type
 
@@ -171,8 +171,7 @@ type
     { private declarations }
     FPopupTrigger: TPopupTrigger;
     FCurrentRef: string;
-    //FChapterView: TChapterView;
-    FChapterView: TRTFChapterView;
+    FChapterView: TChapterView;
     {$IFDEF WINDOWS}
     FRxMorpho: IRegex;
     syncTw2iBiblia: boolean;
@@ -311,7 +310,7 @@ begin
   end;
 
   ProjetoAtual := TProjeto.Criar([ScrollBoxSrcVerse, ScrollBoxDstVerse, ScrollBoxRef1Verse, ScrollBoxRef2Verse], TreeView1, RadioGroupStatus, CommentsMemo);
-  ProjetoAtual.OnNovoVersiculo := @QuandoNovoVersiculo;
+  ProjetoAtual.OnNewVerseSubscribe(@QuandoNovoVersiculo);
   ProjetoAtual.OnAlterarVersiculo := @QuandoAlterarVersiculo;
   ProjetoAtual.OnSintagmaClick := @QuandoPalavraClicada;
   ProjetoAtual.PalavrasComStrongEmNegrito := MenuItemStrongNegrito.Checked;
@@ -487,7 +486,7 @@ begin
     ProjetoAtual.Escopo := QualEscopo;
     ProjetoAtual.PalavrasComStrongEmNegrito := MenuItemStrongNegrito.Checked;
     ProjetoAtual.MostrarQtdStrongs := FStrongsCountMode;
-    ProjetoAtual.OnNovoVersiculo := @QuandoNovoVersiculo;
+    ProjetoAtual.OnNewVerseSubscribe(@QuandoNovoVersiculo);
     ProjetoAtual.OnAlterarVersiculo := @QuandoAlterarVersiculo;
     ProjetoAtual.Novo(SaveDialog1.FileName, FormNovoProjeto1.EditNomeProjeto.Text);
     ProjetoAtual.ExibirDefinicoesSoComCtrl := MenuItemDictPopup.Checked;
@@ -649,16 +648,15 @@ begin
   MenuItemSynciBiblia.Checked := opts.ReadBool('opcoes', 'syncibiblia', false);
   MenuItemStrongNegrito.Checked := opts.ReadBool('opcoes', 'boldstrongs', false);
 
-  FChapterView := TRTFChapterView.Create(ContextPanel);
+  FChapterView := TChapterView.Create(ContextPanel);
   with FChapterView do
   begin
     ParentWindow := ContextPanel.Handle;
     BorderStyle  := bsNone;
     Align        := alClient;
     VScrollVisible := true;
-    //ScrollBars   := ssAutoVertical;
     //ZoomFactor   := opts.ReadInteger('leiaute', 'principal.chapterview.zoom', 10) / 10.0;
-    VerseMode    := TViewMode(opts.ReadInteger('opcoes', 'chapterview.versemode', Ord(vmxParagraph)));
+    VerseMode    := TViewMode(opts.ReadInteger('opcoes', 'chapterview.versemode', Ord(vmParagraph)));
   end;
 
   MenuItemStrongsCountNone.Tag    := Integer(scNone);

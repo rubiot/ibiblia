@@ -5,16 +5,17 @@ unit ChapterView;
 interface
 
 uses
-  Classes, SysUtils, Forms, RichMemo, RichMemoUtils, Graphics, StrUtils,
-  ONTTokenizer, LCLType, LazUTF8, Projeto, PCRE, Math, Character, Controls,
-  Menus;
+  Classes, SysUtils, Forms, RichView, RVStyle, Graphics, ONTTokenizer, LCLType,
+  LazUTF8, Projeto, PCRE, Controls, Menus, fgl;
 
 type
-  TVerseMode = (vmParagraph, vmVersePerLine);
+
+  TViewMode = (vmParagraph, vmVersePerLine);
+  TIntegerList = specialize TFPGList<Integer>;
 
   { TChapterView }
 
-  TChapterView = class(TRichMemo)
+  TChapterView = class(TRichView)
   private
     FProject: TProjeto;
     FRxVerseHeading: IRegex;
@@ -23,81 +24,110 @@ type
     FHint: THintWindow;
     FParagraphModeItem: TMenuItem;
     FVersePerLineItem: TMenuItem;
-    FVerseMode: TVerseMode;
+    FZoomInItem: TMenuItem;
+    FZoomOutItem: TMenuItem;
+    FVerseMode: TViewMode;
+    FStyles: TRVStyle;
+    FVerseJumps: TIntegerList;
+    FNoteJumps: TIntegerList;
+    FJumps: integer;
+    FFromNewLine: boolean;
 
-    procedure RenderVerse(txt: string; verse: string; isCurrent: boolean);
-    procedure RenderSpan(txt: string; fmt: TFontParams);
+    procedure RenderVerse(txt: string; verse: integer; isCurrent: boolean);
+    procedure RenderSpan(txt: string);
     procedure RenderNotes;
+    procedure HandleJump(Sender: TObject; id: Integer);
     procedure HandleVerseChange(Sender: TProjeto);
     procedure HandleKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure HandleMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
-    procedure HandleLinkAction(Sender: TObject; ALinkAction: TLinkAction; const info: TLinkMouseInfo; LinkStart, LinkLen: Integer);
     procedure HandleMouseWheel(Sender: TObject; Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
     procedure HandleParagraphMode(Sender: TObject);
     procedure HandleVersePerLineMode(Sender: TObject);
+    procedure HandleZoomIn(Sender: TObject);
+    procedure HandleZoomOut(Sender: TObject);
     procedure SetProject(AValue: TProjeto);
     procedure InitPopupMenu;
-    procedure SetVerseMode(AValue: TVerseMode);
+    procedure InitStyles;
+    procedure SetVerseMode(AValue: TViewMode);
+    procedure AppendText(s: string; StyleNo: Integer);
+  protected
+    procedure SetEnabled(Value: Boolean); override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure RenderChapter(verses: TStringList; current: integer);
     property Project: TProjeto read FProject write SetProject;
-    property VerseMode: TVerseMode read FVerseMode write SetVerseMode;
+    property VerseMode: TViewMode read FVerseMode write SetVerseMode;
   end;
 
+var
+  rvsFI: integer;
+  rvsFO: integer;
+  rvsFR: integer;
+  rvsBold: integer;
+  rvsItalic: integer;
+  rvsUnderline: integer;
+  rvsSuperscript: integer;
+  rvsSubscript: integer;
+  rvsBoldItalic: integer;
+  rvsTS0: integer;
+  rvsTS1: integer;
+  rvsTS2: integer;
+  rvsTS3: integer;
+  rvsStrikeout: integer;
+  rvsVerseNumber: integer;
+  rvsCurrentVerseNumber: integer;
+
 resourcestring
-  SParagraphMode ='&Paragraph mode';
+  SParagraphMode = '&Paragraph mode';
   SVersePerLineMode = '&Verse per line mode';
+  SZoomIn = 'Zoom in';
+  SZoomOut = 'Zoom out';
 
 implementation
 
 { TChapterView }
 
-procedure TChapterView.RenderVerse(txt: string; verse: string;
+procedure TChapterView.RenderVerse(txt: string; verse: integer;
   isCurrent: boolean);
 var
-  fmt: TFontParams;
-  pos: PtrInt;
   mtHeading: IMatch;
 begin
-  fmt := GetFontParams(Font);
-  fmt.Size := 10;
-
-  if (FVerseMode = vmParagraph) and (Lines.Count > 0) then
-    InsertFontText(Self, ' ', fmt);
+  if (FVerseMode = vmParagraph) and (verse > 1) then
+    Add(' ', rvsNormal);
 
   mtHeading := FRxVerseHeading.Match(txt);
   if not mtHeading.Success then
-    raise Exception.Create(Format('Unmatched verse: <%s>', [txt]));
+    raise Exception.Create(SysUtils.Format('Unmatched verse: <%s>', [txt]));
 
   { rendering titles before the verse number }
-  RenderSpan(mtHeading.Groups[1].Value, fmt);
+  RenderSpan(mtHeading.Groups[1].Value);
   txt := mtHeading.Groups[2].Value;
 
-  if isCurrent then
+  {if isCurrent then
   begin
-    fmt.BkColor  := clLtGray;
-    fmt.HasBkClr := true;
-  end;
+    //fmt.BkColor  := clLtGray;
+    //fmt.HasBkClr := true;
+  end;}
 
-  { rendering verse number and making it a link }
-  RenderSpan(Format('<b>%s</b> ', [verse]), fmt);
-  pos := UTF8Length(Text) - UTF8Length(verse) - 1;
-  SetLink(pos, UTF8Length(verse), true, verse);
+  { rendering verse number }
+  AppendText(SysUtils.Format('%d ', [verse]), rvsJump1);
+  FVerseJumps.Add(FJumps); Inc(FJumps);
 
   { rendering the verse text }
-  RenderSpan(txt, fmt);
+  RenderSpan(txt);
 
   if FVerseMode = vmVersePerLine then
-    InsertFontText(Self, #13#10, fmt);
+    FFromNewLine := true;
 end;
 
-procedure TChapterView.RenderSpan(txt: string; fmt: TFontParams);
+procedure TChapterView.RenderSpan(txt: string);
 var
   FTokenizer: TONTTokenizer;
   token: TTagSintagma;
+  fmt: Integer;
 begin
+  fmt := rvsNormal;
   FTokenizer := TONTTokenizer.Criar(txt);
   while FTokenizer.LerSintagma(token) <> tsNulo do
   begin
@@ -112,12 +142,23 @@ begin
       tsTag:
         if token.valor.StartsWith('<TS') then
         begin
-          fmt.Style := [fsBold, fsItalic];
-          token.valor := IfThen(Lines.Count > 0, #13#10, '');
+          case token.valor[4] of
+            '>','0':
+              fmt := rvsTS0;
+            '1':
+              fmt := rvsTS1;
+            '2':
+              fmt := rvsTS2;
+            '3':
+              fmt := rvsTS3;
+          end;
+          token.valor := '';
+          FFromNewLine := true;
         end else if token.valor = '<Ts>' then
         begin
-          fmt.Style := [];
-          token.valor := #13;
+          fmt := rvsNormal;
+          token.valor := '';
+          FFromNewLine:=true;
         end
         else if token.valor.StartsWith('<RF') then
         begin
@@ -126,98 +167,65 @@ begin
           token.valor := token.valor.Replace('<Rf>',  '');
           FChapterNotes.Add(token.valor);
 
-          fmt.VScriptPos := vpSuperScript;
-          InsertFontText(Self, Format(' %d ', [FNoteID]), fmt);
-          fmt.VScriptPos := vpNormal;
-
+          AddText(SysUtils.Format(' %d ', [FNoteID]), rvsJump2);
+          FNoteJumps.Add(FJumps); Inc(FJumps);
           inc(FNoteID);
           token.valor := '';
         end
         else if token.valor = '<FI>' then
         begin
-          fmt.Style := [fsItalic];
-          fmt.Color := clGray;
-          token.valor := '';
-        end else if token.valor = '<Fi>' then
-        begin
-          fmt.Style := [];
-          fmt.Color := clBlack;
+          fmt := rvsFI;
           token.valor := '';
         end else if token.valor = '<FR>' then
         begin
-          fmt.Color := clRed;
+          fmt := rvsFR;
           token.valor := '';
-        end else if token.valor = '<Fi>' then
+        end else if token.valor = '<FO>' then
         begin
-          fmt.Color := clBlack;
+          fmt := rvsFO;
           token.valor := '';
-        end
-        else if token.valor = '<FO>' then
+        end else if token.valor.ToLower = '<b>' then
         begin
-          fmt.Style := [fsBold];
+          fmt := rvsBold;
           token.valor := '';
-        end else if token.valor = '<Fo>' then
+        end else if token.valor.ToLower = '<i>' then
         begin
-          fmt.Style := [];
+          fmt := rvsItalic;
           token.valor := '';
-        end
-        else if token.valor.ToLower = '<b>' then
+        end else if token.valor.ToLower = '<u>' then
         begin
-          Include(fmt.Style, fsBold);
+          fmt := rvsUnderline;
           token.valor := '';
-        end else if token.valor.ToLower = '</b>' then
+        end else if token.valor.ToLower = '<s>' then
         begin
-          Exclude(fmt.Style, fsBold);
+          fmt := rvsStrikeout;
           token.valor := '';
-        end
-        else if token.valor.ToLower = '<i>' then
+        end else if token.valor.ToLower = '<sup>' then
         begin
-          Include(fmt.Style, fsItalic);
+          fmt := rvsSuperscript;
           token.valor := '';
-        end else if token.valor.ToLower = '</i>' then
+        end else if token.valor.ToLower = '<sub>' then
         begin
-          Exclude(fmt.Style, fsItalic);
+          fmt := rvsSubscript;
           token.valor := '';
-        end
-        else if token.valor.ToLower = '<u>' then
+        end else if token.valor = '<CM>' then
         begin
-          Include(fmt.Style, fsUnderline);
+          if FVerseMode = vmParagraph then
+            FFromNewLine := true;
           token.valor := '';
-        end else if token.valor.ToLower = '</u>' then
+        end else if (token.valor = '</sub>')
+                 or (token.valor = '</sup>')
+                 or (token.valor = '</s>')
+                 or (token.valor = '</u>')
+                 or (token.valor = '</i>')
+                 or (token.valor = '</b>')
+                 or (token.valor = '<Fo>')
+                 or (token.valor = '<Fr>')
+                 or (token.valor = '<Fi>')
+                 or (token.valor = '</b>') then
         begin
-          Exclude(fmt.Style, fsUnderline);
+          fmt := rvsNormal;
           token.valor := '';
-        end
-        else if token.valor.ToLower = '<s>' then
-        begin
-          Include(fmt.Style, fsStrikeOut);
-          token.valor := '';
-        end else if token.valor.ToLower = '</s>' then
-        begin
-          Exclude(fmt.Style, fsStrikeOut);
-          token.valor := '';
-        end
-        else if token.valor.ToLower = '<sup>' then
-        begin
-          fmt.VScriptPos := vpSuperScript;
-          token.valor := '';
-        end else if token.valor.ToLower = '</sup>' then
-        begin
-          fmt.VScriptPos := vpNormal;
-          token.valor := '';
-        end
-        else if token.valor.ToLower = '<sub>' then
-        begin
-          fmt.VScriptPos := vpSubScript;
-          token.valor := '';
-        end else if token.valor.ToLower = '</sub>' then
-        begin
-          fmt.VScriptPos := vpNormal;
-          token.valor := '';
-        end
-        else if token.valor = '<CM>' then
-        begin
-          token.valor := IfThen(FVerseMode = vmParagraph, #13#10, '');
         end else if token.valor.ToLower = '<br/>' then
         begin
           token.valor := ' ';
@@ -225,33 +233,45 @@ begin
           token.valor := '';
     end;
     if not token.valor.IsEmpty then
-      InsertFontText(Self, token.valor, fmt);
+      AppendText(token.valor, fmt);
   end;
   FreeAndNil(FTokenizer);
+end;
+
+procedure TChapterView.HandleJump(Sender: TObject; id: Integer);
+var
+  i: Integer;
+begin
+  if id >= FJumps then { notes }
+  begin
+    ScrollTo(GetJumpPointY(FNoteJumps[id-FJumps]));
+    exit;
+  end;
+
+  i := FVerseJumps.IndexOf(id);
+  if i >= 0 then { verse }
+  begin
+    FProject.IrPara(SysUtils.Format('%d,%d,%d', [FProject.BookID, FProject.Chapter, i + 1]));
+    exit;
+  end;
+
+  { note link }
+  i := FNoteJumps.IndexOf(id);
+  ScrollTo(GetJumpPointY(FJumps + i));
 end;
 
 procedure TChapterView.RenderNotes;
 var
   i: integer;
-  fmt: TFontParams;
-  par: TParaNumbering;
-  start: PtrInt;
 begin
-  fmt := GetFontParams(Font);
-  fmt.Size := 9;
+  if FChapterNotes.Count = 0 then
+    exit;
 
-  InsertFontText(Self, #13#10#13#10, fmt);
-
-  GetParaNumbering(0, par);
-  par.NumberStart := 1;
-  par.Indent      := 10;
-  par.Style       := pnNumber;
-
+  AddBreak;
   for i:=0 to FChapterNotes.Count-1 do
   begin
-    start := UTF8Length(Text) + 1;
-    RenderSpan(Format('%s<CM>', [FChapterNotes[i]]), fmt);
-    SetParaNumbering(start, UTF8Length(Text) - start, par);
+    AddFromNewLine(SysUtils.Format('%d ', [i + 1]), rvsJump2);
+    RenderSpan(FChapterNotes[i]);
   end;
 end;
 
@@ -272,27 +292,35 @@ end;
 
 procedure TChapterView.HandleKeyDown(Sender: TObject; var Key: Word;
   Shift: TShiftState);
+var
+  s: integer;
 begin
-  if (ssCtrl in Shift) and (Key in [VK_SUBTRACT, VK_OEM_MINUS]) and (ZoomFactor > 0.1) then
-    ZoomFactor := ZoomFactor - 0.1
-  else if (ssCtrl in Shift) and (Key in [VK_ADD, VK_OEM_PLUS]) then
-    ZoomFactor := ZoomFactor + 0.1
-  else if (ssCtrl in Shift) and (Key in [VK_A]) then
+  if (ssCtrl in Shift) and (Key in [VK_SUBTRACT, VK_OEM_MINUS]) and (Style.TextStyles[rvsNormal].Size > 1) then
   begin
-    SelectAll;
-    Key := 0;
+    for s:=0 to Style.TextStyles.Count-1 do
+      Style.TextStyles[s].Size := Style.TextStyles[s].Size-1;
+    Format;
+    Repaint;
+  end
+  else if (ssCtrl in Shift) and (Key in [VK_ADD, VK_OEM_PLUS]) then
+  begin
+    for s:=0 to Style.TextStyles.Count-1 do
+      Style.TextStyles[s].Size := Style.TextStyles[s].Size+1;
+    Format;
+    Repaint;
   end;
 end;
 
 procedure TChapterView.HandleMouseMove(Sender: TObject; Shift: TShiftState; X,
   Y: Integer);
-var
+{var
   iCharIndex, iCharOffset, i, j: Integer;
   s, note: string;
   attr: TFontParams;
   rect: TRect;
-  pos: TPoint;
+  pos: TPoint;}
 begin
+  {
   iCharIndex := CharAtPos(X, Y);
   if iCharIndex < 0
     then Exit;
@@ -330,27 +358,17 @@ begin
   Rect.Top := Pos.Y+5;
   Rect.Right := Rect.Left + Rect.Right;
   Rect.Bottom := Rect.Top + Rect.Bottom;
-  FHint.ActivateHint(Rect, note);
-end;
-
-procedure TChapterView.HandleLinkAction(Sender: TObject;
-  ALinkAction: TLinkAction; const info: TLinkMouseInfo; LinkStart,
-  LinkLen: Integer);
-var
-  Verse: string;
-begin
-  Verse := GetText(LinkStart, LinkLen);
-  FProject.IrPara(Format('%d,%d,%s', [FProject.BookID, FProject.Chapter, Verse]));
+  FHint.ActivateHint(Rect, note);}
 end;
 
 procedure TChapterView.HandleMouseWheel(Sender: TObject; Shift: TShiftState;
   WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
 begin
-  if ssCtrl in Shift then
+  {if ssCtrl in Shift then
   begin
     TRichMemo(Sender).ZoomFactor := Max(TRichMemo(Sender).ZoomFactor + Sign(WheelDelta)*0.1, 0.1);
     Handled := true;
-  end;
+  end;}
 end;
 
 procedure TChapterView.HandleParagraphMode(Sender: TObject);
@@ -363,11 +381,33 @@ begin
   VerseMode := vmVersePerLine;
 end;
 
+procedure TChapterView.HandleZoomIn(Sender: TObject);
+var
+  s: integer;
+begin
+  for s:=0 to Style.TextStyles.Count-1 do
+    Style.TextStyles[s].Size := Style.TextStyles[s].Size+1;
+  Format;
+  Repaint;
+end;
+
+procedure TChapterView.HandleZoomOut(Sender: TObject);
+var
+  s: integer;
+begin
+  if Style.TextStyles[rvsNormal].Size < 2 then
+    exit;
+  for s:=0 to Style.TextStyles.Count-1 do
+    Style.TextStyles[s].Size := Style.TextStyles[s].Size-1;
+  Format;
+  Repaint;
+end;
+
 procedure TChapterView.SetProject(AValue: TProjeto);
 begin
   if FProject = AValue then Exit;
   FProject := AValue;
-  FProject.OnNovoVersiculo := @HandleVerseChange;
+  FProject.OnNewVerseSubscribe(@HandleVerseChange);
 end;
 
 procedure TChapterView.InitPopupMenu;
@@ -392,9 +432,103 @@ begin
     Enabled := True;
   end;
   PopupMenu.Items.Add(FVersePerLineItem);
+
+  PopupMenu.Items.AddSeparator;
+  FZoomInItem := TMenuItem.Create(PopupMenu);
+  with FZoomInItem do
+  begin
+    Caption := SZoomIn;
+    OnClick := @HandleZoomIn;
+  end;
+  PopupMenu.Items.Add(FZoomInItem);
+
+  FZoomOutItem := TMenuItem.Create(PopupMenu);
+  with FZoomOutItem do
+  begin
+    Caption := SZoomOut;
+    OnClick := @HandleZoomOut;
+  end;
+  PopupMenu.Items.Add(FZoomOutItem);
 end;
 
-procedure TChapterView.SetVerseMode(AValue: TVerseMode);
+procedure TChapterView.InitStyles;
+begin
+  Style := TRVStyle.Create(Self);
+
+  Style.TextStyles[rvsNormal].Size := 12;
+
+  rvsFI := Style.AddTextStyle();
+  Style.TextStyles[Style.TextStyles.Count-1].Size := 12;
+  Style.TextStyles[Style.TextStyles.Count-1].Style := [fsItalic];
+  Style.TextStyles[Style.TextStyles.Count-1].Color := clGrayText;
+
+  rvsFO := Style.AddTextStyle();
+  Style.TextStyles[Style.TextStyles.Count-1].Size := 12;
+  Style.TextStyles[Style.TextStyles.Count-1].Style := [fsBold];
+
+  rvsFR := Style.AddTextStyle();
+  Style.TextStyles[Style.TextStyles.Count-1].Size := 12;
+  Style.TextStyles[Style.TextStyles.Count-1].Color := clRed;
+
+  rvsBold := Style.AddTextStyle();
+  Style.TextStyles[Style.TextStyles.Count-1].Size := 12;
+  Style.TextStyles[Style.TextStyles.Count-1].Style := [fsBold];
+
+  rvsItalic := Style.AddTextStyle();
+  Style.TextStyles[Style.TextStyles.Count-1].Size := 12;
+  Style.TextStyles[Style.TextStyles.Count-1].Style := [fsItalic];
+
+  rvsUnderline := Style.AddTextStyle();
+  Style.TextStyles[Style.TextStyles.Count-1].Size := 12;
+  Style.TextStyles[Style.TextStyles.Count-1].Style := [fsUnderline];
+
+  rvsSuperscript := Style.AddTextStyle();
+  Style.TextStyles[Style.TextStyles.Count-1].Size := 12;
+
+  rvsSubscript := Style.AddTextStyle();
+  Style.TextStyles[Style.TextStyles.Count-1].Size := 12;
+
+  rvsBoldItalic := Style.AddTextStyle();
+  Style.TextStyles[Style.TextStyles.Count-1].Size := 12;
+  Style.TextStyles[Style.TextStyles.Count-1].Style := [fsBold, fsItalic];
+
+  rvsTS0 := Style.AddTextStyle();
+  Style.TextStyles[Style.TextStyles.Count-1].Size := 14;
+  Style.TextStyles[Style.TextStyles.Count-1].Style := [fsBold, fsItalic];
+  Style.TextStyles[Style.TextStyles.Count-1].Color := clGrayText;
+
+  rvsTS1 := Style.AddTextStyle();
+  Style.TextStyles[Style.TextStyles.Count-1].Size := 13;
+  Style.TextStyles[Style.TextStyles.Count-1].Style := [fsBold, fsItalic];
+
+  rvsTS2 := Style.AddTextStyle();
+  Style.TextStyles[Style.TextStyles.Count-1].Size := 12;
+  Style.TextStyles[Style.TextStyles.Count-1].Style := [fsBold, fsItalic];
+
+  rvsTS3 := Style.AddTextStyle();
+  Style.TextStyles[Style.TextStyles.Count-1].Size := 12;
+  Style.TextStyles[Style.TextStyles.Count-1].Style := [fsItalic];
+
+  rvsStrikeout := Style.AddTextStyle();
+  Style.TextStyles[Style.TextStyles.Count-1].Size := 12;
+  Style.TextStyles[Style.TextStyles.Count-1].Style := [fsStrikeOut];
+
+  rvsVerseNumber := Style.AddTextStyle();
+  Style.TextStyles[Style.TextStyles.Count-1].Size := 12;
+  Style.TextStyles[Style.TextStyles.Count-1].Style := [fsBold];
+  Style.TextStyles[Style.TextStyles.Count-1].Color := clMaroon;
+
+  rvsCurrentVerseNumber := Style.AddTextStyle();
+  Style.TextStyles[Style.TextStyles.Count-1].Size := 12;
+  Style.TextStyles[Style.TextStyles.Count-1].Style := [fsBold, fsUnderline];
+  Style.TextStyles[Style.TextStyles.Count-1].Color := clMaroon;
+
+  Style.TextStyles[rvsJump1].Size := 12;
+  Style.TextStyles[rvsJump1].Color := clMaroon;
+  Style.TextStyles[rvsJump1].Style := [fsBold];
+end;
+
+procedure TChapterView.SetVerseMode(AValue: TViewMode);
 begin
   if FVerseMode = AValue
     then Exit;
@@ -405,31 +539,58 @@ begin
   HandleVerseChange(FProject);
 end;
 
+procedure TChapterView.AppendText(s: string; StyleNo: Integer);
+begin
+  if FFromNewLine then
+    AddTextFromNewLine(s, StyleNo)
+  else
+    AddText(s, StyleNo);
+  FFromNewLine:=false;
+end;
+
+procedure TChapterView.SetEnabled(Value: Boolean);
+begin
+  if assigned(FProject) and not Value and Enabled then
+  begin
+    FProject.OnNewVerseUnsubscribe(@HandleVerseChange);
+    FProject := nil;
+  end;
+
+  inherited SetEnabled(Value);
+end;
+
 constructor TChapterView.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   Parent       := TWinControl(AOwner);
-  ReadOnly     := true;
-  OnKeyDown    := @HandleKeyDown;
-  OnLinkAction := @HandleLinkAction;
-  OnMouseWheel := @HandleMouseWheel;
+  //OnKeyDown    := @HandleKeyDown;
+  //OnMouseWheel := @HandleMouseWheel;
   { TRichMemo.GetText causes unsolicited scrolling, disabling it }
   //OnMouseMove  := @HandleMouseMove;
-  FProject     := nil;
-  FVerseMode   := vmParagraph;
+  OnJump          := @HandleJump;
+  FProject        := nil;
+  FVerseMode      := vmParagraph;
   FRxVerseHeading := RegexCreate('^((?:<TS[0-7]?>.*?<Ts>)*)(.*?)$', [rcoUTF8]);
-  FChapterNotes := TStringList.Create;
-  FHint := THintWindow.Create(Self);
+  FChapterNotes   := TStringList.Create;
+  FVerseJumps     := TIntegerList.Create;
+  FNoteJumps      := TIntegerList.Create;
+  FHint           := THintWindow.Create(Self);
   FHint.Font.Size := 10;
-  FHint.Color := $E0FFFF;
+  FHint.Color     := $E0FFFF;
   InitPopupMenu;
+  InitStyles;
 end;
 
 destructor TChapterView.Destroy;
 begin
   FChapterNotes.Free;
+  FVerseJumps.Free;
+  FNoteJumps.Free;
   FHint.Free;
-  { For correctness we should unsubscribe from TProjeto.OnNovoVersiculo... }
+  FStyles.Free;
+  if assigned(FProject) then
+    FProject.OnNewVerseUnsubscribe(@HandleVerseChange);
+
   inherited Destroy;
 end;
 
@@ -438,25 +599,31 @@ var
   verse: string;
   v: integer;
 begin
-  Lines.BeginUpdate;
-  Rtf := ''; { RichMemo1.Lines.Clear doesn't work on Linux }
+  Clear;
 
+  FirstJumpNo := 0;
   FNoteID := 1;
   FChapterNotes.Clear;
-  FChapterNotes := TStringList.Create;
+  FVerseJumps.Clear;
+  FNoteJumps.Clear;
+  FJumps := 0;
+
+  FFromNewLine := false;
 
   v := 0;
   for verse in verses do
   begin
-    Application.ProcessMessages;
     Inc(v);
-    RenderVerse(verse, v.ToString, v = current);
+    RenderVerse(verse, v, v = current);
   end;
-  RenderNotes;
-  Lines.EndUpdate;
 
+  RenderNotes;
+
+  Format;
+  Repaint;
+  ScrollTo(GetJumpPointY(current));
   { TRichMemo bug: Current zoom factor doesn't apply automatically }
-  ZoomFactor := ZoomFactor;
+  //ZoomFactor := ZoomFactor;
 end;
 
 end.
