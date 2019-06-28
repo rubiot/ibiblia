@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, RichView, RVStyle, Graphics, ONTTokenizer, LCLType,
-  LazUTF8, Projeto, PCRE, Controls, Menus, fgl, Dialogs;
+  LazUTF8, Projeto, PCRE, Controls, Menus, fgl, Dialogs, Math;
 
 type
 
@@ -170,7 +170,7 @@ begin
           token.valor := token.valor.Replace('<Rf>',  '');
           FChapterNotes.Add(token.valor);
 
-          AddText(SysUtils.Format(' %d ', [FNoteID]), rvsJump2);
+          AddText(SysUtils.Format('[%d]', [FNoteID]), rvsJump2);
           FNoteJumps.Add(FJumps); Inc(FJumps);
           inc(FNoteID);
           token.valor := '';
@@ -270,13 +270,19 @@ begin
   if FChapterNotes.Count = 0 then
     exit;
 
+  AddFromNewLine(' ', rvsNormal);
   AddBreak;
   FFromNewLine := false;
   for i:=0 to FChapterNotes.Count-1 do
   begin
-    AddFromNewLine(SysUtils.Format('%d ', [i + 1]), rvsJump2);
+    AddTextFromNewLine(SysUtils.Format('[%d]', [i + 1]), rvsJump2);
+    AddText(' ', rvsNormal);
     RenderSpan(FChapterNotes[i]);
   end;
+
+  { adding space to allow scrolling past the end }
+  for i:=1 to 50 do
+    AddFromNewLine(' ', rvsNormal);
 end;
 
 procedure TChapterView.HandleVerseChange(Sender: TProjeto);
@@ -500,6 +506,9 @@ begin
 
   Style.TextStyles[rvsJump1].Color := clMaroon;
   Style.TextStyles[rvsJump1].Style := [fsBold];
+  Style.TextStyles[rvsJump1].Size  := Max(Style.TextStyles[rvsJump1].Size - 3, 2);
+
+  //Style.TextStyles[rvsJump2].Layout := tlTop;
 end;
 
 procedure TChapterView.SetVerseMode(AValue: TViewMode);
@@ -531,6 +540,8 @@ begin
 
   for s:=0 to Style.TextStyles.Count-1 do
     Style.TextStyles[s].Size := FFontSize;
+
+  Style.TextStyles[rvsJump2].Size := Max(FFontSize - 3, 2);
 
   Format;
   Repaint;
@@ -574,7 +585,7 @@ begin
   FFontSize       := 10;
   FProject        := nil;
   FVerseMode      := vmParagraph;
-  FRxVerseHeading := RegexCreate('^((?:<TS[0-7]?>.*?<Ts>)*)(.*?)$', [rcoUTF8]);
+  FRxVerseHeading := RegexCreate('^((?:<TS[0-3]?>.*?<Ts>)*)(.*?)$', [rcoUTF8]);
   FChapterNotes   := TStringList.Create;
   FVerseJumps     := TIntegerList.Create;
   FNoteJumps      := TIntegerList.Create;
