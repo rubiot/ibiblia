@@ -2297,14 +2297,17 @@ begin
     end;
     FinishScrollingSession;
 
-    if pos(lines[0], '<WG') = 0 then { adicionando tag inócua para que o theWord exiba definições mesmo sem associações no primeiro versículo }
-      lines[0] := lines[0] + '<_MORPH_>';
-
     try
       if arquivo.EndsWith('.mybible') then // MySword module?
         ExportMySwordBible(lines, arquivo, ResgatarInfo('propriedades.destino'))
       else
+      begin
+        if (pos(lines[0], '<WG') = 0) and     { no Greek tags in the first verse? }
+           (pos(lines[0], '<WH') = 0) then    { nor Hebrew tags? }
+          lines[0] := lines[0] + '<_MORPH_>'; { making sure theWord will know the module has tags }
+
         ExportTheWordBible(lines, arquivo, ResgatarInfo('propriedades.destino'));
+      end;
     except
       on E: Exception do MessageDlg(SError, SExportToFileError, mtError, [mbOK], 0);
     end;
