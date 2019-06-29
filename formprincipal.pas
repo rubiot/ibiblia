@@ -648,18 +648,6 @@ begin
   MenuItemSynciBiblia.Checked := opts.ReadBool('opcoes', 'syncibiblia', false);
   MenuItemStrongNegrito.Checked := opts.ReadBool('opcoes', 'boldstrongs', false);
 
-  FChapterView := TChapterView.Create(ContextPanel);
-  with FChapterView do
-  begin
-    ParentWindow := ContextPanel.Handle;
-    BorderStyle  := bsNone;
-    Align        := alClient;
-    VScrollVisible := true;
-    FontName     := opts.ReadString('leiaute', 'principal.chapterview.font.name', DefFontData.Name);
-    FontSize     := opts.ReadInteger('leiaute', 'principal.chapterview.font.size', 0);
-    VerseMode    := TViewMode(opts.ReadInteger('opcoes', 'chapterview.versemode', Ord(vmParagraph)));
-  end;
-
   MenuItemStrongsCountNone.Tag    := Integer(scNone);
   MenuItemStrongsCountWords.Tag   := Integer(scCountWords);
   MenuItemStrongsCountStrongs.Tag := Integer(scCountStrongs);
@@ -682,6 +670,18 @@ begin
   else if language = 'pt' then
     MenuItemLangPt.Checked:=true;
   TranslateStatusRadioGroup;
+
+  FChapterView := TChapterView.Create(ContextPanel);
+  with FChapterView do
+  begin
+    ParentWindow := ContextPanel.Handle;
+    BorderStyle  := bsNone;
+    Align        := alClient;
+    VScrollVisible := true;
+    FontName     := opts.ReadString('leiaute', 'principal.chapterview.font.name', DefFontData.Name);
+    FontSize     := opts.ReadInteger('leiaute', 'principal.chapterview.font.size', 0);
+    VerseMode    := TViewMode(opts.ReadInteger('opcoes', 'chapterview.versemode', Ord(vmParagraph)));
+  end;
 
   CarregarMRU(MenuItemRecent);
   TreeView1.Width := opts.ReadInteger('leiaute', 'principal.treeview.largura', TreeView1.Width);
