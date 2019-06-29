@@ -386,6 +386,7 @@ var
   dialog: TFontDialog;
 begin
   dialog := TFontDialog.Create(self);
+  dialog.Options := [fdNoStyleSel];
   dialog.Font.Name := FFontName;
   dialog.Font.Size := FFontSize;
   if dialog.Execute then
