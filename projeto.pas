@@ -1208,6 +1208,7 @@ end;
 procedure TProjeto.OnAlterarTextoVersiculo(Sender: TMemoVersiculo);
 var
   v: TTipoTextoBiblico;
+  e: TOnNovoVersiculoEvent;
 begin
   for v:=low(FAVersiculo) to high(FAVersiculo) do
     if FAVersiculo[v] = Sender.Versiculo then
@@ -1216,8 +1217,15 @@ begin
         Sender.Versiculo.AlterarTexto(Sender.Texto)
       else // reference text
         Sender.Versiculo.Texto := Sender.Texto;
+
+      if v = tbDestino then
+        for e in FOnNovoVersiculo do
+          e(self);
+
       break;
     end;
+
+
   //MessageDlg('Versículo modificado', format('Versiculo modificado: %s', [Sender.Texto]), mtError, [mbOK], 0);
 end;
 

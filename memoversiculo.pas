@@ -121,8 +121,9 @@ procedure TMemoVersiculo.Desativar;
 begin
   if not FMemo.Visible then
     exit;
+
   FMemo.Visible := False;
-  if assigned(FEventoTextoModificado) then
+  if assigned(FEventoTextoModificado) and FModificado then
     FEventoTextoModificado(self);
 end;
 
