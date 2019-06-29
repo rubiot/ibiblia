@@ -542,6 +542,7 @@ begin
     Style.TextStyles[s].Size := FFontSize;
 
   Style.TextStyles[rvsJump2].Size := Max(FFontSize - 3, 2);
+  Style.TextStyles[rvsHeading].Size := FFontSize + 2;
 
   Format;
   Repaint;
@@ -623,7 +624,8 @@ begin
   FNoteJumps.Clear;
   FJumps := 0;
 
-  FFromNewLine := false;
+  AddText(SysUtils.Format('%s %d', [FProject.Book, FProject.Chapter]), rvsHeading);
+  FFromNewLine := true;
 
   v := 0;
   for verse in verses do
