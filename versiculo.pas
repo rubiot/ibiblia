@@ -369,6 +369,7 @@ var
 begin
   if not FAtivo then
     exit;
+
   for s in FSintagmas do
   begin
     if not assigned(s.LabelRef) or not s.TemStrongs then
@@ -379,8 +380,9 @@ begin
     begin
       // Link para solução overriding Paint: http://forum.lazarus.freepascal.org/index.php?topic=23894.0
       Brush.Color := clYellow;
-      Font.Size   := round(s.LabelRef.Font.Size * 0.5);;
-      Font.Color  := RGBToColor(0,0,0);
+      Font.Name   := DefFontData.Name;
+      Font.Height := round(s.LabelRef.Font.Height * 0.6);
+      Font.Color  := clBlack;
       Rectangle(p.x, p.y, p.x + TextWidth(tags) + 4, p.y + TextHeight(tags));
       Brush.Style := bsClear;
       TextOut(p.x+2, p.y, tags);
