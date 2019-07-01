@@ -434,7 +434,11 @@ procedure TVersiculo.AlterarTexto(_XML: string);
     if assigned(s.Pares) then
     begin
       for pair in FVersiculoRef.Sintagmas do
+      begin
         pair.Pares.Remove(s);
+        if pair.Pares.Count = 0 then
+          pair.Correlacionado := false;
+      end;
       s.Pares.Clear;
     end;
 
