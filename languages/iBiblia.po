@@ -1191,8 +1191,16 @@ msgstr ""
 msgid "&Copy tags"
 msgstr ""
 
-#: versiculo.spastetags
-msgid "&Paste tags"
+#: versiculo.spastealltags
+msgid "Paste &all tags"
+msgstr ""
+
+#: versiculo.spastemorphotags
+msgid "Paste &morphology tags"
+msgstr ""
+
+#: versiculo.spastestrongtags
+msgid "&Paste &Strong's tags"
 msgstr ""
 
 #: versiculo.ssavetofile

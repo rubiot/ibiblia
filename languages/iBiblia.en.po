@@ -1232,9 +1232,17 @@ msgstr "Exit the program"
 msgid "&Copy tags"
 msgstr "&Copy tags"
 
-#: versiculo.spastetags
-msgid "&Paste tags"
-msgstr "&Paste tags"
+#: versiculo.spastealltags
+msgid "Paste &all tags"
+msgstr "Paste &all tags"
+
+#: versiculo.spastemorphotags
+msgid "Paste &morphology tags"
+msgstr "Paste &morphology tags"
+
+#: versiculo.spastestrongtags
+msgid "&Paste &Strong's tags"
+msgstr "&Paste &Strong's tags"
 
 #: versiculo.ssavetofile
 msgid "&Save text to file..."

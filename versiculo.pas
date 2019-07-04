@@ -76,8 +76,8 @@ type
     procedure AtualizarXMLInterno;
     procedure AtualizarStrongCount;
     function GetTokens: string;
-    procedure OnCopiarTagsSintagma(Sender: TObject);
-    procedure OnColarTagsSintagma(Sender: TObject);
+    procedure OnCopySyntagmTags(Sender: TObject);
+    procedure OnPasteSyntagmTags(Sender: TObject);
     procedure OnSaveTextToFile(Sender: TObject);
     procedure OnVerseMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure InitSyntagmPopupMenu;
@@ -149,7 +149,9 @@ type
 
 resourcestring
   SCopyTags ='&Copy tags';
-  SPasteTags = '&Paste tags';
+  SPasteAllTags = 'Paste &all tags';
+  SPasteStrongTags = '&Paste &Strong''s tags';
+  SPasteMorphoTags = 'Paste &morphology tags';
   SSaveToFile = '&Save text to file...';
 
 implementation
@@ -1146,9 +1148,8 @@ procedure TVersiculo.AtualizarStrongCount;
 
   function GetStrongsCount(s: TSintagma): integer;
   begin
+    result := 0;
     case FStrongsCountMode of
-      scNone:
-        result := 0;
       scCountStrongs:
         result := s.StrongsCount;
       scCountWords:
@@ -1201,12 +1202,12 @@ begin
   tokens.Destroy;
 end;
 
-procedure TVersiculo.OnCopiarTagsSintagma(Sender: TObject);
+procedure TVersiculo.OnCopySyntagmTags(Sender: TObject);
 begin
   SintagmaClipboard := TSintagma(FSyntagmPopupMenu.Tag);
 end;
 
-procedure TVersiculo.OnColarTagsSintagma(Sender: TObject);
+procedure TVersiculo.OnPasteSyntagmTags(Sender: TObject);
 var
   s: TSintagma;
   t: string;
@@ -1216,15 +1217,26 @@ begin
 
   s := TSintagma(FSyntagmPopupMenu.Tag);
 
-  s.Strong.Clear;
-  for t in SintagmaClipboard.Strong do
-    s.Strong.Add(t);
+  s.TextoBruto := s.Texto;
+  if TMenuItem(Sender).Caption <> SPasteMorphoTags then
+  begin
+    s.Strong.Clear;
+    for t in SintagmaClipboard.Strong do
+    begin
+      s.Strong.Add(t);
+      s.TextoBruto := Format('%s<W%s>', [s.TextoBruto, t]);
+    end;
+  end;
 
-  s.Morf.Clear;
-  for t in SintagmaClipboard.Morf do
-    s.Morf.Add(t);
-
-  s.TextoBruto := s.Texto + s.Tags;
+  if TMenuItem(Sender).Caption <> SPasteStrongTags then
+  begin
+    s.Morf.Clear;
+    for t in SintagmaClipboard.Morf do
+    begin
+      s.Morf.Add(t);
+      s.TextoBruto := Format('%s<W%s>', [s.TextoBruto, t]);
+    end;
+  end;
 
   AtualizarXMLInterno;
   FModificado := true;
@@ -1259,12 +1271,22 @@ begin
 
   Item := TMenuItem.Create(FSyntagmPopupMenu);
   Item.Caption := SCopyTags;
-  Item.OnClick := @OnCopiarTagsSintagma;
+  Item.OnClick := @OnCopySyntagmTags;
   FSyntagmPopupMenu.Items.Add(Item);
 
   Item := TMenuItem.Create(FSyntagmPopupMenu);
-  Item.Caption := SPasteTags;
-  Item.OnClick := @OnColarTagsSintagma;
+  Item.Caption := SPasteAllTags;
+  Item.OnClick := @OnPasteSyntagmTags;
+  FSyntagmPopupMenu.Items.Add(Item);
+
+  Item := TMenuItem.Create(FSyntagmPopupMenu);
+  Item.Caption := SPasteStrongTags;
+  Item.OnClick := @OnPasteSyntagmTags;
+  FSyntagmPopupMenu.Items.Add(Item);
+
+  Item := TMenuItem.Create(FSyntagmPopupMenu);
+  Item.Caption := SPasteMorphoTags;
+  Item.OnClick := @OnPasteSyntagmTags;
   FSyntagmPopupMenu.Items.Add(Item);
 end;
 

@@ -1215,9 +1215,17 @@ msgstr "Sair do programa"
 msgid "&Copy tags"
 msgstr "&Copiar tags"
 
-#: versiculo.spastetags
-msgid "&Paste tags"
-msgstr "Co&lar tags"
+#: versiculo.spastealltags
+msgid "Paste &all tags"
+msgstr "Colar &todas as tags"
+
+#: versiculo.spastemorphotags
+msgid "Paste &morphology tags"
+msgstr "Colar tags de &morfologia"
+
+#: versiculo.spastestrongtags
+msgid "&Paste &Strong's tags"
+msgstr "Colar tags de &Strong"
 
 #: versiculo.ssavetofile
 msgid "&Save text to file..."
