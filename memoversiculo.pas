@@ -55,7 +55,9 @@ end;
 procedure TMemoVersiculo.OnKeyDown(Sender: TObject; var Key: word; Shift: TShiftState);
 begin
   if Key = VK_ESCAPE then
-    ConfirmarAlteracao;
+    ConfirmarAlteracao
+  else if Key = VK_RETURN then
+    Key := 0;
 end;
 
 procedure TMemoVersiculo.OnChange(Sender: TObject);
