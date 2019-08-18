@@ -279,10 +279,6 @@ begin
     AddText(' ', rvsNormal);
     RenderSpan(FChapterNotes[i]);
   end;
-
-  { adding space to allow scrolling past the end }
-  for i:=1 to 50 do
-    AddFromNewLine(' ', rvsNormal);
 end;
 
 procedure TChapterView.HandleVerseChange(Sender: TProjeto);
@@ -636,6 +632,10 @@ begin
   end;
 
   RenderNotes;
+
+  { adding space to allow scrolling past the end }
+  for v:=1 to 50 do
+    AddFromNewLine(' ', rvsNormal);
 
   Format;
   Repaint;
