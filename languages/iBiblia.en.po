@@ -102,6 +102,11 @@ msgstr "Close project"
 msgid "destination"
 msgstr "destination"
 
+#: formprincipal.sdestinationtext
+msgctxt "formprincipal.sdestinationtext"
+msgid "Destination"
+msgstr "Destination"
+
 #: formprincipal.sloadingfile
 msgid "Loading %s..."
 msgstr "Loading %s..."
@@ -127,9 +132,17 @@ msgstr ""
 msgid "reference 1"
 msgstr "reference 1"
 
+#: formprincipal.sreference1text
+msgid "Reference1"
+msgstr "Reference1"
+
 #: formprincipal.sreference2
 msgid "reference 2"
 msgstr "reference 2"
+
+#: formprincipal.sreference2text
+msgid "Reference2"
+msgstr "Reference2"
 
 #: formprincipal.srollbackchanges
 msgctxt "formprincipal.srollbackchanges"
@@ -147,6 +160,11 @@ msgstr "Would you like to save your changes?"
 #: formprincipal.ssource
 msgid "source"
 msgstr "source"
+
+#: formprincipal.ssourcetext
+msgctxt "formprincipal.ssourcetext"
+msgid "Source"
+msgstr "Source"
 
 #: formprincipal.sstatusassociated
 msgid "Associated!"

@@ -90,6 +90,11 @@ msgstr ""
 msgid "destination"
 msgstr ""
 
+#: formprincipal.sdestinationtext
+msgctxt "formprincipal.sdestinationtext"
+msgid "Destination"
+msgstr ""
+
 #: formprincipal.sloadingfile
 msgid "Loading %s..."
 msgstr ""
@@ -113,8 +118,16 @@ msgstr ""
 msgid "reference 1"
 msgstr ""
 
+#: formprincipal.sreference1text
+msgid "Reference1"
+msgstr ""
+
 #: formprincipal.sreference2
 msgid "reference 2"
+msgstr ""
+
+#: formprincipal.sreference2text
+msgid "Reference2"
 msgstr ""
 
 #: formprincipal.srollbackchanges
@@ -132,6 +145,11 @@ msgstr ""
 
 #: formprincipal.ssource
 msgid "source"
+msgstr ""
+
+#: formprincipal.ssourcetext
+msgctxt "formprincipal.ssourcetext"
+msgid "Source"
 msgstr ""
 
 #: formprincipal.sstatusassociated

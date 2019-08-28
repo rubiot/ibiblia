@@ -33,6 +33,7 @@ type
     FNoteJumps: TIntegerList;
     FJumps: integer;
     FFromNewLine: boolean;
+    FBibleText: TTipoTextoBiblico;
 
     procedure RenderVerse(txt: string; verse: integer; isCurrent: boolean);
     procedure RenderSpan(txt: string);
@@ -45,6 +46,7 @@ type
     procedure HandleSetFont(Sender: TObject);
     procedure HandleParagraphMode(Sender: TObject);
     procedure HandleVersePerLineMode(Sender: TObject);
+    procedure SetBibleText(AValue: TTipoTextoBiblico);
     procedure SetProject(AValue: TProjeto);
     procedure InitPopupMenu;
     procedure InitStyles;
@@ -62,6 +64,7 @@ type
     property VerseMode: TViewMode read FVerseMode write SetVerseMode;
     property FontSize: integer read FFontSize write SetFontSize;
     property FontName: string read FFontName write SetFontName;
+    property BibleText: TTipoTextoBiblico read FBibleText write SetBibleText;
   end;
 
 var
@@ -288,7 +291,7 @@ begin
   if not assigned(FProject) or (Width < 2) then
     exit;
 
-  verses := Sender.ChapterText;
+  verses := Sender.GetChapterText(FBibleText);
   try
     RenderChapter(verses, Sender.Verse);
   finally
@@ -401,6 +404,13 @@ end;
 procedure TChapterView.HandleVersePerLineMode(Sender: TObject);
 begin
   VerseMode := vmVersePerLine;
+end;
+
+procedure TChapterView.SetBibleText(AValue: TTipoTextoBiblico);
+begin
+  if FBibleText=AValue then Exit;
+  FBibleText:=AValue;
+  HandleVerseChange(FProject);
 end;
 
 procedure TChapterView.SetProject(AValue: TProjeto);
@@ -590,6 +600,7 @@ begin
   FHint           := THintWindow.Create(Self);
   FHint.Font.Size := 10;
   FHint.Color     := $E0FFFF;
+  FBibleText      := tbDestino;
   InitPopupMenu;
   InitStyles;
 end;

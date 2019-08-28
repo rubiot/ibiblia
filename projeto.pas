@@ -106,7 +106,6 @@ type
     FOnSintagmaClick: TOnSintagmaClickEvent;
     FClosing: boolean;
     function GetCaminho: string;
-    function GetChapterText: TStringList;
     function GetComentarios: string;
     function GetID: string;
     function GetModificado: boolean;
@@ -198,6 +197,7 @@ type
     function ObterTextoSimplesVersiculo(texto: TTipoTextoBiblico): string;
     function ObterTextoSimplesVersiculo(Referencia: string; texto: TTipoTextoBiblico): string;
     function GetTranslationSuggestions(syntagm: TSintagma): string;
+    function GetChapterText(BibleText: TTipoTextoBiblico): TStringList;
     procedure Translate;
     procedure ToggleDisplayTags;
     procedure StartScrollingSession;
@@ -228,7 +228,6 @@ type
     property MostrarQtdStrongs: TStrongsCountMode read FVerseStrongsCountMode write SetVerseStrongsCountMode;
     property PopupTrigger: TPopupTrigger read FPopupTrigger write FPopupTrigger;
     property DisplayTags: boolean read FDisplayTags write SetDisplayTags;
-    property ChapterText: TStringList read GetChapterText;
     property BookID: integer read FReference.BookID;
     property Book: string read FReference.Book;
     property Chapter: integer read FReference.Chapter;
@@ -713,7 +712,7 @@ begin
     result := FTblInfo.FileName;
 end;
 
-function TProjeto.GetChapterText: TStringList;
+function TProjeto.GetChapterText(BibleText: TTipoTextoBiblico): TStringList;
 var
   bkch, text, comments: string;
 begin
@@ -725,8 +724,8 @@ begin
   with FTblPares do
     while not FTblPares.EOF and GetID().StartsWith(bkch) do
     begin
-      text     := FTblPares.Fields[FACamposTexto[tbDestino]].AsString.Replace(#239#187#191, '');
-      comments := Comentarios.Replace(#13#10, '<br/>', [rfReplaceAll]);
+      text     := FTblPares.Fields[FACamposTexto[BibleText]].AsString.Replace(#239#187#191, '');
+      comments := IfThen(BibleText = tbDestino, Comentarios.Replace(#13#10, '<br/>', [rfReplaceAll]), '');
       result.Add(Format('%s%s', [text, IfThen(comments.IsEmpty, '', Format('<RF>%s<Rf>', [comments]))]));
       VersiculoSeguinte;
     end;

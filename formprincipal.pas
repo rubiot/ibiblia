@@ -108,6 +108,7 @@ type
     Splitter5: TSplitter;
     Splitter6: TSplitter;
     StatusBar1: TStatusBar;
+    ChapterViewTabCtrl: TTabControl;
     ToolBar1: TToolBar;
     ToolButton1: TToolButton;
     ToolButton10: TToolButton;
@@ -166,6 +167,7 @@ type
     procedure CarregarMRU(m: TMenuItem);
     procedure DescarregarMRU(m: TMenuItem);
     procedure RadioGroupStatusSelectionChanged(Sender: TObject);
+    procedure ChapterViewTabCtrlChange(Sender: TObject);
     procedure ToolButtonExitClick(Sender: TObject);
   private
     { private declarations }
@@ -180,7 +182,7 @@ type
     procedure SyncToTwRef(Ref: string);
     procedure SetUpSyncThread;
     {$ENDIF}
-    procedure TranslateStatusRadioGroup;
+    procedure Translate;
   public
     { public declarations }
     language: string;
@@ -208,6 +210,10 @@ resourcestring
   SStatusAssociated = 'Associated!';
   SRollbackChanges = 'Rollback changes';
   SRollbackChangesConfirmation = 'Are you sure you want to rollback all changes to this verse?';
+  SSourceText = 'Source';
+  SDestinationText = 'Destination';
+  SReference1Text = 'Reference1';
+  SReference2Text = 'Reference2';
 
 implementation
 
@@ -669,12 +675,13 @@ begin
     MenuItemLangEn.Checked:=true
   else if language = 'pt' then
     MenuItemLangPt.Checked:=true;
-  TranslateStatusRadioGroup;
+  Translate;
 
-  FChapterView := TChapterView.Create(ContextPanel);
+  ChapterViewTabCtrl.TabIndex := opts.ReadInteger('opcoes', 'chapter.view.text', ord(tbDestino));
+  FChapterView := TChapterView.Create(ChapterViewTabCtrl);
   with FChapterView do
   begin
-    ParentWindow := ContextPanel.Handle;
+    ParentWindow := ChapterViewTabCtrl.Handle;
     BorderStyle  := bsNone;
     Align        := alClient;
     VScrollVisible := true;
@@ -718,6 +725,7 @@ begin
   opts.WriteString('opcoes', 'language', language);
   opts.WriteBool('opcoes', 'alwaysontop', MenuItemAlwaysOnTop.Checked);
   opts.WriteInteger('opcoes', 'popuptrigger', LongInt(FPopupTrigger));
+  opts.WriteInteger('opcoes', 'chapter.view.text', ChapterViewTabCtrl.TabIndex);
   opts.Free;
 
   FChapterView.Free;
@@ -801,11 +809,7 @@ begin
   SetDefaultLang('en');
   TMenuItem(Sender).Checked:=true;
   MenuItemLangPt.Checked:=false;
-  TranslateStatusRadioGroup;
-  formnovoprojeto1.Translate;
-  FormPropProjeto1.Translate;
-  if assigned(ProjetoAtual) then
-    ProjetoAtual.Translate;
+  Translate;
 end;
 
 procedure TFrmPrincipal.MenuItemLangPtClick(Sender: TObject);
@@ -817,11 +821,7 @@ begin
   SetDefaultLang('pt');
   TMenuItem(Sender).Checked:=true;
   MenuItemLangEn.Checked:=false;
-  TranslateStatusRadioGroup;
-  formnovoprojeto1.Translate;
-  FormPropProjeto1.Translate;
-  if assigned(ProjetoAtual) then
-    ProjetoAtual.Translate;
+  Translate;
 end;
 
 procedure TFrmPrincipal.MenuItemPopupTriggerClick(Sender: TObject);
@@ -990,6 +990,11 @@ begin
     ProjetoAtual.Situacao := RadioGroupStatus.ItemIndex;
 end;
 
+procedure TFrmPrincipal.ChapterViewTabCtrlChange(Sender: TObject);
+begin
+  FChapterView.BibleText := TTipoTextoBiblico(TTabControl(Sender).TabIndex);
+end;
+
 procedure TFrmPrincipal.ToolButtonExitClick(Sender: TObject);
 begin
   Close;
@@ -1023,7 +1028,7 @@ begin
 end;
 {$ENDIF}
 
-procedure TFrmPrincipal.TranslateStatusRadioGroup;
+procedure TFrmPrincipal.Translate;
 begin
   with RadioGroupStatus.Items do
   begin
@@ -1033,6 +1038,20 @@ begin
     Add(SStatusNeedsReview);
     Add(SStatusAssociated);
   end;
+  with ChapterViewTabCtrl do
+  begin
+    Tabs.Clear;
+    Tabs.Add(SSourceText);
+    Tabs.Add(SDestinationText);
+    Tabs.Add(SReference1Text);
+    Tabs.Add(SReference2Text);
+  end;
+  if assigned(FormNovoProjeto1) then
+    FormNovoProjeto1.Translate;
+  if assigned(FormPropProjeto1) then
+    FormPropProjeto1.Translate;
+  if assigned(ProjetoAtual) then
+    ProjetoAtual.Translate;
 end;
 
 end.

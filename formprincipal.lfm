@@ -15,7 +15,7 @@ object frmPrincipal: TfrmPrincipal
   OnShow = FormShow
   Position = poDesktopCenter
   ShowHint = True
-  LCLVersion = '2.0.2.0'
+  LCLVersion = '2.0.4.0'
   object StatusBar1: TStatusBar
     Left = 0
     Height = 23
@@ -315,9 +315,26 @@ object frmPrincipal: TfrmPrincipal
       Top = 1
       Width = 150
       Align = alRight
-      BorderStyle = bsSingle
+      ClientHeight = 591
+      ClientWidth = 150
       ParentColor = False
       TabOrder = 4
+      object ChapterViewTabCtrl: TTabControl
+        Left = 1
+        Height = 589
+        Top = 1
+        Width = 148
+        OnChange = ChapterViewTabCtrlChange
+        TabIndex = 0
+        Tabs.Strings = (
+          'Source'
+          'Destination'
+          'Reference1'
+          'Reference2'
+        )
+        Align = alClient
+        TabOrder = 0
+      end
     end
   end
   object ProgressBar1: TProgressBar
