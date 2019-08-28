@@ -893,12 +893,17 @@ procedure TFrmPrincipal.QuandoPalavraClicada(Sender: TSintagma);
 {$IFDEF WINDOWS}
 var
   match: IMatch;
+  wordSyncd: boolean;
 {$ENDIF}
 begin
   {$IFDEF WINDOWS}
   if not syncTw2iBiblia then
     exit;
 
+  if Sender.TemStrongs then
+    SyncTheWordDict(Sender.Strong[0]); // strong#
+
+  wordSyncd := false;
   if Sender.TemMorfs then
   begin
     match := FRxMorpho.Match(Sender.Morf[0]);
@@ -906,12 +911,15 @@ begin
     begin
       SyncTheWordDict(match.Groups[1].Value); // morphology
       if not match.Groups[3].Value.IsEmpty then
+      begin
         SyncTheWordDict(match.Groups[3].Value); // lemma
+        wordSyncd := true;
+      end;
     end;
   end;
 
-  if Sender.TemStrongs then
-    SyncTheWordDict(Sender.Strong[0]); // strong#
+  if not wordSyncd then
+    SyncTheWordDict(Sender.Texto); // raw word
   {$ENDIF}
 end;
 
