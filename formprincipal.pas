@@ -15,7 +15,7 @@ uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, Menus,
   ActnList, ComCtrls, ExtCtrls, StdCtrls, Projeto, IniFiles, Math,
   Sintagma, LCLTranslator, unitabout, PCRE, Versiculo,
-  LCLType, LazUTF8, ChapterView;
+  LCLType, LazUTF8, KChapterView;
 
 type
 
@@ -173,7 +173,7 @@ type
     { private declarations }
     FPopupTrigger: TPopupTrigger;
     FCurrentRef: string;
-    FChapterView: TChapterView;
+    FChapterView: TKChapterView;
     {$IFDEF WINDOWS}
     FRxMorpho: IRegex;
     syncTw2iBiblia: boolean;
@@ -678,16 +678,16 @@ begin
   Translate;
 
   ChapterViewTabCtrl.TabIndex := opts.ReadInteger('opcoes', 'chapter.view.text', ord(tbDestino));
-  FChapterView := TChapterView.Create(ChapterViewTabCtrl);
+  FChapterView := TKChapterView.Create(ChapterViewTabCtrl);
   with FChapterView do
   begin
     ParentWindow := ChapterViewTabCtrl.Handle;
     BorderStyle  := bsNone;
     Align        := alClient;
-    VScrollVisible := true;
     FontName     := opts.ReadString('leiaute', 'principal.chapterview.font.name', DefFontData.Name);
     FontSize     := opts.ReadInteger('leiaute', 'principal.chapterview.font.size', 0);
     VerseMode    := TViewMode(opts.ReadInteger('opcoes', 'chapterview.versemode', Ord(vmParagraph)));
+    BibleText    := TTipoTextoBiblico(ChapterViewTabCtrl.TabIndex);
   end;
 
   CarregarMRU(MenuItemRecent);
