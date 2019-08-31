@@ -15,8 +15,28 @@ type
     first, last: integer;
   end;
 
+  { TNoteInfo }
+
+  TNoteInfo = class
+  private
+    FId: integer;
+    FVerse: integer;
+    FText: string;
+    FRange: TBlockRange;
+  public
+    constructor Create(id: integer; verse: integer; text: string);
+    //destructor Destroy; override;
+    property Id: integer read FId write FId;
+    property Verse: integer read FVerse write FVerse;
+    property Text: string read FText write FText;
+    property Range: TBlockRange read FRange write FRange;
+    property FirstBlock: integer read FRange.first write FRange.first;
+    property LastBlock: integer read FRange.last write FRange.last;
+  end;
+
   TViewMode = (vmParagraph, vmVersePerLine);
   TIntegerList = specialize TFPGList<Integer>;
+  TNotesList = specialize TFPGList<TNoteInfo>;
 
   { TKChapterView }
 
@@ -26,24 +46,25 @@ type
     FFontSize: integer;
     FProject: TProjeto;
     FRxVerseHeading: IRegex;
-    FChapterNotes: TStringList;
     FNoteID: integer;
     FHint: THintWindow;
     FFontItem: TMenuItem;
     FParagraphModeItem: TMenuItem;
     FVersePerLineItem: TMenuItem;
     FVerseMode: TViewMode;
-    FNoteJumps: TIntegerList;
     FBibleText: TTipoTextoBiblico;
     FStyleStack: TObjectStack;
     FVerseRanges: array of TBlockRange;
+    FCurrentVerse: integer;
+    FNotes: TNotesList;
 
     function GetCurrentStyle: TKMemoTextStyle;
-    procedure RenderVerse(txt: string; verse: integer; isCurrent: boolean);
+    procedure RenderVerse(txt: string);
     procedure RenderSpan(txt: string);
     procedure RenderNotes;
-    procedure HandleClickVerseLink(sender: TObject);
-    procedure HandleClickNoteLink(sender: TObject);
+    procedure HandleVerseNumberClick(sender: TObject);
+    procedure HandleNoteLinkClick(sender: TObject);
+    procedure HandleNoteClick(sender: TObject);
     procedure HandleVerseChange(Sender: TProjeto);
     procedure HandleKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure HandleMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
@@ -76,6 +97,10 @@ type
     property CurrentStyle: TKMemoTextStyle read GetCurrentStyle;
   end;
 
+const
+  NonBibleTextColor = $cc6600;
+  NoteLinkColor = $0045ff;
+
 resourcestring
   SSetFont = 'Choose &font...';
   SParagraphMode = '&Paragraph mode';
@@ -83,14 +108,22 @@ resourcestring
 
 implementation
 
+{ TNoteInfo }
+
+constructor TNoteInfo.Create(id: integer; verse: integer; text: string);
+begin
+  FId    := id;
+  FVerse := verse;
+  FText  := text;
+end;
+
 { TKChapterView }
 
-procedure TKChapterView.RenderVerse(txt: string; verse: integer;
-  isCurrent: boolean);
+procedure TKChapterView.RenderVerse(txt: string);
 var
   mtHeading: IMatch;
 begin
-  if (FVerseMode = vmParagraph) and (verse > 1) then
+  if (FVerseMode = vmParagraph) and (FCurrentVerse > 1) then
     Blocks.AddTextBlock(' '); // space between verses
 
   mtHeading := FRxVerseHeading.Match(txt);
@@ -102,19 +135,19 @@ begin
   txt := mtHeading.Groups[2].Value;
 
   { rendering verse number }
-  with Blocks.AddHyperlink(SysUtils.Format('%d ', [verse]), SysUtils.Format('%d,%d,%d', [FProject.BookID, FProject.Chapter, verse])) do
+  with Blocks.AddHyperlink(SysUtils.Format('%d ', [FCurrentVerse]), SysUtils.Format('%d,%d,%d', [FProject.BookID, FProject.Chapter, FCurrentVerse])) do
   begin
-    OnClick := @HandleClickVerseLink;
+    OnClick := @HandleVerseNumberClick;
     TextStyle.Font.Size := FFontSize+2;
     TextStyle.Font.Style := [fsBold];
-    TextStyle.Font.Color := TColor($cc6600);
+    TextStyle.Font.Color := NonBibleTextColor;
     TextStyle.ScriptPosition:= tpoSuperscript;
   end;
 
   { rendering the verse text }
-  FVerseRanges[verse].first := Blocks.Count;
+  FVerseRanges[FCurrentVerse].first := Blocks.Count;
   RenderSpan(txt);
-  FVerseRanges[verse].last := Blocks.Count-1;
+  FVerseRanges[FCurrentVerse].last := Blocks.Count-1;
 
   if FVerseMode = vmVersePerLine then
     Blocks.AddParagraph();
@@ -182,17 +215,16 @@ begin
           token.valor := '';
           FTokenizer.LerAteTag(token, '<Rf>');
           token.valor := token.valor.Replace('<Rf>',  '');
-          FChapterNotes.Add(token.valor);
 
-          with Blocks.AddHyperlink(SysUtils.Format('[%d]', [FNoteID]), '<rf>') do
+          FNotes.Add(TNoteInfo.Create(FNoteID, FCurrentVerse, token.valor));
+          with Blocks.AddHyperlink(SysUtils.Format('[%d]', [FNoteID]), (FNoteID-1).ToString) do
           begin
-            URL := Blocks.Count.ToString;
             TextStyle.Assign(TextStyle);
-            TextStyle.Font.Color := clGreen;
+            TextStyle.Font.Color := NoteLinkColor;
             TextStyle.Font.Style := [fsBold];
-            TextStyle.Font.Size  := Max(Font.Size - 3, 2);
+            //TextStyle.Font.Size  := Max(TextStyle.Font.Size - 2, 2);
             TextStyle.ScriptPosition := tpoSuperscript;
-            OnClick := @HandleClickNoteLink;
+            OnClick := @HandleNoteLinkClick;
           end;
           inc(FNoteID);
         end
@@ -262,9 +294,9 @@ end;
 
 procedure TKChapterView.RenderNotes;
 var
-  i: integer;
+  note: TNoteInfo;
 begin
-  if FChapterNotes.Count = 0 then
+  if FNotes.Count = 0 then
     exit;
 
   ResetStyleStack;
@@ -273,36 +305,56 @@ begin
   Blocks.AddParagraph();
   Blocks.AddParagraph();
 
-  for i:=0 to FChapterNotes.Count-1 do
+  for note in FNotes do
   begin
-    with Blocks.AddHyperlink(SysUtils.Format('[%d] ', [i + 1]), '<rf>').TextStyle.Font do
+    with Blocks.AddHyperlink(SysUtils.Format('[%d] ', [note.Id]), (note.Id-1).ToString) do
     begin
-      Color := clBlue;
-      Style := [fsBold];
-      Size  := Max(Size - 3, 2);
+      TextStyle.Font.Color := NoteLinkColor;
+      TextStyle.Font.Style := [fsBold];
+      TextStyle.Font.Size  := Max(FFontSize - 3, 2);
+      OnClick := @HandleNoteClick;
     end;
-    RenderSpan(FChapterNotes[i]);
+    note.FirstBlock := Blocks.Count-1;
+    RenderSpan(note.Text);
+    note.LastBlock := Blocks.Count-1;
     Blocks.AddParagraph();
   end;
 end;
 
-procedure TKChapterView.HandleClickVerseLink(sender: TObject);
+procedure TKChapterView.HandleVerseNumberClick(sender: TObject);
+var
+  verse: integer;
+  ref: string;
 begin
-  FProject.IrPara(TKMemoHyperlink(Sender).URL);
+  verse := TKMemoHyperlink(Sender).URL.ToInteger;
+  ref := SysUtils.Format('%d,%d,%d', [FProject.BookID, FProject.Chapter, verse]);
+
+  //if ref = FProject.ID then
+  //  HightlightRange(FVerseRanges[verse], clSilver)
+  //else
+  FProject.IrPara(ref);
 end;
 
-procedure TKChapterView.HandleClickNoteLink(sender: TObject);
+procedure TKChapterView.HandleNoteLinkClick(sender: TObject);
 var
   p: TPoint;
+  note: TNoteInfo;
 begin
-  with Blocks[TKMemoHyperlink(Sender).URL.ToInteger+1] do
-  begin
-    p.x := Left;
-    p.y := Top;
-  end;
+  note := FNotes[TKMemoHyperlink(Sender).URL.ToInteger];
+  p := Blocks[note.FirstBlock].BoundsRect.TopLeft;
   ExecuteCommand(ecGotoXY, @p);
-  //Blocks[TKMemoHyperlink(Sender).URL.ToInteger].
-  //ScrollTo(GetJumpPointY(FNoteJumps[id-FJumps]));
+  ExecuteCommand(ecDown, nil);
+  HightlightRange(note.Range, clSilver);
+  //ExecuteCommand(ecScrollCenter, nil);
+end;
+
+procedure TKChapterView.HandleNoteClick(sender: TObject);
+var
+  note: TNoteInfo;
+begin
+  note := FNotes[TKMemoHyperlink(Sender).URL.ToInteger];
+  HightlightRange(note.Range, clDefault); // un-highlight current note text
+  HightlightRange(FVerseRanges[note.Verse], clSilver); // un-highlight current note text
 end;
 
 procedure TKChapterView.HandleVerseChange(Sender: TProjeto);
@@ -322,8 +374,6 @@ end;
 
 procedure TKChapterView.HandleKeyDown(Sender: TObject; var Key: Word;
   Shift: TShiftState);
-//var
-//  s: integer;
 begin
   if (ssCtrl in Shift) and (Key in [VK_SUBTRACT, VK_OEM_MINUS]) and (FFontSize > 1) then
   begin
@@ -563,14 +613,12 @@ begin
   //OnMouseWheel := @HandleMouseWheel;
   { TRichMemo.GetText causes unsolicited scrolling, disabling it }
   //OnMouseMove  := @HandleMouseMove;
-  //OnJump          := @HandleJump;
   FFontName       := 'default';
   FFontSize       := 10;
   FProject        := nil;
   FVerseMode      := vmParagraph;
   FRxVerseHeading := RegexCreate('^((?:<TS[0-3]?>.*?<Ts>)*)(.*?)$', [rcoUTF8]);
-  FChapterNotes   := TStringList.Create;
-  FNoteJumps      := TIntegerList.Create;
+  FNotes          := TNotesList.Create;
   FHint           := THintWindow.Create(Self);
   FHint.Font.Size := 10;
   FHint.Color     := $e0ffff;
@@ -581,8 +629,7 @@ end;
 
 destructor TKChapterView.Destroy;
 begin
-  FChapterNotes.Free;
-  FNoteJumps.Free;
+  FNotes.Free;
   FHint.Free;
   FStyleStack.Free;
   if assigned(FProject) then
@@ -594,7 +641,6 @@ end;
 procedure TKChapterView.RenderChapter(verses: TStringList; current: integer);
 var
   verse: string;
-  v: integer;
   p: TPoint;
 begin
   SetLength(FVerseRanges, verses.Count + 1);
@@ -605,24 +651,23 @@ begin
     ResetStyleStack;
 
     FNoteID := 1;
-    FChapterNotes.Clear;
-    FNoteJumps.Clear;
+    FNotes.Clear;
 
     with Blocks.AddTextBlock(SysUtils.Format('%s %d', [FProject.Book, FProject.Chapter])).TextStyle do
     begin
       Font := TextStyle.Font;
       Font.Size := Font.Size + 1;
       Font.Bold := true;
-      Font.Color := $cc6600;
+      Font.Color := NonBibleTextColor;
     end;
 
     Blocks.AddParagraph();
 
-    v := 0;
+    FCurrentVerse := 0;
     for verse in verses do
     begin
-      Inc(v);
-      RenderVerse(verse, v, v = current);
+      Inc(FCurrentVerse);
+      RenderVerse(verse);
     end;
 
     RenderNotes;
