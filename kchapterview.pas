@@ -123,7 +123,7 @@ procedure TKChapterView.RenderVerse(txt: string);
 var
   mtHeading: IMatch;
 begin
-  if (FVerseMode = vmParagraph) and (FCurrentVerse > 1) then
+  if (FCurrentVerse > 1) and not (Blocks[Blocks.Count-1] is TKMemoParagraph) then
     Blocks.AddTextBlock(' '); // space between verses
 
   mtHeading := FRxVerseHeading.Match(txt);
@@ -135,7 +135,7 @@ begin
   txt := mtHeading.Groups[2].Value;
 
   { rendering verse number }
-  with Blocks.AddHyperlink(SysUtils.Format('%d ', [FCurrentVerse]), SysUtils.Format('%d,%d,%d', [FProject.BookID, FProject.Chapter, FCurrentVerse])) do
+  with Blocks.AddHyperlink(SysUtils.Format('%d ', [FCurrentVerse]), FCurrentVerse.ToString) do
   begin
     OnClick := @HandleVerseNumberClick;
     TextStyle.Font.Size := FFontSize+2;
@@ -150,7 +150,7 @@ begin
   FVerseRanges[FCurrentVerse].last := Blocks.Count-1;
 
   if FVerseMode = vmVersePerLine then
-    Blocks.AddParagraph();
+    Blocks.AddParagraph().ParaStyle.FirstIndent := 0;
 end;
 
 function TKChapterView.GetCurrentStyle: TKMemoTextStyle;
@@ -162,6 +162,8 @@ procedure TKChapterView.RenderSpan(txt: string);
 var
   FTokenizer: TONTTokenizer;
   token: TTagSintagma;
+  prop: string;
+  size: integer;
 begin
   FTokenizer := TONTTokenizer.Criar(txt);
   while FTokenizer.LerSintagma(token) <> tsNulo do
@@ -171,45 +173,48 @@ begin
         ;
       tsEspaco:
         if token.valor <> '|' then
-          Blocks.AddTextBlock(token.valor).TextStyle.Font := CurrentStyle.Font;
+          Blocks.AddTextBlock(token.valor).TextStyle.Assign(CurrentStyle);
       tsPontuacao, tsSintagma:
-        Blocks.AddTextBlock(token.valor).TextStyle.Font := CurrentStyle.Font;
+        Blocks.AddTextBlock(token.valor).TextStyle.Assign(CurrentStyle);
       tsTag:
         if token.valor.StartsWith('<TS') then
         begin
           if not (Blocks[Blocks.Count-1] is TKMemoParagraph) then
             Blocks.AddParagraph();
+          Blocks[Blocks.Count-1].ParaStyle.FirstIndent := 0;
+
           with PushNewStyle do
           begin
             case token.valor[4] of
               '>','0':
               begin
                 Font.Size := Font.Size + 2;
-                Font.Style := [fsBold, fsItalic];
-                Font.Color := clGrayText;
+                Font.Style := [fsBold];
+                Font.Color := $424242;
               end;
               '1':
               begin
                 Font.Size := Font.Size + 1;
                 Font.Style := [fsBold, fsItalic];
-                Font.Color := clGrayText;
+                Font.Color := clDefault;
               end;
               '2':
               begin
                 Font.Style := [fsBold, fsItalic];
-                Font.Color := clBlack;
+                Font.Color := clDefault;
               end;
               '3':
               begin
                 Font.Style := [fsItalic];
-                Font.Color := clBlack;
+                Font.Color := clDefault;
               end;
             end;
           end;
         end else if token.valor = '<Ts>' then
         begin
-          Blocks.AddParagraph();
-          PopStyle;
+          ResetStyleStack;
+          // TODO: FirstIndent changing previous paragraph...
+          Blocks.AddParagraph().ParaStyle.FirstIndent := IfThen(FVerseMode = vmParagraph, 20);
         end else if token.valor.StartsWith('<RF') then
         begin
           token.valor := '';
@@ -217,12 +222,11 @@ begin
           token.valor := token.valor.Replace('<Rf>',  '');
 
           FNotes.Add(TNoteInfo.Create(FNoteID, FCurrentVerse, token.valor));
-          with Blocks.AddHyperlink(SysUtils.Format('[%d]', [FNoteID]), (FNoteID-1).ToString) do
+          with Blocks.AddHyperlink(SysUtils.Format('%d', [FNoteID]), (FNoteID-1).ToString) do
           begin
             TextStyle.Assign(TextStyle);
             TextStyle.Font.Color := NoteLinkColor;
             TextStyle.Font.Style := [fsBold];
-            //TextStyle.Font.Size  := Max(TextStyle.Font.Size - 2, 2);
             TextStyle.ScriptPosition := tpoSuperscript;
             OnClick := @HandleNoteLinkClick;
           end;
@@ -237,42 +241,51 @@ begin
           end;
         end else if token.valor = '<FR>' then
         begin
-          PushInheritedStyle.Font.Color := clRed;
+          PushInheritedStyle.Font.Color := clRed
         end else if token.valor = '<FO>' then
         begin
-          PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsBold];
-        end else if token.valor = '<CM>' then
+          PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsBold]
+        end
+        else if token.valor = '<CM>' then
         begin
           if FVerseMode = vmParagraph then
-            Blocks.AddParagraph();
+            Blocks.AddParagraph().ParaStyle.FirstIndent := 20;
+        end else if token.valor = '<CL>' then
+        begin
+          if FVerseMode = vmParagraph then
+            Blocks.AddParagraph().ParaStyle.FirstIndent := 0;
+            //Blocks.InsertNewLine(Text.Length);
         end else
         begin
           token.valor := token.valor.ToLower;
-          if token.valor.StartsWith('<font color') then
+          if token.valor.StartsWith('<font ') then
           begin
-            PushInheritedStyle.Font.Color := HTML2Color(FTokenizer.LerPropriedadeTag('color', token));
+            if token.valor.Contains(' color=') then
+              PushInheritedStyle.Font.Color := HTML2Color(FTokenizer.LerPropriedadeTag('color', token));
+            if token.valor.Contains(' size=') then
+            begin
+              prop := FTokenizer.LerPropriedadeTag('size', token);
+              if prop.Chars[0] in ['-', '+'] then
+                size := CurrentStyle.Font.Size + prop.ToInteger
+              else
+                size := prop.ToInteger;
+              PushInheritedStyle.Font.Size := size;
+            end;
           end else if token.valor = '<b>' then
-          begin
-            PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsBold];
-          end else if token.valor = '<i>' then
-          begin
-            PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsItalic];
-          end else if token.valor = '<u>' then
-          begin
-            PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsUnderline];
-          end else if token.valor = '<s>' then
-          begin
-            PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsStrikeOut];
-          end else if token.valor = '<sup>' then
-          begin
-            PushInheritedStyle.ScriptPosition := tpoSuperscript;
-          end else if token.valor = '<sub>' then
-          begin
-            PushInheritedStyle.ScriptPosition := tpoSubscript;
-          end else if token.valor = '<br/>' then
-          begin
-            Blocks.AddParagraph();
-          end else if (token.valor = '</sub>')
+            PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsBold]
+          else if token.valor = '<i>' then
+            PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsItalic]
+          else if token.valor = '<u>' then
+            PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsUnderline]
+          else if token.valor = '<s>' then
+            PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsStrikeOut]
+          else if token.valor = '<sup>' then
+            PushInheritedStyle.ScriptPosition := tpoSuperscript
+          else if token.valor = '<sub>' then
+            PushInheritedStyle.ScriptPosition := tpoSubscript
+          else if token.valor = '<br/>' then
+            Blocks.AddParagraph().ParaStyle.FirstIndent := 0
+          else if (token.valor = '</sub>')
                    or (token.valor = '</sup>')
                    or (token.valor = '</s>')
                    or (token.valor = '</u>')
@@ -282,10 +295,7 @@ begin
                    or (token.valor = '<fr>')
                    or (token.valor = '<fi>')
                    or (token.valor = '</font>') then
-          begin
             PopStyle;
-          end; { else
-            raise Exception.Create(Format('Unhandled tag: %s', [token.valor]));}
         end;
     end;
   end;
@@ -565,7 +575,6 @@ begin
   current := CurrentStyle;
   result := PushNewStyle;
   result.Assign(current);
-  //DebugLn('pushed inherited style: %s', [loc2.Strings[d]]);
 end;
 
 procedure TKChapterView.PopStyle;
@@ -589,6 +598,7 @@ begin
     PopStyle;
   TextStyle.Font.Size := FFontSize;
   TextStyle.Font.Name := FFontName;
+  TextStyle.ScriptPosition := tpoNormal;
   ParaStyle.FirstIndent := 0;
   PushNewStyle; // pushing default style onto stack
 end;
@@ -656,12 +666,12 @@ begin
     with Blocks.AddTextBlock(SysUtils.Format('%s %d', [FProject.Book, FProject.Chapter])).TextStyle do
     begin
       Font := TextStyle.Font;
-      Font.Size := Font.Size + 1;
+      Font.Size := Font.Size + 2;
       Font.Bold := true;
       Font.Color := NonBibleTextColor;
     end;
 
-    Blocks.AddParagraph();
+    Blocks.AddParagraph().ParaStyle.FirstIndent := 0;
 
     FCurrentVerse := 0;
     for verse in verses do
