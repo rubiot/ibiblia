@@ -20,13 +20,15 @@ type
   TNoteInfo = class
   private
     FId: integer;
+    FLinkText: string;
     FVerse: integer;
     FText: string;
     FRange: TBlockRange;
   public
-    constructor Create(id: integer; verse: integer; text: string);
+    constructor Create(id: integer; verse: integer; text: string; linktext: string);
     //destructor Destroy; override;
     property Id: integer read FId write FId;
+    property LinkText: string read FLinkText write FLinkText;
     property Verse: integer read FVerse write FVerse;
     property Text: string read FText write FText;
     property Range: TBlockRange read FRange write FRange;
@@ -57,6 +59,7 @@ type
     FVerseRanges: array of TBlockRange;
     FCurrentVerse: integer;
     FNotes: TNotesList;
+    FHideVerseNumber: boolean;
 
     function GetCurrentStyle: TKMemoTextStyle;
     procedure RenderVerse(txt: string);
@@ -67,6 +70,8 @@ type
     procedure HandleNoteClick(sender: TObject);
     procedure HandleVerseChange(Sender: TProjeto);
     procedure HandleKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure HandlePopupKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure HandlePopupExit(Sender: TObject);
     procedure HandleMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
     procedure HandleMouseWheel(Sender: TObject; Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
     procedure HandleSetFont(Sender: TObject);
@@ -95,6 +100,7 @@ type
     property FontName: string read FFontName write SetFontName;
     property BibleText: TTipoTextoBiblico read FBibleText write SetBibleText default tbDestino;
     property CurrentStyle: TKMemoTextStyle read GetCurrentStyle;
+    property HideVerseNumber: boolean read FHideVerseNumber write FHideVerseNumber default false;
   end;
 
 const
@@ -110,11 +116,13 @@ implementation
 
 { TNoteInfo }
 
-constructor TNoteInfo.Create(id: integer; verse: integer; text: string);
+constructor TNoteInfo.Create(id: integer; verse: integer; text: string;
+  linktext: string);
 begin
   FId    := id;
   FVerse := verse;
   FText  := text;
+  FLinkText := linktext;
 end;
 
 { TKChapterView }
@@ -135,13 +143,16 @@ begin
   txt := mtHeading.Groups[2].Value;
 
   { rendering verse number }
-  with Blocks.AddHyperlink(SysUtils.Format('%d ', [FCurrentVerse]), FCurrentVerse.ToString) do
+  if not FHideVerseNumber then
   begin
-    OnClick := @HandleVerseNumberClick;
-    TextStyle.Font.Size := FFontSize+2;
-    TextStyle.Font.Style := [fsBold];
-    TextStyle.Font.Color := NonBibleTextColor;
-    TextStyle.ScriptPosition:= tpoSuperscript;
+    with Blocks.AddHyperlink(SysUtils.Format('%d ', [FCurrentVerse]), FCurrentVerse.ToString) do
+    begin
+      OnClick := @HandleVerseNumberClick;
+      TextStyle.Font.Size := FFontSize+2;
+      TextStyle.Font.Style := [fsBold];
+      TextStyle.Font.Color := NonBibleTextColor;
+      TextStyle.ScriptPosition:= tpoSuperscript;
+    end;
   end;
 
   { rendering the verse text }
@@ -164,6 +175,7 @@ var
   token: TTagSintagma;
   prop: string;
   chunk: string;
+  linktext: string;
   size: integer;
 begin
   chunk := '';
@@ -225,12 +237,15 @@ begin
           Blocks.AddParagraph().ParaStyle.FirstIndent := IfThen(FVerseMode = vmParagraph, 20);
         end else if token.valor.StartsWith('<RF') then
         begin
+          linktext := FTokenizer.LerPropriedadeTag('q', token);
+          if linktext.IsEmpty then
+            linktext := FNoteID.ToString;
           token.valor := '';
           FTokenizer.LerAteTag(token, '<Rf>');
           token.valor := token.valor.Replace('<Rf>',  '');
 
-          FNotes.Add(TNoteInfo.Create(FNoteID, FCurrentVerse, token.valor));
-          with Blocks.AddHyperlink(SysUtils.Format('%d', [FNoteID]), (FNoteID-1).ToString) do
+          FNotes.Add(TNoteInfo.Create(FNoteID, FCurrentVerse, token.valor, linktext));
+          with Blocks.AddHyperlink(linktext, (FNoteID-1).ToString) do
           begin
             TextStyle.Assign(TextStyle);
             TextStyle.Font.Color := NoteLinkColor;
@@ -333,7 +348,7 @@ begin
 
   for note in FNotes do
   begin
-    with Blocks.AddHyperlink(SysUtils.Format('[%d] ', [note.Id]), (note.Id-1).ToString) do
+    with Blocks.AddHyperlink(SysUtils.Format('[%s] ', [note.LinkText]), (note.Id-1).ToString) do
     begin
       TextStyle.Font.Color := NoteLinkColor;
       TextStyle.Font.Style := [fsBold];
@@ -363,15 +378,51 @@ end;
 
 procedure TKChapterView.HandleNoteLinkClick(sender: TObject);
 var
-  p: TPoint;
+  //p: TPoint;
   note: TNoteInfo;
+  rect: TRect;
+  pos: TPoint;
+  memo: TKChapterView;
 begin
   note := FNotes[TKMemoHyperlink(Sender).URL.ToInteger];
-  p := Blocks[note.FirstBlock].BoundsRect.TopLeft;
+
+  if FHint.ControlCount = 0 then // first time? create the memo
+  begin
+    FHint.InsertControl(TKChapterView.Create(nil));
+    with (FHint.Controls[0] as TKChapterView) do
+    begin
+      PopupMenu.Free;
+      PopupMenu := nil;
+      OnKeyDown := @HandlePopupKeyDown;
+      OnExit    := @HandlePopupExit;
+      Align := alClient;
+    end;
+  end;
+
+  memo := FHint.Controls[0] as TKChapterView;
+  with memo do
+  begin
+    TextStyle.Assign(self.TextStyle);
+    TextStyle.Font.Size := TextStyle.Font.Size - 1;
+    memo.Clear(false);
+    memo.RenderSpan(note.Text);
+  end;
+
+  { hopefully the rect for plain text on bigger font is enough for the actual text }
+  Rect := FHint.CalcHintRect(600, memo.Text, nil);
+  Pos := Mouse.CursorPos;
+  Rect.Left := Pos.X+10;
+  Rect.Top := Pos.Y+5;
+  Rect.Right := Rect.Left + Rect.Right;
+  Rect.Bottom := Rect.Top + Rect.Bottom;
+  FHint.ActivateHint(Rect, '');
+
+  {p := Blocks[note.FirstBlock].BoundsRect.TopLeft;
   ExecuteCommand(ecGotoXY, @p);
   ExecuteCommand(ecDown, nil);
   HightlightRange(note.Range, clSilver);
   //ExecuteCommand(ecScrollCenter, nil);
+  }
 end;
 
 procedure TKChapterView.HandleNoteClick(sender: TObject);
@@ -379,6 +430,7 @@ var
   note: TNoteInfo;
 begin
   note := FNotes[TKMemoHyperlink(Sender).URL.ToInteger];
+
   HightlightRange(note.Range, clDefault); // un-highlight current note text
   HightlightRange(FVerseRanges[note.Verse], clSilver); // un-highlight current note text
 end;
@@ -411,6 +463,18 @@ begin
     FFontSize := FFontSize+1;
     HandleVerseChange(FProject);
   end;
+end;
+
+procedure TKChapterView.HandlePopupKeyDown(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+begin
+  if Key = VK_ESCAPE then
+    (Parent as THintWindow).Hide;
+end;
+
+procedure TKChapterView.HandlePopupExit(Sender: TObject);
+begin
+  (Parent as THintWindow).Hide;
 end;
 
 procedure TKChapterView.HandleMouseMove(Sender: TObject; Shift: TShiftState; X,
@@ -466,11 +530,11 @@ end;
 procedure TKChapterView.HandleMouseWheel(Sender: TObject; Shift: TShiftState;
   WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
 begin
-  {if ssCtrl in Shift then
+  if ssCtrl in Shift then
   begin
-    TRichMemo(Sender).ZoomFactor := Max(TRichMemo(Sender).ZoomFactor + Sign(WheelDelta)*0.1, 0.1);
+    SetFontSize(FFontSize + Sign(WheelDelta)*1);
     Handled := true;
-  end;}
+  end;
 end;
 
 procedure TKChapterView.HandleSetFont(Sender: TObject);
@@ -565,6 +629,7 @@ begin
   if (FFontSize = AValue) or (AValue < 1) then Exit;
   FFontSize := AValue;
   TextStyle.Font.Size := FFontSize;
+  FHint.Font.Assign(TextStyle.Font);
 
   HandleVerseChange(FProject);
 end;
@@ -574,6 +639,7 @@ begin
   if (FFontName = AValue) then Exit;
   FFontName := AValue;
   TextStyle.Font.Name := FFontName;
+  FHint.Font.Assign(TextStyle.Font);
 
   HandleVerseChange(FProject);
 end;
@@ -636,7 +702,7 @@ begin
   Parent       := TWinControl(AOwner);
   OnKeyDown    := @HandleKeyDown;
   ReadOnly     := true;
-  //OnMouseWheel := @HandleMouseWheel;
+  OnMouseWheel := @HandleMouseWheel;
   { TRichMemo.GetText causes unsolicited scrolling, disabling it }
   //OnMouseMove  := @HandleMouseMove;
   FFontName       := 'default';
@@ -646,7 +712,8 @@ begin
   FRxVerseHeading := RegexCreate('^((?:<TS[0-3]?>.*?<Ts>)*)(.*?)$', [rcoUTF8]);
   FNotes          := TNotesList.Create;
   FHint           := THintWindow.Create(Self);
-  FHint.Font.Size := 10;
+  FHint.AutoHide  := false;
+  //FHint.Font.Size := 10;
   FHint.Color     := $e0ffff;
   InitPopupMenu;
 
