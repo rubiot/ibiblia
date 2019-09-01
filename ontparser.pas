@@ -42,7 +42,7 @@ begin
   begin
     if token.tipo = tsTag then
     begin
-      if token.valor = '<RF>' then
+      if token.valor.StartsWith('<RF') then
       begin
         tokenizer.LerAteTag(token, '<Rf>');
         token.tipo := tsMetaDado;
