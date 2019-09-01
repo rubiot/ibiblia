@@ -163,8 +163,10 @@ var
   FTokenizer: TONTTokenizer;
   token: TTagSintagma;
   prop: string;
+  chunk: string;
   size: integer;
 begin
+  chunk := '';
   FTokenizer := TONTTokenizer.Criar(txt);
   while FTokenizer.LerSintagma(token) <> tsNulo do
   begin
@@ -173,10 +175,16 @@ begin
         ;
       tsEspaco:
         if token.valor <> '|' then
-          Blocks.AddTextBlock(token.valor).TextStyle.Assign(CurrentStyle);
+          chunk := chunk + token.valor;
       tsPontuacao, tsSintagma:
-        Blocks.AddTextBlock(token.valor).TextStyle.Assign(CurrentStyle);
+        chunk := chunk + token.valor;
       tsTag:
+      begin
+        if chunk.Length > 0 then
+        begin
+          Blocks.AddTextBlock(chunk).TextStyle.Assign(CurrentStyle);
+          chunk := '';
+        end;
         if token.valor.StartsWith('<TS') then
         begin
           if not (Blocks[Blocks.Count-1] is TKMemoParagraph) then
@@ -297,8 +305,16 @@ begin
                    or (token.valor = '</font>') then
             PopStyle;
         end;
+      end;
     end;
   end;
+
+  if chunk.Length > 0 then
+  begin
+    Blocks.AddTextBlock(chunk).TextStyle.Assign(CurrentStyle);
+    chunk := '';
+  end;
+
   FreeAndNil(FTokenizer);
 end;
 
@@ -681,10 +697,7 @@ begin
     end;
 
     RenderNotes;
-
     HightlightRange(FVerseRanges[current], clSilver);
-
-    //Blocks.AddTextBlock(Format('%d blocks', [Blocks.Count]));
   finally
     Blocks.UnLockUpdate;
   end;
