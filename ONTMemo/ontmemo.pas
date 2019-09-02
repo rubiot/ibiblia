@@ -5,7 +5,7 @@ unit ONTMemo;
 interface
 
 uses
-  Classes, SysUtils, KMemo, Graphics;
+  Classes, SysUtils, KMemo, Graphics, ONTParser;
 
 type
 
@@ -92,11 +92,18 @@ end;
 { TONTMemo }
 
 procedure TONTMemo.SetONTText(AValue: string);
+var
+  parser: TONTParser;
 begin
   if FONTText = AValue then Exit;
   FONTText := AValue;
 
-  { TODO: Parse ont text and create blocks }
+  parser := TONTParser.Create(FONTText);
+  try
+    while parser.ReadChunk;
+  finally
+    parser.Free;
+  end;
 end;
 
 function TONTMemo.AddTextBlock(const AText: string; At: TKMemoBlockIndex

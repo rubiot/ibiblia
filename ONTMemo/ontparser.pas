@@ -15,49 +15,50 @@ type
   private
     FTokenizer: TONTTokenizer;
     FToken: TToken;
+    FPartial: TToken;
   public
     constructor Create(text: string);
     destructor Destroy; override;
-    function NextChunk: TToken;
+    function ReadChunk: TTokenKind;
   end;
 
 implementation
 
 { TONTParser }
 
-function TONTParser.NextChunk: TToken;
+function TONTParser.ReadChunk: TTokenKind;
 begin
-  FTokenizer.ReadToken;
-
-  case FTokenizer.Token.Kind of
-    ttNull:
-    begin
-      if not FToken.Text.IsEmpty then
+  while FTokenizer.ReadToken do
+  begin
+    case FTokenizer.Token.Kind of
+      ttNull:
       begin
-        Result := FToken;
-        FToken.Kind := ttNull;
-        FToken.Text := '';
-      end else
-        Result := FToken;
-      exit;
-    end;
-    ttMetadata:
-      ;
-    ttSpace:
-      if FTokenizer.Token.Text <> '|' then
+        if not FPartial.Text.IsEmpty then
+        begin
+          FToken.Kind := ttNull;
+          FToken.Text := '';
+        end;
+        Result := FToken.Kind;
+        Exit;
+      end;
+      ttMetadata:
+        ;
+      ttSpace:
+        if FTokenizer.Token.Text <> '|' then
+          FToken.Text := FToken.Text + FTokenizer.Token.Text;
+      ttPunctuation, ttSyntagm:
         FToken.Text := FToken.Text + FTokenizer.Token.Text;
-    ttPunctuation, ttSyntagm:
-      FToken.Text := FToken.Text + FTokenizer.Token.Text;
-    ttTag:
-    begin
-      if FToken.Text.Length > 0 then
+      ttTag:
       begin
-        Result := FToken;
-        FToken.Text := '';
-      end else
-        Result := FTokenizer.Token;
-      FToken := FTokenizer.Token;
-      exit;
+        if FToken.Text.Length > 0 then
+        begin
+          Result := FToken;
+          FToken.Text := '';
+        end else
+          Result := FTokenizer.Token;
+        FToken := FTokenizer.Token;
+        exit;
+      end;
     end;
   end;
 
