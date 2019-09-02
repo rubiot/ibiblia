@@ -16,8 +16,8 @@ type
     FTokenizer: TONTTokenizer;
     FToken: TToken;
   public
-    constructor Create(ont: string);
-    destructor Destroy;
+    constructor Create(text: string);
+    destructor Destroy; override;
     function NextChunk: TToken;
   end;
 
@@ -27,11 +27,41 @@ implementation
 
 function TONTParser.NextChunk: TToken;
 begin
-
   FTokenizer.ReadToken;
 
+  case FTokenizer.Token.Kind of
+    ttNull:
+    begin
+      if not FToken.Text.IsEmpty then
+      begin
+        Result := FToken;
+        FToken.Kind := ttNull;
+        FToken.Text := '';
+      end else
+        Result := FToken;
+      exit;
+    end;
+    ttMetadata:
+      ;
+    ttSpace:
+      if FTokenizer.Token.Text <> '|' then
+        FToken.Text := FToken.Text + FTokenizer.Token.Text;
+    ttPunctuation, ttSyntagm:
+      FToken.Text := FToken.Text + FTokenizer.Token.Text;
+    ttTag:
+    begin
+      if FToken.Text.Length > 0 then
+      begin
+        Result := FToken;
+        FToken.Text := '';
+      end else
+        Result := FTokenizer.Token;
+      FToken := FTokenizer.Token;
+      exit;
+    end;
+  end;
+
   {
-  try
     while FTokenizer.ReadToken <> ttNull do
     begin
       case FTokenizer.Token.Kind of
@@ -174,15 +204,15 @@ begin
           end;
         end;
     end;
-  finally
-  end;
     }
 end;
 
-constructor TONTParser.Create(ont: string);
+constructor TONTParser.Create(text: string);
 begin
   inherited Create;
   FTokenizer := TONTTokenizer.Create(text);
+  FToken.Text := '';
+  FToken.Kind := ttNull;
 end;
 
 destructor TONTParser.Destroy;

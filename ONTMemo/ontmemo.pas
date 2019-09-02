@@ -95,6 +95,7 @@ procedure TONTMemo.SetONTText(AValue: string);
 begin
   if FONTText = AValue then Exit;
   FONTText := AValue;
+
   { TODO: Parse ont text and create blocks }
 end;
 

@@ -32,7 +32,7 @@ type
   public
     constructor Create(XML: string); overload;
     constructor Create(XML: PChar); overload;
-    destructor Destroy;
+    destructor Destroy; override;
     function ReadToken: TTokenKind;
     function ReadProperty(prop: string): string;
     procedure ReadUntilTag(AteTag: string);
@@ -53,6 +53,8 @@ begin
   FPXML := FXML;
   if pos(#239#187#191, FPXML) = 1 then // saltando o UTF-8 BOM
      inc(FPXML, 3);
+  FToken.Kind := ttNull;
+  FToken.Text := '';
 end;
 
 destructor TONTTokenizer.Destroy;
@@ -189,7 +191,7 @@ function TONTTokenizer.ReadToken: TTokenKind;
     ini: PChar;
   begin
     ini := FPXML;
-    while (FPXML^ <> #0) and not Contido(UTF8CharacterToUnicode(FPXML, t), ate) do
+    while (FPXML^ <> #0) and not Contido(UTF8CodePointToUnicode(FPXML, t), ate) do
       inc(FPXML, t);
 
     s.Text := copy(ini, 0, FPXML-ini);
@@ -200,7 +202,7 @@ function TONTTokenizer.ReadToken: TTokenKind;
     t: integer;
   begin
     ReadUntil(s, ate);
-    if UTF8CharacterToUnicode(FPXML, t) <> 0 then
+    if UTF8CodePointToUnicode(FPXML, t) <> 0 then
     begin
       s.Text := s.Text + copy(FPXML, 0, t);
       inc(FPXML, t);
@@ -213,7 +215,7 @@ function TONTTokenizer.ReadToken: TTokenKind;
     ini: PChar;
   begin
     ini := FPXML;
-    while (FPXML^ <> #0) and Contido(UTF8CharacterToUnicode(FPXML, t), enquanto) do
+    while (FPXML^ <> #0) and Contido(UTF8CodePointToUnicode(FPXML, t), enquanto) do
       inc(FPXML, t);
 
     s.Text := copy(ini, 0, FPXML-ini);
@@ -225,7 +227,7 @@ function TONTTokenizer.ReadToken: TTokenKind;
     c: Cardinal;
   begin
     result := ttSyntagm;
-    c := UTF8CharacterToUnicode(FPXML, t);
+    c := UTF8CodePointToUnicode(FPXML, t);
     if c = 0 then
       result := ttNull
     else if c = ord('<') then
