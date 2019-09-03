@@ -8,7 +8,7 @@ uses
   Classes, SysUtils, StrUtils, LCLProc, Dialogs, LazUTF8, Graphics;
 
 type
-  TTokenKind = (ttNull, ttSyntagm, ttTag, ttSpace, ttPunctuation, ttMetadata);
+  TTokenKind = (ttNull, ttSyntagm, ttTag, ttSpace, ttPunctuation, ttMetadata, ttEOF);
 
 type
   TToken = record
@@ -229,7 +229,7 @@ function TONTTokenizer.ReadToken: TTokenKind;
     result := ttSyntagm;
     c := UTF8CodePointToUnicode(FPXML, t);
     if c = 0 then
-      result := ttNull
+      result := ttEOF
     else if c = ord('<') then
       result := ttTag
     else if Contido(c, [ord(#32), ord(#9), ord('|')]) then
@@ -255,6 +255,8 @@ begin
                       183, 903, 8220, 8221{, ord('-')}]); // hack para ··“”
     ttTag:
       ReadUntilInclusive(FToken, [ord('>')]);
+    ttEOF:
+      ;
   else
     if FPXML^ = '-' then
     begin

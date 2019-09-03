@@ -5,7 +5,7 @@ unit ONTMemo;
 interface
 
 uses
-  Classes, SysUtils, KMemo, Graphics, ONTParser;
+  Classes, SysUtils, KMemo, Graphics, ONTParser, ONTTokenizer;
 
 type
 
@@ -100,7 +100,12 @@ begin
 
   parser := TONTParser.Create(FONTText);
   try
-    while parser.ReadChunk;
+    while parser.ReadChunk <> ttNull do
+    case parser.Chunk.Kind of
+      ttSyntagm, ttSpace, ttPunctuation: AddTextBlock(parser.Chunk.Text);
+      ttTag:
+        ;
+    end;
   finally
     parser.Free;
   end;
