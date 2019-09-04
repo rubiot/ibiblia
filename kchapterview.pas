@@ -36,9 +36,23 @@ type
     property LastBlock: integer read FRange.last write FRange.last;
   end;
 
+  TKChapterView = class;
+
+  { TNoteWindow }
+
+  TNoteWindow = class(THintWindow)
+  private
+    FNoteView: TKChapterView;
+    procedure InitNoteView;
+    procedure SetNoteText(const AText: string; const AStyle: TKMemoTextStyle);
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    procedure ActivateHint(const AHint: string; AStyle: TKMemoTextStyle); overload;
+  end;
+
   TViewMode = (vmParagraph, vmVersePerLine);
-  TIntegerList = specialize TFPGList<Integer>;
-  TNotesList = specialize TFPGList<TNoteInfo>;
+  TNoteList = specialize TFPGList<TNoteInfo>;
 
   { TKChapterView }
 
@@ -49,7 +63,7 @@ type
     FProject: TProjeto;
     FRxVerseHeading: IRegex;
     FNoteID: integer;
-    FHint: THintWindow;
+    FHint: TNoteWindow;
     FFontItem: TMenuItem;
     FParagraphModeItem: TMenuItem;
     FVersePerLineItem: TMenuItem;
@@ -58,7 +72,7 @@ type
     FStyleStack: TObjectStack;
     FVerseRanges: array of TBlockRange;
     FCurrentVerse: integer;
-    FNotes: TNotesList;
+    FNotes: TNoteList;
     FHideVerseNumber: boolean;
 
     function GetCurrentStyle: TKMemoTextStyle;
@@ -113,6 +127,69 @@ resourcestring
   SVersePerLineMode = '&Verse per line mode';
 
 implementation
+
+{ TNoteWindow }
+
+procedure TNoteWindow.InitNoteView;
+begin
+  InsertControl(TKChapterView.Create(nil));
+  FNoteView := Controls[0] as TKChapterView;
+  with FNoteView do
+  begin
+    PopupMenu.Free;
+    PopupMenu   := nil;
+    OnKeyDown   := @HandlePopupKeyDown;
+    OnExit      := @HandlePopupExit;
+    Align       := alClient;
+    BorderStyle := bsNone;
+  end;
+end;
+
+procedure TNoteWindow.SetNoteText(const AText: string;
+  const AStyle: TKMemoTextStyle);
+begin
+  FNoteView.Blocks.LockUpdate;
+  Width := 500;
+  FNoteView.Clear(false);
+  FNoteView.TextStyle.Assign(AStyle);
+  FNoteView.TextStyle.Font.Size := FNoteView.TextStyle.Font.Size - 1;
+  FNoteView.RenderSpan(AText);
+  FNoteView.Blocks.UnLockUpdate;
+end;
+
+constructor TNoteWindow.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+
+  AutoHide := false;
+  Color    := clWindow;
+  FNoteView:= nil;
+end;
+
+destructor TNoteWindow.Destroy;
+begin
+  inherited Destroy;
+end;
+
+procedure TNoteWindow.ActivateHint(const AHint: string; AStyle: TKMemoTextStyle
+  );
+var
+  Rect: TRect;
+  Pos: TPoint;
+begin
+  if not Assigned(FNoteView) then
+    InitNoteView;
+
+  SetNoteText(AHint, AStyle);
+
+  Rect := FNoteView.ContentRect;
+  Pos := Mouse.CursorPos;
+  Rect.Left := Pos.X+10;
+  Rect.Top := Pos.Y+5;
+  Rect.Right := Rect.Left + {Rect.Right} 500 + 5;
+  Rect.Bottom := Rect.Top + Rect.Bottom + 5;
+  ActivateHint(Rect, '');
+end;
 
 { TNoteInfo }
 
@@ -180,6 +257,8 @@ var
 begin
   chunk := '';
   FTokenizer := TONTTokenizer.Criar(txt);
+
+  Blocks.LockUpdate;
   while FTokenizer.LerSintagma(token) <> tsNulo do
   begin
     case token.tipo of
@@ -331,6 +410,7 @@ begin
   end;
 
   FreeAndNil(FTokenizer);
+  Blocks.UnLockUpdate;
 end;
 
 procedure TKChapterView.RenderNotes;
@@ -380,42 +460,47 @@ procedure TKChapterView.HandleNoteLinkClick(sender: TObject);
 var
   //p: TPoint;
   note: TNoteInfo;
-  rect: TRect;
+  {rect: TRect;
   pos: TPoint;
-  memo: TKChapterView;
+  memo: TKChapterView;}
 begin
   note := FNotes[TKMemoHyperlink(Sender).URL.ToInteger];
+  FHint.ActivateHint(note.Text, TextStyle);
 
+  {
   if FHint.ControlCount = 0 then // first time? create the memo
   begin
     FHint.InsertControl(TKChapterView.Create(nil));
     with (FHint.Controls[0] as TKChapterView) do
     begin
       PopupMenu.Free;
-      PopupMenu := nil;
-      OnKeyDown := @HandlePopupKeyDown;
-      OnExit    := @HandlePopupExit;
-      Align := alClient;
+      PopupMenu  := nil;
+      OnKeyDown  := @HandlePopupKeyDown;
+      OnExit     := @HandlePopupExit;
+      Align      := alClient;
+      BorderStyle:= bsNone;
     end;
   end;
 
   memo := FHint.Controls[0] as TKChapterView;
   with memo do
   begin
+    memo.Blocks.LockUpdate;
     TextStyle.Assign(self.TextStyle);
     TextStyle.Font.Size := TextStyle.Font.Size - 1;
+    FHint.Width := 500;
     memo.Clear(false);
     memo.RenderSpan(note.Text);
+    memo.Blocks.UnLockUpdate;
   end;
 
-  { hopefully the rect for plain text on bigger font is enough for the actual text }
-  Rect := FHint.CalcHintRect(600, memo.Text, nil);
+  Rect := memo.ContentRect; //FHint.CalcHintRect(600, memo.Text, nil);
   Pos := Mouse.CursorPos;
   Rect.Left := Pos.X+10;
   Rect.Top := Pos.Y+5;
-  Rect.Right := Rect.Left + Rect.Right;
-  Rect.Bottom := Rect.Top + Rect.Bottom;
-  FHint.ActivateHint(Rect, '');
+  Rect.Right := Rect.Left + {Rect.Right} 500 + 5;
+  Rect.Bottom := Rect.Top + Rect.Bottom + 5;
+  FHint.ActivateHint(Rect, '');}
 
   {p := Blocks[note.FirstBlock].BoundsRect.TopLeft;
   ExecuteCommand(ecGotoXY, @p);
@@ -710,11 +795,8 @@ begin
   FProject        := nil;
   FVerseMode      := vmParagraph;
   FRxVerseHeading := RegexCreate('^((?:<TS[0-3]?>.*?<Ts>)*)(.*?)$', [rcoUTF8]);
-  FNotes          := TNotesList.Create;
-  FHint           := THintWindow.Create(Self);
-  FHint.AutoHide  := false;
-  //FHint.Font.Size := 10;
-  FHint.Color     := $e0ffff;
+  FNotes          := TNoteList.Create;
+  FHint           := TNoteWindow.Create(Self);
   InitPopupMenu;
 
   FStyleStack := TObjectStack.Create;
@@ -763,7 +845,7 @@ begin
       RenderVerse(verse);
     end;
 
-    RenderNotes;
+    //RenderNotes;
     HightlightRange(FVerseRanges[current], clSilver);
   finally
     Blocks.UnLockUpdate;
