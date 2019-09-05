@@ -45,6 +45,8 @@ type
     FNoteView: TKChapterView;
     procedure InitNoteView;
     procedure SetNoteText(const AText: string; const AStyle: TKMemoTextStyle);
+    procedure HandlePopupMouseEnter(Sender: TObject);
+    procedure HandlePopupMouseLeave(Sender: TObject);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -88,7 +90,6 @@ type
     procedure HandleVerseChange(Sender: TProjeto);
     procedure HandleKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure HandlePopupKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-    procedure HandlePopupExit(Sender: TObject);
     procedure HandleMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
     procedure HandleMouseWheel(Sender: TObject; Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
     procedure HandleSetFont(Sender: TObject);
@@ -142,7 +143,8 @@ begin
     PopupMenu.Free;
     PopupMenu   := nil;
     OnKeyDown   := @HandlePopupKeyDown;
-    OnExit      := @HandlePopupExit;
+    OnMouseEnter:= @HandlePopupMouseEnter;
+    OnMouseLeave:= @HandlePopupMouseLeave;
     Align       := alClient;
     BorderStyle := bsNone;
   end;
@@ -160,12 +162,21 @@ begin
   FNoteView.Blocks.UnLockUpdate;
 end;
 
+procedure TNoteWindow.HandlePopupMouseEnter(Sender: TObject);
+begin
+  AutoHide := false;
+end;
+
+procedure TNoteWindow.HandlePopupMouseLeave(Sender: TObject);
+begin
+  Hide;
+end;
+
 constructor TNoteWindow.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
 
-  AutoHide := false;
-  Color    := clWindow;
+  Color := clWindow;
   FNoteView:= nil;
 end;
 
@@ -183,6 +194,7 @@ begin
   if not Assigned(FNoteView) then
     InitNoteView;
 
+  AutoHide := true;
   SetNoteText(AHint, AStyle);
 
   Rect := FNoteView.ContentRect;
@@ -563,11 +575,6 @@ procedure TKChapterView.HandlePopupKeyDown(Sender: TObject; var Key: Word;
 begin
   if Key = VK_ESCAPE then
     (Parent as THintWindow).Hide;
-end;
-
-procedure TKChapterView.HandlePopupExit(Sender: TObject);
-begin
-  (Parent as THintWindow).Hide;
 end;
 
 procedure TKChapterView.HandleMouseMove(Sender: TObject; Shift: TShiftState; X,
