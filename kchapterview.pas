@@ -125,11 +125,14 @@ const
   NonBibleTextColor = $be7c41;
   NoteLinkColor = $4080ff;
   ChapterNumberColor = $2cba7d;
+  DefaultFirstIndent = 20;
 
 resourcestring
   SSetFont = 'Choose &font...';
   SParagraphMode = '&Paragraph mode';
   SVersePerLineMode = '&Verse per line mode';
+  SPreviousChapter = 'Previous chapter';
+  SNextChapter = 'Next chapter';
 
 implementation
 
@@ -225,7 +228,7 @@ var
   mtHeading: IMatch;
   heading: string;
 begin
-  if (FCurrentVerse > 1) and not (Blocks.LastBlock is TKMemoParagraph) then
+  if Blocks.LastBlock.ClassName <> 'TKMemoParagraph' then
     Blocks.AddTextBlock(' '); // space between verses
 
   mtHeading := FRxVerseHeading.Match(txt);
@@ -293,13 +296,21 @@ begin
       begin
         if chunk.Length > 0 then
         begin
+          if Blocks.LastBlock.ClassName = 'TKMemoParagraph' {TODO: and last paragraph is not a title} then
+            Blocks.LastBlock.ParaStyle.FirstIndent := DefaultFirstIndent;
           Blocks.AddTextBlock(chunk).TextStyle.Assign(CurrentStyle);
           chunk := '';
         end;
         if token.valor.StartsWith('<TS') then
         begin
-          if not (Blocks[Blocks.Count-1] is TKMemoParagraph) then
-            Blocks.AddParagraph().ParaStyle.FirstIndent := IfThen(FVerseMode = vmParagraph, 20);
+          if Blocks.LastBlock.ClassName <> 'TKMemoParagraph' then
+            Blocks.AddParagraph();
+
+          with TKMemoParagraph(Blocks.LastBlock).ParaStyle do
+          begin
+            FirstIndent := IfThen(FVerseMode = vmParagraph, DefaultFirstIndent);
+            BottomPadding := 10;
+          end;
 
           with PushNewStyle do
           begin
@@ -334,7 +345,6 @@ begin
           with Blocks.AddParagraph().ParaStyle do
           begin
             FirstIndent := 0;
-            TopPadding := IfThen(Blocks.GetNearestParagraphBlock(Blocks.Count-1).BottomPadding > 0, 0, 10);
           end;
         end else if token.valor.StartsWith('<RF') then
         begin
@@ -349,7 +359,7 @@ begin
           with PushInheritedStyle do
           begin
             Font.Style := Font.Style + [fsItalic];
-            Font.Color := clGrayText;
+            Font.Color := clGray;
           end;
         end else if token.valor = '<FR>' then
         begin
@@ -361,7 +371,7 @@ begin
         else if token.valor = '<CM>' then
         begin
           if FVerseMode = vmParagraph then
-            Blocks.AddParagraph().ParaStyle.FirstIndent := 20;
+            Blocks.AddParagraph().ParaStyle.FirstIndent := DefaultFirstIndent;
         end else if token.valor = '<CL>' then
         begin
           if FVerseMode = vmParagraph then
@@ -415,8 +425,9 @@ begin
 
   if chunk.Length > 0 then
   begin
+    if Blocks.LastBlock.ClassName = 'TKMemoParagraph' then
+      Blocks.LastBlock.ParaStyle.FirstIndent := DefaultFirstIndent;
     Blocks.AddTextBlock(chunk).TextStyle.Assign(CurrentStyle);
-    chunk := '';
   end;
 
   FreeAndNil(FTokenizer);
@@ -437,6 +448,7 @@ begin
     TextStyle.Assign(TextStyle);
     TextStyle.Font.Color := NoteLinkColor;
     TextStyle.Font.Style := [fsItalic];
+    TextStyle.Font.Size := TextStyle.Font.Size + 1;
     TextStyle.ScriptPosition := tpoSuperscript;
     OnClick := @HandleNoteLinkClick;
   end;
@@ -580,14 +592,31 @@ end;
 
 procedure TKChapterView.HandleMouseMove(Sender: TObject; Shift: TShiftState; X,
   Y: Integer);
-{var
+begin
+{
+var
+  p: TPoint;
+  rect: TRect;
+  note: string;
+begin
+  p.x := X;
+  p.y := Y;
+  note := Blocks.PointToRelativeBlock(PointToBlockPoint(p)).Text;
+
+  Rect := FHint.CalcHintRect(500, note, nil);
+  Rect.Left := p.X+10;
+  Rect.Top := p.Y+5;
+  Rect.Right := Rect.Left + Rect.Right;
+  Rect.Bottom := Rect.Top + Rect.Bottom;
+  FHint.ActivateHint(Rect, note);}
+
+  {var
   iCharIndex, iCharOffset, i, j: Integer;
   s, note: string;
   attr: TFontParams;
   rect: TRect;
-  pos: TPoint;}
+  pos: TPoint;
 begin
-  {
   iCharIndex := CharAtPos(X, Y);
   if iCharIndex < 0
     then Exit;
@@ -825,7 +854,12 @@ begin
         TextStyle.Font.Color := ChapterNumberColor;
       end;
   end;
-  Blocks.AddParagraph().ParaStyle.BottomPadding := 10;
+
+  with Blocks.AddParagraph().ParaStyle do
+  begin
+    BottomPadding := 10;
+    FirstIndent := 0;
+  end;
 end;
 
 procedure TKChapterView.RenderChapterFooter;
@@ -878,16 +912,19 @@ procedure TKChapterView.RenderChapterFooter;
   end;
 
 var
-  book, chapter: integer;
+  pbook, nbook, pchapter, nchapter: integer;
 begin
-  Blocks.AddParagraph().ParaStyle.BottomPadding := 10;
+  if Blocks.LastBlock.ClassName <> 'TKMemoParagraph' then
+    Blocks.AddParagraph();
 
-  book := 0;
-  chapter := 0;
-  GetPreviousChapter(book, chapter);
+  Blocks.LastBlock.ParaStyle.BottomPadding := 10;
 
-  if book <> 0 then
-    with Blocks.AddHyperlink(Format('%s %d << ', [NLivrosONT[book], chapter]), Format('%d,%d,1', [book, chapter])) do
+  pbook := 0;
+  pchapter := 0;
+  GetPreviousChapter(pbook, pchapter);
+
+  if pbook <> 0 then
+    with Blocks.AddHyperlink(Format('%s (%s %d)', [SPreviousChapter, NLivrosONT[pbook], pchapter]), Format('%d,%d,1', [pbook, pchapter])) do
     begin
       OnClick := @HandleReferenceClick;
       TextStyle.Font.Name  := 'default';
@@ -896,12 +933,16 @@ begin
       TextStyle.Font.Color := ChapterNumberColor;
     end;
 
-  book := 0;
-  chapter := 0;
-  GetNextChapter(book, chapter);
+  nbook := 0;
+  nchapter := 0;
+  GetNextChapter(nbook, nchapter);
 
-  if book <> 0 then
-    with Blocks.AddHyperlink(Format(' >> %s %d', [NLivrosONT[book], chapter]), Format('%d,%d,1', [book, chapter])) do
+  if nbook <> 0 then
+  begin
+    if pbook <> 0 then
+      Blocks.AddTextBlock(' | ');
+
+    with Blocks.AddHyperlink(Format('%s (%s %d)', [SNextChapter, NLivrosONT[nbook], nchapter]), Format('%d,%d,1', [nbook, nchapter])) do
     begin
       OnClick := @HandleReferenceClick;
       TextStyle.Font.Name  := 'default';
@@ -909,10 +950,11 @@ begin
       TextStyle.Font.Bold  := false;
       TextStyle.Font.Color := ChapterNumberColor;
     end;
+  end;
 
   with Blocks.AddParagraph().ParaStyle do
   begin
-    BottomPadding := 10;
+    TopPadding := 0;
     HAlign := halCenter;
   end;
 end;
@@ -932,10 +974,9 @@ constructor TKChapterView.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   Parent       := TWinControl(AOwner);
-  OnKeyDown    := @HandleKeyDown;
   ReadOnly     := true;
+  OnKeyDown    := @HandleKeyDown;
   OnMouseWheel := @HandleMouseWheel;
-  { TRichMemo.GetText causes unsolicited scrolling, disabling it }
   //OnMouseMove  := @HandleMouseMove;
   FFontName       := 'default';
   FFontSize       := 10;
@@ -983,6 +1024,9 @@ begin
       Inc(FCurrentVerse);
       RenderVerse(verse);
     end;
+
+    if Blocks.LastBlock.ClassName <> 'TKMemoParagraph' then
+      Blocks.AddParagraph().ParaStyle.FirstIndent := IfThen(FVerseMode = vmParagraph, DefaultFirstIndent, 0);
 
     RenderChapterFooter;
     HightlightRange(FVerseRanges[current], clSilver);
