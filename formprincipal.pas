@@ -647,8 +647,14 @@ begin
   ProjetoAtual := nil;
   opts := TIniFile.Create('iBiblia.ini');
 
-  Width  := opts.ReadInteger('leiaute', 'principal.largura',  Width);
-  Height := opts.ReadInteger('leiaute', 'principal.altura',   Height);
+  if opts.ReadBool('leiaute', 'principal.maximized', false) then
+    WindowState := wsMaximized
+  else
+  begin
+    Width  := opts.ReadInteger('leiaute', 'principal.largura',  Width);
+    Height := opts.ReadInteger('leiaute', 'principal.altura',   Height);
+  end;
+
   MenuItem22.Checked := opts.ReadBool('opcoes', 'sugestoes.automaticas', false);
   MenuItemSyncTheWord.Checked := opts.ReadBool('opcoes', 'synctheword', false);
   MenuItemSynciBiblia.Checked := opts.ReadBool('opcoes', 'syncibiblia', false);
@@ -704,10 +710,14 @@ end;
 procedure TFrmPrincipal.FormDestroy(Sender: TObject);
 begin
   DescarregarMRU(MenuItemRecent);
-  opts.WriteInteger('leiaute', 'principal.largura', Width);
-  opts.WriteInteger('leiaute', 'principal.altura', Height);
-  opts.WriteInteger('leiaute', 'principal.topo', Top);
-  opts.WriteInteger('leiaute', 'principal.esquerda', Left);
+  opts.WriteBool('leiaute', 'principal.maximized', WindowState = wsMaximized);
+  if WindowState <> wsMaximized then
+  begin
+    opts.WriteInteger('leiaute', 'principal.largura', Width);
+    opts.WriteInteger('leiaute', 'principal.altura', Height);
+    opts.WriteInteger('leiaute', 'principal.topo', Top);
+    opts.WriteInteger('leiaute', 'principal.esquerda', Left);
+  end;
   opts.WriteInteger('leiaute', 'principal.treeview.largura', TreeView1.Width);
   opts.WriteInteger('leiaute', 'principal.splitter2.topo', Splitter2.Top);
   opts.WriteInteger('leiaute', 'principal.splitter3.topo', Splitter3.Top);
