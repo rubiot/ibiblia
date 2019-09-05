@@ -80,6 +80,7 @@ type
     function GetCurrentStyle: TKMemoTextStyle;
     procedure RenderChapter(verses: TStringList; current: integer);
     procedure RenderChapterHeader;
+    procedure RenderChapterFooter;
     procedure RenderVerse(txt: string);
     procedure RenderSpan(txt: string);
     procedure RenderNote(link: string; note: string);
@@ -827,6 +828,95 @@ begin
   Blocks.AddParagraph().ParaStyle.BottomPadding := 10;
 end;
 
+procedure TKChapterView.RenderChapterFooter;
+  function GetFirstBook: integer;
+  begin
+    if FProject.Escopo = etNT then
+      Result := 40
+    else
+      Result := 1;
+  end;
+
+  procedure GetPreviousChapter(var book: integer; var chapter: integer);
+  begin
+    if (FProject.BookID = GetFirstBook) and (FProject.Chapter = 1) then
+       exit;
+
+    if FProject.Chapter = 1 then
+    begin
+      book := FProject.BookID - 1;
+      chapter := QCapitulosONT[book];
+    end else
+    begin
+      book := FProject.BookID;
+      chapter := FProject.Chapter - 1;
+    end;
+  end;
+
+  function GetLastBook: integer;
+  begin
+    if FProject.Escopo = etOT then
+      Result := 39
+    else
+      Result := 66;
+  end;
+
+  procedure GetNextChapter(var book: integer; var chapter: integer);
+  begin
+    if (FProject.BookID = GetLastBook) and (FProject.Chapter = QCapitulosONT[FProject.BookID]) then
+       exit;
+
+    if FProject.Chapter = QCapitulosONT[FProject.BookID] then
+    begin
+      book := FProject.BookID + 1;
+      chapter := 1;
+    end else
+    begin
+      book := FProject.BookID;
+      chapter := FProject.Chapter + 1;
+    end;
+  end;
+
+var
+  book, chapter: integer;
+begin
+  Blocks.AddParagraph().ParaStyle.BottomPadding := 10;
+
+  book := 0;
+  chapter := 0;
+  GetPreviousChapter(book, chapter);
+
+  if book <> 0 then
+    with Blocks.AddHyperlink(Format('%s %d << ', [NLivrosONT[book], chapter]), Format('%d,%d,1', [book, chapter])) do
+    begin
+      OnClick := @HandleReferenceClick;
+      TextStyle.Font.Name  := 'default';
+      TextStyle.Font.Size  := Self.TextStyle.Font.Size-2;
+      TextStyle.Font.Bold  := false;
+      TextStyle.Font.Color := ChapterNumberColor;
+    end;
+
+  book := 0;
+  chapter := 0;
+  GetNextChapter(book, chapter);
+
+  if book <> 0 then
+    with Blocks.AddHyperlink(Format(' >> %s %d', [NLivrosONT[book], chapter]), Format('%d,%d,1', [book, chapter])) do
+    begin
+      OnClick := @HandleReferenceClick;
+      TextStyle.Font.Name  := 'default';
+      TextStyle.Font.Size  := Self.TextStyle.Font.Size-2;
+      TextStyle.Font.Bold  := false;
+      TextStyle.Font.Color := ChapterNumberColor;
+    end;
+
+  with Blocks.AddParagraph().ParaStyle do
+  begin
+    BottomPadding := 10;
+    HAlign := halCenter;
+  end;
+end;
+
 procedure TKChapterView.SetEnabled(Value: Boolean);
 begin
   if assigned(FProject) and not Value and Enabled then
@@ -894,8 +984,9 @@ begin
       RenderVerse(verse);
     end;
 
-    //RenderNotes;
+    RenderChapterFooter;
     HightlightRange(FVerseRanges[current], clSilver);
+    //RenderNotes;
   finally
     Blocks.UnLockUpdate;
   end;
