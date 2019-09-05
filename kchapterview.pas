@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, Forms, Graphics, ONTTokenizer, LCLType, HTMLColors,
   LazUTF8, Projeto, PCRE, Controls, Menus, fgl, Dialogs, Math, Contnrs, KMemo,
-  KEditCommon;
+  KEditCommon, KGraphics;
 
 type
 
@@ -76,10 +76,12 @@ type
     FHideVerseNumber: boolean;
 
     function GetCurrentStyle: TKMemoTextStyle;
+    procedure RenderChapter(verses: TStringList; current: integer);
+    procedure RenderChapterHeader;
     procedure RenderVerse(txt: string);
     procedure RenderSpan(txt: string);
     procedure RenderNotes;
-    procedure HandleVerseNumberClick(sender: TObject);
+    procedure HandleReferenceClick(sender: TObject);
     procedure HandleNoteLinkClick(sender: TObject);
     procedure HandleNoteClick(sender: TObject);
     procedure HandleVerseChange(Sender: TProjeto);
@@ -107,7 +109,6 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    procedure RenderChapter(verses: TStringList; current: integer);
     property Project: TProjeto read FProject write SetProject;
     property VerseMode: TViewMode read FVerseMode write SetVerseMode;
     property FontSize: integer read FFontSize write SetFontSize;
@@ -118,8 +119,9 @@ type
   end;
 
 const
-  NonBibleTextColor = $cc6600;
-  NoteLinkColor = $0045ff;
+  NonBibleTextColor = $be7c41;
+  NoteLinkColor = $4080ff;
+  ChapterNumberColor = $2cba7d;
 
 resourcestring
   SSetFont = 'Choose &font...';
@@ -207,25 +209,29 @@ end;
 procedure TKChapterView.RenderVerse(txt: string);
 var
   mtHeading: IMatch;
+  heading: string;
 begin
-  if (FCurrentVerse > 1) and not (Blocks[Blocks.Count-1] is TKMemoParagraph) then
+  if (FCurrentVerse > 1) and not (Blocks.LastBlock is TKMemoParagraph) then
     Blocks.AddTextBlock(' '); // space between verses
 
   mtHeading := FRxVerseHeading.Match(txt);
   if not mtHeading.Success then
     raise Exception.Create(SysUtils.Format('Unmatched verse: <%s>', [txt]));
+  heading := mtHeading.Groups[1].Value;
+  txt     := mtHeading.Groups[2].Value;
 
   { rendering titles before the verse number }
-  RenderSpan(mtHeading.Groups[1].Value);
-  txt := mtHeading.Groups[2].Value;
+  if not heading.IsEmpty then
+    RenderSpan(heading);
 
   { rendering verse number }
   if not FHideVerseNumber then
   begin
-    with Blocks.AddHyperlink(SysUtils.Format('%d ', [FCurrentVerse]), FCurrentVerse.ToString) do
+    with Blocks.AddHyperlink(Format('%d ', [FCurrentVerse]), Format('%d,%d,%d', [FProject.BookID, FProject.Chapter, FCurrentVerse])) do
     begin
-      OnClick := @HandleVerseNumberClick;
-      TextStyle.Font.Size := FFontSize+2;
+      OnClick := @HandleReferenceClick;
+      TextStyle.Font.Name  := 'default';
+      TextStyle.Font.Size  := FFontSize+2;
       TextStyle.Font.Style := [fsBold];
       TextStyle.Font.Color := NonBibleTextColor;
       TextStyle.ScriptPosition:= tpoSuperscript;
@@ -279,8 +285,7 @@ begin
         if token.valor.StartsWith('<TS') then
         begin
           if not (Blocks[Blocks.Count-1] is TKMemoParagraph) then
-            Blocks.AddParagraph();
-          Blocks[Blocks.Count-1].ParaStyle.FirstIndent := 0;
+            Blocks.AddParagraph().ParaStyle.FirstIndent := IfThen(FVerseMode = vmParagraph, 20);
 
           with PushNewStyle do
           begin
@@ -312,8 +317,11 @@ begin
         end else if token.valor = '<Ts>' then
         begin
           ResetStyleStack;
-          // TODO: FirstIndent changing previous paragraph...
-          Blocks.AddParagraph().ParaStyle.FirstIndent := IfThen(FVerseMode = vmParagraph, 20);
+          with Blocks.AddParagraph().ParaStyle do
+          begin
+            FirstIndent := 0;
+            TopPadding := IfThen(Blocks.GetNearestParagraphBlock(Blocks.Count-1).BottomPadding > 0, 0, 10);
+          end;
         end else if token.valor.StartsWith('<RF') then
         begin
           linktext := FTokenizer.LerPropriedadeTag('q', token);
@@ -324,11 +332,13 @@ begin
           token.valor := token.valor.Replace('<Rf>',  '');
 
           FNotes.Add(TNoteInfo.Create(FNoteID, FCurrentVerse, token.valor, linktext));
+          if not Blocks.LastBlock.Text.EndsWith(' ') then
+            linktext := ' ' + linktext;
           with Blocks.AddHyperlink(linktext, (FNoteID-1).ToString) do
           begin
             TextStyle.Assign(TextStyle);
             TextStyle.Font.Color := NoteLinkColor;
-            TextStyle.Font.Style := [fsBold];
+            TextStyle.Font.Style := [fsItalic];
             TextStyle.ScriptPosition := tpoSuperscript;
             OnClick := @HandleNoteLinkClick;
           end;
@@ -442,18 +452,9 @@ begin
   end;
 end;
 
-procedure TKChapterView.HandleVerseNumberClick(sender: TObject);
-var
-  verse: integer;
-  ref: string;
+procedure TKChapterView.HandleReferenceClick(sender: TObject);
 begin
-  verse := TKMemoHyperlink(Sender).URL.ToInteger;
-  ref := SysUtils.Format('%d,%d,%d', [FProject.BookID, FProject.Chapter, verse]);
-
-  //if ref = FProject.ID then
-  //  HightlightRange(FVerseRanges[verse], clSilver)
-  //else
-  FProject.IrPara(ref);
+  FProject.IrPara(TKMemoHyperlink(Sender).URL);
 end;
 
 procedure TKChapterView.HandleNoteLinkClick(sender: TObject);
@@ -754,7 +755,7 @@ var
   i: integer;
 begin
   for i:=range.first to range.last do
-    if Blocks[i] is TKMemoTextBlock then
+    if Blocks[i].ClassName = 'TKMemoTextBlock' then
       with TKMemoTextBlock(Blocks[i]) do
         TextStyle.Brush.Color := bgcolor;
 end;
@@ -767,7 +768,49 @@ begin
   TextStyle.Font.Name := FFontName;
   TextStyle.ScriptPosition := tpoNormal;
   ParaStyle.FirstIndent := 0;
+  ParaStyle.LineSpacingFactor := 1.2;
   PushNewStyle; // pushing default style onto stack
+end;
+
+procedure TKChapterView.RenderChapterHeader;
+var
+  c: integer;
+begin
+  { current chapter }
+  with Blocks.AddTextBlock(SysUtils.Format('%s %d', [FProject.Book, FProject.Chapter])).TextStyle.Font do
+  begin
+    Name := 'default';
+    Size := Self.TextStyle.Font.Size+2;
+    Bold := true;
+    Color := NonBibleTextColor;
+  end;
+  Blocks.AddParagraph(); //.ParaStyle.HAlign := halLeft;
+
+  { chapter list }
+  for c:=1 to QCapitulosONT[FProject.BookID] do
+  begin
+    if c > 1 then
+      Blocks.AddTextBlock(' ');
+
+    if c = FProject.Chapter then
+      with Blocks.AddTextBlock(c.ToString).TextStyle.Font do
+      begin
+        Name := 'default';
+        Size := Self.TextStyle.Font.Size-2;
+        Bold := true;
+        Color := NonBibleTextColor;
+      end
+    else
+      with Blocks.AddHyperlink(c.ToString, Format('%d,%d,1', [FProject.BookID, c])) do
+      begin
+        OnClick := @HandleReferenceClick;
+        TextStyle.Font.Name  := 'default';
+        TextStyle.Font.Size  := Self.TextStyle.Font.Size-2;
+        TextStyle.Font.Bold  := false;
+        TextStyle.Font.Color := ChapterNumberColor;
+      end;
+  end;
+  Blocks.AddParagraph().ParaStyle.BottomPadding := 10;
 end;
 
 procedure TKChapterView.SetEnabled(Value: Boolean);
@@ -828,15 +871,7 @@ begin
     FNoteID := 1;
     FNotes.Clear;
 
-    with Blocks.AddTextBlock(SysUtils.Format('%s %d', [FProject.Book, FProject.Chapter])).TextStyle do
-    begin
-      Font := TextStyle.Font;
-      Font.Size := Font.Size + 2;
-      Font.Bold := true;
-      Font.Color := NonBibleTextColor;
-    end;
-
-    Blocks.AddParagraph().ParaStyle.FirstIndent := 0;
+    RenderChapterHeader;
 
     FCurrentVerse := 0;
     for verse in verses do
