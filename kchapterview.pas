@@ -80,6 +80,7 @@ type
     procedure RenderChapterHeader;
     procedure RenderVerse(txt: string);
     procedure RenderSpan(txt: string);
+    procedure RenderNote(link: string; note: string);
     procedure RenderNotes;
     procedure HandleReferenceClick(sender: TObject);
     procedure HandleNoteLinkClick(sender: TObject);
@@ -325,24 +326,10 @@ begin
         end else if token.valor.StartsWith('<RF') then
         begin
           linktext := FTokenizer.LerPropriedadeTag('q', token);
-          if linktext.IsEmpty then
-            linktext := FNoteID.ToString;
           token.valor := '';
           FTokenizer.LerAteTag(token, '<Rf>');
-          token.valor := token.valor.Replace('<Rf>',  '');
-
-          FNotes.Add(TNoteInfo.Create(FNoteID, FCurrentVerse, token.valor, linktext));
-          if not Blocks.LastBlock.Text.EndsWith(' ') then
-            linktext := ' ' + linktext;
-          with Blocks.AddHyperlink(linktext, (FNoteID-1).ToString) do
-          begin
-            TextStyle.Assign(TextStyle);
-            TextStyle.Font.Color := NoteLinkColor;
-            TextStyle.Font.Style := [fsItalic];
-            TextStyle.ScriptPosition := tpoSuperscript;
-            OnClick := @HandleNoteLinkClick;
-          end;
-          inc(FNoteID);
+          token.valor := token.valor.Replace('<Rf>', '');
+          RenderNote(linktext, token.valor);
         end
         else if token.valor = '<FI>' then
         begin
@@ -421,6 +408,26 @@ begin
 
   FreeAndNil(FTokenizer);
   Blocks.UnLockUpdate;
+end;
+
+procedure TKChapterView.RenderNote(link: string; note: string);
+begin
+  if link.IsEmpty then
+    link := FNoteID.ToString;
+
+  FNotes.Add(TNoteInfo.Create(FNoteID, FCurrentVerse, note, link));
+  if not Blocks.LastBlock.Text.EndsWith(' ') then
+    link := ' ' + link;
+
+  with Blocks.AddHyperlink(link, (FNoteID-1).ToString) do
+  begin
+    TextStyle.Assign(TextStyle);
+    TextStyle.Font.Color := NoteLinkColor;
+    TextStyle.Font.Style := [fsItalic];
+    TextStyle.ScriptPosition := tpoSuperscript;
+    OnClick := @HandleNoteLinkClick;
+  end;
+  Inc(FNoteID);
 end;
 
 procedure TKChapterView.RenderNotes;
