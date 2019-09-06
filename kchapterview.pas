@@ -133,6 +133,7 @@ resourcestring
   SVersePerLineMode = '&Verse per line mode';
   SPreviousChapter = 'Previous chapter';
   SNextChapter = 'Next chapter';
+  SChapterBeginning = 'Beginning of chapter';
 
 implementation
 
@@ -296,7 +297,7 @@ begin
       begin
         if chunk.Length > 0 then
         begin
-          if Blocks.LastBlock.ClassName = 'TKMemoParagraph' {TODO: and last paragraph is not a title} then
+          if assigned(Blocks.LastBlock) and (Blocks.LastBlock.ClassName = 'TKMemoParagraph') {TODO: and last paragraph is not a title} then
             Blocks.LastBlock.ParaStyle.FirstIndent := DefaultFirstIndent;
           Blocks.AddTextBlock(chunk).TextStyle.Assign(CurrentStyle);
           chunk := '';
@@ -937,11 +938,21 @@ begin
   nchapter := 0;
   GetNextChapter(nbook, nchapter);
 
+  if pbook <> 0 then
+    Blocks.AddTextBlock(' | ');
+
+  with Blocks.AddHyperlink(Format('%s', [SChapterBeginning]), Format('%d,%d,1', [FProject.BookID, FProject.Chapter])) do
+  begin
+    OnClick := @HandleReferenceClick;
+    TextStyle.Font.Name  := 'default';
+    TextStyle.Font.Size  := Self.TextStyle.Font.Size-2;
+    TextStyle.Font.Bold  := false;
+    TextStyle.Font.Color := ChapterNumberColor;
+  end;
+
   if nbook <> 0 then
   begin
-    if pbook <> 0 then
-      Blocks.AddTextBlock(' | ');
-
+    Blocks.AddTextBlock(' | ');
     with Blocks.AddHyperlink(Format('%s (%s %d)', [SNextChapter, NLivrosONT[nbook], nchapter]), Format('%d,%d,1', [nbook, nchapter])) do
     begin
       OnClick := @HandleReferenceClick;
