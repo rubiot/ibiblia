@@ -288,10 +288,11 @@ begin
   if s.valor[1] <> '<' then
     exit;
 
-  i := pos(p+'=', s.valor) + length(p) + 1;
+  i := pos(p+'=', s.valor);
   if i = 0 then
     exit;
 
+  i := i + length(p) + 1;
   if s.valor[i] = '"' then
   begin
     inc(i);
