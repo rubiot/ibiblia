@@ -14,7 +14,7 @@ uses
   twAutomate, twSyncThread,
   {$ENDIF}
   ONTParser, Sintagma, unitabout, MySwordModule, TheWordDictionary,
-  ChapterView, KChapterView, lazrichview, HTMLColors;
+  KChapterView, lazrichview, HTMLColors;
 
 {$R *.res}
 

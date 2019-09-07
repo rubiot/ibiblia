@@ -322,13 +322,13 @@ begin
   ProjetoAtual.PalavrasComStrongEmNegrito := MenuItemStrongNegrito.Checked;
   ProjetoAtual.MostrarQtdStrongs := FStrongsCountMode;
 
-  FChapterView.Enabled := true;
-  FChapterView.Project := ProjetoAtual;
-
   ProjetoAtual.Abrir(OpenDialog1.FileName);
   ProjetoAtual.ExibirDefinicoesSoComCtrl := MenuItemDictPopup.Checked;
   ProjetoAtual.SugerirAssociacaoAutomaticamente := MenuItem22.Checked;
   ProjetoAtual.PopupTrigger := FPopupTrigger;
+
+  FChapterView.Project := ProjetoAtual;
+  FChapterView.Enabled := true;
 
   ActionSalvarProjeto.Enabled := true;
   ActionSalvarProjetoComo.Enabled := true;

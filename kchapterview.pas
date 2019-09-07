@@ -249,7 +249,7 @@ begin
     begin
       OnClick := @HandleReferenceClick;
       TextStyle.Font.Name  := 'default';
-      TextStyle.Font.Size  := FFontSize+2;
+      TextStyle.Font.Size  := FFontSize+1;
       TextStyle.Font.Style := [fsBold];
       TextStyle.Font.Color := NonBibleTextColor;
       TextStyle.ScriptPosition:= tpoSuperscript;
@@ -297,21 +297,13 @@ begin
       begin
         if chunk.Length > 0 then
         begin
-          if assigned(Blocks.LastBlock) and (Blocks.LastBlock.ClassName = 'TKMemoParagraph') {TODO: and last paragraph is not a title} then
-            Blocks.LastBlock.ParaStyle.FirstIndent := DefaultFirstIndent;
           Blocks.AddTextBlock(chunk).TextStyle.Assign(CurrentStyle);
           chunk := '';
         end;
         if token.valor.StartsWith('<TS') then
         begin
           if Blocks.LastBlock.ClassName <> 'TKMemoParagraph' then
-            Blocks.AddParagraph();
-
-          with TKMemoParagraph(Blocks.LastBlock).ParaStyle do
-          begin
-            FirstIndent := IfThen(FVerseMode = vmParagraph, DefaultFirstIndent);
-            BottomPadding := 10;
-          end;
+            Blocks.AddParagraph().ParaStyle.FirstIndent := IfThen(FVerseMode = vmParagraph, DefaultFirstIndent);
 
           with PushNewStyle do
           begin
@@ -343,10 +335,8 @@ begin
         end else if token.valor = '<Ts>' then
         begin
           ResetStyleStack;
-          with Blocks.AddParagraph().ParaStyle do
-          begin
-            FirstIndent := 0;
-          end;
+          Blocks.AddParagraph().ParaStyle.TopPadding :=
+            IfThen(Blocks.LastBlock is TKMemoParagraph and (TKMemoParagraph(Blocks.LastBlock).ParaStyle.BottomPadding = 0), 5);
         end else if token.valor.StartsWith('<RF') then
         begin
           linktext := FTokenizer.LerPropriedadeTag('q', token);
@@ -706,7 +696,12 @@ procedure TKChapterView.SetProject(AValue: TProjeto);
 begin
   if FProject = AValue then Exit;
   FProject := AValue;
-  FProject.OnNewVerseSubscribe(@HandleVerseChange);
+
+  if assigned(FProject) then
+  begin
+    FProject.OnNewVerseSubscribe(@HandleVerseChange);
+    HandleVerseChange(FProject);
+  end;
 end;
 
 procedure TKChapterView.InitPopupMenu;
@@ -813,7 +808,7 @@ begin
   TextStyle.Font.Name := FFontName;
   TextStyle.ScriptPosition := tpoNormal;
   ParaStyle.FirstIndent := 0;
-  ParaStyle.LineSpacingFactor := 1.2;
+  ParaStyle.LineSpacingFactor := 1.15;
   PushNewStyle; // pushing default style onto stack
 end;
 
