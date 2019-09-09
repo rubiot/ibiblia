@@ -70,7 +70,6 @@ type
     FParagraphModeItem: TMenuItem;
     FVersePerLineItem: TMenuItem;
     FVerseMode: TViewMode;
-    FBibleText: TTipoTextoBiblico;
     FStyleStack: TObjectStack;
     FVerseRanges: array of TBlockRange;
     FCurrentVerse: integer;
@@ -96,7 +95,6 @@ type
     procedure HandleSetFont(Sender: TObject);
     procedure HandleParagraphMode(Sender: TObject);
     procedure HandleVersePerLineMode(Sender: TObject);
-    procedure SetBibleText(AValue: TTipoTextoBiblico);
     procedure SetProject(AValue: TProjeto);
     procedure InitPopupMenu;
     procedure SetVerseMode(AValue: TViewMode);
@@ -107,16 +105,17 @@ type
     procedure PopStyle;
     procedure HightlightRange(range: TBlockRange; bgcolor: TColor);
     procedure ResetStyleStack;
+    function GetPreviousParagraphBlock: TKMemoParagraph;
   protected
     procedure SetEnabled(Value: Boolean); override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    procedure LoadChapter;
     property Project: TProjeto read FProject write SetProject;
     property VerseMode: TViewMode read FVerseMode write SetVerseMode;
     property FontSize: integer read FFontSize write SetFontSize;
     property FontName: string read FFontName write SetFontName;
-    property BibleText: TTipoTextoBiblico read FBibleText write SetBibleText default tbDestino;
     property CurrentStyle: TKMemoTextStyle read GetCurrentStyle;
     property HideVerseNumber: boolean read FHideVerseNumber write FHideVerseNumber default false;
   end;
@@ -278,6 +277,9 @@ var
   chunk: string;
   linktext: string;
   size: integer;
+  padding: longint;
+  lastpar: TKMemoParagraph;
+  b: TKMemoBlockIndex;
 begin
   chunk := '';
   FTokenizer := TONTTokenizer.Criar(txt);
@@ -302,7 +304,7 @@ begin
         end;
         if token.valor.StartsWith('<TS') then
         begin
-          if Blocks.LastBlock.ClassName <> 'TKMemoParagraph' then
+          if assigned(Blocks.LastBlock) and (Blocks.LastBlock.ClassName <> 'TKMemoParagraph') then
             Blocks.AddParagraph().ParaStyle.FirstIndent := IfThen(FVerseMode = vmParagraph, DefaultFirstIndent);
 
           with PushNewStyle do
@@ -335,8 +337,9 @@ begin
         end else if token.valor = '<Ts>' then
         begin
           ResetStyleStack;
-          Blocks.AddParagraph().ParaStyle.TopPadding :=
-            IfThen(Blocks.LastBlock is TKMemoParagraph and (TKMemoParagraph(Blocks.LastBlock).ParaStyle.BottomPadding = 0), 5);
+          lastpar := GetPreviousParagraphBlock;
+          padding := IfThen(assigned(lastpar) and (lastpar.ParaStyle.BottomPadding = 0), 5);
+          Blocks.AddParagraph().ParaStyle.TopPadding := padding;
         end else if token.valor.StartsWith('<RF') then
         begin
           linktext := FTokenizer.LerPropriedadeTag('q', token);
@@ -416,7 +419,7 @@ begin
 
   if chunk.Length > 0 then
   begin
-    if Blocks.LastBlock.ClassName = 'TKMemoParagraph' then
+    if assigned(Blocks.LastBlock) and (Blocks.LastBlock.ClassName = 'TKMemoParagraph') then
       Blocks.LastBlock.ParaStyle.FirstIndent := DefaultFirstIndent;
     Blocks.AddTextBlock(chunk).TextStyle.Assign(CurrentStyle);
   end;
@@ -431,7 +434,7 @@ begin
     link := FNoteID.ToString;
 
   FNotes.Add(TNoteInfo.Create(FNoteID, FCurrentVerse, note, link));
-  if not Blocks.LastBlock.Text.EndsWith(' ') then
+  if assigned(Blocks.LastBlock) and not Blocks.LastBlock.Text.EndsWith(' ') then
     link := ' ' + link;
 
   with Blocks.AddHyperlink(link, (FNoteID-1).ToString) do
@@ -551,7 +554,7 @@ begin
   if not assigned(FProject) or (Width < 2) then
     exit;
 
-  verses := Sender.GetChapterText(FBibleText);
+  verses := Sender.GetChapterText;
   try
     RenderChapter(verses, Sender.Verse);
   finally
@@ -685,13 +688,6 @@ begin
   VerseMode := vmVersePerLine;
 end;
 
-procedure TKChapterView.SetBibleText(AValue: TTipoTextoBiblico);
-begin
-  if FBibleText=AValue then Exit;
-  FBibleText:=AValue;
-  HandleVerseChange(FProject);
-end;
-
 procedure TKChapterView.SetProject(AValue: TProjeto);
 begin
   if FProject = AValue then Exit;
@@ -812,6 +808,19 @@ begin
   PushNewStyle; // pushing default style onto stack
 end;
 
+function TKChapterView.GetPreviousParagraphBlock: TKMemoParagraph;
+var
+  b: TKMemoBlockIndex;
+begin
+  Result := nil;
+  for b := Blocks.Count-1 downto 0 do
+    if Blocks[b] is TKMemoParagraph then
+    begin
+      Result := Blocks[b] as TKMemoParagraph;
+      break;
+    end;
+end;
+
 procedure TKChapterView.RenderChapterHeader;
 var
   c: integer;
@@ -910,17 +919,12 @@ procedure TKChapterView.RenderChapterFooter;
 var
   pbook, nbook, pchapter, nchapter: integer;
 begin
-  if Blocks.LastBlock.ClassName <> 'TKMemoParagraph' then
-    Blocks.AddParagraph();
-
-  Blocks.LastBlock.ParaStyle.BottomPadding := 10;
-
   pbook := 0;
   pchapter := 0;
   GetPreviousChapter(pbook, pchapter);
 
   if pbook <> 0 then
-    with Blocks.AddHyperlink(Format('%s (%s %d)', [SPreviousChapter, NLivrosONT[pbook], pchapter]), Format('%d,%d,1', [pbook, pchapter])) do
+    with Blocks.AddHyperlink(Format('<< %s %d', [NLivrosONT[pbook], pchapter]), Format('%d,%d,1', [pbook, pchapter])) do
     begin
       OnClick := @HandleReferenceClick;
       TextStyle.Font.Name  := 'default';
@@ -948,7 +952,7 @@ begin
   if nbook <> 0 then
   begin
     Blocks.AddTextBlock(' | ');
-    with Blocks.AddHyperlink(Format('%s (%s %d)', [SNextChapter, NLivrosONT[nbook], nchapter]), Format('%d,%d,1', [nbook, nchapter])) do
+    with Blocks.AddHyperlink(Format('%s %d >>', [NLivrosONT[nbook], nchapter]), Format('%d,%d,1', [nbook, nchapter])) do
     begin
       OnClick := @HandleReferenceClick;
       TextStyle.Font.Name  := 'default';
@@ -960,7 +964,7 @@ begin
 
   with Blocks.AddParagraph().ParaStyle do
   begin
-    TopPadding := 0;
+    TopPadding := 10;
     HAlign := halCenter;
   end;
 end;
@@ -1007,6 +1011,11 @@ begin
   inherited Destroy;
 end;
 
+procedure TKChapterView.LoadChapter;
+begin
+  HandleVerseChange(FProject);
+end;
+
 procedure TKChapterView.RenderChapter(verses: TStringList; current: integer);
 var
   verse: string;
@@ -1032,7 +1041,7 @@ begin
     end;
 
     if Blocks.LastBlock.ClassName <> 'TKMemoParagraph' then
-      Blocks.AddParagraph().ParaStyle.FirstIndent := IfThen(FVerseMode = vmParagraph, DefaultFirstIndent, 0);
+      Blocks.AddParagraph().ParaStyle.FirstIndent := IfThen(FVerseMode = vmParagraph, DefaultFirstIndent);
 
     RenderChapterFooter;
     HightlightRange(FVerseRanges[current], clSilver);
@@ -1045,6 +1054,8 @@ begin
   ExecuteCommand(ecGotoXY, @p);
   ExecuteCommand(ecDown, nil);
   ExecuteCommand(ecScrollCenter, nil);
+  //SelStart := Blocks[FVerseRanges[current].first].index;
+  //ExecuteCommand(ecScrollCenter);
 end;
 
 end.

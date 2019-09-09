@@ -106,6 +106,7 @@ type
     FOnSintagmaClick: TOnSintagmaClickEvent;
     FClosing: boolean;
     function GetCaminho: string;
+    function GetChapterViewText: TTipoTextoBiblico;
     function GetComentarios: string;
     function GetID: string;
     function GetModificado: boolean;
@@ -113,6 +114,7 @@ type
     function GetSituacao: Integer;
     procedure PreencherArvore;
     procedure SetAtrasoExibicao(const AValue: Cardinal);
+    procedure SetChapterViewText(AValue: TTipoTextoBiblico);
     procedure SetComentarios(const AValue: string);
     procedure SetDisplayTags(AValue: boolean);
     procedure SetVerseStrongsCountMode(AValue: TStrongsCountMode);
@@ -197,7 +199,7 @@ type
     function ObterTextoSimplesVersiculo(texto: TTipoTextoBiblico): string;
     function ObterTextoSimplesVersiculo(Referencia: string; texto: TTipoTextoBiblico): string;
     function GetTranslationSuggestions(syntagm: TSintagma): string;
-    function GetChapterText(BibleText: TTipoTextoBiblico): TStringList;
+    function GetChapterText: TStringList;
     procedure Translate;
     procedure ToggleDisplayTags;
     procedure StartScrollingSession;
@@ -233,6 +235,7 @@ type
     property Chapter: integer read FReference.Chapter;
     property Verse: integer read FReference.Verse;
     property ScrollEventsEnabled: boolean read FScrollEventsEnabled write FScrollEventsEnabled;
+    property ChapterViewText: TTipoTextoBiblico read GetChapterViewText write SetChapterViewText;
   end;
 
 resourcestring
@@ -563,6 +566,11 @@ begin
   FTemporizador.Interval := AValue;
 end;
 
+procedure TProjeto.SetChapterViewText(AValue: TTipoTextoBiblico);
+begin
+  AtribuirInfo('chapterview.text', Ord(AValue).toString);
+end;
+
 procedure TProjeto.SetComentarios(const AValue: string);
 begin
   FTblPares.Edit;
@@ -712,7 +720,17 @@ begin
     result := FTblInfo.FileName;
 end;
 
-function TProjeto.GetChapterText(BibleText: TTipoTextoBiblico): TStringList;
+function TProjeto.GetChapterViewText: TTipoTextoBiblico;
+var
+  t: string;
+begin
+  t := ObterInfo('chapterview.text');
+  if t.IsEmpty then
+    t := Ord(tbDestino).ToString;
+  result := TTipoTextoBiblico(t.ToInteger);
+end;
+
+function TProjeto.GetChapterText: TStringList;
 var
   bkch, text, comments: string;
 begin
@@ -724,8 +742,8 @@ begin
   with FTblPares do
     while not FTblPares.EOF and GetID().StartsWith(bkch) do
     begin
-      text     := FTblPares.Fields[FACamposTexto[BibleText]].AsString.Replace(#239#187#191, '');
-      comments := IfThen(BibleText = tbDestino, Comentarios.Replace(#13#10, '<br/>', [rfReplaceAll]), '');
+      text     := FTblPares.Fields[FACamposTexto[ChapterViewText]].AsString.Replace(#239#187#191, '');
+      comments := IfThen(ChapterViewText = tbDestino, Comentarios.Replace(#13#10, '<br/>', [rfReplaceAll]), '');
       result.Add(Format('%s%s', [text, IfThen(comments.IsEmpty, '', Format('<RF>%s<Rf>', [comments]))]));
       VersiculoSeguinte;
     end;

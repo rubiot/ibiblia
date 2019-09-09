@@ -327,6 +327,7 @@ begin
   ProjetoAtual.SugerirAssociacaoAutomaticamente := MenuItem22.Checked;
   ProjetoAtual.PopupTrigger := FPopupTrigger;
 
+  ChapterViewTabCtrl.TabIndex := Ord(ProjetoAtual.ChapterViewText);
   FChapterView.Project := ProjetoAtual;
   FChapterView.Enabled := true;
 
@@ -392,6 +393,7 @@ begin
 
   AtualizarMRU(MenuItemRecent);
 
+  ProjetoAtual.ChapterViewText := TTipoTextoBiblico(ChapterViewTabCtrl.TabIndex);
   ProjetoAtual.Fechar(salvar);
   ProjetoAtual.Destruir;
   ProjetoAtual := nil;
@@ -683,7 +685,6 @@ begin
     MenuItemLangPt.Checked:=true;
   Translate;
 
-  ChapterViewTabCtrl.TabIndex := opts.ReadInteger('opcoes', 'chapter.view.text', ord(tbDestino));
   FChapterView := TKChapterView.Create(ChapterViewTabCtrl);
   with FChapterView do
   begin
@@ -693,7 +694,6 @@ begin
     FontName     := opts.ReadString('leiaute', 'principal.chapterview.font.name', DefFontData.Name);
     FontSize     := opts.ReadInteger('leiaute', 'principal.chapterview.font.size', 0);
     VerseMode    := TViewMode(opts.ReadInteger('opcoes', 'chapterview.versemode', Ord(vmParagraph)));
-    BibleText    := TTipoTextoBiblico(ChapterViewTabCtrl.TabIndex);
   end;
 
   CarregarMRU(MenuItemRecent);
@@ -735,7 +735,6 @@ begin
   opts.WriteString('opcoes', 'language', language);
   opts.WriteBool('opcoes', 'alwaysontop', MenuItemAlwaysOnTop.Checked);
   opts.WriteInteger('opcoes', 'popuptrigger', LongInt(FPopupTrigger));
-  opts.WriteInteger('opcoes', 'chapter.view.text', ChapterViewTabCtrl.TabIndex);
   opts.Free;
 
   FChapterView.Free;
@@ -1010,7 +1009,11 @@ end;
 
 procedure TFrmPrincipal.ChapterViewTabCtrlChange(Sender: TObject);
 begin
-  FChapterView.BibleText := TTipoTextoBiblico(TTabControl(Sender).TabIndex);
+  if assigned(ProjetoAtual) then
+  begin
+    ProjetoAtual.ChapterViewText := TTipoTextoBiblico(TTabControl(Sender).TabIndex);
+    FChapterView.LoadChapter;
+  end;
 end;
 
 procedure TFrmPrincipal.ToolButtonExitClick(Sender: TObject);
