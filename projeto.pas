@@ -573,6 +573,8 @@ end;
 
 procedure TProjeto.SetComentarios(const AValue: string);
 begin
+  if FTblPares.FieldByName('pare_comentarios').AsString = AValue then
+    exit;
   FTblPares.Edit;
   FTblPares.FieldByName('pare_comentarios').AsString := AValue;
   FTblPares.Post;
@@ -707,10 +709,14 @@ begin
 end;
 
 function TProjeto.GetModificado: boolean;
+var
+  pairsPending, infoPending, srcPending: boolean;
 begin
-  result := FTblPares.UpdatesPending or
-            FTblInfo.UpdatesPending or
-            (assigned(FAVersiculo[tbOrigem]) and FAVersiculo[tbOrigem].Modificado);
+  pairsPending := FTblPares.UpdatesPending;
+  infoPending  := FTblInfo.UpdatesPending;
+  srcPending   := (assigned(FAVersiculo[tbOrigem]) and FAVersiculo[tbOrigem].Modificado);
+
+  result := pairsPending or infoPending or srcPending;
 end;
 
 function TProjeto.GetCaminho: string;
@@ -1881,12 +1887,10 @@ begin
     Rollback;
 
   FTblPares.Close;
-  FTblPares.Free;
-  FTblPares := nil;
+  FreeAndNil(FTblPares);
 
   FTblInfo.Close;
-  FTblInfo.Free;
-  FTblInfo := nil;
+  FreeAndNil(FTblInfo);
 
   FMemoVersiculo.Desativar;
 
