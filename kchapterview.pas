@@ -1020,7 +1020,6 @@ end;
 procedure TKChapterView.RenderChapter(verses: TStringList; current: integer);
 var
   verse: string;
-  p: TPoint;
 begin
   SetLength(FVerseRanges, verses.Count + 1);
 
@@ -1051,12 +1050,10 @@ begin
     Blocks.UnLockUpdate;
   end;
 
-  p := Blocks[FVerseRanges[current].first].BoundsRect.TopLeft;
-  ExecuteCommand(ecGotoXY, @p);
-  ExecuteCommand(ecDown, nil);
-  ExecuteCommand(ecScrollCenter, nil);
-  //SelStart := Blocks[FVerseRanges[current].first].index;
-  //ExecuteCommand(ecScrollCenter);
+  { scroll current verse to center }
+  self.SelectBlock(Blocks[FVerseRanges[current].first], sgpTopLeft);
+  self.SelLength:=0;
+  ExecuteCommand(ecScrollCenter);
 end;
 
 end.
