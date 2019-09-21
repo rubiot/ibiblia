@@ -1,20 +1,6 @@
 msgid ""
 msgstr "Content-Type: text/plain; charset=UTF-8"
 
-#: chapterview.sparagraphmode
-msgctxt "chapterview.sparagraphmode"
-msgid "&Paragraph mode"
-msgstr ""
-
-#: chapterview.ssetfont
-msgid "Choose &font..."
-msgstr ""
-
-#: chapterview.sverseperlinemode
-msgctxt "chapterview.sverseperlinemode"
-msgid "&Verse per line mode"
-msgstr ""
-
 #: formexportar.sanalyticalconcordance
 msgid "AnalyticalConcordance"
 msgstr ""
@@ -93,6 +79,10 @@ msgstr ""
 #: formprincipal.sdestinationtext
 msgctxt "formprincipal.sdestinationtext"
 msgid "Destination"
+msgstr ""
+
+#: formprincipal.sinterlineartext
+msgid "Interlinear"
 msgstr ""
 
 #: formprincipal.sloadingfile
@@ -252,6 +242,33 @@ msgstr ""
 #: formpropprojeto.swholebiblefilter
 msgctxt "formpropprojeto.swholebiblefilter"
 msgid "theWord Bible modules (*.ont)|*.ont|All files|*.*"
+msgstr ""
+
+#: kchapterview.schapterbeginning
+msgid "Beginning of chapter"
+msgstr ""
+
+#: kchapterview.snextchapter
+msgid "Next chapter"
+msgstr ""
+
+#: kchapterview.sparagraphmode
+msgctxt "kchapterview.sparagraphmode"
+msgid "&Paragraph mode"
+msgstr ""
+
+#: kchapterview.spreviouschapter
+msgid "Previous chapter"
+msgstr ""
+
+#: kchapterview.ssetfont
+msgctxt "kchapterview.ssetfont"
+msgid "Choose &font..."
+msgstr ""
+
+#: kchapterview.sverseperlinemode
+msgctxt "kchapterview.sverseperlinemode"
+msgid "&Verse per line mode"
 msgstr ""
 
 #: memoversiculo.schangeverse

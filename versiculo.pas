@@ -745,7 +745,7 @@ begin
                       linha.DataString, '</sup> <sup>', ' '
                     ), '  ', ' '
                   ), '<sup>', '<font size=+1 color="CC3300"><sup>'
-                ), '</sup>', '</font></sup>'
+                ), '</sup>', '</sup></font>'
               );
     linha.Destroy;
   end;

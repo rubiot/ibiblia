@@ -11,20 +11,6 @@ msgstr ""
 "Language: en\n"
 "X-Generator: Poedit 2.2.3\n"
 
-#: chapterview.sparagraphmode
-msgctxt "chapterview.sparagraphmode"
-msgid "&Paragraph mode"
-msgstr "&Paragraph mode"
-
-#: chapterview.ssetfont
-msgid "Choose &font..."
-msgstr "Choose &font..."
-
-#: chapterview.sverseperlinemode
-msgctxt "chapterview.sverseperlinemode"
-msgid "&Verse per line mode"
-msgstr "&Verse per line mode"
-
 #: formexportar.sanalyticalconcordance
 msgid "AnalyticalConcordance"
 msgstr "AnalyticalConcordance"
@@ -106,6 +92,10 @@ msgstr "destination"
 msgctxt "formprincipal.sdestinationtext"
 msgid "Destination"
 msgstr "Destination"
+
+#: formprincipal.sinterlineartext
+msgid "Interlinear"
+msgstr "Interlinear"
 
 #: formprincipal.sloadingfile
 msgid "Loading %s..."
@@ -276,6 +266,33 @@ msgstr "Source"
 msgctxt "formpropprojeto.swholebiblefilter"
 msgid "theWord Bible modules (*.ont)|*.ont|All files|*.*"
 msgstr "theWord Bible modules (*.ont)|*.ont|All files|*.*"
+
+#: kchapterview.schapterbeginning
+msgid "Beginning of chapter"
+msgstr "Beginning of chapter"
+
+#: kchapterview.snextchapter
+msgid "Next chapter"
+msgstr "Next chapter"
+
+#: kchapterview.sparagraphmode
+msgctxt "kchapterview.sparagraphmode"
+msgid "&Paragraph mode"
+msgstr "&Paragraph mode"
+
+#: kchapterview.spreviouschapter
+msgid "Previous chapter"
+msgstr "Previous chapter"
+
+#: kchapterview.ssetfont
+msgctxt "kchapterview.ssetfont"
+msgid "Choose &font..."
+msgstr "Choose &font..."
+
+#: kchapterview.sverseperlinemode
+msgctxt "kchapterview.sverseperlinemode"
+msgid "&Verse per line mode"
+msgstr "&Verse per line mode"
 
 #: memoversiculo.schangeverse
 msgid "Change verse text?"

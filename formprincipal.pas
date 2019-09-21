@@ -214,6 +214,7 @@ resourcestring
   SDestinationText = 'Destination';
   SReference1Text = 'Reference1';
   SReference2Text = 'Reference2';
+  SInterlinearText = 'Interlinear';
 
 implementation
 
@@ -502,7 +503,7 @@ begin
     ProjetoAtual.PopupTrigger := FPopupTrigger;
 
     //ParThread.pb := ProgressBar1;
-    for v:=low(TTipoTextoBiblico) to high(TTipoTextoBiblico) do
+    for v:=tbOrigem to tbConsulta2 do
     begin
       StatusBar1.Caption := Format(SLoadingFile, [QualTexto(v)]);
       ParThread.texto := v;
@@ -1066,6 +1067,7 @@ begin
     Tabs.Add(SDestinationText);
     Tabs.Add(SReference1Text);
     Tabs.Add(SReference2Text);
+    Tabs.Add(SInterlinearText);
   end;
   if assigned(FormNovoProjeto1) then
     FormNovoProjeto1.Translate;

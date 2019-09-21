@@ -376,8 +376,9 @@ begin
           token.valor := token.valor.ToLower;
           if token.valor.StartsWith('<font ') then
           begin
+            PushInheritedStyle;
             if token.valor.Contains(' color=') then
-              PushInheritedStyle.Font.Color := HTML2Color(FTokenizer.LerPropriedadeTag('color', token));
+              CurrentStyle.Font.Color := HTML2Color(FTokenizer.LerPropriedadeTag('color', token));
             if token.valor.Contains(' size=') then
             begin
               prop := FTokenizer.LerPropriedadeTag('size', token);
@@ -385,7 +386,7 @@ begin
                 size := CurrentStyle.Font.Size + prop.ToInteger
               else
                 size := prop.ToInteger;
-              PushInheritedStyle.Font.Size := size;
+              CurrentStyle.Font.Size := size;
             end;
           end else if token.valor = '<b>' then
             PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsBold]

@@ -38,6 +38,7 @@ type
     tbDestino,
     tbConsulta1,
     tbConsulta2,
+    tbInterlinear, // interlinear version of the destination text
     tbNone
   );
 
@@ -589,7 +590,7 @@ begin
 
   FDisplayTags := AValue;
 
-  for t:=low(TTipoTextoBiblico) to high(TTipoTextoBiblico) do
+  for t:=tbOrigem to tbConsulta2 do
   begin
     if FDisplayTags then
       FAVersiculo[t].MostrarTags
@@ -737,8 +738,37 @@ begin
 end;
 
 function TProjeto.GetChapterText: TStringList;
+  function GetText: string;
+  begin
+    case ChapterViewText of
+      tbOrigem, tbDestino, tbConsulta1, tbConsulta2:
+        result := FTblPares.Fields[FACamposTexto[ChapterViewText]].AsString.Replace(#239#187#191, '');
+      tbInterlinear:
+      begin
+        if length(FTblPares.FieldByName('pare_pares').AsString) = 0 then
+          result := FTblPares.Fields[FACamposTexto[tbOrigem]].AsString
+        else
+        begin
+          FATmpVerse[tbOrigem ].Texto := FTblPares.Fields[FACamposTexto[tbOrigem] ].AsString;
+          FATmpVerse[tbDestino].Texto := FTblPares.Fields[FACamposTexto[tbDestino]].AsString;
+          try
+            FATmpVerse[tbOrigem ].Pares := FTblPares.FieldByName('pare_pares').AsString;
+          except
+            on E: Exception do
+              MessageDlg(SError, SCorruptedData + #13#10#13#10 + FormattedReference + #13#10 +
+                   format('%s'#13#10'pares: %s'#13#10'%s'#13#10'%s',
+                          [E.Message, FTblPares.FieldByName('pare_pares').AsString,
+                          FATmpVerse[tbOrigem].DebugTokens, FATmpVerse[tbDestino].DebugTokens]),
+                   mtError, [mbOK], 0);
+          end;
+          result := //FATmpVerse[tbOrigem].GetMySwordInterlinearLine,
+                    FATmpVerse[tbOrigem].GetTheWordInterlinearLine;
+        end;
+      end;
+    end;
+  end;
 var
-  bkch, text, comments: string;
+  bkch, comments: string;
 begin
   bkch := Format('%d,%d,', [BookID, Chapter]);
   result := TStringList.Create;
@@ -748,9 +778,8 @@ begin
   with FTblPares do
     while not FTblPares.EOF and GetID().StartsWith(bkch) do
     begin
-      text     := FTblPares.Fields[FACamposTexto[ChapterViewText]].AsString.Replace(#239#187#191, '');
       comments := IfThen(ChapterViewText = tbDestino, Comentarios.Replace(#13#10, '<br/>', [rfReplaceAll]), '');
-      result.Add(Format('%s%s', [text, IfThen(comments.IsEmpty, '', Format('<RF>%s<Rf>', [comments]))]));
+      result.Add(Format('%s%s', [GetText, IfThen(comments.IsEmpty, '', Format('<RF>%s<Rf>', [comments]))]));
       VersiculoSeguinte;
     end;
   FinishScrollingSession;
@@ -1715,7 +1744,7 @@ begin
   Criar;
 
   for v:=low(paineis) to high(paineis) do
-    if (v <= integer(high(TTipoTextoBiblico))) and assigned(paineis[v]) then
+    if (v <= Ord(tbConsulta2)) and assigned(paineis[v]) then
       NovoObjetoVersiculo(paineis[v], TTipoTextoBiblico(v));
 
   Arvore              := navegador;
@@ -1799,7 +1828,7 @@ begin
   FTblInfo.Open;
 
   f := TFont.Create;
-  for t:=low(TTipoTextoBiblico) to high(TTipoTextoBiblico) do
+  for t:=tbOrigem to tbConsulta2 do
   begin
     if not assigned(FAVersiculo[t]) then
        continue;
@@ -2545,7 +2574,7 @@ procedure TProjeto.AtribuirFonteTexto(fonte: TFont; textos: STextosBiblicos);
 var
   t: TTipoTextoBiblico;
 begin
-  for t:=low(TTipoTextoBiblico) to high(TTipoTextoBiblico) do
+  for t:=tbOrigem to tbConsulta2 do
     if t in textos then
     begin
       FAVersiculo[t].Fonte := fonte;
@@ -2582,7 +2611,7 @@ procedure TProjeto.AtribuirDicStrong(dic: string; textos: STextosBiblicos);
 var
   t: TTipoTextoBiblico;
 begin
-  for t:=low(TTipoTextoBiblico) to high(TTipoTextoBiblico) do
+  for t:=tbOrigem to tbConsulta2 do
   begin
     if t in textos then
     begin
@@ -2596,7 +2625,7 @@ procedure TProjeto.AtribuirDicMorfo(dic: string; textos: STextosBiblicos);
 var
   t: TTipoTextoBiblico;
 begin
-  for t:=low(TTipoTextoBiblico) to high(TTipoTextoBiblico) do
+  for t:=tbOrigem to tbConsulta2 do
   begin
     if t in textos then
     begin

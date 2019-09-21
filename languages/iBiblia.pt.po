@@ -11,20 +11,6 @@ msgstr ""
 "Language: pt\n"
 "X-Generator: Poedit 2.2.3\n"
 
-#: chapterview.sparagraphmode
-msgctxt "chapterview.sparagraphmode"
-msgid "&Paragraph mode"
-msgstr "Modo de &parágrafo"
-
-#: chapterview.ssetfont
-msgid "Choose &font..."
-msgstr "Selecionar &fonte..."
-
-#: chapterview.sverseperlinemode
-msgctxt "chapterview.sverseperlinemode"
-msgid "&Verse per line mode"
-msgstr "Modo &versículo"
-
 #: formexportar.sanalyticalconcordance
 msgid "AnalyticalConcordance"
 msgstr "ConcordanciaAnalitica"
@@ -104,6 +90,10 @@ msgstr "destino"
 msgctxt "formprincipal.sdestinationtext"
 msgid "Destination"
 msgstr "Destino"
+
+#: formprincipal.sinterlineartext
+msgid "Interlinear"
+msgstr "Interlinear"
 
 #: formprincipal.sloadingfile
 msgid "Loading %s..."
@@ -271,6 +261,33 @@ msgctxt "formpropprojeto.swholebiblefilter"
 msgid "theWord Bible modules (*.ont)|*.ont|All files|*.*"
 msgstr "Módulos de Bíblia do theWord (*.ont)|*.ont|Todos os arquivos|*.*"
 
+#: kchapterview.schapterbeginning
+msgid "Beginning of chapter"
+msgstr "Início do capítulo"
+
+#: kchapterview.snextchapter
+msgid "Next chapter"
+msgstr "Próximo capítulo"
+
+#: kchapterview.sparagraphmode
+msgctxt "kchapterview.sparagraphmode"
+msgid "&Paragraph mode"
+msgstr "Modo de &parágrafo"
+
+#: kchapterview.spreviouschapter
+msgid "Previous chapter"
+msgstr "Capítulo anterior"
+
+#: kchapterview.ssetfont
+msgctxt "kchapterview.ssetfont"
+msgid "Choose &font..."
+msgstr "Selecionar &fonte..."
+
+#: kchapterview.sverseperlinemode
+msgctxt "kchapterview.sverseperlinemode"
+msgid "&Verse per line mode"
+msgstr "Modo &versículo"
+
 #: memoversiculo.schangeverse
 msgid "Change verse text?"
 msgstr "Alterar o texto do versículo?"
@@ -285,7 +302,7 @@ msgstr "Erro ao criar novo módulo de Bíblia do MySword"
 
 #: myswordmodule.soverrideerror
 msgid "MySword Bible module exists and cannot be overwritten"
-msgstr "Este módulo de Bíblia do MySword já existe e não pode ser sobrescrito."
+msgstr "Este módulo de Bíblia do MySword já existe e não pode ser sobrescrito"
 
 #: myswordmodule.sprojectoverrideerror
 msgid "A project with this name already exists. Delete it first or choose another name"
