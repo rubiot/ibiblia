@@ -163,6 +163,7 @@ begin
   FNoteView.TextStyle.Assign(AStyle);
   FNoteView.TextStyle.Font.Size := FNoteView.TextStyle.Font.Size - 1;
   FNoteView.RenderSpan(AText);
+  FNoteView.Background.Color := $00CCFBFB;
   FNoteView.Blocks.UnLockUpdate;
 end;
 
@@ -189,8 +190,7 @@ begin
   inherited Destroy;
 end;
 
-procedure TNoteWindow.ActivateHint(const AHint: string; AStyle: TKMemoTextStyle
-  );
+procedure TNoteWindow.ActivateHint(const AHint: string; AStyle: TKMemoTextStyle);
 var
   Rect: TRect;
   Pos: TPoint;
@@ -205,7 +205,7 @@ begin
   Pos := Mouse.CursorPos;
   Rect.Left := Pos.X+10;
   Rect.Top := Pos.Y+5;
-  Rect.Right := Rect.Left + {Rect.Right} 500 + 5;
+  Rect.Right := Rect.Left + Rect.Right {500} + 5;
   Rect.Bottom := Rect.Top + Rect.Bottom + 5;
   ActivateHint(Rect, '');
 end;
@@ -302,7 +302,7 @@ begin
           Blocks.AddTextBlock(chunk).TextStyle.Assign(CurrentStyle);
           chunk := '';
         end;
-        if token.valor.StartsWith('<TS') then
+        if token.valor.StartsWith('<TS') then { title beginning }
         begin
           if assigned(Blocks.LastBlock) and (Blocks.LastBlock.ClassName <> 'TKMemoParagraph') then
             Blocks.AddParagraph().ParaStyle.FirstIndent := IfThen(FVerseMode = vmParagraph, DefaultFirstIndent);
@@ -334,13 +334,13 @@ begin
               end;
             end;
           end;
-        end else if token.valor = '<Ts>' then
+        end else if token.valor = '<Ts>' then { title end }
         begin
           ResetStyleStack;
           lastpar := GetPreviousParagraphBlock;
           padding := IfThen(assigned(lastpar) and (lastpar.ParaStyle.BottomPadding = 0), 5);
           Blocks.AddParagraph().ParaStyle.TopPadding := padding;
-        end else if token.valor.StartsWith('<RF') then
+        end else if token.valor.StartsWith('<RF') then { translator note }
         begin
           linktext := FTokenizer.LerPropriedadeTag('q', token);
           token.valor := '';
@@ -348,25 +348,25 @@ begin
           token.valor := token.valor.Replace('<Rf>', '');
           RenderNote(linktext, token.valor);
         end
-        else if token.valor = '<FI>' then
+        else if token.valor = '<FI>' then { added word(s) }
         begin
           with PushInheritedStyle do
           begin
             Font.Style := Font.Style + [fsItalic];
             Font.Color := clGray;
           end;
-        end else if token.valor = '<FR>' then
+        end else if token.valor = '<FR>' then { Jesus word(s) }
         begin
           PushInheritedStyle.Font.Color := clRed
-        end else if token.valor = '<FO>' then
+        end else if token.valor = '<FO>' then { Old Testament quotation }
         begin
           PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsBold]
         end
-        else if token.valor = '<CM>' then
+        else if token.valor = '<CM>' then { new paragraph }
         begin
           if FVerseMode = vmParagraph then
             Blocks.AddParagraph().ParaStyle.FirstIndent := DefaultFirstIndent;
-        end else if token.valor = '<CL>' then
+        end else if token.valor = '<CL>' then { new line }
         begin
           if FVerseMode = vmParagraph then
             Blocks.AddParagraph().ParaStyle.FirstIndent := 0;
@@ -374,7 +374,7 @@ begin
         end else
         begin
           token.valor := token.valor.ToLower;
-          if token.valor.StartsWith('<font ') then
+          if token.valor.StartsWith('<font ') then { font change }
           begin
             PushInheritedStyle;
             if token.valor.Contains(' color=') then
@@ -388,19 +388,19 @@ begin
                 size := prop.ToInteger;
               CurrentStyle.Font.Size := size;
             end;
-          end else if token.valor = '<b>' then
+          end else if token.valor = '<b>' then { bold }
             PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsBold]
-          else if token.valor = '<i>' then
+          else if token.valor = '<i>' then { italic }
             PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsItalic]
-          else if token.valor = '<u>' then
+          else if token.valor = '<u>' then { underline }
             PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsUnderline]
-          else if token.valor = '<s>' then
+          else if token.valor = '<s>' then { strikeout }
             PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsStrikeOut]
-          else if token.valor = '<sup>' then
+          else if token.valor = '<sup>' then { superscript }
             PushInheritedStyle.ScriptPosition := tpoSuperscript
-          else if token.valor = '<sub>' then
+          else if token.valor = '<sub>' then { subscript }
             PushInheritedStyle.ScriptPosition := tpoSubscript
-          else if token.valor = '<br/>' then
+          else if token.valor = '<br/>' then { line break }
             Blocks.AddParagraph().ParaStyle.FirstIndent := 0
           else if (token.valor = '</sub>')
                    or (token.valor = '</sup>')
