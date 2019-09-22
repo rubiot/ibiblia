@@ -738,15 +738,11 @@ begin
     end;
 
   finally
-    result := AnsiReplaceStr(
-                AnsiReplaceStr(
-                  AnsiReplaceStr(
-                    AnsiReplaceStr(
-                      linha.DataString, '</sup> <sup>', ' '
-                    ), '  ', ' '
-                  ), '<sup>', '<font size=+1 color="CC3300"><sup>'
-                ), '</sup>', '</sup></font>'
-              );
+    result := linha.DataString.Replace('</sup> <sup>', ' ')
+                              .Replace('  ', ' ')
+                              .Replace('<sup>', '<font size=+1 color="CC3300"><sup>')
+                              .Replace('</sup>', '</sup></font>')
+                              .Replace(' -', '-');
     linha.Destroy;
   end;
 end;
