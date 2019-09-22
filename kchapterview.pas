@@ -486,56 +486,10 @@ end;
 
 procedure TKChapterView.HandleNoteLinkClick(sender: TObject);
 var
-  //p: TPoint;
   note: TNoteInfo;
-  {rect: TRect;
-  pos: TPoint;
-  memo: TKChapterView;}
 begin
   note := FNotes[TKMemoHyperlink(Sender).URL.ToInteger];
   FHint.ActivateHint(note.Text, TextStyle);
-
-  {
-  if FHint.ControlCount = 0 then // first time? create the memo
-  begin
-    FHint.InsertControl(TKChapterView.Create(nil));
-    with (FHint.Controls[0] as TKChapterView) do
-    begin
-      PopupMenu.Free;
-      PopupMenu  := nil;
-      OnKeyDown  := @HandlePopupKeyDown;
-      OnExit     := @HandlePopupExit;
-      Align      := alClient;
-      BorderStyle:= bsNone;
-    end;
-  end;
-
-  memo := FHint.Controls[0] as TKChapterView;
-  with memo do
-  begin
-    memo.Blocks.LockUpdate;
-    TextStyle.Assign(self.TextStyle);
-    TextStyle.Font.Size := TextStyle.Font.Size - 1;
-    FHint.Width := 500;
-    memo.Clear(false);
-    memo.RenderSpan(note.Text);
-    memo.Blocks.UnLockUpdate;
-  end;
-
-  Rect := memo.ContentRect; //FHint.CalcHintRect(600, memo.Text, nil);
-  Pos := Mouse.CursorPos;
-  Rect.Left := Pos.X+10;
-  Rect.Top := Pos.Y+5;
-  Rect.Right := Rect.Left + {Rect.Right} 500 + 5;
-  Rect.Bottom := Rect.Top + Rect.Bottom + 5;
-  FHint.ActivateHint(Rect, '');}
-
-  {p := Blocks[note.FirstBlock].BoundsRect.TopLeft;
-  ExecuteCommand(ecGotoXY, @p);
-  ExecuteCommand(ecDown, nil);
-  HightlightRange(note.Range, clSilver);
-  //ExecuteCommand(ecScrollCenter, nil);
-  }
 end;
 
 procedure TKChapterView.HandleNoteClick(sender: TObject);
@@ -657,7 +611,10 @@ procedure TKChapterView.HandleMouseWheel(Sender: TObject; Shift: TShiftState;
 begin
   if ssCtrl in Shift then
   begin
-    SetFontSize(FFontSize + Sign(WheelDelta)*1);
+    Blocks.LockUpdate;
+    FontSize := FFontSize + Sign(WheelDelta) * 1;
+    HandleVerseChange(FProject);
+    Blocks.UnlockUpdate;
     Handled := true;
   end;
 end;
@@ -672,9 +629,11 @@ begin
   dialog.Font.Size := FFontSize;
   if dialog.Execute then
   begin
+    Blocks.LockUpdate;
     FontName := dialog.Font.Name;
     FontSize := dialog.Font.Size;
     HandleVerseChange(FProject);
+    Blocks.UnlockUpdate;
   end;
   dialog.Free;
 end;
@@ -750,21 +709,23 @@ end;
 procedure TKChapterView.SetFontSize(AValue: integer);
 begin
   if (FFontSize = AValue) or (AValue < 1) then Exit;
+
+  Blocks.LockUpdate;
   FFontSize := AValue;
   TextStyle.Font.Size := FFontSize;
   FHint.Font.Assign(TextStyle.Font);
-
-  HandleVerseChange(FProject);
+  Blocks.UnlockUpdate;
 end;
 
 procedure TKChapterView.SetFontName(AValue: string);
 begin
   if (FFontName = AValue) then Exit;
+
+  Blocks.LockUpdate;
   FFontName := AValue;
   TextStyle.Font.Name := FFontName;
   FHint.Font.Assign(TextStyle.Font);
-
-  HandleVerseChange(FProject);
+  Blocks.UnlockUpdate;
 end;
 
 function TKChapterView.PushNewStyle: TKMemoTextStyle;
