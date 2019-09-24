@@ -43,6 +43,7 @@ type
   TNoteWindow = class(THintWindow)
   private
     FNoteView: TKChapterView;
+    function GetScrollBarsVisible: boolean;
     procedure InitNoteView;
     procedure SetNoteText(const AText: string; const AStyle: TKMemoTextStyle);
     procedure HandlePopupMouseEnter(Sender: TObject);
@@ -51,6 +52,7 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure ActivateHint(const AHint: string; AStyle: TKMemoTextStyle); overload;
+    property ScrollBarsVisible: boolean read GetScrollBarsVisible;
   end;
 
   TViewMode = (vmParagraph, vmVersePerLine);
@@ -154,6 +156,13 @@ begin
   end;
 end;
 
+function TNoteWindow.GetScrollBarsVisible: boolean;
+begin
+  result := ((FNoteView.Height - FNoteView.ClientRect.Bottom) > 10) or
+            ((FNoteView.Width - FNoteView.ClientRect.Right) > 10) or
+            (FNoteView.ClientRect.Height = 10);
+end;
+
 procedure TNoteWindow.SetNoteText(const AText: string;
   const AStyle: TKMemoTextStyle);
 begin
@@ -199,13 +208,15 @@ begin
     InitNoteView;
 
   AutoHide := true;
+
   SetNoteText(AHint, AStyle);
 
   Rect := FNoteView.ContentRect;
+
   Pos := Mouse.CursorPos;
   Rect.Left := Pos.X+10;
   Rect.Top := Pos.Y+5;
-  Rect.Right := Rect.Left + Rect.Right {500} + 5;
+  Rect.Right := Rect.Left + Rect.Right + 5;
   Rect.Bottom := Rect.Top + Rect.Bottom + 5;
   ActivateHint(Rect, '');
 end;
@@ -487,9 +498,13 @@ end;
 procedure TKChapterView.HandleNoteLinkClick(sender: TObject);
 var
   note: TNoteInfo;
+  c: integer = 0;
 begin
   note := FNotes[TKMemoHyperlink(Sender).URL.ToInteger];
-  FHint.ActivateHint(note.Text, TextStyle);
+  repeat { working around TKMemo.ClientRect, which always gives wrong results the first time }
+    inc(c);
+    FHint.ActivateHint(note.Text, TextStyle);
+  until not FHint.ScrollBarsVisible or (c = 2);
 end;
 
 procedure TKChapterView.HandleNoteClick(sender: TObject);
