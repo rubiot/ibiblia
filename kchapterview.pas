@@ -239,9 +239,6 @@ var
   mtHeading: IMatch;
   heading: string;
 begin
-  if Blocks.LastBlock.ClassName <> 'TKMemoParagraph' then
-    Blocks.AddTextBlock(' '); // space between verses
-
   mtHeading := FRxVerseHeading.Match(txt);
   if not mtHeading.Success then
     raise Exception.Create(SysUtils.Format('Unmatched verse: <%s>', [txt]));
@@ -251,6 +248,9 @@ begin
   { rendering titles before the verse number }
   if not heading.IsEmpty then
     RenderSpan(heading);
+
+  if Blocks.LastBlock.ClassName <> 'TKMemoParagraph' then
+    Blocks.AddTextBlock(' '); // space between verses
 
   { rendering verse number }
   if not FHideVerseNumber then
@@ -972,6 +972,7 @@ begin
   FRxVerseHeading := RegexCreate('^((?:<TS[0-3]?>.*?<Ts>)*)(.*?)$', [rcoUTF8]);
   FNotes          := TNoteList.Create;
   FHint           := TNoteWindow.Create(Self);
+  FHideVerseNumber:= false;
   InitPopupMenu;
 
   FStyleStack := TObjectStack.Create;
