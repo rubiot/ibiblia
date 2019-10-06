@@ -4,23 +4,24 @@
     <PathDelim Value="\"/>
     <Version Value="11"/>
     <BuildModes Active="Default"/>
-    <Units Count="11">
+    <Units Count="15">
       <Unit0>
         <Filename Value="project1.lpr"/>
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="7"/>
-        <CursorPos X="60" Y="10"/>
-        <UsageCount Value="20"/>
+        <CursorPos Y="15"/>
+        <UsageCount Value="41"/>
         <Loaded Value="True"/>
       </Unit0>
       <Unit1>
         <Filename Value="main.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="Form1"/>
+        <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <TopLine Value="10"/>
-        <CursorPos X="9" Y="43"/>
-        <UsageCount Value="20"/>
+        <TopLine Value="6"/>
+        <CursorPos X="126" Y="48"/>
+        <UsageCount Value="41"/>
         <Loaded Value="True"/>
         <LoadedDesigner Value="True"/>
       </Unit1>
@@ -28,200 +29,229 @@
         <Filename Value="ontmemo.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="ONTMemo"/>
+        <IsVisibleTab Value="True"/>
         <EditorIndex Value="1"/>
-        <TopLine Value="24"/>
-        <CursorPos X="5" Y="45"/>
-        <UsageCount Value="20"/>
+        <TopLine Value="195"/>
+        <CursorPos X="28" Y="232"/>
+        <UsageCount Value="41"/>
         <Loaded Value="True"/>
       </Unit2>
       <Unit3>
-        <Filename Value="C:\Users\rubio\AppData\Local\lazarus\onlinepackagemanager\packages\kcontrols\source\kmemo.pas"/>
-        <EditorIndex Value="3"/>
-        <TopLine Value="11577"/>
-        <CursorPos Y="11578"/>
-        <UsageCount Value="10"/>
+        <Filename Value="onttokenizer.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="ONTTokenizer"/>
+        <EditorIndex Value="5"/>
+        <TopLine Value="278"/>
+        <CursorPos X="36" Y="301"/>
+        <UsageCount Value="41"/>
         <Loaded Value="True"/>
       </Unit3>
       <Unit4>
+        <Filename Value="htmlcolors.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="HTMLColors"/>
+        <EditorIndex Value="6"/>
+        <TopLine Value="163"/>
+        <UsageCount Value="41"/>
+        <Loaded Value="True"/>
+      </Unit4>
+      <Unit5>
+        <Filename Value="ontparser.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="ONTParser"/>
+        <EditorIndex Value="4"/>
+        <TopLine Value="69"/>
+        <CursorPos X="15" Y="87"/>
+        <UsageCount Value="41"/>
+        <Loaded Value="True"/>
+      </Unit5>
+      <Unit6>
+        <Filename Value="C:\Users\rubio\AppData\Local\lazarus\onlinepackagemanager\packages\kcontrols\source\kmemo.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="11577"/>
+        <CursorPos Y="11578"/>
+        <UsageCount Value="8"/>
+      </Unit6>
+      <Unit7>
         <Filename Value="C:\tools\lazarus\lcl\graphics.pp"/>
         <UnitName Value="Graphics"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="48"/>
         <CursorPos X="3" Y="66"/>
-        <UsageCount Value="10"/>
-      </Unit4>
-      <Unit5>
+        <UsageCount Value="8"/>
+      </Unit7>
+      <Unit8>
         <Filename Value="C:\Users\rubio\AppData\Local\lazarus\onlinepackagemanager\packages\kcontrols\source\kfunctions.pas"/>
-        <EditorIndex Value="6"/>
+        <EditorIndex Value="-1"/>
         <TopLine Value="327"/>
         <CursorPos X="3" Y="346"/>
-        <UsageCount Value="10"/>
-        <Loaded Value="True"/>
-      </Unit5>
-      <Unit6>
+        <UsageCount Value="8"/>
+      </Unit8>
+      <Unit9>
         <Filename Value="C:\tools\lazarus\fpc\3.0.4\source\rtl\inc\objpash.inc"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="170"/>
         <CursorPos X="8" Y="189"/>
-        <UsageCount Value="10"/>
-      </Unit6>
-      <Unit7>
-        <Filename Value="onttokenizer.pas"/>
-        <IsPartOfProject Value="True"/>
-        <UnitName Value="ONTTokenizer"/>
-        <EditorIndex Value="2"/>
-        <TopLine Value="284"/>
-        <CursorPos X="14" Y="314"/>
-        <UsageCount Value="20"/>
-        <Loaded Value="True"/>
-      </Unit7>
-      <Unit8>
+        <UsageCount Value="8"/>
+      </Unit9>
+      <Unit10>
         <Filename Value="C:\github\ibiblia\ontparser.pas"/>
         <UnitName Value="ONTParser"/>
         <EditorIndex Value="-1"/>
         <CursorPos X="46" Y="8"/>
-        <UsageCount Value="20"/>
-      </Unit8>
-      <Unit9>
-        <Filename Value="htmlcolors.pas"/>
-        <IsPartOfProject Value="True"/>
-        <UnitName Value="HTMLColors"/>
-        <EditorIndex Value="4"/>
-        <UsageCount Value="20"/>
-        <Loaded Value="True"/>
-      </Unit9>
-      <Unit10>
-        <Filename Value="ontparser.pas"/>
-        <IsPartOfProject Value="True"/>
-        <UnitName Value="ONTParser"/>
-        <IsVisibleTab Value="True"/>
-        <EditorIndex Value="5"/>
-        <TopLine Value="7"/>
-        <CursorPos X="31" Y="30"/>
-        <UsageCount Value="20"/>
-        <Loaded Value="True"/>
+        <UsageCount Value="18"/>
       </Unit10>
+      <Unit11>
+        <Filename Value="..\..\..\.lazarus\onlinepackagemanager\packages\kcontrols\source\kmemo.pas"/>
+        <EditorIndex Value="2"/>
+        <TopLine Value="827"/>
+        <CursorPos X="14" Y="819"/>
+        <UsageCount Value="12"/>
+        <Loaded Value="True"/>
+      </Unit11>
+      <Unit12>
+        <Filename Value="..\..\..\..\..\usr\share\fpcsrc\3.0.4\packages\rtl-objpas\src\inc\strutils.pp"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="1069"/>
+        <CursorPos X="3" Y="1072"/>
+        <UsageCount Value="11"/>
+      </Unit12>
+      <Unit13>
+        <Filename Value="..\..\..\.lazarus\onlinepackagemanager\packages\kcontrols\source\kfunctions.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="323"/>
+        <CursorPos X="3" Y="346"/>
+        <UsageCount Value="10"/>
+      </Unit13>
+      <Unit14>
+        <Filename Value="..\..\..\.lazarus\onlinepackagemanager\packages\kcontrols\source\kgraphics.pas"/>
+        <EditorIndex Value="3"/>
+        <TopLine Value="1058"/>
+        <CursorPos X="3" Y="1060"/>
+        <UsageCount Value="10"/>
+        <Loaded Value="True"/>
+      </Unit14>
     </Units>
     <JumpHistory Count="30" HistoryIndex="29">
       <Position1>
-        <Filename Value="onttokenizer.pas"/>
-        <Caret Line="173" Column="12" TopLine="154"/>
+        <Filename Value="ontmemo.pas"/>
+        <Caret Line="209" TopLine="191"/>
       </Position1>
       <Position2>
-        <Filename Value="onttokenizer.pas"/>
-        <Caret Line="183" Column="22" TopLine="154"/>
+        <Filename Value="ontmemo.pas"/>
+        <Caret Line="210" TopLine="191"/>
       </Position2>
       <Position3>
-        <Filename Value="onttokenizer.pas"/>
-        <Caret Line="195" Column="31" TopLine="164"/>
+        <Filename Value="ontmemo.pas"/>
+        <Caret Line="212" TopLine="191"/>
       </Position3>
       <Position4>
-        <Filename Value="onttokenizer.pas"/>
-        <Caret Line="207" Column="22" TopLine="177"/>
+        <Filename Value="ontmemo.pas"/>
+        <Caret Line="213" TopLine="191"/>
       </Position4>
       <Position5>
-        <Filename Value="ontparser.pas"/>
-        <Caret Line="18" TopLine="8"/>
+        <Filename Value="ontmemo.pas"/>
+        <Caret Line="227" TopLine="191"/>
       </Position5>
       <Position6>
-        <Filename Value="ontparser.pas"/>
-        <Caret Line="26" Column="25"/>
+        <Filename Value="ontmemo.pas"/>
+        <Caret Line="212" TopLine="191"/>
       </Position6>
       <Position7>
-        <Filename Value="ontparser.pas"/>
-        <Caret Line="19" Column="19"/>
+        <Filename Value="ontmemo.pas"/>
+        <Caret Line="213" TopLine="191"/>
       </Position7>
       <Position8>
-        <Filename Value="ontparser.pas"/>
-        <Caret Line="26" Column="29"/>
+        <Filename Value="ontmemo.pas"/>
+        <Caret Line="216" TopLine="191"/>
       </Position8>
       <Position9>
-        <Filename Value="ontparser.pas"/>
-        <Caret Line="19" Column="24"/>
+        <Filename Value="ontmemo.pas"/>
+        <Caret Line="218" TopLine="191"/>
       </Position9>
       <Position10>
-        <Filename Value="onttokenizer.pas"/>
-        <Caret Line="219" Column="20" TopLine="284"/>
+        <Filename Value="ontmemo.pas"/>
+        <Caret Line="227" TopLine="191"/>
       </Position10>
       <Position11>
-        <Filename Value="onttokenizer.pas"/>
-        <Caret Line="35" Column="23" TopLine="11"/>
+        <Filename Value="ontmemo.pas"/>
+        <Caret Line="212" TopLine="191"/>
       </Position11>
       <Position12>
-        <Filename Value="ontparser.pas"/>
-        <Caret Line="34"/>
+        <Filename Value="ontmemo.pas"/>
+        <Caret Line="213" TopLine="191"/>
       </Position12>
       <Position13>
         <Filename Value="ontmemo.pas"/>
-        <Caret Line="45" Column="5" TopLine="24"/>
+        <Caret Line="227" TopLine="191"/>
       </Position13>
       <Position14>
-        <Filename Value="onttokenizer.pas"/>
-        <Caret Line="89" Column="9" TopLine="70"/>
+        <Filename Value="ontmemo.pas"/>
+        <Caret Line="212" TopLine="191"/>
       </Position14>
       <Position15>
-        <Filename Value="onttokenizer.pas"/>
-        <Caret Line="121" Column="9" TopLine="103"/>
+        <Filename Value="ontmemo.pas"/>
+        <Caret Line="213" TopLine="191"/>
       </Position15>
       <Position16>
-        <Filename Value="onttokenizer.pas"/>
-        <Caret Line="142" Column="9" TopLine="124"/>
+        <Filename Value="ontmemo.pas"/>
+        <Caret Line="222" TopLine="191"/>
       </Position16>
       <Position17>
-        <Filename Value="onttokenizer.pas"/>
-        <Caret Line="168" Column="9" TopLine="149"/>
+        <Filename Value="ontmemo.pas"/>
+        <Caret Line="223" TopLine="191"/>
       </Position17>
       <Position18>
-        <Filename Value="onttokenizer.pas"/>
-        <Caret Line="244" Column="14" TopLine="223"/>
+        <Filename Value="ontmemo.pas"/>
+        <Caret Line="224" TopLine="191"/>
       </Position18>
       <Position19>
-        <Filename Value="onttokenizer.pas"/>
-        <Caret Line="268" Column="19" TopLine="250"/>
+        <Filename Value="ontmemo.pas"/>
+        <Caret Line="227" TopLine="191"/>
       </Position19>
       <Position20>
-        <Filename Value="onttokenizer.pas"/>
-        <Caret Line="312" Column="16" TopLine="281"/>
+        <Filename Value="ontmemo.pas"/>
+        <Caret Line="212" TopLine="191"/>
       </Position20>
       <Position21>
-        <Filename Value="ontparser.pas"/>
-        <Caret Line="28" Column="37" TopLine="7"/>
+        <Filename Value="ontmemo.pas"/>
+        <Caret Line="213" TopLine="191"/>
       </Position21>
       <Position22>
-        <Filename Value="onttokenizer.pas"/>
-        <Caret Line="312" Column="16" TopLine="281"/>
+        <Filename Value="ontmemo.pas"/>
+        <Caret Line="227" TopLine="191"/>
       </Position22>
       <Position23>
-        <Filename Value="onttokenizer.pas"/>
-        <Caret Line="36" Column="32" TopLine="11"/>
+        <Filename Value="ontmemo.pas"/>
+        <Caret Line="229" TopLine="191"/>
       </Position23>
       <Position24>
-        <Filename Value="onttokenizer.pas"/>
-        <Caret Line="244" Column="8" TopLine="226"/>
+        <Filename Value="ontmemo.pas"/>
+        <Caret Line="230" TopLine="191"/>
       </Position24>
       <Position25>
-        <Filename Value="onttokenizer.pas"/>
-        <Caret Line="307" TopLine="284"/>
+        <Filename Value="ontmemo.pas"/>
+        <Caret Line="209" TopLine="191"/>
       </Position25>
       <Position26>
-        <Filename Value="onttokenizer.pas"/>
-        <Caret Line="274" Column="37" TopLine="269"/>
+        <Filename Value="ontmemo.pas"/>
+        <Caret Line="210" TopLine="191"/>
       </Position26>
       <Position27>
-        <Filename Value="onttokenizer.pas"/>
-        <Caret Line="37" Column="31" TopLine="18"/>
+        <Filename Value="ontmemo.pas"/>
+        <Caret Line="217" Column="13" TopLine="191"/>
       </Position27>
       <Position28>
-        <Filename Value="onttokenizer.pas"/>
-        <Caret Line="274" Column="49" TopLine="269"/>
+        <Filename Value="ontmemo.pas"/>
+        <Caret Line="233" Column="19" TopLine="194"/>
       </Position28>
       <Position29>
-        <Filename Value="onttokenizer.pas"/>
-        <Caret Line="37" TopLine="13"/>
+        <Filename Value="ontmemo.pas"/>
+        <Caret Line="215" Column="53" TopLine="194"/>
       </Position29>
       <Position30>
-        <Filename Value="onttokenizer.pas"/>
-        <Caret Line="314" Column="14" TopLine="284"/>
+        <Filename Value="ontmemo.pas"/>
+        <Caret Line="156" Column="3" TopLine="127"/>
       </Position30>
     </JumpHistory>
     <RunParams>

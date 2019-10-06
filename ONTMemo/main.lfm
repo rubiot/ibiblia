@@ -1,18 +1,19 @@
 object Form1: TForm1
-  Left = 321
+  Left = 300
   Height = 463
-  Top = 127
+  Top = 141
   Width = 683
   Caption = 'Form1'
   ClientHeight = 463
   ClientWidth = 683
   OnCreate = FormCreate
-  LCLVersion = '2.0.4.0'
+  LCLVersion = '2.0.2.0'
   object Panel1: TPanel
-    Left = 8
-    Height = 346
-    Top = 8
-    Width = 664
+    Left = 0
+    Height = 463
+    Top = 0
+    Width = 683
+    Align = alClient
     Caption = 'Panel1'
     TabOrder = 0
   end

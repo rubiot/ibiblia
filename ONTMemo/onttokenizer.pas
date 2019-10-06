@@ -35,7 +35,7 @@ type
     destructor Destroy; override;
     function ReadToken: TTokenKind;
     function ReadProperty(prop: string): string;
-    procedure ReadUntilTag(AteTag: string);
+    procedure ReadUntilTag(UntilTag: string; KeepSurroundingTags: Boolean = False);
 
     property Token: TToken read FToken;
   end;
@@ -51,7 +51,7 @@ constructor TONTTokenizer.Create(XML: PChar);
 begin
   FXML := XML;
   FPXML := FXML;
-  if pos(#239#187#191, FPXML) = 1 then // saltando o UTF-8 BOM
+  if pos(#239#187#191, FPXML) = 1 then // skipping UTF-8 byte-order-marker
      inc(FPXML, 3);
   FToken.Kind := ttNull;
   FToken.Text := '';
@@ -175,7 +175,7 @@ end;
 
 function TONTTokenizer.ReadToken: TTokenKind;
 
-  function Contido(c: cardinal; v: array of cardinal): boolean;
+  function Contained(c: cardinal; v: array of cardinal): boolean;
   var
     i: integer;
   begin
@@ -191,7 +191,7 @@ function TONTTokenizer.ReadToken: TTokenKind;
     ini: PChar;
   begin
     ini := FPXML;
-    while (FPXML^ <> #0) and not Contido(UTF8CodePointToUnicode(FPXML, t), ate) do
+    while (FPXML^ <> #0) and not Contained(UTF8CodePointToUnicode(FPXML, t), ate) do
       inc(FPXML, t);
 
     s.Text := copy(ini, 0, FPXML-ini);
@@ -215,13 +215,13 @@ function TONTTokenizer.ReadToken: TTokenKind;
     ini: PChar;
   begin
     ini := FPXML;
-    while (FPXML^ <> #0) and Contido(UTF8CodePointToUnicode(FPXML, t), enquanto) do
+    while (FPXML^ <> #0) and Contained(UTF8CodePointToUnicode(FPXML, t), enquanto) do
       inc(FPXML, t);
 
     s.Text := copy(ini, 0, FPXML-ini);
   end;
 
-  function tipoChar: TTokenKind;
+  function charKind: TTokenKind;
   var
     t: integer;
     c: Cardinal;
@@ -232,19 +232,19 @@ function TONTTokenizer.ReadToken: TTokenKind;
       result := ttEOF
     else if c = ord('<') then
       result := ttTag
-    else if Contido(c, [ord(#32), ord(#9), ord('|')]) then
+    else if Contained(c, [ord(#32), ord(#9), ord('|')]) then
       result := ttSpace
-    else if Contido(c, [ord('"'), ord('.'), ord(','), ord(';'), ord(':'),
+    else if Contained(c, [ord('"'), ord('.'), ord(','), ord(';'), ord(':'),
                         ord('!'), ord('?'), ord('('), ord(')'),
                         183, 903, 8220, 8221{, ord('-')}]) // hack para ··“”
     then
       result := ttPunctuation;
   end;
 var
-  hifen: string;
+  hyphen: string;
 begin
   FToken.Text := '';
-  FToken.Kind := tipoChar;
+  FToken.Kind := charKind;
 
   case FToken.Kind of
     ttSpace:
@@ -260,15 +260,15 @@ begin
   else
     if FPXML^ = '-' then
     begin
-      hifen := '-';
+      hyphen := '-';
       Inc(FPXML);
     end else
-      hifen := '';
+      hyphen := '';
 
     ReadUntil(FToken, [ord('<'), ord(#32), ord(#9), ord('|'), ord('"'), ord('.'),
                ord(','), ord(';'), ord(':'), ord('!'), ord('?'), ord('-'),
                ord('('), ord(')'), 183, 903, 8220, 8221]);  // hack para ··“”
-    FToken.Text := hifen + FToken.Text;
+    FToken.Text := hyphen + FToken.Text;
   end;
 
   //MessageDlg('Fechar projeto', '"'+FToken.Text+'"', mtConfirmation, [], 0);
@@ -308,16 +308,20 @@ begin
   result := copy(FToken.Text, i, f-i);
 end;
 
-procedure TONTTokenizer.ReadUntilTag(AteTag: string);
+procedure TONTTokenizer.ReadUntilTag(UntilTag: string; KeepSurroundingTags: Boolean = False);
 var
   valor: string;
 begin
-  valor := '';
-  repeat
+  valor := IfThen(KeepSurroundingTags, FToken.Text, '');
+
+  ReadToken;
+  while (FToken.Kind <> ttNull) and (FToken.Text <> UntilTag) do
+  begin
     valor := concat(valor, FToken.Text);
     ReadToken;
-  until (FToken.Kind = ttNull) or (FToken.Text = AteTag);
-  FToken.Text := valor + FToken.Text;
+  end;
+
+  FToken.Text := valor + IfThen(KeepSurroundingTags, FToken.Text, '');
 end;
 
 end.
