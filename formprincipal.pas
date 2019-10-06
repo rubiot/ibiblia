@@ -15,7 +15,7 @@ uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, Menus,
   ActnList, ComCtrls, ExtCtrls, StdCtrls, Projeto, IniFiles, Math,
   Sintagma, LCLTranslator, unitabout, PCRE, Versiculo,
-  LCLType, LazUTF8, KChapterView;
+  LCLType, LazUTF8, ChapterView;
 
 type
 
@@ -173,7 +173,7 @@ type
     { private declarations }
     FPopupTrigger: TPopupTrigger;
     FCurrentRef: string;
-    FChapterView: TKChapterView;
+    FChapterView: TChapterView;
     {$IFDEF WINDOWS}
     FRxMorpho: IRegex;
     syncTw2iBiblia: boolean;
@@ -686,7 +686,7 @@ begin
     MenuItemLangPt.Checked:=true;
   Translate;
 
-  FChapterView := TKChapterView.Create(ChapterViewTabCtrl);
+  FChapterView := TChapterView.Create(ChapterViewTabCtrl);
   with FChapterView do
   begin
     ParentWindow := ChapterViewTabCtrl.Handle;

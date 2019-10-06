@@ -1,4 +1,4 @@
-unit KChapterView;
+unit ChapterView;
 
 {$mode objfpc}{$H+}
 
@@ -36,13 +36,13 @@ type
     property LastBlock: integer read FRange.last write FRange.last;
   end;
 
-  TKChapterView = class;
+  TChapterView = class;
 
   { TNoteWindow }
 
   TNoteWindow = class(THintWindow)
   private
-    FNoteView: TKChapterView;
+    FNoteView: TChapterView;
     function GetScrollBarsVisible: boolean;
     procedure InitNoteView;
     procedure SetNoteText(const AText: string; const AStyle: TKMemoTextStyle);
@@ -58,9 +58,9 @@ type
   TViewMode = (vmParagraph, vmVersePerLine);
   TNoteList = specialize TFPGList<TNoteInfo>;
 
-  { TKChapterView }
+  { TChapterView }
 
-  TKChapterView = class(TKMemo)
+  TChapterView = class(TKMemo)
   private
     FFontName: string;
     FFontSize: integer;
@@ -142,8 +142,8 @@ implementation
 
 procedure TNoteWindow.InitNoteView;
 begin
-  InsertControl(TKChapterView.Create(nil));
-  FNoteView := Controls[0] as TKChapterView;
+  InsertControl(TChapterView.Create(nil));
+  FNoteView := Controls[0] as TChapterView;
   with FNoteView do
   begin
     PopupMenu.Free;
@@ -232,9 +232,9 @@ begin
   FLinkText := linktext;
 end;
 
-{ TKChapterView }
+{ TChapterView }
 
-procedure TKChapterView.RenderVerse(txt: string);
+procedure TChapterView.RenderVerse(txt: string);
 var
   mtHeading: IMatch;
   heading: string;
@@ -275,12 +275,12 @@ begin
     Blocks.AddParagraph().ParaStyle.FirstIndent := 0;
 end;
 
-function TKChapterView.GetCurrentStyle: TKMemoTextStyle;
+function TChapterView.GetCurrentStyle: TKMemoTextStyle;
 begin
   result := TKMemoTextStyle(FStyleStack.Peek);
 end;
 
-procedure TKChapterView.RenderSpan(txt: string);
+procedure TChapterView.RenderSpan(txt: string);
 var
   FTokenizer: TONTTokenizer;
   token: TTagSintagma;
@@ -440,7 +440,7 @@ begin
   Blocks.UnLockUpdate;
 end;
 
-procedure TKChapterView.RenderNote(link: string; note: string);
+procedure TChapterView.RenderNote(link: string; note: string);
 begin
   if link.IsEmpty then
     link := FNoteID.ToString;
@@ -461,7 +461,7 @@ begin
   Inc(FNoteID);
 end;
 
-procedure TKChapterView.RenderNotes;
+procedure TChapterView.RenderNotes;
 var
   note: TNoteInfo;
 begin
@@ -490,12 +490,12 @@ begin
   end;
 end;
 
-procedure TKChapterView.HandleReferenceClick(sender: TObject);
+procedure TChapterView.HandleReferenceClick(sender: TObject);
 begin
   FProject.IrPara(TKMemoHyperlink(Sender).URL);
 end;
 
-procedure TKChapterView.HandleNoteLinkClick(sender: TObject);
+procedure TChapterView.HandleNoteLinkClick(sender: TObject);
 var
   note: TNoteInfo;
   c: integer = 0;
@@ -507,7 +507,7 @@ begin
   until not FHint.ScrollBarsVisible or (c = 2);
 end;
 
-procedure TKChapterView.HandleNoteClick(sender: TObject);
+procedure TChapterView.HandleNoteClick(sender: TObject);
 var
   note: TNoteInfo;
 begin
@@ -517,7 +517,7 @@ begin
   HightlightRange(FVerseRanges[note.Verse], clSilver); // un-highlight current note text
 end;
 
-procedure TKChapterView.HandleVerseChange(Sender: TProjeto);
+procedure TChapterView.HandleVerseChange(Sender: TProjeto);
 var
   verses: TStringList;
 begin
@@ -532,7 +532,7 @@ begin
   end;
 end;
 
-procedure TKChapterView.HandleKeyDown(Sender: TObject; var Key: Word;
+procedure TChapterView.HandleKeyDown(Sender: TObject; var Key: Word;
   Shift: TShiftState);
 begin
   if (ssCtrl in Shift) and (Key in [VK_SUBTRACT, VK_OEM_MINUS]) and (FFontSize > 1) then
@@ -547,14 +547,14 @@ begin
   end;
 end;
 
-procedure TKChapterView.HandlePopupKeyDown(Sender: TObject; var Key: Word;
+procedure TChapterView.HandlePopupKeyDown(Sender: TObject; var Key: Word;
   Shift: TShiftState);
 begin
   if Key = VK_ESCAPE then
     (Parent as THintWindow).Hide;
 end;
 
-procedure TKChapterView.HandleMouseMove(Sender: TObject; Shift: TShiftState; X,
+procedure TChapterView.HandleMouseMove(Sender: TObject; Shift: TShiftState; X,
   Y: Integer);
 begin
 {
@@ -621,7 +621,7 @@ begin
   FHint.ActivateHint(Rect, note);}
 end;
 
-procedure TKChapterView.HandleMouseWheel(Sender: TObject; Shift: TShiftState;
+procedure TChapterView.HandleMouseWheel(Sender: TObject; Shift: TShiftState;
   WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
 begin
   if ssCtrl in Shift then
@@ -634,7 +634,7 @@ begin
   end;
 end;
 
-procedure TKChapterView.HandleSetFont(Sender: TObject);
+procedure TChapterView.HandleSetFont(Sender: TObject);
 var
   dialog: TFontDialog;
 begin
@@ -653,17 +653,17 @@ begin
   dialog.Free;
 end;
 
-procedure TKChapterView.HandleParagraphMode(Sender: TObject);
+procedure TChapterView.HandleParagraphMode(Sender: TObject);
 begin
   VerseMode := vmParagraph;
 end;
 
-procedure TKChapterView.HandleVersePerLineMode(Sender: TObject);
+procedure TChapterView.HandleVersePerLineMode(Sender: TObject);
 begin
   VerseMode := vmVersePerLine;
 end;
 
-procedure TKChapterView.SetProject(AValue: TProjeto);
+procedure TChapterView.SetProject(AValue: TProjeto);
 begin
   if FProject = AValue then Exit;
   FProject := AValue;
@@ -675,7 +675,7 @@ begin
   end;
 end;
 
-procedure TKChapterView.InitPopupMenu;
+procedure TChapterView.InitPopupMenu;
 begin
   PopupMenu := TPopupMenu.Create(Self);
   PopupMenu.Parent := Self;
@@ -710,7 +710,7 @@ begin
   PopupMenu.Items.Add(FVersePerLineItem);
 end;
 
-procedure TKChapterView.SetVerseMode(AValue: TViewMode);
+procedure TChapterView.SetVerseMode(AValue: TViewMode);
 begin
   if FVerseMode = AValue
     then Exit;
@@ -721,7 +721,7 @@ begin
   HandleVerseChange(FProject);
 end;
 
-procedure TKChapterView.SetFontSize(AValue: integer);
+procedure TChapterView.SetFontSize(AValue: integer);
 begin
   if (FFontSize = AValue) or (AValue < 1) then Exit;
 
@@ -732,7 +732,7 @@ begin
   Blocks.UnlockUpdate;
 end;
 
-procedure TKChapterView.SetFontName(AValue: string);
+procedure TChapterView.SetFontName(AValue: string);
 begin
   if (FFontName = AValue) then Exit;
 
@@ -743,13 +743,13 @@ begin
   Blocks.UnlockUpdate;
 end;
 
-function TKChapterView.PushNewStyle: TKMemoTextStyle;
+function TChapterView.PushNewStyle: TKMemoTextStyle;
 begin
   result := TKMemoTextStyle(FStyleStack.Push(TKMemoTextStyle.Create));
   result.Assign(TextStyle);
 end;
 
-function TKChapterView.PushInheritedStyle: TKMemoTextStyle;
+function TChapterView.PushInheritedStyle: TKMemoTextStyle;
 var
   current: TKMemoTextStyle;
 begin
@@ -758,12 +758,12 @@ begin
   result.Assign(current);
 end;
 
-procedure TKChapterView.PopStyle;
+procedure TChapterView.PopStyle;
 begin
   FStyleStack.Pop.Free;
 end;
 
-procedure TKChapterView.HightlightRange(range: TBlockRange; bgcolor: TColor);
+procedure TChapterView.HightlightRange(range: TBlockRange; bgcolor: TColor);
 var
   i: integer;
 begin
@@ -773,7 +773,7 @@ begin
         TextStyle.Brush.Color := bgcolor;
 end;
 
-procedure TKChapterView.ResetStyleStack;
+procedure TChapterView.ResetStyleStack;
 begin
   while FStyleStack.Count > 0 do
     PopStyle;
@@ -785,7 +785,7 @@ begin
   PushNewStyle; // pushing default style onto stack
 end;
 
-function TKChapterView.GetPreviousParagraphBlock: TKMemoParagraph;
+function TChapterView.GetPreviousParagraphBlock: TKMemoParagraph;
 var
   b: TKMemoBlockIndex;
 begin
@@ -798,7 +798,7 @@ begin
     end;
 end;
 
-procedure TKChapterView.RenderChapterHeader;
+procedure TChapterView.RenderChapterHeader;
 var
   c: integer;
 begin
@@ -844,7 +844,7 @@ begin
   end;
 end;
 
-procedure TKChapterView.RenderChapterFooter;
+procedure TChapterView.RenderChapterFooter;
   function GetFirstBook: integer;
   begin
     if FProject.Escopo = etNT then
@@ -946,7 +946,7 @@ begin
   end;
 end;
 
-procedure TKChapterView.SetEnabled(Value: Boolean);
+procedure TChapterView.SetEnabled(Value: Boolean);
 begin
   if assigned(FProject) and not Value and Enabled then
   begin
@@ -957,7 +957,7 @@ begin
   inherited SetEnabled(Value);
 end;
 
-constructor TKChapterView.Create(AOwner: TComponent);
+constructor TChapterView.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   Parent       := TWinControl(AOwner);
@@ -978,7 +978,7 @@ begin
   FStyleStack := TObjectStack.Create;
 end;
 
-destructor TKChapterView.Destroy;
+destructor TChapterView.Destroy;
 begin
   FNotes.Free;
   FHint.Free;
@@ -989,12 +989,12 @@ begin
   inherited Destroy;
 end;
 
-procedure TKChapterView.LoadChapter;
+procedure TChapterView.LoadChapter;
 begin
   HandleVerseChange(FProject);
 end;
 
-procedure TKChapterView.RenderChapter(verses: TStringList; current: integer);
+procedure TChapterView.RenderChapter(verses: TStringList; current: integer);
 var
   verse: string;
 begin
