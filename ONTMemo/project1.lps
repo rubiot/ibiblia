@@ -8,9 +8,9 @@
       <Unit0>
         <Filename Value="project1.lpr"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="7"/>
+        <EditorIndex Value="6"/>
         <CursorPos Y="15"/>
-        <UsageCount Value="41"/>
+        <UsageCount Value="43"/>
         <Loaded Value="True"/>
       </Unit0>
       <Unit1>
@@ -19,9 +19,9 @@
         <ComponentName Value="Form1"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <TopLine Value="6"/>
-        <CursorPos X="126" Y="48"/>
-        <UsageCount Value="41"/>
+        <TopLine Value="28"/>
+        <CursorPos X="16" Y="63"/>
+        <UsageCount Value="43"/>
         <Loaded Value="True"/>
         <LoadedDesigner Value="True"/>
       </Unit1>
@@ -31,46 +31,47 @@
         <UnitName Value="ONTMemo"/>
         <IsVisibleTab Value="True"/>
         <EditorIndex Value="1"/>
-        <TopLine Value="195"/>
-        <CursorPos X="28" Y="232"/>
-        <UsageCount Value="41"/>
+        <TopLine Value="203"/>
+        <CursorPos Y="220"/>
+        <UsageCount Value="43"/>
         <Loaded Value="True"/>
       </Unit2>
       <Unit3>
         <Filename Value="onttokenizer.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="ONTTokenizer"/>
-        <EditorIndex Value="5"/>
+        <EditorIndex Value="4"/>
         <TopLine Value="278"/>
         <CursorPos X="36" Y="301"/>
-        <UsageCount Value="41"/>
+        <UsageCount Value="43"/>
         <Loaded Value="True"/>
       </Unit3>
       <Unit4>
         <Filename Value="htmlcolors.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="HTMLColors"/>
-        <EditorIndex Value="6"/>
+        <EditorIndex Value="5"/>
         <TopLine Value="163"/>
-        <UsageCount Value="41"/>
+        <UsageCount Value="43"/>
         <Loaded Value="True"/>
       </Unit4>
       <Unit5>
         <Filename Value="ontparser.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="ONTParser"/>
-        <EditorIndex Value="4"/>
+        <EditorIndex Value="3"/>
         <TopLine Value="69"/>
         <CursorPos X="15" Y="87"/>
-        <UsageCount Value="41"/>
+        <UsageCount Value="43"/>
         <Loaded Value="True"/>
       </Unit5>
       <Unit6>
         <Filename Value="C:\Users\rubio\AppData\Local\lazarus\onlinepackagemanager\packages\kcontrols\source\kmemo.pas"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="11577"/>
-        <CursorPos Y="11578"/>
-        <UsageCount Value="8"/>
+        <EditorIndex Value="2"/>
+        <TopLine Value="1455"/>
+        <CursorPos X="14" Y="1469"/>
+        <UsageCount Value="10"/>
+        <Loaded Value="True"/>
       </Unit6>
       <Unit7>
         <Filename Value="C:\tools\lazarus\lcl\graphics.pp"/>
@@ -95,163 +96,161 @@
         <UsageCount Value="8"/>
       </Unit9>
       <Unit10>
-        <Filename Value="C:\github\ibiblia\ontparser.pas"/>
+        <Filename Value="..\ontparser.pas"/>
         <UnitName Value="ONTParser"/>
         <EditorIndex Value="-1"/>
         <CursorPos X="46" Y="8"/>
         <UsageCount Value="18"/>
       </Unit10>
       <Unit11>
-        <Filename Value="..\..\..\.lazarus\onlinepackagemanager\packages\kcontrols\source\kmemo.pas"/>
-        <EditorIndex Value="2"/>
+        <Filename Value="C:\.lazarus\onlinepackagemanager\packages\kcontrols\source\kmemo.pas"/>
+        <EditorIndex Value="-1"/>
         <TopLine Value="827"/>
         <CursorPos X="14" Y="819"/>
         <UsageCount Value="12"/>
-        <Loaded Value="True"/>
       </Unit11>
       <Unit12>
-        <Filename Value="..\..\..\..\..\usr\share\fpcsrc\3.0.4\packages\rtl-objpas\src\inc\strutils.pp"/>
+        <Filename Value="C:\usr\share\fpcsrc\3.0.4\packages\rtl-objpas\src\inc\strutils.pp"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="1069"/>
         <CursorPos X="3" Y="1072"/>
         <UsageCount Value="11"/>
       </Unit12>
       <Unit13>
-        <Filename Value="..\..\..\.lazarus\onlinepackagemanager\packages\kcontrols\source\kfunctions.pas"/>
+        <Filename Value="C:\.lazarus\onlinepackagemanager\packages\kcontrols\source\kfunctions.pas"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="323"/>
         <CursorPos X="3" Y="346"/>
         <UsageCount Value="10"/>
       </Unit13>
       <Unit14>
-        <Filename Value="..\..\..\.lazarus\onlinepackagemanager\packages\kcontrols\source\kgraphics.pas"/>
-        <EditorIndex Value="3"/>
+        <Filename Value="C:\.lazarus\onlinepackagemanager\packages\kcontrols\source\kgraphics.pas"/>
+        <EditorIndex Value="-1"/>
         <TopLine Value="1058"/>
         <CursorPos X="3" Y="1060"/>
         <UsageCount Value="10"/>
-        <Loaded Value="True"/>
       </Unit14>
     </Units>
-    <JumpHistory Count="30" HistoryIndex="29">
+    <JumpHistory Count="30" HistoryIndex="25">
       <Position1>
         <Filename Value="ontmemo.pas"/>
-        <Caret Line="209" TopLine="191"/>
+        <Caret Line="230" TopLine="202"/>
       </Position1>
       <Position2>
         <Filename Value="ontmemo.pas"/>
-        <Caret Line="210" TopLine="191"/>
+        <Caret Line="231" TopLine="203"/>
       </Position2>
       <Position3>
         <Filename Value="ontmemo.pas"/>
-        <Caret Line="212" TopLine="191"/>
+        <Caret Line="237" TopLine="209"/>
       </Position3>
       <Position4>
         <Filename Value="ontmemo.pas"/>
-        <Caret Line="213" TopLine="191"/>
+        <Caret Line="241" TopLine="213"/>
       </Position4>
       <Position5>
         <Filename Value="ontmemo.pas"/>
-        <Caret Line="227" TopLine="191"/>
+        <Caret Line="216" TopLine="209"/>
       </Position5>
       <Position6>
         <Filename Value="ontmemo.pas"/>
-        <Caret Line="212" TopLine="191"/>
+        <Caret Line="222" TopLine="209"/>
       </Position6>
       <Position7>
         <Filename Value="ontmemo.pas"/>
-        <Caret Line="213" TopLine="191"/>
+        <Caret Line="225" TopLine="209"/>
       </Position7>
       <Position8>
         <Filename Value="ontmemo.pas"/>
-        <Caret Line="216" TopLine="191"/>
+        <Caret Line="222" TopLine="209"/>
       </Position8>
       <Position9>
         <Filename Value="ontmemo.pas"/>
-        <Caret Line="218" TopLine="191"/>
+        <Caret Line="225" TopLine="209"/>
       </Position9>
       <Position10>
         <Filename Value="ontmemo.pas"/>
-        <Caret Line="227" TopLine="191"/>
+        <Caret Line="241" TopLine="213"/>
       </Position10>
       <Position11>
         <Filename Value="ontmemo.pas"/>
-        <Caret Line="212" TopLine="191"/>
+        <Caret Line="216" TopLine="209"/>
       </Position11>
       <Position12>
         <Filename Value="ontmemo.pas"/>
-        <Caret Line="213" TopLine="191"/>
+        <Caret Line="217" TopLine="209"/>
       </Position12>
       <Position13>
         <Filename Value="ontmemo.pas"/>
-        <Caret Line="227" TopLine="191"/>
+        <Caret Line="222" TopLine="213"/>
       </Position13>
       <Position14>
         <Filename Value="ontmemo.pas"/>
-        <Caret Line="212" TopLine="191"/>
+        <Caret Line="223" TopLine="213"/>
       </Position14>
       <Position15>
-        <Filename Value="ontmemo.pas"/>
-        <Caret Line="213" TopLine="191"/>
+        <Filename Value="C:\Users\rubio\AppData\Local\lazarus\onlinepackagemanager\packages\kcontrols\source\kmemo.pas"/>
+        <Caret Line="12950" TopLine="12933"/>
       </Position15>
       <Position16>
-        <Filename Value="ontmemo.pas"/>
-        <Caret Line="222" TopLine="191"/>
+        <Filename Value="C:\Users\rubio\AppData\Local\lazarus\onlinepackagemanager\packages\kcontrols\source\kmemo.pas"/>
+        <Caret Line="12951" TopLine="12933"/>
       </Position16>
       <Position17>
-        <Filename Value="ontmemo.pas"/>
-        <Caret Line="223" TopLine="191"/>
+        <Filename Value="C:\Users\rubio\AppData\Local\lazarus\onlinepackagemanager\packages\kcontrols\source\kmemo.pas"/>
+        <Caret Line="12952" TopLine="12933"/>
       </Position17>
       <Position18>
-        <Filename Value="ontmemo.pas"/>
-        <Caret Line="224" TopLine="191"/>
+        <Filename Value="C:\Users\rubio\AppData\Local\lazarus\onlinepackagemanager\packages\kcontrols\source\kmemo.pas"/>
+        <Caret Line="12953" TopLine="12933"/>
       </Position18>
       <Position19>
-        <Filename Value="ontmemo.pas"/>
-        <Caret Line="227" TopLine="191"/>
+        <Filename Value="C:\Users\rubio\AppData\Local\lazarus\onlinepackagemanager\packages\kcontrols\source\kmemo.pas"/>
+        <Caret Line="12954" TopLine="12941"/>
       </Position19>
       <Position20>
-        <Filename Value="ontmemo.pas"/>
-        <Caret Line="212" TopLine="191"/>
+        <Filename Value="C:\Users\rubio\AppData\Local\lazarus\onlinepackagemanager\packages\kcontrols\source\kmemo.pas"/>
+        <Caret Line="12955" TopLine="12941"/>
       </Position20>
       <Position21>
-        <Filename Value="ontmemo.pas"/>
-        <Caret Line="213" TopLine="191"/>
+        <Filename Value="C:\Users\rubio\AppData\Local\lazarus\onlinepackagemanager\packages\kcontrols\source\kmemo.pas"/>
+        <Caret Line="12956" TopLine="12941"/>
       </Position21>
       <Position22>
-        <Filename Value="ontmemo.pas"/>
-        <Caret Line="227" TopLine="191"/>
+        <Filename Value="C:\Users\rubio\AppData\Local\lazarus\onlinepackagemanager\packages\kcontrols\source\kmemo.pas"/>
+        <Caret Line="12944" Column="28" TopLine="12933"/>
       </Position22>
       <Position23>
-        <Filename Value="ontmemo.pas"/>
-        <Caret Line="229" TopLine="191"/>
+        <Filename Value="C:\Users\rubio\AppData\Local\lazarus\onlinepackagemanager\packages\kcontrols\source\kmemo.pas"/>
+        <Caret Line="1469" Column="14" TopLine="1453"/>
       </Position23>
       <Position24>
         <Filename Value="ontmemo.pas"/>
-        <Caret Line="230" TopLine="191"/>
+        <Caret Line="223" Column="57" TopLine="213"/>
       </Position24>
       <Position25>
-        <Filename Value="ontmemo.pas"/>
-        <Caret Line="209" TopLine="191"/>
+        <Filename Value="C:\Users\rubio\AppData\Local\lazarus\onlinepackagemanager\packages\kcontrols\source\kmemo.pas"/>
+        <Caret Line="12950" Column="3" TopLine="12943"/>
       </Position25>
       <Position26>
         <Filename Value="ontmemo.pas"/>
-        <Caret Line="210" TopLine="191"/>
+        <Caret Line="220" TopLine="203"/>
       </Position26>
       <Position27>
-        <Filename Value="ontmemo.pas"/>
-        <Caret Line="217" Column="13" TopLine="191"/>
+        <Filename Value="C:\Users\rubio\AppData\Local\lazarus\onlinepackagemanager\packages\kcontrols\source\kmemo.pas"/>
+        <Caret Line="1469" Column="14" TopLine="1454"/>
       </Position27>
       <Position28>
-        <Filename Value="ontmemo.pas"/>
-        <Caret Line="233" Column="19" TopLine="194"/>
+        <Filename Value="C:\Users\rubio\AppData\Local\lazarus\onlinepackagemanager\packages\kcontrols\source\kmemo.pas"/>
+        <Caret Line="12955" TopLine="12943"/>
       </Position28>
       <Position29>
-        <Filename Value="ontmemo.pas"/>
-        <Caret Line="215" Column="53" TopLine="194"/>
+        <Filename Value="C:\Users\rubio\AppData\Local\lazarus\onlinepackagemanager\packages\kcontrols\source\kmemo.pas"/>
+        <Caret Line="1459" Column="14" TopLine="1443"/>
       </Position29>
       <Position30>
-        <Filename Value="ontmemo.pas"/>
-        <Caret Line="156" Column="3" TopLine="127"/>
+        <Filename Value="C:\Users\rubio\AppData\Local\lazarus\onlinepackagemanager\packages\kcontrols\source\kmemo.pas"/>
+        <Caret Line="12732" TopLine="12726"/>
       </Position30>
     </JumpHistory>
     <RunParams>

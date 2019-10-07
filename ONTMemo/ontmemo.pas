@@ -202,8 +202,9 @@ var
   parser: TONTParser;
   token: TONTToken;
   cont: TKMemoContainer;
-  //maxWidth: integer;
+  //lineWidth, maxWidth: integer;
 begin
+  //lineWidth := 0;
   //maxWidth := 0;
   cont := Blocks.AddContainer();
   cont.Position := mbpText;
@@ -216,24 +217,36 @@ begin
       case token.Kind of
         otText:
         begin
-          //if (cont.Blocks.Count > 0) and (cont.Blocks.LastBlock.ClassName <> 'TKMemoParagraph') then
-          //  cont.Blocks.AddParagraph();
-          //maxWidth := Max(maxWidth, cont.Blocks.AddTextBlock(token.Text).Width);
-          cont.Blocks.AddTextBlock(token.Text)
+          if assigned(cont.Blocks.LastBlock) and cont.Blocks.LastBlock.ClassNameIs('TKMemoTextBlock') then
+            cont.Blocks.InsertString(cont.Blocks.Count-1, true, token.Text)
+          else
+            cont.Blocks.AddTextBlock(token.Text);
+          //Inc(lineWidth, cont.Blocks.LastBlock.BoundsRect.Right);
         end;
         otTranslationBlock, otTransliterationBlock:
         begin
           if cont.Blocks.Count > 0 then
             cont.Blocks.AddParagraph();
-          //maxWidth := Max(maxWidth, cont.Blocks.AddTextBlock(token.Text).BoundsRect.Right);
-          cont.Blocks.AddTextBlock(token.Text);
+          {if lineWidth > 0 then
+          begin
+            maxWidth := Max(maxWidth, lineWidth);
+            lineWidth := 0;
+          end;}
+          cont.Blocks.AddTextBlock(token.Text).TextStyle.Font.Color := clBlue;
+          //Inc(lineWidth, cont.Blocks.LastBlock.BoundsRect.Right);
         end;
       end;
     until token.Kind = otNull;
-  finally
-    //cont.RequiredWidth := 100;
-    //cont.Blocks.AddParagraph();
+
+    {if lineWidth > 0 then
+    begin
+      maxWidth := Max(maxWidth, lineWidth);
+      lineWidth := 0;
+    end;}
+    //cont.RequiredWidth := maxWidth;
     cont.BlockStyle.BottomPadding := 10;
+
+  finally
     parser.Free;
   end;
 end;
