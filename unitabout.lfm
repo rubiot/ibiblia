@@ -2,22 +2,23 @@ object FormAbout: TFormAbout
   Left = 567
   Height = 124
   Top = 237
-  Width = 392
+  Width = 450
   BorderIcons = [biSystemMenu]
   BorderStyle = bsToolWindow
   Caption = 'About iBiblia'
   ClientHeight = 124
-  ClientWidth = 392
+  ClientWidth = 450
   OnCreate = FormCreate
   Position = poMainFormCenter
-  LCLVersion = '2.0.2.0'
+  LCLVersion = '2.0.4.0'
   object Label1: TLabel
     Left = 0
     Height = 30
     Top = 0
-    Width = 392
+    Width = 450
     Align = alTop
     Alignment = taCenter
+    AutoSize = False
     Caption = 'iBiblia'
     Font.Height = -21
     Font.Style = [fsBold]
@@ -26,9 +27,9 @@ object FormAbout: TFormAbout
   end
   object LabelVersion: TLabel
     Left = 0
-    Height = 24
+    Height = 21
     Top = 27
-    Width = 392
+    Width = 450
     Alignment = taCenter
     AutoSize = False
     Caption = 'iBiblia version'
@@ -38,9 +39,9 @@ object FormAbout: TFormAbout
   end
   object Label2: TLabel
     Left = 0
-    Height = 32
+    Height = 21
     Top = 64
-    Width = 392
+    Width = 450
     Alignment = taCenter
     AutoSize = False
     Caption = 'Copyright Rúbio R. C. Terra <rubio.terra@gmail.com>'
@@ -50,9 +51,9 @@ object FormAbout: TFormAbout
   end
   object Label3: TLabel
     Left = 0
-    Height = 24
+    Height = 21
     Top = 88
-    Width = 392
+    Width = 450
     Alignment = taCenter
     AutoSize = False
     Caption = 'https://github.com/rubiot/ibiblia'
