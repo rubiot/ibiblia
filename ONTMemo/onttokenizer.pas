@@ -16,6 +16,11 @@ type
     Text: string;
   end;
 
+  TTokenMarker = record
+    Token: TToken;
+    Address: PChar;
+  end;
+
   { TONTTokenizer }
 
   TONTTokenizer = class
@@ -23,6 +28,7 @@ type
     FXML: PChar;
     FPXML: PChar;
     FToken: TToken;
+    FLastToken: TTokenMarker;
     procedure SkipSpaces;
     procedure SkipCurrentTag;
     procedure ReadSpaces(var s: TToken);
@@ -34,6 +40,7 @@ type
     constructor Create(XML: PChar); overload;
     destructor Destroy; override;
     function ReadToken: TTokenKind;
+    procedure UnreadToken;
     function ReadProperty(prop: string): string;
     procedure ReadUntilTag(UntilTag: string; KeepSurroundingTags: Boolean = False);
 
@@ -55,6 +62,7 @@ begin
      inc(FPXML, 3);
   FToken.Kind := ttNull;
   FToken.Text := '';
+  FLastToken.Address := nil;
 end;
 
 destructor TONTTokenizer.Destroy;
@@ -243,6 +251,9 @@ function TONTTokenizer.ReadToken: TTokenKind;
 var
   hyphen: string;
 begin
+  FLastToken.Token   := FToken;
+  FLastToken.Address := FPXML;
+
   FToken.Text := '';
   FToken.Kind := charKind;
 
@@ -273,6 +284,16 @@ begin
 
   //MessageDlg('Fechar projeto', '"'+FToken.Text+'"', mtConfirmation, [], 0);
   result := FToken.Kind;
+end;
+
+procedure TONTTokenizer.UnreadToken;
+begin
+  if not assigned(FLastToken.Address) then
+    raise Exception.Create('There'' no previous token!');
+
+  FToken := FLastToken.Token;
+  FPXML  := FLastToken.Address;
+  FLastToken.Address := nil;
 end;
 
 function TONTTokenizer.ReadProperty(prop: string): string;

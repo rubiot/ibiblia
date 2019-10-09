@@ -37,6 +37,7 @@ begin
   FMemo.Align := alClient;
   FMemo.Parent := Panel1;
 
+  //FMemo.ONT := '<Q>τὸν<WG3588><WTT-ASM l=""ὁ""> <wg>Θεὸν<WG2316><WTN-ASM l=""θεός""><T>Deus<t><q>';
   LoadSample;
   {
   FMemo.AddTextBlock('Normal text ');

@@ -144,7 +144,7 @@ begin
         otInterlinearBlock:
           AddInterlinearBlock(token.Text);
       end;
-    until token.Kind = otNull;
+    until token.Kind = otEOF;
   finally
     parser.Free;
     UnlockUpdate;
@@ -217,10 +217,11 @@ begin
       case token.Kind of
         otText:
         begin
+          token.Punctuation := StringReplace(token.Punctuation, ' ', #8239, [rfReplaceAll]);
           if assigned(cont.Blocks.LastBlock) and cont.Blocks.LastBlock.ClassNameIs('TKMemoTextBlock') then
-            cont.Blocks.InsertString(cont.Blocks.Count-1, true, token.Text)
+            cont.Blocks.InsertString(cont.Blocks.Text.Length, true, token.Text + token.Punctuation)
           else
-            cont.Blocks.AddTextBlock(token.Text);
+            cont.Blocks.AddTextBlock(token.Text + token.Punctuation);
           //Inc(lineWidth, cont.Blocks.LastBlock.BoundsRect.Right);
         end;
         otTranslationBlock, otTransliterationBlock:
@@ -232,11 +233,12 @@ begin
             maxWidth := Max(maxWidth, lineWidth);
             lineWidth := 0;
           end;}
+          token.Text := StringReplace(token.Text, ' ', #8239, [rfReplaceAll]);
           cont.Blocks.AddTextBlock(token.Text).TextStyle.Font.Color := clBlue;
           //Inc(lineWidth, cont.Blocks.LastBlock.BoundsRect.Right);
         end;
       end;
-    until token.Kind = otNull;
+    until token.Kind = otEOF;
 
     {if lineWidth > 0 then
     begin
@@ -245,6 +247,7 @@ begin
     end;}
     //cont.RequiredWidth := maxWidth;
     cont.BlockStyle.BottomPadding := 10;
+    cont.BlockStyle.RightPadding := 5;
 
   finally
     parser.Free;

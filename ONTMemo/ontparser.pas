@@ -5,7 +5,7 @@ unit ONTParser;
 interface
 
 uses
-  Classes, SysUtils, StrUtils, Math, ONTTokenizer, Graphics, HTMLColors;
+  Classes, SysUtils, StrUtils, Math, ONTTokenizer, Graphics, HTMLColors, typinfo, LazLogger;
 
 type
 
@@ -20,6 +20,10 @@ type
     otParagraph,  // CM
     otLineBreak,  // CL
     otTitle,      // TS-TS3
+    otStrong,
+    otMorphology,
+    otPunctuation,
+    otSpace,
     otMetaData,   // unhandled tag
 
     otInterlinearBlock, // interlinear block
@@ -34,6 +38,7 @@ type
     case Kind: TONTTokenKind of
       otTitle: (Level: integer);
       otNote: (q: string[32]);
+      otText: (Tags: string[32]; Punctuation: string[8]);
   end;
 
   { TONTParser }
@@ -41,10 +46,10 @@ type
   TONTParser = class
   private
     FTokenizer: TONTTokenizer;
-    FChunk: TONTToken;
 
     function Translate(from: TToken): TONTTokenKind;
     function GetEndingTag(tag: string): string;
+    function TokenToString(t: TONTToken): string;
   public
     constructor Create(text: string);
     destructor Destroy; override;
@@ -56,62 +61,52 @@ implementation
 { TONTParser }
 
 function TONTParser.ReadNext: TONTToken;
-var
-  kind: TONTTokenKind;
-  return: boolean;
 begin
-  if FTokenizer.Token.Kind = ttEOF then
-  begin
-    Result.Kind := otNull;
-    Exit;
-  end;
+  FTokenizer.ReadToken;
+  Result.Kind := Translate(FTokenizer.Token);
 
-  while FTokenizer.ReadToken <> ttEOF do
-  begin
-    kind := Translate(FTokenizer.Token);
-    if kind = FChunk.Kind then
+  case Result.Kind of
+    otText:
     begin
-      FChunk.Text := FChunk.Text + FTokenizer.Token.Text;
-    end else
-    begin
-      if FChunk.Kind <> otNull then
+      Result.Text := FTokenizer.Token.Text;
+      Result.Tags := '';
+      Result.Punctuation := '';
+      while FTokenizer.ReadToken <> ttNull do
       begin
-        Result := FChunk;
-        return := true;
-      end else
-        return := false;
-
-      FChunk.Kind := kind;
-
-      case kind of
-        otText:
-          ;
-        otAddedWords, otOTQuote, otJesusWords, otInterlinearBlock, otTranslationBlock, otTransliterationBlock:
-          FTokenizer.ReadUntilTag(GetEndingTag(FTokenizer.Token.Text));
-        otNote:
-        begin
-          FChunk.q := FTokenizer.ReadProperty('q');
-          FTokenizer.ReadUntilTag('<Rf>');
+        case Translate(FTokenizer.Token) of
+          otStrong, otMorphology:
+            Result.Tags := Result.Tags + FTokenizer.Token.Text;
+          otPunctuation:
+            Result.Punctuation := Result.Punctuation + FTokenizer.Token.Text;
+        else
+          FTokenizer.UnreadToken;
+          break;
         end;
-        otTitle:
-        begin
-          if FTokenizer.Token.Text = '<TS>' then
-            FChunk.Level := 0
-          else
-            FChunk.Level := Copy(FTokenizer.Token.Text, 4, 1).ToInteger;
-          FTokenizer.ReadUntilTag('<Ts>');
-        end;
-        otNull, otEOF, otParagraph, otLineBreak, otMetaData:
-          ;
       end;
-
-      FChunk.Text := FTokenizer.Token.Text;
-      if return then
-        Exit;
     end;
+    otAddedWords, otOTQuote, otJesusWords, otInterlinearBlock, otTranslationBlock, otTransliterationBlock:
+    begin
+      FTokenizer.ReadUntilTag(GetEndingTag(FTokenizer.Token.Text));
+      Result.Text := FTokenizer.Token.Text;
+    end;
+    otNote:
+    begin
+      Result.q := FTokenizer.ReadProperty('q');
+      FTokenizer.ReadUntilTag('<Rf>');
+      Result.Text := FTokenizer.Token.Text;
+    end;
+    otTitle:
+    begin
+      if FTokenizer.Token.Text = '<TS>' then
+        Result.Level := 0
+      else
+        Result.Level := Copy(FTokenizer.Token.Text, 4, 1).ToInteger;
+      FTokenizer.ReadUntilTag('<Ts>');
+      Result.Text := FTokenizer.Token.Text;
+    end;
+    otNull, otEOF, otParagraph, otLineBreak, otMetaData:
+      Result.Text := FTokenizer.Token.Text;
   end;
-
-  Result := FChunk;
 end;
 
 function TONTParser.Translate(from: TToken): TONTTokenKind;
@@ -122,11 +117,19 @@ begin
       Result:= otNull;
     ttEOF:
       Result:= otEOF;
-    ttPunctuation, ttSpace, ttSyntagm:
+    ttPunctuation, ttSpace:
+      Result := otPunctuation;
+    //ttSpace:
+    //  Result := otSpace;
+    ttSyntagm:
       Result := otText;
     ttTag:
       if from.Text = '<FI>' then
         Result := otAddedWords
+      else if from.Text.StartsWith('<WG') then
+        Result := otStrong
+      else if from.Text.StartsWith('<WT') then
+        Result := otMorphology
       else if from.Text = '<FR>' then
         Result := otJesusWords
       else if from.Text = '<FO>' then
@@ -159,12 +162,24 @@ begin
   result := copy(tag, 1, tag.Length-2) + copy(tag, tag.Length-1, 1).ToLower + '>';
 end;
 
+function TONTParser.TokenToString(t: TONTToken): string;
+begin
+  Result := Format('{text="%s", kind=%s', [t.Text, GetEnumName(TypeInfo(TONTTokenKind), ord(t.Kind))]);
+  case t.Kind of
+    otTitle:
+      Result := Result + Format(', level=%d', [t.Level]);
+    otNote:
+      Result := Result + Format(', Q="%s"', [t.q]);
+    otText:
+      Result := Result + Format(', tags="%s", punctuation="%s"', [t.Tags, t.Punctuation]);
+  end;
+  Result := Result + '}';
+end;
+
 constructor TONTParser.Create(text: string);
 begin
   inherited Create;
   FTokenizer := TONTTokenizer.Create(text);
-  FChunk.Text := '';
-  FChunk.Kind := otNull;
 end;
 
 destructor TONTParser.Destroy;
