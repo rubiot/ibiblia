@@ -739,7 +739,7 @@ begin
       for i := i+1 to Sintagmas.Count-1 do
       begin
         if (Sintagmas[i].Tipo = tsSintagma) and
-           Sintagmas[i].TemStrongs and
+           (Sintagmas[i].TemStrongs or Sintagmas[i].TemMorfs) and
            (not Sintagmas[i].Correlacionado) then
         begin
           result := Sintagmas[i];
