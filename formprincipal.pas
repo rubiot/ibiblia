@@ -183,6 +183,7 @@ type
     procedure SetUpSyncThread;
     {$ENDIF}
     procedure Translate;
+    procedure DoOpenProject(filename: string);
   public
     { public declarations }
     language: string;
@@ -316,41 +317,7 @@ begin
     exit;
   end;
 
-  ProjetoAtual := TProjeto.Criar([ScrollBoxSrcVerse, ScrollBoxDstVerse, ScrollBoxRef1Verse, ScrollBoxRef2Verse], TreeView1, RadioGroupStatus, CommentsMemo);
-  ProjetoAtual.OnNewVerseSubscribe(@QuandoNovoVersiculo);
-  ProjetoAtual.OnAlterarVersiculo := @QuandoAlterarVersiculo;
-  ProjetoAtual.OnSintagmaClick := @QuandoPalavraClicada;
-  ProjetoAtual.PalavrasComStrongEmNegrito := MenuItemStrongNegrito.Checked;
-  ProjetoAtual.MostrarQtdStrongs := FStrongsCountMode;
-
-  ProjetoAtual.Abrir(OpenDialog1.FileName);
-  ProjetoAtual.ExibirDefinicoesSoComCtrl := MenuItemDictPopup.Checked;
-  ProjetoAtual.SugerirAssociacaoAutomaticamente := MenuItem22.Checked;
-  ProjetoAtual.PopupTrigger := FPopupTrigger;
-
-  ChapterViewTabCtrl.TabIndex := Ord(ProjetoAtual.ChapterViewText);
-  FChapterView.Project := ProjetoAtual;
-  FChapterView.Enabled := true;
-
-  ActionSalvarProjeto.Enabled := true;
-  ActionSalvarProjetoComo.Enabled := true;
-  ActionFecharProjeto.Enabled := true;
-  ActionPropProjeto.Enabled := true;
-  ActionVersoPrimeiro.Enabled := true;
-  ActionVersoUltimo.Enabled := true;
-  ActionVersoSeguinte.Enabled := true;
-  ActionVersoAnterior.Enabled := true;
-  ActionSugerirAssociacao.Enabled := true;
-  ActionReverterAssociacoes.Enabled := true;
-  ActionLimparAssociacoes.Enabled := true;
-  ActionExportar.Enabled := true;
-  //ActionExportarDestinoComStrongs.Enabled := true;
-  //ActionExportarTextoInterlinear.Enabled := true;
-  StatusBar1.SimpleText := '';
-
-  {$IFDEF WINDOWS}
-  SetUpSyncThread;
-  {$ENDIF}
+  DoOpenProject(OpenDialog1.FileName);
 end;
 
 procedure TFrmPrincipal.ActionExportarExecute(Sender: TObject);
@@ -776,8 +743,10 @@ begin
   BottomPanel.Height := opts.ReadInteger('leiaute', 'principal.panel3.height', BottomPanel.Height);
   ContextPanel.Width := opts.ReadInteger('leiaute', 'principal.contextpanel.width', ContextPanel.Width);
 
-  if (MenuItemRecent.Count > 0) and FileExists(MenuItemRecent.Items[0].Caption) then
-    ActionAbrirProjetoExecute(MenuItemRecent.Items[0]);
+  if (ParamCount > 0) and ParamStr(1).EndsWith('.bib') and FileExists(ParamStr(1)) then
+    DoOpenProject(ParamStr(1))
+  else if (MenuItemRecent.Count > 0) and FileExists(MenuItemRecent.Items[0].Caption) then
+    DoOpenProject(MenuItemRecent.Items[0].Caption);
 end;
 
 procedure TFrmPrincipal.MenuItem22Click(Sender: TObject);
@@ -1075,6 +1044,45 @@ begin
     FormPropProjeto1.Translate;
   if assigned(ProjetoAtual) then
     ProjetoAtual.Translate;
+end;
+
+procedure TFrmPrincipal.DoOpenProject(filename: string);
+begin
+  ProjetoAtual := TProjeto.Criar([ScrollBoxSrcVerse, ScrollBoxDstVerse, ScrollBoxRef1Verse, ScrollBoxRef2Verse], TreeView1, RadioGroupStatus, CommentsMemo);
+  ProjetoAtual.OnNewVerseSubscribe(@QuandoNovoVersiculo);
+  ProjetoAtual.OnAlterarVersiculo := @QuandoAlterarVersiculo;
+  ProjetoAtual.OnSintagmaClick := @QuandoPalavraClicada;
+  ProjetoAtual.PalavrasComStrongEmNegrito := MenuItemStrongNegrito.Checked;
+  ProjetoAtual.MostrarQtdStrongs := FStrongsCountMode;
+
+  ProjetoAtual.Abrir(filename);
+  ProjetoAtual.ExibirDefinicoesSoComCtrl := MenuItemDictPopup.Checked;
+  ProjetoAtual.SugerirAssociacaoAutomaticamente := MenuItem22.Checked;
+  ProjetoAtual.PopupTrigger := FPopupTrigger;
+
+  ChapterViewTabCtrl.TabIndex := Ord(ProjetoAtual.ChapterViewText);
+  FChapterView.Project := ProjetoAtual;
+  FChapterView.Enabled := true;
+
+  ActionSalvarProjeto.Enabled := true;
+  ActionSalvarProjetoComo.Enabled := true;
+  ActionFecharProjeto.Enabled := true;
+  ActionPropProjeto.Enabled := true;
+  ActionVersoPrimeiro.Enabled := true;
+  ActionVersoUltimo.Enabled := true;
+  ActionVersoSeguinte.Enabled := true;
+  ActionVersoAnterior.Enabled := true;
+  ActionSugerirAssociacao.Enabled := true;
+  ActionReverterAssociacoes.Enabled := true;
+  ActionLimparAssociacoes.Enabled := true;
+  ActionExportar.Enabled := true;
+  //ActionExportarDestinoComStrongs.Enabled := true;
+  //ActionExportarTextoInterlinear.Enabled := true;
+  StatusBar1.SimpleText := '';
+
+  {$IFDEF WINDOWS}
+  SetUpSyncThread;
+  {$ENDIF}
 end;
 
 end.
