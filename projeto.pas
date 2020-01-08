@@ -2479,7 +2479,7 @@ begin
     begin
       pb.Position := 0;
       pb.Min := 0;
-      pb.Max := QLinhas[FEscopo] + QStrongs[FEscopo]; // versículos do NT + qtde de strongs
+      pb.Max := QLinhas[FEscopo] + QStrongs[etONT]; // versículos do NT + qtde de strongs
       pb.Step := 1;
       pb.Visible := true;
     end;

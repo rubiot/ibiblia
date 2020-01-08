@@ -8,6 +8,8 @@ uses
   Classes, SysUtils, LCLProc, contnrs, strutils, PCRE, LazUTF8;
 
 function UnicodeToRTF(s: string): string;
+function MakeStrongLink(strong: string; anchor: string): string;
+function MakeMorphoLink(morpho: string; anchor: string): string;
 
 type
 
@@ -19,7 +21,7 @@ type
   private
     FPai: TConcordancia;
     FLocucao: string;
-    FHashLocucoes: TFPHashList;
+    FHashTranslation: TFPHashList;
     function GetChave(index: Integer): string;
     function GetChaveFmt(index: Integer): string;
     function GetItem(index: Integer): TStringList;
@@ -49,6 +51,7 @@ type
     reRemoveMorfo: IRegex;
     reUnicodeChars: IRegex;
     reSintagma: IRegex;
+    reTag: IRegex;
     function GetChave(i: Integer): string;
     function GetItem(i: Integer): TLocucao;
     function GetLocucao(chave: string): TLocucao;
@@ -88,6 +91,26 @@ begin
       result := result + chr(unicode);
     inc(p,CharLen);
   until (CharLen=0) or (unicode=0);
+end;
+
+function MakeStrongLink(strong: string; anchor: string): string;
+var
+  font: string;
+begin
+  if RegexCreate('\p{Greek}', [rcoUTF8]).Matches(anchor).Count > 0 then
+    font := '\f1'
+  else if RegexCreate('\p{Hebrew}', [rcoUTF8]).Matches(anchor).Count > 0 then
+    font := '\f2'
+  else
+    font := '\f0';
+
+  result := format('{\field{\*\fldinst HYPERLINK "tw://[strong]?%s"}{\fldrslt%s\b %s}}',
+                   [UpperCase(strong), font, UnicodeToRTF(anchor)]);
+end;
+
+function MakeMorphoLink(morpho: string; anchor: string): string;
+begin
+  result := format('{\field{\*\fldinst HYPERLINK "tw://[morph]?%s"}{\fldrslt\cf6 %s}}', [UpperCase(morpho), UnicodeToRTF(anchor)]);
 end;
 
 function ExtrairTexto(s: string): string;
@@ -162,7 +185,7 @@ begin
   result := TLocucao(FHashLocucoes.Find(tags));
   if result = nil then
   begin
-    result := TLocucao.Create(Self, chave);
+    result := TLocucao.Create(Self, IfThen(FDetalhada, chave, tags));
     FHashLocucoes.Add(tags, result);
   end;
 end;
@@ -194,8 +217,7 @@ var
 begin
   c := 0;
   strong := format('<W%s>', [s]).ToLower;
-  result := format('{\field{\*\fldinst HYPERLINK "tw://[strong]?%s"}{\fldrslt%s\b %s}} (__OCORRENCIAS__)\par',
-                   [s, IfThen(s.StartsWith('G'), '\f1', '\f2'), UnicodeToRTF(lema)]);
+  result := MakeStrongLink(s, lema) + ' (__OCORRENCIAS__)\par';
 
   for l:=0 to FHashLocucoes.Count-1 do
   begin
@@ -207,7 +229,7 @@ begin
       for p:=0 to locucao.Qtde-1 do
       begin
         result := result +
-               format('{\i %s (%d)} \par\li500 ', [UnicodeToRTF(locucao.ChavesFmt[p].Replace(';',' ')), locucao.Items[p].Count]);
+                  format('{\i %s (%d)} \par\li500 ', [UnicodeToRTF(locucao.ChavesFmt[p].Replace(';',' ')), locucao.Items[p].Count]);
         ultima := '';
         u := 0;
 
@@ -245,9 +267,10 @@ end;
 constructor TConcordancia.Create;
 begin
   FHashLocucoes  := TFPHashList.Create;
-  reRemoveMorfo  := RegexCreate('<WT[^>]+>', [rcoUTF8,rcoIgnoreCase]);
-  reSintagma     := RegexCreate('(^|;)([^<]+)(<W([HG]\d+)>)(<W([HG]\d+)>)?(<W([HG]\d+)>)?(<WT([^\ >]+)>)?(<W([HG]\d+)>)?(<WT([^\ >]+)>)?', [rcoUTF8,rcoIgnoreCase]);
+  reRemoveMorfo  := RegexCreate('<WT[^>]+>', [rcoUTF8, rcoIgnoreCase]);
   reUnicodeChars := RegexCreate('[^[:ascii:]]', [rcoUTF8]);
+  reSintagma     := RegexCreate('^([^<]+)?((?:<[^>]+>)+)$', [rcoUTF8, rcoIgnoreCase]);
+  reTag          := RegexCreate('<W([GH][^<]+)>|<WT([^ <]+)(?: l="([^"]+)")?>', [rcoUTF8, rcoIgnoreCase]);
   FDetalhada     := true;
 end;
 
@@ -294,31 +317,31 @@ end;
 
 function TLocucao.GetRef(chave: string): TStringList;
 begin
-  result := TStringList(FHashLocucoes.Find(chave));
+  result := TStringList(FHashTranslation.Find(chave));
   if result = nil then
   begin
     result := TStringList.Create;
-    FHashLocucoes.Add(chave, result);
+    FHashTranslation.Add(chave, result);
   end;
 end;
 
 function TLocucao.GetQtde: Integer;
 begin
-  result := FHashLocucoes.Count;
+  result := FHashTranslation.Count;
 end;
 
 function TLocucao.GetItem(index: Integer): TStringList;
 begin
   result := nil;
   if (index >= 0) and (index < Self.Qtde) then
-    result := TStringList(FHashLocucoes[index]);
+    result := TStringList(FHashTranslation[index]);
 end;
 
 function TLocucao.GetChave(index: Integer): string;
 begin
   result := '';
   if (index >= 0) and (index < Self.Qtde) then
-    result := FHashLocucoes.NameOfIndex(index);
+    result := FHashTranslation.NameOfIndex(index);
 end;
 
 function TLocucao.GetChaveFmt(index: Integer): string;
@@ -357,7 +380,7 @@ constructor TLocucao.Create(pai: TConcordancia; locucao: string);
 begin
   FPai := pai;
   FLocucao := locucao;
-  FHashLocucoes := TFPHashList.Create;
+  FHashTranslation := TFPHashList.Create;
 end;
 
 destructor TLocucao.Destroy;
@@ -367,32 +390,41 @@ begin
   for i:=0 to Self.Qtde do
     Self.Items[i].Free;
 
-  FHashLocucoes.Free;
+  FHashTranslation.Free;
   inherited Destroy;
 end;
 
 function TLocucao.GetLocucaoRTF: string;
-  function iif(c: boolean; v, f: string): string;
-  begin
-    if c then
-      result := v
-    else
-      result := f;
-  end;
 var
-  m: IMatchCollection;
+  m, m1: IMatchCollection;
   i: smallint;
+  words: TStringArray;
+  w, wt, tag: string;
 begin
+  result := '';
+
+  // detailed: word with link to strong + morphology tag with link to dictionary
+  //           word1<WG1><WTX>;word2<WG2><WTZ>
+  // simple:  Strong's tag with link
+  //          <WG1>;<WG2>
   result := '\par\li0 {\b\''95  }';
-  m := FPai.reSintagma.Matches(FLocucao);
-  for i:=0 to m.Count-1 do
+  words := FLocucao.Split(';');
+  for w in words do
   begin
-    if m[i].Groups[4].GetMatched then // strong
-      result := result + format('{\field{\*\fldinst HYPERLINK "tw://[strong]?%s"}{\fldrslt\cf2 %s }}',
-             [ UpperCase(m[i].Groups[4].GetValue), iif(FPai.Detalhada, UnicodeToRTF(m[i].Groups[2].GetValue), UpperCase(m[i].Groups[4].GetValue)+ ' ') ]);
-    if m[i].Groups[10].GetMatched then // morfologia
-      result := result + format(' {\super {\field{\*\fldinst HYPERLINK "tw://[morph]?%s"}{\fldrslt\cf6 %s}}} ',
-             [ UpperCase(m[i].Groups[10].GetValue), UpperCase(m[i].Groups[10].GetValue) ]);
+    m := FPai.reSintagma.Matches(w);
+    if m.Count = 0 then
+      break;
+    wt := m[0].Groups[1].GetValue;
+    tag := m[0].Groups[2].GetValue;
+
+    m1 := FPai.reTag.Matches(tag);
+    for i:=0 to m1.Count-1 do
+    begin
+      if m1[i].Groups[1].GetMatched then // strong
+        result := result + IfThen(not result.EndsWith(' '), ' ') + MakeStrongLink(m1[i].Groups[1].GetValue, IfThen(FPai.Detalhada, wt, UpperCase(m1[i].Groups[1].GetValue)))
+      else if m1[i].Groups[2].GetMatched then // morphology
+        result := result + format(' {\super %s }', [MakeMorphoLink(m1[i].Groups[2].GetValue, UpperCase(m1[i].Groups[2].GetValue))]);
+    end;
   end;
   result := result + '\par\li250 ';
 end;
