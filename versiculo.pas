@@ -159,6 +159,11 @@ implementation
 var
   SintagmaClipboard: TSintagma;
 
+function CompareIndexes(List: TStringList; Index1, Index2: Integer): Integer;
+begin
+  result := List[Index1].ToInteger - List[Index2].ToInteger;
+end;
+
 { TVersiculo }
 
 constructor TVersiculo.Criar(TheOwner : TScrollBox);
@@ -1002,6 +1007,7 @@ var
 begin
   tokens := TStringList.Create;
   tokens.DelimitedText := lst;
+  tokens.CustomSort(@CompareIndexes);
   for i:=0 to tokens.Count-1 do
   begin
     s := StrToInt(tokens[i]);
