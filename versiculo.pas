@@ -739,7 +739,7 @@ begin
       end;
 
       for p in s.Pares do // pares
-        linha.WriteString('<sup>' + p.Texto + '</sup> ');
+        linha.WriteString('<sup>' + IfThen(p.Italico, format('<FI>%s<Fi>', [p.Texto]), p.Texto) + '</sup> ');
     end;
 
   finally
@@ -747,6 +747,7 @@ begin
                               .Replace('  ', ' ')
                               .Replace('<sup>', '<font size=+1 color="CC3300"><sup>')
                               .Replace('</sup>', '</sup></font>')
+                              .Replace('<Fi><FI>', '')
                               .Replace(' -', '-');
     linha.Destroy;
   end;
@@ -786,7 +787,7 @@ begin
               begin
                 if p <> s.Pares[0] then
                   line.WriteString(' ');
-                line.WriteString(p.Texto);
+                line.WriteString(IfThen(p.Italico, format('<FI>%s<Fi'), [p.Texto]), p.Texto);
               end;
             end else // not a first sibling
               line.WriteString('←');
