@@ -345,30 +345,60 @@ begin
 end;
 
 function TLocucao.GetChaveFmt(index: Integer): string;
+var
+  chave: string;
 begin
-  result := Self.Chaves[index]
-              .Replace(';', ' ')
-              // pronomes átonos
-              .Replace('- ','-')
-              .Replace(' -','-')
+  chave := Self.Chaves[index];
+  result := chave
+              .Replace('-;-','-')
               // mesóclises
-              .Replace('-ei', 'ei')
-              .Replace('-ás', 'ás')
-              .Replace('-á', 'á')
-              .Replace('-emos', 'emos')
-              .Replace('-eis', 'eis')
-              .Replace('-ão', 'ão')
-              .Replace('-ia', 'ia')
-              .Replace('-ias', 'ias')
-              .Replace('-íamos', 'íamos')
-              .Replace('-íeis', 'íeis')
-              .Replace('-iam', 'iam')
+              .Replace('r-ei', 'rei')
+              .Replace('r-ás', 'rás')
+              .Replace('r-á', 'rá')
+              .Replace('r-emos', 'remos')
+              .Replace('r-eis', 'reis')
+              .Replace('r-ão', 'rão')
+              .Replace('r-ia', 'ria')
+              .Replace('r-ias', 'rias')
+              .Replace('r-íamos', 'ríamos')
+              .Replace('r-íeis', 'ríeis')
+              .Replace('r-iam', 'riam')
+              .Replace('á-ei', 'arei')
+              .Replace('á-ás', 'arás')
+              .Replace('á-á', 'ará')
+              .Replace('á-emos', 'aremos')
+              .Replace('á-eis', 'areis')
+              .Replace('á-ão', 'arão')
+              .Replace('á-ia', 'aria')
+              .Replace('á-ias', 'arias')
+              .Replace('á-íamos', 'aríamos')
+              .Replace('á-íeis', 'aríeis')
+              .Replace('á-iam', 'ariam')
+              // ênclises
+              {.Replace('á-á', 'ar-l')
+              .Replace('ê-l', 'er-l')
+              .Replace('i-l', 'ir-l')
+              .Replace('ô-l', 'or-l')}
+              // casos restantes
+              .Replace(';',' ')
+              .Replace('- ', ' ')
+              {
               // ênclises
               //.Replace('á-l', 'ar-l')
               //.Replace('ê-l', 'er-l')
               //.Replace('i-l', 'ir-l')
-              //.Replace('ô-l', 'or-l')
+              //.Replace('ô-l', 'or-l')}
               ;
+
+  if result.EndsWith('á-') then
+    result := result.Replace('á-','ar');
+  if result.EndsWith('ê-') then
+    result := result.Replace('ê-','er');
+  if result.EndsWith('-') then
+    result := Copy(result, 1, Length(result)-1);
+
+  if chave.Contains('-') then
+    DebugLn(Format('"%s" => "%s"', [chave, result]));
 end;
 
 procedure TLocucao.PutRef(chave: string; const AValue: TStringList);

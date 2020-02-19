@@ -393,13 +393,20 @@ begin
   result := '';
 
   if t in [tlTexto, tlTudo] then
+  begin
     result := Texto;
+    with TVersiculo(FVersiculo) do
+    begin
+      s := Sintagmas.IndexOf(Self);
+      if (s >= 0) and (s < (Sintagmas.Count-1)) and
+         (Sintagmas[s+1].Tipo = tsSintagma) and
+         Sintagmas[s+1].Texto.StartsWith('-') then
+        result := result + '-';
+    end;
+  end;
 
   if t <> tlTexto then
-  //if FVersiculo.StrongMorfoComoChave then
   begin
-    //result := '';
-
     if assigned(Strong) and assigned(Morf) then
     begin
       for s:=0 to max(Strong.Count, Morf.Count) do
@@ -409,20 +416,12 @@ begin
         if (t <> tlStrong) and (s < Morf.Count) then
           result := format('%s<WT%s>', [result, Morf.Strings[s]]);
       end;
-
-      {for s:=0 to Strong.Count-1 do // strongs
-        result := format('%s<W%s>', [result, Strong.Strings[s]]);
-      for s:=0 to Morf.Count-1 do // morfologia
-        result := format('%s<WT%s>', [result, Morf.Strings[s]]);}
-
       if result = '' then
         result := Texto;
     end;
   end;
-  //else
-  //  result := Texto;
 
-  result := UTF8LowerCase(result); //lowercase(result);
+  result := UTF8LowerCase(result);
 end;
 
 function TSintagma.GetCorrelacionado: boolean;
