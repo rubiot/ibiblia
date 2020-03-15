@@ -59,6 +59,7 @@ type
     MenuItem15: TMenuItem;
     MenuItem16: TMenuItem;
     MenuItem17: TMenuItem;
+    MenuItemAutoSave: TMenuItem;
     MenuItemStrongsCountNone: TMenuItem;
     MenuItemStrongsCountWords: TMenuItem;
     MenuItemStrongsCountStrongs: TMenuItem;
@@ -153,6 +154,7 @@ type
     procedure AbrirRecenteClick(Sender: TObject);
     procedure MenuItemAboutClick(Sender: TObject);
     procedure MenuItemAlwaysOnTopClick(Sender: TObject);
+    procedure MenuItemAutoSaveClick(Sender: TObject);
     procedure MenuItemLangEnClick(Sender: TObject);
     procedure MenuItemLangPtClick(Sender: TObject);
     procedure MenuItemPopupTriggerClick(Sender: TObject);
@@ -581,26 +583,30 @@ end;
 
 procedure TFrmPrincipal.ActionVersoAnteriorExecute(Sender: TObject);
 begin
-  if ProjetoAtual <> nil then
-    ProjetoAtual.VersiculoAnterior;
+  if ProjetoAtual = nil then exit;
+
+  ProjetoAtual.VersiculoAnterior;
 end;
 
 procedure TFrmPrincipal.ActionVersoPrimeiroExecute(Sender: TObject);
 begin
-  if ProjetoAtual <> nil then
-    ProjetoAtual.VersiculoInicial;
+  if ProjetoAtual = nil then exit;
+
+  ProjetoAtual.VersiculoInicial;
 end;
 
 procedure TFrmPrincipal.ActionVersoSeguinteExecute(Sender: TObject);
 begin
-  if ProjetoAtual <> nil then
-    ProjetoAtual.VersiculoSeguinte;
+  if ProjetoAtual = nil then exit;
+
+  ProjetoAtual.VersiculoSeguinte;
 end;
 
 procedure TFrmPrincipal.ActionVersoUltimoExecute(Sender: TObject);
 begin
-  if ProjetoAtual <> nil then
-    ProjetoAtual.VersiculoFinal;
+  if ProjetoAtual = nil then exit;
+
+  ProjetoAtual.VersiculoFinal;
 end;
 
 procedure TFrmPrincipal.FormClose(Sender: TObject; var CloseAction: TCloseAction);
@@ -629,6 +635,7 @@ begin
   MenuItemSyncTheWord.Checked := opts.ReadBool('opcoes', 'synctheword', false);
   MenuItemSynciBiblia.Checked := opts.ReadBool('opcoes', 'syncibiblia', false);
   MenuItemStrongNegrito.Checked := opts.ReadBool('opcoes', 'boldstrongs', false);
+  MenuItemAutoSave.Checked := opts.ReadBool('opcoes', 'auto.save', false);
 
   MenuItemStrongsCountNone.Tag    := Integer(scNone);
   MenuItemStrongsCountWords.Tag   := Integer(scCountWords);
@@ -703,6 +710,7 @@ begin
   opts.WriteString('opcoes', 'language', language);
   opts.WriteBool('opcoes', 'alwaysontop', MenuItemAlwaysOnTop.Checked);
   opts.WriteInteger('opcoes', 'popuptrigger', LongInt(FPopupTrigger));
+  opts.WriteBool('opcoes', 'auto.save', MenuItemAutoSave.Checked);
   opts.Free;
 
   FChapterView.Free;
@@ -777,6 +785,13 @@ begin
     FormStyle := fsSystemStayOnTop
   else
     FormStyle := fsNormal;
+end;
+
+procedure TFrmPrincipal.MenuItemAutoSaveClick(Sender: TObject);
+begin
+  TMenuItem(Sender).Checked := not TMenuItem(Sender).Checked;
+  if assigned(ProjetoAtual) then
+    ProjetoAtual.AutoSave := TMenuItem(Sender).Checked;
 end;
 
 procedure TFrmPrincipal.MenuItemLangEnClick(Sender: TObject);
@@ -1054,6 +1069,7 @@ begin
   ProjetoAtual.OnSintagmaClick := @QuandoPalavraClicada;
   ProjetoAtual.PalavrasComStrongEmNegrito := MenuItemStrongNegrito.Checked;
   ProjetoAtual.MostrarQtdStrongs := FStrongsCountMode;
+  ProjetoAtual.AutoSave := MenuItemAutoSave.Checked;
 
   ProjetoAtual.Abrir(filename);
   ProjetoAtual.ExibirDefinicoesSoComCtrl := MenuItemDictPopup.Checked;

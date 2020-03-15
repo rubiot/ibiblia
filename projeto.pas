@@ -106,6 +106,7 @@ type
     FOnNovoVersiculo: TOnNovoVersiculoEvents;
     FOnSintagmaClick: TOnSintagmaClickEvent;
     FClosing: boolean;
+    FAutoSave: boolean;
     function GetCaminho: string;
     function GetChapterViewText: TTipoTextoBiblico;
     function GetComentarios: string;
@@ -115,6 +116,7 @@ type
     function GetSituacao: Integer;
     procedure PreencherArvore;
     procedure SetAtrasoExibicao(const AValue: Cardinal);
+    procedure SetAutoSave(AValue: boolean);
     procedure SetChapterViewText(AValue: TTipoTextoBiblico);
     procedure SetComentarios(const AValue: string);
     procedure SetDisplayTags(AValue: boolean);
@@ -237,6 +239,7 @@ type
     property Verse: integer read FReference.Verse;
     property ScrollEventsEnabled: boolean read FScrollEventsEnabled write FScrollEventsEnabled;
     property ChapterViewText: TTipoTextoBiblico read GetChapterViewText write SetChapterViewText;
+    property AutoSave: boolean read FAutoSave write SetAutoSave;
   end;
 
 resourcestring
@@ -565,6 +568,12 @@ begin
   if FAtrasoExibicao = AValue then exit;
   FAtrasoExibicao := AValue;
   FTemporizador.Interval := AValue;
+end;
+
+procedure TProjeto.SetAutoSave(AValue: boolean);
+begin
+  if FAutoSave=AValue then Exit;
+  FAutoSave:=AValue;
 end;
 
 procedure TProjeto.SetChapterViewText(AValue: TTipoTextoBiblico);
@@ -1061,6 +1070,9 @@ begin
 
   for e in FOnNovoVersiculo do
     e(self);
+
+  if FAutoSave and not FExportando then
+    Salvar;
 end;
 
 procedure TProjeto.SalvarPares;

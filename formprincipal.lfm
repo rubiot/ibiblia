@@ -460,6 +460,10 @@ object frmPrincipal: TfrmPrincipal
         Hint = 'Run the auto-association whenever you navigate to an unassociated verse'
         OnClick = MenuItem22Click
       end
+      object MenuItemAutoSave: TMenuItem
+        Caption = 'Auto-save on verse change'
+        OnClick = MenuItemAutoSaveClick
+      end
       object MenuItemSyncTheWord: TMenuItem
         Caption = 'Sync theWord to iBiblia verse'
         Hint = 'Keeps theWord synchronized to iBiblia''s current verse, and current word''s strong, morphology and lemma.'
