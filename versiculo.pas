@@ -691,6 +691,25 @@ begin
 end;
 
 function TVersiculo.GetTheWordInterlinearLine: string;
+
+  function GetSpacingBefore(syn, pair: TSintagma): string;
+  var
+    i: integer;
+  begin
+    result := '';
+    if pair = syn.Pares[0] then exit;
+    for i:=FVersiculoRef.Sintagmas.IndexOf(pair)-1 downto 0 do
+    begin
+      if FVersiculoRef.Sintagmas[i].Tipo = tsSintagma then
+        break;
+      if FVersiculoRef.Sintagmas[i].Tipo = tsEspaco then
+      begin
+        result := ' ';
+        break;
+      end;
+    end;
+  end;
+
 var
   linha: TStringStream;
   s, p, prox: TSintagma;
@@ -739,7 +758,7 @@ begin
       end;
 
       for p in s.Pares do // pares
-        linha.WriteString('<sup>' + IfThen(p.Italico, format('<FI>%s<Fi>', [p.Texto]), p.Texto) + '</sup> ');
+        linha.WriteString(GetSpacingBefore(s, p) + '<sup>' + IfThen(p.Italico, format('<FI>%s<Fi>', [p.Texto]), p.Texto) + '</sup>');
     end;
 
   finally
@@ -754,6 +773,25 @@ begin
 end;
 
 function TVersiculo.GetMySwordInterlinearLine: string;
+
+  function GetSpacingBefore(syn, pair: TSintagma): string;
+  var
+    i: integer;
+  begin
+    result := '';
+    if pair = syn.Pares[0] then exit;
+    for i:=FVersiculoRef.Sintagmas.IndexOf(pair)-1 downto 0 do
+    begin
+      if FVersiculoRef.Sintagmas[i].Tipo = tsSintagma then
+        break;
+      if FVersiculoRef.Sintagmas[i].Tipo = tsEspaco then
+      begin
+        result := ' ';
+        break;
+      end;
+    end;
+  end;
+
 var
   line: TStringStream;
   s, p: TSintagma;
@@ -785,9 +823,8 @@ begin
             begin // no siblings of the first sibling
               for p in s.Pares do
               begin
-                if p <> s.Pares[0] then
-                  line.WriteString(' ');
-                line.WriteString(IfThen(p.Italico, format('<FI>%s<Fi'), [p.Texto]), p.Texto);
+                line.WriteString(GetSpacingBefore(s, p));
+                line.WriteString(IfThen(p.Italico, format('<FI>%s<Fi', [p.Texto]), p.Texto));
               end;
             end else // not a first sibling
               line.WriteString('←');
