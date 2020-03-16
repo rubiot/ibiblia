@@ -139,7 +139,10 @@ begin
 
   OpenDialog1.Title  := SChooseABibleModule;
   if OpenDialog1.Execute then
+  begin
     FProjeto.ImportarModuloTheWord(OpenDialog1.FileName, TTipoTextoBiblico(TabControl1.TabIndex), ProgressBar1, replace);
+    ShowMessage('New text imported successfully');
+  end;
 end;
 
 procedure TFormPropProjeto.ActionLimparTextoExecute(Sender: TObject);

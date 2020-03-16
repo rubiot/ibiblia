@@ -22,6 +22,8 @@ type
   { TFrmPrincipal }
 
   TFrmPrincipal = class(TForm)
+    ActionApplyPatch: TAction;
+    ActionExportPatch: TAction;
     ActionMostrarTags: TAction;
     ActionSyncTheWordVerse: TAction;
     ActionRecriarBaseSugestoes: TAction;
@@ -59,6 +61,8 @@ type
     MenuItem15: TMenuItem;
     MenuItem16: TMenuItem;
     MenuItem17: TMenuItem;
+    MenuItemApplyPatch: TMenuItem;
+    MenuItemExportPatch: TMenuItem;
     MenuItemAutoSave: TMenuItem;
     MenuItemStrongsCountNone: TMenuItem;
     MenuItemStrongsCountWords: TMenuItem;
@@ -123,10 +127,12 @@ type
     ToolButton8: TToolButton;
     ToolButton9: TToolButton;
     TreeView1: TTreeView;
+    procedure ActionApplyPatchExecute(Sender: TObject);
     procedure ActionExportarExecute(Sender: TObject);
     procedure ActionAbrirProjetoExecute(Sender: TObject);
     procedure ActionExportarDestinoComStrongsExecute(Sender: TObject);
     procedure ActionExportarTextoInterlinearExecute(Sender: TObject);
+    procedure ActionExportPatchExecute(Sender: TObject);
     procedure ActionFecharProjetoExecute(Sender: TObject);
     procedure ActionLimparAssociacoesExecute(Sender: TObject);
     procedure ActionMesclarProjetosExecute(Sender: TObject);
@@ -221,7 +227,7 @@ resourcestring
 
 implementation
 
-uses formnovoprojeto, formpropprojeto, formexportar, formmesclarprojetos;
+uses formnovoprojeto, formpropprojeto, formexportar, formmesclarprojetos, formexportpatch;
 
 {$R *.lfm}
 
@@ -330,6 +336,35 @@ begin
   frmExportarProjeto.ShowModal;
 end;
 
+procedure TFrmPrincipal.ActionApplyPatchExecute(Sender: TObject);
+var
+  SaveDlg: TSaveDialog;
+  patch: string;
+begin
+  if not assigned(ProjetoAtual) then
+    exit;
+
+  SaveDlg := TSaveDialog.Create(nil);
+  try
+    SaveDlg.DefaultExt := '.ibpatch';
+    SaveDlg.Filter := 'iBiblia patch files|*.ibpatch';
+    SaveDlg.Title := SExportTextSaveDlgTitle;
+    if SaveDlg.Execute then
+      patch := SaveDlg.FileName
+    else
+      patch := '';
+  finally
+    SaveDlg.Free;
+  end;
+
+  if patch.IsEmpty then
+    exit;
+
+  ProjetoAtual.ApplyPatch(patch);
+
+  ShowMessage('Patch successfully applied');
+end;
+
 procedure TFrmPrincipal.ActionExportarDestinoComStrongsExecute(Sender: TObject);
 begin
   if (ProjetoAtual <> nil) and SaveDialog2.Execute then
@@ -342,6 +377,18 @@ begin
   if (ProjetoAtual <> nil) and SaveDialog2.Execute then
     ProjetoAtual.ExportarTextoInterlinear(SaveDialog2.FileName, []{, ProgressBar1});
   //ProgressBar1.Visible := false;
+end;
+
+procedure TFrmPrincipal.ActionExportPatchExecute(Sender: TObject);
+begin
+  if not assigned(ProjetoAtual) then exit;
+
+  FrmExportPatch.Scope := ProjetoAtual.Escopo;
+  if FrmExportPatch.ShowModal = mrOK then
+  begin
+    ProjetoAtual.ExportPatch(FrmExportPatch.GetVerseList);
+    ShowMessage('Patch successfully exported');
+  end;
 end;
 
 procedure TFrmPrincipal.ActionFecharProjetoExecute(Sender: TObject);

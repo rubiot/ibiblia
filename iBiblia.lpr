@@ -14,7 +14,7 @@ uses
   twAutomate, twSyncThread,
   {$ENDIF}
   ONTParser, Sintagma, unitabout, MySwordModule, TheWordDictionary,
-  lazrichview, HTMLColors;
+  lazrichview, HTMLColors, formexportpatch;
 
 {$R *.res}
 
@@ -27,6 +27,7 @@ begin
   Application.CreateForm(TFrmEscolherVerseRules, FrmEscolherVerseRules);
   Application.CreateForm(TfrmExportarProjeto, frmExportarProjeto);
   Application.CreateForm(TFormAbout, FormAbout);
+  Application.CreateForm(TFormExportPatch, FrmExportPatch);
   Application.Run;
 end.
 

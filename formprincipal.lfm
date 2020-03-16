@@ -4,7 +4,7 @@ object frmPrincipal: TfrmPrincipal
   Top = 148
   Width = 943
   Caption = 'iBiblia'
-  ClientHeight = 661
+  ClientHeight = 660
   ClientWidth = 943
   KeyPreview = True
   Menu = MainMenu1
@@ -15,11 +15,11 @@ object frmPrincipal: TfrmPrincipal
   OnShow = FormShow
   Position = poDesktopCenter
   ShowHint = True
-  LCLVersion = '2.0.4.0'
+  LCLVersion = '2.0.6.0'
   object StatusBar1: TStatusBar
     Left = 0
-    Height = 23
-    Top = 638
+    Height = 21
+    Top = 639
     Width = 943
     AutoHint = True
     Panels = <>
@@ -98,23 +98,23 @@ object frmPrincipal: TfrmPrincipal
   end
   object Panel1: TPanel
     Left = 0
-    Height = 593
+    Height = 594
     Top = 33
     Width = 943
     Align = alBottom
     Anchors = [akTop, akLeft, akRight, akBottom]
     Caption = 'Panel1'
-    ClientHeight = 593
+    ClientHeight = 594
     ClientWidth = 943
     TabOrder = 2
     object CenterPanel: TPanel
       Left = 144
-      Height = 591
+      Height = 592
       Top = 1
       Width = 643
       Align = alClient
       Caption = 'CenterPanel'
-      ClientHeight = 591
+      ClientHeight = 592
       ClientWidth = 643
       TabOrder = 0
       object ScrollBoxSrcVerse: TScrollBox
@@ -174,7 +174,7 @@ object frmPrincipal: TfrmPrincipal
         AnchorSideTop.Control = Splitter4
         AnchorSideTop.Side = asrBottom
         Left = 1
-        Height = 114
+        Height = 115
         Top = 357
         Width = 641
         HorzScrollBar.Page = 1
@@ -222,7 +222,7 @@ object frmPrincipal: TfrmPrincipal
       object BottomPanel: TPanel
         Left = 1
         Height = 114
-        Top = 476
+        Top = 477
         Width = 641
         Align = alBottom
         Caption = 'BottomPanel'
@@ -233,16 +233,16 @@ object frmPrincipal: TfrmPrincipal
           Left = 1
           Height = 112
           Top = 1
-          Width = 525
+          Width = 517
           Align = alClient
           Enabled = False
           TabOrder = 0
         end
         object RadioGroupStatus: TRadioGroup
-          Left = 526
+          Left = 518
           Height = 112
           Top = 1
-          Width = 114
+          Width = 122
           Align = alRight
           Anchors = [akRight, akBottom]
           AutoFill = True
@@ -257,8 +257,8 @@ object frmPrincipal: TfrmPrincipal
           ChildSizing.ShrinkVertical = crsScaleChilds
           ChildSizing.Layout = cclTopToBottomThenLeftToRight
           ChildSizing.ControlsPerLine = 4
-          ClientHeight = 92
-          ClientWidth = 110
+          ClientHeight = 93
+          ClientWidth = 118
           ColumnLayout = clVerticalThenHorizontal
           Enabled = False
           ItemIndex = 0
@@ -276,7 +276,7 @@ object frmPrincipal: TfrmPrincipal
         Cursor = crVSplit
         Left = 1
         Height = 5
-        Top = 471
+        Top = 472
         Width = 641
         Align = alBottom
         Anchors = [akLeft, akBottom]
@@ -285,13 +285,13 @@ object frmPrincipal: TfrmPrincipal
     end
     object Splitter1: TSplitter
       Left = 139
-      Height = 591
+      Height = 592
       Top = 1
       Width = 5
     end
     object TreeView1: TTreeView
       Left = 1
-      Height = 591
+      Height = 592
       Top = 1
       Width = 138
       Align = alLeft
@@ -303,7 +303,7 @@ object frmPrincipal: TfrmPrincipal
     end
     object Splitter6: TSplitter
       Left = 787
-      Height = 591
+      Height = 592
       Top = 1
       Width = 5
       Align = alRight
@@ -311,17 +311,17 @@ object frmPrincipal: TfrmPrincipal
     end
     object ContextPanel: TPanel
       Left = 792
-      Height = 591
+      Height = 592
       Top = 1
       Width = 150
       Align = alRight
-      ClientHeight = 591
+      ClientHeight = 592
       ClientWidth = 150
       ParentColor = False
       TabOrder = 4
       object ChapterViewTabCtrl: TTabControl
         Left = 1
-        Height = 589
+        Height = 590
         Top = 1
         Width = 148
         OnChange = ChapterViewTabCtrlChange
@@ -340,7 +340,7 @@ object frmPrincipal: TfrmPrincipal
   object ProgressBar1: TProgressBar
     Left = 0
     Height = 12
-    Top = 626
+    Top = 627
     Width = 943
     Align = alBottom
     TabOrder = 3
@@ -371,6 +371,13 @@ object frmPrincipal: TfrmPrincipal
       end
       object MenuItem16: TMenuItem
         Action = ActionExportar
+        Caption = 'Export project...'
+      end
+      object MenuItemExportPatch: TMenuItem
+        Action = ActionExportPatch
+      end
+      object MenuItemApplyPatch: TMenuItem
+        Action = ActionApplyPatch
       end
       object MenuItem18: TMenuItem
         Action = ActionRecriarBaseSugestoes
@@ -635,6 +642,14 @@ object frmPrincipal: TfrmPrincipal
       Caption = 'ActionMostrarTags'
       OnExecute = ActionMostrarTagsExecute
       ShortCut = 119
+    end
+    object ActionExportPatch: TAction
+      Caption = 'Export patch...'
+      OnExecute = ActionExportPatchExecute
+    end
+    object ActionApplyPatch: TAction
+      Caption = 'Apply patch...'
+      OnExecute = ActionApplyPatchExecute
     end
   end
   object OpenDialog1: TOpenDialog
