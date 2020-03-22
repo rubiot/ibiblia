@@ -227,7 +227,7 @@ resourcestring
 
 implementation
 
-uses formnovoprojeto, formpropprojeto, formexportar, formmesclarprojetos, formexportpatch;
+uses formnovoprojeto, formpropprojeto, formexportar, formmesclarprojetos, formexportpatch, formapplypatch;
 
 {$R *.lfm}
 
@@ -347,7 +347,7 @@ begin
   SaveDlg := TSaveDialog.Create(nil);
   try
     SaveDlg.DefaultExt := '.ibpatch';
-    SaveDlg.Filter := 'iBiblia patch files|*.ibpatch';
+    SaveDlg.Filter := SIBibliaPatchFiles + '|*.ibpatch';
     SaveDlg.Title := SExportTextSaveDlgTitle;
     if SaveDlg.Execute then
       patch := SaveDlg.FileName
@@ -360,9 +360,13 @@ begin
   if patch.IsEmpty then
     exit;
 
-  ProjetoAtual.ApplyPatch(patch);
-
-  ShowMessage('Patch successfully applied');
+  FrmApplyPatch.LoadPatch(patch);
+  if FrmApplyPatch.ShowModal = mrOK then
+  begin
+    Screen.Cursor := crHourGlass;
+    FrmApplyPatch.Apply;
+    Screen.Cursor := crDefault;
+  end;
 end;
 
 procedure TFrmPrincipal.ActionExportarDestinoComStrongsExecute(Sender: TObject);
@@ -380,15 +384,36 @@ begin
 end;
 
 procedure TFrmPrincipal.ActionExportPatchExecute(Sender: TObject);
+var
+  SaveDlg: TSaveDialog;
+  destination: string;
 begin
   if not assigned(ProjetoAtual) then exit;
 
-  FrmExportPatch.Scope := ProjetoAtual.Escopo;
-  if FrmExportPatch.ShowModal = mrOK then
-  begin
-    ProjetoAtual.ExportPatch(FrmExportPatch.GetVerseList);
-    ShowMessage('Patch successfully exported');
+  if FrmExportPatch.ShowModal <> mrOK then
+    exit;
+
+  SaveDlg := TSaveDialog.Create(nil);
+  try
+    SaveDlg.DefaultExt := '.ibpatch';
+    SaveDlg.Filter := SIBibliaPatchFiles + '|*.ibpatch';
+    SaveDlg.Title := SExportTextSaveDlgTitle;
+    if SaveDlg.Execute then
+      destination := SaveDlg.FileName
+    else
+      destination := '';
+  finally
+    SaveDlg.Free;
   end;
+
+  if destination.IsEmpty then
+    exit;
+
+  Screen.Cursor := crHourGlass;
+  FrmExportPatch.SavePatch(destination);
+  Screen.Cursor := crDefault;
+
+  ShowMessage(SPatchSuccessfullyExported);
 end;
 
 procedure TFrmPrincipal.ActionFecharProjetoExecute(Sender: TObject);
@@ -430,6 +455,9 @@ begin
   ActionReverterAssociacoes.Enabled := false;
   ActionLimparAssociacoes.Enabled := false;
   ActionExportar.Enabled := false;
+  ActionRecriarBaseSugestoes.Enabled := false;
+  ActionExportPatch.Enabled := false;
+  ActionApplyPatch.Enabled := false;
   FChapterView.Enabled := false;
   FChapterView.Clear;
   //ActionExportarDestinoComStrongs.Enabled := false;
@@ -1139,6 +1167,9 @@ begin
   ActionReverterAssociacoes.Enabled := true;
   ActionLimparAssociacoes.Enabled := true;
   ActionExportar.Enabled := true;
+  ActionRecriarBaseSugestoes.Enabled := true;
+  ActionExportPatch.Enabled := true;
+  ActionApplyPatch.Enabled := true;
   //ActionExportarDestinoComStrongs.Enabled := true;
   //ActionExportarTextoInterlinear.Enabled := true;
   StatusBar1.SimpleText := '';

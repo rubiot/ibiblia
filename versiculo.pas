@@ -121,7 +121,7 @@ type
     property Sintagmas: TSintagmaList read FSintagmas;
     property Selecao: TSintagmaList read FSelecao write FSelecao;
     property Modificado: boolean read FModificado write SetModificado;
-    property XMLModificado: boolean read FXMLModificado;
+    property XMLModificado: boolean read FXMLModificado write FXMLModificado;
     property OnClick: TOnSintagmaEvent read FOnSintagmaClick write FOnSintagmaClick;
     property OnMouseEnter: TOnSintagmaEvent read FOnSintagmaMouseEnter write FOnSintagmaMouseEnter;
     property OnMouseLeave: TOnSintagmaEvent read FOnSintagmaMouseLeave write FOnSintagmaMouseLeave;
@@ -201,7 +201,7 @@ begin
   //FFontePadrao          := TFont.Create;
   //FFontePadrao.Assign(TheOwner.Font);
   FCorAssociado         := clWindowText;
-  FCorDesassociado      := clGrayText;
+  FCorDesassociado      := $A3A3A3;//clGrayText;
   //FStrongMorfoComoChave := false;
   FDestruindo           := false;
   FONTParser := TONTParser.Create;
@@ -425,8 +425,8 @@ begin
   LimparSintagmas;
   FSintagmas := FONTParser.ParseLine(FXML, self);
   Renderizar;
-  Modificado := false;
-  FXMLModificado := false;
+  Modificado := true;
+  FXMLModificado := true;
   SintagmaClipboard := nil;
 end;
 

@@ -13,8 +13,8 @@ uses
   {$IFDEF WINDOWS}
   twAutomate, twSyncThread,
   {$ENDIF}
-  ONTParser, Sintagma, unitabout, MySwordModule, TheWordDictionary,
-  lazrichview, HTMLColors, formexportpatch;
+  ONTParser, Sintagma, unitabout, MySwordModule, TheWordDictionary, lazrichview,
+  HTMLColors, formexportpatch, BibleTreeView, formapplypatch, PatchFile;
 
 {$R *.res}
 
@@ -28,6 +28,7 @@ begin
   Application.CreateForm(TfrmExportarProjeto, frmExportarProjeto);
   Application.CreateForm(TFormAbout, FormAbout);
   Application.CreateForm(TFormExportPatch, FrmExportPatch);
+  Application.CreateForm(TFrmApplyPatch, FrmApplyPatch);
   Application.Run;
 end.
 

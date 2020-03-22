@@ -84,6 +84,7 @@ resourcestring
   SOldTestamentFilter = 'theWord Bible modules (*.ont, *.ot)|*.ont;*.ot|All files|*.*';
   SWholeBibleFilter = 'theWord Bible modules (*.ont)|*.ont|All files|*.*';
   SDictionaryFilter = 'theWord dictionary modules (*.dct.twm)|*.dct.twm|All files|*.*';
+  SNewTextImportedSuccessfully = 'New text imported successfully';
 
 implementation
 
@@ -140,8 +141,11 @@ begin
   OpenDialog1.Title  := SChooseABibleModule;
   if OpenDialog1.Execute then
   begin
+    Enabled := False;
     FProjeto.ImportarModuloTheWord(OpenDialog1.FileName, TTipoTextoBiblico(TabControl1.TabIndex), ProgressBar1, replace);
-    ShowMessage('New text imported successfully');
+    Enabled := True;
+    FProjeto.Atualizar;
+    ShowMessage(SNewTextImportedSuccessfully);
   end;
 end;
 
@@ -152,7 +156,10 @@ begin
   msg := IfThen(TTipoTextoBiblico(TabControl1.TabIndex) in [tbOrigem, tbDestino],
                 SClearTextConfirmationAssociation, SClearTextConfirmation);
   if MessageDlg(SClearText, msg, mtConfirmation, [mbYes, mbCancel], 0) = mrYes then
+  begin
     FProjeto.LimparTexto(TTipoTextoBiblico(TabControl1.TabIndex));
+    FProjeto.Atualizar;
+  end;
 end;
 
 procedure TFormPropProjeto.ActionMudancaAbaExecute(Sender: TObject);

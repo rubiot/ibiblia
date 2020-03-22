@@ -1,0 +1,8 @@
+{"version":1,"strings":[
+{"hash":265954542,"name":"tfrmapplypatch.caption","sourcebytes":[65,112,112,108,121,32,112,97,116,99,104,46,46,46],"value":"Apply patch..."},
+{"hash":1339,"name":"tfrmapplypatch.button1.caption","sourcebytes":[79,75],"value":"OK"},
+{"hash":77089212,"name":"tfrmapplypatch.button2.caption","sourcebytes":[67,97,110,99,101,108],"value":"Cancel"},
+{"hash":195296268,"name":"tfrmapplypatch.btnselectall.caption","sourcebytes":[83,101,108,101,99,116,32,97,108,108],"value":"Select all"},
+{"hash":252378124,"name":"tfrmapplypatch.btndeselectall.caption","sourcebytes":[68,101,115,101,108,101,99,116,32,97,108,108],"value":"Deselect all"},
+{"hash":126668695,"name":"tfrmapplypatch.groupbox2.caption","sourcebytes":[80,114,101,118,105,101,119],"value":"Preview"}
+]}

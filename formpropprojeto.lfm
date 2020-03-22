@@ -8,7 +8,7 @@ object FormPropProjeto: TFormPropProjeto
   ClientWidth = 553
   OnCreate = FormCreate
   Position = poMainFormCenter
-  LCLVersion = '2.0.2.0'
+  LCLVersion = '2.0.6.0'
   object GroupBox2: TGroupBox
     Left = 0
     Height = 82

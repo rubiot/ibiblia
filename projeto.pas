@@ -17,7 +17,7 @@ uses
   SysUtils, Sqlite3DS, sqlite3conn, sqldb, db, StrUtils, math,
   ExtCtrls, Controls, ComCtrls, StdCtrls, Graphics, Forms, Versiculo, Sugestao,
   MemoVersiculo, ONTTokenizer, Dialogs, dos, PCRE, ExportarProjeto, LazLogger,
-  Sintagma, MySwordModule, TheWordDictionary, fgl, zstream;
+  Sintagma, MySwordModule, TheWordDictionary, fgl, zstream, PatchFile;
 
 type
 
@@ -44,6 +44,7 @@ type
     tbNone
   );
 
+  TIntegerList = specialize TFPGList<integer>;
   TPopupTrigger = (ptMouseHover, ptAltMouseHover, ptCtrlMouseHover);
 
   TOpcaoExportacao =
@@ -113,6 +114,7 @@ type
     function GetID: string;
     function GetModificado: boolean;
     function GetFormattedReference: string;
+    function GetPairs: string;
     function GetSituacao: Integer;
     procedure PreencherArvore;
     procedure SetAtrasoExibicao(const AValue: Cardinal);
@@ -210,8 +212,7 @@ type
     procedure RewindChapter;
     procedure OnNewVerseSubscribe(const AValue: TOnNovoVersiculoEvent);
     procedure OnNewVerseUnsubscribe(const AValue: TOnNovoVersiculoEvent);
-    procedure ExportPatch(verses: TStringList);
-    procedure ApplyPatch(PatchFile: string);
+    procedure ApplyPatch(patch: TPatchFile; indexes: TIntegerList);
 
     property FileName: string read FFileName;
     property FormattedReference: string read GetFormattedReference;
@@ -242,6 +243,7 @@ type
     property ScrollEventsEnabled: boolean read FScrollEventsEnabled write FScrollEventsEnabled;
     property ChapterViewText: TTipoTextoBiblico read GetChapterViewText write SetChapterViewText;
     property AutoSave: boolean read FAutoSave write SetAutoSave;
+    property Pairs: string read GetPairs;
   end;
 
 {$INCLUDE include/bookdefs.inc}
@@ -272,6 +274,10 @@ resourcestring
                        'Please check if theWord is using the file, then close it and try again.';
   STranslationMemory = 'Translation memory';
   SExportTextSaveDlgTitle = 'Please choose a destination file';
+  SIBibliaPatchFiles = 'iBiblia patch files';
+  SPatchSuccessfullyExported = 'Patch successfully exported';
+  SReferenceNotFound = 'Reference not found';
+  SReferenceNotFoundWarning = 'The reference %s is not a valid reference in this project and will be ignored.'#13#10'Press Ignore to ignore all subsequent warnings.';
 
 const
   QStrongs: array[etOT..etONT] of smallint = (8674, 5624, 14298);
@@ -303,6 +309,11 @@ end;
 function TProjeto.GetFormattedReference: string;
 begin
   result := format('%s %d:%d', [Book, Chapter, Verse]);
+end;
+
+function TProjeto.GetPairs: string;
+begin
+  result := FTblPares.FieldByName('pare_pares').AsString;
 end;
 
 function TProjeto.GetSituacao: Integer;
@@ -416,93 +427,48 @@ begin
   FOnNovoVersiculo.Remove(AValue);
 end;
 
-procedure TProjeto.ExportPatch(verses: TStringList);
+procedure TProjeto.ApplyPatch(patch: TPatchFile; indexes: TIntegerList);
 var
-  SaveDlg: TSaveDialog;
-  destination: string;
-  v: integer;
-  patch: TMemoryStream;
-  compressor: TCompressionStream;
+  i: integer;
+  ignoreWarnings: boolean;
 begin
-  SaveDlg := TSaveDialog.Create(nil);
-  try
-    SaveDlg.DefaultExt := '.ibpatch';
-    SaveDlg.Filter := 'iBiblia patch files|*.ibpatch';
-    SaveDlg.Title := SExportTextSaveDlgTitle;
-    if SaveDlg.Execute then
-      destination := SaveDlg.FileName
-    else
-      destination := '';
-  finally
-    SaveDlg.Free;
-  end;
-
-  if destination.IsEmpty then
-    exit;
-
+  ignoreWarnings := false;
   try
     StartScrollingSession;
-    for v:=0 to verses.Count-1 do
+    for i in indexes do
     begin
-      IrPara(verses[v]);
-      DebugLn('exporting %s (%s)', [verses[v], FormattedReference]);
-      verses[v] := Format('%s'#9'%s'#9'%s'#9'%s'#9'%s'#9'%s', [
-                           verses[v],
-                           FTblPares.FieldByName('pare_texto_origem').AsString,
-                           FTblPares.FieldByName('pare_texto_destino').AsString,
-                           FTblPares.FieldByName('pare_pares').AsString,
-                           FTblPares.FieldByName('pare_comentarios').AsString.Replace(#13#10, '<crlf/>').Replace(#10, '<lf/>'),
-                           FTblPares.FieldByName('pare_situacao').AsString]);
-    end;
-  finally
-    FinishScrollingSession;
-    patch := TMemoryStream.Create;
-    compressor := TCompressionStream.create(clMax, patch);
-    verses.SaveToStream(compressor);
-    verses.Free;
-    compressor.Free; // also forces flush
-    patch.SaveToFile(destination);
-    patch.Free;
-  end;
-end;
+      IrPara(patch.Reference[i]);
 
-procedure TProjeto.ApplyPatch(PatchFile: string);
-var
-  decompressor: TDecompressionStream;
-  patch: TMemoryStream;
-  verses: TStringList;
-  line: string;
-  fields: TStringArray;
-begin
-  patch := TMemoryStream.Create;
-  patch.LoadFromFile(PatchFile);
-  decompressor := TDecompressionStream.Create(patch);
-  verses := TStringList.Create;
-  verses.LoadFromStream(decompressor);
-  decompressor.Free;
-  patch.Free;
-
-  try
-    StartScrollingSession;
-    for line in verses do
-    begin
-      fields := line.Split(#9);
-      IrPara(fields[0]);
+      if ID <> patch.Reference[i] then
+      begin
+        if ignoreWarnings then
+          continue;
+        if MessageDlg(
+             SReferenceNotFound,
+             Format(SReferenceNotFoundWarning, [patch.Reference[i]]),
+             mtWarning,
+             [mbOK, mbIgnore],
+             0
+           ) = mrIgnore then
+          ignoreWarnings := true;
+        continue;
+      end;
 
       FTblPares.Edit;
-      FTblPares.FieldByName('pare_texto_origem' ).AsString := fields[1];
-      FTblPares.FieldByName('pare_texto_destino').AsString := fields[2];
-      FTblPares.FieldByName('pare_pares'        ).AsString := fields[3];
-      FTblPares.FieldByName('pare_comentarios'  ).AsString := fields[4].Replace('<crlf/>', #13#10).Replace('<lf/>', #10);
-      FTblPares.FieldByName('pare_situacao'     ).AsString := fields[5];
+      FTblPares.FieldByName('pare_texto_origem' ).AsString := patch.SourceText[i];
+      FTblPares.FieldByName('pare_texto_destino').AsString := patch.DestinationText[i];
+      FTblPares.FieldByName('pare_pares'        ).AsString := patch.Pairs[i];
+      FTblPares.FieldByName('pare_comentarios'  ).AsString := patch.Comments[i];
+      FTblPares.FieldByName('pare_situacao'     ).AsString := patch.Status[i];
       FTblPares.Post;
 
-      DebugLn('%s comments: "%s" situacao: %s', [fields[0], FTblPares.FieldByName('pare_comentarios').AsString, FTblPares.FieldByName('pare_situacao').AsString]);
+      DebugLn('%s comments: "%s" situacao: %s', [ID, FTblPares.FieldByName('pare_comentarios').AsString, FTblPares.FieldByName('pare_situacao').AsString]);
     end;
   finally
     FinishScrollingSession;
-    verses.Free;
   end;
+
+  Atualizar;
 end;
 
 procedure TProjeto.SetOnSintagmaClick(const AValue: TOnSintagmaClickEvent);
@@ -904,7 +870,11 @@ begin
 
   for v:=low(FAVersiculo) to high(FAVersiculo) do
     if assigned(FAVersiculo[v]) then
+    begin
       FAVersiculo[v].Texto := FTblPares.Fields[FACamposTexto[v]].AsString;
+      FAVersiculo[v].Modificado := false;
+      FAVersiculo[v].XMLModificado := false;
+    end;
 
   if assigned(FAVersiculo[tbOrigem]) and assigned(FAVersiculo[tbOrigem]) then
   begin
@@ -957,6 +927,8 @@ begin
       FTblPares.Edit;
       FTblPares.Fields[FACamposTexto[v]].AsString := FAVersiculo[v].XML;
       FTblPares.Post;
+      FAVersiculo[v].Modificado := false;
+      FAVersiculo[v].XMLModificado := false;
     end;
 end;
 
@@ -1946,8 +1918,6 @@ begin
         pb.Visible := true;
       end;
 
-      FAVersiculo[tbOrigem].Ativo := false;
-      FAVersiculo[tbDestino].Ativo := false;
       FExportando := true;
 
       StartScrollingSession;
@@ -1956,11 +1926,12 @@ begin
       begin
         if length(FTblPares.FieldByName('pare_pares').AsString) > 0 then
         begin
-          FAVersiculo[tbOrigem].Texto := FTblPares.Fields[FACamposTexto[tbOrigem]].AsString;
-          FAVersiculo[tbDestino].Texto := FTblPares.Fields[FACamposTexto[tbDestino]].AsString;
-          FAVersiculo[tbOrigem].Pares := FTblPares.FieldByName('pare_pares').AsString;
 
-          pares := FAVersiculo[tbOrigem].GetListaPares(tlMetaDados);
+          FATmpVerse[tbOrigem ].Texto := FTblPares.Fields[FACamposTexto[tbOrigem]].AsString;
+          FATmpVerse[tbDestino].Texto := FTblPares.Fields[FACamposTexto[tbDestino]].AsString;
+          FATmpVerse[tbOrigem ].Pares := FTblPares.FieldByName('pare_pares').AsString;
+
+          pares := FATmpVerse[tbOrigem ].GetListaPares(tlMetaDados);
 
           for p:=0 to pares.Count-1 do
             if (p mod 2) = 0 then // pares estão alternados na lista
@@ -1984,8 +1955,6 @@ begin
                       'Par2: ' + pares.Strings[p+1] + #13#10);
     end;
   finally
-    FAVersiculo[tbOrigem].Ativo := true;
-    FAVersiculo[tbDestino].Ativo := true;
     FinishScrollingSession;
     PosRolagemVersiculo(nil);
     FExportando := false;

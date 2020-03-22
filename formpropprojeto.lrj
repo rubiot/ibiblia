@@ -1,0 +1,16 @@
+{"version":1,"strings":[
+{"hash":114087587,"name":"tformpropprojeto.caption","sourcebytes":[80,114,111,112,101,114,116,105,101,115],"value":"Properties"},
+{"hash":114087587,"name":"tformpropprojeto.groupbox2.caption","sourcebytes":[80,114,111,112,101,114,116,105,101,115],"value":"Properties"},
+{"hash":346165,"name":"tformpropprojeto.editnomeprojeto.editlabel.caption","sourcebytes":[78,97,109,101],"value":"Name"},
+{"hash":11067,"name":"tformpropprojeto.bitbtn1.caption","sourcebytes":[38,79,75],"value":"&OK"},
+{"hash":77089212,"name":"tformpropprojeto.bitbtn2.caption","sourcebytes":[67,97,110,99,101,108],"value":"Cancel"},
+{"hash":237732857,"name":"tformpropprojeto.ledicstrong.editlabel.caption","sourcebytes":[83,116,114,111,110,103,39,115,32,100,105,99,116,105,111,110,97,114,121],"value":"Strong's dictionary"},
+{"hash":222162953,"name":"tformpropprojeto.ledicmorfo.editlabel.caption","sourcebytes":[77,111,114,112,104,111,108,111,103,121,32,100,105,99,116,105,111,110,97,114,121],"value":"Morphology dictionary"},
+{"hash":317012,"name":"tformpropprojeto.label2.caption","sourcebytes":[70,111,110,116],"value":"Font"},
+{"hash":264293348,"name":"tformpropprojeto.actioncarregartexto.caption","sourcebytes":[76,111,97,100,32,110,101,119,32,116,101,120,116],"value":"Load new text"},
+{"hash":138612292,"name":"tformpropprojeto.actionlimpartexto.caption","sourcebytes":[67,108,101,97,114,32,116,101,120,116],"value":"Clear text"},
+{"hash":77555349,"name":"tformpropprojeto.actionselecionarstrong.caption","sourcebytes":[67,104,111,111,115,101],"value":"Choose"},
+{"hash":77555349,"name":"tformpropprojeto.actionselecionarmorfo.caption","sourcebytes":[67,104,111,111,115,101],"value":"Choose"},
+{"hash":77555349,"name":"tformpropprojeto.actionselecionarfonte.caption","sourcebytes":[67,104,111,111,115,101],"value":"Choose"},
+{"hash":137258641,"name":"tformpropprojeto.actionmudancaaba.caption","sourcebytes":[65,99,116,105,111,110,77,117,100,97,110,99,97,65,98,97],"value":"ActionMudancaAba"}
+]}

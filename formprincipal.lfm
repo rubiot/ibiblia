@@ -4,7 +4,7 @@ object frmPrincipal: TfrmPrincipal
   Top = 148
   Width = 943
   Caption = 'iBiblia'
-  ClientHeight = 660
+  ClientHeight = 661
   ClientWidth = 943
   KeyPreview = True
   Menu = MainMenu1
@@ -18,8 +18,8 @@ object frmPrincipal: TfrmPrincipal
   LCLVersion = '2.0.6.0'
   object StatusBar1: TStatusBar
     Left = 0
-    Height = 21
-    Top = 639
+    Height = 23
+    Top = 638
     Width = 943
     AutoHint = True
     Panels = <>
@@ -98,23 +98,23 @@ object frmPrincipal: TfrmPrincipal
   end
   object Panel1: TPanel
     Left = 0
-    Height = 594
+    Height = 593
     Top = 33
     Width = 943
     Align = alBottom
     Anchors = [akTop, akLeft, akRight, akBottom]
     Caption = 'Panel1'
-    ClientHeight = 594
+    ClientHeight = 593
     ClientWidth = 943
     TabOrder = 2
     object CenterPanel: TPanel
       Left = 144
-      Height = 592
+      Height = 591
       Top = 1
       Width = 643
       Align = alClient
       Caption = 'CenterPanel'
-      ClientHeight = 592
+      ClientHeight = 591
       ClientWidth = 643
       TabOrder = 0
       object ScrollBoxSrcVerse: TScrollBox
@@ -138,7 +138,7 @@ object frmPrincipal: TfrmPrincipal
         AnchorSideTop.Control = Splitter2
         AnchorSideTop.Side = asrBottom
         AnchorSideBottom.Control = Splitter3
-        Left = 1
+        Left = 0
         Height = 114
         Top = 123
         Width = 640
@@ -174,7 +174,7 @@ object frmPrincipal: TfrmPrincipal
         AnchorSideTop.Control = Splitter4
         AnchorSideTop.Side = asrBottom
         Left = 1
-        Height = 115
+        Height = 114
         Top = 357
         Width = 641
         HorzScrollBar.Page = 1
@@ -222,7 +222,7 @@ object frmPrincipal: TfrmPrincipal
       object BottomPanel: TPanel
         Left = 1
         Height = 114
-        Top = 477
+        Top = 476
         Width = 641
         Align = alBottom
         Caption = 'BottomPanel'
@@ -233,16 +233,16 @@ object frmPrincipal: TfrmPrincipal
           Left = 1
           Height = 112
           Top = 1
-          Width = 517
+          Width = 525
           Align = alClient
           Enabled = False
           TabOrder = 0
         end
         object RadioGroupStatus: TRadioGroup
-          Left = 518
+          Left = 526
           Height = 112
           Top = 1
-          Width = 122
+          Width = 114
           Align = alRight
           Anchors = [akRight, akBottom]
           AutoFill = True
@@ -257,8 +257,8 @@ object frmPrincipal: TfrmPrincipal
           ChildSizing.ShrinkVertical = crsScaleChilds
           ChildSizing.Layout = cclTopToBottomThenLeftToRight
           ChildSizing.ControlsPerLine = 4
-          ClientHeight = 93
-          ClientWidth = 118
+          ClientHeight = 92
+          ClientWidth = 110
           ColumnLayout = clVerticalThenHorizontal
           Enabled = False
           ItemIndex = 0
@@ -276,7 +276,7 @@ object frmPrincipal: TfrmPrincipal
         Cursor = crVSplit
         Left = 1
         Height = 5
-        Top = 472
+        Top = 471
         Width = 641
         Align = alBottom
         Anchors = [akLeft, akBottom]
@@ -285,13 +285,13 @@ object frmPrincipal: TfrmPrincipal
     end
     object Splitter1: TSplitter
       Left = 139
-      Height = 592
+      Height = 591
       Top = 1
       Width = 5
     end
     object TreeView1: TTreeView
       Left = 1
-      Height = 592
+      Height = 591
       Top = 1
       Width = 138
       Align = alLeft
@@ -303,7 +303,7 @@ object frmPrincipal: TfrmPrincipal
     end
     object Splitter6: TSplitter
       Left = 787
-      Height = 592
+      Height = 591
       Top = 1
       Width = 5
       Align = alRight
@@ -311,17 +311,17 @@ object frmPrincipal: TfrmPrincipal
     end
     object ContextPanel: TPanel
       Left = 792
-      Height = 592
+      Height = 591
       Top = 1
       Width = 150
       Align = alRight
-      ClientHeight = 592
+      ClientHeight = 591
       ClientWidth = 150
       ParentColor = False
       TabOrder = 4
       object ChapterViewTabCtrl: TTabControl
         Left = 1
-        Height = 590
+        Height = 589
         Top = 1
         Width = 148
         OnChange = ChapterViewTabCtrlChange
@@ -340,7 +340,7 @@ object frmPrincipal: TfrmPrincipal
   object ProgressBar1: TProgressBar
     Left = 0
     Height = 12
-    Top = 627
+    Top = 626
     Width = 943
     Align = alBottom
     TabOrder = 3
@@ -469,6 +469,7 @@ object frmPrincipal: TfrmPrincipal
       end
       object MenuItemAutoSave: TMenuItem
         Caption = 'Auto-save on verse change'
+        Hint = 'Save changes automatically at every verse change'
         OnClick = MenuItemAutoSaveClick
       end
       object MenuItemSyncTheWord: TMenuItem
@@ -644,7 +645,7 @@ object frmPrincipal: TfrmPrincipal
       ShortCut = 119
     end
     object ActionExportPatch: TAction
-      Caption = 'Export patch...'
+      Caption = 'Create patch...'
       OnExecute = ActionExportPatchExecute
     end
     object ActionApplyPatch: TAction

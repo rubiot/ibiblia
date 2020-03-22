@@ -9,7 +9,345 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Language: en\n"
-"X-Generator: Poedit 2.2.3\n"
+"X-Generator: Poedit 2.3\n"
+
+#: bibletreeview.s1chronicles
+msgctxt "bibletreeview.s1chronicles"
+msgid "1 Chronicles"
+msgstr "1 Chronicles"
+
+#: bibletreeview.s1corinthians
+msgctxt "bibletreeview.s1corinthians"
+msgid "1 Corinthians"
+msgstr "1 Corinthians"
+
+#: bibletreeview.s1john
+msgctxt "bibletreeview.s1john"
+msgid "1 John"
+msgstr "1 John"
+
+#: bibletreeview.s1kings
+msgctxt "bibletreeview.s1kings"
+msgid "1 Kings"
+msgstr "1 Kings"
+
+#: bibletreeview.s1peter
+msgctxt "bibletreeview.s1peter"
+msgid "1 Peter"
+msgstr "1 Peter"
+
+#: bibletreeview.s1samuel
+msgctxt "bibletreeview.s1samuel"
+msgid "1 Samuel"
+msgstr "1 Samuel"
+
+#: bibletreeview.s1thessalonians
+msgctxt "bibletreeview.s1thessalonians"
+msgid "1 Thessalonians"
+msgstr "1 Thessalonians"
+
+#: bibletreeview.s1timothy
+msgctxt "bibletreeview.s1timothy"
+msgid "1 Timothy"
+msgstr "1 Timothy"
+
+#: bibletreeview.s2chronicles
+msgctxt "bibletreeview.s2chronicles"
+msgid "2 Chronicles"
+msgstr "2 Chronicles"
+
+#: bibletreeview.s2corinthians
+msgctxt "bibletreeview.s2corinthians"
+msgid "2 Corinthians"
+msgstr "2 Corinthians"
+
+#: bibletreeview.s2john
+msgctxt "bibletreeview.s2john"
+msgid "2 John"
+msgstr "2 John"
+
+#: bibletreeview.s2kings
+msgctxt "bibletreeview.s2kings"
+msgid "2 Kings"
+msgstr "2 Kings"
+
+#: bibletreeview.s2peter
+msgctxt "bibletreeview.s2peter"
+msgid "2 Peter"
+msgstr "2 Peter"
+
+#: bibletreeview.s2samuel
+msgctxt "bibletreeview.s2samuel"
+msgid "2 Samuel"
+msgstr "2 Samuel"
+
+#: bibletreeview.s2thessalonians
+msgctxt "bibletreeview.s2thessalonians"
+msgid "2 Thessalonians"
+msgstr "2 Thessalonians"
+
+#: bibletreeview.s2timothy
+msgctxt "bibletreeview.s2timothy"
+msgid "2 Timothy"
+msgstr "2 Timothy"
+
+#: bibletreeview.s3john
+msgctxt "bibletreeview.s3john"
+msgid "3 John"
+msgstr "3 John"
+
+#: bibletreeview.sacts
+msgctxt "bibletreeview.sacts"
+msgid "Acts"
+msgstr "Acts"
+
+#: bibletreeview.samos
+msgctxt "bibletreeview.samos"
+msgid "Amos"
+msgstr "Amos"
+
+#: bibletreeview.schapterfmt
+msgid "Chapter %d"
+msgstr "Chapter %d"
+
+#: bibletreeview.scolossians
+msgctxt "bibletreeview.scolossians"
+msgid "Colossians"
+msgstr "Colossians"
+
+#: bibletreeview.sdaniel
+msgctxt "bibletreeview.sdaniel"
+msgid "Daniel"
+msgstr "Daniel"
+
+#: bibletreeview.sdeuteronomy
+msgctxt "bibletreeview.sdeuteronomy"
+msgid "Deuteronomy"
+msgstr "Deuteronomy"
+
+#: bibletreeview.secclesiastes
+msgctxt "bibletreeview.secclesiastes"
+msgid "Ecclesiastes"
+msgstr "Ecclesiastes"
+
+#: bibletreeview.sephesians
+msgctxt "bibletreeview.sephesians"
+msgid "Ephesians"
+msgstr "Ephesians"
+
+#: bibletreeview.sesther
+msgctxt "bibletreeview.sesther"
+msgid "Esther"
+msgstr "Esther"
+
+#: bibletreeview.sexodus
+msgctxt "bibletreeview.sexodus"
+msgid "Exodus"
+msgstr "Exodus"
+
+#: bibletreeview.sezekiel
+msgctxt "bibletreeview.sezekiel"
+msgid "Ezekiel"
+msgstr "Ezekiel"
+
+#: bibletreeview.sezra
+msgctxt "bibletreeview.sezra"
+msgid "Ezra"
+msgstr "Ezra"
+
+#: bibletreeview.sgalatians
+msgctxt "bibletreeview.sgalatians"
+msgid "Galatians"
+msgstr "Galatians"
+
+#: bibletreeview.sgenesis
+msgctxt "bibletreeview.sgenesis"
+msgid "Genesis"
+msgstr "Genesis"
+
+#: bibletreeview.shabakkuk
+msgctxt "bibletreeview.shabakkuk"
+msgid "Habakkuk"
+msgstr "Habakkuk"
+
+#: bibletreeview.shaggai
+msgctxt "bibletreeview.shaggai"
+msgid "Haggai"
+msgstr "Haggai"
+
+#: bibletreeview.shebrew
+msgctxt "bibletreeview.shebrew"
+msgid "Hebrews"
+msgstr "Hebrews"
+
+#: bibletreeview.shosea
+msgctxt "bibletreeview.shosea"
+msgid "Hosea"
+msgstr "Hosea"
+
+#: bibletreeview.sisaiah
+msgctxt "bibletreeview.sisaiah"
+msgid "Isaiah"
+msgstr "Isaiah"
+
+#: bibletreeview.sjames
+msgctxt "bibletreeview.sjames"
+msgid "James"
+msgstr "James"
+
+#: bibletreeview.sjeremiah
+msgctxt "bibletreeview.sjeremiah"
+msgid "Jeremiah"
+msgstr "Jeremiah"
+
+#: bibletreeview.sjob
+msgctxt "bibletreeview.sjob"
+msgid "Job"
+msgstr "Job"
+
+#: bibletreeview.sjoel
+msgctxt "bibletreeview.sjoel"
+msgid "Joel"
+msgstr "Joel"
+
+#: bibletreeview.sjohah
+msgctxt "bibletreeview.sjohah"
+msgid "Jonah"
+msgstr "Jonah"
+
+#: bibletreeview.sjohn
+msgctxt "bibletreeview.sjohn"
+msgid "John"
+msgstr "John"
+
+#: bibletreeview.sjoshua
+msgctxt "bibletreeview.sjoshua"
+msgid "Joshua"
+msgstr "Joshua"
+
+#: bibletreeview.sjude
+msgctxt "bibletreeview.sjude"
+msgid "Jude"
+msgstr "Jude"
+
+#: bibletreeview.sjudges
+msgctxt "bibletreeview.sjudges"
+msgid "Judges"
+msgstr "Judges"
+
+#: bibletreeview.slamentations
+msgctxt "bibletreeview.slamentations"
+msgid "Lamentations"
+msgstr "Lamentations"
+
+#: bibletreeview.sleviticus
+msgctxt "bibletreeview.sleviticus"
+msgid "Leviticus"
+msgstr "Leviticus"
+
+#: bibletreeview.sluke
+msgctxt "bibletreeview.sluke"
+msgid "Luke"
+msgstr "Luke"
+
+#: bibletreeview.smalachi
+msgctxt "bibletreeview.smalachi"
+msgid "Malachi"
+msgstr "Malachi"
+
+#: bibletreeview.smark
+msgctxt "bibletreeview.smark"
+msgid "Mark"
+msgstr "Mark"
+
+#: bibletreeview.smatthew
+msgctxt "bibletreeview.smatthew"
+msgid "Matthew"
+msgstr "Matthew"
+
+#: bibletreeview.smicah
+msgctxt "bibletreeview.smicah"
+msgid "Micah"
+msgstr "Micah"
+
+#: bibletreeview.snahum
+msgctxt "bibletreeview.snahum"
+msgid "Nahum"
+msgstr "Nahum"
+
+#: bibletreeview.snehemiah
+msgctxt "bibletreeview.snehemiah"
+msgid "Nehemiah"
+msgstr "Nehemiah"
+
+#: bibletreeview.snumbers
+msgctxt "bibletreeview.snumbers"
+msgid "Numbers"
+msgstr "Numbers"
+
+#: bibletreeview.sobadiah
+msgctxt "bibletreeview.sobadiah"
+msgid "Obadiah"
+msgstr "Obadiah"
+
+#: bibletreeview.sphilemon
+msgctxt "bibletreeview.sphilemon"
+msgid "Philemon"
+msgstr "Philemon"
+
+#: bibletreeview.sphilippians
+msgctxt "bibletreeview.sphilippians"
+msgid "Philippians"
+msgstr "Philippians"
+
+#: bibletreeview.sproverbs
+msgctxt "bibletreeview.sproverbs"
+msgid "Proverbs"
+msgstr "Proverbs"
+
+#: bibletreeview.spsalms
+msgctxt "bibletreeview.spsalms"
+msgid "Psalms"
+msgstr "Psalms"
+
+#: bibletreeview.srevelation
+msgctxt "bibletreeview.srevelation"
+msgid "Revelation"
+msgstr "Revelation"
+
+#: bibletreeview.sromans
+msgctxt "bibletreeview.sromans"
+msgid "Romans"
+msgstr "Romans"
+
+#: bibletreeview.sruth
+msgctxt "bibletreeview.sruth"
+msgid "Ruth"
+msgstr "Ruth"
+
+#: bibletreeview.ssongofsolomon
+msgctxt "bibletreeview.ssongofsolomon"
+msgid "Song of Solomon"
+msgstr "Song of Solomon"
+
+#: bibletreeview.stitus
+msgctxt "bibletreeview.stitus"
+msgid "Titus"
+msgstr "Titus"
+
+#: bibletreeview.szechariah
+msgctxt "bibletreeview.szechariah"
+msgid "Zecariah"
+msgstr "Zecariah"
+
+#: bibletreeview.szephaniah
+msgctxt "bibletreeview.szephaniah"
+msgid "Zephaniah"
+msgstr "Zephaniah"
+
+#: formapplypatch.spatchsuccessfullyapplied
+msgid "Patch successfully applied"
+msgstr "Patch successfully applied"
 
 #: formexportar.sanalyticalconcordance
 msgid "AnalyticalConcordance"
@@ -232,6 +570,10 @@ msgctxt "formpropprojeto.snewtestamentfilter"
 msgid "theWord Bible modules (*.ont, *.nt)|*.ont;*.nt|All files|*.*"
 msgstr "theWord Bible modules (*.ont, *.nt)|*.ont;*.nt|All files|*.*"
 
+#: formpropprojeto.snewtextimportedsuccessfully
+msgid "New text imported successfully"
+msgstr "New text imported successfully"
+
 #: formpropprojeto.soldtestamentfilter
 #| msgid "theWord Bible modules (*.ont, *.ot)|*.ont;*.ot"
 msgctxt "formpropprojeto.soldtestamentfilter"
@@ -315,78 +657,97 @@ msgid "A project with this name already exists. Delete it first or choose anothe
 msgstr "A project with this name already exists. Delete it first or choose another name"
 
 #: projeto.s1chronicles
+msgctxt "projeto.s1chronicles"
 msgid "1 Chronicles"
 msgstr "1 Chronicles"
 
 #: projeto.s1corinthians
+msgctxt "projeto.s1corinthians"
 msgid "1 Corinthians"
 msgstr "1 Corinthians"
 
 #: projeto.s1john
+msgctxt "projeto.s1john"
 msgid "1 John"
 msgstr "1 John"
 
 #: projeto.s1kings
+msgctxt "projeto.s1kings"
 msgid "1 Kings"
 msgstr "1 Kings"
 
 #: projeto.s1peter
+msgctxt "projeto.s1peter"
 msgid "1 Peter"
 msgstr "1 Peter"
 
 #: projeto.s1samuel
+msgctxt "projeto.s1samuel"
 msgid "1 Samuel"
 msgstr "1 Samuel"
 
 #: projeto.s1thessalonians
+msgctxt "projeto.s1thessalonians"
 msgid "1 Thessalonians"
 msgstr "1 Thessalonians"
 
 #: projeto.s1timothy
+msgctxt "projeto.s1timothy"
 msgid "1 Timothy"
 msgstr "1 Timothy"
 
 #: projeto.s2chronicles
+msgctxt "projeto.s2chronicles"
 msgid "2 Chronicles"
 msgstr "2 Chronicles"
 
 #: projeto.s2corinthians
+msgctxt "projeto.s2corinthians"
 msgid "2 Corinthians"
 msgstr "2 Corinthians"
 
 #: projeto.s2john
+msgctxt "projeto.s2john"
 msgid "2 John"
 msgstr "2 John"
 
 #: projeto.s2kings
+msgctxt "projeto.s2kings"
 msgid "2 Kings"
 msgstr "2 Kings"
 
 #: projeto.s2peter
+msgctxt "projeto.s2peter"
 msgid "2 Peter"
 msgstr "2 Peter"
 
 #: projeto.s2samuel
+msgctxt "projeto.s2samuel"
 msgid "2 Samuel"
 msgstr "2 Samuel"
 
 #: projeto.s2thessalonians
+msgctxt "projeto.s2thessalonians"
 msgid "2 Thessalonians"
 msgstr "2 Thessalonians"
 
 #: projeto.s2timothy
+msgctxt "projeto.s2timothy"
 msgid "2 Timothy"
 msgstr "2 Timothy"
 
 #: projeto.s3john
+msgctxt "projeto.s3john"
 msgid "3 John"
 msgstr "3 John"
 
 #: projeto.sacts
+msgctxt "projeto.sacts"
 msgid "Acts"
 msgstr "Acts"
 
 #: projeto.samos
+msgctxt "projeto.samos"
 msgid "Amos"
 msgstr "Amos"
 
@@ -395,6 +756,7 @@ msgid "Anaytical Concordance"
 msgstr "Anaytical Concordance"
 
 #: projeto.scolossians
+msgctxt "projeto.scolossians"
 msgid "Colossians"
 msgstr "Colossians"
 
@@ -421,10 +783,12 @@ msgstr ""
 "    at https://github.com/rubiot/ibiblia.\n"
 
 #: projeto.sdaniel
+msgctxt "projeto.sdaniel"
 msgid "Daniel"
 msgstr "Daniel"
 
 #: projeto.sdeuteronomy
+msgctxt "projeto.sdeuteronomy"
 msgid "Deuteronomy"
 msgstr "Deuteronomy"
 
@@ -433,10 +797,12 @@ msgid "The selected dictionary doesn't exist: %s"
 msgstr "The selected dictionary doesn't exist: %s"
 
 #: projeto.secclesiastes
+msgctxt "projeto.secclesiastes"
 msgid "Ecclesiastes"
 msgstr "Ecclesiastes"
 
 #: projeto.sephesians
+msgctxt "projeto.sephesians"
 msgid "Ephesians"
 msgstr "Ephesians"
 
@@ -445,10 +811,12 @@ msgid "Error"
 msgstr "Error"
 
 #: projeto.sesther
+msgctxt "projeto.sesther"
 msgid "Esther"
 msgstr "Esther"
 
 #: projeto.sexodus
+msgctxt "projeto.sexodus"
 msgid "Exodus"
 msgstr "Exodus"
 
@@ -468,10 +836,12 @@ msgstr ""
 "Please check if theWord is using the file, then close it and try again.\n"
 
 #: projeto.sezekiel
+msgctxt "projeto.sezekiel"
 msgid "Ezekiel"
 msgstr "Ezekiel"
 
 #: projeto.sezra
+msgctxt "projeto.sezra"
 msgid "Ezra"
 msgstr "Ezra"
 
@@ -480,28 +850,38 @@ msgid "Failed to create file: %s"
 msgstr "Failed to create file: %s"
 
 #: projeto.sgalatians
+msgctxt "projeto.sgalatians"
 msgid "Galatians"
 msgstr "Galatians"
 
 #: projeto.sgenesis
+msgctxt "projeto.sgenesis"
 msgid "Genesis"
 msgstr "Genesis"
 
 #: projeto.shabakkuk
+msgctxt "projeto.shabakkuk"
 msgid "Habakkuk"
 msgstr "Habakkuk"
 
 #: projeto.shaggai
+msgctxt "projeto.shaggai"
 msgid "Haggai"
 msgstr "Haggai"
 
 #: projeto.shebrew
+msgctxt "projeto.shebrew"
 msgid "Hebrews"
 msgstr "Hebrews"
 
 #: projeto.shosea
+msgctxt "projeto.shosea"
 msgid "Hosea"
 msgstr "Hosea"
+
+#: projeto.sibibliapatchfiles
+msgid "iBiblia patch files"
+msgstr "iBiblia patch files"
 
 #: projeto.sinformation
 msgid "Information"
@@ -512,46 +892,57 @@ msgid "Invalid file, it must have at least %d lines"
 msgstr "Invalid file, it must have at least %d lines"
 
 #: projeto.sisaiah
+msgctxt "projeto.sisaiah"
 msgid "Isaiah"
 msgstr "Isaiah"
 
 #: projeto.sjames
+msgctxt "projeto.sjames"
 msgid "James"
 msgstr "James"
 
 #: projeto.sjeremiah
+msgctxt "projeto.sjeremiah"
 msgid "Jeremiah"
 msgstr "Jeremiah"
 
 #: projeto.sjob
+msgctxt "projeto.sjob"
 msgid "Job"
 msgstr "Job"
 
 #: projeto.sjoel
+msgctxt "projeto.sjoel"
 msgid "Joel"
 msgstr "Joel"
 
 #: projeto.sjohah
+msgctxt "projeto.sjohah"
 msgid "Jonah"
 msgstr "Jonah"
 
 #: projeto.sjohn
+msgctxt "projeto.sjohn"
 msgid "John"
 msgstr "John"
 
 #: projeto.sjoshua
+msgctxt "projeto.sjoshua"
 msgid "Joshua"
 msgstr "Joshua"
 
 #: projeto.sjude
+msgctxt "projeto.sjude"
 msgid "Jude"
 msgstr "Jude"
 
 #: projeto.sjudges
+msgctxt "projeto.sjudges"
 msgid "Judges"
 msgstr "Judges"
 
 #: projeto.slamentations
+msgctxt "projeto.slamentations"
 msgid "Lamentations"
 msgstr "Lamentations"
 
@@ -560,26 +951,32 @@ msgid "en"
 msgstr "en"
 
 #: projeto.sleviticus
+msgctxt "projeto.sleviticus"
 msgid "Leviticus"
 msgstr "Leviticus"
 
 #: projeto.sluke
+msgctxt "projeto.sluke"
 msgid "Luke"
 msgstr "Luke"
 
 #: projeto.smalachi
+msgctxt "projeto.smalachi"
 msgid "Malachi"
 msgstr "Malachi"
 
 #: projeto.smark
+msgctxt "projeto.smark"
 msgid "Mark"
 msgstr "Mark"
 
 #: projeto.smatthew
+msgctxt "projeto.smatthew"
 msgid "Matthew"
 msgstr "Matthew"
 
 #: projeto.smicah
+msgctxt "projeto.smicah"
 msgid "Micah"
 msgstr "Micah"
 
@@ -588,18 +985,22 @@ msgid "Morphology Dictionary"
 msgstr "Morphology Dictionary"
 
 #: projeto.snahum
+msgctxt "projeto.snahum"
 msgid "Nahum"
 msgstr "Nahum"
 
 #: projeto.snehemiah
+msgctxt "projeto.snehemiah"
 msgid "Nehemiah"
 msgstr "Nehemiah"
 
 #: projeto.snumbers
+msgctxt "projeto.snumbers"
 msgid "Numbers"
 msgstr "Numbers"
 
 #: projeto.sobadiah
+msgctxt "projeto.sobadiah"
 msgid "Obadiah"
 msgstr "Obadiah"
 
@@ -612,11 +1013,17 @@ msgstr "Open project"
 msgid "Old Testament concordance is not implemented yet"
 msgstr "Old Testament concordance is not implemented yet"
 
+#: projeto.spatchsuccessfullyexported
+msgid "Patch successfully exported"
+msgstr "Patch successfully exported"
+
 #: projeto.sphilemon
+msgctxt "projeto.sphilemon"
 msgid "Philemon"
 msgstr "Philemon"
 
 #: projeto.sphilippians
+msgctxt "projeto.sphilippians"
 msgid "Philippians"
 msgstr "Philippians"
 
@@ -625,26 +1032,44 @@ msgid "The selected project doesn't exist: %s"
 msgstr "The selected project doesn't exist: %s"
 
 #: projeto.sproverbs
+msgctxt "projeto.sproverbs"
 msgid "Proverbs"
 msgstr "Proverbs"
 
 #: projeto.spsalms
+msgctxt "projeto.spsalms"
 msgid "Psalms"
 msgstr "Psalms"
 
+#: projeto.sreferencenotfound
+msgid "Reference not found"
+msgstr "Reference not found"
+
+#: projeto.sreferencenotfoundwarning
+msgid ""
+"The reference %s is not a valid reference in this project and will be ignored.\n"
+"Press Ignore to ignore all subsequent warnings.\n"
+msgstr ""
+"The reference %s is not a valid reference in this project and will be ignored.\n"
+"Press Ignore to ignore all subsequent warnings.\n"
+
 #: projeto.srevelation
+msgctxt "projeto.srevelation"
 msgid "Revelation"
 msgstr "Revelation"
 
 #: projeto.sromans
+msgctxt "projeto.sromans"
 msgid "Romans"
 msgstr "Romans"
 
 #: projeto.sruth
+msgctxt "projeto.sruth"
 msgid "Ruth"
 msgstr "Ruth"
 
 #: projeto.ssongofsolomon
+msgctxt "projeto.ssongofsolomon"
 msgid "Song of Solomon"
 msgstr "Song of Solomon"
 
@@ -657,6 +1082,7 @@ msgid "Synthetic Concordance"
 msgstr "Synthetic Concordance"
 
 #: projeto.stitus
+msgctxt "projeto.stitus"
 msgid "Titus"
 msgstr "Titus"
 
@@ -665,10 +1091,12 @@ msgid "Translation memory"
 msgstr "Translation memory"
 
 #: projeto.szechariah
+msgctxt "projeto.szechariah"
 msgid "Zecariah"
 msgstr "Zecariah"
 
 #: projeto.szephaniah
+msgctxt "projeto.szephaniah"
 msgid "Zephaniah"
 msgstr "Zephaniah"
 
@@ -835,6 +1263,35 @@ msgstr "Morphology dictionary"
 msgid "Strong's dictionary"
 msgstr "Strong's dictionary"
 
+#: tfrmapplypatch.btndeselectall.caption
+msgid "Deselect all"
+msgstr "Deselect all"
+
+#: tfrmapplypatch.btnselectall.caption
+msgid "Select all"
+msgstr "Select all"
+
+#: tfrmapplypatch.button1.caption
+#, fuzzy
+msgctxt "tfrmapplypatch.button1.caption"
+msgid "OK"
+msgstr "OK"
+
+#: tfrmapplypatch.button2.caption
+#, fuzzy
+msgctxt "tfrmapplypatch.button2.caption"
+msgid "Cancel"
+msgstr "Cancel"
+
+#: tfrmapplypatch.caption
+msgctxt "tfrmapplypatch.caption"
+msgid "Apply patch..."
+msgstr "Apply patch..."
+
+#: tfrmapplypatch.groupbox2.caption
+msgid "Preview"
+msgstr "Preview"
+
 #: tfrmdictionarypopup.caption
 msgid "Dictionary"
 msgstr "Dictionary"
@@ -844,6 +1301,7 @@ msgid "&Cancel"
 msgstr "&Cancel"
 
 #: tfrmescolherverserules.button2.caption
+msgctxt "tfrmescolherverserules.button2.caption"
 msgid "OK"
 msgstr "OK"
 
@@ -936,6 +1394,11 @@ msgstr "Open..."
 msgid "Open an existent project"
 msgstr "Open an existent project"
 
+#: tfrmprincipal.actionapplypatch.caption
+msgctxt "tfrmprincipal.actionapplypatch.caption"
+msgid "Apply patch..."
+msgstr "Apply patch..."
+
 #: tfrmprincipal.actionexportar.caption
 msgid "Export..."
 msgstr "Export..."
@@ -947,6 +1410,10 @@ msgstr "Export destination text"
 #: tfrmprincipal.actionexportartextointerlinear.caption
 msgid "Export interlinear text"
 msgstr "Export interlinear text"
+
+#: tfrmprincipal.actionexportpatch.caption
+msgid "Create patch..."
+msgstr "Create patch..."
 
 #: tfrmprincipal.actionfecharprojeto.caption
 msgid "Close"
@@ -1096,6 +1563,10 @@ msgstr "Project"
 msgid "Edit"
 msgstr "Edit"
 
+#: tfrmprincipal.menuitem16.caption
+msgid "Export project..."
+msgstr "Export project..."
+
 #: tfrmprincipal.menuitem17.caption
 msgid "Help"
 msgstr "Help"
@@ -1139,6 +1610,14 @@ msgstr "Always on top"
 #: tfrmprincipal.menuitemalwaysontop.hint
 msgid "Keep iBiblia window always on top of other windows"
 msgstr "Keep iBiblia window always on top of other windows"
+
+#: tfrmprincipal.menuitemautosave.caption
+msgid "Auto-save on verse change"
+msgstr "Auto-save on verse change"
+
+#: tfrmprincipal.menuitemautosave.hint
+msgid "Save changes automatically at every verse change"
+msgstr "Save changes automatically at every verse change"
 
 #: tfrmprincipal.menuitemctrlmousehover.caption
 msgid "Ctrl + Mouse hover"
