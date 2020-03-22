@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  ComCtrls, ExtCtrls, fgl, BibleTreeView, PatchFile, Versiculo, Projeto;
+  ComCtrls, ExtCtrls, BibleTreeView, PatchFile, Versiculo, Projeto;
 
 type
 

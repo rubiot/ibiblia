@@ -551,6 +551,7 @@ end;
 function TSintagma.GetGist: string;
   function TipoStr(t: TTipoSintagma): string;
   begin
+    result := '';
     case t of
       tsNulo:     result := 'tsNulo';
       tsSintagma: result := 'tsSintagma';

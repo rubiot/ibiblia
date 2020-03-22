@@ -290,7 +290,6 @@ var
   size: integer;
   padding: longint;
   lastpar: TKMemoParagraph;
-  b: TKMemoBlockIndex;
 begin
   chunk := '';
   FTokenizer := TONTTokenizer.Criar(txt);
