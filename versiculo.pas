@@ -80,6 +80,7 @@ type
     procedure OnPasteSyntagmTags(Sender: TObject);
     procedure OnSaveTextToFile(Sender: TObject);
     procedure OnVerseMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+    procedure OnResize(Sender: TObject);
     procedure InitSyntagmPopupMenu;
     procedure InitVersePopupMenu;
   protected
@@ -169,6 +170,7 @@ end;
 constructor TVersiculo.Criar(TheOwner : TScrollBox);
 begin
   FPanel := TheOwner;
+
   FAtivo := assigned(FPanel);
 
   if (FAtivo) then
@@ -186,6 +188,7 @@ begin
     FEdit.OnExit     := @EditExit;
     FPanel.InsertControl(FEdit);
     FPanel.OnMouseDown := @OnVerseMouseDown;
+    FPanel.OnResize := @OnResize;
   end;
 
   FStrongCount          := nil;
@@ -1300,6 +1303,11 @@ procedure TVersiculo.OnVerseMouseDown(Sender: TObject; Button: TMouseButton;
 begin
   if Button = mbRight then
     FVersePopupMenu.PopUp;
+end;
+
+procedure TVersiculo.OnResize(Sender: TObject);
+begin
+  Renderizar;
 end;
 
 procedure TVersiculo.InitSyntagmPopupMenu;

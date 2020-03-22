@@ -1074,6 +1074,10 @@ msgstr "Tito"
 msgid "Translation memory"
 msgstr "Histórico de associações"
 
+#: projeto.sverseabsentfromproject
+msgid "[This project does not contain this verse]"
+msgstr "[Este projeto não contém este versículo]"
+
 #: projeto.szechariah
 msgctxt "projeto.szechariah"
 msgid "Zecariah"
@@ -1269,10 +1273,6 @@ msgstr "Cancelar"
 msgctxt "tfrmapplypatch.caption"
 msgid "Apply patch..."
 msgstr "Aplicar patch..."
-
-#: tfrmapplypatch.groupbox2.caption
-msgid "Preview"
-msgstr "Visualização"
 
 #: tfrmdictionarypopup.caption
 msgid "Dictionary"

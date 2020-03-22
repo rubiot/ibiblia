@@ -18,24 +18,27 @@ type
     Button1: TButton;
     Button2: TButton;
     GroupBox1: TGroupBox;
-    GroupBox2: TGroupBox;
-    ImageList1: TImageList;
     MemoComments: TMemo;
     ScrollBoxSrcText: TScrollBox;
     ScrollBoxDstText: TScrollBox;
     Splitter1: TSplitter;
     Splitter2: TSplitter;
+    TabControlPreview: TTabControl;
     procedure BtnDeselectAllClick(Sender: TObject);
     procedure BtnSelectAllClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure FormShow(Sender: TObject);
+    procedure TabControlPreviewChange(Sender: TObject);
   private
     FBibleTreeView: TBibleTreeView;
     FPatch: TPatchFile;
+    FIndex: integer; // index of current verse in patch
     FSrcVerse: TVersiculo;
     FDstVerse: TVersiculo;
     procedure OnVerseChange(index: integer);
+    procedure LoadControlsFromPatch;
+    procedure LoadControlsFromProject;
   public
     procedure LoadPatch(filename: string);
     procedure Apply;
@@ -94,12 +97,37 @@ begin
   MemoComments.Font := FrmPrincipal.CommentsMemo.Font;
 end;
 
+procedure TFrmApplyPatch.TabControlPreviewChange(Sender: TObject);
+begin
+  case TabControlPreview.TabIndex of
+    0: LoadControlsFromPatch;
+    1: LoadControlsFromProject;
+  end;
+end;
+
 procedure TFrmApplyPatch.OnVerseChange(index: integer);
 begin
-  FSrcVerse.Texto := FPatch.SourceText[index];
-  FDstVerse.Texto := FPatch.DestinationText[index];
-  FSrcVerse.Pares := FPatch.Pairs[index];
-  MemoComments.Text := FPatch.Comments[index];
+  if index = FIndex then
+    exit;
+
+  FIndex := index;
+  TabControlPreviewChange(TabControlPreview);
+end;
+
+procedure TFrmApplyPatch.LoadControlsFromPatch;
+begin
+  FSrcVerse.Texto := FPatch.SourceText[FIndex];
+  FDstVerse.Texto := FPatch.DestinationText[FIndex];
+  FSrcVerse.Pares := FPatch.Pairs[FIndex];
+  MemoComments.Text := FPatch.Comments[FIndex];
+end;
+
+procedure TFrmApplyPatch.LoadControlsFromProject;
+begin
+  FSrcVerse.Texto := ProjetoAtual.ObterTextoVersiculo(FPatch.Reference[FIndex], tbOrigem);
+  FDstVerse.Texto := ProjetoAtual.ObterTextoVersiculo(FPatch.Reference[FIndex], tbDestino);
+  FSrcVerse.Pares := ProjetoAtual.GetPairs(FPatch.Reference[FIndex]);
+  MemoComments.Text := ProjetoAtual.GetComments(FPatch.Reference[FIndex]);
 end;
 
 procedure TFrmApplyPatch.LoadPatch(filename: string);
@@ -109,7 +137,8 @@ begin
 
   FPatch := TPatchFile.Create(filename);
   FBibleTreeView.VerseList := FPatch.Reference;
-  OnVerseChange(0);
+  FIndex := 0;
+  TabControlPreviewChange(TabControlPreview);
 end;
 
 procedure TFrmApplyPatch.Apply;

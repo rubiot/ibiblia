@@ -155,7 +155,6 @@ type
     procedure OnMudancaVersiculo(Sender: TObject; Node: TTreeNode);
     procedure OnAlterarTextoVersiculo(Sender: TMemoVersiculo);
     procedure OnExibirDefinicao(Sender: TObject);
-    procedure OnRedimensionarVersiculo(Sender: TObject);
     procedure OnDblClickVersiculo(Sender: TObject);
     procedure AtribuirDicStrong(dic: string; t: TTipoTextoBiblico);
     procedure AtribuirDicMorfo(dic: string; t: TTipoTextoBiblico);
@@ -213,6 +212,8 @@ type
     procedure OnNewVerseSubscribe(const AValue: TOnNovoVersiculoEvent);
     procedure OnNewVerseUnsubscribe(const AValue: TOnNovoVersiculoEvent);
     procedure ApplyPatch(patch: TPatchFile; indexes: TIntegerList);
+    function GetPairs(ref: string): string;
+    function GetComments(ref: string): string;
 
     property FileName: string read FFileName;
     property FormattedReference: string read GetFormattedReference;
@@ -278,6 +279,7 @@ resourcestring
   SPatchSuccessfullyExported = 'Patch successfully exported';
   SReferenceNotFound = 'Reference not found';
   SReferenceNotFoundWarning = 'The reference %s is not a valid reference in this project and will be ignored.'#13#10'Press Ignore to ignore all subsequent warnings.';
+  SVerseAbsentFromProject = '[This project does not contain this verse]';
 
 const
   QStrongs: array[etOT..etONT] of smallint = (8674, 5624, 14298);
@@ -314,6 +316,19 @@ end;
 function TProjeto.GetPairs: string;
 begin
   result := FTblPares.FieldByName('pare_pares').AsString;
+end;
+
+function TProjeto.GetPairs(ref: string): string;
+begin
+  result := '';
+  StartScrollingSession;
+  try
+    IrPara(ref);
+    if ID = ref then
+      result := GetPairs;
+  finally
+    FinishScrollingSession;
+  end;
 end;
 
 function TProjeto.GetSituacao: Integer;
@@ -628,6 +643,19 @@ end;
 function TProjeto.GetComentarios: string;
 begin
   result := FTblPares.FieldByName('pare_comentarios').AsString;
+end;
+
+function TProjeto.GetComments(ref: string): string;
+begin
+  result := '';
+  StartScrollingSession;
+  try
+    IrPara(ref);
+    if ID = ref then
+      result := GetComentarios;
+  finally
+    FinishScrollingSession;
+  end;
 end;
 
 function TProjeto.GetID: string;
@@ -1186,11 +1214,6 @@ begin
       break;
     end;
   end;
-end;
-
-procedure TProjeto.OnRedimensionarVersiculo(Sender: TObject);
-begin
-  TVersiculo(TScrollBox(Sender).Tag).Renderizar;
 end;
 
 procedure TProjeto.OnDblClickVersiculo(Sender: TObject);
@@ -2106,7 +2129,7 @@ procedure TProjeto.NovoObjetoVersiculo(owner: TScrollBox;
 begin
   FAVersiculo[texto] := TVersiculo.Criar(owner);
   owner.Tag := ptrint(FAVersiculo[texto]);
-  owner.OnResize := @OnRedimensionarVersiculo;
+  //owner.OnResize := @OnRedimensionarVersiculo;
   owner.OnDblClick := @OnDblClickVersiculo;
   FAVersiculo[texto].OnClick := @SintagmaOnClick;
   FAVersiculo[texto].OnExportText := @OnExportText;
@@ -2495,22 +2518,20 @@ end;
 
 function TProjeto.ObterTextoVersiculo(texto: TTipoTextoBiblico): string;
 begin
-  result := ObterTextoVersiculo('', texto);
+  result := FTblPares.Fields[FACamposTexto[texto]].AsString;
 end;
 
 function TProjeto.ObterTextoVersiculo(Referencia: string; texto: TTipoTextoBiblico): string;
 begin
-  if Referencia <> '' then
-  begin
-    StartScrollingSession;
+  result := SVerseAbsentFromProject;
+  StartScrollingSession;
+  try
     IrPara(Referencia);
-  end;
-
-  result := FTblPares.Fields[FACamposTexto[texto]].AsString;
-
-  if Referencia <> '' then
+    if ID = Referencia then
+      result := ObterTextoVersiculo(texto);
+  finally
     FinishScrollingSession;
-
+  end;
 end;
 
 function TProjeto.ObterTextoSimplesVersiculo(texto: TTipoTextoBiblico): string;
