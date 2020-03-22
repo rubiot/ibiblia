@@ -5,7 +5,7 @@ unit BibleTreeView;
 interface
 
 uses
-  Classes, SysUtils, Controls, ComCtrls, Graphics, fgl, Projeto;
+  Classes, SysUtils, Controls, ComCtrls, Graphics, fgl, Projeto, LResources;
 
 const
   ImgIndexUnchecked = 0;
@@ -253,7 +253,7 @@ begin
 end;
 
 procedure TBibleTreeView.CreateImageList;
-  procedure AddPng(filename: string);
+  procedure AddPngFromRes(res: string);
   var
     SrcBmp: TBitmap;
     Picture: TPicture;
@@ -261,7 +261,7 @@ procedure TBibleTreeView.CreateImageList;
     Picture := TPicture.Create;
     SrcBmp := TBitmap.Create;
     try
-      Picture.LoadFromFile(filename);
+      Picture.LoadFromLazarusResource(res);
       SrcBmp.Assign(Picture.Graphic);
       FImages.Add(SrcBmp, nil);
     finally
@@ -271,9 +271,9 @@ procedure TBibleTreeView.CreateImageList;
 
 begin
   FImages := TImageList.Create(self);
-  AddPng('imagens/16x16/checkbox-unchecked.png');
-  AddPng('imagens/16x16/checkbox-checked.png');
-  AddPng('imagens/16x16/checkbox-partial.png');
+  AddPngFromRes('checkbox-unchecked');
+  AddPngFromRes('checkbox-checked');
+  AddPngFromRes('checkbox-partial');
   StateImages := FImages;
 end;
 
@@ -318,6 +318,9 @@ begin
     node := node.GetNextSibling;
   end;
 end;
+
+initialization
+  {$I bibletreeview.lrs}
 
 end.
 

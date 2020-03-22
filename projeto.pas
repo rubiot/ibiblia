@@ -325,7 +325,7 @@ begin
   try
     IrPara(ref);
     if ID = ref then
-      result := GetPairs;
+      result := GetPairs();
   finally
     FinishScrollingSession;
   end;
