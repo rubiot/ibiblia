@@ -15,7 +15,7 @@ object frmDictionaryPopup: TfrmDictionaryPopup
   OnDestroy = FormDestroy
   OnHide = FormHide
   OnKeyDown = FormKeyDown
-  LCLVersion = '2.0.4.0'
+  LCLVersion = '2.0.6.0'
   object TabControlStrongs: TTabControl
     Left = 1
     Height = 263

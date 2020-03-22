@@ -12,7 +12,7 @@ object FrmEscolherVerseRules: TFrmEscolherVerseRules
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   Position = poOwnerFormCenter
-  LCLVersion = '1.8.4.0'
+  LCLVersion = '2.0.6.0'
   object ckgVerseRules: TCheckGroup
     Left = 0
     Height = 450

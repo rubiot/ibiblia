@@ -36,6 +36,7 @@ object FrmApplyPatch: TFrmApplyPatch
     Top = 626
     Width = 75
     Anchors = [akRight, akBottom]
+    Cancel = True
     Caption = 'Cancel'
     ModalResult = 2
     TabOrder = 2

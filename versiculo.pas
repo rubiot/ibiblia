@@ -327,7 +327,7 @@ end;
 
 function TVersiculo.GetListaPares(tipo: TTipoListaPares): TStringList;
 var
-  t: string;
+  src, dst: string;
   s, p: TSintagma;
   tmp: TSintagmaList;
 begin
@@ -336,27 +336,29 @@ begin
   tmp := TSintagmaList.Create;
   for s in FSintagmas do
   begin
-    if assigned(s.Pares) and (tmp.IndexOf(s) < 0) then
+    if not assigned(s.Pares) or s.Italico or (tmp.IndexOf(s) >= 0) then
+      continue;
+
+    src := s.GetChaveSugestao(tipo);
+    tmp.Add(s);
+    for p in s.Irmaos do
     begin
-      t := s.GetChaveSugestao(tipo);
-      tmp.Add(s);
-      for p in s.Irmaos do
-      begin
-        t := t + ';' + p.GetChaveSugestao(tipo);
-        tmp.Add(p);
-      end;
-      result.Add(t);
-      t := '';
-      for p in s.Pares do
-      begin
-        t := t + p.GetChaveSugestao(tipo);
-        if s.Pares.IndexOf(p) <> s.Pares.Count-1 then
-          t := t + ';';
-      end;
-      if t = '' then // par sem associacao! Nao deveria acontecer!
-        result.Delete(result.Count-1)
-      else
-        result.Add(t);
+      if p.Italico then
+        continue;
+      src := src + ';' + p.GetChaveSugestao(tipo);
+      tmp.Add(p);
+    end;
+    dst := '';
+    for p in s.Pares do
+    begin
+      if p.Italico then
+        continue;
+      dst := dst + p.GetChaveSugestao(tipo) + ';'
+    end;
+    if not src.IsEmpty and not dst.IsEmpty then
+    begin
+      result.Add(src);
+      result.Add(dst.TrimRight(';'));
     end;
   end;
   tmp.Destroy;
