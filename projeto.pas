@@ -214,6 +214,8 @@ type
     procedure ApplyPatch(patch: TPatchFile; indexes: TIntegerList);
     function GetPairs(ref: string): string;
     function GetComments(ref: string): string;
+    procedure SetTextDescription(text: TTipoTextoBiblico; description: string);
+    function GetTextDescription(text: TTipoTextoBiblico): string;
 
     property FileName: string read FFileName;
     property FormattedReference: string read GetFormattedReference;
@@ -656,6 +658,17 @@ begin
   finally
     FinishScrollingSession;
   end;
+end;
+
+procedure TProjeto.SetTextDescription(text: TTipoTextoBiblico;
+  description: string);
+begin
+  AtribuirInfo(Format('description.text%d', [Integer(text)]), description);
+end;
+
+function TProjeto.GetTextDescription(text: TTipoTextoBiblico): string;
+begin
+  result := ObterInfo(Format('description.text%d', [text]));
 end;
 
 function TProjeto.GetID: string;
@@ -1997,8 +2010,8 @@ procedure TProjeto.ImportarModuloTheWord(arquivo: string;
 var
   modulo: TStringList;
   i, offset: smallint;
-  reVazio, reComments, {reShortTitle,} reVerseRules, verseRule: IRegex;
-  mtVerseRules: IMatch;
+  reVazio, reComments, reDescription, reVerseRules, verseRule: IRegex;
+  mtVerseRules, mtDescription: IMatch;
   verseRulesDe, verseRulesPara: TStringList;
   propriedades: TStringStream;
   m: smallint;
@@ -2034,7 +2047,7 @@ begin
 
     reVazio        := RegexCreate('^\s*$', [rcoUTF8]);
     reComments     := RegexCreate('#.*$', [rcoUTF8]);
-    //reShortTitle   := RegexCreate('(short.title)\s*=\s*(.*)$', [rcoUTF8]);
+    reDescription  := RegexCreate('^\s*description\s*=\s*(.*)$', [rcoUTF8]);
     reVerseRules   := RegexCreate('^\s*verse.rule\s*=\s*"(.*?)(?<!")"(?!")\s+"(.*?)"(?=\s*$|\s+"(.*?)(?<!")"(?!"))', [rcoUTF8]);
     FrmEscolherVerseRules.Reset;
     verseRulesDe   := TStringList.Create;
@@ -2052,6 +2065,10 @@ begin
         continue;
 
       propriedades.WriteString(modulo[i] + #13#10);
+
+      mtDescription := reDescription.Match(modulo[i]);
+      if mtDescription.Success then
+        SetTextDescription(texto, mtDescription.Groups[1].Value);
 
       mtVerseRules := reVerseRules.Match(modulo[i]);
       if mtVerseRules.Success then
@@ -2466,6 +2483,7 @@ begin
     end;
     ScrollEventsEnabled := true;
   end;
+  SetTextDescription(texto, '');
 end;
 
 function TProjeto.ObterFonteTexto(texto: TTipoTextoBiblico): TFont;

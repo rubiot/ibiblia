@@ -863,6 +863,10 @@ msgctxt "tformpropprojeto.bitbtn2.caption"
 msgid "Cancel"
 msgstr "Cancelar"
 
+#: tformpropprojeto.bitbtntextdescription.caption
+msgid "Apply"
+msgstr "Aplicar"
+
 #: tformpropprojeto.caption
 msgctxt "tformpropprojeto.caption"
 msgid "Properties"
@@ -889,6 +893,10 @@ msgstr "Dicionário de morfologia"
 #: tformpropprojeto.ledicstrong.editlabel.caption
 msgid "Strong's dictionary"
 msgstr "Dicionário de Strong"
+
+#: tformpropprojeto.letextdescription.editlabel.caption
+msgid "Text description"
+msgstr "Descrição do texto"
 
 #: tfrmapplypatch.btndeselectall.caption
 msgid "Deselect all"
@@ -1381,4 +1389,3 @@ msgstr "Colar tags de &Strong"
 #: versiculo.ssavetofile
 msgid "&Save text to file..."
 msgstr "&Exportar texto para arquivo..."
-

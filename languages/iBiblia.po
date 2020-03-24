@@ -837,6 +837,10 @@ msgctxt "tformpropprojeto.bitbtn2.caption"
 msgid "Cancel"
 msgstr ""
 
+#: tformpropprojeto.bitbtntextdescription.caption
+msgid "Apply"
+msgstr ""
+
 #: tformpropprojeto.caption
 msgctxt "tformpropprojeto.caption"
 msgid "Properties"
@@ -862,6 +866,10 @@ msgstr ""
 
 #: tformpropprojeto.ledicstrong.editlabel.caption
 msgid "Strong's dictionary"
+msgstr ""
+
+#: tformpropprojeto.letextdescription.editlabel.caption
+msgid "Text description"
 msgstr ""
 
 #: tfrmapplypatch.btndeselectall.caption

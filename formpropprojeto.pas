@@ -27,6 +27,7 @@ type
     BitBtn2: TBitBtn;
     BitBtn3: TBitBtn;
     BitBtn4: TBitBtn;
+    BitBtnTextDescription: TBitBtn;
     BitBtn8: TBitBtn;
     BitBtn9: TBitBtn;
     Button2: TButton;
@@ -34,24 +35,28 @@ type
     FontDialog1: TFontDialog;
     GroupBox2: TGroupBox;
     Label2: TLabel;
+    leTextDescription: TLabeledEdit;
     leDicStrong: TLabeledEdit;
     leDicMorfo: TLabeledEdit;
     MemoFonte: TMemo;
     OpenDialog1: TOpenDialog;
     ProgressBar1: TProgressBar;
     TabControl1: TTabControl;
-    FProjeto: TProjeto;
     procedure ActionCarregarTextoExecute(Sender: TObject);
     procedure ActionLimparTextoExecute(Sender: TObject);
     procedure ActionMudancaAbaExecute(Sender: TObject);
     procedure ActionSelecionarFonteExecute(Sender: TObject);
     procedure ActionSelecionarMorfoExecute(Sender: TObject);
     procedure ActionSelecionarStrongExecute(Sender: TObject);
+    procedure BitBtn1Click(Sender: TObject);
+    procedure BitBtnTextDescriptionClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure leDicMorfoChange(Sender: TObject);
     procedure leDicStrongChange(Sender: TObject);
+    procedure leTextDescriptionChange(Sender: TObject);
   private
     { private declarations }
+    FProjeto: TProjeto;
   public
     { public declarations }
     procedure SetProjeto(p: TProjeto);
@@ -106,6 +111,11 @@ begin
   BitBtn4.Caption := SSetDictionary;
 end;
 
+procedure TFormPropProjeto.leTextDescriptionChange(Sender: TObject);
+begin
+  BitBtnTextDescription.Show;
+end;
+
 procedure TFormPropProjeto.Translate;
 begin
   TabControl1.Tabs[0] := SSourceTab;
@@ -144,6 +154,7 @@ begin
     Enabled := False;
     FProjeto.ImportarModuloTheWord(OpenDialog1.FileName, TTipoTextoBiblico(TabControl1.TabIndex), ProgressBar1, replace);
     Enabled := True;
+    ActionMudancaAbaExecute(nil);
     FProjeto.Atualizar;
     ShowMessage(SNewTextImportedSuccessfully);
   end;
@@ -158,12 +169,15 @@ begin
   if MessageDlg(SClearText, msg, mtConfirmation, [mbYes, mbCancel], 0) = mrYes then
   begin
     FProjeto.LimparTexto(TTipoTextoBiblico(TabControl1.TabIndex));
+    ActionMudancaAbaExecute(nil);
     FProjeto.Atualizar;
   end;
 end;
 
 procedure TFormPropProjeto.ActionMudancaAbaExecute(Sender: TObject);
 begin
+  leTextDescription.Text := FProjeto.GetTextDescription(TTipoTextoBiblico(TabControl1.TabIndex));
+  BitBtnTextDescription.Hide;
   leDicStrong.Text := FProjeto.ObterInfo(format('dicstrong%d', [TabControl1.TabIndex]));
   leDicMorfo.Text  := FProjeto.ObterInfo(format('dicmorfo%d', [TabControl1.TabIndex]));
   BitBtn4.Caption  := SChooseDictionary; // seleção Strong
@@ -222,6 +236,17 @@ begin
     FProjeto.AtribuirDicStrong(leDicStrong.Text, [TTipoTextoBiblico(TabControl1.TabIndex)]);
   end;
   BitBtn4.Caption := SChooseDictionary;
+end;
+
+procedure TFormPropProjeto.BitBtn1Click(Sender: TObject);
+begin
+
+end;
+
+procedure TFormPropProjeto.BitBtnTextDescriptionClick(Sender: TObject);
+begin
+  FProjeto.SetTextDescription(TTipoTextoBiblico(TabControl1.TabIndex), leTextDescription.Text);
+  BitBtnTextDescription.Hide;
 end;
 
 procedure TFormPropProjeto.SetProjeto(p: TProjeto);

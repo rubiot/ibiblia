@@ -251,7 +251,6 @@ end;
 procedure TVersiculo.AssociarSintagmas;
 var
   s: TSintagma;
-
 begin
   if not Assigned(VersiculoPar) then
     exit;

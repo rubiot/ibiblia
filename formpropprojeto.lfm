@@ -1,10 +1,10 @@
 object FormPropProjeto: TFormPropProjeto
   Left = 318
-  Height = 565
+  Height = 611
   Top = 155
   Width = 553
   Caption = 'Properties'
-  ClientHeight = 565
+  ClientHeight = 611
   ClientWidth = 553
   OnCreate = FormCreate
   Position = poMainFormCenter
@@ -33,18 +33,19 @@ object FormPropProjeto: TFormPropProjeto
   object BitBtn1: TBitBtn
     Left = 462
     Height = 30
-    Top = 528
+    Top = 573
     Width = 83
     Caption = '&OK'
     Default = True
     Kind = bkOK
     ModalResult = 1
+    OnClick = BitBtn1Click
     TabOrder = 1
   end
   object BitBtn2: TBitBtn
     Left = 353
     Height = 30
-    Top = 528
+    Top = 573
     Width = 91
     Cancel = True
     Caption = 'Cancel'
@@ -53,9 +54,9 @@ object FormPropProjeto: TFormPropProjeto
     TabOrder = 2
   end
   object TabControl1: TTabControl
-    Left = 6
-    Height = 416
-    Top = 104
+    Left = 7
+    Height = 472
+    Top = 96
     Width = 539
     TabStop = False
     OnChange = ActionMudancaAbaExecute
@@ -66,11 +67,13 @@ object FormPropProjeto: TFormPropProjeto
       'Reference 1'
       'Reference 2'
     )
+    ParentShowHint = False
+    ShowHint = True
     TabOrder = 3
     object leDicStrong: TLabeledEdit
       Left = 11
       Height = 23
-      Top = 107
+      Top = 148
       Width = 420
       EditLabel.Height = 15
       EditLabel.Width = 420
@@ -82,7 +85,7 @@ object FormPropProjeto: TFormPropProjeto
     object leDicMorfo: TLabeledEdit
       Left = 11
       Height = 23
-      Top = 155
+      Top = 196
       Width = 420
       EditLabel.Height = 15
       EditLabel.Width = 420
@@ -102,7 +105,7 @@ object FormPropProjeto: TFormPropProjeto
     object BitBtn4: TBitBtn
       Left = 440
       Height = 23
-      Top = 107
+      Top = 148
       Width = 83
       Action = ActionSelecionarStrong
       TabOrder = 4
@@ -110,7 +113,7 @@ object FormPropProjeto: TFormPropProjeto
     object BitBtn8: TBitBtn
       Left = 440
       Height = 23
-      Top = 152
+      Top = 196
       Width = 83
       Action = ActionSelecionarMorfo
       TabOrder = 5
@@ -125,8 +128,8 @@ object FormPropProjeto: TFormPropProjeto
     end
     object MemoFonte: TMemo
       Left = 11
-      Height = 194
-      Top = 205
+      Height = 210
+      Top = 246
       Width = 420
       Lines.Strings = (
         'MemoFonte'
@@ -138,7 +141,7 @@ object FormPropProjeto: TFormPropProjeto
     object Label2: TLabel
       Left = 11
       Height = 15
-      Top = 187
+      Top = 228
       Width = 24
       Caption = 'Font'
       ParentColor = False
@@ -146,16 +149,38 @@ object FormPropProjeto: TFormPropProjeto
     object Button2: TButton
       Left = 440
       Height = 25
-      Top = 200
+      Top = 246
       Width = 83
       Action = ActionSelecionarFonte
       TabOrder = 8
+    end
+    object leTextDescription: TLabeledEdit
+      Left = 10
+      Height = 23
+      Top = 101
+      Width = 420
+      EditLabel.Height = 15
+      EditLabel.Width = 420
+      EditLabel.Caption = 'Text description'
+      EditLabel.ParentColor = False
+      TabOrder = 9
+      OnChange = leTextDescriptionChange
+    end
+    object BitBtnTextDescription: TBitBtn
+      Left = 440
+      Height = 23
+      Top = 101
+      Width = 83
+      Caption = 'Apply'
+      OnClick = BitBtnTextDescriptionClick
+      TabOrder = 10
+      Visible = False
     end
   end
   object ProgressBar1: TProgressBar
     Left = 6
     Height = 20
-    Top = 528
+    Top = 577
     Width = 340
     TabOrder = 4
     Visible = False

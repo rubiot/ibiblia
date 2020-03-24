@@ -333,6 +333,7 @@ object frmPrincipal: TfrmPrincipal
           'Reference2'
         )
         Align = alClient
+        ParentShowHint = False
         TabOrder = 0
       end
     end
