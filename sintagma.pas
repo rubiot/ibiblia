@@ -203,8 +203,6 @@ begin
      (versiculo.Selecao.Count > 0) then // Shift pressionado
   begin
     versiculo.AssociarSintagmas;
-    versiculo.Modificado:=true;
-    versiculo.VersiculoPar.Modificado:=true;
   end
   else if Assigned(versiculo.VersiculoPar) then // Shift não pressionado
   begin
@@ -365,8 +363,6 @@ begin
      (versiculo.Selecao.Count > 0) then
   begin
     versiculo.AssociarSintagmas;
-    versiculo.Modificado:=true;
-    versiculo.VersiculoPar.Modificado:=true;
   end;
 
   if not (ssCtrl in Shift) and (versiculo.VersiculoPar.Selecao.Count > 0) then

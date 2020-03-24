@@ -2129,7 +2129,6 @@ procedure TProjeto.NovoObjetoVersiculo(owner: TScrollBox;
 begin
   FAVersiculo[texto] := TVersiculo.Criar(owner);
   owner.Tag := ptrint(FAVersiculo[texto]);
-  //owner.OnResize := @OnRedimensionarVersiculo;
   owner.OnDblClick := @OnDblClickVersiculo;
   FAVersiculo[texto].OnClick := @SintagmaOnClick;
   FAVersiculo[texto].OnExportText := @OnExportText;

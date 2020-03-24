@@ -251,6 +251,7 @@ end;
 procedure TVersiculo.AssociarSintagmas;
 var
   s: TSintagma;
+
 begin
   if not Assigned(VersiculoPar) then
     exit;
@@ -279,6 +280,9 @@ begin
       Irmaos.Remove(s);
     end;
   end;
+
+  Modificado := true;
+  VersiculoPar.Modificado := true;
 end;
 
 procedure TVersiculo.LimparSelecao;
