@@ -12,6 +12,7 @@ type
   TONTTokenKind = (
     otNull,
     otEOF,
+    otEOL,
     otText,       // plain text
     otAddedWords, // FI
     otOTQuote,    // FO
@@ -24,6 +25,7 @@ type
     otMorphology,
     otPunctuation,
     otSpace,
+    otWT,         // <wt> tag
     otMetaData,   // unhandled tag
 
     otInterlinearBlock, // interlinear block
@@ -38,7 +40,7 @@ type
     case Kind: TONTTokenKind of
       otTitle: (Level: integer);
       otNote: (q: string[32]);
-      otText: (Tags: string[32]; Punctuation: string[8]);
+      otText: (Tags: string[32]; Strongs: string[32]; Morpho: string[32]; Lemma: string[32]; Punctuation: string[8]);
   end;
 
   { TONTParser }
@@ -50,6 +52,9 @@ type
     function Translate(from: TToken): TONTTokenKind;
     function GetEndingTag(tag: string): string;
     function TokenToString(t: TONTToken): string;
+    function ExtractStrong(tag: string): string;
+    function ExtractMorpho(tag: string): string;
+    function ExtractLemma(tag: string): string;
   public
     constructor Create(text: string);
     destructor Destroy; override;
@@ -63,19 +68,32 @@ implementation
 function TONTParser.ReadNext: TONTToken;
 begin
   FTokenizer.ReadToken;
+  FillByte(Result, SizeOf(Result), 0);
   Result.Kind := Translate(FTokenizer.Token);
 
   case Result.Kind of
-    otText:
+    otText, otWT:
     begin
+      if Result.Kind = otWT then // multiple words
+      begin
+        FTokenizer.ReadUntilTag(ttTag);
+        Result.Kind := otText;
+      end;
       Result.Text := FTokenizer.Token.Text;
-      Result.Tags := '';
-      Result.Punctuation := '';
       while FTokenizer.ReadToken <> ttNull do
       begin
         case Translate(FTokenizer.Token) of
-          otStrong, otMorphology:
-            Result.Tags := Result.Tags + FTokenizer.Token.Text;
+          otStrong:
+          begin
+            Result.Strongs := ExtractStrong(FTokenizer.Token.Text);
+            Result.Tags    := Result.Tags + FTokenizer.Token.Text;
+          end;
+          otMorphology:
+          begin
+            Result.Morpho  := ExtractMorpho(FTokenizer.Token.Text);
+            Result.Lemma   := ExtractLemma(FTokenizer.Token.Text);
+            Result.Tags    := Result.Tags + FTokenizer.Token.Text;
+          end;
           otPunctuation:
             Result.Punctuation := Result.Punctuation + FTokenizer.Token.Text;
         else
@@ -104,8 +122,12 @@ begin
       FTokenizer.ReadUntilTag('<Ts>');
       Result.Text := FTokenizer.Token.Text;
     end;
-    otNull, otEOF, otParagraph, otLineBreak, otMetaData:
+    otNull, otEOF, otEOL, otParagraph, otLineBreak, otMetaData, otPunctuation:
       Result.Text := FTokenizer.Token.Text;
+    otStrong, otMorphology: // ignoring for now. TODO: handles astray strong/morpho tags
+      Result.Text := FTokenizer.Token.Text;
+    else
+      raise Exception.Create(Format('unhandled token in TONTParser.ReadNext: [%s]', [FTokenizer.Token.Text]));
   end;
 end;
 
@@ -117,6 +139,8 @@ begin
       Result:= otNull;
     ttEOF:
       Result:= otEOF;
+    ttEOL:
+      Result:= otEOL;
     ttPunctuation, ttSpace:
       Result := otPunctuation;
     //ttSpace:
@@ -152,6 +176,8 @@ begin
         Result := otHebrewBlock
       else if from.Text = '<G>' then
         Result := otGreekBlock
+      else if from.Text = '<wt>' then
+        Result := otWT
       else
         Result := otMetaData;
   end;
@@ -174,6 +200,38 @@ begin
       Result := Result + Format(', tags="%s", punctuation="%s"', [t.Tags, t.Punctuation]);
   end;
   Result := Result + '}';
+end;
+
+function TONTParser.ExtractStrong(tag: string): string;
+begin
+  if not tag.StartsWith('<WG') and not tag.StartsWith('<WH') then
+    raise Exception.Create(Format('Invalid Strong''s tag: %s', [tag]));
+  result := Copy(tag, 3, tag.Length-3);
+end;
+
+function TONTParser.ExtractMorpho(tag: string): string;
+var
+  p: Integer;
+begin
+  if not tag.StartsWith('<WT') then
+    raise Exception.Create(Format('Invalid morphology tag: %s', [tag]));
+  p := Pos(' ', tag);
+  if p > 0 then
+    result := Copy(tag, 4, p-4)
+  else
+    result := Copy(tag, 4, tag.Length-4);
+end;
+
+function TONTParser.ExtractLemma(tag: string): string;
+var
+  p: Integer;
+begin
+  if not tag.StartsWith('<WT') then
+    raise Exception.Create(Format('Invalid morphology tag: %s', [tag]));
+  result := '';
+  p := Pos('"', tag);
+  if p > 0 then
+    result := Copy(tag, p+1, tag.Length-p-2);
 end;
 
 constructor TONTParser.Create(text: string);

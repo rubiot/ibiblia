@@ -12,6 +12,7 @@ type
   { TONTBlock }
 
   TONTBlock = class(TKMemoTextBlock)
+    FData: string;
   public
     constructor Create(AText: string); overload; virtual;
   end;
@@ -51,8 +52,12 @@ type
 
   TONTMemo = class(TKCustomMemo)
   private
+    FVerseNumber: integer;
+    FNoteNumber: integer;
+    FNewVerse: boolean;
     FONTText: string;
     procedure SetONTText(AValue: string);
+    procedure CheckNewVerse;
   public
     constructor Create(AOwner: TComponent); override;
     function AddTextBlock(const AText: string; At: TKMemoBlockIndex = -1): TONTBlock;
@@ -60,8 +65,9 @@ type
     function AddFRBlock(const AText: string; At: TKMemoBlockIndex = -1): TFRBlock;
     function AddFOBlock(const AText: string; At: TKMemoBlockIndex = -1): TFOBlock;
     procedure AddTitle(const AText: string; Level: integer);
-    procedure AddCMBlock(At: TKMemoBlockIndex = -1);
+    function AddCMBlock(At: TKMemoBlockIndex = -1): TKMemoParagraph;
     procedure AddInterlinearBlock(const AText: string);
+    procedure AddNote(anchor: string; const Note: string);
 
     property ONT: string read FONTText write SetONTText;
   end;
@@ -126,34 +132,54 @@ begin
   if FONTText = AValue then Exit;
   FONTText := AValue;
 
-  LockUpdate;
+  FVerseNumber := 0;
+  FNoteNumber  := 0;
+  FNewVerse    := true;
+
+  Blocks.LockUpdate;
+  Blocks.Clear;
   parser := TONTParser.Create(FONTText);
   try
     repeat
       token := parser.ReadNext;
       case token.Kind of
-        otText:
-          AddTextBlock(token.Text);
+        otText, otPunctuation:
+          AddTextBlock(token.Text + token.Punctuation);
         otParagraph:
           Blocks.AddParagraph();
         otAddedWords:
           AddFIBlock(token.Text);
         otTitle:
           AddTitle(token.Text, token.Level);
-        otNote:;
+        otNote:
+          AddNote(token.q, token.Text);
         otInterlinearBlock:
           AddInterlinearBlock(token.Text);
+        otEOL:
+          FNewVerse := true;
+        otEOF:
+          ; // do nothing
+        otMetaData:
+          ; // TODO
+        otTranslationBlock:
+          ; // TODO
+        otStrong, otMorphology:
+          ; // TODO handle astray strong/morpho tags
+        else
+          raise Exception.Create(Format('unhandled token type in TONTMemo.SetONTText(): [%s]', [token.Text]));
       end;
     until token.Kind = otEOF;
   finally
     parser.Free;
-    UnlockUpdate;
+    Blocks.UnLockUpdate;
   end;
 end;
 
 constructor TONTMemo.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
+  ParentFont := true;
+  ReadOnly := true;
   Blocks.Clear; // clearing default empty paragraph
   Blocks.DefaultParaStyle.HAlign := halLeft;
 end;
@@ -161,6 +187,7 @@ end;
 function TONTMemo.AddTextBlock(const AText: string; At: TKMemoBlockIndex
   ): TONTBlock;
 begin
+  CheckNewVerse;
   Result := TONTBlock.Create(AText);
   Blocks.AddAt(Result, At);
 end;
@@ -168,6 +195,7 @@ end;
 function TONTMemo.AddFIBlock(const AText: string; At: TKMemoBlockIndex
   ): TFIBlock;
 begin
+  CheckNewVerse;
   Result := TFIBlock.Create(AText);
   Blocks.AddAt(Result, At);
 end;
@@ -175,6 +203,7 @@ end;
 function TONTMemo.AddFRBlock(const AText: string; At: TKMemoBlockIndex
   ): TFRBlock;
 begin
+  CheckNewVerse;
   Result := TFRBlock.Create(AText);
   Blocks.AddAt(Result, At);
 end;
@@ -182,19 +211,23 @@ end;
 function TONTMemo.AddFOBlock(const AText: string; At: TKMemoBlockIndex
   ): TFOBlock;
 begin
+  CheckNewVerse;
   Result := TFOBlock.Create(AText);
   Blocks.AddAt(Result, At);
 end;
 
 procedure TONTMemo.AddTitle(const AText: string; Level: integer);
 begin
-  AddFOBlock(AText);
+  if not Blocks.Empty then
+    AddCMBlock();
+
+  Blocks.AddTextBlock(AText).TextStyle.Font.Bold := true;
   AddCMBlock();
 end;
 
-procedure TONTMemo.AddCMBlock(At: TKMemoBlockIndex);
+function TONTMemo.AddCMBlock(At: TKMemoBlockIndex): TKMemoParagraph;
 begin
-  Blocks.AddParagraph(At);
+  result := Blocks.AddParagraph(At);
 end;
 
 procedure TONTMemo.AddInterlinearBlock(const AText: string);
@@ -202,10 +235,8 @@ var
   parser: TONTParser;
   token: TONTToken;
   cont: TKMemoContainer;
-  //lineWidth, maxWidth: integer;
 begin
-  //lineWidth := 0;
-  //maxWidth := 0;
+  CheckNewVerse;
   cont := Blocks.AddContainer();
   cont.Position := mbpText;
   cont.FixedWidth := true;
@@ -222,36 +253,70 @@ begin
             cont.Blocks.InsertString(cont.Blocks.Text.Length, true, token.Text + token.Punctuation)
           else
             cont.Blocks.AddTextBlock(token.Text + token.Punctuation);
-          //Inc(lineWidth, cont.Blocks.LastBlock.BoundsRect.Right);
+
+          {if Length(token.Strongs) > 0 then
+          begin
+            cont.Blocks.AddParagraph();
+            cont.Blocks.AddTextBlock(token.Strongs).TextStyle.Font.Color := clBlue;
+          end;
+          if Length(token.Morpho) > 0 then
+          begin
+            cont.Blocks.AddParagraph(); //.ParaStyle.HAlign := halCenter;
+            cont.Blocks.AddTextBlock(token.Morpho).TextStyle.Font.Color := clGreen;
+          end;
+          if Length(token.Lemma) > 0 then
+          begin
+            cont.Blocks.AddParagraph(); //.ParaStyle.HAlign := halCenter;
+            cont.Blocks.AddTextBlock(token.Lemma).TextStyle.Font.Color := clBlack;
+          end;}
         end;
         otTranslationBlock, otTransliterationBlock:
         begin
           if cont.Blocks.Count > 0 then
             cont.Blocks.AddParagraph();
-          {if lineWidth > 0 then
-          begin
-            maxWidth := Max(maxWidth, lineWidth);
-            lineWidth := 0;
-          end;}
           token.Text := StringReplace(token.Text, ' ', #8239, [rfReplaceAll]);
-          cont.Blocks.AddTextBlock(token.Text).TextStyle.Font.Color := clBlue;
-          //Inc(lineWidth, cont.Blocks.LastBlock.BoundsRect.Right);
+          cont.Blocks.AddTextBlock(token.Text).TextStyle.Font.Color := $be7c41;
         end;
       end;
     until token.Kind = otEOF;
 
-    {if lineWidth > 0 then
-    begin
-      maxWidth := Max(maxWidth, lineWidth);
-      lineWidth := 0;
-    end;}
-    //cont.RequiredWidth := maxWidth;
     cont.BlockStyle.BottomPadding := 10;
     cont.BlockStyle.RightPadding := 5;
 
   finally
     parser.Free;
   end;
+end;
+
+procedure TONTMemo.AddNote(anchor: string; const Note: string);
+begin
+  if anchor.IsEmpty then
+  begin
+    Inc(FNoteNumber);
+    anchor := FNoteNumber.ToString;
+  end;
+
+  with Blocks.AddHyperlink(anchor, '').TextStyle do
+  begin
+    ScriptPosition := tpoSuperscript;
+  end;
+end;
+
+procedure TONTMemo.CheckNewVerse;
+begin
+  if not FNewVerse then exit;
+
+  Inc(FVerseNumber);
+  if (FVerseNumber > 1) and (Blocks.LastBlock.ClassName <> 'TKMemoParagraph') then
+     Blocks.AddTextBlock(' ');
+
+  with Blocks.AddTextBlock(Format('%d ', [FVerseNumber])).TextStyle do
+  begin
+    ScriptPosition := tpoSuperscript;
+    Font.Bold := true;
+  end;
+
+  FNewVerse := false;
 end;
 
 end.

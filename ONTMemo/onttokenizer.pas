@@ -8,7 +8,7 @@ uses
   Classes, SysUtils, StrUtils, LCLProc, Dialogs, LazUTF8, Graphics;
 
 type
-  TTokenKind = (ttNull, ttSyntagm, ttTag, ttSpace, ttPunctuation, ttMetadata, ttEOF);
+  TTokenKind = (ttNull, ttSyntagm, ttTag, ttSpace, ttPunctuation, ttMetadata, ttEOL, ttEOF);
 
 type
   TToken = record
@@ -43,6 +43,7 @@ type
     procedure UnreadToken;
     function ReadProperty(prop: string): string;
     procedure ReadUntilTag(UntilTag: string; KeepSurroundingTags: Boolean = False);
+    procedure ReadUntilTag(UntilType: TTokenKind);
 
     property Token: TToken read FToken;
   end;
@@ -242,6 +243,8 @@ function TONTTokenizer.ReadToken: TTokenKind;
       result := ttTag
     else if Contained(c, [ord(#32), ord(#9), ord('|')]) then
       result := ttSpace
+    else if Contained(c, [ord(#13), ord(#10)]) then
+      result := ttEOL
     else if Contained(c, [ord('"'), ord('.'), ord(','), ord(';'), ord(':'),
                         ord('!'), ord('?'), ord('('), ord(')'),
                         183, 903, 8220, 8221{, ord('-')}]) // hack para ··“”
@@ -265,7 +268,9 @@ begin
                       ord('!'), ord('?'), ord('('), ord(')'),
                       183, 903, 8220, 8221{, ord('-')}]); // hack para ··“”
     ttTag:
-      ReadUntilInclusive(FToken, [ord('>')]);
+      ReadUntilInclusive(FToken, [ord('>'), ord(#13), ord(#10)]);
+    ttEOL:
+      ReadWhile(FToken, [ord(#13), ord(#10)]);
     ttEOF:
       ;
   else
@@ -276,7 +281,7 @@ begin
     end else
       hyphen := '';
 
-    ReadUntil(FToken, [ord('<'), ord(#32), ord(#9), ord('|'), ord('"'), ord('.'),
+    ReadUntil(FToken, [ord('<'), ord(#32), ord(#9), ord(#13), ord(#10), ord('|'), ord('"'), ord('.'),
                ord(','), ord(';'), ord(':'), ord('!'), ord('?'), ord('-'),
                ord('('), ord(')'), 183, 903, 8220, 8221]);  // hack para ··“”
     FToken.Text := hyphen + FToken.Text;
@@ -307,9 +312,11 @@ begin
   if FToken.Text[1] <> '<' then
     exit;
 
-  i := pos(prop+'=', FToken.Text) + length(prop) + 1;
+  i := pos(prop+'=', FToken.Text);
   if i = 0 then
     exit;
+
+  i := i + length(prop) + 1;
 
   if FToken.Text[i] = '"' then
   begin
@@ -343,6 +350,21 @@ begin
   end;
 
   FToken.Text := valor + IfThen(KeepSurroundingTags, FToken.Text, '');
+end;
+
+procedure TONTTokenizer.ReadUntilTag(UntilType: TTokenKind);
+var
+  valor: string;
+begin
+  valor := '';
+
+  ReadToken;
+  while not (FToken.Kind in [ttNull, UntilType]) do
+  begin
+    valor := concat(valor, FToken.Text);
+    ReadToken;
+  end;
+  UnreadToken;
 end;
 
 end.
