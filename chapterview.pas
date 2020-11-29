@@ -241,7 +241,8 @@ var
 begin
   mtHeading := FRxVerseHeading.Match(txt);
   if not mtHeading.Success then
-    raise Exception.Create(SysUtils.Format('Unmatched verse: <%s>', [txt]));
+    raise Exception.Create(SysUtils.Format('There''s something wrong with this verse: "%s"'#13#10 +
+                                           'Please check for invalid tags or line breaks', [txt]));
   heading := mtHeading.Groups[1].Value;
   txt     := mtHeading.Groups[2].Value;
 
