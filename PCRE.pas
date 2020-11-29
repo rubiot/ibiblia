@@ -99,7 +99,10 @@ type
     rcoNoUTF8Check,               // PCRE_NO_UTF8_CHECK
     rcoAutoCallout,               // PCRE_AUTO_CALLOUT
     rcoPartial,                   // PCRE_PARTIAL
-    rcoFirstLine                  // PCRE_FIRSTLINE
+    rcoFirstLine,                  // PCRE_FIRSTLINE
+    rcoNewLineCR,                 // PCRE_NEWLINE_CR
+    rcoNewLineLF,                 // PCRE_NEWLINE_LF
+    rcoNewLineCRLF                // PCRE_NEWLINE_CRLF
   );
 
   // Options used to control matching behavior
@@ -746,6 +749,16 @@ begin
 
   if rcoFirstLine in theOptions then
     Result := Result or PCRE_FIRSTLINE;
+
+  if rcoNewLineCR in theOptions then
+    Result := Result or PCRE_NEWLINE_CR;
+
+  if rcoNewLineLF in theOptions then
+    Result := Result or PCRE_NEWLINE_LF;
+
+  if rcoNewLineCRLF in theOptions then
+    Result := Result or PCRE_NEWLINE_CRLF;
+
 end;
 
 //===========================================================================
@@ -796,6 +809,15 @@ begin
 
   if (theOptions and PCRE_FIRSTLINE <> 0) then
     Include(Result, rcoFirstLine);
+
+  if (theOptions and PCRE_NEWLINE_CR <> 0) then
+    Include(Result, rcoNewLineCR);
+
+  if (theOptions and PCRE_NEWLINE_LF <> 0) then
+    Include(Result, rcoNewLineLF);
+
+  if (theOptions and PCRE_NEWLINE_CRLF <> 0) then
+    Include(Result, rcoNewLineCRLF);
 end;
 
 //===========================================================================
