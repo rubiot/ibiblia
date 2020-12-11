@@ -221,6 +221,7 @@ begin
     FEdit.Free;
     FSyntagmPopupMenu.Free;
     FVersePopupMenu.Free;
+    FPanel.OnResize := nil;
   end;
   FONTParser.Destroy;
   //FFontePadrao.Free;
