@@ -23,7 +23,7 @@
       <BuildNr Value="64"/>
       <StringTable CompanyName="Rúbio R. C. Terra (rubio.terra@gmail.com)" FileDescription="Ferramenta para associação de textos bíblicos" ProductName="iBiblia" ProductVersion="0.0.0.0"/>
     </VersionInfo>
-    <BuildModes Count="4" Active="Debug32">
+    <BuildModes Count="4" Active="Release32">
       <Item1 Name="Debug" Default="True"/>
       <Item2 Name="Release">
         <CompilerOptions>
@@ -210,7 +210,7 @@
         <Filename Value="sugestao.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="Sugestao"/>
-        <EditorIndex Value="21"/>
+        <EditorIndex Value="19"/>
         <TopLine Value="468"/>
         <CursorPos X="7" Y="485"/>
         <UsageCount Value="207"/>
@@ -222,7 +222,7 @@
         <ComponentName Value="FormNovoProjeto"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <EditorIndex Value="19"/>
+        <EditorIndex Value="17"/>
         <TopLine Value="107"/>
         <CursorPos Y="130"/>
         <UsageCount Value="205"/>
@@ -235,7 +235,7 @@
         <ComponentName Value="frmDictionaryPopup"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <EditorIndex Value="20"/>
+        <EditorIndex Value="18"/>
         <TopLine Value="4"/>
         <CursorPos X="29" Y="56"/>
         <UsageCount Value="201"/>
@@ -256,7 +256,7 @@
         <ComponentName Value="FormPropProjeto"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <EditorIndex Value="23"/>
+        <EditorIndex Value="21"/>
         <TopLine Value="115"/>
         <CursorPos X="6" Y="120"/>
         <UsageCount Value="204"/>
@@ -267,7 +267,7 @@
         <Filename Value="memoversiculo.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="MemoVersiculo"/>
-        <EditorIndex Value="22"/>
+        <EditorIndex Value="20"/>
         <TopLine Value="3"/>
         <CursorPos Y="53"/>
         <UsageCount Value="224"/>
@@ -287,7 +287,7 @@
         <ComponentName Value="frmExportarProjeto"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <EditorIndex Value="16"/>
+        <EditorIndex Value="14"/>
         <TopLine Value="167"/>
         <CursorPos X="43" Y="175"/>
         <UsageCount Value="203"/>
@@ -321,7 +321,7 @@
         <ComponentName Value="FrmEscolherVerseRules"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <EditorIndex Value="27"/>
+        <EditorIndex Value="25"/>
         <TopLine Value="59"/>
         <CursorPos X="21" Y="71"/>
         <UsageCount Value="228"/>
@@ -331,7 +331,7 @@
       <Unit15>
         <Filename Value="twAutomate.pas"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="29"/>
+        <EditorIndex Value="27"/>
         <TopLine Value="101"/>
         <CursorPos X="30" Y="118"/>
         <UsageCount Value="232"/>
@@ -341,7 +341,7 @@
         <Filename Value="twsyncthread.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="twSyncThread"/>
-        <EditorIndex Value="28"/>
+        <EditorIndex Value="26"/>
         <TopLine Value="20"/>
         <CursorPos Y="52"/>
         <UsageCount Value="212"/>
@@ -351,7 +351,7 @@
         <Filename Value="onttokenizer.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="ONTTokenizer"/>
-        <EditorIndex Value="26"/>
+        <EditorIndex Value="24"/>
         <TopLine Value="177"/>
         <CursorPos X="42" Y="195"/>
         <UsageCount Value="202"/>
@@ -361,7 +361,7 @@
         <Filename Value="ontparser.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="ONTParser"/>
-        <EditorIndex Value="24"/>
+        <EditorIndex Value="22"/>
         <TopLine Value="23"/>
         <CursorPos X="36" Y="41"/>
         <UsageCount Value="202"/>
@@ -371,7 +371,7 @@
         <Filename Value="sintagma.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="Sintagma"/>
-        <EditorIndex Value="15"/>
+        <EditorIndex Value="13"/>
         <TopLine Value="384"/>
         <CursorPos Y="395"/>
         <UsageCount Value="202"/>
@@ -383,7 +383,7 @@
         <ComponentName Value="FormAbout"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <EditorIndex Value="17"/>
+        <EditorIndex Value="15"/>
         <TopLine Value="11"/>
         <CursorPos X="18" Y="12"/>
         <UsageCount Value="241"/>
@@ -394,7 +394,7 @@
         <Filename Value="myswordmodule.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="MySwordModule"/>
-        <EditorIndex Value="18"/>
+        <EditorIndex Value="16"/>
         <TopLine Value="15"/>
         <CursorPos X="61" Y="33"/>
         <UsageCount Value="213"/>
@@ -444,7 +444,7 @@
         <Filename Value="htmlcolors.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="HTMLColors"/>
-        <EditorIndex Value="25"/>
+        <EditorIndex Value="23"/>
         <TopLine Value="71"/>
         <CursorPos X="50" Y="91"/>
         <UsageCount Value="232"/>
@@ -615,19 +615,17 @@
       </Unit47>
       <Unit48>
         <Filename Value="C:\tools\lazarus\fpc\3.0.4\source\rtl\objpas\sysutils\syshelph.inc"/>
-        <EditorIndex Value="13"/>
+        <EditorIndex Value="-1"/>
         <TopLine Value="158"/>
         <CursorPos X="15" Y="173"/>
         <UsageCount Value="12"/>
-        <Loaded Value="True"/>
       </Unit48>
       <Unit49>
         <Filename Value="C:\tools\lazarus\fpc\3.0.4\source\rtl\objpas\sysutils\syshelp.inc"/>
-        <EditorIndex Value="14"/>
+        <EditorIndex Value="-1"/>
         <TopLine Value="1446"/>
         <CursorPos X="3" Y="1452"/>
         <UsageCount Value="12"/>
-        <Loaded Value="True"/>
       </Unit49>
       <Unit50>
         <Filename Value="C:\tools\lazarus\lcl\include\picture.inc"/>

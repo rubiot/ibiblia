@@ -19,10 +19,6 @@ msgstr "Patch aplicado com sucesso"
 msgid "AnalyticalConcordance"
 msgstr "ConcordanciaAnalitica"
 
-#: formexportar.slogosbiblemodule
-msgid "Logos Bible module (*.docx)"
-msgstr "Módulo de Bíblia do Logos (*.docx)"
-
 #: formexportar.smyswordmodule
 msgid "MySword Bible module (*.bbl.mybible)"
 msgstr "Módulo de Bíblia do MySword (*.bb.mybible)"
@@ -1001,10 +997,6 @@ msgctxt "tfrmexportarprojeto.label2.caption"
 msgid "Module properties"
 msgstr "Propriedades do módulo"
 
-#: tfrmexportarprojeto.label3.caption
-msgid "Chapter view verse rules"
-msgstr "Regras da visualização do capítulo"
-
 #: tfrmexportarprojeto.leabreviacao.editlabel.caption
 msgid "Abbreviation"
 msgstr "Abreviação"
@@ -1018,14 +1010,6 @@ msgstr "Salvar módulo como..."
 msgctxt "tfrmexportarprojeto.savedialogconcordancia.title"
 msgid "Salvar módulo como..."
 msgstr "Salvar módulo como..."
-
-#: tfrmexportarprojeto.stringgridinterlinear.columns[0].title.caption
-msgid "From"
-msgstr "De"
-
-#: tfrmexportarprojeto.stringgridinterlinear.columns[1].title.caption
-msgid "To"
-msgstr "Para"
 
 #: tfrmexportarprojeto.tabsheet1.caption
 msgid "Tagged destination text"
@@ -1413,3 +1397,4 @@ msgstr "Colar tags de &Strong"
 #: versiculo.ssavetofile
 msgid "&Save text to file..."
 msgstr "&Exportar texto para arquivo..."
+

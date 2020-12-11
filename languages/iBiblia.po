@@ -9,10 +9,6 @@ msgstr ""
 msgid "AnalyticalConcordance"
 msgstr ""
 
-#: formexportar.slogosbiblemodule
-msgid "Logos Bible module (*.docx)"
-msgstr ""
-
 #: formexportar.smyswordmodule
 msgid "MySword Bible module (*.bbl.mybible)"
 msgstr ""
@@ -975,10 +971,6 @@ msgctxt "tfrmexportarprojeto.label2.caption"
 msgid "Module properties"
 msgstr ""
 
-#: tfrmexportarprojeto.label3.caption
-msgid "Chapter view verse rules"
-msgstr ""
-
 #: tfrmexportarprojeto.leabreviacao.editlabel.caption
 msgid "Abbreviation"
 msgstr ""
@@ -991,14 +983,6 @@ msgstr ""
 #: tfrmexportarprojeto.savedialogconcordancia.title
 msgctxt "tfrmexportarprojeto.savedialogconcordancia.title"
 msgid "Salvar módulo como..."
-msgstr ""
-
-#: tfrmexportarprojeto.stringgridinterlinear.columns[0].title.caption
-msgid "From"
-msgstr ""
-
-#: tfrmexportarprojeto.stringgridinterlinear.columns[1].title.caption
-msgid "To"
 msgstr ""
 
 #: tfrmexportarprojeto.tabsheet1.caption
