@@ -911,11 +911,7 @@ begin
 
   for v:=low(FAVersiculo) to high(FAVersiculo) do
     if assigned(FAVersiculo[v]) then
-    begin
       FAVersiculo[v].Texto := FTblPares.Fields[FACamposTexto[v]].AsString;
-      FAVersiculo[v].Modificado := false;
-      FAVersiculo[v].XMLModificado := false;
-    end;
 
   if assigned(FAVersiculo[tbOrigem]) and assigned(FAVersiculo[tbOrigem]) then
   begin
@@ -932,6 +928,13 @@ begin
     end;
     FParesAntigos := FAVersiculo[tbOrigem].GetListaPares(tlMetaDados);
   end;
+
+  for v:=low(FAVersiculo) to high(FAVersiculo) do
+    if assigned(FAVersiculo[v]) then
+    begin
+      FAVersiculo[v].Modificado := false;
+      FAVersiculo[v].XMLModificado := false;
+    end;
 
   SelectTreeNode(ID);
 
