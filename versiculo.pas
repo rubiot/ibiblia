@@ -81,6 +81,8 @@ type
     procedure OnSaveTextToFile(Sender: TObject);
     procedure OnVerseMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure OnResize(Sender: TObject);
+    procedure OnMouseWheel(Sender: TObject; Shift: TShiftState;
+             WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
     procedure InitSyntagmPopupMenu;
     procedure InitVersePopupMenu;
   protected
@@ -187,8 +189,9 @@ begin
     FEdit.OnKeyDown  := @EditKeyDown;
     FEdit.OnExit     := @EditExit;
     FPanel.InsertControl(FEdit);
-    FPanel.OnMouseDown := @OnVerseMouseDown;
-    FPanel.OnResize := @OnResize;
+    FPanel.OnMouseDown  := @OnVerseMouseDown;
+    FPanel.OnResize     := @OnResize;
+    FPanel.OnMouseWheel := @OnMouseWheel;
   end;
 
   FStrongCount          := nil;
@@ -221,7 +224,9 @@ begin
     FEdit.Free;
     FSyntagmPopupMenu.Free;
     FVersePopupMenu.Free;
-    FPanel.OnResize := nil;
+    FPanel.OnMouseDown  := nil;
+    FPanel.OnResize     := nil;
+    FPanel.OnMouseWheel := nil;
   end;
   FONTParser.Destroy;
   //FFontePadrao.Free;
@@ -1314,6 +1319,16 @@ end;
 procedure TVersiculo.OnResize(Sender: TObject);
 begin
   Renderizar;
+end;
+
+procedure TVersiculo.OnMouseWheel(Sender: TObject; Shift: TShiftState;
+  WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
+begin
+  if ssCtrl in Shift then
+  begin
+    FPanel.Font.Size := FPanel.Font.Size + Sign(WheelDelta) * 1;
+    Renderizar;
+  end;
 end;
 
 procedure TVersiculo.InitSyntagmPopupMenu;

@@ -1781,6 +1781,8 @@ begin
 end;
 
 procedure TProjeto.Fechar(_Commit: boolean);
+var
+  t: TTipoTextoBiblico;
 begin
   FClosing := true;
 
@@ -1793,10 +1795,14 @@ begin
 
   PreRolagemVersiculo(nil);
 
+  for t:=low(FAVersiculo) to high(FAVersiculo) do // saving font sizes
+    if assigned(FAVersiculo[t]) then
+      AtribuirInfo(format('fonte%d.tamanho', [t]), IntToStr(FAVersiculo[t].Fonte.Size));
+
   if _Commit then
   begin
     AtribuirInfo('marcador', FTblPares.FieldByName('pare_id').AsString);
-    Commit
+    Commit;
   end
   else
     Rollback;
