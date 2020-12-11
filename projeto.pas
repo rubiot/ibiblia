@@ -282,6 +282,8 @@ resourcestring
   SReferenceNotFound = 'Reference not found';
   SReferenceNotFoundWarning = 'The reference %s is not a valid reference in this project and will be ignored.'#13#10'Press Ignore to ignore all subsequent warnings.';
   SVerseAbsentFromProject = '[This project does not contain this verse]';
+  SLineBreaksInTextTitle = 'Edit error';
+  SLineBreaksInText = 'A verse cannot contain line breaks. Your changes will be discarded.';
 
 const
   QStrongs: array[etOT..etONT] of smallint = (8674, 5624, 14298);
@@ -1158,6 +1160,12 @@ begin
   for v:=low(FAVersiculo) to high(FAVersiculo) do
     if FAVersiculo[v] = Sender.Versiculo then
     begin
+      if ContainsText(Sender.Texto, #13) or ContainsText(Sender.Texto, #10) then
+      begin
+        MessageDlg(SLineBreaksInTextTitle, SLineBreaksInText, mtError, [mbOK], 0);
+        exit;
+      end;
+
       if Assigned(Sender.Versiculo.VersiculoPar) then
         Sender.Versiculo.AlterarTexto(Sender.Texto)
       else // reference text
