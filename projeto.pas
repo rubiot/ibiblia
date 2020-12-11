@@ -2024,7 +2024,7 @@ var
   verseRulesDe, verseRulesPara: TStringList;
   propriedades: TStringStream;
   m: smallint;
-  //line: string;
+  line: string;
 begin
   offset := 0;
   if arquivo.EndsWith('.ont') then
@@ -2065,21 +2065,23 @@ begin
     propriedades := TStringStream.Create('');
     for i:=offset+QLinhas[FEscopo] to modulo.Count-1 do
     begin
-      //line := modulo[i];
+      line := modulo[i];
       { eliminando comentários }
       modulo[i] := reComments.Replace(modulo[i], '');
-      //modulo.Strings[i] := reShortTitle.Replace(modulo.Strings[i], '$1=$2i');
 
-      if reVazio.IsMatch(modulo[i]) then
+      if reVazio.IsMatch(line) then
         continue;
 
-      propriedades.WriteString(modulo[i] + #13#10);
+      propriedades.WriteString(line + #13#10);
 
-      mtDescription := reDescription.Match(modulo[i]);
+      mtDescription := reDescription.Match(line);
       if mtDescription.Success then
+      begin
         SetTextDescription(texto, mtDescription.Groups[1].Value);
+        continue;
+      end;
 
-      mtVerseRules := reVerseRules.Match(modulo[i]);
+      mtVerseRules := reVerseRules.Match(line);
       if mtVerseRules.Success then
          FrmEscolherVerseRules.AddVerseRule(mtVerseRules.Groups[1].Value, mtVerseRules.Groups[2].Value);
     end;
