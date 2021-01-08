@@ -17,7 +17,7 @@ uses
   SysUtils, Sqlite3DS, sqlite3conn, sqldb, db, StrUtils, math,
   ExtCtrls, Controls, ComCtrls, StdCtrls, Graphics, Forms, Versiculo, Sugestao,
   MemoVersiculo, ONTTokenizer, Dialogs, dos, PCRE, ExportarProjeto, LazLogger,
-  Sintagma, MySwordModule, TheWordDictionary, fgl, PatchFile;
+  Sintagma, MySwordModule, TheWordDictionary, fgl, PatchFile, lclinf;
 
 type
 
@@ -2221,7 +2221,7 @@ end;
 procedure TProjeto.ExportarTextoDestinoComStrongs(arquivo: string;
   pb: TProgressBar; opcoes: TOpcoesExportacao);
 var
-  lines: TStringList;
+  lines, errors: TStringList;
 begin
   if not assigned(FAVersiculo[tbOrigem]) or not assigned(FAVersiculo[tbDestino]) then
     exit;
@@ -2237,6 +2237,7 @@ begin
     end;
     FExportando := true;
     lines := TStringList.Create;
+    errors := TStringList.Create;
 
     StartScrollingSession;
     with FTblPares do
@@ -2254,11 +2255,10 @@ begin
             FATmpVerse[tbOrigem].Pares := FTblPares.FieldByName('pare_pares').AsString;
           except
             on E: Exception do
-              MessageDlg(SError, SCorruptedData + #13#10#13#10 + FormattedReference + #13#10 +
-                   format('%s'#13#10'pares: %s'#13#10'%s'#13#10'%s',
+              errors.Add(SCorruptedData + #13#10#13#10 + FormattedReference + #13#10 +
+                   format('%s'#13#10'pares: %s'#13#10'%s'#13#10'%s'#13#10,
                           [E.Message, FTblPares.FieldByName('pare_pares').AsString,
-                          FATmpVerse[tbOrigem].DebugTokens, FATmpVerse[tbDestino].DebugTokens]),
-                   mtError, [mbOK], 0);
+                          FATmpVerse[tbOrigem].DebugTokens, FATmpVerse[tbDestino].DebugTokens]));
           end;
           lines.Add(FATmpVerse[tbDestino].GetLinhaONT(
             (oeExportarMorfologia in opcoes),
@@ -2298,12 +2298,20 @@ begin
       on E: Exception do MessageDlg(SError, SExportToFileError, mtError, [mbOK], 0);
     end;
   finally
-    lines.Destroy;
+    lines.Free;
     FExportando := false;
     PosRolagemVersiculo(nil);
     if assigned(pb) then
       pb.Visible := false;
   end;
+
+  if errors.Count > 0 then
+  begin
+    errors.SaveToFile('export-errors.txt');
+    OpenDocument('export-errors.txt');
+  end;
+  errors.Free;
+
 end;
 
 procedure TProjeto.ExportarTextoInterlinear(arquivo: string; opcoes: TOpcoesExportacao);
