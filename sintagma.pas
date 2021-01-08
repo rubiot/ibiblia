@@ -623,7 +623,7 @@ begin
   end else
     FLabel := nil;
 
-  if FTipo = tsSintagma then
+  if FTipo in [tsSintagma, tsPontuacao] then
   begin
     //FLabel.OnClick     := @DoOnClick;
     //FLabel.OnDblClick   := @DoOnDblClick;
@@ -748,7 +748,7 @@ end;
 
 procedure TSintagma.Desassociar;
 begin
-  if FTipo <> tsSintagma then
+  if not (FTipo in [tsSintagma, tsPontuacao]) then
     exit;
 
   Correlacionado := false;

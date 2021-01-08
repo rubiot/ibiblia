@@ -1063,7 +1063,7 @@ begin
   for i:=0 to tokens.Count-1 do
   begin
     s := StrToInt(tokens[i]);
-    if (s < 0) or (s >= Sintagmas.Count) or (Sintagmas[s].Tipo <> tsSintagma) then
+    if (s < 0) or (s >= Sintagmas.Count) or not (Sintagmas[s].Tipo in [tsSintagma, tsPontuacao]) then
       raise Exception.Create(format('Invalid syntagm index: %d', [s]))
     else
       Sintagmas[s].SelecaoMais;
