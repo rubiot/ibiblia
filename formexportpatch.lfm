@@ -1,7 +1,7 @@
 object FormExportPatch: TFormExportPatch
-  Left = 345
+  Left = 346
   Height = 569
-  Top = 167
+  Top = 168
   Width = 413
   Caption = 'Export patch...'
   ClientHeight = 569

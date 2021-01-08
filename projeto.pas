@@ -44,6 +44,7 @@ type
     tbNone
   );
 
+  TRegexList = specialize TFPGList<IRegex>;
   TIntegerList = specialize TFPGList<integer>;
   TPopupTrigger = (ptMouseHover, ptAltMouseHover, ptCtrlMouseHover);
 
@@ -597,7 +598,9 @@ begin
 end;
 
 function TProjeto.GetChapterText: TStringList;
-  function GetText: string;
+  function GetText(rulesRx: TRegexList; replaceTo: TStringList): string;
+  var
+    i: integer;
   begin
     case ChapterViewText of
       tbOrigem, tbDestino, tbConsulta1, tbConsulta2:
@@ -622,15 +625,37 @@ function TProjeto.GetChapterText: TStringList;
           end;
           result := //FATmpVerse[tbOrigem].GetMySwordInterlinearLine,
                     FATmpVerse[tbOrigem].GetTheWordInterlinearLine;
+
+          // apply verse rules
+          for i:=0 to rulesRx.Count-1 do
+            result := rulesRx[i].Replace(result, replaceTo[i]);
+
         end;
       end;
     end;
   end;
 var
   bkch, comments: string;
+  rulesRx: TRegexList;
+  replaceTo: TStringList;
+  keyValue: TStringArray;
+  rule: string;
 begin
   bkch := Format('%d,%d,', [BookID, Chapter]);
   result := TStringList.Create;
+
+  if ChapterViewText = tbInterlinear then
+  begin // compiling verse rules beforehand
+    rulesRx := TRegexList.Create;
+    replaceTo := TStringList.Create;
+    for rule in ObterInfo('propriedades.interlinearview.verserules').Split(#13) do
+    begin
+      keyValue := rule.Split(#10);
+      if keyValue[0].IsEmpty then continue;
+      rulesRx.Add(RegexCreate(keyValue[0], [rcoUTF8]));
+      replaceTo.Add(keyValue[1]);
+    end;
+  end;
 
   StartScrollingSession;
   RewindChapter;
@@ -638,10 +663,16 @@ begin
     while not FTblPares.EOF and GetID().StartsWith(bkch) do
     begin
       comments := IfThen(ChapterViewText = tbDestino, Comentarios.Replace(#13#10, '<br/>', [rfReplaceAll]), '');
-      result.Add(Format('%s%s', [GetText, IfThen(comments.IsEmpty, '', Format('<RF>%s<Rf>', [comments]))]));
+      result.Add(Format('%s%s', [GetText(rulesRx, replaceTo), IfThen(comments.IsEmpty, '', Format('<RF>%s<Rf>', [comments]))]));
       VersiculoSeguinte;
     end;
   FinishScrollingSession;
+
+  if ChapterViewText = tbInterlinear then
+  begin
+    rulesRx.Free;
+    replaceTo.Free;
+  end;
 end;
 
 function TProjeto.GetComentarios: string;

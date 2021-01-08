@@ -1,7 +1,7 @@
 object FrmEscolherVerseRules: TFrmEscolherVerseRules
-  Left = 382
+  Left = 383
   Height = 450
-  Top = 213
+  Top = 214
   Width = 1171
   HorzScrollBar.Page = 1160
   VertScrollBar.Page = 398
@@ -12,7 +12,7 @@ object FrmEscolherVerseRules: TFrmEscolherVerseRules
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   Position = poOwnerFormCenter
-  LCLVersion = '2.0.6.0'
+  LCLVersion = '2.0.10.0'
   object ckgVerseRules: TCheckGroup
     Left = 0
     Height = 450
@@ -32,7 +32,7 @@ object FrmEscolherVerseRules: TFrmEscolherVerseRules
     TabOrder = 0
   end
   object Button1: TButton
-    Left = 964
+    Left = 8
     Height = 25
     Top = 416
     Width = 75
@@ -43,7 +43,7 @@ object FrmEscolherVerseRules: TFrmEscolherVerseRules
     TabOrder = 1
   end
   object Button2: TButton
-    Left = 1085
+    Left = 129
     Height = 25
     Top = 416
     Width = 75

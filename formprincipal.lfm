@@ -1,7 +1,7 @@
 object frmPrincipal: TfrmPrincipal
-  Left = 366
+  Left = 367
   Height = 681
-  Top = 148
+  Top = 149
   Width = 943
   Caption = 'iBiblia'
   ClientHeight = 661
@@ -15,7 +15,7 @@ object frmPrincipal: TfrmPrincipal
   OnShow = FormShow
   Position = poDesktopCenter
   ShowHint = True
-  LCLVersion = '2.0.6.0'
+  LCLVersion = '2.0.10.0'
   object StatusBar1: TStatusBar
     Left = 0
     Height = 23
@@ -348,8 +348,8 @@ object frmPrincipal: TfrmPrincipal
     Visible = False
   end
   object MainMenu1: TMainMenu
-    left = 160
-    top = 192
+    Left = 160
+    Top = 192
     object MenuItem1: TMenuItem
       Caption = 'Project'
       object MenuItem2: TMenuItem
@@ -503,8 +503,8 @@ object frmPrincipal: TfrmPrincipal
     end
   end
   object ActionList1: TActionList
-    left = 40
-    top = 192
+    Left = 40
+    Top = 192
     object ActionNovoProjeto: TAction
       Caption = 'New...'
       Hint = 'Create new association project'
@@ -660,8 +660,8 @@ object frmPrincipal: TfrmPrincipal
     Filter = 'Association project (*.bib)|*.bib'
     InitialDir = '.\dados'
     Options = [ofFileMustExist, ofEnableSizing, ofViewDetail]
-    left = 400
-    top = 192
+    Left = 400
+    Top = 192
   end
   object SaveDialog1: TSaveDialog
     Title = 'Save project as...'
@@ -669,19 +669,19 @@ object frmPrincipal: TfrmPrincipal
     FileName = 'projeto1'
     Filter = 'Association projects (*.bib)|*.bib'
     InitialDir = '.\dados'
-    left = 544
-    top = 192
+    Left = 544
+    Top = 192
   end
   object SaveDialog2: TSaveDialog
     Title = 'Save module as...'
     DefaultExt = '.nt'
     Filter = 'theWord module (*.nt)|*.nt'
-    left = 664
-    top = 192
+    Left = 664
+    Top = 192
   end
   object ImageListTreeView: TImageList
-    left = 792
-    top = 192
+    Left = 792
+    Top = 192
     Bitmap = {
       4C69080000001000000010000000FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
       FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
@@ -945,8 +945,8 @@ object frmPrincipal: TfrmPrincipal
   object ImageList64x64: TImageList
     Height = 64
     Width = 64
-    left = 280
-    top = 192
+    Left = 280
+    Top = 192
     Bitmap = {
       4C69070000004000000040000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
@@ -4538,8 +4538,8 @@ object frmPrincipal: TfrmPrincipal
   object ImageList1: TImageList
     Height = 32
     Width = 32
-    left = 280
-    top = 264
+    Left = 280
+    Top = 264
     Bitmap = {
       4C69180000002000000020000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000

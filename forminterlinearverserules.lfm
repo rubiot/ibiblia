@@ -1,0 +1,54 @@
+object FormInterlinearVerseRules: TFormInterlinearVerseRules
+  Left = 497
+  Height = 225
+  Top = 313
+  Width = 856
+  Caption = 'Interlinear view verse rules'
+  ClientHeight = 225
+  ClientWidth = 856
+  OnCreate = FormCreate
+  Position = poOwnerFormCenter
+  LCLVersion = '2.0.10.0'
+  object StringGridInterlinear: TStringGrid
+    Left = 13
+    Height = 144
+    Top = 24
+    Width = 829
+    Anchors = [akTop, akLeft, akRight, akBottom]
+    ColCount = 2
+    Columns = <    
+      item
+        Title.Caption = 'From'
+      end    
+      item
+        Title.Caption = 'To'
+      end>
+    FixedCols = 0
+    Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goColSizing, goEditing, goAutoAddRows, goAlwaysShowEditor, goSmoothScroll, goCellEllipsis]
+    RowCount = 2
+    TabOrder = 0
+  end
+  object ButtonOK: TButton
+    Left = 767
+    Height = 25
+    Top = 184
+    Width = 75
+    Anchors = [akRight, akBottom]
+    Caption = 'OK'
+    Default = True
+    ModalResult = 1
+    OnClick = ButtonOKClick
+    TabOrder = 1
+  end
+  object Button2: TButton
+    Left = 664
+    Height = 25
+    Top = 184
+    Width = 75
+    Anchors = [akRight, akBottom]
+    Cancel = True
+    Caption = 'Cancel'
+    ModalResult = 2
+    TabOrder = 2
+  end
+end

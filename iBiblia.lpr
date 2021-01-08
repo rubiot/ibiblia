@@ -14,7 +14,7 @@ uses
   twAutomate, twSyncThread,
   {$ENDIF}
   ONTParser, Sintagma, unitabout, MySwordModule, TheWordDictionary, lazrichview,
-  HTMLColors, formexportpatch, formapplypatch, PatchFile;
+  HTMLColors, formexportpatch, formapplypatch, PatchFile, formInterlinearVerseRules;
 
 {$R *.res}
 
@@ -29,6 +29,7 @@ begin
   Application.CreateForm(TFormAbout, FormAbout);
   Application.CreateForm(TFormExportPatch, FrmExportPatch);
   Application.CreateForm(TFrmApplyPatch, FrmApplyPatch);
+  Application.CreateForm(TFormInterlinearVerseRules, frmInterlinearVerseRules);
   Application.Run;
 end.
 

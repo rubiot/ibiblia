@@ -1,7 +1,7 @@
 object FrmApplyPatch: TFrmApplyPatch
-  Left = 315
+  Left = 316
   Height = 663
-  Top = 119
+  Top = 120
   Width = 788
   Caption = 'Apply patch...'
   ClientHeight = 663

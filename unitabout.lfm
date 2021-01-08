@@ -1,7 +1,7 @@
 object FormAbout: TFormAbout
-  Left = 567
+  Left = 568
   Height = 124
-  Top = 237
+  Top = 238
   Width = 450
   BorderIcons = [biSystemMenu]
   BorderStyle = bsToolWindow

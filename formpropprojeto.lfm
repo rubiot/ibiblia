@@ -1,7 +1,7 @@
 object FormPropProjeto: TFormPropProjeto
-  Left = 318
+  Left = 319
   Height = 611
-  Top = 155
+  Top = 156
   Width = 553
   Caption = 'Properties'
   ClientHeight = 611

@@ -11,7 +11,7 @@ type
 
 { TMySwordModule }
 
- TMySwordModule = class
+  TMySwordModule = class
   private
     FConnection: TSQLite3Connection;
     FOT: boolean;

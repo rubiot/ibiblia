@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, Forms, Graphics, ONTTokenizer, LCLType, HTMLColors,
   LazUTF8, Projeto, PCRE, Controls, Menus, fgl, Dialogs, Math, Contnrs, KMemo,
-  KEditCommon, KGraphics;
+  KEditCommon, KGraphics, formInterlinearVerseRules;
 
 type
 
@@ -68,9 +68,9 @@ type
     FRxVerseHeading: IRegex;
     FNoteID: integer;
     FHint: TNoteWindow;
-    FFontItem: TMenuItem;
     FParagraphModeItem: TMenuItem;
     FVersePerLineItem: TMenuItem;
+    FVerseRulesItem: TMenuItem;
     FVerseMode: TViewMode;
     FStyleStack: TObjectStack;
     FVerseRanges: array of TBlockRange;
@@ -94,9 +94,11 @@ type
     procedure HandlePopupKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure HandleMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
     procedure HandleMouseWheel(Sender: TObject; Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
+    procedure HandleContextPopup(Sender: TObject; MousePos: TPoint; var Handled: Boolean);
     procedure HandleSetFont(Sender: TObject);
     procedure HandleParagraphMode(Sender: TObject);
     procedure HandleVersePerLineMode(Sender: TObject);
+    procedure HandleVerseRules(Sender: TObject);
     procedure SetProject(AValue: TProjeto);
     procedure InitPopupMenu;
     procedure SetVerseMode(AValue: TViewMode);
@@ -132,6 +134,7 @@ resourcestring
   SSetFont = 'Choose &font...';
   SParagraphMode = '&Paragraph mode';
   SVersePerLineMode = '&Verse per line mode';
+  SVerseRules = 'Verse &rules...';
   SPreviousChapter = 'Previous chapter';
   SNextChapter = 'Next chapter';
   SChapterBeginning = 'Beginning of chapter';
@@ -634,6 +637,17 @@ begin
   end;
 end;
 
+procedure TChapterView.HandleContextPopup(Sender: TObject; MousePos: TPoint;
+  var Handled: Boolean);
+begin
+  if not assigned(FProject) then
+  begin
+    Handled := true;
+    exit;
+  end;
+  FVerseRulesItem.Enabled := FProject.ChapterViewText = tbInterlinear;
+end;
+
 procedure TChapterView.HandleSetFont(Sender: TObject);
 var
   dialog: TFontDialog;
@@ -663,6 +677,12 @@ begin
   VerseMode := vmVersePerLine;
 end;
 
+procedure TChapterView.HandleVerseRules(Sender: TObject);
+begin
+  frmInterlinearVerseRules.Project := FProject;
+  frmInterlinearVerseRules.ShowModal;
+end;
+
 procedure TChapterView.SetProject(AValue: TProjeto);
 begin
   if FProject = AValue then Exit;
@@ -676,20 +696,20 @@ begin
 end;
 
 procedure TChapterView.InitPopupMenu;
+var
+  aItem: TMenuItem;
 begin
   PopupMenu := TPopupMenu.Create(Self);
   PopupMenu.Parent := Self;
 
-  FFontItem := TMenuItem.Create(PopupMenu);
-  with FFontItem do
+  aItem := TMenuItem.Create(PopupMenu);
+  with aItem do
   begin
     Caption := SSetFont;
     OnClick := @HandleSetFont;
     Enabled := True;
   end;
-  PopupMenu.Items.Add(FFontItem);
-
-  PopupMenu.Items.AddSeparator;
+  PopupMenu.Items.Add(aItem);
 
   FParagraphModeItem := TMenuItem.Create(PopupMenu);
   with FParagraphModeItem do
@@ -698,6 +718,7 @@ begin
     OnClick := @HandleParagraphMode;
     Enabled := False;
   end;
+  PopupMenu.Items.AddSeparator;
   PopupMenu.Items.Add(FParagraphModeItem);
 
   FVersePerLineItem := TMenuItem.Create(PopupMenu);
@@ -708,6 +729,15 @@ begin
     Enabled := True;
   end;
   PopupMenu.Items.Add(FVersePerLineItem);
+
+  PopupMenu.Items.AddSeparator;
+  FVerseRulesItem := TMenuItem.Create(PopupMenu);
+  with FVerseRulesItem do
+  begin
+    Caption := SVerseRules;
+    OnClick := @HandleVerseRules;
+  end;
+  PopupMenu.Items.Add(FVerseRulesItem);
 end;
 
 procedure TChapterView.SetVerseMode(AValue: TViewMode);
@@ -965,6 +995,7 @@ begin
   OnKeyDown    := @HandleKeyDown;
   OnMouseWheel := @HandleMouseWheel;
   //OnMouseMove  := @HandleMouseMove;
+  OnContextPopup := @HandleContextPopup;
   FFontName       := 'default';
   FFontSize       := 10;
   FProject        := nil;
