@@ -242,6 +242,7 @@ var
   mtHeading: IMatch;
   heading: string;
 begin
+  ResetStyleStack;
   mtHeading := FRxVerseHeading.Match(txt);
   if not mtHeading.Success then
     raise Exception.Create(SysUtils.Format('There''s something wrong with this verse: "%s"'#13#10 +
