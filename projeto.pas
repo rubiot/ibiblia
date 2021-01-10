@@ -310,6 +310,7 @@ begin
   AtribuirInfo('descricao', descricao);
   AtribuirInfo('marcador', format('%d,1,1', [OffsetLivros[FEscopo] + 1]));
   FExibirDefComCtrl := false;  //FTblInfo.ExecuteDirect('COMMIT;');
+  VersiculoInicial;
   Commit;
 end;
 
