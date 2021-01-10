@@ -303,6 +303,8 @@ resourcestring
   SNewAssociationProject = 'New association project';
   SLoadingFile = 'Loading %s...';
   SChanged = 'changed';
+  SInvalidProjectNameQuery = 'Do you want to choose a different name?';
+  SInvalidProjectNameTitle = 'A project file with this name already exists';
 
 { TFrmPrincipal }
 
@@ -533,52 +535,66 @@ begin
 
   FormNovoProjeto1.EditNomeProjeto.Text := SNewAssociationProject;
 
-  if (FormNovoProjeto1.ShowModal = mrOK) and SaveDialog1.Execute then
-  begin
-    ProjetoAtual := TProjeto.Criar([ScrollBoxSrcVerse, ScrollBoxDstVerse, ScrollBoxRef1Verse, ScrollBoxRef2Verse], TreeView1, RadioGroupStatus, CommentsMemo);
-    ProjetoAtual.Escopo := QualEscopo;
-    ProjetoAtual.PalavrasComStrongEmNegrito := MenuItemStrongNegrito.Checked;
-    ProjetoAtual.MostrarQtdStrongs := FStrongsCountMode;
-    ProjetoAtual.OnNewVerseSubscribe(@QuandoNovoVersiculo);
-    ProjetoAtual.OnAlterarVersiculo := @QuandoAlterarVersiculo;
-    ProjetoAtual.Novo(SaveDialog1.FileName, FormNovoProjeto1.EditNomeProjeto.Text, language);
-    ProjetoAtual.ExibirDefinicoesSoComCtrl := MenuItemDictPopup.Checked;
-    ProjetoAtual.SugerirAssociacaoAutomaticamente := MenuItem22.Checked;
-    ProjetoAtual.PopupTrigger := FPopupTrigger;
+  if FormNovoProjeto1.ShowModal <> mrOK then
+    exit;
 
-    //ParThread.pb := ProgressBar1;
-    for v:=tbOrigem to tbConsulta2 do
+  repeat
+    if not SaveDialog1.Execute then
+      exit;
+
+    if FileExists(SaveDialog1.FileName) then
     begin
-      StatusBar1.Caption := Format(SLoadingFile, [QualTexto(v)]);
-      ParThread.texto := v;
-      ParThread.pb := ProgressBar1;
-      Application.ProcessMessages;
-      //WaitForThreadTerminate(BeginThread(@CarregarTexto, Pointer(@ParThread)), 0);
-      CarregarTexto(Pointer(@ParThread));
-    end;
-    StatusBar1.Caption:='';
+      case MessageDlg(SInvalidProjectNameTitle, SInvalidProjectNameQuery, mtConfirmation, [mbYes, mbNo], 0) of
+        mrNo: exit;
+        mrYes: continue;
+      end;
+    end else
+      break;
+  until false;
 
-    ProjetoAtual.Commit;
-    ProjetoAtual.Atualizar;
+  ProjetoAtual := TProjeto.Criar([ScrollBoxSrcVerse, ScrollBoxDstVerse, ScrollBoxRef1Verse, ScrollBoxRef2Verse], TreeView1, RadioGroupStatus, CommentsMemo);
+  ProjetoAtual.Escopo := QualEscopo;
+  ProjetoAtual.PalavrasComStrongEmNegrito := MenuItemStrongNegrito.Checked;
+  ProjetoAtual.MostrarQtdStrongs := FStrongsCountMode;
+  ProjetoAtual.OnNewVerseSubscribe(@QuandoNovoVersiculo);
+  ProjetoAtual.OnAlterarVersiculo := @QuandoAlterarVersiculo;
+  ProjetoAtual.Novo(SaveDialog1.FileName, FormNovoProjeto1.EditNomeProjeto.Text, language);
+  ProjetoAtual.ExibirDefinicoesSoComCtrl := MenuItemDictPopup.Checked;
+  ProjetoAtual.SugerirAssociacaoAutomaticamente := MenuItem22.Checked;
+  ProjetoAtual.PopupTrigger := FPopupTrigger;
 
-    //ProgressBar1.Visible := false;
-    ActionSalvarProjeto.Enabled := true;
-    ActionSalvarProjetoComo.Enabled := true;
-    ActionFecharProjeto.Enabled := true;
-    ActionPropProjeto.Enabled := true;
-    ActionVersoPrimeiro.Enabled := true;
-    ActionVersoUltimo.Enabled := true;
-    ActionVersoSeguinte.Enabled := true;
-    ActionVersoAnterior.Enabled := true;
-    ActionSugerirAssociacao.Enabled := true;
-    ActionReverterAssociacoes.Enabled := true;
-    ActionLimparAssociacoes.Enabled := true;
-    ActionExportar.Enabled := true;
-    FChapterView.Enabled := true;
-    FChapterView.Project := ProjetoAtual;
-
-    StatusBar1.SimpleText := '';
+  //ParThread.pb := ProgressBar1;
+  for v:=tbOrigem to tbConsulta2 do
+  begin
+    StatusBar1.Caption := Format(SLoadingFile, [QualTexto(v)]);
+    ParThread.texto := v;
+    ParThread.pb := ProgressBar1;
+    Application.ProcessMessages;
+    //WaitForThreadTerminate(BeginThread(@CarregarTexto, Pointer(@ParThread)), 0);
+    CarregarTexto(Pointer(@ParThread));
   end;
+  StatusBar1.Caption:='';
+
+  ProjetoAtual.Commit;
+  ProjetoAtual.Atualizar;
+
+  //ProgressBar1.Visible := false;
+  ActionSalvarProjeto.Enabled := true;
+  ActionSalvarProjetoComo.Enabled := true;
+  ActionFecharProjeto.Enabled := true;
+  ActionPropProjeto.Enabled := true;
+  ActionVersoPrimeiro.Enabled := true;
+  ActionVersoUltimo.Enabled := true;
+  ActionVersoSeguinte.Enabled := true;
+  ActionVersoAnterior.Enabled := true;
+  ActionSugerirAssociacao.Enabled := true;
+  ActionReverterAssociacoes.Enabled := true;
+  ActionLimparAssociacoes.Enabled := true;
+  ActionExportar.Enabled := true;
+  FChapterView.Enabled := true;
+  FChapterView.Project := ProjetoAtual;
+
+  StatusBar1.SimpleText := '';
 end;
 
 procedure TFrmPrincipal.ActionPropProjetoExecute(Sender: TObject);

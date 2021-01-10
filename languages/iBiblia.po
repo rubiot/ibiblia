@@ -117,6 +117,14 @@ msgstr ""
 msgid "Interlinear"
 msgstr ""
 
+#: formprincipal.sinvalidprojectnamequery
+msgid "Do you want to choose a different name?"
+msgstr ""
+
+#: formprincipal.sinvalidprojectnametitle
+msgid "A project file with this name already exists"
+msgstr ""
+
 #: formprincipal.sloadingfile
 msgid "Loading %s..."
 msgstr ""
