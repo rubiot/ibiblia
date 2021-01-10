@@ -1046,9 +1046,13 @@ var
   show: boolean;
 begin
   case FPopupTrigger of
-    ptMouseHover:     show := true;
-    ptAltMouseHover:  show := GetKeyState(VK_MENU   ) and $8000 <> 0;
-    ptCtrlMouseHover: show := GetKeyState(VK_CONTROL) and $8000 <> 0;
+    ptMouseHover:     show := (GetKeyState(VK_CONTROL) and $8000 = 0) and
+                              (GetKeyState(VK_SHIFT  ) and $8000 = 0);
+
+    ptAltMouseHover:  show := (GetKeyState(VK_MENU   ) and $8000 <> 0);
+
+    ptCtrlMouseHover: show := (GetKeyState(VK_CONTROL) and $8000 <> 0) and
+                              (GetKeyState(VK_SHIFT  ) and $8000 = 0);
   end;
 
   if show then
