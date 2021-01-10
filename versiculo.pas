@@ -480,6 +480,8 @@ begin
   if FXML = _XML then
     exit;
 
+  FAtivo := false; // we're potentially deleting labels
+
   new := TSintagmaList.Create;
   new := FONTParser.ParseLine(_XML, self);
 
@@ -562,6 +564,7 @@ begin
     VersiculoPar.Modificado := true;
   SintagmaClipboard := nil;
 
+  FAtivo := true;
   Renderizar;
 end;
 
@@ -1297,7 +1300,7 @@ begin
   VersiculoPar.Modificado := true;
 
   LimparSelecao;
-  VersiculoPar.LimparSelecao;;
+  VersiculoPar.LimparSelecao;
   s.SelecaoMais;
 
   Renderizar;
