@@ -727,14 +727,6 @@ begin
   if MenuItemAlwaysOnTop.Checked then
     FormStyle := fsSystemStayOnTop;
 
-  language := opts.ReadString('opcoes', 'language', 'pt');
-  SetDefaultLang(language);
-  if language = 'en' then
-    MenuItemLangEn.Checked:=true
-  else if language = 'pt' then
-    MenuItemLangPt.Checked:=true;
-  Translate;
-
   FChapterView := TChapterView.Create(ChapterViewTabCtrl);
   with FChapterView do
   begin
@@ -745,6 +737,14 @@ begin
     FontSize     := opts.ReadInteger('leiaute', 'principal.chapterview.font.size', 0);
     VerseMode    := TViewMode(opts.ReadInteger('opcoes', 'chapterview.versemode', Ord(vmParagraph)));
   end;
+
+  language := opts.ReadString('opcoes', 'language', 'pt');
+  SetDefaultLang(language);
+  if language = 'en' then
+    MenuItemLangEn.Checked:=true
+  else if language = 'pt' then
+    MenuItemLangPt.Checked:=true;
+  Translate;
 
   CarregarMRU(MenuItemRecent);
   TreeView1.Width := opts.ReadInteger('leiaute', 'principal.treeview.largura', TreeView1.Width);
@@ -1134,6 +1134,8 @@ begin
     FormPropProjeto1.Translate;
   if assigned(ProjetoAtual) then
     ProjetoAtual.Translate;
+  if assigned(FChapterView) then
+    FChapterView.Translate;
 end;
 
 procedure TFrmPrincipal.DoOpenProject(filename: string);

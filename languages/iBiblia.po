@@ -1,6 +1,34 @@
 msgid ""
 msgstr "Content-Type: text/plain; charset=UTF-8"
 
+#: chapterview.schapterbeginning
+msgid "Beginning of chapter"
+msgstr ""
+
+#: chapterview.snextchapter
+msgid "Next chapter"
+msgstr ""
+
+#: chapterview.sparagraphmode
+msgid "&Paragraph mode"
+msgstr ""
+
+#: chapterview.spreviouschapter
+msgid "Previous chapter"
+msgstr ""
+
+#: chapterview.ssetfont
+msgid "Choose &font..."
+msgstr ""
+
+#: chapterview.sverseperlinemode
+msgid "&Verse per line mode"
+msgstr ""
+
+#: chapterview.sverserules
+msgid "Verse &rules..."
+msgstr ""
+
 #: formapplypatch.spatchsuccessfullyapplied
 msgid "Patch successfully applied"
 msgstr ""
@@ -728,6 +756,28 @@ msgstr ""
 
 #: tformabout.labelversion.caption
 msgid "iBiblia version"
+msgstr ""
+
+#: tforminterlinearverserules.button2.caption
+msgctxt "tforminterlinearverserules.button2.caption"
+msgid "Cancel"
+msgstr ""
+
+#: tforminterlinearverserules.buttonok.caption
+msgctxt "tforminterlinearverserules.buttonok.caption"
+msgid "OK"
+msgstr ""
+
+#: tforminterlinearverserules.caption
+msgid "Interlinear view verse rules"
+msgstr ""
+
+#: tforminterlinearverserules.stringgridinterlinear.columns[0].title.caption
+msgid "From"
+msgstr ""
+
+#: tforminterlinearverserules.stringgridinterlinear.columns[1].title.caption
+msgid "To"
 msgstr ""
 
 #: tformnovoprojeto.bitbtn1.caption

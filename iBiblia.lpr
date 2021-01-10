@@ -14,7 +14,8 @@ uses
   twAutomate, twSyncThread,
   {$ENDIF}
   ONTParser, Sintagma, unitabout, MySwordModule, TheWordDictionary, lazrichview,
-  HTMLColors, formexportpatch, formapplypatch, PatchFile, formInterlinearVerseRules;
+  HTMLColors, formexportpatch, formapplypatch, PatchFile,
+  formInterlinearVerseRules, ChapterView;
 
 {$R *.res}
 

@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, Forms, Graphics, ONTTokenizer, LCLType, HTMLColors,
   LazUTF8, Projeto, PCRE, Controls, Menus, fgl, Dialogs, Math, Contnrs, KMemo,
-  KEditCommon, KGraphics, formInterlinearVerseRules;
+  KEditCommon, KGraphics, formInterlinearVerseRules, LCLTranslator;
 
 type
 
@@ -68,6 +68,7 @@ type
     FRxVerseHeading: IRegex;
     FNoteID: integer;
     FHint: TNoteWindow;
+    FSetFontItem: TMenuItem;
     FParagraphModeItem: TMenuItem;
     FVersePerLineItem: TMenuItem;
     FVerseRulesItem: TMenuItem;
@@ -115,6 +116,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    procedure Translate;
     procedure LoadChapter;
     property Project: TProjeto read FProject write SetProject;
     property VerseMode: TViewMode read FVerseMode write SetVerseMode;
@@ -697,20 +699,18 @@ begin
 end;
 
 procedure TChapterView.InitPopupMenu;
-var
-  aItem: TMenuItem;
 begin
   PopupMenu := TPopupMenu.Create(Self);
   PopupMenu.Parent := Self;
 
-  aItem := TMenuItem.Create(PopupMenu);
-  with aItem do
+  FSetFontItem := TMenuItem.Create(PopupMenu);
+  with FSetFontItem do
   begin
     Caption := SSetFont;
     OnClick := @HandleSetFont;
     Enabled := True;
   end;
-  PopupMenu.Items.Add(aItem);
+  PopupMenu.Items.Add(FSetFontItem);
 
   FParagraphModeItem := TMenuItem.Create(PopupMenu);
   with FParagraphModeItem do
@@ -1019,6 +1019,15 @@ begin
     FProject.OnNewVerseUnsubscribe(@HandleVerseChange);
 
   inherited Destroy;
+end;
+
+procedure TChapterView.Translate;
+begin
+  FSetFontItem.Caption       := SSetFont;
+  FParagraphModeItem.Caption := SParagraphMode;
+  FVersePerLineItem.Caption  := SVersePerLineMode;
+  FVerseRulesItem.Caption    := SVerseRules;
+  HandleVerseChange(FProject);
 end;
 
 procedure TChapterView.LoadChapter;

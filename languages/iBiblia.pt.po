@@ -11,6 +11,34 @@ msgstr ""
 "Language: pt\n"
 "X-Generator: Poedit 2.4.2\n"
 
+#: chapterview.schapterbeginning
+msgid "Beginning of chapter"
+msgstr "Início do capítulo"
+
+#: chapterview.snextchapter
+msgid "Next chapter"
+msgstr "Próximo capítulo"
+
+#: chapterview.sparagraphmode
+msgid "&Paragraph mode"
+msgstr "Modo &parágrafo"
+
+#: chapterview.spreviouschapter
+msgid "Previous chapter"
+msgstr "Capítulo anterior"
+
+#: chapterview.ssetfont
+msgid "Choose &font..."
+msgstr "Selecionar &fonte..."
+
+#: chapterview.sverseperlinemode
+msgid "&Verse per line mode"
+msgstr "Um versículo por &linha"
+
+#: chapterview.sverserules
+msgid "Verse &rules..."
+msgstr "Regras de &transformação (verse rules)..."
+
 #: formapplypatch.spatchsuccessfullyapplied
 msgid "Patch successfully applied"
 msgstr "Patch aplicado com sucesso"
@@ -756,6 +784,28 @@ msgstr "https://github.com/rubiot/ibiblia"
 msgid "iBiblia version"
 msgstr "Versão do iBiblia"
 
+#: tforminterlinearverserules.button2.caption
+msgctxt "tforminterlinearverserules.button2.caption"
+msgid "Cancel"
+msgstr "Cancelar"
+
+#: tforminterlinearverserules.buttonok.caption
+msgctxt "tforminterlinearverserules.buttonok.caption"
+msgid "OK"
+msgstr "OK"
+
+#: tforminterlinearverserules.caption
+msgid "Interlinear view verse rules"
+msgstr "Regras de transformação (verse rules)"
+
+#: tforminterlinearverserules.stringgridinterlinear.columns[0].title.caption
+msgid "From"
+msgstr "De"
+
+#: tforminterlinearverserules.stringgridinterlinear.columns[1].title.caption
+msgid "To"
+msgstr "Para"
+
 #: tformnovoprojeto.bitbtn1.caption
 msgctxt "tformnovoprojeto.bitbtn1.caption"
 msgid "..."
@@ -1397,4 +1447,3 @@ msgstr "Colar tags de &Strong"
 #: versiculo.ssavetofile
 msgid "&Save text to file..."
 msgstr "&Exportar texto para arquivo..."
-
