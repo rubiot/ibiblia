@@ -552,49 +552,54 @@ begin
       break;
   until false;
 
-  ProjetoAtual := TProjeto.Criar([ScrollBoxSrcVerse, ScrollBoxDstVerse, ScrollBoxRef1Verse, ScrollBoxRef2Verse], TreeView1, RadioGroupStatus, CommentsMemo);
-  ProjetoAtual.Escopo := QualEscopo;
-  ProjetoAtual.PalavrasComStrongEmNegrito := MenuItemStrongNegrito.Checked;
-  ProjetoAtual.MostrarQtdStrongs := FStrongsCountMode;
-  ProjetoAtual.OnNewVerseSubscribe(@QuandoNovoVersiculo);
-  ProjetoAtual.OnAlterarVersiculo := @QuandoAlterarVersiculo;
-  ProjetoAtual.Novo(SaveDialog1.FileName, FormNovoProjeto1.EditNomeProjeto.Text, language);
-  ProjetoAtual.ExibirDefinicoesSoComCtrl := MenuItemDictPopup.Checked;
-  ProjetoAtual.SugerirAssociacaoAutomaticamente := MenuItem22.Checked;
-  ProjetoAtual.PopupTrigger := FPopupTrigger;
+  try
+    Enabled := false;
+    ProjetoAtual := TProjeto.Criar([ScrollBoxSrcVerse, ScrollBoxDstVerse, ScrollBoxRef1Verse, ScrollBoxRef2Verse], TreeView1, RadioGroupStatus, CommentsMemo);
+    ProjetoAtual.Escopo := QualEscopo;
+    ProjetoAtual.PalavrasComStrongEmNegrito := MenuItemStrongNegrito.Checked;
+    ProjetoAtual.MostrarQtdStrongs := FStrongsCountMode;
+    ProjetoAtual.OnNewVerseSubscribe(@QuandoNovoVersiculo);
+    ProjetoAtual.OnAlterarVersiculo := @QuandoAlterarVersiculo;
+    ProjetoAtual.Novo(SaveDialog1.FileName, FormNovoProjeto1.EditNomeProjeto.Text, language);
+    ProjetoAtual.ExibirDefinicoesSoComCtrl := MenuItemDictPopup.Checked;
+    ProjetoAtual.SugerirAssociacaoAutomaticamente := MenuItem22.Checked;
+    ProjetoAtual.PopupTrigger := FPopupTrigger;
 
-  //ParThread.pb := ProgressBar1;
-  for v:=tbOrigem to tbConsulta2 do
-  begin
-    StatusBar1.Caption := Format(SLoadingFile, [QualTexto(v)]);
-    ParThread.texto := v;
-    ParThread.pb := ProgressBar1;
-    Application.ProcessMessages;
-    //WaitForThreadTerminate(BeginThread(@CarregarTexto, Pointer(@ParThread)), 0);
-    CarregarTexto(Pointer(@ParThread));
+    //ParThread.pb := ProgressBar1;
+    for v:=tbOrigem to tbConsulta2 do
+    begin
+      StatusBar1.Caption := Format(SLoadingFile, [QualTexto(v)]);
+      ParThread.texto := v;
+      ParThread.pb := ProgressBar1;
+      Application.ProcessMessages;
+      //WaitForThreadTerminate(BeginThread(@CarregarTexto, Pointer(@ParThread)), 0);
+      CarregarTexto(Pointer(@ParThread));
+    end;
+    StatusBar1.Caption:='';
+
+    ProjetoAtual.Commit;
+    ProjetoAtual.Atualizar;
+
+    //ProgressBar1.Visible := false;
+    ActionSalvarProjeto.Enabled := true;
+    ActionSalvarProjetoComo.Enabled := true;
+    ActionFecharProjeto.Enabled := true;
+    ActionPropProjeto.Enabled := true;
+    ActionVersoPrimeiro.Enabled := true;
+    ActionVersoUltimo.Enabled := true;
+    ActionVersoSeguinte.Enabled := true;
+    ActionVersoAnterior.Enabled := true;
+    ActionSugerirAssociacao.Enabled := true;
+    ActionReverterAssociacoes.Enabled := true;
+    ActionLimparAssociacoes.Enabled := true;
+    ActionExportar.Enabled := true;
+    FChapterView.Enabled := true;
+    FChapterView.Project := ProjetoAtual;
+
+    StatusBar1.SimpleText := '';
+  finally
+    Enabled := true;
   end;
-  StatusBar1.Caption:='';
-
-  ProjetoAtual.Commit;
-  ProjetoAtual.Atualizar;
-
-  //ProgressBar1.Visible := false;
-  ActionSalvarProjeto.Enabled := true;
-  ActionSalvarProjetoComo.Enabled := true;
-  ActionFecharProjeto.Enabled := true;
-  ActionPropProjeto.Enabled := true;
-  ActionVersoPrimeiro.Enabled := true;
-  ActionVersoUltimo.Enabled := true;
-  ActionVersoSeguinte.Enabled := true;
-  ActionVersoAnterior.Enabled := true;
-  ActionSugerirAssociacao.Enabled := true;
-  ActionReverterAssociacoes.Enabled := true;
-  ActionLimparAssociacoes.Enabled := true;
-  ActionExportar.Enabled := true;
-  FChapterView.Enabled := true;
-  FChapterView.Project := ProjetoAtual;
-
-  StatusBar1.SimpleText := '';
 end;
 
 procedure TFrmPrincipal.ActionPropProjetoExecute(Sender: TObject);
