@@ -131,6 +131,7 @@ object frmPrincipal: TfrmPrincipal
         Constraints.MinWidth = 100
         Font.Height = -21
         Font.Quality = fqCleartypeNatural
+        ParentBiDiMode = False
         ParentFont = False
         TabOrder = 0
       end

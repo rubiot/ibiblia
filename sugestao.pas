@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, StrUtils, sqldb, sqlite3conn, Versiculo,
-  Dialogs, LazLogger, PCRE, Sintagma, ONTTokenizer, ExportarProjeto;
+  Dialogs, LazLogger, PCRE, Syntagm, ONTTokenizer, ExportarProjeto;
 
 type
 
@@ -60,7 +60,7 @@ type
     procedure LimparBaseAssociacoes;
     procedure Commit;
     procedure Rollback;
-    function GetTranslationAlternatives(syntagm: TSintagma): string;
+    function GetTranslationAlternatives(syntagm: TSyntagm): string;
   end;
 
 
@@ -491,7 +491,7 @@ procedure TGerSugestoes.SugerirAssociacoes(v1: TVersiculo);
 
 var
   s1, s2, o, d, d1, d2: smallint;
-  stg: TSintagma;
+  stg: TSyntagm;
   v2: TVersiculo;
   associado: boolean;
   QSugestoes: TSQLQuery;
@@ -519,14 +519,14 @@ begin
     v1.LimparSelecao;
     stg := v1.Sintagmas[s1];
 
-    if (stg.Tipo <> tsSintagma) or (stg.Pares.Count > 0) then
+    if (stg.Kind <> tsSintagma) or (stg.Pairs.Count > 0) then
       continue;
 
-    stg.SelecaoMais;
+    stg.AddToSelection;
 
-    DebugLn('novo sintagma origem sem associacao: %s', [stg.Texto]);
+    DebugLn('novo sintagma origem sem associacao: %s', [stg.Text]);
 
-    QSugestoes := ObterSugestoes(stg.GetChaveSugestao(tlMetaDados));
+    QSugestoes := ObterSugestoes(stg.GetSuggestionKey(plMetaData));
 
     while not QSugestoes.EOF do
     begin
@@ -541,12 +541,12 @@ begin
       while (s2 < v1.Sintagmas.Count)
         and (o < loc1.Count) do
       begin
-        if (v1.Sintagmas[s2].Tipo = tsSintagma) and (v1.Sintagmas[s2].Italico = false) then
+        if (v1.Sintagmas[s2].Kind = tsSintagma) and (v1.Sintagmas[s2].IsItalic = false) then
         begin
-          if not compararOrigem(v1.Sintagmas[s2].GetChaveSugestao(tlMetaDados), loc1.Strings[o]) then
+          if not compararOrigem(v1.Sintagmas[s2].GetSuggestionKey(plMetaData), loc1.Strings[o]) then
             break;
 
-          v1.Sintagmas[s2].SelecaoMais;
+          v1.Sintagmas[s2].AddToSelection;
           inc(o);
         end;
         inc(s2);
@@ -561,26 +561,26 @@ begin
         begin
           v2.LimparSelecao;
           stg := v2.Sintagmas[d1];
-          if (stg.Tipo <> tsSintagma) or stg.Italico or (stg.Pares.Count > 0) then
+          if (stg.Kind <> tsSintagma) or stg.IsItalic or (stg.Pairs.Count > 0) then
             continue;
 
-          if compararDestino(stg.GetChaveSugestao(tlMetaDados), loc2.Strings[0]) then
+          if compararDestino(stg.GetSuggestionKey(plMetaData), loc2.Strings[0]) then
           begin
             DebugLn('inicio da locucao %s localizada no texto destino', [loc2.Strings[0]]);
-            stg.SelecaoMais;
+            stg.AddToSelection;
             // procuremos a locução no idioma destino
             d2 := d1 + 1;
             d := 1; // começando do segundo termo da locução
             DebugLn('    procurando demais termos da locução %s', [loc2.DelimitedText]);
             while (d2 < v2.Sintagmas.Count)
               and (d < loc2.Count) do
-              //and ((v2.Sintagmas[d2].Tipo <> tsSintagma) or comparar(v2.Sintagmas[d2].GetChaveSugestao(tlStrong), FStrList.Strings[d])) do
+              //and ((v2.Sintagmas[d2].Type <> tsSintagma) or comparar(v2.Sintagmas[d2].GetSuggestionKey(plStrong), FStrList.Strings[d])) do
             begin
-              if (v2.Sintagmas[d2].Tipo = tsSintagma) then
+              if (v2.Sintagmas[d2].Kind = tsSintagma) then
               begin
                 DebugLn('    procurando termo da locução: %s', [loc2.Strings[d]]);
-                if compararDestino(v2.Sintagmas[d2].GetChaveSugestao(tlMetaDados), loc2.Strings[d]) then
-                  v2.Sintagmas[d2].SelecaoMais
+                if compararDestino(v2.Sintagmas[d2].GetSuggestionKey(plMetaData), loc2.Strings[d]) then
+                  v2.Sintagmas[d2].AddToSelection
                 else
                   break;
                 inc(d);
@@ -653,17 +653,17 @@ begin
 end;
 
 {*
-function TGerSugestoes.GetTranslationAlternatives(syntagm: TSintagma): string;
+function TGerSugestoes.GetTranslationAlternatives(syntagm: TSyntagm): string;
 var
   QSugestoes: TSQLQuery;
   locucao, key: string;
 begin
   result := '';
-  key := syntagm.GetChaveSugestao(tlMetaDados);
+  key := syntagm.GetChaveSugestao(plMetaData);
   if key.IsEmpty then
     exit;
 
-  QSugestoes := ObterSugestoes(syntagm.GetChaveSugestao(tlMetaDados));
+  QSugestoes := ObterSugestoes(syntagm.GetChaveSugestao(plMetaData));
   while not QSugestoes.EOF do
   begin
     locucao := AnsiReplaceStr(QSugestoes.Fields[1].AsString, ';', ' ');
@@ -673,17 +673,17 @@ begin
   QSugestoes.Close;
 end;
 *}
-function TGerSugestoes.GetTranslationAlternatives(syntagm: TSintagma): string;
+function TGerSugestoes.GetTranslationAlternatives(syntagm: TSyntagm): string;
 var
   QSugestoes: TSQLQuery;
   locucao, key: string;
 begin
   result := '';
-  key := syntagm.GetChaveSugestao(tlMetaDados);
+  key := syntagm.GetSuggestionKey(plMetaData);
   if key.IsEmpty then
     exit;
 
-  QSugestoes := GetTranslationMemory(syntagm.GetChaveSugestao(tlStrong));
+  QSugestoes := GetTranslationMemory(syntagm.GetSuggestionKey(plStrong));
   while not QSugestoes.EOF do
   begin
     locucao := AnsiReplaceStr(QSugestoes.Fields[0].AsString, ';', ' ') +

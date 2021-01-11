@@ -14,7 +14,7 @@ uses
   {$ENDIF}
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, Menus,
   ActnList, ComCtrls, ExtCtrls, StdCtrls, Projeto, IniFiles, Math,
-  Sintagma, LCLTranslator, unitabout, PCRE, Versiculo,
+  Syntagm, LCLTranslator, unitabout, PCRE, Versiculo,
   LCLType, LazUTF8, ChapterView;
 
 type
@@ -169,7 +169,7 @@ type
     procedure MenuItemSynciBibliaClick(Sender: TObject);
     procedure MenuItemSyncTheWordClick(Sender: TObject);
     procedure QuandoNovoVersiculo(Sender: TProjeto);
-    procedure QuandoPalavraClicada(Sender: TSintagma);
+    procedure QuandoPalavraClicada(Sender: TSyntagm);
     procedure QuandoAlterarVersiculo;
     procedure AtualizarMRU(m: TMenuItem);
     procedure CarregarMRU(m: TMenuItem);
@@ -979,7 +979,7 @@ begin
   ActionQuandoNovoVersiculoExecute(nil);
 end;
 
-procedure TFrmPrincipal.QuandoPalavraClicada(Sender: TSintagma);
+procedure TFrmPrincipal.QuandoPalavraClicada(Sender: TSyntagm);
 {$IFDEF WINDOWS}
 var
   match: IMatch;
@@ -990,13 +990,13 @@ begin
   if not syncTw2iBiblia then
     exit;
 
-  if Sender.TemStrongs then
+  if Sender.HasStrongs then
     SyncTheWordDict(Sender.Strong[0]); // strong#
 
   wordSyncd := false;
-  if Sender.TemMorfs then
+  if Sender.HasMorph then
   begin
-    match := FRxMorpho.Match(Sender.Morf[0]);
+    match := FRxMorpho.Match(Sender.Morph[0]);
     if match.Success then
     begin
       SyncTheWordDict(match.Groups[1].Value); // morphology
@@ -1009,7 +1009,7 @@ begin
   end;
 
   if not wordSyncd then
-    SyncTheWordDict(Sender.Texto); // raw word
+    SyncTheWordDict(Sender.Text); // raw word
   {$ENDIF}
 end;
 

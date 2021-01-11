@@ -17,7 +17,7 @@ uses
   SysUtils, Sqlite3DS, sqlite3conn, sqldb, db, StrUtils, math,
   ExtCtrls, Controls, ComCtrls, StdCtrls, Graphics, Forms, Versiculo, Sugestao,
   MemoVersiculo, ONTTokenizer, Dialogs, dos, PCRE, ExportarProjeto, LazLogger,
-  Sintagma, MySwordModule, TheWordDictionary, fgl, PatchFile, LCLIntf;
+  Syntagm, MySwordModule, TheWordDictionary, fgl, PatchFile, LCLIntf;
 
 type
 
@@ -62,7 +62,7 @@ type
 
   TOnNovoVersiculoEvent = procedure (Sender: TProjeto) of object;
   TOnNovoVersiculoEvents = specialize TFPGList<TOnNovoVersiculoEvent>;
-  TOnSintagmaClickEvent = procedure (Sender: TSintagma) of object;
+  TOnSintagmaClickEvent = procedure (Sender: TSyntagm) of object;
   //TOnAlterarVersiculoEvent = procedure (Sender: TProjeto) of object;
 
   AVersiculo = array[tbOrigem..tbConsulta2] of TVersiculo;
@@ -130,7 +130,7 @@ type
     procedure SetSituacao(const AValue: Integer);
     procedure ExportTheWordBible(verses: TStringList; filename: string; props: string);
     procedure ExportMySwordBible(verses: TStringList; filename: string; props: string);
-    procedure HighlightStrongs(syntagm: TSintagma);
+    procedure HighlightStrongs(syntagm: TSyntagm);
   protected
     procedure CopiarArquivo(origem, destino: string);
     function CriarObjetoTabela(db, tabela, chave: string): TSqlite3Dataset;
@@ -149,9 +149,9 @@ type
     procedure SalvarTexto;
     procedure SalvarAssociacoes;
     procedure RemoverAssociacoes;
-    procedure SintagmaOnMouseEnter(Sender: TSintagma);
-    procedure SintagmaOnMouseLeave(Sender: TSintagma);
-    procedure SintagmaOnClick(Sender: TSintagma);
+    procedure SintagmaOnMouseEnter(Sender: TSyntagm);
+    procedure SintagmaOnMouseLeave(Sender: TSyntagm);
+    procedure SintagmaOnClick(Sender: TSyntagm);
     procedure OnExportText(Sender: TVersiculo);
     procedure OnMudancaVersiculo(Sender: TObject; Node: TTreeNode);
     procedure OnAlterarTextoVersiculo(Sender: TMemoVersiculo);
@@ -203,7 +203,7 @@ type
     function ObterTextoVersiculo(Referencia: string; texto: TTipoTextoBiblico): string;
     function ObterTextoSimplesVersiculo(texto: TTipoTextoBiblico): string;
     function ObterTextoSimplesVersiculo(Referencia: string; texto: TTipoTextoBiblico): string;
-    function GetTranslationSuggestions(syntagm: TSintagma): string;
+    function GetTranslationSuggestions(syntagm: TSyntagm): string;
     function GetChapterText: TStringList;
     procedure Translate;
     procedure ToggleDisplayTags;
@@ -553,17 +553,17 @@ begin
   module.Free;
 end;
 
-procedure TProjeto.HighlightStrongs(syntagm: TSintagma);
+procedure TProjeto.HighlightStrongs(syntagm: TSyntagm);
 var
   v: TTipoTextoBiblico;
   strongs: TStringList;
   strong: string;
 begin
   strongs := nil;
-  if syntagm.TemStrongs then
+  if syntagm.HasStrongs then
     strongs := syntagm.Strong
-  else if syntagm.ParesTemStrongs then
-    strongs := syntagm.Pares[0].Strong;
+  else if syntagm.PairsHaveStrongs then
+    strongs := syntagm.Pairs[0].Strong;
 
   if not assigned(strongs) then
     exit;
@@ -967,7 +967,7 @@ begin
            mtError, [mbOK], 0);
 
     end;
-    FParesAntigos := FAVersiculo[tbOrigem].GetListaPares(tlMetaDados);
+    FParesAntigos := FAVersiculo[tbOrigem].GetListaPares(plMetaData);
   end;
 
   for v:=low(FAVersiculo) to high(FAVersiculo) do
@@ -1028,7 +1028,7 @@ begin
   if Assigned(FParesAntigos) then
     RemoverAssociacoes;
 
-  pares := FAVersiculo[tbOrigem].GetListaPares(tlMetaDados);
+  pares := FAVersiculo[tbOrigem].GetListaPares(plMetaData);
 
   for p:=0 to pares.Count-1 do
     if (p mod 2) = 0 then // pares estão alternados na lista
@@ -1049,7 +1049,7 @@ begin
       FSugeridor.RemoverPar(FParesAntigos.Strings[p], FParesAntigos.Strings[p+1]);
 end;
 
-procedure TProjeto.SintagmaOnMouseEnter(Sender: TSintagma);
+procedure TProjeto.SintagmaOnMouseEnter(Sender: TSyntagm);
 var
   show: boolean;
 begin
@@ -1075,7 +1075,7 @@ begin
   SetDisplayTags(false);
 end;
 
-procedure TProjeto.SintagmaOnMouseLeave(Sender: TSintagma);
+procedure TProjeto.SintagmaOnMouseLeave(Sender: TSyntagm);
 var
   hide: boolean;
   v: TTipoTextoBiblico;
@@ -1098,7 +1098,7 @@ begin
         FAVersiculo[v].DisableStrongHighlight;
 end;
 
-procedure TProjeto.SintagmaOnClick(Sender: TSintagma);
+procedure TProjeto.SintagmaOnClick(Sender: TSyntagm);
 begin
   FMemoVersiculo.Desativar; // saving eventual changes on verse edit
 
@@ -1106,7 +1106,7 @@ begin
     FOnSintagmaClick(Sender);
 
   if assigned(FAVersiculo[tbOrigem]) and
-     ((Sender.VersiculoRef = FAVersiculo[tbOrigem]) or (Sender.VersiculoRef = FAVersiculo[tbDestino])) then
+     ((Sender.VerseRef = FAVersiculo[tbOrigem]) or (Sender.VerseRef = FAVersiculo[tbDestino])) then
   begin
     if (FRadioGroupSituacao.ItemIndex = 0) and (FAVersiculo[tbOrigem].AndamentoAssociacao > 0) then
       FRadioGroupSituacao.ItemIndex := 1 // associando
@@ -1230,26 +1230,26 @@ procedure TProjeto.OnExibirDefinicao(Sender: TObject);
 var
   v: TTipoTextoBiblico;
   point: TPoint;
-  s, p: TSintagma;
+  s, p: TSyntagm;
   m, rtf: string;
 begin
   if frmDictionaryPopup.Visible then
     exit;
 
-  s := TSintagma(TTimer(Sender).Tag);
+  s := TSyntagm(TTimer(Sender).Tag);
   for v:=low(FAVersiculo) to high(FAVersiculo) do
   begin
-    if (FAVersiculo[v] = s.VersiculoRef) then
+    if (FAVersiculo[v] = s.VerseRef) then
     begin
       if assigned(FADicMorfo[v]) then
       begin
-        if s.Morf.Count > 0 then
-          for m in s.Morf do
+        if s.Morph.Count > 0 then
+          for m in s.Morph do
             FrmDictionaryPopup.AdicionarMorfo(m, ObterDefinicaoMorfo(m, v))
         else
         begin // não tem morfo, vejamos se os pares têm
-          for p in s.Pares do
-            for m in p.Morf do
+          for p in s.Pairs do
+            for m in p.Morph do
               FrmDictionaryPopup.AdicionarMorfo(m, ObterDefinicaoMorfo(m, v));
         end;
       end;
@@ -1261,7 +1261,7 @@ begin
             frmDictionaryPopup.AdicionarStrong(m, ObterDefinicaoStrong(m, v))
         else
         begin // não tem strongs, vejamos se os pares têm
-          for p in s.Pares do
+          for p in s.Pairs do
             for m in p.Strong do
               FrmDictionaryPopup.AdicionarStrong(m, ObterDefinicaoStrong(m, v));
         end;
@@ -2028,7 +2028,7 @@ begin
           FATmpVerse[tbDestino].Texto := FTblPares.Fields[FACamposTexto[tbDestino]].AsString;
           FATmpVerse[tbOrigem ].Pares := FTblPares.FieldByName('pare_pares').AsString;
 
-          pares := FATmpVerse[tbOrigem ].GetListaPares(tlMetaDados);
+          pares := FATmpVerse[tbOrigem ].GetListaPares(plMetaData);
 
           for p:=0 to pares.Count-1 do
             if (p mod 2) = 0 then // pares estão alternados na lista
@@ -2477,7 +2477,7 @@ begin
                         FATmpVerse[tbOrigem].DebugTokens, FATmpVerse[tbDestino].DebugTokens]),
                  mtError, [mbOK], 0);
         end;
-        pares := FATmpVerse[tbOrigem].GetListaPares(tlTudo);
+        pares := FATmpVerse[tbOrigem].GetListaPares(plAll);
         Concordancia.AdicionarLocucao(pares, GetID);
         pares.Free;
       end;
@@ -2659,7 +2659,7 @@ begin
   varredorXML.Destruir;
 end;
 
-function TProjeto.GetTranslationSuggestions(syntagm: TSintagma): string;
+function TProjeto.GetTranslationSuggestions(syntagm: TSyntagm): string;
 begin
   result := FSugeridor.GetTranslationAlternatives(syntagm);
 end;

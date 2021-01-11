@@ -13,7 +13,7 @@ uses
   {$IFDEF WINDOWS}
   twAutomate, twSyncThread,
   {$ENDIF}
-  ONTParser, Sintagma, unitabout, MySwordModule, TheWordDictionary, lazrichview,
+  ONTParser, Syntagm, unitabout, MySwordModule, TheWordDictionary, lazrichview,
   HTMLColors, formexportpatch, formapplypatch, PatchFile,
   formInterlinearVerseRules, ChapterView;
 
