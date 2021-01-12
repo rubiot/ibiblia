@@ -713,6 +713,16 @@ begin
 end;
 
 procedure TFrmPrincipal.FormCreate(Sender: TObject);
+
+  function GetDefaultLang: string;
+  var
+    fallbackLang: string;
+  begin
+    result := '';
+    fallbackLang := 'en';
+    LazGetLanguageIDs(result, fallbackLang);
+  end;
+
 var
   m: integer;
 begin
@@ -759,7 +769,7 @@ begin
     VerseMode    := TViewMode(opts.ReadInteger('opcoes', 'chapterview.versemode', Ord(vmParagraph)));
   end;
 
-  language := opts.ReadString('opcoes', 'language', 'pt');
+  language := opts.ReadString('opcoes', 'language', GetDefaultLang);
   SetDefaultLang(language);
   if language = 'en' then
     MenuItemLangEn.Checked:=true
