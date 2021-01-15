@@ -114,9 +114,10 @@ msgid "Whole Bible"
 msgstr "Whole Bible"
 
 #: formnovoprojeto.swholebiblefilter
+#| msgid "theWord Bible modules (*.ont)|*.ont"
 msgctxt "formnovoprojeto.swholebiblefilter"
-msgid "theWord Bible modules (*.ont)|*.ont"
-msgstr "theWord Bible modules (*.ont)|*.ont"
+msgid "theWord Bible modules (*.ont, *.ot, *.nt)|*.ont;*.ot;*.nt"
+msgstr "theWord Bible modules (*.ont, *.ot, *.nt)|*.ont;*.ot;*.nt"
 
 #: formprincipal.schanged
 msgid "changed"
@@ -278,20 +279,20 @@ msgid "theWord dictionary modules (*.dct.twm)|*.dct.twm|All files|*.*"
 msgstr "theWord dictionary modules (*.dct.twm)|*.dct.twm|All files|*.*"
 
 #: formpropprojeto.snewtestamentfilter
-#| msgid "theWord Bible modules (*.ont, *.nt)|*.ont;*.nt"
+#| msgid "theWord Bible modules (*.ont, *.nt)|*.ont;*.nt|All files|*.*"
 msgctxt "formpropprojeto.snewtestamentfilter"
-msgid "theWord Bible modules (*.ont, *.nt)|*.ont;*.nt|All files|*.*"
-msgstr "theWord Bible modules (*.ont, *.nt)|*.ont;*.nt|All files|*.*"
+msgid "theWord Bible modules (*.ont, *.nt)|*.ont;*.nt"
+msgstr "theWord Bible modules (*.ont, *.nt)|*.ont;*.nt"
 
 #: formpropprojeto.snewtextimportedsuccessfully
 msgid "New text imported successfully"
 msgstr "New text imported successfully"
 
 #: formpropprojeto.soldtestamentfilter
-#| msgid "theWord Bible modules (*.ont, *.ot)|*.ont;*.ot"
+#| msgid "theWord Bible modules (*.ont, *.ot)|*.ont;*.ot|All files|*.*"
 msgctxt "formpropprojeto.soldtestamentfilter"
-msgid "theWord Bible modules (*.ont, *.ot)|*.ont;*.ot|All files|*.*"
-msgstr "theWord Bible modules (*.ont, *.ot)|*.ont;*.ot|All files|*.*"
+msgid "theWord Bible modules (*.ont, *.ot)|*.ont;*.ot"
+msgstr "theWord Bible modules (*.ont, *.ot)|*.ont;*.ot"
 
 #: formpropprojeto.sopendictionary
 msgid "Please choose a theWord dictionary module..."
@@ -317,10 +318,10 @@ msgid "Source"
 msgstr "Source"
 
 #: formpropprojeto.swholebiblefilter
-#| msgid "theWord Bible modules (*.ont)|*.ont"
+#| msgid "theWord Bible modules (*.ont)|*.ont|All files|*.*"
 msgctxt "formpropprojeto.swholebiblefilter"
-msgid "theWord Bible modules (*.ont)|*.ont|All files|*.*"
-msgstr "theWord Bible modules (*.ont)|*.ont|All files|*.*"
+msgid "theWord Bible modules (*.ont, *.ot, *.nt)|*.ont;*.ot;*.nt"
+msgstr "theWord Bible modules (*.ont, *.ot, *.nt)|*.ont;*.ot;*.nt"
 
 #: memoversiculo.schangeverse
 msgid "Change verse text?"
@@ -593,6 +594,10 @@ msgstr ""
 msgid "Invalid file, it must have at least %d lines"
 msgstr "Invalid file, it must have at least %d lines"
 
+#: projeto.sinvalidmoduletype
+msgid "Unknown module extension. Please choose a valid theWord Bible module (.ot, .ont or .nt)"
+msgstr "Unknown module extension. Please choose a valid theWord Bible module (.ot, .ont or .nt)"
+
 #: projeto.sisaiah
 msgctxt "projeto.sisaiah"
 msgid "Isaiah"
@@ -690,6 +695,10 @@ msgstr "Matthew"
 msgctxt "projeto.smicah"
 msgid "Micah"
 msgstr "Micah"
+
+#: projeto.smoduledoesnotincludescope
+msgid "This module is incompatible with the scope of the project. Please choose a valid module."
+msgstr "This module is incompatible with the scope of the project. Please choose a valid module."
 
 #: projeto.smorphologydictionary
 msgid "Morphology Dictionary"

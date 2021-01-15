@@ -297,6 +297,8 @@ resourcestring
   SLineBreaksInText = 'A verse cannot contain line breaks. Your changes will be discarded.';
   SInvalidInterlinearVerseRule = 'There is something wrong with your interlinear verse rule.'#13#10'[%s]';
   SInterlinearVerseRuleReplaceError = 'There is something wrong with one of your interlinear verse rules.'#13#10'Please review them.';
+  SModuleDoesNotIncludeScope = 'This module is incompatible with the scope of the project. Please choose a valid module.';
+  SInvalidModuleType = 'Unknown module extension. Please choose a valid theWord Bible module (.ot, .ont or .nt)';
 
 const
   QStrongs: array[etOT..etONT] of smallint = (8674, 5624, 14298);
@@ -2144,42 +2146,55 @@ procedure TProjeto.ImportarModuloTheWord(arquivo: string;
   texto: TTipoTextoBiblico; pb: TProgressBar; replace: boolean);
 var
   modulo: TStringList;
-  i, offset: smallint;
+  i, linesOffset, projectOffset: smallint;
   reVazio, reComments, reDescription, reVerseRules, verseRule: IRegex;
   mtVerseRules, mtDescription: IMatch;
   verseRulesDe, verseRulesPara: TStringList;
   propriedades: TStringStream;
   m: smallint;
   line: string;
+  moduleScope: TEscopoTexto;
 begin
-  offset := 0;
+  linesOffset := 0;
+  projectOffset := 0;
   if arquivo.EndsWith('.ont') then
   begin
+    moduleScope := etONT;
     if FEscopo = etNT then
-      offset := QLinhas[etOT] // saltando o velho testamento
+      linesOffset := QLinhas[etOT]; // saltando o velho testamento
   end
   else if arquivo.EndsWith('.nt') then
   begin
-    if FEscopo in [etOT, etONT] then
+    moduleScope := etNT;
+    if FEscopo = etOT then
+    begin
+      ShowMessage(SModuleDoesNotIncludeScope);
       exit;
+    end;
+    if FEscopo = etONT then
+      projectOffset := QLinhas[etOT];
   end
   else if arquivo.EndsWith('.ot') then
   begin
-    if FEscopo in [etNT, etONT] then
+    moduleScope := etOT;
+    if FEscopo = etNT then
+    begin
+      ShowMessage(SModuleDoesNotIncludeScope);
       exit;
+    end;
   end else
   begin
-    ShowMessage('Unknown module extension. Please choose a valid theWord Bible module (.ot, .ont or .nt)');
-    exit; // não parece ser um módulo do theWord
+    ShowMessage(SInvalidModuleType);
+    exit;
   end;
 
   try
     modulo := TStringList.Create;
     modulo.LoadFromFile(arquivo);
 
-    if modulo.Count < QLinhas[FEscopo] then
+    if modulo.Count < QLinhas[moduleScope] then
     begin
-      MessageDlg(SError, format(SInvalidLineCount, [QLinhas[FEscopo]]), mtError, [mbOK], 0);
+      MessageDlg(SError, format(SInvalidLineCount, [QLinhas[moduleScope]]), mtError, [mbOK], 0);
       exit;
     end;
 
@@ -2192,7 +2207,7 @@ begin
     verseRulesPara := TStringList.Create;
 
     propriedades := TStringStream.Create('');
-    for i:=offset+QLinhas[FEscopo] to modulo.Count-1 do
+    for i:=QLinhas[moduleScope] to modulo.Count-1 do
     begin
       line := modulo[i];
       { eliminando comentários }
@@ -2248,8 +2263,13 @@ begin
     FExportando := true;
     StartScrollingSession;
     VersiculoInicial;
-    for i:=offset to offset + QLinhas[FEscopo] - 1 do
+
+    for i:=0 to projectOffset-1 do
+      VersiculoSeguinte;
+
+    for i:=linesOffset to QLinhas[moduleScope] - 1 do
     begin
+      if FTblPares.EOF then break;
       //line := modulo[i];
       { aplicando verse.rules }
       for m:=0 to verseRulesDe.Count-1 do
@@ -2261,6 +2281,7 @@ begin
       SetVerseText(modulo[i], texto, replace);
 
       VersiculoSeguinte;
+
       if assigned(pb) then
       begin
         pb.StepIt;

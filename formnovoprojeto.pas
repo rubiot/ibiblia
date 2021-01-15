@@ -34,7 +34,6 @@ type
     procedure BitBtn4Click(Sender: TObject);
     procedure BitBtn5Click(Sender: TObject);
     procedure FormCreate(Sender: TObject);
-    procedure RadioGroupScopeClick(Sender: TObject);
   private
     { private declarations }
     procedure SelecionarTexto(edit: TLabeledEdit);
@@ -55,7 +54,7 @@ resourcestring
   SWholeBible = 'Whole Bible';
   SNewTestamentFilter = 'theWord Bible modules (*.ont, *.nt)|*.ont;*.nt';
   SOldTestamentFilter = 'theWord Bible modules (*.ont, *.ot)|*.ont;*.ot';
-  SWholeBibleFilter = 'theWord Bible modules (*.ont)|*.ont';
+  SWholeBibleFilter = 'theWord Bible modules (*.ont, *.ot, *.nt)|*.ont;*.ot;*.nt';
 
 implementation
 
@@ -87,11 +86,6 @@ end;
 procedure TFormNovoProjeto.FormCreate(Sender: TObject);
 begin
   Translate;
-end;
-
-procedure TFormNovoProjeto.RadioGroupScopeClick(Sender: TObject);
-begin
-
 end;
 
 procedure TFormNovoProjeto.BitBtn1Click(Sender: TObject);

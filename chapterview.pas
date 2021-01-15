@@ -587,7 +587,10 @@ procedure TChapterView.RenderInterlinearUnit(cont: TKMemoBlocks;
   translation: string);
 begin
   if cont.Count > 0 then
+  begin
+    //cont.LastBlock.ParaStyle.HAlign := halCenter;
     cont.AddParagraph();
+  end;
   translation := StringReplace(translation, ' ', #8239, [rfReplaceAll]); // using non-breakable spaces
   RenderSpan(cont, '<font color="#417cbe">' + translation + '</font>');
   //cont.AddTextBlock(translation).TextStyle.Font.Color := $be7c41;

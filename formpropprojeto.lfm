@@ -8,7 +8,7 @@ object FormPropProjeto: TFormPropProjeto
   ClientWidth = 553
   OnCreate = FormCreate
   Position = poMainFormCenter
-  LCLVersion = '2.0.6.0'
+  LCLVersion = '2.0.10.0'
   object GroupBox2: TGroupBox
     Left = 0
     Height = 82
@@ -39,7 +39,6 @@ object FormPropProjeto: TFormPropProjeto
     Default = True
     Kind = bkOK
     ModalResult = 1
-    OnClick = BitBtn1Click
     TabOrder = 1
   end
   object BitBtn2: TBitBtn
@@ -187,12 +186,12 @@ object FormPropProjeto: TFormPropProjeto
   end
   object OpenDialog1: TOpenDialog
     InitialDir = './data'
-    left = 110
-    top = 422
+    Left = 110
+    Top = 422
   end
   object ActionList1: TActionList
-    left = 23
-    top = 424
+    Left = 23
+    Top = 424
     object ActionCarregarTexto: TAction
       Caption = 'Load new text'
       OnExecute = ActionCarregarTextoExecute
@@ -221,7 +220,7 @@ object FormPropProjeto: TFormPropProjeto
   object FontDialog1: TFontDialog
     MinFontSize = 0
     MaxFontSize = 0
-    left = 186
-    top = 424
+    Left = 186
+    Top = 424
   end
 end

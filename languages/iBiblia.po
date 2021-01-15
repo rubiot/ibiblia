@@ -103,7 +103,7 @@ msgstr ""
 
 #: formnovoprojeto.swholebiblefilter
 msgctxt "formnovoprojeto.swholebiblefilter"
-msgid "theWord Bible modules (*.ont)|*.ont"
+msgid "theWord Bible modules (*.ont, *.ot, *.nt)|*.ont;*.ot;*.nt"
 msgstr ""
 
 #: formprincipal.schanged
@@ -259,7 +259,7 @@ msgstr ""
 
 #: formpropprojeto.snewtestamentfilter
 msgctxt "formpropprojeto.snewtestamentfilter"
-msgid "theWord Bible modules (*.ont, *.nt)|*.ont;*.nt|All files|*.*"
+msgid "theWord Bible modules (*.ont, *.nt)|*.ont;*.nt"
 msgstr ""
 
 #: formpropprojeto.snewtextimportedsuccessfully
@@ -268,7 +268,7 @@ msgstr ""
 
 #: formpropprojeto.soldtestamentfilter
 msgctxt "formpropprojeto.soldtestamentfilter"
-msgid "theWord Bible modules (*.ont, *.ot)|*.ont;*.ot|All files|*.*"
+msgid "theWord Bible modules (*.ont, *.ot)|*.ont;*.ot"
 msgstr ""
 
 #: formpropprojeto.sopendictionary
@@ -296,7 +296,7 @@ msgstr ""
 
 #: formpropprojeto.swholebiblefilter
 msgctxt "formpropprojeto.swholebiblefilter"
-msgid "theWord Bible modules (*.ont)|*.ont|All files|*.*"
+msgid "theWord Bible modules (*.ont, *.ot, *.nt)|*.ont;*.ot;*.nt"
 msgstr ""
 
 #: memoversiculo.schangeverse
@@ -549,6 +549,10 @@ msgstr ""
 msgid "Invalid file, it must have at least %d lines"
 msgstr ""
 
+#: projeto.sinvalidmoduletype
+msgid "Unknown module extension. Please choose a valid theWord Bible module (.ot, .ont or .nt)"
+msgstr ""
+
 #: projeto.sisaiah
 msgctxt "projeto.sisaiah"
 msgid "Isaiah"
@@ -644,6 +648,10 @@ msgstr ""
 #: projeto.smicah
 msgctxt "projeto.smicah"
 msgid "Micah"
+msgstr ""
+
+#: projeto.smoduledoesnotincludescope
+msgid "This module is incompatible with the scope of the project. Please choose a valid module."
 msgstr ""
 
 #: projeto.smorphologydictionary

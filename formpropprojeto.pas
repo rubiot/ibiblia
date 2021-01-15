@@ -48,7 +48,6 @@ type
     procedure ActionSelecionarFonteExecute(Sender: TObject);
     procedure ActionSelecionarMorfoExecute(Sender: TObject);
     procedure ActionSelecionarStrongExecute(Sender: TObject);
-    procedure BitBtn1Click(Sender: TObject);
     procedure BitBtnTextDescriptionClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure leDicMorfoChange(Sender: TObject);
@@ -85,9 +84,9 @@ resourcestring
   SDestinationTab = 'Destination';
   SReference1Tab = 'Reference 1';
   SReference2Tab = 'Reference 2';
-  SNewTestamentFilter = 'theWord Bible modules (*.ont, *.nt)|*.ont;*.nt|All files|*.*';
-  SOldTestamentFilter = 'theWord Bible modules (*.ont, *.ot)|*.ont;*.ot|All files|*.*';
-  SWholeBibleFilter = 'theWord Bible modules (*.ont)|*.ont|All files|*.*';
+  SNewTestamentFilter = 'theWord Bible modules (*.ont, *.nt)|*.ont;*.nt';
+  SOldTestamentFilter = 'theWord Bible modules (*.ont, *.ot)|*.ont;*.ot';
+  SWholeBibleFilter = 'theWord Bible modules (*.ont, *.ot, *.nt)|*.ont;*.ot;*.nt';
   SDictionaryFilter = 'theWord dictionary modules (*.dct.twm)|*.dct.twm|All files|*.*';
   SNewTextImportedSuccessfully = 'New text imported successfully';
 
@@ -236,11 +235,6 @@ begin
     FProjeto.AtribuirDicStrong(leDicStrong.Text, [TTipoTextoBiblico(TabControl1.TabIndex)]);
   end;
   BitBtn4.Caption := SChooseDictionary;
-end;
-
-procedure TFormPropProjeto.BitBtn1Click(Sender: TObject);
-begin
-
 end;
 
 procedure TFormPropProjeto.BitBtnTextDescriptionClick(Sender: TObject);
