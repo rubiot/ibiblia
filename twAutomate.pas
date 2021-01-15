@@ -2,7 +2,7 @@ unit twAutomate;
 
 interface
 
-uses PCRE, sysutils, classes, gmap, gutil, Dialogs, Windows, LazUTF8;
+uses PCRE, sysutils, classes, gmap, gutil, Dialogs, Windows, LazUTF8, Controls;
 
 type
   TBCV_A = packed record
@@ -25,6 +25,7 @@ type
   { TWAutomateUtils }
 
   TWAutomateUtils = class
+    class procedure Reset;
     class function IsTwRunning: THandle;
     class function GetTwCurrentRef: string;
     class procedure LoadLangFile(langFile: string);
@@ -47,8 +48,18 @@ type
 
 var
   BooksMap: TBooksMap;
+  IgnoreErrors: boolean;
+
+resourcestring
+  STWSynchronizationErrorTitle = 'Synchronization error';
+  STWSynchronizationError = 'Failed to detect theWord''s current verse.'#13#10'Please restart theWord if you have switched its current language.';
 
 implementation
+
+class procedure TWAutomateUtils.Reset;
+begin
+  IgnoreErrors := false;
+end;
 
 {------------------------------------------------------------------------------}
 { Return 0 if tw is not running, else the HWND of the running instance }
@@ -99,8 +110,23 @@ class function TWAutomateUtils.GetTwCurrentRef: string;
     result := '';
     reRef := RegexCreate('^(.*?) (\d+):(\d+)', [rcoUTF8]);
     mtRef := reRef.Match(caption);
-    if mtRef.Success then
-      result := format('%s,%s,%s', [BooksMap[mtRef.Groups[1].Value], mtRef.Groups[2].Value, mtRef.Groups[3].Value])
+
+    if not mtRef.Success then exit;
+
+    if not assigned(BooksMap) or (BooksMap.Find(mtRef.Groups[1].Value) = nil) then
+    begin
+      FreeAndNil(BooksMap);
+      LoadLangFile(GetCurrentLangFile(GetConfigFile));
+    end;
+
+    if BooksMap.Find(mtRef.Groups[1].Value) = nil then
+    begin
+      if not IgnoreErrors and (MessageDlg(STWSynchronizationErrorTitle, STWSynchronizationError, mtError, [mbOK, mbIgnore], 0) = mrIgnore) then
+        IgnoreErrors := true;
+      exit;
+    end;
+
+    result := format('%s,%s,%s', [BooksMap[mtRef.Groups[1].Value], mtRef.Groups[2].Value, mtRef.Groups[3].Value]);
   end;
 
 var
@@ -109,15 +135,13 @@ var
   refStr: string;
 begin
   result := '';
-  if BooksMap = nil then
-  begin
-    LoadLangFile(GetCurrentLangFile(GetConfigFile));
-    exit;
-  end;
   hwnd := IsTwRunning;
-  GetWindowText(hwnd, caption, SizeOf(caption));
-  refStr := caption;
-  result := ExtractRefStr(refStr);
+  if hwnd <> 0 then
+  begin
+    GetWindowText(hwnd, caption, SizeOf(caption));
+    refStr := caption;
+    result := ExtractRefStr(refStr);
+  end;
 end;
 
 class procedure TWAutomateUtils.LoadLangFile(langFile: string);

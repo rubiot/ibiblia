@@ -27,6 +27,7 @@ implementation
 constructor TTwSyncThread.Create(CreateSuspended : boolean);
 begin
   FreeOnTerminate := True;
+  twAutomate.TWAutomateUtils.Reset;
   inherited Create(CreateSuspended);
 end;
 
@@ -39,17 +40,20 @@ end;
 
 procedure TTwSyncThread.Execute;
 var
-  newRef : string;
+  newRef: string;
 begin
   while not Terminated do
   begin
     newRef := twAutomate.TWAutomateUtils.GetTwCurrentRef();
-    if newRef <> fCurrentRef then
+    if (newRef <> fCurrentRef) and (newRef <> '') then
     begin
       fCurrentRef := newRef;
       Synchronize(@RefChange);
     end;
-    Sleep(500);
+    if newRef = '' then
+      Sleep(5000) // try again in 5s in case of error
+    else
+      Sleep(500);
   end;
 end;
 
