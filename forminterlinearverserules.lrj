@@ -1,7 +1,16 @@
 {"version":1,"strings":[
 {"hash":182109571,"name":"tforminterlinearverserules.caption","sourcebytes":[73,110,116,101,114,108,105,110,101,97,114,32,118,105,101,119,32,118,101,114,115,101,32,114,117,108,101,115],"value":"Interlinear view verse rules"},
+{"hash":1339,"name":"tforminterlinearverserules.buttonok.caption","sourcebytes":[79,75],"value":"OK"},
+{"hash":77089212,"name":"tforminterlinearverserules.button2.caption","sourcebytes":[67,97,110,99,101,108],"value":"Cancel"},
+{"hash":159387970,"name":"tforminterlinearverserules.tabsheet1.caption","sourcebytes":[73,110,116,101,114,108,105,110,101,97,114],"value":"Interlinear"},
 {"hash":317789,"name":"tforminterlinearverserules.stringgridinterlinear.columns[0].title.caption","sourcebytes":[70,114,111,109],"value":"From"},
 {"hash":1455,"name":"tforminterlinearverserules.stringgridinterlinear.columns[1].title.caption","sourcebytes":[84,111],"value":"To"},
-{"hash":1339,"name":"tforminterlinearverserules.buttonok.caption","sourcebytes":[79,75],"value":"OK"},
-{"hash":77089212,"name":"tforminterlinearverserules.button2.caption","sourcebytes":[67,97,110,99,101,108],"value":"Cancel"}
+{"hash":79984933,"name":"tforminterlinearverserules.stringgridinterlinear.columns[2].title.caption","sourcebytes":[69,110,97,98,108,101],"value":"Enable"},
+{"hash":80705172,"name":"tforminterlinearverserules.stringgridinterlinear.columns[3].title.caption","sourcebytes":[69,120,112,111,114,116],"value":"Export"},
+{"hash":142610434,"name":"tforminterlinearverserules.tabsheet2.caption","sourcebytes":[73,110,116,114,97,108,105,110,101,97,114],"value":"Intralinear"},
+{"hash":317789,"name":"tforminterlinearverserules.stringgridintralinear.columns[0].title.caption","sourcebytes":[70,114,111,109],"value":"From"},
+{"hash":1455,"name":"tforminterlinearverserules.stringgridintralinear.columns[1].title.caption","sourcebytes":[84,111],"value":"To"},
+{"hash":79984933,"name":"tforminterlinearverserules.stringgridintralinear.columns[2].title.caption","sourcebytes":[69,110,97,98,108,101],"value":"Enable"},
+{"hash":80705172,"name":"tforminterlinearverserules.stringgridintralinear.columns[3].title.caption","sourcebytes":[69,120,112,111,114,116],"value":"Export"},
+{"hash":245198292,"name":"tforminterlinearverserules.buttoncopyrawcontent.caption","sourcebytes":[67,111,112,121,32,114,97,119,32,99,104,97,112,116,101,114,32,116,111,32,99,108,105,112,98,111,97,114,100],"value":"Copy raw chapter to clipboard"}
 ]}

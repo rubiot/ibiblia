@@ -44,6 +44,9 @@ type
     tbNone
   );
 
+  TParagraphMode = (pmParagraph, pmNoParagraphs);
+  TInterlinearMode = (imIntralinear, imInterlinear);
+
   TRegexList = specialize TFPGList<IRegex>;
   TIntegerList = specialize TFPGList<integer>;
   TPopupTrigger = (ptMouseHover, ptAltMouseHover, ptCtrlMouseHover);
@@ -113,9 +116,11 @@ type
     function GetChapterViewText: TTipoTextoBiblico;
     function GetComentarios: string;
     function GetID: string;
+    function GetInterlinearMode: TInterlinearMode;
     function GetModificado: boolean;
     function GetFormattedReference: string;
     function GetPairs: string;
+    function GetParagraphMode: TParagraphMode;
     function GetSituacao: Integer;
     procedure PreencherArvore(language: string);
     procedure SetAtrasoExibicao(const AValue: Cardinal);
@@ -123,6 +128,8 @@ type
     procedure SetChapterViewText(AValue: TTipoTextoBiblico);
     procedure SetComentarios(const AValue: string);
     procedure SetDisplayTags(AValue: boolean);
+    procedure SetInterlinearMode(AValue: TInterlinearMode);
+    procedure SetParagraphMode(AValue: TParagraphMode);
     procedure SetVerseStrongsCountMode(AValue: TStrongsCountMode);
     procedure SetOnAlterarVersiculo(const AValue: TOnAlterarVersiculoEvent);
     procedure SetOnSintagmaClick(const AValue: TOnSintagmaClickEvent);
@@ -205,6 +212,7 @@ type
     function ObterTextoSimplesVersiculo(Referencia: string; texto: TTipoTextoBiblico): string;
     function GetTranslationSuggestions(syntagm: TSyntagm): string;
     function GetChapterText: TStringList;
+    procedure CompileInterlinearVerseRules(var rulesRx: TRegexList; var replaceTo: TStringList; mode: TInterlinearMode; exporting: boolean = false);
     procedure Translate;
     procedure ToggleDisplayTags;
     procedure StartScrollingSession;
@@ -246,6 +254,8 @@ type
     property Verse: integer read FReference.Verse;
     property ScrollEventsEnabled: boolean read FScrollEventsEnabled write FScrollEventsEnabled;
     property ChapterViewText: TTipoTextoBiblico read GetChapterViewText write SetChapterViewText;
+    property InterlinearMode: TInterlinearMode read GetInterlinearMode write SetInterlinearMode;
+    property ParagraphMode: TParagraphMode read GetParagraphMode write SetParagraphMode;
     property AutoSave: boolean read FAutoSave write SetAutoSave;
     property Pairs: string read GetPairs;
   end;
@@ -285,6 +295,8 @@ resourcestring
   SVerseAbsentFromProject = '[This project does not contain this verse]';
   SLineBreaksInTextTitle = 'Edit error';
   SLineBreaksInText = 'A verse cannot contain line breaks. Your changes will be discarded.';
+  SInvalidInterlinearVerseRule = 'There is something wrong with your interlinear verse rule.'#13#10'[%s]';
+  SInterlinearVerseRuleReplaceError = 'There is something wrong with one of your interlinear verse rules.'#13#10'Please review them.';
 
 const
   QStrongs: array[etOT..etONT] of smallint = (8674, 5624, 14298);
@@ -322,6 +334,16 @@ end;
 function TProjeto.GetPairs: string;
 begin
   result := FTblPares.FieldByName('pare_pares').AsString;
+end;
+
+function TProjeto.GetParagraphMode: TParagraphMode;
+var
+  t: string;
+begin
+  t := ObterInfo('paragraph.mode');
+  if t.IsEmpty then
+    t := Ord(pmParagraph).ToString;
+  result := TParagraphMode(t.ToInteger);
 end;
 
 function TProjeto.GetPairs(ref: string): string;
@@ -421,6 +443,16 @@ begin
     else
       FAVersiculo[t].OcultarTags;
   end;
+end;
+
+procedure TProjeto.SetInterlinearMode(AValue: TInterlinearMode);
+begin
+  AtribuirInfo('interlinear.mode', Ord(AValue).toString);
+end;
+
+procedure TProjeto.SetParagraphMode(AValue: TParagraphMode);
+begin
+  AtribuirInfo('paragraph.mode', Ord(AValue).toString);
 end;
 
 procedure TProjeto.SetVerseStrongsCountMode(AValue: TStrongsCountMode);
@@ -631,39 +663,41 @@ function TProjeto.GetChapterText: TStringList;
                           FATmpVerse[tbOrigem].DebugTokens, FATmpVerse[tbDestino].DebugTokens]),
                    mtError, [mbOK], 0);
           end;
-          result := //FATmpVerse[tbOrigem].GetMySwordInterlinearLine,
-                    FATmpVerse[tbOrigem].GetTheWordInterlinearLine;
+
+          if InterlinearMode = imInterlinear then
+            result := FATmpVerse[tbOrigem].GetMySwordInterlinearLine
+          else if InterlinearMode = imIntralinear then
+            result := FATmpVerse[tbOrigem].GetTheWordInterlinearLine
+          else
+            raise Exception.Create(Format('Invalid interlinear mode [%d]', [Ord(InterlinearMode)]));
 
           // apply verse rules
           for i:=0 to rulesRx.Count-1 do
-            result := rulesRx[i].Replace(result, replaceTo[i]);
+          begin
+            try
+              result := rulesRx[i].Replace(result, replaceTo[i]);
+            except
+              on E: Exception do ShowMessage(SInterlinearVerseRuleReplaceError + #13#10 + E.Message);
+            end;
+          end;
 
         end;
       end;
     end;
   end;
+
 var
   bkch, comments: string;
   rulesRx: TRegexList;
   replaceTo: TStringList;
-  keyValue: TStringArray;
-  rule: string;
 begin
   bkch := Format('%d,%d,', [BookID, Chapter]);
   result := TStringList.Create;
 
+  rulesRx := nil;
+  replaceTo := nil;
   if ChapterViewText = tbInterlinear then
-  begin // compiling verse rules beforehand
-    rulesRx := TRegexList.Create;
-    replaceTo := TStringList.Create;
-    for rule in ObterInfo('propriedades.interlinearview.verserules').Split(#13) do
-    begin
-      keyValue := rule.Split(#10);
-      if keyValue[0].IsEmpty then continue;
-      rulesRx.Add(RegexCreate(keyValue[0], [rcoUTF8]));
-      replaceTo.Add(keyValue[1]);
-    end;
-  end;
+    CompileInterlinearVerseRules(rulesRx, replaceTo, InterlinearMode);
 
   StartScrollingSession;
   RewindChapter;
@@ -680,6 +714,36 @@ begin
   begin
     rulesRx.Free;
     replaceTo.Free;
+  end;
+end;
+
+procedure TProjeto.CompileInterlinearVerseRules(var rulesRx: TRegexList;
+  var replaceTo: TStringList; mode: TInterlinearMode; exporting: boolean);
+var
+  verseRules: string;
+  keyValue: TStringArray;
+  rule: string;
+begin
+  rulesRx := TRegexList.Create;
+  replaceTo := TStringList.Create;
+  if mode = imInterlinear then
+    verseRules := ObterInfo('propriedades.interlinearview.verserules')
+  else // intralinear (theWord mode)
+    verseRules := ObterInfo('propriedades.intralinearview.verserules');
+
+  for rule in verseRules.Split(#13) do
+  begin
+    try
+      keyValue := rule.Split(#10);
+      if (keyValue[0].IsEmpty) or ((length(keyValue) > 2) and (keyValue[2] <> '1')) then
+        continue;
+      if exporting and ((length(keyValue) > 2) and (keyValue[3] <> '1')) then
+        continue;
+      rulesRx.Add(RegexCreate(keyValue[0], [rcoUTF8]));
+      replaceTo.Add(keyValue[1]);
+    except
+      on E: Exception do ShowMessage(Format(SInvalidInterlinearVerseRule, [rule]) + #13#10 + E.Message);
+    end;
   end;
 end;
 
@@ -715,6 +779,16 @@ end;
 function TProjeto.GetID: string;
 begin
   result := FTblPares.FieldByName('pare_id').AsString;
+end;
+
+function TProjeto.GetInterlinearMode: TInterlinearMode;
+var
+  t: string;
+begin
+  t := ObterInfo('interlinear.mode');
+  if t.IsEmpty then
+    t := Ord(imInterlinear).ToString;
+  result := TInterlinearMode(t.ToInteger);
 end;
 
 procedure TProjeto.CopiarArquivo(origem, destino: string);
@@ -2094,7 +2168,10 @@ begin
     if FEscopo in [etNT, etONT] then
       exit;
   end else
+  begin
+    ShowMessage('Unknown module extension. Please choose a valid theWord Bible module (.ot, .ont or .nt)');
     exit; // não parece ser um módulo do theWord
+  end;
 
   try
     modulo := TStringList.Create;
@@ -2259,7 +2336,9 @@ begin
       while not FTblPares.EOF do
       begin
         if length(FTblPares.FieldByName('pare_pares').AsString) = 0 then
+        begin
           lines.Add(FTblPares.Fields[FACamposTexto[tbDestino]].AsString)
+        end
         else
         begin
           FATmpVerse[tbOrigem ].Texto := FTblPares.Fields[FACamposTexto[tbOrigem ]].AsString;
@@ -2336,10 +2415,20 @@ end;
 procedure TProjeto.ExportarTextoInterlinear(arquivo: string;
   pb: TProgressBar; opcoes: TOpcoesExportacao);
 var
+  i: integer;
   lines: TStringList;
+  rulesRx: TRegexList;
+  replaceTo: TStringList;
 begin
   if (FAVersiculo[tbOrigem] = nil) or (FAVersiculo[tbDestino] = nil) then
     exit;
+
+  rulesRx := nil;
+  replaceTo := nil;
+  if arquivo.EndsWith('.mybible') then
+    CompileInterlinearVerseRules(rulesRx, replaceTo, imInterlinear, true)
+  else // theWord mode
+    CompileInterlinearVerseRules(rulesRx, replaceTo, imIntralinear, true);
 
   try
     if assigned(pb) then
@@ -2375,10 +2464,23 @@ begin
                           FATmpVerse[tbOrigem].DebugTokens, FATmpVerse[tbDestino].DebugTokens]),
                    mtError, [mbOK], 0);
           end;
-          lines.Add(IfThen(arquivo.EndsWith('.mybible'),
-                           FATmpVerse[tbOrigem].GetMySwordInterlinearLine,
-                           FATmpVerse[tbOrigem].GetTheWordInterlinearLine));
+
+          if arquivo.EndsWith('.mybible') then
+            lines.Add(FATmpVerse[tbOrigem].GetMySwordInterlinearLine)
+          else
+            lines.Add(FATmpVerse[tbOrigem].GetTheWordInterlinearLine);
         end;
+
+        // apply verse rules
+        for i:=0 to rulesRx.Count-1 do
+        begin
+          try
+            lines[lines.Count-1] := rulesRx[i].Replace(lines[lines.Count-1], replaceTo[i]);
+          except
+            on E: Exception do ShowMessage(SInterlinearVerseRuleReplaceError + #13#10 + E.Message);
+          end;
+        end;
+
         if pb <> nil then
         begin
           pb.StepIt;
@@ -2403,7 +2505,9 @@ begin
       on E: Exception do MessageDlg(SError, SExportToFileError, mtError, [mbOK], 0);
     end;
   finally
-    lines.Destroy;
+    rulesRx.Free;
+    replaceTo.Free;
+    lines.Free;
     FExportando := false;
     PosRolagemVersiculo(nil);
     if assigned(pb) then

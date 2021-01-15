@@ -766,7 +766,6 @@ begin
     Align        := alClient;
     FontName     := opts.ReadString('leiaute', 'principal.chapterview.font.name', DefFontData.Name);
     FontSize     := opts.ReadInteger('leiaute', 'principal.chapterview.font.size', 0);
-    VerseMode    := TViewMode(opts.ReadInteger('opcoes', 'chapterview.versemode', Ord(vmParagraph)));
   end;
 
   language := opts.ReadString('opcoes', 'language', GetDefaultLang);
@@ -807,7 +806,6 @@ begin
   opts.WriteInteger('leiaute', 'principal.contextpanel.width', ContextPanel.Width);
   opts.WriteInteger('leiaute', 'principal.chapterview.font.size', FChapterView.FontSize);
   opts.WriteString('leiaute', 'principal.chapterview.font.name', FChapterView.FontName);
-  opts.WriteInteger('opcoes', 'chapterview.versemode', Ord(FChapterView.VerseMode));
   opts.WriteBool('opcoes', 'sugestoes.automaticas', MenuItem22.Checked);
   opts.WriteBool('opcoes', 'synctheword', MenuItemSyncTheWord.Checked);
   opts.WriteBool('opcoes', 'syncibiblia', MenuItemSynciBiblia.Checked);
@@ -1100,11 +1098,8 @@ end;
 
 procedure TFrmPrincipal.ChapterViewTabCtrlChange(Sender: TObject);
 begin
-  if assigned(ProjetoAtual) then
-  begin
-    ProjetoAtual.ChapterViewText := TTipoTextoBiblico(TTabControl(Sender).TabIndex);
-    FChapterView.LoadChapter;
-  end;
+  if assigned(FChapterView) then
+    FChapterView.TextType := TTipoTextoBiblico(TTabControl(Sender).TabIndex);
 end;
 
 procedure TFrmPrincipal.ToolButtonExitClick(Sender: TObject);
@@ -1206,6 +1201,11 @@ begin
   //ActionExportarDestinoComStrongs.Enabled := true;
   //ActionExportarTextoInterlinear.Enabled := true;
   StatusBar1.SimpleText := '';
+
+  {ScrollBoxRef1Verse.Visible := false;
+  Splitter3.Visible := false;
+  ScrollBoxRef2Verse.Visible := false;
+  Splitter4.Visible := false;}
 
   {$IFDEF WINDOWS}
   SetUpSyncThread;

@@ -5,6 +5,20 @@ msgstr "Content-Type: text/plain; charset=UTF-8"
 msgid "Beginning of chapter"
 msgstr ""
 
+#: chapterview.sinterlinearmode
+msgid "Interlinear layout..."
+msgstr ""
+
+#: chapterview.sinterlinearmodeinter
+msgctxt "chapterview.sinterlinearmodeinter"
+msgid "Interlinear"
+msgstr ""
+
+#: chapterview.sinterlinearmodeintra
+msgctxt "chapterview.sinterlinearmodeintra"
+msgid "Intralinear"
+msgstr ""
+
 #: chapterview.snextchapter
 msgid "Next chapter"
 msgstr ""
@@ -19,10 +33,6 @@ msgstr ""
 
 #: chapterview.ssetfont
 msgid "Choose &font..."
-msgstr ""
-
-#: chapterview.sverseperlinemode
-msgid "&Verse per line mode"
 msgstr ""
 
 #: chapterview.sverserules
@@ -114,6 +124,7 @@ msgid "Destination"
 msgstr ""
 
 #: formprincipal.sinterlineartext
+msgctxt "formprincipal.sinterlineartext"
 msgid "Interlinear"
 msgstr ""
 
@@ -522,6 +533,18 @@ msgstr ""
 msgid "Information"
 msgstr ""
 
+#: projeto.sinterlinearverserulereplaceerror
+msgid ""
+"There is something wrong with one of your interlinear verse rules.\n"
+"Please review them.\n"
+msgstr ""
+
+#: projeto.sinvalidinterlinearverserule
+msgid ""
+"There is something wrong with your interlinear verse rule.\n"
+"[%s]\n"
+msgstr ""
+
 #: projeto.sinvalidlinecount
 msgid "Invalid file, it must have at least %d lines"
 msgstr ""
@@ -771,6 +794,10 @@ msgctxt "tforminterlinearverserules.button2.caption"
 msgid "Cancel"
 msgstr ""
 
+#: tforminterlinearverserules.buttoncopyrawcontent.caption
+msgid "Copy raw chapter to clipboard"
+msgstr ""
+
 #: tforminterlinearverserules.buttonok.caption
 msgctxt "tforminterlinearverserules.buttonok.caption"
 msgid "OK"
@@ -781,11 +808,53 @@ msgid "Interlinear view verse rules"
 msgstr ""
 
 #: tforminterlinearverserules.stringgridinterlinear.columns[0].title.caption
+msgctxt "tforminterlinearverserules.stringgridinterlinear.columns[0].title.caption"
 msgid "From"
 msgstr ""
 
 #: tforminterlinearverserules.stringgridinterlinear.columns[1].title.caption
+msgctxt "tforminterlinearverserules.stringgridinterlinear.columns[1].title.caption"
 msgid "To"
+msgstr ""
+
+#: tforminterlinearverserules.stringgridinterlinear.columns[2].title.caption
+msgctxt "tforminterlinearverserules.stringgridinterlinear.columns[2].title.caption"
+msgid "Enable"
+msgstr ""
+
+#: tforminterlinearverserules.stringgridinterlinear.columns[3].title.caption
+msgctxt "tforminterlinearverserules.stringgridinterlinear.columns[3].title.caption"
+msgid "Export"
+msgstr ""
+
+#: tforminterlinearverserules.stringgridintralinear.columns[0].title.caption
+msgctxt "tforminterlinearverserules.stringgridintralinear.columns[0].title.caption"
+msgid "From"
+msgstr ""
+
+#: tforminterlinearverserules.stringgridintralinear.columns[1].title.caption
+msgctxt "tforminterlinearverserules.stringgridintralinear.columns[1].title.caption"
+msgid "To"
+msgstr ""
+
+#: tforminterlinearverserules.stringgridintralinear.columns[2].title.caption
+msgctxt "tforminterlinearverserules.stringgridintralinear.columns[2].title.caption"
+msgid "Enable"
+msgstr ""
+
+#: tforminterlinearverserules.stringgridintralinear.columns[3].title.caption
+msgctxt "tforminterlinearverserules.stringgridintralinear.columns[3].title.caption"
+msgid "Export"
+msgstr ""
+
+#: tforminterlinearverserules.tabsheet1.caption
+msgctxt "tforminterlinearverserules.tabsheet1.caption"
+msgid "Interlinear"
+msgstr ""
+
+#: tforminterlinearverserules.tabsheet2.caption
+msgctxt "tforminterlinearverserules.tabsheet2.caption"
+msgid "Intralinear"
 msgstr ""
 
 #: tformnovoprojeto.bitbtn1.caption
@@ -983,6 +1052,7 @@ msgid "Choose verse rules you'd like to apply"
 msgstr ""
 
 #: tfrmexportarprojeto.btexportar.caption
+msgctxt "tfrmexportarprojeto.btexportar.caption"
 msgid "Export"
 msgstr ""
 
@@ -1408,6 +1478,16 @@ msgstr ""
 #: tfrmprincipal.toolbuttonexit.hint
 msgctxt "tfrmprincipal.toolbuttonexit.hint"
 msgid "Exit the program"
+msgstr ""
+
+#: twautomate.stwsynchronizationerror
+msgid ""
+"Failed to detect theWord's current verse.\n"
+"Please restart theWord if you have switched its current language.\n"
+msgstr ""
+
+#: twautomate.stwsynchronizationerrortitle
+msgid "Synchronization error"
 msgstr ""
 
 #: versiculo.scopytags

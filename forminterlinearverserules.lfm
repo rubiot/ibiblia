@@ -6,28 +6,8 @@ object FormInterlinearVerseRules: TFormInterlinearVerseRules
   Caption = 'Interlinear view verse rules'
   ClientHeight = 225
   ClientWidth = 856
-  OnCreate = FormCreate
   Position = poOwnerFormCenter
   LCLVersion = '2.0.10.0'
-  object StringGridInterlinear: TStringGrid
-    Left = 13
-    Height = 144
-    Top = 24
-    Width = 829
-    Anchors = [akTop, akLeft, akRight, akBottom]
-    ColCount = 2
-    Columns = <    
-      item
-        Title.Caption = 'From'
-      end    
-      item
-        Title.Caption = 'To'
-      end>
-    FixedCols = 0
-    Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goColSizing, goEditing, goAutoAddRows, goAlwaysShowEditor, goSmoothScroll, goCellEllipsis]
-    RowCount = 2
-    TabOrder = 0
-  end
   object ButtonOK: TButton
     Left = 767
     Height = 25
@@ -38,7 +18,7 @@ object FormInterlinearVerseRules: TFormInterlinearVerseRules
     Default = True
     ModalResult = 1
     OnClick = ButtonOKClick
-    TabOrder = 1
+    TabOrder = 0
   end
   object Button2: TButton
     Left = 664
@@ -49,6 +29,89 @@ object FormInterlinearVerseRules: TFormInterlinearVerseRules
     Cancel = True
     Caption = 'Cancel'
     ModalResult = 2
+    TabOrder = 1
+  end
+  object PageControlVerseRules: TPageControl
+    Left = 8
+    Height = 167
+    Top = 8
+    Width = 840
+    ActivePage = TabSheet1
+    Anchors = [akTop, akLeft, akRight, akBottom]
+    TabIndex = 0
     TabOrder = 2
+    object TabSheet1: TTabSheet
+      Caption = 'Interlinear'
+      ClientHeight = 139
+      ClientWidth = 832
+      object StringGridInterlinear: TStringGrid
+        Left = 0
+        Height = 139
+        Top = 0
+        Width = 832
+        Align = alClient
+        ColCount = 4
+        Columns = <        
+          item
+            Title.Caption = 'From'
+          end        
+          item
+            Title.Caption = 'To'
+          end        
+          item
+            ButtonStyle = cbsCheckboxColumn
+            Title.Caption = 'Enable'
+          end        
+          item
+            ButtonStyle = cbsCheckboxColumn
+            Title.Caption = 'Export'
+          end>
+        FixedCols = 0
+        Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goColSizing, goEditing, goAutoAddRows, goAlwaysShowEditor, goDblClickAutoSize, goSmoothScroll]
+        RowCount = 1
+        TabOrder = 0
+      end
+    end
+    object TabSheet2: TTabSheet
+      Caption = 'Intralinear'
+      ClientHeight = 139
+      ClientWidth = 832
+      object StringGridIntralinear: TStringGrid
+        Left = 0
+        Height = 139
+        Top = 0
+        Width = 832
+        Align = alClient
+        ColCount = 4
+        Columns = <        
+          item
+            Title.Caption = 'From'
+          end        
+          item
+            Title.Caption = 'To'
+          end        
+          item
+            ButtonStyle = cbsCheckboxColumn
+            Title.Caption = 'Enable'
+          end        
+          item
+            ButtonStyle = cbsCheckboxColumn
+            Title.Caption = 'Export'
+          end>
+        FixedCols = 0
+        Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goColSizing, goEditing, goAutoAddRows, goAlwaysShowEditor, goDblClickAutoSize, goSmoothScroll]
+        RowCount = 1
+        TabOrder = 0
+      end
+    end
+  end
+  object ButtonCopyRawContent: TButton
+    Left = 440
+    Height = 25
+    Top = 184
+    Width = 192
+    Caption = 'Copy raw chapter to clipboard'
+    OnClick = ButtonCopyRawContentClick
+    TabOrder = 3
   end
 end

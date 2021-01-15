@@ -15,6 +15,20 @@ msgstr ""
 msgid "Beginning of chapter"
 msgstr "Início do capítulo"
 
+#: chapterview.sinterlinearmode
+msgid "Interlinear layout..."
+msgstr "Formato do interlinear..."
+
+#: chapterview.sinterlinearmodeinter
+msgctxt "chapterview.sinterlinearmodeinter"
+msgid "Interlinear"
+msgstr "Interlinear"
+
+#: chapterview.sinterlinearmodeintra
+msgctxt "chapterview.sinterlinearmodeintra"
+msgid "Intralinear"
+msgstr "Intralinear"
+
 #: chapterview.snextchapter
 msgid "Next chapter"
 msgstr "Próximo capítulo"
@@ -30,10 +44,6 @@ msgstr "Capítulo anterior"
 #: chapterview.ssetfont
 msgid "Choose &font..."
 msgstr "Selecionar &fonte..."
-
-#: chapterview.sverseperlinemode
-msgid "&Verse per line mode"
-msgstr "Um versículo por &linha"
 
 #: chapterview.sverserules
 msgid "Verse &rules..."
@@ -124,6 +134,7 @@ msgid "Destination"
 msgstr "Destino"
 
 #: formprincipal.sinterlineartext
+msgctxt "formprincipal.sinterlineartext"
 msgid "Interlinear"
 msgstr "Interlinear"
 
@@ -546,6 +557,22 @@ msgstr "Patches do iBiblia"
 msgid "Information"
 msgstr "Informação"
 
+#: projeto.sinterlinearverserulereplaceerror
+msgid ""
+"There is something wrong with one of your interlinear verse rules.\n"
+"Please review them.\n"
+msgstr ""
+"Há um problema com pelo menos uma de suas verse rules.\n"
+"Por favor, revise-as.\n"
+
+#: projeto.sinvalidinterlinearverserule
+msgid ""
+"There is something wrong with your interlinear verse rule.\n"
+"[%s]\n"
+msgstr ""
+"Há um problema com sua verse rule.\n"
+"[%s]\n"
+
 #: projeto.sinvalidlinecount
 msgid "Invalid file, it must have at least %d lines"
 msgstr "Arquivo inválido, ele precisa ter ao menos %d linhas"
@@ -797,6 +824,10 @@ msgctxt "tforminterlinearverserules.button2.caption"
 msgid "Cancel"
 msgstr "Cancelar"
 
+#: tforminterlinearverserules.buttoncopyrawcontent.caption
+msgid "Copy raw chapter to clipboard"
+msgstr "Copiar capítulo"
+
 #: tforminterlinearverserules.buttonok.caption
 msgctxt "tforminterlinearverserules.buttonok.caption"
 msgid "OK"
@@ -807,12 +838,54 @@ msgid "Interlinear view verse rules"
 msgstr "Regras de transformação (verse rules)"
 
 #: tforminterlinearverserules.stringgridinterlinear.columns[0].title.caption
+msgctxt "tforminterlinearverserules.stringgridinterlinear.columns[0].title.caption"
 msgid "From"
 msgstr "De"
 
 #: tforminterlinearverserules.stringgridinterlinear.columns[1].title.caption
+msgctxt "tforminterlinearverserules.stringgridinterlinear.columns[1].title.caption"
 msgid "To"
 msgstr "Para"
+
+#: tforminterlinearverserules.stringgridinterlinear.columns[2].title.caption
+msgctxt "tforminterlinearverserules.stringgridinterlinear.columns[2].title.caption"
+msgid "Enable"
+msgstr "Habilitar"
+
+#: tforminterlinearverserules.stringgridinterlinear.columns[3].title.caption
+msgctxt "tforminterlinearverserules.stringgridinterlinear.columns[3].title.caption"
+msgid "Export"
+msgstr "Exportar"
+
+#: tforminterlinearverserules.stringgridintralinear.columns[0].title.caption
+msgctxt "tforminterlinearverserules.stringgridintralinear.columns[0].title.caption"
+msgid "From"
+msgstr "De"
+
+#: tforminterlinearverserules.stringgridintralinear.columns[1].title.caption
+msgctxt "tforminterlinearverserules.stringgridintralinear.columns[1].title.caption"
+msgid "To"
+msgstr "Para"
+
+#: tforminterlinearverserules.stringgridintralinear.columns[2].title.caption
+msgctxt "tforminterlinearverserules.stringgridintralinear.columns[2].title.caption"
+msgid "Enable"
+msgstr "Habilitar"
+
+#: tforminterlinearverserules.stringgridintralinear.columns[3].title.caption
+msgctxt "tforminterlinearverserules.stringgridintralinear.columns[3].title.caption"
+msgid "Export"
+msgstr "Exportar"
+
+#: tforminterlinearverserules.tabsheet1.caption
+msgctxt "tforminterlinearverserules.tabsheet1.caption"
+msgid "Interlinear"
+msgstr "Interlinear"
+
+#: tforminterlinearverserules.tabsheet2.caption
+msgctxt "tforminterlinearverserules.tabsheet2.caption"
+msgid "Intralinear"
+msgstr "Intralinear"
 
 #: tformnovoprojeto.bitbtn1.caption
 msgctxt "tformnovoprojeto.bitbtn1.caption"
@@ -1009,6 +1082,7 @@ msgid "Choose verse rules you'd like to apply"
 msgstr "Marque as verse rules que você deseja aplicar"
 
 #: tfrmexportarprojeto.btexportar.caption
+msgctxt "tfrmexportarprojeto.btexportar.caption"
 msgid "Export"
 msgstr "Exportar"
 
@@ -1435,6 +1509,18 @@ msgstr "Sair"
 msgctxt "tfrmprincipal.toolbuttonexit.hint"
 msgid "Exit the program"
 msgstr "Sair do programa"
+
+#: twautomate.stwsynchronizationerror
+msgid ""
+"Failed to detect theWord's current verse.\n"
+"Please restart theWord if you have switched its current language.\n"
+msgstr ""
+"Falha na detecção do versículo atual do theWord.\n"
+"Se você tiver trocado o idioma no theWord, você precisa reiniciá-lo.\n"
+
+#: twautomate.stwsynchronizationerrortitle
+msgid "Synchronization error"
+msgstr "Erro de sincronização"
 
 #: versiculo.scopytags
 msgid "&Copy tags"

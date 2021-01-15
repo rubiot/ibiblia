@@ -109,6 +109,7 @@ type
     procedure HighlightStrong(strong: string);
     procedure ToggleStrongHighlight(enable: boolean);
     function GetNext: TSyntagm;
+    function GetNextUnassociated: TSyntagm;
     function GetSuggestionKey(t: TPairsListType): string;
     function IsEqualTo(other : TSyntagm): boolean;
     property Strong: TStringList read FStrong write FStrong;
@@ -369,8 +370,8 @@ begin
     LastSelected := verse.VersiculoPar.Selecao[verse.VersiculoPar.Selecao.Count-1];
     verse.LimparSelecao;
     verse.VersiculoPar.LimparSelecao;
-    if Assigned(LastSelected) and Assigned(LastSelected.GetNext) then
-      LastSelected.GetNext.AddToSelection;
+    if Assigned(LastSelected) and Assigned(LastSelected.GetNextUnassociated) then
+      LastSelected.GetNextUnassociated.AddToSelection;
   end;
 
   verse.Renderizar;
@@ -570,6 +571,19 @@ begin
   FLabel.Font.Underline := enable;
 end;
 
+function TSyntagm.GetNext: TSyntagm;
+var
+  i: Integer;
+begin
+  result := nil;
+  with TVersiculo(FVerse) do
+  begin
+    i := Sintagmas.IndexOf(Self);
+    if (i >= 0) and (i < (Sintagmas.Count-1)) then
+       result := Sintagmas[i+1];
+  end;
+end;
+
 function TSyntagm.IsEqualTo(other: TSyntagm): boolean;
 begin
   result := (FKind = other.FKind) and
@@ -582,18 +596,18 @@ end;
 { creates a basic instance of a syntagm, no label, no event handlers, etc. }
 constructor TSyntagm.Create(s: TTagSintagma; owner: TObject);
 begin
-  FVerse   := owner;
-  FText       := s.valor;
-  FRawText    := s.valor;
+  FVerse       := owner;
+  FText        := s.valor;
+  FRawText     := s.valor;
   FKind        := s.tipo;
-  FColor         := s.cor;
+  FColor       := s.cor;
   FSuperscript := s.sobrescrito;
-  FItalic     := s.italico;
+  FItalic      := s.italico;
   FLabel       := nil;
   FPairs       := TSyntagmList.Create;
-  FSiblings      := TSyntagmList.Create;
+  FSiblings    := TSyntagmList.Create;
   FStrong      := TStringList.Create;
-  FMorph        := TStringList.Create;
+  FMorph       := TStringList.Create;
 end;
 
 { instantiates the visual representation of the syntagm (its label) }
@@ -721,7 +735,7 @@ begin
       ToggleStrongHighlight(true);
 end;
 
-function TSyntagm.GetNext: TSyntagm;
+function TSyntagm.GetNextUnassociated: TSyntagm;
 var
   i: Integer;
 begin

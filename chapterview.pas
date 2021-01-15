@@ -55,7 +55,6 @@ type
     property ScrollBarsVisible: boolean read GetScrollBarsVisible;
   end;
 
-  TViewMode = (vmParagraph, vmVersePerLine);
   TNoteList = specialize TFPGList<TNoteInfo>;
 
   { TChapterView }
@@ -70,9 +69,10 @@ type
     FHint: TNoteWindow;
     FSetFontItem: TMenuItem;
     FParagraphModeItem: TMenuItem;
-    FVersePerLineItem: TMenuItem;
     FVerseRulesItem: TMenuItem;
-    FVerseMode: TViewMode;
+    FInterlinearModeItem: TMenuItem;
+    FInterlinearModeInterItem: TMenuItem;
+    FInterlinearModeIntraItem: TMenuItem;
     FStyleStack: TObjectStack;
     FVerseRanges: array of TBlockRange;
     FCurrentVerse: integer;
@@ -80,13 +80,19 @@ type
     FHideVerseNumber: boolean;
 
     function GetCurrentStyle: TKMemoTextStyle;
+    function GetInterlinearMode: TInterlinearMode;
+    function GetParagraphMode: TParagraphMode;
+    function GetTextType: TTipoTextoBiblico;
     procedure RenderChapter(verses: TStringList; current: integer);
     procedure RenderChapterHeader;
     procedure RenderChapterFooter;
     procedure RenderVerse(txt: string);
-    procedure RenderSpan(txt: string);
+    procedure RenderVerseNumber(number: integer);
+    procedure RenderSpan(cont: TKMemoBlocks; txt: string);
     procedure RenderNote(link: string; note: string);
     procedure RenderNotes;
+    procedure RenderInterlinearBlock(cont: TKMemoBlocks; blockText: string);
+    procedure RenderInterlinearUnit(cont: TKMemoBlocks; translation: string);
     procedure HandleReferenceClick(sender: TObject);
     procedure HandleNoteLinkClick(sender: TObject);
     procedure HandleNoteClick(sender: TObject);
@@ -98,19 +104,22 @@ type
     procedure HandleContextPopup(Sender: TObject; MousePos: TPoint; var Handled: Boolean);
     procedure HandleSetFont(Sender: TObject);
     procedure HandleParagraphMode(Sender: TObject);
-    procedure HandleVersePerLineMode(Sender: TObject);
     procedure HandleVerseRules(Sender: TObject);
+    procedure HandleInterlinearMode(Sender: TObject);
+    procedure HandleIntralinearMode(Sender: TObject);
+    procedure SetInterlinearMode(AValue: TInterlinearMode);
     procedure SetProject(AValue: TProjeto);
     procedure InitPopupMenu;
-    procedure SetVerseMode(AValue: TViewMode);
+    procedure SetParagraphMode(AValue: TParagraphMode);
     procedure SetFontSize(AValue: integer);
     procedure SetFontName(AValue: string);
     function PushNewStyle: TKMemoTextStyle;
     function PushInheritedStyle: TKMemoTextStyle;
     procedure PopStyle;
-    procedure HightlightRange(range: TBlockRange; bgcolor: TColor);
+    procedure HighlightRange(range: TBlockRange; bgcolor: TColor);
     procedure ResetStyleStack;
     function GetPreviousParagraphBlock: TKMemoParagraph;
+    procedure SetTextType(AValue: TTipoTextoBiblico);
   protected
     procedure SetEnabled(Value: Boolean); override;
   public
@@ -119,7 +128,9 @@ type
     procedure Translate;
     procedure LoadChapter;
     property Project: TProjeto read FProject write SetProject;
-    property VerseMode: TViewMode read FVerseMode write SetVerseMode;
+    property TextType: TTipoTextoBiblico read GetTextType write SetTextType;
+    property ParagraphMode: TParagraphMode read GetParagraphMode write SetParagraphMode;
+    property InterlinearMode: TInterlinearMode read GetInterlinearMode write SetInterlinearMode;
     property FontSize: integer read FFontSize write SetFontSize;
     property FontName: string read FFontName write SetFontName;
     property CurrentStyle: TKMemoTextStyle read GetCurrentStyle;
@@ -135,8 +146,10 @@ const
 resourcestring
   SSetFont = 'Choose &font...';
   SParagraphMode = '&Paragraph mode';
-  SVersePerLineMode = '&Verse per line mode';
   SVerseRules = 'Verse &rules...';
+  SInterlinearMode = 'Interlinear layout...';
+  SInterlinearModeInter = 'Interlinear';
+  SInterlinearModeIntra = 'Intralinear';
   SPreviousChapter = 'Previous chapter';
   SNextChapter = 'Next chapter';
   SChapterBeginning = 'Beginning of chapter';
@@ -176,7 +189,7 @@ begin
   FNoteView.Clear(false);
   FNoteView.TextStyle.Assign(AStyle);
   FNoteView.TextStyle.Font.Size := FNoteView.TextStyle.Font.Size - 1;
-  FNoteView.RenderSpan(AText);
+  FNoteView.RenderSpan(FNoteView.Blocks, AText);
   FNoteView.Background.Color := $00CCFBFB;
   FNoteView.Blocks.UnLockUpdate;
 end;
@@ -254,32 +267,60 @@ begin
 
   { rendering titles before the verse number }
   if not heading.IsEmpty then
-    RenderSpan(heading);
+    RenderSpan(Blocks, heading);
 
   if Blocks.LastBlock.ClassName <> 'TKMemoParagraph' then
     Blocks.AddTextBlock(' '); // space between verses
 
   { rendering verse number }
-  if not FHideVerseNumber then
-  begin
-    with Blocks.AddHyperlink(Format('%d ', [FCurrentVerse]), Format('%d,%d,%d', [FProject.BookID, FProject.Chapter, FCurrentVerse])) do
-    begin
-      OnClick := @HandleReferenceClick;
-      TextStyle.Font.Name  := 'default';
-      TextStyle.Font.Size  := FFontSize+1;
-      TextStyle.Font.Style := [fsBold];
-      TextStyle.Font.Color := NonBibleTextColor;
-      TextStyle.ScriptPosition:= tpoSuperscript;
-    end;
-  end;
+  RenderVerseNumber(FCurrentVerse);
 
   { rendering the verse text }
   FVerseRanges[FCurrentVerse].first := Blocks.Count;
-  RenderSpan(txt);
+  RenderSpan(Blocks, txt);
   FVerseRanges[FCurrentVerse].last := Blocks.Count-1;
 
-  if FVerseMode = vmVersePerLine then
+  if FProject.ParagraphMode = pmNoParagraphs then
     Blocks.AddParagraph().ParaStyle.FirstIndent := 0;
+end;
+
+procedure TChapterView.RenderVerseNumber(number: integer);
+var
+  b: TKMemoBlocks;
+begin
+  if FHideVerseNumber then exit;
+
+  if FProject.InterlinearMode = imInterlinear then
+    with Blocks.AddContainer do
+    begin
+      Position := mbpText;
+      FixedWidth := true;
+      //BlockStyle.BottomPadding := 5;
+      BlockStyle.RightPadding := 5;
+      b := Blocks;
+    end
+  else
+    b := Blocks;
+
+  with b.AddHyperlink(Format('%d ', [number]), Format('%d,%d,%d', [FProject.BookID, FProject.Chapter, number])) do
+  begin
+    OnClick := @HandleReferenceClick;
+    TextStyle.Font.Name  := 'default';
+    TextStyle.Font.Style := [fsBold];
+    TextStyle.Font.Color := NonBibleTextColor;
+    case FProject.InterlinearMode of
+      imInterlinear:
+      begin
+        TextStyle.Font.Size      := FFontSize-1;
+        TextStyle.ScriptPosition := tpoNormal;
+      end;
+      imIntralinear:
+      begin
+        TextStyle.Font.Size      := FFontSize+1;
+        TextStyle.ScriptPosition := tpoSuperscript;
+      end;
+    end;
+  end;
 end;
 
 function TChapterView.GetCurrentStyle: TKMemoTextStyle;
@@ -287,7 +328,22 @@ begin
   result := TKMemoTextStyle(FStyleStack.Peek);
 end;
 
-procedure TChapterView.RenderSpan(txt: string);
+function TChapterView.GetInterlinearMode: TInterlinearMode;
+begin
+  result := FProject.InterlinearMode;
+end;
+
+function TChapterView.GetParagraphMode: TParagraphMode;
+begin
+  result := FProject.ParagraphMode;
+end;
+
+function TChapterView.GetTextType: TTipoTextoBiblico;
+begin
+  result := FProject.ChapterViewText;
+end;
+
+procedure TChapterView.RenderSpan(cont: TKMemoBlocks; txt: string);
 var
   FTokenizer: TONTTokenizer;
   token: TTagSintagma;
@@ -301,7 +357,7 @@ begin
   chunk := '';
   FTokenizer := TONTTokenizer.Criar(txt);
 
-  Blocks.LockUpdate;
+  cont.LockUpdate;
   while FTokenizer.LerSintagma(token) <> tsNulo do
   begin
     case token.tipo of
@@ -316,13 +372,13 @@ begin
       begin
         if chunk.Length > 0 then
         begin
-          Blocks.AddTextBlock(chunk).TextStyle.Assign(CurrentStyle);
+          cont.AddTextBlock(chunk).TextStyle.Assign(CurrentStyle);
           chunk := '';
         end;
         if token.valor.StartsWith('<TS') then { title beginning }
         begin
-          if assigned(Blocks.LastBlock) and (Blocks.LastBlock.ClassName <> 'TKMemoParagraph') then
-            Blocks.AddParagraph().ParaStyle.FirstIndent := IfThen(FVerseMode = vmParagraph, DefaultFirstIndent);
+          if assigned(cont.LastBlock) and (cont.LastBlock.ClassName <> 'TKMemoParagraph') then
+            cont.AddParagraph().ParaStyle.FirstIndent := IfThen(GetParagraphMode = pmParagraph, DefaultFirstIndent);
 
           with PushNewStyle do
           begin
@@ -351,44 +407,61 @@ begin
               end;
             end;
           end;
-        end else if token.valor = '<Ts>' then { title end }
+        end
+        else if token.valor = '<Ts>' then { title end }
         begin
           ResetStyleStack;
           lastpar := GetPreviousParagraphBlock;
           padding := IfThen(assigned(lastpar) and (lastpar.ParaStyle.BottomPadding = 0), 5);
-          Blocks.AddParagraph().ParaStyle.TopPadding := padding;
-        end else if token.valor.StartsWith('<RF') then { translator note }
+          cont.AddParagraph().ParaStyle.TopPadding := padding;
+        end
+        else if token.valor.StartsWith('<RF') then { translator note }
         begin
           linktext := FTokenizer.LerPropriedadeTag('q', token);
-          token.valor := '';
-          FTokenizer.LerAteTag(token, '<Rf>');
-          token.valor := token.valor.Replace('<Rf>', '');
-          RenderNote(linktext, token.valor);
+          RenderNote(linktext, FTokenizer.ReadUntilExclusive('<Rf>'));
         end
-        else if token.valor = '<FI>' then { added word(s) }
+        else if token.valor = '<Q>' then { interlinear block }
+        begin
+          RenderInterlinearBlock(cont, FTokenizer.ReadUntilExclusive('<q>'));
+        end
+        else if token.valor = '<E>' then { interlinear English block }
+        begin
+          RenderInterlinearUnit(cont, FTokenizer.ReadUntilExclusive('<e>'));
+        end
+        else if token.valor = '<T>' then { interlinear translation block }
+        begin
+          RenderInterlinearUnit(cont, FTokenizer.ReadUntilExclusive('<t>'));
+        end
+        else
+        if token.valor = '<FI>' then { added word(s) }
         begin
           with PushInheritedStyle do
           begin
             Font.Style := Font.Style + [fsItalic];
             Font.Color := clGray;
           end;
-        end else if token.valor = '<FR>' then { Jesus word(s) }
+        end
+        else if token.valor = '<FR>' then { Jesus word(s) }
         begin
           PushInheritedStyle.Font.Color := clRed
-        end else if token.valor = '<FO>' then { Old Testament quotation }
+        end
+        else if token.valor = '<FO>' then { Old Testament quotation }
         begin
           PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsBold]
         end
-        else if token.valor = '<CM>' then { new paragraph }
+        else
+        if token.valor = '<CM>' then { new paragraph }
         begin
-          if FVerseMode = vmParagraph then
-            Blocks.AddParagraph().ParaStyle.FirstIndent := DefaultFirstIndent;
-        end else if token.valor = '<CL>' then { new line }
+          if GetParagraphMode = pmParagraph then
+            cont.AddParagraph().ParaStyle.FirstIndent := DefaultFirstIndent;
+        end
+        else if token.valor = '<CL>' then { new line }
         begin
-          if FVerseMode = vmParagraph then
-            Blocks.AddParagraph().ParaStyle.FirstIndent := 0;
-            //Blocks.InsertNewLine(Text.Length);
-        end else
+          if GetParagraphMode = pmParagraph then
+            cont.AddParagraph().ParaStyle.FirstIndent := 0;
+            //cont.InsertNewLine(Text.Length);
+        end
+        else
         begin
           token.valor := token.valor.ToLower;
           if token.valor.StartsWith('<font ') then { font change }
@@ -418,17 +491,17 @@ begin
           else if token.valor = '<sub>' then { subscript }
             PushInheritedStyle.ScriptPosition := tpoSubscript
           else if token.valor = '<br/>' then { line break }
-            Blocks.AddParagraph().ParaStyle.FirstIndent := 0
+            cont.AddParagraph().ParaStyle.FirstIndent := 0
           else if (token.valor = '</sub>')
-                   or (token.valor = '</sup>')
-                   or (token.valor = '</s>')
-                   or (token.valor = '</u>')
-                   or (token.valor = '</i>')
-                   or (token.valor = '</b>')
-                   or (token.valor = '<fo>')
-                   or (token.valor = '<fr>')
-                   or (token.valor = '<fi>')
-                   or (token.valor = '</font>') then
+               or (token.valor = '</sup>')
+               or (token.valor = '</s>')
+               or (token.valor = '</u>')
+               or (token.valor = '</i>')
+               or (token.valor = '</b>')
+               or (token.valor = '<fo>')
+               or (token.valor = '<fr>')
+               or (token.valor = '<fi>')
+               or (token.valor = '</font>') then
             PopStyle;
         end;
       end;
@@ -437,13 +510,13 @@ begin
 
   if chunk.Length > 0 then
   begin
-    if assigned(Blocks.LastBlock) and (Blocks.LastBlock.ClassName = 'TKMemoParagraph') then
-      Blocks.LastBlock.ParaStyle.FirstIndent := DefaultFirstIndent;
-    Blocks.AddTextBlock(chunk).TextStyle.Assign(CurrentStyle);
+    if assigned(cont.LastBlock) and (cont.LastBlock.ClassName = 'TKMemoParagraph') then
+      cont.LastBlock.ParaStyle.FirstIndent := DefaultFirstIndent;
+    cont.AddTextBlock(chunk).TextStyle.Assign(CurrentStyle);
   end;
 
   FreeAndNil(FTokenizer);
-  Blocks.UnLockUpdate;
+  cont.UnLockUpdate;
 end;
 
 procedure TChapterView.RenderNote(link: string; note: string);
@@ -490,10 +563,34 @@ begin
       OnClick := @HandleNoteClick;
     end;
     note.FirstBlock := Blocks.Count-1;
-    RenderSpan(note.Text);
+    RenderSpan(Blocks, note.Text);
     note.LastBlock := Blocks.Count-1;
     Blocks.AddParagraph();
   end;
+end;
+
+procedure TChapterView.RenderInterlinearBlock(cont: TKMemoBlocks;
+  blockText: string);
+var
+  b: TKMemoContainer;
+begin
+  b := cont.AddContainer();
+  b.Position := mbpText;
+  b.FixedWidth := true;
+  //b.BlockStyle.BottomPadding := 5;
+  b.BlockStyle.RightPadding := 5;
+
+  RenderSpan(b.Blocks, blockText);
+end;
+
+procedure TChapterView.RenderInterlinearUnit(cont: TKMemoBlocks;
+  translation: string);
+begin
+  if cont.Count > 0 then
+    cont.AddParagraph();
+  translation := StringReplace(translation, ' ', #8239, [rfReplaceAll]); // using non-breakable spaces
+  RenderSpan(cont, '<font color="#417cbe">' + translation + '</font>');
+  //cont.AddTextBlock(translation).TextStyle.Font.Color := $be7c41;
 end;
 
 procedure TChapterView.HandleReferenceClick(sender: TObject);
@@ -519,8 +616,8 @@ var
 begin
   note := FNotes[TKMemoHyperlink(Sender).URL.ToInteger];
 
-  HightlightRange(note.Range, clDefault); // un-highlight current note text
-  HightlightRange(FVerseRanges[note.Verse], clSilver); // un-highlight current note text
+  HighlightRange(note.Range, clDefault); // un-highlight current note text
+  HighlightRange(FVerseRanges[note.Verse], clSilver); // un-highlight current note text
 end;
 
 procedure TChapterView.HandleVerseChange(Sender: TProjeto);
@@ -544,12 +641,12 @@ begin
   if (ssCtrl in Shift) and (Key in [VK_SUBTRACT, VK_OEM_MINUS]) and (FFontSize > 1) then
   begin
     FFontSize := FFontSize-1;
-    HandleVerseChange(FProject);
+    LoadChapter;
   end
   else if (ssCtrl in Shift) and (Key in [VK_ADD, VK_OEM_PLUS]) then
   begin
     FFontSize := FFontSize+1;
-    HandleVerseChange(FProject);
+    LoadChapter;
   end;
 end;
 
@@ -634,7 +731,7 @@ begin
   begin
     Blocks.LockUpdate;
     FontSize := FFontSize + Sign(WheelDelta) * 1;
-    HandleVerseChange(FProject);
+    LoadChapter;
     Blocks.UnlockUpdate;
     Handled := true;
   end;
@@ -648,7 +745,9 @@ begin
     Handled := true;
     exit;
   end;
-  FVerseRulesItem.Enabled := FProject.ChapterViewText = tbInterlinear;
+
+  FVerseRulesItem.Visible      := GetTextType = tbInterlinear;
+  FInterlinearModeItem.Visible := GetTextType = tbInterlinear;
 end;
 
 procedure TChapterView.HandleSetFont(Sender: TObject);
@@ -664,7 +763,7 @@ begin
     Blocks.LockUpdate;
     FontName := dialog.Font.Name;
     FontSize := dialog.Font.Size;
-    HandleVerseChange(FProject);
+    LoadChapter;
     Blocks.UnlockUpdate;
   end;
   dialog.Free;
@@ -672,18 +771,38 @@ end;
 
 procedure TChapterView.HandleParagraphMode(Sender: TObject);
 begin
-  VerseMode := vmParagraph;
-end;
-
-procedure TChapterView.HandleVersePerLineMode(Sender: TObject);
-begin
-  VerseMode := vmVersePerLine;
+  if ParagraphMode = pmParagraph then
+    ParagraphMode := pmNoParagraphs
+  else
+    ParagraphMode := pmParagraph;
 end;
 
 procedure TChapterView.HandleVerseRules(Sender: TObject);
 begin
   frmInterlinearVerseRules.Project := FProject;
-  frmInterlinearVerseRules.ShowModal;
+  if frmInterlinearVerseRules.ShowModal = mrOK then
+    LoadChapter;
+end;
+
+procedure TChapterView.HandleInterlinearMode(Sender: TObject);
+begin
+  InterlinearMode := imInterlinear;
+end;
+
+procedure TChapterView.HandleIntralinearMode(Sender: TObject);
+begin
+  InterlinearMode := imIntralinear;
+end;
+
+procedure TChapterView.SetInterlinearMode(AValue: TInterlinearMode);
+begin
+  FInterlinearModeInterItem.Checked := AValue = imInterlinear;
+  FInterlinearModeIntraItem.Checked := AValue = imIntralinear;
+
+  if FProject.InterlinearMode = AValue then Exit;
+  FProject.InterlinearMode := AValue;
+
+  LoadChapter;
 end;
 
 procedure TChapterView.SetProject(AValue: TProjeto);
@@ -693,8 +812,10 @@ begin
 
   if assigned(FProject) then
   begin
+    SetParagraphMode(FProject.ParagraphMode);
+    SetInterlinearMode(FProject.InterlinearMode);
     FProject.OnNewVerseSubscribe(@HandleVerseChange);
-    HandleVerseChange(FProject);
+    LoadChapter;
   end;
 end;
 
@@ -703,35 +824,48 @@ begin
   PopupMenu := TPopupMenu.Create(Self);
   PopupMenu.Parent := Self;
 
+  { Set font }
   FSetFontItem := TMenuItem.Create(PopupMenu);
   with FSetFontItem do
   begin
     Caption := SSetFont;
     OnClick := @HandleSetFont;
-    Enabled := True;
   end;
   PopupMenu.Items.Add(FSetFontItem);
 
+  { Paragraph mode }
   FParagraphModeItem := TMenuItem.Create(PopupMenu);
   with FParagraphModeItem do
   begin
     Caption := SParagraphMode;
     OnClick := @HandleParagraphMode;
-    Enabled := False;
   end;
-  PopupMenu.Items.AddSeparator;
   PopupMenu.Items.Add(FParagraphModeItem);
 
-  FVersePerLineItem := TMenuItem.Create(PopupMenu);
-  with FVersePerLineItem do
-  begin
-    Caption := SVersePerLineMode;
-    OnClick := @HandleVersePerLineMode;
-    Enabled := True;
-  end;
-  PopupMenu.Items.Add(FVersePerLineItem);
+  { Interlinear mode }
+  FInterlinearModeItem := TMenuItem.Create(PopupMenu);
+  FInterlinearModeItem.Caption := SInterlinearMode;
+  PopupMenu.Items.Add(FInterlinearModeItem);
 
-  PopupMenu.Items.AddSeparator;
+  { Interlinear mode -> Interlinear }
+  FInterlinearModeInterItem := TMenuItem.Create(PopupMenu);
+  with FInterlinearModeInterItem do
+  begin
+    Caption := SInterlinearModeInter;
+    OnClick := @HandleInterlinearMode;
+  end;
+  FInterlinearModeItem.Add(FInterlinearModeInterItem);
+
+  { Interlinear mode -> Intralinear }
+  FInterlinearModeIntraItem := TMenuItem.Create(PopupMenu);
+  with FInterlinearModeIntraItem do
+  begin
+    Caption := SInterlinearModeIntra;
+    OnClick := @HandleIntralinearMode;
+  end;
+  FInterlinearModeItem.Add(FInterlinearModeIntraItem);
+
+  { Verse rules }
   FVerseRulesItem := TMenuItem.Create(PopupMenu);
   with FVerseRulesItem do
   begin
@@ -741,15 +875,14 @@ begin
   PopupMenu.Items.Add(FVerseRulesItem);
 end;
 
-procedure TChapterView.SetVerseMode(AValue: TViewMode);
+procedure TChapterView.SetParagraphMode(AValue: TParagraphMode);
 begin
-  if FVerseMode = AValue
-    then Exit;
+  FParagraphModeItem.Checked := AValue = pmParagraph;
 
-  FVerseMode := AValue;
-  FParagraphModeItem.Enabled := FVerseMode <> vmParagraph;
-  FVersePerLineItem.Enabled  := FVerseMode <> vmVersePerLine;
-  HandleVerseChange(FProject);
+  if FProject.ParagraphMode = AValue then exit;
+  FProject.ParagraphMode := AValue;
+
+  LoadChapter;
 end;
 
 procedure TChapterView.SetFontSize(AValue: integer);
@@ -794,14 +927,17 @@ begin
   FStyleStack.Pop.Free;
 end;
 
-procedure TChapterView.HightlightRange(range: TBlockRange; bgcolor: TColor);
+procedure TChapterView.HighlightRange(range: TBlockRange; bgcolor: TColor);
 var
   i: integer;
 begin
   for i:=range.first to range.last do
+  begin
     if Blocks[i].ClassName = 'TKMemoTextBlock' then
-      with TKMemoTextBlock(Blocks[i]) do
-        TextStyle.Brush.Color := bgcolor;
+      TKMemoTextBlock(Blocks[i]).TextStyle.Brush.Color := bgcolor
+    else if Blocks[i].ClassName = 'TKMemoContainer' then
+      TKMemoContainer(Blocks[i]).BlockStyle.Brush.Color:= bgcolor;;
+  end;
 end;
 
 procedure TChapterView.ResetStyleStack;
@@ -827,6 +963,13 @@ begin
       Result := Blocks[b] as TKMemoParagraph;
       break;
     end;
+end;
+
+procedure TChapterView.SetTextType(AValue: TTipoTextoBiblico);
+begin
+  if GetTextType = AValue then Exit;
+  FProject.ChapterViewText := AValue;
+  LoadChapter;
 end;
 
 procedure TChapterView.RenderChapterHeader;
@@ -1000,7 +1143,6 @@ begin
   FFontName       := 'default';
   FFontSize       := 10;
   FProject        := nil;
-  FVerseMode      := vmParagraph;
   FRxVerseHeading := RegexCreate('^((?:<TS[0-3]?>.*?<Ts>)*)(.*?)$', [rcoUTF8]);
   FNotes          := TNoteList.Create;
   FHint           := TNoteWindow.Create(Self);
@@ -1023,11 +1165,13 @@ end;
 
 procedure TChapterView.Translate;
 begin
-  FSetFontItem.Caption       := SSetFont;
-  FParagraphModeItem.Caption := SParagraphMode;
-  FVersePerLineItem.Caption  := SVersePerLineMode;
-  FVerseRulesItem.Caption    := SVerseRules;
-  HandleVerseChange(FProject);
+  FSetFontItem.Caption              := SSetFont;
+  FParagraphModeItem.Caption        := SParagraphMode;
+  FInterlinearModeItem.Caption      := SInterlinearMode;
+  FInterlinearModeInterItem.Caption := SInterlinearModeInter;
+  FInterlinearModeIntraItem.Caption := SInterlinearModeIntra;
+  FVerseRulesItem.Caption           := SVerseRules;
+  LoadChapter;
 end;
 
 procedure TChapterView.LoadChapter;
@@ -1059,10 +1203,10 @@ begin
     end;
 
     if Blocks.LastBlock.ClassName <> 'TKMemoParagraph' then
-      Blocks.AddParagraph().ParaStyle.FirstIndent := IfThen(FVerseMode = vmParagraph, DefaultFirstIndent);
+      Blocks.AddParagraph().ParaStyle.FirstIndent := IfThen(GetParagraphMode = pmParagraph, DefaultFirstIndent);
 
     RenderChapterFooter;
-    HightlightRange(FVerseRanges[current], clSilver);
+    HighlightRange(FVerseRanges[current], clSilver);
     //RenderNotes;
   finally
     Blocks.UnLockUpdate;

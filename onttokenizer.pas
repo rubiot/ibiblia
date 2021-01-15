@@ -41,6 +41,7 @@ type
     function LerSintagma(var s: TTagSintagma): TTipoSintagma;
     function LerPropriedadeTag(p: string; s: TTagSintagma): string;
     procedure LerAteTag(var s: TTagSintagma; AteTag: string);
+    function ReadUntilExclusive(endTag: string): string;
   end;
 
 implementation
@@ -321,6 +322,14 @@ begin
     LerSintagma(s);
   until (s.tipo = tsNulo) or (s.valor = AteTag);
   s.valor := valor + s.valor;
+end;
+
+function TONTTokenizer.ReadUntilExclusive(endTag: string): string;
+var
+  token: TTagSintagma;
+begin
+  LerAteTag(token, endTag);
+  result := token.valor.Replace(endTag, '');
 end;
 
 end.

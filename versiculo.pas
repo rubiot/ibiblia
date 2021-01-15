@@ -813,6 +813,7 @@ var
   line: TStringStream;
   s, p: TSyntagm;
   m: string;
+  skip: boolean;
 begin
   result := '';
 
@@ -820,8 +821,15 @@ begin
   try
     line := TStringStream.Create('');
 
+    skip := false;
     for s in FSintagmas do
     begin
+      if skip then
+      begin
+        skip := false;
+        continue;
+      end;
+
       case s.Kind of
         tsSintagma:
         begin
@@ -833,6 +841,12 @@ begin
           for m in s.Morph do
             line.WriteString(format('<WT%s>', [m]));
 
+          if assigned(s.GetNext) and (s.GetNext.Kind = tsPontuacao) then
+          begin
+            line.WriteString(s.GetNext.Text);
+            skip := true;
+          end;
+
           if s.Pairs.Count > 0 then
           begin
             line.WriteString('<T>');
@@ -841,12 +855,18 @@ begin
               for p in s.Pairs do
               begin
                 line.WriteString(GetSpacingBefore(s, p));
-                line.WriteString(IfThen(p.IsItalic, format('<FI>%s<Fi', [p.Text]), p.Text));
+                line.WriteString(IfThen(p.IsItalic, format('<FI>%s<Fi>', [p.Text]), p.Text));
               end;
             end else // not a first sibling
               line.WriteString('←');
             line.WriteString('<t>');
-          end;
+          end
+          else
+            line.WriteString('<T>•<t>');
+
+          //for m in s.Strong do
+          //  line.WriteString(format('<T>%s<t>', [m]));
+
           line.WriteString('<q>');
         end;
         tsTag:       line.WriteString(s.RawText);
