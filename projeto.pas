@@ -1007,8 +1007,7 @@ begin
   end;
   SalvarTexto; // salvar alterações nos textos dos versículos
 
-  FParesAntigos.Free; // liberando pares antigos do versículo
-  FParesAntigos := nil;
+  FreeAndNil(FParesAntigos); // liberando pares antigos do versículo
 
   if assigned(FMemoComentarios) then
     Comentarios := FMemoComentarios.Text;
@@ -1799,8 +1798,7 @@ begin
     end;
   end;
 
-  if assigned(FParesAntigos) then
-    FParesAntigos.Free;
+  FreeAndNil(FParesAntigos);
 
   FOnNovoVersiculo.Free;
   FSugeridor.Free;

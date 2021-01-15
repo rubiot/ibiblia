@@ -345,14 +345,14 @@ begin
   tmp := TSyntagmList.Create;
   for s in FSintagmas do
   begin
-    if not assigned(s.Pairs) or s.IsItalic or (tmp.IndexOf(s) >= 0) then
+    if not assigned(s.Pairs) or (s.Kind <> tsSintagma) or s.IsItalic or (tmp.IndexOf(s) >= 0) then
       continue;
 
     src := s.GetSuggestionKey(tipo);
     tmp.Add(s);
     for p in s.Siblings do
     begin
-      if p.IsItalic then
+      if p.IsItalic or (p.Kind <> tsSintagma) then
         continue;
       src := src + ';' + p.GetSuggestionKey(tipo);
       tmp.Add(p);
@@ -360,7 +360,7 @@ begin
     dst := '';
     for p in s.Pairs do
     begin
-      if p.IsItalic then
+      if p.IsItalic or (p.Kind <> tsSintagma) then
         continue;
       dst := dst + p.GetSuggestionKey(tipo) + ';'
     end;
@@ -907,7 +907,7 @@ begin
     begin // sintagmas
       Inc(s);
 
-      if (prox = nil) and (stg.Pairs.Count > 0) then
+      if (prox = nil) and (stg.Pairs.Count > 0) and (stg.Kind = tsSintagma) then
         linha.WriteString('<wt>');
 
       if autoitalico and (stg.Pairs.Count = 0) and (stg.Kind = tsSintagma) then
@@ -921,7 +921,7 @@ begin
       if autoitalico and (stg.Pairs.Count = 0) and (stg.Kind = tsSintagma) then
          linha.WriteString('<Fi>');
 
-      if stg.Pairs.Count > 0 then
+      if (stg.Pairs.Count > 0) and (stg.Kind = tsSintagma) then
       begin
         if (s < (Sintagmas.Count-1)) and // não é o último sintagma e
            (stg.Siblings.Count > 0) then   // tem irmãos
