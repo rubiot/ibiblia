@@ -190,8 +190,8 @@ type
     procedure SugerirAssociacao;
     procedure RecriarBaseSugestoes;
     procedure RecriarBaseSugestoes(pb: TProgressBar);
-    procedure ImportarModuloTheWord(arquivo: string; texto: TTipoTextoBiblico; replace: boolean);
-    procedure ImportarModuloTheWord(arquivo: string; texto: TTipoTextoBiblico; pb: TProgressBar; replace: boolean);
+    function ImportarModuloTheWord(arquivo: string; texto: TTipoTextoBiblico; replace: boolean): boolean;
+    function ImportarModuloTheWord(arquivo: string; texto: TTipoTextoBiblico; pb: TProgressBar; replace: boolean): boolean;
     procedure NovoObjetoVersiculo(owner: TScrollBox; texto: TTipoTextoBiblico);
     procedure ExportarTextoDestinoComStrongs(arquivo: string; opcoes: TOpcoesExportacao);
     procedure ExportarTextoDestinoComStrongs(arquivo: string; pb: TProgressBar; opcoes: TOpcoesExportacao);
@@ -269,6 +269,7 @@ resourcestring
   SOTConcordanceNotImplementedYet = 'Old Testament concordance is not implemented yet';
   SLanguageId = 'en';
   SError = 'Error';
+  SWarning = 'Warning';
   SInformation = 'Information';
   SCorruptedData = 'Corrupted data, some associations may be lost.' +
                    'This can happen for several reasons:'#13#10 +
@@ -283,6 +284,10 @@ resourcestring
   SOpenProject = 'Open project';
   SProjectDoesntExist = 'The selected project doesn''t exist: %s';
   SInvalidLineCount = 'Invalid file, it must have at least %d lines';
+  SPotentialNonUTF8ModuleWarning = 'This module has a ''charset'' property and this may be an indication that this is a non-UTF8 module. ' +
+                                   'iBiblia was not designed to work with non-UTF8 modules. ' +
+                                   'Please choose ''Ignore'' to ignore this warning and continue at your own risk or ''Abort'' ' +
+                                   'to abort the operation and choose another module.';
   SFailedToCreateFile = 'Failed to create file: %s';
   SExportToFileError = 'iBiblia found an error while exporting the Bible module file.'#13#10 +
                        'Please check if theWord is using the file, then close it and try again.';
@@ -2134,18 +2139,18 @@ begin
   end;
 end;
 
-procedure TProjeto.ImportarModuloTheWord(arquivo: string;
-  texto: TTipoTextoBiblico; replace: boolean);
+function TProjeto.ImportarModuloTheWord(arquivo: string;
+  texto: TTipoTextoBiblico; replace: boolean): boolean;
 begin
-  ImportarModuloTheWord(arquivo, texto, nil, replace);
+  result := ImportarModuloTheWord(arquivo, texto, nil, replace);
 end;
 
-procedure TProjeto.ImportarModuloTheWord(arquivo: string;
-  texto: TTipoTextoBiblico; pb: TProgressBar; replace: boolean);
+function TProjeto.ImportarModuloTheWord(arquivo: string;
+  texto: TTipoTextoBiblico; pb: TProgressBar; replace: boolean): boolean;
 var
   modulo: TStringList;
   i, linesOffset, projectOffset: smallint;
-  reVazio, reComments, reDescription, reVerseRules, verseRule: IRegex;
+  reVazio, reComments, reDescription, reCharset, reVerseRules, verseRule: IRegex;
   mtVerseRules, mtDescription: IMatch;
   verseRulesDe, verseRulesPara: TStringList;
   propriedades: TStringStream;
@@ -2153,6 +2158,7 @@ var
   line: string;
   moduleScope: TEscopoTexto;
 begin
+  result := false;
   linesOffset := 0;
   projectOffset := 0;
   if arquivo.EndsWith('.ont') then
@@ -2199,6 +2205,7 @@ begin
     reVazio        := RegexCreate('^\s*$', [rcoUTF8]);
     reComments     := RegexCreate('#.*$', [rcoUTF8]);
     reDescription  := RegexCreate('^\s*description\s*=\s*(.*)$', [rcoUTF8]);
+    reCharset      := RegexCreate('^\s*charset\s*=\s*(.*)$', [rcoUTF8]);
     reVerseRules   := RegexCreate('^\s*verse.rule\s*=\s*"(.*?)(?<!")"(?!")\s+"(.*?)"(?=\s*$|\s+"(.*?)(?<!")"(?!"))', [rcoUTF8]);
     FrmEscolherVerseRules.Reset;
     verseRulesDe   := TStringList.Create;
@@ -2213,6 +2220,12 @@ begin
 
       if reVazio.IsMatch(line) then
         continue;
+
+      if reCharset.IsMatch(line) then
+      begin
+        if MessageDlg(SWarning, SPotentialNonUTF8ModuleWarning, mtWarning, [mbIgnore, mbAbort], 0) = mrAbort then
+          exit;
+      end;
 
       propriedades.WriteString(line + #13#10);
 
@@ -2298,6 +2311,7 @@ begin
     verseRulesPara.Free;
   end;
   //FTblPares.ApplyUpdates;
+  result := true;
 end;
 
 procedure TProjeto.NovoObjetoVersiculo(owner: TScrollBox;

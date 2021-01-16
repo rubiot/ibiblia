@@ -125,7 +125,7 @@ end;
 
 procedure TFormPropProjeto.ActionCarregarTextoExecute(Sender: TObject);
 var
-  replace: boolean;
+  replace, importOK: boolean;
 begin
   if TTipoTextoBiblico(TabControl1.TabIndex) in [tbOrigem, tbDestino] then
   begin
@@ -151,11 +151,12 @@ begin
   if OpenDialog1.Execute then
   begin
     Enabled := False;
-    FProjeto.ImportarModuloTheWord(OpenDialog1.FileName, TTipoTextoBiblico(TabControl1.TabIndex), ProgressBar1, replace);
+    importOK := FProjeto.ImportarModuloTheWord(OpenDialog1.FileName, TTipoTextoBiblico(TabControl1.TabIndex), ProgressBar1, replace);
     Enabled := True;
     ActionMudancaAbaExecute(nil);
     FProjeto.Atualizar;
-    ShowMessage(SNewTextImportedSuccessfully);
+    if importOK then
+      ShowMessage(SNewTextImportedSuccessfully);
   end;
 end;
 

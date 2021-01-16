@@ -747,6 +747,10 @@ msgctxt "projeto.sphilippians"
 msgid "Philippians"
 msgstr "Philippians"
 
+#: projeto.spotentialnonutf8modulewarning
+msgid "This module has a 'charset' property and this may be an indication that this is a non-UTF8 module. iBiblia was not designed to work with non-UTF8 modules. Please choose 'Ignore' to ignore this warning and continue at your own risk or 'Abort' to abort the operation and choose another module."
+msgstr "This module has a 'charset' property and this may be an indication that this is a non-UTF8 module. iBiblia was not designed to work with non-UTF8 modules. Please choose 'Ignore' to ignore this warning and continue at your own risk or 'Abort' to abort the operation and choose another module."
+
 #: projeto.sprojectdoesntexist
 msgid "The selected project doesn't exist: %s"
 msgstr "The selected project doesn't exist: %s"
@@ -813,6 +817,10 @@ msgstr "Translation memory"
 #: projeto.sverseabsentfromproject
 msgid "[This project does not contain this verse]"
 msgstr "[This project does not contain this verse]"
+
+#: projeto.swarning
+msgid "Warning"
+msgstr "Warning"
 
 #: projeto.szechariah
 msgctxt "projeto.szechariah"
