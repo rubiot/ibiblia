@@ -378,7 +378,7 @@ var
 begin
   if FArvore.Items.Count = 0 then // evitando preencher outra vez a mesma árvore
   begin // preenchendo árvore
-    FArvore.Visible := false;
+    FArvore.BeginUpdate;
     for l:=0 to QLivros[FEscopo]-1 do
     begin
       nl := FArvore.Items.Add(nil, NLivros[FEscopo][l]);
@@ -394,7 +394,7 @@ begin
         end;
       end;
     end;
-    FArvore.Visible := true;
+    FArvore.EndUpdate;
   end;
 
   FArvore.OnChange := @OnMudancaVersiculo;

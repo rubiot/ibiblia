@@ -147,6 +147,7 @@ begin
   if FScope = AValue then Exit;
   FScope := AValue;
 
+  BeginUpdate;
   Items.Clear;
   for b:=0 to QLivros[FScope]-1 do
   begin
@@ -166,6 +167,7 @@ begin
       end;
     end;
   end;
+  EndUpdate;
 end;
 
 procedure TBibleTreeView.SetVerseList(refs: TStringList);
@@ -174,6 +176,7 @@ var
   b, c, v, i: integer;
   nb, nc: TTreeNode;
 begin
+  BeginUpdate;
   Items.Clear;
   nb := nil;
   nc := nil;
@@ -199,6 +202,7 @@ begin
     Inc(i);
   end;
   SelectAll;
+  EndUpdate;
 end;
 
 procedure TBibleTreeView.ToggleTreeViewCheckBoxes(node: TTreeNode);
