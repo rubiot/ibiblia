@@ -258,7 +258,7 @@ var
   heading: string;
 begin
   ResetStyleStack;
-  mtHeading := FRxVerseHeading.Match(txt);
+  mtHeading := FRxVerseHeading.Match(txt, [rmoNoUTF8Check]);
   if not mtHeading.Success then
     raise Exception.Create(SysUtils.Format('There''s something wrong with this verse: "%s"'#13#10 +
                                            'Please check for invalid tags or line breaks', [txt]));
@@ -290,7 +290,7 @@ var
 begin
   if FHideVerseNumber then exit;
 
-  if FProject.InterlinearMode = imInterlinear then
+  if (FProject.ChapterViewText = tbInterlinear) and (FProject.InterlinearMode = imInterlinear) then
     with Blocks.AddContainer do
     begin
       Position := mbpText;
@@ -306,20 +306,9 @@ begin
   begin
     OnClick := @HandleReferenceClick;
     TextStyle.Font.Name  := 'default';
+    TextStyle.Font.Size  := FFontSize-2;
     TextStyle.Font.Style := [fsBold];
     TextStyle.Font.Color := NonBibleTextColor;
-    case FProject.InterlinearMode of
-      imInterlinear:
-      begin
-        TextStyle.Font.Size      := FFontSize-1;
-        TextStyle.ScriptPosition := tpoNormal;
-      end;
-      imIntralinear:
-      begin
-        TextStyle.Font.Size      := FFontSize+1;
-        TextStyle.ScriptPosition := tpoSuperscript;
-      end;
-    end;
   end;
 end;
 
