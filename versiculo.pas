@@ -9,7 +9,7 @@ interface
 uses
   Classes, SysUtils, StrUtils, ExtCtrls, StdCtrls, Controls, Graphics,
   ONTTokenizer, Syntagm, Forms, LCLType, Math, LCLProc, Dialogs, LazUTF8,
-  ONTParser, dbugintf, Menus, Clipbrd;
+  ONTParser, dbugintf, Menus, Clipbrd, PCRE;
 
 type
 
@@ -53,6 +53,7 @@ type
     FONTParser: TONTParser;
     FSyntagmPopupMenu: TPopupMenu;
     FVersePopupMenu: TPopupMenu;
+    FFixWrongFiTag: IRegex;
     //FOnNovaAssociacao: TOnAssociacaoEvent;
     //FOnRemoverAssociacao: TOnAssociacaoEvent;
     function GetAndamentoAssociacao: Single;
@@ -211,6 +212,9 @@ begin
   //FStrongMorfoComoChave := false;
   FDestruindo           := false;
   FONTParser := TONTParser.Create;
+
+  { regex to fix cases in which a <Fi> tag ends up misplaced }
+  FFixWrongFiTag := RegexCreate('((?:<W[THG][^>]+>)+)(<Fi>)', [rcoUTF8]);
 end;
 
 destructor TVersiculo.Destruir;
@@ -475,11 +479,12 @@ procedure TVersiculo.AlterarTexto(_XML: string);
 var
   new, result: TSyntagmList;
   s, old: TSyntagm;
-  found: boolean;
+  found, oldActive: boolean;
 begin
   if FXML = _XML then
     exit;
 
+  oldActive := FAtivo;
   FAtivo := false; // we're potentially deleting labels
 
   new := TSyntagmList.Create;
@@ -564,7 +569,7 @@ begin
     VersiculoPar.Modificado := true;
   SintagmaClipboard := nil;
 
-  FAtivo := true;
+  FAtivo := oldActive;
   Renderizar;
 end;
 
@@ -924,7 +929,7 @@ begin
       if (stg.Pairs.Count > 0) and (stg.Kind = tsSintagma) then
       begin
         if (s < (Sintagmas.Count-1)) and // não é o último sintagma e
-           (stg.Siblings.Count > 0) then   // tem irmãos
+           (stg.Siblings.Count > 0) then // tem irmãos
         begin
           prox := nil;
           for m:=s+1 to Sintagmas.Count-1 do
@@ -938,6 +943,7 @@ begin
           if (prox <> nil) and (stg.Siblings.IndexOf(prox) >= 0) then // o próximo sintagma é irmão deste?
             continue;
         end;
+
         prox := nil;
         for p:=0 to stg.Pairs.Count-1 do
         begin // pares
@@ -970,8 +976,11 @@ begin
             linha.WriteString(format('<W%sx>', [stg.Strong[m]]));
       end;
     end;
+
+    { handling special cases for italics }
+    result := FFixWrongFiTag.Replace(linha.DataString, '$2$1'); { fix '<wt>bla <FI>ble<WG1><Fi>' case }
+    result := result.Replace('<FI><wt>', '<wt><FI>', [rfReplaceAll]);
   finally
-    result := linha.DataString;
     linha.Destroy;
     ls.Destroy;
   end;
