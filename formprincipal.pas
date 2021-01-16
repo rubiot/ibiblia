@@ -560,7 +560,7 @@ begin
     ProjetoAtual.MostrarQtdStrongs := FStrongsCountMode;
     ProjetoAtual.OnNewVerseSubscribe(@QuandoNovoVersiculo);
     ProjetoAtual.OnAlterarVersiculo := @QuandoAlterarVersiculo;
-    ProjetoAtual.Novo(SaveDialog1.FileName, FormNovoProjeto1.EditNomeProjeto.Text, language);
+    ProjetoAtual.Novo(SaveDialog1.FileName, FormNovoProjeto1.EditNomeProjeto.Text);
     ProjetoAtual.ExibirDefinicoesSoComCtrl := MenuItemDictPopup.Checked;
     ProjetoAtual.SugerirAssociacaoAutomaticamente := MenuItem22.Checked;
     ProjetoAtual.PopupTrigger := FPopupTrigger;
@@ -1174,7 +1174,7 @@ begin
   ProjetoAtual.MostrarQtdStrongs := FStrongsCountMode;
   ProjetoAtual.AutoSave := MenuItemAutoSave.Checked;
 
-  ProjetoAtual.Abrir(filename, language);
+  ProjetoAtual.Abrir(filename);
   ProjetoAtual.ExibirDefinicoesSoComCtrl := MenuItemDictPopup.Checked;
   ProjetoAtual.SugerirAssociacaoAutomaticamente := MenuItem22.Checked;
   ProjetoAtual.PopupTrigger := FPopupTrigger;

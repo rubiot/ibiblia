@@ -122,7 +122,7 @@ type
     function GetPairs: string;
     function GetParagraphMode: TParagraphMode;
     function GetSituacao: Integer;
-    procedure PreencherArvore(language: string);
+    procedure PreencherArvore;
     procedure SetAtrasoExibicao(const AValue: Cardinal);
     procedure SetAutoSave(AValue: boolean);
     procedure SetChapterViewText(AValue: TTipoTextoBiblico);
@@ -173,9 +173,9 @@ type
     constructor Criar;
     constructor Criar(paineis: array of TScrollbox; navegador: TTreeView; rsituacao: TRadioGroup; rcomentarios: TMemo);
     destructor Destruir;
-    procedure Novo(nomedb, descricao: string; language: string);
-    procedure Novo(nomedbvelho, nomedbnovo, descricao: string; language: string);
-    procedure Abrir(Nome: string; language: string);
+    procedure Novo(nomedb, descricao: string);
+    procedure Novo(nomedbvelho, nomedbnovo, descricao: string);
+    procedure Abrir(Nome: string);
     procedure Fechar(_Commit: boolean);
     procedure Commit;
     procedure Rollback;
@@ -315,16 +315,16 @@ uses formpopup, formverserules;
 
 { TProjeto }
 
-procedure TProjeto.Novo(nomedb, descricao: string; language: string);
+procedure TProjeto.Novo(nomedb, descricao: string);
 begin
-  Novo(ProjetoModelo[FEscopo], nomedb, descricao, language);
+  Novo(ProjetoModelo[FEscopo], nomedb, descricao);
 end;
 
-procedure TProjeto.Novo(nomedbvelho, nomedbnovo, descricao: string; language: string);
+procedure TProjeto.Novo(nomedbvelho, nomedbnovo, descricao: string);
 begin
   CopiarArquivo(nomedbvelho, nomedbnovo);
 
-  Abrir(nomedbnovo, language);
+  Abrir(nomedbnovo);
 
   AtribuirInfo('descricao', descricao);
   AtribuirInfo('marcador', format('%d,1,1', [OffsetLivros[FEscopo] + 1]));
@@ -371,17 +371,12 @@ begin
   result := FTblPares.FieldByName('pare_situacao').AsInteger;
 end;
 
-procedure TProjeto.PreencherArvore(language: string);
+procedure TProjeto.PreencherArvore;
 var
   l, c, v: smallint;
   nl, nc, nv: TTreeNode;
-  //starttime: DWord;
 begin
-  //starttime:=getTickCount;
-
-  FArvore.LoadFromFile(Format('tree-%s-%d.dat', [language, Ord(FEscopo)]));
-
-  {if FArvore.Items.Count = 0 then // evitando preencher outra vez a mesma árvore
+  if FArvore.Items.Count = 0 then // evitando preencher outra vez a mesma árvore
   begin // preenchendo árvore
     FArvore.Visible := false;
     for l:=0 to QLivros[FEscopo]-1 do
@@ -401,10 +396,8 @@ begin
     end;
     FArvore.Visible := true;
   end;
-  FArvore.SaveToFile(Format('tree-%s-%d.dat', [language, Ord(FEscopo)]));}
 
   FArvore.OnChange := @OnMudancaVersiculo;
-  //DebugLn('  TProjeto.PreencherArvore: %d milliseconds', [getTickCount-starttime]);
 end;
 
 procedure TProjeto.SetAtrasoExibicao(const AValue: Cardinal);
@@ -1133,7 +1126,6 @@ procedure TProjeto.SintagmaOnMouseEnter(Sender: TSyntagm);
 var
   show: boolean;
 begin
-  show := false;
   case FPopupTrigger of
     ptMouseHover:     show := (GetKeyState(VK_CONTROL) and $8000 = 0) and
                               (GetKeyState(VK_SHIFT  ) and $8000 = 0);
@@ -1811,7 +1803,7 @@ begin
   FMemoVersiculo.Destruir;
 end;
 
-procedure TProjeto.Abrir(Nome: string; language: string);
+procedure TProjeto.Abrir(Nome: string);
   function IdentificarEscopo: TEscopoTexto;
   begin
     FTblPares.First;
@@ -1891,7 +1883,7 @@ begin
 
   if assigned(FArvore) then
   begin
-    PreencherArvore(language);
+    PreencherArvore;
     AtualizarArvore;
     //FArvore.FullCollapse;
     FArvore.Enabled := true;
