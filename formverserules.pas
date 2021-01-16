@@ -6,33 +6,32 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
-  ExtCtrls, StdCtrls, PCRE, LCLTranslator;
+  ExtCtrls, StdCtrls, PCRE, LCLTranslator, Grids, fgl;
 
 type
+
+  TRegexList = specialize TFPGList<IRegex>;
 
   { TFrmEscolherVerseRules }
 
   TFrmEscolherVerseRules = class(TForm)
     Button1: TButton;
     Button2: TButton;
-    ckgVerseRules: TCheckGroup;
-    lbDe: TListBox;
-    lbPara: TListBox;
-    procedure FormCreate(Sender: TObject);
-    procedure FormDestroy(Sender: TObject);
-    procedure lbDeSelectionChange(Sender: TObject; User: boolean);
+    BtnSelectNone: TButton;
+    BtnSelectAll: TButton;
+    StringGridVerseRules: TStringGrid;
+    procedure BtnSelectAllClick(Sender: TObject);
+    procedure BtnSelectNoneClick(Sender: TObject);
+    procedure FormShow(Sender: TObject);
   private
+    function GetHasRules: boolean;
     { private declarations }
-    FVerseRulesDe: TStringList;
-    FVerseRulesPara: TStringList;
-    FCorrigirAspas: IRegex;
   public
     { public declarations }
-    procedure CarregarVerseRules(rulesDe: TStringList; rulesPara: TStringList);
     procedure AddVerseRule(de: String; para: String);
     procedure Reset;
-    property VerseRuleDe: TStringList read FVerseRulesDe;
-    property VerseRulePara: TStringList read FVerseRulesPara;
+    procedure CompileVerseRules(var rxFrom: TRegexList; var rxTo: TStringList);
+    property HasRules: boolean read GetHasRules;
   end;
 
 var
@@ -42,55 +41,58 @@ implementation
 
 { TFrmEscolherVerseRules }
 
-procedure TFrmEscolherVerseRules.FormCreate(Sender: TObject);
+procedure TFrmEscolherVerseRules.FormShow(Sender: TObject);
 begin
-  FVerseRulesDe := TStringList.Create;
-  FVerseRulesPara := TStringList.Create;
-  FCorrigirAspas:= RegexCreate('""');
+  StringGridVerseRules.AutoAdjustColumns;
 end;
 
-procedure TFrmEscolherVerseRules.CarregarVerseRules(rulesDe: TStringList;
-  rulesPara: TStringList);
+procedure TFrmEscolherVerseRules.BtnSelectAllClick(Sender: TObject);
 var
   r: integer;
 begin
-  Reset;
-  for r:=0 to rulesDe.Count do
-    AddVerseRule(rulesDe.Strings[r], rulesPara.Strings[r]);
+  for r:=1 to StringGridVerseRules.RowCount-1 do
+    StringGridVerseRules.Cells[0, r] := '1';
+end;
+
+procedure TFrmEscolherVerseRules.BtnSelectNoneClick(Sender: TObject);
+var
+  r: integer;
+begin
+  for r:=1 to StringGridVerseRules.RowCount-1 do
+    StringGridVerseRules.Cells[0, r] := '0';
+end;
+
+function TFrmEscolherVerseRules.GetHasRules: boolean;
+begin
+  result := StringGridVerseRules.RowCount > 1;
 end;
 
 procedure TFrmEscolherVerseRules.AddVerseRule(de: String; para: String);
 begin
-  de := FCorrigirAspas.Replace(de, '"');
-  para := FCorrigirAspas.Replace(para, '"');
-  FVerseRulesDe.Add(de);
-  FVerseRulesPara.Add(para);
-  ckgVerseRules.Items.Add(Format('[%s] → [%s]', [de, para]));
-  ckgVerseRules.Checked[ ckgVerseRules.Items.Count-1 ] := true;
-
-  lbDe.Items.Add(de);
-  lbPara.Items.Add(para);
-  lbDe.Selected[lbDe.Items.Count-1] := true;
-  lbPara.Selected[lbPara.Items.Count-1] := true;
+  StringGridVerseRules.RowCount := StringGridVerseRules.RowCount + 1;
+  StringGridVerseRules.Cells[0, StringGridVerseRules.RowCount-1] := '1';
+  StringGridVerseRules.Cells[1, StringGridVerseRules.RowCount-1] := de.Replace('""', '"', [rfReplaceAll]);
+  StringGridVerseRules.Cells[2, StringGridVerseRules.RowCount-1] := para.Replace('""', '"', [rfReplaceAll]);
 end;
 
 procedure TFrmEscolherVerseRules.Reset;
 begin
-  ckgVerseRules.Items.Clear;
-  FVerseRulesDe.Clear;
-  FVerseRulesPara.Clear;
+  StringGridVerseRules.RowCount := 1;
 end;
 
-procedure TFrmEscolherVerseRules.FormDestroy(Sender: TObject);
+procedure TFrmEscolherVerseRules.CompileVerseRules(var rxFrom: TRegexList; var rxTo: TStringList);
+var
+  r: integer;
 begin
-  FVerseRulesDe.Free;
-  FVerseRulesPara.Free;
-end;
+  rxFrom := TRegexList.Create;
+  rxTo   := TStringList.Create;
 
-procedure TFrmEscolherVerseRules.lbDeSelectionChange(Sender: TObject;
-  User: boolean);
-begin
-  //lbPara.Selected[lbDe.ItemIndex] := lbDe.Selected[lbDe.ItemIndex];
+  for r:=1 to StringGridVerseRules.RowCount-1 do
+    if StringGridVerseRules.Cells[0, r] = '1' then
+    begin
+      rxFrom.Add(RegexCreate(StringGridVerseRules.Cells[1, r], [rcoUTF8]));
+      rxTo.Add(StringGridVerseRules.Cells[2, r]);
+    end;
 end;
 
 initialization

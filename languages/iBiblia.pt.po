@@ -1019,6 +1019,7 @@ msgid "Cancel"
 msgstr "Cancelar"
 
 #: tformpropprojeto.bitbtntextdescription.caption
+msgctxt "tformpropprojeto.bitbtntextdescription.caption"
 msgid "Apply"
 msgstr "Aplicar"
 
@@ -1058,6 +1059,7 @@ msgid "Deselect all"
 msgstr "Desmarcar tudo"
 
 #: tfrmapplypatch.btnselectall.caption
+msgctxt "tfrmapplypatch.btnselectall.caption"
 msgid "Select all"
 msgstr "Marcar tudo"
 
@@ -1080,6 +1082,15 @@ msgstr "Aplicar patch..."
 msgid "Dictionary"
 msgstr "Dicionário"
 
+#: tfrmescolherverserules.btnselectall.caption
+msgctxt "tfrmescolherverserules.btnselectall.caption"
+msgid "Select all"
+msgstr "Marcar tudo"
+
+#: tfrmescolherverserules.btnselectnone.caption
+msgid "Select none"
+msgstr "Desmarcar tudo"
+
 #: tfrmescolherverserules.button1.caption
 msgid "&Cancel"
 msgstr "&Cancelar"
@@ -1093,9 +1104,20 @@ msgstr "OK"
 msgid "Choose verse rules"
 msgstr "Escolher verse rules"
 
-#: tfrmescolherverserules.ckgverserules.caption
-msgid "Choose verse rules you'd like to apply"
-msgstr "Marque as verse rules que você deseja aplicar"
+#: tfrmescolherverserules.stringgridverserules.columns[0].title.caption
+msgctxt "tfrmescolherverserules.stringgridverserules.columns[0].title.caption"
+msgid "Apply"
+msgstr "Aplicar"
+
+#: tfrmescolherverserules.stringgridverserules.columns[1].title.caption
+msgctxt "tfrmescolherverserules.stringgridverserules.columns[1].title.caption"
+msgid "From"
+msgstr "De"
+
+#: tfrmescolherverserules.stringgridverserules.columns[2].title.caption
+msgctxt "tfrmescolherverserules.stringgridverserules.columns[2].title.caption"
+msgid "To"
+msgstr "Para"
 
 #: tfrmexportarprojeto.btexportar.caption
 msgctxt "tfrmexportarprojeto.btexportar.caption"

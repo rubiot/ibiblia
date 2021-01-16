@@ -2152,12 +2152,15 @@ var
   i, linesOffset, projectOffset: smallint;
   reVazio, reComments, reDescription, reCharset, reVerseRules, verseRule: IRegex;
   mtVerseRules, mtDescription: IMatch;
-  verseRulesDe, verseRulesPara: TStringList;
+  rxVerseRulesFrom: TRegexList;
+  rxVerseRulesTo: TStringList;
   propriedades: TStringStream;
   m: smallint;
   line: string;
   moduleScope: TEscopoTexto;
 begin
+  rxVerseRulesFrom := nil;
+  rxVerseRulesTo := nil;
   result := false;
   linesOffset := 0;
   projectOffset := 0;
@@ -2207,11 +2210,10 @@ begin
     reDescription  := RegexCreate('^\s*description\s*=\s*(.*)$', [rcoUTF8]);
     reCharset      := RegexCreate('^\s*charset\s*=\s*(.*)$', [rcoUTF8]);
     reVerseRules   := RegexCreate('^\s*verse.rule\s*=\s*"(.*?)(?<!")"(?!")\s+"(.*?)"(?=\s*$|\s+"(.*?)(?<!")"(?!"))', [rcoUTF8]);
-    FrmEscolherVerseRules.Reset;
-    verseRulesDe   := TStringList.Create;
-    verseRulesPara := TStringList.Create;
 
+    FrmEscolherVerseRules.Reset;
     propriedades := TStringStream.Create('');
+
     for i:=QLinhas[moduleScope] to modulo.Count-1 do
     begin
       line := modulo[i];
@@ -2251,16 +2253,9 @@ begin
     end;
     propriedades.Free;
 
-    if (FrmEscolherVerseRules.VerseRuleDe.Count > 0) and (FrmEscolherVerseRules.ShowModal = mrOK) then
-    begin
-      for m:=0 to FrmEscolherVerseRules.ckgVerseRules.Items.Count-1 do
-        if FrmEscolherVerseRules.ckgVerseRules.Checked[m] then
-        begin
-          verseRulesDe.Add(FrmEscolherVerseRules.VerseRuleDe[m]);
-          verseRulesPara.Add( FrmEscolherVerseRules.VerseRulePara[m] );
-          DebugLn('regex criado (%s -------- %s)', [FrmEscolherVerseRules.VerseRuleDe[m], FrmEscolherVerseRules.VerseRulePara[m]]);
-        end;
-    end;
+    if FrmEscolherVerseRules.HasRules and (FrmEscolherVerseRules.ShowModal = mrOK) then
+      FrmEscolherVerseRules.CompileVerseRules(rxVerseRulesFrom, rxVerseRulesTo);
+
     //modulo.SaveToFile(arquivo + '.txt');
     if assigned(pb) then
     begin
@@ -2282,12 +2277,11 @@ begin
     begin
       if FTblPares.EOF then break;
       //line := modulo[i];
+
       { aplicando verse.rules }
-      for m:=0 to verseRulesDe.Count-1 do
-      begin
-        verseRule := RegexCreate(verseRulesDe[m], [rcoUTF8]);
-        modulo[i] := verseRule.Replace(modulo[i], verseRulesPara[m]);
-      end;
+      if assigned(rxVerseRulesFrom) then
+        for m:=0 to rxVerseRulesFrom.Count-1 do
+          modulo[i] := rxVerseRulesFrom[m].Replace(modulo[i], rxVerseRulesTo[m]);
 
       SetVerseText(modulo[i], texto, replace);
 
@@ -2307,8 +2301,8 @@ begin
     modulo.Free;
     if assigned(pb) then
        pb.Visible := false;
-    verseRulesDe.Free;
-    verseRulesPara.Free;
+    FreeAndNil(rxVerseRulesFrom);
+    FreeAndNil(rxVerseRulesTo);
   end;
   //FTblPares.ApplyUpdates;
   result := true;

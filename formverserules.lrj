@@ -1,6 +1,10 @@
 {"version":1,"strings":[
 {"hash":77213123,"name":"tfrmescolherverserules.caption","sourcebytes":[67,104,111,111,115,101,32,118,101,114,115,101,32,114,117,108,101,115],"value":"Choose verse rules"},
-{"hash":94574457,"name":"tfrmescolherverserules.ckgverserules.caption","sourcebytes":[67,104,111,111,115,101,32,118,101,114,115,101,32,114,117,108,101,115,32,121,111,117,39,100,32,108,105,107,101,32,116,111,32,97,112,112,108,121],"value":"Choose verse rules you'd like to apply"},
 {"hash":177752476,"name":"tfrmescolherverserules.button1.caption","sourcebytes":[38,67,97,110,99,101,108],"value":"&Cancel"},
-{"hash":1339,"name":"tfrmescolherverserules.button2.caption","sourcebytes":[79,75],"value":"OK"}
+{"hash":1339,"name":"tfrmescolherverserules.button2.caption","sourcebytes":[79,75],"value":"OK"},
+{"hash":4749113,"name":"tfrmescolherverserules.stringgridverserules.columns[0].title.caption","sourcebytes":[65,112,112,108,121],"value":"Apply"},
+{"hash":317789,"name":"tfrmescolherverserules.stringgridverserules.columns[1].title.caption","sourcebytes":[70,114,111,109],"value":"From"},
+{"hash":1455,"name":"tfrmescolherverserules.stringgridverserules.columns[2].title.caption","sourcebytes":[84,111],"value":"To"},
+{"hash":172005621,"name":"tfrmescolherverserules.btnselectnone.caption","sourcebytes":[83,101,108,101,99,116,32,110,111,110,101],"value":"Select none"},
+{"hash":195296268,"name":"tfrmescolherverserules.btnselectall.caption","sourcebytes":[83,101,108,101,99,116,32,97,108,108],"value":"Select all"}
 ]}

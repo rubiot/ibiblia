@@ -989,6 +989,7 @@ msgid "Cancel"
 msgstr ""
 
 #: tformpropprojeto.bitbtntextdescription.caption
+msgctxt "tformpropprojeto.bitbtntextdescription.caption"
 msgid "Apply"
 msgstr ""
 
@@ -1028,6 +1029,7 @@ msgid "Deselect all"
 msgstr ""
 
 #: tfrmapplypatch.btnselectall.caption
+msgctxt "tfrmapplypatch.btnselectall.caption"
 msgid "Select all"
 msgstr ""
 
@@ -1050,6 +1052,15 @@ msgstr ""
 msgid "Dictionary"
 msgstr ""
 
+#: tfrmescolherverserules.btnselectall.caption
+msgctxt "tfrmescolherverserules.btnselectall.caption"
+msgid "Select all"
+msgstr ""
+
+#: tfrmescolherverserules.btnselectnone.caption
+msgid "Select none"
+msgstr ""
+
 #: tfrmescolherverserules.button1.caption
 msgid "&Cancel"
 msgstr ""
@@ -1063,8 +1074,19 @@ msgstr ""
 msgid "Choose verse rules"
 msgstr ""
 
-#: tfrmescolherverserules.ckgverserules.caption
-msgid "Choose verse rules you'd like to apply"
+#: tfrmescolherverserules.stringgridverserules.columns[0].title.caption
+msgctxt "tfrmescolherverserules.stringgridverserules.columns[0].title.caption"
+msgid "Apply"
+msgstr ""
+
+#: tfrmescolherverserules.stringgridverserules.columns[1].title.caption
+msgctxt "tfrmescolherverserules.stringgridverserules.columns[1].title.caption"
+msgid "From"
+msgstr ""
+
+#: tfrmescolherverserules.stringgridverserules.columns[2].title.caption
+msgctxt "tfrmescolherverserules.stringgridverserules.columns[2].title.caption"
+msgid "To"
 msgstr ""
 
 #: tfrmexportarprojeto.btexportar.caption
