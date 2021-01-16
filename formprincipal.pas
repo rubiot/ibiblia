@@ -979,6 +979,8 @@ begin
   {$IFDEF WINDOWS}
   TMenuItem(Sender).Checked := not TMenuItem(Sender).Checked;
   syncTw2iBiblia := TMenuItem(Sender).Checked;
+  if syncTw2iBiblia then
+    ActionSyncTheWordVerseExecute(Sender);
   {$ENDIF}
 end;
 
