@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, Forms, Graphics, ONTTokenizer, LCLType, HTMLColors,
   LazUTF8, Projeto, PCRE, Controls, Menus, fgl, Dialogs, Math, Contnrs, KMemo,
-  KEditCommon, KGraphics, formInterlinearVerseRules, LCLTranslator;
+  KEditCommon, KGraphics, formInterlinearVerseRules, LCLTranslator, LazLogger;
 
 type
 
@@ -1174,7 +1174,10 @@ end;
 procedure TChapterView.RenderChapter(verses: TStringList; current: integer);
 var
   verse: string;
+  //starttime: DWord;
 begin
+  //starttime := getTickCount;
+
   SetLength(FVerseRanges, verses.Count + 1);
 
   Blocks.LockUpdate;
@@ -1208,6 +1211,8 @@ begin
   self.SelectBlock(Blocks[FVerseRanges[current].first], sgpTopLeft);
   self.SelLength:=0;
   ExecuteCommand(ecScrollCenter);
+
+  //DebugLn('  TChapterView.RenderChapter: %d milliseconds', [getTickCount-starttime]);
 end;
 
 end.

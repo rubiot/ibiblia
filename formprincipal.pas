@@ -14,7 +14,7 @@ uses
   {$ENDIF}
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, Menus,
   ActnList, ComCtrls, ExtCtrls, StdCtrls, Projeto, IniFiles, Math,
-  Syntagm, LCLTranslator, unitabout, PCRE, Versiculo,
+  Syntagm, LCLTranslator, unitabout, PCRE, Versiculo, LCLProc, LazLogger,
   LCLType, LazUTF8, ChapterView;
 
 type
@@ -726,6 +726,8 @@ procedure TFrmPrincipal.FormCreate(Sender: TObject);
 var
   m: integer;
 begin
+  DebugLn('=================================');
+
   ProjetoAtual := nil;
   opts := TIniFile.Create('iBiblia.ini');
 

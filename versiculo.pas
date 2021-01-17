@@ -1045,8 +1045,7 @@ procedure TVersiculo.OrganizarSintagmas;
       x := 5;
     end;
 
-    s.LabelRef.Left:=x;
-    s.LabelRef.Top:=y;
+    s.LabelRef.SetBounds(x, y, s.LabelRef.Width, s.LabelRef.Height);
 
     if (x = 5) and (s.Kind = tsEspaco) then
       s.LabelRef.Visible := false // hiding spaces at the beginning of the line
@@ -1067,11 +1066,8 @@ begin
   y := 0; // y position
   a := 0; // line width
   for syntagm in FSintagmas do
-  begin
-    if not assigned(syntagm.LabelRef) then
-      continue;
-    PositionSyntagm(syntagm, x, y, a);
-  end;
+    if assigned(syntagm.LabelRef) then
+      PositionSyntagm(syntagm, x, y, a);
 
   if (FStrongsCountMode <> scNone) and assigned(FStrongCount) then
     PositionSyntagm(FStrongCount, x, y, a);
@@ -1194,19 +1190,19 @@ end;
 procedure TVersiculo.Renderizar;
 var
   s: TSyntagm;
+  //starttime: DWord;
 begin
   if not FAtivo or not assigned(FSintagmas) then
     exit;
 
+  //starttime := getTickCount;
   FPanel.DisableAutoSizing;
-
   for s in FSintagmas do
     s.Render;
   RenderizarStrongCount;
-
   FPanel.EnableAutoSizing;
-
   OrganizarSintagmas;
+  //DebugLn('  TVersiculo.Renderizar: %d milliseconds', [getTickCount-starttime]);
 end;
 
 procedure TVersiculo.RenderizarStrongCount;

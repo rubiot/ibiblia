@@ -690,7 +690,10 @@ var
   bkch, comments: string;
   rulesRx: TRegexList;
   replaceTo: TStringList;
+  //starttime: DWord;
 begin
+  //starttime := getTickCount;
+
   bkch := Format('%d,%d,', [BookID, Chapter]);
   result := TStringList.Create;
 
@@ -715,6 +718,7 @@ begin
     rulesRx.Free;
     replaceTo.Free;
   end;
+  //DebugLn('  TProjeto.GetChapterText: %d milliseconds', [getTickCount-starttime]);
 end;
 
 procedure TProjeto.CompileInterlinearVerseRules(var rulesRx: TRegexList;
@@ -992,9 +996,12 @@ begin
 end;
 
 procedure TProjeto.PreRolagemVersiculo(DataSet: TDataSet);
+//var starttime: DWord;
 begin
   if not FScrollEventsEnabled or not Assigned(FAVersiculo[tbOrigem]) then
     exit;
+
+  //starttime := getTickCount;
 
   FMemoVersiculo.Desativar; // hide and save verse edit if necessary
 
@@ -1009,12 +1016,15 @@ begin
 
   if assigned(FMemoComentarios) then
     Comentarios := FMemoComentarios.Text;
+
+  //DebugLn('  TProjeto.PreRolagemVersiculo: %d milliseconds', [getTickCount-starttime]);
 end;
 
 procedure TProjeto.PosRolagemVersiculo(DataSet: TDataSet);
 var
   v: TTipoTextoBiblico;
   e: TOnNovoVersiculoEvent;
+  //starttime: DWord;
 begin
   // updating current reference
   Sscanf(GetID(), '%d,%d,%d', [@FReference.BookID, @FReference.Chapter, @FReference.Verse]);
@@ -1023,9 +1033,14 @@ begin
   if not FScrollEventsEnabled then
     exit;
 
+  //starttime := getTickCount;
+
   for v:=low(FAVersiculo) to high(FAVersiculo) do
     if assigned(FAVersiculo[v]) then
+    begin
+      FAVersiculo[v].Ativo := false;
       FAVersiculo[v].Texto := FTblPares.Fields[FACamposTexto[v]].AsString;
+    end;
 
   if assigned(FAVersiculo[tbOrigem]) and assigned(FAVersiculo[tbOrigem]) then
   begin
@@ -1048,6 +1063,8 @@ begin
     begin
       FAVersiculo[v].Modificado := false;
       FAVersiculo[v].XMLModificado := false;
+      FAVersiculo[v].Ativo := true;
+      FAVersiculo[v].Renderizar;
     end;
 
   SelectTreeNode(ID);
@@ -1066,6 +1083,8 @@ begin
 
   if FAutoSave and not FExportando then
     Salvar;
+
+  //DebugLn('  TProjeto.PosRolagemVersiculo: %d milliseconds', [getTickCount-starttime]);
 end;
 
 procedure TProjeto.SalvarPares;
@@ -1898,9 +1917,8 @@ begin
   FTblPares.AfterScroll  := @PosRolagemVersiculo;
   FArvore.OnChange       := @OnMudancaVersiculo;
 
-  IrPara(ObterInfo('marcador'));
   ScrollEventsEnabled := true;
-  PosRolagemVersiculo(nil);
+  IrPara(ObterInfo('marcador'));
 
   FAtivo := true;
   FDisplayTags := false;
