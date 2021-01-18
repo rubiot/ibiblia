@@ -5,7 +5,7 @@ unit ibibliatest;
 interface
 
 uses
-  Classes, SysUtils, fpcunit, testutils, testregistry, Versiculo, Sintagma;
+  Classes, SysUtils, fpcunit, testutils, testregistry, Versiculo, Syntagm;
 
 type
 
@@ -17,8 +17,8 @@ type
     verse2: TVersiculo;
 
     procedure Associate(const source: array of const; const dest: array of const);
-    procedure AssertSyntagmListEquals(list: TSintagmaList; const values: array of const);
-    procedure AssertPairsAndSiblings(syntagm: TSintagma; const pairs, siblings: array of const);
+    procedure AssertSyntagmListEquals(list: TSyntagmList; const values: array of const);
+    procedure AssertPairsAndSiblings(syntagm: TSyntagm; const pairs, siblings: array of const);
   protected
     procedure SetUp; override;
     procedure TearDown; override;
@@ -68,30 +68,30 @@ end;
 procedure TVerseTests.SyntagmsParsing;
 begin
   verse1.Texto := 'Sample<WG1><WTPREP> verse<WH100><WH11><WTPREP l="verse"> <FI>text<Fi> x|z.';
-  AssertTrue(verse1.Sintagmas[0].Texto = 'Sample');
-  AssertTrue(verse1.Sintagmas[1].Texto = ' ');
-  AssertTrue(verse1.Sintagmas[2].Texto = 'verse');
-  AssertTrue(verse1.Sintagmas[3].Texto = ' ');
-  AssertTrue(verse1.Sintagmas[4].Texto = '<FI>');
-  AssertTrue(verse1.Sintagmas[5].Texto = 'text');
-  AssertTrue(verse1.Sintagmas[6].Texto = '<Fi>');
-  AssertTrue(verse1.Sintagmas[7].Texto = ' ');
-  AssertTrue(verse1.Sintagmas[8].Texto = 'x');
-  AssertTrue(verse1.Sintagmas[9].Texto = 'z');
-  AssertTrue(verse1.Sintagmas[10].Texto = '.');
+  AssertTrue(verse1.Sintagmas[0].Text = 'Sample');
+  AssertTrue(verse1.Sintagmas[1].Text = ' ');
+  AssertTrue(verse1.Sintagmas[2].Text = 'verse');
+  AssertTrue(verse1.Sintagmas[3].Text = ' ');
+  AssertTrue(verse1.Sintagmas[4].Text = '<FI>');
+  AssertTrue(verse1.Sintagmas[5].Text = 'text');
+  AssertTrue(verse1.Sintagmas[6].Text = '<Fi>');
+  AssertTrue(verse1.Sintagmas[7].Text = ' ');
+  AssertTrue(verse1.Sintagmas[8].Text = 'x');
+  AssertTrue(verse1.Sintagmas[9].Text = 'z');
+  AssertTrue(verse1.Sintagmas[10].Text = '.');
 end;
 
 procedure TVerseTests.StrongsParsing;
 var
-  s: TSintagma;
+  s: TSyntagm;
 begin
   verse1.Texto := 'word';
   s := verse1.Sintagmas.First;
-  AssertTrue(s.TemStrongs = false);
+  AssertTrue(s.HasStrongs = false);
 
   verse1.Texto := 'word<WG1>';
   s := verse1.Sintagmas.First;
-  AssertTrue(s.TemStrongs = true);
+  AssertTrue(s.HasStrongs = true);
   AssertEquals(1, s.Strong.Count);
   AssertEquals('G1', s.Strong[0]);
 
@@ -104,32 +104,32 @@ end;
 
 procedure TVerseTests.MorphologyParsing;
 var
-  s: TSintagma;
+  s: TSyntagm;
 begin
   verse1.Texto := 'word';
   s := verse1.Sintagmas.First;
-  AssertEquals(0, s.Morf.Count);
+  AssertEquals(0, s.Morph.Count);
 
   verse1.Texto := 'word<WTPREP>';
   s := verse1.Sintagmas.First;
-  AssertEquals(1, s.Morf.Count);
-  AssertEquals('PREP', s.Morf[0]);
+  AssertEquals(1, s.Morph.Count);
+  AssertEquals('PREP', s.Morph[0]);
 
   verse1.Texto := 'word<WTPREP l="prep">';
   s := verse1.Sintagmas.First;
-  AssertEquals(1, s.Morf.Count);
-  AssertEquals('PREP l="prep"', s.Morf[0]);
+  AssertEquals(1, s.Morph.Count);
+  AssertEquals('PREP l="prep"', s.Morph[0]);
 
   verse1.Texto := 'word<WG1><WTV-AA3S><WG33><WTPREP>';
   s := verse1.Sintagmas.First;
-  AssertEquals(2, s.Morf.Count);
-  AssertEquals('V-AA3S', s.Morf[0]);
-  AssertEquals('PREP', s.Morf[1]);
+  AssertEquals(2, s.Morph.Count);
+  AssertEquals('V-AA3S', s.Morph[0]);
+  AssertEquals('PREP', s.Morph[1]);
 end;
 
 procedure TVerseTests.AssociationOneToOne;
 var
-  original, translation: TSintagma;
+  original, translation: TSyntagm;
 begin
   verse1.Texto := 'original';
   verse2.Texto := 'translation';
@@ -144,7 +144,7 @@ end;
 
 procedure TVerseTests.AssociationOneToMany;
 var
-  original, translation1, translation2: TSintagma;
+  original, translation1, translation2: TSyntagm;
 begin
   verse1.Texto := 'original';
   verse2.Texto := 'translation1 translation2';
@@ -161,7 +161,7 @@ end;
 
 procedure TVerseTests.AssociationManyToOne;
 var
-  original1, original2, translation1: TSintagma;
+  original1, original2, translation1: TSyntagm;
 begin
   verse1.Texto := 'original1 original2';
   verse2.Texto := 'translation1';
@@ -178,7 +178,7 @@ end;
 
 procedure TVerseTests.AssociationManyToMany;
 var
-  original1, original2, translation1, translation2: TSintagma;
+  original1, original2, translation1, translation2: TSyntagm;
 begin
   verse1.Texto := 'original1 original2';
   verse2.Texto := 'translation1 translation2';
@@ -197,7 +197,7 @@ end;
 
 procedure TVerseTests.ReplaceSourceTextSameText;
 var
-  original1, original2, translation1, translation2: TSintagma;
+  original1, original2, translation1, translation2: TSyntagm;
 begin
   verse1.Texto := 'original1 original2';
   verse2.Texto := 'translation1 translation2';
@@ -219,7 +219,7 @@ end;
 
 procedure TVerseTests.ReplaceDestinationTextSameText;
 var
-  original1, original2, translation1, translation2: TSintagma;
+  original1, original2, translation1, translation2: TSyntagm;
 begin
   verse1.Texto := 'translation1 translation2';
   verse2.Texto := 'original1 original2';
@@ -241,8 +241,8 @@ end;
 
 procedure TVerseTests.ReplaceSourceTextChangeBeginning;
 var
-  original1, original2, translation1, translation2: TSintagma;
-  neworiginal1, neworiginal2, neworiginal3: TSintagma;
+  original1, original2, translation1, translation2: TSyntagm;
+  neworiginal1, neworiginal2, neworiginal3: TSyntagm;
 begin
   verse1.Texto := 'original1 original2';
   verse2.Texto := 'translation1 translation2';
@@ -272,8 +272,8 @@ end;
 
 procedure TVerseTests.ReplaceDestinationTextChangeBeginning;
 var
-  original1, original2, translation1, translation2: TSintagma;
-  neworiginal1, neworiginal2, neworiginal3: TSintagma;
+  original1, original2, translation1, translation2: TSyntagm;
+  neworiginal1, neworiginal2, neworiginal3: TSyntagm;
 begin
   verse1.Texto := 'translation1 translation2';
   verse2.Texto := 'original1 original2';
@@ -303,8 +303,8 @@ end;
 
 procedure TVerseTests.ReplaceSourceTextChangeEnd;
 var
-  original1, original2, translation1, translation2: TSintagma;
-  neworiginal1, neworiginal2, neworiginal3: TSintagma;
+  original1, original2, translation1, translation2: TSyntagm;
+  neworiginal1, neworiginal2, neworiginal3: TSyntagm;
 begin
   verse1.Texto := 'original1 original2';
   verse2.Texto := 'translation1 translation2';
@@ -334,8 +334,8 @@ end;
 
 procedure TVerseTests.ReplaceDestinationTextChangeEnd;
 var
-  original1, original2, translation1, translation2: TSintagma;
-  neworiginal1, neworiginal2, neworiginal3: TSintagma;
+  original1, original2, translation1, translation2: TSyntagm;
+  neworiginal1, neworiginal2, neworiginal3: TSyntagm;
 begin
   verse1.Texto := 'translation1 translation2';
   verse2.Texto := 'original1 original2';
@@ -365,8 +365,8 @@ end;
 
 procedure TVerseTests.ReplaceSourceTextChangeMiddle;
 var
-  original1, original2, translation1, translation2: TSintagma;
-  neworiginal1, neworiginal2, neworiginal3: TSintagma;
+  original1, original2, translation1, translation2: TSyntagm;
+  neworiginal1, neworiginal2, neworiginal3: TSyntagm;
 begin
   verse1.Texto := 'original1 original2';
   verse2.Texto := 'translation1 translation2';
@@ -396,8 +396,8 @@ end;
 
 procedure TVerseTests.ReplaceDestinationTextChangeMiddle;
 var
-  original1, original2, translation1, translation2: TSintagma;
-  neworiginal1, neworiginal2, neworiginal3: TSintagma;
+  original1, original2, translation1, translation2: TSyntagm;
+  neworiginal1, neworiginal2, neworiginal3: TSyntagm;
 begin
   verse1.Texto := 'translation1 translation2';
   verse2.Texto := 'original1 original2';
@@ -427,7 +427,7 @@ end;
 
 procedure TVerseTests.ReplaceTextTwice;
 var
-  s, d: TSintagmaList;
+  s, d: TSyntagmList;
 begin           // 0 2 4 6
   verse1.Texto := 'a b c d';
   verse2.Texto := 'a b c d';
@@ -471,7 +471,7 @@ end;
 
 procedure TVerseTests.ReplaceSourceTextVerticalBar;
 var
-  s, d: TSintagmaList;
+  s, d: TSyntagmList;
 begin           // 0 2 3 5
   verse1.Texto := 'a b|c d';
                 // 0 2 4 6
@@ -523,7 +523,7 @@ end;
 
 procedure TVerseTests.ReplaceDestinationTextVerticalBar;
 var
-  s, d: TSintagmaList;
+  s, d: TSyntagmList;
 begin
                 // 0 2 4 6
   verse1.Texto := 'a b c d';
@@ -576,7 +576,7 @@ end;
 
 procedure TVerseTests.ReplaceSourceTextAddPunctuation;
 var
-  s, d: TSintagmaList;
+  s, d: TSyntagmList;
 begin
                 // 0 2 4 6
   verse1.Texto := 'a b c d';
@@ -638,28 +638,28 @@ begin
   verse2.LimparSelecao;
 
   for i := 0 to High(source) do
-    verse1.Sintagmas[source[i].VInteger].SelecaoMais;
+    verse1.Sintagmas[source[i].VInteger].AddToSelection;
 
   for i := 0 to High(dest) do
-    verse2.Sintagmas[dest[i].VInteger].SelecaoMais;
+    verse2.Sintagmas[dest[i].VInteger].AddToSelection;
 
   verse1.AssociarSintagmas;
 end;
 
-procedure TVerseTests.AssertSyntagmListEquals(list: TSintagmaList; const values: array of const);
+procedure TVerseTests.AssertSyntagmListEquals(list: TSyntagmList; const values: array of const);
 var
   i: integer;
 begin
   AssertEquals(High(values) + 1, list.Count);
   for i := 0 to High(values) do
-    AssertTrue(Format('[%s]=[%s]', [TSintagma(values[i].VPointer).TextoBruto, list[i].TextoBruto]),
-               TSintagma(values[i].VPointer) = list[i]);
+    AssertTrue(Format('[%s]=[%s]', [TSyntagm(values[i].VPointer).RawText, list[i].RawText]),
+               TSyntagm(values[i].VPointer) = list[i]);
 end;
 
-procedure TVerseTests.AssertPairsAndSiblings(syntagm: TSintagma; const pairs, siblings: array of const);
+procedure TVerseTests.AssertPairsAndSiblings(syntagm: TSyntagm; const pairs, siblings: array of const);
 begin
-  AssertSyntagmListEquals(syntagm.Pares, pairs);
-  AssertSyntagmListEquals(syntagm.Irmaos, siblings);
+  AssertSyntagmListEquals(syntagm.Pairs, pairs);
+  AssertSyntagmListEquals(syntagm.Siblings, siblings);
 end;
 
 procedure TVerseTests.SetUp;
