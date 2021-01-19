@@ -49,6 +49,7 @@ procedure TFormInterlinearVerseRules.ButtonCopyRawContentClick(Sender: TObject);
 var
   lines: TStringList;
 begin
+  ButtonOKClick(Sender);
   lines := FProject.GetChapterText;
   try
     Clipboard.AsText := lines.Text;

@@ -110,6 +110,7 @@ object FormInterlinearVerseRules: TFormInterlinearVerseRules
     Height = 25
     Top = 184
     Width = 192
+    Anchors = [akRight, akBottom]
     Caption = 'Copy raw chapter to clipboard'
     OnClick = ButtonCopyRawContentClick
     TabOrder = 3
