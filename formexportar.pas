@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
-  ComCtrls, StdCtrls, ExtCtrls, Projeto, LCLTranslator;
+  ComCtrls, StdCtrls, ExtCtrls, Projeto, LCLTranslator, LCLIntf;
 
 type
 
@@ -123,6 +123,7 @@ begin
     try
        self.Enabled := false;
        FProjeto.ExportarTextoDestinoComStrongs(SaveDialog1.FileName, ProgressBar1, opcoes);
+       OpenDocument(ExtractFilePath(SaveDialog1.FileName));
     finally
       self.Enabled := true;
     end;
@@ -159,6 +160,7 @@ begin
     try
        self.Enabled:=false;
        FProjeto.ExportarTextoInterlinear(SaveDialog1.FileName, ProgressBar1, opcoes);
+       OpenDocument(ExtractFilePath(SaveDialog1.FileName));
     finally
       self.Enabled:=true;
     end;
@@ -192,6 +194,7 @@ begin
     try
        self.Enabled:=false;
        FProjeto.ExportarConcordancia(SaveDialogConcordancia.FileName, ProgressBar1, opcoes, leAbreviacao.Text);
+       OpenDocument(ExtractFilePath(SaveDialogConcordancia.FileName));
     finally
       self.Enabled:=true;
     end;
