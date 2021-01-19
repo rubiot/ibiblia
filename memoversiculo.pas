@@ -91,6 +91,8 @@ begin
   FMemo.ScrollBars := ssAutoVertical;
   FMemo.OnKeyDown  := @OnKeyDown;
   FMemo.OnChange   := @OnChange;
+  FMemo.ParentFont := False;
+  FMemo.Font.Name  := 'Courier New';
   FModificado      := False;
   FVersiculo       := nil;
   FEventoTextoModificado := nil;
