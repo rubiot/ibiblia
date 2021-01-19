@@ -338,7 +338,6 @@ var
   token: TTagSintagma;
   prop: string;
   chunk: string;
-  linktext: string;
   size: integer;
   padding: longint;
   lastpar: TKMemoParagraph;
@@ -405,52 +404,39 @@ begin
           cont.AddParagraph().ParaStyle.TopPadding := padding;
         end
         else if token.valor.StartsWith('<RF') then { translator note }
-        begin
-          linktext := FTokenizer.LerPropriedadeTag('q', token);
-          RenderNote(linktext, FTokenizer.ReadUntilExclusive('<Rf>'));
-        end
+          RenderNote(FTokenizer.LerPropriedadeTag('q', token), FTokenizer.ReadUntilExclusive('<Rf>'))
         else if token.valor = '<Q>' then { interlinear block }
-        begin
-          RenderInterlinearBlock(cont, FTokenizer.ReadUntilExclusive('<q>'));
-        end
+          RenderInterlinearBlock(cont, FTokenizer.ReadUntilExclusive('<q>'))
         else if token.valor = '<E>' then { interlinear English block }
-        begin
-          RenderInterlinearUnit(cont, FTokenizer.ReadUntilExclusive('<e>'));
-        end
+          RenderInterlinearUnit(cont, FTokenizer.ReadUntilExclusive('<e>'))
         else if token.valor = '<T>' then { interlinear translation block }
-        begin
-          RenderInterlinearUnit(cont, FTokenizer.ReadUntilExclusive('<t>'));
-        end
-        else
-        if token.valor = '<FI>' then { added word(s) }
-        begin
+          RenderInterlinearUnit(cont, FTokenizer.ReadUntilExclusive('<t>'))
+        else if token.valor = '<X>' then { interlinear transliteration block }
+          RenderInterlinearUnit(cont, FTokenizer.ReadUntilExclusive('<x>'))
+        else if token.valor = '<H>' then { interlinear Hebrew block }
+          RenderInterlinearUnit(cont, FTokenizer.ReadUntilExclusive('<h>'))
+        else if token.valor = '<G>' then { interlinear Greek block }
+          RenderInterlinearUnit(cont, FTokenizer.ReadUntilExclusive('<g>'))
+        else if token.valor = '<FI>' then { added word(s) }
           with PushInheritedStyle do
           begin
             Font.Style := Font.Style + [fsItalic];
             Font.Color := clGray;
-          end;
-        end
+          end
         else if token.valor = '<FR>' then { Jesus word(s) }
-        begin
           PushInheritedStyle.Font.Color := clRed
-        end
         else if token.valor = '<FO>' then { Old Testament quotation }
-        begin
           PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsBold]
-        end
-        else
-        if token.valor = '<CM>' then { new paragraph }
+        else if token.valor = '<CM>' then { new paragraph }
         begin
           if GetParagraphMode = pmParagraph then
             cont.AddParagraph().ParaStyle.FirstIndent := DefaultFirstIndent;
-        end
-        else if token.valor = '<CL>' then { new line }
+        end else if token.valor = '<CL>' then { new line }
         begin
           if GetParagraphMode = pmParagraph then
             cont.AddParagraph().ParaStyle.FirstIndent := 0;
             //cont.InsertNewLine(Text.Length);
-        end
-        else
+        end else
         begin
           token.valor := token.valor.ToLower;
           if token.valor.StartsWith('<font ') then { font change }
@@ -581,6 +567,7 @@ begin
     cont.AddParagraph();
   end;
   translation := StringReplace(translation, ' ', #8239, [rfReplaceAll]); // using non-breakable spaces
+  //translation := StringReplace(translation, '[', #8288'['#8288, [rfReplaceAll]);
   RenderSpan(cont, '<font color="#417cbe">' + translation + '</font>');
   //cont.AddTextBlock(translation).TextStyle.Font.Color := $be7c41;
 end;
