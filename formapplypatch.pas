@@ -76,6 +76,8 @@ begin
   FSrcVerse := TVersiculo.Criar(ScrollBoxSrcText);
   FDstVerse := TVersiculo.Criar(ScrollBoxDstText);
   FSrcVerse.VersiculoPar := FDstVerse;
+  FSrcVerse.ReadOnly := true;
+  FDstVerse.ReadOnly := true;
 end;
 
 procedure TFrmApplyPatch.FormDestroy(Sender: TObject);

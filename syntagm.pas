@@ -185,6 +185,10 @@ var
 begin
   //d := format('selecao: %d, ' + 'sel par: %d, ' + 'irmaos : %d, ' + 'pares  : %d', [VerseRef.Selecao.Count, VerseRef.VersiculoPar.Selecao.Count, Siblings.Count, Pairs.Count]);
   verse := TVersiculo(VerseRef);
+
+  if verse.ReadOnly then
+    Shift := [];
+
   if (ssShift in Shift) and Assigned(verse.VersiculoPar) then
   begin
     DisassociatePairs;
@@ -347,6 +351,9 @@ begin
 
   verse := TVersiculo(VerseRef);
   if not assigned(verse.VersiculoPar) then
+    exit;
+
+  if verse.ReadOnly then
     exit;
 
   DisassociatePairs;

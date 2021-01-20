@@ -54,6 +54,7 @@ type
     FSyntagmPopupMenu: TPopupMenu;
     FVersePopupMenu: TPopupMenu;
     FFixWrongFiTag: IRegex;
+    FReadOnly: Boolean;
     //FOnNovaAssociacao: TOnAssociacaoEvent;
     //FOnRemoverAssociacao: TOnAssociacaoEvent;
     function GetAndamentoAssociacao: Single;
@@ -147,6 +148,7 @@ type
     property PalavrasComStrongEmNegrito: boolean read FPalavrasComStrongEmNegrito write SetPalavrasComStrongEmNegrito;
     property StrongsCountMode: TStrongsCountMode read FStrongsCountMode write SetStrongsCountMode;
     property DebugTokens: string read GetTokens;
+    property ReadOnly: Boolean read FReadOnly write FReadOnly default False;
  published
     { Published declarations }
   end;
