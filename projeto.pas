@@ -1252,6 +1252,8 @@ begin
   end;
   lines.SaveToFile(destination);
   lines.Free;
+
+  OpenDocument(ExtractFilePath(destination));
 end;
 
 procedure TProjeto.OnMudancaVersiculo(Sender: TObject; Node: TTreeNode);
@@ -1621,8 +1623,6 @@ begin
       ul.ImageIndex := 1;
     ul.SelectedIndex := ul.ImageIndex + 4;
   end;
-
-  FinishScrollingSession;
 end;
 
 procedure TProjeto.AtualizarArvore(id: string);
@@ -1997,7 +1997,11 @@ end;
 procedure TProjeto.IrPara(Referencia: string);
 begin
   if ID <> Referencia then
+  begin
     FTblPares.Locate('pare_id', Referencia, []);
+    if ID <> Referencia then
+      raise Exception.Create(Format('Reference not found in project [%s]', [Referencia]));
+  end;
 end;
 
 procedure TProjeto.VersiculoSeguinte;

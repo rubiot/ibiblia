@@ -39,6 +39,20 @@ msgstr ""
 msgid "Verse &rules..."
 msgstr ""
 
+#: formapplypatch.signoredversesonpatch
+msgctxt "formapplypatch.signoredversesonpatch"
+msgid "%d verses are the same as those in the project and were ignored"
+msgstr ""
+
+#: formapplypatch.sinfo
+msgctxt "formapplypatch.sinfo"
+msgid "Information"
+msgstr ""
+
+#: formapplypatch.snoupdatedversesonpatch
+msgid "There are no updated verses in the patch. Ignoring it."
+msgstr ""
+
 #: formapplypatch.spatchsuccessfullyapplied
 msgid "Patch successfully applied"
 msgstr ""
@@ -530,6 +544,7 @@ msgid "iBiblia patch files"
 msgstr ""
 
 #: projeto.sinformation
+msgctxt "projeto.sinformation"
 msgid "Information"
 msgstr ""
 
@@ -1046,6 +1061,27 @@ msgstr ""
 #: tfrmapplypatch.caption
 msgctxt "tfrmapplypatch.caption"
 msgid "Apply patch..."
+msgstr ""
+
+#: tfrmapplypatch.labelassociations.caption
+msgid "Associations"
+msgstr ""
+
+#: tfrmapplypatch.labelcomments.caption
+msgid "Comments"
+msgstr ""
+
+#: tfrmapplypatch.labeldsttext.caption
+msgid "Destination text"
+msgstr ""
+
+#: tfrmapplypatch.labelsrctext.caption
+msgid "Source text"
+msgstr ""
+
+#: tfrmapplypatch.labelstatus.caption
+msgctxt "tfrmapplypatch.labelstatus.caption"
+msgid "Status"
 msgstr ""
 
 #: tfrmdictionarypopup.caption

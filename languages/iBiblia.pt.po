@@ -49,6 +49,21 @@ msgstr "Selecionar &fonte..."
 msgid "Verse &rules..."
 msgstr "Regras de &transformação (verse rules)..."
 
+#: formapplypatch.signoredversesonpatch
+msgctxt "formapplypatch.signoredversesonpatch"
+msgid "%d verses are the same as those in the project and were ignored"
+msgstr ""
+
+#: formapplypatch.sinfo
+#, fuzzy
+msgctxt "formapplypatch.sinfo"
+msgid "Information"
+msgstr "Informação"
+
+#: formapplypatch.snoupdatedversesonpatch
+msgid "There are no updated verses in the patch. Ignoring it."
+msgstr ""
+
 #: formapplypatch.spatchsuccessfullyapplied
 msgid "Patch successfully applied"
 msgstr "Patch aplicado com sucesso"
@@ -554,6 +569,7 @@ msgid "iBiblia patch files"
 msgstr "Patches do iBiblia"
 
 #: projeto.sinformation
+msgctxt "projeto.sinformation"
 msgid "Information"
 msgstr "Informação"
 
@@ -1078,6 +1094,28 @@ msgctxt "tfrmapplypatch.caption"
 msgid "Apply patch..."
 msgstr "Aplicar patch..."
 
+#: tfrmapplypatch.labelassociations.caption
+msgid "Associations"
+msgstr ""
+
+#: tfrmapplypatch.labelcomments.caption
+msgid "Comments"
+msgstr ""
+
+#: tfrmapplypatch.labeldsttext.caption
+msgid "Destination text"
+msgstr ""
+
+#: tfrmapplypatch.labelsrctext.caption
+msgid "Source text"
+msgstr ""
+
+#: tfrmapplypatch.labelstatus.caption
+#, fuzzy
+msgctxt "tfrmapplypatch.labelstatus.caption"
+msgid "Status"
+msgstr "Andamento"
+
 #: tfrmdictionarypopup.caption
 msgid "Dictionary"
 msgstr "Dicionário"
@@ -1579,3 +1617,4 @@ msgstr "Colar tags de &Strong"
 #: versiculo.ssavetofile
 msgid "&Save text to file..."
 msgstr "&Exportar texto para arquivo..."
+

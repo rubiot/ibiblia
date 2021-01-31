@@ -362,8 +362,7 @@ begin
   if patch.IsEmpty then
     exit;
 
-  FrmApplyPatch.LoadPatch(patch);
-  if FrmApplyPatch.ShowModal = mrOK then
+  if FrmApplyPatch.LoadPatch(patch) and (FrmApplyPatch.ShowModal = mrOK) then
   begin
     Screen.Cursor := crHourGlass;
     FrmApplyPatch.Apply;

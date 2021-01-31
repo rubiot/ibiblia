@@ -5,14 +5,14 @@ LazarusResources.Add('TFormExportPatch','FORMDATA',[
   +#2#3'Top'#3#168#0#5'Width'#3#157#1#7'Caption'#6#15'Export patch...'#12'Clien'
   +'tHeight'#3'9'#2#11'ClientWidth'#3#157#1#8'OnCreate'#7#10'FormCreate'#9'OnDe'
   +'stroy'#7#11'FormDestroy'#6'OnShow'#7#8'FormShow'#8'Position'#7#16'poMainFor'
-  +'mCenter'#10'LCLVersion'#6#7'2.0.6.0'#0#9'TGroupBox'#9'GroupBox1'#4'Left'#2#0
-  +#6'Height'#3#18#2#3'Top'#2#0#5'Width'#3#157#1#5'Align'#7#5'alTop'#7'Anchors'
-  +#11#5'akTop'#6'akLeft'#7'akRight'#8'akBottom'#0#8'TabOrder'#2#0#0#0#7'TButto'
-  +'n'#7'Button1'#4'Left'#3'E'#1#6'Height'#2#25#3'Top'#3#26#2#5'Width'#2'K'#7'A'
-  +'nchors'#11#7'akRight'#8'akBottom'#0#7'Caption'#6#2'OK'#11'ModalResult'#2#1#8
-  +'TabOrder'#2#1#0#0#7'TButton'#7'Button2'#4'Left'#3#237#0#6'Height'#2#25#3'To'
-  +'p'#3#26#2#5'Width'#2'K'#7'Anchors'#11#7'akRight'#8'akBottom'#0#6'Cancel'#9#7
-  +'Caption'#6#6'Cancel'#11'ModalResult'#2#2#8'TabOrder'#2#2#0#0#7'TButton'#12
+  +'mCenter'#10'LCLVersion'#6#8'2.0.10.0'#0#9'TGroupBox'#9'GroupBox1'#4'Left'#2
+  +#0#6'Height'#3#18#2#3'Top'#2#0#5'Width'#3#157#1#5'Align'#7#5'alTop'#7'Anchor'
+  +'s'#11#5'akTop'#6'akLeft'#7'akRight'#8'akBottom'#0#8'TabOrder'#2#0#0#0#7'TBu'
+  +'tton'#7'Button1'#4'Left'#3'E'#1#6'Height'#2#25#3'Top'#3#26#2#5'Width'#2'K'#7
+  +'Anchors'#11#7'akRight'#8'akBottom'#0#7'Caption'#6#2'OK'#11'ModalResult'#2#1
+  +#8'TabOrder'#2#1#0#0#7'TButton'#7'Button2'#4'Left'#3#237#0#6'Height'#2#25#3
+  +'Top'#3#26#2#5'Width'#2'K'#7'Anchors'#11#7'akRight'#8'akBottom'#0#6'Cancel'#9
+  +#7'Caption'#6#6'Cancel'#11'ModalResult'#2#2#8'TabOrder'#2#2#0#0#7'TButton'#12
   +'BtnSelectAll'#4'Left'#2#8#6'Height'#2#25#3'Top'#3#26#2#5'Width'#2'\'#7'Anch'
   +'ors'#11#7'akRight'#8'akBottom'#0#7'Caption'#6#10'Select all'#7'OnClick'#7#17
   +'BtnSelectAllClick'#8'TabOrder'#2#3#0#0#7'TButton'#14'BtnDeselectAll'#4'Left'

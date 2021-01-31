@@ -18,6 +18,11 @@ type
     Button1: TButton;
     Button2: TButton;
     GroupBox1: TGroupBox;
+    LabelSrcText: TLabel;
+    LabelDstText: TLabel;
+    LabelAssociations: TLabel;
+    LabelComments: TLabel;
+    LabelStatus: TLabel;
     MemoComments: TMemo;
     ScrollBoxSrcText: TScrollBox;
     ScrollBoxDstText: TScrollBox;
@@ -40,7 +45,7 @@ type
     procedure LoadControlsFromPatch;
     procedure LoadControlsFromProject;
   public
-    procedure LoadPatch(filename: string);
+    function LoadPatch(filename: string): boolean;
     procedure Apply;
   end;
 
@@ -49,6 +54,9 @@ var
 
 resourcestring
   SPatchSuccessfullyApplied = 'Patch successfully applied';
+  SIgnoredVersesOnPatch = '%d verses are the same as those in the project and were ignored';
+  SInfo = 'Information';
+  SNoUpdatedVersesOnPatch = 'There are no updated verses in the patch. Ignoring it.';
 
 implementation
 
@@ -100,11 +108,25 @@ begin
 end;
 
 procedure TFrmApplyPatch.TabControlPreviewChange(Sender: TObject);
+
+  procedure SetLabelColor(lbl: TLabel; isEqual: boolean);
+  begin
+    if isEqual then
+      lbl.Color := clGreen
+    else
+      lbl.Color := clRed;
+  end;
+
 begin
   case TabControlPreview.TabIndex of
     0: LoadControlsFromPatch;
     1: LoadControlsFromProject;
   end;
+  SetLabelColor(LabelSrcText,      ProjetoAtual.ObterTextoVersiculo(FPatch.Reference[FIndex], tbOrigem ) = FPatch.SourceText[FIndex]);
+  SetLabelColor(LabelDstText,      ProjetoAtual.ObterTextoVersiculo(FPatch.Reference[FIndex], tbDestino) = FPatch.DestinationText[FIndex]);
+  SetLabelColor(LabelAssociations, ProjetoAtual.GetPairs           (FPatch.Reference[FIndex]           ) = FPatch.Pairs[FIndex]);
+  SetLabelColor(LabelComments,     ProjetoAtual.GetComments        (FPatch.Reference[FIndex]           ) = FPatch.Comments[FIndex]);
+  //SetLabelColor(LabelStatus, ProjetoAtual.Situacao(FPatch.Reference[FIndex]                     ) = FPatch.Status[FIndex]);
 end;
 
 procedure TFrmApplyPatch.OnVerseChange(index: integer);
@@ -113,6 +135,7 @@ begin
     exit;
 
   FIndex := index;
+
   TabControlPreviewChange(TabControlPreview);
 end;
 
@@ -132,15 +155,26 @@ begin
   MemoComments.Text := ProjetoAtual.GetComments(FPatch.Reference[FIndex]);
 end;
 
-procedure TFrmApplyPatch.LoadPatch(filename: string);
+function TFrmApplyPatch.LoadPatch(filename: string): boolean;
 begin
   if assigned(FPatch) then
     FPatch.Free;
 
-  FPatch := TPatchFile.Create(filename);
+  FPatch := TPatchFile.Create(filename, ProjetoAtual);
+  if FPatch.SourceText.Count = 0 then
+  begin
+    MessageDlg(SInfo, SNoUpdatedVersesOnPatch, mtInformation, [mbOK], 0);
+    result := false;
+    Exit;
+  end;
+
+  if FPatch.IgnoredVerses > 0 then
+    MessageDlg(SInfo, Format(SIgnoredVersesOnPatch, [FPatch.IgnoredVerses]), mtInformation, [mbOK], 0);
+
   FBibleTreeView.VerseList := FPatch.Reference;
   FIndex := 0;
   TabControlPreviewChange(TabControlPreview);
+  result := true;
 end;
 
 procedure TFrmApplyPatch.Apply;

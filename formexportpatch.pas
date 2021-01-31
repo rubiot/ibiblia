@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  ComCtrls, Projeto, LazLogger, BibleTreeView, PatchFile;
+  ComCtrls, Projeto, LazLogger, BibleTreeView, PatchFile, LCLIntf;
 
 type
 
@@ -64,6 +64,7 @@ begin
   finally
     patch.Free;
   end;
+  OpenDocument(ExtractFilePath(filename));
 end;
 
 function TFormExportPatch.GetVerseList: TStringList;
@@ -83,8 +84,6 @@ begin
     for ref in refs do
     begin
       ProjetoAtual.IrPara(ref);
-      if ProjetoAtual.ID <> ref then
-        raise Exception.Create(Format('Invalid verse found in patch: [%s]', [ref]));
       DebugLn('exporting %s (%s)', [ref, ProjetoAtual.FormattedReference]);
       result.Add(ref,
                  ProjetoAtual.ObterTextoVersiculo(tbOrigem),

@@ -49,6 +49,21 @@ msgstr "Choose &font..."
 msgid "Verse &rules..."
 msgstr "Verse &rules..."
 
+#: formapplypatch.signoredversesonpatch
+msgctxt "formapplypatch.signoredversesonpatch"
+msgid "%d verses are the same as those in the project and were ignored"
+msgstr ""
+
+#: formapplypatch.sinfo
+#, fuzzy
+msgctxt "formapplypatch.sinfo"
+msgid "Information"
+msgstr "Information"
+
+#: formapplypatch.snoupdatedversesonpatch
+msgid "There are no updated verses in the patch. Ignoring it."
+msgstr ""
+
 #: formapplypatch.spatchsuccessfullyapplied
 msgid "Patch successfully applied"
 msgstr "Patch successfully applied"
@@ -571,6 +586,7 @@ msgid "iBiblia patch files"
 msgstr "iBiblia patch files"
 
 #: projeto.sinformation
+msgctxt "projeto.sinformation"
 msgid "Information"
 msgstr "Information"
 
@@ -1100,6 +1116,28 @@ msgctxt "tfrmapplypatch.caption"
 msgid "Apply patch..."
 msgstr "Apply patch..."
 
+#: tfrmapplypatch.labelassociations.caption
+msgid "Associations"
+msgstr ""
+
+#: tfrmapplypatch.labelcomments.caption
+msgid "Comments"
+msgstr ""
+
+#: tfrmapplypatch.labeldsttext.caption
+msgid "Destination text"
+msgstr ""
+
+#: tfrmapplypatch.labelsrctext.caption
+msgid "Source text"
+msgstr ""
+
+#: tfrmapplypatch.labelstatus.caption
+#, fuzzy
+msgctxt "tfrmapplypatch.labelstatus.caption"
+msgid "Status"
+msgstr "Status"
+
 #: tfrmdictionarypopup.caption
 msgid "Dictionary"
 msgstr "Dictionary"
@@ -1602,3 +1640,4 @@ msgstr "&Paste &Strong's tags"
 #: versiculo.ssavetofile
 msgid "&Save text to file..."
 msgstr "&Save text to file..."
+
