@@ -874,10 +874,6 @@ msgctxt "tforminterlinearverserules.button2.caption"
 msgid "Cancel"
 msgstr "Cancel"
 
-#: tforminterlinearverserules.buttoncopyrawcontent.caption
-msgid "Copy raw chapter to clipboard"
-msgstr "Copy raw chapter to clipboard"
-
 #: tforminterlinearverserules.buttonok.caption
 msgctxt "tforminterlinearverserules.buttonok.caption"
 msgid "OK"

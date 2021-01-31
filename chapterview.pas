@@ -7,12 +7,26 @@ interface
 uses
   Classes, SysUtils, Forms, Graphics, ONTTokenizer, LCLType, HTMLColors,
   LazUTF8, Projeto, PCRE, Controls, Menus, fgl, Dialogs, Math, Contnrs, KMemo,
-  KEditCommon, KGraphics, formInterlinearVerseRules, LCLTranslator, LazLogger;
+  KEditCommon, KGraphics, formInterlinearVerseRules, LCLTranslator, LazLogger,
+  StdCtrls;
 
 type
 
   TBlockRange = record
     first, last: integer;
+  end;
+
+  { TRawChapterMemo }
+
+  TRawChapterMemo = class(TMemo)
+  private
+    procedure HandleOnKeyDown(Sender: TObject; var Key: word; Shift: TShiftState);
+  public
+    constructor Create(AOwner: TComponent); overload;
+    destructor Destroy; override;
+
+    procedure Show(aText: string);
+    procedure Hide;
   end;
 
   { TNoteInfo }
@@ -78,6 +92,7 @@ type
     FCurrentVerse: integer;
     FNotes: TNoteList;
     FHideVerseNumber: boolean;
+    FRawMemo: TRawChapterMemo;
 
     function GetCurrentStyle: TKMemoTextStyle;
     function GetInterlinearMode: TInterlinearMode;
@@ -101,6 +116,7 @@ type
     procedure HandlePopupKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure HandleMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
     procedure HandleMouseWheel(Sender: TObject; Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
+    procedure HandleDoubleClick(Sender: TObject);
     procedure HandleContextPopup(Sender: TObject; MousePos: TPoint; var Handled: Boolean);
     procedure HandleSetFont(Sender: TObject);
     procedure HandleParagraphMode(Sender: TObject);
@@ -155,6 +171,47 @@ resourcestring
   SChapterBeginning = 'Beginning of chapter';
 
 implementation
+
+{ TRawChapterMemo }
+
+procedure TRawChapterMemo.HandleOnKeyDown(Sender: TObject; var Key: word;
+  Shift: TShiftState);
+begin
+  if Key = VK_ESCAPE then
+    Hide;
+end;
+
+constructor TRawChapterMemo.Create(AOwner: TComponent);
+begin
+  inherited Create(nil);
+
+  Visible    := False;
+  Parent     := TWinControl(AOwner);
+  Align      := alClient;
+  ScrollBars := ssAutoVertical;
+  ParentFont := False;
+  Font.Name  := 'Courier New';
+  ReadOnly   := true;
+  OnKeyDown  := @HandleOnKeyDown;
+end;
+
+destructor TRawChapterMemo.Destroy;
+begin
+  inherited Destroy;
+end;
+
+procedure TRawChapterMemo.Show(aText: string);
+begin
+  Text := aText;
+  BringToFront;
+  Visible := True;
+  SetFocus;
+end;
+
+procedure TRawChapterMemo.Hide;
+begin
+  Visible := false;
+end;
 
 { TNoteWindow }
 
@@ -716,6 +773,20 @@ begin
   end;
 end;
 
+procedure TChapterView.HandleDoubleClick(Sender: TObject);
+var
+  verses: TStringList;
+begin
+  if not assigned(FProject) then exit;
+
+  verses := FProject.GetChapterText;
+  try
+    FRawMemo.Show(verses.Text);
+  finally
+    verses.Free;
+  end;
+end;
+
 procedure TChapterView.HandleContextPopup(Sender: TObject; MousePos: TPoint;
   var Handled: Boolean);
 begin
@@ -1117,6 +1188,7 @@ begin
   ReadOnly     := true;
   OnKeyDown    := @HandleKeyDown;
   OnMouseWheel := @HandleMouseWheel;
+  OnDblClick   := @HandleDoubleClick;
   //OnMouseMove  := @HandleMouseMove;
   OnContextPopup := @HandleContextPopup;
   FFontName       := 'default';
@@ -1129,10 +1201,12 @@ begin
   InitPopupMenu;
 
   FStyleStack := TObjectStack.Create;
+  FRawMemo    := TRawChapterMemo.Create(Parent);
 end;
 
 destructor TChapterView.Destroy;
 begin
+  FRawMemo.Free;
   FNotes.Free;
   FHint.Free;
   FStyleStack.Free;
@@ -1164,8 +1238,8 @@ var
   //starttime: DWord;
 begin
   //starttime := getTickCount;
-
   SetLength(FVerseRanges, verses.Count + 1);
+  FRawMemo.Hide;
 
   Blocks.LockUpdate;
   try

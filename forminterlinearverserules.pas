@@ -13,7 +13,6 @@ type
   { TFormInterlinearVerseRules }
 
   TFormInterlinearVerseRules = class(TForm)
-    ButtonCopyRawContent: TButton;
     ButtonOK: TButton;
     Button2: TButton;
     PageControlVerseRules: TPageControl;
@@ -21,7 +20,6 @@ type
     StringGridInterlinear: TStringGrid;
     TabSheet1: TTabSheet;
     TabSheet2: TTabSheet;
-    procedure ButtonCopyRawContentClick(Sender: TObject);
     procedure ButtonOKClick(Sender: TObject);
   private
     FProject: TProjeto;
@@ -43,19 +41,6 @@ procedure TFormInterlinearVerseRules.ButtonOKClick(Sender: TObject);
 begin
   FProject.AtribuirInfo('propriedades.interlinearview.verserules', GetVerseRules(StringGridInterlinear));
   FProject.AtribuirInfo('propriedades.intralinearview.verserules', GetVerseRules(StringGridIntralinear));
-end;
-
-procedure TFormInterlinearVerseRules.ButtonCopyRawContentClick(Sender: TObject);
-var
-  lines: TStringList;
-begin
-  ButtonOKClick(Sender);
-  lines := FProject.GetChapterText;
-  try
-    Clipboard.AsText := lines.Text;
-  finally
-    lines.Free;
-  end;
 end;
 
 procedure TFormInterlinearVerseRules.SetProject(AValue: TProjeto);

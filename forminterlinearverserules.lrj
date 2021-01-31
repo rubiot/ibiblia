@@ -11,6 +11,5 @@
 {"hash":317789,"name":"tforminterlinearverserules.stringgridintralinear.columns[0].title.caption","sourcebytes":[70,114,111,109],"value":"From"},
 {"hash":1455,"name":"tforminterlinearverserules.stringgridintralinear.columns[1].title.caption","sourcebytes":[84,111],"value":"To"},
 {"hash":79984933,"name":"tforminterlinearverserules.stringgridintralinear.columns[2].title.caption","sourcebytes":[69,110,97,98,108,101],"value":"Enable"},
-{"hash":80705172,"name":"tforminterlinearverserules.stringgridintralinear.columns[3].title.caption","sourcebytes":[69,120,112,111,114,116],"value":"Export"},
-{"hash":245198292,"name":"tforminterlinearverserules.buttoncopyrawcontent.caption","sourcebytes":[67,111,112,121,32,114,97,119,32,99,104,97,112,116,101,114,32,116,111,32,99,108,105,112,98,111,97,114,100],"value":"Copy raw chapter to clipboard"}
+{"hash":80705172,"name":"tforminterlinearverserules.stringgridintralinear.columns[3].title.caption","sourcebytes":[69,120,112,111,114,116],"value":"Export"}
 ]}
