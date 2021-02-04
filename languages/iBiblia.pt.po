@@ -1610,6 +1610,10 @@ msgstr "Colar tags de &morfologia"
 msgid "&Paste &Strong's tags"
 msgstr "Colar tags de &Strong"
 
+#: versiculo.srighttoleft
+msgid "Right to left text"
+msgstr ""
+
 #: versiculo.ssavetofile
 msgid "&Save text to file..."
 msgstr "&Exportar texto para arquivo..."

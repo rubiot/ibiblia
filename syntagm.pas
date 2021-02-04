@@ -109,7 +109,9 @@ type
     procedure HighlightStrong(strong: string);
     procedure ToggleStrongHighlight(enable: boolean);
     function GetNext: TSyntagm;
+    function GetNextVisible: TSyntagm;
     function GetNextUnassociated: TSyntagm;
+    function GetPrevVisible: TSyntagm;
     function GetSuggestionKey(t: TPairsListType): string;
     function IsEqualTo(other : TSyntagm): boolean;
     property Strong: TStringList read FStrong write FStrong;
@@ -591,6 +593,28 @@ begin
   end;
 end;
 
+function TSyntagm.GetNextVisible: TSyntagm;
+var
+  i: Integer;
+begin
+  result := nil;
+  with TVersiculo(FVerse) do
+  begin
+    i := Sintagmas.IndexOf(Self);
+    if (i >= 0) and (i < Sintagmas.Count) then
+    begin
+      for i := i+1 to Sintagmas.Count-1 do
+      begin
+        if assigned(Sintagmas[i].FLabel)then
+        begin
+          result := Sintagmas[i];
+          break;
+        end;
+      end;
+    end;
+  end;
+end;
+
 function TSyntagm.IsEqualTo(other: TSyntagm): boolean;
 begin
   result := (FKind = other.FKind) and
@@ -757,6 +781,28 @@ begin
         if (Sintagmas[i].Kind = tsSintagma) and
            (Sintagmas[i].HasStrongs or Sintagmas[i].HasMorph) and
            (not Sintagmas[i].IsAssociated) then
+        begin
+          result := Sintagmas[i];
+          break;
+        end;
+      end;
+    end;
+  end;
+end;
+
+function TSyntagm.GetPrevVisible: TSyntagm;
+var
+  i: Integer;
+begin
+  result := nil;
+  with TVersiculo(FVerse) do
+  begin
+    i := Sintagmas.IndexOf(Self);
+    if (i >= 0) and (i > 0) then
+    begin
+      for i := i-1 to 0 do
+      begin
+        if assigned(Sintagmas[i].FLabel)then
         begin
           result := Sintagmas[i];
           break;

@@ -150,12 +150,12 @@
         <PackageName Value="LCL"/>
       </Item5>
     </RequiredPackages>
-    <Units Count="56">
+    <Units Count="54">
       <Unit0>
         <Filename Value="iBiblia.lpr"/>
         <IsPartOfProject Value="True"/>
         <TopLine Value="2"/>
-        <CursorPos Y="35"/>
+        <CursorPos Y="34"/>
         <UsageCount Value="207"/>
         <Loaded Value="True"/>
       </Unit0>
@@ -177,9 +177,10 @@
         <Filename Value="versiculo.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="Versiculo"/>
+        <IsVisibleTab Value="True"/>
         <EditorIndex Value="18"/>
-        <TopLine Value="1170"/>
-        <CursorPos X="33" Y="1118"/>
+        <TopLine Value="1030"/>
+        <CursorPos Y="1036"/>
         <ExtraEditorCount Value="1"/>
         <ExtraEditor1>
           <EditorIndex Value="-1"/>
@@ -195,8 +196,8 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="Projeto"/>
         <EditorIndex Value="4"/>
-        <TopLine Value="1357"/>
-        <CursorPos X="21" Y="1385"/>
+        <TopLine Value="1050"/>
+        <CursorPos Y="1067"/>
         <ExtraEditorCount Value="1"/>
         <ExtraEditor1>
           <EditorIndex Value="-1"/>
@@ -212,8 +213,8 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="Sugestao"/>
         <EditorIndex Value="25"/>
-        <TopLine Value="227"/>
-        <CursorPos X="30" Y="245"/>
+        <TopLine Value="221"/>
+        <CursorPos Y="238"/>
         <UsageCount Value="207"/>
         <Loaded Value="True"/>
       </Unit4>
@@ -249,7 +250,7 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="85"/>
         <CursorPos Y="94"/>
-        <UsageCount Value="141"/>
+        <UsageCount Value="136"/>
       </Unit7>
       <Unit8>
         <Filename Value="formpropprojeto.pas"/>
@@ -413,10 +414,9 @@
         <Filename Value="chapterview.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="ChapterView"/>
-        <IsVisibleTab Value="True"/>
         <EditorIndex Value="6"/>
-        <TopLine Value="1229"/>
-        <CursorPos Y="1242"/>
+        <TopLine Value="756"/>
+        <CursorPos X="18" Y="784"/>
         <UsageCount Value="200"/>
         <Loaded Value="True"/>
       </Unit23>
@@ -426,7 +426,7 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="144"/>
         <CursorPos Y="162"/>
-        <UsageCount Value="140"/>
+        <UsageCount Value="135"/>
       </Unit24>
       <Unit25>
         <Filename Value="C:\Users\rubio\AppData\Local\lazarus\onlinepackagemanager\packages\kcontrols\source\kmemo.pas"/>
@@ -481,7 +481,7 @@
         <UnitName Value="BibleTreeView"/>
         <EditorIndex Value="-1"/>
         <CursorPos X="19"/>
-        <UsageCount Value="13"/>
+        <UsageCount Value="8"/>
       </Unit30>
       <Unit31>
         <Filename Value="bibletreeview.pas"/>
@@ -529,7 +529,7 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="1304"/>
         <CursorPos Y="1322"/>
-        <UsageCount Value="20"/>
+        <UsageCount Value="15"/>
       </Unit35>
       <Unit36>
         <Filename Value="pcre_dll.pas"/>
@@ -545,13 +545,13 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="206"/>
         <CursorPos X="35" Y="119"/>
-        <UsageCount Value="6"/>
+        <UsageCount Value="1"/>
       </Unit37>
       <Unit38>
         <Filename Value="C:\tools\lazarus\fpc\3.2.0\source\rtl\objpas\sysutils\syshelph.inc"/>
         <EditorIndex Value="-1"/>
         <CursorPos X="3" Y="5"/>
-        <UsageCount Value="6"/>
+        <UsageCount Value="1"/>
       </Unit38>
       <Unit39>
         <Filename Value="logosbiblemodule.pas"/>
@@ -568,7 +568,7 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="157"/>
         <CursorPos X="20" Y="183"/>
-        <UsageCount Value="14"/>
+        <UsageCount Value="9"/>
       </Unit40>
       <Unit41>
         <Filename Value="forminterlinearverserules.pas"/>
@@ -590,14 +590,14 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="1477"/>
         <CursorPos X="14" Y="1492"/>
-        <UsageCount Value="103"/>
+        <UsageCount Value="98"/>
       </Unit42>
       <Unit43>
         <Filename Value="C:\tools\lazarus\fpc\3.2.0\source\rtl\objpas\fgl.pp"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="887"/>
         <CursorPos Y="906"/>
-        <UsageCount Value="23"/>
+        <UsageCount Value="18"/>
       </Unit43>
       <Unit44>
         <Filename Value="ONTMemo\ontmemo.pas"/>
@@ -605,7 +605,7 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="271"/>
         <CursorPos X="11" Y="298"/>
-        <UsageCount Value="104"/>
+        <UsageCount Value="99"/>
       </Unit44>
       <Unit45>
         <Filename Value="ONTMemo\ontparser.pas"/>
@@ -613,21 +613,21 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="154"/>
         <CursorPos Y="178"/>
-        <UsageCount Value="104"/>
+        <UsageCount Value="99"/>
       </Unit45>
       <Unit46>
         <Filename Value="C:\Users\rubio\AppData\Local\lazarus\onlinepackagemanager\packages\kcontrols\source\kgraphics.pas"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="84"/>
         <CursorPos X="3" Y="141"/>
-        <UsageCount Value="44"/>
+        <UsageCount Value="39"/>
       </Unit46>
       <Unit47>
         <Filename Value="syntagm.pas"/>
         <UnitName Value="Syntagm"/>
         <EditorIndex Value="19"/>
-        <TopLine Value="106"/>
-        <CursorPos X="31" Y="121"/>
+        <TopLine Value="497"/>
+        <CursorPos X="33" Y="519"/>
         <UsageCount Value="118"/>
         <Loaded Value="True"/>
       </Unit47>
@@ -653,167 +653,148 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="2322"/>
         <CursorPos X="11" Y="2322"/>
-        <UsageCount Value="21"/>
+        <UsageCount Value="16"/>
       </Unit50>
       <Unit51>
-        <Filename Value="C:\tools\lazarus\lcl\include\customlabel.inc"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="484"/>
-        <CursorPos X="3" Y="490"/>
-        <UsageCount Value="2"/>
-      </Unit51>
-      <Unit52>
         <Filename Value="C:\tools\lazarus\lcl\stdctrls.pp"/>
         <UnitName Value="StdCtrls"/>
         <EditorIndex Value="-1"/>
-        <TopLine Value="881"/>
-        <CursorPos X="17" Y="898"/>
+        <TopLine Value="1552"/>
+        <CursorPos X="15" Y="1569"/>
         <UsageCount Value="10"/>
-      </Unit52>
-      <Unit53>
-        <Filename Value="C:\tools\lazarus\components\lazutils\LazLoggerImpl.inc"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="47"/>
-        <CursorPos X="18" Y="74"/>
-        <UsageCount Value="1"/>
-      </Unit53>
-      <Unit54>
-        <Filename Value="C:\tools\lazarus\components\lazutils\lazloggerbase.pas"/>
-        <UnitName Value="LazLoggerBase"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="216"/>
-        <CursorPos X="3" Y="97"/>
-        <UsageCount Value="1"/>
-      </Unit54>
-      <Unit55>
+      </Unit51>
+      <Unit52>
         <Filename Value="C:\tools\lazarus\fpc\3.2.0\source\rtl\objpas\classes\classesh.inc"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="101"/>
         <CursorPos X="44" Y="118"/>
+        <UsageCount Value="5"/>
+      </Unit52>
+      <Unit53>
+        <Filename Value="C:\tools\lazarus\lcl\include\customlabel.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="484"/>
+        <CursorPos X="3" Y="492"/>
         <UsageCount Value="10"/>
-      </Unit55>
+      </Unit53>
     </Units>
-    <JumpHistory Count="30" HistoryIndex="29">
+    <JumpHistory Count="29" HistoryIndex="28">
       <Position1>
-        <Filename Value="chapterview.pas"/>
-        <Caret Line="1206" TopLine="1203"/>
+        <Filename Value="versiculo.pas"/>
+        <Caret Line="1088" TopLine="1071"/>
       </Position1>
       <Position2>
-        <Filename Value="chapterview.pas"/>
-        <Caret Line="25" Column="44" TopLine="8"/>
+        <Filename Value="versiculo.pas"/>
+        <Caret Line="1090" TopLine="1071"/>
       </Position2>
       <Position3>
-        <Filename Value="chapterview.pas"/>
-        <Caret Line="28" Column="22" TopLine="11"/>
+        <Filename Value="versiculo.pas"/>
+        <Caret Line="1065" TopLine="1047"/>
       </Position3>
       <Position4>
-        <Filename Value="chapterview.pas"/>
-        <Caret Line="204" Column="3" TopLine="202"/>
+        <Filename Value="versiculo.pas"/>
+        <Caret Line="1066" TopLine="1047"/>
       </Position4>
       <Position5>
-        <Filename Value="chapterview.pas"/>
-        <Caret Line="186" Column="13" TopLine="169"/>
+        <Filename Value="versiculo.pas"/>
+        <Caret Line="1067" TopLine="1047"/>
       </Position5>
       <Position6>
-        <Filename Value="chapterview.pas"/>
-        <Caret Line="187" Column="22" TopLine="181"/>
+        <Filename Value="versiculo.pas"/>
+        <Caret Line="1071" TopLine="1047"/>
       </Position6>
       <Position7>
-        <Filename Value="chapterview.pas"/>
-        <Caret Line="119" Column="15" TopLine="104"/>
+        <Filename Value="versiculo.pas"/>
+        <Caret Line="1072" TopLine="1047"/>
       </Position7>
       <Position8>
-        <Filename Value="chapterview.pas"/>
-        <Caret Line="781" TopLine="773"/>
+        <Filename Value="versiculo.pas"/>
+        <Caret Line="1075" TopLine="1047"/>
       </Position8>
       <Position9>
-        <Filename Value="chapterview.pas"/>
-        <Caret Line="203" TopLine="186"/>
+        <Filename Value="versiculo.pas"/>
+        <Caret Line="1077" TopLine="1049"/>
       </Position9>
       <Position10>
-        <Filename Value="chapterview.pas"/>
-        <Caret Line="204" TopLine="186"/>
+        <Filename Value="versiculo.pas"/>
+        <Caret Line="1078" Column="38" TopLine="1050"/>
       </Position10>
       <Position11>
-        <Filename Value="chapterview.pas"/>
-        <Caret Line="205" TopLine="186"/>
+        <Filename Value="versiculo.pas"/>
+        <Caret Line="1081" TopLine="1054"/>
       </Position11>
       <Position12>
-        <Filename Value="chapterview.pas"/>
-        <Caret Line="206" TopLine="186"/>
+        <Filename Value="versiculo.pas"/>
+        <Caret Line="1097" TopLine="1080"/>
       </Position12>
       <Position13>
-        <Filename Value="chapterview.pas"/>
-        <Caret Line="207" TopLine="186"/>
+        <Filename Value="versiculo.pas"/>
+        <Caret Line="1087" TopLine="1078"/>
       </Position13>
       <Position14>
-        <Filename Value="chapterview.pas"/>
-        <Caret Line="203" TopLine="186"/>
+        <Filename Value="versiculo.pas"/>
+        <Caret Line="1090" TopLine="1078"/>
       </Position14>
       <Position15>
-        <Filename Value="chapterview.pas"/>
-        <Caret Line="208" TopLine="186"/>
+        <Filename Value="versiculo.pas"/>
+        <Caret Line="1091" TopLine="1078"/>
       </Position15>
       <Position16>
-        <Filename Value="chapterview.pas"/>
-        <Caret Line="780" TopLine="763"/>
+        <Filename Value="versiculo.pas"/>
+        <Caret Line="1093" TopLine="1078"/>
       </Position16>
       <Position17>
-        <Filename Value="chapterview.pas"/>
-        <Caret Line="778" TopLine="763"/>
+        <Filename Value="versiculo.pas"/>
+        <Caret Line="1101" TopLine="1085"/>
       </Position17>
       <Position18>
-        <Filename Value="chapterview.pas"/>
-        <Caret Line="781" Column="16" TopLine="763"/>
+        <Filename Value="versiculo.pas"/>
+        <Caret Line="1103" TopLine="1085"/>
       </Position18>
       <Position19>
-        <Filename Value="chapterview.pas"/>
-        <Caret Line="209" TopLine="184"/>
+        <Filename Value="versiculo.pas"/>
+        <Caret Line="1106" TopLine="1089"/>
       </Position19>
       <Position20>
-        <Filename Value="forminterlinearverserules.pas"/>
-        <Caret Line="52" Column="25" TopLine="31"/>
+        <Filename Value="versiculo.pas"/>
+        <Caret Line="1107" TopLine="1089"/>
       </Position20>
       <Position21>
-        <Filename Value="forminterlinearverserules.pas"/>
-        <Caret Line="51" Column="25" TopLine="30"/>
+        <Filename Value="versiculo.pas"/>
+        <Caret Line="1108" Column="56" TopLine="1089"/>
       </Position21>
       <Position22>
-        <Filename Value="forminterlinearverserules.pas"/>
-        <Caret Line="47" Column="45" TopLine="30"/>
+        <Filename Value="versiculo.pas"/>
+        <Caret Line="1120" Column="17" TopLine="1101"/>
       </Position22>
       <Position23>
-        <Filename Value="chapterview.pas"/>
-        <Caret Line="180" TopLine="310"/>
+        <Filename Value="versiculo.pas"/>
+        <Caret Line="1052" TopLine="1034"/>
       </Position23>
       <Position24>
-        <Filename Value="chapterview.pas"/>
-        <Caret Line="119" Column="15" TopLine="104"/>
+        <Filename Value="versiculo.pas"/>
+        <Caret Line="96" Column="20" TopLine="91"/>
       </Position24>
       <Position25>
-        <Filename Value="formprincipal.pas"/>
-        <Caret Line="852" Column="45" TopLine="832"/>
+        <Filename Value="versiculo.pas"/>
+        <Caret Line="1456" Column="28" TopLine="1434"/>
       </Position25>
       <Position26>
-        <Filename Value="formprincipal.pas"/>
-        <Caret Line="1105" Column="23" TopLine="1074"/>
+        <Filename Value="versiculo.pas"/>
+        <Caret Line="1455" Column="18" TopLine="1431"/>
       </Position26>
       <Position27>
-        <Filename Value="chapterview.pas"/>
-        <Caret Line="147" Column="14" TopLine="131"/>
+        <Filename Value="versiculo.pas"/>
+        <Caret Line="1463" Column="39" TopLine="1435"/>
       </Position27>
       <Position28>
-        <Filename Value="chapterview.pas"/>
-        <Caret Line="1022" Column="10" TopLine="1017"/>
+        <Filename Value="versiculo.pas"/>
+        <Caret Line="1401" Column="12" TopLine="1395"/>
       </Position28>
       <Position29>
-        <Filename Value="chapterview.pas"/>
-        <Caret Line="1232" Column="13" TopLine="1230"/>
+        <Filename Value="versiculo.pas"/>
+        <Caret Line="156" Column="14" TopLine="141"/>
       </Position29>
-      <Position30>
-        <Filename Value="chapterview.pas"/>
-        <Caret Line="668" Column="13" TopLine="651"/>
-      </Position30>
     </JumpHistory>
   </ProjectOptions>
   <CompilerOptions>
@@ -862,7 +843,7 @@
         <WatchScope Value="wpsLocal"/>
         <WatchKind Value="wpkWrite"/>
         <Source Value="versiculo.pas"/>
-        <Line Value="1326"/>
+        <Line Value="1384"/>
       </Item3>
     </BreakPoints>
     <Watches Count="1">

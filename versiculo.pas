@@ -25,6 +25,7 @@ type
 
   TVersiculo = class
   private
+    FRightToLeft: Boolean;
     { Private declarations }
     FMostrarDicas: boolean;
     FOnAlterarVersiculo: TOnAlterarVersiculoEvent;
@@ -53,6 +54,7 @@ type
     FONTParser: TONTParser;
     FSyntagmPopupMenu: TPopupMenu;
     FVersePopupMenu: TPopupMenu;
+    FRTLMenuItem: TMenuItem;
     FFixWrongFiTag: IRegex;
     FReadOnly: Boolean;
     //FOnNovaAssociacao: TOnAssociacaoEvent;
@@ -65,6 +67,7 @@ type
     procedure SetAtivo(const AValue: boolean);
     procedure SetFonte(const AValue: TFont);
     procedure SetModificado(const AValue: boolean);
+    procedure SetRightToLeft(AValue: Boolean);
     procedure SetStrongsCountMode(AValue: TStrongsCountMode);
     procedure SetPalavrasComStrongEmNegrito(AValue: boolean);
     procedure SetPares(const AValue: string);
@@ -81,6 +84,7 @@ type
     procedure OnCopySyntagmTags(Sender: TObject);
     procedure OnPasteSyntagmTags(Sender: TObject);
     procedure OnSaveTextToFile(Sender: TObject);
+    procedure OnRightToLeft(Sender: TObject);
     procedure OnVerseMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure OnResize(Sender: TObject);
     procedure OnMouseWheel(Sender: TObject; Shift: TShiftState;
@@ -149,6 +153,7 @@ type
     property StrongsCountMode: TStrongsCountMode read FStrongsCountMode write SetStrongsCountMode;
     property DebugTokens: string read GetTokens;
     property ReadOnly: Boolean read FReadOnly write FReadOnly default False;
+    property RightToLeft: Boolean read FRightToLeft write SetRightToLeft default False;
  published
     { Published declarations }
   end;
@@ -159,8 +164,12 @@ resourcestring
   SPasteStrongTags = '&Paste &Strong''s tags';
   SPasteMorphoTags = 'Paste &morphology tags';
   SSaveToFile = '&Save text to file...';
+  SRightToLeft = 'Right to left text';
 
 implementation
+
+const
+  MarginWidth = 10; // text's distance from the margin
 
 var
   SintagmaClipboard: TSyntagm;
@@ -1020,6 +1029,14 @@ begin
      FOnAlterarVersiculo;
 end;
 
+procedure TVersiculo.SetRightToLeft(AValue: Boolean);
+begin
+  if FRightToLeft=AValue then Exit;
+  FRightToLeft:=AValue;
+  FRTLMenuItem.Checked := FRightToLeft;
+  Renderizar;
+end;
+
 procedure TVersiculo.SetStrongsCountMode(AValue: TStrongsCountMode);
 begin
   if FStrongsCountMode = AValue
@@ -1037,42 +1054,83 @@ end;
 
 procedure TVersiculo.OrganizarSintagmas;
 
+  function StartingXPos: smallint;
+  begin
+    if FRightToLeft then
+      result := Painel.Width-MarginWidth
+    else
+      result := MarginWidth;
+  end;
+
+  function WrapLine(s: TSyntagm; x: smallint): boolean;
+  var
+    next, prev: TSyntagm;
+    punctWidth: smallint;
+  begin
+    result := false;
+    prev := s.GetPrevVisible;
+    if (s.Kind = tsPontuacao) and
+       (not assigned(prev) or (prev.Kind <> tsPontuacao)) then // and not following another punctiation
+       exit;
+
+    next := s.GetNextVisible;
+    if assigned(next) and (next.Kind = tsPontuacao) then
+      punctWidth := next.LabelRef.Width
+    else
+      punctWidth := 0;
+
+    if FRightToLeft then
+      result := (x - punctWidth) < 15
+    else
+      result := (x + s.LabelRef.Width + punctWidth) > (Painel.Width-15);
+  end;
+
   procedure PositionSyntagm(s: TSyntagm; var x, y, a: smallint);
+  var
+    firstLabel: boolean;
   begin
     a := max(a, s.LabelRef.Height);
-    if (x > 0) and (s.Kind <> tsPontuacao) and ((x + s.LabelRef.Width) > (Painel.Width-15)) then
+
+    firstLabel := x = StartingXPos;
+    if FRightToLeft then
+      dec(x, s.LabelRef.Width);
+
+    if WrapLine(s, x) then
     begin
       inc(y, a);
       a := 0;
-      x := 5;
+      x := IfThen(FRightToLeft, StartingXPos-s.LabelRef.Width, StartingXPos);
+      firstLabel := true;
     end;
 
     s.LabelRef.SetBounds(x, y, s.LabelRef.Width, s.LabelRef.Height);
 
-    if (x = 5) and (s.Kind = tsEspaco) then
+    if firstLabel and (s.Kind = tsEspaco) then
       s.LabelRef.Visible := false // hiding spaces at the beginning of the line
     else begin
+      //s.LabelRef.Color := clHighlight;
       s.LabelRef.Show;
-      inc(x, s.LabelRef.Width);
+      if not FRightToLeft then
+        inc(x, s.LabelRef.Width);
     end;
   end;
 
 var
   syntagm: TSyntagm;
-  x, y, a: smallint;
+  x, y, h: smallint;
 begin
   if not Ativo or FDestruindo or not assigned(FSintagmas) then
     exit;
 
-  x := 5; // start x position
-  y := 0; // y position
-  a := 0; // line width
+  x := StartingXPos; // starting x position
+  y := 0;            // starting y position
+  h := 0;            // line height
   for syntagm in FSintagmas do
     if assigned(syntagm.LabelRef) then
-      PositionSyntagm(syntagm, x, y, a);
+      PositionSyntagm(syntagm, x, y, h);
 
   if (FStrongsCountMode <> scNone) and assigned(FStrongCount) then
-    PositionSyntagm(FStrongCount, x, y, a);
+    PositionSyntagm(FStrongCount, x, y, h);
 end;
 
 procedure TVersiculo.SetVersiculoPar(Par: TVersiculo);
@@ -1339,6 +1397,11 @@ begin
      FOnExportText(Self);
 end;
 
+procedure TVersiculo.OnRightToLeft(Sender: TObject);
+begin
+  RightToLeft := not FRightToLeft;
+end;
+
 procedure TVersiculo.OnVerseMouseDown(Sender: TObject; Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
 begin
@@ -1396,6 +1459,11 @@ begin
   FVersePopupMenu := TPopupMenu.Create(FPanel);
   FVersePopupMenu.Parent := FPanel;
   FVersePopupMenu.Tag := PtrInt(Self);
+
+  FRTLMenuItem := TMenuItem.Create(FVersePopupMenu);
+  FRTLMenuItem.Caption := SRightToLeft;
+  FRTLMenuItem.OnClick := @OnRightToLeft;
+  FVersePopupMenu.Items.Add(FRTLMenuItem);
 
   Item := TMenuItem.Create(FVersePopupMenu);
   Item.Caption := SSaveToFile;

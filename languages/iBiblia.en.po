@@ -1633,6 +1633,10 @@ msgstr "Paste &morphology tags"
 msgid "&Paste &Strong's tags"
 msgstr "&Paste &Strong's tags"
 
+#: versiculo.srighttoleft
+msgid "Right to left text"
+msgstr ""
+
 #: versiculo.ssavetofile
 msgid "&Save text to file..."
 msgstr "&Save text to file..."

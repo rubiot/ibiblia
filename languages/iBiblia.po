@@ -1576,6 +1576,10 @@ msgstr ""
 msgid "&Paste &Strong's tags"
 msgstr ""
 
+#: versiculo.srighttoleft
+msgid "Right to left text"
+msgstr ""
+
 #: versiculo.ssavetofile
 msgid "&Save text to file..."
 msgstr ""
