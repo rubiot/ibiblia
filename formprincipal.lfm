@@ -375,14 +375,26 @@ object frmPrincipal: TfrmPrincipal
         Action = ActionExportar
         Caption = 'Export project...'
       end
+      object MenuItem18: TMenuItem
+        Caption = '-'
+      end
       object MenuItemExportPatch: TMenuItem
         Action = ActionExportPatch
       end
       object MenuItemApplyPatch: TMenuItem
         Action = ActionApplyPatch
       end
-      object MenuItem18: TMenuItem
-        Action = ActionRecriarBaseSugestoes
+      object MenuItem21: TMenuItem
+        Caption = '-'
+      end
+      object MenuItem24: TMenuItem
+        Caption = 'Maintenance'
+        object MenuItem25: TMenuItem
+          Action = ActionVaccumProject
+        end
+        object MenuItem26: TMenuItem
+          Action = ActionRecriarBaseSugestoes
+        end
       end
       object MenuItem4: TMenuItem
         Action = ActionSair
@@ -653,6 +665,10 @@ object frmPrincipal: TfrmPrincipal
     object ActionApplyPatch: TAction
       Caption = 'Apply patch...'
       OnExecute = ActionApplyPatchExecute
+    end
+    object ActionVaccumProject: TAction
+      Caption = 'Vacuum project'
+      OnExecute = ActionVaccumProjectExecute
     end
   end
   object OpenDialog1: TOpenDialog

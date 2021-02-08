@@ -19,6 +19,7 @@ type
     Button2: TButton;
     BtnSelectNone: TButton;
     BtnSelectAll: TButton;
+    Panel1: TPanel;
     StringGridVerseRules: TStringGrid;
     procedure BtnSelectAllClick(Sender: TObject);
     procedure BtnSelectNoneClick(Sender: TObject);

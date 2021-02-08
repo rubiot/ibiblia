@@ -22,6 +22,7 @@ type
   { TFrmPrincipal }
 
   TFrmPrincipal = class(TForm)
+    ActionVaccumProject: TAction;
     ActionApplyPatch: TAction;
     ActionExportPatch: TAction;
     ActionMostrarTags: TAction;
@@ -61,6 +62,11 @@ type
     MenuItem15: TMenuItem;
     MenuItem16: TMenuItem;
     MenuItem17: TMenuItem;
+    MenuItem18: TMenuItem;
+    MenuItem21: TMenuItem;
+    MenuItem24: TMenuItem;
+    MenuItem25: TMenuItem;
+    MenuItem26: TMenuItem;
     MenuItemApplyPatch: TMenuItem;
     MenuItemExportPatch: TMenuItem;
     MenuItemAutoSave: TMenuItem;
@@ -69,7 +75,6 @@ type
     MenuItemStrongsCountStrongs: TMenuItem;
     MenuItemAbout: TMenuItem;
     MenuItemMouseHover: TMenuItem;
-    MenuItem18: TMenuItem;
     MenuItem19: TMenuItem;
     MenuItem2: TMenuItem;
     MenuItem20: TMenuItem;
@@ -147,6 +152,7 @@ type
     procedure ActionSalvarProjetoExecute(Sender: TObject);
     procedure ActionSugerirAssociacaoExecute(Sender: TObject);
     procedure ActionSyncTheWordVerseExecute(Sender: TObject);
+    procedure ActionVaccumProjectExecute(Sender: TObject);
     procedure ActionVersoAnteriorExecute(Sender: TObject);
     procedure ActionVersoPrimeiroExecute(Sender: TObject);
     procedure ActionVersoSeguinteExecute(Sender: TObject);
@@ -674,6 +680,13 @@ begin
   if syncTw2iBiblia and (ProjetoAtual <> nil) then
     SyncTheWordVerse(ProjetoAtual.ID);
   {$ENDIF}
+end;
+
+procedure TFrmPrincipal.ActionVaccumProjectExecute(Sender: TObject);
+begin
+  if ProjetoAtual = nil then exit;
+
+  ProjetoAtual.Vacuum;
 end;
 
 procedure TFrmPrincipal.ActionVersoAnteriorExecute(Sender: TObject);

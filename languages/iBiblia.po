@@ -41,7 +41,7 @@ msgstr ""
 
 #: formapplypatch.signoredversesonpatch
 msgctxt "formapplypatch.signoredversesonpatch"
-msgid "%d verses are the same as those in the project and were ignored"
+msgid "%d verses are identical to what you have in your project and were ignored."
 msgstr ""
 
 #: formapplypatch.sinfo
@@ -50,7 +50,7 @@ msgid "Information"
 msgstr ""
 
 #: formapplypatch.snoupdatedversesonpatch
-msgid "There are no updated verses in the patch. Ignoring it."
+msgid "The content of this patch is identical to what you have in your project. The patch will not be applied."
 msgstr ""
 
 #: formapplypatch.spatchsuccessfullyapplied
@@ -437,6 +437,10 @@ msgctxt "projeto.scolossians"
 msgid "Colossians"
 msgstr ""
 
+#: projeto.sconfirmation
+msgid "Confirmation"
+msgstr ""
+
 #: projeto.scorrupteddata
 msgid ""
 "Corrupted data, some associations may be lost.This can happen for several reasons:\n"
@@ -781,6 +785,15 @@ msgstr ""
 msgid "Translation memory"
 msgstr ""
 
+#: projeto.svaccumprojectconfirmation
+msgid "Vacuuming requires that your project be saved and reopened. Do you want to proceed?"
+msgstr ""
+
+#: projeto.svacuumdone
+msgctxt "projeto.svacuumdone"
+msgid "Vacuum done!"
+msgstr ""
+
 #: projeto.sverseabsentfromproject
 msgid "[This project does not contain this verse]"
 msgstr ""
@@ -1106,6 +1119,11 @@ msgstr ""
 msgid "Choose verse rules"
 msgstr ""
 
+#: tfrmescolherverserules.panel1.caption
+msgctxt "tfrmescolherverserules.panel1.caption"
+msgid "Panel1"
+msgstr ""
+
 #: tfrmescolherverserules.stringgridverserules.columns[0].title.caption
 msgctxt "tfrmescolherverserules.stringgridverserules.columns[0].title.caption"
 msgid "Apply"
@@ -1319,6 +1337,10 @@ msgstr ""
 msgid "ActionSyncTheWordVerse"
 msgstr ""
 
+#: tfrmprincipal.actionvaccumproject.caption
+msgid "Vacuum project"
+msgstr ""
+
 #: tfrmprincipal.actionversoanterior.caption
 msgid "Previous"
 msgstr ""
@@ -1394,6 +1416,10 @@ msgstr ""
 
 #: tfrmprincipal.menuitem23.caption
 msgid "Language"
+msgstr ""
+
+#: tfrmprincipal.menuitem24.caption
+msgid "Maintenance"
 msgstr ""
 
 #: tfrmprincipal.menuitem5.caption
@@ -1519,6 +1545,7 @@ msgid "Open existing association project"
 msgstr ""
 
 #: tfrmprincipal.panel1.caption
+msgctxt "tfrmprincipal.panel1.caption"
 msgid "Panel1"
 msgstr ""
 

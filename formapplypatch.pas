@@ -54,9 +54,9 @@ var
 
 resourcestring
   SPatchSuccessfullyApplied = 'Patch successfully applied';
-  SIgnoredVersesOnPatch = '%d verses are the same as those in the project and were ignored';
+  SIgnoredVersesOnPatch = '%d verses are identical to what you have in your project and were ignored.';
   SInfo = 'Information';
-  SNoUpdatedVersesOnPatch = 'There are no updated verses in the patch. Ignoring it.';
+  SNoUpdatedVersesOnPatch = 'The content of this patch is identical to what you have in your project. The patch will not be applied.';
 
 implementation
 

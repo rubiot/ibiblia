@@ -3,8 +3,8 @@ object FrmEscolherVerseRules: TFrmEscolherVerseRules
   Height = 237
   Top = 214
   Width = 989
-  HorzScrollBar.Page = 83
-  VertScrollBar.Page = 184
+  HorzScrollBar.Page = 976
+  VertScrollBar.Page = 52
   AutoScroll = True
   Caption = 'Choose verse rules'
   ClientHeight = 237
@@ -13,7 +13,7 @@ object FrmEscolherVerseRules: TFrmEscolherVerseRules
   Position = poOwnerFormCenter
   LCLVersion = '2.0.10.0'
   object Button1: TButton
-    Left = 782
+    Left = 808
     Height = 25
     Top = 195
     Width = 75
@@ -34,47 +34,58 @@ object FrmEscolherVerseRules: TFrmEscolherVerseRules
     ModalResult = 1
     TabOrder = 1
   end
-  object StringGridVerseRules: TStringGrid
-    Left = 0
-    Height = 184
-    Top = 0
-    Width = 989
-    Align = alTop
-    AutoEdit = False
-    ColCount = 3
-    Columns = <    
-      item
-        ButtonStyle = cbsCheckboxColumn
-        Title.Caption = 'Apply'
-      end    
-      item
-        Title.Caption = 'From'
-      end    
-      item
-        Title.Caption = 'To'
-      end>
-    FixedCols = 0
-    Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goColSizing, goEditing, goSmoothScroll]
-    TabOrder = 2
-  end
   object BtnSelectNone: TButton
-    Left = 647
+    Left = 680
     Height = 25
     Top = 195
-    Width = 83
+    Width = 110
     Anchors = [akRight, akBottom]
     Caption = 'Select none'
     OnClick = BtnSelectNoneClick
-    TabOrder = 3
+    TabOrder = 2
   end
   object BtnSelectAll: TButton
-    Left = 522
+    Left = 552
     Height = 25
     Top = 195
-    Width = 83
+    Width = 110
     Anchors = [akRight, akBottom]
     Caption = 'Select all'
     OnClick = BtnSelectAllClick
+    TabOrder = 3
+  end
+  object Panel1: TPanel
+    Left = 10
+    Height = 177
+    Top = 7
+    Width = 966
+    Anchors = [akTop, akLeft, akRight, akBottom]
+    Caption = 'Panel1'
+    ClientHeight = 177
+    ClientWidth = 966
     TabOrder = 4
+    object StringGridVerseRules: TStringGrid
+      Left = 1
+      Height = 175
+      Top = 1
+      Width = 964
+      Align = alClient
+      AutoEdit = False
+      ColCount = 3
+      Columns = <      
+        item
+          ButtonStyle = cbsCheckboxColumn
+          Title.Caption = 'Apply'
+        end      
+        item
+          Title.Caption = 'From'
+        end      
+        item
+          Title.Caption = 'To'
+        end>
+      FixedCols = 0
+      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goColSizing, goEditing, goSmoothScroll]
+      TabOrder = 0
+    end
   end
 end

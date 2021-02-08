@@ -51,18 +51,17 @@ msgstr "Regras de &transformação (verse rules)..."
 
 #: formapplypatch.signoredversesonpatch
 msgctxt "formapplypatch.signoredversesonpatch"
-msgid "%d verses are the same as those in the project and were ignored"
-msgstr ""
+msgid "%d verses are identical to what you have in your project and were ignored."
+msgstr "%d versículos são idênticos aos do seu projeto e foram ignorados."
 
 #: formapplypatch.sinfo
-#, fuzzy
 msgctxt "formapplypatch.sinfo"
 msgid "Information"
 msgstr "Informação"
 
 #: formapplypatch.snoupdatedversesonpatch
-msgid "There are no updated verses in the patch. Ignoring it."
-msgstr ""
+msgid "The content of this patch is identical to what you have in your project. The patch will not be applied."
+msgstr "O conteúdo deste patch é idêntico ao que você tem em seu projeto. O patch não será aplicado."
 
 #: formapplypatch.spatchsuccessfullyapplied
 msgid "Patch successfully applied"
@@ -455,6 +454,10 @@ msgctxt "projeto.scolossians"
 msgid "Colossians"
 msgstr "Colossenses"
 
+#: projeto.sconfirmation
+msgid "Confirmation"
+msgstr ""
+
 #: projeto.scorrupteddata
 msgid ""
 "Corrupted data, some associations may be lost.This can happen for several reasons:\n"
@@ -812,6 +815,16 @@ msgstr "Tito"
 msgid "Translation memory"
 msgstr "Histórico de associações"
 
+#: projeto.svaccumprojectconfirmation
+msgid "Vacuuming requires that your project be saved and reopened. Do you want to proceed?"
+msgstr ""
+
+#: projeto.svacuumdone
+#, fuzzy
+msgctxt "projeto.svacuumdone"
+msgid "Vacuum done!"
+msgstr "Arquivo do projeto compactado!"
+
 #: projeto.sverseabsentfromproject
 msgid "[This project does not contain this verse]"
 msgstr "[Este projeto não contém este versículo]"
@@ -1092,22 +1105,21 @@ msgstr "Aplicar patch..."
 
 #: tfrmapplypatch.labelassociations.caption
 msgid "Associations"
-msgstr ""
+msgstr "Associações"
 
 #: tfrmapplypatch.labelcomments.caption
 msgid "Comments"
-msgstr ""
+msgstr "Comentários"
 
 #: tfrmapplypatch.labeldsttext.caption
 msgid "Destination text"
-msgstr ""
+msgstr "Texto destino"
 
 #: tfrmapplypatch.labelsrctext.caption
 msgid "Source text"
-msgstr ""
+msgstr "Texto origem"
 
 #: tfrmapplypatch.labelstatus.caption
-#, fuzzy
 msgctxt "tfrmapplypatch.labelstatus.caption"
 msgid "Status"
 msgstr "Andamento"
@@ -1137,6 +1149,11 @@ msgstr "OK"
 #: tfrmescolherverserules.caption
 msgid "Choose verse rules"
 msgstr "Escolher verse rules"
+
+#: tfrmescolherverserules.panel1.caption
+msgctxt "tfrmescolherverserules.panel1.caption"
+msgid "Panel1"
+msgstr "Panel1"
 
 #: tfrmescolherverserules.stringgridverserules.columns[0].title.caption
 msgctxt "tfrmescolherverserules.stringgridverserules.columns[0].title.caption"
@@ -1351,6 +1368,10 @@ msgstr "Sugerir associações do versículo"
 msgid "ActionSyncTheWordVerse"
 msgstr "ActionSyncTheWordVerse"
 
+#: tfrmprincipal.actionvaccumproject.caption
+msgid "Vacuum project"
+msgstr "Compactar arquivo do projeto"
+
 #: tfrmprincipal.actionversoanterior.caption
 msgid "Previous"
 msgstr "Anterior"
@@ -1427,6 +1448,10 @@ msgstr "Fazer a associação automática sempre que um versículo não tiver ass
 #: tfrmprincipal.menuitem23.caption
 msgid "Language"
 msgstr "Language/Idioma"
+
+#: tfrmprincipal.menuitem24.caption
+msgid "Maintenance"
+msgstr "Manutenção"
 
 #: tfrmprincipal.menuitem5.caption
 msgid "Navigation"
@@ -1551,6 +1576,7 @@ msgid "Open existing association project"
 msgstr "Abrir projeto de associação existente"
 
 #: tfrmprincipal.panel1.caption
+msgctxt "tfrmprincipal.panel1.caption"
 msgid "Panel1"
 msgstr "Panel1"
 
@@ -1612,7 +1638,7 @@ msgstr "Colar tags de &Strong"
 
 #: versiculo.srighttoleft
 msgid "Right to left text"
-msgstr ""
+msgstr "Texto da direita para a esquerda"
 
 #: versiculo.ssavetofile
 msgid "&Save text to file..."

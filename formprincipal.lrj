@@ -10,6 +10,7 @@
 {"hash":127273972,"name":"tfrmprincipal.menuitem1.caption","sourcebytes":[80,114,111,106,101,99,116],"value":"Project"},
 {"hash":131987540,"name":"tfrmprincipal.menuitemrecent.caption","sourcebytes":[79,112,101,110,32,114,101,99,101,110,116],"value":"Open recent"},
 {"hash":160563534,"name":"tfrmprincipal.menuitem16.caption","sourcebytes":[69,120,112,111,114,116,32,112,114,111,106,101,99,116,46,46,46],"value":"Export project..."},
+{"hash":184026309,"name":"tfrmprincipal.menuitem24.caption","sourcebytes":[77,97,105,110,116,101,110,97,110,99,101],"value":"Maintenance"},
 {"hash":310020,"name":"tfrmprincipal.menuitem10.caption","sourcebytes":[69,100,105,116],"value":"Edit"},
 {"hash":266201246,"name":"tfrmprincipal.menuitem5.caption","sourcebytes":[78,97,118,105,103,97,116,105,111,110],"value":"Navigation"},
 {"hash":108725763,"name":"tfrmprincipal.menuitem20.caption","sourcebytes":[79,112,116,105,111,110,115],"value":"Options"},
@@ -82,6 +83,7 @@
 {"hash":250766931,"name":"tfrmprincipal.actionmostrartags.caption","sourcebytes":[65,99,116,105,111,110,77,111,115,116,114,97,114,84,97,103,115],"value":"ActionMostrarTags"},
 {"hash":52670190,"name":"tfrmprincipal.actionexportpatch.caption","sourcebytes":[67,114,101,97,116,101,32,112,97,116,99,104,46,46,46],"value":"Create patch..."},
 {"hash":265954542,"name":"tfrmprincipal.actionapplypatch.caption","sourcebytes":[65,112,112,108,121,32,112,97,116,99,104,46,46,46],"value":"Apply patch..."},
+{"hash":3846420,"name":"tfrmprincipal.actionvaccumproject.caption","sourcebytes":[86,97,99,117,117,109,32,112,114,111,106,101,99,116],"value":"Vacuum project"},
 {"hash":20636196,"name":"tfrmprincipal.opendialog1.title","sourcebytes":[79,112,101,110,32,101,120,105,115,116,105,110,103,32,97,115,115,111,99,105,97,116,105,111,110,32,112,114,111,106,101,99,116],"value":"Open existing association project"},
 {"hash":71740894,"name":"tfrmprincipal.savedialog1.title","sourcebytes":[83,97,118,101,32,112,114,111,106,101,99,116,32,97,115,46,46,46],"value":"Save project as..."},
 {"hash":1341790,"name":"tfrmprincipal.savedialog2.title","sourcebytes":[83,97,118,101,32,109,111,100,117,108,101,32,97,115,46,46,46],"value":"Save module as..."}

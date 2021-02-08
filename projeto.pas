@@ -225,6 +225,7 @@ type
     function GetComments(ref: string): string;
     procedure SetTextDescription(text: TTipoTextoBiblico; description: string);
     function GetTextDescription(text: TTipoTextoBiblico): string;
+    procedure Vacuum;
 
     property FileName: string read FFileName;
     property FormattedReference: string read GetFormattedReference;
@@ -304,6 +305,9 @@ resourcestring
   SInterlinearVerseRuleReplaceError = 'There is something wrong with one of your interlinear verse rules.'#13#10'Please review them.';
   SModuleDoesNotIncludeScope = 'This module is incompatible with the scope of the project. Please choose a valid module.';
   SInvalidModuleType = 'Unknown module extension. Please choose a valid theWord Bible module (.ot, .ont or .nt)';
+  SConfirmation = 'Confirmation';
+  SVaccumProjectConfirmation = 'Vacuuming requires that your project be saved and reopened. Do you want to proceed?';
+  SVacuumDone = 'Vacuum done!';
 
 const
   QStrongs: array[etOT..etONT] of smallint = (8674, 5624, 14298);
@@ -778,6 +782,22 @@ end;
 function TProjeto.GetTextDescription(text: TTipoTextoBiblico): string;
 begin
   result := ObterInfo(Format('description.text%d', [text]));
+end;
+
+procedure TProjeto.Vacuum;
+begin
+  if MessageDlg(SConfirmation, SVaccumProjectConfirmation, mtConfirmation, [mbYes, mbNo],0) = mrNo then
+    exit;
+
+  Fechar(true);
+  with TSqlite3Dataset.Create(nil) do
+  begin
+    FileName:=FFileName;
+    ExecSQL('VACUUM;');
+    Free;
+  end;
+  Abrir(FFileName);
+  ShowMessage(SVacuumDone);
 end;
 
 function TProjeto.GetID: string;

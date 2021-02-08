@@ -1108,7 +1108,6 @@ procedure TVersiculo.OrganizarSintagmas;
     if firstLabel and (s.Kind = tsEspaco) then
       s.LabelRef.Visible := false // hiding spaces at the beginning of the line
     else begin
-      //s.LabelRef.Color := clHighlight;
       s.LabelRef.Show;
       if not FRightToLeft then
         inc(x, s.LabelRef.Width);
