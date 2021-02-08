@@ -2220,7 +2220,7 @@ begin
     end;
 
     reVazio        := RegexCreate('^\s*$', [rcoUTF8]);
-    reComments     := RegexCreate('#.*$', [rcoUTF8]);
+    reComments     := RegexCreate('\s*#.*$', [rcoUTF8]);
     reDescription  := RegexCreate('^\s*description\s*=\s*(.*)$', [rcoUTF8]);
     reCharset      := RegexCreate('^\s*charset\s*=\s*(.*)$', [rcoUTF8]);
     reVerseRules   := RegexCreate('^\s*verse.rule\s*=\s*"(.*?)(?<!")"(?!")\s+"(.*?)"(?=\s*$|\s+"(.*?)(?<!")"(?!"))', [rcoUTF8]);
@@ -2232,7 +2232,7 @@ begin
     begin
       line := modulo[i];
       { eliminando comentários }
-      modulo[i] := reComments.Replace(modulo[i], '');
+      line := reComments.Replace(line, '');
 
       if reVazio.IsMatch(line) then
         continue;
@@ -2243,7 +2243,7 @@ begin
           exit;
       end;
 
-      propriedades.WriteString(line + #13#10);
+      propriedades.WriteString(modulo[i] + #13#10);
 
       mtDescription := reDescription.Match(line);
       if mtDescription.Success then
