@@ -61,7 +61,7 @@ begin
 
   if not values.IsEmpty then
     for rule in values.Split(#13) do
-      if rule <> #10 then // not an empty rule
+      if not rule.StartsWith(#10#10) then // not an empty rule
       begin
         fromTo := rule.Split(#10);
         grid.RowCount := grid.RowCount + 1;
