@@ -431,13 +431,11 @@ var
   words: TStringArray;
   w, wt, tag: string;
 begin
-  result := '';
-
   // detailed: word with link to strong + morphology tag with link to dictionary
   //           word1<WG1><WTX>;word2<WG2><WTZ>
   // simple:  Strong's tag with link
   //          <WG1>;<WG2>
-  result := '\par\li0 {\b\''95  }';
+  result := '\par\li0 {\u8226?}';
   words := FLocucao.Split(';');
   for w in words do
   begin

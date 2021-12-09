@@ -1,0 +1,31 @@
+object FormPleaseWait: TFormPleaseWait
+  Left = 689
+  Height = 92
+  Top = 405
+  Width = 448
+  BorderIcons = []
+  Caption = 'Operation in progress'
+  ClientHeight = 92
+  ClientWidth = 448
+  FormStyle = fsStayOnTop
+  Position = poMainFormCenter
+  LCLVersion = '2.0.10.0'
+  object ProgressBar1: TProgressBar
+    Left = 32
+    Height = 28
+    Top = 48
+    Width = 392
+    Style = pbstMarquee
+    TabOrder = 0
+  end
+  object Label1: TLabel
+    Left = 184
+    Height = 21
+    Top = 16
+    Width = 86
+    Caption = 'Please wait...'
+    Font.Height = -16
+    ParentColor = False
+    ParentFont = False
+  end
+end

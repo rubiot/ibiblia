@@ -1027,6 +1027,14 @@ msgctxt "tformnovoprojeto.radiogroupscope.caption"
 msgid "Scope"
 msgstr "Scope"
 
+#: tformpleasewait.caption
+msgid "Operation in progress"
+msgstr ""
+
+#: tformpleasewait.label1.caption
+msgid "Please wait..."
+msgstr ""
+
 #: tformpropprojeto.actioncarregartexto.caption
 msgid "Load new text"
 msgstr "Load new text"

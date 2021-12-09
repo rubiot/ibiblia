@@ -15,7 +15,7 @@ uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, Menus,
   ActnList, ComCtrls, ExtCtrls, StdCtrls, Projeto, IniFiles, Math,
   Syntagm, LCLTranslator, unitabout, PCRE, Versiculo, LCLProc, LazLogger,
-  LCLType, LazUTF8, ChapterView;
+  LCLType, LazUTF8, ChapterView, UnitPleaseWait;
 
 type
 
@@ -686,7 +686,9 @@ procedure TFrmPrincipal.ActionVaccumProjectExecute(Sender: TObject);
 begin
   if ProjetoAtual = nil then exit;
 
+  FormPleaseWait.Show;
   ProjetoAtual.Vacuum;
+  FormPleaseWait.Hide;
 end;
 
 procedure TFrmPrincipal.ActionVersoAnteriorExecute(Sender: TObject);

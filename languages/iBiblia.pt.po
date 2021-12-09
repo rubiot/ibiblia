@@ -456,7 +456,7 @@ msgstr "Colossenses"
 
 #: projeto.sconfirmation
 msgid "Confirmation"
-msgstr ""
+msgstr "Confirmação"
 
 #: projeto.scorrupteddata
 msgid ""
@@ -817,10 +817,9 @@ msgstr "Histórico de associações"
 
 #: projeto.svaccumprojectconfirmation
 msgid "Vacuuming requires that your project be saved and reopened. Do you want to proceed?"
-msgstr ""
+msgstr "Para compactar um projeto é necessário fechá-lo e reabri-lo. Deseja prosseguir?"
 
 #: projeto.svacuumdone
-#, fuzzy
 msgctxt "projeto.svacuumdone"
 msgid "Vacuum done!"
 msgstr "Arquivo do projeto compactado!"
@@ -1004,6 +1003,14 @@ msgstr "Escolha um módulo de bíblia do theWord"
 msgctxt "tformnovoprojeto.radiogroupscope.caption"
 msgid "Scope"
 msgstr "Escopo"
+
+#: tformpleasewait.caption
+msgid "Operation in progress"
+msgstr "Operação em andamento"
+
+#: tformpleasewait.label1.caption
+msgid "Please wait..."
+msgstr "Por favor, aguarde..."
 
 #: tformpropprojeto.actioncarregartexto.caption
 msgid "Load new text"
@@ -1643,4 +1650,3 @@ msgstr "Texto da direita para a esquerda"
 #: versiculo.ssavetofile
 msgid "&Save text to file..."
 msgstr "&Exportar texto para arquivo..."
-
