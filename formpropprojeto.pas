@@ -79,7 +79,7 @@ resourcestring
   SClearTextConfirmationAssociation = 'Are you sure you want to clear this Bible text?'#13#10 +
                                       'All your associations will be lost!';
   SChooseDictionary = 'Choose';
-  SOpenDictionary = 'Please choose a theWord dictionary module...';
+  SOpenDictionary = 'Please choose an unencrypted theWord dictionary module...';
   SSourceTab = 'Source';
   SDestinationTab = 'Destination';
   SReference1Tab = 'Reference 1';
@@ -198,8 +198,9 @@ end;
 
 procedure TFormPropProjeto.ActionSelecionarMorfoExecute(Sender: TObject);
 var
-  d: string;
+  d, path: string;
 begin
+  d := '';
   OpenDialog1.Filter := SDictionaryFilter;
   OpenDialog1.FileName := leDicMorfo.Text;
   OpenDialog1.Title  := SOpenDictionary;
@@ -208,19 +209,20 @@ begin
     { utilizando caminho relativo sempre que possível }
     GetDir(0, d);
     if Pos(d, OpenDialog1.FileName) = 1 then
-    begin
-      leDicMorfo.Text := format('.%s', [RightStr(OpenDialog1.Filename, length(OpenDialog1.Filename) - length(d))]);
-    end else
-      leDicMorfo.Text := OpenDialog1.FileName;
-    FProjeto.AtribuirDicMorfo(leDicMorfo.Text, [TTipoTextoBiblico(TabControl1.TabIndex)]);
+      path := format('.%s', [RightStr(OpenDialog1.Filename, length(OpenDialog1.Filename) - length(d))])
+    else
+      path := OpenDialog1.FileName;
+    if FProjeto.AtribuirDicMorfo(path, [TTipoTextoBiblico(TabControl1.TabIndex)]) then
+      leDicMorfo.Text := path;
   end;
   BitBtn8.Caption := SChooseDictionary;
 end;
 
 procedure TFormPropProjeto.ActionSelecionarStrongExecute(Sender: TObject);
 var
-  d: string;
+  d, path: string;
 begin
+  d := '';
   OpenDialog1.Filter := SDictionaryFilter;
   OpenDialog1.FileName := leDicStrong.Text;
   OpenDialog1.Title  := SOpenDictionary;
@@ -229,11 +231,11 @@ begin
     { utilizando caminho relativo sempre que possível }
     GetDir(0, d);
     if Pos(d, OpenDialog1.FileName) = 1 then
-    begin
-      leDicStrong.Text := format('.%s', [RightStr(OpenDialog1.Filename, length(OpenDialog1.Filename) - length(d))]);
-    end else
-      leDicStrong.Text := OpenDialog1.FileName;
-    FProjeto.AtribuirDicStrong(leDicStrong.Text, [TTipoTextoBiblico(TabControl1.TabIndex)]);
+      path := format('.%s', [RightStr(OpenDialog1.Filename, length(OpenDialog1.Filename) - length(d))])
+    else
+      path := OpenDialog1.FileName;
+    if FProjeto.AtribuirDicStrong(path, [TTipoTextoBiblico(TabControl1.TabIndex)]) then
+      leDicStrong.Text := path;
   end;
   BitBtn4.Caption := SChooseDictionary;
 end;

@@ -309,8 +309,9 @@ msgid "theWord Bible modules (*.ont, *.ot)|*.ont;*.ot"
 msgstr "theWord Bible modules (*.ont, *.ot)|*.ont;*.ot"
 
 #: formpropprojeto.sopendictionary
-msgid "Please choose a theWord dictionary module..."
-msgstr "Please choose a theWord dictionary module..."
+#| msgid "Please choose a theWord dictionary module..."
+msgid "Please choose an unencrypted theWord dictionary module..."
+msgstr "Please choose an unencrypted theWord dictionary module..."
 
 #: formpropprojeto.sreference1tab
 msgctxt "formpropprojeto.sreference1tab"
@@ -461,9 +462,13 @@ msgctxt "projeto.scolossians"
 msgid "Colossians"
 msgstr "Colossians"
 
+#: projeto.scompresseddictionary
+msgid "Compressed dictionary"
+msgstr "Compressed dictionary"
+
 #: projeto.sconfirmation
 msgid "Confirmation"
-msgstr ""
+msgstr "Confirmation"
 
 #: projeto.scorrupteddata
 #| msgid ""
@@ -505,6 +510,10 @@ msgstr "The selected dictionary doesn't exist: %s"
 msgctxt "projeto.secclesiastes"
 msgid "Ecclesiastes"
 msgstr "Ecclesiastes"
+
+#: projeto.sencrypteddictionary
+msgid "Encrypted dictionary"
+msgstr "Encrypted dictionary"
 
 #: projeto.sephesians
 msgctxt "projeto.sephesians"
@@ -601,6 +610,22 @@ msgstr ""
 "There is something wrong with one of your interlinear verse rules.\n"
 "Please review them.\n"
 
+#: projeto.sinvalidcompresseddictionary
+msgid ""
+"iBiblia does not suppport compressed dictionaries yet.\n"
+"Please choose an uncompressed module.\n"
+msgstr ""
+"iBiblia does not suppport compressed dictionaries yet.\n"
+"Please choose an uncompressed module.\n"
+
+#: projeto.sinvalidencrypteddictionary
+msgid ""
+"iBiblia does not and will not support encrypted modules.\n"
+"Please choose an unencrypted module.\n"
+msgstr ""
+"iBiblia does not and will not support encrypted modules.\n"
+"Please choose an unencrypted module.\n"
+
 #: projeto.sinvalidinterlinearverserule
 msgid ""
 "There is something wrong with your interlinear verse rule.\n"
@@ -616,6 +641,30 @@ msgstr "Invalid file, it must have at least %d lines"
 #: projeto.sinvalidmoduletype
 msgid "Unknown module extension. Please choose a valid theWord Bible module (.ot, .ont or .nt)"
 msgstr "Unknown module extension. Please choose a valid theWord Bible module (.ot, .ont or .nt)"
+
+#: projeto.sinvalidmorphologydictionary
+msgid ""
+"This is not a morphology dictionary.\n"
+"Please choose a valid morphology dictionary.\n"
+msgstr ""
+"This is not a morphology dictionary.\n"
+"Please choose a valid morphology dictionary.\n"
+
+#: projeto.sinvalidnonrtfdictionary
+msgid ""
+"iBiblia only suppports RTF modules.\n"
+"Please choose another module or convert this module to RTF in theWord.\n"
+msgstr ""
+"iBiblia only suppports RTF modules.\n"
+"Please choose another module or convert this module to RTF in theWord.\n"
+
+#: projeto.sinvalidstrongsdictionary
+msgid ""
+"This is not a Strong's dictionary.\n"
+"Please choose a valid Strong's dictionary.\n"
+msgstr ""
+"This is not a Strong's dictionary.\n"
+"Please choose a valid Strong's dictionary.\n"
 
 #: projeto.sisaiah
 msgctxt "projeto.sisaiah"
@@ -733,6 +782,10 @@ msgctxt "projeto.snehemiah"
 msgid "Nehemiah"
 msgstr "Nehemiah"
 
+#: projeto.snonrtfdictionary
+msgid "Non-RTF module"
+msgstr "Non-RTF module"
+
 #: projeto.snumbers
 msgctxt "projeto.snumbers"
 msgid "Numbers"
@@ -835,10 +888,9 @@ msgstr "Translation memory"
 
 #: projeto.svaccumprojectconfirmation
 msgid "Vacuuming requires that your project be saved and reopened. Do you want to proceed?"
-msgstr ""
+msgstr "Vacuuming requires that your project be saved and reopened. Do you want to proceed?"
 
 #: projeto.svacuumdone
-#, fuzzy
 msgctxt "projeto.svacuumdone"
 msgid "Vacuum done!"
 msgstr "Vacuum done!"
@@ -1029,11 +1081,11 @@ msgstr "Scope"
 
 #: tformpleasewait.caption
 msgid "Operation in progress"
-msgstr ""
+msgstr "Operation in progress"
 
 #: tformpleasewait.label1.caption
 msgid "Please wait..."
-msgstr ""
+msgstr "Please wait..."
 
 #: tformpropprojeto.actioncarregartexto.caption
 msgid "Load new text"
@@ -1674,4 +1726,3 @@ msgstr "Right to left text"
 #: versiculo.ssavetofile
 msgid "&Save text to file..."
 msgstr "&Save text to file..."
-

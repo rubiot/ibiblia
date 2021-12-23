@@ -286,7 +286,7 @@ msgid "theWord Bible modules (*.ont, *.ot)|*.ont;*.ot"
 msgstr ""
 
 #: formpropprojeto.sopendictionary
-msgid "Please choose a theWord dictionary module..."
+msgid "Please choose an unencrypted theWord dictionary module..."
 msgstr ""
 
 #: formpropprojeto.sreference1tab
@@ -437,6 +437,10 @@ msgctxt "projeto.scolossians"
 msgid "Colossians"
 msgstr ""
 
+#: projeto.scompresseddictionary
+msgid "Compressed dictionary"
+msgstr ""
+
 #: projeto.sconfirmation
 msgid "Confirmation"
 msgstr ""
@@ -468,6 +472,10 @@ msgstr ""
 #: projeto.secclesiastes
 msgctxt "projeto.secclesiastes"
 msgid "Ecclesiastes"
+msgstr ""
+
+#: projeto.sencrypteddictionary
+msgid "Encrypted dictionary"
 msgstr ""
 
 #: projeto.sephesians
@@ -558,6 +566,18 @@ msgid ""
 "Please review them.\n"
 msgstr ""
 
+#: projeto.sinvalidcompresseddictionary
+msgid ""
+"iBiblia does not suppport compressed dictionaries yet.\n"
+"Please choose an uncompressed module.\n"
+msgstr ""
+
+#: projeto.sinvalidencrypteddictionary
+msgid ""
+"iBiblia does not and will not support encrypted modules.\n"
+"Please choose an unencrypted module.\n"
+msgstr ""
+
 #: projeto.sinvalidinterlinearverserule
 msgid ""
 "There is something wrong with your interlinear verse rule.\n"
@@ -570,6 +590,24 @@ msgstr ""
 
 #: projeto.sinvalidmoduletype
 msgid "Unknown module extension. Please choose a valid theWord Bible module (.ot, .ont or .nt)"
+msgstr ""
+
+#: projeto.sinvalidmorphologydictionary
+msgid ""
+"This is not a morphology dictionary.\n"
+"Please choose a valid morphology dictionary.\n"
+msgstr ""
+
+#: projeto.sinvalidnonrtfdictionary
+msgid ""
+"iBiblia only suppports RTF modules.\n"
+"Please choose another module or convert this module to RTF in theWord.\n"
+msgstr ""
+
+#: projeto.sinvalidstrongsdictionary
+msgid ""
+"This is not a Strong's dictionary.\n"
+"Please choose a valid Strong's dictionary.\n"
 msgstr ""
 
 #: projeto.sisaiah
@@ -685,6 +723,10 @@ msgstr ""
 #: projeto.snehemiah
 msgctxt "projeto.snehemiah"
 msgid "Nehemiah"
+msgstr ""
+
+#: projeto.snonrtfdictionary
+msgid "Non-RTF module"
 msgstr ""
 
 #: projeto.snumbers

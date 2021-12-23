@@ -303,8 +303,8 @@ msgid "theWord Bible modules (*.ont, *.ot)|*.ont;*.ot"
 msgstr "Módulos de Bíblia do theWord (*.ont, *.ot)|*.ont;*.ot"
 
 #: formpropprojeto.sopendictionary
-msgid "Please choose a theWord dictionary module..."
-msgstr "Escolha um módulo de dicionário do theWord..."
+msgid "Please choose an unencrypted theWord dictionary module..."
+msgstr "Escolha um módulo de dicionário não-criptografado do theWord..."
 
 #: formpropprojeto.sreference1tab
 msgctxt "formpropprojeto.sreference1tab"
@@ -454,6 +454,10 @@ msgctxt "projeto.scolossians"
 msgid "Colossians"
 msgstr "Colossenses"
 
+#: projeto.scompresseddictionary
+msgid "Compressed dictionary"
+msgstr "Dicionário compactado"
+
 #: projeto.sconfirmation
 msgid "Confirmation"
 msgstr "Confirmação"
@@ -490,6 +494,10 @@ msgstr "O dicionário selecionado não existe: %s"
 msgctxt "projeto.secclesiastes"
 msgid "Ecclesiastes"
 msgstr "Eclesiastes"
+
+#: projeto.sencrypteddictionary
+msgid "Encrypted dictionary"
+msgstr "Dicionário criptografado"
 
 #: projeto.sephesians
 msgctxt "projeto.sephesians"
@@ -584,6 +592,22 @@ msgstr ""
 "Há um problema com pelo menos uma de suas verse rules.\n"
 "Por favor, revise-as.\n"
 
+#: projeto.sinvalidcompresseddictionary
+msgid ""
+"iBiblia does not suppport compressed dictionaries yet.\n"
+"Please choose an uncompressed module.\n"
+msgstr ""
+"O iBiblia ainda não suporta dicionários compactados.\n"
+"Por favor, escolha um módulo sem compactação.\n"
+
+#: projeto.sinvalidencrypteddictionary
+msgid ""
+"iBiblia does not and will not support encrypted modules.\n"
+"Please choose an unencrypted module.\n"
+msgstr ""
+"O iBiblia não suporta (e nem suportará) módulos criptografados.\n"
+"Por favor, escolha um módulo sem criptografia.\n"
+
 #: projeto.sinvalidinterlinearverserule
 msgid ""
 "There is something wrong with your interlinear verse rule.\n"
@@ -599,6 +623,30 @@ msgstr "Arquivo inválido, ele precisa ter ao menos %d linhas"
 #: projeto.sinvalidmoduletype
 msgid "Unknown module extension. Please choose a valid theWord Bible module (.ot, .ont or .nt)"
 msgstr "Módulo com extensão desconhecida. Por favor, escolha um módulo válido do theWord (.ot, .ont ou .nt)"
+
+#: projeto.sinvalidmorphologydictionary
+msgid ""
+"This is not a morphology dictionary.\n"
+"Please choose a valid morphology dictionary.\n"
+msgstr ""
+"Este não é um dicionário de morfologia.\n"
+"Por favor, escolha um dicionário de morfologia válido.\n"
+
+#: projeto.sinvalidnonrtfdictionary
+msgid ""
+"iBiblia only suppports RTF modules.\n"
+"Please choose another module or convert this module to RTF in theWord.\n"
+msgstr ""
+"O iBiblia só suporta módulos no formato RTF.\n"
+"Por favor, escolha outro módulo ou converta este módulo para RTF no theWord.\n"
+
+#: projeto.sinvalidstrongsdictionary
+msgid ""
+"This is not a Strong's dictionary.\n"
+"Please choose a valid Strong's dictionary.\n"
+msgstr ""
+"Este não é um dicionário de Strong.\n"
+"Por favor, escolha um dicionário de Strong válido.\n"
 
 #: projeto.sisaiah
 msgctxt "projeto.sisaiah"
@@ -714,6 +762,10 @@ msgstr "Naum"
 msgctxt "projeto.snehemiah"
 msgid "Nehemiah"
 msgstr "Neemias"
+
+#: projeto.snonrtfdictionary
+msgid "Non-RTF module"
+msgstr "Módulo não-RTF"
 
 #: projeto.snumbers
 msgctxt "projeto.snumbers"

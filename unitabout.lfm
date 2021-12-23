@@ -1,7 +1,7 @@
 object FormAbout: TFormAbout
-  Left = 568
+  Left = 569
   Height = 124
-  Top = 238
+  Top = 239
   Width = 450
   BorderIcons = [biSystemMenu]
   BorderStyle = bsToolWindow
@@ -10,7 +10,7 @@ object FormAbout: TFormAbout
   ClientWidth = 450
   OnCreate = FormCreate
   Position = poMainFormCenter
-  LCLVersion = '2.0.6.0'
+  LCLVersion = '2.0.10.0'
   object Label1: TLabel
     Left = 0
     Height = 30

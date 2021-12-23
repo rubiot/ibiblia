@@ -1,7 +1,7 @@
 object frmExportarProjeto: TfrmExportarProjeto
-  Left = 505
+  Left = 506
   Height = 490
-  Top = 264
+  Top = 265
   Width = 787
   Caption = 'Export association'
   ClientHeight = 490

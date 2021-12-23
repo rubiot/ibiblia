@@ -1,7 +1,7 @@
 object frmPrincipal: TfrmPrincipal
-  Left = 367
+  Left = 368
   Height = 681
-  Top = 149
+  Top = 150
   Width = 943
   Caption = 'iBiblia'
   ClientHeight = 661

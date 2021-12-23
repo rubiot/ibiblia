@@ -122,6 +122,7 @@ type
     function GetPairs: string;
     function GetParagraphMode: TParagraphMode;
     function GetSituacao: Integer;
+    function IsValidDicionaryModule(const path: string; const dicType: string): boolean;
     procedure PreencherArvore;
     procedure SetAtrasoExibicao(const AValue: Cardinal);
     procedure SetAutoSave(AValue: boolean);
@@ -164,8 +165,8 @@ type
     procedure OnAlterarTextoVersiculo(Sender: TMemoVersiculo);
     procedure OnExibirDefinicao(Sender: TObject);
     procedure OnDblClickVersiculo(Sender: TObject);
-    procedure AtribuirDicStrong(dic: string; t: TTipoTextoBiblico);
-    procedure AtribuirDicMorfo(dic: string; t: TTipoTextoBiblico);
+    function AtribuirDicStrong(dic: string; t: TTipoTextoBiblico): boolean;
+    function AtribuirDicMorfo(dic: string; t: TTipoTextoBiblico): boolean;
     procedure AtualizarArvore;
     procedure AtualizarArvore(id: string);
     procedure SelectTreeNode(id: string);
@@ -202,8 +203,8 @@ type
     procedure AtribuirFonteTexto(fonte: TFont; textos: STextosBiblicos);
     procedure LimparTexto(texto: TTipoTextoBiblico);
     function ObterFonteTexto(texto: TTipoTextoBiblico): TFont;
-    procedure AtribuirDicStrong(dic: string; textos: STextosBiblicos);
-    procedure AtribuirDicMorfo(dic: string; textos: STextosBiblicos);
+    function AtribuirDicStrong(dic: string; textos: STextosBiblicos): boolean;
+    function AtribuirDicMorfo(dic: string; textos: STextosBiblicos): boolean;
     procedure AtribuirInfo(info, valor: string);
     function ObterInfo(info: string): string;
     function ObterTextoVersiculo(texto: TTipoTextoBiblico): string;
@@ -280,8 +281,16 @@ resourcestring
                    '    If this is the case, please file a bug in the Github project page'#13#10 +
                    '    at https://github.com/rubiot/ibiblia.';
   SStrongDictionary = 'Strong''s Dictionary';
-  SDictionaryDoesntExist = 'The selected dictionary doesn''t exist: %s';
   SMorphologyDictionary = 'Morphology Dictionary';
+  SDictionaryDoesntExist = 'The selected dictionary doesn''t exist: %s';
+  SInvalidMorphologyDictionary = 'This is not a morphology dictionary.'#13#10'Please choose a valid morphology dictionary.';
+  SInvalidStrongsDictionary = 'This is not a Strong''s dictionary.'#13#10'Please choose a valid Strong''s dictionary.';
+  SCompressedDictionary = 'Compressed dictionary';
+  SInvalidCompressedDictionary = 'iBiblia does not suppport compressed dictionaries yet.'#13#10'Please choose an uncompressed module.';
+  SEncryptedDictionary = 'Encrypted dictionary';
+  SInvalidEncryptedDictionary = 'iBiblia does not and will not support encrypted modules.'#13#10'Please choose an unencrypted module.';
+  SNonRTFDictionary = 'Non-RTF module';
+  SInvalidNonRTFDictionary = 'iBiblia only suppports RTF modules.'#13#10'Please choose another module or convert this module to RTF in theWord.';
   SOpenProject = 'Open project';
   SProjectDoesntExist = 'The selected project doesn''t exist: %s';
   SInvalidLineCount = 'Invalid file, it must have at least %d lines';
@@ -373,6 +382,76 @@ end;
 function TProjeto.GetSituacao: Integer;
 begin
   result := FTblPares.FieldByName('pare_situacao').AsInteger;
+end;
+
+function TProjeto.IsValidDicionaryModule(const path: string; const dicType: string): boolean;
+var
+  strong, morpho, encrypted, compressed, nonrtf: boolean;
+begin
+  result := false;
+  strong := false;
+  morpho := false;
+  nonrtf := false;
+  encrypted := false;
+  compressed := false;
+
+  with CriarObjetoQuery(path) do
+  begin
+    SQL.Text := 'select distinct * from config where name in (''strong'',''morph'',''compressed'',''secure'',''do.encrypt'',''content.type'')';
+    Prepare;
+    Open;
+    try
+      while not EOF do
+      begin
+        case FieldByName('name').AsString of
+          'strong':
+            strong := FieldByName('value').AsString = '1';
+          'morph':
+            morpho := FieldByName('value').AsString = '1';
+          'compressed':
+            compressed := FieldByName('value').AsString = '1';
+          'secure','do.encrypt':
+            encrypted := FieldByName('value').AsString = '1';
+          'content.type':
+            nonrtf := FieldByName('value').AsString.ToLower <> 'rtf';
+        end;
+        Next;
+      end;
+    finally
+      Close;
+      Free;
+    end;
+  end;
+
+  if (dicType = 'morph') and not morpho then
+  begin
+    MessageDlg(SMorphologyDictionary, format(SInvalidMorphologyDictionary, [FExpand(path)]), mtError, [mbOK], 0);
+    exit;
+  end else if (dicType = 'strong') and not strong then
+  begin
+    MessageDlg(SStrongDictionary, format(SInvalidStrongsDictionary, [FExpand(path)]), mtError, [mbOK], 0);
+    exit;
+  end;
+
+  if encrypted then
+  begin
+    MessageDlg(SEncryptedDictionary, format(SInvalidEncryptedDictionary, [FExpand(path)]), mtError, [mbOK], 0);
+    exit;
+  end;
+
+  if compressed then
+  begin
+    MessageDlg(SCompressedDictionary, format(SInvalidCompressedDictionary, [FExpand(path)]), mtError, [mbOK], 0);
+    exit;
+  end;
+
+  if nonrtf then
+  begin
+    MessageDlg(SNonRTFDictionary, format(SInvalidNonRTFDictionary, [FExpand(path)]), mtError, [mbOK], 0);
+    exit;
+  end;
+
+  result := true;
 end;
 
 procedure TProjeto.PreencherArvore;
@@ -1405,10 +1484,12 @@ begin
   FMemoVersiculo.Ativar(TScrollBox(Sender), TVersiculo(TScrollBox(Sender).Tag));
 end;
 
-procedure TProjeto.AtribuirDicStrong(dic: string; t: TTipoTextoBiblico);
+function TProjeto.AtribuirDicStrong(dic: string; t: TTipoTextoBiblico): boolean;
 //var
 //  t1: TTipoTextoBiblico;
 begin
+  result := false;
+
   FAVersiculo[t].OnMouseEnter := @SintagmaOnMouseEnter;
   FAVersiculo[t].OnMouseLeave := @SintagmaOnMouseLeave;
 
@@ -1420,6 +1501,9 @@ begin
     MessageDlg(SStrongDictionary, format(SDictionaryDoesntExist, [FExpand(dic)]), mtError, [mbOK], 0);
     exit;
   end;
+
+  if not IsValidDicionaryModule(dic, 'strong') then
+    exit;
 
   if assigned(FADicStrong[t]) then // liberando query se não estiver mais sendo utilizada
   begin
@@ -1450,12 +1534,16 @@ begin
     FADicStrong[t].Prepare;
     FADicStrong[t].Tag := 1;
   end;
+
+  result := true;
 end;
 
-procedure TProjeto.AtribuirDicMorfo(dic: string; t: TTipoTextoBiblico);
+function TProjeto.AtribuirDicMorfo(dic: string; t: TTipoTextoBiblico): boolean;
 //var
 //  t1: TTipoTextoBiblico;
 begin
+  result := false;
+
   if dic = '' then
     exit;
 
@@ -1464,6 +1552,9 @@ begin
     MessageDlg(SMorphologyDictionary, format(SDictionaryDoesntExist, [FExpand(dic)]), mtError, [mbOK], 0);
     exit;
   end;
+
+  if not IsValidDicionaryModule(dic, 'morph') then
+    exit;
 
   if assigned(FADicMorfo[t]) then // liberando query se não estiver mais sendo utilizada
   begin
@@ -1496,6 +1587,8 @@ begin
  end;
   FAVersiculo[t].OnMouseEnter := @SintagmaOnMouseEnter;
   FAVersiculo[t].OnMouseLeave := @SintagmaOnMouseLeave;
+
+  result := true;
 end;
 
 procedure TProjeto.AtualizarArvore;
@@ -2733,32 +2826,40 @@ begin
      result := nil;
 end;
 
-procedure TProjeto.AtribuirDicStrong(dic: string; textos: STextosBiblicos);
+function TProjeto.AtribuirDicStrong(dic: string; textos: STextosBiblicos
+  ): boolean;
 var
   t: TTipoTextoBiblico;
 begin
+  result := false;
   for t:=tbOrigem to tbConsulta2 do
   begin
     if t in textos then
     begin
-      AtribuirDicStrong(dic, t);
+      if not AtribuirDicStrong(dic, t) then
+        exit;
       AtribuirInfo(format('dicstrong%d', [t]), dic);
     end;
   end;
+  result := true;
 end;
 
-procedure TProjeto.AtribuirDicMorfo(dic: string; textos: STextosBiblicos);
+function TProjeto.AtribuirDicMorfo(dic: string; textos: STextosBiblicos
+  ): boolean;
 var
   t: TTipoTextoBiblico;
 begin
+  result := false;
   for t:=tbOrigem to tbConsulta2 do
   begin
     if t in textos then
     begin
-      AtribuirDicMorfo(dic, t);
+      if not AtribuirDicMorfo(dic, t) then
+        exit;
       AtribuirInfo(format('dicmorfo%d', [t]), dic);
     end;
   end;
+  result := true;
 end;
 
 procedure TProjeto.AtribuirInfo(info, valor: string);

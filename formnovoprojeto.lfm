@@ -1,7 +1,7 @@
 object FormNovoProjeto: TFormNovoProjeto
-  Left = 507
+  Left = 508
   Height = 437
-  Top = 227
+  Top = 228
   Width = 464
   Caption = 'New project...'
   ClientHeight = 437

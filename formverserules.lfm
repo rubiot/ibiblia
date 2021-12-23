@@ -1,9 +1,9 @@
 object FrmEscolherVerseRules: TFrmEscolherVerseRules
-  Left = 383
+  Left = 384
   Height = 237
-  Top = 214
+  Top = 215
   Width = 989
-  HorzScrollBar.Page = 976
+  HorzScrollBar.Page = 110
   VertScrollBar.Page = 52
   AutoScroll = True
   Caption = 'Choose verse rules'

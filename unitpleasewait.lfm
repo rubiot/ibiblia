@@ -1,7 +1,7 @@
 object FormPleaseWait: TFormPleaseWait
-  Left = 689
+  Left = 690
   Height = 92
-  Top = 405
+  Top = 406
   Width = 448
   BorderIcons = []
   Caption = 'Operation in progress'

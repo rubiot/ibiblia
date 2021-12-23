@@ -1,7 +1,7 @@
 object FormInterlinearVerseRules: TFormInterlinearVerseRules
-  Left = 497
+  Left = 498
   Height = 225
-  Top = 313
+  Top = 314
   Width = 856
   Caption = 'Interlinear view verse rules'
   ClientHeight = 225
