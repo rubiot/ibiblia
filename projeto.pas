@@ -2305,7 +2305,7 @@ begin
     moduleScope := etNT;
     if FEscopo = etOT then
     begin
-      ShowMessage(SModuleDoesNotIncludeScope);
+      MessageDlg(arquivo, SModuleDoesNotIncludeScope, mtError, [mbOK], 0);
       exit;
     end;
     if FEscopo = etONT then
@@ -2316,12 +2316,12 @@ begin
     moduleScope := etOT;
     if FEscopo = etNT then
     begin
-      ShowMessage(SModuleDoesNotIncludeScope);
+      MessageDlg(arquivo, SModuleDoesNotIncludeScope, mtError, [mbOK], 0);
       exit;
     end;
   end else
   begin
-    ShowMessage(SInvalidModuleType);
+    MessageDlg(arquivo, SInvalidModuleType, mtError, [mbOK], 0);
     exit;
   end;
 
@@ -2331,7 +2331,7 @@ begin
 
     if modulo.Count < QLinhas[moduleScope] then
     begin
-      MessageDlg(SError, format(SInvalidLineCount, [QLinhas[moduleScope]]), mtError, [mbOK], 0);
+      MessageDlg(arquivo, format(SInvalidLineCount, [QLinhas[moduleScope]]), mtError, [mbOK], 0);
       exit;
     end;
 
@@ -2355,7 +2355,7 @@ begin
 
       if reCharset.IsMatch(line) then
       begin
-        if MessageDlg(SWarning, SPotentialNonUTF8ModuleWarning, mtWarning, [mbIgnore, mbAbort], 0) = mrAbort then
+        if MessageDlg(arquivo, SPotentialNonUTF8ModuleWarning, mtWarning, [mbIgnore, mbAbort], 0) = mrAbort then
           exit;
       end;
 
