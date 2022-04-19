@@ -57,8 +57,6 @@ type
     FRTLMenuItem: TMenuItem;
     FFixWrongFiTag: IRegex;
     FReadOnly: Boolean;
-    FDragRect: TRect;
-    FDragging: boolean;
     //FOnNovaAssociacao: TOnAssociacaoEvent;
     //FOnRemoverAssociacao: TOnAssociacaoEvent;
     function GetAndamentoAssociacao: Single;
@@ -87,6 +85,7 @@ type
     procedure OnPasteSyntagmTags(Sender: TObject);
     procedure OnSaveTextToFile(Sender: TObject);
     procedure OnRightToLeft(Sender: TObject);
+    procedure OnVerseMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure OnResize(Sender: TObject);
     procedure OnMouseWheel(Sender: TObject; Shift: TShiftState;
              WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
@@ -123,10 +122,6 @@ type
     function GetLinhaONT(morfo: boolean; autoitalico: boolean; strongsreutilizados: boolean;
           strongsnaotraduzidos: boolean): string;
 
-    procedure OnMouseDownVerse(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-    procedure OnMouseUpVerse(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-    procedure OnMouseMoveVerse(Sender: TObject; Shift: TShiftState; X, Y: Integer);
-
     property VersiculoPar: TVersiculo read FVersiculoRef write SetVersiculoPar;
     property XML: string read FXML;
     property Texto: string read GetTexto write SetTexto;
@@ -159,7 +154,6 @@ type
     property DebugTokens: string read GetTokens;
     property ReadOnly: Boolean read FReadOnly write FReadOnly default False;
     property RightToLeft: Boolean read FRightToLeft write SetRightToLeft default False;
-    property IsDragging: Boolean read FDragging;
  published
     { Published declarations }
   end;
@@ -207,12 +201,9 @@ begin
     FEdit.OnKeyDown  := @EditKeyDown;
     FEdit.OnExit     := @EditExit;
     FPanel.InsertControl(FEdit);
-
-    FPanel.OnResize    := @OnResize;
-    FPanel.OnMouseWheel:= @OnMouseWheel;
-    FPanel.OnMouseDown := @OnMouseDownVerse;
-    FPanel.OnMouseUp   := @OnMouseUpVerse;
-    FPanel.OnMouseMove := @OnMouseMoveVerse;
+    FPanel.OnMouseDown  := @OnVerseMouseDown;
+    FPanel.OnResize     := @OnResize;
+    FPanel.OnMouseWheel := @OnMouseWheel;
   end;
 
   FStrongCount          := nil;
@@ -235,10 +226,6 @@ begin
 
   { regex to fix cases in which a <Fi> tag ends up misplaced }
   FFixWrongFiTag := RegexCreate('((?:<W[THG][^>]+>)+)(<Fi>)', [rcoUTF8]);
-  FDragRect.TopLeft.x := 0;
-  FDragRect.TopLeft.y := 0;
-  FDragRect.BottomRight := FDragRect.TopLeft;
-  FDragging := false;
 end;
 
 destructor TVersiculo.Destruir;
@@ -1414,6 +1401,13 @@ begin
   RightToLeft := not FRightToLeft;
 end;
 
+procedure TVersiculo.OnVerseMouseDown(Sender: TObject; Button: TMouseButton;
+  Shift: TShiftState; X, Y: Integer);
+begin
+  if Button = mbRight then
+    FVersePopupMenu.PopUp;
+end;
+
 procedure TVersiculo.OnResize(Sender: TObject);
 begin
   Renderizar;
@@ -1474,67 +1468,6 @@ begin
   Item.Caption := SSaveToFile;
   Item.OnClick := @OnSaveTextToFile;
   FVersePopupMenu.Items.Add(Item);
-end;
-
-procedure TVersiculo.OnMouseDownVerse(Sender: TObject; Button: TMouseButton;
-  Shift: TShiftState; X, Y: Integer);
-begin
-  if Button = mbRight then
-  begin
-    FDragRect.TopLeft.x := X;
-    FDragRect.TopLeft.y := y;
-    FDragRect.BottomRight := FDragRect.TopLeft;
-    FDragging := true;
-  end;
-end;
-
-procedure TVersiculo.OnMouseUpVerse(Sender: TObject; Button: TMouseButton;
-  Shift: TShiftState; X, Y: Integer);
-var
-  s: TSyntagm;
-begin
-  if Button = mbRight then
-  begin
-    if (FDragRect.TopLeft.x <> X) or (FDragRect.TopLeft.y <> Y) then
-    begin
-      for s in FSintagmas do
-        if assigned(s.LabelRef) and (not s.IsSelected) and s.ContainedInRect(FDragRect) then
-          s.AddToSelection;
-      FPanel.Invalidate;
-    end else
-      FVersePopupMenu.PopUp;
-
-    FDragRect.TopLeft.x := 0;
-    FDragRect.TopLeft.y := 0;
-    FDragRect.BottomRight := FDragRect.TopLeft;
-    FDragging := false;
-  end;
-end;
-
-procedure TVersiculo.OnMouseMoveVerse(Sender: TObject; Shift: TShiftState; X, Y: Integer);
-var
-  p: TPoint;
-begin
-  if FDragging then
-  begin
-    FPanel.Invalidate;
-
-    with FDragRect do
-    begin
-      BottomRight.x := X;
-      BottomRight.y := Y;
-
-      if BottomRight.x < TopLeft.x then
-      begin
-          p := TopLeft;
-          TopLeft.x     := X;
-          BottomRight.x := p.x;
-      end;
-    end;
-
-    FPanel.Canvas.Brush.Color := clRed;
-    FPanel.Canvas.FrameRect(FDragRect);
-  end;
 end;
 
 constructor TVersiculo.Criar;
