@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
-  ComCtrls, StdCtrls, ExtCtrls, Projeto, LCLTranslator, LCLIntf;
+  ComCtrls, StdCtrls, ExtCtrls, Projeto, LCLTranslator, LCLIntf, LazUTF8;
 
 type
 
@@ -40,6 +40,7 @@ type
     procedure ExportarDestinoEnriquecido;
     procedure ExportarOrigemInterlinear;
     procedure ExportarConcordancia;
+    procedure ShowExportedFile(fileName: string);
   public
     { public declarations }
     procedure SetProjeto(projeto: TProjeto);
@@ -123,7 +124,7 @@ begin
     try
        self.Enabled := false;
        FProjeto.ExportarTextoDestinoComStrongs(SaveDialog1.FileName, ProgressBar1, opcoes);
-       OpenDocument(ExtractFilePath(SaveDialog1.FileName));
+       ShowExportedFile(SaveDialog1.FileName);
     finally
       self.Enabled := true;
     end;
@@ -160,7 +161,7 @@ begin
     try
        self.Enabled:=false;
        FProjeto.ExportarTextoInterlinear(SaveDialog1.FileName, ProgressBar1, opcoes);
-       OpenDocument(ExtractFilePath(SaveDialog1.FileName));
+       ShowExportedFile(SaveDialog1.FileName);
     finally
       self.Enabled:=true;
     end;
@@ -194,13 +195,22 @@ begin
     try
        self.Enabled:=false;
        FProjeto.ExportarConcordancia(SaveDialogConcordancia.FileName, ProgressBar1, opcoes, leAbreviacao.Text);
-       OpenDocument(ExtractFilePath(SaveDialogConcordancia.FileName));
+       ShowExportedFile(SaveDialogConcordancia.FileName);
     finally
       self.Enabled:=true;
     end;
   end;
 
   FProjeto.AtribuirInfo('propriedades.abbrev', leAbreviacao.Text);
+end;
+
+procedure TFrmExportarProjeto.ShowExportedFile(fileName: string);
+begin
+  {$IFDEF WINDOWS}
+  SysUtils.ExecuteProcess(UTF8ToSys('explorer.exe'), '/select,' + fileName, []);
+  {$ELSE}
+  OpenDocument(ExtractFilePath(fileName));
+  {$ENDIF}
 end;
 
 procedure TFrmExportarProjeto.SetProjeto(projeto: TProjeto);
