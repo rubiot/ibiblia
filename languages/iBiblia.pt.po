@@ -41,6 +41,10 @@ msgstr "Modo &parágrafo"
 msgid "Previous chapter"
 msgstr "Capítulo anterior"
 
+#: chapterview.sprintchapter
+msgid "Print chapter"
+msgstr "Imprimir capítulo..."
+
 #: chapterview.ssetfont
 msgid "Choose &font..."
 msgstr "Selecionar &fonte..."
@@ -50,6 +54,7 @@ msgid "Verse &rules..."
 msgstr "Regras de &transformação (verse rules)..."
 
 #: formapplypatch.signoredversesonpatch
+#, object-pascal-format
 msgctxt "formapplypatch.signoredversesonpatch"
 msgid "%d verses are identical to what you have in your project and were ignored."
 msgstr "%d versículos são idênticos aos do seu projeto e foram ignorados."
@@ -161,6 +166,7 @@ msgid "A project file with this name already exists"
 msgstr "Um projeto com este nome já existe"
 
 #: formprincipal.sloadingfile
+#, object-pascal-format
 msgid "Loading %s..."
 msgstr "Carregando %s..."
 
@@ -174,9 +180,13 @@ msgid "Open project"
 msgstr "Abrir projeto"
 
 #: formprincipal.sprojectfiledoesnotexist
+#, fuzzy, object-pascal-format
+#| msgid ""
+#| "The selected project file doesn't exist:\n"
+#| "%s\n"
 msgid ""
 "The selected project file doesn't exist:\n"
-"%s\n"
+"%s"
 msgstr ""
 "O arquivo de projeto selecionado não existe:\n"
 "%s\n"
@@ -240,10 +250,15 @@ msgid "Are you sure you want to replace this Bible text with a new one?"
 msgstr "Tem certeza de que quer substituir o texto atual por outro?"
 
 #: formpropprojeto.schangetextconfirmationassociation
+#, fuzzy
+#| msgid ""
+#| "Loading a new Bible text will cause all your existing associations to be discarded. But, if you click 'Yes', iBiblia can try to keep existing associations for you.\n"
+#| "\n"
+#| "Would you like iBiblia to do that?\n"
 msgid ""
 "Loading a new Bible text will cause all your existing associations to be discarded. But, if you click 'Yes', iBiblia can try to keep existing associations for you.\n"
 "\n"
-"Would you like iBiblia to do that?\n"
+"Would you like iBiblia to do that?"
 msgstr ""
 "Carregar um novo texto fará com que as associações existentes sejam descartadas. Mas, se você clicar no botão \"Sim\", o iBiblia pode tentar manter as suas associações.\n"
 "\n"
@@ -272,9 +287,13 @@ msgid "Are you sure you want to clear this Bible text?"
 msgstr "Tem certeza de que deseja limpar este texto?"
 
 #: formpropprojeto.scleartextconfirmationassociation
+#, fuzzy
+#| msgid ""
+#| "Are you sure you want to clear this Bible text?\n"
+#| "All your associations will be lost!\n"
 msgid ""
 "Are you sure you want to clear this Bible text?\n"
-"All your associations will be lost!\n"
+"All your associations will be lost!"
 msgstr ""
 "Tem certeza de que quer limpar este texto?\n"
 "Todas as suas associações serão perdidas!\n"
@@ -463,13 +482,21 @@ msgid "Confirmation"
 msgstr "Confirmação"
 
 #: projeto.scorrupteddata
+#, fuzzy
+#| msgid ""
+#| "Corrupted data, some associations may be lost.This can happen for several reasons:\n"
+#| " 1. The project file was modified outside iBiblia\n"
+#| " 2. The project was created/edited on an incompatible iBiblia version\n"
+#| " 3. This can be a bug in iBiblia.\n"
+#| "    If this is the case, please file a bug in the Github project page\n"
+#| "    at https://github.com/rubiot/ibiblia.\n"
 msgid ""
 "Corrupted data, some associations may be lost.This can happen for several reasons:\n"
 " 1. The project file was modified outside iBiblia\n"
 " 2. The project was created/edited on an incompatible iBiblia version\n"
 " 3. This can be a bug in iBiblia.\n"
 "    If this is the case, please file a bug in the Github project page\n"
-"    at https://github.com/rubiot/ibiblia.\n"
+"    at https://github.com/rubiot/ibiblia."
 msgstr ""
 "Dados inconsistentes, algumas associações podem ser perdidas. Isso pode ocorrer por várias razões:\n"
 "1. O projeto foi modificado fora do iBiblia\n"
@@ -487,6 +514,7 @@ msgid "Deuteronomy"
 msgstr "Deuteronômio"
 
 #: projeto.sdictionarydoesntexist
+#, object-pascal-format
 msgid "The selected dictionary doesn't exist: %s"
 msgstr "O dicionário selecionado não existe: %s"
 
@@ -523,9 +551,13 @@ msgid "Please choose a destination file"
 msgstr "Escolha o arquivo de destino"
 
 #: projeto.sexporttofileerror
+#, fuzzy
+#| msgid ""
+#| "iBiblia found an error while exporting the Bible module file.\n"
+#| "Please check if theWord is using the file, then close it and try again.\n"
 msgid ""
 "iBiblia found an error while exporting the Bible module file.\n"
-"Please check if theWord is using the file, then close it and try again.\n"
+"Please check if theWord is using the file, then close it and try again."
 msgstr ""
 "iBiblia encontrou um erro ao salvar o módulo.\n"
 "Verifique se o theWord está usando o arquivo. Se sim,\n"
@@ -542,6 +574,7 @@ msgid "Ezra"
 msgstr "Esdras"
 
 #: projeto.sfailedtocreatefile
+#, object-pascal-format
 msgid "Failed to create file: %s"
 msgstr "Falha ao criar arquivo: %s"
 
@@ -585,38 +618,55 @@ msgid "Information"
 msgstr "Informação"
 
 #: projeto.sinterlinearverserulereplaceerror
+#, fuzzy
+#| msgid ""
+#| "There is something wrong with one of your interlinear verse rules.\n"
+#| "Please review them.\n"
 msgid ""
 "There is something wrong with one of your interlinear verse rules.\n"
-"Please review them.\n"
+"Please review them."
 msgstr ""
 "Há um problema com pelo menos uma de suas verse rules.\n"
 "Por favor, revise-as.\n"
 
 #: projeto.sinvalidcompresseddictionary
+#, fuzzy
+#| msgid ""
+#| "iBiblia does not suppport compressed dictionaries yet.\n"
+#| "Please choose an uncompressed module.\n"
 msgid ""
 "iBiblia does not suppport compressed dictionaries yet.\n"
-"Please choose an uncompressed module.\n"
+"Please choose an uncompressed module."
 msgstr ""
 "O iBiblia ainda não suporta dicionários compactados.\n"
 "Por favor, escolha um módulo sem compactação.\n"
 
 #: projeto.sinvalidencrypteddictionary
+#, fuzzy
+#| msgid ""
+#| "iBiblia does not and will not support encrypted modules.\n"
+#| "Please choose an unencrypted module.\n"
 msgid ""
 "iBiblia does not and will not support encrypted modules.\n"
-"Please choose an unencrypted module.\n"
+"Please choose an unencrypted module."
 msgstr ""
 "O iBiblia não suporta (e nem suportará) módulos criptografados.\n"
 "Por favor, escolha um módulo sem criptografia.\n"
 
 #: projeto.sinvalidinterlinearverserule
+#, fuzzy, object-pascal-format
+#| msgid ""
+#| "There is something wrong with your interlinear verse rule.\n"
+#| "[%s]\n"
 msgid ""
 "There is something wrong with your interlinear verse rule.\n"
-"[%s]\n"
+"[%s]"
 msgstr ""
 "Há um problema com sua verse rule.\n"
 "[%s]\n"
 
 #: projeto.sinvalidlinecount
+#, object-pascal-format
 msgid "Invalid file, it must have at least %d lines"
 msgstr "Arquivo inválido, ele precisa ter ao menos %d linhas"
 
@@ -625,25 +675,37 @@ msgid "Unknown module extension. Please choose a valid theWord Bible module (.ot
 msgstr "Módulo com extensão desconhecida. Por favor, escolha um módulo válido do theWord (.ot, .ont ou .nt)"
 
 #: projeto.sinvalidmorphologydictionary
+#, fuzzy
+#| msgid ""
+#| "This is not a morphology dictionary.\n"
+#| "Please choose a valid morphology dictionary.\n"
 msgid ""
 "This is not a morphology dictionary.\n"
-"Please choose a valid morphology dictionary.\n"
+"Please choose a valid morphology dictionary."
 msgstr ""
 "Este não é um dicionário de morfologia.\n"
 "Por favor, escolha um dicionário de morfologia válido.\n"
 
 #: projeto.sinvalidnonrtfdictionary
+#, fuzzy
+#| msgid ""
+#| "iBiblia only suppports RTF modules.\n"
+#| "Please choose another module or convert this module to RTF in theWord.\n"
 msgid ""
 "iBiblia only suppports RTF modules.\n"
-"Please choose another module or convert this module to RTF in theWord.\n"
+"Please choose another module or convert this module to RTF in theWord."
 msgstr ""
 "O iBiblia só suporta módulos no formato RTF.\n"
 "Por favor, escolha outro módulo ou converta este módulo para RTF no theWord.\n"
 
 #: projeto.sinvalidstrongsdictionary
+#, fuzzy
+#| msgid ""
+#| "This is not a Strong's dictionary.\n"
+#| "Please choose a valid Strong's dictionary.\n"
 msgid ""
 "This is not a Strong's dictionary.\n"
-"Please choose a valid Strong's dictionary.\n"
+"Please choose a valid Strong's dictionary."
 msgstr ""
 "Este não é um dicionário de Strong.\n"
 "Por favor, escolha um dicionário de Strong válido.\n"
@@ -805,6 +867,7 @@ msgid "This module has a 'charset' property and this may be an indication that t
 msgstr "Este módulo contém a propriedade 'charset', o que pode indicar que ele não é um módulo UTF-8. O iBiblia não foi projetado para trabalhar com este tipo de módulo. Escolha 'Ignorar' para ignorar este aviso e continuar por sua própria conta e risco, ou 'Abortar' para abortar a operação e escolher outro módulo."
 
 #: projeto.sprojectdoesntexist
+#, object-pascal-format
 msgid "The selected project doesn't exist: %s"
 msgstr "O projeto selecionado não existe: %s"
 
@@ -823,9 +886,13 @@ msgid "Reference not found"
 msgstr "Referência não encontrada"
 
 #: projeto.sreferencenotfoundwarning
+#, fuzzy, object-pascal-format
+#| msgid ""
+#| "The reference %s is not a valid reference in this project and will be ignored.\n"
+#| "Press Ignore to ignore all subsequent warnings.\n"
 msgid ""
 "The reference %s is not a valid reference in this project and will be ignored.\n"
-"Press Ignore to ignore all subsequent warnings.\n"
+"Press Ignore to ignore all subsequent warnings."
 msgstr ""
 "A referência %s não é válida neste projeto e será ignorada.\n"
 "Clique em Ignorar para não mostrar mais esta mensagem.\n"
@@ -1668,9 +1735,13 @@ msgid "Exit the program"
 msgstr "Sair do programa"
 
 #: twautomate.stwsynchronizationerror
+#, fuzzy
+#| msgid ""
+#| "Failed to detect theWord's current verse.\n"
+#| "Please restart theWord if you have switched its current language.\n"
 msgid ""
 "Failed to detect theWord's current verse.\n"
-"Please restart theWord if you have switched its current language.\n"
+"Please restart theWord if you have switched its current language."
 msgstr ""
 "Falha na detecção do versículo atual do theWord.\n"
 "Se você tiver trocado o idioma no theWord, você precisa reiniciá-lo.\n"

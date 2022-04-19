@@ -7,8 +7,8 @@ interface
 uses
   Classes, SysUtils, Forms, Graphics, ONTTokenizer, LCLType, HTMLColors,
   LazUTF8, Projeto, PCRE, Controls, Menus, fgl, Dialogs, Math, Contnrs, KMemo,
-  KEditCommon, KGraphics, formInterlinearVerseRules, LCLTranslator, LazLogger,
-  StdCtrls;
+  KEditCommon, KGraphics, KDialogs, formInterlinearVerseRules,
+  LCLTranslator, LazLogger, StdCtrls;
 
 type
 
@@ -87,6 +87,7 @@ type
     FInterlinearModeItem: TMenuItem;
     FInterlinearModeInterItem: TMenuItem;
     FInterlinearModeIntraItem: TMenuItem;
+    FPrintChapterItem: TMenuItem;
     FStyleStack: TObjectStack;
     FVerseRanges: array of TBlockRange;
     FCurrentVerse: integer;
@@ -119,6 +120,7 @@ type
     procedure HandleDoubleClick(Sender: TObject);
     procedure HandleContextPopup(Sender: TObject; MousePos: TPoint; var Handled: Boolean);
     procedure HandleSetFont(Sender: TObject);
+    procedure HandlePrintChapter(Sender: TObject);
     procedure HandleParagraphMode(Sender: TObject);
     procedure HandleVerseRules(Sender: TObject);
     procedure HandleInterlinearMode(Sender: TObject);
@@ -162,6 +164,7 @@ const
 resourcestring
   SSetFont = 'Choose &font...';
   SParagraphMode = '&Paragraph mode';
+  SPrintChapter = 'Print chapter';
   SVerseRules = 'Verse &rules...';
   SInterlinearMode = 'Interlinear layout...';
   SInterlinearModeInter = 'Interlinear';
@@ -819,6 +822,19 @@ begin
   dialog.Free;
 end;
 
+procedure TChapterView.HandlePrintChapter(Sender: TObject);
+var
+  setup: TKPrintSetupDialog;
+begin
+  setup := TKPrintSetupDialog.Create(nil);
+  try
+     setup.Control := self;
+     setup.Execute;
+  finally
+    setup.Free;
+  end;
+end;
+
 procedure TChapterView.HandleParagraphMode(Sender: TObject);
 begin
   if ParagraphMode = pmParagraph then
@@ -923,6 +939,15 @@ begin
     OnClick := @HandleVerseRules;
   end;
   PopupMenu.Items.Add(FVerseRulesItem);
+
+  { Print }
+  FPrintChapterItem := TMenuItem.Create(PopupMenu);
+  with FPrintChapterItem do
+  begin
+    Caption := SPrintChapter;
+    OnClick := @HandlePrintChapter;
+  end;
+  PopupMenu.Items.Add(FPrintChapterItem);
 end;
 
 procedure TChapterView.SetParagraphMode(AValue: TParagraphMode);
@@ -1224,6 +1249,7 @@ begin
   FInterlinearModeInterItem.Caption := SInterlinearModeInter;
   FInterlinearModeIntraItem.Caption := SInterlinearModeIntra;
   FVerseRulesItem.Caption           := SVerseRules;
+  FPrintChapterItem.Caption         := SPrintChapter;
   LoadChapter;
 end;
 
