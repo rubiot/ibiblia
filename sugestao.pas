@@ -356,7 +356,7 @@ begin
   FQryInserirLdes.Params[2].AsString := locucao;
   FQryInserirLdes.ExecSQL;
 
-  // sintagmas locucao idicma origem
+  // sintagmas locucao idioma origem
   for s:=0 to FStrList.Count-1 do
   begin
     FQryInserirSdes.Close;

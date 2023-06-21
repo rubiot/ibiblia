@@ -341,7 +341,7 @@ end;
 
 procedure TSyntagm.DoOnRightClick(Sender: TObject; Shift: TShiftState);
 var
-  LastSelected: TSyntagm;
+  LastSelected, NextUnassociated: TSyntagm;
   verse: TVersiculo;
 begin
   {if ssShift in Shift then
@@ -375,12 +375,19 @@ begin
   end;
 
   if not (ssCtrl in Shift) and (verse.VersiculoPar.Selecao.Count > 0) then
-  begin
+  begin // right-click with no modifiers triggers auto-select next syntagm
     LastSelected := verse.VersiculoPar.Selecao[verse.VersiculoPar.Selecao.Count-1];
     verse.LimparSelecao;
     verse.VersiculoPar.LimparSelecao;
-    if Assigned(LastSelected) and Assigned(LastSelected.GetNextUnassociated) then
-      LastSelected.GetNextUnassociated.AddToSelection;
+    if Assigned(LastSelected) then
+    begin
+      NextUnassociated := LastSelected.GetNextUnassociated;
+      if Assigned(NextUnassociated) then
+      begin
+        NextUnassociated.AddToSelection;
+        verse.OnClick(NextUnassociated); // triggers left-click on newly selected syntagm
+      end;
+    end;
   end;
 
   verse.Renderizar;

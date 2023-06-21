@@ -16,13 +16,18 @@ type
     first, last: integer;
   end;
 
+  TChapterView = class;
+
   { TRawChapterMemo }
 
   TRawChapterMemo = class(TMemo)
   private
+    FChapterView: TChapterView;
     procedure HandleOnKeyDown(Sender: TObject; var Key: word; Shift: TShiftState);
+    procedure HandleOnMouseWheel(Sender: TObject; Shift: TShiftState;
+      WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
   public
-    constructor Create(AOwner: TComponent); overload;
+    constructor Create(AOwner: TComponent; ChapterView: TChapterView); overload;
     destructor Destroy; override;
 
     procedure Show(aText: string);
@@ -49,8 +54,6 @@ type
     property FirstBlock: integer read FRange.first write FRange.first;
     property LastBlock: integer read FRange.last write FRange.last;
   end;
-
-  TChapterView = class;
 
   { TNoteWindow }
 
@@ -184,18 +187,29 @@ begin
     Hide;
 end;
 
-constructor TRawChapterMemo.Create(AOwner: TComponent);
+procedure TRawChapterMemo.HandleOnMouseWheel(Sender: TObject;
+  Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint;
+  var Handled: Boolean);
+begin
+  if ssCtrl in Shift then
+    Font.Size := Font.Size + Sign(WheelDelta) * 1;
+end;
+
+constructor TRawChapterMemo.Create(AOwner: TComponent; ChapterView: TChapterView
+  );
 begin
   inherited Create(nil);
 
   Visible    := False;
   Parent     := TWinControl(AOwner);
+  FChapterView := ChapterView;
   Align      := alClient;
   ScrollBars := ssAutoVertical;
   ParentFont := False;
   Font.Name  := 'Courier New';
   ReadOnly   := true;
   OnKeyDown  := @HandleOnKeyDown;
+  OnMouseWheel := @HandleOnMouseWheel;
 end;
 
 destructor TRawChapterMemo.Destroy;
@@ -205,6 +219,7 @@ end;
 
 procedure TRawChapterMemo.Show(aText: string);
 begin
+  Font.Size := FChapterView.FontSize;
   Text := aText;
   BringToFront;
   Visible := True;
@@ -214,6 +229,7 @@ end;
 procedure TRawChapterMemo.Hide;
 begin
   Visible := false;
+  //FChapterView.FontSize := Font.Size;
 end;
 
 { TNoteWindow }
@@ -1226,7 +1242,7 @@ begin
   InitPopupMenu;
 
   FStyleStack := TObjectStack.Create;
-  FRawMemo    := TRawChapterMemo.Create(Parent);
+  FRawMemo    := TRawChapterMemo.Create(Parent, Self);
 end;
 
 destructor TChapterView.Destroy;

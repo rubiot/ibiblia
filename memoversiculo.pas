@@ -9,7 +9,7 @@ uses
   {$IFNDEF UNIX}
   Windows,
   {$ENDIF}
-  Dialogs, Versiculo;
+  Dialogs, Versiculo, Math;
 
 type
 
@@ -25,6 +25,8 @@ type
     FVersiculo: TVersiculo;
     FEventoTextoModificado: TEventoTextoModificado;
     function GetTexto: TCaption;
+    procedure OnMouseWheel(Sender: TObject; Shift: TShiftState;
+             WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
   protected
     procedure OnKeyDown(Sender: TObject; var Key: word; Shift: TShiftState);
     procedure OnChange(Sender: TObject);
@@ -52,10 +54,22 @@ begin
   result := FMemo.Text;
 end;
 
+procedure TMemoVersiculo.OnMouseWheel(Sender: TObject; Shift: TShiftState;
+  WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
+begin
+  if ssCtrl in Shift then
+  begin
+    FMemo.Font.Size := FMemo.Font.Size + Sign(WheelDelta) * 1;
+  end;
+end;
+
 procedure TMemoVersiculo.OnKeyDown(Sender: TObject; var Key: word; Shift: TShiftState);
 begin
   if Key = VK_ESCAPE then
-    ConfirmarAlteracao
+  begin
+    ConfirmarAlteracao;
+    FVersiculo.Fonte.Size := FMemo.Font.Size;
+  end
   else if Key = VK_RETURN then
     Key := 0;
 end;
@@ -86,15 +100,16 @@ end;
 constructor TMemoVersiculo.Criar;
 begin
   FMemo := TMemo.Create(nil);
-  FMemo.Visible    := False;
-  FMemo.Align      := alClient;
-  FMemo.ScrollBars := ssAutoVertical;
-  FMemo.OnKeyDown  := @OnKeyDown;
-  FMemo.OnChange   := @OnChange;
-  FMemo.ParentFont := False;
-  FMemo.Font.Name  := 'Courier New';
-  FModificado      := False;
-  FVersiculo       := nil;
+  FMemo.Visible      := False;
+  FMemo.Align        := alClient;
+  FMemo.ScrollBars   := ssAutoVertical;
+  FMemo.OnKeyDown    := @OnKeyDown;
+  FMemo.OnChange     := @OnChange;
+  FMemo.OnMouseWheel := @OnMouseWheel;
+  FMemo.ParentFont   := False;
+  FMemo.Font.Name    := 'Courier New';
+  FModificado        := False;
+  FVersiculo         := nil;
   FEventoTextoModificado := nil;
 end;
 
@@ -111,6 +126,7 @@ begin
     exit;
   end;
 
+  FMemo.Font.Size := versiculo.Fonte.Size;
   FModificado := False;
   FVersiculo := versiculo;
   FMemo.Parent := nil;  // flag sinalizando que não se deve disparar evento OnChange

@@ -2052,10 +2052,6 @@ begin
 
   PreRolagemVersiculo(nil);
 
-  for t:=low(FAVersiculo) to high(FAVersiculo) do // saving font sizes
-    if assigned(FAVersiculo[t]) then
-      AtribuirInfo(format('fonte%d.tamanho', [t]), IntToStr(FAVersiculo[t].Fonte.Size));
-
   if _Commit then
   begin
     AtribuirInfo('marcador', FTblPares.FieldByName('pare_id').AsString);
@@ -2063,6 +2059,12 @@ begin
   end
   else
     Rollback;
+
+  // always saving font sizes
+  for t:=low(FAVersiculo) to high(FAVersiculo) do
+    if assigned(FAVersiculo[t]) then
+      AtribuirInfo(format('fonte%d.tamanho', [t]), IntToStr(FAVersiculo[t].Fonte.Size));
+  Commit;
 
   FTblPares.Close;
   FreeAndNil(FTblPares);
