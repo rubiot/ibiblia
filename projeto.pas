@@ -139,6 +139,7 @@ type
     procedure ExportTheWordBible(verses: TStringList; filename: string; props: string);
     procedure ExportMySwordBible(verses: TStringList; filename: string; props: string);
     procedure HighlightStrongs(syntagm: TSyntagm);
+    procedure UpdateReference(ref: string);
   protected
     procedure CopiarArquivo(origem, destino: string);
     function CriarObjetoTabela(db, tabela, chave: string): TSqlite3Dataset;
@@ -691,6 +692,11 @@ begin
       FAVersiculo[v].EnableStrongHighlight(strong);
   end;
 end;
+procedure TProjeto.UpdateReference(ref: string);
+begin
+  Sscanf(ref, '%d,%d,%d', [@FReference.BookID, @FReference.Chapter, @FReference.Verse]);
+  FReference.Book := NLivros[FEscopo][FReference.BookID-OffsetLivros[FEscopo]-1];
+end;
 
 function TProjeto.GetModificado: boolean;
 var
@@ -1125,9 +1131,7 @@ var
   e: TOnNovoVersiculoEvent;
   //starttime: DWord;
 begin
-  // updating current reference
-  Sscanf(GetID(), '%d,%d,%d', [@FReference.BookID, @FReference.Chapter, @FReference.Verse]);
-  FReference.Book := NLivros[FEscopo][FReference.BookID-OffsetLivros[FEscopo]-1];
+  UpdateReference(GetID());
 
   if not FScrollEventsEnabled then
     exit;
@@ -2114,7 +2118,11 @@ begin
   if Referencia.IsEmpty then
     Referencia := format('%d,1,1', [OffsetLivros[FEscopo] + 1]);
 
-  if ID <> Referencia then
+  if ID = Referencia then
+  begin // if FTblPares.Locate is not called, PosRolagemVersiculo won't either
+     UpdateReference(Referencia);
+  end
+  else
   begin
     FTblPares.Locate('pare_id', Referencia, []);
     if ID <> Referencia then
