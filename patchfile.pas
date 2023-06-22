@@ -90,7 +90,7 @@ procedure TPatchFile.LoadFromFile(patchfile: string);
   begin
     result := false;
     try
-      project.IrPara(patch[0]);
+      project.GoToReference(patch[0]);
     except
       exit;
     end;

@@ -650,7 +650,7 @@ end;
 
 procedure TChapterView.HandleReferenceClick(sender: TObject);
 begin
-  FProject.IrPara(TKMemoHyperlink(Sender).URL);
+  FProject.GoToReference(TKMemoHyperlink(Sender).URL);
 end;
 
 procedure TChapterView.HandleNoteLinkClick(sender: TObject);

@@ -83,7 +83,7 @@ begin
     ProjetoAtual.StartScrollingSession;
     for ref in refs do
     begin
-      ProjetoAtual.IrPara(ref);
+      ProjetoAtual.GoToReference(ref);
       DebugLn('exporting %s (%s)', [ref, ProjetoAtual.FormattedReference]);
       result.Add(ref,
                  ProjetoAtual.ObterTextoVersiculo(tbOrigem),

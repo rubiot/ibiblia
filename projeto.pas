@@ -17,7 +17,7 @@ uses
   SysUtils, Sqlite3DS, sqlite3conn, sqldb, db, StrUtils, math,
   ExtCtrls, Controls, ComCtrls, StdCtrls, Graphics, Forms, Versiculo, Sugestao,
   MemoVersiculo, ONTTokenizer, Dialogs, dos, PCRE, ExportarProjeto, LazLogger,
-  Syntagm, MySwordModule, TheWordDictionary, fgl, PatchFile, LCLIntf;
+  Syntagm, MySwordModule, TheWordDictionary, fgl, PatchFile, LCLIntf, menus;
 
 type
 
@@ -101,6 +101,7 @@ type
     FSugeridor: TGerSugestoes;
     FParesAntigos: TStringList;
     FArvore: TTreeView;
+    FBibleTreePointedNode: TTreeNode;
     FMemoComentarios: TMemo;
     FRadioGroupSituacao: TRadioGroup;
     FTemporizador: TTimer;
@@ -139,7 +140,9 @@ type
     procedure ExportTheWordBible(verses: TStringList; filename: string; props: string);
     procedure ExportMySwordBible(verses: TStringList; filename: string; props: string);
     procedure HighlightStrongs(syntagm: TSyntagm);
+    function CreateBibleTreeContextMenu: TPopupMenu;
     procedure UpdateReference(ref: string);
+    function BibleTreeNodeToReference(const node: TTreeNode): TReference;
   protected
     procedure CopiarArquivo(origem, destino: string);
     function CriarObjetoTabela(db, tabela, chave: string): TSqlite3Dataset;
@@ -166,6 +169,8 @@ type
     procedure OnAlterarTextoVersiculo(Sender: TMemoVersiculo);
     procedure OnExibirDefinicao(Sender: TObject);
     procedure OnDblClickVersiculo(Sender: TObject);
+    procedure OnBibleTreePopupItemClick(Sender: TObject);
+    procedure OnBibleTreeContextPopup(Sender: TObject; MousePos: TPoint; var Handled: Boolean);
     function AtribuirDicStrong(dic: string; t: TTipoTextoBiblico): boolean;
     function AtribuirDicMorfo(dic: string; t: TTipoTextoBiblico): boolean;
     procedure AtualizarArvore;
@@ -181,7 +186,8 @@ type
     procedure Fechar(_Commit: boolean);
     procedure Commit;
     procedure Rollback;
-    procedure IrPara(Referencia: string);
+    procedure GoToReference(reference: string);
+    procedure GoToReference(reference: TReference);
     procedure VersiculoSeguinte;
     procedure VersiculoAnterior;
     procedure VersiculoInicial;
@@ -372,7 +378,7 @@ begin
   result := '';
   StartScrollingSession;
   try
-    IrPara(ref);
+    GoToReference(ref);
     if ID = ref then
       result := GetPairs();
   finally
@@ -581,7 +587,7 @@ begin
     StartScrollingSession;
     for i in indexes do
     begin
-      IrPara(patch.Reference[i]);
+      GoToReference(patch.Reference[i]);
 
       if ID <> patch.Reference[i] then
       begin
@@ -692,10 +698,77 @@ begin
       FAVersiculo[v].EnableStrongHighlight(strong);
   end;
 end;
+
+function TProjeto.CreateBibleTreeContextMenu: TPopupMenu;
+
+  procedure AddSubItemForStatus(item: TMenuItem; status: Integer);
+  var
+    subitem: TMenuItem;
+  begin
+    subitem := TMenuItem.Create(item);
+    with subitem do
+    begin
+      Caption := FRadioGroupSituacao.Items[status];
+      OnClick := @OnBibleTreePopupItemClick;
+      ImageIndex := status;
+      Tag := status;
+    end;
+    item.Add(subitem);
+  end;
+
+var
+  item: TMenuItem;
+  status: Integer;
+begin
+  result := TPopupMenu.Create(FArvore);
+  result.Parent := FArvore;
+  result.Images := FArvore.Images;
+
+  item := TMenuItem.Create(result);
+  item.Caption := 'Set status of all children to...';
+  result.Items.Add(item);
+  for status:=0 to 3 do
+    AddSubItemForStatus(item, status);
+end;
+
 procedure TProjeto.UpdateReference(ref: string);
 begin
   Sscanf(ref, '%d,%d,%d', [@FReference.BookID, @FReference.Chapter, @FReference.Verse]);
   FReference.Book := NLivros[FEscopo][FReference.BookID-OffsetLivros[FEscopo]-1];
+end;
+
+function TProjeto.BibleTreeNodeToReference(const node: TTreeNode): TReference;
+var
+  ch, bk, vs: TTreeNode;
+  i: Integer;
+begin
+  if node.HasChildren then // node is either a chapter or a book
+  begin
+    if assigned(node.Parent) then // chapter
+    begin
+      ch := node;
+      bk := ch.Parent;
+      vs := ch.GetFirstChild;
+    end else begin // book
+      bk := node;
+      ch := bk.GetFirstChild;
+      vs := ch.GetFirstChild;
+    end;
+  end else begin // verse
+    vs := node;
+    ch := vs.Parent;
+    bk := ch.Parent;
+  end;
+
+  for i:=0 to QLivros[FEscopo]-1 do
+    if NLivros[FEscopo][i] = bk.Text then
+      break;
+
+  result.BookID  := i+1+OffsetLivros[FEscopo];
+  result.Book    := NLivrosONT[result.BookID];
+  result.Chapter := StrToInt(ch.Text);
+  result.Verse   := StrToInt(vs.Text);
+  //GoToReference(format('%d,%s,%s', [i+1+OffsetLivros[FEscopo], c.Text, v.Text]));
 end;
 
 function TProjeto.GetModificado: boolean;
@@ -850,7 +923,7 @@ begin
   result := '';
   StartScrollingSession;
   try
-    IrPara(ref);
+    GoToReference(ref);
     if ID = ref then
       result := GetComentarios;
   finally
@@ -1360,36 +1433,10 @@ begin
 end;
 
 procedure TProjeto.OnMudancaVersiculo(Sender: TObject; Node: TTreeNode);
-var
-  l, c, v: TTreeNode;
-  i: smallint;
 begin
   if not FScrollEventsEnabled or not assigned(FTblPares) or FClosing or not assigned(Node) then
     exit;
-
-  if Node.HasChildren then // capítulo ou livro
-  begin
-    if assigned(Node.Parent) then // capitulo
-    begin
-      c := Node;
-      l := c.Parent;
-      v := c.GetFirstChild;
-    end else begin // livro
-      l := Node;
-      c := l.GetFirstChild;
-      v := c.GetFirstChild;
-    end;
-  end else begin // versículo
-    v := Node;
-    c := v.Parent;
-    l := c.Parent;
-  end;
-
-  for i:=0 to QLivros[FEscopo]-1 do
-    if NLivros[FEscopo][i] = l.Text then
-      break;
-
-  IrPara(format('%d,%s,%s', [i+1+OffsetLivros[FEscopo], c.Text, v.Text]));
+  GoToReference(BibleTreeNodeToReference(Node));
 end;
 
 procedure TProjeto.OnAlterarTextoVersiculo(Sender: TMemoVersiculo);
@@ -1417,8 +1464,6 @@ begin
 
       break;
     end;
-
-
   //MessageDlg('Versículo modificado', format('Versiculo modificado: %s', [Sender.Texto]), mtError, [mbOK], 0);
 end;
 
@@ -1486,6 +1531,61 @@ begin
     exit;
 
   FMemoVersiculo.Ativar(TScrollBox(Sender), TVersiculo(TScrollBox(Sender).Tag));
+end;
+
+procedure TProjeto.OnBibleTreePopupItemClick(Sender: TObject);
+
+  function SameReference(a, b: TReference): boolean;
+  begin
+    result := (a.Book = b.Book) and (a.BookID = b.BookID) and (a.Chapter = b.Chapter) and (a.Verse = b.Verse);
+  end;
+
+  procedure SetNodeStatus(node: TTreeNode; status: Integer);
+  begin
+    GoToReference(BibleTreeNodeToReference(node));
+    SetSituacao(status);
+    //node.ImageIndex := status;
+  end;
+
+  procedure SetSubTreeStatus(parent: TTreeNode; status: Integer);
+  var
+    node: TTreeNode;
+  begin
+    node := parent.GetFirstChild;
+    while assigned(node) do
+    begin
+      if node.HasChildren then
+      begin
+        SetSubTreeStatus(node, status);
+        if assigned(node.Parent) then // has children and parent, this is a chapter node
+          node.ImageIndex := status;
+      end
+      else
+        SetNodeStatus(node, status);
+      node := node.GetNextSibling;
+    end;
+  end;
+
+var
+  item: TMenuItem;
+begin
+  item := TMenuItem(Sender);
+  try
+    StartScrollingSession;
+    SetSubTreeStatus(FBibleTreePointedNode, item.Tag);
+  finally
+    FinishScrollingSession;
+  end;
+
+  Atualizar;
+end;
+
+procedure TProjeto.OnBibleTreeContextPopup(Sender: TObject; MousePos: TPoint;
+  var Handled: Boolean);
+begin
+  FBibleTreePointedNode := (Sender as TTreeView).GetNodeAt(MousePos.X, MousePos.Y);
+  if (not Ativo) or (FBibleTreePointedNode = nil) or (not FBibleTreePointedNode.HasChildren) then
+    Handled := True;
 end;
 
 function TProjeto.AtribuirDicStrong(dic: string; t: TTipoTextoBiblico): boolean;
@@ -2033,9 +2133,11 @@ begin
   FTblPares.BeforeScroll := @PreRolagemVersiculo;
   FTblPares.AfterScroll  := @PosRolagemVersiculo;
   FArvore.OnChange       := @OnMudancaVersiculo;
+  FArvore.OnContextPopup := @OnBibleTreeContextPopup;
+  FArvore.PopupMenu := CreateBibleTreeContextMenu;
 
   ScrollEventsEnabled := true;
-  IrPara(ObterInfo('marcador'));
+  GoToReference(ObterInfo('marcador'));
 
   FAtivo := true;
   FDisplayTags := false;
@@ -2113,21 +2215,26 @@ begin
   FSugeridor.Rollback;
 end;
 
-procedure TProjeto.IrPara(Referencia: string);
+procedure TProjeto.GoToReference(reference: string);
 begin
-  if Referencia.IsEmpty then
-    Referencia := format('%d,1,1', [OffsetLivros[FEscopo] + 1]);
+  if reference.IsEmpty then
+    reference := format('%d,1,1', [OffsetLivros[FEscopo] + 1]);
 
-  if ID = Referencia then
+  if ID = reference then
   begin // if FTblPares.Locate is not called, PosRolagemVersiculo won't either
-     UpdateReference(Referencia);
+     UpdateReference(reference);
   end
   else
   begin
-    FTblPares.Locate('pare_id', Referencia, []);
-    if ID <> Referencia then
-      raise Exception.Create(Format('Reference not found in project [%s]', [Referencia]));
+    FTblPares.Locate('pare_id', reference, []);
+    if ID <> reference then
+      raise Exception.Create(Format('Reference not found in project [%s]', [reference]));
   end;
+end;
+
+procedure TProjeto.GoToReference(reference: TReference);
+begin
+  GoToReference(format('%d,%d,%d', [reference.BookID, reference.Chapter, reference.Verse]));
 end;
 
 procedure TProjeto.VersiculoSeguinte;
@@ -2893,7 +3000,7 @@ begin
   result := SVerseAbsentFromProject;
   StartScrollingSession;
   try
-    IrPara(Referencia);
+    GoToReference(Referencia);
     if ID = Referencia then
       result := ObterTextoVersiculo(texto);
   finally
@@ -2945,16 +3052,23 @@ end;
 
 procedure TProjeto.Translate;
 var
-  l: integer;
+  bk: integer;
   node: TTreeNode;
 begin
   if not assigned(FArvore) then
     exit;
+
   node := FArvore.Items[0];
-  for l:=0 to QLivros[FEscopo]-1 do
+  for bk:=0 to QLivros[FEscopo]-1 do
   begin
-    node.Text := NLivros[FEscopo][l];
+    node.Text := NLivros[FEscopo][bk];
     node := node.GetNextSibling;
+  end;
+
+  if assigned(FArvore.PopupMenu) then
+  begin
+    FArvore.PopupMenu.Free;
+    FArvore.PopupMenu := CreateBibleTreeContextMenu;
   end;
 end;
 
@@ -2972,14 +3086,14 @@ end;
 
 procedure TProjeto.FinishScrollingSession;
 begin
-  IrPara(FMarker);
+  GoToReference(FMarker);
   ScrollEventsEnabled := true;
 end;
 
 procedure TProjeto.RewindChapter;
 begin
   if Verse <> 1 then
-    IrPara(Format('%d,%d,%d', [BookID, Chapter, 1]));
+    GoToReference(Format('%d,%d,%d', [BookID, Chapter, 1]));
 end;
 
 end.

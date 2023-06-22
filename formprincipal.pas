@@ -1129,7 +1129,7 @@ end;
 procedure TFrmPrincipal.SyncToTwRef(Ref: string);
 begin
   if (ProjetoAtual <> nil) then
-    ProjetoAtual.IrPara(Ref);
+    ProjetoAtual.GoToReference(Ref);
 end;
 
 procedure TFrmPrincipal.SetUpSyncThread;
