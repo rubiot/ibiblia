@@ -306,8 +306,7 @@ resourcestring
                                    'Please choose ''Ignore'' to ignore this warning and continue at your own risk or ''Abort'' ' +
                                    'to abort the operation and choose another module.';
   SFailedToCreateFile = 'Failed to create file: %s';
-  SExportToFileError = 'iBiblia found an error while exporting the Bible module file.'#13#10 +
-                       'Please check if theWord is using the file, then close it and try again.';
+  SExportToFileError = 'iBiblia found an error while exporting the Bible module file.';
   STranslationMemory = 'Translation memory';
   SExportTextSaveDlgTitle = 'Please choose a destination file';
   SIBibliaPatchFiles = 'iBiblia patch files';
@@ -650,11 +649,19 @@ end;
 
 procedure TProjeto.ExportTheWordBible(verses: TStringList; filename: string;
   props: string);
+var
+  stream: TFileStream;
 begin
   verses.Add('');
   verses.Add(props);
   verses[0] := #239#187#191 + verses.Strings[0]; // adicionando BOM
-  verses.SaveToFile(filename);
+  stream := TFileStream.Create(filename, fmOpenWrite or fmShareDenyNone);
+  try
+    stream.Size := 0;
+    verses.SaveToStream(stream);
+  finally
+    stream.Free;
+  end;
 end;
 
 procedure TProjeto.ExportMySwordBible(verses: TStringList; filename: string; props: string);
