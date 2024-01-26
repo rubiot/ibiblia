@@ -655,7 +655,7 @@ begin
   verses.Add('');
   verses.Add(props);
   verses[0] := #239#187#191 + verses.Strings[0]; // adicionando BOM
-  stream := TFileStream.Create(filename, fmOpenWrite or fmShareDenyNone);
+  stream := TFileStream.Create(filename, fmCreate or fmOpenWrite or fmShareDenyNone);
   try
     stream.Size := 0;
     verses.SaveToStream(stream);
@@ -2668,7 +2668,7 @@ begin
         ExportTheWordBible(lines, arquivo, ResgatarInfo('propriedades.destino'));
       end;
     except
-      on E: Exception do MessageDlg(SError, SExportToFileError, mtError, [mbOK], 0);
+      on E: Exception do MessageDlg(SError, SExportToFileError + #13#10 + E.Message, mtError, [mbOK], 0);
     end;
   finally
     lines.Free;
