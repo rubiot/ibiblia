@@ -80,6 +80,7 @@ type
   private
     FFontName: string;
     FFontSize: integer;
+    FPrintMode: boolean;
     FProject: TProjeto;
     FRxVerseHeading: IRegex;
     FNoteID: integer;
@@ -129,6 +130,7 @@ type
     procedure HandleInterlinearMode(Sender: TObject);
     procedure HandleIntralinearMode(Sender: TObject);
     procedure SetInterlinearMode(AValue: TInterlinearMode);
+    procedure SetPrintMode(AValue: boolean);
     procedure SetProject(AValue: TProjeto);
     procedure InitPopupMenu;
     procedure SetParagraphMode(AValue: TParagraphMode);
@@ -156,6 +158,7 @@ type
     property FontName: string read FFontName write SetFontName;
     property CurrentStyle: TKMemoTextStyle read GetCurrentStyle;
     property HideVerseNumber: boolean read FHideVerseNumber write FHideVerseNumber default false;
+    property PrintMode: boolean read FPrintMode write SetPrintMode;
   end;
 
 const
@@ -844,10 +847,12 @@ var
 begin
   setup := TKPrintSetupDialog.Create(nil);
   try
-     setup.Control := self;
-     setup.Execute;
+    PrintMode := true;
+    setup.Control := self;
+    setup.Execute;
   finally
     setup.Free;
+    PrintMode := false;
   end;
 end;
 
@@ -885,6 +890,13 @@ begin
   FProject.InterlinearMode := AValue;
 
   LoadChapter;
+end;
+
+procedure TChapterView.SetPrintMode(AValue: boolean);
+begin
+  if FPrintMode=AValue then Exit;
+  FPrintMode:=AValue;
+  HandleVerseChange(FProject);
 end;
 
 procedure TChapterView.SetProject(AValue: TProjeto);
@@ -1075,31 +1087,35 @@ begin
     Bold := true;
     Color := NonBibleTextColor;
   end;
-  Blocks.AddParagraph(); //.ParaStyle.HAlign := halLeft;
 
-  { chapter list }
-  for c:=1 to QCapitulosONT[FProject.BookID] do
+  if not FPrintMode then
   begin
-    if c > 1 then
-      Blocks.AddTextBlock(' ');
+    Blocks.AddParagraph(); //.ParaStyle.HAlign := halLeft;
 
-    if c = FProject.Chapter then
-      with Blocks.AddTextBlock(c.ToString).TextStyle.Font do
-      begin
-        Name := 'default';
-        Size := Self.TextStyle.Font.Size-2;
-        Bold := true;
-        Color := NonBibleTextColor;
-      end
-    else
-      with Blocks.AddHyperlink(c.ToString, Format('%d,%d,1', [FProject.BookID, c])) do
-      begin
-        OnClick := @HandleReferenceClick;
-        TextStyle.Font.Name  := 'default';
-        TextStyle.Font.Size  := Self.TextStyle.Font.Size-2;
-        TextStyle.Font.Bold  := false;
-        TextStyle.Font.Color := ChapterNumberColor;
-      end;
+    { chapter list }
+    for c:=1 to QCapitulosONT[FProject.BookID] do
+    begin
+      if c > 1 then
+        Blocks.AddTextBlock(' ');
+
+      if c = FProject.Chapter then
+        with Blocks.AddTextBlock(c.ToString).TextStyle.Font do
+        begin
+          Name := 'default';
+          Size := Self.TextStyle.Font.Size-2;
+          Bold := true;
+          Color := NonBibleTextColor;
+        end
+      else
+        with Blocks.AddHyperlink(c.ToString, Format('%d,%d,1', [FProject.BookID, c])) do
+        begin
+          OnClick := @HandleReferenceClick;
+          TextStyle.Font.Name  := 'default';
+          TextStyle.Font.Size  := Self.TextStyle.Font.Size-2;
+          TextStyle.Font.Bold  := false;
+          TextStyle.Font.Color := ChapterNumberColor;
+        end;
+    end;
   end;
 
   with Blocks.AddParagraph().ParaStyle do
@@ -1161,6 +1177,8 @@ procedure TChapterView.RenderChapterFooter;
 var
   pbook, nbook, pchapter, nchapter: integer;
 begin
+  if FPrintMode then exit;
+
   pbook := 0;
   pchapter := 0;
   GetPreviousChapter(pbook, pchapter);
@@ -1239,6 +1257,7 @@ begin
   FNotes          := TNoteList.Create;
   FHint           := TNoteWindow.Create(Self);
   FHideVerseNumber:= false;
+  FPrintMode      := false;
   InitPopupMenu;
 
   FStyleStack := TObjectStack.Create;
