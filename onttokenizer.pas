@@ -39,7 +39,7 @@ type
   private
     class var FPreferredVersion: Integer;
   public
-    const LATEST_VERSION = 1;
+    const LATEST_VERSION = 2;
     class constructor Create;
     class function CreateTokenizer(version: Integer; XML: string): TONTTokenizer; overload;
     class function CreateTokenizer(version: Integer; XML: PChar): TONTTokenizer; overload;
@@ -57,9 +57,9 @@ type
     procedure PularEspacos;
     procedure PularTagAtual;
     procedure LerEspacos(var s: TTagSintagma);
-    procedure LerPontuacao(var s: TTagSintagma);
+    procedure LerPontuacao(var s: TTagSintagma); virtual;
     procedure LerTag(var s: TTagSintagma);
-    procedure LerTexto(var s: TTagSintagma);
+    procedure LerTexto(var s: TTagSintagma); virtual;
   public
     constructor Create(XML: string); override;
     constructor Create(XML: PChar); override;
@@ -68,6 +68,15 @@ type
     function LerPropriedadeTag(p: string; s: TTagSintagma): string; override;
     procedure LerAteTag(var s: TTagSintagma; AteTag: string); override;
     function ReadUntilExclusive(endTag: string): string; override;
+  end;
+
+  { TONTTokenizerV2 }
+  TONTTokenizerV2 = class(TONTTokenizerV1)
+  protected
+    procedure LerPontuacao(var s: TTagSintagma); override;
+    procedure LerTexto(var s: TTagSintagma); override;
+  public
+    function LerSintagma(var s: TTagSintagma): TTipoSintagma; override;
   end;
 
 implementation
@@ -90,6 +99,7 @@ class function TTokenizerFactory.CreateTokenizer(version: Integer; XML: string):
 begin
   case version of
     1: Result := TONTTokenizerV1.Create(XML);
+    2: Result := TONTTokenizerV2.Create(XML);
   else
     raise Exception.Create('Unsupported tokenizer version');
   end;
@@ -99,6 +109,7 @@ class function TTokenizerFactory.CreateTokenizer(version: Integer; XML: PChar): 
 begin
   case version of
     1: Result := TONTTokenizerV1.Create(XML);
+    2: Result := TONTTokenizerV2.Create(XML);
   else
     raise Exception.Create('Unsupported tokenizer version');
   end;
@@ -402,6 +413,172 @@ begin
   result := token.valor.Replace(endTag, '');
 end;
 
+{ TONTTokenizerV2 }
+
+procedure TONTTokenizerV2.LerPontuacao(var s: TTagSintagma);
+var
+  c: integer;
+begin
+  c := 0;
+  while (FPXML^ in ['"', '.', ',', ';', ':', '!', '?', '(', ')']) or
+        (pos(#194#183, FPXML) = 1) or      // ·
+        (pos(#226#128#156, FPXML) = 1) or  // “
+        (pos(#226#128#157, FPXML) = 1) or  // ”
+        (pos(#206#135, FPXML) = 1) or      // ·
+        (pos(#215#128, FPXML) = 1) or      // ׀ paseq
+        (pos(#215#131, FPXML) = 1) or      // ׃ soft pasuq
+        (pos(#214#190, FPXML) = 1)         // – maqaf
+  do
+  begin
+    if AnsiStartsStr(#194#183, FPXML) or
+       AnsiStartsStr(#215#128, FPXML) or  // paseq
+       AnsiStartsStr(#215#131, FPXML) or  // soft pasuq
+       AnsiStartsStr(#214#190, FPXML) or  // maqaf
+       AnsiStartsStr(#206#135, FPXML) then // hack para sinais de pontuação gregos/hebraicos
+    begin
+      inc(FPXML, 2);
+      inc(c, 2);
+    end else if AnsiStartsStr(#226#128#156, FPXML) or
+                AnsiStartsStr(#226#128#157, FPXML) then // hack para “ e ”
+    begin
+      inc(FPXML, 3);
+      inc(c, 3);
+    end else
+    begin
+      inc(FPXML);
+      inc(c);
+    end;
+  end;
+  s.valor := copy(FPXML-c, 0, c);
+  s.tipo  := tsPontuacao;
+end;
+
+procedure TONTTokenizerV2.LerTexto(var s: TTagSintagma);
+var
+  c: integer;
+begin
+  c := 0;
+  while not (FPXML^ in [#0, #32, #9, '|', '<', '"', '.', ',', ';', ':', '!', '?', '(', ')']) do
+  begin
+    if AnsiStartsStr(#194#183, FPXML) or     // ·
+       AnsiStartsStr(#226#128#156, FPXML) or // “
+       AnsiStartsStr(#226#128#157, FPXML) or // ”
+       AnsiStartsStr(#206#135, FPXML) or     // ·
+       AnsiStartsStr(#215#128, FPXML) or     // paseq
+       AnsiStartsStr(#215#131, FPXML) or     // soft pasuq
+       AnsiStartsStr(#214#190, FPXML)        // maqaf
+    then // hack para wide chars
+      break;
+
+    inc(c);
+    inc(FPXML);
+  end;
+  s.valor := copy(FPXML-c, 0, c);
+  s.tipo  := tsSintagma;
+end;
+
+function TONTTokenizerV2.LerSintagma(var s: TTagSintagma): TTipoSintagma;
+
+  function Contido(c: cardinal; v: array of cardinal): boolean;
+  var
+    i: integer;
+  begin
+    result := false;
+    for i:=low(v) to high(v) do
+      if v[i] = c then
+        result := true;
+  end;
+
+  procedure lerAte(var s: TTagSintagma; ate: array of cardinal);
+  var
+    t: integer;
+    ini: PChar;
+  begin
+    ini := FPXML;
+    while (FPXML^ <> #0) and not Contido(UTF8CharacterToUnicode(FPXML, t), ate) do
+      inc(FPXML, t);
+
+    s.valor := copy(ini, 0, FPXML-ini);
+  end;
+
+  procedure lerAteInclusive(var s: TTagSintagma; ate: array of cardinal);
+  var
+    t: integer;
+  begin
+    lerAte(s, ate);
+    if UTF8CharacterToUnicode(FPXML, t) <> 0 then
+    begin
+      s.valor := s.valor + copy(FPXML, 0, t);
+      inc(FPXML, t);
+    end;
+  end;
+
+  procedure lerEnquanto(var s: TTagSintagma; enquanto: array of cardinal);
+  var
+    t: integer;
+    ini: PChar;
+  begin
+    ini := FPXML;
+    while (FPXML^ <> #0) and Contido(UTF8CharacterToUnicode(FPXML, t), enquanto) do
+      inc(FPXML, t);
+
+    s.valor := copy(ini, 0, FPXML-ini);
+  end;
+
+  function tipoChar: TTipoSintagma;
+  var
+    t: integer;
+    c: Cardinal;
+  begin
+    result := tsSintagma;
+    c := UTF8CharacterToUnicode(FPXML, t);
+    if c = 0 then
+      result := tsNulo
+    else if c = ord('<') then
+      result := tsTag
+    else if Contido(c, [ord(#32), ord(#9), ord('|')]) then
+      result := tsEspaco
+    else if Contido(c, [ord('"'), ord('.'), ord(','), ord(';'), ord(':'),
+                        ord('!'), ord('?'), ord('('), ord(')'),
+                        183, 903, 8220, 8221, 1470, 1472, 1475]) // hack para ··“”־׀׃
+    then
+      result := tsPontuacao;
+  end;
+var
+  hifen: string;
+begin
+  s.valor      := '';
+  s.cor        := clDefault;
+  s.italico    := false;
+  s.sobrescrito:= false;
+  s.tipo       := tipoChar;
+
+  case s.tipo of
+    tsEspaco:
+      lerEnquanto(s, [ord(#32), ord(#9), ord('|')]);
+    tsPontuacao:
+      lerEnquanto(s, [ord('"'), ord('.'), ord(','), ord(';'), ord(':'),
+                      ord('!'), ord('?'), ord('('), ord(')'),
+                      183, 903, 8220, 8221, 1470, 1472, 1475]); // hack para ··“”־׃׀
+    tsTag:
+      lerAteInclusive(s, [ord('>')]);
+  else
+    if FPXML^ = '-' then
+    begin
+      hifen := '-';
+      Inc(FPXML);
+    end else
+      hifen := '';
+
+    lerAte(s, [ord('<'), ord(#32), ord(#9), ord('|'), ord('"'), ord('.'),
+               ord(','), ord(';'), ord(':'), ord('!'), ord('?'), ord('-'),
+               ord('('), ord(')'), 1470, 1472, 1475, 183, 903, 8220, 8221]);  // hack para ··“”־׃׀
+    s.valor := hifen + s.valor;
+  end;
+
+  //MessageDlg('Fechar projeto', '"'+s.valor+'"', mtConfirmation, [], 0);
+  result := s.tipo;
+end;
 end.
 
 

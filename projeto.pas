@@ -2146,7 +2146,7 @@ begin
   FArvore.PopupMenu := CreateBibleTreeContextMenu;
 
   // set tokenizer version
-  TTokenizerFactory.PreferredVersion := StrToIntDef(ObterInfo('tokenizer_version'), TTokenizerFactory.LATEST_VERSION);
+  TTokenizerFactory.PreferredVersion := StrToIntDef(ObterInfo('tokenizer_version'), 1);
 
   ScrollEventsEnabled := true;
   GoToReference(ObterInfo('marcador'));
