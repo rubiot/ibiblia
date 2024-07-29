@@ -422,7 +422,7 @@ var
   lastpar: TKMemoParagraph;
 begin
   chunk := '';
-  FTokenizer := TONTTokenizer.Criar(txt);
+  FTokenizer := TTokenizerFactory.CreatePreferredTokenizer(txt);
 
   cont.LockUpdate;
   while FTokenizer.LerSintagma(token) <> tsNulo do

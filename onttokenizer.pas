@@ -23,9 +23,35 @@ type
   end;
 
   { TONTTokenizer }
-
   TONTTokenizer = class
+  public
+    constructor Create(XML: string); virtual; abstract;
+    constructor Create(XML: PChar); virtual; abstract;
+    destructor Destroy; override;
+    function LerSintagma(var s: TTagSintagma): TTipoSintagma; virtual; abstract;
+    function LerPropriedadeTag(p: string; s: TTagSintagma): string; virtual; abstract;
+    procedure LerAteTag(var s: TTagSintagma; AteTag: string); virtual; abstract;
+    function ReadUntilExclusive(endTag: string): string; virtual; abstract;
+  end;
+
+  { TONTTokenizerFactory }
+  TTokenizerFactory = class
   private
+    class var FPreferredVersion: Integer;
+  public
+    const LATEST_VERSION = 1;
+    class constructor Create;
+    class function CreateTokenizer(version: Integer; XML: string): TONTTokenizer; overload;
+    class function CreateTokenizer(version: Integer; XML: PChar): TONTTokenizer; overload;
+    class function CreatePreferredTokenizer(XML: string): TONTTokenizer; overload;
+    class function CreatePreferredTokenizer(XML: PChar): TONTTokenizer; overload;
+    class property PreferredVersion: Integer read FPreferredVersion write FPreferredVersion;
+  end;
+
+  { TONTTokenizerV1 }
+
+  TONTTokenizerV1 = class(TONTTokenizer)
+  protected
     FXML: PChar;
     FPXML: PChar;
     procedure PularEspacos;
@@ -35,23 +61,67 @@ type
     procedure LerTag(var s: TTagSintagma);
     procedure LerTexto(var s: TTagSintagma);
   public
-    constructor Criar(XML: string); overload;
-    constructor Criar(XML: PChar); overload;
-    destructor Destruir;
-    function LerSintagma(var s: TTagSintagma): TTipoSintagma;
-    function LerPropriedadeTag(p: string; s: TTagSintagma): string;
-    procedure LerAteTag(var s: TTagSintagma; AteTag: string);
-    function ReadUntilExclusive(endTag: string): string;
+    constructor Create(XML: string); override;
+    constructor Create(XML: PChar); override;
+    destructor Destroy; override;
+    function LerSintagma(var s: TTagSintagma): TTipoSintagma; override;
+    function LerPropriedadeTag(p: string; s: TTagSintagma): string; override;
+    procedure LerAteTag(var s: TTagSintagma; AteTag: string); override;
+    function ReadUntilExclusive(endTag: string): string; override;
   end;
 
 implementation
 
-constructor TONTTokenizer.Criar(XML: string);
+{ TONTTokenizer }
+
+destructor TONTTokenizer.Destroy;
 begin
-  Criar(Pchar(XML));
+  inherited Destroy;
 end;
 
-constructor TONTTokenizer.Criar(XML: PChar);
+{ TTokenizerFactory }
+
+class constructor TTokenizerFactory.Create;
+begin
+  FPreferredVersion := LATEST_VERSION;
+end;
+
+class function TTokenizerFactory.CreateTokenizer(version: Integer; XML: string): TONTTokenizer;
+begin
+  case version of
+    1: Result := TONTTokenizerV1.Create(XML);
+  else
+    raise Exception.Create('Unsupported tokenizer version');
+  end;
+end;
+
+class function TTokenizerFactory.CreateTokenizer(version: Integer; XML: PChar): TONTTokenizer;
+begin
+  case version of
+    1: Result := TONTTokenizerV1.Create(XML);
+  else
+    raise Exception.Create('Unsupported tokenizer version');
+  end;
+end;
+
+class function TTokenizerFactory.CreatePreferredTokenizer(XML: string): TONTTokenizer;
+begin
+  Result := CreateTokenizer(FPreferredVersion, XML);
+end;
+
+class function TTokenizerFactory.CreatePreferredTokenizer(XML: PChar): TONTTokenizer;
+begin
+  Result := CreateTokenizer(FPreferredVersion, XML);
+end;
+
+{ TONTTokenizerV1 }
+
+constructor TONTTokenizerV1.Create(XML: string);
+begin
+  Create(Pchar(XML));
+end;
+
+constructor TONTTokenizerV1.Create(XML: PChar);
 begin
   FXML := XML;
   FPXML := FXML;
@@ -59,12 +129,12 @@ begin
      inc(FPXML, 3);
 end;
 
-destructor TONTTokenizer.Destruir;
+destructor TONTTokenizerV1.Destroy;
 begin
 
 end;
 
-procedure TONTTokenizer.PularEspacos;
+procedure TONTTokenizerV1.PularEspacos;
 begin
   while (FPXML^ in [#13, #10, #32, #9, '|']) do
   begin
@@ -72,7 +142,7 @@ begin
   end;
 end;
 
-procedure TONTTokenizer.PularTagAtual;
+procedure TONTTokenizerV1.PularTagAtual;
 begin
   while (FPXML^ <> #0) and (FPXML^ <> '>') do
   begin
@@ -82,7 +152,7 @@ begin
     inc(FPXML);
 end;
 
-procedure TONTTokenizer.LerEspacos(var s: TTagSintagma);
+procedure TONTTokenizerV1.LerEspacos(var s: TTagSintagma);
 var
   c: integer;
 begin
@@ -96,7 +166,7 @@ begin
   s.tipo  := tsEspaco;
 end;
 
-procedure TONTTokenizer.LerPontuacao(var s: TTagSintagma);
+procedure TONTTokenizerV1.LerPontuacao(var s: TTagSintagma);
 var
   c: integer;
 begin
@@ -128,7 +198,7 @@ begin
   s.tipo  := tsPontuacao;
 end;
 
-procedure TONTTokenizer.LerTag(var s: TTagSintagma);
+procedure TONTTokenizerV1.LerTag(var s: TTagSintagma);
 var
   c: integer;
 begin
@@ -154,7 +224,7 @@ begin
   //  s.valor := ']';
 end;
 
-procedure TONTTokenizer.LerTexto(var s: TTagSintagma);
+procedure TONTTokenizerV1.LerTexto(var s: TTagSintagma);
 var
   c: integer;
 begin
@@ -175,7 +245,7 @@ begin
   s.tipo  := tsSintagma;
 end;
 
-function TONTTokenizer.LerSintagma(var s: TTagSintagma): TTipoSintagma;
+function TONTTokenizerV1.LerSintagma(var s: TTagSintagma): TTipoSintagma;
 
   function Contido(c: cardinal; v: array of cardinal): boolean;
   var
@@ -278,7 +348,7 @@ begin
   result := s.tipo;
 end;
 
-function TONTTokenizer.LerPropriedadeTag(p: string; s: TTagSintagma): string;
+function TONTTokenizerV1.LerPropriedadeTag(p: string; s: TTagSintagma): string;
 var
   i, f: smallint;
   //quote: boolean;
@@ -312,7 +382,7 @@ begin
   result := copy(s.valor, i, f-i);
 end;
 
-procedure TONTTokenizer.LerAteTag(var s: TTagSintagma; AteTag: string);
+procedure TONTTokenizerV1.LerAteTag(var s: TTagSintagma; AteTag: string);
 var
   valor: string;
 begin
@@ -324,7 +394,7 @@ begin
   s.valor := valor + s.valor;
 end;
 
-function TONTTokenizer.ReadUntilExclusive(endTag: string): string;
+function TONTTokenizerV1.ReadUntilExclusive(endTag: string): string;
 var
   token: TTagSintagma;
 begin

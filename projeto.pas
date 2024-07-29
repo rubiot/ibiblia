@@ -346,6 +346,8 @@ begin
   Abrir(nomedbnovo);
 
   AtribuirInfo('descricao', descricao);
+  // new projects always use the latest tokenizer version
+  AtribuirInfo('tokenizer_version', IntToStr(TTokenizerFactory.LATEST_VERSION));
   //AtribuirInfo('marcador', format('%d,1,1', [OffsetLivros[FEscopo] + 1]));
   FExibirDefComCtrl := false;  //FTblInfo.ExecuteDirect('COMMIT;');
   VersiculoInicial;
@@ -2143,6 +2145,9 @@ begin
   FArvore.OnContextPopup := @OnBibleTreeContextPopup;
   FArvore.PopupMenu := CreateBibleTreeContextMenu;
 
+  // set tokenizer version
+  TTokenizerFactory.PreferredVersion := StrToIntDef(ObterInfo('tokenizer_version'), TTokenizerFactory.LATEST_VERSION);
+
   ScrollEventsEnabled := true;
   GoToReference(ObterInfo('marcador'));
 
@@ -3029,7 +3034,7 @@ begin
   result := FAVersiculo[texto].TextoSimples;
   exit;
   result := '';
-  varredorXML := TONTTokenizer.Criar(FTblPares.Fields[FACamposTexto[texto]].AsString);
+  varredorXML := TTokenizerFactory.CreatePreferredTokenizer(FTblPares.Fields[FACamposTexto[texto]].AsString);
   while varredorXML.LerSintagma(s) <> tsNulo do
   begin
     if s.tipo = tsTag then
@@ -3049,7 +3054,7 @@ begin
     if s.tipo in [tsEspaco, tsSintagma, tsPontuacao] then
       result := result + s.valor;
   end;
-  varredorXML.Destruir;
+  varredorXML.Destroy;
 end;
 
 function TProjeto.GetTranslationSuggestions(syntagm: TSyntagm): string;

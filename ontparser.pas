@@ -37,7 +37,7 @@ begin
   FTmpSobrescrito := false;
   sintagma := nil;
   sintagmas := TSyntagmList.Create;
-  tokenizer := TONTTokenizer.Criar(line);
+  tokenizer := TTokenizerFactory.CreatePreferredTokenizer(line);
   while tokenizer.LerSintagma(token) <> tsNulo do
   begin
     if token.tipo = tsTag then
@@ -94,7 +94,7 @@ begin
     sintagma := TSyntagm.Create(token, owner);
     sintagmas.Add(sintagma);
   end;
-  tokenizer.Destruir;
+  tokenizer.Destroy;
   result := sintagmas;
 end;
 

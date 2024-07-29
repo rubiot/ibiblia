@@ -611,7 +611,7 @@ begin
   FExibirErro := true;
   VersiculoPar.FExibirErro := true;
 
-  varredorXML := TONTTokenizer.Criar(AValue);
+  varredorXML := TTokenizerFactory.CreatePreferredTokenizer(AValue);
   while varredorXML.LerSintagma(s) <> tsNulo do
   begin
     if AnsiStartsStr('<par ', s.valor) then
@@ -625,7 +625,7 @@ begin
       VersiculoPar.LimparSelecao;
     end;
   end;
-  varredorXML.Destruir;
+  varredorXML.Destroy;
 
   Renderizar;
   VersiculoPar.Renderizar;
@@ -1187,7 +1187,7 @@ begin
   offset := 0;
   novo := nil;
 
-  varredorXML := TONTTokenizer.Criar(FEdit.Caption);
+  varredorXML := TTokenizerFactory.CreatePreferredTokenizer(FEdit.Caption);
   while varredorXML.LerSintagma(s) <> tsNulo do
   begin
     if (s.tipo = tsEspaco) and (s.valor = '|') then
