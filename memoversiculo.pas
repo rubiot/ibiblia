@@ -27,6 +27,7 @@ type
     function GetTexto: TCaption;
     procedure OnMouseWheel(Sender: TObject; Shift: TShiftState;
              WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
+    procedure ApplyTagToSelection(const StartTag, EndTag: string);
   protected
     procedure OnKeyDown(Sender: TObject; var Key: word; Shift: TShiftState);
     procedure OnChange(Sender: TObject);
@@ -63,9 +64,38 @@ begin
   end;
 end;
 
+procedure TMemoVersiculo.ApplyTagToSelection(const StartTag, EndTag: string);
+var
+  selText: string;
+begin
+  selText := FMemo.SelText;
+  if selText <> '' then
+    FMemo.SelText := StartTag + selText + EndTag;
+end;
+
 procedure TMemoVersiculo.OnKeyDown(Sender: TObject; var Key: word; Shift: TShiftState);
 begin
-  if Key = VK_ESCAPE then
+  if (ssCtrl in Shift) and (ssShift in Shift) then
+  begin
+    case Key of
+      VK_I: begin // added words
+        ApplyTagToSelection('<FI>', '<Fi>');
+        Key := 0;
+      end;
+      // Ctrl+Shift+R is taken by theWord
+      // Ctrl+Shift+J clears the selection ???
+      VK_E: begin // words of Jesus
+        ApplyTagToSelection('<FR>', '<Fr>');
+        Key := 0;
+      end;
+      VK_O: begin // Old Testament citation
+        ApplyTagToSelection('<FO>', '<Fo>');
+        Key := 0;
+      end;
+      // ...no else clause here, we let other shortcuts continue...
+    end;
+  end
+  else if Key = VK_ESCAPE then
   begin
     ConfirmarAlteracao;
     FVersiculo.Fonte.Size := FMemo.Font.Size;
