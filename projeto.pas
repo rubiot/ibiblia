@@ -2654,8 +2654,12 @@ begin
         end;
 
         if (oeExportarComentarios in opcoes) and not FTblPares.FieldByName('pare_comentarios').AsString.isEmpty then
-          lines[lines.Count-1] := lines[lines.Count-1] + '<RF>' +
-            AnsiReplaceStr(FTblPares.FieldByName('pare_comentarios').AsString, #13#10, '<CM>') + '<Rf>';
+            lines[lines.Count-1] := lines[lines.Count-1] + '<RF>' +
+            AnsiReplaceStr(
+              AnsiReplaceStr(
+              AnsiReplaceStr(FTblPares.FieldByName('pare_comentarios').AsString, #13#10, '<CM>'),
+              #13, '<CM>'),
+            #10, '<CM>') + '<Rf>';
 
         if assigned(pb) then
         begin
