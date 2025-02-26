@@ -878,7 +878,14 @@ begin
   with FTblPares do
     while not FTblPares.EOF and GetID().StartsWith(bkch) do
     begin
-      comments := IfThen(ChapterViewText = tbDestino, Comentarios.Replace(#13#10, '<br/>', [rfReplaceAll]), '');
+      comments := IfThen(
+        ChapterViewText = tbDestino,
+        Comentarios
+          .Replace(#13#10, '<br/>', [rfReplaceAll])
+          .Replace(#13, '<br/>', [rfReplaceAll])
+          .Replace(#10, '<br/>', [rfReplaceAll]),
+        ''
+      );
       result.Add(Format('%s%s', [GetText(rulesRx, replaceTo), IfThen(comments.IsEmpty, '', Format('<RF>%s<Rf>', [comments]))]));
       VersiculoSeguinte;
     end;
