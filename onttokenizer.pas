@@ -274,7 +274,7 @@ function TONTTokenizerV1.LerSintagma(var s: TTagSintagma): TTipoSintagma;
     ini: PChar;
   begin
     ini := FPXML;
-    while (FPXML^ <> #0) and not Contido(UTF8CharacterToUnicode(FPXML, t), ate) do
+    while (FPXML^ <> #0) and not Contido(UTF8CodepointToUnicode(FPXML, t), ate) do
       inc(FPXML, t);
 
     s.valor := copy(ini, 0, FPXML-ini);
@@ -285,7 +285,7 @@ function TONTTokenizerV1.LerSintagma(var s: TTagSintagma): TTipoSintagma;
     t: integer;
   begin
     lerAte(s, ate);
-    if UTF8CharacterToUnicode(FPXML, t) <> 0 then
+    if UTF8CodepointToUnicode(FPXML, t) <> 0 then
     begin
       s.valor := s.valor + copy(FPXML, 0, t);
       inc(FPXML, t);
@@ -298,7 +298,7 @@ function TONTTokenizerV1.LerSintagma(var s: TTagSintagma): TTipoSintagma;
     ini: PChar;
   begin
     ini := FPXML;
-    while (FPXML^ <> #0) and Contido(UTF8CharacterToUnicode(FPXML, t), enquanto) do
+    while (FPXML^ <> #0) and Contido(UTF8CodepointToUnicode(FPXML, t), enquanto) do
       inc(FPXML, t);
 
     s.valor := copy(ini, 0, FPXML-ini);
@@ -310,7 +310,7 @@ function TONTTokenizerV1.LerSintagma(var s: TTagSintagma): TTipoSintagma;
     c: Cardinal;
   begin
     result := tsSintagma;
-    c := UTF8CharacterToUnicode(FPXML, t);
+    c := UTF8CodepointToUnicode(FPXML, t);
     if c = 0 then
       result := tsNulo
     else if c = ord('<') then
@@ -495,7 +495,7 @@ function TONTTokenizerV2.LerSintagma(var s: TTagSintagma): TTipoSintagma;
     ini: PChar;
   begin
     ini := FPXML;
-    while (FPXML^ <> #0) and not Contido(UTF8CharacterToUnicode(FPXML, t), ate) do
+    while (FPXML^ <> #0) and not Contido(UTF8CodepointToUnicode(FPXML, t), ate) do
       inc(FPXML, t);
 
     s.valor := copy(ini, 0, FPXML-ini);
@@ -506,7 +506,7 @@ function TONTTokenizerV2.LerSintagma(var s: TTagSintagma): TTipoSintagma;
     t: integer;
   begin
     lerAte(s, ate);
-    if UTF8CharacterToUnicode(FPXML, t) <> 0 then
+    if UTF8CodepointToUnicode(FPXML, t) <> 0 then
     begin
       s.valor := s.valor + copy(FPXML, 0, t);
       inc(FPXML, t);
@@ -519,7 +519,7 @@ function TONTTokenizerV2.LerSintagma(var s: TTagSintagma): TTipoSintagma;
     ini: PChar;
   begin
     ini := FPXML;
-    while (FPXML^ <> #0) and Contido(UTF8CharacterToUnicode(FPXML, t), enquanto) do
+    while (FPXML^ <> #0) and Contido(UTF8CodepointToUnicode(FPXML, t), enquanto) do
       inc(FPXML, t);
 
     s.valor := copy(ini, 0, FPXML-ini);
@@ -531,7 +531,7 @@ function TONTTokenizerV2.LerSintagma(var s: TTagSintagma): TTipoSintagma;
     c: Cardinal;
   begin
     result := tsSintagma;
-    c := UTF8CharacterToUnicode(FPXML, t);
+    c := UTF8CodepointToUnicode(FPXML, t);
     if c = 0 then
       result := tsNulo
     else if c = ord('<') then
@@ -546,6 +546,7 @@ function TONTTokenizerV2.LerSintagma(var s: TTagSintagma): TTipoSintagma;
   end;
 var
   hifen: string;
+  len: integer;
 begin
   s.valor      := '';
   s.cor        := clDefault;
@@ -557,9 +558,11 @@ begin
     tsEspaco:
       lerEnquanto(s, [ord(#32), ord(#9), ord('|')]);
     tsPontuacao:
-      lerEnquanto(s, [ord('"'), ord('.'), ord(','), ord(';'), ord(':'),
-                      ord('!'), ord('?'), ord('('), ord(')'),
-                      183, 903, 8220, 8221, 1470, 1472, 1475]); // hack para ··“”־׃׀
+    begin
+      UTF8CodepointToUnicode(FPXML, len);
+      Inc(FPXML, len);
+      s.valor := copy(FPXML-len, 0, len);
+    end;
     tsTag:
       lerAteInclusive(s, [ord('>')]);
   else

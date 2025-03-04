@@ -4,6 +4,8 @@ unit Versiculo;
 
 {TODO -cObrigatório: Rever algoritmo de associação/desassociação }
 
+{$DEFINE DEBUG}
+
 interface
 
 uses
@@ -84,6 +86,9 @@ type
     procedure OnCopySyntagmTags(Sender: TObject);
     procedure OnPasteSyntagmTags(Sender: TObject);
     procedure OnSaveTextToFile(Sender: TObject);
+    procedure OnCopyTokensToClipboard(Sender: TObject);
+    procedure OnCopyInterlinearVerseToClipboard(Sender: TObject);
+    procedure OnCopyXMLToClipboard(Sender: TObject);
     procedure OnRightToLeft(Sender: TObject);
     procedure OnVerseMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure OnResize(Sender: TObject);
@@ -91,6 +96,9 @@ type
              WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
     procedure InitSyntagmPopupMenu;
     procedure InitVersePopupMenu;
+    procedure OnCopyAssociationsJSONToClipboard(Sender: TObject);
+    procedure OnCopySintagmasAsJSON(Sender: TObject);
+    function GetAssociationsJSON: string;
   protected
     { Protected declarations }
   public
@@ -165,8 +173,15 @@ resourcestring
   SPasteMorphoTags = 'Paste &morphology tags';
   SSaveToFile = '&Save text to file...';
   SRightToLeft = 'Right to left text';
+  SCopyTokensToClipboard = 'Copy &tokens to clipboard';
+  SCopyInterlinearVerseToClipboard = 'Copy &interlinear verse to clipboard';
+  SCopyXMLToClipboard = 'Copy association &XML to clipboard';
+  SCopyAssociationsJSONToClipboard = 'Copy association &JSON to clipboard';
 
 implementation
+
+uses
+  TypInfo; // added TypInfo
 
 const
   MarginWidth = 10; // text's distance from the margin
@@ -498,7 +513,6 @@ begin
   oldActive := FAtivo;
   FAtivo := false; // we're potentially deleting labels
 
-  new := TSyntagmList.Create;
   new := FONTParser.ParseLine(_XML, self);
 
   LimparSelecao;
@@ -825,9 +839,16 @@ function TVersiculo.GetMySwordInterlinearLine: string;
     end;
   end;
 
+  function TestAndUnset(out flag: boolean): Boolean;
+  begin
+    result := flag;
+    if flag then
+      flag := false;
+  end;
+
 var
   line: TStringStream;
-  s, p: TSyntagm;
+  s, p, nextSyntagm: TSyntagm;
   m: string;
   skip: boolean;
 begin
@@ -840,12 +861,10 @@ begin
     skip := false;
     for s in FSintagmas do
     begin
-      if skip then
-      begin
-        skip := false;
+      if TestAndUnset(skip) then
         continue;
-      end;
 
+      nextSyntagm := s.GetNextSyntagm;
       case s.Kind of
         tsSintagma:
         begin
@@ -861,6 +880,17 @@ begin
           begin
             line.WriteString(s.GetNext.Text);
             skip := true;
+          // end
+          // // if next syntagm is a sibling, add it along with all its strongs and morphs and then skip it
+          // else if assigned(nextSyntagm) and (s.Siblings.Count > 0) and (s.Siblings.IndexOf(nextSyntagm) > 0) then
+          // begin
+          //   line.WriteString(p.Text);
+          //   for m in p.Strong do
+          //     line.WriteString(format('<W%s>', [m]));
+          //   for m in p.Morph do
+          //     line.WriteString(format('<WT%s>', [m]));
+          //   skip := true;
+          //   continue;
           end;
 
           if s.Pairs.Count > 0 then
@@ -1396,6 +1426,21 @@ begin
      FOnExportText(Self);
 end;
 
+procedure TVersiculo.OnCopyTokensToClipboard(Sender: TObject);
+begin
+  clipboard.AsText := GetTokens();
+end;
+
+procedure TVersiculo.OnCopyInterlinearVerseToClipboard(Sender: TObject);
+begin
+  clipboard.AsText := GetMySwordInterlinearLine;
+end;
+
+procedure TVersiculo.OnCopyXMLToClipboard(Sender: TObject);
+begin
+  clipboard.AsText := GetPares;
+end;
+
 procedure TVersiculo.OnRightToLeft(Sender: TObject);
 begin
   RightToLeft := not FRightToLeft;
@@ -1468,6 +1513,35 @@ begin
   Item.Caption := SSaveToFile;
   Item.OnClick := @OnSaveTextToFile;
   FVersePopupMenu.Items.Add(Item);
+
+  {$IFDEF DEBUG}
+    FVersePopupMenu.Items.AddSeparator;
+
+    Item := TMenuItem.Create(FVersePopupMenu);
+    Item.Caption := SCopyTokensToClipboard;
+    Item.OnClick := @OnCopyTokensToClipboard;
+    FVersePopupMenu.Items.Add(Item);
+
+    Item := TMenuItem.Create(FVersePopupMenu);
+    Item.Caption := 'Copy Syntagmas as JSON';
+    Item.OnClick := @OnCopySintagmasAsJSON;
+    FVersePopupMenu.Items.Add(Item);
+
+    Item := TMenuItem.Create(FVersePopupMenu);
+    Item.Caption := SCopyInterlinearVerseToClipboard;
+    Item.OnClick := @OnCopyInterlinearVerseToClipboard;
+    FVersePopupMenu.Items.Add(Item);
+
+    Item := TMenuItem.Create(FVersePopupMenu);
+    Item.Caption := SCopyXMLToClipboard;
+    Item.OnClick := @OnCopyXMLToClipboard;
+    FVersePopupMenu.Items.Add(Item);
+
+    Item := TMenuItem.Create(FVersePopupMenu);
+    Item.Caption := SCopyAssociationsJSONToClipboard;
+    Item.OnClick := @OnCopyAssociationsJSONToClipboard;
+    FVersePopupMenu.Items.Add(Item);
+  {$ENDIF}
 end;
 
 constructor TVersiculo.Criar;
@@ -1475,6 +1549,113 @@ begin
   Criar(nil);
 end;
 
+procedure TVersiculo.OnCopySintagmasAsJSON(Sender: TObject);
+  // local helper to convert a TStringList to a JSON array
+  function StringListToJSONArray(lst: TStringList): string;
+  var
+    i: Integer;
+    arr: string;
+  begin
+    if lst = nil then
+    begin
+      Result := '[]';
+      Exit;
+    end;
+    arr := '[';
+    for i := 0 to lst.Count - 1 do
+    begin
+      if i > 0 then
+        arr := arr + ',';
+      arr := arr + QuotedStr(lst[i]);
+    end;
+    arr := arr + ']';
+    Result := arr;
+  end;
+var
+  i: Integer;
+  s: TSyntagm;
+  jsonItems: TStringList;
+  jsonStr: string;
+  strongsJSON, morphJSON, kindStr: string;
+begin
+  jsonItems := TStringList.Create;
+  try
+    for i := 0 to FSintagmas.Count - 1 do
+    begin
+      s := FSintagmas[i];
+      strongsJSON := StringListToJSONArray(s.Strong);
+      morphJSON := StringListToJSONArray(s.Morph);
+      kindStr := GetEnumName(TypeInfo(TTipoSintagma), Ord(s.Kind)); // convert kind to text
+      jsonItems.Add(Format('{"text": "%s", "index": %d, "kind": "%s", "strongs": %s, "morph": %s}'#13#10,
+        [s.Text, i, kindStr, strongsJSON, morphJSON]));
+    end;
+    // Prevent TStringList from adding extra quotes by disabling quoting
+    jsonItems.Delimiter := ',';
+    jsonItems.StrictDelimiter := True;
+    jsonItems.QuoteChar := #0;
+    jsonStr := '{"syntagmas": [' + jsonItems.DelimitedText + ']}';
+    Clipboard.AsText := jsonStr;
+  finally
+    jsonItems.Free;
+  end;
+end;
+
+function TVersiculo.GetAssociationsJSON: string;
+var
+  associations: TStringList;
+  processed: TList; // list to avoid duplicate processing
+  s, p: TSyntagm;
+  i: integer;
+  wordA, wordB: string;
+  jsonList: string;
+begin
+  associations := TStringList.Create;
+  processed := TList.Create;
+  try
+    for i := 0 to FSintagmas.Count - 1 do
+    begin
+      s := FSintagmas[i];
+      if (s.Pairs.Count = 0) or (processed.IndexOf(s) <> -1) then
+        Continue;
+      // Mark the group as processed
+      processed.Add(s);
+      for p in s.Siblings do
+        processed.Add(p);
+      // Build side A by concatenating s.Text and its siblings
+      wordA := s.Text;
+      for p in s.Siblings do
+        wordA := wordA + ' ' + p.Text;
+      // Build side B by concatenating texts of each paired syntagm
+      wordB := '';
+      for p in s.Pairs do
+      begin
+        if wordB = '' then
+          wordB := p.Text
+        else
+          wordB := wordB + ' ' + p.Text;
+      end;
+      // Add association in desired format
+      associations.Add(Format('["%s", "%s"]', [wordA, wordB]));
+    end;
+    // Manually join the association elements without extra quotes
+    jsonList := '';
+    for i := 0 to associations.Count - 1 do
+    begin
+      if i > 0 then
+        jsonList := jsonList + ',';
+      jsonList := jsonList + associations[i];
+    end;
+    Result := '{"data": [' + jsonList + ']}';
+  finally
+    processed.Free;
+    associations.Free;
+  end;
+end;
+
+procedure TVersiculo.OnCopyAssociationsJSONToClipboard(Sender: TObject);
+begin
+  clipboard.AsText := GetAssociationsJSON;
+end;
 
 end.
 

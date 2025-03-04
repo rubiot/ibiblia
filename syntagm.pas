@@ -109,6 +109,7 @@ type
     procedure HighlightStrong(strong: string);
     procedure ToggleStrongHighlight(enable: boolean);
     function GetNext: TSyntagm;
+    function GetNextSyntagm: TSyntagm;
     function GetNextVisible: TSyntagm;
     function GetNextUnassociated: TSyntagm;
     function GetPrevVisible: TSyntagm;
@@ -600,6 +601,28 @@ begin
   end;
 end;
 
+function TSyntagm.GetNextSyntagm: TSyntagm;
+var
+  i: Integer;
+begin
+  result := nil;
+  with TVersiculo(FVerse) do
+  begin
+    i := Sintagmas.IndexOf(Self);
+    if (i >= 0) and (i < Sintagmas.Count) then
+    begin
+      for i := i+1 to Sintagmas.Count-1 do
+      begin
+        if Sintagmas[i].FKind = tsSintagma then
+        begin
+          result := Sintagmas[i];
+          break;
+        end;
+      end;
+    end;
+  end;
+end;
+
 function TSyntagm.GetNextVisible: TSyntagm;
 var
   i: Integer;
@@ -612,7 +635,7 @@ begin
     begin
       for i := i+1 to Sintagmas.Count-1 do
       begin
-        if assigned(Sintagmas[i].FLabel)then
+        if assigned(Sintagmas[i].FLabel) then
         begin
           result := Sintagmas[i];
           break;
@@ -625,6 +648,7 @@ end;
 function TSyntagm.IsEqualTo(other: TSyntagm): boolean;
 begin
   result := (FKind = other.FKind) and
+            //(FText.ToLower = other.FText.ToLower) and
             (FText = other.FText) and
             (FColor = other.FColor) and
             (FSuperscript = other.FSuperscript) and

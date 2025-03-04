@@ -9,6 +9,9 @@ uses
 
 type
 
+  TPair = array of array of string;
+  TPairs = array of TPair;
+
   { TVerseTests }
 
   TVerseTests = class(TTestCase)
@@ -17,8 +20,15 @@ type
     verse2: TVersiculo;
 
     procedure Associate(const source: array of const; const dest: array of const);
-    procedure AssertSyntagmListEquals(list: TSyntagmList; const values: array of const);
+    procedure AssociateByText(const pair: TPair);
+    procedure AssociatePairs(const pairs: TPairs);
+    procedure AssertPairs(const pairs: TPairs);
+    procedure AssertPair(const pair: TPair);
+    procedure AssertPair(const source, dest: TSyntagmList);
+    procedure AssertSyntagmListEquals(const list1, list2: TSyntagmList);
+    procedure AssertSyntagmListEquals(const list: TSyntagmList; const values: array of const);
     procedure AssertPairsAndSiblings(syntagm: TSyntagm; const pairs, siblings: array of const);
+    function FindIndexOf(verse: TVersiculo; word: string): Integer;
   protected
     procedure SetUp; override;
     procedure TearDown; override;
@@ -43,6 +53,7 @@ type
     procedure ReplaceTextTwice;
     procedure ReplaceSourceTextVerticalBar;
     procedure ReplaceDestinationTextVerticalBar;
+    procedure ReplaceDestinationTextManyWords;
     procedure ReplaceSourceTextAddPunctuation;
   end;
 
@@ -574,6 +585,65 @@ begin
   AssertPairsAndSiblings(d[6], [s[6]], []);
 end;
 
+procedure TVerseTests.ReplaceDestinationTextManyWords;
+begin
+  verse1.Texto := '(καὶ ἡ ζωὴ ἐφανερώθη· καὶ ἑωράκαμεν, καὶ μαρτυροῦμεν, καὶ ἀπαγγέλλομεν ὑμῖν τὴν ζωὴν τὴν αἰώνιον, ἥτις ἦν πρὸς τὸν πατέρα, καὶ ἐφανερώθη ἡμῖν·)';
+  verse2.Texto := '(E a vida foi manifestada, e nós a vimos, e testificamos dela, e vos anunciamos a vida eterna, que estava com o Pai, e nos foi manifestada);';
+
+  AssociatePairs([
+    [['καὶ'], ['E']],
+    [['ἡ'], ['a']],
+    [['ζωὴ'], ['vida']],
+    [['ἐφανερώθη·'], ['foi', 'manifestada']],
+    [['καὶ'], ['e']],
+    [['ἑωράκαμεν'], ['nós', 'vimos']],
+    [['καὶ'], ['e']],
+    [['μαρτυροῦμεν'], ['testificamos']],
+    [['καὶ'], ['e']],
+    [['ἀπαγγέλλομεν'], ['anunciamos']],
+    [['ὑμῖν'], ['vos']],
+    [['τὴν'], ['a']],
+    [['ζωὴν'], ['vida']],
+    [['αἰώνιον'], ['eterna']],
+    [['ἥτις'], ['que']],
+    [['ἦν'], ['eestava']],
+    [['πρὸς'], ['com']],
+    [['τὸν'], ['o']],
+    [['πατέρα'], ['Pai']],
+    [['καὶ'], ['e']],
+    [['ἐφανερώθη'], ['foi', 'manifestada']],
+    [['ἡμῖν'], ['nos']]
+  ]);
+
+  verse2.AlterarTexto('(Porque a vida foi manifestada, e nós <FI>a<Fi> vimos, e testificamos, e vos anunciamos a vida eterna, que estava com o Pai, e nos foi manifestada.)');
+
+  AssertPairs([
+    //[['καὶ'], ['E']], association lost
+    [['ἡ'], ['a']],
+    [['ζωὴ'], ['vida']],
+    [['ἐφανερώθη·'], ['foi', 'manifestada']],
+    [['καὶ'], ['e']],
+    [['ἑωράκαμεν'], ['nós', 'vimos']],
+    [['καὶ'], ['e']],
+    [['μαρτυροῦμεν'], ['testificamos']],
+    [['καὶ'], ['e']],
+    [['ἀπαγγέλλομεν'], ['anunciamos']],
+    [['ὑμῖν'], ['vos']],
+    [['τὴν'], ['a']],
+    [['ζωὴν'], ['vida']],
+    [['αἰώνιον'], ['eterna']],
+    [['ἥτις'], ['que']],
+    [['ἦν'], ['eestava']],
+    [['πρὸς'], ['com']],
+    [['τὸν'], ['o']],
+    [['πατέρα'], ['Pai']],
+    [['καὶ'], ['e']],
+    [['ἐφανερώθη'], ['foi', 'manifestada']],
+    [['ἡμῖν'], ['nos']]
+  ]);
+
+end;
+
 procedure TVerseTests.ReplaceSourceTextAddPunctuation;
 var
   s, d: TSyntagmList;
@@ -646,7 +716,115 @@ begin
   verse1.AssociarSintagmas;
 end;
 
-procedure TVerseTests.AssertSyntagmListEquals(list: TSyntagmList; const values: array of const);
+procedure TVerseTests.AssociateByText(const pair: TPair);
+var
+  word: string;
+  i, s: Integer;
+  words: array of string;
+begin
+  verse1.LimparSelecao;
+  verse2.LimparSelecao;
+
+  AssertTrue(Length(pair) = 2);
+  words := pair[0];
+  for i:=0 to Length(words)-1 do
+  begin
+    word := string(words[i]);
+    s := FindIndexOf(verse1, word);
+    if s = -1 then
+       raise Exception.Create('Word not found in source text: ' + word);
+    verse1.Sintagmas[s].AddToSelection;
+  end;
+  words := pair[1];
+  for i:=0 to Length(words)-1 do
+  begin
+    word := string(words[i]);
+    s := FindIndexOf(verse2, word);
+    if s = -1 then
+       raise Exception.Create('Word not found in destination text: ' + word);
+    verse2.Sintagmas[s].AddToSelection;
+  end;
+
+  verse1.AssociarSintagmas;
+end;
+
+procedure TVerseTests.AssociatePairs(const pairs: TPairs);
+var
+  pair: TPair;
+begin
+  for pair in pairs do
+    AssociateByText(pair);
+end;
+
+procedure TVerseTests.AssertPairs(const pairs: TPairs);
+var
+  pair: TPair;
+begin
+  for pair in pairs do
+    AssertPair(pair);
+end;
+
+procedure TVerseTests.AssertPair(const pair: TPair);
+var
+  s: TSyntagm;
+  word: string;
+  i, idx: integer;
+  srcList, dstList, siblings: TSyntagmList;
+  src: array of string;
+  dst: array of string;
+begin
+  AssertTrue(Length(pair) = 2);
+  src := pair[0];
+  dst := pair[1];
+  AssertTrue(Length(src) > 0);
+  AssertTrue(Length(dst) > 0);
+
+  try
+    srcList := TSyntagmList.Create;
+    dstList := TSyntagmList.Create;
+    for word in src do
+      srcList.Add(verse1.Sintagmas[FindIndexOf(verse1, word)]);
+    AssertEquals(srcList.Count, Length(src));
+    for word in dst do
+      dstList.Add(verse2.Sintagmas[FindIndexOf(verse2, word)]);
+    AssertEquals(dstList.Count, Length(dst));
+
+    siblings := TSyntagmList.Create();
+    siblings.AddList(srcList);
+    for i:=0 to srcList.Count-1 do
+    begin
+      s := srcList[i];
+      // checking siblings
+      idx := srcList.IndexOf(s);
+      siblings.Delete(idx);
+      AssertSyntagmListEquals(s.Siblings, siblings);
+      siblings.Insert(idx, s);
+      // checking pairs
+      AssertSyntagmListEquals(s.Pairs, dstList);
+    end;
+  finally
+    srcList.Free;
+    dstList.Free;
+    siblings.Free;
+  end;
+end;
+
+procedure TVerseTests.AssertPair(const source, dest: TSyntagmList);
+var
+  s: TSyntagm;
+begin
+end;
+
+procedure TVerseTests.AssertSyntagmListEquals(const list1, list2: TSyntagmList);
+var
+  i: integer;
+begin
+  AssertEquals(list1.Count, list2.Count);
+  for i := 0 to list1.Count-1 do
+    AssertTrue(list1[i] = list2[i]);
+end;
+
+procedure TVerseTests.AssertSyntagmListEquals(const list: TSyntagmList; const values: array of const);
 var
   i: integer;
 begin
@@ -660,6 +838,24 @@ procedure TVerseTests.AssertPairsAndSiblings(syntagm: TSyntagm; const pairs, sib
 begin
   AssertSyntagmListEquals(syntagm.Pairs, pairs);
   AssertSyntagmListEquals(syntagm.Siblings, siblings);
+end;
+
+function TVerseTests.FindIndexOf(verse: TVersiculo; word: string): Integer;
+var
+  list: TSyntagmList;
+  i: Integer;
+begin
+  list := verse.Sintagmas;
+  Result := -1;
+
+  for i := 0 to list.Count - 1 do
+    if not list[i].IsAssociated and (list[i].RawText = word) then
+      if Result <> -1 then
+        raise Exception.Create(Format('Duplicated word in verse', [word, Result, i]));
+      result := i;
+
+  if Result = -1 then
+    raise Exception.Create(Format('Word [%s] not found in verse', [word]));
 end;
 
 procedure TVerseTests.SetUp;
