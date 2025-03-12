@@ -933,13 +933,14 @@ begin
 end;
 
 function TVersiculo.GetLinhaONT(morfo: boolean; autoitalico: boolean; strongsreutilizados: boolean;
-          strongsnaotraduzidos: boolean
- ): string;
+      strongsnaotraduzidos: boolean): string;
 var
   linha: TStringStream;
   stg, prox: TSyntagm;
   s, p, m: smallint;
   ls: TList;
+  temp: string;
+  label NextSyntagm;
 begin
   result := '';
   ls := TList.Create; // usado para armazenar os Strongs utilizados no versículo
@@ -950,22 +951,23 @@ begin
 
     s := -1;
     for stg in FSintagmas do
-    begin // sintagmas
+    begin // para cada sintagma, computa sua saída em uma variável temporária
       Inc(s);
+      temp := '';
 
-      if (prox = nil) and (stg.Pairs.Count > 0) and (stg.Kind = tsSintagma) then
-        linha.WriteString('<wt>');
+      // if (prox = nil) and (stg.Pairs.Count > 0) and (stg.Kind = tsSintagma) then
+      //   temp := temp + '<wt>';
 
       if autoitalico and (stg.Pairs.Count = 0) and (stg.Kind = tsSintagma) then
-        linha.WriteString('<FI>');
+        temp := temp + '<FI>';
 
       if autoitalico and (stg.Kind = tsTag) and ((stg.Text = '<FI>') or (stg.Text = '<Fi>')) then
-        continue; // quando auto-itálico, ignorar os itálicos originais
+        goto NextSyntagm; // quando auto-itálico, ignorar os itálicos originais
 
-      linha.WriteString(stg.Text);
+      temp := temp + stg.Text;
 
       if autoitalico and (stg.Pairs.Count = 0) and (stg.Kind = tsSintagma) then
-         linha.WriteString('<Fi>');
+        temp := temp + '<Fi>';
 
       if (stg.Pairs.Count > 0) and (stg.Kind = tsSintagma) then
       begin
@@ -973,7 +975,7 @@ begin
            (stg.Siblings.Count > 0) then // tem irmãos
         begin
           prox := nil;
-          for m:=s+1 to Sintagmas.Count-1 do
+          for m := s+1 to Sintagmas.Count-1 do
           begin // procurando o próximo sintagma (saltando espaços, pontuação, etc.)
             if Sintagmas[m].Kind = tsSintagma then
             begin
@@ -982,43 +984,50 @@ begin
             end;
           end;
           if (prox <> nil) and (stg.Siblings.IndexOf(prox) >= 0) then // o próximo sintagma é irmão deste?
-            continue;
+            goto NextSyntagm;
         end;
 
         prox := nil;
-        for p:=0 to stg.Pairs.Count-1 do
+        for p := 0 to stg.Pairs.Count-1 do
         begin // pares
-          for m:=0 to stg.Pairs[p].Strong.Count-1 do // strongs
+          for m := 0 to stg.Pairs[p].Strong.Count-1 do // strongs
           begin
-            if not strongsreutilizados or (ls.IndexOf(stg.Pairs[p].Strong) = -1) then // este Strong já foi utilizado antes?
+            if (not strongsreutilizados) or (ls.IndexOf(stg.Pairs[p].Strong) = -1) then // este Strong já foi utilizado antes?
             begin // não
-              linha.WriteString(format('<W%s>', [stg.Pairs[p].Strong[m]]));
+              temp := temp + format('<W%s>', [stg.Pairs[p].Strong[m]]);
               ls.Add(stg.Pairs[p].Strong)
             end else // strong reutilizado
-              linha.WriteString(format('<W%ss>', [stg.Pairs[p].Strong[m]]));
+              temp := temp + format('<W%ss>', [stg.Pairs[p].Strong[m]]);
           end;
 
-          if not morfo then continue;
+          if not morfo then
+            continue;
 
-          for m:=0 to stg.Pairs[p].Morph.Count-1 do   // morfologia
-            linha.WriteString(format('<WT%s>', [stg.Pairs[p].Morph[m]]));
+          for m := 0 to stg.Pairs[p].Morph.Count-1 do // morfologia
+            temp := temp + format('<WT%s>', [stg.Pairs[p].Morph[m]]);
         end;
       end;
+
+      NextSyntagm:
+        // escreve o resultado do sintagma em 'linha' após computá-lo integralmente
+        if temp.Contains('<W') then // se houver strongs ou morfologia, então é um sintagma
+          linha.WriteString('<wt>');
+        linha.WriteString(temp);
     end;
 
     if strongsnaotraduzidos then
     begin
       // verificando se ficaram palavras do original que não foram traduzidas
-      for s:=0 to VersiculoPar.Sintagmas.Count-1 do
-      begin // sintagmas
-        stg := VersiculoPar.Sintagmas[s];
-        if assigned(stg.Strong) and (ls.IndexOf(stg.Strong) = -1) then
-          for m:=0 to stg.Strong.Count-1 do // strongs
-            linha.WriteString(format('<W%sx>', [stg.Strong[m]]));
+      for s := 0 to VersiculoPar.Sintagmas.Count-1 do
+      begin
+      stg := VersiculoPar.Sintagmas[s];
+      if assigned(stg.Strong) and (ls.IndexOf(stg.Strong) = -1) then
+        for m := 0 to stg.Strong.Count-1 do // strongs
+        linha.WriteString(format('<W%sx>', [stg.Strong[m]]));
       end;
     end;
 
-    { handling special cases for italics }
+    // handling special cases for italics
     result := FFixWrongFiTag.Replace(linha.DataString, '$2$1'); { fix '<wt>bla <FI>ble<WG1><Fi>' case }
     result := result.Replace('<FI><wt>', '<wt><FI>', [rfReplaceAll]);
   finally
