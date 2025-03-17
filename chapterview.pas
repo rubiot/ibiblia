@@ -634,7 +634,8 @@ begin
   //b.BlockStyle.BottomPadding := 5;
   b.BlockStyle.RightPadding := 5;
 
-  RenderSpan(b.Blocks, blockText);
+  // using non-breakable spaces inside interlinear blocks
+  RenderSpan(b.Blocks, stringReplace(blockText, ' ', #8239, [rfReplaceAll]));
 end;
 
 procedure TChapterView.RenderInterlinearUnit(cont: TKMemoBlocks;
@@ -645,8 +646,6 @@ begin
     //cont.LastBlock.ParaStyle.HAlign := halCenter;
     cont.AddParagraph();
   end;
-  translation := StringReplace(translation, ' ', #8239, [rfReplaceAll]); // using non-breakable spaces
-  //translation := StringReplace(translation, '[', #8288'['#8288, [rfReplaceAll]);
   RenderSpan(cont, '<font color="#417cbe">' + translation + '</font>');
   //cont.AddTextBlock(translation).TextStyle.Font.Color := $be7c41;
 end;

@@ -846,31 +846,123 @@ function TVersiculo.GetMySwordInterlinearLine: string;
       flag := false;
   end;
 
+  function CollectConsecutiveSiblings(startSyntagm: TSyntagm; var skipIndices: TList): string;
+  var
+    currentIdx, nextIdx, lookAheadIdx: Integer;
+    currentSyn, nextSyn, lookAheadSyn: TSyntagm;
+    combinedText: string;
+    foundSpace: Boolean;
+  begin
+    combinedText := startSyntagm.Text;
+    currentIdx := FSintagmas.IndexOf(startSyntagm);
+
+    // If we have siblings, check if any are consecutive
+    if startSyntagm.Siblings.Count = 0 then
+    begin
+      Result := combinedText;
+      Exit;
+    end;
+
+    // Check next syntagms to find consecutive siblings
+    nextIdx := currentIdx + 1;
+    while nextIdx < FSintagmas.Count do
+    begin
+      nextSyn := FSintagmas[nextIdx];
+
+      // Add any spaces between siblings
+      if nextSyn.Kind = tsEspaco then
+      begin
+        combinedText := combinedText + nextSyn.Text;
+        skipIndices.Add(Pointer(nextIdx));
+        Inc(nextIdx);
+        continue;
+      end
+      // Handle '<wt>' tags between siblings - look ahead to see if followed by a sibling
+      else if (nextSyn.Kind = tsMetaDado) and (nextSyn.Text = '<wt>') then
+      begin
+        // Look ahead to find next syntagm after the tag
+        lookAheadIdx := nextIdx + 1;
+        lookAheadSyn := nil;
+
+        while (lookAheadIdx < FSintagmas.Count) do
+        begin
+          if FSintagmas[lookAheadIdx].Kind = tsSintagma then
+          begin
+            lookAheadSyn := FSintagmas[lookAheadIdx];
+            break;
+          end;
+          Inc(lookAheadIdx);
+        end;
+
+        // Only add the '<wt>' tag if followed by a sibling
+        if (lookAheadSyn <> nil) and (startSyntagm.Siblings.IndexOf(lookAheadSyn) >= 0) then
+        begin
+          combinedText := combinedText + nextSyn.Text;
+          skipIndices.Add(Pointer(nextIdx));
+        end;
+
+        Inc(nextIdx);
+        continue;
+      end
+      // If next syntagm is not a sibling or not a syntagm, we're done
+      else if (nextSyn.Kind <> tsSintagma) or
+              (startSyntagm.Siblings.IndexOf(nextSyn) < 0) then
+        break;
+
+      // Found consecutive sibling, add it to result
+      combinedText := combinedText + nextSyn.Text;
+      skipIndices.Add(Pointer(nextIdx));
+      Inc(nextIdx);
+    end;
+
+    Result := combinedText;
+  end;
+
 var
   line: TStringStream;
   s, p, nextSyntagm: TSyntagm;
   m: string;
   skip: boolean;
+  skipIndices: TList;
+  i, currentIndex: Integer;
+  combinedText: string;
 begin
   result := '';
 
   {Sample: <TS>The Creation<Ts><Q><wg>εν<WG1722><E> In<e><q> <Q><wg>αρχή<WG746><E> <FI>the<Fi> beginning<e><q>}
+  skipIndices := TList.Create;
   try
     line := TStringStream.Create('');
 
     skip := false;
-    for s in FSintagmas do
+    i := 0;
+    while i < FSintagmas.Count do
     begin
-      if TestAndUnset(skip) then
+      if skipIndices.IndexOf(Pointer(i)) >= 0 then
+      begin
+        Inc(i);
         continue;
+      end;
 
-      nextSyntagm := s.GetNextSyntagm;
+      s := FSintagmas[i];
+
+      if TestAndUnset(skip) then
+      begin
+        Inc(i);
+        continue;
+      end;
+
       case s.Kind of
         tsSintagma:
         begin
-          line.WriteString('<Q>');
-          line.WriteString(s.Text);
+          // Collect text from consecutive siblings
+          combinedText := CollectConsecutiveSiblings(s, skipIndices);
 
+          line.WriteString('<Q>');
+          // Use non-breakable spaces in the text
+          line.WriteString(combinedText);
+
+          // Output Strong's numbers and morphology for this syntagm
           for m in s.Strong do
             line.WriteString(format('<W%s>', [m]));
           for m in s.Morph do
@@ -880,28 +972,21 @@ begin
           begin
             line.WriteString(s.GetNext.Text);
             skip := true;
-          // end
-          // // if next syntagm is a sibling, add it along with all its strongs and morphs and then skip it
-          // else if assigned(nextSyntagm) and (s.Siblings.Count > 0) and (s.Siblings.IndexOf(nextSyntagm) > 0) then
-          // begin
-          //   line.WriteString(p.Text);
-          //   for m in p.Strong do
-          //     line.WriteString(format('<W%s>', [m]));
-          //   for m in p.Morph do
-          //     line.WriteString(format('<WT%s>', [m]));
-          //   skip := true;
-          //   continue;
           end;
 
           if s.Pairs.Count > 0 then
           begin
             line.WriteString('<T>');
-            if (s.Siblings.Count = 0) or (FSintagmas.IndexOf(s) < FSintagmas.IndexOf(s.Siblings[0])) then
-            begin // no siblings of the first sibling
+            if (s.Siblings.Count = 0) or (i < FSintagmas.IndexOf(s.Siblings[0])) then
+            begin // no siblings or is the first sibling
               for p in s.Pairs do
               begin
                 line.WriteString(GetSpacingBefore(s, p));
-                line.WriteString(IfThen(p.IsItalic, format('<FI>%s<Fi>', [p.Text]), p.Text));
+                // Also use non-breakable spaces in the translated text
+                if p.IsItalic then
+                  line.WriteString(Format('<FI>%s<Fi>', [p.Text]))
+                else
+                  line.WriteString(p.Text);
               end;
             end else // not a first sibling
               line.WriteString('←');
@@ -910,9 +995,6 @@ begin
           else
             line.WriteString('<T>•<t>');
 
-          //for m in s.Strong do
-          //  line.WriteString(format('<T>%s<t>', [m]));
-
           line.WriteString('<q>');
         end;
         tsTag:       line.WriteString(s.RawText);
@@ -920,9 +1002,13 @@ begin
         tsPontuacao: line.WriteString(s.RawText);
         tsMetaDado:  if s.Text <> '<wt>' then line.WriteString(s.RawText);
       end;
+
+      Inc(i);
     end;
-  finally
+
     result := line.DataString;
+  finally
+    skipIndices.Free;
     line.Free;
   end;
 end;
@@ -954,9 +1040,6 @@ begin
     begin // para cada sintagma, computa sua saída em uma variável temporária
       Inc(s);
       temp := '';
-
-      // if (prox = nil) and (stg.Pairs.Count > 0) and (stg.Kind = tsSintagma) then
-      //   temp := temp + '<wt>';
 
       if autoitalico and (stg.Pairs.Count = 0) and (stg.Kind = tsSintagma) then
         temp := temp + '<FI>';
@@ -1197,8 +1280,7 @@ begin
   tokens.Destroy;
 end;
 
-procedure TVersiculo.EditKeyDown(Sender: TObject; var Key: Word;
-  Shift: TShiftState);
+procedure TVersiculo.EditKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
   if Key = VK_ESCAPE then
     FEdit.Visible := False
@@ -1328,12 +1410,13 @@ procedure TVersiculo.AtualizarStrongCount;
 
   function GetStrongsCount(s: TSyntagm): integer;
   begin
-    result := 0;
     case FStrongsCountMode of
       scCountStrongs:
         result := s.StrongsCount;
       scCountWords:
         result := s.StrongsWordsCount;
+    else
+      result := 0;
     end;
   end;
 
