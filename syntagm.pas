@@ -800,8 +800,10 @@ end;
 function TSyntagm.GetNextUnassociated: TSyntagm;
 var
   i: Integer;
+  mustHaveTags: boolean;
 begin
   result := nil;
+  mustHaveTags := TVersiculo(FVerse).NextAutoSelectWordMustHaveStrongMorpho;
   with TVersiculo(FVerse) do
   begin
     i := Sintagmas.IndexOf(Self);
@@ -810,7 +812,7 @@ begin
       for i := i+1 to Sintagmas.Count-1 do
       begin
         if (Sintagmas[i].Kind = tsSintagma) and
-           (Sintagmas[i].HasStrongs or Sintagmas[i].HasMorph) and
+           (not mustHaveTags or (Sintagmas[i].HasStrongs or Sintagmas[i].HasMorph)) and
            (not Sintagmas[i].IsAssociated) then
         begin
           result := Sintagmas[i];

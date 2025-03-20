@@ -59,6 +59,8 @@ type
     FRTLMenuItem: TMenuItem;
     FFixWrongFiTag: IRegex;
     FReadOnly: Boolean;
+    { determines the auto select behaviour on right-click association }
+    FNextAutoSelectWordMustHaveStrongMorpho: Boolean;
     //FOnNovaAssociacao: TOnAssociacaoEvent;
     //FOnRemoverAssociacao: TOnAssociacaoEvent;
     function GetAndamentoAssociacao: Single;
@@ -162,6 +164,7 @@ type
     property DebugTokens: string read GetTokens;
     property ReadOnly: Boolean read FReadOnly write FReadOnly default False;
     property RightToLeft: Boolean read FRightToLeft write SetRightToLeft default False;
+    property NextAutoSelectWordMustHaveStrongMorpho: boolean read FNextAutoSelectWordMustHaveStrongMorpho write FNextAutoSelectWordMustHaveStrongMorpho;
  published
     { Published declarations }
   end;
@@ -231,6 +234,7 @@ begin
   FXMLModificado        := false;
   FSelecao              := TSyntagmList.Create;
   FMostrarDicas         := false;
+  FNextAutoSelectWordMustHaveStrongMorpho := true;
   //FFontePadrao          := TFont.Create;
   //FFontePadrao.Assign(TheOwner.Font);
   FCorAssociado         := clWindowText;
