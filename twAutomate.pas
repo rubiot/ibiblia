@@ -31,16 +31,24 @@ type
     class procedure LoadLangFile(langFile: string);
     class function GetConfigFile: string;
     class function GetCurrentLangFile(configFile: string): string;
+    class procedure FindTheWordWindows(outputFile: string);
   end;
 
 const
   //the classname of the main theWord window.
-  MAINFORM_CLASSNAME = 'theWord.0f2ba8a0-906d-11e1-b0c4-0800200c9a66';
+  TW6_MAINFORM_CLASSNAME = 'theWord.0f2ba8a0-906d-11e1-b0c4-0800200c9a667.UnicodeClass';
+  TW7_MAINFORM_CLASSNAME = 'theWord.0f2ba8a0-906d-11e1-b0c4-0800200c9a66';
   //the value of COPYDATASTRUCT.dwData
   COPYDATA_OP_FIRST = $ffff0000;
   //Operation go-to-verse
   COPYDATA_OP_GOTOVERSE = COPYDATA_OP_FIRST + 1;
   COPYDATA_OP_DCTWORDLOOKUP = COPYDATA_OP_FIRST + 2;
+
+  // File encoding constants
+  FILE_ENCODING_UTF8 = 0;
+  FILE_ENCODING_UTF16LE = 1;
+  FILE_ENCODING_UTF16BE = 2;
+  FILE_ENCODING_UNKNOWN = -1;
 
 type
   TStrLess = specialize TLess<string>;
@@ -61,19 +69,64 @@ begin
   IgnoreErrors := false;
 end;
 
+// Detects the encoding of a file by checking for BOM (Byte Order Mark)
+function DetectFileEncoding(const fileName: string): Integer;
+var
+  fs: TFileStream;
+  header: array[0..3] of Byte;
+  bytesRead: Integer;
+begin
+  Result := FILE_ENCODING_UNKNOWN;
+
+  if not FileExists(fileName) then
+    Exit;
+
+  fs := TFileStream.Create(fileName, fmOpenRead or fmShareDenyNone);
+  try
+    bytesRead := fs.Read(header, SizeOf(header));
+
+    if bytesRead >= 3 then
+    begin
+      // UTF-8 BOM: EF BB BF
+      if (header[0] = $EF) and (header[1] = $BB) and (header[2] = $BF) then
+        Result := FILE_ENCODING_UTF8
+      // UTF-16 LE BOM: FF FE
+      else if (header[0] = $FF) and (header[1] = $FE) then
+        Result := FILE_ENCODING_UTF16LE
+      // UTF-16 BE BOM: FE FF
+      else if (header[0] = $FE) and (header[1] = $FF) then
+        Result := FILE_ENCODING_UTF16BE;
+    end;
+  finally
+    fs.Free;
+  end;
+end;
+
 {------------------------------------------------------------------------------}
 { Return 0 if tw is not running, else the HWND of the running instance }
 class function TWAutomateUtils.IsTwRunning: THandle;
 var
   PrevWindow: THandle;
 begin
-  PrevWindow := FindWindow(MAINFORM_CLASSNAME + '.UnicodeClass', nil);
-  if IsWindow(PrevWindow) then begin
-    Result := PrevWindow
-  end
-  else begin
-    Result := 0;
+  // Try TW7 window class first
+  PrevWindow := FindWindow(TW7_MAINFORM_CLASSNAME, nil);
+  if IsWindow(PrevWindow) then
+  begin
+    Result := PrevWindow;
+    Exit;
   end;
+
+  // Fallback to TW6 window class
+  PrevWindow := FindWindow(TW6_MAINFORM_CLASSNAME, nil);
+  if IsWindow(PrevWindow) then
+  begin
+    Result := PrevWindow;
+    Exit;
+  end;
+
+  // Neither window class was found
+  FindTheWordWindows('theWordWindows.txt');
+  Result := 0;
 end;
 
 function QueryFullProcessImageName(hProcess: HANDLE; dwFlags: DWORD; lpExeName: LPTSTR; var lpdwSize: DWORD): BOOL; stdcall; external 'KERNEL32' name 'QueryFullProcessImageNameA';
@@ -87,15 +140,25 @@ begin
   result := '';
   pid := 0;
   hwnd := IsTwRunning;
+
+  if hwnd = 0 then
+    Exit;
+
   size := sizeof(module);
   if GetWindowThreadProcessId(hwnd, pid) <> 0 then
   begin
     hProcess := OpenProcess(PROCESS_QUERY_INFORMATION, false, pid);
-    if QueryFullProcessImageName(hProcess, 0, module, size) then
+    if hProcess <> 0 then
     begin
-      result := module;
-      result := ExtractFilePath(result) + 'config.ini';
-      exit;
+      try
+        if QueryFullProcessImageName(hProcess, 0, module, size) then
+        begin
+          result := module;
+          result := ExtractFilePath(result) + 'config.ini';
+        end;
+      finally
+        CloseHandle(hProcess);
+      end;
     end;
   end;
 end;
@@ -181,35 +244,111 @@ var
   matches: IMatch;
   line: string;
   stream: TMemoryStream;
+  encoding: Integer;
 begin
   result := '';
   if configFile = '' then
     exit;
 
-  { o config do TheWord é codificado em UTF-16... }
-  stream := TMemoryStream.Create;
+  encoding := DetectFileEncoding(configFile);
+  lines := TStringList.Create;
   try
-    stream.LoadFromFile(configFile);
-    stream.Position := 0;
-    lines := TStringList.Create;
-    lines.AddText(UTF16ToUTF8(PWideChar(stream.Memory), stream.Size div SizeOf(WideChar)));
-  finally
-    stream.Free;
-  end;
+    stream := TMemoryStream.Create;
+    try
+      stream.LoadFromFile(configFile);
+      stream.Position := 0;
 
-  reLang := RegexCreate('^lang=(\w+)', [rcoUTF8]);
+      // Handle according to detected encoding
+      case encoding of
+        FILE_ENCODING_UTF16LE, FILE_ENCODING_UTF16BE:
+          begin
+            // Skip BOM if present (position is already set after LoadFromFile)
+            lines.AddText(UTF16ToUTF8(PWideChar(stream.Memory), stream.Size div SizeOf(WideChar)));
+          end;
+        FILE_ENCODING_UTF8:
+          begin
+            // Standard UTF-8 with BOM
+            lines.LoadFromFile(configFile);
+          end;
+        else
+          begin
+            // Unknown encoding or no BOM, try to load it directly
+            lines.LoadFromFile(configFile);
+          end;
+      end;
 
-  for i:=0 to lines.Count - 1 do
-  begin
-    line := lines[i];
-    matches := reLang.Match(line);
-    if matches.Success then
-    begin
-      result := format('%s%s.lng', [ExtractFilePath(configFile), matches.Groups[1].Value]);
-      exit;
+      reLang := RegexCreate('^lang=(\w+)', [rcoUTF8]);
+
+      for i:=0 to lines.Count - 1 do
+      begin
+        line := lines[i];
+        matches := reLang.Match(line);
+        if matches.Success then
+        begin
+          result := format('%s%s.lng', [ExtractFilePath(configFile), matches.Groups[1].Value]);
+          exit;
+        end;
+      end;
+    finally
+      stream.Free;
     end;
+  finally
+    lines.Free;
   end;
-  lines.Free;
+end;
+
+function EnumWindowsProc(hwnd: HWND; lParam: LPARAM): BOOL; stdcall;
+var
+  className, windowTitle: array[0..255] of Char;
+  classStr, titleStr: string;
+  fPtr: ^TextFile;
+begin
+  Result := True; // Continue enumeration
+
+  // Get window class name
+  GetClassName(hwnd, className, 256);
+  classStr := className;
+
+  // Get window title
+  GetWindowText(hwnd, windowTitle, 256);
+  titleStr := windowTitle;
+
+  // Check if either class name or title contains 'theWord'
+  if (Pos('theWord', LowerCase(classStr)) > 0) or
+     (Pos('theword', LowerCase(titleStr)) > 0) then
+  begin
+    // Write to file
+    fPtr := Pointer(lParam);
+    WriteLn(fPtr^, 'Window Handle: ', hwnd);
+    WriteLn(fPtr^, 'Class Name: ', classStr);
+    WriteLn(fPtr^, 'Window Title: ', titleStr);
+    WriteLn(fPtr^, StringOfChar('-', 50));
+  end;
+end;
+
+class procedure TWAutomateUtils.FindTheWordWindows(outputFile: string);
+var
+  f: TextFile;
+begin
+  AssignFile(f, outputFile);
+  try
+    Rewrite(f);
+    WriteLn(f, 'List of Windows with "theWord" in class name or title:');
+    WriteLn(f, StringOfChar('=', 50));
+    WriteLn(f, 'Current MAINFORM_CLASSNAME constant: ', TW6_MAINFORM_CLASSNAME);
+    WriteLn(f, StringOfChar('=', 50));
+    WriteLn(f);
+
+    // Enumerate all windows
+    EnumWindows(@EnumWindowsProc, LPARAM(@f));
+
+    WriteLn(f);
+    WriteLn(f, 'End of Window List');
+  finally
+    CloseFile(f);
+  end;
+
+  ShowMessage('theWord window not found. Debug information has been saved to: ' + outputFile);
 end;
 
 end.
