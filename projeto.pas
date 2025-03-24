@@ -231,6 +231,7 @@ type
     procedure ApplyPatch(patch: TPatchFile; indexes: TIntegerList);
     function GetPairs(ref: string): string;
     function GetComments(ref: string): string;
+    function GetStatus(ref: string): Integer;
     procedure SetTextDescription(text: TTipoTextoBiblico; description: string);
     function GetTextDescription(text: TTipoTextoBiblico): string;
     procedure Vacuum;
@@ -942,6 +943,19 @@ begin
     GoToReference(ref);
     if ID = ref then
       result := GetComentarios;
+  finally
+    FinishScrollingSession;
+  end;
+end;
+
+function TProjeto.GetStatus(ref: string): Integer;
+begin
+  result := 0;
+  StartScrollingSession;
+  try
+    GoToReference(ref);
+    if ID = ref then
+      result := GetSituacao;
   finally
     FinishScrollingSession;
   end;

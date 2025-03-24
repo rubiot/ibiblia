@@ -126,7 +126,7 @@ begin
   SetLabelColor(LabelDstText,      ProjetoAtual.ObterTextoVersiculo(FPatch.Reference[FIndex], tbDestino) = FPatch.DestinationText[FIndex]);
   SetLabelColor(LabelAssociations, ProjetoAtual.GetPairs           (FPatch.Reference[FIndex]           ) = FPatch.Pairs[FIndex]);
   SetLabelColor(LabelComments,     ProjetoAtual.GetComments        (FPatch.Reference[FIndex]           ) = FPatch.Comments[FIndex]);
-  //SetLabelColor(LabelStatus, ProjetoAtual.Situacao(FPatch.Reference[FIndex]                     ) = FPatch.Status[FIndex]);
+  SetLabelColor(LabelStatus,       IntToStr(ProjetoAtual.GetStatus(FPatch.Reference[FIndex])           ) = FPatch.Status[FIndex]);
 end;
 
 procedure TFrmApplyPatch.OnVerseChange(index: integer);
