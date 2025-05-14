@@ -219,10 +219,6 @@ const
   MAX_MRU = 10;
 
 resourcestring
-  SStatusNotAssociated = 'Not associated';
-  SStatusAssociating = 'Associating';
-  SStatusNeedsReview = 'Needs review';
-  SStatusAssociated = 'Associated!';
   SRollbackChanges = 'Rollback changes';
   SRollbackChangesConfirmation = 'Are you sure you want to rollback all changes to this verse?';
   SSourceText = 'Source';
@@ -230,6 +226,12 @@ resourcestring
   SReference1Text = 'Reference1';
   SReference2Text = 'Reference2';
   SInterlinearText = 'Interlinear';
+  SRegisterFileAssociationSuccess = 'Successfully registered file association for .bib files';
+  SRegisterFileAssociationFailure = 'Failed to register file association for .bib files';
+  SUnregisterFileAssociationSuccess = 'Successfully removed file association for .bib files';
+  SUnregisterFileAssociationFailure = 'Failed to remove file association for .bib files';
+  SRegisterFileAssociation = 'Register .bib file association';
+  SUnregisterFileAssociation = 'Unregister .bib file association';
 
 implementation
 
@@ -1154,14 +1156,17 @@ end;
 {$ENDIF}
 
 procedure TFrmPrincipal.Translate;
+var i: Integer;
 begin
+  UpdateDefaultSituacaoDescricao;
   with RadioGroupStatus.Items do
   begin
     Clear;
-    Add(SStatusNotAssociated);
-    Add(SStatusAssociating);
-    Add(SStatusNeedsReview);
-    Add(SStatusAssociated);
+    if Assigned(ProjetoAtual) then
+    begin
+      for i := 0 to 3 do
+        Add(ProjetoAtual.GetSituacaoDescricao(i));
+    end;
   end;
   with ChapterViewTabCtrl do
   begin

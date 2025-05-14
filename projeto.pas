@@ -143,6 +143,8 @@ type
     function CreateBibleTreeContextMenu: TPopupMenu;
     procedure UpdateReference(ref: string);
     function BibleTreeNodeToReference(const node: TTreeNode): TReference;
+    procedure SetSituacaoDescricao(index: Integer; descricao: string);
+    function HasSituacaoCustomizada: boolean;
   protected
     procedure CopiarArquivo(origem, destino: string);
     function CriarObjetoTabela(db, tabela, chave: string): TSqlite3Dataset;
@@ -235,6 +237,7 @@ type
     procedure SetTextDescription(text: TTipoTextoBiblico; description: string);
     function GetTextDescription(text: TTipoTextoBiblico): string;
     procedure Vacuum;
+    function GetSituacaoDescricao(index: Integer): string;
 
     property FileName: string read FFileName;
     property FormattedReference: string read GetFormattedReference;
@@ -274,6 +277,10 @@ type
 
 resourcestring
 
+  SStatusNotAssociated = 'Not associated';
+  SStatusAssociating = 'Associating';
+  SStatusNeedsReview = 'Needs review';
+  SStatusAssociated = 'Associated!';
   SAnalyticalConcordance = 'Anaytical Concordance';
   SSyntheticConcordance = 'Synthetic Concordance';
   SOTConcordanceNotImplementedYet = 'Old Testament concordance is not implemented yet';
@@ -329,11 +336,60 @@ const
   QStrongs: array[etOT..etONT] of smallint = (8674, 5624, 14298);
   ProjetoModelo: array[etOT..etONT] of string = ('projeto-ot.modelo', 'projeto.modelo', 'projeto-ont.modelo');
 
+procedure UpdateDefaultSituacaoDescricao;
+
 implementation
 
 uses formpopup, formverserules;
 
 { TProjeto }
+
+const
+  DefaultSituacaoDescricao: array[0..3] of string = (
+    'Not associated',
+    'Associating',
+    'Needs review',
+    'Associated'
+  );
+
+procedure UpdateDefaultSituacaoDescricao;
+begin
+  DefaultSituacaoDescricao[0] := SStatusNotAssociated;
+  DefaultSituacaoDescricao[1] := SStatusAssociating;
+  DefaultSituacaoDescricao[2] := SStatusNeedsReview;
+  DefaultSituacaoDescricao[3] := SStatusAssociated;
+end;
+
+function TProjeto.GetSituacaoDescricao(index: Integer): string;
+var
+  custom: string;
+begin
+  custom := ObterInfo('status.description.' + IntToStr(index));
+  if not custom.IsEmpty then
+    Result := custom
+  else if (index >= 0) and (index <= 3) then
+    Result := DefaultSituacaoDescricao[index]
+  else
+    Result := '';
+end;
+
+procedure TProjeto.SetSituacaoDescricao(index: Integer; descricao: string);
+begin
+  AtribuirInfo('status.description.' + IntToStr(index), descricao);
+end;
+
+function TProjeto.HasSituacaoCustomizada: boolean;
+var
+  i: Integer;
+begin
+  Result := False;
+  for i := 0 to 3 do
+    if not ObterInfo('status.description.' + IntToStr(i)).IsEmpty then
+    begin
+      Result := True;
+      Exit;
+    end;
+end;
 
 procedure TProjeto.Novo(nomedb, descricao: string);
 begin
@@ -718,7 +774,7 @@ function TProjeto.CreateBibleTreeContextMenu: TPopupMenu;
     subitem := TMenuItem.Create(item);
     with subitem do
     begin
-      Caption := FRadioGroupSituacao.Items[status];
+      Caption := GetSituacaoDescricao(status);
       OnClick := @OnBibleTreePopupItemClick;
       ImageIndex := status;
       Tag := status;
@@ -1197,7 +1253,8 @@ begin
   if not replace and (texto in [tbOrigem, tbDestino]) then // clearing associations to avoid inconsistencies
   begin
     FTblPares.FieldByName('pare_pares').AsString := '';
-    FTblPares.FieldByName('pare_situacao').AsInteger := 0; // not associated
+    if not HasSituacaoCustomizada then
+      FTblPares.FieldByName('pare_situacao').AsInteger := 0; // not associated
   end;
 
   FTblPares.Post;
@@ -2089,6 +2146,7 @@ var
   t: TTipoTextoBiblico;
   s: string;
   f: TFont;
+  i: Integer;
 begin
   if not FileExists(Nome) then
   begin
@@ -2158,7 +2216,16 @@ begin
   if assigned(FMemoComentarios) then
     FMemoComentarios.Enabled := true;
   if assigned(FRadioGroupSituacao) then
+  begin
+    // Repopulate RadioGroupStatus with the correct status descriptions for this project
+    with FRadioGroupSituacao.Items do
+    begin
+      Clear;
+      for i := 0 to 3 do
+        Add(GetSituacaoDescricao(i));
+    end;
     FRadioGroupSituacao.Enabled := true;
+  end;
 
   FTblPares.BeforeScroll := @PreRolagemVersiculo;
   FTblPares.AfterScroll  := @PosRolagemVersiculo;
@@ -2224,7 +2291,7 @@ begin
   if assigned(FRadioGroupSituacao) then
   begin
     FRadioGroupSituacao.Enabled := false;
-    FRadioGroupSituacao.ItemIndex := 0;
+    FRadioGroupSituacao.Items.Clear;
   end;
 
   FClosing := false;
@@ -2274,7 +2341,7 @@ procedure TProjeto.VersiculoSeguinte;
 begin
   if not FTblPares.EOF then
     FTblPares.Next;
-  if not FExportando and SugerirAssociacaoAutomaticamente and (FRadioGroupSituacao.ItemIndex = 0) then
+  if not FExportando and SugerirAssociacaoAutomaticamente and (FRadioGroupSituacao.ItemIndex = 0) and (not HasSituacaoCustomizada) then
     SugerirAssociacao;
 end;
 
@@ -2282,7 +2349,7 @@ procedure TProjeto.VersiculoAnterior;
 begin
   if not FTblPares.BOF then
     FTblPares.Prior;
-  if not FExportando and SugerirAssociacaoAutomaticamente and (FRadioGroupSituacao.ItemIndex = 0) then
+  if not FExportando and SugerirAssociacaoAutomaticamente and (FRadioGroupSituacao.ItemIndex = 0) and (not HasSituacaoCustomizada) then
     SugerirAssociacao;
 end;
 
@@ -2290,7 +2357,7 @@ procedure TProjeto.VersiculoInicial;
 begin
   if not FTblPares.BOF then
     FTblPares.First;
-  if not FExportando and SugerirAssociacaoAutomaticamente and (FRadioGroupSituacao.ItemIndex = 0) then
+  if not FExportando and SugerirAssociacaoAutomaticamente and (FRadioGroupSituacao.ItemIndex = 0) and (not HasSituacaoCustomizada) then
     SugerirAssociacao;
 end;
 
@@ -2298,7 +2365,7 @@ procedure TProjeto.VersiculoFinal;
 begin
   if not FTblPares.EOF then
     FTblPares.Last;
-  if not FExportando and SugerirAssociacaoAutomaticamente and (FRadioGroupSituacao.ItemIndex = 0) then
+  if not FExportando and SugerirAssociacaoAutomaticamente and (FRadioGroupSituacao.ItemIndex = 0) and (not HasSituacaoCustomizada) then
     SugerirAssociacao;
 end;
 
@@ -2340,12 +2407,13 @@ end;
 procedure TProjeto.SugerirAssociacao;
 begin
   FSugeridor.SugerirAssociacoes(FAVersiculo[tbOrigem]);
+  FAVersiculo[tbOrigem].Renderizar;
+  FAVersiculo[tbDestino].Renderizar;
+
+  if HasSituacaoCustomizada then exit;
 
   if (FRadioGroupSituacao.ItemIndex = 0) and (FAVersiculo[tbOrigem].AndamentoAssociacao > 0) then
     FRadioGroupSituacao.ItemIndex := 1; // associando
-
-  FAVersiculo[tbOrigem].Renderizar;
-  FAVersiculo[tbDestino].Renderizar;
 end;
 
 procedure TProjeto.RecriarBaseSugestoes;
@@ -3092,6 +3160,7 @@ var
   bk: integer;
   node: TTreeNode;
 begin
+  UpdateDefaultSituacaoDescricao;
   if not assigned(FArvore) then
     exit;
 
