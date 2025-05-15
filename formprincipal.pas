@@ -8,7 +8,7 @@ interface
 
 uses
   {$IFDEF WINDOWS}
-  windows, twAutomate, TwSyncThread,
+  windows, twAutomate, TwSyncThread, fileassociation, ShellApi,
   {$ELSE}
   lclintf,
   {$ENDIF}
@@ -22,6 +22,8 @@ type
   { TFrmPrincipal }
 
   TFrmPrincipal = class(TForm)
+    ActionUnregisterFileAssociation: TAction;
+    ActionRegisterFileAssociation: TAction;
     ActionVaccumProject: TAction;
     ActionApplyPatch: TAction;
     ActionExportPatch: TAction;
@@ -63,10 +65,13 @@ type
     MenuItem16: TMenuItem;
     MenuItem17: TMenuItem;
     MenuItem18: TMenuItem;
+    MenuItem2: TMenuItem;
     MenuItem21: TMenuItem;
     MenuItem24: TMenuItem;
     MenuItem25: TMenuItem;
     MenuItem26: TMenuItem;
+    MenuItemRegisterFileAssoc: TMenuItem;
+    MenuItemUnregisterFileAssoc: TMenuItem;
     MenuItemApplyPatch: TMenuItem;
     MenuItemExportPatch: TMenuItem;
     MenuItemAutoSave: TMenuItem;
@@ -76,7 +81,6 @@ type
     MenuItemAbout: TMenuItem;
     MenuItemMouseHover: TMenuItem;
     MenuItem19: TMenuItem;
-    MenuItem2: TMenuItem;
     MenuItem20: TMenuItem;
     MenuItemDictPopup: TMenuItem;
     MenuItem22: TMenuItem;
@@ -146,6 +150,8 @@ type
     procedure ActionPropProjetoExecute(Sender: TObject);
     procedure ActionQuandoNovoVersiculoExecute(Sender: TObject);
     procedure ActionRecriarBaseSugestoesExecute(Sender: TObject);
+    procedure ActionRegisterFileAssociationExecute(Sender: TObject);
+    procedure ActionUnregisterFileAssociationExecute(Sender: TObject);
     procedure ActionReverterAssociacoesExecute(Sender: TObject);
     procedure ActionSairExecute(Sender: TObject);
     procedure ActionSalvarProjetoComoExecute(Sender: TObject);
@@ -183,6 +189,7 @@ type
     procedure RadioGroupStatusSelectionChanged(Sender: TObject);
     procedure ChapterViewTabCtrlChange(Sender: TObject);
     procedure ToolButtonExitClick(Sender: TObject);
+    procedure UpdateFileAssociationMenuItems;
   private
     { private declarations }
     FPopupTrigger: TPopupTrigger;
@@ -198,6 +205,7 @@ type
     {$ENDIF}
     procedure Translate;
     procedure DoOpenProject(filename: string);
+    procedure CheckFileAssociation;
   public
     { public declarations }
     language: string;
@@ -742,6 +750,23 @@ procedure TFrmPrincipal.FormCreate(Sender: TObject);
 var
   m: integer;
 begin
+  {$IFDEF WINDOWS}
+  // Handle elevation for file association registration
+  if (ParamCount > 0) and (ParamStr(1) = '--register-file-assoc') then
+  begin
+    if AssociateFileExtension(
+      '.bib',
+      'iBiblia.Project',
+      'iBiblia Project File',
+      ParamStr(0),
+      ParamStr(0)
+    ) then
+      MessageDlg(SRegisterFileAssociationSuccess, mtInformation, [mbOK], 0)
+    else
+      MessageDlg(SRegisterFileAssociationFailure, mtError, [mbOK], 0);
+    Halt;
+  end;
+  {$ENDIF}
   DebugLn('=================================');
 
   ProjetoAtual := nil;
@@ -802,6 +827,9 @@ begin
   syncTw2iBiblia := MenuItemSyncTheWord.Checked;
   synciBiblia2Tw := MenuItemSynciBiblia.Checked;
   SetUpSyncThread;
+
+  // Check and update file association menu items
+  CheckFileAssociation;
   {$ENDIF}
 end;
 
@@ -1234,6 +1262,116 @@ begin
   SetUpSyncThread;
   {$ENDIF}
 end;
+
+procedure TFrmPrincipal.ActionRegisterFileAssociationExecute(Sender: TObject);
+{$IFDEF WINDOWS}
+var
+  ExePath, IconPath: string;
+  Success: Boolean;
+  IsAssociated: Boolean;
+  AssociatedApp: string;
+  UserChoice: Integer;
+begin
+  ExePath := ParamStr(0);
+  IconPath := ExePath;
+
+  IsAssociated := IsFileAssociated('.bib');
+  AssociatedApp := GetAssociatedApp('.bib');
+
+  if IsAssociated and (not AssociatedApp.IsEmpty) and (not AssociatedApp.Contains('iBiblia')) then
+  begin
+    UserChoice := MessageDlg(SRegisterFileAssociation, 
+      Format('The .bib extension is currently associated with: %s.\nDo you want to take over the association for iBiblia?', [AssociatedApp]),
+      mtConfirmation, [mbYes, mbNo], 0);
+    if UserChoice <> mrYes then
+      Exit;
+  end;
+
+  Success := AssociateFileExtension(
+    '.bib',
+    'iBiblia.Project',
+    'iBiblia Project File',
+    ExePath,
+    IconPath
+  );
+
+  if Success then
+  begin
+    ShowMessage(SRegisterFileAssociationSuccess);
+    UpdateFileAssociationMenuItems;
+  end
+  else
+  begin
+    // Try to elevate if not already running as admin
+    if MessageDlg(SRegisterFileAssociation, 'Failed to register file association. This operation requires administrator rights.\nDo you want to retry as administrator?', mtConfirmation, [mbYes, mbNo], 0) = mrYes then
+    begin
+      // Relaunch self with elevation and a special parameter
+      ShellExecute(0, 'runas', PChar(ExePath), PChar('--register-file-assoc'), nil, SW_SHOWNORMAL);
+    end
+    else
+      ShowMessage(SRegisterFileAssociationFailure);
+  end
+end;
+{$ELSE}
+begin
+  // Nothing to do on non-Windows platforms
+end;
+{$ENDIF}
+
+procedure TFrmPrincipal.ActionUnregisterFileAssociationExecute(Sender: TObject);
+{$IFDEF WINDOWS}
+var
+  Success: Boolean;
+begin
+  Success := RemoveFileAssociation('.bib', 'iBiblia.Project');
+
+  if Success then
+  begin
+    ShowMessage(SUnregisterFileAssociationSuccess);
+    UpdateFileAssociationMenuItems;
+  end
+  else
+    ShowMessage(SUnregisterFileAssociationFailure);
+end;
+{$ELSE}
+begin
+  // Nothing to do on non-Windows platforms
+end;
+{$ENDIF}
+
+procedure TFrmPrincipal.UpdateFileAssociationMenuItems;
+{$IFDEF WINDOWS}
+var
+  IsAssociated: Boolean;
+  AssociatedApp: string;
+  IsOurs: Boolean;
+begin
+  IsAssociated := IsFileAssociated('.bib');
+  AssociatedApp := GetAssociatedApp('.bib');
+  // Check if the associated app is iBiblia (by exe name or path)
+  IsOurs := (not AssociatedApp.IsEmpty) and (AssociatedApp = ParamStr(0));
+
+  MenuItemRegisterFileAssoc.Enabled := (not IsOurs);
+  MenuItemUnregisterFileAssoc.Enabled := IsOurs;
+end;
+{$ELSE}
+begin
+  MenuItemRegisterFileAssoc.Visible := False;
+  MenuItemUnregisterFileAssoc.Visible := False;
+  MenuItemFileAssocSeparator.Visible := False;
+end;
+{$ENDIF}
+
+procedure TFrmPrincipal.CheckFileAssociation;
+{$IFDEF WINDOWS}
+begin
+  UpdateFileAssociationMenuItems;
+end;
+{$ELSE}
+begin
+  // Nothing to do on non-Windows platforms
+end;
+{$ENDIF}
 
 end.
 
