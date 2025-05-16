@@ -135,6 +135,14 @@ msgctxt "formnovoprojeto.swholebiblefilter"
 msgid "theWord Bible modules (*.ont, *.ot, *.nt)|*.ont;*.ot;*.nt"
 msgstr "Módulos de Bíblia do theWord (*.ont, *.ot, *.nt)|*.ont;*.ot;*.nt"
 
+#: formprincipal.saisuggestion
+msgid "AI-assisted (experimental)"
+msgstr ""
+
+#: formprincipal.saisuggestionhint
+msgid "Use the new AI-assisted suggestion engine (requires internet)"
+msgstr ""
+
 #: formprincipal.schanged
 msgid "changed"
 msgstr "modificado"
@@ -204,6 +212,18 @@ msgstr "referência 2"
 msgid "Reference2"
 msgstr "Referência2"
 
+#: formprincipal.sregisterfileassociation
+msgid "Register .bib file association"
+msgstr ""
+
+#: formprincipal.sregisterfileassociationfailure
+msgid "Failed to register file association for .bib files"
+msgstr ""
+
+#: formprincipal.sregisterfileassociationsuccess
+msgid "Successfully registered file association for .bib files"
+msgstr ""
+
 #: formprincipal.srollbackchanges
 msgctxt "formprincipal.srollbackchanges"
 msgid "Rollback changes"
@@ -226,21 +246,29 @@ msgctxt "formprincipal.ssourcetext"
 msgid "Source"
 msgstr "Origem"
 
-#: formprincipal.sstatusassociated
-msgid "Associated!"
-msgstr "Associado!"
+#: formprincipal.sstatisticalsuggestion
+msgid "Statistical model"
+msgstr ""
 
-#: formprincipal.sstatusassociating
-msgid "Associating"
-msgstr "Associando..."
+#: formprincipal.sstatisticalsuggestionhint
+msgid "Use the traditional statistical suggestion engine"
+msgstr ""
 
-#: formprincipal.sstatusneedsreview
-msgid "Needs review"
-msgstr "Rever"
+#: formprincipal.ssuggestionmode
+msgid "Suggestion mode"
+msgstr ""
 
-#: formprincipal.sstatusnotassociated
-msgid "Not associated"
-msgstr "Não associado"
+#: formprincipal.sunregisterfileassociation
+msgid "Unregister .bib file association"
+msgstr ""
+
+#: formprincipal.sunregisterfileassociationfailure
+msgid "Failed to remove file association for .bib files"
+msgstr ""
+
+#: formprincipal.sunregisterfileassociationsuccess
+msgid "Successfully removed file association for .bib files"
+msgstr ""
 
 #: formpropprojeto.schangetextconfirmation
 msgid "Are you sure you want to replace this Bible text with a new one?"
@@ -857,6 +885,30 @@ msgstr "Rute"
 msgctxt "projeto.ssongofsolomon"
 msgid "Song of Solomon"
 msgstr "Cântico dos cânticos"
+
+#: projeto.sstatusassociated
+#, fuzzy
+msgctxt "projeto.sstatusassociated"
+msgid "Associated!"
+msgstr "Associado!"
+
+#: projeto.sstatusassociating
+#, fuzzy
+msgctxt "projeto.sstatusassociating"
+msgid "Associating"
+msgstr "Associando..."
+
+#: projeto.sstatusneedsreview
+#, fuzzy
+msgctxt "projeto.sstatusneedsreview"
+msgid "Needs review"
+msgstr "Rever"
+
+#: projeto.sstatusnotassociated
+#, fuzzy
+msgctxt "projeto.sstatusnotassociated"
+msgid "Not associated"
+msgstr "Não associado"
 
 #: projeto.sstrongdictionary
 msgid "Strong's Dictionary"
@@ -1520,6 +1572,10 @@ msgstr "Language/Idioma"
 msgid "Maintenance"
 msgstr "Manutenção"
 
+#: tfrmprincipal.menuitem27.caption
+msgid "Association engine"
+msgstr ""
+
 #: tfrmprincipal.menuitem5.caption
 msgid "Navigation"
 msgstr "Navegação"
@@ -1527,6 +1583,10 @@ msgstr "Navegação"
 #: tfrmprincipal.menuitemabout.caption
 msgid "About..."
 msgstr "Sobre..."
+
+#: tfrmprincipal.menuitemaisuggestion.caption
+msgid "AI assisted"
+msgstr ""
 
 #: tfrmprincipal.menuitemaltmousehover.caption
 msgid "Alt + Mouse hover"
@@ -1586,6 +1646,14 @@ msgstr "Ativar a janela de definição apontando o mouse para a palavra"
 msgid "Open recent"
 msgstr "Abrir recente"
 
+#: tfrmprincipal.menuitemregisterfileassoc.caption
+msgid "Register .bib files"
+msgstr ""
+
+#: tfrmprincipal.menuitemstatisticalsuggestion.caption
+msgid "Statistical engine"
+msgstr ""
+
 #: tfrmprincipal.menuitemstrongnegrito.caption
 msgid "Words with strongs in bold"
 msgstr "Palavras com strongs em negrito"
@@ -1638,6 +1706,10 @@ msgstr "Sincronizar theWord com o versículo do iBiblia"
 msgid "Keeps theWord synchronized to iBiblia's current verse, and current word's strong, morphology and lemma."
 msgstr "Manter o theWord sincronizado com o versículo atual do iBiblia, além de sincronizar a definição de palavras clicadas."
 
+#: tfrmprincipal.menuitemunregisterfileassoc.caption
+msgid "Unregister .bib files"
+msgstr ""
+
 #: tfrmprincipal.opendialog1.title
 msgid "Open existing association project"
 msgstr "Abrir projeto de associação existente"
@@ -1687,9 +1759,25 @@ msgstr ""
 msgid "Synchronization error"
 msgstr "Erro de sincronização"
 
+#: versiculo.scopyassociationsjsontoclipboard
+msgid "Copy association &JSON to clipboard"
+msgstr ""
+
+#: versiculo.scopyinterlinearversetoclipboard
+msgid "Copy &interlinear verse to clipboard"
+msgstr ""
+
 #: versiculo.scopytags
 msgid "&Copy tags"
 msgstr "&Copiar tags"
+
+#: versiculo.scopytokenstoclipboard
+msgid "Copy &tokens to clipboard"
+msgstr ""
+
+#: versiculo.scopyxmltoclipboard
+msgid "Copy association &XML to clipboard"
+msgstr ""
 
 #: versiculo.spastealltags
 msgid "Paste &all tags"
@@ -1710,3 +1798,4 @@ msgstr "Texto da direita para a esquerda"
 #: versiculo.ssavetofile
 msgid "&Save text to file..."
 msgstr "&Exportar texto para arquivo..."
+

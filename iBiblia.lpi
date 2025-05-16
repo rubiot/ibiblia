@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CONFIG>
   <ProjectOptions>
-    <Version Value="11"/>
+    <Version Value="12"/>
     <PathDelim Value="\"/>
     <General>
-      <MainUnit Value="0"/>
+      <Flags>
+        <CompatibilityMode Value="True"/>
+      </Flags>
       <Title Value="iBiblia"/>
       <UseXPManifest Value="True"/>
       <XPManifest>
@@ -20,7 +22,7 @@
       <UseVersionInfo Value="True"/>
       <AutoIncrementBuild Value="True"/>
       <MajorVersionNr Value="1"/>
-      <BuildNr Value="67"/>
+      <BuildNr Value="68"/>
       <StringTable CompanyName="Rúbio R. C. Terra (rubio.terra@gmail.com)" FileDescription="Ferramenta para associação de textos bíblicos" ProductName="iBiblia" ProductVersion="0.0.0.0"/>
     </VersionInfo>
     <BuildModes Count="4" Active="Debug32">
@@ -121,13 +123,18 @@
       <Version Value="2"/>
     </PublishOptions>
     <RunParams>
+      <local>
+        <CommandLineParams Value="--debug-log=log.txt"/>
+        <LaunchingApplication PathPlusParams="\usr\X11R6\bin\xterm -T &apos;Lazarus Run Output&apos; -e $(LazarusDir)\tools\runwait.sh $(TargetCmdLine)"/>
+        <WorkingDirectory Value="C:\Code\ibiblia"/>
+      </local>
       <FormatVersion Value="2"/>
       <Modes Count="1">
         <Mode0 Name="default">
           <local>
             <CommandLineParams Value="--debug-log=log.txt"/>
-            <LaunchingApplication PathPlusParams="\usr\X11R6\bin\xterm -T 'Lazarus Run Output' -e $(LazarusDir)\tools\runwait.sh $(TargetCmdLine)"/>
-            <WorkingDirectory Value="C:\github\ibiblia"/>
+            <LaunchingApplication PathPlusParams="\usr\X11R6\bin\xterm -T &apos;Lazarus Run Output&apos; -e $(LazarusDir)\tools\runwait.sh $(TargetCmdLine)"/>
+            <WorkingDirectory Value="C:\Code\ibiblia"/>
           </local>
         </Mode0>
       </Modes>
@@ -150,11 +157,11 @@
         <PackageName Value="LCL"/>
       </Item5>
     </RequiredPackages>
-    <Units Count="49">
+    <Units Count="51">
       <Unit0>
         <Filename Value="iBiblia.lpr"/>
         <IsPartOfProject Value="True"/>
-        <CursorPos X="57" Y="18"/>
+        <CursorPos Y="36"/>
         <UsageCount Value="207"/>
         <Loaded Value="True"/>
       </Unit0>
@@ -165,9 +172,10 @@
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="formPrincipal"/>
-        <EditorIndex Value="3"/>
-        <TopLine Value="552"/>
-        <CursorPos Y="561"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="4"/>
+        <TopLine Value="653"/>
+        <CursorPos X="9" Y="700"/>
         <UsageCount Value="207"/>
         <Loaded Value="True"/>
         <LoadedDesigner Value="True"/>
@@ -177,8 +185,8 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="Versiculo"/>
         <EditorIndex Value="21"/>
-        <TopLine Value="1075"/>
-        <CursorPos X="30" Y="1102"/>
+        <TopLine Value="1336"/>
+        <CursorPos Y="1383"/>
         <ExtraEditorCount Value="1"/>
         <ExtraEditor1>
           <EditorIndex Value="-1"/>
@@ -193,10 +201,9 @@
         <Filename Value="projeto.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="Projeto"/>
-        <IsVisibleTab Value="True"/>
-        <EditorIndex Value="5"/>
-        <TopLine Value="1539"/>
-        <CursorPos Y="1556"/>
+        <EditorIndex Value="6"/>
+        <TopLine Value="155"/>
+        <CursorPos X="15" Y="200"/>
         <ExtraEditorCount Value="1"/>
         <ExtraEditor1>
           <EditorIndex Value="-1"/>
@@ -211,7 +218,7 @@
         <Filename Value="sugestao.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="Sugestao"/>
-        <EditorIndex Value="28"/>
+        <EditorIndex Value="27"/>
         <TopLine Value="524"/>
         <CursorPos Y="533"/>
         <UsageCount Value="207"/>
@@ -223,7 +230,7 @@
         <ComponentName Value="FormNovoProjeto"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <EditorIndex Value="26"/>
+        <EditorIndex Value="25"/>
         <TopLine Value="104"/>
         <CursorPos Y="58"/>
         <UsageCount Value="205"/>
@@ -236,7 +243,7 @@
         <ComponentName Value="frmDictionaryPopup"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <EditorIndex Value="27"/>
+        <EditorIndex Value="26"/>
         <TopLine Value="4"/>
         <CursorPos X="29" Y="56"/>
         <UsageCount Value="201"/>
@@ -257,7 +264,7 @@
         <ComponentName Value="FormPropProjeto"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <EditorIndex Value="29"/>
+        <EditorIndex Value="28"/>
         <TopLine Value="198"/>
         <CursorPos X="81" Y="215"/>
         <UsageCount Value="204"/>
@@ -277,7 +284,7 @@
       <Unit10>
         <Filename Value="PCRE.pas"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="1"/>
+        <EditorIndex Value="2"/>
         <TopLine Value="1141"/>
         <CursorPos Y="1162"/>
         <UsageCount Value="208"/>
@@ -333,7 +340,7 @@
       <Unit15>
         <Filename Value="twAutomate.pas"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="34"/>
+        <EditorIndex Value="33"/>
         <TopLine Value="13"/>
         <CursorPos X="8" Y="27"/>
         <UsageCount Value="232"/>
@@ -343,7 +350,7 @@
         <Filename Value="twsyncthread.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="twSyncThread"/>
-        <EditorIndex Value="33"/>
+        <EditorIndex Value="32"/>
         <TopLine Value="27"/>
         <CursorPos X="50" Y="47"/>
         <UsageCount Value="212"/>
@@ -353,7 +360,7 @@
         <Filename Value="onttokenizer.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="ONTTokenizer"/>
-        <EditorIndex Value="32"/>
+        <EditorIndex Value="31"/>
         <TopLine Value="262"/>
         <CursorPos Y="279"/>
         <UsageCount Value="202"/>
@@ -363,7 +370,7 @@
         <Filename Value="ontparser.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="ONTParser"/>
-        <EditorIndex Value="30"/>
+        <EditorIndex Value="29"/>
         <TopLine Value="68"/>
         <CursorPos X="26" Y="67"/>
         <UsageCount Value="202"/>
@@ -395,7 +402,7 @@
         <Filename Value="myswordmodule.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="MySwordModule"/>
-        <EditorIndex Value="25"/>
+        <EditorIndex Value="24"/>
         <TopLine Value="15"/>
         <CursorPos X="61" Y="33"/>
         <UsageCount Value="213"/>
@@ -440,7 +447,7 @@
         <Filename Value="htmlcolors.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="HTMLColors"/>
-        <EditorIndex Value="31"/>
+        <EditorIndex Value="30"/>
         <TopLine Value="71"/>
         <CursorPos X="50" Y="91"/>
         <UsageCount Value="232"/>
@@ -479,7 +486,7 @@
       <Unit30>
         <Filename Value="bibletreeview.pas"/>
         <UnitName Value="BibleTreeView"/>
-        <EditorIndex Value="24"/>
+        <EditorIndex Value="23"/>
         <TopLine Value="188"/>
         <CursorPos Y="204"/>
         <UsageCount Value="120"/>
@@ -512,15 +519,14 @@
         <Filename Value="projectfile.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="ProjectFile"/>
-        <EditorIndex Value="23"/>
+        <EditorIndex Value="-1"/>
         <TopLine Value="20"/>
         <CursorPos X="32" Y="40"/>
         <UsageCount Value="238"/>
-        <Loaded Value="True"/>
       </Unit33>
       <Unit34>
         <Filename Value="pcre_dll.pas"/>
-        <EditorIndex Value="2"/>
+        <EditorIndex Value="3"/>
         <TopLine Value="214"/>
         <CursorPos X="11" Y="218"/>
         <UsageCount Value="103"/>
@@ -592,19 +598,17 @@
       <Unit42>
         <Filename Value="C:\tools\lazarus\lcl\dialogs.pp"/>
         <UnitName Value="Dialogs"/>
-        <EditorIndex Value="35"/>
+        <EditorIndex Value="-1"/>
         <TopLine Value="683"/>
         <CursorPos X="72" Y="700"/>
         <UsageCount Value="113"/>
-        <Loaded Value="True"/>
       </Unit42>
       <Unit43>
         <Filename Value="C:\tools\lazarus\components\lazutils\uitypes.pas"/>
         <UnitName Value="UITypes"/>
-        <EditorIndex Value="36"/>
+        <EditorIndex Value="-1"/>
         <CursorPos X="3" Y="18"/>
         <UsageCount Value="113"/>
-        <Loaded Value="True"/>
       </Unit43>
       <Unit44>
         <Filename Value="C:\tools\lazarus\lcl\stdctrls.pp"/>
@@ -628,7 +632,7 @@
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="UnitPleaseWait"/>
-        <EditorIndex Value="4"/>
+        <EditorIndex Value="5"/>
         <CursorPos X="21" Y="30"/>
         <UsageCount Value="172"/>
         <Loaded Value="True"/>
@@ -645,132 +649,147 @@
       <Unit48>
         <Filename Value="C:\lazarus\fpc\3.2.0\source\packages\fcl-db\src\sqldb\sqldb.pp"/>
         <UnitName Value="SQLDB"/>
-        <EditorIndex Value="6"/>
+        <EditorIndex Value="-1"/>
         <TopLine Value="621"/>
         <CursorPos X="3" Y="626"/>
         <UsageCount Value="77"/>
-        <Loaded Value="True"/>
       </Unit48>
+      <Unit49>
+        <Filename Value="llmclient.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="45"/>
+        <CursorPos X="45" Y="92"/>
+        <UsageCount Value="10"/>
+      </Unit49>
+      <Unit50>
+        <Filename Value="C:\Apps\lazarus\fpc\3.2.2\source\packages\fcl-web\src\base\fphttpclient.pp"/>
+        <EditorIndex Value="1"/>
+        <TopLine Value="161"/>
+        <CursorPos Y="208"/>
+        <UsageCount Value="10"/>
+        <Loaded Value="True"/>
+      </Unit50>
     </Units>
     <JumpHistory Count="30" HistoryIndex="29">
       <Position1>
-        <Filename Value="formpropprojeto.pas"/>
-        <Caret Line="225" Column="11" TopLine="200"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="1498" TopLine="1482"/>
       </Position1>
       <Position2>
-        <Filename Value="formpropprojeto.pas"/>
-        <Caret Line="215" Column="13" TopLine="197"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="1549" TopLine="1531"/>
       </Position2>
       <Position3>
         <Filename Value="projeto.pas"/>
-        <Caret Line="169" Column="14" TopLine="152"/>
+        <Caret Line="1498" TopLine="1482"/>
       </Position3>
       <Position4>
         <Filename Value="projeto.pas"/>
-        <Caret Line="1538" Column="3" TopLine="1532"/>
+        <Caret Line="1549" Column="44" TopLine="1531"/>
       </Position4>
       <Position5>
-        <Filename Value="formpropprojeto.pas"/>
-        <Caret Line="215" Column="93" TopLine="198"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="125" Column="14" TopLine="110"/>
       </Position5>
       <Position6>
-        <Filename Value="formpropprojeto.pas"/>
-        <Caret Line="210" TopLine="198"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="448" Column="3" TopLine="404"/>
       </Position6>
       <Position7>
-        <Filename Value="formpropprojeto.pas"/>
-        <Caret Line="215" Column="24" TopLine="198"/>
+        <Filename Value="projeto.pas"/>
+        <Caret Line="1505" TopLine="1487"/>
       </Position7>
       <Position8>
         <Filename Value="projeto.pas"/>
-        <Caret Line="169" Column="30" TopLine="153"/>
+        <Caret Line="1556" Column="34" TopLine="1539"/>
       </Position8>
       <Position9>
         <Filename Value="projeto.pas"/>
-        <Caret Line="207" Column="31" TopLine="180"/>
+        <Caret Line="125" Column="14" TopLine="110"/>
       </Position9>
       <Position10>
         <Filename Value="projeto.pas"/>
-        <Caret Line="1534" Column="35" TopLine="1506"/>
+        <Caret Line="420" Column="9" TopLine="398"/>
       </Position10>
       <Position11>
         <Filename Value="projeto.pas"/>
-        <Caret Line="1993" Column="21" TopLine="1965"/>
+        <Caret Line="1505" TopLine="1487"/>
       </Position11>
       <Position12>
-        <Filename Value="projeto.pas"/>
-        <Caret Line="2836" Column="36" TopLine="2808"/>
+        <Filename Value="formprincipal.pas"/>
+        <Caret Line="561" TopLine="552"/>
       </Position12>
       <Position13>
-        <Filename Value="projeto.pas"/>
-        <Caret Line="2844" Column="23" TopLine="2816"/>
+        <Filename Value="formprincipal.pas"/>
+        <Caret Line="562" TopLine="553"/>
       </Position13>
       <Position14>
-        <Filename Value="projeto.pas"/>
+        <Filename Value="formprincipal.pas"/>
+        <Caret Line="563" TopLine="554"/>
       </Position14>
       <Position15>
-        <Filename Value="projeto.pas"/>
-        <Caret Line="168" TopLine="152"/>
+        <Filename Value="formprincipal.pas"/>
+        <Caret Line="565" TopLine="556"/>
       </Position15>
       <Position16>
-        <Filename Value="projeto.pas"/>
-        <Caret Line="206" Column="25" TopLine="182"/>
+        <Filename Value="formprincipal.pas"/>
+        <Caret Line="1020" Column="41" TopLine="997"/>
       </Position16>
       <Position17>
-        <Filename Value="projeto.pas"/>
-        <Caret Line="2826" Column="3" TopLine="2820"/>
+        <Filename Value="formprincipal.pas"/>
+        <Caret Line="992" Column="111" TopLine="936"/>
       </Position17>
       <Position18>
-        <Filename Value="projeto.pas"/>
-        <Caret Line="207" Column="76" TopLine="191"/>
+        <Filename Value="formprincipal.pas"/>
+        <Caret Line="1391" Column="28" TopLine="1321"/>
       </Position18>
       <Position19>
-        <Filename Value="projeto.pas"/>
-        <Caret Line="2837" Column="18" TopLine="2817"/>
+        <Filename Value="formprincipal.pas"/>
+        <Caret Line="1393" Column="30" TopLine="1323"/>
       </Position19>
       <Position20>
-        <Filename Value="projeto.pas"/>
-        <Caret Line="1498" TopLine="1482"/>
+        <Filename Value="formprincipal.pas"/>
+        <Caret Line="79" TopLine="33"/>
       </Position20>
       <Position21>
-        <Filename Value="projeto.pas"/>
-        <Caret Line="1549" TopLine="1531"/>
+        <Filename Value="iBiblia.lpr"/>
+        <Caret Line="36"/>
       </Position21>
       <Position22>
-        <Filename Value="projeto.pas"/>
-        <Caret Line="1498" TopLine="1482"/>
+        <Filename Value="formprincipal.pas"/>
+        <Caret Line="79" TopLine="33"/>
       </Position22>
       <Position23>
-        <Filename Value="projeto.pas"/>
-        <Caret Line="1549" Column="44" TopLine="1531"/>
+        <Filename Value="formprincipal.pas"/>
+        <Caret Line="696" Column="3" TopLine="663"/>
       </Position23>
       <Position24>
-        <Filename Value="projeto.pas"/>
-        <Caret Line="125" Column="14" TopLine="110"/>
+        <Filename Value="formprincipal.pas"/>
+        <Caret Line="21" Column="35"/>
       </Position24>
       <Position25>
-        <Filename Value="projeto.pas"/>
-        <Caret Line="448" Column="3" TopLine="404"/>
+        <Filename Value="formprincipal.pas"/>
+        <Caret Line="807" Column="37" TopLine="745"/>
       </Position25>
       <Position26>
-        <Filename Value="projeto.pas"/>
-        <Caret Line="1505" TopLine="1487"/>
+        <Filename Value="formprincipal.pas"/>
+        <Caret Line="808" Column="75" TopLine="745"/>
       </Position26>
       <Position27>
-        <Filename Value="projeto.pas"/>
-        <Caret Line="1556" Column="34" TopLine="1539"/>
+        <Filename Value="formprincipal.pas"/>
+        <Caret Line="1020" Column="35" TopLine="943"/>
       </Position27>
       <Position28>
-        <Filename Value="projeto.pas"/>
-        <Caret Line="125" Column="14" TopLine="110"/>
+        <Filename Value="formprincipal.pas"/>
+        <Caret Line="21" Column="35"/>
       </Position28>
       <Position29>
-        <Filename Value="projeto.pas"/>
-        <Caret Line="420" Column="9" TopLine="398"/>
+        <Filename Value="formprincipal.pas"/>
+        <Caret Line="163" Column="15" TopLine="117"/>
       </Position29>
       <Position30>
-        <Filename Value="projeto.pas"/>
-        <Caret Line="1505" TopLine="1487"/>
+        <Filename Value="formprincipal.pas"/>
+        <Caret Line="694" Column="41" TopLine="657"/>
       </Position30>
     </JumpHistory>
   </ProjectOptions>
@@ -800,7 +819,7 @@
     </Linking>
   </CompilerOptions>
   <Debugging>
-    <BreakPoints Count="6">
+    <BreakPoints Count="4">
       <Item1>
         <Kind Value="bpkSource"/>
         <WatchScope Value="wpsLocal"/>
@@ -819,30 +838,16 @@
         <Kind Value="bpkSource"/>
         <WatchScope Value="wpsLocal"/>
         <WatchKind Value="wpkWrite"/>
-        <Source Value="versiculo.pas"/>
-        <Line Value="1383"/>
+        <Source Value="projeto.pas"/>
+        <Line Value="343"/>
       </Item3>
       <Item4>
         <Kind Value="bpkSource"/>
         <WatchScope Value="wpsLocal"/>
         <WatchKind Value="wpkWrite"/>
-        <Source Value="projeto.pas"/>
-        <Line Value="343"/>
-      </Item4>
-      <Item5>
-        <Kind Value="bpkSource"/>
-        <WatchScope Value="wpsLocal"/>
-        <WatchKind Value="wpkWrite"/>
         <Source Value="formprincipal.pas"/>
-        <Line Value="561"/>
-      </Item5>
-      <Item6>
-        <Kind Value="bpkSource"/>
-        <WatchScope Value="wpsLocal"/>
-        <WatchKind Value="wpkWrite"/>
-        <Source Value="projeto.pas"/>
-        <Line Value="1556"/>
-      </Item6>
+        <Line Value="566"/>
+      </Item4>
     </BreakPoints>
     <Watches Count="1">
       <Item1>

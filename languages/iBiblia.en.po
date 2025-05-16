@@ -135,6 +135,14 @@ msgctxt "formnovoprojeto.swholebiblefilter"
 msgid "theWord Bible modules (*.ont, *.ot, *.nt)|*.ont;*.ot;*.nt"
 msgstr "theWord Bible modules (*.ont, *.ot, *.nt)|*.ont;*.ot;*.nt"
 
+#: formprincipal.saisuggestion
+msgid "AI-assisted (experimental)"
+msgstr ""
+
+#: formprincipal.saisuggestionhint
+msgid "Use the new AI-assisted suggestion engine (requires internet)"
+msgstr ""
+
 #: formprincipal.schanged
 msgid "changed"
 msgstr "changed"
@@ -181,9 +189,6 @@ msgstr "Open project"
 
 #: formprincipal.sprojectfiledoesnotexist
 #, object-pascal-format
-#| msgid ""
-#| "The selected project file doesn't exist:\n"
-#| "%s\n"
 msgid ""
 "The selected project file doesn't exist:\n"
 "%s"
@@ -207,6 +212,18 @@ msgstr "reference 2"
 msgid "Reference2"
 msgstr "Reference2"
 
+#: formprincipal.sregisterfileassociation
+msgid "Register .bib file association"
+msgstr ""
+
+#: formprincipal.sregisterfileassociationfailure
+msgid "Failed to register file association for .bib files"
+msgstr ""
+
+#: formprincipal.sregisterfileassociationsuccess
+msgid "Successfully registered file association for .bib files"
+msgstr ""
+
 #: formprincipal.srollbackchanges
 msgctxt "formprincipal.srollbackchanges"
 msgid "Rollback changes"
@@ -229,31 +246,35 @@ msgctxt "formprincipal.ssourcetext"
 msgid "Source"
 msgstr "Source"
 
-#: formprincipal.sstatusassociated
-msgid "Associated!"
-msgstr "Associated!"
+#: formprincipal.sstatisticalsuggestion
+msgid "Statistical model"
+msgstr ""
 
-#: formprincipal.sstatusassociating
-msgid "Associating"
-msgstr "Associating"
+#: formprincipal.sstatisticalsuggestionhint
+msgid "Use the traditional statistical suggestion engine"
+msgstr ""
 
-#: formprincipal.sstatusneedsreview
-msgid "Needs review"
-msgstr "Needs review"
+#: formprincipal.ssuggestionmode
+msgid "Suggestion mode"
+msgstr ""
 
-#: formprincipal.sstatusnotassociated
-msgid "Not associated"
-msgstr "Not associated"
+#: formprincipal.sunregisterfileassociation
+msgid "Unregister .bib file association"
+msgstr ""
+
+#: formprincipal.sunregisterfileassociationfailure
+msgid "Failed to remove file association for .bib files"
+msgstr ""
+
+#: formprincipal.sunregisterfileassociationsuccess
+msgid "Successfully removed file association for .bib files"
+msgstr ""
 
 #: formpropprojeto.schangetextconfirmation
 msgid "Are you sure you want to replace this Bible text with a new one?"
 msgstr "Are you sure you want to replace this text with a new one?"
 
 #: formpropprojeto.schangetextconfirmationassociation
-#| msgid ""
-#| "Loading a new Bible text will cause all your existing associations to be discarded. But, if you click 'Yes', iBiblia can try to keep existing associations for you.\n"
-#| "\n"
-#| "Would you like iBiblia to do that?\n"
 msgid ""
 "Loading a new Bible text will cause all your existing associations to be discarded. But, if you click 'Yes', iBiblia can try to keep existing associations for you.\n"
 "\n"
@@ -286,9 +307,6 @@ msgid "Are you sure you want to clear this Bible text?"
 msgstr "Are you sure you want to clear this text?"
 
 #: formpropprojeto.scleartextconfirmationassociation
-#| msgid ""
-#| "Are you sure you want to clear this Bible text?\n"
-#| "All your associations will be lost!\n"
 msgid ""
 "Are you sure you want to clear this Bible text?\n"
 "All your associations will be lost!"
@@ -480,13 +498,6 @@ msgid "Confirmation"
 msgstr "Confirmation"
 
 #: projeto.scorrupteddata
-#| msgid ""
-#| "Corrupted data, some associations may be lost.This can happen for several reasons:\n"
-#| " 1. The project file was modified outside iBiblia\n"
-#| " 2. The project was created/edited on an incompatible iBiblia version\n"
-#| " 3. This can be a bug in iBiblia.\n"
-#| "    If this is the case, please file a bug in the Github project page\n"
-#| "    at https://github.com/rubiot/ibiblia.\n"
 msgid ""
 "Corrupted data, some associations may be lost.This can happen for several reasons:\n"
 " 1. The project file was modified outside iBiblia\n"
@@ -550,9 +561,6 @@ msgid "Please choose a destination file"
 msgstr "Please choose a destination file"
 
 #: projeto.sexporttofileerror
-#| msgid ""
-#| "iBiblia found an error while exporting the Bible module file.\n"
-#| "Please check if theWord is using the file, then close it and try again.\n"
 msgid "iBiblia found an error while exporting the Bible module file."
 msgstr "iBiblia found an error while exporting the Bible module file."
 
@@ -611,9 +619,6 @@ msgid "Information"
 msgstr "Information"
 
 #: projeto.sinterlinearverserulereplaceerror
-#| msgid ""
-#| "There is something wrong with one of your interlinear verse rules.\n"
-#| "Please review them.\n"
 msgid ""
 "There is something wrong with one of your interlinear verse rules.\n"
 "Please review them."
@@ -622,9 +627,6 @@ msgstr ""
 "Please review them."
 
 #: projeto.sinvalidcompresseddictionary
-#| msgid ""
-#| "iBiblia does not suppport compressed dictionaries yet.\n"
-#| "Please choose an uncompressed module.\n"
 msgid ""
 "iBiblia does not suppport compressed dictionaries yet.\n"
 "Please choose an uncompressed module."
@@ -633,9 +635,6 @@ msgstr ""
 "Please choose an uncompressed module."
 
 #: projeto.sinvalidencrypteddictionary
-#| msgid ""
-#| "iBiblia does not and will not support encrypted modules.\n"
-#| "Please choose an unencrypted module.\n"
 msgid ""
 "iBiblia does not and will not support encrypted modules.\n"
 "Please choose an unencrypted module."
@@ -645,9 +644,6 @@ msgstr ""
 
 #: projeto.sinvalidinterlinearverserule
 #, object-pascal-format
-#| msgid ""
-#| "There is something wrong with your interlinear verse rule.\n"
-#| "[%s]\n"
 msgid ""
 "There is something wrong with your interlinear verse rule.\n"
 "[%s]"
@@ -665,9 +661,6 @@ msgid "Unknown module extension. Please choose a valid theWord Bible module (.ot
 msgstr "Unknown module extension. Please choose a valid theWord Bible module (.ot, .ont or .nt)"
 
 #: projeto.sinvalidmorphologydictionary
-#| msgid ""
-#| "This is not a morphology dictionary.\n"
-#| "Please choose a valid morphology dictionary.\n"
 msgid ""
 "This is not a morphology dictionary.\n"
 "Please choose a valid morphology dictionary."
@@ -676,9 +669,6 @@ msgstr ""
 "Please choose a valid morphology dictionary."
 
 #: projeto.sinvalidnonrtfdictionary
-#| msgid ""
-#| "iBiblia only suppports RTF modules.\n"
-#| "Please choose another module or convert this module to RTF in theWord.\n"
 msgid ""
 "iBiblia only suppports RTF modules.\n"
 "Please choose another module or convert this module to RTF in theWord."
@@ -687,9 +677,6 @@ msgstr ""
 "Please choose another module or convert this module to RTF in theWord."
 
 #: projeto.sinvalidstrongsdictionary
-#| msgid ""
-#| "This is not a Strong's dictionary.\n"
-#| "Please choose a valid Strong's dictionary.\n"
 msgid ""
 "This is not a Strong's dictionary.\n"
 "Please choose a valid Strong's dictionary."
@@ -874,9 +861,6 @@ msgstr "Reference not found"
 
 #: projeto.sreferencenotfoundwarning
 #, object-pascal-format
-#| msgid ""
-#| "The reference %s is not a valid reference in this project and will be ignored.\n"
-#| "Press Ignore to ignore all subsequent warnings.\n"
 msgid ""
 "The reference %s is not a valid reference in this project and will be ignored.\n"
 "Press Ignore to ignore all subsequent warnings."
@@ -903,6 +887,30 @@ msgstr "Ruth"
 msgctxt "projeto.ssongofsolomon"
 msgid "Song of Solomon"
 msgstr "Song of Solomon"
+
+#: projeto.sstatusassociated
+#, fuzzy
+msgctxt "projeto.sstatusassociated"
+msgid "Associated!"
+msgstr "Associated!"
+
+#: projeto.sstatusassociating
+#, fuzzy
+msgctxt "projeto.sstatusassociating"
+msgid "Associating"
+msgstr "Associating"
+
+#: projeto.sstatusneedsreview
+#, fuzzy
+msgctxt "projeto.sstatusneedsreview"
+msgid "Needs review"
+msgstr "Needs review"
+
+#: projeto.sstatusnotassociated
+#, fuzzy
+msgctxt "projeto.sstatusnotassociated"
+msgid "Not associated"
+msgstr "Not associated"
 
 #: projeto.sstrongdictionary
 msgid "Strong's Dictionary"
@@ -1566,6 +1574,10 @@ msgstr "Language"
 msgid "Maintenance"
 msgstr "Maintenance"
 
+#: tfrmprincipal.menuitem27.caption
+msgid "Association engine"
+msgstr ""
+
 #: tfrmprincipal.menuitem5.caption
 msgid "Navigation"
 msgstr "Navigation"
@@ -1573,6 +1585,10 @@ msgstr "Navigation"
 #: tfrmprincipal.menuitemabout.caption
 msgid "About..."
 msgstr "About..."
+
+#: tfrmprincipal.menuitemaisuggestion.caption
+msgid "AI assisted"
+msgstr ""
 
 #: tfrmprincipal.menuitemaltmousehover.caption
 msgid "Alt + Mouse hover"
@@ -1632,6 +1648,14 @@ msgstr "Activate the popup dictionary whenever you hover the mouse pointer over 
 msgid "Open recent"
 msgstr "Open recent"
 
+#: tfrmprincipal.menuitemregisterfileassoc.caption
+msgid "Register .bib files"
+msgstr ""
+
+#: tfrmprincipal.menuitemstatisticalsuggestion.caption
+msgid "Statistical engine"
+msgstr ""
+
 #: tfrmprincipal.menuitemstrongnegrito.caption
 msgid "Words with strongs in bold"
 msgstr "Words with strongs in bold"
@@ -1684,6 +1708,10 @@ msgstr "Sync theWord to iBiblia verse"
 msgid "Keeps theWord synchronized to iBiblia's current verse, and current word's strong, morphology and lemma."
 msgstr "Keeps theWord synchronized to iBiblia's current verse, and current word's strong, morphology and lemma."
 
+#: tfrmprincipal.menuitemunregisterfileassoc.caption
+msgid "Unregister .bib files"
+msgstr ""
+
 #: tfrmprincipal.opendialog1.title
 msgid "Open existing association project"
 msgstr "Open existing association project"
@@ -1722,9 +1750,6 @@ msgid "Exit the program"
 msgstr "Exit the program"
 
 #: twautomate.stwsynchronizationerror
-#| msgid ""
-#| "Failed to detect theWord's current verse.\n"
-#| "Please restart theWord if you have switched its current language.\n"
 msgid ""
 "Failed to detect theWord's current verse.\n"
 "Please restart theWord if you have switched its current language."
@@ -1736,9 +1761,25 @@ msgstr ""
 msgid "Synchronization error"
 msgstr "Synchronization error"
 
+#: versiculo.scopyassociationsjsontoclipboard
+msgid "Copy association &JSON to clipboard"
+msgstr ""
+
+#: versiculo.scopyinterlinearversetoclipboard
+msgid "Copy &interlinear verse to clipboard"
+msgstr ""
+
 #: versiculo.scopytags
 msgid "&Copy tags"
 msgstr "&Copy tags"
+
+#: versiculo.scopytokenstoclipboard
+msgid "Copy &tokens to clipboard"
+msgstr ""
+
+#: versiculo.scopyxmltoclipboard
+msgid "Copy association &XML to clipboard"
+msgstr ""
 
 #: versiculo.spastealltags
 msgid "Paste &all tags"
@@ -1759,3 +1800,4 @@ msgstr "Right to left text"
 #: versiculo.ssavetofile
 msgid "&Save text to file..."
 msgstr "&Save text to file..."
+
