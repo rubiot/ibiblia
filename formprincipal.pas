@@ -18,6 +18,7 @@ uses
   LCLType, LazUTF8, ChapterView, UnitPleaseWait;
 
 type
+  TSuggestionMode = (smStatistical, smAI);
 
   { TFrmPrincipal }
 
@@ -70,8 +71,11 @@ type
     MenuItem24: TMenuItem;
     MenuItem25: TMenuItem;
     MenuItem26: TMenuItem;
-    MenuItemRegisterFileAssoc: TMenuItem;
+    MenuItem27: TMenuItem;
     MenuItemUnregisterFileAssoc: TMenuItem;
+    MenuItemRegisterFileAssoc: TMenuItem;
+    MenuItemStatisticalSuggestion: TMenuItem;
+    MenuItemAISuggestion: TMenuItem;
     MenuItemApplyPatch: TMenuItem;
     MenuItemExportPatch: TMenuItem;
     MenuItemAutoSave: TMenuItem;
@@ -171,11 +175,13 @@ type
     procedure MenuItem22Click(Sender: TObject);
     procedure AbrirRecenteClick(Sender: TObject);
     procedure MenuItemAboutClick(Sender: TObject);
+    procedure MenuItemAISuggestionClick(Sender: TObject);
     procedure MenuItemAlwaysOnTopClick(Sender: TObject);
     procedure MenuItemAutoSaveClick(Sender: TObject);
     procedure MenuItemLangEnClick(Sender: TObject);
     procedure MenuItemLangPtClick(Sender: TObject);
     procedure MenuItemPopupTriggerClick(Sender: TObject);
+    procedure MenuItemStatisticalSuggestionClick(Sender: TObject);
     procedure MenuItemStrongNegritoClick(Sender: TObject);
     procedure MenuItemStrongsCountClick(Sender: TObject);
     procedure MenuItemSynciBibliaClick(Sender: TObject);
@@ -200,6 +206,8 @@ type
     syncTw2iBiblia: boolean;
     synciBiblia2Tw: boolean;
     TwSyncThread: TTwSyncThread;
+    FSuggestionMode: TSuggestionMode;
+
     procedure SyncToTwRef(Ref: string);
     procedure SetUpSyncThread;
     {$ENDIF}
@@ -240,6 +248,11 @@ resourcestring
   SUnregisterFileAssociationFailure = 'Failed to remove file association for .bib files';
   SRegisterFileAssociation = 'Register .bib file association';
   SUnregisterFileAssociation = 'Unregister .bib file association';
+  SSuggestionMode = 'Suggestion mode';
+  SStatisticalSuggestion = 'Statistical model';
+  SAISuggestion = 'AI-assisted (experimental)';
+  SStatisticalSuggestionHint = 'Use the traditional statistical suggestion engine';
+  SAISuggestionHint = 'Use the new AI-assisted suggestion engine (requires internet)';
 
 implementation
 
@@ -681,7 +694,12 @@ end;
 procedure TFrmPrincipal.ActionSugerirAssociacaoExecute(Sender: TObject);
 begin
   if ProjetoAtual <> nil then
-    ProjetoAtual.SugerirAssociacao;
+  begin
+    case FSuggestionMode of
+      smStatistical: ProjetoAtual.SugerirAssociacao;
+      // smAI: if Assigned(ProjetoAtual.SugerirAssociacaoAI) then ProjetoAtual.SugerirAssociacaoAI else ProjetoAtual.SugerirAssociacao;
+    end;
+  end;
 end;
 
 procedure TFrmPrincipal.ActionSyncTheWordVerseExecute(Sender: TObject);
@@ -748,7 +766,7 @@ procedure TFrmPrincipal.FormCreate(Sender: TObject);
   end;
 
 var
-  m: integer;
+  m, modeInt: integer;
 begin
   {$IFDEF WINDOWS}
   // Handle elevation for file association registration
@@ -785,6 +803,15 @@ begin
   MenuItemSynciBiblia.Checked := opts.ReadBool('opcoes', 'syncibiblia', false);
   MenuItemStrongNegrito.Checked := opts.ReadBool('opcoes', 'boldstrongs', false);
   MenuItemAutoSave.Checked := opts.ReadBool('opcoes', 'auto.save', false);
+
+  // association engine
+  modeInt := opts.ReadInteger('opcoes', 'suggestion.mode', 0);
+  if modeInt = 1 then
+    FSuggestionMode := smAI
+  else
+    FSuggestionMode := smStatistical;
+  MenuItemStatisticalSuggestion.Checked := FSuggestionMode = smStatistical;
+  MenuItemAISuggestion.Checked := FSuggestionMode = smAI;
 
   MenuItemStrongsCountNone.Tag    := Integer(scNone);
   MenuItemStrongsCountWords.Tag   := Integer(scCountWords);
@@ -853,6 +880,7 @@ begin
   opts.WriteInteger('leiaute', 'principal.chapterview.font.size', FChapterView.FontSize);
   opts.WriteString('leiaute', 'principal.chapterview.font.name', FChapterView.FontName);
   opts.WriteBool('opcoes', 'sugestoes.automaticas', MenuItem22.Checked);
+  opts.WriteInteger('opcoes', 'suggestion.mode', Ord(FSuggestionMode));
   opts.WriteBool('opcoes', 'synctheword', MenuItemSyncTheWord.Checked);
   opts.WriteBool('opcoes', 'syncibiblia', MenuItemSynciBiblia.Checked);
   opts.WriteBool('opcoes', 'boldstrongs', MenuItemStrongNegrito.Checked);
@@ -925,6 +953,13 @@ begin
   FormAbout.ShowModal;
 end;
 
+procedure TFrmPrincipal.MenuItemAISuggestionClick(Sender: TObject);
+begin
+  FSuggestionMode := smAI;
+  MenuItemStatisticalSuggestion.Checked := False;
+  MenuItemAISuggestion.Checked := True;
+end;
+
 procedure TFrmPrincipal.MenuItemAlwaysOnTopClick(Sender: TObject);
 var
   m: TMenuItem;
@@ -983,6 +1018,13 @@ begin
     end else
       MenuItemDictPopup.Items[integer(m)].Checked := false;
   end;
+end;
+
+procedure TFrmPrincipal.MenuItemStatisticalSuggestionClick(Sender: TObject);
+begin
+  FSuggestionMode := smStatistical;
+  MenuItemStatisticalSuggestion.Checked := True;
+  MenuItemAISuggestion.Checked := False;
 end;
 
 procedure TFrmPrincipal.MenuItemStrongNegritoClick(Sender: TObject);
