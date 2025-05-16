@@ -1,9 +1,23 @@
+# Lazarus/FPC specific build outputs and files
+*.ppu
+*.o
+*.lps
+*.~*
+*.bak
+*.compiled
+*.dbg
+__history/
+*.local
+
+# Existing specific project outputs
 backup/
 dic/
 lib/
 iBiblia.exe
 iBiblia.ini
 iBiblia
+
+# PCRE library build artifacts
 pcre-6.7-lazarus/.libs
 pcre-6.7-lazarus/*.o
 pcre-6.7-lazarus/*.l[ao]
@@ -16,4 +30,5 @@ pcre-6.7-lazarus/config.log
 pcre-6.7-lazarus/config.status
 pcre-6.7-lazarus/dftables
 
+# Editor swap files
 *.sw[nop]
