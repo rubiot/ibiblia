@@ -21,7 +21,7 @@ if [ ! -f "pcre_compile.c" ]; then
 fi
 # Build 32-bit version
 echo "Building 32-bit version..."
-i686-w64-mingw32-gcc -O2 -shared -o pcre32.dll pcre_compile.c pcre_config.c pcre_dfa_exec.c pcre_exec.c pcre_fullinfo.c pcre_get.c pcre_globals.c pcre_info.c pcre_maketables.c pcre_ord2utf8.c pcre_refcount.c pcre_study.c pcre_tables.c pcre_try_flipped.c pcre_ucp_searchfuncs.c pcre_valid_utf8.c pcre_version.c pcre_xclass.c pcreposix.c pcre_helpers.c pcre_chartables.c -I. -Wl,--out-implib,libpcre32.a
+i686-w64-mingw32-gcc -O2 -shared -DSUPPORT_UTF8 -DSUPPORT_UCP -o pcre32.dll pcre_compile.c pcre_config.c pcre_dfa_exec.c pcre_exec.c pcre_fullinfo.c pcre_get.c pcre_globals.c pcre_info.c pcre_maketables.c pcre_ord2utf8.c pcre_refcount.c pcre_study.c pcre_tables.c pcre_try_flipped.c pcre_ucp_searchfuncs.c pcre_valid_utf8.c pcre_version.c pcre_xclass.c pcreposix.c pcre_helpers.c pcre_chartables.c -I. -Wl,--out-implib,libpcre32.a
 # Check if the build was successful
 if [ $? -ne 0 ]; then
     echo "32-bit build failed."
@@ -29,7 +29,7 @@ if [ $? -ne 0 ]; then
 fi
 # Build 64-bit version
 echo "Building 64-bit version..."
-x86_64-w64-mingw32-gcc -O2 -shared -o pcre64.dll pcre_compile.c pcre_config.c pcre_dfa_exec.c pcre_exec.c pcre_fullinfo.c pcre_get.c pcre_globals.c pcre_info.c pcre_maketables.c pcre_ord2utf8.c pcre_refcount.c pcre_study.c pcre_tables.c pcre_try_flipped.c pcre_ucp_searchfuncs.c pcre_valid_utf8.c pcre_version.c pcre_xclass.c pcreposix.c pcre_helpers.c pcre_chartables.c -I. -Wl,--out-implib,libpcre64.a
+x86_64-w64-mingw32-gcc -O2 -shared -DSUPPORT_UTF8 -DSUPPORT_UCP -o pcre64.dll pcre_compile.c pcre_config.c pcre_dfa_exec.c pcre_exec.c pcre_fullinfo.c pcre_get.c pcre_globals.c pcre_info.c pcre_maketables.c pcre_ord2utf8.c pcre_refcount.c pcre_study.c pcre_tables.c pcre_try_flipped.c pcre_ucp_searchfuncs.c pcre_valid_utf8.c pcre_version.c pcre_xclass.c pcreposix.c pcre_helpers.c pcre_chartables.c -I. -Wl,--out-implib,libpcre64.a
 # Check if the build was successful
 if [ $? -ne 0 ]; then
     echo "64-bit build failed."
