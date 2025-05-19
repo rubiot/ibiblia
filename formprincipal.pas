@@ -767,6 +767,7 @@ procedure TFrmPrincipal.FormCreate(Sender: TObject);
 
 var
   m, modeInt: integer;
+  ConfigFilePath: string;
 begin
   {$IFDEF WINDOWS}
   // Handle elevation for file association registration
@@ -788,7 +789,9 @@ begin
   DebugLn('=================================');
 
   ProjetoAtual := nil;
-  opts := TIniFile.Create('iBiblia.ini');
+
+  ConfigFilePath := ExtractFilePath(ParamStr(0)) + 'iBiblia.ini';
+  opts := TIniFile.Create(ConfigFilePath);
 
   if opts.ReadBool('leiaute', 'principal.maximized', false) then
     WindowState := wsMaximized
