@@ -686,6 +686,7 @@ begin
       FLabel.Caption := '['
     else if FText = '<Fi>' then
       FLabel.Caption := ']';
+    FLabel.Transparent := False; // Explicitly set Transparent to False
     FLabel.ParentColor := false;
     FLabel.Font.Color  := FColor;
     FLabel.Parent      := TVersiculo(FVerse).Painel;

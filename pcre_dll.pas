@@ -666,9 +666,10 @@ const
 {$endif}
 {$ifdef Win64}
     'pcre64.dll'
+{$else}
+  {$error 'Unsupported platform for PCRE library'}
 {$endif}
   ;
-
 
 function PCRE_MAJOR; external PCRE_DLL_NAME name 'pcre_major';
 function PCRE_MINOR; external PCRE_DLL_NAME name 'pcre_minor';
