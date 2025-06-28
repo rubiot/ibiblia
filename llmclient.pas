@@ -3,7 +3,6 @@ unit llmclient;
 {$mode objfpc}{$H+}
 
 // This unit provides an interface to LLMs (OpenAI/DeepSeek) for suggesting associations between words in two verses.
-// It mirrors the Python module provided by the user, but in Object Pascal.
 
 interface
 
@@ -35,7 +34,7 @@ type
     // Utility: Perform HTTP POST and return response as string
     function HttpPostJson(const Url, JsonBody, ApiKey: string; const ExtraHeaders: array of string): string;
   public
-    function AskChatCompletions(const Model: string; const Messages: array of TLLMMessage): TLLMResponse; virtual; abstract;
+    function AskChatCompletions(const Messages: array of TLLMMessage): TLLMResponse; virtual; abstract;
   end;
 
   { OpenAI backend implementation (stub, to be implemented with actual HTTP calls) }
@@ -45,7 +44,7 @@ type
     FApiKey: string;
   public
     constructor Create(const AModel, AApiKey: string);
-    function AskChatCompletions(const Model: string; const Messages: array of TLLMMessage): TLLMResponse; override;
+    function AskChatCompletions(const Messages: array of TLLMMessage): TLLMResponse; override;
   end;
 
   { DeepSeek backend implementation (stub, to be implemented with actual HTTP calls) }
@@ -55,7 +54,7 @@ type
     FApiKey: string;
   public
     constructor Create(const AModel, AApiKey: string);
-    function AskChatCompletions(const Model: string; const Messages: array of TLLMMessage): TLLMResponse; override;
+    function AskChatCompletions(const Messages: array of TLLMMessage): TLLMResponse; override;
   end;
 
 function CreateBackend(const Model: string; const ApiKey: string): TBaseLLMClient;
@@ -110,7 +109,7 @@ const
     (Name: 'o1-mini';           Info: (Backend: lbOpenAI;   SupportsStructOutput: False)),
     (Name: 'o3-mini';           Info: (Backend: lbOpenAI;   SupportsStructOutput: True)),
     (Name: 'deepseek';          Info: (Backend: lbDeepSeek; SupportsStructOutput: True)),
-    (Name: 'deepseek-reasoner'; Info: (Backend: lbDeepSeek; SupportsStructOutput: False))
+    (Name: 'deepseek-reasoner'; Info: (Backend: lbDeepSeek; SupportsStructOutput: True))
   );
 
 function GetModelInfo(const Model: string): TLLMModelInfo;
@@ -161,7 +160,7 @@ begin
   FApiKey := AApiKey;
 end;
 
-function TOpenAIBackend.AskChatCompletions(const Model: string; const Messages: array of TLLMMessage): TLLMResponse;
+function TOpenAIBackend.AskChatCompletions(const Messages: array of TLLMMessage): TLLMResponse;
 var
   url, body, resp: string;
   req, respjson: TJSONObject;
@@ -224,7 +223,7 @@ begin
   FApiKey := AApiKey;
 end;
 
-function TDeepSeekBackend.AskChatCompletions(const Model: string; const Messages: array of TLLMMessage): TLLMResponse;
+function TDeepSeekBackend.AskChatCompletions(const Messages: array of TLLMMessage): TLLMResponse;
 var
   url, body, resp: string;
   req, respjson: TJSONObject;

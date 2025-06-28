@@ -697,7 +697,7 @@ begin
   begin
     case FSuggestionMode of
       smStatistical: ProjetoAtual.SugerirAssociacao;
-      // smAI: if Assigned(ProjetoAtual.SugerirAssociacaoAI) then ProjetoAtual.SugerirAssociacaoAI else ProjetoAtual.SugerirAssociacao;
+      smAI: ProjetoAtual.SugerirAssociacaoAI;
     end;
   end;
 end;

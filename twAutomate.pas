@@ -125,7 +125,7 @@ begin
   end;
 
   // Neither window class was found
-  FindTheWordWindows('theWordWindows.txt');
+  //FindTheWordWindows('theWordWindows.txt');
   Result := 0;
 end;
 

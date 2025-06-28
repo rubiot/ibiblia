@@ -4,19 +4,19 @@ object frmPrincipal: TfrmPrincipal
   Top = 150
   Width = 992
   Caption = 'iBiblia'
-  ClientHeight = 695
+  ClientHeight = 716
   ClientWidth = 992
   DesignTimePPI = 101
   KeyPreview = True
   Menu = MainMenu1
+  Position = poDesktopCenter
+  ShowHint = True
+  LCLVersion = '4.0.0.4'
   OnClose = FormClose
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   OnKeyPress = FormKeyPress
   OnShow = FormShow
-  Position = poDesktopCenter
-  ShowHint = True
-  LCLVersion = '2.2.6.0'
   object StatusBar1: TStatusBar
     Left = 0
     Height = 25
@@ -270,8 +270,8 @@ object frmPrincipal: TfrmPrincipal
             'Needs review'
             'Associated!'
           )
-          OnSelectionChanged = RadioGroupStatusSelectionChanged
           TabOrder = 1
+          OnSelectionChanged = RadioGroupStatusSelectionChanged
         end
       end
       object Splitter5: TSplitter
@@ -540,8 +540,8 @@ object frmPrincipal: TfrmPrincipal
       Caption = 'New...'
       Hint = 'Create new association project'
       ImageIndex = 6
-      OnExecute = ActionNovoProjetoExecute
       ShortCut = 16462
+      OnExecute = ActionNovoProjetoExecute
     end
     object ActionSalvarProjetoComo: TAction
       Caption = 'Save as...'
@@ -554,23 +554,23 @@ object frmPrincipal: TfrmPrincipal
       Caption = 'Open...'
       Hint = 'Open an existent project'
       ImageIndex = 0
-      OnExecute = ActionAbrirProjetoExecute
       ShortCut = 16449
+      OnExecute = ActionAbrirProjetoExecute
     end
     object ActionFecharProjeto: TAction
       Caption = 'Close'
       Enabled = False
       Hint = 'Close current project'
       ImageIndex = 1
-      OnExecute = ActionFecharProjetoExecute
       ShortCut = 16499
+      OnExecute = ActionFecharProjetoExecute
     end
     object ActionPropProjeto: TAction
       Caption = 'Settings...'
       Enabled = False
       Hint = 'Current project settings...'
-      OnExecute = ActionPropProjetoExecute
       ShortCut = 16464
+      OnExecute = ActionPropProjetoExecute
     end
     object ActionSair: TAction
       Caption = 'Exit'
@@ -595,24 +595,24 @@ object frmPrincipal: TfrmPrincipal
       Enabled = False
       Hint = 'Next verse'
       ImageIndex = 8
-      OnExecute = ActionVersoSeguinteExecute
       ShortCut = 34
+      OnExecute = ActionVersoSeguinteExecute
     end
     object ActionVersoAnterior: TAction
       Caption = 'Previous'
       Enabled = False
       Hint = 'Previous verse'
       ImageIndex = 7
-      OnExecute = ActionVersoAnteriorExecute
       ShortCut = 33
+      OnExecute = ActionVersoAnteriorExecute
     end
     object ActionSugerirAssociacao: TAction
       Caption = 'Auto-associate'
       Enabled = False
       Hint = 'Auto associate verse'
       ImageIndex = 4
-      OnExecute = ActionSugerirAssociacaoExecute
       ShortCut = 114
+      OnExecute = ActionSugerirAssociacaoExecute
     end
     object ActionQuandoNovoVersiculo: TAction
       Caption = 'ActionQuandoNovoVersiculo'
@@ -623,24 +623,24 @@ object frmPrincipal: TfrmPrincipal
       Enabled = False
       Hint = 'Save changes'
       ImageIndex = 2
-      OnExecute = ActionSalvarProjetoExecute
       ShortCut = 16467
+      OnExecute = ActionSalvarProjetoExecute
     end
     object ActionReverterAssociacoes: TAction
       Caption = 'Rollback'
       Enabled = False
       Hint = 'Rollback changes'
       ImageIndex = 9
-      OnExecute = ActionReverterAssociacoesExecute
       ShortCut = 116
+      OnExecute = ActionReverterAssociacoesExecute
     end
     object ActionLimparAssociacoes: TAction
       Caption = 'Clear'
       Enabled = False
       Hint = 'Clear verse associations'
       ImageIndex = 5
-      OnExecute = ActionLimparAssociacoesExecute
       ShortCut = 113
+      OnExecute = ActionLimparAssociacoesExecute
     end
     object ActionExportarDestinoComStrongs: TAction
       Caption = 'Export destination text'
@@ -655,8 +655,8 @@ object frmPrincipal: TfrmPrincipal
     object ActionExportar: TAction
       Caption = 'Export...'
       Enabled = False
-      OnExecute = ActionExportarExecute
       ShortCut = 16453
+      OnExecute = ActionExportarExecute
     end
     object ActionMesclarProjetos: TAction
       Caption = 'Merge projects...'
@@ -673,8 +673,8 @@ object frmPrincipal: TfrmPrincipal
     end
     object ActionMostrarTags: TAction
       Caption = 'ActionMostrarTags'
-      OnExecute = ActionMostrarTagsExecute
       ShortCut = 119
+      OnExecute = ActionMostrarTagsExecute
     end
     object ActionExportPatch: TAction
       Caption = 'Create patch...'

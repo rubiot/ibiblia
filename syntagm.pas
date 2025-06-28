@@ -866,6 +866,11 @@ end;
 
 function TSyntagmList.GetS(Index: Integer): TSyntagm;
 begin
+  if (Index < 0) or (Index >= Count) then
+  begin
+    result := nil;
+    Exit;
+  end;
   result := TSyntagm(Get(Index));
 end;
 

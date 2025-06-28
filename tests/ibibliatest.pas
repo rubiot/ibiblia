@@ -29,6 +29,8 @@ type
     procedure AssertSyntagmListEquals(const list: TSyntagmList; const values: array of const);
     procedure AssertPairsAndSiblings(syntagm: TSyntagm; const pairs, siblings: array of const);
     function FindIndexOf(verse: TVersiculo; word: string): Integer;
+    function CreateStringList(const AWords: array of string): TStringList; // Helper
+    procedure AssertSelectionEqualsIndices(const ExpectedIndices: array of Integer); // Helper
   protected
     procedure SetUp; override;
     procedure TearDown; override;
@@ -55,6 +57,19 @@ type
     procedure ReplaceDestinationTextVerticalBar;
     procedure ReplaceDestinationTextManyWords;
     procedure ReplaceSourceTextAddPunctuation;
+    // New tests for FindAndSelectSyntagms
+    procedure TestFindAndSelectSyntagms_SimpleSequence;
+    procedure TestFindAndSelectSyntagms_NotFound;
+    procedure TestFindAndSelectSyntagms_PartialTrue_SomeFound;
+    procedure TestFindAndSelectSyntagms_PartialFalse_NotAllFound;
+    procedure TestFindAndSelectSyntagms_AvoidAlreadySelected_Sequential;
+    procedure TestFindAndSelectSyntagms_JoinConnected_NoPunctuationAdded_CurrentBehavior;
+    procedure TestFindAndSelectSyntagms_EmptyWordsList;
+    procedure TestFindAndSelectSyntagms_SequentialSkipsSelected;
+    procedure TestFindAndSelectSyntagms_AnyOrderSkipsSelected_FullMatch;
+    procedure TestFindAndSelectSyntagms_AnyOrder_PartialTrue_SkipsSelected;
+    procedure TestFindAndSelectSyntagms_SequenceWithIntermediateNonWords;
+    procedure TestFindAndSelectSyntagms_AnyOrderWithDuplicatesInSearchList;
   end;
 
 implementation
@@ -697,6 +712,332 @@ begin
   AssertPairsAndSiblings(d[4], [s[5]], []);
   AssertPairsAndSiblings(d[5], [],     []);
   AssertPairsAndSiblings(d[6], [s[7]], []);
+end;
+
+function TVerseTests.CreateStringList(const AWords: array of string): TStringList;
+var
+  I: Integer;
+begin
+  Result := TStringList.Create;
+  for I := Low(AWords) to High(AWords) do
+    Result.Add(AWords[I]);
+end;
+
+procedure TVerseTests.AssertSelectionEqualsIndices(const ExpectedIndices: array of Integer);
+var
+  I: Integer;
+  ExpectedSyntagmPointers: array of Variant; // Using Variant to hold pointers for array of const
+  ExpectedSyntagmsList: TSyntagmList;
+begin
+  // Check if verse1 and its Sintagmas are assigned
+  AssertNotNull('verse1 is not initialized in AssertSelectionEqualsIndices', verse1);
+  AssertNotNull('verse1.Sintagmas is not initialized in AssertSelectionEqualsIndices', verse1.Sintagmas);
+
+  // Create a list of expected TSyntagm objects
+  ExpectedSyntagmsList := TSyntagmList.Create;
+  try
+    for I := Low(ExpectedIndices) to High(ExpectedIndices) do
+    begin
+      if (ExpectedIndices[I] >= 0) and (ExpectedIndices[I] < verse1.Sintagmas.Count) then
+        ExpectedSyntagmsList.Add(verse1.Sintagmas[ExpectedIndices[I]])
+      else
+        Fail(Format('Expected index %d is out of bounds for verse1.Sintagmas (count: %d)', [ExpectedIndices[I], verse1.Sintagmas.Count]));
+    end;
+
+    // Assert counts first
+    AssertEquals(Format('Selection count mismatch. Expected %d, Got %d.', [ExpectedSyntagmsList.Count, verse1.Selecao.Count]),
+      ExpectedSyntagmsList.Count, verse1.Selecao.Count);
+
+    // Assert each item if counts match
+    if ExpectedSyntagmsList.Count = verse1.Selecao.Count then
+    begin
+      for I := 0 to ExpectedSyntagmsList.Count - 1 do
+      begin
+        AssertTrue(Format('Selected syntagm at selection index %d does not match. Expected syntagm text: "%s" (original index %d), Got: "%s" (original index %d)',
+                 [I, ExpectedSyntagmsList[I].Text, verse1.Sintagmas.IndexOf(ExpectedSyntagmsList[I]),
+                  verse1.Selecao[I].Text, verse1.Sintagmas.IndexOf(verse1.Selecao[I]) ]),
+                  ExpectedSyntagmsList[I] = verse1.Selecao[I]);
+      end;
+    end;
+  finally
+    ExpectedSyntagmsList.Free;
+  end;
+end;
+
+procedure TVerseTests.TestFindAndSelectSyntagms_SimpleSequence;
+var
+  Words: TStringList;
+begin
+  verse1.Texto := 'This is a test verse';
+  // FSintagmas: 0:This 1:  2:is 3:  4:a 5:  6:test 7:  8:verse
+  Words := CreateStringList(['test', 'verse']);
+  try
+    verse1.LimparSelecao;
+    verse1.FindAndSelectSyntagms(Words, False, False);
+    AssertSelectionEqualsIndices([6, 8]); // "test", "verse"
+  finally
+    Words.Free;
+  end;
+end;
+
+procedure TVerseTests.TestFindAndSelectSyntagms_NotFound;
+var
+  Words: TStringList;
+begin
+  verse1.Texto := 'This is a test verse';
+  Words := CreateStringList(['invalid', 'words']);
+  try
+    verse1.LimparSelecao;
+    verse1.FindAndSelectSyntagms(Words, False, False);
+    AssertSelectionEqualsIndices([]);
+  finally
+    Words.Free;
+  end;
+end;
+
+procedure TVerseTests.TestFindAndSelectSyntagms_PartialTrue_SomeFound;
+var
+  Words: TStringList;
+begin
+  verse1.Texto := 'one two three';
+  // FSintagmas: 0:one 1:  2:two 3:  4:three
+  Words := CreateStringList(['one', 'four']);
+  try
+    verse1.LimparSelecao;
+    verse1.FindAndSelectSyntagms(Words, True, False);
+    // Any-order search: finds "one". "four" not found. Partial=True, so "one" is selected.
+    AssertSelectionEqualsIndices([0]); // "one"
+  finally
+    Words.Free;
+  end;
+end;
+
+procedure TVerseTests.TestFindAndSelectSyntagms_PartialFalse_NotAllFound;
+var
+  Words: TStringList;
+begin
+  verse1.Texto := 'one two three';
+  Words := CreateStringList(['one', 'four']);
+  try
+    verse1.LimparSelecao;
+    verse1.FindAndSelectSyntagms(Words, False, False);
+    AssertSelectionEqualsIndices([]); // Not all found, Partial=False
+  finally
+    Words.Free;
+  end;
+end;
+
+procedure TVerseTests.TestFindAndSelectSyntagms_AvoidAlreadySelected_Sequential;
+var
+  Words: TStringList;
+begin
+  verse1.Texto := 'test one test two';
+  // FSintagmas: 0:test 1:  2:one 3:  4:test 5:  6:two
+  verse1.LimparSelecao;
+  verse1.Sintagmas[0].AddToSelection; // Pre-select first "test"
+
+  Words := CreateStringList(['test', 'two']);
+  try
+    // verse1.Selecao already contains Sintagmas[0]
+    verse1.FindAndSelectSyntagms(Words, False, False);
+    // Expected: first "test" (index 0) remains selected.
+    // Method should find second "test" (index 4) and "two" (index 6).
+    AssertSelectionEqualsIndices([0, 4, 6]);
+  finally
+    Words.Free;
+  end;
+end;
+
+procedure TVerseTests.TestFindAndSelectSyntagms_JoinConnected_NoPunctuationAdded_CurrentBehavior;
+var
+  Words: TStringList;
+begin
+  // Assuming "word1 - word2" parses to "word1" (idx0), " " (idx1), "-" (idx2, tsPontuacao), " " (idx3), "word2" (idx4)
+  verse1.Texto := 'word1<wt>-</wt>word2'; // Ensure '-' is a distinct syntagm
+  // FSintagmas: 0:word1 1:<wt> 2:- 3:</wt> 4:word2
+  // Let's use a simpler text that TONTParser handles predictably for spaces:
+  verse1.Texto := 'word1 - word2';
+  // FSintagmas: 0:word1 1:  2:- 3:  4:word2
+  Words := CreateStringList(['word1', 'word2']);
+  try
+    verse1.LimparSelecao;
+    verse1.FindAndSelectSyntagms(Words, False, True); // JoinConnected = True
+    // Current Pascal impl. of JoinConnected doesn't add punctuation to selection.
+    AssertSelectionEqualsIndices([0, 4]); // "word1", "word2"
+  finally
+    Words.Free;
+  end;
+end;
+
+procedure TVerseTests.TestFindAndSelectSyntagms_EmptyWordsList;
+begin
+  verse1.Texto := 'This is a test';
+  verse1.LimparSelecao;
+  verse1.FindAndSelectSyntagms(nil, False, False); // Test with nil
+  AssertSelectionEqualsIndices([]);
+
+  verse1.LimparSelecao;
+  verse1.FindAndSelectSyntagms(CreateStringList([]), False, False); // Test with empty TStringList
+  AssertSelectionEqualsIndices([]);
+end;
+
+procedure TVerseTests.TestFindAndSelectSyntagms_SequentialSkipsSelected;
+var
+  Words: TStringList;
+begin
+  verse1.Texto := 'a b c a b d';
+  // Indices:    0 1 2 3 4 5 6 7 8 9 10
+  // Syntagms:   a ' ' b ' ' c ' ' a ' ' b ' '  d
+  // Word Idx:   0     2     4     6     8     10
+  verse1.LimparSelecao;
+  verse1.Sintagmas[0].AddToSelection; // Select first 'a'
+  verse1.Sintagmas[2].AddToSelection; // Select first 'b'
+
+  Words := CreateStringList(['a', 'b']);
+  try
+    verse1.FindAndSelectSyntagms(Words, False, False);
+    // Expected: Original selections [0,2] + new sequence [6,8]
+    AssertSelectionEqualsIndices([0, 2, 6, 8]);
+  finally
+    Words.Free;
+  end;
+end;
+
+procedure TVerseTests.TestFindAndSelectSyntagms_AnyOrderSkipsSelected_FullMatch;
+var
+  Words: TStringList;
+begin
+  verse1.Texto := 'x y z x y w';
+  // Indices:    0 1 2 3 4 5 6 7 8 9 10
+  // Syntagms:   x ' ' y ' ' z ' ' x ' ' y ' '  w
+  // Word Idx:   0     2     4     6     8     10
+  verse1.LimparSelecao;
+  verse1.Sintagmas[0].AddToSelection; // Select first 'x'
+
+  Words := CreateStringList(['x', 'y']); // Search for 'x' and 'y'
+  try
+    verse1.FindAndSelectSyntagms(Words, False, False);
+    // Sequential search for ['x', 'y'] fails because FSintagmas[0] ('x') is selected.
+    // Any-order search:
+    // For 'x': finds FSintagmas[6] (second 'x')
+    // For 'y': finds FSintagmas[2] (first 'y')
+    // Expected: Original selection [0] + new found [6,2] (order in Selecao might depend on AddToSelection calls)
+    // The Selecao list should maintain insertion order.
+    // FoundSyntagms in FindAndSelectSyntagms (any-order part) adds in order of Words list.
+    // So, FSintagmas[6] then FSintagmas[2].
+    // Final Selecao: [0, 6, 2]
+    AssertSelectionEqualsIndices([0, 6, 2]);
+  finally
+    Words.Free;
+  end;
+end;
+
+procedure TVerseTests.TestFindAndSelectSyntagms_AnyOrder_PartialTrue_SkipsSelected;
+var
+  Words: TStringList;
+begin
+  verse1.Texto := 'x y z x y w';
+  // Word Idx:   0     2     4     6     8     10
+  verse1.LimparSelecao;
+  verse1.Sintagmas[0].AddToSelection; // Select first 'x' (idx 0)
+  verse1.Sintagmas[8].AddToSelection; // Select second 'y' (idx 8)
+
+  Words := CreateStringList(['x', 'y', 'missing']);
+  try
+    verse1.FindAndSelectSyntagms(Words, True, False); // Partial = True
+    // Sequential for ['x','y','missing'] fails.
+    // Any-order:
+    // For 'x': finds FSintagmas[6] (second 'x')
+    // For 'y': finds FSintagmas[2] (first 'y')
+    // For 'missing': not found.
+    // Partial=True, so [6,2] are added.
+    // Expected: Original selection [0,8] + new found [6,2]
+    AssertSelectionEqualsIndices([0, 8, 6, 2]);
+  finally
+    Words.Free;
+  end;
+end;
+
+procedure TVerseTests.TestFindAndSelectSyntagms_SequenceWithIntermediateNonWords;
+var
+  Words: TStringList;
+begin
+  // Test if "word1 <tag> word2" can find sequence ["word1", "word2"]
+  // Current implementation of sequential search in FindAndSelectSyntagms:
+  //   for J := 0 to Words.Count - 1 do
+  //     Syntagm := FSintagmas[I + J];
+  // This implies direct adjacency in FSintagmas list for sequential matches.
+  // This test will clarify that behavior. If FSintagmas[I+J] is not a word syntagm, it will fail.
+  // The current code only checks Syntagm.Kind = tsSintagma.
+  // If FSintagmas[I+J] is a space or tag, it won't match Words[J] unless Words[J] is that space/tag.
+  // So, this test should behave as if direct adjacency of *word syntagms* is required.
+
+  verse1.Texto := 'word1<TAG_HERE>word2'; // Parsed as: word1 (0), <TAG_HERE> (1), word2 (2)
+  Words := CreateStringList(['word1', 'word2']);
+  try
+    verse1.LimparSelecao;
+    verse1.FindAndSelectSyntagms(Words, False, False);
+    // Sequential search for "word1", "word2":
+    // I=0: FSintagmas[0]="word1" (match), FSintagmas[1]="<TAG_HERE>" (no match for "word2") -> Fails
+    // Any-order search: finds "word1" (idx 0), "word2" (idx 2)
+    AssertSelectionEqualsIndices([0, 2]);
+  finally
+    Words.Free;
+  end;
+
+  // Test with space
+  verse1.Texto := 'word1 word2'; // Parsed as: word1 (0), ' ' (1), word2 (2)
+  Words := CreateStringList(['word1', 'word2']);
+  try
+    verse1.LimparSelecao;
+    verse1.FindAndSelectSyntagms(Words, False, False);
+    // Sequential search:
+    // I=0: FSintagmas[0]="word1" (match), FSintagmas[1]=" " (no match for "word2") -> Fails
+    // Any-order search: finds "word1" (idx 0), "word2" (idx 2)
+    AssertSelectionEqualsIndices([0, 2]);
+  finally
+    Words.Free;
+  end;
+end;
+
+procedure TVerseTests.TestFindAndSelectSyntagms_AnyOrderWithDuplicatesInSearchList;
+var
+  Words: TStringList;
+begin
+  verse1.Texto := 'apple banana apple orange apple';
+  // Indices:    0     1 2      3 4     5 6      7 8     9
+  // Syntagms:   apple ' ' banana ' ' apple ' ' orange ' ' apple
+  // Word Idx:   0         2         4          6          8
+  Words := CreateStringList(['apple', 'apple']);
+  try
+    verse1.LimparSelecao;
+    verse1.FindAndSelectSyntagms(Words, False, False);
+    // Sequential search for ['apple', 'apple'] will fail because of space.
+    // Any-order search:
+    // For Words[0] ('apple'): finds FSintagmas[0]
+    // For Words[1] ('apple'): finds FSintagmas[4] (because FSintagmas[0] is now in FoundSyntagms due to IndexOf check)
+    AssertSelectionEqualsIndices([0, 4]);
+  finally
+    Words.Free;
+  end;
+
+  // Test with Partial = True and one more duplicate than available
+  // Words.Clear; // This was causing AV as Words was already freed.
+  Words := TStringList.Create; // Re-create Words
+  Words.Add('apple'); Words.Add('apple'); Words.Add('apple'); Words.Add('apple'); // 4 apples
+  try
+    verse1.LimparSelecao;
+    verse1.FindAndSelectSyntagms(Words, True, False); // Partial = True
+    // Any-order:
+    // Word 1 ('apple'): finds idx 0
+    // Word 2 ('apple'): finds idx 4
+    // Word 3 ('apple'): finds idx 8
+    // Word 4 ('apple'): no more apples
+    // Partial = True, so [0,4,8] are selected
+    AssertSelectionEqualsIndices([0, 4, 8]);
+  finally
+    Words.Free;
+  end;
 end;
 
 procedure TVerseTests.Associate(const source: array of const;

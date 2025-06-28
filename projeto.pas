@@ -17,7 +17,8 @@ uses
   SysUtils, Sqlite3DS, sqlite3conn, sqldb, db, StrUtils, math,
   ExtCtrls, Controls, ComCtrls, StdCtrls, Graphics, Forms, Versiculo, Sugestao,
   MemoVersiculo, ONTTokenizer, Dialogs, dos, PCRE, ExportarProjeto, LazLogger,
-  Syntagm, MySwordModule, TheWordDictionary, fgl, PatchFile, LCLIntf, menus;
+  Syntagm, MySwordModule, TheWordDictionary, fgl, PatchFile, LCLIntf, menus,
+  aiassociator;
 
 type
 
@@ -99,6 +100,7 @@ type
     FADicStrong: ADicStrong;
     FADicMorfo: ADicMorfo;
     FSugeridor: TGerSugestoes;
+    FAiAssociator: TAiAssociator;
     FParesAntigos: TStringList;
     FArvore: TTreeView;
     FBibleTreePointedNode: TTreeNode;
@@ -198,6 +200,7 @@ type
     procedure Limpar;
     procedure Salvar;
     procedure SugerirAssociacao;
+    procedure SugerirAssociacaoAI; // Added this line
     procedure RecriarBaseSugestoes;
     procedure RecriarBaseSugestoes(pb: TProgressBar);
     function ImportarModuloTheWord(arquivo: string; texto: TTipoTextoBiblico; replace: boolean): boolean;
@@ -271,6 +274,7 @@ type
     property ParagraphMode: TParagraphMode read GetParagraphMode write SetParagraphMode;
     property AutoSave: boolean read FAutoSave write SetAutoSave;
     property Pairs: string read GetPairs;
+    property VerseObjects: AVersiculo read FAVersiculo;
   end;
 
 {$INCLUDE include/bookdefs.inc}
@@ -1145,8 +1149,7 @@ begin
   {result := FTblInfo.QuickQuery(format('select valor from info where id = ''%s''', [AnsiReplaceStr(info, '''', '''''')]));}
 end;
 
-function TProjeto.ObterDefinicaoStrong(strong: string; texto: TTipoTextoBiblico
-  ): string;
+function TProjeto.ObterDefinicaoStrong(strong: string; texto: TTipoTextoBiblico): string;
 begin
   if (FADicStrong[texto] = nil) or (strong = '') then
   begin
@@ -1163,8 +1166,7 @@ begin
   end;
 end;
 
-function TProjeto.ObterDefinicaoMorfo(morfo: string; texto: TTipoTextoBiblico
-  ): string;
+function TProjeto.ObterDefinicaoMorfo(morfo: string; texto: TTipoTextoBiblico): string;
 var
   m: string;
   //p, l: sizeint;
@@ -1791,6 +1793,7 @@ var
 begin
   if not assigned(FArvore) then exit;
   // POSSIBLE BUG: TopItem returns the first VISIBLE node, not the top SELECTED node!!!
+
   n := FArvore.TopItem.GetFirstChild.GetFirstChild; // nó versículo atual
   l := OffsetLivros[FEscopo] + 1; // livro atual
   c := 1;  // capítulo atual
@@ -1915,7 +1918,7 @@ begin
   for s:=0 to 3 do // todos os capítulos estão na mesma situação?
     if sl[s] = QCapitulos[FEscopo][qc] then
     begin
-      ul.ImageIndex := s; ul.SelectedIndex := ul.ImageIndex + 4;
+      ul.ImageIndex := s; ul.SelectedIndex := ul.SelectedIndex + 4;
       b := true;
       break;
     end;
@@ -1999,7 +2002,7 @@ begin
     end;
 
     b := false;
-    for i:=0 to 3 do // todos os versículos estão na mesma situação?
+    for i:=0 to 3 do // todos os capítulos estão na mesma situação?
     begin
       if al[i] = QCapitulos[FEscopo][BookID-OffsetLivros[FEscopo]] then
       begin
@@ -2057,6 +2060,7 @@ begin
   FOnNovoVersiculo    := TOnNovoVersiculoEvents.Create;
   FOnAlterarVersiculo := nil;
   FSugeridor          := nil;
+  FAiAssociator       := nil;
   FTblPares           := nil;
   FTblInfo            := nil;
   FEscopo             := etNone;
@@ -2122,6 +2126,7 @@ begin
 
   FOnNovoVersiculo.Free;
   FSugeridor.Free;
+  FAiAssociator.Free;
   FTemporizador.Free;
   FMemoVersiculo.Destruir;
 end;
@@ -2155,13 +2160,26 @@ begin
   end;
 
   FFileName := Nome;
-  FTblPares := CriarObjetoTabela(Nome, 'pares', 'pare_id');
 
   FTblInfo  := CriarObjetoTabela(Nome, 'info', 'id');
-  FSugeridor := TGerSugestoes.Criar(Nome);
-
-  FTblPares.Open;
   FTblInfo.Open;
+
+  FSugeridor := TGerSugestoes.Criar(Nome);
+  // Initialize FAiAssociator only if all required parameters are present
+  if (not ObterInfo('ai_associator.model').IsEmpty) and
+     (not ObterInfo('ai_associator.api_key').IsEmpty) and
+     (not ObterInfo('ai_associator.prompt').IsEmpty) then
+  begin
+    FAiAssociator := TAiAssociator.Create(
+      ObterInfo('ai_associator.model'),
+      ObterInfo('ai_associator.api_key'),
+      ObterInfo('ai_associator.prompt'));
+  end
+  else
+    FAiAssociator := nil;
+
+  FTblPares := CriarObjetoTabela(Nome, 'pares', 'pare_id');
+  FTblPares.Open;
 
   f := TFont.Create;
   for t:=tbOrigem to tbConsulta2 do
@@ -2193,8 +2211,8 @@ begin
   end;
   f.free;
 
-  FATmpVerse[tbOrigem ] := TVersiculo.Criar;
-  FATmpVerse[tbDestino] := TVersiculo.Criar;
+  FATmpVerse[tbOrigem ] := TVersiculo.Criar(self);
+  FATmpVerse[tbDestino] := TVersiculo.Criar(self);
   FATmpVerse[tbOrigem ].VersiculoPar := FATmpVerse[tbDestino];
 
   FACamposTexto[tbOrigem]    := FTblPares.FindField('pare_texto_origem').Index;
@@ -2416,6 +2434,11 @@ begin
     FRadioGroupSituacao.ItemIndex := 1; // associando
 end;
 
+procedure TProjeto.SugerirAssociacaoAI;
+begin
+  FAiAssociator.AssociateVerse(FAVersiculo[tbOrigem]);
+end;
+
 procedure TProjeto.RecriarBaseSugestoes;
 begin
   RecriarBaseSugestoes(nil);
@@ -2455,7 +2478,7 @@ begin
           FATmpVerse[tbDestino].Texto := FTblPares.Fields[FACamposTexto[tbDestino]].AsString;
           FATmpVerse[tbOrigem ].Pares := FTblPares.FieldByName('pare_pares').AsString;
 
-          pares := FATmpVerse[tbOrigem ].GetListaPares(plMetaData);
+          pares := FATmpVerse[tbOrigem].GetListaPares(plMetaData);
 
           for p:=0 to pares.Count-1 do
             if (p mod 2) = 0 then // pares estão alternados na lista
@@ -2659,7 +2682,7 @@ end;
 procedure TProjeto.NovoObjetoVersiculo(owner: TScrollBox;
   texto: TTipoTextoBiblico);
 begin
-  FAVersiculo[texto] := TVersiculo.Criar(owner);
+  FAVersiculo[texto] := TVersiculo.Criar(self, owner);
   owner.Tag := ptrint(FAVersiculo[texto]);
   owner.OnDblClick := @OnDblClickVersiculo;
   FAVersiculo[texto].OnClick := @SintagmaOnClick;
@@ -2716,7 +2739,7 @@ begin
         end
         else
         begin
-          FATmpVerse[tbOrigem ].Texto := FTblPares.Fields[FACamposTexto[tbOrigem ]].AsString;
+          FATmpVerse[tbOrigem ].Texto := FTblPares.Fields[FACamposTexto[tbOrigem]].AsString;
           FATmpVerse[tbDestino].Texto := FTblPares.Fields[FACamposTexto[tbDestino]].AsString;
           try
             FATmpVerse[tbOrigem].Pares := FTblPares.FieldByName('pare_pares').AsString;
@@ -2955,7 +2978,7 @@ begin
         except
           on E: Exception do
             MessageDlg(SError, SCorruptedData + #13#10#13#10 + FormattedReference + #13#10 +
-                 format('%s'#13#10'pares: %s'#13#10'%s'#13#10'%s',
+                 format('%s'#13#10'pares: %s'#13#10'%s'#13#10'%s'#13#10,
                         [E.Message, FTblPares.FieldByName('pare_pares').AsString,
                         FATmpVerse[tbOrigem].DebugTokens, FATmpVerse[tbDestino].DebugTokens]),
                  mtError, [mbOK], 0);
@@ -3048,8 +3071,7 @@ begin
      result := nil;
 end;
 
-function TProjeto.AtribuirDicStrong(dic: string; textos: STextosBiblicos
-  ): boolean;
+function TProjeto.AtribuirDicStrong(dic: string; textos: STextosBiblicos): boolean;
 var
   t: TTipoTextoBiblico;
 begin
@@ -3066,8 +3088,7 @@ begin
   result := true;
 end;
 
-function TProjeto.AtribuirDicMorfo(dic: string; textos: STextosBiblicos
-  ): boolean;
+function TProjeto.AtribuirDicMorfo(dic: string; textos: STextosBiblicos): boolean;
 var
   t: TTipoTextoBiblico;
 begin

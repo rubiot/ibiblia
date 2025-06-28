@@ -27,6 +27,7 @@ type
 
   TVersiculo = class
   private
+    FProject: TObject;
     FRightToLeft: Boolean;
     { Private declarations }
     FMostrarDicas: boolean;
@@ -61,6 +62,7 @@ type
     FReadOnly: Boolean;
     { determines the auto select behaviour on right-click association }
     FNextAutoSelectWordMustHaveStrongMorpho: Boolean;
+    // function CompareSyntagmsInFSintagmas(Item1, Item2: Pointer): Integer; // Removed
     //FOnNovaAssociacao: TOnAssociacaoEvent;
     //FOnRemoverAssociacao: TOnAssociacaoEvent;
     function GetAndamentoAssociacao: Single;
@@ -99,14 +101,15 @@ type
     procedure InitSyntagmPopupMenu;
     procedure InitVersePopupMenu;
     procedure OnCopyAssociationsJSONToClipboard(Sender: TObject);
+    procedure OnSwitchDestinationAndReference1Texts(Sender: TObject);
     procedure OnCopySintagmasAsJSON(Sender: TObject);
     function GetAssociationsJSON: string;
   protected
     { Protected declarations }
   public
     { Public declarations }
-    constructor Criar;
-    constructor Criar(TheOwner: TScrollBox);
+    constructor Criar(AProject: TObject);
+    constructor Criar(AProject: TObject; TheOwner: TScrollBox);
     destructor Destruir;
     procedure LimparSintagmas;
     procedure AssociarSintagmas;
@@ -125,6 +128,8 @@ type
     procedure OcultarTags;
     procedure EnableStrongHighlight(strong: string);
     procedure DisableStrongHighlight;
+
+    procedure FindAndSelectSyntagms(Words: TStringList; Partial: Boolean = False; JoinConnected: Boolean = True);
 
     function GetTheWordInterlinearLine: string;
     function GetMySwordInterlinearLine: string;
@@ -180,17 +185,50 @@ resourcestring
   SCopyInterlinearVerseToClipboard = 'Copy &interlinear verse to clipboard';
   SCopyXMLToClipboard = 'Copy association &XML to clipboard';
   SCopyAssociationsJSONToClipboard = 'Copy association &JSON to clipboard';
+  SSwitchDestinationAndReference1Texts = 'Switch destination text with reference 1';
 
 implementation
 
 uses
-  TypInfo; // added TypInfo
+  Projeto, TypInfo;
 
 const
   MarginWidth = 10; // text's distance from the margin
 
 var
   SintagmaClipboard: TSyntagm;
+  CurrentVersiculoForSort: TVersiculo = nil; // Temporary global for sorting
+
+function ActualCompareSyntagms(Item1, Item2: Pointer): Integer;
+var
+  S1, S2: TSyntagm;
+  Idx1, Idx2: Integer;
+begin
+  if CurrentVersiculoForSort = nil then
+  begin
+    // This case should ideally not happen if CurrentVersiculoForSort is managed correctly
+    Result := 0;
+    Exit;
+  end;
+  S1 := TSyntagm(Item1);
+  S2 := TSyntagm(Item2);
+  // Ensure S1 and S2 are valid and found in the list to prevent errors
+  Idx1 := CurrentVersiculoForSort.FSintagmas.IndexOf(S1);
+  Idx2 := CurrentVersiculoForSort.FSintagmas.IndexOf(S2);
+
+  if (Idx1 = -1) or (Idx2 = -1) then
+  begin
+    // Handle cases where syntagms might not be in FSintagmas (e.g., if they are temporary)
+    // This might indicate an issue elsewhere if FoundSyntagms contains items not in FSintagmas
+    Result := 0; // Or some other default/error behavior
+    // Optionally, add a debug message here if this occurs unexpectedly
+    // DebugLn('Warning: Syntagm not found in FSintagmas during sort.');
+  end
+  else
+  begin
+    Result := Idx1 - Idx2;
+  end;
+end;
 
 function CompareIndexes(List: TStringList; Index1, Index2: Integer): Integer;
 begin
@@ -199,8 +237,9 @@ end;
 
 { TVersiculo }
 
-constructor TVersiculo.Criar(TheOwner : TScrollBox);
+constructor TVersiculo.Criar(AProject: TObject; TheOwner : TScrollBox);
 begin
+  FProject := AProject;
   FPanel := TheOwner;
 
   FAtivo := assigned(FPanel);
@@ -1328,7 +1367,7 @@ begin
   end;
   varredorXML.Destruir;
 
-  { copiando dados do sintagma clicado para o primeiro sintagma parseado }
+  // copiando dados do sintagma clicado para o primeiro sintagma parseado
   for j:=(i-Offset) to i+Offset do
   begin
     novo := FSintagmas[j];
@@ -1467,6 +1506,214 @@ begin
     tokens.WriteString(s.Gist);
   result:= tokens.DataString;
   tokens.Destroy;
+end;
+
+procedure TVersiculo.FindAndSelectSyntagms(Words: TStringList; Partial: Boolean = False; JoinConnected: Boolean = True);
+var
+  I, J, K: Integer;
+  WordToFind: string;
+  FoundSyntagmsThisCall: TSyntagmList; // Syntagms found in this specific call, to be added to Selecao
+  
+  // Search strategy state
+  AttemptAnyOrder: Boolean;
+  EffectivePartial: Boolean;
+
+  // Sequential search state
+  CurrentSequentialSearchStartIndex: Integer;
+  AllWordsFoundSequentially: Boolean;
+  TempSequentialList: TSyntagmList;
+
+  // Any-order search state
+  PickedForAnyOrderThisCall: TSyntagmList;
+  AllWordsFoundInAnyOrder: Boolean;
+  FoundThisWordInAnyOrder: Boolean;
+  
+  SyntagmNode: TSyntagm;
+  // FoundMatchForCurrentWord: TSyntagm; // Replaced by direct add to lists
+
+  // JoinConnected specific
+  Syntagm1, Syntagm2: TSyntagm;
+  Idx1, Idx2: Integer;
+  IsConnected: Boolean;
+  IntermediateSyntagm: TSyntagm;
+  TempJoinList: TSyntagmList;
+
+begin
+  if not Assigned(Words) or (Words.Count = 0) then
+    Exit;
+
+  FoundSyntagmsThisCall := TSyntagmList.Create;
+  TempSequentialList := TSyntagmList.Create;
+  PickedForAnyOrderThisCall := TSyntagmList.Create; // Used by any-order search
+  TempJoinList := TSyntagmList.Create;
+
+  try
+    EffectivePartial := Partial; // Base partiality on the input flag
+
+    // 1. Attempt Sequential Match if enabled
+    AllWordsFoundSequentially := True;
+    CurrentSequentialSearchStartIndex := 0;
+    for I := 0 to Words.Count - 1 do
+    begin
+      WordToFind := Trim(Words[I]);
+      if WordToFind = '' then Continue;
+
+      SyntagmNode := nil; // Placeholder for found syntagm
+      for J := CurrentSequentialSearchStartIndex to FSintagmas.Count - 1 do
+      begin
+        if (FSintagmas[J].Kind = tsSintagma) and SameText(FSintagmas[J].Text, WordToFind) then
+        begin
+          if (not FSintagmas[J].IsAssociated) and (TempSequentialList.IndexOf(FSintagmas[J]) = -1) then
+          begin
+            SyntagmNode := FSintagmas[J];
+            CurrentSequentialSearchStartIndex := J + 1;
+            Break;
+          end;
+        end;
+      end;
+
+      if Assigned(SyntagmNode) then
+      begin
+        TempSequentialList.Add(SyntagmNode);
+      end
+      else
+      begin
+        AllWordsFoundSequentially := False;
+        Break;
+      end;
+    end;
+
+    if AllWordsFoundSequentially and (TempSequentialList.Count = Words.Count) then
+    begin
+      for I := 0 to TempSequentialList.Count - 1 do
+        FoundSyntagmsThisCall.Add(TempSequentialList[I]);
+    end;
+
+    // 2. Attempt Any-Order Match if sequential didn't find all, or if sequential was skipped
+    AttemptAnyOrder := (FoundSyntagmsThisCall.Count < Words.Count);
+
+    if AttemptAnyOrder then
+    begin
+      FoundSyntagmsThisCall.Clear;
+      
+      AllWordsFoundInAnyOrder := True;
+      PickedForAnyOrderThisCall.Clear; // Ensure it's clean for this attempt
+
+      for I := 0 to Words.Count - 1 do
+      begin
+        WordToFind := Trim(Words[I]);
+        if WordToFind = '' then Continue;
+
+        FoundThisWordInAnyOrder := False;
+        for J := 0 to FSintagmas.Count - 1 do
+        begin
+          SyntagmNode := FSintagmas[J];
+          if (SyntagmNode.Kind = tsSintagma) and SameText(SyntagmNode.Text, WordToFind) then
+          begin
+            if (Self.Selecao.IndexOf(SyntagmNode) = -1) and (PickedForAnyOrderThisCall.IndexOf(SyntagmNode) = -1) then
+            begin
+              // Add to FoundSyntagmsThisCall directly, as this is now the primary list being built
+              FoundSyntagmsThisCall.Add(SyntagmNode);
+              PickedForAnyOrderThisCall.Add(SyntagmNode); // Track for this any-order pass
+              FoundThisWordInAnyOrder := True;
+              Break; // Found for this Words[I], move to next word in Words
+            end;
+          end;
+        end; // End J loop (searching for current WordToFind)
+
+        if not FoundThisWordInAnyOrder then
+        begin
+          AllWordsFoundInAnyOrder := False;
+          if not EffectivePartial then // If not effectively partial, and one word fails, the whole any-order attempt fails
+            Break;
+        end;
+      end; // End I loop for Words[I]
+
+      // After any-order attempt, validate based on EffectivePartial flag
+      if not AllWordsFoundInAnyOrder and not EffectivePartial then
+        FoundSyntagmsThisCall.Clear; // Not all words found, and not partial, so result is empty
+    end; // End if AttemptAnyOrder
+
+    // 3. If no syntagms were found by any means, exit.
+    if FoundSyntagmsThisCall.Count = 0 then
+      Exit;
+
+    // 4. Join connected syntagms
+    if JoinConnected and (FoundSyntagmsThisCall.Count > 1) then
+    begin
+      CurrentVersiculoForSort := Self;
+      try
+        FoundSyntagmsThisCall.Sort(@ActualCompareSyntagms);
+      finally
+        CurrentVersiculoForSort := nil;
+      end;
+
+      K := 0;
+      while K < FoundSyntagmsThisCall.Count - 1 do
+      begin
+        Syntagm1 := FoundSyntagmsThisCall[K];
+        Syntagm2 := FoundSyntagmsThisCall[K+1];
+        Idx1 := FSintagmas.IndexOf(Syntagm1);
+        Idx2 := FSintagmas.IndexOf(Syntagm2);
+
+        if (Idx1 = -1) or (Idx2 = -1) or (Idx1 >= Idx2) then
+        begin
+          Inc(K); Continue;
+        end;
+
+        IsConnected := True;
+        if Idx2 - Idx1 > 1 then
+        begin
+          for J := Idx1 + 1 to Idx2 - 1 do
+          begin
+            IntermediateSyntagm := FSintagmas[J];
+            if IntermediateSyntagm.Kind = tsSintagma then
+            begin
+              IsConnected := False; Break;
+            end;
+          end;
+        end;
+
+        if IsConnected then
+        begin
+          TempJoinList.Clear;
+          for J := Idx1 + 1 to Idx2 - 1 do
+          begin
+            IntermediateSyntagm := FSintagmas[J];
+            // Only join punctuation syntagms, not spaces or others
+            if (IntermediateSyntagm.Kind = tsPontuacao) and (FoundSyntagmsThisCall.IndexOf(IntermediateSyntagm) = -1) then
+              TempJoinList.Add(IntermediateSyntagm);
+          end;
+
+          if TempJoinList.Count > 0 then
+          begin
+            for J := 0 to TempJoinList.Count - 1 do
+              FoundSyntagmsThisCall.Add(TempJoinList[J]);
+            CurrentVersiculoForSort := Self;
+            try
+              FoundSyntagmsThisCall.Sort(@ActualCompareSyntagms);
+            finally
+              CurrentVersiculoForSort := nil;
+            end;
+            K := -1; // Restart scan due to list modification
+          end;
+        end;
+        Inc(K);
+      end;
+    end;
+
+    // 5. Add all found (and potentially joined) syntagms to the verse\'s selection
+    for I := 0 to FoundSyntagmsThisCall.Count - 1 do
+    begin
+      FoundSyntagmsThisCall[I].AddToSelection;
+    end;
+
+  finally
+    FoundSyntagmsThisCall.Free;
+    TempSequentialList.Free;
+    PickedForAnyOrderThisCall.Free; 
+    TempJoinList.Free;
+  end;
 end;
 
 procedure TVersiculo.OnCopySyntagmTags(Sender: TObject);
@@ -1637,12 +1884,18 @@ begin
     Item.Caption := SCopyAssociationsJSONToClipboard;
     Item.OnClick := @OnCopyAssociationsJSONToClipboard;
     FVersePopupMenu.Items.Add(Item);
+
+    Item := TMenuItem.Create(FVersePopupMenu);
+    Item.Caption := SSwitchDestinationAndReference1Texts;
+    Item.OnClick := @OnSwitchDestinationAndReference1Texts;
+    FVersePopupMenu.Items.Add(Item);
+
   {$ENDIF}
 end;
 
-constructor TVersiculo.Criar;
+constructor TVersiculo.Criar(AProject: TObject);
 begin
-  Criar(nil);
+  Criar(AProject, nil);
 end;
 
 procedure TVersiculo.OnCopySintagmasAsJSON(Sender: TObject);
@@ -1751,6 +2004,17 @@ end;
 procedure TVersiculo.OnCopyAssociationsJSONToClipboard(Sender: TObject);
 begin
   clipboard.AsText := GetAssociationsJSON;
+end;
+
+procedure TVersiculo.OnSwitchDestinationAndReference1Texts(Sender: TObject);
+var
+  destinationText: string;
+  project: TProjeto;
+begin
+  project := (FProject as TProjeto);
+  destinationText := project.VerseObjects[tbDestino].XML;
+  project.VerseObjects[tbDestino].AlterarTexto(project.VerseObjects[tbConsulta1].XML);
+  project.VerseObjects[tbConsulta1].SetTexto('(KJF original) ' + destinationText);
 end;
 
 end.
