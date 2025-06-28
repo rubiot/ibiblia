@@ -2,7 +2,7 @@ unit llmclient;
 
 {$mode objfpc}{$H+}
 
-// This unit provides an interface to LLMs (OpenAI/DeepSeek) for suggesting associations between words in two verses.
+// This unit provides an interface to LLMs (OpenAI/DeepSeek/Google) for suggesting associations between words in two verses.
 
 interface
 
@@ -11,7 +11,7 @@ uses
 
 type
   { Enum for LLM backends }
-  TLLMBackend = (lbOpenAI, lbDeepSeek);
+  TLLMBackend = (lbOpenAI, lbDeepSeek, lbGoogle);
 
   TLLMModelInfo = record
     Backend: TLLMBackend;
@@ -31,29 +31,47 @@ type
   { Base class for LLM clients }
   TBaseLLMClient = class
   protected
+    FModel: string;
+    FApiKey: string;
     // Utility: Perform HTTP POST and return response as string
-    function HttpPostJson(const Url, JsonBody, ApiKey: string; const ExtraHeaders: array of string): string;
+    function HttpPostJson(const Url, JsonBody: string; const ExtraHeaders: array of string): string; virtual; abstract;
   public
+    constructor Create(const AModel, AApiKey: string);
     function AskChatCompletions(const Messages: array of TLLMMessage): TLLMResponse; virtual; abstract;
   end;
 
-  { OpenAI backend implementation (stub, to be implemented with actual HTTP calls) }
-  TOpenAIBackend = class(TBaseLLMClient)
-  private
-    FModel: string;
-    FApiKey: string;
+  { Base class for OpenAI-compatible backends }
+  TOpenAICompatibleBackend = class(TBaseLLMClient)
+  protected
+    function GetCompletionsUrl: string; virtual; abstract;
+    procedure ParseCompletionsResponse(const JsonResponse: TJSONObject; out Response: TLLMResponse); virtual;
   public
-    constructor Create(const AModel, AApiKey: string);
+    function HttpPostJson(const Url, JsonBody: string; const ExtraHeaders: array of string): string; override;
     function AskChatCompletions(const Messages: array of TLLMMessage): TLLMResponse; override;
   end;
 
-  { DeepSeek backend implementation (stub, to be implemented with actual HTTP calls) }
-  TDeepSeekBackend = class(TBaseLLMClient)
-  private
-    FModel: string;
-    FApiKey: string;
+  { OpenAI backend implementation }
+  TOpenAIBackend = class(TOpenAICompatibleBackend)
+  protected
+    function GetCompletionsUrl: string; override;
   public
     constructor Create(const AModel, AApiKey: string);
+  end;
+
+  { DeepSeek backend implementation }
+  TDeepSeekBackend = class(TOpenAICompatibleBackend)
+  protected
+    function GetCompletionsUrl: string; override;
+    procedure ParseCompletionsResponse(const JsonResponse: TJSONObject; out Response: TLLMResponse); override;
+  public
+    constructor Create(const AModel, AApiKey: string);
+  end;
+
+  { Google backend implementation }
+  TGoogleBackend = class(TBaseLLMClient)
+  public
+    constructor Create(const AModel, AApiKey: string);
+    function HttpPostJson(const Url, JsonBody: string; const ExtraHeaders: array of string): string; override;
     function AskChatCompletions(const Messages: array of TLLMMessage): TLLMResponse; override;
   end;
 
@@ -70,37 +88,14 @@ uses
 
 { TBaseLLMClient }
 
-function TBaseLLMClient.HttpPostJson(const Url, JsonBody, ApiKey: string; const ExtraHeaders: array of string): string;
-var
-  client: TFPHTTPClient;
-  i: Integer;
-  stream: TStringStream;
-  responseStream: TStringStream;
+constructor TBaseLLMClient.Create(const AModel, AApiKey: string);
 begin
-  client := TFPHTTPClient.Create(nil);
-  stream := TStringStream.Create(JsonBody);
-  responseStream := TStringStream.Create('');
-  try
-    client.AddHeader('Content-Type', 'application/json');
-    if ApiKey <> '' then
-      client.AddHeader('Authorization', 'Bearer ' + ApiKey);
-    for i := 0 to High(ExtraHeaders) do
-      if ExtraHeaders[i] <> '' then
-        client.AddHeader(ExtraHeaders[i], '');
-    stream.Position := 0;
-    client.RequestBody := stream;
-    client.Post(Url, responseStream);
-    responseStream.Position := 0;
-    Result := responseStream.DataString;
-  finally
-    stream.Free;
-    responseStream.Free;
-    client.Free;
-  end;
+  FModel := AModel;
+  FApiKey := AApiKey;
 end;
 
 const
-  MODEL_INFO: array[0..5] of record
+  MODEL_INFO: array[0..9] of record
     Name: string;
     Info: TLLMModelInfo;
   end = (
@@ -109,7 +104,11 @@ const
     (Name: 'o1-mini';           Info: (Backend: lbOpenAI;   SupportsStructOutput: False)),
     (Name: 'o3-mini';           Info: (Backend: lbOpenAI;   SupportsStructOutput: True)),
     (Name: 'deepseek';          Info: (Backend: lbDeepSeek; SupportsStructOutput: True)),
-    (Name: 'deepseek-reasoner'; Info: (Backend: lbDeepSeek; SupportsStructOutput: True))
+    (Name: 'deepseek-reasoner'; Info: (Backend: lbDeepSeek; SupportsStructOutput: True)),
+    (Name: 'gemini-1.5-flash';  Info: (Backend: lbGoogle;   SupportsStructOutput: True)),
+    (Name: 'gemini';            Info: (Backend: lbGoogle;   SupportsStructOutput: True)),
+    (Name: 'gemini-1.5';        Info: (Backend: lbGoogle;   SupportsStructOutput: True)),
+    (Name: 'gemini-2';          Info: (Backend: lbGoogle;   SupportsStructOutput: True))
   );
 
 function GetModelInfo(const Model: string): TLLMModelInfo;
@@ -130,6 +129,7 @@ begin
   case Info.Backend of
     lbOpenAI:    Result := TOpenAIBackend.Create(Model, ApiKey);
     lbDeepSeek:  Result := TDeepSeekBackend.Create(Model, ApiKey);
+    lbGoogle:    Result := TGoogleBackend.Create(Model, ApiKey);
   else
     raise Exception.Create('Unsupported backend');
   end;
@@ -152,24 +152,68 @@ begin
   Result := arr;
 end;
 
-{ TOpenAIBackend }
+{ TOpenAICompatibleBackend }
 
-constructor TOpenAIBackend.Create(const AModel, AApiKey: string);
+function TOpenAICompatibleBackend.HttpPostJson(const Url, JsonBody: string; const ExtraHeaders: array of string): string;
+var
+  client: TFPHTTPClient;
+  i: Integer;
+  stream: TStringStream;
+  responseStream: TStringStream;
 begin
-  FModel := AModel;
-  FApiKey := AApiKey;
+  client := TFPHTTPClient.Create(nil);
+  stream := TStringStream.Create(JsonBody);
+  responseStream := TStringStream.Create('');
+  try
+    client.AddHeader('Content-Type', 'application/json');
+    if FApiKey <> '' then
+      client.AddHeader('Authorization', 'Bearer ' + FApiKey);
+    for i := 0 to High(ExtraHeaders) do
+      if ExtraHeaders[i] <> '' then
+        client.AddHeader(ExtraHeaders[i], '');
+    stream.Position := 0;
+    client.RequestBody := stream;
+    client.Post(Url, responseStream);
+    responseStream.Position := 0;
+    Result := responseStream.DataString;
+  finally
+    stream.Free;
+    responseStream.Free;
+    client.Free;
+  end;
 end;
 
-function TOpenAIBackend.AskChatCompletions(const Messages: array of TLLMMessage): TLLMResponse;
+procedure TOpenAICompatibleBackend.ParseCompletionsResponse(const JsonResponse: TJSONObject; out Response: TLLMResponse);
+var
+  choices: TJSONArray;
+  msg: TJSONObject;
+begin
+  Response.Content := '';
+  Response.Reasoning := '';
+  if JsonResponse.Find('choices') <> nil then
+  begin
+    choices := TJSONArray(JsonResponse.Arrays['choices']);
+    if (choices.Count > 0) and (choices.Objects[0].Find('message') <> nil) then
+    begin
+      msg := TJSONObject(choices.Objects[0].Objects['message']);
+      Response.Content := msg.Get('content', '');
+      Response.Reasoning := ''; // Default reasoning is empty
+    end
+    else
+      Response.Content := JsonResponse.AsString;
+  end
+  else
+    Response.Content := JsonResponse.AsString;
+end;
+
+function TOpenAICompatibleBackend.AskChatCompletions(const Messages: array of TLLMMessage): TLLMResponse;
 var
   url, body, resp: string;
   req, respjson: TJSONObject;
   arr: TJSONArray;
   info: TLLMModelInfo;
-  choices: TJSONArray;
-  msg: TJSONObject;
 begin
-  url := 'https://api.openai.com/v1/chat/completions';
+  url := GetCompletionsUrl;
   info := GetModelInfo(FModel);
   req := TJSONObject.Create;
   try
@@ -184,25 +228,10 @@ begin
     req.Free;
   end;
   try
-    resp := HttpPostJson(url, body, FApiKey, []);
+    resp := HttpPostJson(url, body, []);
     respjson := TJSONObject(GetJSON(resp));
     try
-      // Parse response: choices[0].message.content
-      if respjson.Find('choices') <> nil then
-      begin
-        choices := TJSONArray(respjson.Arrays['choices']);
-        if (choices.Count > 0) and (choices.Objects[0].Find('message') <> nil) then
-        begin
-          msg := TJSONObject(choices.Objects[0].Objects['message']);
-          Result.Content := msg.Get('content', '');
-          // Reasoning is not standard in OpenAI, so leave blank
-          Result.Reasoning := '';
-        end
-        else
-          Result.Content := resp;
-      end
-      else
-        Result.Content := resp;
+      ParseCompletionsResponse(respjson, Result);
     finally
       respjson.Free;
     end;
@@ -215,59 +244,152 @@ begin
   end;
 end;
 
+{ TOpenAIBackend }
+
+constructor TOpenAIBackend.Create(const AModel, AApiKey: string);
+begin
+  inherited Create(AModel, AApiKey);
+end;
+
+function TOpenAIBackend.GetCompletionsUrl: string;
+begin
+  Result := 'https://api.openai.com/v1/chat/completions';
+end;
+
 { TDeepSeekBackend }
 
 constructor TDeepSeekBackend.Create(const AModel, AApiKey: string);
 begin
-  FModel := AModel;
-  FApiKey := AApiKey;
+  inherited Create(AModel, AApiKey);
 end;
 
-function TDeepSeekBackend.AskChatCompletions(const Messages: array of TLLMMessage): TLLMResponse;
+function TDeepSeekBackend.GetCompletionsUrl: string;
+begin
+  Result := 'https://api.deepseek.com/v1/chat/completions';
+end;
+
+procedure TDeepSeekBackend.ParseCompletionsResponse(const JsonResponse: TJSONObject; out Response: TLLMResponse);
 var
-  url, body, resp: string;
-  req, respjson: TJSONObject;
-  arr: TJSONArray;
-  info: TLLMModelInfo;
   choices: TJSONArray;
   msg: TJSONObject;
 begin
-  url := 'https://api.deepseek.com/v1/chat/completions';
+  inherited ParseCompletionsResponse(JsonResponse, Response);
+  if JsonResponse.Find('choices') <> nil then
+  begin
+    choices := TJSONArray(JsonResponse.Arrays['choices']);
+    if (choices.Count > 0) and (choices.Objects[0].Find('message') <> nil) then
+    begin
+      msg := TJSONObject(choices.Objects[0].Objects['message']);
+      if msg.Find('reasoning_content') <> nil then
+        Response.Reasoning := msg.Get('reasoning_content', '');
+    end;
+  end;
+end;
+
+{ TGoogleBackend }
+
+constructor TGoogleBackend.Create(const AModel, AApiKey: string);
+begin
+  inherited Create(AModel, AApiKey);
+end;
+
+function TGoogleBackend.HttpPostJson(const Url, JsonBody: string; const ExtraHeaders: array of string): string;
+var
+  client: TFPHTTPClient;
+  i: Integer;
+  stream: TStringStream;
+  responseStream: TStringStream;
+  postUrl: string;
+begin
+  client := TFPHTTPClient.Create(nil);
+  stream := TStringStream.Create(JsonBody);
+  responseStream := TStringStream.Create('');
+  postUrl := Url;
+  if FApiKey <> '' then
+    postUrl := Url + '?key=' + FApiKey;
+  try
+    client.AddHeader('Content-Type', 'application/json');
+    for i := 0 to High(ExtraHeaders) do
+      if ExtraHeaders[i] <> '' then
+        client.AddHeader(ExtraHeaders[i], '');
+    stream.Position := 0;
+    client.RequestBody := stream;
+    client.Post(postUrl, responseStream);
+    responseStream.Position := 0;
+    Result := responseStream.DataString;
+  finally
+    stream.Free;
+    responseStream.Free;
+    client.Free;
+  end;
+end;
+
+function TGoogleBackend.AskChatCompletions(const Messages: array of TLLMMessage): TLLMResponse;
+var
+  url, body, resp, combinedContent: string;
+  req, respjson, genConfig, part, content: TJSONObject;
+  contents, parts: TJSONArray;
+  info: TLLMModelInfo;
+  i: Integer;
+  candidates: TJSONArray;
+begin
+  url := 'https://generativelanguage.googleapis.com/v1beta/models/' + FModel + ':generateContent';
   info := GetModelInfo(FModel);
   req := TJSONObject.Create;
   try
-    req.Add('model', FModel);
-    arr := MessagesToJSONArray(Messages);
-    req.Add('messages', arr);
-    req.Add('stream', False);
+    contents := TJSONArray.Create;
+    content := TJSONObject.Create;
+    parts := TJSONArray.Create;
+    combinedContent := '';
+    for i := 0 to High(Messages) do
+    begin
+      if combinedContent <> '' then
+        combinedContent := combinedContent + #13#10;
+      combinedContent := combinedContent + Messages[i].Content;
+    end;
+    part := TJSONObject.Create;
+    part.Add('text', combinedContent);
+    parts.Add(part);
+    content.Add('parts', parts);
+    contents.Add(content);
+    req.Add('contents', contents);
+
+    genConfig := TJSONObject.Create;
     if info.SupportsStructOutput then
-      req.Add('response_format', TJSONObject.Create(['type', 'json_object']));
+      genConfig.Add('response_mime_type', 'application/json');
+    req.Add('generationConfig', genConfig);
+
     body := req.AsJSON;
   finally
     req.Free;
   end;
   try
-    resp := HttpPostJson(url, body, FApiKey, []);
+    resp := HttpPostJson(url, body, []);
     respjson := TJSONObject(GetJSON(resp));
     try
-      // Parse response: choices[0].message.content, choices[0].message.reasoning_content (if present)
-      if respjson.Find('choices') <> nil then
+      if respjson.Find('candidates') <> nil then
       begin
-        choices := TJSONArray(respjson.Arrays['choices']);
-        if (choices.Count > 0) and (choices.Objects[0].Find('message') <> nil) then
+        candidates := TJSONArray(respjson.Arrays['candidates']);
+        if (candidates.Count > 0) and (candidates.Objects[0].Find('content') <> nil) then
         begin
-          msg := TJSONObject(choices.Objects[0].Objects['message']);
-          Result.Content := msg.Get('content', '');
-          if msg.Find('reasoning_content') <> nil then
-            Result.Reasoning := msg.Get('reasoning_content', '')
+          content := TJSONObject(candidates.Objects[0].Objects['content']);
+          if content.Find('parts') <> nil then
+          begin
+            parts := TJSONArray(content.Arrays['parts']);
+            if (parts.Count > 0) and (parts.Objects[0].Find('text') <> nil) then
+              Result.Content := parts.Objects[0].Get('text', '')
+            else
+              Result.Content := resp;
+          end
           else
-            Result.Reasoning := '';
+            Result.Content := resp;
         end
         else
           Result.Content := resp;
       end
       else
         Result.Content := resp;
+      Result.Reasoning := '';
     finally
       respjson.Free;
     end;
