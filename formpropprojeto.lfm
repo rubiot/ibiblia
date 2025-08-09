@@ -1,28 +1,29 @@
 object FormPropProjeto: TFormPropProjeto
   Left = 320
-  Height = 611
+  Height = 643
   Top = 157
-  Width = 553
+  Width = 582
   Caption = 'Properties'
-  ClientHeight = 611
-  ClientWidth = 553
-  OnCreate = FormCreate
+  ClientHeight = 643
+  ClientWidth = 582
+  DesignTimePPI = 101
   Position = poMainFormCenter
-  LCLVersion = '2.0.10.0'
+  LCLVersion = '4.0.0.4'
+  OnCreate = FormCreate
   object GroupBox2: TGroupBox
     Left = 0
-    Height = 82
+    Height = 86
     Top = 6
-    Width = 546
+    Width = 574
     Caption = 'Properties'
-    ClientHeight = 62
-    ClientWidth = 542
+    ClientHeight = 66
+    ClientWidth = 570
     TabOrder = 0
     object EditNomeProjeto: TLabeledEdit
-      Left = 15
+      Left = 16
       Height = 23
-      Top = 22
-      Width = 519
+      Top = 23
+      Width = 546
       EditLabel.Height = 15
       EditLabel.Width = 519
       EditLabel.Caption = 'Name'
@@ -31,10 +32,10 @@ object FormPropProjeto: TFormPropProjeto
     end
   end
   object BitBtn1: TBitBtn
-    Left = 462
-    Height = 30
-    Top = 573
-    Width = 83
+    Left = 486
+    Height = 32
+    Top = 603
+    Width = 87
     Caption = '&OK'
     Default = True
     Kind = bkOK
@@ -42,10 +43,10 @@ object FormPropProjeto: TFormPropProjeto
     TabOrder = 1
   end
   object BitBtn2: TBitBtn
-    Left = 353
-    Height = 30
-    Top = 573
-    Width = 91
+    Left = 371
+    Height = 32
+    Top = 603
+    Width = 96
     Cancel = True
     Caption = 'Cancel'
     Kind = bkCancel
@@ -54,9 +55,9 @@ object FormPropProjeto: TFormPropProjeto
   end
   object TabControl1: TTabControl
     Left = 7
-    Height = 472
-    Top = 96
-    Width = 539
+    Height = 497
+    Top = 101
+    Width = 567
     TabStop = False
     OnChange = ActionMudancaAbaExecute
     TabIndex = 0
@@ -70,10 +71,10 @@ object FormPropProjeto: TFormPropProjeto
     ShowHint = True
     TabOrder = 3
     object leDicStrong: TLabeledEdit
-      Left = 11
+      Left = 12
       Height = 23
-      Top = 148
-      Width = 420
+      Top = 156
+      Width = 442
       EditLabel.Height = 15
       EditLabel.Width = 420
       EditLabel.Caption = 'Strong''s dictionary'
@@ -82,10 +83,10 @@ object FormPropProjeto: TFormPropProjeto
       OnChange = leDicStrongChange
     end
     object leDicMorfo: TLabeledEdit
-      Left = 11
+      Left = 12
       Height = 23
-      Top = 196
-      Width = 420
+      Top = 206
+      Width = 442
       EditLabel.Height = 15
       EditLabel.Width = 420
       EditLabel.Caption = 'Morphology dictionary'
@@ -94,42 +95,42 @@ object FormPropProjeto: TFormPropProjeto
       OnChange = leDicMorfoChange
     end
     object BitBtn3: TBitBtn
-      Left = 11
-      Height = 27
-      Top = 48
-      Width = 167
+      Left = 12
+      Height = 28
+      Top = 50
+      Width = 176
       Action = ActionCarregarTexto
       TabOrder = 3
     end
     object BitBtn4: TBitBtn
-      Left = 440
-      Height = 23
-      Top = 148
-      Width = 83
+      Left = 463
+      Height = 24
+      Top = 156
+      Width = 87
       Action = ActionSelecionarStrong
       TabOrder = 4
     end
     object BitBtn8: TBitBtn
-      Left = 440
-      Height = 23
-      Top = 196
-      Width = 83
+      Left = 463
+      Height = 24
+      Top = 206
+      Width = 87
       Action = ActionSelecionarMorfo
       TabOrder = 5
     end
     object BitBtn9: TBitBtn
-      Left = 194
-      Height = 27
-      Top = 48
-      Width = 166
+      Left = 204
+      Height = 28
+      Top = 50
+      Width = 175
       Action = ActionLimparTexto
       TabOrder = 6
     end
     object MemoFonte: TMemo
-      Left = 11
-      Height = 210
-      Top = 246
-      Width = 420
+      Left = 12
+      Height = 221
+      Top = 259
+      Width = 442
       Lines.Strings = (
         'MemoFonte'
       )
@@ -138,26 +139,26 @@ object FormPropProjeto: TFormPropProjeto
       TabOrder = 7
     end
     object Label2: TLabel
-      Left = 11
+      Left = 12
       Height = 15
-      Top = 228
+      Top = 240
       Width = 24
       Caption = 'Font'
       ParentColor = False
     end
     object Button2: TButton
-      Left = 440
-      Height = 25
-      Top = 246
-      Width = 83
+      Left = 463
+      Height = 26
+      Top = 259
+      Width = 87
       Action = ActionSelecionarFonte
       TabOrder = 8
     end
     object leTextDescription: TLabeledEdit
-      Left = 10
+      Left = 11
       Height = 23
-      Top = 101
-      Width = 420
+      Top = 106
+      Width = 442
       EditLabel.Height = 15
       EditLabel.Width = 420
       EditLabel.Caption = 'Text description'
@@ -166,32 +167,32 @@ object FormPropProjeto: TFormPropProjeto
       OnChange = leTextDescriptionChange
     end
     object BitBtnTextDescription: TBitBtn
-      Left = 440
-      Height = 23
-      Top = 101
-      Width = 83
+      Left = 463
+      Height = 24
+      Top = 106
+      Width = 87
       Caption = 'Apply'
-      OnClick = BitBtnTextDescriptionClick
       TabOrder = 10
       Visible = False
+      OnClick = BitBtnTextDescriptionClick
     end
   end
   object ProgressBar1: TProgressBar
     Left = 6
-    Height = 20
-    Top = 577
-    Width = 340
+    Height = 21
+    Top = 607
+    Width = 358
     TabOrder = 4
     Visible = False
   end
   object OpenDialog1: TOpenDialog
     InitialDir = './data'
-    Left = 110
-    Top = 422
+    Left = 116
+    Top = 444
   end
   object ActionList1: TActionList
-    Left = 23
-    Top = 424
+    Left = 24
+    Top = 446
     object ActionCarregarTexto: TAction
       Caption = 'Load new text'
       OnExecute = ActionCarregarTextoExecute
@@ -220,7 +221,7 @@ object FormPropProjeto: TFormPropProjeto
   object FontDialog1: TFontDialog
     MinFontSize = 0
     MaxFontSize = 0
-    Left = 186
-    Top = 424
+    Left = 196
+    Top = 446
   end
 end

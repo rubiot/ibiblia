@@ -1,16 +1,17 @@
 object FormExportPatch: TFormExportPatch
   Left = 347
-  Height = 569
+  Height = 599
   Top = 169
-  Width = 413
+  Width = 435
   Caption = 'Export patch...'
-  ClientHeight = 569
-  ClientWidth = 413
+  ClientHeight = 599
+  ClientWidth = 435
+  DesignTimePPI = 101
+  Position = poMainFormCenter
+  LCLVersion = '4.0.0.4'
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   OnShow = FormShow
-  Position = poMainFormCenter
-  LCLVersion = '2.0.10.0'
   object GroupBox1: TGroupBox
     Left = 0
     Height = 530
@@ -21,20 +22,20 @@ object FormExportPatch: TFormExportPatch
     TabOrder = 0
   end
   object Button1: TButton
-    Left = 325
-    Height = 25
-    Top = 538
-    Width = 75
+    Left = 320
+    Height = 26
+    Top = 537
+    Width = 79
     Anchors = [akRight, akBottom]
     Caption = 'OK'
     ModalResult = 1
     TabOrder = 1
   end
   object Button2: TButton
-    Left = 237
-    Height = 25
-    Top = 538
-    Width = 75
+    Left = 228
+    Height = 26
+    Top = 537
+    Width = 79
     Anchors = [akRight, akBottom]
     Cancel = True
     Caption = 'Cancel'
@@ -42,23 +43,23 @@ object FormExportPatch: TFormExportPatch
     TabOrder = 2
   end
   object BtnSelectAll: TButton
-    Left = 8
-    Height = 25
-    Top = 538
-    Width = 92
+    Left = -13
+    Height = 26
+    Top = 537
+    Width = 97
     Anchors = [akRight, akBottom]
     Caption = 'Select all'
-    OnClick = BtnSelectAllClick
     TabOrder = 3
+    OnClick = BtnSelectAllClick
   end
   object BtnDeselectAll: TButton
-    Left = 112
-    Height = 25
-    Top = 538
-    Width = 92
+    Left = 96
+    Height = 26
+    Top = 537
+    Width = 97
     Anchors = [akRight, akBottom]
     Caption = 'Deselect all'
-    OnClick = BtnDeselectAllClick
     TabOrder = 4
+    OnClick = BtnDeselectAllClick
   end
 end

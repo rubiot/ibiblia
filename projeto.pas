@@ -225,7 +225,7 @@ type
     function ObterTextoSimplesVersiculo(Referencia: string; texto: TTipoTextoBiblico): string;
     function GetTranslationSuggestions(syntagm: TSyntagm): string;
     function GetChapterText: TStringList;
-    procedure CompileInterlinearVerseRules(var rulesRx: TRegexList; var replaceTo: TStringList; mode: TInterlinearMode; exporting: boolean = false);
+    procedure CompileInterlinearVerseRules(var rulesRx: TRegexList; var replaceTo: TStringList; mode: TInterlinearMode; exporting: boolean);
     procedure Translate;
     procedure ToggleDisplayTags;
     procedure StartScrollingSession;
@@ -932,7 +932,7 @@ begin
   rulesRx := nil;
   replaceTo := nil;
   if ChapterViewText = tbInterlinear then
-    CompileInterlinearVerseRules(rulesRx, replaceTo, InterlinearMode);
+    CompileInterlinearVerseRules(rulesRx, replaceTo, InterlinearMode, false);
 
   StartScrollingSession;
   RewindChapter;
@@ -960,8 +960,7 @@ begin
   //DebugLn('  TProjeto.GetChapterText: %d milliseconds', [getTickCount-starttime]);
 end;
 
-procedure TProjeto.CompileInterlinearVerseRules(var rulesRx: TRegexList;
-  var replaceTo: TStringList; mode: TInterlinearMode; exporting: boolean);
+procedure TProjeto.CompileInterlinearVerseRules(var rulesRx: TRegexList; var replaceTo: TStringList; mode: TInterlinearMode; exporting: boolean);
 var
   verseRules: string;
   keyValue: TStringArray;

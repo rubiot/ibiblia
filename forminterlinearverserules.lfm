@@ -1,30 +1,31 @@
 object FormInterlinearVerseRules: TFormInterlinearVerseRules
   Left = 498
-  Height = 225
+  Height = 237
   Top = 314
-  Width = 856
+  Width = 901
   Caption = 'Interlinear view verse rules'
-  ClientHeight = 225
-  ClientWidth = 856
+  ClientHeight = 237
+  ClientWidth = 901
+  DesignTimePPI = 101
   Position = poOwnerFormCenter
-  LCLVersion = '2.0.10.0'
+  LCLVersion = '4.0.0.4'
   object ButtonOK: TButton
-    Left = 767
-    Height = 25
-    Top = 184
-    Width = 75
+    Left = 762
+    Height = 26
+    Top = 182
+    Width = 79
     Anchors = [akRight, akBottom]
     Caption = 'OK'
     Default = True
     ModalResult = 1
-    OnClick = ButtonOKClick
     TabOrder = 0
+    OnClick = ButtonOKClick
   end
   object Button2: TButton
-    Left = 664
-    Height = 25
-    Top = 184
-    Width = 75
+    Left = 654
+    Height = 26
+    Top = 182
+    Width = 79
     Anchors = [akRight, akBottom]
     Cancel = True
     Caption = 'Cancel'
@@ -33,7 +34,7 @@ object FormInterlinearVerseRules: TFormInterlinearVerseRules
   end
   object PageControlVerseRules: TPageControl
     Left = 8
-    Height = 167
+    Height = 164
     Top = 8
     Width = 840
     ActivePage = TabSheet1

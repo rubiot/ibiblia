@@ -1801,3 +1801,7 @@ msgstr "Right to left text"
 msgid "&Save text to file..."
 msgstr "&Save text to file..."
 
+#: versiculo.sswitchdestinationandreference1texts
+msgid "Switch destination text with reference 1"
+msgstr ""
+
