@@ -2445,7 +2445,10 @@ end;
 
 procedure TProjeto.SugerirAssociacaoAI;
 begin
-  FAiAssociator.AssociateVerse(FAVersiculo[tbOrigem]);
+  if assigned(FAiAssociator) then
+    FAiAssociator.AssociateVerse(FAVersiculo[tbOrigem])
+  else
+    ShowMessage('Error: AI Associator is not assigned.');
 end;
 
 procedure TProjeto.RecriarBaseSugestoes;
