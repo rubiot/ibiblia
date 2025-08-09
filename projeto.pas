@@ -2313,7 +2313,10 @@ begin
   if assigned(FMemoComentarios) then
   begin
     FMemoComentarios.Enabled := false;
-    FMemoComentarios.Caption := '';
+    if FMemoComentarios is TCommentsView then
+      TCommentsView(FMemoComentarios).Text := ''
+    else if FMemoComentarios is TMemo then
+      TMemo(FMemoComentarios).Text := '';
   end;
   if assigned(FRadioGroupSituacao) then
   begin
