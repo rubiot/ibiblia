@@ -15,7 +15,7 @@ uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, Menus,
   ActnList, ComCtrls, ExtCtrls, StdCtrls, Projeto, IniFiles, Math,
   Syntagm, LCLTranslator, unitabout, PCRE, Versiculo, LCLProc, LazLogger,
-  LCLType, LazUTF8, ChapterView, UnitPleaseWait;
+  LCLType, LazUTF8, ChapterView, UnitPleaseWait, CommentsView;
 
 type
   TSuggestionMode = (smStatistical, smAI);
@@ -198,6 +198,7 @@ type
     procedure UpdateFileAssociationMenuItems;
   private
     { private declarations }
+    FActualCommentsMemo: TCommentsView; // The actual comments view component
     FPopupTrigger: TPopupTrigger;
     FCurrentRef: string;
     FChapterView: TChapterView;
@@ -582,7 +583,7 @@ begin
 
   try
     Enabled := false;
-    ProjetoAtual := TProjeto.Criar([ScrollBoxSrcVerse, ScrollBoxDstVerse, ScrollBoxRef1Verse, ScrollBoxRef2Verse], TreeView1, RadioGroupStatus, CommentsMemo);
+    ProjetoAtual := TProjeto.Criar([ScrollBoxSrcVerse, ScrollBoxDstVerse, ScrollBoxRef1Verse, ScrollBoxRef2Verse], TreeView1, RadioGroupStatus, FActualCommentsMemo);
     ProjetoAtual.Escopo := QualEscopo;
     ProjetoAtual.PalavrasComStrongEmNegrito := MenuItemStrongNegrito.Checked;
     ProjetoAtual.MostrarQtdStrongs := FStrongsCountMode;
@@ -852,6 +853,16 @@ begin
   CarregarMRU(MenuItemRecent);
   TreeView1.Width := opts.ReadInteger('leiaute', 'principal.treeview.largura', TreeView1.Width);
 
+  // Create the actual CommentsView and replace the TMemo
+  FActualCommentsMemo := TCommentsView.Create(Self);
+  FActualCommentsMemo.Parent := CommentsMemo.Parent;
+  FActualCommentsMemo.Align := CommentsMemo.Align;
+  FActualCommentsMemo.Enabled := CommentsMemo.Enabled;
+  FActualCommentsMemo.TabOrder := CommentsMemo.TabOrder;
+  FActualCommentsMemo.FontName := opts.ReadString('leiaute', 'principal.commentsmemo.font.name', DefFontData.Name);
+  FActualCommentsMemo.FontSize := opts.ReadInteger('leiaute', 'principal.commentsmemo.font.size', 10);
+  CommentsMemo.Visible := False; // Hide the original TMemo
+
   {$IFDEF WINDOWS}
   FRxMorpho := RegexCreate('^(\S+)( l="(.*?)")?$', [rcoUTF8]);
   syncTw2iBiblia := MenuItemSyncTheWord.Checked;
@@ -882,6 +893,8 @@ begin
   opts.WriteInteger('leiaute', 'principal.contextpanel.width', ContextPanel.Width);
   opts.WriteInteger('leiaute', 'principal.chapterview.font.size', FChapterView.FontSize);
   opts.WriteString('leiaute', 'principal.chapterview.font.name', FChapterView.FontName);
+  opts.WriteInteger('leiaute', 'principal.commentsmemo.font.size', FActualCommentsMemo.FontSize);
+  opts.WriteString('leiaute', 'principal.commentsmemo.font.name', FActualCommentsMemo.FontName);
   opts.WriteBool('opcoes', 'sugestoes.automaticas', MenuItem22.Checked);
   opts.WriteInteger('opcoes', 'suggestion.mode', Ord(FSuggestionMode));
   opts.WriteBool('opcoes', 'synctheword', MenuItemSyncTheWord.Checked);
@@ -895,6 +908,7 @@ begin
   opts.Free;
 
   FChapterView.Free;
+  FActualCommentsMemo.Free; // Free the dynamically created CommentsView
 end;
 
 procedure TFrmPrincipal.FormKeyPress(Sender: TObject; var Key: char);
@@ -1262,7 +1276,7 @@ end;
 
 procedure TFrmPrincipal.DoOpenProject(filename: string);
 begin
-  ProjetoAtual := TProjeto.Criar([ScrollBoxSrcVerse, ScrollBoxDstVerse, ScrollBoxRef1Verse, ScrollBoxRef2Verse], TreeView1, RadioGroupStatus, CommentsMemo);
+  ProjetoAtual := TProjeto.Criar([ScrollBoxSrcVerse, ScrollBoxDstVerse, ScrollBoxRef1Verse, ScrollBoxRef2Verse], TreeView1, RadioGroupStatus, FActualCommentsMemo);
   ProjetoAtual.OnNewVerseSubscribe(@QuandoNovoVersiculo);
   ProjetoAtual.OnAlterarVersiculo := @QuandoAlterarVersiculo;
   ProjetoAtual.OnSintagmaClick := @QuandoPalavraClicada;

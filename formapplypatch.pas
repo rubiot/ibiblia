@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  ComCtrls, ExtCtrls, BibleTreeView, PatchFile, Versiculo, Projeto;
+  ComCtrls, ExtCtrls, BibleTreeView, PatchFile, Versiculo, Projeto, CommentsView;
 
 type
 
@@ -41,6 +41,7 @@ type
     FIndex: integer; // index of current verse in patch
     FSrcVerse: TVersiculo;
     FDstVerse: TVersiculo;
+    FActualCommentsMemo: TCommentsView; // Dynamic replacement for TMemo
     procedure OnVerseChange(index: integer);
     procedure LoadControlsFromPatch;
     procedure LoadControlsFromProject;
@@ -81,11 +82,19 @@ begin
   FBibleTreeView.OnVerseChange := @OnVerseChange;
   FPatch := nil;
 
-  FSrcVerse := TVersiculo.Criar(ScrollBoxSrcText);
-  FDstVerse := TVersiculo.Criar(ScrollBoxDstText);
+  FSrcVerse := TVersiculo.Criar(ProjetoAtual, ScrollBoxSrcText);
+  FDstVerse := TVersiculo.Criar(ProjetoAtual, ScrollBoxDstText);
   FSrcVerse.VersiculoPar := FDstVerse;
   FSrcVerse.ReadOnly := true;
   FDstVerse.ReadOnly := true;
+
+  // Replace the TMemo with TCommentsView
+  FActualCommentsMemo := TCommentsView.Create(Self);
+  FActualCommentsMemo.Parent := MemoComments.Parent;
+  FActualCommentsMemo.Align := MemoComments.Align;
+  FActualCommentsMemo.TabOrder := MemoComments.TabOrder;
+  FActualCommentsMemo.ReadOnly := True; // Disable editing in patch preview
+  MemoComments.Visible := False;
 end;
 
 procedure TFrmApplyPatch.FormDestroy(Sender: TObject);
@@ -93,6 +102,7 @@ begin
   FSrcVerse.Free;
   FDstVerse.Free;
   FBibleTreeView.Free;
+  FActualCommentsMemo.Free; // Free the dynamically created TCommentsView
   if assigned(FPatch) then
     FPatch.Free;
 end;
@@ -104,7 +114,12 @@ begin
   FSrcVerse.PalavrasComStrongEmNegrito := ProjetoAtual.PalavrasComStrongEmNegrito;
   FSrcVerse.StrongsCountMode := ProjetoAtual.MostrarQtdStrongs;
   FDstVerse.StrongsCountMode := ProjetoAtual.MostrarQtdStrongs;
-  MemoComments.Font := FrmPrincipal.CommentsMemo.Font;
+  FSrcVerse.Ativo := true;
+  FDstVerse.Ativo := true;
+
+  // Configure FActualCommentsMemo with appropriate font settings
+  FActualCommentsMemo.FontName := 'default';
+  FActualCommentsMemo.FontSize := 10;
 end;
 
 procedure TFrmApplyPatch.TabControlPreviewChange(Sender: TObject);
@@ -144,7 +159,7 @@ begin
   FSrcVerse.Texto := FPatch.SourceText[FIndex];
   FDstVerse.Texto := FPatch.DestinationText[FIndex];
   FSrcVerse.Pares := FPatch.Pairs[FIndex];
-  MemoComments.Text := FPatch.Comments[FIndex];
+  FActualCommentsMemo.SetCommentsText(FPatch.Comments[FIndex]);
 end;
 
 procedure TFrmApplyPatch.LoadControlsFromProject;
@@ -152,7 +167,7 @@ begin
   FSrcVerse.Texto := ProjetoAtual.ObterTextoVersiculo(FPatch.Reference[FIndex], tbOrigem);
   FDstVerse.Texto := ProjetoAtual.ObterTextoVersiculo(FPatch.Reference[FIndex], tbDestino);
   FSrcVerse.Pares := ProjetoAtual.GetPairs(FPatch.Reference[FIndex]);
-  MemoComments.Text := ProjetoAtual.GetComments(FPatch.Reference[FIndex]);
+  FActualCommentsMemo.SetCommentsText(ProjetoAtual.GetComments(FPatch.Reference[FIndex]));
 end;
 
 function TFrmApplyPatch.LoadPatch(filename: string): boolean;

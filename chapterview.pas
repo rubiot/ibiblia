@@ -8,7 +8,7 @@ uses
   Classes, SysUtils, Forms, Graphics, ONTTokenizer, LCLType, HTMLColors,
   LazUTF8, Projeto, PCRE, Controls, Menus, fgl, Dialogs, Math, Contnrs, KMemo,
   KEditCommon, KGraphics, KDialogs, formInterlinearVerseRules,
-  LCLTranslator, LazLogger, StdCtrls;
+  LCLTranslator, LazLogger, StdCtrls, HTMLRenderer, CommentsView;
 
 type
 
@@ -59,7 +59,7 @@ type
 
   TNoteWindow = class(THintWindow)
   private
-    FNoteView: TChapterView;
+    FNoteView: TCommentsView;
     function GetScrollBarsVisible: boolean;
     procedure InitNoteView;
     procedure SetNoteText(const AText: string; const AStyle: TKMemoTextStyle);
@@ -76,7 +76,7 @@ type
 
   { TChapterView }
 
-  TChapterView = class(TKMemo)
+  TChapterView = class(THTMLRenderer)
   private
     FFontName: string;
     FFontSize: integer;
@@ -92,14 +92,12 @@ type
     FInterlinearModeInterItem: TMenuItem;
     FInterlinearModeIntraItem: TMenuItem;
     FPrintChapterItem: TMenuItem;
-    FStyleStack: TObjectStack;
     FVerseRanges: array of TBlockRange;
     FCurrentVerse: integer;
     FNotes: TNoteList;
     FHideVerseNumber: boolean;
     FRawMemo: TRawChapterMemo;
 
-    function GetCurrentStyle: TKMemoTextStyle;
     function GetInterlinearMode: TInterlinearMode;
     function GetParagraphMode: TParagraphMode;
     function GetTextType: TTipoTextoBiblico;
@@ -108,7 +106,7 @@ type
     procedure RenderChapterFooter;
     procedure RenderVerse(txt: string);
     procedure RenderVerseNumber(number: integer);
-    procedure RenderSpan(cont: TKMemoBlocks; txt: string);
+    procedure RenderSpan(cont: TKMemoBlocks; txt: string); override;
     procedure RenderNote(link: string; note: string);
     procedure RenderNotes;
     procedure RenderInterlinearBlock(cont: TKMemoBlocks; blockText: string);
@@ -136,15 +134,12 @@ type
     procedure SetParagraphMode(AValue: TParagraphMode);
     procedure SetFontSize(AValue: integer);
     procedure SetFontName(AValue: string);
-    function PushNewStyle: TKMemoTextStyle;
-    function PushInheritedStyle: TKMemoTextStyle;
-    procedure PopStyle;
     procedure HighlightRange(range: TBlockRange; bgcolor: TColor);
-    procedure ResetStyleStack;
     function GetPreviousParagraphBlock: TKMemoParagraph;
     procedure SetTextType(AValue: TTipoTextoBiblico);
   protected
     procedure SetEnabled(Value: Boolean); override;
+    procedure SetupDefaultStyle; override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -239,13 +234,10 @@ end;
 
 procedure TNoteWindow.InitNoteView;
 begin
-  InsertControl(TChapterView.Create(nil));
-  FNoteView := Controls[0] as TChapterView;
+  InsertControl(TCommentsView.Create(nil));
+  FNoteView := Controls[0] as TCommentsView;
   with FNoteView do
   begin
-    PopupMenu.Free;
-    PopupMenu   := nil;
-    OnKeyDown   := @HandlePopupKeyDown;
     OnMouseEnter:= @HandlePopupMouseEnter;
     OnMouseLeave:= @HandlePopupMouseLeave;
     Align       := alClient;
@@ -266,9 +258,9 @@ begin
   FNoteView.Blocks.LockUpdate;
   Width := 500;
   FNoteView.Clear(false);
-  FNoteView.TextStyle.Assign(AStyle);
-  FNoteView.TextStyle.Font.Size := FNoteView.TextStyle.Font.Size - 1;
-  FNoteView.RenderSpan(FNoteView.Blocks, AText);
+  FNoteView.FontName := AStyle.Font.Name;
+  FNoteView.FontSize := AStyle.Font.Size - 1;
+  FNoteView.SetCommentsText(AText);
   FNoteView.Background.Color := $00CCFBFB;
   FNoteView.Blocks.UnLockUpdate;
 end;
@@ -389,11 +381,6 @@ begin
     TextStyle.Font.Style := [fsBold];
     TextStyle.Font.Color := NonBibleTextColor;
   end;
-end;
-
-function TChapterView.GetCurrentStyle: TKMemoTextStyle;
-begin
-  result := TKMemoTextStyle(FStyleStack.Peek);
 end;
 
 function TChapterView.GetInterlinearMode: TInterlinearMode;
@@ -717,68 +704,7 @@ end;
 procedure TChapterView.HandleMouseMove(Sender: TObject; Shift: TShiftState; X,
   Y: Integer);
 begin
-{
-var
-  p: TPoint;
-  rect: TRect;
-  note: string;
-begin
-  p.x := X;
-  p.y := Y;
-  note := Blocks.PointToRelativeBlock(PointToBlockPoint(p)).Text;
-
-  Rect := FHint.CalcHintRect(500, note, nil);
-  Rect.Left := p.X+10;
-  Rect.Top := p.Y+5;
-  Rect.Right := Rect.Left + Rect.Right;
-  Rect.Bottom := Rect.Top + Rect.Bottom;
-  FHint.ActivateHint(Rect, note);}
-
-  {var
-  iCharIndex, iCharOffset, i, j: Integer;
-  s, note: string;
-  attr: TFontParams;
-  rect: TRect;
-  pos: TPoint;
-begin
-  iCharIndex := CharAtPos(X, Y);
-  if iCharIndex < 0
-    then Exit;
-
-  if not GetTextAttributes(iCharIndex, attr) or
-     (attr.VScriptPos <> vpSuperScript) then
-  begin
-    FHint.Hide;
-    exit;
-  end;
-
-  { GetText causes the whole memo to scroll to the cursor position }
-  s := GetText(Max(iCharIndex - 3, 0), 6);
-
-  iCharOffset := iCharIndex - Max(iCharIndex - 3, 0);
-  i := iCharOffset + 1;
-  while (i > 0) and IsDigit(s[i]) do Dec(i);
-  j := iCharOffset + 1;
-  while (j <= Length(s)) and IsDigit(s[j]) do Inc(j);
-  note := Copy(s, i, j - i);
-
-  if note.IsEmpty then
-  begin
-    FHint.Hide;
-    exit;
-  end;
-
-  if FHint.Visible then
-    exit;
-
-  note := FChapterNotes[note.ToInteger - 1];
-  Rect := FHint.CalcHintRect(500, note, nil);
-  Pos := Mouse.CursorPos;
-  Rect.Left := Pos.X+10;
-  Rect.Top := Pos.Y+5;
-  Rect.Right := Rect.Left + Rect.Right;
-  Rect.Bottom := Rect.Top + Rect.Bottom;
-  FHint.ActivateHint(Rect, note);}
+  // Mouse move handling can be implemented later if needed
 end;
 
 procedure TChapterView.HandleMouseWheel(Sender: TObject; Shift: TShiftState;
@@ -1009,24 +935,14 @@ begin
   Blocks.UnlockUpdate;
 end;
 
-function TChapterView.PushNewStyle: TKMemoTextStyle;
+procedure TChapterView.SetupDefaultStyle;
 begin
-  result := TKMemoTextStyle(FStyleStack.Push(TKMemoTextStyle.Create));
-  result.Assign(TextStyle);
-end;
-
-function TChapterView.PushInheritedStyle: TKMemoTextStyle;
-var
-  current: TKMemoTextStyle;
-begin
-  current := CurrentStyle;
-  result := PushNewStyle;
-  result.Assign(current);
-end;
-
-procedure TChapterView.PopStyle;
-begin
-  FStyleStack.Pop.Free;
+  inherited SetupDefaultStyle;
+  TextStyle.Font.Size := FFontSize;
+  TextStyle.Font.Name := FFontName;
+  TextStyle.ScriptPosition := tpoNormal;
+  ParaStyle.FirstIndent := 0;
+  ParaStyle.LineSpacingFactor := 1.15;
 end;
 
 procedure TChapterView.HighlightRange(range: TBlockRange; bgcolor: TColor);
@@ -1040,18 +956,6 @@ begin
     else if Blocks[i].ClassName = 'TKMemoContainer' then
       TKMemoContainer(Blocks[i]).BlockStyle.Brush.Color:= bgcolor;;
   end;
-end;
-
-procedure TChapterView.ResetStyleStack;
-begin
-  while FStyleStack.Count > 0 do
-    PopStyle;
-  TextStyle.Font.Size := FFontSize;
-  TextStyle.Font.Name := FFontName;
-  TextStyle.ScriptPosition := tpoNormal;
-  ParaStyle.FirstIndent := 0;
-  ParaStyle.LineSpacingFactor := 1.15;
-  PushNewStyle; // pushing default style onto stack
 end;
 
 function TChapterView.GetPreviousParagraphBlock: TKMemoParagraph;
@@ -1259,7 +1163,6 @@ begin
   FPrintMode      := false;
   InitPopupMenu;
 
-  FStyleStack := TObjectStack.Create;
   FRawMemo    := TRawChapterMemo.Create(Parent, Self);
 end;
 
@@ -1268,7 +1171,6 @@ begin
   FRawMemo.Free;
   FNotes.Free;
   FHint.Free;
-  FStyleStack.Free;
   if assigned(FProject) then
     FProject.OnNewVerseUnsubscribe(@HandleVerseChange);
 

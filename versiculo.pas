@@ -311,7 +311,7 @@ var
 begin
   if assigned(FSintagmas) then
   begin
-    if FAtivo then
+    if FAtivo and assigned(FPanel) then
       FPanel.DisableAutoSizing;
 
     for s in FSintagmas do
@@ -321,7 +321,7 @@ begin
 
     FSintagmas.Clear;
 
-    if FAtivo then
+    if FAtivo and assigned(FPanel) then
       FPanel.EnableAutoSizing;
   end;
   FSelecao.Clear;
@@ -1419,11 +1419,13 @@ begin
     exit;
 
   //starttime := getTickCount;
-  FPanel.DisableAutoSizing;
+  if assigned(FPanel) then
+    FPanel.DisableAutoSizing;
   for s in FSintagmas do
     s.Render;
   RenderizarStrongCount;
-  FPanel.EnableAutoSizing;
+  if assigned(FPanel) then
+    FPanel.EnableAutoSizing;
   OrganizarSintagmas;
   //DebugLn('  TVersiculo.Renderizar: %d milliseconds', [getTickCount-starttime]);
 end;

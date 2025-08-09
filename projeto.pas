@@ -18,7 +18,7 @@ uses
   ExtCtrls, Controls, ComCtrls, StdCtrls, Graphics, Forms, Versiculo, Sugestao,
   MemoVersiculo, ONTTokenizer, Dialogs, dos, PCRE, ExportarProjeto, LazLogger,
   Syntagm, MySwordModule, TheWordDictionary, fgl, PatchFile, LCLIntf, menus,
-  aiassociator;
+  aiassociator, CommentsView;
 
 type
 
@@ -104,7 +104,7 @@ type
     FParesAntigos: TStringList;
     FArvore: TTreeView;
     FBibleTreePointedNode: TTreeNode;
-    FMemoComentarios: TMemo;
+    FMemoComentarios: TControl;
     FRadioGroupSituacao: TRadioGroup;
     FTemporizador: TTimer;
     FAtrasoExibicao: Cardinal;
@@ -182,7 +182,7 @@ type
     procedure SelectTreeNode(id: string);
   public
     constructor Criar;
-    constructor Criar(paineis: array of TScrollbox; navegador: TTreeView; rsituacao: TRadioGroup; rcomentarios: TMemo);
+    constructor Criar(paineis: array of TScrollbox; navegador: TTreeView; rsituacao: TRadioGroup; rcomentarios: TControl);
     destructor Destruir;
     procedure Novo(nomedb, descricao: string);
     procedure Novo(nomedbvelho, nomedbnovo, descricao: string);
@@ -255,7 +255,7 @@ type
     property Caminho: string read GetCaminho;
     property Situacao: Integer read GetSituacao write SetSituacao;
     property Comentarios: string read GetComentarios write SetComentarios;
-    property MemoComentarios: TMemo read FMemoComentarios write FMemoComentarios;
+    property MemoComentarios: TControl read FMemoComentarios write FMemoComentarios;
     property RadioGroupSituacao: TRadioGroup read FRadioGroupSituacao write FRadioGroupSituacao;
     property ExibirDefinicoesSoComCtrl: boolean read FExibirDefComCtrl write FExibirDefComCtrl;
     property SugerirAssociacaoAutomaticamente: boolean read FSugerirAssociacaoAuto write FSugerirAssociacaoAuto;
@@ -1281,7 +1281,12 @@ begin
   FreeAndNil(FParesAntigos); // liberando pares antigos do versículo
 
   if assigned(FMemoComentarios) then
-    Comentarios := FMemoComentarios.Text;
+  begin
+    if FMemoComentarios is TCommentsView then
+      Comentarios := TCommentsView(FMemoComentarios).Text
+    else if FMemoComentarios is TMemo then
+      Comentarios := TMemo(FMemoComentarios).Text;
+  end;
 
   //DebugLn('  TProjeto.PreRolagemVersiculo: %d milliseconds', [getTickCount-starttime]);
 end;
@@ -1334,7 +1339,12 @@ begin
   SelectTreeNode(ID);
 
   if assigned(FMemoComentarios) then
-    FMemoComentarios.Text := Comentarios;
+  begin
+    if FMemoComentarios is TCommentsView then
+      TCommentsView(FMemoComentarios).Text := Comentarios
+    else if FMemoComentarios is TMemo then
+      TMemo(FMemoComentarios).Text := Comentarios;
+  end;
 
   if assigned(FRadioGroupSituacao) then
     FRadioGroupSituacao.ItemIndex := Situacao;
@@ -2076,7 +2086,7 @@ begin
 end;
 
 constructor TProjeto.Criar(paineis: array of TScrollbox; navegador: TTreeView;
-  rsituacao: TRadioGroup; rcomentarios: TMemo);
+  rsituacao: TRadioGroup; rcomentarios: TControl);
 var
   v: integer;
 begin
