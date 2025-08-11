@@ -26,7 +26,7 @@ implementation
 
 constructor TTwSyncThread.Create(CreateSuspended : boolean);
 begin
-  FreeOnTerminate := True;
+  FreeOnTerminate := False;  // Controle manual da destruição
   twAutomate.TWAutomateUtils.Reset;
   inherited Create(CreateSuspended);
 end;

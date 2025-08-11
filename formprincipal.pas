@@ -1236,6 +1236,8 @@ begin
     if TwSyncThread <> nil then
     begin
       TwSyncThread.Terminate;
+      TwSyncThread.WaitFor;      // Aguarda a thread terminar completamente
+      TwSyncThread.Free;         // Libera manualmente
       TwSyncThread := nil;
     end;
   end;
