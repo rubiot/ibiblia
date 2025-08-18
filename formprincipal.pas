@@ -23,6 +23,7 @@ type
   { TFrmPrincipal }
 
   TFrmPrincipal = class(TForm)
+  ActionLlmOptions: TAction;
     ActionUnregisterFileAssociation: TAction;
     ActionRegisterFileAssociation: TAction;
     ActionVaccumProject: TAction;
@@ -97,6 +98,7 @@ type
     MenuItemStrongsCount: TMenuItem;
     MenuItemStrongNegrito: TMenuItem;
     MenuItemRecent: TMenuItem;
+  MenuItemLlmOptions: TMenuItem;
     MenuItemSynciBiblia: TMenuItem;
     MenuItemSyncTheWord: TMenuItem;
     MenuItem3: TMenuItem;
@@ -151,6 +153,7 @@ type
     procedure ActionMesclarProjetosExecute(Sender: TObject);
     procedure ActionMostrarTagsExecute(Sender: TObject);
     procedure ActionNovoProjetoExecute(Sender: TObject);
+  procedure ActionLlmOptionsExecute(Sender: TObject);
     procedure ActionPropProjetoExecute(Sender: TObject);
     procedure ActionQuandoNovoVersiculoExecute(Sender: TObject);
     procedure ActionRecriarBaseSugestoesExecute(Sender: TObject);
@@ -254,10 +257,11 @@ resourcestring
   SAISuggestion = 'AI-assisted (experimental)';
   SStatisticalSuggestionHint = 'Use the traditional statistical suggestion engine';
   SAISuggestionHint = 'Use the new AI-assisted suggestion engine (requires internet)';
+  SLLMOptionsMenu = 'LLM options...';
 
 implementation
 
-uses formnovoprojeto, formpropprojeto, formexportar, formmesclarprojetos, formexportpatch, formapplypatch;
+uses formnovoprojeto, formpropprojeto, formexportar, formmesclarprojetos, formexportpatch, formapplypatch, FormLlmOptions;
 
 {$R *.lfm}
 
@@ -489,6 +493,7 @@ begin
   ActionRecriarBaseSugestoes.Enabled := false;
   ActionExportPatch.Enabled := false;
   ActionApplyPatch.Enabled := false;
+  if Assigned(ActionLlmOptions) then ActionLlmOptions.Enabled := false;
   FChapterView.Enabled := false;
   FChapterView.Clear;
   //ActionExportarDestinoComStrongs.Enabled := false;
@@ -622,6 +627,7 @@ begin
     ActionReverterAssociacoes.Enabled := true;
     ActionLimparAssociacoes.Enabled := true;
     ActionExportar.Enabled := true;
+  if Assigned(ActionLlmOptions) then ActionLlmOptions.Enabled := true;
     FChapterView.Enabled := true;
     FChapterView.Project := ProjetoAtual;
 
@@ -639,6 +645,15 @@ begin
     FormPropProjeto1.AplicarAlteracoes;
     ActionQuandoNovoVersiculo.Execute;
   end;
+end;
+
+procedure TFrmPrincipal.ActionLlmOptionsExecute(Sender: TObject);
+begin
+  if not assigned(ProjetoAtual) then Exit;
+  if not assigned(FrmLLMOptions) then
+    Application.CreateForm(TFrmLLMOptions, FrmLLMOptions);
+  FrmLLMOptions.SetProjeto(ProjetoAtual);
+  FrmLLMOptions.ShowModal;
 end;
 
 procedure TFrmPrincipal.ActionQuandoNovoVersiculoExecute(Sender: TObject);
@@ -850,6 +865,17 @@ begin
     MenuItemLangPt.Checked:=true;
   Translate;
 
+  // Create runtime Action and MenuItem for LLM options
+  ActionLlmOptions := TAction.Create(ActionList1);
+  ActionLlmOptions.Caption := SLLMOptionsMenu;
+  ActionLlmOptions.Enabled := False;
+  ActionLlmOptions.OnExecute := @ActionLlmOptionsExecute;
+
+  MenuItemLlmOptions := TMenuItem.Create(MainMenu1);
+  MenuItemLlmOptions.Action := ActionLlmOptions;
+  // Add under Options menu
+  MenuItem20.Add(MenuItemLlmOptions);
+
   CarregarMRU(MenuItemRecent);
   TreeView1.Width := opts.ReadInteger('leiaute', 'principal.treeview.largura', TreeView1.Width);
 
@@ -861,6 +887,7 @@ begin
   FActualCommentsMemo.TabOrder := CommentsMemo.TabOrder;
   FActualCommentsMemo.FontName := opts.ReadString('leiaute', 'principal.commentsmemo.font.name', DefFontData.Name);
   FActualCommentsMemo.FontSize := opts.ReadInteger('leiaute', 'principal.commentsmemo.font.size', 10);
+  FActualCommentsMemo.ScrollBars := ssVertical;
   CommentsMemo.Visible := False; // Hide the original TMemo
 
   {$IFDEF WINDOWS}
@@ -1310,6 +1337,7 @@ begin
   ActionRecriarBaseSugestoes.Enabled := true;
   ActionExportPatch.Enabled := true;
   ActionApplyPatch.Enabled := true;
+  if Assigned(ActionLlmOptions) then ActionLlmOptions.Enabled := true;
   //ActionExportarDestinoComStrongs.Enabled := true;
   //ActionExportarTextoInterlinear.Enabled := true;
   StatusBar1.SimpleText := '';

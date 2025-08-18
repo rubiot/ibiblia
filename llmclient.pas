@@ -77,6 +77,8 @@ type
 
 function CreateBackend(const Model: string; const ApiKey: string): TBaseLLMClient;
 function GetModelInfo(const Model: string): TLLMModelInfo;
+// Returns the list of supported model names defined in this unit
+procedure FillSupportedModelNames(List: TStrings);
 
 // Utility to build a JSON array of messages
 function MessagesToJSONArray(const Messages: array of TLLMMessage): TJSONArray;
@@ -111,14 +113,41 @@ const
     (Name: 'gemini-2';          Info: (Backend: lbGoogle;   SupportsStructOutput: True))
   );
 
+procedure FillSupportedModelNames(List: TStrings);
+var
+  i: Integer;
+begin
+  if not Assigned(List) then Exit;
+  List.BeginUpdate;
+  try
+    List.Clear;
+    for i := Low(MODEL_INFO) to High(MODEL_INFO) do
+      List.Add(MODEL_INFO[i].Name);
+  finally
+    List.EndUpdate;
+  end;
+end;
+
 function GetModelInfo(const Model: string): TLLMModelInfo;
 var
   i: Integer;
+  res: TLLMModelInfo;
 begin
   for i := Low(MODEL_INFO) to High(MODEL_INFO) do
     if SameText(MODEL_INFO[i].Name, Model) then
       Exit(MODEL_INFO[i].Info);
-  raise Exception.Create('Unsupported model backend: ' + Model);
+  // Fallback: try to infer backend by common prefixes and disable structured output by default
+  if (Pos('gemini', LowerCase(Model)) = 1) then
+  begin
+    res.Backend := lbGoogle; res.SupportsStructOutput := False; Exit(res);
+  end;
+  if (Pos('deepseek', LowerCase(Model)) = 1) then
+  begin
+    res.Backend := lbDeepSeek; res.SupportsStructOutput := False; Exit(res);
+  end;
+  // Assume OpenAI-compatible by default (gpt-, o1, o3, etc.)
+  Result.Backend := lbOpenAI;
+  Result.SupportsStructOutput := False;
 end;
 
 function CreateBackend(const Model: string; const ApiKey: string): TBaseLLMClient;

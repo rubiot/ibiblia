@@ -16,7 +16,7 @@ uses
   ONTParser, Syntagm, unitabout, MySwordModule, TheWordDictionary, lazrichview,
   HTMLColors, formexportpatch, formapplypatch, PatchFile,
   formInterlinearVerseRules, ChapterView, UnitPleaseWait,
-  llmclient;
+  llmclient, FormLlmOptions;
 
 {$R *.res}
 
@@ -33,6 +33,7 @@ begin
   Application.CreateForm(TFrmApplyPatch, FrmApplyPatch);
   Application.CreateForm(TFormInterlinearVerseRules, frmInterlinearVerseRules);
   Application.CreateForm(TFormPleaseWait, FormPleaseWait);
+  Application.CreateForm(TFrmLLMOptions, FrmLLMOptions);
   Application.Run;
 end.
 

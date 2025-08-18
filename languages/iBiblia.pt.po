@@ -96,6 +96,54 @@ msgstr "Módulos de Bíblia do theWord (*.ont)"
 msgid "theWord Bible module (*.ot)"
 msgstr "Módulo de Bíblia do theWord (*.ot)"
 
+#: formllmoptions.rsbtncancel
+#, fuzzy
+msgctxt "formllmoptions.rsbtncancel"
+msgid "Cancel"
+msgstr "Cancelar"
+
+#: formllmoptions.rsbtnok
+#, fuzzy
+msgctxt "formllmoptions.rsbtnok"
+msgid "OK"
+msgstr "OK"
+
+#: formllmoptions.rsbtntest
+msgid "Test"
+msgstr ""
+
+#: formllmoptions.rsfallbacktestprompt
+msgid "Say hello."
+msgstr ""
+
+#: formllmoptions.rslabelapikey
+msgid "API key"
+msgstr ""
+
+#: formllmoptions.rslabelmodel
+msgid "Model"
+msgstr ""
+
+#: formllmoptions.rslabelprompt
+msgid "Prompt"
+msgstr ""
+
+#: formllmoptions.rsllmoptionscaption
+msgid "LLM Options"
+msgstr ""
+
+#: formllmoptions.rssystemprompt
+msgid "You are a helpful assistant."
+msgstr ""
+
+#: formllmoptions.rstestfailedtitle
+msgid "Test failed"
+msgstr ""
+
+#: formllmoptions.rstestresulttitle
+msgid "Test result"
+msgstr ""
+
 #: formnovoprojeto.schooseaname
 msgid "Please choose a name for your project"
 msgstr "Escolha um nome para o projeto"
@@ -172,6 +220,10 @@ msgstr "Deseja escolher outro nome?"
 #: formprincipal.sinvalidprojectnametitle
 msgid "A project file with this name already exists"
 msgstr "Um projeto com este nome já existe"
+
+#: formprincipal.sllmoptionsmenu
+msgid "LLM options..."
+msgstr ""
 
 #: formprincipal.sloadingfile
 #, object-pascal-format
@@ -1362,6 +1414,10 @@ msgstr "Texto origem interlinear"
 #: tfrmexportarprojeto.tabsheet3.caption
 msgid "Strong's concordance"
 msgstr "Concordância de strong"
+
+#: tfrmllmoptions.caption
+msgid "FrmLLMOptions"
+msgstr ""
 
 #: tfrmprincipal.actionabrirprojeto.caption
 msgid "Open..."
