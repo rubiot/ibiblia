@@ -185,6 +185,7 @@ procedure TSyntagm.DoOnLeftClick(Sender: TObject; Shift: TShiftState);
 //  d: string;
 var
   verse: TVersiculo;
+  i: integer;
 begin
   //d := format('selecao: %d, ' + 'sel par: %d, ' + 'irmaos : %d, ' + 'pares  : %d', [VerseRef.Selecao.Count, VerseRef.VersiculoPar.Selecao.Count, Siblings.Count, Pairs.Count]);
   verse := TVersiculo(VerseRef);
@@ -195,8 +196,10 @@ begin
   if (ssShift in Shift) and Assigned(verse.VersiculoPar) then
   begin
     DisassociatePairs;
-    if (verse.Selecao.Count > 0) then
-      verse.Selecao[0].DisassociatePairs;
+    for i := 0 to verse.Selecao.Count - 1 do
+      verse.Selecao[i].DisassociatePairs;
+    for i := 0 to verse.VersiculoPar.Selecao.Count - 1 do
+      verse.VersiculoPar.Selecao[i].DisassociatePairs;
   end;
   if not (ssCtrl in Shift) then // Ctrl não pressionado
     verse.LimparSelecao;
@@ -344,6 +347,7 @@ procedure TSyntagm.DoOnRightClick(Sender: TObject; Shift: TShiftState);
 var
   LastSelected, NextUnassociated: TSyntagm;
   verse: TVersiculo;
+  i: integer;
 begin
   {if ssShift in Shift then
   begin
@@ -360,8 +364,10 @@ begin
     exit;
 
   DisassociatePairs;
-  if (verse.Selecao.Count > 0) then
-    verse.Selecao[0].DisassociatePairs;
+  for i := 0 to verse.Selecao.Count - 1 do
+    verse.Selecao[i].DisassociatePairs;
+  for i := 0 to verse.VersiculoPar.Selecao.Count - 1 do
+    verse.VersiculoPar.Selecao[i].DisassociatePairs;
 
   if not (ssCtrl in Shift) then // Ctrl não pressionado
     verse.LimparSelecao;
@@ -386,7 +392,8 @@ begin
       if Assigned(NextUnassociated) then
       begin
         NextUnassociated.AddToSelection;
-        verse.OnClick(NextUnassociated); // triggers left-click on newly selected syntagm
+        if Assigned(TVersiculo(NextUnassociated.VerseRef).OnClick) then
+          TVersiculo(NextUnassociated.VerseRef).OnClick(NextUnassociated);
       end;
     end;
   end;
@@ -772,17 +779,20 @@ procedure TSyntagm.DisassociatePairs;
 var
   s: TSyntagm;
 begin
-  for s in Siblings do
-    s.Disassociate;
+  // 1. Disassociate all siblings (they share the same pairs)
+  while Assigned(FSiblings) and not FSiblings.Empty do
+    TSyntagm(FSiblings.First).Disassociate;
 
-  if not Pairs.Empty then
+  // 2. Disassociate all pairs and THEIR siblings
+  while Assigned(FPairs) and not FPairs.Empty do
   begin
-    if assigned(Pairs[0].Siblings) then
-      for s in Pairs[0].Siblings do
-        s.Disassociate;
-    Pairs[0].Disassociate;
+    s := TSyntagm(FPairs.First);
+    while Assigned(s.FSiblings) and not s.FSiblings.Empty do
+      TSyntagm(s.FSiblings.First).Disassociate;
+    s.Disassociate;
   end;
 
+  // 3. Disassociate self
   Disassociate;
 end;
 
@@ -847,14 +857,39 @@ begin
 end;
 
 procedure TSyntagm.Disassociate;
+var
+  s: TSyntagm;
 begin
   if not (FKind in [tsSintagma, tsPontuacao]) then
     exit;
 
-  IsAssociated := false;
   IsPointed := false;
-  Siblings.Clear;
-  Pairs.Clear;
+
+  if Assigned(FPairs) then
+  begin
+    while not FPairs.Empty do
+    begin
+      s := TSyntagm(FPairs.First);
+      if Assigned(s.Pairs) then
+        s.Pairs.Remove(Self);
+      if s.Pairs.Empty then
+        s.IsAssociated := false;
+      FPairs.Remove(s);
+    end;
+  end;
+
+  if Assigned(FSiblings) then
+  begin
+    while not FSiblings.Empty do
+    begin
+      s := TSyntagm(FSiblings.First);
+      if Assigned(s.Siblings) then
+        s.Siblings.Remove(Self);
+      FSiblings.Remove(s);
+    end;
+  end;
+
+  IsAssociated := false;
 end;
 
 { TSyntagmList }
