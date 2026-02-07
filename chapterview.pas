@@ -1224,16 +1224,20 @@ begin
       Blocks.AddParagraph().ParaStyle.FirstIndent := IfThen(GetParagraphMode = pmParagraph, DefaultFirstIndent);
 
     RenderChapterFooter;
+    if not FPrintMode then
     HighlightRange(FVerseRanges[current], clSilver);
     //RenderNotes;
   finally
     Blocks.UnLockUpdate;
   end;
 
+  if not FPrintMode then
+  begin
   { scroll current verse to center }
   self.SelectBlock(Blocks[FVerseRanges[current].first], sgpTopLeft);
   self.SelLength:=0;
   ExecuteCommand(ecScrollCenter);
+  end;
 
   //DebugLn('  TChapterView.RenderChapter: %d milliseconds', [getTickCount-starttime]);
 end;
