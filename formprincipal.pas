@@ -13,13 +13,11 @@ uses
   lclintf,
   {$ENDIF}
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, Menus,
-  ActnList, ComCtrls, ExtCtrls, StdCtrls, Projeto, IniFiles, Math,
+  ActnList, ComCtrls, ExtCtrls, StdCtrls, BibleScope, Projeto, IniFiles, Math,
   Syntagm, LCLTranslator, unitabout, PCRE, Versiculo, LCLProc, LazLogger,
   LCLType, LazUTF8, ChapterView, UnitPleaseWait, CommentsView;
 
 type
-  TSuggestionMode = (smStatistical, smAI);
-
   { TFrmPrincipal }
 
   TFrmPrincipal = class(TForm)
@@ -597,6 +595,7 @@ begin
     ProjetoAtual.Novo(SaveDialog1.FileName, FormNovoProjeto1.EditNomeProjeto.Text);
     ProjetoAtual.ExibirDefinicoesSoComCtrl := MenuItemDictPopup.Checked;
     ProjetoAtual.SugerirAssociacaoAutomaticamente := MenuItem22.Checked;
+    ProjetoAtual.SuggestionMode := FSuggestionMode;
     ProjetoAtual.PopupTrigger := FPopupTrigger;
 
     //ParThread.pb := ProgressBar1;
@@ -612,7 +611,7 @@ begin
     StatusBar1.Caption:='';
 
     ProjetoAtual.Commit;
-    ProjetoAtual.Atualizar;
+    ProjetoAtual.RefreshUI;
 
     //ProgressBar1.Visible := false;
     ActionSalvarProjeto.Enabled := true;
@@ -677,7 +676,7 @@ begin
   if ProjetoAtual = nil then
     exit;
   if MessageDlg(SRollbackChanges, SRollbackChangesConfirmation, mtConfirmation, [mbYes, mbCancel], 0) = mrYes then
-    ProjetoAtual.Atualizar;
+    ProjetoAtual.RefreshUI;
 end;
 
 procedure TFrmPrincipal.ActionSairExecute(Sender: TObject);
@@ -711,10 +710,22 @@ procedure TFrmPrincipal.ActionSugerirAssociacaoExecute(Sender: TObject);
 begin
   if ProjetoAtual <> nil then
   begin
-    case FSuggestionMode of
-      smStatistical: ProjetoAtual.SugerirAssociacao;
-      smAI: ProjetoAtual.SugerirAssociacaoAI;
-    end;
+    if ProjetoAtual.SuggestionMode = smAI then
+    begin
+      Screen.Cursor := crHourGlass;
+      StatusBar1.SimpleText := SAnalyzingVerse;
+      try
+        ProjetoAtual.SugerirAssociacao;
+      finally
+        Screen.Cursor := crDefault;
+        StatusBar1.SimpleText := '';
+      end;
+    end
+    else
+      ProjetoAtual.SugerirAssociacao;
+
+    if ProjetoAtual.ChapterViewText = tbInterlinear then
+      FChapterView.LoadChapter;
   end;
 end;
 
@@ -937,6 +948,8 @@ begin
   FChapterView.Free;
   FActualCommentsMemo.Free; // Free the dynamically created CommentsView
 end;
+// REMOVED: TimerAITimer - obsolete since AI processing moved to modal
+// AI processing progress is now tracked by TFrmAIProcessing.PumpProcessing
 
 procedure TFrmPrincipal.FormKeyPress(Sender: TObject; var Key: char);
 begin
@@ -1000,6 +1013,8 @@ end;
 procedure TFrmPrincipal.MenuItemAISuggestionClick(Sender: TObject);
 begin
   FSuggestionMode := smAI;
+  if Assigned(ProjetoAtual) then
+    ProjetoAtual.SuggestionMode := smAI;
   MenuItemStatisticalSuggestion.Checked := False;
   MenuItemAISuggestion.Checked := True;
 end;
@@ -1067,6 +1082,8 @@ end;
 procedure TFrmPrincipal.MenuItemStatisticalSuggestionClick(Sender: TObject);
 begin
   FSuggestionMode := smStatistical;
+  if Assigned(ProjetoAtual) then
+    ProjetoAtual.SuggestionMode := smStatistical;
   MenuItemStatisticalSuggestion.Checked := True;
   MenuItemAISuggestion.Checked := False;
 end;
@@ -1312,6 +1329,7 @@ begin
   ProjetoAtual.PalavrasComStrongEmNegrito := MenuItemStrongNegrito.Checked;
   ProjetoAtual.MostrarQtdStrongs := FStrongsCountMode;
   ProjetoAtual.AutoSave := MenuItemAutoSave.Checked;
+  ProjetoAtual.SuggestionMode := FSuggestionMode;
 
   ProjetoAtual.Abrir(filename);
   ProjetoAtual.ExibirDefinicoesSoComCtrl := MenuItemDictPopup.Checked;

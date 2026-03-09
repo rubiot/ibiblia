@@ -225,9 +225,11 @@ begin
   end;
 end;
 
-end.
-
 {$IFDEF FPC}
 initialization
   // Component registration not needed for FPC/Lazarus runtime
 {$ENDIF}
+
+end.
+
+

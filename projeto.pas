@@ -17,14 +17,31 @@ uses
   SysUtils, Sqlite3DS, sqlite3conn, sqldb, db, StrUtils, math,
   ExtCtrls, Controls, ComCtrls, StdCtrls, Graphics, Forms, Versiculo, Sugestao,
   MemoVersiculo, ONTTokenizer, Dialogs, dos, PCRE, ExportarProjeto, LazLogger,
-  Syntagm, MySwordModule, TheWordDictionary, fgl, PatchFile, LCLIntf, menus,
-  aiassociator, CommentsView;
+  Syntagm, BibleScope, MySwordModule, TheWordDictionary, fgl, PatchFile, LCLIntf, menus,
+  CommentsView, ai_translation_flow, ai_processing_manager,
+  ai_flows, ai_association_flow, llmclient, ai_flow_config, ai_debug;
+
+const
+  // AI processing icon indices for ImageListTreeView in formprincipal
+  // ImageListTreeView has indices 0-7 for normal states (0-3) and selected states (4-7)
+  // Indices 8-9 are reserved for AI processing states
+  ImgIndexPending = 8;     // AI processing: queued/pending (to be added to ImageListTreeView)
+  ImgIndexProcessing = 9;  // AI processing: in progress (to be added to ImageListTreeView)
 
 type
+  // Raw verse data from SQL query (without TVersiculo parsing overhead)
+  TVerseData = record
+    ReferenceID: string;        // pare_id (e.g., "40,1,1")
+    ReferenceName: string;      // formatted reference (e.g., "Matthew 1:1")
+    OriginalText: string;       // pare_texto_origem
+    TranslatedText: string;     // pare_texto_destino
+    Associations: string;       // pare_pares (optional)
+    Comments: string;           // pare_comentarios
+    Status: Integer;            // pare_situacao
+  end;
+  PVerseData = ^TVerseData;
 
   TProjeto = class;
-
-  TEscopoTexto = (etOT, etNT, etONT, etNone);
 
   TReference = record
     Book: string;
@@ -47,10 +64,26 @@ type
 
   TParagraphMode = (pmParagraph, pmNoParagraphs);
   TInterlinearMode = (imIntralinear, imInterlinear);
+  TSuggestionMode = (smStatistical, smAI);
 
   TRegexList = specialize TFPGList<IRegex>;
   TIntegerList = specialize TFPGList<integer>;
   TPopupTrigger = (ptMouseHover, ptAltMouseHover, ptCtrlMouseHover);
+
+  { AI Node State Tracking }
+  TAINodeState = (ansNormal, ansPending, ansProcessing);
+
+  // OBSOLETE: TAINodeInfo no longer used - TFrmAIProcessing manages its own tree
+  TAINodeInfo = class
+  public
+    Node: TTreeNode;
+    Reference: string; // format: "book,chapter,verse"
+    State: TAINodeState;
+    OriginalStateIndex: Integer;
+    constructor Create(ANode: TTreeNode; ARef: string);
+  end;
+
+  TAINodeInfoList = specialize TFPGObjectList<TAINodeInfo>;
 
   TOpcaoExportacao =
   (
@@ -100,7 +133,9 @@ type
     FADicStrong: ADicStrong;
     FADicMorfo: ADicMorfo;
     FSugeridor: TGerSugestoes;
-    FAiAssociator: TAiAssociator;
+    FAIManager: TAIProcessingManager; // batch manager IA
+    FAIProcessingNodes: TAINodeInfoList; // OBSOLETE: No longer used - modal manages its own tree
+    FAIBatchCompletionShown: Boolean; // flag to prevent showing completion dialog multiple times
     FParesAntigos: TStringList;
     FArvore: TTreeView;
     FBibleTreePointedNode: TTreeNode;
@@ -108,9 +143,11 @@ type
     FRadioGroupSituacao: TRadioGroup;
     FTemporizador: TTimer;
     FAtrasoExibicao: Cardinal;
+    FInterlinearMode: TInterlinearMode; // It's not there, I should check valid fields.
     FEscopo: TEscopoTexto;
     FPopupTrigger: TPopupTrigger;
     FVerseStrongsCountMode: TStrongsCountMode;
+    FSuggestionMode: TSuggestionMode;
     FOnNovoVersiculo: TOnNovoVersiculoEvents;
     FOnSintagmaClick: TOnSintagmaClickEvent;
     FClosing: boolean;
@@ -175,12 +212,22 @@ type
     procedure OnDblClickVersiculo(Sender: TObject);
     procedure OnBibleTreePopupItemClick(Sender: TObject);
     procedure OnBibleTreeContextPopup(Sender: TObject; MousePos: TPoint; var Handled: Boolean);
+    procedure HandleAutoSave(Sender: TObject);
+    function GetVerseReferenceString(Verse: TVersiculo): string;
+    { AI Visual Feedback }
+    procedure MarkNodeAsAIPending(node: TTreeNode; const ref: string);
+    procedure MarkNodeAsAIProcessing(const ref: string);
+    procedure RestoreNodeStatus(const ref: string);
+    procedure ClearAllAINodeStates;
+    function FindTreeNodeByReference(const ref: string): TTreeNode;
     function AtribuirDicStrong(dic: string; t: TTipoTextoBiblico): boolean;
     function AtribuirDicMorfo(dic: string; t: TTipoTextoBiblico): boolean;
     procedure AtualizarArvore;
     procedure AtualizarArvore(id: string);
     procedure SelectTreeNode(id: string);
   public
+    procedure OnAIBatchClick(Sender: TObject);
+    procedure OnAICancelClick(Sender: TObject);
     constructor Criar;
     constructor Criar(paineis: array of TScrollbox; navegador: TTreeView; rsituacao: TRadioGroup; rcomentarios: TControl);
     destructor Destruir;
@@ -196,11 +243,16 @@ type
     procedure VersiculoAnterior;
     procedure VersiculoInicial;
     procedure VersiculoFinal;
-    procedure Atualizar;
+    procedure RefreshUI;
     procedure Limpar;
     procedure Salvar;
+    procedure SalvarParesVersiculo(Verse: TVersiculo); // Save pairs from any verse object (public for AI flows)
+  procedure ApplyVerseText(const newText: string; texto: TTipoTextoBiblico; replace: Boolean);
+    procedure SugerirAssociacaoEstatistica;
     procedure SugerirAssociacao;
-    procedure SugerirAssociacaoAI; // Added this line
+  procedure SugerirAssociacaoAI;
+  procedure StartAIAssociationBatch(NodesVerses: TList; MaxParallel: Integer); // New: batch IA association
+  procedure StartAITranslationBatch(NodesVerses: TList; MaxParallel: Integer); // batch tradução IA
     procedure RecriarBaseSugestoes;
     procedure RecriarBaseSugestoes(pb: TProgressBar);
     function ImportarModuloTheWord(arquivo: string; texto: TTipoTextoBiblico; replace: boolean): boolean;
@@ -233,7 +285,7 @@ type
     procedure RewindChapter;
     procedure OnNewVerseSubscribe(const AValue: TOnNovoVersiculoEvent);
     procedure OnNewVerseUnsubscribe(const AValue: TOnNovoVersiculoEvent);
-    procedure ApplyPatch(patch: TPatchFile; indexes: TIntegerList);
+    procedure ApplyPatch(patch: TPatchFile; indexes: TIntegerList = nil);
     function GetPairs(ref: string): string;
     function GetComments(ref: string): string;
     function GetStatus(ref: string): Integer;
@@ -275,11 +327,24 @@ type
     property AutoSave: boolean read FAutoSave write SetAutoSave;
     property Pairs: string read GetPairs;
     property VerseObjects: AVersiculo read FAVersiculo;
+    property SuggestionMode: TSuggestionMode read FSuggestionMode write FSuggestionMode;
   end;
 
 {$INCLUDE include/bookdefs.inc}
 
 resourcestring
+  SSetStatusChildren = 'Set status of all children to...';
+  SMarkAsFmt = 'Mark %s as...';
+  SApplyAITo = 'Apply AI flow to...';
+  SApplyAIToFmt = 'Apply AI flow to %s';
+  SAssociation = 'Association';
+  STranslation = 'Translation';
+  SAssociate = 'Associate';
+  STranslate = 'Translate';
+  SCancelAIProcessing = 'Cancel AI processing';
+  SConfirmApplyAIToBook = 'Are you sure you want to apply the AI flow to the entire book %s?';
+  SConfirmApplyAIToChapter = 'Are you sure you want to apply the AI flow to chapter %s?';
+  SAnalyzingVerse = 'Analyzing verse...';
 
   SStatusNotAssociated = 'Not associated';
   SStatusAssociating = 'Associating';
@@ -344,7 +409,7 @@ procedure UpdateDefaultSituacaoDescricao;
 
 implementation
 
-uses formpopup, formverserules;
+uses formpopup, formverserules, formaiprocessing;
 
 { TProjeto }
 
@@ -639,16 +704,22 @@ begin
   FOnNovoVersiculo.Remove(AValue);
 end;
 
-procedure TProjeto.ApplyPatch(patch: TPatchFile; indexes: TIntegerList);
+procedure TProjeto.ApplyPatch(patch: TPatchFile; indexes: TIntegerList = nil);
 var
   i: integer;
   ignoreWarnings: boolean;
+  oldAutoSaveValue: boolean;
 begin
   ignoreWarnings := false;
+
   try
     StartScrollingSession;
-    for i in indexes do
+    for i := 0 to patch.Reference.Count - 1 do
     begin
+      // If indexes provided, skip items not in the list
+      if Assigned(indexes) and (indexes.IndexOf(i) < 0) then
+        continue;
+
       GoToReference(patch.Reference[i]);
 
       if ID <> patch.Reference[i] then
@@ -680,7 +751,10 @@ begin
     FinishScrollingSession;
   end;
 
-  Atualizar;
+  oldAutoSaveValue := FAutoSave;
+  FAutoSave := false;
+  RefreshUI;
+  FAutoSave := oldAutoSaveValue;
 end;
 
 procedure TProjeto.SetOnSintagmaClick(const AValue: TOnSintagmaClickEvent);
@@ -769,6 +843,91 @@ begin
   end;
 end;
 
+{ TAINodeInfo }
+
+constructor TAINodeInfo.Create(ANode: TTreeNode; ARef: string);
+begin
+  inherited Create;
+  Node := ANode;
+  Reference := ARef;
+  State := ansNormal;
+  OriginalStateIndex := -1;
+end;
+
+{ AI Visual Feedback Methods }
+
+// OBSOLETE: These methods are no longer used.
+// Tree node visual updates during AI processing are now handled exclusively
+// by TFrmAIProcessing modal. The main project tree (FArvore) is not affected
+// during processing - it only updates when user clicks Apply in the modal.
+
+procedure TProjeto.MarkNodeAsAIPending(node: TTreeNode; const ref: string);
+begin
+  // No-op: Modal handles its own tree updates
+end;
+
+procedure TProjeto.MarkNodeAsAIProcessing(const ref: string);
+begin
+  // No-op: Modal handles its own tree updates
+end;
+
+procedure TProjeto.RestoreNodeStatus(const ref: string);
+begin
+  // No-op: Modal handles its own tree updates
+end;
+
+procedure TProjeto.ClearAllAINodeStates;
+begin
+  // No-op: Modal handles its own tree updates
+end;
+
+function TProjeto.FindTreeNodeByReference(const ref: string): TTreeNode;
+var
+  refBookId, refChapter, refVerse: Integer;
+  nb, nc, nv: TTreeNode;
+begin
+  Result := nil;
+  if not Assigned(FArvore) then Exit;
+
+  // Parse reference
+  if Sscanf(ref, '%d,%d,%d', [@refBookId, @refChapter, @refVerse]) <> 3 then
+    Exit;
+
+  // Find book node
+  nb := FArvore.Items.GetFirstNode;
+  while Assigned(nb) do
+  begin
+    if PtrInt(nb.Data) = refBookId then
+      Break;
+    nb := nb.GetNextSibling;
+  end;
+
+  if not Assigned(nb) then Exit;
+
+  // Find chapter node
+  nc := nb.GetFirstChild;
+  while Assigned(nc) do
+  begin
+    if PtrInt(nc.Data) = refChapter then
+      Break;
+    nc := nc.GetNextSibling;
+  end;
+
+  if not Assigned(nc) then Exit;
+
+  // Find verse node
+  nv := nc.GetFirstChild;
+  while Assigned(nv) do
+  begin
+    if PtrInt(nv.Data) = refVerse then
+    begin
+      Result := nv;
+      Exit;
+    end;
+    nv := nv.GetNextSibling;
+  end;
+end;
+
 function TProjeto.CreateBibleTreeContextMenu: TPopupMenu;
 
   procedure AddSubItemForStatus(item: TMenuItem; status: Integer);
@@ -789,16 +948,243 @@ function TProjeto.CreateBibleTreeContextMenu: TPopupMenu;
 var
   item: TMenuItem;
   status: Integer;
+  aiMenu: TMenuItem;
+  aiChapterItem: TMenuItem;
+  aiCancelItem: TMenuItem;
+  aiTrChapterItem: TMenuItem;
+
+
+  procedure CollectVersesFromNode(node: TTreeNode; dest: TList);
+  var child: TTreeNode;
+  begin
+    if node = nil then Exit;
+    if not node.HasChildren then
+    begin
+      // verse node: convert to full reference and navigate to load verse object
+      // node.Text is just the verse number; use BibleTreeNodeToReference to get full ref
+      GoToReference(BibleTreeNodeToReference(node));
+      dest.Add(FAVersiculo[tbOrigem]);
+      Exit;
+    end;
+    child := node.GetFirstChild;
+    while child <> nil do
+    begin
+      CollectVersesFromNode(child, dest);
+      child := child.GetNextSibling;
+    end;
+  end;
+
 begin
   result := TPopupMenu.Create(FArvore);
   result.Parent := FArvore;
   result.Images := FArvore.Images;
 
   item := TMenuItem.Create(result);
-  item.Caption := 'Set status of all children to...';
+  // Status submenu: 'Marcar <referência> como...'
+  item.Caption := SSetStatusChildren;
   result.Items.Add(item);
   for status:=0 to 3 do
     AddSubItemForStatus(item, status);
+
+  // 'Aplicar fluxo de IA a <referência>...' submenu (will be updated at popup time)
+  aiMenu := TMenuItem.Create(result);
+  aiMenu.Caption := SApplyAITo;
+  result.Items.Add(aiMenu);
+  // Associação
+  aiChapterItem := TMenuItem.Create(aiMenu);
+  aiChapterItem.Caption := SAssociation;
+  aiChapterItem.OnClick := @Self.OnAIBatchClick;
+  aiChapterItem.Tag := 1001; // assoc chapter/book/verse depending on popup (use non-colliding tag)
+  aiMenu.Add(aiChapterItem);
+  // Tradução
+  aiTrChapterItem := TMenuItem.Create(aiMenu);
+  aiTrChapterItem.Caption := STranslation;
+  aiTrChapterItem.OnClick := @Self.OnAIBatchClick;
+  aiTrChapterItem.Tag := 1011; // translate chapter/book/verse depending on popup (use non-colliding tag)
+  aiMenu.Add(aiTrChapterItem);
+  // Cancel item
+  aiCancelItem := TMenuItem.Create(aiMenu);
+  aiCancelItem.Caption := SCancelAIProcessing;
+  aiCancelItem.Tag := 9001; // identificador para habilitação dinâmica
+  aiCancelItem.OnClick := @Self.OnAICancelClick;
+  if Assigned(FAIManager) and (not FAIManager.IsIdle) then
+    aiCancelItem.Enabled := True
+  else
+    aiCancelItem.Enabled := False;
+  aiMenu.Add(aiCancelItem);
+end;
+
+
+
+procedure TProjeto.OnAICancelClick(Sender: TObject);
+begin
+  if Assigned(FAIManager) then
+  begin
+    FAIManager.CancelAll;
+    ClearAllAINodeStates; // Restore node icons
+  end;
+end;
+
+procedure TProjeto.OnAIBatchClick(Sender: TObject);
+var
+  list: TList;
+  maxPar: Integer;
+  clickedNode: TTreeNode;
+  flow: IAIVerseFlow;
+  flowConfig: IAIFlowConfig;
+  verseData: PVerseData;
+  node: TTreeNode;
+  i: Integer;
+
+  procedure CollectVersesFromNode(node: TTreeNode; dest: TList);
+  var
+    child: TTreeNode;
+    ref: TReference;
+    verseData: PVerseData;
+    qry: TSQLQuery;
+  begin
+    if node = nil then Exit;
+
+    // If leaf node (verse), collect this single verse as raw data
+    if not node.HasChildren then
+    begin
+      ref := BibleTreeNodeToReference(node);
+
+      // Use dataset navigation like TFormExportPatch.CreatePatch (no separate queries)
+      GoToReference(ref);
+
+      // Store raw data without creating TVersiculo (expensive parsing)
+      New(verseData);
+      verseData^.ReferenceID := Format('%d,%d,%d', [ref.BookID, ref.Chapter, ref.Verse]);
+      verseData^.ReferenceName := ref.Book + ' ' + IntToStr(ref.Chapter) + ':' + IntToStr(ref.Verse);
+      verseData^.OriginalText := ObterTextoVersiculo(tbOrigem);
+      verseData^.TranslatedText := ObterTextoVersiculo(tbDestino);
+      verseData^.Associations := Pairs; // pare_pares
+      verseData^.Comments := FTblPares.FieldByName('pare_comentarios').AsString;
+      verseData^.Status := FTblPares.FieldByName('pare_situacao').AsInteger;
+
+      dest.Add(verseData);
+      Exit;
+    end;
+
+    // If not a leaf, recursively collect from children
+    child := node.GetFirstChild;
+    while child <> nil do
+    begin
+      CollectVersesFromNode(child, dest);
+      child := child.GetNextSibling;
+    end;
+  end;
+
+begin
+  if FArvore = nil then Exit;
+  clickedNode := FBibleTreePointedNode;  // Use the node where popup was triggered, not the selected node
+  if clickedNode = nil then Exit;
+  list := TList.Create;
+  try
+    // Determine action (association vs translation) by Tag and scope by pointed node level
+    if not (Sender is TMenuItem) then Exit;
+
+    // Confirm BEFORE collecting verses (expensive operation)
+    if FBibleTreePointedNode.Level = 0 then // book
+    begin
+      if MessageDlg(SConfirmation, Format(SConfirmApplyAIToBook, [FBibleTreePointedNode.Text]), mtConfirmation, [mbYes, mbNo], 0) = mrNo then
+        Exit;
+    end
+    else if FBibleTreePointedNode.Level = 1 then // chapter
+    begin
+      if MessageDlg(SConfirmation, Format(SConfirmApplyAIToChapter, [Format('%s %s', [FBibleTreePointedNode.Parent.Text, FBibleTreePointedNode.Text])]), mtConfirmation, [mbYes, mbNo], 0) = mrNo then
+        Exit;
+    end;
+
+    // Now collect verses after confirmation
+    StartScrollingSession;
+    try
+      case FBibleTreePointedNode.Level of
+        0: // book
+          CollectVersesFromNode(clickedNode, list);
+        1: // chapter
+          CollectVersesFromNode(clickedNode, list);
+        2: // verse
+          CollectVersesFromNode(clickedNode, list);
+      else
+        CollectVersesFromNode(clickedNode, list);
+      end;
+    finally
+      FinishScrollingSession;
+    end;
+    if list.Count = 0 then Exit;
+
+    maxPar := StrToIntDef(ObterInfo(AI_COMMON_CONFIG.MaxParallel), 2);
+
+    if ObterInfo(AI_COMMON_CONFIG.Model).IsEmpty or ObterInfo(AI_COMMON_CONFIG.ApiKey).IsEmpty then
+    begin
+      ShowMessage('AI associator not configured.');
+      Exit;
+    end;
+
+    if Assigned(FAIManager) then
+    begin
+      FAIManager.CancelAll;
+      ClearAllAINodeStates;
+      FreeAndNil(FAIManager);
+    end;
+
+    FAIBatchCompletionShown := False;
+
+    // Note: Tree node visual updates are now handled by TFrmAIProcessing modal
+    // The main tree (FArvore) is not affected until Apply is clicked
+
+    flow := nil;
+
+    // Get appropriate flow config based on menu item tag
+    // Factory method CreateFlowInstance handles all flow-specific configuration and creation
+    if TMenuItem(Sender).Tag = 1001 then
+    begin
+      flowConfig := GetFlowConfigById('association');
+      if Assigned(flowConfig) then
+        flow := flowConfig.CreateFlowInstance(Self) as IAIVerseFlow;
+    end
+    else if TMenuItem(Sender).Tag = 1011 then
+    begin
+      flowConfig := GetFlowConfigById('translation');
+      if Assigned(flowConfig) then
+        flow := flowConfig.CreateFlowInstance(Self) as IAIVerseFlow;
+    end
+    else
+      Exit;
+
+    if flow = nil then Exit;
+
+    FAIManager := TAIProcessingManager.Create(
+      ObterInfo(AI_COMMON_CONFIG.Model),
+      ObterInfo(AI_COMMON_CONFIG.ApiKey),
+      maxPar
+    );
+    FAIManager.MaxRetries := StrToIntDef(ObterInfo(AI_COMMON_CONFIG.MaxRetries), 3);
+    FAIManager.RetryBaseDelay := StrToIntDef(ObterInfo(AI_COMMON_CONFIG.RetryDelay), 1000);
+    FAIManager.AutoSaveInterval := StrToIntDef(ObterInfo(AI_COMMON_CONFIG.AutoSaveInterval), 10);
+    FAIManager.OnAutoSaveNeeded := @HandleAutoSave;
+    FAIManager.GetVerseReference := @GetVerseReferenceString;
+
+    // Use global form instance instead of creating new one
+    if Assigned(FrmAIProcessing) then
+    begin
+      if FrmAIProcessing.StartProcessing(FAIManager, flow, list, Self) then
+      begin
+        // Pass FBatch to manager so flows can update it with results (in-memory, not DB)
+        FAIManager.StartBatch(flow, list, Self, FrmAIProcessing.Batch);
+        if FrmAIProcessing.ShowModal = mrOK then
+        begin
+          FrmAIProcessing.Apply;
+        end;
+      end;
+    end;
+  finally
+    // Note: TVerseData records will be freed by the AI manager
+    // (Manager takes ownership through TAIJob and frees in destructor)
+    list.Free;
+  end;
 end;
 
 procedure TProjeto.UpdateReference(ref: string);
@@ -1261,6 +1647,11 @@ begin
   FTblPares.Post;
 end;
 
+procedure TProjeto.ApplyVerseText(const newText: string; texto: TTipoTextoBiblico; replace: Boolean);
+begin
+  SetVerseText(newText, texto, replace);
+end;
+
 procedure TProjeto.PreRolagemVersiculo(DataSet: TDataSet);
 //var starttime: DWord;
 begin
@@ -1309,6 +1700,8 @@ begin
     begin
       FAVersiculo[v].Ativo := false;
       FAVersiculo[v].Texto := FTblPares.Fields[FACamposTexto[v]].AsString;
+      FAVersiculo[v].Referencia := FormattedReference;
+      FAVersiculo[v].ReferenciaID := GetID();
     end;
 
   if assigned(FAVersiculo[tbOrigem]) and assigned(FAVersiculo[tbOrigem]) then
@@ -1355,8 +1748,8 @@ begin
   for e in FOnNovoVersiculo do
     e(self);
 
-  if FAutoSave and not FExportando then
-    Salvar;
+  if fautosave and not fexportando then
+    salvar;
 
   //DebugLn('  TProjeto.PosRolagemVersiculo: %d milliseconds', [getTickCount-starttime]);
 end;
@@ -1365,6 +1758,16 @@ procedure TProjeto.SalvarPares;
 begin
   FTblPares.Edit;
   FTblPares.FieldByName('pare_pares').AsString := FAVersiculo[tbOrigem].Pares;
+  FTblPares.Post;
+end;
+
+procedure TProjeto.SalvarParesVersiculo(Verse: TVersiculo);
+begin
+  // Save pairs from a specific verse object (works for temp or visual verses)
+  // Assumes database cursor is already positioned at the correct record
+  if Verse = nil then Exit;
+  FTblPares.Edit;
+  FTblPares.FieldByName('pare_pares').AsString := Verse.Pares;
   FTblPares.Post;
 end;
 
@@ -1675,15 +2078,84 @@ begin
     FinishScrollingSession;
   end;
 
-  Atualizar;
+  RefreshUI;
 end;
 
 procedure TProjeto.OnBibleTreeContextPopup(Sender: TObject; MousePos: TPoint;
   var Handled: Boolean);
+var
+  i, j: Integer;
+  m, sub: TMenuItem;
+  refStr: string;
+  baseCaption: string;
 begin
   FBibleTreePointedNode := (Sender as TTreeView).GetNodeAt(MousePos.X, MousePos.Y);
-  if (not Ativo) or (FBibleTreePointedNode = nil) or (not FBibleTreePointedNode.HasChildren) then
+  // Allow context menu on leaf (verse) nodes as well — only block when project not active or no node
+  if (not Ativo) or (FBibleTreePointedNode = nil) then
     Handled := True;
+  // Atualiza habilitação do item 'Cancelar processamento IA' (Tag 9001)
+  if Assigned(FArvore) and Assigned(FArvore.PopupMenu) then
+  begin
+    // update cancel enabled state
+    for i := 0 to FArvore.PopupMenu.Items.Count-1 do
+    begin
+      m := FArvore.PopupMenu.Items[i];
+      for j := 0 to m.Count-1 do
+      begin
+        sub := m.Items[j];
+        if sub.Tag = 9001 then
+        begin
+          if Assigned(FAIManager) and (not FAIManager.IsIdle) then
+            sub.Enabled := True
+          else
+            sub.Enabled := False;
+        end;
+      end;
+    end;
+
+    // Find IA submenu and update its children to include the reference and scope
+    if FBibleTreePointedNode <> nil then
+    begin
+      // Build reference string depending on level
+        if FBibleTreePointedNode.Level = 0 then
+          refStr := FBibleTreePointedNode.Text
+        else if FBibleTreePointedNode.Level = 1 then
+          refStr := Format('%s %s', [FBibleTreePointedNode.Parent.Text, FBibleTreePointedNode.Text])
+        else // level = 2
+          refStr := Format('%s %s:%s', [FBibleTreePointedNode.Parent.Parent.Text, FBibleTreePointedNode.Parent.Text, FBibleTreePointedNode.Text]);
+
+      // locate IA menu
+      for i := 0 to FArvore.PopupMenu.Items.Count-1 do
+      begin
+        m := FArvore.PopupMenu.Items[i];
+        for j := 0 to m.Count-1 do
+        begin
+          sub := m.Items[j];
+          // Status items have Tag in 0..3
+          if (sub.Tag >= 0) and (sub.Tag <= 3) then
+          begin
+            // update parent (status) caption to include reference
+            m.Caption := Format(SMarkAsFmt, [refStr]);
+          end;
+          // Identify AI submenu children by their tags (association/translation starter)
+          if (sub.Tag = 1001) or (sub.Tag = 1011) then
+          begin
+            // sub.Tag indicates action type (1=Association,11=Translation); scope is derived from node level
+            // Use resource strings for AI child captions
+            if sub.Tag = 1001 then
+              baseCaption := SAssociate
+            else
+              baseCaption := STranslate;
+            sub.Caption := Format('%s %s', [baseCaption, refStr]);
+            // visibility: show for book/chapter/verse depending on node level
+            sub.Visible := True;
+            // set parent caption to include reference
+            m.Caption := Format(SApplyAIToFmt, [refStr]);
+          end;
+        end;
+      end;
+    end;
+  end;
 end;
 
 function TProjeto.AtribuirDicStrong(dic: string; t: TTipoTextoBiblico): boolean;
@@ -1947,6 +2419,7 @@ var
   al, ac: array[0..3] of smallint;
   nl, nc, nv, n: TTreeNode;
   b: boolean;
+  totalChildren: integer;
 begin
   if not assigned(FArvore) or FClosing then
     exit;
@@ -1961,70 +2434,83 @@ begin
   nc := nl.GetFirstChild;
   for i:=Chapter-1 downto 1 do
   begin
-    inc(al[nc.ImageIndex]);
     nc := nc.GetNextSibling;
   end;
 
   nv := nc.GetFirstChild;
   for i:=Verse-1 downto 1 do
   begin
-    inc(ac[nv.ImageIndex]);
     nv := nv.GetNextSibling;
   end;
 
+  { atualizando versículo }
   if nv.ImageIndex <> Situacao then
   begin
-    { atualizando versículo }
     nv.ImageIndex := Situacao; nv.SelectedIndex := nv.ImageIndex + 4;
-    { atualizando capítulo }
-    n := nv;
-    while assigned(n) do // percorrendo últimos versículos do capítulo
-    begin
+  end;
+  
+  { atualizando capítulo - sempre recontar todos os versículos }
+  ac[0] := 0; ac[1] := 0; ac[2] := 0; ac[3] := 0;
+  totalChildren := 0;
+  n := nc.GetFirstChild;
+  while assigned(n) do
+  begin
+    if (n.ImageIndex >= 0) and (n.ImageIndex <= 3) then
       inc(ac[n.ImageIndex]);
-      n := n.GetNextSibling;
-    end;
+    inc(totalChildren);
+    n := n.GetNextSibling;
+  end;
 
-    b := false;
+  b := false;
+  if totalChildren > 0 then
     for i:=0 to 3 do // todos os versículos estão na mesma situação?
     begin
-      if ac[i] = QVersiculos[FEscopo][ QCapLivros[FEscopo][BookID-OffsetLivros[FEscopo]]+Chapter-1 ] then
+      if ac[i] = totalChildren then
       begin
         nc.ImageIndex := i; nc.SelectedIndex := nc.ImageIndex + 4;
         b := true;
         break;
       end;
     end;
-    if not b then // várias situações diferentes
-    begin
-      if ac[2] > 0 then
-        nc.ImageIndex := 2
-      else
-        nc.ImageIndex := 1;
-      nc.SelectedIndex := nc.ImageIndex + 4;
-    end;
-    { atualizando livro }
-    n := nc;
-    while assigned(n) do // percorrendo últimos capítulos do livro
-    begin
+  if not b then // várias situações diferentes
+  begin
+    if ac[2] > 0 then
+      nc.ImageIndex := 2  // vermelho: tem algo para rever
+    else
+      nc.ImageIndex := 1; // amarelo: status mistos mas nada para rever
+    nc.SelectedIndex := nc.ImageIndex + 4;
+  end;
+  
+  { atualizando livro - sempre recontar todos os capítulos }
+  al[0] := 0; al[1] := 0; al[2] := 0; al[3] := 0;
+  totalChildren := 0;
+  n := nl.GetFirstChild;
+  while assigned(n) do
+  begin
+    if (n.ImageIndex >= 0) and (n.ImageIndex <= 3) then
       inc(al[n.ImageIndex]);
-      n := n.GetNextSibling;
-    end;
+    inc(totalChildren);
+    n := n.GetNextSibling;
+  end;
 
-    b := false;
+  b := false;
+  if totalChildren > 0 then
     for i:=0 to 3 do // todos os capítulos estão na mesma situação?
     begin
-      if al[i] = QCapitulos[FEscopo][BookID-OffsetLivros[FEscopo]] then
+      if al[i] = totalChildren then
       begin
         nl.ImageIndex := i; nl.SelectedIndex := nl.ImageIndex + 4;
         b := true;
         break;
       end;
     end;
-    if not b then // várias situações diferentes
-    begin
-      nl.ImageIndex := IfThen(al[2] > 0, 2, 1);
-      nl.SelectedIndex := nl.ImageIndex + 4;
-    end;
+  if not b then // várias situações diferentes
+  begin
+    if al[2] > 0 then
+      nl.ImageIndex := 2  // vermelho: tem algo para rever
+    else
+      nl.ImageIndex := 1; // amarelo: status mistos mas nada para rever
+    nl.SelectedIndex := nl.ImageIndex + 4;
   end;
 end;
 
@@ -2069,7 +2555,9 @@ begin
   FOnNovoVersiculo    := TOnNovoVersiculoEvents.Create;
   FOnAlterarVersiculo := nil;
   FSugeridor          := nil;
-  FAiAssociator       := nil;
+  FAIManager          := nil;
+  FAIProcessingNodes  := TAINodeInfoList.Create(True); // owns objects
+  FAIBatchCompletionShown := False;
   FTblPares           := nil;
   FTblInfo            := nil;
   FEscopo             := etNone;
@@ -2133,9 +2621,11 @@ begin
 
   FreeAndNil(FParesAntigos);
 
+  if Assigned(FAIProcessingNodes) then
+    FreeAndNil(FAIProcessingNodes);
+
   FOnNovoVersiculo.Free;
   FSugeridor.Free;
-  FAiAssociator.Free;
   FTemporizador.Free;
   FMemoVersiculo.Destruir;
 end;
@@ -2174,18 +2664,6 @@ begin
   FTblInfo.Open;
 
   FSugeridor := TGerSugestoes.Criar(Nome);
-  // Initialize FAiAssociator only if all required parameters are present
-  if (not ObterInfo('ai_associator.model').IsEmpty) and
-     (not ObterInfo('ai_associator.api_key').IsEmpty) and
-     (not ObterInfo('ai_associator.prompt').IsEmpty) then
-  begin
-    FAiAssociator := TAiAssociator.Create(
-      ObterInfo('ai_associator.model'),
-      ObterInfo('ai_associator.api_key'),
-      ObterInfo('ai_associator.prompt'));
-  end
-  else
-    FAiAssociator := nil;
 
   FTblPares := CriarObjetoTabela(Nome, 'pares', 'pare_id');
   FTblPares.Open;
@@ -2329,13 +2807,42 @@ begin
 end;
 
 procedure TProjeto.Commit;
+var
+  retryCount: Integer;
+  maxRetries: Integer = 5;
+  delayMs: Integer;
 begin
   if assigned(FSugeridor) then
     FSugeridor.Commit;
-  if assigned(FTblPares) then
-    FTblPares.ApplyUpdates;
-  if assigned(FTblInfo) then
-    FTblInfo.ApplyUpdates;
+
+  // Retry ApplyUpdates with exponential backoff to handle SQLITE_BUSY
+  retryCount := 0;
+  delayMs := 50;
+  while retryCount < maxRetries do
+  begin
+    try
+      if assigned(FTblPares) then
+        FTblPares.ApplyUpdates;
+      if assigned(FTblInfo) then
+        FTblInfo.ApplyUpdates;
+      Break;  // Success, exit retry loop
+    except
+      on E: Exception do
+      begin
+        // If SQLITE_BUSY, retry; otherwise re-raise
+        if (Pos('SQLITE_BUSY', E.Message) > 0) or (Pos('database is locked', E.Message) > 0) then
+        begin
+          Inc(retryCount);
+          if retryCount >= maxRetries then
+            raise;  // Max retries exceeded, propagate error
+          Sleep(delayMs);
+          delayMs := delayMs * 2;  // Exponential backoff: 50, 100, 200, 400, 800 ms
+        end
+        else
+          raise;  // Not SQLITE_BUSY, propagate immediately
+      end;
+    end;
+  end;
 end;
 
 procedure TProjeto.Rollback;
@@ -2399,7 +2906,7 @@ begin
     SugerirAssociacao;
 end;
 
-procedure TProjeto.Atualizar;
+procedure TProjeto.RefreshUI;
 begin
   PosRolagemVersiculo(FTblPares);
 end;
@@ -2434,7 +2941,7 @@ begin
     e(Self);
 end;
 
-procedure TProjeto.SugerirAssociacao;
+procedure TProjeto.SugerirAssociacaoEstatistica;
 begin
   FSugeridor.SugerirAssociacoes(FAVersiculo[tbOrigem]);
   FAVersiculo[tbOrigem].Renderizar;
@@ -2446,13 +2953,240 @@ begin
     FRadioGroupSituacao.ItemIndex := 1; // associando
 end;
 
-procedure TProjeto.SugerirAssociacaoAI;
+procedure TProjeto.SugerirAssociacao;
 begin
-  if assigned(FAiAssociator) then
-    FAiAssociator.AssociateVerse(FAVersiculo[tbOrigem])
-  else
-    ShowMessage('Error: AI Associator is not assigned.');
+  case FSuggestionMode of
+    smStatistical: SugerirAssociacaoEstatistica;
+    smAI:
+      begin
+        // Note: AI Association is blocking and should ideally show progress,
+        // but for auto-suggestion we rely on blocking behavior.
+        // It might be worth checking if AI is configured before trying.
+        try
+          SugerirAssociacaoAI;
+        except
+          on E: Exception do
+            // Fallback or just log? User will see message box from SugerirAssociacaoAI catch block.
+        end;
+      end;
+  end;
 end;
+
+procedure TProjeto.SugerirAssociacaoAI;
+var
+  flow: IAIVerseFlow;
+  flowConfig: IAIFlowConfig;
+  client: TBaseLLMClient;
+  msgs: TLLMMessageArray;
+  resp: TLLMResponse;
+  parsed: TAIFlowResult;
+  v: TVersiculo;
+  OldCursor: TCursor;
+begin
+  if (ObterInfo(AI_COMMON_CONFIG.Model).IsEmpty) or
+     (ObterInfo(AI_COMMON_CONFIG.ApiKey).IsEmpty) then
+  begin
+    ShowMessage('AI Associator not configured.');
+    Exit;
+  end;
+
+  v := FAVersiculo[tbOrigem];
+  if not Assigned(v) or not Assigned(v.VersiculoPar) then
+  begin
+    ShowMessage('No verse to associate.');
+    Exit;
+  end;
+
+  OldCursor := Screen.Cursor;
+  Screen.Cursor := crHourGlass;
+  try
+    try
+      flowConfig := GetFlowConfigById('association');
+      flow := flowConfig.CreateFlowInstance(Self);
+
+      client := llmclient.CreateBackend(ObterInfo(AI_COMMON_CONFIG.Model), ObterInfo(AI_COMMON_CONFIG.ApiKey));
+      try
+        msgs := flow.BuildMessages(v);
+        resp := client.AskChatCompletions(msgs);
+
+        AIDebugLog('[AI Single] Response received, parsing...');
+        parsed := flow.ParseResponse(resp.Content, v);
+        try
+          AIDebugLog('[AI Single] Applying result...');
+          flow.ApplyResult(parsed, v);
+          SalvarParesVersiculo(v);
+          AIDebugLog('[AI Single] Result applied and saved.');
+        finally
+          parsed.Free;
+        end;
+      finally
+        client.Free;
+      end;
+    except
+      on E: Exception do
+      begin
+        AIDebugLog('[AI Single] Error: ' + E.Message);
+        ShowMessage('AI association failed: ' + E.Message);
+      end;
+    end;
+  finally
+    Screen.Cursor := OldCursor;
+  end;
+end;
+
+procedure TProjeto.StartAIAssociationBatch(NodesVerses: TList; MaxParallel: Integer);
+var
+  flow: IAIVerseFlow;
+  flowConfig: IAIFlowConfig;
+  customInstructions: string;
+  i: Integer;
+  verseData: PVerseData;
+  node: TTreeNode;
+begin
+  if (NodesVerses = nil) or (NodesVerses.Count = 0) then Exit;
+  if MaxParallel <= 0 then MaxParallel := 1;
+  if (ObterInfo(AI_COMMON_CONFIG.Model).IsEmpty) or (ObterInfo(AI_COMMON_CONFIG.ApiKey).IsEmpty) then
+  begin
+    ShowMessage('AI associator not configured.');
+    Exit;
+  end;
+  // Cancel previous batch if running
+  if Assigned(FAIManager) then
+  begin
+    FAIManager.CancelAll;
+    ClearAllAINodeStates;
+    FreeAndNil(FAIManager);
+  end;
+
+  // Reset completion flag
+  FAIBatchCompletionShown := False;
+
+  // Mark all nodes as pending before starting (using raw data)
+  for i := 0 to NodesVerses.Count - 1 do
+  begin
+    verseData := PVerseData(NodesVerses[i]);
+    if Assigned(verseData) and not verseData^.ReferenceID.IsEmpty then
+    begin
+      node := FindTreeNodeByReference(verseData^.ReferenceID);
+      if Assigned(node) then
+        MarkNodeAsAIPending(node, verseData^.ReferenceID);
+    end;
+  end;
+
+  // Get association flow config and build prompt
+  flowConfig := GetFlowConfigById('association');
+  customInstructions := ObterInfo(AI_ASSOCIATION_CONFIG_KEY_CUSTOM_INSTRUCTIONS);
+
+  flow := TAIAssociationFlow.Create(
+    flowConfig.BuildPromptFromConfig([AI_ASSOCIATION_CONFIG_KEY_CUSTOM_INSTRUCTIONS, customInstructions])
+  );
+
+  FAIManager := TAIProcessingManager.Create(
+    ObterInfo(AI_COMMON_CONFIG.Model),
+    ObterInfo(AI_COMMON_CONFIG.ApiKey),
+    MaxParallel
+  );
+  // Configure manager with project settings
+  FAIManager.MaxRetries := StrToIntDef(ObterInfo(AI_COMMON_CONFIG.MaxRetries), 3);
+  FAIManager.RetryBaseDelay := StrToIntDef(ObterInfo(AI_COMMON_CONFIG.RetryDelay), 1000);
+  FAIManager.AutoSaveInterval := StrToIntDef(ObterInfo(AI_COMMON_CONFIG.AutoSaveInterval), 10);
+  FAIManager.OnAutoSaveNeeded := @HandleAutoSave;
+  FAIManager.GetVerseReference := @GetVerseReferenceString;
+  FAIManager.StartBatch(flow, NodesVerses, Self); // Pass project for lazy verse creation
+end;
+
+procedure TProjeto.StartAITranslationBatch(NodesVerses: TList; MaxParallel: Integer);
+var
+  flow: IAIVerseFlow;
+  flowConfig: IAIFlowConfig;
+  forceOverwrite: Boolean;
+  configValues: array[0..5] of TVarRec;
+  i: Integer;
+  verseData: PVerseData;
+  node: TTreeNode;
+begin
+  if (NodesVerses = nil) or (NodesVerses.Count = 0) then Exit;
+  if MaxParallel <= 0 then MaxParallel := 1;
+  if Assigned(FAIManager) then
+  begin
+    FAIManager.CancelAll;
+    ClearAllAINodeStates;
+    FreeAndNil(FAIManager);
+  end;
+
+  // Reset completion flag
+  FAIBatchCompletionShown := False;
+
+  // Mark all nodes as pending before starting (using raw data)
+  for i := 0 to NodesVerses.Count - 1 do
+  begin
+    verseData := PVerseData(NodesVerses[i]);
+    if Assigned(verseData) and not verseData^.ReferenceID.IsEmpty then
+    begin
+      node := FindTreeNodeByReference(verseData^.ReferenceID);
+      if Assigned(node) then
+        MarkNodeAsAIPending(node, verseData^.ReferenceID);
+    end;
+  end;
+
+  // Get translation flow config and prepare config values
+  flowConfig := GetFlowConfigById('translation');
+
+  // Build config values array for BuildPromptFromConfig
+  configValues[0].VType := vtAnsiString;
+  configValues[0].VAnsiString := PAnsiChar(AnsiString(AI_TRANSLATION_CONFIG_KEY_TARGET_LANGUAGE));
+  configValues[1].VType := vtAnsiString;
+  configValues[1].VAnsiString := PAnsiChar(AnsiString(ObterInfo(AI_TRANSLATION_CONFIG_KEY_TARGET_LANGUAGE)));
+
+  configValues[2].VType := vtAnsiString;
+  configValues[2].VAnsiString := PAnsiChar(AnsiString(AI_TRANSLATION_CONFIG_KEY_CUSTOM_INSTRUCTIONS));
+  configValues[3].VType := vtAnsiString;
+  configValues[3].VAnsiString := PAnsiChar(AnsiString(ObterInfo(AI_TRANSLATION_CONFIG_KEY_CUSTOM_INSTRUCTIONS)));
+
+  forceOverwrite := LowerCase(ObterInfo(AI_TRANSLATION_CONFIG_KEY_FORCE_OVERWRITE)) = 'true';
+
+  flow := TAITranslationFlow.Create(
+    flowConfig.BuildPromptFromConfig(configValues),
+    forceOverwrite
+  );
+
+  FAIManager := TAIProcessingManager.Create(
+    ObterInfo(AI_COMMON_CONFIG.Model),
+    ObterInfo(AI_COMMON_CONFIG.ApiKey),
+    MaxParallel
+  );
+  FAIManager.MaxRetries := StrToIntDef(ObterInfo(AI_COMMON_CONFIG.MaxRetries), 3);
+  FAIManager.RetryBaseDelay := StrToIntDef(ObterInfo(AI_COMMON_CONFIG.RetryDelay), 1000);
+  FAIManager.AutoSaveInterval := StrToIntDef(ObterInfo(AI_COMMON_CONFIG.AutoSaveInterval), 10);
+  FAIManager.OnAutoSaveNeeded := @HandleAutoSave;
+  FAIManager.GetVerseReference := @GetVerseReferenceString;
+  FAIManager.StartBatch(flow, NodesVerses, Self); // Pass project for lazy verse creation
+end;
+
+procedure TProjeto.HandleAutoSave(Sender: TObject);
+begin
+  // Called from main thread when autosave interval is reached
+  Salvar;
+end;
+
+function TProjeto.GetVerseReferenceString(Verse: TVersiculo): string;
+begin
+  // Return formatted reference for the current verse
+  if Verse = nil then
+  begin
+    Result := 'Unknown';
+    Exit;
+  end;
+  // Use current project reference (assumes verse is from this project)
+  Result := Format('%s %d:%d', [Book, Chapter, Self.Verse]);
+end;
+
+// REMOVED: PumpAIAssociation - obsolete since AI processing moved to modal
+// AI processing is now pumped by TFrmAIProcessing.PumpProcessing
+// Modal handles completion messages and manager lifecycle
+
+// REMOVED: GetAIBatchProgress - obsolete since AI processing moved to modal
+// Progress is now tracked internally by TFrmAIProcessing
 
 procedure TProjeto.RecriarBaseSugestoes;
 begin
@@ -3224,12 +3958,14 @@ begin
   FMarker := ID;
   PreRolagemVersiculo(nil);
   ScrollEventsEnabled := false;
+  FExportando := True;
 end;
 
 procedure TProjeto.FinishScrollingSession;
 begin
   GoToReference(FMarker);
   ScrollEventsEnabled := true;
+  FExportando := False;
 end;
 
 procedure TProjeto.RewindChapter;

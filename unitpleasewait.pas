@@ -27,7 +27,9 @@ var
 implementation
 
 initialization
+{$IFNDEF FPCUNIT}
   {$I unitpleasewait.lrs}
+{$ENDIF}
 
 end.
 

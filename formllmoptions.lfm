@@ -1,89 +1,117 @@
 object FrmLLMOptions: TFrmLLMOptions
   Left = 392
-  Height = 360
-  Top = 250
-  Width = 560
-  Caption = ''
+  Height = 756
+  Top = 200
+  Width = 680
+  ClientHeight = 756
+  ClientWidth = 680
   DesignTimePPI = 101
+  Position = poMainFormCenter
   OnCreate = FormCreate
-  LCLVersion = '3.0.0.0'
-  object LabelModel: TLabel
-    Left = 16
-    Top = 16
-    Width = 36
-    Height = 15
-    Caption = 'Model'
-  end
-  object cbModel: TComboBox
-    Left = 16
-    Top = 34
-    Width = 520
-    Height = 23
-    ItemHeight = 17
-    Style = csDropDown
+  object gbCommonSettings: TGroupBox
+    Left = 8
+    Height = 145
+    Top = 8
+    Width = 664
+    Anchors = [akTop, akLeft, akRight]
+    Caption = 'Common Settings (All Flows)'
+    ClientHeight = 123
+    ClientWidth = 660
     TabOrder = 0
+    object LabelModel: TLabel
+      Left = 8
+      Height = 17
+      Top = 8
+      Width = 38
+      Caption = 'Model'
+    end
+    object cbModel: TComboBox
+      Left = 8
+      Height = 25
+      Top = 26
+      Width = 400
+      ItemHeight = 17
+      TabOrder = 0
+    end
+    object btnTest: TButton
+      Left = 416
+      Height = 25
+      Top = 26
+      Width = 75
+      Caption = 'Test'
+      TabOrder = 1
+      OnClick = btnTestClick
+    end
+    object leApiKey: TLabeledEdit
+      Left = 8
+      Height = 25
+      Top = 78
+      Width = 400
+      EchoMode = emPassword
+      EditLabel.Height = 17
+      EditLabel.Width = 400
+      EditLabel.Caption = 'API key'
+      PasswordChar = '*'
+      TabOrder = 2
+    end
+    object leMaxParallel: TLabeledEdit
+      Left = 500
+      Height = 25
+      Top = 78
+      Width = 70
+      EditLabel.Height = 17
+      EditLabel.Width = 70
+      EditLabel.Caption = 'Max Parallel'
+      TabOrder = 3
+      Text = '2'
+    end
+    object leMaxRetries: TLabeledEdit
+      Left = 580
+      Height = 25
+      Top = 78
+      Width = 70
+      EditLabel.Height = 17
+      EditLabel.Width = 70
+      EditLabel.Caption = 'Max Retries'
+      TabOrder = 4
+      Text = '3'
+    end
   end
-  object leApiKey: TLabeledEdit
-    Left = 16
-    Top = 86
-    Width = 520
-    Height = 23
-    EditLabel.AnchorSideLeft.Control = leApiKey
-    EditLabel.AnchorSideTop.Control = leApiKey
-    EditLabel.AnchorSideTop.Side = asrCenter
-    EditLabel.Left = 16
-    EditLabel.Top = 68
-    EditLabel.Width = 38
-    EditLabel.Height = 15
-    EditLabel.Caption = 'API key'
+  object pcFlows: TPageControl
+    Left = 8
+    Height = 540
+    Top = 160
+    Width = 664
+    ActivePage = tsAssociation
+    Anchors = [akTop, akLeft, akRight, akBottom]
+    TabIndex = 0
     TabOrder = 1
-    EchoMode = emPassword
-    PasswordChar = '*'
-  end
-  object LabelPrompt: TLabel
-    Left = 16
-    Top = 120
-    Width = 41
-    Height = 15
-    Caption = 'Prompt'
-  end
-  object MemoPrompt: TMemo
-    Left = 16
-    Top = 138
-    Width = 520
-    Height = 146
-    ScrollBars = ssAutoBoth
-    TabOrder = 2
+    object tsAssociation: TTabSheet
+      Caption = 'Association'
+    end
+    object tsTranslation: TTabSheet
+      Caption = 'Translation'
+    end
   end
   object btnOK: TButton
-    Left = 376
-    Top = 300
-    Width = 75
+    Left = 488
     Height = 25
+    Top = 716
+    Width = 88
     Anchors = [akRight, akBottom]
     Caption = 'OK'
     Default = True
+    TabOrder = 2
     OnClick = btnOKClick
-    TabOrder = 3
-  end
-  object btnTest: TButton
-    Left = 291
-    Top = 300
-    Width = 75
-    Height = 25
-    Anchors = [akRight, akBottom]
-    Caption = 'Test'
-    OnClick = btnTestClick
-    TabOrder = 5
   end
   object btnCancel: TButton
-    Left = 461
-    Top = 300
-    Width = 75
+    Left = 584
     Height = 25
+    Top = 716
+    Width = 88
     Anchors = [akRight, akBottom]
     Caption = 'Cancel'
     ModalResult = 2
-    TabOrder = 4
+    TabOrder = 3
   end
 end

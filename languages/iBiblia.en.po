@@ -11,6 +11,134 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "X-Generator: Poedit 3.3.2\n"
 
+#: ai_association_flow.sconfigadditionalinstructionsdescription
+msgid "Add specific guidelines for your project (e.g., handling of poetry, examples for edge cases)"
+msgstr ""
+
+#: ai_association_flow.sconfigadditionalinstructionsdisplayname
+msgctxt "ai_association_flow.sconfigadditionalinstructionsdisplayname"
+msgid "Additional Instructions"
+msgstr ""
+
+#: ai_association_flow.sconfigapikeyoverridedescription
+msgctxt "ai_association_flow.sconfigapikeyoverridedescription"
+msgid "Specify a different API key for this flow. Leave empty to use global setting."
+msgstr ""
+
+#: ai_association_flow.sconfigapikeyoverridedisplayname
+msgctxt "ai_association_flow.sconfigapikeyoverridedisplayname"
+msgid "API Key"
+msgstr ""
+
+#: ai_association_flow.sconfigincludecommentsdescription
+msgid "If enabled, the AI will provide critical comments about the associations."
+msgstr ""
+
+#: ai_association_flow.sconfigincludecommentsdisplayname
+msgid "Include AI Comments"
+msgstr ""
+
+#: ai_association_flow.sconfigmodeloverridedescription
+msgctxt "ai_association_flow.sconfigmodeloverridedescription"
+msgid "Specify a different model for this flow. Leave empty to use global setting."
+msgstr ""
+
+#: ai_association_flow.sconfigmodeloverridedisplayname
+msgctxt "ai_association_flow.sconfigmodeloverridedisplayname"
+msgid "Model"
+msgstr ""
+
+#: ai_association_flow.sconfigprovideroverridedescription
+msgctxt "ai_association_flow.sconfigprovideroverridedescription"
+msgid "Specify a different provider for this flow. Leave empty to use global setting."
+msgstr ""
+
+#: ai_association_flow.sconfigprovideroverridedisplayname
+msgctxt "ai_association_flow.sconfigprovideroverridedisplayname"
+msgid "Provider"
+msgstr ""
+
+#: ai_association_flow.sdescriptionassociation
+msgid "Matches corresponding phrases between original and translated texts"
+msgstr ""
+
+#: ai_association_flow.sdisplaynameassociation
+msgctxt "ai_association_flow.sdisplaynameassociation"
+msgid "Association"
+msgstr ""
+
+#: ai_association_flow.soutputformatinfoassociation
+msgid "This flow expects JSON output: {\"data\": [[original, translation], ...], \"comments\": \"...\" (optional)}"
+msgstr ""
+
+#: ai_translation_flow.sconfigadditionalinstructionsdescription
+msgid "Add translation philosophy, terminology preferences, or context-specific rules"
+msgstr ""
+
+#: ai_translation_flow.sconfigadditionalinstructionsdisplayname
+msgctxt "ai_translation_flow.sconfigadditionalinstructionsdisplayname"
+msgid "Additional Instructions"
+msgstr ""
+
+#: ai_translation_flow.sconfigapikeyoverridedescription
+msgctxt "ai_translation_flow.sconfigapikeyoverridedescription"
+msgid "Specify a different API key for this flow. Leave empty to use global setting."
+msgstr ""
+
+#: ai_translation_flow.sconfigapikeyoverridedisplayname
+msgctxt "ai_translation_flow.sconfigapikeyoverridedisplayname"
+msgid "API Key"
+msgstr ""
+
+#: ai_translation_flow.sconfigforceoverwritedescription
+msgid "If checked, overwrites existing translations. If unchecked, only translates empty verses."
+msgstr ""
+
+#: ai_translation_flow.sconfigforceoverwritedisplayname
+msgid "Force Overwrite"
+msgstr ""
+
+#: ai_translation_flow.sconfigmodeloverridedescription
+msgctxt "ai_translation_flow.sconfigmodeloverridedescription"
+msgid "Specify a different model for this flow. Leave empty to use global setting."
+msgstr ""
+
+#: ai_translation_flow.sconfigmodeloverridedisplayname
+msgctxt "ai_translation_flow.sconfigmodeloverridedisplayname"
+msgid "Model"
+msgstr ""
+
+#: ai_translation_flow.sconfigprovideroverridedescription
+msgctxt "ai_translation_flow.sconfigprovideroverridedescription"
+msgid "Specify a different provider for this flow. Leave empty to use global setting."
+msgstr ""
+
+#: ai_translation_flow.sconfigprovideroverridedisplayname
+msgctxt "ai_translation_flow.sconfigprovideroverridedisplayname"
+msgid "Provider"
+msgstr ""
+
+#: ai_translation_flow.sconfigtargetlanguagedescription
+msgid "Specify the target language for translation (e.g., \"Brazilian Portuguese\", \"Spanish\")"
+msgstr ""
+
+#: ai_translation_flow.sconfigtargetlanguagedisplayname
+msgid "Target Language"
+msgstr ""
+
+#: ai_translation_flow.sdescriptiontranslation
+msgid "Translates biblical verses maintaining theological and stylistic accuracy"
+msgstr ""
+
+#: ai_translation_flow.sdisplaynametranslation
+msgctxt "ai_translation_flow.sdisplaynametranslation"
+msgid "Translation"
+msgstr ""
+
+#: ai_translation_flow.soutputformatinfotranslation
+msgid "This flow expects plain text output without quotes or explanations"
+msgstr ""
+
 #: chapterview.schapterbeginning
 msgid "Beginning of chapter"
 msgstr "Beginning of chapter"
@@ -52,6 +180,51 @@ msgstr "Choose &font..."
 #: chapterview.sverserules
 msgid "Verse &rules..."
 msgstr "Verse &rules..."
+
+#: formaiprocessing.saiprocessingcancelled
+msgid "Processing cancelled"
+msgstr ""
+
+#: formaiprocessing.saiprocessingcancelling
+msgid "Cancelling..."
+msgstr ""
+
+#: formaiprocessing.saiprocessingcompleted
+#, object-pascal-format
+msgid "Processing completed: %d successful, %d failed"
+msgstr ""
+
+#: formaiprocessing.saiprocessinginprogress
+#, object-pascal-format
+msgid "Processing: %d of %d verses (%d%%)"
+msgstr ""
+
+#: formaiprocessing.saiprocessingtitle
+msgid "AI Processing"
+msgstr ""
+
+#: formaiprocessing.sapplysuccessful
+msgid "Changes applied successfully"
+msgstr ""
+
+#: formaiprocessing.scancelconfirmation
+msgid "Are you sure you want to cancel the AI processing?"
+msgstr ""
+
+#: formaiprocessing.sconfirmation
+#, fuzzy
+msgctxt "formaiprocessing.sconfirmation"
+msgid "Confirmation"
+msgstr "Confirmation"
+
+#: formaiprocessing.sdiscardconfirmation
+msgid "Are you sure you want to discard the AI results?"
+msgstr ""
+
+#: formaiprocessing.sestimatedtimeremaining
+#, object-pascal-format
+msgid "Estimated time remaining: %s"
+msgstr ""
 
 #: formapplypatch.signoredversesonpatch
 #, object-pascal-format
@@ -96,6 +269,10 @@ msgstr "theWord Bible module (*.ont)"
 msgid "theWord Bible module (*.ot)"
 msgstr "theWord Bible module (*.ot)"
 
+#: formllmoptions.rsadditionalinstructions
+msgid "Additional Instructions (Optional):"
+msgstr ""
+
 #: formllmoptions.rsbtncancel
 #, fuzzy
 msgctxt "formllmoptions.rsbtncancel"
@@ -108,32 +285,67 @@ msgctxt "formllmoptions.rsbtnok"
 msgid "OK"
 msgstr "OK"
 
+#: formllmoptions.rsbtnreset
+msgid "Reset to Default"
+msgstr ""
+
 #: formllmoptions.rsbtntest
+msgctxt "formllmoptions.rsbtntest"
 msgid "Test"
 msgstr ""
 
+#: formllmoptions.rsbtnviewdefault
+msgid "View Default Prompt"
+msgstr ""
+
+#: formllmoptions.rscommonsettings
+msgctxt "formllmoptions.rscommonsettings"
+msgid "Common Settings (All Flows)"
+msgstr ""
+
+#: formllmoptions.rscustominstructionshint
+msgid "Add specific guidelines for your project (e.g., translation philosophy, examples). Leave empty to use only the default prompt."
+msgstr ""
+
+#: formllmoptions.rsdefaultprompttitle
+#, object-pascal-format
+msgid "Default Prompt - %s"
+msgstr ""
+
 #: formllmoptions.rsfallbacktestprompt
-msgid "Say hello."
+msgid "Tell me something about you. Answer in JSON format."
 msgstr ""
 
 #: formllmoptions.rslabelapikey
+msgctxt "formllmoptions.rslabelapikey"
 msgid "API key"
 msgstr ""
 
-#: formllmoptions.rslabelmodel
-msgid "Model"
+#: formllmoptions.rslabelmaxparallel
+msgctxt "formllmoptions.rslabelmaxparallel"
+msgid "Max Parallel"
 msgstr ""
 
-#: formllmoptions.rslabelprompt
-msgid "Prompt"
+#: formllmoptions.rslabelmaxretries
+msgctxt "formllmoptions.rslabelmaxretries"
+msgid "Max Retries"
+msgstr ""
+
+#: formllmoptions.rslabelmodel
+msgctxt "formllmoptions.rslabelmodel"
+msgid "Model"
 msgstr ""
 
 #: formllmoptions.rsllmoptionscaption
 msgid "LLM Options"
 msgstr ""
 
+#: formllmoptions.rsprovideroverride
+msgid "Provider Override (Optional)"
+msgstr ""
+
 #: formllmoptions.rssystemprompt
-msgid "You are a helpful assistant."
+msgid "You are a helpful assistant ready to assist users with their questions on Bible translation."
 msgstr ""
 
 #: formllmoptions.rstestfailedtitle
@@ -536,6 +748,32 @@ msgstr "Amos"
 msgid "Anaytical Concordance"
 msgstr "Anaytical Concordance"
 
+#: projeto.sanalyzingverse
+msgid "Analyzing verse..."
+msgstr ""
+
+#: projeto.sapplyaito
+msgid "Apply AI flow to..."
+msgstr ""
+
+#: projeto.sapplyaitofmt
+#, object-pascal-format
+msgid "Apply AI flow to %s"
+msgstr ""
+
+#: projeto.sassociate
+msgid "Associate"
+msgstr ""
+
+#: projeto.sassociation
+msgctxt "projeto.sassociation"
+msgid "Association"
+msgstr ""
+
+#: projeto.scancelaiprocessing
+msgid "Cancel AI processing"
+msgstr ""
+
 #: projeto.scolossians
 msgctxt "projeto.scolossians"
 msgid "Colossians"
@@ -545,7 +783,18 @@ msgstr "Colossians"
 msgid "Compressed dictionary"
 msgstr "Compressed dictionary"
 
+#: projeto.sconfirmapplyaitobook
+#, object-pascal-format
+msgid "Are you sure you want to apply the AI flow to the entire book %s?"
+msgstr ""
+
+#: projeto.sconfirmapplyaitochapter
+#, object-pascal-format
+msgid "Are you sure you want to apply the AI flow to chapter %s?"
+msgstr ""
+
 #: projeto.sconfirmation
+msgctxt "projeto.sconfirmation"
 msgid "Confirmation"
 msgstr "Confirmation"
 
@@ -823,6 +1072,11 @@ msgctxt "projeto.smark"
 msgid "Mark"
 msgstr "Mark"
 
+#: projeto.smarkasfmt
+#, object-pascal-format
+msgid "Mark %s as..."
+msgstr ""
+
 #: projeto.smatthew
 msgctxt "projeto.smatthew"
 msgid "Matthew"
@@ -935,6 +1189,10 @@ msgctxt "projeto.sruth"
 msgid "Ruth"
 msgstr "Ruth"
 
+#: projeto.ssetstatuschildren
+msgid "Set status of all children to..."
+msgstr ""
+
 #: projeto.ssongofsolomon
 msgctxt "projeto.ssongofsolomon"
 msgid "Song of Solomon"
@@ -976,6 +1234,15 @@ msgstr "Synthetic Concordance"
 msgctxt "projeto.stitus"
 msgid "Titus"
 msgstr "Titus"
+
+#: projeto.stranslate
+msgid "Translate"
+msgstr ""
+
+#: projeto.stranslation
+msgctxt "projeto.stranslation"
+msgid "Translation"
+msgstr ""
 
 #: projeto.stranslationmemory
 msgid "Translation memory"
@@ -1417,8 +1684,64 @@ msgstr "Interlinear source text"
 msgid "Strong's concordance"
 msgstr "Strong's concordance"
 
-#: tfrmllmoptions.caption
-msgid "FrmLLMOptions"
+#: tfrmllmoptions.btncancel.caption
+#, fuzzy
+msgctxt "tfrmllmoptions.btncancel.caption"
+msgid "Cancel"
+msgstr "Cancel"
+
+#: tfrmllmoptions.btnok.caption
+#, fuzzy
+msgctxt "tfrmllmoptions.btnok.caption"
+msgid "OK"
+msgstr "OK"
+
+#: tfrmllmoptions.btntest.caption
+msgctxt "tfrmllmoptions.btntest.caption"
+msgid "Test"
+msgstr ""
+
+#: tfrmllmoptions.gbcommonsettings.caption
+msgctxt "tfrmllmoptions.gbcommonsettings.caption"
+msgid "Common Settings (All Flows)"
+msgstr ""
+
+#: tfrmllmoptions.labelmodel.caption
+msgctxt "tfrmllmoptions.labelmodel.caption"
+msgid "Model"
+msgstr ""
+
+#: tfrmllmoptions.leapikey.editlabel.caption
+msgctxt "tfrmllmoptions.leapikey.editlabel.caption"
+msgid "API key"
+msgstr ""
+
+#: tfrmllmoptions.lemaxparallel.editlabel.caption
+msgctxt "tfrmllmoptions.lemaxparallel.editlabel.caption"
+msgid "Max Parallel"
+msgstr ""
+
+#: tfrmllmoptions.lemaxparallel.text
+msgid "2"
+msgstr ""
+
+#: tfrmllmoptions.lemaxretries.editlabel.caption
+msgctxt "tfrmllmoptions.lemaxretries.editlabel.caption"
+msgid "Max Retries"
+msgstr ""
+
+#: tfrmllmoptions.lemaxretries.text
+msgid "3"
+msgstr ""
+
+#: tfrmllmoptions.tsassociation.caption
+msgctxt "tfrmllmoptions.tsassociation.caption"
+msgid "Association"
+msgstr ""
+
+#: tfrmllmoptions.tstranslation.caption
+msgctxt "tfrmllmoptions.tstranslation.caption"
+msgid "Translation"
 msgstr ""
 
 #: tfrmprincipal.actionabrirprojeto.caption
@@ -1816,6 +2139,10 @@ msgstr ""
 #: twautomate.stwsynchronizationerrortitle
 msgid "Synchronization error"
 msgstr "Synchronization error"
+
+#: versiculo.scopyassociationexample
+msgid "Copy association example for AI instructions"
+msgstr ""
 
 #: versiculo.scopyassociationsjsontoclipboard
 msgid "Copy association &JSON to clipboard"

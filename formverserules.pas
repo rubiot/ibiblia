@@ -97,7 +97,9 @@ begin
 end;
 
 initialization
+{$IFNDEF FPCUNIT}
   {$I formverserules.lrs}
+{$ENDIF}
 
 end.
 

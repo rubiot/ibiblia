@@ -917,16 +917,13 @@ begin
   Words := CreateStringList(['x', 'y']); // Search for 'x' and 'y'
   try
     verse1.FindAndSelectSyntagms(Words, False, False);
-    // Sequential search for ['x', 'y'] fails because FSintagmas[0] ('x') is selected.
-    // Any-order search:
-    // For 'x': finds FSintagmas[6] (second 'x')
-    // For 'y': finds FSintagmas[2] (first 'y')
-    // Expected: Original selection [0] + new found [6,2] (order in Selecao might depend on AddToSelection calls)
-    // The Selecao list should maintain insertion order.
-    // FoundSyntagms in FindAndSelectSyntagms (any-order part) adds in order of Words list.
-    // So, FSintagmas[6] then FSintagmas[2].
-    // Final Selecao: [0, 6, 2]
-    AssertSelectionEqualsIndices([0, 6, 2]);
+    // Sequential search now succeeds (after fix to skip already selected syntagms):
+    // For 'x': skips FSintagmas[0] (already selected), finds FSintagmas[6] (second 'x')
+    // For 'y': starting from index 7, finds FSintagmas[8] (second 'y')
+    // Sequential search succeeds, so any-order search is not attempted.
+    // Expected: Original selection [0] + sequential found [6,8]
+    // Final Selecao: [0, 6, 8]
+    AssertSelectionEqualsIndices([0, 6, 8]);
   finally
     Words.Free;
   end;
@@ -1201,8 +1198,8 @@ end;
 
 procedure TVerseTests.SetUp;
 begin
-  verse1 := TVersiculo.Criar;
-  verse2 := TVersiculo.Criar;
+  verse1 := TVersiculo.Criar(nil);
+  verse2 := TVersiculo.Criar(nil);
   verse1.VersiculoPar := verse2;
 end;
 

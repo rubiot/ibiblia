@@ -1,0 +1,252 @@
+object FrmAIProcessing: TFrmAIProcessing
+  Left = 384
+  Height = 770
+  Top = 162
+  Width = 829
+  Caption = 'AI Processing'
+  ClientHeight = 770
+  ClientWidth = 829
+  DesignTimePPI = 101
+  Position = poMainFormCenter
+  OnCreate = FormCreate
+  OnDestroy = FormDestroy
+  OnShow = FormShow
+  object GroupBoxVerses: TGroupBox
+    Left = 0
+    Height = 667
+    Top = 0
+    Width = 235
+    Align = alLeft
+    Caption = 'Verses'
+    ClientHeight = 645
+    ClientWidth = 231
+    TabOrder = 0
+    object BtnSelectAll: TButton
+      Left = 8
+      Height = 26
+      Top = 8
+      Width = 105
+      Caption = 'Select all'
+      TabOrder = 0
+      OnClick = BtnSelectAllClick
+    end
+    object BtnDeselectAll: TButton
+      Left = 118
+      Height = 26
+      Top = 8
+      Width = 105
+      Caption = 'Deselect all'
+      TabOrder = 1
+      OnClick = BtnDeselectAllClick
+    end
+  end
+  object PanelBottom: TPanel
+    Left = 0
+    Height = 103
+    Top = 667
+    Width = 829
+    Align = alBottom
+    ClientHeight = 103
+    ClientWidth = 829
+    TabOrder = 1
+    object LabelProgress: TLabel
+      Left = 8
+      Height = 17
+      Top = 8
+      Width = 132
+      Caption = 'Preparing to process...'
+      ParentColor = False
+    end
+    object LabelETA: TLabel
+      Left = 8
+      Height = 17
+      Top = 27
+      Width = 225
+      Caption = 'Estimated time remaining: calculating...'
+      ParentColor = False
+      Visible = False
+    end
+    object ProgressBar1: TProgressBar
+      Left = 8
+      Height = 21
+      Top = 46
+      Width = 813
+      Anchors = [akTop, akLeft, akRight]
+      TabOrder = 0
+    end
+    object BtnCancel: TButton
+      Left = 8
+      Height = 26
+      Top = 72
+      Width = 105
+      Caption = 'Cancel'
+      TabOrder = 1
+      OnClick = BtnCancelClick
+    end
+    object BtnApply: TButton
+      Left = 601
+      Height = 26
+      Top = 72
+      Width = 105
+      Anchors = [akTop, akRight]
+      Caption = 'Apply'
+      Enabled = False
+      ModalResult = 1
+      TabOrder = 2
+      OnClick = BtnApplyClick
+    end
+    object BtnClose: TButton
+      Left = 716
+      Height = 26
+      Top = 72
+      Width = 105
+      Anchors = [akTop, akRight]
+      Caption = 'Discard'
+      Enabled = False
+      ModalResult = 2
+      TabOrder = 3
+      OnClick = BtnCloseClick
+    end
+    object LabelSrcText: TLabel
+      Left = 476
+      Height = 16
+      Top = 9
+      Width = 170
+      AutoSize = False
+      Caption = 'Source text'
+      Color = clGreen
+      Font.Color = clWhite
+      ParentColor = False
+      ParentFont = False
+      Transparent = False
+    end
+    object LabelDstText: TLabel
+      Left = 655
+      Height = 16
+      Top = 8
+      Width = 170
+      AutoSize = False
+      Caption = 'Destination text'
+      Color = clGreen
+      Font.Color = clWhite
+      ParentColor = False
+      ParentFont = False
+      Transparent = False
+    end
+    object LabelAssociations: TLabel
+      Left = 296
+      Height = 16
+      Top = 24
+      Width = 170
+      AutoSize = False
+      Caption = 'Associations'
+      Color = clGreen
+      Font.Color = clWhite
+      ParentColor = False
+      ParentFont = False
+      Transparent = False
+    end
+    object LabelComments: TLabel
+      Left = 476
+      Height = 16
+      Top = 24
+      Width = 170
+      AutoSize = False
+      Caption = 'Comments'
+      Color = clGreen
+      Font.Color = clWhite
+      ParentColor = False
+      ParentFont = False
+      Transparent = False
+    end
+    object LabelStatus: TLabel
+      Left = 655
+      Height = 16
+      Top = 24
+      Width = 170
+      AutoSize = False
+      Caption = 'Status'
+      Color = clGreen
+      Font.Color = clWhite
+      ParentColor = False
+      ParentFont = False
+      Transparent = False
+    end
+  end
+  object TabControlPreview: TTabControl
+    Left = 240
+    Height = 667
+    Top = 0
+    Width = 589
+    OnChange = TabControlPreviewChange
+    TabIndex = 1
+    Tabs.Strings = (
+      'AI Results'
+      'Current Project'
+    )
+    Align = alClient
+    TabOrder = 2
+    object ScrollBoxSrcText: TScrollBox
+      Left = 2
+      Height = 203
+      Top = 25
+      Width = 585
+      HorzScrollBar.Page = 1
+      VertScrollBar.Page = 1
+      Align = alTop
+      TabOrder = 0
+    end
+    object Splitter1: TSplitter
+      Cursor = crVSplit
+      Left = 0
+      Height = 5
+      Top = 224
+      Width = 587
+      Align = alNone
+      Anchors = []
+      ResizeAnchor = akTop
+    end
+    object ScrollBoxDstText: TScrollBox
+      Left = 2
+      Height = 261
+      Top = 228
+      Width = 585
+      HorzScrollBar.Page = 1
+      VertScrollBar.Page = 1
+      Align = alTop
+      TabOrder = 1
+    end
+    object Splitter2: TSplitter
+      Cursor = crVSplit
+      Left = 2
+      Height = 5
+      Top = 489
+      Width = 585
+      Align = alTop
+      ResizeAnchor = akTop
+    end
+    object MemoComments: TMemo
+      Left = 2
+      Height = 171
+      Top = 494
+      Width = 585
+      Align = alClient
+      ReadOnly = True
+      ScrollBars = ssAutoBoth
+      TabOrder = 2
+    end
+  end
+  object Splitter3: TSplitter
+    Left = 235
+    Height = 667
+    Top = 0
+    Width = 5
+  end
+  object TimerUpdate: TTimer
+    Enabled = False
+    Interval = 500
+    OnTimer = TimerUpdateTimer
+    Left = 758
+    Top = 8
+  end
+end

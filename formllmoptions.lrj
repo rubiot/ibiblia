@@ -1,0 +1,14 @@
+{"version":1,"strings":[
+{"hash":153331625,"name":"tfrmllmoptions.gbcommonsettings.caption","sourcebytes":[67,111,109,109,111,110,32,83,101,116,116,105,110,103,115,32,40,65,108,108,32,70,108,111,119,115,41],"value":"Common Settings (All Flows)"},
+{"hash":5528252,"name":"tfrmllmoptions.labelmodel.caption","sourcebytes":[77,111,100,101,108],"value":"Model"},
+{"hash":371876,"name":"tfrmllmoptions.btntest.caption","sourcebytes":[84,101,115,116],"value":"Test"},
+{"hash":105607561,"name":"tfrmllmoptions.leapikey.editlabel.caption","sourcebytes":[65,80,73,32,107,101,121],"value":"API key"},
+{"hash":230725596,"name":"tfrmllmoptions.lemaxparallel.editlabel.caption","sourcebytes":[77,97,120,32,80,97,114,97,108,108,101,108],"value":"Max Parallel"},
+{"hash":50,"name":"tfrmllmoptions.lemaxparallel.text","sourcebytes":[50],"value":"2"},
+{"hash":144180627,"name":"tfrmllmoptions.lemaxretries.editlabel.caption","sourcebytes":[77,97,120,32,82,101,116,114,105,101,115],"value":"Max Retries"},
+{"hash":51,"name":"tfrmllmoptions.lemaxretries.text","sourcebytes":[51],"value":"3"},
+{"hash":162530830,"name":"tfrmllmoptions.tsassociation.caption","sourcebytes":[65,115,115,111,99,105,97,116,105,111,110],"value":"Association"},
+{"hash":175319054,"name":"tfrmllmoptions.tstranslation.caption","sourcebytes":[84,114,97,110,115,108,97,116,105,111,110],"value":"Translation"},
+{"hash":1339,"name":"tfrmllmoptions.btnok.caption","sourcebytes":[79,75],"value":"OK"},
+{"hash":77089212,"name":"tfrmllmoptions.btncancel.caption","sourcebytes":[67,97,110,99,101,108],"value":"Cancel"}
+]}

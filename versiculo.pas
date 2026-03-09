@@ -11,7 +11,7 @@ interface
 uses
   Classes, SysUtils, StrUtils, ExtCtrls, StdCtrls, Controls, Graphics,
   ONTTokenizer, Syntagm, Forms, LCLType, Math, LCLProc, Dialogs, LazUTF8,
-  ONTParser, dbugintf, Menus, Clipbrd, PCRE;
+  ONTParser, dbugintf, Menus, Clipbrd, PCRE, ai_debug;
 
 type
 
@@ -28,6 +28,8 @@ type
   TVersiculo = class
   private
     FProject: TObject;
+    FReferencia: string;
+    FReferenciaID: string;
     FRightToLeft: Boolean;
     { Private declarations }
     FMostrarDicas: boolean;
@@ -58,6 +60,7 @@ type
     FSyntagmPopupMenu: TPopupMenu;
     FVersePopupMenu: TPopupMenu;
     FRTLMenuItem: TMenuItem;
+    FCopyAssociationExampleMenuItem: TMenuItem;
     FFixWrongFiTag: IRegex;
     FReadOnly: Boolean;
     { determines the auto select behaviour on right-click association }
@@ -70,6 +73,7 @@ type
     function GetFonte: TFont;
     function GetPares: string;
     function GetTextoSimples: string;
+    function GetProjeto: TObject;
     procedure SetAtivo(const AValue: boolean);
     procedure SetFonte(const AValue: TFont);
     procedure SetModificado(const AValue: boolean);
@@ -101,16 +105,19 @@ type
     procedure InitSyntagmPopupMenu;
     procedure InitVersePopupMenu;
     procedure OnCopyAssociationsJSONToClipboard(Sender: TObject);
+    procedure OnCopyAssociationExample(Sender: TObject);
     procedure OnSwitchDestinationAndReference1Texts(Sender: TObject);
     procedure OnCopySintagmasAsJSON(Sender: TObject);
     function GetAssociationsJSON: string;
+    function HasAssociations: boolean;
   protected
     { Protected declarations }
   public
     { Public declarations }
-    constructor Criar(AProject: TObject);
-    constructor Criar(AProject: TObject; TheOwner: TScrollBox);
+    constructor Criar(AProject: TObject; const AReferencia: string = '');
+    constructor Criar(AProject: TObject; TheOwner: TScrollBox; const AReferencia: string = '');
     destructor Destruir;
+    procedure MarkDestroying;
     procedure LimparSintagmas;
     procedure AssociarSintagmas;
     procedure LimparSelecao;
@@ -138,6 +145,9 @@ type
           strongsnaotraduzidos: boolean): string;
 
     property VersiculoPar: TVersiculo read FVersiculoRef write SetVersiculoPar;
+    property Referencia: string read FReferencia write FReferencia;
+    property ReferenciaID: string read FReferenciaID write FReferenciaID;
+    property Projeto: TObject read GetProjeto;
     property XML: string read FXML;
     property Texto: string read GetTexto write SetTexto;
     property Pares: string read GetPares write SetPares;
@@ -170,6 +180,7 @@ type
     property ReadOnly: Boolean read FReadOnly write FReadOnly default False;
     property RightToLeft: Boolean read FRightToLeft write SetRightToLeft default False;
     property NextAutoSelectWordMustHaveStrongMorpho: boolean read FNextAutoSelectWordMustHaveStrongMorpho write FNextAutoSelectWordMustHaveStrongMorpho;
+     property Destroying: boolean read FDestruindo;
  published
     { Published declarations }
   end;
@@ -185,6 +196,7 @@ resourcestring
   SCopyInterlinearVerseToClipboard = 'Copy &interlinear verse to clipboard';
   SCopyXMLToClipboard = 'Copy association &XML to clipboard';
   SCopyAssociationsJSONToClipboard = 'Copy association &JSON to clipboard';
+  SCopyAssociationExample = 'Copy association example for AI instructions';
   SSwitchDestinationAndReference1Texts = 'Switch destination text with reference 1';
 
 implementation
@@ -237,9 +249,15 @@ end;
 
 { TVersiculo }
 
-constructor TVersiculo.Criar(AProject: TObject; TheOwner : TScrollBox);
+constructor TVersiculo.Criar(AProject: TObject; TheOwner : TScrollBox; const AReferencia: string = '');
 begin
+  AIDebugLogFmt('[TVersiculo] Criar called. Self=%s, Project=%s, Owner=%s, Referencia=%s',
+    [IntToHex(PtrUInt(Pointer(Self)), SizeOf(Pointer)*2),
+     IntToHex(PtrUInt(Pointer(AProject)), SizeOf(Pointer)*2),
+     IntToHex(PtrUInt(Pointer(TheOwner)), SizeOf(Pointer)*2),
+     AReferencia]);
   FProject := AProject;
+  FReferencia := AReferencia;
   FPanel := TheOwner;
 
   FAtivo := assigned(FPanel);
@@ -288,6 +306,11 @@ end;
 
 destructor TVersiculo.Destruir;
 begin
+  AIDebugLogFmt('[TVersiculo] Destruir called. Self=%s, Project=%s, Panel=%s, Referencia=%s',
+    [IntToHex(PtrUInt(Pointer(Self)), SizeOf(Pointer)*2),
+     IntToHex(PtrUInt(Pointer(FProject)), SizeOf(Pointer)*2),
+     IntToHex(PtrUInt(Pointer(FPanel)), SizeOf(Pointer)*2),
+     FReferencia]);
   FDestruindo := true;
   LimparSintagmas;
   FSintagmas.Free;
@@ -303,6 +326,12 @@ begin
   end;
   FONTParser.Destroy;
   //FFontePadrao.Free;
+  inherited Destroy;
+end;
+
+procedure TVersiculo.MarkDestroying;
+begin
+  FDestruindo := true;
 end;
 
 procedure TVersiculo.LimparSintagmas;
@@ -522,25 +551,10 @@ procedure TVersiculo.AlterarTexto(_XML: string);
 
   procedure DeleteSyntagm(i: integer; newlist: TSyntagmList);
   var
-    s, s1, pair: TSyntagm;
+    s: TSyntagm;
   begin
     s := FSintagmas[i];
-    if assigned(s.Pairs) then
-    begin
-      for pair in FVersiculoRef.Sintagmas do
-      begin
-        pair.Pairs.Remove(s);
-        if pair.Pairs.Count = 0 then
-          pair.IsAssociated := false;
-      end;
-      s.Pairs.Clear;
-    end;
-
-    if s.Kind = tsSintagma then
-      for s1 in newlist do
-        if assigned(s1.Siblings) then
-          s1.Siblings.Remove(s);
-
+    s.Disassociate;
     s.Destroy;
     FSintagmas.Delete(i);
   end;
@@ -575,27 +589,30 @@ begin
        result.Add(new[0]);
        new.Delete(0);
       end
+      else if FSintagmas.First.IsEqualTo(new.First) then
+      begin
+        with FSintagmas.First do
+        begin
+          if Kind = tsSintagma then
+          begin
+            Strong.Free;
+            Morph.Free;
+            Strong := new.First.Strong;
+            Morph   := new.First.Morph;
+            new.First.Strong := nil;
+            new.First.Morph   := nil;
+          end;
+        end;
+        result.Add(FSintagmas.First);
+        FSintagmas.Delete(0);
+        new.First.Destroy;
+        new.Delete(0);
+      end
       else if FSintagmas.First.Kind <> tsSintagma then
         DeleteSyntagm(0, result)
       else if new.First.Kind <> tsSintagma then
       begin
         result.Add(new[0]);
-        new.Delete(0);
-      end
-      else if new.First.IsEqualTo(FSintagmas.First) then
-      begin
-        with FSintagmas.First do
-        begin
-          Strong.Free;
-          Morph.Free;
-          Strong := new.First.Strong;
-          Morph   := new.First.Morph;
-          new.First.Strong := nil;
-          new.First.Morph   := nil;
-        end;
-        result.Add(FSintagmas.First);
-        FSintagmas.Delete(0);
-        new.First.Destroy;
         new.Delete(0);
       end
       else
@@ -639,6 +656,11 @@ begin
 
   FAtivo := oldActive;
   Renderizar;
+end;
+
+function TVersiculo.GetProjeto: TObject;
+begin
+  Result := FProject;
 end;
 
 function TVersiculo.GetTexto: string;
@@ -1307,20 +1329,37 @@ end;
 procedure TVersiculo.SelecionarListaSintagmas(lst: string);
 var
   tokens: TStringList;
-  i, s: smallint;
+  i: Integer;
+  idx: Integer;
+  ok: Boolean;
 begin
   tokens := TStringList.Create;
-  tokens.DelimitedText := lst;
-  tokens.CustomSort(@CompareIndexes);
-  for i:=0 to tokens.Count-1 do
-  begin
-    s := StrToInt(tokens[i]);
-    if (s < 0) or (s >= Sintagmas.Count) or not (Sintagmas[s].Kind in [tsSintagma, tsPontuacao]) then
-      raise Exception.Create(format('Invalid syntagm index: %d', [s]))
-    else
-      Sintagmas[s].AddToSelection;
+  try
+    tokens.DelimitedText := lst;
+    tokens.CustomSort(@CompareIndexes);
+    for i := 0 to tokens.Count - 1 do
+    begin
+      ok := TryStrToInt(tokens[i], idx);
+      if not ok then
+      begin
+        AIDebugLogFmt('[SelecionarListaSintagmas] Invalid token (not integer): %s', [tokens[i]]);
+        Continue;
+      end;
+      if (idx < 0) or (idx >= Sintagmas.Count) then
+      begin
+        AIDebugLogFmt('[SelecionarListaSintagmas] Index out of range: %d (Count=%d)', [idx, Sintagmas.Count]);
+        Continue;
+      end;
+      if not (Sintagmas[idx].Kind in [tsSintagma, tsPontuacao]) then
+      begin
+        AIDebugLogFmt('[SelecionarListaSintagmas] Index %d is not selectable (Kind=%d)', [idx, Ord(Sintagmas[idx].Kind)]);
+        Continue;
+      end;
+      Sintagmas[idx].AddToSelection;
+    end;
+  finally
+    tokens.Free;
   end;
-  tokens.Destroy;
 end;
 
 procedure TVersiculo.EditKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
@@ -1515,7 +1554,7 @@ var
   I, J, K: Integer;
   WordToFind: string;
   FoundSyntagmsThisCall: TSyntagmList; // Syntagms found in this specific call, to be added to Selecao
-  
+
   // Search strategy state
   AttemptAnyOrder: Boolean;
   EffectivePartial: Boolean;
@@ -1529,7 +1568,7 @@ var
   PickedForAnyOrderThisCall: TSyntagmList;
   AllWordsFoundInAnyOrder: Boolean;
   FoundThisWordInAnyOrder: Boolean;
-  
+
   SyntagmNode: TSyntagm;
   // FoundMatchForCurrentWord: TSyntagm; // Replaced by direct add to lists
 
@@ -1543,6 +1582,12 @@ var
 begin
   if not Assigned(Words) or (Words.Count = 0) then
     Exit;
+
+  AIDebugLogFmt('[FindAndSelectSyntagms] Verse: %s - Searching for %d words, Partial=%s, JoinConnected=%s',
+                [Referencia, Words.Count, BoolToStr(Partial, True), BoolToStr(JoinConnected, True)]);
+  for I := 0 to Words.Count - 1 do
+    AIDebugLogFmt('[FindAndSelectSyntagms]   Word[%d]: "%s"', [I, Words[I]]);
+  AIDebugLogFmt('[FindAndSelectSyntagms] Total syntagms in verse: %d', [FSintagmas.Count]);
 
   FoundSyntagmsThisCall := TSyntagmList.Create;
   TempSequentialList := TSyntagmList.Create;
@@ -1563,13 +1608,25 @@ begin
       SyntagmNode := nil; // Placeholder for found syntagm
       for J := CurrentSequentialSearchStartIndex to FSintagmas.Count - 1 do
       begin
-        if (FSintagmas[J].Kind = tsSintagma) and SameText(FSintagmas[J].Text, WordToFind) then
+        if (FSintagmas[J].Kind = tsSintagma) and AnsiSameStr(FSintagmas[J].Text, WordToFind) then
         begin
-          if (not FSintagmas[J].IsAssociated) and (TempSequentialList.IndexOf(FSintagmas[J]) = -1) then
+          AIDebugLogVerboseFmt('[FindAndSelectSyntagms]   Found candidate "%s" at index %d: IsAssociated=%s',
+                        [FSintagmas[J].Text, J, BoolToStr(FSintagmas[J].IsAssociated, True)]);
+          
+          // Check if already associated by verifying Pairs directly (works even when Ativo=False)
+          // Also check if already in Selecao (from previous searches) or TempSequentialList (from current search)
+          if (not Assigned(FSintagmas[J].Pairs) or (FSintagmas[J].Pairs.Count = 0)) and
+             (Self.Selecao.IndexOf(FSintagmas[J]) = -1) and
+             (TempSequentialList.IndexOf(FSintagmas[J]) = -1) then
           begin
             SyntagmNode := FSintagmas[J];
             CurrentSequentialSearchStartIndex := J + 1;
+            AIDebugLogVerboseFmt('[FindAndSelectSyntagms]   Selected syntagm "%s"', [SyntagmNode.Text]);
             Break;
+          end
+          else
+          begin
+            AIDebugLogVerbose('[FindAndSelectSyntagms]   Skipped (already associated, in Selecao, or in temp list)');
           end;
         end;
       end;
@@ -1587,8 +1644,17 @@ begin
 
     if AllWordsFoundSequentially and (TempSequentialList.Count = Words.Count) then
     begin
+      AIDebugLogVerboseFmt('[FindAndSelectSyntagms] Sequential search SUCCESS - Found %d syntagms', [TempSequentialList.Count]);
       for I := 0 to TempSequentialList.Count - 1 do
+      begin
         FoundSyntagmsThisCall.Add(TempSequentialList[I]);
+        AIDebugLogVerboseFmt('[FindAndSelectSyntagms]   Sequential[%d]: "%s"', [I, TempSequentialList[I].Text]);
+      end;
+    end
+    else
+    begin
+      AIDebugLogVerboseFmt('[FindAndSelectSyntagms] Sequential search FAILED - Found %d/%d',
+                    [TempSequentialList.Count, Words.Count]);
     end;
 
     // 2. Attempt Any-Order Match if sequential didn't find all, or if sequential was skipped
@@ -1596,8 +1662,9 @@ begin
 
     if AttemptAnyOrder then
     begin
+      AIDebugLogVerbose('[FindAndSelectSyntagms] Attempting any-order search...');
       FoundSyntagmsThisCall.Clear;
-      
+
       AllWordsFoundInAnyOrder := True;
       PickedForAnyOrderThisCall.Clear; // Ensure it's clean for this attempt
 
@@ -1610,9 +1677,12 @@ begin
         for J := 0 to FSintagmas.Count - 1 do
         begin
           SyntagmNode := FSintagmas[J];
-          if (SyntagmNode.Kind = tsSintagma) and SameText(SyntagmNode.Text, WordToFind) then
+          if (SyntagmNode.Kind = tsSintagma) and AnsiSameStr(SyntagmNode.Text, WordToFind) then
           begin
-            if (Self.Selecao.IndexOf(SyntagmNode) = -1) and (PickedForAnyOrderThisCall.IndexOf(SyntagmNode) = -1) then
+            // Check if already associated by verifying Pairs directly (works even when Ativo=False)
+            if (not Assigned(SyntagmNode.Pairs) or (SyntagmNode.Pairs.Count = 0)) and
+               (Self.Selecao.IndexOf(SyntagmNode) = -1) and
+               (PickedForAnyOrderThisCall.IndexOf(SyntagmNode) = -1) then
             begin
               // Add to FoundSyntagmsThisCall directly, as this is now the primary list being built
               FoundSyntagmsThisCall.Add(SyntagmNode);
@@ -1633,22 +1703,38 @@ begin
 
       // After any-order attempt, validate based on EffectivePartial flag
       if not AllWordsFoundInAnyOrder and not EffectivePartial then
+      begin
+        AIDebugLogVerbose('[FindAndSelectSyntagms] Any-order search FAILED - Not all words found and Partial=False');
         FoundSyntagmsThisCall.Clear; // Not all words found, and not partial, so result is empty
+      end
+      else
+      begin
+        AIDebugLogVerboseFmt('[FindAndSelectSyntagms] Any-order search result - Found %d syntagms',
+                      [FoundSyntagmsThisCall.Count]);
+        for I := 0 to FoundSyntagmsThisCall.Count - 1 do
+          AIDebugLogVerboseFmt('[FindAndSelectSyntagms]   AnyOrder[%d]: "%s"', [I, FoundSyntagmsThisCall[I].Text]);
+      end;
     end; // End if AttemptAnyOrder
 
     // 3. If no syntagms were found by any means, exit.
     if FoundSyntagmsThisCall.Count = 0 then
+    begin
+      AIDebugLogVerbose('[FindAndSelectSyntagms] No syntagms found - Exiting');
       Exit;
+    end;
 
     // 4. Join connected syntagms
     if JoinConnected and (FoundSyntagmsThisCall.Count > 1) then
     begin
+      AIDebugLogVerboseFmt('[FindAndSelectSyntagms] JoinConnected - Processing %d syntagms',
+                    [FoundSyntagmsThisCall.Count]);
       CurrentVersiculoForSort := Self;
       try
         FoundSyntagmsThisCall.Sort(@ActualCompareSyntagms);
       finally
         CurrentVersiculoForSort := nil;
       end;
+      // ... (rest of join logic)
 
       K := 0;
       while K < FoundSyntagmsThisCall.Count - 1 do
@@ -1704,16 +1790,20 @@ begin
       end;
     end;
 
-    // 5. Add all found (and potentially joined) syntagms to the verse\'s selection
+    // 5. Add all found (and potentially joined) syntagms to the verse's selection
+    AIDebugLogVerboseFmt('[FindAndSelectSyntagms] Adding %d syntagms to selection', [FoundSyntagmsThisCall.Count]);
     for I := 0 to FoundSyntagmsThisCall.Count - 1 do
     begin
+      AIDebugLogVerboseFmt('[FindAndSelectSyntagms]   Adding to selection: "%s"', [FoundSyntagmsThisCall[I].Text]);
       FoundSyntagmsThisCall[I].AddToSelection;
     end;
+
+    AIDebugLogVerbose('[FindAndSelectSyntagms] Completed successfully');
 
   finally
     FoundSyntagmsThisCall.Free;
     TempSequentialList.Free;
-    PickedForAnyOrderThisCall.Free; 
+    PickedForAnyOrderThisCall.Free;
     TempJoinList.Free;
   end;
 end;
@@ -1795,7 +1885,11 @@ procedure TVersiculo.OnVerseMouseDown(Sender: TObject; Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
 begin
   if Button = mbRight then
+  begin
+    if Assigned(FCopyAssociationExampleMenuItem) then
+      FCopyAssociationExampleMenuItem.Visible := HasAssociations;
     FVersePopupMenu.PopUp;
+  end;
 end;
 
 procedure TVersiculo.OnResize(Sender: TObject);
@@ -1887,6 +1981,11 @@ begin
     Item.OnClick := @OnCopyAssociationsJSONToClipboard;
     FVersePopupMenu.Items.Add(Item);
 
+    FCopyAssociationExampleMenuItem := TMenuItem.Create(FVersePopupMenu);
+    FCopyAssociationExampleMenuItem.Caption := SCopyAssociationExample;
+    FCopyAssociationExampleMenuItem.OnClick := @OnCopyAssociationExample;
+    FVersePopupMenu.Items.Add(FCopyAssociationExampleMenuItem);
+
     Item := TMenuItem.Create(FVersePopupMenu);
     Item.Caption := SSwitchDestinationAndReference1Texts;
     Item.OnClick := @OnSwitchDestinationAndReference1Texts;
@@ -1895,9 +1994,9 @@ begin
   {$ENDIF}
 end;
 
-constructor TVersiculo.Criar(AProject: TObject);
+constructor TVersiculo.Criar(AProject: TObject; const AReferencia: string = '');
 begin
-  Criar(AProject, nil);
+  Criar(AProject, nil, AReferencia);
 end;
 
 procedure TVersiculo.OnCopySintagmasAsJSON(Sender: TObject);
@@ -2003,9 +2102,41 @@ begin
   end;
 end;
 
+function TVersiculo.HasAssociations: boolean;
+var
+  s: TSyntagm;
+begin
+  Result := False;
+  if not Assigned(FSintagmas) then Exit;
+  for s in FSintagmas do
+    if s.Pairs.Count > 0 then
+    begin
+      Result := True;
+      Break;
+    end;
+end;
+
 procedure TVersiculo.OnCopyAssociationsJSONToClipboard(Sender: TObject);
 begin
   clipboard.AsText := GetAssociationsJSON;
+end;
+
+procedure TVersiculo.OnCopyAssociationExample(Sender: TObject);
+var
+  example: string;
+  project: TProjeto;
+  originalVerse, destinoVerse: TVersiculo;
+begin
+  project := TProjeto(FProject);
+  originalVerse := project.VerseObjects[tbOrigem];
+  destinoVerse := project.VerseObjects[tbDestino];
+
+  if (not Assigned(originalVerse)) or (not Assigned(destinoVerse)) then
+    Exit;
+
+  example := Format('Original: "%s"'#13#10'Tradução: "%s"'#13#10'Resposta esperada: %s',
+    [originalVerse.GetTextoSimples, destinoVerse.GetTextoSimples, originalVerse.GetAssociationsJSON]);
+  Clipboard.AsText := example;
 end;
 
 procedure TVersiculo.OnSwitchDestinationAndReference1Texts(Sender: TObject);

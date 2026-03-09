@@ -207,7 +207,9 @@ begin
 end;
 
 initialization
+{$IFNDEF FPCUNIT}
   {$I formapplypatch.lrs}
+{$ENDIF}
 
 end.
 

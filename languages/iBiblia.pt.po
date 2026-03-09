@@ -9,7 +9,139 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"X-Generator: Poedit 3.3.2\n"
+"X-Generator: Poedit 3.8\n"
+
+#: ai_association_flow.sconfigadditionalinstructionsdescription
+msgid "Add specific guidelines for your project (e.g., handling of poetry, examples for edge cases)"
+msgstr "Adicione diretrizes específicas para o seu projeto ou exemplos de associações"
+
+#: ai_association_flow.sconfigadditionalinstructionsdisplayname
+msgctxt "ai_association_flow.sconfigadditionalinstructionsdisplayname"
+msgid "Additional Instructions"
+msgstr "Instruções adicionais"
+
+#: ai_association_flow.sconfigapikeyoverridedescription
+msgctxt "ai_association_flow.sconfigapikeyoverridedescription"
+msgid "Specify a different API key for this flow. Leave empty to use global setting."
+msgstr ""
+
+#: ai_association_flow.sconfigapikeyoverridedisplayname
+msgctxt "ai_association_flow.sconfigapikeyoverridedisplayname"
+msgid "API Key"
+msgstr ""
+
+#: ai_association_flow.sconfigincludecommentsdescription
+msgid "If enabled, the AI will provide critical comments about the associations."
+msgstr "Quando habilitado, a IA vai incluir comentários sobre a associação."
+
+#: ai_association_flow.sconfigincludecommentsdisplayname
+msgid "Include AI Comments"
+msgstr "Incluir comentários da IA"
+
+#: ai_association_flow.sconfigmodeloverridedescription
+msgctxt "ai_association_flow.sconfigmodeloverridedescription"
+msgid "Specify a different model for this flow. Leave empty to use global setting."
+msgstr ""
+
+#: ai_association_flow.sconfigmodeloverridedisplayname
+#, fuzzy
+#| msgid "Model"
+msgctxt "ai_association_flow.sconfigmodeloverridedisplayname"
+msgid "Model"
+msgstr "Modelo"
+
+#: ai_association_flow.sconfigprovideroverridedescription
+msgctxt "ai_association_flow.sconfigprovideroverridedescription"
+msgid "Specify a different provider for this flow. Leave empty to use global setting."
+msgstr ""
+
+#: ai_association_flow.sconfigprovideroverridedisplayname
+msgctxt "ai_association_flow.sconfigprovideroverridedisplayname"
+msgid "Provider"
+msgstr ""
+
+#: ai_association_flow.sdescriptionassociation
+msgid "Matches corresponding phrases between original and translated texts"
+msgstr "Associa termos correspondentes entre os textos origem e destino"
+
+#: ai_association_flow.sdisplaynameassociation
+msgctxt "ai_association_flow.sdisplaynameassociation"
+msgid "Association"
+msgstr "Associação"
+
+#: ai_association_flow.soutputformatinfoassociation
+msgid "This flow expects JSON output: {\"data\": [[original, translation], ...], \"comments\": \"...\" (optional)}"
+msgstr "Este fluxo espera saída JSON: {\"data\": [[original, tradução], ...], \"comments\": \"...\" (opcional)}"
+
+#: ai_translation_flow.sconfigadditionalinstructionsdescription
+msgid "Add translation philosophy, terminology preferences, or context-specific rules"
+msgstr "Adicione a filosofia de tradução, preferências de terminologia, ou regras específicas"
+
+#: ai_translation_flow.sconfigadditionalinstructionsdisplayname
+msgctxt "ai_translation_flow.sconfigadditionalinstructionsdisplayname"
+msgid "Additional Instructions"
+msgstr "Instruções adicionais"
+
+#: ai_translation_flow.sconfigapikeyoverridedescription
+msgctxt "ai_translation_flow.sconfigapikeyoverridedescription"
+msgid "Specify a different API key for this flow. Leave empty to use global setting."
+msgstr ""
+
+#: ai_translation_flow.sconfigapikeyoverridedisplayname
+msgctxt "ai_translation_flow.sconfigapikeyoverridedisplayname"
+msgid "API Key"
+msgstr ""
+
+#: ai_translation_flow.sconfigforceoverwritedescription
+msgid "If checked, overwrites existing translations. If unchecked, only translates empty verses."
+msgstr "Se marcado, sobrescreve traduções existentes. Se desmarcado, só traduz versículos vazios."
+
+#: ai_translation_flow.sconfigforceoverwritedisplayname
+msgid "Force Overwrite"
+msgstr "Forçar sobrescrita"
+
+#: ai_translation_flow.sconfigmodeloverridedescription
+msgctxt "ai_translation_flow.sconfigmodeloverridedescription"
+msgid "Specify a different model for this flow. Leave empty to use global setting."
+msgstr ""
+
+#: ai_translation_flow.sconfigmodeloverridedisplayname
+#, fuzzy
+#| msgid "Model"
+msgctxt "ai_translation_flow.sconfigmodeloverridedisplayname"
+msgid "Model"
+msgstr "Modelo"
+
+#: ai_translation_flow.sconfigprovideroverridedescription
+msgctxt "ai_translation_flow.sconfigprovideroverridedescription"
+msgid "Specify a different provider for this flow. Leave empty to use global setting."
+msgstr ""
+
+#: ai_translation_flow.sconfigprovideroverridedisplayname
+msgctxt "ai_translation_flow.sconfigprovideroverridedisplayname"
+msgid "Provider"
+msgstr ""
+
+#: ai_translation_flow.sconfigtargetlanguagedescription
+msgid "Specify the target language for translation (e.g., \"Brazilian Portuguese\", \"Spanish\")"
+msgstr "Especifique o idioma alvo da tradução (ex.: \"português brasileiro\", \"espanhol\")"
+
+#: ai_translation_flow.sconfigtargetlanguagedisplayname
+msgid "Target Language"
+msgstr "Idioma alvo"
+
+#: ai_translation_flow.sdescriptiontranslation
+msgid "Translates biblical verses maintaining theological and stylistic accuracy"
+msgstr "Traduz versículos bíblicos mantendo acurácia teológica e estilística"
+
+#: ai_translation_flow.sdisplaynametranslation
+msgctxt "ai_translation_flow.sdisplaynametranslation"
+msgid "Translation"
+msgstr "Tradução"
+
+#: ai_translation_flow.soutputformatinfotranslation
+msgid "This flow expects plain text output without quotes or explanations"
+msgstr "Este fluxo espera saída em texto simples, sem aspas ou explicações"
 
 #: chapterview.schapterbeginning
 msgid "Beginning of chapter"
@@ -53,9 +185,52 @@ msgstr "Selecionar &fonte..."
 msgid "Verse &rules..."
 msgstr "Regras de &transformação (verse rules)..."
 
+#: formaiprocessing.saiprocessingcancelled
+msgid "Processing cancelled"
+msgstr "Processamento cancelado"
+
+#: formaiprocessing.saiprocessingcancelling
+msgid "Cancelling..."
+msgstr "Cancelando..."
+
+#: formaiprocessing.saiprocessingcompleted
+#, object-pascal-format
+msgid "Processing completed: %d successful, %d failed"
+msgstr "Processamento concluído: %d sucessos, %d falhas"
+
+#: formaiprocessing.saiprocessinginprogress
+#, object-pascal-format
+msgid "Processing: %d of %d verses (%d%%)"
+msgstr "Processando: %d de %d versículos (%d%%)"
+
+#: formaiprocessing.saiprocessingtitle
+msgid "AI Processing"
+msgstr "Processamento IA"
+
+#: formaiprocessing.sapplysuccessful
+msgid "Changes applied successfully"
+msgstr "Mudanças aplicadas com sucesso"
+
+#: formaiprocessing.scancelconfirmation
+msgid "Are you sure you want to cancel the AI processing?"
+msgstr "Tem certeza de que deseja cancelar o processamento IA?"
+
+#: formaiprocessing.sconfirmation
+msgctxt "formaiprocessing.sconfirmation"
+msgid "Confirmation"
+msgstr "Confirmação"
+
+#: formaiprocessing.sdiscardconfirmation
+msgid "Are you sure you want to discard the AI results?"
+msgstr "Tem certeza de que deseja descartar os resultados da IA?"
+
+#: formaiprocessing.sestimatedtimeremaining
+#, object-pascal-format
+msgid "Estimated time remaining: %s"
+msgstr "Tempo restante estimado: %s"
+
 #: formapplypatch.signoredversesonpatch
 #, object-pascal-format
-msgctxt "formapplypatch.signoredversesonpatch"
 msgid "%d verses are identical to what you have in your project and were ignored."
 msgstr "%d versículos são idênticos aos do seu projeto e foram ignorados."
 
@@ -96,53 +271,90 @@ msgstr "Módulos de Bíblia do theWord (*.ont)"
 msgid "theWord Bible module (*.ot)"
 msgstr "Módulo de Bíblia do theWord (*.ot)"
 
+#: formllmoptions.rsadditionalinstructions
+msgid "Additional Instructions (Optional):"
+msgstr "Instruções adicionais (opcional):"
+
 #: formllmoptions.rsbtncancel
-#, fuzzy
 msgctxt "formllmoptions.rsbtncancel"
 msgid "Cancel"
 msgstr "Cancelar"
 
 #: formllmoptions.rsbtnok
-#, fuzzy
 msgctxt "formllmoptions.rsbtnok"
 msgid "OK"
 msgstr "OK"
 
+#: formllmoptions.rsbtnreset
+msgid "Reset to Default"
+msgstr "Restaurar Padrão"
+
 #: formllmoptions.rsbtntest
+msgctxt "formllmoptions.rsbtntest"
 msgid "Test"
-msgstr ""
+msgstr "Testar"
+
+#: formllmoptions.rsbtnviewdefault
+msgid "View Default Prompt"
+msgstr "Exibir prompt padrão"
+
+#: formllmoptions.rscommonsettings
+msgctxt "formllmoptions.rscommonsettings"
+msgid "Common Settings (All Flows)"
+msgstr "Configurações comuns (todos os fluxos)"
+
+#: formllmoptions.rscustominstructionshint
+msgid "Add specific guidelines for your project (e.g., translation philosophy, examples). Leave empty to use only the default prompt."
+msgstr "Adicione diretrizes específicas para o seu projeto (por exemplo, filosofia de tradução, exemplos). Deixe em branco para usar apenas o prompt padrão."
+
+#: formllmoptions.rsdefaultprompttitle
+#, object-pascal-format
+msgid "Default Prompt - %s"
+msgstr "Prompt padrão - %s"
 
 #: formllmoptions.rsfallbacktestprompt
-msgid "Say hello."
-msgstr ""
+msgid "Tell me something about you. Answer in JSON format."
+msgstr "Diga alguma coisa sobre você. Responda em formato JSON."
 
 #: formllmoptions.rslabelapikey
+msgctxt "formllmoptions.rslabelapikey"
 msgid "API key"
-msgstr ""
+msgstr "Chave da API"
+
+#: formllmoptions.rslabelmaxparallel
+msgctxt "formllmoptions.rslabelmaxparallel"
+msgid "Max Parallel"
+msgstr "Processos"
+
+#: formllmoptions.rslabelmaxretries
+msgctxt "formllmoptions.rslabelmaxretries"
+msgid "Max Retries"
+msgstr "Retentativas"
 
 #: formllmoptions.rslabelmodel
+msgctxt "formllmoptions.rslabelmodel"
 msgid "Model"
-msgstr ""
-
-#: formllmoptions.rslabelprompt
-msgid "Prompt"
-msgstr ""
+msgstr "Modelo"
 
 #: formllmoptions.rsllmoptionscaption
 msgid "LLM Options"
+msgstr "Opções de IA"
+
+#: formllmoptions.rsprovideroverride
+msgid "Provider Override (Optional)"
 msgstr ""
 
 #: formllmoptions.rssystemprompt
-msgid "You are a helpful assistant."
-msgstr ""
+msgid "You are a helpful assistant ready to assist users with their questions on Bible translation."
+msgstr "Você é um assistente solícito, pronto para ajudar usuários com suas questões relacionadas a tradução bíblica."
 
 #: formllmoptions.rstestfailedtitle
 msgid "Test failed"
-msgstr ""
+msgstr "O teste falhou"
 
 #: formllmoptions.rstestresulttitle
 msgid "Test result"
-msgstr ""
+msgstr "Resultado do teste"
 
 #: formnovoprojeto.schooseaname
 msgid "Please choose a name for your project"
@@ -189,7 +401,7 @@ msgstr ""
 
 #: formprincipal.saisuggestionhint
 msgid "Use the new AI-assisted suggestion engine (requires internet)"
-msgstr ""
+msgstr "Usar a associação com auxílio de IA (requer internet)"
 
 #: formprincipal.schanged
 msgid "changed"
@@ -223,7 +435,7 @@ msgstr "Um projeto com este nome já existe"
 
 #: formprincipal.sllmoptionsmenu
 msgid "LLM options..."
-msgstr ""
+msgstr "Opções de IA"
 
 #: formprincipal.sloadingfile
 #, object-pascal-format
@@ -266,15 +478,15 @@ msgstr "Referência2"
 
 #: formprincipal.sregisterfileassociation
 msgid "Register .bib file association"
-msgstr ""
+msgstr "Registrar a extensão de arquivo .bib"
 
 #: formprincipal.sregisterfileassociationfailure
 msgid "Failed to register file association for .bib files"
-msgstr ""
+msgstr "Falha ao registrar a extensão de arquivo .bib"
 
 #: formprincipal.sregisterfileassociationsuccess
 msgid "Successfully registered file association for .bib files"
-msgstr ""
+msgstr "Sucesso ao registrar a extensão de arquivo .bib"
 
 #: formprincipal.srollbackchanges
 msgctxt "formprincipal.srollbackchanges"
@@ -300,27 +512,27 @@ msgstr "Origem"
 
 #: formprincipal.sstatisticalsuggestion
 msgid "Statistical model"
-msgstr ""
+msgstr "Modelo estatístico"
 
 #: formprincipal.sstatisticalsuggestionhint
 msgid "Use the traditional statistical suggestion engine"
-msgstr ""
+msgstr "Usar o modelo de sugestão estatístico"
 
 #: formprincipal.ssuggestionmode
 msgid "Suggestion mode"
-msgstr ""
+msgstr "Modo de sugestão"
 
 #: formprincipal.sunregisterfileassociation
 msgid "Unregister .bib file association"
-msgstr ""
+msgstr "Desfazer registro da extensão de arquivo .bib"
 
 #: formprincipal.sunregisterfileassociationfailure
 msgid "Failed to remove file association for .bib files"
-msgstr ""
+msgstr "Falha ao remover associação com arquivo .bib"
 
 #: formprincipal.sunregisterfileassociationsuccess
 msgid "Successfully removed file association for .bib files"
-msgstr ""
+msgstr "Sucesso ao remover a associação com arquivos .bib"
 
 #: formpropprojeto.schangetextconfirmation
 msgid "Are you sure you want to replace this Bible text with a new one?"
@@ -350,7 +562,6 @@ msgid "Choose"
 msgstr "Selecionar"
 
 #: formpropprojeto.scleartext
-msgctxt "formpropprojeto.scleartext"
 msgid "Clear Bible text"
 msgstr "Limpar texto"
 
@@ -438,97 +649,78 @@ msgid "A project with this name already exists. Delete it first or choose anothe
 msgstr "Já existe um projeto com este nome. Apague-o ou escolha outro nome"
 
 #: projeto.s1chronicles
-msgctxt "projeto.s1chronicles"
 msgid "1 Chronicles"
 msgstr "1 Crônicas"
 
 #: projeto.s1corinthians
-msgctxt "projeto.s1corinthians"
 msgid "1 Corinthians"
 msgstr "1 Coríntios"
 
 #: projeto.s1john
-msgctxt "projeto.s1john"
 msgid "1 John"
 msgstr "1 João"
 
 #: projeto.s1kings
-msgctxt "projeto.s1kings"
 msgid "1 Kings"
 msgstr "1 Reis"
 
 #: projeto.s1peter
-msgctxt "projeto.s1peter"
 msgid "1 Peter"
 msgstr "1 Pedro"
 
 #: projeto.s1samuel
-msgctxt "projeto.s1samuel"
 msgid "1 Samuel"
 msgstr "1 Samuel"
 
 #: projeto.s1thessalonians
-msgctxt "projeto.s1thessalonians"
 msgid "1 Thessalonians"
 msgstr "1 Tessalonicenses"
 
 #: projeto.s1timothy
-msgctxt "projeto.s1timothy"
 msgid "1 Timothy"
 msgstr "1 Timóteo"
 
 #: projeto.s2chronicles
-msgctxt "projeto.s2chronicles"
 msgid "2 Chronicles"
 msgstr "2 Crônicas"
 
 #: projeto.s2corinthians
-msgctxt "projeto.s2corinthians"
 msgid "2 Corinthians"
 msgstr "2 Coríntios"
 
 #: projeto.s2john
-msgctxt "projeto.s2john"
 msgid "2 John"
 msgstr "2 João"
 
 #: projeto.s2kings
-msgctxt "projeto.s2kings"
 msgid "2 Kings"
 msgstr "2 Reis"
 
 #: projeto.s2peter
-msgctxt "projeto.s2peter"
 msgid "2 Peter"
 msgstr "2 Pedro"
 
 #: projeto.s2samuel
-msgctxt "projeto.s2samuel"
 msgid "2 Samuel"
 msgstr "2 Samuel"
 
 #: projeto.s2thessalonians
-msgctxt "projeto.s2thessalonians"
 msgid "2 Thessalonians"
 msgstr "2 Tessalonicenses"
 
 #: projeto.s2timothy
-msgctxt "projeto.s2timothy"
 msgid "2 Timothy"
 msgstr "2 Timóteo"
 
 #: projeto.s3john
-msgctxt "projeto.s3john"
 msgid "3 John"
 msgstr "3 João"
 
 #: projeto.sacts
-msgctxt "projeto.sacts"
 msgid "Acts"
 msgstr "Atos dos apóstolos"
 
 #: projeto.samos
-msgctxt "projeto.samos"
 msgid "Amos"
 msgstr "Amós"
 
@@ -536,8 +728,33 @@ msgstr "Amós"
 msgid "Anaytical Concordance"
 msgstr "Concordância Analítica"
 
+#: projeto.sanalyzingverse
+msgid "Analyzing verse..."
+msgstr "Analisando versículo..."
+
+#: projeto.sapplyaito
+msgid "Apply AI flow to..."
+msgstr "Aplicar fluxo de IA a..."
+
+#: projeto.sapplyaitofmt
+#, object-pascal-format
+msgid "Apply AI flow to %s"
+msgstr "Aplicar fluxo de IA a %s"
+
+#: projeto.sassociate
+msgid "Associate"
+msgstr "Associar"
+
+#: projeto.sassociation
+msgctxt "projeto.sassociation"
+msgid "Association"
+msgstr "Associação"
+
+#: projeto.scancelaiprocessing
+msgid "Cancel AI processing"
+msgstr "Cancelar processamento IA"
+
 #: projeto.scolossians
-msgctxt "projeto.scolossians"
 msgid "Colossians"
 msgstr "Colossenses"
 
@@ -545,7 +762,18 @@ msgstr "Colossenses"
 msgid "Compressed dictionary"
 msgstr "Dicionário compactado"
 
+#: projeto.sconfirmapplyaitobook
+#, object-pascal-format
+msgid "Are you sure you want to apply the AI flow to the entire book %s?"
+msgstr "Tem certeza de que deseja aplicar o fluxo de IA a todo o livro de %s?"
+
+#: projeto.sconfirmapplyaitochapter
+#, object-pascal-format
+msgid "Are you sure you want to apply the AI flow to chapter %s?"
+msgstr "Tem certeza de que deseja aplicar o fluxo de IA a todo o capítulo %s?"
+
 #: projeto.sconfirmation
+msgctxt "projeto.sconfirmation"
 msgid "Confirmation"
 msgstr "Confirmação"
 
@@ -564,12 +792,10 @@ msgstr ""
 "3. Pode ser um bug no iBiblia. Nesse caso, abra um bug na página do projeto no GitHub (https://github.com/rubiot/ibiblia)."
 
 #: projeto.sdaniel
-msgctxt "projeto.sdaniel"
 msgid "Daniel"
 msgstr "Daniel"
 
 #: projeto.sdeuteronomy
-msgctxt "projeto.sdeuteronomy"
 msgid "Deuteronomy"
 msgstr "Deuteronômio"
 
@@ -579,7 +805,6 @@ msgid "The selected dictionary doesn't exist: %s"
 msgstr "O dicionário selecionado não existe: %s"
 
 #: projeto.secclesiastes
-msgctxt "projeto.secclesiastes"
 msgid "Ecclesiastes"
 msgstr "Eclesiastes"
 
@@ -588,7 +813,6 @@ msgid "Encrypted dictionary"
 msgstr "Dicionário criptografado"
 
 #: projeto.sephesians
-msgctxt "projeto.sephesians"
 msgid "Ephesians"
 msgstr "Efésios"
 
@@ -597,12 +821,10 @@ msgid "Error"
 msgstr "Erro"
 
 #: projeto.sesther
-msgctxt "projeto.sesther"
 msgid "Esther"
 msgstr "Ester"
 
 #: projeto.sexodus
-msgctxt "projeto.sexodus"
 msgid "Exodus"
 msgstr "Êxodo"
 
@@ -615,12 +837,10 @@ msgid "iBiblia found an error while exporting the Bible module file."
 msgstr "iBiblia encontrou um erro ao salvar o módulo."
 
 #: projeto.sezekiel
-msgctxt "projeto.sezekiel"
 msgid "Ezekiel"
 msgstr "Ezequiel"
 
 #: projeto.sezra
-msgctxt "projeto.sezra"
 msgid "Ezra"
 msgstr "Esdras"
 
@@ -630,32 +850,26 @@ msgid "Failed to create file: %s"
 msgstr "Falha ao criar arquivo: %s"
 
 #: projeto.sgalatians
-msgctxt "projeto.sgalatians"
 msgid "Galatians"
 msgstr "Gálatas"
 
 #: projeto.sgenesis
-msgctxt "projeto.sgenesis"
 msgid "Genesis"
 msgstr "Gênesis"
 
 #: projeto.shabakkuk
-msgctxt "projeto.shabakkuk"
 msgid "Habakkuk"
 msgstr "Habacuque"
 
 #: projeto.shaggai
-msgctxt "projeto.shaggai"
 msgid "Haggai"
 msgstr "Ageu"
 
 #: projeto.shebrew
-msgctxt "projeto.shebrew"
 msgid "Hebrews"
 msgstr "Hebreus"
 
 #: projeto.shosea
-msgctxt "projeto.shosea"
 msgid "Hosea"
 msgstr "Oseias"
 
@@ -735,57 +949,46 @@ msgstr ""
 "Por favor, escolha um dicionário de Strong válido."
 
 #: projeto.sisaiah
-msgctxt "projeto.sisaiah"
 msgid "Isaiah"
 msgstr "Isaías"
 
 #: projeto.sjames
-msgctxt "projeto.sjames"
 msgid "James"
 msgstr "Tiago"
 
 #: projeto.sjeremiah
-msgctxt "projeto.sjeremiah"
 msgid "Jeremiah"
 msgstr "Jeremias"
 
 #: projeto.sjob
-msgctxt "projeto.sjob"
 msgid "Job"
 msgstr "Jó"
 
 #: projeto.sjoel
-msgctxt "projeto.sjoel"
 msgid "Joel"
 msgstr "Joel"
 
 #: projeto.sjohah
-msgctxt "projeto.sjohah"
 msgid "Jonah"
 msgstr "Jonas"
 
 #: projeto.sjohn
-msgctxt "projeto.sjohn"
 msgid "John"
 msgstr "João"
 
 #: projeto.sjoshua
-msgctxt "projeto.sjoshua"
 msgid "Joshua"
 msgstr "Josué"
 
 #: projeto.sjude
-msgctxt "projeto.sjude"
 msgid "Jude"
 msgstr "Judas"
 
 #: projeto.sjudges
-msgctxt "projeto.sjudges"
 msgid "Judges"
 msgstr "Juízes"
 
 #: projeto.slamentations
-msgctxt "projeto.slamentations"
 msgid "Lamentations"
 msgstr "Lamentações"
 
@@ -794,7 +997,6 @@ msgid "en"
 msgstr "pt"
 
 #: projeto.sleviticus
-msgctxt "projeto.sleviticus"
 msgid "Leviticus"
 msgstr "Levítico"
 
@@ -807,27 +1009,27 @@ msgid "Edit error"
 msgstr "Erro de edição"
 
 #: projeto.sluke
-msgctxt "projeto.sluke"
 msgid "Luke"
 msgstr "Lucas"
 
 #: projeto.smalachi
-msgctxt "projeto.smalachi"
 msgid "Malachi"
 msgstr "Malaquias"
 
 #: projeto.smark
-msgctxt "projeto.smark"
 msgid "Mark"
 msgstr "Marcos"
 
+#: projeto.smarkasfmt
+#, object-pascal-format
+msgid "Mark %s as..."
+msgstr "Marcar %s como..."
+
 #: projeto.smatthew
-msgctxt "projeto.smatthew"
 msgid "Matthew"
 msgstr "Mateus"
 
 #: projeto.smicah
-msgctxt "projeto.smicah"
 msgid "Micah"
 msgstr "Miqueias"
 
@@ -840,12 +1042,10 @@ msgid "Morphology Dictionary"
 msgstr "Dicionário de morfologia"
 
 #: projeto.snahum
-msgctxt "projeto.snahum"
 msgid "Nahum"
 msgstr "Naum"
 
 #: projeto.snehemiah
-msgctxt "projeto.snehemiah"
 msgid "Nehemiah"
 msgstr "Neemias"
 
@@ -854,12 +1054,10 @@ msgid "Non-RTF module"
 msgstr "Módulo não-RTF"
 
 #: projeto.snumbers
-msgctxt "projeto.snumbers"
 msgid "Numbers"
 msgstr "Números"
 
 #: projeto.sobadiah
-msgctxt "projeto.sobadiah"
 msgid "Obadiah"
 msgstr "Obadias"
 
@@ -877,12 +1075,10 @@ msgid "Patch successfully exported"
 msgstr "Patch criado com sucesso"
 
 #: projeto.sphilemon
-msgctxt "projeto.sphilemon"
 msgid "Philemon"
 msgstr "Filemom"
 
 #: projeto.sphilippians
-msgctxt "projeto.sphilippians"
 msgid "Philippians"
 msgstr "Filipenses"
 
@@ -896,12 +1092,10 @@ msgid "The selected project doesn't exist: %s"
 msgstr "O projeto selecionado não existe: %s"
 
 #: projeto.sproverbs
-msgctxt "projeto.sproverbs"
 msgid "Proverbs"
 msgstr "Provérbios"
 
 #: projeto.spsalms
-msgctxt "projeto.spsalms"
 msgid "Psalms"
 msgstr "Salmos"
 
@@ -919,45 +1113,41 @@ msgstr ""
 "Clique em Ignorar para não mostrar mais esta mensagem."
 
 #: projeto.srevelation
-msgctxt "projeto.srevelation"
 msgid "Revelation"
 msgstr "Apocalipse"
 
 #: projeto.sromans
-msgctxt "projeto.sromans"
 msgid "Romans"
 msgstr "Romanos"
 
 #: projeto.sruth
-msgctxt "projeto.sruth"
 msgid "Ruth"
 msgstr "Rute"
 
+#: projeto.ssetstatuschildren
+msgid "Set status of all children to..."
+msgstr "Atribuir a situação de todos os filhos para..."
+
 #: projeto.ssongofsolomon
-msgctxt "projeto.ssongofsolomon"
 msgid "Song of Solomon"
 msgstr "Cântico dos cânticos"
 
 #: projeto.sstatusassociated
-#, fuzzy
 msgctxt "projeto.sstatusassociated"
 msgid "Associated!"
 msgstr "Associado!"
 
 #: projeto.sstatusassociating
-#, fuzzy
 msgctxt "projeto.sstatusassociating"
 msgid "Associating"
 msgstr "Associando..."
 
 #: projeto.sstatusneedsreview
-#, fuzzy
 msgctxt "projeto.sstatusneedsreview"
 msgid "Needs review"
 msgstr "Rever"
 
 #: projeto.sstatusnotassociated
-#, fuzzy
 msgctxt "projeto.sstatusnotassociated"
 msgid "Not associated"
 msgstr "Não associado"
@@ -971,9 +1161,17 @@ msgid "Synthetic Concordance"
 msgstr "Concordância Sintética"
 
 #: projeto.stitus
-msgctxt "projeto.stitus"
 msgid "Titus"
 msgstr "Tito"
+
+#: projeto.stranslate
+msgid "Translate"
+msgstr "Traduzir"
+
+#: projeto.stranslation
+msgctxt "projeto.stranslation"
+msgid "Translation"
+msgstr "Tradução"
 
 #: projeto.stranslationmemory
 msgid "Translation memory"
@@ -984,7 +1182,6 @@ msgid "Vacuuming requires that your project be saved and reopened. Do you want t
 msgstr "Para compactar um projeto é necessário fechá-lo e reabri-lo. Deseja prosseguir?"
 
 #: projeto.svacuumdone
-msgctxt "projeto.svacuumdone"
 msgid "Vacuum done!"
 msgstr "Arquivo do projeto compactado!"
 
@@ -997,12 +1194,10 @@ msgid "Warning"
 msgstr "Aviso"
 
 #: projeto.szechariah
-msgctxt "projeto.szechariah"
 msgid "Zecariah"
 msgstr "Zacarias"
 
 #: projeto.szephaniah
-msgctxt "projeto.szephaniah"
 msgid "Zephaniah"
 msgstr "Sofonias"
 
@@ -1164,7 +1359,6 @@ msgid "Choose a theWord bible module"
 msgstr "Escolha um módulo de bíblia do theWord"
 
 #: tformnovoprojeto.radiogroupscope.caption
-msgctxt "tformnovoprojeto.radiogroupscope.caption"
 msgid "Scope"
 msgstr "Escopo"
 
@@ -1181,7 +1375,6 @@ msgid "Load new text"
 msgstr "Carregar novo texto"
 
 #: tformpropprojeto.actionlimpartexto.caption
-msgctxt "tformpropprojeto.actionlimpartexto.caption"
 msgid "Clear text"
 msgstr "Limpar texto"
 
@@ -1415,9 +1608,63 @@ msgstr "Texto origem interlinear"
 msgid "Strong's concordance"
 msgstr "Concordância de strong"
 
-#: tfrmllmoptions.caption
-msgid "FrmLLMOptions"
+#: tfrmllmoptions.btncancel.caption
+msgctxt "tfrmllmoptions.btncancel.caption"
+msgid "Cancel"
+msgstr "Cancelar"
+
+#: tfrmllmoptions.btnok.caption
+msgctxt "tfrmllmoptions.btnok.caption"
+msgid "OK"
+msgstr "OK"
+
+#: tfrmllmoptions.btntest.caption
+msgctxt "tfrmllmoptions.btntest.caption"
+msgid "Test"
+msgstr "Testar"
+
+#: tfrmllmoptions.gbcommonsettings.caption
+msgctxt "tfrmllmoptions.gbcommonsettings.caption"
+msgid "Common Settings (All Flows)"
+msgstr "Configurações comuns (todos os fluxos)"
+
+#: tfrmllmoptions.labelmodel.caption
+msgctxt "tfrmllmoptions.labelmodel.caption"
+msgid "Model"
+msgstr "Modelo"
+
+#: tfrmllmoptions.leapikey.editlabel.caption
+msgctxt "tfrmllmoptions.leapikey.editlabel.caption"
+msgid "API key"
+msgstr "Chave da API"
+
+#: tfrmllmoptions.lemaxparallel.editlabel.caption
+msgctxt "tfrmllmoptions.lemaxparallel.editlabel.caption"
+msgid "Max Parallel"
+msgstr "Processos"
+
+#: tfrmllmoptions.lemaxparallel.text
+msgid "2"
 msgstr ""
+
+#: tfrmllmoptions.lemaxretries.editlabel.caption
+msgctxt "tfrmllmoptions.lemaxretries.editlabel.caption"
+msgid "Max Retries"
+msgstr "Retentativas"
+
+#: tfrmllmoptions.lemaxretries.text
+msgid "3"
+msgstr ""
+
+#: tfrmllmoptions.tsassociation.caption
+msgctxt "tfrmllmoptions.tsassociation.caption"
+msgid "Association"
+msgstr "Associação"
+
+#: tfrmllmoptions.tstranslation.caption
+msgctxt "tfrmllmoptions.tstranslation.caption"
+msgid "Translation"
+msgstr "Tradução"
 
 #: tfrmprincipal.actionabrirprojeto.caption
 msgid "Open..."
@@ -1630,7 +1877,7 @@ msgstr "Manutenção"
 
 #: tfrmprincipal.menuitem27.caption
 msgid "Association engine"
-msgstr ""
+msgstr "Motor de associação"
 
 #: tfrmprincipal.menuitem5.caption
 msgid "Navigation"
@@ -1642,7 +1889,7 @@ msgstr "Sobre..."
 
 #: tfrmprincipal.menuitemaisuggestion.caption
 msgid "AI assisted"
-msgstr ""
+msgstr "Inteligência Artificial"
 
 #: tfrmprincipal.menuitemaltmousehover.caption
 msgid "Alt + Mouse hover"
@@ -1681,12 +1928,10 @@ msgid "Dictionary popup trigger..."
 msgstr "Ativar definição da palavra com..."
 
 #: tfrmprincipal.menuitemlangen.caption
-msgctxt "tfrmprincipal.menuitemlangen.caption"
 msgid "English"
 msgstr "English"
 
 #: tfrmprincipal.menuitemlangpt.caption
-msgctxt "tfrmprincipal.menuitemlangpt.caption"
 msgid "Português"
 msgstr "Português"
 
@@ -1704,11 +1949,11 @@ msgstr "Abrir recente"
 
 #: tfrmprincipal.menuitemregisterfileassoc.caption
 msgid "Register .bib files"
-msgstr ""
+msgstr "Registrar arquivos .bib"
 
 #: tfrmprincipal.menuitemstatisticalsuggestion.caption
 msgid "Statistical engine"
-msgstr ""
+msgstr "Motor estatístico"
 
 #: tfrmprincipal.menuitemstrongnegrito.caption
 msgid "Words with strongs in bold"
@@ -1764,7 +2009,7 @@ msgstr "Manter o theWord sincronizado com o versículo atual do iBiblia, além d
 
 #: tfrmprincipal.menuitemunregisterfileassoc.caption
 msgid "Unregister .bib files"
-msgstr ""
+msgstr "Desassociar com arquivos .bib"
 
 #: tfrmprincipal.opendialog1.title
 msgid "Open existing association project"
@@ -1785,7 +2030,6 @@ msgid "Save project as..."
 msgstr "Salvar projeto como..."
 
 #: tfrmprincipal.savedialog2.title
-msgctxt "tfrmprincipal.savedialog2.title"
 msgid "Save module as..."
 msgstr "Salvar módulo como..."
 
@@ -1815,13 +2059,17 @@ msgstr ""
 msgid "Synchronization error"
 msgstr "Erro de sincronização"
 
+#: versiculo.scopyassociationexample
+msgid "Copy association example for AI instructions"
+msgstr "Copiar como exemplo para IA"
+
 #: versiculo.scopyassociationsjsontoclipboard
 msgid "Copy association &JSON to clipboard"
-msgstr ""
+msgstr "Copiar JSON da associação para a área de transferência"
 
 #: versiculo.scopyinterlinearversetoclipboard
 msgid "Copy &interlinear verse to clipboard"
-msgstr ""
+msgstr "Copiar o versículo interlinear para a área de transferência"
 
 #: versiculo.scopytags
 msgid "&Copy tags"
@@ -1829,11 +2077,11 @@ msgstr "&Copiar tags"
 
 #: versiculo.scopytokenstoclipboard
 msgid "Copy &tokens to clipboard"
-msgstr ""
+msgstr "Copiar os tokens para a área de transferência"
 
 #: versiculo.scopyxmltoclipboard
 msgid "Copy association &XML to clipboard"
-msgstr ""
+msgstr "Copia o XML de associação para a área de transferência"
 
 #: versiculo.spastealltags
 msgid "Paste &all tags"
@@ -1857,5 +2105,5 @@ msgstr "&Exportar texto para arquivo..."
 
 #: versiculo.sswitchdestinationandreference1texts
 msgid "Switch destination text with reference 1"
-msgstr ""
+msgstr "Trocar texto destino com texto de referência 1"
 

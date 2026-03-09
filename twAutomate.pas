@@ -171,8 +171,24 @@ class function TWAutomateUtils.GetTwCurrentRef: string;
     mtRef: IMatch;
   begin
     result := '';
-    reRef := RegexCreate('^(.*?) (\d+):(\d+)', [rcoUTF8]);
-    mtRef := reRef.Match(caption);
+    try
+      reRef := RegexCreate('^(.*?) (\d+):(\d+)', [rcoUTF8]);
+      mtRef := reRef.Match(caption);
+    except
+      on E: Exception do
+      begin
+        if E.Message = 'PCRE_ERROR_BADUTF8' then
+        begin // fallback for bad UTF-8 sequences
+          reRef := RegexCreate('^(.*?) (\d+):(\d+)', []);
+          mtRef := reRef.Match(caption);
+        end
+        else
+        begin
+          ShowMessage('Error in regex: ' + E.Message);
+          exit;
+        end;
+      end;
+    end;
 
     if not mtRef.Success then exit;
 
@@ -180,6 +196,11 @@ class function TWAutomateUtils.GetTwCurrentRef: string;
     begin
       FreeAndNil(BooksMap);
       LoadLangFile(GetCurrentLangFile(GetConfigFile));
+      if not assigned(BooksMap) then
+      begin
+        // ShowMessage('Failed to load language file');
+        exit;
+      end;
     end;
 
     if BooksMap.Find(mtRef.Groups[1].Value) = nil then

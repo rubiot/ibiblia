@@ -722,8 +722,17 @@ begin
 end;
 
 destructor TSyntagm.Destroy;
+var
+  verse: TVersiculo;
 begin
-  DisassociatePairs;
+  verse := nil;
+  if Assigned(FVerse) then
+    verse := TVersiculo(FVerse);
+
+  if not (Assigned(verse) and verse.Destroying and
+          ((verse.VersiculoPar = nil) or verse.VersiculoPar.Destroying)) then
+    DisassociatePairs;
+
   if assigned(FLabel) then
   begin
     FLabel.Destroy;
@@ -749,6 +758,7 @@ begin
     FMorph.Destroy;
     FMorph := nil;
   end;
+  inherited Destroy;
 end;
 
 procedure TSyntagm.AddToSelection;

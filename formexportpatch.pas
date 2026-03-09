@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  ComCtrls, Projeto, LazLogger, BibleTreeView, PatchFile, LCLIntf;
+  ComCtrls, BibleScope, Projeto, LazLogger, BibleTreeView, PatchFile, LCLIntf;
 
 type
 
@@ -129,7 +129,9 @@ begin
 end;
 
 initialization
+{$IFNDEF FPCUNIT}
   {$I formexportpatch.lrs}
+{$ENDIF}
 
 end.
 

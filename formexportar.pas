@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
-  ComCtrls, StdCtrls, ExtCtrls, Projeto, LCLTranslator, LCLIntf, LazUTF8;
+  ComCtrls, StdCtrls, ExtCtrls, BibleScope, Projeto, LCLTranslator, LCLIntf, LazUTF8;
 
 type
 
@@ -227,7 +227,9 @@ begin
 end;
 
 initialization
+{$IFNDEF FPCUNIT}
   {$I formexportar.lrs}
+{$ENDIF}
 
 end.
 

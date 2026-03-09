@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Graphics, ONTTokenizer, LCLType, HTMLColors,
-  LazUTF8, Projeto, PCRE, Controls, Menus, fgl, Dialogs, Math, Contnrs, KMemo,
+  LazUTF8, BibleScope, Projeto, PCRE, Controls, Menus, fgl, Dialogs, Math, Contnrs, KMemo,
   KEditCommon, KGraphics, KDialogs, formInterlinearVerseRules,
   LCLTranslator, LazLogger, StdCtrls, HTMLRenderer, CommentsView;
 
@@ -1225,7 +1225,7 @@ begin
 
     RenderChapterFooter;
     if not FPrintMode then
-    HighlightRange(FVerseRanges[current], clSilver);
+      HighlightRange(FVerseRanges[current], clSilver);
     //RenderNotes;
   finally
     Blocks.UnLockUpdate;
@@ -1233,10 +1233,10 @@ begin
 
   if not FPrintMode then
   begin
-  { scroll current verse to center }
-  self.SelectBlock(Blocks[FVerseRanges[current].first], sgpTopLeft);
-  self.SelLength:=0;
-  ExecuteCommand(ecScrollCenter);
+    { scroll current verse to center }
+    self.SelectBlock(Blocks[FVerseRanges[current].first], sgpTopLeft);
+    self.SelLength:=0;
+    ExecuteCommand(ecScrollCenter);
   end;
 
   //DebugLn('  TChapterView.RenderChapter: %d milliseconds', [getTickCount-starttime]);

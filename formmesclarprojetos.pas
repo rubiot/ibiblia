@@ -55,7 +55,9 @@ begin
 end;
 
 initialization
+{$IFNDEF FPCUNIT}
   {$I formmesclarprojetos.lrs}
+{$ENDIF}
 
 end.
 

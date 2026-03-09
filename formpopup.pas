@@ -183,7 +183,9 @@ begin
 end;
 
 initialization
+{$IFNDEF FPCUNIT}
   {$I formpopup.lrs}
+{$ENDIF}
 
 end.
 

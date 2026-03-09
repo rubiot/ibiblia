@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
-  StdCtrls, ExtCtrls, Buttons, ComCtrls, ActnList, Projeto, LCLTranslator,
+  StdCtrls, ExtCtrls, Buttons, ComCtrls, ActnList, BibleScope, Projeto, LCLTranslator,
   StrUtils;
 
 type
@@ -154,7 +154,7 @@ begin
     importOK := FProjeto.ImportarModuloTheWord(OpenDialog1.FileName, TTipoTextoBiblico(TabControl1.TabIndex), ProgressBar1, replace);
     Enabled := True;
     ActionMudancaAbaExecute(nil);
-    FProjeto.Atualizar;
+    FProjeto.RefreshUI;
     if importOK then
       ShowMessage(SNewTextImportedSuccessfully);
   end;
@@ -170,7 +170,7 @@ begin
   begin
     FProjeto.LimparTexto(TTipoTextoBiblico(TabControl1.TabIndex));
     ActionMudancaAbaExecute(nil);
-    FProjeto.Atualizar;
+    FProjeto.RefreshUI;
   end;
 end;
 
@@ -262,7 +262,9 @@ begin
 end;
 
 initialization
+{$IFNDEF FPCUNIT}
   {$I formpropprojeto.lrs}
+{$ENDIF}
 
 end.
 

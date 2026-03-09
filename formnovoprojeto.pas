@@ -132,7 +132,9 @@ begin
 end;
 
 initialization
+{$IFNDEF FPCUNIT}
   {$I formnovoprojeto.lrs}
+{$ENDIF}
 
 end.
 

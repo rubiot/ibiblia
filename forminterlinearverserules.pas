@@ -94,7 +94,9 @@ begin
 end;
 
 initialization
+{$IFNDEF FPCUNIT}
   {$I formInterlinearVerseRules.lrs}
+{$ENDIF}
 
 end.
 

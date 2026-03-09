@@ -41,8 +41,10 @@ begin
   FileVerInfo.Free;
 end;
 
+{$IFNDEF FPCUNIT}
 initialization
   {$I unitabout.lrs}
+{$ENDIF}
 
 end.
 
