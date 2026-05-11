@@ -86,6 +86,7 @@ type
 function CreateBackend(const Provider, Model, ApiKey: string; Timeout: Integer = 60000): TBaseLLMClient; overload;
 function CreateBackend(const Model: string; const ApiKey: string; Timeout: Integer = 60000): TBaseLLMClient; overload; // Legacy support
 function GetModelInfo(const Model: string): TLLMModelInfo;
+procedure ReloadModelRegistry;
 // Returns the list of supported model names defined in this unit
 procedure FillSupportedModelNames(List: TStrings; const FilterProvider: string = '');
 // Returns the list of supported provider names
@@ -107,20 +108,15 @@ var
   SSLInitLock: TCriticalSection;
   GlobalDummyClient: TFPHTTPClient = nil; // Keep alive to prevent SSL unload
 
-{ TBaseLLMClient }
-
-constructor TBaseLLMClient.Create(const AModel, AApiKey: string; ATimeout: Integer = 60000);
-begin
-  FModel := AModel;
-  FApiKey := AApiKey;
-  FTimeout := ATimeout;
-end;
-
-const
-  MODEL_INFO: array[0..11] of record
+type
+  TLLMModelEntry = record
     Name: string;
     Info: TLLMModelInfo;
-  end = (
+  end;
+
+const
+  MODEL_REGISTRY_FILE_NAME = 'iBiblia.models.json';
+  DEFAULT_MODEL_INFO: array[0..11] of TLLMModelEntry = (
     (Name: 'gpt-4o-mini';       Info: (Backend: lbOpenAI;   SupportsStructOutput: True)),
     (Name: 'o1';                Info: (Backend: lbOpenAI;   SupportsStructOutput: True)),
     (Name: 'o1-mini';           Info: (Backend: lbOpenAI;   SupportsStructOutput: False)),
@@ -135,6 +131,177 @@ const
     (Name: 'gemini-2';          Info: (Backend: lbGoogle;   SupportsStructOutput: True))
   );
 
+var
+  ModelRegistry: array of TLLMModelEntry;
+  ModelRegistryLoaded: Boolean = False;
+
+function GetModelRegistryFilePath: string;
+begin
+  Result := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + MODEL_REGISTRY_FILE_NAME;
+end;
+
+function TryParseBackend(const Provider: string; out Backend: TLLMBackend): Boolean;
+begin
+  Result := True;
+  if SameText(Provider, 'OpenAI') then
+    Backend := lbOpenAI
+  else if SameText(Provider, 'DeepSeek') then
+    Backend := lbDeepSeek
+  else if SameText(Provider, 'Google') then
+    Backend := lbGoogle
+  else
+    Result := False;
+end;
+
+procedure LoadDefaultModelRegistry;
+var
+  i: Integer;
+begin
+  SetLength(ModelRegistry, Length(DEFAULT_MODEL_INFO));
+  for i := Low(DEFAULT_MODEL_INFO) to High(DEFAULT_MODEL_INFO) do
+    ModelRegistry[i] := DEFAULT_MODEL_INFO[i];
+end;
+
+function TryLoadModelRegistryFromJson(const Root: TJSONData): Boolean;
+var
+  ModelsArray: TJSONArray;
+  ModelObj: TJSONObject;
+  EntryInfo: TLLMModelInfo;
+  EntryName: string;
+  ProviderName: string;
+  i: Integer;
+  ValidCount: Integer;
+begin
+  Result := False;
+
+  if Root.JSONType = jtArray then
+    ModelsArray := TJSONArray(Root)
+  else if (Root.JSONType = jtObject) and (TJSONObject(Root).Find('models') <> nil) then
+    ModelsArray := TJSONObject(Root).Arrays['models']
+  else
+  begin
+    AIDebugLog('TryLoadModelRegistryFromJson - invalid root structure, expected array or object.models');
+    Exit;
+  end;
+
+  SetLength(ModelRegistry, ModelsArray.Count);
+  ValidCount := 0;
+  for i := 0 to ModelsArray.Count - 1 do
+  begin
+    if ModelsArray.Items[i].JSONType <> jtObject then
+    begin
+      AIDebugLogFmt('TryLoadModelRegistryFromJson - ignoring non-object entry at index %d', [i]);
+      Continue;
+    end;
+
+    ModelObj := ModelsArray.Objects[i];
+    EntryName := Trim(ModelObj.Get('name', ''));
+    ProviderName := Trim(ModelObj.Get('provider', ''));
+    if (EntryName = '') or (ProviderName = '') then
+    begin
+      AIDebugLogFmt('TryLoadModelRegistryFromJson - ignoring entry at index %d because name/provider is empty', [i]);
+      Continue;
+    end;
+
+    if not TryParseBackend(ProviderName, EntryInfo.Backend) then
+    begin
+      AIDebugLogFmt('TryLoadModelRegistryFromJson - ignoring model "%s" with unsupported provider "%s"', [EntryName, ProviderName]);
+      Continue;
+    end;
+
+    EntryInfo.SupportsStructOutput := ModelObj.Get('supports_struct_output', False);
+    ModelRegistry[ValidCount].Name := EntryName;
+    ModelRegistry[ValidCount].Info := EntryInfo;
+    Inc(ValidCount);
+  end;
+
+  SetLength(ModelRegistry, ValidCount);
+  Result := ValidCount > 0;
+end;
+
+function TryLoadModelRegistryFromFile(const FilePath: string): Boolean;
+var
+  JsonText: TStringList;
+  Root: TJSONData;
+begin
+  Result := False;
+  if not FileExists(FilePath) then
+    Exit;
+
+  JsonText := TStringList.Create;
+  try
+    JsonText.LoadFromFile(FilePath);
+    Root := GetJSON(JsonText.Text);
+    try
+      Result := TryLoadModelRegistryFromJson(Root);
+    finally
+      Root.Free;
+    end;
+  finally
+    JsonText.Free;
+  end;
+end;
+
+procedure EnsureModelRegistryLoaded;
+var
+  RegistryPath: string;
+begin
+  if ModelRegistryLoaded then
+    Exit;
+
+  RegistryPath := GetModelRegistryFilePath;
+  try
+    if TryLoadModelRegistryFromFile(RegistryPath) then
+      AIDebugLogFmt('EnsureModelRegistryLoaded - loaded model registry from %s', [RegistryPath])
+    else
+    begin
+      LoadDefaultModelRegistry;
+      if FileExists(RegistryPath) then
+        AIDebugLogFmt('EnsureModelRegistryLoaded - falling back to built-in model registry after reading %s', [RegistryPath])
+      else
+        AIDebugLogFmt('EnsureModelRegistryLoaded - model registry file not found, using built-in defaults (%s)', [RegistryPath]);
+    end;
+  except
+    on E: Exception do
+    begin
+      LoadDefaultModelRegistry;
+      AIDebugLogFmt('EnsureModelRegistryLoaded - failed to load %s: %s. Using built-in defaults.', [RegistryPath, E.Message]);
+    end;
+  end;
+
+  ModelRegistryLoaded := True;
+end;
+
+procedure ReloadModelRegistry;
+begin
+  ModelRegistryLoaded := False;
+  SetLength(ModelRegistry, 0);
+  EnsureModelRegistryLoaded;
+end;
+
+function TryFindRegisteredModelInfo(const Model: string; out Info: TLLMModelInfo): Boolean;
+var
+  i: Integer;
+begin
+  EnsureModelRegistryLoaded;
+  for i := Low(ModelRegistry) to High(ModelRegistry) do
+    if SameText(ModelRegistry[i].Name, Model) then
+    begin
+      Info := ModelRegistry[i].Info;
+      Exit(True);
+    end;
+  Result := False;
+end;
+
+{ TBaseLLMClient }
+
+constructor TBaseLLMClient.Create(const AModel, AApiKey: string; ATimeout: Integer = 60000);
+begin
+  FModel := AModel;
+  FApiKey := AApiKey;
+  FTimeout := ATimeout;
+end;
+
 procedure FillSupportedModelNames(List: TStrings; const FilterProvider: string = '');
 var
   i: Integer;
@@ -142,6 +309,7 @@ var
   filterFound: Boolean;
 begin
   if not Assigned(List) then Exit;
+  EnsureModelRegistryLoaded;
   filterFound := False;
   if FilterProvider <> '' then
   begin
@@ -153,10 +321,10 @@ begin
   List.BeginUpdate;
   try
     List.Clear;
-    for i := Low(MODEL_INFO) to High(MODEL_INFO) do
+    for i := Low(ModelRegistry) to High(ModelRegistry) do
     begin
-      if (not filterFound) or (MODEL_INFO[i].Info.Backend = backend) then
-        List.Add(MODEL_INFO[i].Name);
+      if (not filterFound) or (ModelRegistry[i].Info.Backend = backend) then
+        List.Add(ModelRegistry[i].Name);
     end;
   finally
     List.EndUpdate;
@@ -179,12 +347,10 @@ end;
 
 function GetModelInfo(const Model: string): TLLMModelInfo;
 var
-  i: Integer;
   res: TLLMModelInfo;
 begin
-  for i := Low(MODEL_INFO) to High(MODEL_INFO) do
-    if SameText(MODEL_INFO[i].Name, Model) then
-      Exit(MODEL_INFO[i].Info);
+  if TryFindRegisteredModelInfo(Model, res) then
+    Exit(res);
   // Fallback: try to infer backend by common prefixes and disable structured output by default
   if (Pos('gemini', LowerCase(Model)) = 1) then
   begin

@@ -163,6 +163,10 @@ type
     function GetParagraphMode: TParagraphMode;
     function GetSituacao: Integer;
     function IsValidDicionaryModule(const path: string; const dicType: string): boolean;
+    function BuildAssociationFlowExample: TAIFlowExample;
+    function BuildTranslationFlowExample: TAIFlowExample;
+    function CreateFlowExample(const FlowId: string): TAIFlowExample;
+    function PromptReplaceExistingFlowExample(const FlowId: string; const ExistingExample: TAIFlowExample): Boolean;
     procedure PreencherArvore;
     procedure SetAtrasoExibicao(const AValue: Cardinal);
     procedure SetAutoSave(AValue: boolean);
@@ -271,6 +275,11 @@ type
     function AtribuirDicMorfo(dic: string; textos: STextosBiblicos): boolean;
     procedure AtribuirInfo(info, valor: string);
     function ObterInfo(info: string): string;
+    function GetFlowExamples(const FlowId: string): TAIFlowExampleArray;
+    procedure SetFlowExamples(const FlowId: string; const Examples: TAIFlowExampleArray);
+    function IncludeCurrentVerseAsFlowExample(const FlowId: string): Boolean;
+    procedure RemoveFlowExample(const FlowId, ReferenceId: string);
+    procedure ClearFlowExamples(const FlowId: string);
     function ObterTextoVersiculo(texto: TTipoTextoBiblico): string;
     function ObterTextoVersiculo(Referencia: string; texto: TTipoTextoBiblico): string;
     function ObterTextoSimplesVersiculo(texto: TTipoTextoBiblico): string;
@@ -341,6 +350,18 @@ resourcestring
   STranslation = 'Translation';
   SAssociate = 'Associate';
   STranslate = 'Translate';
+  SUseVerseAsExample = 'Use verse as example...';
+  SUseVerseAsAssociationExample = 'In association flow';
+  SUseVerseAsTranslationExample = 'In translation flow';
+  SExampleSaved = 'Example saved.';
+  SExampleAlreadyExistsTitle = 'Example already exists';
+  SExampleAlreadyExistsPrompt = 'This verse is already saved as an example for the %s flow.' + #13#10 + #13#10 +
+                                'Existing entry: %s' + #13#10 + #13#10 +
+                                'Do you want to replace it with the current verse state?';
+  SAssociationExampleRequiresPair = 'Association examples require an active source verse paired with a destination verse.';
+  SAssociationExampleRequiresAssociations = 'Association examples require existing associations in the current verse.';
+  STranslationExampleRequiresPair = 'Translation examples require an active source verse paired with a destination verse.';
+  STranslationExampleRequiresText = 'Translation examples require translated text in the destination verse.';
   SCancelAIProcessing = 'Cancel AI processing';
   SConfirmApplyAIToBook = 'Are you sure you want to apply the AI flow to the entire book %s?';
   SConfirmApplyAIToChapter = 'Are you sure you want to apply the AI flow to chapter %s?';
@@ -458,6 +479,76 @@ begin
       Result := True;
       Exit;
     end;
+end;
+
+function TProjeto.BuildAssociationFlowExample: TAIFlowExample;
+var
+  SourceVerse, TargetVerse: TVersiculo;
+begin
+  SourceVerse := FAVersiculo[tbOrigem];
+  TargetVerse := FAVersiculo[tbDestino];
+
+  if (not Assigned(SourceVerse)) or (not Assigned(TargetVerse)) or (SourceVerse.VersiculoPar <> TargetVerse) then
+    raise Exception.Create(SAssociationExampleRequiresPair);
+
+  if not SourceVerse.HasAssociations then
+    raise Exception.Create(SAssociationExampleRequiresAssociations);
+
+  Result.ReferenceId := ID;
+  Result.ReferenceCaption := FormattedReference;
+  Result.SourceText := SourceVerse.TextoSimples;
+  Result.TargetText := TargetVerse.TextoSimples;
+  Result.ExpectedResponse := SourceVerse.GetAssociationsJSON;
+end;
+
+function TProjeto.BuildTranslationFlowExample: TAIFlowExample;
+var
+  SourceVerse, TargetVerse: TVersiculo;
+begin
+  SourceVerse := FAVersiculo[tbOrigem];
+  TargetVerse := FAVersiculo[tbDestino];
+
+  if (not Assigned(SourceVerse)) or (not Assigned(TargetVerse)) or (SourceVerse.VersiculoPar <> TargetVerse) then
+    raise Exception.Create(STranslationExampleRequiresPair);
+
+  if Trim(TargetVerse.TextoSimples) = '' then
+    raise Exception.Create(STranslationExampleRequiresText);
+
+  Result.ReferenceId := ID;
+  Result.ReferenceCaption := FormattedReference;
+  Result.SourceText := SourceVerse.TextoSimples;
+  Result.TargetText := TargetVerse.TextoSimples;
+  Result.ExpectedResponse := TargetVerse.TextoSimples;
+end;
+
+function TProjeto.CreateFlowExample(const FlowId: string): TAIFlowExample;
+begin
+  case LowerCase(Trim(FlowId)) of
+    'association': Result := BuildAssociationFlowExample;
+    'translation': Result := BuildTranslationFlowExample;
+  else
+    raise Exception.CreateFmt('Unknown flow ID for example creation: %s', [FlowId]);
+  end;
+end;
+
+function TProjeto.PromptReplaceExistingFlowExample(const FlowId: string; const ExistingExample: TAIFlowExample): Boolean;
+var
+  FlowCaption: string;
+begin
+  if SameText(FlowId, 'association') then
+    FlowCaption := SAssociation
+  else if SameText(FlowId, 'translation') then
+    FlowCaption := STranslation
+  else
+    FlowCaption := FlowId;
+
+  Result := MessageDlg(
+    SExampleAlreadyExistsTitle,
+    Format(SExampleAlreadyExistsPrompt, [FlowCaption, FormatFlowExampleSummary(ExistingExample)]),
+    mtConfirmation,
+    [mbYes, mbNo],
+    0
+  ) = mrYes;
 end;
 
 procedure TProjeto.Novo(nomedb, descricao: string);
@@ -3038,7 +3129,6 @@ procedure TProjeto.StartAIAssociationBatch(NodesVerses: TList; MaxParallel: Inte
 var
   flow: IAIVerseFlow;
   flowConfig: IAIFlowConfig;
-  customInstructions: string;
   i: Integer;
   verseData: PVerseData;
   node: TTreeNode;
@@ -3075,11 +3165,7 @@ begin
 
   // Get association flow config and build prompt
   flowConfig := GetFlowConfigById('association');
-  customInstructions := ObterInfo(AI_ASSOCIATION_CONFIG_KEY_CUSTOM_INSTRUCTIONS);
-
-  flow := TAIAssociationFlow.Create(
-    flowConfig.BuildPromptFromConfig([AI_ASSOCIATION_CONFIG_KEY_CUSTOM_INSTRUCTIONS, customInstructions])
-  );
+  flow := flowConfig.CreateFlowInstance(Self);
 
   FAIManager := TAIProcessingManager.Create(
     ObterInfo(AI_COMMON_CONFIG.Model),
@@ -3099,8 +3185,6 @@ procedure TProjeto.StartAITranslationBatch(NodesVerses: TList; MaxParallel: Inte
 var
   flow: IAIVerseFlow;
   flowConfig: IAIFlowConfig;
-  forceOverwrite: Boolean;
-  configValues: array[0..5] of TVarRec;
   i: Integer;
   verseData: PVerseData;
   node: TTreeNode;
@@ -3129,26 +3213,9 @@ begin
     end;
   end;
 
-  // Get translation flow config and prepare config values
+  // Get translation flow config and prepare flow instance
   flowConfig := GetFlowConfigById('translation');
-
-  // Build config values array for BuildPromptFromConfig
-  configValues[0].VType := vtAnsiString;
-  configValues[0].VAnsiString := PAnsiChar(AnsiString(AI_TRANSLATION_CONFIG_KEY_TARGET_LANGUAGE));
-  configValues[1].VType := vtAnsiString;
-  configValues[1].VAnsiString := PAnsiChar(AnsiString(ObterInfo(AI_TRANSLATION_CONFIG_KEY_TARGET_LANGUAGE)));
-
-  configValues[2].VType := vtAnsiString;
-  configValues[2].VAnsiString := PAnsiChar(AnsiString(AI_TRANSLATION_CONFIG_KEY_CUSTOM_INSTRUCTIONS));
-  configValues[3].VType := vtAnsiString;
-  configValues[3].VAnsiString := PAnsiChar(AnsiString(ObterInfo(AI_TRANSLATION_CONFIG_KEY_CUSTOM_INSTRUCTIONS)));
-
-  forceOverwrite := LowerCase(ObterInfo(AI_TRANSLATION_CONFIG_KEY_FORCE_OVERWRITE)) = 'true';
-
-  flow := TAITranslationFlow.Create(
-    flowConfig.BuildPromptFromConfig(configValues),
-    forceOverwrite
-  );
+  flow := flowConfig.CreateFlowInstance(Self);
 
   FAIManager := TAIProcessingManager.Create(
     ObterInfo(AI_COMMON_CONFIG.Model),
@@ -3863,6 +3930,65 @@ end;
 function TProjeto.ObterInfo(info: string): string;
 begin
   result := ResgatarInfo(info);
+end;
+
+function TProjeto.GetFlowExamples(const FlowId: string): TAIFlowExampleArray;
+begin
+  Result := LoadFlowExamples(ObterInfo(GetFlowExamplesConfigKey(FlowId)));
+end;
+
+procedure TProjeto.SetFlowExamples(const FlowId: string; const Examples: TAIFlowExampleArray);
+begin
+  AtribuirInfo(GetFlowExamplesConfigKey(FlowId), SaveFlowExamples(Examples));
+end;
+
+function TProjeto.IncludeCurrentVerseAsFlowExample(const FlowId: string): Boolean;
+var
+  Examples: TAIFlowExampleArray;
+  Example: TAIFlowExample;
+  ExistingIndex: Integer;
+  ReplaceExisting: Boolean;
+begin
+  Result := False;
+  try
+    Example := CreateFlowExample(FlowId);
+    Examples := GetFlowExamples(FlowId);
+    ExistingIndex := IndexOfFlowExampleByReference(Examples, Example.ReferenceId);
+
+    if ExistingIndex >= 0 then
+    begin
+      ReplaceExisting := PromptReplaceExistingFlowExample(FlowId, Examples[ExistingIndex]);
+      if not ReplaceExisting then
+        Exit;
+    end
+    else
+      ReplaceExisting := False;
+
+    Examples := UpsertFlowExample(Examples, Example, ReplaceExisting);
+    SetFlowExamples(FlowId, Examples);
+    ShowMessage(SExampleSaved);
+    Result := True;
+  except
+    on E: Exception do
+      MessageDlg(SWarning, E.Message, mtWarning, [mbOK], 0);
+  end;
+end;
+
+procedure TProjeto.RemoveFlowExample(const FlowId, ReferenceId: string);
+var
+  Examples: TAIFlowExampleArray;
+begin
+  Examples := GetFlowExamples(FlowId);
+  Examples := ai_flow_config.RemoveFlowExample(Examples, ReferenceId);
+  SetFlowExamples(FlowId, Examples);
+end;
+
+procedure TProjeto.ClearFlowExamples(const FlowId: string);
+var
+  Examples: TAIFlowExampleArray;
+begin
+  Examples := nil;
+  SetFlowExamples(FlowId, Examples);
 end;
 
 function TProjeto.ObterTextoVersiculo(texto: TTipoTextoBiblico): string;

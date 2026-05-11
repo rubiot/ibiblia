@@ -129,7 +129,27 @@ resourcestring
 implementation
 
 uses
-  Projeto;
+  Projeto, ai_flow_config;
+
+function FormatAssociationExamplesPromptSection(const Examples: TAIFlowExampleArray): string;
+var
+  I: Integer;
+begin
+  Result := '';
+  if Length(Examples) = 0 then
+    Exit;
+
+  Result := '=== Association Examples ===' + LineEnding +
+            'Use these examples as guidance for the expected matching style and JSON output.';
+  for I := 0 to High(Examples) do
+  begin
+    Result := Result + LineEnding + LineEnding +
+              Format('Example %d - %s', [I + 1, Examples[I].ReferenceCaption]) + LineEnding +
+              Format('Original: "%s"', [Examples[I].SourceText]) + LineEnding +
+              Format('Translation: "%s"', [Examples[I].TargetText]) + LineEnding +
+              'Expected response: ' + Examples[I].ExpectedResponse;
+  end;
+end;
 
 // Helper function to extract JSON from markdown code blocks
 function ExtractJsonFromMarkdown(const RawContent: string): string;
@@ -303,10 +323,13 @@ function TAIAssociationFlowConfig.BuildPromptFromConfig(const ConfigValues: arra
 var
   customInstructions: string;
   includeComments: Boolean;
+  serializedExamples: string;
+  examplesSection: string;
   I: Integer;
 begin
   includeComments := False;
   customInstructions := '';
+  serializedExamples := '';
   
   I := 0;
   while I < Length(ConfigValues) do
@@ -327,6 +350,11 @@ begin
             vtAnsiString: includeComments := LowerCase(string(ConfigValues[I+1].VAnsiString)) = 'true';
           end;
         end;
+      end
+      else if string(ConfigValues[I].VAnsiString) = AI_ASSOCIATION_EXAMPLES_KEY then
+      begin
+        if (I + 1 < Length(ConfigValues)) and (ConfigValues[I+1].VType = vtAnsiString) then
+          serializedExamples := string(ConfigValues[I+1].VAnsiString);
       end;
     end;
     Inc(I, 2);
@@ -352,6 +380,10 @@ begin
               '=== Additional Project-Specific Instructions ===' + LineEnding +
               customInstructions;
   end;
+
+  examplesSection := FormatAssociationExamplesPromptSection(LoadFlowExamples(serializedExamples));
+  if examplesSection <> '' then
+    Result := Result + LineEnding + LineEnding + examplesSection;
 end;
 
 function TAIAssociationFlowConfig.CreateFlowInstance(Project: TObject): IAIVerseFlow;
@@ -360,6 +392,7 @@ var
   customInstructions: string;
   includeComments: Boolean;
   providerOverride, modelOverride, apiKeyOverride: string;
+  serializedExamples: string;
   flow: TAIAssociationFlow;
 begin
   Result := nil;
@@ -376,12 +409,14 @@ begin
   providerOverride := proj.ObterInfo(AI_ASSOCIATION_CONFIG_KEY_PROVIDER);
   modelOverride := proj.ObterInfo(AI_ASSOCIATION_CONFIG_KEY_MODEL);
   apiKeyOverride := proj.ObterInfo(AI_ASSOCIATION_CONFIG_KEY_API_KEY);
+  serializedExamples := proj.ObterInfo(AI_ASSOCIATION_EXAMPLES_KEY);
   
   // Build flow with constructed prompt
   flow := TAIAssociationFlow.Create(
     BuildPromptFromConfig([
       AI_ASSOCIATION_CONFIG_KEY_CUSTOM_INSTRUCTIONS, customInstructions,
-      AI_ASSOCIATION_CONFIG_KEY_INCLUDE_COMMENTS, includeComments
+      AI_ASSOCIATION_CONFIG_KEY_INCLUDE_COMMENTS, includeComments,
+      AI_ASSOCIATION_EXAMPLES_KEY, serializedExamples
     ]),
     includeComments,
     providerOverride,

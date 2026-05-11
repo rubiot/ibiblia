@@ -23,9 +23,14 @@ type
     FlowId: string;
     LblDescription: TLabel;
     FieldControls: array of TFieldControl;  // Dynamic array of field controls
+    LblExamples: TLabel;
+    lbExamples: TListBox;
+    BtnRemoveExample: TButton;
+    BtnClearExamples: TButton;
     BtnViewDefault: TButton;
     BtnReset: TButton;
     LblFormatInfo: TLabel;
+    WorkingExamples: TAIFlowExampleArray;
   end;
 
   { TFrmLLMOptions }
@@ -60,8 +65,12 @@ type
     procedure SaveFlowConfig(const AFlowId: string);
     procedure OnViewDefaultClick(Sender: TObject);
     procedure OnResetClick(Sender: TObject);
+    procedure OnRemoveExampleClick(Sender: TObject);
+    procedure OnClearExamplesClick(Sender: TObject);
     procedure OnFlowProviderChange(Sender: TObject);
+    procedure RefreshFlowExamplesUI(const AFlowId: string);
     function GetFlowTabByFlowId(const AFlowId: string): TFlowTabControls;
+    function GetFlowTabIndexByFlowId(const AFlowId: string): Integer;
   public
     procedure SetProjeto(AProjeto: TProjeto);
   end;
@@ -86,6 +95,12 @@ resourcestring
   rsAdditionalInstructions = 'Additional Instructions (Optional):';
   rsBtnViewDefault = 'View Default Prompt';
   rsBtnReset = 'Reset to Default';
+  rsSavedExamples = 'Saved Examples:';
+  rsBtnRemoveExample = 'Remove Selected';
+  rsBtnClearExamples = 'Clear List';
+  rsClearExamplesTitle = 'Clear examples';
+  rsClearExamplesPrompt = 'Remove all saved examples for the %s flow?';
+  rsNoExamples = '(no saved examples)';
   rsDefaultPromptTitle = 'Default Prompt - %s';
   rsCustomInstructionsHint = 'Add specific guidelines for your project (e.g., translation philosophy, examples). Leave empty to use only the default prompt.';
   rsProviderOverride = 'Provider Override (Optional)';
@@ -100,6 +115,7 @@ begin
   leApiKey.PasswordChar := '*';
 
   // Populate supported model names
+  ReloadModelRegistry;
   FillSupportedModelNames(cbModel.Items);
 
   // Localize captions
@@ -439,7 +455,10 @@ begin
 
       cb.Width := currentParent.ClientWidth - 16;
       cb.Anchors := [akTop, akLeft, akRight];
-      cb.Style := csDropDownList; // Use DropDownList for providers/models
+      if configFields[i].FieldType = 'provider' then
+        cb.Style := csDropDownList
+      else
+        cb.Style := csDropDown;
       
       if configFields[i].FieldType = 'provider' then
       begin
@@ -508,6 +527,58 @@ begin
     yPos := gbProvider.Top + gbProvider.Height + 10;
 
   Inc(yPos, 8);
+
+  tabControls.LblExamples := TLabel.Create(ATabSheet);
+  with tabControls.LblExamples do
+  begin
+    Parent := ATabSheet;
+    Left := 8;
+    Top := yPos;
+    Caption := rsSavedExamples;
+    AutoSize := True;
+  end;
+  Inc(yPos, 20);
+
+  tabControls.lbExamples := TListBox.Create(ATabSheet);
+  with tabControls.lbExamples do
+  begin
+    Parent := ATabSheet;
+    Left := 8;
+    Top := yPos;
+    Width := 600;
+    Height := 88;
+    Anchors := [akTop, akLeft, akRight];
+    IntegralHeight := False;
+  end;
+  Inc(yPos, 96);
+
+  tabControls.BtnRemoveExample := TButton.Create(ATabSheet);
+  with tabControls.BtnRemoveExample do
+  begin
+    Parent := ATabSheet;
+    Left := 8;
+    Top := yPos;
+    Width := 120;
+    Height := 25;
+    Caption := rsBtnRemoveExample;
+    Tag := idx;
+    OnClick := @OnRemoveExampleClick;
+  end;
+
+  tabControls.BtnClearExamples := TButton.Create(ATabSheet);
+  with tabControls.BtnClearExamples do
+  begin
+    Parent := ATabSheet;
+    Left := 136;
+    Top := yPos;
+    Width := 90;
+    Height := 25;
+    Caption := rsBtnClearExamples;
+    Tag := idx;
+    OnClick := @OnClearExamplesClick;
+  end;
+
+  Inc(yPos, 33);
 
   // Buttons panel
   tabControls.BtnViewDefault := TButton.Create(ATabSheet);
@@ -600,7 +671,7 @@ var
   flowConfig: IAIFlowConfig;
   tabControls: TFlowTabControls;
   configFields: TAIFlowConfigFieldArray;
-  i, j: Integer;
+  i, tabIdx: Integer;
   fieldValue, providerValue: string;
   ctrl: TControl;
   LcbModel: TComboBox;
@@ -663,6 +734,13 @@ begin
       LcbModel.Text := fieldValue;
     end;
   end;
+
+  tabIdx := GetFlowTabIndexByFlowId(AFlowId);
+  if tabIdx >= 0 then
+  begin
+    FFlowTabs[tabIdx].WorkingExamples := FProjeto.GetFlowExamples(AFlowId);
+    RefreshFlowExamplesUI(AFlowId);
+  end;
 end;
 
 procedure TFrmLLMOptions.SaveFlowConfig(const AFlowId: string);
@@ -670,7 +748,7 @@ var
   flowConfig: IAIFlowConfig;
   tabControls: TFlowTabControls;
   configFields: TAIFlowConfigFieldArray;
-  i: Integer;
+  i, tabIdx: Integer;
   fieldValue: string;
   ctrl: TControl;
 begin
@@ -690,6 +768,7 @@ begin
     if i > High(configFields) then Break;
 
     ctrl := tabControls.FieldControls[i].Control;
+    fieldValue := '';
 
     // Get value based on control type
     if ctrl is TLabeledEdit then
@@ -704,6 +783,84 @@ begin
     // Save to project
     FProjeto.AtribuirInfo(configFields[i].Key, fieldValue);
   end;
+
+  tabIdx := GetFlowTabIndexByFlowId(AFlowId);
+  if tabIdx >= 0 then
+    FProjeto.SetFlowExamples(AFlowId, FFlowTabs[tabIdx].WorkingExamples);
+end;
+
+procedure TFrmLLMOptions.OnRemoveExampleClick(Sender: TObject);
+var
+  btn: TButton;
+  idx, selectedIndex: Integer;
+begin
+  if not (Sender is TButton) then Exit;
+
+  btn := TButton(Sender);
+  idx := btn.Tag;
+  if (idx < 0) or (idx >= Length(FFlowTabs)) then Exit;
+
+  selectedIndex := FFlowTabs[idx].lbExamples.ItemIndex;
+  if (selectedIndex < 0) or (selectedIndex > High(FFlowTabs[idx].WorkingExamples)) then Exit;
+
+  FFlowTabs[idx].WorkingExamples := ai_flow_config.RemoveFlowExample(
+    FFlowTabs[idx].WorkingExamples,
+    FFlowTabs[idx].WorkingExamples[selectedIndex].ReferenceId
+  );
+  RefreshFlowExamplesUI(FFlowTabs[idx].FlowId);
+end;
+
+procedure TFrmLLMOptions.OnClearExamplesClick(Sender: TObject);
+var
+  btn: TButton;
+  idx: Integer;
+  flowConfig: IAIFlowConfig;
+begin
+  if not (Sender is TButton) then Exit;
+
+  btn := TButton(Sender);
+  idx := btn.Tag;
+  if (idx < 0) or (idx >= Length(FFlowTabs)) then Exit;
+
+  flowConfig := GetFlowConfigById(FFlowTabs[idx].FlowId);
+  if not Assigned(flowConfig) then Exit;
+
+  if MessageDlg(rsClearExamplesTitle,
+                Format(rsClearExamplesPrompt, [flowConfig.GetDisplayName]),
+                mtConfirmation,
+                [mbYes, mbNo],
+                0) <> mrYes then
+    Exit;
+
+  FFlowTabs[idx].WorkingExamples := nil;
+  RefreshFlowExamplesUI(FFlowTabs[idx].FlowId);
+end;
+
+procedure TFrmLLMOptions.RefreshFlowExamplesUI(const AFlowId: string);
+var
+  idx, i: Integer;
+begin
+  idx := GetFlowTabIndexByFlowId(AFlowId);
+  if idx < 0 then Exit;
+
+  FFlowTabs[idx].lbExamples.Items.BeginUpdate;
+  try
+    FFlowTabs[idx].lbExamples.Items.Clear;
+    if Length(FFlowTabs[idx].WorkingExamples) = 0 then
+      FFlowTabs[idx].lbExamples.Items.Add(rsNoExamples)
+    else
+      for i := 0 to High(FFlowTabs[idx].WorkingExamples) do
+        FFlowTabs[idx].lbExamples.Items.Add(FormatFlowExampleSummary(FFlowTabs[idx].WorkingExamples[i]));
+  finally
+    FFlowTabs[idx].lbExamples.Items.EndUpdate;
+  end;
+
+  if Length(FFlowTabs[idx].WorkingExamples) > 0 then
+    FFlowTabs[idx].lbExamples.ItemIndex := 0
+  else
+    FFlowTabs[idx].lbExamples.ItemIndex := -1;
+  FFlowTabs[idx].BtnRemoveExample.Enabled := Length(FFlowTabs[idx].WorkingExamples) > 0;
+  FFlowTabs[idx].BtnClearExamples.Enabled := Length(FFlowTabs[idx].WorkingExamples) > 0;
 end;
 
 procedure TFrmLLMOptions.OnViewDefaultClick(Sender: TObject);
@@ -805,6 +962,7 @@ function TFrmLLMOptions.GetFlowTabByFlowId(const AFlowId: string): TFlowTabContr
 var
   i: Integer;
 begin
+  Result := Default(TFlowTabControls);
   for i := 0 to High(FFlowTabs) do
   begin
     if FFlowTabs[i].FlowId = AFlowId then
@@ -813,13 +971,22 @@ begin
       Exit;
     end;
   end;
-  // Return empty record if not found
-  FillChar(Result, SizeOf(Result), 0);
+end;
+
+function TFrmLLMOptions.GetFlowTabIndexByFlowId(const AFlowId: string): Integer;
+begin
+  Result := -1;
+  for Result := 0 to High(FFlowTabs) do
+    if FFlowTabs[Result].FlowId = AFlowId then
+      Exit;
+  Result := -1;
 end;
 
 procedure TFrmLLMOptions.SetProjeto(AProjeto: TProjeto);
 begin
   FProjeto := AProjeto;
+  ReloadModelRegistry;
+  FillSupportedModelNames(cbModel.Items);
   LoadFromProjeto;
 end;
 

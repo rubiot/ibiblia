@@ -60,6 +60,9 @@ type
     FSyntagmPopupMenu: TPopupMenu;
     FVersePopupMenu: TPopupMenu;
     FRTLMenuItem: TMenuItem;
+    FUseAsExampleMenuItem: TMenuItem;
+    FUseAsAssociationExampleMenuItem: TMenuItem;
+    FUseAsTranslationExampleMenuItem: TMenuItem;
     FCopyAssociationExampleMenuItem: TMenuItem;
     FFixWrongFiTag: IRegex;
     FReadOnly: Boolean;
@@ -104,12 +107,12 @@ type
              WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
     procedure InitSyntagmPopupMenu;
     procedure InitVersePopupMenu;
+    procedure OnUseAssociationAsExample(Sender: TObject);
+    procedure OnUseTranslationAsExample(Sender: TObject);
     procedure OnCopyAssociationsJSONToClipboard(Sender: TObject);
     procedure OnCopyAssociationExample(Sender: TObject);
     procedure OnSwitchDestinationAndReference1Texts(Sender: TObject);
     procedure OnCopySintagmasAsJSON(Sender: TObject);
-    function GetAssociationsJSON: string;
-    function HasAssociations: boolean;
   protected
     { Protected declarations }
   public
@@ -135,6 +138,8 @@ type
     procedure OcultarTags;
     procedure EnableStrongHighlight(strong: string);
     procedure DisableStrongHighlight;
+    function GetAssociationsJSON: string;
+    function HasAssociations: boolean;
 
     procedure FindAndSelectSyntagms(Words: TStringList; Partial: Boolean = False; JoinConnected: Boolean = True);
 
@@ -196,6 +201,9 @@ resourcestring
   SCopyInterlinearVerseToClipboard = 'Copy &interlinear verse to clipboard';
   SCopyXMLToClipboard = 'Copy association &XML to clipboard';
   SCopyAssociationsJSONToClipboard = 'Copy association &JSON to clipboard';
+  SUseVerseAsExample = 'Use verse as example...';
+  SUseVerseAsAssociationExample = 'In association flow';
+  SUseVerseAsTranslationExample = 'In translation flow';
   SCopyAssociationExample = 'Copy association example for AI instructions';
   SSwitchDestinationAndReference1Texts = 'Switch destination text with reference 1';
 
@@ -1883,9 +1891,27 @@ end;
 
 procedure TVersiculo.OnVerseMouseDown(Sender: TObject; Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
+var
+  Project: TProjeto;
+  IsPrimaryVerse: Boolean;
+  CanUseAssociationExample: Boolean;
+  CanUseTranslationExample: Boolean;
 begin
   if Button = mbRight then
   begin
+    Project := TProjeto(FProject);
+    IsPrimaryVerse := Assigned(Project) and Assigned(Project.VerseObjects[tbOrigem]) and
+      (Project.VerseObjects[tbOrigem] = Self);
+    CanUseAssociationExample := IsPrimaryVerse and Assigned(VersiculoPar) and HasAssociations;
+    CanUseTranslationExample := IsPrimaryVerse and Assigned(VersiculoPar) and (Trim(VersiculoPar.TextoSimples) <> '');
+
+    if Assigned(FUseAsExampleMenuItem) then
+    begin
+      FUseAsExampleMenuItem.Visible := CanUseAssociationExample or CanUseTranslationExample;
+      FUseAsAssociationExampleMenuItem.Enabled := CanUseAssociationExample;
+      FUseAsTranslationExampleMenuItem.Enabled := CanUseTranslationExample;
+    end;
+
     if Assigned(FCopyAssociationExampleMenuItem) then
       FCopyAssociationExampleMenuItem.Visible := HasAssociations;
     FVersePopupMenu.PopUp;
@@ -1952,6 +1978,20 @@ begin
   Item.Caption := SSaveToFile;
   Item.OnClick := @OnSaveTextToFile;
   FVersePopupMenu.Items.Add(Item);
+
+  FUseAsExampleMenuItem := TMenuItem.Create(FVersePopupMenu);
+  FUseAsExampleMenuItem.Caption := SUseVerseAsExample;
+  FVersePopupMenu.Items.Add(FUseAsExampleMenuItem);
+
+  FUseAsAssociationExampleMenuItem := TMenuItem.Create(FVersePopupMenu);
+  FUseAsAssociationExampleMenuItem.Caption := SUseVerseAsAssociationExample;
+  FUseAsAssociationExampleMenuItem.OnClick := @OnUseAssociationAsExample;
+  FUseAsExampleMenuItem.Add(FUseAsAssociationExampleMenuItem);
+
+  FUseAsTranslationExampleMenuItem := TMenuItem.Create(FVersePopupMenu);
+  FUseAsTranslationExampleMenuItem.Caption := SUseVerseAsTranslationExample;
+  FUseAsTranslationExampleMenuItem.OnClick := @OnUseTranslationAsExample;
+  FUseAsExampleMenuItem.Add(FUseAsTranslationExampleMenuItem);
 
   {$IFDEF DEBUG}
     FVersePopupMenu.Items.AddSeparator;
@@ -2119,6 +2159,18 @@ end;
 procedure TVersiculo.OnCopyAssociationsJSONToClipboard(Sender: TObject);
 begin
   clipboard.AsText := GetAssociationsJSON;
+end;
+
+procedure TVersiculo.OnUseAssociationAsExample(Sender: TObject);
+begin
+  if Assigned(FProject) then
+    TProjeto(FProject).IncludeCurrentVerseAsFlowExample('association');
+end;
+
+procedure TVersiculo.OnUseTranslationAsExample(Sender: TObject);
+begin
+  if Assigned(FProject) then
+    TProjeto(FProject).IncludeCurrentVerseAsFlowExample('translation');
 end;
 
 procedure TVersiculo.OnCopyAssociationExample(Sender: TObject);

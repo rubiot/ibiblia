@@ -107,7 +107,26 @@ resourcestring
 implementation
 
 uses
-  Projeto;
+  Projeto, ai_flow_config;
+
+function FormatTranslationExamplesPromptSection(const Examples: TAIFlowExampleArray): string;
+var
+  I: Integer;
+begin
+  Result := '';
+  if Length(Examples) = 0 then
+    Exit;
+
+  Result := '=== Translation Examples ===' + LineEnding +
+            'Use these examples as guidance for tone, terminology, and expected output.';
+  for I := 0 to High(Examples) do
+  begin
+    Result := Result + LineEnding + LineEnding +
+              Format('Example %d - %s', [I + 1, Examples[I].ReferenceCaption]) + LineEnding +
+              Format('Original: "%s"', [Examples[I].SourceText]) + LineEnding +
+              Format('Expected translation: "%s"', [Examples[I].ExpectedResponse]);
+  end;
+end;
 
 { TAITranslationFlowConfig }
 
@@ -193,11 +212,12 @@ function TAITranslationFlowConfig.BuildPromptFromConfig(const ConfigValues: arra
 var
   i: Integer;
   key, value: string;
-  targetLanguage, customInstructions: string;
+  targetLanguage, customInstructions, serializedExamples, examplesSection: string;
 begin
   Result := DEFAULT_TRANSLATION_PROMPT;
   targetLanguage := '';
   customInstructions := '';
+  serializedExamples := '';
   i := 0;
   
   // Extract config values (expecting key-value pairs)
@@ -212,7 +232,9 @@ begin
       if key = AI_TRANSLATION_CONFIG_KEY_TARGET_LANGUAGE then
         targetLanguage := Trim(value)
       else if key = AI_TRANSLATION_CONFIG_KEY_CUSTOM_INSTRUCTIONS then
-        customInstructions := Trim(value);
+        customInstructions := Trim(value)
+      else if key = AI_TRANSLATION_EXAMPLES_KEY then
+        serializedExamples := value;
     end;
     Inc(i, 2);
   end;
@@ -232,6 +254,10 @@ begin
               '=== Additional Project-Specific Instructions ===' + LineEnding +
               customInstructions;
   end;
+
+  examplesSection := FormatTranslationExamplesPromptSection(LoadFlowExamples(serializedExamples));
+  if examplesSection <> '' then
+    Result := Result + LineEnding + LineEnding + examplesSection;
 end;
 
 function TAITranslationFlowConfig.CreateFlowInstance(Project: TObject): IAIVerseFlow;
@@ -240,7 +266,8 @@ var
   targetLanguage, customInstructions: string;
   forceOverwrite: Boolean;
   providerOverride, modelOverride, apiKeyOverride: string;
-  configValues: array[0..3] of TVarRec;
+  serializedExamples: string;
+  configValues: array[0..5] of TVarRec;
   flow: TAITranslationFlow;
 begin
   Result := nil;
@@ -258,6 +285,7 @@ begin
   providerOverride := proj.ObterInfo(AI_TRANSLATION_CONFIG_KEY_PROVIDER);
   modelOverride := proj.ObterInfo(AI_TRANSLATION_CONFIG_KEY_MODEL);
   apiKeyOverride := proj.ObterInfo(AI_TRANSLATION_CONFIG_KEY_API_KEY);
+  serializedExamples := proj.ObterInfo(AI_TRANSLATION_EXAMPLES_KEY);
   
   // Build configValues array for BuildPromptFromConfig
   // Array format: [key1, value1, key2, value2, ...]
@@ -269,6 +297,10 @@ begin
   configValues[2].VAnsiString := PAnsiChar(AnsiString(AI_TRANSLATION_CONFIG_KEY_CUSTOM_INSTRUCTIONS));
   configValues[3].VType := vtAnsiString;
   configValues[3].VAnsiString := PAnsiChar(AnsiString(customInstructions));
+  configValues[4].VType := vtAnsiString;
+  configValues[4].VAnsiString := PAnsiChar(AnsiString(AI_TRANSLATION_EXAMPLES_KEY));
+  configValues[5].VType := vtAnsiString;
+  configValues[5].VAnsiString := PAnsiChar(AnsiString(serializedExamples));
   
   // Create TAITranslationFlow with built prompt and forceOverwrite flag
   flow := TAITranslationFlow.Create(
