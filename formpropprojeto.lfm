@@ -12,11 +12,11 @@ object FormPropProjeto: TFormPropProjeto
   OnCreate = FormCreate
   object GroupBox2: TGroupBox
     Left = 0
-    Height = 86
+    Height = 127
     Top = 6
     Width = 574
     Caption = 'Properties'
-    ClientHeight = 66
+    ClientHeight = 107
     ClientWidth = 570
     TabOrder = 0
     object EditNomeProjeto: TLabeledEdit
@@ -29,6 +29,23 @@ object FormPropProjeto: TFormPropProjeto
       EditLabel.Caption = 'Name'
       EditLabel.ParentColor = False
       TabOrder = 0
+    end
+    object LabelTokenizerVersion: TLabel
+      Left = 16
+      Height = 15
+      Top = 57
+      Width = 96
+      Caption = 'Tokenizer version'
+      ParentColor = False
+    end
+    object cbTokenizerVersion: TComboBox
+      Left = 16
+      Height = 23
+      Top = 75
+      Width = 546
+      ItemHeight = 15
+      Style = csDropDownList
+      TabOrder = 1
     end
   end
   object BitBtn1: TBitBtn
@@ -55,8 +72,8 @@ object FormPropProjeto: TFormPropProjeto
   end
   object TabControl1: TTabControl
     Left = 7
-    Height = 497
-    Top = 101
+    Height = 456
+    Top = 142
     Width = 567
     TabStop = False
     OnChange = ActionMudancaAbaExecute

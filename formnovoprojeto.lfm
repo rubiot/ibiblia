@@ -1,10 +1,10 @@
 object FormNovoProjeto: TFormNovoProjeto
   Left = 508
-  Height = 437
+  Height = 477
   Top = 228
   Width = 464
   Caption = 'New project...'
-  ClientHeight = 437
+  ClientHeight = 477
   ClientWidth = 464
   OnCreate = FormCreate
   Position = poMainFormCenter
@@ -12,7 +12,7 @@ object FormNovoProjeto: TFormNovoProjeto
   object GroupBox1: TGroupBox
     Left = 6
     Height = 231
-    Top = 152
+    Top = 202
     Width = 450
     Caption = 'Texts'
     ClientHeight = 211
@@ -106,7 +106,7 @@ object FormNovoProjeto: TFormNovoProjeto
   object BitBtn5: TBitBtn
     Left = 8
     Height = 30
-    Top = 396
+    Top = 438
     Width = 119
     Caption = '&OK'
     Default = True
@@ -118,7 +118,7 @@ object FormNovoProjeto: TFormNovoProjeto
   object BitBtn6: TBitBtn
     Left = 144
     Height = 30
-    Top = 396
+    Top = 438
     Width = 119
     Cancel = True
     Caption = 'Cancel'
@@ -128,11 +128,11 @@ object FormNovoProjeto: TFormNovoProjeto
   end
   object GroupBox2: TGroupBox
     Left = 6
-    Height = 80
+    Height = 128
     Top = 8
     Width = 450
     Caption = 'Properties'
-    ClientHeight = 60
+    ClientHeight = 108
     ClientWidth = 446
     TabOrder = 3
     object EditNomeProjeto: TLabeledEdit
@@ -146,11 +146,28 @@ object FormNovoProjeto: TFormNovoProjeto
       EditLabel.ParentColor = False
       TabOrder = 0
     end
+    object LabelTokenizerVersion: TLabel
+      Left = 8
+      Height = 15
+      Top = 56
+      Width = 96
+      Caption = 'Tokenizer version'
+      ParentColor = False
+    end
+    object cbTokenizerVersion: TComboBox
+      Left = 8
+      Height = 23
+      Top = 74
+      Width = 384
+      ItemHeight = 15
+      Style = csDropDownList
+      TabOrder = 1
+    end
   end
   object RadioGroupScope: TRadioGroup
     Left = 7
     Height = 49
-    Top = 97
+    Top = 147
     Width = 449
     AutoFill = True
     Caption = 'Scope'
@@ -178,6 +195,6 @@ object FormNovoProjeto: TFormNovoProjeto
     Filter = 'theWord bible modules (*.ont, *.nt, *.ot)|*.ont;*.nt;*.ot'
     InitialDir = 'C:\Utilities\The Word\Bibles'
     Left = 192
-    Top = 156
+    Top = 208
   end
 end

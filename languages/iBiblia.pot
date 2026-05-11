@@ -266,9 +266,17 @@ msgctxt "formllmoptions.rsbtncancel"
 msgid "Cancel"
 msgstr ""
 
+#: formllmoptions.rsbtnclearexamples
+msgid "Clear List"
+msgstr ""
+
 #: formllmoptions.rsbtnok
 msgctxt "formllmoptions.rsbtnok"
 msgid "OK"
+msgstr ""
+
+#: formllmoptions.rsbtnremoveexample
+msgid "Remove Selected"
 msgstr ""
 
 #: formllmoptions.rsbtnreset
@@ -282,6 +290,15 @@ msgstr ""
 
 #: formllmoptions.rsbtnviewdefault
 msgid "View Default Prompt"
+msgstr ""
+
+#: formllmoptions.rsclearexamplesprompt
+#, object-pascal-format
+msgid "Remove all saved examples for the %s flow?"
+msgstr ""
+
+#: formllmoptions.rsclearexamplestitle
+msgid "Clear examples"
 msgstr ""
 
 #: formllmoptions.rscommonsettings
@@ -326,8 +343,16 @@ msgstr ""
 msgid "LLM Options"
 msgstr ""
 
+#: formllmoptions.rsnoexamples
+msgid "(no saved examples)"
+msgstr ""
+
 #: formllmoptions.rsprovideroverride
 msgid "Provider Override (Optional)"
+msgstr ""
+
+#: formllmoptions.rssavedexamples
+msgid "Saved Examples:"
 msgstr ""
 
 #: formllmoptions.rssystemprompt
@@ -370,6 +395,11 @@ msgstr ""
 #: formnovoprojeto.soldtestamentfilter
 msgctxt "formnovoprojeto.soldtestamentfilter"
 msgid "theWord Bible modules (*.ont, *.ot)|*.ont;*.ot"
+msgstr ""
+
+#: formnovoprojeto.stokenizerversion
+msgctxt "formnovoprojeto.stokenizerversion"
+msgid "Tokenizer version"
 msgstr ""
 
 #: formnovoprojeto.swholebible
@@ -529,6 +559,10 @@ msgid ""
 "Would you like iBiblia to do that?"
 msgstr ""
 
+#: formpropprojeto.schangetokenizeranyway
+msgid "Change anyway"
+msgstr ""
+
 #: formpropprojeto.schooseabiblemodule
 msgid "Please choose a theWord Bible module file..."
 msgstr ""
@@ -540,6 +574,10 @@ msgstr ""
 #: formpropprojeto.schoosedictionary
 msgctxt "formpropprojeto.schoosedictionary"
 msgid "Choose"
+msgstr ""
+
+#: formpropprojeto.sclearassociationsandchange
+msgid "Clear associations"
 msgstr ""
 
 #: formpropprojeto.scleartext
@@ -563,6 +601,10 @@ msgstr ""
 
 #: formpropprojeto.sdictionaryfilter
 msgid "theWord dictionary modules (*.dct.twm)|*.dct.twm|All files|*.*"
+msgstr ""
+
+#: formpropprojeto.skeepcurrenttokenizer
+msgid "Keep current version"
 msgstr ""
 
 #: formpropprojeto.snewtestamentfilter
@@ -602,6 +644,25 @@ msgctxt "formpropprojeto.ssourcetab"
 msgid "Source"
 msgstr ""
 
+#: formpropprojeto.stokenizerversion
+msgctxt "formpropprojeto.stokenizerversion"
+msgid "Tokenizer version"
+msgstr ""
+
+#: formpropprojeto.stokenizerversionchangeconfirmation
+msgid ""
+"Changing the tokenizer version may invalidate your existing associations.\n"
+"\n"
+"Choose one of the options below:\n"
+"Yes: clear all associations before changing the tokenizer.\n"
+"No: keep the associations and change the tokenizer anyway.\n"
+"Cancel: keep the current tokenizer version."
+msgstr ""
+
+#: formpropprojeto.stokenizerversionchangetitle
+msgid "Change tokenizer version"
+msgstr ""
+
 #: formpropprojeto.swholebiblefilter
 msgctxt "formpropprojeto.swholebiblefilter"
 msgid "theWord Bible modules (*.ont, *.ot, *.nt)|*.ont;*.ot;*.nt"
@@ -625,6 +686,19 @@ msgstr ""
 
 #: myswordmodule.sprojectoverrideerror
 msgid "A project with this name already exists. Delete it first or choose another name"
+msgstr ""
+
+#: onttokenizer.stokenizerversion1caption
+msgid "Version 1 - Original tokenizer"
+msgstr ""
+
+#: onttokenizer.stokenizerversion2caption
+msgid "Version 2 - Hebrew punctuation support"
+msgstr ""
+
+#: onttokenizer.stokenizerversionfallbackcaption
+#, object-pascal-format
+msgid "Version %d"
 msgstr ""
 
 #: projeto.s1chronicles
@@ -729,6 +803,14 @@ msgctxt "projeto.sassociation"
 msgid "Association"
 msgstr ""
 
+#: projeto.sassociationexamplerequiresassociations
+msgid "Association examples require existing associations in the current verse."
+msgstr ""
+
+#: projeto.sassociationexamplerequirespair
+msgid "Association examples require an active source verse paired with a destination verse."
+msgstr ""
+
 #: projeto.scancelaiprocessing
 msgid "Cancel AI processing"
 msgstr ""
@@ -797,6 +879,24 @@ msgstr ""
 
 #: projeto.sesther
 msgid "Esther"
+msgstr ""
+
+#: projeto.sexamplealreadyexistsprompt
+#, object-pascal-format
+msgid ""
+"This verse is already saved as an example for the %s flow.\n"
+"\n"
+"Existing entry: %s\n"
+"\n"
+"Do you want to replace it with the current verse state?"
+msgstr ""
+
+#: projeto.sexamplealreadyexiststitle
+msgid "Example already exists"
+msgstr ""
+
+#: projeto.sexamplesaved
+msgid "Example saved."
 msgstr ""
 
 #: projeto.sexodus
@@ -1132,8 +1232,31 @@ msgctxt "projeto.stranslation"
 msgid "Translation"
 msgstr ""
 
+#: projeto.stranslationexamplerequirespair
+msgid "Translation examples require an active source verse paired with a destination verse."
+msgstr ""
+
+#: projeto.stranslationexamplerequirestext
+msgid "Translation examples require translated text in the destination verse."
+msgstr ""
+
 #: projeto.stranslationmemory
 msgid "Translation memory"
+msgstr ""
+
+#: projeto.suseverseasassociationexample
+msgctxt "projeto.suseverseasassociationexample"
+msgid "In association flow"
+msgstr ""
+
+#: projeto.suseverseasexample
+msgctxt "projeto.suseverseasexample"
+msgid "Use verse as example..."
+msgstr ""
+
+#: projeto.suseverseastranslationexample
+msgctxt "projeto.suseverseastranslationexample"
+msgid "In translation flow"
 msgstr ""
 
 #: projeto.svaccumprojectconfirmation
@@ -2062,5 +2185,20 @@ msgstr ""
 
 #: versiculo.sswitchdestinationandreference1texts
 msgid "Switch destination text with reference 1"
+msgstr ""
+
+#: versiculo.suseverseasassociationexample
+msgctxt "versiculo.suseverseasassociationexample"
+msgid "In association flow"
+msgstr ""
+
+#: versiculo.suseverseasexample
+msgctxt "versiculo.suseverseasexample"
+msgid "Use verse as example..."
+msgstr ""
+
+#: versiculo.suseverseastranslationexample
+msgctxt "versiculo.suseverseastranslationexample"
+msgid "In translation flow"
 msgstr ""
 

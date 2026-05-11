@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
-  StdCtrls, ExtCtrls, Buttons, LCLTranslator;
+  StdCtrls, ExtCtrls, Buttons, LCLTranslator, ONTTokenizer;
 
 type
 
@@ -19,6 +19,7 @@ type
     BitBtn4: TBitBtn;
     BitBtn5: TBitBtn;
     BitBtn6: TBitBtn;
+    cbTokenizerVersion: TComboBox;
     GroupBox1: TGroupBox;
     GroupBox2: TGroupBox;
     EditTextoOrigem: TLabeledEdit;
@@ -26,6 +27,7 @@ type
     EditTextoRef1: TLabeledEdit;
     EditTextoRef2: TLabeledEdit;
     EditNomeProjeto: TLabeledEdit;
+    LabelTokenizerVersion: TLabel;
     OpenDialog1: TOpenDialog;
     RadioGroupScope: TRadioGroup;
     procedure BitBtn1Click(Sender: TObject);
@@ -36,9 +38,11 @@ type
     procedure FormCreate(Sender: TObject);
   private
     { private declarations }
+    procedure LoadTokenizerVersions(selectedVersion: Integer);
     procedure SelecionarTexto(edit: TLabeledEdit);
   public
     { public declarations }
+    function GetTokenizerVersion: Integer;
     procedure Translate;
   end; 
 
@@ -52,6 +56,7 @@ resourcestring
   SOldTestament = 'Old Testament';
   SNewTestament = 'New Testament';
   SWholeBible = 'Whole Bible';
+  STokenizerVersion = 'Tokenizer version';
   SNewTestamentFilter = 'theWord Bible modules (*.ont, *.nt)|*.ont;*.nt';
   SOldTestamentFilter = 'theWord Bible modules (*.ont, *.ot)|*.ont;*.ot';
   SWholeBibleFilter = 'theWord Bible modules (*.ont, *.ot, *.nt)|*.ont;*.ot;*.nt';
@@ -119,8 +124,37 @@ begin
     edit.Text := OpenDialog1.FileName;
 end;
 
-procedure TFormNovoProjeto.Translate;
+procedure TFormNovoProjeto.LoadTokenizerVersions(selectedVersion: Integer);
+var
+  i: Integer;
 begin
+  TTokenizerFactory.PopulateVersionCaptions(cbTokenizerVersion.Items);
+  cbTokenizerVersion.ItemIndex := -1;
+
+  for i := 0 to cbTokenizerVersion.Items.Count - 1 do
+    if PtrInt(cbTokenizerVersion.Items.Objects[i]) = selectedVersion then
+    begin
+      cbTokenizerVersion.ItemIndex := i;
+      Exit;
+    end;
+
+  if cbTokenizerVersion.Items.Count > 0 then
+    cbTokenizerVersion.ItemIndex := cbTokenizerVersion.Items.Count - 1;
+end;
+
+function TFormNovoProjeto.GetTokenizerVersion: Integer;
+begin
+  if cbTokenizerVersion.ItemIndex >= 0 then
+    Result := PtrInt(cbTokenizerVersion.Items.Objects[cbTokenizerVersion.ItemIndex])
+  else
+    Result := TTokenizerFactory.LATEST_VERSION;
+end;
+
+procedure TFormNovoProjeto.Translate;
+var
+  selectedVersion: Integer;
+begin
+  selectedVersion := GetTokenizerVersion;
   with RadioGroupScope do
   begin
     Items.Clear;
@@ -129,6 +163,8 @@ begin
     Items.Add(SWholeBible);
     ItemIndex := 1;
   end;
+  LabelTokenizerVersion.Caption := STokenizerVersion;
+  LoadTokenizerVersions(selectedVersion);
 end;
 
 initialization

@@ -7,9 +7,11 @@ interface
 uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
   StdCtrls, ExtCtrls, Buttons, ComCtrls, ActnList, BibleScope, Projeto, LCLTranslator,
-  StrUtils;
+  StrUtils, ONTTokenizer;
 
 type
+
+  TTokenizerVersionChangeAction = (tvcaKeepCurrentVersion, tvcaChangeAnyway, tvcaClearAssociations);
 
   { TFrmPropProjeto }
 
@@ -31,10 +33,12 @@ type
     BitBtn8: TBitBtn;
     BitBtn9: TBitBtn;
     Button2: TButton;
+    cbTokenizerVersion: TComboBox;
     EditNomeProjeto: TLabeledEdit;
     FontDialog1: TFontDialog;
     GroupBox2: TGroupBox;
     Label2: TLabel;
+    LabelTokenizerVersion: TLabel;
     leTextDescription: TLabeledEdit;
     leDicStrong: TLabeledEdit;
     leDicMorfo: TLabeledEdit;
@@ -56,6 +60,9 @@ type
   private
     { private declarations }
     FProjeto: TProjeto;
+    function ConfirmTokenizerVersionChange: TTokenizerVersionChangeAction;
+    procedure LoadTokenizerVersions(selectedVersion: Integer);
+    function GetSelectedTokenizerVersion: Integer;
   public
     { public declarations }
     procedure SetProjeto(p: TProjeto);
@@ -84,6 +91,16 @@ resourcestring
   SDestinationTab = 'Destination';
   SReference1Tab = 'Reference 1';
   SReference2Tab = 'Reference 2';
+  STokenizerVersion = 'Tokenizer version';
+  STokenizerVersionChangeTitle = 'Change tokenizer version';
+  STokenizerVersionChangeConfirmation = 'Changing the tokenizer version may invalidate your existing associations.'#13#10#13#10 +
+                                        'Choose one of the options below:'#13#10 +
+                                        'Yes: clear all associations before changing the tokenizer.'#13#10 +
+                                        'No: keep the associations and change the tokenizer anyway.'#13#10 +
+                                        'Cancel: keep the current tokenizer version.';
+  SClearAssociationsAndChange = 'Clear associations';
+  SChangeTokenizerAnyway = 'Change anyway';
+  SKeepCurrentTokenizer = 'Keep current version';
   SNewTestamentFilter = 'theWord Bible modules (*.ont, *.nt)|*.ont;*.nt';
   SOldTestamentFilter = 'theWord Bible modules (*.ont, *.ot)|*.ont;*.ot';
   SWholeBibleFilter = 'theWord Bible modules (*.ont, *.ot, *.nt)|*.ont;*.ot;*.nt';
@@ -116,11 +133,16 @@ begin
 end;
 
 procedure TFormPropProjeto.Translate;
+var
+  selectedVersion: Integer;
 begin
+  selectedVersion := GetSelectedTokenizerVersion;
   TabControl1.Tabs[0] := SSourceTab;
   TabControl1.Tabs[1] := SDestinationTab;
   TabControl1.Tabs[2] := SReference1Tab;
   TabControl1.Tabs[3] := SReference2Tab;
+  LabelTokenizerVersion.Caption := STokenizerVersion;
+  LoadTokenizerVersions(selectedVersion);
 end;
 
 procedure TFormPropProjeto.ActionCarregarTextoExecute(Sender: TObject);
@@ -246,18 +268,96 @@ begin
   BitBtnTextDescription.Hide;
 end;
 
+function TFormPropProjeto.ConfirmTokenizerVersionChange: TTokenizerVersionChangeAction;
+var
+  dlg: TForm;
+  i: Integer;
+begin
+  Result := tvcaKeepCurrentVersion;
+  dlg := CreateMessageDialog(STokenizerVersionChangeConfirmation, mtConfirmation, [mbYes, mbNo, mbCancel]);
+  try
+    dlg.Caption := STokenizerVersionChangeTitle;
+
+    for i := 0 to dlg.ComponentCount - 1 do
+      if dlg.Components[i] is TButton then
+        case TButton(dlg.Components[i]).ModalResult of
+          mrYes: TButton(dlg.Components[i]).Caption := SClearAssociationsAndChange;
+          mrNo: TButton(dlg.Components[i]).Caption := SChangeTokenizerAnyway;
+          mrCancel: TButton(dlg.Components[i]).Caption := SKeepCurrentTokenizer;
+        end;
+
+    case dlg.ShowModal of
+      mrYes: Result := tvcaClearAssociations;
+      mrNo: Result := tvcaChangeAnyway;
+    else
+      Result := tvcaKeepCurrentVersion;
+    end;
+  finally
+    dlg.Free;
+  end;
+end;
+
+procedure TFormPropProjeto.LoadTokenizerVersions(selectedVersion: Integer);
+var
+  i: Integer;
+begin
+  TTokenizerFactory.PopulateVersionCaptions(cbTokenizerVersion.Items);
+  cbTokenizerVersion.ItemIndex := -1;
+
+  for i := 0 to cbTokenizerVersion.Items.Count - 1 do
+    if PtrInt(cbTokenizerVersion.Items.Objects[i]) = selectedVersion then
+    begin
+      cbTokenizerVersion.ItemIndex := i;
+      Exit;
+    end;
+
+  if cbTokenizerVersion.Items.Count > 0 then
+    cbTokenizerVersion.ItemIndex := cbTokenizerVersion.Items.Count - 1;
+end;
+
+function TFormPropProjeto.GetSelectedTokenizerVersion: Integer;
+begin
+  if cbTokenizerVersion.ItemIndex >= 0 then
+    Result := PtrInt(cbTokenizerVersion.Items.Objects[cbTokenizerVersion.ItemIndex])
+  else if Assigned(FProjeto) then
+    Result := FProjeto.TokenizerVersion
+  else
+    Result := TTokenizerFactory.LATEST_VERSION;
+end;
+
 procedure TFormPropProjeto.SetProjeto(p: TProjeto);
 begin
   FProjeto := p;
   EditNomeProjeto.Caption := p.ObterInfo('descricao');
+  LoadTokenizerVersions(p.TokenizerVersion);
   ActionMudancaAba.Execute;
 end;
 
 procedure TFormPropProjeto.AplicarAlteracoes;
+var
+  currentVersion: Integer;
+  selectedVersion: Integer;
 begin
   if assigned(FProjeto) then
   begin
     FProjeto.AtribuirInfo('descricao', EditNomeProjeto.Caption);
+
+    currentVersion := FProjeto.TokenizerVersion;
+    selectedVersion := GetSelectedTokenizerVersion;
+
+    if selectedVersion <> currentVersion then
+    begin
+      if FProjeto.HasStoredAssociations then
+        case ConfirmTokenizerVersionChange of
+          tvcaKeepCurrentVersion:
+            selectedVersion := currentVersion;
+          tvcaClearAssociations:
+            FProjeto.ClearStoredAssociations;
+        end;
+
+      if selectedVersion <> currentVersion then
+        FProjeto.TokenizerVersion := selectedVersion;
+    end;
   end;
 end;
 

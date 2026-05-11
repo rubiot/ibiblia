@@ -41,6 +41,9 @@ type
   public
     const LATEST_VERSION = 2;
     class constructor Create;
+    class function NormalizeVersion(version: Integer): Integer;
+    class function GetVersionCaption(version: Integer): string;
+    class procedure PopulateVersionCaptions(items: TStrings);
     class function CreateTokenizer(version: Integer; XML: string): TONTTokenizer; overload;
     class function CreateTokenizer(version: Integer; XML: PChar): TONTTokenizer; overload;
     class function CreatePreferredTokenizer(XML: string): TONTTokenizer; overload;
@@ -81,6 +84,11 @@ type
 
 implementation
 
+resourcestring
+  STokenizerVersion1Caption = 'Version 1 - Original tokenizer';
+  STokenizerVersion2Caption = 'Version 2 - Hebrew punctuation support';
+  STokenizerVersionFallbackCaption = 'Version %d';
+
 { TONTTokenizer }
 
 destructor TONTTokenizer.Destroy;
@@ -95,9 +103,38 @@ begin
   FPreferredVersion := LATEST_VERSION;
 end;
 
-class function TTokenizerFactory.CreateTokenizer(version: Integer; XML: string): TONTTokenizer;
+class function TTokenizerFactory.NormalizeVersion(version: Integer): Integer;
 begin
   case version of
+    1, 2:
+      Result := version;
+  else
+    Result := 1;
+  end;
+end;
+
+class function TTokenizerFactory.GetVersionCaption(version: Integer): string;
+begin
+  case NormalizeVersion(version) of
+    1: Result := STokenizerVersion1Caption;
+    2: Result := STokenizerVersion2Caption;
+  else
+    Result := Format(STokenizerVersionFallbackCaption, [version]);
+  end;
+end;
+
+class procedure TTokenizerFactory.PopulateVersionCaptions(items: TStrings);
+var
+  version: Integer;
+begin
+  items.Clear;
+  for version := 1 to LATEST_VERSION do
+    items.AddObject(GetVersionCaption(version), TObject(PtrInt(version)));
+end;
+
+class function TTokenizerFactory.CreateTokenizer(version: Integer; XML: string): TONTTokenizer;
+begin
+  case NormalizeVersion(version) of
     1: Result := TONTTokenizerV1.Create(XML);
     2: Result := TONTTokenizerV2.Create(XML);
   else
@@ -107,7 +144,7 @@ end;
 
 class function TTokenizerFactory.CreateTokenizer(version: Integer; XML: PChar): TONTTokenizer;
 begin
-  case version of
+  case NormalizeVersion(version) of
     1: Result := TONTTokenizerV1.Create(XML);
     2: Result := TONTTokenizerV2.Create(XML);
   else

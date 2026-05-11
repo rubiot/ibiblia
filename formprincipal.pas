@@ -592,7 +592,8 @@ begin
     ProjetoAtual.MostrarQtdStrongs := FStrongsCountMode;
     ProjetoAtual.OnNewVerseSubscribe(@QuandoNovoVersiculo);
     ProjetoAtual.OnAlterarVersiculo := @QuandoAlterarVersiculo;
-    ProjetoAtual.Novo(SaveDialog1.FileName, FormNovoProjeto1.EditNomeProjeto.Text);
+    ProjetoAtual.Novo(SaveDialog1.FileName, FormNovoProjeto1.EditNomeProjeto.Text,
+      FormNovoProjeto1.GetTokenizerVersion);
     ProjetoAtual.ExibirDefinicoesSoComCtrl := MenuItemDictPopup.Checked;
     ProjetoAtual.SugerirAssociacaoAutomaticamente := MenuItem22.Checked;
     ProjetoAtual.SuggestionMode := FSuggestionMode;

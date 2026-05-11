@@ -162,6 +162,7 @@ type
     function GetPairs: string;
     function GetParagraphMode: TParagraphMode;
     function GetSituacao: Integer;
+    function GetTokenizerVersion: Integer;
     function IsValidDicionaryModule(const path: string; const dicType: string): boolean;
     function BuildAssociationFlowExample: TAIFlowExample;
     function BuildTranslationFlowExample: TAIFlowExample;
@@ -175,6 +176,7 @@ type
     procedure SetDisplayTags(AValue: boolean);
     procedure SetInterlinearMode(AValue: TInterlinearMode);
     procedure SetParagraphMode(AValue: TParagraphMode);
+    procedure SetTokenizerVersion(AValue: Integer);
     procedure SetVerseStrongsCountMode(AValue: TStrongsCountMode);
     procedure SetOnAlterarVersiculo(const AValue: TOnAlterarVersiculoEvent);
     procedure SetOnSintagmaClick(const AValue: TOnSintagmaClickEvent);
@@ -237,6 +239,8 @@ type
     destructor Destruir;
     procedure Novo(nomedb, descricao: string);
     procedure Novo(nomedbvelho, nomedbnovo, descricao: string);
+    procedure Novo(nomedb, descricao: string; tokenizerVersion: Integer); overload;
+    procedure Novo(nomedbvelho, nomedbnovo, descricao: string; tokenizerVersion: Integer); overload;
     procedure Abrir(Nome: string);
     procedure Fechar(_Commit: boolean);
     procedure Commit;
@@ -300,6 +304,8 @@ type
     function GetStatus(ref: string): Integer;
     procedure SetTextDescription(text: TTipoTextoBiblico; description: string);
     function GetTextDescription(text: TTipoTextoBiblico): string;
+    function HasStoredAssociations: Boolean;
+    procedure ClearStoredAssociations;
     procedure Vacuum;
     function GetSituacaoDescricao(index: Integer): string;
 
@@ -333,6 +339,7 @@ type
     property ChapterViewText: TTipoTextoBiblico read GetChapterViewText write SetChapterViewText;
     property InterlinearMode: TInterlinearMode read GetInterlinearMode write SetInterlinearMode;
     property ParagraphMode: TParagraphMode read GetParagraphMode write SetParagraphMode;
+    property TokenizerVersion: Integer read GetTokenizerVersion write SetTokenizerVersion;
     property AutoSave: boolean read FAutoSave write SetAutoSave;
     property Pairs: string read GetPairs;
     property VerseObjects: AVersiculo read FAVersiculo;
@@ -553,18 +560,27 @@ end;
 
 procedure TProjeto.Novo(nomedb, descricao: string);
 begin
-  Novo(ProjetoModelo[FEscopo], nomedb, descricao);
+  Novo(ProjetoModelo[FEscopo], nomedb, descricao, TTokenizerFactory.LATEST_VERSION);
 end;
 
 procedure TProjeto.Novo(nomedbvelho, nomedbnovo, descricao: string);
+begin
+  Novo(nomedbvelho, nomedbnovo, descricao, TTokenizerFactory.LATEST_VERSION);
+end;
+
+procedure TProjeto.Novo(nomedb, descricao: string; tokenizerVersion: Integer);
+begin
+  Novo(ProjetoModelo[FEscopo], nomedb, descricao, tokenizerVersion);
+end;
+
+procedure TProjeto.Novo(nomedbvelho, nomedbnovo, descricao: string; tokenizerVersion: Integer);
 begin
   CopiarArquivo(nomedbvelho, nomedbnovo);
 
   Abrir(nomedbnovo);
 
   AtribuirInfo('descricao', descricao);
-  // new projects always use the latest tokenizer version
-  AtribuirInfo('tokenizer_version', IntToStr(TTokenizerFactory.LATEST_VERSION));
+  TokenizerVersion := tokenizerVersion;
   //AtribuirInfo('marcador', format('%d,1,1', [OffsetLivros[FEscopo] + 1]));
   FExibirDefComCtrl := false;  //FTblInfo.ExecuteDirect('COMMIT;');
   VersiculoInicial;
@@ -589,6 +605,11 @@ begin
   if t.IsEmpty then
     t := Ord(pmParagraph).ToString;
   result := TParagraphMode(t.ToInteger);
+end;
+
+function TProjeto.GetTokenizerVersion: Integer;
+begin
+  Result := TTokenizerFactory.NormalizeVersion(StrToIntDef(ObterInfo('tokenizer_version'), 1));
 end;
 
 function TProjeto.GetPairs(ref: string): string;
@@ -761,6 +782,16 @@ end;
 procedure TProjeto.SetParagraphMode(AValue: TParagraphMode);
 begin
   AtribuirInfo('paragraph.mode', Ord(AValue).toString);
+end;
+
+procedure TProjeto.SetTokenizerVersion(AValue: Integer);
+begin
+  AValue := TTokenizerFactory.NormalizeVersion(AValue);
+  AtribuirInfo('tokenizer_version', IntToStr(AValue));
+  TTokenizerFactory.PreferredVersion := AValue;
+
+  if Assigned(FTblPares) and FAtivo then
+    PosRolagemVersiculo(nil);
 end;
 
 procedure TProjeto.SetVerseStrongsCountMode(AValue: TStrongsCountMode);
@@ -2830,7 +2861,7 @@ begin
   FArvore.PopupMenu := CreateBibleTreeContextMenu;
 
   // set tokenizer version
-  TTokenizerFactory.PreferredVersion := StrToIntDef(ObterInfo('tokenizer_version'), 1);
+  TTokenizerFactory.PreferredVersion := TokenizerVersion;
 
   ScrollEventsEnabled := true;
   GoToReference(ObterInfo('marcador'));
@@ -4049,6 +4080,61 @@ end;
 function TProjeto.GetTranslationSuggestions(syntagm: TSyntagm): string;
 begin
   result := FSugeridor.GetTranslationAlternatives(syntagm);
+end;
+
+function TProjeto.HasStoredAssociations: Boolean;
+begin
+  Result := False;
+
+  if not Assigned(FTblPares) then
+    Exit;
+
+  StartScrollingSession;
+  try
+    VersiculoInicial;
+    while not FTblPares.EOF do
+    begin
+      if not FTblPares.FieldByName('pare_pares').AsString.IsEmpty then
+      begin
+        Result := True;
+        Exit;
+      end;
+      VersiculoSeguinte;
+    end;
+  finally
+    FinishScrollingSession;
+  end;
+end;
+
+procedure TProjeto.ClearStoredAssociations;
+var
+  shouldResetStatus: Boolean;
+begin
+  if not Assigned(FTblPares) then
+    Exit;
+
+  shouldResetStatus := not HasSituacaoCustomizada;
+  FSugeridor.LimparBaseAssociacoes;
+
+  StartScrollingSession;
+  try
+    VersiculoInicial;
+    while not FTblPares.EOF do
+    begin
+      if not FTblPares.FieldByName('pare_pares').AsString.IsEmpty then
+      begin
+        FTblPares.Edit;
+        FTblPares.FieldByName('pare_pares').AsString := '';
+        if shouldResetStatus then
+          FTblPares.FieldByName('pare_situacao').AsInteger := 0;
+        FTblPares.Post;
+      end;
+      VersiculoSeguinte;
+    end;
+  finally
+    FinishScrollingSession;
+    PosRolagemVersiculo(nil);
+  end;
 end;
 
 procedure TProjeto.Translate;
