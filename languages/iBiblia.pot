@@ -696,6 +696,10 @@ msgstr ""
 msgid "Version 2 - Hebrew punctuation support"
 msgstr ""
 
+#: onttokenizer.stokenizerversion3caption
+msgid "Version 3 - English quote punctuation"
+msgstr ""
+
 #: onttokenizer.stokenizerversionfallbackcaption
 #, object-pascal-format
 msgid "Version %d"

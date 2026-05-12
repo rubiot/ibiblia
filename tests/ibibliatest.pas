@@ -5,7 +5,7 @@ unit ibibliatest;
 interface
 
 uses
-  Classes, SysUtils, fpcunit, testutils, testregistry, Versiculo, Syntagm;
+  Classes, SysUtils, fpcunit, testutils, testregistry, Versiculo, Syntagm, ONTTokenizer;
 
 type
 
@@ -31,6 +31,8 @@ type
     function FindIndexOf(verse: TVersiculo; word: string): Integer;
     function CreateStringList(const AWords: array of string): TStringList; // Helper
     procedure AssertSelectionEqualsIndices(const ExpectedIndices: array of Integer); // Helper
+    function CollectTokenizerTokens(version: Integer; const AText: string): TStringList;
+    procedure AssertTokenizerTokens(version: Integer; const AText: string; const Expected: array of string);
   protected
     procedure SetUp; override;
     procedure TearDown; override;
@@ -57,6 +59,12 @@ type
     procedure ReplaceDestinationTextVerticalBar;
     procedure ReplaceDestinationTextManyWords;
     procedure ReplaceSourceTextAddPunctuation;
+    procedure TokenizerVersion1KeepsCurlyQuotesInsideWords;
+    procedure TokenizerVersion2KeepsCurlyQuotesInsideWords;
+    procedure TokenizerVersion1KeepsHebrewMaqafInsideWord;
+    procedure TokenizerVersions2And3TreatHebrewMaqafAsPunctuation;
+    procedure TokenizerVersionsKeepAsciiApostropheInsideWords;
+    procedure TokenizerVersion3TreatsCurlyQuotesAsPunctuation;
     // New tests for FindAndSelectSyntagms
     procedure TestFindAndSelectSyntagms_SimpleSequence;
     procedure TestFindAndSelectSyntagms_NotFound;
@@ -495,6 +503,42 @@ begin           // 0 2 4 6
   AssertPairsAndSiblings(d[8], [s[6]], []);
 end;
 
+procedure TVerseTests.TokenizerVersion1KeepsCurlyQuotesInsideWords;
+begin
+  AssertTokenizerTokens(1, '‘You shall not eat of every tree of the garden’?”',
+    ['‘You', 'shall', 'not', 'eat', 'of', 'every', 'tree', 'of', 'the', 'garden’', '?”']);
+end;
+
+procedure TVerseTests.TokenizerVersion2KeepsCurlyQuotesInsideWords;
+begin
+  AssertTokenizerTokens(2, '‘You shall not eat of every tree of the garden’?”',
+    ['‘You', 'shall', 'not', 'eat', 'of', 'every', 'tree', 'of', 'the', 'garden’', '?', '”']);
+end;
+
+procedure TVerseTests.TokenizerVersion1KeepsHebrewMaqafInsideWord;
+begin
+  AssertTokenizerTokens(1, 'דבר־יהוה', ['דבר־יהוה']);
+end;
+
+procedure TVerseTests.TokenizerVersions2And3TreatHebrewMaqafAsPunctuation;
+begin
+  AssertTokenizerTokens(2, 'דבר־יהוה', ['דבר', '־', 'יהוה']);
+  AssertTokenizerTokens(3, 'דבר־יהוה', ['דבר', '־', 'יהוה']);
+end;
+
+procedure TVerseTests.TokenizerVersionsKeepAsciiApostropheInsideWords;
+begin
+  AssertTokenizerTokens(1, 'don''t stop', ['don''t', 'stop']);
+  AssertTokenizerTokens(2, 'don''t stop', ['don''t', 'stop']);
+  AssertTokenizerTokens(3, 'don''t stop', ['don''t', 'stop']);
+end;
+
+procedure TVerseTests.TokenizerVersion3TreatsCurlyQuotesAsPunctuation;
+begin
+  AssertTokenizerTokens(3, '‘You shall not eat of every tree of the garden’?”',
+    ['‘', 'You', 'shall', 'not', 'eat', 'of', 'every', 'tree', 'of', 'the', 'garden', '’', '?', '”']);
+end;
+
 procedure TVerseTests.ReplaceSourceTextVerticalBar;
 var
   s, d: TSyntagmList;
@@ -721,6 +765,38 @@ begin
   Result := TStringList.Create;
   for I := Low(AWords) to High(AWords) do
     Result.Add(AWords[I]);
+end;
+
+function TVerseTests.CollectTokenizerTokens(version: Integer; const AText: string): TStringList;
+var
+  tokenizer: TONTTokenizer;
+  token: TTagSintagma;
+begin
+  Result := TStringList.Create;
+  tokenizer := TTokenizerFactory.CreateTokenizer(version, AText);
+  try
+    while tokenizer.LerSintagma(token) <> tsNulo do
+      if token.tipo <> tsEspaco then
+        Result.Add(token.valor);
+  finally
+    tokenizer.Destroy;
+  end;
+end;
+
+procedure TVerseTests.AssertTokenizerTokens(version: Integer; const AText: string;
+  const Expected: array of string);
+var
+  tokens: TStringList;
+  i: Integer;
+begin
+  tokens := CollectTokenizerTokens(version, AText);
+  try
+    AssertEquals(Format('Tokenizer v%d token count', [version]), Length(Expected), tokens.Count);
+    for i := Low(Expected) to High(Expected) do
+      AssertEquals(Format('Tokenizer v%d token %d', [version, i]), Expected[i], tokens[i]);
+  finally
+    tokens.Free;
+  end;
 end;
 
 procedure TVerseTests.AssertSelectionEqualsIndices(const ExpectedIndices: array of Integer);

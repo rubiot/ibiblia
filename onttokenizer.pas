@@ -5,7 +5,7 @@ unit ONTTokenizer;
 interface
 
 uses
-  Classes, SysUtils, StrUtils, LCLProc, Dialogs, LazUTF8, Graphics;
+  Classes, SysUtils, LCLProc, Dialogs, LazUTF8, Graphics;
 
 type
   Simbolos = array of cardinal;
@@ -40,6 +40,7 @@ type
     class var FPreferredVersion: Integer;
   public
     const LATEST_VERSION = 2;
+    const MAX_VERSION = 3;
     class constructor Create;
     class function NormalizeVersion(version: Integer): Integer;
     class function GetVersionCaption(version: Integer): string;
@@ -57,6 +58,13 @@ type
   protected
     FXML: PChar;
     FPXML: PChar;
+    function CurrentCodepoint(out codepoint: Cardinal; out codepointLength: Integer): Boolean;
+    function IsSpaceCodepoint(codepoint: Cardinal): Boolean;
+    function IsTokenizerPunctuation(codepoint: Cardinal): Boolean; virtual;
+    function ConsumeSinglePunctuationCodepoint: Boolean; virtual;
+    procedure InitializeToken(var s: TTagSintagma);
+    procedure ReadGroupedPunctuation(var s: TTagSintagma);
+    procedure ReadPunctuationToken(var s: TTagSintagma);
     procedure PularEspacos;
     procedure PularTagAtual;
     procedure LerEspacos(var s: TTagSintagma);
@@ -76,17 +84,32 @@ type
   { TONTTokenizerV2 }
   TONTTokenizerV2 = class(TONTTokenizerV1)
   protected
-    procedure LerPontuacao(var s: TTagSintagma); override;
-    procedure LerTexto(var s: TTagSintagma); override;
-  public
-    function LerSintagma(var s: TTagSintagma): TTipoSintagma; override;
+    function IsTokenizerPunctuation(codepoint: Cardinal): Boolean; override;
+    function ConsumeSinglePunctuationCodepoint: Boolean; override;
+  end;
+
+  { TONTTokenizerV3 }
+  TONTTokenizerV3 = class(TONTTokenizerV2)
+  protected
+    function IsTokenizerPunctuation(codepoint: Cardinal): Boolean; override;
   end;
 
 implementation
 
+function ContainsCodepoint(codepoint: Cardinal; const values: array of Cardinal): Boolean;
+var
+  i: Integer;
+begin
+  Result := False;
+  for i := Low(values) to High(values) do
+    if values[i] = codepoint then
+      Exit(True);
+end;
+
 resourcestring
   STokenizerVersion1Caption = 'Version 1 - Original tokenizer';
   STokenizerVersion2Caption = 'Version 2 - Hebrew punctuation support';
+  STokenizerVersion3Caption = 'Version 3 - English quote punctuation';
   STokenizerVersionFallbackCaption = 'Version %d';
 
 { TONTTokenizer }
@@ -106,7 +129,7 @@ end;
 class function TTokenizerFactory.NormalizeVersion(version: Integer): Integer;
 begin
   case version of
-    1, 2:
+    1, 2, 3:
       Result := version;
   else
     Result := 1;
@@ -118,6 +141,7 @@ begin
   case NormalizeVersion(version) of
     1: Result := STokenizerVersion1Caption;
     2: Result := STokenizerVersion2Caption;
+    3: Result := STokenizerVersion3Caption;
   else
     Result := Format(STokenizerVersionFallbackCaption, [version]);
   end;
@@ -128,7 +152,7 @@ var
   version: Integer;
 begin
   items.Clear;
-  for version := 1 to LATEST_VERSION do
+  for version := 1 to MAX_VERSION do
     items.AddObject(GetVersionCaption(version), TObject(PtrInt(version)));
 end;
 
@@ -137,6 +161,7 @@ begin
   case NormalizeVersion(version) of
     1: Result := TONTTokenizerV1.Create(XML);
     2: Result := TONTTokenizerV2.Create(XML);
+    3: Result := TONTTokenizerV3.Create(XML);
   else
     raise Exception.Create('Unsupported tokenizer version');
   end;
@@ -147,6 +172,7 @@ begin
   case NormalizeVersion(version) of
     1: Result := TONTTokenizerV1.Create(XML);
     2: Result := TONTTokenizerV2.Create(XML);
+    3: Result := TONTTokenizerV3.Create(XML);
   else
     raise Exception.Create('Unsupported tokenizer version');
   end;
@@ -182,6 +208,68 @@ begin
 
 end;
 
+function TONTTokenizerV1.CurrentCodepoint(out codepoint: Cardinal;
+  out codepointLength: Integer): Boolean;
+begin
+  codepoint := UTF8CodepointToUnicode(FPXML, codepointLength);
+  Result := codepoint <> 0;
+end;
+
+function TONTTokenizerV1.IsSpaceCodepoint(codepoint: Cardinal): Boolean;
+begin
+  Result := ContainsCodepoint(codepoint, [Ord(#32), Ord(#9), Ord('|')]);
+end;
+
+function TONTTokenizerV1.IsTokenizerPunctuation(codepoint: Cardinal): Boolean;
+begin
+  Result := ContainsCodepoint(codepoint,
+    [Ord('"'), Ord('.'), Ord(','), Ord(';'), Ord(':'), Ord('!'), Ord('?'),
+     Ord('('), Ord(')'), 183, 903, 8220, 8221]);
+end;
+
+function TONTTokenizerV1.ConsumeSinglePunctuationCodepoint: Boolean;
+begin
+  Result := False;
+end;
+
+procedure TONTTokenizerV1.InitializeToken(var s: TTagSintagma);
+begin
+  s.valor := '';
+  s.cor := clDefault;
+  s.italico := False;
+  s.sobrescrito := False;
+end;
+
+procedure TONTTokenizerV1.ReadGroupedPunctuation(var s: TTagSintagma);
+var
+  start: PChar;
+  codepoint: Cardinal;
+  codepointLength: Integer;
+begin
+  start := FPXML;
+  while CurrentCodepoint(codepoint, codepointLength) and IsTokenizerPunctuation(codepoint) do
+    Inc(FPXML, codepointLength);
+
+  s.valor := Copy(start, 0, FPXML - start);
+  s.tipo := tsPontuacao;
+end;
+
+procedure TONTTokenizerV1.ReadPunctuationToken(var s: TTagSintagma);
+var
+  codepoint: Cardinal;
+  codepointLength: Integer;
+begin
+  if ConsumeSinglePunctuationCodepoint and CurrentCodepoint(codepoint, codepointLength) then
+  begin
+    Inc(FPXML, codepointLength);
+    s.valor := Copy(FPXML - codepointLength, 0, codepointLength);
+    s.tipo := tsPontuacao;
+    Exit;
+  end;
+
+  ReadGroupedPunctuation(s);
+end;
+
 procedure TONTTokenizerV1.PularEspacos;
 begin
   while (FPXML^ in [#13, #10, #32, #9, '|']) do
@@ -215,35 +303,8 @@ begin
 end;
 
 procedure TONTTokenizerV1.LerPontuacao(var s: TTagSintagma);
-var
-  c: integer;
 begin
-  c := 0;
-  while (FPXML^ in [{'''',} '"', '.', ',', ';', ':', '!', '?', {'-',} '(', ')']) or
-        (pos(#194#183, FPXML) = 1) or      // ·
-        (pos(#226#128#156, FPXML) = 1) or  // “
-        (pos(#226#128#157, FPXML) = 1) or  // ”
-        (pos(#206#135, FPXML) = 1)         // ·
-  do
-  begin
-    if AnsiStartsStr(#194#183, FPXML) or
-       AnsiStartsStr(#206#135, FPXML) then // hack para sinais de pontuação gregos
-    begin
-      inc(FPXML, 2);
-      inc(c, 2);
-    end else if AnsiStartsStr(#226#128#156, FPXML) or
-                AnsiStartsStr(#226#128#157, FPXML) then // hack para “ e ”
-    begin
-      inc(FPXML, 3);
-      inc(c, 3);
-    end else
-    begin
-      inc(FPXML);
-      inc(c);
-    end;
-  end;
-  s.valor := copy(FPXML-c, 0, c);
-  s.tipo  := tsPontuacao;
+  ReadGroupedPunctuation(s);
 end;
 
 procedure TONTTokenizerV1.LerTag(var s: TTagSintagma);
@@ -274,126 +335,61 @@ end;
 
 procedure TONTTokenizerV1.LerTexto(var s: TTagSintagma);
 var
-  c: integer;
+  start: PChar;
+  codepoint: Cardinal;
+  codepointLength: Integer;
+  hifen: string;
 begin
-  c := 0;
-  while not (FPXML^ in [#0, #32, #9, '|', '<', {'''',} '"', '.', ',', ';', ':', '!', '?', {'-',} '(', ')']) do
+  if FPXML^ = '-' then
   begin
-    if AnsiStartsStr(#194#183, FPXML) or     // ·
-       AnsiStartsStr(#226#128#156, FPXML) or // “
-       AnsiStartsStr(#226#128#157, FPXML) or // ”
-       AnsiStartsStr(#206#135, FPXML)        // ·
-    then // hack para wide chars
-      break;
+    hifen := '-';
+    Inc(FPXML);
+  end
+  else
+    hifen := '';
 
-    inc(c);
-    inc(FPXML);
-  end;
-  s.valor := copy(FPXML-c, 0, c);
-  s.tipo  := tsSintagma;
+  start := FPXML;
+  while CurrentCodepoint(codepoint, codepointLength)
+    and not IsSpaceCodepoint(codepoint)
+    and (codepoint <> Ord('<'))
+    and (codepoint <> Ord('-'))
+    and not IsTokenizerPunctuation(codepoint) do
+    Inc(FPXML, codepointLength);
+
+  s.valor := hifen + Copy(start, 0, FPXML - start);
+  s.tipo := tsSintagma;
 end;
 
 function TONTTokenizerV1.LerSintagma(var s: TTagSintagma): TTipoSintagma;
-
-  function Contido(c: cardinal; v: array of cardinal): boolean;
-  var
-    i: integer;
-  begin
-    result := false;
-    for i:=low(v) to high(v) do
-      if v[i] = c then
-        result := true;
-  end;
-
-  procedure lerAte(var s: TTagSintagma; ate: array of cardinal);
-  var
-    t: integer;
-    ini: PChar;
-  begin
-    ini := FPXML;
-    while (FPXML^ <> #0) and not Contido(UTF8CodepointToUnicode(FPXML, t), ate) do
-      inc(FPXML, t);
-
-    s.valor := copy(ini, 0, FPXML-ini);
-  end;
-
-  procedure lerAteInclusive(var s: TTagSintagma; ate: array of cardinal);
-  var
-    t: integer;
-  begin
-    lerAte(s, ate);
-    if UTF8CodepointToUnicode(FPXML, t) <> 0 then
-    begin
-      s.valor := s.valor + copy(FPXML, 0, t);
-      inc(FPXML, t);
-    end;
-  end;
-
-  procedure lerEnquanto(var s: TTagSintagma; enquanto: array of cardinal);
-  var
-    t: integer;
-    ini: PChar;
-  begin
-    ini := FPXML;
-    while (FPXML^ <> #0) and Contido(UTF8CodepointToUnicode(FPXML, t), enquanto) do
-      inc(FPXML, t);
-
-    s.valor := copy(ini, 0, FPXML-ini);
-  end;
-
-  function tipoChar: TTipoSintagma;
-  var
-    t: integer;
-    c: Cardinal;
-  begin
-    result := tsSintagma;
-    c := UTF8CodepointToUnicode(FPXML, t);
-    if c = 0 then
-      result := tsNulo
-    else if c = ord('<') then
-      result := tsTag
-    else if Contido(c, [ord(#32), ord(#9), ord('|')]) then
-      result := tsEspaco
-    else if Contido(c, [ord('"'), ord('.'), ord(','), ord(';'), ord(':'),
-                        ord('!'), ord('?'), ord('('), ord(')'),
-                        183, 903, 8220, 8221{, ord('-')}]) // hack para ··“”
-    then
-      result := tsPontuacao;
-  end;
 var
-  hifen: string;
+  codepoint: Cardinal;
+  codepointLength: Integer;
 begin
-  s.valor      := '';
-  s.cor        := clDefault;
-  s.italico    := false;
-  s.sobrescrito:= false;
-  s.tipo       := tipoChar;
+  InitializeToken(s);
+
+  if not CurrentCodepoint(codepoint, codepointLength) then
+    s.tipo := tsNulo
+  else if codepoint = Ord('<') then
+    s.tipo := tsTag
+  else if IsSpaceCodepoint(codepoint) then
+    s.tipo := tsEspaco
+  else if IsTokenizerPunctuation(codepoint) then
+    s.tipo := tsPontuacao
+  else
+    s.tipo := tsSintagma;
 
   case s.tipo of
     tsEspaco:
-      lerEnquanto(s, [ord(#32), ord(#9), ord('|')]);
+      LerEspacos(s);
     tsPontuacao:
-      lerEnquanto(s, [ord('"'), ord('.'), ord(','), ord(';'), ord(':'),
-                      ord('!'), ord('?'), ord('('), ord(')'),
-                      183, 903, 8220, 8221{, ord('-')}]); // hack para ··“”
+      ReadPunctuationToken(s);
     tsTag:
-      lerAteInclusive(s, [ord('>')]);
-  else
-    if FPXML^ = '-' then
-    begin
-      hifen := '-';
-      Inc(FPXML);
-    end else
-      hifen := '';
-
-    lerAte(s, [ord('<'), ord(#32), ord(#9), ord('|'), ord('"'), ord('.'),
-               ord(','), ord(';'), ord(':'), ord('!'), ord('?'), ord('-'),
-               ord('('), ord(')'), 183, 903, 8220, 8221]);  // hack para ··“”
-    s.valor := hifen + s.valor;
+      LerTag(s);
+    tsSintagma:
+      LerTexto(s);
   end;
 
-  //MessageDlg('Fechar projeto', '"'+s.valor+'"', mtConfirmation, [], 0);
-  result := s.tipo;
+  Result := s.tipo;
 end;
 
 function TONTTokenizerV1.LerPropriedadeTag(p: string; s: TTagSintagma): string;
@@ -452,172 +448,25 @@ end;
 
 { TONTTokenizerV2 }
 
-procedure TONTTokenizerV2.LerPontuacao(var s: TTagSintagma);
-var
-  c: integer;
+function TONTTokenizerV2.IsTokenizerPunctuation(codepoint: Cardinal): Boolean;
 begin
-  c := 0;
-  while (FPXML^ in ['"', '.', ',', ';', ':', '!', '?', '(', ')']) or
-        (pos(#194#183, FPXML) = 1) or      // ·
-        (pos(#226#128#156, FPXML) = 1) or  // “
-        (pos(#226#128#157, FPXML) = 1) or  // ”
-        (pos(#206#135, FPXML) = 1) or      // ·
-        (pos(#215#128, FPXML) = 1) or      // ׀ paseq
-        (pos(#215#131, FPXML) = 1) or      // ׃ soft pasuq
-        (pos(#214#190, FPXML) = 1)         // – maqaf
-  do
-  begin
-    if AnsiStartsStr(#194#183, FPXML) or
-       AnsiStartsStr(#215#128, FPXML) or  // paseq
-       AnsiStartsStr(#215#131, FPXML) or  // soft pasuq
-       AnsiStartsStr(#214#190, FPXML) or  // maqaf
-       AnsiStartsStr(#206#135, FPXML) then // hack para sinais de pontuação gregos/hebraicos
-    begin
-      inc(FPXML, 2);
-      inc(c, 2);
-    end else if AnsiStartsStr(#226#128#156, FPXML) or
-                AnsiStartsStr(#226#128#157, FPXML) then // hack para “ e ”
-    begin
-      inc(FPXML, 3);
-      inc(c, 3);
-    end else
-    begin
-      inc(FPXML);
-      inc(c);
-    end;
-  end;
-  s.valor := copy(FPXML-c, 0, c);
-  s.tipo  := tsPontuacao;
+  Result := ContainsCodepoint(codepoint,
+    [Ord('"'), Ord('.'), Ord(','), Ord(';'), Ord(':'), Ord('!'), Ord('?'),
+     Ord('('), Ord(')'), 183, 903, 8220, 8221, 1470, 1472, 1475]);
 end;
 
-procedure TONTTokenizerV2.LerTexto(var s: TTagSintagma);
-var
-  c: integer;
+function TONTTokenizerV2.ConsumeSinglePunctuationCodepoint: Boolean;
 begin
-  c := 0;
-  while not (FPXML^ in [#0, #32, #9, '|', '<', '"', '.', ',', ';', ':', '!', '?', '(', ')']) do
-  begin
-    if AnsiStartsStr(#194#183, FPXML) or     // ·
-       AnsiStartsStr(#226#128#156, FPXML) or // “
-       AnsiStartsStr(#226#128#157, FPXML) or // ”
-       AnsiStartsStr(#206#135, FPXML) or     // ·
-       AnsiStartsStr(#215#128, FPXML) or     // paseq
-       AnsiStartsStr(#215#131, FPXML) or     // soft pasuq
-       AnsiStartsStr(#214#190, FPXML)        // maqaf
-    then // hack para wide chars
-      break;
-
-    inc(c);
-    inc(FPXML);
-  end;
-  s.valor := copy(FPXML-c, 0, c);
-  s.tipo  := tsSintagma;
+  Result := True;
 end;
 
-function TONTTokenizerV2.LerSintagma(var s: TTagSintagma): TTipoSintagma;
+{ TONTTokenizerV3 }
 
-  function Contido(c: cardinal; v: array of cardinal): boolean;
-  var
-    i: integer;
-  begin
-    result := false;
-    for i:=low(v) to high(v) do
-      if v[i] = c then
-        result := true;
-  end;
-
-  procedure lerAte(var s: TTagSintagma; ate: array of cardinal);
-  var
-    t: integer;
-    ini: PChar;
-  begin
-    ini := FPXML;
-    while (FPXML^ <> #0) and not Contido(UTF8CodepointToUnicode(FPXML, t), ate) do
-      inc(FPXML, t);
-
-    s.valor := copy(ini, 0, FPXML-ini);
-  end;
-
-  procedure lerAteInclusive(var s: TTagSintagma; ate: array of cardinal);
-  var
-    t: integer;
-  begin
-    lerAte(s, ate);
-    if UTF8CodepointToUnicode(FPXML, t) <> 0 then
-    begin
-      s.valor := s.valor + copy(FPXML, 0, t);
-      inc(FPXML, t);
-    end;
-  end;
-
-  procedure lerEnquanto(var s: TTagSintagma; enquanto: array of cardinal);
-  var
-    t: integer;
-    ini: PChar;
-  begin
-    ini := FPXML;
-    while (FPXML^ <> #0) and Contido(UTF8CodepointToUnicode(FPXML, t), enquanto) do
-      inc(FPXML, t);
-
-    s.valor := copy(ini, 0, FPXML-ini);
-  end;
-
-  function tipoChar: TTipoSintagma;
-  var
-    t: integer;
-    c: Cardinal;
-  begin
-    result := tsSintagma;
-    c := UTF8CodepointToUnicode(FPXML, t);
-    if c = 0 then
-      result := tsNulo
-    else if c = ord('<') then
-      result := tsTag
-    else if Contido(c, [ord(#32), ord(#9), ord('|')]) then
-      result := tsEspaco
-    else if Contido(c, [ord('"'), ord('.'), ord(','), ord(';'), ord(':'),
-                        ord('!'), ord('?'), ord('('), ord(')'),
-                        183, 903, 8220, 8221, 1470, 1472, 1475]) // hack para ··“”־׀׃
-    then
-      result := tsPontuacao;
-  end;
-var
-  hifen: string;
-  len: integer;
+function TONTTokenizerV3.IsTokenizerPunctuation(codepoint: Cardinal): Boolean;
 begin
-  s.valor      := '';
-  s.cor        := clDefault;
-  s.italico    := false;
-  s.sobrescrito:= false;
-  s.tipo       := tipoChar;
-
-  case s.tipo of
-    tsEspaco:
-      lerEnquanto(s, [ord(#32), ord(#9), ord('|')]);
-    tsPontuacao:
-    begin
-      UTF8CodepointToUnicode(FPXML, len);
-      Inc(FPXML, len);
-      s.valor := copy(FPXML-len, 0, len);
-    end;
-    tsTag:
-      lerAteInclusive(s, [ord('>')]);
-  else
-    if FPXML^ = '-' then
-    begin
-      hifen := '-';
-      Inc(FPXML);
-    end else
-      hifen := '';
-
-    lerAte(s, [ord('<'), ord(#32), ord(#9), ord('|'), ord('"'), ord('.'),
-               ord(','), ord(';'), ord(':'), ord('!'), ord('?'), ord('-'),
-               ord('('), ord(')'), 1470, 1472, 1475, 183, 903, 8220, 8221]);  // hack para ··“”־׃׀
-    s.valor := hifen + s.valor;
-  end;
-
-  //MessageDlg('Fechar projeto', '"'+s.valor+'"', mtConfirmation, [], 0);
-  result := s.tipo;
+  Result := ContainsCodepoint(codepoint,
+    [Ord('"'), Ord('.'), Ord(','), Ord(';'), Ord(':'), Ord('!'), Ord('?'),
+     Ord('('), Ord(')'), 183, 8216, 8217, 903, 8220, 8221, 1470, 1472, 1475]);
 end;
 end.
 
