@@ -42,11 +42,11 @@ object FrmAIProcessing: TFrmAIProcessing
   end
   object PanelBottom: TPanel
     Left = 0
-    Height = 103
+    Height = 126
     Top = 667
     Width = 829
     Align = alBottom
-    ClientHeight = 103
+    ClientHeight = 126
     ClientWidth = 829
     TabOrder = 1
     object LabelProgress: TLabel
@@ -66,10 +66,19 @@ object FrmAIProcessing: TFrmAIProcessing
       ParentColor = False
       Visible = False
     end
+    object LabelTokens: TLabel
+      Left = 8
+      Height = 17
+      Top = 46
+      Width = 813
+      Anchors = [akTop, akLeft, akRight]
+      Caption = 'Tokens consumed: 0'
+      ParentColor = False
+    end
     object ProgressBar1: TProgressBar
       Left = 8
       Height = 21
-      Top = 46
+      Top = 66
       Width = 813
       Anchors = [akTop, akLeft, akRight]
       TabOrder = 0
@@ -77,7 +86,7 @@ object FrmAIProcessing: TFrmAIProcessing
     object BtnCancel: TButton
       Left = 8
       Height = 26
-      Top = 72
+      Top = 92
       Width = 105
       Caption = 'Cancel'
       TabOrder = 1
@@ -86,7 +95,7 @@ object FrmAIProcessing: TFrmAIProcessing
     object BtnApply: TButton
       Left = 601
       Height = 26
-      Top = 72
+      Top = 92
       Width = 105
       Anchors = [akTop, akRight]
       Caption = 'Apply'
@@ -98,7 +107,7 @@ object FrmAIProcessing: TFrmAIProcessing
     object BtnClose: TButton
       Left = 716
       Height = 26
-      Top = 72
+      Top = 92
       Width = 105
       Anchors = [akTop, akRight]
       Caption = 'Discard'

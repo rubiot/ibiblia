@@ -229,6 +229,24 @@ msgstr "Tem certeza de que deseja descartar os resultados da IA?"
 msgid "Estimated time remaining: %s"
 msgstr "Tempo restante estimado: %s"
 
+#: formaiprocessing.stokensconsumed
+#, object-pascal-format
+msgid "Tokens consumed: prompt %s, completion %s, total %s"
+msgstr ""
+
+#: formaiprocessing.stokensconsumedlastincrement
+#, object-pascal-format
+msgid "Tokens consumed: prompt %s, completion %s, total %s (last +%s)"
+msgstr ""
+
+#: formaiprocessing.stokensconsumednone
+msgid "Tokens consumed: 0"
+msgstr ""
+
+#: formaiprocessing.stokensconsumedunavailable
+msgid "Tokens consumed: unavailable"
+msgstr ""
+
 #: formapplypatch.signoredversesonpatch
 #, object-pascal-format
 msgid "%d verses are identical to what you have in your project and were ignored."
@@ -437,6 +455,12 @@ msgstr ""
 msgid "Use the new AI-assisted suggestion engine (requires internet)"
 msgstr "Usar a associação com auxílio de IA (requer internet)"
 
+#: formprincipal.sanalyzingverse
+#, fuzzy
+msgctxt "formprincipal.sanalyzingverse"
+msgid "Analyzing verse..."
+msgstr "Analisando versículo..."
+
 #: formprincipal.schanged
 msgid "changed"
 msgstr "modificado"
@@ -470,6 +494,15 @@ msgstr "Um projeto com este nome já existe"
 #: formprincipal.sllmoptionsmenu
 msgid "LLM options..."
 msgstr "Opções de IA"
+
+#: formprincipal.sllmusagestatus
+#, object-pascal-format
+msgid "Tokens: prompt %d, completion %d, total %d"
+msgstr ""
+
+#: formprincipal.sllmusageunavailable
+msgid "Tokens: unavailable"
+msgstr ""
 
 #: formprincipal.sloadingfile
 #, object-pascal-format
@@ -811,6 +844,7 @@ msgid "Anaytical Concordance"
 msgstr "Concordância Analítica"
 
 #: projeto.sanalyzingverse
+msgctxt "projeto.sanalyzingverse"
 msgid "Analyzing verse..."
 msgstr "Analisando versículo..."
 

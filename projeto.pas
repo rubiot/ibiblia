@@ -148,6 +148,8 @@ type
     FPopupTrigger: TPopupTrigger;
     FVerseStrongsCountMode: TStrongsCountMode;
     FSuggestionMode: TSuggestionMode;
+    FLastLLMUsage: TLLMUsage;
+    FLastLLMCallCompleted: Boolean;
     FOnNovoVersiculo: TOnNovoVersiculoEvents;
     FOnSintagmaClick: TOnSintagmaClickEvent;
     FClosing: boolean;
@@ -341,6 +343,8 @@ type
     property ParagraphMode: TParagraphMode read GetParagraphMode write SetParagraphMode;
     property TokenizerVersion: Integer read GetTokenizerVersion write SetTokenizerVersion;
     property AutoSave: boolean read FAutoSave write SetAutoSave;
+    property LastLLMUsage: TLLMUsage read FLastLLMUsage;
+    property LastLLMCallCompleted: Boolean read FLastLLMCallCompleted;
     property Pairs: string read GetPairs;
     property VerseObjects: AVersiculo read FAVersiculo;
     property SuggestionMode: TSuggestionMode read FSuggestionMode write FSuggestionMode;
@@ -2685,6 +2689,10 @@ begin
   FEscopo             := etNone;
   FClosing            := false;
   FVerseStrongsCountMode := scNone;
+  FLastLLMUsage.PromptTokens := 0;
+  FLastLLMUsage.CompletionTokens := 0;
+  FLastLLMUsage.TotalTokens := 0;
+  FLastLLMCallCompleted := False;
 
   FTemporizador          := TTimer.Create(nil);
   FTemporizador.Enabled  := false;
@@ -3105,6 +3113,11 @@ var
   v: TVersiculo;
   OldCursor: TCursor;
 begin
+  FLastLLMUsage.PromptTokens := 0;
+  FLastLLMUsage.CompletionTokens := 0;
+  FLastLLMUsage.TotalTokens := 0;
+  FLastLLMCallCompleted := False;
+
   if (ObterInfo(AI_COMMON_CONFIG.Model).IsEmpty) or
      (ObterInfo(AI_COMMON_CONFIG.ApiKey).IsEmpty) then
   begin
@@ -3130,6 +3143,8 @@ begin
       try
         msgs := flow.BuildMessages(v);
         resp := client.AskChatCompletions(msgs);
+        FLastLLMUsage := resp.Usage;
+        FLastLLMCallCompleted := True;
 
         AIDebugLog('[AI Single] Response received, parsing...');
         parsed := flow.ParseResponse(resp.Content, v);

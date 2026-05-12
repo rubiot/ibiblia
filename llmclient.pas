@@ -23,9 +23,16 @@ type
     Content: string;
   end;
 
+  TLLMUsage = record
+    PromptTokens: Integer;
+    CompletionTokens: Integer;
+    TotalTokens: Integer;
+  end;
+
   TLLMResponse = record
     Content: string;
     Reasoning: string;
+    Usage: TLLMUsage;
   end;
 
   TLLMMessageArray = specialize TArray<TLLMMessage>;
@@ -37,6 +44,8 @@ type
     FApiKey: string;
     FProvider: string;
     FTimeout: Integer;
+    procedure ClearUsage(out Usage: TLLMUsage); virtual;
+    procedure ParseUsage(const JsonResponse: TJSONObject; out Usage: TLLMUsage); virtual;
     // Utility: Perform HTTP POST and return response as string
     function HttpPostJson(const Url, JsonBody: string; const ExtraHeaders: array of string): string; virtual; abstract;
   public
@@ -52,6 +61,7 @@ type
   TOpenAICompatibleBackend = class(TBaseLLMClient)
   protected
     function GetCompletionsUrl: string; virtual; abstract;
+    procedure ParseUsage(const JsonResponse: TJSONObject; out Usage: TLLMUsage); override;
     procedure ParseCompletionsResponse(const JsonResponse: TJSONObject; out Response: TLLMResponse); virtual;
   public
     function HttpPostJson(const Url, JsonBody: string; const ExtraHeaders: array of string): string; override;
@@ -77,6 +87,8 @@ type
 
   { Google backend implementation }
   TGoogleBackend = class(TBaseLLMClient)
+  protected
+    procedure ParseUsage(const JsonResponse: TJSONObject; out Usage: TLLMUsage); override;
   public
     constructor Create(const AModel, AApiKey: string; ATimeout: Integer = 60000);
     function HttpPostJson(const Url, JsonBody: string; const ExtraHeaders: array of string): string; override;
@@ -87,6 +99,7 @@ function CreateBackend(const Provider, Model, ApiKey: string; Timeout: Integer =
 function CreateBackend(const Model: string; const ApiKey: string; Timeout: Integer = 60000): TBaseLLMClient; overload; // Legacy support
 function GetModelInfo(const Model: string): TLLMModelInfo;
 procedure ReloadModelRegistry;
+function HasUsage(const Usage: TLLMUsage): Boolean;
 // Returns the list of supported model names defined in this unit
 procedure FillSupportedModelNames(List: TStrings; const FilterProvider: string = '');
 // Returns the list of supported provider names
@@ -291,6 +304,41 @@ begin
       Exit(True);
     end;
   Result := False;
+end;
+
+function HasUsage(const Usage: TLLMUsage): Boolean;
+begin
+  Result := (Usage.PromptTokens > 0) or (Usage.CompletionTokens > 0) or
+    (Usage.TotalTokens > 0);
+end;
+
+procedure TBaseLLMClient.ClearUsage(out Usage: TLLMUsage);
+begin
+  Usage.PromptTokens := 0;
+  Usage.CompletionTokens := 0;
+  Usage.TotalTokens := 0;
+end;
+
+procedure TBaseLLMClient.ParseUsage(const JsonResponse: TJSONObject; out Usage: TLLMUsage);
+begin
+  if JsonResponse = nil then ;
+  ClearUsage(Usage);
+end;
+
+procedure TOpenAICompatibleBackend.ParseUsage(const JsonResponse: TJSONObject; out Usage: TLLMUsage);
+var
+  usageObj: TJSONObject;
+begin
+  ClearUsage(Usage);
+  if (JsonResponse = nil) or (JsonResponse.Find('usage') = nil) then
+    Exit;
+
+  usageObj := JsonResponse.Objects['usage'];
+  Usage.PromptTokens := usageObj.Get('prompt_tokens', 0);
+  Usage.CompletionTokens := usageObj.Get('completion_tokens', 0);
+  Usage.TotalTokens := usageObj.Get('total_tokens', 0);
+  if Usage.TotalTokens = 0 then
+    Usage.TotalTokens := Usage.PromptTokens + Usage.CompletionTokens;
 end;
 
 { TBaseLLMClient }
@@ -512,6 +560,7 @@ var
 begin
   Response.Content := '';
   Response.Reasoning := '';
+  ParseUsage(JsonResponse, Response.Usage);
   if JsonResponse.Find('choices') <> nil then
   begin
     choices := TJSONArray(JsonResponse.Arrays['choices']);
@@ -562,6 +611,7 @@ begin
     begin
       Result.Content := '{"error": "' + E.Message + '"}';
       Result.Reasoning := '';
+      Self.ClearUsage(Result.Usage);
     end;
   end;
 end;
@@ -616,6 +666,24 @@ constructor TGoogleBackend.Create(const AModel, AApiKey: string; ATimeout: Integ
 begin
   inherited Create(AModel, AApiKey, ATimeout);
   FProvider := 'Google';
+end;
+
+procedure TGoogleBackend.ParseUsage(const JsonResponse: TJSONObject; out Usage: TLLMUsage);
+var
+  usageObj: TJSONObject;
+begin
+  ClearUsage(Usage);
+  if (JsonResponse = nil) or (JsonResponse.Find('usageMetadata') = nil) then
+    Exit;
+
+  usageObj := JsonResponse.Objects['usageMetadata'];
+  Usage.PromptTokens := usageObj.Get('promptTokenCount', 0);
+  Usage.CompletionTokens := usageObj.Get('candidatesTokenCount', 0);
+  if Usage.CompletionTokens = 0 then
+    Usage.CompletionTokens := usageObj.Get('outputTokenCount', 0);
+  Usage.TotalTokens := usageObj.Get('totalTokenCount', 0);
+  if Usage.TotalTokens = 0 then
+    Usage.TotalTokens := Usage.PromptTokens + Usage.CompletionTokens;
 end;
 
 function TGoogleBackend.HttpPostJson(const Url, JsonBody: string; const ExtraHeaders: array of string): string;
@@ -719,6 +787,7 @@ begin
       else
         Result.Content := resp;
       Result.Reasoning := '';
+      ParseUsage(respjson, Result.Usage);
     finally
       respjson.Free;
     end;
@@ -727,6 +796,7 @@ begin
     begin
       Result.Content := '{"error": "' + E.Message + '"}';
       Result.Reasoning := '';
+      Self.ClearUsage(Result.Usage);
     end;
   end;
 end;

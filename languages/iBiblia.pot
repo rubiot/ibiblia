@@ -215,6 +215,24 @@ msgstr ""
 msgid "Estimated time remaining: %s"
 msgstr ""
 
+#: formaiprocessing.stokensconsumed
+#, object-pascal-format
+msgid "Tokens consumed: prompt %s, completion %s, total %s"
+msgstr ""
+
+#: formaiprocessing.stokensconsumedlastincrement
+#, object-pascal-format
+msgid "Tokens consumed: prompt %s, completion %s, total %s (last +%s)"
+msgstr ""
+
+#: formaiprocessing.stokensconsumednone
+msgid "Tokens consumed: 0"
+msgstr ""
+
+#: formaiprocessing.stokensconsumedunavailable
+msgid "Tokens consumed: unavailable"
+msgstr ""
+
 #: formapplypatch.signoredversesonpatch
 #, object-pascal-format
 msgid "%d verses are identical to what you have in your project and were ignored."
@@ -423,6 +441,11 @@ msgstr ""
 msgid "Use the new AI-assisted suggestion engine (requires internet)"
 msgstr ""
 
+#: formprincipal.sanalyzingverse
+msgctxt "formprincipal.sanalyzingverse"
+msgid "Analyzing verse..."
+msgstr ""
+
 #: formprincipal.schanged
 msgid "changed"
 msgstr ""
@@ -455,6 +478,15 @@ msgstr ""
 
 #: formprincipal.sllmoptionsmenu
 msgid "LLM options..."
+msgstr ""
+
+#: formprincipal.sllmusagestatus
+#, object-pascal-format
+msgid "Tokens: prompt %d, completion %d, total %d"
+msgstr ""
+
+#: formprincipal.sllmusageunavailable
+msgid "Tokens: unavailable"
 msgstr ""
 
 #: formprincipal.sloadingfile
@@ -790,6 +822,7 @@ msgid "Anaytical Concordance"
 msgstr ""
 
 #: projeto.sanalyzingverse
+msgctxt "projeto.sanalyzingverse"
 msgid "Analyzing verse..."
 msgstr ""
 

@@ -43,6 +43,7 @@ type
     Project: TObject;           // TProjeto reference for verse creation (stored as TObject to avoid circular dependency)
     Batch: TObject;             // TAIProcessingBatch reference (stored as TObject to avoid circular dependency)
     Index: Integer;             // Index in batch for callbacks
+    Usage: TLLMUsage;
     destructor Destroy; override;
   end;
 
@@ -86,6 +87,9 @@ type
     FBatchStartTime: TDateTime;
     FTotalRequestTime: Double; // total seconds spent on requests
     FRequestCount: Integer; // successful request count
+    FTotalPromptTokens: Int64;
+    FTotalCompletionTokens: Int64;
+    FTotalTokens: Int64;
     // Autosave
     FAutoSaveInterval: Integer; // save every N completed jobs
     FLastAutoSaveCount: Integer;
@@ -129,6 +133,9 @@ type
     function AverageRequestTime: Double; // seconds per request
     function EstimatedTimeRemaining: Double; // seconds
     function GetETAFormatted: string; // returns formatted as hh:mm:ss
+    function PromptTokens: Int64;
+    function CompletionTokens: Int64;
+    function TotalTokens: Int64;
     // Autosave
     property AutoSaveInterval: Integer read FAutoSaveInterval write FAutoSaveInterval;
     property OnAutoSaveNeeded: TOnAutoSaveNeeded read FOnAutoSaveNeeded write FOnAutoSaveNeeded;
@@ -260,6 +267,9 @@ begin
       job.State := ajsFetching;
       Inc(job.AttemptCount);
       job.RequestStartTime := Now;
+      job.Usage.PromptTokens := 0;
+      job.Usage.CompletionTokens := 0;
+      job.Usage.TotalTokens := 0;
       
       // Lazy verse creation: if we have raw data, create TVersiculo now (in worker thread)
       // NOTE: Each verse creates its own TONTParser instance, so there should be no shared state.
@@ -289,6 +299,7 @@ begin
       resp := FClient.AskChatCompletions(msgs);  // Use worker's own client
       AIDebugLogFmt('[Worker] API response received for job index %d, length=%d', [job.Index, Length(resp.Content)]);
       job.RawContent := resp.Content;
+      job.Usage := resp.Usage;
       job.Parsed := job.Flow.ParseResponse(resp.Content, job.Verse);
       job.State := ajsCompleted;
       AIDebugLog('[Worker] Job completed, enqueuing for apply');
@@ -371,6 +382,9 @@ begin
   FBatchStartTime := 0;
   FTotalRequestTime := 0;
   FRequestCount := 0;
+  FTotalPromptTokens := 0;
+  FTotalCompletionTokens := 0;
+  FTotalTokens := 0;
   FAutoSaveInterval := 10;
   FLastAutoSaveCount := 0;
   FOnAutoSaveNeeded := nil;
@@ -532,6 +546,9 @@ begin
   job.State := ajsPending;
   job.AttemptCount := 0;
   job.NextRetryTime := 0;
+  job.Usage.PromptTokens := 0;
+  job.Usage.CompletionTokens := 0;
+  job.Usage.TotalTokens := 0;
   SafeEnterLock; try Inc(FTotalJobs); finally SafeLeaveLock; end;
   EnqueuePending(job);
   AIDebugLogFmt('[Manager] Job enqueued, creating worker. TotalJobs=%d', [FTotalJobs]);
@@ -559,6 +576,9 @@ begin
     job.State := ajsPending;
     job.AttemptCount := 0;
     job.NextRetryTime := 0;
+    job.Usage.PromptTokens := 0;
+    job.Usage.CompletionTokens := 0;
+    job.Usage.TotalTokens := 0;
     // Batch jobs own their data only when we are using the lazy/raw-data (Project) path.
     // If Verses were already created (legacy UI path) we must NOT free them here.
     job.OwnsVerse := Assigned(Project);
@@ -635,6 +655,18 @@ begin
       shouldFree := True;
       triggerAutoSave := False;
       try
+        SafeEnterLock;
+        try
+          FTotalPromptTokens := FTotalPromptTokens + job.Usage.PromptTokens;
+          FTotalCompletionTokens := FTotalCompletionTokens + job.Usage.CompletionTokens;
+          if job.Usage.TotalTokens > 0 then
+            FTotalTokens := FTotalTokens + job.Usage.TotalTokens
+          else
+            FTotalTokens := FTotalTokens + job.Usage.PromptTokens + job.Usage.CompletionTokens;
+        finally
+          SafeLeaveLock;
+        end;
+
         if job.State = ajsCompleted then
         begin
           AIDebugLog('[Manager] Job completed, calling ApplyResult');
@@ -655,8 +687,6 @@ begin
             // Call ApplyResult on main thread; protect against exceptions coming from UI code
             job.Flow.ApplyResult(job.Parsed, job.Verse);
             AIDebugLog('[Manager] ApplyResult returned');
-            NotifyStateChange(job); // Update UI icon to success
-            NotifyJobCompleted(job); // Notify completion
             SafeEnterLock;
             try
               Inc(FCompleted);
@@ -673,6 +703,9 @@ begin
             finally
               SafeLeaveLock;
             end;
+
+            NotifyStateChange(job); // Update UI icon to success
+            NotifyJobCompleted(job); // Notify completion
 
             if triggerAutoSave then
               FOnAutoSaveNeeded(Self);
@@ -979,6 +1012,57 @@ begin
   minutes := Trunc((etaSeconds - hours * 3600) / 60);
   seconds := Trunc(etaSeconds - hours * 3600 - minutes * 60);
   Result := Format('%.2d:%.2d:%.2d', [hours, minutes, seconds]);
+end;
+
+function TAIProcessingManager.PromptTokens: Int64;
+begin
+  if not FLockInitialized then
+  begin
+    Result := 0;
+    Exit;
+  end;
+  if not SafeEnterLock then
+    Result := 0
+  else
+  try
+    Result := FTotalPromptTokens;
+  finally
+    SafeLeaveLock;
+  end;
+end;
+
+function TAIProcessingManager.CompletionTokens: Int64;
+begin
+  if not FLockInitialized then
+  begin
+    Result := 0;
+    Exit;
+  end;
+  if not SafeEnterLock then
+    Result := 0
+  else
+  try
+    Result := FTotalCompletionTokens;
+  finally
+    SafeLeaveLock;
+  end;
+end;
+
+function TAIProcessingManager.TotalTokens: Int64;
+begin
+  if not FLockInitialized then
+  begin
+    Result := 0;
+    Exit;
+  end;
+  if not SafeEnterLock then
+    Result := 0
+  else
+  try
+    Result := FTotalTokens;
+  finally
+    SafeLeaveLock;
+  end;
 end;
 
 procedure TAIProcessingManager.NotifyStateChange(Job: TAIJob);

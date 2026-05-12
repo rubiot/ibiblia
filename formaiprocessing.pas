@@ -59,6 +59,7 @@ type
     LabelAssociations: TLabel;
     LabelComments: TLabel;
     LabelStatus: TLabel;
+    LabelTokens: TLabel;
     MemoComments: TMemo;
     PanelTop: TPanel;
     PanelBottom: TPanel;
@@ -92,12 +93,14 @@ type
     FActualCommentsMemo: TCommentsView;
     FStatus: TAIProcessingStatus;
     FOriginalData: TAIProcessingBatch; // Store original project data for comparison
+    FLastTotalTokens: Int64;
     
     procedure OnVerseChange(index: integer);
       procedure EnsureVersesCreated;
     procedure LoadControlsFromBatch;
     procedure LoadControlsFromOriginal;
     procedure UpdateProgress;
+    procedure UpdateTokenUsageLabel;
     procedure UpdateTreeNodeStates;
     procedure PumpProcessing;
     procedure OnJobStateChanged(Sender: TObject; JobIndex: Integer; NewState: TAIJobState; ErrorMsg: string);
@@ -120,6 +123,10 @@ resourcestring
   SAIProcessingCancelling = 'Cancelling...';
   SAIProcessingCancelled = 'Processing cancelled';
   SEstimatedTimeRemaining = 'Estimated time remaining: %s';
+  STokensConsumed = 'Tokens consumed: prompt %s, completion %s, total %s';
+  STokensConsumedLastIncrement = 'Tokens consumed: prompt %s, completion %s, total %s (last +%s)';
+  STokensConsumedUnavailable = 'Tokens consumed: unavailable';
+  STokensConsumedNone = 'Tokens consumed: 0';
   SApplySuccessful = 'Changes applied successfully';
   SCancelConfirmation = 'Are you sure you want to cancel the AI processing?';
   SConfirmation = 'Confirmation';
@@ -200,6 +207,7 @@ begin
   FStatus := apsIdle;
   FIndex := 0;
   FProject := nil;
+  FLastTotalTokens := 0;
   
   // Note: child visual controls are created in FormCreate after .lfm is loaded
 end;
@@ -461,8 +469,54 @@ begin
   end
   else
     LabelETA.Visible := False;
+
+  UpdateTokenUsageLabel;
     
   Application.ProcessMessages;
+end;
+
+procedure TFrmAIProcessing.UpdateTokenUsageLabel;
+var
+  promptTokens, completionTokens, totalTokens: Int64;
+  processed: Integer;
+  lastIncrement: Int64;
+begin
+  if not Assigned(LabelTokens) then Exit;
+
+  if not Assigned(FManager) then
+  begin
+    LabelTokens.Caption := STokensConsumedNone;
+    Exit;
+  end;
+
+  promptTokens := FManager.PromptTokens;
+  completionTokens := FManager.CompletionTokens;
+  totalTokens := FManager.TotalTokens;
+  processed := FManager.CompletedJobs + FManager.FailedJobs;
+  lastIncrement := totalTokens - FLastTotalTokens;
+
+  if (promptTokens > 0) or (completionTokens > 0) or (totalTokens > 0) then
+  begin
+    if lastIncrement > 0 then
+      LabelTokens.Caption := Format(STokensConsumedLastIncrement, [
+        IntToStr(promptTokens),
+        IntToStr(completionTokens),
+        IntToStr(totalTokens),
+        IntToStr(lastIncrement)
+      ])
+    else
+      LabelTokens.Caption := Format(STokensConsumed, [
+        IntToStr(promptTokens),
+        IntToStr(completionTokens),
+        IntToStr(totalTokens)
+      ]);
+  end
+  else if processed > 0 then
+    LabelTokens.Caption := STokensConsumedUnavailable
+  else
+    LabelTokens.Caption := STokensConsumedNone;
+
+  FLastTotalTokens := totalTokens;
 end;
 
 procedure TFrmAIProcessing.UpdateTreeNodeStates;
@@ -605,6 +659,8 @@ begin
     end;
   end;
 
+  UpdateTokenUsageLabel;
+
   // If this is the currently displayed verse, refresh the view
   if JobIndex = FIndex then
     LoadControlsFromBatch;
@@ -624,6 +680,7 @@ begin
   FFlow := Flow;
   FProject := Project;
   FStatus := apsRunning;
+  FLastTotalTokens := 0;
   EnsureVersesCreated;
   
   proj := TProjeto(Project); // Cast to use methods
@@ -682,6 +739,7 @@ begin
   BtnCancel.Enabled := True;
   ProgressBar1.Max := FBatch.Count;
   ProgressBar1.Position := 0;
+  UpdateTokenUsageLabel;
   
   // Start the timer for updates
   TimerUpdate.Enabled := True;

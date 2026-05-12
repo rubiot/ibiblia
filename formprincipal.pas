@@ -259,7 +259,7 @@ resourcestring
 
 implementation
 
-uses formnovoprojeto, formpropprojeto, formexportar, formmesclarprojetos, formexportpatch, formapplypatch, FormLlmOptions;
+uses formnovoprojeto, formpropprojeto, formexportar, formmesclarprojetos, formexportpatch, formapplypatch, FormLlmOptions, llmclient;
 
 {$R *.lfm}
 
@@ -335,8 +335,19 @@ resourcestring
   SNewAssociationProject = 'New association project';
   SLoadingFile = 'Loading %s...';
   SChanged = 'changed';
+  SAnalyzingVerse = 'Analyzing verse...';
+  SLLMUsageStatus = 'Tokens: prompt %d, completion %d, total %d';
+  SLLMUsageUnavailable = 'Tokens: unavailable';
   SInvalidProjectNameQuery = 'Do you want to choose a different name?';
   SInvalidProjectNameTitle = 'A project file with this name already exists';
+
+function FormatLLMUsageStatus(const Usage: TLLMUsage): string;
+begin
+  if HasUsage(Usage) then
+    Result := Format(SLLMUsageStatus, [Usage.PromptTokens, Usage.CompletionTokens, Usage.TotalTokens])
+  else
+    Result := SLLMUsageUnavailable;
+end;
 
 { TFrmPrincipal }
 
@@ -717,9 +728,12 @@ begin
       StatusBar1.SimpleText := SAnalyzingVerse;
       try
         ProjetoAtual.SugerirAssociacao;
+        if ProjetoAtual.LastLLMCallCompleted then
+          StatusBar1.SimpleText := FormatLLMUsageStatus(ProjetoAtual.LastLLMUsage)
+        else
+          StatusBar1.SimpleText := '';
       finally
         Screen.Cursor := crDefault;
-        StatusBar1.SimpleText := '';
       end;
     end
     else
