@@ -57,6 +57,7 @@ const
 function ExtractCustomInstructions(const FullPrompt, DefaultPrompt: string): string;
 
 function GetFlowExamplesConfigKey(const FlowId: string): string;
+function GetFlowOverrideEnabledConfigKey(const FlowId: string): string;
 function LoadFlowExamples(const SerializedExamples: string): TAIFlowExampleArray;
 function SaveFlowExamples(const Examples: TAIFlowExampleArray): string;
 function IndexOfFlowExampleByReference(const Examples: TAIFlowExampleArray; const ReferenceId: string): Integer;
@@ -126,6 +127,16 @@ begin
     'translation': Result := AI_TRANSLATION_EXAMPLES_KEY;
   else
     raise Exception.CreateFmt('Unknown flow ID for examples: %s', [FlowId]);
+  end;
+end;
+
+function GetFlowOverrideEnabledConfigKey(const FlowId: string): string;
+begin
+  case LowerCase(Trim(FlowId)) of
+    'association': Result := 'ai.flow.association.override_enabled';
+    'translation': Result := 'ai.flow.translation.override_enabled';
+  else
+    raise Exception.CreateFmt('Unknown flow ID for override config: %s', [FlowId]);
   end;
 end;
 

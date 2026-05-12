@@ -23,6 +23,8 @@ type
     FlowId: string;
     LblDescription: TLabel;
     FieldControls: array of TFieldControl;  // Dynamic array of field controls
+    chkUseOverride: TCheckBox;
+    gbOverride: TGroupBox;
     LblExamples: TLabel;
     lbExamples: TListBox;
     BtnRemoveExample: TButton;
@@ -68,7 +70,9 @@ type
     procedure OnRemoveExampleClick(Sender: TObject);
     procedure OnClearExamplesClick(Sender: TObject);
     procedure OnFlowProviderChange(Sender: TObject);
+    procedure OnFlowOverrideToggle(Sender: TObject);
     procedure RefreshFlowExamplesUI(const AFlowId: string);
+    procedure UpdateFlowOverrideControls(TabIdx: Integer);
     function GetFlowTabByFlowId(const AFlowId: string): TFlowTabControls;
     function GetFlowTabIndexByFlowId(const AFlowId: string): Integer;
   public
@@ -104,6 +108,7 @@ resourcestring
   rsDefaultPromptTitle = 'Default Prompt - %s';
   rsCustomInstructionsHint = 'Add specific guidelines for your project (e.g., translation philosophy, examples). Leave empty to use only the default prompt.';
   rsProviderOverride = 'Provider Override (Optional)';
+  rsUseFlowOverride = 'Use flow-specific provider/model/API key';
 
 implementation
 
@@ -360,6 +365,16 @@ begin
     begin
       if gbProvider = nil then
       begin
+        tabControls.chkUseOverride := TCheckBox.Create(ATabSheet);
+        tabControls.chkUseOverride.Parent := ATabSheet;
+        tabControls.chkUseOverride.Left := 8;
+        tabControls.chkUseOverride.Top := yPos;
+        tabControls.chkUseOverride.Width := 320;
+        tabControls.chkUseOverride.Caption := rsUseFlowOverride;
+        tabControls.chkUseOverride.Tag := idx;
+        tabControls.chkUseOverride.OnChange := @OnFlowOverrideToggle;
+        Inc(yPos, 26);
+
         gbProvider := TGroupBox.Create(ATabSheet);
         gbProvider.Parent := ATabSheet;
         gbProvider.Left := 8;
@@ -368,6 +383,7 @@ begin
         gbProvider.Height := 100; // Will adjust
         gbProvider.Anchors := [akTop, akLeft, akRight];
         gbProvider.Caption := rsProviderOverride;
+        tabControls.gbOverride := gbProvider;
         Inc(yPos, gbProvider.Height + 10);
       end;
       currentParent := gbProvider;
@@ -625,6 +641,7 @@ begin
   end;
 
   FFlowTabs[idx] := tabControls;
+  UpdateFlowOverrideControls(idx);
 
   OutputDebugString(PChar('DEBUG: CreateFlowTab complete for "' + AFlowId + '" - Created ' +
           IntToStr(Length(tabControls.FieldControls)) + ' field controls'));
@@ -672,7 +689,8 @@ var
   tabControls: TFlowTabControls;
   configFields: TAIFlowConfigFieldArray;
   i, tabIdx: Integer;
-  fieldValue, providerValue: string;
+  fieldValue, providerValue, overrideEnabledValue: string;
+  hasStoredOverride: Boolean;
   ctrl: TControl;
   LcbModel: TComboBox;
 begin
@@ -685,6 +703,7 @@ begin
   if not Assigned(tabControls.TabSheet) then Exit;
 
   configFields := flowConfig.GetConfigFields;
+  hasStoredOverride := False;
 
   // Find provider value first to filter models
   providerValue := '';
@@ -697,6 +716,16 @@ begin
       Break;
     end;
   end;
+
+  for i := 0 to High(configFields) do
+    if ((configFields[i].FieldType = 'provider') or
+        (configFields[i].FieldType = 'model') or
+        (configFields[i].FieldType = 'password')) and
+       (Trim(FProjeto.ObterInfo(configFields[i].Key)) <> '') then
+    begin
+      hasStoredOverride := True;
+      Break;
+    end;
 
   // Load each field value from project
   for i := 0 to High(tabControls.FieldControls) do
@@ -738,6 +767,13 @@ begin
   tabIdx := GetFlowTabIndexByFlowId(AFlowId);
   if tabIdx >= 0 then
   begin
+    overrideEnabledValue := Trim(FProjeto.ObterInfo(GetFlowOverrideEnabledConfigKey(AFlowId)));
+    if overrideEnabledValue = '' then
+      FFlowTabs[tabIdx].chkUseOverride.Checked := hasStoredOverride
+    else
+      FFlowTabs[tabIdx].chkUseOverride.Checked := LowerCase(overrideEnabledValue) = 'true';
+    UpdateFlowOverrideControls(tabIdx);
+
     FFlowTabs[tabIdx].WorkingExamples := FProjeto.GetFlowExamples(AFlowId);
     RefreshFlowExamplesUI(AFlowId);
   end;
@@ -759,6 +795,11 @@ begin
 
   tabControls := GetFlowTabByFlowId(AFlowId);
   if not Assigned(tabControls.TabSheet) then Exit;
+
+  FProjeto.AtribuirInfo(
+    GetFlowOverrideEnabledConfigKey(AFlowId),
+    BoolToStr(Assigned(tabControls.chkUseOverride) and tabControls.chkUseOverride.Checked, True)
+  );
 
   configFields := flowConfig.GetConfigFields;
 
@@ -787,6 +828,24 @@ begin
   tabIdx := GetFlowTabIndexByFlowId(AFlowId);
   if tabIdx >= 0 then
     FProjeto.SetFlowExamples(AFlowId, FFlowTabs[tabIdx].WorkingExamples);
+end;
+
+procedure TFrmLLMOptions.OnFlowOverrideToggle(Sender: TObject);
+var
+  chk: TCheckBox;
+begin
+  if not (Sender is TCheckBox) then Exit;
+  chk := TCheckBox(Sender);
+  UpdateFlowOverrideControls(chk.Tag);
+end;
+
+procedure TFrmLLMOptions.UpdateFlowOverrideControls(TabIdx: Integer);
+begin
+  if (TabIdx < 0) or (TabIdx > High(FFlowTabs)) then Exit;
+  if not Assigned(FFlowTabs[TabIdx].chkUseOverride) then Exit;
+  if not Assigned(FFlowTabs[TabIdx].gbOverride) then Exit;
+
+  FFlowTabs[TabIdx].gbOverride.Enabled := FFlowTabs[TabIdx].chkUseOverride.Checked;
 end;
 
 procedure TFrmLLMOptions.OnRemoveExampleClick(Sender: TObject);
@@ -955,6 +1014,12 @@ begin
       TCheckBox(ctrl).Checked := LowerCase(configFields[i].DefaultValue) = 'true'
     else if ctrl is TComboBox then
       TComboBox(ctrl).Text := configFields[i].DefaultValue;
+  end;
+
+  if Assigned(tabControls.chkUseOverride) then
+  begin
+    tabControls.chkUseOverride.Checked := False;
+    UpdateFlowOverrideControls(btn.Tag);
   end;
 end;
 

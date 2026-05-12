@@ -381,6 +381,10 @@ msgstr "O teste falhou"
 msgid "Test result"
 msgstr "Resultado do teste"
 
+#: formllmoptions.rsuseflowoverride
+msgid "Use flow-specific provider/model/API key"
+msgstr ""
+
 #: formnovoprojeto.schooseaname
 msgid "Please choose a name for your project"
 msgstr "Escolha um nome para o projeto"

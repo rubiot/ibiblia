@@ -367,6 +367,10 @@ msgstr ""
 msgid "Test result"
 msgstr ""
 
+#: formllmoptions.rsuseflowoverride
+msgid "Use flow-specific provider/model/API key"
+msgstr ""
+
 #: formnovoprojeto.schooseaname
 msgid "Please choose a name for your project"
 msgstr ""

@@ -265,6 +265,8 @@ var
   proj: TProjeto;
   targetLanguage, customInstructions: string;
   forceOverwrite: Boolean;
+  overrideEnabled: Boolean;
+  overrideEnabledValue: string;
   providerOverride, modelOverride, apiKeyOverride: string;
   serializedExamples: string;
   configValues: array[0..5] of TVarRec;
@@ -285,6 +287,17 @@ begin
   providerOverride := proj.ObterInfo(AI_TRANSLATION_CONFIG_KEY_PROVIDER);
   modelOverride := proj.ObterInfo(AI_TRANSLATION_CONFIG_KEY_MODEL);
   apiKeyOverride := proj.ObterInfo(AI_TRANSLATION_CONFIG_KEY_API_KEY);
+  overrideEnabledValue := Trim(proj.ObterInfo(GetFlowOverrideEnabledConfigKey('translation')));
+  if overrideEnabledValue = '' then
+    overrideEnabled := (Trim(providerOverride) <> '') or (Trim(modelOverride) <> '') or (Trim(apiKeyOverride) <> '')
+  else
+    overrideEnabled := LowerCase(overrideEnabledValue) = 'true';
+  if not overrideEnabled then
+  begin
+    providerOverride := '';
+    modelOverride := '';
+    apiKeyOverride := '';
+  end;
   serializedExamples := proj.ObterInfo(AI_TRANSLATION_EXAMPLES_KEY);
   
   // Build configValues array for BuildPromptFromConfig
