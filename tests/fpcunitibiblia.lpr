@@ -3,7 +3,7 @@ program fpcunitibiblia;
 {$mode objfpc}{$H+}
 
 uses
-  Interfaces, Forms, GuiTestRunner, ibibliatest, Syntagm, versiculotest;
+  Interfaces, Forms, GuiTestRunner, ibibliatest, versiculotest, syntagmselectiontest;
 
 {$R *.res}
 

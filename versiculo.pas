@@ -210,49 +210,17 @@ resourcestring
 implementation
 
 uses
-  Projeto, TypInfo;
+  Projeto, TypInfo, SyntagmSelection;
 
 const
   MarginWidth = 10; // text's distance from the margin
 
 var
   SintagmaClipboard: TSyntagm;
-  CurrentVersiculoForSort: TVersiculo = nil; // Temporary global for sorting
-
-function ActualCompareSyntagms(Item1, Item2: Pointer): Integer;
-var
-  S1, S2: TSyntagm;
-  Idx1, Idx2: Integer;
-begin
-  if CurrentVersiculoForSort = nil then
-  begin
-    // This case should ideally not happen if CurrentVersiculoForSort is managed correctly
-    Result := 0;
-    Exit;
-  end;
-  S1 := TSyntagm(Item1);
-  S2 := TSyntagm(Item2);
-  // Ensure S1 and S2 are valid and found in the list to prevent errors
-  Idx1 := CurrentVersiculoForSort.FSintagmas.IndexOf(S1);
-  Idx2 := CurrentVersiculoForSort.FSintagmas.IndexOf(S2);
-
-  if (Idx1 = -1) or (Idx2 = -1) then
-  begin
-    // Handle cases where syntagms might not be in FSintagmas (e.g., if they are temporary)
-    // This might indicate an issue elsewhere if FoundSyntagms contains items not in FSintagmas
-    Result := 0; // Or some other default/error behavior
-    // Optionally, add a debug message here if this occurs unexpectedly
-    // DebugLn('Warning: Syntagm not found in FSintagmas during sort.');
-  end
-  else
-  begin
-    Result := Idx1 - Idx2;
-  end;
-end;
 
 function CompareIndexes(List: TStringList; Index1, Index2: Integer): Integer;
 begin
-  result := List[Index1].ToInteger - List[Index2].ToInteger;
+  Result := List[Index1].ToInteger - List[Index2].ToInteger;
 end;
 
 { TVersiculo }
@@ -300,11 +268,8 @@ begin
   FSelecao              := TSyntagmList.Create;
   FMostrarDicas         := false;
   FNextAutoSelectWordMustHaveStrongMorpho := true;
-  //FFontePadrao          := TFont.Create;
-  //FFontePadrao.Assign(TheOwner.Font);
   FCorAssociado         := clWindowText;
-  FCorDesassociado      := $A3A3A3;//clGrayText;
-  //FStrongMorfoComoChave := false;
+  FCorDesassociado      := $A3A3A3;
   FDestruindo           := false;
   FONTParser := TONTParser.Create;
 
@@ -333,8 +298,6 @@ begin
     FPanel.OnMouseWheel := nil;
   end;
   FONTParser.Destroy;
-  //FFontePadrao.Free;
-  inherited Destroy;
 end;
 
 procedure TVersiculo.MarkDestroying;
@@ -355,7 +318,6 @@ begin
       s.Destroy;
 
     ClearStrongCount;
-
     FSintagmas.Clear;
 
     if FAtivo and assigned(FPanel) then
@@ -1559,35 +1521,12 @@ end;
 
 procedure TVersiculo.FindAndSelectSyntagms(Words: TStringList; Partial: Boolean = False; JoinConnected: Boolean = True);
 var
-  I, J, K: Integer;
-  WordToFind: string;
-  FoundSyntagmsThisCall: TSyntagmList; // Syntagms found in this specific call, to be added to Selecao
-
-  // Search strategy state
-  AttemptAnyOrder: Boolean;
-  EffectivePartial: Boolean;
-
-  // Sequential search state
-  CurrentSequentialSearchStartIndex: Integer;
-  AllWordsFoundSequentially: Boolean;
-  TempSequentialList: TSyntagmList;
-
-  // Any-order search state
-  PickedForAnyOrderThisCall: TSyntagmList;
-  AllWordsFoundInAnyOrder: Boolean;
-  FoundThisWordInAnyOrder: Boolean;
-
-  SyntagmNode: TSyntagm;
-  // FoundMatchForCurrentWord: TSyntagm; // Replaced by direct add to lists
-
-  // JoinConnected specific
-  Syntagm1, Syntagm2: TSyntagm;
-  Idx1, Idx2: Integer;
-  IsConnected: Boolean;
-  IntermediateSyntagm: TSyntagm;
-  TempJoinList: TSyntagmList;
+  I: Integer;
+  SelectedIndexes: TSyntagmIndexArray;
 
 begin
+  LimparSelecao;
+
   if not Assigned(Words) or (Words.Count = 0) then
     Exit;
 
@@ -1597,223 +1536,20 @@ begin
     AIDebugLogFmt('[FindAndSelectSyntagms]   Word[%d]: "%s"', [I, Words[I]]);
   AIDebugLogFmt('[FindAndSelectSyntagms] Total syntagms in verse: %d', [FSintagmas.Count]);
 
-  FoundSyntagmsThisCall := TSyntagmList.Create;
-  TempSequentialList := TSyntagmList.Create;
-  PickedForAnyOrderThisCall := TSyntagmList.Create; // Used by any-order search
-  TempJoinList := TSyntagmList.Create;
+  SelectedIndexes := ResolveSyntagmSelectionIndexes(FSintagmas, Words, Partial, JoinConnected);
+  AIDebugLogVerboseFmt('[FindAndSelectSyntagms] Resolved %d syntagm indexes', [Length(SelectedIndexes)]);
 
-  try
-    EffectivePartial := Partial; // Base partiality on the input flag
+  for I := 0 to High(SelectedIndexes) do
+  begin
+    if (SelectedIndexes[I] < 0) or (SelectedIndexes[I] >= FSintagmas.Count) then
+      Continue;
 
-    // 1. Attempt Sequential Match if enabled
-    AllWordsFoundSequentially := True;
-    CurrentSequentialSearchStartIndex := 0;
-    for I := 0 to Words.Count - 1 do
-    begin
-      WordToFind := Trim(Words[I]);
-      if WordToFind = '' then Continue;
-
-      SyntagmNode := nil; // Placeholder for found syntagm
-      for J := CurrentSequentialSearchStartIndex to FSintagmas.Count - 1 do
-      begin
-        if (FSintagmas[J].Kind = tsSintagma) and AnsiSameStr(FSintagmas[J].Text, WordToFind) then
-        begin
-          AIDebugLogVerboseFmt('[FindAndSelectSyntagms]   Found candidate "%s" at index %d: IsAssociated=%s',
-                        [FSintagmas[J].Text, J, BoolToStr(FSintagmas[J].IsAssociated, True)]);
-          
-          // Check if already associated by verifying Pairs directly (works even when Ativo=False)
-          // Also check if already in Selecao (from previous searches) or TempSequentialList (from current search)
-          if (not Assigned(FSintagmas[J].Pairs) or (FSintagmas[J].Pairs.Count = 0)) and
-             (Self.Selecao.IndexOf(FSintagmas[J]) = -1) and
-             (TempSequentialList.IndexOf(FSintagmas[J]) = -1) then
-          begin
-            SyntagmNode := FSintagmas[J];
-            CurrentSequentialSearchStartIndex := J + 1;
-            AIDebugLogVerboseFmt('[FindAndSelectSyntagms]   Selected syntagm "%s"', [SyntagmNode.Text]);
-            Break;
-          end
-          else
-          begin
-            AIDebugLogVerbose('[FindAndSelectSyntagms]   Skipped (already associated, in Selecao, or in temp list)');
-          end;
-        end;
-      end;
-
-      if Assigned(SyntagmNode) then
-      begin
-        TempSequentialList.Add(SyntagmNode);
-      end
-      else
-      begin
-        AllWordsFoundSequentially := False;
-        Break;
-      end;
-    end;
-
-    if AllWordsFoundSequentially and (TempSequentialList.Count = Words.Count) then
-    begin
-      AIDebugLogVerboseFmt('[FindAndSelectSyntagms] Sequential search SUCCESS - Found %d syntagms', [TempSequentialList.Count]);
-      for I := 0 to TempSequentialList.Count - 1 do
-      begin
-        FoundSyntagmsThisCall.Add(TempSequentialList[I]);
-        AIDebugLogVerboseFmt('[FindAndSelectSyntagms]   Sequential[%d]: "%s"', [I, TempSequentialList[I].Text]);
-      end;
-    end
-    else
-    begin
-      AIDebugLogVerboseFmt('[FindAndSelectSyntagms] Sequential search FAILED - Found %d/%d',
-                    [TempSequentialList.Count, Words.Count]);
-    end;
-
-    // 2. Attempt Any-Order Match if sequential didn't find all, or if sequential was skipped
-    AttemptAnyOrder := (FoundSyntagmsThisCall.Count < Words.Count);
-
-    if AttemptAnyOrder then
-    begin
-      AIDebugLogVerbose('[FindAndSelectSyntagms] Attempting any-order search...');
-      FoundSyntagmsThisCall.Clear;
-
-      AllWordsFoundInAnyOrder := True;
-      PickedForAnyOrderThisCall.Clear; // Ensure it's clean for this attempt
-
-      for I := 0 to Words.Count - 1 do
-      begin
-        WordToFind := Trim(Words[I]);
-        if WordToFind = '' then Continue;
-
-        FoundThisWordInAnyOrder := False;
-        for J := 0 to FSintagmas.Count - 1 do
-        begin
-          SyntagmNode := FSintagmas[J];
-          if (SyntagmNode.Kind = tsSintagma) and AnsiSameStr(SyntagmNode.Text, WordToFind) then
-          begin
-            // Check if already associated by verifying Pairs directly (works even when Ativo=False)
-            if (not Assigned(SyntagmNode.Pairs) or (SyntagmNode.Pairs.Count = 0)) and
-               (Self.Selecao.IndexOf(SyntagmNode) = -1) and
-               (PickedForAnyOrderThisCall.IndexOf(SyntagmNode) = -1) then
-            begin
-              // Add to FoundSyntagmsThisCall directly, as this is now the primary list being built
-              FoundSyntagmsThisCall.Add(SyntagmNode);
-              PickedForAnyOrderThisCall.Add(SyntagmNode); // Track for this any-order pass
-              FoundThisWordInAnyOrder := True;
-              Break; // Found for this Words[I], move to next word in Words
-            end;
-          end;
-        end; // End J loop (searching for current WordToFind)
-
-        if not FoundThisWordInAnyOrder then
-        begin
-          AllWordsFoundInAnyOrder := False;
-          if not EffectivePartial then // If not effectively partial, and one word fails, the whole any-order attempt fails
-            Break;
-        end;
-      end; // End I loop for Words[I]
-
-      // After any-order attempt, validate based on EffectivePartial flag
-      if not AllWordsFoundInAnyOrder and not EffectivePartial then
-      begin
-        AIDebugLogVerbose('[FindAndSelectSyntagms] Any-order search FAILED - Not all words found and Partial=False');
-        FoundSyntagmsThisCall.Clear; // Not all words found, and not partial, so result is empty
-      end
-      else
-      begin
-        AIDebugLogVerboseFmt('[FindAndSelectSyntagms] Any-order search result - Found %d syntagms',
-                      [FoundSyntagmsThisCall.Count]);
-        for I := 0 to FoundSyntagmsThisCall.Count - 1 do
-          AIDebugLogVerboseFmt('[FindAndSelectSyntagms]   AnyOrder[%d]: "%s"', [I, FoundSyntagmsThisCall[I].Text]);
-      end;
-    end; // End if AttemptAnyOrder
-
-    // 3. If no syntagms were found by any means, exit.
-    if FoundSyntagmsThisCall.Count = 0 then
-    begin
-      AIDebugLogVerbose('[FindAndSelectSyntagms] No syntagms found - Exiting');
-      Exit;
-    end;
-
-    // 4. Join connected syntagms
-    if JoinConnected and (FoundSyntagmsThisCall.Count > 1) then
-    begin
-      AIDebugLogVerboseFmt('[FindAndSelectSyntagms] JoinConnected - Processing %d syntagms',
-                    [FoundSyntagmsThisCall.Count]);
-      CurrentVersiculoForSort := Self;
-      try
-        FoundSyntagmsThisCall.Sort(@ActualCompareSyntagms);
-      finally
-        CurrentVersiculoForSort := nil;
-      end;
-      // ... (rest of join logic)
-
-      K := 0;
-      while K < FoundSyntagmsThisCall.Count - 1 do
-      begin
-        Syntagm1 := FoundSyntagmsThisCall[K];
-        Syntagm2 := FoundSyntagmsThisCall[K+1];
-        Idx1 := FSintagmas.IndexOf(Syntagm1);
-        Idx2 := FSintagmas.IndexOf(Syntagm2);
-
-        if (Idx1 = -1) or (Idx2 = -1) or (Idx1 >= Idx2) then
-        begin
-          Inc(K); Continue;
-        end;
-
-        IsConnected := True;
-        if Idx2 - Idx1 > 1 then
-        begin
-          for J := Idx1 + 1 to Idx2 - 1 do
-          begin
-            IntermediateSyntagm := FSintagmas[J];
-            if IntermediateSyntagm.Kind = tsSintagma then
-            begin
-              IsConnected := False; Break;
-            end;
-          end;
-        end;
-
-        if IsConnected then
-        begin
-          TempJoinList.Clear;
-          for J := Idx1 + 1 to Idx2 - 1 do
-          begin
-            IntermediateSyntagm := FSintagmas[J];
-            // Only join punctuation syntagms, not spaces or others
-            if (IntermediateSyntagm.Kind = tsPontuacao) and (FoundSyntagmsThisCall.IndexOf(IntermediateSyntagm) = -1) then
-              TempJoinList.Add(IntermediateSyntagm);
-          end;
-
-          if TempJoinList.Count > 0 then
-          begin
-            for J := 0 to TempJoinList.Count - 1 do
-              FoundSyntagmsThisCall.Add(TempJoinList[J]);
-            CurrentVersiculoForSort := Self;
-            try
-              FoundSyntagmsThisCall.Sort(@ActualCompareSyntagms);
-            finally
-              CurrentVersiculoForSort := nil;
-            end;
-            K := -1; // Restart scan due to list modification
-          end;
-        end;
-        Inc(K);
-      end;
-    end;
-
-    // 5. Add all found (and potentially joined) syntagms to the verse's selection
-    AIDebugLogVerboseFmt('[FindAndSelectSyntagms] Adding %d syntagms to selection', [FoundSyntagmsThisCall.Count]);
-    for I := 0 to FoundSyntagmsThisCall.Count - 1 do
-    begin
-      AIDebugLogVerboseFmt('[FindAndSelectSyntagms]   Adding to selection: "%s"', [FoundSyntagmsThisCall[I].Text]);
-      FoundSyntagmsThisCall[I].AddToSelection;
-    end;
-
-    AIDebugLogVerbose('[FindAndSelectSyntagms] Completed successfully');
-
-  finally
-    FoundSyntagmsThisCall.Free;
-    TempSequentialList.Free;
-    PickedForAnyOrderThisCall.Free;
-    TempJoinList.Free;
+    AIDebugLogVerboseFmt('[FindAndSelectSyntagms]   Adding index %d to selection: "%s"',
+      [SelectedIndexes[I], FSintagmas[SelectedIndexes[I]].Text]);
+    FSintagmas[SelectedIndexes[I]].AddToSelection;
   end;
+
+  AIDebugLogVerbose('[FindAndSelectSyntagms] Completed successfully');
 end;
 
 procedure TVersiculo.OnCopySyntagmTags(Sender: TObject);

@@ -295,35 +295,24 @@ begin
   words := TStringList.Create;
   try
     v.Texto := 'word1 word2 word3 word4 word5';
-    
-    // First pass: select word3 and word1 (out of order, triggers any-order search)
-    words.Add('word3'); words.Add('word1');
+
+    // First pass: ordered fallback should select word1 and word3, skipping word2.
+    words.Add('word1'); words.Add('word3');
     v.LimparSelecao;
     v.FindAndSelectSyntagms(words, False, False);
     AssertEquals('First pass selected', 2, v.Selecao.Count);
-    
-    // Store references and mark as associated by adding to Pairs
-    syn1 := nil; syn3 := nil;
-    if v.Selecao[0].Text = 'word1' then
-    begin
-      syn1 := v.Selecao[0];
-      syn3 := v.Selecao[1];
-    end
-    else
-    begin
-      syn1 := v.Selecao[1];
-      syn3 := v.Selecao[0];
-    end;
-    
+
+    syn1 := v.Selecao[0];
+    syn3 := v.Selecao[1];
     syn1.Pairs.Add(syn1); // Mark as associated
     syn3.Pairs.Add(syn3);
     v.LimparSelecao;
-    
-    // Second pass: try to select word3 and word1 again (any-order)
+
+    // Second pass: try to select word1 and word3 again.
     // Should fail because both are already associated
     v.FindAndSelectSyntagms(words, False, False);
     AssertEquals('Second pass found nothing', 0, v.Selecao.Count);
-    
+
     // Third pass: try with partial=True (should still find nothing)
     v.FindAndSelectSyntagms(words, True, False);
     AssertEquals('Third pass found nothing even with Partial', 0, v.Selecao.Count);

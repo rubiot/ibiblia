@@ -17,6 +17,11 @@ iBiblia.exe
 iBiblia.ini
 iBiblia
 
+# Units test outputs
+tests/results.xml
+tests/fpcunitibiblia.lps
+tests/fpcunitibiblia.exe
+
 # PCRE library build artifacts
 pcre-6.7-lazarus/.libs
 pcre-6.7-lazarus/*.o
