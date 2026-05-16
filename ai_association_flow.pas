@@ -612,9 +612,12 @@ begin
       end;
     end;
 
-    // All changes are now in memory (Verse object and its Pairs)
-    // Extract the XML representation of the associations for storage in batch
+    // All accepted association changes now live in the temporary verses.
+    // Capture one persistence-ready snapshot so downstream code does not need
+    // to reconstruct state from flow-specific result types.
     Assoc.PairsXML := Verse.Pares;
+    Assoc.CaptureAcceptedVerseState(Verse);
+    Assoc.SetAcceptedComments(Assoc.Comments);
     AIDebugLogFmt('[Association] Associations complete. PairsXML length: %d chars', [Length(Assoc.PairsXML)]);
     AIDebugLogFmt('[Association] Pairs updated in memory for verse: %s (NOT saved to DB yet)', [Verse.Referencia]);
 

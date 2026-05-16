@@ -15,6 +15,35 @@ type
 
   // Base result class for flow-specific parsed data
   TAIFlowResult = class
+  private
+    FAcceptedSourceText: string;
+    FAcceptedDestinationText: string;
+    FAcceptedPairs: string;
+    FAcceptedComments: string;
+    FAcceptedStatus: Integer;
+    FAcceptedSourceTextSet: Boolean;
+    FAcceptedDestinationTextSet: Boolean;
+    FAcceptedPairsSet: Boolean;
+    FAcceptedCommentsSet: Boolean;
+    FAcceptedStatusSet: Boolean;
+  public
+    procedure CaptureAcceptedVerseState(Verse: TVersiculo);
+    procedure SetAcceptedSourceText(const Value: string);
+    procedure SetAcceptedDestinationText(const Value: string);
+    procedure SetAcceptedPairs(const Value: string);
+    procedure SetAcceptedComments(const Value: string);
+    procedure SetAcceptedStatus(Value: Integer);
+
+    property AcceptedSourceText: string read FAcceptedSourceText;
+    property AcceptedDestinationText: string read FAcceptedDestinationText;
+    property AcceptedPairs: string read FAcceptedPairs;
+    property AcceptedComments: string read FAcceptedComments;
+    property AcceptedStatus: Integer read FAcceptedStatus;
+    property AcceptedSourceTextSet: Boolean read FAcceptedSourceTextSet;
+    property AcceptedDestinationTextSet: Boolean read FAcceptedDestinationTextSet;
+    property AcceptedPairsSet: Boolean read FAcceptedPairsSet;
+    property AcceptedCommentsSet: Boolean read FAcceptedCommentsSet;
+    property AcceptedStatusSet: Boolean read FAcceptedStatusSet;
   end;
 
   // Forward declaration
@@ -90,5 +119,47 @@ type
 implementation
 
 { Currently only abstractions, concrete flows in ai_association_flow.pas }
+
+procedure TAIFlowResult.CaptureAcceptedVerseState(Verse: TVersiculo);
+begin
+  if not Assigned(Verse) then
+    Exit;
+
+  SetAcceptedSourceText(Verse.Texto);
+  SetAcceptedPairs(Verse.Pares);
+
+  if Assigned(Verse.VersiculoPar) then
+    SetAcceptedDestinationText(Verse.VersiculoPar.Texto);
+end;
+
+procedure TAIFlowResult.SetAcceptedSourceText(const Value: string);
+begin
+  FAcceptedSourceText := Value;
+  FAcceptedSourceTextSet := True;
+end;
+
+procedure TAIFlowResult.SetAcceptedDestinationText(const Value: string);
+begin
+  FAcceptedDestinationText := Value;
+  FAcceptedDestinationTextSet := True;
+end;
+
+procedure TAIFlowResult.SetAcceptedPairs(const Value: string);
+begin
+  FAcceptedPairs := Value;
+  FAcceptedPairsSet := True;
+end;
+
+procedure TAIFlowResult.SetAcceptedComments(const Value: string);
+begin
+  FAcceptedComments := Value;
+  FAcceptedCommentsSet := True;
+end;
+
+procedure TAIFlowResult.SetAcceptedStatus(Value: Integer);
+begin
+  FAcceptedStatus := Value;
+  FAcceptedStatusSet := True;
+end;
 
 end.

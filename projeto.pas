@@ -18,8 +18,8 @@ uses
   ExtCtrls, Controls, ComCtrls, StdCtrls, Graphics, Forms, Versiculo, Sugestao,
   MemoVersiculo, ONTTokenizer, Dialogs, dos, PCRE, ExportarProjeto, LazLogger,
   Syntagm, BibleScope, MySwordModule, TheWordDictionary, fgl, PatchFile, LCLIntf, menus,
-  CommentsView, ai_translation_flow, ai_processing_manager,
-  ai_flows, ai_association_flow, llmclient, ai_flow_config, ai_debug;
+  CommentsView, ai_processing_manager, ai_processing_batch,
+  ai_flows, llmclient, ai_flow_config, ai_debug;
 
 const
   // AI processing icon indices for ImageListTreeView in formprincipal
@@ -301,6 +301,8 @@ type
     procedure OnNewVerseSubscribe(const AValue: TOnNovoVersiculoEvent);
     procedure OnNewVerseUnsubscribe(const AValue: TOnNovoVersiculoEvent);
     procedure ApplyPatch(patch: TPatchFile; indexes: TIntegerList = nil);
+    function ApplyAcceptedAIBatch(Batch, OriginalData: TAIProcessingBatch;
+      SelectedIndexes: TAIBatchIndexList = nil): Integer;
     function GetPairs(ref: string): string;
     function GetComments(ref: string): string;
     function GetStatus(ref: string): Integer;
@@ -881,6 +883,24 @@ begin
   FAutoSave := false;
   RefreshUI;
   FAutoSave := oldAutoSaveValue;
+end;
+
+function TProjeto.ApplyAcceptedAIBatch(Batch, OriginalData: TAIProcessingBatch;
+  SelectedIndexes: TAIBatchIndexList = nil): Integer;
+var
+  Patch: TPatchFile;
+begin
+  Result := 0;
+  if not Assigned(Batch) then
+    Exit;
+
+  Patch := Batch.CreatePatch(OriginalData, SelectedIndexes, Result);
+  try
+    if Result > 0 then
+      ApplyPatch(Patch, nil);
+  finally
+    Patch.Free;
+  end;
 end;
 
 procedure TProjeto.SetOnSintagmaClick(const AValue: TOnSintagmaClickEvent);

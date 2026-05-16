@@ -435,6 +435,7 @@ begin
   // Work directly with temporary verse objects created for batch processing.
   // Store the translation in memory only. The TAIProcessingBatch will store
   // the translated text and apply it to the database ONLY after user review.
+  R.SetAcceptedDestinationText(R.TranslatedText);
   
   // The translation is now available in R.TranslatedText for the modal to display
   // and the batch processing to apply when user clicks Apply.

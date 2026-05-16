@@ -7,41 +7,10 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ComCtrls, ExtCtrls, BibleTreeView, Versiculo, CommentsView,
-  ai_processing_manager, ai_flows, ai_translation_flow, ai_association_flow,
-  PatchFile;
+  ai_processing_manager, ai_flows, ai_processing_batch;
 
 type
   TAIProcessingStatus = (apsIdle, apsRunning, apsCancelling, apsCompleted, apsCancelled);
-
-  { TAIProcessingBatch }
-  
-  TAIProcessingBatch = class
-  private
-    FReference: TStringList;
-    FSrcText: TStringList;
-    FDstText: TStringList;
-    FPairs: TStringList;
-    FComments: TStringList;
-    FStatus: TStringList;
-    FErrors: TStringList;
-    FProcessingState: TStringList; // 'pending', 'processing', 'success', 'error'
-  public
-    constructor Create;
-    destructor Destroy; override;
-    procedure Add(ref, src, dst, pairs, comments: string; status: integer);
-    procedure SetState(index: integer; state: string);
-    procedure SetError(index: integer; error: string);
-    function Count: integer;
-    
-    property Reference: TStringList read FReference;
-    property SourceText: TStringList read FSrcText;
-    property DestinationText: TStringList read FDstText;
-    property Pairs: TStringList read FPairs;
-    property Comments: TStringList read FComments;
-    property Status: TStringList read FStatus;
-    property ProcessingState: TStringList read FProcessingState;
-    property Errors: TStringList read FErrors;
-  end;
 
   { TFrmAIProcessing }
 
@@ -137,62 +106,6 @@ implementation
 {$R *.lfm}
 
 uses Projeto, ai_debug;
-
-{ TAIProcessingBatch }
-
-constructor TAIProcessingBatch.Create;
-begin
-  FReference := TStringList.Create;
-  FSrcText := TStringList.Create;
-  FDstText := TStringList.Create;
-  FPairs := TStringList.Create;
-  FComments := TStringList.Create;
-  FStatus := TStringList.Create;
-  FErrors := TStringList.Create;
-  FProcessingState := TStringList.Create;
-end;
-
-destructor TAIProcessingBatch.Destroy;
-begin
-  FReference.Free;
-  FSrcText.Free;
-  FDstText.Free;
-  FPairs.Free;
-  FComments.Free;
-  FStatus.Free;
-  FErrors.Free;
-  FProcessingState.Free;
-  inherited Destroy;
-end;
-
-procedure TAIProcessingBatch.Add(ref, src, dst, pairs, comments: string; status: integer);
-begin
-  FReference.Add(ref);
-  FSrcText.Add(src);
-  FDstText.Add(dst);
-  FPairs.Add(pairs);
-  FComments.Add(comments);
-  FStatus.Add(IntToStr(status));
-  FErrors.Add('');
-  FProcessingState.Add('pending');
-end;
-
-procedure TAIProcessingBatch.SetState(index: integer; state: string);
-begin
-  if (index >= 0) and (index < FProcessingState.Count) then
-    FProcessingState[index] := state;
-end;
-
-procedure TAIProcessingBatch.SetError(index: integer; error: string);
-begin
-  if (index >= 0) and (index < FErrors.Count) then
-    FErrors[index] := error;
-end;
-
-function TAIProcessingBatch.Count: integer;
-begin
-  Result := FReference.Count;
-end;
 
 { TFrmAIProcessing }
 
@@ -628,36 +541,11 @@ end;
 
 procedure TFrmAIProcessing.OnJobCompletedEvent(Sender: TObject; JobIndex: Integer;
   Result: TAIFlowResult);
-var
-  translation: TAITranslationResult;
-  association: TAssociationResult;
 begin
   if (JobIndex < 0) or (JobIndex >= FBatch.Count) then Exit;
   if not Assigned(Result) then Exit;
 
-  if Result is TAITranslationResult then
-  begin
-    translation := TAITranslationResult(Result);
-    // Use the translated text from the result (already updated in temp verse by ApplyResult)
-    FBatch.DestinationText[JobIndex] := translation.TranslatedText;
-    AIDebugLogFmt('[OnJobCompletedEvent] Translation result: "%s"', [translation.TranslatedText]);
-  end
-  else if Result is TAssociationResult then
-  begin
-    association := TAssociationResult(Result);
-    
-    // Store comments from the association result
-    if association.Comments <> '' then
-      FBatch.Comments[JobIndex] := association.Comments;
-    
-    // Store the PairsXML that was populated by ApplyResult
-    // This is the XML representation of associations created during batch processing
-    if association.PairsXML <> '' then
-    begin
-      FBatch.Pairs[JobIndex] := association.PairsXML;
-      AIDebugLogFmt('[OnJobCompletedEvent] Association PairsXML stored (%d chars)', [Length(association.PairsXML)]);
-    end;
-  end;
+  FBatch.ApplyAcceptedResult(JobIndex, Result);
 
   UpdateTokenUsageLabel;
 
@@ -672,7 +560,6 @@ var
   i: Integer;
   verseData: PVerseData;
   ref: string;
-  proj: TProjeto;
 begin
   Result := False;
   
@@ -682,8 +569,6 @@ begin
   FStatus := apsRunning;
   FLastTotalTokens := 0;
   EnsureVersesCreated;
-  
-  proj := TProjeto(Project); // Cast to use methods
   
   // Initialize batch with verse data
   FBatch.Reference.Clear;
@@ -751,10 +636,10 @@ end;
 
 procedure TFrmAIProcessing.Apply;
 var
-  i, idx: Integer;
+  i: Integer;
   proj: TProjeto;
-  patch: TPatchFile;
-  selectedIndexes: TIntegerList;
+  treeIndexes: BibleTreeView.TIntegerList;
+  selectedIndexes: TAIBatchIndexList;
   appliedCount: Integer;
 begin
   if not Assigned(FProject) then Exit;
@@ -768,9 +653,10 @@ begin
   
   // Try to get selected verses from tree view
   selectedIndexes := nil;
+  treeIndexes := nil;
   try
-    selectedIndexes := FBibleTreeView.IndexesList;
-    AIDebugLogFmt('[Apply] Tree selection: %d items', [selectedIndexes.Count]);
+    treeIndexes := FBibleTreeView.IndexesList;
+    AIDebugLogFmt('[Apply] Tree selection: %d items', [treeIndexes.Count]);
   except
     on E: Exception do
     begin
@@ -779,63 +665,27 @@ begin
   end;
   
   // If no selection, use all verses
-  if not Assigned(selectedIndexes) or (selectedIndexes.Count = 0) then
+  if not Assigned(treeIndexes) or (treeIndexes.Count = 0) then
   begin
     AIDebugLogFmt('[Apply] No tree selection, applying all %d batch items', [FBatch.Count]);
-    FreeAndNil(selectedIndexes);
-    selectedIndexes := TIntegerList.Create;
+    selectedIndexes := TAIBatchIndexList.Create;
     for i := 0 to FBatch.Count - 1 do
-      selectedIndexes.Add(i);
+      selectedIndexes.Add(IntToStr(i));
   end
   else
   begin
+    selectedIndexes := TAIBatchIndexList.Create;
+    for i := 0 to treeIndexes.Count - 1 do
+      selectedIndexes.Add(IntToStr(treeIndexes[i]));
     AIDebugLogFmt('[Apply] Applying %d selected verses from tree', [selectedIndexes.Count]);
   end;
   
   try
-    // Create patch from batch data
-    patch := TPatchFile.Create;
-    try
-      appliedCount := 0;
-      
-      // Add only changed verses to patch
-      for i := 0 to selectedIndexes.Count - 1 do
-      begin
-        idx := selectedIndexes[i];
-        if (idx >= 0) and (idx < FBatch.Count) then
-        begin
-          // Only include verses that have changed
-          if FBatch.Pairs[idx] <> FOriginalData.Pairs[idx] then
-          begin
-            patch.Add(
-              FBatch.Reference[idx],
-              FBatch.SourceText[idx],
-              FBatch.DestinationText[idx],
-              FBatch.Pairs[idx],
-              FBatch.Comments[idx],
-              StrToInt(FBatch.Status[idx])
-            );
-            Inc(appliedCount);
-            AIDebugLogFmt('[Apply] Added to patch: %s', [FBatch.Reference[idx]]);
-          end;
-        end;
-      end;
-      
-      AIDebugLogFmt('[Apply] Patch created with %d verses', [appliedCount]);
-      
-      // Apply the patch using TProjeto.ApplyPatch (handles scrolling session, DB updates, etc.)
-      if appliedCount > 0 then
-      begin
-        // ApplyPatch with nil indexes applies all patch items
-        AIDebugLogFmt('[Apply] Calling ApplyPatch with %d verses', [appliedCount]);
-        proj.ApplyPatch(patch, nil);
-        AIDebugLogFmt('[Apply] ApplyPatch completed successfully', []);
-      end;
-      
-    finally
-      patch.Free;
-    end;
+    appliedCount := proj.ApplyAcceptedAIBatch(FBatch, FOriginalData, selectedIndexes);
+    AIDebugLogFmt('[Apply] ApplyAcceptedAIBatch completed successfully: %d verses', [appliedCount]);
   finally
+    if Assigned(treeIndexes) then
+      treeIndexes.Free;
     if Assigned(selectedIndexes) then
       selectedIndexes.Free;
       
