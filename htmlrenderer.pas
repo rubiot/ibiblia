@@ -14,6 +14,7 @@ type
   THTMLRenderer = class(TKMemo)
   private
     FStyleStack: TObjectStack;
+    FTokenizerVersion: Integer;
   protected
     function GetCurrentStyle: TKMemoTextStyle;
     function PushNewStyle: TKMemoTextStyle;
@@ -29,6 +30,7 @@ type
     procedure RenderSpan(cont: TKMemoBlocks; txt: string); virtual;
     
     property CurrentStyle: TKMemoTextStyle read GetCurrentStyle;
+    property TokenizerVersion: Integer read FTokenizerVersion write FTokenizerVersion;
   end;
 
 implementation
@@ -41,6 +43,7 @@ begin
   ReadOnly := true;
   BorderStyle := bsNone;
   FStyleStack := TObjectStack.Create;
+  FTokenizerVersion := TTokenizerFactory.LATEST_VERSION;
 end;
 
 destructor THTMLRenderer.Destroy;
@@ -112,7 +115,7 @@ var
   size: integer;
 begin
   chunk := '';
-  FTokenizer := TTokenizerFactory.CreatePreferredTokenizer(txt);
+  FTokenizer := TTokenizerFactory.CreateTokenizer(FTokenizerVersion, txt);
 
   cont.LockUpdate;
   try

@@ -603,7 +603,8 @@ end;
 
 function TProjeto.GetTokenizerVersion: Integer;
 begin
-  Result := TTokenizerFactory.NormalizeVersion(StrToIntDef(ObterInfo('tokenizer_version'), 1));
+  Result := TTokenizerFactory.NormalizeVersion(
+    StrToIntDef(ObterInfo('tokenizer_version'), TTokenizerFactory.PreferredVersion));
 end;
 
 function TProjeto.GetPairs(ref: string): string;
@@ -779,10 +780,20 @@ begin
 end;
 
 procedure TProjeto.SetTokenizerVersion(AValue: Integer);
+var
+  v: TTipoTextoBiblico;
 begin
   AValue := TTokenizerFactory.NormalizeVersion(AValue);
   AtribuirInfo('tokenizer_version', IntToStr(AValue));
   TTokenizerFactory.PreferredVersion := AValue;
+
+  for v := Low(FAVersiculo) to High(FAVersiculo) do
+    if Assigned(FAVersiculo[v]) then
+      FAVersiculo[v].TokenizerVersion := AValue;
+
+  for v := Low(FATmpVerse) to High(FATmpVerse) do
+    if Assigned(FATmpVerse[v]) then
+      FATmpVerse[v].TokenizerVersion := AValue;
 
   if Assigned(FTblPares) and FAtivo then
     PosRolagemVersiculo(nil);
@@ -1659,6 +1670,8 @@ end;
 function TProjeto.ResgatarInfo(info: string): string;
 begin
   result := '';
+  if not Assigned(FTblInfo) then
+    Exit;
   if FTblInfo.Locate('id', info, []) then
     result := FTblInfo.Fields[1].AsString
   {result := FTblInfo.QuickQuery(format('select valor from info where id = ''%s''', [AnsiReplaceStr(info, '''', '''''')]));}
@@ -2808,6 +2821,8 @@ begin
     if not assigned(FAVersiculo[t]) then
        continue;
 
+    FAVersiculo[t].TokenizerVersion := TokenizerVersion;
+
     { definindo fontes }
     f.Name := 'default';
     f.Size := 12;
@@ -2834,6 +2849,8 @@ begin
 
   FATmpVerse[tbOrigem ] := TVersiculo.Criar(self);
   FATmpVerse[tbDestino] := TVersiculo.Criar(self);
+  FATmpVerse[tbOrigem ].TokenizerVersion := TokenizerVersion;
+  FATmpVerse[tbDestino].TokenizerVersion := TokenizerVersion;
   FATmpVerse[tbOrigem ].VersiculoPar := FATmpVerse[tbDestino];
 
   FACamposTexto[tbOrigem]    := FTblPares.FindField('pare_texto_origem').Index;
@@ -4073,7 +4090,7 @@ begin
   result := FAVersiculo[texto].TextoSimples;
   exit;
   result := '';
-  varredorXML := TTokenizerFactory.CreatePreferredTokenizer(FTblPares.Fields[FACamposTexto[texto]].AsString);
+  varredorXML := TTokenizerFactory.CreateTokenizer(TokenizerVersion, FTblPares.Fields[FACamposTexto[texto]].AsString);
   while varredorXML.LerSintagma(s) <> tsNulo do
   begin
     if s.tipo = tsTag then

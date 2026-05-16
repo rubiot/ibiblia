@@ -409,7 +409,9 @@ var
   lastpar: TKMemoParagraph;
 begin
   chunk := '';
-  FTokenizer := TTokenizerFactory.CreatePreferredTokenizer(txt);
+      if Assigned(FProject) then
+        TokenizerVersion := FProject.TokenizerVersion;
+      FTokenizer := TTokenizerFactory.CreateTokenizer(TokenizerVersion, txt);
 
   cont.LockUpdate;
   while FTokenizer.LerSintagma(token) <> tsNulo do
@@ -831,6 +833,7 @@ begin
 
   if assigned(FProject) then
   begin
+      TokenizerVersion := FProject.TokenizerVersion;
     SetParagraphMode(FProject.ParagraphMode);
     SetInterlinearMode(FProject.InterlinearMode);
     FProject.OnNewVerseSubscribe(@HandleVerseChange);

@@ -5,7 +5,8 @@ unit ibibliatest;
 interface
 
 uses
-  Classes, SysUtils, fpcunit, testutils, testregistry, Versiculo, Syntagm, ONTTokenizer;
+  Classes, SysUtils, fpcunit, testutils, testregistry, Versiculo, Syntagm,
+  ONTTokenizer;
 
 type
 
@@ -65,6 +66,7 @@ type
     procedure TokenizerVersions2And3TreatHebrewMaqafAsPunctuation;
     procedure TokenizerVersionsKeepAsciiApostropheInsideWords;
     procedure TokenizerVersion3TreatsCurlyQuotesAsPunctuation;
+    procedure VerseTokenizerVersionOverridesGlobalPreferredVersion;
     // New tests for FindAndSelectSyntagms
     procedure TestFindAndSelectSyntagms_SimpleSequence;
     procedure TestFindAndSelectSyntagms_NotFound;
@@ -537,6 +539,26 @@ procedure TVerseTests.TokenizerVersion3TreatsCurlyQuotesAsPunctuation;
 begin
   AssertTokenizerTokens(3, '‘You shall not eat of every tree of the garden’?”',
     ['‘', 'You', 'shall', 'not', 'eat', 'of', 'every', 'tree', 'of', 'the', 'garden', '’', '?', '”']);
+end;
+
+procedure TVerseTests.VerseTokenizerVersionOverridesGlobalPreferredVersion;
+var
+  previousPreferredVersion: Integer;
+begin
+  previousPreferredVersion := TTokenizerFactory.PreferredVersion;
+  try
+    TTokenizerFactory.PreferredVersion := 1;
+    verse1.TokenizerVersion := 3;
+
+    verse1.Texto := '‘quoted’';
+
+    AssertEquals(3, verse1.Sintagmas.Count);
+    AssertEquals('‘', verse1.Sintagmas[0].Text);
+    AssertEquals('quoted', verse1.Sintagmas[1].Text);
+    AssertEquals('’', verse1.Sintagmas[2].Text);
+  finally
+    TTokenizerFactory.PreferredVersion := previousPreferredVersion;
+  end;
 end;
 
 procedure TVerseTests.ReplaceSourceTextVerticalBar;

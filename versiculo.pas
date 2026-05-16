@@ -57,6 +57,7 @@ type
     FOnExportText: TOnExportTextEvent;
     FXML: string;
     FONTParser: TONTParser;
+    FTokenizerVersion: Integer;
     FSyntagmPopupMenu: TPopupMenu;
     FVersePopupMenu: TPopupMenu;
     FRTLMenuItem: TMenuItem;
@@ -84,6 +85,7 @@ type
     procedure SetStrongsCountMode(AValue: TStrongsCountMode);
     procedure SetPalavrasComStrongEmNegrito(AValue: boolean);
     procedure SetPares(const AValue: string);
+    procedure SetTokenizerVersion(AValue: Integer);
     procedure SetTexto(_XML: string);
     function GetTexto: string;
     procedure SetVersiculoPar(Par: TVersiculo);
@@ -113,6 +115,7 @@ type
     procedure OnCopyAssociationExample(Sender: TObject);
     procedure OnSwitchDestinationAndReference1Texts(Sender: TObject);
     procedure OnCopySintagmasAsJSON(Sender: TObject);
+    function CreateTokenizer(const XML: string): TONTTokenizer;
   protected
     { Protected declarations }
   public
@@ -185,6 +188,7 @@ type
     property ReadOnly: Boolean read FReadOnly write FReadOnly default False;
     property RightToLeft: Boolean read FRightToLeft write SetRightToLeft default False;
     property NextAutoSelectWordMustHaveStrongMorpho: boolean read FNextAutoSelectWordMustHaveStrongMorpho write FNextAutoSelectWordMustHaveStrongMorpho;
+    property TokenizerVersion: Integer read FTokenizerVersion write SetTokenizerVersion;
      property Destroying: boolean read FDestruindo;
  published
     { Published declarations }
@@ -271,7 +275,11 @@ begin
   FCorAssociado         := clWindowText;
   FCorDesassociado      := $A3A3A3;
   FDestruindo           := false;
-  FONTParser := TONTParser.Create;
+  if AProject is TProjeto then
+    FTokenizerVersion := TProjeto(AProject).TokenizerVersion
+  else
+    FTokenizerVersion := TTokenizerFactory.PreferredVersion;
+  FONTParser := TONTParser.Create(FTokenizerVersion);
 
   { regex to fix cases in which a <Fi> tag ends up misplaced }
   FFixWrongFiTag := RegexCreate('((?:<W[THG][^>]+>)+)(<Fi>)', [rcoUTF8]);
@@ -649,6 +657,11 @@ begin
   end;
 end;
 
+function TVersiculo.CreateTokenizer(const XML: string): TONTTokenizer;
+begin
+  Result := TTokenizerFactory.CreateTokenizer(FTokenizerVersion, XML);
+end;
+
 procedure TVersiculo.SetPares(const AValue: string);
 var
   varredorXML: TONTTokenizer;
@@ -660,7 +673,7 @@ begin
   FExibirErro := true;
   VersiculoPar.FExibirErro := true;
 
-  varredorXML := TTokenizerFactory.CreatePreferredTokenizer(AValue);
+  varredorXML := CreateTokenizer(AValue);
   while varredorXML.LerSintagma(s) <> tsNulo do
   begin
     if AnsiStartsStr('<par ', s.valor) then
@@ -678,6 +691,17 @@ begin
 
   Renderizar;
   VersiculoPar.Renderizar;
+end;
+
+procedure TVersiculo.SetTokenizerVersion(AValue: Integer);
+begin
+  AValue := TTokenizerFactory.NormalizeVersion(AValue);
+  if FTokenizerVersion = AValue then
+    Exit;
+
+  FTokenizerVersion := AValue;
+  if Assigned(FONTParser) then
+    FONTParser.TokenizerVersion := AValue;
 end;
 
 function TVersiculo.GetPares: string;
@@ -1360,7 +1384,7 @@ begin
   offset := 0;
   novo := nil;
 
-  varredorXML := TTokenizerFactory.CreatePreferredTokenizer(FEdit.Caption);
+  varredorXML := TTokenizerFactory.CreateTokenizer(FTokenizerVersion, FEdit.Caption);
   while varredorXML.LerSintagma(s) <> tsNulo do
   begin
     if (s.tipo = tsEspaco) and (s.valor = '|') then

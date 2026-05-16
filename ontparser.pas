@@ -13,9 +13,11 @@ type
 
   TONTParser = class
   private
+    FTokenizerVersion: Integer;
   public
-    constructor Create;
+    constructor Create(ATokenizerVersion: Integer = TTokenizerFactory.LATEST_VERSION);
     function ParseLine(line: string; owner: TObject): TSyntagmList;
+    property TokenizerVersion: Integer read FTokenizerVersion write FTokenizerVersion;
   end;
 
 implementation
@@ -37,7 +39,7 @@ begin
   FTmpSobrescrito := false;
   sintagma := nil;
   sintagmas := TSyntagmList.Create;
-  tokenizer := TTokenizerFactory.CreatePreferredTokenizer(line);
+  tokenizer := TTokenizerFactory.CreateTokenizer(FTokenizerVersion, line);
   while tokenizer.LerSintagma(token) <> tsNulo do
   begin
     if token.tipo = tsTag then
@@ -98,9 +100,9 @@ begin
   result := sintagmas;
 end;
 
-constructor TONTParser.Create;
+constructor TONTParser.Create(ATokenizerVersion: Integer = TTokenizerFactory.LATEST_VERSION);
 begin
- // default
+  FTokenizerVersion := TTokenizerFactory.NormalizeVersion(ATokenizerVersion);
 end;
 
 end.
