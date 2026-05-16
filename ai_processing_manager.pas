@@ -5,20 +5,10 @@ unit ai_processing_manager;
 interface
 
 uses
-  Classes, SysUtils, ai_flows, llmclient, versiculo, contnrs;
+  Classes, SysUtils, ai_flows, llmclient, versiculo, contnrs,
+  ai_batch_work_item;
 
 type
-  // Raw verse data from SQL query (without TVersiculo parsing overhead)
-  TVerseData = record
-    ReferenceID: string;        // pare_id (e.g., "40,1,1")
-    ReferenceName: string;      // formatted reference (e.g., "Matthew 1:1")
-    OriginalText: string;       // pare_texto_origem
-    TranslatedText: string;     // pare_texto_destino
-    Associations: string;       // pare_pares (optional)
-    Comments: string;           // pare_comentarios
-    Status: Integer;            // pare_situacao
-  end;
-  PVerseData = ^TVerseData;
 
   TOnAutoSaveNeeded = procedure(Sender: TObject) of object;
   TGetVerseReferenceFunc = function(Verse: TVersiculo): string of object;
@@ -37,11 +27,8 @@ type
     AttemptCount: Integer;
     NextRetryTime: TDateTime;
     RequestStartTime: TDateTime;
-    OwnsVerse: Boolean; // if True, destructor will free Verse and VersePair
-    // Lazy verse creation support (for batch optimization)
-    VerseData: PVerseData;      // if not nil, verse not yet created
-    Project: TObject;           // TProjeto reference for verse creation (stored as TObject to avoid circular dependency)
-    Batch: TObject;             // TAIProcessingBatch reference (stored as TObject to avoid circular dependency)
+    OwnsVerse: Boolean; // batch jobs own temp verses; single jobs reuse visual verses
+    WorkItem: TAIBatchWorkItem; // explicit batch input and temp-verse creation seam
     Index: Integer;             // Index in batch for callbacks
     Usage: TLLMUsage;
     destructor Destroy; override;
@@ -113,7 +100,7 @@ type
     constructor Create(const AModel, AApiKey: string; AMaxParallel: Integer = 2);
     destructor Destroy; override;
     procedure StartSingle(Flow: IAIVerseFlow; Verse: TVersiculo); // processes one verse async (apply after PumpApply)
-    procedure StartBatch(Flow: IAIVerseFlow; Verses: TList; Project: TObject = nil; Batch: TObject = nil); // Verses list of TVersiculo or PVerseData
+    procedure StartBatch(Flow: IAIVerseFlow; WorkItems: TAIBatchWorkItemList);
     procedure PumpApply; // Call periodically in main thread
     procedure CancelAll;
     procedure RetryFailedJobs; // Re-queue all permanently failed jobs
@@ -154,9 +141,6 @@ uses
 
 destructor TAIJob.Destroy;
 begin
-  if Assigned(VerseData) then
-    Dispose(VerseData);
-    
   // Free temporary verse objects created for batch processing
   if OwnsVerse then
   begin
@@ -172,6 +156,8 @@ begin
     if Assigned(Verse) then
       Verse.Destruir;
   end;
+  if Assigned(WorkItem) then
+    WorkItem.Free;
   // Free parsed result
   if Assigned(Parsed) then
     Parsed.Free;
@@ -271,25 +257,14 @@ begin
       job.Usage.CompletionTokens := 0;
       job.Usage.TotalTokens := 0;
       
-      // Lazy verse creation: if we have raw data, create TVersiculo now (in worker thread)
+      // Batch work items own the lazy verse-creation seam.
       // NOTE: Each verse creates its own TONTParser instance, so there should be no shared state.
       // However, if deadlocks persist, consider adding a global mutex around ParseLine calls.
-      if Assigned(job.VerseData) and Assigned(job.Project) then
+      if Assigned(job.WorkItem) then
       begin
-        AIDebugLogFmt('[Worker] Creating verses for job index %d', [job.Index]);
-        // Create verses from raw data (parsing happens here, parallelized with API calls)
-        job.Verse := TVersiculo.Criar(job.Project);
-        job.VersePair := TVersiculo.Criar(job.Project);
-        AIDebugLogFmt('[Worker] Setting text for job index %d', [job.Index]);
-        job.Verse.Texto := job.VerseData^.OriginalText;
-        job.VersePair.Texto := job.VerseData^.TranslatedText;
-        job.Verse.Referencia := job.VerseData^.ReferenceName;
-        job.Verse.ReferenciaID := job.VerseData^.ReferenceID;
-        job.Verse.VersiculoPar := job.VersePair;
-        
-        // Free raw data now that verses are created
-        Dispose(job.VerseData);
-        job.VerseData := nil;
+        AIDebugLogFmt('[Worker] Materializing batch work item for job index %d (%s)',
+          [job.Index, job.WorkItem.VerseData.ReferenceID]);
+        job.WorkItem.CreateTempVersePair(job.Verse, job.VersePair);
         AIDebugLogFmt('[Worker] Verses created for job index %d', [job.Index]);
       end;
       
@@ -557,20 +532,22 @@ begin
   AIDebugLogFmt('[Manager] Workers count: %d', [FWorkers.Count]);
 end;
 
-procedure TAIProcessingManager.StartBatch(Flow: IAIVerseFlow; Verses: TList; Project: TObject = nil; Batch: TObject = nil);
+procedure TAIProcessingManager.StartBatch(Flow: IAIVerseFlow; WorkItems: TAIBatchWorkItemList);
 var
   i: Integer;
   job: TAIJob;
-  verse: TVersiculo;
-  verseData: PVerseData;
+  item: TAIBatchWorkItem;
   activeWorkersNeeded: Integer;
+  jobCount: Integer;
 begin
-  if Flow = nil then Exit;
-  AIDebugLogFmt('[Manager] StartBatch called. Jobs count: %d, MaxParallel configuration: %d', [Verses.Count, FMaxParallel]);
+  if (Flow = nil) or not Assigned(WorkItems) or (WorkItems.Count = 0) then Exit;
+  jobCount := WorkItems.Count;
+  AIDebugLogFmt('[Manager] StartBatch called. Jobs count: %d, MaxParallel configuration: %d', [jobCount, FMaxParallel]);
   FFlowName := Flow.Name;
   FBatchStartTime := Now;
-  for i := 0 to Verses.Count - 1 do
+  for i := 0 to jobCount - 1 do
   begin
+    item := WorkItems.ExtractItem(0);
     job := TAIJob.Create;
     job.Flow := Flow;
     job.State := ajsPending;
@@ -579,45 +556,25 @@ begin
     job.Usage.PromptTokens := 0;
     job.Usage.CompletionTokens := 0;
     job.Usage.TotalTokens := 0;
-    // Batch jobs own their data only when we are using the lazy/raw-data (Project) path.
-    // If Verses were already created (legacy UI path) we must NOT free them here.
-    job.OwnsVerse := Assigned(Project);
+    job.OwnsVerse := True;
     job.Index := i; // Store index for callbacks
-    job.Batch := Batch; // Store batch reference for in-memory updates
-    
-    // Check if this is raw data (optimization path) or already-created verse (legacy path)
-    if Assigned(Project) then
-    begin
-      // Optimization path: store raw data for lazy verse creation in worker thread
-      verseData := PVerseData(Verses[i]);
-      job.VerseData := verseData;
-      job.Project := Project;
-      job.Verse := nil; // Will be created in worker thread
-      job.VersePair := nil;
-    end
-    else
-    begin
-      // Legacy path: verses already created
-      verse := TVersiculo(Verses[i]);
-      job.Verse := verse;
-      job.VersePair := verse.VersiculoPar;
-      job.VerseData := nil;
-      job.Project := nil;
-    end;
+    job.WorkItem := item;
+    job.Verse := nil;
+    job.VersePair := nil;
     
     EnqueuePending(job);
     NotifyStateChange(job); // Notify that job is pending
   end;
-  SafeEnterLock; try Inc(FTotalJobs, Verses.Count); finally SafeLeaveLock; end;
+  SafeEnterLock; try Inc(FTotalJobs, jobCount); finally SafeLeaveLock; end;
   
   // Create worker threads up to FMaxParallel
-  activeWorkersNeeded := Verses.Count;
+  activeWorkersNeeded := jobCount;
   if activeWorkersNeeded > FMaxParallel then
     activeWorkersNeeded := FMaxParallel;
 
   if FWorkers.Count < activeWorkersNeeded then
     AIDebugLogFmt('[Manager] Starting %d worker threads (batch size=%d, MaxParallel=%d)', 
-      [activeWorkersNeeded - FWorkers.Count, Verses.Count, FMaxParallel]);
+      [activeWorkersNeeded - FWorkers.Count, jobCount, FMaxParallel]);
 
   while (FWorkers.Count < activeWorkersNeeded) do
     FWorkers.Add(TAIWorkerThread.Create(Self, FModel, FApiKey));

@@ -13,6 +13,7 @@ __history/
 backup/
 dic/
 lib/
+doc/
 iBiblia.exe
 iBiblia.ini
 iBiblia
@@ -21,6 +22,7 @@ iBiblia
 tests/results.xml
 tests/fpcunitibiblia.lps
 tests/fpcunitibiblia.exe
+tests/fpcunitibiblia_console.exe
 
 # PCRE library build artifacts
 pcre-6.7-lazarus/.libs

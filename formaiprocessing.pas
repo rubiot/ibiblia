@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ComCtrls, ExtCtrls, BibleTreeView, Versiculo, CommentsView,
-  ai_processing_manager, ai_flows, ai_processing_batch;
+  ai_processing_manager, ai_flows, ai_processing_batch, ai_batch_work_item;
 
 type
   TAIProcessingStatus = (apsIdle, apsRunning, apsCancelling, apsCompleted, apsCancelled);
@@ -77,7 +77,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     function StartProcessing(Manager: TAIProcessingManager; Flow: IAIVerseFlow; 
-                             Verses: TList; Project: TObject): boolean;
+                             WorkItems: TAIBatchWorkItemList; Project: TObject): boolean;
     procedure Apply;
     property Batch: TAIProcessingBatch read FBatch;
   end;
@@ -555,10 +555,11 @@ begin
 end;
 
 function TFrmAIProcessing.StartProcessing(Manager: TAIProcessingManager;
-  Flow: IAIVerseFlow; Verses: TList; Project: TObject): boolean;
+  Flow: IAIVerseFlow; WorkItems: TAIBatchWorkItemList; Project: TObject): boolean;
 var
   i: Integer;
-  verseData: PVerseData;
+  workItem: TAIBatchWorkItem;
+  verseData: TVerseData;
   ref: string;
 begin
   Result := False;
@@ -582,29 +583,30 @@ begin
   
   // Load original data and initialize batch
   // Note: verse data is already collected by caller, no dataset navigation needed
-  for i := 0 to Verses.Count - 1 do
+  for i := 0 to WorkItems.Count - 1 do
   begin
-    verseData := PVerseData(Verses[i]);
-    ref := verseData^.ReferenceID;
+    workItem := WorkItems[i];
+    verseData := workItem.VerseData;
+    ref := verseData.ReferenceID;
     
     // Store original data
     FOriginalData.Add(
       ref,
-      verseData^.OriginalText,
-      verseData^.TranslatedText,
-      verseData^.Associations,
-      verseData^.Comments,
-      verseData^.Status
+      verseData.OriginalText,
+      verseData.TranslatedText,
+      verseData.Associations,
+      verseData.Comments,
+      verseData.Status
     );
     
     // Initialize batch with same data (will be updated as processing completes)
     FBatch.Add(
       ref,
-      verseData^.OriginalText,
-      verseData^.TranslatedText,
-      verseData^.Associations,
-      verseData^.Comments,
-      verseData^.Status
+      verseData.OriginalText,
+      verseData.TranslatedText,
+      verseData.Associations,
+      verseData.Comments,
+      verseData.Status
     );
   end;
   

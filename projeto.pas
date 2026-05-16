@@ -18,7 +18,7 @@ uses
   ExtCtrls, Controls, ComCtrls, StdCtrls, Graphics, Forms, Versiculo, Sugestao,
   MemoVersiculo, ONTTokenizer, Dialogs, dos, PCRE, ExportarProjeto, LazLogger,
   Syntagm, BibleScope, MySwordModule, TheWordDictionary, fgl, PatchFile, LCLIntf, menus,
-  CommentsView, ai_processing_manager, ai_processing_batch,
+  CommentsView, ai_processing_manager, ai_processing_batch, ai_batch_work_item,
   ai_flows, llmclient, ai_flow_config, ai_debug;
 
 const
@@ -29,18 +29,6 @@ const
   ImgIndexProcessing = 9;  // AI processing: in progress (to be added to ImageListTreeView)
 
 type
-  // Raw verse data from SQL query (without TVersiculo parsing overhead)
-  TVerseData = record
-    ReferenceID: string;        // pare_id (e.g., "40,1,1")
-    ReferenceName: string;      // formatted reference (e.g., "Matthew 1:1")
-    OriginalText: string;       // pare_texto_origem
-    TranslatedText: string;     // pare_texto_destino
-    Associations: string;       // pare_pares (optional)
-    Comments: string;           // pare_comentarios
-    Status: Integer;            // pare_situacao
-  end;
-  PVerseData = ^TVerseData;
-
   TProjeto = class;
 
   TReference = record
@@ -261,8 +249,8 @@ type
     procedure SugerirAssociacaoEstatistica;
     procedure SugerirAssociacao;
   procedure SugerirAssociacaoAI;
-  procedure StartAIAssociationBatch(NodesVerses: TList; MaxParallel: Integer); // New: batch IA association
-  procedure StartAITranslationBatch(NodesVerses: TList; MaxParallel: Integer); // batch tradução IA
+  procedure StartAIAssociationBatch(NodesVerses: TAIBatchWorkItemList; MaxParallel: Integer); // New: batch IA association
+  procedure StartAITranslationBatch(NodesVerses: TAIBatchWorkItemList; MaxParallel: Integer); // batch tradução IA
     procedure RecriarBaseSugestoes;
     procedure RecriarBaseSugestoes(pb: TProgressBar);
     function ImportarModuloTheWord(arquivo: string; texto: TTipoTextoBiblico; replace: boolean): boolean;
@@ -1173,20 +1161,20 @@ end;
 
 procedure TProjeto.OnAIBatchClick(Sender: TObject);
 var
-  list: TList;
+  list: TAIBatchWorkItemList;
   maxPar: Integer;
   clickedNode: TTreeNode;
   flow: IAIVerseFlow;
   flowConfig: IAIFlowConfig;
-  verseData: PVerseData;
+  verseData: TVerseData;
   node: TTreeNode;
   i: Integer;
 
-  procedure CollectVersesFromNode(node: TTreeNode; dest: TList);
+  procedure CollectVersesFromNode(node: TTreeNode; dest: TAIBatchWorkItemList);
   var
     child: TTreeNode;
     ref: TReference;
-    verseData: PVerseData;
+    verseData: TVerseData;
     qry: TSQLQuery;
   begin
     if node = nil then Exit;
@@ -1200,16 +1188,15 @@ var
       GoToReference(ref);
 
       // Store raw data without creating TVersiculo (expensive parsing)
-      New(verseData);
-      verseData^.ReferenceID := Format('%d,%d,%d', [ref.BookID, ref.Chapter, ref.Verse]);
-      verseData^.ReferenceName := ref.Book + ' ' + IntToStr(ref.Chapter) + ':' + IntToStr(ref.Verse);
-      verseData^.OriginalText := ObterTextoVersiculo(tbOrigem);
-      verseData^.TranslatedText := ObterTextoVersiculo(tbDestino);
-      verseData^.Associations := Pairs; // pare_pares
-      verseData^.Comments := FTblPares.FieldByName('pare_comentarios').AsString;
-      verseData^.Status := FTblPares.FieldByName('pare_situacao').AsInteger;
+      verseData.ReferenceID := Format('%d,%d,%d', [ref.BookID, ref.Chapter, ref.Verse]);
+      verseData.ReferenceName := ref.Book + ' ' + IntToStr(ref.Chapter) + ':' + IntToStr(ref.Verse);
+      verseData.OriginalText := ObterTextoVersiculo(tbOrigem);
+      verseData.TranslatedText := ObterTextoVersiculo(tbDestino);
+      verseData.Associations := Pairs; // pare_pares
+      verseData.Comments := FTblPares.FieldByName('pare_comentarios').AsString;
+      verseData.Status := FTblPares.FieldByName('pare_situacao').AsInteger;
 
-      dest.Add(verseData);
+      dest.AddItem(TAIBatchWorkItem.Create(Self, verseData));
       Exit;
     end;
 
@@ -1226,7 +1213,7 @@ begin
   if FArvore = nil then Exit;
   clickedNode := FBibleTreePointedNode;  // Use the node where popup was triggered, not the selected node
   if clickedNode = nil then Exit;
-  list := TList.Create;
+  list := TAIBatchWorkItemList.Create;
   try
     // Determine action (association vs translation) by Tag and scope by pointed node level
     if not (Sender is TMenuItem) then Exit;
@@ -1318,8 +1305,7 @@ begin
     begin
       if FrmAIProcessing.StartProcessing(FAIManager, flow, list, Self) then
       begin
-        // Pass FBatch to manager so flows can update it with results (in-memory, not DB)
-        FAIManager.StartBatch(flow, list, Self, FrmAIProcessing.Batch);
+        FAIManager.StartBatch(flow, list);
         if FrmAIProcessing.ShowModal = mrOK then
         begin
           FrmAIProcessing.Apply;
@@ -1327,8 +1313,6 @@ begin
       end;
     end;
   finally
-    // Note: TVerseData records will be freed by the AI manager
-    // (Manager takes ownership through TAIJob and frees in destructor)
     list.Free;
   end;
 end;
@@ -3191,12 +3175,12 @@ begin
   end;
 end;
 
-procedure TProjeto.StartAIAssociationBatch(NodesVerses: TList; MaxParallel: Integer);
+procedure TProjeto.StartAIAssociationBatch(NodesVerses: TAIBatchWorkItemList; MaxParallel: Integer);
 var
   flow: IAIVerseFlow;
   flowConfig: IAIFlowConfig;
   i: Integer;
-  verseData: PVerseData;
+  verseData: TVerseData;
   node: TTreeNode;
 begin
   if (NodesVerses = nil) or (NodesVerses.Count = 0) then Exit;
@@ -3220,12 +3204,12 @@ begin
   // Mark all nodes as pending before starting (using raw data)
   for i := 0 to NodesVerses.Count - 1 do
   begin
-    verseData := PVerseData(NodesVerses[i]);
-    if Assigned(verseData) and not verseData^.ReferenceID.IsEmpty then
+    verseData := NodesVerses[i].VerseData;
+    if not verseData.ReferenceID.IsEmpty then
     begin
-      node := FindTreeNodeByReference(verseData^.ReferenceID);
+      node := FindTreeNodeByReference(verseData.ReferenceID);
       if Assigned(node) then
-        MarkNodeAsAIPending(node, verseData^.ReferenceID);
+        MarkNodeAsAIPending(node, verseData.ReferenceID);
     end;
   end;
 
@@ -3244,15 +3228,15 @@ begin
   FAIManager.AutoSaveInterval := StrToIntDef(ObterInfo(AI_COMMON_CONFIG.AutoSaveInterval), 10);
   FAIManager.OnAutoSaveNeeded := @HandleAutoSave;
   FAIManager.GetVerseReference := @GetVerseReferenceString;
-  FAIManager.StartBatch(flow, NodesVerses, Self); // Pass project for lazy verse creation
+  FAIManager.StartBatch(flow, NodesVerses);
 end;
 
-procedure TProjeto.StartAITranslationBatch(NodesVerses: TList; MaxParallel: Integer);
+procedure TProjeto.StartAITranslationBatch(NodesVerses: TAIBatchWorkItemList; MaxParallel: Integer);
 var
   flow: IAIVerseFlow;
   flowConfig: IAIFlowConfig;
   i: Integer;
-  verseData: PVerseData;
+  verseData: TVerseData;
   node: TTreeNode;
 begin
   if (NodesVerses = nil) or (NodesVerses.Count = 0) then Exit;
@@ -3270,12 +3254,12 @@ begin
   // Mark all nodes as pending before starting (using raw data)
   for i := 0 to NodesVerses.Count - 1 do
   begin
-    verseData := PVerseData(NodesVerses[i]);
-    if Assigned(verseData) and not verseData^.ReferenceID.IsEmpty then
+    verseData := NodesVerses[i].VerseData;
+    if not verseData.ReferenceID.IsEmpty then
     begin
-      node := FindTreeNodeByReference(verseData^.ReferenceID);
+      node := FindTreeNodeByReference(verseData.ReferenceID);
       if Assigned(node) then
-        MarkNodeAsAIPending(node, verseData^.ReferenceID);
+        MarkNodeAsAIPending(node, verseData.ReferenceID);
     end;
   end;
 
@@ -3293,7 +3277,7 @@ begin
   FAIManager.AutoSaveInterval := StrToIntDef(ObterInfo(AI_COMMON_CONFIG.AutoSaveInterval), 10);
   FAIManager.OnAutoSaveNeeded := @HandleAutoSave;
   FAIManager.GetVerseReference := @GetVerseReferenceString;
-  FAIManager.StartBatch(flow, NodesVerses, Self); // Pass project for lazy verse creation
+  FAIManager.StartBatch(flow, NodesVerses);
 end;
 
 procedure TProjeto.HandleAutoSave(Sender: TObject);
