@@ -21,7 +21,7 @@ uses
   CommentsView, ai_processing_manager, ai_processing_batch, ai_batch_work_item,
   ai_flows, llmclient, ai_flow_config, ai_debug, project_persistence, project_config,
   project_verse_repository, current_verse_workspace, verse_render_buffer,
-  project_patch_applier;
+  project_patch_applier, bible_tree_coordinator;
 const
   // AI processing icon indices for ImageListTreeView in formprincipal
   // ImageListTreeView has indices 0-7 for normal states (0-3) and selected states (4-7)
@@ -119,6 +119,7 @@ type
     FVerseRepository: TProjectVerseRepository;
     FVerseRenderBuffer: TVerseRenderBuffer;
     FPatchApplier: TProjectPatchApplier;
+    FBibleTreeCoordinator: TBibleTreeCoordinator;
     FTblPares: TSqlite3Dataset;
     FTblInfo: TSqlite3Dataset;
     FAVersiculo: AVersiculo;
@@ -164,6 +165,10 @@ type
     function CreateFlowExample(const FlowId: string): TAIFlowExample;
     function PromptReplaceExistingFlowExample(const FlowId: string; const ExistingExample: TAIFlowExample): Boolean;
     function ConfirmMissingPatchReference(const Reference: string): Boolean;
+    function IsTreeStatusIterationFinished: Boolean;
+    function CurrentTreeVerseStatus: Integer;
+    procedure ResetTreeStatusIteration;
+    procedure AdvanceTreeStatusIteration;
     procedure PreencherArvore;
     procedure SetAtrasoExibicao(const AValue: Cardinal);
     procedure SetAutoSave(AValue: boolean);
@@ -227,7 +232,6 @@ type
     function AtribuirDicMorfo(dic: string; t: TTipoTextoBiblico): boolean;
     procedure AtualizarArvore;
     procedure AtualizarArvore(id: string);
-    procedure SelectTreeNode(id: string);
   public
     procedure OnAIBatchClick(Sender: TObject);
     procedure OnAICancelClick(Sender: TObject);
@@ -699,32 +703,8 @@ begin
 end;
 
 procedure TProjeto.PreencherArvore;
-var
-  l, c, v: smallint;
-  nl, nc, nv: TTreeNode;
 begin
-  if FArvore.Items.Count = 0 then // evitando preencher outra vez a mesma árvore
-  begin // preenchendo árvore
-    FArvore.BeginUpdate;
-    for l:=0 to QLivros[FEscopo]-1 do
-    begin
-      nl := FArvore.Items.Add(nil, NLivros[FEscopo][l]);
-      nl.ImageIndex := 0; nl.SelectedIndex := nl.ImageIndex + 4;
-      for c:=0 to QCapitulos[FEscopo][l]-1 do
-      begin
-        nc := FArvore.Items.AddChild(nl, IntToStr(c+1));
-        nc.ImageIndex := 0; nc.SelectedIndex := nc.ImageIndex + 4;
-        for v:=0 to QVersiculos[FEscopo][QCapLivros[FEscopo][l] + c - 1]-1 do
-        begin
-          nv := FArvore.Items.AddChild(nc, IntToStr(v+1));
-          nv.ImageIndex := 0; nv.SelectedIndex := nv.ImageIndex + 4;
-        end;
-      end;
-    end;
-    FArvore.EndUpdate;
-  end;
-
-  FArvore.OnChange := @OnMudancaVersiculo;
+  FBibleTreeCoordinator.Populate(FEscopo, @OnMudancaVersiculo);
 end;
 
 procedure TProjeto.SetAtrasoExibicao(const AValue: Cardinal);
@@ -870,6 +850,26 @@ end;
 procedure TProjeto.OnNewVerseUnsubscribe(const AValue: TOnNovoVersiculoEvent);
 begin
   FOnNovoVersiculo.Remove(AValue);
+end;
+
+function TProjeto.IsTreeStatusIterationFinished: Boolean;
+begin
+  Result := not Assigned(FPersistence) or FPersistence.EOF;
+end;
+
+function TProjeto.CurrentTreeVerseStatus: Integer;
+begin
+  Result := Situacao;
+end;
+
+procedure TProjeto.ResetTreeStatusIteration;
+begin
+  VersiculoInicial;
+end;
+
+procedure TProjeto.AdvanceTreeStatusIteration;
+begin
+  VersiculoSeguinte;
 end;
 
 function TProjeto.ConfirmMissingPatchReference(const Reference: string): Boolean;
@@ -1146,9 +1146,7 @@ var
     if node = nil then Exit;
     if not node.HasChildren then
     begin
-      // verse node: convert to full reference and navigate to load verse object
-      // node.Text is just the verse number; use BibleTreeNodeToReference to get full ref
-      GoToReference(BibleTreeNodeToReference(node));
+      GoToReference(FBibleTreeCoordinator.NodeToReferenceID(FEscopo, node));
       dest.Add(FAVersiculo[tbOrigem]);
       Exit;
     end;
@@ -1368,36 +1366,11 @@ end;
 
 function TProjeto.BibleTreeNodeToReference(const node: TTreeNode): TReference;
 var
-  ch, bk, vs: TTreeNode;
-  i: Integer;
+  ReferenceID: string;
 begin
-  if node.HasChildren then // node is either a chapter or a book
-  begin
-    if assigned(node.Parent) then // chapter
-    begin
-      ch := node;
-      bk := ch.Parent;
-      vs := ch.GetFirstChild;
-    end else begin // book
-      bk := node;
-      ch := bk.GetFirstChild;
-      vs := ch.GetFirstChild;
-    end;
-  end else begin // verse
-    vs := node;
-    ch := vs.Parent;
-    bk := ch.Parent;
-  end;
-
-  for i:=0 to QLivros[FEscopo]-1 do
-    if NLivros[FEscopo][i] = bk.Text then
-      break;
-
-  result.BookID  := i+1+OffsetLivros[FEscopo];
+  ReferenceID := FBibleTreeCoordinator.NodeToReferenceID(FEscopo, node);
+  Sscanf(ReferenceID, '%d,%d,%d', [@Result.BookID, @Result.Chapter, @Result.Verse]);
   result.Book    := NLivrosONT[result.BookID];
-  result.Chapter := StrToInt(ch.Text);
-  result.Verse   := StrToInt(vs.Text);
-  //GoToReference(format('%d,%s,%s', [i+1+OffsetLivros[FEscopo], c.Text, v.Text]));
 end;
 
 function TProjeto.GetModificado: boolean;
@@ -1418,8 +1391,13 @@ begin
 end;
 
 function TProjeto.GetChapterViewText: TTipoTextoBiblico;
+var
+  t: string;
 begin
-  Result := TTipoTextoBiblico(FConfig.ReadChapterViewText(Ord(tbDestino)));
+  t := ObterInfo('chapterview.text');
+  if t.IsEmpty then
+    t := Ord(tbDestino).ToString;
+  Result := TTipoTextoBiblico(t.ToInteger);
 end;
 
 function TProjeto.GetChapterText: TStringList;
@@ -1466,7 +1444,6 @@ function TProjeto.GetChapterText: TStringList;
           else
             raise Exception.Create(Format('Invalid interlinear mode [%d]', [Ord(InterlinearMode)]));
 
-          // apply verse rules
           for i:=0 to rulesRx.Count-1 do
           begin
             try
@@ -1475,7 +1452,6 @@ function TProjeto.GetChapterText: TStringList;
               on E: Exception do ShowMessage(SInterlinearVerseRuleReplaceError + #13#10 + E.Message);
             end;
           end;
-
         end;
       end;
     end;
@@ -1485,10 +1461,7 @@ var
   bkch, comments: string;
   rulesRx: TRegexList;
   replaceTo: TStringList;
-  //starttime: DWord;
 begin
-  //starttime := getTickCount;
-
   bkch := Format('%d,%d,', [BookID, Chapter]);
   result := TStringList.Create;
 
@@ -1519,7 +1492,6 @@ begin
     rulesRx.Free;
     replaceTo.Free;
   end;
-  //DebugLn('  TProjeto.GetChapterText: %d milliseconds', [getTickCount-starttime]);
 end;
 
 procedure TProjeto.CompileInterlinearVerseRules(var rulesRx: TRegexList; var replaceTo: TStringList; mode: TInterlinearMode; exporting: boolean);
@@ -1532,7 +1504,7 @@ begin
   replaceTo := TStringList.Create;
   if mode = imInterlinear then
     verseRules := FConfig.ReadVerseRules(True)
-  else // intralinear (theWord mode)
+  else
     verseRules := FConfig.ReadVerseRules(False);
 
   for rule in verseRules.Split(#13) do
@@ -1815,7 +1787,7 @@ begin
 
   FCurrentVerseWorkspace.FinalizeLoadedVerse(FAVersiculo);
 
-  SelectTreeNode(ID);
+  FBibleTreeCoordinator.SelectReference(FEscopo, ID);
 
   if assigned(FMemoComentarios) then
   begin
@@ -1989,7 +1961,7 @@ procedure TProjeto.OnMudancaVersiculo(Sender: TObject; Node: TTreeNode);
 begin
   if not FScrollEventsEnabled or not assigned(FTblPares) or FClosing or not assigned(Node) then
     exit;
-  GoToReference(BibleTreeNodeToReference(Node));
+  GoToReference(FBibleTreeCoordinator.NodeToReferenceID(FEscopo, Node));
 end;
 
 procedure TProjeto.OnAlterarTextoVersiculo(Sender: TMemoVersiculo);
@@ -2087,7 +2059,7 @@ procedure TProjeto.OnBibleTreePopupItemClick(Sender: TObject);
 
   procedure SetNodeStatus(node: TTreeNode; status: Integer);
   begin
-    GoToReference(BibleTreeNodeToReference(node));
+    GoToReference(FBibleTreeCoordinator.NodeToReferenceID(FEscopo, node));
     SetSituacao(status);
     //node.ImageIndex := status;
   end;
@@ -2310,151 +2282,13 @@ begin
 end;
 
 procedure TProjeto.AtualizarArvore;
-var
-  n, ul, uc: TTreeNode;
-  qv, qc, l, c, v, s: smallint;
-  sl, sc: array[0..3] of smallint;
-  b: boolean;
 begin
   if not assigned(FArvore) then exit;
-  // POSSIBLE BUG: TopItem returns the first VISIBLE node, not the top SELECTED node!!!
-
-  n := FArvore.TopItem.GetFirstChild.GetFirstChild; // nó versículo atual
-  l := OffsetLivros[FEscopo] + 1; // livro atual
-  c := 1;  // capítulo atual
-  v := 1;  // versículo atual
-  ul := FArvore.TopItem; // nó do livro atual
-  uc := FArvore.TopItem.GetFirstChild; // nó do capítulo atual
-  qv := 0; // índice no vetor QVersiculos
-  qc := 0; // índice no vetor QCapitulos
-
-  sc[0] := 0;  // contagem de versículos por situação no capítulo
-  sc[1] := 0;
-  sc[2] := 0;
-  sc[3] := 0;
-
-  sl[0] := 0;  // contagem de versículos por situação no livro
-  sl[1] := 0;
-  sl[2] := 0;
-  sl[3] := 0;
-
-  VersiculoInicial;
-
-  while not FTblPares.EOF do
-  begin
-    if v > QVersiculos[FEscopo][qv] then // novo capítulo
-    begin
-      { atualizando nó do capítulo }
-      //if qv = 69 then
-      //  MessageDlg('sc', format('[%d][%d][%d][%d] - QVersiculos[%d]=%d', [sc[0],sc[1],sc[2],sc[3], qv, QVersiculos[qv]]), mtInformation, [mbOK], 0);
-      b := false;
-      for s:=0 to 3 do // todos os versículos estão na mesma situação?
-        if sc[s] = QVersiculos[FEscopo][qv] then
-        begin
-          uc.ImageIndex := s; uc.SelectedIndex := uc.ImageIndex + 4;
-          b := true;
-          break;
-        end;
-      if not b then // várias situacoes diferentes
-      begin
-        if sc[2] > 0 then //(sc[0] = 0) and (sc[1] = 0) then
-          uc.ImageIndex := 2
-        else
-          uc.ImageIndex := 1;
-        uc.SelectedIndex := uc.ImageIndex + 4;
-      end;
-      sc[0] := 0;
-      sc[1] := 0;
-      sc[2] := 0;
-      sc[3] := 0;
-      inc(sl[uc.ImageIndex]);
-
-      v := 1;
-      inc(c);
-      if c > QCapitulos[FEscopo][qc] then // novo livro
-      begin
-        { atualizando nó do livro }
-        //if qc = 27 then
-        //  MessageDlg('sl', format('[%d][%d][%d][%d] - [%d]', [sl[0],sl[1],sl[2],sl[3], QCapitulos[qc]]), mtInformation, [mbOK], 0);
-        b := false;
-        for s:=0 to 3 do // todos os capítulos estão na mesma situação?
-          if sl[s] = QCapitulos[FEscopo][qc] then
-          begin
-            ul.ImageIndex := s; ul.SelectedIndex := ul.ImageIndex + 4;
-            b := true;
-            break;
-          end;
-        if not b then // várias situações diferentes
-        begin
-          if sl[2] > 0 then //(sl[0] = 0) and (sl[1] = 0) then
-            ul.ImageIndex := 2
-          else
-            ul.ImageIndex := 1;
-          ul.SelectedIndex := ul.ImageIndex + 4;
-        end;
-        sl[0] := 0;
-        sl[1] := 0;
-        sl[2] := 0;
-        sl[3] := 0;
-
-        c := 1;
-        inc(l);
-        inc(qc);
-        ul := ul.GetNextSibling;
-        uc := ul.GetFirstChild;
-      end else
-        uc := uc.GetNextSibling;
-
-      n := uc.GetFirstChild;
-      inc(qv);
-    end;
-    inc(sc[Situacao]);
-    n.ImageIndex := Situacao;
-    n.SelectedIndex := n.ImageIndex + 4;
-
-    VersiculoSeguinte;
-    inc(v);
-    n := n.GetNextSibling;
-  end;
-
-  { atualizando o último capítulo - Apocalipse 22 }
-  b := false;
-  for s:=0 to 3 do // todos os versículos estão na mesma situação?
-    if sc[s] = QVersiculos[FEscopo][qv] then
-    begin
-      uc.ImageIndex := s; uc.SelectedIndex := uc.ImageIndex + 4;
-      b := true;
-      break;
-    end;
-  if not b then // várias situacoes diferentes
-  begin
-    if sc[2] > 0 then //(sc[0] = 0) and (sc[1] = 0) then
-      uc.ImageIndex := 2
-    else
-      uc.ImageIndex := 1;
-
-    uc.SelectedIndex := uc.ImageIndex + 4;
-  end;
-
-  { atualizando último livro - Apocalipse }
-  b := false;
-  inc(sl[Situacao]);
-  //MessageDlg('sl', format('[%d][%d][%d][%d] - [%d]', [sl[0],sl[1],sl[2],sl[3], QCapitulos[qc]]), mtInformation, [mbOK], 0);
-  for s:=0 to 3 do // todos os capítulos estão na mesma situação?
-    if sl[s] = QCapitulos[FEscopo][qc] then
-    begin
-      ul.ImageIndex := s; ul.SelectedIndex := ul.SelectedIndex + 4;
-      b := true;
-      break;
-    end;
-  if not b then // várias situações diferentes
-  begin
-    if sl[2] > 0 then //(sl[0] = 0) and (sl[1] = 0) then
-      ul.ImageIndex := 2
-    else
-      ul.ImageIndex := 1;
-    ul.SelectedIndex := ul.ImageIndex + 4;
-  end;
+  FBibleTreeCoordinator.RecomputeAllStatuses(FEscopo,
+    @ResetTreeStatusIteration,
+    @IsTreeStatusIterationFinished,
+    @AdvanceTreeStatusIteration,
+    @CurrentTreeVerseStatus);
 end;
 
 procedure TProjeto.AtualizarArvore(id: string);
@@ -2558,31 +2392,6 @@ begin
   end;
 end;
 
-procedure TProjeto.SelectTreeNode(id: string);
-var
-  b, c, v, i: smallint;
-  node: TTreeNode;
-begin
-  if not assigned(FArvore) or FClosing then
-    exit;
-
-  SScanf(id, '%d,%d,%d', [@b, @c, @v]);
-
-  node := FArvore.Items[0];
-  for i:=b-OffsetLivros[FEscopo]-1 downto 1 do
-    node := node.GetNextSibling;
-
-  node := node.GetFirstChild;
-  for i:=c-1 downto 1 do
-    node := node.GetNextSibling;
-
-  node := node.GetFirstChild;
-  for i:=v-1 downto 1 do
-    node := node.GetNextSibling;
-
-  node.Selected := true;
-end;
-
 constructor TProjeto.Criar;
 var
   v: TTipoTextoBiblico;
@@ -2607,6 +2416,7 @@ begin
   FVerseRepository    := TProjectVerseRepository.Create(nil);
   FVerseRenderBuffer  := nil;
   FPatchApplier       := TProjectPatchApplier.Create(nil);
+  FBibleTreeCoordinator := TBibleTreeCoordinator.Create(nil);
   FTblPares           := nil;
   FTblInfo            := nil;
   FEscopo             := etNone;
@@ -2638,6 +2448,7 @@ begin
       NovoObjetoVersiculo(paineis[v], TTipoTextoBiblico(v));
 
   Arvore              := navegador;
+  FBibleTreeCoordinator.Attach(FArvore);
   FRadioGroupSituacao := rsituacao;
   FMemoComentarios    := rcomentarios;
 end;
@@ -2676,6 +2487,7 @@ begin
     FreeAndNil(FAIProcessingNodes);
 
   FreeAndNil(FCurrentVerseWorkspace);
+  FreeAndNil(FBibleTreeCoordinator);
   FreeAndNil(FPatchApplier);
   FreeAndNil(FVerseRenderBuffer);
   FreeAndNil(FVerseRepository);
