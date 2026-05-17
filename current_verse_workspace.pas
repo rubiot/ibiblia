@@ -5,7 +5,7 @@ unit current_verse_workspace;
 interface
 
 uses
-  Classes, SysUtils, Controls, StdCtrls,
+  Classes, SysUtils, Controls, StdCtrls, Forms, Graphics,
   versiculo, memoversiculo, commentsview, sugestao, syntagm, project_persistence,
   verse_render_buffer;
 
@@ -27,6 +27,19 @@ type
   public
     destructor Destroy; override;
     procedure Clear;
+    procedure InitializeVerseRuntime(var VerseViews: array of TVersiculo;
+      var TextFieldIndexes: array of Integer);
+    procedure DestroyVerseViews(var VerseViews: array of TVersiculo);
+    procedure CreateVerseView(Project: TObject; Owner: TScrollBox; VerseIndex,
+      SourceVerseIndex, DestinationVerseIndex: Integer;
+      var VerseViews: array of TVersiculo; OnVerseDoubleClick: TNotifyEvent;
+      OnSyntagmClick: TOnSintagmaEvent; OnExportText: TOnExportTextEvent);
+    procedure ApplyDisplayTags(const VerseViews: array of TVersiculo; DisplayTags: Boolean);
+    procedure ApplyTokenizerVersion(const VerseViews: array of TVersiculo;
+      TokenizerVersion: Integer);
+    procedure ApplyStrongsCountMode(const VerseViews: array of TVersiculo;
+      StrongsCountMode: TStrongsCountMode);
+    procedure ApplyBoldStrongs(const VerseViews: array of TVersiculo; Enabled: Boolean);
     function ApplyEditedVerseText(const VerseViews: array of TVersiculo;
       EditedVerse: TVersiculo; const NewText: string): Integer;
     procedure SavePairs(Persistence: TProjectPersistence; SourceVerse: TVersiculo);
@@ -105,6 +118,97 @@ end;
 procedure TCurrentVerseWorkspace.Clear;
 begin
   FreeAndNil(FOldPairs);
+end;
+
+procedure TCurrentVerseWorkspace.InitializeVerseRuntime(
+  var VerseViews: array of TVersiculo; var TextFieldIndexes: array of Integer);
+var
+  Index: Integer;
+begin
+  for Index := Low(VerseViews) to High(VerseViews) do
+    VerseViews[Index] := nil;
+
+  for Index := Low(TextFieldIndexes) to High(TextFieldIndexes) do
+    TextFieldIndexes[Index] := 0;
+end;
+
+procedure TCurrentVerseWorkspace.DestroyVerseViews(
+  var VerseViews: array of TVersiculo);
+var
+  Index: Integer;
+begin
+  for Index := Low(VerseViews) to High(VerseViews) do
+    if Assigned(VerseViews[Index]) then
+    begin
+      VerseViews[Index].Destruir;
+      VerseViews[Index] := nil;
+    end;
+end;
+
+procedure TCurrentVerseWorkspace.CreateVerseView(Project: TObject;
+  Owner: TScrollBox; VerseIndex, SourceVerseIndex, DestinationVerseIndex: Integer;
+  var VerseViews: array of TVersiculo; OnVerseDoubleClick: TNotifyEvent;
+  OnSyntagmClick: TOnSintagmaEvent; OnExportText: TOnExportTextEvent);
+begin
+  if (VerseIndex < Low(VerseViews)) or (VerseIndex > High(VerseViews)) then
+    raise Exception.CreateFmt('Current verse view index out of bounds [%d]', [VerseIndex]);
+
+  VerseViews[VerseIndex] := TVersiculo.Criar(Project, Owner);
+  Owner.Tag := PtrInt(VerseViews[VerseIndex]);
+  Owner.OnDblClick := OnVerseDoubleClick;
+  VerseViews[VerseIndex].OnClick := OnSyntagmClick;
+  VerseViews[VerseIndex].OnExportText := OnExportText;
+
+  if (VerseIndex <> SourceVerseIndex) and (VerseIndex <> DestinationVerseIndex) then
+    VerseViews[VerseIndex].CorDesassociado := clWindowText;
+
+  if (VerseIndex = DestinationVerseIndex) and Assigned(GetVerseView(VerseViews, SourceVerseIndex)) then
+    VerseViews[DestinationVerseIndex].VersiculoPar := GetVerseView(VerseViews, SourceVerseIndex)
+  else if (VerseIndex = SourceVerseIndex) and Assigned(GetVerseView(VerseViews, DestinationVerseIndex)) then
+    VerseViews[SourceVerseIndex].VersiculoPar := GetVerseView(VerseViews, DestinationVerseIndex);
+end;
+
+procedure TCurrentVerseWorkspace.ApplyDisplayTags(
+  const VerseViews: array of TVersiculo; DisplayTags: Boolean);
+var
+  Index: Integer;
+begin
+  for Index := Low(VerseViews) to High(VerseViews) do
+    if Assigned(VerseViews[Index]) then
+      if DisplayTags then
+        VerseViews[Index].MostrarTags
+      else
+        VerseViews[Index].OcultarTags;
+end;
+
+procedure TCurrentVerseWorkspace.ApplyTokenizerVersion(
+  const VerseViews: array of TVersiculo; TokenizerVersion: Integer);
+var
+  Index: Integer;
+begin
+  for Index := Low(VerseViews) to High(VerseViews) do
+    if Assigned(VerseViews[Index]) then
+      VerseViews[Index].TokenizerVersion := TokenizerVersion;
+end;
+
+procedure TCurrentVerseWorkspace.ApplyStrongsCountMode(
+  const VerseViews: array of TVersiculo; StrongsCountMode: TStrongsCountMode);
+var
+  Index: Integer;
+begin
+  for Index := Low(VerseViews) to High(VerseViews) do
+    if Assigned(VerseViews[Index]) then
+      VerseViews[Index].StrongsCountMode := StrongsCountMode;
+end;
+
+procedure TCurrentVerseWorkspace.ApplyBoldStrongs(
+  const VerseViews: array of TVersiculo; Enabled: Boolean);
+var
+  Index: Integer;
+begin
+  for Index := Low(VerseViews) to High(VerseViews) do
+    if Assigned(VerseViews[Index]) then
+      VerseViews[Index].PalavrasComStrongEmNegrito := Enabled;
 end;
 
 function TCurrentVerseWorkspace.ApplyEditedVerseText(

@@ -256,12 +256,12 @@ type
     procedure Limpar;
     procedure Salvar;
     procedure SalvarParesVersiculo(Verse: TVersiculo); // Save pairs from any verse object (public for AI flows)
-  procedure ApplyVerseText(const newText: string; texto: TTipoTextoBiblico; replace: Boolean);
+    procedure ApplyVerseText(const newText: string; texto: TTipoTextoBiblico; replace: Boolean);
     procedure SugerirAssociacaoEstatistica;
     procedure SugerirAssociacao;
-  procedure SugerirAssociacaoAI;
-  procedure StartAIAssociationBatch(NodesVerses: TAIBatchWorkItemList; MaxParallel: Integer); // New: batch IA association
-  procedure StartAITranslationBatch(NodesVerses: TAIBatchWorkItemList; MaxParallel: Integer); // batch tradução IA
+    procedure SugerirAssociacaoAI;
+    procedure StartAIAssociationBatch(NodesVerses: TAIBatchWorkItemList; MaxParallel: Integer); // New: batch IA association
+    procedure StartAITranslationBatch(NodesVerses: TAIBatchWorkItemList; MaxParallel: Integer); // batch tradução IA
     procedure RecriarBaseSugestoes;
     procedure RecriarBaseSugestoes(pb: TProgressBar);
     function ImportarModuloTheWord(arquivo: string; texto: TTipoTextoBiblico; replace: boolean): boolean;
@@ -733,21 +733,12 @@ begin
 end;
 
 procedure TProjeto.SetDisplayTags(AValue: boolean);
-var
-  t: TTipoTextoBiblico;
 begin
   if FDisplayTags = AValue then
     Exit;
 
   FDisplayTags := AValue;
-
-  for t:=tbOrigem to tbConsulta2 do
-  begin
-    if FDisplayTags then
-      FAVersiculo[t].MostrarTags
-    else
-      FAVersiculo[t].OcultarTags;
-  end;
+  FCurrentVerseWorkspace.ApplyDisplayTags(FAVersiculo, FDisplayTags);
 end;
 
 procedure TProjeto.SetInterlinearMode(AValue: TInterlinearMode);
@@ -763,7 +754,6 @@ end;
 procedure TProjeto.SetTokenizerVersion(AValue: Integer);
 var
   currentVersion: Integer;
-  v: TTipoTextoBiblico;
 begin
   AValue := TTokenizerFactory.NormalizeVersion(AValue);
   currentVersion := TokenizerVersion;
@@ -775,9 +765,7 @@ begin
   FConfig.WriteTokenizerVersion(AValue);
   TTokenizerFactory.PreferredVersion := AValue;
 
-  for v := Low(FAVersiculo) to High(FAVersiculo) do
-    if Assigned(FAVersiculo[v]) then
-      FAVersiculo[v].TokenizerVersion := AValue;
+  FCurrentVerseWorkspace.ApplyTokenizerVersion(FAVersiculo, AValue);
 
   if Assigned(FVerseRenderBuffer) then
     FVerseRenderBuffer.SetTokenizerVersion(AValue);
@@ -821,15 +809,12 @@ begin
 end;
 
 procedure TProjeto.SetVerseStrongsCountMode(AValue: TStrongsCountMode);
-var
-  v: TTipoTextoBiblico;
 begin
-  if FVerseStrongsCountMode = AValue
-     then Exit;
+  if FVerseStrongsCountMode = AValue then
+    Exit;
+
   FVerseStrongsCountMode := AValue;
-  for v:=low(FAVersiculo) to high(FAVersiculo) do
-    if assigned(FAVersiculo[v]) then
-      FAVersiculo[v].StrongsCountMode := AValue;
+  FCurrentVerseWorkspace.ApplyStrongsCountMode(FAVersiculo, AValue);
 end;
 
 procedure TProjeto.SetOnAlterarVersiculo(const AValue: TOnAlterarVersiculoEvent);
@@ -949,14 +934,10 @@ begin
 end;
 
 procedure TProjeto.SetPalavrasComStrongEmNegrito(AValue: boolean);
-var
-  v: TTipoTextoBiblico;
 begin
   if FPalavrasComStrongEmNegrito=AValue then Exit;
   FPalavrasComStrongEmNegrito:=AValue;
-  for v:=low(FAVersiculo) to high(FAVersiculo) do
-    if assigned(FAVersiculo[v]) then
-      FAVersiculo[v].PalavrasComStrongEmNegrito := AValue;
+  FCurrentVerseWorkspace.ApplyBoldStrongs(FAVersiculo, AValue);
 end;
 
 procedure TProjeto.SetSituacao(const AValue: Integer);
@@ -2411,6 +2392,7 @@ begin
   FAIProcessingNodes  := TAINodeInfoList.Create(True); // owns objects
   FAIBatchCompletionShown := False;
   FCurrentVerseWorkspace := TCurrentVerseWorkspace.Create;
+  FCurrentVerseWorkspace.InitializeVerseRuntime(FAVersiculo, FACamposTexto);
   FPersistence        := nil;
   FConfig             := TProjectConfig.Create(nil);
   FVerseRepository    := TProjectVerseRepository.Create(nil);
@@ -2457,11 +2439,10 @@ destructor TProjeto.Destruir;
 var
   v: TTipoTextoBiblico;
 begin
-  for v:=low(FAVersiculo) to high(FAVersiculo) do
-  begin
-    if assigned(FAVersiculo[v]) then
-      FAVersiculo[v].Destruir;
+  FCurrentVerseWorkspace.DestroyVerseViews(FAVersiculo);
 
+  for v:=low(FADicStrong) to high(FADicStrong) do
+  begin
     if assigned(FADicStrong[v]) then
     begin
       FADicStrong[v].Close;
@@ -2566,14 +2547,16 @@ begin
       f.Bold := Boolean(StrToInt(s));
 
     FAVersiculo[t].Fonte := f;
-    FAVersiculo[t].PalavrasComStrongEmNegrito := FPalavrasComStrongEmNegrito;
-    FAVersiculo[t].StrongsCountMode := FVerseStrongsCountMode;
 
     { definindo dicionários }
     AtribuirDicStrong(ObterInfo(format('dicstrong%d', [t])), t);
     AtribuirDicMorfo(ObterInfo(format('dicmorfo%d', [t])), t);
   end;
   f.free;
+
+  FCurrentVerseWorkspace.ApplyTokenizerVersion(FAVersiculo, TokenizerVersion);
+  FCurrentVerseWorkspace.ApplyBoldStrongs(FAVersiculo, FPalavrasComStrongEmNegrito);
+  FCurrentVerseWorkspace.ApplyStrongsCountMode(FAVersiculo, FVerseStrongsCountMode);
 
   FreeAndNil(FVerseRenderBuffer);
   FVerseRenderBuffer := TVerseRenderBuffer.Create(self);
@@ -3015,6 +2998,7 @@ begin
     Result := 'Unknown';
     Exit;
   end;
+
   // Use current project reference (assumes verse is from this project)
   Result := Format('%s %d:%d', [Book, Chapter, Self.Verse]);
 end;
@@ -3273,23 +3257,9 @@ end;
 procedure TProjeto.NovoObjetoVersiculo(owner: TScrollBox;
   texto: TTipoTextoBiblico);
 begin
-  FAVersiculo[texto] := TVersiculo.Criar(self, owner);
-  owner.Tag := ptrint(FAVersiculo[texto]);
-  owner.OnDblClick := @OnDblClickVersiculo;
-  FAVersiculo[texto].OnClick := @SintagmaOnClick;
-  FAVersiculo[texto].OnExportText := @OnExportText;
-
-  //FAVersiculo[texto].MostrarDicas := true;
-  if texto in [tbConsulta1, tbConsulta2] then
-    FAVersiculo[texto].CorDesassociado := clWindowText;
-
-  //if texto = tbOrigem then
-  //  FAVersiculo[texto].StrongMorfoComoChave := true;
-
-  if (texto = tbDestino) and assigned(FAVersiculo[tbOrigem]) then
-    FAVersiculo[tbDestino].VersiculoPar := FAVersiculo[tbOrigem]
-  else if (texto = tbOrigem) and assigned(FAVersiculo[tbDestino]) then
-    FAVersiculo[tbOrigem].VersiculoPar := FAVersiculo[tbDestino];
+  FCurrentVerseWorkspace.CreateVerseView(self, owner, Ord(texto), Ord(tbOrigem),
+    Ord(tbDestino), FAVersiculo, @OnDblClickVersiculo, @SintagmaOnClick,
+    @OnExportText);
 end;
 
 procedure TProjeto.ExportarTextoDestinoComStrongs(arquivo: string; opcoes: TOpcoesExportacao);
