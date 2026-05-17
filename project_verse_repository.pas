@@ -22,6 +22,10 @@ type
       ATranslatedTextIndex: Integer = -1);
     function ReadCurrentVerseData(const ReferenceID, ReferenceName: string): TVerseData;
     function ReadVerseData(const ReferenceID, ReferenceName: string): TVerseData;
+    function TryReadVerseData(const ReferenceID, ReferenceName: string;
+      out VerseData: TVerseData): Boolean;
+    function TryReadText(const ReferenceID: string; TextIndex: Integer;
+      var TextValue: string): Boolean;
   end;
 
 implementation
@@ -78,6 +82,30 @@ begin
     raise Exception.CreateFmt('Reference not found in project [%s]', [ReferenceID]);
 
   Result := ReadCurrentVerseData(ReferenceID, ReferenceName);
+end;
+
+function TProjectVerseRepository.TryReadVerseData(const ReferenceID,
+  ReferenceName: string; out VerseData: TVerseData): Boolean;
+begin
+  RequirePersistence;
+
+  Result := (FPersistence.CurrentPairId = ReferenceID) or
+    FPersistence.LocateReference(ReferenceID);
+  if Result then
+    VerseData := ReadCurrentVerseData(ReferenceID, ReferenceName);
+end;
+
+function TProjectVerseRepository.TryReadText(const ReferenceID: string;
+  TextIndex: Integer; var TextValue: string): Boolean;
+begin
+  RequirePersistence;
+  if TextIndex < 0 then
+    raise Exception.Create('Project verse repository text index is not attached');
+
+  Result := (FPersistence.CurrentPairId = ReferenceID) or
+    FPersistence.LocateReference(ReferenceID);
+  if Result then
+    TextValue := FPersistence.CurrentText(TextIndex);
 end;
 
 end.

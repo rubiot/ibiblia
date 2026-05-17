@@ -607,13 +607,14 @@ begin
 end;
 
 function TProjeto.GetPairs(ref: string): string;
+var
+  verseData: TVerseData;
 begin
   result := '';
   StartScrollingSession;
   try
-    GoToReference(ref);
-    if ID = ref then
-      result := GetPairs();
+    if FVerseRepository.TryReadVerseData(ref, ref, verseData) then
+      Result := verseData.Associations;
   finally
     FinishScrollingSession;
   end;
@@ -1554,26 +1555,28 @@ begin
 end;
 
 function TProjeto.GetComments(ref: string): string;
+var
+  verseData: TVerseData;
 begin
   result := '';
   StartScrollingSession;
   try
-    GoToReference(ref);
-    if ID = ref then
-      result := GetComentarios;
+    if FVerseRepository.TryReadVerseData(ref, ref, verseData) then
+      Result := verseData.Comments;
   finally
     FinishScrollingSession;
   end;
 end;
 
 function TProjeto.GetStatus(ref: string): Integer;
+var
+  verseData: TVerseData;
 begin
   result := 0;
   StartScrollingSession;
   try
-    GoToReference(ref);
-    if ID = ref then
-      result := GetSituacao;
+    if FVerseRepository.TryReadVerseData(ref, ref, verseData) then
+      Result := verseData.Status;
   finally
     FinishScrollingSession;
   end;
@@ -4034,9 +4037,7 @@ begin
   result := SVerseAbsentFromProject;
   StartScrollingSession;
   try
-    GoToReference(Referencia);
-    if ID = Referencia then
-      result := ObterTextoVersiculo(texto);
+    FVerseRepository.TryReadText(Referencia, FACamposTexto[texto], Result);
   finally
     FinishScrollingSession;
   end;
