@@ -19,7 +19,7 @@ uses
   MemoVersiculo, ONTTokenizer, Dialogs, dos, PCRE, ExportarProjeto, LazLogger,
   Syntagm, BibleScope, MySwordModule, TheWordDictionary, fgl, PatchFile, LCLIntf, menus,
   CommentsView, ai_processing_manager, ai_processing_batch, ai_batch_work_item,
-  ai_flows, llmclient, ai_flow_config, ai_debug;
+  ai_flows, llmclient, ai_flow_config, ai_debug, project_persistence;
 
 const
   // AI processing icon indices for ImageListTreeView in formprincipal
@@ -113,6 +113,7 @@ type
     FSugerirAssociacaoAuto: boolean;
     FPalavrasComStrongEmNegrito: boolean;
     FExibirDefComCtrl: boolean;
+    FPersistence: TProjectPersistence;
     FTblPares: TSqlite3Dataset;
     FTblInfo: TSqlite3Dataset;
     FAVersiculo: AVersiculo;
@@ -589,7 +590,7 @@ end;
 
 function TProjeto.GetPairs: string;
 begin
-  result := FTblPares.FieldByName('pare_pares').AsString;
+  Result := FPersistence.CurrentPairs;
 end;
 
 function TProjeto.GetParagraphMode: TParagraphMode;
@@ -623,7 +624,7 @@ end;
 
 function TProjeto.GetSituacao: Integer;
 begin
-  result := FTblPares.FieldByName('pare_situacao').AsInteger;
+  Result := FPersistence.CurrentStatus;
 end;
 
 function TProjeto.IsValidDicionaryModule(const path: string; const dicType: string): boolean;
@@ -745,11 +746,9 @@ end;
 
 procedure TProjeto.SetComentarios(const AValue: string);
 begin
-  if FTblPares.FieldByName('pare_comentarios').AsString = AValue then
+  if FPersistence.CurrentComments = AValue then
     exit;
-  FTblPares.Edit;
-  FTblPares.FieldByName('pare_comentarios').AsString := AValue;
-  FTblPares.Post;
+  FPersistence.WriteCurrentComments(AValue);
 end;
 
 procedure TProjeto.SetDisplayTags(AValue: boolean);
@@ -1570,7 +1569,7 @@ end;
 
 function TProjeto.GetComentarios: string;
 begin
-  result := FTblPares.FieldByName('pare_comentarios').AsString;
+  Result := FPersistence.CurrentComments;
 end;
 
 function TProjeto.GetComments(ref: string): string;
@@ -1628,7 +1627,7 @@ end;
 
 function TProjeto.GetID: string;
 begin
-  result := FTblPares.FieldByName('pare_id').AsString;
+  Result := FPersistence.CurrentPairId;
 end;
 
 function TProjeto.GetInterlinearMode: TInterlinearMode;
@@ -1657,76 +1656,35 @@ end;
 
 function TProjeto.CriarObjetoTabela(db, tabela, chave: string): TSqlite3Dataset;
 begin
-  result := TSqlite3Dataset.Create(nil);
-  result.FileName := db;
-  result.TableName := tabela;
-  result.PrimaryKey := chave;
+  Result := TProjectPersistence.CreateTableDataset(db, tabela, chave);
 end;
 
 function TProjeto.CriarObjetoQuery(db: string): TSQLQuery;
 begin
-  result := TSQLQuery.Create(nil);
-  result.DataBase := TSQLite3Connection.Create(nil);
-  result.DataBase.DatabaseName := db;
-  result.DataBase.Open;
-  TSQLite3Connection(result.DataBase).Transaction := TSQLTransaction.Create(nil);
-  result.Transaction := TSQLite3Connection(result.DataBase).Transaction;
+  Result := TProjectPersistence.CreateQueryObject(db);
 end;
 
 function TProjeto.InserirInfo(info, valor: string): boolean;
 begin
-  if FTblInfo.Locate('id', info, []) then
-  begin
-     result := false;
-     exit;
-  end;
-
-  FTblInfo.InsertRecord([info, valor]);
-
-  result := true;
-  {result := true;
-  try
-    FTblInfo.ExecuteDirect(format('insert into info (id, valor) values (''%s'', ''%s'')', [AnsiReplaceStr(info, '''', ''''''), AnsiReplaceStr(valor, '''', '''''')]));
-  except
-    result := false;
-  end;}
+  Result := FPersistence.InsertInfo(info, valor);
 end;
 
 function TProjeto.AtualizarInfo(info, valor: string): boolean;
 begin
-  result := FTblInfo.Locate('id', info, []);
-
-  if result then
-  begin
-    FTblInfo.Edit;
-    FTblInfo.Fields[1].AsString := valor;
-    FTblInfo.Post;
-  end;
-
-  {FTblInfo.ExecuteDirect(format('update info set valor = ''%s'' where id = ''%s''', [AnsiReplaceStr(valor, '''', ''''''), AnsiReplaceStr(info, '''', '''''')]));
-  result := FTblInfo.RowsAffected = 1;}
+  Result := FPersistence.UpdateInfo(info, valor);
 end;
 
 function TProjeto.AtualizarConfig(table: TSqlite3Dataset; name, value: string): boolean;
 begin
-  result := table.Locate('name', name, []);
-
-  if result then
-  begin
-    table.Edit;
-    table.Fields[1].AsString := value;
-    table.Post;
-  end;
+  Result := TProjectPersistence.UpdateConfigTable(table, name, value);
 end;
 
 function TProjeto.ResgatarInfo(info: string): string;
 begin
-  result := '';
-  if not Assigned(FTblInfo) then
-    Exit;
-  if FTblInfo.Locate('id', info, []) then
-    result := FTblInfo.Fields[1].AsString
-  {result := FTblInfo.QuickQuery(format('select valor from info where id = ''%s''', [AnsiReplaceStr(info, '''', '''''')]));}
+  if Assigned(FPersistence) then
+    Result := FPersistence.ReadInfo(info)
+  else
+    Result := '';
 end;
 
 function TProjeto.ObterDefinicaoStrong(strong: string; texto: TTipoTextoBiblico): string;
@@ -1951,9 +1909,7 @@ end;
 
 procedure TProjeto.SalvarPares;
 begin
-  FTblPares.Edit;
-  FTblPares.FieldByName('pare_pares').AsString := FAVersiculo[tbOrigem].Pares;
-  FTblPares.Post;
+  FPersistence.WriteCurrentPairs(FAVersiculo[tbOrigem].Pares);
 end;
 
 procedure TProjeto.SalvarParesVersiculo(Verse: TVersiculo);
@@ -1961,9 +1917,7 @@ begin
   // Save pairs from a specific verse object (works for temp or visual verses)
   // Assumes database cursor is already positioned at the correct record
   if Verse = nil then Exit;
-  FTblPares.Edit;
-  FTblPares.FieldByName('pare_pares').AsString := Verse.Pares;
-  FTblPares.Post;
+  FPersistence.WriteCurrentPairs(Verse.Pares);
 end;
 
 procedure TProjeto.SalvarTexto;
@@ -2753,6 +2707,7 @@ begin
   FAIManager          := nil;
   FAIProcessingNodes  := TAINodeInfoList.Create(True); // owns objects
   FAIBatchCompletionShown := False;
+  FPersistence        := nil;
   FTblPares           := nil;
   FTblInfo            := nil;
   FEscopo             := etNone;
@@ -2823,6 +2778,8 @@ begin
   if Assigned(FAIProcessingNodes) then
     FreeAndNil(FAIProcessingNodes);
 
+  FreeAndNil(FPersistence);
+
   FOnNovoVersiculo.Free;
   FSugeridor.Free;
   FTemporizador.Free;
@@ -2859,13 +2816,14 @@ begin
 
   FFileName := Nome;
 
-  FTblInfo  := CriarObjetoTabela(Nome, 'info', 'id');
-  FTblInfo.Open;
+  FreeAndNil(FPersistence);
+  FPersistence := TProjectPersistence.Create;
+  FPersistence.Open(Nome);
+  FTblInfo := FPersistence.InfoTable;
 
   FSugeridor := TGerSugestoes.Criar(Nome);
 
-  FTblPares := CriarObjetoTabela(Nome, 'pares', 'pare_id');
-  FTblPares.Open;
+  FTblPares := FPersistence.PairsTable;
 
   f := TFont.Create;
   for t:=tbOrigem to tbConsulta2 do
@@ -2980,11 +2938,9 @@ begin
       AtribuirInfo(format('fonte%d.tamanho', [t]), IntToStr(FAVersiculo[t].Fonte.Size));
   Commit;
 
-  FTblPares.Close;
-  FreeAndNil(FTblPares);
-
-  FTblInfo.Close;
-  FreeAndNil(FTblInfo);
+  FreeAndNil(FPersistence);
+  FTblPares := nil;
+  FTblInfo := nil;
 
   FMemoVersiculo.Desativar;
 
@@ -3010,48 +2966,18 @@ begin
 end;
 
 procedure TProjeto.Commit;
-var
-  retryCount: Integer;
-  maxRetries: Integer = 5;
-  delayMs: Integer;
 begin
   if assigned(FSugeridor) then
     FSugeridor.Commit;
 
-  // Retry ApplyUpdates with exponential backoff to handle SQLITE_BUSY
-  retryCount := 0;
-  delayMs := 50;
-  while retryCount < maxRetries do
-  begin
-    try
-      if assigned(FTblPares) then
-        FTblPares.ApplyUpdates;
-      if assigned(FTblInfo) then
-        FTblInfo.ApplyUpdates;
-      Break;  // Success, exit retry loop
-    except
-      on E: Exception do
-      begin
-        // If SQLITE_BUSY, retry; otherwise re-raise
-        if (Pos('SQLITE_BUSY', E.Message) > 0) or (Pos('database is locked', E.Message) > 0) then
-        begin
-          Inc(retryCount);
-          if retryCount >= maxRetries then
-            raise;  // Max retries exceeded, propagate error
-          Sleep(delayMs);
-          delayMs := delayMs * 2;  // Exponential backoff: 50, 100, 200, 400, 800 ms
-        end
-        else
-          raise;  // Not SQLITE_BUSY, propagate immediately
-      end;
-    end;
-  end;
+  if Assigned(FPersistence) then
+    FPersistence.Commit;
 end;
 
 procedure TProjeto.Rollback;
 begin
-  FTblPares.ClearUpdates;
-  FTblInfo.ClearUpdates;
+  if Assigned(FPersistence) then
+    FPersistence.Rollback;
   FSugeridor.Rollback;
 end;
 
@@ -3066,7 +2992,7 @@ begin
   end
   else
   begin
-    FTblPares.Locate('pare_id', reference, []);
+    FPersistence.LocateReference(reference);
     if ID <> reference then
       raise Exception.Create(Format('Reference not found in project [%s]', [reference]));
   end;
