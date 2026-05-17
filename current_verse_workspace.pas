@@ -282,21 +282,15 @@ begin
 
   if Replace and ParticipatesInPairs and not CurrentPairs.IsEmpty then
   begin
-    try
-      UpdatedPairs := RenderBuffer.ReplaceTextKeepingAssociations(
+    if Assigned(RenderBuffer) and RenderBuffer.TryReplaceTextKeepingAssociations(
         Persistence.CurrentText(SourceTextFieldIndex),
         Persistence.CurrentText(DestinationTextFieldIndex),
         CurrentPairs,
         TextIndex = SourceVerseIndex,
-        VerseText);
+        VerseText,
+        UpdatedPairs,
+        CorruptionDetails) then
       Persistence.SetCurrentFieldAsString('pare_pares', UpdatedPairs);
-    except
-      on E: Exception do
-        CorruptionDetails := Format('%s'#13#10'pares: %s'#13#10'%s'#13#10'%s',
-          [E.Message, CurrentPairs,
-           RenderBuffer.SourceVerse.DebugTokens,
-           RenderBuffer.DestinationVerse.DebugTokens]);
-    end;
   end;
 
   Persistence.SetCurrentText(GetTextFieldIndex(TextFieldIndexes, TextIndex), VerseText);

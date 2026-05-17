@@ -20,7 +20,8 @@ uses
   Syntagm, BibleScope, MySwordModule, TheWordDictionary, fgl, PatchFile, LCLIntf, menus,
   CommentsView, ai_processing_manager, ai_processing_batch, ai_batch_work_item,
   ai_flows, llmclient, ai_flow_config, ai_debug, project_persistence, project_config,
-  project_verse_repository, current_verse_workspace, verse_render_buffer;
+  project_verse_repository, current_verse_workspace, verse_render_buffer,
+  project_patch_applier;
 const
   // AI processing icon indices for ImageListTreeView in formprincipal
   // ImageListTreeView has indices 0-7 for normal states (0-3) and selected states (4-7)
@@ -117,6 +118,7 @@ type
     FConfig: TProjectConfig;
     FVerseRepository: TProjectVerseRepository;
     FVerseRenderBuffer: TVerseRenderBuffer;
+    FPatchApplier: TProjectPatchApplier;
     FTblPares: TSqlite3Dataset;
     FTblInfo: TSqlite3Dataset;
     FAVersiculo: AVersiculo;
@@ -144,6 +146,7 @@ type
     FOnSintagmaClick: TOnSintagmaClickEvent;
     FClosing: boolean;
     FAutoSave: boolean;
+    FIgnoreMissingPatchWarnings: Boolean;
     function GetCaminho: string;
     function GetChapterViewText: TTipoTextoBiblico;
     function GetComentarios: string;
@@ -160,6 +163,7 @@ type
     function BuildTranslationFlowExample: TAIFlowExample;
     function CreateFlowExample(const FlowId: string): TAIFlowExample;
     function PromptReplaceExistingFlowExample(const FlowId: string; const ExistingExample: TAIFlowExample): Boolean;
+    function ConfirmMissingPatchReference(const Reference: string): Boolean;
     procedure PreencherArvore;
     procedure SetAtrasoExibicao(const AValue: Cardinal);
     procedure SetAutoSave(AValue: boolean);
@@ -868,49 +872,48 @@ begin
   FOnNovoVersiculo.Remove(AValue);
 end;
 
+function TProjeto.ConfirmMissingPatchReference(const Reference: string): Boolean;
+begin
+  Result := FIgnoreMissingPatchWarnings;
+  if Result then
+    Exit;
+
+  if MessageDlg(
+       SReferenceNotFound,
+       Format(SReferenceNotFoundWarning, [Reference]),
+       mtWarning,
+       [mbOK, mbIgnore],
+       0
+     ) = mrIgnore then
+  begin
+    FIgnoreMissingPatchWarnings := True;
+    Result := True;
+  end;
+end;
+
 procedure TProjeto.ApplyPatch(patch: TPatchFile; indexes: TIntegerList = nil);
 var
-  i: integer;
-  ignoreWarnings: boolean;
   oldAutoSaveValue: boolean;
+  selectedIndexes: TPatchIndexArray;
+
+  function BuildSelectedPatchIndexes: TPatchIndexArray;
+  var
+    PatchIndex: Integer;
+  begin
+    if not Assigned(indexes) then
+      Exit(nil);
+
+    SetLength(Result, indexes.Count);
+    for PatchIndex := 0 to indexes.Count - 1 do
+      Result[PatchIndex] := indexes[PatchIndex];
+  end;
 begin
-  ignoreWarnings := false;
+  selectedIndexes := BuildSelectedPatchIndexes;
+  FIgnoreMissingPatchWarnings := False;
 
   try
     StartScrollingSession;
-    for i := 0 to patch.Reference.Count - 1 do
-    begin
-      // If indexes provided, skip items not in the list
-      if Assigned(indexes) and (indexes.IndexOf(i) < 0) then
-        continue;
-
-      GoToReference(patch.Reference[i]);
-
-      if ID <> patch.Reference[i] then
-      begin
-        if ignoreWarnings then
-          continue;
-        if MessageDlg(
-             SReferenceNotFound,
-             Format(SReferenceNotFoundWarning, [patch.Reference[i]]),
-             mtWarning,
-             [mbOK, mbIgnore],
-             0
-           ) = mrIgnore then
-          ignoreWarnings := true;
-        continue;
-      end;
-
-      FTblPares.Edit;
-      FTblPares.FieldByName('pare_texto_origem' ).AsString := patch.SourceText[i];
-      FTblPares.FieldByName('pare_texto_destino').AsString := patch.DestinationText[i];
-      FTblPares.FieldByName('pare_pares'        ).AsString := patch.Pairs[i];
-      FTblPares.FieldByName('pare_comentarios'  ).AsString := patch.Comments[i];
-      FTblPares.FieldByName('pare_situacao'     ).AsString := patch.Status[i];
-      FTblPares.Post;
-
-      DebugLn('%s comments: "%s" situacao: %s', [ID, FTblPares.FieldByName('pare_comentarios').AsString, FTblPares.FieldByName('pare_situacao').AsString]);
-    end;
+    FPatchApplier.ApplyPatch(patch, selectedIndexes, @ConfirmMissingPatchReference);
   finally
     FinishScrollingSession;
   end;
@@ -1422,6 +1425,7 @@ function TProjeto.GetChapterText: TStringList;
   function GetText(rulesRx: TRegexList; replaceTo: TStringList): string;
   var
     i: integer;
+    corruptionDetails: string;
   begin
     case ChapterViewText of
       tbOrigem, tbDestino, tbConsulta1, tbConsulta2:
@@ -1432,30 +1436,34 @@ function TProjeto.GetChapterText: TStringList;
           result := FPersistence.CurrentText(FACamposTexto[tbOrigem])
         else
         begin
-          try
-            if InterlinearMode = imInterlinear then
-              result := FVerseRenderBuffer.BuildInterlinearLine(
+          if InterlinearMode = imInterlinear then
+          begin
+            if not FVerseRenderBuffer.TryBuildInterlinearLine(
                 FPersistence.CurrentText(FACamposTexto[tbOrigem]),
                 FPersistence.CurrentText(FACamposTexto[tbDestino]),
                 FPersistence.CurrentPairs,
-                rimMySword)
-            else if InterlinearMode = imIntralinear then
-              result := FVerseRenderBuffer.BuildInterlinearLine(
-                FPersistence.CurrentText(FACamposTexto[tbOrigem]),
-                FPersistence.CurrentText(FACamposTexto[tbDestino]),
-                FPersistence.CurrentPairs,
-                rimTheWord)
-            else
-              raise Exception.Create(Format('Invalid interlinear mode [%d]', [Ord(InterlinearMode)]));
-          except
-            on E: Exception do
+                rimMySword,
+                result,
+                corruptionDetails) then
               MessageDlg(SError, SCorruptedData + #13#10#13#10 + FormattedReference + #13#10 +
-                   format('%s'#13#10'pares: %s'#13#10'%s'#13#10'%s',
-                          [E.Message, FPersistence.CurrentPairs,
-                          FVerseRenderBuffer.SourceVerse.DebugTokens,
-                          FVerseRenderBuffer.DestinationVerse.DebugTokens]),
+                   corruptionDetails,
                    mtError, [mbOK], 0);
-          end;
+          end
+          else if InterlinearMode = imIntralinear then
+          begin
+            if not FVerseRenderBuffer.TryBuildInterlinearLine(
+                FPersistence.CurrentText(FACamposTexto[tbOrigem]),
+                FPersistence.CurrentText(FACamposTexto[tbDestino]),
+                FPersistence.CurrentPairs,
+                rimTheWord,
+                result,
+                corruptionDetails) then
+              MessageDlg(SError, SCorruptedData + #13#10#13#10 + FormattedReference + #13#10 +
+                   corruptionDetails,
+                   mtError, [mbOK], 0);
+          end
+          else
+            raise Exception.Create(Format('Invalid interlinear mode [%d]', [Ord(InterlinearMode)]));
 
           // apply verse rules
           for i:=0 to rulesRx.Count-1 do
@@ -2597,6 +2605,7 @@ begin
   FConfig             := TProjectConfig.Create(nil);
   FVerseRepository    := TProjectVerseRepository.Create(nil);
   FVerseRenderBuffer  := nil;
+  FPatchApplier       := TProjectPatchApplier.Create(nil);
   FTblPares           := nil;
   FTblInfo            := nil;
   FEscopo             := etNone;
@@ -2666,6 +2675,7 @@ begin
     FreeAndNil(FAIProcessingNodes);
 
   FreeAndNil(FCurrentVerseWorkspace);
+  FreeAndNil(FPatchApplier);
   FreeAndNil(FVerseRenderBuffer);
   FreeAndNil(FVerseRepository);
   FreeAndNil(FConfig);
@@ -2755,6 +2765,8 @@ begin
   FreeAndNil(FVerseRenderBuffer);
   FVerseRenderBuffer := TVerseRenderBuffer.Create(self);
   FVerseRenderBuffer.SetTokenizerVersion(TokenizerVersion);
+  if Assigned(FPatchApplier) then
+    FPatchApplier.Attach(FPersistence);
 
   FACamposTexto[tbOrigem]    := FTblPares.FindField('pare_texto_origem').Index;
   FACamposTexto[tbDestino]   := FTblPares.FindField('pare_texto_destino').Index;
@@ -2836,6 +2848,8 @@ begin
     FConfig.Attach(nil);
   if Assigned(FVerseRepository) then
     FVerseRepository.Attach(nil);
+  if Assigned(FPatchApplier) then
+    FPatchApplier.Attach(nil);
   if Assigned(FCurrentVerseWorkspace) then
     FCurrentVerseWorkspace.Clear;
   FreeAndNil(FPersistence);
@@ -3209,6 +3223,7 @@ var
   verseData: TVerseData;
   pares: TStringList;
   p: smallint;
+  corruptionDetails: string;
 begin
   if (FAVersiculo[tbOrigem] = nil) or (FAVersiculo[tbDestino] = nil) then
     exit;
@@ -3235,17 +3250,22 @@ begin
         verseData := FVerseRepository.ReadCurrentVerseData;
         if verseData.Associations <> '' then
         begin
-          pares := FVerseRenderBuffer.ExtractPairsList(
-            verseData.OriginalText,
-            verseData.TranslatedText,
-            verseData.Associations,
-            plMetaData);
+          if FVerseRenderBuffer.TryExtractPairsList(
+              verseData.OriginalText,
+              verseData.TranslatedText,
+              verseData.Associations,
+              plMetaData,
+              pares,
+              corruptionDetails) then
+          begin
+            for p:=0 to pares.Count-1 do
+              if (p mod 2) = 0 then // pares estão alternados na lista
+                FSugeridor.InserirPar(pares.Strings[p], pares.Strings[p+1]);
 
-          for p:=0 to pares.Count-1 do
-            if (p mod 2) = 0 then // pares estão alternados na lista
-              FSugeridor.InserirPar(pares.Strings[p], pares.Strings[p+1]);
-
-          pares.Free;
+            pares.Free;
+          end
+          else
+            ShowMessage('Error: ' + SCorruptedData + #13#10#13#10 + GetID + #13#10 + corruptionDetails);
         end;
         if assigned(pb) then
         begin
@@ -3257,10 +3277,7 @@ begin
       end;
     except
       on E: Exception do
-         ShowMessage( 'Error: '+ E.ClassName + #13#10 + E.Message + #13#10#13#10 +
-                      'Ref: ' + GetID + #13#10 +
-                      'Par1: ' + pares.Strings[p] + #13#10 +
-                      'Par2: ' + pares.Strings[p+1] + #13#10);
+         ShowMessage('Error: ' + E.ClassName + #13#10 + E.Message);
     end;
   finally
     FinishScrollingSession;
@@ -3473,6 +3490,8 @@ var
   verseData: TVerseData;
   lines, errors: TStringList;
   hasTags: Boolean;
+  renderedLine: string;
+  corruptionDetails: string;
 begin
   if not assigned(FAVersiculo[tbOrigem]) or not assigned(FAVersiculo[tbDestino]) then
     exit;
@@ -3504,24 +3523,20 @@ begin
         end
         else
         begin
-          try
-            lines.Add(FVerseRenderBuffer.BuildDestinationLineONT(
+          if FVerseRenderBuffer.TryBuildDestinationLineONT(
               verseData.OriginalText,
               verseData.TranslatedText,
               verseData.Associations,
               (oeExportarMorfologia in opcoes),
               (oeExportarNAComoItalicos in opcoes),
               (oeStrongsReutilizados in opcoes),
-              (oeStrongsNaoTraduzidos in opcoes))
-            );
-          except
-            on E: Exception do
-              errors.Add(SCorruptedData + #13#10#13#10 + FormattedReference + #13#10 +
-                   format('%s'#13#10'pares: %s'#13#10'%s'#13#10'%s'#13#10,
-                          [E.Message, verseData.Associations,
-                          FVerseRenderBuffer.SourceVerse.DebugTokens,
-                          FVerseRenderBuffer.DestinationVerse.DebugTokens]));
-          end;
+              (oeStrongsNaoTraduzidos in opcoes),
+              renderedLine,
+              corruptionDetails) then
+            lines.Add(renderedLine)
+          else
+            errors.Add(SCorruptedData + #13#10#13#10 + FormattedReference + #13#10 +
+                 corruptionDetails + #13#10);
         end;
 
         if (oeExportarComentarios in opcoes) and not verseData.Comments.isEmpty then
@@ -3589,6 +3604,8 @@ var
   lines: TStringList;
   rulesRx: TRegexList;
   replaceTo: TStringList;
+  renderedLine: string;
+  corruptionDetails: string;
 begin
   if (FAVersiculo[tbOrigem] = nil) or (FAVersiculo[tbDestino] = nil) then
     exit;
@@ -3622,26 +3639,34 @@ begin
           lines.Add(verseData.OriginalText)
         else
         begin
-          try
-            if arquivo.EndsWith('.mybible') then
-              lines.Add(FVerseRenderBuffer.BuildInterlinearLine(
+          if arquivo.EndsWith('.mybible') then
+          begin
+            if FVerseRenderBuffer.TryBuildInterlinearLine(
                 verseData.OriginalText,
                 verseData.TranslatedText,
                 verseData.Associations,
-                rimMySword))
+                rimMySword,
+                renderedLine,
+                corruptionDetails) then
+              lines.Add(renderedLine)
             else
-              lines.Add(FVerseRenderBuffer.BuildInterlinearLine(
+              MessageDlg(SError, SCorruptedData + #13#10#13#10 + FormattedReference + #13#10 +
+                   corruptionDetails,
+                   mtError, [mbOK], 0);
+          end
+          else
+          begin
+            if FVerseRenderBuffer.TryBuildInterlinearLine(
                 verseData.OriginalText,
                 verseData.TranslatedText,
                 verseData.Associations,
-                rimTheWord));
-          except
-            on E: Exception do
+                rimTheWord,
+                renderedLine,
+                corruptionDetails) then
+              lines.Add(renderedLine)
+            else
               MessageDlg(SError, SCorruptedData + #13#10#13#10 + FormattedReference + #13#10 +
-                   format('%s'#13#10'pares: %s'#13#10'%s'#13#10'%s',
-                          [E.Message, verseData.Associations,
-                          FVerseRenderBuffer.SourceVerse.DebugTokens,
-                          FVerseRenderBuffer.DestinationVerse.DebugTokens]),
+                   corruptionDetails,
                    mtError, [mbOK], 0);
           end;
         end;
@@ -3708,6 +3733,7 @@ var
   match: IMatch;
   pares: TStringList;
   entry, strong, lemma: string;
+  corruptionDetails: string;
 begin
   if (FAVersiculo[tbOrigem] = nil) or (FAVersiculo[tbDestino] = nil) then
     exit;
@@ -3747,23 +3773,21 @@ begin
       verseData := FVerseRepository.ReadCurrentVerseData;
       if verseData.Associations <> '' then
       begin
-        try
-          pares := FVerseRenderBuffer.ExtractPairsList(
+        if FVerseRenderBuffer.TryExtractPairsList(
             verseData.OriginalText,
             verseData.TranslatedText,
             verseData.Associations,
-            plAll);
-        except
-          on E: Exception do
-            MessageDlg(SError, SCorruptedData + #13#10#13#10 + FormattedReference + #13#10 +
-                 format('%s'#13#10'pares: %s'#13#10'%s'#13#10'%s'#13#10,
-                        [E.Message, verseData.Associations,
-                        FVerseRenderBuffer.SourceVerse.DebugTokens,
-                        FVerseRenderBuffer.DestinationVerse.DebugTokens]),
-                 mtError, [mbOK], 0);
-        end;
-        Concordancia.AdicionarLocucao(pares, GetID);
-        pares.Free;
+            plAll,
+            pares,
+            corruptionDetails) then
+        begin
+          Concordancia.AdicionarLocucao(pares, GetID);
+          pares.Free;
+        end
+        else
+          MessageDlg(SError, SCorruptedData + #13#10#13#10 + FormattedReference + #13#10 +
+               corruptionDetails,
+               mtError, [mbOK], 0);
       end;
       if assigned(pb) then
       begin

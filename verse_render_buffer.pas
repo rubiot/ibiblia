@@ -21,17 +21,31 @@ type
     procedure SetTokenizerVersion(Value: Integer);
     procedure LoadTexts(const OriginalText, TranslatedText: string);
     procedure LoadPair(const OriginalText, TranslatedText, Associations: string);
+    function FormatCorruptionDetails(const ErrorMessage, Associations: string): string;
     function ReplaceTextKeepingAssociations(const OriginalText, TranslatedText,
       Associations: string; ReplaceSourceText: Boolean; const NewText: string): string;
+    function TryReplaceTextKeepingAssociations(const OriginalText, TranslatedText,
+      Associations: string; ReplaceSourceText: Boolean; const NewText: string;
+      out UpdatedPairs: string; out CorruptionDetails: string): Boolean;
     function RetokenizeAssociations(const OriginalText, TranslatedText,
       Associations: string; OldVersion, NewVersion: Integer): string;
     function BuildInterlinearLine(const OriginalText, TranslatedText,
       Associations: string; Mode: TRenderInterlinearMode): string;
+    function TryBuildInterlinearLine(const OriginalText, TranslatedText,
+      Associations: string; Mode: TRenderInterlinearMode; out Line: string;
+      out CorruptionDetails: string): Boolean;
     function BuildDestinationLineONT(const OriginalText, TranslatedText,
       Associations: string; ExportMorphology, ExportNAAsItalics,
       MarkReusedStrongs, MarkUntranslatedStrongs: Boolean): string;
+    function TryBuildDestinationLineONT(const OriginalText, TranslatedText,
+      Associations: string; ExportMorphology, ExportNAAsItalics,
+      MarkReusedStrongs, MarkUntranslatedStrongs: Boolean; out Line: string;
+      out CorruptionDetails: string): Boolean;
     function ExtractPairsList(const OriginalText, TranslatedText,
       Associations: string; ListType: TPairsListType): TStringList;
+    function TryExtractPairsList(const OriginalText, TranslatedText,
+      Associations: string; ListType: TPairsListType; out Pairs: TStringList;
+      out CorruptionDetails: string): Boolean;
     property SourceVerse: TVersiculo read FSourceVerse;
     property DestinationVerse: TVersiculo read FDestinationVerse;
   end;
@@ -82,6 +96,13 @@ begin
   FSourceVerse.Pares := Associations;
 end;
 
+function TVerseRenderBuffer.FormatCorruptionDetails(const ErrorMessage,
+  Associations: string): string;
+begin
+  Result := Format('%s'#13#10'pares: %s'#13#10'%s'#13#10'%s',
+    [ErrorMessage, Associations, FSourceVerse.DebugTokens, FDestinationVerse.DebugTokens]);
+end;
+
 function TVerseRenderBuffer.ReplaceTextKeepingAssociations(const OriginalText,
   TranslatedText, Associations: string; ReplaceSourceText: Boolean;
   const NewText: string): string;
@@ -92,6 +113,26 @@ begin
   else
     FDestinationVerse.AlterarTexto(NewText);
   Result := FSourceVerse.Pares;
+end;
+
+function TVerseRenderBuffer.TryReplaceTextKeepingAssociations(
+  const OriginalText, TranslatedText, Associations: string;
+  ReplaceSourceText: Boolean; const NewText: string; out UpdatedPairs: string;
+  out CorruptionDetails: string): Boolean;
+begin
+  CorruptionDetails := '';
+  try
+    UpdatedPairs := ReplaceTextKeepingAssociations(OriginalText, TranslatedText,
+      Associations, ReplaceSourceText, NewText);
+    Result := True;
+  except
+    on E: Exception do
+    begin
+      UpdatedPairs := '';
+      CorruptionDetails := FormatCorruptionDetails(E.Message, Associations);
+      Result := False;
+    end;
+  end;
 end;
 
 function TVerseRenderBuffer.RetokenizeAssociations(const OriginalText,
@@ -123,6 +164,24 @@ begin
   end;
 end;
 
+function TVerseRenderBuffer.TryBuildInterlinearLine(const OriginalText,
+  TranslatedText, Associations: string; Mode: TRenderInterlinearMode;
+  out Line: string; out CorruptionDetails: string): Boolean;
+begin
+  CorruptionDetails := '';
+  try
+    Line := BuildInterlinearLine(OriginalText, TranslatedText, Associations, Mode);
+    Result := True;
+  except
+    on E: Exception do
+    begin
+      Line := '';
+      CorruptionDetails := FormatCorruptionDetails(E.Message, Associations);
+      Result := False;
+    end;
+  end;
+end;
+
 function TVerseRenderBuffer.BuildDestinationLineONT(const OriginalText,
   TranslatedText, Associations: string; ExportMorphology, ExportNAAsItalics,
   MarkReusedStrongs, MarkUntranslatedStrongs: Boolean): string;
@@ -132,11 +191,50 @@ begin
     MarkReusedStrongs, MarkUntranslatedStrongs);
 end;
 
+function TVerseRenderBuffer.TryBuildDestinationLineONT(const OriginalText,
+  TranslatedText, Associations: string; ExportMorphology, ExportNAAsItalics,
+  MarkReusedStrongs, MarkUntranslatedStrongs: Boolean; out Line: string;
+  out CorruptionDetails: string): Boolean;
+begin
+  CorruptionDetails := '';
+  try
+    Line := BuildDestinationLineONT(OriginalText, TranslatedText, Associations,
+      ExportMorphology, ExportNAAsItalics, MarkReusedStrongs,
+      MarkUntranslatedStrongs);
+    Result := True;
+  except
+    on E: Exception do
+    begin
+      Line := '';
+      CorruptionDetails := FormatCorruptionDetails(E.Message, Associations);
+      Result := False;
+    end;
+  end;
+end;
+
 function TVerseRenderBuffer.ExtractPairsList(const OriginalText,
   TranslatedText, Associations: string; ListType: TPairsListType): TStringList;
 begin
   LoadPair(OriginalText, TranslatedText, Associations);
   Result := FSourceVerse.GetListaPares(ListType);
+end;
+
+function TVerseRenderBuffer.TryExtractPairsList(const OriginalText,
+  TranslatedText, Associations: string; ListType: TPairsListType;
+  out Pairs: TStringList; out CorruptionDetails: string): Boolean;
+begin
+  CorruptionDetails := '';
+  try
+    Pairs := ExtractPairsList(OriginalText, TranslatedText, Associations, ListType);
+    Result := True;
+  except
+    on E: Exception do
+    begin
+      Pairs := nil;
+      CorruptionDetails := FormatCorruptionDetails(E.Message, Associations);
+      Result := False;
+    end;
+  end;
 end;
 
 end.
