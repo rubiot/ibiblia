@@ -6,7 +6,8 @@ interface
 
 uses
   Classes, SysUtils, Controls, StdCtrls,
-  versiculo, memoversiculo, commentsview, sugestao, syntagm, project_persistence;
+  versiculo, memoversiculo, commentsview, sugestao, syntagm, project_persistence,
+  verse_render_buffer;
 
 type
   TCurrentVerseLoadResult = record
@@ -26,6 +27,8 @@ type
   public
     destructor Destroy; override;
     procedure Clear;
+    function ApplyEditedVerseText(const VerseViews: array of TVersiculo;
+      EditedVerse: TVersiculo; const NewText: string): Integer;
     procedure SavePairs(Persistence: TProjectPersistence; SourceVerse: TVersiculo);
     procedure SaveTexts(Persistence: TProjectPersistence;
       const VerseViews: array of TVersiculo; const TextFieldIndexes: array of Integer);
@@ -39,6 +42,11 @@ type
       const VerseViews: array of TVersiculo; const TextFieldIndexes: array of Integer;
       const FormattedReference, ReferenceID: string; SourceVerseIndex,
       DestinationVerseIndex: Integer): TCurrentVerseLoadResult;
+    procedure SetCurrentVerseText(Persistence: TProjectPersistence;
+      RenderBuffer: TVerseRenderBuffer; const TextFieldIndexes: array of Integer;
+      const VerseText: string; TextIndex, SourceVerseIndex,
+      DestinationVerseIndex: Integer; Replace, ResetStatus: Boolean;
+      out CorruptionDetails: string);
     procedure ApplyLoadedAssociations(SourceVerse: TVersiculo; const Associations: string);
     procedure FinalizeLoadedVerse(const VerseViews: array of TVersiculo);
   end;
@@ -97,6 +105,24 @@ end;
 procedure TCurrentVerseWorkspace.Clear;
 begin
   FreeAndNil(FOldPairs);
+end;
+
+function TCurrentVerseWorkspace.ApplyEditedVerseText(
+  const VerseViews: array of TVersiculo; EditedVerse: TVersiculo;
+  const NewText: string): Integer;
+var
+  Index: Integer;
+begin
+  Result := -1;
+  for Index := Low(VerseViews) to High(VerseViews) do
+    if VerseViews[Index] = EditedVerse then
+    begin
+      if Assigned(EditedVerse.VersiculoPar) then
+        EditedVerse.AlterarTexto(NewText)
+      else
+        EditedVerse.Texto := NewText;
+      Exit(Index);
+    end;
 end;
 
 procedure TCurrentVerseWorkspace.SavePairs(Persistence: TProjectPersistence;
@@ -229,6 +255,59 @@ begin
 
   if not Assigned(GetVerseView(VerseViews, SourceVerseIndex)) then
     Clear;
+end;
+
+procedure TCurrentVerseWorkspace.SetCurrentVerseText(
+  Persistence: TProjectPersistence; RenderBuffer: TVerseRenderBuffer;
+  const TextFieldIndexes: array of Integer; const VerseText: string; TextIndex,
+  SourceVerseIndex, DestinationVerseIndex: Integer; Replace,
+  ResetStatus: Boolean; out CorruptionDetails: string);
+var
+  CurrentPairs: string;
+  UpdatedPairs: string;
+  ParticipatesInPairs: Boolean;
+  SourceTextFieldIndex: Integer;
+  DestinationTextFieldIndex: Integer;
+begin
+  CorruptionDetails := '';
+  if not Assigned(Persistence) then
+    Exit;
+
+  Persistence.BeginCurrentEdit;
+
+  SourceTextFieldIndex := GetTextFieldIndex(TextFieldIndexes, SourceVerseIndex);
+  DestinationTextFieldIndex := GetTextFieldIndex(TextFieldIndexes, DestinationVerseIndex);
+  ParticipatesInPairs := (TextIndex = SourceVerseIndex) or (TextIndex = DestinationVerseIndex);
+  CurrentPairs := Persistence.CurrentPairs;
+
+  if Replace and ParticipatesInPairs and not CurrentPairs.IsEmpty then
+  begin
+    try
+      UpdatedPairs := RenderBuffer.ReplaceTextKeepingAssociations(
+        Persistence.CurrentText(SourceTextFieldIndex),
+        Persistence.CurrentText(DestinationTextFieldIndex),
+        CurrentPairs,
+        TextIndex = SourceVerseIndex,
+        VerseText);
+      Persistence.SetCurrentFieldAsString('pare_pares', UpdatedPairs);
+    except
+      on E: Exception do
+        CorruptionDetails := Format('%s'#13#10'pares: %s'#13#10'%s'#13#10'%s',
+          [E.Message, CurrentPairs,
+           RenderBuffer.SourceVerse.DebugTokens,
+           RenderBuffer.DestinationVerse.DebugTokens]);
+    end;
+  end;
+
+  Persistence.SetCurrentText(GetTextFieldIndex(TextFieldIndexes, TextIndex), VerseText);
+  if not Replace and ParticipatesInPairs then
+  begin
+    Persistence.SetCurrentFieldAsString('pare_pares', '');
+    if ResetStatus then
+      Persistence.SetCurrentFieldAsInteger('pare_situacao', 0);
+  end;
+
+  Persistence.PostCurrentEdit;
 end;
 
 procedure TCurrentVerseWorkspace.ApplyLoadedAssociations(SourceVerse: TVersiculo;

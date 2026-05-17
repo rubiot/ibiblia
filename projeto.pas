@@ -20,7 +20,7 @@ uses
   Syntagm, BibleScope, MySwordModule, TheWordDictionary, fgl, PatchFile, LCLIntf, menus,
   CommentsView, ai_processing_manager, ai_processing_batch, ai_batch_work_item,
   ai_flows, llmclient, ai_flow_config, ai_debug, project_persistence, project_config,
-  project_verse_repository, current_verse_workspace;
+  project_verse_repository, current_verse_workspace, verse_render_buffer;
 const
   // AI processing icon indices for ImageListTreeView in formprincipal
   // ImageListTreeView has indices 0-7 for normal states (0-3) and selected states (4-7)
@@ -91,7 +91,6 @@ type
   //TOnAlterarVersiculoEvent = procedure (Sender: TProjeto) of object;
 
   AVersiculo = array[tbOrigem..tbConsulta2] of TVersiculo;
-  ATmpVerse = array[tbOrigem..tbDestino] of TVersiculo;
   ACamposTexto = array[tbOrigem..tbConsulta2] of integer;
   ADicStrong = array[tbOrigem..tbConsulta2] of TSQLQuery;
   ADicMorfo = array[tbOrigem..tbConsulta2] of TSQLQuery;
@@ -117,10 +116,10 @@ type
     FPersistence: TProjectPersistence;
     FConfig: TProjectConfig;
     FVerseRepository: TProjectVerseRepository;
+    FVerseRenderBuffer: TVerseRenderBuffer;
     FTblPares: TSqlite3Dataset;
     FTblInfo: TSqlite3Dataset;
     FAVersiculo: AVersiculo;
-    FATmpVerse: ATmpVerse;
     FACamposTexto: ACamposTexto;
     FADicStrong: ADicStrong;
     FADicMorfo: ADicMorfo;
@@ -796,9 +795,8 @@ begin
     if Assigned(FAVersiculo[v]) then
       FAVersiculo[v].TokenizerVersion := AValue;
 
-  for v := Low(FATmpVerse) to High(FATmpVerse) do
-    if Assigned(FATmpVerse[v]) then
-      FATmpVerse[v].TokenizerVersion := AValue;
+  if Assigned(FVerseRenderBuffer) then
+    FVerseRenderBuffer.SetTokenizerVersion(AValue);
 
   if Assigned(FTblPares) and FAtivo then
     PosRolagemVersiculo(nil);
@@ -809,41 +807,31 @@ procedure TProjeto.MigrateStoredAssociationsToTokenizerVersion(OldVersion,
 var
   oldPairs: string;
 begin
-  if (OldVersion = NewVersion) or not Assigned(FTblPares) then
+  if (OldVersion = NewVersion) or not Assigned(FPersistence) then
     Exit;
 
-  if not Assigned(FATmpVerse[tbOrigem]) or not Assigned(FATmpVerse[tbDestino]) then
+  if not Assigned(FVerseRenderBuffer) then
     Exit;
 
   StartScrollingSession;
   try
     VersiculoInicial;
-    while not FTblPares.EOF do
+    while not FPersistence.EOF do
     begin
-      oldPairs := FTblPares.FieldByName('pare_pares').AsString;
+      oldPairs := FPersistence.CurrentPairs;
       if not oldPairs.IsEmpty then
-      begin
-        FATmpVerse[tbOrigem].TokenizerVersion := OldVersion;
-        FATmpVerse[tbDestino].TokenizerVersion := OldVersion;
-        FATmpVerse[tbOrigem].Texto := FTblPares.Fields[FACamposTexto[tbOrigem]].AsString;
-        FATmpVerse[tbDestino].Texto := FTblPares.Fields[FACamposTexto[tbDestino]].AsString;
-        FATmpVerse[tbOrigem].Pares := oldPairs;
-
-        FATmpVerse[tbOrigem].TokenizerVersion := NewVersion;
-        FATmpVerse[tbDestino].TokenizerVersion := NewVersion;
-        FATmpVerse[tbDestino].RetokenizePreservingAssociations;
-        FATmpVerse[tbOrigem].RetokenizePreservingAssociations;
-
-        FTblPares.Edit;
-        FTblPares.FieldByName('pare_pares').AsString := FATmpVerse[tbOrigem].Pares;
-        FTblPares.Post;
-      end;
+        FPersistence.WriteCurrentPairs(
+          FVerseRenderBuffer.RetokenizeAssociations(
+            FPersistence.CurrentText(FACamposTexto[tbOrigem]),
+            FPersistence.CurrentText(FACamposTexto[tbDestino]),
+            oldPairs,
+            OldVersion,
+            NewVersion));
 
       VersiculoSeguinte;
     end;
   finally
-    FATmpVerse[tbOrigem].TokenizerVersion := NewVersion;
-    FATmpVerse[tbDestino].TokenizerVersion := NewVersion;
+    FVerseRenderBuffer.SetTokenizerVersion(NewVersion);
     FinishScrollingSession;
   end;
 end;
@@ -1444,25 +1432,30 @@ function TProjeto.GetChapterText: TStringList;
           result := FPersistence.CurrentText(FACamposTexto[tbOrigem])
         else
         begin
-          FATmpVerse[tbOrigem ].Texto := FPersistence.CurrentText(FACamposTexto[tbOrigem]);
-          FATmpVerse[tbDestino].Texto := FPersistence.CurrentText(FACamposTexto[tbDestino]);
           try
-            FATmpVerse[tbOrigem ].Pares := FPersistence.CurrentPairs;
+            if InterlinearMode = imInterlinear then
+              result := FVerseRenderBuffer.BuildInterlinearLine(
+                FPersistence.CurrentText(FACamposTexto[tbOrigem]),
+                FPersistence.CurrentText(FACamposTexto[tbDestino]),
+                FPersistence.CurrentPairs,
+                rimMySword)
+            else if InterlinearMode = imIntralinear then
+              result := FVerseRenderBuffer.BuildInterlinearLine(
+                FPersistence.CurrentText(FACamposTexto[tbOrigem]),
+                FPersistence.CurrentText(FACamposTexto[tbDestino]),
+                FPersistence.CurrentPairs,
+                rimTheWord)
+            else
+              raise Exception.Create(Format('Invalid interlinear mode [%d]', [Ord(InterlinearMode)]));
           except
             on E: Exception do
               MessageDlg(SError, SCorruptedData + #13#10#13#10 + FormattedReference + #13#10 +
                    format('%s'#13#10'pares: %s'#13#10'%s'#13#10'%s',
                           [E.Message, FPersistence.CurrentPairs,
-                          FATmpVerse[tbOrigem].DebugTokens, FATmpVerse[tbDestino].DebugTokens]),
+                          FVerseRenderBuffer.SourceVerse.DebugTokens,
+                          FVerseRenderBuffer.DestinationVerse.DebugTokens]),
                    mtError, [mbOK], 0);
           end;
-
-          if InterlinearMode = imInterlinear then
-            result := FATmpVerse[tbOrigem].GetMySwordInterlinearLine
-          else if InterlinearMode = imIntralinear then
-            result := FATmpVerse[tbOrigem].GetTheWordInterlinearLine
-          else
-            raise Exception.Create(Format('Invalid interlinear mode [%d]', [Ord(InterlinearMode)]));
 
           // apply verse rules
           for i:=0 to rulesRx.Count-1 do
@@ -1745,38 +1738,17 @@ end;
 
 procedure TProjeto.SetVerseText(versiculo: string;
   texto: TTipoTextoBiblico; replace: boolean);
+var
+  corruptionDetails: string;
 begin
-  FPersistence.BeginCurrentEdit;
+  FCurrentVerseWorkspace.SetCurrentVerseText(FPersistence, FVerseRenderBuffer,
+    FACamposTexto, versiculo, Ord(texto), Ord(tbOrigem), Ord(tbDestino),
+    replace, not HasSituacaoCustomizada, corruptionDetails);
 
-  // try to keep associations and update pairs
-  if replace and (texto in [tbOrigem, tbDestino]) and not FPersistence.CurrentPairs.IsEmpty then
-  begin
-    FATmpVerse[tbOrigem ].Texto := FPersistence.CurrentText(FACamposTexto[tbOrigem]);
-    FATmpVerse[tbDestino].Texto := FPersistence.CurrentText(FACamposTexto[tbDestino]);
-
-    try
-      FATmpVerse[tbOrigem ].Pares := FPersistence.CurrentPairs;
-      FATmpVerse[texto].AlterarTexto(versiculo);
-      FPersistence.SetCurrentFieldAsString('pare_pares', FATmpVerse[tbOrigem].Pares);
-    except
-      on E: Exception do
-        MessageDlg(SError, SCorruptedData + #13#10#13#10 + FormattedReference + #13#10 +
-             format('%s'#13#10'pares: %s'#13#10'%s'#13#10'%s',
-                    [E.Message, FPersistence.CurrentPairs,
-                    FATmpVerse[tbOrigem].DebugTokens, FATmpVerse[tbDestino].DebugTokens]),
-             mtError, [mbOK], 0);
-    end;
-  end;
-
-  FPersistence.SetCurrentText(FACamposTexto[texto], versiculo);
-  if not replace and (texto in [tbOrigem, tbDestino]) then // clearing associations to avoid inconsistencies
-  begin
-    FPersistence.SetCurrentFieldAsString('pare_pares', '');
-    if not HasSituacaoCustomizada then
-      FPersistence.SetCurrentFieldAsInteger('pare_situacao', 0); // not associated
-  end;
-
-  FPersistence.PostCurrentEdit;
+  if not corruptionDetails.IsEmpty then
+    MessageDlg(SError, SCorruptedData + #13#10#13#10 + FormattedReference + #13#10 +
+         corruptionDetails,
+         mtError, [mbOK], 0);
 end;
 
 procedure TProjeto.ApplyVerseText(const newText: string; texto: TTipoTextoBiblico; replace: Boolean);
@@ -2013,29 +1985,21 @@ end;
 
 procedure TProjeto.OnAlterarTextoVersiculo(Sender: TMemoVersiculo);
 var
-  v: TTipoTextoBiblico;
+  editedIndex: Integer;
   e: TOnNovoVersiculoEvent;
 begin
-  for v:=low(FAVersiculo) to high(FAVersiculo) do
-    if FAVersiculo[v] = Sender.Versiculo then
-    begin
-      if ContainsText(Sender.Texto, #13) or ContainsText(Sender.Texto, #10) then
-      begin
-        MessageDlg(SLineBreaksInTextTitle, SLineBreaksInText, mtError, [mbOK], 0);
-        exit;
-      end;
+  if ContainsText(Sender.Texto, #13) or ContainsText(Sender.Texto, #10) then
+  begin
+    MessageDlg(SLineBreaksInTextTitle, SLineBreaksInText, mtError, [mbOK], 0);
+    exit;
+  end;
 
-      if Assigned(Sender.Versiculo.VersiculoPar) then
-        Sender.Versiculo.AlterarTexto(Sender.Texto)
-      else // reference text
-        Sender.Versiculo.Texto := Sender.Texto;
+  editedIndex := FCurrentVerseWorkspace.ApplyEditedVerseText(FAVersiculo,
+    Sender.Versiculo, Sender.Texto);
+  if editedIndex = Ord(tbDestino) then
+    for e in FOnNovoVersiculo do
+      e(self);
 
-      if v = tbDestino then
-        for e in FOnNovoVersiculo do
-          e(self);
-
-      break;
-    end;
   //MessageDlg('Versículo modificado', format('Versiculo modificado: %s', [Sender.Texto]), mtError, [mbOK], 0);
 end;
 
@@ -2632,6 +2596,7 @@ begin
   FPersistence        := nil;
   FConfig             := TProjectConfig.Create(nil);
   FVerseRepository    := TProjectVerseRepository.Create(nil);
+  FVerseRenderBuffer  := nil;
   FTblPares           := nil;
   FTblInfo            := nil;
   FEscopo             := etNone;
@@ -2701,6 +2666,7 @@ begin
     FreeAndNil(FAIProcessingNodes);
 
   FreeAndNil(FCurrentVerseWorkspace);
+  FreeAndNil(FVerseRenderBuffer);
   FreeAndNil(FVerseRepository);
   FreeAndNil(FConfig);
   FreeAndNil(FPersistence);
@@ -2786,11 +2752,9 @@ begin
   end;
   f.free;
 
-  FATmpVerse[tbOrigem ] := TVersiculo.Criar(self);
-  FATmpVerse[tbDestino] := TVersiculo.Criar(self);
-  FATmpVerse[tbOrigem ].TokenizerVersion := TokenizerVersion;
-  FATmpVerse[tbDestino].TokenizerVersion := TokenizerVersion;
-  FATmpVerse[tbOrigem ].VersiculoPar := FATmpVerse[tbDestino];
+  FreeAndNil(FVerseRenderBuffer);
+  FVerseRenderBuffer := TVerseRenderBuffer.Create(self);
+  FVerseRenderBuffer.SetTokenizerVersion(TokenizerVersion);
 
   FACamposTexto[tbOrigem]    := FTblPares.FindField('pare_texto_origem').Index;
   FACamposTexto[tbDestino]   := FTblPares.FindField('pare_texto_destino').Index;
@@ -2880,8 +2844,7 @@ begin
 
   FMemoVersiculo.Desativar;
 
-  FATmpVerse[tbOrigem ].Destruir;
-  FATmpVerse[tbDestino].Destruir;
+  FreeAndNil(FVerseRenderBuffer);
 
   if assigned(FMemoComentarios) then
   begin
@@ -3272,11 +3235,11 @@ begin
         verseData := FVerseRepository.ReadCurrentVerseData;
         if verseData.Associations <> '' then
         begin
-          FATmpVerse[tbOrigem ].Texto := verseData.OriginalText;
-          FATmpVerse[tbDestino].Texto := verseData.TranslatedText;
-          FATmpVerse[tbOrigem ].Pares := verseData.Associations;
-
-          pares := FATmpVerse[tbOrigem].GetListaPares(plMetaData);
+          pares := FVerseRenderBuffer.ExtractPairsList(
+            verseData.OriginalText,
+            verseData.TranslatedText,
+            verseData.Associations,
+            plMetaData);
 
           for p:=0 to pares.Count-1 do
             if (p mod 2) = 0 then // pares estão alternados na lista
@@ -3541,23 +3504,24 @@ begin
         end
         else
         begin
-          FATmpVerse[tbOrigem ].Texto := verseData.OriginalText;
-          FATmpVerse[tbDestino].Texto := verseData.TranslatedText;
           try
-            FATmpVerse[tbOrigem].Pares := verseData.Associations;
+            lines.Add(FVerseRenderBuffer.BuildDestinationLineONT(
+              verseData.OriginalText,
+              verseData.TranslatedText,
+              verseData.Associations,
+              (oeExportarMorfologia in opcoes),
+              (oeExportarNAComoItalicos in opcoes),
+              (oeStrongsReutilizados in opcoes),
+              (oeStrongsNaoTraduzidos in opcoes))
+            );
           except
             on E: Exception do
               errors.Add(SCorruptedData + #13#10#13#10 + FormattedReference + #13#10 +
                    format('%s'#13#10'pares: %s'#13#10'%s'#13#10'%s'#13#10,
                           [E.Message, verseData.Associations,
-                          FATmpVerse[tbOrigem].DebugTokens, FATmpVerse[tbDestino].DebugTokens]));
+                          FVerseRenderBuffer.SourceVerse.DebugTokens,
+                          FVerseRenderBuffer.DestinationVerse.DebugTokens]));
           end;
-          lines.Add(FATmpVerse[tbDestino].GetLinhaONT(
-            (oeExportarMorfologia in opcoes),
-            (oeExportarNAComoItalicos in opcoes),
-            (oeStrongsReutilizados in opcoes),
-            (oeStrongsNaoTraduzidos in opcoes))
-          );
         end;
 
         if (oeExportarComentarios in opcoes) and not verseData.Comments.isEmpty then
@@ -3658,23 +3622,28 @@ begin
           lines.Add(verseData.OriginalText)
         else
         begin
-          FATmpVerse[tbOrigem ].Texto := verseData.OriginalText;
-          FATmpVerse[tbDestino].Texto := verseData.TranslatedText;
           try
-            FATmpVerse[tbOrigem ].Pares := verseData.Associations;
+            if arquivo.EndsWith('.mybible') then
+              lines.Add(FVerseRenderBuffer.BuildInterlinearLine(
+                verseData.OriginalText,
+                verseData.TranslatedText,
+                verseData.Associations,
+                rimMySword))
+            else
+              lines.Add(FVerseRenderBuffer.BuildInterlinearLine(
+                verseData.OriginalText,
+                verseData.TranslatedText,
+                verseData.Associations,
+                rimTheWord));
           except
             on E: Exception do
               MessageDlg(SError, SCorruptedData + #13#10#13#10 + FormattedReference + #13#10 +
                    format('%s'#13#10'pares: %s'#13#10'%s'#13#10'%s',
                           [E.Message, verseData.Associations,
-                          FATmpVerse[tbOrigem].DebugTokens, FATmpVerse[tbDestino].DebugTokens]),
+                          FVerseRenderBuffer.SourceVerse.DebugTokens,
+                          FVerseRenderBuffer.DestinationVerse.DebugTokens]),
                    mtError, [mbOK], 0);
           end;
-
-          if arquivo.EndsWith('.mybible') then
-            lines.Add(FATmpVerse[tbOrigem].GetMySwordInterlinearLine)
-          else
-            lines.Add(FATmpVerse[tbOrigem].GetTheWordInterlinearLine);
         end;
 
         // apply verse rules
@@ -3778,19 +3747,21 @@ begin
       verseData := FVerseRepository.ReadCurrentVerseData;
       if verseData.Associations <> '' then
       begin
-        FATmpVerse[tbOrigem ].Texto := verseData.OriginalText;
-        FATmpVerse[tbDestino].Texto := verseData.TranslatedText;
         try
-          FATmpVerse[tbOrigem].Pares := verseData.Associations;
+          pares := FVerseRenderBuffer.ExtractPairsList(
+            verseData.OriginalText,
+            verseData.TranslatedText,
+            verseData.Associations,
+            plAll);
         except
           on E: Exception do
             MessageDlg(SError, SCorruptedData + #13#10#13#10 + FormattedReference + #13#10 +
                  format('%s'#13#10'pares: %s'#13#10'%s'#13#10'%s'#13#10,
                         [E.Message, verseData.Associations,
-                        FATmpVerse[tbOrigem].DebugTokens, FATmpVerse[tbDestino].DebugTokens]),
+                        FVerseRenderBuffer.SourceVerse.DebugTokens,
+                        FVerseRenderBuffer.DestinationVerse.DebugTokens]),
                  mtError, [mbOK], 0);
         end;
-        pares := FATmpVerse[tbOrigem].GetListaPares(plAll);
         Concordancia.AdicionarLocucao(pares, GetID);
         pares.Free;
       end;
