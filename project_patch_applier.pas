@@ -14,6 +14,7 @@ type
   TProjectPatchApplier = class
   private
     FPersistence: TProjectPersistence;
+    procedure EnsurePersistenceAttached;
     function ShouldApplyIndex(const Indexes: TPatchIndexArray; Index: Integer): Boolean;
     function LocatePatchReference(const Reference: string): Boolean;
   public
@@ -22,6 +23,8 @@ type
     procedure ApplyPatchEntry(Patch: TPatchFile; Index: Integer);
     procedure ApplyPatch(Patch: TPatchFile; const Indexes: TPatchIndexArray;
       OnMissingReference: TOnMissingPatchReference = nil);
+    procedure ClearTextFieldForAll(TextFieldIndex, SourceTextFieldIndex,
+      DestinationTextFieldIndex: Integer; ResetStatus: Boolean);
   end;
 
 implementation
@@ -35,6 +38,12 @@ end;
 procedure TProjectPatchApplier.Attach(APersistence: TProjectPersistence);
 begin
   FPersistence := APersistence;
+end;
+
+procedure TProjectPatchApplier.EnsurePersistenceAttached;
+begin
+  if not Assigned(FPersistence) then
+    raise Exception.Create('Project patch applier persistence is not attached');
 end;
 
 function TProjectPatchApplier.ShouldApplyIndex(const Indexes: TPatchIndexArray;
@@ -54,8 +63,7 @@ end;
 
 function TProjectPatchApplier.LocatePatchReference(const Reference: string): Boolean;
 begin
-  if not Assigned(FPersistence) then
-    raise Exception.Create('Project patch applier persistence is not attached');
+  EnsurePersistenceAttached;
 
   Result := (FPersistence.CurrentPairId = Reference) or FPersistence.LocateReference(Reference);
   if Result then
@@ -64,8 +72,7 @@ end;
 
 procedure TProjectPatchApplier.ApplyPatchEntry(Patch: TPatchFile; Index: Integer);
 begin
-  if not Assigned(FPersistence) then
-    raise Exception.Create('Project patch applier persistence is not attached');
+  EnsurePersistenceAttached;
 
   FPersistence.BeginCurrentEdit;
   FPersistence.SetCurrentFieldAsString('pare_texto_origem', Patch.SourceText[Index]);
@@ -108,6 +115,32 @@ begin
     end;
 
     ApplyPatchEntry(Patch, PatchIndex);
+  end;
+end;
+
+procedure TProjectPatchApplier.ClearTextFieldForAll(TextFieldIndex,
+  SourceTextFieldIndex, DestinationTextFieldIndex: Integer; ResetStatus: Boolean);
+var
+  ClearsAssociations: Boolean;
+begin
+  EnsurePersistenceAttached;
+
+  ClearsAssociations := (TextFieldIndex = SourceTextFieldIndex) or
+                        (TextFieldIndex = DestinationTextFieldIndex);
+
+  FPersistence.First;
+  while not FPersistence.EOF do
+  begin
+    FPersistence.BeginCurrentEdit;
+    FPersistence.SetCurrentText(TextFieldIndex, '');
+    if ClearsAssociations then
+    begin
+      FPersistence.SetCurrentFieldAsString('pare_pares', '');
+      if ResetStatus then
+        FPersistence.SetCurrentFieldAsInteger('pare_situacao', 0);
+    end;
+    FPersistence.PostCurrentEdit;
+    FPersistence.Next;
   end;
 end;
 

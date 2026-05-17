@@ -960,12 +960,13 @@ begin
 end;
 
 procedure TProjeto.SetSituacao(const AValue: Integer);
+var
+  NormalizedStatus: Integer;
 begin
-  if FClosing or (FTblPares.FieldByName('pare_situacao').AsInteger = AValue) then
+  NormalizedStatus := IfThen((AValue < 0) or (AValue > 3), 1, AValue);
+  if FClosing or (FPersistence.CurrentStatus = NormalizedStatus) then
     exit;
-  FTblPares.Edit;
-  FTblPares.FieldByName('pare_situacao').AsInteger := IfThen((AValue < 0) or (AValue > 3), 1, AValue);
-  FTblPares.Post;
+  FPersistence.WriteCurrentStatus(NormalizedStatus);
   AtualizarArvore(ID);
 end;
 
@@ -3850,16 +3851,12 @@ end;
 
 procedure TProjeto.LimparTexto(texto: TTipoTextoBiblico);
 begin
-  with FTblPares do
-  begin
-    ScrollEventsEnabled := false;
-    VersiculoInicial;
-    while not FTblPares.EOF do
-    begin
-      SetVerseText('', texto, false);
-      VersiculoSeguinte;
-    end;
-    ScrollEventsEnabled := true;
+  StartScrollingSession;
+  try
+    FPatchApplier.ClearTextFieldForAll(FACamposTexto[texto], FACamposTexto[tbOrigem],
+      FACamposTexto[tbDestino], not HasSituacaoCustomizada);
+  finally
+    FinishScrollingSession;
   end;
   SetTextDescription(texto, '');
 end;

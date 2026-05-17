@@ -46,6 +46,7 @@ type
     procedure SetCurrentFieldAsInteger(const fieldName: string; value: Integer);
     procedure WriteCurrentPairs(const pairs: string);
     procedure WriteCurrentComments(const comments: string);
+    procedure WriteCurrentStatus(status: Integer);
     procedure Commit;
     procedure Rollback;
     property PairsTable: TSqlite3Dataset read FPairsTable;
@@ -316,6 +317,12 @@ end;
 procedure TProjectPersistence.WriteCurrentComments(const comments: string);
 begin
   SetCurrentFieldAsString('pare_comentarios', comments);
+  PostCurrentEdit;
+end;
+
+procedure TProjectPersistence.WriteCurrentStatus(status: Integer);
+begin
+  SetCurrentFieldAsInteger('pare_situacao', status);
   PostCurrentEdit;
 end;
 
