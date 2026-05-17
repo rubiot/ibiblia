@@ -5,7 +5,7 @@ unit project_persistence;
 interface
 
 uses
-  SysUtils, Sqlite3DS, sqlite3conn, sqldb;
+  SysUtils, Sqlite3DS, sqlite3conn, sqldb, db;
 
 type
   TProjectPersistence = class
@@ -21,7 +21,16 @@ type
     class function UpdateConfigTable(table: TSqlite3Dataset; const name, value: string): Boolean; static;
     procedure Open(const AFileName: string);
     procedure Close;
+    function UpdatesPending: Boolean;
     function LocateReference(const reference: string): Boolean;
+    procedure Next;
+    procedure Prior;
+    procedure First;
+    procedure Last;
+    function EOF: Boolean;
+    function BOF: Boolean;
+    procedure BeginCurrentEdit;
+    procedure PostCurrentEdit;
     function InsertInfo(const info, value: string): Boolean;
     function UpdateInfo(const info, value: string): Boolean;
     function ReadInfo(const info: string): string;
@@ -29,6 +38,12 @@ type
     function CurrentPairs: string;
     function CurrentComments: string;
     function CurrentStatus: Integer;
+    function CurrentText(fieldIndex: Integer): string;
+    function CurrentFieldAsString(const fieldName: string): string;
+    function CurrentFieldAsInteger(const fieldName: string): Integer;
+    procedure SetCurrentText(fieldIndex: Integer; const value: string);
+    procedure SetCurrentFieldAsString(const fieldName, value: string);
+    procedure SetCurrentFieldAsInteger(const fieldName: string; value: Integer);
     procedure WriteCurrentPairs(const pairs: string);
     procedure WriteCurrentComments(const comments: string);
     procedure Commit;
@@ -112,12 +127,70 @@ begin
   FFileName := '';
 end;
 
+function TProjectPersistence.UpdatesPending: Boolean;
+begin
+  Result := (Assigned(FPairsTable) and FPairsTable.UpdatesPending) or
+            (Assigned(FInfoTable) and FInfoTable.UpdatesPending);
+end;
+
 function TProjectPersistence.LocateReference(const reference: string): Boolean;
 begin
   if not Assigned(FPairsTable) then
     raise Exception.Create('Project pairs table is not open');
 
   Result := FPairsTable.Locate('pare_id', reference, []);
+end;
+
+procedure TProjectPersistence.Next;
+begin
+  if Assigned(FPairsTable) then
+    FPairsTable.Next;
+end;
+
+procedure TProjectPersistence.Prior;
+begin
+  if Assigned(FPairsTable) then
+    FPairsTable.Prior;
+end;
+
+procedure TProjectPersistence.First;
+begin
+  if Assigned(FPairsTable) then
+    FPairsTable.First;
+end;
+
+procedure TProjectPersistence.Last;
+begin
+  if Assigned(FPairsTable) then
+    FPairsTable.Last;
+end;
+
+function TProjectPersistence.EOF: Boolean;
+begin
+  Result := not Assigned(FPairsTable) or FPairsTable.EOF;
+end;
+
+function TProjectPersistence.BOF: Boolean;
+begin
+  Result := not Assigned(FPairsTable) or FPairsTable.BOF;
+end;
+
+procedure TProjectPersistence.BeginCurrentEdit;
+begin
+  if not Assigned(FPairsTable) then
+    raise Exception.Create('Project pairs table is not open');
+
+  if not (FPairsTable.State in dsEditModes) then
+    FPairsTable.Edit;
+end;
+
+procedure TProjectPersistence.PostCurrentEdit;
+begin
+  if not Assigned(FPairsTable) then
+    raise Exception.Create('Project pairs table is not open');
+
+  if FPairsTable.State in dsEditModes then
+    FPairsTable.Post;
 end;
 
 function TProjectPersistence.InsertInfo(const info, value: string): Boolean;
@@ -192,24 +265,58 @@ begin
   Result := FPairsTable.FieldByName('pare_situacao').AsInteger;
 end;
 
-procedure TProjectPersistence.WriteCurrentPairs(const pairs: string);
+function TProjectPersistence.CurrentText(fieldIndex: Integer): string;
 begin
   if not Assigned(FPairsTable) then
-    raise Exception.Create('Project pairs table is not open');
+    Exit('');
 
-  FPairsTable.Edit;
-  FPairsTable.FieldByName('pare_pares').AsString := pairs;
-  FPairsTable.Post;
+  Result := FPairsTable.Fields[fieldIndex].AsString;
+end;
+
+function TProjectPersistence.CurrentFieldAsString(const fieldName: string): string;
+begin
+  if not Assigned(FPairsTable) then
+    Exit('');
+
+  Result := FPairsTable.FieldByName(fieldName).AsString;
+end;
+
+function TProjectPersistence.CurrentFieldAsInteger(const fieldName: string): Integer;
+begin
+  if not Assigned(FPairsTable) then
+    Exit(0);
+
+  Result := FPairsTable.FieldByName(fieldName).AsInteger;
+end;
+
+procedure TProjectPersistence.SetCurrentText(fieldIndex: Integer; const value: string);
+begin
+  BeginCurrentEdit;
+  FPairsTable.Fields[fieldIndex].AsString := value;
+end;
+
+procedure TProjectPersistence.SetCurrentFieldAsString(const fieldName, value: string);
+begin
+  BeginCurrentEdit;
+  FPairsTable.FieldByName(fieldName).AsString := value;
+end;
+
+procedure TProjectPersistence.SetCurrentFieldAsInteger(const fieldName: string; value: Integer);
+begin
+  BeginCurrentEdit;
+  FPairsTable.FieldByName(fieldName).AsInteger := value;
+end;
+
+procedure TProjectPersistence.WriteCurrentPairs(const pairs: string);
+begin
+  SetCurrentFieldAsString('pare_pares', pairs);
+  PostCurrentEdit;
 end;
 
 procedure TProjectPersistence.WriteCurrentComments(const comments: string);
 begin
-  if not Assigned(FPairsTable) then
-    raise Exception.Create('Project pairs table is not open');
-
-  FPairsTable.Edit;
-  FPairsTable.FieldByName('pare_comentarios').AsString := comments;
-  FPairsTable.Post;
+  SetCurrentFieldAsString('pare_comentarios', comments);
+  PostCurrentEdit;
 end;
 
 procedure TProjectPersistence.Commit;

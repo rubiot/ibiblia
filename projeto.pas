@@ -19,7 +19,7 @@ uses
   MemoVersiculo, ONTTokenizer, Dialogs, dos, PCRE, ExportarProjeto, LazLogger,
   Syntagm, BibleScope, MySwordModule, TheWordDictionary, fgl, PatchFile, LCLIntf, menus,
   CommentsView, ai_processing_manager, ai_processing_batch, ai_batch_work_item,
-  ai_flows, llmclient, ai_flow_config, ai_debug, project_persistence;
+  ai_flows, llmclient, ai_flow_config, ai_debug, project_persistence, project_config;
 
 const
   // AI processing icon indices for ImageListTreeView in formprincipal
@@ -114,6 +114,7 @@ type
     FPalavrasComStrongEmNegrito: boolean;
     FExibirDefComCtrl: boolean;
     FPersistence: TProjectPersistence;
+    FConfig: TProjectConfig;
     FTblPares: TSqlite3Dataset;
     FTblInfo: TSqlite3Dataset;
     FAVersiculo: AVersiculo;
@@ -594,19 +595,14 @@ begin
 end;
 
 function TProjeto.GetParagraphMode: TParagraphMode;
-var
-  t: string;
 begin
-  t := ObterInfo('paragraph.mode');
-  if t.IsEmpty then
-    t := Ord(pmParagraph).ToString;
-  result := TParagraphMode(t.ToInteger);
+  Result := TParagraphMode(FConfig.ReadParagraphMode(Ord(pmParagraph)));
 end;
 
 function TProjeto.GetTokenizerVersion: Integer;
 begin
   Result := TTokenizerFactory.NormalizeVersion(
-    StrToIntDef(ObterInfo('tokenizer_version'), TTokenizerFactory.PreferredVersion));
+    FConfig.ReadTokenizerVersion(TTokenizerFactory.PreferredVersion));
 end;
 
 function TProjeto.GetPairs(ref: string): string;
@@ -741,7 +737,7 @@ end;
 
 procedure TProjeto.SetChapterViewText(AValue: TTipoTextoBiblico);
 begin
-  AtribuirInfo('chapterview.text', Ord(AValue).toString);
+  FConfig.WriteChapterViewText(Ord(AValue));
 end;
 
 procedure TProjeto.SetComentarios(const AValue: string);
@@ -771,12 +767,12 @@ end;
 
 procedure TProjeto.SetInterlinearMode(AValue: TInterlinearMode);
 begin
-  AtribuirInfo('interlinear.mode', Ord(AValue).toString);
+  FConfig.WriteInterlinearMode(Ord(AValue));
 end;
 
 procedure TProjeto.SetParagraphMode(AValue: TParagraphMode);
 begin
-  AtribuirInfo('paragraph.mode', Ord(AValue).toString);
+  FConfig.WriteParagraphMode(Ord(AValue));
 end;
 
 procedure TProjeto.SetTokenizerVersion(AValue: Integer);
@@ -791,7 +787,7 @@ begin
 
   MigrateStoredAssociationsToTokenizerVersion(currentVersion, AValue);
 
-  AtribuirInfo('tokenizer_version', IntToStr(AValue));
+  FConfig.WriteTokenizerVersion(AValue);
   TTokenizerFactory.PreferredVersion := AValue;
 
   for v := Low(FAVersiculo) to High(FAVersiculo) do
@@ -1421,30 +1417,24 @@ end;
 
 function TProjeto.GetModificado: boolean;
 var
-  pairsPending, infoPending, srcPending: boolean;
+  srcPending: boolean;
 begin
-  pairsPending := FTblPares.UpdatesPending;
-  infoPending  := FTblInfo.UpdatesPending;
   srcPending   := (assigned(FAVersiculo[tbOrigem]) and FAVersiculo[tbOrigem].Modificado);
 
-  result := pairsPending or infoPending or srcPending;
+  result := FPersistence.UpdatesPending or srcPending;
 end;
 
 function TProjeto.GetCaminho: string;
 begin
-  result := '';
-  if FTblInfo.Active then
-    result := FTblInfo.FileName;
+  if Assigned(FPersistence) then
+    Result := FPersistence.FileName
+  else
+    Result := '';
 end;
 
 function TProjeto.GetChapterViewText: TTipoTextoBiblico;
-var
-  t: string;
 begin
-  t := ObterInfo('chapterview.text');
-  if t.IsEmpty then
-    t := Ord(tbDestino).ToString;
-  result := TTipoTextoBiblico(t.ToInteger);
+  Result := TTipoTextoBiblico(FConfig.ReadChapterViewText(Ord(tbDestino)));
 end;
 
 function TProjeto.GetChapterText: TStringList;
@@ -1454,22 +1444,22 @@ function TProjeto.GetChapterText: TStringList;
   begin
     case ChapterViewText of
       tbOrigem, tbDestino, tbConsulta1, tbConsulta2:
-        result := FTblPares.Fields[FACamposTexto[ChapterViewText]].AsString.Replace(#239#187#191, '');
+        result := FPersistence.CurrentText(FACamposTexto[ChapterViewText]).Replace(#239#187#191, '');
       tbInterlinear:
       begin
-        if length(FTblPares.FieldByName('pare_pares').AsString) = 0 then
-          result := FTblPares.Fields[FACamposTexto[tbOrigem]].AsString
+        if FPersistence.CurrentPairs.IsEmpty then
+          result := FPersistence.CurrentText(FACamposTexto[tbOrigem])
         else
         begin
-          FATmpVerse[tbOrigem ].Texto := FTblPares.Fields[FACamposTexto[tbOrigem] ].AsString;
-          FATmpVerse[tbDestino].Texto := FTblPares.Fields[FACamposTexto[tbDestino]].AsString;
+          FATmpVerse[tbOrigem ].Texto := FPersistence.CurrentText(FACamposTexto[tbOrigem]);
+          FATmpVerse[tbDestino].Texto := FPersistence.CurrentText(FACamposTexto[tbDestino]);
           try
-            FATmpVerse[tbOrigem ].Pares := FTblPares.FieldByName('pare_pares').AsString;
+            FATmpVerse[tbOrigem ].Pares := FPersistence.CurrentPairs;
           except
             on E: Exception do
               MessageDlg(SError, SCorruptedData + #13#10#13#10 + FormattedReference + #13#10 +
                    format('%s'#13#10'pares: %s'#13#10'%s'#13#10'%s',
-                          [E.Message, FTblPares.FieldByName('pare_pares').AsString,
+                          [E.Message, FPersistence.CurrentPairs,
                           FATmpVerse[tbOrigem].DebugTokens, FATmpVerse[tbDestino].DebugTokens]),
                    mtError, [mbOK], 0);
           end;
@@ -1514,20 +1504,19 @@ begin
 
   StartScrollingSession;
   RewindChapter;
-  with FTblPares do
-    while not FTblPares.EOF and GetID().StartsWith(bkch) do
-    begin
-      comments := IfThen(
-        ChapterViewText = tbDestino,
-        Comentarios
-          .Replace(#13#10, '<br/>', [rfReplaceAll])
-          .Replace(#13, '<br/>', [rfReplaceAll])
-          .Replace(#10, '<br/>', [rfReplaceAll]),
-        ''
-      );
-      result.Add(Format('%s%s', [GetText(rulesRx, replaceTo), IfThen(comments.IsEmpty, '', Format('<RF>%s<Rf>', [comments]))]));
-      VersiculoSeguinte;
-    end;
+  while not FPersistence.EOF and GetID().StartsWith(bkch) do
+  begin
+    comments := IfThen(
+      ChapterViewText = tbDestino,
+      Comentarios
+        .Replace(#13#10, '<br/>', [rfReplaceAll])
+        .Replace(#13, '<br/>', [rfReplaceAll])
+        .Replace(#10, '<br/>', [rfReplaceAll]),
+      ''
+    );
+    result.Add(Format('%s%s', [GetText(rulesRx, replaceTo), IfThen(comments.IsEmpty, '', Format('<RF>%s<Rf>', [comments]))]));
+    VersiculoSeguinte;
+  end;
   FinishScrollingSession;
 
   if ChapterViewText = tbInterlinear then
@@ -1547,9 +1536,9 @@ begin
   rulesRx := TRegexList.Create;
   replaceTo := TStringList.Create;
   if mode = imInterlinear then
-    verseRules := ObterInfo('propriedades.interlinearview.verserules')
+    verseRules := FConfig.ReadVerseRules(True)
   else // intralinear (theWord mode)
-    verseRules := ObterInfo('propriedades.intralinearview.verserules');
+    verseRules := FConfig.ReadVerseRules(False);
 
   for rule in verseRules.Split(#13) do
   begin
@@ -1601,12 +1590,12 @@ end;
 procedure TProjeto.SetTextDescription(text: TTipoTextoBiblico;
   description: string);
 begin
-  AtribuirInfo(Format('description.text%d', [Integer(text)]), description);
+  FConfig.WriteTextDescription(Integer(text), description);
 end;
 
 function TProjeto.GetTextDescription(text: TTipoTextoBiblico): string;
 begin
-  result := ObterInfo(Format('description.text%d', [text]));
+  Result := FConfig.ReadTextDescription(Integer(text));
 end;
 
 procedure TProjeto.Vacuum;
@@ -1631,13 +1620,8 @@ begin
 end;
 
 function TProjeto.GetInterlinearMode: TInterlinearMode;
-var
-  t: string;
 begin
-  t := ObterInfo('interlinear.mode');
-  if t.IsEmpty then
-    t := Ord(imInterlinear).ToString;
-  result := TInterlinearMode(t.ToInteger);
+  Result := TInterlinearMode(FConfig.ReadInterlinearMode(Ord(imInterlinear)));
 end;
 
 procedure TProjeto.CopiarArquivo(origem, destino: string);
@@ -1767,37 +1751,37 @@ end;
 procedure TProjeto.SetVerseText(versiculo: string;
   texto: TTipoTextoBiblico; replace: boolean);
 begin
-  FTblPares.Edit;
+  FPersistence.BeginCurrentEdit;
 
   // try to keep associations and update pairs
-  if replace and (texto in [tbOrigem, tbDestino]) and not FTblPares.FieldByName('pare_pares').AsString.IsEmpty then
+  if replace and (texto in [tbOrigem, tbDestino]) and not FPersistence.CurrentPairs.IsEmpty then
   begin
-    FATmpVerse[tbOrigem ].Texto := FTblPares.Fields[FACamposTexto[tbOrigem ]].AsString;
-    FATmpVerse[tbDestino].Texto := FTblPares.Fields[FACamposTexto[tbDestino]].AsString;
+    FATmpVerse[tbOrigem ].Texto := FPersistence.CurrentText(FACamposTexto[tbOrigem]);
+    FATmpVerse[tbDestino].Texto := FPersistence.CurrentText(FACamposTexto[tbDestino]);
 
     try
-      FATmpVerse[tbOrigem ].Pares := FTblPares.FieldByName('pare_pares').AsString;
+      FATmpVerse[tbOrigem ].Pares := FPersistence.CurrentPairs;
       FATmpVerse[texto].AlterarTexto(versiculo);
-      FTblPares.FieldByName('pare_pares').AsString := FATmpVerse[tbOrigem].Pares;
+      FPersistence.SetCurrentFieldAsString('pare_pares', FATmpVerse[tbOrigem].Pares);
     except
       on E: Exception do
         MessageDlg(SError, SCorruptedData + #13#10#13#10 + FormattedReference + #13#10 +
              format('%s'#13#10'pares: %s'#13#10'%s'#13#10'%s',
-                    [E.Message, FTblPares.FieldByName('pare_pares').AsString,
+                    [E.Message, FPersistence.CurrentPairs,
                     FATmpVerse[tbOrigem].DebugTokens, FATmpVerse[tbDestino].DebugTokens]),
              mtError, [mbOK], 0);
     end;
   end;
 
-  FTblPares.Fields[FACamposTexto[texto]].AsString := versiculo;
+  FPersistence.SetCurrentText(FACamposTexto[texto], versiculo);
   if not replace and (texto in [tbOrigem, tbDestino]) then // clearing associations to avoid inconsistencies
   begin
-    FTblPares.FieldByName('pare_pares').AsString := '';
+    FPersistence.SetCurrentFieldAsString('pare_pares', '');
     if not HasSituacaoCustomizada then
-      FTblPares.FieldByName('pare_situacao').AsInteger := 0; // not associated
+      FPersistence.SetCurrentFieldAsInteger('pare_situacao', 0); // not associated
   end;
 
-  FTblPares.Post;
+  FPersistence.PostCurrentEdit;
 end;
 
 procedure TProjeto.ApplyVerseText(const newText: string; texto: TTipoTextoBiblico; replace: Boolean);
@@ -1927,9 +1911,9 @@ begin
   for v:=low(FAVersiculo) to high(FAVersiculo) do
     if assigned(FAVersiculo[v]) and FAVersiculo[v].XMLModificado then
     begin
-      FTblPares.Edit;
-      FTblPares.Fields[FACamposTexto[v]].AsString := FAVersiculo[v].XML;
-      FTblPares.Post;
+      FPersistence.BeginCurrentEdit;
+      FPersistence.SetCurrentText(FACamposTexto[v], FAVersiculo[v].XML);
+      FPersistence.PostCurrentEdit;
       FAVersiculo[v].Modificado := false;
       FAVersiculo[v].XMLModificado := false;
     end;
@@ -2708,6 +2692,7 @@ begin
   FAIProcessingNodes  := TAINodeInfoList.Create(True); // owns objects
   FAIBatchCompletionShown := False;
   FPersistence        := nil;
+  FConfig             := TProjectConfig.Create(nil);
   FTblPares           := nil;
   FTblInfo            := nil;
   FEscopo             := etNone;
@@ -2778,6 +2763,7 @@ begin
   if Assigned(FAIProcessingNodes) then
     FreeAndNil(FAIProcessingNodes);
 
+  FreeAndNil(FConfig);
   FreeAndNil(FPersistence);
 
   FOnNovoVersiculo.Free;
@@ -2819,6 +2805,10 @@ begin
   FreeAndNil(FPersistence);
   FPersistence := TProjectPersistence.Create;
   FPersistence.Open(Nome);
+  if not Assigned(FConfig) then
+    FConfig := TProjectConfig.Create(FPersistence)
+  else
+    FConfig.Attach(FPersistence);
   FTblInfo := FPersistence.InfoTable;
 
   FSugeridor := TGerSugestoes.Criar(Nome);
@@ -2903,7 +2893,7 @@ begin
   TTokenizerFactory.PreferredVersion := TokenizerVersion;
 
   ScrollEventsEnabled := true;
-  GoToReference(ObterInfo('marcador'));
+  GoToReference(FConfig.ReadMarker);
 
   FAtivo := true;
   FDisplayTags := false;
@@ -2926,7 +2916,7 @@ begin
 
   if _Commit then
   begin
-    AtribuirInfo('marcador', FTblPares.FieldByName('pare_id').AsString);
+    FConfig.WriteMarker(ID);
     Commit;
   end
   else
@@ -2938,6 +2928,8 @@ begin
       AtribuirInfo(format('fonte%d.tamanho', [t]), IntToStr(FAVersiculo[t].Fonte.Size));
   Commit;
 
+  if Assigned(FConfig) then
+    FConfig.Attach(nil);
   FreeAndNil(FPersistence);
   FTblPares := nil;
   FTblInfo := nil;
@@ -3005,32 +2997,32 @@ end;
 
 procedure TProjeto.VersiculoSeguinte;
 begin
-  if not FTblPares.EOF then
-    FTblPares.Next;
+  if not FPersistence.EOF then
+    FPersistence.Next;
   if not FExportando and SugerirAssociacaoAutomaticamente and (FRadioGroupSituacao.ItemIndex = 0) and (not HasSituacaoCustomizada) then
     SugerirAssociacao;
 end;
 
 procedure TProjeto.VersiculoAnterior;
 begin
-  if not FTblPares.BOF then
-    FTblPares.Prior;
+  if not FPersistence.BOF then
+    FPersistence.Prior;
   if not FExportando and SugerirAssociacaoAutomaticamente and (FRadioGroupSituacao.ItemIndex = 0) and (not HasSituacaoCustomizada) then
     SugerirAssociacao;
 end;
 
 procedure TProjeto.VersiculoInicial;
 begin
-  if not FTblPares.BOF then
-    FTblPares.First;
+  if not FPersistence.BOF then
+    FPersistence.First;
   if not FExportando and SugerirAssociacaoAutomaticamente and (FRadioGroupSituacao.ItemIndex = 0) and (not HasSituacaoCustomizada) then
     SugerirAssociacao;
 end;
 
 procedure TProjeto.VersiculoFinal;
 begin
-  if not FTblPares.EOF then
-    FTblPares.Last;
+  if not FPersistence.EOF then
+    FPersistence.Last;
   if not FExportando and SugerirAssociacaoAutomaticamente and (FRadioGroupSituacao.ItemIndex = 0) and (not HasSituacaoCustomizada) then
     SugerirAssociacao;
 end;
@@ -3057,7 +3049,7 @@ var
   e: TOnNovoVersiculoEvent;
 begin
   PreRolagemVersiculo(nil);
-  AtribuirInfo('marcador', FTblPares.FieldByName('pare_id').AsString);
+  FConfig.WriteMarker(ID);
   Commit;
 
   if assigned(FAVersiculo[tbOrigem]) and assigned(FAVersiculo[tbDestino]) then
@@ -3968,13 +3960,12 @@ end;
 
 procedure TProjeto.AtribuirInfo(info, valor: string);
 begin
-  if not AtualizarInfo(info, valor) then
-    InserirInfo(info, valor);
+  FConfig.WriteString(info, valor);
 end;
 
 function TProjeto.ObterInfo(info: string): string;
 begin
-  result := ResgatarInfo(info);
+  Result := FConfig.ReadString(info);
 end;
 
 function TProjeto.GetFlowExamples(const FlowId: string): TAIFlowExampleArray;
@@ -4038,7 +4029,7 @@ end;
 
 function TProjeto.ObterTextoVersiculo(texto: TTipoTextoBiblico): string;
 begin
-  result := FTblPares.Fields[FACamposTexto[texto]].AsString;
+  Result := FPersistence.CurrentText(FACamposTexto[texto]);
 end;
 
 function TProjeto.ObterTextoVersiculo(Referencia: string; texto: TTipoTextoBiblico): string;
