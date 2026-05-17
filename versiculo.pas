@@ -45,6 +45,7 @@ type
     FEdit: TEdit;
     FAtivo: boolean;
     FDestruindo: boolean;
+    FRendering: Boolean;
     FExibirErro: boolean;
     FPalavrasComStrongEmNegrito: boolean;
     FStrongsCountMode: TStrongsCountMode;
@@ -277,6 +278,7 @@ begin
   FCorAssociado         := clWindowText;
   FCorDesassociado      := $A3A3A3;
   FDestruindo           := false;
+  FRendering            := false;
   if AProject is TProjeto then
     FTokenizerVersion := TProjeto(AProject).TokenizerVersion
   else
@@ -685,6 +687,8 @@ begin
 
   FExibirErro := true;
   VersiculoPar.FExibirErro := true;
+
+  LimparAssociacoes;
 
   varredorXML := CreateTokenizer(AValue);
   while varredorXML.LerSintagma(s) <> tsNulo do
@@ -1349,17 +1353,17 @@ begin
       ok := TryStrToInt(tokens[i], idx);
       if not ok then
       begin
-        AIDebugLogFmt('[SelecionarListaSintagmas] Invalid token (not integer): %s', [tokens[i]]);
+        //AIDebugLogFmt('[SelecionarListaSintagmas] Invalid token (not integer): %s', [tokens[i]]);
         Continue;
       end;
       if (idx < 0) or (idx >= Sintagmas.Count) then
       begin
-        AIDebugLogFmt('[SelecionarListaSintagmas] Index out of range: %d (Count=%d)', [idx, Sintagmas.Count]);
+        //AIDebugLogFmt('[SelecionarListaSintagmas] Index out of range: %d (Count=%d)', [idx, Sintagmas.Count]);
         Continue;
       end;
       if not (Sintagmas[idx].Kind in [tsSintagma, tsPontuacao]) then
       begin
-        AIDebugLogFmt('[SelecionarListaSintagmas] Index %d is not selectable (Kind=%d)', [idx, Ord(Sintagmas[idx].Kind)]);
+        //AIDebugLogFmt('[SelecionarListaSintagmas] Index %d is not selectable (Kind=%d)', [idx, Ord(Sintagmas[idx].Kind)]);
         Continue;
       end;
       Sintagmas[idx].AddToSelection;
@@ -1461,18 +1465,23 @@ var
   s: TSyntagm;
   //starttime: DWord;
 begin
-  if not FAtivo or not assigned(FSintagmas) then
+  if not FAtivo or not assigned(FSintagmas) or FRendering then
     exit;
 
   //starttime := getTickCount;
-  if assigned(FPanel) then
-    FPanel.DisableAutoSizing;
-  for s in FSintagmas do
-    s.Render;
-  RenderizarStrongCount;
-  if assigned(FPanel) then
-    FPanel.EnableAutoSizing;
-  OrganizarSintagmas;
+  FRendering := True;
+  try
+    if assigned(FPanel) then
+      FPanel.DisableAutoSizing;
+    for s in FSintagmas do
+      s.Render;
+    RenderizarStrongCount;
+    if assigned(FPanel) then
+      FPanel.EnableAutoSizing;
+    OrganizarSintagmas;
+  finally
+    FRendering := False;
+  end;
   //DebugLn('  TVersiculo.Renderizar: %d milliseconds', [getTickCount-starttime]);
 end;
 
@@ -1693,7 +1702,8 @@ end;
 
 procedure TVersiculo.OnResize(Sender: TObject);
 begin
-  Renderizar;
+  if not FRendering then
+    OrganizarSintagmas;
 end;
 
 procedure TVersiculo.OnMouseWheel(Sender: TObject; Shift: TShiftState;

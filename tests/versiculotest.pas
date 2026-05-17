@@ -26,6 +26,7 @@ type
     // Migrated from aiassociatortest.pas
     procedure TestFindAndSelectSyntagms_Brackets;
     procedure TestRetokenizePreservesAssociationsAcrossTokenizerVersions;
+    procedure TestDisassociatePairs_ToleratesAsymmetricSiblingLists;
     procedure TestAssociation_Greek;
     procedure TestAssociation_Hebrew;
   end;
@@ -496,6 +497,44 @@ begin
   end;
 end;
 
+procedure TVersiculoTest.TestDisassociatePairs_ToleratesAsymmetricSiblingLists;
+var
+  vOrig, vDest: TVersiculo;
+  leftSyn, rightSyn, destSyn: TSyntagm;
+begin
+  vOrig := TVersiculo.Criar(nil);
+  vDest := TVersiculo.Criar(nil);
+  try
+    vOrig.Texto := 'alpha beta';
+    vDest.Texto := 'one';
+    vOrig.VersiculoPar := vDest;
+    vDest.VersiculoPar := vOrig;
+
+    leftSyn := vOrig.Sintagmas[0];
+    rightSyn := vOrig.Sintagmas[2];
+    destSyn := vDest.Sintagmas[0];
+
+    leftSyn.AddToSelection;
+    rightSyn.AddToSelection;
+    destSyn.AddToSelection;
+    vOrig.AssociarSintagmas;
+    vOrig.LimparSelecao;
+    vDest.LimparSelecao;
+
+    rightSyn.Siblings.Remove(leftSyn);
+
+    leftSyn.DisassociatePairs;
+
+    AssertEquals('Left syntagm pairs cleared', 0, leftSyn.Pairs.Count);
+    AssertEquals('Left syntagm siblings cleared', 0, leftSyn.Siblings.Count);
+    AssertEquals('Right syntagm pairs cleared', 0, rightSyn.Pairs.Count);
+    AssertEquals('Right syntagm siblings cleared', 0, rightSyn.Siblings.Count);
+    AssertEquals('Destination syntagm pairs cleared', 0, destSyn.Pairs.Count);
+  finally
+    vOrig.Free;
+    vDest.Free;
+  end;
+end;
 
 procedure TVersiculoTest.TestAssociation_Greek;
 var

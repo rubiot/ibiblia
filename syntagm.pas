@@ -763,6 +763,8 @@ end;
 
 procedure TSyntagm.AddToSelection;
 begin
+  if FSelected or (TVersiculo(FVerse).Selecao.IndexOf(Self) >= 0) then
+    exit;
   FSelected := true;
   if TVersiculo(FVerse).Ativo and assigned(FLabel) then
     FLabel.Color:= clYellow;
@@ -791,15 +793,33 @@ var
 begin
   // 1. Disassociate all siblings (they share the same pairs)
   while Assigned(FSiblings) and not FSiblings.Empty do
-    TSyntagm(FSiblings.First).Disassociate;
+  begin
+    s := TSyntagm(FSiblings.First);
+    FSiblings.Remove(s); // force local progress even if sibling links are asymmetric
+    if Assigned(s) and Assigned(s.FSiblings) then
+      s.FSiblings.Remove(Self);
+    if Assigned(s) and (s <> Self) then
+      s.Disassociate;
+  end;
 
   // 2. Disassociate all pairs and THEIR siblings
   while Assigned(FPairs) and not FPairs.Empty do
   begin
     s := TSyntagm(FPairs.First);
+    FPairs.Remove(s); // force local progress even if pair links are asymmetric
+    if Assigned(s) and Assigned(s.FPairs) then
+      s.FPairs.Remove(Self);
     while Assigned(s.FSiblings) and not s.FSiblings.Empty do
+    begin
+      if s.FSiblings.First = Self then
+      begin
+        s.FSiblings.Remove(Self);
+        Continue;
+      end;
       TSyntagm(s.FSiblings.First).Disassociate;
-    s.Disassociate;
+    end;
+    if s <> Self then
+      s.Disassociate;
   end;
 
   // 3. Disassociate self
@@ -880,11 +900,11 @@ begin
     while not FPairs.Empty do
     begin
       s := TSyntagm(FPairs.First);
+      FPairs.Remove(s);
       if Assigned(s.Pairs) then
         s.Pairs.Remove(Self);
-      if s.Pairs.Empty then
+      if Assigned(s.Pairs) and s.Pairs.Empty then
         s.IsAssociated := false;
-      FPairs.Remove(s);
     end;
   end;
 
@@ -893,9 +913,9 @@ begin
     while not FSiblings.Empty do
     begin
       s := TSyntagm(FSiblings.First);
+      FSiblings.Remove(s);
       if Assigned(s.Siblings) then
         s.Siblings.Remove(Self);
-      FSiblings.Remove(s);
     end;
   end;
 
