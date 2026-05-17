@@ -19,8 +19,8 @@ uses
   MemoVersiculo, ONTTokenizer, Dialogs, dos, PCRE, ExportarProjeto, LazLogger,
   Syntagm, BibleScope, MySwordModule, TheWordDictionary, fgl, PatchFile, LCLIntf, menus,
   CommentsView, ai_processing_manager, ai_processing_batch, ai_batch_work_item,
-  ai_flows, llmclient, ai_flow_config, ai_debug, project_persistence, project_config;
-
+  ai_flows, llmclient, ai_flow_config, ai_debug, project_persistence, project_config,
+  project_verse_repository;
 const
   // AI processing icon indices for ImageListTreeView in formprincipal
   // ImageListTreeView has indices 0-7 for normal states (0-3) and selected states (4-7)
@@ -115,6 +115,7 @@ type
     FExibirDefComCtrl: boolean;
     FPersistence: TProjectPersistence;
     FConfig: TProjectConfig;
+    FVerseRepository: TProjectVerseRepository;
     FTblPares: TSqlite3Dataset;
     FTblInfo: TSqlite3Dataset;
     FAVersiculo: AVersiculo;
@@ -1233,7 +1234,6 @@ var
     child: TTreeNode;
     ref: TReference;
     verseData: TVerseData;
-    qry: TSQLQuery;
   begin
     if node = nil then Exit;
 
@@ -1241,18 +1241,10 @@ var
     if not node.HasChildren then
     begin
       ref := BibleTreeNodeToReference(node);
-
-      // Use dataset navigation like TFormExportPatch.CreatePatch (no separate queries)
-      GoToReference(ref);
-
-      // Store raw data without creating TVersiculo (expensive parsing)
-      verseData.ReferenceID := Format('%d,%d,%d', [ref.BookID, ref.Chapter, ref.Verse]);
-      verseData.ReferenceName := ref.Book + ' ' + IntToStr(ref.Chapter) + ':' + IntToStr(ref.Verse);
-      verseData.OriginalText := ObterTextoVersiculo(tbOrigem);
-      verseData.TranslatedText := ObterTextoVersiculo(tbDestino);
-      verseData.Associations := Pairs; // pare_pares
-      verseData.Comments := FTblPares.FieldByName('pare_comentarios').AsString;
-      verseData.Status := FTblPares.FieldByName('pare_situacao').AsInteger;
+      verseData := FVerseRepository.ReadVerseData(
+        Format('%d,%d,%d', [ref.BookID, ref.Chapter, ref.Verse]),
+        ref.Book + ' ' + IntToStr(ref.Chapter) + ':' + IntToStr(ref.Verse)
+      );
 
       dest.AddItem(TAIBatchWorkItem.Create(Self, verseData));
       Exit;
@@ -2693,6 +2685,7 @@ begin
   FAIBatchCompletionShown := False;
   FPersistence        := nil;
   FConfig             := TProjectConfig.Create(nil);
+  FVerseRepository    := TProjectVerseRepository.Create(nil);
   FTblPares           := nil;
   FTblInfo            := nil;
   FEscopo             := etNone;
@@ -2763,6 +2756,7 @@ begin
   if Assigned(FAIProcessingNodes) then
     FreeAndNil(FAIProcessingNodes);
 
+  FreeAndNil(FVerseRepository);
   FreeAndNil(FConfig);
   FreeAndNil(FPersistence);
 
@@ -2857,6 +2851,7 @@ begin
   FACamposTexto[tbDestino]   := FTblPares.FindField('pare_texto_destino').Index;
   FACamposTexto[tbConsulta1] := FTblPares.FindField('pare_texto_consulta1').Index;
   FACamposTexto[tbConsulta2] := FTblPares.FindField('pare_texto_consulta2').Index;
+  FVerseRepository.Attach(FPersistence, FACamposTexto[tbOrigem], FACamposTexto[tbDestino]);
 
   if FEscopo = etNone then
     FEscopo := IdentificarEscopo;
@@ -2930,6 +2925,8 @@ begin
 
   if Assigned(FConfig) then
     FConfig.Attach(nil);
+  if Assigned(FVerseRepository) then
+    FVerseRepository.Attach(nil);
   FreeAndNil(FPersistence);
   FTblPares := nil;
   FTblInfo := nil;
