@@ -452,7 +452,7 @@ function TONTTokenizerV2.IsTokenizerPunctuation(codepoint: Cardinal): Boolean;
 begin
   Result := ContainsCodepoint(codepoint,
     [Ord('"'), Ord('.'), Ord(','), Ord(';'), Ord(':'), Ord('!'), Ord('?'),
-     Ord('('), Ord(')'), 183, 903, 8220, 8221, 1470, 1472, 1475]);
+     Ord('('), Ord(')'), Ord('['), Ord(']'), 183, 903, 8220, 8221, 1470, 1472, 1475]);
 end;
 
 function TONTTokenizerV2.ConsumeSinglePunctuationCodepoint: Boolean;
@@ -466,7 +466,7 @@ function TONTTokenizerV3.IsTokenizerPunctuation(codepoint: Cardinal): Boolean;
 begin
   Result := ContainsCodepoint(codepoint,
     [Ord('"'), Ord('.'), Ord(','), Ord(';'), Ord(':'), Ord('!'), Ord('?'),
-     Ord('('), Ord(')'), 183, 8216, 8217, 903, 8220, 8221, 1470, 1472, 1475]);
+     Ord('('), Ord(')'), Ord('['), Ord(']'), 183, 8216, 8217, 903, 8220, 8221, 1470, 1472, 1475]);
 end;
 end.
 

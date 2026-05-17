@@ -25,6 +25,7 @@ type
     procedure TestMultipleAssociations_PartialMatch;
     // Migrated from aiassociatortest.pas
     procedure TestFindAndSelectSyntagms_Brackets;
+    procedure TestRetokenizePreservesAssociationsAcrossTokenizerVersions;
     procedure TestAssociation_Greek;
     procedure TestAssociation_Hebrew;
   end;
@@ -430,17 +431,71 @@ begin
   v := TVersiculo.Criar(nil);
   words := TStringList.Create;
   try
+    v.TokenizerVersion := 1;
     v.Texto := 'In [the] beginning';
     words.Add('In'); words.Add('[the]'); words.Add('beginning');
     v.LimparSelecao;
     v.FindAndSelectSyntagms(words, False, False);
-    AssertEquals('Brackets selected count', 3, v.Selecao.Count);
-    AssertEquals('Brackets selected 1', '[the]', v.Selecao[1].Text);
+
+    AssertEquals('Tokenizer v1 brackets selected count', 3, v.Selecao.Count);
+    AssertEquals('Tokenizer v1 brackets selected 1', '[the]', v.Selecao[1].Text);
+
+    v.TokenizerVersion := 2;
+    v.Texto := 'In [the] beginning';
+    words.Clear;
+    words.Add('In'); words.Add('[the]'); words.Add('beginning');
+    v.LimparSelecao;
+    v.FindAndSelectSyntagms(words, False, False);
+
+    AssertEquals('Tokenizer v2 brackets no longer match as one token', 0, v.Selecao.Count);
   finally
     words.Free;
     v.Free;
   end;
 end;
+
+procedure TVersiculoTest.TestRetokenizePreservesAssociationsAcrossTokenizerVersions;
+var
+  vOrig, vDest: TVersiculo;
+begin
+  vOrig := TVersiculo.Criar(nil);
+  vDest := TVersiculo.Criar(nil);
+  try
+    vOrig.TokenizerVersion := 1;
+    vDest.TokenizerVersion := 1;
+    vOrig.Texto := 'alpha beta gamma';
+    vDest.Texto := 'one [two] three';
+    vOrig.VersiculoPar := vDest;
+    vDest.VersiculoPar := vOrig;
+
+    vOrig.Sintagmas[0].AddToSelection;
+    vDest.Sintagmas[0].AddToSelection;
+    vOrig.AssociarSintagmas;
+    vOrig.LimparSelecao;
+    vDest.LimparSelecao;
+
+    vOrig.Sintagmas[4].AddToSelection;
+    vDest.Sintagmas[4].AddToSelection;
+    vOrig.AssociarSintagmas;
+    vOrig.LimparSelecao;
+    vDest.LimparSelecao;
+
+    AssertEquals('Tokenizer v1 pairs', '<par a="0" b="0"><par a="4" b="4">', vOrig.Pares);
+
+    vOrig.TokenizerVersion := 2;
+    vDest.TokenizerVersion := 2;
+    vDest.RetokenizePreservingAssociations;
+    vOrig.RetokenizePreservingAssociations;
+
+    AssertEquals('Tokenizer v2 token count', 7, vDest.Sintagmas.Count);
+    AssertEquals('Tokenizer v2 migrated pairs', '<par a="0" b="0"><par a="4" b="6">', vOrig.Pares);
+    AssertEquals('Association after brackets preserved', 'three', vOrig.Sintagmas[4].Pairs[0].Text);
+  finally
+    vOrig.Free;
+    vDest.Free;
+  end;
+end;
+
 
 procedure TVersiculoTest.TestAssociation_Greek;
 var
@@ -517,7 +572,7 @@ begin
     Assoc('הָיְתָ֥ה', 'era');
     Assoc('תֹ֨הוּ֙', 'sem forma');
     Assoc('וָבֹ֔הוּ', 'e vazia');
-    Assoc('וְחֹ֖שֶׁךְ', 'e [havia] trevas');
+    Assoc('וְחֹ֖שֶׁךְ', 'e havia trevas');
     Assoc('עַל־פְּנֵ֣י', 'sobre a face');
     Assoc('תְה֑וֹם', 'do abismo');
     Assoc('וְר֣וּחַ', 'e o Espírito');
@@ -526,7 +581,7 @@ begin
     Assoc('עַל־פְּנֵ֥י', 'sobre a face');
     Assoc('הַמָּֽיִם׃', 'das águas');
     
-    AssertEquals('Hebrew associations', '<par a="0" b="0,2,4"><par a="2" b="6"><par a="4" b="8,10"><par a="6" b="12,14"><par a="8" b="17,19,21"><par a="10,11,12" b="23,25,27"><par a="14" b="29,31"><par a="16" b="34,36,38"><par a="18" b="40,42"><par a="20" b="44,46"><par a="22,23,24" b="48,50,52"><par a="26" b="54,56">', v1.Pares);
+    AssertEquals('Hebrew associations', '<par a="0" b="0,2,4"><par a="2" b="6"><par a="4" b="8,10"><par a="6" b="12,14"><par a="8" b="17,20,23"><par a="10,11,12" b="25,27,29"><par a="14" b="31,33"><par a="16" b="36,38,40"><par a="18" b="42,44"><par a="20" b="46,48"><par a="22,23,24" b="50,52,54"><par a="26" b="56,58">', v1.Pares);
   finally
     v1.Free; v2.Free;
   end;

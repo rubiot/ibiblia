@@ -180,6 +180,7 @@ type
     function BibleTreeNodeToReference(const node: TTreeNode): TReference;
     procedure SetSituacaoDescricao(index: Integer; descricao: string);
     function HasSituacaoCustomizada: boolean;
+    procedure MigrateStoredAssociationsToTokenizerVersion(OldVersion, NewVersion: Integer);
   protected
     procedure CopiarArquivo(origem, destino: string);
     function CriarObjetoTabela(db, tabela, chave: string): TSqlite3Dataset;
@@ -781,9 +782,16 @@ end;
 
 procedure TProjeto.SetTokenizerVersion(AValue: Integer);
 var
+  currentVersion: Integer;
   v: TTipoTextoBiblico;
 begin
   AValue := TTokenizerFactory.NormalizeVersion(AValue);
+  currentVersion := TokenizerVersion;
+  if currentVersion = AValue then
+    Exit;
+
+  MigrateStoredAssociationsToTokenizerVersion(currentVersion, AValue);
+
   AtribuirInfo('tokenizer_version', IntToStr(AValue));
   TTokenizerFactory.PreferredVersion := AValue;
 
@@ -797,6 +805,50 @@ begin
 
   if Assigned(FTblPares) and FAtivo then
     PosRolagemVersiculo(nil);
+end;
+
+procedure TProjeto.MigrateStoredAssociationsToTokenizerVersion(OldVersion,
+  NewVersion: Integer);
+var
+  oldPairs: string;
+begin
+  if (OldVersion = NewVersion) or not Assigned(FTblPares) then
+    Exit;
+
+  if not Assigned(FATmpVerse[tbOrigem]) or not Assigned(FATmpVerse[tbDestino]) then
+    Exit;
+
+  StartScrollingSession;
+  try
+    VersiculoInicial;
+    while not FTblPares.EOF do
+    begin
+      oldPairs := FTblPares.FieldByName('pare_pares').AsString;
+      if not oldPairs.IsEmpty then
+      begin
+        FATmpVerse[tbOrigem].TokenizerVersion := OldVersion;
+        FATmpVerse[tbDestino].TokenizerVersion := OldVersion;
+        FATmpVerse[tbOrigem].Texto := FTblPares.Fields[FACamposTexto[tbOrigem]].AsString;
+        FATmpVerse[tbDestino].Texto := FTblPares.Fields[FACamposTexto[tbDestino]].AsString;
+        FATmpVerse[tbOrigem].Pares := oldPairs;
+
+        FATmpVerse[tbOrigem].TokenizerVersion := NewVersion;
+        FATmpVerse[tbDestino].TokenizerVersion := NewVersion;
+        FATmpVerse[tbDestino].RetokenizePreservingAssociations;
+        FATmpVerse[tbOrigem].RetokenizePreservingAssociations;
+
+        FTblPares.Edit;
+        FTblPares.FieldByName('pare_pares').AsString := FATmpVerse[tbOrigem].Pares;
+        FTblPares.Post;
+      end;
+
+      VersiculoSeguinte;
+    end;
+  finally
+    FATmpVerse[tbOrigem].TokenizerVersion := NewVersion;
+    FATmpVerse[tbDestino].TokenizerVersion := NewVersion;
+    FinishScrollingSession;
+  end;
 end;
 
 procedure TProjeto.SetVerseStrongsCountMode(AValue: TStrongsCountMode);

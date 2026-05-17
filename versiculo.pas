@@ -116,6 +116,7 @@ type
     procedure OnSwitchDestinationAndReference1Texts(Sender: TObject);
     procedure OnCopySintagmasAsJSON(Sender: TObject);
     function CreateTokenizer(const XML: string): TONTTokenizer;
+    procedure ReplaceTextPreservingAssociations(const _XML: string; ForceRetokenize: Boolean);
   protected
     { Protected declarations }
   public
@@ -135,6 +136,7 @@ type
     procedure OrganizarSintagmas;
     procedure SelecionarSintagmas(list: TSyntagmList);
     procedure AlterarTexto(_XML: string);
+    procedure RetokenizePreservingAssociations;
     function GetListaPares(tipo: TPairsListType): TStringList;
     procedure OnSintagmaPopupMenu(s: TSyntagm);
     procedure MostrarTags;
@@ -525,7 +527,8 @@ begin
 end;
 
 { Replaces the verse text trying to keep existing associations }
-procedure TVersiculo.AlterarTexto(_XML: string);
+procedure TVersiculo.ReplaceTextPreservingAssociations(const _XML: string;
+  ForceRetokenize: Boolean);
 
   procedure DeleteSyntagm(i: integer; newlist: TSyntagmList);
   var
@@ -542,7 +545,7 @@ var
   s, old: TSyntagm;
   found, oldActive: boolean;
 begin
-  if FXML = _XML then
+  if (not ForceRetokenize) and (FXML = _XML) then
     exit;
 
   oldActive := FAtivo;
@@ -634,6 +637,16 @@ begin
 
   FAtivo := oldActive;
   Renderizar;
+end;
+
+procedure TVersiculo.AlterarTexto(_XML: string);
+begin
+  ReplaceTextPreservingAssociations(_XML, False);
+end;
+
+procedure TVersiculo.RetokenizePreservingAssociations;
+begin
+  ReplaceTextPreservingAssociations(FXML, True);
 end;
 
 function TVersiculo.GetProjeto: TObject;
