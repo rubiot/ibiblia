@@ -3299,6 +3299,7 @@ end;
 
 procedure TProjeto.RecriarBaseSugestoes(pb: TProgressBar);
 var
+  verseData: TVerseData;
   pares: TStringList;
   p: smallint;
 begin
@@ -3321,15 +3322,15 @@ begin
       FExportando := true;
 
       StartScrollingSession;
-      VersiculoInicial;
-      while not FTblPares.EOF do
+      FVerseRepository.First;
+      while not FVerseRepository.EOF do
       begin
-        if length(FTblPares.FieldByName('pare_pares').AsString) > 0 then
+        verseData := FVerseRepository.ReadCurrentVerseData;
+        if verseData.Associations <> '' then
         begin
-
-          FATmpVerse[tbOrigem ].Texto := FTblPares.Fields[FACamposTexto[tbOrigem]].AsString;
-          FATmpVerse[tbDestino].Texto := FTblPares.Fields[FACamposTexto[tbDestino]].AsString;
-          FATmpVerse[tbOrigem ].Pares := FTblPares.FieldByName('pare_pares').AsString;
+          FATmpVerse[tbOrigem ].Texto := verseData.OriginalText;
+          FATmpVerse[tbDestino].Texto := verseData.TranslatedText;
+          FATmpVerse[tbOrigem ].Pares := verseData.Associations;
 
           pares := FATmpVerse[tbOrigem].GetListaPares(plMetaData);
 
@@ -3345,7 +3346,7 @@ begin
            if (pb.Position mod 50) = 0 then
              Application.ProcessMessages;
         end;
-        VersiculoSeguinte;
+        FVerseRepository.Next;
       end;
     except
       on E: Exception do
@@ -3562,11 +3563,15 @@ end;
 procedure TProjeto.ExportarTextoDestinoComStrongs(arquivo: string;
   pb: TProgressBar; opcoes: TOpcoesExportacao);
 var
+  verseData: TVerseData;
   lines, errors: TStringList;
+  hasTags: Boolean;
 begin
   if not assigned(FAVersiculo[tbOrigem]) or not assigned(FAVersiculo[tbDestino]) then
     exit;
 
+  lines := nil;
+  errors := nil;
   try
     if assigned(pb) then
     begin
@@ -3581,26 +3586,26 @@ begin
     errors := TStringList.Create;
 
     StartScrollingSession;
-    with FTblPares do
-    begin
-      VersiculoInicial;
-      while not FTblPares.EOF do
+    try
+      FVerseRepository.First;
+      while not FVerseRepository.EOF do
       begin
-        if length(FTblPares.FieldByName('pare_pares').AsString) = 0 then
+        verseData := FVerseRepository.ReadCurrentVerseData;
+        if verseData.Associations = '' then
         begin
-          lines.Add(FTblPares.Fields[FACamposTexto[tbDestino]].AsString)
+          lines.Add(verseData.TranslatedText)
         end
         else
         begin
-          FATmpVerse[tbOrigem ].Texto := FTblPares.Fields[FACamposTexto[tbOrigem]].AsString;
-          FATmpVerse[tbDestino].Texto := FTblPares.Fields[FACamposTexto[tbDestino]].AsString;
+          FATmpVerse[tbOrigem ].Texto := verseData.OriginalText;
+          FATmpVerse[tbDestino].Texto := verseData.TranslatedText;
           try
-            FATmpVerse[tbOrigem].Pares := FTblPares.FieldByName('pare_pares').AsString;
+            FATmpVerse[tbOrigem].Pares := verseData.Associations;
           except
             on E: Exception do
               errors.Add(SCorruptedData + #13#10#13#10 + FormattedReference + #13#10 +
                    format('%s'#13#10'pares: %s'#13#10'%s'#13#10'%s'#13#10,
-                          [E.Message, FTblPares.FieldByName('pare_pares').AsString,
+                          [E.Message, verseData.Associations,
                           FATmpVerse[tbOrigem].DebugTokens, FATmpVerse[tbDestino].DebugTokens]));
           end;
           lines.Add(FATmpVerse[tbDestino].GetLinhaONT(
@@ -3611,54 +3616,55 @@ begin
           );
         end;
 
-        if (oeExportarComentarios in opcoes) and not FTblPares.FieldByName('pare_comentarios').AsString.isEmpty then
-            lines[lines.Count-1] := lines[lines.Count-1] + '<RF>' +
+        if (oeExportarComentarios in opcoes) and not verseData.Comments.isEmpty then
+          lines[lines.Count-1] := lines[lines.Count-1] + '<RF>' +
             AnsiReplaceStr(
               AnsiReplaceStr(
-              AnsiReplaceStr(FTblPares.FieldByName('pare_comentarios').AsString, #13#10, '<CM>'),
-              #13, '<CM>'),
-            #10, '<CM>') + '<Rf>';
+                AnsiReplaceStr(verseData.Comments, #13#10, '<CM>'),
+                #13, '<CM>'),
+              #10, '<CM>') + '<Rf>';
 
         if assigned(pb) then
         begin
           pb.StepIt;
           if (pb.Position mod 50) = 0 then
-             Application.ProcessMessages;
+            Application.ProcessMessages;
         end;
-        VersiculoSeguinte;
+        FVerseRepository.Next;
       end;
+    finally
+      FinishScrollingSession;
     end;
-    FinishScrollingSession;
 
     try
       if arquivo.EndsWith('.mybible') then // MySword module?
         ExportMySwordBible(lines, arquivo, ResgatarInfo('propriedades.destino'))
       else
       begin
-        if (pos(lines[0], '<WG') = 0) and     { no Greek tags in the first verse? }
-           (pos(lines[0], '<WH') = 0) then    { nor Hebrew tags? }
-          lines[0] := lines[0] + '<_MORPH_>'; { making sure theWord will know the module has tags }
+        hasTags := (lines.Count > 0) and
+          ((Pos('<WG', lines[0]) > 0) or (Pos('<WH', lines[0]) > 0));
+        if (lines.Count > 0) and not hasTags then
+          lines[0] := lines[0] + '<_MORPH_>';
 
         ExportTheWordBible(lines, arquivo, ResgatarInfo('propriedades.destino'));
       end;
     except
-      on E: Exception do MessageDlg(SError, SExportToFileError + #13#10 + E.Message, mtError, [mbOK], 0);
+      on E: Exception do
+        MessageDlg(SError, SExportToFileError + #13#10 + E.Message, mtError, [mbOK], 0);
     end;
   finally
-    lines.Free;
     FExportando := false;
     PosRolagemVersiculo(nil);
+    if Assigned(errors) and (errors.Count > 0) then
+    begin
+      errors.SaveToFile('export-errors.txt');
+      OpenDocument('export-errors.txt');
+    end;
+    FreeAndNil(lines);
+    FreeAndNil(errors);
     if assigned(pb) then
       pb.Visible := false;
   end;
-
-  if errors.Count > 0 then
-  begin
-    errors.SaveToFile('export-errors.txt');
-    OpenDocument('export-errors.txt');
-  end;
-  errors.Free;
-
 end;
 
 procedure TProjeto.ExportarTextoInterlinear(arquivo: string; opcoes: TOpcoesExportacao);
@@ -3671,6 +3677,7 @@ procedure TProjeto.ExportarTextoInterlinear(arquivo: string;
   pb: TProgressBar; opcoes: TOpcoesExportacao);
 var
   i: integer;
+  verseData: TVerseData;
   lines: TStringList;
   rulesRx: TRegexList;
   replaceTo: TStringList;
@@ -3698,24 +3705,24 @@ begin
     lines := TStringList.Create;
 
     StartScrollingSession;
-    with FTblPares do
-    begin
-      VersiculoInicial;
-      while not FTblPares.EOF do
+    try
+      FVerseRepository.First;
+      while not FVerseRepository.EOF do
       begin
-        if length(FTblPares.FieldByName('pare_pares').AsString) = 0 then
-          lines.Add(FTblPares.Fields[FACamposTexto[tbOrigem]].AsString)
+        verseData := FVerseRepository.ReadCurrentVerseData;
+        if verseData.Associations = '' then
+          lines.Add(verseData.OriginalText)
         else
         begin
-          FATmpVerse[tbOrigem ].Texto := FTblPares.Fields[FACamposTexto[tbOrigem] ].AsString;
-          FATmpVerse[tbDestino].Texto := FTblPares.Fields[FACamposTexto[tbDestino]].AsString;
+          FATmpVerse[tbOrigem ].Texto := verseData.OriginalText;
+          FATmpVerse[tbDestino].Texto := verseData.TranslatedText;
           try
-            FATmpVerse[tbOrigem ].Pares := FTblPares.FieldByName('pare_pares').AsString;
+            FATmpVerse[tbOrigem ].Pares := verseData.Associations;
           except
             on E: Exception do
               MessageDlg(SError, SCorruptedData + #13#10#13#10 + FormattedReference + #13#10 +
                    format('%s'#13#10'pares: %s'#13#10'%s'#13#10'%s',
-                          [E.Message, FTblPares.FieldByName('pare_pares').AsString,
+                          [E.Message, verseData.Associations,
                           FATmpVerse[tbOrigem].DebugTokens, FATmpVerse[tbDestino].DebugTokens]),
                    mtError, [mbOK], 0);
           end;
@@ -3742,10 +3749,11 @@ begin
           if (pb.Position mod 50) = 0 then
              Application.ProcessMessages;
         end;
-        VersiculoSeguinte;
+        FVerseRepository.Next;
       end;
+    finally
+      FinishScrollingSession;
     end;
-    FinishScrollingSession;
 
     //lines.Add('');
     //lines.Add(ResgatarInfo('propriedades.origem'));
@@ -3779,6 +3787,7 @@ end;
 procedure TProjeto.ExportarConcordancia(arquivo: string;
   pb: TProgressBar; opcoes: TOpcoesExportacao; abbreviation: string);
 var
+  verseData: TVerseData;
   Concordancia: TConcordancia;
   entries: TStringList;
   dictionary: TTheWordDictionary;
@@ -3818,21 +3827,22 @@ begin
     FExportando := true;
 
     StartScrollingSession;
-    VersiculoInicial;
+    FVerseRepository.First;
 
-    while not FTblPares.EOF do
+    while not FVerseRepository.EOF do
     begin
-      if length(FTblPares.FieldByName('pare_pares').AsString) > 0 then
+      verseData := FVerseRepository.ReadCurrentVerseData;
+      if verseData.Associations <> '' then
       begin
-        FATmpVerse[tbOrigem ].Texto := FTblPares.Fields[FACamposTexto[tbOrigem ]].AsString;
-        FATmpVerse[tbDestino].Texto := FTblPares.Fields[FACamposTexto[tbDestino]].AsString;
+        FATmpVerse[tbOrigem ].Texto := verseData.OriginalText;
+        FATmpVerse[tbDestino].Texto := verseData.TranslatedText;
         try
-          FATmpVerse[tbOrigem].Pares := FTblPares.FieldByName('pare_pares').AsString;
+          FATmpVerse[tbOrigem].Pares := verseData.Associations;
         except
           on E: Exception do
             MessageDlg(SError, SCorruptedData + #13#10#13#10 + FormattedReference + #13#10 +
                  format('%s'#13#10'pares: %s'#13#10'%s'#13#10'%s'#13#10,
-                        [E.Message, FTblPares.FieldByName('pare_pares').AsString,
+                        [E.Message, verseData.Associations,
                         FATmpVerse[tbOrigem].DebugTokens, FATmpVerse[tbDestino].DebugTokens]),
                  mtError, [mbOK], 0);
         end;
@@ -3846,7 +3856,7 @@ begin
         if (pb.Position mod 20) = 0 then
           Application.ProcessMessages;
       end;
-      VersiculoSeguinte;
+      FVerseRepository.Next;
     end;
 
     entries := TStringList.Create;
@@ -3874,7 +3884,6 @@ begin
 
     dictionary.Commit;
   finally
-    //ShowMessage('Position: ' + IntToStr(pb.Position));
     Application.ProcessMessages;
     Concordancia.Free;
     dictionary.Free;

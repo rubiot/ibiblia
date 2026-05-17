@@ -20,6 +20,11 @@ type
       ATranslatedTextIndex: Integer = -1);
     procedure Attach(APersistence: TProjectPersistence; AOriginalTextIndex: Integer = -1;
       ATranslatedTextIndex: Integer = -1);
+    procedure First;
+    procedure Next;
+    function EOF: Boolean;
+    function CurrentReferenceID: string;
+    function ReadCurrentVerseData: TVerseData; overload;
     function ReadCurrentVerseData(const ReferenceID, ReferenceName: string): TVerseData;
     function ReadVerseData(const ReferenceID, ReferenceName: string): TVerseData;
     function TryReadVerseData(const ReferenceID, ReferenceName: string;
@@ -55,6 +60,35 @@ begin
   FPersistence := APersistence;
   FOriginalTextIndex := AOriginalTextIndex;
   FTranslatedTextIndex := ATranslatedTextIndex;
+end;
+
+procedure TProjectVerseRepository.First;
+begin
+  RequirePersistence;
+  FPersistence.First;
+end;
+
+procedure TProjectVerseRepository.Next;
+begin
+  RequirePersistence;
+  FPersistence.Next;
+end;
+
+function TProjectVerseRepository.EOF: Boolean;
+begin
+  RequirePersistence;
+  Result := FPersistence.EOF;
+end;
+
+function TProjectVerseRepository.CurrentReferenceID: string;
+begin
+  RequirePersistence;
+  Result := FPersistence.CurrentPairId;
+end;
+
+function TProjectVerseRepository.ReadCurrentVerseData: TVerseData;
+begin
+  Result := ReadCurrentVerseData(CurrentReferenceID, '');
 end;
 
 function TProjectVerseRepository.ReadCurrentVerseData(const ReferenceID,
