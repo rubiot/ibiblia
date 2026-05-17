@@ -2047,11 +2047,11 @@ begin
   with FTblPares do
   begin
     StartScrollingSession;
-    VersiculoInicial;
-    while not FTblPares.EOF do
+    FVerseRepository.First;
+    while not FVerseRepository.EOF do
     begin
-      lines.Add(FTblPares.Fields[FACamposTexto[text]].AsString);
-      VersiculoSeguinte;
+      lines.Add(FVerseRepository.CurrentText(FACamposTexto[text]));
+      FVerseRepository.Next;
     end;
     FinishScrollingSession;
   end;
@@ -4098,20 +4098,20 @@ function TProjeto.HasStoredAssociations: Boolean;
 begin
   Result := False;
 
-  if not Assigned(FTblPares) then
+  if not Assigned(FPersistence) then
     Exit;
 
   StartScrollingSession;
   try
-    VersiculoInicial;
-    while not FTblPares.EOF do
+    FVerseRepository.First;
+    while not FVerseRepository.EOF do
     begin
-      if not FTblPares.FieldByName('pare_pares').AsString.IsEmpty then
+      if FVerseRepository.HasCurrentAssociations then
       begin
         Result := True;
         Exit;
       end;
-      VersiculoSeguinte;
+      FVerseRepository.Next;
     end;
   finally
     FinishScrollingSession;
@@ -4122,7 +4122,7 @@ procedure TProjeto.ClearStoredAssociations;
 var
   shouldResetStatus: Boolean;
 begin
-  if not Assigned(FTblPares) then
+  if not Assigned(FPersistence) then
     Exit;
 
   shouldResetStatus := not HasSituacaoCustomizada;
@@ -4130,18 +4130,12 @@ begin
 
   StartScrollingSession;
   try
-    VersiculoInicial;
-    while not FTblPares.EOF do
+    FVerseRepository.First;
+    while not FVerseRepository.EOF do
     begin
-      if not FTblPares.FieldByName('pare_pares').AsString.IsEmpty then
-      begin
-        FTblPares.Edit;
-        FTblPares.FieldByName('pare_pares').AsString := '';
-        if shouldResetStatus then
-          FTblPares.FieldByName('pare_situacao').AsInteger := 0;
-        FTblPares.Post;
-      end;
-      VersiculoSeguinte;
+      if FVerseRepository.HasCurrentAssociations then
+        FVerseRepository.ClearCurrentAssociations(shouldResetStatus);
+      FVerseRepository.Next;
     end;
   finally
     FinishScrollingSession;

@@ -24,6 +24,9 @@ type
     procedure Next;
     function EOF: Boolean;
     function CurrentReferenceID: string;
+    function CurrentText(TextIndex: Integer): string;
+    function HasCurrentAssociations: Boolean;
+    procedure ClearCurrentAssociations(ResetStatus: Boolean = False);
     function ReadCurrentVerseData: TVerseData; overload;
     function ReadCurrentVerseData(const ReferenceID, ReferenceName: string): TVerseData;
     function ReadVerseData(const ReferenceID, ReferenceName: string): TVerseData;
@@ -84,6 +87,29 @@ function TProjectVerseRepository.CurrentReferenceID: string;
 begin
   RequirePersistence;
   Result := FPersistence.CurrentPairId;
+end;
+
+function TProjectVerseRepository.CurrentText(TextIndex: Integer): string;
+begin
+  RequirePersistence;
+  if TextIndex < 0 then
+    raise Exception.Create('Project verse repository text index is not attached');
+
+  Result := FPersistence.CurrentText(TextIndex);
+end;
+
+function TProjectVerseRepository.HasCurrentAssociations: Boolean;
+begin
+  RequirePersistence;
+  Result := not FPersistence.CurrentPairs.IsEmpty;
+end;
+
+procedure TProjectVerseRepository.ClearCurrentAssociations(ResetStatus: Boolean);
+begin
+  RequirePersistence;
+  FPersistence.WriteCurrentPairs('');
+  if ResetStatus then
+    FPersistence.SetCurrentFieldAsInteger('pare_situacao', 0);
 end;
 
 function TProjectVerseRepository.ReadCurrentVerseData: TVerseData;
