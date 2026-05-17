@@ -20,7 +20,7 @@ uses
   Syntagm, BibleScope, MySwordModule, TheWordDictionary, fgl, PatchFile, LCLIntf, menus,
   CommentsView, ai_processing_manager, ai_processing_batch, ai_batch_work_item,
   ai_flows, llmclient, ai_flow_config, ai_debug, project_persistence, project_config,
-  project_verse_repository;
+  project_verse_repository, current_verse_workspace;
 const
   // AI processing icon indices for ImageListTreeView in formprincipal
   // ImageListTreeView has indices 0-7 for normal states (0-3) and selected states (4-7)
@@ -113,6 +113,7 @@ type
     FSugerirAssociacaoAuto: boolean;
     FPalavrasComStrongEmNegrito: boolean;
     FExibirDefComCtrl: boolean;
+    FCurrentVerseWorkspace: TCurrentVerseWorkspace;
     FPersistence: TProjectPersistence;
     FConfig: TProjectConfig;
     FVerseRepository: TProjectVerseRepository;
@@ -127,7 +128,6 @@ type
     FAIManager: TAIProcessingManager; // batch manager IA
     FAIProcessingNodes: TAINodeInfoList; // OBSOLETE: No longer used - modal manages its own tree
     FAIBatchCompletionShown: Boolean; // flag to prevent showing completion dialog multiple times
-    FParesAntigos: TStringList;
     FArvore: TTreeView;
     FBibleTreePointedNode: TTreeNode;
     FMemoComentarios: TControl;
@@ -1792,32 +1792,17 @@ begin
 
   //starttime := getTickCount;
 
-  FMemoVersiculo.Desativar; // hide and save verse edit if necessary
-
-  if FAVersiculo[tbOrigem].Modificado then
-  begin
-    SalvarAssociacoes;
-    SalvarPares;
-  end;
-  SalvarTexto; // salvar alterações nos textos dos versículos
-
-  FreeAndNil(FParesAntigos); // liberando pares antigos do versículo
-
-  if assigned(FMemoComentarios) then
-  begin
-    if FMemoComentarios is TCommentsView then
-      Comentarios := TCommentsView(FMemoComentarios).Text
-    else if FMemoComentarios is TMemo then
-      Comentarios := TMemo(FMemoComentarios).Text;
-  end;
+  FCurrentVerseWorkspace.SaveBeforeScroll(FPersistence, FSugeridor,
+    FMemoVersiculo, FMemoComentarios, FAVersiculo, FACamposTexto,
+    Ord(tbOrigem), Ord(tbDestino));
 
   //DebugLn('  TProjeto.PreRolagemVersiculo: %d milliseconds', [getTickCount-starttime]);
 end;
 
 procedure TProjeto.PosRolagemVersiculo(DataSet: TDataSet);
 var
-  v: TTipoTextoBiblico;
   e: TOnNovoVersiculoEvent;
+  loadResult: TCurrentVerseLoadResult;
   //starttime: DWord;
 begin
   UpdateReference(GetID());
@@ -1827,54 +1812,42 @@ begin
 
   //starttime := getTickCount;
 
-  for v:=low(FAVersiculo) to high(FAVersiculo) do
-    if assigned(FAVersiculo[v]) then
-    begin
-      FAVersiculo[v].Ativo := false;
-      FAVersiculo[v].Texto := FTblPares.Fields[FACamposTexto[v]].AsString;
-      FAVersiculo[v].Referencia := FormattedReference;
-      FAVersiculo[v].ReferenciaID := GetID();
-    end;
+  loadResult := FCurrentVerseWorkspace.LoadCurrentVerse(FPersistence,
+    FAVersiculo, FACamposTexto, FormattedReference, GetID(),
+    Ord(tbOrigem), Ord(tbDestino));
 
-  if assigned(FAVersiculo[tbOrigem]) and assigned(FAVersiculo[tbOrigem]) then
+  if assigned(FAVersiculo[tbOrigem]) and assigned(FAVersiculo[tbDestino]) then
   begin
     try
-      FAVersiculo[tbOrigem].Pares := FTblPares.FieldByName('pare_pares').AsString;
+      FCurrentVerseWorkspace.ApplyLoadedAssociations(FAVersiculo[tbOrigem],
+        loadResult.Associations);
     except
       on E: Exception do
       MessageDlg(SError, SCorruptedData + #13#10#13#10 + FormattedReference + #13#10#13#10 +
            format('%s'#13#10#13#10'pares: %s'#13#10'%s'#13#10'%s',
-                  [E.Message, FTblPares.FieldByName('pare_pares').AsString,
+                  [E.Message, loadResult.Associations,
                   FAVersiculo[tbOrigem].DebugTokens, FAVersiculo[tbDestino].DebugTokens]),
            mtError, [mbOK], 0);
 
     end;
-    FParesAntigos := FAVersiculo[tbOrigem].GetListaPares(plMetaData);
   end;
 
-  for v:=low(FAVersiculo) to high(FAVersiculo) do
-    if assigned(FAVersiculo[v]) then
-    begin
-      FAVersiculo[v].Modificado := false;
-      FAVersiculo[v].XMLModificado := false;
-      FAVersiculo[v].Ativo := true;
-      FAVersiculo[v].Renderizar;
-    end;
+  FCurrentVerseWorkspace.FinalizeLoadedVerse(FAVersiculo);
 
   SelectTreeNode(ID);
 
   if assigned(FMemoComentarios) then
   begin
     if FMemoComentarios is TCommentsView then
-      TCommentsView(FMemoComentarios).Text := Comentarios
+      TCommentsView(FMemoComentarios).Text := loadResult.Comments
     else if FMemoComentarios is TMemo then
-      TMemo(FMemoComentarios).Text := Comentarios;
+      TMemo(FMemoComentarios).Text := loadResult.Comments;
   end;
 
   if assigned(FRadioGroupSituacao) then
-    FRadioGroupSituacao.ItemIndex := Situacao;
+    FRadioGroupSituacao.ItemIndex := loadResult.Status;
 
-  if FTblPares.Fields[FACamposTexto[tbDestino]].AsString.IsEmpty then // open verse to edition if is empty
+  if loadResult.DestinationTextEmpty then // open verse to edition if is empty
     OnDblClickVersiculo(FAVersiculo[tbDestino].Painel);
 
   for e in FOnNovoVersiculo do
@@ -1888,7 +1861,7 @@ end;
 
 procedure TProjeto.SalvarPares;
 begin
-  FPersistence.WriteCurrentPairs(FAVersiculo[tbOrigem].Pares);
+  FCurrentVerseWorkspace.SavePairs(FPersistence, FAVersiculo[tbOrigem]);
 end;
 
 procedure TProjeto.SalvarParesVersiculo(Verse: TVersiculo);
@@ -1900,50 +1873,20 @@ begin
 end;
 
 procedure TProjeto.SalvarTexto;
-var
-  v: TTipoTextoBiblico;
 begin
-  for v:=low(FAVersiculo) to high(FAVersiculo) do
-    if assigned(FAVersiculo[v]) and FAVersiculo[v].XMLModificado then
-    begin
-      FPersistence.BeginCurrentEdit;
-      FPersistence.SetCurrentText(FACamposTexto[v], FAVersiculo[v].XML);
-      FPersistence.PostCurrentEdit;
-      FAVersiculo[v].Modificado := false;
-      FAVersiculo[v].XMLModificado := false;
-    end;
+  FCurrentVerseWorkspace.SaveTexts(FPersistence, FAVersiculo, FACamposTexto);
 end;
 
 procedure TProjeto.SalvarAssociacoes;
-var
-  pares: TStringList;
-  p: smallint;
 begin
-  if (FAVersiculo[tbOrigem] = nil) or (FAVersiculo[tbDestino] = nil) then
-    exit;
-
-  if Assigned(FParesAntigos) then
-    RemoverAssociacoes;
-
-  pares := FAVersiculo[tbOrigem].GetListaPares(plMetaData);
-
-  for p:=0 to pares.Count-1 do
-    if (p mod 2) = 0 then // pares estão alternados na lista
-      FSugeridor.InserirPar(pares.Strings[p], pares.Strings[p+1]);
-
-  pares.Free;
+  FCurrentVerseWorkspace.SaveAssociations(FSugeridor,
+    FAVersiculo[tbOrigem], FAVersiculo[tbDestino]);
 end;
 
 procedure TProjeto.RemoverAssociacoes;
-var
-  p: smallint;
 begin
-  if (FAVersiculo[tbOrigem] = nil) or (FAVersiculo[tbOrigem] = nil) then
-    exit;
-
-  for p:=0 to FParesAntigos.Count-1 do
-    if (p mod 2) = 0 then // pares estão alternados na lista
-      FSugeridor.RemoverPar(FParesAntigos.Strings[p], FParesAntigos.Strings[p+1]);
+  FCurrentVerseWorkspace.RemoveOldAssociations(FSugeridor,
+    FAVersiculo[tbOrigem], FAVersiculo[tbDestino]);
 end;
 
 procedure TProjeto.SintagmaOnMouseEnter(Sender: TSyntagm);
@@ -2679,13 +2622,13 @@ begin
     FACamposTexto[v] := 0;
   end;
 
-  FParesAntigos       := nil;
   FOnNovoVersiculo    := TOnNovoVersiculoEvents.Create;
   FOnAlterarVersiculo := nil;
   FSugeridor          := nil;
   FAIManager          := nil;
   FAIProcessingNodes  := TAINodeInfoList.Create(True); // owns objects
   FAIBatchCompletionShown := False;
+  FCurrentVerseWorkspace := TCurrentVerseWorkspace.Create;
   FPersistence        := nil;
   FConfig             := TProjectConfig.Create(nil);
   FVerseRepository    := TProjectVerseRepository.Create(nil);
@@ -2754,11 +2697,10 @@ begin
     end;
   end;
 
-  FreeAndNil(FParesAntigos);
-
   if Assigned(FAIProcessingNodes) then
     FreeAndNil(FAIProcessingNodes);
 
+  FreeAndNil(FCurrentVerseWorkspace);
   FreeAndNil(FVerseRepository);
   FreeAndNil(FConfig);
   FreeAndNil(FPersistence);
@@ -2930,6 +2872,8 @@ begin
     FConfig.Attach(nil);
   if Assigned(FVerseRepository) then
     FVerseRepository.Attach(nil);
+  if Assigned(FCurrentVerseWorkspace) then
+    FCurrentVerseWorkspace.Clear;
   FreeAndNil(FPersistence);
   FTblPares := nil;
   FTblInfo := nil;
