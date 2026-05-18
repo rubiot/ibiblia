@@ -21,7 +21,8 @@ uses
   CommentsView, ai_processing_manager, ai_processing_batch, ai_batch_work_item,
   ai_flows, llmclient, ai_flow_config, ai_debug, project_persistence, project_config,
   project_verse_repository, current_verse_workspace, verse_render_buffer,
-  project_patch_applier, bible_tree_coordinator, ai_batch_orchestrator;
+  project_patch_applier, bible_tree_coordinator, ai_batch_orchestrator,
+  dictionary_manager;
 const
   // AI processing icon indices for ImageListTreeView in formprincipal
   // ImageListTreeView has indices 0-7 for normal states (0-3) and selected states (4-7)
@@ -93,8 +94,6 @@ type
 
   AVersiculo = array[tbOrigem..tbConsulta2] of TVersiculo;
   ACamposTexto = array[tbOrigem..tbConsulta2] of integer;
-  ADicStrong = array[tbOrigem..tbConsulta2] of TSQLQuery;
-  ADicMorfo = array[tbOrigem..tbConsulta2] of TSQLQuery;
   STextosBiblicos = set of TTipoTextoBiblico;
 
   { TProjeto }
@@ -118,14 +117,13 @@ type
     FConfig: TProjectConfig;
     FVerseRepository: TProjectVerseRepository;
     FVerseRenderBuffer: TVerseRenderBuffer;
+    FDictionaryManager: TDictionaryManager;
     FPatchApplier: TProjectPatchApplier;
     FBibleTreeCoordinator: TBibleTreeCoordinator;
     FTblPares: TSqlite3Dataset;
     FTblInfo: TSqlite3Dataset;
     FAVersiculo: AVersiculo;
     FACamposTexto: ACamposTexto;
-    FADicStrong: ADicStrong;
-    FADicMorfo: ADicMorfo;
     FSugeridor: TGerSugestoes;
     FAIManager: TAIProcessingManager; // batch manager IA
     FAIProcessingNodes: TAINodeInfoList; // OBSOLETE: No longer used - modal manages its own tree
@@ -159,7 +157,6 @@ type
     function GetParagraphMode: TParagraphMode;
     function GetSituacao: Integer;
     function GetTokenizerVersion: Integer;
-    function IsValidDicionaryModule(const path: string; const dicType: string): boolean;
     function BuildAssociationFlowExample: TAIFlowExample;
     function BuildTranslationFlowExample: TAIFlowExample;
     function CreateFlowExample(const FlowId: string): TAIFlowExample;
@@ -201,9 +198,6 @@ type
     function AtualizarInfo(info, valor: string): boolean;
     function AtualizarConfig(table: TSqlite3Dataset; name, value: string): boolean;
     function ResgatarInfo(info: string): string;
-    function ObterDefinicaoStrong(strong: string; texto: TTipoTextoBiblico): string;
-    function ObterDefinicaoMorfo(morfo: string; texto: TTipoTextoBiblico): string;
-    function FormatRTF(rtf: string): string;
     procedure SetVerseText(versiculo: string; texto: TTipoTextoBiblico; replace: boolean);
     procedure PreRolagemVersiculo(DataSet: TDataSet);
     procedure PosRolagemVersiculo(DataSet: TDataSet);
@@ -631,76 +625,6 @@ end;
 function TProjeto.GetSituacao: Integer;
 begin
   Result := FPersistence.CurrentStatus;
-end;
-
-function TProjeto.IsValidDicionaryModule(const path: string; const dicType: string): boolean;
-var
-  strong, morpho, encrypted, compressed, nonrtf: boolean;
-begin
-  result := false;
-  strong := false;
-  morpho := false;
-  nonrtf := false;
-  encrypted := false;
-  compressed := false;
-
-  with CriarObjetoQuery(path) do
-  begin
-    SQL.Text := 'select distinct * from config where name in (''strong'',''morph'',''compressed'',''secure'',''do.encrypt'',''content.type'')';
-    Prepare;
-    Open;
-    try
-      while not EOF do
-      begin
-        case FieldByName('name').AsString of
-          'strong':
-            strong := FieldByName('value').AsString = '1';
-          'morph':
-            morpho := FieldByName('value').AsString = '1';
-          'compressed':
-            compressed := FieldByName('value').AsString = '1';
-          'secure','do.encrypt':
-            encrypted := FieldByName('value').AsString = '1';
-          'content.type':
-            nonrtf := FieldByName('value').AsString.ToLower <> 'rtf';
-        end;
-        Next;
-      end;
-    finally
-      Close;
-      Free;
-    end;
-  end;
-
-  if (dicType = 'morph') and not morpho then
-  begin
-    MessageDlg(SMorphologyDictionary, format(SInvalidMorphologyDictionary, [FExpand(path)]), mtError, [mbOK], 0);
-    exit;
-  end else if (dicType = 'strong') and not strong then
-  begin
-    MessageDlg(SStrongDictionary, format(SInvalidStrongsDictionary, [FExpand(path)]), mtError, [mbOK], 0);
-    exit;
-  end;
-
-  if encrypted then
-  begin
-    MessageDlg(SEncryptedDictionary, format(SInvalidEncryptedDictionary, [FExpand(path)]), mtError, [mbOK], 0);
-    exit;
-  end;
-
-  if compressed then
-  begin
-    MessageDlg(SCompressedDictionary, format(SInvalidCompressedDictionary, [FExpand(path)]), mtError, [mbOK], 0);
-    exit;
-  end;
-
-  if nonrtf then
-  begin
-    MessageDlg(SNonRTFDictionary, format(SInvalidNonRTFDictionary, [FExpand(path)]), mtError, [mbOK], 0);
-    exit;
-  end;
-
-  result := true;
 end;
 
 procedure TProjeto.PreencherArvore;
@@ -1632,83 +1556,6 @@ begin
     Result := '';
 end;
 
-function TProjeto.ObterDefinicaoStrong(strong: string; texto: TTipoTextoBiblico): string;
-begin
-  if (FADicStrong[texto] = nil) or (strong = '') then
-  begin
-    result := ''; //'{\rtf1\ansi\ansicpg1252\deff0\deflang1046{\fonttbl{\f0\fswiss\fcharset0 Arial;}}\viewkind4\uc1\pard\f0\fs20\par}';
-    exit;
-  end;
-
-  with FADicStrong[texto] do
-  begin
-    Close;
-    Params.ParamByName('strong').AsString := strong;
-    Open;
-    result := FormatRTF(Fields[0].AsString);
-  end;
-end;
-
-function TProjeto.ObterDefinicaoMorfo(morfo: string; texto: TTipoTextoBiblico): string;
-var
-  m: string;
-  //p, l: sizeint;
-begin
-  result := '';
-  if (not assigned(FADicMorfo[texto])) or (morfo = '') then
-    exit;
-
-  // tratar morfologia com lema <WTXXXXX l="yyyyyy">
-  m := morfo;
-  //p := pos(' ', m);
-  //l := length(m);
-  if pos(' ', m) > 1 then
-    m := copy(m, 1, pos(' ', m)-1);
-
-  with FADicMorfo[texto] do
-  begin
-    Close;
-    Params.ParamByName('morf').AsString := m;
-    Open;
-
-    if Fields[0].AsString = '' then
-      exit;
-
-    result := FormatRTF(Fields[0].AsString);
-  end;
-end;
-
-function TProjeto.FormatRTF(rtf: string): string;
-begin
-  result := '';
-  if rtf.IsEmpty then
-    exit;
-
-  if AnsiStartsStr('{\rtf1', rtf) then
-    result := rtf
-  else
-    result := '{\rtf1\ansi\ansicpg1252\deff0\deflang1033{\fonttbl{\f0\fnil\fcharset0 Tahoma;}' +
-      '{\f1\fswiss\fprq2\fcharset0 Tahoma;}{\f2\fswiss\fcharset0 Arial;}}' +
-      '{\colortbl ;' +
-        '\red0\green0\blue0;' +
-        '\red0\green0\blue255;' +
-        '\red150\green60\blue100;' + //maroon;
-        '\red0\green255\blue0;' +
-        '\red255\green0\blue255;' +
-        '\red255\green0\blue0;' +
-        '\red255\green255\blue0;' +
-        '\red255\green255\blue255;' +
-        '\red0\green0\blue128;' +
-        '\red0\green128\blue128;' +
-        '\red255\green0\blue0;' + //dark green
-        '\red128\green0\blue128;' +
-        '\red128\green0\blue0;' +
-        '\red128\green128\blue0;' +
-        '\red128\green128\blue128;' +
-        '\red192\green192\blue192;}' +
-      '\viewkind4\uc1\pard\lang1046\f0\fs20 ' + rtf + '}';
-end;
-
 procedure TProjeto.SetVerseText(versiculo: string;
   texto: TTipoTextoBiblico; replace: boolean);
 var
@@ -1978,10 +1825,13 @@ end;
 
 procedure TProjeto.OnExibirDefinicao(Sender: TObject);
 var
+  StrongEntries: TDictionaryEntryArray;
+  MorphologyEntries: TDictionaryEntryArray;
+  EntryIndex: Integer;
   v: TTipoTextoBiblico;
   point: TPoint;
-  s, p: TSyntagm;
-  m, rtf: string;
+  s: TSyntagm;
+  rtf: string;
 begin
   if frmDictionaryPopup.Visible then
     exit;
@@ -1991,35 +1841,19 @@ begin
   begin
     if (FAVersiculo[v] = s.VerseRef) then
     begin
-      if assigned(FADicMorfo[v]) then
-      begin
-        if s.Morph.Count > 0 then
-          for m in s.Morph do
-            FrmDictionaryPopup.AdicionarMorfo(m, ObterDefinicaoMorfo(m, v))
-        else
-        begin // não tem morfo, vejamos se os pares têm
-          for p in s.Pairs do
-            for m in p.Morph do
-              FrmDictionaryPopup.AdicionarMorfo(m, ObterDefinicaoMorfo(m, v));
-        end;
-      end;
+      FDictionaryManager.CollectPopupEntries(s, Ord(v), StrongEntries, MorphologyEntries);
 
-      if assigned(FADicStrong[v]) then
-      begin
-        if s.Strong.Count > 0 then
-          for m in s.Strong do
-            frmDictionaryPopup.AdicionarStrong(m, ObterDefinicaoStrong(m, v))
-        else
-        begin // não tem strongs, vejamos se os pares têm
-          for p in s.Pairs do
-            for m in p.Strong do
-              FrmDictionaryPopup.AdicionarStrong(m, ObterDefinicaoStrong(m, v));
-        end;
-      end;
+      for EntryIndex := Low(MorphologyEntries) to High(MorphologyEntries) do
+        FrmDictionaryPopup.AdicionarMorfo(MorphologyEntries[EntryIndex].Key,
+          MorphologyEntries[EntryIndex].Definition);
+
+      for EntryIndex := Low(StrongEntries) to High(StrongEntries) do
+        FrmDictionaryPopup.AdicionarStrong(StrongEntries[EntryIndex].Key,
+          StrongEntries[EntryIndex].Definition);
 
       if v = tbOrigem then
       begin
-        rtf := FormatRTF(FSugeridor.GetTranslationAlternatives(s));
+        rtf := TDictionaryManager.FormatRTF(FSugeridor.GetTranslationAlternatives(s));
         if not rtf.IsEmpty then
           frmDictionaryPopup.AdicionarStrong(STranslationMemory, rtf);
       end;
@@ -2167,8 +2001,8 @@ begin
 end;
 
 function TProjeto.AtribuirDicStrong(dic: string; t: TTipoTextoBiblico): boolean;
-//var
-//  t1: TTipoTextoBiblico;
+var
+  ValidationResult: TDictionaryValidationResult;
 begin
   result := false;
 
@@ -2184,45 +2018,39 @@ begin
     exit;
   end;
 
-  if not IsValidDicionaryModule(dic, 'strong') then
+  ValidationResult := TDictionaryManager.ValidateDictionaryModule(dic, dmtStrong);
+  case ValidationResult of
+    dvrMissingStrongSupport:
+      begin
+        MessageDlg(SStrongDictionary, format(SInvalidStrongsDictionary, [FExpand(dic)]), mtError, [mbOK], 0);
+        Exit;
+      end;
+    dvrEncrypted:
+      begin
+        MessageDlg(SEncryptedDictionary, format(SInvalidEncryptedDictionary, [FExpand(dic)]), mtError, [mbOK], 0);
+        Exit;
+      end;
+    dvrCompressed:
+      begin
+        MessageDlg(SCompressedDictionary, format(SInvalidCompressedDictionary, [FExpand(dic)]), mtError, [mbOK], 0);
+        Exit;
+      end;
+    dvrNonRTF:
+      begin
+        MessageDlg(SNonRTFDictionary, format(SInvalidNonRTFDictionary, [FExpand(dic)]), mtError, [mbOK], 0);
+        Exit;
+      end;
+  end;
+
+  if ValidationResult <> dvrValid then
     exit;
 
-  if assigned(FADicStrong[t]) then // liberando query se não estiver mais sendo utilizada
-  begin
-    FADicStrong[t].Tag := FADicStrong[t].Tag - 1;
-    if (FADicStrong[t].Tag = 0) then
-    begin
-      FADicStrong[t].Close;
-      FADicStrong[t].DataBase.Close;
-      TSQLite3Connection(FADicStrong[t].DataBase).Transaction.Free;
-      FADicStrong[t].DataBase.Free;
-      FADicStrong[t].Free;
-      FADicStrong[t] := nil;
-    end;
-  end;
-  { desabilitando reaproveitamento até corrigir erro de desalocação múltipla }
-  {for t1:=low(TTipoTextoBiblico) to high(TTipoTextoBiblico) do
-    if assigned(FADicStrong[t1]) and (FADicStrong[t1].DataBase.DatabaseName = dic) then
-    begin // reaproveitando TQueries que usem o mesmo db
-      FADicStrong[t] := FADicStrong[t1];
-      FADicStrong[t].Tag := FADicStrong[t].Tag + 1;
-      break;
-    end;}
-
-  if not assigned(FADicStrong[t]) then
-  begin // primeira ocorrência deste db
-    FADicStrong[t] := CriarObjetoQuery(dic);
-    FADicStrong[t].SQL.Text := 'select data from topics, content where subject = :strong and id = topic_id';
-    FADicStrong[t].Prepare;
-    FADicStrong[t].Tag := 1;
-  end;
-
-  result := true;
+  Result := FDictionaryManager.AssignStrongDictionary(dic, Ord(t));
 end;
 
 function TProjeto.AtribuirDicMorfo(dic: string; t: TTipoTextoBiblico): boolean;
-//var
-//  t1: TTipoTextoBiblico;
+var
+  ValidationResult: TDictionaryValidationResult;
 begin
   result := false;
 
@@ -2235,42 +2063,36 @@ begin
     exit;
   end;
 
-  if not IsValidDicionaryModule(dic, 'morph') then
+  ValidationResult := TDictionaryManager.ValidateDictionaryModule(dic, dmtMorphology);
+  case ValidationResult of
+    dvrMissingMorphologySupport:
+      begin
+        MessageDlg(SMorphologyDictionary, format(SInvalidMorphologyDictionary, [FExpand(dic)]), mtError, [mbOK], 0);
+        Exit;
+      end;
+    dvrEncrypted:
+      begin
+        MessageDlg(SEncryptedDictionary, format(SInvalidEncryptedDictionary, [FExpand(dic)]), mtError, [mbOK], 0);
+        Exit;
+      end;
+    dvrCompressed:
+      begin
+        MessageDlg(SCompressedDictionary, format(SInvalidCompressedDictionary, [FExpand(dic)]), mtError, [mbOK], 0);
+        Exit;
+      end;
+    dvrNonRTF:
+      begin
+        MessageDlg(SNonRTFDictionary, format(SInvalidNonRTFDictionary, [FExpand(dic)]), mtError, [mbOK], 0);
+        Exit;
+      end;
+  end;
+
+  if ValidationResult <> dvrValid then
     exit;
 
-  if assigned(FADicMorfo[t]) then // liberando query se não estiver mais sendo utilizada
-  begin
-    FADicMorfo[t].Tag := FADicMorfo[t].Tag - 1;
-    if (FADicMorfo[t].Tag = 0) then
-    begin
-      FADicMorfo[t].Close;
-      FADicMorfo[t].DataBase.Close;
-      TSQLite3Connection(FADicMorfo[t].DataBase).Transaction.Free;
-      FADicMorfo[t].DataBase.Free;
-      FADicMorfo[t].Free;
-      FADicMorfo[t] := nil;
-    end;
-  end;
-  // desabilitando reaproveitamento até corrigir erro de desalocação múltipla
-  {for t1:=low(TTipoTextoBiblico) to high(TTipoTextoBiblico) do
-    if assigned(FADicMorfo[t1]) and (FADicMorfo[t1].DataBase.DatabaseName = dic) then
-    begin // reaproveitando TQueries que usem o mesmo db
-      FADicMorfo[t] := FADicMorfo[t1];
-      FADicMorfo[t].Tag := FADicStrong[t].Tag + 1;
-      break;
-    end;}
-
-  if not assigned(FADicMorfo[t]) then
-  begin // primeira ocorrência deste db
-    FADicMorfo[t] := CriarObjetoQuery(dic);
-    FADicMorfo[t].SQL.Text := 'select data from topics, content where subject = :morf and id = topic_id';
-    FADicMorfo[t].Prepare;
-    FADicMorfo[t].Tag := 1;
- end;
+  Result := FDictionaryManager.AssignMorphologyDictionary(dic, Ord(t));
   FAVersiculo[t].OnMouseEnter := @SintagmaOnMouseEnter;
   FAVersiculo[t].OnMouseLeave := @SintagmaOnMouseLeave;
-
-  result := true;
 end;
 
 procedure TProjeto.AtualizarArvore;
@@ -2391,8 +2213,6 @@ begin
   for v:=low(FAVersiculo) to high(FAVersiculo) do
   begin
     FAVersiculo[v]   := nil;
-    FADicStrong[v]   := nil;
-    FADicMorfo[v]    := nil;
     FACamposTexto[v] := 0;
   end;
 
@@ -2408,6 +2228,7 @@ begin
   FConfig             := TProjectConfig.Create(nil);
   FVerseRepository    := TProjectVerseRepository.Create(nil);
   FVerseRenderBuffer  := nil;
+  FDictionaryManager  := TDictionaryManager.Create;
   FPatchApplier       := TProjectPatchApplier.Create(nil);
   FBibleTreeCoordinator := TBibleTreeCoordinator.Create(nil);
   FTblPares           := nil;
@@ -2447,33 +2268,8 @@ begin
 end;
 
 destructor TProjeto.Destruir;
-var
-  v: TTipoTextoBiblico;
 begin
   FCurrentVerseWorkspace.DestroyVerseViews(FAVersiculo);
-
-  for v:=low(FADicStrong) to high(FADicStrong) do
-  begin
-    if assigned(FADicStrong[v]) then
-    begin
-      FADicStrong[v].Close;
-      FADicStrong[v].DataBase.Close;
-      TSQLite3Connection(FADicStrong[v].DataBase).Transaction.Free;
-      FADicStrong[v].DataBase.Free;
-      FADicStrong[v].Free;
-      FADicStrong[v] := nil;
-    end;
-
-    if assigned(FADicMorfo[v]) then
-    begin
-      FADicMorfo[v].Close;
-      FADicMorfo[v].DataBase.Close;
-      TSQLite3Connection(FADicMorfo[v].DataBase).Transaction.Free;
-      FADicMorfo[v].DataBase.Free;
-      FADicMorfo[v].Free;
-      FADicMorfo[v] := nil;
-    end;
-  end;
 
   if Assigned(FAIProcessingNodes) then
     FreeAndNil(FAIProcessingNodes);
@@ -2481,6 +2277,7 @@ begin
   FreeAndNil(FCurrentVerseWorkspace);
   FreeAndNil(FBibleTreeCoordinator);
   FreeAndNil(FPatchApplier);
+  FreeAndNil(FDictionaryManager);
   FreeAndNil(FVerseRenderBuffer);
   FreeAndNil(FVerseRepository);
   FreeAndNil(FConfig);
