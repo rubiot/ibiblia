@@ -1218,7 +1218,7 @@ var
         ref.Book + ' ' + IntToStr(ref.Chapter) + ':' + IntToStr(ref.Verse)
       );
 
-      dest.AddItem(TAIBatchWorkItem.Create(Self, verseData));
+      dest.AddItem(TAIBatchWorkItem.Create(TokenizerVersion, verseData));
       Exit;
     end;
 
@@ -1298,13 +1298,13 @@ begin
     begin
       flowConfig := GetFlowConfigById('association');
       if Assigned(flowConfig) then
-        flow := flowConfig.CreateFlowInstance(Self) as IAIVerseFlow;
+        flow := flowConfig.CreateFlowInstance(CreateAIFlowContext(@ObterInfo)) as IAIVerseFlow;
     end
     else if TMenuItem(Sender).Tag = 1011 then
     begin
       flowConfig := GetFlowConfigById('translation');
       if Assigned(flowConfig) then
-        flow := flowConfig.CreateFlowInstance(Self) as IAIVerseFlow;
+        flow := flowConfig.CreateFlowInstance(CreateAIFlowContext(@ObterInfo)) as IAIVerseFlow;
     end
     else
       Exit;
@@ -2845,7 +2845,7 @@ begin
   try
     try
       flowConfig := GetFlowConfigById('association');
-      flow := flowConfig.CreateFlowInstance(Self);
+      flow := flowConfig.CreateFlowInstance(CreateAIFlowContext(@ObterInfo));
 
       client := llmclient.CreateBackend(ObterInfo(AI_COMMON_CONFIG.Model), ObterInfo(AI_COMMON_CONFIG.ApiKey));
       try
@@ -2919,7 +2919,7 @@ begin
 
   // Get association flow config and build prompt
   flowConfig := GetFlowConfigById('association');
-  flow := flowConfig.CreateFlowInstance(Self);
+  flow := flowConfig.CreateFlowInstance(CreateAIFlowContext(@ObterInfo));
 
   FAIManager := TAIProcessingManager.Create(
     ObterInfo(AI_COMMON_CONFIG.Model),
@@ -2969,7 +2969,7 @@ begin
 
   // Get translation flow config and prepare flow instance
   flowConfig := GetFlowConfigById('translation');
-  flow := flowConfig.CreateFlowInstance(Self);
+  flow := flowConfig.CreateFlowInstance(CreateAIFlowContext(@ObterInfo));
 
   FAIManager := TAIProcessingManager.Create(
     ObterInfo(AI_COMMON_CONFIG.Model),

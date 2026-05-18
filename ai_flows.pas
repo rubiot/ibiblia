@@ -10,6 +10,8 @@ uses
   Classes, SysUtils, llmclient, versiculo;
 
 type
+  TAIProjectInfoReader = function(Key: string): string of object;
+
   // Generic job state (future use in manager)
   TAIJobState = (ajsPending, ajsFetching, ajsCompleted, ajsFailed, ajsCancelled);
 
@@ -49,9 +51,23 @@ type
   // Forward declaration
   IAIVerseFlow = interface;
   IAIFlowConfig = interface;
+  IAIFlowContext = interface;
 
   // Callback/event types (will be used by manager in future phases)
   TOnAIFlowApply = procedure(const Flow: IAIVerseFlow; Verse: TVersiculo; ResultObj: TAIFlowResult) of object;
+
+  IAIFlowContext = interface
+    ['{8D2EA80B-78F5-44A4-B6F9-EA4C5E8456A3}']
+    function GetProjectInfo(Key: string): string;
+  end;
+
+  TAIFlowContext = class(TInterfacedObject, IAIFlowContext)
+  private
+    FProjectInfoReader: TAIProjectInfoReader;
+  public
+    constructor Create(const AProjectInfoReader: TAIProjectInfoReader);
+    function GetProjectInfo(Key: string): string;
+  end;
   
   // Configuration field descriptor
   TAIFlowConfigField = record
@@ -112,13 +128,33 @@ type
     function BuildPromptFromConfig(const ConfigValues: array of const): string;
     
     // Create and configure flow instance from project settings
-    // Project holds GetProjectInfo() to fetch configuration
-    function CreateFlowInstance(Project: TObject): IAIVerseFlow;
+    function CreateFlowInstance(Context: IAIFlowContext): IAIVerseFlow;
   end;
+
+function CreateAIFlowContext(const AProjectInfoReader: TAIProjectInfoReader): IAIFlowContext;
 
 implementation
 
 { Currently only abstractions, concrete flows in ai_association_flow.pas }
+
+constructor TAIFlowContext.Create(const AProjectInfoReader: TAIProjectInfoReader);
+begin
+  inherited Create;
+  FProjectInfoReader := AProjectInfoReader;
+end;
+
+function TAIFlowContext.GetProjectInfo(Key: string): string;
+begin
+  if not Assigned(FProjectInfoReader) then
+    Exit('');
+
+  Result := FProjectInfoReader(Key);
+end;
+
+function CreateAIFlowContext(const AProjectInfoReader: TAIProjectInfoReader): IAIFlowContext;
+begin
+  Result := TAIFlowContext.Create(AProjectInfoReader);
+end;
 
 procedure TAIFlowResult.CaptureAcceptedVerseState(Verse: TVersiculo);
 begin

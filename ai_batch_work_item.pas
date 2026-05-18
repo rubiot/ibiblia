@@ -20,12 +20,11 @@ type
 
   TAIBatchWorkItem = class
   private
-    FProject: TObject;
+    FTokenizerVersion: Integer;
     FVerseData: TVerseData;
   public
-    constructor Create(AProject: TObject; const AVerseData: TVerseData);
+    constructor Create(ATokenizerVersion: Integer; const AVerseData: TVerseData);
     procedure CreateTempVersePair(out Verse: TVersiculo; out VersePair: TVersiculo);
-    property Project: TObject read FProject;
     property VerseData: TVerseData read FVerseData;
   end;
 
@@ -41,20 +40,19 @@ type
 
 implementation
 
-constructor TAIBatchWorkItem.Create(AProject: TObject; const AVerseData: TVerseData);
+constructor TAIBatchWorkItem.Create(ATokenizerVersion: Integer; const AVerseData: TVerseData);
 begin
   inherited Create;
-  FProject := AProject;
+  FTokenizerVersion := ATokenizerVersion;
   FVerseData := AVerseData;
 end;
 
 procedure TAIBatchWorkItem.CreateTempVersePair(out Verse: TVersiculo; out VersePair: TVersiculo);
 begin
-  if not Assigned(FProject) then
-    raise Exception.CreateFmt('TAIBatchWorkItem.CreateTempVersePair: missing project for %s', [FVerseData.ReferenceID]);
-
-  Verse := TVersiculo.Criar(FProject);
-  VersePair := TVersiculo.Criar(FProject);
+  Verse := TVersiculo.Criar(nil);
+  VersePair := TVersiculo.Criar(nil);
+  Verse.TokenizerVersion := FTokenizerVersion;
+  VersePair.TokenizerVersion := FTokenizerVersion;
   Verse.Texto := FVerseData.OriginalText;
   VersePair.Texto := FVerseData.TranslatedText;
   Verse.Referencia := FVerseData.ReferenceName;

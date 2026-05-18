@@ -57,7 +57,7 @@ const
      function GetDefaultCustomInstructions: string;
      function GetConfigFields: TAIFlowConfigFieldArray;
      function BuildPromptFromConfig(const ConfigValues: array of const): string;
-     function CreateFlowInstance(Project: TObject): IAIVerseFlow;
+     function CreateFlowInstance(Context: IAIFlowContext): IAIVerseFlow;
    end;
 
    { TAITranslationFlow }
@@ -107,7 +107,7 @@ resourcestring
 implementation
 
 uses
-  Projeto, ai_flow_config;
+  ai_flow_config;
 
 function FormatTranslationExamplesPromptSection(const Examples: TAIFlowExampleArray): string;
 var
@@ -260,9 +260,8 @@ begin
     Result := Result + LineEnding + LineEnding + examplesSection;
 end;
 
-function TAITranslationFlowConfig.CreateFlowInstance(Project: TObject): IAIVerseFlow;
+function TAITranslationFlowConfig.CreateFlowInstance(Context: IAIFlowContext): IAIVerseFlow;
 var
-  proj: TProjeto;
   targetLanguage, customInstructions: string;
   forceOverwrite: Boolean;
   overrideEnabled: Boolean;
@@ -273,21 +272,17 @@ var
   flow: TAITranslationFlow;
 begin
   Result := nil;
-  
-  // Cast project to TProjeto
-  if not (Project is TProjeto) then
-    raise Exception.Create('CreateFlowInstance: Project must be TProjeto instance');
-  
-  proj := TProjeto(Project);
+  if not Assigned(Context) then
+    raise Exception.Create('CreateFlowInstance: missing AI flow context');
   
   // Read configuration from project
-  targetLanguage := proj.ObterInfo(AI_TRANSLATION_CONFIG_KEY_TARGET_LANGUAGE);
-  customInstructions := proj.ObterInfo(AI_TRANSLATION_CONFIG_KEY_CUSTOM_INSTRUCTIONS);
-  forceOverwrite := LowerCase(proj.ObterInfo(AI_TRANSLATION_CONFIG_KEY_FORCE_OVERWRITE)) = 'true';
-  providerOverride := proj.ObterInfo(AI_TRANSLATION_CONFIG_KEY_PROVIDER);
-  modelOverride := proj.ObterInfo(AI_TRANSLATION_CONFIG_KEY_MODEL);
-  apiKeyOverride := proj.ObterInfo(AI_TRANSLATION_CONFIG_KEY_API_KEY);
-  overrideEnabledValue := Trim(proj.ObterInfo(GetFlowOverrideEnabledConfigKey('translation')));
+  targetLanguage := Context.GetProjectInfo(AI_TRANSLATION_CONFIG_KEY_TARGET_LANGUAGE);
+  customInstructions := Context.GetProjectInfo(AI_TRANSLATION_CONFIG_KEY_CUSTOM_INSTRUCTIONS);
+  forceOverwrite := LowerCase(Context.GetProjectInfo(AI_TRANSLATION_CONFIG_KEY_FORCE_OVERWRITE)) = 'true';
+  providerOverride := Context.GetProjectInfo(AI_TRANSLATION_CONFIG_KEY_PROVIDER);
+  modelOverride := Context.GetProjectInfo(AI_TRANSLATION_CONFIG_KEY_MODEL);
+  apiKeyOverride := Context.GetProjectInfo(AI_TRANSLATION_CONFIG_KEY_API_KEY);
+  overrideEnabledValue := Trim(Context.GetProjectInfo(GetFlowOverrideEnabledConfigKey('translation')));
   if overrideEnabledValue = '' then
     overrideEnabled := (Trim(providerOverride) <> '') or (Trim(modelOverride) <> '') or (Trim(apiKeyOverride) <> '')
   else
@@ -298,7 +293,7 @@ begin
     modelOverride := '';
     apiKeyOverride := '';
   end;
-  serializedExamples := proj.ObterInfo(AI_TRANSLATION_EXAMPLES_KEY);
+  serializedExamples := Context.GetProjectInfo(AI_TRANSLATION_EXAMPLES_KEY);
   
   // Build configValues array for BuildPromptFromConfig
   // Array format: [key1, value1, key2, value2, ...]
