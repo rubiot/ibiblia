@@ -16,13 +16,13 @@ uses
   {$ENDIF}
   SysUtils, Sqlite3DS, sqlite3conn, sqldb, db, StrUtils, math,
   ExtCtrls, Controls, ComCtrls, StdCtrls, Graphics, Forms, Versiculo, Sugestao,
-  MemoVersiculo, ONTTokenizer, Dialogs, dos, PCRE, ExportarProjeto, LazLogger,
-  Syntagm, BibleScope, MySwordModule, TheWordDictionary, fgl, PatchFile, LCLIntf, menus,
+  MemoVersiculo, ONTTokenizer, Dialogs, dos, PCRE, LazLogger,
+  Syntagm, BibleScope, MySwordModule, fgl, PatchFile, LCLIntf, menus,
   CommentsView, ai_processing_manager, ai_processing_batch, ai_batch_work_item,
   ai_flows, llmclient, ai_flow_config, ai_debug, project_persistence, project_config,
   project_verse_repository, current_verse_workspace, verse_render_buffer,
   project_patch_applier, bible_tree_coordinator, ai_batch_orchestrator,
-  dictionary_manager;
+  dictionary_manager, project_exporter;
 const
   // AI processing icon indices for ImageListTreeView in formprincipal
   // ImageListTreeView has indices 0-7 for normal states (0-3) and selected states (4-7)
@@ -117,6 +117,7 @@ type
     FConfig: TProjectConfig;
     FVerseRepository: TProjectVerseRepository;
     FVerseRenderBuffer: TVerseRenderBuffer;
+    FProjectExporter: TProjectExporter;
     FDictionaryManager: TDictionaryManager;
     FPatchApplier: TProjectPatchApplier;
     FBibleTreeCoordinator: TBibleTreeCoordinator;
@@ -181,8 +182,6 @@ type
     procedure SetOnSintagmaClick(const AValue: TOnSintagmaClickEvent);
     procedure SetPalavrasComStrongEmNegrito(AValue: boolean);
     procedure SetSituacao(const AValue: Integer);
-    procedure ExportTheWordBible(verses: TStringList; filename: string; props: string);
-    procedure ExportMySwordBible(verses: TStringList; filename: string; props: string);
     procedure HighlightStrongs(syntagm: TSyntagm);
     function CreateBibleTreeContextMenu: TPopupMenu;
     procedure UpdateReference(ref: string);
@@ -874,41 +873,6 @@ begin
     exit;
   FPersistence.WriteCurrentStatus(NormalizedStatus);
   AtualizarArvore(ID);
-end;
-
-procedure TProjeto.ExportTheWordBible(verses: TStringList; filename: string;
-  props: string);
-var
-  stream: TFileStream;
-begin
-  verses.Add('');
-  verses.Add(props);
-  verses[0] := #239#187#191 + verses.Strings[0]; // adicionando BOM
-  stream := TFileStream.Create(filename, fmCreate or fmOpenWrite or fmShareDenyNone);
-  try
-    stream.Size := 0;
-    verses.SaveToStream(stream);
-  finally
-    stream.Free;
-  end;
-end;
-
-procedure TProjeto.ExportMySwordBible(verses: TStringList; filename: string; props: string);
-var
-  module: TMySwordModule;
-  b, c, v, i: smallint;
-begin
-  module := TMySwordModule.Create(filename, FEscopo in [etOT, etONT], FEscopo in [etNT, etONT], true, props);
-  i := 0;
-  for b:=0 to QLivros[FEscopo]-1 do
-    for c:=0 to QCapitulos[FEscopo][b]-1 do
-      for v:=0 to QVersiculos[FEscopo][QCapLivros[FEscopo][b] + c - 1]-1 do
-      begin
-        module.AddVerse(verses[i], b+OffsetLivros[FEscopo]+1, c+1, v+1);
-        Inc(i);
-      end;
-  module.Commit;
-  module.Free;
 end;
 
 procedure TProjeto.HighlightStrongs(syntagm: TSyntagm);
@@ -2228,6 +2192,7 @@ begin
   FConfig             := TProjectConfig.Create(nil);
   FVerseRepository    := TProjectVerseRepository.Create(nil);
   FVerseRenderBuffer  := nil;
+  FProjectExporter    := TProjectExporter.Create(etNone, nil, nil);
   FDictionaryManager  := TDictionaryManager.Create;
   FPatchApplier       := TProjectPatchApplier.Create(nil);
   FBibleTreeCoordinator := TBibleTreeCoordinator.Create(nil);
@@ -2277,6 +2242,7 @@ begin
   FreeAndNil(FCurrentVerseWorkspace);
   FreeAndNil(FBibleTreeCoordinator);
   FreeAndNil(FPatchApplier);
+  FreeAndNil(FProjectExporter);
   FreeAndNil(FDictionaryManager);
   FreeAndNil(FVerseRenderBuffer);
   FreeAndNil(FVerseRepository);
@@ -2380,6 +2346,9 @@ begin
 
   if FEscopo = etNone then
     FEscopo := IdentificarEscopo;
+
+  if Assigned(FProjectExporter) then
+    FProjectExporter.Attach(FEscopo, FVerseRepository, FVerseRenderBuffer);
 
   if assigned(FArvore) then
   begin
@@ -3044,106 +3013,30 @@ end;
 procedure TProjeto.ExportarTextoDestinoComStrongs(arquivo: string;
   pb: TProgressBar; opcoes: TOpcoesExportacao);
 var
-  verseData: TVerseData;
-  lines, errors: TStringList;
-  hasTags: Boolean;
-  renderedLine: string;
-  corruptionDetails: string;
+  Options: TDestinationTextExportOptions;
 begin
   if not assigned(FAVersiculo[tbOrigem]) or not assigned(FAVersiculo[tbDestino]) then
     exit;
 
-  lines := nil;
-  errors := nil;
   try
-    if assigned(pb) then
-    begin
-      pb.Position := 0;
-      pb.Min := 0;
-      pb.Max := QLinhas[FEscopo];
-      pb.Step := 1;
-      pb.Visible := true;
-    end;
     FExportando := true;
-    lines := TStringList.Create;
-    errors := TStringList.Create;
 
-    StartScrollingSession;
-    try
-      FVerseRepository.First;
-      while not FVerseRepository.EOF do
-      begin
-        verseData := FVerseRepository.ReadCurrentVerseData;
-        if verseData.Associations = '' then
-        begin
-          lines.Add(verseData.TranslatedText)
-        end
-        else
-        begin
-          if FVerseRenderBuffer.TryBuildDestinationLineONT(
-              verseData.OriginalText,
-              verseData.TranslatedText,
-              verseData.Associations,
-              (oeExportarMorfologia in opcoes),
-              (oeExportarNAComoItalicos in opcoes),
-              (oeStrongsReutilizados in opcoes),
-              (oeStrongsNaoTraduzidos in opcoes),
-              renderedLine,
-              corruptionDetails) then
-            lines.Add(renderedLine)
-          else
-            errors.Add(SCorruptedData + #13#10#13#10 + FormattedReference + #13#10 +
-                 corruptionDetails + #13#10);
-        end;
+    Options.ExportMorphology := oeExportarMorfologia in opcoes;
+    Options.ExportNAAsItalics := oeExportarNAComoItalicos in opcoes;
+    Options.MarkReusedStrongs := oeStrongsReutilizados in opcoes;
+    Options.MarkUntranslatedStrongs := oeStrongsNaoTraduzidos in opcoes;
+    Options.ExportComments := oeExportarComentarios in opcoes;
+    Options.Properties := ResgatarInfo('propriedades.destino');
+    Options.ErrorDialogTitle := SError;
+    Options.CorruptedDataMessage := SCorruptedData;
+    Options.ExportToFileErrorMessage := SExportToFileError;
+    Options.ErrorReportFileName := 'export-errors.txt';
 
-        if (oeExportarComentarios in opcoes) and not verseData.Comments.isEmpty then
-          lines[lines.Count-1] := lines[lines.Count-1] + '<RF>' +
-            AnsiReplaceStr(
-              AnsiReplaceStr(
-                AnsiReplaceStr(verseData.Comments, #13#10, '<CM>'),
-                #13, '<CM>'),
-              #10, '<CM>') + '<Rf>';
-
-        if assigned(pb) then
-        begin
-          pb.StepIt;
-          if (pb.Position mod 50) = 0 then
-            Application.ProcessMessages;
-        end;
-        FVerseRepository.Next;
-      end;
-    finally
-      FinishScrollingSession;
-    end;
-
-    try
-      if arquivo.EndsWith('.mybible') then // MySword module?
-        ExportMySwordBible(lines, arquivo, ResgatarInfo('propriedades.destino'))
-      else
-      begin
-        hasTags := (lines.Count > 0) and
-          ((Pos('<WG', lines[0]) > 0) or (Pos('<WH', lines[0]) > 0));
-        if (lines.Count > 0) and not hasTags then
-          lines[0] := lines[0] + '<_MORPH_>';
-
-        ExportTheWordBible(lines, arquivo, ResgatarInfo('propriedades.destino'));
-      end;
-    except
-      on E: Exception do
-        MessageDlg(SError, SExportToFileError + #13#10 + E.Message, mtError, [mbOK], 0);
-    end;
+    FProjectExporter.ExportDestinationTextWithStrongs(arquivo, pb, Options,
+      @StartScrollingSession, @FinishScrollingSession, @GetID);
   finally
     FExportando := false;
     PosRolagemVersiculo(nil);
-    if Assigned(errors) and (errors.Count > 0) then
-    begin
-      errors.SaveToFile('export-errors.txt');
-      OpenDocument('export-errors.txt');
-    end;
-    FreeAndNil(lines);
-    FreeAndNil(errors);
-    if assigned(pb) then
-      pb.Visible := false;
   end;
 end;
 
@@ -3156,13 +3049,9 @@ end;
 procedure TProjeto.ExportarTextoInterlinear(arquivo: string;
   pb: TProgressBar; opcoes: TOpcoesExportacao);
 var
-  i: integer;
-  verseData: TVerseData;
-  lines: TStringList;
+  Options: TInterlinearTextExportOptions;
   rulesRx: TRegexList;
   replaceTo: TStringList;
-  renderedLine: string;
-  corruptionDetails: string;
 begin
   if (FAVersiculo[tbOrigem] = nil) or (FAVersiculo[tbDestino] = nil) then
     exit;
@@ -3175,101 +3064,21 @@ begin
     CompileInterlinearVerseRules(rulesRx, replaceTo, imIntralinear, true);
 
   try
-    if assigned(pb) then
-    begin
-      pb.Position := 0;
-      pb.Min := 0;
-      pb.Max := QLinhas[FEscopo];
-      pb.Step := 1;
-      pb.Visible := true;
-    end;
     FExportando := true;
-    lines := TStringList.Create;
 
-    StartScrollingSession;
-    try
-      FVerseRepository.First;
-      while not FVerseRepository.EOF do
-      begin
-        verseData := FVerseRepository.ReadCurrentVerseData;
-        if verseData.Associations = '' then
-          lines.Add(verseData.OriginalText)
-        else
-        begin
-          if arquivo.EndsWith('.mybible') then
-          begin
-            if FVerseRenderBuffer.TryBuildInterlinearLine(
-                verseData.OriginalText,
-                verseData.TranslatedText,
-                verseData.Associations,
-                rimMySword,
-                renderedLine,
-                corruptionDetails) then
-              lines.Add(renderedLine)
-            else
-              MessageDlg(SError, SCorruptedData + #13#10#13#10 + FormattedReference + #13#10 +
-                   corruptionDetails,
-                   mtError, [mbOK], 0);
-          end
-          else
-          begin
-            if FVerseRenderBuffer.TryBuildInterlinearLine(
-                verseData.OriginalText,
-                verseData.TranslatedText,
-                verseData.Associations,
-                rimTheWord,
-                renderedLine,
-                corruptionDetails) then
-              lines.Add(renderedLine)
-            else
-              MessageDlg(SError, SCorruptedData + #13#10#13#10 + FormattedReference + #13#10 +
-                   corruptionDetails,
-                   mtError, [mbOK], 0);
-          end;
-        end;
+    Options.Properties := ResgatarInfo('propriedades.origem');
+    Options.ErrorDialogTitle := SError;
+    Options.CorruptedDataMessage := SCorruptedData;
+    Options.ExportToFileErrorMessage := SExportToFileError;
+    Options.VerseRuleReplaceErrorMessage := SInterlinearVerseRuleReplaceError;
 
-        // apply verse rules
-        for i:=0 to rulesRx.Count-1 do
-        begin
-          try
-            lines[lines.Count-1] := rulesRx[i].Replace(lines[lines.Count-1], replaceTo[i]);
-          except
-            on E: Exception do ShowMessage(SInterlinearVerseRuleReplaceError + #13#10 + E.Message);
-          end;
-        end;
-
-        if pb <> nil then
-        begin
-          pb.StepIt;
-          if (pb.Position mod 50) = 0 then
-             Application.ProcessMessages;
-        end;
-        FVerseRepository.Next;
-      end;
-    finally
-      FinishScrollingSession;
-    end;
-
-    //lines.Add('');
-    //lines.Add(ResgatarInfo('propriedades.origem'));
-    //lines[0] := #239#187#191 + lines[0]; // adicionando BOM
-
-    try
-      if arquivo.EndsWith('.mybible') then // MySword module?
-        ExportMySwordBible(lines, arquivo, ResgatarInfo('propriedades.origem'))
-      else
-        ExportTheWordBible(lines, arquivo, ResgatarInfo('propriedades.origem'));
-    except
-      on E: Exception do MessageDlg(SError, SExportToFileError, mtError, [mbOK], 0);
-    end;
+    FProjectExporter.ExportInterlinearText(arquivo, pb, rulesRx, replaceTo,
+      Options, @StartScrollingSession, @FinishScrollingSession, @GetID);
   finally
     rulesRx.Free;
     replaceTo.Free;
-    lines.Free;
     FExportando := false;
     PosRolagemVersiculo(nil);
-    if assigned(pb) then
-      pb.Visible := false;
   end;
 end;
 
@@ -3282,112 +3091,27 @@ end;
 procedure TProjeto.ExportarConcordancia(arquivo: string;
   pb: TProgressBar; opcoes: TOpcoesExportacao; abbreviation: string);
 var
-  verseData: TVerseData;
-  Concordancia: TConcordancia;
-  entries: TStringList;
-  dictionary: TTheWordDictionary;
-  rxLemma: IRegex;
-  match: IMatch;
-  pares: TStringList;
-  entry, strong, lemma: string;
-  corruptionDetails: string;
+  Options: TConcordanceExportOptions;
 begin
   if (FAVersiculo[tbOrigem] = nil) or (FAVersiculo[tbDestino] = nil) then
     exit;
 
   try
-    if assigned(pb) then
-    begin
-      pb.Position := 0;
-      pb.Min := 0;
-      pb.Max := QLinhas[FEscopo] + QStrongs[etONT]; // versículos do NT + qtde de strongs
-      pb.Step := 1;
-      pb.Visible := true;
-    end;
-
-    Concordancia := TConcordancia.Create;
-    Concordancia.Detalhada := oeConcordDetalhada in opcoes;
-
-    dictionary := TTheWordDictionary.Create(arquivo, true);
-    with dictionary do
-    begin
-      Title        := format('%s %s', [abbreviation, IfThen(oeConcordDetalhada in opcoes, SAnalyticalConcordance, SSyntheticConcordance)]);
-      TitleEnglish := format('%s %s', [abbreviation, IfThen(oeConcordDetalhada in opcoes, 'Analytical Concordance', 'Synthetic Concordance')]);
-      Language     := SLanguageId;
-      Description  := format('%s %s', [abbreviation, IfThen(oeConcordDetalhada in opcoes, SAnalyticalConcordance, SSyntheticConcordance)]);
-      EnglishDescription := format('%s %s', [abbreviation, IfThen(oeConcordDetalhada in opcoes, 'Analytical Concordance', 'Synthetic Concordance')]);
-      VersionDate  := FormatDateTime('YYYY-MM-DD', Now);
-      Abbrev       := abbreviation;
-    end;
-
     FExportando := true;
 
-    StartScrollingSession;
-    FVerseRepository.First;
+    Options.Detailed := oeConcordDetalhada in opcoes;
+    Options.Abbreviation := abbreviation;
+    Options.LanguageId := SLanguageId;
+    Options.AnalyticalCaption := SAnalyticalConcordance;
+    Options.SyntheticCaption := SSyntheticConcordance;
+    Options.ErrorDialogTitle := SError;
+    Options.CorruptedDataMessage := SCorruptedData;
 
-    while not FVerseRepository.EOF do
-    begin
-      verseData := FVerseRepository.ReadCurrentVerseData;
-      if verseData.Associations <> '' then
-      begin
-        if FVerseRenderBuffer.TryExtractPairsList(
-            verseData.OriginalText,
-            verseData.TranslatedText,
-            verseData.Associations,
-            plAll,
-            pares,
-            corruptionDetails) then
-        begin
-          Concordancia.AdicionarLocucao(pares, GetID);
-          pares.Free;
-        end
-        else
-          MessageDlg(SError, SCorruptedData + #13#10#13#10 + FormattedReference + #13#10 +
-               corruptionDetails,
-               mtError, [mbOK], 0);
-      end;
-      if assigned(pb) then
-      begin
-        pb.StepIt;
-        if (pb.Position mod 20) = 0 then
-          Application.ProcessMessages;
-      end;
-      FVerseRepository.Next;
-    end;
-
-    entries := TStringList.Create;
-    entries.LoadFromFile('lemmas.dat');
-    rxLemma := RegexCreate('^(.*?),(.*?)$', [rcoUTF8]);
-    for entry in entries do
-    begin
-      match := rxLemma.Match(entry);
-
-      if match.Success then
-      begin
-        strong := match.Groups[1].Value;
-        lemma  := match.Groups[2].Value;
-        dictionary.AddEntry(strong, lemma, Concordancia.GetStrongRTF(lemma, strong));
-      end;
-
-      if assigned(pb) then
-      begin
-        pb.StepIt;
-        if (pb.Position mod 20) = 0 then
-          Application.ProcessMessages;
-      end;
-    end;
-    entries.Free;
-
-    dictionary.Commit;
+    FProjectExporter.ExportConcordance(arquivo, pb, Options,
+      @StartScrollingSession, @FinishScrollingSession, @GetID);
   finally
-    Application.ProcessMessages;
-    Concordancia.Free;
-    dictionary.Free;
     FExportando := false;
-    FinishScrollingSession;
     PosRolagemVersiculo(nil);
-    if assigned(pb) then
-      pb.Visible := false;
   end;
 end;
 
