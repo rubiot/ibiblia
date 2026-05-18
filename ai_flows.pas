@@ -7,11 +7,9 @@ unit ai_flows;
 interface
 
 uses
-  Classes, SysUtils, llmclient, versiculo;
+  Classes, SysUtils, llmclient, versiculo, project_config;
 
 type
-  TAIProjectInfoReader = function(Key: string): string of object;
-
   // Generic job state (future use in manager)
   TAIJobState = (ajsPending, ajsFetching, ajsCompleted, ajsFailed, ajsCancelled);
 
@@ -63,9 +61,9 @@ type
 
   TAIFlowContext = class(TInterfacedObject, IAIFlowContext)
   private
-    FProjectInfoReader: TAIProjectInfoReader;
+    FConfig: TProjectConfig;
   public
-    constructor Create(const AProjectInfoReader: TAIProjectInfoReader);
+    constructor Create(AConfig: TProjectConfig);
     function GetProjectInfo(Key: string): string;
   end;
   
@@ -131,29 +129,29 @@ type
     function CreateFlowInstance(Context: IAIFlowContext): IAIVerseFlow;
   end;
 
-function CreateAIFlowContext(const AProjectInfoReader: TAIProjectInfoReader): IAIFlowContext;
+function CreateAIFlowContext(AConfig: TProjectConfig): IAIFlowContext;
 
 implementation
 
 { Currently only abstractions, concrete flows in ai_association_flow.pas }
 
-constructor TAIFlowContext.Create(const AProjectInfoReader: TAIProjectInfoReader);
+constructor TAIFlowContext.Create(AConfig: TProjectConfig);
 begin
   inherited Create;
-  FProjectInfoReader := AProjectInfoReader;
+  FConfig := AConfig;
 end;
 
 function TAIFlowContext.GetProjectInfo(Key: string): string;
 begin
-  if not Assigned(FProjectInfoReader) then
+  if not Assigned(FConfig) then
     Exit('');
 
-  Result := FProjectInfoReader(Key);
+  Result := FConfig.ReadString(Key);
 end;
 
-function CreateAIFlowContext(const AProjectInfoReader: TAIProjectInfoReader): IAIFlowContext;
+function CreateAIFlowContext(AConfig: TProjectConfig): IAIFlowContext;
 begin
-  Result := TAIFlowContext.Create(AProjectInfoReader);
+  Result := TAIFlowContext.Create(AConfig);
 end;
 
 procedure TAIFlowResult.CaptureAcceptedVerseState(Verse: TVersiculo);

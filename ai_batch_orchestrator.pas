@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, ComCtrls, ai_flows, ai_flow_config,
-  ai_processing_manager, ai_batch_work_item, versiculo;
+  ai_processing_manager, ai_batch_work_item, project_config;
 
 type
   TCancelAIBatchProc = procedure of object;
@@ -20,7 +20,7 @@ type
 
   TAIBatchOrchestrator = class
   private
-    FProjectInfoReader: TAIProjectInfoReader;
+    FConfig: TProjectConfig;
     FCancelCurrentBatch: TCancelAIBatchProc;
     FFindTreeNodeByReference: TFindTreeNodeByReferenceFunc;
     FMarkNodePending: TMarkNodePendingProc;
@@ -28,7 +28,7 @@ type
     FGetVerseReference: TGetVerseReferenceFunc;
     procedure MarkPendingNodes(WorkItems: TAIBatchWorkItemList);
   public
-    constructor Create(const AProjectInfoReader: TAIProjectInfoReader;
+    constructor Create(AConfig: TProjectConfig;
       const ACancelCurrentBatch: TCancelAIBatchProc;
       const AFindTreeNodeByReference: TFindTreeNodeByReferenceFunc;
       const AMarkNodePending: TMarkNodePendingProc;
@@ -40,7 +40,7 @@ type
 
 implementation
 
-constructor TAIBatchOrchestrator.Create(const AProjectInfoReader: TAIProjectInfoReader;
+constructor TAIBatchOrchestrator.Create(AConfig: TProjectConfig;
   const ACancelCurrentBatch: TCancelAIBatchProc;
   const AFindTreeNodeByReference: TFindTreeNodeByReferenceFunc;
   const AMarkNodePending: TMarkNodePendingProc;
@@ -48,7 +48,7 @@ constructor TAIBatchOrchestrator.Create(const AProjectInfoReader: TAIProjectInfo
   const AGetVerseReference: TGetVerseReferenceFunc);
 begin
   inherited Create;
-  FProjectInfoReader := AProjectInfoReader;
+  FConfig := AConfig;
   FCancelCurrentBatch := ACancelCurrentBatch;
   FFindTreeNodeByReference := AFindTreeNodeByReference;
   FMarkNodePending := AMarkNodePending;
@@ -103,18 +103,18 @@ begin
   if not Assigned(FlowConfig) then
     Exit;
 
-  Result.Flow := FlowConfig.CreateFlowInstance(CreateAIFlowContext(FProjectInfoReader));
+  Result.Flow := FlowConfig.CreateFlowInstance(CreateAIFlowContext(FConfig));
   if not Assigned(Result.Flow) then
     Exit;
 
   Result.Manager := TAIProcessingManager.Create(
-    FProjectInfoReader(AI_COMMON_CONFIG.Model),
-    FProjectInfoReader(AI_COMMON_CONFIG.ApiKey),
+    FConfig.ReadString(AI_COMMON_CONFIG.Model),
+    FConfig.ReadString(AI_COMMON_CONFIG.ApiKey),
     MaxParallel
   );
-  Result.Manager.MaxRetries := StrToIntDef(FProjectInfoReader(AI_COMMON_CONFIG.MaxRetries), 3);
-  Result.Manager.RetryBaseDelay := StrToIntDef(FProjectInfoReader(AI_COMMON_CONFIG.RetryDelay), 1000);
-  Result.Manager.AutoSaveInterval := StrToIntDef(FProjectInfoReader(AI_COMMON_CONFIG.AutoSaveInterval), 10);
+  Result.Manager.MaxRetries := StrToIntDef(FConfig.ReadString(AI_COMMON_CONFIG.MaxRetries), 3);
+  Result.Manager.RetryBaseDelay := StrToIntDef(FConfig.ReadString(AI_COMMON_CONFIG.RetryDelay), 1000);
+  Result.Manager.AutoSaveInterval := StrToIntDef(FConfig.ReadString(AI_COMMON_CONFIG.AutoSaveInterval), 10);
   Result.Manager.OnAutoSaveNeeded := FOnAutoSaveNeeded;
   Result.Manager.GetVerseReference := FGetVerseReference;
 end;

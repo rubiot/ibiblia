@@ -1309,7 +1309,7 @@ begin
       Exit;
 
     orchestrator := TAIBatchOrchestrator.Create(
-      @ObterInfo,
+      FConfig,
       @ResetAIBatchManager,
       @FindTreeNodeByReference,
       @MarkNodeAsAIPending,
@@ -2856,7 +2856,7 @@ begin
   try
     try
       flowConfig := GetFlowConfigById('association');
-      flow := flowConfig.CreateFlowInstance(CreateAIFlowContext(@ObterInfo));
+      flow := flowConfig.CreateFlowInstance(CreateAIFlowContext(FConfig));
 
       client := llmclient.CreateBackend(ObterInfo(AI_COMMON_CONFIG.Model), ObterInfo(AI_COMMON_CONFIG.ApiKey));
       try
@@ -2907,7 +2907,7 @@ begin
   FAIBatchCompletionShown := False;
 
   orchestrator := TAIBatchOrchestrator.Create(
-    @ObterInfo,
+    FConfig,
     @ResetAIBatchManager,
     @FindTreeNodeByReference,
     @MarkNodeAsAIPending,
@@ -2940,7 +2940,7 @@ begin
   FAIBatchCompletionShown := False;
 
   orchestrator := TAIBatchOrchestrator.Create(
-    @ObterInfo,
+    FConfig,
     @ResetAIBatchManager,
     @FindTreeNodeByReference,
     @MarkNodeAsAIPending,
