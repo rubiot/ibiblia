@@ -12,6 +12,17 @@ uses
 type
   TAIProcessingStatus = (apsIdle, apsRunning, apsCancelling, apsCompleted, apsCancelled);
 
+  TAIProcessingApplyBatchFunc = function(Batch, OriginalData: TAIProcessingBatch;
+    SelectedIndexes: TAIBatchIndexList): Integer of object;
+
+  TAIProcessingPreviewOptions = record
+    TokenizerVersion: Integer;
+    SourceFont: TFont;
+    DestinationFont: TFont;
+    BoldStrongs: Boolean;
+    StrongsCountMode: TStrongsCountMode;
+  end;
+
   { TFrmAIProcessing }
 
   TFrmAIProcessing = class(TForm)
@@ -55,7 +66,8 @@ type
     FBatch: TAIProcessingBatch;
     FManager: TAIProcessingManager;
     FFlow: IAIVerseFlow;
-    FProject: TObject; // TProjeto - stored as TObject to avoid circular reference
+    FApplyAcceptedBatch: TAIProcessingApplyBatchFunc;
+    FPreviewOptions: TAIProcessingPreviewOptions;
     FIndex: integer;
     FSrcVerse: TVersiculo;
     FDstVerse: TVersiculo;
@@ -77,7 +89,9 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     function StartProcessing(Manager: TAIProcessingManager; Flow: IAIVerseFlow; 
-                             WorkItems: TAIBatchWorkItemList; Project: TObject): boolean;
+                             WorkItems: TAIBatchWorkItemList;
+                             const PreviewOptions: TAIProcessingPreviewOptions;
+                             ApplyAcceptedBatch: TAIProcessingApplyBatchFunc): boolean;
     procedure Apply;
     property Batch: TAIProcessingBatch read FBatch;
   end;
@@ -105,7 +119,7 @@ implementation
 
 {$R *.lfm}
 
-uses Projeto, ai_debug;
+uses ai_debug;
 
 { TFrmAIProcessing }
 
@@ -119,7 +133,8 @@ begin
   
   FStatus := apsIdle;
   FIndex := 0;
-  FProject := nil;
+  FApplyAcceptedBatch := nil;
+  FillChar(FPreviewOptions, SizeOf(FPreviewOptions), 0);
   FLastTotalTokens := 0;
   
   // Note: child visual controls are created in FormCreate after .lfm is loaded
@@ -195,11 +210,7 @@ begin
 end;
 
 procedure TFrmAIProcessing.FormShow(Sender: TObject);
-var
-  proj: TProjeto;
 begin
-  if not Assigned(FProject) then Exit;
-  
   // Setup MemoComments replacement (now that form is fully created)
   if Assigned(MemoComments) then
   begin
@@ -212,25 +223,8 @@ begin
     FActualCommentsMemo.Height := MemoComments.Height;
     MemoComments.Visible := False;
   end;
-  
-  proj := TProjeto(FProject);
-  // Ensure verses are created with the project so their Painel is initialized
-  if not Assigned(FSrcVerse) then
-    FSrcVerse := TVersiculo.Criar(FProject, ScrollBoxSrcText);
-  if not Assigned(FDstVerse) then
-    FDstVerse := TVersiculo.Criar(FProject, ScrollBoxDstText);
 
-  FSrcVerse.VersiculoPar := FDstVerse;
-  FSrcVerse.ReadOnly := true;
-  FDstVerse.ReadOnly := true;
-
-  FSrcVerse.Fonte := proj.ObterFonteTexto(tbOrigem);
-  FDstVerse.Fonte := proj.ObterFonteTexto(tbDestino);
-  FSrcVerse.PalavrasComStrongEmNegrito := proj.PalavrasComStrongEmNegrito;
-  FSrcVerse.StrongsCountMode := proj.MostrarQtdStrongs;
-  FDstVerse.StrongsCountMode := proj.MostrarQtdStrongs;
-  FSrcVerse.Ativo := true;
-  FDstVerse.Ativo := true;
+  EnsureVersesCreated;
   
   FActualCommentsMemo.FontName := 'default';
   FActualCommentsMemo.FontSize := 10;
@@ -282,26 +276,27 @@ begin
   // If verses already created, nothing to do
   if Assigned(FSrcVerse) and Assigned(FDstVerse) then Exit;
 
-  // If we have a project, create verses with project so panels are initialized
-  if Assigned(FProject) then
-  begin
-    if not Assigned(FSrcVerse) then
-      FSrcVerse := TVersiculo.Criar(FProject, ScrollBoxSrcText);
-    if not Assigned(FDstVerse) then
-      FDstVerse := TVersiculo.Criar(FProject, ScrollBoxDstText);
-    FSrcVerse.VersiculoPar := FDstVerse;
-    FSrcVerse.ReadOnly := true;
-    FDstVerse.ReadOnly := true;
-  end
-  else
-  begin
-    // Create non-active verses bound to the scrollboxes so FPanel is not nil
-    if not Assigned(FSrcVerse) then
-      FSrcVerse := TVersiculo.Criar(nil, ScrollBoxSrcText);
-    if not Assigned(FDstVerse) then
-      FDstVerse := TVersiculo.Criar(nil, ScrollBoxDstText);
-    FSrcVerse.VersiculoPar := FDstVerse;
-  end;
+  if not Assigned(FSrcVerse) then
+    FSrcVerse := TVersiculo.Criar(nil, ScrollBoxSrcText);
+  if not Assigned(FDstVerse) then
+    FDstVerse := TVersiculo.Criar(nil, ScrollBoxDstText);
+
+  FSrcVerse.VersiculoPar := FDstVerse;
+  FSrcVerse.ReadOnly := true;
+  FDstVerse.ReadOnly := true;
+  FSrcVerse.TokenizerVersion := FPreviewOptions.TokenizerVersion;
+  FDstVerse.TokenizerVersion := FPreviewOptions.TokenizerVersion;
+
+  if Assigned(FPreviewOptions.SourceFont) then
+    FSrcVerse.Fonte := FPreviewOptions.SourceFont;
+  if Assigned(FPreviewOptions.DestinationFont) then
+    FDstVerse.Fonte := FPreviewOptions.DestinationFont;
+
+  FSrcVerse.PalavrasComStrongEmNegrito := FPreviewOptions.BoldStrongs;
+  FSrcVerse.StrongsCountMode := FPreviewOptions.StrongsCountMode;
+  FDstVerse.StrongsCountMode := FPreviewOptions.StrongsCountMode;
+  FSrcVerse.Ativo := true;
+  FDstVerse.Ativo := true;
 end;
 
 procedure TFrmAIProcessing.LoadControlsFromBatch;
@@ -555,7 +550,9 @@ begin
 end;
 
 function TFrmAIProcessing.StartProcessing(Manager: TAIProcessingManager;
-  Flow: IAIVerseFlow; WorkItems: TAIBatchWorkItemList; Project: TObject): boolean;
+  Flow: IAIVerseFlow; WorkItems: TAIBatchWorkItemList;
+  const PreviewOptions: TAIProcessingPreviewOptions;
+  ApplyAcceptedBatch: TAIProcessingApplyBatchFunc): boolean;
 var
   i: Integer;
   workItem: TAIBatchWorkItem;
@@ -566,7 +563,8 @@ begin
   
   FManager := Manager;
   FFlow := Flow;
-  FProject := Project;
+  FPreviewOptions := PreviewOptions;
+  FApplyAcceptedBatch := ApplyAcceptedBatch;
   FStatus := apsRunning;
   FLastTotalTokens := 0;
   EnsureVersesCreated;
@@ -639,14 +637,11 @@ end;
 procedure TFrmAIProcessing.Apply;
 var
   i: Integer;
-  proj: TProjeto;
   treeIndexes: BibleTreeView.TIntegerList;
   selectedIndexes: TAIBatchIndexList;
   appliedCount: Integer;
 begin
-  if not Assigned(FProject) then Exit;
-  
-  proj := TProjeto(FProject);
+  if not Assigned(FApplyAcceptedBatch) then Exit;
   
   // Disable verse change callbacks during Apply to prevent UI refresh while DB is locked
   FBibleTreeView.OnVerseChange := nil;
@@ -683,7 +678,7 @@ begin
   end;
   
   try
-    appliedCount := proj.ApplyAcceptedAIBatch(FBatch, FOriginalData, selectedIndexes);
+    appliedCount := FApplyAcceptedBatch(FBatch, FOriginalData, selectedIndexes);
     AIDebugLogFmt('[Apply] ApplyAcceptedAIBatch completed successfully: %d verses', [appliedCount]);
   finally
     if Assigned(treeIndexes) then

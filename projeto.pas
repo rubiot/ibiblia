@@ -21,7 +21,7 @@ uses
   CommentsView, ai_processing_manager, ai_processing_batch, ai_batch_work_item,
   ai_flows, llmclient, ai_flow_config, ai_debug, project_persistence, project_config,
   project_verse_repository, current_verse_workspace, verse_render_buffer,
-  project_patch_applier, bible_tree_coordinator;
+  project_patch_applier, bible_tree_coordinator, ai_batch_orchestrator;
 const
   // AI processing icon indices for ImageListTreeView in formprincipal
   // ImageListTreeView has indices 0-7 for normal states (0-3) and selected states (4-7)
@@ -168,6 +168,7 @@ type
     function IsTreeStatusIterationFinished: Boolean;
     function CurrentTreeVerseStatus: Integer;
     procedure ResetTreeStatusIteration;
+    procedure ResetAIBatchManager;
     procedure AdvanceTreeStatusIteration;
     procedure PreencherArvore;
     procedure SetAtrasoExibicao(const AValue: Cardinal);
@@ -1190,16 +1191,26 @@ begin
   end;
 end;
 
+procedure TProjeto.ResetAIBatchManager;
+begin
+  if Assigned(FAIManager) then
+  begin
+    FAIManager.CancelAll;
+    ClearAllAINodeStates;
+    FreeAndNil(FAIManager);
+  end;
+end;
+
 procedure TProjeto.OnAIBatchClick(Sender: TObject);
 var
   list: TAIBatchWorkItemList;
   maxPar: Integer;
   clickedNode: TTreeNode;
+  flowId: string;
   flow: IAIVerseFlow;
-  flowConfig: IAIFlowConfig;
-  verseData: TVerseData;
-  node: TTreeNode;
-  i: Integer;
+  batchPrep: TAIBatchPreparation;
+  orchestrator: TAIBatchOrchestrator;
+  previewOptions: TAIProcessingPreviewOptions;
 
   procedure CollectVersesFromNode(node: TTreeNode; dest: TAIBatchWorkItemList);
   var
@@ -1290,42 +1301,42 @@ begin
     // Note: Tree node visual updates are now handled by TFrmAIProcessing modal
     // The main tree (FArvore) is not affected until Apply is clicked
 
-    flow := nil;
-
-    // Get appropriate flow config based on menu item tag
-    // Factory method CreateFlowInstance handles all flow-specific configuration and creation
     if TMenuItem(Sender).Tag = 1001 then
-    begin
-      flowConfig := GetFlowConfigById('association');
-      if Assigned(flowConfig) then
-        flow := flowConfig.CreateFlowInstance(CreateAIFlowContext(@ObterInfo)) as IAIVerseFlow;
-    end
+      flowId := 'association'
     else if TMenuItem(Sender).Tag = 1011 then
-    begin
-      flowConfig := GetFlowConfigById('translation');
-      if Assigned(flowConfig) then
-        flow := flowConfig.CreateFlowInstance(CreateAIFlowContext(@ObterInfo)) as IAIVerseFlow;
-    end
+      flowId := 'translation'
     else
       Exit;
 
-    if flow = nil then Exit;
-
-    FAIManager := TAIProcessingManager.Create(
-      ObterInfo(AI_COMMON_CONFIG.Model),
-      ObterInfo(AI_COMMON_CONFIG.ApiKey),
-      maxPar
+    orchestrator := TAIBatchOrchestrator.Create(
+      @ObterInfo,
+      @ResetAIBatchManager,
+      @FindTreeNodeByReference,
+      @MarkNodeAsAIPending,
+      @HandleAutoSave,
+      @GetVerseReferenceString
     );
-    FAIManager.MaxRetries := StrToIntDef(ObterInfo(AI_COMMON_CONFIG.MaxRetries), 3);
-    FAIManager.RetryBaseDelay := StrToIntDef(ObterInfo(AI_COMMON_CONFIG.RetryDelay), 1000);
-    FAIManager.AutoSaveInterval := StrToIntDef(ObterInfo(AI_COMMON_CONFIG.AutoSaveInterval), 10);
-    FAIManager.OnAutoSaveNeeded := @HandleAutoSave;
-    FAIManager.GetVerseReference := @GetVerseReferenceString;
+    try
+      batchPrep := orchestrator.PrepareBatch(flowId, list, maxPar);
+    finally
+      orchestrator.Free;
+    end;
+
+    flow := batchPrep.Flow;
+    FAIManager := batchPrep.Manager;
+    if flow = nil then Exit;
+    if not Assigned(FAIManager) then Exit;
+
+    previewOptions.TokenizerVersion := TokenizerVersion;
+    previewOptions.SourceFont := ObterFonteTexto(tbOrigem);
+    previewOptions.DestinationFont := ObterFonteTexto(tbDestino);
+    previewOptions.BoldStrongs := PalavrasComStrongEmNegrito;
+    previewOptions.StrongsCountMode := MostrarQtdStrongs;
 
     // Use global form instance instead of creating new one
     if Assigned(FrmAIProcessing) then
     begin
-      if FrmAIProcessing.StartProcessing(FAIManager, flow, list, Self) then
+      if FrmAIProcessing.StartProcessing(FAIManager, flow, list, previewOptions, @ApplyAcceptedAIBatch) then
       begin
         FAIManager.StartBatch(flow, list);
         if FrmAIProcessing.ShowModal = mrOK then
@@ -2882,105 +2893,71 @@ end;
 procedure TProjeto.StartAIAssociationBatch(NodesVerses: TAIBatchWorkItemList; MaxParallel: Integer);
 var
   flow: IAIVerseFlow;
-  flowConfig: IAIFlowConfig;
-  i: Integer;
-  verseData: TVerseData;
-  node: TTreeNode;
+  batchPrep: TAIBatchPreparation;
+  orchestrator: TAIBatchOrchestrator;
 begin
   if (NodesVerses = nil) or (NodesVerses.Count = 0) then Exit;
-  if MaxParallel <= 0 then MaxParallel := 1;
   if (ObterInfo(AI_COMMON_CONFIG.Model).IsEmpty) or (ObterInfo(AI_COMMON_CONFIG.ApiKey).IsEmpty) then
   begin
     ShowMessage('AI associator not configured.');
     Exit;
   end;
-  // Cancel previous batch if running
-  if Assigned(FAIManager) then
-  begin
-    FAIManager.CancelAll;
-    ClearAllAINodeStates;
-    FreeAndNil(FAIManager);
-  end;
 
   // Reset completion flag
   FAIBatchCompletionShown := False;
 
-  // Mark all nodes as pending before starting (using raw data)
-  for i := 0 to NodesVerses.Count - 1 do
-  begin
-    verseData := NodesVerses[i].VerseData;
-    if not verseData.ReferenceID.IsEmpty then
-    begin
-      node := FindTreeNodeByReference(verseData.ReferenceID);
-      if Assigned(node) then
-        MarkNodeAsAIPending(node, verseData.ReferenceID);
-    end;
+  orchestrator := TAIBatchOrchestrator.Create(
+    @ObterInfo,
+    @ResetAIBatchManager,
+    @FindTreeNodeByReference,
+    @MarkNodeAsAIPending,
+    @HandleAutoSave,
+    @GetVerseReferenceString
+  );
+  try
+    batchPrep := orchestrator.PrepareBatch('association', NodesVerses, MaxParallel);
+  finally
+    orchestrator.Free;
   end;
 
-  // Get association flow config and build prompt
-  flowConfig := GetFlowConfigById('association');
-  flow := flowConfig.CreateFlowInstance(CreateAIFlowContext(@ObterInfo));
+  flow := batchPrep.Flow;
+  FAIManager := batchPrep.Manager;
+  if (flow = nil) or not Assigned(FAIManager) then
+    Exit;
 
-  FAIManager := TAIProcessingManager.Create(
-    ObterInfo(AI_COMMON_CONFIG.Model),
-    ObterInfo(AI_COMMON_CONFIG.ApiKey),
-    MaxParallel
-  );
-  // Configure manager with project settings
-  FAIManager.MaxRetries := StrToIntDef(ObterInfo(AI_COMMON_CONFIG.MaxRetries), 3);
-  FAIManager.RetryBaseDelay := StrToIntDef(ObterInfo(AI_COMMON_CONFIG.RetryDelay), 1000);
-  FAIManager.AutoSaveInterval := StrToIntDef(ObterInfo(AI_COMMON_CONFIG.AutoSaveInterval), 10);
-  FAIManager.OnAutoSaveNeeded := @HandleAutoSave;
-  FAIManager.GetVerseReference := @GetVerseReferenceString;
   FAIManager.StartBatch(flow, NodesVerses);
 end;
 
 procedure TProjeto.StartAITranslationBatch(NodesVerses: TAIBatchWorkItemList; MaxParallel: Integer);
 var
   flow: IAIVerseFlow;
-  flowConfig: IAIFlowConfig;
-  i: Integer;
-  verseData: TVerseData;
-  node: TTreeNode;
+  batchPrep: TAIBatchPreparation;
+  orchestrator: TAIBatchOrchestrator;
 begin
   if (NodesVerses = nil) or (NodesVerses.Count = 0) then Exit;
-  if MaxParallel <= 0 then MaxParallel := 1;
-  if Assigned(FAIManager) then
-  begin
-    FAIManager.CancelAll;
-    ClearAllAINodeStates;
-    FreeAndNil(FAIManager);
-  end;
 
   // Reset completion flag
   FAIBatchCompletionShown := False;
 
-  // Mark all nodes as pending before starting (using raw data)
-  for i := 0 to NodesVerses.Count - 1 do
-  begin
-    verseData := NodesVerses[i].VerseData;
-    if not verseData.ReferenceID.IsEmpty then
-    begin
-      node := FindTreeNodeByReference(verseData.ReferenceID);
-      if Assigned(node) then
-        MarkNodeAsAIPending(node, verseData.ReferenceID);
-    end;
+  orchestrator := TAIBatchOrchestrator.Create(
+    @ObterInfo,
+    @ResetAIBatchManager,
+    @FindTreeNodeByReference,
+    @MarkNodeAsAIPending,
+    @HandleAutoSave,
+    @GetVerseReferenceString
+  );
+  try
+    batchPrep := orchestrator.PrepareBatch('translation', NodesVerses, MaxParallel);
+  finally
+    orchestrator.Free;
   end;
 
-  // Get translation flow config and prepare flow instance
-  flowConfig := GetFlowConfigById('translation');
-  flow := flowConfig.CreateFlowInstance(CreateAIFlowContext(@ObterInfo));
+  flow := batchPrep.Flow;
+  FAIManager := batchPrep.Manager;
+  if (flow = nil) or not Assigned(FAIManager) then
+    Exit;
 
-  FAIManager := TAIProcessingManager.Create(
-    ObterInfo(AI_COMMON_CONFIG.Model),
-    ObterInfo(AI_COMMON_CONFIG.ApiKey),
-    MaxParallel
-  );
-  FAIManager.MaxRetries := StrToIntDef(ObterInfo(AI_COMMON_CONFIG.MaxRetries), 3);
-  FAIManager.RetryBaseDelay := StrToIntDef(ObterInfo(AI_COMMON_CONFIG.RetryDelay), 1000);
-  FAIManager.AutoSaveInterval := StrToIntDef(ObterInfo(AI_COMMON_CONFIG.AutoSaveInterval), 10);
-  FAIManager.OnAutoSaveNeeded := @HandleAutoSave;
-  FAIManager.GetVerseReference := @GetVerseReferenceString;
   FAIManager.StartBatch(flow, NodesVerses);
 end;
 
