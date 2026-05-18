@@ -22,6 +22,7 @@ uses
   ai_flows, llmclient, ai_flow_config, ai_debug, project_persistence, project_config,
   project_verse_repository, current_verse_workspace, verse_render_buffer,
   project_patch_applier, bible_tree_coordinator, ai_batch_orchestrator,
+  project_database_bootstrap,
   dictionary_manager, project_exporter;
 const
   // AI processing icon indices for ImageListTreeView in formprincipal
@@ -190,7 +191,6 @@ type
     function HasSituacaoCustomizada: boolean;
     procedure MigrateStoredAssociationsToTokenizerVersion(OldVersion, NewVersion: Integer);
   protected
-    procedure CopiarArquivo(origem, destino: string);
     function CriarObjetoTabela(db, tabela, chave: string): TSqlite3Dataset;
     function CriarObjetoQuery(db: string): TSQLQuery;
     function InserirInfo(info, valor: string): boolean;
@@ -430,7 +430,6 @@ resourcestring
 
 const
   QStrongs: array[etOT..etONT] of smallint = (8674, 5624, 14298);
-  ProjetoModelo: array[etOT..etONT] of string = ('projeto-ot.modelo', 'projeto.modelo', 'projeto-ont.modelo');
 
 procedure UpdateDefaultSituacaoDescricao;
 
@@ -559,31 +558,30 @@ end;
 
 procedure TProjeto.Novo(nomedb, descricao: string);
 begin
-  Novo(ProjetoModelo[FEscopo], nomedb, descricao, TTokenizerFactory.LATEST_VERSION);
+  Novo(nomedb, descricao, TTokenizerFactory.LATEST_VERSION);
 end;
 
 procedure TProjeto.Novo(nomedbvelho, nomedbnovo, descricao: string);
 begin
-  Novo(nomedbvelho, nomedbnovo, descricao, TTokenizerFactory.LATEST_VERSION);
+  Novo(nomedbnovo, descricao, TTokenizerFactory.LATEST_VERSION);
 end;
 
 procedure TProjeto.Novo(nomedb, descricao: string; tokenizerVersion: Integer);
 begin
-  Novo(ProjetoModelo[FEscopo], nomedb, descricao, tokenizerVersion);
+  TProjectDatabaseBootstrap.CreateProjectDatabase(nomedb, FEscopo);
+
+  Abrir(nomedb);
+
+  AtribuirInfo('descricao', descricao);
+  TokenizerVersion := tokenizerVersion;
+  FExibirDefComCtrl := false;  //FTblInfo.ExecuteDirect('COMMIT;');
+  VersiculoInicial;
+  Commit;
 end;
 
 procedure TProjeto.Novo(nomedbvelho, nomedbnovo, descricao: string; tokenizerVersion: Integer);
 begin
-  CopiarArquivo(nomedbvelho, nomedbnovo);
-
-  Abrir(nomedbnovo);
-
-  AtribuirInfo('descricao', descricao);
-  TokenizerVersion := tokenizerVersion;
-  //AtribuirInfo('marcador', format('%d,1,1', [OffsetLivros[FEscopo] + 1]));
-  FExibirDefComCtrl := false;  //FTblInfo.ExecuteDirect('COMMIT;');
-  VersiculoInicial;
-  Commit;
+  Novo(nomedbnovo, descricao, tokenizerVersion);
 end;
 
 function TProjeto.GetFormattedReference: string;
@@ -1471,20 +1469,6 @@ end;
 function TProjeto.GetInterlinearMode: TInterlinearMode;
 begin
   Result := TInterlinearMode(FConfig.ReadInterlinearMode(Ord(imInterlinear)));
-end;
-
-procedure TProjeto.CopiarArquivo(origem, destino: string);
-begin
-  if FileExists(destino) then
-    raise Exception.Create(SProjectOverrideError);
-
-  with TMemoryStream.Create do
-  try
-    LoadFromFile(origem);
-    SaveToFile(destino);
-  finally
-    Free;
-  end;
 end;
 
 function TProjeto.CriarObjetoTabela(db, tabela, chave: string): TSqlite3Dataset;
