@@ -13,6 +13,36 @@ type
   TFindTreeNodeByReferenceFunc = function(const Ref: string): TTreeNode of object;
   TMarkNodePendingProc = procedure(Node: TTreeNode; const Ref: string) of object;
 
+  IAIBatchContext = interface
+    ['{A3F9D21C-6B7E-4C1A-89D4-F2E51B730A8F}']
+    procedure CancelCurrentBatch;
+    function FindTreeNodeByReference(const Ref: string): TTreeNode;
+    procedure MarkNodePending(Node: TTreeNode; const Ref: string);
+    function GetAutoSaveCallback: TOnAutoSaveNeeded;
+    function GetVerseReferenceCallback: TGetVerseReferenceFunc;
+  end;
+
+  TAIBatchContextAdapter = class(TInterfacedObject, IAIBatchContext)
+  private
+    FCancelProc: TCancelAIBatchProc;
+    FFindNodeFunc: TFindTreeNodeByReferenceFunc;
+    FMarkPendingProc: TMarkNodePendingProc;
+    FAutoSaveProc: TOnAutoSaveNeeded;
+    FGetRefFunc: TGetVerseReferenceFunc;
+  public
+    constructor Create(
+      ACancelProc: TCancelAIBatchProc;
+      AFindNodeFunc: TFindTreeNodeByReferenceFunc;
+      AMarkPendingProc: TMarkNodePendingProc;
+      AAutoSaveProc: TOnAutoSaveNeeded;
+      AGetRefFunc: TGetVerseReferenceFunc);
+    procedure CancelCurrentBatch;
+    function FindTreeNodeByReference(const Ref: string): TTreeNode;
+    procedure MarkNodePending(Node: TTreeNode; const Ref: string);
+    function GetAutoSaveCallback: TOnAutoSaveNeeded;
+    function GetVerseReferenceCallback: TGetVerseReferenceFunc;
+  end;
+
   TAIBatchPreparation = record
     Flow: IAIVerseFlow;
     Manager: TAIProcessingManager;
@@ -21,39 +51,68 @@ type
   TAIBatchOrchestrator = class
   private
     FConfig: TProjectConfig;
-    FCancelCurrentBatch: TCancelAIBatchProc;
-    FFindTreeNodeByReference: TFindTreeNodeByReferenceFunc;
-    FMarkNodePending: TMarkNodePendingProc;
-    FOnAutoSaveNeeded: TOnAutoSaveNeeded;
-    FGetVerseReference: TGetVerseReferenceFunc;
+    FContext: IAIBatchContext;
     procedure MarkPendingNodes(WorkItems: TAIBatchWorkItemList);
   public
-    constructor Create(AConfig: TProjectConfig;
-      const ACancelCurrentBatch: TCancelAIBatchProc;
-      const AFindTreeNodeByReference: TFindTreeNodeByReferenceFunc;
-      const AMarkNodePending: TMarkNodePendingProc;
-      const AOnAutoSaveNeeded: TOnAutoSaveNeeded;
-      const AGetVerseReference: TGetVerseReferenceFunc);
+    constructor Create(AConfig: TProjectConfig; AContext: IAIBatchContext);
     function PrepareBatch(const FlowId: string; WorkItems: TAIBatchWorkItemList;
       MaxParallel: Integer): TAIBatchPreparation;
   end;
 
 implementation
 
-constructor TAIBatchOrchestrator.Create(AConfig: TProjectConfig;
-  const ACancelCurrentBatch: TCancelAIBatchProc;
-  const AFindTreeNodeByReference: TFindTreeNodeByReferenceFunc;
-  const AMarkNodePending: TMarkNodePendingProc;
-  const AOnAutoSaveNeeded: TOnAutoSaveNeeded;
-  const AGetVerseReference: TGetVerseReferenceFunc);
+{ TAIBatchContextAdapter }
+
+constructor TAIBatchContextAdapter.Create(
+  ACancelProc: TCancelAIBatchProc;
+  AFindNodeFunc: TFindTreeNodeByReferenceFunc;
+  AMarkPendingProc: TMarkNodePendingProc;
+  AAutoSaveProc: TOnAutoSaveNeeded;
+  AGetRefFunc: TGetVerseReferenceFunc);
+begin
+  inherited Create;
+  FCancelProc := ACancelProc;
+  FFindNodeFunc := AFindNodeFunc;
+  FMarkPendingProc := AMarkPendingProc;
+  FAutoSaveProc := AAutoSaveProc;
+  FGetRefFunc := AGetRefFunc;
+end;
+
+procedure TAIBatchContextAdapter.CancelCurrentBatch;
+begin
+  if Assigned(FCancelProc) then FCancelProc;
+end;
+
+function TAIBatchContextAdapter.FindTreeNodeByReference(const Ref: string): TTreeNode;
+begin
+  if Assigned(FFindNodeFunc) then
+    Result := FFindNodeFunc(Ref)
+  else
+    Result := nil;
+end;
+
+procedure TAIBatchContextAdapter.MarkNodePending(Node: TTreeNode; const Ref: string);
+begin
+  if Assigned(FMarkPendingProc) then FMarkPendingProc(Node, Ref);
+end;
+
+function TAIBatchContextAdapter.GetAutoSaveCallback: TOnAutoSaveNeeded;
+begin
+  Result := FAutoSaveProc;
+end;
+
+function TAIBatchContextAdapter.GetVerseReferenceCallback: TGetVerseReferenceFunc;
+begin
+  Result := FGetRefFunc;
+end;
+
+{ TAIBatchOrchestrator }
+
+constructor TAIBatchOrchestrator.Create(AConfig: TProjectConfig; AContext: IAIBatchContext);
 begin
   inherited Create;
   FConfig := AConfig;
-  FCancelCurrentBatch := ACancelCurrentBatch;
-  FFindTreeNodeByReference := AFindTreeNodeByReference;
-  FMarkNodePending := AMarkNodePending;
-  FOnAutoSaveNeeded := AOnAutoSaveNeeded;
-  FGetVerseReference := AGetVerseReference;
+  FContext := AContext;
 end;
 
 procedure TAIBatchOrchestrator.MarkPendingNodes(WorkItems: TAIBatchWorkItemList);
@@ -71,12 +130,12 @@ begin
     if VerseData.ReferenceID.IsEmpty then
       Continue;
 
-    if not Assigned(FFindTreeNodeByReference) or not Assigned(FMarkNodePending) then
+    if not Assigned(FContext) then
       Continue;
 
-    Node := FFindTreeNodeByReference(VerseData.ReferenceID);
+    Node := FContext.FindTreeNodeByReference(VerseData.ReferenceID);
     if Assigned(Node) then
-      FMarkNodePending(Node, VerseData.ReferenceID);
+      FContext.MarkNodePending(Node, VerseData.ReferenceID);
   end;
 end;
 
@@ -94,8 +153,8 @@ begin
   if MaxParallel <= 0 then
     MaxParallel := 1;
 
-  if Assigned(FCancelCurrentBatch) then
-    FCancelCurrentBatch;
+  if Assigned(FContext) then
+    FContext.CancelCurrentBatch;
 
   MarkPendingNodes(WorkItems);
 
@@ -115,8 +174,11 @@ begin
   Result.Manager.MaxRetries := StrToIntDef(FConfig.ReadString(AI_COMMON_CONFIG.MaxRetries), 3);
   Result.Manager.RetryBaseDelay := StrToIntDef(FConfig.ReadString(AI_COMMON_CONFIG.RetryDelay), 1000);
   Result.Manager.AutoSaveInterval := StrToIntDef(FConfig.ReadString(AI_COMMON_CONFIG.AutoSaveInterval), 10);
-  Result.Manager.OnAutoSaveNeeded := FOnAutoSaveNeeded;
-  Result.Manager.GetVerseReference := FGetVerseReference;
+  if Assigned(FContext) then
+  begin
+    Result.Manager.OnAutoSaveNeeded := FContext.GetAutoSaveCallback;
+    Result.Manager.GetVerseReference := FContext.GetVerseReferenceCallback;
+  end;
 end;
 
 end.

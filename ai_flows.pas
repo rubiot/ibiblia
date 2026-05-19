@@ -13,20 +13,27 @@ type
   // Generic job state (future use in manager)
   TAIJobState = (ajsPending, ajsFetching, ajsCompleted, ajsFailed, ajsCancelled);
 
+  // Optional value records — replace boolean flag pairs
+  TOptionalString = record
+    Value: string;
+    HasValue: Boolean;
+  end;
+
+  TOptionalInt = record
+    Value: Integer;
+    HasValue: Boolean;
+  end;
+
   // Base result class for flow-specific parsed data
   TAIFlowResult = class
   private
-    FAcceptedSourceText: string;
-    FAcceptedDestinationText: string;
-    FAcceptedPairs: string;
-    FAcceptedComments: string;
-    FAcceptedStatus: Integer;
-    FAcceptedSourceTextSet: Boolean;
-    FAcceptedDestinationTextSet: Boolean;
-    FAcceptedPairsSet: Boolean;
-    FAcceptedCommentsSet: Boolean;
-    FAcceptedStatusSet: Boolean;
+    FAcceptedSourceText: TOptionalString;
+    FAcceptedDestinationText: TOptionalString;
+    FAcceptedPairs: TOptionalString;
+    FAcceptedComments: TOptionalString;
+    FAcceptedStatus: TOptionalInt;
   public
+    ParseError: string; // non-empty when ParseResponse could not parse the response
     procedure CaptureAcceptedVerseState(Verse: TVersiculo);
     procedure SetAcceptedSourceText(const Value: string);
     procedure SetAcceptedDestinationText(const Value: string);
@@ -34,16 +41,16 @@ type
     procedure SetAcceptedComments(const Value: string);
     procedure SetAcceptedStatus(Value: Integer);
 
-    property AcceptedSourceText: string read FAcceptedSourceText;
-    property AcceptedDestinationText: string read FAcceptedDestinationText;
-    property AcceptedPairs: string read FAcceptedPairs;
-    property AcceptedComments: string read FAcceptedComments;
-    property AcceptedStatus: Integer read FAcceptedStatus;
-    property AcceptedSourceTextSet: Boolean read FAcceptedSourceTextSet;
-    property AcceptedDestinationTextSet: Boolean read FAcceptedDestinationTextSet;
-    property AcceptedPairsSet: Boolean read FAcceptedPairsSet;
-    property AcceptedCommentsSet: Boolean read FAcceptedCommentsSet;
-    property AcceptedStatusSet: Boolean read FAcceptedStatusSet;
+    property AcceptedSourceText: string read FAcceptedSourceText.Value;
+    property AcceptedDestinationText: string read FAcceptedDestinationText.Value;
+    property AcceptedPairs: string read FAcceptedPairs.Value;
+    property AcceptedComments: string read FAcceptedComments.Value;
+    property AcceptedStatus: Integer read FAcceptedStatus.Value;
+    property AcceptedSourceTextSet: Boolean read FAcceptedSourceText.HasValue;
+    property AcceptedDestinationTextSet: Boolean read FAcceptedDestinationText.HasValue;
+    property AcceptedPairsSet: Boolean read FAcceptedPairs.HasValue;
+    property AcceptedCommentsSet: Boolean read FAcceptedComments.HasValue;
+    property AcceptedStatusSet: Boolean read FAcceptedStatus.HasValue;
   end;
 
   // Forward declaration
@@ -168,32 +175,32 @@ end;
 
 procedure TAIFlowResult.SetAcceptedSourceText(const Value: string);
 begin
-  FAcceptedSourceText := Value;
-  FAcceptedSourceTextSet := True;
+  FAcceptedSourceText.Value := Value;
+  FAcceptedSourceText.HasValue := True;
 end;
 
 procedure TAIFlowResult.SetAcceptedDestinationText(const Value: string);
 begin
-  FAcceptedDestinationText := Value;
-  FAcceptedDestinationTextSet := True;
+  FAcceptedDestinationText.Value := Value;
+  FAcceptedDestinationText.HasValue := True;
 end;
 
 procedure TAIFlowResult.SetAcceptedPairs(const Value: string);
 begin
-  FAcceptedPairs := Value;
-  FAcceptedPairsSet := True;
+  FAcceptedPairs.Value := Value;
+  FAcceptedPairs.HasValue := True;
 end;
 
 procedure TAIFlowResult.SetAcceptedComments(const Value: string);
 begin
-  FAcceptedComments := Value;
-  FAcceptedCommentsSet := True;
+  FAcceptedComments.Value := Value;
+  FAcceptedComments.HasValue := True;
 end;
 
 procedure TAIFlowResult.SetAcceptedStatus(Value: Integer);
 begin
-  FAcceptedStatus := Value;
-  FAcceptedStatusSet := True;
+  FAcceptedStatus.Value := Value;
+  FAcceptedStatus.HasValue := True;
 end;
 
 end.

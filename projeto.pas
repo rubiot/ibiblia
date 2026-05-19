@@ -1196,11 +1196,13 @@ begin
 
     orchestrator := TAIBatchOrchestrator.Create(
       FConfig,
-      @ResetAIBatchManager,
-      @FindTreeNodeByReference,
-      @MarkNodeAsAIPending,
-      @HandleAutoSave,
-      @GetVerseReferenceString
+      TAIBatchContextAdapter.Create(
+        @ResetAIBatchManager,
+        @FindTreeNodeByReference,
+        @MarkNodeAsAIPending,
+        @HandleAutoSave,
+        @GetVerseReferenceString
+      )
     );
     try
       batchPrep := orchestrator.PrepareBatch(flowId, list, maxPar);
@@ -2658,11 +2660,13 @@ begin
 
   orchestrator := TAIBatchOrchestrator.Create(
     FConfig,
-    @ResetAIBatchManager,
-    @FindTreeNodeByReference,
-    @MarkNodeAsAIPending,
-    @HandleAutoSave,
-    @GetVerseReferenceString
+    TAIBatchContextAdapter.Create(
+      @ResetAIBatchManager,
+      @FindTreeNodeByReference,
+      @MarkNodeAsAIPending,
+      @HandleAutoSave,
+      @GetVerseReferenceString
+    )
   );
   try
     batchPrep := orchestrator.PrepareBatch('association', NodesVerses, MaxParallel);
@@ -2691,11 +2695,13 @@ begin
 
   orchestrator := TAIBatchOrchestrator.Create(
     FConfig,
-    @ResetAIBatchManager,
-    @FindTreeNodeByReference,
-    @MarkNodeAsAIPending,
-    @HandleAutoSave,
-    @GetVerseReferenceString
+    TAIBatchContextAdapter.Create(
+      @ResetAIBatchManager,
+      @FindTreeNodeByReference,
+      @MarkNodeAsAIPending,
+      @HandleAutoSave,
+      @GetVerseReferenceString
+    )
   );
   try
     batchPrep := orchestrator.PrepareBatch('translation', NodesVerses, MaxParallel);

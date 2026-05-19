@@ -108,6 +108,9 @@ procedure FillSupportedProviders(List: TStrings);
 // Utility to build a JSON array of messages
 function MessagesToJSONArray(const Messages: array of TLLMMessage): TJSONArray;
 
+// Returns True if any message content contains AWord (case-insensitive)
+function MessagesContainWord(const Messages: array of TLLMMessage; const AWord: string): Boolean;
+
 // Thread-safe SSL initialization
 procedure EnsureSSLInitialized;
 
@@ -452,6 +455,16 @@ begin
   Result := arr;
 end;
 
+function MessagesContainWord(const Messages: array of TLLMMessage; const AWord: string): Boolean;
+var
+  i: Integer;
+begin
+  for i := 0 to High(Messages) do
+    if Pos(LowerCase(AWord), LowerCase(Messages[i].Content)) > 0 then
+      Exit(True);
+  Result := False;
+end;
+
 procedure EnsureSSLInitialized;
 {$IFDEF MSWINDOWS}
 const
@@ -557,6 +570,8 @@ procedure TOpenAICompatibleBackend.ParseCompletionsResponse(const JsonResponse: 
 var
   choices: TJSONArray;
   msg: TJSONObject;
+  errObj: TJSONObject;
+  errMsg: string;
 begin
   Response.Content := '';
   Response.Reasoning := '';
@@ -571,10 +586,23 @@ begin
       Response.Reasoning := ''; // Default reasoning is empty
     end
     else
-      Response.Content := JsonResponse.AsString;
+      raise Exception.Create('API response has empty choices: ' + JsonResponse.AsJSON);
   end
   else
-    Response.Content := JsonResponse.AsString;
+  begin
+    // API returned an error object instead of a completion
+    if JsonResponse.Find('error') <> nil then
+    begin
+      errObj := JsonResponse.Objects['error'];
+      if Assigned(errObj) then
+        errMsg := errObj.Get('message', JsonResponse.AsJSON)
+      else
+        errMsg := JsonResponse.Get('error', JsonResponse.AsJSON);
+      raise Exception.Create('API error: ' + errMsg);
+    end
+    else
+      raise Exception.Create('Unexpected API response (no choices): ' + JsonResponse.AsJSON);
+  end;
 end;
 
 function TOpenAICompatibleBackend.AskChatCompletions(const Messages: array of TLLMMessage): TLLMResponse;
@@ -592,7 +620,9 @@ begin
     arr := MessagesToJSONArray(Messages);
     req.Add('messages', arr);
     req.Add('stream', False);
-    if info.SupportsStructOutput then
+    // Only request json_object mode when the model supports it AND the prompt
+    // actually mentions JSON — APIs (e.g. DeepSeek) reject the combination otherwise.
+    if info.SupportsStructOutput and MessagesContainWord(Messages, 'json') then
       req.Add('response_format', TJSONObject.Create(['type', 'json_object']));
     body := req.AsJSON;
   finally
@@ -608,11 +638,7 @@ begin
     end;
   except
     on E: Exception do
-    begin
-      Result.Content := '{"error": "' + E.Message + '"}';
-      Result.Reasoning := '';
-      Self.ClearUsage(Result.Usage);
-    end;
+      raise;
   end;
 end;
 
@@ -776,16 +802,21 @@ begin
             if (parts.Count > 0) and (parts.Objects[0].Find('text') <> nil) then
               Result.Content := parts.Objects[0].Get('text', '')
             else
-              Result.Content := resp;
+              raise Exception.Create('Google API: no text in parts: ' + respjson.AsJSON);
           end
           else
-            Result.Content := resp;
+            raise Exception.Create('Google API: no parts in content: ' + respjson.AsJSON);
         end
         else
-          Result.Content := resp;
+          raise Exception.Create('Google API: empty candidates: ' + respjson.AsJSON);
       end
       else
-        Result.Content := resp;
+      begin
+        if respjson.Find('error') <> nil then
+          raise Exception.Create('Google API error: ' + respjson.Objects['error'].Get('message', respjson.AsJSON))
+        else
+          raise Exception.Create('Google API unexpected response: ' + respjson.AsJSON);
+      end;
       Result.Reasoning := '';
       ParseUsage(respjson, Result.Usage);
     finally
@@ -793,11 +824,7 @@ begin
     end;
   except
     on E: Exception do
-    begin
-      Result.Content := '{"error": "' + E.Message + '"}';
-      Result.Reasoning := '';
-      Self.ClearUsage(Result.Usage);
-    end;
+      raise;
   end;
 end;
 

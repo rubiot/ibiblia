@@ -27,7 +27,6 @@ type
     AttemptCount: Integer;
     NextRetryTime: TDateTime;
     RequestStartTime: TDateTime;
-    OwnsVerse: Boolean; // batch jobs own temp verses; single jobs reuse visual verses
     WorkItem: TAIBatchWorkItem; // explicit batch input and temp-verse creation seam
     Index: Integer;             // Index in batch for callbacks
     Usage: TLLMUsage;
@@ -142,7 +141,7 @@ uses
 destructor TAIJob.Destroy;
 begin
   // Free temporary verse objects created for batch processing
-  if OwnsVerse then
+  if Assigned(WorkItem) then
   begin
     if Assigned(Verse) then
       Verse.MarkDestroying;
@@ -211,7 +210,14 @@ begin
     // Check if this is a retry job that's not ready yet
     if (job.AttemptCount > 0) and (Now < job.NextRetryTime) then
     begin
-      // Re-queue for later
+      // Decrement InFlight (was incremented by DequeuePending) before re-queuing,
+      // otherwise FInFlight grows by 1 each 100ms sleep cycle.
+      FManager.SafeEnterLock;
+      try
+        Dec(FManager.FInFlight);
+      finally
+        FManager.SafeLeaveLock;
+      end;
       FManager.EnqueuePending(job);
       Sleep(100);
       Continue;
@@ -276,6 +282,8 @@ begin
       job.RawContent := resp.Content;
       job.Usage := resp.Usage;
       job.Parsed := job.Flow.ParseResponse(resp.Content, job.Verse);
+      if Assigned(job.Parsed) and (job.Parsed.ParseError <> '') then
+        raise Exception.Create('Parse error: ' + job.Parsed.ParseError);
       job.State := ajsCompleted;
       AIDebugLog('[Worker] Job completed, enqueuing for apply');
       // Track metrics
@@ -517,7 +525,7 @@ begin
   FFlowName := Flow.Name;
   job.Flow := Flow;
   job.Verse := Verse;
-  job.OwnsVerse := False; // Single jobs use visual verses that should not be freed
+  // Single jobs use visual verses (WorkItem = nil) so destructor won't free them
   job.State := ajsPending;
   job.AttemptCount := 0;
   job.NextRetryTime := 0;
@@ -556,7 +564,7 @@ begin
     job.Usage.PromptTokens := 0;
     job.Usage.CompletionTokens := 0;
     job.Usage.TotalTokens := 0;
-    job.OwnsVerse := True;
+    // WorkItem set means batch job — destructor will free temp verses
     job.Index := i; // Store index for callbacks
     job.WorkItem := item;
     job.Verse := nil;
@@ -635,8 +643,8 @@ begin
               raise Exception.Create('Missing Parsed result in job when applying result');
 
             // Diagnostic logging: job metadata right before ApplyResult
-            AIDebugLogFmt('[Manager] About to call ApplyResult. JobPtr=%s, JobIndex=%d, OwnsVerse=%s, VerseAssigned=%s, RawContentLen=%d, FlowPtr=%s, ParsedPtr=%s',
-              [IntToHex(PtrUInt(Pointer(job)), SizeOf(Pointer)*2), job.Index, BoolToStr(job.OwnsVerse, True), BoolToStr(Assigned(job.Verse), True), Length(job.RawContent),
+            AIDebugLogFmt('[Manager] About to call ApplyResult. JobPtr=%s, JobIndex=%d, BatchJob=%s, VerseAssigned=%s, RawContentLen=%d, FlowPtr=%s, ParsedPtr=%s',
+              [IntToHex(PtrUInt(Pointer(job)), SizeOf(Pointer)*2), job.Index, BoolToStr(Assigned(job.WorkItem), True), BoolToStr(Assigned(job.Verse), True), Length(job.RawContent),
                IntToHex(PtrUInt(Pointer(job.Flow)), SizeOf(Pointer)*2), IntToHex(PtrUInt(Pointer(job.Parsed)), SizeOf(Pointer)*2)]);
             if Assigned(job.Verse) then
               AIDebugLogFmt('[Manager]   VersePtr=%s, Verse ref: %s (ID=%s)', [IntToHex(PtrUInt(Pointer(job.Verse)), SizeOf(Pointer)*2), job.Verse.Referencia, job.Verse.ReferenciaID]);

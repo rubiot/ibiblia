@@ -242,7 +242,7 @@ begin
   except
     on E: Exception do
     begin
-      // If JSON parsing fails, leave result empty; could log E.Message
+      Result.ParseError := E.Message;
     end;
   end;
 end;
