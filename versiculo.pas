@@ -27,7 +27,6 @@ type
 
   TVersiculo = class
   private
-    FProject: TObject;
     FReferencia: string;
     FReferenciaID: string;
     FRightToLeft: Boolean;
@@ -62,10 +61,6 @@ type
     FSyntagmPopupMenu: TPopupMenu;
     FVersePopupMenu: TPopupMenu;
     FRTLMenuItem: TMenuItem;
-    FUseAsExampleMenuItem: TMenuItem;
-    FUseAsAssociationExampleMenuItem: TMenuItem;
-    FUseAsTranslationExampleMenuItem: TMenuItem;
-    FCopyAssociationExampleMenuItem: TMenuItem;
     FFixWrongFiTag: IRegex;
     FReadOnly: Boolean;
     { determines the auto select behaviour on right-click association }
@@ -78,7 +73,6 @@ type
     function GetFonte: TFont;
     function GetPares: string;
     function GetTextoSimples: string;
-    function GetProjeto: TObject;
     procedure SetAtivo(const AValue: boolean);
     procedure SetFonte(const AValue: TFont);
     procedure SetModificado(const AValue: boolean);
@@ -110,11 +104,7 @@ type
              WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
     procedure InitSyntagmPopupMenu;
     procedure InitVersePopupMenu;
-    procedure OnUseAssociationAsExample(Sender: TObject);
-    procedure OnUseTranslationAsExample(Sender: TObject);
     procedure OnCopyAssociationsJSONToClipboard(Sender: TObject);
-    procedure OnCopyAssociationExample(Sender: TObject);
-    procedure OnSwitchDestinationAndReference1Texts(Sender: TObject);
     procedure OnCopySintagmasAsJSON(Sender: TObject);
     function CreateTokenizer(const XML: string): TONTTokenizer;
     procedure ReplaceTextPreservingAssociations(const _XML: string; ForceRetokenize: Boolean);
@@ -122,8 +112,8 @@ type
     { Protected declarations }
   public
     { Public declarations }
-    constructor Criar(AProject: TObject; const AReferencia: string = '');
-    constructor Criar(AProject: TObject; TheOwner: TScrollBox; const AReferencia: string = '');
+    constructor Criar(const AReferencia: string = '');
+    constructor Criar(TheOwner: TScrollBox; const AReferencia: string = '');
     destructor Destruir;
     procedure MarkDestroying;
     procedure LimparSintagmas;
@@ -158,11 +148,11 @@ type
     property VersiculoPar: TVersiculo read FVersiculoRef write SetVersiculoPar;
     property Referencia: string read FReferencia write FReferencia;
     property ReferenciaID: string read FReferenciaID write FReferenciaID;
-    property Projeto: TObject read GetProjeto;
     property XML: string read FXML;
     property Texto: string read GetTexto write SetTexto;
     property Pares: string read GetPares write SetPares;
     property Painel: TScrollBox read FPanel write FPanel;
+    property VersePopupMenu: TPopupMenu read FVersePopupMenu;
     property Sintagmas: TSyntagmList read FSintagmas;
     property Selecao: TSyntagmList read FSelecao write FSelecao;
     property Modificado: boolean read FModificado write SetModificado;
@@ -208,16 +198,11 @@ resourcestring
   SCopyInterlinearVerseToClipboard = 'Copy &interlinear verse to clipboard';
   SCopyXMLToClipboard = 'Copy association &XML to clipboard';
   SCopyAssociationsJSONToClipboard = 'Copy association &JSON to clipboard';
-  SUseVerseAsExample = 'Use verse as example...';
-  SUseVerseAsAssociationExample = 'In association flow';
-  SUseVerseAsTranslationExample = 'In translation flow';
-  SCopyAssociationExample = 'Copy association example for AI instructions';
-  SSwitchDestinationAndReference1Texts = 'Switch destination text with reference 1';
 
 implementation
 
 uses
-  Projeto, TypInfo, SyntagmSelection;
+  TypInfo, SyntagmSelection;
 
 const
   MarginWidth = 10; // text's distance from the margin
@@ -232,14 +217,12 @@ end;
 
 { TVersiculo }
 
-constructor TVersiculo.Criar(AProject: TObject; TheOwner : TScrollBox; const AReferencia: string = '');
+constructor TVersiculo.Criar(TheOwner : TScrollBox; const AReferencia: string = '');
 begin
-  AIDebugLogFmt('[TVersiculo] Criar called. Self=%s, Project=%s, Owner=%s, Referencia=%s',
+  AIDebugLogFmt('[TVersiculo] Criar called. Self=%s, Owner=%s, Referencia=%s',
     [IntToHex(PtrUInt(Pointer(Self)), SizeOf(Pointer)*2),
-     IntToHex(PtrUInt(Pointer(AProject)), SizeOf(Pointer)*2),
      IntToHex(PtrUInt(Pointer(TheOwner)), SizeOf(Pointer)*2),
      AReferencia]);
-  FProject := AProject;
   FReferencia := AReferencia;
   FPanel := TheOwner;
 
@@ -279,10 +262,7 @@ begin
   FCorDesassociado      := $A3A3A3;
   FDestruindo           := false;
   FRendering            := false;
-  if AProject is TProjeto then
-    FTokenizerVersion := TProjeto(AProject).TokenizerVersion
-  else
-    FTokenizerVersion := TTokenizerFactory.PreferredVersion;
+  FTokenizerVersion := TTokenizerFactory.PreferredVersion;
   FONTParser := TONTParser.Create(FTokenizerVersion);
 
   { regex to fix cases in which a <Fi> tag ends up misplaced }
@@ -291,9 +271,8 @@ end;
 
 destructor TVersiculo.Destruir;
 begin
-  AIDebugLogFmt('[TVersiculo] Destruir called. Self=%s, Project=%s, Panel=%s, Referencia=%s',
+  AIDebugLogFmt('[TVersiculo] Destruir called. Self=%s, Panel=%s, Referencia=%s',
     [IntToHex(PtrUInt(Pointer(Self)), SizeOf(Pointer)*2),
-     IntToHex(PtrUInt(Pointer(FProject)), SizeOf(Pointer)*2),
      IntToHex(PtrUInt(Pointer(FPanel)), SizeOf(Pointer)*2),
      FReferencia]);
   FDestruindo := true;
@@ -649,11 +628,6 @@ end;
 procedure TVersiculo.RetokenizePreservingAssociations;
 begin
   ReplaceTextPreservingAssociations(FXML, True);
-end;
-
-function TVersiculo.GetProjeto: TObject;
-begin
-  Result := FProject;
 end;
 
 function TVersiculo.GetTexto: string;
@@ -1673,31 +1647,10 @@ end;
 
 procedure TVersiculo.OnVerseMouseDown(Sender: TObject; Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
-var
-  Project: TProjeto;
-  IsPrimaryVerse: Boolean;
-  CanUseAssociationExample: Boolean;
-  CanUseTranslationExample: Boolean;
 begin
   if Button = mbRight then
-  begin
-    Project := TProjeto(FProject);
-    IsPrimaryVerse := Assigned(Project) and Assigned(Project.VerseObjects[tbOrigem]) and
-      (Project.VerseObjects[tbOrigem] = Self);
-    CanUseAssociationExample := IsPrimaryVerse and Assigned(VersiculoPar) and HasAssociations;
-    CanUseTranslationExample := IsPrimaryVerse and Assigned(VersiculoPar) and (Trim(VersiculoPar.TextoSimples) <> '');
-
-    if Assigned(FUseAsExampleMenuItem) then
-    begin
-      FUseAsExampleMenuItem.Visible := CanUseAssociationExample or CanUseTranslationExample;
-      FUseAsAssociationExampleMenuItem.Enabled := CanUseAssociationExample;
-      FUseAsTranslationExampleMenuItem.Enabled := CanUseTranslationExample;
-    end;
-
-    if Assigned(FCopyAssociationExampleMenuItem) then
-      FCopyAssociationExampleMenuItem.Visible := HasAssociations;
-    FVersePopupMenu.PopUp;
-  end;
+    if Assigned(FVersePopupMenu) then
+      FVersePopupMenu.PopUp;
 end;
 
 procedure TVersiculo.OnResize(Sender: TObject);
@@ -1762,20 +1715,6 @@ begin
   Item.OnClick := @OnSaveTextToFile;
   FVersePopupMenu.Items.Add(Item);
 
-  FUseAsExampleMenuItem := TMenuItem.Create(FVersePopupMenu);
-  FUseAsExampleMenuItem.Caption := SUseVerseAsExample;
-  FVersePopupMenu.Items.Add(FUseAsExampleMenuItem);
-
-  FUseAsAssociationExampleMenuItem := TMenuItem.Create(FVersePopupMenu);
-  FUseAsAssociationExampleMenuItem.Caption := SUseVerseAsAssociationExample;
-  FUseAsAssociationExampleMenuItem.OnClick := @OnUseAssociationAsExample;
-  FUseAsExampleMenuItem.Add(FUseAsAssociationExampleMenuItem);
-
-  FUseAsTranslationExampleMenuItem := TMenuItem.Create(FVersePopupMenu);
-  FUseAsTranslationExampleMenuItem.Caption := SUseVerseAsTranslationExample;
-  FUseAsTranslationExampleMenuItem.OnClick := @OnUseTranslationAsExample;
-  FUseAsExampleMenuItem.Add(FUseAsTranslationExampleMenuItem);
-
   {$IFDEF DEBUG}
     FVersePopupMenu.Items.AddSeparator;
 
@@ -1804,22 +1743,12 @@ begin
     Item.OnClick := @OnCopyAssociationsJSONToClipboard;
     FVersePopupMenu.Items.Add(Item);
 
-    FCopyAssociationExampleMenuItem := TMenuItem.Create(FVersePopupMenu);
-    FCopyAssociationExampleMenuItem.Caption := SCopyAssociationExample;
-    FCopyAssociationExampleMenuItem.OnClick := @OnCopyAssociationExample;
-    FVersePopupMenu.Items.Add(FCopyAssociationExampleMenuItem);
-
-    Item := TMenuItem.Create(FVersePopupMenu);
-    Item.Caption := SSwitchDestinationAndReference1Texts;
-    Item.OnClick := @OnSwitchDestinationAndReference1Texts;
-    FVersePopupMenu.Items.Add(Item);
-
   {$ENDIF}
 end;
 
-constructor TVersiculo.Criar(AProject: TObject; const AReferencia: string = '');
+constructor TVersiculo.Criar(const AReferencia: string = '');
 begin
-  Criar(AProject, nil, AReferencia);
+  Criar(nil, AReferencia);
 end;
 
 procedure TVersiculo.OnCopySintagmasAsJSON(Sender: TObject);
@@ -1942,47 +1871,6 @@ end;
 procedure TVersiculo.OnCopyAssociationsJSONToClipboard(Sender: TObject);
 begin
   clipboard.AsText := GetAssociationsJSON;
-end;
-
-procedure TVersiculo.OnUseAssociationAsExample(Sender: TObject);
-begin
-  if Assigned(FProject) then
-    TProjeto(FProject).IncludeCurrentVerseAsFlowExample('association');
-end;
-
-procedure TVersiculo.OnUseTranslationAsExample(Sender: TObject);
-begin
-  if Assigned(FProject) then
-    TProjeto(FProject).IncludeCurrentVerseAsFlowExample('translation');
-end;
-
-procedure TVersiculo.OnCopyAssociationExample(Sender: TObject);
-var
-  example: string;
-  project: TProjeto;
-  originalVerse, destinoVerse: TVersiculo;
-begin
-  project := TProjeto(FProject);
-  originalVerse := project.VerseObjects[tbOrigem];
-  destinoVerse := project.VerseObjects[tbDestino];
-
-  if (not Assigned(originalVerse)) or (not Assigned(destinoVerse)) then
-    Exit;
-
-  example := Format('Original: "%s"'#13#10'Tradução: "%s"'#13#10'Resposta esperada: %s',
-    [originalVerse.GetTextoSimples, destinoVerse.GetTextoSimples, originalVerse.GetAssociationsJSON]);
-  Clipboard.AsText := example;
-end;
-
-procedure TVersiculo.OnSwitchDestinationAndReference1Texts(Sender: TObject);
-var
-  destinationText: string;
-  project: TProjeto;
-begin
-  project := (FProject as TProjeto);
-  destinationText := project.VerseObjects[tbDestino].XML;
-  project.VerseObjects[tbDestino].AlterarTexto(project.VerseObjects[tbConsulta1].XML);
-  project.VerseObjects[tbConsulta1].SetTexto('(KJF original) ' + destinationText);
 end;
 
 end.

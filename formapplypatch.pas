@@ -1,4 +1,4 @@
-unit formapplypatch;
+﻿unit formapplypatch;
 
 {$mode objfpc}{$H+}
 
@@ -6,7 +6,8 @@ interface
 
 uses
   Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  ComCtrls, ExtCtrls, BibleTreeView, PatchFile, Versiculo, Projeto, CommentsView;
+  ComCtrls, ExtCtrls, BibleTreeView, PatchFile, Versiculo, Projeto, CommentsView,
+  ONTTokenizer;
 
 type
 
@@ -76,17 +77,25 @@ begin
 end;
 
 procedure TFrmApplyPatch.FormCreate(Sender: TObject);
+var
+  tokenizerVersion: Integer;
 begin
   FBibleTreeView := TBibleTreeView.Create(GroupBox1);
   FBibleTreeView.Align := alClient;
   FBibleTreeView.OnVerseChange := @OnVerseChange;
   FPatch := nil;
 
-  FSrcVerse := TVersiculo.Criar(ProjetoAtual, ScrollBoxSrcText);
-  FDstVerse := TVersiculo.Criar(ProjetoAtual, ScrollBoxDstText);
+  FSrcVerse := TVersiculo.Criar(ScrollBoxSrcText);
+  FDstVerse := TVersiculo.Criar(ScrollBoxDstText);
   FSrcVerse.VersiculoPar := FDstVerse;
   FSrcVerse.ReadOnly := true;
   FDstVerse.ReadOnly := true;
+  if Assigned(ProjetoAtual) then
+    tokenizerVersion := ProjetoAtual.TokenizerVersion
+  else
+    tokenizerVersion := TTokenizerFactory.PreferredVersion;
+  FSrcVerse.TokenizerVersion := tokenizerVersion;
+  FDstVerse.TokenizerVersion := tokenizerVersion;
 
   // Replace the TMemo with TCommentsView
   FActualCommentsMemo := TCommentsView.Create(Self);

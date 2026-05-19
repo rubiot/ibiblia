@@ -30,7 +30,7 @@ type
     procedure InitializeVerseRuntime(var VerseViews: array of TVersiculo;
       var TextFieldIndexes: array of Integer);
     procedure DestroyVerseViews(var VerseViews: array of TVersiculo);
-    procedure CreateVerseView(Project: TObject; Owner: TScrollBox; VerseIndex,
+    procedure CreateVerseView(Owner: TScrollBox; VerseIndex,
       SourceVerseIndex, DestinationVerseIndex: Integer;
       var VerseViews: array of TVersiculo; OnVerseDoubleClick: TNotifyEvent;
       OnSyntagmClick: TOnSintagmaEvent; OnExportText: TOnExportTextEvent);
@@ -145,15 +145,15 @@ begin
     end;
 end;
 
-procedure TCurrentVerseWorkspace.CreateVerseView(Project: TObject;
-  Owner: TScrollBox; VerseIndex, SourceVerseIndex, DestinationVerseIndex: Integer;
+procedure TCurrentVerseWorkspace.CreateVerseView(Owner: TScrollBox;
+  VerseIndex, SourceVerseIndex, DestinationVerseIndex: Integer;
   var VerseViews: array of TVersiculo; OnVerseDoubleClick: TNotifyEvent;
   OnSyntagmClick: TOnSintagmaEvent; OnExportText: TOnExportTextEvent);
 begin
   if (VerseIndex < Low(VerseViews)) or (VerseIndex > High(VerseViews)) then
     raise Exception.CreateFmt('Current verse view index out of bounds [%d]', [VerseIndex]);
 
-  VerseViews[VerseIndex] := TVersiculo.Criar(Project, Owner);
+  VerseViews[VerseIndex] := TVersiculo.Criar(nil, Owner);
   Owner.Tag := PtrInt(VerseViews[VerseIndex]);
   Owner.OnDblClick := OnVerseDoubleClick;
   VerseViews[VerseIndex].OnClick := OnSyntagmClick;

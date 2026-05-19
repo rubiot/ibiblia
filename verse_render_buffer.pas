@@ -16,7 +16,7 @@ type
     FDestinationVerse: TVersiculo;
     procedure EnsureReady;
   public
-    constructor Create(Project: TObject);
+    constructor Create;
     destructor Destroy; override;
     procedure SetTokenizerVersion(Value: Integer);
     procedure LoadTexts(const OriginalText, TranslatedText: string);
@@ -58,11 +58,11 @@ begin
     raise Exception.Create('Verse render buffer is not initialized');
 end;
 
-constructor TVerseRenderBuffer.Create(Project: TObject);
+constructor TVerseRenderBuffer.Create;
 begin
   inherited Create;
-  FSourceVerse := TVersiculo.Criar(Project);
-  FDestinationVerse := TVersiculo.Criar(Project);
+  FSourceVerse := TVersiculo.Criar();
+  FDestinationVerse := TVersiculo.Criar();
   FSourceVerse.VersiculoPar := FDestinationVerse;
 end;
 

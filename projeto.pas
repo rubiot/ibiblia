@@ -16,7 +16,7 @@ uses
   {$ENDIF}
   SysUtils, Sqlite3DS, sqlite3conn, sqldb, db, StrUtils, math,
   ExtCtrls, Controls, ComCtrls, StdCtrls, Graphics, Forms, Versiculo, Sugestao,
-  MemoVersiculo, ONTTokenizer, Dialogs, dos, PCRE, LazLogger,
+  MemoVersiculo, ONTTokenizer, Dialogs, dos, PCRE, LazLogger, Clipbrd,
   Syntagm, BibleScope, MySwordModule, fgl, PatchFile, LCLIntf, menus,
   CommentsView, ai_processing_manager, ai_processing_batch, ai_batch_work_item,
   ai_flows, llmclient, ai_flow_config, ai_debug, project_persistence, project_config,
@@ -125,6 +125,11 @@ type
     FTblPares: TSqlite3Dataset;
     FTblInfo: TSqlite3Dataset;
     FAVersiculo: AVersiculo;
+    FUseAsExampleMenuItems: array[tbOrigem..tbConsulta2] of TMenuItem;
+    FUseAsAssociationExampleMenuItems: array[tbOrigem..tbConsulta2] of TMenuItem;
+    FUseAsTranslationExampleMenuItems: array[tbOrigem..tbConsulta2] of TMenuItem;
+    FCopyAssociationExampleMenuItems: array[tbOrigem..tbConsulta2] of TMenuItem;
+    FSwitchDestinationTextMenuItems: array[tbOrigem..tbConsulta2] of TMenuItem;
     FACamposTexto: ACamposTexto;
     FSugeridor: TGerSugestoes;
     FAIManager: TAIProcessingManager; // batch manager IA
@@ -204,6 +209,11 @@ type
     procedure SintagmaOnMouseLeave(Sender: TSyntagm);
     procedure SintagmaOnClick(Sender: TSyntagm);
     procedure OnExportText(Sender: TVersiculo);
+    procedure OnVersePopup(Sender: TObject);
+    procedure OnUseAssociationAsExample(Sender: TObject);
+    procedure OnUseTranslationAsExample(Sender: TObject);
+    procedure OnCopyAssociationExample(Sender: TObject);
+    procedure OnSwitchDestinationAndReference1Texts(Sender: TObject);
     procedure OnMudancaVersiculo(Sender: TObject; Node: TTreeNode);
     procedure OnAlterarTextoVersiculo(Sender: TMemoVersiculo);
     procedure OnExibirDefinicao(Sender: TObject);
@@ -212,6 +222,8 @@ type
     procedure OnBibleTreeContextPopup(Sender: TObject; MousePos: TPoint; var Handled: Boolean);
     procedure HandleAutoSave(Sender: TObject);
     function GetVerseReferenceString(Verse: TVersiculo): string;
+    procedure AttachProjectVersePopupMenu(texto: TTipoTextoBiblico);
+    function FindVerseType(Verse: TVersiculo; out VerseType: TTipoTextoBiblico): Boolean;
     { AI Visual Feedback }
     procedure MarkNodeAsAIPending(node: TTreeNode; const ref: string);
     procedure MarkNodeAsAIProcessing(const ref: string);
@@ -369,6 +381,8 @@ resourcestring
   SUseVerseAsExample = 'Use verse as example...';
   SUseVerseAsAssociationExample = 'In association flow';
   SUseVerseAsTranslationExample = 'In translation flow';
+  SCopyAssociationExample = 'Copy association example for AI instructions';
+  SSwitchDestinationAndReference1Texts = 'Switch destination text with reference 1';
   SExampleSaved = 'Example saved.';
   SExampleAlreadyExistsTitle = 'Example already exists';
   SExampleAlreadyExistsPrompt = 'This verse is already saved as an example for the %s flow.' + #13#10 + #13#10 +
@@ -1764,6 +1778,130 @@ begin
   OpenDocument(ExtractFilePath(destination));
 end;
 
+function TProjeto.FindVerseType(Verse: TVersiculo; out VerseType: TTipoTextoBiblico): Boolean;
+var
+  t: TTipoTextoBiblico;
+begin
+  for t := Low(FAVersiculo) to High(FAVersiculo) do
+    if FAVersiculo[t] = Verse then
+    begin
+      VerseType := t;
+      Exit(True);
+    end;
+
+  Result := False;
+end;
+
+procedure TProjeto.OnVersePopup(Sender: TObject);
+var
+  PopupMenu: TPopupMenu;
+  ClickedVerse: TVersiculo;
+  VerseType: TTipoTextoBiblico;
+  IsPrimaryVerse: Boolean;
+  CanUseAssociationExample: Boolean;
+  CanUseTranslationExample: Boolean;
+begin
+  if not (Sender is TPopupMenu) then
+    Exit;
+
+  PopupMenu := TPopupMenu(Sender);
+  ClickedVerse := TVersiculo(PopupMenu.Tag);
+  if not Assigned(ClickedVerse) or not FindVerseType(ClickedVerse, VerseType) then
+    Exit;
+
+  IsPrimaryVerse := VerseType = tbOrigem;
+  CanUseAssociationExample := IsPrimaryVerse and Assigned(ClickedVerse.VersiculoPar) and ClickedVerse.HasAssociations;
+  CanUseTranslationExample := IsPrimaryVerse and Assigned(ClickedVerse.VersiculoPar) and (Trim(ClickedVerse.VersiculoPar.TextoSimples) <> '');
+
+  if Assigned(FUseAsExampleMenuItems[VerseType]) then
+  begin
+    FUseAsExampleMenuItems[VerseType].Visible := CanUseAssociationExample or CanUseTranslationExample;
+    FUseAsAssociationExampleMenuItems[VerseType].Enabled := CanUseAssociationExample;
+    FUseAsTranslationExampleMenuItems[VerseType].Enabled := CanUseTranslationExample;
+  end;
+
+  if Assigned(FCopyAssociationExampleMenuItems[VerseType]) then
+    FCopyAssociationExampleMenuItems[VerseType].Visible := ClickedVerse.HasAssociations;
+end;
+
+procedure TProjeto.OnUseAssociationAsExample(Sender: TObject);
+begin
+  IncludeCurrentVerseAsFlowExample('association');
+end;
+
+procedure TProjeto.OnUseTranslationAsExample(Sender: TObject);
+begin
+  IncludeCurrentVerseAsFlowExample('translation');
+end;
+
+procedure TProjeto.OnCopyAssociationExample(Sender: TObject);
+var
+  example: string;
+  originalVerse: TVersiculo;
+  destinationVerse: TVersiculo;
+begin
+  originalVerse := FAVersiculo[tbOrigem];
+  destinationVerse := FAVersiculo[tbDestino];
+
+  if (not Assigned(originalVerse)) or (not Assigned(destinationVerse)) then
+    Exit;
+
+  example := Format('Original: "%s"'#13#10'Tradução: "%s"'#13#10'Resposta esperada: %s',
+    [originalVerse.TextoSimples, destinationVerse.TextoSimples, originalVerse.GetAssociationsJSON]);
+  Clipboard.AsText := example;
+end;
+
+procedure TProjeto.OnSwitchDestinationAndReference1Texts(Sender: TObject);
+var
+  destinationText: string;
+begin
+  if (not Assigned(FAVersiculo[tbDestino])) or (not Assigned(FAVersiculo[tbConsulta1])) then
+    Exit;
+
+  destinationText := FAVersiculo[tbDestino].XML;
+  FAVersiculo[tbDestino].AlterarTexto(FAVersiculo[tbConsulta1].XML);
+  FAVersiculo[tbConsulta1].Texto := '(KJF original) ' + destinationText;
+end;
+
+procedure TProjeto.AttachProjectVersePopupMenu(texto: TTipoTextoBiblico);
+var
+  PopupMenu: TPopupMenu;
+begin
+  if not Assigned(FAVersiculo[texto]) or not Assigned(FAVersiculo[texto].VersePopupMenu) then
+    Exit;
+
+  PopupMenu := FAVersiculo[texto].VersePopupMenu;
+  PopupMenu.OnPopup := @OnVersePopup;
+
+  FUseAsExampleMenuItems[texto] := TMenuItem.Create(PopupMenu);
+  FUseAsExampleMenuItems[texto].Caption := SUseVerseAsExample;
+  PopupMenu.Items.Add(FUseAsExampleMenuItems[texto]);
+
+  FUseAsAssociationExampleMenuItems[texto] := TMenuItem.Create(PopupMenu);
+  FUseAsAssociationExampleMenuItems[texto].Caption := SUseVerseAsAssociationExample;
+  FUseAsAssociationExampleMenuItems[texto].OnClick := @OnUseAssociationAsExample;
+  FUseAsExampleMenuItems[texto].Add(FUseAsAssociationExampleMenuItems[texto]);
+
+  FUseAsTranslationExampleMenuItems[texto] := TMenuItem.Create(PopupMenu);
+  FUseAsTranslationExampleMenuItems[texto].Caption := SUseVerseAsTranslationExample;
+  FUseAsTranslationExampleMenuItems[texto].OnClick := @OnUseTranslationAsExample;
+  FUseAsExampleMenuItems[texto].Add(FUseAsTranslationExampleMenuItems[texto]);
+
+  {$IFDEF DEBUG}
+  PopupMenu.Items.AddSeparator;
+
+  FCopyAssociationExampleMenuItems[texto] := TMenuItem.Create(PopupMenu);
+  FCopyAssociationExampleMenuItems[texto].Caption := SCopyAssociationExample;
+  FCopyAssociationExampleMenuItems[texto].OnClick := @OnCopyAssociationExample;
+  PopupMenu.Items.Add(FCopyAssociationExampleMenuItems[texto]);
+
+  FSwitchDestinationTextMenuItems[texto] := TMenuItem.Create(PopupMenu);
+  FSwitchDestinationTextMenuItems[texto].Caption := SSwitchDestinationAndReference1Texts;
+  FSwitchDestinationTextMenuItems[texto].OnClick := @OnSwitchDestinationAndReference1Texts;
+  PopupMenu.Items.Add(FSwitchDestinationTextMenuItems[texto]);
+  {$ENDIF}
+end;
+
 procedure TProjeto.OnMudancaVersiculo(Sender: TObject; Node: TTreeNode);
 begin
   if not FScrollEventsEnabled or not assigned(FTblPares) or FClosing or not assigned(Node) then
@@ -3005,9 +3143,14 @@ end;
 procedure TProjeto.NovoObjetoVersiculo(owner: TScrollBox;
   texto: TTipoTextoBiblico);
 begin
-  FCurrentVerseWorkspace.CreateVerseView(self, owner, Ord(texto), Ord(tbOrigem),
+  FCurrentVerseWorkspace.CreateVerseView(owner, Ord(texto), Ord(tbOrigem),
     Ord(tbDestino), FAVersiculo, @OnDblClickVersiculo, @SintagmaOnClick,
     @OnExportText);
+  if Assigned(FAVersiculo[texto]) then
+  begin
+    FAVersiculo[texto].TokenizerVersion := TokenizerVersion;
+    AttachProjectVersePopupMenu(texto);
+  end;
 end;
 
 procedure TProjeto.ExportarTextoDestinoComStrongs(arquivo: string; opcoes: TOpcoesExportacao);
