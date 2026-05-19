@@ -1,4 +1,4 @@
-unit syntagmselectiontest;
+﻿unit syntagmselectiontest;
 
 {$mode objfpc}{$H+}
 
@@ -49,7 +49,7 @@ var
   Words: TStringList;
   ResultIndexes: TSyntagmIndexArray;
 begin
-  Verse := TVersiculo.Criar(nil);
+  Verse := TVersiculo.Create();
   Words := CreateWords(['minha', 'locucao']);
   try
     Verse.Texto := 'minha querida locucao minha locucao';
@@ -67,7 +67,7 @@ var
   Words: TStringList;
   ResultIndexes: TSyntagmIndexArray;
 begin
-  Verse := TVersiculo.Criar(nil);
+  Verse := TVersiculo.Create();
   Words := CreateWords(['minha', 'locucao']);
   try
     Verse.Texto := 'minha querida locucao';
@@ -85,7 +85,7 @@ var
   Words: TStringList;
   ResultIndexes: TSyntagmIndexArray;
 begin
-  Verse := TVersiculo.Criar(nil);
+  Verse := TVersiculo.Create();
   Words := CreateWords(['a', 'missing', 'b']);
   try
     Verse.Texto := 'x a y b';
@@ -103,7 +103,7 @@ var
   Words: TStringList;
   ResultIndexes: TSyntagmIndexArray;
 begin
-  Verse := TVersiculo.Criar(nil);
+  Verse := TVersiculo.Create();
   Words := CreateWords(['word1', 'word2']);
   try
     Verse.Texto := 'word1 word2 word1 word2';
@@ -123,7 +123,7 @@ var
   Words: TStringList;
   ResultIndexes: TSyntagmIndexArray;
 begin
-  Verse := TVersiculo.Criar(nil);
+  Verse := TVersiculo.Create();
   Words := CreateWords(['word1', 'word2']);
   try
     Verse.Texto := 'word1,word2';
@@ -141,7 +141,7 @@ var
   Words: TStringList;
   ResultIndexes: TSyntagmIndexArray;
 begin
-  Verse := TVersiculo.Criar(nil);
+  Verse := TVersiculo.Create();
   Words := CreateWords(['word1', 'word2']);
   try
     Verse.Texto := 'word1 , word2';
@@ -159,7 +159,7 @@ var
   Words: TStringList;
   ResultIndexes: TSyntagmIndexArray;
 begin
-  Verse := TVersiculo.Criar(nil);
+  Verse := TVersiculo.Create();
   Words := CreateWords(['word1', 'word2']);
   try
     Verse.Texto := 'word1 - word2';

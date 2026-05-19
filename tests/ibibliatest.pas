@@ -1,4 +1,4 @@
-unit ibibliatest;
+﻿unit ibibliatest;
 
 {$mode objfpc}{$H+}
 
@@ -1277,8 +1277,8 @@ end;
 
 procedure TVerseTests.SetUp;
 begin
-  verse1 := TVersiculo.Criar(nil);
-  verse2 := TVersiculo.Criar(nil);
+  verse1 := TVersiculo.Create();
+  verse2 := TVersiculo.Create();
   verse1.VersiculoPar := verse2;
 end;
 

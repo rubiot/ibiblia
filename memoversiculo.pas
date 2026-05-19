@@ -33,8 +33,8 @@ type
     procedure OnChange(Sender: TObject);
     procedure ConfirmarAlteracao;
   public
-    constructor Criar;
-    destructor Destruir;
+    constructor Create;
+    destructor Destroy; override;
     procedure Ativar(conteiner: TScrollBox; versiculo: TVersiculo);
     procedure Desativar;
     property Texto: TCaption read GetTexto;
@@ -127,7 +127,7 @@ begin
   Desativar;
 end;
 
-constructor TMemoVersiculo.Criar;
+constructor TMemoVersiculo.Create;
 begin
   FMemo := TMemo.Create(nil);
   FMemo.Visible      := False;
@@ -143,9 +143,10 @@ begin
   FEventoTextoModificado := nil;
 end;
 
-destructor TMemoVersiculo.Destruir;
+destructor TMemoVersiculo.Destroy;
 begin
   FMemo.Free;
+  inherited Destroy;
 end;
 
 procedure TMemoVersiculo.Ativar(conteiner: TScrollBox; versiculo: TVersiculo);

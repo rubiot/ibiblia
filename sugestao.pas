@@ -50,9 +50,9 @@ type
     function ObterSugestoes(chave: string): TSQLQuery;
     function GetTranslationMemory(key: string): TSQLQuery;
   public
-    constructor Criar(Owner: TComponent; conn: TSQLConnection);
-    constructor Criar(db: string);
-    destructor Destruir;
+    constructor Create(Owner: TComponent; conn: TSQLConnection); overload;
+    constructor Create(db: string); overload;
+    destructor Destroy; override;
     property ReconhecerFormasVerbais: boolean read FRecFormasVerbais write FRecFormasVerbais;
     procedure InserirPar(origem, destino: string);
     procedure RemoverPar(origem, destino: string);
@@ -68,7 +68,7 @@ implementation
 
 { TGerSugestoes }
 
-constructor TGerSugestoes.Criar(Owner: TComponent; conn: TSQLConnection);
+constructor TGerSugestoes.Create(Owner: TComponent; conn: TSQLConnection);
 begin
   FConn := conn;
   FQry := TSQLQuery.Create(Owner);
@@ -184,7 +184,7 @@ begin
   FRETirarMorfo := RegexCreate('<wt.*?>', [rcoUTF8]);
 end;
 
-constructor TGerSugestoes.Criar(db: string);
+constructor TGerSugestoes.Create(db: string);
 begin
   FConnTmp := TSQLite3Connection.Create(nil);
   FConnTmp.DatabaseName := db;
@@ -192,10 +192,10 @@ begin
   FConnTmp.StartTransaction;
   //FConnTmp.Transaction.Action;
   FConnTmp.Open;
-  Criar(nil, FConnTmp);
+  Create(nil, FConnTmp);
 end;
 
-destructor TGerSugestoes.Destruir;
+destructor TGerSugestoes.Destroy;
 begin
   if assigned(FConnTmp) then
   begin
@@ -229,6 +229,7 @@ begin
 
   FStrList.Free;
   FVerbosList.Free;
+  inherited Destroy;
 end;
 
 procedure TGerSugestoes.InserirPar(origem, destino: string);

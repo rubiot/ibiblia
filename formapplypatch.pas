@@ -85,8 +85,8 @@ begin
   FBibleTreeView.OnVerseChange := @OnVerseChange;
   FPatch := nil;
 
-  FSrcVerse := TVersiculo.Criar(ScrollBoxSrcText);
-  FDstVerse := TVersiculo.Criar(ScrollBoxDstText);
+  FSrcVerse := TVersiculo.Create(ScrollBoxSrcText);
+  FDstVerse := TVersiculo.Create(ScrollBoxDstText);
   FSrcVerse.VersiculoPar := FDstVerse;
   FSrcVerse.ReadOnly := true;
   FDstVerse.ReadOnly := true;

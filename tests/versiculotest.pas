@@ -1,4 +1,4 @@
-unit versiculotest;
+﻿unit versiculotest;
 
 {$mode objfpc}{$H+}
 
@@ -37,7 +37,7 @@ procedure TVersiculoTest.TestInit;
 var
   v: TVersiculo;
 begin
-  v := TVersiculo.Criar(nil);
+  v := TVersiculo.Create();
   try
     v.Texto := 'This is a test verse';
     AssertEquals('Init', 'This is a test verse', v.Texto);
@@ -50,7 +50,7 @@ procedure TVersiculoTest.TestFindByIndex;
 var
   v: TVersiculo;
 begin
-  v := TVersiculo.Criar(nil);
+  v := TVersiculo.Create();
   try
     v.Texto := 'This is a test verse';
     AssertEquals('Index 0', 'This', v.Sintagmas[0].Text);
@@ -69,7 +69,7 @@ var
   v: TVersiculo;
   words: TStringList;
 begin
-  v := TVersiculo.Criar(nil);
+  v := TVersiculo.Create();
   words := TStringList.Create;
   try
     v.Texto := 'This is a test verse with some test words';
@@ -90,7 +90,7 @@ var
   v: TVersiculo;
   words: TStringList;
 begin
-  v := TVersiculo.Criar(nil);
+  v := TVersiculo.Create();
   words := TStringList.Create;
   try
     v.Texto := 'This is a test verse with some test words';
@@ -110,7 +110,7 @@ var
   v: TVersiculo;
   words: TStringList;
 begin
-  v := TVersiculo.Criar(nil);
+  v := TVersiculo.Create();
   words := TStringList.Create;
   try
     v.Texto := 'וְהָאָ֗רֶץ הָיְתָ֥ה תֹ֨הוּ֙ וָבֹ֔הוּ וְחֹ֖שֶׁךְ עַל־פְּנֵ֣י תְה֑וֹם';
@@ -132,7 +132,7 @@ var
   v: TVersiculo;
   words: TStringList;
 begin
-  v := TVersiculo.Criar(nil);
+  v := TVersiculo.Create();
   words := TStringList.Create;
   try
     v.Texto := 'וְהָאָ֗רֶץ הָיְתָ֥ה תֹ֨הוּ֙ וָבֹ֔הוּ וְחֹ֖שֶׁךְ עַל־פְּנֵ֣י תְה֑וֹם';
@@ -153,7 +153,7 @@ var
   v: TVersiculo;
   words: TStringList;
 begin
-  v := TVersiculo.Criar(nil);
+  v := TVersiculo.Create();
   words := TStringList.Create;
   try
     v.Texto := 'This is a test verse with some test words';
@@ -180,8 +180,8 @@ var
   words1, words2: TStringList;
   firstSyntagm: TSyntagm;
 begin
-  vOrig := TVersiculo.Criar(nil);
-  vTrans := TVersiculo.Criar(nil);
+  vOrig := TVersiculo.Create();
+  vTrans := TVersiculo.Create();
   words1 := TStringList.Create;
   words2 := TStringList.Create;
   try
@@ -246,7 +246,7 @@ var
   words: TStringList;
   syn1, syn2, syn3: TSyntagm;
 begin
-  v := TVersiculo.Criar(nil);
+  v := TVersiculo.Create();
   words := TStringList.Create;
   try
     v.Texto := 'word1 word2 word3 word1 word2 word3';
@@ -293,7 +293,7 @@ var
   words: TStringList;
   syn1, syn3: TSyntagm;
 begin
-  v := TVersiculo.Criar(nil);
+  v := TVersiculo.Create();
   words := TStringList.Create;
   try
     v.Texto := 'word1 word2 word3 word4 word5';
@@ -330,8 +330,8 @@ var
   vOrig, vTrans: TVersiculo;
   words1Orig, words1Trans, words2Orig, words2Trans: TStringList;
 begin
-  vOrig := TVersiculo.Criar(nil);
-  vTrans := TVersiculo.Criar(nil);
+  vOrig := TVersiculo.Create();
+  vTrans := TVersiculo.Create();
   words1Orig := TStringList.Create;
   words1Trans := TStringList.Create;
   words2Orig := TStringList.Create;
@@ -397,7 +397,7 @@ var
   v: TVersiculo;
   words: TStringList;
 begin
-  v := TVersiculo.Criar(nil);
+  v := TVersiculo.Create();
   words := TStringList.Create;
   try
     v.Texto := 'word1 word2 word3 word4 word5';
@@ -429,7 +429,7 @@ var
   v: TVersiculo;
   words: TStringList;
 begin
-  v := TVersiculo.Criar(nil);
+  v := TVersiculo.Create();
   words := TStringList.Create;
   try
     v.TokenizerVersion := 1;
@@ -459,8 +459,8 @@ procedure TVersiculoTest.TestRetokenizePreservesAssociationsAcrossTokenizerVersi
 var
   vOrig, vDest: TVersiculo;
 begin
-  vOrig := TVersiculo.Criar(nil);
-  vDest := TVersiculo.Criar(nil);
+  vOrig := TVersiculo.Create();
+  vDest := TVersiculo.Create();
   try
     vOrig.TokenizerVersion := 1;
     vDest.TokenizerVersion := 1;
@@ -502,8 +502,8 @@ var
   vOrig, vDest: TVersiculo;
   leftSyn, rightSyn, destSyn: TSyntagm;
 begin
-  vOrig := TVersiculo.Criar(nil);
-  vDest := TVersiculo.Criar(nil);
+  vOrig := TVersiculo.Create();
+  vDest := TVersiculo.Create();
   try
     vOrig.Texto := 'alpha beta';
     vDest.Texto := 'one';
@@ -556,8 +556,8 @@ var
     end;
   end;
 begin
-  v1 := TVersiculo.Criar(nil);
-  v2 := TVersiculo.Criar(nil);
+  v1 := TVersiculo.Create();
+  v2 := TVersiculo.Create();
   try
     v1.Texto := 'Βίβλος γενέσεως ἸΗΣΟΥ Χριστοῦ, υἱοῦ Δαβὶδ, υἱοῦ Ἁβραάμ.';
     v2.Texto := 'LIVRO da geração de Jesus Cristo, filho de Davi, filho de Abraão.';
@@ -600,8 +600,8 @@ var
     end;
   end;
 begin
-  v1 := TVersiculo.Criar(nil);
-  v2 := TVersiculo.Criar(nil);
+  v1 := TVersiculo.Create();
+  v2 := TVersiculo.Create();
   try
     v1.Texto := 'וְהָאָ֗רֶץ הָיְתָ֥ה תֹ֨הוּ֙ וָבֹ֔הוּ וְחֹ֖שֶׁךְ עַל־פְּנֵ֣י תְה֑וֹם וְר֣וּחַ אֱלֹהִ֔ים מְרַחֶ֖פֶת עַל־פְּנֵ֥י הַמָּֽיִם׃';
     v2.Texto := 'E a terra era sem forma e vazia; e [havia] trevas sobre a face do abismo; e o Espírito de Deus se movia sobre a face das águas.';

@@ -1,4 +1,4 @@
-unit Projeto;
+﻿unit Projeto;
 
 {$mode objfpc}{$H+}{$M+}
 
@@ -237,9 +237,9 @@ type
   public
     procedure OnAIBatchClick(Sender: TObject);
     procedure OnAICancelClick(Sender: TObject);
-    constructor Criar;
-    constructor Criar(paineis: array of TScrollbox; navegador: TTreeView; rsituacao: TRadioGroup; rcomentarios: TControl);
-    destructor Destruir;
+    constructor Create; overload;
+    constructor Create(paineis: array of TScrollbox; navegador: TTreeView; rsituacao: TRadioGroup; rcomentarios: TControl); overload;
+    destructor Destroy; override;
     procedure Novo(nomedb, descricao: string);
     procedure Novo(nomedbvelho, nomedbnovo, descricao: string);
     procedure Novo(nomedb, descricao: string; tokenizerVersion: Integer); overload;
@@ -2309,7 +2309,7 @@ begin
   end;
 end;
 
-constructor TProjeto.Criar;
+constructor TProjeto.Create;
 var
   v: TTipoTextoBiblico;
 begin
@@ -2350,16 +2350,16 @@ begin
   FTemporizador.Interval := 300;
   FTemporizador.OnTimer  := @OnExibirDefinicao;
 
-  FMemoVersiculo := TMemoVersiculo.Criar;
+  FMemoVersiculo := TMemoVersiculo.Create;
   FMemoVersiculo.QuandoModificarVersiculo := @OnAlterarTextoVersiculo;
 end;
 
-constructor TProjeto.Criar(paineis: array of TScrollbox; navegador: TTreeView;
+constructor TProjeto.Create(paineis: array of TScrollbox; navegador: TTreeView;
   rsituacao: TRadioGroup; rcomentarios: TControl);
 var
   v: integer;
 begin
-  Criar;
+  Create;
 
   for v:=low(paineis) to high(paineis) do
     if (v <= Ord(tbConsulta2)) and assigned(paineis[v]) then
@@ -2371,7 +2371,7 @@ begin
   FMemoComentarios    := rcomentarios;
 end;
 
-destructor TProjeto.Destruir;
+destructor TProjeto.Destroy;
 begin
   FCurrentVerseWorkspace.DestroyVerseViews(FAVersiculo);
 
@@ -2391,7 +2391,8 @@ begin
   FOnNovoVersiculo.Free;
   FSugeridor.Free;
   FTemporizador.Free;
-  FMemoVersiculo.Destruir;
+  FMemoVersiculo.Destroy;
+  inherited Destroy;
 end;
 
 procedure TProjeto.Abrir(Nome: string);
@@ -2433,7 +2434,7 @@ begin
     FConfig.Attach(FPersistence);
   FTblInfo := FPersistence.InfoTable;
 
-  FSugeridor := TGerSugestoes.Criar(Nome);
+  FSugeridor := TGerSugestoes.Create(Nome);
 
   FTblPares := FPersistence.PairsTable;
 
@@ -2472,7 +2473,7 @@ begin
   FCurrentVerseWorkspace.ApplyStrongsCountMode(FAVersiculo, FVerseStrongsCountMode);
 
   FreeAndNil(FVerseRenderBuffer);
-  FVerseRenderBuffer := TVerseRenderBuffer.Create(self);
+  FVerseRenderBuffer := TVerseRenderBuffer.Create();
   FVerseRenderBuffer.SetTokenizerVersion(TokenizerVersion);
   if Assigned(FPatchApplier) then
     FPatchApplier.Attach(FPersistence);

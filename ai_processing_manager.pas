@@ -150,10 +150,10 @@ begin
 
     // Free paired verse first (stored separately to avoid double-free)
     if Assigned(VersePair) then
-      VersePair.Destruir;
+      VersePair.Destroy;
     // Then free main verse
     if Assigned(Verse) then
-      Verse.Destruir;
+      Verse.Destroy;
   end;
   if Assigned(WorkItem) then
     WorkItem.Free;

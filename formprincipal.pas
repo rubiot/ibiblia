@@ -481,7 +481,7 @@ begin
 
   ProjetoAtual.ChapterViewText := TTipoTextoBiblico(ChapterViewTabCtrl.TabIndex);
   ProjetoAtual.Fechar(salvar);
-  ProjetoAtual.Destruir;
+  ProjetoAtual.Destroy;
   ProjetoAtual := nil;
   Caption := 'iBiblia';
 
@@ -597,7 +597,7 @@ begin
 
   try
     Enabled := false;
-    ProjetoAtual := TProjeto.Criar([ScrollBoxSrcVerse, ScrollBoxDstVerse, ScrollBoxRef1Verse, ScrollBoxRef2Verse], TreeView1, RadioGroupStatus, FActualCommentsMemo);
+    ProjetoAtual := TProjeto.Create([ScrollBoxSrcVerse, ScrollBoxDstVerse, ScrollBoxRef1Verse, ScrollBoxRef2Verse], TreeView1, RadioGroupStatus, FActualCommentsMemo);
     ProjetoAtual.Escopo := QualEscopo;
     ProjetoAtual.PalavrasComStrongEmNegrito := MenuItemStrongNegrito.Checked;
     ProjetoAtual.MostrarQtdStrongs := FStrongsCountMode;
@@ -1337,7 +1337,7 @@ end;
 
 procedure TFrmPrincipal.DoOpenProject(filename: string);
 begin
-  ProjetoAtual := TProjeto.Criar([ScrollBoxSrcVerse, ScrollBoxDstVerse, ScrollBoxRef1Verse, ScrollBoxRef2Verse], TreeView1, RadioGroupStatus, FActualCommentsMemo);
+  ProjetoAtual := TProjeto.Create([ScrollBoxSrcVerse, ScrollBoxDstVerse, ScrollBoxRef1Verse, ScrollBoxRef2Verse], TreeView1, RadioGroupStatus, FActualCommentsMemo);
   ProjetoAtual.OnNewVerseSubscribe(@QuandoNovoVersiculo);
   ProjetoAtual.OnAlterarVersiculo := @QuandoAlterarVersiculo;
   ProjetoAtual.OnSintagmaClick := @QuandoPalavraClicada;

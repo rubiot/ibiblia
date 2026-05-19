@@ -1,4 +1,4 @@
-unit current_verse_workspace;
+﻿unit current_verse_workspace;
 
 {$mode objfpc}{$H+}
 
@@ -140,7 +140,7 @@ begin
   for Index := Low(VerseViews) to High(VerseViews) do
     if Assigned(VerseViews[Index]) then
     begin
-      VerseViews[Index].Destruir;
+      VerseViews[Index].Destroy;
       VerseViews[Index] := nil;
     end;
 end;
@@ -153,7 +153,7 @@ begin
   if (VerseIndex < Low(VerseViews)) or (VerseIndex > High(VerseViews)) then
     raise Exception.CreateFmt('Current verse view index out of bounds [%d]', [VerseIndex]);
 
-  VerseViews[VerseIndex] := TVersiculo.Criar(nil, Owner);
+  VerseViews[VerseIndex] := TVersiculo.Create(Owner);
   Owner.Tag := PtrInt(VerseViews[VerseIndex]);
   Owner.OnDblClick := OnVerseDoubleClick;
   VerseViews[VerseIndex].OnClick := OnSyntagmClick;

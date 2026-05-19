@@ -112,9 +112,9 @@ type
     { Protected declarations }
   public
     { Public declarations }
-    constructor Criar(const AReferencia: string = '');
-    constructor Criar(TheOwner: TScrollBox; const AReferencia: string = '');
-    destructor Destruir;
+    constructor Create(const AReferencia: string = ''); overload;
+    constructor Create(TheOwner: TScrollBox; const AReferencia: string = ''); overload;
+    destructor Destroy; override;
     procedure MarkDestroying;
     procedure LimparSintagmas;
     procedure AssociarSintagmas;
@@ -217,9 +217,9 @@ end;
 
 { TVersiculo }
 
-constructor TVersiculo.Criar(TheOwner : TScrollBox; const AReferencia: string = '');
+constructor TVersiculo.Create(TheOwner : TScrollBox; const AReferencia: string = '');
 begin
-  AIDebugLogFmt('[TVersiculo] Criar called. Self=%s, Owner=%s, Referencia=%s',
+  AIDebugLogFmt('[TVersiculo] Create called. Self=%s, Owner=%s, Referencia=%s',
     [IntToHex(PtrUInt(Pointer(Self)), SizeOf(Pointer)*2),
      IntToHex(PtrUInt(Pointer(TheOwner)), SizeOf(Pointer)*2),
      AReferencia]);
@@ -269,9 +269,9 @@ begin
   FFixWrongFiTag := RegexCreate('((?:<W[THG][^>]+>)+)(<Fi>)', [rcoUTF8]);
 end;
 
-destructor TVersiculo.Destruir;
+destructor TVersiculo.Destroy;
 begin
-  AIDebugLogFmt('[TVersiculo] Destruir called. Self=%s, Panel=%s, Referencia=%s',
+  AIDebugLogFmt('[TVersiculo] Destroy called. Self=%s, Panel=%s, Referencia=%s',
     [IntToHex(PtrUInt(Pointer(Self)), SizeOf(Pointer)*2),
      IntToHex(PtrUInt(Pointer(FPanel)), SizeOf(Pointer)*2),
      FReferencia]);
@@ -289,6 +289,7 @@ begin
     FPanel.OnMouseWheel := nil;
   end;
   FONTParser.Destroy;
+  inherited Destroy;
 end;
 
 procedure TVersiculo.MarkDestroying;
@@ -1746,9 +1747,9 @@ begin
   {$ENDIF}
 end;
 
-constructor TVersiculo.Criar(const AReferencia: string = '');
+constructor TVersiculo.Create(const AReferencia: string = '');
 begin
-  Criar(nil, AReferencia);
+  Create(nil, AReferencia);
 end;
 
 procedure TVersiculo.OnCopySintagmasAsJSON(Sender: TObject);

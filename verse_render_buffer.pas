@@ -61,17 +61,17 @@ end;
 constructor TVerseRenderBuffer.Create;
 begin
   inherited Create;
-  FSourceVerse := TVersiculo.Criar();
-  FDestinationVerse := TVersiculo.Criar();
+  FSourceVerse := TVersiculo.Create();
+  FDestinationVerse := TVersiculo.Create();
   FSourceVerse.VersiculoPar := FDestinationVerse;
 end;
 
 destructor TVerseRenderBuffer.Destroy;
 begin
   if Assigned(FSourceVerse) then
-    FSourceVerse.Destruir;
+    FSourceVerse.Destroy;
   if Assigned(FDestinationVerse) then
-    FDestinationVerse.Destruir;
+    FDestinationVerse.Destroy;
   inherited Destroy;
 end;
 

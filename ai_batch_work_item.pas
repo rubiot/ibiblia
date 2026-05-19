@@ -1,4 +1,4 @@
-unit ai_batch_work_item;
+﻿unit ai_batch_work_item;
 
 {$mode objfpc}{$H+}
 
@@ -49,8 +49,8 @@ end;
 
 procedure TAIBatchWorkItem.CreateTempVersePair(out Verse: TVersiculo; out VersePair: TVersiculo);
 begin
-  Verse := TVersiculo.Criar(nil);
-  VersePair := TVersiculo.Criar(nil);
+  Verse := TVersiculo.Create();
+  VersePair := TVersiculo.Create();
   Verse.TokenizerVersion := FTokenizerVersion;
   VersePair.TokenizerVersion := FTokenizerVersion;
   Verse.Texto := FVerseData.OriginalText;

@@ -1,4 +1,4 @@
-unit formaiprocessing;
+﻿unit formaiprocessing;
 
 {$mode objfpc}{$H+}
 
@@ -277,9 +277,9 @@ begin
   if Assigned(FSrcVerse) and Assigned(FDstVerse) then Exit;
 
   if not Assigned(FSrcVerse) then
-    FSrcVerse := TVersiculo.Criar(nil, ScrollBoxSrcText);
+    FSrcVerse := TVersiculo.Create(ScrollBoxSrcText);
   if not Assigned(FDstVerse) then
-    FDstVerse := TVersiculo.Criar(nil, ScrollBoxDstText);
+    FDstVerse := TVersiculo.Create(ScrollBoxDstText);
 
   FSrcVerse.VersiculoPar := FDstVerse;
   FSrcVerse.ReadOnly := true;
