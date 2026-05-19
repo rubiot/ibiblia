@@ -164,11 +164,7 @@ type
     function CreateFlowExample(const FlowId: string): TAIFlowExample;
     function PromptReplaceExistingFlowExample(const FlowId: string; const ExistingExample: TAIFlowExample): Boolean;
     function ConfirmMissingPatchReference(const Reference: string): Boolean;
-    function IsTreeStatusIterationFinished: Boolean;
-    function CurrentTreeVerseStatus: Integer;
-    procedure ResetTreeStatusIteration;
     procedure ResetAIBatchManager;
-    procedure AdvanceTreeStatusIteration;
     procedure PreencherArvore;
     procedure SetAtrasoExibicao(const AValue: Cardinal);
     procedure SetAutoSave(AValue: boolean);
@@ -345,6 +341,20 @@ type
     property SuggestionMode: TSuggestionMode read FSuggestionMode write FSuggestionMode;
   end;
 
+  { TProjectVerseStatusCursor — implements IVerseStatusCursor so that
+    TBibleTreeCoordinator.RecomputeAllStatuses owns the iteration contract
+    rather than receiving four callback closures over TProjeto. }
+  TProjectVerseStatusCursor = class(TInterfacedObject, IVerseStatusCursor)
+  private
+    FOwner: TProjeto;
+  public
+    constructor Create(AOwner: TProjeto);
+    procedure Reset;
+    function EOF: Boolean;
+    procedure Advance;
+    function CurrentStatus: Integer;
+  end;
+
 {$INCLUDE include/bookdefs.inc}
 
 resourcestring
@@ -453,6 +463,34 @@ begin
   DefaultSituacaoDescricao[1] := SStatusAssociating;
   DefaultSituacaoDescricao[2] := SStatusNeedsReview;
   DefaultSituacaoDescricao[3] := SStatusAssociated;
+end;
+
+{ TProjectVerseStatusCursor }
+
+constructor TProjectVerseStatusCursor.Create(AOwner: TProjeto);
+begin
+  inherited Create;
+  FOwner := AOwner;
+end;
+
+procedure TProjectVerseStatusCursor.Reset;
+begin
+  FOwner.VersiculoInicial;
+end;
+
+function TProjectVerseStatusCursor.EOF: Boolean;
+begin
+  Result := not Assigned(FOwner.FPersistence) or FOwner.FPersistence.EOF;
+end;
+
+procedure TProjectVerseStatusCursor.Advance;
+begin
+  FOwner.VersiculoSeguinte;
+end;
+
+function TProjectVerseStatusCursor.CurrentStatus: Integer;
+begin
+  Result := FOwner.Situacao;
 end;
 
 function TProjeto.GetSituacaoDescricao(index: Integer): string;
@@ -757,26 +795,6 @@ end;
 procedure TProjeto.OnNewVerseUnsubscribe(const AValue: TOnNovoVersiculoEvent);
 begin
   FOnNovoVersiculo.Remove(AValue);
-end;
-
-function TProjeto.IsTreeStatusIterationFinished: Boolean;
-begin
-  Result := not Assigned(FPersistence) or FPersistence.EOF;
-end;
-
-function TProjeto.CurrentTreeVerseStatus: Integer;
-begin
-  Result := Situacao;
-end;
-
-procedure TProjeto.ResetTreeStatusIteration;
-begin
-  VersiculoInicial;
-end;
-
-procedure TProjeto.AdvanceTreeStatusIteration;
-begin
-  VersiculoSeguinte;
 end;
 
 function TProjeto.ConfirmMissingPatchReference(const Reference: string): Boolean;
@@ -2049,10 +2067,7 @@ procedure TProjeto.AtualizarArvore;
 begin
   if not assigned(FArvore) then exit;
   FBibleTreeCoordinator.RecomputeAllStatuses(FEscopo,
-    @ResetTreeStatusIteration,
-    @IsTreeStatusIterationFinished,
-    @AdvanceTreeStatusIteration,
-    @CurrentTreeVerseStatus);
+    TProjectVerseStatusCursor.Create(Self));
 end;
 
 procedure TProjeto.AtualizarArvore(id: string);

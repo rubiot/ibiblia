@@ -8,10 +8,14 @@ uses
   SysUtils, ComCtrls, BibleScope;
 
 type
-  TTreeStatusResetProc = procedure of object;
-  TTreeStatusAdvanceProc = procedure of object;
-  TTreeStatusEOFProc = function: Boolean of object;
-  TTreeStatusValueProc = function: Integer of object;
+  { IVerseStatusCursor — the coordinator iterates this instead of calling
+    back into the owner via four separate procedure-of-object variables. }
+  IVerseStatusCursor = interface
+    procedure Reset;
+    function EOF: Boolean;
+    procedure Advance;
+    function CurrentStatus: Integer;
+  end;
 
   TBibleTreeCoordinator = class
   private
@@ -27,8 +31,7 @@ type
     procedure Populate(const Scope: TEscopoTexto; OnChange: TTVChangedEvent);
     function NodeToReferenceID(const Scope: TEscopoTexto; const Node: TTreeNode): string;
     procedure RecomputeAllStatuses(const Scope: TEscopoTexto;
-      ResetIteration: TTreeStatusResetProc; IsEOF: TTreeStatusEOFProc;
-      AdvanceIteration: TTreeStatusAdvanceProc; CurrentStatus: TTreeStatusValueProc);
+      Cursor: IVerseStatusCursor);
     procedure UpdateReferenceStatus(const Scope: TEscopoTexto;
       const ReferenceID: string; Status: Integer);
     procedure SelectReference(const Scope: TEscopoTexto; const ReferenceID: string);
@@ -234,30 +237,28 @@ begin
 end;
 
 procedure TBibleTreeCoordinator.RecomputeAllStatuses(const Scope: TEscopoTexto;
-  ResetIteration: TTreeStatusResetProc; IsEOF: TTreeStatusEOFProc;
-  AdvanceIteration: TTreeStatusAdvanceProc; CurrentStatus: TTreeStatusValueProc);
+  Cursor: IVerseStatusCursor);
 var
   BookNode: TTreeNode;
   ChapterNode: TTreeNode;
   VerseNode: TTreeNode;
 begin
-  if not Assigned(FTree) or (FTree.Items.Count = 0) or not Assigned(ResetIteration) or
-     not Assigned(IsEOF) or not Assigned(AdvanceIteration) or not Assigned(CurrentStatus) then
+  if not Assigned(FTree) or (FTree.Items.Count = 0) or not Assigned(Cursor) then
     Exit;
 
-  ResetIteration;
+  Cursor.Reset;
 
   BookNode := FTree.Items[0];
-  while Assigned(BookNode) and not IsEOF() do
+  while Assigned(BookNode) and not Cursor.EOF do
   begin
     ChapterNode := BookNode.GetFirstChild;
-    while Assigned(ChapterNode) and not IsEOF() do
+    while Assigned(ChapterNode) and not Cursor.EOF do
     begin
       VerseNode := ChapterNode.GetFirstChild;
-      while Assigned(VerseNode) and not IsEOF() do
+      while Assigned(VerseNode) and not Cursor.EOF do
       begin
-        SetNodeStatus(VerseNode, CurrentStatus());
-        AdvanceIteration();
+        SetNodeStatus(VerseNode, Cursor.CurrentStatus);
+        Cursor.Advance;
         VerseNode := VerseNode.GetNextSibling;
       end;
 
