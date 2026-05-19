@@ -10,87 +10,134 @@ uses
 type
   TAIBatchIndexList = class(TStringList);
 
+  { TAIBatchEntry - a single row in the batch; keeps all fields together so
+    they can never get out of sync across parallel lists. }
+  TAIBatchEntry = record
+    Reference: string;
+    SourceText: string;
+    DestinationText: string;
+    Pairs: string;
+    Comments: string;
+    Status: Integer;
+    ProcessingState: string;
+    Error: string;
+  end;
+
   TAIProcessingBatch = class
   private
-    FReference: TStringList;
-    FSrcText: TStringList;
-    FDstText: TStringList;
-    FPairs: TStringList;
-    FComments: TStringList;
-    FStatus: TStringList;
-    FErrors: TStringList;
-    FProcessingState: TStringList;
+    FEntries: array of TAIBatchEntry;
+    FCount: Integer;
+    function GetReference(I: Integer): string;
+    function GetSourceText(I: Integer): string;
+    procedure SetSourceText(I: Integer; const Value: string);
+    function GetDestinationText(I: Integer): string;
+    procedure SetDestinationText(I: Integer; const Value: string);
+    function GetPairs(I: Integer): string;
+    procedure SetPairs(I: Integer; const Value: string);
+    function GetComments(I: Integer): string;
+    procedure SetComments(I: Integer; const Value: string);
+    function GetStatus(I: Integer): string;
+    function GetProcessingState(I: Integer): string;
+    function GetErrors(I: Integer): string;
     function HasVerseChanges(OriginalData: TAIProcessingBatch; Index: Integer): Boolean;
   public
-    constructor Create;
-    destructor Destroy; override;
     procedure Add(ref, src, dst, pairs, comments: string; status: integer);
+    procedure Clear;
     procedure SetState(index: integer; state: string);
     procedure SetError(index: integer; error: string);
     procedure ApplyAcceptedResult(Index: Integer; ResultObj: TAIFlowResult);
     function Count: integer;
+    { Returns a new TStringList with the Reference values; caller must free it. }
+    function BuildReferenceList: TStringList;
     function CreatePatch(OriginalData: TAIProcessingBatch; SelectedIndexes: TAIBatchIndexList;
       out AppliedCount: Integer): TPatchFile;
 
-    property Reference: TStringList read FReference;
-    property SourceText: TStringList read FSrcText;
-    property DestinationText: TStringList read FDstText;
-    property Pairs: TStringList read FPairs;
-    property Comments: TStringList read FComments;
-    property Status: TStringList read FStatus;
-    property ProcessingState: TStringList read FProcessingState;
-    property Errors: TStringList read FErrors;
+    property Reference[I: Integer]: string read GetReference;
+    property SourceText[I: Integer]: string read GetSourceText write SetSourceText;
+    property DestinationText[I: Integer]: string read GetDestinationText write SetDestinationText;
+    property Pairs[I: Integer]: string read GetPairs write SetPairs;
+    property Comments[I: Integer]: string read GetComments write SetComments;
+    { Returns status as string (IntToStr) for backward-compatible comparisons. }
+    property Status[I: Integer]: string read GetStatus;
+    property ProcessingState[I: Integer]: string read GetProcessingState;
+    property Errors[I: Integer]: string read GetErrors;
   end;
 
 implementation
 
-constructor TAIProcessingBatch.Create;
-begin
-  FReference := TStringList.Create;
-  FSrcText := TStringList.Create;
-  FDstText := TStringList.Create;
-  FPairs := TStringList.Create;
-  FComments := TStringList.Create;
-  FStatus := TStringList.Create;
-  FErrors := TStringList.Create;
-  FProcessingState := TStringList.Create;
-end;
+{ Accessors }
 
-destructor TAIProcessingBatch.Destroy;
-begin
-  FReference.Free;
-  FSrcText.Free;
-  FDstText.Free;
-  FPairs.Free;
-  FComments.Free;
-  FStatus.Free;
-  FErrors.Free;
-  FProcessingState.Free;
-  inherited Destroy;
-end;
+function TAIProcessingBatch.GetReference(I: Integer): string;
+begin Result := FEntries[I].Reference; end;
+
+function TAIProcessingBatch.GetSourceText(I: Integer): string;
+begin Result := FEntries[I].SourceText; end;
+
+procedure TAIProcessingBatch.SetSourceText(I: Integer; const Value: string);
+begin FEntries[I].SourceText := Value; end;
+
+function TAIProcessingBatch.GetDestinationText(I: Integer): string;
+begin Result := FEntries[I].DestinationText; end;
+
+procedure TAIProcessingBatch.SetDestinationText(I: Integer; const Value: string);
+begin FEntries[I].DestinationText := Value; end;
+
+function TAIProcessingBatch.GetPairs(I: Integer): string;
+begin Result := FEntries[I].Pairs; end;
+
+procedure TAIProcessingBatch.SetPairs(I: Integer; const Value: string);
+begin FEntries[I].Pairs := Value; end;
+
+function TAIProcessingBatch.GetComments(I: Integer): string;
+begin Result := FEntries[I].Comments; end;
+
+procedure TAIProcessingBatch.SetComments(I: Integer; const Value: string);
+begin FEntries[I].Comments := Value; end;
+
+function TAIProcessingBatch.GetStatus(I: Integer): string;
+begin Result := IntToStr(FEntries[I].Status); end;
+
+function TAIProcessingBatch.GetProcessingState(I: Integer): string;
+begin Result := FEntries[I].ProcessingState; end;
+
+function TAIProcessingBatch.GetErrors(I: Integer): string;
+begin Result := FEntries[I].Error; end;
+
+{ Core methods }
 
 procedure TAIProcessingBatch.Add(ref, src, dst, pairs, comments: string; status: integer);
+var
+  entry: TAIBatchEntry;
 begin
-  FReference.Add(ref);
-  FSrcText.Add(src);
-  FDstText.Add(dst);
-  FPairs.Add(pairs);
-  FComments.Add(comments);
-  FStatus.Add(IntToStr(status));
-  FErrors.Add('');
-  FProcessingState.Add('pending');
+  entry.Reference := ref;
+  entry.SourceText := src;
+  entry.DestinationText := dst;
+  entry.Pairs := pairs;
+  entry.Comments := comments;
+  entry.Status := status;
+  entry.ProcessingState := 'pending';
+  entry.Error := '';
+  Inc(FCount);
+  SetLength(FEntries, FCount);
+  FEntries[FCount - 1] := entry;
+end;
+
+procedure TAIProcessingBatch.Clear;
+begin
+  FCount := 0;
+  SetLength(FEntries, 0);
 end;
 
 procedure TAIProcessingBatch.SetState(index: integer; state: string);
 begin
-  if (index >= 0) and (index < FProcessingState.Count) then
-    FProcessingState[index] := state;
+  if (index >= 0) and (index < FCount) then
+    FEntries[index].ProcessingState := state;
 end;
 
 procedure TAIProcessingBatch.SetError(index: integer; error: string);
 begin
-  if (index >= 0) and (index < FErrors.Count) then
-    FErrors[index] := error;
+  if (index >= 0) and (index < FCount) then
+    FEntries[index].Error := error;
 end;
 
 procedure TAIProcessingBatch.ApplyAcceptedResult(Index: Integer; ResultObj: TAIFlowResult);
@@ -99,20 +146,29 @@ begin
     Exit;
 
   if ResultObj.AcceptedSourceTextSet then
-    FSrcText[Index] := ResultObj.AcceptedSourceText;
+    FEntries[Index].SourceText := ResultObj.AcceptedSourceText;
   if ResultObj.AcceptedDestinationTextSet then
-    FDstText[Index] := ResultObj.AcceptedDestinationText;
+    FEntries[Index].DestinationText := ResultObj.AcceptedDestinationText;
   if ResultObj.AcceptedPairsSet then
-    FPairs[Index] := ResultObj.AcceptedPairs;
+    FEntries[Index].Pairs := ResultObj.AcceptedPairs;
   if ResultObj.AcceptedCommentsSet then
-    FComments[Index] := ResultObj.AcceptedComments;
+    FEntries[Index].Comments := ResultObj.AcceptedComments;
   if ResultObj.AcceptedStatusSet then
-    FStatus[Index] := IntToStr(ResultObj.AcceptedStatus);
+    FEntries[Index].Status := ResultObj.AcceptedStatus;
 end;
 
 function TAIProcessingBatch.Count: integer;
 begin
-  Result := FReference.Count;
+  Result := FCount;
+end;
+
+function TAIProcessingBatch.BuildReferenceList: TStringList;
+var
+  i: Integer;
+begin
+  Result := TStringList.Create;
+  for i := 0 to FCount - 1 do
+    Result.Add(FEntries[i].Reference);
 end;
 
 function TAIProcessingBatch.HasVerseChanges(OriginalData: TAIProcessingBatch; Index: Integer): Boolean;
@@ -120,12 +176,12 @@ begin
   Result := not Assigned(OriginalData) or
             (Index < 0) or
             (Index >= OriginalData.Count) or
-            (FReference[Index] <> OriginalData.Reference[Index]) or
-            (FSrcText[Index] <> OriginalData.SourceText[Index]) or
-            (FDstText[Index] <> OriginalData.DestinationText[Index]) or
-            (FPairs[Index] <> OriginalData.Pairs[Index]) or
-            (FComments[Index] <> OriginalData.Comments[Index]) or
-            (FStatus[Index] <> OriginalData.Status[Index]);
+            (FEntries[Index].Reference       <> OriginalData.FEntries[Index].Reference) or
+            (FEntries[Index].SourceText      <> OriginalData.FEntries[Index].SourceText) or
+            (FEntries[Index].DestinationText <> OriginalData.FEntries[Index].DestinationText) or
+            (FEntries[Index].Pairs           <> OriginalData.FEntries[Index].Pairs) or
+            (FEntries[Index].Comments        <> OriginalData.FEntries[Index].Comments) or
+            (FEntries[Index].Status          <> OriginalData.FEntries[Index].Status);
 end;
 
 function TAIProcessingBatch.CreatePatch(OriginalData: TAIProcessingBatch;
@@ -142,8 +198,9 @@ begin
     for Index := 0 to Count - 1 do
       if HasVerseChanges(OriginalData, Index) then
       begin
-        Result.Add(FReference[Index], FSrcText[Index], FDstText[Index], FPairs[Index],
-          FComments[Index], StrToIntDef(FStatus[Index], 0));
+        Result.Add(FEntries[Index].Reference, FEntries[Index].SourceText,
+          FEntries[Index].DestinationText, FEntries[Index].Pairs,
+          FEntries[Index].Comments, FEntries[Index].Status);
         Inc(AppliedCount);
       end;
     Exit;
@@ -157,8 +214,9 @@ begin
     if not HasVerseChanges(OriginalData, Index) then
       Continue;
 
-    Result.Add(FReference[Index], FSrcText[Index], FDstText[Index], FPairs[Index],
-      FComments[Index], StrToIntDef(FStatus[Index], 0));
+    Result.Add(FEntries[Index].Reference, FEntries[Index].SourceText,
+      FEntries[Index].DestinationText, FEntries[Index].Pairs,
+      FEntries[Index].Comments, FEntries[Index].Status);
     Inc(AppliedCount);
   end;
 end;

@@ -558,6 +558,7 @@ var
   workItem: TAIBatchWorkItem;
   verseData: TVerseData;
   ref: string;
+  refList: TStringList;
 begin
   Result := False;
   
@@ -570,14 +571,8 @@ begin
   EnsureVersesCreated;
   
   // Initialize batch with verse data
-  FBatch.Reference.Clear;
-  FBatch.SourceText.Clear;
-  FBatch.DestinationText.Clear;
-  FBatch.Pairs.Clear;
-  FBatch.Comments.Clear;
-  FBatch.Status.Clear;
-  FBatch.ProcessingState.Clear;
-  FBatch.Errors.Clear;
+  FBatch.Clear;
+  FOriginalData.Clear;
   
   // Load original data and initialize batch
   // Note: verse data is already collected by caller, no dataset navigation needed
@@ -609,7 +604,12 @@ begin
   end;
   
   // Setup tree view
-  FBibleTreeView.VerseList := FBatch.Reference;
+  refList := FBatch.BuildReferenceList;
+  try
+    FBibleTreeView.VerseList := refList;
+  finally
+    refList.Free;
+  end;
   FIndex := 0;
   TabControlPreviewChange(TabControlPreview);
   
