@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, StrUtils, sqldb, sqlite3conn, Verse,
-  Dialogs, LazLogger, PCRE, Syntagm, ONTTokenizer, ExportarProjeto;
+  Dialogs, LazLogger, PCRE, Syntagm, ONTTokenizer, ConcordanceExport;
 
 type
 
@@ -658,7 +658,7 @@ begin
   begin
     Phrase := AnsiReplaceStr(Suggestions.Fields[0].AsString, ';', ' ') +
               Format(' (%d)', [Suggestions.Fields[1].AsInteger]);
-    Result := Format('%s\par\li0 {\b\''95  } %s', [Result, UnicodeToRTF(Phrase)]);
+    Result := Format('%s\par\li0 {\b\''95  } %s', [Result, UnicodeToRtf(Phrase)]);
     Suggestions.Next;
   end;
   Suggestions.Close;

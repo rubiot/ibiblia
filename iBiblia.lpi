@@ -214,6 +214,7 @@
       <Unit2>
         <Filename Value="Verse.pas"/>
         <IsPartOfProject Value="True"/>
+        <IsVisibleTab Value="True"/>
         <EditorIndex Value="16"/>
         <TopLine Value="1336"/>
         <CursorPos X="11" Y="1349"/>
@@ -247,7 +248,6 @@
       <Unit4>
         <Filename Value="SuggestionManager.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="SuggestionManager"/>
         <EditorIndex Value="37"/>
         <TopLine Value="524"/>
         <CursorPos Y="533"/>
@@ -304,7 +304,6 @@
       <Unit9>
         <Filename Value="VerseMemo.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="VerseMemo"/>
         <EditorIndex Value="18"/>
         <TopLine Value="93"/>
         <CursorPos X="22" Y="118"/>
@@ -332,9 +331,9 @@
         <LoadedDesigner Value="True"/>
       </Unit11>
       <Unit12>
-        <Filename Value="exportarprojeto.pas"/>
+        <Filename Value="ConcordanceExport.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="ExportarProjeto"/>
+        <UnitName Value="ConcordanceExport"/>
         <EditorIndex Value="25"/>
         <TopLine Value="427"/>
         <CursorPos X="20" Y="440"/>
@@ -784,7 +783,6 @@
         <ComponentName Value="FrmAIProcessing"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <IsVisibleTab Value="True"/>
         <EditorIndex Value="10"/>
         <UsageCount Value="262"/>
         <Loaded Value="True"/>

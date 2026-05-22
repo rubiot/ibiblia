@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, StrUtils, Forms, Dialogs, ComCtrls, LCLIntf, fgl, PCRE,
-  BibleScope, MySwordModule, TheWordDictionary, ExportarProjeto,
+  BibleScope, MySwordModule, TheWordDictionary, ConcordanceExport,
   ai_batch_work_item, syntagm, project_verse_repository, verse_render_buffer;
 
 type
@@ -387,7 +387,7 @@ procedure TProjectExporter.ExportConcordance(const FileName: string;
   GetReference: TExportReferenceFunc);
 var
   VerseData: TVerseData;
-  Concordance: TConcordancia;
+  Concordance: TConcordance;
   Entries: TStringList;
   Dictionary: TTheWordDictionary;
   LemmaRegex: IRegex;
@@ -407,8 +407,8 @@ begin
   try
     ConfigureProgressBar(ProgressBar, QLinhas[FScope] + QStrongs[etONT]);
 
-    Concordance := TConcordancia.Create;
-    Concordance.Detalhada := Options.Detailed;
+    Concordance := TConcordance.Create;
+    Concordance.Detailed := Options.Detailed;
 
     if Options.Detailed then
       TitleText := Format('%s %s', [Options.Abbreviation, Options.AnalyticalCaption])
@@ -445,7 +445,7 @@ begin
               Pairs,
               CorruptionDetails) then
           begin
-            Concordance.AdicionarLocucao(Pairs, FVerseRepository.CurrentReferenceID);
+            Concordance.AddPhrase(Pairs, FVerseRepository.CurrentReferenceID);
             Pairs.Free;
           end
           else
@@ -469,7 +469,7 @@ begin
         begin
           Strong := Match.Groups[1].Value;
           Lemma := Match.Groups[2].Value;
-          Dictionary.AddEntry(Strong, Lemma, Concordance.GetStrongRTF(Lemma, Strong));
+          Dictionary.AddEntry(Strong, Lemma, Concordance.GetStrongRtf(Lemma, Strong));
         end;
 
         AdvanceProgressBar(ProgressBar, 20);
