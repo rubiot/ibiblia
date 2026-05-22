@@ -155,14 +155,14 @@ type
     FIgnoreMissingPatchWarnings: Boolean;
     function GetCaminho: string;
     function GetChapterViewText: TTipoTextoBiblico;
-    function GetComentarios: string;
+    function GetComments: string;
     function GetID: string;
     function GetInterlinearMode: TInterlinearMode;
     function GetModificado: boolean;
     function GetFormattedReference: string;
     function GetPairs: string;
     function GetParagraphMode: TParagraphMode;
-    function GetSituacao: Integer;
+    function GetStatus: Integer;
     function GetTokenizerVersion: Integer;
     function BuildAssociationFlowExample: TAIFlowExample;
     function BuildTranslationFlowExample: TAIFlowExample;
@@ -174,7 +174,7 @@ type
     procedure SetAtrasoExibicao(const AValue: Cardinal);
     procedure SetAutoSave(AValue: boolean);
     procedure SetChapterViewText(AValue: TTipoTextoBiblico);
-    procedure SetComentarios(const AValue: string);
+    procedure SetComments(const AValue: string);
     procedure SetDisplayTags(AValue: boolean);
     procedure SetInterlinearMode(AValue: TInterlinearMode);
     procedure SetParagraphMode(AValue: TParagraphMode);
@@ -183,13 +183,13 @@ type
     procedure SetOnAlterarVersiculo(const AValue: TOnAlterarVersiculoEvent);
     procedure SetOnSintagmaClick(const AValue: TOnSintagmaClickEvent);
     procedure SetPalavrasComStrongEmNegrito(AValue: boolean);
-    procedure SetSituacao(const AValue: Integer);
+    procedure SetStatus(const AValue: Integer);
     procedure HighlightStrongs(syntagm: TSyntagm);
     function CreateBibleTreeContextMenu: TPopupMenu;
     procedure UpdateReference(ref: string);
     function BibleTreeNodeToReference(const node: TTreeNode): TReference;
-    procedure SetSituacaoDescricao(index: Integer; descricao: string);
-    function HasSituacaoCustomizada: boolean;
+    procedure SetStatusDescription(index: Integer; description: string);
+    function HasCustomStatus: boolean;
     procedure MigrateStoredAssociationsToTokenizerVersion(OldVersion, NewVersion: Integer);
   protected
     function CriarObjetoTabela(db, tabela, chave: string): TSqlite3Dataset;
@@ -312,7 +312,7 @@ type
     function HasStoredAssociations: Boolean;
     procedure ClearStoredAssociations;
     procedure Vacuum;
-    function GetSituacaoDescricao(index: Integer): string;
+    function GetStatusDescription(index: Integer): string;
 
     property FileName: string read FFileName;
     property FormattedReference: string read GetFormattedReference;
@@ -325,8 +325,8 @@ type
     property AtrasoExibicaoDefinicao: Cardinal read FAtrasoExibicao write SetAtrasoExibicao;
     property Ativo: boolean read FAtivo;
     property Caminho: string read GetCaminho;
-    property Situacao: Integer read GetSituacao write SetSituacao;
-    property Comentarios: string read GetComentarios write SetComentarios;
+    property Status: Integer read GetStatus write SetStatus;
+    property Comments: string read GetComments write SetComments;
     property MemoComentarios: TControl read FMemoComentarios write FMemoComentarios;
     property RadioGroupSituacao: TRadioGroup read FRadioGroupSituacao write FRadioGroupSituacao;
     property ExibirDefinicoesSoComCtrl: boolean read FExibirDefComCtrl write FExibirDefComCtrl;
@@ -455,7 +455,7 @@ resourcestring
 const
   QStrongs: array[etOT..etONT] of smallint = (8674, 5624, 14298);
 
-procedure UpdateDefaultSituacaoDescricao;
+procedure UpdateDefaultStatusDescription;
 
 implementation
 
@@ -464,19 +464,19 @@ uses formpopup, formverserules, formaiprocessing;
 { TProjeto }
 
 const
-  DefaultSituacaoDescricao: array[0..3] of string = (
+  DefaultStatusDescription: array[0..3] of string = (
     'Not associated',
     'Associating',
     'Needs review',
     'Associated'
   );
 
-procedure UpdateDefaultSituacaoDescricao;
+procedure UpdateDefaultStatusDescription;
 begin
-  DefaultSituacaoDescricao[0] := SStatusNotAssociated;
-  DefaultSituacaoDescricao[1] := SStatusAssociating;
-  DefaultSituacaoDescricao[2] := SStatusNeedsReview;
-  DefaultSituacaoDescricao[3] := SStatusAssociated;
+  DefaultStatusDescription[0] := SStatusNotAssociated;
+  DefaultStatusDescription[1] := SStatusAssociating;
+  DefaultStatusDescription[2] := SStatusNeedsReview;
+  DefaultStatusDescription[3] := SStatusAssociated;
 end;
 
 { TProjectVerseStatusCursor }
@@ -504,10 +504,10 @@ end;
 
 function TProjectVerseStatusCursor.CurrentStatus: Integer;
 begin
-  Result := FOwner.Situacao;
+  Result := FOwner.Status;
 end;
 
-function TProjeto.GetSituacaoDescricao(index: Integer): string;
+function TProjeto.GetStatusDescription(index: Integer): string;
 var
   custom: string;
 begin
@@ -515,17 +515,17 @@ begin
   if not custom.IsEmpty then
     Result := custom
   else if (index >= 0) and (index <= 3) then
-    Result := DefaultSituacaoDescricao[index]
+    Result := DefaultStatusDescription[index]
   else
     Result := '';
 end;
 
-procedure TProjeto.SetSituacaoDescricao(index: Integer; descricao: string);
+procedure TProjeto.SetStatusDescription(index: Integer; description: string);
 begin
-  SetInfo('status.description.' + IntToStr(index), descricao);
+  SetInfo('status.description.' + IntToStr(index), description);
 end;
 
-function TProjeto.HasSituacaoCustomizada: boolean;
+function TProjeto.HasCustomStatus: boolean;
 var
   i: Integer;
 begin
@@ -671,7 +671,7 @@ begin
   end;
 end;
 
-function TProjeto.GetSituacao: Integer;
+function TProjeto.GetStatus: Integer;
 begin
   Result := FPersistence.CurrentStatus;
 end;
@@ -699,7 +699,7 @@ begin
   FConfig.WriteChapterViewText(Ord(AValue));
 end;
 
-procedure TProjeto.SetComentarios(const AValue: string);
+procedure TProjeto.SetComments(const AValue: string);
 begin
   if FPersistence.CurrentComments = AValue then
     exit;
@@ -894,7 +894,7 @@ begin
   FCurrentVerseWorkspace.ApplyBoldStrongs(FAVersiculo, AValue);
 end;
 
-procedure TProjeto.SetSituacao(const AValue: Integer);
+procedure TProjeto.SetStatus(const AValue: Integer);
 var
   NormalizedStatus: Integer;
 begin
@@ -1023,7 +1023,7 @@ function TProjeto.CreateBibleTreeContextMenu: TPopupMenu;
     subitem := TMenuItem.Create(item);
     with subitem do
     begin
-      Caption := GetSituacaoDescricao(status);
+      Caption := GetStatusDescription(status);
       OnClick := @OnBibleTreePopupItemClick;
       ImageIndex := status;
       Tag := status;
@@ -1033,7 +1033,7 @@ function TProjeto.CreateBibleTreeContextMenu: TPopupMenu;
 
 var
   item: TMenuItem;
-  status: Integer;
+  statusIndex: Integer;
   aiMenu: TMenuItem;
   aiChapterItem: TMenuItem;
   aiCancelItem: TMenuItem;
@@ -1067,8 +1067,8 @@ begin
   // Status submenu: 'Marcar <referência> como...'
   item.Caption := SSetStatusChildren;
   result.Items.Add(item);
-  for status:=0 to 3 do
-    AddSubItemForStatus(item, status);
+  for statusIndex:=0 to 3 do
+    AddSubItemForStatus(item, statusIndex);
 
   // 'Aplicar fluxo de IA a <referência>...' submenu (will be updated at popup time)
   aiMenu := TMenuItem.Create(result);
@@ -1370,7 +1370,7 @@ function TProjeto.GetChapterText: TStringList;
   end;
 
 var
-  bkch, comments: string;
+  bkch, verseComments: string;
   rulesRx: TRegexList;
   replaceTo: TStringList;
 begin
@@ -1386,15 +1386,15 @@ begin
   RewindChapter;
   while not FPersistence.EOF and GetID().StartsWith(bkch) do
   begin
-    comments := IfThen(
+    verseComments := IfThen(
       ChapterViewText = tbDestino,
-      Comentarios
+      Comments
         .Replace(#13#10, '<br/>', [rfReplaceAll])
         .Replace(#13, '<br/>', [rfReplaceAll])
         .Replace(#10, '<br/>', [rfReplaceAll]),
       ''
     );
-    result.Add(Format('%s%s', [GetText(rulesRx, replaceTo), IfThen(comments.IsEmpty, '', Format('<RF>%s<Rf>', [comments]))]));
+    result.Add(Format('%s%s', [GetText(rulesRx, replaceTo), IfThen(verseComments.IsEmpty, '', Format('<RF>%s<Rf>', [verseComments]))]));
     VersiculoSeguinte;
   end;
   FinishScrollingSession;
@@ -1435,7 +1435,7 @@ begin
   end;
 end;
 
-function TProjeto.GetComentarios: string;
+function TProjeto.GetComments: string;
 begin
   Result := FPersistence.CurrentComments;
 end;
@@ -1545,7 +1545,7 @@ var
 begin
   FCurrentVerseWorkspace.SetCurrentVerseText(FPersistence, FVerseRenderBuffer,
     FACamposTexto, versiculo, Ord(texto), Ord(tbOrigem), Ord(tbDestino),
-    replace, not HasSituacaoCustomizada, corruptionDetails);
+    replace, not HasCustomStatus, corruptionDetails);
 
   if not corruptionDetails.IsEmpty then
     MessageDlg(SError, SCorruptedData + #13#10#13#10 + FormattedReference + #13#10 +
@@ -1992,7 +1992,7 @@ procedure TProjeto.OnBibleTreePopupItemClick(Sender: TObject);
   procedure SetNodeStatus(node: TTreeNode; status: Integer);
   begin
     GoToReference(FBibleTreeCoordinator.NodeToReferenceID(FEscopo, node));
-    SetSituacao(status);
+    SetStatus(status);
     //node.ImageIndex := status;
   end;
 
@@ -2239,9 +2239,9 @@ begin
   end;
 
   { atualizando versículo }
-  if nv.ImageIndex <> Situacao then
+  if nv.ImageIndex <> Status then
   begin
-    nv.ImageIndex := Situacao; nv.SelectedIndex := nv.ImageIndex + 4;
+    nv.ImageIndex := Status; nv.SelectedIndex := nv.ImageIndex + 4;
   end;
   
   { atualizando capítulo - sempre recontar todos os versículos }
@@ -2507,7 +2507,7 @@ begin
     begin
       Clear;
       for i := 0 to 3 do
-        Add(GetSituacaoDescricao(i));
+        Add(GetStatusDescription(i));
     end;
     FRadioGroupSituacao.Enabled := true;
   end;
@@ -2633,7 +2633,7 @@ procedure TProjeto.VersiculoSeguinte;
 begin
   if not FPersistence.EOF then
     FPersistence.Next;
-  if not FExportando and SugerirAssociacaoAutomaticamente and (FRadioGroupSituacao.ItemIndex = 0) and (not HasSituacaoCustomizada) then
+  if not FExportando and SugerirAssociacaoAutomaticamente and (FRadioGroupSituacao.ItemIndex = 0) and (not HasCustomStatus) then
     SugerirAssociacao;
 end;
 
@@ -2641,7 +2641,7 @@ procedure TProjeto.VersiculoAnterior;
 begin
   if not FPersistence.BOF then
     FPersistence.Prior;
-  if not FExportando and SugerirAssociacaoAutomaticamente and (FRadioGroupSituacao.ItemIndex = 0) and (not HasSituacaoCustomizada) then
+  if not FExportando and SugerirAssociacaoAutomaticamente and (FRadioGroupSituacao.ItemIndex = 0) and (not HasCustomStatus) then
     SugerirAssociacao;
 end;
 
@@ -2649,7 +2649,7 @@ procedure TProjeto.VersiculoInicial;
 begin
   if not FPersistence.BOF then
     FPersistence.First;
-  if not FExportando and SugerirAssociacaoAutomaticamente and (FRadioGroupSituacao.ItemIndex = 0) and (not HasSituacaoCustomizada) then
+  if not FExportando and SugerirAssociacaoAutomaticamente and (FRadioGroupSituacao.ItemIndex = 0) and (not HasCustomStatus) then
     SugerirAssociacao;
 end;
 
@@ -2657,7 +2657,7 @@ procedure TProjeto.VersiculoFinal;
 begin
   if not FPersistence.EOF then
     FPersistence.Last;
-  if not FExportando and SugerirAssociacaoAutomaticamente and (FRadioGroupSituacao.ItemIndex = 0) and (not HasSituacaoCustomizada) then
+  if not FExportando and SugerirAssociacaoAutomaticamente and (FRadioGroupSituacao.ItemIndex = 0) and (not HasCustomStatus) then
     SugerirAssociacao;
 end;
 
@@ -2702,7 +2702,7 @@ begin
   FAVersiculo[tbOrigem].Renderizar;
   FAVersiculo[tbDestino].Renderizar;
 
-  if HasSituacaoCustomizada then exit;
+  if HasCustomStatus then exit;
 
   if (FRadioGroupSituacao.ItemIndex = 0) and (FAVersiculo[tbOrigem].AndamentoAssociacao > 0) then
     FRadioGroupSituacao.ItemIndex := 1; // associando
@@ -3283,7 +3283,7 @@ begin
   StartScrollingSession;
   try
     FPatchApplier.ClearTextFieldForAll(FACamposTexto[texto], FACamposTexto[tbOrigem],
-      FACamposTexto[tbDestino], not HasSituacaoCustomizada);
+      FACamposTexto[tbDestino], not HasCustomStatus);
   finally
     FinishScrollingSession;
   end;
@@ -3490,7 +3490,7 @@ begin
   if not Assigned(FPersistence) then
     Exit;
 
-  shouldResetStatus := not HasSituacaoCustomizada;
+  shouldResetStatus := not HasCustomStatus;
   FSuggestionManager.ClearAssociationDatabase;
 
   StartScrollingSession;
@@ -3513,7 +3513,7 @@ var
   bk: integer;
   node: TTreeNode;
 begin
-  UpdateDefaultSituacaoDescricao;
+  UpdateDefaultStatusDescription;
   if not assigned(FArvore) then
     exit;
 

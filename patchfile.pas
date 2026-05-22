@@ -97,8 +97,8 @@ procedure TPatchFile.LoadFromFile(patchfile: string);
     if patch[1] <> project.GetVerseText(tbOrigem) then exit;
     if patch[2] <> project.GetVerseText(tbDestino) then exit;
     if patch[3] <> project.Pairs then exit;
-    if patch[4] <> FormatComments(project.Comentarios) then exit;
-    if patch[5].ToInteger <> project.Situacao then exit;
+    if patch[4] <> FormatComments(project.Comments) then exit;
+    if patch[5].ToInteger <> project.Status then exit;
     result := true;
   end;
 var

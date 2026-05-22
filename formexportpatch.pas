@@ -89,8 +89,8 @@ begin
                  ProjetoAtual.GetVerseText(tbOrigem),
                  ProjetoAtual.GetVerseText(tbDestino),
                  ProjetoAtual.Pairs,
-                 ProjetoAtual.Comentarios,
-                 ProjetoAtual.Situacao
+                 ProjetoAtual.Comments,
+                 ProjetoAtual.Status
                 );
     end;
   finally

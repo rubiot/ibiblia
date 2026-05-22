@@ -1259,7 +1259,7 @@ end;
 procedure TFrmPrincipal.RadioGroupStatusSelectionChanged(Sender: TObject);
 begin
   if ProjetoAtual <> nil then
-    ProjetoAtual.Situacao := RadioGroupStatus.ItemIndex;
+    ProjetoAtual.Status := RadioGroupStatus.ItemIndex;
 end;
 
 procedure TFrmPrincipal.ChapterViewTabCtrlChange(Sender: TObject);
@@ -1306,14 +1306,14 @@ end;
 procedure TFrmPrincipal.Translate;
 var i: Integer;
 begin
-  UpdateDefaultSituacaoDescricao;
+  UpdateDefaultStatusDescription;
   with RadioGroupStatus.Items do
   begin
     Clear;
     if Assigned(ProjetoAtual) then
     begin
       for i := 0 to 3 do
-        Add(ProjetoAtual.GetSituacaoDescricao(i));
+        Add(ProjetoAtual.GetStatusDescription(i));
     end;
   end;
   with ChapterViewTabCtrl do
