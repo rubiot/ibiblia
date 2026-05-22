@@ -15,7 +15,7 @@ uses
   Windows,
   {$ENDIF}
   SysUtils, Sqlite3DS, sqlite3conn, sqldb, db, StrUtils, math,
-  ExtCtrls, Controls, ComCtrls, StdCtrls, Graphics, Forms, Versiculo, Sugestao,
+  ExtCtrls, Controls, ComCtrls, StdCtrls, Graphics, Forms, Verse, Sugestao,
   MemoVersiculo, ONTTokenizer, Dialogs, dos, PCRE, LazLogger, Clipbrd,
   Syntagm, BibleScope, MySwordModule, fgl, PatchFile, LCLIntf, menus,
   CommentsView, ai_processing_manager, ai_processing_batch, ai_batch_work_item,
@@ -93,7 +93,7 @@ type
   TOnSintagmaClickEvent = procedure (Sender: TSyntagm) of object;
   //TOnAlterarVersiculoEvent = procedure (Sender: TProjeto) of object;
 
-  AVersiculo = array[tbOrigem..tbConsulta2] of TVersiculo;
+  AVersiculo = array[tbOrigem..tbConsulta2] of TVerse;
   ACamposTexto = array[tbOrigem..tbConsulta2] of integer;
   STextosBiblicos = set of TTipoTextoBiblico;
 
@@ -208,7 +208,7 @@ type
     procedure SintagmaOnMouseEnter(Sender: TSyntagm);
     procedure SintagmaOnMouseLeave(Sender: TSyntagm);
     procedure SintagmaOnClick(Sender: TSyntagm);
-    procedure OnExportText(Sender: TVersiculo);
+    procedure OnExportText(Sender: TVerse);
     procedure OnVersePopup(Sender: TObject);
     procedure OnUseAssociationAsExample(Sender: TObject);
     procedure OnUseTranslationAsExample(Sender: TObject);
@@ -221,9 +221,9 @@ type
     procedure OnBibleTreePopupItemClick(Sender: TObject);
     procedure OnBibleTreeContextPopup(Sender: TObject; MousePos: TPoint; var Handled: Boolean);
     procedure HandleAutoSave(Sender: TObject);
-    function GetVerseReferenceString(Verse: TVersiculo): string;
+    function GetVerseReferenceString(Verse: TVerse): string;
     procedure AttachProjectVersePopupMenu(texto: TTipoTextoBiblico);
-    function FindVerseType(Verse: TVersiculo; out VerseType: TTipoTextoBiblico): Boolean;
+    function FindVerseType(Verse: TVerse; out VerseType: TTipoTextoBiblico): Boolean;
     { AI Visual Feedback }
     procedure MarkNodeAsAIPending(node: TTreeNode; const ref: string);
     procedure MarkNodeAsAIProcessing(const ref: string);
@@ -257,7 +257,7 @@ type
     procedure RefreshUI;
     procedure Limpar;
     procedure Salvar;
-    procedure SalvarParesVersiculo(Verse: TVersiculo); // Save pairs from any verse object (public for AI flows)
+    procedure SalvarParesVersiculo(Verse: TVerse); // Save pairs from any verse object (public for AI flows)
     procedure ApplyVerseText(const newText: string; texto: TTipoTextoBiblico; replace: Boolean);
     procedure SugerirAssociacaoEstatistica;
     procedure SugerirAssociacao;
@@ -540,7 +540,7 @@ end;
 
 function TProjeto.BuildAssociationFlowExample: TAIFlowExample;
 var
-  SourceVerse, TargetVerse: TVersiculo;
+  SourceVerse, TargetVerse: TVerse;
 begin
   SourceVerse := FAVersiculo[tbOrigem];
   TargetVerse := FAVersiculo[tbDestino];
@@ -560,7 +560,7 @@ end;
 
 function TProjeto.BuildTranslationFlowExample: TAIFlowExample;
 var
-  SourceVerse, TargetVerse: TVersiculo;
+  SourceVerse, TargetVerse: TVerse;
 begin
   SourceVerse := FAVersiculo[tbOrigem];
   TargetVerse := FAVersiculo[tbDestino];
@@ -1638,7 +1638,7 @@ begin
   FCurrentVerseWorkspace.SavePairs(FPersistence, FAVersiculo[tbOrigem]);
 end;
 
-procedure TProjeto.SalvarParesVersiculo(Verse: TVersiculo);
+procedure TProjeto.SalvarParesVersiculo(Verse: TVerse);
 begin
   // Save pairs from a specific verse object (works for temp or visual verses)
   // Assumes database cursor is already positioned at the correct record
@@ -1730,7 +1730,7 @@ begin
   end;
 end;
 
-procedure TProjeto.OnExportText(Sender: TVersiculo);
+procedure TProjeto.OnExportText(Sender: TVerse);
 var
   lines: TStringList;
   v, text: TTipoTextoBiblico;
@@ -1778,7 +1778,7 @@ begin
   OpenDocument(ExtractFilePath(destination));
 end;
 
-function TProjeto.FindVerseType(Verse: TVersiculo; out VerseType: TTipoTextoBiblico): Boolean;
+function TProjeto.FindVerseType(Verse: TVerse; out VerseType: TTipoTextoBiblico): Boolean;
 var
   t: TTipoTextoBiblico;
 begin
@@ -1795,7 +1795,7 @@ end;
 procedure TProjeto.OnVersePopup(Sender: TObject);
 var
   PopupMenu: TPopupMenu;
-  ClickedVerse: TVersiculo;
+  ClickedVerse: TVerse;
   VerseType: TTipoTextoBiblico;
   IsPrimaryVerse: Boolean;
   CanUseAssociationExample: Boolean;
@@ -1805,7 +1805,7 @@ begin
     Exit;
 
   PopupMenu := TPopupMenu(Sender);
-  ClickedVerse := TVersiculo(PopupMenu.Tag);
+  ClickedVerse := TVerse(PopupMenu.Tag);
   if not Assigned(ClickedVerse) or not FindVerseType(ClickedVerse, VerseType) then
     Exit;
 
@@ -1837,8 +1837,8 @@ end;
 procedure TProjeto.OnCopyAssociationExample(Sender: TObject);
 var
   example: string;
-  originalVerse: TVersiculo;
-  destinationVerse: TVersiculo;
+  originalVerse: TVerse;
+  destinationVerse: TVerse;
 begin
   originalVerse := FAVersiculo[tbOrigem];
   destinationVerse := FAVersiculo[tbDestino];
@@ -1979,7 +1979,7 @@ begin
   if not Ativo then
     exit;
 
-  FMemoVersiculo.Ativar(TScrollBox(Sender), TVersiculo(TScrollBox(Sender).Tag));
+  FMemoVersiculo.Ativar(TScrollBox(Sender), TVerse(TScrollBox(Sender).Tag));
 end;
 
 procedure TProjeto.OnBibleTreePopupItemClick(Sender: TObject);
@@ -2735,7 +2735,7 @@ var
   msgs: TLLMMessageArray;
   resp: TLLMResponse;
   parsed: TAIFlowResult;
-  v: TVersiculo;
+  v: TVerse;
   OldCursor: TCursor;
 begin
   FLastLLMUsage.PromptTokens := 0;
@@ -2877,7 +2877,7 @@ begin
   Salvar;
 end;
 
-function TProjeto.GetVerseReferenceString(Verse: TVersiculo): string;
+function TProjeto.GetVerseReferenceString(Verse: TVerse): string;
 begin
   // Return formatted reference for the current verse
   if Verse = nil then

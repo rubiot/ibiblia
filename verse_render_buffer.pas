@@ -5,15 +5,15 @@ unit verse_render_buffer;
 interface
 
 uses
-  Classes, SysUtils, versiculo, syntagm;
+  Classes, SysUtils, Verse, syntagm;
 
 type
   TRenderInterlinearMode = (rimMySword, rimTheWord);
 
   TVerseRenderBuffer = class
   private
-    FSourceVerse: TVersiculo;
-    FDestinationVerse: TVersiculo;
+    FSourceVerse: TVerse;
+    FDestinationVerse: TVerse;
     procedure EnsureReady;
   public
     constructor Create;
@@ -46,8 +46,8 @@ type
     function TryExtractPairsList(const OriginalText, TranslatedText,
       Associations: string; ListType: TPairsListType; out Pairs: TStringList;
       out CorruptionDetails: string): Boolean;
-    property SourceVerse: TVersiculo read FSourceVerse;
-    property DestinationVerse: TVersiculo read FDestinationVerse;
+    property SourceVerse: TVerse read FSourceVerse;
+    property DestinationVerse: TVerse read FDestinationVerse;
   end;
 
 implementation
@@ -61,8 +61,8 @@ end;
 constructor TVerseRenderBuffer.Create;
 begin
   inherited Create;
-  FSourceVerse := TVersiculo.Create();
-  FDestinationVerse := TVersiculo.Create();
+  FSourceVerse := TVerse.Create();
+  FDestinationVerse := TVerse.Create();
   FSourceVerse.VersiculoPar := FDestinationVerse;
 end;
 

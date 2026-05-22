@@ -5,7 +5,7 @@ unit ai_association_flow;
 interface
 
 uses
-  Classes, SysUtils, ai_flows, versiculo, Syntagm, ONTParser, ONTTokenizer,
+  Classes, SysUtils, ai_flows, Verse, Syntagm, ONTParser, ONTTokenizer,
   fpjson, jsonparser, llmclient, ai_debug;
 
 const
@@ -92,10 +92,10 @@ type
     FApiKeyOverride: string;
   protected
     function Name: string;
-    procedure PrepareRequest(Verse: TVersiculo; out Messages: array of TLLMMessage); overload;
-    function BuildMessages(Verse: TVersiculo): TLLMMessageArray;
-    function ParseResponse(const RawContent: string; Verse: TVersiculo): TAIFlowResult;
-    procedure ApplyResult(ResultObj: TAIFlowResult; Verse: TVersiculo);
+    procedure PrepareRequest(Verse: TVerse; out Messages: array of TLLMMessage); overload;
+    function BuildMessages(Verse: TVerse): TLLMMessageArray;
+    function ParseResponse(const RawContent: string; Verse: TVerse): TAIFlowResult;
+    procedure ApplyResult(ResultObj: TAIFlowResult; Verse: TVerse);
     function RequiresIndividualClient: Boolean;
     function ModelOverride: string;
     function ApiKeyOverride: string;
@@ -467,7 +467,7 @@ begin
   Result := FProviderOverride;
 end;
 
-procedure TAIAssociationFlow.PrepareRequest(Verse: TVersiculo; out Messages: array of TLLMMessage);
+procedure TAIAssociationFlow.PrepareRequest(Verse: TVerse; out Messages: array of TLLMMessage);
 begin
   // Legacy fixed-size support; expect length >=2
   if Length(Messages) >= 2 then
@@ -486,14 +486,14 @@ begin
   end;
 end;
 
-function TAIAssociationFlow.BuildMessages(Verse: TVersiculo): TLLMMessageArray;
+function TAIAssociationFlow.BuildMessages(Verse: TVerse): TLLMMessageArray;
 begin
   Result := nil; // Initialize
   SetLength(Result, 2);
   PrepareRequest(Verse, Result);
 end;
 
-function TAIAssociationFlow.ParseResponse(const RawContent: string; Verse: TVersiculo): TAIFlowResult;
+function TAIAssociationFlow.ParseResponse(const RawContent: string; Verse: TVerse): TAIFlowResult;
 var
   AssocResult: TAssociationResult;
 begin
@@ -520,7 +520,7 @@ begin
   end;
 end;
 
-procedure TAIAssociationFlow.ApplyResult(ResultObj: TAIFlowResult; Verse: TVersiculo);
+procedure TAIAssociationFlow.ApplyResult(ResultObj: TAIFlowResult; Verse: TVerse);
 var
   Assoc: TAssociationResult;
   I: Integer;
@@ -529,7 +529,7 @@ var
   ParsedSyntagms: TSyntagmList;
   OriginalSelectionCount, TranslatedSelectionCount: Integer;
   
-  procedure CollectTexts(const Phrase: string; VerseOwner: TVersiculo; Texts: TStringList);
+  procedure CollectTexts(const Phrase: string; VerseOwner: TVerse; Texts: TStringList);
   var
     J: Integer;
   begin

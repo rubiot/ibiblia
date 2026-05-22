@@ -5,7 +5,7 @@
 interface
 
 uses
-  Classes, SysUtils, fpcunit, testregistry, versiculo, syntagm, syntagmselection;
+  Classes, SysUtils, fpcunit, testregistry, Verse, syntagm, syntagmselection;
 
 type
   TSyntagmSelectionTest = class(TTestCase)

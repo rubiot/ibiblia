@@ -5,7 +5,7 @@
 interface
 
 uses
-  Classes, SysUtils, fpcunit, testutils, testregistry, versiculo, syntagm;
+  Classes, SysUtils, fpcunit, testutils, testregistry, Verse, syntagm;
 
 type
   TVersiculoTest = class(TTestCase)

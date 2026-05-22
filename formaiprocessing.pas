@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  ComCtrls, ExtCtrls, BibleTreeView, Versiculo, CommentsView,
+  ComCtrls, ExtCtrls, BibleTreeView, Verse, CommentsView,
   ai_processing_manager, ai_flows, ai_processing_batch, ai_batch_work_item;
 
 type
@@ -69,8 +69,8 @@ type
     FApplyAcceptedBatch: TAIProcessingApplyBatchFunc;
     FPreviewOptions: TAIProcessingPreviewOptions;
     FIndex: integer;
-    FSrcVerse: TVersiculo;
-    FDstVerse: TVersiculo;
+    FSrcVerse: TVerse;
+    FDstVerse: TVerse;
     FActualCommentsMemo: TCommentsView;
     FStatus: TAIProcessingStatus;
     FOriginalData: TAIProcessingBatch; // Store original project data for comparison
@@ -148,7 +148,7 @@ begin
   FBibleTreeView.Align := alClient;
   FBibleTreeView.OnVerseChange := @OnVerseChange;
 
-  // Do not create TVersiculo here; create them in FormShow with the project
+  // Do not create TVerse here; create them in FormShow with the project
 
   FActualCommentsMemo := TCommentsView.Create(Self);
   FActualCommentsMemo.ReadOnly := True;
@@ -277,9 +277,9 @@ begin
   if Assigned(FSrcVerse) and Assigned(FDstVerse) then Exit;
 
   if not Assigned(FSrcVerse) then
-    FSrcVerse := TVersiculo.Create(ScrollBoxSrcText);
+    FSrcVerse := TVerse.Create(ScrollBoxSrcText);
   if not Assigned(FDstVerse) then
-    FDstVerse := TVersiculo.Create(ScrollBoxDstText);
+    FDstVerse := TVerse.Create(ScrollBoxDstText);
 
   FSrcVerse.VersiculoPar := FDstVerse;
   FSrcVerse.ReadOnly := true;

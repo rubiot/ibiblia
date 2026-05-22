@@ -5,7 +5,7 @@ unit ai_translation_flow;
 interface
 
 uses
-  Classes, SysUtils, ai_flows, llmclient, versiculo, ai_debug;
+  Classes, SysUtils, ai_flows, llmclient, Verse, ai_debug;
 
 const
   DEFAULT_TRANSLATION_PROMPT =
@@ -70,10 +70,10 @@ const
      FApiKeyOverride: string;
    protected
      function Name: string;
-     procedure PrepareRequest(Verse: TVersiculo; out Messages: array of TLLMMessage); overload;
-     function BuildMessages(Verse: TVersiculo): TLLMMessageArray;
-     function ParseResponse(const RawContent: string; Verse: TVersiculo): TAIFlowResult;
-     procedure ApplyResult(ResultObj: TAIFlowResult; Verse: TVersiculo);
+    procedure PrepareRequest(Verse: TVerse; out Messages: array of TLLMMessage); overload;
+    function BuildMessages(Verse: TVerse): TLLMMessageArray;
+    function ParseResponse(const RawContent: string; Verse: TVerse): TAIFlowResult;
+    procedure ApplyResult(ResultObj: TAIFlowResult; Verse: TVerse);
      function RequiresIndividualClient: Boolean;
      function ModelOverride: string;
      function ApiKeyOverride: string;
@@ -354,7 +354,7 @@ begin
   Result := FProviderOverride;
 end;
 
-procedure TAITranslationFlow.PrepareRequest(Verse: TVersiculo; out Messages: array of TLLMMessage);
+procedure TAITranslationFlow.PrepareRequest(Verse: TVerse; out Messages: array of TLLMMessage);
 begin
   if Length(Messages) >= 2 then
   begin
@@ -376,14 +376,14 @@ begin
   end;
 end;
 
-function TAITranslationFlow.BuildMessages(Verse: TVersiculo): TLLMMessageArray;
+function TAITranslationFlow.BuildMessages(Verse: TVerse): TLLMMessageArray;
 begin
   Result := nil;
   SetLength(Result, 2);
   PrepareRequest(Verse, Result);
 end;
 
-function TAITranslationFlow.ParseResponse(const RawContent: string; Verse: TVersiculo): TAIFlowResult;
+function TAITranslationFlow.ParseResponse(const RawContent: string; Verse: TVerse): TAIFlowResult;
 var
   R: TAITranslationResult;
 begin
@@ -402,7 +402,7 @@ begin
   end;
 end;
 
-procedure TAITranslationFlow.ApplyResult(ResultObj: TAIFlowResult; Verse: TVersiculo);
+procedure TAITranslationFlow.ApplyResult(ResultObj: TAIFlowResult; Verse: TVerse);
 var
   R: TAITranslationResult;
 begin

@@ -71,7 +71,7 @@ type
     FSiblings: TSyntagmList;
     FLabel: TLabel;
     FSelected: boolean;
-    FVerse: TObject; // TVersiculo; avoiding circular reference
+    FVerse: TObject; // TVerse; avoiding circular reference
     FStrong: TStringList;
     FMorph: TStringList;
     FColor: TColor;
@@ -121,7 +121,7 @@ type
     property LabelRef: TLabel read FLabel write FLabel;
     property Pairs: TSyntagmList read FPairs write FPairs;
     property Siblings: TSyntagmList read FSiblings write FSiblings;
-    property VerseRef: TObject{TVersiculo} read FVerse write FVerse;
+    property VerseRef: TObject{TVerse} read FVerse write FVerse;
     property IsSelected: boolean read FSelected;
     property IsAssociated: boolean read GetIsAssociated write SetAssociated;
     property IsPointed: boolean write SetPointed;
@@ -142,7 +142,7 @@ type
 
 implementation
 
-uses Versiculo;
+uses Verse;
 
 var Hint: THintWindow;
 
@@ -184,11 +184,11 @@ procedure TSyntagm.DoOnLeftClick(Sender: TObject; Shift: TShiftState);
 //var
 //  d: string;
 var
-  verse: TVersiculo;
+  verse: TVerse;
   i: integer;
 begin
   //d := format('selecao: %d, ' + 'sel par: %d, ' + 'irmaos : %d, ' + 'pares  : %d', [VerseRef.Selecao.Count, VerseRef.VersiculoPar.Selecao.Count, Siblings.Count, Pairs.Count]);
-  verse := TVersiculo(VerseRef);
+  verse := TVerse(VerseRef);
 
   if verse.ReadOnly then
     Shift := [];
@@ -236,10 +236,10 @@ end;
 procedure TSyntagm.DoOnDblClick(Sender: TObject);
 begin
   {
-  if (TVersiculo(FVerse).Ativo) then
+  if (TVerse(FVerse).Ativo) then
   begin
     //LabelRef.Font.StrikeTrough := not LabelRef.Font.StrikeTrough;
-    with TVersiculo(FVerse).Edit do
+    with TVerse(FVerse).Edit do
     begin
       Tag       := PtrInt(Self);
       Top       := FLabel.Top;
@@ -257,7 +257,7 @@ end;
 procedure TSyntagm.DoOnMouseDown(Sender: TObject; Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
 begin
-  TVersiculo(FVerse).Edit.OnExit(Self);
+  TVerse(FVerse).Edit.OnExit(Self);
   if Button = mbRight then
     DoOnRightClick(Sender, Shift)
   else if Button = mbLeft then
@@ -278,7 +278,7 @@ var
   pos: TPoint;
   txt: string;
   i: smallint;
-  verse: TVersiculo;
+  verse: TVerse;
 begin
   SetPointed(true);
 
@@ -287,7 +287,7 @@ begin
   for i:=0 to Siblings.Count-1 do
     Siblings[i].SetPointed(true);
 
-  verse := TVersiculo(VerseRef);
+  verse := TVerse(VerseRef);
   if assigned(verse.OnMouseEnter) then
     verse.OnMouseEnter(self);
 
@@ -339,24 +339,24 @@ begin
     Hint := nil;
   end;
 
-  if assigned(TVersiculo(VerseRef).OnMouseLeave) then
-    TVersiculo(VerseRef).OnMouseLeave(self);
+  if assigned(TVerse(VerseRef).OnMouseLeave) then
+    TVerse(VerseRef).OnMouseLeave(self);
 end;
 
 procedure TSyntagm.DoOnRightClick(Sender: TObject; Shift: TShiftState);
 var
   LastSelected, NextUnassociated: TSyntagm;
-  verse: TVersiculo;
+  verse: TVerse;
   i: integer;
 begin
   {if ssShift in Shift then
   begin
-    TVersiculo(FVerse).OnSintagmaPopupMenu(self);
+    TVerse(FVerse).OnSintagmaPopupMenu(self);
     exit;
   end;
   }
 
-  verse := TVersiculo(VerseRef);
+  verse := TVerse(VerseRef);
   if not assigned(verse.VersiculoPar) then
     exit;
 
@@ -392,8 +392,8 @@ begin
       if Assigned(NextUnassociated) then
       begin
         NextUnassociated.AddToSelection;
-        if Assigned(TVersiculo(NextUnassociated.VerseRef).OnClick) then
-          TVersiculo(NextUnassociated.VerseRef).OnClick(NextUnassociated);
+        if Assigned(TVerse(NextUnassociated.VerseRef).OnClick) then
+          TVerse(NextUnassociated.VerseRef).OnClick(NextUnassociated);
       end;
     end;
   end;
@@ -403,7 +403,7 @@ end;
 
 procedure TSyntagm.DoOnMiddleClick(Sender: TObject; Shift: TShiftState);
 begin
-  TVersiculo(FVerse).OnSintagmaPopupMenu(self);
+  TVerse(FVerse).OnSintagmaPopupMenu(self);
 end;
 
 function TSyntagm.GetSuggestionKey(t: TPairsListType): string;
@@ -415,7 +415,7 @@ begin
   if t in [plText, plAll] then
   begin
     result := Text;
-    with TVersiculo(FVerse) do
+    with TVerse(FVerse) do
     begin
       s := Sintagmas.IndexOf(Self);
       if (s >= 0) and (s < (Sintagmas.Count-1)) and
@@ -446,7 +446,7 @@ end;
 
 function TSyntagm.GetIsAssociated: boolean;
 begin
-  result := TVersiculo(FVerse).Ativo and assigned(Pairs) and (Pairs.Count > 0){ (not FLabel.Font.Italic)};
+  result := TVerse(FVerse).Ativo and assigned(Pairs) and (Pairs.Count > 0){ (not FLabel.Font.Italic)};
 end;
 
 function TSyntagm.GetPairsHaveStrongs: boolean;
@@ -522,7 +522,7 @@ end;
 
 procedure TSyntagm.SetPointed(const AValue: boolean);
 begin
-  //TVersiculo(FVerse).Painel.Refresh; // ocultando tags, se estiverem sendo exibidas
+  //TVerse(FVerse).Painel.Refresh; // ocultando tags, se estiverem sendo exibidas
 
   if not assigned(FLabel) then
     exit;
@@ -546,7 +546,7 @@ end;
 procedure TSyntagm.SetAssociated(const AValue: boolean);
 begin
   if (not assigned(FVerse)) or
-     (not TVersiculo(FVerse).Ativo) or
+    (not TVerse(FVerse).Ativo) or
      (not assigned(FLabel)) then
     exit;
 
@@ -555,14 +555,14 @@ begin
     //FLabel.Font.Italic := false;
     //FLabel.Font.Color := FColor; //clWindowText;
     if FColor = clDefault then
-      FLabel.Font.Color := TVersiculo(FVerse).CorAssociado //clGrayText
+      FLabel.Font.Color := TVerse(FVerse).CorAssociado //clGrayText
     else
       FLabel.Font.Color := FColor;
   end else // nao IsAssociated
   begin
     //FLabel.Font.Italic := true;
     if FColor = clDefault then
-      FLabel.Font.Color := TVersiculo(FVerse).CorDesassociado //clGrayText
+      FLabel.Font.Color := TVerse(FVerse).CorDesassociado //clGrayText
     else
       FLabel.Font.Color := FColor;
   end;
@@ -584,7 +584,7 @@ function TSyntagm.GetGist: string;
   end;
 begin
   result := format('{index:%d,kind:%s,text:"%s"}',
-    [TVersiculo(FVerse).Sintagmas.IndexOf(self), KindToStr(FKind), FText]);
+    [TVerse(FVerse).Sintagmas.IndexOf(self), KindToStr(FKind), FText]);
 end;
 
 procedure TSyntagm.ToggleStrongHighlight(enable: boolean);
@@ -600,7 +600,7 @@ var
   i: Integer;
 begin
   result := nil;
-  with TVersiculo(FVerse) do
+  with TVerse(FVerse) do
   begin
     i := Sintagmas.IndexOf(Self);
     if (i >= 0) and (i < (Sintagmas.Count-1)) then
@@ -613,7 +613,7 @@ var
   i: Integer;
 begin
   result := nil;
-  with TVersiculo(FVerse) do
+  with TVerse(FVerse) do
   begin
     i := Sintagmas.IndexOf(Self);
     if (i >= 0) and (i < Sintagmas.Count) then
@@ -635,7 +635,7 @@ var
   i: Integer;
 begin
   result := nil;
-  with TVersiculo(FVerse) do
+  with TVerse(FVerse) do
   begin
     i := Sintagmas.IndexOf(Self);
     if (i >= 0) and (i < Sintagmas.Count) then
@@ -686,7 +686,7 @@ begin
      (FText = '<FI>') or (FText = '<Fi>') then
   begin
     if not assigned(FLabel) then
-      FLabel := TLabel.Create(TVersiculo(FVerse).Painel);
+      FLabel := TLabel.Create(TVerse(FVerse).Painel);
 
     FLabel.Caption     := FText;
     if FText = '<FI>' then
@@ -696,12 +696,12 @@ begin
     FLabel.Transparent := False; // Explicitly set Transparent to False
     FLabel.ParentColor := false;
     FLabel.Font.Color  := FColor;
-    FLabel.Parent      := TVersiculo(FVerse).Painel;
+    FLabel.Parent      := TVerse(FVerse).Painel;
     FLabel.ParentFont  := FKind <> tsStrongCount;
     FLabel.AutoSize    := true;
     if FSuperscript then
       FLabel.Font.Size := round(FLabel.Font.Size * 0.7);
-    FLabel.Font.Bold := FLabel.Font.Bold or (TVersiculo(FVerse).PalavrasComStrongEmNegrito and HasStrongs);
+    FLabel.Font.Bold := FLabel.Font.Bold or (TVerse(FVerse).PalavrasComStrongEmNegrito and HasStrongs);
     IsAssociated     := FPairs.Count > 0;
   end else
     FLabel := nil;
@@ -723,11 +723,11 @@ end;
 
 destructor TSyntagm.Destroy;
 var
-  verse: TVersiculo;
+  verse: TVerse;
 begin
   verse := nil;
   if Assigned(FVerse) then
-    verse := TVersiculo(FVerse);
+    verse := TVerse(FVerse);
 
   if not (Assigned(verse) and verse.Destroying and
           ((verse.VersiculoPar = nil) or verse.VersiculoPar.Destroying)) then
@@ -763,20 +763,20 @@ end;
 
 procedure TSyntagm.AddToSelection;
 begin
-  if FSelected or (TVersiculo(FVerse).Selecao.IndexOf(Self) >= 0) then
+  if FSelected or (TVerse(FVerse).Selecao.IndexOf(Self) >= 0) then
     exit;
   FSelected := true;
-  if TVersiculo(FVerse).Ativo and assigned(FLabel) then
+  if TVerse(FVerse).Ativo and assigned(FLabel) then
     FLabel.Color:= clYellow;
-  TVersiculo(FVerse).Selecao.Add(Self);
+  TVerse(FVerse).Selecao.Add(Self);
 end;
 
 procedure TSyntagm.RemoveFromSelection;
 begin
   FSelected := false;
-  if TVersiculo(FVerse).Ativo and assigned(FLabel) then
+  if TVerse(FVerse).Ativo and assigned(FLabel) then
     FLabel.Color:= clWindow;
-  TVersiculo(FVerse).Selecao.Remove(Self);
+  TVerse(FVerse).Selecao.Remove(Self);
 end;
 
 procedure TSyntagm.InvertSelection;
@@ -844,8 +844,8 @@ var
   mustHaveTags: boolean;
 begin
   result := nil;
-  mustHaveTags := TVersiculo(FVerse).NextAutoSelectWordMustHaveStrongMorpho;
-  with TVersiculo(FVerse) do
+  mustHaveTags := TVerse(FVerse).NextAutoSelectWordMustHaveStrongMorpho;
+  with TVerse(FVerse) do
   begin
     i := Sintagmas.IndexOf(Self);
     if (i >= 0) and (i < Sintagmas.Count) then
@@ -869,7 +869,7 @@ var
   i: Integer;
 begin
   result := nil;
-  with TVersiculo(FVerse) do
+  with TVerse(FVerse) do
   begin
     i := Sintagmas.IndexOf(Self);
     if (i >= 0) and (i > 0) then

@@ -5,7 +5,7 @@
 interface
 
 uses
-  Classes, SysUtils, versiculo;
+  Classes, SysUtils, Verse;
 
 type
   TVerseData = record
@@ -24,7 +24,7 @@ type
     FVerseData: TVerseData;
   public
     constructor Create(ATokenizerVersion: Integer; const AVerseData: TVerseData);
-    procedure CreateTempVersePair(out Verse: TVersiculo; out VersePair: TVersiculo);
+    procedure CreateTempVersePair(out Verse: TVerse; out VersePair: TVerse);
     property VerseData: TVerseData read FVerseData;
   end;
 
@@ -47,10 +47,10 @@ begin
   FVerseData := AVerseData;
 end;
 
-procedure TAIBatchWorkItem.CreateTempVersePair(out Verse: TVersiculo; out VersePair: TVersiculo);
+procedure TAIBatchWorkItem.CreateTempVersePair(out Verse: TVerse; out VersePair: TVerse);
 begin
-  Verse := TVersiculo.Create();
-  VersePair := TVersiculo.Create();
+  Verse := TVerse.Create();
+  VersePair := TVerse.Create();
   Verse.TokenizerVersion := FTokenizerVersion;
   VersePair.TokenizerVersion := FTokenizerVersion;
   Verse.Texto := FVerseData.OriginalText;

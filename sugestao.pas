@@ -5,7 +5,7 @@ unit Sugestao;
 interface
 
 uses
-  Classes, SysUtils, StrUtils, sqldb, sqlite3conn, Versiculo,
+  Classes, SysUtils, StrUtils, sqldb, sqlite3conn, Verse,
   Dialogs, LazLogger, PCRE, Syntagm, ONTTokenizer, ExportarProjeto;
 
 type
@@ -56,7 +56,7 @@ type
     property ReconhecerFormasVerbais: boolean read FRecFormasVerbais write FRecFormasVerbais;
     procedure InserirPar(origem, destino: string);
     procedure RemoverPar(origem, destino: string);
-    procedure SugerirAssociacoes(v1: TVersiculo);
+    procedure SugerirAssociacoes(v1: TVerse);
     procedure LimparBaseAssociacoes;
     procedure Commit;
     procedure Rollback;
@@ -443,7 +443,7 @@ begin
   FQryTranslationMemory.Open;
 end;
 
-procedure TGerSugestoes.SugerirAssociacoes(v1: TVersiculo);
+procedure TGerSugestoes.SugerirAssociacoes(v1: TVerse);
   function compararDestino(a, b: string): boolean;
   var a1, b1: string;
   begin
@@ -493,7 +493,7 @@ procedure TGerSugestoes.SugerirAssociacoes(v1: TVersiculo);
 var
   s1, s2, o, d, d1, d2: smallint;
   stg: TSyntagm;
-  v2: TVersiculo;
+  v2: TVerse;
   associado: boolean;
   QSugestoes: TSQLQuery;
   loc1, loc2: TStringList;

@@ -7,7 +7,7 @@ unit ai_flows;
 interface
 
 uses
-  Classes, SysUtils, llmclient, versiculo, project_config;
+  Classes, SysUtils, llmclient, Verse, project_config;
 
 type
   // Generic job state (future use in manager)
@@ -34,7 +34,7 @@ type
     FAcceptedStatus: TOptionalInt;
   public
     ParseError: string; // non-empty when ParseResponse could not parse the response
-    procedure CaptureAcceptedVerseState(Verse: TVersiculo);
+    procedure CaptureAcceptedVerseState(Verse: TVerse);
     procedure SetAcceptedSourceText(const Value: string);
     procedure SetAcceptedDestinationText(const Value: string);
     procedure SetAcceptedPairs(const Value: string);
@@ -59,7 +59,7 @@ type
   IAIFlowContext = interface;
 
   // Callback/event types (will be used by manager in future phases)
-  TOnAIFlowApply = procedure(const Flow: IAIVerseFlow; Verse: TVersiculo; ResultObj: TAIFlowResult) of object;
+  TOnAIFlowApply = procedure(const Flow: IAIVerseFlow; Verse: TVerse; ResultObj: TAIFlowResult) of object;
 
   IAIFlowContext = interface
     ['{8D2EA80B-78F5-44A4-B6F9-EA4C5E8456A3}']
@@ -91,12 +91,12 @@ type
     ['{3D2F7A7E-7E15-4F5C-9AA9-6F5C4BA1D0B2}']
     function Name: string;
     // Prepare messages for the LLM request (should be pure / no side effects)
-    procedure PrepareRequest(Verse: TVersiculo; out Messages: array of TLLMMessage); overload; // discouraged (fixed len)
-    function BuildMessages(Verse: TVersiculo): TLLMMessageArray; // preferred dynamic builder
+    procedure PrepareRequest(Verse: TVerse; out Messages: array of TLLMMessage); overload; // discouraged (fixed len)
+    function BuildMessages(Verse: TVerse): TLLMMessageArray; // preferred dynamic builder
     // Parse raw LLM content (JSON/string) into a structured result
-    function ParseResponse(const RawContent: string; Verse: TVersiculo): TAIFlowResult;
+    function ParseResponse(const RawContent: string; Verse: TVerse): TAIFlowResult;
     // Apply the structured result to the verse (must run on main thread)
-    procedure ApplyResult(ResultObj: TAIFlowResult; Verse: TVersiculo);
+    procedure ApplyResult(ResultObj: TAIFlowResult; Verse: TVerse);
     // Optional: Provide model + prompt if owned by flow (else caller supplies client)
     function RequiresIndividualClient: Boolean;
     
@@ -161,7 +161,7 @@ begin
   Result := TAIFlowContext.Create(AConfig);
 end;
 
-procedure TAIFlowResult.CaptureAcceptedVerseState(Verse: TVersiculo);
+procedure TAIFlowResult.CaptureAcceptedVerseState(Verse: TVerse);
 begin
   if not Assigned(Verse) then
     Exit;

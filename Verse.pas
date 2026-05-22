@@ -1,4 +1,4 @@
-unit Versiculo;
+unit Verse;
 
 {$mode objfpc}{$H+}
 
@@ -15,26 +15,29 @@ uses
 
 type
 
-  TVersiculo = class;
+  TVerse = class;
+  TVersiculo = TVerse;
 
-  TOnSintagmaEvent = procedure (Sender: TSyntagm) of object;
-  TOnAlterarVersiculoEvent = procedure () of object;
-  TOnExportTextEvent = procedure (Sender: TVersiculo) of object;
+  TOnSyntagmEvent = procedure (Sender: TSyntagm) of object;
+  TOnVerseChangedEvent = procedure () of object;
+  TOnExportTextEvent = procedure (Sender: TVerse) of object;
+  TOnSintagmaEvent = TOnSyntagmEvent;
+  TOnAlterarVersiculoEvent = TOnVerseChangedEvent;
 
   TStrongsCountMode = (scNone, scCountWords, scCountStrongs);
 
-  { TVersiculo }
+  { TVerse }
 
-  TVersiculo = class
+  TVerse = class
   private
     FReferencia: string;
     FReferenciaID: string;
     FRightToLeft: Boolean;
     { Private declarations }
     FMostrarDicas: boolean;
-    FOnAlterarVersiculo: TOnAlterarVersiculoEvent;
+    FOnAlterarVersiculo: TOnVerseChangedEvent;
     //FStrongMorfoComoChave: boolean;
-    FVersiculoRef: TVersiculo;
+    FVersiculoRef: TVerse;
     FSintagmas: TSyntagmList;
     FStrongCount: TSyntagm;
     FSelecao: TSyntagmList;
@@ -51,9 +54,9 @@ type
     //FFontePadrao: TFont;
     FCorAssociado: TColor;
     FCorDesassociado: TColor;
-    FOnSintagmaClick: TOnSintagmaEvent;
-    FOnSintagmaMouseEnter: TOnSintagmaEvent;
-    FOnSintagmaMouseLeave: TOnSintagmaEvent;
+    FOnSintagmaClick: TOnSyntagmEvent;
+    FOnSintagmaMouseEnter: TOnSyntagmEvent;
+    FOnSintagmaMouseLeave: TOnSyntagmEvent;
     FOnExportText: TOnExportTextEvent;
     FXML: string;
     FONTParser: TONTParser;
@@ -83,7 +86,7 @@ type
     procedure SetTokenizerVersion(AValue: Integer);
     procedure SetTexto(_XML: string);
     function GetTexto: string;
-    procedure SetVersiculoPar(Par: TVersiculo);
+    procedure SetVersiculoPar(Par: TVerse);
     procedure SelecionarListaSintagmas(lst: string);
     procedure EditKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure EditExit(Sender: TObject);
@@ -116,6 +119,23 @@ type
     constructor Create(TheOwner: TScrollBox; const AReferencia: string = ''); overload;
     destructor Destroy; override;
     procedure MarkDestroying;
+    procedure ClearSyntagms;
+    procedure AssociateSyntagms;
+    procedure ClearSelection;
+    procedure DisassociatePairs;
+    procedure ClearAssociations;
+    procedure Render;
+    procedure RenderStrongCount;
+    procedure OrganizeSyntagms;
+    procedure SelectSyntagms(list: TSyntagmList);
+    procedure ChangeText(_XML: string);
+    function GetPairsList(tipo: TPairsListType): TStringList;
+    procedure OnSyntagmPopupMenu(s: TSyntagm);
+    procedure ShowTags;
+    procedure HideTags;
+    function GetONTLine: string; overload;
+    function GetONTLine(morfo: boolean; autoitalico: boolean; strongsreutilizados: boolean;
+      strongsnaotraduzidos: boolean): string; overload;
     procedure LimparSintagmas;
     procedure AssociarSintagmas;
     procedure LimparSelecao;
@@ -145,7 +165,29 @@ type
     function GetLinhaONT(morfo: boolean; autoitalico: boolean; strongsreutilizados: boolean;
           strongsnaotraduzidos: boolean): string;
 
-    property VersiculoPar: TVersiculo read FVersiculoRef write SetVersiculoPar;
+        property PairedVerse: TVerse read FVersiculoRef write SetVersiculoPar;
+        property Reference: string read FReferencia write FReferencia;
+        property ReferenceID: string read FReferenciaID write FReferenciaID;
+        property Text: string read GetTexto write SetTexto;
+        property Pairs: string read GetPares write SetPares;
+        property Panel: TScrollBox read FPanel write FPanel;
+        property Syntagms: TSyntagmList read FSintagmas;
+        property Selection: TSyntagmList read FSelecao write FSelecao;
+        property Modified: boolean read FModificado write SetModificado;
+        property XMLModified: boolean read FXMLModificado write FXMLModificado;
+        property OnClick: TOnSyntagmEvent read FOnSintagmaClick write FOnSintagmaClick;
+        property OnMouseEnter: TOnSyntagmEvent read FOnSintagmaMouseEnter write FOnSintagmaMouseEnter;
+        property OnMouseLeave: TOnSyntagmEvent read FOnSintagmaMouseLeave write FOnSintagmaMouseLeave;
+        property OnVerseChanged: TOnVerseChangedEvent read FOnAlterarVersiculo write FOnAlterarVersiculo;
+        property ShowHints: boolean read FMostrarDicas write FMostrarDicas;
+        property Active: boolean read GetAtivo write SetAtivo;
+        property PlainText: string read GetTextoSimples;
+        property AssociatedColor: TColor read FCorAssociado write FCorAssociado;
+        property UnassociatedColor: TColor read FCorDesassociado write FCorDesassociado;
+        property AssociationProgress: Single read GetAndamentoAssociacao;
+        property Font: TFont read GetFonte write SetFonte;
+        property BoldWordsWithStrong: boolean read FPalavrasComStrongEmNegrito write SetPalavrasComStrongEmNegrito;
+        property VersiculoPar: TVerse read FVersiculoRef write SetVersiculoPar;
     property Referencia: string read FReferencia write FReferencia;
     property ReferenciaID: string read FReferenciaID write FReferenciaID;
     property XML: string read FXML;
@@ -157,9 +199,6 @@ type
     property Selecao: TSyntagmList read FSelecao write FSelecao;
     property Modificado: boolean read FModificado write SetModificado;
     property XMLModificado: boolean read FXMLModificado write FXMLModificado;
-    property OnClick: TOnSintagmaEvent read FOnSintagmaClick write FOnSintagmaClick;
-    property OnMouseEnter: TOnSintagmaEvent read FOnSintagmaMouseEnter write FOnSintagmaMouseEnter;
-    property OnMouseLeave: TOnSintagmaEvent read FOnSintagmaMouseLeave write FOnSintagmaMouseLeave;
     property OnExportText: TOnExportTextEvent read FOnExportText write FOnExportText;
     property OnAlterarVersiculo: TOnAlterarVersiculoEvent read FOnAlterarVersiculo write FOnAlterarVersiculo;
     //property OnNovaAssociacao: TOnAssociacaoEvent read FOnNovaAssociacao write FOnNovaAssociacao;
@@ -208,18 +247,18 @@ const
   MarginWidth = 10; // text's distance from the margin
 
 var
-  SintagmaClipboard: TSyntagm;
+  SyntagmClipboard: TSyntagm;
 
 function CompareIndexes(List: TStringList; Index1, Index2: Integer): Integer;
 begin
   Result := List[Index1].ToInteger - List[Index2].ToInteger;
 end;
 
-{ TVersiculo }
+{ TVerse }
 
-constructor TVersiculo.Create(TheOwner : TScrollBox; const AReferencia: string = '');
+constructor TVerse.Create(TheOwner : TScrollBox; const AReferencia: string = '');
 begin
-  AIDebugLogFmt('[TVersiculo] Create called. Self=%s, Owner=%s, Referencia=%s',
+  AIDebugLogFmt('[TVerse] Create called. Self=%s, Owner=%s, Reference=%s',
     [IntToHex(PtrUInt(Pointer(Self)), SizeOf(Pointer)*2),
      IntToHex(PtrUInt(Pointer(TheOwner)), SizeOf(Pointer)*2),
      AReferencia]);
@@ -269,9 +308,9 @@ begin
   FFixWrongFiTag := RegexCreate('((?:<W[THG][^>]+>)+)(<Fi>)', [rcoUTF8]);
 end;
 
-destructor TVersiculo.Destroy;
+destructor TVerse.Destroy;
 begin
-  AIDebugLogFmt('[TVersiculo] Destroy called. Self=%s, Panel=%s, Referencia=%s',
+  AIDebugLogFmt('[TVerse] Destroy called. Self=%s, Panel=%s, Reference=%s',
     [IntToHex(PtrUInt(Pointer(Self)), SizeOf(Pointer)*2),
      IntToHex(PtrUInt(Pointer(FPanel)), SizeOf(Pointer)*2),
      FReferencia]);
@@ -292,12 +331,12 @@ begin
   inherited Destroy;
 end;
 
-procedure TVersiculo.MarkDestroying;
+procedure TVerse.MarkDestroying;
 begin
   FDestruindo := true;
 end;
 
-procedure TVersiculo.LimparSintagmas;
+procedure TVerse.LimparSintagmas;
 var
   s: TSyntagm;
 begin
@@ -318,7 +357,7 @@ begin
   FSelecao.Clear;
 end;
 
-procedure TVersiculo.AssociarSintagmas;
+procedure TVerse.AssociarSintagmas;
 var
   s: TSyntagm;
 begin
@@ -354,13 +393,13 @@ begin
   VersiculoPar.Modificado := true;
 end;
 
-procedure TVersiculo.LimparSelecao;
+procedure TVerse.LimparSelecao;
 begin
   while not Selecao.Empty do
     TSyntagm(Selecao.First).RemoveFromSelection;
 end;
 
-procedure TVersiculo.DesassociarPares;
+procedure TVerse.DesassociarPares;
 var
   s: TSyntagm;
 begin
@@ -377,7 +416,7 @@ begin
   VersiculoPar.Renderizar;
 end;
 
-procedure TVersiculo.LimparAssociacoes;
+procedure TVerse.LimparAssociacoes;
 var
   s: TSyntagm;
 begin
@@ -390,7 +429,7 @@ begin
     end;
 end;
 
-procedure TVersiculo.SelecionarSintagmas(list: TSyntagmList);
+procedure TVerse.SelecionarSintagmas(list: TSyntagmList);
 var
   s: TSyntagm;
 begin
@@ -398,7 +437,7 @@ begin
     s.AddToSelection;
 end;
 
-function TVersiculo.GetListaPares(tipo: TPairsListType): TStringList;
+function TVerse.GetListaPares(tipo: TPairsListType): TStringList;
 var
   src, dst: string;
   s, p: TSyntagm;
@@ -437,7 +476,7 @@ begin
   tmp.Destroy;
 end;
 
-procedure TVersiculo.OnSintagmaPopupMenu(s: TSyntagm);
+procedure TVerse.OnSintagmaPopupMenu(s: TSyntagm);
 var
   p: TPoint;
 begin
@@ -446,7 +485,7 @@ begin
   FSyntagmPopupMenu.PopUp(p.x, p.y);
 end;
 
-procedure TVersiculo.MostrarTags;
+procedure TVerse.MostrarTags;
 var
   s: TSyntagm;
   p: TPoint;
@@ -475,13 +514,13 @@ begin
   end;
 end;
 
-procedure TVersiculo.OcultarTags;
+procedure TVerse.OcultarTags;
 begin
   if FAtivo then
     FPanel.Refresh;
 end;
 
-procedure TVersiculo.EnableStrongHighlight(strong: string);
+procedure TVerse.EnableStrongHighlight(strong: string);
 var
   s: TSyntagm;
 begin
@@ -489,7 +528,7 @@ begin
     s.HighlightStrong(strong);
 end;
 
-procedure TVersiculo.DisableStrongHighlight;
+procedure TVerse.DisableStrongHighlight;
 var
   s: TSyntagm;
 begin
@@ -497,7 +536,7 @@ begin
     s.ToggleStrongHighlight(false);
 end;
 
-procedure TVersiculo.SetTexto(_XML: string);
+procedure TVerse.SetTexto(_XML: string);
 begin
   FXML := _XML;
   LimparSintagmas;
@@ -505,11 +544,11 @@ begin
   Renderizar;
   Modificado := true;
   FXMLModificado := true;
-  SintagmaClipboard := nil;
+  SyntagmClipboard := nil;
 end;
 
 { Replaces the verse text trying to keep existing associations }
-procedure TVersiculo.ReplaceTextPreservingAssociations(const _XML: string;
+procedure TVerse.ReplaceTextPreservingAssociations(const _XML: string;
   ForceRetokenize: Boolean);
 
   procedure DeleteSyntagm(i: integer; newlist: TSyntagmList);
@@ -615,23 +654,23 @@ begin
   FModificado := true;
   if assigned(VersiculoPar) then
     VersiculoPar.Modificado := true;
-  SintagmaClipboard := nil;
+  SyntagmClipboard := nil;
 
   FAtivo := oldActive;
   Renderizar;
 end;
 
-procedure TVersiculo.AlterarTexto(_XML: string);
+procedure TVerse.AlterarTexto(_XML: string);
 begin
   ReplaceTextPreservingAssociations(_XML, False);
 end;
 
-procedure TVersiculo.RetokenizePreservingAssociations;
+procedure TVerse.RetokenizePreservingAssociations;
 begin
   ReplaceTextPreservingAssociations(FXML, True);
 end;
 
-function TVersiculo.GetTexto: string;
+function TVerse.GetTexto: string;
 var
   linha: TStringStream;
   s: TSyntagm;
@@ -647,12 +686,12 @@ begin
   end;
 end;
 
-function TVersiculo.CreateTokenizer(const XML: string): TONTTokenizer;
+function TVerse.CreateTokenizer(const XML: string): TONTTokenizer;
 begin
   Result := TTokenizerFactory.CreateTokenizer(FTokenizerVersion, XML);
 end;
 
-procedure TVersiculo.SetPares(const AValue: string);
+procedure TVerse.SetPares(const AValue: string);
 var
   varredorXML: TONTTokenizer;
   s: TTagSintagma;
@@ -685,7 +724,7 @@ begin
   VersiculoPar.Renderizar;
 end;
 
-procedure TVersiculo.SetTokenizerVersion(AValue: Integer);
+procedure TVerse.SetTokenizerVersion(AValue: Integer);
 begin
   AValue := TTokenizerFactory.NormalizeVersion(AValue);
   if FTokenizerVersion = AValue then
@@ -696,7 +735,7 @@ begin
     FONTParser.TokenizerVersion := AValue;
 end;
 
-function TVersiculo.GetPares: string;
+function TVerse.GetPares: string;
 var
   b: integer;
   s, p: TSyntagm;
@@ -737,7 +776,7 @@ begin
   _xml.Destroy;
 end;
 
-function TVersiculo.GetTextoSimples: string;
+function TVerse.GetTextoSimples: string;
 var
   linha: TStringStream;
   s: TSyntagm;
@@ -754,12 +793,12 @@ begin
   end;
 end;
 
-function TVersiculo.GetAtivo: boolean;
+function TVerse.GetAtivo: boolean;
 begin
   result := FAtivo;
 end;
 
-function TVersiculo.GetFonte: TFont;
+function TVerse.GetFonte: TFont;
 begin
   if FAtivo then
     result := FPanel.Font
@@ -767,7 +806,7 @@ begin
     result := nil;
 end;
 
-function TVersiculo.GetAndamentoAssociacao: Single;
+function TVerse.GetAndamentoAssociacao: Single;
 var
   s: TSyntagm;
   t, p: smallint;
@@ -788,7 +827,7 @@ begin
     result := p/t;
 end;
 
-function TVersiculo.GetTheWordInterlinearLine: string;
+function TVerse.GetTheWordInterlinearLine: string;
 
   function GetSpacingBefore(syn, pair: TSyntagm): string;
   var
@@ -870,7 +909,7 @@ begin
   end;
 end;
 
-function TVersiculo.GetMySwordInterlinearLine: string;
+function TVerse.GetMySwordInterlinearLine: string;
 
   function GetSpacingBefore(syn, pair: TSyntagm): string;
   var
@@ -1064,12 +1103,12 @@ begin
   end;
 end;
 
-function TVersiculo.GetLinhaONT: string;
+function TVerse.GetLinhaONT: string;
 begin
   result := GetLinhaONT(true, false, false, false);
 end;
 
-function TVersiculo.GetLinhaONT(morfo: boolean; autoitalico: boolean; strongsreutilizados: boolean;
+function TVerse.GetLinhaONT(morfo: boolean; autoitalico: boolean; strongsreutilizados: boolean;
       strongsnaotraduzidos: boolean): string;
 var
   linha: TStringStream;
@@ -1170,7 +1209,7 @@ begin
   end;
 end;
 
-procedure TVersiculo.SetAtivo(const AValue: boolean);
+procedure TVerse.SetAtivo(const AValue: boolean);
 begin
   if (AValue <> FAtivo) then
   begin
@@ -1186,7 +1225,7 @@ begin
   end;
 end;
 
-procedure TVersiculo.SetFonte(const AValue: TFont);
+procedure TVerse.SetFonte(const AValue: TFont);
 begin
   if not FAtivo then
     exit;
@@ -1194,7 +1233,7 @@ begin
   Renderizar;
 end;
 
-procedure TVersiculo.SetModificado(const AValue: boolean);
+procedure TVerse.SetModificado(const AValue: boolean);
 begin
   if FModificado = AValue then exit;
   FModificado := AValue;
@@ -1202,7 +1241,7 @@ begin
      FOnAlterarVersiculo;
 end;
 
-procedure TVersiculo.SetRightToLeft(AValue: Boolean);
+procedure TVerse.SetRightToLeft(AValue: Boolean);
 begin
   if FRightToLeft=AValue then Exit;
   FRightToLeft:=AValue;
@@ -1210,7 +1249,7 @@ begin
   Renderizar;
 end;
 
-procedure TVersiculo.SetStrongsCountMode(AValue: TStrongsCountMode);
+procedure TVerse.SetStrongsCountMode(AValue: TStrongsCountMode);
 begin
   if FStrongsCountMode = AValue
      then Exit;
@@ -1218,14 +1257,14 @@ begin
   Renderizar;
 end;
 
-procedure TVersiculo.SetPalavrasComStrongEmNegrito(AValue: boolean);
+procedure TVerse.SetPalavrasComStrongEmNegrito(AValue: boolean);
 begin
   if FPalavrasComStrongEmNegrito=AValue then Exit;
   FPalavrasComStrongEmNegrito:=AValue;
   Renderizar;
 end;
 
-procedure TVersiculo.OrganizarSintagmas;
+procedure TVerse.OrganizarSintagmas;
 
   function StartingXPos: smallint;
   begin
@@ -1305,14 +1344,14 @@ begin
     PositionSyntagm(FStrongCount, x, y, h);
 end;
 
-procedure TVersiculo.SetVersiculoPar(Par: TVersiculo);
+procedure TVerse.SetVersiculoPar(Par: TVerse);
 begin
   FVersiculoRef := Par;
   if (Par.VersiculoPar <> self) then
     Par.VersiculoPar := self;
 end;
 
-procedure TVersiculo.SelecionarListaSintagmas(lst: string);
+procedure TVerse.SelecionarListaSintagmas(lst: string);
 var
   tokens: TStringList;
   i: Integer;
@@ -1348,7 +1387,7 @@ begin
   end;
 end;
 
-procedure TVersiculo.EditKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+procedure TVerse.EditKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
   if Key = VK_ESCAPE then
     FEdit.Visible := False
@@ -1356,12 +1395,12 @@ begin
     EditConfirm;
 end;
 
-procedure TVersiculo.EditExit(Sender: TObject);
+procedure TVerse.EditExit(Sender: TObject);
 begin
   FEdit.Visible := False;
 end;
 
-procedure TVersiculo.EditConfirm;
+procedure TVerse.EditConfirm;
 {var
   s: TTagSintagma;
   varredorXML: TONTTokenizer;
@@ -1423,7 +1462,7 @@ begin
 end;
 
 { Atualiza o XML interno a partir do texto dos sintagmas }
-procedure TVersiculo.AtualizarXMLInterno;
+procedure TVerse.AtualizarXMLInterno;
 var
   s: TSyntagm;
 begin
@@ -1435,7 +1474,7 @@ begin
   FModificado := true;
 end;
 
-procedure TVersiculo.Renderizar;
+procedure TVerse.Renderizar;
 var
   s: TSyntagm;
   //starttime: DWord;
@@ -1457,10 +1496,10 @@ begin
   finally
     FRendering := False;
   end;
-  //DebugLn('  TVersiculo.Renderizar: %d milliseconds', [getTickCount-starttime]);
+  //DebugLn('  TVerse.Render: %d milliseconds', [getTickCount-starttime]);
 end;
 
-procedure TVersiculo.RenderizarStrongCount;
+procedure TVerse.RenderizarStrongCount;
 begin
   ClearStrongCount;
   if FStrongsCountMode = scNone then
@@ -1472,7 +1511,7 @@ begin
   FStrongCount.Render;
 end;
 
-procedure TVersiculo.ClearStrongCount;
+procedure TVerse.ClearStrongCount;
 begin
   if not assigned(FStrongCount) then
     exit;
@@ -1481,7 +1520,7 @@ begin
   FStrongCount := nil;
 end;
 
-procedure TVersiculo.AtualizarStrongCount;
+procedure TVerse.AtualizarStrongCount;
 
   function GetStrongsCount(s: TSyntagm): integer;
   begin
@@ -1528,7 +1567,7 @@ begin
   FStrongCount := TSyntagm.Create(token, self);
 end;
 
-function TVersiculo.GetTokens: string;
+function TVerse.GetTokens: string;
 var
   s: TSyntagm;
   tokens: TStringStream;
@@ -1540,7 +1579,7 @@ begin
   tokens.Destroy;
 end;
 
-procedure TVersiculo.FindAndSelectSyntagms(Words: TStringList; Partial: Boolean = False; JoinConnected: Boolean = True);
+procedure TVerse.FindAndSelectSyntagms(Words: TStringList; Partial: Boolean = False; JoinConnected: Boolean = True);
 var
   I: Integer;
   SelectedIndexes: TSyntagmIndexArray;
@@ -1573,17 +1612,17 @@ begin
   AIDebugLogVerbose('[FindAndSelectSyntagms] Completed successfully');
 end;
 
-procedure TVersiculo.OnCopySyntagmTags(Sender: TObject);
+procedure TVerse.OnCopySyntagmTags(Sender: TObject);
 begin
-  SintagmaClipboard := TSyntagm(FSyntagmPopupMenu.Tag);
+  SyntagmClipboard := TSyntagm(FSyntagmPopupMenu.Tag);
 end;
 
-procedure TVersiculo.OnPasteSyntagmTags(Sender: TObject);
+procedure TVerse.OnPasteSyntagmTags(Sender: TObject);
 var
   s: TSyntagm;
   t: string;
 begin
-  if not assigned(SintagmaClipboard) then
+  if not assigned(SyntagmClipboard) then
     exit;
 
   s := TSyntagm(FSyntagmPopupMenu.Tag);
@@ -1592,7 +1631,7 @@ begin
   if TMenuItem(Sender).Caption <> SPasteMorphoTags then
   begin
     s.Strong.Clear;
-    for t in SintagmaClipboard.Strong do
+    for t in SyntagmClipboard.Strong do
     begin
       s.Strong.Add(t);
       s.RawText := Format('%s<W%s>', [s.RawText, t]);
@@ -1602,7 +1641,7 @@ begin
   if TMenuItem(Sender).Caption <> SPasteStrongTags then
   begin
     s.Morph.Clear;
-    for t in SintagmaClipboard.Morph do
+    for t in SyntagmClipboard.Morph do
     begin
       s.Morph.Add(t);
       s.RawText := Format('%s<W%s>', [s.RawText, t]);
@@ -1620,33 +1659,33 @@ begin
   Renderizar;
 end;
 
-procedure TVersiculo.OnSaveTextToFile(Sender: TObject);
+procedure TVerse.OnSaveTextToFile(Sender: TObject);
 begin
   if assigned(FOnExportText) then
      FOnExportText(Self);
 end;
 
-procedure TVersiculo.OnCopyTokensToClipboard(Sender: TObject);
+procedure TVerse.OnCopyTokensToClipboard(Sender: TObject);
 begin
   clipboard.AsText := GetTokens();
 end;
 
-procedure TVersiculo.OnCopyInterlinearVerseToClipboard(Sender: TObject);
+procedure TVerse.OnCopyInterlinearVerseToClipboard(Sender: TObject);
 begin
   clipboard.AsText := GetMySwordInterlinearLine;
 end;
 
-procedure TVersiculo.OnCopyXMLToClipboard(Sender: TObject);
+procedure TVerse.OnCopyXMLToClipboard(Sender: TObject);
 begin
   clipboard.AsText := GetPares;
 end;
 
-procedure TVersiculo.OnRightToLeft(Sender: TObject);
+procedure TVerse.OnRightToLeft(Sender: TObject);
 begin
   RightToLeft := not FRightToLeft;
 end;
 
-procedure TVersiculo.OnVerseMouseDown(Sender: TObject; Button: TMouseButton;
+procedure TVerse.OnVerseMouseDown(Sender: TObject; Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
 begin
   if Button = mbRight then
@@ -1654,13 +1693,13 @@ begin
       FVersePopupMenu.PopUp;
 end;
 
-procedure TVersiculo.OnResize(Sender: TObject);
+procedure TVerse.OnResize(Sender: TObject);
 begin
   if not FRendering then
     OrganizarSintagmas;
 end;
 
-procedure TVersiculo.OnMouseWheel(Sender: TObject; Shift: TShiftState;
+procedure TVerse.OnMouseWheel(Sender: TObject; Shift: TShiftState;
   WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
 begin
   if ssCtrl in Shift then
@@ -1670,7 +1709,7 @@ begin
   end;
 end;
 
-procedure TVersiculo.InitSyntagmPopupMenu;
+procedure TVerse.InitSyntagmPopupMenu;
 var
   Item: TMenuItem;
 begin
@@ -1698,7 +1737,7 @@ begin
   FSyntagmPopupMenu.Items.Add(Item);
 end;
 
-procedure TVersiculo.InitVersePopupMenu;
+procedure TVerse.InitVersePopupMenu;
 var
   Item: TMenuItem;
 begin
@@ -1747,12 +1786,12 @@ begin
   {$ENDIF}
 end;
 
-constructor TVersiculo.Create(const AReferencia: string = '');
+constructor TVerse.Create(const AReferencia: string = '');
 begin
   Create(nil, AReferencia);
 end;
 
-procedure TVersiculo.OnCopySintagmasAsJSON(Sender: TObject);
+procedure TVerse.OnCopySintagmasAsJSON(Sender: TObject);
   // local helper to convert a TStringList to a JSON array
   function StringListToJSONArray(lst: TStringList): string;
   var
@@ -1803,7 +1842,7 @@ begin
   end;
 end;
 
-function TVersiculo.GetAssociationsJSON: string;
+function TVerse.GetAssociationsJSON: string;
 var
   associations: TStringList;
   processed: TList; // list to avoid duplicate processing
@@ -1855,7 +1894,7 @@ begin
   end;
 end;
 
-function TVersiculo.HasAssociations: boolean;
+function TVerse.HasAssociations: boolean;
 var
   s: TSyntagm;
 begin
@@ -1869,9 +1908,90 @@ begin
     end;
 end;
 
-procedure TVersiculo.OnCopyAssociationsJSONToClipboard(Sender: TObject);
+procedure TVerse.OnCopyAssociationsJSONToClipboard(Sender: TObject);
 begin
   clipboard.AsText := GetAssociationsJSON;
+end;
+
+procedure TVerse.ClearSyntagms;
+begin
+  LimparSintagmas;
+end;
+
+procedure TVerse.AssociateSyntagms;
+begin
+  AssociarSintagmas;
+end;
+
+procedure TVerse.ClearSelection;
+begin
+  LimparSelecao;
+end;
+
+procedure TVerse.DisassociatePairs;
+begin
+  DesassociarPares;
+end;
+
+procedure TVerse.ClearAssociations;
+begin
+  LimparAssociacoes;
+end;
+
+procedure TVerse.Render;
+begin
+  Renderizar;
+end;
+
+procedure TVerse.RenderStrongCount;
+begin
+  RenderizarStrongCount;
+end;
+
+procedure TVerse.OrganizeSyntagms;
+begin
+  OrganizarSintagmas;
+end;
+
+procedure TVerse.SelectSyntagms(list: TSyntagmList);
+begin
+  SelecionarSintagmas(list);
+end;
+
+procedure TVerse.ChangeText(_XML: string);
+begin
+  AlterarTexto(_XML);
+end;
+
+function TVerse.GetPairsList(tipo: TPairsListType): TStringList;
+begin
+  Result := GetListaPares(tipo);
+end;
+
+procedure TVerse.OnSyntagmPopupMenu(s: TSyntagm);
+begin
+  OnSintagmaPopupMenu(s);
+end;
+
+procedure TVerse.ShowTags;
+begin
+  MostrarTags;
+end;
+
+procedure TVerse.HideTags;
+begin
+  OcultarTags;
+end;
+
+function TVerse.GetONTLine: string;
+begin
+  Result := GetLinhaONT;
+end;
+
+function TVerse.GetONTLine(morfo: boolean; autoitalico: boolean; strongsreutilizados: boolean;
+  strongsnaotraduzidos: boolean): string;
+begin
+  Result := GetLinhaONT(morfo, autoitalico, strongsreutilizados, strongsnaotraduzidos);
 end;
 
 end.

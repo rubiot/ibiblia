@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  ComCtrls, ExtCtrls, BibleTreeView, PatchFile, Versiculo, Projeto, CommentsView,
+  ComCtrls, ExtCtrls, BibleTreeView, PatchFile, Verse, Projeto, CommentsView,
   ONTTokenizer;
 
 type
@@ -40,8 +40,8 @@ type
     FBibleTreeView: TBibleTreeView;
     FPatch: TPatchFile;
     FIndex: integer; // index of current verse in patch
-    FSrcVerse: TVersiculo;
-    FDstVerse: TVersiculo;
+    FSrcVerse: TVerse;
+    FDstVerse: TVerse;
     FActualCommentsMemo: TCommentsView; // Dynamic replacement for TMemo
     procedure OnVerseChange(index: integer);
     procedure LoadControlsFromPatch;
@@ -85,8 +85,8 @@ begin
   FBibleTreeView.OnVerseChange := @OnVerseChange;
   FPatch := nil;
 
-  FSrcVerse := TVersiculo.Create(ScrollBoxSrcText);
-  FDstVerse := TVersiculo.Create(ScrollBoxDstText);
+  FSrcVerse := TVerse.Create(ScrollBoxSrcText);
+  FDstVerse := TVerse.Create(ScrollBoxDstText);
   FSrcVerse.VersiculoPar := FDstVerse;
   FSrcVerse.ReadOnly := true;
   FDstVerse.ReadOnly := true;

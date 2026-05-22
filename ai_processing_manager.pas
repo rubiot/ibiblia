@@ -5,20 +5,20 @@ unit ai_processing_manager;
 interface
 
 uses
-  Classes, SysUtils, ai_flows, llmclient, versiculo, contnrs,
+  Classes, SysUtils, ai_flows, llmclient, Verse, contnrs,
   ai_batch_work_item;
 
 type
 
   TOnAutoSaveNeeded = procedure(Sender: TObject) of object;
-  TGetVerseReferenceFunc = function(Verse: TVersiculo): string of object;
+  TGetVerseReferenceFunc = function(Verse: TVerse): string of object;
   TOnJobStateChange = procedure(Sender: TObject; JobIndex: Integer; NewState: TAIJobState; ErrorMsg: string) of object;
   TOnJobCompleted = procedure(Sender: TObject; JobIndex: Integer; Result: TAIFlowResult) of object;
 
   TAIJob = class
   public
-    Verse: TVersiculo;
-    VersePair: TVersiculo; // separate reference to paired verse (for batch temp verses)
+    Verse: TVerse;
+    VersePair: TVerse; // separate reference to paired verse (for batch temp verses)
     Flow: IAIVerseFlow;
     State: TAIJobState;
     RawContent: string;
@@ -98,7 +98,7 @@ type
   public
     constructor Create(const AModel, AApiKey: string; AMaxParallel: Integer = 2);
     destructor Destroy; override;
-    procedure StartSingle(Flow: IAIVerseFlow; Verse: TVersiculo); // processes one verse async (apply after PumpApply)
+    procedure StartSingle(Flow: IAIVerseFlow; Verse: TVerse); // processes one verse async (apply after PumpApply)
     procedure StartBatch(Flow: IAIVerseFlow; WorkItems: TAIBatchWorkItemList);
     procedure PumpApply; // Call periodically in main thread
     procedure CancelAll;
@@ -516,7 +516,7 @@ begin
   end;
 end;
 
-procedure TAIProcessingManager.StartSingle(Flow: IAIVerseFlow; Verse: TVersiculo);
+procedure TAIProcessingManager.StartSingle(Flow: IAIVerseFlow; Verse: TVerse);
 var
   job: TAIJob;
 begin

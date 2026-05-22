@@ -14,7 +14,7 @@ uses
   {$ENDIF}
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, Menus,
   ActnList, ComCtrls, ExtCtrls, StdCtrls, BibleScope, Projeto, IniFiles, Math,
-  Syntagm, LCLTranslator, unitabout, PCRE, Versiculo, LCLProc, LazLogger,
+  Syntagm, LCLTranslator, unitabout, PCRE, Verse, LCLProc, LazLogger,
   LCLType, LazUTF8, ChapterView, UnitPleaseWait, CommentsView;
 
 type

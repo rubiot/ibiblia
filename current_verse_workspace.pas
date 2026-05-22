@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Controls, StdCtrls, Forms, Graphics,
-  versiculo, memoversiculo, commentsview, sugestao, syntagm, project_persistence,
+  Verse, memoversiculo, commentsview, sugestao, syntagm, project_persistence,
   verse_render_buffer;
 
 type
@@ -20,39 +20,39 @@ type
   TCurrentVerseWorkspace = class
   private
     FOldPairs: TStringList;
-    function GetVerseView(const VerseViews: array of TVersiculo; Index: Integer): TVersiculo;
+    function GetVerseView(const VerseViews: array of TVerse; Index: Integer): TVerse;
     function GetTextFieldIndex(const TextFieldIndexes: array of Integer; Index: Integer): Integer;
     function ReadCommentsText(CommentsControl: TControl): string;
     procedure SaveComments(Persistence: TProjectPersistence; CommentsControl: TControl);
   public
     destructor Destroy; override;
     procedure Clear;
-    procedure InitializeVerseRuntime(var VerseViews: array of TVersiculo;
+    procedure InitializeVerseRuntime(var VerseViews: array of TVerse;
       var TextFieldIndexes: array of Integer);
-    procedure DestroyVerseViews(var VerseViews: array of TVersiculo);
+    procedure DestroyVerseViews(var VerseViews: array of TVerse);
     procedure CreateVerseView(Owner: TScrollBox; VerseIndex,
       SourceVerseIndex, DestinationVerseIndex: Integer;
-      var VerseViews: array of TVersiculo; OnVerseDoubleClick: TNotifyEvent;
-      OnSyntagmClick: TOnSintagmaEvent; OnExportText: TOnExportTextEvent);
-    procedure ApplyDisplayTags(const VerseViews: array of TVersiculo; DisplayTags: Boolean);
-    procedure ApplyTokenizerVersion(const VerseViews: array of TVersiculo;
+      var VerseViews: array of TVerse; OnVerseDoubleClick: TNotifyEvent;
+      OnSyntagmClick: TOnSyntagmEvent; OnExportText: TOnExportTextEvent);
+    procedure ApplyDisplayTags(const VerseViews: array of TVerse; DisplayTags: Boolean);
+    procedure ApplyTokenizerVersion(const VerseViews: array of TVerse;
       TokenizerVersion: Integer);
-    procedure ApplyStrongsCountMode(const VerseViews: array of TVersiculo;
+    procedure ApplyStrongsCountMode(const VerseViews: array of TVerse;
       StrongsCountMode: TStrongsCountMode);
-    procedure ApplyBoldStrongs(const VerseViews: array of TVersiculo; Enabled: Boolean);
-    function ApplyEditedVerseText(const VerseViews: array of TVersiculo;
-      EditedVerse: TVersiculo; const NewText: string): Integer;
-    procedure SavePairs(Persistence: TProjectPersistence; SourceVerse: TVersiculo);
+    procedure ApplyBoldStrongs(const VerseViews: array of TVerse; Enabled: Boolean);
+    function ApplyEditedVerseText(const VerseViews: array of TVerse;
+      EditedVerse: TVerse; const NewText: string): Integer;
+    procedure SavePairs(Persistence: TProjectPersistence; SourceVerse: TVerse);
     procedure SaveTexts(Persistence: TProjectPersistence;
-      const VerseViews: array of TVersiculo; const TextFieldIndexes: array of Integer);
-    procedure RemoveOldAssociations(Suggester: TGerSugestoes; SourceVerse, DestinationVerse: TVersiculo);
-    procedure SaveAssociations(Suggester: TGerSugestoes; SourceVerse, DestinationVerse: TVersiculo);
+      const VerseViews: array of TVerse; const TextFieldIndexes: array of Integer);
+    procedure RemoveOldAssociations(Suggester: TGerSugestoes; SourceVerse, DestinationVerse: TVerse);
+    procedure SaveAssociations(Suggester: TGerSugestoes; SourceVerse, DestinationVerse: TVerse);
     procedure SaveBeforeScroll(Persistence: TProjectPersistence; Suggester: TGerSugestoes;
       MemoVersiculo: TMemoVersiculo; CommentsControl: TControl;
-      const VerseViews: array of TVersiculo; const TextFieldIndexes: array of Integer;
+      const VerseViews: array of TVerse; const TextFieldIndexes: array of Integer;
       SourceVerseIndex, DestinationVerseIndex: Integer);
     function LoadCurrentVerse(Persistence: TProjectPersistence;
-      const VerseViews: array of TVersiculo; const TextFieldIndexes: array of Integer;
+      const VerseViews: array of TVerse; const TextFieldIndexes: array of Integer;
       const FormattedReference, ReferenceID: string; SourceVerseIndex,
       DestinationVerseIndex: Integer): TCurrentVerseLoadResult;
     procedure SetCurrentVerseText(Persistence: TProjectPersistence;
@@ -60,14 +60,14 @@ type
       const VerseText: string; TextIndex, SourceVerseIndex,
       DestinationVerseIndex: Integer; Replace, ResetStatus: Boolean;
       out CorruptionDetails: string);
-    procedure ApplyLoadedAssociations(SourceVerse: TVersiculo; const Associations: string);
-    procedure FinalizeLoadedVerse(const VerseViews: array of TVersiculo);
+    procedure ApplyLoadedAssociations(SourceVerse: TVerse; const Associations: string);
+    procedure FinalizeLoadedVerse(const VerseViews: array of TVerse);
   end;
 
 implementation
 
-function TCurrentVerseWorkspace.GetVerseView(const VerseViews: array of TVersiculo;
-  Index: Integer): TVersiculo;
+function TCurrentVerseWorkspace.GetVerseView(const VerseViews: array of TVerse;
+  Index: Integer): TVerse;
 begin
   if (Index < Low(VerseViews)) or (Index > High(VerseViews)) then
     raise Exception.CreateFmt('Current verse view index out of bounds [%d]', [Index]);
@@ -121,7 +121,7 @@ begin
 end;
 
 procedure TCurrentVerseWorkspace.InitializeVerseRuntime(
-  var VerseViews: array of TVersiculo; var TextFieldIndexes: array of Integer);
+  var VerseViews: array of TVerse; var TextFieldIndexes: array of Integer);
 var
   Index: Integer;
 begin
@@ -133,7 +133,7 @@ begin
 end;
 
 procedure TCurrentVerseWorkspace.DestroyVerseViews(
-  var VerseViews: array of TVersiculo);
+  var VerseViews: array of TVerse);
 var
   Index: Integer;
 begin
@@ -147,13 +147,13 @@ end;
 
 procedure TCurrentVerseWorkspace.CreateVerseView(Owner: TScrollBox;
   VerseIndex, SourceVerseIndex, DestinationVerseIndex: Integer;
-  var VerseViews: array of TVersiculo; OnVerseDoubleClick: TNotifyEvent;
-  OnSyntagmClick: TOnSintagmaEvent; OnExportText: TOnExportTextEvent);
+  var VerseViews: array of TVerse; OnVerseDoubleClick: TNotifyEvent;
+  OnSyntagmClick: TOnSyntagmEvent; OnExportText: TOnExportTextEvent);
 begin
   if (VerseIndex < Low(VerseViews)) or (VerseIndex > High(VerseViews)) then
     raise Exception.CreateFmt('Current verse view index out of bounds [%d]', [VerseIndex]);
 
-  VerseViews[VerseIndex] := TVersiculo.Create(Owner);
+  VerseViews[VerseIndex] := TVerse.Create(Owner);
   Owner.Tag := PtrInt(VerseViews[VerseIndex]);
   Owner.OnDblClick := OnVerseDoubleClick;
   VerseViews[VerseIndex].OnClick := OnSyntagmClick;
@@ -169,7 +169,7 @@ begin
 end;
 
 procedure TCurrentVerseWorkspace.ApplyDisplayTags(
-  const VerseViews: array of TVersiculo; DisplayTags: Boolean);
+  const VerseViews: array of TVerse; DisplayTags: Boolean);
 var
   Index: Integer;
 begin
@@ -182,7 +182,7 @@ begin
 end;
 
 procedure TCurrentVerseWorkspace.ApplyTokenizerVersion(
-  const VerseViews: array of TVersiculo; TokenizerVersion: Integer);
+  const VerseViews: array of TVerse; TokenizerVersion: Integer);
 var
   Index: Integer;
 begin
@@ -192,7 +192,7 @@ begin
 end;
 
 procedure TCurrentVerseWorkspace.ApplyStrongsCountMode(
-  const VerseViews: array of TVersiculo; StrongsCountMode: TStrongsCountMode);
+  const VerseViews: array of TVerse; StrongsCountMode: TStrongsCountMode);
 var
   Index: Integer;
 begin
@@ -202,7 +202,7 @@ begin
 end;
 
 procedure TCurrentVerseWorkspace.ApplyBoldStrongs(
-  const VerseViews: array of TVersiculo; Enabled: Boolean);
+  const VerseViews: array of TVerse; Enabled: Boolean);
 var
   Index: Integer;
 begin
@@ -212,7 +212,7 @@ begin
 end;
 
 function TCurrentVerseWorkspace.ApplyEditedVerseText(
-  const VerseViews: array of TVersiculo; EditedVerse: TVersiculo;
+  const VerseViews: array of TVerse; EditedVerse: TVerse;
   const NewText: string): Integer;
 var
   Index: Integer;
@@ -230,7 +230,7 @@ begin
 end;
 
 procedure TCurrentVerseWorkspace.SavePairs(Persistence: TProjectPersistence;
-  SourceVerse: TVersiculo);
+  SourceVerse: TVerse);
 begin
   if not Assigned(Persistence) or not Assigned(SourceVerse) then
     Exit;
@@ -239,10 +239,10 @@ begin
 end;
 
 procedure TCurrentVerseWorkspace.SaveTexts(Persistence: TProjectPersistence;
-  const VerseViews: array of TVersiculo; const TextFieldIndexes: array of Integer);
+  const VerseViews: array of TVerse; const TextFieldIndexes: array of Integer);
 var
   Index: Integer;
-  VerseView: TVersiculo;
+  VerseView: TVerse;
 begin
   if not Assigned(Persistence) then
     Exit;
@@ -262,7 +262,7 @@ begin
 end;
 
 procedure TCurrentVerseWorkspace.RemoveOldAssociations(Suggester: TGerSugestoes;
-  SourceVerse, DestinationVerse: TVersiculo);
+  SourceVerse, DestinationVerse: TVerse);
 var
   PairIndex: Integer;
 begin
@@ -276,7 +276,7 @@ begin
 end;
 
 procedure TCurrentVerseWorkspace.SaveAssociations(Suggester: TGerSugestoes;
-  SourceVerse, DestinationVerse: TVersiculo);
+  SourceVerse, DestinationVerse: TVerse);
 var
   Pairs: TStringList;
   PairIndex: Integer;
@@ -299,11 +299,11 @@ end;
 
 procedure TCurrentVerseWorkspace.SaveBeforeScroll(Persistence: TProjectPersistence;
   Suggester: TGerSugestoes; MemoVersiculo: TMemoVersiculo;
-  CommentsControl: TControl; const VerseViews: array of TVersiculo;
+  CommentsControl: TControl; const VerseViews: array of TVerse;
   const TextFieldIndexes: array of Integer; SourceVerseIndex,
   DestinationVerseIndex: Integer);
 var
-  SourceVerse: TVersiculo;
+  SourceVerse: TVerse;
 begin
   SourceVerse := GetVerseView(VerseViews, SourceVerseIndex);
   if not Assigned(SourceVerse) then
@@ -324,12 +324,12 @@ begin
 end;
 
 function TCurrentVerseWorkspace.LoadCurrentVerse(Persistence: TProjectPersistence;
-  const VerseViews: array of TVersiculo; const TextFieldIndexes: array of Integer;
+  const VerseViews: array of TVerse; const TextFieldIndexes: array of Integer;
   const FormattedReference, ReferenceID: string; SourceVerseIndex,
   DestinationVerseIndex: Integer): TCurrentVerseLoadResult;
 var
   Index: Integer;
-  VerseView: TVersiculo;
+  VerseView: TVerse;
 begin
   Result.Associations := '';
   Result.Comments := '';
@@ -408,7 +408,7 @@ begin
   Persistence.PostCurrentEdit;
 end;
 
-procedure TCurrentVerseWorkspace.ApplyLoadedAssociations(SourceVerse: TVersiculo;
+procedure TCurrentVerseWorkspace.ApplyLoadedAssociations(SourceVerse: TVerse;
   const Associations: string);
 begin
   if not Assigned(SourceVerse) then
@@ -424,10 +424,10 @@ begin
 end;
 
 procedure TCurrentVerseWorkspace.FinalizeLoadedVerse(
-  const VerseViews: array of TVersiculo);
+  const VerseViews: array of TVerse);
 var
   Index: Integer;
-  VerseView: TVersiculo;
+  VerseView: TVerse;
 begin
   for Index := Low(VerseViews) to High(VerseViews) do
   begin

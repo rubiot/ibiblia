@@ -9,7 +9,7 @@ uses
   {$IFNDEF UNIX}
   Windows,
   {$ENDIF}
-  Dialogs, Versiculo, Math;
+  Dialogs, Verse, Math;
 
 type
 
@@ -22,7 +22,7 @@ type
   private
     FModificado: boolean;
     FMemo: TMemo;
-    FVersiculo: TVersiculo;
+    FVersiculo: TVerse;
     FEventoTextoModificado: TEventoTextoModificado;
     function GetTexto: TCaption;
     procedure OnMouseWheel(Sender: TObject; Shift: TShiftState;
@@ -35,10 +35,10 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    procedure Ativar(conteiner: TScrollBox; versiculo: TVersiculo);
+    procedure Ativar(conteiner: TScrollBox; versiculo: TVerse);
     procedure Desativar;
     property Texto: TCaption read GetTexto;
-    property Versiculo: TVersiculo read FVersiculo;
+    property Versiculo: TVerse read FVersiculo;
     property QuandoModificarVersiculo: TEventoTextoModificado read FEventoTextoModificado write FEventoTextoModificado;
   end;
 
@@ -149,7 +149,7 @@ begin
   inherited Destroy;
 end;
 
-procedure TMemoVersiculo.Ativar(conteiner: TScrollBox; versiculo: TVersiculo);
+procedure TMemoVersiculo.Ativar(conteiner: TScrollBox; versiculo: TVerse);
 begin
   if FMemo.Visible and FModificado and (FMemo.Parent <> conteiner) then
   begin

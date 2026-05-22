@@ -5,7 +5,7 @@
 interface
 
 uses
-  Classes, SysUtils, fpcunit, testutils, testregistry, Versiculo, Syntagm,
+  Classes, SysUtils, fpcunit, testutils, testregistry, Verse, Syntagm,
   ONTTokenizer;
 
 type
