@@ -352,9 +352,9 @@
         <UsageCount Value="213"/>
       </Unit13>
       <Unit14>
-        <Filename Value="formverserules.pas"/>
+        <Filename Value="FormVerseRules.pas"/>
         <IsPartOfProject Value="True"/>
-        <ComponentName Value="FrmEscolherVerseRules"/>
+        <ComponentName Value="FrmVerseRules"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <EditorIndex Value="-1"/>

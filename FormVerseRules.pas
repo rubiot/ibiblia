@@ -1,4 +1,4 @@
-unit formverserules;
+unit FormVerseRules;
 
 {$mode objfpc}{$H+}
 
@@ -12,9 +12,9 @@ type
 
   TRegexList = specialize TFPGList<IRegex>;
 
-  { TFrmEscolherVerseRules }
+  { TFrmVerseRules }
 
-  TFrmEscolherVerseRules = class(TForm)
+  TFrmVerseRules = class(TForm)
     Button1: TButton;
     Button2: TButton;
     BtnSelectNone: TButton;
@@ -26,9 +26,7 @@ type
     procedure FormShow(Sender: TObject);
   private
     function GetHasRules: boolean;
-    { private declarations }
   public
-    { public declarations }
     procedure AddVerseRule(de: String; para: String);
     procedure Reset;
     procedure CompileVerseRules(var rxFrom: TRegexList; var rxTo: TStringList);
@@ -36,18 +34,18 @@ type
   end;
 
 var
-  FrmEscolherVerseRules: TFrmEscolherVerseRules;
+  FrmVerseRules: TFrmVerseRules;
 
 implementation
 
-{ TFrmEscolherVerseRules }
+{ TFrmVerseRules }
 
-procedure TFrmEscolherVerseRules.FormShow(Sender: TObject);
+procedure TFrmVerseRules.FormShow(Sender: TObject);
 begin
   StringGridVerseRules.AutoAdjustColumns;
 end;
 
-procedure TFrmEscolherVerseRules.BtnSelectAllClick(Sender: TObject);
+procedure TFrmVerseRules.BtnSelectAllClick(Sender: TObject);
 var
   r: integer;
 begin
@@ -55,7 +53,7 @@ begin
     StringGridVerseRules.Cells[0, r] := '1';
 end;
 
-procedure TFrmEscolherVerseRules.BtnSelectNoneClick(Sender: TObject);
+procedure TFrmVerseRules.BtnSelectNoneClick(Sender: TObject);
 var
   r: integer;
 begin
@@ -63,12 +61,12 @@ begin
     StringGridVerseRules.Cells[0, r] := '0';
 end;
 
-function TFrmEscolherVerseRules.GetHasRules: boolean;
+function TFrmVerseRules.GetHasRules: boolean;
 begin
   result := StringGridVerseRules.RowCount > 1;
 end;
 
-procedure TFrmEscolherVerseRules.AddVerseRule(de: String; para: String);
+procedure TFrmVerseRules.AddVerseRule(de: String; para: String);
 begin
   StringGridVerseRules.RowCount := StringGridVerseRules.RowCount + 1;
   StringGridVerseRules.Cells[0, StringGridVerseRules.RowCount-1] := '1';
@@ -76,12 +74,12 @@ begin
   StringGridVerseRules.Cells[2, StringGridVerseRules.RowCount-1] := para.Replace('""', '"', [rfReplaceAll]);
 end;
 
-procedure TFrmEscolherVerseRules.Reset;
+procedure TFrmVerseRules.Reset;
 begin
   StringGridVerseRules.RowCount := 1;
 end;
 
-procedure TFrmEscolherVerseRules.CompileVerseRules(var rxFrom: TRegexList; var rxTo: TStringList);
+procedure TFrmVerseRules.CompileVerseRules(var rxFrom: TRegexList; var rxTo: TStringList);
 var
   r: integer;
 begin
@@ -98,8 +96,7 @@ end;
 
 initialization
 {$IFNDEF FPCUNIT}
-  {$I formverserules.lrs}
+  {$I FormVerseRules.lrs}
 {$ENDIF}
 
 end.
-

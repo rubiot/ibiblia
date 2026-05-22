@@ -8,7 +8,7 @@ uses
   {$ENDIF}{$ENDIF}
   Interfaces, // this includes the LCL widgetset
   Forms, formPrincipal, Verse, ONTTokenizer, Projeto, SuggestionManager,
-  VerseMemo, PCRE, ConcordanceExport, formverserules, FormMergeProjects,
+  VerseMemo, PCRE, ConcordanceExport, FormVerseRules, FormMergeProjects,
   formpopup, FormNewProject, FormProjectProperties, FormProjectExport,
   {$IFDEF WINDOWS}
   twAutomate, twSyncThread,
@@ -26,7 +26,7 @@ begin
   Application.CreateForm(TfrmDictionaryPopup, frmDictionaryPopup);
   Application.CreateForm(TFrmProjectProperties, FrmProjectProperties);
   Application.CreateForm(TFrmNewProject, FrmNewProject);
-  Application.CreateForm(TFrmEscolherVerseRules, FrmEscolherVerseRules);
+  Application.CreateForm(TFrmVerseRules, FrmVerseRules);
   Application.CreateForm(TFrmProjectExport, FrmProjectExport);
   Application.CreateForm(TFormAbout, FormAbout);
   Application.CreateForm(TFormExportPatch, FrmExportPatch);

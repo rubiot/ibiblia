@@ -480,7 +480,7 @@ begin
   AtualizarMRU(MenuItemRecent);
 
   ProjetoAtual.ChapterViewText := TTipoTextoBiblico(ChapterViewTabCtrl.TabIndex);
-  ProjetoAtual.Fechar(salvar);
+  ProjetoAtual.CloseProject(salvar);
   ProjetoAtual.Destroy;
   ProjetoAtual := nil;
   Caption := 'iBiblia';
@@ -513,7 +513,7 @@ end;
 procedure TFrmPrincipal.ActionLimparAssociacoesExecute(Sender: TObject);
 begin
   if ProjetoAtual <> nil then
-    ProjetoAtual.Limpar;
+    ProjetoAtual.ClearAssociations;
 end;
 
 procedure TFrmPrincipal.ActionMesclarProjetosExecute(Sender: TObject);
@@ -603,7 +603,7 @@ begin
     ProjetoAtual.MostrarQtdStrongs := FStrongsCountMode;
     ProjetoAtual.OnNewVerseSubscribe(@QuandoNovoVersiculo);
     ProjetoAtual.OnAlterarVersiculo := @QuandoAlterarVersiculo;
-    ProjetoAtual.Novo(SaveDialog1.FileName, FrmNewProject.EditProjectName.Text,
+    ProjetoAtual.CreateProject(SaveDialog1.FileName, FrmNewProject.EditProjectName.Text,
       FrmNewProject.GetTokenizerVersion);
     ProjetoAtual.ExibirDefinicoesSoComCtrl := MenuItemDictPopup.Checked;
     ProjetoAtual.SugerirAssociacaoAutomaticamente := MenuItem22.Checked;
@@ -702,8 +702,8 @@ begin
   {if ProjetoAtual <> nil then
   begin
     old := ProjetoAtual.Caminho;
-    ProjetoAtual.Fechar(true);
-    ProjetoAtual.Novo(old, );
+    ProjetoAtual.CloseProject(true);
+    ProjetoAtual.CreateProject(old, );
 
   end;
   }
@@ -713,7 +713,7 @@ procedure TFrmPrincipal.ActionSalvarProjetoExecute(Sender: TObject);
 begin
   if ProjetoAtual <> nil then
   begin
-    ProjetoAtual.Salvar;
+    ProjetoAtual.SaveProject;
     StatusBar1.SimpleText := '';
   end;
 end;
@@ -1346,7 +1346,7 @@ begin
   ProjetoAtual.AutoSave := MenuItemAutoSave.Checked;
   ProjetoAtual.SuggestionMode := FSuggestionMode;
 
-  ProjetoAtual.Abrir(filename);
+  ProjetoAtual.OpenProject(filename);
   ProjetoAtual.ExibirDefinicoesSoComCtrl := MenuItemDictPopup.Checked;
   ProjetoAtual.SugerirAssociacaoAutomaticamente := MenuItem22.Checked;
   ProjetoAtual.PopupTrigger := FPopupTrigger;

@@ -240,12 +240,12 @@ type
     constructor Create; overload;
     constructor Create(paineis: array of TScrollbox; navegador: TTreeView; rsituacao: TRadioGroup; rcomentarios: TControl); overload;
     destructor Destroy; override;
-    procedure Novo(nomedb, descricao: string);
-    procedure Novo(nomedbvelho, nomedbnovo, descricao: string);
-    procedure Novo(nomedb, descricao: string; tokenizerVersion: Integer); overload;
-    procedure Novo(nomedbvelho, nomedbnovo, descricao: string; tokenizerVersion: Integer); overload;
-    procedure Abrir(Nome: string);
-    procedure Fechar(_Commit: boolean);
+    procedure CreateProject(nomedb, descricao: string);
+    procedure CreateProject(nomedbvelho, nomedbnovo, descricao: string);
+    procedure CreateProject(nomedb, descricao: string; tokenizerVersion: Integer); overload;
+    procedure CreateProject(nomedbvelho, nomedbnovo, descricao: string; tokenizerVersion: Integer); overload;
+    procedure OpenProject(Nome: string);
+    procedure CloseProject(_Commit: boolean);
     procedure Commit;
     procedure Rollback;
     procedure GoToReference(reference: string);
@@ -255,8 +255,8 @@ type
     procedure VersiculoInicial;
     procedure VersiculoFinal;
     procedure RefreshUI;
-    procedure Limpar;
-    procedure Salvar;
+    procedure ClearAssociations;
+    procedure SaveProject;
     procedure SalvarParesVersiculo(Verse: TVerse); // Save pairs from any verse object (public for AI flows)
     procedure ApplyVerseText(const newText: string; texto: TTipoTextoBiblico; replace: Boolean);
     procedure SugerirAssociacaoEstatistica;
@@ -459,7 +459,7 @@ procedure UpdateDefaultStatusDescription;
 
 implementation
 
-uses formpopup, formverserules, formaiprocessing;
+uses formpopup, FormVerseRules, formaiprocessing;
 
 { TProjeto }
 
@@ -608,21 +608,21 @@ begin
   ) = mrYes;
 end;
 
-procedure TProjeto.Novo(nomedb, descricao: string);
+procedure TProjeto.CreateProject(nomedb, descricao: string);
 begin
-  Novo(nomedb, descricao, TTokenizerFactory.LATEST_VERSION);
+  CreateProject(nomedb, descricao, TTokenizerFactory.LATEST_VERSION);
 end;
 
-procedure TProjeto.Novo(nomedbvelho, nomedbnovo, descricao: string);
+procedure TProjeto.CreateProject(nomedbvelho, nomedbnovo, descricao: string);
 begin
-  Novo(nomedbnovo, descricao, TTokenizerFactory.LATEST_VERSION);
+  CreateProject(nomedbnovo, descricao, TTokenizerFactory.LATEST_VERSION);
 end;
 
-procedure TProjeto.Novo(nomedb, descricao: string; tokenizerVersion: Integer);
+procedure TProjeto.CreateProject(nomedb, descricao: string; tokenizerVersion: Integer);
 begin
   TProjectDatabaseBootstrap.CreateProjectDatabase(nomedb, FEscopo);
 
-  Abrir(nomedb);
+  OpenProject(nomedb);
 
   SetInfo('descricao', descricao);
   TokenizerVersion := tokenizerVersion;
@@ -631,9 +631,9 @@ begin
   Commit;
 end;
 
-procedure TProjeto.Novo(nomedbvelho, nomedbnovo, descricao: string; tokenizerVersion: Integer);
+procedure TProjeto.CreateProject(nomedbvelho, nomedbnovo, descricao: string; tokenizerVersion: Integer);
 begin
-  Novo(nomedbnovo, descricao, tokenizerVersion);
+  CreateProject(nomedbnovo, descricao, tokenizerVersion);
 end;
 
 function TProjeto.GetFormattedReference: string;
@@ -1484,14 +1484,14 @@ begin
   if MessageDlg(SConfirmation, SVaccumProjectConfirmation, mtConfirmation, [mbYes, mbNo],0) = mrNo then
     exit;
 
-  Fechar(true);
+  CloseProject(true);
   with TSqlite3Dataset.Create(nil) do
   begin
     FileName:=FFileName;
     ExecSQL('VACUUM;');
     Free;
   end;
-  Abrir(FFileName);
+  OpenProject(FFileName);
   ShowMessage(SVacuumDone);
 end;
 
@@ -1628,7 +1628,7 @@ begin
     e(self);
 
   if fautosave and not fexportando then
-    salvar;
+    SaveProject;
 
   //DebugLn('  TProjeto.PosRolagemVersiculo: %d milliseconds', [getTickCount-starttime]);
 end;
@@ -2396,7 +2396,7 @@ begin
   inherited Destroy;
 end;
 
-procedure TProjeto.Abrir(Nome: string);
+procedure TProjeto.OpenProject(Nome: string);
   function IdentificarEscopo: TEscopoTexto;
   begin
     FTblPares.First;
@@ -2530,7 +2530,7 @@ begin
   FDisplayTags := false;
 end;
 
-procedure TProjeto.Fechar(_Commit: boolean);
+procedure TProjeto.CloseProject(_Commit: boolean);
 var
   t: TTipoTextoBiblico;
 begin
@@ -2668,7 +2668,7 @@ begin
   PosRolagemVersiculo(FTblPares);
 end;
 
-procedure TProjeto.Limpar;
+procedure TProjeto.ClearAssociations;
 begin
   if assigned(FAVersiculo[tbOrigem]) then
   begin
@@ -2680,7 +2680,7 @@ begin
   end;
 end;
 
-procedure TProjeto.Salvar;
+procedure TProjeto.SaveProject;
 var
   e: TOnNovoVersiculoEvent;
 begin
@@ -2876,7 +2876,7 @@ end;
 procedure TProjeto.HandleAutoSave(Sender: TObject);
 begin
   // Called from main thread when autosave interval is reached
-  Salvar;
+  SaveProject;
 end;
 
 function TProjeto.GetVerseReferenceString(Verse: TVerse): string;
@@ -3046,7 +3046,7 @@ begin
     reCharset      := RegexCreate('^\s*charset\s*=\s*(.*)$', [rcoUTF8]);
     reVerseRules   := RegexCreate('^\s*verse.rule\s*=\s*"(.*?)(?<!")"(?!")\s+"(.*?)"(?=\s*$|\s+"(.*?)(?<!")"(?!"))', [rcoUTF8]);
 
-    FrmEscolherVerseRules.Reset;
+    FrmVerseRules.Reset;
     propriedades := TStringStream.Create('');
 
     for i:=QLinhas[moduleScope] to modulo.Count-1 do
@@ -3075,7 +3075,7 @@ begin
 
       mtVerseRules := reVerseRules.Match(line);
       if mtVerseRules.Success then
-         FrmEscolherVerseRules.AddVerseRule(mtVerseRules.Groups[1].Value, mtVerseRules.Groups[2].Value);
+         FrmVerseRules.AddVerseRule(mtVerseRules.Groups[1].Value, mtVerseRules.Groups[2].Value);
     end;
 
      if ((texto = tbOrigem)  and (GetInfo('propriedades.origem')  = '')) or // não importar propriedades quando já existem
@@ -3088,8 +3088,8 @@ begin
     end;
     propriedades.Free;
 
-    if FrmEscolherVerseRules.HasRules and (FrmEscolherVerseRules.ShowModal = mrOK) then
-      FrmEscolherVerseRules.CompileVerseRules(rxVerseRulesFrom, rxVerseRulesTo);
+    if FrmVerseRules.HasRules and (FrmVerseRules.ShowModal = mrOK) then
+      FrmVerseRules.CompileVerseRules(rxVerseRulesFrom, rxVerseRulesTo);
 
     //modulo.SaveToFile(arquivo + '.txt');
     if assigned(pb) then

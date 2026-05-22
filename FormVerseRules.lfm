@@ -1,4 +1,4 @@
-object FrmEscolherVerseRules: TFrmEscolherVerseRules
+object FrmVerseRules: TFrmVerseRules
   Left = 384
   Height = 237
   Top = 215
@@ -72,14 +72,14 @@ object FrmEscolherVerseRules: TFrmEscolherVerseRules
       Align = alClient
       AutoEdit = False
       ColCount = 3
-      Columns = <      
+      Columns = <
         item
           ButtonStyle = cbsCheckboxColumn
           Title.Caption = 'Apply'
-        end      
+        end
         item
           Title.Caption = 'From'
-        end      
+        end
         item
           Title.Caption = 'To'
         end>
