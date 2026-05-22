@@ -118,8 +118,8 @@ end;
 
 procedure TFrmApplyPatch.FormShow(Sender: TObject);
 begin
-  FSrcVerse.Fonte := ProjetoAtual.ObterFonteTexto(tbOrigem);
-  FDstVerse.Fonte := ProjetoAtual.ObterFonteTexto(tbDestino);
+  FSrcVerse.Fonte := ProjetoAtual.GetTextFont(tbOrigem);
+  FDstVerse.Fonte := ProjetoAtual.GetTextFont(tbDestino);
   FSrcVerse.PalavrasComStrongEmNegrito := ProjetoAtual.PalavrasComStrongEmNegrito;
   FSrcVerse.StrongsCountMode := ProjetoAtual.MostrarQtdStrongs;
   FDstVerse.StrongsCountMode := ProjetoAtual.MostrarQtdStrongs;

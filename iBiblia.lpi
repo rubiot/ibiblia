@@ -255,9 +255,9 @@
         <Loaded Value="True"/>
       </Unit4>
       <Unit5>
-        <Filename Value="formnovoprojeto.pas"/>
+        <Filename Value="FormNewProject.pas"/>
         <IsPartOfProject Value="True"/>
-        <ComponentName Value="FormNovoProjeto"/>
+        <ComponentName Value="FrmNewProject"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <EditorIndex Value="35"/>

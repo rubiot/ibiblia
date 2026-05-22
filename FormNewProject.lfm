@@ -1,4 +1,4 @@
-object FormNovoProjeto: TFormNovoProjeto
+object FrmNewProject: TFrmNewProject
   Left = 508
   Height = 477
   Top = 228
@@ -9,7 +9,7 @@ object FormNovoProjeto: TFormNovoProjeto
   OnCreate = FormCreate
   Position = poMainFormCenter
   LCLVersion = '2.0.10.0'
-  object GroupBox1: TGroupBox
+  object GroupBoxTexts: TGroupBox
     Left = 6
     Height = 231
     Top = 202
@@ -18,7 +18,7 @@ object FormNovoProjeto: TFormNovoProjeto
     ClientHeight = 211
     ClientWidth = 446
     TabOrder = 0
-    object EditTextoOrigem: TLabeledEdit
+    object EditSourceText: TLabeledEdit
       Left = 8
       Height = 23
       Top = 24
@@ -30,7 +30,7 @@ object FormNovoProjeto: TFormNovoProjeto
       ReadOnly = True
       TabOrder = 0
     end
-    object EditTextoDestino: TLabeledEdit
+    object EditDestinationText: TLabeledEdit
       Left = 8
       Height = 23
       Top = 72
@@ -42,7 +42,7 @@ object FormNovoProjeto: TFormNovoProjeto
       ReadOnly = True
       TabOrder = 1
     end
-    object EditTextoRef1: TLabeledEdit
+    object EditReferenceText1: TLabeledEdit
       Left = 8
       Height = 23
       Top = 120
@@ -54,7 +54,7 @@ object FormNovoProjeto: TFormNovoProjeto
       ReadOnly = True
       TabOrder = 2
     end
-    object EditTextoRef2: TLabeledEdit
+    object EditReferenceText2: TLabeledEdit
       Left = 8
       Height = 23
       Top = 168
@@ -66,44 +66,44 @@ object FormNovoProjeto: TFormNovoProjeto
       ReadOnly = True
       TabOrder = 3
     end
-    object BitBtn1: TBitBtn
+    object BtnSelectSourceText: TBitBtn
       Left = 396
       Height = 25
       Top = 24
       Width = 38
       Caption = '...'
-      OnClick = BitBtn1Click
+      OnClick = BtnSelectSourceTextClick
       TabOrder = 4
     end
-    object BitBtn2: TBitBtn
+    object BtnSelectDestinationText: TBitBtn
       Left = 396
       Height = 25
       Top = 72
       Width = 38
       Caption = '...'
-      OnClick = BitBtn2Click
+      OnClick = BtnSelectDestinationTextClick
       TabOrder = 5
     end
-    object BitBtn3: TBitBtn
+    object BtnSelectReferenceText1: TBitBtn
       Left = 396
       Height = 25
       Top = 120
       Width = 38
       Caption = '...'
-      OnClick = BitBtn3Click
+      OnClick = BtnSelectReferenceText1Click
       TabOrder = 6
     end
-    object BitBtn4: TBitBtn
+    object BtnSelectReferenceText2: TBitBtn
       Left = 396
       Height = 25
       Top = 168
       Width = 38
       Caption = '...'
-      OnClick = BitBtn4Click
+      OnClick = BtnSelectReferenceText2Click
       TabOrder = 7
     end
   end
-  object BitBtn5: TBitBtn
+  object BtnOk: TBitBtn
     Left = 8
     Height = 30
     Top = 438
@@ -112,10 +112,10 @@ object FormNovoProjeto: TFormNovoProjeto
     Default = True
     Kind = bkOK
     ModalResult = 1
-    OnClick = BitBtn5Click
+    OnClick = BtnOkClick
     TabOrder = 1
   end
-  object BitBtn6: TBitBtn
+  object BtnCancel: TBitBtn
     Left = 144
     Height = 30
     Top = 438
@@ -126,7 +126,7 @@ object FormNovoProjeto: TFormNovoProjeto
     ModalResult = 2
     TabOrder = 2
   end
-  object GroupBox2: TGroupBox
+  object GroupBoxProperties: TGroupBox
     Left = 6
     Height = 128
     Top = 8
@@ -135,7 +135,7 @@ object FormNovoProjeto: TFormNovoProjeto
     ClientHeight = 108
     ClientWidth = 446
     TabOrder = 3
-    object EditNomeProjeto: TLabeledEdit
+    object EditProjectName: TLabeledEdit
       Left = 8
       Height = 23
       Top = 22
@@ -190,7 +190,7 @@ object FormNovoProjeto: TFormNovoProjeto
     )
     TabOrder = 4
   end
-  object OpenDialog1: TOpenDialog
+  object OpenDialogSelectText: TOpenDialog
     Title = 'Choose a theWord bible module'
     Filter = 'theWord bible modules (*.ont, *.nt, *.ot)|*.ont;*.nt;*.ot'
     InitialDir = 'C:\Utilities\The Word\Bibles'

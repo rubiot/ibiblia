@@ -259,7 +259,7 @@ resourcestring
 
 implementation
 
-uses formnovoprojeto, FormProjectProperties, FormProjectExport, formmesclarprojetos, formexportpatch, formapplypatch, FormLlmOptions, llmclient;
+uses FormNewProject, FormProjectProperties, FormProjectExport, formmesclarprojetos, formexportpatch, formapplypatch, FormLlmOptions, llmclient;
 
 {$R *.lfm}
 
@@ -535,10 +535,10 @@ var
 begin
   p := TParametroThread(par^);
   case p.texto of
-    tbOrigem: edit := FormNovoProjeto1.EditTextoOrigem;
-    tbDestino: edit := FormNovoProjeto1.EditTextoDestino;
-    tbConsulta1: edit := FormNovoProjeto1.EditTextoRef1;
-    tbConsulta2: edit := FormNovoProjeto1.EditTextoRef2;
+    tbOrigem: edit := FrmNewProject.EditSourceText;
+    tbDestino: edit := FrmNewProject.EditDestinationText;
+    tbConsulta1: edit := FrmNewProject.EditReferenceText1;
+    tbConsulta2: edit := FrmNewProject.EditReferenceText2;
   end;
 
   if edit.Text <> '' then
@@ -560,7 +560,7 @@ procedure TFrmPrincipal.ActionNovoProjetoExecute(Sender: TObject);
 
   function QualEscopo: TEscopoTexto;
   begin
-    case FormNovoProjeto1.RadioGroupScope.ItemIndex of
+    case FrmNewProject.RadioGroupScope.ItemIndex of
       0: result := etOT;
       1: result := etNT;
       2: result := etONT;
@@ -576,9 +576,9 @@ begin
   if ProjetoAtual <> nil then
     exit;
 
-  FormNovoProjeto1.EditNomeProjeto.Text := SNewAssociationProject;
+  FrmNewProject.EditProjectName.Text := SNewAssociationProject;
 
-  if FormNovoProjeto1.ShowModal <> mrOK then
+  if FrmNewProject.ShowModal <> mrOK then
     exit;
 
   repeat
@@ -603,8 +603,8 @@ begin
     ProjetoAtual.MostrarQtdStrongs := FStrongsCountMode;
     ProjetoAtual.OnNewVerseSubscribe(@QuandoNovoVersiculo);
     ProjetoAtual.OnAlterarVersiculo := @QuandoAlterarVersiculo;
-    ProjetoAtual.Novo(SaveDialog1.FileName, FormNovoProjeto1.EditNomeProjeto.Text,
-      FormNovoProjeto1.GetTokenizerVersion);
+    ProjetoAtual.Novo(SaveDialog1.FileName, FrmNewProject.EditProjectName.Text,
+      FrmNewProject.GetTokenizerVersion);
     ProjetoAtual.ExibirDefinicoesSoComCtrl := MenuItemDictPopup.Checked;
     ProjetoAtual.SugerirAssociacaoAutomaticamente := MenuItem22.Checked;
     ProjetoAtual.SuggestionMode := FSuggestionMode;
@@ -1325,8 +1325,8 @@ begin
     Tabs.Add(SReference2Text);
     Tabs.Add(SInterlinearText);
   end;
-  if assigned(FormNovoProjeto1) then
-    FormNovoProjeto1.Translate;
+  if assigned(FrmNewProject) then
+    FrmNewProject.Translate;
   if assigned(FrmProjectProperties) then
     FrmProjectProperties.Translate;
   if assigned(ProjetoAtual) then

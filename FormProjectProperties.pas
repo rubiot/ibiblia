@@ -202,7 +202,7 @@ begin
   BtnSelectStrongDictionary.Caption := SChooseDictionary;
   BtnSelectMorphologyDictionary.Caption := SChooseDictionary;
   MemoTextPreview.Text := FProject.GetPlainVerseText(TTipoTextoBiblico(TabControlTextType.TabIndex));
-  MemoTextPreview.Font := FProject.ObterFonteTexto(TTipoTextoBiblico(TabControlTextType.TabIndex));
+  MemoTextPreview.Font := FProject.GetTextFont(TTipoTextoBiblico(TabControlTextType.TabIndex));
 end;
 
 procedure TFrmProjectProperties.ActionSelectFontExecute(Sender: TObject);
@@ -211,7 +211,7 @@ begin
   if FontDialogSelect.Execute then
   begin
     MemoTextPreview.Font := FontDialogSelect.Font;
-    FProject.AtribuirFonteTexto(MemoTextPreview.Font, [TTipoTextoBiblico(TabControlTextType.TabIndex)]);
+    FProject.AssignTextFont(MemoTextPreview.Font, [TTipoTextoBiblico(TabControlTextType.TabIndex)]);
   end;
 end;
 
@@ -233,7 +233,7 @@ begin
         Length(OpenDialogSelectFile.FileName) - Length(CurrentDirectory))])
     else
       SelectedPath := OpenDialogSelectFile.FileName;
-    if FProject.AtribuirDicMorfo(SelectedPath, [TTipoTextoBiblico(TabControlTextType.TabIndex)]) then
+    if FProject.AssignMorphologyDictionary(SelectedPath, [TTipoTextoBiblico(TabControlTextType.TabIndex)]) then
       EditMorphologyDictionary.Text := SelectedPath;
   end;
   BtnSelectMorphologyDictionary.Caption := SChooseDictionary;
@@ -257,7 +257,7 @@ begin
         Length(OpenDialogSelectFile.FileName) - Length(CurrentDirectory))])
     else
       SelectedPath := OpenDialogSelectFile.FileName;
-    if FProject.AtribuirDicStrong(SelectedPath, [TTipoTextoBiblico(TabControlTextType.TabIndex)]) then
+    if FProject.AssignStrongDictionary(SelectedPath, [TTipoTextoBiblico(TabControlTextType.TabIndex)]) then
       EditStrongDictionary.Text := SelectedPath;
   end;
   BtnSelectStrongDictionary.Caption := SChooseDictionary;

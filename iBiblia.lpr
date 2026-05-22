@@ -9,7 +9,7 @@ uses
   Interfaces, // this includes the LCL widgetset
   Forms, formPrincipal, Verse, ONTTokenizer, Projeto, SuggestionManager,
   VerseMemo, PCRE, ConcordanceExport, formverserules, formmesclarprojetos,
-  formpopup, formnovoprojeto, FormProjectProperties, FormProjectExport,
+  formpopup, FormNewProject, FormProjectProperties, FormProjectExport,
   {$IFDEF WINDOWS}
   twAutomate, twSyncThread,
   {$ENDIF}
@@ -25,7 +25,7 @@ begin
   Application.CreateForm(TFrmPrincipal, FrmPrincipal);
   Application.CreateForm(TfrmDictionaryPopup, frmDictionaryPopup);
   Application.CreateForm(TFrmProjectProperties, FrmProjectProperties);
-  Application.CreateForm(TFormNovoProjeto, FormNovoProjeto1);
+  Application.CreateForm(TFrmNewProject, FrmNewProject);
   Application.CreateForm(TFrmEscolherVerseRules, FrmEscolherVerseRules);
   Application.CreateForm(TFrmProjectExport, FrmProjectExport);
   Application.CreateForm(TFormAbout, FormAbout);

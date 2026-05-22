@@ -230,8 +230,8 @@ type
     procedure RestoreNodeStatus(const ref: string);
     procedure ClearAllAINodeStates;
     function FindTreeNodeByReference(const ref: string): TTreeNode;
-    function AtribuirDicStrong(dic: string; t: TTipoTextoBiblico): boolean;
-    function AtribuirDicMorfo(dic: string; t: TTipoTextoBiblico): boolean;
+    function AssignStrongDictionary(dic: string; t: TTipoTextoBiblico): boolean;
+    function AssignMorphologyDictionary(dic: string; t: TTipoTextoBiblico): boolean;
     procedure AtualizarArvore;
     procedure AtualizarArvore(id: string);
   public
@@ -275,11 +275,11 @@ type
     procedure ExportarTextoInterlinear(arquivo: string; pb: TProgressBar; opcoes: TOpcoesExportacao);
     procedure ExportarConcordancia(arquivo: string; opcoes: TOpcoesExportacao; abbreviation: string);
     procedure ExportarConcordancia(arquivo: string; pb: TProgressBar; opcoes: TOpcoesExportacao; abbreviation: string);
-    procedure AtribuirFonteTexto(fonte: TFont; textos: STextosBiblicos);
+    procedure AssignTextFont(fonte: TFont; textos: STextosBiblicos);
     procedure LimparTexto(texto: TTipoTextoBiblico);
-    function ObterFonteTexto(texto: TTipoTextoBiblico): TFont;
-    function AtribuirDicStrong(dic: string; textos: STextosBiblicos): boolean;
-    function AtribuirDicMorfo(dic: string; textos: STextosBiblicos): boolean;
+    function GetTextFont(texto: TTipoTextoBiblico): TFont;
+    function AssignStrongDictionary(dic: string; textos: STextosBiblicos): boolean;
+    function AssignMorphologyDictionary(dic: string; textos: STextosBiblicos): boolean;
     procedure SetInfo(info, valor: string);
     function GetInfo(info: string): string;
     function GetFlowExamples(const FlowId: string): TAIFlowExampleArray;
@@ -1248,8 +1248,8 @@ begin
     if not Assigned(FAIManager) then Exit;
 
     previewOptions.TokenizerVersion := TokenizerVersion;
-    previewOptions.SourceFont := ObterFonteTexto(tbOrigem);
-    previewOptions.DestinationFont := ObterFonteTexto(tbDestino);
+    previewOptions.SourceFont := GetTextFont(tbOrigem);
+    previewOptions.DestinationFont := GetTextFont(tbDestino);
     previewOptions.BoldStrongs := PalavrasComStrongEmNegrito;
     previewOptions.StrongsCountMode := MostrarQtdStrongs;
 
@@ -2106,7 +2106,7 @@ begin
   end;
 end;
 
-function TProjeto.AtribuirDicStrong(dic: string; t: TTipoTextoBiblico): boolean;
+function TProjeto.AssignStrongDictionary(dic: string; t: TTipoTextoBiblico): boolean;
 var
   ValidationResult: TDictionaryValidationResult;
 begin
@@ -2154,7 +2154,7 @@ begin
   Result := FDictionaryManager.AssignStrongDictionary(dic, Ord(t));
 end;
 
-function TProjeto.AtribuirDicMorfo(dic: string; t: TTipoTextoBiblico): boolean;
+function TProjeto.AssignMorphologyDictionary(dic: string; t: TTipoTextoBiblico): boolean;
 var
   ValidationResult: TDictionaryValidationResult;
 begin
@@ -2463,8 +2463,8 @@ begin
     FAVersiculo[t].Fonte := f;
 
     { definindo dicionários }
-    AtribuirDicStrong(GetInfo(format('dicstrong%d', [t])), t);
-    AtribuirDicMorfo(GetInfo(format('dicmorfo%d', [t])), t);
+    AssignStrongDictionary(GetInfo(format('dicstrong%d', [t])), t);
+    AssignMorphologyDictionary(GetInfo(format('dicmorfo%d', [t])), t);
   end;
   f.free;
 
@@ -3264,7 +3264,7 @@ begin
   end;
 end;
 
-procedure TProjeto.AtribuirFonteTexto(fonte: TFont; textos: STextosBiblicos);
+procedure TProjeto.AssignTextFont(fonte: TFont; textos: STextosBiblicos);
 var
   t: TTipoTextoBiblico;
 begin
@@ -3290,7 +3290,7 @@ begin
   SetTextDescription(texto, '');
 end;
 
-function TProjeto.ObterFonteTexto(texto: TTipoTextoBiblico): TFont;
+function TProjeto.GetTextFont(texto: TTipoTextoBiblico): TFont;
 begin
    if assigned(FAVersiculo[texto]) then
      result := FAVersiculo[texto].Fonte
@@ -3298,7 +3298,7 @@ begin
      result := nil;
 end;
 
-function TProjeto.AtribuirDicStrong(dic: string; textos: STextosBiblicos): boolean;
+function TProjeto.AssignStrongDictionary(dic: string; textos: STextosBiblicos): boolean;
 var
   t: TTipoTextoBiblico;
 begin
@@ -3307,7 +3307,7 @@ begin
   begin
     if t in textos then
     begin
-      if not AtribuirDicStrong(dic, t) then
+      if not AssignStrongDictionary(dic, t) then
         exit;
       SetInfo(format('dicstrong%d', [t]), dic);
     end;
@@ -3315,7 +3315,7 @@ begin
   result := true;
 end;
 
-function TProjeto.AtribuirDicMorfo(dic: string; textos: STextosBiblicos): boolean;
+function TProjeto.AssignMorphologyDictionary(dic: string; textos: STextosBiblicos): boolean;
 var
   t: TTipoTextoBiblico;
 begin
@@ -3324,7 +3324,7 @@ begin
   begin
     if t in textos then
     begin
-      if not AtribuirDicMorfo(dic, t) then
+      if not AssignMorphologyDictionary(dic, t) then
         exit;
       SetInfo(format('dicmorfo%d', [t]), dic);
     end;
