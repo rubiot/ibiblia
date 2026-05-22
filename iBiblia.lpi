@@ -268,9 +268,9 @@
         <LoadedDesigner Value="True"/>
       </Unit5>
       <Unit6>
-        <Filename Value="formpopup.pas"/>
+        <Filename Value="FormDictionaryPopup.pas"/>
         <IsPartOfProject Value="True"/>
-        <ComponentName Value="frmDictionaryPopup"/>
+        <ComponentName Value="FrmDictionaryPopup"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <EditorIndex Value="36"/>

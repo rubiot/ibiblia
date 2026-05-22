@@ -2,7 +2,7 @@
 
 {$mode objfpc}{$H+}{$M+}
 
-{TODO -cDesejável: Remover dependência com formpopup, criá-lo dinamicamente }
+{TODO -cDesejável: Remover dependência com FormDictionaryPopup, criá-lo dinamicamente }
 {TODO -cDesejável: Usar descendente de THintWindow para exibição de definições }
 
 interface
@@ -250,10 +250,10 @@ type
     procedure Rollback;
     procedure GoToReference(reference: string);
     procedure GoToReference(reference: TReference);
-    procedure VersiculoSeguinte;
-    procedure VersiculoAnterior;
-    procedure VersiculoInicial;
-    procedure VersiculoFinal;
+    procedure NextVerse;
+    procedure PreviousVerse;
+    procedure FirstVerse;
+    procedure LastVerse;
     procedure RefreshUI;
     procedure ClearAssociations;
     procedure SaveProject;
@@ -459,7 +459,7 @@ procedure UpdateDefaultStatusDescription;
 
 implementation
 
-uses formpopup, FormVerseRules, formaiprocessing;
+uses FormDictionaryPopup, FormVerseRules, formaiprocessing;
 
 { TProjeto }
 
@@ -489,7 +489,7 @@ end;
 
 procedure TProjectVerseStatusCursor.Reset;
 begin
-  FOwner.VersiculoInicial;
+  FOwner.FirstVerse;
 end;
 
 function TProjectVerseStatusCursor.EOF: Boolean;
@@ -499,7 +499,7 @@ end;
 
 procedure TProjectVerseStatusCursor.Advance;
 begin
-  FOwner.VersiculoSeguinte;
+  FOwner.NextVerse;
 end;
 
 function TProjectVerseStatusCursor.CurrentStatus: Integer;
@@ -627,7 +627,7 @@ begin
   SetInfo('descricao', descricao);
   TokenizerVersion := tokenizerVersion;
   FExibirDefComCtrl := false;  //FTblInfo.ExecuteDirect('COMMIT;');
-  VersiculoInicial;
+  FirstVerse;
   Commit;
 end;
 
@@ -761,7 +761,7 @@ begin
 
   StartScrollingSession;
   try
-    VersiculoInicial;
+    FirstVerse;
     while not FPersistence.EOF do
     begin
       oldPairs := FPersistence.CurrentPairs;
@@ -774,7 +774,7 @@ begin
             OldVersion,
             NewVersion));
 
-      VersiculoSeguinte;
+      NextVerse;
     end;
   finally
     FVerseRenderBuffer.SetTokenizerVersion(NewVersion);
@@ -1395,7 +1395,7 @@ begin
       ''
     );
     result.Add(Format('%s%s', [GetText(rulesRx, replaceTo), IfThen(verseComments.IsEmpty, '', Format('<RF>%s<Rf>', [verseComments]))]));
-    VersiculoSeguinte;
+    NextVerse;
   end;
   FinishScrollingSession;
 
@@ -1703,7 +1703,7 @@ begin
   end;
 
   if hide then
-    frmDictionaryPopup.Ocultar;
+    FrmDictionaryPopup.HidePopup;
 
   { hide strong hightlights }
   for v:=low(FAVersiculo) to high(FAVersiculo) do
@@ -1950,24 +1950,24 @@ begin
       FDictionaryManager.CollectPopupEntries(s, Ord(v), StrongEntries, MorphologyEntries);
 
       for EntryIndex := Low(MorphologyEntries) to High(MorphologyEntries) do
-        FrmDictionaryPopup.AdicionarMorfo(MorphologyEntries[EntryIndex].Key,
+        FrmDictionaryPopup.AddMorphology(MorphologyEntries[EntryIndex].Key,
           MorphologyEntries[EntryIndex].Definition);
 
       for EntryIndex := Low(StrongEntries) to High(StrongEntries) do
-        FrmDictionaryPopup.AdicionarStrong(StrongEntries[EntryIndex].Key,
+        FrmDictionaryPopup.AddStrong(StrongEntries[EntryIndex].Key,
           StrongEntries[EntryIndex].Definition);
 
       if v = tbOrigem then
       begin
         rtf := TDictionaryManager.FormatRTF(FSuggestionManager.GetTranslationAlternatives(s));
         if not rtf.IsEmpty then
-          frmDictionaryPopup.AdicionarStrong(STranslationMemory, rtf);
+          FrmDictionaryPopup.AddStrong(STranslationMemory, rtf);
       end;
 
-      if (FrmDictionaryPopup.Strongs.Count > 0) or (FrmDictionaryPopup.Morfos.Count > 0) then
+      if (FrmDictionaryPopup.Strongs.Count > 0) or (FrmDictionaryPopup.Morphologies.Count > 0) then
       begin
         point := s.LabelRef.ClientToScreen(s.LabelRef.ClientRect.BottomRight);
-        frmDictionaryPopup.MostrarEm(point.x, point.y);
+        FrmDictionaryPopup.ShowAt(point.x, point.y);
       end;
       break;
     end;
@@ -2631,7 +2631,7 @@ begin
   GoToReference(format('%d,%d,%d', [reference.BookID, reference.Chapter, reference.Verse]));
 end;
 
-procedure TProjeto.VersiculoSeguinte;
+procedure TProjeto.NextVerse;
 begin
   if not FPersistence.EOF then
     FPersistence.Next;
@@ -2639,7 +2639,7 @@ begin
     SugerirAssociacao;
 end;
 
-procedure TProjeto.VersiculoAnterior;
+procedure TProjeto.PreviousVerse;
 begin
   if not FPersistence.BOF then
     FPersistence.Prior;
@@ -2647,7 +2647,7 @@ begin
     SugerirAssociacao;
 end;
 
-procedure TProjeto.VersiculoInicial;
+procedure TProjeto.FirstVerse;
 begin
   if not FPersistence.BOF then
     FPersistence.First;
@@ -2655,7 +2655,7 @@ begin
     SugerirAssociacao;
 end;
 
-procedure TProjeto.VersiculoFinal;
+procedure TProjeto.LastVerse;
 begin
   if not FPersistence.EOF then
     FPersistence.Last;
@@ -3103,10 +3103,10 @@ begin
 
     FExportando := true;
     StartScrollingSession;
-    VersiculoInicial;
+    FirstVerse;
 
     for i:=0 to projectOffset-1 do
-      VersiculoSeguinte;
+      NextVerse;
 
     for i:=linesOffset to QLinhas[moduleScope] - 1 do
     begin
@@ -3120,7 +3120,7 @@ begin
 
       SetVerseText(modulo[i], texto, replace);
 
-      VersiculoSeguinte;
+      NextVerse;
 
       if assigned(pb) then
       begin

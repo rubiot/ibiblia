@@ -1,4 +1,4 @@
-unit formpopup;
+unit FormDictionaryPopup;
 
 {$mode objfpc}{$H+}
 
@@ -16,30 +16,30 @@ type
     Panel1: TPanel;
     Panel2: TPanel;
     RichMemoStrong: TRichMemo;
-    RichMemoMorpho: TRichMemo;
+    RichMemoMorphology: TRichMemo;
     Splitter1: TSplitter;
     TabControlStrongs: TTabControl;
-    TabControlMorfos: TTabControl;
+    TabControlMorphologies: TTabControl;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure FormHide(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure RichMemoMouseWheel(Sender: TObject; Shift: TShiftState;
       WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
-    procedure TabControlMorfosChange(Sender: TObject);
+    procedure TabControlMorphologiesChange(Sender: TObject);
     procedure TabControlStrongsChange(Sender: TObject);
   private
     { private declarations }
     FStrongs: TStringList;
-    FMorfos: TStringList;
+    FMorphologies: TStringList;
   public
     { public declarations }
-    procedure AdicionarStrong(const strong: string; const definition: string);
-    procedure AdicionarMorfo(const morfo: string; const definition: string);
-    procedure MostrarEm(x: Integer; y: Integer);
-    procedure Ocultar;
+    procedure AddStrong(const strong: string; const definition: string);
+    procedure AddMorphology(const morfo: string; const definition: string);
+    procedure ShowAt(x: Integer; y: Integer);
+    procedure HidePopup;
     property Strongs: TStringList read FStrongs;
-    property Morfos: TStringList read FMorfos;
+    property Morphologies: TStringList read FMorphologies;
   end;
 
 var
@@ -61,10 +61,10 @@ begin
     SetInitialBounds(0, 0, CX, CY);
 
   FStrongs := TStringList.Create;
-  FMorfos  := TStringList.Create;
+  FMorphologies := TStringList.Create;
 
   RichMemoStrong.ZoomFactor := opts.ReadInteger('leiaute', 'popup.zoom.strong', 10) / 10.0;
-  RichMemoMorpho.ZoomFactor := opts.ReadInteger('leiaute', 'popup.zoom.morfo',  10) / 10.0;
+  RichMemoMorphology.ZoomFactor := opts.ReadInteger('leiaute', 'popup.zoom.morfo',  10) / 10.0;
   Width  := opts.ReadInteger('leiaute', 'popup.largura', Width);
   Height := opts.ReadInteger('leiaute', 'popup.altura', Height);
   Panel2.Height := opts.ReadInteger('leiaute', 'popup.panel2.altura', Panel2.Height);
@@ -76,18 +76,18 @@ begin
   opts.WriteInteger('leiaute', 'popup.altura', Height);
   opts.WriteInteger('leiaute', 'popup.panel2.altura', Panel2.Height);
   opts.WriteInteger('leiaute', 'popup.zoom.strong', Trunc(RichMemoStrong.ZoomFactor * 10));
-  opts.WriteInteger('leiaute', 'popup.zoom.morfo',  Trunc(RichMemoMorpho.ZoomFactor * 10));
+  opts.WriteInteger('leiaute', 'popup.zoom.morfo',  Trunc(RichMemoMorphology.ZoomFactor * 10));
 
   FStrongs.Destroy;
-  FMorfos.Destroy;
+  FMorphologies.Destroy;
 end;
 
 procedure TFrmDictionaryPopup.FormHide(Sender: TObject);
 begin
   FStrongs.Clear;
-  FMorfos.Clear;
+  FMorphologies.Clear;
   TabControlStrongs.Tabs.Clear;
-  TabControlMorfos.Tabs.Clear;
+  TabControlMorphologies.Tabs.Clear;
 end;
 
 procedure TFrmDictionaryPopup.FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
@@ -110,9 +110,9 @@ begin
   end;
 end;
 
-procedure TFrmDictionaryPopup.TabControlMorfosChange(Sender: TObject);
+procedure TFrmDictionaryPopup.TabControlMorphologiesChange(Sender: TObject);
 begin
-  RichMemoMorpho.Rtf := FMorfos[TabControlMorfos.TabIndex];
+  RichMemoMorphology.Rtf := FMorphologies[TabControlMorphologies.TabIndex];
 end;
 
 procedure TFrmDictionaryPopup.TabControlStrongsChange(Sender: TObject);
@@ -120,19 +120,19 @@ begin
   RichMemoStrong.Rtf := FStrongs[TabControlStrongs.TabIndex];
 end;
 
-procedure TFrmDictionaryPopup.AdicionarStrong(const strong: string; const definition: string);
+procedure TFrmDictionaryPopup.AddStrong(const strong: string; const definition: string);
 begin
   FStrongs.Add(definition);
   TabControlStrongs.Tabs.Add(strong);
 end;
 
-procedure TFrmDictionaryPopup.AdicionarMorfo(const morfo: string; const definition: string);
+procedure TFrmDictionaryPopup.AddMorphology(const morfo: string; const definition: string);
 begin
-  FMorfos.Add(definition);
-  TabControlMorfos.Tabs.Add(morfo);
+  FMorphologies.Add(definition);
+  TabControlMorphologies.Tabs.Add(morfo);
 end;
 
-procedure TFrmDictionaryPopup.MostrarEm(x: Integer; y: Integer);
+procedure TFrmDictionaryPopup.ShowAt(x: Integer; y: Integer);
 begin
   if FStrongs.Count > 0 then
   begin
@@ -140,15 +140,15 @@ begin
     RichMemoStrong.Rtf         := FStrongs[0];
     RichMemoStrong.ZoomFactor  := RichMemoStrong.ZoomFactor; { circunventing bug... }
   end;
-  if FMorfos.Count > 0 then
+  if FMorphologies.Count > 0 then
   begin
-    TabControlMorfos.TabIndex  := 0;
-    RichMemoMorpho.Rtf         := FMorfos[0];
-    RichMemoMorpho.ZoomFactor  := RichMemoMorpho.ZoomFactor; { circunventing bug... }
-    TabControlMorfos.Visible   := true;
+    TabControlMorphologies.TabIndex := 0;
+    RichMemoMorphology.Rtf := FMorphologies[0];
+    RichMemoMorphology.ZoomFactor := RichMemoMorphology.ZoomFactor; { circunventing bug... }
+    TabControlMorphologies.Visible := true;
   end else
   begin
-    TabControlMorfos.Visible   := false;
+    TabControlMorphologies.Visible := false;
   end;
 
   if x + Width > Screen.Width then
@@ -170,21 +170,21 @@ begin
   Visible := True;
 end;
 
-procedure TFrmDictionaryPopup.Ocultar;
+procedure TFrmDictionaryPopup.HidePopup;
 begin
   if not Visible then
     exit;
   Visible := false;
   FormHide(self);
   TabControlStrongs.Tabs.Clear;
-  TabControlMorfos.Tabs.Clear;
+  TabControlMorphologies.Tabs.Clear;
   RichMemoStrong.Rtf := '';
-  RichMemoMorpho.Rtf := '';
+  RichMemoMorphology.Rtf := '';
 end;
 
 initialization
 {$IFNDEF FPCUNIT}
-  {$I formpopup.lrs}
+  {$I FormDictionaryPopup.lrs}
 {$ENDIF}
 
 end.

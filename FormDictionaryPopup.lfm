@@ -1,4 +1,4 @@
-object frmDictionaryPopup: TfrmDictionaryPopup
+object FrmDictionaryPopup: TFrmDictionaryPopup
   Left = 576
   Height = 418
   Top = 304
@@ -52,12 +52,12 @@ object frmDictionaryPopup: TfrmDictionaryPopup
       end
     end
   end
-  object TabControlMorfos: TTabControl
+  object TabControlMorphologies: TTabControl
     Left = 1
     Height = 150
     Top = 267
     Width = 423
-    OnChange = TabControlMorfosChange
+    OnChange = TabControlMorphologiesChange
     Align = alBottom
     TabOrder = 1
     object Panel2: TPanel
@@ -70,7 +70,7 @@ object frmDictionaryPopup: TfrmDictionaryPopup
       ClientHeight = 145
       ClientWidth = 419
       TabOrder = 1
-      object RichMemoMorpho: TRichMemo
+      object RichMemoMorphology: TRichMemo
         Left = 0
         Height = 145
         Top = 0

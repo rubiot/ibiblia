@@ -765,28 +765,28 @@ procedure TFrmPrincipal.ActionVersoAnteriorExecute(Sender: TObject);
 begin
   if ProjetoAtual = nil then exit;
 
-  ProjetoAtual.VersiculoAnterior;
+  ProjetoAtual.PreviousVerse;
 end;
 
 procedure TFrmPrincipal.ActionVersoPrimeiroExecute(Sender: TObject);
 begin
   if ProjetoAtual = nil then exit;
 
-  ProjetoAtual.VersiculoInicial;
+  ProjetoAtual.FirstVerse;
 end;
 
 procedure TFrmPrincipal.ActionVersoSeguinteExecute(Sender: TObject);
 begin
   if ProjetoAtual = nil then exit;
 
-  ProjetoAtual.VersiculoSeguinte;
+  ProjetoAtual.NextVerse;
 end;
 
 procedure TFrmPrincipal.ActionVersoUltimoExecute(Sender: TObject);
 begin
   if ProjetoAtual = nil then exit;
 
-  ProjetoAtual.VersiculoFinal;
+  ProjetoAtual.LastVerse;
 end;
 
 procedure TFrmPrincipal.FormClose(Sender: TObject; var CloseAction: TCloseAction);
