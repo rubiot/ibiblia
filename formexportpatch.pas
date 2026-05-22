@@ -86,8 +86,8 @@ begin
       ProjetoAtual.GoToReference(ref);
       DebugLn('exporting %s (%s)', [ref, ProjetoAtual.FormattedReference]);
       result.Add(ref,
-                 ProjetoAtual.ObterTextoVersiculo(tbOrigem),
-                 ProjetoAtual.ObterTextoVersiculo(tbDestino),
+                 ProjetoAtual.GetVerseText(tbOrigem),
+                 ProjetoAtual.GetVerseText(tbDestino),
                  ProjetoAtual.Pairs,
                  ProjetoAtual.Comentarios,
                  ProjetoAtual.Situacao

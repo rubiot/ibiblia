@@ -280,17 +280,17 @@ type
     function ObterFonteTexto(texto: TTipoTextoBiblico): TFont;
     function AtribuirDicStrong(dic: string; textos: STextosBiblicos): boolean;
     function AtribuirDicMorfo(dic: string; textos: STextosBiblicos): boolean;
-    procedure AtribuirInfo(info, valor: string);
-    function ObterInfo(info: string): string;
+    procedure SetInfo(info, valor: string);
+    function GetInfo(info: string): string;
     function GetFlowExamples(const FlowId: string): TAIFlowExampleArray;
     procedure SetFlowExamples(const FlowId: string; const Examples: TAIFlowExampleArray);
     function IncludeCurrentVerseAsFlowExample(const FlowId: string): Boolean;
     procedure RemoveFlowExample(const FlowId, ReferenceId: string);
     procedure ClearFlowExamples(const FlowId: string);
-    function ObterTextoVersiculo(texto: TTipoTextoBiblico): string;
-    function ObterTextoVersiculo(Referencia: string; texto: TTipoTextoBiblico): string;
-    function ObterTextoSimplesVersiculo(texto: TTipoTextoBiblico): string;
-    function ObterTextoSimplesVersiculo(Referencia: string; texto: TTipoTextoBiblico): string;
+    function GetVerseText(texto: TTipoTextoBiblico): string;
+    function GetVerseText(Referencia: string; texto: TTipoTextoBiblico): string;
+    function GetPlainVerseText(texto: TTipoTextoBiblico): string;
+    function GetPlainVerseText(Referencia: string; texto: TTipoTextoBiblico): string;
     function GetTranslationSuggestions(syntagm: TSyntagm): string;
     function GetChapterText: TStringList;
     procedure CompileInterlinearVerseRules(var rulesRx: TRegexList; var replaceTo: TStringList; mode: TInterlinearMode; exporting: boolean);
@@ -511,7 +511,7 @@ function TProjeto.GetSituacaoDescricao(index: Integer): string;
 var
   custom: string;
 begin
-  custom := ObterInfo('status.description.' + IntToStr(index));
+  custom := GetInfo('status.description.' + IntToStr(index));
   if not custom.IsEmpty then
     Result := custom
   else if (index >= 0) and (index <= 3) then
@@ -522,7 +522,7 @@ end;
 
 procedure TProjeto.SetSituacaoDescricao(index: Integer; descricao: string);
 begin
-  AtribuirInfo('status.description.' + IntToStr(index), descricao);
+  SetInfo('status.description.' + IntToStr(index), descricao);
 end;
 
 function TProjeto.HasSituacaoCustomizada: boolean;
@@ -531,7 +531,7 @@ var
 begin
   Result := False;
   for i := 0 to 3 do
-    if not ObterInfo('status.description.' + IntToStr(i)).IsEmpty then
+    if not GetInfo('status.description.' + IntToStr(i)).IsEmpty then
     begin
       Result := True;
       Exit;
@@ -624,7 +624,7 @@ begin
 
   Abrir(nomedb);
 
-  AtribuirInfo('descricao', descricao);
+  SetInfo('descricao', descricao);
   TokenizerVersion := tokenizerVersion;
   FExibirDefComCtrl := false;  //FTblInfo.ExecuteDirect('COMMIT;');
   VersiculoInicial;
@@ -1199,9 +1199,9 @@ begin
     end;
     if list.Count = 0 then Exit;
 
-    maxPar := StrToIntDef(ObterInfo(AI_COMMON_CONFIG.MaxParallel), 2);
+    maxPar := StrToIntDef(GetInfo(AI_COMMON_CONFIG.MaxParallel), 2);
 
-    if ObterInfo(AI_COMMON_CONFIG.Model).IsEmpty or ObterInfo(AI_COMMON_CONFIG.ApiKey).IsEmpty then
+    if GetInfo(AI_COMMON_CONFIG.Model).IsEmpty or GetInfo(AI_COMMON_CONFIG.ApiKey).IsEmpty then
     begin
       ShowMessage('AI associator not configured.');
       Exit;
@@ -1306,7 +1306,7 @@ function TProjeto.GetChapterViewText: TTipoTextoBiblico;
 var
   t: string;
 begin
-  t := ObterInfo('chapterview.text');
+  t := GetInfo('chapterview.text');
   if t.IsEmpty then
     t := Ord(tbDestino).ToString;
   Result := TTipoTextoBiblico(t.ToInteger);
@@ -2450,21 +2450,21 @@ begin
     f.Name := 'default';
     f.Size := 12;
 
-    s := ObterInfo(format('fonte%d.tamanho', [t]));
+    s := GetInfo(format('fonte%d.tamanho', [t]));
     if not s.IsEmpty then
       f.Size := StrToInt(s);
-    s := ObterInfo(format('fonte%d.nome', [t]));
+    s := GetInfo(format('fonte%d.nome', [t]));
     if not s.IsEmpty then
       f.Name := s;
-    s := ObterInfo(format('fonte%d.bold', [t]));
+    s := GetInfo(format('fonte%d.bold', [t]));
     if not s.IsEmpty then
       f.Bold := Boolean(StrToInt(s));
 
     FAVersiculo[t].Fonte := f;
 
     { definindo dicionários }
-    AtribuirDicStrong(ObterInfo(format('dicstrong%d', [t])), t);
-    AtribuirDicMorfo(ObterInfo(format('dicmorfo%d', [t])), t);
+    AtribuirDicStrong(GetInfo(format('dicstrong%d', [t])), t);
+    AtribuirDicMorfo(GetInfo(format('dicmorfo%d', [t])), t);
   end;
   f.free;
 
@@ -2554,7 +2554,7 @@ begin
   // always saving font sizes
   for t:=low(FAVersiculo) to high(FAVersiculo) do
     if assigned(FAVersiculo[t]) then
-      AtribuirInfo(format('fonte%d.tamanho', [t]), IntToStr(FAVersiculo[t].Fonte.Size));
+      SetInfo(format('fonte%d.tamanho', [t]), IntToStr(FAVersiculo[t].Fonte.Size));
   Commit;
 
   if Assigned(FConfig) then
@@ -2743,8 +2743,8 @@ begin
   FLastLLMUsage.TotalTokens := 0;
   FLastLLMCallCompleted := False;
 
-  if (ObterInfo(AI_COMMON_CONFIG.Model).IsEmpty) or
-     (ObterInfo(AI_COMMON_CONFIG.ApiKey).IsEmpty) then
+    if (GetInfo(AI_COMMON_CONFIG.Model).IsEmpty) or
+      (GetInfo(AI_COMMON_CONFIG.ApiKey).IsEmpty) then
   begin
     ShowMessage('AI Associator not configured.');
     Exit;
@@ -2764,7 +2764,7 @@ begin
       flowConfig := GetFlowConfigById('association');
       flow := flowConfig.CreateFlowInstance(CreateAIFlowContext(FConfig));
 
-      client := llmclient.CreateBackend(ObterInfo(AI_COMMON_CONFIG.Model), ObterInfo(AI_COMMON_CONFIG.ApiKey));
+      client := llmclient.CreateBackend(GetInfo(AI_COMMON_CONFIG.Model), GetInfo(AI_COMMON_CONFIG.ApiKey));
       try
         msgs := flow.BuildMessages(v);
         resp := client.AskChatCompletions(msgs);
@@ -2803,7 +2803,7 @@ var
   orchestrator: TAIBatchOrchestrator;
 begin
   if (NodesVerses = nil) or (NodesVerses.Count = 0) then Exit;
-  if (ObterInfo(AI_COMMON_CONFIG.Model).IsEmpty) or (ObterInfo(AI_COMMON_CONFIG.ApiKey).IsEmpty) then
+  if (GetInfo(AI_COMMON_CONFIG.Model).IsEmpty) or (GetInfo(AI_COMMON_CONFIG.ApiKey).IsEmpty) then
   begin
     ShowMessage('AI associator not configured.');
     Exit;
@@ -3076,12 +3076,12 @@ begin
          FrmEscolherVerseRules.AddVerseRule(mtVerseRules.Groups[1].Value, mtVerseRules.Groups[2].Value);
     end;
 
-    if ((texto = tbOrigem)  and (ObterInfo('propriedades.origem')  = '')) or // não importar propriedades quando já existem
-       ((texto = tbDestino) and (ObterInfo('propriedades.destino') = '')) then
+     if ((texto = tbOrigem)  and (GetInfo('propriedades.origem')  = '')) or // não importar propriedades quando já existem
+       ((texto = tbDestino) and (GetInfo('propriedades.destino') = '')) then
     begin
       case texto of
-        tbOrigem:  AtribuirInfo('propriedades.origem', propriedades.DataString);
-        tbDestino: AtribuirInfo('propriedades.destino', propriedades.DataString);
+        tbOrigem:  SetInfo('propriedades.origem', propriedades.DataString);
+        tbDestino: SetInfo('propriedades.destino', propriedades.DataString);
       end;
     end;
     propriedades.Free;
@@ -3272,9 +3272,9 @@ begin
     if t in textos then
     begin
       FAVersiculo[t].Fonte := fonte;
-      AtribuirInfo(format('fonte%d.nome', [t]), fonte.Name);
-      AtribuirInfo(format('fonte%d.tamanho', [t]), IntToStr(fonte.Size));
-      AtribuirInfo(format('fonte%d.bold', [t]), IntToStr(Ord(fonte.Bold)));
+      SetInfo(format('fonte%d.nome', [t]), fonte.Name);
+      SetInfo(format('fonte%d.tamanho', [t]), IntToStr(fonte.Size));
+      SetInfo(format('fonte%d.bold', [t]), IntToStr(Ord(fonte.Bold)));
     end;
 end;
 
@@ -3309,7 +3309,7 @@ begin
     begin
       if not AtribuirDicStrong(dic, t) then
         exit;
-      AtribuirInfo(format('dicstrong%d', [t]), dic);
+      SetInfo(format('dicstrong%d', [t]), dic);
     end;
   end;
   result := true;
@@ -3326,30 +3326,30 @@ begin
     begin
       if not AtribuirDicMorfo(dic, t) then
         exit;
-      AtribuirInfo(format('dicmorfo%d', [t]), dic);
+      SetInfo(format('dicmorfo%d', [t]), dic);
     end;
   end;
   result := true;
 end;
 
-procedure TProjeto.AtribuirInfo(info, valor: string);
+procedure TProjeto.SetInfo(info, valor: string);
 begin
   FConfig.WriteString(info, valor);
 end;
 
-function TProjeto.ObterInfo(info: string): string;
+function TProjeto.GetInfo(info: string): string;
 begin
   Result := FConfig.ReadString(info);
 end;
 
 function TProjeto.GetFlowExamples(const FlowId: string): TAIFlowExampleArray;
 begin
-  Result := LoadFlowExamples(ObterInfo(GetFlowExamplesConfigKey(FlowId)));
+  Result := LoadFlowExamples(GetInfo(GetFlowExamplesConfigKey(FlowId)));
 end;
 
 procedure TProjeto.SetFlowExamples(const FlowId: string; const Examples: TAIFlowExampleArray);
 begin
-  AtribuirInfo(GetFlowExamplesConfigKey(FlowId), SaveFlowExamples(Examples));
+  SetInfo(GetFlowExamplesConfigKey(FlowId), SaveFlowExamples(Examples));
 end;
 
 function TProjeto.IncludeCurrentVerseAsFlowExample(const FlowId: string): Boolean;
@@ -3401,12 +3401,12 @@ begin
   SetFlowExamples(FlowId, Examples);
 end;
 
-function TProjeto.ObterTextoVersiculo(texto: TTipoTextoBiblico): string;
+function TProjeto.GetVerseText(texto: TTipoTextoBiblico): string;
 begin
   Result := FPersistence.CurrentText(FACamposTexto[texto]);
 end;
 
-function TProjeto.ObterTextoVersiculo(Referencia: string; texto: TTipoTextoBiblico): string;
+function TProjeto.GetVerseText(Referencia: string; texto: TTipoTextoBiblico): string;
 begin
   result := SVerseAbsentFromProject;
   StartScrollingSession;
@@ -3417,12 +3417,12 @@ begin
   end;
 end;
 
-function TProjeto.ObterTextoSimplesVersiculo(texto: TTipoTextoBiblico): string;
+function TProjeto.GetPlainVerseText(texto: TTipoTextoBiblico): string;
 begin
-  result := ObterTextoSimplesVersiculo('', texto);
+  result := GetPlainVerseText('', texto);
 end;
 
-function TProjeto.ObterTextoSimplesVersiculo(Referencia: string;
+function TProjeto.GetPlainVerseText(Referencia: string;
   texto: TTipoTextoBiblico): string;
 var
   varredorXML: TONTTokenizer;

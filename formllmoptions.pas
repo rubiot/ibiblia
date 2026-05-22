@@ -207,13 +207,13 @@ begin
   MigrateLegacyConfigIfNeeded;
 
   // Load common settings
-  cbModel.Text := FProjeto.ObterInfo(AI_COMMON_CONFIG.Model);
-  leApiKey.Text := FProjeto.ObterInfo(AI_COMMON_CONFIG.ApiKey);
+  cbModel.Text := FProjeto.GetInfo(AI_COMMON_CONFIG.Model);
+  leApiKey.Text := FProjeto.GetInfo(AI_COMMON_CONFIG.ApiKey);
 
-  leMaxParallel.Text := FProjeto.ObterInfo(AI_COMMON_CONFIG.MaxParallel);
+  leMaxParallel.Text := FProjeto.GetInfo(AI_COMMON_CONFIG.MaxParallel);
   if Trim(leMaxParallel.Text) = '' then leMaxParallel.Text := '2';
 
-  leMaxRetries.Text := FProjeto.ObterInfo(AI_COMMON_CONFIG.MaxRetries);
+  leMaxRetries.Text := FProjeto.GetInfo(AI_COMMON_CONFIG.MaxRetries);
   if Trim(leMaxRetries.Text) = '' then leMaxRetries.Text := '3';
 
   // Load each flow configuration
@@ -228,16 +228,16 @@ begin
   if not Assigned(FProjeto) then Exit;
 
   // Save common settings
-  FProjeto.AtribuirInfo(AI_COMMON_CONFIG.Model, cbModel.Text);
-  FProjeto.AtribuirInfo(AI_COMMON_CONFIG.ApiKey, leApiKey.Text);
+  FProjeto.SetInfo(AI_COMMON_CONFIG.Model, cbModel.Text);
+  FProjeto.SetInfo(AI_COMMON_CONFIG.ApiKey, leApiKey.Text);
 
   if StrToIntDef(leMaxParallel.Text, 0) <= 0 then
     leMaxParallel.Text := '2';
-  FProjeto.AtribuirInfo(AI_COMMON_CONFIG.MaxParallel, leMaxParallel.Text);
+  FProjeto.SetInfo(AI_COMMON_CONFIG.MaxParallel, leMaxParallel.Text);
 
   if StrToIntDef(leMaxRetries.Text, 0) < 0 then
     leMaxRetries.Text := '3';
-  FProjeto.AtribuirInfo(AI_COMMON_CONFIG.MaxRetries, leMaxRetries.Text);
+  FProjeto.SetInfo(AI_COMMON_CONFIG.MaxRetries, leMaxRetries.Text);
 
   // Save each flow configuration
   SaveFlowConfig('association');
@@ -253,19 +253,19 @@ begin
   if not Assigned(FProjeto) then Exit;
 
   // Check if legacy configuration exists and new one doesn't
-  if (FProjeto.ObterInfo(LEGACY_MODEL_KEY) <> '') and
-     (FProjeto.ObterInfo(AI_COMMON_CONFIG.Model) = '') then
+  if (FProjeto.GetInfo(LEGACY_MODEL_KEY) <> '') and
+     (FProjeto.GetInfo(AI_COMMON_CONFIG.Model) = '') then
   begin
     // Migrate common settings
-    FProjeto.AtribuirInfo(AI_COMMON_CONFIG.Model, FProjeto.ObterInfo(LEGACY_MODEL_KEY));
-    FProjeto.AtribuirInfo(AI_COMMON_CONFIG.ApiKey, FProjeto.ObterInfo(LEGACY_API_KEY));
-    FProjeto.AtribuirInfo(AI_COMMON_CONFIG.MaxParallel, FProjeto.ObterInfo(LEGACY_MAX_PARALLEL_KEY));
-    FProjeto.AtribuirInfo(AI_COMMON_CONFIG.MaxRetries, FProjeto.ObterInfo(LEGACY_MAX_RETRIES_KEY));
-    FProjeto.AtribuirInfo(AI_COMMON_CONFIG.RetryDelay, FProjeto.ObterInfo(LEGACY_RETRY_DELAY_KEY));
-    FProjeto.AtribuirInfo(AI_COMMON_CONFIG.AutoSaveInterval, FProjeto.ObterInfo(LEGACY_AUTOSAVE_INTERVAL_KEY));
+    FProjeto.SetInfo(AI_COMMON_CONFIG.Model, FProjeto.GetInfo(LEGACY_MODEL_KEY));
+    FProjeto.SetInfo(AI_COMMON_CONFIG.ApiKey, FProjeto.GetInfo(LEGACY_API_KEY));
+    FProjeto.SetInfo(AI_COMMON_CONFIG.MaxParallel, FProjeto.GetInfo(LEGACY_MAX_PARALLEL_KEY));
+    FProjeto.SetInfo(AI_COMMON_CONFIG.MaxRetries, FProjeto.GetInfo(LEGACY_MAX_RETRIES_KEY));
+    FProjeto.SetInfo(AI_COMMON_CONFIG.RetryDelay, FProjeto.GetInfo(LEGACY_RETRY_DELAY_KEY));
+    FProjeto.SetInfo(AI_COMMON_CONFIG.AutoSaveInterval, FProjeto.GetInfo(LEGACY_AUTOSAVE_INTERVAL_KEY));
 
     // Migrate prompt - extract custom instructions from old full prompt
-    legacyPrompt := FProjeto.ObterInfo(LEGACY_PROMPT_KEY);
+    legacyPrompt := FProjeto.GetInfo(LEGACY_PROMPT_KEY);
     if legacyPrompt <> '' then
     begin
       // Get default prompt from association flow to extract custom part
@@ -275,9 +275,9 @@ begin
 
       customInstructions := ExtractCustomInstructions(legacyPrompt, defaultPrompt);
       if customInstructions <> '' then
-        FProjeto.AtribuirInfo(flowConfig.GetConfigFields[0].Key, customInstructions)
+        FProjeto.SetInfo(flowConfig.GetConfigFields[0].Key, customInstructions)
       else
-        FProjeto.AtribuirInfo(flowConfig.GetConfigFields[0].Key, flowConfig.GetDefaultCustomInstructions);
+        FProjeto.SetInfo(flowConfig.GetConfigFields[0].Key, flowConfig.GetDefaultCustomInstructions);
     end;
 
     // Note: We don't delete legacy keys to maintain compatibility with older versions
@@ -711,7 +711,7 @@ begin
   begin
     if configFields[i].FieldType = 'provider' then
     begin
-      providerValue := FProjeto.ObterInfo(configFields[i].Key);
+      providerValue := FProjeto.GetInfo(configFields[i].Key);
       if providerValue = '' then providerValue := configFields[i].DefaultValue;
       Break;
     end;
@@ -721,7 +721,7 @@ begin
     if ((configFields[i].FieldType = 'provider') or
         (configFields[i].FieldType = 'model') or
         (configFields[i].FieldType = 'password')) and
-       (Trim(FProjeto.ObterInfo(configFields[i].Key)) <> '') then
+      (Trim(FProjeto.GetInfo(configFields[i].Key)) <> '') then
     begin
       hasStoredOverride := True;
       Break;
@@ -733,7 +733,7 @@ begin
     if i > High(configFields) then Break;
 
     ctrl := tabControls.FieldControls[i].Control;
-    fieldValue := FProjeto.ObterInfo(configFields[i].Key);
+    fieldValue := FProjeto.GetInfo(configFields[i].Key);
 
     // If empty, use default value
     if Trim(fieldValue) = '' then
@@ -767,7 +767,7 @@ begin
   tabIdx := GetFlowTabIndexByFlowId(AFlowId);
   if tabIdx >= 0 then
   begin
-    overrideEnabledValue := Trim(FProjeto.ObterInfo(GetFlowOverrideEnabledConfigKey(AFlowId)));
+    overrideEnabledValue := Trim(FProjeto.GetInfo(GetFlowOverrideEnabledConfigKey(AFlowId)));
     if overrideEnabledValue = '' then
       FFlowTabs[tabIdx].chkUseOverride.Checked := hasStoredOverride
     else
@@ -796,7 +796,7 @@ begin
   tabControls := GetFlowTabByFlowId(AFlowId);
   if not Assigned(tabControls.TabSheet) then Exit;
 
-  FProjeto.AtribuirInfo(
+  FProjeto.SetInfo(
     GetFlowOverrideEnabledConfigKey(AFlowId),
     BoolToStr(Assigned(tabControls.chkUseOverride) and tabControls.chkUseOverride.Checked, True)
   );
@@ -822,7 +822,7 @@ begin
       fieldValue := TComboBox(ctrl).Text;
 
     // Save to project
-    FProjeto.AtribuirInfo(configFields[i].Key, fieldValue);
+    FProjeto.SetInfo(configFields[i].Key, fieldValue);
   end;
 
   tabIdx := GetFlowTabIndexByFlowId(AFlowId);

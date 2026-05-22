@@ -200,11 +200,11 @@ procedure TFormPropProjeto.ActionMudancaAbaExecute(Sender: TObject);
 begin
   leTextDescription.Text := FProjeto.GetTextDescription(TTipoTextoBiblico(TabControl1.TabIndex));
   BitBtnTextDescription.Hide;
-  leDicStrong.Text := FProjeto.ObterInfo(format('dicstrong%d', [TabControl1.TabIndex]));
-  leDicMorfo.Text  := FProjeto.ObterInfo(format('dicmorfo%d', [TabControl1.TabIndex]));
+  leDicStrong.Text := FProjeto.GetInfo(format('dicstrong%d', [TabControl1.TabIndex]));
+  leDicMorfo.Text  := FProjeto.GetInfo(format('dicmorfo%d', [TabControl1.TabIndex]));
   BitBtn4.Caption  := SChooseDictionary; // seleção Strong
   BitBtn8.Caption  := SChooseDictionary; // seleção Morfo
-  MemoFonte.Text   := FProjeto.ObterTextoSimplesVersiculo(TTipoTextoBiblico(TabControl1.TabIndex));
+  MemoFonte.Text   := FProjeto.GetPlainVerseText(TTipoTextoBiblico(TabControl1.TabIndex));
   MemoFonte.Font   := FProjeto.ObterFonteTexto(TTipoTextoBiblico(TabControl1.TabIndex));
 end;
 
@@ -328,7 +328,7 @@ end;
 procedure TFormPropProjeto.SetProjeto(p: TProjeto);
 begin
   FProjeto := p;
-  EditNomeProjeto.Caption := p.ObterInfo('descricao');
+  EditNomeProjeto.Caption := p.GetInfo('descricao');
   LoadTokenizerVersions(p.TokenizerVersion);
   ActionMudancaAba.Execute;
 end;
@@ -340,7 +340,7 @@ var
 begin
   if assigned(FProjeto) then
   begin
-    FProjeto.AtribuirInfo('descricao', EditNomeProjeto.Caption);
+    FProjeto.SetInfo('descricao', EditNomeProjeto.Caption);
 
     currentVersion := FProjeto.TokenizerVersion;
     selectedVersion := GetSelectedTokenizerVersion;

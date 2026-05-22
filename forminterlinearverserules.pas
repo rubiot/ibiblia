@@ -39,15 +39,15 @@ implementation
 
 procedure TFormInterlinearVerseRules.ButtonOKClick(Sender: TObject);
 begin
-  FProject.AtribuirInfo('propriedades.interlinearview.verserules', GetVerseRules(StringGridInterlinear));
-  FProject.AtribuirInfo('propriedades.intralinearview.verserules', GetVerseRules(StringGridIntralinear));
+  FProject.SetInfo('propriedades.interlinearview.verserules', GetVerseRules(StringGridInterlinear));
+  FProject.SetInfo('propriedades.intralinearview.verserules', GetVerseRules(StringGridIntralinear));
 end;
 
 procedure TFormInterlinearVerseRules.SetProject(AValue: TProjeto);
 begin
   FProject := AValue;
-  LoadGrid(StringGridInterlinear, FProject.ObterInfo('propriedades.interlinearview.verserules'));
-  LoadGrid(StringGridIntralinear, FProject.ObterInfo('propriedades.intralinearview.verserules'));
+  LoadGrid(StringGridInterlinear, FProject.GetInfo('propriedades.interlinearview.verserules'));
+  LoadGrid(StringGridIntralinear, FProject.GetInfo('propriedades.intralinearview.verserules'));
   PageControlVerseRules.PageIndex := IfThen(FProject.InterlinearMode = imInterlinear, 0, 1);
 end;
 

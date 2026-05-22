@@ -94,12 +94,12 @@ begin
   if cbStrongsNaoTraduzidos.Checked then
     opcoes := opcoes + [oeStrongsNaoTraduzidos];
 
-  FProjeto.AtribuirInfo('propriedades.destino', MemoRodapeDestino.Text);
-  FProjeto.AtribuirInfo('opcoes.exportar.comentarios', bool2string(cbExportarComentarios.Checked));
-  FProjeto.AtribuirInfo('opcoes.exportar.morfologia', bool2string(cbExportarMorfologia.Checked));
-  FProjeto.AtribuirInfo('opcoes.exportar.na.como.italicos', bool2string(cbExportarNAComoItalicos.Checked));
-  FProjeto.AtribuirInfo('opcoes.exportar.strongs.reutilizados', bool2string(cbStrongsReutilizados.Checked));
-  FProjeto.AtribuirInfo('opcoes.exportar.strongs.nao.traduzidos', bool2string(cbStrongsNaoTraduzidos.Checked));
+  FProjeto.SetInfo('propriedades.destino', MemoRodapeDestino.Text);
+  FProjeto.SetInfo('opcoes.exportar.comentarios', bool2string(cbExportarComentarios.Checked));
+  FProjeto.SetInfo('opcoes.exportar.morfologia', bool2string(cbExportarMorfologia.Checked));
+  FProjeto.SetInfo('opcoes.exportar.na.como.italicos', bool2string(cbExportarNAComoItalicos.Checked));
+  FProjeto.SetInfo('opcoes.exportar.strongs.reutilizados', bool2string(cbStrongsReutilizados.Checked));
+  FProjeto.SetInfo('opcoes.exportar.strongs.nao.traduzidos', bool2string(cbStrongsNaoTraduzidos.Checked));
 
   case FProjeto.Escopo of
     etOT:
@@ -136,7 +136,7 @@ var
   opcoes: TOpcoesExportacao;
 begin
   opcoes := [];
-  FProjeto.AtribuirInfo('propriedades.origem', MemoRodapeOrigem.Text);
+  FProjeto.SetInfo('propriedades.origem', MemoRodapeOrigem.Text);
 
   case FProjeto.Escopo of
     etOT:
@@ -185,10 +185,10 @@ begin
       abrev := SSyntheticConcordance;
   end;
 
-  {if oeConcordDetalhada in opcoes then
-     FProjeto.AtribuirInfo('opcoes.exportar.abrevconc.analitica', abrev)
-  else
-     FProjeto.AtribuirInfo('opcoes.exportar.abrevconc.sintetica', abrev);}
+    {if oeConcordDetalhada in opcoes then
+      FProjeto.SetInfo('opcoes.exportar.abrevconc.analitica', abrev)
+    else
+      FProjeto.SetInfo('opcoes.exportar.abrevconc.sintetica', abrev);}
 
   if SaveDialogConcordancia.Execute then
   begin
@@ -201,7 +201,7 @@ begin
     end;
   end;
 
-  FProjeto.AtribuirInfo('propriedades.abbrev', leAbreviacao.Text);
+  FProjeto.SetInfo('propriedades.abbrev', leAbreviacao.Text);
 end;
 
 procedure TFrmExportarProjeto.ShowExportedFile(fileName: string);
@@ -216,14 +216,14 @@ end;
 procedure TFrmExportarProjeto.SetProjeto(projeto: TProjeto);
 begin
   FProjeto := projeto;
-  MemoRodapeOrigem.Text := FProjeto.ObterInfo('propriedades.origem');
-  MemoRodapeDestino.Text := FProjeto.ObterInfo('propriedades.destino');
-  leAbreviacao.Text := FProjeto.ObterInfo('propriedades.abbrev');
-  cbExportarComentarios.Checked := FProjeto.ObterInfo('opcoes.exportar.comentarios') = '1';
-  cbExportarMorfologia.Checked := FProjeto.ObterInfo('opcoes.exportar.morfologia') = '1';
-  cbExportarNAComoItalicos.Checked := FProjeto.ObterInfo('opcoes.exportar.na.como.italicos') = '1';
-  cbStrongsReutilizados.Checked := FProjeto.ObterInfo('opcoes.exportar.strongs.reutilizados') = '1';
-  cbStrongsNaoTraduzidos.Checked := FProjeto.ObterInfo('opcoes.exportar.strongs.nao.traduzidos') = '1';
+  MemoRodapeOrigem.Text := FProjeto.GetInfo('propriedades.origem');
+  MemoRodapeDestino.Text := FProjeto.GetInfo('propriedades.destino');
+  leAbreviacao.Text := FProjeto.GetInfo('propriedades.abbrev');
+  cbExportarComentarios.Checked := FProjeto.GetInfo('opcoes.exportar.comentarios') = '1';
+  cbExportarMorfologia.Checked := FProjeto.GetInfo('opcoes.exportar.morfologia') = '1';
+  cbExportarNAComoItalicos.Checked := FProjeto.GetInfo('opcoes.exportar.na.como.italicos') = '1';
+  cbStrongsReutilizados.Checked := FProjeto.GetInfo('opcoes.exportar.strongs.reutilizados') = '1';
+  cbStrongsNaoTraduzidos.Checked := FProjeto.GetInfo('opcoes.exportar.strongs.nao.traduzidos') = '1';
 end;
 
 initialization
