@@ -35,9 +35,9 @@ implementation
 
 procedure TVersiculoTest.TestInit;
 var
-  v: TVersiculo;
+  v: TVerse;
 begin
-  v := TVersiculo.Create();
+  v := TVerse.Create();
   try
     v.Texto := 'This is a test verse';
     AssertEquals('Init', 'This is a test verse', v.Texto);
@@ -48,9 +48,9 @@ end;
 
 procedure TVersiculoTest.TestFindByIndex;
 var
-  v: TVersiculo;
+  v: TVerse;
 begin
-  v := TVersiculo.Create();
+  v := TVerse.Create();
   try
     v.Texto := 'This is a test verse';
     AssertEquals('Index 0', 'This', v.Sintagmas[0].Text);
@@ -66,10 +66,10 @@ end;
 
 procedure TVersiculoTest.TestFindAndSelectSyntagms_Basic;
 var
-  v: TVersiculo;
+  v: TVerse;
   words: TStringList;
 begin
-  v := TVersiculo.Create();
+  v := TVerse.Create();
   words := TStringList.Create;
   try
     v.Texto := 'This is a test verse with some test words';
@@ -87,10 +87,10 @@ end;
 
 procedure TVersiculoTest.TestFindAndSelectSyntagms_Partial;
 var
-  v: TVersiculo;
+  v: TVerse;
   words: TStringList;
 begin
-  v := TVersiculo.Create();
+  v := TVerse.Create();
   words := TStringList.Create;
   try
     v.Texto := 'This is a test verse with some test words';
@@ -107,10 +107,10 @@ end;
 
 procedure TVersiculoTest.TestFindAndSelectSyntagms_JoinConnected;
 var
-  v: TVersiculo;
+  v: TVerse;
   words: TStringList;
 begin
-  v := TVersiculo.Create();
+  v := TVerse.Create();
   words := TStringList.Create;
   try
     v.Texto := 'וְהָאָ֗רֶץ הָיְתָ֥ה תֹ֨הוּ֙ וָבֹ֔הוּ וְחֹ֖שֶׁךְ עַל־פְּנֵ֣י תְה֑וֹם';
@@ -129,10 +129,10 @@ end;
 
 procedure TVersiculoTest.TestFindAndSelectSyntagms_JoinConnected_False;
 var
-  v: TVersiculo;
+  v: TVerse;
   words: TStringList;
 begin
-  v := TVersiculo.Create();
+  v := TVerse.Create();
   words := TStringList.Create;
   try
     v.Texto := 'וְהָאָ֗רֶץ הָיְתָ֥ה תֹ֨הוּ֙ וָבֹ֔הוּ וְחֹ֖שֶׁךְ עַל־פְּנֵ֣י תְה֑וֹם';
@@ -150,10 +150,10 @@ end;
 
 procedure TVersiculoTest.TestFindAndSelectSyntagms_AvoidAssociated;
 var
-  v: TVersiculo;
+  v: TVerse;
   words: TStringList;
 begin
-  v := TVersiculo.Create();
+  v := TVerse.Create();
   words := TStringList.Create;
   try
     v.Texto := 'This is a test verse with some test words';
@@ -176,12 +176,12 @@ end;
   verifies that syntagms from the first pair are not available for the second pair. }
 procedure TVersiculoTest.TestMultipleAssociations_NoReuse;
 var
-  vOrig, vTrans: TVersiculo;
+  vOrig, vTrans: TVerse;
   words1, words2: TStringList;
   firstSyntagm: TSyntagm;
 begin
-  vOrig := TVersiculo.Create();
-  vTrans := TVersiculo.Create();
+  vOrig := TVerse.Create();
+  vTrans := TVerse.Create();
   words1 := TStringList.Create;
   words2 := TStringList.Create;
   try
@@ -242,11 +242,11 @@ end;
 { Test sequential search specifically - ensures IsAssociated check works in sequential mode }
 procedure TVersiculoTest.TestMultipleAssociations_SequentialSearch;
 var
-  v: TVersiculo;
+  v: TVerse;
   words: TStringList;
   syn1, syn2, syn3: TSyntagm;
 begin
-  v := TVersiculo.Create();
+  v := TVerse.Create();
   words := TStringList.Create;
   try
     v.Texto := 'word1 word2 word3 word1 word2 word3';
@@ -289,11 +289,11 @@ end;
 { Test any-order search specifically - ensures IsAssociated check works in any-order mode }
 procedure TVersiculoTest.TestMultipleAssociations_AnyOrderSearch;
 var
-  v: TVersiculo;
+  v: TVerse;
   words: TStringList;
   syn1, syn3: TSyntagm;
 begin
-  v := TVersiculo.Create();
+  v := TVerse.Create();
   words := TStringList.Create;
   try
     v.Texto := 'word1 word2 word3 word4 word5';
@@ -327,11 +327,11 @@ end;
 { Test with actual verse pair - simulates real association workflow }
 procedure TVersiculoTest.TestMultipleAssociations_WithVersePair;
 var
-  vOrig, vTrans: TVersiculo;
+  vOrig, vTrans: TVerse;
   words1Orig, words1Trans, words2Orig, words2Trans: TStringList;
 begin
-  vOrig := TVersiculo.Create();
-  vTrans := TVersiculo.Create();
+  vOrig := TVerse.Create();
+  vTrans := TVerse.Create();
   words1Orig := TStringList.Create;
   words1Trans := TStringList.Create;
   words2Orig := TStringList.Create;
@@ -394,10 +394,10 @@ end;
 { Test partial match with already associated syntagms }
 procedure TVersiculoTest.TestMultipleAssociations_PartialMatch;
 var
-  v: TVersiculo;
+  v: TVerse;
   words: TStringList;
 begin
-  v := TVersiculo.Create();
+  v := TVerse.Create();
   words := TStringList.Create;
   try
     v.Texto := 'word1 word2 word3 word4 word5';
@@ -426,10 +426,10 @@ end;
 
 procedure TVersiculoTest.TestFindAndSelectSyntagms_Brackets;
 var
-  v: TVersiculo;
+  v: TVerse;
   words: TStringList;
 begin
-  v := TVersiculo.Create();
+  v := TVerse.Create();
   words := TStringList.Create;
   try
     v.TokenizerVersion := 1;
@@ -457,10 +457,10 @@ end;
 
 procedure TVersiculoTest.TestRetokenizePreservesAssociationsAcrossTokenizerVersions;
 var
-  vOrig, vDest: TVersiculo;
+  vOrig, vDest: TVerse;
 begin
-  vOrig := TVersiculo.Create();
-  vDest := TVersiculo.Create();
+  vOrig := TVerse.Create();
+  vDest := TVerse.Create();
   try
     vOrig.TokenizerVersion := 1;
     vDest.TokenizerVersion := 1;
@@ -499,11 +499,11 @@ end;
 
 procedure TVersiculoTest.TestDisassociatePairs_ToleratesAsymmetricSiblingLists;
 var
-  vOrig, vDest: TVersiculo;
+  vOrig, vDest: TVerse;
   leftSyn, rightSyn, destSyn: TSyntagm;
 begin
-  vOrig := TVersiculo.Create();
-  vDest := TVersiculo.Create();
+  vOrig := TVerse.Create();
+  vDest := TVerse.Create();
   try
     vOrig.Texto := 'alpha beta';
     vDest.Texto := 'one';
@@ -538,7 +538,7 @@ end;
 
 procedure TVersiculoTest.TestAssociation_Greek;
 var
-  v1, v2: TVersiculo;
+  v1, v2: TVerse;
   procedure Assoc(const Orig, Trans: string);
   var
     w1, w2: TStringList;
@@ -556,8 +556,8 @@ var
     end;
   end;
 begin
-  v1 := TVersiculo.Create();
-  v2 := TVersiculo.Create();
+  v1 := TVerse.Create();
+  v2 := TVerse.Create();
   try
     v1.Texto := 'Βίβλος γενέσεως ἸΗΣΟΥ Χριστοῦ, υἱοῦ Δαβὶδ, υἱοῦ Ἁβραάμ.';
     v2.Texto := 'LIVRO da geração de Jesus Cristo, filho de Davi, filho de Abraão.';
@@ -580,7 +580,7 @@ end;
 
 procedure TVersiculoTest.TestAssociation_Hebrew;
 var
-  v1, v2: TVersiculo;
+  v1, v2: TVerse;
   procedure Assoc(const Orig, Trans: string);
   var
     w1, w2: TStringList;
@@ -600,8 +600,8 @@ var
     end;
   end;
 begin
-  v1 := TVersiculo.Create();
-  v2 := TVersiculo.Create();
+  v1 := TVerse.Create();
+  v2 := TVerse.Create();
   try
     v1.Texto := 'וְהָאָ֗רֶץ הָיְתָ֥ה תֹ֨הוּ֙ וָבֹ֔הוּ וְחֹ֖שֶׁךְ עַל־פְּנֵ֣י תְה֑וֹם וְר֣וּחַ אֱלֹהִ֔ים מְרַחֶ֖פֶת עַל־פְּנֵ֥י הַמָּֽיִם׃';
     v2.Texto := 'E a terra era sem forma e vazia; e [havia] trevas sobre a face do abismo; e o Espírito de Deus se movia sobre a face das águas.';

@@ -17,8 +17,8 @@ type
 
   TVerseTests = class(TTestCase)
   private
-    verse1: TVersiculo;
-    verse2: TVersiculo;
+    verse1: TVerse;
+    verse2: TVerse;
 
     procedure Associate(const source: array of const; const dest: array of const);
     procedure AssociateByText(const pair: TPair);
@@ -29,7 +29,7 @@ type
     procedure AssertSyntagmListEquals(const list1, list2: TSyntagmList);
     procedure AssertSyntagmListEquals(const list: TSyntagmList; const values: array of const);
     procedure AssertPairsAndSiblings(syntagm: TSyntagm; const pairs, siblings: array of const);
-    function FindIndexOf(verse: TVersiculo; word: string): Integer;
+    function FindIndexOf(verse: TVerse; word: string): Integer;
     function CreateStringList(const AWords: array of string): TStringList; // Helper
     procedure AssertSelectionEqualsIndices(const ExpectedIndices: array of Integer); // Helper
     function CollectTokenizerTokens(version: Integer; const AText: string): TStringList;
@@ -1257,7 +1257,7 @@ begin
   AssertSyntagmListEquals(syntagm.Siblings, siblings);
 end;
 
-function TVerseTests.FindIndexOf(verse: TVersiculo; word: string): Integer;
+function TVerseTests.FindIndexOf(verse: TVerse; word: string): Integer;
 var
   list: TSyntagmList;
   i: Integer;
@@ -1277,8 +1277,8 @@ end;
 
 procedure TVerseTests.SetUp;
 begin
-  verse1 := TVersiculo.Create();
-  verse2 := TVersiculo.Create();
+  verse1 := TVerse.Create();
+  verse2 := TVerse.Create();
   verse1.VersiculoPar := verse2;
 end;
 

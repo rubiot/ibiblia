@@ -3,6 +3,7 @@ program fpcunitibiblia_console;
 {$mode objfpc}{$H+}
 
 uses
+  Interfaces,
   consoletestrunner,
   ibibliatest,
   versiculotest,

@@ -16,7 +16,6 @@ uses
 type
 
   TVerse = class;
-  TVersiculo = TVerse;
 
   TOnSyntagmEvent = procedure (Sender: TSyntagm) of object;
   TOnVerseChangedEvent = procedure () of object;

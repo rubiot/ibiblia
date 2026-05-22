@@ -45,11 +45,11 @@ end;
 
 procedure TSyntagmSelectionTest.TestExactSequencePrefersContiguousWords;
 var
-  Verse: TVersiculo;
+  Verse: TVerse;
   Words: TStringList;
   ResultIndexes: TSyntagmIndexArray;
 begin
-  Verse := TVersiculo.Create();
+  Verse := TVerse.Create();
   Words := CreateWords(['minha', 'locucao']);
   try
     Verse.Texto := 'minha querida locucao minha locucao';
@@ -63,11 +63,11 @@ end;
 
 procedure TSyntagmSelectionTest.TestFallbackSelectsOrderedGap;
 var
-  Verse: TVersiculo;
+  Verse: TVerse;
   Words: TStringList;
   ResultIndexes: TSyntagmIndexArray;
 begin
-  Verse := TVersiculo.Create();
+  Verse := TVerse.Create();
   Words := CreateWords(['minha', 'locucao']);
   try
     Verse.Texto := 'minha querida locucao';
@@ -81,11 +81,11 @@ end;
 
 procedure TSyntagmSelectionTest.TestPartialPreservesRequestedOrder;
 var
-  Verse: TVersiculo;
+  Verse: TVerse;
   Words: TStringList;
   ResultIndexes: TSyntagmIndexArray;
 begin
-  Verse := TVersiculo.Create();
+  Verse := TVerse.Create();
   Words := CreateWords(['a', 'missing', 'b']);
   try
     Verse.Texto := 'x a y b';
@@ -99,11 +99,11 @@ end;
 
 procedure TSyntagmSelectionTest.TestAssociatedSyntagmsAreExcluded;
 var
-  Verse: TVersiculo;
+  Verse: TVerse;
   Words: TStringList;
   ResultIndexes: TSyntagmIndexArray;
 begin
-  Verse := TVersiculo.Create();
+  Verse := TVerse.Create();
   Words := CreateWords(['word1', 'word2']);
   try
     Verse.Texto := 'word1 word2 word1 word2';
@@ -119,11 +119,11 @@ end;
 
 procedure TSyntagmSelectionTest.TestJoinConnectedAddsPunctuation;
 var
-  Verse: TVersiculo;
+  Verse: TVerse;
   Words: TStringList;
   ResultIndexes: TSyntagmIndexArray;
 begin
-  Verse := TVersiculo.Create();
+  Verse := TVerse.Create();
   Words := CreateWords(['word1', 'word2']);
   try
     Verse.Texto := 'word1,word2';
@@ -137,11 +137,11 @@ end;
 
 procedure TSyntagmSelectionTest.TestJoinConnectedDoesNotCrossSpaces;
 var
-  Verse: TVersiculo;
+  Verse: TVerse;
   Words: TStringList;
   ResultIndexes: TSyntagmIndexArray;
 begin
-  Verse := TVersiculo.Create();
+  Verse := TVerse.Create();
   Words := CreateWords(['word1', 'word2']);
   try
     Verse.Texto := 'word1 , word2';
@@ -155,11 +155,11 @@ end;
 
 procedure TSyntagmSelectionTest.TestJoinConnectedFalseKeepsOnlyWords;
 var
-  Verse: TVersiculo;
+  Verse: TVerse;
   Words: TStringList;
   ResultIndexes: TSyntagmIndexArray;
 begin
-  Verse := TVersiculo.Create();
+  Verse := TVerse.Create();
   Words := CreateWords(['word1', 'word2']);
   try
     Verse.Texto := 'word1 - word2';
