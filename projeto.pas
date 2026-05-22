@@ -15,7 +15,7 @@ uses
   Windows,
   {$ENDIF}
   SysUtils, Sqlite3DS, sqlite3conn, sqldb, db, StrUtils, math,
-  ExtCtrls, Controls, ComCtrls, StdCtrls, Graphics, Forms, Verse, Sugestao,
+  ExtCtrls, Controls, ComCtrls, StdCtrls, Graphics, Forms, Verse, SuggestionManager,
   MemoVersiculo, ONTTokenizer, Dialogs, dos, PCRE, LazLogger, Clipbrd,
   Syntagm, BibleScope, MySwordModule, fgl, PatchFile, LCLIntf, menus,
   CommentsView, ai_processing_manager, ai_processing_batch, ai_batch_work_item,
@@ -131,7 +131,7 @@ type
     FCopyAssociationExampleMenuItems: array[tbOrigem..tbConsulta2] of TMenuItem;
     FSwitchDestinationTextMenuItems: array[tbOrigem..tbConsulta2] of TMenuItem;
     FACamposTexto: ACamposTexto;
-    FSugeridor: TGerSugestoes;
+    FSuggestionManager: TSuggestionManager;
     FAIManager: TAIProcessingManager; // batch manager IA
     FAIProcessingNodes: TAINodeInfoList; // OBSOLETE: No longer used - modal manages its own tree
     FAIBatchCompletionShown: Boolean; // flag to prevent showing completion dialog multiple times
@@ -1566,7 +1566,7 @@ begin
 
   //starttime := getTickCount;
 
-  FCurrentVerseWorkspace.SaveBeforeScroll(FPersistence, FSugeridor,
+  FCurrentVerseWorkspace.SaveBeforeScroll(FPersistence, FSuggestionManager,
     FMemoVersiculo, FMemoComentarios, FAVersiculo, FACamposTexto,
     Ord(tbOrigem), Ord(tbDestino));
 
@@ -1653,13 +1653,13 @@ end;
 
 procedure TProjeto.SalvarAssociacoes;
 begin
-  FCurrentVerseWorkspace.SaveAssociations(FSugeridor,
+  FCurrentVerseWorkspace.SaveAssociations(FSuggestionManager,
     FAVersiculo[tbOrigem], FAVersiculo[tbDestino]);
 end;
 
 procedure TProjeto.RemoverAssociacoes;
 begin
-  FCurrentVerseWorkspace.RemoveOldAssociations(FSugeridor,
+  FCurrentVerseWorkspace.RemoveOldAssociations(FSuggestionManager,
     FAVersiculo[tbOrigem], FAVersiculo[tbDestino]);
 end;
 
@@ -1959,7 +1959,7 @@ begin
 
       if v = tbOrigem then
       begin
-        rtf := TDictionaryManager.FormatRTF(FSugeridor.GetTranslationAlternatives(s));
+        rtf := TDictionaryManager.FormatRTF(FSuggestionManager.GetTranslationAlternatives(s));
         if not rtf.IsEmpty then
           frmDictionaryPopup.AdicionarStrong(STranslationMemory, rtf);
       end;
@@ -2321,7 +2321,7 @@ begin
 
   FOnNovoVersiculo    := TOnNovoVersiculoEvents.Create;
   FOnAlterarVersiculo := nil;
-  FSugeridor          := nil;
+  FSuggestionManager  := nil;
   FAIManager          := nil;
   FAIProcessingNodes  := TAINodeInfoList.Create(True); // owns objects
   FAIBatchCompletionShown := False;
@@ -2389,7 +2389,7 @@ begin
   FreeAndNil(FPersistence);
 
   FOnNovoVersiculo.Free;
-  FSugeridor.Free;
+  FSuggestionManager.Free;
   FTemporizador.Free;
   FMemoVersiculo.Destroy;
   inherited Destroy;
@@ -2434,7 +2434,7 @@ begin
     FConfig.Attach(FPersistence);
   FTblInfo := FPersistence.InfoTable;
 
-  FSugeridor := TGerSugestoes.Create(Nome);
+  FSuggestionManager := TSuggestionManager.Create(Nome);
 
   FTblPares := FPersistence.PairsTable;
 
@@ -2593,8 +2593,8 @@ end;
 
 procedure TProjeto.Commit;
 begin
-  if assigned(FSugeridor) then
-    FSugeridor.Commit;
+  if assigned(FSuggestionManager) then
+    FSuggestionManager.Commit;
 
   if Assigned(FPersistence) then
     FPersistence.Commit;
@@ -2604,7 +2604,7 @@ procedure TProjeto.Rollback;
 begin
   if Assigned(FPersistence) then
     FPersistence.Rollback;
-  FSugeridor.Rollback;
+  FSuggestionManager.Rollback;
 end;
 
 procedure TProjeto.GoToReference(reference: string);
@@ -2698,7 +2698,7 @@ end;
 
 procedure TProjeto.SugerirAssociacaoEstatistica;
 begin
-  FSugeridor.SugerirAssociacoes(FAVersiculo[tbOrigem]);
+  FSuggestionManager.SuggestAssociations(FAVersiculo[tbOrigem]);
   FAVersiculo[tbOrigem].Renderizar;
   FAVersiculo[tbDestino].Renderizar;
 
@@ -2912,7 +2912,7 @@ begin
   if (FAVersiculo[tbOrigem] = nil) or (FAVersiculo[tbDestino] = nil) then
     exit;
 
-  FSugeridor.LimparBaseAssociacoes;
+  FSuggestionManager.ClearAssociationDatabase;
 
   try
     try
@@ -2944,7 +2944,7 @@ begin
           begin
             for p:=0 to pares.Count-1 do
               if (p mod 2) = 0 then // pares estão alternados na lista
-                FSugeridor.InserirPar(pares.Strings[p], pares.Strings[p+1]);
+                FSuggestionManager.AddPair(pares.Strings[p], pares.Strings[p+1]);
 
             pares.Free;
           end
@@ -3456,7 +3456,7 @@ end;
 
 function TProjeto.GetTranslationSuggestions(syntagm: TSyntagm): string;
 begin
-  result := FSugeridor.GetTranslationAlternatives(syntagm);
+  result := FSuggestionManager.GetTranslationAlternatives(syntagm);
 end;
 
 function TProjeto.HasStoredAssociations: Boolean;
@@ -3491,7 +3491,7 @@ begin
     Exit;
 
   shouldResetStatus := not HasSituacaoCustomizada;
-  FSugeridor.LimparBaseAssociacoes;
+  FSuggestionManager.ClearAssociationDatabase;
 
   StartScrollingSession;
   try

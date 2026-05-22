@@ -7,7 +7,7 @@ uses
   cthreads,
   {$ENDIF}{$ENDIF}
   Interfaces, // this includes the LCL widgetset
-  Forms, formPrincipal, Verse, ONTTokenizer, Projeto, Sugestao,
+  Forms, formPrincipal, Verse, ONTTokenizer, Projeto, SuggestionManager,
   memoversiculo, PCRE, exportarprojeto, formverserules, formmesclarprojetos,
   formpopup, formnovoprojeto, formpropprojeto, formexportar,
   {$IFDEF WINDOWS}

@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Controls, StdCtrls, Forms, Graphics,
-  Verse, memoversiculo, commentsview, sugestao, syntagm, project_persistence,
+  Verse, memoversiculo, commentsview, SuggestionManager, syntagm, project_persistence,
   verse_render_buffer;
 
 type
@@ -45,9 +45,9 @@ type
     procedure SavePairs(Persistence: TProjectPersistence; SourceVerse: TVerse);
     procedure SaveTexts(Persistence: TProjectPersistence;
       const VerseViews: array of TVerse; const TextFieldIndexes: array of Integer);
-    procedure RemoveOldAssociations(Suggester: TGerSugestoes; SourceVerse, DestinationVerse: TVerse);
-    procedure SaveAssociations(Suggester: TGerSugestoes; SourceVerse, DestinationVerse: TVerse);
-    procedure SaveBeforeScroll(Persistence: TProjectPersistence; Suggester: TGerSugestoes;
+    procedure RemoveOldAssociations(Suggester: TSuggestionManager; SourceVerse, DestinationVerse: TVerse);
+    procedure SaveAssociations(Suggester: TSuggestionManager; SourceVerse, DestinationVerse: TVerse);
+    procedure SaveBeforeScroll(Persistence: TProjectPersistence; Suggester: TSuggestionManager;
       MemoVersiculo: TMemoVersiculo; CommentsControl: TControl;
       const VerseViews: array of TVerse; const TextFieldIndexes: array of Integer;
       SourceVerseIndex, DestinationVerseIndex: Integer);
@@ -261,7 +261,7 @@ begin
   end;
 end;
 
-procedure TCurrentVerseWorkspace.RemoveOldAssociations(Suggester: TGerSugestoes;
+procedure TCurrentVerseWorkspace.RemoveOldAssociations(Suggester: TSuggestionManager;
   SourceVerse, DestinationVerse: TVerse);
 var
   PairIndex: Integer;
@@ -272,10 +272,10 @@ begin
 
   for PairIndex := 0 to FOldPairs.Count - 1 do
     if (PairIndex mod 2) = 0 then
-      Suggester.RemoverPar(FOldPairs.Strings[PairIndex], FOldPairs.Strings[PairIndex + 1]);
+      Suggester.RemovePair(FOldPairs.Strings[PairIndex], FOldPairs.Strings[PairIndex + 1]);
 end;
 
-procedure TCurrentVerseWorkspace.SaveAssociations(Suggester: TGerSugestoes;
+procedure TCurrentVerseWorkspace.SaveAssociations(Suggester: TSuggestionManager;
   SourceVerse, DestinationVerse: TVerse);
 var
   Pairs: TStringList;
@@ -291,14 +291,14 @@ begin
   try
     for PairIndex := 0 to Pairs.Count - 1 do
       if (PairIndex mod 2) = 0 then
-        Suggester.InserirPar(Pairs.Strings[PairIndex], Pairs.Strings[PairIndex + 1]);
+        Suggester.AddPair(Pairs.Strings[PairIndex], Pairs.Strings[PairIndex + 1]);
   finally
     Pairs.Free;
   end;
 end;
 
 procedure TCurrentVerseWorkspace.SaveBeforeScroll(Persistence: TProjectPersistence;
-  Suggester: TGerSugestoes; MemoVersiculo: TMemoVersiculo;
+  Suggester: TSuggestionManager; MemoVersiculo: TMemoVersiculo;
   CommentsControl: TControl; const VerseViews: array of TVerse;
   const TextFieldIndexes: array of Integer; SourceVerseIndex,
   DestinationVerseIndex: Integer);

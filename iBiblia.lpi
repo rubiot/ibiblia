@@ -245,9 +245,9 @@
         <Loaded Value="True"/>
       </Unit3>
       <Unit4>
-        <Filename Value="sugestao.pas"/>
+        <Filename Value="SuggestionManager.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="Sugestao"/>
+        <UnitName Value="SuggestionManager"/>
         <EditorIndex Value="37"/>
         <TopLine Value="524"/>
         <CursorPos Y="533"/>
