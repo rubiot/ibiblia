@@ -1,4 +1,4 @@
-object FormExportPatch: TFormExportPatch
+object FrmExportPatch: TFrmExportPatch
   Left = 347
   Height = 599
   Top = 169

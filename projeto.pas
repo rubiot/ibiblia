@@ -269,12 +269,12 @@ type
     function ImportTheWordModule(arquivo: string; texto: TTipoTextoBiblico; replace: boolean): boolean;
     function ImportTheWordModule(arquivo: string; texto: TTipoTextoBiblico; pb: TProgressBar; replace: boolean): boolean;
     procedure CreateVerseObject(owner: TScrollBox; texto: TTipoTextoBiblico);
-    procedure ExportarTextoDestinoComStrongs(arquivo: string; opcoes: TOpcoesExportacao);
-    procedure ExportarTextoDestinoComStrongs(arquivo: string; pb: TProgressBar; opcoes: TOpcoesExportacao);
-    procedure ExportarTextoInterlinear(arquivo: string; opcoes: TOpcoesExportacao);
-    procedure ExportarTextoInterlinear(arquivo: string; pb: TProgressBar; opcoes: TOpcoesExportacao);
-    procedure ExportarConcordancia(arquivo: string; opcoes: TOpcoesExportacao; abbreviation: string);
-    procedure ExportarConcordancia(arquivo: string; pb: TProgressBar; opcoes: TOpcoesExportacao; abbreviation: string);
+    procedure ExportDestinationTextWithStrongs(arquivo: string; opcoes: TOpcoesExportacao);
+    procedure ExportDestinationTextWithStrongs(arquivo: string; pb: TProgressBar; opcoes: TOpcoesExportacao);
+    procedure ExportInterlinearText(arquivo: string; opcoes: TOpcoesExportacao);
+    procedure ExportInterlinearText(arquivo: string; pb: TProgressBar; opcoes: TOpcoesExportacao);
+    procedure ExportConcordance(arquivo: string; opcoes: TOpcoesExportacao; abbreviation: string);
+    procedure ExportConcordance(arquivo: string; pb: TProgressBar; opcoes: TOpcoesExportacao; abbreviation: string);
     procedure AssignTextFont(fonte: TFont; textos: STextosBiblicos);
     procedure ClearText(texto: TTipoTextoBiblico);
     function GetTextFont(texto: TTipoTextoBiblico): TFont;
@@ -3157,12 +3157,12 @@ begin
   end;
 end;
 
-procedure TProjeto.ExportarTextoDestinoComStrongs(arquivo: string; opcoes: TOpcoesExportacao);
+procedure TProjeto.ExportDestinationTextWithStrongs(arquivo: string; opcoes: TOpcoesExportacao);
 begin
-  ExportarTextoDestinoComStrongs(arquivo, nil, opcoes);
+  ExportDestinationTextWithStrongs(arquivo, nil, opcoes);
 end;
 
-procedure TProjeto.ExportarTextoDestinoComStrongs(arquivo: string;
+procedure TProjeto.ExportDestinationTextWithStrongs(arquivo: string;
   pb: TProgressBar; opcoes: TOpcoesExportacao);
 var
   Options: TDestinationTextExportOptions;
@@ -3192,13 +3192,13 @@ begin
   end;
 end;
 
-procedure TProjeto.ExportarTextoInterlinear(arquivo: string; opcoes: TOpcoesExportacao);
+procedure TProjeto.ExportInterlinearText(arquivo: string; opcoes: TOpcoesExportacao);
 begin
-  ExportarTextoInterlinear(arquivo, nil, opcoes);
+  ExportInterlinearText(arquivo, nil, opcoes);
 end;
 
-{ TODO: Unify this code with ExportarTextoDestinoComStrongs() }
-procedure TProjeto.ExportarTextoInterlinear(arquivo: string;
+{ TODO: Unify this code with ExportDestinationTextWithStrongs() }
+procedure TProjeto.ExportInterlinearText(arquivo: string;
   pb: TProgressBar; opcoes: TOpcoesExportacao);
 var
   Options: TInterlinearTextExportOptions;
@@ -3234,13 +3234,13 @@ begin
   end;
 end;
 
-procedure TProjeto.ExportarConcordancia(arquivo: string;
+procedure TProjeto.ExportConcordance(arquivo: string;
   opcoes: TOpcoesExportacao; abbreviation: string);
 begin
-  ExportarConcordancia(arquivo, nil, opcoes, abbreviation);
+  ExportConcordance(arquivo, nil, opcoes, abbreviation);
 end;
 
-procedure TProjeto.ExportarConcordancia(arquivo: string;
+procedure TProjeto.ExportConcordance(arquivo: string;
   pb: TProgressBar; opcoes: TOpcoesExportacao; abbreviation: string);
 var
   Options: TConcordanceExportOptions;

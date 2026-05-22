@@ -492,8 +492,8 @@
         <Loaded Value="True"/>
       </Unit28>
       <Unit29>
-        <Filename Value="formexportpatch.pas"/>
-        <ComponentName Value="FormExportPatch"/>
+        <Filename Value="FormExportPatch.pas"/>
+        <ComponentName Value="FrmExportPatch"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <EditorIndex Value="21"/>

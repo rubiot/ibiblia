@@ -117,7 +117,7 @@ begin
   begin
     try
       Self.Enabled := False;
-      FProject.ExportarTextoDestinoComStrongs(SaveDialog1.FileName, ProgressBar1, Options);
+      FProject.ExportDestinationTextWithStrongs(SaveDialog1.FileName, ProgressBar1, Options);
       ShowExportedFile(SaveDialog1.FileName);
     finally
       Self.Enabled := True;
@@ -154,7 +154,7 @@ begin
   begin
     try
       Self.Enabled := False;
-      FProject.ExportarTextoInterlinear(SaveDialog1.FileName, ProgressBar1, Options);
+      FProject.ExportInterlinearText(SaveDialog1.FileName, ProgressBar1, Options);
       ShowExportedFile(SaveDialog1.FileName);
     finally
       Self.Enabled := True;
@@ -189,7 +189,7 @@ begin
   begin
     try
       Self.Enabled := False;
-      FProject.ExportarConcordancia(SaveDialogConcordancia.FileName, ProgressBar1, Options, leAbreviacao.Text);
+      FProject.ExportConcordance(SaveDialogConcordancia.FileName, ProgressBar1, Options, leAbreviacao.Text);
       ShowExportedFile(SaveDialogConcordancia.FileName);
     finally
       Self.Enabled := True;

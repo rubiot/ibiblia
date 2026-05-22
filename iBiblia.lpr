@@ -14,7 +14,7 @@ uses
   twAutomate, twSyncThread,
   {$ENDIF}
   ONTParser, Syntagm, unitabout, MySwordModule, TheWordDictionary, lazrichview,
-  HTMLColors, formexportpatch, FormApplyPatch, PatchFile,
+  HTMLColors, FormExportPatch, FormApplyPatch, PatchFile,
   formInterlinearVerseRules, ChapterView, UnitPleaseWait,
   llmclient, FormLlmOptions, FormAiProcessing;
 
@@ -29,7 +29,7 @@ begin
   Application.CreateForm(TFrmVerseRules, FrmVerseRules);
   Application.CreateForm(TFrmProjectExport, FrmProjectExport);
   Application.CreateForm(TFormAbout, FormAbout);
-  Application.CreateForm(TFormExportPatch, FrmExportPatch);
+  Application.CreateForm(TFrmExportPatch, FrmExportPatch);
   Application.CreateForm(TFrmApplyPatch, FrmApplyPatch);
   Application.CreateForm(TFormInterlinearVerseRules, frmInterlinearVerseRules);
   Application.CreateForm(TFormPleaseWait, FormPleaseWait);

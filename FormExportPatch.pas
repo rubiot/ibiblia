@@ -1,4 +1,4 @@
-unit formexportpatch;
+unit FormExportPatch;
 
 {$mode objfpc}{$H+}
 
@@ -10,9 +10,9 @@ uses
 
 type
 
-  { TFormExportPatch }
+  { TFrmExportPatch }
 
-  TFormExportPatch = class(TForm)
+  TFrmExportPatch = class(TForm)
     Button1: TButton;
     Button2: TButton;
     BtnSelectAll: TButton;
@@ -37,20 +37,20 @@ type
 {$INCLUDE include/bookdefs.inc}
 
 var
-  FrmExportPatch: TFormExportPatch;
+  FrmExportPatch: TFrmExportPatch;
 
 implementation
 
 uses formPrincipal;
 
-{ TFormExportPatch }
+{ TFrmExportPatch }
 
-procedure TFormExportPatch.SetScope(AValue: TEscopoTexto);
+procedure TFrmExportPatch.SetScope(AValue: TEscopoTexto);
 begin
   FBibleTreeView.Scope := AValue;
 end;
 
-procedure TFormExportPatch.SavePatch(filename: string);
+procedure TFrmExportPatch.SavePatch(filename: string);
 var
   patch: TPatchFile;
 begin
@@ -67,12 +67,12 @@ begin
   OpenDocument(ExtractFilePath(filename));
 end;
 
-function TFormExportPatch.GetVerseList: TStringList;
+function TFrmExportPatch.GetVerseList: TStringList;
 begin
   result := FBibleTreeView.VerseList;
 end;
 
-function TFormExportPatch.CreatePatch: TPatchFile;
+function TFrmExportPatch.CreatePatch: TPatchFile;
 var
   refs: TStringList;
   ref: string;
@@ -99,18 +99,18 @@ begin
   end;
 end;
 
-procedure TFormExportPatch.FormCreate(Sender: TObject);
+procedure TFrmExportPatch.FormCreate(Sender: TObject);
 begin
   FBibleTreeView := TBibleTreeView.Create(GroupBox1);
   FBibleTreeView.Align := alClient;
 end;
 
-procedure TFormExportPatch.FormDestroy(Sender: TObject);
+procedure TFrmExportPatch.FormDestroy(Sender: TObject);
 begin
   FBibleTreeView.Free;
 end;
 
-procedure TFormExportPatch.FormShow(Sender: TObject);
+procedure TFrmExportPatch.FormShow(Sender: TObject);
 begin
   Scope := ProjetoAtual.Escopo;
   Position := poScreenCenter; // necessary to force alignment after setting height
@@ -118,19 +118,19 @@ begin
   Position := poMainFormCenter;
 end;
 
-procedure TFormExportPatch.BtnSelectAllClick(Sender: TObject);
+procedure TFrmExportPatch.BtnSelectAllClick(Sender: TObject);
 begin
   FBibleTreeView.SelectAll;
 end;
 
-procedure TFormExportPatch.BtnDeselectAllClick(Sender: TObject);
+procedure TFrmExportPatch.BtnDeselectAllClick(Sender: TObject);
 begin
   FBibleTreeView.SelectNone;
 end;
 
 initialization
 {$IFNDEF FPCUNIT}
-  {$I formexportpatch.lrs}
+  {$I FormExportPatch.lrs}
 {$ENDIF}
 
 end.

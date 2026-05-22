@@ -259,7 +259,7 @@ resourcestring
 
 implementation
 
-uses FormNewProject, FormProjectProperties, FormProjectExport, FormMergeProjects, formexportpatch, FormApplyPatch, FormLlmOptions, llmclient;
+uses FormNewProject, FormProjectProperties, FormProjectExport, FormMergeProjects, FormExportPatch, FormApplyPatch, FormLlmOptions, llmclient;
 
 {$R *.lfm}
 
@@ -416,14 +416,14 @@ end;
 procedure TFrmPrincipal.ActionExportarDestinoComStrongsExecute(Sender: TObject);
 begin
   if (ProjetoAtual <> nil) and SaveDialog2.Execute then
-    ProjetoAtual.ExportarTextoDestinoComStrongs(SaveDialog2.FileName, []{, ProgressBar1});
+    ProjetoAtual.ExportDestinationTextWithStrongs(SaveDialog2.FileName, []{, ProgressBar1});
   //ProgressBar1.Visible := false;
 end;
 
 procedure TFrmPrincipal.ActionExportarTextoInterlinearExecute(Sender: TObject);
 begin
   if (ProjetoAtual <> nil) and SaveDialog2.Execute then
-    ProjetoAtual.ExportarTextoInterlinear(SaveDialog2.FileName, []{, ProgressBar1});
+    ProjetoAtual.ExportInterlinearText(SaveDialog2.FileName, []{, ProgressBar1});
   //ProgressBar1.Visible := false;
 end;
 
