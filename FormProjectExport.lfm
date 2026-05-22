@@ -1,4 +1,4 @@
-object frmExportarProjeto: TfrmExportarProjeto
+object FrmProjectExport: TFrmProjectExport
   Left = 506
   Height = 516
   Top = 265
@@ -158,7 +158,7 @@ object frmExportarProjeto: TfrmExportarProjeto
     Default = True
     ModalResult = 1
     TabOrder = 1
-    OnClick = btExportarClick
+    OnClick = BtnExportClick
   end
   object Button2: TButton
     Left = 606

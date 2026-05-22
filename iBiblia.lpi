@@ -319,9 +319,9 @@
         <UsageCount Value="208"/>
       </Unit10>
       <Unit11>
-        <Filename Value="formexportar.pas"/>
+        <Filename Value="FormProjectExport.pas"/>
         <IsPartOfProject Value="True"/>
-        <ComponentName Value="frmExportarProjeto"/>
+        <ComponentName Value="FrmProjectExport"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <EditorIndex Value="26"/>

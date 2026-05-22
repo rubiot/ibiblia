@@ -9,7 +9,7 @@
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="13"/>
         <CursorPos X="69" Y="6"/>
-        <UsageCount Value="115"/>
+        <UsageCount Value="116"/>
         <Loaded Value="True"/>
       </Unit0>
       <Unit1>
@@ -17,7 +17,7 @@
         <IsPartOfProject Value="True"/>
         <TopLine Value="1150"/>
         <CursorPos X="24" Y="1204"/>
-        <UsageCount Value="115"/>
+        <UsageCount Value="116"/>
         <Loaded Value="True"/>
       </Unit1>
       <Unit2>
@@ -27,11 +27,10 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="60"/>
         <CursorPos X="20" Y="68"/>
-        <UsageCount Value="115"/>
+        <UsageCount Value="116"/>
       </Unit2>
       <Unit3>
         <Filename Value="../Verse.pas"/>
-        <UnitName Value="Verse"/>
         <EditorIndex Value="9"/>
         <TopLine Value="79"/>
         <CursorPos X="17" Y="112"/>
@@ -57,7 +56,6 @@
       <Unit6>
         <Filename Value="../onttokenizer.pas"/>
         <UnitName Value="ONTTokenizer"/>
-        <IsVisibleTab Value="True"/>
         <EditorIndex Value="11"/>
         <UsageCount Value="50"/>
         <Loaded Value="True"/>
@@ -165,6 +163,7 @@
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="FormLlmOptions"/>
+        <IsVisibleTab Value="True"/>
         <EditorIndex Value="2"/>
         <TopLine Value="125"/>
         <CursorPos X="3" Y="188"/>

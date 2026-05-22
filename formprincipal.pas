@@ -259,7 +259,7 @@ resourcestring
 
 implementation
 
-uses formnovoprojeto, formpropprojeto, formexportar, formmesclarprojetos, formexportpatch, formapplypatch, FormLlmOptions, llmclient;
+uses formnovoprojeto, formpropprojeto, FormProjectExport, formmesclarprojetos, formexportpatch, formapplypatch, FormLlmOptions, llmclient;
 
 {$R *.lfm}
 
@@ -377,8 +377,8 @@ procedure TFrmPrincipal.ActionExportarExecute(Sender: TObject);
 begin
   if not assigned(ProjetoAtual) then
     exit;
-  frmExportarProjeto.SetProjeto(ProjetoAtual);
-  frmExportarProjeto.ShowModal;
+  FrmProjectExport.SetProject(ProjetoAtual);
+  FrmProjectExport.ShowModal;
 end;
 
 procedure TFrmPrincipal.ActionApplyPatchExecute(Sender: TObject);
