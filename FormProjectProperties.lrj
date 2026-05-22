@@ -1,0 +1,18 @@
+{"version":1,"strings":[
+{"hash":114087587,"name":"tfrmprojectproperties.caption","sourcebytes":[80,114,111,112,101,114,116,105,101,115],"value":"Properties"},
+{"hash":114087587,"name":"tfrmprojectproperties.groupboxproperties.caption","sourcebytes":[80,114,111,112,101,114,116,105,101,115],"value":"Properties"},
+{"hash":346165,"name":"tfrmprojectproperties.editprojectname.editlabel.caption","sourcebytes":[78,97,109,101],"value":"Name"},
+{"hash":11067,"name":"tfrmprojectproperties.btnok.caption","sourcebytes":[38,79,75],"value":"&OK"},
+{"hash":77089212,"name":"tfrmprojectproperties.btncancel.caption","sourcebytes":[67,97,110,99,101,108],"value":"Cancel"},
+{"hash":237732857,"name":"tfrmprojectproperties.editstrongdictionary.editlabel.caption","sourcebytes":[83,116,114,111,110,103,39,115,32,100,105,99,116,105,111,110,97,114,121],"value":"Strong's dictionary"},
+{"hash":222162953,"name":"tfrmprojectproperties.editmorphologydictionary.editlabel.caption","sourcebytes":[77,111,114,112,104,111,108,111,103,121,32,100,105,99,116,105,111,110,97,114,121],"value":"Morphology dictionary"},
+{"hash":317012,"name":"tfrmprojectproperties.labelfont.caption","sourcebytes":[70,111,110,116],"value":"Font"},
+{"hash":258525966,"name":"tfrmprojectproperties.edittextdescription.editlabel.caption","sourcebytes":[84,101,120,116,32,100,101,115,99,114,105,112,116,105,111,110],"value":"Text description"},
+{"hash":4749113,"name":"tfrmprojectproperties.btnapplytextdescription.caption","sourcebytes":[65,112,112,108,121],"value":"Apply"},
+{"hash":264293348,"name":"tfrmprojectproperties.actionloadtext.caption","sourcebytes":[76,111,97,100,32,110,101,119,32,116,101,120,116],"value":"Load new text"},
+{"hash":138612292,"name":"tfrmprojectproperties.actioncleartext.caption","sourcebytes":[67,108,101,97,114,32,116,101,120,116],"value":"Clear text"},
+{"hash":77555349,"name":"tfrmprojectproperties.actionselectstrongdictionary.caption","sourcebytes":[67,104,111,111,115,101],"value":"Choose"},
+{"hash":77555349,"name":"tfrmprojectproperties.actionselectmorphologydictionary.caption","sourcebytes":[67,104,111,111,115,101],"value":"Choose"},
+{"hash":77555349,"name":"tfrmprojectproperties.actionselectfont.caption","sourcebytes":[67,104,111,111,115,101],"value":"Choose"},
+{"hash":117624032,"name":"tfrmprojectproperties.actionchangetab.caption","sourcebytes":[65,99,116,105,111,110,67,104,97,110,103,101,84,97,98],"value":"ActionChangeTab"}
+]}

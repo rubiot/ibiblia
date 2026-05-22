@@ -1,4 +1,4 @@
-object FormPropProjeto: TFormPropProjeto
+object FrmProjectProperties: TFrmProjectProperties
   Left = 320
   Height = 643
   Top = 157
@@ -10,7 +10,7 @@ object FormPropProjeto: TFormPropProjeto
   Position = poMainFormCenter
   LCLVersion = '4.0.0.4'
   OnCreate = FormCreate
-  object GroupBox2: TGroupBox
+  object GroupBoxProperties: TGroupBox
     Left = 0
     Height = 127
     Top = 6
@@ -19,7 +19,7 @@ object FormPropProjeto: TFormPropProjeto
     ClientHeight = 107
     ClientWidth = 570
     TabOrder = 0
-    object EditNomeProjeto: TLabeledEdit
+    object EditProjectName: TLabeledEdit
       Left = 16
       Height = 23
       Top = 23
@@ -48,7 +48,7 @@ object FormPropProjeto: TFormPropProjeto
       TabOrder = 1
     end
   end
-  object BitBtn1: TBitBtn
+  object BtnOk: TBitBtn
     Left = 486
     Height = 32
     Top = 603
@@ -59,7 +59,7 @@ object FormPropProjeto: TFormPropProjeto
     ModalResult = 1
     TabOrder = 1
   end
-  object BitBtn2: TBitBtn
+  object BtnCancel: TBitBtn
     Left = 371
     Height = 32
     Top = 603
@@ -70,13 +70,13 @@ object FormPropProjeto: TFormPropProjeto
     ModalResult = 2
     TabOrder = 2
   end
-  object TabControl1: TTabControl
+  object TabControlTextType: TTabControl
     Left = 7
     Height = 456
     Top = 142
     Width = 567
     TabStop = False
-    OnChange = ActionMudancaAbaExecute
+    OnChange = ActionChangeTabExecute
     TabIndex = 0
     Tabs.Strings = (
       'Source'
@@ -87,7 +87,7 @@ object FormPropProjeto: TFormPropProjeto
     ParentShowHint = False
     ShowHint = True
     TabOrder = 3
-    object leDicStrong: TLabeledEdit
+    object EditStrongDictionary: TLabeledEdit
       Left = 12
       Height = 23
       Top = 156
@@ -97,9 +97,9 @@ object FormPropProjeto: TFormPropProjeto
       EditLabel.Caption = 'Strong''s dictionary'
       EditLabel.ParentColor = False
       TabOrder = 1
-      OnChange = leDicStrongChange
+      OnChange = EditStrongDictionaryChange
     end
-    object leDicMorfo: TLabeledEdit
+    object EditMorphologyDictionary: TLabeledEdit
       Left = 12
       Height = 23
       Top = 206
@@ -109,53 +109,53 @@ object FormPropProjeto: TFormPropProjeto
       EditLabel.Caption = 'Morphology dictionary'
       EditLabel.ParentColor = False
       TabOrder = 2
-      OnChange = leDicMorfoChange
+      OnChange = EditMorphologyDictionaryChange
     end
-    object BitBtn3: TBitBtn
+    object BtnLoadText: TBitBtn
       Left = 12
       Height = 28
       Top = 50
       Width = 176
-      Action = ActionCarregarTexto
+      Action = ActionLoadText
       TabOrder = 3
     end
-    object BitBtn4: TBitBtn
+    object BtnSelectStrongDictionary: TBitBtn
       Left = 463
       Height = 24
       Top = 156
       Width = 87
-      Action = ActionSelecionarStrong
+      Action = ActionSelectStrongDictionary
       TabOrder = 4
     end
-    object BitBtn8: TBitBtn
+    object BtnSelectMorphologyDictionary: TBitBtn
       Left = 463
       Height = 24
       Top = 206
       Width = 87
-      Action = ActionSelecionarMorfo
+      Action = ActionSelectMorphologyDictionary
       TabOrder = 5
     end
-    object BitBtn9: TBitBtn
+    object BtnClearText: TBitBtn
       Left = 204
       Height = 28
       Top = 50
       Width = 175
-      Action = ActionLimparTexto
+      Action = ActionClearText
       TabOrder = 6
     end
-    object MemoFonte: TMemo
+    object MemoTextPreview: TMemo
       Left = 12
       Height = 221
       Top = 259
       Width = 442
       Lines.Strings = (
-        'MemoFonte'
+        'MemoTextPreview'
       )
       ReadOnly = True
       ScrollBars = ssAutoVertical
       TabOrder = 7
     end
-    object Label2: TLabel
+    object LabelFont: TLabel
       Left = 12
       Height = 15
       Top = 240
@@ -163,15 +163,15 @@ object FormPropProjeto: TFormPropProjeto
       Caption = 'Font'
       ParentColor = False
     end
-    object Button2: TButton
+    object BtnSelectFont: TButton
       Left = 463
       Height = 26
       Top = 259
       Width = 87
-      Action = ActionSelecionarFonte
+      Action = ActionSelectFont
       TabOrder = 8
     end
-    object leTextDescription: TLabeledEdit
+    object EditTextDescription: TLabeledEdit
       Left = 11
       Height = 23
       Top = 106
@@ -181,9 +181,9 @@ object FormPropProjeto: TFormPropProjeto
       EditLabel.Caption = 'Text description'
       EditLabel.ParentColor = False
       TabOrder = 9
-      OnChange = leTextDescriptionChange
+      OnChange = EditTextDescriptionChange
     end
-    object BitBtnTextDescription: TBitBtn
+    object BtnApplyTextDescription: TBitBtn
       Left = 463
       Height = 24
       Top = 106
@@ -191,10 +191,10 @@ object FormPropProjeto: TFormPropProjeto
       Caption = 'Apply'
       TabOrder = 10
       Visible = False
-      OnClick = BitBtnTextDescriptionClick
+      OnClick = BtnApplyTextDescriptionClick
     end
   end
-  object ProgressBar1: TProgressBar
+  object ProgressBarOperation: TProgressBar
     Left = 6
     Height = 21
     Top = 607
@@ -202,7 +202,7 @@ object FormPropProjeto: TFormPropProjeto
     TabOrder = 4
     Visible = False
   end
-  object OpenDialog1: TOpenDialog
+  object OpenDialogSelectFile: TOpenDialog
     InitialDir = './data'
     Left = 116
     Top = 444
@@ -210,32 +210,32 @@ object FormPropProjeto: TFormPropProjeto
   object ActionList1: TActionList
     Left = 24
     Top = 446
-    object ActionCarregarTexto: TAction
+    object ActionLoadText: TAction
       Caption = 'Load new text'
-      OnExecute = ActionCarregarTextoExecute
+      OnExecute = ActionLoadTextExecute
     end
-    object ActionLimparTexto: TAction
+    object ActionClearText: TAction
       Caption = 'Clear text'
-      OnExecute = ActionLimparTextoExecute
+      OnExecute = ActionClearTextExecute
     end
-    object ActionSelecionarStrong: TAction
+    object ActionSelectStrongDictionary: TAction
       Caption = 'Choose'
-      OnExecute = ActionSelecionarStrongExecute
+      OnExecute = ActionSelectStrongDictionaryExecute
     end
-    object ActionSelecionarMorfo: TAction
+    object ActionSelectMorphologyDictionary: TAction
       Caption = 'Choose'
-      OnExecute = ActionSelecionarMorfoExecute
+      OnExecute = ActionSelectMorphologyDictionaryExecute
     end
-    object ActionSelecionarFonte: TAction
+    object ActionSelectFont: TAction
       Caption = 'Choose'
-      OnExecute = ActionSelecionarFonteExecute
+      OnExecute = ActionSelectFontExecute
     end
-    object ActionMudancaAba: TAction
-      Caption = 'ActionMudancaAba'
-      OnExecute = ActionMudancaAbaExecute
+    object ActionChangeTab: TAction
+      Caption = 'ActionChangeTab'
+      OnExecute = ActionChangeTabExecute
     end
   end
-  object FontDialog1: TFontDialog
+  object FontDialogSelect: TFontDialog
     MinFontSize = 0
     MaxFontSize = 0
     Left = 196

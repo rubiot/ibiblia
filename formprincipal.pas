@@ -259,7 +259,7 @@ resourcestring
 
 implementation
 
-uses formnovoprojeto, formpropprojeto, FormProjectExport, formmesclarprojetos, formexportpatch, formapplypatch, FormLlmOptions, llmclient;
+uses formnovoprojeto, FormProjectProperties, FormProjectExport, formmesclarprojetos, formexportpatch, formapplypatch, FormLlmOptions, llmclient;
 
 {$R *.lfm}
 
@@ -650,10 +650,10 @@ end;
 
 procedure TFrmPrincipal.ActionPropProjetoExecute(Sender: TObject);
 begin
-  FormPropProjeto1.SetProjeto(ProjetoAtual);
-  if FormPropProjeto1.ShowModal = mrOK then
+  FrmProjectProperties.SetProject(ProjetoAtual);
+  if FrmProjectProperties.ShowModal = mrOK then
   begin
-    FormPropProjeto1.AplicarAlteracoes;
+    FrmProjectProperties.ApplyChanges;
     ActionQuandoNovoVersiculo.Execute;
   end;
 end;
@@ -1327,8 +1327,8 @@ begin
   end;
   if assigned(FormNovoProjeto1) then
     FormNovoProjeto1.Translate;
-  if assigned(FormPropProjeto1) then
-    FormPropProjeto1.Translate;
+  if assigned(FrmProjectProperties) then
+    FrmProjectProperties.Translate;
   if assigned(ProjetoAtual) then
     ProjetoAtual.Translate;
   if assigned(FChapterView) then

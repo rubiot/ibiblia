@@ -289,9 +289,9 @@
         <UsageCount Value="11"/>
       </Unit7>
       <Unit8>
-        <Filename Value="formpropprojeto.pas"/>
+        <Filename Value="FormProjectProperties.pas"/>
         <IsPartOfProject Value="True"/>
-        <ComponentName Value="FormPropProjeto"/>
+        <ComponentName Value="FrmProjectProperties"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <EditorIndex Value="38"/>
