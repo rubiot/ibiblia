@@ -207,7 +207,7 @@ var
 begin
   indexes := FBibleTreeView.IndexesList;
   try
-    ProjetoAtual.ApplyPatch(FPatch, indexes);
+    ProjetoAtual.ApplyProjectPatch(FPatch, indexes);
   finally
     indexes.Free;
     FreeAndNil(FPatch);

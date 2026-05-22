@@ -679,7 +679,7 @@ begin
   
   try
     appliedCount := FApplyAcceptedBatch(FBatch, FOriginalData, selectedIndexes);
-    AIDebugLogFmt('[Apply] ApplyAcceptedAIBatch completed successfully: %d verses', [appliedCount]);
+    AIDebugLogFmt('[Apply] ApplyAcceptedBatch completed successfully: %d verses', [appliedCount]);
   finally
     if Assigned(treeIndexes) then
       treeIndexes.Free;

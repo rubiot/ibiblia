@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, Forms, Graphics, ONTTokenizer, LCLType, HTMLColors,
   LazUTF8, BibleScope, Projeto, PCRE, Controls, Menus, fgl, Dialogs, Math, Contnrs, KMemo,
-  KEditCommon, KGraphics, KDialogs, formInterlinearVerseRules,
+  KEditCommon, KGraphics, KDialogs, FormInterlinearVerseRules,
   LCLTranslator, LazLogger, StdCtrls, HTMLRenderer, CommentsView;
 
 type
@@ -793,8 +793,8 @@ end;
 
 procedure TChapterView.HandleVerseRules(Sender: TObject);
 begin
-  frmInterlinearVerseRules.Project := FProject;
-  if frmInterlinearVerseRules.ShowModal = mrOK then
+  FrmInterlinearVerseRules.Project := FProject;
+  if FrmInterlinearVerseRules.ShowModal = mrOK then
     LoadChapter;
 end;
 

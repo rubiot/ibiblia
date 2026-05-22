@@ -1,4 +1,4 @@
-object FormInterlinearVerseRules: TFormInterlinearVerseRules
+object FrmInterlinearVerseRules: TFrmInterlinearVerseRules
   Left = 498
   Height = 237
   Top = 314

@@ -561,12 +561,12 @@
         <UsageCount Value="212"/>
       </Unit35>
       <Unit36>
-        <Filename Value="forminterlinearverserules.pas"/>
+        <Filename Value="FormInterlinearVerseRules.pas"/>
         <IsPartOfProject Value="True"/>
-        <ComponentName Value="FormInterlinearVerseRules"/>
+        <ComponentName Value="FrmInterlinearVerseRules"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <UnitName Value="formInterlinearVerseRules"/>
+        <UnitName Value="FormInterlinearVerseRules"/>
         <EditorIndex Value="27"/>
         <CursorPos X="70" Y="9"/>
         <UsageCount Value="200"/>

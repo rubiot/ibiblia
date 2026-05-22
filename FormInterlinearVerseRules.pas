@@ -1,4 +1,4 @@
-unit formInterlinearVerseRules;
+unit FormInterlinearVerseRules;
 
 {$mode objfpc}{$H+}
 
@@ -10,9 +10,9 @@ uses
 
 type
 
-  { TFormInterlinearVerseRules }
+  { TFrmInterlinearVerseRules }
 
-  TFormInterlinearVerseRules = class(TForm)
+  TFrmInterlinearVerseRules = class(TForm)
     ButtonOK: TButton;
     Button2: TButton;
     PageControlVerseRules: TPageControl;
@@ -31,19 +31,19 @@ type
   end;
 
 var
-  frmInterlinearVerseRules: TFormInterlinearVerseRules;
+  FrmInterlinearVerseRules: TFrmInterlinearVerseRules;
 
 implementation
 
-{ TFormInterlinearVerseRules }
+{ TFrmInterlinearVerseRules }
 
-procedure TFormInterlinearVerseRules.ButtonOKClick(Sender: TObject);
+procedure TFrmInterlinearVerseRules.ButtonOKClick(Sender: TObject);
 begin
   FProject.SetInfo('propriedades.interlinearview.verserules', GetVerseRules(StringGridInterlinear));
   FProject.SetInfo('propriedades.intralinearview.verserules', GetVerseRules(StringGridIntralinear));
 end;
 
-procedure TFormInterlinearVerseRules.SetProject(AValue: TProjeto);
+procedure TFrmInterlinearVerseRules.SetProject(AValue: TProjeto);
 begin
   FProject := AValue;
   LoadGrid(StringGridInterlinear, FProject.GetInfo('propriedades.interlinearview.verserules'));
@@ -51,7 +51,7 @@ begin
   PageControlVerseRules.PageIndex := IfThen(FProject.InterlinearMode = imInterlinear, 0, 1);
 end;
 
-procedure TFormInterlinearVerseRules.LoadGrid(grid: TStringGrid; values: string
+procedure TFrmInterlinearVerseRules.LoadGrid(grid: TStringGrid; values: string
   );
 var
   rule: string;
@@ -77,7 +77,7 @@ begin
   grid.AutoSizeColumns;
 end;
 
-function TFormInterlinearVerseRules.GetVerseRules(grid: TStringGrid): string;
+function TFrmInterlinearVerseRules.GetVerseRules(grid: TStringGrid): string;
 var
   i: integer;
 begin
@@ -95,7 +95,7 @@ end;
 
 initialization
 {$IFNDEF FPCUNIT}
-  {$I formInterlinearVerseRules.lrs}
+  {$I FormInterlinearVerseRules.lrs}
 {$ENDIF}
 
 end.

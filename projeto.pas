@@ -301,8 +301,8 @@ type
     procedure RewindChapter;
     procedure OnNewVerseSubscribe(const AValue: TOnNovoVersiculoEvent);
     procedure OnNewVerseUnsubscribe(const AValue: TOnNovoVersiculoEvent);
-    procedure ApplyPatch(patch: TPatchFile; indexes: TIntegerList = nil);
-    function ApplyAcceptedAIBatch(Batch, OriginalData: TAIProcessingBatch;
+    procedure ApplyProjectPatch(patch: TPatchFile; indexes: TIntegerList = nil);
+    function ApplyAcceptedBatch(Batch, OriginalData: TAIProcessingBatch;
       SelectedIndexes: TAIBatchIndexList = nil): Integer;
     function GetPairs(ref: string): string;
     function GetComments(ref: string): string;
@@ -830,7 +830,7 @@ begin
   end;
 end;
 
-procedure TProjeto.ApplyPatch(patch: TPatchFile; indexes: TIntegerList = nil);
+procedure TProjeto.ApplyProjectPatch(patch: TPatchFile; indexes: TIntegerList = nil);
 var
   oldAutoSaveValue: boolean;
   selectedIndexes: TPatchIndexArray;
@@ -863,7 +863,7 @@ begin
   FAutoSave := oldAutoSaveValue;
 end;
 
-function TProjeto.ApplyAcceptedAIBatch(Batch, OriginalData: TAIProcessingBatch;
+function TProjeto.ApplyAcceptedBatch(Batch, OriginalData: TAIProcessingBatch;
   SelectedIndexes: TAIBatchIndexList = nil): Integer;
 var
   Patch: TPatchFile;
@@ -875,7 +875,7 @@ begin
   Patch := Batch.CreatePatch(OriginalData, SelectedIndexes, Result);
   try
     if Result > 0 then
-      ApplyPatch(Patch, nil);
+      ApplyProjectPatch(Patch, nil);
   finally
     Patch.Free;
   end;
@@ -1256,7 +1256,7 @@ begin
     // Use global form instance instead of creating new one
     if Assigned(FrmAIProcessing) then
     begin
-      if FrmAIProcessing.StartProcessing(FAIManager, flow, list, previewOptions, @ApplyAcceptedAIBatch) then
+      if FrmAIProcessing.StartProcessing(FAIManager, flow, list, previewOptions, @ApplyAcceptedBatch) then
       begin
         FAIManager.StartBatch(flow, list);
         if FrmAIProcessing.ShowModal = mrOK then

@@ -15,7 +15,7 @@ uses
   {$ENDIF}
   ONTParser, Syntagm, unitabout, MySwordModule, TheWordDictionary, lazrichview,
   HTMLColors, FormExportPatch, FormApplyPatch, PatchFile,
-  formInterlinearVerseRules, ChapterView, UnitPleaseWait,
+  FormInterlinearVerseRules, ChapterView, UnitPleaseWait,
   llmclient, FormLlmOptions, FormAiProcessing;
 
 {$R *.res}
@@ -31,7 +31,7 @@ begin
   Application.CreateForm(TFormAbout, FormAbout);
   Application.CreateForm(TFrmExportPatch, FrmExportPatch);
   Application.CreateForm(TFrmApplyPatch, FrmApplyPatch);
-  Application.CreateForm(TFormInterlinearVerseRules, frmInterlinearVerseRules);
+  Application.CreateForm(TFrmInterlinearVerseRules, FrmInterlinearVerseRules);
   Application.CreateForm(TFormPleaseWait, FormPleaseWait);
   Application.CreateForm(TFrmLLMOptions, FrmLLMOptions);
   Application.CreateForm(TFrmAIProcessing, FrmAIProcessing);
