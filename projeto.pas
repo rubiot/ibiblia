@@ -259,13 +259,13 @@ type
     procedure SaveProject;
     procedure SalvarParesVersiculo(Verse: TVerse); // Save pairs from any verse object (public for AI flows)
     procedure ApplyVerseText(const newText: string; texto: TTipoTextoBiblico; replace: Boolean);
-    procedure SugerirAssociacaoEstatistica;
-    procedure SugerirAssociacao;
-    procedure SugerirAssociacaoAI;
+    procedure SuggestAssociationStatistical;
+    procedure SuggestAssociation;
+    procedure SuggestAssociationAI;
     procedure StartAIAssociationBatch(NodesVerses: TAIBatchWorkItemList; MaxParallel: Integer); // New: batch IA association
     procedure StartAITranslationBatch(NodesVerses: TAIBatchWorkItemList; MaxParallel: Integer); // batch tradução IA
-    procedure RecriarBaseSugestoes;
-    procedure RecriarBaseSugestoes(pb: TProgressBar);
+    procedure RebuildSuggestionDatabase;
+    procedure RebuildSuggestionDatabase(pb: TProgressBar);
     function ImportTheWordModule(arquivo: string; texto: TTipoTextoBiblico; replace: boolean): boolean;
     function ImportTheWordModule(arquivo: string; texto: TTipoTextoBiblico; pb: TProgressBar; replace: boolean): boolean;
     procedure CreateVerseObject(owner: TScrollBox; texto: TTipoTextoBiblico);
@@ -2636,7 +2636,7 @@ begin
   if not FPersistence.EOF then
     FPersistence.Next;
   if not FExportando and SugerirAssociacaoAutomaticamente and (FRadioGroupSituacao.ItemIndex = 0) and (not HasCustomStatus) then
-    SugerirAssociacao;
+    SuggestAssociation;
 end;
 
 procedure TProjeto.PreviousVerse;
@@ -2644,7 +2644,7 @@ begin
   if not FPersistence.BOF then
     FPersistence.Prior;
   if not FExportando and SugerirAssociacaoAutomaticamente and (FRadioGroupSituacao.ItemIndex = 0) and (not HasCustomStatus) then
-    SugerirAssociacao;
+    SuggestAssociation;
 end;
 
 procedure TProjeto.FirstVerse;
@@ -2652,7 +2652,7 @@ begin
   if not FPersistence.BOF then
     FPersistence.First;
   if not FExportando and SugerirAssociacaoAutomaticamente and (FRadioGroupSituacao.ItemIndex = 0) and (not HasCustomStatus) then
-    SugerirAssociacao;
+    SuggestAssociation;
 end;
 
 procedure TProjeto.LastVerse;
@@ -2660,7 +2660,7 @@ begin
   if not FPersistence.EOF then
     FPersistence.Last;
   if not FExportando and SugerirAssociacaoAutomaticamente and (FRadioGroupSituacao.ItemIndex = 0) and (not HasCustomStatus) then
-    SugerirAssociacao;
+    SuggestAssociation;
 end;
 
 procedure TProjeto.RefreshUI;
@@ -2698,7 +2698,7 @@ begin
     e(Self);
 end;
 
-procedure TProjeto.SugerirAssociacaoEstatistica;
+procedure TProjeto.SuggestAssociationStatistical;
 begin
   FSuggestionManager.SuggestAssociations(FAVersiculo[tbOrigem]);
   FAVersiculo[tbOrigem].Renderizar;
@@ -2710,26 +2710,26 @@ begin
     FRadioGroupSituacao.ItemIndex := 1; // associando
 end;
 
-procedure TProjeto.SugerirAssociacao;
+procedure TProjeto.SuggestAssociation;
 begin
   case FSuggestionMode of
-    smStatistical: SugerirAssociacaoEstatistica;
+    smStatistical: SuggestAssociationStatistical;
     smAI:
       begin
         // Note: AI Association is blocking and should ideally show progress,
         // but for auto-suggestion we rely on blocking behavior.
         // It might be worth checking if AI is configured before trying.
         try
-          SugerirAssociacaoAI;
+          SuggestAssociationAI;
         except
           on E: Exception do
-            // Fallback or just log? User will see message box from SugerirAssociacaoAI catch block.
+            // Fallback or just log? User will see message box from SuggestAssociationAI catch block.
         end;
       end;
   end;
 end;
 
-procedure TProjeto.SugerirAssociacaoAI;
+procedure TProjeto.SuggestAssociationAI;
 var
   flow: IAIVerseFlow;
   flowConfig: IAIFlowConfig;
@@ -2899,12 +2899,12 @@ end;
 // REMOVED: GetAIBatchProgress - obsolete since AI processing moved to modal
 // Progress is now tracked internally by TFrmAIProcessing
 
-procedure TProjeto.RecriarBaseSugestoes;
+procedure TProjeto.RebuildSuggestionDatabase;
 begin
-  RecriarBaseSugestoes(nil);
+  RebuildSuggestionDatabase(nil);
 end;
 
-procedure TProjeto.RecriarBaseSugestoes(pb: TProgressBar);
+procedure TProjeto.RebuildSuggestionDatabase(pb: TProgressBar);
 var
   verseData: TVerseData;
   pares: TStringList;

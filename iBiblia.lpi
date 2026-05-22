@@ -513,7 +513,7 @@
         <Loaded Value="True"/>
       </Unit30>
       <Unit31>
-        <Filename Value="formapplypatch.pas"/>
+        <Filename Value="FormApplyPatch.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="FrmApplyPatch"/>
         <HasResources Value="True"/>

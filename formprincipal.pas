@@ -259,7 +259,7 @@ resourcestring
 
 implementation
 
-uses FormNewProject, FormProjectProperties, FormProjectExport, FormMergeProjects, formexportpatch, formapplypatch, FormLlmOptions, llmclient;
+uses FormNewProject, FormProjectProperties, FormProjectExport, FormMergeProjects, formexportpatch, FormApplyPatch, FormLlmOptions, llmclient;
 
 {$R *.lfm}
 
@@ -680,7 +680,7 @@ end;
 procedure TFrmPrincipal.ActionRecriarBaseSugestoesExecute(Sender: TObject);
 begin
   if ProjetoAtual <> nil then
-    ProjetoAtual.RecriarBaseSugestoes(ProgressBar1);
+    ProjetoAtual.RebuildSuggestionDatabase(ProgressBar1);
 end;
 
 procedure TFrmPrincipal.ActionReverterAssociacoesExecute(Sender: TObject);
@@ -727,7 +727,7 @@ begin
       Screen.Cursor := crHourGlass;
       StatusBar1.SimpleText := SAnalyzingVerse;
       try
-        ProjetoAtual.SugerirAssociacao;
+        ProjetoAtual.SuggestAssociation;
         if ProjetoAtual.LastLLMCallCompleted then
           StatusBar1.SimpleText := FormatLLMUsageStatus(ProjetoAtual.LastLLMUsage)
         else
@@ -737,7 +737,7 @@ begin
       end;
     end
     else
-      ProjetoAtual.SugerirAssociacao;
+      ProjetoAtual.SuggestAssociation;
 
     if ProjetoAtual.ChapterViewText = tbInterlinear then
       FChapterView.LoadChapter;

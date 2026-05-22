@@ -1,4 +1,4 @@
-﻿unit formapplypatch;
+﻿unit FormApplyPatch;
 
 {$mode objfpc}{$H+}
 
@@ -217,7 +217,7 @@ end;
 
 initialization
 {$IFNDEF FPCUNIT}
-  {$I formapplypatch.lrs}
+  {$I FormApplyPatch.lrs}
 {$ENDIF}
 
 end.
