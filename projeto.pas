@@ -16,7 +16,7 @@ uses
   {$ENDIF}
   SysUtils, Sqlite3DS, sqlite3conn, sqldb, db, StrUtils, math,
   ExtCtrls, Controls, ComCtrls, StdCtrls, Graphics, Forms, Verse, SuggestionManager,
-  MemoVersiculo, ONTTokenizer, Dialogs, dos, PCRE, LazLogger, Clipbrd,
+  VerseMemo, ONTTokenizer, Dialogs, dos, PCRE, LazLogger, Clipbrd,
   Syntagm, BibleScope, MySwordModule, fgl, PatchFile, LCLIntf, menus,
   CommentsView, ai_processing_manager, ai_processing_batch, ai_batch_work_item,
   ai_flows, llmclient, ai_flow_config, ai_debug, project_persistence, project_config,
@@ -103,7 +103,7 @@ type
   private
     FReference: TReference;
     FFileName: string;
-    FMemoVersiculo: TMemoVersiculo;
+    FVerseMemo: TVerseMemo;
     FAtivo: boolean;
     FMarker: string;
     FScrollEventsEnabled: boolean;
@@ -215,7 +215,7 @@ type
     procedure OnCopyAssociationExample(Sender: TObject);
     procedure OnSwitchDestinationAndReference1Texts(Sender: TObject);
     procedure OnMudancaVersiculo(Sender: TObject; Node: TTreeNode);
-    procedure OnAlterarTextoVersiculo(Sender: TMemoVersiculo);
+    procedure OnAlterarTextoVersiculo(Sender: TVerseMemo);
     procedure OnExibirDefinicao(Sender: TObject);
     procedure OnDblClickVersiculo(Sender: TObject);
     procedure OnBibleTreePopupItemClick(Sender: TObject);
@@ -1567,7 +1567,7 @@ begin
   //starttime := getTickCount;
 
   FCurrentVerseWorkspace.SaveBeforeScroll(FPersistence, FSuggestionManager,
-    FMemoVersiculo, FMemoComentarios, FAVersiculo, FACamposTexto,
+    FVerseMemo, FMemoComentarios, FAVersiculo, FACamposTexto,
     Ord(tbOrigem), Ord(tbDestino));
 
   //DebugLn('  TProjeto.PreRolagemVersiculo: %d milliseconds', [getTickCount-starttime]);
@@ -1713,7 +1713,7 @@ end;
 
 procedure TProjeto.SintagmaOnClick(Sender: TSyntagm);
 begin
-  FMemoVersiculo.Desativar; // saving eventual changes on verse edit
+  FVerseMemo.Deactivate; // saving eventual changes on verse edit
 
   if assigned(FOnSintagmaClick) then
     FOnSintagmaClick(Sender);
@@ -1909,24 +1909,24 @@ begin
   GoToReference(FBibleTreeCoordinator.NodeToReferenceID(FEscopo, Node));
 end;
 
-procedure TProjeto.OnAlterarTextoVersiculo(Sender: TMemoVersiculo);
+procedure TProjeto.OnAlterarTextoVersiculo(Sender: TVerseMemo);
 var
   editedIndex: Integer;
   e: TOnNovoVersiculoEvent;
 begin
-  if ContainsText(Sender.Texto, #13) or ContainsText(Sender.Texto, #10) then
+  if ContainsText(Sender.Text, #13) or ContainsText(Sender.Text, #10) then
   begin
     MessageDlg(SLineBreaksInTextTitle, SLineBreaksInText, mtError, [mbOK], 0);
     exit;
   end;
 
   editedIndex := FCurrentVerseWorkspace.ApplyEditedVerseText(FAVersiculo,
-    Sender.Versiculo, Sender.Texto);
+    Sender.Verse, Sender.Text);
   if editedIndex = Ord(tbDestino) then
     for e in FOnNovoVersiculo do
       e(self);
 
-  //MessageDlg('Versículo modificado', format('Versiculo modificado: %s', [Sender.Texto]), mtError, [mbOK], 0);
+  //MessageDlg('Versículo modificado', format('Versiculo modificado: %s', [Sender.Text]), mtError, [mbOK], 0);
 end;
 
 procedure TProjeto.OnExibirDefinicao(Sender: TObject);
@@ -1979,7 +1979,7 @@ begin
   if not Ativo then
     exit;
 
-  FMemoVersiculo.Ativar(TScrollBox(Sender), TVerse(TScrollBox(Sender).Tag));
+  FVerseMemo.Activate(TScrollBox(Sender), TVerse(TScrollBox(Sender).Tag));
 end;
 
 procedure TProjeto.OnBibleTreePopupItemClick(Sender: TObject);
@@ -2350,8 +2350,8 @@ begin
   FTemporizador.Interval := 300;
   FTemporizador.OnTimer  := @OnExibirDefinicao;
 
-  FMemoVersiculo := TMemoVersiculo.Create;
-  FMemoVersiculo.QuandoModificarVersiculo := @OnAlterarTextoVersiculo;
+  FVerseMemo := TVerseMemo.Create;
+  FVerseMemo.OnVerseTextModified := @OnAlterarTextoVersiculo;
 end;
 
 constructor TProjeto.Create(paineis: array of TScrollbox; navegador: TTreeView;
@@ -2391,7 +2391,7 @@ begin
   FOnNovoVersiculo.Free;
   FSuggestionManager.Free;
   FTemporizador.Free;
-  FMemoVersiculo.Destroy;
+  FVerseMemo.Destroy;
   inherited Destroy;
 end;
 
@@ -2569,7 +2569,7 @@ begin
   FTblPares := nil;
   FTblInfo := nil;
 
-  FMemoVersiculo.Desativar;
+  FVerseMemo.Deactivate;
 
   FreeAndNil(FVerseRenderBuffer);
 

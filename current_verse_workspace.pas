@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Controls, StdCtrls, Forms, Graphics,
-  Verse, memoversiculo, commentsview, SuggestionManager, syntagm, project_persistence,
+  Verse, VerseMemo, commentsview, SuggestionManager, syntagm, project_persistence,
   verse_render_buffer;
 
 type
@@ -48,7 +48,7 @@ type
     procedure RemoveOldAssociations(Suggester: TSuggestionManager; SourceVerse, DestinationVerse: TVerse);
     procedure SaveAssociations(Suggester: TSuggestionManager; SourceVerse, DestinationVerse: TVerse);
     procedure SaveBeforeScroll(Persistence: TProjectPersistence; Suggester: TSuggestionManager;
-      MemoVersiculo: TMemoVersiculo; CommentsControl: TControl;
+      VerseMemo: TVerseMemo; CommentsControl: TControl;
       const VerseViews: array of TVerse; const TextFieldIndexes: array of Integer;
       SourceVerseIndex, DestinationVerseIndex: Integer);
     function LoadCurrentVerse(Persistence: TProjectPersistence;
@@ -298,7 +298,7 @@ begin
 end;
 
 procedure TCurrentVerseWorkspace.SaveBeforeScroll(Persistence: TProjectPersistence;
-  Suggester: TSuggestionManager; MemoVersiculo: TMemoVersiculo;
+  Suggester: TSuggestionManager; VerseMemo: TVerseMemo;
   CommentsControl: TControl; const VerseViews: array of TVerse;
   const TextFieldIndexes: array of Integer; SourceVerseIndex,
   DestinationVerseIndex: Integer);
@@ -309,8 +309,8 @@ begin
   if not Assigned(SourceVerse) then
     Exit;
 
-  if Assigned(MemoVersiculo) then
-    MemoVersiculo.Desativar;
+  if Assigned(VerseMemo) then
+    VerseMemo.Deactivate;
 
   if SourceVerse.Modificado then
   begin

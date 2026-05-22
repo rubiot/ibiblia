@@ -302,9 +302,9 @@
         <LoadedDesigner Value="True"/>
       </Unit8>
       <Unit9>
-        <Filename Value="memoversiculo.pas"/>
+        <Filename Value="VerseMemo.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="MemoVersiculo"/>
+        <UnitName Value="VerseMemo"/>
         <EditorIndex Value="18"/>
         <TopLine Value="93"/>
         <CursorPos X="22" Y="118"/>
