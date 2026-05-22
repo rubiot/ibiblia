@@ -1,4 +1,4 @@
-﻿unit FormApplyPatch;
+unit FormApplyPatch;
 
 {$mode objfpc}{$H+}
 
@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  ComCtrls, ExtCtrls, BibleTreeView, PatchFile, Verse, Projeto, CommentsView,
+  ComCtrls, ExtCtrls, BibleTreeView, PatchFile, Verse, Project, CommentsView,
   ONTTokenizer;
 
 type

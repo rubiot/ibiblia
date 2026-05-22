@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs,
-  StdCtrls, ExtCtrls, ComCtrls, Projeto, llmclient, ai_flows, ai_flow_config
+  StdCtrls, ExtCtrls, ComCtrls, Project, llmclient, ai_flows, ai_flow_config
   {$IFDEF WINDOWS}, Windows{$ENDIF};
 
 type
@@ -54,12 +54,12 @@ type
     procedure btnOKClick(Sender: TObject);
     procedure btnTestClick(Sender: TObject);
   private
-    FProjeto: TProjeto;
+    FProject: TProject;
     FFlowTabs: array of TFlowTabControls;
     procedure UpdateTestEnabled;
     procedure OnFieldsChanged(Sender: TObject);
-    procedure LoadFromProjeto;
-    procedure SaveToProjeto;
+    procedure LoadFromProject;
+    procedure SaveToProject;
     procedure MigrateLegacyConfigIfNeeded;
     procedure InitializeFlowTabs;
     procedure CreateFlowTab(ATabSheet: TTabSheet; const AFlowId: string);
@@ -76,7 +76,7 @@ type
     function GetFlowTabByFlowId(const AFlowId: string): TFlowTabControls;
     function GetFlowTabIndexByFlowId(const AFlowId: string): Integer;
   public
-    procedure SetProjeto(AProjeto: TProjeto);
+    procedure SetProject(AProject: TProject);
   end;
 
 var
@@ -148,7 +148,7 @@ end;
 
 procedure TFrmLLMOptions.btnOKClick(Sender: TObject);
 begin
-  SaveToProjeto;
+  SaveToProject;
   ModalResult := mrOK;
 end;
 
@@ -199,21 +199,21 @@ begin
   UpdateTestEnabled;
 end;
 
-procedure TFrmLLMOptions.LoadFromProjeto;
+procedure TFrmLLMOptions.LoadFromProject;
 begin
-  if not Assigned(FProjeto) then Exit;
+  if not Assigned(FProject) then Exit;
 
   // Try to migrate legacy config if present
   MigrateLegacyConfigIfNeeded;
 
   // Load common settings
-  cbModel.Text := FProjeto.GetInfo(AI_COMMON_CONFIG.Model);
-  leApiKey.Text := FProjeto.GetInfo(AI_COMMON_CONFIG.ApiKey);
+  cbModel.Text := FProject.GetInfo(AI_COMMON_CONFIG.Model);
+  leApiKey.Text := FProject.GetInfo(AI_COMMON_CONFIG.ApiKey);
 
-  leMaxParallel.Text := FProjeto.GetInfo(AI_COMMON_CONFIG.MaxParallel);
+  leMaxParallel.Text := FProject.GetInfo(AI_COMMON_CONFIG.MaxParallel);
   if Trim(leMaxParallel.Text) = '' then leMaxParallel.Text := '2';
 
-  leMaxRetries.Text := FProjeto.GetInfo(AI_COMMON_CONFIG.MaxRetries);
+  leMaxRetries.Text := FProject.GetInfo(AI_COMMON_CONFIG.MaxRetries);
   if Trim(leMaxRetries.Text) = '' then leMaxRetries.Text := '3';
 
   // Load each flow configuration
@@ -223,21 +223,21 @@ begin
   UpdateTestEnabled;
 end;
 
-procedure TFrmLLMOptions.SaveToProjeto;
+procedure TFrmLLMOptions.SaveToProject;
 begin
-  if not Assigned(FProjeto) then Exit;
+  if not Assigned(FProject) then Exit;
 
   // Save common settings
-  FProjeto.SetInfo(AI_COMMON_CONFIG.Model, cbModel.Text);
-  FProjeto.SetInfo(AI_COMMON_CONFIG.ApiKey, leApiKey.Text);
+  FProject.SetInfo(AI_COMMON_CONFIG.Model, cbModel.Text);
+  FProject.SetInfo(AI_COMMON_CONFIG.ApiKey, leApiKey.Text);
 
   if StrToIntDef(leMaxParallel.Text, 0) <= 0 then
     leMaxParallel.Text := '2';
-  FProjeto.SetInfo(AI_COMMON_CONFIG.MaxParallel, leMaxParallel.Text);
+  FProject.SetInfo(AI_COMMON_CONFIG.MaxParallel, leMaxParallel.Text);
 
   if StrToIntDef(leMaxRetries.Text, 0) < 0 then
     leMaxRetries.Text := '3';
-  FProjeto.SetInfo(AI_COMMON_CONFIG.MaxRetries, leMaxRetries.Text);
+  FProject.SetInfo(AI_COMMON_CONFIG.MaxRetries, leMaxRetries.Text);
 
   // Save each flow configuration
   SaveFlowConfig('association');
@@ -250,22 +250,22 @@ var
   flowConfig: IAIFlowConfig;
   defaultPrompt: string;
 begin
-  if not Assigned(FProjeto) then Exit;
+  if not Assigned(FProject) then Exit;
 
   // Check if legacy configuration exists and new one doesn't
-  if (FProjeto.GetInfo(LEGACY_MODEL_KEY) <> '') and
-     (FProjeto.GetInfo(AI_COMMON_CONFIG.Model) = '') then
+  if (FProject.GetInfo(LEGACY_MODEL_KEY) <> '') and
+     (FProject.GetInfo(AI_COMMON_CONFIG.Model) = '') then
   begin
     // Migrate common settings
-    FProjeto.SetInfo(AI_COMMON_CONFIG.Model, FProjeto.GetInfo(LEGACY_MODEL_KEY));
-    FProjeto.SetInfo(AI_COMMON_CONFIG.ApiKey, FProjeto.GetInfo(LEGACY_API_KEY));
-    FProjeto.SetInfo(AI_COMMON_CONFIG.MaxParallel, FProjeto.GetInfo(LEGACY_MAX_PARALLEL_KEY));
-    FProjeto.SetInfo(AI_COMMON_CONFIG.MaxRetries, FProjeto.GetInfo(LEGACY_MAX_RETRIES_KEY));
-    FProjeto.SetInfo(AI_COMMON_CONFIG.RetryDelay, FProjeto.GetInfo(LEGACY_RETRY_DELAY_KEY));
-    FProjeto.SetInfo(AI_COMMON_CONFIG.AutoSaveInterval, FProjeto.GetInfo(LEGACY_AUTOSAVE_INTERVAL_KEY));
+    FProject.SetInfo(AI_COMMON_CONFIG.Model, FProject.GetInfo(LEGACY_MODEL_KEY));
+    FProject.SetInfo(AI_COMMON_CONFIG.ApiKey, FProject.GetInfo(LEGACY_API_KEY));
+    FProject.SetInfo(AI_COMMON_CONFIG.MaxParallel, FProject.GetInfo(LEGACY_MAX_PARALLEL_KEY));
+    FProject.SetInfo(AI_COMMON_CONFIG.MaxRetries, FProject.GetInfo(LEGACY_MAX_RETRIES_KEY));
+    FProject.SetInfo(AI_COMMON_CONFIG.RetryDelay, FProject.GetInfo(LEGACY_RETRY_DELAY_KEY));
+    FProject.SetInfo(AI_COMMON_CONFIG.AutoSaveInterval, FProject.GetInfo(LEGACY_AUTOSAVE_INTERVAL_KEY));
 
     // Migrate prompt - extract custom instructions from old full prompt
-    legacyPrompt := FProjeto.GetInfo(LEGACY_PROMPT_KEY);
+    legacyPrompt := FProject.GetInfo(LEGACY_PROMPT_KEY);
     if legacyPrompt <> '' then
     begin
       // Get default prompt from association flow to extract custom part
@@ -275,9 +275,9 @@ begin
 
       customInstructions := ExtractCustomInstructions(legacyPrompt, defaultPrompt);
       if customInstructions <> '' then
-        FProjeto.SetInfo(flowConfig.GetConfigFields[0].Key, customInstructions)
+        FProject.SetInfo(flowConfig.GetConfigFields[0].Key, customInstructions)
       else
-        FProjeto.SetInfo(flowConfig.GetConfigFields[0].Key, flowConfig.GetDefaultCustomInstructions);
+        FProject.SetInfo(flowConfig.GetConfigFields[0].Key, flowConfig.GetDefaultCustomInstructions);
     end;
 
     // Note: We don't delete legacy keys to maintain compatibility with older versions
@@ -694,7 +694,7 @@ var
   ctrl: TControl;
   LcbModel: TComboBox;
 begin
-  if not Assigned(FProjeto) then Exit;
+  if not Assigned(FProject) then Exit;
 
   flowConfig := GetFlowConfigById(AFlowId);
   if not Assigned(flowConfig) then Exit;
@@ -711,7 +711,7 @@ begin
   begin
     if configFields[i].FieldType = 'provider' then
     begin
-      providerValue := FProjeto.GetInfo(configFields[i].Key);
+      providerValue := FProject.GetInfo(configFields[i].Key);
       if providerValue = '' then providerValue := configFields[i].DefaultValue;
       Break;
     end;
@@ -721,7 +721,7 @@ begin
     if ((configFields[i].FieldType = 'provider') or
         (configFields[i].FieldType = 'model') or
         (configFields[i].FieldType = 'password')) and
-      (Trim(FProjeto.GetInfo(configFields[i].Key)) <> '') then
+      (Trim(FProject.GetInfo(configFields[i].Key)) <> '') then
     begin
       hasStoredOverride := True;
       Break;
@@ -733,7 +733,7 @@ begin
     if i > High(configFields) then Break;
 
     ctrl := tabControls.FieldControls[i].Control;
-    fieldValue := FProjeto.GetInfo(configFields[i].Key);
+    fieldValue := FProject.GetInfo(configFields[i].Key);
 
     // If empty, use default value
     if Trim(fieldValue) = '' then
@@ -767,14 +767,14 @@ begin
   tabIdx := GetFlowTabIndexByFlowId(AFlowId);
   if tabIdx >= 0 then
   begin
-    overrideEnabledValue := Trim(FProjeto.GetInfo(GetFlowOverrideEnabledConfigKey(AFlowId)));
+    overrideEnabledValue := Trim(FProject.GetInfo(GetFlowOverrideEnabledConfigKey(AFlowId)));
     if overrideEnabledValue = '' then
       FFlowTabs[tabIdx].chkUseOverride.Checked := hasStoredOverride
     else
       FFlowTabs[tabIdx].chkUseOverride.Checked := LowerCase(overrideEnabledValue) = 'true';
     UpdateFlowOverrideControls(tabIdx);
 
-    FFlowTabs[tabIdx].WorkingExamples := FProjeto.GetFlowExamples(AFlowId);
+    FFlowTabs[tabIdx].WorkingExamples := FProject.GetFlowExamples(AFlowId);
     RefreshFlowExamplesUI(AFlowId);
   end;
 end;
@@ -788,7 +788,7 @@ var
   fieldValue: string;
   ctrl: TControl;
 begin
-  if not Assigned(FProjeto) then Exit;
+  if not Assigned(FProject) then Exit;
 
   flowConfig := GetFlowConfigById(AFlowId);
   if not Assigned(flowConfig) then Exit;
@@ -796,7 +796,7 @@ begin
   tabControls := GetFlowTabByFlowId(AFlowId);
   if not Assigned(tabControls.TabSheet) then Exit;
 
-  FProjeto.SetInfo(
+  FProject.SetInfo(
     GetFlowOverrideEnabledConfigKey(AFlowId),
     BoolToStr(Assigned(tabControls.chkUseOverride) and tabControls.chkUseOverride.Checked, True)
   );
@@ -822,12 +822,12 @@ begin
       fieldValue := TComboBox(ctrl).Text;
 
     // Save to project
-    FProjeto.SetInfo(configFields[i].Key, fieldValue);
+    FProject.SetInfo(configFields[i].Key, fieldValue);
   end;
 
   tabIdx := GetFlowTabIndexByFlowId(AFlowId);
   if tabIdx >= 0 then
-    FProjeto.SetFlowExamples(AFlowId, FFlowTabs[tabIdx].WorkingExamples);
+    FProject.SetFlowExamples(AFlowId, FFlowTabs[tabIdx].WorkingExamples);
 end;
 
 procedure TFrmLLMOptions.OnFlowOverrideToggle(Sender: TObject);
@@ -1047,12 +1047,12 @@ begin
   Result := -1;
 end;
 
-procedure TFrmLLMOptions.SetProjeto(AProjeto: TProjeto);
+procedure TFrmLLMOptions.SetProject(AProject: TProject);
 begin
-  FProjeto := AProjeto;
+  FProject := AProject;
   ReloadModelRegistry;
   FillSupportedModelNames(cbModel.Items);
-  LoadFromProjeto;
+  LoadFromProject;
 end;
 
 initialization

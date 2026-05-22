@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Graphics, ONTTokenizer, LCLType, HTMLColors,
-  LazUTF8, BibleScope, Projeto, PCRE, Controls, Menus, fgl, Dialogs, Math, Contnrs, KMemo,
+  LazUTF8, BibleScope, Project, PCRE, Controls, Menus, fgl, Dialogs, Math, Contnrs, KMemo,
   KEditCommon, KGraphics, KDialogs, FormInterlinearVerseRules,
   LCLTranslator, LazLogger, StdCtrls, HTMLRenderer, CommentsView;
 
@@ -81,7 +81,7 @@ type
     FFontName: string;
     FFontSize: integer;
     FPrintMode: boolean;
-    FProject: TProjeto;
+    FProject: TProject;
     FRxVerseHeading: IRegex;
     FNoteID: integer;
     FHint: TNoteWindow;
@@ -114,7 +114,7 @@ type
     procedure HandleReferenceClick(sender: TObject);
     procedure HandleNoteLinkClick(sender: TObject);
     procedure HandleNoteClick(sender: TObject);
-    procedure HandleVerseChange(Sender: TProjeto);
+    procedure HandleVerseChange(Sender: TProject);
     procedure HandleKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure HandlePopupKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure HandleMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
@@ -129,7 +129,7 @@ type
     procedure HandleIntralinearMode(Sender: TObject);
     procedure SetInterlinearMode(AValue: TInterlinearMode);
     procedure SetPrintMode(AValue: boolean);
-    procedure SetProject(AValue: TProjeto);
+    procedure SetProject(AValue: TProject);
     procedure InitPopupMenu;
     procedure SetParagraphMode(AValue: TParagraphMode);
     procedure SetFontSize(AValue: integer);
@@ -145,7 +145,7 @@ type
     destructor Destroy; override;
     procedure Translate;
     procedure LoadChapter;
-    property Project: TProjeto read FProject write SetProject;
+    property Project: TProject read FProject write SetProject;
     property TextType: TTipoTextoBiblico read GetTextType write SetTextType;
     property ParagraphMode: TParagraphMode read GetParagraphMode write SetParagraphMode;
     property InterlinearMode: TInterlinearMode read GetInterlinearMode write SetInterlinearMode;
@@ -666,7 +666,7 @@ begin
   HighlightRange(FVerseRanges[note.Verse], clSilver); // un-highlight current note text
 end;
 
-procedure TChapterView.HandleVerseChange(Sender: TProjeto);
+procedure TChapterView.HandleVerseChange(Sender: TProject);
 var
   verses: TStringList;
 begin
@@ -826,7 +826,7 @@ begin
   HandleVerseChange(FProject);
 end;
 
-procedure TChapterView.SetProject(AValue: TProjeto);
+procedure TChapterView.SetProject(AValue: TProject);
 begin
   if FProject = AValue then Exit;
   FProject := AValue;

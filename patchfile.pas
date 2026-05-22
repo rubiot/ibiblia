@@ -41,7 +41,7 @@ type
 
 implementation
 
-uses Projeto;
+uses Project;
 
 { TPatchFile }
 
@@ -86,7 +86,7 @@ end;
 
 procedure TPatchFile.LoadFromFile(patchfile: string);
 
-  function VersesAreEqual(patch: TStringArray; project: TProjeto): boolean;
+  function VersesAreEqual(patch: TStringArray; project: TProject): boolean;
   begin
     result := false;
     try
@@ -107,7 +107,7 @@ var
   lines: TStringList;
   line: string;
   fields: TStringArray;
-  project: TProjeto;
+  project: TProject;
 begin
   FReference.Clear;
   FSrcText.Clear;
@@ -116,7 +116,7 @@ begin
   FComments.Clear;
   FStatus.Clear;
 
-  project := TProjeto(FProject);
+  project := TProject(FProject);
   project.StartScrollingSession;
 
   lines := TStringList.Create;

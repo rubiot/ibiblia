@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  ComCtrls, BibleScope, Projeto, LazLogger, BibleTreeView, PatchFile, LCLIntf;
+  ComCtrls, BibleScope, Project, LazLogger, BibleTreeView, PatchFile, LCLIntf;
 
 type
 

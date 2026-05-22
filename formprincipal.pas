@@ -13,7 +13,7 @@ uses
   lclintf,
   {$ENDIF}
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, Menus,
-  ActnList, ComCtrls, ExtCtrls, StdCtrls, BibleScope, Projeto, IniFiles, Math,
+  ActnList, ComCtrls, ExtCtrls, StdCtrls, BibleScope, Project, IniFiles, Math,
   Syntagm, LCLTranslator, unitabout, PCRE, Verse, LCLProc, LazLogger,
   LCLType, LazUTF8, ChapterView, UnitPleaseWait, CommentsView;
 
@@ -187,7 +187,7 @@ type
     procedure MenuItemStrongsCountClick(Sender: TObject);
     procedure MenuItemSynciBibliaClick(Sender: TObject);
     procedure MenuItemSyncTheWordClick(Sender: TObject);
-    procedure QuandoNovoVersiculo(Sender: TProjeto);
+    procedure QuandoNovoVersiculo(Sender: TProject);
     procedure QuandoPalavraClicada(Sender: TSyntagm);
     procedure QuandoAlterarVersiculo;
     procedure AtualizarMRU(m: TMenuItem);
@@ -229,7 +229,7 @@ type
 
 var
   FrmPrincipal: TFrmPrincipal;
-  ProjetoAtual: TProjeto;
+  ProjetoAtual: TProject;
   opts: TIniFile;
   FStrongsCountMode: TStrongsCountMode;
 
@@ -597,7 +597,7 @@ begin
 
   try
     Enabled := false;
-    ProjetoAtual := TProjeto.Create([ScrollBoxSrcVerse, ScrollBoxDstVerse, ScrollBoxRef1Verse, ScrollBoxRef2Verse], TreeView1, RadioGroupStatus, FActualCommentsMemo);
+    ProjetoAtual := TProject.Create([ScrollBoxSrcVerse, ScrollBoxDstVerse, ScrollBoxRef1Verse, ScrollBoxRef2Verse], TreeView1, RadioGroupStatus, FActualCommentsMemo);
     ProjetoAtual.Escopo := QualEscopo;
     ProjetoAtual.PalavrasComStrongEmNegrito := MenuItemStrongNegrito.Checked;
     ProjetoAtual.MostrarQtdStrongs := FStrongsCountMode;
@@ -663,7 +663,7 @@ begin
   if not assigned(ProjetoAtual) then Exit;
   if not assigned(FrmLLMOptions) then
     Application.CreateForm(TFrmLLMOptions, FrmLLMOptions);
-  FrmLLMOptions.SetProjeto(ProjetoAtual);
+  FrmLLMOptions.SetProject(ProjetoAtual);
   FrmLLMOptions.ShowModal;
 end;
 
@@ -1148,7 +1148,7 @@ begin
   {$ENDIF}
 end;
 
-procedure TFrmPrincipal.QuandoNovoVersiculo(Sender: TProjeto);
+procedure TFrmPrincipal.QuandoNovoVersiculo(Sender: TProject);
 begin
   ActionQuandoNovoVersiculoExecute(nil);
 end;
@@ -1337,7 +1337,7 @@ end;
 
 procedure TFrmPrincipal.DoOpenProject(filename: string);
 begin
-  ProjetoAtual := TProjeto.Create([ScrollBoxSrcVerse, ScrollBoxDstVerse, ScrollBoxRef1Verse, ScrollBoxRef2Verse], TreeView1, RadioGroupStatus, FActualCommentsMemo);
+  ProjetoAtual := TProject.Create([ScrollBoxSrcVerse, ScrollBoxDstVerse, ScrollBoxRef1Verse, ScrollBoxRef2Verse], TreeView1, RadioGroupStatus, FActualCommentsMemo);
   ProjetoAtual.OnNewVerseSubscribe(@QuandoNovoVersiculo);
   ProjetoAtual.OnAlterarVersiculo := @QuandoAlterarVersiculo;
   ProjetoAtual.OnSintagmaClick := @QuandoPalavraClicada;

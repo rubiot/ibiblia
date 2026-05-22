@@ -1,4 +1,4 @@
-﻿unit Projeto;
+unit Project;
 
 {$mode objfpc}{$H+}{$M+}
 
@@ -32,7 +32,7 @@ const
   ImgIndexProcessing = 9;  // AI processing: in progress (to be added to ImageListTreeView)
 
 type
-  TProjeto = class;
+  TProject = class;
 
   TReference = record
     Book: string;
@@ -88,18 +88,18 @@ type
 
   TOpcoesExportacao = set of TOpcaoExportacao;
 
-  TOnNovoVersiculoEvent = procedure (Sender: TProjeto) of object;
+  TOnNovoVersiculoEvent = procedure (Sender: TProject) of object;
   TOnNovoVersiculoEvents = specialize TFPGList<TOnNovoVersiculoEvent>;
   TOnSintagmaClickEvent = procedure (Sender: TSyntagm) of object;
-  //TOnAlterarVersiculoEvent = procedure (Sender: TProjeto) of object;
+  //TOnAlterarVersiculoEvent = procedure (Sender: TProject) of object;
 
   AVersiculo = array[tbOrigem..tbConsulta2] of TVerse;
   ACamposTexto = array[tbOrigem..tbConsulta2] of integer;
   STextosBiblicos = set of TTipoTextoBiblico;
 
-  { TProjeto }
+  { TProject }
 
-  TProjeto = class
+  TProject = class
   private
     FReference: TReference;
     FFileName: string;
@@ -355,12 +355,12 @@ type
 
   { TProjectVerseStatusCursor — implements IVerseStatusCursor so that
     TBibleTreeCoordinator.RecomputeAllStatuses owns the iteration contract
-    rather than receiving four callback closures over TProjeto. }
+    rather than receiving four callback closures over TProject. }
   TProjectVerseStatusCursor = class(TInterfacedObject, IVerseStatusCursor)
   private
-    FOwner: TProjeto;
+    FOwner: TProject;
   public
-    constructor Create(AOwner: TProjeto);
+    constructor Create(AOwner: TProject);
     procedure Reset;
     function EOF: Boolean;
     procedure Advance;
@@ -461,7 +461,7 @@ implementation
 
 uses FormDictionaryPopup, FormVerseRules, formaiprocessing;
 
-{ TProjeto }
+{ TProject }
 
 const
   DefaultStatusDescription: array[0..3] of string = (
@@ -481,7 +481,7 @@ end;
 
 { TProjectVerseStatusCursor }
 
-constructor TProjectVerseStatusCursor.Create(AOwner: TProjeto);
+constructor TProjectVerseStatusCursor.Create(AOwner: TProject);
 begin
   inherited Create;
   FOwner := AOwner;
@@ -507,7 +507,7 @@ begin
   Result := FOwner.Status;
 end;
 
-function TProjeto.GetStatusDescription(index: Integer): string;
+function TProject.GetStatusDescription(index: Integer): string;
 var
   custom: string;
 begin
@@ -520,12 +520,12 @@ begin
     Result := '';
 end;
 
-procedure TProjeto.SetStatusDescription(index: Integer; description: string);
+procedure TProject.SetStatusDescription(index: Integer; description: string);
 begin
   SetInfo('status.description.' + IntToStr(index), description);
 end;
 
-function TProjeto.HasCustomStatus: boolean;
+function TProject.HasCustomStatus: boolean;
 var
   i: Integer;
 begin
@@ -538,7 +538,7 @@ begin
     end;
 end;
 
-function TProjeto.BuildAssociationFlowExample: TAIFlowExample;
+function TProject.BuildAssociationFlowExample: TAIFlowExample;
 var
   SourceVerse, TargetVerse: TVerse;
 begin
@@ -558,7 +558,7 @@ begin
   Result.ExpectedResponse := SourceVerse.GetAssociationsJSON;
 end;
 
-function TProjeto.BuildTranslationFlowExample: TAIFlowExample;
+function TProject.BuildTranslationFlowExample: TAIFlowExample;
 var
   SourceVerse, TargetVerse: TVerse;
 begin
@@ -578,7 +578,7 @@ begin
   Result.ExpectedResponse := TargetVerse.TextoSimples;
 end;
 
-function TProjeto.CreateFlowExample(const FlowId: string): TAIFlowExample;
+function TProject.CreateFlowExample(const FlowId: string): TAIFlowExample;
 begin
   case LowerCase(Trim(FlowId)) of
     'association': Result := BuildAssociationFlowExample;
@@ -588,7 +588,7 @@ begin
   end;
 end;
 
-function TProjeto.PromptReplaceExistingFlowExample(const FlowId: string; const ExistingExample: TAIFlowExample): Boolean;
+function TProject.PromptReplaceExistingFlowExample(const FlowId: string; const ExistingExample: TAIFlowExample): Boolean;
 var
   FlowCaption: string;
 begin
@@ -608,17 +608,17 @@ begin
   ) = mrYes;
 end;
 
-procedure TProjeto.CreateProject(nomedb, descricao: string);
+procedure TProject.CreateProject(nomedb, descricao: string);
 begin
   CreateProject(nomedb, descricao, TTokenizerFactory.LATEST_VERSION);
 end;
 
-procedure TProjeto.CreateProject(nomedbvelho, nomedbnovo, descricao: string);
+procedure TProject.CreateProject(nomedbvelho, nomedbnovo, descricao: string);
 begin
   CreateProject(nomedbnovo, descricao, TTokenizerFactory.LATEST_VERSION);
 end;
 
-procedure TProjeto.CreateProject(nomedb, descricao: string; tokenizerVersion: Integer);
+procedure TProject.CreateProject(nomedb, descricao: string; tokenizerVersion: Integer);
 begin
   TProjectDatabaseBootstrap.CreateProjectDatabase(nomedb, FEscopo);
 
@@ -631,33 +631,33 @@ begin
   Commit;
 end;
 
-procedure TProjeto.CreateProject(nomedbvelho, nomedbnovo, descricao: string; tokenizerVersion: Integer);
+procedure TProject.CreateProject(nomedbvelho, nomedbnovo, descricao: string; tokenizerVersion: Integer);
 begin
   CreateProject(nomedbnovo, descricao, tokenizerVersion);
 end;
 
-function TProjeto.GetFormattedReference: string;
+function TProject.GetFormattedReference: string;
 begin
   result := format('%s %d:%d', [Book, Chapter, Verse]);
 end;
 
-function TProjeto.GetPairs: string;
+function TProject.GetPairs: string;
 begin
   Result := FPersistence.CurrentPairs;
 end;
 
-function TProjeto.GetParagraphMode: TParagraphMode;
+function TProject.GetParagraphMode: TParagraphMode;
 begin
   Result := TParagraphMode(FConfig.ReadParagraphMode(Ord(pmParagraph)));
 end;
 
-function TProjeto.GetTokenizerVersion: Integer;
+function TProject.GetTokenizerVersion: Integer;
 begin
   Result := TTokenizerFactory.NormalizeVersion(
     FConfig.ReadTokenizerVersion(TTokenizerFactory.PreferredVersion));
 end;
 
-function TProjeto.GetPairs(ref: string): string;
+function TProject.GetPairs(ref: string): string;
 var
   verseData: TVerseData;
 begin
@@ -671,42 +671,42 @@ begin
   end;
 end;
 
-function TProjeto.GetStatus: Integer;
+function TProject.GetStatus: Integer;
 begin
   Result := FPersistence.CurrentStatus;
 end;
 
-procedure TProjeto.PreencherArvore;
+procedure TProject.PreencherArvore;
 begin
   FBibleTreeCoordinator.Populate(FEscopo, @OnMudancaVersiculo);
 end;
 
-procedure TProjeto.SetAtrasoExibicao(const AValue: Cardinal);
+procedure TProject.SetAtrasoExibicao(const AValue: Cardinal);
 begin
   if FAtrasoExibicao = AValue then exit;
   FAtrasoExibicao := AValue;
   FTemporizador.Interval := AValue;
 end;
 
-procedure TProjeto.SetAutoSave(AValue: boolean);
+procedure TProject.SetAutoSave(AValue: boolean);
 begin
   if FAutoSave=AValue then Exit;
   FAutoSave:=AValue;
 end;
 
-procedure TProjeto.SetChapterViewText(AValue: TTipoTextoBiblico);
+procedure TProject.SetChapterViewText(AValue: TTipoTextoBiblico);
 begin
   FConfig.WriteChapterViewText(Ord(AValue));
 end;
 
-procedure TProjeto.SetComments(const AValue: string);
+procedure TProject.SetComments(const AValue: string);
 begin
   if FPersistence.CurrentComments = AValue then
     exit;
   FPersistence.WriteCurrentComments(AValue);
 end;
 
-procedure TProjeto.SetDisplayTags(AValue: boolean);
+procedure TProject.SetDisplayTags(AValue: boolean);
 begin
   if FDisplayTags = AValue then
     Exit;
@@ -715,17 +715,17 @@ begin
   FCurrentVerseWorkspace.ApplyDisplayTags(FAVersiculo, FDisplayTags);
 end;
 
-procedure TProjeto.SetInterlinearMode(AValue: TInterlinearMode);
+procedure TProject.SetInterlinearMode(AValue: TInterlinearMode);
 begin
   FConfig.WriteInterlinearMode(Ord(AValue));
 end;
 
-procedure TProjeto.SetParagraphMode(AValue: TParagraphMode);
+procedure TProject.SetParagraphMode(AValue: TParagraphMode);
 begin
   FConfig.WriteParagraphMode(Ord(AValue));
 end;
 
-procedure TProjeto.SetTokenizerVersion(AValue: Integer);
+procedure TProject.SetTokenizerVersion(AValue: Integer);
 var
   currentVersion: Integer;
 begin
@@ -748,7 +748,7 @@ begin
     AfterVerseScroll(nil);
 end;
 
-procedure TProjeto.MigrateStoredAssociationsToTokenizerVersion(OldVersion,
+procedure TProject.MigrateStoredAssociationsToTokenizerVersion(OldVersion,
   NewVersion: Integer);
 var
   oldPairs: string;
@@ -782,7 +782,7 @@ begin
   end;
 end;
 
-procedure TProjeto.SetVerseStrongsCountMode(AValue: TStrongsCountMode);
+procedure TProject.SetVerseStrongsCountMode(AValue: TStrongsCountMode);
 begin
   if FVerseStrongsCountMode = AValue then
     Exit;
@@ -791,7 +791,7 @@ begin
   FCurrentVerseWorkspace.ApplyStrongsCountMode(FAVersiculo, AValue);
 end;
 
-procedure TProjeto.SetOnAlterarVersiculo(const AValue: TOnAlterarVersiculoEvent);
+procedure TProject.SetOnAlterarVersiculo(const AValue: TOnAlterarVersiculoEvent);
 begin
   if FOnAlterarVersiculo = AValue then exit;
   FOnAlterarVersiculo := AValue;
@@ -800,18 +800,18 @@ begin
     FAVersiculo[tbOrigem].OnAlterarVersiculo := OnAlterarVersiculo;
 end;
 
-procedure TProjeto.OnNewVerseSubscribe(const AValue: TOnNovoVersiculoEvent);
+procedure TProject.OnNewVerseSubscribe(const AValue: TOnNovoVersiculoEvent);
 begin
   if FOnNovoVersiculo.IndexOf(AValue) = -1 then
     FOnNovoVersiculo.Add(AValue);
 end;
 
-procedure TProjeto.OnNewVerseUnsubscribe(const AValue: TOnNovoVersiculoEvent);
+procedure TProject.OnNewVerseUnsubscribe(const AValue: TOnNovoVersiculoEvent);
 begin
   FOnNovoVersiculo.Remove(AValue);
 end;
 
-function TProjeto.ConfirmMissingPatchReference(const Reference: string): Boolean;
+function TProject.ConfirmMissingPatchReference(const Reference: string): Boolean;
 begin
   Result := FIgnoreMissingPatchWarnings;
   if Result then
@@ -830,7 +830,7 @@ begin
   end;
 end;
 
-procedure TProjeto.ApplyProjectPatch(patch: TPatchFile; indexes: TIntegerList = nil);
+procedure TProject.ApplyProjectPatch(patch: TPatchFile; indexes: TIntegerList = nil);
 var
   oldAutoSaveValue: boolean;
   selectedIndexes: TPatchIndexArray;
@@ -863,7 +863,7 @@ begin
   FAutoSave := oldAutoSaveValue;
 end;
 
-function TProjeto.ApplyAcceptedBatch(Batch, OriginalData: TAIProcessingBatch;
+function TProject.ApplyAcceptedBatch(Batch, OriginalData: TAIProcessingBatch;
   SelectedIndexes: TAIBatchIndexList = nil): Integer;
 var
   Patch: TPatchFile;
@@ -881,20 +881,20 @@ begin
   end;
 end;
 
-procedure TProjeto.SetOnSintagmaClick(const AValue: TOnSintagmaClickEvent);
+procedure TProject.SetOnSintagmaClick(const AValue: TOnSintagmaClickEvent);
 begin
   if FOnSintagmaClick = AValue then exit;
   FOnSintagmaClick := AValue;
 end;
 
-procedure TProjeto.SetPalavrasComStrongEmNegrito(AValue: boolean);
+procedure TProject.SetPalavrasComStrongEmNegrito(AValue: boolean);
 begin
   if FPalavrasComStrongEmNegrito=AValue then Exit;
   FPalavrasComStrongEmNegrito:=AValue;
   FCurrentVerseWorkspace.ApplyBoldStrongs(FAVersiculo, AValue);
 end;
 
-procedure TProjeto.SetStatus(const AValue: Integer);
+procedure TProject.SetStatus(const AValue: Integer);
 var
   NormalizedStatus: Integer;
 begin
@@ -905,7 +905,7 @@ begin
   UpdateTree(ID);
 end;
 
-procedure TProjeto.HighlightStrongs(syntagm: TSyntagm);
+procedure TProject.HighlightStrongs(syntagm: TSyntagm);
 var
   v: TTipoTextoBiblico;
   strongs: TStringList;
@@ -947,27 +947,27 @@ end;
 // by TFrmAIProcessing modal. The main project tree (FArvore) is not affected
 // during processing - it only updates when user clicks Apply in the modal.
 
-procedure TProjeto.MarkNodeAsAIPending(node: TTreeNode; const ref: string);
+procedure TProject.MarkNodeAsAIPending(node: TTreeNode; const ref: string);
 begin
   // No-op: Modal handles its own tree updates
 end;
 
-procedure TProjeto.MarkNodeAsAIProcessing(const ref: string);
+procedure TProject.MarkNodeAsAIProcessing(const ref: string);
 begin
   // No-op: Modal handles its own tree updates
 end;
 
-procedure TProjeto.RestoreNodeStatus(const ref: string);
+procedure TProject.RestoreNodeStatus(const ref: string);
 begin
   // No-op: Modal handles its own tree updates
 end;
 
-procedure TProjeto.ClearAllAINodeStates;
+procedure TProject.ClearAllAINodeStates;
 begin
   // No-op: Modal handles its own tree updates
 end;
 
-function TProjeto.FindTreeNodeByReference(const ref: string): TTreeNode;
+function TProject.FindTreeNodeByReference(const ref: string): TTreeNode;
 var
   refBookId, refChapter, refVerse: Integer;
   nb, nc, nv: TTreeNode;
@@ -1014,7 +1014,7 @@ begin
   end;
 end;
 
-function TProjeto.CreateBibleTreeContextMenu: TPopupMenu;
+function TProject.CreateBibleTreeContextMenu: TPopupMenu;
 
   procedure AddSubItemForStatus(item: TMenuItem; status: Integer);
   var
@@ -1100,7 +1100,7 @@ end;
 
 
 
-procedure TProjeto.OnAICancelClick(Sender: TObject);
+procedure TProject.OnAICancelClick(Sender: TObject);
 begin
   if Assigned(FAIManager) then
   begin
@@ -1109,7 +1109,7 @@ begin
   end;
 end;
 
-procedure TProjeto.ResetAIBatchManager;
+procedure TProject.ResetAIBatchManager;
 begin
   if Assigned(FAIManager) then
   begin
@@ -1119,7 +1119,7 @@ begin
   end;
 end;
 
-procedure TProjeto.OnAIBatchClick(Sender: TObject);
+procedure TProject.OnAIBatchClick(Sender: TObject);
 var
   list: TAIBatchWorkItemList;
   maxPar: Integer;
@@ -1270,13 +1270,13 @@ begin
   end;
 end;
 
-procedure TProjeto.UpdateReference(ref: string);
+procedure TProject.UpdateReference(ref: string);
 begin
   Sscanf(ref, '%d,%d,%d', [@FReference.BookID, @FReference.Chapter, @FReference.Verse]);
   FReference.Book := NLivros[FEscopo][FReference.BookID-OffsetLivros[FEscopo]-1];
 end;
 
-function TProjeto.BibleTreeNodeToReference(const node: TTreeNode): TReference;
+function TProject.BibleTreeNodeToReference(const node: TTreeNode): TReference;
 var
   ReferenceID: string;
 begin
@@ -1285,7 +1285,7 @@ begin
   result.Book    := NLivrosONT[result.BookID];
 end;
 
-function TProjeto.GetModificado: boolean;
+function TProject.GetModificado: boolean;
 var
   srcPending: boolean;
 begin
@@ -1294,7 +1294,7 @@ begin
   result := FPersistence.UpdatesPending or srcPending;
 end;
 
-function TProjeto.GetCaminho: string;
+function TProject.GetCaminho: string;
 begin
   if Assigned(FPersistence) then
     Result := FPersistence.FileName
@@ -1302,7 +1302,7 @@ begin
     Result := '';
 end;
 
-function TProjeto.GetChapterViewText: TTipoTextoBiblico;
+function TProject.GetChapterViewText: TTipoTextoBiblico;
 var
   t: string;
 begin
@@ -1312,7 +1312,7 @@ begin
   Result := TTipoTextoBiblico(t.ToInteger);
 end;
 
-function TProjeto.GetChapterText: TStringList;
+function TProject.GetChapterText: TStringList;
   function GetText(rulesRx: TRegexList; replaceTo: TStringList): string;
   var
     i: integer;
@@ -1406,7 +1406,7 @@ begin
   end;
 end;
 
-procedure TProjeto.CompileInterlinearVerseRules(var rulesRx: TRegexList; var replaceTo: TStringList; mode: TInterlinearMode; exporting: boolean);
+procedure TProject.CompileInterlinearVerseRules(var rulesRx: TRegexList; var replaceTo: TStringList; mode: TInterlinearMode; exporting: boolean);
 var
   verseRules: string;
   keyValue: TStringArray;
@@ -1435,12 +1435,12 @@ begin
   end;
 end;
 
-function TProjeto.GetComments: string;
+function TProject.GetComments: string;
 begin
   Result := FPersistence.CurrentComments;
 end;
 
-function TProjeto.GetComments(ref: string): string;
+function TProject.GetComments(ref: string): string;
 var
   verseData: TVerseData;
 begin
@@ -1454,7 +1454,7 @@ begin
   end;
 end;
 
-function TProjeto.GetStatus(ref: string): Integer;
+function TProject.GetStatus(ref: string): Integer;
 var
   verseData: TVerseData;
 begin
@@ -1468,18 +1468,18 @@ begin
   end;
 end;
 
-procedure TProjeto.SetTextDescription(text: TTipoTextoBiblico;
+procedure TProject.SetTextDescription(text: TTipoTextoBiblico;
   description: string);
 begin
   FConfig.WriteTextDescription(Integer(text), description);
 end;
 
-function TProjeto.GetTextDescription(text: TTipoTextoBiblico): string;
+function TProject.GetTextDescription(text: TTipoTextoBiblico): string;
 begin
   Result := FConfig.ReadTextDescription(Integer(text));
 end;
 
-procedure TProjeto.Vacuum;
+procedure TProject.Vacuum;
 begin
   if MessageDlg(SConfirmation, SVaccumProjectConfirmation, mtConfirmation, [mbYes, mbNo],0) = mrNo then
     exit;
@@ -1495,42 +1495,42 @@ begin
   ShowMessage(SVacuumDone);
 end;
 
-function TProjeto.GetID: string;
+function TProject.GetID: string;
 begin
   Result := FPersistence.CurrentPairId;
 end;
 
-function TProjeto.GetInterlinearMode: TInterlinearMode;
+function TProject.GetInterlinearMode: TInterlinearMode;
 begin
   Result := TInterlinearMode(FConfig.ReadInterlinearMode(Ord(imInterlinear)));
 end;
 
-function TProjeto.CreateTableDataset(db, tableName, keyField: string): TSqlite3Dataset;
+function TProject.CreateTableDataset(db, tableName, keyField: string): TSqlite3Dataset;
 begin
   Result := TProjectPersistence.CreateTableDataset(db, tableName, keyField);
 end;
 
-function TProjeto.CreateQueryObject(db: string): TSQLQuery;
+function TProject.CreateQueryObject(db: string): TSQLQuery;
 begin
   Result := TProjectPersistence.CreateQueryObject(db);
 end;
 
-function TProjeto.InsertInfo(info, value: string): boolean;
+function TProject.InsertInfo(info, value: string): boolean;
 begin
   Result := FPersistence.InsertInfo(info, value);
 end;
 
-function TProjeto.UpdateInfo(info, value: string): boolean;
+function TProject.UpdateInfo(info, value: string): boolean;
 begin
   Result := FPersistence.UpdateInfo(info, value);
 end;
 
-function TProjeto.UpdateConfigTable(table: TSqlite3Dataset; name, value: string): boolean;
+function TProject.UpdateConfigTable(table: TSqlite3Dataset; name, value: string): boolean;
 begin
   Result := TProjectPersistence.UpdateConfigTable(table, name, value);
 end;
 
-function TProjeto.ReadInfo(info: string): string;
+function TProject.ReadInfo(info: string): string;
 begin
   if Assigned(FPersistence) then
     Result := FPersistence.ReadInfo(info)
@@ -1538,7 +1538,7 @@ begin
     Result := '';
 end;
 
-procedure TProjeto.SetVerseText(versiculo: string;
+procedure TProject.SetVerseText(versiculo: string;
   texto: TTipoTextoBiblico; replace: boolean);
 var
   corruptionDetails: string;
@@ -1553,12 +1553,12 @@ begin
          mtError, [mbOK], 0);
 end;
 
-procedure TProjeto.ApplyVerseText(const newText: string; texto: TTipoTextoBiblico; replace: Boolean);
+procedure TProject.ApplyVerseText(const newText: string; texto: TTipoTextoBiblico; replace: Boolean);
 begin
   SetVerseText(newText, texto, replace);
 end;
 
-procedure TProjeto.BeforeVerseScroll(DataSet: TDataSet);
+procedure TProject.BeforeVerseScroll(DataSet: TDataSet);
 //var starttime: DWord;
 begin
   if not FScrollEventsEnabled or not Assigned(FAVersiculo[tbOrigem]) then
@@ -1570,10 +1570,10 @@ begin
     FVerseMemo, FMemoComentarios, FAVersiculo, FACamposTexto,
     Ord(tbOrigem), Ord(tbDestino));
 
-  //DebugLn('  TProjeto.BeforeVerseScroll: %d milliseconds', [getTickCount-starttime]);
+  //DebugLn('  TProject.BeforeVerseScroll: %d milliseconds', [getTickCount-starttime]);
 end;
 
-procedure TProjeto.AfterVerseScroll(DataSet: TDataSet);
+procedure TProject.AfterVerseScroll(DataSet: TDataSet);
 var
   e: TOnNovoVersiculoEvent;
   loadResult: TCurrentVerseLoadResult;
@@ -1630,15 +1630,15 @@ begin
   if fautosave and not fexportando then
     SaveProject;
 
-  //DebugLn('  TProjeto.PosRolagemVersiculo: %d milliseconds', [getTickCount-starttime]);
+  //DebugLn('  TProject.PosRolagemVersiculo: %d milliseconds', [getTickCount-starttime]);
 end;
 
-procedure TProjeto.SavePairs;
+procedure TProject.SavePairs;
 begin
   FCurrentVerseWorkspace.SavePairs(FPersistence, FAVersiculo[tbOrigem]);
 end;
 
-procedure TProjeto.SaveVersePairs(Verse: TVerse);
+procedure TProject.SaveVersePairs(Verse: TVerse);
 begin
   // Save pairs from a specific verse object (works for temp or visual verses)
   // Assumes database cursor is already positioned at the correct record
@@ -1646,24 +1646,24 @@ begin
   FPersistence.WriteCurrentPairs(Verse.Pares);
 end;
 
-procedure TProjeto.SaveText;
+procedure TProject.SaveText;
 begin
   FCurrentVerseWorkspace.SaveTexts(FPersistence, FAVersiculo, FACamposTexto);
 end;
 
-procedure TProjeto.SaveAssociations;
+procedure TProject.SaveAssociations;
 begin
   FCurrentVerseWorkspace.SaveAssociations(FSuggestionManager,
     FAVersiculo[tbOrigem], FAVersiculo[tbDestino]);
 end;
 
-procedure TProjeto.RemoveAssociations;
+procedure TProject.RemoveAssociations;
 begin
   FCurrentVerseWorkspace.RemoveOldAssociations(FSuggestionManager,
     FAVersiculo[tbOrigem], FAVersiculo[tbDestino]);
 end;
 
-procedure TProjeto.SintagmaOnMouseEnter(Sender: TSyntagm);
+procedure TProject.SintagmaOnMouseEnter(Sender: TSyntagm);
 var
   show: boolean;
 begin
@@ -1688,7 +1688,7 @@ begin
   SetDisplayTags(false);
 end;
 
-procedure TProjeto.SintagmaOnMouseLeave(Sender: TSyntagm);
+procedure TProject.SintagmaOnMouseLeave(Sender: TSyntagm);
 var
   hide: boolean;
   v: TTipoTextoBiblico;
@@ -1711,7 +1711,7 @@ begin
         FAVersiculo[v].DisableStrongHighlight;
 end;
 
-procedure TProjeto.SintagmaOnClick(Sender: TSyntagm);
+procedure TProject.SintagmaOnClick(Sender: TSyntagm);
 begin
   FVerseMemo.Deactivate; // saving eventual changes on verse edit
 
@@ -1730,7 +1730,7 @@ begin
   end;
 end;
 
-procedure TProjeto.OnExportText(Sender: TVerse);
+procedure TProject.OnExportText(Sender: TVerse);
 var
   lines: TStringList;
   v, text: TTipoTextoBiblico;
@@ -1778,7 +1778,7 @@ begin
   OpenDocument(ExtractFilePath(destination));
 end;
 
-function TProjeto.FindVerseType(Verse: TVerse; out VerseType: TTipoTextoBiblico): Boolean;
+function TProject.FindVerseType(Verse: TVerse; out VerseType: TTipoTextoBiblico): Boolean;
 var
   t: TTipoTextoBiblico;
 begin
@@ -1792,7 +1792,7 @@ begin
   Result := False;
 end;
 
-procedure TProjeto.OnVersePopup(Sender: TObject);
+procedure TProject.OnVersePopup(Sender: TObject);
 var
   PopupMenu: TPopupMenu;
   ClickedVerse: TVerse;
@@ -1824,17 +1824,17 @@ begin
     FCopyAssociationExampleMenuItems[VerseType].Visible := ClickedVerse.HasAssociations;
 end;
 
-procedure TProjeto.OnUseAssociationAsExample(Sender: TObject);
+procedure TProject.OnUseAssociationAsExample(Sender: TObject);
 begin
   IncludeCurrentVerseAsFlowExample('association');
 end;
 
-procedure TProjeto.OnUseTranslationAsExample(Sender: TObject);
+procedure TProject.OnUseTranslationAsExample(Sender: TObject);
 begin
   IncludeCurrentVerseAsFlowExample('translation');
 end;
 
-procedure TProjeto.OnCopyAssociationExample(Sender: TObject);
+procedure TProject.OnCopyAssociationExample(Sender: TObject);
 var
   example: string;
   originalVerse: TVerse;
@@ -1851,7 +1851,7 @@ begin
   Clipboard.AsText := example;
 end;
 
-procedure TProjeto.OnSwitchDestinationAndReference1Texts(Sender: TObject);
+procedure TProject.OnSwitchDestinationAndReference1Texts(Sender: TObject);
 var
   destinationText: string;
 begin
@@ -1863,7 +1863,7 @@ begin
   FAVersiculo[tbConsulta1].Texto := '(KJF original) ' + destinationText;
 end;
 
-procedure TProjeto.AttachProjectVersePopupMenu(texto: TTipoTextoBiblico);
+procedure TProject.AttachProjectVersePopupMenu(texto: TTipoTextoBiblico);
 var
   PopupMenu: TPopupMenu;
 begin
@@ -1902,14 +1902,14 @@ begin
   {$ENDIF}
 end;
 
-procedure TProjeto.OnMudancaVersiculo(Sender: TObject; Node: TTreeNode);
+procedure TProject.OnMudancaVersiculo(Sender: TObject; Node: TTreeNode);
 begin
   if not FScrollEventsEnabled or not assigned(FTblPares) or FClosing or not assigned(Node) then
     exit;
   GoToReference(FBibleTreeCoordinator.NodeToReferenceID(FEscopo, Node));
 end;
 
-procedure TProjeto.OnAlterarTextoVersiculo(Sender: TVerseMemo);
+procedure TProject.OnAlterarTextoVersiculo(Sender: TVerseMemo);
 var
   editedIndex: Integer;
   e: TOnNovoVersiculoEvent;
@@ -1929,7 +1929,7 @@ begin
   //MessageDlg('Versículo modificado', format('Versiculo modificado: %s', [Sender.Text]), mtError, [mbOK], 0);
 end;
 
-procedure TProjeto.OnExibirDefinicao(Sender: TObject);
+procedure TProject.OnExibirDefinicao(Sender: TObject);
 var
   StrongEntries: TDictionaryEntryArray;
   MorphologyEntries: TDictionaryEntryArray;
@@ -1974,7 +1974,7 @@ begin
   end;
 end;
 
-procedure TProjeto.OnDblClickVersiculo(Sender: TObject);
+procedure TProject.OnDblClickVersiculo(Sender: TObject);
 begin
   if not Ativo then
     exit;
@@ -1982,7 +1982,7 @@ begin
   FVerseMemo.Activate(TScrollBox(Sender), TVerse(TScrollBox(Sender).Tag));
 end;
 
-procedure TProjeto.OnBibleTreePopupItemClick(Sender: TObject);
+procedure TProject.OnBibleTreePopupItemClick(Sender: TObject);
 
   function SameReference(a, b: TReference): boolean;
   begin
@@ -2029,7 +2029,7 @@ begin
   RefreshUI;
 end;
 
-procedure TProjeto.OnBibleTreeContextPopup(Sender: TObject; MousePos: TPoint;
+procedure TProject.OnBibleTreeContextPopup(Sender: TObject; MousePos: TPoint;
   var Handled: Boolean);
 var
   i, j: Integer;
@@ -2106,7 +2106,7 @@ begin
   end;
 end;
 
-function TProjeto.AssignStrongDictionary(dic: string; t: TTipoTextoBiblico): boolean;
+function TProject.AssignStrongDictionary(dic: string; t: TTipoTextoBiblico): boolean;
 var
   ValidationResult: TDictionaryValidationResult;
 begin
@@ -2154,7 +2154,7 @@ begin
   Result := FDictionaryManager.AssignStrongDictionary(dic, Ord(t));
 end;
 
-function TProjeto.AssignMorphologyDictionary(dic: string; t: TTipoTextoBiblico): boolean;
+function TProject.AssignMorphologyDictionary(dic: string; t: TTipoTextoBiblico): boolean;
 var
   ValidationResult: TDictionaryValidationResult;
 begin
@@ -2201,14 +2201,14 @@ begin
   FAVersiculo[t].OnMouseLeave := @SintagmaOnMouseLeave;
 end;
 
-procedure TProjeto.UpdateTree;
+procedure TProject.UpdateTree;
 begin
   if not assigned(FArvore) then exit;
   FBibleTreeCoordinator.RecomputeAllStatuses(FEscopo,
     TProjectVerseStatusCursor.Create(Self));
 end;
 
-procedure TProjeto.UpdateTree(id: string);
+procedure TProject.UpdateTree(id: string);
 var
   i: smallint;
   al, ac: array[0..3] of smallint;
@@ -2309,7 +2309,7 @@ begin
   end;
 end;
 
-constructor TProjeto.Create;
+constructor TProject.Create;
 var
   v: TTipoTextoBiblico;
 begin
@@ -2354,7 +2354,7 @@ begin
   FVerseMemo.OnVerseTextModified := @OnAlterarTextoVersiculo;
 end;
 
-constructor TProjeto.Create(paineis: array of TScrollbox; navegador: TTreeView;
+constructor TProject.Create(paineis: array of TScrollbox; navegador: TTreeView;
   rsituacao: TRadioGroup; rcomentarios: TControl);
 var
   v: integer;
@@ -2372,7 +2372,7 @@ begin
   FMemoComentarios    := rcomentarios;
 end;
 
-destructor TProjeto.Destroy;
+destructor TProject.Destroy;
 begin
   FCurrentVerseWorkspace.DestroyVerseViews(FAVersiculo);
 
@@ -2396,7 +2396,7 @@ begin
   inherited Destroy;
 end;
 
-procedure TProjeto.OpenProject(Nome: string);
+procedure TProject.OpenProject(Nome: string);
   function IdentificarEscopo: TEscopoTexto;
   begin
     FTblPares.First;
@@ -2530,7 +2530,7 @@ begin
   FDisplayTags := false;
 end;
 
-procedure TProjeto.CloseProject(_Commit: boolean);
+procedure TProject.CloseProject(_Commit: boolean);
 var
   t: TTipoTextoBiblico;
 begin
@@ -2593,7 +2593,7 @@ begin
   FAtivo := false;
 end;
 
-procedure TProjeto.Commit;
+procedure TProject.Commit;
 begin
   if assigned(FSuggestionManager) then
     FSuggestionManager.Commit;
@@ -2602,14 +2602,14 @@ begin
     FPersistence.Commit;
 end;
 
-procedure TProjeto.Rollback;
+procedure TProject.Rollback;
 begin
   if Assigned(FPersistence) then
     FPersistence.Rollback;
   FSuggestionManager.Rollback;
 end;
 
-procedure TProjeto.GoToReference(reference: string);
+procedure TProject.GoToReference(reference: string);
 begin
   if reference.IsEmpty then
     reference := format('%d,1,1', [OffsetLivros[FEscopo] + 1]);
@@ -2626,12 +2626,12 @@ begin
   end;
 end;
 
-procedure TProjeto.GoToReference(reference: TReference);
+procedure TProject.GoToReference(reference: TReference);
 begin
   GoToReference(format('%d,%d,%d', [reference.BookID, reference.Chapter, reference.Verse]));
 end;
 
-procedure TProjeto.NextVerse;
+procedure TProject.NextVerse;
 begin
   if not FPersistence.EOF then
     FPersistence.Next;
@@ -2639,7 +2639,7 @@ begin
     SuggestAssociation;
 end;
 
-procedure TProjeto.PreviousVerse;
+procedure TProject.PreviousVerse;
 begin
   if not FPersistence.BOF then
     FPersistence.Prior;
@@ -2647,7 +2647,7 @@ begin
     SuggestAssociation;
 end;
 
-procedure TProjeto.FirstVerse;
+procedure TProject.FirstVerse;
 begin
   if not FPersistence.BOF then
     FPersistence.First;
@@ -2655,7 +2655,7 @@ begin
     SuggestAssociation;
 end;
 
-procedure TProjeto.LastVerse;
+procedure TProject.LastVerse;
 begin
   if not FPersistence.EOF then
     FPersistence.Last;
@@ -2663,12 +2663,12 @@ begin
     SuggestAssociation;
 end;
 
-procedure TProjeto.RefreshUI;
+procedure TProject.RefreshUI;
 begin
   AfterVerseScroll(FTblPares);
 end;
 
-procedure TProjeto.ClearAssociations;
+procedure TProject.ClearAssociations;
 begin
   if assigned(FAVersiculo[tbOrigem]) then
   begin
@@ -2680,7 +2680,7 @@ begin
   end;
 end;
 
-procedure TProjeto.SaveProject;
+procedure TProject.SaveProject;
 var
   e: TOnNovoVersiculoEvent;
 begin
@@ -2698,7 +2698,7 @@ begin
     e(Self);
 end;
 
-procedure TProjeto.SuggestAssociationStatistical;
+procedure TProject.SuggestAssociationStatistical;
 begin
   FSuggestionManager.SuggestAssociations(FAVersiculo[tbOrigem]);
   FAVersiculo[tbOrigem].Renderizar;
@@ -2710,7 +2710,7 @@ begin
     FRadioGroupSituacao.ItemIndex := 1; // associando
 end;
 
-procedure TProjeto.SuggestAssociation;
+procedure TProject.SuggestAssociation;
 begin
   case FSuggestionMode of
     smStatistical: SuggestAssociationStatistical;
@@ -2729,7 +2729,7 @@ begin
   end;
 end;
 
-procedure TProjeto.SuggestAssociationAI;
+procedure TProject.SuggestAssociationAI;
 var
   flow: IAIVerseFlow;
   flowConfig: IAIFlowConfig;
@@ -2798,7 +2798,7 @@ begin
   end;
 end;
 
-procedure TProjeto.StartAIAssociationBatch(NodesVerses: TAIBatchWorkItemList; MaxParallel: Integer);
+procedure TProject.StartAIAssociationBatch(NodesVerses: TAIBatchWorkItemList; MaxParallel: Integer);
 var
   flow: IAIVerseFlow;
   batchPrep: TAIBatchPreparation;
@@ -2838,7 +2838,7 @@ begin
   FAIManager.StartBatch(flow, NodesVerses);
 end;
 
-procedure TProjeto.StartAITranslationBatch(NodesVerses: TAIBatchWorkItemList; MaxParallel: Integer);
+procedure TProject.StartAITranslationBatch(NodesVerses: TAIBatchWorkItemList; MaxParallel: Integer);
 var
   flow: IAIVerseFlow;
   batchPrep: TAIBatchPreparation;
@@ -2873,13 +2873,13 @@ begin
   FAIManager.StartBatch(flow, NodesVerses);
 end;
 
-procedure TProjeto.HandleAutoSave(Sender: TObject);
+procedure TProject.HandleAutoSave(Sender: TObject);
 begin
   // Called from main thread when autosave interval is reached
   SaveProject;
 end;
 
-function TProjeto.GetVerseReferenceString(Verse: TVerse): string;
+function TProject.GetVerseReferenceString(Verse: TVerse): string;
 begin
   // Return formatted reference for the current verse
   if Verse = nil then
@@ -2899,12 +2899,12 @@ end;
 // REMOVED: GetAIBatchProgress - obsolete since AI processing moved to modal
 // Progress is now tracked internally by TFrmAIProcessing
 
-procedure TProjeto.RebuildSuggestionDatabase;
+procedure TProject.RebuildSuggestionDatabase;
 begin
   RebuildSuggestionDatabase(nil);
 end;
 
-procedure TProjeto.RebuildSuggestionDatabase(pb: TProgressBar);
+procedure TProject.RebuildSuggestionDatabase(pb: TProgressBar);
 var
   verseData: TVerseData;
   pares: TStringList;
@@ -2974,13 +2974,13 @@ begin
   end;
 end;
 
-function TProjeto.ImportTheWordModule(arquivo: string;
+function TProject.ImportTheWordModule(arquivo: string;
   texto: TTipoTextoBiblico; replace: boolean): boolean;
 begin
   result := ImportTheWordModule(arquivo, texto, nil, replace);
 end;
 
-function TProjeto.ImportTheWordModule(arquivo: string;
+function TProject.ImportTheWordModule(arquivo: string;
   texto: TTipoTextoBiblico; pb: TProgressBar; replace: boolean): boolean;
 var
   modulo: TStringList;
@@ -3144,7 +3144,7 @@ begin
   result := true;
 end;
 
-procedure TProjeto.CreateVerseObject(owner: TScrollBox;
+procedure TProject.CreateVerseObject(owner: TScrollBox;
   texto: TTipoTextoBiblico);
 begin
   FCurrentVerseWorkspace.CreateVerseView(owner, Ord(texto), Ord(tbOrigem),
@@ -3157,12 +3157,12 @@ begin
   end;
 end;
 
-procedure TProjeto.ExportDestinationTextWithStrongs(arquivo: string; opcoes: TOpcoesExportacao);
+procedure TProject.ExportDestinationTextWithStrongs(arquivo: string; opcoes: TOpcoesExportacao);
 begin
   ExportDestinationTextWithStrongs(arquivo, nil, opcoes);
 end;
 
-procedure TProjeto.ExportDestinationTextWithStrongs(arquivo: string;
+procedure TProject.ExportDestinationTextWithStrongs(arquivo: string;
   pb: TProgressBar; opcoes: TOpcoesExportacao);
 var
   Options: TDestinationTextExportOptions;
@@ -3192,13 +3192,13 @@ begin
   end;
 end;
 
-procedure TProjeto.ExportInterlinearText(arquivo: string; opcoes: TOpcoesExportacao);
+procedure TProject.ExportInterlinearText(arquivo: string; opcoes: TOpcoesExportacao);
 begin
   ExportInterlinearText(arquivo, nil, opcoes);
 end;
 
 { TODO: Unify this code with ExportDestinationTextWithStrongs() }
-procedure TProjeto.ExportInterlinearText(arquivo: string;
+procedure TProject.ExportInterlinearText(arquivo: string;
   pb: TProgressBar; opcoes: TOpcoesExportacao);
 var
   Options: TInterlinearTextExportOptions;
@@ -3234,13 +3234,13 @@ begin
   end;
 end;
 
-procedure TProjeto.ExportConcordance(arquivo: string;
+procedure TProject.ExportConcordance(arquivo: string;
   opcoes: TOpcoesExportacao; abbreviation: string);
 begin
   ExportConcordance(arquivo, nil, opcoes, abbreviation);
 end;
 
-procedure TProjeto.ExportConcordance(arquivo: string;
+procedure TProject.ExportConcordance(arquivo: string;
   pb: TProgressBar; opcoes: TOpcoesExportacao; abbreviation: string);
 var
   Options: TConcordanceExportOptions;
@@ -3267,7 +3267,7 @@ begin
   end;
 end;
 
-procedure TProjeto.AssignTextFont(fonte: TFont; textos: STextosBiblicos);
+procedure TProject.AssignTextFont(fonte: TFont; textos: STextosBiblicos);
 var
   t: TTipoTextoBiblico;
 begin
@@ -3281,7 +3281,7 @@ begin
     end;
 end;
 
-procedure TProjeto.ClearText(texto: TTipoTextoBiblico);
+procedure TProject.ClearText(texto: TTipoTextoBiblico);
 begin
   StartScrollingSession;
   try
@@ -3294,7 +3294,7 @@ begin
   SetTextDescription(texto, '');
 end;
 
-function TProjeto.GetTextFont(texto: TTipoTextoBiblico): TFont;
+function TProject.GetTextFont(texto: TTipoTextoBiblico): TFont;
 begin
    if assigned(FAVersiculo[texto]) then
      result := FAVersiculo[texto].Fonte
@@ -3302,7 +3302,7 @@ begin
      result := nil;
 end;
 
-function TProjeto.AssignStrongDictionary(dic: string; textos: STextosBiblicos): boolean;
+function TProject.AssignStrongDictionary(dic: string; textos: STextosBiblicos): boolean;
 var
   t: TTipoTextoBiblico;
 begin
@@ -3319,7 +3319,7 @@ begin
   result := true;
 end;
 
-function TProjeto.AssignMorphologyDictionary(dic: string; textos: STextosBiblicos): boolean;
+function TProject.AssignMorphologyDictionary(dic: string; textos: STextosBiblicos): boolean;
 var
   t: TTipoTextoBiblico;
 begin
@@ -3336,27 +3336,27 @@ begin
   result := true;
 end;
 
-procedure TProjeto.SetInfo(info, valor: string);
+procedure TProject.SetInfo(info, valor: string);
 begin
   FConfig.WriteString(info, valor);
 end;
 
-function TProjeto.GetInfo(info: string): string;
+function TProject.GetInfo(info: string): string;
 begin
   Result := FConfig.ReadString(info);
 end;
 
-function TProjeto.GetFlowExamples(const FlowId: string): TAIFlowExampleArray;
+function TProject.GetFlowExamples(const FlowId: string): TAIFlowExampleArray;
 begin
   Result := LoadFlowExamples(GetInfo(GetFlowExamplesConfigKey(FlowId)));
 end;
 
-procedure TProjeto.SetFlowExamples(const FlowId: string; const Examples: TAIFlowExampleArray);
+procedure TProject.SetFlowExamples(const FlowId: string; const Examples: TAIFlowExampleArray);
 begin
   SetInfo(GetFlowExamplesConfigKey(FlowId), SaveFlowExamples(Examples));
 end;
 
-function TProjeto.IncludeCurrentVerseAsFlowExample(const FlowId: string): Boolean;
+function TProject.IncludeCurrentVerseAsFlowExample(const FlowId: string): Boolean;
 var
   Examples: TAIFlowExampleArray;
   Example: TAIFlowExample;
@@ -3388,7 +3388,7 @@ begin
   end;
 end;
 
-procedure TProjeto.RemoveFlowExample(const FlowId, ReferenceId: string);
+procedure TProject.RemoveFlowExample(const FlowId, ReferenceId: string);
 var
   Examples: TAIFlowExampleArray;
 begin
@@ -3397,7 +3397,7 @@ begin
   SetFlowExamples(FlowId, Examples);
 end;
 
-procedure TProjeto.ClearFlowExamples(const FlowId: string);
+procedure TProject.ClearFlowExamples(const FlowId: string);
 var
   Examples: TAIFlowExampleArray;
 begin
@@ -3405,12 +3405,12 @@ begin
   SetFlowExamples(FlowId, Examples);
 end;
 
-function TProjeto.GetVerseText(texto: TTipoTextoBiblico): string;
+function TProject.GetVerseText(texto: TTipoTextoBiblico): string;
 begin
   Result := FPersistence.CurrentText(FACamposTexto[texto]);
 end;
 
-function TProjeto.GetVerseText(Referencia: string; texto: TTipoTextoBiblico): string;
+function TProject.GetVerseText(Referencia: string; texto: TTipoTextoBiblico): string;
 begin
   result := SVerseAbsentFromProject;
   StartScrollingSession;
@@ -3421,12 +3421,12 @@ begin
   end;
 end;
 
-function TProjeto.GetPlainVerseText(texto: TTipoTextoBiblico): string;
+function TProject.GetPlainVerseText(texto: TTipoTextoBiblico): string;
 begin
   result := GetPlainVerseText('', texto);
 end;
 
-function TProjeto.GetPlainVerseText(Referencia: string;
+function TProject.GetPlainVerseText(Referencia: string;
   texto: TTipoTextoBiblico): string;
 var
   varredorXML: TONTTokenizer;
@@ -3458,12 +3458,12 @@ begin
   varredorXML.Destroy;
 end;
 
-function TProjeto.GetTranslationSuggestions(syntagm: TSyntagm): string;
+function TProject.GetTranslationSuggestions(syntagm: TSyntagm): string;
 begin
   result := FSuggestionManager.GetTranslationAlternatives(syntagm);
 end;
 
-function TProjeto.HasStoredAssociations: Boolean;
+function TProject.HasStoredAssociations: Boolean;
 begin
   Result := False;
 
@@ -3487,7 +3487,7 @@ begin
   end;
 end;
 
-procedure TProjeto.ClearStoredAssociations;
+procedure TProject.ClearStoredAssociations;
 var
   shouldResetStatus: Boolean;
 begin
@@ -3512,7 +3512,7 @@ begin
   end;
 end;
 
-procedure TProjeto.Translate;
+procedure TProject.Translate;
 var
   bk: integer;
   node: TTreeNode;
@@ -3535,12 +3535,12 @@ begin
   end;
 end;
 
-procedure TProjeto.ToggleDisplayTags;
+procedure TProject.ToggleDisplayTags;
 begin
   SetDisplayTags(not DisplayTags);
 end;
 
-procedure TProjeto.StartScrollingSession;
+procedure TProject.StartScrollingSession;
 begin
   FMarker := ID;
   BeforeVerseScroll(nil);
@@ -3548,14 +3548,14 @@ begin
   FExportando := True;
 end;
 
-procedure TProjeto.FinishScrollingSession;
+procedure TProject.FinishScrollingSession;
 begin
   GoToReference(FMarker);
   ScrollEventsEnabled := true;
   FExportando := False;
 end;
 
-procedure TProjeto.RewindChapter;
+procedure TProject.RewindChapter;
 begin
   if Verse <> 1 then
     GoToReference(Format('%d,%d,%d', [BookID, Chapter, 1]));

@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
-  StdCtrls, ExtCtrls, Buttons, ComCtrls, ActnList, BibleScope, Projeto, LCLTranslator,
+  StdCtrls, ExtCtrls, Buttons, ComCtrls, ActnList, BibleScope, Project, LCLTranslator,
   StrUtils, ONTTokenizer;
 
 type
@@ -54,12 +54,12 @@ type
     procedure EditTextDescriptionChange(Sender: TObject);
     procedure FormCreate(Sender: TObject);
   private
-    FProject: TProjeto;
+    FProject: TProject;
     function ConfirmTokenizerVersionChange: TTokenizerVersionChangeAction;
     procedure LoadTokenizerVersions(SelectedVersion: Integer);
     function GetSelectedTokenizerVersion: Integer;
   public
-    procedure SetProject(Project: TProjeto);
+    procedure SetProject(Project: TProject);
     procedure ApplyChanges;
     procedure Translate;
   end;
@@ -325,7 +325,7 @@ begin
     Result := TTokenizerFactory.LATEST_VERSION;
 end;
 
-procedure TFrmProjectProperties.SetProject(Project: TProjeto);
+procedure TFrmProjectProperties.SetProject(Project: TProject);
 begin
   FProject := Project;
   EditProjectName.Caption := Project.GetInfo('descricao');

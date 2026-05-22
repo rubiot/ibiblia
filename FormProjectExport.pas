@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
-  ComCtrls, StdCtrls, ExtCtrls, BibleScope, Projeto, LCLTranslator, LCLIntf, LazUTF8;
+  ComCtrls, StdCtrls, ExtCtrls, BibleScope, Project, LCLTranslator, LCLIntf, LazUTF8;
 
 type
 
@@ -33,13 +33,13 @@ type
     TabSheet3: TTabSheet;
     procedure BtnExportClick(Sender: TObject);
   private
-    FProject: TProjeto;
+    FProject: TProject;
     procedure ExportTaggedDestinationText;
     procedure ExportInterlinearSourceText;
     procedure ExportConcordance;
     procedure ShowExportedFile(const FileName: string);
   public
-    procedure SetProject(Project: TProjeto);
+    procedure SetProject(Project: TProject);
   end;
 
 var
@@ -208,7 +208,7 @@ begin
   {$ENDIF}
 end;
 
-procedure TFrmProjectExport.SetProject(Project: TProjeto);
+procedure TFrmProjectExport.SetProject(Project: TProject);
 begin
   FProject := Project;
   MemoRodapeOrigem.Text := FProject.GetInfo('propriedades.origem');

@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, Grids,
-  StdCtrls, ComCtrls, Clipbrd, StrUtils, Math, Projeto;
+  StdCtrls, ComCtrls, Clipbrd, StrUtils, Math, Project;
 
 type
 
@@ -22,12 +22,12 @@ type
     TabSheet2: TTabSheet;
     procedure ButtonOKClick(Sender: TObject);
   private
-    FProject: TProjeto;
-    procedure SetProject(AValue: TProjeto);
+    FProject: TProject;
+    procedure SetProject(AValue: TProject);
     procedure LoadGrid(grid: TStringGrid; values: string);
     function GetVerseRules(grid: TStringGrid): string;
   public
-    property Project: TProjeto read FProject write SetProject;
+    property Project: TProject read FProject write SetProject;
   end;
 
 var
@@ -43,7 +43,7 @@ begin
   FProject.SetInfo('propriedades.intralinearview.verserules', GetVerseRules(StringGridIntralinear));
 end;
 
-procedure TFrmInterlinearVerseRules.SetProject(AValue: TProjeto);
+procedure TFrmInterlinearVerseRules.SetProject(AValue: TProject);
 begin
   FProject := AValue;
   LoadGrid(StringGridInterlinear, FProject.GetInfo('propriedades.interlinearview.verserules'));

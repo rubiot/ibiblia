@@ -229,9 +229,9 @@
         <Loaded Value="True"/>
       </Unit2>
       <Unit3>
-        <Filename Value="projeto.pas"/>
+        <Filename Value="Project.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="Projeto"/>
+        <UnitName Value="Project"/>
         <EditorIndex Value="4"/>
         <TopLine Value="617"/>
         <CursorPos Y="657"/>
@@ -980,7 +980,7 @@
         <Caret Line="215" TopLine="175"/>
       </Position26>
       <Position27>
-        <Filename Value="projeto.pas"/>
+        <Filename Value="Project.pas"/>
         <Caret Line="1672" TopLine="1631"/>
       </Position27>
       <Position28>
