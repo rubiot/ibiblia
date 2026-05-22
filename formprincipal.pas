@@ -259,7 +259,7 @@ resourcestring
 
 implementation
 
-uses FormNewProject, FormProjectProperties, FormProjectExport, formmesclarprojetos, formexportpatch, formapplypatch, FormLlmOptions, llmclient;
+uses FormNewProject, FormProjectProperties, FormProjectExport, FormMergeProjects, formexportpatch, formapplypatch, FormLlmOptions, llmclient;
 
 {$R *.lfm}
 
@@ -518,8 +518,8 @@ end;
 
 procedure TFrmPrincipal.ActionMesclarProjetosExecute(Sender: TObject);
 begin
-  FrmMesclarProjetos.InicializarForm;
-  FrmMesclarProjetos.ShowModal;
+  FrmMergeProjects.InitializeForm;
+  FrmMergeProjects.ShowModal;
 end;
 
 procedure TFrmPrincipal.ActionMostrarTagsExecute(Sender: TObject);
@@ -542,7 +542,7 @@ begin
   end;
 
   if edit.Text <> '' then
-    ProjetoAtual.ImportarModuloTheWord(edit.Text, p.texto, p.pb, false);
+    ProjetoAtual.ImportTheWordModule(edit.Text, p.texto, p.pb, false);
 
   result := 0;
 end;

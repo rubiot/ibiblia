@@ -341,9 +341,9 @@
         <Loaded Value="True"/>
       </Unit12>
       <Unit13>
-        <Filename Value="formmesclarprojetos.pas"/>
+        <Filename Value="FormMergeProjects.pas"/>
         <IsPartOfProject Value="True"/>
-        <ComponentName Value="FrmMesclarProjetos"/>
+        <ComponentName Value="FrmMergeProjects"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <EditorIndex Value="-1"/>

@@ -8,7 +8,7 @@ uses
   {$ENDIF}{$ENDIF}
   Interfaces, // this includes the LCL widgetset
   Forms, formPrincipal, Verse, ONTTokenizer, Projeto, SuggestionManager,
-  VerseMemo, PCRE, ConcordanceExport, formverserules, formmesclarprojetos,
+  VerseMemo, PCRE, ConcordanceExport, formverserules, FormMergeProjects,
   formpopup, FormNewProject, FormProjectProperties, FormProjectExport,
   {$IFDEF WINDOWS}
   twAutomate, twSyncThread,

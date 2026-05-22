@@ -232,8 +232,8 @@ type
     function FindTreeNodeByReference(const ref: string): TTreeNode;
     function AssignStrongDictionary(dic: string; t: TTipoTextoBiblico): boolean;
     function AssignMorphologyDictionary(dic: string; t: TTipoTextoBiblico): boolean;
-    procedure AtualizarArvore;
-    procedure AtualizarArvore(id: string);
+    procedure UpdateTree;
+    procedure UpdateTree(id: string);
   public
     procedure OnAIBatchClick(Sender: TObject);
     procedure OnAICancelClick(Sender: TObject);
@@ -266,9 +266,9 @@ type
     procedure StartAITranslationBatch(NodesVerses: TAIBatchWorkItemList; MaxParallel: Integer); // batch tradução IA
     procedure RecriarBaseSugestoes;
     procedure RecriarBaseSugestoes(pb: TProgressBar);
-    function ImportarModuloTheWord(arquivo: string; texto: TTipoTextoBiblico; replace: boolean): boolean;
-    function ImportarModuloTheWord(arquivo: string; texto: TTipoTextoBiblico; pb: TProgressBar; replace: boolean): boolean;
-    procedure NovoObjetoVersiculo(owner: TScrollBox; texto: TTipoTextoBiblico);
+    function ImportTheWordModule(arquivo: string; texto: TTipoTextoBiblico; replace: boolean): boolean;
+    function ImportTheWordModule(arquivo: string; texto: TTipoTextoBiblico; pb: TProgressBar; replace: boolean): boolean;
+    procedure CreateVerseObject(owner: TScrollBox; texto: TTipoTextoBiblico);
     procedure ExportarTextoDestinoComStrongs(arquivo: string; opcoes: TOpcoesExportacao);
     procedure ExportarTextoDestinoComStrongs(arquivo: string; pb: TProgressBar; opcoes: TOpcoesExportacao);
     procedure ExportarTextoInterlinear(arquivo: string; opcoes: TOpcoesExportacao);
@@ -276,7 +276,7 @@ type
     procedure ExportarConcordancia(arquivo: string; opcoes: TOpcoesExportacao; abbreviation: string);
     procedure ExportarConcordancia(arquivo: string; pb: TProgressBar; opcoes: TOpcoesExportacao; abbreviation: string);
     procedure AssignTextFont(fonte: TFont; textos: STextosBiblicos);
-    procedure LimparTexto(texto: TTipoTextoBiblico);
+    procedure ClearText(texto: TTipoTextoBiblico);
     function GetTextFont(texto: TTipoTextoBiblico): TFont;
     function AssignStrongDictionary(dic: string; textos: STextosBiblicos): boolean;
     function AssignMorphologyDictionary(dic: string; textos: STextosBiblicos): boolean;
@@ -902,7 +902,7 @@ begin
   if FClosing or (FPersistence.CurrentStatus = NormalizedStatus) then
     exit;
   FPersistence.WriteCurrentStatus(NormalizedStatus);
-  AtualizarArvore(ID);
+  UpdateTree(ID);
 end;
 
 procedure TProjeto.HighlightStrongs(syntagm: TSyntagm);
@@ -2201,14 +2201,14 @@ begin
   FAVersiculo[t].OnMouseLeave := @SintagmaOnMouseLeave;
 end;
 
-procedure TProjeto.AtualizarArvore;
+procedure TProjeto.UpdateTree;
 begin
   if not assigned(FArvore) then exit;
   FBibleTreeCoordinator.RecomputeAllStatuses(FEscopo,
     TProjectVerseStatusCursor.Create(Self));
 end;
 
-procedure TProjeto.AtualizarArvore(id: string);
+procedure TProjeto.UpdateTree(id: string);
 var
   i: smallint;
   al, ac: array[0..3] of smallint;
@@ -2363,7 +2363,8 @@ begin
 
   for v:=low(paineis) to high(paineis) do
     if (v <= Ord(tbConsulta2)) and assigned(paineis[v]) then
-      NovoObjetoVersiculo(paineis[v], TTipoTextoBiblico(v));
+      CreateVerseObject(paineis[v], TTipoTextoBiblico(v));
+  CreateVerseObject(paineis[v], TTipoTextoBiblico(v));
 
   Arvore              := navegador;
   FBibleTreeCoordinator.Attach(FArvore);
@@ -2493,7 +2494,8 @@ begin
   if assigned(FArvore) then
   begin
     PreencherArvore;
-    AtualizarArvore;
+    UpdateTree;
+      UpdateTree;
     //FArvore.FullCollapse;
     FArvore.Enabled := true;
   end;
@@ -2691,7 +2693,7 @@ begin
     FAVersiculo[tbOrigem].Modificado  := false;
     FAVersiculo[tbDestino].Modificado := false;
   end;
-  //AtualizarArvore;
+  //UpdateTree;
   for e in FOnNovoVersiculo do
     e(Self);
 end;
@@ -2972,13 +2974,13 @@ begin
   end;
 end;
 
-function TProjeto.ImportarModuloTheWord(arquivo: string;
+function TProjeto.ImportTheWordModule(arquivo: string;
   texto: TTipoTextoBiblico; replace: boolean): boolean;
 begin
-  result := ImportarModuloTheWord(arquivo, texto, nil, replace);
+  result := ImportTheWordModule(arquivo, texto, nil, replace);
 end;
 
-function TProjeto.ImportarModuloTheWord(arquivo: string;
+function TProjeto.ImportTheWordModule(arquivo: string;
   texto: TTipoTextoBiblico; pb: TProgressBar; replace: boolean): boolean;
 var
   modulo: TStringList;
@@ -3129,7 +3131,8 @@ begin
     end;
     FinishScrollingSession;
     FExportando := false;
-    AtualizarArvore(FMarker);
+    UpdateTree(FMarker);
+    UpdateTree(FMarker);
   finally
     modulo.Free;
     if assigned(pb) then
@@ -3141,7 +3144,7 @@ begin
   result := true;
 end;
 
-procedure TProjeto.NovoObjetoVersiculo(owner: TScrollBox;
+procedure TProjeto.CreateVerseObject(owner: TScrollBox;
   texto: TTipoTextoBiblico);
 begin
   FCurrentVerseWorkspace.CreateVerseView(owner, Ord(texto), Ord(tbOrigem),
@@ -3278,10 +3281,11 @@ begin
     end;
 end;
 
-procedure TProjeto.LimparTexto(texto: TTipoTextoBiblico);
+procedure TProjeto.ClearText(texto: TTipoTextoBiblico);
 begin
   StartScrollingSession;
   try
+      //UpdateTree;
     FPatchApplier.ClearTextFieldForAll(FACamposTexto[texto], FACamposTexto[tbOrigem],
       FACamposTexto[tbDestino], not HasCustomStatus);
   finally

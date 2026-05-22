@@ -1,4 +1,4 @@
-object FrmMesclarProjetos: TFrmMesclarProjetos
+object FrmMergeProjects: TFrmMergeProjects
   Left = 858
   Height = 516
   Top = 201
@@ -7,7 +7,7 @@ object FrmMesclarProjetos: TFrmMesclarProjetos
   ClientHeight = 516
   ClientWidth = 283
   LCLVersion = '1.8.4.0'
-  object CheckListBox1: TCheckListBox
+  object SourceCheckList: TCheckListBox
     Left = 8
     Height = 416
     Top = 40
@@ -42,13 +42,13 @@ object FrmMesclarProjetos: TFrmMesclarProjetos
       'Apocalipse'
     )
     ItemHeight = 15
-    OnClickCheck = CheckListBox1ClickCheck
+    OnClickCheck = SourceCheckListClickCheck
     TabOrder = 0
     Data = {
       1B000000000000000000000000000000000000000000000000000000000000
     }
   end
-  object CheckListBox2: TCheckListBox
+  object TargetCheckList: TCheckListBox
     Left = 144
     Height = 416
     Top = 40
@@ -83,13 +83,13 @@ object FrmMesclarProjetos: TFrmMesclarProjetos
       'Apocalipse'
     )
     ItemHeight = 15
-    OnClickCheck = CheckListBox2ClickCheck
+    OnClickCheck = TargetCheckListClickCheck
     TabOrder = 1
     Data = {
       1B000000000000000000000000000000000000000000000000000000000000
     }
   end
-  object Button1: TButton
+  object BtnMerge: TButton
     Left = 197
     Height = 25
     Top = 480
@@ -97,8 +97,8 @@ object FrmMesclarProjetos: TFrmMesclarProjetos
     Caption = 'Button1'
     TabOrder = 2
   end
-  object OpenDialog1: TOpenDialog
-    left = 304
-    top = 384
+  object OpenDialogSelectProject: TOpenDialog
+    Left = 304
+    Top = 384
   end
 end

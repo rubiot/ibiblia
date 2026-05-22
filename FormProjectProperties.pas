@@ -169,7 +169,7 @@ begin
   if OpenDialogSelectFile.Execute then
   begin
     Enabled := False;
-    ImportSucceeded := FProject.ImportarModuloTheWord(OpenDialogSelectFile.FileName,
+    ImportSucceeded := FProject.ImportTheWordModule(OpenDialogSelectFile.FileName,
       TTipoTextoBiblico(TabControlTextType.TabIndex), ProgressBarOperation, ReplaceExistingText);
     Enabled := True;
     ActionChangeTabExecute(nil);
@@ -187,7 +187,7 @@ begin
                 SClearTextConfirmationAssociation, SClearTextConfirmation);
   if MessageDlg(SClearText, Msg, mtConfirmation, [mbYes, mbCancel], 0) = mrYes then
   begin
-    FProject.LimparTexto(TTipoTextoBiblico(TabControlTextType.TabIndex));
+    FProject.ClearText(TTipoTextoBiblico(TabControlTextType.TabIndex));
     ActionChangeTabExecute(nil);
     FProject.RefreshUI;
   end;
