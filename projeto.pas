@@ -192,19 +192,19 @@ type
     function HasCustomStatus: boolean;
     procedure MigrateStoredAssociationsToTokenizerVersion(OldVersion, NewVersion: Integer);
   protected
-    function CriarObjetoTabela(db, tabela, chave: string): TSqlite3Dataset;
-    function CriarObjetoQuery(db: string): TSQLQuery;
-    function InserirInfo(info, valor: string): boolean;
-    function AtualizarInfo(info, valor: string): boolean;
-    function AtualizarConfig(table: TSqlite3Dataset; name, value: string): boolean;
-    function ResgatarInfo(info: string): string;
+    function CreateTableDataset(db, tableName, keyField: string): TSqlite3Dataset;
+    function CreateQueryObject(db: string): TSQLQuery;
+    function InsertInfo(info, value: string): boolean;
+    function UpdateInfo(info, value: string): boolean;
+    function UpdateConfigTable(table: TSqlite3Dataset; name, value: string): boolean;
+    function ReadInfo(info: string): string;
     procedure SetVerseText(versiculo: string; texto: TTipoTextoBiblico; replace: boolean);
-    procedure PreRolagemVersiculo(DataSet: TDataSet);
-    procedure PosRolagemVersiculo(DataSet: TDataSet);
-    procedure SalvarPares;
-    procedure SalvarTexto;
-    procedure SalvarAssociacoes;
-    procedure RemoverAssociacoes;
+    procedure BeforeVerseScroll(DataSet: TDataSet);
+    procedure AfterVerseScroll(DataSet: TDataSet);
+    procedure SavePairs;
+    procedure SaveText;
+    procedure SaveAssociations;
+    procedure RemoveAssociations;
     procedure SintagmaOnMouseEnter(Sender: TSyntagm);
     procedure SintagmaOnMouseLeave(Sender: TSyntagm);
     procedure SintagmaOnClick(Sender: TSyntagm);
@@ -257,7 +257,7 @@ type
     procedure RefreshUI;
     procedure ClearAssociations;
     procedure SaveProject;
-    procedure SalvarParesVersiculo(Verse: TVerse); // Save pairs from any verse object (public for AI flows)
+    procedure SaveVersePairs(Verse: TVerse); // Save pairs from any verse object (public for AI flows)
     procedure ApplyVerseText(const newText: string; texto: TTipoTextoBiblico; replace: Boolean);
     procedure SuggestAssociationStatistical;
     procedure SuggestAssociation;
@@ -745,7 +745,7 @@ begin
     FVerseRenderBuffer.SetTokenizerVersion(AValue);
 
   if Assigned(FTblPares) and FAtivo then
-    PosRolagemVersiculo(nil);
+    AfterVerseScroll(nil);
 end;
 
 procedure TProjeto.MigrateStoredAssociationsToTokenizerVersion(OldVersion,
@@ -1505,32 +1505,32 @@ begin
   Result := TInterlinearMode(FConfig.ReadInterlinearMode(Ord(imInterlinear)));
 end;
 
-function TProjeto.CriarObjetoTabela(db, tabela, chave: string): TSqlite3Dataset;
+function TProjeto.CreateTableDataset(db, tableName, keyField: string): TSqlite3Dataset;
 begin
-  Result := TProjectPersistence.CreateTableDataset(db, tabela, chave);
+  Result := TProjectPersistence.CreateTableDataset(db, tableName, keyField);
 end;
 
-function TProjeto.CriarObjetoQuery(db: string): TSQLQuery;
+function TProjeto.CreateQueryObject(db: string): TSQLQuery;
 begin
   Result := TProjectPersistence.CreateQueryObject(db);
 end;
 
-function TProjeto.InserirInfo(info, valor: string): boolean;
+function TProjeto.InsertInfo(info, value: string): boolean;
 begin
-  Result := FPersistence.InsertInfo(info, valor);
+  Result := FPersistence.InsertInfo(info, value);
 end;
 
-function TProjeto.AtualizarInfo(info, valor: string): boolean;
+function TProjeto.UpdateInfo(info, value: string): boolean;
 begin
-  Result := FPersistence.UpdateInfo(info, valor);
+  Result := FPersistence.UpdateInfo(info, value);
 end;
 
-function TProjeto.AtualizarConfig(table: TSqlite3Dataset; name, value: string): boolean;
+function TProjeto.UpdateConfigTable(table: TSqlite3Dataset; name, value: string): boolean;
 begin
   Result := TProjectPersistence.UpdateConfigTable(table, name, value);
 end;
 
-function TProjeto.ResgatarInfo(info: string): string;
+function TProjeto.ReadInfo(info: string): string;
 begin
   if Assigned(FPersistence) then
     Result := FPersistence.ReadInfo(info)
@@ -1558,7 +1558,7 @@ begin
   SetVerseText(newText, texto, replace);
 end;
 
-procedure TProjeto.PreRolagemVersiculo(DataSet: TDataSet);
+procedure TProjeto.BeforeVerseScroll(DataSet: TDataSet);
 //var starttime: DWord;
 begin
   if not FScrollEventsEnabled or not Assigned(FAVersiculo[tbOrigem]) then
@@ -1570,10 +1570,10 @@ begin
     FVerseMemo, FMemoComentarios, FAVersiculo, FACamposTexto,
     Ord(tbOrigem), Ord(tbDestino));
 
-  //DebugLn('  TProjeto.PreRolagemVersiculo: %d milliseconds', [getTickCount-starttime]);
+  //DebugLn('  TProjeto.BeforeVerseScroll: %d milliseconds', [getTickCount-starttime]);
 end;
 
-procedure TProjeto.PosRolagemVersiculo(DataSet: TDataSet);
+procedure TProjeto.AfterVerseScroll(DataSet: TDataSet);
 var
   e: TOnNovoVersiculoEvent;
   loadResult: TCurrentVerseLoadResult;
@@ -1633,12 +1633,12 @@ begin
   //DebugLn('  TProjeto.PosRolagemVersiculo: %d milliseconds', [getTickCount-starttime]);
 end;
 
-procedure TProjeto.SalvarPares;
+procedure TProjeto.SavePairs;
 begin
   FCurrentVerseWorkspace.SavePairs(FPersistence, FAVersiculo[tbOrigem]);
 end;
 
-procedure TProjeto.SalvarParesVersiculo(Verse: TVerse);
+procedure TProjeto.SaveVersePairs(Verse: TVerse);
 begin
   // Save pairs from a specific verse object (works for temp or visual verses)
   // Assumes database cursor is already positioned at the correct record
@@ -1646,18 +1646,18 @@ begin
   FPersistence.WriteCurrentPairs(Verse.Pares);
 end;
 
-procedure TProjeto.SalvarTexto;
+procedure TProjeto.SaveText;
 begin
   FCurrentVerseWorkspace.SaveTexts(FPersistence, FAVersiculo, FACamposTexto);
 end;
 
-procedure TProjeto.SalvarAssociacoes;
+procedure TProjeto.SaveAssociations;
 begin
   FCurrentVerseWorkspace.SaveAssociations(FSuggestionManager,
     FAVersiculo[tbOrigem], FAVersiculo[tbDestino]);
 end;
 
-procedure TProjeto.RemoverAssociacoes;
+procedure TProjeto.RemoveAssociations;
 begin
   FCurrentVerseWorkspace.RemoveOldAssociations(FSuggestionManager,
     FAVersiculo[tbOrigem], FAVersiculo[tbDestino]);
@@ -2514,8 +2514,8 @@ begin
     FRadioGroupSituacao.Enabled := true;
   end;
 
-  FTblPares.BeforeScroll := @PreRolagemVersiculo;
-  FTblPares.AfterScroll  := @PosRolagemVersiculo;
+  FTblPares.BeforeScroll := @BeforeVerseScroll;
+  FTblPares.AfterScroll  := @AfterVerseScroll;
   FArvore.OnChange       := @OnMudancaVersiculo;
   FArvore.OnContextPopup := @OnBibleTreeContextPopup;
   FArvore.PopupMenu := CreateBibleTreeContextMenu;
@@ -2543,7 +2543,7 @@ begin
     FArvore.Items.Clear;
   end;
 
-  PreRolagemVersiculo(nil);
+  BeforeVerseScroll(nil);
 
   if _Commit then
   begin
@@ -2665,7 +2665,7 @@ end;
 
 procedure TProjeto.RefreshUI;
 begin
-  PosRolagemVersiculo(FTblPares);
+  AfterVerseScroll(FTblPares);
 end;
 
 procedure TProjeto.ClearAssociations;
@@ -2673,8 +2673,8 @@ begin
   if assigned(FAVersiculo[tbOrigem]) then
   begin
     FAVersiculo[tbOrigem].LimparAssociacoes;
-    SalvarAssociacoes;
-    SalvarPares;
+    SaveAssociations;
+    SavePairs;
     if assigned(FRadioGroupSituacao) then
       FRadioGroupSituacao.ItemIndex := 0; // not associated
   end;
@@ -2684,7 +2684,7 @@ procedure TProjeto.SaveProject;
 var
   e: TOnNovoVersiculoEvent;
 begin
-  PreRolagemVersiculo(nil);
+  BeforeVerseScroll(nil);
   FConfig.WriteMarker(ID);
   Commit;
 
@@ -2778,7 +2778,7 @@ begin
         try
           AIDebugLog('[AI Single] Applying result...');
           flow.ApplyResult(parsed, v);
-          SalvarParesVersiculo(v);
+          SaveVersePairs(v);
           AIDebugLog('[AI Single] Result applied and saved.');
         finally
           parsed.Free;
@@ -2967,7 +2967,7 @@ begin
     end;
   finally
     FinishScrollingSession;
-    PosRolagemVersiculo(nil);
+    AfterVerseScroll(nil);
     FExportando := false;
     if assigned(pb) then
        pb.Visible := false;
@@ -3178,7 +3178,7 @@ begin
     Options.MarkReusedStrongs := oeStrongsReutilizados in opcoes;
     Options.MarkUntranslatedStrongs := oeStrongsNaoTraduzidos in opcoes;
     Options.ExportComments := oeExportarComentarios in opcoes;
-    Options.Properties := ResgatarInfo('propriedades.destino');
+    Options.Properties := ReadInfo('propriedades.destino');
     Options.ErrorDialogTitle := SError;
     Options.CorruptedDataMessage := SCorruptedData;
     Options.ExportToFileErrorMessage := SExportToFileError;
@@ -3188,7 +3188,7 @@ begin
       @StartScrollingSession, @FinishScrollingSession, @GetID);
   finally
     FExportando := false;
-    PosRolagemVersiculo(nil);
+    AfterVerseScroll(nil);
   end;
 end;
 
@@ -3218,7 +3218,7 @@ begin
   try
     FExportando := true;
 
-    Options.Properties := ResgatarInfo('propriedades.origem');
+    Options.Properties := ReadInfo('propriedades.origem');
     Options.ErrorDialogTitle := SError;
     Options.CorruptedDataMessage := SCorruptedData;
     Options.ExportToFileErrorMessage := SExportToFileError;
@@ -3230,7 +3230,7 @@ begin
     rulesRx.Free;
     replaceTo.Free;
     FExportando := false;
-    PosRolagemVersiculo(nil);
+    AfterVerseScroll(nil);
   end;
 end;
 
@@ -3263,7 +3263,7 @@ begin
       @StartScrollingSession, @FinishScrollingSession, @GetID);
   finally
     FExportando := false;
-    PosRolagemVersiculo(nil);
+    AfterVerseScroll(nil);
   end;
 end;
 
@@ -3508,7 +3508,7 @@ begin
     end;
   finally
     FinishScrollingSession;
-    PosRolagemVersiculo(nil);
+    AfterVerseScroll(nil);
   end;
 end;
 
@@ -3543,7 +3543,7 @@ end;
 procedure TProjeto.StartScrollingSession;
 begin
   FMarker := ID;
-  PreRolagemVersiculo(nil);
+  BeforeVerseScroll(nil);
   ScrollEventsEnabled := false;
   FExportando := True;
 end;
