@@ -21,6 +21,7 @@ type
   { TFrmPrincipal }
 
   TFrmPrincipal = class(TForm)
+  ActionKeyboardShortcuts: TAction;
   ActionLlmOptions: TAction;
     ActionUnregisterFileAssociation: TAction;
     ActionRegisterFileAssociation: TAction;
@@ -82,6 +83,7 @@ type
     MenuItemStrongsCountWords: TMenuItem;
     MenuItemStrongsCountStrongs: TMenuItem;
     MenuItemAbout: TMenuItem;
+    MenuItemKeyboardShortcuts: TMenuItem;
     MenuItemMouseHover: TMenuItem;
     MenuItem19: TMenuItem;
     MenuItem20: TMenuItem;
@@ -147,6 +149,7 @@ type
     procedure ActionExportarTextoInterlinearExecute(Sender: TObject);
     procedure ActionExportPatchExecute(Sender: TObject);
     procedure ActionFecharProjetoExecute(Sender: TObject);
+    procedure ActionKeyboardShortcutsExecute(Sender: TObject);
     procedure ActionLimparAssociacoesExecute(Sender: TObject);
     procedure ActionMesclarProjetosExecute(Sender: TObject);
     procedure ActionMostrarTagsExecute(Sender: TObject);
@@ -213,7 +216,10 @@ type
     procedure SyncToTwRef(Ref: string);
     procedure SetUpSyncThread;
     {$ENDIF}
+    procedure ApplyShortcutHints;
+    function BuildKeyboardShortcutsText: string;
     procedure Translate;
+    procedure UpdateActionHintWithShortcut(AAction: TCustomAction);
     procedure DoOpenProject(filename: string);
     procedure CheckFileAssociation;
   public
@@ -264,6 +270,33 @@ resourcestring
   SStatisticalSuggestionHint = 'Use the traditional statistical suggestion engine';
   SAISuggestionHint = 'Use the new AI-assisted suggestion engine (requires internet)';
   SLLMOptionsMenu = 'LLM options...';
+  SKeyboardShortcutsMenu = 'Keyboard shortcuts...';
+  SKeyboardShortcutsHint = 'Show keyboard shortcuts';
+  SKeyboardShortcutsTitle = 'Keyboard shortcuts';
+  SShortcutProjectSection = 'Project';
+  SShortcutNavigationSection = 'Navigation';
+  SShortcutEditingSection = 'Editing and review';
+  SShortcutHelpSection = 'Help';
+  SShortcutNewProject = 'New project';
+  SShortcutOpenProject = 'Open project';
+  SShortcutSaveProject = 'Save project';
+  SShortcutCloseProject = 'Close project';
+  SShortcutProjectSettings = 'Project settings';
+  SShortcutExportProject = 'Export project';
+  SShortcutPreviousVerse = 'Previous verse';
+  SShortcutNextVerse = 'Next verse';
+  SShortcutAutoAssociate = 'Auto-associate current verse';
+  SShortcutRollback = 'Rollback current verse';
+  SShortcutClearAssociations = 'Clear associations in current verse';
+  SShortcutToggleTags = 'Show or hide Strong''s and morphology tags';
+  SShortcutStatus1 = 'Set current verse status to Not associated';
+  SShortcutStatus2 = 'Set current verse status to Associating';
+  SShortcutStatus3 = 'Set current verse status to Needs review';
+  SShortcutStatus4 = 'Set current verse status to Associated';
+  SShortcutFinishEdit = 'Finish verse text editing';
+  SShortcutShowKeyboardShortcuts = 'Show this list';
+  SStatusCaptionWithShortcuts = 'Status (1-4)';
+  SStatusKeyboardHint = 'Use 1..4 to set the status for the current verse';
 
 implementation
 
@@ -366,6 +399,114 @@ begin
 end;
 
 { TFrmPrincipal }
+
+procedure TFrmPrincipal.UpdateActionHintWithShortcut(AAction: TCustomAction);
+var
+  BaseHint, ShortcutText, ShortcutSuffix: string;
+begin
+  if not Assigned(AAction) then
+    Exit;
+
+  ShortcutText := ShortCutToText(AAction.ShortCut);
+  BaseHint := AAction.Hint;
+  if BaseHint = '' then
+    BaseHint := AAction.Caption;
+
+  if ShortcutText <> '' then
+  begin
+    ShortcutSuffix := ' (' + ShortcutText + ')';
+    if (Length(BaseHint) >= Length(ShortcutSuffix)) and
+       (Copy(BaseHint, Length(BaseHint) - Length(ShortcutSuffix) + 1, Length(ShortcutSuffix)) = ShortcutSuffix) then
+      Delete(BaseHint, Length(BaseHint) - Length(ShortcutSuffix) + 1, Length(ShortcutSuffix));
+
+    AAction.Hint := Format('%s%s', [BaseHint, ShortcutSuffix]);
+  end
+  else
+    AAction.Hint := BaseHint;
+end;
+
+procedure TFrmPrincipal.ApplyShortcutHints;
+begin
+  UpdateActionHintWithShortcut(ActionNovoProjeto);
+  UpdateActionHintWithShortcut(ActionAbrirProjeto);
+  UpdateActionHintWithShortcut(ActionFecharProjeto);
+  UpdateActionHintWithShortcut(ActionPropProjeto);
+  UpdateActionHintWithShortcut(ActionSalvarProjeto);
+  UpdateActionHintWithShortcut(ActionExportar);
+  UpdateActionHintWithShortcut(ActionVersoAnterior);
+  UpdateActionHintWithShortcut(ActionVersoSeguinte);
+  UpdateActionHintWithShortcut(ActionSugerirAssociacao);
+  UpdateActionHintWithShortcut(ActionReverterAssociacoes);
+  UpdateActionHintWithShortcut(ActionLimparAssociacoes);
+
+  ActionMostrarTags.Hint := SShortcutToggleTags;
+  UpdateActionHintWithShortcut(ActionMostrarTags);
+
+  if Assigned(ActionKeyboardShortcuts) then
+    UpdateActionHintWithShortcut(ActionKeyboardShortcuts);
+
+  RadioGroupStatus.Caption := SStatusCaptionWithShortcuts;
+  RadioGroupStatus.Hint := SStatusKeyboardHint;
+  RadioGroupStatus.ShowHint := True;
+end;
+
+function TFrmPrincipal.BuildKeyboardShortcutsText: string;
+var
+  Lines: TStringList;
+
+  procedure AddSection(const ACaption: string);
+  begin
+    if Lines.Count > 0 then
+      Lines.Add('');
+    Lines.Add(ACaption);
+  end;
+
+  procedure AddShortcut(const AShortcut, ADescription: string);
+  begin
+    if AShortcut <> '' then
+      Lines.Add(Format('  %s - %s', [AShortcut, ADescription]));
+  end;
+
+  procedure AddActionShortcut(AAction: TCustomAction; const ADescription: string);
+  begin
+    if Assigned(AAction) then
+      AddShortcut(ShortCutToText(AAction.ShortCut), ADescription);
+  end;
+
+begin
+  Lines := TStringList.Create;
+  try
+    AddSection(SShortcutProjectSection);
+    AddActionShortcut(ActionNovoProjeto, SShortcutNewProject);
+    AddActionShortcut(ActionAbrirProjeto, SShortcutOpenProject);
+    AddActionShortcut(ActionSalvarProjeto, SShortcutSaveProject);
+    AddActionShortcut(ActionFecharProjeto, SShortcutCloseProject);
+    AddActionShortcut(ActionPropProjeto, SShortcutProjectSettings);
+    AddActionShortcut(ActionExportar, SShortcutExportProject);
+
+    AddSection(SShortcutNavigationSection);
+    AddActionShortcut(ActionVersoAnterior, SShortcutPreviousVerse);
+    AddActionShortcut(ActionVersoSeguinte, SShortcutNextVerse);
+
+    AddSection(SShortcutEditingSection);
+    AddActionShortcut(ActionLimparAssociacoes, SShortcutClearAssociations);
+    AddActionShortcut(ActionSugerirAssociacao, SShortcutAutoAssociate);
+    AddActionShortcut(ActionReverterAssociacoes, SShortcutRollback);
+    AddActionShortcut(ActionMostrarTags, SShortcutToggleTags);
+    AddShortcut('1', SShortcutStatus1);
+    AddShortcut('2', SShortcutStatus2);
+    AddShortcut('3', SShortcutStatus3);
+    AddShortcut('4', SShortcutStatus4);
+    AddShortcut('Esc', SShortcutFinishEdit);
+
+    AddSection(SShortcutHelpSection);
+    AddActionShortcut(ActionKeyboardShortcuts, SShortcutShowKeyboardShortcuts);
+
+    Result := Lines.Text;
+  finally
+    Lines.Free;
+  end;
+end;
 
 procedure TFrmPrincipal.ActionAbrirProjetoExecute(Sender: TObject);
 begin
@@ -524,6 +665,12 @@ begin
   //ActionExportarDestinoComStrongs.Enabled := false;
   //ActionExportarTextoInterlinear.Enabled := false;
   StatusBar1.SimpleText := '';
+end;
+
+procedure TFrmPrincipal.ActionKeyboardShortcutsExecute(Sender: TObject);
+begin
+  MessageDlg(SKeyboardShortcutsTitle, BuildKeyboardShortcutsText,
+    mtInformation, [mbOK], 0);
 end;
 
 procedure TFrmPrincipal.ActionLimparAssociacoesExecute(Sender: TObject);
@@ -948,6 +1095,17 @@ begin
     MenuItemLangEn.Checked:=true
   else if language = 'pt' then
     MenuItemLangPt.Checked:=true;
+
+  ActionKeyboardShortcuts := TAction.Create(ActionList1);
+  ActionKeyboardShortcuts.Caption := SKeyboardShortcutsMenu;
+  ActionKeyboardShortcuts.Hint := SKeyboardShortcutsHint;
+  ActionKeyboardShortcuts.ShortCut := ShortCut(VK_F1, []);
+  ActionKeyboardShortcuts.OnExecute := @ActionKeyboardShortcutsExecute;
+
+  MenuItemKeyboardShortcuts := TMenuItem.Create(MainMenu1);
+  MenuItemKeyboardShortcuts.Action := ActionKeyboardShortcuts;
+  MenuItem17.Insert(0, MenuItemKeyboardShortcuts);
+
   Translate;
 
   // Create runtime Action and MenuItem for LLM options
@@ -1027,10 +1185,16 @@ end;
 
 procedure TFrmPrincipal.FormKeyPress(Sender: TObject; var Key: char);
 begin
+  if (ActiveControl is TCustomEdit) or (ActiveControl is TCustomComboBox) then
+    Exit;
+
   case Key of
     '1', '2', '3', '4':
-      if assigned(ProjetoAtual) then
+      if assigned(ProjetoAtual) and RadioGroupStatus.Enabled then
+      begin
         RadioGroupStatus.ItemIndex := Ord(Key) - Ord('0') - 1;
+        Key := #0;
+      end;
   end;
 end;
 
@@ -1365,10 +1529,19 @@ end;
 procedure TFrmPrincipal.Translate;
 var i: Integer;
 begin
+  if Assigned(ActionKeyboardShortcuts) then
+  begin
+    ActionKeyboardShortcuts.Caption := SKeyboardShortcutsMenu;
+    ActionKeyboardShortcuts.Hint := SKeyboardShortcutsHint;
+  end;
+  if Assigned(ActionLlmOptions) then
+    ActionLlmOptions.Caption := SLLMOptionsMenu;
+
   ActionReverterAssociacoes.Caption := SRollbackCurrentVerse;
   ActionReverterAssociacoes.Hint := SRollbackCurrentVerseHint;
   ActionLimparAssociacoes.Caption := SClearCurrentVerseAssociations;
   ActionLimparAssociacoes.Hint := SClearCurrentVerseAssociationsHint;
+  ApplyShortcutHints;
 
   UpdateDefaultStatusDescription;
   with RadioGroupStatus.Items do
