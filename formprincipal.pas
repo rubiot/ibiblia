@@ -216,7 +216,7 @@ type
     FHeaderSelectionLabel: TLabel;
     FHeaderEngineLabel: TLabel;
     FHeaderModifiedLabel: TLabel;
-    FVersePanelLabels: array[tbOrigem..tbConsulta2] of TLabel;
+    FVersePanelLabels: array[tbOrigem..tbConsulta2] of TPanel;
     {$IFDEF WINDOWS}
     FRxMorpho: IRegex;
     syncTw2iBiblia: boolean;
@@ -229,7 +229,7 @@ type
     {$ENDIF}
     procedure ApplyShortcutHints;
     function BuildKeyboardShortcutsText: string;
-    function CreateVersePanelLabel(AParent: TWinControl): TLabel;
+    function CreateVersePanelLabel(AParent: TWinControl): TPanel;
     function CreateStateHeaderLabel(AParent: TWinControl; Bold: Boolean = False): TLabel;
     procedure CreateStateHeader;
     procedure CreateVersePanelLabels;
@@ -552,16 +552,15 @@ begin
   end;
 end;
 
-function TFrmPrincipal.CreateVersePanelLabel(AParent: TWinControl): TLabel;
+function TFrmPrincipal.CreateVersePanelLabel(AParent: TWinControl): TPanel;
 begin
-  Result := TLabel.Create(AParent);
+  Result := TPanel.Create(AParent);
   with Result do
   begin
     Parent := AParent;
-    AutoSize := False;
     Alignment := taCenter;
-    Layout := tlCenter;
-    Transparent := False;
+    BevelOuter := bvNone;
+    ParentColor := False;
     Color := clBtnFace;
     Font.Style := Font.Style + [fsBold];
     Font.Size := Max(6, Font.Size - 1);
@@ -714,7 +713,8 @@ var
 
   function CaptionWidth(ALabel: TLabel): Integer;
   begin
-    Result := FStateHeaderPanel.Canvas.TextWidth(ALabel.Caption) + 8;
+    FStateHeaderPanel.Canvas.Font.Assign(ALabel.Font);
+    Result := FStateHeaderPanel.Canvas.TextWidth(ALabel.Caption) + 16;
   end;
 
   procedure PlaceLabel(ALabel: TLabel; var ALeft: Integer; AMaxRight: Integer;
@@ -745,7 +745,7 @@ begin
   LineHeight := FStateHeaderPanel.Canvas.TextHeight('Hg') + 8;
   Y := Max(0, (FStateHeaderPanel.ClientHeight - LineHeight) div 2);
 
-  ModifiedWidth := CaptionWidth(FHeaderModifiedLabel) + 8;
+  ModifiedWidth := CaptionWidth(FHeaderModifiedLabel);
   FHeaderModifiedLabel.SetBounds(
     Max(Margin, FStateHeaderPanel.ClientWidth - ModifiedWidth - Margin),
     Y, ModifiedWidth, LineHeight);
@@ -753,7 +753,7 @@ begin
   MaxRight := FHeaderModifiedLabel.Left - Gap;
   X := Margin;
 
-  PlaceLabel(FHeaderReferenceLabel, X, MaxRight, True, 220);
+  PlaceLabel(FHeaderReferenceLabel, X, MaxRight, True, 260);
   PlaceLabel(FHeaderStatusLabel, X, MaxRight, False, 220);
   PlaceLabel(FHeaderAssociationsLabel, X, MaxRight, False, 190);
   PlaceLabel(FHeaderSelectionLabel, X, MaxRight, False, 210);
@@ -828,9 +828,10 @@ const
   LabelHeight = 17;
 var
   TextType: TTipoTextoBiblico;
-  LabelControl: TLabel;
+  LabelControl: TPanel;
   PanelControl: TControl;
   CaptionText: string;
+  LabelWidth: Integer;
 begin
   for TextType := tbOrigem to tbConsulta2 do
   begin
@@ -853,10 +854,12 @@ begin
     CaptionText := GetVersePanelCaption(TextType);
     LabelControl.Caption := CaptionText;
     LabelControl.Hint := CaptionText;
+    CenterPanel.Canvas.Font.Assign(LabelControl.Font);
+    LabelWidth := CenterPanel.Canvas.TextWidth(CaptionText) + 16;
     LabelControl.SetBounds(
-      PanelControl.Left + Margin,
-      PanelControl.Top + Margin,
-      CenterPanel.Canvas.TextWidth(CaptionText) + 14,
+      PanelControl.Left + Max(Margin, PanelControl.Width - LabelWidth - Margin),
+      PanelControl.Top + Max(Margin, PanelControl.Height - LabelHeight - Margin),
+      LabelWidth,
       LabelHeight);
     LabelControl.BringToFront;
   end;
