@@ -265,30 +265,6 @@ msgstr "O conteúdo deste patch é idêntico ao que você tem em seu projeto. O 
 msgid "Patch successfully applied"
 msgstr "Patch aplicado com sucesso"
 
-#: formexportar.sanalyticalconcordance
-msgid "AnalyticalConcordance"
-msgstr "ConcordanciaAnalitica"
-
-#: formexportar.smyswordmodule
-msgid "MySword Bible module (*.bbl.mybible)"
-msgstr "Módulo de Bíblia do MySword (*.bb.mybible)"
-
-#: formexportar.ssyntheticconcordance
-msgid "SyntheticConcordance"
-msgstr "ConcordanciaSintetica"
-
-#: formexportar.sthewordntmodule
-msgid "theWord Bible module (*.nt)"
-msgstr "Módulo de Bíblia do theWord (*.nt)"
-
-#: formexportar.sthewordontmodule
-msgid "theWord Bible module (*.ont)"
-msgstr "Módulos de Bíblia do theWord (*.ont)"
-
-#: formexportar.sthewordotmodule
-msgid "theWord Bible module (*.ot)"
-msgstr "Módulo de Bíblia do theWord (*.ot)"
-
 #: formllmoptions.rsadditionalinstructions
 msgid "Additional Instructions (Optional):"
 msgstr "Instruções adicionais (opcional):"
@@ -403,47 +379,62 @@ msgstr "Resultado do teste"
 msgid "Use flow-specific provider/model/API key"
 msgstr ""
 
-#: formnovoprojeto.schooseaname
+#: formnewproject.schooseaname
+#, fuzzy
+msgctxt "formnewproject.schooseaname"
 msgid "Please choose a name for your project"
 msgstr "Escolha um nome para o projeto"
 
-#: formnovoprojeto.schooseatleastonetext
+#: formnewproject.schooseatleastonetext
+#, fuzzy
+msgctxt "formnewproject.schooseatleastonetext"
 msgid "Please choose a source Bible text"
 msgstr "Escolha pelo menos um texto origem"
 
-#: formnovoprojeto.snewproject
+#: formnewproject.snewproject
+#, fuzzy
+msgctxt "formnewproject.snewproject"
 msgid "New project"
 msgstr "Novo projecto"
 
-#: formnovoprojeto.snewtestament
+#: formnewproject.snewtestament
+#, fuzzy
+msgctxt "formnewproject.snewtestament"
 msgid "New Testament"
 msgstr "Novo Testamento"
 
-#: formnovoprojeto.snewtestamentfilter
-msgctxt "formnovoprojeto.snewtestamentfilter"
+#: formnewproject.snewtestamentfilter
+#, fuzzy
+msgctxt "formnewproject.snewtestamentfilter"
 msgid "theWord Bible modules (*.ont, *.nt)|*.ont;*.nt"
 msgstr "Módulos de Bíblia do theWord (*.ont, *.nt)|*.ont;*.nt"
 
-#: formnovoprojeto.soldtestament
+#: formnewproject.soldtestament
+#, fuzzy
+msgctxt "formnewproject.soldtestament"
 msgid "Old Testament"
 msgstr "Velho Testamento"
 
-#: formnovoprojeto.soldtestamentfilter
-msgctxt "formnovoprojeto.soldtestamentfilter"
+#: formnewproject.soldtestamentfilter
+#, fuzzy
+msgctxt "formnewproject.soldtestamentfilter"
 msgid "theWord Bible modules (*.ont, *.ot)|*.ont;*.ot"
 msgstr "Módulos de Bíblia do theWord (*.ont, *.ot)|*.ont;*.ot"
 
-#: formnovoprojeto.stokenizerversion
-msgctxt "formnovoprojeto.stokenizerversion"
+#: formnewproject.stokenizerversion
+msgctxt "formnewproject.stokenizerversion"
 msgid "Tokenizer version"
 msgstr ""
 
-#: formnovoprojeto.swholebible
+#: formnewproject.swholebible
+#, fuzzy
+msgctxt "formnewproject.swholebible"
 msgid "Whole Bible"
 msgstr "Bíblia completa"
 
-#: formnovoprojeto.swholebiblefilter
-msgctxt "formnovoprojeto.swholebiblefilter"
+#: formnewproject.swholebiblefilter
+#, fuzzy
+msgctxt "formnewproject.swholebiblefilter"
 msgid "theWord Bible modules (*.ont, *.ot, *.nt)|*.ont;*.ot;*.nt"
 msgstr "Módulos de Bíblia do theWord (*.ont, *.ot, *.nt)|*.ont;*.ot;*.nt"
 
@@ -468,6 +459,10 @@ msgstr "modificado"
 #: formprincipal.scloseproject
 msgid "Close project"
 msgstr "Fechar projeto"
+
+#: formprincipal.screatingprojectprogress
+msgid "Creating project..."
+msgstr ""
 
 #: formprincipal.sdestination
 msgid "destination"
@@ -504,14 +499,34 @@ msgstr ""
 msgid "Tokens: unavailable"
 msgstr ""
 
+#: formprincipal.sloadingdestinationtextprogress
+msgid "Loading destination text..."
+msgstr ""
+
 #: formprincipal.sloadingfile
 #, object-pascal-format
 msgid "Loading %s..."
 msgstr "Carregando %s..."
 
+#: formprincipal.sloadingreference1textprogress
+msgid "Loading reference 1 text..."
+msgstr ""
+
+#: formprincipal.sloadingreference2textprogress
+msgid "Loading reference 2 text..."
+msgstr ""
+
+#: formprincipal.sloadingsourcetextprogress
+msgid "Loading source text..."
+msgstr ""
+
 #: formprincipal.snewassociationproject
 msgid "New association project"
 msgstr "Novo projeto de associação"
+
+#: formprincipal.snewprojectprogresstitle
+msgid "Creating project"
+msgstr ""
 
 #: formprincipal.sopenproject
 msgctxt "formprincipal.sopenproject"
@@ -526,6 +541,14 @@ msgid ""
 msgstr ""
 "O arquivo de projeto selecionado não existe:\n"
 "%s"
+
+#: formprincipal.srebuildassociationmemoryprogress
+msgid "Recreating association memory..."
+msgstr ""
+
+#: formprincipal.srebuildassociationmemorytitle
+msgid "Association memory"
+msgstr ""
 
 #: formprincipal.sreference1
 msgid "reference 1"
@@ -601,11 +624,78 @@ msgstr "Falha ao remover associação com arquivo .bib"
 msgid "Successfully removed file association for .bib files"
 msgstr "Sucesso ao remover a associação com arquivos .bib"
 
-#: formpropprojeto.schangetextconfirmation
+#: formprojectexport.sanalyticalconcordance
+#, fuzzy
+msgctxt "formprojectexport.sanalyticalconcordance"
+msgid "AnalyticalConcordance"
+msgstr "ConcordanciaAnalitica"
+
+#: formprojectexport.sexportconcordanceprogress
+msgid "Exporting concordance..."
+msgstr ""
+
+#: formprojectexport.sexportconcordancetitle
+msgctxt "formprojectexport.sexportconcordancetitle"
+msgid "Export project"
+msgstr ""
+
+#: formprojectexport.sexportinterlinearprogress
+msgid "Exporting interlinear source text..."
+msgstr ""
+
+#: formprojectexport.sexportinterlineartitle
+msgctxt "formprojectexport.sexportinterlineartitle"
+msgid "Export project"
+msgstr ""
+
+#: formprojectexport.sexporttaggeddestinationprogress
+msgid "Exporting tagged destination text..."
+msgstr ""
+
+#: formprojectexport.sexporttaggeddestinationtitle
+msgctxt "formprojectexport.sexporttaggeddestinationtitle"
+msgid "Export project"
+msgstr ""
+
+#: formprojectexport.smyswordmodule
+#, fuzzy
+msgctxt "formprojectexport.smyswordmodule"
+msgid "MySword Bible module (*.bbl.mybible)"
+msgstr "Módulo de Bíblia do MySword (*.bb.mybible)"
+
+#: formprojectexport.ssyntheticconcordance
+#, fuzzy
+msgctxt "formprojectexport.ssyntheticconcordance"
+msgid "SyntheticConcordance"
+msgstr "ConcordanciaSintetica"
+
+#: formprojectexport.sthewordntmodule
+#, fuzzy
+msgctxt "formprojectexport.sthewordntmodule"
+msgid "theWord Bible module (*.nt)"
+msgstr "Módulo de Bíblia do theWord (*.nt)"
+
+#: formprojectexport.sthewordontmodule
+#, fuzzy
+msgctxt "formprojectexport.sthewordontmodule"
+msgid "theWord Bible module (*.ont)"
+msgstr "Módulos de Bíblia do theWord (*.ont)"
+
+#: formprojectexport.sthewordotmodule
+#, fuzzy
+msgctxt "formprojectexport.sthewordotmodule"
+msgid "theWord Bible module (*.ot)"
+msgstr "Módulo de Bíblia do theWord (*.ot)"
+
+#: formprojectproperties.schangetextconfirmation
+#, fuzzy
+msgctxt "formprojectproperties.schangetextconfirmation"
 msgid "Are you sure you want to replace this Bible text with a new one?"
 msgstr "Tem certeza de que quer substituir o texto atual por outro?"
 
-#: formpropprojeto.schangetextconfirmationassociation
+#: formprojectproperties.schangetextconfirmationassociation
+#, fuzzy
+msgctxt "formprojectproperties.schangetextconfirmationassociation"
 msgid ""
 "Loading a new Bible text will cause all your existing associations to be discarded. But, if you click 'Yes', iBiblia can try to keep existing associations for you.\n"
 "\n"
@@ -615,36 +705,49 @@ msgstr ""
 "\n"
 "Você gostaria que o iBiblia fizesse isso?"
 
-#: formpropprojeto.schangetokenizeranyway
+#: formprojectproperties.schangetokenizeranyway
+msgctxt "formprojectproperties.schangetokenizeranyway"
 msgid "Change anyway"
 msgstr ""
 
-#: formpropprojeto.schooseabiblemodule
+#: formprojectproperties.schooseabiblemodule
+#, fuzzy
+msgctxt "formprojectproperties.schooseabiblemodule"
 msgid "Please choose a theWord Bible module file..."
 msgstr "Escolha um módulo do theWord..."
 
-#: formpropprojeto.schooseanothertext
+#: formprojectproperties.schooseanothertext
+#, fuzzy
+msgctxt "formprojectproperties.schooseanothertext"
 msgid "Replace text"
 msgstr "Trocar texto"
 
-#: formpropprojeto.schoosedictionary
-msgctxt "formpropprojeto.schoosedictionary"
+#: formprojectproperties.schoosedictionary
+#, fuzzy
+msgctxt "formprojectproperties.schoosedictionary"
 msgid "Choose"
 msgstr "Selecionar"
 
-#: formpropprojeto.sclearassociationsandchange
+#: formprojectproperties.sclearassociationsandchange
+msgctxt "formprojectproperties.sclearassociationsandchange"
 msgid "Clear associations"
 msgstr ""
 
-#: formpropprojeto.scleartext
+#: formprojectproperties.scleartext
+#, fuzzy
+msgctxt "formprojectproperties.scleartext"
 msgid "Clear Bible text"
 msgstr "Limpar texto"
 
-#: formpropprojeto.scleartextconfirmation
+#: formprojectproperties.scleartextconfirmation
+#, fuzzy
+msgctxt "formprojectproperties.scleartextconfirmation"
 msgid "Are you sure you want to clear this Bible text?"
 msgstr "Tem certeza de que deseja limpar este texto?"
 
-#: formpropprojeto.scleartextconfirmationassociation
+#: formprojectproperties.scleartextconfirmationassociation
+#, fuzzy
+msgctxt "formprojectproperties.scleartextconfirmationassociation"
 msgid ""
 "Are you sure you want to clear this Bible text?\n"
 "All your associations will be lost!"
@@ -652,62 +755,78 @@ msgstr ""
 "Tem certeza de que quer limpar este texto?\n"
 "Todas as suas associações serão perdidas!"
 
-#: formpropprojeto.sdestinationtab
-msgctxt "formpropprojeto.sdestinationtab"
+#: formprojectproperties.sdestinationtab
+#, fuzzy
+msgctxt "formprojectproperties.sdestinationtab"
 msgid "Destination"
 msgstr "Destino"
 
-#: formpropprojeto.sdictionaryfilter
+#: formprojectproperties.sdictionaryfilter
+#, fuzzy
+msgctxt "formprojectproperties.sdictionaryfilter"
 msgid "theWord dictionary modules (*.dct.twm)|*.dct.twm|All files|*.*"
 msgstr "Dicionários do theWord (*.dct.twm)|*.dct.twm|Todos os arquivos|*.*"
 
-#: formpropprojeto.skeepcurrenttokenizer
+#: formprojectproperties.skeepcurrenttokenizer
+msgctxt "formprojectproperties.skeepcurrenttokenizer"
 msgid "Keep current version"
 msgstr ""
 
-#: formpropprojeto.snewtestamentfilter
-msgctxt "formpropprojeto.snewtestamentfilter"
+#: formprojectproperties.snewtestamentfilter
+#, fuzzy
+msgctxt "formprojectproperties.snewtestamentfilter"
 msgid "theWord Bible modules (*.ont, *.nt)|*.ont;*.nt"
 msgstr "Módulos de Bíblia do theWord (*.ont, *.nt)|*.ont;*.nt"
 
-#: formpropprojeto.snewtextimportedsuccessfully
+#: formprojectproperties.snewtextimportedsuccessfully
+#, fuzzy
+msgctxt "formprojectproperties.snewtextimportedsuccessfully"
 msgid "New text imported successfully"
 msgstr "Novo texto importado com sucesso"
 
-#: formpropprojeto.soldtestamentfilter
-msgctxt "formpropprojeto.soldtestamentfilter"
+#: formprojectproperties.soldtestamentfilter
+#, fuzzy
+msgctxt "formprojectproperties.soldtestamentfilter"
 msgid "theWord Bible modules (*.ont, *.ot)|*.ont;*.ot"
 msgstr "Módulos de Bíblia do theWord (*.ont, *.ot)|*.ont;*.ot"
 
-#: formpropprojeto.sopendictionary
+#: formprojectproperties.sopendictionary
+#, fuzzy
+msgctxt "formprojectproperties.sopendictionary"
 msgid "Please choose an unencrypted theWord dictionary module..."
 msgstr "Escolha um módulo de dicionário não-criptografado do theWord..."
 
-#: formpropprojeto.sreference1tab
-msgctxt "formpropprojeto.sreference1tab"
+#: formprojectproperties.sreference1tab
+#, fuzzy
+msgctxt "formprojectproperties.sreference1tab"
 msgid "Reference 1"
 msgstr "Referência 1"
 
-#: formpropprojeto.sreference2tab
-msgctxt "formpropprojeto.sreference2tab"
+#: formprojectproperties.sreference2tab
+#, fuzzy
+msgctxt "formprojectproperties.sreference2tab"
 msgid "Reference 2"
 msgstr "Referência 2"
 
-#: formpropprojeto.ssetdictionary
+#: formprojectproperties.ssetdictionary
+#, fuzzy
+msgctxt "formprojectproperties.ssetdictionary"
 msgid "Set"
 msgstr "Atribuir"
 
-#: formpropprojeto.ssourcetab
-msgctxt "formpropprojeto.ssourcetab"
+#: formprojectproperties.ssourcetab
+#, fuzzy
+msgctxt "formprojectproperties.ssourcetab"
 msgid "Source"
 msgstr "Origem"
 
-#: formpropprojeto.stokenizerversion
-msgctxt "formpropprojeto.stokenizerversion"
+#: formprojectproperties.stokenizerversion
+msgctxt "formprojectproperties.stokenizerversion"
 msgid "Tokenizer version"
 msgstr ""
 
-#: formpropprojeto.stokenizerversionchangeconfirmation
+#: formprojectproperties.stokenizerversionchangeconfirmation
+msgctxt "formprojectproperties.stokenizerversionchangeconfirmation"
 msgid ""
 "Changing the tokenizer version may invalidate your existing associations.\n"
 "\n"
@@ -717,22 +836,16 @@ msgid ""
 "Cancel: keep the current tokenizer version."
 msgstr ""
 
-#: formpropprojeto.stokenizerversionchangetitle
+#: formprojectproperties.stokenizerversionchangetitle
+msgctxt "formprojectproperties.stokenizerversionchangetitle"
 msgid "Change tokenizer version"
 msgstr ""
 
-#: formpropprojeto.swholebiblefilter
-msgctxt "formpropprojeto.swholebiblefilter"
+#: formprojectproperties.swholebiblefilter
+#, fuzzy
+msgctxt "formprojectproperties.swholebiblefilter"
 msgid "theWord Bible modules (*.ont, *.ot, *.nt)|*.ont;*.ot;*.nt"
 msgstr "Módulos de Bíblia do theWord (*.ont, *.ot, *.nt)|*.ont;*.ot;*.nt"
-
-#: memoversiculo.schangeverse
-msgid "Change verse text?"
-msgstr "Alterar o texto do versículo?"
-
-#: memoversiculo.schangeverseconfirmation
-msgid "Are you sure you want to change the verse text? Some associations may be lost."
-msgstr "Tem certeza de que quer alterar o texto deste versículo? Algumas alterações podem ser perdidas."
 
 #: myswordmodule.screatemyswordbibleerror
 msgid "Unable to create new MySword module file"
@@ -763,145 +876,210 @@ msgstr ""
 msgid "Version %d"
 msgstr ""
 
-#: projeto.s1chronicles
+#: project.s1chronicles
+#, fuzzy
+msgctxt "project.s1chronicles"
 msgid "1 Chronicles"
 msgstr "1 Crônicas"
 
-#: projeto.s1corinthians
+#: project.s1corinthians
+#, fuzzy
+msgctxt "project.s1corinthians"
 msgid "1 Corinthians"
 msgstr "1 Coríntios"
 
-#: projeto.s1john
+#: project.s1john
+#, fuzzy
+msgctxt "project.s1john"
 msgid "1 John"
 msgstr "1 João"
 
-#: projeto.s1kings
+#: project.s1kings
+#, fuzzy
+msgctxt "project.s1kings"
 msgid "1 Kings"
 msgstr "1 Reis"
 
-#: projeto.s1peter
+#: project.s1peter
+#, fuzzy
+msgctxt "project.s1peter"
 msgid "1 Peter"
 msgstr "1 Pedro"
 
-#: projeto.s1samuel
+#: project.s1samuel
+#, fuzzy
+msgctxt "project.s1samuel"
 msgid "1 Samuel"
 msgstr "1 Samuel"
 
-#: projeto.s1thessalonians
+#: project.s1thessalonians
+#, fuzzy
+msgctxt "project.s1thessalonians"
 msgid "1 Thessalonians"
 msgstr "1 Tessalonicenses"
 
-#: projeto.s1timothy
+#: project.s1timothy
+#, fuzzy
+msgctxt "project.s1timothy"
 msgid "1 Timothy"
 msgstr "1 Timóteo"
 
-#: projeto.s2chronicles
+#: project.s2chronicles
+#, fuzzy
+msgctxt "project.s2chronicles"
 msgid "2 Chronicles"
 msgstr "2 Crônicas"
 
-#: projeto.s2corinthians
+#: project.s2corinthians
+#, fuzzy
+msgctxt "project.s2corinthians"
 msgid "2 Corinthians"
 msgstr "2 Coríntios"
 
-#: projeto.s2john
+#: project.s2john
+#, fuzzy
+msgctxt "project.s2john"
 msgid "2 John"
 msgstr "2 João"
 
-#: projeto.s2kings
+#: project.s2kings
+#, fuzzy
+msgctxt "project.s2kings"
 msgid "2 Kings"
 msgstr "2 Reis"
 
-#: projeto.s2peter
+#: project.s2peter
+#, fuzzy
+msgctxt "project.s2peter"
 msgid "2 Peter"
 msgstr "2 Pedro"
 
-#: projeto.s2samuel
+#: project.s2samuel
+#, fuzzy
+msgctxt "project.s2samuel"
 msgid "2 Samuel"
 msgstr "2 Samuel"
 
-#: projeto.s2thessalonians
+#: project.s2thessalonians
+#, fuzzy
+msgctxt "project.s2thessalonians"
 msgid "2 Thessalonians"
 msgstr "2 Tessalonicenses"
 
-#: projeto.s2timothy
+#: project.s2timothy
+#, fuzzy
+msgctxt "project.s2timothy"
 msgid "2 Timothy"
 msgstr "2 Timóteo"
 
-#: projeto.s3john
+#: project.s3john
+#, fuzzy
+msgctxt "project.s3john"
 msgid "3 John"
 msgstr "3 João"
 
-#: projeto.sacts
+#: project.sacts
+#, fuzzy
+msgctxt "project.sacts"
 msgid "Acts"
 msgstr "Atos dos apóstolos"
 
-#: projeto.samos
+#: project.samos
+#, fuzzy
+msgctxt "project.samos"
 msgid "Amos"
 msgstr "Amós"
 
-#: projeto.sanalyticalconcordance
+#: project.sanalyticalconcordance
+#, fuzzy
+msgctxt "project.sanalyticalconcordance"
 msgid "Anaytical Concordance"
 msgstr "Concordância Analítica"
 
-#: projeto.sanalyzingverse
-msgctxt "projeto.sanalyzingverse"
+#: project.sanalyzingverse
+#, fuzzy
+msgctxt "project.sanalyzingverse"
 msgid "Analyzing verse..."
 msgstr "Analisando versículo..."
 
-#: projeto.sapplyaito
+#: project.sapplyaito
+#, fuzzy
+msgctxt "project.sapplyaito"
 msgid "Apply AI flow to..."
 msgstr "Aplicar fluxo de IA a..."
 
-#: projeto.sapplyaitofmt
-#, object-pascal-format
+#: project.sapplyaitofmt
+#, object-pascal-format, fuzzy
+msgctxt "project.sapplyaitofmt"
 msgid "Apply AI flow to %s"
 msgstr "Aplicar fluxo de IA a %s"
 
-#: projeto.sassociate
+#: project.sassociate
+#, fuzzy
+msgctxt "project.sassociate"
 msgid "Associate"
 msgstr "Associar"
 
-#: projeto.sassociation
-msgctxt "projeto.sassociation"
+#: project.sassociation
+#, fuzzy
+msgctxt "project.sassociation"
 msgid "Association"
 msgstr "Associação"
 
-#: projeto.sassociationexamplerequiresassociations
+#: project.sassociationexamplerequiresassociations
+msgctxt "project.sassociationexamplerequiresassociations"
 msgid "Association examples require existing associations in the current verse."
 msgstr ""
 
-#: projeto.sassociationexamplerequirespair
+#: project.sassociationexamplerequirespair
+msgctxt "project.sassociationexamplerequirespair"
 msgid "Association examples require an active source verse paired with a destination verse."
 msgstr ""
 
-#: projeto.scancelaiprocessing
+#: project.scancelaiprocessing
+#, fuzzy
+msgctxt "project.scancelaiprocessing"
 msgid "Cancel AI processing"
 msgstr "Cancelar processamento IA"
 
-#: projeto.scolossians
+#: project.scolossians
+#, fuzzy
+msgctxt "project.scolossians"
 msgid "Colossians"
 msgstr "Colossenses"
 
-#: projeto.scompresseddictionary
+#: project.scompresseddictionary
+#, fuzzy
+msgctxt "project.scompresseddictionary"
 msgid "Compressed dictionary"
 msgstr "Dicionário compactado"
 
-#: projeto.sconfirmapplyaitobook
-#, object-pascal-format
+#: project.sconfirmapplyaitobook
+#, object-pascal-format, fuzzy
+msgctxt "project.sconfirmapplyaitobook"
 msgid "Are you sure you want to apply the AI flow to the entire book %s?"
 msgstr "Tem certeza de que deseja aplicar o fluxo de IA a todo o livro de %s?"
 
-#: projeto.sconfirmapplyaitochapter
-#, object-pascal-format
+#: project.sconfirmapplyaitochapter
+#, object-pascal-format, fuzzy
+msgctxt "project.sconfirmapplyaitochapter"
 msgid "Are you sure you want to apply the AI flow to chapter %s?"
 msgstr "Tem certeza de que deseja aplicar o fluxo de IA a todo o capítulo %s?"
 
-#: projeto.sconfirmation
-msgctxt "projeto.sconfirmation"
+#: project.sconfirmation
+#, fuzzy
+msgctxt "project.sconfirmation"
 msgid "Confirmation"
 msgstr "Confirmação"
 
-#: projeto.scorrupteddata
+#: project.scopyassociationexample
+msgctxt "project.scopyassociationexample"
+msgid "Copy association example for AI instructions"
+msgstr ""
+
+#: project.scorrupteddata
+#, fuzzy
+msgctxt "project.scorrupteddata"
 msgid ""
 "Corrupted data, some associations may be lost.This can happen for several reasons:\n"
 " 1. The project file was modified outside iBiblia\n"
@@ -915,41 +1093,57 @@ msgstr ""
 "2. O projeto foi criado/editado em uma versão incompatível do iBiblia\n"
 "3. Pode ser um bug no iBiblia. Nesse caso, abra um bug na página do projeto no GitHub (https://github.com/rubiot/ibiblia)."
 
-#: projeto.sdaniel
+#: project.sdaniel
+#, fuzzy
+msgctxt "project.sdaniel"
 msgid "Daniel"
 msgstr "Daniel"
 
-#: projeto.sdeuteronomy
+#: project.sdeuteronomy
+#, fuzzy
+msgctxt "project.sdeuteronomy"
 msgid "Deuteronomy"
 msgstr "Deuteronômio"
 
-#: projeto.sdictionarydoesntexist
-#, object-pascal-format
+#: project.sdictionarydoesntexist
+#, object-pascal-format, fuzzy
+msgctxt "project.sdictionarydoesntexist"
 msgid "The selected dictionary doesn't exist: %s"
 msgstr "O dicionário selecionado não existe: %s"
 
-#: projeto.secclesiastes
+#: project.secclesiastes
+#, fuzzy
+msgctxt "project.secclesiastes"
 msgid "Ecclesiastes"
 msgstr "Eclesiastes"
 
-#: projeto.sencrypteddictionary
+#: project.sencrypteddictionary
+#, fuzzy
+msgctxt "project.sencrypteddictionary"
 msgid "Encrypted dictionary"
 msgstr "Dicionário criptografado"
 
-#: projeto.sephesians
+#: project.sephesians
+#, fuzzy
+msgctxt "project.sephesians"
 msgid "Ephesians"
 msgstr "Efésios"
 
-#: projeto.serror
+#: project.serror
+#, fuzzy
+msgctxt "project.serror"
 msgid "Error"
 msgstr "Erro"
 
-#: projeto.sesther
+#: project.sesther
+#, fuzzy
+msgctxt "project.sesther"
 msgid "Esther"
 msgstr "Ester"
 
-#: projeto.sexamplealreadyexistsprompt
+#: project.sexamplealreadyexistsprompt
 #, object-pascal-format
+msgctxt "project.sexamplealreadyexistsprompt"
 msgid ""
 "This verse is already saved as an example for the %s flow.\n"
 "\n"
@@ -958,73 +1152,103 @@ msgid ""
 "Do you want to replace it with the current verse state?"
 msgstr ""
 
-#: projeto.sexamplealreadyexiststitle
+#: project.sexamplealreadyexiststitle
+msgctxt "project.sexamplealreadyexiststitle"
 msgid "Example already exists"
 msgstr ""
 
-#: projeto.sexamplesaved
+#: project.sexamplesaved
+msgctxt "project.sexamplesaved"
 msgid "Example saved."
 msgstr ""
 
-#: projeto.sexodus
+#: project.sexodus
+#, fuzzy
+msgctxt "project.sexodus"
 msgid "Exodus"
 msgstr "Êxodo"
 
-#: projeto.sexporttextsavedlgtitle
+#: project.sexporttextsavedlgtitle
+#, fuzzy
+msgctxt "project.sexporttextsavedlgtitle"
 msgid "Please choose a destination file"
 msgstr "Escolha o arquivo de destino"
 
-#: projeto.sexporttofileerror
+#: project.sexporttofileerror
+#, fuzzy
+msgctxt "project.sexporttofileerror"
 msgid "iBiblia found an error while exporting the Bible module file."
 msgstr "iBiblia encontrou um erro ao salvar o módulo."
 
-#: projeto.sezekiel
+#: project.sezekiel
+#, fuzzy
+msgctxt "project.sezekiel"
 msgid "Ezekiel"
 msgstr "Ezequiel"
 
-#: projeto.sezra
+#: project.sezra
+#, fuzzy
+msgctxt "project.sezra"
 msgid "Ezra"
 msgstr "Esdras"
 
-#: projeto.sfailedtocreatefile
-#, object-pascal-format
+#: project.sfailedtocreatefile
+#, object-pascal-format, fuzzy
+msgctxt "project.sfailedtocreatefile"
 msgid "Failed to create file: %s"
 msgstr "Falha ao criar arquivo: %s"
 
-#: projeto.sgalatians
+#: project.sgalatians
+#, fuzzy
+msgctxt "project.sgalatians"
 msgid "Galatians"
 msgstr "Gálatas"
 
-#: projeto.sgenesis
+#: project.sgenesis
+#, fuzzy
+msgctxt "project.sgenesis"
 msgid "Genesis"
 msgstr "Gênesis"
 
-#: projeto.shabakkuk
+#: project.shabakkuk
+#, fuzzy
+msgctxt "project.shabakkuk"
 msgid "Habakkuk"
 msgstr "Habacuque"
 
-#: projeto.shaggai
+#: project.shaggai
+#, fuzzy
+msgctxt "project.shaggai"
 msgid "Haggai"
 msgstr "Ageu"
 
-#: projeto.shebrew
+#: project.shebrew
+#, fuzzy
+msgctxt "project.shebrew"
 msgid "Hebrews"
 msgstr "Hebreus"
 
-#: projeto.shosea
+#: project.shosea
+#, fuzzy
+msgctxt "project.shosea"
 msgid "Hosea"
 msgstr "Oseias"
 
-#: projeto.sibibliapatchfiles
+#: project.sibibliapatchfiles
+#, fuzzy
+msgctxt "project.sibibliapatchfiles"
 msgid "iBiblia patch files"
 msgstr "Patches do iBiblia"
 
-#: projeto.sinformation
-msgctxt "projeto.sinformation"
+#: project.sinformation
+#, fuzzy
+msgctxt "project.sinformation"
 msgid "Information"
 msgstr "Informação"
 
-#: projeto.sinterlinearverserulereplaceerror
+#: project.sinterlinearverserulereplaceerror
+#, fuzzy
+msgctxt "project.sinterlinearverserulereplaceerror"
 msgid ""
 "There is something wrong with one of your interlinear verse rules.\n"
 "Please review them."
@@ -1032,7 +1256,9 @@ msgstr ""
 "Há um problema com pelo menos uma de suas verse rules.\n"
 "Por favor, revise-as."
 
-#: projeto.sinvalidcompresseddictionary
+#: project.sinvalidcompresseddictionary
+#, fuzzy
+msgctxt "project.sinvalidcompresseddictionary"
 msgid ""
 "iBiblia does not suppport compressed dictionaries yet.\n"
 "Please choose an uncompressed module."
@@ -1040,7 +1266,9 @@ msgstr ""
 "O iBiblia ainda não suporta dicionários compactados.\n"
 "Por favor, escolha um módulo sem compactação."
 
-#: projeto.sinvalidencrypteddictionary
+#: project.sinvalidencrypteddictionary
+#, fuzzy
+msgctxt "project.sinvalidencrypteddictionary"
 msgid ""
 "iBiblia does not and will not support encrypted modules.\n"
 "Please choose an unencrypted module."
@@ -1048,8 +1276,9 @@ msgstr ""
 "O iBiblia não suporta (e nem suportará) módulos criptografados.\n"
 "Por favor, escolha um módulo sem criptografia."
 
-#: projeto.sinvalidinterlinearverserule
-#, object-pascal-format
+#: project.sinvalidinterlinearverserule
+#, object-pascal-format, fuzzy
+msgctxt "project.sinvalidinterlinearverserule"
 msgid ""
 "There is something wrong with your interlinear verse rule.\n"
 "[%s]"
@@ -1057,16 +1286,21 @@ msgstr ""
 "Há um problema com sua verse rule.\n"
 "[%s]"
 
-#: projeto.sinvalidlinecount
-#, object-pascal-format
+#: project.sinvalidlinecount
+#, object-pascal-format, fuzzy
+msgctxt "project.sinvalidlinecount"
 msgid "Invalid file, it must have at least %d lines"
 msgstr "Arquivo inválido, ele precisa ter ao menos %d linhas"
 
-#: projeto.sinvalidmoduletype
+#: project.sinvalidmoduletype
+#, fuzzy
+msgctxt "project.sinvalidmoduletype"
 msgid "Unknown module extension. Please choose a valid theWord Bible module (.ot, .ont or .nt)"
 msgstr "Módulo com extensão desconhecida. Por favor, escolha um módulo válido do theWord (.ot, .ont ou .nt)"
 
-#: projeto.sinvalidmorphologydictionary
+#: project.sinvalidmorphologydictionary
+#, fuzzy
+msgctxt "project.sinvalidmorphologydictionary"
 msgid ""
 "This is not a morphology dictionary.\n"
 "Please choose a valid morphology dictionary."
@@ -1074,7 +1308,9 @@ msgstr ""
 "Este não é um dicionário de morfologia.\n"
 "Por favor, escolha um dicionário de morfologia válido."
 
-#: projeto.sinvalidnonrtfdictionary
+#: project.sinvalidnonrtfdictionary
+#, fuzzy
+msgctxt "project.sinvalidnonrtfdictionary"
 msgid ""
 "iBiblia only suppports RTF modules.\n"
 "Please choose another module or convert this module to RTF in theWord."
@@ -1082,7 +1318,9 @@ msgstr ""
 "O iBiblia só suporta módulos no formato RTF.\n"
 "Por favor, escolha outro módulo ou converta este módulo para RTF no theWord."
 
-#: projeto.sinvalidstrongsdictionary
+#: project.sinvalidstrongsdictionary
+#, fuzzy
+msgctxt "project.sinvalidstrongsdictionary"
 msgid ""
 "This is not a Strong's dictionary.\n"
 "Please choose a valid Strong's dictionary."
@@ -1090,163 +1328,237 @@ msgstr ""
 "Este não é um dicionário de Strong.\n"
 "Por favor, escolha um dicionário de Strong válido."
 
-#: projeto.sisaiah
+#: project.sisaiah
+#, fuzzy
+msgctxt "project.sisaiah"
 msgid "Isaiah"
 msgstr "Isaías"
 
-#: projeto.sjames
+#: project.sjames
+#, fuzzy
+msgctxt "project.sjames"
 msgid "James"
 msgstr "Tiago"
 
-#: projeto.sjeremiah
+#: project.sjeremiah
+#, fuzzy
+msgctxt "project.sjeremiah"
 msgid "Jeremiah"
 msgstr "Jeremias"
 
-#: projeto.sjob
+#: project.sjob
+#, fuzzy
+msgctxt "project.sjob"
 msgid "Job"
 msgstr "Jó"
 
-#: projeto.sjoel
+#: project.sjoel
+#, fuzzy
+msgctxt "project.sjoel"
 msgid "Joel"
 msgstr "Joel"
 
-#: projeto.sjohah
+#: project.sjohah
+#, fuzzy
+msgctxt "project.sjohah"
 msgid "Jonah"
 msgstr "Jonas"
 
-#: projeto.sjohn
+#: project.sjohn
+#, fuzzy
+msgctxt "project.sjohn"
 msgid "John"
 msgstr "João"
 
-#: projeto.sjoshua
+#: project.sjoshua
+#, fuzzy
+msgctxt "project.sjoshua"
 msgid "Joshua"
 msgstr "Josué"
 
-#: projeto.sjude
+#: project.sjude
+#, fuzzy
+msgctxt "project.sjude"
 msgid "Jude"
 msgstr "Judas"
 
-#: projeto.sjudges
+#: project.sjudges
+#, fuzzy
+msgctxt "project.sjudges"
 msgid "Judges"
 msgstr "Juízes"
 
-#: projeto.slamentations
+#: project.slamentations
+#, fuzzy
+msgctxt "project.slamentations"
 msgid "Lamentations"
 msgstr "Lamentações"
 
-#: projeto.slanguageid
+#: project.slanguageid
+#, fuzzy
+msgctxt "project.slanguageid"
 msgid "en"
 msgstr "pt"
 
-#: projeto.sleviticus
+#: project.sleviticus
+#, fuzzy
+msgctxt "project.sleviticus"
 msgid "Leviticus"
 msgstr "Levítico"
 
-#: projeto.slinebreaksintext
+#: project.slinebreaksintext
+#, fuzzy
+msgctxt "project.slinebreaksintext"
 msgid "A verse cannot contain line breaks. Your changes will be discarded."
 msgstr "Um versículo não pode conter quebras de linha. As suas alterações serão descartadas."
 
-#: projeto.slinebreaksintexttitle
+#: project.slinebreaksintexttitle
+#, fuzzy
+msgctxt "project.slinebreaksintexttitle"
 msgid "Edit error"
 msgstr "Erro de edição"
 
-#: projeto.sluke
+#: project.sluke
+#, fuzzy
+msgctxt "project.sluke"
 msgid "Luke"
 msgstr "Lucas"
 
-#: projeto.smalachi
+#: project.smalachi
+#, fuzzy
+msgctxt "project.smalachi"
 msgid "Malachi"
 msgstr "Malaquias"
 
-#: projeto.smark
+#: project.smark
+#, fuzzy
+msgctxt "project.smark"
 msgid "Mark"
 msgstr "Marcos"
 
-#: projeto.smarkasfmt
-#, object-pascal-format
+#: project.smarkasfmt
+#, object-pascal-format, fuzzy
+msgctxt "project.smarkasfmt"
 msgid "Mark %s as..."
 msgstr "Marcar %s como..."
 
-#: projeto.smatthew
+#: project.smatthew
+#, fuzzy
+msgctxt "project.smatthew"
 msgid "Matthew"
 msgstr "Mateus"
 
-#: projeto.smicah
+#: project.smicah
+#, fuzzy
+msgctxt "project.smicah"
 msgid "Micah"
 msgstr "Miqueias"
 
-#: projeto.smoduledoesnotincludescope
+#: project.smoduledoesnotincludescope
+#, fuzzy
+msgctxt "project.smoduledoesnotincludescope"
 msgid "This module is incompatible with the scope of the project. Please choose a valid module."
 msgstr "Este módulo é incompatível com o escopo do projeto. Por favor, escolha um módulo válido."
 
-#: projeto.smorphologydictionary
+#: project.smorphologydictionary
+#, fuzzy
+msgctxt "project.smorphologydictionary"
 msgid "Morphology Dictionary"
 msgstr "Dicionário de morfologia"
 
-#: projeto.snahum
+#: project.snahum
+#, fuzzy
+msgctxt "project.snahum"
 msgid "Nahum"
 msgstr "Naum"
 
-#: projeto.snehemiah
+#: project.snehemiah
+#, fuzzy
+msgctxt "project.snehemiah"
 msgid "Nehemiah"
 msgstr "Neemias"
 
-#: projeto.snonrtfdictionary
+#: project.snonrtfdictionary
+#, fuzzy
+msgctxt "project.snonrtfdictionary"
 msgid "Non-RTF module"
 msgstr "Módulo não-RTF"
 
-#: projeto.snumbers
+#: project.snumbers
+#, fuzzy
+msgctxt "project.snumbers"
 msgid "Numbers"
 msgstr "Números"
 
-#: projeto.sobadiah
+#: project.sobadiah
+#, fuzzy
+msgctxt "project.sobadiah"
 msgid "Obadiah"
 msgstr "Obadias"
 
-#: projeto.sopenproject
-msgctxt "projeto.sopenproject"
+#: project.sopenproject
+#, fuzzy
+msgctxt "project.sopenproject"
 msgid "Open project"
 msgstr "Abrir projeto"
 
-#: projeto.sotconcordancenotimplementedyet
+#: project.sotconcordancenotimplementedyet
+#, fuzzy
+msgctxt "project.sotconcordancenotimplementedyet"
 msgid "Old Testament concordance is not implemented yet"
 msgstr "A concordância do Velho Testamento ainda não está implementada"
 
-#: projeto.spatchsuccessfullyexported
+#: project.spatchsuccessfullyexported
+#, fuzzy
+msgctxt "project.spatchsuccessfullyexported"
 msgid "Patch successfully exported"
 msgstr "Patch criado com sucesso"
 
-#: projeto.sphilemon
+#: project.sphilemon
+#, fuzzy
+msgctxt "project.sphilemon"
 msgid "Philemon"
 msgstr "Filemom"
 
-#: projeto.sphilippians
+#: project.sphilippians
+#, fuzzy
+msgctxt "project.sphilippians"
 msgid "Philippians"
 msgstr "Filipenses"
 
-#: projeto.spotentialnonutf8modulewarning
+#: project.spotentialnonutf8modulewarning
+#, fuzzy
+msgctxt "project.spotentialnonutf8modulewarning"
 msgid "This module has a 'charset' property and this may be an indication that this is a non-UTF8 module. iBiblia was not designed to work with non-UTF8 modules. Please choose 'Ignore' to ignore this warning and continue at your own risk or 'Abort' to abort the operation and choose another module."
 msgstr "Este módulo contém a propriedade 'charset', o que pode indicar que ele não é um módulo UTF-8. O iBiblia não foi projetado para trabalhar com este tipo de módulo. Escolha 'Ignorar' para ignorar este aviso e continuar por sua própria conta e risco, ou 'Abortar' para abortar a operação e escolher outro módulo."
 
-#: projeto.sprojectdoesntexist
-#, object-pascal-format
+#: project.sprojectdoesntexist
+#, object-pascal-format, fuzzy
+msgctxt "project.sprojectdoesntexist"
 msgid "The selected project doesn't exist: %s"
 msgstr "O projeto selecionado não existe: %s"
 
-#: projeto.sproverbs
+#: project.sproverbs
+#, fuzzy
+msgctxt "project.sproverbs"
 msgid "Proverbs"
 msgstr "Provérbios"
 
-#: projeto.spsalms
+#: project.spsalms
+#, fuzzy
+msgctxt "project.spsalms"
 msgid "Psalms"
 msgstr "Salmos"
 
-#: projeto.sreferencenotfound
+#: project.sreferencenotfound
+#, fuzzy
+msgctxt "project.sreferencenotfound"
 msgid "Reference not found"
 msgstr "Referência não encontrada"
 
-#: projeto.sreferencenotfoundwarning
-#, object-pascal-format
+#: project.sreferencenotfoundwarning
+#, object-pascal-format, fuzzy
+msgctxt "project.sreferencenotfoundwarning"
 msgid ""
 "The reference %s is not a valid reference in this project and will be ignored.\n"
 "Press Ignore to ignore all subsequent warnings."
@@ -1254,115 +1566,167 @@ msgstr ""
 "A referência %s não é válida neste projeto e será ignorada.\n"
 "Clique em Ignorar para não mostrar mais esta mensagem."
 
-#: projeto.srevelation
+#: project.srevelation
+#, fuzzy
+msgctxt "project.srevelation"
 msgid "Revelation"
 msgstr "Apocalipse"
 
-#: projeto.sromans
+#: project.sromans
+#, fuzzy
+msgctxt "project.sromans"
 msgid "Romans"
 msgstr "Romanos"
 
-#: projeto.sruth
+#: project.sruth
+#, fuzzy
+msgctxt "project.sruth"
 msgid "Ruth"
 msgstr "Rute"
 
-#: projeto.ssetstatuschildren
+#: project.ssetstatuschildren
+#, fuzzy
+msgctxt "project.ssetstatuschildren"
 msgid "Set status of all children to..."
 msgstr "Atribuir a situação de todos os filhos para..."
 
-#: projeto.ssongofsolomon
+#: project.ssongofsolomon
+#, fuzzy
+msgctxt "project.ssongofsolomon"
 msgid "Song of Solomon"
 msgstr "Cântico dos cânticos"
 
-#: projeto.sstatusassociated
-msgctxt "projeto.sstatusassociated"
+#: project.sstatusassociated
+#, fuzzy
+msgctxt "project.sstatusassociated"
 msgid "Associated!"
 msgstr "Associado!"
 
-#: projeto.sstatusassociating
-msgctxt "projeto.sstatusassociating"
+#: project.sstatusassociating
+#, fuzzy
+msgctxt "project.sstatusassociating"
 msgid "Associating"
 msgstr "Associando..."
 
-#: projeto.sstatusneedsreview
-msgctxt "projeto.sstatusneedsreview"
+#: project.sstatusneedsreview
+#, fuzzy
+msgctxt "project.sstatusneedsreview"
 msgid "Needs review"
 msgstr "Rever"
 
-#: projeto.sstatusnotassociated
-msgctxt "projeto.sstatusnotassociated"
+#: project.sstatusnotassociated
+#, fuzzy
+msgctxt "project.sstatusnotassociated"
 msgid "Not associated"
 msgstr "Não associado"
 
-#: projeto.sstrongdictionary
+#: project.sstrongdictionary
+#, fuzzy
+msgctxt "project.sstrongdictionary"
 msgid "Strong's Dictionary"
 msgstr "Dicionário de Strong"
 
-#: projeto.ssyntheticconcordance
+#: project.sswitchdestinationandreference1texts
+msgctxt "project.sswitchdestinationandreference1texts"
+msgid "Switch destination text with reference 1"
+msgstr ""
+
+#: project.ssyntheticconcordance
+#, fuzzy
+msgctxt "project.ssyntheticconcordance"
 msgid "Synthetic Concordance"
 msgstr "Concordância Sintética"
 
-#: projeto.stitus
+#: project.stitus
+#, fuzzy
+msgctxt "project.stitus"
 msgid "Titus"
 msgstr "Tito"
 
-#: projeto.stranslate
+#: project.stranslate
+#, fuzzy
+msgctxt "project.stranslate"
 msgid "Translate"
 msgstr "Traduzir"
 
-#: projeto.stranslation
-msgctxt "projeto.stranslation"
+#: project.stranslation
+#, fuzzy
+msgctxt "project.stranslation"
 msgid "Translation"
 msgstr "Tradução"
 
-#: projeto.stranslationexamplerequirespair
+#: project.stranslationexamplerequirespair
+msgctxt "project.stranslationexamplerequirespair"
 msgid "Translation examples require an active source verse paired with a destination verse."
 msgstr ""
 
-#: projeto.stranslationexamplerequirestext
+#: project.stranslationexamplerequirestext
+msgctxt "project.stranslationexamplerequirestext"
 msgid "Translation examples require translated text in the destination verse."
 msgstr ""
 
-#: projeto.stranslationmemory
+#: project.stranslationmemory
+#, fuzzy
+msgctxt "project.stranslationmemory"
 msgid "Translation memory"
 msgstr "Histórico de associações"
 
-#: projeto.suseverseasassociationexample
-msgctxt "projeto.suseverseasassociationexample"
+#: project.suseverseasassociationexample
+msgctxt "project.suseverseasassociationexample"
 msgid "In association flow"
 msgstr ""
 
-#: projeto.suseverseasexample
-msgctxt "projeto.suseverseasexample"
+#: project.suseverseasexample
+msgctxt "project.suseverseasexample"
 msgid "Use verse as example..."
 msgstr ""
 
-#: projeto.suseverseastranslationexample
-msgctxt "projeto.suseverseastranslationexample"
+#: project.suseverseastranslationexample
+msgctxt "project.suseverseastranslationexample"
 msgid "In translation flow"
 msgstr ""
 
-#: projeto.svaccumprojectconfirmation
+#: project.svaccumprojectconfirmation
+#, fuzzy
+msgctxt "project.svaccumprojectconfirmation"
 msgid "Vacuuming requires that your project be saved and reopened. Do you want to proceed?"
 msgstr "Para compactar um projeto é necessário fechá-lo e reabri-lo. Deseja prosseguir?"
 
-#: projeto.svacuumdone
+#: project.svacuumdone
+#, fuzzy
+msgctxt "project.svacuumdone"
 msgid "Vacuum done!"
 msgstr "Arquivo do projeto compactado!"
 
-#: projeto.sverseabsentfromproject
+#: project.svacuumprogressmessage
+msgid "Optimizing project database..."
+msgstr ""
+
+#: project.svacuumprogresstitle
+msgid "Optimize project"
+msgstr ""
+
+#: project.sverseabsentfromproject
+#, fuzzy
+msgctxt "project.sverseabsentfromproject"
 msgid "[This project does not contain this verse]"
 msgstr "[Este projeto não contém este versículo]"
 
-#: projeto.swarning
+#: project.swarning
+#, fuzzy
+msgctxt "project.swarning"
 msgid "Warning"
 msgstr "Aviso"
 
-#: projeto.szechariah
+#: project.szechariah
+#, fuzzy
+msgctxt "project.szechariah"
 msgid "Zecariah"
 msgstr "Zacarias"
 
-#: projeto.szephaniah
+#: project.szephaniah
+#, fuzzy
+msgctxt "project.szephaniah"
 msgid "Zephaniah"
 msgstr "Sofonias"
 
@@ -1451,162 +1815,14 @@ msgctxt "tforminterlinearverserules.tabsheet2.caption"
 msgid "Intralinear"
 msgstr "Intralinear"
 
-#: tformnovoprojeto.bitbtn1.caption
-msgctxt "tformnovoprojeto.bitbtn1.caption"
-msgid "..."
-msgstr "..."
-
-#: tformnovoprojeto.bitbtn2.caption
-msgctxt "tformnovoprojeto.bitbtn2.caption"
-msgid "..."
-msgstr "..."
-
-#: tformnovoprojeto.bitbtn3.caption
-msgctxt "tformnovoprojeto.bitbtn3.caption"
-msgid "..."
-msgstr "..."
-
-#: tformnovoprojeto.bitbtn4.caption
-msgctxt "tformnovoprojeto.bitbtn4.caption"
-msgid "..."
-msgstr "..."
-
-#: tformnovoprojeto.bitbtn5.caption
-msgctxt "tformnovoprojeto.bitbtn5.caption"
-msgid "&OK"
-msgstr "&OK"
-
-#: tformnovoprojeto.bitbtn6.caption
-msgctxt "tformnovoprojeto.bitbtn6.caption"
-msgid "Cancel"
-msgstr "Cancelar"
-
-#: tformnovoprojeto.caption
-msgid "New project..."
-msgstr "Novo projeto..."
-
-#: tformnovoprojeto.editnomeprojeto.editlabel.caption
-msgctxt "tformnovoprojeto.editnomeprojeto.editlabel.caption"
-msgid "Name"
-msgstr "Nome"
-
-#: tformnovoprojeto.edittextodestino.editlabel.caption
-msgctxt "tformnovoprojeto.edittextodestino.editlabel.caption"
-msgid "Destination"
-msgstr "Destino"
-
-#: tformnovoprojeto.edittextoorigem.editlabel.caption
-msgctxt "tformnovoprojeto.edittextoorigem.editlabel.caption"
-msgid "Source"
-msgstr "Origem"
-
-#: tformnovoprojeto.edittextoref1.editlabel.caption
-msgctxt "tformnovoprojeto.edittextoref1.editlabel.caption"
-msgid "Reference 1"
-msgstr "Referência 1"
-
-#: tformnovoprojeto.edittextoref2.editlabel.caption
-msgctxt "tformnovoprojeto.edittextoref2.editlabel.caption"
-msgid "Reference 2"
-msgstr "Referência 2"
-
-#: tformnovoprojeto.groupbox1.caption
-msgid "Texts"
-msgstr "Textos"
-
-#: tformnovoprojeto.groupbox2.caption
-msgctxt "tformnovoprojeto.groupbox2.caption"
-msgid "Properties"
-msgstr "Propriedades"
-
-#: tformnovoprojeto.opendialog1.title
-msgid "Choose a theWord bible module"
-msgstr "Escolha um módulo de bíblia do theWord"
-
-#: tformnovoprojeto.radiogroupscope.caption
-msgid "Scope"
-msgstr "Escopo"
-
 #: tformpleasewait.caption
+msgctxt "tformpleasewait.caption"
 msgid "Operation in progress"
 msgstr "Operação em andamento"
 
 #: tformpleasewait.label1.caption
 msgid "Please wait..."
 msgstr "Por favor, aguarde..."
-
-#: tformpropprojeto.actioncarregartexto.caption
-msgid "Load new text"
-msgstr "Carregar novo texto"
-
-#: tformpropprojeto.actionlimpartexto.caption
-msgid "Clear text"
-msgstr "Limpar texto"
-
-#: tformpropprojeto.actionmudancaaba.caption
-msgid "ActionMudancaAba"
-msgstr "ActionMudancaAba"
-
-#: tformpropprojeto.actionselecionarfonte.caption
-msgctxt "tformpropprojeto.actionselecionarfonte.caption"
-msgid "Choose"
-msgstr "Selecionar"
-
-#: tformpropprojeto.actionselecionarmorfo.caption
-msgctxt "tformpropprojeto.actionselecionarmorfo.caption"
-msgid "Choose"
-msgstr "Selecionar"
-
-#: tformpropprojeto.actionselecionarstrong.caption
-msgctxt "tformpropprojeto.actionselecionarstrong.caption"
-msgid "Choose"
-msgstr "Selecionar"
-
-#: tformpropprojeto.bitbtn1.caption
-msgctxt "tformpropprojeto.bitbtn1.caption"
-msgid "&OK"
-msgstr "&OK"
-
-#: tformpropprojeto.bitbtn2.caption
-msgctxt "tformpropprojeto.bitbtn2.caption"
-msgid "Cancel"
-msgstr "Cancelar"
-
-#: tformpropprojeto.bitbtntextdescription.caption
-msgctxt "tformpropprojeto.bitbtntextdescription.caption"
-msgid "Apply"
-msgstr "Aplicar"
-
-#: tformpropprojeto.caption
-msgctxt "tformpropprojeto.caption"
-msgid "Properties"
-msgstr "Propriedades"
-
-#: tformpropprojeto.editnomeprojeto.editlabel.caption
-msgctxt "tformpropprojeto.editnomeprojeto.editlabel.caption"
-msgid "Name"
-msgstr "Nome"
-
-#: tformpropprojeto.groupbox2.caption
-msgctxt "tformpropprojeto.groupbox2.caption"
-msgid "Properties"
-msgstr "Propriedades"
-
-#: tformpropprojeto.label2.caption
-msgid "Font"
-msgstr "Fonte"
-
-#: tformpropprojeto.ledicmorfo.editlabel.caption
-msgid "Morphology dictionary"
-msgstr "Dicionário de morfologia"
-
-#: tformpropprojeto.ledicstrong.editlabel.caption
-msgid "Strong's dictionary"
-msgstr "Dicionário de Strong"
-
-#: tformpropprojeto.letextdescription.editlabel.caption
-msgid "Text description"
-msgstr "Descrição do texto"
 
 #: tfrmapplypatch.btndeselectall.caption
 msgid "Deselect all"
@@ -1656,122 +1872,6 @@ msgstr "Andamento"
 #: tfrmdictionarypopup.caption
 msgid "Dictionary"
 msgstr "Dicionário"
-
-#: tfrmescolherverserules.btnselectall.caption
-msgctxt "tfrmescolherverserules.btnselectall.caption"
-msgid "Select all"
-msgstr "Marcar tudo"
-
-#: tfrmescolherverserules.btnselectnone.caption
-msgid "Select none"
-msgstr "Desmarcar tudo"
-
-#: tfrmescolherverserules.button1.caption
-msgid "&Cancel"
-msgstr "&Cancelar"
-
-#: tfrmescolherverserules.button2.caption
-msgctxt "tfrmescolherverserules.button2.caption"
-msgid "OK"
-msgstr "OK"
-
-#: tfrmescolherverserules.caption
-msgid "Choose verse rules"
-msgstr "Escolher verse rules"
-
-#: tfrmescolherverserules.panel1.caption
-msgctxt "tfrmescolherverserules.panel1.caption"
-msgid "Panel1"
-msgstr "Panel1"
-
-#: tfrmescolherverserules.stringgridverserules.columns[0].title.caption
-msgctxt "tfrmescolherverserules.stringgridverserules.columns[0].title.caption"
-msgid "Apply"
-msgstr "Aplicar"
-
-#: tfrmescolherverserules.stringgridverserules.columns[1].title.caption
-msgctxt "tfrmescolherverserules.stringgridverserules.columns[1].title.caption"
-msgid "From"
-msgstr "De"
-
-#: tfrmescolherverserules.stringgridverserules.columns[2].title.caption
-msgctxt "tfrmescolherverserules.stringgridverserules.columns[2].title.caption"
-msgid "To"
-msgstr "Para"
-
-#: tfrmexportarprojeto.btexportar.caption
-msgctxt "tfrmexportarprojeto.btexportar.caption"
-msgid "Export"
-msgstr "Exportar"
-
-#: tfrmexportarprojeto.button2.caption
-msgctxt "tfrmexportarprojeto.button2.caption"
-msgid "Cancel"
-msgstr "Cancelar"
-
-#: tfrmexportarprojeto.caption
-msgid "Export association"
-msgstr "Exportar associação"
-
-#: tfrmexportarprojeto.cbconcordanciadetalhada.caption
-msgid "Group by inflectioned forms"
-msgstr "Agrupar por formas flexionadas"
-
-#: tfrmexportarprojeto.cbexportarcomentarios.caption
-msgid "Export comments as translator notes"
-msgstr "Exportar comentários como notas"
-
-#: tfrmexportarprojeto.cbexportarmorfologia.caption
-msgid "Export morphology tags"
-msgstr "Exportar morfologia"
-
-#: tfrmexportarprojeto.cbexportarnacomoitalicos.caption
-msgid "Export unassociated words as added words (italics)"
-msgstr "Exportar palavras não associadas como itálicos"
-
-#: tfrmexportarprojeto.cbstrongsnaotraduzidos.caption
-msgid "Mark unused strongs"
-msgstr "Sinalizar strongs não utilizados"
-
-#: tfrmexportarprojeto.cbstrongsreutilizados.caption
-msgid "Mark reused strongs"
-msgstr "Sinalizar strongs reutilizados"
-
-#: tfrmexportarprojeto.label1.caption
-msgctxt "tfrmexportarprojeto.label1.caption"
-msgid "Module properties"
-msgstr "Propriedades do módulo"
-
-#: tfrmexportarprojeto.label2.caption
-msgctxt "tfrmexportarprojeto.label2.caption"
-msgid "Module properties"
-msgstr "Propriedades do módulo"
-
-#: tfrmexportarprojeto.leabreviacao.editlabel.caption
-msgid "Abbreviation"
-msgstr "Abreviação"
-
-#: tfrmexportarprojeto.savedialog1.title
-msgctxt "tfrmexportarprojeto.savedialog1.title"
-msgid "Salvar módulo como..."
-msgstr "Salvar módulo como..."
-
-#: tfrmexportarprojeto.savedialogconcordancia.title
-msgctxt "tfrmexportarprojeto.savedialogconcordancia.title"
-msgid "Salvar módulo como..."
-msgstr "Salvar módulo como..."
-
-#: tfrmexportarprojeto.tabsheet1.caption
-msgid "Tagged destination text"
-msgstr "Texto destino enriquecido"
-
-#: tfrmexportarprojeto.tabsheet2.caption
-msgid "Interlinear source text"
-msgstr "Texto origem interlinear"
-
-#: tfrmexportarprojeto.tabsheet3.caption
-msgid "Strong's concordance"
-msgstr "Concordância de strong"
 
 #: tfrmllmoptions.btncancel.caption
 msgctxt "tfrmllmoptions.btncancel.caption"
@@ -1830,6 +1930,102 @@ msgstr "Associação"
 msgctxt "tfrmllmoptions.tstranslation.caption"
 msgid "Translation"
 msgstr "Tradução"
+
+#: tfrmnewproject.btncancel.caption
+#, fuzzy
+msgctxt "tfrmnewproject.btncancel.caption"
+msgid "Cancel"
+msgstr "Cancelar"
+
+#: tfrmnewproject.btnok.caption
+#, fuzzy
+msgctxt "tfrmnewproject.btnok.caption"
+msgid "&OK"
+msgstr "&OK"
+
+#: tfrmnewproject.btnselectdestinationtext.caption
+#, fuzzy
+msgctxt "tfrmnewproject.btnselectdestinationtext.caption"
+msgid "..."
+msgstr "..."
+
+#: tfrmnewproject.btnselectreferencetext1.caption
+#, fuzzy
+msgctxt "tfrmnewproject.btnselectreferencetext1.caption"
+msgid "..."
+msgstr "..."
+
+#: tfrmnewproject.btnselectreferencetext2.caption
+#, fuzzy
+msgctxt "tfrmnewproject.btnselectreferencetext2.caption"
+msgid "..."
+msgstr "..."
+
+#: tfrmnewproject.btnselectsourcetext.caption
+#, fuzzy
+msgctxt "tfrmnewproject.btnselectsourcetext.caption"
+msgid "..."
+msgstr "..."
+
+#: tfrmnewproject.caption
+#, fuzzy
+msgctxt "tfrmnewproject.caption"
+msgid "New project..."
+msgstr "Novo projeto..."
+
+#: tfrmnewproject.editdestinationtext.editlabel.caption
+#, fuzzy
+msgctxt "tfrmnewproject.editdestinationtext.editlabel.caption"
+msgid "Destination"
+msgstr "Destino"
+
+#: tfrmnewproject.editprojectname.editlabel.caption
+#, fuzzy
+msgctxt "tfrmnewproject.editprojectname.editlabel.caption"
+msgid "Name"
+msgstr "Nome"
+
+#: tfrmnewproject.editreferencetext1.editlabel.caption
+#, fuzzy
+msgctxt "tfrmnewproject.editreferencetext1.editlabel.caption"
+msgid "Reference 1"
+msgstr "Referência 1"
+
+#: tfrmnewproject.editreferencetext2.editlabel.caption
+#, fuzzy
+msgctxt "tfrmnewproject.editreferencetext2.editlabel.caption"
+msgid "Reference 2"
+msgstr "Referência 2"
+
+#: tfrmnewproject.editsourcetext.editlabel.caption
+#, fuzzy
+msgctxt "tfrmnewproject.editsourcetext.editlabel.caption"
+msgid "Source"
+msgstr "Origem"
+
+#: tfrmnewproject.groupboxproperties.caption
+#, fuzzy
+msgctxt "tfrmnewproject.groupboxproperties.caption"
+msgid "Properties"
+msgstr "Propriedades"
+
+#: tfrmnewproject.groupboxtexts.caption
+#, fuzzy
+msgctxt "tfrmnewproject.groupboxtexts.caption"
+msgid "Texts"
+msgstr "Textos"
+
+#: tfrmnewproject.opendialogselecttext.title
+#, fuzzy
+msgctxt "tfrmnewproject.opendialogselecttext.title"
+msgid "Choose a theWord bible module"
+msgstr "Escolha um módulo de bíblia do theWord"
+
+#: tfrmnewproject.radiogroupscope.caption
+#, fuzzy
+msgctxt "tfrmnewproject.radiogroupscope.caption"
+msgid "Scope"
+msgstr "Escopo"
 
 #: tfrmprincipal.actionabrirprojeto.caption
 msgid "Open..."
@@ -2212,6 +2408,256 @@ msgctxt "tfrmprincipal.toolbuttonexit.hint"
 msgid "Exit the program"
 msgstr "Sair do programa"
 
+#: tfrmprojectexport.btexportar.caption
+#, fuzzy
+msgctxt "tfrmprojectexport.btexportar.caption"
+msgid "Export"
+msgstr "Exportar"
+
+#: tfrmprojectexport.button2.caption
+#, fuzzy
+msgctxt "tfrmprojectexport.button2.caption"
+msgid "Cancel"
+msgstr "Cancelar"
+
+#: tfrmprojectexport.caption
+#, fuzzy
+msgctxt "tfrmprojectexport.caption"
+msgid "Export association"
+msgstr "Exportar associação"
+
+#: tfrmprojectexport.cbconcordanciadetalhada.caption
+#, fuzzy
+msgctxt "tfrmprojectexport.cbconcordanciadetalhada.caption"
+msgid "Group by inflectioned forms"
+msgstr "Agrupar por formas flexionadas"
+
+#: tfrmprojectexport.cbexportarcomentarios.caption
+#, fuzzy
+msgctxt "tfrmprojectexport.cbexportarcomentarios.caption"
+msgid "Export comments as translator notes"
+msgstr "Exportar comentários como notas"
+
+#: tfrmprojectexport.cbexportarmorfologia.caption
+#, fuzzy
+msgctxt "tfrmprojectexport.cbexportarmorfologia.caption"
+msgid "Export morphology tags"
+msgstr "Exportar morfologia"
+
+#: tfrmprojectexport.cbexportarnacomoitalicos.caption
+#, fuzzy
+msgctxt "tfrmprojectexport.cbexportarnacomoitalicos.caption"
+msgid "Export unassociated words as added words (italics)"
+msgstr "Exportar palavras não associadas como itálicos"
+
+#: tfrmprojectexport.cbstrongsnaotraduzidos.caption
+#, fuzzy
+msgctxt "tfrmprojectexport.cbstrongsnaotraduzidos.caption"
+msgid "Mark unused strongs"
+msgstr "Sinalizar strongs não utilizados"
+
+#: tfrmprojectexport.cbstrongsreutilizados.caption
+#, fuzzy
+msgctxt "tfrmprojectexport.cbstrongsreutilizados.caption"
+msgid "Mark reused strongs"
+msgstr "Sinalizar strongs reutilizados"
+
+#: tfrmprojectexport.label1.caption
+#, fuzzy
+msgctxt "tfrmprojectexport.label1.caption"
+msgid "Module properties"
+msgstr "Propriedades do módulo"
+
+#: tfrmprojectexport.label2.caption
+#, fuzzy
+msgctxt "tfrmprojectexport.label2.caption"
+msgid "Module properties"
+msgstr "Propriedades do módulo"
+
+#: tfrmprojectexport.leabreviacao.editlabel.caption
+#, fuzzy
+msgctxt "tfrmprojectexport.leabreviacao.editlabel.caption"
+msgid "Abbreviation"
+msgstr "Abreviação"
+
+#: tfrmprojectexport.savedialog1.title
+#, fuzzy
+msgctxt "tfrmprojectexport.savedialog1.title"
+msgid "Salvar módulo como..."
+msgstr "Salvar módulo como..."
+
+#: tfrmprojectexport.savedialogconcordancia.title
+#, fuzzy
+msgctxt "tfrmprojectexport.savedialogconcordancia.title"
+msgid "Salvar módulo como..."
+msgstr "Salvar módulo como..."
+
+#: tfrmprojectexport.tabsheet1.caption
+#, fuzzy
+msgctxt "tfrmprojectexport.tabsheet1.caption"
+msgid "Tagged destination text"
+msgstr "Texto destino enriquecido"
+
+#: tfrmprojectexport.tabsheet2.caption
+#, fuzzy
+msgctxt "tfrmprojectexport.tabsheet2.caption"
+msgid "Interlinear source text"
+msgstr "Texto origem interlinear"
+
+#: tfrmprojectexport.tabsheet3.caption
+#, fuzzy
+msgctxt "tfrmprojectexport.tabsheet3.caption"
+msgid "Strong's concordance"
+msgstr "Concordância de strong"
+
+#: tfrmprojectproperties.actionchangetab.caption
+msgid "ActionChangeTab"
+msgstr ""
+
+#: tfrmprojectproperties.actioncleartext.caption
+#, fuzzy
+msgctxt "tfrmprojectproperties.actioncleartext.caption"
+msgid "Clear text"
+msgstr "Limpar texto"
+
+#: tfrmprojectproperties.actionloadtext.caption
+#, fuzzy
+msgctxt "tfrmprojectproperties.actionloadtext.caption"
+msgid "Load new text"
+msgstr "Carregar novo texto"
+
+#: tfrmprojectproperties.actionselectfont.caption
+#, fuzzy
+msgctxt "tfrmprojectproperties.actionselectfont.caption"
+msgid "Choose"
+msgstr "Selecionar"
+
+#: tfrmprojectproperties.actionselectmorphologydictionary.caption
+#, fuzzy
+msgctxt "tfrmprojectproperties.actionselectmorphologydictionary.caption"
+msgid "Choose"
+msgstr "Selecionar"
+
+#: tfrmprojectproperties.actionselectstrongdictionary.caption
+#, fuzzy
+msgctxt "tfrmprojectproperties.actionselectstrongdictionary.caption"
+msgid "Choose"
+msgstr "Selecionar"
+
+#: tfrmprojectproperties.btnapplytextdescription.caption
+#, fuzzy
+msgctxt "tfrmprojectproperties.btnapplytextdescription.caption"
+msgid "Apply"
+msgstr "Aplicar"
+
+#: tfrmprojectproperties.btncancel.caption
+#, fuzzy
+msgctxt "tfrmprojectproperties.btncancel.caption"
+msgid "Cancel"
+msgstr "Cancelar"
+
+#: tfrmprojectproperties.btnok.caption
+#, fuzzy
+msgctxt "tfrmprojectproperties.btnok.caption"
+msgid "&OK"
+msgstr "&OK"
+
+#: tfrmprojectproperties.caption
+#, fuzzy
+msgctxt "tfrmprojectproperties.caption"
+msgid "Properties"
+msgstr "Propriedades"
+
+#: tfrmprojectproperties.editmorphologydictionary.editlabel.caption
+#, fuzzy
+msgctxt "tfrmprojectproperties.editmorphologydictionary.editlabel.caption"
+msgid "Morphology dictionary"
+msgstr "Dicionário de morfologia"
+
+#: tfrmprojectproperties.editprojectname.editlabel.caption
+#, fuzzy
+msgctxt "tfrmprojectproperties.editprojectname.editlabel.caption"
+msgid "Name"
+msgstr "Nome"
+
+#: tfrmprojectproperties.editstrongdictionary.editlabel.caption
+#, fuzzy
+msgctxt "tfrmprojectproperties.editstrongdictionary.editlabel.caption"
+msgid "Strong's dictionary"
+msgstr "Dicionário de Strong"
+
+#: tfrmprojectproperties.edittextdescription.editlabel.caption
+#, fuzzy
+msgctxt "tfrmprojectproperties.edittextdescription.editlabel.caption"
+msgid "Text description"
+msgstr "Descrição do texto"
+
+#: tfrmprojectproperties.groupboxproperties.caption
+#, fuzzy
+msgctxt "tfrmprojectproperties.groupboxproperties.caption"
+msgid "Properties"
+msgstr "Propriedades"
+
+#: tfrmprojectproperties.labelfont.caption
+#, fuzzy
+msgctxt "tfrmprojectproperties.labelfont.caption"
+msgid "Font"
+msgstr "Fonte"
+
+#: tfrmverserules.btnselectall.caption
+#, fuzzy
+msgctxt "tfrmverserules.btnselectall.caption"
+msgid "Select all"
+msgstr "Marcar tudo"
+
+#: tfrmverserules.btnselectnone.caption
+#, fuzzy
+msgctxt "tfrmverserules.btnselectnone.caption"
+msgid "Select none"
+msgstr "Desmarcar tudo"
+
+#: tfrmverserules.button1.caption
+#, fuzzy
+msgctxt "tfrmverserules.button1.caption"
+msgid "&Cancel"
+msgstr "&Cancelar"
+
+#: tfrmverserules.button2.caption
+#, fuzzy
+msgctxt "tfrmverserules.button2.caption"
+msgid "OK"
+msgstr "OK"
+
+#: tfrmverserules.caption
+#, fuzzy
+msgctxt "tfrmverserules.caption"
+msgid "Choose verse rules"
+msgstr "Escolher verse rules"
+
+#: tfrmverserules.panel1.caption
+#, fuzzy
+msgctxt "tfrmverserules.panel1.caption"
+msgid "Panel1"
+msgstr "Panel1"
+
+#: tfrmverserules.stringgridverserules.columns[0].title.caption
+#, fuzzy
+msgctxt "tfrmverserules.stringgridverserules.columns[0].title.caption"
+msgid "Apply"
+msgstr "Aplicar"
+
+#: tfrmverserules.stringgridverserules.columns[1].title.caption
+#, fuzzy
+msgctxt "tfrmverserules.stringgridverserules.columns[1].title.caption"
+msgid "From"
+msgstr "De"
+
+#: tfrmverserules.stringgridverserules.columns[2].title.caption
+#, fuzzy
+msgctxt "tfrmverserules.stringgridverserules.columns[2].title.caption"
+msgid "To"
+msgstr "Para"
+
 #: twautomate.stwsynchronizationerror
 msgid ""
 "Failed to detect theWord's current verse.\n"
@@ -2224,66 +2670,81 @@ msgstr ""
 msgid "Synchronization error"
 msgstr "Erro de sincronização"
 
-#: versiculo.scopyassociationexample
-msgid "Copy association example for AI instructions"
-msgstr "Copiar como exemplo para IA"
+#: unitpleasewait.sdefaultoperationtitle
+#, fuzzy
+msgctxt "unitpleasewait.sdefaultoperationtitle"
+msgid "Operation in progress"
+msgstr "Operação em andamento"
 
-#: versiculo.scopyassociationsjsontoclipboard
+#: verse.scopyassociationsjsontoclipboard
+#, fuzzy
+msgctxt "verse.scopyassociationsjsontoclipboard"
 msgid "Copy association &JSON to clipboard"
 msgstr "Copiar JSON da associação para a área de transferência"
 
-#: versiculo.scopyinterlinearversetoclipboard
+#: verse.scopyinterlinearversetoclipboard
+#, fuzzy
+msgctxt "verse.scopyinterlinearversetoclipboard"
 msgid "Copy &interlinear verse to clipboard"
 msgstr "Copiar o versículo interlinear para a área de transferência"
 
-#: versiculo.scopytags
+#: verse.scopytags
+#, fuzzy
+msgctxt "verse.scopytags"
 msgid "&Copy tags"
 msgstr "&Copiar tags"
 
-#: versiculo.scopytokenstoclipboard
+#: verse.scopytokenstoclipboard
+#, fuzzy
+msgctxt "verse.scopytokenstoclipboard"
 msgid "Copy &tokens to clipboard"
 msgstr "Copiar os tokens para a área de transferência"
 
-#: versiculo.scopyxmltoclipboard
+#: verse.scopyxmltoclipboard
+#, fuzzy
+msgctxt "verse.scopyxmltoclipboard"
 msgid "Copy association &XML to clipboard"
 msgstr "Copia o XML de associação para a área de transferência"
 
-#: versiculo.spastealltags
+#: verse.spastealltags
+#, fuzzy
+msgctxt "verse.spastealltags"
 msgid "Paste &all tags"
 msgstr "Colar &todas as tags"
 
-#: versiculo.spastemorphotags
+#: verse.spastemorphotags
+#, fuzzy
+msgctxt "verse.spastemorphotags"
 msgid "Paste &morphology tags"
 msgstr "Colar tags de &morfologia"
 
-#: versiculo.spastestrongtags
+#: verse.spastestrongtags
+#, fuzzy
+msgctxt "verse.spastestrongtags"
 msgid "&Paste &Strong's tags"
 msgstr "Colar tags de &Strong"
 
-#: versiculo.srighttoleft
+#: verse.srighttoleft
+#, fuzzy
+msgctxt "verse.srighttoleft"
 msgid "Right to left text"
 msgstr "Texto da direita para a esquerda"
 
-#: versiculo.ssavetofile
+#: verse.ssavetofile
+#, fuzzy
+msgctxt "verse.ssavetofile"
 msgid "&Save text to file..."
 msgstr "&Exportar texto para arquivo..."
 
-#: versiculo.sswitchdestinationandreference1texts
-msgid "Switch destination text with reference 1"
-msgstr "Trocar texto destino com texto de referência 1"
+#: versememo.schangeverse
+#, fuzzy
+msgctxt "versememo.schangeverse"
+msgid "Change verse text?"
+msgstr "Alterar o texto do versículo?"
 
-#: versiculo.suseverseasassociationexample
-msgctxt "versiculo.suseverseasassociationexample"
-msgid "In association flow"
-msgstr ""
-
-#: versiculo.suseverseasexample
-msgctxt "versiculo.suseverseasexample"
-msgid "Use verse as example..."
-msgstr ""
-
-#: versiculo.suseverseastranslationexample
-msgctxt "versiculo.suseverseastranslationexample"
-msgid "In translation flow"
-msgstr ""
+#: versememo.schangeverseconfirmation
+#, fuzzy
+msgctxt "versememo.schangeverseconfirmation"
+msgid "Are you sure you want to change the verse text? Some associations may be lost."
+msgstr "Tem certeza de que quer alterar o texto deste versículo? Algumas alterações podem ser perdidas."
 

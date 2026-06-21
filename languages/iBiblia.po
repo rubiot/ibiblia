@@ -333,119 +333,119 @@ msgstr ""
 msgid "A project with this name already exists. Delete it first or choose another name"
 msgstr ""
 
-#: projeto.s1chronicles
-msgctxt "projeto.s1chronicles"
+#: project.s1chronicles
+msgctxt "project.s1chronicles"
 msgid "1 Chronicles"
 msgstr ""
 
-#: projeto.s1corinthians
-msgctxt "projeto.s1corinthians"
+#: project.s1corinthians
+msgctxt "project.s1corinthians"
 msgid "1 Corinthians"
 msgstr ""
 
-#: projeto.s1john
-msgctxt "projeto.s1john"
+#: project.s1john
+msgctxt "project.s1john"
 msgid "1 John"
 msgstr ""
 
-#: projeto.s1kings
-msgctxt "projeto.s1kings"
+#: project.s1kings
+msgctxt "project.s1kings"
 msgid "1 Kings"
 msgstr ""
 
-#: projeto.s1peter
-msgctxt "projeto.s1peter"
+#: project.s1peter
+msgctxt "project.s1peter"
 msgid "1 Peter"
 msgstr ""
 
-#: projeto.s1samuel
-msgctxt "projeto.s1samuel"
+#: project.s1samuel
+msgctxt "project.s1samuel"
 msgid "1 Samuel"
 msgstr ""
 
-#: projeto.s1thessalonians
-msgctxt "projeto.s1thessalonians"
+#: project.s1thessalonians
+msgctxt "project.s1thessalonians"
 msgid "1 Thessalonians"
 msgstr ""
 
-#: projeto.s1timothy
-msgctxt "projeto.s1timothy"
+#: project.s1timothy
+msgctxt "project.s1timothy"
 msgid "1 Timothy"
 msgstr ""
 
-#: projeto.s2chronicles
-msgctxt "projeto.s2chronicles"
+#: project.s2chronicles
+msgctxt "project.s2chronicles"
 msgid "2 Chronicles"
 msgstr ""
 
-#: projeto.s2corinthians
-msgctxt "projeto.s2corinthians"
+#: project.s2corinthians
+msgctxt "project.s2corinthians"
 msgid "2 Corinthians"
 msgstr ""
 
-#: projeto.s2john
-msgctxt "projeto.s2john"
+#: project.s2john
+msgctxt "project.s2john"
 msgid "2 John"
 msgstr ""
 
-#: projeto.s2kings
-msgctxt "projeto.s2kings"
+#: project.s2kings
+msgctxt "project.s2kings"
 msgid "2 Kings"
 msgstr ""
 
-#: projeto.s2peter
-msgctxt "projeto.s2peter"
+#: project.s2peter
+msgctxt "project.s2peter"
 msgid "2 Peter"
 msgstr ""
 
-#: projeto.s2samuel
-msgctxt "projeto.s2samuel"
+#: project.s2samuel
+msgctxt "project.s2samuel"
 msgid "2 Samuel"
 msgstr ""
 
-#: projeto.s2thessalonians
-msgctxt "projeto.s2thessalonians"
+#: project.s2thessalonians
+msgctxt "project.s2thessalonians"
 msgid "2 Thessalonians"
 msgstr ""
 
-#: projeto.s2timothy
-msgctxt "projeto.s2timothy"
+#: project.s2timothy
+msgctxt "project.s2timothy"
 msgid "2 Timothy"
 msgstr ""
 
-#: projeto.s3john
-msgctxt "projeto.s3john"
+#: project.s3john
+msgctxt "project.s3john"
 msgid "3 John"
 msgstr ""
 
-#: projeto.sacts
-msgctxt "projeto.sacts"
+#: project.sacts
+msgctxt "project.sacts"
 msgid "Acts"
 msgstr ""
 
-#: projeto.samos
-msgctxt "projeto.samos"
+#: project.samos
+msgctxt "project.samos"
 msgid "Amos"
 msgstr ""
 
-#: projeto.sanalyticalconcordance
+#: project.sanalyticalconcordance
 msgid "Anaytical Concordance"
 msgstr ""
 
-#: projeto.scolossians
-msgctxt "projeto.scolossians"
+#: project.scolossians
+msgctxt "project.scolossians"
 msgid "Colossians"
 msgstr ""
 
-#: projeto.scompresseddictionary
+#: project.scompresseddictionary
 msgid "Compressed dictionary"
 msgstr ""
 
-#: projeto.sconfirmation
+#: project.sconfirmation
 msgid "Confirmation"
 msgstr ""
 
-#: projeto.scorrupteddata
+#: project.scorrupteddata
 msgid ""
 "Corrupted data, some associations may be lost.This can happen for several reasons:\n"
 " 1. The project file was modified outside iBiblia\n"
@@ -455,402 +455,402 @@ msgid ""
 "    at https://github.com/rubiot/ibiblia.\n"
 msgstr ""
 
-#: projeto.sdaniel
-msgctxt "projeto.sdaniel"
+#: project.sdaniel
+msgctxt "project.sdaniel"
 msgid "Daniel"
 msgstr ""
 
-#: projeto.sdeuteronomy
-msgctxt "projeto.sdeuteronomy"
+#: project.sdeuteronomy
+msgctxt "project.sdeuteronomy"
 msgid "Deuteronomy"
 msgstr ""
 
-#: projeto.sdictionarydoesntexist
+#: project.sdictionarydoesntexist
 msgid "The selected dictionary doesn't exist: %s"
 msgstr ""
 
-#: projeto.secclesiastes
-msgctxt "projeto.secclesiastes"
+#: project.secclesiastes
+msgctxt "project.secclesiastes"
 msgid "Ecclesiastes"
 msgstr ""
 
-#: projeto.sencrypteddictionary
+#: project.sencrypteddictionary
 msgid "Encrypted dictionary"
 msgstr ""
 
-#: projeto.sephesians
-msgctxt "projeto.sephesians"
+#: project.sephesians
+msgctxt "project.sephesians"
 msgid "Ephesians"
 msgstr ""
 
-#: projeto.serror
+#: project.serror
 msgid "Error"
 msgstr ""
 
-#: projeto.sesther
-msgctxt "projeto.sesther"
+#: project.sesther
+msgctxt "project.sesther"
 msgid "Esther"
 msgstr ""
 
-#: projeto.sexodus
-msgctxt "projeto.sexodus"
+#: project.sexodus
+msgctxt "project.sexodus"
 msgid "Exodus"
 msgstr ""
 
-#: projeto.sexporttextsavedlgtitle
+#: project.sexporttextsavedlgtitle
 msgid "Please choose a destination file"
 msgstr ""
 
-#: projeto.sexporttofileerror
+#: project.sexporttofileerror
 msgid ""
 "iBiblia found an error while exporting the Bible module file.\n"
 "Please check if theWord is using the file, then close it and try again.\n"
 msgstr ""
 
-#: projeto.sezekiel
-msgctxt "projeto.sezekiel"
+#: project.sezekiel
+msgctxt "project.sezekiel"
 msgid "Ezekiel"
 msgstr ""
 
-#: projeto.sezra
-msgctxt "projeto.sezra"
+#: project.sezra
+msgctxt "project.sezra"
 msgid "Ezra"
 msgstr ""
 
-#: projeto.sfailedtocreatefile
+#: project.sfailedtocreatefile
 msgid "Failed to create file: %s"
 msgstr ""
 
-#: projeto.sgalatians
-msgctxt "projeto.sgalatians"
+#: project.sgalatians
+msgctxt "project.sgalatians"
 msgid "Galatians"
 msgstr ""
 
-#: projeto.sgenesis
-msgctxt "projeto.sgenesis"
+#: project.sgenesis
+msgctxt "project.sgenesis"
 msgid "Genesis"
 msgstr ""
 
-#: projeto.shabakkuk
-msgctxt "projeto.shabakkuk"
+#: project.shabakkuk
+msgctxt "project.shabakkuk"
 msgid "Habakkuk"
 msgstr ""
 
-#: projeto.shaggai
-msgctxt "projeto.shaggai"
+#: project.shaggai
+msgctxt "project.shaggai"
 msgid "Haggai"
 msgstr ""
 
-#: projeto.shebrew
-msgctxt "projeto.shebrew"
+#: project.shebrew
+msgctxt "project.shebrew"
 msgid "Hebrews"
 msgstr ""
 
-#: projeto.shosea
-msgctxt "projeto.shosea"
+#: project.shosea
+msgctxt "project.shosea"
 msgid "Hosea"
 msgstr ""
 
-#: projeto.sibibliapatchfiles
+#: project.sibibliapatchfiles
 msgid "iBiblia patch files"
 msgstr ""
 
-#: projeto.sinformation
-msgctxt "projeto.sinformation"
+#: project.sinformation
+msgctxt "project.sinformation"
 msgid "Information"
 msgstr ""
 
-#: projeto.sinterlinearverserulereplaceerror
+#: project.sinterlinearverserulereplaceerror
 msgid ""
 "There is something wrong with one of your interlinear verse rules.\n"
 "Please review them.\n"
 msgstr ""
 
-#: projeto.sinvalidcompresseddictionary
+#: project.sinvalidcompresseddictionary
 msgid ""
 "iBiblia does not suppport compressed dictionaries yet.\n"
 "Please choose an uncompressed module.\n"
 msgstr ""
 
-#: projeto.sinvalidencrypteddictionary
+#: project.sinvalidencrypteddictionary
 msgid ""
 "iBiblia does not and will not support encrypted modules.\n"
 "Please choose an unencrypted module.\n"
 msgstr ""
 
-#: projeto.sinvalidinterlinearverserule
+#: project.sinvalidinterlinearverserule
 msgid ""
 "There is something wrong with your interlinear verse rule.\n"
 "[%s]\n"
 msgstr ""
 
-#: projeto.sinvalidlinecount
+#: project.sinvalidlinecount
 msgid "Invalid file, it must have at least %d lines"
 msgstr ""
 
-#: projeto.sinvalidmoduletype
+#: project.sinvalidmoduletype
 msgid "Unknown module extension. Please choose a valid theWord Bible module (.ot, .ont or .nt)"
 msgstr ""
 
-#: projeto.sinvalidmorphologydictionary
+#: project.sinvalidmorphologydictionary
 msgid ""
 "This is not a morphology dictionary.\n"
 "Please choose a valid morphology dictionary.\n"
 msgstr ""
 
-#: projeto.sinvalidnonrtfdictionary
+#: project.sinvalidnonrtfdictionary
 msgid ""
 "iBiblia only suppports RTF modules.\n"
 "Please choose another module or convert this module to RTF in theWord.\n"
 msgstr ""
 
-#: projeto.sinvalidstrongsdictionary
+#: project.sinvalidstrongsdictionary
 msgid ""
 "This is not a Strong's dictionary.\n"
 "Please choose a valid Strong's dictionary.\n"
 msgstr ""
 
-#: projeto.sisaiah
-msgctxt "projeto.sisaiah"
+#: project.sisaiah
+msgctxt "project.sisaiah"
 msgid "Isaiah"
 msgstr ""
 
-#: projeto.sjames
-msgctxt "projeto.sjames"
+#: project.sjames
+msgctxt "project.sjames"
 msgid "James"
 msgstr ""
 
-#: projeto.sjeremiah
-msgctxt "projeto.sjeremiah"
+#: project.sjeremiah
+msgctxt "project.sjeremiah"
 msgid "Jeremiah"
 msgstr ""
 
-#: projeto.sjob
-msgctxt "projeto.sjob"
+#: project.sjob
+msgctxt "project.sjob"
 msgid "Job"
 msgstr ""
 
-#: projeto.sjoel
-msgctxt "projeto.sjoel"
+#: project.sjoel
+msgctxt "project.sjoel"
 msgid "Joel"
 msgstr ""
 
-#: projeto.sjohah
-msgctxt "projeto.sjohah"
+#: project.sjohah
+msgctxt "project.sjohah"
 msgid "Jonah"
 msgstr ""
 
-#: projeto.sjohn
-msgctxt "projeto.sjohn"
+#: project.sjohn
+msgctxt "project.sjohn"
 msgid "John"
 msgstr ""
 
-#: projeto.sjoshua
-msgctxt "projeto.sjoshua"
+#: project.sjoshua
+msgctxt "project.sjoshua"
 msgid "Joshua"
 msgstr ""
 
-#: projeto.sjude
-msgctxt "projeto.sjude"
+#: project.sjude
+msgctxt "project.sjude"
 msgid "Jude"
 msgstr ""
 
-#: projeto.sjudges
-msgctxt "projeto.sjudges"
+#: project.sjudges
+msgctxt "project.sjudges"
 msgid "Judges"
 msgstr ""
 
-#: projeto.slamentations
-msgctxt "projeto.slamentations"
+#: project.slamentations
+msgctxt "project.slamentations"
 msgid "Lamentations"
 msgstr ""
 
-#: projeto.slanguageid
+#: project.slanguageid
 msgid "en"
 msgstr ""
 
-#: projeto.sleviticus
-msgctxt "projeto.sleviticus"
+#: project.sleviticus
+msgctxt "project.sleviticus"
 msgid "Leviticus"
 msgstr ""
 
-#: projeto.slinebreaksintext
+#: project.slinebreaksintext
 msgid "A verse cannot contain line breaks. Your changes will be discarded."
 msgstr ""
 
-#: projeto.slinebreaksintexttitle
+#: project.slinebreaksintexttitle
 msgid "Edit error"
 msgstr ""
 
-#: projeto.sluke
-msgctxt "projeto.sluke"
+#: project.sluke
+msgctxt "project.sluke"
 msgid "Luke"
 msgstr ""
 
-#: projeto.smalachi
-msgctxt "projeto.smalachi"
+#: project.smalachi
+msgctxt "project.smalachi"
 msgid "Malachi"
 msgstr ""
 
-#: projeto.smark
-msgctxt "projeto.smark"
+#: project.smark
+msgctxt "project.smark"
 msgid "Mark"
 msgstr ""
 
-#: projeto.smatthew
-msgctxt "projeto.smatthew"
+#: project.smatthew
+msgctxt "project.smatthew"
 msgid "Matthew"
 msgstr ""
 
-#: projeto.smicah
-msgctxt "projeto.smicah"
+#: project.smicah
+msgctxt "project.smicah"
 msgid "Micah"
 msgstr ""
 
-#: projeto.smoduledoesnotincludescope
+#: project.smoduledoesnotincludescope
 msgid "This module is incompatible with the scope of the project. Please choose a valid module."
 msgstr ""
 
-#: projeto.smorphologydictionary
+#: project.smorphologydictionary
 msgid "Morphology Dictionary"
 msgstr ""
 
-#: projeto.snahum
-msgctxt "projeto.snahum"
+#: project.snahum
+msgctxt "project.snahum"
 msgid "Nahum"
 msgstr ""
 
-#: projeto.snehemiah
-msgctxt "projeto.snehemiah"
+#: project.snehemiah
+msgctxt "project.snehemiah"
 msgid "Nehemiah"
 msgstr ""
 
-#: projeto.snonrtfdictionary
+#: project.snonrtfdictionary
 msgid "Non-RTF module"
 msgstr ""
 
-#: projeto.snumbers
-msgctxt "projeto.snumbers"
+#: project.snumbers
+msgctxt "project.snumbers"
 msgid "Numbers"
 msgstr ""
 
-#: projeto.sobadiah
-msgctxt "projeto.sobadiah"
+#: project.sobadiah
+msgctxt "project.sobadiah"
 msgid "Obadiah"
 msgstr ""
 
-#: projeto.sopenproject
-msgctxt "projeto.sopenproject"
+#: project.sopenproject
+msgctxt "project.sopenproject"
 msgid "Open project"
 msgstr ""
 
-#: projeto.sotconcordancenotimplementedyet
+#: project.sotconcordancenotimplementedyet
 msgid "Old Testament concordance is not implemented yet"
 msgstr ""
 
-#: projeto.spatchsuccessfullyexported
+#: project.spatchsuccessfullyexported
 msgid "Patch successfully exported"
 msgstr ""
 
-#: projeto.sphilemon
-msgctxt "projeto.sphilemon"
+#: project.sphilemon
+msgctxt "project.sphilemon"
 msgid "Philemon"
 msgstr ""
 
-#: projeto.sphilippians
-msgctxt "projeto.sphilippians"
+#: project.sphilippians
+msgctxt "project.sphilippians"
 msgid "Philippians"
 msgstr ""
 
-#: projeto.spotentialnonutf8modulewarning
+#: project.spotentialnonutf8modulewarning
 msgid "This module has a 'charset' property and this may be an indication that this is a non-UTF8 module. iBiblia was not designed to work with non-UTF8 modules. Please choose 'Ignore' to ignore this warning and continue at your own risk or 'Abort' to abort the operation and choose another module."
 msgstr ""
 
-#: projeto.sprojectdoesntexist
+#: project.sprojectdoesntexist
 msgid "The selected project doesn't exist: %s"
 msgstr ""
 
-#: projeto.sproverbs
-msgctxt "projeto.sproverbs"
+#: project.sproverbs
+msgctxt "project.sproverbs"
 msgid "Proverbs"
 msgstr ""
 
-#: projeto.spsalms
-msgctxt "projeto.spsalms"
+#: project.spsalms
+msgctxt "project.spsalms"
 msgid "Psalms"
 msgstr ""
 
-#: projeto.sreferencenotfound
+#: project.sreferencenotfound
 msgid "Reference not found"
 msgstr ""
 
-#: projeto.sreferencenotfoundwarning
+#: project.sreferencenotfoundwarning
 msgid ""
 "The reference %s is not a valid reference in this project and will be ignored.\n"
 "Press Ignore to ignore all subsequent warnings.\n"
 msgstr ""
 
-#: projeto.srevelation
-msgctxt "projeto.srevelation"
+#: project.srevelation
+msgctxt "project.srevelation"
 msgid "Revelation"
 msgstr ""
 
-#: projeto.sromans
-msgctxt "projeto.sromans"
+#: project.sromans
+msgctxt "project.sromans"
 msgid "Romans"
 msgstr ""
 
-#: projeto.sruth
-msgctxt "projeto.sruth"
+#: project.sruth
+msgctxt "project.sruth"
 msgid "Ruth"
 msgstr ""
 
-#: projeto.ssongofsolomon
-msgctxt "projeto.ssongofsolomon"
+#: project.ssongofsolomon
+msgctxt "project.ssongofsolomon"
 msgid "Song of Solomon"
 msgstr ""
 
-#: projeto.sstrongdictionary
+#: project.sstrongdictionary
 msgid "Strong's Dictionary"
 msgstr ""
 
-#: projeto.ssyntheticconcordance
+#: project.ssyntheticconcordance
 msgid "Synthetic Concordance"
 msgstr ""
 
-#: projeto.stitus
-msgctxt "projeto.stitus"
+#: project.stitus
+msgctxt "project.stitus"
 msgid "Titus"
 msgstr ""
 
-#: projeto.stranslationmemory
+#: project.stranslationmemory
 msgid "Translation memory"
 msgstr ""
 
-#: projeto.svaccumprojectconfirmation
+#: project.svaccumprojectconfirmation
 msgid "Vacuuming requires that your project be saved and reopened. Do you want to proceed?"
 msgstr ""
 
-#: projeto.svacuumdone
-msgctxt "projeto.svacuumdone"
+#: project.svacuumdone
+msgctxt "project.svacuumdone"
 msgid "Vacuum done!"
 msgstr ""
 
-#: projeto.sverseabsentfromproject
+#: project.sverseabsentfromproject
 msgid "[This project does not contain this verse]"
 msgstr ""
 
-#: projeto.swarning
+#: project.swarning
 msgid "Warning"
 msgstr ""
 
-#: projeto.szechariah
-msgctxt "projeto.szechariah"
+#: project.szechariah
+msgctxt "project.szechariah"
 msgid "Zecariah"
 msgstr ""
 
-#: projeto.szephaniah
-msgctxt "projeto.szephaniah"
+#: project.szephaniah
+msgctxt "project.szephaniah"
 msgid "Zephaniah"
 msgstr ""
 

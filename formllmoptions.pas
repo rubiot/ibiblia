@@ -10,21 +10,22 @@ uses
   {$IFDEF WINDOWS}, Windows{$ENDIF};
 
 type
-  // Record to store a single field control
-  TFieldControl = record
-    FieldKey: string;
-    FieldType: string;
-    Control: TControl;  // Can be TEdit, TMemo, TCheckBox, etc.
-  end;
-
   // Record to store controls for each flow tab
   TFlowTabControls = record
     TabSheet: TTabSheet;
     FlowId: string;
+    ScrollBox: TScrollBox;
     LblDescription: TLabel;
-    FieldControls: array of TFieldControl;  // Dynamic array of field controls
+    EditTargetLanguage: TLabeledEdit;
+    LblInstructions: TLabel;
+    MemoInstructions: TMemo;
+    ChkIncludeComments: TCheckBox;
+    ChkForceOverwrite: TCheckBox;
     chkUseOverride: TCheckBox;
     gbOverride: TGroupBox;
+    CbProvider: TComboBox;
+    CbModel: TComboBox;
+    EditApiKey: TLabeledEdit;
     LblExamples: TLabel;
     lbExamples: TListBox;
     BtnRemoveExample: TButton;
@@ -62,7 +63,25 @@ type
     procedure SaveToProject;
     procedure MigrateLegacyConfigIfNeeded;
     procedure InitializeFlowTabs;
-    procedure CreateFlowTab(ATabSheet: TTabSheet; const AFlowId: string);
+    procedure CreateAssociationTab(ATabSheet: TTabSheet; TabIdx: Integer);
+    procedure CreateTranslationTab(ATabSheet: TTabSheet; TabIdx: Integer);
+    function CreateFlowScrollBox(ATabSheet: TTabSheet; TabIdx: Integer): TScrollBox;
+    procedure AddFlowDescription(AParent: TWinControl; var YPos: Integer;
+      var LblDescription: TLabel; const ADescription: string);
+    procedure AddInstructionsMemo(AParent: TWinControl; var YPos: Integer;
+      var LblInstructions: TLabel; var MemoInstructions: TMemo;
+      const ACaption, AHint: string);
+    procedure AddProviderOverrideSection(AParent: TWinControl; var YPos: Integer;
+      TabIdx: Integer; var TabControls: TFlowTabControls);
+    procedure AddExamplesSection(AParent: TWinControl; var YPos: Integer;
+      TabIdx: Integer; var TabControls: TFlowTabControls);
+    procedure AddPromptButtonsAndFormatInfo(AParent: TWinControl; var YPos: Integer;
+      TabIdx: Integer; var TabControls: TFlowTabControls;
+      const AOutputFormatInfo: string);
+    procedure SetFlowProviderValues(TabIdx: Integer; const AProvider, AModel,
+      AApiKey: string);
+    procedure OnFlowScrollBoxResize(Sender: TObject);
+    procedure ResizeFlowTabControls(TabIdx: Integer);
     procedure LoadFlowConfig(const AFlowId: string);
     procedure SaveFlowConfig(const AFlowId: string);
     procedure OnViewDefaultClick(Sender: TObject);
@@ -111,6 +130,9 @@ resourcestring
   rsUseFlowOverride = 'Use flow-specific provider/model/API key';
 
 implementation
+
+uses
+  ai_association_flow, ai_translation_flow;
 
 { TFrmLLMOptions }
 
@@ -275,9 +297,9 @@ begin
 
       customInstructions := ExtractCustomInstructions(legacyPrompt, defaultPrompt);
       if customInstructions <> '' then
-        FProject.SetInfo(flowConfig.GetConfigFields[0].Key, customInstructions)
+        FProject.SetInfo(AI_ASSOCIATION_CONFIG_KEY_CUSTOM_INSTRUCTIONS, customInstructions)
       else
-        FProject.SetInfo(flowConfig.GetConfigFields[0].Key, flowConfig.GetDefaultCustomInstructions);
+        FProject.SetInfo(AI_ASSOCIATION_CONFIG_KEY_CUSTOM_INSTRUCTIONS, flowConfig.GetDefaultCustomInstructions);
     end;
 
     // Note: We don't delete legacy keys to maintain compatibility with older versions
@@ -287,388 +309,476 @@ end;
 
 procedure TFrmLLMOptions.InitializeFlowTabs;
 begin
-  // Initialize each flow tab with controls
   SetLength(FFlowTabs, 2);
-
-  // Association flow
-  CreateFlowTab(tsAssociation, 'association');
-
-  // Translation flow
-  CreateFlowTab(tsTranslation, 'translation');
+  CreateAssociationTab(tsAssociation, 0);
+  CreateTranslationTab(tsTranslation, 1);
 end;
 
-procedure TFrmLLMOptions.CreateFlowTab(ATabSheet: TTabSheet; const AFlowId: string);
-var
-  flowConfig: IAIFlowConfig;
-  tabControls: TFlowTabControls;
-  yPos: Integer;
-  idx: Integer;
-  configFields: TAIFlowConfigFieldArray;
-  i: Integer;
-  fieldCtrl: TFieldControl;
-  lbl: TLabel;
-  edit: TLabeledEdit;
-  memo: TMemo;
-  checkbox: TCheckBox;
-  cb: TComboBox;
-  gbProvider: TGroupBox;
-  currentParent: TWinControl;
-  gbYPos: Integer;
+function TFrmLLMOptions.CreateFlowScrollBox(ATabSheet: TTabSheet; TabIdx: Integer): TScrollBox;
 begin
-  flowConfig := GetFlowConfigById(AFlowId);
-  if not Assigned(flowConfig) then Exit;
-
-  // Find or add to array
-  idx := Length(FFlowTabs);
-  if AFlowId = 'association' then idx := 0
-  else if AFlowId = 'translation' then idx := 1;
-
-  tabControls.TabSheet := ATabSheet;
-  tabControls.FlowId := AFlowId;
-
-  yPos := 12;
-
-  // Description label
-  tabControls.LblDescription := TLabel.Create(ATabSheet);
-  with tabControls.LblDescription do
+  Result := TScrollBox.Create(ATabSheet);
+  with Result do
   begin
     Parent := ATabSheet;
+    Align := alClient;
+    BorderStyle := bsNone;
+    Tag := TabIdx;
+    HorzScrollBar.Visible := False;
+    OnResize := @OnFlowScrollBoxResize;
+  end;
+end;
+
+procedure TFrmLLMOptions.OnFlowScrollBoxResize(Sender: TObject);
+begin
+  if Sender is TScrollBox then
+    ResizeFlowTabControls(TScrollBox(Sender).Tag);
+end;
+
+procedure TFrmLLMOptions.ResizeFlowTabControls(TabIdx: Integer);
+var
+  contentWidth, innerWidth: Integer;
+  tabControls: TFlowTabControls;
+
+  procedure SetWidthIfAssigned(AControl: TControl; AWidth: Integer);
+  begin
+    if Assigned(AControl) then
+      AControl.Width := AWidth;
+  end;
+
+begin
+  if (TabIdx < 0) or (TabIdx > High(FFlowTabs)) then Exit;
+  tabControls := FFlowTabs[TabIdx];
+  if not Assigned(tabControls.ScrollBox) then Exit;
+
+  contentWidth := tabControls.ScrollBox.ClientWidth - 24;
+  if contentWidth < 240 then
+    contentWidth := 240;
+  innerWidth := contentWidth - 16;
+  if innerWidth < 200 then
+    innerWidth := 200;
+
+  SetWidthIfAssigned(tabControls.LblDescription, contentWidth);
+  SetWidthIfAssigned(tabControls.EditTargetLanguage, contentWidth);
+  SetWidthIfAssigned(tabControls.LblInstructions, contentWidth);
+  SetWidthIfAssigned(tabControls.MemoInstructions, contentWidth);
+  SetWidthIfAssigned(tabControls.ChkIncludeComments, contentWidth);
+  SetWidthIfAssigned(tabControls.ChkForceOverwrite, contentWidth);
+  SetWidthIfAssigned(tabControls.chkUseOverride, contentWidth);
+  SetWidthIfAssigned(tabControls.gbOverride, contentWidth);
+  SetWidthIfAssigned(tabControls.lbExamples, contentWidth);
+  SetWidthIfAssigned(tabControls.LblFormatInfo, contentWidth);
+
+  SetWidthIfAssigned(tabControls.CbProvider, innerWidth);
+  SetWidthIfAssigned(tabControls.CbModel, innerWidth);
+  SetWidthIfAssigned(tabControls.EditApiKey, innerWidth);
+end;
+
+procedure TFrmLLMOptions.AddFlowDescription(AParent: TWinControl;
+  var YPos: Integer; var LblDescription: TLabel; const ADescription: string);
+begin
+  LblDescription := TLabel.Create(AParent);
+  with LblDescription do
+  begin
+    Parent := AParent;
     Left := 8;
-    Top := yPos;
-    Width := 600;  // Use fixed width initially, Anchors will resize it
-    Anchors := [akTop, akLeft, akRight];
-    Caption := flowConfig.GetDescription;
+    Top := YPos;
+    Width := 600;
+    Anchors := [akTop, akLeft];
+    Caption := ADescription;
     WordWrap := True;
     AutoSize := True;
     Font.Style := [fsBold];
   end;
+  LblDescription.AdjustSize;
+  Inc(YPos, LblDescription.Height + 16);
+end;
 
-  // Force layout calculation to get correct height for next controls
-  tabControls.LblDescription.AdjustSize;
-  Inc(yPos, tabControls.LblDescription.Height + 16);
-
-  // Get configuration fields for this flow
-  configFields := flowConfig.GetConfigFields;
-  SetLength(tabControls.FieldControls, Length(configFields));
-
-  gbProvider := nil;
-  gbYPos := 20;
-
-  // Create controls dynamically for each field
-  for i := 0 to High(configFields) do
+procedure TFrmLLMOptions.AddInstructionsMemo(AParent: TWinControl;
+  var YPos: Integer; var LblInstructions: TLabel;
+  var MemoInstructions: TMemo; const ACaption, AHint: string);
+begin
+  LblInstructions := TLabel.Create(AParent);
+  with LblInstructions do
   begin
-    fieldCtrl.FieldKey := configFields[i].Key;
-    fieldCtrl.FieldType := configFields[i].FieldType;
+    Parent := AParent;
+    Left := 8;
+    Top := YPos;
+    Caption := ACaption + ':';
+    AutoSize := True;
+  end;
+  Inc(YPos, 20);
 
-    // Decide parent: provider fields go into a GroupBox
-    if (configFields[i].FieldType = 'model') or (configFields[i].FieldType = 'password') or (configFields[i].FieldType = 'provider') then
-    begin
-      if gbProvider = nil then
-      begin
-        tabControls.chkUseOverride := TCheckBox.Create(ATabSheet);
-        tabControls.chkUseOverride.Parent := ATabSheet;
-        tabControls.chkUseOverride.Left := 8;
-        tabControls.chkUseOverride.Top := yPos;
-        tabControls.chkUseOverride.Width := 320;
-        tabControls.chkUseOverride.Caption := rsUseFlowOverride;
-        tabControls.chkUseOverride.Tag := idx;
-        tabControls.chkUseOverride.OnChange := @OnFlowOverrideToggle;
-        Inc(yPos, 26);
+  MemoInstructions := TMemo.Create(AParent);
+  with MemoInstructions do
+  begin
+    Parent := AParent;
+    Left := 8;
+    Top := YPos;
+    Width := 600;
+    Height := 120;
+    Anchors := [akTop, akLeft];
+    ScrollBars := ssAutoBoth;
+    Hint := AHint;
+    ShowHint := True;
+    WordWrap := True;
+    BorderStyle := bsSingle;
+    Color := clWindow;
+  end;
+  Inc(YPos, MemoInstructions.Height + 12);
+end;
 
-        gbProvider := TGroupBox.Create(ATabSheet);
-        gbProvider.Parent := ATabSheet;
-        gbProvider.Left := 8;
-        gbProvider.Top := yPos;
-        gbProvider.Width := 600;
-        gbProvider.Height := 100; // Will adjust
-        gbProvider.Anchors := [akTop, akLeft, akRight];
-        gbProvider.Caption := rsProviderOverride;
-        tabControls.gbOverride := gbProvider;
-        Inc(yPos, gbProvider.Height + 10);
-      end;
-      currentParent := gbProvider;
-    end
-    else
-      currentParent := ATabSheet;
+procedure TFrmLLMOptions.AddProviderOverrideSection(AParent: TWinControl;
+  var YPos: Integer; TabIdx: Integer; var TabControls: TFlowTabControls);
+var
+  lbl: TLabel;
+begin
+  TabControls.chkUseOverride := TCheckBox.Create(AParent);
+  with TabControls.chkUseOverride do
+  begin
+    Parent := AParent;
+    Left := 8;
+    Top := YPos;
+    Width := 360;
+    Caption := rsUseFlowOverride;
+    Tag := TabIdx;
+    OnChange := @OnFlowOverrideToggle;
+  end;
+  Inc(YPos, 26);
 
-    // Create appropriate control based on field type
-    if (configFields[i].FieldType = 'string') or (configFields[i].FieldType = 'password') then
-    begin
-      // Create TLabeledEdit
-      edit := TLabeledEdit.Create(currentParent);
-      edit.Parent := currentParent;
-      edit.Left := 8;
-      
-      if currentParent = gbProvider then
-      begin
-        edit.Top := gbYPos + 20;
-        Inc(gbYPos, 50);
-        if gbYPos + 15 > gbProvider.Height then gbProvider.Height := gbYPos + 15;
-      end
-      else
-      begin
-        Inc(yPos, 20);
-        edit.Top := yPos;
-        Inc(yPos, 28);
-      end;
-
-      edit.Width := currentParent.ClientWidth - 16;
-      edit.Height := 21;
-      edit.Anchors := [akTop, akLeft, akRight];
-      edit.EditLabel.Caption := configFields[i].DisplayName;
-      edit.LabelPosition := lpAbove;
-      edit.LabelSpacing := 3;
-      edit.Hint := configFields[i].Description;
-      edit.ShowHint := True;
-      if configFields[i].FieldType = 'password' then
-        edit.PasswordChar := '*';
-      fieldCtrl.Control := edit;
-    end
-    else if (configFields[i].FieldType = 'model') or (configFields[i].FieldType = 'provider') then
-    begin
-      // Only create label if it's not the provider field inside the gbProvider groupbox
-      // (as the groupbox title 'Provider Override' already describes it)
-      lbl := nil;
-      if not ((currentParent = gbProvider) and (configFields[i].FieldType = 'provider')) then
-      begin
-        lbl := TLabel.Create(currentParent);
-        lbl.Parent := currentParent;
-        lbl.Left := 8;
-        lbl.Caption := configFields[i].DisplayName;
-      end;
-      
-      if currentParent = gbProvider then
-      begin
-        if Assigned(lbl) then
-        begin
-          lbl.Top := gbYPos;
-          cb := TComboBox.Create(currentParent);
-          cb.Parent := currentParent;
-          cb.Left := 8;
-          cb.Top := gbYPos + 16;
-          Inc(gbYPos, 50);
-        end
-        else
-        begin
-          // If no label, position combo box at the top of current slot
-          cb := TComboBox.Create(currentParent);
-          cb.Parent := currentParent;
-          cb.Left := 8;
-          cb.Top := gbYPos;
-          Inc(gbYPos, 36);
-        end;
-        if gbYPos + 15 > gbProvider.Height then gbProvider.Height := gbYPos + 15;
-      end
-      else
-      begin
-        lbl.Top := yPos;
-        cb := TComboBox.Create(currentParent);
-        cb.Parent := currentParent;
-        cb.Left := 8;
-        cb.Top := yPos + 16;
-        Inc(yPos, 45);
-      end;
-
-      cb.Width := currentParent.ClientWidth - 16;
-      cb.Anchors := [akTop, akLeft, akRight];
-      if configFields[i].FieldType = 'provider' then
-        cb.Style := csDropDownList
-      else
-        cb.Style := csDropDown;
-      
-      if configFields[i].FieldType = 'provider' then
-      begin
-        FillSupportedProviders(cb.Items);
-        cb.OnChange := @OnFlowProviderChange;
-        cb.Tag := idx; // Link to tab index
-      end
-      else
-        FillSupportedModelNames(cb.Items);
-        
-      cb.Hint := configFields[i].Description;
-      cb.ShowHint := True;
-      if Assigned(lbl) then lbl.Caption := configFields[i].DisplayName;
-      fieldCtrl.Control := cb;
-    end
-    else if configFields[i].FieldType = 'memo' then
-    begin
-      // Label for memo
-      lbl := TLabel.Create(currentParent);
-      lbl.Parent := currentParent;
-      lbl.Left := 8;
-      lbl.Top := yPos;
-      lbl.Caption := configFields[i].DisplayName + ':';
-      lbl.AutoSize := True;
-      Inc(yPos, 20);
-
-      // Create TMemo for memo fields
-      memo := TMemo.Create(currentParent);
-      memo.Parent := currentParent;
-      memo.Left := 8;
-      memo.Top := yPos;
-      memo.Width := 600;  // Use fixed width, Anchors will resize it
-      memo.Height := 100;
-      memo.Anchors := [akTop, akLeft, akRight];
-      memo.ScrollBars := ssAutoBoth;
-      memo.Hint := configFields[i].Description;
-      memo.ShowHint := True;
-      memo.Visible := True;
-      memo.TabStop := True;
-      memo.WordWrap := True;
-      memo.BorderStyle := bsSingle;  // Ensure border is visible
-      memo.Color := clWindow;  // White background
-      fieldCtrl.Control := memo;
-      Inc(yPos, 108); // Memo (100) + Gap (8)
-    end
-    else if configFields[i].FieldType = 'boolean' then
-    begin
-      // Create TCheckBox for boolean fields
-      checkbox := TCheckBox.Create(currentParent);
-      checkbox.Parent := currentParent;
-      checkbox.Left := 8;
-      checkbox.Top := yPos;
-      checkbox.Width := 600;  // Use fixed width, Anchors will resize it
-      checkbox.Caption := configFields[i].DisplayName;
-      checkbox.Hint := configFields[i].Description;
-      checkbox.ShowHint := True;
-      fieldCtrl.Control := checkbox;
-      Inc(yPos, 28); // CheckBox (20) + Gap (8)
-    end;
-
-    tabControls.FieldControls[i] := fieldCtrl;
+  TabControls.gbOverride := TGroupBox.Create(AParent);
+  with TabControls.gbOverride do
+  begin
+    Parent := AParent;
+    Left := 8;
+    Top := YPos;
+    Width := 600;
+    Height := 210;
+    Anchors := [akTop, akLeft];
+    Caption := rsProviderOverride;
   end;
 
-  // Final adjustment of yPos after GroupBox if it was resized
-  if gbProvider <> nil then
-    yPos := gbProvider.Top + gbProvider.Height + 10;
-
-  Inc(yPos, 8);
-
-  tabControls.LblExamples := TLabel.Create(ATabSheet);
-  with tabControls.LblExamples do
+  lbl := TLabel.Create(TabControls.gbOverride);
+  with lbl do
   begin
-    Parent := ATabSheet;
+    Parent := TabControls.gbOverride;
     Left := 8;
-    Top := yPos;
+    Top := 20;
+    Caption := ai_association_flow.SConfigProviderOverrideDisplayName;
+    AutoSize := True;
+  end;
+
+  TabControls.CbProvider := TComboBox.Create(TabControls.gbOverride);
+  with TabControls.CbProvider do
+  begin
+    Parent := TabControls.gbOverride;
+    Left := 8;
+    Top := 38;
+    Width := 584;
+    Anchors := [akTop, akLeft];
+    Style := csDropDownList;
+    Hint := ai_association_flow.SConfigProviderOverrideDescription;
+    ShowHint := True;
+    Tag := TabIdx;
+    OnChange := @OnFlowProviderChange;
+    FillSupportedProviders(Items);
+  end;
+
+  lbl := TLabel.Create(TabControls.gbOverride);
+  with lbl do
+  begin
+    Parent := TabControls.gbOverride;
+    Left := 8;
+    Top := 70;
+    Caption := ai_association_flow.SConfigModelOverrideDisplayName;
+    AutoSize := True;
+  end;
+
+  TabControls.CbModel := TComboBox.Create(TabControls.gbOverride);
+  with TabControls.CbModel do
+  begin
+    Parent := TabControls.gbOverride;
+    Left := 8;
+    Top := 88;
+    Width := 584;
+    Anchors := [akTop, akLeft];
+    Style := csDropDown;
+    Hint := ai_association_flow.SConfigModelOverrideDescription;
+    ShowHint := True;
+    FillSupportedModelNames(Items);
+  end;
+
+  TabControls.EditApiKey := TLabeledEdit.Create(TabControls.gbOverride);
+  with TabControls.EditApiKey do
+  begin
+    Parent := TabControls.gbOverride;
+    Left := 8;
+    Top := 140;
+    Width := 584;
+    Height := 25;
+    Anchors := [akTop, akLeft];
+    EditLabel.Caption := ai_association_flow.SConfigApiKeyOverrideDisplayName;
+    LabelPosition := lpAbove;
+    LabelSpacing := 3;
+    PasswordChar := '*';
+    Hint := ai_association_flow.SConfigApiKeyOverrideDescription;
+    ShowHint := True;
+  end;
+
+  Inc(YPos, TabControls.gbOverride.Height + 18);
+end;
+
+procedure TFrmLLMOptions.AddExamplesSection(AParent: TWinControl;
+  var YPos: Integer; TabIdx: Integer; var TabControls: TFlowTabControls);
+begin
+  TabControls.LblExamples := TLabel.Create(AParent);
+  with TabControls.LblExamples do
+  begin
+    Parent := AParent;
+    Left := 8;
+    Top := YPos;
     Caption := rsSavedExamples;
     AutoSize := True;
   end;
-  Inc(yPos, 20);
+  Inc(YPos, 20);
 
-  tabControls.lbExamples := TListBox.Create(ATabSheet);
-  with tabControls.lbExamples do
+  TabControls.lbExamples := TListBox.Create(AParent);
+  with TabControls.lbExamples do
   begin
-    Parent := ATabSheet;
+    Parent := AParent;
     Left := 8;
-    Top := yPos;
+    Top := YPos;
     Width := 600;
     Height := 88;
-    Anchors := [akTop, akLeft, akRight];
+    Anchors := [akTop, akLeft];
     IntegralHeight := False;
   end;
-  Inc(yPos, 96);
+  Inc(YPos, 96);
 
-  tabControls.BtnRemoveExample := TButton.Create(ATabSheet);
-  with tabControls.BtnRemoveExample do
+  TabControls.BtnRemoveExample := TButton.Create(AParent);
+  with TabControls.BtnRemoveExample do
   begin
-    Parent := ATabSheet;
+    Parent := AParent;
     Left := 8;
-    Top := yPos;
+    Top := YPos;
     Width := 120;
     Height := 25;
     Caption := rsBtnRemoveExample;
-    Tag := idx;
+    Tag := TabIdx;
     OnClick := @OnRemoveExampleClick;
   end;
 
-  tabControls.BtnClearExamples := TButton.Create(ATabSheet);
-  with tabControls.BtnClearExamples do
+  TabControls.BtnClearExamples := TButton.Create(AParent);
+  with TabControls.BtnClearExamples do
   begin
-    Parent := ATabSheet;
+    Parent := AParent;
     Left := 136;
-    Top := yPos;
+    Top := YPos;
     Width := 90;
     Height := 25;
     Caption := rsBtnClearExamples;
-    Tag := idx;
+    Tag := TabIdx;
     OnClick := @OnClearExamplesClick;
   end;
 
-  Inc(yPos, 33);
+  Inc(YPos, 33);
+end;
 
-  // Buttons panel
-  tabControls.BtnViewDefault := TButton.Create(ATabSheet);
-  with tabControls.BtnViewDefault do
+procedure TFrmLLMOptions.AddPromptButtonsAndFormatInfo(AParent: TWinControl;
+  var YPos: Integer; TabIdx: Integer; var TabControls: TFlowTabControls;
+  const AOutputFormatInfo: string);
+begin
+  TabControls.BtnViewDefault := TButton.Create(AParent);
+  with TabControls.BtnViewDefault do
   begin
-    Parent := ATabSheet;
+    Parent := AParent;
     Left := 8;
-    Top := yPos;
+    Top := YPos;
     Width := 140;
     Height := 25;
     Caption := rsBtnViewDefault;
-    Tag := idx; // Store index for identification
+    Tag := TabIdx;
     OnClick := @OnViewDefaultClick;
   end;
 
-  tabControls.BtnReset := TButton.Create(ATabSheet);
-  with tabControls.BtnReset do
+  TabControls.BtnReset := TButton.Create(AParent);
+  with TabControls.BtnReset do
   begin
-    Parent := ATabSheet;
+    Parent := AParent;
     Left := 156;
-    Top := yPos;
+    Top := YPos;
     Width := 120;
     Height := 25;
     Caption := rsBtnReset;
-    Tag := idx; // Store index for identification
+    Tag := TabIdx;
     OnClick := @OnResetClick;
   end;
+  Inc(YPos, 33);
 
-  Inc(yPos, 33);
-
-  // Format info label
-  tabControls.LblFormatInfo := TLabel.Create(ATabSheet);
-  with tabControls.LblFormatInfo do
+  TabControls.LblFormatInfo := TLabel.Create(AParent);
+  with TabControls.LblFormatInfo do
   begin
-    Parent := ATabSheet;
+    Parent := AParent;
     Left := 8;
-    Top := yPos;
-    Width := 600; // Use fixed width initially
-    Anchors := [akTop, akLeft, akRight];
-    Caption := 'ℹ️ ' + flowConfig.GetOutputFormatInfo;
+    Top := YPos;
+    Width := 600;
+    Anchors := [akTop, akLeft];
+    Caption := 'Info: ' + AOutputFormatInfo;
     WordWrap := True;
     Font.Style := [fsItalic];
     AutoSize := True;
   end;
+  Inc(YPos, TabControls.LblFormatInfo.Height + 16);
+end;
 
-  FFlowTabs[idx] := tabControls;
-  UpdateFlowOverrideControls(idx);
+procedure TFrmLLMOptions.CreateAssociationTab(ATabSheet: TTabSheet; TabIdx: Integer);
+var
+  flowConfig: IAIFlowConfig;
+  tabControls: TFlowTabControls;
+  yPos: Integer;
+begin
+  flowConfig := GetFlowConfigById('association');
+  if not Assigned(flowConfig) then Exit;
 
-  OutputDebugString(PChar('DEBUG: CreateFlowTab complete for "' + AFlowId + '" - Created ' +
-          IntToStr(Length(tabControls.FieldControls)) + ' field controls'));
+  tabControls := Default(TFlowTabControls);
+  tabControls.TabSheet := ATabSheet;
+  tabControls.FlowId := 'association';
+  tabControls.ScrollBox := CreateFlowScrollBox(ATabSheet, TabIdx);
+  yPos := 12;
+
+  AddFlowDescription(tabControls.ScrollBox, yPos, tabControls.LblDescription,
+    flowConfig.GetDescription);
+  AddInstructionsMemo(tabControls.ScrollBox, yPos, tabControls.LblInstructions,
+    tabControls.MemoInstructions,
+    ai_association_flow.SConfigAdditionalInstructionsDisplayName,
+    ai_association_flow.SConfigAdditionalInstructionsDescription);
+
+  tabControls.ChkIncludeComments := TCheckBox.Create(tabControls.ScrollBox);
+  with tabControls.ChkIncludeComments do
+  begin
+    Parent := tabControls.ScrollBox;
+    Left := 8;
+    Top := yPos;
+    Width := 600;
+    Anchors := [akTop, akLeft];
+    Caption := ai_association_flow.SConfigIncludeCommentsDisplayName;
+    Hint := ai_association_flow.SConfigIncludeCommentsDescription;
+    ShowHint := True;
+  end;
+  Inc(yPos, 32);
+
+  AddProviderOverrideSection(tabControls.ScrollBox, yPos, TabIdx, tabControls);
+  AddExamplesSection(tabControls.ScrollBox, yPos, TabIdx, tabControls);
+  AddPromptButtonsAndFormatInfo(tabControls.ScrollBox, yPos, TabIdx, tabControls,
+    flowConfig.GetOutputFormatInfo);
+
+  FFlowTabs[TabIdx] := tabControls;
+  UpdateFlowOverrideControls(TabIdx);
+  ResizeFlowTabControls(TabIdx);
+  OutputDebugString(PChar('DEBUG: CreateAssociationTab complete'));
+end;
+
+procedure TFrmLLMOptions.CreateTranslationTab(ATabSheet: TTabSheet; TabIdx: Integer);
+var
+  flowConfig: IAIFlowConfig;
+  tabControls: TFlowTabControls;
+  yPos: Integer;
+begin
+  flowConfig := GetFlowConfigById('translation');
+  if not Assigned(flowConfig) then Exit;
+
+  tabControls := Default(TFlowTabControls);
+  tabControls.TabSheet := ATabSheet;
+  tabControls.FlowId := 'translation';
+  tabControls.ScrollBox := CreateFlowScrollBox(ATabSheet, TabIdx);
+  yPos := 12;
+
+  AddFlowDescription(tabControls.ScrollBox, yPos, tabControls.LblDescription,
+    flowConfig.GetDescription);
+
+  tabControls.EditTargetLanguage := TLabeledEdit.Create(tabControls.ScrollBox);
+  with tabControls.EditTargetLanguage do
+  begin
+    Parent := tabControls.ScrollBox;
+    Left := 8;
+    Top := yPos + 20;
+    Width := 600;
+    Height := 25;
+    Anchors := [akTop, akLeft];
+    EditLabel.Caption := ai_translation_flow.SConfigTargetLanguageDisplayName;
+    LabelPosition := lpAbove;
+    LabelSpacing := 3;
+    Hint := ai_translation_flow.SConfigTargetLanguageDescription;
+    ShowHint := True;
+  end;
+  Inc(yPos, 58);
+
+  AddInstructionsMemo(tabControls.ScrollBox, yPos, tabControls.LblInstructions,
+    tabControls.MemoInstructions,
+    ai_translation_flow.SConfigAdditionalInstructionsDisplayName,
+    ai_translation_flow.SConfigAdditionalInstructionsDescription);
+
+  tabControls.ChkForceOverwrite := TCheckBox.Create(tabControls.ScrollBox);
+  with tabControls.ChkForceOverwrite do
+  begin
+    Parent := tabControls.ScrollBox;
+    Left := 8;
+    Top := yPos;
+    Width := 600;
+    Anchors := [akTop, akLeft];
+    Caption := ai_translation_flow.SConfigForceOverwriteDisplayName;
+    Hint := ai_translation_flow.SConfigForceOverwriteDescription;
+    ShowHint := True;
+  end;
+  Inc(yPos, 32);
+
+  AddProviderOverrideSection(tabControls.ScrollBox, yPos, TabIdx, tabControls);
+  AddExamplesSection(tabControls.ScrollBox, yPos, TabIdx, tabControls);
+  AddPromptButtonsAndFormatInfo(tabControls.ScrollBox, yPos, TabIdx, tabControls,
+    flowConfig.GetOutputFormatInfo);
+
+  FFlowTabs[TabIdx] := tabControls;
+  UpdateFlowOverrideControls(TabIdx);
+  ResizeFlowTabControls(TabIdx);
+  OutputDebugString(PChar('DEBUG: CreateTranslationTab complete'));
+end;
+
+procedure TFrmLLMOptions.SetFlowProviderValues(TabIdx: Integer;
+  const AProvider, AModel, AApiKey: string);
+begin
+  if (TabIdx < 0) or (TabIdx > High(FFlowTabs)) then Exit;
+
+  if Assigned(FFlowTabs[TabIdx].CbProvider) then
+    FFlowTabs[TabIdx].CbProvider.Text := AProvider;
+
+  if Assigned(FFlowTabs[TabIdx].CbModel) then
+  begin
+    FFlowTabs[TabIdx].CbModel.Items.BeginUpdate;
+    try
+      FFlowTabs[TabIdx].CbModel.Items.Clear;
+      FillSupportedModelNames(FFlowTabs[TabIdx].CbModel.Items, AProvider);
+    finally
+      FFlowTabs[TabIdx].CbModel.Items.EndUpdate;
+    end;
+    FFlowTabs[TabIdx].CbModel.Text := AModel;
+  end;
+
+  if Assigned(FFlowTabs[TabIdx].EditApiKey) then
+    FFlowTabs[TabIdx].EditApiKey.Text := AApiKey;
 end;
 
 procedure TFrmLLMOptions.OnFlowProviderChange(Sender: TObject);
 var
   cbProvider, LcbModel: TComboBox;
-  tabIdx, i: Integer;
+  tabIdx: Integer;
   provider: string;
 begin
   if not (Sender is TComboBox) then Exit;
   cbProvider := TComboBox(Sender);
-  tabIdx := cbProvider.Tag; // We set this in CreateFlowTab to 0 or 1
+  tabIdx := cbProvider.Tag;
+  if (tabIdx < 0) or (tabIdx > High(FFlowTabs)) then Exit;
+
   provider := cbProvider.Text;
-
-  // Find the model combo in the same tab
-  LcbModel := nil;
-  for i := 0 to High(FFlowTabs[tabIdx].FieldControls) do
-  begin
-    if FFlowTabs[tabIdx].FieldControls[i].FieldType = 'model' then
-    begin
-      LcbModel := TComboBox(FFlowTabs[tabIdx].FieldControls[i].Control);
-      Break;
-    end;
-  end;
-
+  LcbModel := FFlowTabs[tabIdx].CbModel;
   if Assigned(LcbModel) then
   begin
     LcbModel.Items.BeginUpdate;
@@ -685,149 +795,135 @@ end;
 
 procedure TFrmLLMOptions.LoadFlowConfig(const AFlowId: string);
 var
-  flowConfig: IAIFlowConfig;
-  tabControls: TFlowTabControls;
-  configFields: TAIFlowConfigFieldArray;
-  i, tabIdx: Integer;
-  fieldValue, providerValue, overrideEnabledValue: string;
+  tabIdx: Integer;
+  providerValue, modelValue, apiKeyValue, overrideEnabledValue: string;
   hasStoredOverride: Boolean;
-  ctrl: TControl;
-  LcbModel: TComboBox;
+
+  function StoredOrDefault(const AKey, ADefault: string): string;
+  begin
+    Result := FProject.GetInfo(AKey);
+    if Trim(Result) = '' then
+      Result := ADefault;
+  end;
+
 begin
   if not Assigned(FProject) then Exit;
 
-  flowConfig := GetFlowConfigById(AFlowId);
-  if not Assigned(flowConfig) then Exit;
-
-  tabControls := GetFlowTabByFlowId(AFlowId);
-  if not Assigned(tabControls.TabSheet) then Exit;
-
-  configFields := flowConfig.GetConfigFields;
-  hasStoredOverride := False;
-
-  // Find provider value first to filter models
-  providerValue := '';
-  for i := 0 to High(configFields) do
-  begin
-    if configFields[i].FieldType = 'provider' then
-    begin
-      providerValue := FProject.GetInfo(configFields[i].Key);
-      if providerValue = '' then providerValue := configFields[i].DefaultValue;
-      Break;
-    end;
-  end;
-
-  for i := 0 to High(configFields) do
-    if ((configFields[i].FieldType = 'provider') or
-        (configFields[i].FieldType = 'model') or
-        (configFields[i].FieldType = 'password')) and
-      (Trim(FProject.GetInfo(configFields[i].Key)) <> '') then
-    begin
-      hasStoredOverride := True;
-      Break;
-    end;
-
-  // Load each field value from project
-  for i := 0 to High(tabControls.FieldControls) do
-  begin
-    if i > High(configFields) then Break;
-
-    ctrl := tabControls.FieldControls[i].Control;
-    fieldValue := FProject.GetInfo(configFields[i].Key);
-
-    // If empty, use default value
-    if Trim(fieldValue) = '' then
-      fieldValue := configFields[i].DefaultValue;
-
-    // Set value based on control type
-    if ctrl is TLabeledEdit then
-      TLabeledEdit(ctrl).Text := fieldValue
-    else if ctrl is TMemo then
-      TMemo(ctrl).Lines.Text := fieldValue
-    else if ctrl is TCheckBox then
-      TCheckBox(ctrl).Checked := LowerCase(fieldValue) = 'true'
-    else if ctrl is TComboBox then
-    begin
-      LcbModel := TComboBox(ctrl);
-      // If it's a model combo, populate it filtered by provider
-      if tabControls.FieldControls[i].FieldType = 'model' then
-      begin
-        LcbModel.Items.BeginUpdate;
-        try
-          LcbModel.Items.Clear;
-          FillSupportedModelNames(LcbModel.Items, providerValue);
-        finally
-          LcbModel.Items.EndUpdate;
-        end;
-      end;
-      LcbModel.Text := fieldValue;
-    end;
-  end;
-
   tabIdx := GetFlowTabIndexByFlowId(AFlowId);
-  if tabIdx >= 0 then
+  if tabIdx < 0 then Exit;
+
+  providerValue := '';
+  modelValue := '';
+  apiKeyValue := '';
+
+  if SameText(AFlowId, 'association') then
   begin
-    overrideEnabledValue := Trim(FProject.GetInfo(GetFlowOverrideEnabledConfigKey(AFlowId)));
+    if Assigned(FFlowTabs[tabIdx].MemoInstructions) then
+      FFlowTabs[tabIdx].MemoInstructions.Lines.Text := StoredOrDefault(
+        AI_ASSOCIATION_CONFIG_KEY_CUSTOM_INSTRUCTIONS,
+        DEFAULT_ASSOCIATION_CUSTOM_INSTRUCTIONS);
+
+    if Assigned(FFlowTabs[tabIdx].ChkIncludeComments) then
+      FFlowTabs[tabIdx].ChkIncludeComments.Checked :=
+        LowerCase(StoredOrDefault(AI_ASSOCIATION_CONFIG_KEY_INCLUDE_COMMENTS, 'false')) = 'true';
+
+    providerValue := FProject.GetInfo(AI_ASSOCIATION_CONFIG_KEY_PROVIDER);
+    modelValue := FProject.GetInfo(AI_ASSOCIATION_CONFIG_KEY_MODEL);
+    apiKeyValue := FProject.GetInfo(AI_ASSOCIATION_CONFIG_KEY_API_KEY);
+  end
+  else if SameText(AFlowId, 'translation') then
+  begin
+    if Assigned(FFlowTabs[tabIdx].EditTargetLanguage) then
+      FFlowTabs[tabIdx].EditTargetLanguage.Text :=
+        StoredOrDefault(AI_TRANSLATION_CONFIG_KEY_TARGET_LANGUAGE, '');
+
+    if Assigned(FFlowTabs[tabIdx].MemoInstructions) then
+      FFlowTabs[tabIdx].MemoInstructions.Lines.Text := StoredOrDefault(
+        AI_TRANSLATION_CONFIG_KEY_CUSTOM_INSTRUCTIONS,
+        DEFAULT_TRANSLATION_CUSTOM_INSTRUCTIONS);
+
+    if Assigned(FFlowTabs[tabIdx].ChkForceOverwrite) then
+      FFlowTabs[tabIdx].ChkForceOverwrite.Checked :=
+        LowerCase(StoredOrDefault(AI_TRANSLATION_CONFIG_KEY_FORCE_OVERWRITE, 'false')) = 'true';
+
+    providerValue := FProject.GetInfo(AI_TRANSLATION_CONFIG_KEY_PROVIDER);
+    modelValue := FProject.GetInfo(AI_TRANSLATION_CONFIG_KEY_MODEL);
+    apiKeyValue := FProject.GetInfo(AI_TRANSLATION_CONFIG_KEY_API_KEY);
+  end
+  else
+    Exit;
+
+  SetFlowProviderValues(tabIdx, providerValue, modelValue, apiKeyValue);
+
+  hasStoredOverride := (Trim(providerValue) <> '') or
+    (Trim(modelValue) <> '') or (Trim(apiKeyValue) <> '');
+  overrideEnabledValue := Trim(FProject.GetInfo(GetFlowOverrideEnabledConfigKey(AFlowId)));
+  if Assigned(FFlowTabs[tabIdx].chkUseOverride) then
+  begin
     if overrideEnabledValue = '' then
       FFlowTabs[tabIdx].chkUseOverride.Checked := hasStoredOverride
     else
       FFlowTabs[tabIdx].chkUseOverride.Checked := LowerCase(overrideEnabledValue) = 'true';
-    UpdateFlowOverrideControls(tabIdx);
-
-    FFlowTabs[tabIdx].WorkingExamples := FProject.GetFlowExamples(AFlowId);
-    RefreshFlowExamplesUI(AFlowId);
   end;
+  UpdateFlowOverrideControls(tabIdx);
+
+  FFlowTabs[tabIdx].WorkingExamples := FProject.GetFlowExamples(AFlowId);
+  RefreshFlowExamplesUI(AFlowId);
 end;
 
 procedure TFrmLLMOptions.SaveFlowConfig(const AFlowId: string);
 var
-  flowConfig: IAIFlowConfig;
   tabControls: TFlowTabControls;
-  configFields: TAIFlowConfigFieldArray;
-  i, tabIdx: Integer;
-  fieldValue: string;
-  ctrl: TControl;
+  tabIdx: Integer;
 begin
   if not Assigned(FProject) then Exit;
 
-  flowConfig := GetFlowConfigById(AFlowId);
-  if not Assigned(flowConfig) then Exit;
-
-  tabControls := GetFlowTabByFlowId(AFlowId);
-  if not Assigned(tabControls.TabSheet) then Exit;
+  tabIdx := GetFlowTabIndexByFlowId(AFlowId);
+  if tabIdx < 0 then Exit;
+  tabControls := FFlowTabs[tabIdx];
 
   FProject.SetInfo(
     GetFlowOverrideEnabledConfigKey(AFlowId),
     BoolToStr(Assigned(tabControls.chkUseOverride) and tabControls.chkUseOverride.Checked, True)
   );
 
-  configFields := flowConfig.GetConfigFields;
-
-  // Save each field value to project
-  for i := 0 to High(tabControls.FieldControls) do
+  if SameText(AFlowId, 'association') then
   begin
-    if i > High(configFields) then Break;
+    if Assigned(tabControls.MemoInstructions) then
+      FProject.SetInfo(AI_ASSOCIATION_CONFIG_KEY_CUSTOM_INSTRUCTIONS,
+        tabControls.MemoInstructions.Lines.Text);
+    if Assigned(tabControls.ChkIncludeComments) then
+      FProject.SetInfo(AI_ASSOCIATION_CONFIG_KEY_INCLUDE_COMMENTS,
+        BoolToStr(tabControls.ChkIncludeComments.Checked, True));
+    if Assigned(tabControls.CbProvider) then
+      FProject.SetInfo(AI_ASSOCIATION_CONFIG_KEY_PROVIDER, tabControls.CbProvider.Text);
+    if Assigned(tabControls.CbModel) then
+      FProject.SetInfo(AI_ASSOCIATION_CONFIG_KEY_MODEL, tabControls.CbModel.Text);
+    if Assigned(tabControls.EditApiKey) then
+      FProject.SetInfo(AI_ASSOCIATION_CONFIG_KEY_API_KEY, tabControls.EditApiKey.Text);
+  end
+  else if SameText(AFlowId, 'translation') then
+  begin
+    if Assigned(tabControls.EditTargetLanguage) then
+      FProject.SetInfo(AI_TRANSLATION_CONFIG_KEY_TARGET_LANGUAGE,
+        tabControls.EditTargetLanguage.Text);
+    if Assigned(tabControls.MemoInstructions) then
+      FProject.SetInfo(AI_TRANSLATION_CONFIG_KEY_CUSTOM_INSTRUCTIONS,
+        tabControls.MemoInstructions.Lines.Text);
+    if Assigned(tabControls.ChkForceOverwrite) then
+      FProject.SetInfo(AI_TRANSLATION_CONFIG_KEY_FORCE_OVERWRITE,
+        BoolToStr(tabControls.ChkForceOverwrite.Checked, True));
+    if Assigned(tabControls.CbProvider) then
+      FProject.SetInfo(AI_TRANSLATION_CONFIG_KEY_PROVIDER, tabControls.CbProvider.Text);
+    if Assigned(tabControls.CbModel) then
+      FProject.SetInfo(AI_TRANSLATION_CONFIG_KEY_MODEL, tabControls.CbModel.Text);
+    if Assigned(tabControls.EditApiKey) then
+      FProject.SetInfo(AI_TRANSLATION_CONFIG_KEY_API_KEY, tabControls.EditApiKey.Text);
+  end
+  else
+    Exit;
 
-    ctrl := tabControls.FieldControls[i].Control;
-    fieldValue := '';
-
-    // Get value based on control type
-    if ctrl is TLabeledEdit then
-      fieldValue := TLabeledEdit(ctrl).Text
-    else if ctrl is TMemo then
-      fieldValue := TMemo(ctrl).Lines.Text
-    else if ctrl is TCheckBox then
-      fieldValue := BoolToStr(TCheckBox(ctrl).Checked, True)
-    else if ctrl is TComboBox then
-      fieldValue := TComboBox(ctrl).Text;
-
-    // Save to project
-    FProject.SetInfo(configFields[i].Key, fieldValue);
-  end;
-
-  tabIdx := GetFlowTabIndexByFlowId(AFlowId);
-  if tabIdx >= 0 then
-    FProject.SetFlowExamples(AFlowId, FFlowTabs[tabIdx].WorkingExamples);
+  FProject.SetFlowExamples(AFlowId, FFlowTabs[tabIdx].WorkingExamples);
 end;
 
 procedure TFrmLLMOptions.OnFlowOverrideToggle(Sender: TObject);
@@ -981,11 +1077,7 @@ end;
 procedure TFrmLLMOptions.OnResetClick(Sender: TObject);
 var
   btn: TButton;
-  flowConfig: IAIFlowConfig;
   tabControls: TFlowTabControls;
-  configFields: TAIFlowConfigFieldArray;
-  i: Integer;
-  ctrl: TControl;
 begin
   if not (Sender is TButton) then Exit;
 
@@ -993,28 +1085,25 @@ begin
   if (btn.Tag < 0) or (btn.Tag >= Length(FFlowTabs)) then Exit;
 
   tabControls := FFlowTabs[btn.Tag];
-  flowConfig := GetFlowConfigById(tabControls.FlowId);
-  if not Assigned(flowConfig) then Exit;
 
-  configFields := flowConfig.GetConfigFields;
-
-  // Reset all fields to their default values
-  for i := 0 to High(tabControls.FieldControls) do
+  if SameText(tabControls.FlowId, 'association') then
   begin
-    if i > High(configFields) then Break;
-
-    ctrl := tabControls.FieldControls[i].Control;
-
-    // Reset based on control type
-    if ctrl is TLabeledEdit then
-      TLabeledEdit(ctrl).Text := configFields[i].DefaultValue
-    else if ctrl is TMemo then
-      TMemo(ctrl).Lines.Text := configFields[i].DefaultValue
-    else if ctrl is TCheckBox then
-      TCheckBox(ctrl).Checked := LowerCase(configFields[i].DefaultValue) = 'true'
-    else if ctrl is TComboBox then
-      TComboBox(ctrl).Text := configFields[i].DefaultValue;
+    if Assigned(tabControls.MemoInstructions) then
+      tabControls.MemoInstructions.Lines.Text := DEFAULT_ASSOCIATION_CUSTOM_INSTRUCTIONS;
+    if Assigned(tabControls.ChkIncludeComments) then
+      tabControls.ChkIncludeComments.Checked := False;
+  end
+  else if SameText(tabControls.FlowId, 'translation') then
+  begin
+    if Assigned(tabControls.EditTargetLanguage) then
+      tabControls.EditTargetLanguage.Text := '';
+    if Assigned(tabControls.MemoInstructions) then
+      tabControls.MemoInstructions.Lines.Text := DEFAULT_TRANSLATION_CUSTOM_INSTRUCTIONS;
+    if Assigned(tabControls.ChkForceOverwrite) then
+      tabControls.ChkForceOverwrite.Checked := False;
   end;
+
+  SetFlowProviderValues(btn.Tag, '', '', '');
 
   if Assigned(tabControls.chkUseOverride) then
   begin

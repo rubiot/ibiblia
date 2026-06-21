@@ -214,7 +214,6 @@
       <Unit2>
         <Filename Value="Verse.pas"/>
         <IsPartOfProject Value="True"/>
-        <IsVisibleTab Value="True"/>
         <EditorIndex Value="16"/>
         <TopLine Value="1336"/>
         <CursorPos X="11" Y="1349"/>
@@ -231,7 +230,6 @@
       <Unit3>
         <Filename Value="Project.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="Project"/>
         <EditorIndex Value="4"/>
         <TopLine Value="617"/>
         <CursorPos Y="657"/>
@@ -286,7 +284,7 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="85"/>
         <CursorPos Y="94"/>
-        <UsageCount Value="11"/>
+        <UsageCount Value="6"/>
       </Unit7>
       <Unit8>
         <Filename Value="FormProjectProperties.pas"/>
@@ -324,6 +322,7 @@
         <ComponentName Value="FrmProjectExport"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
+        <IsVisibleTab Value="True"/>
         <EditorIndex Value="26"/>
         <CursorPos X="88" Y="9"/>
         <UsageCount Value="203"/>
@@ -333,7 +332,6 @@
       <Unit12>
         <Filename Value="ConcordanceExport.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="ConcordanceExport"/>
         <EditorIndex Value="25"/>
         <TopLine Value="427"/>
         <CursorPos X="20" Y="440"/>
@@ -454,14 +452,14 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="144"/>
         <CursorPos Y="162"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="5"/>
       </Unit24>
       <Unit25>
         <Filename Value="C:\Users\rubio\AppData\Local\lazarus\onlinepackagemanager\packages\kcontrols\source\kmemo.pas"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="1280"/>
         <CursorPos X="14" Y="1297"/>
-        <UsageCount Value="62"/>
+        <UsageCount Value="57"/>
       </Unit25>
       <Unit26>
         <Filename Value="htmlcolors.pas"/>
@@ -549,7 +547,7 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="628"/>
         <CursorPos X="90" Y="667"/>
-        <UsageCount Value="65"/>
+        <UsageCount Value="60"/>
       </Unit34>
       <Unit35>
         <Filename Value="logosbiblemodule.pas"/>
@@ -566,7 +564,6 @@
         <ComponentName Value="FrmInterlinearVerseRules"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <UnitName Value="FormInterlinearVerseRules"/>
         <EditorIndex Value="27"/>
         <CursorPos X="70" Y="9"/>
         <UsageCount Value="200"/>
@@ -588,14 +585,14 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="683"/>
         <CursorPos X="72" Y="700"/>
-        <UsageCount Value="12"/>
+        <UsageCount Value="7"/>
       </Unit38>
       <Unit39>
         <Filename Value="C:\tools\lazarus\components\lazutils\uitypes.pas"/>
         <UnitName Value="UITypes"/>
         <EditorIndex Value="-1"/>
         <CursorPos X="3" Y="18"/>
-        <UsageCount Value="12"/>
+        <UsageCount Value="7"/>
       </Unit39>
       <Unit40>
         <Filename Value="unitpleasewait.pas"/>
@@ -613,7 +610,7 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="3991"/>
         <CursorPos X="56" Y="4066"/>
-        <UsageCount Value="47"/>
+        <UsageCount Value="42"/>
       </Unit41>
       <Unit42>
         <Filename Value="llmclient.pas"/>
@@ -628,14 +625,14 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="161"/>
         <CursorPos Y="208"/>
-        <UsageCount Value="72"/>
+        <UsageCount Value="67"/>
       </Unit43>
       <Unit44>
         <Filename Value="C:\Apps\lazarus4\lcl\include\control.inc"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="4606"/>
         <CursorPos Y="4651"/>
-        <UsageCount Value="70"/>
+        <UsageCount Value="65"/>
       </Unit44>
       <Unit45>
         <Filename Value="aiassociator.pas"/>
@@ -643,14 +640,14 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="282"/>
         <CursorPos X="25" Y="312"/>
-        <UsageCount Value="112"/>
+        <UsageCount Value="107"/>
       </Unit45>
       <Unit46>
         <Filename Value="C:\Apps\lazarus4\fpc\3.2.2\source\packages\fcl-json\src\fpjson.pp"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="600"/>
         <CursorPos X="3" Y="604"/>
-        <UsageCount Value="74"/>
+        <UsageCount Value="69"/>
       </Unit46>
       <Unit47>
         <Filename Value="htmlrenderer.pas"/>
@@ -667,7 +664,7 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="166"/>
         <CursorPos Y="226"/>
-        <UsageCount Value="62"/>
+        <UsageCount Value="57"/>
       </Unit48>
       <Unit49>
         <Filename Value="C:\Apps\lazarus4\lcl\include\customform.inc"/>
@@ -682,7 +679,7 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="592"/>
         <CursorPos Y="626"/>
-        <UsageCount Value="76"/>
+        <UsageCount Value="71"/>
       </Unit50>
       <Unit51>
         <Filename Value="C:\Apps\lazarus4\lcl\include\application.inc"/>
@@ -698,7 +695,7 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="1019"/>
         <CursorPos X="3" Y="1020"/>
-        <UsageCount Value="68"/>
+        <UsageCount Value="63"/>
       </Unit52>
       <Unit53>
         <Filename Value="formllmoptions.pas"/>
@@ -719,7 +716,7 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="2322"/>
         <CursorPos X="3" Y="2348"/>
-        <UsageCount Value="67"/>
+        <UsageCount Value="62"/>
       </Unit54>
       <Unit55>
         <Filename Value="ai_flows.pas"/>
@@ -759,7 +756,7 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="837"/>
         <CursorPos Y="866"/>
-        <UsageCount Value="62"/>
+        <UsageCount Value="57"/>
       </Unit59>
       <Unit60>
         <Filename Value="C:\Apps\lazarus4\fpc\3.2.2\source\rtl\objpas\sysutils\sysutilh.inc"/>
@@ -794,7 +791,7 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="1711"/>
         <CursorPos X="14" Y="1739"/>
-        <UsageCount Value="18"/>
+        <UsageCount Value="13"/>
       </Unit63>
       <Unit64>
         <Filename Value="formaiprocessing.lrs"/>
@@ -808,7 +805,7 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="460"/>
         <CursorPos Y="490"/>
-        <UsageCount Value="7"/>
+        <UsageCount Value="2"/>
       </Unit65>
       <Unit66>
         <Filename Value="C:\Apps\lazarus4\lcl\customtimer.pas"/>
@@ -841,20 +838,20 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="45"/>
         <CursorPos X="17" Y="94"/>
-        <UsageCount Value="124"/>
+        <UsageCount Value="119"/>
       </Unit69>
       <Unit70>
         <Filename Value="C:\Apps\lazarus4\fpc\3.2.2\source\rtl\objpas\sysutils\sysstr.inc"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="524"/>
         <CursorPos X="2" Y="527"/>
-        <UsageCount Value="124"/>
+        <UsageCount Value="119"/>
       </Unit70>
       <Unit71>
         <Filename Value="C:\Apps\lazarus4\lcl\include\interfacebase.inc"/>
         <EditorIndex Value="14"/>
         <CursorPos Y="54"/>
-        <UsageCount Value="78"/>
+        <UsageCount Value="102"/>
         <Loaded Value="True"/>
       </Unit71>
       <Unit72>
@@ -862,7 +859,7 @@
         <EditorIndex Value="6"/>
         <TopLine Value="2"/>
         <CursorPos Y="75"/>
-        <UsageCount Value="35"/>
+        <UsageCount Value="59"/>
         <Loaded Value="True"/>
       </Unit72>
       <Unit73>
@@ -870,7 +867,7 @@
         <EditorIndex Value="5"/>
         <TopLine Value="111"/>
         <CursorPos Y="190"/>
-        <UsageCount Value="11"/>
+        <UsageCount Value="35"/>
         <Loaded Value="True"/>
       </Unit73>
     </Units>

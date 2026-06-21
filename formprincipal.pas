@@ -342,6 +342,14 @@ resourcestring
   SReference2 = 'reference 2';
   SNewAssociationProject = 'New association project';
   SLoadingFile = 'Loading %s...';
+  SNewProjectProgressTitle = 'Creating project';
+  SCreatingProjectProgress = 'Creating project...';
+  SLoadingSourceTextProgress = 'Loading source text...';
+  SLoadingDestinationTextProgress = 'Loading destination text...';
+  SLoadingReference1TextProgress = 'Loading reference 1 text...';
+  SLoadingReference2TextProgress = 'Loading reference 2 text...';
+  SRebuildAssociationMemoryTitle = 'Association memory';
+  SRebuildAssociationMemoryProgress = 'Recreating association memory...';
   SChanged = 'changed';
   SAnalyzingVerse = 'Analyzing verse...';
   SLLMUsageStatus = 'Tokens: prompt %d, completion %d, total %d';
@@ -581,6 +589,30 @@ procedure TFrmPrincipal.ActionNovoProjetoExecute(Sender: TObject);
     end;
   end;
 
+  function ArquivoTexto(v: TTipoTextoBiblico): string;
+  begin
+    case v of
+      tbOrigem: result := FrmNewProject.EditSourceText.Text;
+      tbDestino: result := FrmNewProject.EditDestinationText.Text;
+      tbConsulta1: result := FrmNewProject.EditReferenceText1.Text;
+      tbConsulta2: result := FrmNewProject.EditReferenceText2.Text;
+    else
+      result := '';
+    end;
+  end;
+
+  function MensagemCarregamento(v: TTipoTextoBiblico): string;
+  begin
+    case v of
+      tbOrigem: result := SLoadingSourceTextProgress;
+      tbDestino: result := SLoadingDestinationTextProgress;
+      tbConsulta1: result := SLoadingReference1TextProgress;
+      tbConsulta2: result := SLoadingReference2TextProgress;
+    else
+      result := Format(SLoadingFile, [QualTexto(v)]);
+    end;
+  end;
+
 var
   v: TTipoTextoBiblico;
   ParThread: TParametroThread;
@@ -610,7 +642,9 @@ begin
   until false;
 
   try
-    Enabled := false;
+    FormPleaseWait.BeginOperation(Self, SNewProjectProgressTitle,
+      SCreatingProjectProgress, 1, SaveDialog1.FileName);
+
     ProjetoAtual := TProject.Create([ScrollBoxSrcVerse, ScrollBoxDstVerse, ScrollBoxRef1Verse, ScrollBoxRef2Verse], TreeView1, RadioGroupStatus, FActualCommentsMemo);
     ProjetoAtual.Escopo := QualEscopo;
     ProjetoAtual.PalavrasComStrongEmNegrito := MenuItemStrongNegrito.Checked;
@@ -628,8 +662,10 @@ begin
     for v:=tbOrigem to tbConsulta2 do
     begin
       StatusBar1.Caption := Format(SLoadingFile, [QualTexto(v)]);
+      FormPleaseWait.SetMessage(MensagemCarregamento(v));
+      FormPleaseWait.SetDetail(ArquivoTexto(v));
       ParThread.texto := v;
-      ParThread.pb := ProgressBar1;
+      ParThread.pb := FormPleaseWait.ProgressBar1;
       Application.ProcessMessages;
       //WaitForThreadTerminate(BeginThread(@CarregarTexto, Pointer(@ParThread)), 0);
       CarregarTexto(Pointer(@ParThread));
@@ -658,7 +694,8 @@ begin
 
     StatusBar1.SimpleText := '';
   finally
-    Enabled := true;
+    StatusBar1.Caption := '';
+    FormPleaseWait.FinishOperation;
   end;
 end;
 
@@ -694,7 +731,15 @@ end;
 procedure TFrmPrincipal.ActionRecriarBaseSugestoesExecute(Sender: TObject);
 begin
   if ProjetoAtual <> nil then
-    ProjetoAtual.RebuildSuggestionDatabase(ProgressBar1);
+  begin
+    FormPleaseWait.BeginOperation(Self, SRebuildAssociationMemoryTitle,
+      SRebuildAssociationMemoryProgress, 1);
+    try
+      ProjetoAtual.RebuildSuggestionDatabase(FormPleaseWait.ProgressBar1);
+    finally
+      FormPleaseWait.FinishOperation;
+    end;
+  end;
 end;
 
 procedure TFrmPrincipal.ActionReverterAssociacoesExecute(Sender: TObject);
@@ -772,9 +817,7 @@ procedure TFrmPrincipal.ActionVaccumProjectExecute(Sender: TObject);
 begin
   if ProjetoAtual = nil then exit;
 
-  FormPleaseWait.Show;
   ProjetoAtual.Vacuum;
-  FormPleaseWait.Hide;
 end;
 
 procedure TFrmPrincipal.ActionVersoAnteriorExecute(Sender: TObject);

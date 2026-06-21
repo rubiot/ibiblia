@@ -23,7 +23,7 @@ uses
   project_verse_repository, current_verse_workspace, verse_render_buffer,
   project_patch_applier, bible_tree_coordinator, ai_batch_orchestrator,
   project_database_bootstrap,
-  dictionary_manager, project_exporter;
+  dictionary_manager, project_exporter, UnitPleaseWait;
 const
   // AI processing icon indices for ImageListTreeView in formprincipal
   // ImageListTreeView has indices 0-7 for normal states (0-3) and selected states (4-7)
@@ -455,6 +455,8 @@ resourcestring
   SConfirmation = 'Confirmation';
   SVaccumProjectConfirmation = 'Vacuuming requires that your project be saved and reopened. Do you want to proceed?';
   SVacuumDone = 'Vacuum done!';
+  SVacuumProgressTitle = 'Optimize project';
+  SVacuumProgressMessage = 'Optimizing project database...';
 
 const
   QStrongs: array[etOT..etONT] of smallint = (8674, 5624, 14298);
@@ -1488,14 +1490,20 @@ begin
   if MessageDlg(SConfirmation, SVaccumProjectConfirmation, mtConfirmation, [mbYes, mbNo],0) = mrNo then
     exit;
 
-  CloseProject(true);
-  with TSqlite3Dataset.Create(nil) do
-  begin
-    FileName:=FFileName;
-    ExecSQL('VACUUM;');
-    Free;
+  FormPleaseWait.BeginOperation(Application.MainForm, SVacuumProgressTitle,
+    SVacuumProgressMessage, 0, FFileName);
+  try
+    CloseProject(true);
+    with TSqlite3Dataset.Create(nil) do
+    begin
+      FileName:=FFileName;
+      ExecSQL('VACUUM;');
+      Free;
+    end;
+    OpenProject(FFileName);
+  finally
+    FormPleaseWait.FinishOperation;
   end;
-  OpenProject(FFileName);
   ShowMessage(SVacuumDone);
 end;
 
@@ -2929,6 +2937,7 @@ begin
     try
       if assigned(pb) then
       begin
+        pb.Style := pbstNormal;
         pb.Position := 0;
         pb.Min := 0;
         pb.Max := QLinhas[FEscopo];
@@ -3103,6 +3112,7 @@ begin
     //modulo.SaveToFile(arquivo + '.txt');
     if assigned(pb) then
     begin
+      pb.Style := pbstNormal;
       pb.Position := 0;
       pb.Min := 0;
       pb.Max := QLinhas[FEscopo];
