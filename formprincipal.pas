@@ -23,6 +23,7 @@ type
   TFrmPrincipal = class(TForm)
   ActionKeyboardShortcuts: TAction;
   ActionLlmOptions: TAction;
+  ActionResetLayout: TAction;
     ActionUnregisterFileAssociation: TAction;
     ActionRegisterFileAssociation: TAction;
     ActionVaccumProject: TAction;
@@ -84,6 +85,7 @@ type
     MenuItemStrongsCountStrongs: TMenuItem;
     MenuItemAbout: TMenuItem;
     MenuItemKeyboardShortcuts: TMenuItem;
+    MenuItemResetLayout: TMenuItem;
     MenuItemMouseHover: TMenuItem;
     MenuItem19: TMenuItem;
     MenuItem20: TMenuItem;
@@ -158,6 +160,7 @@ type
     procedure ActionPropProjetoExecute(Sender: TObject);
     procedure ActionQuandoNovoVersiculoExecute(Sender: TObject);
     procedure ActionRecriarBaseSugestoesExecute(Sender: TObject);
+    procedure ActionResetLayoutExecute(Sender: TObject);
     procedure ActionRegisterFileAssociationExecute(Sender: TObject);
     procedure ActionUnregisterFileAssociationExecute(Sender: TObject);
     procedure ActionReverterAssociacoesExecute(Sender: TObject);
@@ -213,6 +216,7 @@ type
     FHeaderSelectionLabel: TLabel;
     FHeaderEngineLabel: TLabel;
     FHeaderModifiedLabel: TLabel;
+    FVersePanelLabels: array[tbOrigem..tbConsulta2] of TLabel;
     {$IFDEF WINDOWS}
     FRxMorpho: IRegex;
     syncTw2iBiblia: boolean;
@@ -225,12 +229,18 @@ type
     {$ENDIF}
     procedure ApplyShortcutHints;
     function BuildKeyboardShortcutsText: string;
+    function CreateVersePanelLabel(AParent: TWinControl): TLabel;
     function CreateStateHeaderLabel(AParent: TWinControl; Bold: Boolean = False): TLabel;
     procedure CreateStateHeader;
+    procedure CreateVersePanelLabels;
     procedure CountCurrentAssociations(out Associated, Total: Integer);
     function CurrentEngineCaption: string;
     function CurrentSelectionCaption: string;
+    function GetVersePanelCaption(TextType: TTipoTextoBiblico): string;
     procedure LayoutStateHeader;
+    procedure LayoutVersePanelLabels;
+    procedure ResetMainLayout;
+    procedure SplitterMoved(Sender: TObject);
     procedure StateHeaderResize(Sender: TObject);
     procedure Translate;
     procedure UpdateActionHintWithShortcut(AAction: TCustomAction);
@@ -325,6 +335,12 @@ resourcestring
   SHeaderEngineAI = 'AI-assisted';
   SHeaderSaved = 'Saved';
   SHeaderUnsavedChanges = 'Unsaved changes';
+  SResetLayoutMenu = 'Reset layout';
+  SResetLayoutHint = 'Restore the default panel layout';
+  SPanelLabelSource = 'Source';
+  SPanelLabelDestination = 'Destination';
+  SPanelLabelReference1 = 'Reference 1';
+  SPanelLabelReference2 = 'Reference 2';
 
 implementation
 
@@ -536,6 +552,23 @@ begin
   end;
 end;
 
+function TFrmPrincipal.CreateVersePanelLabel(AParent: TWinControl): TLabel;
+begin
+  Result := TLabel.Create(AParent);
+  with Result do
+  begin
+    Parent := AParent;
+    AutoSize := False;
+    Alignment := taCenter;
+    Layout := tlCenter;
+    Transparent := False;
+    Color := clBtnFace;
+    Font.Style := Font.Style + [fsBold];
+    Font.Size := Max(6, Font.Size - 1);
+    ShowHint := True;
+  end;
+end;
+
 function TFrmPrincipal.CreateStateHeaderLabel(AParent: TWinControl;
   Bold: Boolean): TLabel;
 begin
@@ -583,6 +616,23 @@ begin
   FHeaderModifiedLabel := CreateStateHeaderLabel(FStateHeaderPanel, True);
 
   UpdateStateHeader;
+end;
+
+procedure TFrmPrincipal.CreateVersePanelLabels;
+var
+  TextType: TTipoTextoBiblico;
+begin
+  for TextType := tbOrigem to tbConsulta2 do
+    if not Assigned(FVersePanelLabels[TextType]) then
+      FVersePanelLabels[TextType] := CreateVersePanelLabel(CenterPanel);
+
+  CenterPanel.OnResize := @SplitterMoved;
+  Splitter2.OnMoved := @SplitterMoved;
+  Splitter3.OnMoved := @SplitterMoved;
+  Splitter4.OnMoved := @SplitterMoved;
+  Splitter5.OnMoved := @SplitterMoved;
+
+  LayoutVersePanelLabels;
 end;
 
 procedure TFrmPrincipal.CountCurrentAssociations(out Associated, Total: Integer);
@@ -640,6 +690,18 @@ begin
     Result := SHeaderSelectionNone
   else
     Result := Format(SHeaderSelectionFmt, [SourceCount, DestinationCount]);
+end;
+
+function TFrmPrincipal.GetVersePanelCaption(TextType: TTipoTextoBiblico): string;
+begin
+  case TextType of
+    tbOrigem: Result := SPanelLabelSource;
+    tbDestino: Result := SPanelLabelDestination;
+    tbConsulta1: Result := SPanelLabelReference1;
+    tbConsulta2: Result := SPanelLabelReference2;
+  else
+    Result := '';
+  end;
 end;
 
 procedure TFrmPrincipal.LayoutStateHeader;
@@ -758,6 +820,91 @@ begin
   FHeaderEngineLabel.Hint := FHeaderEngineLabel.Caption;
   FHeaderModifiedLabel.Hint := FHeaderModifiedLabel.Caption;
   LayoutStateHeader;
+end;
+
+procedure TFrmPrincipal.LayoutVersePanelLabels;
+const
+  Margin = 5;
+  LabelHeight = 17;
+var
+  TextType: TTipoTextoBiblico;
+  LabelControl: TLabel;
+  PanelControl: TControl;
+  CaptionText: string;
+begin
+  for TextType := tbOrigem to tbConsulta2 do
+  begin
+    LabelControl := FVersePanelLabels[TextType];
+    if not Assigned(LabelControl) then
+      Continue;
+
+    case TextType of
+      tbOrigem: PanelControl := ScrollBoxSrcVerse;
+      tbDestino: PanelControl := ScrollBoxDstVerse;
+      tbConsulta1: PanelControl := ScrollBoxRef1Verse;
+      tbConsulta2: PanelControl := ScrollBoxRef2Verse;
+    else
+      PanelControl := nil;
+    end;
+
+    if not Assigned(PanelControl) then
+      Continue;
+
+    CaptionText := GetVersePanelCaption(TextType);
+    LabelControl.Caption := CaptionText;
+    LabelControl.Hint := CaptionText;
+    LabelControl.SetBounds(
+      PanelControl.Left + Margin,
+      PanelControl.Top + Margin,
+      CenterPanel.Canvas.TextWidth(CaptionText) + 14,
+      LabelHeight);
+    LabelControl.BringToFront;
+  end;
+end;
+
+procedure TFrmPrincipal.ResetMainLayout;
+const
+  DefaultTreeWidth = 145;
+  DefaultContextWidth = 321;
+  DefaultCommentsHeight = 120;
+  MinCommentsHeight = 80;
+  MinVerseHeight = 42;
+var
+  TextTop, TextBottom, AvailableHeight, BaseHeight, ExtraHeight: Integer;
+  TextWidth: Integer;
+begin
+  TreeView1.Width := DefaultTreeWidth;
+  ContextPanel.Width := Min(DefaultContextWidth, Max(180, Panel1.ClientWidth div 2));
+  BottomPanel.Height := Min(DefaultCommentsHeight,
+    Max(MinCommentsHeight, CenterPanel.ClientHeight div 3));
+
+  TextTop := 1;
+  TextBottom := CenterPanel.ClientHeight - BottomPanel.Height - Splitter5.Height;
+  AvailableHeight := TextBottom - TextTop - Splitter2.Height - Splitter3.Height - Splitter4.Height;
+  BaseHeight := Max(MinVerseHeight, AvailableHeight div 4);
+  ExtraHeight := Max(0, AvailableHeight - (BaseHeight * 4));
+  TextWidth := CenterPanel.ClientWidth - 2;
+
+  ScrollBoxSrcVerse.SetBounds(1, TextTop, TextWidth, BaseHeight + ExtraHeight);
+  Splitter2.SetBounds(1, ScrollBoxSrcVerse.Top + ScrollBoxSrcVerse.Height,
+    TextWidth, Splitter2.Height);
+  ScrollBoxDstVerse.SetBounds(1, Splitter2.Top + Splitter2.Height,
+    TextWidth, BaseHeight);
+  Splitter3.SetBounds(1, ScrollBoxDstVerse.Top + ScrollBoxDstVerse.Height,
+    TextWidth, Splitter3.Height);
+  ScrollBoxRef1Verse.SetBounds(1, Splitter3.Top + Splitter3.Height,
+    TextWidth, BaseHeight);
+  Splitter4.SetBounds(1, ScrollBoxRef1Verse.Top + ScrollBoxRef1Verse.Height,
+    TextWidth, Splitter4.Height);
+  ScrollBoxRef2Verse.SetBounds(1, Splitter4.Top + Splitter4.Height,
+    TextWidth, Max(MinVerseHeight, TextBottom - Splitter4.Top - Splitter4.Height));
+
+  LayoutVersePanelLabels;
+end;
+
+procedure TFrmPrincipal.SplitterMoved(Sender: TObject);
+begin
+  LayoutVersePanelLabels;
 end;
 
 procedure TFrmPrincipal.ActionAbrirProjetoExecute(Sender: TObject);
@@ -1147,6 +1294,11 @@ begin
   end;
 end;
 
+procedure TFrmPrincipal.ActionResetLayoutExecute(Sender: TObject);
+begin
+  ResetMainLayout;
+end;
+
 procedure TFrmPrincipal.ActionReverterAssociacoesExecute(Sender: TObject);
 begin
   if ProjetoAtual = nil then
@@ -1364,6 +1516,7 @@ begin
     MenuItemLangPt.Checked:=true;
 
   CreateStateHeader;
+  CreateVersePanelLabels;
 
   ActionKeyboardShortcuts := TAction.Create(ActionList1);
   ActionKeyboardShortcuts.Caption := SKeyboardShortcutsMenu;
@@ -1374,6 +1527,15 @@ begin
   MenuItemKeyboardShortcuts := TMenuItem.Create(MainMenu1);
   MenuItemKeyboardShortcuts.Action := ActionKeyboardShortcuts;
   MenuItem17.Insert(0, MenuItemKeyboardShortcuts);
+
+  ActionResetLayout := TAction.Create(ActionList1);
+  ActionResetLayout.Caption := SResetLayoutMenu;
+  ActionResetLayout.Hint := SResetLayoutHint;
+  ActionResetLayout.OnExecute := @ActionResetLayoutExecute;
+
+  MenuItemResetLayout := TMenuItem.Create(MainMenu1);
+  MenuItemResetLayout.Action := ActionResetLayout;
+  MenuItem20.Add(MenuItemResetLayout);
 
   Translate;
 
@@ -1492,6 +1654,7 @@ begin
   Splitter4.Top := opts.ReadInteger('leiaute', 'principal.splitter4.topo', Splitter4.Top);
   BottomPanel.Height := opts.ReadInteger('leiaute', 'principal.panel3.height', BottomPanel.Height);
   ContextPanel.Width := opts.ReadInteger('leiaute', 'principal.contextpanel.width', ContextPanel.Width);
+  LayoutVersePanelLabels;
 
   if (ParamCount > 0) and ParamStr(1).EndsWith('.bib') and FileExists(ParamStr(1)) then
     DoOpenProject(ParamStr(1))
@@ -1812,6 +1975,11 @@ begin
   end;
   if Assigned(ActionLlmOptions) then
     ActionLlmOptions.Caption := SLLMOptionsMenu;
+  if Assigned(ActionResetLayout) then
+  begin
+    ActionResetLayout.Caption := SResetLayoutMenu;
+    ActionResetLayout.Hint := SResetLayoutHint;
+  end;
 
   ActionReverterAssociacoes.Caption := SRollbackCurrentVerse;
   ActionReverterAssociacoes.Hint := SRollbackCurrentVerseHint;
@@ -1847,6 +2015,7 @@ begin
   if assigned(FChapterView) then
     FChapterView.Translate;
   UpdateStateHeader;
+  LayoutVersePanelLabels;
 end;
 
 procedure TFrmPrincipal.DoOpenProject(filename: string);
