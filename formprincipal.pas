@@ -237,8 +237,16 @@ const
   MAX_MRU = 10;
 
 resourcestring
-  SRollbackChanges = 'Rollback changes';
-  SRollbackChangesConfirmation = 'Are you sure you want to rollback all changes to this verse?';
+  SRollbackCurrentVerse = 'Rollback current verse';
+  SRollbackCurrentVerseHint = 'Discard unsaved changes in the current verse';
+  SRollbackCurrentVerseConfirmation = 'This will discard unsaved changes in the current verse only (%s) and reload it from the project file.'#13#10#13#10 +
+                                      'Other verses and saved project data will not be changed.'#13#10#13#10 +
+                                      'Continue?';
+  SClearCurrentVerseAssociations = 'Clear associations in current verse';
+  SClearCurrentVerseAssociationsHint = 'Remove all associations from the current verse only';
+  SClearCurrentVerseAssociationsConfirmation = 'This will remove all associations from the current verse only (%s).'#13#10#13#10 +
+                                               'Associations in other verses will not be changed.'#13#10#13#10 +
+                                               'Continue?';
   SSourceText = 'Source';
   SDestinationText = 'Destination';
   SReference1Text = 'Reference1';
@@ -512,7 +520,13 @@ end;
 
 procedure TFrmPrincipal.ActionLimparAssociacoesExecute(Sender: TObject);
 begin
-  if ProjetoAtual <> nil then
+  if ProjetoAtual = nil then
+    Exit;
+
+  if MessageDlg(SClearCurrentVerseAssociations,
+      Format(SClearCurrentVerseAssociationsConfirmation,
+        [ProjetoAtual.FormattedReference]),
+      mtConfirmation, [mbYes, mbCancel], 0) = mrYes then
     ProjetoAtual.ClearAssociations;
 end;
 
@@ -687,7 +701,9 @@ procedure TFrmPrincipal.ActionReverterAssociacoesExecute(Sender: TObject);
 begin
   if ProjetoAtual = nil then
     exit;
-  if MessageDlg(SRollbackChanges, SRollbackChangesConfirmation, mtConfirmation, [mbYes, mbCancel], 0) = mrYes then
+  if MessageDlg(SRollbackCurrentVerse,
+      Format(SRollbackCurrentVerseConfirmation, [ProjetoAtual.FormattedReference]),
+      mtConfirmation, [mbYes, mbCancel], 0) = mrYes then
     ProjetoAtual.RefreshUI;
 end;
 
@@ -1306,6 +1322,11 @@ end;
 procedure TFrmPrincipal.Translate;
 var i: Integer;
 begin
+  ActionReverterAssociacoes.Caption := SRollbackCurrentVerse;
+  ActionReverterAssociacoes.Hint := SRollbackCurrentVerseHint;
+  ActionLimparAssociacoes.Caption := SClearCurrentVerseAssociations;
+  ActionLimparAssociacoes.Hint := SClearCurrentVerseAssociationsHint;
+
   UpdateDefaultStatusDescription;
   with RadioGroupStatus.Items do
   begin

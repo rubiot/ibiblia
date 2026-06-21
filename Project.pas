@@ -382,7 +382,11 @@ resourcestring
   SUseVerseAsAssociationExample = 'In association flow';
   SUseVerseAsTranslationExample = 'In translation flow';
   SCopyAssociationExample = 'Copy association example for AI instructions';
-  SSwitchDestinationAndReference1Texts = 'Switch destination text with reference 1';
+  SSwitchDestinationAndReference1Texts = 'Switch destination with reference 1 in this verse';
+  SSwitchDestinationAndReference1TextsConfirmation = 'This will change text only in the current verse (%s).'#13#10#13#10 +
+                                                     'The destination text will be replaced by reference 1 text. The previous destination text will be moved to reference 1 with the "(KJF original)" prefix.'#13#10#13#10 +
+                                                     'Text and associations in other verses will not be changed.'#13#10#13#10 +
+                                                     'Continue?';
   SExampleSaved = 'Example saved.';
   SExampleAlreadyExistsTitle = 'Example already exists';
   SExampleAlreadyExistsPrompt = 'This verse is already saved as an example for the %s flow.' + #13#10 + #13#10 +
@@ -1856,6 +1860,11 @@ var
   destinationText: string;
 begin
   if (not Assigned(FAVersiculo[tbDestino])) or (not Assigned(FAVersiculo[tbConsulta1])) then
+    Exit;
+
+  if MessageDlg(SSwitchDestinationAndReference1Texts,
+      Format(SSwitchDestinationAndReference1TextsConfirmation,
+        [FormattedReference]), mtConfirmation, [mbYes, mbCancel], 0) <> mrYes then
     Exit;
 
   destinationText := FAVersiculo[tbDestino].XML;
