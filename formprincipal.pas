@@ -15,7 +15,7 @@ uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, Menus,
   ActnList, ComCtrls, ExtCtrls, StdCtrls, BibleScope, Project, IniFiles, Math,
   Syntagm, LCLTranslator, unitabout, PCRE, Verse, LCLProc, LazLogger,
-  LCLType, LazUTF8, ChapterView, UnitPleaseWait, CommentsView;
+  LCLType, LazUTF8, ChapterView, UnitPleaseWait, CommentsView, ONTTokenizer;
 
 type
   { TFrmPrincipal }
@@ -206,6 +206,13 @@ type
     FPopupTrigger: TPopupTrigger;
     FCurrentRef: string;
     FChapterView: TChapterView;
+    FStateHeaderPanel: TPanel;
+    FHeaderReferenceLabel: TLabel;
+    FHeaderStatusLabel: TLabel;
+    FHeaderAssociationsLabel: TLabel;
+    FHeaderSelectionLabel: TLabel;
+    FHeaderEngineLabel: TLabel;
+    FHeaderModifiedLabel: TLabel;
     {$IFDEF WINDOWS}
     FRxMorpho: IRegex;
     syncTw2iBiblia: boolean;
@@ -218,8 +225,16 @@ type
     {$ENDIF}
     procedure ApplyShortcutHints;
     function BuildKeyboardShortcutsText: string;
+    function CreateStateHeaderLabel(AParent: TWinControl; Bold: Boolean = False): TLabel;
+    procedure CreateStateHeader;
+    procedure CountCurrentAssociations(out Associated, Total: Integer);
+    function CurrentEngineCaption: string;
+    function CurrentSelectionCaption: string;
+    procedure LayoutStateHeader;
+    procedure StateHeaderResize(Sender: TObject);
     procedure Translate;
     procedure UpdateActionHintWithShortcut(AAction: TCustomAction);
+    procedure UpdateStateHeader;
     procedure DoOpenProject(filename: string);
     procedure CheckFileAssociation;
   public
@@ -297,6 +312,19 @@ resourcestring
   SShortcutShowKeyboardShortcuts = 'Show this list';
   SStatusCaptionWithShortcuts = 'Status (1-4)';
   SStatusKeyboardHint = 'Use 1..4 to set the status for the current verse';
+  SHeaderNoProject = 'No project open';
+  SHeaderReferenceFmt = 'Reference: %s';
+  SHeaderStatusFmt = 'Status: %s';
+  SHeaderStatusEmpty = 'Status: -';
+  SHeaderAssociationsFmt = 'Associations: %d/%d (%d%%)';
+  SHeaderAssociationsEmpty = 'Associations: -';
+  SHeaderSelectionFmt = 'Selection: source %d, destination %d';
+  SHeaderSelectionNone = 'Selection: none';
+  SHeaderEngineFmt = 'Engine: %s';
+  SHeaderEngineStatistical = 'Statistical';
+  SHeaderEngineAI = 'AI-assisted';
+  SHeaderSaved = 'Saved';
+  SHeaderUnsavedChanges = 'Unsaved changes';
 
 implementation
 
@@ -508,6 +536,230 @@ begin
   end;
 end;
 
+function TFrmPrincipal.CreateStateHeaderLabel(AParent: TWinControl;
+  Bold: Boolean): TLabel;
+begin
+  Result := TLabel.Create(AParent);
+  with Result do
+  begin
+    Parent := AParent;
+    AutoSize := False;
+    Transparent := True;
+    Layout := tlCenter;
+    ShowHint := True;
+    Font.Color := clWindowText;
+    if Bold then
+      Font.Style := Font.Style + [fsBold];
+  end;
+end;
+
+procedure TFrmPrincipal.CreateStateHeader;
+begin
+  if Assigned(FStateHeaderPanel) then
+    Exit;
+
+  ToolBar1.Align := alTop;
+  ToolBar1.Top := 0;
+  Panel1.Align := alClient;
+
+  FStateHeaderPanel := TPanel.Create(Self);
+  with FStateHeaderPanel do
+  begin
+    Parent := Self;
+    Align := alTop;
+    Top := ToolBar1.Height;
+    Height := 34;
+    BevelOuter := bvNone;
+    ParentColor := False;
+    Color := clBtnFace;
+    OnResize := @StateHeaderResize;
+  end;
+
+  FHeaderReferenceLabel := CreateStateHeaderLabel(FStateHeaderPanel, True);
+  FHeaderStatusLabel := CreateStateHeaderLabel(FStateHeaderPanel);
+  FHeaderAssociationsLabel := CreateStateHeaderLabel(FStateHeaderPanel);
+  FHeaderSelectionLabel := CreateStateHeaderLabel(FStateHeaderPanel);
+  FHeaderEngineLabel := CreateStateHeaderLabel(FStateHeaderPanel);
+  FHeaderModifiedLabel := CreateStateHeaderLabel(FStateHeaderPanel, True);
+
+  UpdateStateHeader;
+end;
+
+procedure TFrmPrincipal.CountCurrentAssociations(out Associated, Total: Integer);
+var
+  SourceVerse: TVerse;
+  Syntagm: TSyntagm;
+begin
+  Associated := 0;
+  Total := 0;
+
+  if not Assigned(ProjetoAtual) then
+    Exit;
+
+  SourceVerse := ProjetoAtual.VerseObjects[tbOrigem];
+  if not Assigned(SourceVerse) or not Assigned(SourceVerse.Syntagms) then
+    Exit;
+
+  for Syntagm in SourceVerse.Syntagms do
+    if Syntagm.Kind = tsSintagma then
+    begin
+      Inc(Total);
+      if Syntagm.IsAssociated then
+        Inc(Associated);
+    end;
+end;
+
+function TFrmPrincipal.CurrentEngineCaption: string;
+begin
+  case FSuggestionMode of
+    smAI: Result := SHeaderEngineAI;
+  else
+    Result := SHeaderEngineStatistical;
+  end;
+end;
+
+function TFrmPrincipal.CurrentSelectionCaption: string;
+var
+  SourceCount, DestinationCount: Integer;
+begin
+  SourceCount := 0;
+  DestinationCount := 0;
+
+  if Assigned(ProjetoAtual) then
+  begin
+    if Assigned(ProjetoAtual.VerseObjects[tbOrigem]) and
+       Assigned(ProjetoAtual.VerseObjects[tbOrigem].Selection) then
+      SourceCount := ProjetoAtual.VerseObjects[tbOrigem].Selection.Count;
+
+    if Assigned(ProjetoAtual.VerseObjects[tbDestino]) and
+       Assigned(ProjetoAtual.VerseObjects[tbDestino].Selection) then
+      DestinationCount := ProjetoAtual.VerseObjects[tbDestino].Selection.Count;
+  end;
+
+  if (SourceCount = 0) and (DestinationCount = 0) then
+    Result := SHeaderSelectionNone
+  else
+    Result := Format(SHeaderSelectionFmt, [SourceCount, DestinationCount]);
+end;
+
+procedure TFrmPrincipal.LayoutStateHeader;
+const
+  Margin = 8;
+  Gap = 14;
+  MinReferenceWidth = 120;
+var
+  X, Y, LineHeight, ModifiedWidth, MaxRight: Integer;
+
+  function CaptionWidth(ALabel: TLabel): Integer;
+  begin
+    Result := FStateHeaderPanel.Canvas.TextWidth(ALabel.Caption) + 8;
+  end;
+
+  procedure PlaceLabel(ALabel: TLabel; var ALeft: Integer; AMaxRight: Integer;
+    AAlwaysShow: Boolean; AMaxWidth: Integer = 0);
+  var
+    W: Integer;
+  begin
+    W := CaptionWidth(ALabel);
+    if AMaxWidth > 0 then
+      W := Min(W, AMaxWidth);
+
+    ALabel.Visible := AAlwaysShow or (ALeft + W <= AMaxRight);
+    if not ALabel.Visible then
+      Exit;
+
+    if AAlwaysShow then
+      W := Max(MinReferenceWidth, Min(W, Max(0, AMaxRight - ALeft)));
+
+    ALabel.SetBounds(ALeft, Y, W, LineHeight);
+    Inc(ALeft, W + Gap);
+  end;
+
+begin
+  if not Assigned(FStateHeaderPanel) then
+    Exit;
+
+  FStateHeaderPanel.Canvas.Font.Assign(Font);
+  LineHeight := FStateHeaderPanel.Canvas.TextHeight('Hg') + 8;
+  Y := Max(0, (FStateHeaderPanel.ClientHeight - LineHeight) div 2);
+
+  ModifiedWidth := CaptionWidth(FHeaderModifiedLabel) + 8;
+  FHeaderModifiedLabel.SetBounds(
+    Max(Margin, FStateHeaderPanel.ClientWidth - ModifiedWidth - Margin),
+    Y, ModifiedWidth, LineHeight);
+
+  MaxRight := FHeaderModifiedLabel.Left - Gap;
+  X := Margin;
+
+  PlaceLabel(FHeaderReferenceLabel, X, MaxRight, True, 220);
+  PlaceLabel(FHeaderStatusLabel, X, MaxRight, False, 220);
+  PlaceLabel(FHeaderAssociationsLabel, X, MaxRight, False, 190);
+  PlaceLabel(FHeaderSelectionLabel, X, MaxRight, False, 210);
+  PlaceLabel(FHeaderEngineLabel, X, MaxRight, False, 180);
+end;
+
+procedure TFrmPrincipal.StateHeaderResize(Sender: TObject);
+begin
+  LayoutStateHeader;
+end;
+
+procedure TFrmPrincipal.UpdateStateHeader;
+var
+  Associated, Total, Percent: Integer;
+begin
+  if not Assigned(FStateHeaderPanel) then
+    Exit;
+
+  if not Assigned(ProjetoAtual) then
+  begin
+    FHeaderReferenceLabel.Caption := SHeaderNoProject;
+    FHeaderStatusLabel.Caption := SHeaderStatusEmpty;
+    FHeaderAssociationsLabel.Caption := SHeaderAssociationsEmpty;
+    FHeaderSelectionLabel.Caption := SHeaderSelectionNone;
+    FHeaderEngineLabel.Caption := Format(SHeaderEngineFmt, [CurrentEngineCaption]);
+    FHeaderModifiedLabel.Caption := SHeaderSaved;
+    FHeaderModifiedLabel.Font.Color := clGrayText;
+  end
+  else
+  begin
+    CountCurrentAssociations(Associated, Total);
+    if Total > 0 then
+    begin
+      Percent := Round((Associated / Total) * 100);
+      FHeaderAssociationsLabel.Caption := Format(SHeaderAssociationsFmt,
+        [Associated, Total, Percent]);
+    end
+    else
+      FHeaderAssociationsLabel.Caption := SHeaderAssociationsEmpty;
+
+    FHeaderReferenceLabel.Caption := Format(SHeaderReferenceFmt,
+      [ProjetoAtual.FormattedReference]);
+    FHeaderStatusLabel.Caption := Format(SHeaderStatusFmt,
+      [ProjetoAtual.GetStatusDescription(ProjetoAtual.Status)]);
+    FHeaderSelectionLabel.Caption := CurrentSelectionCaption;
+    FHeaderEngineLabel.Caption := Format(SHeaderEngineFmt, [CurrentEngineCaption]);
+
+    if ProjetoAtual.Modificado then
+    begin
+      FHeaderModifiedLabel.Caption := SHeaderUnsavedChanges;
+      FHeaderModifiedLabel.Font.Color := clRed;
+    end
+    else
+    begin
+      FHeaderModifiedLabel.Caption := SHeaderSaved;
+      FHeaderModifiedLabel.Font.Color := clGreen;
+    end;
+  end;
+
+  FHeaderReferenceLabel.Hint := FHeaderReferenceLabel.Caption;
+  FHeaderStatusLabel.Hint := FHeaderStatusLabel.Caption;
+  FHeaderAssociationsLabel.Hint := FHeaderAssociationsLabel.Caption;
+  FHeaderSelectionLabel.Hint := FHeaderSelectionLabel.Caption;
+  FHeaderEngineLabel.Hint := FHeaderEngineLabel.Caption;
+  FHeaderModifiedLabel.Hint := FHeaderModifiedLabel.Caption;
+  LayoutStateHeader;
+end;
+
 procedure TFrmPrincipal.ActionAbrirProjetoExecute(Sender: TObject);
 begin
   if Sender is TMenuItem then
@@ -665,6 +917,7 @@ begin
   //ActionExportarDestinoComStrongs.Enabled := false;
   //ActionExportarTextoInterlinear.Enabled := false;
   StatusBar1.SimpleText := '';
+  UpdateStateHeader;
 end;
 
 procedure TFrmPrincipal.ActionKeyboardShortcutsExecute(Sender: TObject);
@@ -682,7 +935,10 @@ begin
       Format(SClearCurrentVerseAssociationsConfirmation,
         [ProjetoAtual.FormattedReference]),
       mtConfirmation, [mbYes, mbCancel], 0) = mrYes then
+  begin
     ProjetoAtual.ClearAssociations;
+    UpdateStateHeader;
+  end;
 end;
 
 procedure TFrmPrincipal.ActionMesclarProjetosExecute(Sender: TObject);
@@ -840,6 +1096,7 @@ begin
     FChapterView.Project := ProjetoAtual;
 
     StatusBar1.SimpleText := '';
+    UpdateStateHeader;
   finally
     StatusBar1.Caption := '';
     FormPleaseWait.FinishOperation;
@@ -872,6 +1129,7 @@ begin
     Caption := format('iBiblia | %s | %s (%s)', [ProjetoAtual.FormattedReference, ProjetoAtual.GetInfo('descricao'), ProjetoAtual.FileName]);
     RadioGroupStatus.SetFocus;
     ActionSyncTheWordVerseExecute(Sender);
+    UpdateStateHeader;
   end;
 end;
 
@@ -896,7 +1154,10 @@ begin
   if MessageDlg(SRollbackCurrentVerse,
       Format(SRollbackCurrentVerseConfirmation, [ProjetoAtual.FormattedReference]),
       mtConfirmation, [mbYes, mbCancel], 0) = mrYes then
+  begin
     ProjetoAtual.RefreshUI;
+    UpdateStateHeader;
+  end;
 end;
 
 procedure TFrmPrincipal.ActionSairExecute(Sender: TObject);
@@ -923,6 +1184,7 @@ begin
   begin
     ProjetoAtual.SaveProject;
     StatusBar1.SimpleText := '';
+    UpdateStateHeader;
   end;
 end;
 
@@ -949,6 +1211,7 @@ begin
 
     if ProjetoAtual.ChapterViewText = tbInterlinear then
       FChapterView.LoadChapter;
+    UpdateStateHeader;
   end;
 end;
 
@@ -972,6 +1235,7 @@ begin
   if ProjetoAtual = nil then exit;
 
   ProjetoAtual.PreviousVerse;
+  UpdateStateHeader;
 end;
 
 procedure TFrmPrincipal.ActionVersoPrimeiroExecute(Sender: TObject);
@@ -979,6 +1243,7 @@ begin
   if ProjetoAtual = nil then exit;
 
   ProjetoAtual.FirstVerse;
+  UpdateStateHeader;
 end;
 
 procedure TFrmPrincipal.ActionVersoSeguinteExecute(Sender: TObject);
@@ -986,6 +1251,7 @@ begin
   if ProjetoAtual = nil then exit;
 
   ProjetoAtual.NextVerse;
+  UpdateStateHeader;
 end;
 
 procedure TFrmPrincipal.ActionVersoUltimoExecute(Sender: TObject);
@@ -993,6 +1259,7 @@ begin
   if ProjetoAtual = nil then exit;
 
   ProjetoAtual.LastVerse;
+  UpdateStateHeader;
 end;
 
 procedure TFrmPrincipal.FormClose(Sender: TObject; var CloseAction: TCloseAction);
@@ -1095,6 +1362,8 @@ begin
     MenuItemLangEn.Checked:=true
   else if language = 'pt' then
     MenuItemLangPt.Checked:=true;
+
+  CreateStateHeader;
 
   ActionKeyboardShortcuts := TAction.Create(ActionList1);
   ActionKeyboardShortcuts.Caption := SKeyboardShortcutsMenu;
@@ -1255,6 +1524,7 @@ begin
     ProjetoAtual.SuggestionMode := smAI;
   MenuItemStatisticalSuggestion.Checked := False;
   MenuItemAISuggestion.Checked := True;
+  UpdateStateHeader;
 end;
 
 procedure TFrmPrincipal.MenuItemAlwaysOnTopClick(Sender: TObject);
@@ -1324,6 +1594,7 @@ begin
     ProjetoAtual.SuggestionMode := smStatistical;
   MenuItemStatisticalSuggestion.Checked := True;
   MenuItemAISuggestion.Checked := False;
+  UpdateStateHeader;
 end;
 
 procedure TFrmPrincipal.MenuItemStrongNegritoClick(Sender: TObject);
@@ -1383,6 +1654,7 @@ var
   wordSyncd: boolean;
 {$ENDIF}
 begin
+  UpdateStateHeader;
   {$IFDEF WINDOWS}
   if not syncTw2iBiblia then
     exit;
@@ -1413,6 +1685,7 @@ end;
 procedure TFrmPrincipal.QuandoAlterarVersiculo;
 begin
   StatusBar1.SimpleText := SChanged;
+  UpdateStateHeader;
 end;
 
 procedure TFrmPrincipal.AtualizarMRU(m: TMenuItem);
@@ -1482,7 +1755,10 @@ end;
 procedure TFrmPrincipal.RadioGroupStatusSelectionChanged(Sender: TObject);
 begin
   if ProjetoAtual <> nil then
+  begin
     ProjetoAtual.Status := RadioGroupStatus.ItemIndex;
+    UpdateStateHeader;
+  end;
 end;
 
 procedure TFrmPrincipal.ChapterViewTabCtrlChange(Sender: TObject);
@@ -1570,6 +1846,7 @@ begin
     ProjetoAtual.Translate;
   if assigned(FChapterView) then
     FChapterView.Translate;
+  UpdateStateHeader;
 end;
 
 procedure TFrmPrincipal.DoOpenProject(filename: string);
@@ -1611,6 +1888,7 @@ begin
   //ActionExportarDestinoComStrongs.Enabled := true;
   //ActionExportarTextoInterlinear.Enabled := true;
   StatusBar1.SimpleText := '';
+  UpdateStateHeader;
 
   {ScrollBoxRef1Verse.Visible := false;
   Splitter3.Visible := false;
