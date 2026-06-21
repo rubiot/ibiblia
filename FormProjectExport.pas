@@ -6,7 +6,8 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
-  ComCtrls, StdCtrls, ExtCtrls, BibleScope, Project, LCLTranslator, LCLIntf, LazUTF8;
+  ComCtrls, StdCtrls, ExtCtrls, BibleScope, Project, LCLTranslator, LCLIntf,
+  LazUTF8, UnitPleaseWait;
 
 type
 
@@ -52,6 +53,12 @@ resourcestring
   SMySwordModule   = 'MySword Bible module (*.bbl.mybible)';
   SAnalyticalConcordance = 'AnalyticalConcordance';
   SSyntheticConcordance = 'SyntheticConcordance';
+  SExportTaggedDestinationTitle = 'Export project';
+  SExportTaggedDestinationProgress = 'Exporting tagged destination text...';
+  SExportInterlinearTitle = 'Export project';
+  SExportInterlinearProgress = 'Exporting interlinear source text...';
+  SExportConcordanceTitle = 'Export project';
+  SExportConcordanceProgress = 'Exporting concordance...';
 
 implementation
 
@@ -115,13 +122,15 @@ begin
 
   if SaveDialog1.Execute then
   begin
+    FormPleaseWait.BeginOperation(Self, SExportTaggedDestinationTitle,
+      SExportTaggedDestinationProgress, 1, SaveDialog1.FileName);
     try
-      Self.Enabled := False;
-      FProject.ExportDestinationTextWithStrongs(SaveDialog1.FileName, ProgressBar1, Options);
-      ShowExportedFile(SaveDialog1.FileName);
+      FProject.ExportDestinationTextWithStrongs(SaveDialog1.FileName,
+        FormPleaseWait.ProgressBar1, Options);
     finally
-      Self.Enabled := True;
+      FormPleaseWait.FinishOperation;
     end;
+    ShowExportedFile(SaveDialog1.FileName);
   end;
 end;
 
@@ -152,13 +161,15 @@ begin
 
   if SaveDialog1.Execute then
   begin
+    FormPleaseWait.BeginOperation(Self, SExportInterlinearTitle,
+      SExportInterlinearProgress, 1, SaveDialog1.FileName);
     try
-      Self.Enabled := False;
-      FProject.ExportInterlinearText(SaveDialog1.FileName, ProgressBar1, Options);
-      ShowExportedFile(SaveDialog1.FileName);
+      FProject.ExportInterlinearText(SaveDialog1.FileName,
+        FormPleaseWait.ProgressBar1, Options);
     finally
-      Self.Enabled := True;
+      FormPleaseWait.FinishOperation;
     end;
+    ShowExportedFile(SaveDialog1.FileName);
   end;
 end;
 
@@ -187,13 +198,15 @@ begin
 
   if SaveDialogConcordancia.Execute then
   begin
+    FormPleaseWait.BeginOperation(Self, SExportConcordanceTitle,
+      SExportConcordanceProgress, 1, SaveDialogConcordancia.FileName);
     try
-      Self.Enabled := False;
-      FProject.ExportConcordance(SaveDialogConcordancia.FileName, ProgressBar1, Options, leAbreviacao.Text);
-      ShowExportedFile(SaveDialogConcordancia.FileName);
+      FProject.ExportConcordance(SaveDialogConcordancia.FileName,
+        FormPleaseWait.ProgressBar1, Options, leAbreviacao.Text);
     finally
-      Self.Enabled := True;
+      FormPleaseWait.FinishOperation;
     end;
+    ShowExportedFile(SaveDialogConcordancia.FileName);
   end;
 
   FProject.SetInfo('propriedades.abbrev', leAbreviacao.Text);

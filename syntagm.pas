@@ -789,7 +789,7 @@ end;
 
 procedure TSyntagm.DisassociatePairs;
 var
-  s: TSyntagm;
+  s, pairSyntagm, sibling: TSyntagm;
 begin
   // 1. Disassociate all siblings (they share the same pairs)
   while Assigned(FSiblings) and not FSiblings.Empty do
@@ -805,21 +805,26 @@ begin
   // 2. Disassociate all pairs and THEIR siblings
   while Assigned(FPairs) and not FPairs.Empty do
   begin
-    s := TSyntagm(FPairs.First);
-    FPairs.Remove(s); // force local progress even if pair links are asymmetric
-    if Assigned(s) and Assigned(s.FPairs) then
-      s.FPairs.Remove(Self);
-    while Assigned(s.FSiblings) and not s.FSiblings.Empty do
+    pairSyntagm := TSyntagm(FPairs.First);
+    FPairs.Remove(pairSyntagm); // force local progress even if pair links are asymmetric
+    if Assigned(pairSyntagm) and Assigned(pairSyntagm.FPairs) then
+      pairSyntagm.FPairs.Remove(Self);
+
+    if Assigned(pairSyntagm) then
     begin
-      if s.FSiblings.First = Self then
+      while Assigned(pairSyntagm.FSiblings) and not pairSyntagm.FSiblings.Empty do
       begin
-        s.FSiblings.Remove(Self);
-        Continue;
+        sibling := TSyntagm(pairSyntagm.FSiblings.First);
+        pairSyntagm.FSiblings.Remove(sibling); // force progress even if sibling links are asymmetric
+        if Assigned(sibling) and Assigned(sibling.FSiblings) then
+          sibling.FSiblings.Remove(pairSyntagm);
+        if Assigned(sibling) and (sibling <> Self) and (sibling <> pairSyntagm) then
+          sibling.Disassociate;
       end;
-      TSyntagm(s.FSiblings.First).Disassociate;
+
+      if pairSyntagm <> Self then
+        pairSyntagm.Disassociate;
     end;
-    if s <> Self then
-      s.Disassociate;
   end;
 
   // 3. Disassociate self

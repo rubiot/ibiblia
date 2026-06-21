@@ -124,6 +124,7 @@ begin
   if not Assigned(ProgressBar) then
     Exit;
 
+  ProgressBar.Style := pbstNormal;
   ProgressBar.Position := 0;
   ProgressBar.Min := 0;
   ProgressBar.Max := MaxValue;
