@@ -237,6 +237,17 @@ begin
   if not Assigned(Node) then
     Exit;
 
+  if not Node.HasChildren then
+  begin
+    StatusIndex := Node.ImageIndex;
+    Result := Format('%s%sStatus: %s', [
+      NodeTitle,
+      LineEnding,
+      StatusCaption(StatusIndex)
+    ]);
+    Exit;
+  end;
+
   CountVerseStatuses(Node, Counts, Total);
   Result := Format('%s%sTotal: %d', [NodeTitle, LineEnding, Total]);
   for StatusIndex := 0 to 3 do
