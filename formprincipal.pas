@@ -1135,6 +1135,7 @@ begin
   //ActionExportarTextoInterlinear.Enabled := false;
   StatusBar1.SimpleText := '';
   UpdateStateHeader;
+  LayoutVersePanelLabels;
 end;
 
 procedure TFrmPrincipal.ActionKeyboardShortcutsExecute(Sender: TObject);
@@ -2137,6 +2138,7 @@ begin
   StatusBar1.SimpleText := '';
   UpdateStateHeader;
   UpdateTreeLegend;
+  LayoutVersePanelLabels;
 
   {ScrollBoxRef1Verse.Visible := false;
   Splitter3.Visible := false;
