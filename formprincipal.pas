@@ -704,6 +704,8 @@ begin
 end;
 
 function TFrmPrincipal.GetVersePanelCaption(TextType: TTipoTextoBiblico): string;
+var
+  TextDescription: string;
 begin
   case TextType of
     tbOrigem: Result := SPanelLabelSource;
@@ -712,6 +714,13 @@ begin
     tbConsulta2: Result := SPanelLabelReference2;
   else
     Result := '';
+  end;
+
+  if Assigned(ProjetoAtual) then
+  begin
+    TextDescription := Trim(ProjetoAtual.GetTextDescription(TextType));
+    if TextDescription <> '' then
+      Result := Format('%s: %s', [Result, TextDescription]);
   end;
 end;
 
@@ -910,7 +919,10 @@ begin
     LabelControl.Caption := CaptionText;
     LabelControl.Hint := CaptionText;
     CenterPanel.Canvas.Font.Assign(LabelControl.Font);
-    LabelWidth := CenterPanel.Canvas.TextWidth(CaptionText) + 16;
+    LabelWidth := Min(
+      CenterPanel.Canvas.TextWidth(CaptionText) + 16,
+      Max(1, PanelControl.Width - (Margin * 2))
+    );
     LabelControl.SetBounds(
       PanelControl.Left + Max(Margin, PanelControl.Width - LabelWidth - Margin),
       PanelControl.Top + Max(Margin, PanelControl.Height - LabelHeight - Margin),
@@ -1316,6 +1328,7 @@ begin
     FrmProjectProperties.ApplyChanges;
     ActionQuandoNovoVersiculo.Execute;
     UpdateTreeLegend;
+    LayoutVersePanelLabels;
   end;
 end;
 
