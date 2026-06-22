@@ -313,6 +313,7 @@ type
     procedure ClearStoredAssociations;
     procedure Vacuum;
     function GetStatusDescription(index: Integer): string;
+    function GetTreeNodeStatusHint(Node: TTreeNode): string;
 
     property FileName: string read FFileName;
     property FormattedReference: string read GetFormattedReference;
@@ -524,6 +525,17 @@ begin
     Result := DefaultStatusDescription[index]
   else
     Result := '';
+end;
+
+function TProject.GetTreeNodeStatusHint(Node: TTreeNode): string;
+var
+  Captions: array[0..3] of string;
+  StatusIndex: Integer;
+begin
+  for StatusIndex := 0 to 3 do
+    Captions[StatusIndex] := GetStatusDescription(StatusIndex);
+
+  Result := FBibleTreeCoordinator.BuildStatusHint(FEscopo, Node, Captions);
 end;
 
 procedure TProject.SetStatusDescription(index: Integer; description: string);
@@ -2227,103 +2239,16 @@ end;
 
 procedure TProject.UpdateTree(id: string);
 var
-  i: smallint;
-  al, ac: array[0..3] of smallint;
-  nl, nc, nv, n: TTreeNode;
-  b: boolean;
-  totalChildren: integer;
+  ReferenceStatus: Integer;
 begin
   if not assigned(FArvore) or FClosing then
     exit;
 
-  al[0] := 0; al[1] := 0; al[2] := 0; al[3] := 0;
-  ac[0] := 0; ac[1] := 0; ac[2] := 0; ac[3] := 0;
-
-  nl := FArvore.Items[0];
-  for i:=BookID-OffsetLivros[FEscopo]-1 downto 1 do
-    nl := nl.GetNextSibling;
-
-  nc := nl.GetFirstChild;
-  for i:=Chapter-1 downto 1 do
-  begin
-    nc := nc.GetNextSibling;
-  end;
-
-  nv := nc.GetFirstChild;
-  for i:=Verse-1 downto 1 do
-  begin
-    nv := nv.GetNextSibling;
-  end;
-
-  { atualizando versículo }
-  if nv.ImageIndex <> Status then
-  begin
-    nv.ImageIndex := Status; nv.SelectedIndex := nv.ImageIndex + 4;
-  end;
-  
-  { atualizando capítulo - sempre recontar todos os versículos }
-  ac[0] := 0; ac[1] := 0; ac[2] := 0; ac[3] := 0;
-  totalChildren := 0;
-  n := nc.GetFirstChild;
-  while assigned(n) do
-  begin
-    if (n.ImageIndex >= 0) and (n.ImageIndex <= 3) then
-      inc(ac[n.ImageIndex]);
-    inc(totalChildren);
-    n := n.GetNextSibling;
-  end;
-
-  b := false;
-  if totalChildren > 0 then
-    for i:=0 to 3 do // todos os versículos estão na mesma situação?
-    begin
-      if ac[i] = totalChildren then
-      begin
-        nc.ImageIndex := i; nc.SelectedIndex := nc.ImageIndex + 4;
-        b := true;
-        break;
-      end;
-    end;
-  if not b then // várias situações diferentes
-  begin
-    if ac[2] > 0 then
-      nc.ImageIndex := 2  // vermelho: tem algo para rever
-    else
-      nc.ImageIndex := 1; // amarelo: status mistos mas nada para rever
-    nc.SelectedIndex := nc.ImageIndex + 4;
-  end;
-  
-  { atualizando livro - sempre recontar todos os capítulos }
-  al[0] := 0; al[1] := 0; al[2] := 0; al[3] := 0;
-  totalChildren := 0;
-  n := nl.GetFirstChild;
-  while assigned(n) do
-  begin
-    if (n.ImageIndex >= 0) and (n.ImageIndex <= 3) then
-      inc(al[n.ImageIndex]);
-    inc(totalChildren);
-    n := n.GetNextSibling;
-  end;
-
-  b := false;
-  if totalChildren > 0 then
-    for i:=0 to 3 do // todos os capítulos estão na mesma situação?
-    begin
-      if al[i] = totalChildren then
-      begin
-        nl.ImageIndex := i; nl.SelectedIndex := nl.ImageIndex + 4;
-        b := true;
-        break;
-      end;
-    end;
-  if not b then // várias situações diferentes
-  begin
-    if al[2] > 0 then
-      nl.ImageIndex := 2  // vermelho: tem algo para rever
-    else
-      nl.ImageIndex := 1; // amarelo: status mistos mas nada para rever
-    nl.SelectedIndex := nl.ImageIndex + 4;
-  end;
+  if id = ID then
+    ReferenceStatus := Status
+  else
+    ReferenceStatus := GetStatus(id);
+  FBibleTreeCoordinator.UpdateReferenceStatus(FEscopo, id, ReferenceStatus);
 end;
 
 constructor TProject.Create;
@@ -3532,20 +3457,12 @@ begin
 end;
 
 procedure TProject.Translate;
-var
-  bk: integer;
-  node: TTreeNode;
 begin
   UpdateDefaultStatusDescription;
   if not assigned(FArvore) then
     exit;
 
-  node := FArvore.Items[0];
-  for bk:=0 to QLivros[FEscopo]-1 do
-  begin
-    node.Text := NLivros[FEscopo][bk];
-    node := node.GetNextSibling;
-  end;
+  FBibleTreeCoordinator.RefreshCaptions(FEscopo);
 
   if assigned(FArvore.PopupMenu) then
   begin

@@ -112,6 +112,7 @@ type
     MenuItem9: TMenuItem;
     OpenDialog1: TOpenDialog;
     Panel1: TPanel;
+    NavigationPanel: TPanel;
     CenterPanel: TPanel;
     BottomPanel: TPanel;
     ContextPanel: TPanel;
@@ -143,6 +144,8 @@ type
     ToolButton7: TToolButton;
     ToolButton8: TToolButton;
     ToolButton9: TToolButton;
+    TreeLegendLabel: TLabel;
+    TreeLegendPanel: TPanel;
     TreeView1: TTreeView;
     procedure ActionApplyPatchExecute(Sender: TObject);
     procedure ActionExportarExecute(Sender: TObject);
@@ -242,9 +245,11 @@ type
     procedure ResetMainLayout;
     procedure SplitterMoved(Sender: TObject);
     procedure StateHeaderResize(Sender: TObject);
+    procedure TreeViewShowHint(Sender: TObject; HintInfo: PHintInfo);
     procedure Translate;
     procedure UpdateActionHintWithShortcut(AAction: TCustomAction);
     procedure UpdateStateHeader;
+    procedure UpdateTreeLegend;
     procedure DoOpenProject(filename: string);
     procedure CheckFileAssociation;
   public
@@ -341,6 +346,13 @@ resourcestring
   SPanelLabelDestination = 'Destination';
   SPanelLabelReference1 = 'Reference 1';
   SPanelLabelReference2 = 'Reference 2';
+  STreeLegendTitle = 'Tree legend';
+  STreeLegendStatusFmt = '%d: %s';
+  STreeLegendCounts = 'Hover tree items for status counts';
+  STreeLegendNotAssociated = 'Not associated';
+  STreeLegendAssociating = 'Associating';
+  STreeLegendNeedsReview = 'Needs review';
+  STreeLegendAssociated = 'Associated';
 
 implementation
 
@@ -822,6 +834,49 @@ begin
   LayoutStateHeader;
 end;
 
+procedure TFrmPrincipal.UpdateTreeLegend;
+
+  function StatusCaption(Index: Integer; const DefaultCaption: string): string;
+  begin
+    if (Index >= 0) and (Index < RadioGroupStatus.Items.Count) then
+      Result := RadioGroupStatus.Items[Index]
+    else
+      Result := DefaultCaption;
+  end;
+
+begin
+  if not Assigned(TreeLegendLabel) then
+    Exit;
+
+  TreeLegendLabel.Caption :=
+    STreeLegendTitle + LineEnding +
+    Format(STreeLegendStatusFmt, [1, StatusCaption(0, STreeLegendNotAssociated)]) + LineEnding +
+    Format(STreeLegendStatusFmt, [2, StatusCaption(1, STreeLegendAssociating)]) + LineEnding +
+    Format(STreeLegendStatusFmt, [3, StatusCaption(2, STreeLegendNeedsReview)]) + LineEnding +
+    Format(STreeLegendStatusFmt, [4, StatusCaption(3, STreeLegendAssociated)]) + LineEnding +
+    STreeLegendCounts;
+end;
+
+procedure TFrmPrincipal.TreeViewShowHint(Sender: TObject; HintInfo: PHintInfo);
+var
+  Node: TTreeNode;
+  HintText: string;
+begin
+  if (not Assigned(HintInfo)) or (not Assigned(ProjetoAtual)) then
+    Exit;
+
+  Node := TreeView1.GetNodeAt(HintInfo^.CursorPos.X, HintInfo^.CursorPos.Y);
+  if not Assigned(Node) then
+  begin
+    HintInfo^.HintStr := '';
+    Exit;
+  end;
+
+  HintText := ProjetoAtual.GetTreeNodeStatusHint(Node);
+  HintInfo^.HintStr := HintText;
+  HintInfo^.HintMaxWidth := 360;
+end;
+
 procedure TFrmPrincipal.LayoutVersePanelLabels;
 const
   Margin = 5;
@@ -876,7 +931,7 @@ var
   TextTop, TextBottom, AvailableHeight, BaseHeight, ExtraHeight: Integer;
   TextWidth: Integer;
 begin
-  TreeView1.Width := DefaultTreeWidth;
+  NavigationPanel.Width := DefaultTreeWidth;
   ContextPanel.Width := Min(DefaultContextWidth, Max(180, Panel1.ClientWidth div 2));
   BottomPanel.Height := Min(DefaultCommentsHeight,
     Max(MinCommentsHeight, CenterPanel.ClientHeight div 3));
@@ -1260,6 +1315,7 @@ begin
   begin
     FrmProjectProperties.ApplyChanges;
     ActionQuandoNovoVersiculo.Execute;
+    UpdateTreeLegend;
   end;
 end;
 
@@ -1520,6 +1576,10 @@ begin
 
   CreateStateHeader;
   CreateVersePanelLabels;
+  TreeView1.Hint := ' ';
+  TreeView1.ShowHint := True;
+  TreeView1.OnShowHint := @TreeViewShowHint;
+  TreeView1.Options := TreeView1.Options - [tvoToolTips];
 
   ActionKeyboardShortcuts := TAction.Create(ActionList1);
   ActionKeyboardShortcuts.Caption := SKeyboardShortcutsMenu;
@@ -1554,7 +1614,8 @@ begin
   MenuItem20.Add(MenuItemLlmOptions);
 
   CarregarMRU(MenuItemRecent);
-  TreeView1.Width := opts.ReadInteger('leiaute', 'principal.treeview.largura', TreeView1.Width);
+  NavigationPanel.Width := opts.ReadInteger('leiaute', 'principal.treeview.largura', NavigationPanel.Width);
+  UpdateTreeLegend;
 
   // Create the actual CommentsView and replace the TMemo
   FActualCommentsMemo := TCommentsView.Create(Self);
@@ -1589,7 +1650,7 @@ begin
     opts.WriteInteger('leiaute', 'principal.topo', Top);
     opts.WriteInteger('leiaute', 'principal.esquerda', Left);
   end;
-  opts.WriteInteger('leiaute', 'principal.treeview.largura', TreeView1.Width);
+  opts.WriteInteger('leiaute', 'principal.treeview.largura', NavigationPanel.Width);
   opts.WriteInteger('leiaute', 'principal.splitter2.topo', Splitter2.Top);
   opts.WriteInteger('leiaute', 'principal.splitter3.topo', Splitter3.Top);
   opts.WriteInteger('leiaute', 'principal.splitter4.topo', Splitter4.Top);
@@ -2018,6 +2079,7 @@ begin
   if assigned(FChapterView) then
     FChapterView.Translate;
   UpdateStateHeader;
+  UpdateTreeLegend;
   LayoutVersePanelLabels;
 end;
 
@@ -2061,6 +2123,7 @@ begin
   //ActionExportarTextoInterlinear.Enabled := true;
   StatusBar1.SimpleText := '';
   UpdateStateHeader;
+  UpdateTreeLegend;
 
   {ScrollBoxRef1Verse.Visible := false;
   Splitter3.Visible := false;
