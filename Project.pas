@@ -190,7 +190,8 @@ type
     function BibleTreeNodeToReference(const node: TTreeNode): TReference;
     procedure SetStatusDescription(index: Integer; description: string);
     function HasCustomStatus: boolean;
-    procedure MigrateStoredAssociationsToTokenizerVersion(OldVersion, NewVersion: Integer);
+    procedure MigrateStoredAssociationsToTokenizerVersion(OldVersion,
+      NewVersion: Integer; ProgressBar: TProgressBar = nil);
   protected
     function CreateTableDataset(db, tableName, keyField: string): TSqlite3Dataset;
     function CreateQueryObject(db: string): TSQLQuery;
@@ -256,6 +257,8 @@ type
     procedure LastVerse;
     procedure RefreshUI;
     procedure ClearAssociations;
+    procedure ChangeTokenizerVersion(AValue: Integer;
+      ProgressBar: TProgressBar = nil; MigrateAssociations: Boolean = True);
     procedure SaveProject;
     procedure SaveVersePairs(Verse: TVerse); // Save pairs from any verse object (public for AI flows)
     procedure ApplyVerseText(const newText: string; texto: TTipoTextoBiblico; replace: Boolean);
@@ -478,6 +481,36 @@ const
     'Associated'
   );
 
+procedure ConfigureOperationProgressBar(ProgressBar: TProgressBar;
+  MaxValue: Integer);
+begin
+  if not Assigned(ProgressBar) then
+    Exit;
+
+  if MaxValue <= 0 then
+    MaxValue := 1;
+
+  ProgressBar.Style := pbstNormal;
+  ProgressBar.Position := 0;
+  ProgressBar.Min := 0;
+  ProgressBar.Max := MaxValue;
+  ProgressBar.Step := 1;
+  ProgressBar.Visible := True;
+  ProgressBar.Update;
+end;
+
+procedure AdvanceOperationProgressBar(ProgressBar: TProgressBar;
+  ProcessMessagesEvery: Integer = 50);
+begin
+  if not Assigned(ProgressBar) then
+    Exit;
+
+  ProgressBar.StepIt;
+  if (ProcessMessagesEvery > 0) and
+    ((ProgressBar.Position mod ProcessMessagesEvery) = 0) then
+    Application.ProcessMessages;
+end;
+
 procedure UpdateDefaultStatusDescription;
 begin
   DefaultStatusDescription[0] := SStatusNotAssociated;
@@ -643,7 +676,7 @@ begin
   OpenProject(nomedb);
 
   SetInfo('descricao', descricao);
-  TokenizerVersion := tokenizerVersion;
+  ChangeTokenizerVersion(tokenizerVersion, nil, False);
   FExibirDefComCtrl := false;  //FTblInfo.ExecuteDirect('COMMIT;');
   FirstVerse;
   Commit;
@@ -672,7 +705,7 @@ end;
 function TProject.GetTokenizerVersion: Integer;
 begin
   Result := TTokenizerFactory.NormalizeVersion(
-    FConfig.ReadTokenizerVersion(TTokenizerFactory.PreferredVersion));
+    FConfig.ReadTokenizerVersion(TTokenizerFactory.LEGACY_VERSION));
 end;
 
 function TProject.GetPairs(ref: string): string;
@@ -744,6 +777,12 @@ begin
 end;
 
 procedure TProject.SetTokenizerVersion(AValue: Integer);
+begin
+  ChangeTokenizerVersion(AValue);
+end;
+
+procedure TProject.ChangeTokenizerVersion(AValue: Integer;
+  ProgressBar: TProgressBar; MigrateAssociations: Boolean);
 var
   currentVersion: Integer;
 begin
@@ -752,7 +791,9 @@ begin
   if currentVersion = AValue then
     Exit;
 
-  MigrateStoredAssociationsToTokenizerVersion(currentVersion, AValue);
+  if MigrateAssociations then
+    MigrateStoredAssociationsToTokenizerVersion(currentVersion, AValue,
+      ProgressBar);
 
   FConfig.WriteTokenizerVersion(AValue);
   TTokenizerFactory.PreferredVersion := AValue;
@@ -767,7 +808,7 @@ begin
 end;
 
 procedure TProject.MigrateStoredAssociationsToTokenizerVersion(OldVersion,
-  NewVersion: Integer);
+  NewVersion: Integer; ProgressBar: TProgressBar);
 var
   oldPairs: string;
 begin
@@ -779,6 +820,7 @@ begin
 
   StartScrollingSession;
   try
+    ConfigureOperationProgressBar(ProgressBar, QLinhas[FEscopo]);
     FirstVerse;
     while not FPersistence.EOF do
     begin
@@ -793,6 +835,7 @@ begin
             NewVersion));
 
       NextVerse;
+      AdvanceOperationProgressBar(ProgressBar);
     end;
   finally
     FVerseRenderBuffer.SetTokenizerVersion(NewVersion);

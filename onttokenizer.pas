@@ -39,6 +39,7 @@ type
   private
     class var FPreferredVersion: Integer;
   public
+    const LEGACY_VERSION = 1;
     const LATEST_VERSION = 2;
     const MAX_VERSION = 3;
     class constructor Create;
