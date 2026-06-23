@@ -24,7 +24,7 @@
     <RunParams>
       <FormatVersion Value="2"/>
     </RunParams>
-    <RequiredPackages Count="4">
+    <RequiredPackages Count="5">
       <Item1>
         <PackageName Value="KControlsLaz"/>
       </Item1>
@@ -37,8 +37,11 @@
       <Item4>
         <PackageName Value="FCL"/>
       </Item4>
+      <Item5>
+        <PackageName Value="SynEdit"/>
+      </Item5>
     </RequiredPackages>
-    <Units Count="3">
+    <Units Count="4">
       <Unit0>
         <Filename Value="fpcunitibiblia_console.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -52,6 +55,10 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="Sintagma"/>
       </Unit2>
+      <Unit3>
+        <Filename Value="theword_syntax_highlighter_test.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit3>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

@@ -8,7 +8,8 @@ uses
   Classes, SysUtils, Forms, Graphics, ONTTokenizer, LCLType, HTMLColors,
   LazUTF8, BibleScope, Project, PCRE, Controls, Menus, fgl, Dialogs, Math, Contnrs, KMemo,
   KEditCommon, KGraphics, KDialogs, FormInterlinearVerseRules,
-  LCLTranslator, LazLogger, StdCtrls, HTMLRenderer, CommentsView;
+  LCLTranslator, LazLogger, HTMLRenderer, CommentsView, SynEdit,
+  theword_syntax_highlighter;
 
 type
 
@@ -20,7 +21,7 @@ type
 
   { TRawChapterMemo }
 
-  TRawChapterMemo = class(TMemo)
+  TRawChapterMemo = class(TSynEdit)
   private
     FChapterView: TChapterView;
     procedure HandleOnKeyDown(Sender: TObject; var Key: word; Shift: TShiftState);
@@ -202,10 +203,7 @@ begin
   Parent     := TWinControl(AOwner);
   FChapterView := ChapterView;
   Align      := alClient;
-  ScrollBars := ssAutoVertical;
-  ParentFont := False;
-  Font.Name  := 'Courier New';
-  ReadOnly   := true;
+  ConfigureTheWordSyntaxEditor(Self, True);
   OnKeyDown  := @HandleOnKeyDown;
   OnMouseWheel := @HandleOnMouseWheel;
 end;
@@ -217,7 +215,7 @@ end;
 
 procedure TRawChapterMemo.Show(aText: string);
 begin
-  Font.Size := FChapterView.FontSize;
+  ApplyTheWordSyntaxEditorFont(Self);
   Text := aText;
   BringToFront;
   Visible := True;

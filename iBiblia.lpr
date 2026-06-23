@@ -16,7 +16,7 @@ uses
   ONTParser, Syntagm, unitabout, MySwordModule, TheWordDictionary, lazrichview,
   HTMLColors, FormExportPatch, FormApplyPatch, PatchFile,
   FormInterlinearVerseRules, ChapterView, UnitPleaseWait,
-  llmclient, FormLlmOptions, FormAiProcessing;
+  llmclient, FormLlmOptions, FormAiProcessing, FormTheWordHighlighterColors;
 
 {$R *.res}
 

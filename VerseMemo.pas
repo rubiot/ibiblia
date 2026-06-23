@@ -5,11 +5,11 @@ unit VerseMemo;
 interface
 
 uses
-  Classes, SysUtils, StdCtrls, Controls, Forms, LCLType,
+  Classes, SysUtils, Controls, Forms, LCLType, SynEdit,
   {$IFNDEF UNIX}
   Windows,
   {$ENDIF}
-  Dialogs, Verse, Math;
+  Dialogs, Verse, Math, theword_syntax_highlighter;
 
 type
 
@@ -19,7 +19,7 @@ type
   TVerseMemo = class
   private
     FModified: Boolean;
-    FMemo: TMemo;
+    FMemo: TSynEdit;
     FVerse: TVerse;
     FOnVerseTextModified: TVerseTextModifiedEvent;
     function GetText: TCaption;
@@ -92,7 +92,6 @@ begin
   else if Key = VK_ESCAPE then
   begin
     ConfirmChange;
-    FVerse.Font.Size := FMemo.Font.Size;
   end
   else if Key = VK_RETURN then
     Key := 0;
@@ -100,7 +99,7 @@ end;
 
 procedure TVerseMemo.OnChange(Sender: TObject);
 begin
-  if Assigned(TMemo(Sender).Parent) and TMemo(Sender).Visible then
+  if Assigned(TSynEdit(Sender).Parent) and TSynEdit(Sender).Visible then
     FModified := True;
 end;
 
@@ -122,15 +121,13 @@ end;
 
 constructor TVerseMemo.Create;
 begin
-  FMemo := TMemo.Create(nil);
+  FMemo := TSynEdit.Create(nil);
   FMemo.Visible := False;
   FMemo.Align := alClient;
-  FMemo.ScrollBars := ssAutoVertical;
+  ConfigureTheWordSyntaxEditor(FMemo, False);
   FMemo.OnKeyDown := @OnKeyDown;
   FMemo.OnChange := @OnChange;
   FMemo.OnMouseWheel := @OnMouseWheel;
-  FMemo.ParentFont := False;
-  FMemo.Font.Name := 'Courier New';
   FModified := False;
   FVerse := nil;
   FOnVerseTextModified := nil;
@@ -150,7 +147,7 @@ begin
     Exit;
   end;
 
-  FMemo.Font.Size := Verse.Font.Size;
+  ApplyTheWordSyntaxEditorFont(FMemo);
   FModified := False;
   FVerse := Verse;
   FMemo.Parent := nil;

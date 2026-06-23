@@ -5,14 +5,15 @@ unit CommentsView;
 interface
 
 uses
-  Classes, SysUtils, Controls, HTMLRenderer, StdCtrls, Graphics;
+  Classes, SysUtils, Controls, HTMLRenderer, StdCtrls, Graphics, SynEdit,
+  theword_syntax_highlighter;
 
 type
   TCommentsView = class;
 
   { TRawCommentsMemo }
 
-  TRawCommentsMemo = class(TMemo)
+  TRawCommentsMemo = class(TSynEdit)
   private
     FCommentsView: TCommentsView;
     procedure HandleOnKeyDown(Sender: TObject; var Key: word; Shift: TShiftState);
@@ -93,11 +94,8 @@ begin
   Height     := CommentsView.Height;
   Anchors    := CommentsView.Anchors;
   
-  ScrollBars := ssAutoVertical;
-  ParentFont := False;
-  Font.Name  := 'Courier New';
   Color      := clWindow; // Ensure it has a solid background
-  ReadOnly   := false; // Allow editing
+  ConfigureTheWordSyntaxEditor(Self, False);
   OnKeyDown  := @HandleOnKeyDown;
   OnMouseWheel := @HandleOnMouseWheel;
 end;
@@ -109,7 +107,7 @@ end;
 
 procedure TRawCommentsMemo.Show(aText: string);
 begin
-  Font.Size := FCommentsView.FontSize;
+  ApplyTheWordSyntaxEditorFont(Self);
   Text := aText;
   
   // Position exactly over the CommentsView
@@ -168,12 +166,17 @@ end;
 procedure TCommentsView.SetCommentsText(const CommentsText: string);
 begin
   FText := CommentsText;
+  if Assigned(FRawMemo) and FRawMemo.Visible then
+    FRawMemo.Text := CommentsText;
   RenderHTML(CommentsText);
 end;
 
 function TCommentsView.GetText: string;
 begin
-  Result := FText;
+  if Assigned(FRawMemo) and FRawMemo.Visible then
+    Result := FRawMemo.Text
+  else
+    Result := FText;
 end;
 
 procedure TCommentsView.SetText(const AValue: string);

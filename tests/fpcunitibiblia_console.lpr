@@ -8,7 +8,8 @@ uses
   ibibliatest,
   versiculotest,
   syntagmselectiontest,
-  statuscatalogtest;
+  statuscatalogtest,
+  theword_syntax_highlighter_test;
 
 var
   Application: TTestRunner;

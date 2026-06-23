@@ -16,7 +16,7 @@ uses
   ActnList, ComCtrls, ExtCtrls, StdCtrls, BibleScope, Project, IniFiles, Math,
   Syntagm, LCLTranslator, unitabout, PCRE, Verse, LCLProc, LazLogger,
   LCLType, LazUTF8, ChapterView, UnitPleaseWait, CommentsView, ONTTokenizer,
-  status_catalog;
+  status_catalog, SynEdit;
 
 type
   { TFrmPrincipal }
@@ -25,6 +25,7 @@ type
   ActionKeyboardShortcuts: TAction;
   ActionLlmOptions: TAction;
   ActionResetLayout: TAction;
+  ActionTheWordHighlighterColors: TAction;
     ActionUnregisterFileAssociation: TAction;
     ActionRegisterFileAssociation: TAction;
     ActionVaccumProject: TAction;
@@ -87,6 +88,7 @@ type
     MenuItemAbout: TMenuItem;
     MenuItemKeyboardShortcuts: TMenuItem;
     MenuItemResetLayout: TMenuItem;
+    MenuItemTheWordHighlighterColors: TMenuItem;
     MenuItemMouseHover: TMenuItem;
     MenuItem19: TMenuItem;
     MenuItem20: TMenuItem;
@@ -162,6 +164,7 @@ type
     procedure ActionMostrarTagsExecute(Sender: TObject);
     procedure ActionNovoProjetoExecute(Sender: TObject);
   procedure ActionLlmOptionsExecute(Sender: TObject);
+    procedure ActionTheWordHighlighterColorsExecute(Sender: TObject);
     procedure ActionPropProjetoExecute(Sender: TObject);
     procedure ActionQuandoNovoVersiculoExecute(Sender: TObject);
     procedure ActionRecriarBaseSugestoesExecute(Sender: TObject);
@@ -283,6 +286,7 @@ var
 
 const
   MAX_MRU = 10;
+  STheWordHighlightColorsMenu = 'theWord highlight colors...';
 
 resourcestring
   SRollbackCurrentVerse = 'Rollback current verse';
@@ -365,7 +369,9 @@ resourcestring
 
 implementation
 
-uses FormNewProject, FormProjectProperties, FormProjectExport, FormMergeProjects, FormExportPatch, FormApplyPatch, FormLlmOptions, llmclient;
+uses FormNewProject, FormProjectProperties, FormProjectExport, FormMergeProjects,
+  FormExportPatch, FormApplyPatch, FormLlmOptions, FormTheWordHighlighterColors,
+  llmclient, theword_syntax_highlighter;
 
 {$R *.lfm}
 
@@ -1512,6 +1518,11 @@ begin
   FrmLLMOptions.ShowModal;
 end;
 
+procedure TFrmPrincipal.ActionTheWordHighlighterColorsExecute(Sender: TObject);
+begin
+  TFrmTheWordHighlighterColors.Execute(Self, opts, Self);
+end;
+
 procedure TFrmPrincipal.ActionQuandoNovoVersiculoExecute(Sender: TObject);
 begin
   if ProjetoAtual <> nil then
@@ -1701,6 +1712,8 @@ begin
 
   ConfigFilePath := ExtractFilePath(ParamStr(0)) + 'iBiblia.ini';
   opts := TIniFile.Create(ConfigFilePath);
+  LoadTheWordSyntaxColorScheme(opts);
+  LoadTheWordSyntaxEditorFont(opts);
 
   if opts.ReadBool('leiaute', 'principal.maximized', false) then
     WindowState := wsMaximized
@@ -1784,6 +1797,14 @@ begin
   MenuItemResetLayout.Action := ActionResetLayout;
   MenuItem20.Add(MenuItemResetLayout);
 
+  ActionTheWordHighlighterColors := TAction.Create(ActionList1);
+  ActionTheWordHighlighterColors.Caption := STheWordHighlightColorsMenu;
+  ActionTheWordHighlighterColors.OnExecute := @ActionTheWordHighlighterColorsExecute;
+
+  MenuItemTheWordHighlighterColors := TMenuItem.Create(MainMenu1);
+  MenuItemTheWordHighlighterColors.Action := ActionTheWordHighlighterColors;
+  MenuItem20.Add(MenuItemTheWordHighlighterColors);
+
   Translate;
 
   // Create runtime Action and MenuItem for LLM options
@@ -1865,7 +1886,7 @@ end;
 
 procedure TFrmPrincipal.FormKeyPress(Sender: TObject; var Key: char);
 begin
-  if (ActiveControl is TCustomEdit) or
+  if (ActiveControl is TCustomEdit) or (ActiveControl is TCustomSynEdit) or
     ((ActiveControl is TCustomComboBox) and (ActiveControl <> RadioGroupStatus)) then
     Exit;
 
@@ -2279,6 +2300,8 @@ begin
     ActionResetLayout.Caption := SResetLayoutMenu;
     ActionResetLayout.Hint := SResetLayoutHint;
   end;
+  if Assigned(ActionTheWordHighlighterColors) then
+    ActionTheWordHighlighterColors.Caption := STheWordHighlightColorsMenu;
 
   ActionReverterAssociacoes.Caption := SRollbackCurrentVerse;
   ActionReverterAssociacoes.Hint := SRollbackCurrentVerseHint;

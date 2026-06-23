@@ -171,7 +171,7 @@
         </Mode0>
       </Modes>
     </RunParams>
-    <RequiredPackages Count="5">
+    <RequiredPackages Count="6">
       <Item1>
         <PackageName Value="KControlsLaz"/>
       </Item1>
@@ -188,8 +188,11 @@
       <Item5>
         <PackageName Value="LCL"/>
       </Item5>
+      <Item6>
+        <PackageName Value="SynEdit"/>
+      </Item6>
     </RequiredPackages>
-    <Units Count="72">
+    <Units Count="74">
       <Unit0>
         <Filename Value="iBiblia.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -849,6 +852,15 @@
         <UsageCount Value="65"/>
         <Loaded Value="True"/>
       </Unit71>
+      <Unit72>
+        <Filename Value="theword_syntax_highlighter.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit72>
+      <Unit73>
+        <Filename Value="formthewordhighlightercolors.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="FormTheWordHighlighterColors"/>
+      </Unit73>
     </Units>
     <JumpHistory Count="30" HistoryIndex="28">
       <Position1>
