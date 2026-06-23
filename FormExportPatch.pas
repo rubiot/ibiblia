@@ -6,7 +6,8 @@ interface
 
 uses
   Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  ComCtrls, BibleScope, Project, LazLogger, BibleTreeView, PatchFile, LCLIntf;
+  ComCtrls, BibleScope, Project, LazLogger, BibleTreeView, PatchFile, LCLIntf,
+  status_catalog;
 
 type
 
@@ -78,6 +79,7 @@ var
   ref: string;
 begin
   result := TPatchFile.Create;
+  result.StatusCatalog := SaveStatusDefinitions(ProjetoAtual.GetStatusDefinitions);
   refs := FBibleTreeView.VerseList;
   try
     ProjetoAtual.StartScrollingSession;

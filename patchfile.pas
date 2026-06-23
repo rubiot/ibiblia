@@ -19,6 +19,7 @@ type
     FPairs: TStringList;
     FComments: TStringList;
     FStatus: TStringList;
+    FStatusCatalog: string;
     FProject: TObject;
     FIgnoredVerses: integer;
     procedure LoadFromFile(patchfile: string);
@@ -36,6 +37,7 @@ type
     property Pairs: TStringList read FPairs;
     property Comments: TStringList read FComments;
     property Status: TStringList read FStatus;
+    property StatusCatalog: string read FStatusCatalog write FStatusCatalog;
     property IgnoredVerses: integer read FIgnoredVerses;
   end;
 
@@ -53,6 +55,7 @@ begin
   FPairs     := TStringList.Create();
   FComments  := TStringList.Create();
   FStatus    := TStringList.Create();
+  FStatusCatalog := '';
 end;
 
 constructor TPatchFile.Create(patchFile: string; project: TObject);
@@ -115,6 +118,7 @@ begin
   FPairs.Clear;
   FComments.Clear;
   FStatus.Clear;
+  FStatusCatalog := '';
 
   project := TProject(FProject);
   project.StartScrollingSession;
@@ -129,6 +133,14 @@ begin
     for line in lines do
     begin
       fields := line.Split(#9);
+      if (Length(fields) >= 2) and (fields[0] = '@status.catalog') then
+      begin
+        FStatusCatalog := fields[1];
+        Continue;
+      end;
+
+      if Length(fields) < 6 then
+        Continue;
 
       if assigned(project) and VersesAreEqual(fields, project) then
       begin
@@ -169,6 +181,9 @@ begin
   compressor := TCompressionStream.create(clMax, zpatch);
 
   try
+    if not FStatusCatalog.IsEmpty then
+      patch.Add('@status.catalog' + #9 + FStatusCatalog);
+
     for i:=0 to FReference.Count-1 do
       patch.Add(Format('%s'#9'%s'#9'%s'#9'%s'#9'%s'#9'%s', [FReference[i], FSrcText[i], FDstText[i], FPairs[i], FComments[i], FStatus[i]]));
 

@@ -15,7 +15,8 @@ uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, Menus,
   ActnList, ComCtrls, ExtCtrls, StdCtrls, BibleScope, Project, IniFiles, Math,
   Syntagm, LCLTranslator, unitabout, PCRE, Verse, LCLProc, LazLogger,
-  LCLType, LazUTF8, ChapterView, UnitPleaseWait, CommentsView, ONTTokenizer;
+  LCLType, LazUTF8, ChapterView, UnitPleaseWait, CommentsView, ONTTokenizer,
+  status_catalog;
 
 type
   { TFrmPrincipal }
@@ -117,7 +118,7 @@ type
     BottomPanel: TPanel;
     ContextPanel: TPanel;
     ProgressBar1: TProgressBar;
-    RadioGroupStatus: TRadioGroup;
+    RadioGroupStatus: TComboBox;
     SaveDialog1: TSaveDialog;
     SaveDialog2: TSaveDialog;
     ScrollBoxSrcVerse: TScrollBox;
@@ -131,6 +132,7 @@ type
     Splitter5: TSplitter;
     Splitter6: TSplitter;
     StatusBar1: TStatusBar;
+    StatusPanel: TPanel;
     ChapterViewTabCtrl: TTabControl;
     ToolBar1: TToolBar;
     ToolButton1: TToolButton;
@@ -202,6 +204,8 @@ type
     procedure AtualizarMRU(m: TMenuItem);
     procedure CarregarMRU(m: TMenuItem);
     procedure DescarregarMRU(m: TMenuItem);
+    procedure RadioGroupStatusDrawItem(Control: TWinControl; Index: Integer;
+      ARect: TRect; State: TOwnerDrawState);
     procedure RadioGroupStatusSelectionChanged(Sender: TObject);
     procedure ChapterViewTabCtrlChange(Sender: TObject);
     procedure ToolButtonExitClick(Sender: TObject);
@@ -501,7 +505,6 @@ begin
   if Assigned(ActionKeyboardShortcuts) then
     UpdateActionHintWithShortcut(ActionKeyboardShortcuts);
 
-  RadioGroupStatus.Caption := SStatusCaptionWithShortcuts;
   RadioGroupStatus.Hint := SStatusKeyboardHint;
   RadioGroupStatus.ShowHint := True;
 end;
@@ -844,26 +847,36 @@ begin
 end;
 
 procedure TFrmPrincipal.UpdateTreeLegend;
-
-  function StatusCaption(Index: Integer; const DefaultCaption: string): string;
-  begin
-    if (Index >= 0) and (Index < RadioGroupStatus.Items.Count) then
-      Result := RadioGroupStatus.Items[Index]
-    else
-      Result := DefaultCaption;
-  end;
-
+var
+  Lines: TStringList;
+  Definitions: TStatusDefinitions;
+  Sorted: TStatusDefinitions;
+  Index: Integer;
 begin
   if not Assigned(TreeLegendLabel) then
     Exit;
 
-  TreeLegendLabel.Caption :=
-    STreeLegendTitle + LineEnding +
-    Format(STreeLegendStatusFmt, [1, StatusCaption(0, STreeLegendNotAssociated)]) + LineEnding +
-    Format(STreeLegendStatusFmt, [2, StatusCaption(1, STreeLegendAssociating)]) + LineEnding +
-    Format(STreeLegendStatusFmt, [3, StatusCaption(2, STreeLegendNeedsReview)]) + LineEnding +
-    Format(STreeLegendStatusFmt, [4, StatusCaption(3, STreeLegendAssociated)]) + LineEnding +
-    STreeLegendCounts;
+  if Assigned(ProjetoAtual) then
+    Definitions := ProjetoAtual.GetStatusDefinitions
+  else
+    Definitions := BuildLegacyStatusDefinitions([
+      STreeLegendNotAssociated,
+      STreeLegendAssociating,
+      STreeLegendNeedsReview,
+      STreeLegendAssociated
+    ]);
+
+  Sorted := SortStatusDefinitionsByDisplayOrder(Definitions);
+  Lines := TStringList.Create;
+  try
+    Lines.Add(STreeLegendTitle);
+    for Index := 0 to High(Sorted) do
+      Lines.Add(Format(STreeLegendStatusFmt, [Index + 1, Sorted[Index].Caption]));
+    Lines.Add(STreeLegendCounts);
+    TreeLegendLabel.Caption := TrimRight(Lines.Text);
+  finally
+    Lines.Free;
+  end;
 end;
 
 procedure TFrmPrincipal.TreeViewShowHint(Sender: TObject; HintInfo: PHintInfo);
@@ -1274,6 +1287,8 @@ begin
     ProjetoAtual.OnAlterarVersiculo := @QuandoAlterarVersiculo;
     ProjetoAtual.CreateProject(SaveDialog1.FileName, FrmNewProject.EditProjectName.Text,
       FrmNewProject.GetTokenizerVersion);
+    if FrmNewProject.HasCustomStatusCatalog then
+      ProjetoAtual.SetStatusDefinitions(FrmNewProject.GetStatusDefinitions);
     ProjetoAtual.ExibirDefinicoesSoComCtrl := MenuItemDictPopup.Checked;
     ProjetoAtual.SugerirAssociacaoAutomaticamente := MenuItem22.Checked;
     ProjetoAtual.SuggestionMode := FSuggestionMode;
@@ -1694,15 +1709,20 @@ end;
 
 procedure TFrmPrincipal.FormKeyPress(Sender: TObject; var Key: char);
 begin
-  if (ActiveControl is TCustomEdit) or (ActiveControl is TCustomComboBox) then
+  if (ActiveControl is TCustomEdit) or
+    ((ActiveControl is TCustomComboBox) and (ActiveControl <> RadioGroupStatus)) then
     Exit;
 
   case Key of
-    '1', '2', '3', '4':
+    '1'..'9':
       if assigned(ProjetoAtual) and RadioGroupStatus.Enabled then
       begin
-        RadioGroupStatus.ItemIndex := Ord(Key) - Ord('0') - 1;
-        Key := #0;
+        if Ord(Key) - Ord('0') - 1 < RadioGroupStatus.Items.Count then
+        begin
+          RadioGroupStatus.ItemIndex := Ord(Key) - Ord('0') - 1;
+          RadioGroupStatusSelectionChanged(RadioGroupStatus);
+          Key := #0;
+        end;
       end;
   end;
 end;
@@ -1993,11 +2013,57 @@ begin
     opts.DeleteKey('projetos', format('recente.%d', [j]));
 end;
 
+procedure TFrmPrincipal.RadioGroupStatusDrawItem(Control: TWinControl;
+  Index: Integer; ARect: TRect; State: TOwnerDrawState);
+var
+  Combo: TComboBox;
+  Definitions: TStatusDefinitions;
+  StatusId: Integer;
+  SwatchRect: TRect;
+  TextRect: TRect;
+begin
+  if not (Control is TComboBox) then
+    Exit;
+
+  Combo := TComboBox(Control);
+  Combo.Canvas.FillRect(ARect);
+  if (Index < 0) or (Index >= Combo.Items.Count) then
+    Exit;
+
+  if Assigned(ProjetoAtual) then
+    Definitions := ProjetoAtual.GetStatusDefinitions
+  else
+    Definitions := BuildLegacyStatusDefinitions([
+      STreeLegendNotAssociated,
+      STreeLegendAssociating,
+      STreeLegendNeedsReview,
+      STreeLegendAssociated
+    ]);
+
+  StatusId := StatusIdAtDisplayIndex(Definitions, Index);
+  SwatchRect := Rect(ARect.Left + 4, ARect.Top + 4, ARect.Left + 18,
+    ARect.Bottom - 4);
+  Combo.Canvas.Brush.Color := GetStatusColor(Definitions, StatusId);
+  Combo.Canvas.Pen.Color := clBlack;
+  Combo.Canvas.Rectangle(SwatchRect);
+
+  TextRect := ARect;
+  TextRect.Left := ARect.Left + 24;
+  Combo.Canvas.Brush.Style := bsClear;
+  Combo.Canvas.TextRect(TextRect, TextRect.Left, TextRect.Top + 3,
+    Combo.Items[Index]);
+  Combo.Canvas.Brush.Style := bsSolid;
+end;
+
 procedure TFrmPrincipal.RadioGroupStatusSelectionChanged(Sender: TObject);
+var
+  StatusId: Integer;
 begin
   if ProjetoAtual <> nil then
   begin
-    ProjetoAtual.Status := RadioGroupStatus.ItemIndex;
+    StatusId := StatusIdAtDisplayIndex(ProjetoAtual.GetStatusDefinitions,
+      RadioGroupStatus.ItemIndex);
+    ProjetoAtual.Status := StatusId;
     UpdateStateHeader;
   end;
 end;
@@ -2044,7 +2110,6 @@ end;
 {$ENDIF}
 
 procedure TFrmPrincipal.Translate;
-var i: Integer;
 begin
   if Assigned(ActionKeyboardShortcuts) then
   begin
@@ -2066,15 +2131,10 @@ begin
   ApplyShortcutHints;
 
   UpdateDefaultStatusDescription;
-  with RadioGroupStatus.Items do
-  begin
-    Clear;
-    if Assigned(ProjetoAtual) then
-    begin
-      for i := 0 to 3 do
-        Add(ProjetoAtual.GetStatusDescription(i));
-    end;
-  end;
+  if Assigned(ProjetoAtual) then
+    ProjetoAtual.RefreshStatusControl
+  else
+    RadioGroupStatus.Items.Clear;
   with ChapterViewTabCtrl do
   begin
     Tabs.Clear;

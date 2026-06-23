@@ -8,7 +8,6 @@ object FrmProjectProperties: TFrmProjectProperties
   ClientWidth = 582
   DesignTimePPI = 101
   Position = poMainFormCenter
-  LCLVersion = '4.0.0.4'
   OnCreate = FormCreate
   object GroupBoxProperties: TGroupBox
     Left = 0
@@ -16,34 +15,34 @@ object FrmProjectProperties: TFrmProjectProperties
     Top = 6
     Width = 574
     Caption = 'Properties'
-    ClientHeight = 107
+    ClientHeight = 105
     ClientWidth = 570
     TabOrder = 0
     object EditProjectName: TLabeledEdit
       Left = 16
-      Height = 23
+      Height = 25
       Top = 23
       Width = 546
-      EditLabel.Height = 15
-      EditLabel.Width = 519
+      EditLabel.Height = 17
+      EditLabel.Width = 546
       EditLabel.Caption = 'Name'
       EditLabel.ParentColor = False
       TabOrder = 0
     end
     object LabelTokenizerVersion: TLabel
       Left = 16
-      Height = 15
+      Height = 17
       Top = 57
-      Width = 96
+      Width = 101
       Caption = 'Tokenizer version'
       ParentColor = False
     end
     object cbTokenizerVersion: TComboBox
       Left = 16
-      Height = 23
+      Height = 25
       Top = 75
       Width = 546
-      ItemHeight = 15
+      ItemHeight = 17
       Style = csDropDownList
       TabOrder = 1
     end
@@ -89,11 +88,11 @@ object FrmProjectProperties: TFrmProjectProperties
     TabOrder = 3
     object EditStrongDictionary: TLabeledEdit
       Left = 12
-      Height = 23
+      Height = 25
       Top = 156
       Width = 442
-      EditLabel.Height = 15
-      EditLabel.Width = 420
+      EditLabel.Height = 17
+      EditLabel.Width = 442
       EditLabel.Caption = 'Strong''s dictionary'
       EditLabel.ParentColor = False
       TabOrder = 1
@@ -101,11 +100,11 @@ object FrmProjectProperties: TFrmProjectProperties
     end
     object EditMorphologyDictionary: TLabeledEdit
       Left = 12
-      Height = 23
+      Height = 25
       Top = 206
       Width = 442
-      EditLabel.Height = 15
-      EditLabel.Width = 420
+      EditLabel.Height = 17
+      EditLabel.Width = 442
       EditLabel.Caption = 'Morphology dictionary'
       EditLabel.ParentColor = False
       TabOrder = 2
@@ -115,7 +114,7 @@ object FrmProjectProperties: TFrmProjectProperties
       Left = 12
       Height = 28
       Top = 50
-      Width = 176
+      Width = 254
       Action = ActionLoadText
       TabOrder = 3
     end
@@ -136,10 +135,10 @@ object FrmProjectProperties: TFrmProjectProperties
       TabOrder = 5
     end
     object BtnClearText: TBitBtn
-      Left = 204
+      Left = 296
       Height = 28
-      Top = 50
-      Width = 175
+      Top = 48
+      Width = 254
       Action = ActionClearText
       TabOrder = 6
     end
@@ -157,9 +156,9 @@ object FrmProjectProperties: TFrmProjectProperties
     end
     object LabelFont: TLabel
       Left = 12
-      Height = 15
+      Height = 17
       Top = 240
-      Width = 24
+      Width = 25
       Caption = 'Font'
       ParentColor = False
     end
@@ -173,11 +172,11 @@ object FrmProjectProperties: TFrmProjectProperties
     end
     object EditTextDescription: TLabeledEdit
       Left = 11
-      Height = 23
+      Height = 25
       Top = 106
       Width = 442
-      EditLabel.Height = 15
-      EditLabel.Width = 420
+      EditLabel.Height = 17
+      EditLabel.Width = 442
       EditLabel.Caption = 'Text description'
       EditLabel.ParentColor = False
       TabOrder = 9

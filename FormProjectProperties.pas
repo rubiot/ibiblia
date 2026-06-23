@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
   StdCtrls, ExtCtrls, Buttons, ComCtrls, ActnList, BibleScope, Project, LCLTranslator,
-  StrUtils, ONTTokenizer;
+  StrUtils, ONTTokenizer, status_catalog, FormStatusCatalog, UnitPleaseWait;
 
 type
 
@@ -55,7 +55,13 @@ type
     procedure FormCreate(Sender: TObject);
   private
     FProject: TProject;
+    FStatusDefinitions: TStatusDefinitions;
+    FStatusRemaps: TStatusRemaps;
+    FStatusCatalogChanged: Boolean;
+    BtnStatusCatalog: TButton;
+    procedure BtnStatusCatalogClick(Sender: TObject);
     function ConfirmTokenizerVersionChange: TTokenizerVersionChangeAction;
+    procedure CreateStatusCatalogButton;
     function SelectedTextScopeName: string;
     procedure LoadTokenizerVersions(SelectedVersion: Integer);
     function GetSelectedTokenizerVersion: Integer;
@@ -100,6 +106,7 @@ resourcestring
   SReplaceTextInProjectAction = 'Replace %s text in whole project';
   SClearTextInProjectAction = 'Clear %s text in whole project';
   STokenizerVersion = 'Tokenizer version';
+  SStatusCatalog = 'Status...';
   STokenizerVersionChangeTitle = 'Change tokenizer version';
   STokenizerVersionChangeConfirmation = 'The tokenizer version is a project-wide setting.'#13#10#13#10 +
                                         'Changing it will retokenize the visible text and migrate all stored associations in the project. ' +
@@ -111,6 +118,10 @@ resourcestring
   SClearAssociationsAndChange = 'Clear all associations';
   SChangeTokenizerAnyway = 'Migrate associations';
   SKeepCurrentTokenizer = 'Keep current version';
+  SChangingTokenizerVersionProgress = 'Changing tokenizer version...';
+  SClearingTokenizerAssociationsProgress = 'Clearing project associations...';
+  SMigratingTokenizerAssociationsProgress = 'Migrating project associations...';
+  STokenizerVersionChangeDetail = '%s -> %s';
   SNewTestamentFilter = 'theWord Bible modules (*.ont, *.nt)|*.ont;*.nt';
   SOldTestamentFilter = 'theWord Bible modules (*.ont, *.ot)|*.ont;*.ot';
   SWholeBibleFilter = 'theWord Bible modules (*.ont, *.ot, *.nt)|*.ont;*.ot;*.nt';
@@ -124,7 +135,52 @@ implementation
 procedure TFrmProjectProperties.FormCreate(Sender: TObject);
 begin
   FProject := nil;
+  FStatusCatalogChanged := False;
+  CreateStatusCatalogButton;
   Translate;
+end;
+
+procedure TFrmProjectProperties.CreateStatusCatalogButton;
+const
+  ExtraHeight = 36;
+begin
+  if Assigned(BtnStatusCatalog) then
+    Exit;
+
+  ClientHeight := ClientHeight + ExtraHeight;
+  GroupBoxProperties.Height := GroupBoxProperties.Height + ExtraHeight;
+  TabControlTextType.Top := TabControlTextType.Top + ExtraHeight;
+  BtnOk.Top := BtnOk.Top + ExtraHeight;
+  BtnCancel.Top := BtnCancel.Top + ExtraHeight;
+  ProgressBarOperation.Top := ProgressBarOperation.Top + ExtraHeight;
+
+  BtnStatusCatalog := TButton.Create(Self);
+  BtnStatusCatalog.Parent := GroupBoxProperties;
+  BtnStatusCatalog.Left := 16;
+  BtnStatusCatalog.Top := 108;
+  BtnStatusCatalog.Width := 140;
+  BtnStatusCatalog.Height := 25;
+  BtnStatusCatalog.Caption := SStatusCatalog;
+  BtnStatusCatalog.OnClick := @BtnStatusCatalogClick;
+end;
+
+procedure TFrmProjectProperties.BtnStatusCatalogClick(Sender: TObject);
+var
+  Counts: TStatusCounts;
+  Definitions: TStatusDefinitions;
+  Remaps: TStatusRemaps;
+begin
+  if not Assigned(FProject) then
+    Exit;
+
+  FProject.CountVersesByStatus(Counts);
+  Definitions := Copy(FStatusDefinitions, 0, Length(FStatusDefinitions));
+  if TFrmStatusCatalog.Execute(Definitions, Counts, Remaps) then
+  begin
+    FStatusDefinitions := Copy(Definitions, 0, Length(Definitions));
+    FStatusRemaps := Copy(Remaps, 0, Length(Remaps));
+    FStatusCatalogChanged := True;
+  end;
 end;
 
 procedure TFrmProjectProperties.EditMorphologyDictionaryChange(Sender: TObject);
@@ -152,6 +208,8 @@ begin
   TabControlTextType.Tabs[2] := SReference1Tab;
   TabControlTextType.Tabs[3] := SReference2Tab;
   LabelTokenizerVersion.Caption := STokenizerVersion;
+  if Assigned(BtnStatusCatalog) then
+    BtnStatusCatalog.Caption := SStatusCatalog;
   LoadTokenizerVersions(SelectedVersion);
   ActionLoadText.Caption := Format(SReplaceTextInProjectAction, [SelectedTextScopeName]);
   ActionClearText.Caption := Format(SClearTextInProjectAction, [SelectedTextScopeName]);
@@ -367,6 +425,9 @@ end;
 procedure TFrmProjectProperties.SetProject(Project: TProject);
 begin
   FProject := Project;
+  FStatusDefinitions := Project.GetStatusDefinitions;
+  FStatusRemaps := nil;
+  FStatusCatalogChanged := False;
   EditProjectName.Caption := Project.GetInfo('descricao');
   LoadTokenizerVersions(Project.TokenizerVersion);
   ActionChangeTab.Execute;
@@ -376,6 +437,10 @@ procedure TFrmProjectProperties.ApplyChanges;
 var
   CurrentVersion: Integer;
   SelectedVersion: Integer;
+  TokenizerChangeAction: TTokenizerVersionChangeAction;
+  HasAssociations: Boolean;
+  VersionChangeDetail: string;
+  RemapIndex: Integer;
 begin
   if Assigned(FProject) then
   begin
@@ -386,16 +451,62 @@ begin
 
     if SelectedVersion <> CurrentVersion then
     begin
-      if FProject.HasStoredAssociations then
-        case ConfirmTokenizerVersionChange of
+      HasAssociations := FProject.HasStoredAssociations;
+      TokenizerChangeAction := tvcaChangeAnyway;
+      if HasAssociations then
+        TokenizerChangeAction := ConfirmTokenizerVersionChange;
+
+      case TokenizerChangeAction of
           tvcaKeepCurrentVersion:
             SelectedVersion := CurrentVersion;
           tvcaClearAssociations:
-            FProject.ClearStoredAssociations;
+            begin
+              VersionChangeDetail := Format(STokenizerVersionChangeDetail, [
+                TTokenizerFactory.GetVersionCaption(CurrentVersion),
+                TTokenizerFactory.GetVersionCaption(SelectedVersion)
+              ]);
+              FormPleaseWait.BeginOperation(Self, STokenizerVersionChangeTitle,
+                SClearingTokenizerAssociationsProgress, 0,
+                VersionChangeDetail);
+              try
+                FProject.ClearStoredAssociations(FormPleaseWait.ProgressBar1);
+                FormPleaseWait.SetMessage(SChangingTokenizerVersionProgress);
+                FProject.ChangeTokenizerVersion(SelectedVersion,
+                  FormPleaseWait.ProgressBar1, False);
+              finally
+                FormPleaseWait.FinishOperation;
+              end;
+            end;
         end;
 
-      if SelectedVersion <> CurrentVersion then
-        FProject.TokenizerVersion := SelectedVersion;
+      if (SelectedVersion <> CurrentVersion) and
+        (TokenizerChangeAction <> tvcaClearAssociations) then
+      begin
+        VersionChangeDetail := Format(STokenizerVersionChangeDetail, [
+          TTokenizerFactory.GetVersionCaption(CurrentVersion),
+          TTokenizerFactory.GetVersionCaption(SelectedVersion)
+        ]);
+        if HasAssociations then
+          FormPleaseWait.BeginOperation(Self, STokenizerVersionChangeTitle,
+            SMigratingTokenizerAssociationsProgress, 0, VersionChangeDetail)
+        else
+          FormPleaseWait.BeginOperation(Self, STokenizerVersionChangeTitle,
+            SChangingTokenizerVersionProgress, 0, VersionChangeDetail);
+        try
+          FProject.ChangeTokenizerVersion(SelectedVersion,
+            FormPleaseWait.ProgressBar1, HasAssociations);
+        finally
+          FormPleaseWait.FinishOperation;
+        end;
+      end;
+    end;
+
+    if FStatusCatalogChanged then
+    begin
+      for RemapIndex := 0 to High(FStatusRemaps) do
+        FProject.RemapStatus(FStatusRemaps[RemapIndex].OldStatusId,
+          FStatusRemaps[RemapIndex].NewStatusId);
+      FProject.SetStatusDefinitions(FStatusDefinitions);
     end;
   end;
 end;

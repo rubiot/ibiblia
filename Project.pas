@@ -22,7 +22,7 @@ uses
   ai_flows, llmclient, ai_flow_config, ai_debug, project_persistence, project_config,
   project_verse_repository, current_verse_workspace, verse_render_buffer,
   project_patch_applier, bible_tree_coordinator, ai_batch_orchestrator,
-  project_database_bootstrap,
+  project_database_bootstrap, status_catalog,
   dictionary_manager, project_exporter, UnitPleaseWait;
 const
   // AI processing icon indices for ImageListTreeView in formprincipal
@@ -59,6 +59,7 @@ type
 
   TRegexList = specialize TFPGList<IRegex>;
   TIntegerList = specialize TFPGList<integer>;
+  TIntegerArray = array of Integer;
   TPopupTrigger = (ptMouseHover, ptAltMouseHover, ptCtrlMouseHover);
 
   { AI Node State Tracking }
@@ -138,7 +139,9 @@ type
     FArvore: TTreeView;
     FBibleTreePointedNode: TTreeNode;
     FMemoComentarios: TControl;
-    FRadioGroupSituacao: TRadioGroup;
+    FRadioGroupSituacao: TComboBox;
+    FStatusImages: TImageList;
+    FStatusAggregateImageCache: TStringList;
     FTemporizador: TTimer;
     FAtrasoExibicao: Cardinal;
     FInterlinearMode: TInterlinearMode; // It's not there, I should check valid fields.
@@ -184,6 +187,11 @@ type
     procedure SetOnSintagmaClick(const AValue: TOnSintagmaClickEvent);
     procedure SetPalavrasComStrongEmNegrito(AValue: boolean);
     procedure SetStatus(const AValue: Integer);
+    function GetLegacyStatusDefinitions: TStatusDefinitions;
+    function HasLegacyStatusDescriptions: Boolean;
+    procedure RefreshStatusImages;
+    function GetAggregateStatusImageIndex(const Counts: TStatusCounts;
+      Total: Integer; const StatusDefinitions: TStatusDefinitions): Integer;
     procedure HighlightStrongs(syntagm: TSyntagm);
     function CreateBibleTreeContextMenu: TPopupMenu;
     procedure UpdateReference(ref: string);
@@ -239,7 +247,7 @@ type
     procedure OnAIBatchClick(Sender: TObject);
     procedure OnAICancelClick(Sender: TObject);
     constructor Create; overload;
-    constructor Create(paineis: array of TScrollbox; navegador: TTreeView; rsituacao: TRadioGroup; rcomentarios: TControl); overload;
+    constructor Create(paineis: array of TScrollbox; navegador: TTreeView; rsituacao: TComboBox; rcomentarios: TControl); overload;
     destructor Destroy; override;
     procedure CreateProject(nomedb, descricao: string);
     procedure CreateProject(nomedbvelho, nomedbnovo, descricao: string);
@@ -313,10 +321,17 @@ type
     procedure SetTextDescription(text: TTipoTextoBiblico; description: string);
     function GetTextDescription(text: TTipoTextoBiblico): string;
     function HasStoredAssociations: Boolean;
-    procedure ClearStoredAssociations;
+    procedure ClearStoredAssociations(ProgressBar: TProgressBar = nil);
     procedure Vacuum;
     function GetStatusDescription(index: Integer): string;
     function GetTreeNodeStatusHint(Node: TTreeNode): string;
+    function GetStatusDefinitions: TStatusDefinitions;
+    procedure SetStatusDefinitions(const Definitions: TStatusDefinitions);
+    procedure RefreshStatusControl;
+    function StatusAutomationEnabled: Boolean;
+    procedure CountVersesByStatus(out Counts: TStatusCounts);
+    function CountVersesWithStatus(StatusId: Integer): Integer;
+    procedure RemapStatus(OldStatusId, NewStatusId: Integer);
 
     property FileName: string read FFileName;
     property FormattedReference: string read GetFormattedReference;
@@ -332,7 +347,7 @@ type
     property Status: Integer read GetStatus write SetStatus;
     property Comments: string read GetComments write SetComments;
     property MemoComentarios: TControl read FMemoComentarios write FMemoComentarios;
-    property RadioGroupSituacao: TRadioGroup read FRadioGroupSituacao write FRadioGroupSituacao;
+    property RadioGroupSituacao: TComboBox read FRadioGroupSituacao write FRadioGroupSituacao;
     property ExibirDefinicoesSoComCtrl: boolean read FExibirDefComCtrl write FExibirDefComCtrl;
     property SugerirAssociacaoAutomaticamente: boolean read FSugerirAssociacaoAuto write FSugerirAssociacaoAuto;
     property PalavrasComStrongEmNegrito: boolean read FPalavrasComStrongEmNegrito write SetPalavrasComStrongEmNegrito;
@@ -449,6 +464,11 @@ resourcestring
   SPatchSuccessfullyExported = 'Patch successfully exported';
   SReferenceNotFound = 'Reference not found';
   SReferenceNotFoundWarning = 'The reference %s is not a valid reference in this project and will be ignored.'#13#10'Press Ignore to ignore all subsequent warnings.';
+  SPatchStatusCatalogTitle = 'Patch status catalog';
+  SPatchStatusCatalogDiverged = 'This patch uses a different status catalog. Map patch statuses to this project before applying.';
+  SPatchStatusUnknownNoCatalog = 'This patch uses status IDs that do not exist in this project and does not include a status catalog.'#13#10#13#10 +
+                                 'Apply the saved integer values anyway?';
+  SPatchStatusLabelFmt = '%s (ID %d)';
   SVerseAbsentFromProject = '[This project does not contain this verse]';
   SLineBreaksInTextTitle = 'Edit error';
   SLineBreaksInText = 'A verse cannot contain line breaks. Your changes will be discarded.';
@@ -543,50 +563,113 @@ begin
 end;
 
 function TProjectVerseStatusCursor.CurrentStatus: Integer;
+var
+  Definitions: TStatusDefinitions;
 begin
   Result := FOwner.Status;
+  Definitions := FOwner.GetStatusDefinitions;
+  if not IsValidStatusId(Definitions, Result) then
+    Result := FirstStatusId(Definitions);
 end;
 
-function TProject.GetStatusDescription(index: Integer): string;
-var
-  custom: string;
-begin
-  custom := GetInfo('status.description.' + IntToStr(index));
-  if not custom.IsEmpty then
-    Result := custom
-  else if (index >= 0) and (index <= 3) then
-    Result := DefaultStatusDescription[index]
-  else
-    Result := '';
-end;
-
-function TProject.GetTreeNodeStatusHint(Node: TTreeNode): string;
+function TProject.GetLegacyStatusDefinitions: TStatusDefinitions;
 var
   Captions: array[0..3] of string;
   StatusIndex: Integer;
+  CustomCaption: string;
 begin
   for StatusIndex := 0 to 3 do
-    Captions[StatusIndex] := GetStatusDescription(StatusIndex);
+  begin
+    CustomCaption := GetInfo('status.description.' + IntToStr(StatusIndex));
+    if CustomCaption.IsEmpty then
+      Captions[StatusIndex] := DefaultStatusDescription[StatusIndex]
+    else
+      Captions[StatusIndex] := CustomCaption;
+  end;
+  Result := BuildLegacyStatusDefinitions(Captions);
+end;
 
-  Result := FBibleTreeCoordinator.BuildStatusHint(FEscopo, Node, Captions);
+function TProject.HasLegacyStatusDescriptions: Boolean;
+var
+  StatusIndex: Integer;
+begin
+  Result := False;
+  for StatusIndex := 0 to 3 do
+    if not GetInfo('status.description.' + IntToStr(StatusIndex)).IsEmpty then
+      Exit(True);
+end;
+
+function TProject.GetStatusDefinitions: TStatusDefinitions;
+var
+  Legacy: TStatusDefinitions;
+begin
+  Legacy := GetLegacyStatusDefinitions;
+  Result := LoadStatusDefinitions(GetInfo(STATUS_CATALOG_CONFIG_KEY),
+    [
+      Legacy[0].Caption,
+      Legacy[1].Caption,
+      Legacy[2].Caption,
+      Legacy[3].Caption
+    ]);
+end;
+
+procedure TProject.SetStatusDefinitions(const Definitions: TStatusDefinitions);
+var
+  Normalized: TStatusDefinitions;
+  ErrorMessage: string;
+begin
+  Normalized := Copy(Definitions, 0, Length(Definitions));
+  NormalizeStatusDefinitions(Normalized, False);
+  if not ValidateStatusDefinitions(Normalized, ErrorMessage) then
+    raise Exception.Create(ErrorMessage);
+
+  SetInfo(STATUS_CATALOG_CONFIG_KEY, SaveStatusDefinitions(Normalized));
+  RefreshStatusImages;
+  RefreshStatusControl;
+  if Assigned(FArvore) and Assigned(FArvore.PopupMenu) then
+  begin
+    FArvore.PopupMenu.Free;
+    FArvore.PopupMenu := CreateBibleTreeContextMenu;
+  end;
+  UpdateTree;
+end;
+
+function TProject.GetStatusDescription(index: Integer): string;
+begin
+  Result := GetStatusCaption(GetStatusDefinitions, index);
+end;
+
+function TProject.GetTreeNodeStatusHint(Node: TTreeNode): string;
+begin
+  Result := FBibleTreeCoordinator.BuildStatusHint(FEscopo, Node,
+    GetStatusDefinitions);
 end;
 
 procedure TProject.SetStatusDescription(index: Integer; description: string);
+var
+  Definitions: TStatusDefinitions;
+  StatusIndex: Integer;
 begin
-  SetInfo('status.description.' + IntToStr(index), description);
+  Definitions := GetStatusDefinitions;
+  StatusIndex := IndexOfStatusId(Definitions, index);
+  if StatusIndex >= 0 then
+  begin
+    Definitions[StatusIndex].Caption := description;
+    SetStatusDefinitions(Definitions);
+  end
+  else
+    SetInfo('status.description.' + IntToStr(index), description);
+end;
+
+function TProject.StatusAutomationEnabled: Boolean;
+begin
+  Result := GetInfo(STATUS_CATALOG_CONFIG_KEY).IsEmpty and
+    (not HasLegacyStatusDescriptions);
 end;
 
 function TProject.HasCustomStatus: boolean;
-var
-  i: Integer;
 begin
-  Result := False;
-  for i := 0 to 3 do
-    if not GetInfo('status.description.' + IntToStr(i)).IsEmpty then
-    begin
-      Result := True;
-      Exit;
-    end;
+  Result := not StatusAutomationEnabled;
 end;
 
 function TProject.BuildAssociationFlowExample: TAIFlowExample;
@@ -729,7 +812,8 @@ end;
 
 procedure TProject.PreencherArvore;
 begin
-  FBibleTreeCoordinator.Populate(FEscopo, @OnMudancaVersiculo);
+  FBibleTreeCoordinator.Populate(FEscopo, @OnMudancaVersiculo,
+    GetStatusDefinitions, @GetAggregateStatusImageIndex);
 end;
 
 procedure TProject.SetAtrasoExibicao(const AValue: Cardinal);
@@ -896,6 +980,20 @@ var
   oldAutoSaveValue: boolean;
   selectedIndexes: TPatchIndexArray;
 
+  function PatchIndexIsSelected(PatchIndex: Integer): Boolean;
+  var
+    SelectedIndex: Integer;
+  begin
+    if Length(selectedIndexes) = 0 then
+      Exit(True);
+
+    for SelectedIndex in selectedIndexes do
+      if SelectedIndex = PatchIndex then
+        Exit(True);
+
+    Result := False;
+  end;
+
   function BuildSelectedPatchIndexes: TPatchIndexArray;
   var
     PatchIndex: Integer;
@@ -907,9 +1005,262 @@ var
     for PatchIndex := 0 to indexes.Count - 1 do
       Result[PatchIndex] := indexes[PatchIndex];
   end;
+
+  function StatusListContains(const Values: array of Integer;
+    StatusId: Integer): Boolean;
+  var
+    Value: Integer;
+  begin
+    for Value in Values do
+      if Value = StatusId then
+        Exit(True);
+    Result := False;
+  end;
+
+  function BuildUsedPatchStatuses: TIntegerArray;
+  var
+    PatchIndex: Integer;
+    StatusId: Integer;
+  begin
+    Result := nil;
+    if not Assigned(patch) then
+      Exit;
+
+    for PatchIndex := 0 to patch.Status.Count - 1 do
+    begin
+      if not PatchIndexIsSelected(PatchIndex) then
+        Continue;
+      StatusId := StrToIntDef(patch.Status[PatchIndex], 0);
+      if not StatusListContains(Result, StatusId) then
+      begin
+        SetLength(Result, Length(Result) + 1);
+        Result[High(Result)] := StatusId;
+      end;
+    end;
+  end;
+
+  function StatusDefinitionsDiffer(const PatchDefinitions,
+    CurrentDefinitions: TStatusDefinitions; StatusId: Integer): Boolean;
+  var
+    PatchIndex: Integer;
+    CurrentIndex: Integer;
+  begin
+    PatchIndex := IndexOfStatusId(PatchDefinitions, StatusId);
+    CurrentIndex := IndexOfStatusId(CurrentDefinitions, StatusId);
+    if (PatchIndex < 0) or (CurrentIndex < 0) then
+      Exit(True);
+
+    Result := (PatchDefinitions[PatchIndex].Caption <>
+      CurrentDefinitions[CurrentIndex].Caption) or
+      (ColorToRGB(PatchDefinitions[PatchIndex].Color) <>
+        ColorToRGB(CurrentDefinitions[CurrentIndex].Color)) or
+      (PatchDefinitions[PatchIndex].DisplayOrder <>
+        CurrentDefinitions[CurrentIndex].DisplayOrder) or
+      (PatchDefinitions[PatchIndex].PriorityOrder <>
+        CurrentDefinitions[CurrentIndex].PriorityOrder);
+  end;
+
+  function ComboIndexForStatus(Combo: TComboBox; StatusId: Integer): Integer;
+  var
+    ItemIndex: Integer;
+  begin
+    Result := -1;
+    for ItemIndex := 0 to Combo.Items.Count - 1 do
+      if PtrInt(Combo.Items.Objects[ItemIndex]) = StatusId then
+        Exit(ItemIndex);
+  end;
+
+  function CaptionMatchStatusId(const CurrentDefinitions: TStatusDefinitions;
+    const PatchDefinitions: TStatusDefinitions; PatchStatusId: Integer): Integer;
+  var
+    PatchIndex: Integer;
+    CurrentIndex: Integer;
+  begin
+    Result := -1;
+    PatchIndex := IndexOfStatusId(PatchDefinitions, PatchStatusId);
+    if PatchIndex < 0 then
+      Exit;
+
+    for CurrentIndex := 0 to High(CurrentDefinitions) do
+      if SameText(CurrentDefinitions[CurrentIndex].Caption,
+        PatchDefinitions[PatchIndex].Caption) then
+        Exit(CurrentDefinitions[CurrentIndex].Id);
+  end;
+
+  procedure RemapPatchStatusValues(const UsedStatusIds: array of Integer;
+    const MappedStatusIds: array of Integer);
+  var
+    PatchIndex: Integer;
+    MapIndex: Integer;
+    StatusId: Integer;
+  begin
+    for PatchIndex := 0 to patch.Status.Count - 1 do
+    begin
+      if not PatchIndexIsSelected(PatchIndex) then
+        Continue;
+
+      StatusId := StrToIntDef(patch.Status[PatchIndex], 0);
+      for MapIndex := Low(UsedStatusIds) to High(UsedStatusIds) do
+        if UsedStatusIds[MapIndex] = StatusId then
+        begin
+          patch.Status[PatchIndex] := IntToStr(MappedStatusIds[MapIndex]);
+          Break;
+        end;
+    end;
+  end;
+
+  function PromptPatchStatusMapping(const UsedStatusIds: array of Integer;
+    const PatchDefinitions, CurrentDefinitions: TStatusDefinitions): Boolean;
+  var
+    DialogForm: TForm;
+    InfoLabel: TLabel;
+    LabelControl: TLabel;
+    Combo: TComboBox;
+    OkButton: TButton;
+    CancelButton: TButton;
+    Combos: array of TComboBox;
+    SortedCurrent: TStatusDefinitions;
+    StatusIndex: Integer;
+    CurrentIndex: Integer;
+    DefaultStatusId: Integer;
+    DefaultComboIndex: Integer;
+    MappedStatusIds: array of Integer;
+  begin
+    Result := False;
+    DialogForm := TForm.CreateNew(nil, 1);
+    try
+      DialogForm.Caption := SPatchStatusCatalogTitle;
+      DialogForm.Position := poMainFormCenter;
+      DialogForm.Width := 560;
+      DialogForm.Height := 116 + (Length(UsedStatusIds) * 34);
+
+      InfoLabel := TLabel.Create(DialogForm);
+      InfoLabel.Parent := DialogForm;
+      InfoLabel.Left := 12;
+      InfoLabel.Top := 12;
+      InfoLabel.Width := 520;
+      InfoLabel.Caption := SPatchStatusCatalogDiverged;
+
+      SortedCurrent := SortStatusDefinitionsByDisplayOrder(CurrentDefinitions);
+      SetLength(Combos, Length(UsedStatusIds));
+      for StatusIndex := Low(UsedStatusIds) to High(UsedStatusIds) do
+      begin
+        LabelControl := TLabel.Create(DialogForm);
+        LabelControl.Parent := DialogForm;
+        LabelControl.Left := 12;
+        LabelControl.Top := 44 + (StatusIndex * 34);
+        LabelControl.Width := 230;
+        LabelControl.Caption := Format(SPatchStatusLabelFmt, [
+          GetStatusCaption(PatchDefinitions, UsedStatusIds[StatusIndex]),
+          UsedStatusIds[StatusIndex]
+        ]);
+
+        Combo := TComboBox.Create(DialogForm);
+        Combo.Parent := DialogForm;
+        Combo.Left := 254;
+        Combo.Top := 40 + (StatusIndex * 34);
+        Combo.Width := 280;
+        Combo.Style := csDropDownList;
+        for CurrentIndex := 0 to High(SortedCurrent) do
+          Combo.Items.AddObject(SortedCurrent[CurrentIndex].Caption,
+            TObject(PtrUInt(SortedCurrent[CurrentIndex].Id)));
+
+        DefaultStatusId := UsedStatusIds[StatusIndex];
+        if not IsValidStatusId(CurrentDefinitions, DefaultStatusId) then
+          DefaultStatusId := CaptionMatchStatusId(CurrentDefinitions,
+            PatchDefinitions, UsedStatusIds[StatusIndex]);
+        if not IsValidStatusId(CurrentDefinitions, DefaultStatusId) then
+          DefaultStatusId := FirstStatusId(CurrentDefinitions);
+
+        DefaultComboIndex := ComboIndexForStatus(Combo, DefaultStatusId);
+        if DefaultComboIndex < 0 then
+          DefaultComboIndex := 0;
+        Combo.ItemIndex := DefaultComboIndex;
+        Combos[StatusIndex] := Combo;
+      end;
+
+      OkButton := TButton.Create(DialogForm);
+      OkButton.Parent := DialogForm;
+      OkButton.Left := 350;
+      OkButton.Top := DialogForm.ClientHeight - 40;
+      OkButton.Width := 84;
+      OkButton.Caption := 'OK';
+      OkButton.ModalResult := mrOK;
+
+      CancelButton := TButton.Create(DialogForm);
+      CancelButton.Parent := DialogForm;
+      CancelButton.Left := 450;
+      CancelButton.Top := DialogForm.ClientHeight - 40;
+      CancelButton.Width := 84;
+      CancelButton.Caption := 'Cancel';
+      CancelButton.ModalResult := mrCancel;
+
+      if DialogForm.ShowModal <> mrOK then
+        Exit;
+
+      SetLength(MappedStatusIds, Length(UsedStatusIds));
+      for StatusIndex := Low(Combos) to High(Combos) do
+        MappedStatusIds[StatusIndex] :=
+          PtrInt(Combos[StatusIndex].Items.Objects[Combos[StatusIndex].ItemIndex]);
+
+      RemapPatchStatusValues(UsedStatusIds, MappedStatusIds);
+      Result := True;
+    finally
+      DialogForm.Free;
+    end;
+  end;
+
+  function PreparePatchStatuses: Boolean;
+  var
+    UsedStatusIds: TIntegerArray;
+    CurrentDefinitions: TStatusDefinitions;
+    PatchDefinitions: TStatusDefinitions;
+    LegacyDefinitions: TStatusDefinitions;
+    StatusId: Integer;
+    RequiresMapping: Boolean;
+    HasUnknownStatus: Boolean;
+  begin
+    Result := True;
+    UsedStatusIds := BuildUsedPatchStatuses;
+    if Length(UsedStatusIds) = 0 then
+      Exit;
+
+    CurrentDefinitions := GetStatusDefinitions;
+    HasUnknownStatus := False;
+    for StatusId in UsedStatusIds do
+      if not IsValidStatusId(CurrentDefinitions, StatusId) then
+        HasUnknownStatus := True;
+
+    if patch.StatusCatalog.IsEmpty then
+    begin
+      if HasUnknownStatus then
+        Result := MessageDlg(SPatchStatusCatalogTitle,
+          SPatchStatusUnknownNoCatalog, mtWarning, [mbYes, mbNo], 0) = mrYes;
+      Exit;
+    end;
+
+    LegacyDefinitions := GetLegacyStatusDefinitions;
+    PatchDefinitions := LoadStatusDefinitions(patch.StatusCatalog, [
+      LegacyDefinitions[0].Caption,
+      LegacyDefinitions[1].Caption,
+      LegacyDefinitions[2].Caption,
+      LegacyDefinitions[3].Caption
+    ]);
+
+    RequiresMapping := HasUnknownStatus;
+    for StatusId in UsedStatusIds do
+      if StatusDefinitionsDiffer(PatchDefinitions, CurrentDefinitions, StatusId) then
+        RequiresMapping := True;
+
+    if RequiresMapping then
+      Result := PromptPatchStatusMapping(UsedStatusIds, PatchDefinitions,
+        CurrentDefinitions);
+  end;
 begin
   selectedIndexes := BuildSelectedPatchIndexes;
   FIgnoreMissingPatchWarnings := False;
+  if not PreparePatchStatuses then
+    Exit;
 
   try
     StartScrollingSession;
@@ -934,6 +1285,7 @@ begin
     Exit;
 
   Patch := Batch.CreatePatch(OriginalData, SelectedIndexes, Result);
+  Patch.StatusCatalog := SaveStatusDefinitions(GetStatusDefinitions);
   try
     if Result > 0 then
       ApplyProjectPatch(Patch, nil);
@@ -955,11 +1307,161 @@ begin
   FCurrentVerseWorkspace.ApplyBoldStrongs(FAVersiculo, AValue);
 end;
 
+procedure TProject.RefreshStatusImages;
+var
+  Definitions: TStatusDefinitions;
+  StatusId: Integer;
+  MaxId: Integer;
+  Bitmap: TBitmap;
+  StatusColor: TColor;
+begin
+  if not Assigned(FArvore) then
+    Exit;
+
+  Definitions := GetStatusDefinitions;
+  MaxId := MaxStatusId(Definitions);
+
+  if Assigned(FStatusAggregateImageCache) then
+    FStatusAggregateImageCache.Clear;
+  FArvore.Images := nil;
+  FreeAndNil(FStatusImages);
+  FStatusImages := TImageList.Create(FArvore);
+  FStatusImages.Width := 16;
+  FStatusImages.Height := 16;
+
+  for StatusId := 0 to MaxId do
+  begin
+    Bitmap := TBitmap.Create;
+    try
+      Bitmap.Width := 16;
+      Bitmap.Height := 16;
+      StatusColor := GetStatusColor(Definitions, StatusId);
+      Bitmap.Canvas.Brush.Color := StatusColor;
+      Bitmap.Canvas.Pen.Color := clBlack;
+      Bitmap.Canvas.Rectangle(0, 0, 16, 16);
+      FStatusImages.Add(Bitmap, nil);
+    finally
+      Bitmap.Free;
+    end;
+  end;
+
+  FArvore.Images := FStatusImages;
+end;
+
+function TProject.GetAggregateStatusImageIndex(const Counts: TStatusCounts;
+  Total: Integer; const StatusDefinitions: TStatusDefinitions): Integer;
+const
+  ImageSize = 16;
+  BorderSize = 1;
+  InnerSize = ImageSize - (BorderSize * 2);
+var
+  Segments: TStatusSegmentWidths;
+  CacheKey: string;
+  CacheIndex: Integer;
+  SegmentIndex: Integer;
+  Bitmap: TBitmap;
+  X: Integer;
+  SegmentRect: TRect;
+begin
+  Result := -1;
+  if not Assigned(FStatusImages) then
+    Exit;
+
+  if not Assigned(FStatusAggregateImageCache) then
+    FStatusAggregateImageCache := TStringList.Create;
+
+  Segments := BuildStatusSegmentWidths(Counts, StatusDefinitions, Total, InnerSize);
+  if Length(Segments) = 0 then
+    Exit;
+
+  CacheKey := '';
+  for SegmentIndex := 0 to High(Segments) do
+    CacheKey := CacheKey + Format('%d:%d;', [
+      Segments[SegmentIndex].StatusId,
+      Segments[SegmentIndex].Width
+    ]);
+
+  CacheIndex := FStatusAggregateImageCache.IndexOfName(CacheKey);
+  if CacheIndex >= 0 then
+    Exit(StrToIntDef(FStatusAggregateImageCache.ValueFromIndex[CacheIndex], -1));
+
+  Bitmap := TBitmap.Create;
+  try
+    Bitmap.Width := ImageSize;
+    Bitmap.Height := ImageSize;
+    Bitmap.Canvas.Brush.Color := clWhite;
+    SegmentRect.Left := 0;
+    SegmentRect.Top := 0;
+    SegmentRect.Right := ImageSize;
+    SegmentRect.Bottom := ImageSize;
+    Bitmap.Canvas.FillRect(SegmentRect);
+
+    X := BorderSize;
+    for SegmentIndex := 0 to High(Segments) do
+    begin
+      if Segments[SegmentIndex].Width <= 0 then
+        Continue;
+      Bitmap.Canvas.Brush.Color := GetStatusColor(StatusDefinitions,
+        Segments[SegmentIndex].StatusId);
+      SegmentRect.Left := X;
+      SegmentRect.Top := BorderSize;
+      SegmentRect.Right := X + Segments[SegmentIndex].Width;
+      SegmentRect.Bottom := BorderSize + InnerSize;
+      Bitmap.Canvas.FillRect(SegmentRect);
+      Inc(X, Segments[SegmentIndex].Width);
+    end;
+
+    Bitmap.Canvas.Brush.Style := bsClear;
+    Bitmap.Canvas.Pen.Color := clBlack;
+    Bitmap.Canvas.Rectangle(0, 0, ImageSize, ImageSize);
+    Bitmap.Canvas.Brush.Style := bsSolid;
+
+    Result := FStatusImages.Add(Bitmap, nil);
+    FStatusAggregateImageCache.Add(CacheKey + '=' + IntToStr(Result));
+  finally
+    Bitmap.Free;
+  end;
+end;
+
+procedure TProject.RefreshStatusControl;
+var
+  Definitions: TStatusDefinitions;
+  Sorted: TStatusDefinitions;
+  StatusIndex: Integer;
+  CurrentStatus: Integer;
+begin
+  if not Assigned(FRadioGroupSituacao) then
+    Exit;
+
+  Definitions := GetStatusDefinitions;
+  Sorted := SortStatusDefinitionsByDisplayOrder(Definitions);
+  if Assigned(FPersistence) then
+    CurrentStatus := Status
+  else
+    CurrentStatus := FirstStatusId(Definitions);
+
+  FRadioGroupSituacao.Items.Clear;
+  for StatusIndex := 0 to High(Sorted) do
+    FRadioGroupSituacao.Items.AddObject(Sorted[StatusIndex].Caption,
+      TObject(PtrUInt(Sorted[StatusIndex].Id)));
+
+  FRadioGroupSituacao.ItemIndex := DisplayIndexOfStatusId(Definitions,
+    CurrentStatus);
+  if (FRadioGroupSituacao.ItemIndex < 0) and
+    (FRadioGroupSituacao.Items.Count > 0) then
+    FRadioGroupSituacao.ItemIndex := 0;
+end;
+
 procedure TProject.SetStatus(const AValue: Integer);
 var
   NormalizedStatus: Integer;
+  Definitions: TStatusDefinitions;
 begin
-  NormalizedStatus := IfThen((AValue < 0) or (AValue > 3), 1, AValue);
+  Definitions := GetStatusDefinitions;
+  if IsValidStatusId(Definitions, AValue) then
+    NormalizedStatus := AValue
+  else
+    NormalizedStatus := FirstStatusId(Definitions);
   if FClosing or (FPersistence.CurrentStatus = NormalizedStatus) then
     exit;
   FPersistence.WriteCurrentStatus(NormalizedStatus);
@@ -1095,6 +1597,7 @@ function TProject.CreateBibleTreeContextMenu: TPopupMenu;
 var
   item: TMenuItem;
   statusIndex: Integer;
+  StatusDefinitions: TStatusDefinitions;
   aiMenu: TMenuItem;
   aiChapterItem: TMenuItem;
   aiCancelItem: TMenuItem;
@@ -1128,8 +1631,9 @@ begin
   // Status submenu: 'Marcar <referência> como...'
   item.Caption := SSetStatusChildren;
   result.Items.Add(item);
-  for statusIndex:=0 to 3 do
-    AddSubItemForStatus(item, statusIndex);
+  StatusDefinitions := SortStatusDefinitionsByDisplayOrder(GetStatusDefinitions);
+  for statusIndex := 0 to High(StatusDefinitions) do
+    AddSubItemForStatus(item, StatusDefinitions[statusIndex].Id);
 
   // 'Aplicar fluxo de IA a <referência>...' submenu (will be updated at popup time)
   aiMenu := TMenuItem.Create(result);
@@ -1529,6 +2033,89 @@ begin
   end;
 end;
 
+procedure TProject.CountVersesByStatus(out Counts: TStatusCounts);
+
+  procedure IncStatusCount(StatusId: Integer);
+  var
+    CountIndex: Integer;
+  begin
+    for CountIndex := 0 to High(Counts) do
+      if Counts[CountIndex].StatusId = StatusId then
+      begin
+        Inc(Counts[CountIndex].Count);
+        Exit;
+      end;
+
+    SetLength(Counts, Length(Counts) + 1);
+    Counts[High(Counts)].StatusId := StatusId;
+    Counts[High(Counts)].Count := 1;
+  end;
+
+var
+  Definitions: TStatusDefinitions;
+  VerseData: TVerseData;
+  StatusIndex: Integer;
+begin
+  Counts := nil;
+  Definitions := SortStatusDefinitionsByDisplayOrder(GetStatusDefinitions);
+  SetLength(Counts, Length(Definitions));
+  for StatusIndex := 0 to High(Definitions) do
+  begin
+    Counts[StatusIndex].StatusId := Definitions[StatusIndex].Id;
+    Counts[StatusIndex].Count := 0;
+  end;
+
+  if not Assigned(FVerseRepository) then
+    Exit;
+
+  StartScrollingSession;
+  try
+    FVerseRepository.First;
+    while not FVerseRepository.EOF do
+    begin
+      VerseData := FVerseRepository.ReadCurrentVerseData;
+      IncStatusCount(VerseData.Status);
+      FVerseRepository.Next;
+    end;
+  finally
+    FinishScrollingSession;
+  end;
+end;
+
+function TProject.CountVersesWithStatus(StatusId: Integer): Integer;
+var
+  Counts: TStatusCounts;
+  CountIndex: Integer;
+begin
+  Result := 0;
+  CountVersesByStatus(Counts);
+  for CountIndex := 0 to High(Counts) do
+    if Counts[CountIndex].StatusId = StatusId then
+      Exit(Counts[CountIndex].Count);
+end;
+
+procedure TProject.RemapStatus(OldStatusId, NewStatusId: Integer);
+begin
+  if OldStatusId = NewStatusId then
+    Exit;
+
+  StartScrollingSession;
+  try
+    FVerseRepository.First;
+    while not FVerseRepository.EOF do
+    begin
+      if FPersistence.CurrentStatus = OldStatusId then
+        FPersistence.WriteCurrentStatus(NewStatusId);
+      FVerseRepository.Next;
+    end;
+  finally
+    FinishScrollingSession;
+  end;
+
+  RefreshStatusControl;
+  UpdateTree;
+end;
+
 procedure TProject.SetTextDescription(text: TTipoTextoBiblico;
   description: string);
 begin
@@ -1612,7 +2199,7 @@ var
 begin
   FCurrentVerseWorkspace.SetCurrentVerseText(FPersistence, FVerseRenderBuffer,
     FACamposTexto, versiculo, Ord(texto), Ord(tbOrigem), Ord(tbDestino),
-    replace, not HasCustomStatus, corruptionDetails);
+    replace, StatusAutomationEnabled, corruptionDetails);
 
   if not corruptionDetails.IsEmpty then
     MessageDlg(SError, SCorruptedData + #13#10#13#10 + FormattedReference + #13#10 +
@@ -1646,10 +2233,10 @@ var
   loadResult: TCurrentVerseLoadResult;
   //starttime: DWord;
 begin
-  UpdateReference(GetID());
-
   if not FScrollEventsEnabled then
     exit;
+
+  UpdateReference(GetID());
 
   //starttime := getTickCount;
 
@@ -1686,7 +2273,13 @@ begin
   end;
 
   if assigned(FRadioGroupSituacao) then
-    FRadioGroupSituacao.ItemIndex := loadResult.Status;
+  begin
+    FRadioGroupSituacao.ItemIndex := DisplayIndexOfStatusId(
+      GetStatusDefinitions, loadResult.Status);
+    if (FRadioGroupSituacao.ItemIndex < 0) and
+      (FRadioGroupSituacao.Items.Count > 0) then
+      FRadioGroupSituacao.ItemIndex := 0;
+  end;
 
   if loadResult.DestinationTextEmpty then // open verse to edition if is empty
     OnDblClickVersiculo(FAVersiculo[tbDestino].Painel);
@@ -1785,7 +2378,8 @@ begin
   if assigned(FOnSintagmaClick) then
     FOnSintagmaClick(Sender);
 
-  if assigned(FAVersiculo[tbOrigem]) and
+  if StatusAutomationEnabled and assigned(FRadioGroupSituacao) and
+     assigned(FAVersiculo[tbOrigem]) and
      ((Sender.VerseRef = FAVersiculo[tbOrigem]) or (Sender.VerseRef = FAVersiculo[tbDestino])) then
   begin
     if (FRadioGroupSituacao.ItemIndex = 0) and (FAVersiculo[tbOrigem].AndamentoAssociacao > 0) then
@@ -2065,7 +2659,6 @@ procedure TProject.OnBibleTreePopupItemClick(Sender: TObject);
   begin
     GoToReference(FBibleTreeCoordinator.NodeToReferenceID(FEscopo, node));
     SetStatus(status);
-    //node.ImageIndex := status;
   end;
 
   procedure SetSubTreeStatus(parent: TTreeNode; status: Integer);
@@ -2076,11 +2669,7 @@ procedure TProject.OnBibleTreePopupItemClick(Sender: TObject);
     while assigned(node) do
     begin
       if node.HasChildren then
-      begin
-        SetSubTreeStatus(node, status);
-        if assigned(node.Parent) then // has children and parent, this is a chapter node
-          node.ImageIndex := status;
-      end
+        SetSubTreeStatus(node, status)
       else
         SetNodeStatus(node, status);
       node := node.GetNextSibling;
@@ -2093,7 +2682,14 @@ begin
   item := TMenuItem(Sender);
   try
     StartScrollingSession;
-    SetSubTreeStatus(FBibleTreePointedNode, item.Tag);
+    if FBibleTreePointedNode.HasChildren then
+    begin
+      SetSubTreeStatus(FBibleTreePointedNode, item.Tag)
+    end
+    else
+    begin
+      SetNodeStatus(FBibleTreePointedNode, item.Tag);
+    end;
   finally
     FinishScrollingSession;
   end;
@@ -2151,12 +2747,8 @@ begin
         for j := 0 to m.Count-1 do
         begin
           sub := m.Items[j];
-          // Status items have Tag in 0..3
-          if (sub.Tag >= 0) and (sub.Tag <= 3) then
-          begin
-            // update parent (status) caption to include reference
+          if i = 0 then
             m.Caption := Format(SMarkAsFmt, [refStr]);
-          end;
           // Identify AI submenu children by their tags (association/translation starter)
           if (sub.Tag = 1001) or (sub.Tag = 1011) then
           begin
@@ -2276,8 +2868,14 @@ end;
 procedure TProject.UpdateTree;
 begin
   if not assigned(FArvore) then exit;
-  FBibleTreeCoordinator.RecomputeAllStatuses(FEscopo,
-    TProjectVerseStatusCursor.Create(Self));
+  StartScrollingSession;
+  try
+    FBibleTreeCoordinator.RecomputeAllStatuses(FEscopo,
+      TProjectVerseStatusCursor.Create(Self), GetStatusDefinitions,
+      @GetAggregateStatusImageIndex);
+  finally
+    FinishScrollingSession;
+  end;
 end;
 
 procedure TProject.UpdateTree(id: string);
@@ -2291,7 +2889,8 @@ begin
     ReferenceStatus := Status
   else
     ReferenceStatus := GetStatus(id);
-  FBibleTreeCoordinator.UpdateReferenceStatus(FEscopo, id, ReferenceStatus);
+  FBibleTreeCoordinator.UpdateReferenceStatus(FEscopo, id, ReferenceStatus,
+    GetStatusDefinitions, @GetAggregateStatusImageIndex);
 end;
 
 constructor TProject.Create;
@@ -2310,6 +2909,7 @@ begin
   FAIManager          := nil;
   FAIProcessingNodes  := TAINodeInfoList.Create(True); // owns objects
   FAIBatchCompletionShown := False;
+  FStatusAggregateImageCache := TStringList.Create;
   FCurrentVerseWorkspace := TCurrentVerseWorkspace.Create;
   FCurrentVerseWorkspace.InitializeVerseRuntime(FAVersiculo, FACamposTexto);
   FPersistence        := nil;
@@ -2340,7 +2940,7 @@ begin
 end;
 
 constructor TProject.Create(paineis: array of TScrollbox; navegador: TTreeView;
-  rsituacao: TRadioGroup; rcomentarios: TControl);
+  rsituacao: TComboBox; rcomentarios: TControl);
 var
   v: integer;
 begin
@@ -2369,6 +2969,8 @@ begin
   FreeAndNil(FPatchApplier);
   FreeAndNil(FProjectExporter);
   FreeAndNil(FDictionaryManager);
+  FreeAndNil(FStatusAggregateImageCache);
+  FreeAndNil(FStatusImages);
   FreeAndNil(FVerseRenderBuffer);
   FreeAndNil(FVerseRepository);
   FreeAndNil(FConfig);
@@ -2478,6 +3080,7 @@ begin
 
   if assigned(FArvore) then
   begin
+    RefreshStatusImages;
     PreencherArvore;
     UpdateTree;
       UpdateTree;
@@ -2489,13 +3092,7 @@ begin
     FMemoComentarios.Enabled := true;
   if assigned(FRadioGroupSituacao) then
   begin
-    // Repopulate RadioGroupStatus with the correct status descriptions for this project
-    with FRadioGroupSituacao.Items do
-    begin
-      Clear;
-      for i := 0 to 3 do
-        Add(GetStatusDescription(i));
-    end;
+    RefreshStatusControl;
     FRadioGroupSituacao.Enabled := true;
   end;
 
@@ -2526,7 +3123,11 @@ begin
     //FArvore.FullCollapse;
     FArvore.Enabled := false;
     FArvore.Items.Clear;
+    FArvore.Images := nil;
   end;
+  if Assigned(FStatusAggregateImageCache) then
+    FStatusAggregateImageCache.Clear;
+  FreeAndNil(FStatusImages);
 
   BeforeVerseScroll(nil);
 
@@ -2620,7 +3221,8 @@ procedure TProject.NextVerse;
 begin
   if not FPersistence.EOF then
     FPersistence.Next;
-  if not FExportando and SugerirAssociacaoAutomaticamente and (FRadioGroupSituacao.ItemIndex = 0) and (not HasCustomStatus) then
+  if not FExportando and SugerirAssociacaoAutomaticamente and
+    StatusAutomationEnabled and (Status = FirstStatusId(GetStatusDefinitions)) then
     SuggestAssociation;
 end;
 
@@ -2628,7 +3230,8 @@ procedure TProject.PreviousVerse;
 begin
   if not FPersistence.BOF then
     FPersistence.Prior;
-  if not FExportando and SugerirAssociacaoAutomaticamente and (FRadioGroupSituacao.ItemIndex = 0) and (not HasCustomStatus) then
+  if not FExportando and SugerirAssociacaoAutomaticamente and
+    StatusAutomationEnabled and (Status = FirstStatusId(GetStatusDefinitions)) then
     SuggestAssociation;
 end;
 
@@ -2636,7 +3239,8 @@ procedure TProject.FirstVerse;
 begin
   if not FPersistence.BOF then
     FPersistence.First;
-  if not FExportando and SugerirAssociacaoAutomaticamente and (FRadioGroupSituacao.ItemIndex = 0) and (not HasCustomStatus) then
+  if not FExportando and SugerirAssociacaoAutomaticamente and
+    StatusAutomationEnabled and (Status = FirstStatusId(GetStatusDefinitions)) then
     SuggestAssociation;
 end;
 
@@ -2644,7 +3248,8 @@ procedure TProject.LastVerse;
 begin
   if not FPersistence.EOF then
     FPersistence.Last;
-  if not FExportando and SugerirAssociacaoAutomaticamente and (FRadioGroupSituacao.ItemIndex = 0) and (not HasCustomStatus) then
+  if not FExportando and SugerirAssociacaoAutomaticamente and
+    StatusAutomationEnabled and (Status = FirstStatusId(GetStatusDefinitions)) then
     SuggestAssociation;
 end;
 
@@ -2660,8 +3265,9 @@ begin
     FAVersiculo[tbOrigem].LimparAssociacoes;
     SaveAssociations;
     SavePairs;
-    if assigned(FRadioGroupSituacao) then
-      FRadioGroupSituacao.ItemIndex := 0; // not associated
+    if StatusAutomationEnabled then
+      SetStatus(FirstStatusId(GetStatusDefinitions));
+    RefreshStatusControl;
   end;
 end;
 
@@ -2689,7 +3295,7 @@ begin
   FAVersiculo[tbOrigem].Renderizar;
   FAVersiculo[tbDestino].Renderizar;
 
-  if HasCustomStatus then exit;
+  if not StatusAutomationEnabled then exit;
 
   if (FRadioGroupSituacao.ItemIndex = 0) and (FAVersiculo[tbOrigem].AndamentoAssociacao > 0) then
     FRadioGroupSituacao.ItemIndex := 1; // associando
@@ -3274,7 +3880,7 @@ begin
   try
       //UpdateTree;
     FPatchApplier.ClearTextFieldForAll(FACamposTexto[texto], FACamposTexto[tbOrigem],
-      FACamposTexto[tbDestino], not HasCustomStatus);
+      FACamposTexto[tbDestino], StatusAutomationEnabled);
   finally
     FinishScrollingSession;
   end;
@@ -3474,24 +4080,26 @@ begin
   end;
 end;
 
-procedure TProject.ClearStoredAssociations;
+procedure TProject.ClearStoredAssociations(ProgressBar: TProgressBar);
 var
   shouldResetStatus: Boolean;
 begin
   if not Assigned(FPersistence) then
     Exit;
 
-  shouldResetStatus := not HasCustomStatus;
+  shouldResetStatus := StatusAutomationEnabled;
   FSuggestionManager.ClearAssociationDatabase;
 
   StartScrollingSession;
   try
+    ConfigureOperationProgressBar(ProgressBar, QLinhas[FEscopo]);
     FVerseRepository.First;
     while not FVerseRepository.EOF do
     begin
       if FVerseRepository.HasCurrentAssociations then
         FVerseRepository.ClearCurrentAssociations(shouldResetStatus);
       FVerseRepository.Next;
+      AdvanceOperationProgressBar(ProgressBar);
     end;
   finally
     FinishScrollingSession;
@@ -3505,6 +4113,8 @@ begin
   if not assigned(FArvore) then
     exit;
 
+  RefreshStatusImages;
+  RefreshStatusControl;
   FBibleTreeCoordinator.RefreshCaptions(FEscopo);
 
   if assigned(FArvore.PopupMenu) then

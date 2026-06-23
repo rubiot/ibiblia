@@ -6,7 +6,8 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
-  StdCtrls, ExtCtrls, Buttons, LCLTranslator, ONTTokenizer;
+  StdCtrls, ExtCtrls, Buttons, LCLTranslator, ONTTokenizer, status_catalog,
+  FormStatusCatalog;
 
 type
 
@@ -35,10 +36,18 @@ type
     procedure BtnSelectSourceTextClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
   private
+    FStatusDefinitions: TStatusDefinitions;
+    FStatusCatalogCustomized: Boolean;
+    BtnStatusCatalog: TButton;
+    procedure BtnStatusCatalogClick(Sender: TObject);
+    procedure CreateStatusCatalogButton;
+    function DefaultStatusDefinitions: TStatusDefinitions;
     procedure LoadTokenizerVersions(SelectedVersion: Integer);
     procedure SelectText(Edit: TLabeledEdit);
   public
     function GetTokenizerVersion: Integer;
+    function GetStatusDefinitions: TStatusDefinitions;
+    function HasCustomStatusCatalog: Boolean;
     procedure Translate;
   end;
 
@@ -53,6 +62,11 @@ resourcestring
   SNewTestament = 'New Testament';
   SWholeBible = 'Whole Bible';
   STokenizerVersion = 'Tokenizer version';
+  SStatusCatalog = 'Status...';
+  SStatusNotAssociated = 'Not associated';
+  SStatusAssociating = 'Associating';
+  SStatusNeedsReview = 'Needs review';
+  SStatusAssociated = 'Associated!';
   SNewTestamentFilter = 'theWord Bible modules (*.ont, *.nt)|*.ont;*.nt';
   SOldTestamentFilter = 'theWord Bible modules (*.ont, *.ot)|*.ont;*.ot';
   SWholeBibleFilter = 'theWord Bible modules (*.ont, *.ot, *.nt)|*.ont;*.ot;*.nt';
@@ -82,7 +96,60 @@ end;
 
 procedure TFrmNewProject.FormCreate(Sender: TObject);
 begin
+  FStatusCatalogCustomized := False;
+  FStatusDefinitions := DefaultStatusDefinitions;
+  CreateStatusCatalogButton;
   Translate;
+end;
+
+function TFrmNewProject.DefaultStatusDefinitions: TStatusDefinitions;
+begin
+  Result := BuildLegacyStatusDefinitions([
+    SStatusNotAssociated,
+    SStatusAssociating,
+    SStatusNeedsReview,
+    SStatusAssociated
+  ]);
+end;
+
+procedure TFrmNewProject.CreateStatusCatalogButton;
+const
+  ExtraHeight = 36;
+begin
+  if Assigned(BtnStatusCatalog) then
+    Exit;
+
+  ClientHeight := ClientHeight + ExtraHeight;
+  GroupBoxProperties.Height := GroupBoxProperties.Height + ExtraHeight;
+  RadioGroupScope.Top := RadioGroupScope.Top + ExtraHeight;
+  GroupBoxTexts.Top := GroupBoxTexts.Top + ExtraHeight;
+  BtnOk.Top := BtnOk.Top + ExtraHeight;
+  BtnCancel.Top := BtnCancel.Top + ExtraHeight;
+
+  BtnStatusCatalog := TButton.Create(Self);
+  BtnStatusCatalog.Parent := GroupBoxProperties;
+  BtnStatusCatalog.Left := 8;
+  BtnStatusCatalog.Top := 106;
+  BtnStatusCatalog.Width := 140;
+  BtnStatusCatalog.Height := 25;
+  BtnStatusCatalog.Caption := SStatusCatalog;
+  BtnStatusCatalog.OnClick := @BtnStatusCatalogClick;
+end;
+
+procedure TFrmNewProject.BtnStatusCatalogClick(Sender: TObject);
+var
+  Definitions: TStatusDefinitions;
+  Counts: TStatusCounts;
+  Remaps: TStatusRemaps;
+begin
+  Definitions := Copy(FStatusDefinitions, 0, Length(FStatusDefinitions));
+  Counts := nil;
+  if TFrmStatusCatalog.Execute(Definitions, Counts, Remaps) then
+  begin
+    NormalizeStatusDefinitions(Definitions, True);
+    FStatusDefinitions := Definitions;
+    FStatusCatalogCustomized := True;
+  end;
 end;
 
 procedure TFrmNewProject.BtnSelectSourceTextClick(Sender: TObject);
@@ -142,11 +209,24 @@ begin
     Result := TTokenizerFactory.LATEST_VERSION;
 end;
 
+function TFrmNewProject.GetStatusDefinitions: TStatusDefinitions;
+begin
+  Result := Copy(FStatusDefinitions, 0, Length(FStatusDefinitions));
+  NormalizeStatusDefinitions(Result, True);
+end;
+
+function TFrmNewProject.HasCustomStatusCatalog: Boolean;
+begin
+  Result := FStatusCatalogCustomized;
+end;
+
 procedure TFrmNewProject.Translate;
 var
   SelectedVersion: Integer;
 begin
   SelectedVersion := GetTokenizerVersion;
+  if not FStatusCatalogCustomized then
+    FStatusDefinitions := DefaultStatusDefinitions;
   with RadioGroupScope do
   begin
     Items.Clear;
@@ -156,6 +236,8 @@ begin
     ItemIndex := 1;
   end;
   LabelTokenizerVersion.Caption := STokenizerVersion;
+  if Assigned(BtnStatusCatalog) then
+    BtnStatusCatalog.Caption := SStatusCatalog;
   LoadTokenizerVersions(SelectedVersion);
 end;
 

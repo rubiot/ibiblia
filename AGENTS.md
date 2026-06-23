@@ -66,7 +66,7 @@ Avoid replacing these terms with generic alternatives such as token, row, mappin
 Always verify Pascal changes with the project build command:
 
 ```powershell
-& "C:\Apps\lazarus4\lazbuild.exe" --lazarusdir="C:\Apps\lazarus4" --os=win64 --cpu=x86_64 --build-mode=Release iBiblia.lpi
+& "C:\Apps\lazarus\lazbuild.exe" --lazarusdir="C:\Apps\lazarus" --os=win64 --cpu=x86_64 --build-mode=Release iBiblia.lpi
 ```
 
 Exit code `0` means the application compiled successfully. Existing warnings and hints are common; investigate new errors first.

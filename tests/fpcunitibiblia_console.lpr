@@ -7,7 +7,8 @@ uses
   consoletestrunner,
   ibibliatest,
   versiculotest,
-  syntagmselectiontest;
+  syntagmselectiontest,
+  statuscatalogtest;
 
 var
   Application: TTestRunner;

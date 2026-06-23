@@ -5,11 +5,9 @@ unit bible_tree_coordinator;
 interface
 
 uses
-  SysUtils, ComCtrls, BibleScope;
+  SysUtils, ComCtrls, BibleScope, status_catalog;
 
 type
-  TTreeStatusCounts = array[0..3] of Integer;
-
   { IVerseStatusCursor — the coordinator iterates this instead of calling
     back into the owner via four separate procedure-of-object variables. }
   IVerseStatusCursor = interface
@@ -19,30 +17,41 @@ type
     function CurrentStatus: Integer;
   end;
 
+  TStatusAggregateImageResolver = function(const Counts: TStatusCounts;
+    Total: Integer; const StatusDefinitions: TStatusDefinitions): Integer of object;
+
   TBibleTreeCoordinator = class
   private
     FTree: TTreeView;
     function BaseNodeText(const Scope: TEscopoTexto; Node: TTreeNode): string;
-    procedure CountVerseStatuses(Node: TTreeNode; out Counts: TTreeStatusCounts;
+    procedure CountVerseStatuses(Node: TTreeNode;
+      const StatusDefinitions: TStatusDefinitions; out Counts: TStatusCounts;
       out Total: Integer);
     function FindVerseNode(const Scope: TEscopoTexto; const ReferenceID: string): TTreeNode;
     function ResolveNodePath(const Scope: TEscopoTexto; BookID, Chapter,
       Verse: Integer): TTreeNode;
-    procedure ApplyAggregateStatus(const Scope: TEscopoTexto; ParentNode: TTreeNode);
+    procedure ApplyAggregateStatus(const Scope: TEscopoTexto; ParentNode: TTreeNode;
+      const StatusDefinitions: TStatusDefinitions;
+      AggregateImageResolver: TStatusAggregateImageResolver);
     procedure RefreshNodeCaption(const Scope: TEscopoTexto; Node: TTreeNode);
     procedure SetNodeStatus(Node: TTreeNode; Status: Integer);
   public
     constructor Create(ATree: TTreeView = nil);
     procedure Attach(ATree: TTreeView);
-    procedure Populate(const Scope: TEscopoTexto; OnChange: TTVChangedEvent);
+    procedure Populate(const Scope: TEscopoTexto; OnChange: TTVChangedEvent;
+      const StatusDefinitions: TStatusDefinitions;
+      AggregateImageResolver: TStatusAggregateImageResolver = nil);
     function BuildStatusHint(const Scope: TEscopoTexto; Node: TTreeNode;
-      const StatusCaptions: array of string): string;
+      const StatusDefinitions: TStatusDefinitions): string;
     function NodeToReferenceID(const Scope: TEscopoTexto; const Node: TTreeNode): string;
     procedure RecomputeAllStatuses(const Scope: TEscopoTexto;
-      Cursor: IVerseStatusCursor);
+      Cursor: IVerseStatusCursor; const StatusDefinitions: TStatusDefinitions;
+      AggregateImageResolver: TStatusAggregateImageResolver = nil);
     procedure RefreshCaptions(const Scope: TEscopoTexto);
     procedure UpdateReferenceStatus(const Scope: TEscopoTexto;
-      const ReferenceID: string; Status: Integer);
+      const ReferenceID: string; Status: Integer;
+      const StatusDefinitions: TStatusDefinitions;
+      AggregateImageResolver: TStatusAggregateImageResolver = nil);
     procedure SelectReference(const Scope: TEscopoTexto; const ReferenceID: string);
   end;
 
@@ -91,18 +100,73 @@ begin
   end;
 end;
 
+function IndexOfStatusCount(const Counts: TStatusCounts; StatusId: Integer): Integer;
+var
+  I: Integer;
+begin
+  Result := -1;
+  for I := 0 to High(Counts) do
+    if Counts[I].StatusId = StatusId then
+      Exit(I);
+end;
+
+procedure EnsureStatusCount(var Counts: TStatusCounts; StatusId: Integer);
+var
+  Index: Integer;
+begin
+  Index := IndexOfStatusCount(Counts, StatusId);
+  if Index >= 0 then
+    Exit;
+
+  SetLength(Counts, Length(Counts) + 1);
+  Counts[High(Counts)].StatusId := StatusId;
+  Counts[High(Counts)].Count := 0;
+end;
+
+procedure IncrementStatusCount(var Counts: TStatusCounts; StatusId: Integer;
+  Amount: Integer = 1);
+var
+  Index: Integer;
+begin
+  EnsureStatusCount(Counts, StatusId);
+  Index := IndexOfStatusCount(Counts, StatusId);
+  Inc(Counts[Index].Count, Amount);
+end;
+
+function StatusCountValue(const Counts: TStatusCounts; StatusId: Integer): Integer;
+var
+  Index: Integer;
+begin
+  Index := IndexOfStatusCount(Counts, StatusId);
+  if Index >= 0 then
+    Result := Counts[Index].Count
+  else
+    Result := 0;
+end;
+
+procedure InitializeStatusCounts(var Counts: TStatusCounts;
+  const StatusDefinitions: TStatusDefinitions);
+var
+  I: Integer;
+begin
+  SetLength(Counts, Length(StatusDefinitions));
+  for I := 0 to High(StatusDefinitions) do
+  begin
+    Counts[I].StatusId := StatusDefinitions[I].Id;
+    Counts[I].Count := 0;
+  end;
+end;
+
 procedure TBibleTreeCoordinator.CountVerseStatuses(Node: TTreeNode;
-  out Counts: TTreeStatusCounts; out Total: Integer);
+  const StatusDefinitions: TStatusDefinitions; out Counts: TStatusCounts;
+  out Total: Integer);
 var
   ChildNode: TTreeNode;
-  ChildCounts: TTreeStatusCounts;
+  ChildCounts: TStatusCounts;
   ChildTotal: Integer;
-  StatusIndex: Integer;
+  CountIndex: Integer;
 begin
-  Counts[0] := 0;
-  Counts[1] := 0;
-  Counts[2] := 0;
-  Counts[3] := 0;
+  InitializeStatusCounts(Counts, StatusDefinitions);
   Total := 0;
 
   if not Assigned(Node) then
@@ -110,9 +174,7 @@ begin
 
   if not Node.HasChildren then
   begin
-    StatusIndex := Node.ImageIndex;
-    if (StatusIndex >= 0) and (StatusIndex <= 3) then
-      Inc(Counts[StatusIndex]);
+    IncrementStatusCount(Counts, Node.ImageIndex);
     Inc(Total);
     Exit;
   end;
@@ -120,9 +182,10 @@ begin
   ChildNode := Node.GetFirstChild;
   while Assigned(ChildNode) do
   begin
-    CountVerseStatuses(ChildNode, ChildCounts, ChildTotal);
-    for StatusIndex := 0 to 3 do
-      Inc(Counts[StatusIndex], ChildCounts[StatusIndex]);
+    CountVerseStatuses(ChildNode, StatusDefinitions, ChildCounts, ChildTotal);
+    for CountIndex := 0 to High(ChildCounts) do
+      IncrementStatusCount(Counts, ChildCounts[CountIndex].StatusId,
+        ChildCounts[CountIndex].Count);
     Inc(Total, ChildTotal);
     ChildNode := ChildNode.GetNextSibling;
   end;
@@ -138,7 +201,8 @@ begin
 end;
 
 procedure TBibleTreeCoordinator.Populate(const Scope: TEscopoTexto;
-  OnChange: TTVChangedEvent);
+  OnChange: TTVChangedEvent; const StatusDefinitions: TStatusDefinitions;
+  AggregateImageResolver: TStatusAggregateImageResolver);
 var
   BookIndex: SmallInt;
   ChapterIndex: SmallInt;
@@ -146,9 +210,12 @@ var
   BookNode: TTreeNode;
   ChapterNode: TTreeNode;
   VerseNode: TTreeNode;
+  InitialStatus: Integer;
 begin
   if not Assigned(FTree) then
     Exit;
+
+  InitialStatus := FirstStatusId(StatusDefinitions);
 
   if FTree.Items.Count = 0 then
   begin
@@ -158,24 +225,23 @@ begin
       begin
         BookNode := FTree.Items.Add(nil, NLivros[Scope][BookIndex]);
         BookNode.Data := Pointer(PtrUInt(BookIndex + OffsetLivros[Scope] + 1));
-        BookNode.ImageIndex := 0;
-        BookNode.SelectedIndex := BookNode.ImageIndex + 4;
+        SetNodeStatus(BookNode, InitialStatus);
         for ChapterIndex := 0 to QCapitulos[Scope][BookIndex] - 1 do
         begin
           ChapterNode := FTree.Items.AddChild(BookNode, IntToStr(ChapterIndex + 1));
           ChapterNode.Data := Pointer(PtrUInt(ChapterIndex + 1));
-          ChapterNode.ImageIndex := 0;
-          ChapterNode.SelectedIndex := ChapterNode.ImageIndex + 4;
+          SetNodeStatus(ChapterNode, InitialStatus);
           for VerseIndex := 0 to QVersiculos[Scope][QCapLivros[Scope][BookIndex] + ChapterIndex - 1] - 1 do
           begin
             VerseNode := FTree.Items.AddChild(ChapterNode, IntToStr(VerseIndex + 1));
             VerseNode.Data := Pointer(PtrUInt(VerseIndex + 1));
-            VerseNode.ImageIndex := 0;
-            VerseNode.SelectedIndex := VerseNode.ImageIndex + 4;
+            SetNodeStatus(VerseNode, InitialStatus);
           end;
-          ApplyAggregateStatus(Scope, ChapterNode);
+          ApplyAggregateStatus(Scope, ChapterNode, StatusDefinitions,
+            AggregateImageResolver);
         end;
-        ApplyAggregateStatus(Scope, BookNode);
+        ApplyAggregateStatus(Scope, BookNode, StatusDefinitions,
+          AggregateImageResolver);
       end;
     finally
       FTree.EndUpdate;
@@ -186,14 +252,11 @@ begin
 end;
 
 function TBibleTreeCoordinator.BuildStatusHint(const Scope: TEscopoTexto;
-  Node: TTreeNode; const StatusCaptions: array of string): string;
+  Node: TTreeNode; const StatusDefinitions: TStatusDefinitions): string;
 
-  function StatusCaption(StatusIndex: Integer): string;
+  function StatusCaption(StatusId: Integer): string;
   begin
-    if (StatusIndex >= Low(StatusCaptions)) and (StatusIndex <= High(StatusCaptions)) then
-      Result := StatusCaptions[StatusIndex]
-    else
-      Result := Format('Status %d', [StatusIndex + 1]);
+    Result := GetStatusCaption(StatusDefinitions, StatusId);
   end;
 
   function NodeTitle: string;
@@ -229,9 +292,11 @@ function TBibleTreeCoordinator.BuildStatusHint(const Scope: TEscopoTexto;
   end;
 
 var
-  Counts: TTreeStatusCounts;
+  Counts: TStatusCounts;
   Total: Integer;
   StatusIndex: Integer;
+  Sorted: TStatusDefinitions;
+  CountIndex: Integer;
 begin
   Result := '';
   if not Assigned(Node) then
@@ -248,11 +313,18 @@ begin
     Exit;
   end;
 
-  CountVerseStatuses(Node, Counts, Total);
+  CountVerseStatuses(Node, StatusDefinitions, Counts, Total);
   Result := Format('%s%sTotal: %d', [NodeTitle, LineEnding, Total]);
-  for StatusIndex := 0 to 3 do
+  Sorted := SortStatusDefinitionsByDisplayOrder(StatusDefinitions);
+  for StatusIndex := 0 to High(Sorted) do
     Result := Result + LineEnding +
-      Format('%s: %d', [StatusCaption(StatusIndex), Counts[StatusIndex]]);
+      Format('%s: %d', [StatusCaption(Sorted[StatusIndex].Id),
+        StatusCountValue(Counts, Sorted[StatusIndex].Id)]);
+  for CountIndex := 0 to High(Counts) do
+    if not IsValidStatusId(StatusDefinitions, Counts[CountIndex].StatusId) then
+      Result := Result + LineEnding +
+        Format('%s: %d', [StatusCaption(Counts[CountIndex].StatusId),
+          Counts[CountIndex].Count]);
 end;
 
 function TBibleTreeCoordinator.ResolveNodePath(const Scope: TEscopoTexto; BookID,
@@ -341,51 +413,77 @@ begin
 end;
 
 procedure TBibleTreeCoordinator.ApplyAggregateStatus(const Scope: TEscopoTexto;
-  ParentNode: TTreeNode);
+  ParentNode: TTreeNode; const StatusDefinitions: TStatusDefinitions;
+  AggregateImageResolver: TStatusAggregateImageResolver);
 var
-  Counts: array[0..3] of SmallInt;
-  ChildNode: TTreeNode;
-  StatusIndex: SmallInt;
-  TotalChildren: Integer;
+  Counts: TStatusCounts;
+  TotalVerses: Integer;
+  AggregateImageIndex: Integer;
+  UniformStatus: Integer;
   HasUniformStatus: Boolean;
+  SortedByPriority: TStatusDefinitions;
+  StatusIndex: Integer;
 begin
   if not Assigned(ParentNode) then
     Exit;
 
-  Counts[0] := 0;
-  Counts[1] := 0;
-  Counts[2] := 0;
-  Counts[3] := 0;
-  TotalChildren := 0;
-  ChildNode := ParentNode.GetFirstChild;
-  while Assigned(ChildNode) do
+  CountVerseStatuses(ParentNode, StatusDefinitions, Counts, TotalVerses);
+  if TotalVerses <= 0 then
   begin
-    if (ChildNode.ImageIndex >= 0) and (ChildNode.ImageIndex <= 3) then
-      Inc(Counts[ChildNode.ImageIndex]);
-    Inc(TotalChildren);
-    ChildNode := ChildNode.GetNextSibling;
+    SetNodeStatus(ParentNode, FirstStatusId(StatusDefinitions));
+    RefreshNodeCaption(Scope, ParentNode);
+    Exit;
   end;
 
-  HasUniformStatus := False;
-  if TotalChildren > 0 then
-    for StatusIndex := 0 to 3 do
-      if Counts[StatusIndex] = TotalChildren then
-      begin
-        ParentNode.ImageIndex := StatusIndex;
-        ParentNode.SelectedIndex := ParentNode.ImageIndex + 4;
-        HasUniformStatus := True;
-        RefreshNodeCaption(Scope, ParentNode);
-        Break;
-      end;
+  if Assigned(AggregateImageResolver) then
+  begin
+    AggregateImageIndex := AggregateImageResolver(Counts, TotalVerses,
+      StatusDefinitions);
+    if AggregateImageIndex >= 0 then
+    begin
+      SetNodeStatus(ParentNode, AggregateImageIndex);
+      RefreshNodeCaption(Scope, ParentNode);
+      Exit;
+    end;
+  end;
 
-  if HasUniformStatus then
+  UniformStatus := -1;
+  HasUniformStatus := True;
+
+  for StatusIndex := 0 to High(Counts) do
+    if Counts[StatusIndex].Count > 0 then
+    begin
+      if UniformStatus < 0 then
+        UniformStatus := Counts[StatusIndex].StatusId
+      else if Counts[StatusIndex].StatusId <> UniformStatus then
+        HasUniformStatus := False;
+    end;
+
+  if HasUniformStatus and (UniformStatus >= 0) then
+  begin
+    SetNodeStatus(ParentNode, UniformStatus);
+    RefreshNodeCaption(Scope, ParentNode);
     Exit;
+  end;
 
-  if Counts[2] > 0 then
-    ParentNode.ImageIndex := 2
-  else
-    ParentNode.ImageIndex := 1;
-  ParentNode.SelectedIndex := ParentNode.ImageIndex + 4;
+  SortedByPriority := SortStatusDefinitionsByPriorityOrder(StatusDefinitions);
+  for StatusIndex := 0 to High(SortedByPriority) do
+    if StatusCountValue(Counts, SortedByPriority[StatusIndex].Id) > 0 then
+    begin
+      SetNodeStatus(ParentNode, SortedByPriority[StatusIndex].Id);
+      RefreshNodeCaption(Scope, ParentNode);
+      Exit;
+    end;
+
+  for StatusIndex := 0 to High(Counts) do
+    if Counts[StatusIndex].Count > 0 then
+    begin
+      SetNodeStatus(ParentNode, Counts[StatusIndex].StatusId);
+      RefreshNodeCaption(Scope, ParentNode);
+      Exit;
+    end;
+
+  SetNodeStatus(ParentNode, FirstStatusId(StatusDefinitions));
   RefreshNodeCaption(Scope, ParentNode);
 end;
 
@@ -395,11 +493,12 @@ begin
     Exit;
 
   Node.ImageIndex := Status;
-  Node.SelectedIndex := Node.ImageIndex + 4;
+  Node.SelectedIndex := Status;
 end;
 
 procedure TBibleTreeCoordinator.RecomputeAllStatuses(const Scope: TEscopoTexto;
-  Cursor: IVerseStatusCursor);
+  Cursor: IVerseStatusCursor; const StatusDefinitions: TStatusDefinitions;
+  AggregateImageResolver: TStatusAggregateImageResolver);
 var
   BookNode: TTreeNode;
   ChapterNode: TTreeNode;
@@ -426,11 +525,13 @@ begin
           VerseNode := VerseNode.GetNextSibling;
         end;
 
-        ApplyAggregateStatus(Scope, ChapterNode);
+        ApplyAggregateStatus(Scope, ChapterNode, StatusDefinitions,
+          AggregateImageResolver);
         ChapterNode := ChapterNode.GetNextSibling;
       end;
 
-      ApplyAggregateStatus(Scope, BookNode);
+      ApplyAggregateStatus(Scope, BookNode, StatusDefinitions,
+        AggregateImageResolver);
       BookNode := BookNode.GetNextSibling;
     end;
   finally
@@ -466,12 +567,17 @@ begin
 end;
 
 procedure TBibleTreeCoordinator.UpdateReferenceStatus(const Scope: TEscopoTexto;
-  const ReferenceID: string; Status: Integer);
+  const ReferenceID: string; Status: Integer;
+  const StatusDefinitions: TStatusDefinitions;
+  AggregateImageResolver: TStatusAggregateImageResolver);
 var
   VerseNode: TTreeNode;
   ChapterNode: TTreeNode;
   BookNode: TTreeNode;
 begin
+  if not Assigned(FTree) then
+    Exit;
+
   VerseNode := FindVerseNode(Scope, ReferenceID);
   if not Assigned(VerseNode) then
     Exit;
@@ -479,11 +585,19 @@ begin
   ChapterNode := VerseNode.Parent;
   BookNode := ChapterNode.Parent;
 
-  if VerseNode.ImageIndex <> Status then
-    SetNodeStatus(VerseNode, Status);
+  FTree.BeginUpdate;
+  try
+    if VerseNode.ImageIndex <> Status then
+      SetNodeStatus(VerseNode, Status);
 
-  ApplyAggregateStatus(Scope, ChapterNode);
-  ApplyAggregateStatus(Scope, BookNode);
+    ApplyAggregateStatus(Scope, ChapterNode, StatusDefinitions,
+      AggregateImageResolver);
+    ApplyAggregateStatus(Scope, BookNode, StatusDefinitions,
+      AggregateImageResolver);
+  finally
+    FTree.EndUpdate;
+  end;
+  FTree.Invalidate;
 end;
 
 procedure TBibleTreeCoordinator.SelectReference(const Scope: TEscopoTexto;
