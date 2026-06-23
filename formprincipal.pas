@@ -213,6 +213,7 @@ type
   private
     { private declarations }
     FActualCommentsMemo: TCommentsView; // The actual comments view component
+    FCommentsGroupBox: TGroupBox;
     FPopupTrigger: TPopupTrigger;
     FCurrentRef: string;
     FChapterView: TChapterView;
@@ -224,6 +225,8 @@ type
     FHeaderEngineLabel: TLabel;
     FHeaderModifiedLabel: TLabel;
     FVersePanelLabels: array[tbOrigem..tbConsulta2] of TPanel;
+    FVersePanelTypeLabels: array[tbOrigem..tbConsulta2] of TLabel;
+    FVersePanelDescriptionLabels: array[tbOrigem..tbConsulta2] of TLabel;
     {$IFDEF WINDOWS}
     FRxMorpho: IRegex;
     syncTw2iBiblia: boolean;
@@ -236,15 +239,19 @@ type
     {$ENDIF}
     procedure ApplyShortcutHints;
     function BuildKeyboardShortcutsText: string;
-    function CreateVersePanelLabel(AParent: TWinControl): TPanel;
+    function CreateVersePanelLabel(AParent: TWinControl;
+      TextType: TTipoTextoBiblico): TPanel;
     function CreateStateHeaderLabel(AParent: TWinControl; Bold: Boolean = False): TLabel;
     procedure AttachStatusComboToHeader;
+    procedure CreateCommentsGroupBox;
     procedure CreateStateHeader;
     procedure CreateVersePanelLabels;
     procedure CountCurrentAssociations(out Associated, Total: Integer);
     function CurrentEngineCaption: string;
     function CurrentSelectionCaption: string;
     function GetVersePanelCaption(TextType: TTipoTextoBiblico): string;
+    function GetVersePanelDescription(TextType: TTipoTextoBiblico): string;
+    function GetVersePanelTypeCaption(TextType: TTipoTextoBiblico): string;
     procedure LayoutStateHeader;
     procedure LayoutVersePanelLabels;
     procedure ResetMainLayout;
@@ -347,6 +354,7 @@ resourcestring
   SPanelLabelDestination = 'Destination';
   SPanelLabelReference1 = 'Reference 1';
   SPanelLabelReference2 = 'Reference 2';
+  SPanelLabelComments = 'Comments';
   STreeLegendTitle = 'Tree legend';
   STreeLegendStatusFmt = '%d: %s';
   STreeLegendCounts = 'Hover tree items for status counts';
@@ -582,20 +590,40 @@ begin
   end;
 end;
 
-function TFrmPrincipal.CreateVersePanelLabel(AParent: TWinControl): TPanel;
+function TFrmPrincipal.CreateVersePanelLabel(AParent: TWinControl;
+  TextType: TTipoTextoBiblico): TPanel;
+
+  procedure SetupChildLabel(ALabel: TLabel; Bold: Boolean);
+  begin
+    ALabel.Parent := Result;
+    ALabel.AutoSize := False;
+    ALabel.Transparent := True;
+    ALabel.Layout := tlCenter;
+    ALabel.ShowHint := True;
+    ALabel.Font.Size := Max(6, Font.Size - 1);
+    if Bold then
+      ALabel.Font.Style := ALabel.Font.Style + [fsBold]
+    else
+      ALabel.Font.Style := ALabel.Font.Style - [fsBold];
+  end;
+
 begin
   Result := TPanel.Create(AParent);
   with Result do
   begin
     Parent := AParent;
-    Alignment := taCenter;
+    Caption := '';
     BevelOuter := bvNone;
     ParentColor := False;
     Color := clBtnFace;
-    Font.Style := Font.Style + [fsBold];
-    Font.Size := Max(6, Font.Size - 1);
     ShowHint := True;
   end;
+
+  FVersePanelTypeLabels[TextType] := TLabel.Create(Result);
+  SetupChildLabel(FVersePanelTypeLabels[TextType], True);
+
+  FVersePanelDescriptionLabels[TextType] := TLabel.Create(Result);
+  SetupChildLabel(FVersePanelDescriptionLabels[TextType], False);
 end;
 
 function TFrmPrincipal.CreateStateHeaderLabel(AParent: TWinControl;
@@ -631,6 +659,27 @@ begin
   RadioGroupStatus.Visible := False;
   RadioGroupStatus.ShowHint := True;
   RadioGroupStatus.BringToFront;
+end;
+
+procedure TFrmPrincipal.CreateCommentsGroupBox;
+begin
+  if Assigned(FCommentsGroupBox) then
+    Exit;
+
+  BottomPanel.Caption := '';
+  FCommentsGroupBox := TGroupBox.Create(Self);
+  with FCommentsGroupBox do
+  begin
+    Parent := BottomPanel;
+    Align := alClient;
+    Caption := SPanelLabelComments;
+    ShowHint := True;
+    TabOrder := CommentsMemo.TabOrder;
+  end;
+
+  CommentsMemo.Parent := FCommentsGroupBox;
+  CommentsMemo.Align := alClient;
+  CommentsMemo.BorderSpacing.Around := 4;
 end;
 
 procedure TFrmPrincipal.CreateStateHeader;
@@ -673,7 +722,8 @@ var
 begin
   for TextType := tbOrigem to tbConsulta2 do
     if not Assigned(FVersePanelLabels[TextType]) then
-      FVersePanelLabels[TextType] := CreateVersePanelLabel(CenterPanel);
+      FVersePanelLabels[TextType] := CreateVersePanelLabel(CenterPanel,
+        TextType);
 
   CenterPanel.OnResize := @SplitterMoved;
   Splitter2.OnMoved := @SplitterMoved;
@@ -745,6 +795,23 @@ function TFrmPrincipal.GetVersePanelCaption(TextType: TTipoTextoBiblico): string
 var
   TextDescription: string;
 begin
+  Result := GetVersePanelTypeCaption(TextType);
+  TextDescription := GetVersePanelDescription(TextType);
+  if TextDescription <> '' then
+    Result := Format('%s: %s', [Result, TextDescription]);
+end;
+
+function TFrmPrincipal.GetVersePanelDescription(
+  TextType: TTipoTextoBiblico): string;
+begin
+  Result := '';
+  if Assigned(ProjetoAtual) then
+    Result := Trim(ProjetoAtual.GetTextDescription(TextType));
+end;
+
+function TFrmPrincipal.GetVersePanelTypeCaption(
+  TextType: TTipoTextoBiblico): string;
+begin
   case TextType of
     tbOrigem: Result := SPanelLabelSource;
     tbDestino: Result := SPanelLabelDestination;
@@ -752,13 +819,6 @@ begin
     tbConsulta2: Result := SPanelLabelReference2;
   else
     Result := '';
-  end;
-
-  if Assigned(ProjetoAtual) then
-  begin
-    TextDescription := Trim(ProjetoAtual.GetTextDescription(TextType));
-    if TextDescription <> '' then
-      Result := Format('%s: %s', [Result, TextDescription]);
   end;
 end;
 
@@ -973,14 +1033,24 @@ const
 var
   TextType: TTipoTextoBiblico;
   LabelControl: TPanel;
+  TypeLabel: TLabel;
+  DescriptionLabel: TLabel;
   PanelControl: TControl;
   CaptionText: string;
+  TypeCaption: string;
+  DescriptionCaption: string;
+  TypeWidth: Integer;
+  DescriptionWidth: Integer;
   LabelWidth: Integer;
+  AvailableWidth: Integer;
 begin
   for TextType := tbOrigem to tbConsulta2 do
   begin
     LabelControl := FVersePanelLabels[TextType];
-    if not Assigned(LabelControl) then
+    TypeLabel := FVersePanelTypeLabels[TextType];
+    DescriptionLabel := FVersePanelDescriptionLabels[TextType];
+    if (not Assigned(LabelControl)) or (not Assigned(TypeLabel)) or
+      (not Assigned(DescriptionLabel)) then
       Continue;
 
     case TextType of
@@ -996,18 +1066,36 @@ begin
       Continue;
 
     CaptionText := GetVersePanelCaption(TextType);
-    LabelControl.Caption := CaptionText;
     LabelControl.Hint := CaptionText;
-    CenterPanel.Canvas.Font.Assign(LabelControl.Font);
-    LabelWidth := Min(
-      CenterPanel.Canvas.TextWidth(CaptionText) + 16,
-      Max(1, PanelControl.Width - (Margin * 2))
-    );
+    TypeLabel.Hint := CaptionText;
+    DescriptionLabel.Hint := CaptionText;
+
+    TypeCaption := GetVersePanelTypeCaption(TextType);
+    DescriptionCaption := GetVersePanelDescription(TextType);
+    if DescriptionCaption <> '' then
+      DescriptionCaption := ': ' + DescriptionCaption;
+
+    TypeLabel.Caption := TypeCaption;
+    DescriptionLabel.Caption := DescriptionCaption;
+    DescriptionLabel.Visible := DescriptionCaption <> '';
+
+    CenterPanel.Canvas.Font.Assign(TypeLabel.Font);
+    TypeWidth := CenterPanel.Canvas.TextWidth(TypeCaption);
+    CenterPanel.Canvas.Font.Assign(DescriptionLabel.Font);
+    DescriptionWidth := CenterPanel.Canvas.TextWidth(DescriptionCaption);
+
+    AvailableWidth := Max(1, PanelControl.Width - (Margin * 2));
+    LabelWidth := Min(TypeWidth + DescriptionWidth + 16, AvailableWidth);
     LabelControl.SetBounds(
       PanelControl.Left + Max(Margin, PanelControl.Width - LabelWidth - Margin),
       PanelControl.Top + Max(Margin, PanelControl.Height - LabelHeight - Margin),
       LabelWidth,
       LabelHeight);
+
+    TypeWidth := Min(TypeWidth, Max(0, LabelWidth - 8));
+    DescriptionWidth := Max(0, LabelWidth - TypeWidth - 8);
+    TypeLabel.SetBounds(6, 0, TypeWidth, LabelHeight);
+    DescriptionLabel.SetBounds(6 + TypeWidth, 0, DescriptionWidth, LabelHeight);
     LabelControl.BringToFront;
   end;
 end;
@@ -1671,6 +1759,7 @@ begin
 
   CreateStateHeader;
   CreateVersePanelLabels;
+  CreateCommentsGroupBox;
   TreeView1.Hint := ' ';
   TreeView1.ShowHint := True;
   TreeView1.OnShowHint := @TreeViewShowHint;
@@ -1716,6 +1805,7 @@ begin
   FActualCommentsMemo := TCommentsView.Create(Self);
   FActualCommentsMemo.Parent := CommentsMemo.Parent;
   FActualCommentsMemo.Align := CommentsMemo.Align;
+  FActualCommentsMemo.BorderSpacing.Around := CommentsMemo.BorderSpacing.Around;
   FActualCommentsMemo.Enabled := CommentsMemo.Enabled;
   FActualCommentsMemo.TabOrder := CommentsMemo.TabOrder;
   FActualCommentsMemo.FontName := opts.ReadString('leiaute', 'principal.commentsmemo.font.name', DefFontData.Name);
@@ -2194,6 +2284,11 @@ begin
   ActionReverterAssociacoes.Hint := SRollbackCurrentVerseHint;
   ActionLimparAssociacoes.Caption := SClearCurrentVerseAssociations;
   ActionLimparAssociacoes.Hint := SClearCurrentVerseAssociationsHint;
+  if Assigned(FCommentsGroupBox) then
+  begin
+    FCommentsGroupBox.Caption := SPanelLabelComments;
+    FCommentsGroupBox.Hint := SPanelLabelComments;
+  end;
   ApplyShortcutHints;
 
   UpdateDefaultStatusDescription;
