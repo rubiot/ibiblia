@@ -799,20 +799,9 @@ msgstr ""
 msgid "Show this list"
 msgstr ""
 
-#: formprincipal.sshortcutstatus1
-msgid "Set current verse status to Not associated"
-msgstr ""
-
-#: formprincipal.sshortcutstatus2
-msgid "Set current verse status to Associating"
-msgstr ""
-
-#: formprincipal.sshortcutstatus3
-msgid "Set current verse status to Needs review"
-msgstr ""
-
-#: formprincipal.sshortcutstatus4
-msgid "Set current verse status to Associated"
+#: formprincipal.sshortcutstatusfmt
+#, object-pascal-format
+msgid "Set current verse status to %s"
 msgstr ""
 
 #: formprincipal.sshortcuttoggletags
@@ -837,12 +826,8 @@ msgstr ""
 msgid "Use the traditional statistical suggestion engine"
 msgstr ""
 
-#: formprincipal.sstatuscaptionwithshortcuts
-msgid "Status (1-4)"
-msgstr ""
-
 #: formprincipal.sstatuskeyboardhint
-msgid "Use 1..4 to set the status for the current verse"
+msgid "Use 1..9 to set the first visible statuses for the current verse"
 msgstr ""
 
 #: formprincipal.ssuggestionmode

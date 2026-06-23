@@ -781,13 +781,16 @@ var
   s: TSyntagm;
 begin
   result := '';
+  if not Assigned(FSintagmas) then
+    Exit;
+
+  linha := TStringStream.Create('');
   try
-    linha := TStringStream.Create('');
     for s in FSintagmas do
       if s.Kind in [tsEspaco, tsSintagma, tsPontuacao] then
         linha.WriteString(s.Text);
-  finally
     result := linha.DataString;
+  finally
     linha.Destroy;
   end;
 end;

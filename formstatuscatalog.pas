@@ -19,8 +19,6 @@ type
     FColorButton: TButton;
     FDisplayUpButton: TButton;
     FDisplayDownButton: TButton;
-    FPriorityUpButton: TButton;
-    FPriorityDownButton: TButton;
     FOkButton: TBitBtn;
     FCancelButton: TBitBtn;
     FColorDialog: TColorDialog;
@@ -51,8 +49,6 @@ type
     procedure ColorButtonClick(Sender: TObject);
     procedure DisplayUpButtonClick(Sender: TObject);
     procedure DisplayDownButtonClick(Sender: TObject);
-    procedure PriorityUpButtonClick(Sender: TObject);
-    procedure PriorityDownButtonClick(Sender: TObject);
     procedure OkButtonClick(Sender: TObject);
   public
     class function Execute(var Definitions: TStatusDefinitions;
@@ -62,11 +58,10 @@ type
 resourcestring
   SStatusCatalogTitle = 'Status catalog';
   SStatusCatalogInfo =
-    'Edit descriptions, colors, display order and mixed-node color priority. Verse status IDs stay stable.';
+    'Edit descriptions, colors and display order. Verse status IDs stay stable.';
   SStatusCatalogName = 'Description';
   SStatusCatalogColor = 'Color';
   SStatusCatalogDisplay = 'Display';
-  SStatusCatalogPriority = 'Priority';
   SStatusCatalogUsed = 'Used';
   SStatusCatalogAdd = 'Add';
   SStatusCatalogRename = 'Rename...';
@@ -74,8 +69,6 @@ resourcestring
   SStatusCatalogChooseColor = 'Color...';
   SStatusCatalogDisplayUp = 'Display up';
   SStatusCatalogDisplayDown = 'Display down';
-  SStatusCatalogPriorityUp = 'Priority up';
-  SStatusCatalogPriorityDown = 'Priority down';
   SStatusCatalogCannotRemoveLast = 'At least one status is required.';
   SStatusCatalogMaxReached = 'At most %d statuses are allowed.';
   SStatusCatalogRemapTitle = 'Remap status';
@@ -89,9 +82,7 @@ resourcestring
   SStatusCatalogColorHint =
     'Status color, shown as #RRGGBB. Edit the value, double-click, or use the Color button.';
   SStatusCatalogDisplayHint =
-    'Visual order used in selectors, menus and legends. Change it with Display up/down.';
-  SStatusCatalogPriorityHint =
-    'Color priority for mixed book/chapter nodes. Lower values take precedence.';
+    'Visual order used in selectors, menus, legends and aggregate status bars. Change it with Display up/down.';
   SStatusCatalogUsedHint =
     'Number of verses currently using this status in this project. Read-only.';
 
@@ -127,7 +118,7 @@ begin
   FGrid.Top := 34;
   FGrid.Width := 540;
   FGrid.Height := 330;
-  FGrid.ColCount := 5;
+  FGrid.ColCount := 4;
   FGrid.FixedCols := 0;
   FGrid.FixedRows := 1;
   FGrid.DefaultDrawing := False;
@@ -138,11 +129,10 @@ begin
   FGrid.ShowHint := True;
   FGrid.CellHintPriority := chpAllNoDefault;
   FGrid.Options := FGrid.Options + [goEditing, goCellHints];
-  FGrid.ColWidths[0] := 190;
-  FGrid.ColWidths[1] := 90;
-  FGrid.ColWidths[2] := 70;
-  FGrid.ColWidths[3] := 70;
-  FGrid.ColWidths[4] := 70;
+  FGrid.ColWidths[0] := 220;
+  FGrid.ColWidths[1] := 110;
+  FGrid.ColWidths[2] := 80;
+  FGrid.ColWidths[3] := 80;
 
   ButtonPanel := TPanel.Create(Self);
   ButtonPanel.Parent := Self;
@@ -187,18 +177,6 @@ begin
   FDisplayDownButton.SetBounds(0, 184, 140, 26);
   FDisplayDownButton.Caption := SStatusCatalogDisplayDown;
   FDisplayDownButton.OnClick := @DisplayDownButtonClick;
-
-  FPriorityUpButton := TButton.Create(Self);
-  FPriorityUpButton.Parent := ButtonPanel;
-  FPriorityUpButton.SetBounds(0, 232, 140, 26);
-  FPriorityUpButton.Caption := SStatusCatalogPriorityUp;
-  FPriorityUpButton.OnClick := @PriorityUpButtonClick;
-
-  FPriorityDownButton := TButton.Create(Self);
-  FPriorityDownButton.Parent := ButtonPanel;
-  FPriorityDownButton.SetBounds(0, 266, 140, 26);
-  FPriorityDownButton.Caption := SStatusCatalogPriorityDown;
-  FPriorityDownButton.OnClick := @PriorityDownButtonClick;
 
   FOkButton := TBitBtn.Create(Self);
   FOkButton.Parent := Self;
@@ -312,8 +290,7 @@ begin
     0: HintText := SStatusCatalogNameHint;
     1: HintText := SStatusCatalogColorHint;
     2: HintText := SStatusCatalogDisplayHint;
-    3: HintText := SStatusCatalogPriorityHint;
-    4: HintText := SStatusCatalogUsedHint;
+    3: HintText := SStatusCatalogUsedHint;
   else
     HintText := '';
   end;
@@ -366,16 +343,14 @@ begin
   FGrid.Cells[0, 0] := SStatusCatalogName;
   FGrid.Cells[1, 0] := SStatusCatalogColor;
   FGrid.Cells[2, 0] := SStatusCatalogDisplay;
-  FGrid.Cells[3, 0] := SStatusCatalogPriority;
-  FGrid.Cells[4, 0] := SStatusCatalogUsed;
+  FGrid.Cells[3, 0] := SStatusCatalogUsed;
 
   for RowIndex := 0 to High(FDefinitions) do
   begin
     FGrid.Cells[0, RowIndex + 1] := FDefinitions[RowIndex].Caption;
     FGrid.Cells[1, RowIndex + 1] := StatusColorToString(FDefinitions[RowIndex].Color);
     FGrid.Cells[2, RowIndex + 1] := IntToStr(RowIndex + 1);
-    FGrid.Cells[3, RowIndex + 1] := IntToStr(FDefinitions[RowIndex].PriorityOrder + 1);
-    FGrid.Cells[4, RowIndex + 1] := IntToStr(CountForStatus(FDefinitions[RowIndex].Id));
+    FGrid.Cells[3, RowIndex + 1] := IntToStr(CountForStatus(FDefinitions[RowIndex].Id));
   end;
 end;
 
@@ -398,7 +373,6 @@ begin
   FDefinitions[Index].Caption := Format(SStatusCatalogNewStatus, [Index + 1]);
   FDefinitions[Index].Color := clSilver;
   FDefinitions[Index].DisplayOrder := Index;
-  FDefinitions[Index].PriorityOrder := Index;
   NormalizeStatusDefinitions(FDefinitions, False);
   RefreshGrid;
   FGrid.Row := Length(FDefinitions);
@@ -577,64 +551,6 @@ begin
   NormalizeStatusDefinitions(FDefinitions, False);
   RefreshGrid;
   FGrid.Row := Index + 2;
-end;
-
-procedure TFrmStatusCatalog.PriorityUpButtonClick(Sender: TObject);
-var
-  Index: Integer;
-  DefIndex: Integer;
-  PriorityIndex: Integer;
-  Sorted: TStatusDefinitions;
-  CurrentId: Integer;
-  PreviousId: Integer;
-  Tmp: Integer;
-begin
-  ReadGridCaptions;
-  Index := SelectedDefinitionIndex;
-  if Index < 0 then
-    Exit;
-  CurrentId := FDefinitions[Index].Id;
-  Sorted := SortStatusDefinitionsByPriorityOrder(FDefinitions);
-  PriorityIndex := IndexOfStatusId(Sorted, CurrentId);
-  if PriorityIndex <= 0 then
-    Exit;
-  PreviousId := Sorted[PriorityIndex - 1].Id;
-  DefIndex := DefinitionIndexById(PreviousId);
-  Tmp := FDefinitions[Index].PriorityOrder;
-  FDefinitions[Index].PriorityOrder := FDefinitions[DefIndex].PriorityOrder;
-  FDefinitions[DefIndex].PriorityOrder := Tmp;
-  NormalizeStatusDefinitions(FDefinitions, False);
-  RefreshGrid;
-  FGrid.Row := DisplayIndexOfStatusId(FDefinitions, CurrentId) + 1;
-end;
-
-procedure TFrmStatusCatalog.PriorityDownButtonClick(Sender: TObject);
-var
-  Index: Integer;
-  DefIndex: Integer;
-  PriorityIndex: Integer;
-  Sorted: TStatusDefinitions;
-  CurrentId: Integer;
-  NextId: Integer;
-  Tmp: Integer;
-begin
-  ReadGridCaptions;
-  Index := SelectedDefinitionIndex;
-  if Index < 0 then
-    Exit;
-  CurrentId := FDefinitions[Index].Id;
-  Sorted := SortStatusDefinitionsByPriorityOrder(FDefinitions);
-  PriorityIndex := IndexOfStatusId(Sorted, CurrentId);
-  if (PriorityIndex < 0) or (PriorityIndex >= High(Sorted)) then
-    Exit;
-  NextId := Sorted[PriorityIndex + 1].Id;
-  DefIndex := DefinitionIndexById(NextId);
-  Tmp := FDefinitions[Index].PriorityOrder;
-  FDefinitions[Index].PriorityOrder := FDefinitions[DefIndex].PriorityOrder;
-  FDefinitions[DefIndex].PriorityOrder := Tmp;
-  NormalizeStatusDefinitions(FDefinitions, False);
-  RefreshGrid;
-  FGrid.Row := DisplayIndexOfStatusId(FDefinitions, CurrentId) + 1;
 end;
 
 procedure TFrmStatusCatalog.OkButtonClick(Sender: TObject);

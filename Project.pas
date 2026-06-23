@@ -1055,9 +1055,7 @@ var
       (ColorToRGB(PatchDefinitions[PatchIndex].Color) <>
         ColorToRGB(CurrentDefinitions[CurrentIndex].Color)) or
       (PatchDefinitions[PatchIndex].DisplayOrder <>
-        CurrentDefinitions[CurrentIndex].DisplayOrder) or
-      (PatchDefinitions[PatchIndex].PriorityOrder <>
-        CurrentDefinitions[CurrentIndex].PriorityOrder);
+        CurrentDefinitions[CurrentIndex].DisplayOrder);
   end;
 
   function ComboIndexForStatus(Combo: TComboBox; StatusId: Integer): Integer;
@@ -4024,31 +4022,39 @@ function TProject.GetPlainVerseText(Referencia: string;
 var
   varredorXML: TONTTokenizer;
   s: TTagSintagma;
+  SourceText: string;
 begin
-  result := FAVersiculo[texto].TextoSimples;
-  exit;
   result := '';
-  varredorXML := TTokenizerFactory.CreateTokenizer(TokenizerVersion, FTblPares.Fields[FACamposTexto[texto]].AsString);
-  while varredorXML.LerSintagma(s) <> tsNulo do
-  begin
-    if s.tipo = tsTag then
+
+  if Referencia = '' then
+    SourceText := GetVerseText(texto)
+  else
+    SourceText := GetVerseText(Referencia, texto);
+
+  varredorXML := TTokenizerFactory.CreateTokenizer(TokenizerVersion, SourceText);
+  try
+    while varredorXML.LerSintagma(s) <> tsNulo do
     begin
-      if s.valor = '<RF>' then
+      if s.tipo = tsTag then
       begin
-        varredorXML.LerAteTag(s, '<Rf>');
-        s.tipo := tsMetaDado;
-        continue;
-      end else if AnsiStartsStr('<TS', s.valor) then
-      begin
-        varredorXML.LerAteTag(s, '<Ts>');
-        s.tipo := tsMetaDado;
-        continue;
+        if s.valor = '<RF>' then
+        begin
+          varredorXML.LerAteTag(s, '<Rf>');
+          s.tipo := tsMetaDado;
+          continue;
+        end else if AnsiStartsStr('<TS', s.valor) then
+        begin
+          varredorXML.LerAteTag(s, '<Ts>');
+          s.tipo := tsMetaDado;
+          continue;
+        end;
       end;
+      if s.tipo in [tsEspaco, tsSintagma, tsPontuacao] then
+        result := result + s.valor;
     end;
-    if s.tipo in [tsEspaco, tsSintagma, tsPontuacao] then
-      result := result + s.valor;
+  finally
+    varredorXML.Destroy;
   end;
-  varredorXML.Destroy;
 end;
 
 function TProject.GetTranslationSuggestions(syntagm: TSyntagm): string;

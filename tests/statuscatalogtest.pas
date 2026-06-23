@@ -14,7 +14,6 @@ type
     procedure JsonRoundTripPreservesStableIdsAndColors;
     procedure ValidationRejectsInvalidCatalogs;
     procedure NormalizeCanRenumberNewProjectCatalog;
-    procedure PrioritySortUsesPriorityThenDisplayOrder;
     procedure SegmentWidthsSupportAggregateBars;
   end;
 
@@ -45,19 +44,16 @@ begin
   Definitions[0].Caption := 'Review';
   Definitions[0].Color := RGBToColor(10, 20, 30);
   Definitions[0].DisplayOrder := 2;
-  Definitions[0].PriorityOrder := 1;
 
   Definitions[1].Id := 2;
   Definitions[1].Caption := 'Draft';
   Definitions[1].Color := RGBToColor(40, 50, 60);
   Definitions[1].DisplayOrder := 0;
-  Definitions[1].PriorityOrder := 2;
 
   Definitions[2].Id := 4;
   Definitions[2].Caption := 'Done';
   Definitions[2].Color := RGBToColor(70, 80, 90);
   Definitions[2].DisplayOrder := 1;
-  Definitions[2].PriorityOrder := 0;
 
   Serialized := SaveStatusDefinitions(Definitions);
   Loaded := LoadStatusDefinitions(Serialized, ['A', 'B', 'C', 'D']);
@@ -108,11 +104,9 @@ begin
   Definitions[0].Id := 42;
   Definitions[0].Caption := 'Second';
   Definitions[0].DisplayOrder := 1;
-  Definitions[0].PriorityOrder := 0;
   Definitions[1].Id := 99;
   Definitions[1].Caption := 'First';
   Definitions[1].DisplayOrder := 0;
-  Definitions[1].PriorityOrder := 1;
 
   NormalizeStatusDefinitions(Definitions, True);
 
@@ -121,32 +115,6 @@ begin
   AssertEquals(0, Definitions[0].DisplayOrder);
   AssertEquals('Second', Definitions[1].Caption);
   AssertEquals(1, Definitions[1].Id);
-end;
-
-procedure TStatusCatalogTests.PrioritySortUsesPriorityThenDisplayOrder;
-var
-  Definitions: TStatusDefinitions;
-  Sorted: TStatusDefinitions;
-begin
-  SetLength(Definitions, 3);
-  Definitions[0].Id := 0;
-  Definitions[0].Caption := 'Low';
-  Definitions[0].DisplayOrder := 0;
-  Definitions[0].PriorityOrder := 2;
-  Definitions[1].Id := 1;
-  Definitions[1].Caption := 'High';
-  Definitions[1].DisplayOrder := 1;
-  Definitions[1].PriorityOrder := 0;
-  Definitions[2].Id := 2;
-  Definitions[2].Caption := 'Middle';
-  Definitions[2].DisplayOrder := 2;
-  Definitions[2].PriorityOrder := 1;
-
-  Sorted := SortStatusDefinitionsByPriorityOrder(Definitions);
-
-  AssertEquals(1, Sorted[0].Id);
-  AssertEquals(2, Sorted[1].Id);
-  AssertEquals(0, Sorted[2].Id);
 end;
 
 procedure TStatusCatalogTests.SegmentWidthsSupportAggregateBars;
@@ -172,7 +140,6 @@ begin
     Definitions[I].Id := (I + 1) * 10;
     Definitions[I].Caption := Format('Status %d', [I + 1]);
     Definitions[I].DisplayOrder := I;
-    Definitions[I].PriorityOrder := I;
   end;
 
   SetLength(Counts, 3);

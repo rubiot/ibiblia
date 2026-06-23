@@ -421,7 +421,7 @@ var
   AggregateImageIndex: Integer;
   UniformStatus: Integer;
   HasUniformStatus: Boolean;
-  SortedByPriority: TStatusDefinitions;
+  SortedByDisplay: TStatusDefinitions;
   StatusIndex: Integer;
 begin
   if not Assigned(ParentNode) then
@@ -466,11 +466,11 @@ begin
     Exit;
   end;
 
-  SortedByPriority := SortStatusDefinitionsByPriorityOrder(StatusDefinitions);
-  for StatusIndex := 0 to High(SortedByPriority) do
-    if StatusCountValue(Counts, SortedByPriority[StatusIndex].Id) > 0 then
+  SortedByDisplay := SortStatusDefinitionsByDisplayOrder(StatusDefinitions);
+  for StatusIndex := 0 to High(SortedByDisplay) do
+    if StatusCountValue(Counts, SortedByDisplay[StatusIndex].Id) > 0 then
     begin
-      SetNodeStatus(ParentNode, SortedByPriority[StatusIndex].Id);
+      SetNodeStatus(ParentNode, SortedByDisplay[StatusIndex].Id);
       RefreshNodeCaption(Scope, ParentNode);
       Exit;
     end;

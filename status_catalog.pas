@@ -17,7 +17,6 @@ type
     Caption: string;
     Color: TColor;
     DisplayOrder: Integer;
-    PriorityOrder: Integer;
   end;
 
   TStatusDefinitionComparer = function(const Left, Right: TStatusDefinition): Integer;
@@ -54,7 +53,6 @@ function ValidateStatusDefinitions(const Definitions: TStatusDefinitions;
 procedure NormalizeStatusDefinitions(var Definitions: TStatusDefinitions;
   RenumberIds: Boolean);
 function SortStatusDefinitionsByDisplayOrder(const Definitions: TStatusDefinitions): TStatusDefinitions;
-function SortStatusDefinitionsByPriorityOrder(const Definitions: TStatusDefinitions): TStatusDefinitions;
 function IndexOfStatusId(const Definitions: TStatusDefinitions; StatusId: Integer): Integer;
 function IsValidStatusId(const Definitions: TStatusDefinitions; StatusId: Integer): Boolean;
 function FirstStatusId(const Definitions: TStatusDefinitions): Integer;
@@ -259,22 +257,12 @@ begin
       Result[I].Caption := Format('Status %d', [I + 1]);
     Result[I].Color := LEGACY_STATUS_COLORS[I];
     Result[I].DisplayOrder := I;
-    Result[I].PriorityOrder := I;
   end;
 end;
 
 function CompareByDisplayOrder(const Left, Right: TStatusDefinition): Integer;
 begin
   Result := Left.DisplayOrder - Right.DisplayOrder;
-  if Result = 0 then
-    Result := Left.Id - Right.Id;
-end;
-
-function CompareByPriorityOrder(const Left, Right: TStatusDefinition): Integer;
-begin
-  Result := Left.PriorityOrder - Right.PriorityOrder;
-  if Result = 0 then
-    Result := Left.DisplayOrder - Right.DisplayOrder;
   if Result = 0 then
     Result := Left.Id - Right.Id;
 end;
@@ -302,18 +290,10 @@ begin
   SortDefinitions(Result, @CompareByDisplayOrder);
 end;
 
-function SortStatusDefinitionsByPriorityOrder(
-  const Definitions: TStatusDefinitions): TStatusDefinitions;
-begin
-  Result := Copy(Definitions, 0, Length(Definitions));
-  SortDefinitions(Result, @CompareByPriorityOrder);
-end;
-
 procedure NormalizeStatusDefinitions(var Definitions: TStatusDefinitions;
   RenumberIds: Boolean);
 var
   I: Integer;
-  ByPriority: TStatusDefinitions;
 begin
   Definitions := SortStatusDefinitionsByDisplayOrder(Definitions);
   for I := 0 to High(Definitions) do
@@ -322,10 +302,6 @@ begin
       Definitions[I].Id := I;
     Definitions[I].DisplayOrder := I;
   end;
-
-  ByPriority := SortStatusDefinitionsByPriorityOrder(Definitions);
-  for I := 0 to High(ByPriority) do
-    Definitions[IndexOfStatusId(Definitions, ByPriority[I].Id)].PriorityOrder := I;
 end;
 
 function LoadStatusDefinitions(const SerializedCatalog: string;
@@ -363,7 +339,6 @@ begin
           Result[I].Color := StringToStatusColor(Obj.Get('color', ''),
             LEGACY_STATUS_COLORS[I mod Length(LEGACY_STATUS_COLORS)]);
           Result[I].DisplayOrder := Obj.Get('display_order', I);
-          Result[I].PriorityOrder := Obj.Get('priority_order', I);
         end;
       finally
         Data.Free;
@@ -398,7 +373,6 @@ begin
       Obj.Add('caption', Sorted[I].Caption);
       Obj.Add('color', StatusColorToString(Sorted[I].Color));
       Obj.Add('display_order', Sorted[I].DisplayOrder);
-      Obj.Add('priority_order', Sorted[I].PriorityOrder);
       Arr.Add(Obj);
     end;
     Result := Arr.AsJSON;

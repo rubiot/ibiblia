@@ -238,6 +238,7 @@ type
     function BuildKeyboardShortcutsText: string;
     function CreateVersePanelLabel(AParent: TWinControl): TPanel;
     function CreateStateHeaderLabel(AParent: TWinControl; Bold: Boolean = False): TLabel;
+    procedure AttachStatusComboToHeader;
     procedure CreateStateHeader;
     procedure CreateVersePanelLabels;
     procedure CountCurrentAssociations(out Associated, Total: Integer);
@@ -323,14 +324,10 @@ resourcestring
   SShortcutRollback = 'Rollback current verse';
   SShortcutClearAssociations = 'Clear associations in current verse';
   SShortcutToggleTags = 'Show or hide Strong''s and morphology tags';
-  SShortcutStatus1 = 'Set current verse status to Not associated';
-  SShortcutStatus2 = 'Set current verse status to Associating';
-  SShortcutStatus3 = 'Set current verse status to Needs review';
-  SShortcutStatus4 = 'Set current verse status to Associated';
+  SShortcutStatusFmt = 'Set current verse status to %s';
   SShortcutFinishEdit = 'Finish verse text editing';
   SShortcutShowKeyboardShortcuts = 'Show this list';
-  SStatusCaptionWithShortcuts = 'Status (1-4)';
-  SStatusKeyboardHint = 'Use 1..4 to set the status for the current verse';
+  SStatusKeyboardHint = 'Use 1..9 to set the first visible statuses for the current verse';
   SHeaderNoProject = 'No project open';
   SHeaderReferenceFmt = 'Reference: %s';
   SHeaderStatusFmt = 'Status: %s';
@@ -532,6 +529,27 @@ var
       AddShortcut(ShortCutToText(AAction.ShortCut), ADescription);
   end;
 
+  procedure AddStatusShortcuts;
+  var
+    Definitions, Sorted: TStatusDefinitions;
+    Index: Integer;
+  begin
+    if Assigned(ProjetoAtual) then
+      Definitions := ProjetoAtual.GetStatusDefinitions
+    else
+      Definitions := BuildLegacyStatusDefinitions([
+        STreeLegendNotAssociated,
+        STreeLegendAssociating,
+        STreeLegendNeedsReview,
+        STreeLegendAssociated
+      ]);
+
+    Sorted := SortStatusDefinitionsByDisplayOrder(Definitions);
+    for Index := 0 to Min(High(Sorted), 8) do
+      AddShortcut(IntToStr(Index + 1), Format(SShortcutStatusFmt,
+        [Sorted[Index].Caption]));
+  end;
+
 begin
   Lines := TStringList.Create;
   try
@@ -552,10 +570,7 @@ begin
     AddActionShortcut(ActionSugerirAssociacao, SShortcutAutoAssociate);
     AddActionShortcut(ActionReverterAssociacoes, SShortcutRollback);
     AddActionShortcut(ActionMostrarTags, SShortcutToggleTags);
-    AddShortcut('1', SShortcutStatus1);
-    AddShortcut('2', SShortcutStatus2);
-    AddShortcut('3', SShortcutStatus3);
-    AddShortcut('4', SShortcutStatus4);
+    AddStatusShortcuts;
     AddShortcut('Esc', SShortcutFinishEdit);
 
     AddSection(SShortcutHelpSection);
@@ -600,6 +615,24 @@ begin
   end;
 end;
 
+procedure TFrmPrincipal.AttachStatusComboToHeader;
+begin
+  if Assigned(StatusPanel) then
+  begin
+    StatusPanel.Visible := False;
+    StatusPanel.Width := 0;
+  end;
+
+  if not Assigned(RadioGroupStatus) or not Assigned(FStateHeaderPanel) then
+    Exit;
+
+  RadioGroupStatus.Parent := FStateHeaderPanel;
+  RadioGroupStatus.Anchors := [akLeft, akTop];
+  RadioGroupStatus.Visible := False;
+  RadioGroupStatus.ShowHint := True;
+  RadioGroupStatus.BringToFront;
+end;
+
 procedure TFrmPrincipal.CreateStateHeader;
 begin
   if Assigned(FStateHeaderPanel) then
@@ -624,10 +657,12 @@ begin
 
   FHeaderReferenceLabel := CreateStateHeaderLabel(FStateHeaderPanel, True);
   FHeaderStatusLabel := CreateStateHeaderLabel(FStateHeaderPanel);
+  FHeaderStatusLabel.Visible := False;
   FHeaderAssociationsLabel := CreateStateHeaderLabel(FStateHeaderPanel);
   FHeaderSelectionLabel := CreateStateHeaderLabel(FStateHeaderPanel);
   FHeaderEngineLabel := CreateStateHeaderLabel(FStateHeaderPanel);
   FHeaderModifiedLabel := CreateStateHeaderLabel(FStateHeaderPanel, True);
+  AttachStatusComboToHeader;
 
   UpdateStateHeader;
 end;
@@ -732,6 +767,8 @@ const
   Margin = 8;
   Gap = 14;
   MinReferenceWidth = 120;
+  StatusComboWidth = 178;
+  MinStatusComboWidth = 112;
 var
   X, Y, LineHeight, ModifiedWidth, MaxRight: Integer;
 
@@ -761,6 +798,26 @@ var
     Inc(ALeft, W + Gap);
   end;
 
+  procedure PlaceStatusCombo(var ALeft: Integer; AMaxRight: Integer);
+  var
+    Available, W, ComboTop: Integer;
+  begin
+    if not Assigned(RadioGroupStatus) then
+      Exit;
+
+    Available := Max(0, AMaxRight - ALeft);
+    W := Min(StatusComboWidth, Available);
+    RadioGroupStatus.Visible := Assigned(ProjetoAtual) and
+      (RadioGroupStatus.Items.Count > 0) and (W >= MinStatusComboWidth);
+    if not RadioGroupStatus.Visible then
+      Exit;
+
+    ComboTop := Max(0,
+      (FStateHeaderPanel.ClientHeight - RadioGroupStatus.Height) div 2);
+    RadioGroupStatus.SetBounds(ALeft, ComboTop, W, RadioGroupStatus.Height);
+    Inc(ALeft, W + Gap);
+  end;
+
 begin
   if not Assigned(FStateHeaderPanel) then
     Exit;
@@ -778,7 +835,7 @@ begin
   X := Margin;
 
   PlaceLabel(FHeaderReferenceLabel, X, MaxRight, True, 260);
-  PlaceLabel(FHeaderStatusLabel, X, MaxRight, False, 220);
+  PlaceStatusCombo(X, MaxRight);
   PlaceLabel(FHeaderAssociationsLabel, X, MaxRight, False, 190);
   PlaceLabel(FHeaderSelectionLabel, X, MaxRight, False, 210);
   PlaceLabel(FHeaderEngineLabel, X, MaxRight, False, 180);
@@ -799,7 +856,7 @@ begin
   if not Assigned(ProjetoAtual) then
   begin
     FHeaderReferenceLabel.Caption := SHeaderNoProject;
-    FHeaderStatusLabel.Caption := SHeaderStatusEmpty;
+    FHeaderStatusLabel.Caption := '';
     FHeaderAssociationsLabel.Caption := SHeaderAssociationsEmpty;
     FHeaderSelectionLabel.Caption := SHeaderSelectionNone;
     FHeaderEngineLabel.Caption := Format(SHeaderEngineFmt, [CurrentEngineCaption]);
@@ -820,8 +877,7 @@ begin
 
     FHeaderReferenceLabel.Caption := Format(SHeaderReferenceFmt,
       [ProjetoAtual.FormattedReference]);
-    FHeaderStatusLabel.Caption := Format(SHeaderStatusFmt,
-      [ProjetoAtual.GetStatusDescription(ProjetoAtual.Status)]);
+    FHeaderStatusLabel.Caption := '';
     FHeaderSelectionLabel.Caption := CurrentSelectionCaption;
     FHeaderEngineLabel.Caption := Format(SHeaderEngineFmt, [CurrentEngineCaption]);
 
@@ -838,7 +894,18 @@ begin
   end;
 
   FHeaderReferenceLabel.Hint := FHeaderReferenceLabel.Caption;
-  FHeaderStatusLabel.Hint := FHeaderStatusLabel.Caption;
+  FHeaderStatusLabel.Hint := '';
+  if Assigned(RadioGroupStatus) then
+  begin
+    if Assigned(ProjetoAtual) then
+      RadioGroupStatus.Hint := Format('%s. %s', [
+        Format(SHeaderStatusFmt,
+          [ProjetoAtual.GetStatusDescription(ProjetoAtual.Status)]),
+        SStatusKeyboardHint
+      ])
+    else
+      RadioGroupStatus.Hint := SHeaderStatusEmpty;
+  end;
   FHeaderAssociationsLabel.Hint := FHeaderAssociationsLabel.Caption;
   FHeaderSelectionLabel.Hint := FHeaderSelectionLabel.Caption;
   FHeaderEngineLabel.Hint := FHeaderEngineLabel.Caption;
@@ -1362,7 +1429,6 @@ begin
   if ProjetoAtual <> nil then
   begin
     Caption := format('iBiblia | %s | %s (%s)', [ProjetoAtual.FormattedReference, ProjetoAtual.GetInfo('descricao'), ProjetoAtual.FileName]);
-    RadioGroupStatus.SetFocus;
     ActionSyncTheWordVerseExecute(Sender);
     UpdateStateHeader;
   end;
