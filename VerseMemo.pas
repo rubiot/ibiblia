@@ -5,7 +5,7 @@ unit VerseMemo;
 interface
 
 uses
-  Classes, SysUtils, Controls, Forms, LCLType, SynEdit,
+  Classes, SysUtils, Controls, Forms, LCLType, SynEdit, SynEditKeyCmds,
   {$IFNDEF UNIX}
   Windows,
   {$ENDIF}
@@ -20,12 +20,14 @@ type
   private
     FModified: Boolean;
     FMemo: TSynEdit;
+    FContainer: TScrollBox;
     FVerse: TVerse;
     FOnVerseTextModified: TVerseTextModifiedEvent;
     function GetText: TCaption;
     procedure OnMouseWheel(Sender: TObject; Shift: TShiftState;
              WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
     procedure ApplyTagToSelection(const StartTag, EndTag: string);
+    function HandleEditorCommandKey(var Key: Word; Shift: TShiftState): Boolean;
   protected
     procedure OnKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure OnChange(Sender: TObject);
@@ -46,9 +48,20 @@ resourcestring
 
 implementation
 
+function RemoveFinalLineBreak(const Value: string): string;
+begin
+  Result := Value;
+  if (Length(Result) >= 2) and
+    (Copy(Result, Length(Result) - 1, 2) = #13#10) then
+    SetLength(Result, Length(Result) - 2)
+  else if (Length(Result) >= 1) and
+    (Result[Length(Result)] in [#10, #13]) then
+    SetLength(Result, Length(Result) - 1);
+end;
+
 function TVerseMemo.GetText: TCaption;
 begin
-  Result := FMemo.Text;
+  Result := RemoveFinalLineBreak(FMemo.Text);
 end;
 
 procedure TVerseMemo.OnMouseWheel(Sender: TObject; Shift: TShiftState;
@@ -67,9 +80,102 @@ begin
     FMemo.SelText := StartTag + SelectedText + EndTag;
 end;
 
+function TVerseMemo.HandleEditorCommandKey(var Key: Word;
+  Shift: TShiftState): Boolean;
+var
+  Command: TSynEditorCommand;
+  BasicShift: TShiftState;
+begin
+  Result := False;
+
+  if not Assigned(FMemo) or FMemo.ReadOnly then
+    Exit;
+
+  BasicShift := Shift * [ssShift, ssCtrl];
+  if Shift <> BasicShift then
+    Exit;
+
+  Command := ecNone;
+  case Key of
+    VK_BACK:
+      if (BasicShift = []) or (BasicShift = [ssShift]) then
+        Command := ecDeleteLastChar
+      else if BasicShift = [ssCtrl] then
+        Command := ecDeleteLastWord;
+    VK_DELETE:
+      if BasicShift = [] then
+        Command := ecDeleteChar
+      else if BasicShift = [ssShift] then
+        Command := ecCut;
+    VK_C:
+      if BasicShift = [ssCtrl] then
+        Command := ecCopy;
+    VK_V:
+      if BasicShift = [ssCtrl] then
+        Command := ecPaste;
+    VK_X:
+      if BasicShift = [ssCtrl] then
+        Command := ecCut;
+    VK_LEFT:
+      if BasicShift = [] then
+        Command := ecLeft
+      else if BasicShift = [ssShift] then
+        Command := ecSelLeft
+      else if BasicShift = [ssCtrl] then
+        Command := ecWordLeft
+      else if BasicShift = [ssShift, ssCtrl] then
+        Command := ecSelWordLeft;
+    VK_RIGHT:
+      if BasicShift = [] then
+        Command := ecRight
+      else if BasicShift = [ssShift] then
+        Command := ecSelRight
+      else if BasicShift = [ssCtrl] then
+        Command := ecWordRight
+      else if BasicShift = [ssShift, ssCtrl] then
+        Command := ecSelWordRight;
+    VK_UP:
+      if BasicShift = [] then
+        Command := ecUp
+      else if BasicShift = [ssShift] then
+        Command := ecSelUp;
+    VK_DOWN:
+      if BasicShift = [] then
+        Command := ecDown
+      else if BasicShift = [ssShift] then
+        Command := ecSelDown;
+    VK_HOME:
+      if BasicShift = [] then
+        Command := ecLineStart
+      else if BasicShift = [ssShift] then
+        Command := ecSelLineStart
+      else if BasicShift = [ssCtrl] then
+        Command := ecEditorTop
+      else if BasicShift = [ssShift, ssCtrl] then
+        Command := ecSelEditorTop;
+    VK_END:
+      if BasicShift = [] then
+        Command := ecLineEnd
+      else if BasicShift = [ssShift] then
+        Command := ecSelLineEnd
+      else if BasicShift = [ssCtrl] then
+        Command := ecEditorBottom
+      else if BasicShift = [ssShift, ssCtrl] then
+        Command := ecSelEditorBottom;
+  end;
+
+  Result := Command <> ecNone;
+  if Result then
+  begin
+    FMemo.CommandProcessor(Command, #0, nil);
+    Key := 0;
+  end;
+end;
+
 procedure TVerseMemo.OnKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
-  if (ssCtrl in Shift) and (ssShift in Shift) then
+  if (ssCtrl in Shift) and (ssShift in Shift) and
+    (Key in [VK_I, VK_E, VK_O]) then
   begin
     case Key of
       VK_I:
@@ -94,7 +200,9 @@ begin
     ConfirmChange;
   end
   else if Key = VK_RETURN then
-    Key := 0;
+    Key := 0
+  else
+    HandleEditorCommandKey(Key, Shift);
 end;
 
 procedure TVerseMemo.OnChange(Sender: TObject);
@@ -123,12 +231,13 @@ constructor TVerseMemo.Create;
 begin
   FMemo := TSynEdit.Create(nil);
   FMemo.Visible := False;
-  FMemo.Align := alClient;
+  FMemo.Align := alNone;
   ConfigureTheWordSyntaxEditor(FMemo, False);
   FMemo.OnKeyDown := @OnKeyDown;
   FMemo.OnChange := @OnChange;
   FMemo.OnMouseWheel := @OnMouseWheel;
   FModified := False;
+  FContainer := nil;
   FVerse := nil;
   FOnVerseTextModified := nil;
 end;
@@ -141,7 +250,7 @@ end;
 
 procedure TVerseMemo.Activate(Container: TScrollBox; Verse: TVerse);
 begin
-  if FMemo.Visible and FModified and (FMemo.Parent <> Container) then
+  if FMemo.Visible and FModified and (FContainer <> Container) then
   begin
     ConfirmChange;
     Exit;
@@ -149,10 +258,25 @@ begin
 
   ApplyTheWordSyntaxEditorFont(FMemo);
   FModified := False;
+  FContainer := Container;
   FVerse := Verse;
   FMemo.Parent := nil;
   FMemo.Text := Verse.XML;
-  FMemo.Parent := Container;
+
+  if Assigned(Container.Parent) then
+  begin
+    FMemo.Align := alNone;
+    FMemo.Parent := Container.Parent;
+    FMemo.SetBounds(Container.Left, Container.Top, Container.Width,
+      Container.Height);
+    FMemo.Anchors := Container.Anchors;
+  end
+  else
+  begin
+    FMemo.Align := alClient;
+    FMemo.Parent := Container;
+  end;
+
   FMemo.BringToFront;
   FMemo.Visible := True;
   FMemo.SetFocus;
@@ -166,6 +290,7 @@ begin
   FMemo.Visible := False;
   if Assigned(FOnVerseTextModified) and FModified then
     FOnVerseTextModified(Self);
+  FContainer := nil;
 end;
 
 end.

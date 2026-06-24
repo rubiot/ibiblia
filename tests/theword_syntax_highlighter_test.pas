@@ -14,6 +14,8 @@ type
 
   TTheWordSyntaxHighlighterTests = class(TTestCase)
   private
+    function CompletionItemsContainTag(Items: TStrings;
+      const TagName: string): Boolean;
     function CreateTestIni: TMemIniFile;
     function KindForToken(const Line, Token: string): TTheWordTokenKind;
     procedure AssertAttributeStyle(const Message: string;
@@ -49,9 +51,27 @@ type
     procedure TagPairFindsHtmlClosingTag;
     procedure TagPairIgnoresUnmatchedTags;
     procedure ConfigureEditorInstallsTagPairMarkup;
+    procedure TagCompletionFiltersByPrefix;
+    procedure TagCompletionSnippetsUseClosingTags;
+    procedure TagCompletionIndentTagsAreNotPairs;
+    procedure TagCompletionCompletesTagAtCaret;
+    procedure TagCompletionAutoClosesTypedTag;
+    procedure TagCompletionDoesNotAutoCloseSingleTag;
+    procedure ConfigureEditorInstallsTagCompletionOnlyWhenEditable;
   end;
 
 implementation
+
+function TTheWordSyntaxHighlighterTests.CompletionItemsContainTag(
+  Items: TStrings; const TagName: string): Boolean;
+var
+  Index: Integer;
+begin
+  Result := False;
+  for Index := 0 to Items.Count - 1 do
+    if Pos(TagName + ' ', Items[Index]) = 1 then
+      Exit(True);
+end;
 
 function TTheWordSyntaxHighlighterTests.CreateTestIni: TMemIniFile;
 var
@@ -563,6 +583,148 @@ begin
     ConfigureTheWordSyntaxEditor(Editor, False);
     AssertNotNull('tag pair markup',
       Editor.MarkupByClass[TTheWordTagPairMarkup]);
+  finally
+    Editor.Free;
+    ResetTheWordSyntaxEditorFont;
+  end;
+end;
+
+procedure TTheWordSyntaxHighlighterTests.TagCompletionFiltersByPrefix;
+var
+  Items: TStringList;
+begin
+  Items := TStringList.Create;
+  try
+    GetTheWordTagCompletionItems('F', Items);
+    AssertTrue('FI suggested', CompletionItemsContainTag(Items, 'FI'));
+    AssertTrue('FO suggested', CompletionItemsContainTag(Items, 'FO'));
+    AssertFalse('CM not suggested', CompletionItemsContainTag(Items, 'CM'));
+
+    GetTheWordTagCompletionItems('fo', Items);
+    AssertTrue('case-insensitive FO suggested',
+      CompletionItemsContainTag(Items, 'FO'));
+    AssertFalse('FI filtered out', CompletionItemsContainTag(Items, 'FI'));
+  finally
+    Items.Free;
+  end;
+end;
+
+procedure TTheWordSyntaxHighlighterTests.TagCompletionSnippetsUseClosingTags;
+var
+  CaretOffset: Integer;
+  Snippet: string;
+begin
+  AssertTrue('FI snippet', TryGetTheWordTagCompletionSnippet('FI',
+    Snippet, CaretOffset));
+  AssertEquals('FI snippet text', '<FI><Fi>', Snippet);
+  AssertEquals('FI caret', Length('<FI>'), CaretOffset);
+
+  AssertTrue('HTML snippet', TryGetTheWordTagCompletionSnippet('i',
+    Snippet, CaretOffset));
+  AssertEquals('HTML snippet text', '<i></i>', Snippet);
+  AssertEquals('HTML caret', Length('<i>'), CaretOffset);
+
+  AssertTrue('WT snippet', TryGetTheWordTagCompletionSnippet('WT',
+    Snippet, CaretOffset));
+  AssertEquals('WT snippet text', '<WT>', Snippet);
+  AssertEquals('WT caret', Length('<WT'), CaretOffset);
+end;
+
+procedure TTheWordSyntaxHighlighterTests.TagCompletionIndentTagsAreNotPairs;
+var
+  CaretOffset: Integer;
+  CurrentTag: TTheWordTagPairPosition;
+  Lines: TStringList;
+  MatchingTag: TTheWordTagPairPosition;
+  Snippet: string;
+begin
+  AssertTrue('PI snippet', TryGetTheWordTagCompletionSnippet('PI',
+    Snippet, CaretOffset));
+  AssertEquals('PI text', '<PI>', Snippet);
+  AssertEquals('PI caret', Length('<PI>'), CaretOffset);
+
+  AssertTrue('PF snippet', TryGetTheWordTagCompletionSnippet('PF',
+    Snippet, CaretOffset));
+  AssertEquals('PF text', '<PF>', Snippet);
+  AssertEquals('PF caret', Length('<PF>'), CaretOffset);
+
+  Lines := TStringList.Create;
+  try
+    Lines.Add('<PI>indented<Pi>');
+    AssertFalse('PI is not a pair', FindTheWordMatchingTagPairAt(Lines,
+      Point(2, 1), CurrentTag, MatchingTag));
+  finally
+    Lines.Free;
+  end;
+end;
+
+procedure TTheWordSyntaxHighlighterTests.TagCompletionCompletesTagAtCaret;
+var
+  Editor: TSynEdit;
+begin
+  Editor := TSynEdit.Create(nil);
+  try
+    ConfigureTheWordSyntaxEditor(Editor, False);
+    Editor.Text := '<F';
+    Editor.LogicalCaretXY := Point(3, 1);
+    AssertTrue('completed', CompleteTheWordTagAtCaret(Editor, 'FI'));
+    AssertEquals('text', '<FI><Fi>', Editor.Lines[0]);
+    AssertEquals('caret x', Length('<FI>') + 1, Editor.LogicalCaretXY.X);
+  finally
+    Editor.Free;
+    ResetTheWordSyntaxEditorFont;
+  end;
+end;
+
+procedure TTheWordSyntaxHighlighterTests.TagCompletionAutoClosesTypedTag;
+var
+  Editor: TSynEdit;
+begin
+  Editor := TSynEdit.Create(nil);
+  try
+    ConfigureTheWordSyntaxEditor(Editor, False);
+    Editor.Text := '<FI>';
+    Editor.LogicalCaretXY := Point(5, 1);
+    AssertTrue('closed', InsertTheWordAutoClosingTagAtCaret(Editor));
+    AssertEquals('text', '<FI><Fi>', Editor.Lines[0]);
+    AssertEquals('caret x', Length('<FI>') + 1, Editor.LogicalCaretXY.X);
+  finally
+    Editor.Free;
+    ResetTheWordSyntaxEditorFont;
+  end;
+end;
+
+procedure TTheWordSyntaxHighlighterTests.TagCompletionDoesNotAutoCloseSingleTag;
+var
+  Editor: TSynEdit;
+begin
+  Editor := TSynEdit.Create(nil);
+  try
+    ConfigureTheWordSyntaxEditor(Editor, False);
+    Editor.Text := '<CM>';
+    Editor.LogicalCaretXY := Point(5, 1);
+    AssertFalse('not closed', InsertTheWordAutoClosingTagAtCaret(Editor));
+    AssertEquals('text', '<CM>', Editor.Lines[0]);
+    AssertEquals('caret x', 5, Editor.LogicalCaretXY.X);
+  finally
+    Editor.Free;
+    ResetTheWordSyntaxEditorFont;
+  end;
+end;
+
+procedure TTheWordSyntaxHighlighterTests.ConfigureEditorInstallsTagCompletionOnlyWhenEditable;
+var
+  Editor: TSynEdit;
+begin
+  Editor := TSynEdit.Create(nil);
+  try
+    ConfigureTheWordSyntaxEditor(Editor, False);
+    AssertTrue('editable editor has completion',
+      TheWordSyntaxEditorHasTagCompletion(Editor));
+
+    ConfigureTheWordSyntaxEditor(Editor, True);
+    AssertFalse('read-only editor has no completion',
+      TheWordSyntaxEditorHasTagCompletion(Editor));
   finally
     Editor.Free;
     ResetTheWordSyntaxEditorFont;

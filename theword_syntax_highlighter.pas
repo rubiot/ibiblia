@@ -5,9 +5,10 @@ unit theword_syntax_highlighter;
 interface
 
 uses
-  Classes, SysUtils, StrUtils, Types, Controls, Graphics, IniFiles, StdCtrls,
-  SynEdit, SynEditHighlighter, SynEditMarkup, SynEditMiscClasses,
-  SynEditTypes, SynEditWrappedView;
+  Classes, SysUtils, StrUtils, Types, Controls, Graphics, IniFiles, LCLType,
+  StdCtrls, SynCompletion, SynEdit, SynEditHighlighter, SynEditKeyCmds,
+  SynEditMarkup,
+  SynEditMiscClasses, SynEditTypes, SynEditWrappedView;
 
 type
   TTheWordTokenKind = (
@@ -194,6 +195,13 @@ procedure ApplyTheWordSyntaxColorSchemeToEditors(Root: TWinControl);
 function TheWordSyntaxElementId(Element: TTheWordSyntaxElement): string;
 function TheWordSyntaxElementCaption(Element: TTheWordSyntaxElement): string;
 function TheWordSyntaxTokenKindName(Kind: Integer): string;
+procedure GetTheWordTagCompletionItems(const Prefix: string; Items: TStrings);
+function TryGetTheWordTagCompletionSnippet(const TagNameOrDisplay: string;
+  out Snippet: string; out CaretOffset: Integer): Boolean;
+function CompleteTheWordTagAtCaret(Editor: TSynEdit;
+  const TagNameOrDisplay: string): Boolean;
+function InsertTheWordAutoClosingTagAtCaret(Editor: TSynEdit): Boolean;
+function TheWordSyntaxEditorHasTagCompletion(Editor: TSynEdit): Boolean;
 function FindTheWordMatchingTagPairAt(Lines: TStrings; const Caret: TPoint;
   out CurrentTag, MatchingTag: TTheWordTagPairPosition): Boolean;
 
@@ -209,6 +217,20 @@ var
 type
   TTheWordTagPairFamily = string[31];
 
+  TTheWordTagCompletionCaretMode = (
+    twccAfterSnippet,
+    twccAfterOpening,
+    twccBeforeCloseAngle
+  );
+
+  TTheWordTagCompletionDefinition = record
+    Name: string;
+    OpeningText: string;
+    ClosingText: string;
+    Description: string;
+    CaretMode: TTheWordTagCompletionCaretMode;
+  end;
+
   TTheWordRawTag = record
     Position: TTheWordTagPairPosition;
     Family: TTheWordTagPairFamily;
@@ -216,6 +238,141 @@ type
   end;
 
   TTheWordRawTagArray = array of TTheWordRawTag;
+
+  { TTheWordTagCompletionController }
+
+  TTheWordTagCompletionController = class(TComponent)
+  private
+    FCompletion: TSynCompletion;
+    FEditor: TSynEdit;
+    function EnsureCompletion: Boolean;
+    procedure ExecuteCompletion(const Prefix: string);
+    procedure HandleBeforeUtf8KeyPress(Sender: TObject;
+      var UTF8Key: TUTF8Char);
+    procedure HandleCompletionCancel(Sender: TObject);
+    procedure HandleCompletionKeyDown(Sender: TObject; var Key: Word;
+      Shift: TShiftState);
+    procedure HandleCompletionKeyPress(Sender: TObject; var Key: char);
+    procedure HandleCompletionSearchPosition(var APosition: integer);
+    procedure HandleCompletionUtf8KeyPress(Sender: TObject;
+      var UTF8Key: TUTF8Char);
+    procedure HandleCompletionValidate(Sender: TObject; KeyChar: TUTF8Char;
+      Shift: TShiftState);
+  public
+    constructor Create(AEditor: TSynEdit); reintroduce;
+    destructor Destroy; override;
+  end;
+
+const
+  THEWORD_TAG_COMPLETION_DEFINITIONS: array[0..52] of
+    TTheWordTagCompletionDefinition = (
+    (Name: 'FI'; OpeningText: 'FI'; ClosingText: '<Fi>';
+      Description: 'added words / italics'; CaretMode: twccAfterOpening),
+    (Name: 'FR'; OpeningText: 'FR'; ClosingText: '<Fr>';
+      Description: 'words of Jesus'; CaretMode: twccAfterOpening),
+    (Name: 'FO'; OpeningText: 'FO'; ClosingText: '<Fo>';
+      Description: 'Old Testament quote'; CaretMode: twccAfterOpening),
+    (Name: 'FU'; OpeningText: 'FU'; ClosingText: '<Fu>';
+      Description: 'underline'; CaretMode: twccAfterOpening),
+    (Name: 'TS'; OpeningText: 'TS'; ClosingText: '<Ts>';
+      Description: 'chapter heading'; CaretMode: twccAfterOpening),
+    (Name: 'TS0'; OpeningText: 'TS0'; ClosingText: '<Ts>';
+      Description: 'chapter heading level 0'; CaretMode: twccAfterOpening),
+    (Name: 'TS1'; OpeningText: 'TS1'; ClosingText: '<Ts>';
+      Description: 'chapter heading level 1'; CaretMode: twccAfterOpening),
+    (Name: 'TS2'; OpeningText: 'TS2'; ClosingText: '<Ts>';
+      Description: 'chapter heading level 2'; CaretMode: twccAfterOpening),
+    (Name: 'TS3'; OpeningText: 'TS3'; ClosingText: '<Ts>';
+      Description: 'chapter heading level 3'; CaretMode: twccAfterOpening),
+    (Name: 'RF'; OpeningText: 'RF'; ClosingText: '<Rf>';
+      Description: 'footnote'; CaretMode: twccAfterOpening),
+    (Name: 'RX'; OpeningText: 'RX'; ClosingText: '<Rx>';
+      Description: 'cross-reference'; CaretMode: twccAfterOpening),
+    (Name: 'NB'; OpeningText: 'NB'; ClosingText: '<Nb>';
+      Description: 'non-Bible text'; CaretMode: twccAfterOpening),
+    (Name: 'ST'; OpeningText: 'ST'; ClosingText: '<St>';
+      Description: 'switchable text'; CaretMode: twccAfterOpening),
+    (Name: 'b'; OpeningText: 'b'; ClosingText: '</b>';
+      Description: 'bold HTML'; CaretMode: twccAfterOpening),
+    (Name: 'i'; OpeningText: 'i'; ClosingText: '</i>';
+      Description: 'italic HTML'; CaretMode: twccAfterOpening),
+    (Name: 'u'; OpeningText: 'u'; ClosingText: '</u>';
+      Description: 'underline HTML'; CaretMode: twccAfterOpening),
+    (Name: 's'; OpeningText: 's'; ClosingText: '</s>';
+      Description: 'strikethrough HTML'; CaretMode: twccAfterOpening),
+    (Name: 'sup'; OpeningText: 'sup'; ClosingText: '</sup>';
+      Description: 'superscript HTML'; CaretMode: twccAfterOpening),
+    (Name: 'sub'; OpeningText: 'sub'; ClosingText: '</sub>';
+      Description: 'subscript HTML'; CaretMode: twccAfterOpening),
+    (Name: 'font'; OpeningText: 'font'; ClosingText: '</font>';
+      Description: 'font HTML'; CaretMode: twccAfterOpening),
+    (Name: 'span'; OpeningText: 'span'; ClosingText: '</span>';
+      Description: 'span HTML'; CaretMode: twccAfterOpening),
+    (Name: 'p'; OpeningText: 'p'; ClosingText: '</p>';
+      Description: 'paragraph HTML'; CaretMode: twccAfterOpening),
+    (Name: 'a'; OpeningText: 'a'; ClosingText: '</a>';
+      Description: 'link HTML'; CaretMode: twccAfterOpening),
+    (Name: 'rtl'; OpeningText: 'rtl'; ClosingText: '</rtl>';
+      Description: 'right-to-left override'; CaretMode: twccAfterOpening),
+    (Name: 'ltr'; OpeningText: 'ltr'; ClosingText: '</ltr>';
+      Description: 'left-to-right override'; CaretMode: twccAfterOpening),
+    (Name: 'rtf'; OpeningText: 'rtf tag=""'; ClosingText: '</rtf>';
+      Description: 'raw RTF'; CaretMode: twccAfterOpening),
+    (Name: 'CM'; OpeningText: 'CM'; ClosingText: '';
+      Description: 'new paragraph'; CaretMode: twccAfterSnippet),
+    (Name: 'CL'; OpeningText: 'CL'; ClosingText: '';
+      Description: 'new line'; CaretMode: twccAfterSnippet),
+    (Name: 'CI'; OpeningText: 'CI'; ClosingText: '';
+      Description: 'paragraph without extra space'; CaretMode: twccAfterSnippet),
+    (Name: 'PI'; OpeningText: 'PI'; ClosingText: '';
+      Description: 'paragraph indent'; CaretMode: twccAfterSnippet),
+    (Name: 'PI0'; OpeningText: 'PI0'; ClosingText: '';
+      Description: 'paragraph indent level 0'; CaretMode: twccAfterSnippet),
+    (Name: 'PI1'; OpeningText: 'PI1'; ClosingText: '';
+      Description: 'paragraph indent level 1'; CaretMode: twccAfterSnippet),
+    (Name: 'PI2'; OpeningText: 'PI2'; ClosingText: '';
+      Description: 'paragraph indent level 2'; CaretMode: twccAfterSnippet),
+    (Name: 'PI3'; OpeningText: 'PI3'; ClosingText: '';
+      Description: 'paragraph indent level 3'; CaretMode: twccAfterSnippet),
+    (Name: 'PI4'; OpeningText: 'PI4'; ClosingText: '';
+      Description: 'paragraph indent level 4'; CaretMode: twccAfterSnippet),
+    (Name: 'PI5'; OpeningText: 'PI5'; ClosingText: '';
+      Description: 'paragraph indent level 5'; CaretMode: twccAfterSnippet),
+    (Name: 'PI6'; OpeningText: 'PI6'; ClosingText: '';
+      Description: 'paragraph indent level 6'; CaretMode: twccAfterSnippet),
+    (Name: 'PI7'; OpeningText: 'PI7'; ClosingText: '';
+      Description: 'paragraph indent level 7'; CaretMode: twccAfterSnippet),
+    (Name: 'Pi'; OpeningText: 'Pi'; ClosingText: '';
+      Description: 'reset paragraph indent'; CaretMode: twccAfterSnippet),
+    (Name: 'PF'; OpeningText: 'PF'; ClosingText: '';
+      Description: 'first-line indent'; CaretMode: twccAfterSnippet),
+    (Name: 'PF0'; OpeningText: 'PF0'; ClosingText: '';
+      Description: 'first-line indent level 0'; CaretMode: twccAfterSnippet),
+    (Name: 'PF1'; OpeningText: 'PF1'; ClosingText: '';
+      Description: 'first-line indent level 1'; CaretMode: twccAfterSnippet),
+    (Name: 'PF2'; OpeningText: 'PF2'; ClosingText: '';
+      Description: 'first-line indent level 2'; CaretMode: twccAfterSnippet),
+    (Name: 'PF3'; OpeningText: 'PF3'; ClosingText: '';
+      Description: 'first-line indent level 3'; CaretMode: twccAfterSnippet),
+    (Name: 'PF4'; OpeningText: 'PF4'; ClosingText: '';
+      Description: 'first-line indent level 4'; CaretMode: twccAfterSnippet),
+    (Name: 'PF5'; OpeningText: 'PF5'; ClosingText: '';
+      Description: 'first-line indent level 5'; CaretMode: twccAfterSnippet),
+    (Name: 'PF6'; OpeningText: 'PF6'; ClosingText: '';
+      Description: 'first-line indent level 6'; CaretMode: twccAfterSnippet),
+    (Name: 'PF7'; OpeningText: 'PF7'; ClosingText: '';
+      Description: 'first-line indent level 7'; CaretMode: twccAfterSnippet),
+    (Name: 'br'; OpeningText: 'br'; ClosingText: '';
+      Description: 'line break HTML'; CaretMode: twccAfterSnippet),
+    (Name: 'wt'; OpeningText: 'wt'; ClosingText: '';
+      Description: 'word token marker'; CaretMode: twccAfterSnippet),
+    (Name: 'WG'; OpeningText: 'WG'; ClosingText: '';
+      Description: 'Greek Strong prefix'; CaretMode: twccBeforeCloseAngle),
+    (Name: 'WH'; OpeningText: 'WH'; ClosingText: '';
+      Description: 'Hebrew Strong prefix'; CaretMode: twccBeforeCloseAngle),
+    (Name: 'WT'; OpeningText: 'WT'; ClosingText: '';
+      Description: 'morphology prefix'; CaretMode: twccBeforeCloseAngle)
+  );
 
 procedure ClearTagPairPosition(out Position: TTheWordTagPairPosition);
 begin
@@ -690,6 +847,278 @@ begin
   Result := (Value >= MinValue) and (Value <= MaxValue);
 end;
 
+function TheWordTagCompletionDisplay(
+  const Definition: TTheWordTagCompletionDefinition): string;
+begin
+  if Definition.Description <> '' then
+    Result := Definition.Name + ' - ' + Definition.Description
+  else
+    Result := Definition.Name;
+end;
+
+function TheWordTagCompletionNameFromDisplay(const Value: string): string;
+var
+  SeparatorPos: Integer;
+begin
+  Result := Trim(Value);
+  SeparatorPos := Pos(' ', Result);
+  if SeparatorPos > 0 then
+    Result := Copy(Result, 1, SeparatorPos - 1);
+end;
+
+function NormalizeTagCompletionPrefix(const Prefix: string): string;
+begin
+  Result := Trim(Prefix);
+  if (Result <> '') and (Result[1] = '<') then
+    Delete(Result, 1, 1);
+end;
+
+function CompletionPrefixMatches(const Prefix, TagName: string): Boolean;
+begin
+  Result := (Prefix = '') or
+    (AnsiCompareText(Prefix, Copy(TagName, 1, Length(Prefix))) = 0);
+end;
+
+function TryFindTheWordTagCompletionDefinition(const TagNameOrDisplay: string;
+  out Definition: TTheWordTagCompletionDefinition): Boolean;
+var
+  Index: Integer;
+  TagName: string;
+begin
+  Result := False;
+  TagName := TheWordTagCompletionNameFromDisplay(TagNameOrDisplay);
+  if TagName = '' then
+    Exit;
+
+  for Index := Low(THEWORD_TAG_COMPLETION_DEFINITIONS) to
+    High(THEWORD_TAG_COMPLETION_DEFINITIONS) do
+    if THEWORD_TAG_COMPLETION_DEFINITIONS[Index].Name = TagName then
+    begin
+      Definition := THEWORD_TAG_COMPLETION_DEFINITIONS[Index];
+      Exit(True);
+    end;
+
+  for Index := Low(THEWORD_TAG_COMPLETION_DEFINITIONS) to
+    High(THEWORD_TAG_COMPLETION_DEFINITIONS) do
+    if AnsiCompareText(THEWORD_TAG_COMPLETION_DEFINITIONS[Index].Name,
+      TagName) = 0 then
+    begin
+      Definition := THEWORD_TAG_COMPLETION_DEFINITIONS[Index];
+      Exit(True);
+    end;
+end;
+
+procedure GetTheWordTagCompletionItems(const Prefix: string; Items: TStrings);
+var
+  Index: Integer;
+  NormalizedPrefix: string;
+begin
+  if not Assigned(Items) then
+    Exit;
+
+  NormalizedPrefix := NormalizeTagCompletionPrefix(Prefix);
+  Items.BeginUpdate;
+  try
+    Items.Clear;
+    for Index := Low(THEWORD_TAG_COMPLETION_DEFINITIONS) to
+      High(THEWORD_TAG_COMPLETION_DEFINITIONS) do
+      if CompletionPrefixMatches(NormalizedPrefix,
+        THEWORD_TAG_COMPLETION_DEFINITIONS[Index].Name) then
+        Items.Add(TheWordTagCompletionDisplay(
+          THEWORD_TAG_COMPLETION_DEFINITIONS[Index]));
+  finally
+    Items.EndUpdate;
+  end;
+end;
+
+function TryGetTheWordTagCompletionSnippet(const TagNameOrDisplay: string;
+  out Snippet: string; out CaretOffset: Integer): Boolean;
+var
+  Definition: TTheWordTagCompletionDefinition;
+  OpeningTag: string;
+begin
+  Result := TryFindTheWordTagCompletionDefinition(TagNameOrDisplay,
+    Definition);
+  if not Result then
+  begin
+    Snippet := '';
+    CaretOffset := 0;
+    Exit;
+  end;
+
+  OpeningTag := '<' + Definition.OpeningText + '>';
+  Snippet := OpeningTag + Definition.ClosingText;
+
+  case Definition.CaretMode of
+    twccAfterOpening:
+      CaretOffset := Length(OpeningTag);
+    twccBeforeCloseAngle:
+      CaretOffset := Length('<' + Definition.OpeningText);
+  else
+    CaretOffset := Length(Snippet);
+  end;
+end;
+
+function FindTheWordCompletionStart(Editor: TSynEdit; out StartPoint: TPoint
+  ): Boolean;
+var
+  Caret: TPoint;
+  Index: Integer;
+  Line: string;
+begin
+  Result := False;
+  StartPoint := Point(0, 0);
+
+  if not Assigned(Editor) then
+    Exit;
+
+  Caret := Editor.LogicalCaretXY;
+  if (Caret.Y < 1) or (Caret.Y > Editor.Lines.Count) or (Caret.X < 1) then
+    Exit;
+
+  Line := Editor.Lines[Caret.Y - 1];
+  Index := Caret.X - 1;
+  if Index > Length(Line) then
+    Index := Length(Line);
+
+  while Index >= 1 do
+  begin
+    case Line[Index] of
+      '<':
+        begin
+          if (Index < Length(Line)) and (Line[Index + 1] = '/') then
+            Exit;
+          StartPoint := Point(Index, Caret.Y);
+          Exit(True);
+        end;
+      '>', ' ', #9, #10, #13:
+        Exit;
+    end;
+    Dec(Index);
+  end;
+end;
+
+function CompleteTheWordTagAtCaret(Editor: TSynEdit;
+  const TagNameOrDisplay: string): Boolean;
+var
+  StartPoint: TPoint;
+  EndPoint: TPoint;
+  Snippet: string;
+  CaretOffset: Integer;
+begin
+  Result := False;
+  if not Assigned(Editor) or Editor.ReadOnly then
+    Exit;
+
+  if not FindTheWordCompletionStart(Editor, StartPoint) then
+    Exit;
+
+  if not TryGetTheWordTagCompletionSnippet(TagNameOrDisplay, Snippet,
+    CaretOffset) then
+    Exit;
+
+  EndPoint := Editor.LogicalCaretXY;
+  Editor.BeginUndoBlock;
+  Editor.BeginUpdate;
+  try
+    Editor.TextBetweenPointsEx[StartPoint, EndPoint, scamEnd] := Snippet;
+    Editor.LogicalCaretXY := Point(StartPoint.X + CaretOffset, StartPoint.Y);
+  finally
+    Editor.EndUpdate;
+    Editor.EndUndoBlock;
+  end;
+  Result := True;
+end;
+
+function GetTagNameFromInnerText(const Inner: string): string;
+var
+  EndIndex: Integer;
+  StartIndex: Integer;
+begin
+  Result := '';
+  if Inner = '' then
+    Exit;
+
+  StartIndex := 1;
+  if Inner[StartIndex] = '/' then
+    Inc(StartIndex);
+  if StartIndex > Length(Inner) then
+    Exit;
+
+  EndIndex := StartIndex;
+  while (EndIndex <= Length(Inner)) and not IsTagStop(Inner[EndIndex]) do
+    Inc(EndIndex);
+  Result := Copy(Inner, StartIndex, EndIndex - StartIndex);
+end;
+
+function TryGetTheWordClosingTagForInnerText(const Inner: string;
+  out ClosingText: string): Boolean;
+var
+  Definition: TTheWordTagCompletionDefinition;
+  TagName: string;
+begin
+  Result := False;
+  ClosingText := '';
+  if (Inner = '') or IsTagSpace(Inner[1]) or IsTagSpace(Inner[Length(Inner)]) or
+    (Inner[1] = '/') or (Inner[Length(Inner)] = '/') then
+    Exit;
+
+  TagName := GetTagNameFromInnerText(Inner);
+  if TagName = '' then
+    Exit;
+
+  if TryFindTheWordTagCompletionDefinition(TagName, Definition) then
+    if Definition.ClosingText <> '' then
+    begin
+      ClosingText := Definition.ClosingText;
+      Result := True;
+    end;
+end;
+
+function InsertTheWordAutoClosingTagAtCaret(Editor: TSynEdit): Boolean;
+var
+  Caret: TPoint;
+  ClosingText: string;
+  CloseIndex: Integer;
+  Line: string;
+  StartIndex: Integer;
+begin
+  Result := False;
+  if not Assigned(Editor) or Editor.ReadOnly then
+    Exit;
+
+  Caret := Editor.LogicalCaretXY;
+  if (Caret.Y < 1) or (Caret.Y > Editor.Lines.Count) or (Caret.X < 2) then
+    Exit;
+
+  Line := Editor.Lines[Caret.Y - 1];
+  CloseIndex := Caret.X - 1;
+  if (CloseIndex < 1) or (CloseIndex > Length(Line)) or
+    (Line[CloseIndex] <> '>') then
+    Exit;
+
+  StartIndex := CloseIndex - 1;
+  while StartIndex >= 1 do
+  begin
+    case Line[StartIndex] of
+      '<':
+        begin
+          if not TryGetTheWordClosingTagForInnerText(
+            Copy(Line, StartIndex + 1, CloseIndex - StartIndex - 1),
+            ClosingText) then
+            Exit;
+
+          Editor.InsertTextAtCaret(ClosingText, scamEnd);
+          Editor.LogicalCaretXY := Caret;
+          Exit(True);
+        end;
+      '>':
+        Exit;
+    end;
+    Dec(StartIndex);
+  end;
+end;
+
 function IsHtmlPairTagName(const AName: string): Boolean;
 var
   LowerName: string;
@@ -760,20 +1189,6 @@ begin
   if AName = 'Ts' then
   begin
     Family := 'TS';
-    IsOpening := False;
-    Exit(True);
-  end;
-
-  if (AName = 'PI') or IsNumberedTheWordTag(AName, 'PI', 0, 7) then
-  begin
-    Family := 'PI';
-    IsOpening := True;
-    Exit(True);
-  end;
-
-  if AName = 'Pi' then
-  begin
-    Family := 'PI';
     IsOpening := False;
     Exit(True);
   end;
@@ -996,6 +1411,44 @@ begin
     (AName = 'nt_only');
 end;
 
+function FindTheWordTagCompletionController(Editor: TSynEdit
+  ): TTheWordTagCompletionController;
+var
+  Index: Integer;
+begin
+  Result := nil;
+  if not Assigned(Editor) then
+    Exit;
+
+  for Index := 0 to Editor.ComponentCount - 1 do
+    if Editor.Components[Index] is TTheWordTagCompletionController then
+      Exit(TTheWordTagCompletionController(Editor.Components[Index]));
+end;
+
+function TheWordSyntaxEditorHasTagCompletion(Editor: TSynEdit): Boolean;
+begin
+  Result := Assigned(FindTheWordTagCompletionController(Editor));
+end;
+
+procedure EnsureTheWordTagCompletion(Editor: TSynEdit; Enabled: Boolean);
+var
+  Controller: TTheWordTagCompletionController;
+begin
+  if not Assigned(Editor) then
+    Exit;
+
+  Controller := FindTheWordTagCompletionController(Editor);
+  if not Enabled then
+  begin
+    if Assigned(Controller) then
+      Controller.Free;
+    Exit;
+  end;
+
+  if not Assigned(Controller) then
+    TTheWordTagCompletionController.Create(Editor);
+end;
+
 procedure EnsureLineWrapPlugin(Editor: TSynEdit);
 var
   Index: Integer;
@@ -1014,6 +1467,192 @@ begin
 
   if not Assigned(Editor.MarkupByClass[TTheWordTagPairMarkup]) then
     Editor.MarkupManager.AddMarkUp(TTheWordTagPairMarkup.Create(Editor));
+end;
+
+{ TTheWordTagCompletionController }
+
+constructor TTheWordTagCompletionController.Create(AEditor: TSynEdit);
+begin
+  inherited Create(AEditor);
+  FEditor := AEditor;
+
+  if Assigned(FEditor) then
+    FEditor.RegisterBeforeUtf8KeyPressHandler(@HandleBeforeUtf8KeyPress);
+end;
+
+destructor TTheWordTagCompletionController.Destroy;
+begin
+  if Assigned(FEditor) then
+    FEditor.UnregisterBeforeUtf8KeyPressHandler(@HandleBeforeUtf8KeyPress);
+  FreeAndNil(FCompletion);
+  inherited Destroy;
+end;
+
+function TTheWordTagCompletionController.EnsureCompletion: Boolean;
+begin
+  Result := Assigned(FEditor) and not FEditor.ReadOnly;
+  if not Result then
+    Exit;
+
+  if not Assigned(FCompletion) then
+  begin
+    FCompletion := TSynCompletion.Create(Self);
+    FCompletion.ShortCut := 0;
+    FCompletion.CaseSensitive := False;
+    FCompletion.AutoUseSingleIdent := False;
+    FCompletion.LinesInWindow := 12;
+    FCompletion.Width := 280;
+    FCompletion.OnCancel := @HandleCompletionCancel;
+    FCompletion.OnKeyDown := @HandleCompletionKeyDown;
+    FCompletion.OnKeyPress := @HandleCompletionKeyPress;
+    FCompletion.OnSearchPosition := @HandleCompletionSearchPosition;
+    FCompletion.OnUTF8KeyPress := @HandleCompletionUtf8KeyPress;
+    FCompletion.OnValidate := @HandleCompletionValidate;
+  end;
+
+  FCompletion.Editor := FEditor;
+end;
+
+procedure TTheWordTagCompletionController.ExecuteCompletion(const Prefix: string);
+var
+  ScreenPoint: TPoint;
+begin
+  if not EnsureCompletion then
+    Exit;
+
+  GetTheWordTagCompletionItems(Prefix, FCompletion.ItemList);
+  if FCompletion.ItemList.Count = 0 then
+  begin
+    FCompletion.Editor := nil;
+    Exit;
+  end;
+
+  FCompletion.Editor := FEditor;
+  ScreenPoint := FEditor.ClientToScreen(Point(FEditor.CaretXPix,
+    FEditor.CaretYPix + FEditor.LineHeight + 1));
+  FCompletion.Execute(Prefix, ScreenPoint.X, ScreenPoint.Y);
+end;
+
+procedure TTheWordTagCompletionController.HandleBeforeUtf8KeyPress(
+  Sender: TObject; var UTF8Key: TUTF8Char);
+begin
+  if not Assigned(FEditor) or (Sender <> FEditor) or FEditor.ReadOnly or
+    (UTF8Key = '') then
+    Exit;
+
+  if UTF8Key = '<' then
+  begin
+    if Assigned(FCompletion) and FCompletion.IsActive then
+      FCompletion.Deactivate;
+    FEditor.InsertTextAtCaret('<', scamEnd);
+    UTF8Key := '';
+    ExecuteCompletion('');
+  end
+  else if UTF8Key = '>' then
+  begin
+    if Assigned(FCompletion) and FCompletion.IsActive then
+      Exit;
+
+    FEditor.BeginUndoBlock;
+    FEditor.BeginUpdate;
+    try
+      FEditor.InsertTextAtCaret('>', scamEnd);
+      InsertTheWordAutoClosingTagAtCaret(FEditor);
+    finally
+      FEditor.EndUpdate;
+      FEditor.EndUndoBlock;
+    end;
+    UTF8Key := '';
+  end;
+end;
+
+procedure TTheWordTagCompletionController.HandleCompletionCancel(Sender: TObject);
+begin
+  if Assigned(FCompletion) then
+    FCompletion.Editor := nil;
+
+  if Assigned(FEditor) and FEditor.HandleAllocated and FEditor.CanFocus then
+    FEditor.SetFocus;
+end;
+
+procedure TTheWordTagCompletionController.HandleCompletionKeyDown(
+  Sender: TObject; var Key: Word; Shift: TShiftState);
+begin
+  if not Assigned(FEditor) or FEditor.ReadOnly or (Key <> VK_BACK) or
+    (Shift <> []) then
+    Exit;
+
+  if Assigned(FCompletion) and FCompletion.IsActive and
+    (FCompletion.CurrentString = '') then
+  begin
+    FCompletion.Deactivate;
+    FEditor.CommandProcessor(ecDeleteLastChar, #0, nil);
+    Key := VK_UNKNOWN;
+  end;
+end;
+
+procedure TTheWordTagCompletionController.HandleCompletionKeyPress(
+  Sender: TObject; var Key: char);
+begin
+  if (Key = '/') and Assigned(FCompletion) and FCompletion.IsActive and
+    (FCompletion.CurrentString = '') then
+  begin
+    FCompletion.Deactivate;
+    if Assigned(FEditor) and not FEditor.ReadOnly then
+      FEditor.InsertTextAtCaret('/', scamEnd);
+    Key := #0;
+  end
+  else if Key = '>' then
+  begin
+    HandleCompletionValidate(Sender, '', []);
+    Key := #0;
+  end;
+end;
+
+procedure TTheWordTagCompletionController.HandleCompletionSearchPosition(
+  var APosition: integer);
+begin
+  if not Assigned(FCompletion) then
+    Exit;
+
+  GetTheWordTagCompletionItems(FCompletion.CurrentString,
+    FCompletion.ItemList);
+  if FCompletion.ItemList.Count = 0 then
+    APosition := -1
+  else if (APosition < 0) or (APosition >= FCompletion.ItemList.Count) then
+    APosition := 0;
+end;
+
+procedure TTheWordTagCompletionController.HandleCompletionUtf8KeyPress(
+  Sender: TObject; var UTF8Key: TUTF8Char);
+begin
+  if (UTF8Key = '/') and Assigned(FCompletion) and FCompletion.IsActive and
+    (FCompletion.CurrentString = '') then
+  begin
+    FCompletion.Deactivate;
+    if Assigned(FEditor) and not FEditor.ReadOnly then
+      FEditor.InsertTextAtCaret('/', scamEnd);
+    UTF8Key := '';
+  end
+  else if UTF8Key = '>' then
+  begin
+    HandleCompletionValidate(Sender, '', []);
+    UTF8Key := '';
+  end;
+end;
+
+procedure TTheWordTagCompletionController.HandleCompletionValidate(
+  Sender: TObject; KeyChar: TUTF8Char; Shift: TShiftState);
+var
+  ItemText: string;
+begin
+  if not Assigned(FCompletion) or (FCompletion.Position < 0) or
+    (FCompletion.Position >= FCompletion.ItemList.Count) then
+    Exit;
+
+  ItemText := FCompletion.ItemList[FCompletion.Position];
+  CompleteTheWordTagAtCaret(FEditor, ItemText);
+  FCompletion.Deactivate;
 end;
 
 { TTheWordTagPairMarkup }
@@ -1655,6 +2294,8 @@ begin
     Editor.Highlighter := TTheWordSyntaxHighlighter.Create(Editor);
   if Editor.Highlighter is TTheWordSyntaxHighlighter then
     ApplyTheWordSyntaxColorScheme(TTheWordSyntaxHighlighter(Editor.Highlighter));
+
+  EnsureTheWordTagCompletion(Editor, not ReadOnly);
 end;
 
 function TheWordSyntaxTokenKindName(Kind: Integer): string;
