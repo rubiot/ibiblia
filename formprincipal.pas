@@ -14,7 +14,7 @@ uses
   {$ENDIF}
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, Menus,
   ActnList, ComCtrls, ExtCtrls, StdCtrls, BibleScope, Project, IniFiles, Math,
-  Syntagm, LCLTranslator, unitabout, PCRE, Verse, LCLProc, LazLogger,
+  Syntagm, LCLTranslator, unitabout, PCRE, Verse, LCLProc, LazLogger, CheckLst,
   LCLType, LazUTF8, ChapterView, UnitPleaseWait, CommentsView, ONTTokenizer,
   status_catalog, SynEdit, project_setup_model;
 
@@ -234,6 +234,9 @@ type
     FGuideTextLabel: TLabel;
     FGuideHideButton: TButton;
     FGuideModeEnabled: Boolean;
+    FStatusReviewList: TCheckListBox;
+    FStatusReviewResetButton: TButton;
+    FUpdatingStatusReview: Boolean;
     FVersePanelLabels: array[tbOrigem..tbConsulta2] of TPanel;
     FVersePanelTypeLabels: array[tbOrigem..tbConsulta2] of TLabel;
     FVersePanelDescriptionLabels: array[tbOrigem..tbConsulta2] of TLabel;
@@ -251,6 +254,7 @@ type
     procedure ActionGuideModeExecute(Sender: TObject);
     function BuildKeyboardShortcutsText: string;
     procedure CreateGuidePanel;
+    procedure CreateStatusReviewPanel;
     function CreateVersePanelLabel(AParent: TWinControl;
       TextType: TTipoTextoBiblico): TPanel;
     function CreateStateHeaderLabel(AParent: TWinControl; Bold: Boolean = False): TLabel;
@@ -275,13 +279,16 @@ type
     procedure SetGuideModeEnabled(AEnabled: Boolean);
     procedure SplitterMoved(Sender: TObject);
     procedure StateHeaderResize(Sender: TObject);
+    procedure StatusReviewListClickCheck(Sender: TObject);
+    procedure StatusReviewResetButtonClick(Sender: TObject);
     procedure TreeViewShowHint(Sender: TObject; HintInfo: PHintInfo);
     procedure Translate;
     procedure NormalizeActionHint(AAction: TCustomAction);
     procedure UpdateMainCaption;
     procedure UpdateGuidePanel;
     procedure UpdateStateHeader;
-    procedure UpdateTreeLegend;
+    procedure UpdateStatusReviewPanel;
+    procedure ApplyStatusReviewFilter;
     procedure DoOpenProject(filename: string);
     procedure CheckFileAssociation;
   public
@@ -315,6 +322,8 @@ resourcestring
   SRollbackCurrentVerseConfirmation = 'This will discard unsaved changes in the current verse only (%s) and reload it from the project file.'#13#10#13#10 +
                                       'Other verses and saved project data will not be changed.'#13#10#13#10 +
                                       'Continue?';
+  SButtonYes = 'Yes';
+  SButtonCancel = 'Cancel';
   SClearCurrentVerseAssociations = 'Clear associations in current verse';
   SClearCurrentVerseAssociationsHint = 'Remove all associations from the current verse only';
   SClearCurrentVerseAssociationsConfirmation = 'This will remove all associations from the current verse only (%s).'#13#10#13#10 +
@@ -381,6 +390,13 @@ resourcestring
   SShortcutFinishEdit = 'Finish verse text editing';
   SShortcutShowKeyboardShortcuts = 'Show this list';
   SStatusKeyboardHint = 'Use 1..9 to set the first visible statuses for the current verse';
+  SStatusReviewTitle = 'Review by status';
+  SStatusReviewFilterHint = 'Check statuses to show matching verses in the tree';
+  SStatusReviewNoProject = 'Open a project to review statuses';
+  SStatusReviewItemFmt = '%d  %s';
+  SStatusReviewShowingFmt = 'Showing: %d/%d';
+  SStatusReviewShowAll = 'All';
+  SStatusReviewShowAllHint = 'Show all statuses in the tree';
   SHeaderNoProject = 'No project open';
   SHeaderReferenceFmt = 'Reference: %s';
   SHeaderStatusFmt = 'Status: %s';
@@ -697,6 +713,53 @@ begin
 
   LayoutGuidePanel;
   UpdateGuidePanel;
+end;
+
+procedure TFrmPrincipal.CreateStatusReviewPanel;
+begin
+  if not Assigned(TreeLegendPanel) or Assigned(FStatusReviewList) then
+    Exit;
+
+  TreeLegendPanel.Height := Max(TreeLegendPanel.Height, 170);
+  TreeLegendPanel.Constraints.MinHeight := 130;
+
+  if Assigned(TreeLegendLabel) then
+  begin
+    TreeLegendLabel.Align := alTop;
+    TreeLegendLabel.AutoSize := False;
+    TreeLegendLabel.Height := 38;
+    TreeLegendLabel.WordWrap := True;
+    TreeLegendLabel.Font.Style := TreeLegendLabel.Font.Style + [fsBold];
+    TreeLegendLabel.Caption := SStatusReviewTitle;
+    TreeLegendLabel.Hint := SStatusReviewFilterHint;
+    TreeLegendLabel.ShowHint := True;
+  end;
+
+  FStatusReviewResetButton := TButton.Create(TreeLegendPanel);
+  with FStatusReviewResetButton do
+  begin
+    Parent := TreeLegendPanel;
+    Align := alBottom;
+    Height := 25;
+    Caption := SStatusReviewShowAll;
+    Hint := SStatusReviewShowAllHint;
+    ShowHint := True;
+    OnClick := @StatusReviewResetButtonClick;
+  end;
+
+  FStatusReviewList := TCheckListBox.Create(TreeLegendPanel);
+  with FStatusReviewList do
+  begin
+    Parent := TreeLegendPanel;
+    Align := alClient;
+    BorderStyle := bsNone;
+    IntegralHeight := False;
+    ShowHint := True;
+    Hint := SStatusReviewFilterHint;
+    OnClickCheck := @StatusReviewListClickCheck;
+  end;
+
+  UpdateStatusReviewPanel;
 end;
 
 function TFrmPrincipal.CreateVersePanelLabel(AParent: TWinControl;
@@ -1318,37 +1381,300 @@ begin
   LayoutGuidePanel;
 end;
 
-procedure TFrmPrincipal.UpdateTreeLegend;
+procedure TFrmPrincipal.UpdateStatusReviewPanel;
+type
+  TStatusFilterState = record
+    StatusId: Integer;
+    Checked: Boolean;
+  end;
 var
-  Lines: TStringList;
   Definitions: TStatusDefinitions;
   Sorted: TStatusDefinitions;
+  Counts: TStatusCounts;
+  OldStates: array of TStatusFilterState;
   Index: Integer;
+  CountIndex: Integer;
+  ItemIndex: Integer;
+  Total: Integer;
+  VisibleTotal: Integer;
+  Node: TTreeNode;
+
+  procedure RememberCurrentFilter;
+  var
+    StatusIndex: Integer;
+  begin
+    OldStates := nil;
+    if not Assigned(FStatusReviewList) then
+      Exit;
+
+    SetLength(OldStates, FStatusReviewList.Items.Count);
+    for StatusIndex := 0 to FStatusReviewList.Items.Count - 1 do
+    begin
+      OldStates[StatusIndex].StatusId :=
+        Integer(PtrUInt(FStatusReviewList.Items.Objects[StatusIndex]));
+      OldStates[StatusIndex].Checked := FStatusReviewList.Checked[StatusIndex];
+    end;
+  end;
+
+  function WasChecked(StatusId: Integer): Boolean;
+  var
+    StatusIndex: Integer;
+  begin
+    Result := True;
+    for StatusIndex := 0 to High(OldStates) do
+      if OldStates[StatusIndex].StatusId = StatusId then
+        Exit(OldStates[StatusIndex].Checked);
+  end;
+
+  procedure InitializeCounts;
+  var
+    StatusIndex: Integer;
+  begin
+    SetLength(Counts, Length(Sorted));
+    for StatusIndex := 0 to High(Sorted) do
+    begin
+      Counts[StatusIndex].StatusId := Sorted[StatusIndex].Id;
+      Counts[StatusIndex].Count := 0;
+    end;
+  end;
+
+  procedure IncrementStatusCount(StatusId: Integer);
+  var
+    StatusIndex: Integer;
+  begin
+    for StatusIndex := 0 to High(Counts) do
+      if Counts[StatusIndex].StatusId = StatusId then
+      begin
+        Inc(Counts[StatusIndex].Count);
+        Exit;
+      end;
+
+    SetLength(Counts, Length(Counts) + 1);
+    Counts[High(Counts)].StatusId := StatusId;
+    Counts[High(Counts)].Count := 1;
+  end;
+
+  procedure CountNode(Node: TTreeNode);
+  var
+    ChildNode: TTreeNode;
+  begin
+    if not Assigned(Node) then
+      Exit;
+
+    if not Node.HasChildren then
+    begin
+      IncrementStatusCount(Node.ImageIndex);
+      Inc(Total);
+      Exit;
+    end;
+
+    ChildNode := Node.GetFirstChild;
+    while Assigned(ChildNode) do
+    begin
+      CountNode(ChildNode);
+      ChildNode := ChildNode.GetNextSibling;
+    end;
+  end;
+
+  function CountValue(StatusId: Integer): Integer;
+  var
+    StatusIndex: Integer;
+  begin
+    Result := 0;
+    for StatusIndex := 0 to High(Counts) do
+      if Counts[StatusIndex].StatusId = StatusId then
+        Exit(Counts[StatusIndex].Count);
+  end;
+
+  procedure AddStatusItem(StatusId: Integer; const Caption: string;
+    Count: Integer);
+  begin
+    ItemIndex := FStatusReviewList.Items.AddObject(
+      Format(SStatusReviewItemFmt, [Count, Caption]), TObject(PtrUInt(StatusId)));
+    FStatusReviewList.Checked[ItemIndex] := WasChecked(StatusId);
+    if FStatusReviewList.Checked[ItemIndex] then
+      Inc(VisibleTotal, Count);
+  end;
+
 begin
-  if not Assigned(TreeLegendLabel) then
+  if not Assigned(TreeLegendLabel) or not Assigned(FStatusReviewList) then
     Exit;
 
-  if Assigned(ProjetoAtual) then
-    Definitions := ProjetoAtual.GetStatusDefinitions
-  else
-    Definitions := BuildLegacyStatusDefinitions([
-      STreeLegendNotAssociated,
-      STreeLegendAssociating,
-      STreeLegendNeedsReview,
-      STreeLegendAssociated
-    ]);
-
-  Sorted := SortStatusDefinitionsByDisplayOrder(Definitions);
-  Lines := TStringList.Create;
+  RememberCurrentFilter;
+  FUpdatingStatusReview := True;
   try
-    Lines.Add(STreeLegendTitle);
+    FStatusReviewList.Items.Clear;
+    FStatusReviewList.Enabled := Assigned(ProjetoAtual);
+    if Assigned(FStatusReviewResetButton) then
+    begin
+      FStatusReviewResetButton.Caption := SStatusReviewShowAll;
+      FStatusReviewResetButton.Hint := SStatusReviewShowAllHint;
+      FStatusReviewResetButton.Enabled := Assigned(ProjetoAtual);
+    end;
+
+    if not Assigned(ProjetoAtual) then
+    begin
+      TreeLegendLabel.Caption := SStatusReviewTitle + LineEnding +
+        SStatusReviewNoProject;
+      TreeLegendPanel.Hint := SStatusReviewNoProject;
+      Exit;
+    end;
+
+    Definitions := ProjetoAtual.GetStatusDefinitions;
+    Sorted := SortStatusDefinitionsByDisplayOrder(Definitions);
+    Counts := nil;
+    Total := 0;
+    VisibleTotal := 0;
+    InitializeCounts;
+
+    if Assigned(TreeView1) and (TreeView1.Items.Count > 0) then
+    begin
+      Node := TreeView1.Items[0];
+      while Assigned(Node) do
+      begin
+        CountNode(Node);
+        Node := Node.GetNextSibling;
+      end;
+    end;
+
     for Index := 0 to High(Sorted) do
-      Lines.Add(Format(STreeLegendStatusFmt, [Index + 1, Sorted[Index].Caption]));
-    Lines.Add(STreeLegendCounts);
-    TreeLegendLabel.Caption := TrimRight(Lines.Text);
+      AddStatusItem(Sorted[Index].Id, Sorted[Index].Caption,
+        CountValue(Sorted[Index].Id));
+
+    for CountIndex := 0 to High(Counts) do
+      if not IsValidStatusId(Definitions, Counts[CountIndex].StatusId) then
+        AddStatusItem(Counts[CountIndex].StatusId,
+          GetStatusCaption(Definitions, Counts[CountIndex].StatusId),
+          Counts[CountIndex].Count);
+
+    TreeLegendLabel.Caption := SStatusReviewTitle + LineEnding +
+      Format(SStatusReviewShowingFmt, [VisibleTotal, Total]);
+    TreeLegendPanel.Hint := SStatusReviewFilterHint;
+    FStatusReviewList.Hint := SStatusReviewFilterHint;
   finally
-    Lines.Free;
+    FUpdatingStatusReview := False;
   end;
+
+  ApplyStatusReviewFilter;
+end;
+
+procedure TFrmPrincipal.ApplyStatusReviewFilter;
+var
+  SavedOnChange: TTVChangedEvent;
+  Node: TTreeNode;
+  FilterActive: Boolean;
+
+  function StatusIsChecked(StatusId: Integer): Boolean;
+  var
+    StatusIndex: Integer;
+  begin
+    Result := True;
+    if not Assigned(FStatusReviewList) or (FStatusReviewList.Items.Count = 0) then
+      Exit;
+
+    for StatusIndex := 0 to FStatusReviewList.Items.Count - 1 do
+      if Integer(PtrUInt(FStatusReviewList.Items.Objects[StatusIndex])) = StatusId then
+        Exit(FStatusReviewList.Checked[StatusIndex]);
+
+    Result := False;
+  end;
+
+  function HasActiveFilter: Boolean;
+  var
+    StatusIndex: Integer;
+  begin
+    Result := False;
+    if not Assigned(FStatusReviewList) then
+      Exit;
+
+    for StatusIndex := 0 to FStatusReviewList.Items.Count - 1 do
+      if not FStatusReviewList.Checked[StatusIndex] then
+        Exit(True);
+  end;
+
+  function ApplyNodeFilter(ANode: TTreeNode): Boolean;
+  var
+    ChildNode: TTreeNode;
+    ChildVisible: Boolean;
+  begin
+    if not Assigned(ANode) then
+      Exit(False);
+
+    if not FilterActive then
+    begin
+      Result := True;
+      ChildNode := ANode.GetFirstChild;
+      while Assigned(ChildNode) do
+      begin
+        ApplyNodeFilter(ChildNode);
+        ChildNode := ChildNode.GetNextSibling;
+      end;
+    end
+    else if not ANode.HasChildren then
+      Result := StatusIsChecked(ANode.ImageIndex)
+    else
+    begin
+      Result := False;
+      ChildNode := ANode.GetFirstChild;
+      while Assigned(ChildNode) do
+      begin
+        ChildVisible := ApplyNodeFilter(ChildNode);
+        Result := Result or ChildVisible;
+        ChildNode := ChildNode.GetNextSibling;
+      end;
+    end;
+
+    ANode.Visible := Result;
+  end;
+
+begin
+  if not Assigned(TreeView1) then
+    Exit;
+
+  FilterActive := HasActiveFilter;
+  SavedOnChange := TreeView1.OnChange;
+  TreeView1.OnChange := nil;
+  TreeView1.BeginUpdate;
+  try
+    if TreeView1.Items.Count > 0 then
+    begin
+      Node := TreeView1.Items[0];
+      while Assigned(Node) do
+      begin
+        ApplyNodeFilter(Node);
+        Node := Node.GetNextSibling;
+      end;
+    end;
+  finally
+    TreeView1.EndUpdate;
+    TreeView1.OnChange := SavedOnChange;
+  end;
+end;
+
+procedure TFrmPrincipal.StatusReviewListClickCheck(Sender: TObject);
+begin
+  if FUpdatingStatusReview then
+    Exit;
+
+  UpdateStatusReviewPanel;
+end;
+
+procedure TFrmPrincipal.StatusReviewResetButtonClick(Sender: TObject);
+var
+  Index: Integer;
+begin
+  if not Assigned(FStatusReviewList) then
+    Exit;
+
+  FUpdatingStatusReview := True;
+  try
+    for Index := 0 to FStatusReviewList.Items.Count - 1 do
+      FStatusReviewList.Checked[Index] := True;
+  finally
+    FUpdatingStatusReview := False;
+  end;
+
+  UpdateStatusReviewPanel;
 end;
 
 procedure TFrmPrincipal.TreeViewShowHint(Sender: TObject; HintInfo: PHintInfo);
@@ -1648,6 +1974,7 @@ begin
   //ActionExportarTextoInterlinear.Enabled := false;
   StatusBar1.SimpleText := '';
   UpdateStateHeader;
+  UpdateStatusReviewPanel;
   LayoutVersePanelLabels;
 end;
 
@@ -1669,6 +1996,7 @@ begin
   begin
     ProjetoAtual.ClearAssociations;
     UpdateStateHeader;
+    UpdateStatusReviewPanel;
   end;
 end;
 
@@ -1806,6 +2134,7 @@ begin
 
     StatusBar1.SimpleText := '';
     UpdateStateHeader;
+    UpdateStatusReviewPanel;
   finally
     StatusBar1.Caption := '';
     FormPleaseWait.FinishOperation;
@@ -1819,7 +2148,7 @@ begin
   begin
     FrmProjectProperties.ApplyChanges;
     ActionQuandoNovoVersiculo.Execute;
-    UpdateTreeLegend;
+    UpdateStatusReviewPanel;
     LayoutVersePanelLabels;
   end;
 end;
@@ -1871,9 +2200,10 @@ procedure TFrmPrincipal.ActionReverterAssociacoesExecute(Sender: TObject);
 begin
   if ProjetoAtual = nil then
     exit;
-  if MessageDlg(SRollbackCurrentVerse,
+  if QuestionDlg(SRollbackCurrentVerse,
       Format(SRollbackCurrentVerseConfirmation, [ProjetoAtual.FormattedReference]),
-      mtConfirmation, [mbYes, mbCancel], 0) = mrYes then
+      mtConfirmation,
+      [mrYes, SButtonYes, 'isdefault', mrCancel, SButtonCancel, 'iscancel'], 0) = mrYes then
   begin
     ProjetoAtual.RefreshUI;
     UpdateStateHeader;
@@ -2088,6 +2418,7 @@ begin
 
   CreateStateHeader;
   CreateGuidePanel;
+  CreateStatusReviewPanel;
   CreateVersePanelLabels;
   CreateCommentsGroupBox;
   TreeView1.Hint := ' ';
@@ -2148,7 +2479,7 @@ begin
 
   CarregarMRU(MenuItemRecent);
   NavigationPanel.Width := opts.ReadInteger('leiaute', 'principal.treeview.largura', NavigationPanel.Width);
-  UpdateTreeLegend;
+  UpdateStatusReviewPanel;
 
   // Create the actual CommentsView and replace the TMemo
   FActualCommentsMemo := TCommentsView.Create(Self);
@@ -2453,6 +2784,7 @@ procedure TFrmPrincipal.QuandoAlterarVersiculo;
 begin
   StatusBar1.SimpleText := SChanged;
   UpdateStateHeader;
+  UpdateStatusReviewPanel;
 end;
 
 procedure TFrmPrincipal.AtualizarMRU(m: TMenuItem);
@@ -2571,6 +2903,7 @@ begin
       RadioGroupStatus.ItemIndex);
     ProjetoAtual.Status := StatusId;
     UpdateStateHeader;
+    UpdateStatusReviewPanel;
   end;
 end;
 
@@ -2675,7 +3008,7 @@ begin
   UpdateMainCaption;
   UpdateStateHeader;
   UpdateGuidePanel;
-  UpdateTreeLegend;
+  UpdateStatusReviewPanel;
   LayoutVersePanelLabels;
 end;
 
@@ -2719,7 +3052,7 @@ begin
   //ActionExportarTextoInterlinear.Enabled := true;
   StatusBar1.SimpleText := '';
   UpdateStateHeader;
-  UpdateTreeLegend;
+  UpdateStatusReviewPanel;
   LayoutVersePanelLabels;
 
   {ScrollBoxRef1Verse.Visible := false;

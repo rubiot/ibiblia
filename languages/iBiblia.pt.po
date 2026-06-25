@@ -1079,7 +1079,7 @@ msgstr ""
 #: formprincipal.srollbackcurrentverse
 msgctxt "formprincipal.srollbackcurrentverse"
 msgid "Rollback current verse"
-msgstr ""
+msgstr "Reverter versículo atual"
 
 #: formprincipal.srollbackcurrentverseconfirmation
 #, object-pascal-format
@@ -1090,10 +1090,23 @@ msgid ""
 "\n"
 "Continue?"
 msgstr ""
+"Isto descartará as alterações não salvas apenas no versículo atual (%s) e o recarregará a partir do arquivo do projeto.\n"
+"\n"
+"Outros versículos e dados salvos do projeto não serão alterados.\n"
+"\n"
+"Continuar?"
 
 #: formprincipal.srollbackcurrentversehint
 msgid "Discard unsaved changes in the current verse"
-msgstr ""
+msgstr "Descartar alterações não salvas no versículo atual"
+
+#: formprincipal.sbuttonyes
+msgid "Yes"
+msgstr "Sim"
+
+#: formprincipal.sbuttoncancel
+msgid "Cancel"
+msgstr "Cancelar"
 
 #: formprincipal.ssavechanges
 msgid "Would you like to save your changes?"
@@ -1175,7 +1188,7 @@ msgstr ""
 #: formprincipal.sshortcutrollback
 msgctxt "formprincipal.sshortcutrollback"
 msgid "Rollback current verse"
-msgstr ""
+msgstr "Reverter versículo atual"
 
 #: formprincipal.sshortcutsaveproject
 msgid "Save project"
@@ -1215,6 +1228,36 @@ msgstr "Usar o modelo de sugestão estatístico"
 #: formprincipal.sstatuskeyboardhint
 msgid "Use 1..9 to set the first visible statuses for the current verse"
 msgstr ""
+
+#: formprincipal.sstatusreviewtitle
+msgid "Review by status"
+msgstr "Revisão por estado"
+
+#: formprincipal.sstatusreviewfilterhint
+msgid "Check statuses to show matching verses in the tree"
+msgstr "Marque os estados que devem aparecer na árvore"
+
+#: formprincipal.sstatusreviewnoproject
+msgid "Open a project to review statuses"
+msgstr "Abra um projeto para revisar os estados"
+
+#: formprincipal.sstatusreviewitemfmt
+#, object-pascal-format
+msgid "%d  %s"
+msgstr "%d  %s"
+
+#: formprincipal.sstatusreviewshowingfmt
+#, object-pascal-format
+msgid "Showing: %d/%d"
+msgstr "Exibindo: %d/%d"
+
+#: formprincipal.sstatusreviewshowall
+msgid "All"
+msgstr "Todos"
+
+#: formprincipal.sstatusreviewshowallhint
+msgid "Show all statuses in the tree"
+msgstr "Mostrar todos os estados na árvore"
 
 #: formprincipal.ssuggestionmode
 msgid "Suggestion mode"

@@ -1041,6 +1041,14 @@ msgstr ""
 msgid "Discard unsaved changes in the current verse"
 msgstr ""
 
+#: formprincipal.sbuttonyes
+msgid "Yes"
+msgstr ""
+
+#: formprincipal.sbuttoncancel
+msgid "Cancel"
+msgstr ""
+
 #: formprincipal.ssavechanges
 msgid "Would you like to save your changes?"
 msgstr ""
@@ -1153,6 +1161,36 @@ msgstr ""
 
 #: formprincipal.sstatuskeyboardhint
 msgid "Use 1..9 to set the first visible statuses for the current verse"
+msgstr ""
+
+#: formprincipal.sstatusreviewtitle
+msgid "Review by status"
+msgstr ""
+
+#: formprincipal.sstatusreviewfilterhint
+msgid "Check statuses to show matching verses in the tree"
+msgstr ""
+
+#: formprincipal.sstatusreviewnoproject
+msgid "Open a project to review statuses"
+msgstr ""
+
+#: formprincipal.sstatusreviewitemfmt
+#, object-pascal-format
+msgid "%d  %s"
+msgstr ""
+
+#: formprincipal.sstatusreviewshowingfmt
+#, object-pascal-format
+msgid "Showing: %d/%d"
+msgstr ""
+
+#: formprincipal.sstatusreviewshowall
+msgid "All"
+msgstr ""
+
+#: formprincipal.sstatusreviewshowallhint
+msgid "Show all statuses in the tree"
 msgstr ""
 
 #: formprincipal.ssuggestionmode
