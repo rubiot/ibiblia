@@ -4528,3 +4528,53 @@ msgstr "theWord dictionary module (*.dct.twm)"
 msgctxt "formprojectexport.ssavemoduleas"
 msgid "Save module as..."
 msgstr "Save module as..."
+
+#: FormExportPatch.pas:48
+msgctxt "formexportpatch.sexportpatchtitle"
+msgid "Export patch..."
+msgstr "Export patch..."
+
+#: FormExportPatch.pas:49
+msgctxt "formexportpatch.sselectall"
+msgid "Select all"
+msgstr "Select all"
+
+#: FormExportPatch.pas:50
+msgctxt "formexportpatch.sdeselectall"
+msgid "Deselect all"
+msgstr "Deselect all"
+
+#: FormExportPatch.pas:51
+msgctxt "formexportpatch.scancel"
+msgid "Cancel"
+msgstr "Cancel"
+
+#: FormExportPatch.pas:52
+msgctxt "formexportpatch.sok"
+msgid "OK"
+msgstr "OK"
+
+#: FormExportPatch.lfm:6
+msgctxt "tfrmexportpatch.caption"
+msgid "Export patch..."
+msgstr "Export patch..."
+
+#: FormExportPatch.lfm:51
+msgctxt "tfrmexportpatch.btnselectall.caption"
+msgid "Select all"
+msgstr "Select all"
+
+#: FormExportPatch.lfm:61
+msgctxt "tfrmexportpatch.btndeselectall.caption"
+msgid "Deselect all"
+msgstr "Deselect all"
+
+#: FormExportPatch.lfm:32
+msgctxt "tfrmexportpatch.button2.caption"
+msgid "Cancel"
+msgstr "Cancel"
+
+#: FormExportPatch.lfm:22
+msgctxt "tfrmexportpatch.button1.caption"
+msgid "OK"
+msgstr "OK"

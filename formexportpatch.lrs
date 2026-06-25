@@ -1,9 +1,7 @@
-{ This is an automatically generated lazarus resource file }
-
-LazarusResources.Add('TFormExportPatch','FORMDATA',[
-  'TPF0'#16'TFormExportPatch'#15'FormExportPatch'#4'Left'#3'['#1#6'Height'#3'W'
-  +#2#3'Top'#3#169#0#5'Width'#3#179#1#7'Caption'#6#15'Export patch...'#12'Clien'
-  +'tHeight'#3'W'#2#11'ClientWidth'#3#179#1#13'DesignTimePPI'#2'e'#8'Position'#7
+LazarusResources.Add('TFrmExportPatch','FORMDATA',[
+  'TPF0'#15'TFrmExportPatch'#14'FrmExportPatch'#4'Left'#3'['#1#6'Height'#3'W'#2
+  +#3'Top'#3#169#0#5'Width'#3#179#1#7'Caption'#6#15'Export patch...'#12'ClientH'
+  +'eight'#3'W'#2#11'ClientWidth'#3#179#1#13'DesignTimePPI'#2'e'#8'Position'#7
   +#16'poMainFormCenter'#10'LCLVersion'#6#7'4.0.0.4'#8'OnCreate'#7#10'FormCreat'
   +'e'#9'OnDestroy'#7#11'FormDestroy'#6'OnShow'#7#8'FormShow'#0#9'TGroupBox'#9
   +'GroupBox1'#4'Left'#2#0#6'Height'#3#18#2#3'Top'#2#0#5'Width'#3#157#1#5'Align'
@@ -13,10 +11,10 @@ LazarusResources.Add('TFormExportPatch','FORMDATA',[
   +#11'ModalResult'#2#1#8'TabOrder'#2#1#0#0#7'TButton'#7'Button2'#4'Left'#3#228
   +#0#6'Height'#2#26#3'Top'#3#25#2#5'Width'#2'O'#7'Anchors'#11#7'akRight'#8'akB'
   +'ottom'#0#6'Cancel'#9#7'Caption'#6#6'Cancel'#11'ModalResult'#2#2#8'TabOrder'
-  +#2#2#0#0#7'TButton'#12'BtnSelectAll'#4'Left'#2#243#6'Height'#2#26#3'Top'#3#25
-  +#2#5'Width'#2'a'#7'Anchors'#11#7'akRight'#8'akBottom'#0#7'Caption'#6#10'Sele'
-  +'ct all'#8'TabOrder'#2#3#7'OnClick'#7#17'BtnSelectAllClick'#0#0#7'TButton'#14
-  +'BtnDeselectAll'#4'Left'#2'`'#6'Height'#2#26#3'Top'#3#25#2#5'Width'#2'a'#7'A'
-  +'nchors'#11#7'akRight'#8'akBottom'#0#7'Caption'#6#12'Deselect all'#8'TabOrde'
+  +#2#2#0#0#7'TButton'#12'BtnSelectAll'#4'Left'#2#8#6'Height'#2#26#3'Top'#3#25#2
+  +#5'Width'#2'n'#7'Anchors'#11#6'akLeft'#8'akBottom'#0#7'Caption'#6#10'Select '
+  +'all'#8'TabOrder'#2#3#7'OnClick'#7#17'BtnSelectAllClick'#0#0#7'TButton'#14'B'
+  +'tnDeselectAll'#4'Left'#2'~'#6'Height'#2#26#3'Top'#3#25#2#5'Width'#3#130#0#7
+  +'Anchors'#11#6'akLeft'#8'akBottom'#0#7'Caption'#6#12'Deselect all'#8'TabOrde'
   +'r'#2#4#7'OnClick'#7#19'BtnDeselectAllClick'#0#0#0
 ]);

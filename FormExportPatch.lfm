@@ -43,21 +43,21 @@ object FrmExportPatch: TFrmExportPatch
     TabOrder = 2
   end
   object BtnSelectAll: TButton
-    Left = -13
+    Left = 8
     Height = 26
     Top = 537
-    Width = 97
-    Anchors = [akRight, akBottom]
+    Width = 110
+    Anchors = [akLeft, akBottom]
     Caption = 'Select all'
     TabOrder = 3
     OnClick = BtnSelectAllClick
   end
   object BtnDeselectAll: TButton
-    Left = 96
+    Left = 126
     Height = 26
     Top = 537
-    Width = 97
-    Anchors = [akRight, akBottom]
+    Width = 130
+    Anchors = [akLeft, akBottom]
     Caption = 'Deselect all'
     TabOrder = 4
     OnClick = BtnDeselectAllClick

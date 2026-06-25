@@ -4283,3 +4283,53 @@ msgstr ""
 msgctxt "formprojectexport.ssavemoduleas"
 msgid "Save module as..."
 msgstr ""
+
+#: FormExportPatch.pas:48
+msgctxt "formexportpatch.sexportpatchtitle"
+msgid "Export patch..."
+msgstr ""
+
+#: FormExportPatch.pas:49
+msgctxt "formexportpatch.sselectall"
+msgid "Select all"
+msgstr ""
+
+#: FormExportPatch.pas:50
+msgctxt "formexportpatch.sdeselectall"
+msgid "Deselect all"
+msgstr ""
+
+#: FormExportPatch.pas:51
+msgctxt "formexportpatch.scancel"
+msgid "Cancel"
+msgstr ""
+
+#: FormExportPatch.pas:52
+msgctxt "formexportpatch.sok"
+msgid "OK"
+msgstr ""
+
+#: FormExportPatch.lfm:6
+msgctxt "tfrmexportpatch.caption"
+msgid "Export patch..."
+msgstr ""
+
+#: FormExportPatch.lfm:51
+msgctxt "tfrmexportpatch.btnselectall.caption"
+msgid "Select all"
+msgstr ""
+
+#: FormExportPatch.lfm:61
+msgctxt "tfrmexportpatch.btndeselectall.caption"
+msgid "Deselect all"
+msgstr ""
+
+#: FormExportPatch.lfm:32
+msgctxt "tfrmexportpatch.button2.caption"
+msgid "Cancel"
+msgstr ""
+
+#: FormExportPatch.lfm:22
+msgctxt "tfrmexportpatch.button1.caption"
+msgid "OK"
+msgstr ""
