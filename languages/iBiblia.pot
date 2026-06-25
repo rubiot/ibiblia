@@ -4333,3 +4333,71 @@ msgstr ""
 msgctxt "tfrmexportpatch.button1.caption"
 msgid "OK"
 msgstr ""
+
+#: formprincipal.sguidemodemenu
+msgid "Guide mode"
+msgstr ""
+
+#: formprincipal.sguidemodehint
+msgid "Show contextual guidance for the main workflow"
+msgstr ""
+
+#: formprincipal.shideguidebutton
+msgid "Hide guide"
+msgstr ""
+
+#: formprincipal.sguidenoprojecttitle
+msgid "Guide: start a project"
+msgstr ""
+
+#: formprincipal.sguidenoprojecttext
+msgid "Create or open a project. Association projects copy Strong's and morphology from Source to Destination; translation projects let you write Destination first."
+msgstr ""
+
+#: formprincipal.sguideassociationtitle
+msgid "Guide: associate words"
+msgstr ""
+
+#: formprincipal.sguideassociationnoselectiontext
+msgid "Click a word in the source text to begin."
+msgstr ""
+
+#: formprincipal.sguideassociationselectedtitle
+msgid "Guide: complete the association"
+msgstr ""
+
+#: formprincipal.sguideassociationselectedaddtext
+msgid "To add words to the selection, hold Ctrl and click another word in the source text."
+msgstr ""
+
+#: formprincipal.sguideassociationselectedassociatetext
+msgid "To associate this selection with the other text, hold Shift and select the equivalent word(s) in the destination text. Hold Ctrl too to add words to the selection."
+msgstr ""
+
+#: formprincipal.sguideassociationselectedquicktext
+msgid "To associate this selection with one destination word and select the next word, right-click the equivalent word in the other text."
+msgstr ""
+
+#: formprincipal.sguideassociationexistingtitle
+msgid "Guide: adjust the association"
+msgstr ""
+
+#: formprincipal.sguideassociationexistingdisassociatetext
+msgid "To disassociate, press Ctrl+Shift and click each associated word."
+msgstr ""
+
+#: formprincipal.sguideassociationexistingaddtext
+msgid "To add words to the association, hold Ctrl+Shift and select new words."
+msgstr ""
+
+#: formprincipal.sguideassociationexistingremovetext
+msgid "To remove words from the association, press Ctrl+Shift and click the word."
+msgstr ""
+
+#: formprincipal.sguidetranslationtitle
+msgid "Guide: translate the verse"
+msgstr ""
+
+#: formprincipal.sguidetranslationtext
+msgid "Double-click an empty area in Destination to write the translation; press Esc to finish. Once Destination has text, the guide will switch to association."
+msgstr ""

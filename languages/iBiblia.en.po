@@ -4578,3 +4578,71 @@ msgstr "Cancel"
 msgctxt "tfrmexportpatch.button1.caption"
 msgid "OK"
 msgstr "OK"
+
+#: formprincipal.sguidemodemenu
+msgid "Guide mode"
+msgstr "Guide mode"
+
+#: formprincipal.sguidemodehint
+msgid "Show contextual guidance for the main workflow"
+msgstr "Show contextual guidance for the main workflow"
+
+#: formprincipal.shideguidebutton
+msgid "Hide guide"
+msgstr "Hide guide"
+
+#: formprincipal.sguidenoprojecttitle
+msgid "Guide: start a project"
+msgstr "Guide: start a project"
+
+#: formprincipal.sguidenoprojecttext
+msgid "Create or open a project. Association projects copy Strong's and morphology from Source to Destination; translation projects let you write Destination first."
+msgstr "Create or open a project. Association projects copy Strong's and morphology from Source to Destination; translation projects let you write Destination first."
+
+#: formprincipal.sguideassociationtitle
+msgid "Guide: associate words"
+msgstr "Guide: associate words"
+
+#: formprincipal.sguideassociationnoselectiontext
+msgid "Click a word in the source text to begin."
+msgstr "Click a word in the source text to begin."
+
+#: formprincipal.sguideassociationselectedtitle
+msgid "Guide: complete the association"
+msgstr "Guide: complete the association"
+
+#: formprincipal.sguideassociationselectedaddtext
+msgid "To add words to the selection, hold Ctrl and click another word in the source text."
+msgstr "To add words to the selection, hold Ctrl and click another word in the source text."
+
+#: formprincipal.sguideassociationselectedassociatetext
+msgid "To associate this selection with the other text, hold Shift and select the equivalent word(s) in the destination text. Hold Ctrl too to add words to the selection."
+msgstr "To associate this selection with the other text, hold Shift and select the equivalent word(s) in the destination text. Hold Ctrl too to add words to the selection."
+
+#: formprincipal.sguideassociationselectedquicktext
+msgid "To associate this selection with one destination word and select the next word, right-click the equivalent word in the other text."
+msgstr "To associate this selection with one destination word and select the next word, right-click the equivalent word in the other text."
+
+#: formprincipal.sguideassociationexistingtitle
+msgid "Guide: adjust the association"
+msgstr "Guide: adjust the association"
+
+#: formprincipal.sguideassociationexistingdisassociatetext
+msgid "To disassociate, press Ctrl+Shift and click each associated word."
+msgstr "To disassociate, press Ctrl+Shift and click each associated word."
+
+#: formprincipal.sguideassociationexistingaddtext
+msgid "To add words to the association, hold Ctrl+Shift and select new words."
+msgstr "To add words to the association, hold Ctrl+Shift and select new words."
+
+#: formprincipal.sguideassociationexistingremovetext
+msgid "To remove words from the association, press Ctrl+Shift and click the word."
+msgstr "To remove words from the association, press Ctrl+Shift and click the word."
+
+#: formprincipal.sguidetranslationtitle
+msgid "Guide: translate the verse"
+msgstr "Guide: translate the verse"
+
+#: formprincipal.sguidetranslationtext
+msgid "Double-click an empty area in Destination to write the translation; press Esc to finish. Once Destination has text, the guide will switch to association."
+msgstr "Double-click an empty area in Destination to write the translation; press Esc to finish. Once Destination has text, the guide will switch to association."

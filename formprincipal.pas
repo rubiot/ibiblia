@@ -16,13 +16,14 @@ uses
   ActnList, ComCtrls, ExtCtrls, StdCtrls, BibleScope, Project, IniFiles, Math,
   Syntagm, LCLTranslator, unitabout, PCRE, Verse, LCLProc, LazLogger,
   LCLType, LazUTF8, ChapterView, UnitPleaseWait, CommentsView, ONTTokenizer,
-  status_catalog, SynEdit;
+  status_catalog, SynEdit, project_setup_model;
 
 type
   { TFrmPrincipal }
 
   TFrmPrincipal = class(TForm)
   ActionKeyboardShortcuts: TAction;
+  ActionGuideMode: TAction;
   ActionLlmOptions: TAction;
   ActionResetLayout: TAction;
   ActionTheWordHighlighterColors: TAction;
@@ -86,6 +87,7 @@ type
     MenuItemStrongsCountWords: TMenuItem;
     MenuItemStrongsCountStrongs: TMenuItem;
     MenuItemAbout: TMenuItem;
+    MenuItemGuideMode: TMenuItem;
     MenuItemKeyboardShortcuts: TMenuItem;
     MenuItemResetLayout: TMenuItem;
     MenuItemTheWordHighlighterColors: TMenuItem;
@@ -227,6 +229,11 @@ type
     FHeaderSelectionLabel: TLabel;
     FHeaderEngineLabel: TLabel;
     FHeaderModifiedLabel: TLabel;
+    FGuidePanel: TPanel;
+    FGuideTitleLabel: TLabel;
+    FGuideTextLabel: TLabel;
+    FGuideHideButton: TButton;
+    FGuideModeEnabled: Boolean;
     FVersePanelLabels: array[tbOrigem..tbConsulta2] of TPanel;
     FVersePanelTypeLabels: array[tbOrigem..tbConsulta2] of TLabel;
     FVersePanelDescriptionLabels: array[tbOrigem..tbConsulta2] of TLabel;
@@ -241,7 +248,9 @@ type
     procedure SetUpSyncThread;
     {$ENDIF}
     procedure ApplyShortcutHints;
+    procedure ActionGuideModeExecute(Sender: TObject);
     function BuildKeyboardShortcutsText: string;
+    procedure CreateGuidePanel;
     function CreateVersePanelLabel(AParent: TWinControl;
       TextType: TTipoTextoBiblico): TPanel;
     function CreateStateHeaderLabel(AParent: TWinControl; Bold: Boolean = False): TLabel;
@@ -250,21 +259,27 @@ type
     procedure CreateStateHeader;
     procedure CreateVersePanelLabels;
     procedure CountCurrentAssociations(out Associated, Total: Integer);
+    function CurrentGuideScenario: TProjectScenario;
     function CurrentEngineCaption: string;
     function CurrentSelectionCaption: string;
     function GetVersePanelCaption(TextType: TTipoTextoBiblico): string;
     function GetVersePanelDescription(TextType: TTipoTextoBiblico): string;
     function GetVersePanelTypeCaption(TextType: TTipoTextoBiblico): string;
     function LocalizedProjectDescription(const Description: string): string;
+    procedure GuideHideButtonClick(Sender: TObject);
+    procedure GuidePanelResize(Sender: TObject);
+    procedure LayoutGuidePanel;
     procedure LayoutStateHeader;
     procedure LayoutVersePanelLabels;
     procedure ResetMainLayout;
+    procedure SetGuideModeEnabled(AEnabled: Boolean);
     procedure SplitterMoved(Sender: TObject);
     procedure StateHeaderResize(Sender: TObject);
     procedure TreeViewShowHint(Sender: TObject; HintInfo: PHintInfo);
     procedure Translate;
     procedure UpdateActionHintWithShortcut(AAction: TCustomAction);
     procedure UpdateMainCaption;
+    procedure UpdateGuidePanel;
     procedure UpdateStateHeader;
     procedure UpdateTreeLegend;
     procedure DoOpenProject(filename: string);
@@ -326,6 +341,23 @@ resourcestring
   SStatisticalSuggestionHint = 'Use the traditional statistical suggestion engine';
   SAISuggestionHint = 'Use the new AI-assisted suggestion engine (requires internet)';
   SLLMOptionsMenu = 'LLM options...';
+  SGuideModeMenu = 'Guide mode';
+  SGuideModeHint = 'Show contextual guidance for the main workflow';
+  SHideGuideButton = 'Hide guide';
+  SGuideNoProjectTitle = 'Guide: start a project';
+  SGuideNoProjectText = 'Create or open a project. Association projects copy Strong''s and morphology from Source to Destination; translation projects let you write Destination first.';
+  SGuideAssociationTitle = 'Guide: associate words';
+  SGuideAssociationNoSelectionText = 'Click a word in the source text to begin.';
+  SGuideAssociationSelectedTitle = 'Guide: complete the association';
+  SGuideAssociationSelectedAddText = 'To add words to the selection, hold Ctrl and click another word in the source text.';
+  SGuideAssociationSelectedAssociateText = 'To associate this selection with the other text, hold Shift and select the equivalent word(s) in the destination text. Hold Ctrl too to add words to the selection.';
+  SGuideAssociationSelectedQuickText = 'To associate this selection with one destination word and select the next word, right-click the equivalent word in the other text.';
+  SGuideAssociationExistingTitle = 'Guide: adjust the association';
+  SGuideAssociationExistingDisassociateText = 'To disassociate, press Ctrl+Shift and click each associated word.';
+  SGuideAssociationExistingAddText = 'To add words to the association, hold Ctrl+Shift and select new words.';
+  SGuideAssociationExistingRemoveText = 'To remove words from the association, press Ctrl+Shift and click the word.';
+  SGuideTranslationTitle = 'Guide: translate the verse';
+  SGuideTranslationText = 'Double-click an empty area in Destination to write the translation; press Esc to finish. Once Destination has text, the guide will switch to association.';
   SKeyboardShortcutsMenu = 'Keyboard shortcuts...';
   SKeyboardShortcutsHint = 'Show keyboard shortcuts';
   SKeyboardShortcutsTitle = 'Keyboard shortcuts';
@@ -381,7 +413,7 @@ implementation
 
 uses FormNewProject, FormProjectProperties, FormProjectExport, FormMergeProjects,
   FormExportPatch, FormApplyPatch, FormLlmOptions, FormTheWordHighlighterColors,
-  llmclient, theword_syntax_highlighter, project_setup_model;
+  llmclient, theword_syntax_highlighter;
 
 {$R *.lfm}
 
@@ -531,6 +563,11 @@ begin
   RadioGroupStatus.ShowHint := True;
 end;
 
+procedure TFrmPrincipal.ActionGuideModeExecute(Sender: TObject);
+begin
+  SetGuideModeEnabled(not FGuideModeEnabled);
+end;
+
 function TFrmPrincipal.BuildKeyboardShortcutsText: string;
 var
   Lines: TStringList;
@@ -605,6 +642,59 @@ begin
   finally
     Lines.Free;
   end;
+end;
+
+procedure TFrmPrincipal.CreateGuidePanel;
+begin
+  if Assigned(FGuidePanel) then
+    Exit;
+
+  FGuidePanel := TPanel.Create(Self);
+  with FGuidePanel do
+  begin
+    Parent := Self;
+    Align := alTop;
+    Top := ToolBar1.Height + 34;
+    Height := 88;
+    BevelOuter := bvNone;
+    ParentColor := False;
+    Color := clInfoBk;
+    ShowHint := True;
+    Hint := SGuideModeHint;
+    Visible := False;
+    OnResize := @GuidePanelResize;
+  end;
+
+  FGuideTitleLabel := TLabel.Create(FGuidePanel);
+  with FGuideTitleLabel do
+  begin
+    Parent := FGuidePanel;
+    AutoSize := False;
+    Transparent := True;
+    Layout := tlCenter;
+    Font.Style := Font.Style + [fsBold];
+  end;
+
+  FGuideTextLabel := TLabel.Create(FGuidePanel);
+  with FGuideTextLabel do
+  begin
+    Parent := FGuidePanel;
+    AutoSize := False;
+    Transparent := True;
+    Layout := tlTop;
+    WordWrap := True;
+  end;
+
+  FGuideHideButton := TButton.Create(FGuidePanel);
+  with FGuideHideButton do
+  begin
+    Parent := FGuidePanel;
+    Caption := SHideGuideButton;
+    OnClick := @GuideHideButtonClick;
+  end;
+
+  LayoutGuidePanel;
+  UpdateGuidePanel;
 end;
 
 function TFrmPrincipal.CreateVersePanelLabel(AParent: TWinControl;
@@ -808,6 +898,15 @@ begin
     Result := Format(SHeaderSelectionFmt, [SourceCount, DestinationCount]);
 end;
 
+function TFrmPrincipal.CurrentGuideScenario: TProjectScenario;
+begin
+  if Assigned(ProjetoAtual) then
+    Result := ProjectScenarioFromConfig(
+      ProjetoAtual.GetInfo(PROJECT_SCENARIO_CONFIG_KEY))
+  else
+    Result := psUnknown;
+end;
+
 function TFrmPrincipal.GetVersePanelCaption(TextType: TTipoTextoBiblico): string;
 var
   TextDescription: string;
@@ -848,6 +947,116 @@ begin
   else
     Result := '';
   end;
+end;
+
+procedure TFrmPrincipal.GuideHideButtonClick(Sender: TObject);
+begin
+  SetGuideModeEnabled(False);
+end;
+
+procedure TFrmPrincipal.GuidePanelResize(Sender: TObject);
+begin
+  LayoutGuidePanel;
+end;
+
+procedure TFrmPrincipal.LayoutGuidePanel;
+const
+  Margin = 8;
+  Gap = 10;
+var
+  Compact: Boolean;
+  ButtonWidth, ButtonHeight, ButtonTop, TextWidth, TitleHeight,
+    TextTop, TextHeight, DesiredHeight, LineHeight, WrappedLines: Integer;
+
+  function CountWrappedLines(const AText: string; AMaxWidth: Integer): Integer;
+  var
+    Lines: TStringList;
+    I, LineWidth: Integer;
+  begin
+    Result := 0;
+    Lines := TStringList.Create;
+    try
+      Lines.Text := AText;
+      for I := 0 to Lines.Count - 1 do
+      begin
+        LineWidth := FGuidePanel.Canvas.TextWidth(Lines[I]);
+        Inc(Result, Max(1, Ceil(LineWidth / Max(1, AMaxWidth))));
+      end;
+    finally
+      Lines.Free;
+    end;
+    Result := Max(1, Result);
+  end;
+begin
+  if not Assigned(FGuidePanel) or (FGuidePanel.ClientWidth <= 0) then
+    Exit;
+
+  Compact := FGuidePanel.ClientWidth < 520;
+
+  FGuidePanel.Canvas.Font.Assign(Font);
+  ButtonWidth := Max(100,
+    FGuidePanel.Canvas.TextWidth(FGuideHideButton.Caption) + 28);
+  ButtonHeight := Max(28, FGuidePanel.Canvas.TextHeight('Hg') + 12);
+  TitleHeight := FGuidePanel.Canvas.TextHeight('Hg') + 4;
+  LineHeight := FGuidePanel.Canvas.TextHeight('Hg') + 2;
+
+  if Compact then
+    TextWidth := Max(80, FGuidePanel.ClientWidth - (Margin * 2))
+  else
+    TextWidth := Max(80,
+      FGuidePanel.ClientWidth - ButtonWidth - (Margin * 2) - Gap);
+
+  WrappedLines := CountWrappedLines(FGuideTextLabel.Caption, TextWidth);
+  DesiredHeight := Margin + TitleHeight + 2 + (WrappedLines * LineHeight) +
+    Margin;
+  if Compact then
+    DesiredHeight := DesiredHeight + ButtonHeight + Gap
+  else
+    DesiredHeight := Max(DesiredHeight, ButtonHeight + (Margin * 2));
+  DesiredHeight := Max(72, DesiredHeight);
+
+  if FGuidePanel.Height <> DesiredHeight then
+    FGuidePanel.Height := DesiredHeight;
+
+  if Compact then
+  begin
+    ButtonTop := FGuidePanel.ClientHeight - ButtonHeight - Margin;
+  end
+  else
+  begin
+    ButtonTop := Max(Margin,
+      (FGuidePanel.ClientHeight - ButtonHeight) div 2);
+  end;
+
+  FGuideHideButton.SetBounds(
+    Max(Margin, FGuidePanel.ClientWidth - ButtonWidth - Margin),
+    ButtonTop,
+    ButtonWidth,
+    ButtonHeight);
+
+  TextTop := Margin + TitleHeight + 2;
+  if Compact then
+    TextHeight := Max(24, ButtonTop - TextTop - 4)
+  else
+    TextHeight := Max(24, FGuidePanel.ClientHeight - TextTop - Margin);
+
+  FGuideTitleLabel.SetBounds(Margin, Margin, TextWidth, TitleHeight);
+  FGuideTextLabel.SetBounds(Margin, TextTop, TextWidth, TextHeight);
+end;
+
+procedure TFrmPrincipal.SetGuideModeEnabled(AEnabled: Boolean);
+begin
+  FGuideModeEnabled := AEnabled;
+
+  if Assigned(ActionGuideMode) then
+    ActionGuideMode.Checked := FGuideModeEnabled;
+  if Assigned(MenuItemGuideMode) then
+    MenuItemGuideMode.Checked := FGuideModeEnabled;
+
+  if Assigned(opts) then
+    opts.WriteBool('opcoes', 'guide.mode', FGuideModeEnabled);
+
+  UpdateGuidePanel;
 end;
 
 procedure TFrmPrincipal.LayoutStateHeader;
@@ -999,6 +1208,7 @@ begin
   FHeaderEngineLabel.Hint := FHeaderEngineLabel.Caption;
   FHeaderModifiedLabel.Hint := FHeaderModifiedLabel.Caption;
   LayoutStateHeader;
+  UpdateGuidePanel;
 end;
 
 procedure TFrmPrincipal.UpdateMainCaption;
@@ -1010,6 +1220,100 @@ begin
        ProjetoAtual.FileName])
   else
     Caption := SMainCaption;
+end;
+
+procedure TFrmPrincipal.UpdateGuidePanel;
+var
+  SourceCount, DestinationCount: Integer;
+  Scenario: TProjectScenario;
+  DestinationHasText, SelectionHasAssociation, ShowTranslationGuide: Boolean;
+
+  function JoinedGuideText(const FirstLine, SecondLine, ThirdLine: string): string;
+  begin
+    Result := FirstLine + LineEnding + SecondLine + LineEnding + ThirdLine;
+  end;
+
+  function SelectedAssociationIn(TextType: TTipoTextoBiblico): Boolean;
+  var
+    Syntagm: TSyntagm;
+  begin
+    Result := False;
+    if not Assigned(ProjetoAtual.VerseObjects[TextType]) or
+       not Assigned(ProjetoAtual.VerseObjects[TextType].Selection) then
+      Exit;
+
+    for Syntagm in ProjetoAtual.VerseObjects[TextType].Selection do
+      if Syntagm.IsAssociated then
+        Exit(True);
+  end;
+begin
+  if not Assigned(FGuidePanel) then
+    Exit;
+
+  FGuidePanel.Visible := FGuideModeEnabled;
+  if not FGuideModeEnabled then
+    Exit;
+
+  if not Assigned(ProjetoAtual) then
+  begin
+    FGuideTitleLabel.Caption := SGuideNoProjectTitle;
+    FGuideTextLabel.Caption := SGuideNoProjectText;
+  end
+  else
+  begin
+    Scenario := CurrentGuideScenario;
+    DestinationHasText := Assigned(ProjetoAtual.VerseObjects[tbDestino]) and
+      (Trim(ProjetoAtual.VerseObjects[tbDestino].PlainText) <> '');
+    ShowTranslationGuide := (Scenario = psTranslationProject) and
+      not DestinationHasText;
+
+    if ShowTranslationGuide then
+    begin
+      FGuideTitleLabel.Caption := SGuideTranslationTitle;
+      FGuideTextLabel.Caption := SGuideTranslationText;
+    end
+    else
+    begin
+      SourceCount := 0;
+      DestinationCount := 0;
+      if Assigned(ProjetoAtual.VerseObjects[tbOrigem]) and
+         Assigned(ProjetoAtual.VerseObjects[tbOrigem].Selection) then
+        SourceCount := ProjetoAtual.VerseObjects[tbOrigem].Selection.Count;
+      if Assigned(ProjetoAtual.VerseObjects[tbDestino]) and
+         Assigned(ProjetoAtual.VerseObjects[tbDestino].Selection) then
+        DestinationCount := ProjetoAtual.VerseObjects[tbDestino].Selection.Count;
+
+      SelectionHasAssociation := SelectedAssociationIn(tbOrigem) or
+        SelectedAssociationIn(tbDestino);
+
+      if SelectionHasAssociation then
+      begin
+        FGuideTitleLabel.Caption := SGuideAssociationExistingTitle;
+        FGuideTextLabel.Caption := JoinedGuideText(
+          SGuideAssociationExistingDisassociateText,
+          SGuideAssociationExistingAddText,
+          SGuideAssociationExistingRemoveText);
+      end
+      else if (SourceCount > 0) or (DestinationCount > 0) then
+      begin
+        FGuideTitleLabel.Caption := SGuideAssociationSelectedTitle;
+        FGuideTextLabel.Caption := JoinedGuideText(
+          SGuideAssociationSelectedAddText,
+          SGuideAssociationSelectedAssociateText,
+          SGuideAssociationSelectedQuickText);
+      end
+      else
+      begin
+        FGuideTitleLabel.Caption := SGuideAssociationTitle;
+        FGuideTextLabel.Caption := SGuideAssociationNoSelectionText;
+      end;
+    end;
+  end;
+
+  FGuidePanel.Hint := FGuideTextLabel.Caption;
+  FGuideTitleLabel.Hint := FGuideTitleLabel.Caption;
+  FGuideTextLabel.Hint := FGuideTextLabel.Caption;
+  LayoutGuidePanel;
 end;
 
 procedure TFrmPrincipal.UpdateTreeLegend;
@@ -1737,6 +2041,7 @@ begin
   MenuItemSynciBiblia.Checked := opts.ReadBool('opcoes', 'syncibiblia', false);
   MenuItemStrongNegrito.Checked := opts.ReadBool('opcoes', 'boldstrongs', false);
   MenuItemAutoSave.Checked := opts.ReadBool('opcoes', 'auto.save', false);
+  FGuideModeEnabled := opts.ReadBool('opcoes', 'guide.mode', true);
 
   // association engine
   modeInt := opts.ReadInteger('opcoes', 'suggestion.mode', 0);
@@ -1780,6 +2085,7 @@ begin
     MenuItemLangPt.Checked:=true;
 
   CreateStateHeader;
+  CreateGuidePanel;
   CreateVersePanelLabels;
   CreateCommentsGroupBox;
   TreeView1.Hint := ' ';
@@ -1805,6 +2111,17 @@ begin
   MenuItemResetLayout := TMenuItem.Create(MainMenu1);
   MenuItemResetLayout.Action := ActionResetLayout;
   MenuItem20.Add(MenuItemResetLayout);
+
+  ActionGuideMode := TAction.Create(ActionList1);
+  ActionGuideMode.Caption := SGuideModeMenu;
+  ActionGuideMode.Hint := SGuideModeHint;
+  ActionGuideMode.Checked := FGuideModeEnabled;
+  ActionGuideMode.OnExecute := @ActionGuideModeExecute;
+
+  MenuItemGuideMode := TMenuItem.Create(MainMenu1);
+  MenuItemGuideMode.Action := ActionGuideMode;
+  MenuItemGuideMode.Checked := FGuideModeEnabled;
+  MenuItem20.Add(MenuItemGuideMode);
 
   ActionTheWordHighlighterColors := TAction.Create(ActionList1);
   ActionTheWordHighlighterColors.Caption := STheWordHighlightColorsMenu;
@@ -1885,6 +2202,7 @@ begin
   opts.WriteBool('opcoes', 'alwaysontop', MenuItemAlwaysOnTop.Checked);
   opts.WriteInteger('opcoes', 'popuptrigger', LongInt(FPopupTrigger));
   opts.WriteBool('opcoes', 'auto.save', MenuItemAutoSave.Checked);
+  opts.WriteBool('opcoes', 'guide.mode', FGuideModeEnabled);
   opts.Free;
 
   FChapterView.Free;
@@ -2304,6 +2622,11 @@ begin
   end;
   if Assigned(ActionLlmOptions) then
     ActionLlmOptions.Caption := SLLMOptionsMenu;
+  if Assigned(ActionGuideMode) then
+  begin
+    ActionGuideMode.Caption := SGuideModeMenu;
+    ActionGuideMode.Hint := SGuideModeHint;
+  end;
   if Assigned(ActionResetLayout) then
   begin
     ActionResetLayout.Caption := SResetLayoutMenu;
@@ -2311,6 +2634,8 @@ begin
   end;
   if Assigned(ActionTheWordHighlighterColors) then
     ActionTheWordHighlighterColors.Caption := STheWordHighlightColorsMenu;
+  if Assigned(FGuideHideButton) then
+    FGuideHideButton.Caption := SHideGuideButton;
 
   ActionReverterAssociacoes.Caption := SRollbackCurrentVerse;
   ActionReverterAssociacoes.Hint := SRollbackCurrentVerseHint;
@@ -2347,6 +2672,7 @@ begin
     FChapterView.Translate;
   UpdateMainCaption;
   UpdateStateHeader;
+  UpdateGuidePanel;
   UpdateTreeLegend;
   LayoutVersePanelLabels;
 end;
