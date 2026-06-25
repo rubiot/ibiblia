@@ -3583,6 +3583,7 @@ var
   m: smallint;
   line: string;
   moduleScope: TEscopoTexto;
+  oldCursor: TCursor;
 begin
   rxVerseRulesFrom := nil;
   rxVerseRulesTo := nil;
@@ -3636,7 +3637,7 @@ begin
     reCharset      := RegexCreate('^\s*charset\s*=\s*(.*)$', [rcoUTF8]);
     reVerseRules   := RegexCreate('^\s*verse.rule\s*=\s*"(.*?)(?<!")"(?!")\s+"(.*?)"(?=\s*$|\s+"(.*?)(?<!")"(?!"))', [rcoUTF8]);
 
-    FrmVerseRules.Reset;
+    FrmVerseRules.Reset(arquivo);
     propriedades := TStringStream.Create('');
 
     for i:=QLinhas[moduleScope] to modulo.Count-1 do
@@ -3678,8 +3679,17 @@ begin
     end;
     propriedades.Free;
 
-    if FrmVerseRules.HasRules and (FrmVerseRules.ShowModal = mrOK) then
-      FrmVerseRules.CompileVerseRules(rxVerseRulesFrom, rxVerseRulesTo);
+    if FrmVerseRules.HasRules then
+    begin
+      oldCursor := Screen.Cursor;
+      Screen.Cursor := crDefault;
+      try
+        if FrmVerseRules.ShowModal = mrOK then
+          FrmVerseRules.CompileVerseRules(rxVerseRulesFrom, rxVerseRulesTo);
+      finally
+        Screen.Cursor := oldCursor;
+      end;
+    end;
 
     //modulo.SaveToFile(arquivo + '.txt');
     if assigned(pb) then

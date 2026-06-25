@@ -279,7 +279,8 @@ begin
 
   FMemo.BringToFront;
   FMemo.Visible := True;
-  FMemo.SetFocus;
+  if FMemo.CanSetFocus then
+    FMemo.SetFocus;
 end;
 
 procedure TVerseMemo.Deactivate;

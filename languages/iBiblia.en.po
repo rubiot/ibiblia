@@ -379,6 +379,20 @@ msgstr ""
 msgid "Use flow-specific provider/model/API key"
 msgstr ""
 
+#: formnewproject.sback
+msgid "< Back"
+msgstr ""
+
+#: formnewproject.sbrowse
+msgid "Browse..."
+msgstr ""
+
+#: formnewproject.scancel
+#, fuzzy
+msgctxt "formnewproject.scancel"
+msgid "Cancel"
+msgstr "Cancel"
+
 #: formnewproject.schooseaname
 #, fuzzy
 msgctxt "formnewproject.schooseaname"
@@ -390,6 +404,58 @@ msgstr "Please choose a name for your project"
 msgctxt "formnewproject.schooseatleastonetext"
 msgid "Please choose a source Bible text"
 msgstr "Please choose at least one source text"
+
+#: formnewproject.schoosedestinationtext
+msgid "Please choose a destination Bible text for an association project"
+msgstr ""
+
+#: formnewproject.schooseprojectfile
+msgid "Please choose a .bib project file"
+msgstr ""
+
+#: formnewproject.sdestinationtextlabeloptional
+msgid "Destination text (optional)"
+msgstr ""
+
+#: formnewproject.sdestinationtextlabelrequired
+msgid "Destination text (required)"
+msgstr ""
+
+#: formnewproject.sdictionariesstep
+#, fuzzy
+msgctxt "formnewproject.sdictionariesstep"
+msgid "Dictionaries"
+msgstr "Dictionaries"
+
+#: formnewproject.sdictionaryfilter
+msgctxt "formnewproject.sdictionaryfilter"
+msgid "theWord dictionary modules (*.dct.twm)|*.dct.twm|All files|*.*"
+msgstr ""
+
+#: formnewproject.seditstatuscatalog
+msgctxt "formnewproject.seditstatuscatalog"
+msgid "Edit status catalog..."
+msgstr "Edit status catalog..."
+
+#: formnewproject.sfinish
+msgid "Finish"
+msgstr ""
+
+#: formnewproject.smorphology
+msgctxt "formnewproject.smorphology"
+msgid "Morphology"
+msgstr ""
+
+#: formnewproject.smorphologydictionarylabel
+#, object-pascal-format
+msgid "%s morphology dictionary"
+msgstr ""
+
+#: formnewproject.snewassociationprojectname
+#, fuzzy
+msgctxt "formnewproject.snewassociationprojectname"
+msgid "New association project"
+msgstr "New association project"
 
 #: formnewproject.snewproject
 #, fuzzy
@@ -409,6 +475,23 @@ msgctxt "formnewproject.snewtestamentfilter"
 msgid "theWord Bible modules (*.ont, *.nt)|*.ont;*.nt"
 msgstr "theWord bible modules (*.ont, *.nt)|*.ont;*.nt"
 
+#: formnewproject.snewtranslationprojectname
+msgid "New translation project"
+msgstr ""
+
+#: formnewproject.snext
+msgid "Next >"
+msgstr ""
+
+#: formnewproject.snodictionariesselected
+msgctxt "formnewproject.snodictionariesselected"
+msgid "No dictionaries selected."
+msgstr "No dictionaries selected."
+
+#: formnewproject.snotselected
+msgid "(not selected)"
+msgstr ""
+
 #: formnewproject.soldtestament
 #, fuzzy
 msgctxt "formnewproject.soldtestament"
@@ -421,6 +504,141 @@ msgctxt "formnewproject.soldtestamentfilter"
 msgid "theWord Bible modules (*.ont, *.ot)|*.ont;*.ot"
 msgstr "theWord bible modules (*.ont, *.ot)|*.ont;*.ot"
 
+#: formnewproject.soptionaldictionaryhint
+msgctxt "formnewproject.soptionaldictionaryhint"
+msgid "Optional; invalid filled dictionaries block Finish."
+msgstr "Optional; invalid filled dictionaries block Finish."
+
+#: formnewproject.sprojectfilealreadyexists
+msgid "A project file already exists at this location"
+msgstr ""
+
+#: formnewproject.sprojectfileextension
+msgid "The project file must use the .bib extension"
+msgstr ""
+
+#: formnewproject.sprojectfilefilter
+msgid "iBiblia project (*.bib)|*.bib|All files|*.*"
+msgstr ""
+
+#: formnewproject.sprojectfilelabel
+msgid "Project file (.bib)"
+msgstr ""
+
+#: formnewproject.sprojectnamelabel
+msgid "Project name"
+msgstr ""
+
+#: formnewproject.sprojectstep
+#, fuzzy
+msgctxt "formnewproject.sprojectstep"
+msgid "Project"
+msgstr "Project"
+
+#: formnewproject.sreference1textlabel
+msgid "Reference 1 text (optional)"
+msgstr ""
+
+#: formnewproject.sreference2textlabel
+msgid "Reference 2 text (optional)"
+msgstr ""
+
+#: formnewproject.sreviewblocked
+#, object-pascal-format
+msgid "Cannot finish yet: %s"
+msgstr ""
+
+#: formnewproject.sreviewdictionary
+#, object-pascal-format
+msgid "%s %s dictionary: %s"
+msgstr ""
+
+#: formnewproject.sreviewproject
+#, object-pascal-format
+msgid "Project: %s"
+msgstr ""
+
+#: formnewproject.sreviewprojectfile
+#, object-pascal-format
+msgid "File: %s"
+msgstr ""
+
+#: formnewproject.sreviewready
+msgid "Ready to create the project."
+msgstr ""
+
+#: formnewproject.sreviewscenario
+#, object-pascal-format
+msgctxt "formnewproject.sreviewscenario"
+msgid "Scenario: %s"
+msgstr ""
+
+#: formnewproject.sreviewscope
+#, object-pascal-format
+msgid "Scope: %s"
+msgstr ""
+
+#: formnewproject.sreviewsectiondictionaries
+msgctxt "formnewproject.sreviewsectiondictionaries"
+msgid "Dictionaries"
+msgstr "Dictionaries"
+
+#: formnewproject.sreviewsectionproject
+msgctxt "formnewproject.sreviewsectionproject"
+msgid "Project"
+msgstr "Project"
+
+#: formnewproject.sreviewsectiontexts
+msgctxt "formnewproject.sreviewsectiontexts"
+msgid "Texts"
+msgstr "Texts"
+
+#: formnewproject.sreviewstep
+msgctxt "formnewproject.sreviewstep"
+msgid "Review"
+msgstr ""
+
+#: formnewproject.sreviewtext
+#, object-pascal-format
+msgid "%s text: %s"
+msgstr ""
+
+#: formnewproject.sreviewtokenizer
+#, object-pascal-format
+msgid "Tokenizer: %s"
+msgstr ""
+
+#: formnewproject.sscenarioassociationdescription
+msgid "Use this when you already have a source text and a translated destination text. iBiblia will guide you through associating source syntagms with destination syntagms, so both source and destination texts are required."
+msgstr ""
+
+#: formnewproject.sscenarioassociationtitle
+msgid "Translation association project"
+msgstr ""
+
+#: formnewproject.sscenariostep
+msgid "Scenario"
+msgstr ""
+
+#: formnewproject.sscenariotranslationdescription
+msgid "Use this when the destination text will be created inside iBiblia. Only the source text is required now; the destination text can start empty and be filled by the user."
+msgstr ""
+
+#: formnewproject.sscenariotranslationtitle
+msgid "Translation project"
+msgstr ""
+
+#: formnewproject.sscopelabel
+msgctxt "formnewproject.sscopelabel"
+msgid "Scope"
+msgstr ""
+
+#: formnewproject.ssourcetextlabel
+#, fuzzy
+msgctxt "formnewproject.ssourcetextlabel"
+msgid "Source text"
+msgstr "Source text"
+
 #: formnewproject.sstatusassociated
 msgctxt "formnewproject.sstatusassociated"
 msgid "Associated!"
@@ -431,10 +649,32 @@ msgctxt "formnewproject.sstatusassociating"
 msgid "Associating"
 msgstr ""
 
-#: formnewproject.sstatuscatalog
-msgctxt "formnewproject.sstatuscatalog"
-msgid "Status..."
-msgstr ""
+#: formnewproject.sstatusawaitingtranslation
+msgctxt "formnewproject.sstatusawaitingtranslation"
+msgid "Awaiting translation"
+msgstr "Awaiting translation"
+
+#: formnewproject.sstatuscatalogcurrent
+#, object-pascal-format
+msgctxt "formnewproject.sstatuscatalogcurrent"
+msgid "Current catalog: %d statuses"
+msgstr "Current catalog: %d statuses"
+
+#: formnewproject.sstatuscatalogdescription
+msgctxt "formnewproject.sstatuscatalogdescription"
+msgid "The status catalog defines the labels, order, and colors used to track verse progress. iBiblia uses it in the project tree, filters, and review workflows. You can keep the default catalog for the selected scenario or customize it before creating the project."
+msgstr "The status catalog defines the labels, order, and colors used to track verse progress. iBiblia uses it in the project tree, filters, and review workflows. You can keep the default catalog for the selected scenario or customize it before creating the project."
+
+#: formnewproject.sstatuscatalogready
+#, object-pascal-format
+msgctxt "formnewproject.sstatuscatalogready"
+msgid "Status catalog: %d statuses"
+msgstr "Status catalog: %d statuses"
+
+#: formnewproject.sstatushaspendingissues
+msgctxt "formnewproject.sstatushaspendingissues"
+msgid "Has pending issues"
+msgstr "Has pending issues"
 
 #: formnewproject.sstatusneedsreview
 msgctxt "formnewproject.sstatusneedsreview"
@@ -444,6 +684,46 @@ msgstr ""
 #: formnewproject.sstatusnotassociated
 msgctxt "formnewproject.sstatusnotassociated"
 msgid "Not associated"
+msgstr ""
+
+#: formnewproject.sstatusreadyforreview
+msgctxt "formnewproject.sstatusreadyforreview"
+msgid "Ready for review"
+msgstr "Ready for review"
+
+#: formnewproject.sstatusreviewed
+msgctxt "formnewproject.sstatusreviewed"
+msgid "Reviewed"
+msgstr "Reviewed"
+
+#: formnewproject.sstatusstep
+msgctxt "formnewproject.sstatusstep"
+msgid "Status"
+msgstr "Status"
+
+#: formnewproject.sstatustranslating
+msgctxt "formnewproject.sstatustranslating"
+msgid "Translating"
+msgstr "Translating"
+
+#: formnewproject.sstrong
+msgctxt "formnewproject.sstrong"
+msgid "Strong"
+msgstr ""
+
+#: formnewproject.sstrongdictionarylabel
+#, object-pascal-format
+msgid "%s Strong dictionary"
+msgstr ""
+
+#: formnewproject.stextsstep
+#, fuzzy
+msgctxt "formnewproject.stextsstep"
+msgid "Texts"
+msgstr "Texts"
+
+#: formnewproject.stokenizerstep
+msgid "Tokenizer"
 msgstr ""
 
 #: formnewproject.stokenizerversion
@@ -635,6 +915,7 @@ msgid "Loading source text..."
 msgstr ""
 
 #: formprincipal.snewassociationproject
+msgctxt "formprincipal.snewassociationproject"
 msgid "New association project"
 msgstr "New association project"
 
@@ -646,6 +927,12 @@ msgstr ""
 msgctxt "formprincipal.sopenproject"
 msgid "Open project"
 msgstr "Open project"
+
+#: formprincipal.spanellabelcomments
+#, fuzzy
+msgctxt "formprincipal.spanellabelcomments"
+msgid "Comments"
+msgstr "Comments"
 
 #: formprincipal.spanellabeldestination
 #, fuzzy
@@ -1096,11 +1383,30 @@ msgctxt "formprojectproperties.sdestinationtextscope"
 msgid "destination"
 msgstr "destination"
 
+#: formprojectproperties.sdictionariestab
+#, fuzzy
+msgctxt "formprojectproperties.sdictionariestab"
+msgid "Dictionaries"
+msgstr "Dictionaries"
+
 #: formprojectproperties.sdictionaryfilter
 #, fuzzy
 msgctxt "formprojectproperties.sdictionaryfilter"
 msgid "theWord dictionary modules (*.dct.twm)|*.dct.twm|All files|*.*"
 msgstr "theWord dictionary modules (*.dct.twm)|*.dct.twm|All files|*.*"
+
+#: formprojectproperties.sdictionaryoptional
+msgid "Optional."
+msgstr ""
+
+#: formprojectproperties.sdictionaryready
+msgid "Dictionary ready."
+msgstr ""
+
+#: formprojectproperties.seditstatuscatalog
+msgctxt "formprojectproperties.seditstatuscatalog"
+msgid "Edit status catalog..."
+msgstr "Edit status catalog..."
 
 #: formprojectproperties.skeepcurrenttokenizer
 msgctxt "formprojectproperties.skeepcurrenttokenizer"
@@ -1109,6 +1415,11 @@ msgstr ""
 
 #: formprojectproperties.smigratingtokenizerassociationsprogress
 msgid "Migrating project associations..."
+msgstr ""
+
+#: formprojectproperties.smorphology
+msgctxt "formprojectproperties.smorphology"
+msgid "Morphology"
 msgstr ""
 
 #: formprojectproperties.snewtestamentfilter
@@ -1123,6 +1434,10 @@ msgctxt "formprojectproperties.snewtextimportedsuccessfully"
 msgid "New text imported successfully"
 msgstr "New text imported successfully"
 
+#: formprojectproperties.snopendingchanges
+msgid "No pending changes."
+msgstr ""
+
 #: formprojectproperties.soldtestamentfilter
 #, fuzzy
 msgctxt "formprojectproperties.soldtestamentfilter"
@@ -1134,6 +1449,70 @@ msgstr "theWord bible modules (*.ont, *.ot)|*.ont;*.ot"
 msgctxt "formprojectproperties.sopendictionary"
 msgid "Please choose an unencrypted theWord dictionary module..."
 msgstr "Please choose an unencrypted theWord dictionary module..."
+
+#: formprojectproperties.spendingblocked
+#, object-pascal-format
+msgid "Cannot apply changes: %s"
+msgstr ""
+
+#: formprojectproperties.spendingcleartext
+#, object-pascal-format
+msgid "Clear %s text."
+msgstr ""
+
+#: formprojectproperties.spendingdescription
+#, object-pascal-format
+msgid "Update %s description."
+msgstr ""
+
+#: formprojectproperties.spendingdictionary
+#, object-pascal-format
+msgid "Set %s %s dictionary: %s"
+msgstr ""
+
+#: formprojectproperties.spendingfont
+#, object-pascal-format
+msgid "Update %s font."
+msgstr ""
+
+#: formprojectproperties.spendingloadtext
+#, object-pascal-format
+msgid "Load %s text: %s"
+msgstr ""
+
+#: formprojectproperties.spendingprojectname
+#, object-pascal-format
+msgid "Project name: %s"
+msgstr ""
+
+#: formprojectproperties.spendingready
+msgid "Ready to apply changes."
+msgstr ""
+
+#: formprojectproperties.spendingstatuscatalog
+msgid "Status catalog changed."
+msgstr ""
+
+#: formprojectproperties.spendingtokenizer
+#, object-pascal-format
+msgid "Tokenizer: %s -> %s"
+msgstr ""
+
+#: formprojectproperties.sprojectnamerequired
+msgid "Please choose a name for the project."
+msgstr ""
+
+#: formprojectproperties.sprojectscenariofmt
+#, object-pascal-format
+msgctxt "formprojectproperties.sprojectscenariofmt"
+msgid "Scenario: %s"
+msgstr ""
+
+#: formprojectproperties.sprojecttab
+#, fuzzy
+msgctxt "formprojectproperties.sprojecttab"
+msgid "Project"
+msgstr "Project"
 
 #: formprojectproperties.sreference1tab
 #, fuzzy
@@ -1164,6 +1543,21 @@ msgstr "reference 2"
 msgid "Replace %s text in whole project"
 msgstr ""
 
+#: formprojectproperties.sreviewsectionpendingchanges
+msgctxt "formprojectproperties.sreviewsectionpendingchanges"
+msgid "Pending changes"
+msgstr "Pending changes"
+
+#: formprojectproperties.sreviewsectionproject
+msgctxt "formprojectproperties.sreviewsectionproject"
+msgid "Project"
+msgstr "Project"
+
+#: formprojectproperties.sreviewtab
+msgctxt "formprojectproperties.sreviewtab"
+msgid "Review"
+msgstr ""
+
 #: formprojectproperties.ssetdictionary
 #, fuzzy
 msgctxt "formprojectproperties.ssetdictionary"
@@ -1182,10 +1576,41 @@ msgctxt "formprojectproperties.ssourcetextscope"
 msgid "source"
 msgstr "source"
 
-#: formprojectproperties.sstatuscatalog
-msgctxt "formprojectproperties.sstatuscatalog"
-msgid "Status..."
+#: formprojectproperties.sstatuscatalogcurrent
+#, object-pascal-format
+msgctxt "formprojectproperties.sstatuscatalogcurrent"
+msgid "Current catalog: %d statuses"
+msgstr "Current catalog: %d statuses"
+
+#: formprojectproperties.sstatuscatalogdescription
+msgctxt "formprojectproperties.sstatuscatalogdescription"
+msgid "The status catalog defines the labels, order, and colors used to track verse progress. iBiblia uses it in the project tree, filters, and review workflows. Changes remain pending until you confirm the project properties."
+msgstr "The status catalog defines the labels, order, and colors used to track verse progress. iBiblia uses it in the project tree, filters, and review workflows. Changes remain pending until you confirm the project properties."
+
+#: formprojectproperties.sstatustab
+msgctxt "formprojectproperties.sstatustab"
+msgid "Status"
+msgstr "Status"
+
+#: formprojectproperties.sstrong
+msgctxt "formprojectproperties.sstrong"
+msgid "Strong"
 msgstr ""
+
+#: formprojectproperties.stextpendingclear
+msgid "Pending clear on OK."
+msgstr ""
+
+#: formprojectproperties.stextpendingload
+#, object-pascal-format
+msgid "Pending import: %s"
+msgstr ""
+
+#: formprojectproperties.stextstab
+#, fuzzy
+msgctxt "formprojectproperties.stextstab"
+msgid "Texts"
+msgstr "Texts"
 
 #: formprojectproperties.stokenizerversion
 msgctxt "formprojectproperties.stokenizerversion"
@@ -2249,6 +2674,7 @@ msgid "Associations"
 msgstr "Associations"
 
 #: tfrmapplypatch.labelcomments.caption
+msgctxt "tfrmapplypatch.labelcomments.caption"
 msgid "Comments"
 msgstr "Comments"
 
@@ -2257,6 +2683,7 @@ msgid "Destination text"
 msgstr "Destination text"
 
 #: tfrmapplypatch.labelsrctext.caption
+msgctxt "tfrmapplypatch.labelsrctext.caption"
 msgid "Source text"
 msgstr "Source text"
 
@@ -3014,6 +3441,33 @@ msgstr "Font"
 msgctxt "tfrmprojectproperties.labeltokenizerversion.caption"
 msgid "Tokenizer version"
 msgstr ""
+
+#: formverserules.sverserulescount
+#, object-pascal-format
+msgctxt "formverserules.sverserulescount"
+msgid "%d rules found. Uncheck any rule that should not be applied to the imported text."
+msgstr "%d rules found. Uncheck any rule that should not be applied to the imported text."
+
+#: formverserules.sverserulesdescription
+msgctxt "formverserules.sverserulesdescription"
+msgid "This module defines verse rules: regular-expression replacements that theWord applies while displaying verses. iBiblia imports fixed text, so selected rules are applied now. Keep them selected unless the module uses them only as optional display toggles."
+msgstr "This module defines verse rules: regular-expression replacements that theWord applies while displaying verses. iBiblia imports fixed text, so selected rules are applied now. Keep them selected unless the module uses them only as optional display toggles."
+
+#: formverserules.sverserulesmodule
+#, object-pascal-format
+msgctxt "formverserules.sverserulesmodule"
+msgid "Module: %s"
+msgstr "Module: %s"
+
+#: formverserules.sverserulestitle
+msgctxt "formverserules.sverserulestitle"
+msgid "theWord verse rules"
+msgstr "theWord verse rules"
+
+#: formverserules.sverserulesunknownmodule
+msgctxt "formverserules.sverserulesunknownmodule"
+msgid "(module not available)"
+msgstr "(module not available)"
 
 #: tfrmverserules.btnselectall.caption
 #, fuzzy

@@ -95,7 +95,7 @@ begin
   inherited CreateNew(AOwner);
 
   Caption := 'theWord highlight colors';
-  Position := poScreenCenter;
+  Position := poMainFormCenter;
   BorderStyle := bsSizeable;
   Width := 820;
   Height := 560;

@@ -4,7 +4,7 @@ program fpcunitibiblia;
 
 uses
   Interfaces, Forms, GuiTestRunner, ibibliatest, versiculotest,
-  syntagmselectiontest, statuscatalogtest;
+  syntagmselectiontest, statuscatalogtest, project_setup_validation_test;
 
 {$R *.res}
 

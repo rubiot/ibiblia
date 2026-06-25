@@ -9,6 +9,7 @@ uses
   versiculotest,
   syntagmselectiontest,
   statuscatalogtest,
+  project_setup_validation_test,
   theword_syntax_highlighter_test;
 
 var

@@ -275,6 +275,7 @@ type
 type
   TParametroThread = record
     texto: TTipoTextoBiblico;
+    arquivo: string;
     pb: TProgressBar;
   end;
 
@@ -371,7 +372,7 @@ implementation
 
 uses FormNewProject, FormProjectProperties, FormProjectExport, FormMergeProjects,
   FormExportPatch, FormApplyPatch, FormLlmOptions, FormTheWordHighlighterColors,
-  llmclient, theword_syntax_highlighter;
+  llmclient, theword_syntax_highlighter, project_setup_model;
 
 {$R *.lfm}
 
@@ -1347,19 +1348,12 @@ end;
 
 function CarregarTexto(par: pointer): ptrint;
 var
-  edit: TLabeledEdit;
   p: TParametroThread;
 begin
   p := TParametroThread(par^);
-  case p.texto of
-    tbOrigem: edit := FrmNewProject.EditSourceText;
-    tbDestino: edit := FrmNewProject.EditDestinationText;
-    tbConsulta1: edit := FrmNewProject.EditReferenceText1;
-    tbConsulta2: edit := FrmNewProject.EditReferenceText2;
-  end;
 
-  if edit.Text <> '' then
-    ProjetoAtual.ImportTheWordModule(edit.Text, p.texto, p.pb, false);
+  if p.arquivo <> '' then
+    ProjetoAtual.ImportTheWordModule(p.arquivo, p.texto, p.pb, false);
 
   result := 0;
 end;
@@ -1372,25 +1366,6 @@ procedure TFrmPrincipal.ActionNovoProjetoExecute(Sender: TObject);
       tbDestino: result := SDestination;
       tbConsulta1: result := SReference1;
       tbConsulta2: result := SReference2;
-    end;
-  end;
-
-  function QualEscopo: TEscopoTexto;
-  begin
-    case FrmNewProject.RadioGroupScope.ItemIndex of
-      0: result := etOT;
-      1: result := etNT;
-      2: result := etONT;
-    end;
-  end;
-
-  function ArquivoTexto(v: TTipoTextoBiblico): string;
-  begin
-    case v of
-      tbOrigem: result := FrmNewProject.EditSourceText.Text;
-      tbDestino: result := FrmNewProject.EditDestinationText.Text;
-      tbConsulta1: result := FrmNewProject.EditReferenceText1.Text;
-      tbConsulta2: result := FrmNewProject.EditReferenceText2.Text;
     else
       result := '';
     end;
@@ -1411,45 +1386,38 @@ procedure TFrmPrincipal.ActionNovoProjetoExecute(Sender: TObject);
 var
   v: TTipoTextoBiblico;
   ParThread: TParametroThread;
+  Draft: TProjectSetupDraft;
 begin
   ActionFecharProjetoExecute(nil);
 
   if ProjetoAtual <> nil then
     exit;
 
-  FrmNewProject.EditProjectName.Text := SNewAssociationProject;
+  FrmNewProject.ResetDraft(SNewAssociationProject);
 
   if FrmNewProject.ShowModal <> mrOK then
     exit;
 
-  repeat
-    if not SaveDialog1.Execute then
-      exit;
-
-    if FileExists(SaveDialog1.FileName) then
-    begin
-      case MessageDlg(SInvalidProjectNameTitle, SInvalidProjectNameQuery, mtConfirmation, [mbYes, mbNo], 0) of
-        mrNo: exit;
-        mrYes: continue;
-      end;
-    end else
-      break;
-  until false;
+  Application.ProcessMessages;
+  Draft := FrmNewProject.GetDraft;
 
   try
     FormPleaseWait.BeginOperation(Self, SNewProjectProgressTitle,
-      SCreatingProjectProgress, 1, SaveDialog1.FileName);
+      SCreatingProjectProgress, 1, Draft.ProjectFileName);
 
     ProjetoAtual := TProject.Create([ScrollBoxSrcVerse, ScrollBoxDstVerse, ScrollBoxRef1Verse, ScrollBoxRef2Verse], TreeView1, RadioGroupStatus, FActualCommentsMemo);
-    ProjetoAtual.Escopo := QualEscopo;
+    ProjetoAtual.Escopo := Draft.Scope;
     ProjetoAtual.PalavrasComStrongEmNegrito := MenuItemStrongNegrito.Checked;
     ProjetoAtual.MostrarQtdStrongs := FStrongsCountMode;
     ProjetoAtual.OnNewVerseSubscribe(@QuandoNovoVersiculo);
     ProjetoAtual.OnAlterarVersiculo := @QuandoAlterarVersiculo;
-    ProjetoAtual.CreateProject(SaveDialog1.FileName, FrmNewProject.EditProjectName.Text,
-      FrmNewProject.GetTokenizerVersion);
-    if FrmNewProject.HasCustomStatusCatalog then
-      ProjetoAtual.SetStatusDefinitions(FrmNewProject.GetStatusDefinitions);
+    ProjetoAtual.OnSintagmaClick := @QuandoPalavraClicada;
+    ProjetoAtual.CreateProject(Draft.ProjectFileName, Draft.ProjectName,
+      Draft.TokenizerVersion);
+    ProjetoAtual.SetInfo(PROJECT_SCENARIO_CONFIG_KEY,
+      ProjectScenarioToConfig(Draft.Scenario));
+    if Draft.HasCustomStatusCatalog then
+      ProjetoAtual.SetStatusDefinitions(Draft.StatusDefinitions);
     ProjetoAtual.ExibirDefinicoesSoComCtrl := MenuItemDictPopup.Checked;
     ProjetoAtual.SugerirAssociacaoAutomaticamente := MenuItem22.Checked;
     ProjetoAtual.SuggestionMode := FSuggestionMode;
@@ -1460,14 +1428,23 @@ begin
     begin
       StatusBar1.Caption := Format(SLoadingFile, [QualTexto(v)]);
       FormPleaseWait.SetMessage(MensagemCarregamento(v));
-      FormPleaseWait.SetDetail(ArquivoTexto(v));
+      FormPleaseWait.SetDetail(Draft.Texts[v].ModulePath);
       ParThread.texto := v;
+      ParThread.arquivo := Draft.Texts[v].ModulePath;
       ParThread.pb := FormPleaseWait.ProgressBar1;
       Application.ProcessMessages;
       //WaitForThreadTerminate(BeginThread(@CarregarTexto, Pointer(@ParThread)), 0);
       CarregarTexto(Pointer(@ParThread));
     end;
     StatusBar1.Caption:='';
+
+    for v:=tbOrigem to tbConsulta2 do
+    begin
+      if Draft.Texts[v].StrongDictionaryPath <> '' then
+        ProjetoAtual.AssignStrongDictionary(Draft.Texts[v].StrongDictionaryPath, [v]);
+      if Draft.Texts[v].MorphologyDictionaryPath <> '' then
+        ProjetoAtual.AssignMorphologyDictionary(Draft.Texts[v].MorphologyDictionaryPath, [v]);
+    end;
 
     ProjetoAtual.Commit;
     ProjetoAtual.RefreshUI;

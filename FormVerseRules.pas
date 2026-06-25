@@ -25,10 +25,16 @@ type
     procedure BtnSelectNoneClick(Sender: TObject);
     procedure FormShow(Sender: TObject);
   private
+    FInfoPanel: TPanel;
+    FInfoMemo: TMemo;
+    FModuleFileName: string;
+    procedure EnsureInfoControls;
     function GetHasRules: boolean;
+    procedure LayoutControls;
+    procedure UpdateInfoControls;
   public
     procedure AddVerseRule(de: String; para: String);
-    procedure Reset;
+    procedure Reset(const ModuleFileName: string = '');
     procedure CompileVerseRules(var rxFrom: TRegexList; var rxTo: TStringList);
     property HasRules: boolean read GetHasRules;
   end;
@@ -40,9 +46,115 @@ implementation
 
 { TFrmVerseRules }
 
+resourcestring
+  SVerseRulesTitle = 'theWord verse rules';
+  SVerseRulesModule = 'Module: %s';
+  SVerseRulesDescription = 'This module defines verse rules: regular-expression replacements that theWord applies while displaying verses. iBiblia imports fixed text, so selected rules are applied now. Keep them selected unless the module uses them only as optional display toggles.';
+  SVerseRulesCount = '%d rules found. Uncheck any rule that should not be applied to the imported text.';
+  SVerseRulesUnknownModule = '(module not available)';
+
 procedure TFrmVerseRules.FormShow(Sender: TObject);
 begin
+  EnsureInfoControls;
+  LayoutControls;
+  UpdateInfoControls;
+  FInfoPanel.Invalidate;
   StringGridVerseRules.AutoAdjustColumns;
+end;
+
+procedure TFrmVerseRules.EnsureInfoControls;
+begin
+  if Assigned(FInfoPanel) then
+    Exit;
+
+  FInfoPanel := TPanel.Create(Self);
+  FInfoPanel.Parent := Self;
+  FInfoPanel.BevelOuter := bvNone;
+  FInfoPanel.Caption := '';
+  FInfoPanel.Anchors := [akLeft, akTop, akRight];
+
+  FInfoMemo := TMemo.Create(Self);
+  FInfoMemo.Parent := FInfoPanel;
+  FInfoMemo.BorderStyle := bsNone;
+  FInfoMemo.Color := Color;
+  FInfoMemo.ReadOnly := True;
+  FInfoMemo.TabStop := False;
+  FInfoMemo.WordWrap := True;
+  FInfoMemo.ScrollBars := ssNone;
+  FInfoMemo.Anchors := [akLeft, akTop, akRight, akBottom];
+end;
+
+procedure TFrmVerseRules.LayoutControls;
+const
+  Margin = 12;
+  ButtonTopMargin = 12;
+  ButtonBottomMargin = 14;
+  ButtonHeight = 25;
+  GridTopGap = 8;
+  SelectButtonWidth = 110;
+  DialogButtonWidth = 75;
+  ButtonGap = 18;
+var
+  ButtonTop: Integer;
+  GridTop: Integer;
+  InfoHeight: Integer;
+  LineHeight: Integer;
+begin
+  AutoScroll := False;
+  Constraints.MinWidth := 760;
+  Constraints.MinHeight := 430;
+  if ClientHeight < Constraints.MinHeight then
+    ClientHeight := Constraints.MinHeight;
+  if ClientWidth < Constraints.MinWidth then
+    ClientWidth := Constraints.MinWidth;
+
+  EnsureInfoControls;
+  LineHeight := Canvas.TextHeight('Tg') + 6;
+  InfoHeight := LineHeight * 9 + 16;
+
+  FInfoPanel.SetBounds(Margin, Margin, ClientWidth - (Margin * 2),
+    InfoHeight);
+  FInfoMemo.SetBounds(0, 0, FInfoPanel.Width, FInfoPanel.Height);
+
+  ButtonTop := ClientHeight - ButtonBottomMargin - ButtonHeight;
+  GridTop := FInfoPanel.Top + FInfoPanel.Height + GridTopGap;
+  Panel1.SetBounds(Margin, GridTop, ClientWidth - (Margin * 2),
+    ButtonTop - GridTop - ButtonTopMargin);
+  Panel1.Caption := '';
+
+  Button2.SetBounds(ClientWidth - Margin - DialogButtonWidth, ButtonTop,
+    DialogButtonWidth, ButtonHeight);
+  Button1.SetBounds(Button2.Left - ButtonGap - DialogButtonWidth, ButtonTop,
+    DialogButtonWidth, ButtonHeight);
+  BtnSelectNone.SetBounds(Button1.Left - ButtonGap - SelectButtonWidth,
+    ButtonTop, SelectButtonWidth, ButtonHeight);
+  BtnSelectAll.SetBounds(BtnSelectNone.Left - ButtonGap - SelectButtonWidth,
+    ButtonTop, SelectButtonWidth, ButtonHeight);
+end;
+
+procedure TFrmVerseRules.UpdateInfoControls;
+var
+  ModuleText: string;
+begin
+  EnsureInfoControls;
+  ModuleText := FModuleFileName;
+  if Trim(ModuleText) = '' then
+    ModuleText := SVerseRulesUnknownModule;
+  FInfoMemo.Lines.BeginUpdate;
+  try
+    FInfoMemo.Clear;
+    FInfoMemo.Lines.Add(SVerseRulesTitle);
+    FInfoMemo.Lines.Add(Format(SVerseRulesModule, [ModuleText]));
+    FInfoMemo.Lines.Add('');
+    FInfoMemo.Lines.Add(SVerseRulesDescription);
+    FInfoMemo.Lines.Add('');
+    FInfoMemo.Lines.Add(Format(SVerseRulesCount,
+      [StringGridVerseRules.RowCount - 1]));
+  finally
+    FInfoMemo.Lines.EndUpdate;
+  end;
+  FInfoMemo.Hint := Format(SVerseRulesModule, [ModuleText]);
+  FInfoMemo.ShowHint := True;
 end;
 
 procedure TFrmVerseRules.BtnSelectAllClick(Sender: TObject);
@@ -74,9 +186,15 @@ begin
   StringGridVerseRules.Cells[2, StringGridVerseRules.RowCount-1] := para.Replace('""', '"', [rfReplaceAll]);
 end;
 
-procedure TFrmVerseRules.Reset;
+procedure TFrmVerseRules.Reset(const ModuleFileName: string);
 begin
+  FModuleFileName := ModuleFileName;
   StringGridVerseRules.RowCount := 1;
+  if Assigned(FInfoPanel) and Visible then
+  begin
+    LayoutControls;
+    UpdateInfoControls;
+  end;
 end;
 
 procedure TFrmVerseRules.CompileVerseRules(var rxFrom: TRegexList; var rxTo: TStringList);
