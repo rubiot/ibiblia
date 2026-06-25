@@ -6,6 +6,7 @@
 *.bak
 *.compiled
 *.dbg
+link*.res
 __history/
 *.local
 
@@ -17,12 +18,14 @@ doc/
 iBiblia.exe
 iBiblia.ini
 iBiblia
+/log.txt
 
 # Units test outputs
 tests/results.xml
 tests/fpcunitibiblia.lps
 tests/fpcunitibiblia.exe
 tests/fpcunitibiblia_console.exe
+tests/debug_*.pas
 
 # PCRE library build artifacts
 pcre-6.7-lazarus/.libs
