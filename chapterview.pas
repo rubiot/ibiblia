@@ -9,7 +9,7 @@ uses
   LazUTF8, BibleScope, Project, PCRE, Controls, Menus, fgl, Dialogs, Math, Contnrs, KMemo,
   KEditCommon, KGraphics, KDialogs, FormInterlinearVerseRules,
   LCLTranslator, LazLogger, HTMLRenderer, CommentsView, SynEdit,
-  theword_syntax_highlighter;
+  theword_syntax_highlighter, bible_book_names;
 
 type
 
@@ -1088,7 +1088,7 @@ begin
   GetPreviousChapter(pbook, pchapter);
 
   if pbook <> 0 then
-    with Blocks.AddHyperlink(Format('<< %s %d', [NLivrosONT[pbook], pchapter]), Format('%d,%d,1', [pbook, pchapter])) do
+    with Blocks.AddHyperlink(Format('<< %s %d', [LocalizedBookNameByID(pbook), pchapter]), Format('%d,%d,1', [pbook, pchapter])) do
     begin
       OnClick := @HandleReferenceClick;
       TextStyle.Font.Name  := 'default';
@@ -1116,7 +1116,7 @@ begin
   if nbook <> 0 then
   begin
     Blocks.AddTextBlock(' | ');
-    with Blocks.AddHyperlink(Format('%s %d >>', [NLivrosONT[nbook], nchapter]), Format('%d,%d,1', [nbook, nchapter])) do
+    with Blocks.AddHyperlink(Format('%s %d >>', [LocalizedBookNameByID(nbook), nchapter]), Format('%d,%d,1', [nbook, nchapter])) do
     begin
       OnClick := @HandleReferenceClick;
       TextStyle.Font.Name  := 'default';

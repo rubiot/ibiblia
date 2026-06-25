@@ -156,6 +156,8 @@ resourcestring
   SWholeBibleFilter = 'theWord Bible modules (*.ont, *.ot, *.nt)|*.ont;*.ot;*.nt';
   SProjectFileFilter = 'iBiblia project (*.bib)|*.bib|All files|*.*';
   SDictionaryFilter = 'theWord dictionary modules (*.dct.twm)|*.dct.twm|All files|*.*';
+  SChooseBibleModuleTitle = 'Choose a theWord Bible module';
+  SChooseDictionaryModuleTitle = 'Choose a theWord dictionary module';
   SScenarioStep = 'Scenario';
   SProjectStep = 'Project';
   STextsStep = 'Texts';
@@ -565,6 +567,7 @@ begin
   StrongDictionary := (TButton(Sender).Tag mod 2) = 0;
   TargetEdit := DictionaryEdit(TextType, StrongDictionary);
 
+  OpenDialogSelectText.Title := SChooseDictionaryModuleTitle;
   OpenDialogSelectText.Filter := SDictionaryFilter;
   OpenDialogSelectText.FileName := TargetEdit.Text;
   if OpenDialogSelectText.Execute then
@@ -610,6 +613,7 @@ var
   TextType: TTipoTextoBiblico;
 begin
   SetTextModuleFilter;
+  OpenDialogSelectText.Title := SChooseBibleModuleTitle;
   OpenDialogSelectText.FileName := Edit.Text;
   if OpenDialogSelectText.Execute then
     Edit.Text := OpenDialogSelectText.FileName;
@@ -1141,6 +1145,8 @@ var
   SelectedVersion: Integer;
   SelectedScope: Integer;
   SelectedScenario: TProjectScenario;
+  TextType: TTipoTextoBiblico;
+  TextCaption: string;
 begin
   SelectedVersion := GetTokenizerVersion;
   SelectedScope := RadioGroupScope.ItemIndex;
@@ -1183,6 +1189,10 @@ begin
   EditProjectName.EditLabel.Caption := SProjectNameLabel;
   if Assigned(FProjectFileEdit) then
     FProjectFileEdit.EditLabel.Caption := SProjectFileLabel;
+  if Assigned(FProjectFileButton) then
+    FProjectFileButton.Caption := SBrowse;
+  if Assigned(FProjectSaveDialog) then
+    FProjectSaveDialog.Filter := SProjectFileFilter;
   RadioGroupScope.Caption := SScopeLabel;
   LabelTokenizerVersion.Caption := STokenizerVersion;
   if Assigned(BtnStatusCatalog) then
@@ -1194,6 +1204,28 @@ begin
   if Assigned(FNextButton) then FNextButton.Caption := SNext;
   if Assigned(FFinishButton) then FFinishButton.Caption := SFinish;
   if Assigned(FCancelButton) then FCancelButton.Caption := SCancel;
+  OpenDialogSelectText.Title := SChooseBibleModuleTitle;
+
+  EditSourceText.EditLabel.Caption := SSourceTextLabel;
+  EditReferenceText1.EditLabel.Caption := SReference1TextLabel;
+  EditReferenceText2.EditLabel.Caption := SReference2TextLabel;
+  for TextType := tbOrigem to tbConsulta2 do
+  begin
+    if Assigned(FTextButtons[TextType]) then
+      FTextButtons[TextType].Caption := SBrowse;
+
+    TextCaption := ProjectSetupTextCaption(TextType);
+    if Assigned(FStrongDictionaryEdits[TextType]) then
+      FStrongDictionaryEdits[TextType].EditLabel.Caption :=
+        Format(SStrongDictionaryLabel, [TextCaption]);
+    if Assigned(FMorphologyDictionaryEdits[TextType]) then
+      FMorphologyDictionaryEdits[TextType].EditLabel.Caption :=
+        Format(SMorphologyDictionaryLabel, [TextCaption]);
+    if Assigned(FStrongDictionaryButtons[TextType]) then
+      FStrongDictionaryButtons[TextType].Caption := SBrowse;
+    if Assigned(FMorphologyDictionaryButtons[TextType]) then
+      FMorphologyDictionaryButtons[TextType].Caption := SBrowse;
+  end;
 
   LoadTokenizerVersions(SelectedVersion);
   UpdateScenarioUI;

@@ -116,6 +116,14 @@ var
   FrmProjectProperties: TFrmProjectProperties;
 
 resourcestring
+  SProjectPropertiesTitle = 'Project properties';
+  SPropertiesGroup = 'Properties';
+  SProjectNameLabel = 'Name';
+  SStrongDictionaryLabel = 'Strong''s dictionary';
+  SMorphologyDictionaryLabel = 'Morphology dictionary';
+  STextDescriptionLabel = 'Text description';
+  SFontLabel = 'Font';
+  SApply = 'Apply';
   SSetDictionary = 'Set';
   SChooseABibleModule = 'Please choose a theWord Bible module file...';
   SChooseAnotherText = 'Replace text in whole project';
@@ -770,6 +778,14 @@ var
   SelectedVersion: Integer;
 begin
   SelectedVersion := GetSelectedTokenizerVersion;
+  Caption := SProjectPropertiesTitle;
+  GroupBoxProperties.Caption := SPropertiesGroup;
+  EditProjectName.EditLabel.Caption := SProjectNameLabel;
+  EditStrongDictionary.EditLabel.Caption := SStrongDictionaryLabel;
+  EditMorphologyDictionary.EditLabel.Caption := SMorphologyDictionaryLabel;
+  EditTextDescription.EditLabel.Caption := STextDescriptionLabel;
+  LabelFont.Caption := SFontLabel;
+  BtnApplyTextDescription.Caption := SApply;
   TabControlTextType.Tabs[0] := SSourceTab;
   TabControlTextType.Tabs[1] := SDestinationTab;
   TabControlTextType.Tabs[2] := SReference1Tab;
@@ -794,8 +810,15 @@ begin
     BtnStatusCatalog.Caption := SEditStatusCatalog;
   if Assigned(FStatusDescriptionLabel) then
     FStatusDescriptionLabel.Caption := SStatusCatalogDescription;
+  if Assigned(FScenarioLabel) and Assigned(FProject) then
+    FScenarioLabel.Caption := Format(SProjectScenarioFmt,
+      [ProjectScenarioCaption(ProjectScenarioFromConfig(
+        FProject.GetInfo(PROJECT_SCENARIO_CONFIG_KEY)))]);
   UpdateStatusCatalogSummary;
   LoadTokenizerVersions(SelectedVersion);
+  ActionSelectFont.Caption := SChooseDictionary;
+  ActionSelectStrongDictionary.Caption := SChooseDictionary;
+  ActionSelectMorphologyDictionary.Caption := SChooseDictionary;
   ActionLoadText.Caption := Format(SReplaceTextInProjectAction, [SelectedTextScopeName]);
   ActionClearText.Caption := Format(SClearTextInProjectAction, [SelectedTextScopeName]);
 end;

@@ -23,7 +23,7 @@ uses
   project_verse_repository, current_verse_workspace, verse_render_buffer,
   project_patch_applier, bible_tree_coordinator, ai_batch_orchestrator,
   project_database_bootstrap, status_catalog,
-  dictionary_manager, project_exporter, UnitPleaseWait;
+  dictionary_manager, project_exporter, UnitPleaseWait, bible_book_names;
 const
   // AI processing icon indices for ImageListTreeView in formprincipal
   // ImageListTreeView has indices 0-7 for normal states (0-3) and selected states (4-7)
@@ -418,6 +418,13 @@ resourcestring
   SCancelAIProcessing = 'Cancel AI processing';
   SConfirmApplyAIToBook = 'Are you sure you want to apply the AI flow to the entire book %s?';
   SConfirmApplyAIToChapter = 'Are you sure you want to apply the AI flow to chapter %s?';
+  SAIConfigurationMissing = 'AI is not configured. Open LLM options and set a model and API key.';
+  SNoVerseToAssociate = 'No verse to associate.';
+  SAIAssociationFailedFmt = 'AI association failed: %s';
+  SAISingleResponseReceived = '[AI Single] Response received, parsing...';
+  SAISingleApplyingResult = '[AI Single] Applying result...';
+  SAISingleResultApplied = '[AI Single] Result applied and saved.';
+  SAISingleErrorFmt = '[AI Single] Error: %s';
   SAnalyzingVerse = 'Analyzing verse...';
 
   SStatusNotAssociated = 'Not associated';
@@ -431,6 +438,8 @@ resourcestring
   SError = 'Error';
   SWarning = 'Warning';
   SInformation = 'Information';
+  SButtonOK = 'OK';
+  SButtonCancel = 'Cancel';
   SCorruptedData = 'Corrupted data, some associations may be lost.' +
                    'This can happen for several reasons:'#13#10 +
                    ' 1. The project file was modified outside iBiblia'#13#10 +
@@ -481,6 +490,8 @@ resourcestring
   SVacuumDone = 'Vacuum done!';
   SVacuumProgressTitle = 'Optimize project';
   SVacuumProgressMessage = 'Optimizing project database...';
+  SErrorWithDetailsFmt = '%s: %s';
+  SErrorClassMessageFmt = '%s: %s'#13#10'%s';
 
 const
   QStrongs: array[etOT..etONT] of smallint = (8674, 5624, 14298);
@@ -1182,7 +1193,7 @@ var
       OkButton.Left := 350;
       OkButton.Top := DialogForm.ClientHeight - 40;
       OkButton.Width := 84;
-      OkButton.Caption := 'OK';
+      OkButton.Caption := SButtonOK;
       OkButton.ModalResult := mrOK;
 
       CancelButton := TButton.Create(DialogForm);
@@ -1190,7 +1201,7 @@ var
       CancelButton.Left := 450;
       CancelButton.Top := DialogForm.ClientHeight - 40;
       CancelButton.Width := 84;
-      CancelButton.Caption := 'Cancel';
+      CancelButton.Caption := SButtonCancel;
       CancelButton.ModalResult := mrCancel;
 
       if DialogForm.ShowModal <> mrOK then
@@ -1766,7 +1777,7 @@ begin
 
     if GetInfo(AI_COMMON_CONFIG.Model).IsEmpty or GetInfo(AI_COMMON_CONFIG.ApiKey).IsEmpty then
     begin
-      ShowMessage('AI associator not configured.');
+      ShowMessage(SAIConfigurationMissing);
       Exit;
     end;
 
@@ -1836,7 +1847,8 @@ end;
 procedure TProject.UpdateReference(ref: string);
 begin
   Sscanf(ref, '%d,%d,%d', [@FReference.BookID, @FReference.Chapter, @FReference.Verse]);
-  FReference.Book := NLivros[FEscopo][FReference.BookID-OffsetLivros[FEscopo]-1];
+  FReference.Book := LocalizedBookName(FEscopo,
+    FReference.BookID - OffsetLivros[FEscopo] - 1);
 end;
 
 function TProject.BibleTreeNodeToReference(const node: TTreeNode): TReference;
@@ -1845,7 +1857,7 @@ var
 begin
   ReferenceID := FBibleTreeCoordinator.NodeToReferenceID(FEscopo, node);
   Sscanf(ReferenceID, '%d,%d,%d', [@Result.BookID, @Result.Chapter, @Result.Verse]);
-  result.Book    := NLivrosONT[result.BookID];
+  result.Book    := LocalizedBookNameByID(result.BookID);
 end;
 
 function TProject.GetModificado: boolean;
@@ -3337,14 +3349,14 @@ begin
     if (GetInfo(AI_COMMON_CONFIG.Model).IsEmpty) or
       (GetInfo(AI_COMMON_CONFIG.ApiKey).IsEmpty) then
   begin
-    ShowMessage('AI Associator not configured.');
+    ShowMessage(SAIConfigurationMissing);
     Exit;
   end;
 
   v := FAVersiculo[tbOrigem];
   if not Assigned(v) or not Assigned(v.VersiculoPar) then
   begin
-    ShowMessage('No verse to associate.');
+    ShowMessage(SNoVerseToAssociate);
     Exit;
   end;
 
@@ -3362,13 +3374,13 @@ begin
         FLastLLMUsage := resp.Usage;
         FLastLLMCallCompleted := True;
 
-        AIDebugLog('[AI Single] Response received, parsing...');
+        AIDebugLog(SAISingleResponseReceived);
         parsed := flow.ParseResponse(resp.Content, v);
         try
-          AIDebugLog('[AI Single] Applying result...');
+          AIDebugLog(SAISingleApplyingResult);
           flow.ApplyResult(parsed, v);
           SaveVersePairs(v);
-          AIDebugLog('[AI Single] Result applied and saved.');
+          AIDebugLog(SAISingleResultApplied);
         finally
           parsed.Free;
         end;
@@ -3378,8 +3390,8 @@ begin
     except
       on E: Exception do
       begin
-        AIDebugLog('[AI Single] Error: ' + E.Message);
-        ShowMessage('AI association failed: ' + E.Message);
+        AIDebugLog(Format(SAISingleErrorFmt, [E.Message]));
+        ShowMessage(Format(SAIAssociationFailedFmt, [E.Message]));
       end;
     end;
   finally
@@ -3396,7 +3408,7 @@ begin
   if (NodesVerses = nil) or (NodesVerses.Count = 0) then Exit;
   if (GetInfo(AI_COMMON_CONFIG.Model).IsEmpty) or (GetInfo(AI_COMMON_CONFIG.ApiKey).IsEmpty) then
   begin
-    ShowMessage('AI associator not configured.');
+    ShowMessage(SAIConfigurationMissing);
     Exit;
   end;
 
@@ -3541,7 +3553,8 @@ begin
             pares.Free;
           end
           else
-            ShowMessage('Error: ' + SCorruptedData + #13#10#13#10 + GetID + #13#10 + corruptionDetails);
+            ShowMessage(Format(SErrorWithDetailsFmt, [SError, SCorruptedData]) +
+              #13#10#13#10 + GetID + #13#10 + corruptionDetails);
         end;
         if assigned(pb) then
         begin
@@ -3553,7 +3566,8 @@ begin
       end;
     except
       on E: Exception do
-         ShowMessage('Error: ' + E.ClassName + #13#10 + E.Message);
+         ShowMessage(Format(SErrorClassMessageFmt,
+           [SError, E.ClassName, E.Message]));
     end;
   finally
     FinishScrollingSession;
@@ -4126,6 +4140,8 @@ end;
 procedure TProject.Translate;
 begin
   UpdateDefaultStatusDescription;
+  if Assigned(FPersistence) and (ID <> '') then
+    UpdateReference(ID);
   if not assigned(FArvore) then
     exit;
 

@@ -233,6 +233,7 @@ resourcestring
   SSaveToFile = '&Save text to file...';
   SRightToLeft = 'Right to left text';
   SCopyTokensToClipboard = 'Copy &tokens to clipboard';
+  SCopySyntagmasJSONToClipboard = 'Copy syntagms as &JSON to clipboard';
   SCopyInterlinearVerseToClipboard = 'Copy &interlinear verse to clipboard';
   SCopyXMLToClipboard = 'Copy association &XML to clipboard';
   SCopyAssociationsJSONToClipboard = 'Copy association &JSON to clipboard';
@@ -1766,7 +1767,7 @@ begin
     FVersePopupMenu.Items.Add(Item);
 
     Item := TMenuItem.Create(FVersePopupMenu);
-    Item.Caption := 'Copy Syntagmas as JSON';
+    Item.Caption := SCopySyntagmasJSONToClipboard;
     Item.OnClick := @OnCopySintagmasAsJSON;
     FVersePopupMenu.Items.Add(Item);
 

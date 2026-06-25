@@ -5,7 +5,7 @@ unit bible_tree_coordinator;
 interface
 
 uses
-  SysUtils, ComCtrls, BibleScope, status_catalog;
+  SysUtils, ComCtrls, BibleScope, status_catalog, bible_book_names;
 
 type
   { IVerseStatusCursor — the coordinator iterates this instead of calling
@@ -86,7 +86,7 @@ begin
       begin
         BookIndex := Integer(NodeValue) - OffsetLivros[Scope] - 1;
         if (BookIndex >= 0) and (BookIndex < QLivros[Scope]) then
-          Result := NLivros[Scope][BookIndex]
+          Result := LocalizedBookName(Scope, BookIndex)
         else
           Result := Node.Text;
       end;
@@ -223,7 +223,7 @@ begin
     try
       for BookIndex := 0 to QLivros[Scope] - 1 do
       begin
-        BookNode := FTree.Items.Add(nil, NLivros[Scope][BookIndex]);
+        BookNode := FTree.Items.Add(nil, LocalizedBookName(Scope, BookIndex));
         BookNode.Data := Pointer(PtrUInt(BookIndex + OffsetLivros[Scope] + 1));
         SetNodeStatus(BookNode, InitialStatus);
         for ChapterIndex := 0 to QCapitulos[Scope][BookIndex] - 1 do

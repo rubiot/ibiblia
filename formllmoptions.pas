@@ -107,6 +107,7 @@ resourcestring
   rsLabelApiKey = 'API key';
   rsBtnOK = 'OK';
   rsBtnCancel = 'Cancel';
+  rsBtnClose = 'Close';
   rsBtnTest = 'Test';
   rsTestResultTitle = 'Test result';
   rsTestFailedTitle = 'Test failed';
@@ -125,6 +126,7 @@ resourcestring
   rsClearExamplesPrompt = 'Remove all saved examples for the %s flow?';
   rsNoExamples = '(no saved examples)';
   rsDefaultPromptTitle = 'Default Prompt - %s';
+  rsFormatInfoFmt = 'Info: %s';
   rsCustomInstructionsHint = 'Add specific guidelines for your project (e.g., translation philosophy, examples). Leave empty to use only the default prompt.';
   rsProviderOverride = 'Provider Override (Optional)';
   rsUseFlowOverride = 'Use flow-specific provider/model/API key';
@@ -560,7 +562,7 @@ begin
     Parent := AParent;
     Left := 8;
     Top := YPos;
-    Width := 120;
+    Width := 150;
     Height := 25;
     Caption := rsBtnRemoveExample;
     Tag := TabIdx;
@@ -571,9 +573,9 @@ begin
   with TabControls.BtnClearExamples do
   begin
     Parent := AParent;
-    Left := 136;
+    Left := TabControls.BtnRemoveExample.Left + TabControls.BtnRemoveExample.Width + 8;
     Top := YPos;
-    Width := 90;
+    Width := 110;
     Height := 25;
     Caption := rsBtnClearExamples;
     Tag := TabIdx;
@@ -622,7 +624,7 @@ begin
     Top := YPos;
     Width := 600;
     Anchors := [akTop, akLeft];
-    Caption := 'Info: ' + AOutputFormatInfo;
+    Caption := Format(rsFormatInfoFmt, [AOutputFormatInfo]);
     WordWrap := True;
     Font.Style := [fsItalic];
     AutoSize := True;
@@ -1060,7 +1062,7 @@ begin
 
     btnClose := TButton.Create(frm);
     btnClose.Parent := frm;
-    btnClose.Caption := 'Close';
+    btnClose.Caption := rsBtnClose;
     btnClose.Width := 75;
     btnClose.Height := 25;
     btnClose.Left := frm.ClientWidth - btnClose.Width - 8;

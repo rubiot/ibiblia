@@ -50,13 +50,14 @@ type
     procedure DisplayUpButtonClick(Sender: TObject);
     procedure DisplayDownButtonClick(Sender: TObject);
     procedure OkButtonClick(Sender: TObject);
+    procedure Translate;
   public
     class function Execute(var Definitions: TStatusDefinitions;
       const Counts: TStatusCounts; out Remaps: TStatusRemaps): Boolean;
   end;
 
 resourcestring
-  SStatusCatalogTitle = 'Status catalog';
+  SStatusCatalogWindowTitle = 'Status catalog editor';
   SStatusCatalogInfo =
     'Edit descriptions, colors and display order. Verse status IDs stay stable.';
   SStatusCatalogName = 'Description';
@@ -94,7 +95,7 @@ var
   ButtonPanel: TPanel;
 begin
   inherited CreateNew(AOwner, 1);
-  Caption := SStatusCatalogTitle;
+  Caption := SStatusCatalogWindowTitle;
   Position := poMainFormCenter;
   Width := 720;
   Height := 430;
@@ -110,14 +111,16 @@ begin
   FInfoLabel.Left := 12;
   FInfoLabel.Top := 10;
   FInfoLabel.Width := 680;
-  FInfoLabel.Caption := SStatusCatalogInfo;
+  FInfoLabel.Height := 38;
+  FInfoLabel.AutoSize := False;
+  FInfoLabel.WordWrap := True;
 
   FGrid := TStringGrid.Create(Self);
   FGrid.Parent := Self;
   FGrid.Left := 12;
-  FGrid.Top := 34;
+  FGrid.Top := 54;
   FGrid.Width := 540;
-  FGrid.Height := 330;
+  FGrid.Height := 310;
   FGrid.ColCount := 4;
   FGrid.FixedCols := 0;
   FGrid.FixedRows := 1;
@@ -137,7 +140,7 @@ begin
   ButtonPanel := TPanel.Create(Self);
   ButtonPanel.Parent := Self;
   ButtonPanel.Left := 564;
-  ButtonPanel.Top := 34;
+  ButtonPanel.Top := 54;
   ButtonPanel.Width := 140;
   ButtonPanel.Height := 330;
   ButtonPanel.BevelOuter := bvNone;
@@ -145,37 +148,31 @@ begin
   FAddButton := TButton.Create(Self);
   FAddButton.Parent := ButtonPanel;
   FAddButton.SetBounds(0, 0, 140, 26);
-  FAddButton.Caption := SStatusCatalogAdd;
   FAddButton.OnClick := @AddButtonClick;
 
   FRenameButton := TButton.Create(Self);
   FRenameButton.Parent := ButtonPanel;
   FRenameButton.SetBounds(0, 34, 140, 26);
-  FRenameButton.Caption := SStatusCatalogRename;
   FRenameButton.OnClick := @RenameButtonClick;
 
   FRemoveButton := TButton.Create(Self);
   FRemoveButton.Parent := ButtonPanel;
   FRemoveButton.SetBounds(0, 68, 140, 26);
-  FRemoveButton.Caption := SStatusCatalogRemove;
   FRemoveButton.OnClick := @RemoveButtonClick;
 
   FColorButton := TButton.Create(Self);
   FColorButton.Parent := ButtonPanel;
   FColorButton.SetBounds(0, 102, 140, 26);
-  FColorButton.Caption := SStatusCatalogChooseColor;
   FColorButton.OnClick := @ColorButtonClick;
 
   FDisplayUpButton := TButton.Create(Self);
   FDisplayUpButton.Parent := ButtonPanel;
   FDisplayUpButton.SetBounds(0, 150, 140, 26);
-  FDisplayUpButton.Caption := SStatusCatalogDisplayUp;
   FDisplayUpButton.OnClick := @DisplayUpButtonClick;
 
   FDisplayDownButton := TButton.Create(Self);
   FDisplayDownButton.Parent := ButtonPanel;
   FDisplayDownButton.SetBounds(0, 184, 140, 26);
-  FDisplayDownButton.Caption := SStatusCatalogDisplayDown;
   FDisplayDownButton.OnClick := @DisplayDownButtonClick;
 
   FOkButton := TBitBtn.Create(Self);
@@ -194,7 +191,20 @@ begin
   FCancelButton.Width := 90;
 
   FColorDialog := TColorDialog.Create(Self);
+  Translate;
   RefreshGrid;
+end;
+
+procedure TFrmStatusCatalog.Translate;
+begin
+  Caption := SStatusCatalogWindowTitle;
+  FInfoLabel.Caption := SStatusCatalogInfo;
+  FAddButton.Caption := SStatusCatalogAdd;
+  FRenameButton.Caption := SStatusCatalogRename;
+  FRemoveButton.Caption := SStatusCatalogRemove;
+  FColorButton.Caption := SStatusCatalogChooseColor;
+  FDisplayUpButton.Caption := SStatusCatalogDisplayUp;
+  FDisplayDownButton.Caption := SStatusCatalogDisplayDown;
 end;
 
 function TFrmStatusCatalog.CountForStatus(StatusId: Integer): Integer;
@@ -361,7 +371,7 @@ begin
   ReadGridCaptions;
   if Length(FDefinitions) >= STATUS_CATALOG_MAX_COUNT then
   begin
-    MessageDlg(SStatusCatalogTitle,
+    MessageDlg(SStatusCatalogWindowTitle,
       Format(SStatusCatalogMaxReached, [STATUS_CATALOG_MAX_COUNT]),
       mtWarning, [mbOK], 0);
     Exit;
@@ -478,7 +488,7 @@ begin
   ReadGridCaptions;
   if Length(FDefinitions) <= 1 then
   begin
-    MessageDlg(SStatusCatalogTitle, SStatusCatalogCannotRemoveLast,
+    MessageDlg(SStatusCatalogWindowTitle, SStatusCatalogCannotRemoveLast,
       mtWarning, [mbOK], 0);
     Exit;
   end;
@@ -561,7 +571,7 @@ begin
   NormalizeStatusDefinitions(FDefinitions, False);
   if not ValidateStatusDefinitions(FDefinitions, ErrorMessage) then
   begin
-    MessageDlg(SStatusCatalogTitle, ErrorMessage, mtWarning, [mbOK], 0);
+    MessageDlg(SStatusCatalogWindowTitle, ErrorMessage, mtWarning, [mbOK], 0);
     ModalResult := mrNone;
     RefreshGrid;
     Exit;

@@ -5,7 +5,8 @@ unit BibleTreeView;
 interface
 
 uses
-  Classes, SysUtils, Controls, ComCtrls, Graphics, fgl, BibleScope, LResources;
+  Classes, SysUtils, Controls, ComCtrls, Graphics, fgl, BibleScope, LResources,
+  bible_book_names;
 
 const
   ImgIndexUnchecked = 0;
@@ -167,7 +168,7 @@ begin
   Items.Clear;
   for b:=0 to QLivros[FScope]-1 do
   begin
-    nb := Items.Add(nil, NLivros[FScope][b]);
+    nb := Items.Add(nil, LocalizedBookName(FScope, b));
     nb.StateIndex := 0;
     nb.Data := Pointer(b + OffsetLivros[FScope] + 1);
     for c:=0 to QCapitulos[FScope][b]-1 do
@@ -203,7 +204,7 @@ begin
 
     if (nb = nil) or (nb.Data <> Pointer(b)) then
     begin
-      nb := Items.Add(nil, NLivros[etONT][b-1]);
+      nb := Items.Add(nil, LocalizedBookNameByID(b));
       nb.Data := Pointer(b);
       nb.StateIndex := ImgIndexUnchecked;  // Initialize book node state
       nc := nil;

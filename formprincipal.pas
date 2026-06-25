@@ -255,6 +255,7 @@ type
     function GetVersePanelCaption(TextType: TTipoTextoBiblico): string;
     function GetVersePanelDescription(TextType: TTipoTextoBiblico): string;
     function GetVersePanelTypeCaption(TextType: TTipoTextoBiblico): string;
+    function LocalizedProjectDescription(const Description: string): string;
     procedure LayoutStateHeader;
     procedure LayoutVersePanelLabels;
     procedure ResetMainLayout;
@@ -263,6 +264,7 @@ type
     procedure TreeViewShowHint(Sender: TObject; HintInfo: PHintInfo);
     procedure Translate;
     procedure UpdateActionHintWithShortcut(AAction: TCustomAction);
+    procedure UpdateMainCaption;
     procedure UpdateStateHeader;
     procedure UpdateTreeLegend;
     procedure DoOpenProject(filename: string);
@@ -287,9 +289,12 @@ var
 
 const
   MAX_MRU = 10;
-  STheWordHighlightColorsMenu = 'theWord highlight colors...';
 
 resourcestring
+  SMainCaption = 'iBiblia';
+  SMainCaptionProjectFmt = 'iBiblia | %s | %s (%s)';
+  SProjectFileTypeName = 'iBiblia Project File';
+  STheWordHighlightColorsMenu = 'theWord highlight colors...';
   SRollbackCurrentVerse = 'Rollback current verse';
   SRollbackCurrentVerseHint = 'Discard unsaved changes in the current verse';
   SRollbackCurrentVerseConfirmation = 'This will discard unsaved changes in the current verse only (%s) and reload it from the project file.'#13#10#13#10 +
@@ -311,6 +316,10 @@ resourcestring
   SUnregisterFileAssociationFailure = 'Failed to remove file association for .bib files';
   SRegisterFileAssociation = 'Register .bib file association';
   SUnregisterFileAssociation = 'Unregister .bib file association';
+  SRegisterFileAssociationTakeOverPrompt = 'The .bib extension is currently associated with: %s.'#13#10 +
+                                           'Do you want to take over the association for iBiblia?';
+  SRegisterFileAssociationAdminRetry = 'Failed to register file association. This operation requires administrator rights.'#13#10 +
+                                       'Do you want to retry as administrator?';
   SSuggestionMode = 'Suggestion mode';
   SStatisticalSuggestion = 'Statistical model';
   SAISuggestion = 'AI-assisted (experimental)';
@@ -446,6 +455,7 @@ resourcestring
   SReference1 = 'reference 1';
   SReference2 = 'reference 2';
   SNewAssociationProject = 'New association project';
+  SNewTranslationProject = 'New translation project';
   SLoadingFile = 'Loading %s...';
   SNewProjectProgressTitle = 'Creating project';
   SCreatingProjectProgress = 'Creating project...';
@@ -816,6 +826,17 @@ begin
     Result := Trim(ProjetoAtual.GetTextDescription(TextType));
 end;
 
+function TFrmPrincipal.LocalizedProjectDescription(
+  const Description: string): string;
+begin
+  if SameText(Description, 'New association project') then
+    Result := SNewAssociationProject
+  else if SameText(Description, 'New translation project') then
+    Result := SNewTranslationProject
+  else
+    Result := Description;
+end;
+
 function TFrmPrincipal.GetVersePanelTypeCaption(
   TextType: TTipoTextoBiblico): string;
 begin
@@ -978,6 +999,17 @@ begin
   FHeaderEngineLabel.Hint := FHeaderEngineLabel.Caption;
   FHeaderModifiedLabel.Hint := FHeaderModifiedLabel.Caption;
   LayoutStateHeader;
+end;
+
+procedure TFrmPrincipal.UpdateMainCaption;
+begin
+  if Assigned(ProjetoAtual) then
+    Caption := Format(SMainCaptionProjectFmt,
+      [ProjetoAtual.FormattedReference,
+       LocalizedProjectDescription(ProjetoAtual.GetInfo('descricao')),
+       ProjetoAtual.FileName])
+  else
+    Caption := SMainCaption;
 end;
 
 procedure TFrmPrincipal.UpdateTreeLegend;
@@ -1284,7 +1316,7 @@ begin
   ProjetoAtual.CloseProject(salvar);
   ProjetoAtual.Destroy;
   ProjetoAtual := nil;
-  Caption := 'iBiblia';
+  UpdateMainCaption;
 
   FCurrentRef := '';
 
@@ -1504,7 +1536,7 @@ procedure TFrmPrincipal.ActionQuandoNovoVersiculoExecute(Sender: TObject);
 begin
   if ProjetoAtual <> nil then
   begin
-    Caption := format('iBiblia | %s | %s (%s)', [ProjetoAtual.FormattedReference, ProjetoAtual.GetInfo('descricao'), ProjetoAtual.FileName]);
+    UpdateMainCaption;
     ActionSyncTheWordVerseExecute(Sender);
     UpdateStateHeader;
   end;
@@ -1673,7 +1705,7 @@ begin
     if AssociateFileExtension(
       '.bib',
       'iBiblia.Project',
-      'iBiblia Project File',
+      SProjectFileTypeName,
       ParamStr(0),
       ParamStr(0)
     ) then
@@ -2313,6 +2345,7 @@ begin
     ProjetoAtual.Translate;
   if assigned(FChapterView) then
     FChapterView.Translate;
+  UpdateMainCaption;
   UpdateStateHeader;
   UpdateTreeLegend;
   LayoutVersePanelLabels;
@@ -2389,7 +2422,7 @@ begin
   if IsAssociated and (not AssociatedApp.IsEmpty) and (not AssociatedApp.Contains('iBiblia')) then
   begin
     UserChoice := MessageDlg(SRegisterFileAssociation, 
-      Format('The .bib extension is currently associated with: %s.\nDo you want to take over the association for iBiblia?', [AssociatedApp]),
+      Format(SRegisterFileAssociationTakeOverPrompt, [AssociatedApp]),
       mtConfirmation, [mbYes, mbNo], 0);
     if UserChoice <> mrYes then
       Exit;
@@ -2398,7 +2431,7 @@ begin
   Success := AssociateFileExtension(
     '.bib',
     'iBiblia.Project',
-    'iBiblia Project File',
+    SProjectFileTypeName,
     ExePath,
     IconPath
   );
@@ -2411,7 +2444,8 @@ begin
   else
   begin
     // Try to elevate if not already running as admin
-    if MessageDlg(SRegisterFileAssociation, 'Failed to register file association. This operation requires administrator rights.\nDo you want to retry as administrator?', mtConfirmation, [mbYes, mbNo], 0) = mrYes then
+    if MessageDlg(SRegisterFileAssociation, SRegisterFileAssociationAdminRetry,
+      mtConfirmation, [mbYes, mbNo], 0) = mrYes then
     begin
       // Relaunch self with elevation and a special parameter
       ShellExecute(0, 'runas', PChar(ExePath), PChar('--register-file-assoc'), nil, SW_SHOWNORMAL);

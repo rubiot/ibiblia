@@ -72,6 +72,26 @@ type
 
 implementation
 
+resourcestring
+  STheWordHighlightColorsTitle = 'theWord highlight colors';
+  SButtonOK = 'OK';
+  SButtonCancel = 'Cancel';
+  SButtonApply = 'Apply';
+  SForegroundButton = 'Foreground...';
+  SBackgroundButton = 'Background...';
+  SNoBackgroundButton = 'No background';
+  SBoldStyle = 'Bold';
+  SItalicStyle = 'Italic';
+  SUnderlineStyle = 'Underline';
+  SResetSelected = 'Reset selected';
+  SResetAll = 'Reset all';
+  SFontButton = 'Font...';
+  SResetFont = 'Reset font';
+  SPreview = 'Preview';
+  SNoColor = 'none';
+  SDefaultColor = 'default';
+  SFontSummaryFmt = '%s, %d pt';
+
 const
   SPreviewText =
     '<wt>kai<WG2532><WTCONJ l="kai"> phos<WG5457><WTN-NSN l="phos"> ' +
@@ -94,12 +114,12 @@ var
 begin
   inherited CreateNew(AOwner);
 
-  Caption := 'theWord highlight colors';
+  Caption := STheWordHighlightColorsTitle;
   Position := poMainFormCenter;
   BorderStyle := bsSizeable;
   Width := 820;
   Height := 560;
-  Constraints.MinWidth := 700;
+  Constraints.MinWidth := 820;
   Constraints.MinHeight := 440;
   OnCloseQuery := @CloseQueryHandler;
 
@@ -124,21 +144,21 @@ begin
 
   FBtnOK := TButton.Create(Self);
   FBtnOK.Parent := RightButtonsPanel;
-  FBtnOK.Caption := 'OK';
+  FBtnOK.Caption := SButtonOK;
   FBtnOK.SetBounds(0, 9, 82, 28);
   FBtnOK.Default := True;
   FBtnOK.OnClick := @OKButtonClick;
 
   FBtnCancel := TButton.Create(Self);
   FBtnCancel.Parent := RightButtonsPanel;
-  FBtnCancel.Caption := 'Cancel';
+  FBtnCancel.Caption := SButtonCancel;
   FBtnCancel.SetBounds(90, 9, 82, 28);
   FBtnCancel.Cancel := True;
   FBtnCancel.OnClick := @CancelButtonClick;
 
   FBtnApply := TButton.Create(Self);
   FBtnApply.Parent := RightButtonsPanel;
-  FBtnApply.Caption := 'Apply';
+  FBtnApply.Caption := SButtonApply;
   FBtnApply.SetBounds(180, 9, 82, 28);
   FBtnApply.OnClick := @ApplyButtonClick;
 
@@ -171,7 +191,7 @@ begin
 
   FBtnForeground := TButton.Create(Self);
   FBtnForeground.Parent := OptionsPanel;
-  FBtnForeground.Caption := 'Foreground...';
+  FBtnForeground.Caption := SForegroundButton;
   FBtnForeground.SetBounds(0, 4, 112, 28);
   FBtnForeground.OnClick := @ForegroundButtonClick;
 
@@ -182,7 +202,7 @@ begin
 
   FBtnBackground := TButton.Create(Self);
   FBtnBackground.Parent := OptionsPanel;
-  FBtnBackground.Caption := 'Background...';
+  FBtnBackground.Caption := SBackgroundButton;
   FBtnBackground.SetBounds(0, 40, 112, 28);
   FBtnBackground.OnClick := @BackgroundButtonClick;
 
@@ -193,43 +213,43 @@ begin
 
   FBtnNoBackground := TButton.Create(Self);
   FBtnNoBackground.Parent := OptionsPanel;
-  FBtnNoBackground.Caption := 'No background';
+  FBtnNoBackground.Caption := SNoBackgroundButton;
   FBtnNoBackground.SetBounds(262, 40, 112, 28);
   FBtnNoBackground.OnClick := @NoBackgroundButtonClick;
 
   FChkBold := TCheckBox.Create(Self);
   FChkBold.Parent := OptionsPanel;
-  FChkBold.Caption := 'Bold';
+  FChkBold.Caption := SBoldStyle;
   FChkBold.SetBounds(0, 80, 70, 22);
   FChkBold.OnChange := @ControlsChanged;
 
   FChkItalic := TCheckBox.Create(Self);
   FChkItalic.Parent := OptionsPanel;
-  FChkItalic.Caption := 'Italic';
+  FChkItalic.Caption := SItalicStyle;
   FChkItalic.SetBounds(78, 80, 70, 22);
   FChkItalic.OnChange := @ControlsChanged;
 
   FChkUnderline := TCheckBox.Create(Self);
   FChkUnderline.Parent := OptionsPanel;
-  FChkUnderline.Caption := 'Underline';
+  FChkUnderline.Caption := SUnderlineStyle;
   FChkUnderline.SetBounds(156, 80, 92, 22);
   FChkUnderline.OnChange := @ControlsChanged;
 
   FBtnResetSelected := TButton.Create(Self);
   FBtnResetSelected.Parent := OptionsPanel;
-  FBtnResetSelected.Caption := 'Reset selected';
-  FBtnResetSelected.SetBounds(262, 78, 112, 28);
+  FBtnResetSelected.Caption := SResetSelected;
+  FBtnResetSelected.SetBounds(262, 78, 150, 28);
   FBtnResetSelected.OnClick := @ResetSelectedButtonClick;
 
   FBtnResetAll := TButton.Create(Self);
   FBtnResetAll.Parent := OptionsPanel;
-  FBtnResetAll.Caption := 'Reset all';
-  FBtnResetAll.SetBounds(382, 78, 90, 28);
+  FBtnResetAll.Caption := SResetAll;
+  FBtnResetAll.SetBounds(422, 78, 112, 28);
   FBtnResetAll.OnClick := @ResetAllButtonClick;
 
   FBtnFont := TButton.Create(Self);
   FBtnFont.Parent := OptionsPanel;
-  FBtnFont.Caption := 'Font...';
+  FBtnFont.Caption := SFontButton;
   FBtnFont.SetBounds(0, 116, 112, 28);
   FBtnFont.OnClick := @FontButtonClick;
 
@@ -240,14 +260,14 @@ begin
 
   FBtnResetFont := TButton.Create(Self);
   FBtnResetFont.Parent := OptionsPanel;
-  FBtnResetFont.Caption := 'Reset font';
-  FBtnResetFont.SetBounds(382, 116, 90, 28);
+  FBtnResetFont.Caption := SResetFont;
+  FBtnResetFont.SetBounds(422, 116, 112, 28);
   FBtnResetFont.OnClick := @ResetFontButtonClick;
 
   PreviewLabel := TLabel.Create(Self);
   PreviewLabel.Parent := MainPanel;
   PreviewLabel.Align := alTop;
-  PreviewLabel.Caption := 'Preview';
+  PreviewLabel.Caption := SPreview;
   PreviewLabel.Height := 20;
 
   FPreview := TSynEdit.Create(Self);
@@ -294,12 +314,15 @@ begin
   if HasColor then
   begin
     AControl.Color := AColor;
-    AControl.Caption := ColorToString(AColor);
+    if AColor = clDefault then
+      AControl.Caption := SDefaultColor
+    else
+      AControl.Caption := ColorToString(AColor);
   end
   else
   begin
     AControl.Color := clBtnFace;
-    AControl.Caption := 'none';
+    AControl.Caption := SNoColor;
   end;
 end;
 
@@ -324,7 +347,7 @@ end;
 
 procedure TFrmTheWordHighlighterColors.LoadFontControls;
 begin
-  FFontLabel.Caption := Format('%s, %d pt', [FWorkingFont.Name,
+  FFontLabel.Caption := Format(SFontSummaryFmt, [FWorkingFont.Name,
     FWorkingFont.Size]);
 end;
 

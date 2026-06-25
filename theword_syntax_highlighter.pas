@@ -207,6 +207,22 @@ function FindTheWordMatchingTagPairAt(Lines: TStrings; const Caret: TPoint;
 
 implementation
 
+resourcestring
+  SElementDefaultText = 'Default text';
+  SElementTheWordTag = 'theWord tag';
+  SElementStrong = 'Strong';
+  SElementMorphology = 'Morphology';
+  SElementWordToken = 'Word token <wt>';
+  SElementNoteReference = 'Note/reference';
+  SElementLink = 'Link';
+  SElementHTML = 'HTML';
+  SElementRTF = 'RTF';
+  SElementAttribute = 'Attribute';
+  SElementAttributeValue = 'Attribute value';
+  SElementSymbol = 'Symbol';
+  SElementWarning = 'Warning';
+  SElementUnknown = 'Unknown';
+
 const
   STheWordSyntax = 'theWord Bible';
 
@@ -569,33 +585,33 @@ function TheWordSyntaxElementCaption(Element: TTheWordSyntaxElement): string;
 begin
   case Element of
     tweText:
-      Result := 'Default text';
+      Result := SElementDefaultText;
     tweSemanticTag:
-      Result := 'theWord tag';
+      Result := SElementTheWordTag;
     tweStrongTag:
-      Result := 'Strong';
+      Result := SElementStrong;
     tweMorphTag:
-      Result := 'Morphology';
+      Result := SElementMorphology;
     tweWordTokenTag:
-      Result := 'Word token <wt>';
+      Result := SElementWordToken;
     tweNoteRefTag:
-      Result := 'Note/reference';
+      Result := SElementNoteReference;
     tweLinkTag:
-      Result := 'Link';
+      Result := SElementLink;
     tweHtmlTag:
-      Result := 'HTML';
+      Result := SElementHTML;
     tweRtfTag:
-      Result := 'RTF';
+      Result := SElementRTF;
     tweAttribute:
-      Result := 'Attribute';
+      Result := SElementAttribute;
     tweAttributeValue:
-      Result := 'Attribute value';
+      Result := SElementAttributeValue;
     tweSymbol:
-      Result := 'Symbol';
+      Result := SElementSymbol;
     tweWarning:
-      Result := 'Warning';
+      Result := SElementWarning;
   else
-    Result := 'Unknown';
+    Result := SElementUnknown;
   end;
 end;
 

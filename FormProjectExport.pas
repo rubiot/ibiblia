@@ -51,6 +51,8 @@ resourcestring
   STheWordNTModule = 'theWord Bible module (*.nt)';
   STheWordONTModule = 'theWord Bible module (*.ont)';
   SMySwordModule   = 'MySword Bible module (*.bbl.mybible)';
+  STheWordDictionaryModule = 'theWord dictionary module (*.dct.twm)';
+  SSaveModuleAs = 'Save module as...';
   SAnalyticalConcordance = 'AnalyticalConcordance';
   SSyntheticConcordance = 'SyntheticConcordance';
   SExportTaggedDestinationTitle = 'Export project';
@@ -119,6 +121,7 @@ begin
       SaveDialog1.Filter := STheWordONTModule + '|*.ont' + '|' + SMySwordModule + '|*.bbl.mybible';
     end;
   end;
+  SaveDialog1.Title := SSaveModuleAs;
 
   if SaveDialog1.Execute then
   begin
@@ -158,6 +161,7 @@ begin
       SaveDialog1.Filter := STheWordONTModule + '|*.ont' + '|' + SMySwordModule + '|*.bbl.mybible';
     end;
   end;
+  SaveDialog1.Title := SSaveModuleAs;
 
   if SaveDialog1.Execute then
   begin
@@ -196,6 +200,8 @@ begin
   else
      FProject.SetInfo('opcoes.exportar.abrevconc.sintetica', Abbreviation);}
 
+  SaveDialogConcordancia.Title := SSaveModuleAs;
+  SaveDialogConcordancia.Filter := STheWordDictionaryModule + '|*.dct.twm';
   if SaveDialogConcordancia.Execute then
   begin
     FormPleaseWait.BeginOperation(Self, SExportConcordanceTitle,

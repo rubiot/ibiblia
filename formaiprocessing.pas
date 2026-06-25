@@ -114,6 +114,7 @@ resourcestring
   SCancelConfirmation = 'Are you sure you want to cancel the AI processing?';
   SConfirmation = 'Confirmation';
   SDiscardConfirmation = 'Are you sure you want to discard the AI results?';
+  SAIProcessingErrorSeeLogs = 'Error during AI processing (see logs)';
 
 implementation
 
@@ -453,7 +454,7 @@ begin
       AIDebugLogFmt('[PumpProcessing] Exception from FManager.PumpApply: %s - %s', [E.ClassName, E.Message]);
       // Disable timer to avoid repeated crashes and surface state to user
       TimerUpdate.Enabled := False;
-      LabelProgress.Caption := 'Error during AI processing (see logs)';
+      LabelProgress.Caption := SAIProcessingErrorSeeLogs;
       BtnCancel.Enabled := False;
       BtnApply.Enabled := True;
       BtnClose.Enabled := True;

@@ -61,6 +61,8 @@ var
 resourcestring
   STWSynchronizationErrorTitle = 'Synchronization error';
   STWSynchronizationError = 'Failed to detect theWord''s current verse.'#13#10'Please restart theWord if you have switched its current language.';
+  SRegexErrorFmt = 'Error in regex: %s';
+  STWWindowNotFoundDebugSavedFmt = 'theWord window not found. Debug information has been saved to: %s';
 
 implementation
 
@@ -184,7 +186,7 @@ class function TWAutomateUtils.GetTwCurrentRef: string;
         end
         else
         begin
-          ShowMessage('Error in regex: ' + E.Message);
+          ShowMessage(Format(SRegexErrorFmt, [E.Message]));
           exit;
         end;
       end;
@@ -369,7 +371,7 @@ begin
     CloseFile(f);
   end;
 
-  ShowMessage('theWord window not found. Debug information has been saved to: ' + outputFile);
+  ShowMessage(Format(STWWindowNotFoundDebugSavedFmt, [outputFile]));
 end;
 
 end.

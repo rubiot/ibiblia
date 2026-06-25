@@ -3,7 +3,7 @@ object FrmProjectExport: TFrmProjectExport
   Height = 516
   Top = 265
   Width = 828
-  Caption = 'Export association'
+  Caption = 'Export project'
   ClientHeight = 516
   ClientWidth = 828
   DesignTimePPI = 101
@@ -53,7 +53,7 @@ object FrmProjectExport: TFrmProjectExport
         Left = 14
         Height = 19
         Top = 9
-        Width = 287
+        Width = 360
         Caption = 'Export unassociated words as added words (italics)'
         TabOrder = 1
       end
@@ -61,7 +61,7 @@ object FrmProjectExport: TFrmProjectExport
         Left = 14
         Height = 19
         Top = 35
-        Width = 148
+        Width = 220
         Caption = 'Export morphology tags'
         TabOrder = 2
       end
@@ -69,7 +69,7 @@ object FrmProjectExport: TFrmProjectExport
         Left = 14
         Height = 19
         Top = 60
-        Width = 213
+        Width = 330
         Caption = 'Export comments as translator notes'
         TabOrder = 3
       end
@@ -77,7 +77,7 @@ object FrmProjectExport: TFrmProjectExport
         Left = 391
         Height = 19
         Top = 9
-        Width = 127
+        Width = 220
         Caption = 'Mark reused strongs'
         TabOrder = 4
       end
@@ -85,7 +85,7 @@ object FrmProjectExport: TFrmProjectExport
         Left = 391
         Height = 19
         Top = 35
-        Width = 131
+        Width = 230
         Caption = 'Mark unused strongs'
         TabOrder = 5
       end
@@ -129,8 +129,8 @@ object FrmProjectExport: TFrmProjectExport
         Left = 14
         Height = 19
         Top = 9
-        Width = 169
-        Caption = 'Group by inflectioned forms'
+        Width = 230
+        Caption = 'Group by inflected forms'
         Checked = True
         State = cbChecked
         TabOrder = 0
@@ -182,16 +182,16 @@ object FrmProjectExport: TFrmProjectExport
     Visible = False
   end
   object SaveDialog1: TSaveDialog
-    Title = 'Salvar módulo como...'
+    Title = 'Save module as...'
     DefaultExt = '.nt'
-    Filter = 'Módulo do theWord (*.nt)|*.nt'
+    Filter = 'theWord Bible module (*.nt)|*.nt'
     Left = 728
     Top = 231
   end
   object SaveDialogConcordancia: TSaveDialog
-    Title = 'Salvar módulo como...'
+    Title = 'Save module as...'
     DefaultExt = '.dct.twm'
-    Filter = 'Módulo do theWord (*.twm)|*.twm'
+    Filter = 'theWord dictionary module (*.dct.twm)|*.dct.twm'
     Left = 589
     Top = 236
   end
