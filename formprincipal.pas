@@ -247,7 +247,7 @@ type
     procedure SyncToTwRef(Ref: string);
     procedure SetUpSyncThread;
     {$ENDIF}
-    procedure ApplyShortcutHints;
+    procedure NormalizeActionHints;
     procedure ActionGuideModeExecute(Sender: TObject);
     function BuildKeyboardShortcutsText: string;
     procedure CreateGuidePanel;
@@ -277,7 +277,7 @@ type
     procedure StateHeaderResize(Sender: TObject);
     procedure TreeViewShowHint(Sender: TObject; HintInfo: PHintInfo);
     procedure Translate;
-    procedure UpdateActionHintWithShortcut(AAction: TCustomAction);
+    procedure NormalizeActionHint(AAction: TCustomAction);
     procedure UpdateMainCaption;
     procedure UpdateGuidePanel;
     procedure UpdateStateHeader;
@@ -514,7 +514,7 @@ end;
 
 { TFrmPrincipal }
 
-procedure TFrmPrincipal.UpdateActionHintWithShortcut(AAction: TCustomAction);
+procedure TFrmPrincipal.NormalizeActionHint(AAction: TCustomAction);
 var
   BaseHint, ShortcutText, ShortcutSuffix: string;
 begin
@@ -529,35 +529,37 @@ begin
   if ShortcutText <> '' then
   begin
     ShortcutSuffix := ' (' + ShortcutText + ')';
-    if (Length(BaseHint) >= Length(ShortcutSuffix)) and
-       (Copy(BaseHint, Length(BaseHint) - Length(ShortcutSuffix) + 1, Length(ShortcutSuffix)) = ShortcutSuffix) then
+    while (Length(BaseHint) >= Length(ShortcutSuffix)) and
+       (Copy(BaseHint, Length(BaseHint) - Length(ShortcutSuffix) + 1, Length(ShortcutSuffix)) = ShortcutSuffix) do
+    begin
       Delete(BaseHint, Length(BaseHint) - Length(ShortcutSuffix) + 1, Length(ShortcutSuffix));
+      BaseHint := TrimRight(BaseHint);
+    end;
 
-    AAction.Hint := Format('%s%s', [BaseHint, ShortcutSuffix]);
-  end
-  else
-    AAction.Hint := BaseHint;
+  end;
+
+  AAction.Hint := BaseHint;
 end;
 
-procedure TFrmPrincipal.ApplyShortcutHints;
+procedure TFrmPrincipal.NormalizeActionHints;
 begin
-  UpdateActionHintWithShortcut(ActionNovoProjeto);
-  UpdateActionHintWithShortcut(ActionAbrirProjeto);
-  UpdateActionHintWithShortcut(ActionFecharProjeto);
-  UpdateActionHintWithShortcut(ActionPropProjeto);
-  UpdateActionHintWithShortcut(ActionSalvarProjeto);
-  UpdateActionHintWithShortcut(ActionExportar);
-  UpdateActionHintWithShortcut(ActionVersoAnterior);
-  UpdateActionHintWithShortcut(ActionVersoSeguinte);
-  UpdateActionHintWithShortcut(ActionSugerirAssociacao);
-  UpdateActionHintWithShortcut(ActionReverterAssociacoes);
-  UpdateActionHintWithShortcut(ActionLimparAssociacoes);
+  NormalizeActionHint(ActionNovoProjeto);
+  NormalizeActionHint(ActionAbrirProjeto);
+  NormalizeActionHint(ActionFecharProjeto);
+  NormalizeActionHint(ActionPropProjeto);
+  NormalizeActionHint(ActionSalvarProjeto);
+  NormalizeActionHint(ActionExportar);
+  NormalizeActionHint(ActionVersoAnterior);
+  NormalizeActionHint(ActionVersoSeguinte);
+  NormalizeActionHint(ActionSugerirAssociacao);
+  NormalizeActionHint(ActionReverterAssociacoes);
+  NormalizeActionHint(ActionLimparAssociacoes);
 
   ActionMostrarTags.Hint := SShortcutToggleTags;
-  UpdateActionHintWithShortcut(ActionMostrarTags);
+  NormalizeActionHint(ActionMostrarTags);
 
   if Assigned(ActionKeyboardShortcuts) then
-    UpdateActionHintWithShortcut(ActionKeyboardShortcuts);
+    NormalizeActionHint(ActionKeyboardShortcuts);
 
   RadioGroupStatus.Hint := SStatusKeyboardHint;
   RadioGroupStatus.ShowHint := True;
@@ -2646,7 +2648,7 @@ begin
     FCommentsGroupBox.Caption := SPanelLabelComments;
     FCommentsGroupBox.Hint := SPanelLabelComments;
   end;
-  ApplyShortcutHints;
+  NormalizeActionHints;
 
   UpdateDefaultStatusDescription;
   if Assigned(ProjetoAtual) then
