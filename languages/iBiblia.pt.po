@@ -3650,6 +3650,66 @@ msgstr ""
 "Tem certeza de que quer alterar o texto deste versículo? Algumas alterações "
 "podem ser perdidas."
 
+#: versememo.seditmodetitle
+msgctxt "versememo.seditmodetitle"
+msgid "Editing verse"
+msgstr "Editando versículo"
+
+#: versememo.seditmodesaved
+msgctxt "versememo.seditmodesaved"
+msgid "No changes"
+msgstr "Sem alterações"
+
+#: versememo.seditmodemodified
+msgctxt "versememo.seditmodemodified"
+msgid "Unsaved changes"
+msgstr "Alterações não salvas"
+
+#: versememo.ssaveeditbutton
+msgctxt "versememo.ssaveeditbutton"
+msgid "Save"
+msgstr "Salvar"
+
+#: versememo.ssaveedithint
+msgctxt "versememo.ssaveedithint"
+msgid "Save verse text and close the editor"
+msgstr "Salva o texto do versículo e fecha o editor"
+
+#: versememo.scanceleditbutton
+msgctxt "versememo.scanceleditbutton"
+msgid "Cancel"
+msgstr "Cancelar"
+
+#: versememo.scanceledithint
+msgctxt "versememo.scanceledithint"
+msgid "Discard changes and close the editor"
+msgstr "Descarta as alterações e fecha o editor"
+
+#: versememo.saddedwordstaghint
+msgctxt "versememo.saddedwordstaghint"
+msgid "Wrap the selection with <FI>...<Fi> for added words"
+msgstr "Envolve a seleção com <FI>...<Fi> para palavras adicionadas"
+
+#: versememo.sjesuswordstaghint
+msgctxt "versememo.sjesuswordstaghint"
+msgid "Wrap the selection with <FR>...<Fr> for words of Jesus"
+msgstr "Envolve a seleção com <FR>...<Fr> para palavras de Jesus"
+
+#: versememo.soldtestamentquotetaghint
+msgctxt "versememo.soldtestamentquotetaghint"
+msgid "Wrap the selection with <FO>...<Fo> for Old Testament quotations"
+msgstr "Envolve a seleção com <FO>...<Fo> para citações do Antigo Testamento"
+
+#: versememo.slinebreaksineditortitle
+msgctxt "versememo.slinebreaksineditortitle"
+msgid "Edit error"
+msgstr "Erro de edição"
+
+#: versememo.slinebreaksineditor
+msgctxt "versememo.slinebreaksineditor"
+msgid "A verse cannot contain line breaks. Remove line breaks before saving."
+msgstr "Um versículo não pode conter quebras de linha. Remova as quebras de linha antes de salvar."
+
 #: formprincipal.smaincaption
 msgctxt "formprincipal.smaincaption"
 msgid "iBiblia"
@@ -4664,5 +4724,5 @@ msgid "Guide: translate the verse"
 msgstr "Guia: traduzir o versículo"
 
 #: formprincipal.sguidetranslationtext
-msgid "Double-click an empty area in Destination to write the translation; press Esc to finish. Once Destination has text, the guide will switch to association."
-msgstr "Dê duplo clique numa área vazia do destino para escrever a tradução; pressione Esc para concluir. Quando houver texto no destino, o guia passará para associação."
+msgid "Double-click an empty area in Destination to write the translation. Use Save to apply or Cancel to discard; Esc also saves and closes. Once Destination has text, the guide will switch to association."
+msgstr "Dê duplo clique numa área vazia do destino para escrever a tradução. Use Salvar para aplicar ou Cancelar para descartar; Esc também salva e fecha. Quando houver texto no destino, o guia passará para associação."

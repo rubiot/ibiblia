@@ -3420,6 +3420,66 @@ msgid ""
 "lost."
 msgstr ""
 
+#: versememo.seditmodetitle
+msgctxt "versememo.seditmodetitle"
+msgid "Editing verse"
+msgstr ""
+
+#: versememo.seditmodesaved
+msgctxt "versememo.seditmodesaved"
+msgid "No changes"
+msgstr ""
+
+#: versememo.seditmodemodified
+msgctxt "versememo.seditmodemodified"
+msgid "Unsaved changes"
+msgstr ""
+
+#: versememo.ssaveeditbutton
+msgctxt "versememo.ssaveeditbutton"
+msgid "Save"
+msgstr ""
+
+#: versememo.ssaveedithint
+msgctxt "versememo.ssaveedithint"
+msgid "Save verse text and close the editor"
+msgstr ""
+
+#: versememo.scanceleditbutton
+msgctxt "versememo.scanceleditbutton"
+msgid "Cancel"
+msgstr ""
+
+#: versememo.scanceledithint
+msgctxt "versememo.scanceledithint"
+msgid "Discard changes and close the editor"
+msgstr ""
+
+#: versememo.saddedwordstaghint
+msgctxt "versememo.saddedwordstaghint"
+msgid "Wrap the selection with <FI>...<Fi> for added words"
+msgstr ""
+
+#: versememo.sjesuswordstaghint
+msgctxt "versememo.sjesuswordstaghint"
+msgid "Wrap the selection with <FR>...<Fr> for words of Jesus"
+msgstr ""
+
+#: versememo.soldtestamentquotetaghint
+msgctxt "versememo.soldtestamentquotetaghint"
+msgid "Wrap the selection with <FO>...<Fo> for Old Testament quotations"
+msgstr ""
+
+#: versememo.slinebreaksineditortitle
+msgctxt "versememo.slinebreaksineditortitle"
+msgid "Edit error"
+msgstr ""
+
+#: versememo.slinebreaksineditor
+msgctxt "versememo.slinebreaksineditor"
+msgid "A verse cannot contain line breaks. Remove line breaks before saving."
+msgstr ""
+
 #: formprincipal.smaincaption
 msgctxt "formprincipal.smaincaption"
 msgid "iBiblia"
@@ -4399,5 +4459,5 @@ msgid "Guide: translate the verse"
 msgstr ""
 
 #: formprincipal.sguidetranslationtext
-msgid "Double-click an empty area in Destination to write the translation; press Esc to finish. Once Destination has text, the guide will switch to association."
+msgid "Double-click an empty area in Destination to write the translation. Use Save to apply or Cancel to discard; Esc also saves and closes. Once Destination has text, the guide will switch to association."
 msgstr ""
