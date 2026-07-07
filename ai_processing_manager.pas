@@ -540,6 +540,7 @@ begin
   job.Usage.PromptTokens := 0;
   job.Usage.CompletionTokens := 0;
   job.Usage.TotalTokens := 0;
+  FBatchStartTime := Now;
   SafeEnterLock; try Inc(FTotalJobs); finally SafeLeaveLock; end;
   EnqueuePending(job);
   AIDebugLogFmt('[Manager] Job enqueued, creating worker. TotalJobs=%d', [FTotalJobs]);
@@ -987,19 +988,49 @@ end;
 function TAIProcessingManager.EstimatedTimeRemaining: Double;
 var
   avgTime: Double;
-  remaining: Integer;
+  elapsedSeconds: Double;
+  effectiveParallelism: Integer;
+  remaining, processed: Integer;
 begin
   SafeEnterLock;
   try
     remaining := FTotalJobs - FCompleted - FFailed;
-    if (remaining <= 0) or (FRequestCount = 0) then
+    if remaining <= 0 then
     begin
       Result := 0;
       Exit;
     end;
+
+    processed := FCompleted + FFailed;
+    if (FBatchStartTime > 0) and (processed > 0) then
+    begin
+      elapsedSeconds := (Now - FBatchStartTime) * 24 * 60 * 60;
+      if elapsedSeconds > 0 then
+      begin
+        // Wall-clock throughput already includes actual parallelism, API latency,
+        // parsing, and main-thread application time. This avoids underestimating
+        // ETA when MaxParallel is greater than the number of remaining verses.
+        Result := (remaining * elapsedSeconds) / processed;
+        Exit;
+      end;
+    end;
+
+    if FRequestCount = 0 then
+    begin
+      Result := 0;
+      Exit;
+    end;
+
     avgTime := FTotalRequestTime / FRequestCount;
-    // Adjust for parallelism: time = (remaining * avg) / parallel_workers
-    Result := (remaining * avgTime) / FMaxParallel;
+    effectiveParallelism := FMaxParallel;
+    if effectiveParallelism < 1 then
+      effectiveParallelism := 1;
+    if (FTotalJobs > 0) and (effectiveParallelism > FTotalJobs) then
+      effectiveParallelism := FTotalJobs;
+
+    Result := (remaining * avgTime) / effectiveParallelism;
+    if (remaining > 0) and (Result < avgTime) then
+      Result := avgTime;
   finally
     SafeLeaveLock;
   end;
@@ -1008,7 +1039,7 @@ end;
 function TAIProcessingManager.GetETAFormatted: string;
 var
   etaSeconds: Double;
-  hours, minutes, seconds: Integer;
+  hours, minutes, seconds, totalSeconds: Integer;
 begin
   etaSeconds := EstimatedTimeRemaining;
   if etaSeconds <= 0 then
@@ -1016,9 +1047,15 @@ begin
     Result := '--:--:--';
     Exit;
   end;
-  hours := Trunc(etaSeconds / 3600);
-  minutes := Trunc((etaSeconds - hours * 3600) / 60);
-  seconds := Trunc(etaSeconds - hours * 3600 - minutes * 60);
+  totalSeconds := Trunc(etaSeconds);
+  if etaSeconds > totalSeconds then
+    Inc(totalSeconds);
+  if totalSeconds < 1 then
+    totalSeconds := 1;
+
+  hours := totalSeconds div 3600;
+  minutes := (totalSeconds mod 3600) div 60;
+  seconds := totalSeconds mod 60;
   Result := Format('%.2d:%.2d:%.2d', [hours, minutes, seconds]);
 end;
 
