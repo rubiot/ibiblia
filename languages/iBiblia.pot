@@ -256,6 +256,16 @@ msgstr ""
 msgid "Tokens consumed: unavailable"
 msgstr ""
 
+#: formaiprocessing.saiflowassociation
+msgctxt "formaiprocessing.saiflowassociation"
+msgid "Association"
+msgstr ""
+
+#: formaiprocessing.saiflowtranslation
+msgctxt "formaiprocessing.saiflowtranslation"
+msgid "Translation"
+msgstr ""
+
 #: formapplypatch.signoredversesonpatch
 #, object-pascal-format
 msgid ""
@@ -1041,6 +1051,213 @@ msgstr ""
 msgid "Discard unsaved changes in the current verse"
 msgstr ""
 
+#: formaiprocessing.sapplysuccessfulfmt
+#, object-pascal-format
+msgid "Changes applied successfully (%d verses)"
+msgstr ""
+
+#: formaiprocessing.saireviewgroupcaption
+msgctxt "formaiprocessing.saireviewgroupcaption"
+msgid "Verses to apply"
+msgstr ""
+
+#: formaiprocessing.saireviewairesultstab
+msgid "AI results"
+msgstr ""
+
+#: formaiprocessing.saireviewcurrentprojecttab
+msgid "Current project"
+msgstr ""
+
+#: formaiprocessing.saireviewselectall
+msgctxt "formaiprocessing.saireviewselectall"
+msgid "Accept all"
+msgstr ""
+
+#: formaiprocessing.saireviewdeselectall
+msgctxt "formaiprocessing.saireviewdeselectall"
+msgid "Reject all"
+msgstr ""
+
+#: formaiprocessing.saireviewapplyaccepted
+msgid "Apply accepted"
+msgstr ""
+
+#: formaiprocessing.saireviewdiscard
+msgctxt "formaiprocessing.saireviewdiscard"
+msgid "Discard"
+msgstr ""
+
+#: formaiprocessing.saireviewcancel
+msgctxt "formaiprocessing.saireviewcancel"
+msgid "Cancel"
+msgstr ""
+
+#: formaiprocessing.saireviewerrorprefix
+#, object-pascal-format
+msgid "Error: %s"
+msgstr ""
+
+#: formaiprocessing.saireviewsummaryfmt
+#, object-pascal-format
+msgid "Selected: %d verses; ready to apply: %d verses; failed: %d."
+msgstr ""
+
+#: formaiprocessing.saireviewreadysummaryfmt
+#, object-pascal-format
+msgid "Ready to apply %d accepted verses."
+msgstr ""
+
+#: formaiprocessing.saireviewapplyquestion
+msgid "Apply the accepted AI changes now?"
+msgstr ""
+
+#: formaiprocessing.saireviewnoacceptedchanges
+msgid "There are no accepted AI changes selected to apply."
+msgstr ""
+
+#: formaiprocessing.saireviewfailedwarningfmt
+#, object-pascal-format
+msgid "%d verses failed. They will not be applied unless you retry them successfully."
+msgstr ""
+
+#: formaiprocessing.saireviewacceptverse
+msgid "Accept verse"
+msgstr ""
+
+#: formaiprocessing.saireviewrejectverse
+msgid "Reject verse"
+msgstr ""
+
+#: formaiprocessing.saireviewretryfailed
+msgid "Retry failed"
+msgstr ""
+
+#: formaiprocessing.saireviewselectallhint
+msgid "Mark all completed verses to apply their accepted AI proposals."
+msgstr ""
+
+#: formaiprocessing.saireviewdeselectallhint
+msgid "Unmark all verses. Nothing will be applied until verses are accepted again."
+msgstr ""
+
+#: formaiprocessing.saireviewacceptversehint
+msgid "Mark the current verse for application. Comments follow the selected comment option."
+msgstr ""
+
+#: formaiprocessing.saireviewrejectversehint
+msgid "Unmark the current verse so the project stays unchanged for this verse."
+msgstr ""
+
+#: formaiprocessing.saireviewretryfailedhint
+msgid "Run the AI again only for verses that failed."
+msgstr ""
+
+#: formaiprocessing.saireviewapplyacceptedhint
+msgid "Apply only the marked verses."
+msgstr ""
+
+#: formaiprocessing.saireviewdiscardhint
+msgid "Close this review without applying AI results."
+msgstr ""
+
+#: formaiprocessing.saireviewcancelhint
+msgid "Stop the AI processing that is currently running."
+msgstr ""
+
+#: formaiprocessing.saireviewnofailedverses
+msgid "There are no failed verses to retry."
+msgstr ""
+
+#: formaiprocessing.saireviewretrystartedfmt
+#, object-pascal-format
+msgid "Retrying %d failed verses."
+msgstr ""
+
+#: formaiprocessing.saireviewverseaccepted
+msgid "This verse is accepted and will be applied."
+msgstr ""
+
+#: formaiprocessing.saireviewverserejected
+msgid "This verse is rejected and will not be applied."
+msgstr ""
+
+#: formaiprocessing.saireviewversenochanges
+msgid "The AI did not propose changes for this verse."
+msgstr ""
+
+#: formaiprocessing.saireviewversepending
+msgid "Waiting for AI result."
+msgstr ""
+
+#: formaiprocessing.saireviewverseprocessing
+msgid "Processing this verse..."
+msgstr ""
+
+#: formaiprocessing.saireviewassociationsummaryfmt
+#, object-pascal-format
+msgid "Associations proposed: %d (current project: %d)."
+msgstr ""
+
+#: formaiprocessing.saireviewassociationprogressfmt
+#, object-pascal-format
+msgid "Association coverage in displayed preview: %.0f%%."
+msgstr ""
+
+#: formaiprocessing.saireviewtranslationsummary
+msgid "Review the proposed destination text above."
+msgstr ""
+
+#: formaiprocessing.saireviewcommentsavailable
+msgid "AI comments are shown below."
+msgstr ""
+
+#: formaiprocessing.saireviewnocomments
+msgid "No AI comments for this verse."
+msgstr ""
+
+#: formaiprocessing.saireviewcommentschangedfmt
+#, object-pascal-format
+msgid "AI proposed comments. Current choice: %s."
+msgstr ""
+
+#: formaiprocessing.saireviewcommentssectionsummaryfmt
+#, object-pascal-format
+msgid "Comments: %s"
+msgstr ""
+
+#: formaiprocessing.saireviewshowcomments
+msgid "Review comments"
+msgstr ""
+
+#: formaiprocessing.saireviewhidecomments
+msgid "Hide comments"
+msgstr ""
+
+#: formaiprocessing.saireviewcurrentcomments
+msgid "Current comment"
+msgstr ""
+
+#: formaiprocessing.saireviewappliedcomments
+msgid "After applying"
+msgstr ""
+
+#: formaiprocessing.saireviewcommentsdecisioncaption
+msgid "Comment choice"
+msgstr ""
+
+#: formaiprocessing.saireviewkeepcurrentcomments
+msgid "Keep current comment"
+msgstr ""
+
+#: formaiprocessing.saireviewuseaicomments
+msgid "Use AI comment"
+msgstr ""
+
+#: formaiprocessing.saireviewmergecomments
+msgid "Keep both comments"
+msgstr ""
+
 #: formprincipal.sbuttonyes
 msgid "Yes"
 msgstr ""
@@ -1820,6 +2037,16 @@ msgstr ""
 #: project.scancelaiprocessing
 msgctxt "project.scancelaiprocessing"
 msgid "Cancel AI processing"
+msgstr ""
+
+#: project.sbuttonno
+msgctxt "project.sbuttonno"
+msgid "No"
+msgstr ""
+
+#: project.sbuttonyes
+msgctxt "project.sbuttonyes"
+msgid "Yes"
 msgstr ""
 
 #: project.scolossians

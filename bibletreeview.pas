@@ -30,6 +30,7 @@ type
     FScope: TEscopoTexto;
     FImages: TImageList;
     FOnVerseChange: TOnVerseChangeEvent;
+    FOnSelectionChanged: TNotifyEvent;
     FAIStatesEnabled: Boolean; // Enable/disable AI state icons
     function GetVerseList: TStringList;
     function GetVerseIndexes: TIntegerList;
@@ -38,6 +39,7 @@ type
     procedure ToggleTreeViewCheckBoxes(node: TTreeNode);
     procedure TreeViewClick(Sender: TObject);
     procedure CreateImageList;
+    procedure UpdateParentState(node: TTreeNode);
   public
     constructor Create(AnOwner: TComponent); override;
     destructor Destroy; override;
@@ -46,12 +48,15 @@ type
     procedure SetVerseList(refs: TStringList);
     procedure SetVerseAIState(index: integer; state: integer); // Set AI state icon for verse by index
     procedure ClearAllAIStates; // Reset all verses to checked/unchecked state
+    procedure SetVerseChecked(index: integer; checked: Boolean);
+    function IsVerseChecked(index: integer): Boolean;
 
 
     property Scope: TEscopoTexto read FScope write SetScope;
     property VerseList: TStringList read GetVerseList write SetVerseList;
     property IndexesList: TIntegerList read GetVerseIndexes;
     property OnVerseChange: TOnVerseChangeEvent read FOnVerseChange write FOnVerseChange;
+    property OnSelectionChanged: TNotifyEvent read FOnSelectionChanged write FOnSelectionChanged;
     property AIStatesEnabled: Boolean read FAIStatesEnabled write FAIStatesEnabled;
   end;
 
@@ -256,6 +261,13 @@ begin
   begin
     SetNodeStateIndex(node, ImgIndexUnchecked);
   end;
+
+  nparent := node.Parent;
+  while assigned(nparent) do
+  begin
+    UpdateParentState(nparent);
+    nparent := nparent.Parent;
+  end;
 end;
 
 procedure TBibleTreeView.TreeViewClick(Sender: TObject);
@@ -270,6 +282,8 @@ begin
   if (htOnStateIcon in ht) then begin // checkbox
     node := GetNodeAt(P.X, P.Y);
     ToggleTreeViewCheckBoxes(node);
+    if Assigned(FOnSelectionChanged) then
+      FOnSelectionChanged(Self);
   end else if (htOnLabel in ht) and assigned(FOnVerseChange) then begin // node
     node := GetNodeAt(P.X, P.Y);
     if assigned(node.Parent) and assigned(node.Parent.Parent) then
@@ -333,6 +347,7 @@ begin
   FScope := etNone;
   OnClick := @TreeViewClick;
   FOnVerseChange := nil;
+  FOnSelectionChanged := nil;
   FAIStatesEnabled := False;
 end;
 
@@ -363,6 +378,109 @@ begin
   begin
     SetNodeStateIndex(node, ImgIndexUnchecked);
     node := node.GetNextSibling;
+  end;
+end;
+
+procedure TBibleTreeView.UpdateParentState(node: TTreeNode);
+var
+  child: TTreeNode;
+  hasChecked, hasUnchecked, hasPartial: Boolean;
+begin
+  if not Assigned(node) then
+    Exit;
+
+  hasChecked := False;
+  hasUnchecked := False;
+  hasPartial := False;
+  child := node.GetFirstChild;
+  while Assigned(child) do
+  begin
+    case child.StateIndex of
+      ImgIndexChecked:
+        hasChecked := True;
+      ImgIndexUnchecked:
+        hasUnchecked := True;
+    else
+      hasPartial := True;
+    end;
+    child := child.GetNextSibling;
+  end;
+
+  if hasPartial or (hasChecked and hasUnchecked) then
+    node.StateIndex := ImgIndexPartial
+  else if hasChecked then
+    node.StateIndex := ImgIndexChecked
+  else
+    node.StateIndex := ImgIndexUnchecked;
+end;
+
+procedure TBibleTreeView.SetVerseChecked(index: integer; checked: Boolean);
+var
+  nb, nc, nv: TTreeNode;
+  nparent: TTreeNode;
+begin
+  if Items.Count = 0 then
+    Exit;
+
+  nb := Items[0];
+  while assigned(nb) do
+  begin
+    nc := nb.GetFirstChild;
+    while assigned(nc) do
+    begin
+      nv := nc.GetFirstChild;
+      while assigned(nv) do
+      begin
+        if PtrInt(nv.Data) = index then
+        begin
+          if checked then
+            nv.StateIndex := ImgIndexChecked
+          else
+            nv.StateIndex := ImgIndexUnchecked;
+
+          nparent := nv.Parent;
+          while assigned(nparent) do
+          begin
+            UpdateParentState(nparent);
+            nparent := nparent.Parent;
+          end;
+
+          if Assigned(FOnSelectionChanged) then
+            FOnSelectionChanged(Self);
+          Exit;
+        end;
+        nv := nv.GetNextSibling;
+      end;
+      nc := nc.GetNextSibling;
+    end;
+    nb := nb.GetNextSibling;
+  end;
+end;
+
+function TBibleTreeView.IsVerseChecked(index: integer): Boolean;
+var
+  nb, nc, nv: TTreeNode;
+begin
+  Result := False;
+  if Items.Count = 0 then
+    Exit;
+
+  nb := Items[0];
+  while assigned(nb) do
+  begin
+    nc := nb.GetFirstChild;
+    while assigned(nc) do
+    begin
+      nv := nc.GetFirstChild;
+      while assigned(nv) do
+      begin
+        if PtrInt(nv.Data) = index then
+          Exit(nv.StateIndex = ImgIndexChecked);
+        nv := nv.GetNextSibling;
+      end;
+      nc := nc.GetNextSibling;
+    end;
+    nb := nb.GetNextSibling;
   end;
 end;
 

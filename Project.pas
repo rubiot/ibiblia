@@ -418,6 +418,8 @@ resourcestring
   SCancelAIProcessing = 'Cancel AI processing';
   SConfirmApplyAIToBook = 'Are you sure you want to apply the AI flow to the entire book %s?';
   SConfirmApplyAIToChapter = 'Are you sure you want to apply the AI flow to chapter %s?';
+  SButtonYes = 'Yes';
+  SButtonNo = 'No';
   SAIConfigurationMissing = 'AI is not configured. Open LLM options and set a model and API key.';
   SNoVerseToAssociate = 'No verse to associate.';
   SAIAssociationFailedFmt = 'AI association failed: %s';
@@ -1746,12 +1748,15 @@ begin
     // Confirm BEFORE collecting verses (expensive operation)
     if FBibleTreePointedNode.Level = 0 then // book
     begin
-      if MessageDlg(SConfirmation, Format(SConfirmApplyAIToBook, [FBibleTreePointedNode.Text]), mtConfirmation, [mbYes, mbNo], 0) = mrNo then
+      if QuestionDlg(SConfirmation, Format(SConfirmApplyAIToBook, [FBibleTreePointedNode.Text]),
+        mtConfirmation, [mrYes, SButtonYes, 'IsDefault', mrNo, SButtonNo, 'IsCancel'], 0) = mrNo then
         Exit;
     end
     else if FBibleTreePointedNode.Level = 1 then // chapter
     begin
-      if MessageDlg(SConfirmation, Format(SConfirmApplyAIToChapter, [Format('%s %s', [FBibleTreePointedNode.Parent.Text, FBibleTreePointedNode.Text])]), mtConfirmation, [mbYes, mbNo], 0) = mrNo then
+      if QuestionDlg(SConfirmation, Format(SConfirmApplyAIToChapter,
+        [Format('%s %s', [FBibleTreePointedNode.Parent.Text, FBibleTreePointedNode.Text])]),
+        mtConfirmation, [mrYes, SButtonYes, 'IsDefault', mrNo, SButtonNo, 'IsCancel'], 0) = mrNo then
         Exit;
     end;
 
@@ -4147,7 +4152,10 @@ begin
 
   RefreshStatusImages;
   RefreshStatusControl;
-  FBibleTreeCoordinator.RefreshCaptions(FEscopo);
+  if Assigned(FPersistence) then
+    UpdateTree
+  else
+    FBibleTreeCoordinator.RefreshCaptions(FEscopo);
 
   if assigned(FArvore.PopupMenu) then
   begin

@@ -30,6 +30,7 @@ type
     WorkItem: TAIBatchWorkItem; // explicit batch input and temp-verse creation seam
     Index: Integer;             // Index in batch for callbacks
     Usage: TLLMUsage;
+    procedure ReleaseTempVerses;
     destructor Destroy; override;
   end;
 
@@ -102,7 +103,7 @@ type
     procedure StartBatch(Flow: IAIVerseFlow; WorkItems: TAIBatchWorkItemList);
     procedure PumpApply; // Call periodically in main thread
     procedure CancelAll;
-    procedure RetryFailedJobs; // Re-queue all permanently failed jobs
+    function RetryFailedJobs(SelectedIndexes: TStrings = nil): Integer; // Re-queue permanently failed jobs
   // Progress / metrics
   function TotalJobs: Integer;
   function CompletedJobs: Integer;
@@ -138,9 +139,8 @@ uses
 
 { TAIJob }
 
-destructor TAIJob.Destroy;
+procedure TAIJob.ReleaseTempVerses;
 begin
-  // Free temporary verse objects created for batch processing
   if Assigned(WorkItem) then
   begin
     if Assigned(Verse) then
@@ -154,7 +154,15 @@ begin
     // Then free main verse
     if Assigned(Verse) then
       Verse.Destroy;
+    Verse := nil;
+    VersePair := nil;
   end;
+end;
+
+destructor TAIJob.Destroy;
+begin
+  // Free temporary verse objects created for batch processing
+  ReleaseTempVerses;
   if Assigned(WorkItem) then
     WorkItem.Free;
   // Free parsed result
@@ -769,30 +777,65 @@ begin
     FWorkers.Clear;
 end;
 
-procedure TAIProcessingManager.RetryFailedJobs;
+function TAIProcessingManager.RetryFailedJobs(SelectedIndexes: TStrings): Integer;
 var
   i: Integer;
   job: TAIJob;
-begin
-  SafeEnterLock;
-  try
-    for i := 0 to FFailedJobs.Count - 1 do
-    begin
-      job := TAIJob(FFailedJobs[i]);
-      job.State := ajsPending;
-      job.AttemptCount := 0; // Reset retry count
-      job.NextRetryTime := 0;
-      job.ErrorMsg := '';
-      EnqueuePending(job);
-      Dec(FFailed); // Adjust counter
-    end;
-    FFailedJobs.Clear; // Clear list but don't free objects (they're re-queued)
-  finally
-    SafeLeaveLock;
+  JobsToRetry: TList;
+
+  function IndexSelected(JobIndex: Integer): Boolean;
+  begin
+    Result := (not Assigned(SelectedIndexes)) or
+      (SelectedIndexes.Count = 0) or
+      (SelectedIndexes.IndexOf(IntToStr(JobIndex)) >= 0);
   end;
-  // Ensure workers are running
-  while (FWorkers.Count < FMaxParallel) do
-    FWorkers.Add(TAIWorkerThread.Create(Self, FModel, FApiKey));
+begin
+  Result := 0;
+  JobsToRetry := TList.Create;
+  try
+    if SafeEnterLock then
+    begin
+      try
+        FCancel := False;
+        for i := FFailedJobs.Count - 1 downto 0 do
+        begin
+          job := TAIJob(FFailedJobs[i]);
+          if not IndexSelected(job.Index) then
+            Continue;
+
+          FFailedJobs.Delete(i);
+          if FFailed > 0 then
+            Dec(FFailed);
+          job.State := ajsPending;
+          job.AttemptCount := 0; // Reset retry count
+          job.NextRetryTime := 0;
+          job.ErrorMsg := '';
+          job.RawContent := '';
+          job.Usage.PromptTokens := 0;
+          job.Usage.CompletionTokens := 0;
+          job.Usage.TotalTokens := 0;
+          job.ReleaseTempVerses;
+          JobsToRetry.Add(job);
+        end;
+      finally
+        SafeLeaveLock;
+      end;
+    end;
+
+    for i := 0 to JobsToRetry.Count - 1 do
+    begin
+      job := TAIJob(JobsToRetry[i]);
+      EnqueuePending(job);
+      NotifyStateChange(job);
+      Inc(Result);
+    end;
+
+    // Ensure workers are running
+    while (Result > 0) and (FWorkers.Count < FMaxParallel) do
+      FWorkers.Add(TAIWorkerThread.Create(Self, FModel, FApiKey));
+  finally
+    JobsToRetry.Free;
+  end;
 end;
 
 function TAIProcessingManager.TotalJobs: Integer;

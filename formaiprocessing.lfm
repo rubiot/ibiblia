@@ -211,8 +211,7 @@ object FrmAIProcessing: TFrmAIProcessing
       Height = 5
       Top = 224
       Width = 587
-      Align = alNone
-      Anchors = []
+      Align = alTop
       ResizeAnchor = akTop
     end
     object ScrollBoxDstText: TScrollBox

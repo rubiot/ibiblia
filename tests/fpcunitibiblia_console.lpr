@@ -10,7 +10,8 @@ uses
   syntagmselectiontest,
   statuscatalogtest,
   project_setup_validation_test,
-  theword_syntax_highlighter_test;
+  theword_syntax_highlighter_test,
+  ai_processing_batch_test;
 
 var
   Application: TTestRunner;

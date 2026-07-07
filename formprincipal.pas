@@ -281,6 +281,8 @@ type
     procedure StateHeaderResize(Sender: TObject);
     procedure StatusReviewListClickCheck(Sender: TObject);
     procedure StatusReviewResetButtonClick(Sender: TObject);
+    procedure TreeViewKeyDown(Sender: TObject; var Key: Word;
+      Shift: TShiftState);
     procedure TreeViewShowHint(Sender: TObject; HintInfo: PHintInfo);
     procedure Translate;
     procedure NormalizeActionHint(AAction: TCustomAction);
@@ -1677,6 +1679,28 @@ begin
   UpdateStatusReviewPanel;
 end;
 
+procedure TFrmPrincipal.TreeViewKeyDown(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+begin
+  if Shift <> [] then
+    Exit;
+
+  case Key of
+    VK_PRIOR:
+      begin
+        if ActionVersoAnterior.Enabled then
+          ActionVersoAnterior.Execute;
+        Key := 0;
+      end;
+    VK_NEXT:
+      begin
+        if ActionVersoSeguinte.Enabled then
+          ActionVersoSeguinte.Execute;
+        Key := 0;
+      end;
+  end;
+end;
+
 procedure TFrmPrincipal.TreeViewShowHint(Sender: TObject; HintInfo: PHintInfo);
 var
   Node: TTreeNode;
@@ -2423,6 +2447,7 @@ begin
   CreateCommentsGroupBox;
   TreeView1.Hint := ' ';
   TreeView1.ShowHint := True;
+  TreeView1.OnKeyDown := @TreeViewKeyDown;
   TreeView1.OnShowHint := @TreeViewShowHint;
   TreeView1.Options := TreeView1.Options - [tvoToolTips];
 

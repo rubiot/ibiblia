@@ -248,7 +248,7 @@ msgstr "Processando: %d de %d versículos (%d%%)"
 
 #: formaiprocessing.saiprocessingtitle
 msgid "AI Processing"
-msgstr "Processamento IA"
+msgstr "Processamento de IA"
 
 #: formaiprocessing.sapplysuccessful
 msgid "Changes applied successfully"
@@ -256,7 +256,7 @@ msgstr "Mudanças aplicadas com sucesso"
 
 #: formaiprocessing.scancelconfirmation
 msgid "Are you sure you want to cancel the AI processing?"
-msgstr "Tem certeza de que deseja cancelar o processamento IA?"
+msgstr "Tem certeza de que deseja cancelar o processamento de IA?"
 
 #: formaiprocessing.sconfirmation
 msgctxt "formaiprocessing.sconfirmation"
@@ -275,20 +275,30 @@ msgstr "Tempo restante estimado: %s"
 #: formaiprocessing.stokensconsumed
 #, object-pascal-format
 msgid "Tokens consumed: prompt %s, completion %s, total %s"
-msgstr ""
+msgstr "Tokens consumidos: prompt %s, resposta %s, total %s"
 
 #: formaiprocessing.stokensconsumedlastincrement
 #, object-pascal-format
 msgid "Tokens consumed: prompt %s, completion %s, total %s (last +%s)"
-msgstr ""
+msgstr "Tokens consumidos: prompt %s, resposta %s, total %s (último +%s)"
 
 #: formaiprocessing.stokensconsumednone
 msgid "Tokens consumed: 0"
-msgstr ""
+msgstr "Tokens consumidos: 0"
 
 #: formaiprocessing.stokensconsumedunavailable
 msgid "Tokens consumed: unavailable"
-msgstr ""
+msgstr "Tokens consumidos: indisponível"
+
+#: formaiprocessing.saiflowassociation
+msgctxt "formaiprocessing.saiflowassociation"
+msgid "Association"
+msgstr "Associação"
+
+#: formaiprocessing.saiflowtranslation
+msgctxt "formaiprocessing.saiflowtranslation"
+msgid "Translation"
+msgstr "Tradução"
 
 #: formapplypatch.signoredversesonpatch
 #, object-pascal-format
@@ -1899,25 +1909,22 @@ msgid "Analyzing verse..."
 msgstr "Analisando versículo..."
 
 #: project.sapplyaito
-#, fuzzy
 msgctxt "project.sapplyaito"
 msgid "Apply AI flow to..."
 msgstr "Aplicar fluxo de IA a..."
 
 #: project.sapplyaitofmt
-#, object-pascal-format, fuzzy
+#, object-pascal-format
 msgctxt "project.sapplyaitofmt"
 msgid "Apply AI flow to %s"
 msgstr "Aplicar fluxo de IA a %s"
 
 #: project.sassociate
-#, fuzzy
 msgctxt "project.sassociate"
 msgid "Associate"
 msgstr "Associar"
 
 #: project.sassociation
-#, fuzzy
 msgctxt "project.sassociation"
 msgid "Association"
 msgstr "Associação"
@@ -1936,10 +1943,19 @@ msgid ""
 msgstr ""
 
 #: project.scancelaiprocessing
-#, fuzzy
 msgctxt "project.scancelaiprocessing"
 msgid "Cancel AI processing"
-msgstr "Cancelar processamento IA"
+msgstr "Cancelar processamento de IA"
+
+#: project.sbuttonno
+msgctxt "project.sbuttonno"
+msgid "No"
+msgstr "Não"
+
+#: project.sbuttonyes
+msgctxt "project.sbuttonyes"
+msgid "Yes"
+msgstr "Sim"
 
 #: project.scolossians
 msgctxt "project.scolossians"
@@ -1953,19 +1969,18 @@ msgid "Compressed dictionary"
 msgstr "Dicionário compactado"
 
 #: project.sconfirmapplyaitobook
-#, object-pascal-format, fuzzy
+#, object-pascal-format
 msgctxt "project.sconfirmapplyaitobook"
 msgid "Are you sure you want to apply the AI flow to the entire book %s?"
 msgstr "Tem certeza de que deseja aplicar o fluxo de IA a todo o livro de %s?"
 
 #: project.sconfirmapplyaitochapter
-#, object-pascal-format, fuzzy
+#, object-pascal-format
 msgctxt "project.sconfirmapplyaitochapter"
 msgid "Are you sure you want to apply the AI flow to chapter %s?"
-msgstr "Tem certeza de que deseja aplicar o fluxo de IA a todo o capítulo %s?"
+msgstr "Tem certeza de que deseja aplicar o fluxo de IA ao capítulo %s?"
 
 #: project.sconfirmation
-#, fuzzy
 msgctxt "project.sconfirmation"
 msgid "Confirmation"
 msgstr "Confirmação"
@@ -2314,7 +2329,7 @@ msgid "Mark"
 msgstr "Marcos"
 
 #: project.smarkasfmt
-#, object-pascal-format, fuzzy
+#, object-pascal-format
 msgctxt "project.smarkasfmt"
 msgid "Mark %s as..."
 msgstr "Marcar %s como..."
@@ -2484,7 +2499,6 @@ msgid "Ruth"
 msgstr "Rute"
 
 #: project.ssetstatuschildren
-#, fuzzy
 msgctxt "project.ssetstatuschildren"
 msgid "Set status of all children to..."
 msgstr "Atribuir a situação de todos os filhos para..."
@@ -2495,25 +2509,21 @@ msgid "Song of Solomon"
 msgstr "Cântico dos Cânticos"
 
 #: project.sstatusassociated
-#, fuzzy
 msgctxt "project.sstatusassociated"
 msgid "Associated!"
 msgstr "Associado!"
 
 #: project.sstatusassociating
-#, fuzzy
 msgctxt "project.sstatusassociating"
 msgid "Associating"
-msgstr "Associando..."
+msgstr "Associando"
 
 #: project.sstatusneedsreview
-#, fuzzy
 msgctxt "project.sstatusneedsreview"
 msgid "Needs review"
-msgstr "Rever"
+msgstr "Precisa de revisão"
 
 #: project.sstatusnotassociated
-#, fuzzy
 msgctxt "project.sstatusnotassociated"
 msgid "Not associated"
 msgstr "Não associado"
@@ -2553,13 +2563,11 @@ msgid "Titus"
 msgstr "Tito"
 
 #: project.stranslate
-#, fuzzy
 msgctxt "project.stranslate"
 msgid "Translate"
 msgstr "Traduzir"
 
 #: project.stranslation
-#, fuzzy
 msgctxt "project.stranslation"
 msgid "Translation"
 msgstr "Tradução"
@@ -4769,3 +4777,210 @@ msgstr "Guia: traduzir o versículo"
 #: formprincipal.sguidetranslationtext
 msgid "Double-click an empty area in Destination to write the translation. Use Save to apply or Cancel to discard; Esc also saves and closes. Once Destination has text, the guide will switch to association."
 msgstr "Dê duplo clique numa área vazia do destino para escrever a tradução. Use Salvar para aplicar ou Cancelar para descartar; Esc também salva e fecha. Quando houver texto no destino, o guia passará para associação."
+
+#: formaiprocessing.sapplysuccessfulfmt
+#, object-pascal-format
+msgid "Changes applied successfully (%d verses)"
+msgstr "Mudanças aplicadas com sucesso (%d versículos)"
+
+#: formaiprocessing.saireviewgroupcaption
+msgctxt "formaiprocessing.saireviewgroupcaption"
+msgid "Verses to apply"
+msgstr "Versículos a aplicar"
+
+#: formaiprocessing.saireviewairesultstab
+msgid "AI results"
+msgstr "Resultados da IA"
+
+#: formaiprocessing.saireviewcurrentprojecttab
+msgid "Current project"
+msgstr "Projeto atual"
+
+#: formaiprocessing.saireviewselectall
+msgctxt "formaiprocessing.saireviewselectall"
+msgid "Accept all"
+msgstr "Aceitar todos"
+
+#: formaiprocessing.saireviewdeselectall
+msgctxt "formaiprocessing.saireviewdeselectall"
+msgid "Reject all"
+msgstr "Rejeitar todos"
+
+#: formaiprocessing.saireviewapplyaccepted
+msgid "Apply accepted"
+msgstr "Aplicar aceitos"
+
+#: formaiprocessing.saireviewdiscard
+msgctxt "formaiprocessing.saireviewdiscard"
+msgid "Discard"
+msgstr "Descartar"
+
+#: formaiprocessing.saireviewcancel
+msgctxt "formaiprocessing.saireviewcancel"
+msgid "Cancel"
+msgstr "Cancelar"
+
+#: formaiprocessing.saireviewerrorprefix
+#, object-pascal-format
+msgid "Error: %s"
+msgstr "Erro: %s"
+
+#: formaiprocessing.saireviewsummaryfmt
+#, object-pascal-format
+msgid "Selected: %d verses; ready to apply: %d verses; failed: %d."
+msgstr "Selecionados: %d versículos; prontos para aplicar: %d versículos; falhas: %d."
+
+#: formaiprocessing.saireviewreadysummaryfmt
+#, object-pascal-format
+msgid "Ready to apply %d accepted verses."
+msgstr "Pronto para aplicar %d versículos aceitos."
+
+#: formaiprocessing.saireviewapplyquestion
+msgid "Apply the accepted AI changes now?"
+msgstr "Aplicar agora as mudanças aceitas da IA?"
+
+#: formaiprocessing.saireviewnoacceptedchanges
+msgid "There are no accepted AI changes selected to apply."
+msgstr "Não há mudanças da IA aceitas e selecionadas para aplicar."
+
+#: formaiprocessing.saireviewfailedwarningfmt
+#, object-pascal-format
+msgid "%d verses failed. They will not be applied unless you retry them successfully."
+msgstr "%d versículos falharam. Eles não serão aplicados, a menos que você os reprocesse com sucesso."
+
+#: formaiprocessing.saireviewacceptverse
+msgid "Accept verse"
+msgstr "Aceitar versículo"
+
+#: formaiprocessing.saireviewrejectverse
+msgid "Reject verse"
+msgstr "Rejeitar versículo"
+
+#: formaiprocessing.saireviewretryfailed
+msgid "Retry failed"
+msgstr "Tentar falhas novamente"
+
+#: formaiprocessing.saireviewselectallhint
+msgid "Mark all completed verses to apply their accepted AI proposals."
+msgstr "Marca todos os versículos concluídos para aplicar as propostas aceitas da IA."
+
+#: formaiprocessing.saireviewdeselectallhint
+msgid "Unmark all verses. Nothing will be applied until verses are accepted again."
+msgstr "Desmarca todos os versículos. Nada será aplicado até que versículos sejam aceitos novamente."
+
+#: formaiprocessing.saireviewacceptversehint
+msgid "Mark the current verse for application. Comments follow the selected comment option."
+msgstr "Marca o versículo atual para aplicação. Os comentários seguem a opção selecionada."
+
+#: formaiprocessing.saireviewrejectversehint
+msgid "Unmark the current verse so the project stays unchanged for this verse."
+msgstr "Desmarca o versículo atual para que o projeto permaneça inalterado neste versículo."
+
+#: formaiprocessing.saireviewretryfailedhint
+msgid "Run the AI again only for verses that failed."
+msgstr "Executa a IA novamente apenas para os versículos que falharam."
+
+#: formaiprocessing.saireviewapplyacceptedhint
+msgid "Apply only the marked verses."
+msgstr "Aplica apenas os versículos marcados."
+
+#: formaiprocessing.saireviewdiscardhint
+msgid "Close this review without applying AI results."
+msgstr "Fecha esta revisão sem aplicar os resultados da IA."
+
+#: formaiprocessing.saireviewcancelhint
+msgid "Stop the AI processing that is currently running."
+msgstr "Interrompe o processamento de IA em andamento."
+
+#: formaiprocessing.saireviewnofailedverses
+msgid "There are no failed verses to retry."
+msgstr "Não há versículos com falha para tentar novamente."
+
+#: formaiprocessing.saireviewretrystartedfmt
+#, object-pascal-format
+msgid "Retrying %d failed verses."
+msgstr "Tentando novamente %d versículos com falha."
+
+#: formaiprocessing.saireviewverseaccepted
+msgid "This verse is accepted and will be applied."
+msgstr "Este versículo está aceito e será aplicado."
+
+#: formaiprocessing.saireviewverserejected
+msgid "This verse is rejected and will not be applied."
+msgstr "Este versículo está rejeitado e não será aplicado."
+
+#: formaiprocessing.saireviewversenochanges
+msgid "The AI did not propose changes for this verse."
+msgstr "A IA não propôs mudanças para este versículo."
+
+#: formaiprocessing.saireviewversepending
+msgid "Waiting for AI result."
+msgstr "Aguardando resultado da IA."
+
+#: formaiprocessing.saireviewverseprocessing
+msgid "Processing this verse..."
+msgstr "Processando este versículo..."
+
+#: formaiprocessing.saireviewassociationsummaryfmt
+#, object-pascal-format
+msgid "Associations proposed: %d (current project: %d)."
+msgstr "Associações propostas: %d (projeto atual: %d)."
+
+#: formaiprocessing.saireviewassociationprogressfmt
+#, object-pascal-format
+msgid "Association coverage in displayed preview: %.0f%%."
+msgstr "Cobertura de associação na pré-visualização exibida: %.0f%%."
+
+#: formaiprocessing.saireviewtranslationsummary
+msgid "Review the proposed destination text above."
+msgstr "Revise acima o texto destino proposto."
+
+#: formaiprocessing.saireviewcommentsavailable
+msgid "AI comments are shown below."
+msgstr "Os comentários da IA são exibidos abaixo."
+
+#: formaiprocessing.saireviewnocomments
+msgid "No AI comments for this verse."
+msgstr "Nenhum comentário da IA para este versículo."
+
+#: formaiprocessing.saireviewcommentschangedfmt
+#, object-pascal-format
+msgid "AI proposed comments. Current choice: %s."
+msgstr "A IA propôs comentários. Escolha atual: %s."
+
+#: formaiprocessing.saireviewcommentssectionsummaryfmt
+#, object-pascal-format
+msgid "Comments: %s"
+msgstr "Comentários: %s"
+
+#: formaiprocessing.saireviewshowcomments
+msgid "Review comments"
+msgstr "Revisar comentários"
+
+#: formaiprocessing.saireviewhidecomments
+msgid "Hide comments"
+msgstr "Ocultar comentários"
+
+#: formaiprocessing.saireviewcurrentcomments
+msgid "Current comment"
+msgstr "Comentário atual"
+
+#: formaiprocessing.saireviewappliedcomments
+msgid "After applying"
+msgstr "Após aplicar"
+
+#: formaiprocessing.saireviewcommentsdecisioncaption
+msgid "Comment choice"
+msgstr "Escolha dos comentários"
+
+#: formaiprocessing.saireviewkeepcurrentcomments
+msgid "Keep current comment"
+msgstr "Manter comentário atual"
+
+#: formaiprocessing.saireviewuseaicomments
+msgid "Use AI comment"
+msgstr "Usar comentário da IA"
+
+#: formaiprocessing.saireviewmergecomments
+msgid "Keep both comments"
+msgstr "Manter ambos os comentários"
