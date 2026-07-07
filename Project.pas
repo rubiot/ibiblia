@@ -295,6 +295,8 @@ type
     function GetInfo(info: string): string;
     function GetFlowExamples(const FlowId: string): TAIFlowExampleArray;
     procedure SetFlowExamples(const FlowId: string; const Examples: TAIFlowExampleArray);
+    function TryCreateCurrentVerseFlowExample(const FlowId: string;
+      out Example: TAIFlowExample; out ErrorMessage: string): Boolean;
     function IncludeCurrentVerseAsFlowExample(const FlowId: string): Boolean;
     procedure RemoveFlowExample(const FlowId, ReferenceId: string);
     procedure ClearFlowExamples(const FlowId: string);
@@ -702,7 +704,10 @@ begin
   Result.ReferenceCaption := FormattedReference;
   Result.SourceText := SourceVerse.TextoSimples;
   Result.TargetText := TargetVerse.TextoSimples;
+  Result.SourceXml := SourceVerse.XML;
+  Result.TargetXml := TargetVerse.XML;
   Result.ExpectedResponse := SourceVerse.GetAssociationsJSON;
+  Result.PairsXml := SourceVerse.Pares;
 end;
 
 function TProject.BuildTranslationFlowExample: TAIFlowExample;
@@ -722,7 +727,10 @@ begin
   Result.ReferenceCaption := FormattedReference;
   Result.SourceText := SourceVerse.TextoSimples;
   Result.TargetText := TargetVerse.TextoSimples;
+  Result.SourceXml := SourceVerse.XML;
+  Result.TargetXml := TargetVerse.XML;
   Result.ExpectedResponse := TargetVerse.TextoSimples;
+  Result.PairsXml := '';
 end;
 
 function TProject.CreateFlowExample(const FlowId: string): TAIFlowExample;
@@ -3974,6 +3982,21 @@ end;
 procedure TProject.SetFlowExamples(const FlowId: string; const Examples: TAIFlowExampleArray);
 begin
   SetInfo(GetFlowExamplesConfigKey(FlowId), SaveFlowExamples(Examples));
+end;
+
+function TProject.TryCreateCurrentVerseFlowExample(const FlowId: string;
+  out Example: TAIFlowExample; out ErrorMessage: string): Boolean;
+begin
+  Result := False;
+  ErrorMessage := '';
+  Example := Default(TAIFlowExample);
+  try
+    Example := CreateFlowExample(FlowId);
+    Result := True;
+  except
+    on E: Exception do
+      ErrorMessage := E.Message;
+  end;
 end;
 
 function TProject.IncludeCurrentVerseAsFlowExample(const FlowId: string): Boolean;

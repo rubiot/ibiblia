@@ -25,7 +25,10 @@ type
     ReferenceCaption: string;
     SourceText: string;
     TargetText: string;
+    SourceXml: string;
+    TargetXml: string;
     ExpectedResponse: string;
+    PairsXml: string;
   end;
 
   TAIFlowExampleArray = array of TAIFlowExample;
@@ -63,6 +66,7 @@ function SaveFlowExamples(const Examples: TAIFlowExampleArray): string;
 function IndexOfFlowExampleByReference(const Examples: TAIFlowExampleArray; const ReferenceId: string): Integer;
 function UpsertFlowExample(const Examples: TAIFlowExampleArray; const Example: TAIFlowExample; ReplaceExisting: Boolean): TAIFlowExampleArray;
 function RemoveFlowExample(const Examples: TAIFlowExampleArray; const ReferenceId: string): TAIFlowExampleArray;
+function MoveFlowExample(const Examples: TAIFlowExampleArray; const FromIndex, ToIndex: Integer): TAIFlowExampleArray;
 function FormatFlowExampleSummary(const Example: TAIFlowExample; const MaxPreviewLength: Integer = 60): string;
 
 // Get flow configuration by ID
@@ -171,7 +175,10 @@ begin
         Result[I].ReferenceCaption := JsonObject.Get('reference_caption', '');
         Result[I].SourceText := JsonObject.Get('source_text', '');
         Result[I].TargetText := JsonObject.Get('target_text', '');
+        Result[I].SourceXml := JsonObject.Get('source_xml', '');
+        Result[I].TargetXml := JsonObject.Get('target_xml', '');
         Result[I].ExpectedResponse := JsonObject.Get('expected_response', '');
+        Result[I].PairsXml := JsonObject.Get('pairs_xml', '');
       end;
     finally
       Data.Free;
@@ -196,7 +203,13 @@ begin
       JsonObject.Add('reference_caption', Examples[I].ReferenceCaption);
       JsonObject.Add('source_text', Examples[I].SourceText);
       JsonObject.Add('target_text', Examples[I].TargetText);
+      if Examples[I].SourceXml <> '' then
+        JsonObject.Add('source_xml', Examples[I].SourceXml);
+      if Examples[I].TargetXml <> '' then
+        JsonObject.Add('target_xml', Examples[I].TargetXml);
       JsonObject.Add('expected_response', Examples[I].ExpectedResponse);
+      if Examples[I].PairsXml <> '' then
+        JsonObject.Add('pairs_xml', Examples[I].PairsXml);
       JsonArray.Add(JsonObject);
     end;
 
@@ -245,6 +258,27 @@ begin
   for I := Index to High(Result) - 1 do
     Result[I] := Result[I + 1];
   SetLength(Result, Length(Result) - 1);
+end;
+
+function MoveFlowExample(const Examples: TAIFlowExampleArray; const FromIndex,
+  ToIndex: Integer): TAIFlowExampleArray;
+var
+  Item: TAIFlowExample;
+  I: Integer;
+begin
+  Result := Copy(Examples);
+  if (FromIndex < 0) or (FromIndex > High(Result)) or
+     (ToIndex < 0) or (ToIndex > High(Result)) or (FromIndex = ToIndex) then
+    Exit;
+
+  Item := Result[FromIndex];
+  if FromIndex < ToIndex then
+    for I := FromIndex to ToIndex - 1 do
+      Result[I] := Result[I + 1]
+  else
+    for I := FromIndex downto ToIndex + 1 do
+      Result[I] := Result[I - 1];
+  Result[ToIndex] := Item;
 end;
 
 function FormatFlowExampleSummary(const Example: TAIFlowExample; const MaxPreviewLength: Integer): string;

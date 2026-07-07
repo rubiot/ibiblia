@@ -27,9 +27,8 @@ type
     CbModel: TComboBox;
     EditApiKey: TLabeledEdit;
     LblExamples: TLabel;
-    lbExamples: TListBox;
-    BtnRemoveExample: TButton;
-    BtnClearExamples: TButton;
+    LblExamplesSummary: TLabel;
+    BtnManageExamples: TButton;
     BtnViewDefault: TButton;
     BtnReset: TButton;
     LblFormatInfo: TLabel;
@@ -86,12 +85,12 @@ type
     procedure SaveFlowConfig(const AFlowId: string);
     procedure OnViewDefaultClick(Sender: TObject);
     procedure OnResetClick(Sender: TObject);
-    procedure OnRemoveExampleClick(Sender: TObject);
-    procedure OnClearExamplesClick(Sender: TObject);
+    procedure OnManageExamplesClick(Sender: TObject);
     procedure OnFlowProviderChange(Sender: TObject);
     procedure OnFlowOverrideToggle(Sender: TObject);
     procedure RefreshFlowExamplesUI(const AFlowId: string);
     procedure UpdateFlowOverrideControls(TabIdx: Integer);
+    function BuildCurrentPrompt(TabIdx: Integer): string;
     function GetFlowTabByFlowId(const AFlowId: string): TFlowTabControls;
     function GetFlowTabIndexByFlowId(const AFlowId: string): Integer;
   public
@@ -117,15 +116,13 @@ resourcestring
   rsLabelMaxRetries = 'Max Retries';
   rsCommonSettings = 'Common Settings (All Flows)';
   rsAdditionalInstructions = 'Additional Instructions (Optional):';
-  rsBtnViewDefault = 'View Default Prompt';
+  rsBtnViewDefault = 'View Current Prompt';
   rsBtnReset = 'Reset to Default';
   rsSavedExamples = 'Saved Examples:';
-  rsBtnRemoveExample = 'Remove Selected';
-  rsBtnClearExamples = 'Clear List';
-  rsClearExamplesTitle = 'Clear examples';
-  rsClearExamplesPrompt = 'Remove all saved examples for the %s flow?';
+  rsExamplesSummaryFmt = '%d saved example(s).';
+  rsBtnManageExamples = 'Manage examples...';
   rsNoExamples = '(no saved examples)';
-  rsDefaultPromptTitle = 'Default Prompt - %s';
+  rsDefaultPromptTitle = 'Current Prompt - %s';
   rsFormatInfoFmt = 'Info: %s';
   rsCustomInstructionsHint = 'Add specific guidelines for your project (e.g., translation philosophy, examples). Leave empty to use only the default prompt.';
   rsProviderOverride = 'Provider Override (Optional)';
@@ -134,7 +131,7 @@ resourcestring
 implementation
 
 uses
-  ai_association_flow, ai_translation_flow;
+  ai_association_flow, ai_translation_flow, FormFlowExamples;
 
 { TFrmLLMOptions }
 
@@ -367,7 +364,7 @@ begin
   SetWidthIfAssigned(tabControls.ChkForceOverwrite, contentWidth);
   SetWidthIfAssigned(tabControls.chkUseOverride, contentWidth);
   SetWidthIfAssigned(tabControls.gbOverride, contentWidth);
-  SetWidthIfAssigned(tabControls.lbExamples, contentWidth);
+  SetWidthIfAssigned(tabControls.LblExamplesSummary, contentWidth);
   SetWidthIfAssigned(tabControls.LblFormatInfo, contentWidth);
 
   SetWidthIfAssigned(tabControls.CbProvider, innerWidth);
@@ -543,43 +540,30 @@ begin
   end;
   Inc(YPos, 20);
 
-  TabControls.lbExamples := TListBox.Create(AParent);
-  with TabControls.lbExamples do
+  TabControls.LblExamplesSummary := TLabel.Create(AParent);
+  with TabControls.LblExamplesSummary do
   begin
     Parent := AParent;
     Left := 8;
     Top := YPos;
     Width := 600;
-    Height := 88;
     Anchors := [akTop, akLeft];
-    IntegralHeight := False;
+    Caption := rsNoExamples;
+    AutoSize := False;
   end;
-  Inc(YPos, 96);
+  Inc(YPos, 24);
 
-  TabControls.BtnRemoveExample := TButton.Create(AParent);
-  with TabControls.BtnRemoveExample do
+  TabControls.BtnManageExamples := TButton.Create(AParent);
+  with TabControls.BtnManageExamples do
   begin
     Parent := AParent;
     Left := 8;
     Top := YPos;
     Width := 150;
     Height := 25;
-    Caption := rsBtnRemoveExample;
+    Caption := rsBtnManageExamples;
     Tag := TabIdx;
-    OnClick := @OnRemoveExampleClick;
-  end;
-
-  TabControls.BtnClearExamples := TButton.Create(AParent);
-  with TabControls.BtnClearExamples do
-  begin
-    Parent := AParent;
-    Left := TabControls.BtnRemoveExample.Left + TabControls.BtnRemoveExample.Width + 8;
-    Top := YPos;
-    Width := 110;
-    Height := 25;
-    Caption := rsBtnClearExamples;
-    Tag := TabIdx;
-    OnClick := @OnClearExamplesClick;
+    OnClick := @OnManageExamplesClick;
   end;
 
   Inc(YPos, 33);
@@ -946,78 +930,40 @@ begin
   FFlowTabs[TabIdx].gbOverride.Enabled := FFlowTabs[TabIdx].chkUseOverride.Checked;
 end;
 
-procedure TFrmLLMOptions.OnRemoveExampleClick(Sender: TObject);
-var
-  btn: TButton;
-  idx, selectedIndex: Integer;
-begin
-  if not (Sender is TButton) then Exit;
-
-  btn := TButton(Sender);
-  idx := btn.Tag;
-  if (idx < 0) or (idx >= Length(FFlowTabs)) then Exit;
-
-  selectedIndex := FFlowTabs[idx].lbExamples.ItemIndex;
-  if (selectedIndex < 0) or (selectedIndex > High(FFlowTabs[idx].WorkingExamples)) then Exit;
-
-  FFlowTabs[idx].WorkingExamples := ai_flow_config.RemoveFlowExample(
-    FFlowTabs[idx].WorkingExamples,
-    FFlowTabs[idx].WorkingExamples[selectedIndex].ReferenceId
-  );
-  RefreshFlowExamplesUI(FFlowTabs[idx].FlowId);
-end;
-
-procedure TFrmLLMOptions.OnClearExamplesClick(Sender: TObject);
+procedure TFrmLLMOptions.OnManageExamplesClick(Sender: TObject);
 var
   btn: TButton;
   idx: Integer;
-  flowConfig: IAIFlowConfig;
 begin
   if not (Sender is TButton) then Exit;
+  if not Assigned(FProject) then Exit;
 
   btn := TButton(Sender);
   idx := btn.Tag;
   if (idx < 0) or (idx >= Length(FFlowTabs)) then Exit;
 
-  flowConfig := GetFlowConfigById(FFlowTabs[idx].FlowId);
-  if not Assigned(flowConfig) then Exit;
-
-  if MessageDlg(rsClearExamplesTitle,
-                Format(rsClearExamplesPrompt, [flowConfig.GetDisplayName]),
-                mtConfirmation,
-                [mbYes, mbNo],
-                0) <> mrYes then
-    Exit;
-
-  FFlowTabs[idx].WorkingExamples := nil;
-  RefreshFlowExamplesUI(FFlowTabs[idx].FlowId);
+  if TFrmFlowExamples.Execute(Self, FProject, FFlowTabs[idx].FlowId,
+      FFlowTabs[idx].WorkingExamples) then
+    RefreshFlowExamplesUI(FFlowTabs[idx].FlowId);
 end;
 
 procedure TFrmLLMOptions.RefreshFlowExamplesUI(const AFlowId: string);
 var
-  idx, i: Integer;
+  idx, count: Integer;
 begin
   idx := GetFlowTabIndexByFlowId(AFlowId);
   if idx < 0 then Exit;
 
-  FFlowTabs[idx].lbExamples.Items.BeginUpdate;
-  try
-    FFlowTabs[idx].lbExamples.Items.Clear;
-    if Length(FFlowTabs[idx].WorkingExamples) = 0 then
-      FFlowTabs[idx].lbExamples.Items.Add(rsNoExamples)
+  count := Length(FFlowTabs[idx].WorkingExamples);
+  if Assigned(FFlowTabs[idx].LblExamplesSummary) then
+  begin
+    if count = 0 then
+      FFlowTabs[idx].LblExamplesSummary.Caption := rsNoExamples
     else
-      for i := 0 to High(FFlowTabs[idx].WorkingExamples) do
-        FFlowTabs[idx].lbExamples.Items.Add(FormatFlowExampleSummary(FFlowTabs[idx].WorkingExamples[i]));
-  finally
-    FFlowTabs[idx].lbExamples.Items.EndUpdate;
+      FFlowTabs[idx].LblExamplesSummary.Caption := Format(rsExamplesSummaryFmt, [count]);
   end;
-
-  if Length(FFlowTabs[idx].WorkingExamples) > 0 then
-    FFlowTabs[idx].lbExamples.ItemIndex := 0
-  else
-    FFlowTabs[idx].lbExamples.ItemIndex := -1;
-  FFlowTabs[idx].BtnRemoveExample.Enabled := Length(FFlowTabs[idx].WorkingExamples) > 0;
-  FFlowTabs[idx].BtnClearExamples.Enabled := Length(FFlowTabs[idx].WorkingExamples) > 0;
+  if Assigned(FFlowTabs[idx].BtnManageExamples) then
+    FFlowTabs[idx].BtnManageExamples.Enabled := Assigned(FProject);
 end;
 
 procedure TFrmLLMOptions.OnViewDefaultClick(Sender: TObject);
@@ -1027,7 +973,7 @@ var
   frm: TForm;
   memo: TMemo;
   btnClose: TButton;
-  defaultPrompt: string;
+  currentPrompt: string;
 begin
   if not (Sender is TButton) then Exit;
 
@@ -1037,8 +983,7 @@ begin
   flowConfig := GetFlowConfigById(FFlowTabs[btn.Tag].FlowId);
   if not Assigned(flowConfig) then Exit;
 
-  // Build default prompt
-  defaultPrompt := flowConfig.BuildPromptFromConfig([]);
+  currentPrompt := BuildCurrentPrompt(btn.Tag);
 
   // Create dialog
   frm := TForm.Create(nil);
@@ -1058,7 +1003,7 @@ begin
     memo.ReadOnly := True;
     memo.ScrollBars := ssAutoBoth;
     memo.WordWrap := True;
-    memo.Lines.Text := defaultPrompt;
+    memo.Lines.Text := currentPrompt;
 
     btnClose := TButton.Create(frm);
     btnClose.Parent := frm;
@@ -1111,6 +1056,45 @@ begin
   begin
     tabControls.chkUseOverride.Checked := False;
     UpdateFlowOverrideControls(btn.Tag);
+  end;
+end;
+
+function TFrmLLMOptions.BuildCurrentPrompt(TabIdx: Integer): string;
+var
+  tabControls: TFlowTabControls;
+  flowConfig: IAIFlowConfig;
+  customInstructions, serializedExamples: string;
+  includeComments: Boolean;
+begin
+  Result := '';
+  if (TabIdx < 0) or (TabIdx >= Length(FFlowTabs)) then Exit;
+
+  tabControls := FFlowTabs[TabIdx];
+  flowConfig := GetFlowConfigById(tabControls.FlowId);
+  if not Assigned(flowConfig) then Exit;
+
+  customInstructions := '';
+  if Assigned(tabControls.MemoInstructions) then
+    customInstructions := tabControls.MemoInstructions.Lines.Text;
+  serializedExamples := SaveFlowExamples(tabControls.WorkingExamples);
+
+  if SameText(tabControls.FlowId, 'association') then
+  begin
+    includeComments := Assigned(tabControls.ChkIncludeComments) and
+      tabControls.ChkIncludeComments.Checked;
+    Result := flowConfig.BuildPromptFromConfig([
+      AI_ASSOCIATION_CONFIG_KEY_CUSTOM_INSTRUCTIONS, customInstructions,
+      AI_ASSOCIATION_CONFIG_KEY_INCLUDE_COMMENTS, includeComments,
+      AI_ASSOCIATION_EXAMPLES_KEY, serializedExamples
+    ]);
+  end
+  else if SameText(tabControls.FlowId, 'translation') then
+  begin
+    Result := flowConfig.BuildPromptFromConfig([
+      AI_TRANSLATION_CONFIG_KEY_TARGET_LANGUAGE, tabControls.EditTargetLanguage.Text,
+      AI_TRANSLATION_CONFIG_KEY_CUSTOM_INSTRUCTIONS, customInstructions,
+      AI_TRANSLATION_EXAMPLES_KEY, serializedExamples
+    ]);
   end;
 end;
 

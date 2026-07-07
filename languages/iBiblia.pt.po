@@ -332,6 +332,11 @@ msgctxt "formllmoptions.rsbtncancel"
 msgid "Cancel"
 msgstr "Cancelar"
 
+#: formllmoptions.rsbtnclose
+msgctxt "formllmoptions.rsbtnclose"
+msgid "Close"
+msgstr "Fechar"
+
 #: formllmoptions.rsbtnclearexamples
 msgid "Clear List"
 msgstr "Limpar lista"
@@ -354,9 +359,13 @@ msgctxt "formllmoptions.rsbtntest"
 msgid "Test"
 msgstr "Testar"
 
+#: formllmoptions.rsbtnmanageexamples
+msgid "Manage examples..."
+msgstr "Gerenciar exemplos..."
+
 #: formllmoptions.rsbtnviewdefault
-msgid "View Default Prompt"
-msgstr "Exibir prompt padrão"
+msgid "View Current Prompt"
+msgstr "Exibir prompt atual"
 
 #: formllmoptions.rsclearexamplesprompt
 #, object-pascal-format
@@ -382,8 +391,13 @@ msgstr ""
 
 #: formllmoptions.rsdefaultprompttitle
 #, object-pascal-format
-msgid "Default Prompt - %s"
-msgstr "Prompt padrão - %s"
+msgid "Current Prompt - %s"
+msgstr "Prompt atual - %s"
+
+#: formllmoptions.rsexamplessummaryfmt
+#, object-pascal-format
+msgid "%d saved example(s)."
+msgstr "%d exemplo(s) salvo(s)."
 
 #: formllmoptions.rsfallbacktestprompt
 msgid "Tell me something about you. Answer in JSON format."
@@ -444,6 +458,155 @@ msgstr "Resultado do teste"
 #: formllmoptions.rsuseflowoverride
 msgid "Use flow-specific provider/model/API key"
 msgstr "Usar provedor/modelo/chave de API específicos deste fluxo"
+
+#: formflowexamples.rsflowexamplestitle
+#, object-pascal-format
+msgctxt "formflowexamples.rsflowexamplestitle"
+msgid "%s examples"
+msgstr "Exemplos de %s"
+
+#: formflowexamples.rsexampleslist
+msgctxt "formflowexamples.rsexampleslist"
+msgid "Examples"
+msgstr "Exemplos"
+
+#: formflowexamples.rsaddcurrentverse
+msgctxt "formflowexamples.rsaddcurrentverse"
+msgid "Add current verse"
+msgstr "Adicionar versículo atual"
+
+#: formflowexamples.rsmoveexampleup
+msgctxt "formflowexamples.rsmoveexampleup"
+msgid "Move up"
+msgstr "Mover para cima"
+
+#: formflowexamples.rsmoveexampledown
+msgctxt "formflowexamples.rsmoveexampledown"
+msgid "Move down"
+msgstr "Mover para baixo"
+
+#: formflowexamples.rsremoveexample
+msgctxt "formflowexamples.rsremoveexample"
+msgid "Remove"
+msgstr "Remover"
+
+#: formflowexamples.rsclearexamples
+msgctxt "formflowexamples.rsclearexamples"
+msgid "Clear"
+msgstr "Limpar"
+
+#: formflowexamples.rsbtnok
+msgctxt "formflowexamples.rsbtnok"
+msgid "OK"
+msgstr "OK"
+
+#: formflowexamples.rsbtncancel
+msgctxt "formflowexamples.rsbtncancel"
+msgid "Cancel"
+msgstr "Cancelar"
+
+#: formflowexamples.rsvisualpreview
+msgctxt "formflowexamples.rsvisualpreview"
+msgid "Visual preview"
+msgstr "Prévia visual"
+
+#: formflowexamples.rspromptresponse
+msgctxt "formflowexamples.rspromptresponse"
+msgid "Prompt response"
+msgstr "Resposta do prompt"
+
+#: formflowexamples.rssourcetext
+msgctxt "formflowexamples.rssourcetext"
+msgid "Source text"
+msgstr "Texto origem"
+
+#: formflowexamples.rsdestinationtext
+msgctxt "formflowexamples.rsdestinationtext"
+msgid "Destination / translation"
+msgstr "Destino / tradução"
+
+#: formflowexamples.rsnoexamples
+msgctxt "formflowexamples.rsnoexamples"
+msgid "No saved examples."
+msgstr "Nenhum exemplo salvo."
+
+#: formflowexamples.rsreplaceexampletitle
+msgctxt "formflowexamples.rsreplaceexampletitle"
+msgid "Example already exists"
+msgstr "Exemplo já existe"
+
+#: formflowexamples.rsreplaceexampleprompt
+#, object-pascal-format
+msgctxt "formflowexamples.rsreplaceexampleprompt"
+msgid ""
+"This verse is already saved as an example for the %s flow.\n"
+"\n"
+"Do you want to replace it with the current verse state?"
+msgstr ""
+"Este versículo já está salvo como exemplo para o fluxo %s.\n"
+"\n"
+"Deseja substituí-lo pelo estado atual do versículo?"
+
+#: formflowexamples.rsclearexamplestitle
+msgctxt "formflowexamples.rsclearexamplestitle"
+msgid "Clear examples"
+msgstr "Limpar exemplos"
+
+#: formflowexamples.rsclearexamplesprompt
+#, object-pascal-format
+msgctxt "formflowexamples.rsclearexamplesprompt"
+msgid "Remove all saved examples for the %s flow?"
+msgstr "Remover todos os exemplos salvos do fluxo %s?"
+
+#: formflowexamples.rswarningtitle
+msgctxt "formflowexamples.rswarningtitle"
+msgid "Warning"
+msgstr "Aviso"
+
+#: formflowexamples.rspreviewready
+msgctxt "formflowexamples.rspreviewready"
+msgid "Visual preview ready."
+msgstr "Prévia visual pronta."
+
+#: formflowexamples.rspreviewnovisualassociations
+msgctxt "formflowexamples.rspreviewnovisualassociations"
+msgid "This example has no visual associations to display."
+msgstr "Este exemplo não possui associações visuais para exibir."
+
+#: formflowexamples.rshintaddcurrentverse
+msgctxt "formflowexamples.rshintaddcurrentverse"
+msgid "Add or replace an example using the current source and destination verses."
+msgstr "Adiciona ou substitui um exemplo usando os versículos origem e destino atuais."
+
+#: formflowexamples.rshintmoveexampleup
+msgctxt "formflowexamples.rshintmoveexampleup"
+msgid "Move the selected example earlier in the prompt."
+msgstr "Move o exemplo selecionado para mais cedo no prompt."
+
+#: formflowexamples.rshintmoveexampledown
+msgctxt "formflowexamples.rshintmoveexampledown"
+msgid "Move the selected example later in the prompt."
+msgstr "Move o exemplo selecionado para mais tarde no prompt."
+
+#: formflowexamples.rshintremoveexample
+msgctxt "formflowexamples.rshintremoveexample"
+msgid "Remove the selected example from this working list."
+msgstr "Remove o exemplo selecionado desta lista de trabalho."
+
+#: formflowexamples.rshintclearexamples
+msgctxt "formflowexamples.rshintclearexamples"
+msgid "Remove all examples from this working list."
+msgstr "Remove todos os exemplos desta lista de trabalho."
+
+#: formflowexamples.rshintok
+msgctxt "formflowexamples.rshintok"
+msgid "Save these example changes."
+msgstr "Salva estas alterações nos exemplos."
+
+#: formflowexamples.rshintcancel
+msgctxt "formflowexamples.rshintcancel"
+msgid "Close without saving example changes."
+msgstr "Fecha sem salvar as alterações nos exemplos."
 
 #: formnewproject.sback
 msgid "< Back"
@@ -1933,7 +2096,7 @@ msgstr "Associação"
 msgctxt "project.sassociationexamplerequiresassociations"
 msgid ""
 "Association examples require existing associations in the current verse."
-msgstr ""
+msgstr "Exemplos de associação exigem associações existentes no versículo atual."
 
 #: project.sassociationexamplerequirespair
 msgctxt "project.sassociationexamplerequirespair"
@@ -1941,6 +2104,8 @@ msgid ""
 "Association examples require an active source verse paired with a "
 "destination verse."
 msgstr ""
+"Exemplos de associação exigem um versículo origem ativo pareado com um "
+"versículo destino."
 
 #: project.scancelaiprocessing
 msgctxt "project.scancelaiprocessing"
@@ -2578,11 +2743,13 @@ msgid ""
 "Translation examples require an active source verse paired with a "
 "destination verse."
 msgstr ""
+"Exemplos de tradução exigem um versículo origem ativo pareado com um "
+"versículo destino."
 
 #: project.stranslationexamplerequirestext
 msgctxt "project.stranslationexamplerequirestext"
 msgid "Translation examples require translated text in the destination verse."
-msgstr ""
+msgstr "Exemplos de tradução exigem texto traduzido no versículo destino."
 
 #: project.stranslationmemory
 #, fuzzy
@@ -2593,17 +2760,17 @@ msgstr "Histórico de associações"
 #: project.suseverseasassociationexample
 msgctxt "project.suseverseasassociationexample"
 msgid "In association flow"
-msgstr ""
+msgstr "No fluxo de associação"
 
 #: project.suseverseasexample
 msgctxt "project.suseverseasexample"
 msgid "Use verse as example..."
-msgstr ""
+msgstr "Usar versículo como exemplo..."
 
 #: project.suseverseastranslationexample
 msgctxt "project.suseverseastranslationexample"
 msgid "In translation flow"
-msgstr ""
+msgstr "No fluxo de tradução"
 
 #: project.svaccumprojectconfirmation
 #, fuzzy
