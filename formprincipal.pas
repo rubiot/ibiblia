@@ -14,7 +14,7 @@ uses
   {$ENDIF}
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, Menus,
   ActnList, ComCtrls, ExtCtrls, StdCtrls, BibleScope, Project, IniFiles, Math,
-  Syntagm, LCLTranslator, unitabout, PCRE, Verse, LCLProc, LazLogger, CheckLst,
+  Syntagm, LCLTranslator, unitabout, PCRE, Verse, LCLProc, LazLogger,
   LCLType, LazUTF8, ChapterView, UnitPleaseWait, CommentsView, ONTTokenizer,
   status_catalog, SynEdit, project_setup_model;
 
@@ -212,6 +212,8 @@ type
     procedure RadioGroupStatusDrawItem(Control: TWinControl; Index: Integer;
       ARect: TRect; State: TOwnerDrawState);
     procedure RadioGroupStatusSelectionChanged(Sender: TObject);
+    procedure StatusReviewListDrawItem(Control: TWinControl; Index: Integer;
+      ARect: TRect; State: TOwnerDrawState);
     procedure ChapterViewTabCtrlChange(Sender: TObject);
     procedure ToolButtonExitClick(Sender: TObject);
     procedure UpdateFileAssociationMenuItems;
@@ -234,7 +236,8 @@ type
     FGuideTextLabel: TLabel;
     FGuideHideButton: TButton;
     FGuideModeEnabled: Boolean;
-    FStatusReviewList: TCheckListBox;
+    FStatusReviewList: TListBox;
+    FStatusReviewChecked: array of Boolean;
     FStatusReviewResetButton: TButton;
     FUpdatingStatusReview: Boolean;
     FVersePanelLabels: array[tbOrigem..tbConsulta2] of TPanel;
@@ -279,7 +282,12 @@ type
     procedure SetGuideModeEnabled(AEnabled: Boolean);
     procedure SplitterMoved(Sender: TObject);
     procedure StateHeaderResize(Sender: TObject);
+    function StatusReviewItemChecked(Index: Integer): Boolean;
+    procedure SetStatusReviewItemChecked(Index: Integer; AChecked: Boolean);
+    procedure ToggleStatusReviewItem(Index: Integer);
     procedure StatusReviewListClickCheck(Sender: TObject);
+    procedure StatusReviewListKeyDown(Sender: TObject; var Key: Word;
+      Shift: TShiftState);
     procedure StatusReviewResetButtonClick(Sender: TObject);
     procedure TreeViewKeyDown(Sender: TObject; var Key: Word;
       Shift: TShiftState);
@@ -749,16 +757,20 @@ begin
     OnClick := @StatusReviewResetButtonClick;
   end;
 
-  FStatusReviewList := TCheckListBox.Create(TreeLegendPanel);
+  FStatusReviewList := TListBox.Create(TreeLegendPanel);
   with FStatusReviewList do
   begin
     Parent := TreeLegendPanel;
     Align := alClient;
     BorderStyle := bsNone;
     IntegralHeight := False;
+    Style := lbOwnerDrawFixed;
+    ItemHeight := Max(ItemHeight, 20);
     ShowHint := True;
     Hint := SStatusReviewFilterHint;
-    OnClickCheck := @StatusReviewListClickCheck;
+    OnClick := @StatusReviewListClickCheck;
+    OnDrawItem := @StatusReviewListDrawItem;
+    OnKeyDown := @StatusReviewListKeyDown;
   end;
 
   UpdateStatusReviewPanel;
@@ -1414,7 +1426,7 @@ var
     begin
       OldStates[StatusIndex].StatusId :=
         Integer(PtrUInt(FStatusReviewList.Items.Objects[StatusIndex]));
-      OldStates[StatusIndex].Checked := FStatusReviewList.Checked[StatusIndex];
+      OldStates[StatusIndex].Checked := StatusReviewItemChecked(StatusIndex);
     end;
   end;
 
@@ -1493,8 +1505,9 @@ var
   begin
     ItemIndex := FStatusReviewList.Items.AddObject(
       Format(SStatusReviewItemFmt, [Count, Caption]), TObject(PtrUInt(StatusId)));
-    FStatusReviewList.Checked[ItemIndex] := WasChecked(StatusId);
-    if FStatusReviewList.Checked[ItemIndex] then
+    SetLength(FStatusReviewChecked, FStatusReviewList.Items.Count);
+    FStatusReviewChecked[ItemIndex] := WasChecked(StatusId);
+    if FStatusReviewChecked[ItemIndex] then
       Inc(VisibleTotal, Count);
   end;
 
@@ -1506,6 +1519,7 @@ begin
   FUpdatingStatusReview := True;
   try
     FStatusReviewList.Items.Clear;
+    FStatusReviewChecked := nil;
     FStatusReviewList.Enabled := Assigned(ProjetoAtual);
     if Assigned(FStatusReviewResetButton) then
     begin
@@ -1576,7 +1590,7 @@ var
 
     for StatusIndex := 0 to FStatusReviewList.Items.Count - 1 do
       if Integer(PtrUInt(FStatusReviewList.Items.Objects[StatusIndex])) = StatusId then
-        Exit(FStatusReviewList.Checked[StatusIndex]);
+        Exit(StatusReviewItemChecked(StatusIndex));
 
     Result := False;
   end;
@@ -1590,7 +1604,7 @@ var
       Exit;
 
     for StatusIndex := 0 to FStatusReviewList.Items.Count - 1 do
-      if not FStatusReviewList.Checked[StatusIndex] then
+      if not StatusReviewItemChecked(StatusIndex) then
         Exit(True);
   end;
 
@@ -1653,12 +1667,53 @@ begin
   end;
 end;
 
+function TFrmPrincipal.StatusReviewItemChecked(Index: Integer): Boolean;
+begin
+  Result := (Index >= 0) and (Index <= High(FStatusReviewChecked)) and
+    FStatusReviewChecked[Index];
+end;
+
+procedure TFrmPrincipal.SetStatusReviewItemChecked(Index: Integer;
+  AChecked: Boolean);
+begin
+  if (Index < 0) or (Index > High(FStatusReviewChecked)) then
+    Exit;
+
+  FStatusReviewChecked[Index] := AChecked;
+  if Assigned(FStatusReviewList) then
+    FStatusReviewList.Invalidate;
+end;
+
+procedure TFrmPrincipal.ToggleStatusReviewItem(Index: Integer);
+begin
+  if FUpdatingStatusReview or not Assigned(FStatusReviewList) or
+    not FStatusReviewList.Enabled then
+    Exit;
+
+  if (Index < 0) or (Index >= FStatusReviewList.Items.Count) then
+    Exit;
+
+  SetStatusReviewItemChecked(Index, not StatusReviewItemChecked(Index));
+  UpdateStatusReviewPanel;
+end;
+
 procedure TFrmPrincipal.StatusReviewListClickCheck(Sender: TObject);
 begin
   if FUpdatingStatusReview then
     Exit;
 
-  UpdateStatusReviewPanel;
+  if Assigned(FStatusReviewList) then
+    ToggleStatusReviewItem(FStatusReviewList.ItemIndex);
+end;
+
+procedure TFrmPrincipal.StatusReviewListKeyDown(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+begin
+  if (Key <> VK_SPACE) or (Shift <> []) or not Assigned(FStatusReviewList) then
+    Exit;
+
+  ToggleStatusReviewItem(FStatusReviewList.ItemIndex);
+  Key := 0;
 end;
 
 procedure TFrmPrincipal.StatusReviewResetButtonClick(Sender: TObject);
@@ -1671,7 +1726,7 @@ begin
   FUpdatingStatusReview := True;
   try
     for Index := 0 to FStatusReviewList.Items.Count - 1 do
-      FStatusReviewList.Checked[Index] := True;
+      SetStatusReviewItemChecked(Index, True);
   finally
     FUpdatingStatusReview := False;
   end;
@@ -2930,6 +2985,101 @@ begin
     UpdateStateHeader;
     UpdateStatusReviewPanel;
   end;
+end;
+
+procedure TFrmPrincipal.StatusReviewListDrawItem(Control: TWinControl;
+  Index: Integer; ARect: TRect; State: TOwnerDrawState);
+var
+  List: TListBox;
+  Definitions: TStatusDefinitions;
+  StatusId: Integer;
+  SwatchRect: TRect;
+  TextRect: TRect;
+  SwatchColor: TColor;
+  SwatchSize: Integer;
+  CenterY: Integer;
+
+  function CheckMarkColor(AColor: TColor): TColor;
+  var
+    RGB: LongInt;
+    R, G, B: Integer;
+  begin
+    RGB := ColorToRGB(AColor);
+    R := RGB and $FF;
+    G := (RGB shr 8) and $FF;
+    B := (RGB shr 16) and $FF;
+    if ((R * 299 + G * 587 + B * 114) div 1000) < 128 then
+      Result := clWhite
+    else
+      Result := clBlack;
+  end;
+
+begin
+  if not (Control is TListBox) then
+    Exit;
+
+  List := TListBox(Control);
+  if odSelected in State then
+  begin
+    List.Canvas.Brush.Color := clHighlight;
+    List.Canvas.Font.Color := clHighlightText;
+  end
+  else
+  begin
+    List.Canvas.Brush.Color := List.Color;
+    if List.Enabled then
+      List.Canvas.Font.Color := List.Font.Color
+    else
+      List.Canvas.Font.Color := clGrayText;
+  end;
+  List.Canvas.FillRect(ARect);
+
+  if (Index < 0) or (Index >= List.Items.Count) then
+    Exit;
+
+  if Assigned(ProjetoAtual) then
+    Definitions := ProjetoAtual.GetStatusDefinitions
+  else
+    Definitions := BuildLegacyStatusDefinitions([
+      STreeLegendNotAssociated,
+      STreeLegendAssociating,
+      STreeLegendNeedsReview,
+      STreeLegendAssociated
+    ]);
+
+  StatusId := Integer(PtrUInt(List.Items.Objects[Index]));
+  CenterY := ARect.Top + (ARect.Bottom - ARect.Top) div 2;
+  SwatchSize := Max(11, Min(13, ARect.Bottom - ARect.Top - 5));
+  SwatchRect := Rect(ARect.Left + 4, CenterY - SwatchSize div 2,
+    ARect.Left + 4 + SwatchSize, CenterY + (SwatchSize + 1) div 2);
+
+  SwatchColor := GetStatusColor(Definitions, StatusId);
+  List.Canvas.Brush.Color := SwatchColor;
+  List.Canvas.Pen.Color := clBlack;
+  List.Canvas.Rectangle(SwatchRect);
+  if StatusReviewItemChecked(Index) then
+  begin
+    List.Canvas.Pen.Color := CheckMarkColor(SwatchColor);
+    List.Canvas.Pen.Width := 2;
+    List.Canvas.MoveTo(SwatchRect.Left + 3, CenterY);
+    List.Canvas.LineTo(SwatchRect.Left + SwatchSize div 2 - 1,
+      SwatchRect.Bottom - 3);
+    List.Canvas.LineTo(SwatchRect.Right - 3, SwatchRect.Top + 3);
+    List.Canvas.Pen.Width := 1;
+  end;
+
+  TextRect := ARect;
+  TextRect.Left := SwatchRect.Right + 6;
+  if odSelected in State then
+    List.Canvas.Brush.Color := clHighlight
+  else
+    List.Canvas.Brush.Color := List.Color;
+  List.Canvas.TextRect(TextRect, TextRect.Left,
+    TextRect.Top + Max(0, (TextRect.Bottom - TextRect.Top -
+    List.Canvas.TextHeight(List.Items[Index])) div 2), List.Items[Index]);
+
+  if odFocused in State then
+    List.Canvas.DrawFocusRect(ARect);
 end;
 
 procedure TFrmPrincipal.ChapterViewTabCtrlChange(Sender: TObject);
