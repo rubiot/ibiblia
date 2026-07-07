@@ -435,7 +435,7 @@ resourcestring
   SStatusAssociating = 'Associating';
   SStatusNeedsReview = 'Needs review';
   SStatusAssociated = 'Associated!';
-  SAnalyticalConcordance = 'Anaytical Concordance';
+  SAnalyticalConcordance = 'Analytical Concordance';
   SSyntheticConcordance = 'Synthetic Concordance';
   SOTConcordanceNotImplementedYet = 'Old Testament concordance is not implemented yet';
   SLanguageId = 'en';
@@ -471,6 +471,7 @@ resourcestring
                                    'to abort the operation and choose another module.';
   SFailedToCreateFile = 'Failed to create file: %s';
   SExportToFileError = 'iBiblia found an error while exporting the Bible module file.';
+  SExportErrorReportCreated = 'Some verses could not be exported correctly. Review the error report:'#13#10'%s';
   STranslationMemory = 'Translation memory';
   SExportTextSaveDlgTitle = 'Please choose a destination file';
   SIBibliaPatchFiles = 'iBiblia patch files';
@@ -3810,7 +3811,8 @@ begin
     Options.ErrorDialogTitle := SError;
     Options.CorruptedDataMessage := SCorruptedData;
     Options.ExportToFileErrorMessage := SExportToFileError;
-    Options.ErrorReportFileName := 'export-errors.txt';
+    Options.ErrorReportFileName := ChangeFileExt(arquivo, '.errors.txt');
+    Options.ErrorReportCreatedMessage := SExportErrorReportCreated;
 
     FProjectExporter.ExportDestinationTextWithStrongs(arquivo, pb, Options,
       @StartScrollingSession, @FinishScrollingSession, @GetID);
@@ -3851,6 +3853,8 @@ begin
     Options.CorruptedDataMessage := SCorruptedData;
     Options.ExportToFileErrorMessage := SExportToFileError;
     Options.VerseRuleReplaceErrorMessage := SInterlinearVerseRuleReplaceError;
+    Options.ErrorReportFileName := ChangeFileExt(arquivo, '.errors.txt');
+    Options.ErrorReportCreatedMessage := SExportErrorReportCreated;
 
     FProjectExporter.ExportInterlinearText(arquivo, pb, rulesRx, replaceTo,
       Options, @StartScrollingSession, @FinishScrollingSession, @GetID);
@@ -3886,6 +3890,8 @@ begin
     Options.SyntheticCaption := SSyntheticConcordance;
     Options.ErrorDialogTitle := SError;
     Options.CorruptedDataMessage := SCorruptedData;
+    Options.ErrorReportFileName := ChangeFileExt(arquivo, '.errors.txt');
+    Options.ErrorReportCreatedMessage := SExportErrorReportCreated;
 
     FProjectExporter.ExportConcordance(arquivo, pb, Options,
       @StartScrollingSession, @FinishScrollingSession, @GetID);

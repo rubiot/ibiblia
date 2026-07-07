@@ -26,6 +26,7 @@ type
     CorruptedDataMessage: string;
     ExportToFileErrorMessage: string;
     ErrorReportFileName: string;
+    ErrorReportCreatedMessage: string;
   end;
 
   TInterlinearTextExportOptions = record
@@ -34,6 +35,8 @@ type
     CorruptedDataMessage: string;
     ExportToFileErrorMessage: string;
     VerseRuleReplaceErrorMessage: string;
+    ErrorReportFileName: string;
+    ErrorReportCreatedMessage: string;
   end;
 
   TConcordanceExportOptions = record
@@ -44,6 +47,8 @@ type
     SyntheticCaption: string;
     ErrorDialogTitle: string;
     CorruptedDataMessage: string;
+    ErrorReportFileName: string;
+    ErrorReportCreatedMessage: string;
   end;
 
   TProjectExporter = class
@@ -59,6 +64,10 @@ type
     class function CurrentReference(GetReference: TExportReferenceFunc): string; static;
     class function FormatCorruptionMessage(const BaseMessage, Reference,
       Details: string): string; static;
+    class function StrongBelongsToScope(const Strong: string;
+      Scope: TEscopoTexto): Boolean; static;
+    class procedure SaveErrorReport(Errors: TStringList; const FileName,
+      DialogTitle, DialogMessage: string); static;
     class function EncodeComments(const Comments: string): string; static;
     class procedure WriteTheWordBible(Verses: TStringList; const FileName,
       Properties: string); static;
@@ -158,6 +167,43 @@ begin
   Result := BaseMessage + #13#10#13#10 + Reference + #13#10 + Details;
 end;
 
+class function TProjectExporter.StrongBelongsToScope(const Strong: string;
+  Scope: TEscopoTexto): Boolean;
+var
+  NormalizedStrong: string;
+begin
+  NormalizedStrong := UpperCase(Strong);
+  case Scope of
+    etOT:
+      Result := NormalizedStrong.StartsWith('H');
+    etNT:
+      Result := NormalizedStrong.StartsWith('G');
+    etONT:
+      Result := True;
+  else
+    Result := False;
+  end;
+end;
+
+class procedure TProjectExporter.SaveErrorReport(Errors: TStringList;
+  const FileName, DialogTitle, DialogMessage: string);
+var
+  MessageText: string;
+begin
+  if (not Assigned(Errors)) or (Errors.Count = 0) or (FileName = '') then
+    Exit;
+
+  Errors.SaveToFile(FileName);
+  if DialogMessage = '' then
+    MessageText := FileName
+  else if Pos('%s', DialogMessage) > 0 then
+    MessageText := Format(DialogMessage, [FileName])
+  else
+    MessageText := DialogMessage + #13#10 + FileName;
+
+  MessageDlg(DialogTitle, MessageText, mtWarning, [mbOK], 0);
+end;
+
 class function TProjectExporter.EncodeComments(const Comments: string): string;
 begin
   Result := AnsiReplaceStr(
@@ -239,26 +285,28 @@ begin
       while not FVerseRepository.EOF do
       begin
         VerseData := FVerseRepository.ReadCurrentVerseData;
-        if VerseData.Associations = '' then
-          Lines.Add(VerseData.TranslatedText)
-        else if FVerseRenderBuffer.TryBuildDestinationLineONT(
-            VerseData.OriginalText,
-            VerseData.TranslatedText,
-            VerseData.Associations,
-            Options.ExportMorphology,
-            Options.ExportNAAsItalics,
-            Options.MarkReusedStrongs,
-            Options.MarkUntranslatedStrongs,
-            RenderedLine,
-            CorruptionDetails) then
-          Lines.Add(RenderedLine)
-        else
+        RenderedLine := VerseData.TranslatedText;
+        if (VerseData.Associations <> '') and
+          (not FVerseRenderBuffer.TryBuildDestinationLineONT(
+              VerseData.OriginalText,
+              VerseData.TranslatedText,
+              VerseData.Associations,
+              Options.ExportMorphology,
+              Options.ExportNAAsItalics,
+              Options.MarkReusedStrongs,
+              Options.MarkUntranslatedStrongs,
+              RenderedLine,
+              CorruptionDetails)) then
+        begin
           Errors.Add(FormatCorruptionMessage(Options.CorruptedDataMessage,
             CurrentReference(GetReference), CorruptionDetails) + #13#10);
+          RenderedLine := VerseData.TranslatedText;
+        end;
 
         if Options.ExportComments and not VerseData.Comments.IsEmpty then
-          Lines[Lines.Count - 1] := Lines[Lines.Count - 1] + '<RF>' +
-            EncodeComments(VerseData.Comments) + '<Rf>';
+          RenderedLine := RenderedLine + '<RF>' + EncodeComments(VerseData.Comments) + '<Rf>';
+
+        Lines.Add(RenderedLine);
 
         AdvanceProgressBar(ProgressBar, 50);
         FVerseRepository.Next;
@@ -287,10 +335,8 @@ begin
     end;
 
     if Errors.Count > 0 then
-    begin
-      Errors.SaveToFile(Options.ErrorReportFileName);
-      OpenDocument(Options.ErrorReportFileName);
-    end;
+      SaveErrorReport(Errors, Options.ErrorReportFileName,
+        Options.ErrorDialogTitle, Options.ErrorReportCreatedMessage);
   finally
     FreeAndNil(Lines);
     FreeAndNil(Errors);
@@ -307,6 +353,7 @@ var
   RuleIndex: Integer;
   VerseData: TVerseData;
   Lines: TStringList;
+  Errors: TStringList;
   RenderedLine: string;
   CorruptionDetails: string;
   RenderMode: TRenderInterlinearMode;
@@ -314,9 +361,11 @@ begin
   RequireDependencies;
 
   Lines := nil;
+  Errors := nil;
   try
     ConfigureProgressBar(ProgressBar, QLinhas[FScope]);
     Lines := TStringList.Create;
+    Errors := TStringList.Create;
     if FileName.EndsWith('.mybible') then
       RenderMode := rimMySword
     else
@@ -329,33 +378,35 @@ begin
       while not FVerseRepository.EOF do
       begin
         VerseData := FVerseRepository.ReadCurrentVerseData;
-        if VerseData.Associations = '' then
-          Lines.Add(VerseData.OriginalText)
-        else if FVerseRenderBuffer.TryBuildInterlinearLine(
-            VerseData.OriginalText,
-            VerseData.TranslatedText,
-            VerseData.Associations,
-            RenderMode,
-            RenderedLine,
-            CorruptionDetails) then
-          Lines.Add(RenderedLine)
-        else
-          MessageDlg(Options.ErrorDialogTitle,
-            FormatCorruptionMessage(Options.CorruptedDataMessage,
-              CurrentReference(GetReference), CorruptionDetails),
-            mtError, [mbOK], 0);
+        RenderedLine := VerseData.OriginalText;
+        if (VerseData.Associations <> '') and
+          (not FVerseRenderBuffer.TryBuildInterlinearLine(
+              VerseData.OriginalText,
+              VerseData.TranslatedText,
+              VerseData.Associations,
+              RenderMode,
+              RenderedLine,
+              CorruptionDetails)) then
+        begin
+          Errors.Add(FormatCorruptionMessage(Options.CorruptedDataMessage,
+            CurrentReference(GetReference), CorruptionDetails) + #13#10);
+          RenderedLine := VerseData.OriginalText;
+        end;
 
         if Assigned(RulesRx) then
           for RuleIndex := 0 to RulesRx.Count - 1 do
           begin
             try
-              Lines[Lines.Count - 1] := RulesRx[RuleIndex].Replace(
-                Lines[Lines.Count - 1], ReplaceTo[RuleIndex]);
+              RenderedLine := RulesRx[RuleIndex].Replace(RenderedLine,
+                ReplaceTo[RuleIndex]);
             except
               on E: Exception do
-                ShowMessage(Options.VerseRuleReplaceErrorMessage + #13#10 + E.Message);
+                Errors.Add(Options.VerseRuleReplaceErrorMessage + #13#10#13#10 +
+                  CurrentReference(GetReference) + #13#10 + E.Message + #13#10);
             end;
           end;
+
+        Lines.Add(RenderedLine);
 
         AdvanceProgressBar(ProgressBar, 50);
         FVerseRepository.Next;
@@ -372,11 +423,17 @@ begin
         WriteTheWordBible(Lines, FileName, Options.Properties);
     except
       on E: Exception do
-        MessageDlg(Options.ErrorDialogTitle, Options.ExportToFileErrorMessage,
+        MessageDlg(Options.ErrorDialogTitle,
+          Options.ExportToFileErrorMessage + #13#10 + E.Message,
           mtError, [mbOK], 0);
     end;
+
+    if Errors.Count > 0 then
+      SaveErrorReport(Errors, Options.ErrorReportFileName,
+        Options.ErrorDialogTitle, Options.ErrorReportCreatedMessage);
   finally
     FreeAndNil(Lines);
+    FreeAndNil(Errors);
     if Assigned(ProgressBar) then
       ProgressBar.Visible := False;
   end;
@@ -390,6 +447,7 @@ var
   VerseData: TVerseData;
   Concordance: TConcordance;
   Entries: TStringList;
+  Errors: TStringList;
   Dictionary: TTheWordDictionary;
   LemmaRegex: IRegex;
   Match: IMatch;
@@ -404,12 +462,14 @@ begin
 
   Concordance := nil;
   Entries := nil;
+  Errors := nil;
   Dictionary := nil;
   try
-    ConfigureProgressBar(ProgressBar, QLinhas[FScope] + QStrongs[etONT]);
+    ConfigureProgressBar(ProgressBar, QLinhas[FScope] + QStrongs[FScope]);
 
     Concordance := TConcordance.Create;
     Concordance.Detailed := Options.Detailed;
+    Errors := TStringList.Create;
 
     if Options.Detailed then
       TitleText := Format('%s %s', [Options.Abbreviation, Options.AnalyticalCaption])
@@ -438,6 +498,7 @@ begin
         VerseData := FVerseRepository.ReadCurrentVerseData;
         if VerseData.Associations <> '' then
         begin
+          Pairs := nil;
           if FVerseRenderBuffer.TryExtractPairsList(
               VerseData.OriginalText,
               VerseData.TranslatedText,
@@ -446,14 +507,15 @@ begin
               Pairs,
               CorruptionDetails) then
           begin
-            Concordance.AddPhrase(Pairs, FVerseRepository.CurrentReferenceID);
-            Pairs.Free;
+            try
+              Concordance.AddPhrase(Pairs, FVerseRepository.CurrentReferenceID);
+            finally
+              Pairs.Free;
+            end;
           end
           else
-            MessageDlg(Options.ErrorDialogTitle,
-              FormatCorruptionMessage(Options.CorruptedDataMessage,
-                CurrentReference(GetReference), CorruptionDetails),
-              mtError, [mbOK], 0);
+            Errors.Add(FormatCorruptionMessage(Options.CorruptedDataMessage,
+              CurrentReference(GetReference), CorruptionDetails) + #13#10);
         end;
 
         AdvanceProgressBar(ProgressBar, 20);
@@ -469,11 +531,15 @@ begin
         if Match.Success then
         begin
           Strong := Match.Groups[1].Value;
-          Lemma := Match.Groups[2].Value;
-          Dictionary.AddEntry(Strong, Lemma, Concordance.GetStrongRtf(Lemma, Strong));
-        end;
-
-        AdvanceProgressBar(ProgressBar, 20);
+          if StrongBelongsToScope(Strong, FScope) then
+          begin
+            Lemma := Match.Groups[2].Value;
+            Dictionary.AddEntry(Strong, Lemma, Concordance.GetStrongRtf(Lemma, Strong));
+            AdvanceProgressBar(ProgressBar, 20);
+          end;
+        end
+        else
+          AdvanceProgressBar(ProgressBar, 20);
       end;
 
       Dictionary.Commit;
@@ -481,9 +547,14 @@ begin
       if Assigned(FinishSession) then
         FinishSession;
     end;
+
+    if Errors.Count > 0 then
+      SaveErrorReport(Errors, Options.ErrorReportFileName,
+        Options.ErrorDialogTitle, Options.ErrorReportCreatedMessage);
   finally
     Application.ProcessMessages;
     FreeAndNil(Entries);
+    FreeAndNil(Errors);
     FreeAndNil(Concordance);
     FreeAndNil(Dictionary);
     if Assigned(ProgressBar) then
