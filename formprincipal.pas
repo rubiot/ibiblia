@@ -445,6 +445,12 @@ uses FormNewProject, FormProjectProperties, FormProjectExport, FormMergeProjects
 
 {$IFDEF WINDOWS}
 {------------------------------------------------------------------------------}
+function SameExecutablePath(const LeftPath, RightPath: string): Boolean;
+begin
+  Result := (LeftPath <> '') and (RightPath <> '') and
+    SameText(ExpandFileName(LeftPath), ExpandFileName(RightPath));
+end;
+{------------------------------------------------------------------------------}
 function RestoreTheWord(RestoreWindow: Boolean = True): THandle;
 begin
   Result := twAutomate.TWAutomateUtils.IsTwRunning;
@@ -2413,23 +2419,6 @@ var
   m, modeInt: integer;
   ConfigFilePath: string;
 begin
-  {$IFDEF WINDOWS}
-  // Handle elevation for file association registration
-  if (ParamCount > 0) and (ParamStr(1) = '--register-file-assoc') then
-  begin
-    if AssociateFileExtension(
-      '.bib',
-      'iBiblia.Project',
-      SProjectFileTypeName,
-      ParamStr(0),
-      ParamStr(0)
-    ) then
-      MessageDlg(SRegisterFileAssociationSuccess, mtInformation, [mbOK], 0)
-    else
-      MessageDlg(SRegisterFileAssociationFailure, mtError, [mbOK], 0);
-    Halt;
-  end;
-  {$ENDIF}
   DebugLn('=================================');
 
   ProjetoAtual := nil;
@@ -2543,6 +2532,16 @@ begin
   MenuItemTheWordHighlighterColors := TMenuItem.Create(MainMenu1);
   MenuItemTheWordHighlighterColors.Action := ActionTheWordHighlighterColors;
   MenuItem20.Add(MenuItemTheWordHighlighterColors);
+
+  ActionRegisterFileAssociation := TAction.Create(ActionList1);
+  ActionRegisterFileAssociation.Caption := SRegisterFileAssociation;
+  ActionRegisterFileAssociation.OnExecute := @ActionRegisterFileAssociationExecute;
+  MenuItemRegisterFileAssoc.Action := ActionRegisterFileAssociation;
+
+  ActionUnregisterFileAssociation := TAction.Create(ActionList1);
+  ActionUnregisterFileAssociation.Caption := SUnregisterFileAssociation;
+  ActionUnregisterFileAssociation.OnExecute := @ActionUnregisterFileAssociationExecute;
+  MenuItemUnregisterFileAssoc.Action := ActionUnregisterFileAssociation;
 
   Translate;
 
@@ -2671,7 +2670,7 @@ begin
   ContextPanel.Width := opts.ReadInteger('leiaute', 'principal.contextpanel.width', ContextPanel.Width);
   LayoutVersePanelLabels;
 
-  if (ParamCount > 0) and ParamStr(1).EndsWith('.bib') and FileExists(ParamStr(1)) then
+  if (ParamCount > 0) and SameText(ExtractFileExt(ParamStr(1)), '.bib') and FileExists(ParamStr(1)) then
     DoOpenProject(ParamStr(1))
   else if (MenuItemRecent.Count > 0) and FileExists(MenuItemRecent.Items[0].Caption) then
     DoOpenProject(MenuItemRecent.Items[0].Caption);
@@ -3144,6 +3143,10 @@ begin
   end;
   if Assigned(ActionTheWordHighlighterColors) then
     ActionTheWordHighlighterColors.Caption := STheWordHighlightColorsMenu;
+  if Assigned(ActionRegisterFileAssociation) then
+    ActionRegisterFileAssociation.Caption := SRegisterFileAssociation;
+  if Assigned(ActionUnregisterFileAssociation) then
+    ActionUnregisterFileAssociation.Caption := SUnregisterFileAssociation;
   if Assigned(FGuideHideButton) then
     FGuideHideButton.Caption := SHideGuideButton;
 
@@ -3243,19 +3246,19 @@ end;
 procedure TFrmPrincipal.ActionRegisterFileAssociationExecute(Sender: TObject);
 {$IFDEF WINDOWS}
 var
-  ExePath, IconPath: string;
-  Success: Boolean;
+  ExePath: string;
   IsAssociated: Boolean;
   AssociatedApp: string;
+  IsOurs: Boolean;
   UserChoice: Integer;
 begin
   ExePath := ParamStr(0);
-  IconPath := ExePath;
 
   IsAssociated := IsFileAssociated('.bib');
   AssociatedApp := GetAssociatedApp('.bib');
+  IsOurs := SameExecutablePath(AssociatedApp, ExePath);
 
-  if IsAssociated and (not AssociatedApp.IsEmpty) and (not AssociatedApp.Contains('iBiblia')) then
+  if IsAssociated and (not AssociatedApp.IsEmpty) and (not IsOurs) then
   begin
     UserChoice := MessageDlg(SRegisterFileAssociation, 
       Format(SRegisterFileAssociationTakeOverPrompt, [AssociatedApp]),
@@ -3264,31 +3267,8 @@ begin
       Exit;
   end;
 
-  Success := AssociateFileExtension(
-    '.bib',
-    'iBiblia.Project',
-    SProjectFileTypeName,
-    ExePath,
-    IconPath
-  );
-
-  if Success then
-  begin
-    ShowMessage(SRegisterFileAssociationSuccess);
-    UpdateFileAssociationMenuItems;
-  end
-  else
-  begin
-    // Try to elevate if not already running as admin
-    if MessageDlg(SRegisterFileAssociation, SRegisterFileAssociationAdminRetry,
-      mtConfirmation, [mbYes, mbNo], 0) = mrYes then
-    begin
-      // Relaunch self with elevation and a special parameter
-      ShellExecute(0, 'runas', PChar(ExePath), PChar('--register-file-assoc'), nil, SW_SHOWNORMAL);
-    end
-    else
-      ShowMessage(SRegisterFileAssociationFailure);
-  end
+  if ShellExecute(0, 'runas', PChar(ExePath), PChar('--register-file-assoc'), nil, SW_SHOWNORMAL) <= 32 then
+    ShowMessage(SRegisterFileAssociationFailure);
 end;
 {$ELSE}
 begin
@@ -3299,16 +3279,10 @@ end;
 procedure TFrmPrincipal.ActionUnregisterFileAssociationExecute(Sender: TObject);
 {$IFDEF WINDOWS}
 var
-  Success: Boolean;
+  ExePath: string;
 begin
-  Success := RemoveFileAssociation('.bib', 'iBiblia.Project');
-
-  if Success then
-  begin
-    ShowMessage(SUnregisterFileAssociationSuccess);
-    UpdateFileAssociationMenuItems;
-  end
-  else
+  ExePath := ParamStr(0);
+  if ShellExecute(0, 'runas', PChar(ExePath), PChar('--unregister-file-assoc'), nil, SW_SHOWNORMAL) <= 32 then
     ShowMessage(SUnregisterFileAssociationFailure);
 end;
 {$ELSE}
@@ -3320,17 +3294,21 @@ end;
 procedure TFrmPrincipal.UpdateFileAssociationMenuItems;
 {$IFDEF WINDOWS}
 var
-  IsAssociated: Boolean;
   AssociatedApp: string;
   IsOurs: Boolean;
 begin
-  IsAssociated := IsFileAssociated('.bib');
   AssociatedApp := GetAssociatedApp('.bib');
-  // Check if the associated app is iBiblia (by exe name or path)
-  IsOurs := (not AssociatedApp.IsEmpty) and (AssociatedApp = ParamStr(0));
+  IsOurs := SameExecutablePath(AssociatedApp, ParamStr(0));
 
-  MenuItemRegisterFileAssoc.Enabled := (not IsOurs);
-  MenuItemUnregisterFileAssoc.Enabled := IsOurs;
+  if Assigned(ActionRegisterFileAssociation) then
+    ActionRegisterFileAssociation.Enabled := not IsOurs
+  else
+    MenuItemRegisterFileAssoc.Enabled := not IsOurs;
+
+  if Assigned(ActionUnregisterFileAssociation) then
+    ActionUnregisterFileAssociation.Enabled := IsOurs
+  else
+    MenuItemUnregisterFileAssoc.Enabled := IsOurs;
 end;
 {$ELSE}
 begin
