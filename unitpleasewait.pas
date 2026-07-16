@@ -18,6 +18,7 @@ type
   private
     FDetailLabel: TLabel;
     FOwnerForm: TCustomForm;
+    FOwnerWasActive: Boolean;
     FOwnerWasEnabled: Boolean;
     FOldCursor: TCursor;
     FInOperation: Boolean;
@@ -95,6 +96,8 @@ begin
     FinishOperation;
 
   FOwnerForm := AOwnerForm;
+  FOwnerWasActive := Assigned(FOwnerForm) and
+    (Screen.ActiveCustomForm = FOwnerForm);
   FOwnerWasEnabled := Assigned(FOwnerForm) and FOwnerForm.Enabled;
   FOldCursor := Screen.Cursor;
   FInOperation := True;
@@ -165,17 +168,36 @@ begin
 end;
 
 procedure TFormPleaseWait.FinishOperation;
+var
+  OwnerForm: TCustomForm;
+  RestoreOwnerFocus: Boolean;
 begin
-  Hide;
+  OwnerForm := FOwnerForm;
+  RestoreOwnerFocus := FInOperation and FOwnerWasActive and
+    FOwnerWasEnabled and Assigned(OwnerForm) and Application.Active;
 
   if FInOperation then
   begin
-    if Assigned(FOwnerForm) then
-      FOwnerForm.Enabled := FOwnerWasEnabled;
+    // Enable the owner before hiding this form. Otherwise Windows may choose
+    // another application's window because no enabled iBiblia form is left to
+    // activate when the progress form disappears.
+    if Assigned(OwnerForm) then
+      OwnerForm.Enabled := FOwnerWasEnabled;
     Screen.Cursor := FOldCursor;
   end;
 
+  Hide;
+
+  if RestoreOwnerFocus and OwnerForm.Visible then
+  begin
+    OwnerForm.BringToFront;
+    if OwnerForm.CanSetFocus then
+      OwnerForm.SetFocus;
+    OwnerForm.Update;
+  end;
+
   FOwnerForm := nil;
+  FOwnerWasActive := False;
   FOwnerWasEnabled := False;
   FInOperation := False;
   Application.ProcessMessages;

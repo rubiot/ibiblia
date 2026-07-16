@@ -206,7 +206,7 @@ end;
 
 destructor TONTTokenizerV1.Destroy;
 begin
-
+  inherited Destroy;
 end;
 
 function TONTTokenizerV1.CurrentCodepoint(out codepoint: Cardinal;

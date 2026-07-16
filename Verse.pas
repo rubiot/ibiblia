@@ -444,6 +444,8 @@ var
   tmp: TSyntagmList;
 begin
   result := TStringList.Create;
+  if not Assigned(FSintagmas) then
+    Exit;
 
   tmp := TSyntagmList.Create;
   for s in FSintagmas do
@@ -540,6 +542,7 @@ procedure TVerse.SetTexto(_XML: string);
 begin
   FXML := _XML;
   LimparSintagmas;
+  FreeAndNil(FSintagmas);
   FSintagmas := FONTParser.ParseLine(FXML, self);
   Renderizar;
   Modificado := true;
@@ -576,8 +579,12 @@ begin
 
   LimparSelecao;
 
-  if FSintagmas.Empty then
-    FSintagmas := new
+  if (not Assigned(FSintagmas)) or FSintagmas.Empty then
+  begin
+    FreeAndNil(FSintagmas);
+    FSintagmas := new;
+    new := nil;
+  end
   else
   begin
     result := TSyntagmList.Create;
@@ -644,8 +651,9 @@ begin
     if not FSintagmas.Empty then
       raise Exception.Create('Ainda há sintagmas antigos que não foram liberados!');
 
+    FreeAndNil(new);
     LimparSintagmas;
-    FSintagmas.Destroy;
+    FreeAndNil(FSintagmas);
     FSintagmas := result;
   end;
 
@@ -696,29 +704,50 @@ var
   varredorXML: TONTTokenizer;
   s: TTagSintagma;
 begin
-  if not assigned(VersiculoPar) or AValue.IsEmpty then
+  if not assigned(VersiculoPar) then
     exit;
 
   FExibirErro := true;
   VersiculoPar.FExibirErro := true;
 
   LimparAssociacoes;
+  LimparSelecao;
+  VersiculoPar.LimparSelecao;
+  if AValue.IsEmpty then
+  begin
+    Renderizar;
+    VersiculoPar.Renderizar;
+    Exit;
+  end;
 
   varredorXML := CreateTokenizer(AValue);
-  while varredorXML.LerSintagma(s) <> tsNulo do
-  begin
-    if AnsiStartsStr('<par ', s.valor) then
-    begin
-      //DebugLn('selecionando par: %s', [s.valor]);
-      SelecionarListaSintagmas(varredorXML.LerPropriedadeTag('a', s));
-      VersiculoPar.SelecionarListaSintagmas(varredorXML.LerPropriedadeTag('b', s));
-      AssociarSintagmas;
+  try
+    try
+      while varredorXML.LerSintagma(s) <> tsNulo do
+      begin
+        if not AnsiStartsStr('<par ', s.valor) then
+          Continue;
 
+        //DebugLn('selecionando par: %s', [s.valor]);
+        SelecionarListaSintagmas(varredorXML.LerPropriedadeTag('a', s));
+        VersiculoPar.SelecionarListaSintagmas(
+          varredorXML.LerPropriedadeTag('b', s));
+        AssociarSintagmas;
+
+        LimparSelecao;
+        VersiculoPar.LimparSelecao;
+      end;
+    except
+      // Applying persisted associations is atomic from the Verse Pair point
+      // of view. Never expose the successfully parsed prefix of corrupt data.
       LimparSelecao;
       VersiculoPar.LimparSelecao;
+      LimparAssociacoes;
+      raise;
     end;
+  finally
+    varredorXML.Free;
   end;
-  varredorXML.Destroy;
 
   Renderizar;
   VersiculoPar.Renderizar;

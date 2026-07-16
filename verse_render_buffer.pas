@@ -5,7 +5,7 @@ unit verse_render_buffer;
 interface
 
 uses
-  Classes, SysUtils, Verse, syntagm;
+  Classes, SysUtils, StrUtils, Verse, syntagm, onttokenizer;
 
 type
   TRenderInterlinearMode = (rimMySword, rimTheWord);
@@ -15,12 +15,17 @@ type
     FSourceVerse: TVerse;
     FDestinationVerse: TVerse;
     procedure EnsureReady;
+    function CanonicalizeIndexList(const Value: string;
+      out Canonical: string): Boolean;
+    function CanonicalizeAssociations(const Associations: string;
+      Canonical: TStringList): Boolean;
   public
     constructor Create;
     destructor Destroy; override;
     procedure SetTokenizerVersion(Value: Integer);
     procedure LoadTexts(const OriginalText, TranslatedText: string);
     procedure LoadPair(const OriginalText, TranslatedText, Associations: string);
+    function AssociationsEquivalent(const Left, Right: string): Boolean;
     function FormatCorruptionDetails(const ErrorMessage, Associations: string): string;
     function ReplaceTextKeepingAssociations(const OriginalText, TranslatedText,
       Associations: string; ReplaceSourceText: Boolean; const NewText: string): string;
@@ -52,10 +57,128 @@ type
 
 implementation
 
+function CompareCanonicalIndexes(List: TStringList;
+  Index1, Index2: Integer): Integer;
+var
+  LeftValue: Integer;
+  RightValue: Integer;
+begin
+  LeftValue := StrToInt(List[Index1]);
+  RightValue := StrToInt(List[Index2]);
+  if LeftValue < RightValue then
+    Result := -1
+  else if LeftValue > RightValue then
+    Result := 1
+  else
+    Result := 0;
+end;
+
 procedure TVerseRenderBuffer.EnsureReady;
 begin
   if not Assigned(FSourceVerse) or not Assigned(FDestinationVerse) then
     raise Exception.Create('Verse render buffer is not initialized');
+end;
+
+function TVerseRenderBuffer.CanonicalizeIndexList(const Value: string;
+  out Canonical: string): Boolean;
+var
+  Index: Integer;
+  ParsedIndex: Integer;
+  Items: TStringList;
+begin
+  Result := False;
+  Canonical := '';
+  if Value.IsEmpty then
+    Exit;
+
+  Items := TStringList.Create;
+  try
+    Items.StrictDelimiter := True;
+    Items.Delimiter := ',';
+    Items.DelimitedText := Value;
+    if Items.Count = 0 then
+      Exit;
+
+    for Index := 0 to Items.Count - 1 do
+    begin
+      if not TryStrToInt(Trim(Items[Index]), ParsedIndex) or
+        (ParsedIndex < 0) then
+        Exit;
+      Items[Index] := IntToStr(ParsedIndex);
+    end;
+    Items.CustomSort(@CompareCanonicalIndexes);
+
+    for Index := 0 to Items.Count - 1 do
+    begin
+      if Index > 0 then
+        Canonical := Canonical + ',';
+      Canonical := Canonical + Items[Index];
+    end;
+    Result := True;
+  finally
+    Items.Free;
+  end;
+end;
+
+function TVerseRenderBuffer.CanonicalizeAssociations(
+  const Associations: string; Canonical: TStringList): Boolean;
+var
+  Parsed: TTagSintagma;
+  SourceIndexes: string;
+  TargetIndexes: string;
+  Tokenizer: TONTTokenizer;
+begin
+  Result := False;
+  Canonical.Clear;
+  if Associations.IsEmpty then
+    Exit(True);
+
+  Tokenizer := TTokenizerFactory.CreateTokenizer(
+    FSourceVerse.TokenizerVersion, Associations);
+  try
+    while Tokenizer.LerSintagma(Parsed) <> tsNulo do
+    begin
+      if Parsed.tipo = tsEspaco then
+        Continue;
+      if not AnsiStartsStr('<par ', Parsed.valor) then
+        Exit;
+      if not CanonicalizeIndexList(
+        Tokenizer.LerPropriedadeTag('a', Parsed), SourceIndexes) or
+        not CanonicalizeIndexList(
+        Tokenizer.LerPropriedadeTag('b', Parsed), TargetIndexes) then
+        Exit;
+      Canonical.Add(SourceIndexes + '=' + TargetIndexes);
+    end;
+    Canonical.Sort;
+    Result := True;
+  finally
+    Tokenizer.Free;
+  end;
+end;
+
+function TVerseRenderBuffer.AssociationsEquivalent(const Left,
+  Right: string): Boolean;
+var
+  Index: Integer;
+  LeftCanonical: TStringList;
+  RightCanonical: TStringList;
+begin
+  Result := False;
+  LeftCanonical := TStringList.Create;
+  RightCanonical := TStringList.Create;
+  try
+    if not CanonicalizeAssociations(Left, LeftCanonical) or
+      not CanonicalizeAssociations(Right, RightCanonical) or
+      (LeftCanonical.Count <> RightCanonical.Count) then
+      Exit;
+    for Index := 0 to LeftCanonical.Count - 1 do
+      if LeftCanonical[Index] <> RightCanonical[Index] then
+        Exit;
+    Result := True;
+  finally
+    RightCanonical.Free;
+    LeftCanonical.Free;
+  end;
 end;
 
 constructor TVerseRenderBuffer.Create;
@@ -94,6 +217,9 @@ procedure TVerseRenderBuffer.LoadPair(const OriginalText, TranslatedText,
 begin
   LoadTexts(OriginalText, TranslatedText);
   FSourceVerse.Pares := Associations;
+  if not AssociationsEquivalent(FSourceVerse.Pares, Associations) then
+    raise Exception.Create(
+      'Association data could not be applied completely to the verse pair');
 end;
 
 function TVerseRenderBuffer.FormatCorruptionDetails(const ErrorMessage,

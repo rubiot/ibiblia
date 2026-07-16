@@ -23,7 +23,8 @@ uses
   project_verse_repository, current_verse_workspace, verse_render_buffer,
   project_patch_applier, bible_tree_coordinator, ai_batch_orchestrator,
   project_database_bootstrap, status_catalog,
-  dictionary_manager, project_exporter, UnitPleaseWait, bible_book_names;
+  dictionary_manager, project_exporter, association_memory_service,
+  UnitPleaseWait, bible_book_names;
 const
   // AI processing icon indices for ImageListTreeView in formprincipal
   // ImageListTreeView has indices 0-7 for normal states (0-3) and selected states (4-7)
@@ -119,6 +120,7 @@ type
     FConfig: TProjectConfig;
     FVerseRepository: TProjectVerseRepository;
     FVerseRenderBuffer: TVerseRenderBuffer;
+    FAssociationMemory: TAssociationMemoryService;
     FProjectExporter: TProjectExporter;
     FDictionaryManager: TDictionaryManager;
     FPatchApplier: TProjectPatchApplier;
@@ -156,6 +158,9 @@ type
     FClosing: boolean;
     FAutoSave: boolean;
     FIgnoreMissingPatchWarnings: Boolean;
+    FAssociationMemoryRebuildRunning: Boolean;
+    FAssociationMemoryRebuildFailed: Boolean;
+    FAssociationMemoryProgressBar: TProgressBar;
     function GetCaminho: string;
     function GetChapterViewText: TTipoTextoBiblico;
     function GetComments: string;
@@ -200,6 +205,10 @@ type
     function HasCustomStatus: boolean;
     procedure MigrateStoredAssociationsToTokenizerVersion(OldVersion,
       NewVersion: Integer; ProgressBar: TProgressBar = nil);
+    function EnsureAssociationMemoryFresh: Boolean;
+    procedure RebuildAssociationMemory(ProgressBar: TProgressBar);
+    procedure AssociationMemoryRebuildProgress(
+      Phase: TAssociationMemoryRebuildPhase; Current, Total: Integer);
   protected
     function CreateTableDataset(db, tableName, keyField: string): TSqlite3Dataset;
     function CreateQueryObject(db: string): TSQLQuery;
@@ -495,6 +504,13 @@ resourcestring
   SVacuumDone = 'Vacuum done!';
   SVacuumProgressTitle = 'Optimize project';
   SVacuumProgressMessage = 'Optimizing project database...';
+  SAssociationMemoryProgressTitle = 'Association memory';
+  SAssociationMemoryProgressMessage =
+    'Updating after an iBiblia or project change...';
+  SAssociationMemoryProgressDetailFmt = '%s (%d of %d)';
+  SAssociationMemoryWriting = 'Writing association memory...';
+  SAssociationMemoryValidating = 'Validating association memory...';
+  SAssociationMemoryDatabaseProgressFmt = '%d of %d associations';
   SErrorWithDetailsFmt = '%s: %s';
   SErrorClassMessageFmt = '%s: %s'#13#10'%s';
 
@@ -507,6 +523,25 @@ implementation
 
 uses FormDictionaryPopup, FormVerseRules, formaiprocessing;
 
+type
+  { Executes only the blocking network request outside the LCL thread. Verse
+    parsing and result application remain on the main thread. }
+  TSingleLLMRequestThread = class(TThread)
+  private
+    FApiKey: string;
+    FErrorMessage: string;
+    FMessages: TLLMMessageArray;
+    FModel: string;
+    FResponse: TLLMResponse;
+  protected
+    procedure Execute; override;
+  public
+    constructor Create(const AModel, AApiKey: string;
+      const AMessages: TLLMMessageArray);
+    property ErrorMessage: string read FErrorMessage;
+    property Response: TLLMResponse read FResponse;
+  end;
+
 { TProject }
 
 const
@@ -516,6 +551,60 @@ const
     'Needs review',
     'Associated'
   );
+
+constructor TSingleLLMRequestThread.Create(const AModel, AApiKey: string;
+  const AMessages: TLLMMessageArray);
+begin
+  inherited Create(True);
+  FreeOnTerminate := False;
+  FModel := AModel;
+  FApiKey := AApiKey;
+  FMessages := AMessages;
+end;
+
+procedure TSingleLLMRequestThread.Execute;
+var
+  Client: TBaseLLMClient;
+begin
+  Client := nil;
+  try
+    try
+      // HTTP clients are created and used in the worker thread, matching the
+      // batch-processing lifecycle.
+      Client := llmclient.CreateBackend(FModel, FApiKey);
+      FResponse := Client.AskChatCompletions(FMessages);
+    except
+      on E: Exception do
+        FErrorMessage := E.Message;
+    end;
+  finally
+    Client.Free;
+  end;
+end;
+
+function AskChatCompletionsResponsive(const Model, ApiKey: string;
+  const Messages: TLLMMessageArray): TLLMResponse;
+var
+  RequestThread: TSingleLLMRequestThread;
+begin
+  RequestThread := TSingleLLMRequestThread.Create(Model, ApiKey, Messages);
+  try
+    RequestThread.Start;
+    while not RequestThread.Finished do
+    begin
+      Application.ProcessMessages;
+      if not RequestThread.Finished then
+        Sleep(15);
+    end;
+    RequestThread.WaitFor;
+
+    if RequestThread.ErrorMessage <> '' then
+      raise Exception.Create(RequestThread.ErrorMessage);
+    Result := RequestThread.Response;
+  finally
+    RequestThread.Free;
+  end;
+end;
 
 procedure ConfigureOperationProgressBar(ProgressBar: TProgressBar;
   MaxValue: Integer);
@@ -924,6 +1013,8 @@ begin
   if not Assigned(FVerseRenderBuffer) then
     Exit;
 
+  FAssociationMemory.MarkSourceDirty;
+  FAssociationMemory.InvalidateReplay;
   StartScrollingSession;
   try
     ConfigureOperationProgressBar(ProgressBar, QLinhas[FEscopo]);
@@ -947,6 +1038,8 @@ begin
     FVerseRenderBuffer.SetTokenizerVersion(NewVersion);
     FinishScrollingSession;
   end;
+  FCurrentVerseWorkspace.ApplyTokenizerVersion(FAVersiculo, NewVersion);
+  RebuildAssociationMemory(ProgressBar);
 end;
 
 procedure TProject.SetVerseStrongsCountMode(AValue: TStrongsCountMode);
@@ -1282,12 +1375,16 @@ begin
   if not PreparePatchStatuses then
     Exit;
 
+  FAssociationMemory.MarkSourceDirty;
+  FAssociationMemory.InvalidateReplay;
   try
     StartScrollingSession;
     FPatchApplier.ApplyPatch(patch, selectedIndexes, @ConfirmMissingPatchReference);
   finally
     FinishScrollingSession;
   end;
+
+  RebuildAssociationMemory(nil);
 
   oldAutoSaveValue := FAutoSave;
   FAutoSave := false;
@@ -1925,9 +2022,15 @@ function TProject.GetChapterText: TStringList;
                 rimMySword,
                 result,
                 corruptionDetails) then
-              MessageDlg(SError, SCorruptedData + #13#10#13#10 + FormattedReference + #13#10 +
-                   corruptionDetails,
-                   mtError, [mbOK], 0);
+            begin
+              // Chapter rendering is a secondary view and must never block
+              // saving or correcting the selected Verse Pair. The rebuild
+              // follows the same policy and skips corrupt canonical rows.
+              result := FPersistence.CurrentText(FACamposTexto[tbOrigem]);
+              DebugLn(Format('Ignoring invalid associations in chapter view ' +
+                '[%s]: %s', [FPersistence.CurrentPairId,
+                corruptionDetails]));
+            end;
           end
           else if InterlinearMode = imIntralinear then
           begin
@@ -1938,9 +2041,12 @@ function TProject.GetChapterText: TStringList;
                 rimTheWord,
                 result,
                 corruptionDetails) then
-              MessageDlg(SError, SCorruptedData + #13#10#13#10 + FormattedReference + #13#10 +
-                   corruptionDetails,
-                   mtError, [mbOK], 0);
+            begin
+              result := FPersistence.CurrentText(FACamposTexto[tbOrigem]);
+              DebugLn(Format('Ignoring invalid associations in chapter view ' +
+                '[%s]: %s', [FPersistence.CurrentPairId,
+                corruptionDetails]));
+            end;
           end
           else
             raise Exception.Create(Format('Invalid interlinear mode [%d]', [Ord(InterlinearMode)]));
@@ -2229,6 +2335,12 @@ begin
     MessageDlg(SError, SCorruptedData + #13#10#13#10 + FormattedReference + #13#10 +
          corruptionDetails,
          mtError, [mbOK], 0);
+  if corruptionDetails.IsEmpty and (texto in [tbOrigem, tbDestino]) and
+    Assigned(FAssociationMemory) then
+  begin
+    FAssociationMemory.MarkSourceDirty;
+    FAssociationMemory.InvalidateReplay;
+  end;
 end;
 
 procedure TProject.ApplyVerseText(const newText: string; texto: TTipoTextoBiblico; replace: Boolean);
@@ -2237,16 +2349,39 @@ begin
 end;
 
 procedure TProject.BeforeVerseScroll(DataSet: TDataSet);
-//var starttime: DWord;
+var
+  CacheWasCurrent: Boolean;
+  MemoryInputsChanged: Boolean;
 begin
   if not FScrollEventsEnabled or not Assigned(FAVersiculo[tbOrigem]) then
     exit;
 
   //starttime := getTickCount;
 
-  FCurrentVerseWorkspace.SaveBeforeScroll(FPersistence, FSuggestionManager,
-    FVerseMemo, FMemoComentarios, FAVersiculo, FACamposTexto,
-    Ord(tbOrigem), Ord(tbDestino));
+  CacheWasCurrent := Assigned(FAssociationMemory) and
+    not FAssociationMemory.NeedsRebuild;
+  try
+    MemoryInputsChanged := FCurrentVerseWorkspace.SaveBeforeScroll(
+      FPersistence, FSuggestionManager,
+      FVerseMemo, FMemoComentarios, FAVersiculo, FACamposTexto,
+      Ord(tbOrigem), Ord(tbDestino), FAssociationMemory);
+  except
+    if Assigned(FAssociationMemory) then
+    begin
+      FAssociationMemory.MarkSourceDirty;
+      FAssociationMemory.MarkCacheOutdated;
+      FAssociationMemory.InvalidateReplay;
+    end;
+    raise;
+  end;
+  if MemoryInputsChanged and Assigned(FAssociationMemory) then
+  begin
+    FAssociationMemory.MarkSourceDirty;
+    if FAssociationMemoryRebuildFailed or not CacheWasCurrent then
+      FAssociationMemory.MarkCacheOutdated
+    else
+      FAssociationMemory.MarkCacheSynchronized;
+  end;
 
   //DebugLn('  TProject.BeforeVerseScroll: %d milliseconds', [getTickCount-starttime]);
 end;
@@ -2272,7 +2407,7 @@ begin
   begin
     try
       FCurrentVerseWorkspace.ApplyLoadedAssociations(FAVersiculo[tbOrigem],
-        loadResult.Associations);
+        loadResult.Associations, FVerseRenderBuffer);
     except
       on E: Exception do
       MessageDlg(SError, SCorruptedData + #13#10#13#10 + FormattedReference + #13#10#13#10 +
@@ -2336,15 +2471,47 @@ begin
 end;
 
 procedure TProject.SaveAssociations;
+var
+  CacheWasCurrent: Boolean;
 begin
-  FCurrentVerseWorkspace.SaveAssociations(FSuggestionManager,
-    FAVersiculo[tbOrigem], FAVersiculo[tbDestino]);
+  CacheWasCurrent := Assigned(FAssociationMemory) and
+    not FAssociationMemory.NeedsRebuild;
+  if FCurrentVerseWorkspace.SaveAssociations(FSuggestionManager,
+    FAVersiculo[tbOrigem], FAVersiculo[tbDestino], FAssociationMemory) and
+    Assigned(FAssociationMemory) then
+  begin
+    FAssociationMemory.MarkSourceDirty;
+    if FAssociationMemoryRebuildFailed or not CacheWasCurrent then
+      FAssociationMemory.MarkCacheOutdated
+    else
+      FAssociationMemory.MarkCacheSynchronized;
+  end;
 end;
 
 procedure TProject.RemoveAssociations;
+var
+  CacheWasCurrent: Boolean;
 begin
-  FCurrentVerseWorkspace.RemoveOldAssociations(FSuggestionManager,
-    FAVersiculo[tbOrigem], FAVersiculo[tbDestino]);
+  CacheWasCurrent := Assigned(FAssociationMemory) and
+    not FAssociationMemory.NeedsRebuild;
+  FSuggestionManager.BeginRebuild;
+  try
+    FCurrentVerseWorkspace.RemoveOldAssociations(FSuggestionManager,
+      FAVersiculo[tbOrigem], FAVersiculo[tbDestino]);
+    FSuggestionManager.CommitRebuild;
+    if Assigned(FAssociationMemory) then
+    begin
+      FAssociationMemory.MarkSourceDirty;
+      if FAssociationMemoryRebuildFailed or not CacheWasCurrent then
+        FAssociationMemory.MarkCacheOutdated
+      else
+        FAssociationMemory.MarkCacheSynchronized;
+      FAssociationMemory.InvalidateReplay;
+    end;
+  except
+    FSuggestionManager.RollbackRebuild;
+    raise;
+  end;
 end;
 
 procedure TProject.SintagmaOnMouseEnter(Sender: TSyntagm);
@@ -2649,6 +2816,8 @@ begin
 
       if v = tbOrigem then
       begin
+        if EnsureAssociationMemoryFresh then
+          Exit;
         rtf := TDictionaryManager.FormatRTF(FSuggestionManager.GetTranslationAlternatives(s));
         if not rtf.IsEmpty then
           FrmDictionaryPopup.AddStrong(STranslationMemory, rtf);
@@ -2890,15 +3059,25 @@ begin
 end;
 
 procedure TProject.UpdateTree;
+var
+  OldScrollEventsEnabled: Boolean;
+  OldExporting: Boolean;
 begin
   if not assigned(FArvore) then exit;
+  OldScrollEventsEnabled := FScrollEventsEnabled;
+  OldExporting := FExportando;
   StartScrollingSession;
   try
     FBibleTreeCoordinator.RecomputeAllStatuses(FEscopo,
       TProjectVerseStatusCursor.Create(Self), GetStatusDefinitions,
       @GetAggregateStatusImageIndex);
   finally
-    FinishScrollingSession;
+    try
+      FinishScrollingSession;
+    finally
+      FScrollEventsEnabled := OldScrollEventsEnabled;
+      FExportando := OldExporting;
+    end;
   end;
 end;
 
@@ -2940,6 +3119,7 @@ begin
   FConfig             := TProjectConfig.Create(nil);
   FVerseRepository    := TProjectVerseRepository.Create(nil);
   FVerseRenderBuffer  := nil;
+  FAssociationMemory  := TAssociationMemoryService.Create;
   FProjectExporter    := TProjectExporter.Create(etNone, nil, nil);
   FDictionaryManager  := TDictionaryManager.Create;
   FPatchApplier       := TProjectPatchApplier.Create(nil);
@@ -2948,6 +3128,9 @@ begin
   FTblInfo            := nil;
   FEscopo             := etNone;
   FClosing            := false;
+  FAssociationMemoryRebuildRunning := False;
+  FAssociationMemoryRebuildFailed := False;
+  FAssociationMemoryProgressBar := nil;
   FVerseStrongsCountMode := scNone;
   FLastLLMUsage.PromptTokens := 0;
   FLastLLMUsage.CompletionTokens := 0;
@@ -2995,6 +3178,7 @@ begin
   FreeAndNil(FDictionaryManager);
   FreeAndNil(FStatusAggregateImageCache);
   FreeAndNil(FStatusImages);
+  FreeAndNil(FAssociationMemory);
   FreeAndNil(FVerseRenderBuffer);
   FreeAndNil(FVerseRepository);
   FreeAndNil(FConfig);
@@ -3028,12 +3212,27 @@ var
   s: string;
   f: TFont;
   i: Integer;
+  OldExporting: Boolean;
 begin
   if not FileExists(Nome) then
   begin
       MessageDlg(SOpenProject, format(SProjectDoesntExist, [Nome]), mtError, [mbOK], 0);
     exit;
   end;
+
+  FAtivo := False;
+  FAssociationMemoryRebuildRunning := False;
+  FAssociationMemoryRebuildFailed := False;
+  FScrollEventsEnabled := False;
+  FCurrentVerseWorkspace.Clear;
+  FVerseMemo.Deactivate;
+  for t := Low(FAVersiculo) to High(FAVersiculo) do
+    if Assigned(FAVersiculo[t]) then
+    begin
+      FAVersiculo[t].ReferenciaID := '';
+      FAVersiculo[t].Modificado := False;
+      FAVersiculo[t].XMLModificado := False;
+    end;
 
   FFileName := Nome;
 
@@ -3046,6 +3245,7 @@ begin
     FConfig.Attach(FPersistence);
   FTblInfo := FPersistence.InfoTable;
 
+  FreeAndNil(FSuggestionManager);
   FSuggestionManager := TSuggestionManager.Create(Nome);
 
   FTblPares := FPersistence.PairsTable;
@@ -3087,6 +3287,7 @@ begin
   FreeAndNil(FVerseRenderBuffer);
   FVerseRenderBuffer := TVerseRenderBuffer.Create();
   FVerseRenderBuffer.SetTokenizerVersion(TokenizerVersion);
+  FAssociationMemory.Attach(FConfig, FSuggestionManager, FVerseRenderBuffer);
   if Assigned(FPatchApplier) then
     FPatchApplier.Attach(FPersistence);
 
@@ -3130,10 +3331,27 @@ begin
   TTokenizerFactory.PreferredVersion := TokenizerVersion;
 
   ScrollEventsEnabled := true;
-  GoToReference(FConfig.ReadMarker);
+  OldExporting := FExportando;
+  FExportando := True;
+  try
+    GoToReference(FConfig.ReadMarker);
+    if Assigned(FAVersiculo[tbOrigem]) and
+      ((not Assigned(FAVersiculo[tbOrigem].Syntagms)) or
+       (FAVersiculo[tbOrigem].ReferenciaID <> ID)) then
+      AfterVerseScroll(nil);
+  finally
+    FExportando := OldExporting;
+  end;
 
   FAtivo := true;
   FDisplayTags := false;
+  if FAssociationMemory.NeedsRebuild then
+    try
+      RebuildSuggestionDatabase(nil);
+    except
+      on E: Exception do
+        MessageDlg(SError, E.Message, mtError, [mbOK], 0);
+    end;
 end;
 
 procedure TProject.CloseProject(_Commit: boolean);
@@ -3177,6 +3395,8 @@ begin
     FPatchApplier.Attach(nil);
   if Assigned(FCurrentVerseWorkspace) then
     FCurrentVerseWorkspace.Clear;
+  if Assigned(FAssociationMemory) then
+    FAssociationMemory.Attach(nil, nil, nil);
   FreeAndNil(FPersistence);
   FTblPares := nil;
   FTblInfo := nil;
@@ -3203,20 +3423,137 @@ begin
   FAtivo := false;
 end;
 
-procedure TProject.Commit;
+function TProject.EnsureAssociationMemoryFresh: Boolean;
 begin
-  if assigned(FSuggestionManager) then
-    FSuggestionManager.Commit;
+  Result := False;
+  if not Assigned(FAssociationMemory) then
+    Exit;
+  if FAssociationMemoryRebuildRunning or FAssociationMemory.RebuildActive then
+    Exit(True);
+  if FAssociationMemoryRebuildFailed and
+    FAssociationMemory.NeedsRebuild then
+    Exit(True);
+  if FAssociationMemory.NeedsRebuild then
+  begin
+    RebuildAssociationMemory(nil);
+    Commit;
+    Result := True;
+  end;
+  FAssociationMemory.ValidateCurrentCache;
+end;
 
-  if Assigned(FPersistence) then
+procedure TProject.Commit;
+var
+  BuiltRevisionStaged: Boolean;
+  MemoryWasDirty: Boolean;
+begin
+  if FAssociationMemoryRebuildRunning or
+    (Assigned(FAssociationMemory) and FAssociationMemory.RebuildActive) then
+    Exit;
+
+  if Assigned(FAssociationMemory) and
+    FAssociationMemoryRebuildFailed and
+    FAssociationMemory.NeedsRebuild then
+  begin
+    if Assigned(FSuggestionManager) then
+      FSuggestionManager.Rollback;
+    if Assigned(FPersistence) then
+      FPersistence.Commit;
+    FAssociationMemory.CommitSourceOutdated;
+    Exit;
+  end;
+
+  BuiltRevisionStaged := False;
+  MemoryWasDirty := Assigned(FAssociationMemory) and
+    FAssociationMemory.PendingDirty;
+  if not MemoryWasDirty and Assigned(FAssociationMemory) then
+  begin
+    if FAssociationMemory.NeedsRebuild then
+      RebuildAssociationMemory(nil);
+    FAssociationMemory.ValidateCurrentCache;
+    MemoryWasDirty := FAssociationMemory.PendingDirty;
+  end;
+
+  if MemoryWasDirty then
+  begin
+    if not FAssociationMemory.CanCommitCompletedRebuild then
+    begin
+      if Assigned(FSuggestionManager) then
+        FSuggestionManager.Rollback;
+      FAssociationMemory.MarkCacheOutdated;
+
+      if Assigned(FPersistence) then
+      begin
+        // Persist the source revision first. If writing canonical pairs fails,
+        // the durable revision mismatch prevents stale cache use after reopen.
+        FPersistence.CommitInfo;
+        FPersistence.CommitPairs;
+        FAssociationMemory.MarkSourceRevisionPersisted;
+      end;
+
+      if FAssociationMemory.CanReplayPendingCache then
+        FAssociationMemory.ReplayPendingCache
+      else
+        RebuildAssociationMemory(nil);
+    end;
+  end
+  else if Assigned(FPersistence) then
     FPersistence.Commit;
+
+  if assigned(FSuggestionManager) then
+    try
+      FSuggestionManager.Commit;
+    except
+      if Assigned(FAssociationMemory) then
+      begin
+        FAssociationMemory.MarkCacheOutdated;
+        FAssociationMemory.InvalidateReplay;
+      end;
+      raise;
+    end;
+
+  if Assigned(FAssociationMemory) then
+  begin
+    BuiltRevisionStaged := FAssociationMemory.StageBuiltRevision;
+    if BuiltRevisionStaged and Assigned(FPersistence) then
+      try
+        FPersistence.CommitInfo;
+      except
+        FAssociationMemory.MarkCacheOutdated;
+        FAssociationMemory.InvalidateReplay;
+        raise;
+      end;
+    FAssociationMemory.CommitCompleted;
+  end;
 end;
 
 procedure TProject.Rollback;
+var
+  OldScrollEventsEnabled: Boolean;
 begin
-  if Assigned(FPersistence) then
-    FPersistence.Rollback;
-  FSuggestionManager.Rollback;
+  OldScrollEventsEnabled := FScrollEventsEnabled;
+  FScrollEventsEnabled := False;
+  try
+    if Assigned(FPersistence) then
+      FPersistence.Rollback;
+  finally
+    FScrollEventsEnabled := OldScrollEventsEnabled;
+  end;
+  if Assigned(FSuggestionManager) then
+    FSuggestionManager.Rollback;
+  if Assigned(FAssociationMemory) then
+    FAssociationMemory.ReloadRevisionState;
+  if Assigned(FCurrentVerseWorkspace) then
+    FCurrentVerseWorkspace.Clear;
+  if FAtivo and OldScrollEventsEnabled and not FClosing then
+  begin
+    FExportando := True;
+    try
+      AfterVerseScroll(nil);
+    finally
+      FExportando := False;
+    end;
+  end;
 end;
 
 procedure TProject.GoToReference(reference: string);
@@ -3283,10 +3620,19 @@ begin
 end;
 
 procedure TProject.ClearAssociations;
+var
+  RecoveringInvalidAssociations: Boolean;
 begin
   if assigned(FAVersiculo[tbOrigem]) then
   begin
+    RecoveringInvalidAssociations :=
+      FCurrentVerseWorkspace.LoadedAssociationsInvalid;
     FAVersiculo[tbOrigem].LimparAssociacoes;
+    if RecoveringInvalidAssociations then
+      // An invalid row is shown without its partially applicable prefix.
+      // Treat the explicit Clear command as the user's decision to replace
+      // that stored row with an empty, valid association set.
+      FAVersiculo[tbOrigem].Modificado := True;
     SaveAssociations;
     SavePairs;
     if StatusAutomationEnabled then
@@ -3299,6 +3645,9 @@ procedure TProject.SaveProject;
 var
   e: TOnNovoVersiculoEvent;
 begin
+  if FAssociationMemoryRebuildRunning or
+    (Assigned(FAssociationMemory) and FAssociationMemory.RebuildActive) then
+    Exit;
   BeforeVerseScroll(nil);
   FConfig.WriteMarker(ID);
   Commit;
@@ -3315,6 +3664,7 @@ end;
 
 procedure TProject.SuggestAssociationStatistical;
 begin
+  EnsureAssociationMemoryFresh;
   FSuggestionManager.SuggestAssociations(FAVersiculo[tbOrigem]);
   FAVersiculo[tbOrigem].Renderizar;
   FAVersiculo[tbDestino].Renderizar;
@@ -3348,20 +3698,20 @@ procedure TProject.SuggestAssociationAI;
 var
   flow: IAIVerseFlow;
   flowConfig: IAIFlowConfig;
-  client: TBaseLLMClient;
   msgs: TLLMMessageArray;
   resp: TLLMResponse;
   parsed: TAIFlowResult;
   v: TVerse;
-  OldCursor: TCursor;
+  ErrorMessage: string;
+  WaitFormStarted: Boolean;
 begin
   FLastLLMUsage.PromptTokens := 0;
   FLastLLMUsage.CompletionTokens := 0;
   FLastLLMUsage.TotalTokens := 0;
   FLastLLMCallCompleted := False;
 
-    if (GetInfo(AI_COMMON_CONFIG.Model).IsEmpty) or
-      (GetInfo(AI_COMMON_CONFIG.ApiKey).IsEmpty) then
+  if (GetInfo(AI_COMMON_CONFIG.Model).IsEmpty) or
+    (GetInfo(AI_COMMON_CONFIG.ApiKey).IsEmpty) then
   begin
     ShowMessage(SAIConfigurationMissing);
     Exit;
@@ -3374,43 +3724,51 @@ begin
     Exit;
   end;
 
-  OldCursor := Screen.Cursor;
-  Screen.Cursor := crHourGlass;
+  ErrorMessage := '';
+  WaitFormStarted := False;
+  if Assigned(FormPleaseWait) then
+  begin
+    FormPleaseWait.BeginOperation(Application.MainForm, '', SAnalyzingVerse,
+      0, GetVerseReferenceString(v));
+    WaitFormStarted := True;
+  end;
+
   try
     try
       flowConfig := GetFlowConfigById('association');
       flow := flowConfig.CreateFlowInstance(CreateAIFlowContext(FConfig));
 
-      client := llmclient.CreateBackend(GetInfo(AI_COMMON_CONFIG.Model), GetInfo(AI_COMMON_CONFIG.ApiKey));
-      try
-        msgs := flow.BuildMessages(v);
-        resp := client.AskChatCompletions(msgs);
-        FLastLLMUsage := resp.Usage;
-        FLastLLMCallCompleted := True;
+      msgs := flow.BuildMessages(v);
+      resp := AskChatCompletionsResponsive(GetInfo(AI_COMMON_CONFIG.Model),
+        GetInfo(AI_COMMON_CONFIG.ApiKey), msgs);
+      FLastLLMUsage := resp.Usage;
+      FLastLLMCallCompleted := True;
 
-        AIDebugLog(SAISingleResponseReceived);
-        parsed := flow.ParseResponse(resp.Content, v);
-        try
-          AIDebugLog(SAISingleApplyingResult);
-          flow.ApplyResult(parsed, v);
-          SaveVersePairs(v);
-          AIDebugLog(SAISingleResultApplied);
-        finally
-          parsed.Free;
-        end;
+      AIDebugLog(SAISingleResponseReceived);
+      parsed := flow.ParseResponse(resp.Content, v);
+      try
+        AIDebugLog(SAISingleApplyingResult);
+        flow.ApplyResult(parsed, v);
+        SaveAssociations;
+        SaveVersePairs(v);
+        AIDebugLog(SAISingleResultApplied);
       finally
-        client.Free;
+        parsed.Free;
       end;
     except
       on E: Exception do
       begin
         AIDebugLog(Format(SAISingleErrorFmt, [E.Message]));
-        ShowMessage(Format(SAIAssociationFailedFmt, [E.Message]));
+        ErrorMessage := Format(SAIAssociationFailedFmt, [E.Message]);
       end;
     end;
   finally
-    Screen.Cursor := OldCursor;
+    if WaitFormStarted then
+      FormPleaseWait.FinishOperation;
   end;
+
+  if ErrorMessage <> '' then
+    ShowMessage(ErrorMessage);
 end;
 
 procedure TProject.StartAIAssociationBatch(NodesVerses: TAIBatchWorkItemList; MaxParallel: Integer);
@@ -3491,6 +3849,9 @@ end;
 procedure TProject.HandleAutoSave(Sender: TObject);
 begin
   // Called from main thread when autosave interval is reached
+  if FAssociationMemoryRebuildRunning or
+    (Assigned(FAssociationMemory) and FAssociationMemory.RebuildActive) then
+    Exit;
   SaveProject;
 end;
 
@@ -3520,75 +3881,181 @@ begin
 end;
 
 procedure TProject.RebuildSuggestionDatabase(pb: TProgressBar);
+begin
+  BeforeVerseScroll(nil);
+  RebuildAssociationMemory(pb);
+  Commit;
+end;
+
+procedure TProject.AssociationMemoryRebuildProgress(
+  Phase: TAssociationMemoryRebuildPhase; Current, Total: Integer);
+var
+  ProgressMaximum: Integer;
+  DisplayedPosition: Integer;
+begin
+  ProgressMaximum := Total;
+  if ProgressMaximum <= 0 then
+    ProgressMaximum := 1;
+
+  if Assigned(FAssociationMemoryProgressBar) then
+  begin
+    FAssociationMemoryProgressBar.Style := pbstNormal;
+    FAssociationMemoryProgressBar.Min := 0;
+    FAssociationMemoryProgressBar.Max := ProgressMaximum;
+    DisplayedPosition := Current;
+    if DisplayedPosition < FAssociationMemoryProgressBar.Min then
+      DisplayedPosition := FAssociationMemoryProgressBar.Min
+    else if DisplayedPosition > ProgressMaximum then
+      DisplayedPosition := ProgressMaximum;
+    FAssociationMemoryProgressBar.Position := DisplayedPosition;
+    // The native Windows progress control animates large forward jumps. A
+    // one-step backward update makes phase changes visible immediately.
+    if DisplayedPosition > FAssociationMemoryProgressBar.Min then
+    begin
+      FAssociationMemoryProgressBar.Position := DisplayedPosition - 1;
+      FAssociationMemoryProgressBar.Position := DisplayedPosition;
+    end;
+    FAssociationMemoryProgressBar.Visible := True;
+    FAssociationMemoryProgressBar.Update;
+  end;
+
+  if Assigned(FormPleaseWait) and
+    (FAssociationMemoryProgressBar = FormPleaseWait.ProgressBar1) then
+  begin
+    case Phase of
+      amrpWriting:
+        FormPleaseWait.SetMessage(SAssociationMemoryWriting);
+      amrpValidating:
+        FormPleaseWait.SetMessage(SAssociationMemoryValidating);
+    end;
+    FormPleaseWait.SetDetail(Format(
+      SAssociationMemoryDatabaseProgressFmt, [Current, Total]));
+  end;
+  Application.ProcessMessages;
+end;
+
+procedure TProject.RebuildAssociationMemory(ProgressBar: TProgressBar);
 var
   verseData: TVerseData;
-  pares: TStringList;
-  p: smallint;
-  corruptionDetails: string;
+  SavedMarker: string;
+  OldScrollEventsEnabled: Boolean;
+  OldExporting: Boolean;
+  OwnProgressForm: Boolean;
+  RebuildSucceeded: Boolean;
 begin
-  if (FAVersiculo[tbOrigem] = nil) or (FAVersiculo[tbDestino] = nil) then
+  if not Assigned(FAssociationMemory) or not Assigned(FVerseRepository) then
     exit;
+  if FAssociationMemoryRebuildRunning or FAssociationMemory.RebuildActive then
+    Exit;
 
-  FSuggestionManager.ClearAssociationDatabase;
-
+  FAssociationMemoryRebuildRunning := True;
+  FAssociationMemoryRebuildFailed := False;
+  RebuildSucceeded := False;
+  OldScrollEventsEnabled := FScrollEventsEnabled;
+  OldExporting := FExportando;
+  OwnProgressForm := False;
+  SavedMarker := '';
   try
+    SavedMarker := ID;
+    if not Assigned(ProgressBar) and Assigned(FormPleaseWait) then
+    begin
+      FormPleaseWait.BeginOperation(Application.MainForm,
+        SAssociationMemoryProgressTitle, SAssociationMemoryProgressMessage,
+        QLinhas[FEscopo], ExtractFileName(FFileName));
+      ProgressBar := FormPleaseWait.ProgressBar1;
+      OwnProgressForm := True;
+    end;
+
+    if assigned(ProgressBar) then
+    begin
+      ProgressBar.Style := pbstNormal;
+      ProgressBar.Position := 0;
+      ProgressBar.Min := 0;
+      ProgressBar.Max := QLinhas[FEscopo];
+      ProgressBar.Step := 1;
+      ProgressBar.Visible := true;
+    end;
+
+    FScrollEventsEnabled := False;
+    FExportando := True;
+    FAssociationMemoryProgressBar := ProgressBar;
+    if Assigned(FSuggestionManager) then
+      FSuggestionManager.OnRebuildProgress :=
+        @AssociationMemoryRebuildProgress;
+    FAssociationMemory.MarkSourceDirty;
+    if Assigned(FSuggestionManager) then
+      FSuggestionManager.Rollback;
+    FAssociationMemory.MarkCacheOutdated;
+    if Assigned(FPersistence) then
+    begin
+      // Publish the canonical data and source revision before opening the
+      // association-memory write transaction. A later failure therefore
+      // leaves a durable revision mismatch instead of publishing stale data.
+      FPersistence.CommitInfo;
+      FPersistence.CommitPairs;
+      FAssociationMemory.MarkSourceRevisionPersisted;
+    end;
+    FAssociationMemory.BeginRebuild;
     try
-      if assigned(pb) then
-      begin
-        pb.Style := pbstNormal;
-        pb.Position := 0;
-        pb.Min := 0;
-        pb.Max := QLinhas[FEscopo];
-        pb.Step := 1;
-        pb.Visible := true;
-      end;
-
-      FExportando := true;
-
-      StartScrollingSession;
       FVerseRepository.First;
       while not FVerseRepository.EOF do
       begin
         verseData := FVerseRepository.ReadCurrentVerseData;
-        if verseData.Associations <> '' then
+        FAssociationMemory.AddVerse(verseData.ReferenceID,
+          verseData.ReferenceName, verseData.OriginalText,
+          verseData.TranslatedText, verseData.Associations);
+        if assigned(ProgressBar) then
         begin
-          if FVerseRenderBuffer.TryExtractPairsList(
-              verseData.OriginalText,
-              verseData.TranslatedText,
-              verseData.Associations,
-              plMetaData,
-              pares,
-              corruptionDetails) then
-          begin
-            for p:=0 to pares.Count-1 do
-              if (p mod 2) = 0 then // pares estão alternados na lista
-                FSuggestionManager.AddPair(pares.Strings[p], pares.Strings[p+1]);
-
-            pares.Free;
-          end
-          else
-            ShowMessage(Format(SErrorWithDetailsFmt, [SError, SCorruptedData]) +
-              #13#10#13#10 + GetID + #13#10 + corruptionDetails);
-        end;
-        if assigned(pb) then
-        begin
-           pb.StepIt;
-           if (pb.Position mod 50) = 0 then
+           ProgressBar.StepIt;
+           if (ProgressBar.Position mod 50) = 0 then
+           begin
+             if Assigned(FormPleaseWait) and
+               (ProgressBar = FormPleaseWait.ProgressBar1) then
+               FormPleaseWait.SetDetail(Format(
+                 SAssociationMemoryProgressDetailFmt,
+                 [verseData.ReferenceName, ProgressBar.Position,
+                  ProgressBar.Max]));
              Application.ProcessMessages;
+           end;
         end;
         FVerseRepository.Next;
       end;
+      if Assigned(FormPleaseWait) and
+        (ProgressBar = FormPleaseWait.ProgressBar1) then
+      begin
+        FormPleaseWait.SetMessage(SAssociationMemoryWriting);
+        Application.ProcessMessages;
+      end;
+      FAssociationMemory.FinishRebuild;
+      RebuildSucceeded := True;
     except
-      on E: Exception do
-         ShowMessage(Format(SErrorClassMessageFmt,
-           [SError, E.ClassName, E.Message]));
+      FAssociationMemory.AbortRebuild;
+      raise;
     end;
   finally
-    FinishScrollingSession;
-    AfterVerseScroll(nil);
-    FExportando := false;
-    if assigned(pb) then
-       pb.Visible := false;
+    FAssociationMemoryRebuildFailed := not RebuildSucceeded;
+    if Assigned(FSuggestionManager) then
+      FSuggestionManager.OnRebuildProgress := nil;
+    FAssociationMemoryProgressBar := nil;
+    FAssociationMemoryRebuildRunning := False;
+    if Assigned(FPersistence) and not SavedMarker.IsEmpty then
+      FPersistence.LocateReference(SavedMarker);
+    FScrollEventsEnabled := OldScrollEventsEnabled;
+    if OldScrollEventsEnabled then
+    begin
+      FExportando := True;
+      try
+        AfterVerseScroll(nil);
+      finally
+        FExportando := OldExporting;
+      end;
+    end
+    else
+      FExportando := OldExporting;
+    if assigned(ProgressBar) then
+      ProgressBar.Visible := false;
+    if OwnProgressForm then
+      FormPleaseWait.FinishOperation;
   end;
 end;
 
@@ -3732,34 +4199,37 @@ begin
 
     FExportando := true;
     StartScrollingSession;
-    FirstVerse;
+    try
+      FirstVerse;
 
-    for i:=0 to projectOffset-1 do
-      NextVerse;
+      for i:=0 to projectOffset-1 do
+        NextVerse;
 
-    for i:=linesOffset to QLinhas[moduleScope] - 1 do
-    begin
-      if FTblPares.EOF then break;
-      //line := modulo[i];
-
-      { aplicando verse.rules }
-      if assigned(rxVerseRulesFrom) then
-        for m:=0 to rxVerseRulesFrom.Count-1 do
-          modulo[i] := rxVerseRulesFrom[m].Replace(modulo[i], rxVerseRulesTo[m]);
-
-      SetVerseText(modulo[i], texto, replace);
-
-      NextVerse;
-
-      if assigned(pb) then
+      for i:=linesOffset to QLinhas[moduleScope] - 1 do
       begin
-        pb.StepIt;
-        if (pb.Position mod 75) = 0 then
-           Application.ProcessMessages;
+        if FTblPares.EOF then break;
+
+        { aplicando verse.rules }
+        if assigned(rxVerseRulesFrom) then
+          for m:=0 to rxVerseRulesFrom.Count-1 do
+            modulo[i] := rxVerseRulesFrom[m].Replace(modulo[i], rxVerseRulesTo[m]);
+
+        SetVerseText(modulo[i], texto, replace);
+        NextVerse;
+
+        if assigned(pb) then
+        begin
+          pb.StepIt;
+          if (pb.Position mod 75) = 0 then
+             Application.ProcessMessages;
+        end;
       end;
+    finally
+      FinishScrollingSession;
+      FExportando := false;
     end;
-    FinishScrollingSession;
-    FExportando := false;
+    if texto in [tbOrigem, tbDestino] then
+      RebuildAssociationMemory(pb);
     UpdateTree(FMarker);
     UpdateTree(FMarker);
   finally
@@ -3917,6 +4387,11 @@ end;
 
 procedure TProject.ClearText(texto: TTipoTextoBiblico);
 begin
+  if texto in [tbOrigem, tbDestino] then
+  begin
+    FAssociationMemory.MarkSourceDirty;
+    FAssociationMemory.InvalidateReplay;
+  end;
   StartScrollingSession;
   try
       //UpdateTree;
@@ -3924,6 +4399,10 @@ begin
       FACamposTexto[tbDestino], StatusAutomationEnabled);
   finally
     FinishScrollingSession;
+  end;
+  if texto in [tbOrigem, tbDestino] then
+  begin
+    RebuildAssociationMemory(nil);
   end;
   SetTextDescription(texto, '');
 end;
@@ -4117,6 +4596,8 @@ end;
 
 function TProject.GetTranslationSuggestions(syntagm: TSyntagm): string;
 begin
+  if EnsureAssociationMemoryFresh then
+    Exit('');
   result := FSuggestionManager.GetTranslationAlternatives(syntagm);
 end;
 
@@ -4152,8 +4633,8 @@ begin
     Exit;
 
   shouldResetStatus := StatusAutomationEnabled;
-  FSuggestionManager.ClearAssociationDatabase;
-
+  FAssociationMemory.MarkSourceDirty;
+  FAssociationMemory.InvalidateReplay;
   StartScrollingSession;
   try
     ConfigureOperationProgressBar(ProgressBar, QLinhas[FEscopo]);
@@ -4169,6 +4650,7 @@ begin
     FinishScrollingSession;
     AfterVerseScroll(nil);
   end;
+  RebuildAssociationMemory(ProgressBar);
 end;
 
 procedure TProject.Translate;

@@ -1,4 +1,3 @@
-#
 msgid ""
 msgstr ""
 "Project-Id-Version: \n"
@@ -13,12 +12,8 @@ msgstr ""
 "X-Generator: Poedit 3.8\n"
 
 #: ai_association_flow.sconfigadditionalinstructionsdescription
-msgid ""
-"Add specific guidelines for your project (e.g., handling of poetry, examples"
-" for edge cases)"
-msgstr ""
-"Adicione diretrizes específicas para o seu projeto ou exemplos de "
-"associações"
+msgid "Add specific guidelines for your project (e.g., handling of poetry, examples for edge cases)"
+msgstr "Adicione diretrizes específicas para o seu projeto ou exemplos de associações"
 
 #: ai_association_flow.sconfigadditionalinstructionsdisplayname
 msgctxt "ai_association_flow.sconfigadditionalinstructionsdisplayname"
@@ -27,12 +22,8 @@ msgstr "Instruções adicionais"
 
 #: ai_association_flow.sconfigapikeyoverridedescription
 msgctxt "ai_association_flow.sconfigapikeyoverridedescription"
-msgid ""
-"Specify a different API key for this flow. Leave empty to use global "
-"setting."
-msgstr ""
-"Especifique uma chave de API diferente para este fluxo. Deixe em branco para"
-" usar a configuração global."
+msgid "Specify a different API key for this flow. Leave empty to use global setting."
+msgstr "Especifique uma chave de API diferente para este fluxo. Deixe em branco para usar a configuração global."
 
 #: ai_association_flow.sconfigapikeyoverridedisplayname
 msgctxt "ai_association_flow.sconfigapikeyoverridedisplayname"
@@ -40,8 +31,7 @@ msgid "API Key"
 msgstr "Chave da API"
 
 #: ai_association_flow.sconfigincludecommentsdescription
-msgid ""
-"If enabled, the AI will provide critical comments about the associations."
+msgid "If enabled, the AI will provide critical comments about the associations."
 msgstr "Quando habilitado, a IA vai incluir comentários sobre a associação."
 
 #: ai_association_flow.sconfigincludecommentsdisplayname
@@ -50,26 +40,18 @@ msgstr "Incluir comentários da IA"
 
 #: ai_association_flow.sconfigmodeloverridedescription
 msgctxt "ai_association_flow.sconfigmodeloverridedescription"
-msgid ""
-"Specify a different model for this flow. Leave empty to use global setting."
-msgstr ""
-"Especifique um modelo diferente para este fluxo. Deixe em branco para usar a"
-" configuração global."
+msgid "Specify a different model for this flow. Leave empty to use global setting."
+msgstr "Especifique um modelo diferente para este fluxo. Deixe em branco para usar a configuração global."
 
 #: ai_association_flow.sconfigmodeloverridedisplayname
-#| msgid "Model"
 msgctxt "ai_association_flow.sconfigmodeloverridedisplayname"
 msgid "Model"
 msgstr "Modelo"
 
 #: ai_association_flow.sconfigprovideroverridedescription
 msgctxt "ai_association_flow.sconfigprovideroverridedescription"
-msgid ""
-"Specify a different provider for this flow. Leave empty to use global "
-"setting."
-msgstr ""
-"Especifique um provedor diferente para este fluxo. Deixe em branco para usar"
-" a configuração global."
+msgid "Specify a different provider for this flow. Leave empty to use global setting."
+msgstr "Especifique um provedor diferente para este fluxo. Deixe em branco para usar a configuração global."
 
 #: ai_association_flow.sconfigprovideroverridedisplayname
 msgctxt "ai_association_flow.sconfigprovideroverridedisplayname"
@@ -86,20 +68,12 @@ msgid "Association"
 msgstr "Associação"
 
 #: ai_association_flow.soutputformatinfoassociation
-msgid ""
-"This flow expects JSON output: {\"data\": [[original, translation], ...], "
-"\"comments\": \"...\" (optional)}"
-msgstr ""
-"Este fluxo espera saída JSON: {\"data\": [[original, tradução], ...], "
-"\"comments\": \"...\" (opcional)}"
+msgid "This flow expects JSON output: {\"data\": [[original, translation], ...], \"comments\": \"...\" (optional)}"
+msgstr "Este fluxo espera saída JSON: {\"data\": [[original, tradução], ...], \"comments\": \"...\" (opcional)}"
 
 #: ai_translation_flow.sconfigadditionalinstructionsdescription
-msgid ""
-"Add translation philosophy, terminology preferences, or context-specific "
-"rules"
-msgstr ""
-"Adicione a filosofia de tradução, preferências de terminologia, ou regras "
-"específicas"
+msgid "Add translation philosophy, terminology preferences, or context-specific rules"
+msgstr "Adicione a filosofia de tradução, preferências de terminologia, ou regras específicas"
 
 #: ai_translation_flow.sconfigadditionalinstructionsdisplayname
 msgctxt "ai_translation_flow.sconfigadditionalinstructionsdisplayname"
@@ -108,12 +82,8 @@ msgstr "Instruções adicionais"
 
 #: ai_translation_flow.sconfigapikeyoverridedescription
 msgctxt "ai_translation_flow.sconfigapikeyoverridedescription"
-msgid ""
-"Specify a different API key for this flow. Leave empty to use global "
-"setting."
-msgstr ""
-"Especifique uma chave de API diferente para este fluxo. Deixe em branco para"
-" usar a configuração global."
+msgid "Specify a different API key for this flow. Leave empty to use global setting."
+msgstr "Especifique uma chave de API diferente para este fluxo. Deixe em branco para usar a configuração global."
 
 #: ai_translation_flow.sconfigapikeyoverridedisplayname
 msgctxt "ai_translation_flow.sconfigapikeyoverridedisplayname"
@@ -121,12 +91,8 @@ msgid "API Key"
 msgstr "Chave da API"
 
 #: ai_translation_flow.sconfigforceoverwritedescription
-msgid ""
-"If checked, overwrites existing translations. If unchecked, only translates "
-"empty verses."
-msgstr ""
-"Se marcado, sobrescreve traduções existentes. Se desmarcado, só traduz "
-"versículos vazios."
+msgid "If checked, overwrites existing translations. If unchecked, only translates empty verses."
+msgstr "Se marcado, sobrescreve traduções existentes. Se desmarcado, só traduz versículos vazios."
 
 #: ai_translation_flow.sconfigforceoverwritedisplayname
 msgid "Force Overwrite"
@@ -134,26 +100,18 @@ msgstr "Forçar sobrescrita"
 
 #: ai_translation_flow.sconfigmodeloverridedescription
 msgctxt "ai_translation_flow.sconfigmodeloverridedescription"
-msgid ""
-"Specify a different model for this flow. Leave empty to use global setting."
-msgstr ""
-"Especifique um modelo diferente para este fluxo. Deixe em branco para usar a"
-" configuração global."
+msgid "Specify a different model for this flow. Leave empty to use global setting."
+msgstr "Especifique um modelo diferente para este fluxo. Deixe em branco para usar a configuração global."
 
 #: ai_translation_flow.sconfigmodeloverridedisplayname
-#| msgid "Model"
 msgctxt "ai_translation_flow.sconfigmodeloverridedisplayname"
 msgid "Model"
 msgstr "Modelo"
 
 #: ai_translation_flow.sconfigprovideroverridedescription
 msgctxt "ai_translation_flow.sconfigprovideroverridedescription"
-msgid ""
-"Specify a different provider for this flow. Leave empty to use global "
-"setting."
-msgstr ""
-"Especifique um provedor diferente para este fluxo. Deixe em branco para usar"
-" a configuração global."
+msgid "Specify a different provider for this flow. Leave empty to use global setting."
+msgstr "Especifique um provedor diferente para este fluxo. Deixe em branco para usar a configuração global."
 
 #: ai_translation_flow.sconfigprovideroverridedisplayname
 msgctxt "ai_translation_flow.sconfigprovideroverridedisplayname"
@@ -161,20 +119,15 @@ msgid "Provider"
 msgstr "Provedor"
 
 #: ai_translation_flow.sconfigtargetlanguagedescription
-msgid ""
-"Specify the target language for translation (e.g., \"Brazilian Portuguese\","
-" \"Spanish\")"
-msgstr ""
-"Especifique o idioma alvo da tradução (ex.: \"português brasileiro\", "
-"\"espanhol\")"
+msgid "Specify the target language for translation (e.g., \"Brazilian Portuguese\", \"Spanish\")"
+msgstr "Especifique o idioma alvo da tradução (ex.: \"português brasileiro\", \"espanhol\")"
 
 #: ai_translation_flow.sconfigtargetlanguagedisplayname
 msgid "Target Language"
 msgstr "Idioma alvo"
 
 #: ai_translation_flow.sdescriptiontranslation
-msgid ""
-"Translates biblical verses maintaining theological and stylistic accuracy"
+msgid "Translates biblical verses maintaining theological and stylistic accuracy"
 msgstr "Traduz versículos bíblicos mantendo acurácia teológica e estilística"
 
 #: ai_translation_flow.sdisplaynametranslation
@@ -228,6 +181,16 @@ msgstr "Selecionar &fonte..."
 msgid "Verse &rules..."
 msgstr "Regras de &transformação (verse rules)..."
 
+#: formaiprocessing.saiflowassociation
+msgctxt "formaiprocessing.saiflowassociation"
+msgid "Association"
+msgstr "Associação"
+
+#: formaiprocessing.saiflowtranslation
+msgctxt "formaiprocessing.saiflowtranslation"
+msgid "Translation"
+msgstr "Tradução"
+
 #: formaiprocessing.saiprocessingcancelled
 msgid "Processing cancelled"
 msgstr "Processamento cancelado"
@@ -241,6 +204,13 @@ msgstr "Cancelando..."
 msgid "Processing completed: %d successful, %d failed"
 msgstr "Processamento concluído: %d sucessos, %d falhas"
 
+#: formaiprocessing.saiprocessingerrorseelogs
+#, fuzzy
+#| msgid "Error during AI processing (see logs)UnknownTranslation association projectTranslation projectGenesisExodusLeviticusNumbersDeuteronomyJoshuaJudgesRuth1 Samuel2 Samuel1 Kings2 Kings1 Chronicles2 ChroniclesEzraNehemiahEstherJobPsalmsProverbsEcclesiastesSong of SolomonIsaiahJeremiahLamentationsEzekielDanielHoseaJoelAmosObadiahJonahMicahNahumHabakkukZephaniahHaggaiZechariahMalachiMatthewMarkLukeJohnActsRomans1 Corinthians2 CorinthiansGalatiansEphesiansPhilippiansColossians1 Thessalonians2 Thessalonians1 Timothy2 TimothyTitusPhilemonHebrewsJames1 Peter2 Peter1 John2 John3 JohnJudeRevelation"
+msgctxt "formaiprocessing.saiprocessingerrorseelogsproject_setup_model.sscenariounknownproject_setup_model.sscenarioassociationproject_setup_model.sscenariotranslationbible_book_names.sgenesisbible_book_names.sexodusbible_book_names.sleviticusbible_book_names.snumbersbible_book_names.sdeuteronomybible_book_names.sjoshuabible_book_names.sjudgesbible_book_names.sruthbible_book_names.s1samuelbible_book_names.s2samuelbible_book_names.s1kingsbible_book_names.s2kingsbible_book_names.s1chroniclesbible_book_names.s2chroniclesbible_book_names.sezrabible_book_names.snehemiahbible_book_names.sestherbible_book_names.sjobbible_book_names.spsalmsbible_book_names.sproverbsbible_book_names.secclesiastesbible_book_names.ssongofsolomonbible_book_names.sisaiahbible_book_names.sjeremiahbible_book_names.slamentationsbible_book_names.sezekielbible_book_names.sdanielbible_book_names.shoseabible_book_names.sjoelbible_book_names.samosbible_book_names.sobadiahbible_book_names.sjonahbible_book_names.smicahbible_book_names.snahumbible_book_names.shabakkukbible_book_names.szephaniahbible_book_names.shaggaibible_book_names.szechariahbible_book_names.smalachibible_book_names.smatthewbible_book_names.smarkbible_book_names.slukebible_book_names.sjohnbible_book_names.sactsbible_book_names.sromansbible_book_names.s1corinthiansbible_book_names.s2corinthiansbible_book_names.sgalatiansbible_book_names.sephesiansbible_book_names.sphilippiansbible_book_names.scolossiansbible_book_names.s1thessaloniansbible_book_names.s2thessaloniansbible_book_names.s1timothybible_book_names.s2timothybible_book_names.stitusbible_book_names.sphilemonbible_book_names.shebrewsbible_book_names.sjamesbible_book_names.s1peterbible_book_names.s2peterbible_book_names.s1johnbible_book_names.s2johnbible_book_names.s3johnbible_book_names.sjudebible_book_names.srevelation"
+msgid "Error during AI processing (see logs)"
+msgstr "Erro durante o processamento de IA (consulte os logs)DesconhecidoProjeto de associação de traduçãoProjeto de traduçãoGênesisÊxodoLevíticoNúmerosDeuteronômioJosuéJuízesRute1 Samuel2 Samuel1 Reis2 Reis1 Crônicas2 CrônicasEsdrasNeemiasEsterJóSalmosProvérbiosEclesiastesCântico dos CânticosIsaíasJeremiasLamentaçõesEzequielDanielOseiasJoelAmósObadiasJonasMiqueiasNaumHabacuqueSofoniasAgeuZacariasMalaquiasMateusMarcosLucasJoãoAtosRomanos1 Coríntios2 CoríntiosGálatasEfésiosFilipensesColossenses1 Tessalonicenses2 Tessalonicenses1 Timóteo2 TimóteoTitoFilemomHebreusTiago1 Pedro2 Pedro1 João2 João3 JoãoJudasApocalipse"
+
 #: formaiprocessing.saiprocessinginprogress
 #, object-pascal-format
 msgid "Processing: %d of %d verses (%d%%)"
@@ -250,9 +220,216 @@ msgstr "Processando: %d de %d versículos (%d%%)"
 msgid "AI Processing"
 msgstr "Processamento de IA"
 
+#: formaiprocessing.saireviewacceptverse
+msgid "Accept verse"
+msgstr "Aceitar versículo"
+
+#: formaiprocessing.saireviewacceptversehint
+msgid "Mark the current verse for application. Comments follow the selected comment option."
+msgstr "Marca o versículo atual para aplicação. Os comentários seguem a opção selecionada."
+
+#: formaiprocessing.saireviewairesultstab
+msgid "AI results"
+msgstr "Resultados da IA"
+
+#: formaiprocessing.saireviewappliedcomments
+msgid "After applying"
+msgstr "Após aplicar"
+
+#: formaiprocessing.saireviewapplyaccepted
+msgid "Apply accepted"
+msgstr "Aplicar aceitos"
+
+#: formaiprocessing.saireviewapplyacceptedhint
+msgid "Apply only the marked verses."
+msgstr "Aplica apenas os versículos marcados."
+
+#: formaiprocessing.saireviewapplyquestion
+msgid "Apply the accepted AI changes now?"
+msgstr "Aplicar agora as mudanças aceitas da IA?"
+
+#: formaiprocessing.saireviewassociationprogressfmt
+#, object-pascal-format
+msgid "Association coverage in displayed preview: %.0f%%."
+msgstr "Cobertura de associação na pré-visualização exibida: %.0f%%."
+
+#: formaiprocessing.saireviewassociationsummaryfmt
+#, object-pascal-format
+msgid "Associations proposed: %d (current project: %d)."
+msgstr "Associações propostas: %d (projeto atual: %d)."
+
+#: formaiprocessing.saireviewcancel
+msgctxt "formaiprocessing.saireviewcancel"
+msgid "Cancel"
+msgstr "Cancelar"
+
+#: formaiprocessing.saireviewcancelhint
+msgid "Stop the AI processing that is currently running."
+msgstr "Interrompe o processamento de IA em andamento."
+
+#: formaiprocessing.saireviewcommentsavailable
+msgid "AI comments are shown below."
+msgstr "Os comentários da IA são exibidos abaixo."
+
+#: formaiprocessing.saireviewcommentschangedfmt
+#, object-pascal-format
+msgid "AI proposed comments. Current choice: %s."
+msgstr "A IA propôs comentários. Escolha atual: %s."
+
+#: formaiprocessing.saireviewcommentsdecisioncaption
+msgid "Comment choice"
+msgstr "Escolha dos comentários"
+
+#: formaiprocessing.saireviewcommentssectionsummaryfmt
+#, object-pascal-format
+msgid "Comments: %s"
+msgstr "Comentários: %s"
+
+#: formaiprocessing.saireviewcurrentcomments
+msgid "Current comment"
+msgstr "Comentário atual"
+
+#: formaiprocessing.saireviewcurrentprojecttab
+msgid "Current project"
+msgstr "Projeto atual"
+
+#: formaiprocessing.saireviewdeselectall
+msgctxt "formaiprocessing.saireviewdeselectall"
+msgid "Reject all"
+msgstr "Rejeitar todos"
+
+#: formaiprocessing.saireviewdeselectallhint
+msgid "Unmark all verses. Nothing will be applied until verses are accepted again."
+msgstr "Desmarca todos os versículos. Nada será aplicado até que versículos sejam aceitos novamente."
+
+#: formaiprocessing.saireviewdiscard
+msgctxt "formaiprocessing.saireviewdiscard"
+msgid "Discard"
+msgstr "Descartar"
+
+#: formaiprocessing.saireviewdiscardhint
+msgid "Close this review without applying AI results."
+msgstr "Fecha esta revisão sem aplicar os resultados da IA."
+
+#: formaiprocessing.saireviewerrorprefix
+#, object-pascal-format
+msgid "Error: %s"
+msgstr "Erro: %s"
+
+#: formaiprocessing.saireviewfailedwarningfmt
+#, object-pascal-format
+msgid "%d verses failed. They will not be applied unless you retry them successfully."
+msgstr "%d versículos falharam. Eles não serão aplicados, a menos que você os reprocesse com sucesso."
+
+#: formaiprocessing.saireviewgroupcaption
+msgctxt "formaiprocessing.saireviewgroupcaption"
+msgid "Verses to apply"
+msgstr "Versículos a aplicar"
+
+#: formaiprocessing.saireviewhidecomments
+msgid "Hide comments"
+msgstr "Ocultar comentários"
+
+#: formaiprocessing.saireviewkeepcurrentcomments
+msgid "Keep current comment"
+msgstr "Manter comentário atual"
+
+#: formaiprocessing.saireviewmergecomments
+msgid "Keep both comments"
+msgstr "Manter ambos os comentários"
+
+#: formaiprocessing.saireviewnoacceptedchanges
+msgid "There are no accepted AI changes selected to apply."
+msgstr "Não há mudanças da IA aceitas e selecionadas para aplicar."
+
+#: formaiprocessing.saireviewnocomments
+msgid "No AI comments for this verse."
+msgstr "Nenhum comentário da IA para este versículo."
+
+#: formaiprocessing.saireviewnofailedverses
+msgid "There are no failed verses to retry."
+msgstr "Não há versículos com falha para tentar novamente."
+
+#: formaiprocessing.saireviewreadysummaryfmt
+#, object-pascal-format
+msgid "Ready to apply %d accepted verses."
+msgstr "Pronto para aplicar %d versículos aceitos."
+
+#: formaiprocessing.saireviewrejectverse
+msgid "Reject verse"
+msgstr "Rejeitar versículo"
+
+#: formaiprocessing.saireviewrejectversehint
+msgid "Unmark the current verse so the project stays unchanged for this verse."
+msgstr "Desmarca o versículo atual para que o projeto permaneça inalterado neste versículo."
+
+#: formaiprocessing.saireviewretryfailed
+msgid "Retry failed"
+msgstr "Tentar falhas novamente"
+
+#: formaiprocessing.saireviewretryfailedhint
+msgid "Run the AI again only for verses that failed."
+msgstr "Executa a IA novamente apenas para os versículos que falharam."
+
+#: formaiprocessing.saireviewretrystartedfmt
+#, object-pascal-format
+msgid "Retrying %d failed verses."
+msgstr "Tentando novamente %d versículos com falha."
+
+#: formaiprocessing.saireviewselectall
+msgctxt "formaiprocessing.saireviewselectall"
+msgid "Accept all"
+msgstr "Aceitar todos"
+
+#: formaiprocessing.saireviewselectallhint
+msgid "Mark all completed verses to apply their accepted AI proposals."
+msgstr "Marca todos os versículos concluídos para aplicar as propostas aceitas da IA."
+
+#: formaiprocessing.saireviewshowcomments
+msgid "Review comments"
+msgstr "Revisar comentários"
+
+#: formaiprocessing.saireviewsummaryfmt
+#, object-pascal-format
+msgid "Selected: %d verses; ready to apply: %d verses; failed: %d."
+msgstr "Selecionados: %d versículos; prontos para aplicar: %d versículos; falhas: %d."
+
+#: formaiprocessing.saireviewtranslationsummary
+msgid "Review the proposed destination text above."
+msgstr "Revise acima o texto destino proposto."
+
+#: formaiprocessing.saireviewuseaicomments
+msgid "Use AI comment"
+msgstr "Usar comentário da IA"
+
+#: formaiprocessing.saireviewverseaccepted
+msgid "This verse is accepted and will be applied."
+msgstr "Este versículo está aceito e será aplicado."
+
+#: formaiprocessing.saireviewversenochanges
+msgid "The AI did not propose changes for this verse."
+msgstr "A IA não propôs mudanças para este versículo."
+
+#: formaiprocessing.saireviewversepending
+msgid "Waiting for AI result."
+msgstr "Aguardando resultado da IA."
+
+#: formaiprocessing.saireviewverseprocessing
+msgid "Processing this verse..."
+msgstr "Processando este versículo..."
+
+#: formaiprocessing.saireviewverserejected
+msgid "This verse is rejected and will not be applied."
+msgstr "Este versículo está rejeitado e não será aplicado."
+
 #: formaiprocessing.sapplysuccessful
 msgid "Changes applied successfully"
 msgstr "Mudanças aplicadas com sucesso"
+
+#: formaiprocessing.sapplysuccessfulfmt
+#, object-pascal-format
+msgid "Changes applied successfully (%d verses)"
+msgstr "Mudanças aplicadas com sucesso (%d versículos)"
 
 #: formaiprocessing.scancelconfirmation
 msgid "Are you sure you want to cancel the AI processing?"
@@ -290,20 +467,9 @@ msgstr "Tokens consumidos: 0"
 msgid "Tokens consumed: unavailable"
 msgstr "Tokens consumidos: indisponível"
 
-#: formaiprocessing.saiflowassociation
-msgctxt "formaiprocessing.saiflowassociation"
-msgid "Association"
-msgstr "Associação"
-
-#: formaiprocessing.saiflowtranslation
-msgctxt "formaiprocessing.saiflowtranslation"
-msgid "Translation"
-msgstr "Tradução"
-
 #: formapplypatch.signoredversesonpatch
 #, object-pascal-format
-msgid ""
-"%d verses are identical to what you have in your project and were ignored."
+msgid "%d verses are identical to what you have in your project and were ignored."
 msgstr "%d versículos são idênticos aos do seu projeto e foram ignorados."
 
 #: formapplypatch.sinfo
@@ -312,12 +478,8 @@ msgid "Information"
 msgstr "Informação"
 
 #: formapplypatch.snoupdatedversesonpatch
-msgid ""
-"The content of this patch is identical to what you have in your project. The"
-" patch will not be applied."
-msgstr ""
-"O conteúdo deste patch é idêntico ao que você tem em seu projeto. O patch "
-"não será aplicado."
+msgid "The content of this patch is identical to what you have in your project. The patch will not be applied."
+msgstr "O conteúdo deste patch é idêntico ao que você tem em seu projeto. O patch não será aplicado."
 
 #: formapplypatch.spatchsuccessfullyapplied
 msgid "Patch successfully applied"
@@ -337,18 +499,14 @@ msgctxt "formllmoptions.rsbtnclose"
 msgid "Close"
 msgstr "Fechar"
 
-#: formllmoptions.rsbtnclearexamples
-msgid "Clear List"
-msgstr "Limpar lista"
+#: formllmoptions.rsbtnmanageexamples
+msgid "Manage examples..."
+msgstr "Gerenciar exemplos..."
 
 #: formllmoptions.rsbtnok
 msgctxt "formllmoptions.rsbtnok"
 msgid "OK"
 msgstr "OK"
-
-#: formllmoptions.rsbtnremoveexample
-msgid "Remove Selected"
-msgstr "Remover selecionado"
 
 #: formllmoptions.rsbtnreset
 msgid "Reset to Default"
@@ -359,22 +517,9 @@ msgctxt "formllmoptions.rsbtntest"
 msgid "Test"
 msgstr "Testar"
 
-#: formllmoptions.rsbtnmanageexamples
-msgid "Manage examples..."
-msgstr "Gerenciar exemplos..."
-
 #: formllmoptions.rsbtnviewdefault
 msgid "View Current Prompt"
 msgstr "Exibir prompt atual"
-
-#: formllmoptions.rsclearexamplesprompt
-#, object-pascal-format
-msgid "Remove all saved examples for the %s flow?"
-msgstr "Remover todos os exemplos salvos do fluxo %s?"
-
-#: formllmoptions.rsclearexamplestitle
-msgid "Clear examples"
-msgstr "Limpar exemplos"
 
 #: formllmoptions.rscommonsettings
 msgctxt "formllmoptions.rscommonsettings"
@@ -382,12 +527,8 @@ msgid "Common Settings (All Flows)"
 msgstr "Configurações comuns (todos os fluxos)"
 
 #: formllmoptions.rscustominstructionshint
-msgid ""
-"Add specific guidelines for your project (e.g., translation philosophy, "
-"examples). Leave empty to use only the default prompt."
-msgstr ""
-"Adicione diretrizes específicas para o seu projeto (por exemplo, filosofia "
-"de tradução, exemplos). Deixe em branco para usar apenas o prompt padrão."
+msgid "Add specific guidelines for your project (e.g., translation philosophy, examples). Leave empty to use only the default prompt."
+msgstr "Adicione diretrizes específicas para o seu projeto (por exemplo, filosofia de tradução, exemplos). Deixe em branco para usar apenas o prompt padrão."
 
 #: formllmoptions.rsdefaultprompttitle
 #, object-pascal-format
@@ -402,6 +543,12 @@ msgstr "%d exemplo(s) salvo(s)."
 #: formllmoptions.rsfallbacktestprompt
 msgid "Tell me something about you. Answer in JSON format."
 msgstr "Diga alguma coisa sobre você. Responda em formato JSON."
+
+#: formllmoptions.rsformatinfofmt
+#, object-pascal-format
+msgctxt "formllmoptions.rsformatinfofmt"
+msgid "Info: %s"
+msgstr "Informação: %s"
 
 #: formllmoptions.rslabelapikey
 msgctxt "formllmoptions.rslabelapikey"
@@ -440,12 +587,8 @@ msgid "Saved Examples:"
 msgstr "Exemplos salvos:"
 
 #: formllmoptions.rssystemprompt
-msgid ""
-"You are a helpful assistant ready to assist users with their questions on "
-"Bible translation."
-msgstr ""
-"Você é um assistente solícito, pronto para ajudar usuários com suas questões"
-" relacionadas a tradução bíblica."
+msgid "You are a helpful assistant ready to assist users with their questions on Bible translation."
+msgstr "Você é um assistente solícito, pronto para ajudar usuários com suas questões relacionadas a tradução bíblica."
 
 #: formllmoptions.rstestfailedtitle
 msgid "Test failed"
@@ -458,155 +601,6 @@ msgstr "Resultado do teste"
 #: formllmoptions.rsuseflowoverride
 msgid "Use flow-specific provider/model/API key"
 msgstr "Usar provedor/modelo/chave de API específicos deste fluxo"
-
-#: formflowexamples.rsflowexamplestitle
-#, object-pascal-format
-msgctxt "formflowexamples.rsflowexamplestitle"
-msgid "%s examples"
-msgstr "Exemplos de %s"
-
-#: formflowexamples.rsexampleslist
-msgctxt "formflowexamples.rsexampleslist"
-msgid "Examples"
-msgstr "Exemplos"
-
-#: formflowexamples.rsaddcurrentverse
-msgctxt "formflowexamples.rsaddcurrentverse"
-msgid "Add current verse"
-msgstr "Adicionar versículo atual"
-
-#: formflowexamples.rsmoveexampleup
-msgctxt "formflowexamples.rsmoveexampleup"
-msgid "Move up"
-msgstr "Mover para cima"
-
-#: formflowexamples.rsmoveexampledown
-msgctxt "formflowexamples.rsmoveexampledown"
-msgid "Move down"
-msgstr "Mover para baixo"
-
-#: formflowexamples.rsremoveexample
-msgctxt "formflowexamples.rsremoveexample"
-msgid "Remove"
-msgstr "Remover"
-
-#: formflowexamples.rsclearexamples
-msgctxt "formflowexamples.rsclearexamples"
-msgid "Clear"
-msgstr "Limpar"
-
-#: formflowexamples.rsbtnok
-msgctxt "formflowexamples.rsbtnok"
-msgid "OK"
-msgstr "OK"
-
-#: formflowexamples.rsbtncancel
-msgctxt "formflowexamples.rsbtncancel"
-msgid "Cancel"
-msgstr "Cancelar"
-
-#: formflowexamples.rsvisualpreview
-msgctxt "formflowexamples.rsvisualpreview"
-msgid "Visual preview"
-msgstr "Prévia visual"
-
-#: formflowexamples.rspromptresponse
-msgctxt "formflowexamples.rspromptresponse"
-msgid "Prompt response"
-msgstr "Resposta do prompt"
-
-#: formflowexamples.rssourcetext
-msgctxt "formflowexamples.rssourcetext"
-msgid "Source text"
-msgstr "Texto origem"
-
-#: formflowexamples.rsdestinationtext
-msgctxt "formflowexamples.rsdestinationtext"
-msgid "Destination / translation"
-msgstr "Destino / tradução"
-
-#: formflowexamples.rsnoexamples
-msgctxt "formflowexamples.rsnoexamples"
-msgid "No saved examples."
-msgstr "Nenhum exemplo salvo."
-
-#: formflowexamples.rsreplaceexampletitle
-msgctxt "formflowexamples.rsreplaceexampletitle"
-msgid "Example already exists"
-msgstr "Exemplo já existe"
-
-#: formflowexamples.rsreplaceexampleprompt
-#, object-pascal-format
-msgctxt "formflowexamples.rsreplaceexampleprompt"
-msgid ""
-"This verse is already saved as an example for the %s flow.\n"
-"\n"
-"Do you want to replace it with the current verse state?"
-msgstr ""
-"Este versículo já está salvo como exemplo para o fluxo %s.\n"
-"\n"
-"Deseja substituí-lo pelo estado atual do versículo?"
-
-#: formflowexamples.rsclearexamplestitle
-msgctxt "formflowexamples.rsclearexamplestitle"
-msgid "Clear examples"
-msgstr "Limpar exemplos"
-
-#: formflowexamples.rsclearexamplesprompt
-#, object-pascal-format
-msgctxt "formflowexamples.rsclearexamplesprompt"
-msgid "Remove all saved examples for the %s flow?"
-msgstr "Remover todos os exemplos salvos do fluxo %s?"
-
-#: formflowexamples.rswarningtitle
-msgctxt "formflowexamples.rswarningtitle"
-msgid "Warning"
-msgstr "Aviso"
-
-#: formflowexamples.rspreviewready
-msgctxt "formflowexamples.rspreviewready"
-msgid "Visual preview ready."
-msgstr "Prévia visual pronta."
-
-#: formflowexamples.rspreviewnovisualassociations
-msgctxt "formflowexamples.rspreviewnovisualassociations"
-msgid "This example has no visual associations to display."
-msgstr "Este exemplo não possui associações visuais para exibir."
-
-#: formflowexamples.rshintaddcurrentverse
-msgctxt "formflowexamples.rshintaddcurrentverse"
-msgid "Add or replace an example using the current source and destination verses."
-msgstr "Adiciona ou substitui um exemplo usando os versículos origem e destino atuais."
-
-#: formflowexamples.rshintmoveexampleup
-msgctxt "formflowexamples.rshintmoveexampleup"
-msgid "Move the selected example earlier in the prompt."
-msgstr "Move o exemplo selecionado para mais cedo no prompt."
-
-#: formflowexamples.rshintmoveexampledown
-msgctxt "formflowexamples.rshintmoveexampledown"
-msgid "Move the selected example later in the prompt."
-msgstr "Move o exemplo selecionado para mais tarde no prompt."
-
-#: formflowexamples.rshintremoveexample
-msgctxt "formflowexamples.rshintremoveexample"
-msgid "Remove the selected example from this working list."
-msgstr "Remove o exemplo selecionado desta lista de trabalho."
-
-#: formflowexamples.rshintclearexamples
-msgctxt "formflowexamples.rshintclearexamples"
-msgid "Remove all examples from this working list."
-msgstr "Remove todos os exemplos desta lista de trabalho."
-
-#: formflowexamples.rshintok
-msgctxt "formflowexamples.rshintok"
-msgid "Save these example changes."
-msgstr "Salva estas alterações nos exemplos."
-
-#: formflowexamples.rshintcancel
-msgctxt "formflowexamples.rshintcancel"
-msgid "Close without saving example changes."
-msgstr "Fecha sem salvar as alterações nos exemplos."
 
 #: formnewproject.sback
 msgid "< Back"
@@ -631,9 +625,17 @@ msgctxt "formnewproject.schooseatleastonetext"
 msgid "Please choose a source Bible text"
 msgstr "Escolha um texto bíblico de origem"
 
+#: formnewproject.schoosebiblemoduletitle
+msgid "Choose a theWord Bible module"
+msgstr "Escolha um módulo bíblico do theWord"
+
 #: formnewproject.schoosedestinationtext
 msgid "Please choose a destination Bible text for an association project"
 msgstr "Escolha um texto bíblico de destino para um projeto de associação"
+
+#: formnewproject.schoosedictionarymoduletitle
+msgid "Choose a theWord dictionary module"
+msgstr "Escolha um módulo de dicionário do theWord"
 
 #: formnewproject.schooseprojectfile
 msgid "Please choose a .bib project file"
@@ -655,8 +657,7 @@ msgstr "Dicionários"
 #: formnewproject.sdictionaryfilter
 msgctxt "formnewproject.sdictionaryfilter"
 msgid "theWord dictionary modules (*.dct.twm)|*.dct.twm|All files|*.*"
-msgstr ""
-"Módulos de dicionário do theWord (*.dct.twm)|*.dct.twm|Todos os arquivos|*.*"
+msgstr "Módulos de dicionário do theWord (*.dct.twm)|*.dct.twm|Todos os arquivos|*.*"
 
 #: formnewproject.seditstatuscatalog
 msgctxt "formnewproject.seditstatuscatalog"
@@ -698,6 +699,7 @@ msgid "theWord Bible modules (*.ont, *.nt)|*.ont;*.nt"
 msgstr "Módulos bíblicos do theWord (*.ont, *.nt)|*.ont;*.nt"
 
 #: formnewproject.snewtranslationprojectname
+msgctxt "formnewproject.snewtranslationprojectname"
 msgid "New translation project"
 msgstr "Novo projeto de tradução"
 
@@ -828,14 +830,8 @@ msgid "Tokenizer: %s"
 msgstr "Tokenizador: %s"
 
 #: formnewproject.sscenarioassociationdescription
-msgid ""
-"Use this when you already have a source text and a translated destination "
-"text. iBiblia will guide you through associating source syntagms with "
-"destination syntagms, so both source and destination texts are required."
-msgstr ""
-"Use este cenário quando você já tem um texto origem e um texto destino "
-"traduzido. O iBiblia guiará você na associação de sintagmas do texto origem "
-"aos sintagmas do texto destino; por isso, origem e destino são obrigatórios."
+msgid "Use this when you already have a source text and a translated destination text. iBiblia will guide you through associating source syntagms with destination syntagms, so both source and destination texts are required."
+msgstr "Use este cenário quando você já tem um texto origem e um texto destino traduzido. O iBiblia guiará você na associação de sintagmas do texto origem aos sintagmas do texto destino; por isso, origem e destino são obrigatórios."
 
 #: formnewproject.sscenarioassociationtitle
 msgid "Translation association project"
@@ -846,14 +842,8 @@ msgid "Scenario"
 msgstr "Cenário"
 
 #: formnewproject.sscenariotranslationdescription
-msgid ""
-"Use this when the destination text will be created inside iBiblia. Only the "
-"source text is required now; the destination text can start empty and be "
-"filled by the user."
-msgstr ""
-"Use este cenário quando o texto destino será criado dentro do iBiblia. "
-"Apenas o texto origem é obrigatório agora; o texto destino pode começar "
-"vazio e ser preenchido pelo usuário."
+msgid "Use this when the destination text will be created inside iBiblia. Only the source text is required now; the destination text can start empty and be filled by the user."
+msgstr "Use este cenário quando o texto destino será criado dentro do iBiblia. Apenas o texto origem é obrigatório agora; o texto destino pode começar vazio e ser preenchido pelo usuário."
 
 #: formnewproject.sscenariotranslationtitle
 msgid "Translation project"
@@ -892,16 +882,8 @@ msgstr "Catálogo atual: %d estados"
 
 #: formnewproject.sstatuscatalogdescription
 msgctxt "formnewproject.sstatuscatalogdescription"
-msgid ""
-"The status catalog defines the labels, order, and colors used to track verse"
-" progress. iBiblia uses it in the project tree, filters, and review "
-"workflows. You can keep the default catalog for the selected scenario or "
-"customize it before creating the project."
-msgstr ""
-"O catálogo de estados define os rótulos, a ordem e as cores usados para "
-"acompanhar o progresso dos versículos. O iBiblia o utiliza na árvore do "
-"projeto, nos filtros e nos fluxos de revisão. Você pode manter o catálogo "
-"padrão do cenário escolhido ou personalizá-lo antes de criar o projeto."
+msgid "The status catalog defines the labels, order, and colors used to track verse progress. iBiblia uses it in the project tree, filters, and review workflows. You can keep the default catalog for the selected scenario or customize it before creating the project."
+msgstr "O catálogo de estados define os rótulos, a ordem e as cores usados para acompanhar o progresso dos versículos. O iBiblia o utiliza na árvore do projeto, nos filtros e nos fluxos de revisão. Você pode manter o catálogo padrão do cenário escolhido ou personalizá-lo antes de criar o projeto."
 
 #: formnewproject.sstatuscatalogready
 #, object-pascal-format
@@ -992,6 +974,16 @@ msgctxt "formprincipal.sanalyzingverse"
 msgid "Analyzing verse..."
 msgstr "Analisando versículo..."
 
+#: formprincipal.sbuttoncancel
+msgctxt "formprincipal.sbuttoncancel"
+msgid "Cancel"
+msgstr "Cancelar"
+
+#: formprincipal.sbuttonyes
+msgctxt "formprincipal.sbuttonyes"
+msgid "Yes"
+msgstr "Sim"
+
 #: formprincipal.schanged
 msgid "changed"
 msgstr "modificado"
@@ -1033,6 +1025,70 @@ msgstr "destino"
 msgctxt "formprincipal.sdestinationtext"
 msgid "Destination"
 msgstr "Destino"
+
+#: formprincipal.sguideassociationexistingaddtext
+msgid "To add words to the association, hold Ctrl+Shift and select new words."
+msgstr "Para adicionar palavras à associação, segure Ctrl+Shift e selecione novas palavras."
+
+#: formprincipal.sguideassociationexistingdisassociatetext
+msgid "To disassociate, press Ctrl+Shift and click each associated word."
+msgstr "Para desassociar, pressione Ctrl+Shift e clique cada uma das palavras associadas."
+
+#: formprincipal.sguideassociationexistingremovetext
+msgid "To remove words from the association, press Ctrl+Shift and click the word."
+msgstr "Para remover palavras da associação, pressione Ctrl+Shift e clique na palavra."
+
+#: formprincipal.sguideassociationexistingtitle
+msgid "Guide: adjust the association"
+msgstr "Guia: ajustar a associação"
+
+#: formprincipal.sguideassociationnoselectiontext
+msgid "Click a word in the source text to begin."
+msgstr "Clique numa palavra do texto origem para começar."
+
+#: formprincipal.sguideassociationselectedaddtext
+msgid "To add words to the selection, hold Ctrl and click another word in the source text."
+msgstr "Para adicionar palavras à seleção, segure Ctrl e clique em outra palavra do texto origem."
+
+#: formprincipal.sguideassociationselectedassociatetext
+msgid "To associate this selection with the other text, hold Shift and select the equivalent word(s) in the destination text. Hold Ctrl too to add words to the selection."
+msgstr "Para associar esta seleção com o outro texto, mantenha Shift pressionado e selecione a(s) palavra(s) equivalentes no texto destino. Segure Ctrl também para adicionar palavras à seleção."
+
+#: formprincipal.sguideassociationselectedquicktext
+msgid "To associate this selection with one destination word and select the next word, right-click the equivalent word in the other text."
+msgstr "Para associar esta seleção a uma única palavra do texto destino e já selecionar a próxima palavra, clique com o botão direito na palavra equivalente do outro texto."
+
+#: formprincipal.sguideassociationselectedtitle
+msgid "Guide: complete the association"
+msgstr "Guia: concluir a associação"
+
+#: formprincipal.sguideassociationtitle
+msgid "Guide: associate words"
+msgstr "Guia: associar palavras"
+
+#: formprincipal.sguidemodehint
+msgid "Show contextual guidance for the main workflow"
+msgstr "Mostrar orientação contextual para o fluxo principal"
+
+#: formprincipal.sguidemodemenu
+msgid "Guide mode"
+msgstr "Modo guia"
+
+#: formprincipal.sguidenoprojecttext
+msgid "Create or open a project. Association projects copy Strong's and morphology from Source to Destination; translation projects let you write Destination first."
+msgstr "Crie ou abra um projeto. Projetos de associação copiam Strong e morfologia da origem para o destino; projetos de tradução permitem escrever o destino primeiro."
+
+#: formprincipal.sguidenoprojecttitle
+msgid "Guide: start a project"
+msgstr "Guia: iniciar um projeto"
+
+#: formprincipal.sguidetranslationtext
+msgid "Double-click an empty area in Destination to write the translation. Use Save to apply or Cancel to discard; Esc also saves and closes. Once Destination has text, the guide will switch to association."
+msgstr "Dê duplo clique numa área vazia do destino para escrever a tradução. Use Salvar para aplicar ou Cancelar para descartar; Esc também salva e fecha. Quando houver texto no destino, o guia passará para associação."
+
+#: formprincipal.sguidetranslationtitle
+msgid "Guide: translate the verse"
+msgstr "Guia: traduzir o versículo"
 
 #: formprincipal.sheaderassociationsempty
 msgid "Associations: -"
@@ -1088,8 +1144,13 @@ msgid "Status: %s"
 msgstr "Estado: %s"
 
 #: formprincipal.sheaderunsavedchanges
+msgctxt "formprincipal.sheaderunsavedchanges"
 msgid "Unsaved changes"
 msgstr "Alterações não salvas"
+
+#: formprincipal.shideguidebutton
+msgid "Hide guide"
+msgstr "Ocultar guia"
 
 #: formprincipal.sinterlineartext
 msgctxt "formprincipal.sinterlineartext"
@@ -1150,19 +1211,30 @@ msgstr ""
 msgid "Loading source text..."
 msgstr ""
 
+#: formprincipal.smaincaption
+msgctxt "formprincipal.smaincaption"
+msgid "iBiblia"
+msgstr "iBiblia"
+
+#: formprincipal.smaincaptionprojectfmt
+#, object-pascal-format
+msgctxt "formprincipal.smaincaptionprojectfmt"
+msgid "iBiblia | %s | %s (%s)"
+msgstr "iBiblia | %s | %s (%s)"
+
 #: formprincipal.snewassociationproject
 msgctxt "formprincipal.snewassociationproject"
 msgid "New association project"
 msgstr "Novo projeto de associação"
 
+#: formprincipal.snewprojectprogresstitle
+msgid "Creating project"
+msgstr ""
+
 #: formprincipal.snewtranslationproject
 msgctxt "formprincipal.snewtranslationproject"
 msgid "New translation project"
 msgstr "Novo projeto de tradução"
-
-#: formprincipal.snewprojectprogresstitle
-msgid "Creating project"
-msgstr ""
 
 #: formprincipal.sopenproject
 msgctxt "formprincipal.sopenproject"
@@ -1203,11 +1275,18 @@ msgstr ""
 "O arquivo de projeto selecionado não existe:\n"
 "%s"
 
+#: formprincipal.sprojectfiletypename
+msgctxt "formprincipal.sprojectfiletypename"
+msgid "iBiblia Project File"
+msgstr "Arquivo de projeto iBiblia"
+
 #: formprincipal.srebuildassociationmemoryprogress
+msgctxt "formprincipal.srebuildassociationmemoryprogress"
 msgid "Recreating association memory..."
 msgstr ""
 
 #: formprincipal.srebuildassociationmemorytitle
+msgctxt "formprincipal.srebuildassociationmemorytitle"
 msgid "Association memory"
 msgstr ""
 
@@ -1233,6 +1312,15 @@ msgstr "Referência2"
 msgid "Register .bib file association"
 msgstr "Registrar a extensão de arquivo .bib"
 
+#: formprincipal.sregisterfileassociationadminretry
+msgctxt "formprincipal.sregisterfileassociationadminretry"
+msgid ""
+"Failed to register file association. This operation requires administrator rights.\n"
+"Do you want to retry as administrator?"
+msgstr ""
+"Falha ao registrar a associação de arquivo. Esta operação requer direitos de administrador.\n"
+"Deseja tentar novamente como administrador?"
+
 #: formprincipal.sregisterfileassociationfailure
 msgid "Failed to register file association for .bib files"
 msgstr "Falha ao registrar a extensão de arquivo .bib"
@@ -1240,6 +1328,16 @@ msgstr "Falha ao registrar a extensão de arquivo .bib"
 #: formprincipal.sregisterfileassociationsuccess
 msgid "Successfully registered file association for .bib files"
 msgstr "Sucesso ao registrar a extensão de arquivo .bib"
+
+#: formprincipal.sregisterfileassociationtakeoverprompt
+#, object-pascal-format
+msgctxt "formprincipal.sregisterfileassociationtakeoverprompt"
+msgid ""
+"The .bib extension is currently associated with: %s.\n"
+"Do you want to take over the association for iBiblia?"
+msgstr ""
+"A extensão .bib está associada atualmente a: %s.\n"
+"Deseja assumir a associação para o iBiblia?"
 
 #: formprincipal.sresetlayouthint
 msgid "Restore the default panel layout"
@@ -1273,14 +1371,6 @@ msgstr ""
 msgid "Discard unsaved changes in the current verse"
 msgstr "Descartar alterações não salvas no versículo atual"
 
-#: formprincipal.sbuttonyes
-msgid "Yes"
-msgstr "Sim"
-
-#: formprincipal.sbuttoncancel
-msgid "Cancel"
-msgstr "Cancelar"
-
 #: formprincipal.ssavechanges
 msgid "Would you like to save your changes?"
 msgstr "Deseja salvar as alterações?"
@@ -1305,9 +1395,10 @@ msgid "Editing and review"
 msgstr ""
 
 #: formprincipal.sshortcutexportproject
+#, fuzzy
 msgctxt "formprincipal.sshortcutexportproject"
 msgid "Export project"
-msgstr ""
+msgstr "Exportar projeto"
 
 #: formprincipal.sshortcutfinishedit
 msgid "Finish verse text editing"
@@ -1326,9 +1417,10 @@ msgid "Navigation"
 msgstr "Navegação"
 
 #: formprincipal.sshortcutnewproject
+#, fuzzy
 msgctxt "formprincipal.sshortcutnewproject"
 msgid "New project"
-msgstr ""
+msgstr "Novo projeto"
 
 #: formprincipal.sshortcutnextverse
 #, fuzzy
@@ -1402,27 +1494,18 @@ msgstr "Usar o modelo de sugestão estatístico"
 msgid "Use 1..9 to set the first visible statuses for the current verse"
 msgstr ""
 
-#: formprincipal.sstatusreviewtitle
-msgid "Review by status"
-msgstr "Revisão por estado"
-
 #: formprincipal.sstatusreviewfilterhint
 msgid "Check statuses to show matching verses in the tree"
 msgstr "Marque os estados que devem aparecer na árvore"
-
-#: formprincipal.sstatusreviewnoproject
-msgid "Open a project to review statuses"
-msgstr "Abra um projeto para revisar os estados"
 
 #: formprincipal.sstatusreviewitemfmt
 #, object-pascal-format
 msgid "%d  %s"
 msgstr "%d  %s"
 
-#: formprincipal.sstatusreviewshowingfmt
-#, object-pascal-format
-msgid "Showing: %d/%d"
-msgstr "Exibindo: %d/%d"
+#: formprincipal.sstatusreviewnoproject
+msgid "Open a project to review statuses"
+msgstr "Abra um projeto para revisar os estados"
 
 #: formprincipal.sstatusreviewshowall
 msgid "All"
@@ -1432,9 +1515,23 @@ msgstr "Todos"
 msgid "Show all statuses in the tree"
 msgstr "Mostrar todos os estados na árvore"
 
+#: formprincipal.sstatusreviewshowingfmt
+#, object-pascal-format
+msgid "Showing: %d/%d"
+msgstr "Exibindo: %d/%d"
+
+#: formprincipal.sstatusreviewtitle
+msgid "Review by status"
+msgstr "Revisão por estado"
+
 #: formprincipal.ssuggestionmode
 msgid "Suggestion mode"
 msgstr "Modo de sugestão"
+
+#: formprincipal.sthewordhighlightcolorsmenu
+msgctxt "formprincipal.sthewordhighlightcolorsmenu"
+msgid "theWord highlight colors..."
+msgstr "Cores de destaque do theWord..."
 
 #: formprincipal.streelegendassociated
 msgid "Associated"
@@ -1485,6 +1582,20 @@ msgctxt "formprojectexport.sanalyticalconcordance"
 msgid "AnalyticalConcordance"
 msgstr "ConcordanciaAnalitica"
 
+#: formprojectexport.sexportcompletedprompt
+#, object-pascal-format
+msgid ""
+"Export completed successfully.\n"
+"\n"
+"%s\n"
+"\n"
+"Open the exported file location?"
+msgstr ""
+
+#: formprojectexport.sexportcompletedtitle
+msgid "Export completed"
+msgstr ""
+
 #: formprojectexport.sexportconcordanceprogress
 msgid "Exporting concordance..."
 msgstr "Exportando concordância..."
@@ -1517,10 +1628,22 @@ msgctxt "formprojectexport.smyswordmodule"
 msgid "MySword Bible module (*.bbl.mybible)"
 msgstr "Módulo bíblico do MySword (*.bbl.mybible)"
 
+#: formprojectexport.ssavemoduleas
+#, fuzzy
+msgctxt "formprojectexport.ssavemoduleas"
+msgid "Save module as..."
+msgstr "Salvar módulo como..."
+
 #: formprojectexport.ssyntheticconcordance
 msgctxt "formprojectexport.ssyntheticconcordance"
 msgid "SyntheticConcordance"
 msgstr "ConcordanciaSintetica"
+
+#: formprojectexport.stheworddictionarymodule
+#, fuzzy
+msgctxt "formprojectexport.stheworddictionarymodule"
+msgid "theWord dictionary module (*.dct.twm)"
+msgstr "Módulo de dicionário do theWord (*.dct.twm)"
 
 #: formprojectexport.sthewordntmodule
 msgctxt "formprojectexport.sthewordntmodule"
@@ -1537,10 +1660,13 @@ msgctxt "formprojectexport.sthewordotmodule"
 msgid "theWord Bible module (*.ot)"
 msgstr "Módulo bíblico do theWord (*.ot)"
 
+#: formprojectproperties.sapply
+msgctxt "formprojectproperties.sapply"
+msgid "Apply"
+msgstr "Aplicar"
+
 #: formprojectproperties.schangetextconfirmation
 #, object-pascal-format
-#| msgid ""
-#| "Are you sure you want to replace this Bible text with a new one?"
 msgctxt "formprojectproperties.schangetextconfirmation"
 msgid ""
 "This will replace the %s text in every verse of the project with the selected Bible module.\n"
@@ -1557,10 +1683,6 @@ msgstr ""
 
 #: formprojectproperties.schangetextconfirmationassociation
 #, object-pascal-format
-#| msgid ""
-#| "Loading a new Bible text will cause all your existing associations to be discarded. But, if you click 'Yes', iBiblia can try to keep existing associations for you.\n"
-#| "\n"
-#| "Would you like iBiblia to do that?"
 msgctxt "formprojectproperties.schangetextconfirmationassociation"
 msgid ""
 "This will replace the %s text in every verse of the project with the selected Bible module.\n"
@@ -1594,7 +1716,6 @@ msgid "Please choose a theWord Bible module file..."
 msgstr "Escolha um arquivo de módulo bíblico do theWord..."
 
 #: formprojectproperties.schooseanothertext
-#| msgid "Replace text"
 msgctxt "formprojectproperties.schooseanothertext"
 msgid "Replace text in whole project"
 msgstr "Substituir texto no projeto inteiro"
@@ -1614,14 +1735,12 @@ msgid "Clearing project associations..."
 msgstr "Limpando associações do projeto..."
 
 #: formprojectproperties.scleartext
-#| msgid "Clear Bible text"
 msgctxt "formprojectproperties.scleartext"
 msgid "Clear text in whole project"
 msgstr "Limpar texto no projeto inteiro"
 
 #: formprojectproperties.scleartextconfirmation
 #, object-pascal-format
-#| msgid "Are you sure you want to clear this Bible text?"
 msgctxt "formprojectproperties.scleartextconfirmation"
 msgid ""
 "This will clear the %s text in every verse of the project.\n"
@@ -1638,9 +1757,6 @@ msgstr ""
 
 #: formprojectproperties.scleartextconfirmationassociation
 #, object-pascal-format
-#| msgid ""
-#| "Are you sure you want to clear this Bible text?\n"
-#| "All your associations will be lost!"
 msgctxt "formprojectproperties.scleartextconfirmationassociation"
 msgid ""
 "This will clear the %s text in every verse of the project.\n"
@@ -1678,14 +1794,15 @@ msgstr "Dicionários"
 #: formprojectproperties.sdictionaryfilter
 msgctxt "formprojectproperties.sdictionaryfilter"
 msgid "theWord dictionary modules (*.dct.twm)|*.dct.twm|All files|*.*"
-msgstr ""
-"Módulos de dicionário do theWord (*.dct.twm)|*.dct.twm|Todos os arquivos|*.*"
+msgstr "Módulos de dicionário do theWord (*.dct.twm)|*.dct.twm|Todos os arquivos|*.*"
 
 #: formprojectproperties.sdictionaryoptional
+msgctxt "formprojectproperties.sdictionaryoptional"
 msgid "Optional."
 msgstr "Opcional."
 
 #: formprojectproperties.sdictionaryready
+msgctxt "formprojectproperties.sdictionaryready"
 msgid "Dictionary ready."
 msgstr "Dicionário pronto."
 
@@ -1693,6 +1810,11 @@ msgstr "Dicionário pronto."
 msgctxt "formprojectproperties.seditstatuscatalog"
 msgid "Edit status catalog..."
 msgstr "Editar catálogo de estados..."
+
+#: formprojectproperties.sfontlabel
+msgctxt "formprojectproperties.sfontlabel"
+msgid "Font"
+msgstr "Fonte"
 
 #: formprojectproperties.skeepcurrenttokenizer
 msgctxt "formprojectproperties.skeepcurrenttokenizer"
@@ -1707,6 +1829,11 @@ msgstr "Migrando associações do projeto..."
 msgctxt "formprojectproperties.smorphology"
 msgid "Morphology"
 msgstr "Morfologia"
+
+#: formprojectproperties.smorphologydictionarylabel
+msgctxt "formprojectproperties.smorphologydictionarylabel"
+msgid "Morphology dictionary"
+msgstr "Dicionário morfológico"
 
 #: formprojectproperties.snewtestamentfilter
 msgctxt "formprojectproperties.snewtestamentfilter"
@@ -1780,9 +1907,19 @@ msgstr "Catálogo de estados alterado."
 msgid "Tokenizer: %s -> %s"
 msgstr "Tokenizador: %s -> %s"
 
+#: formprojectproperties.sprojectnamelabel
+msgctxt "formprojectproperties.sprojectnamelabel"
+msgid "Name"
+msgstr "Nome"
+
 #: formprojectproperties.sprojectnamerequired
+msgctxt "formprojectproperties.sprojectnamerequired"
 msgid "Please choose a name for the project."
 msgstr "Escolha um nome para o projeto."
+
+#: formprojectproperties.sprojectpropertiestitle
+msgid "Project properties"
+msgstr "Propriedades"
 
 #: formprojectproperties.sprojectscenariofmt
 #, object-pascal-format
@@ -1794,6 +1931,11 @@ msgstr "Cenário: %s"
 msgctxt "formprojectproperties.sprojecttab"
 msgid "Project"
 msgstr "Projeto"
+
+#: formprojectproperties.spropertiesgroup
+msgctxt "formprojectproperties.spropertiesgroup"
+msgid "Properties"
+msgstr "Propriedades"
 
 #: formprojectproperties.sreference1tab
 msgctxt "formprojectproperties.sreference1tab"
@@ -1858,15 +2000,8 @@ msgstr "Catálogo atual: %d estados"
 
 #: formprojectproperties.sstatuscatalogdescription
 msgctxt "formprojectproperties.sstatuscatalogdescription"
-msgid ""
-"The status catalog defines the labels, order, and colors used to track verse"
-" progress. iBiblia uses it in the project tree, filters, and review "
-"workflows. Changes remain pending until you confirm the project properties."
-msgstr ""
-"O catálogo de estados define os rótulos, a ordem e as cores usados para "
-"acompanhar o progresso dos versículos. O iBiblia o utiliza na árvore do "
-"projeto, nos filtros e nos fluxos de revisão. As alterações permanecem "
-"pendentes até você confirmar as propriedades do projeto."
+msgid "The status catalog defines the labels, order, and colors used to track verse progress. iBiblia uses it in the project tree, filters, and review workflows. Changes remain pending until you confirm the project properties."
+msgstr "O catálogo de estados define os rótulos, a ordem e as cores usados para acompanhar o progresso dos versículos. O iBiblia o utiliza na árvore do projeto, nos filtros e nos fluxos de revisão. As alterações permanecem pendentes até você confirmar as propriedades do projeto."
 
 #: formprojectproperties.sstatustab
 msgctxt "formprojectproperties.sstatustab"
@@ -1877,6 +2012,16 @@ msgstr "Estados"
 msgctxt "formprojectproperties.sstrong"
 msgid "Strong"
 msgstr "Strong"
+
+#: formprojectproperties.sstrongdictionarylabel
+msgctxt "formprojectproperties.sstrongdictionarylabel"
+msgid "Strong's dictionary"
+msgstr "Dicionário Strong"
+
+#: formprojectproperties.stextdescriptionlabel
+msgctxt "formprojectproperties.stextdescriptionlabel"
+msgid "Text description"
+msgstr "Descrição do texto"
 
 #: formprojectproperties.stextpendingclear
 msgid "Pending clear on OK."
@@ -1933,6 +2078,124 @@ msgctxt "formprojectproperties.swholebiblefilter"
 msgid "theWord Bible modules (*.ont, *.ot, *.nt)|*.ont;*.ot;*.nt"
 msgstr "Módulos bíblicos do theWord (*.ont, *.ot, *.nt)|*.ont;*.ot;*.nt"
 
+#: formthewordhighlightercolors.sbackgroundbutton
+msgctxt "formthewordhighlightercolors.sbackgroundbutton"
+msgid "Background..."
+msgstr "Fundo..."
+
+#: formthewordhighlightercolors.sboldstyle
+msgctxt "formthewordhighlightercolors.sboldstyle"
+msgid "Bold"
+msgstr "Negrito"
+
+#: formthewordhighlightercolors.sbuttonapply
+msgctxt "formthewordhighlightercolors.sbuttonapply"
+msgid "Apply"
+msgstr "Aplicar"
+
+#: formthewordhighlightercolors.sbuttoncancel
+msgctxt "formthewordhighlightercolors.sbuttoncancel"
+msgid "Cancel"
+msgstr "Cancelar"
+
+#: formthewordhighlightercolors.sbuttonok
+msgctxt "formthewordhighlightercolors.sbuttonok"
+msgid "OK"
+msgstr "OK"
+
+#: formthewordhighlightercolors.sdefaultcolor
+msgctxt "formthewordhighlightercolors.sdefaultcolor"
+msgid "default"
+msgstr "padrão"
+
+#: formthewordhighlightercolors.sfontbutton
+msgctxt "formthewordhighlightercolors.sfontbutton"
+msgid "Font..."
+msgstr "Fonte..."
+
+#: formthewordhighlightercolors.sfontsummaryfmt
+#, object-pascal-format
+msgctxt "formthewordhighlightercolors.sfontsummaryfmt"
+msgid "%s, %d pt"
+msgstr "%s, %d pt"
+
+#: formthewordhighlightercolors.sforegroundbutton
+msgctxt "formthewordhighlightercolors.sforegroundbutton"
+msgid "Foreground..."
+msgstr "Texto..."
+
+#: formthewordhighlightercolors.sitalicstyle
+msgctxt "formthewordhighlightercolors.sitalicstyle"
+msgid "Italic"
+msgstr "Itálico"
+
+#: formthewordhighlightercolors.snobackgroundbutton
+msgctxt "formthewordhighlightercolors.snobackgroundbutton"
+msgid "No background"
+msgstr "Sem fundo"
+
+#: formthewordhighlightercolors.snocolor
+msgctxt "formthewordhighlightercolors.snocolor"
+msgid "none"
+msgstr "nenhuma"
+
+#: formthewordhighlightercolors.spreview
+msgctxt "formthewordhighlightercolors.spreview"
+msgid "Preview"
+msgstr "Pré-visualização"
+
+#: formthewordhighlightercolors.sresetall
+msgctxt "formthewordhighlightercolors.sresetall"
+msgid "Reset all"
+msgstr "Redefinir tudo"
+
+#: formthewordhighlightercolors.sresetfont
+msgctxt "formthewordhighlightercolors.sresetfont"
+msgid "Reset font"
+msgstr "Redefinir fonte"
+
+#: formthewordhighlightercolors.sresetselected
+msgctxt "formthewordhighlightercolors.sresetselected"
+msgid "Reset selected"
+msgstr "Redefinir selecionado"
+
+#: formthewordhighlightercolors.sthewordhighlightcolorstitle
+msgctxt "formthewordhighlightercolors.sthewordhighlightcolorstitle"
+msgid "theWord highlight colors"
+msgstr "Cores de destaque do theWord"
+
+#: formthewordhighlightercolors.sunderlinestyle
+msgctxt "formthewordhighlightercolors.sunderlinestyle"
+msgid "Underline"
+msgstr "Sublinhado"
+
+#: formverserules.sverserulescount
+#, object-pascal-format
+msgctxt "formverserules.sverserulescount"
+msgid "%d rules found. Uncheck any rule that should not be applied to the imported text."
+msgstr "%d regras encontradas. Desmarque qualquer regra que não deve ser aplicada ao texto importado."
+
+#: formverserules.sverserulesdescription
+msgctxt "formverserules.sverserulesdescription"
+msgid "This module defines verse rules: regular-expression replacements that theWord applies while displaying verses. iBiblia imports fixed text, so selected rules are applied now. Keep them selected unless the module uses them only as optional display toggles."
+msgstr "Este módulo define regras de versículos: substituições por expressão regular que o theWord aplica ao exibir os versículos. O iBiblia importa texto fixo, então as regras selecionadas serão aplicadas agora. Mantenha-as selecionadas, a menos que o módulo as use apenas como alternâncias opcionais de exibição."
+
+#: formverserules.sverserulesmodule
+#, object-pascal-format
+msgctxt "formverserules.sverserulesmodule"
+msgid "Module: %s"
+msgstr "Módulo: %s"
+
+#: formverserules.sverserulestitle
+msgctxt "formverserules.sverserulestitle"
+msgid "theWord verse rules"
+msgstr "Regras de versículos do theWord"
+
+#: formverserules.sverserulesunknownmodule
+msgctxt "formverserules.sverserulesunknownmodule"
+msgid "(module not available)"
+msgstr "(módulo não disponível)"
+
 #: myswordmodule.screatemyswordbibleerror
 msgid "Unable to create new MySword module file"
 msgstr "Erro ao criar novo módulo de Bíblia do MySword"
@@ -1942,9 +2205,7 @@ msgid "MySword Bible module exists and cannot be overwritten"
 msgstr "Este módulo de Bíblia do MySword já existe e não pode ser sobrescrito"
 
 #: myswordmodule.sprojectoverrideerror
-msgid ""
-"A project with this name already exists. Delete it first or choose another "
-"name"
+msgid "A project with this name already exists. Delete it first or choose another name"
 msgstr "Já existe um projeto com este nome. Apague-o ou escolha outro nome"
 
 #: onttokenizer.stokenizerversion1caption
@@ -2054,6 +2315,38 @@ msgctxt "project.sacts"
 msgid "Acts"
 msgstr "Atos"
 
+#: project.saiassociationfailedfmt
+#, object-pascal-format
+msgctxt "project.saiassociationfailedfmt"
+msgid "AI association failed: %s"
+msgstr "Falha na associação por IA: %s"
+
+#: project.saiconfigurationmissing
+msgctxt "project.saiconfigurationmissing"
+msgid "AI is not configured. Open LLM options and set a model and API key."
+msgstr "A IA não está configurada. Abra as opções de LLM e defina um modelo e uma chave de API."
+
+#: project.saisingleapplyingresult
+msgctxt "project.saisingleapplyingresult"
+msgid "[AI Single] Applying result..."
+msgstr "[AI Single] Aplicando resultado..."
+
+#: project.saisingleerrorfmt
+#, object-pascal-format
+msgctxt "project.saisingleerrorfmt"
+msgid "[AI Single] Error: %s"
+msgstr "[AI Single] Erro: %s"
+
+#: project.saisingleresponsereceived
+msgctxt "project.saisingleresponsereceived"
+msgid "[AI Single] Response received, parsing..."
+msgstr "[AI Single] Resposta recebida, analisando..."
+
+#: project.saisingleresultapplied
+msgctxt "project.saisingleresultapplied"
+msgid "[AI Single] Result applied and saved."
+msgstr "[AI Single] Resultado aplicado e salvo."
+
 #: project.samos
 msgctxt "project.samos"
 msgid "Amos"
@@ -2061,8 +2354,9 @@ msgstr "Amós"
 
 #: project.sanalyticalconcordance
 #, fuzzy
+#| msgid "Anaytical Concordance"
 msgctxt "project.sanalyticalconcordance"
-msgid "Anaytical Concordance"
+msgid "Analytical Concordance"
 msgstr "Concordância Analítica"
 
 #: project.sanalyzingverse
@@ -2094,33 +2388,66 @@ msgstr "Associação"
 
 #: project.sassociationexamplerequiresassociations
 msgctxt "project.sassociationexamplerequiresassociations"
-msgid ""
-"Association examples require existing associations in the current verse."
+msgid "Association examples require existing associations in the current verse."
 msgstr "Exemplos de associação exigem associações existentes no versículo atual."
 
 #: project.sassociationexamplerequirespair
 msgctxt "project.sassociationexamplerequirespair"
-msgid ""
-"Association examples require an active source verse paired with a "
-"destination verse."
-msgstr ""
-"Exemplos de associação exigem um versículo origem ativo pareado com um "
-"versículo destino."
+msgid "Association examples require an active source verse paired with a destination verse."
+msgstr "Exemplos de associação exigem um versículo origem ativo pareado com um versículo destino."
 
-#: project.scancelaiprocessing
-msgctxt "project.scancelaiprocessing"
-msgid "Cancel AI processing"
-msgstr "Cancelar processamento de IA"
+#: project.sassociationmemorydatabaseprogressfmt
+#, object-pascal-format
+msgid "%d of %d associations"
+msgstr ""
+
+#: project.sassociationmemoryprogressdetailfmt
+#, object-pascal-format
+msgid "%s (%d of %d)"
+msgstr ""
+
+#: project.sassociationmemoryprogressmessage
+msgctxt "project.sassociationmemoryprogressmessage"
+msgid "Updating after an iBiblia or project change..."
+msgstr ""
+
+#: project.sassociationmemoryprogresstitle
+msgctxt "project.sassociationmemoryprogresstitle"
+msgid "Association memory"
+msgstr ""
+
+#: project.sassociationmemoryvalidating
+msgid "Validating association memory..."
+msgstr ""
+
+#: project.sassociationmemorywriting
+msgid "Writing association memory..."
+msgstr ""
+
+#: project.sbuttoncancel
+msgctxt "project.sbuttoncancel"
+msgid "Cancel"
+msgstr "Cancelar"
 
 #: project.sbuttonno
 msgctxt "project.sbuttonno"
 msgid "No"
 msgstr "Não"
 
+#: project.sbuttonok
+msgctxt "project.sbuttonok"
+msgid "OK"
+msgstr "OK"
+
 #: project.sbuttonyes
 msgctxt "project.sbuttonyes"
 msgid "Yes"
 msgstr "Sim"
+
+#: project.scancelaiprocessing
+msgctxt "project.scancelaiprocessing"
+msgid "Cancel AI processing"
+msgstr "Cancelar processamento de IA"
 
 #: project.scolossians
 msgctxt "project.scolossians"
@@ -2209,6 +2536,22 @@ msgctxt "project.serror"
 msgid "Error"
 msgstr "Erro"
 
+#: project.serrorclassmessagefmt
+#, object-pascal-format
+msgctxt "project.serrorclassmessagefmt"
+msgid ""
+"%s: %s\n"
+"%s"
+msgstr ""
+"%s: %s\n"
+"%s"
+
+#: project.serrorwithdetailsfmt
+#, object-pascal-format
+msgctxt "project.serrorwithdetailsfmt"
+msgid "%s: %s"
+msgstr "%s: %s"
+
 #: project.sesther
 msgctxt "project.sesther"
 msgid "Esther"
@@ -2226,9 +2569,10 @@ msgid ""
 msgstr ""
 
 #: project.sexamplealreadyexiststitle
+#, fuzzy
 msgctxt "project.sexamplealreadyexiststitle"
 msgid "Example already exists"
-msgstr ""
+msgstr "Exemplo já existe"
 
 #: project.sexamplesaved
 msgctxt "project.sexamplesaved"
@@ -2239,6 +2583,13 @@ msgstr ""
 msgctxt "project.sexodus"
 msgid "Exodus"
 msgstr "Êxodo"
+
+#: project.sexporterrorreportcreated
+#, object-pascal-format
+msgid ""
+"Some verses could not be exported correctly. Review the error report:\n"
+"%s"
+msgstr ""
 
 #: project.sexporttextsavedlgtitle
 #, fuzzy
@@ -2360,12 +2711,8 @@ msgstr "Arquivo inválido, ele precisa ter ao menos %d linhas"
 #: project.sinvalidmoduletype
 #, fuzzy
 msgctxt "project.sinvalidmoduletype"
-msgid ""
-"Unknown module extension. Please choose a valid theWord Bible module (.ot, "
-".ont or .nt)"
-msgstr ""
-"Módulo com extensão desconhecida. Por favor, escolha um módulo válido do "
-"theWord (.ot, .ont ou .nt)"
+msgid "Unknown module extension. Please choose a valid theWord Bible module (.ot, .ont or .nt)"
+msgstr "Módulo com extensão desconhecida. Por favor, escolha um módulo válido do theWord (.ot, .ont ou .nt)"
 
 #: project.sinvalidmorphologydictionary
 #, fuzzy
@@ -2468,9 +2815,7 @@ msgstr "Levítico"
 #, fuzzy
 msgctxt "project.slinebreaksintext"
 msgid "A verse cannot contain line breaks. Your changes will be discarded."
-msgstr ""
-"Um versículo não pode conter quebras de linha. As suas alterações serão "
-"descartadas."
+msgstr "Um versículo não pode conter quebras de linha. As suas alterações serão descartadas."
 
 #: project.slinebreaksintexttitle
 #, fuzzy
@@ -2512,12 +2857,8 @@ msgstr "Miqueias"
 #: project.smoduledoesnotincludescope
 #, fuzzy
 msgctxt "project.smoduledoesnotincludescope"
-msgid ""
-"This module is incompatible with the scope of the project. Please choose a "
-"valid module."
-msgstr ""
-"Este módulo é incompatível com o escopo do projeto. Por favor, escolha um "
-"módulo válido."
+msgid "This module is incompatible with the scope of the project. Please choose a valid module."
+msgstr "Este módulo é incompatível com o escopo do projeto. Por favor, escolha um módulo válido."
 
 #: project.smorphologydictionary
 #, fuzzy
@@ -2540,6 +2881,11 @@ msgstr "Neemias"
 msgctxt "project.snonrtfdictionary"
 msgid "Non-RTF module"
 msgstr "Módulo não-RTF"
+
+#: project.snoversetoassociate
+msgctxt "project.snoversetoassociate"
+msgid "No verse to associate."
+msgstr "Não há versículo para associar."
 
 #: project.snumbers
 msgctxt "project.snumbers"
@@ -2564,9 +2910,7 @@ msgid "Old Testament concordance is not implemented yet"
 msgstr "A concordância do Velho Testamento ainda não está implementada"
 
 #: project.spatchstatuscatalogdiverged
-msgid ""
-"This patch uses a different status catalog. Map patch statuses to this "
-"project before applying."
+msgid "This patch uses a different status catalog. Map patch statuses to this project before applying."
 msgstr ""
 
 #: project.spatchstatuscatalogtitle
@@ -2604,17 +2948,8 @@ msgstr "Filipenses"
 #: project.spotentialnonutf8modulewarning
 #, fuzzy
 msgctxt "project.spotentialnonutf8modulewarning"
-msgid ""
-"This module has a 'charset' property and this may be an indication that this"
-" is a non-UTF8 module. iBiblia was not designed to work with non-UTF8 "
-"modules. Please choose 'Ignore' to ignore this warning and continue at your "
-"own risk or 'Abort' to abort the operation and choose another module."
-msgstr ""
-"Este módulo contém a propriedade 'charset', o que pode indicar que ele não é"
-" um módulo UTF-8. O iBiblia não foi projetado para trabalhar com este tipo "
-"de módulo. Escolha 'Ignorar' para ignorar este aviso e continuar por sua "
-"própria conta e risco, ou 'Abortar' para abortar a operação e escolher outro"
-" módulo."
+msgid "This module has a 'charset' property and this may be an indication that this is a non-UTF8 module. iBiblia was not designed to work with non-UTF8 modules. Please choose 'Ignore' to ignore this warning and continue at your own risk or 'Abort' to abort the operation and choose another module."
+msgstr "Este módulo contém a propriedade 'charset', o que pode indicar que ele não é um módulo UTF-8. O iBiblia não foi projetado para trabalhar com este tipo de módulo. Escolha 'Ignorar' para ignorar este aviso e continuar por sua própria conta e risco, ou 'Abortar' para abortar a operação e escolher outro módulo."
 
 #: project.sprojectdoesntexist
 #, object-pascal-format, fuzzy
@@ -2739,12 +3074,8 @@ msgstr "Tradução"
 
 #: project.stranslationexamplerequirespair
 msgctxt "project.stranslationexamplerequirespair"
-msgid ""
-"Translation examples require an active source verse paired with a "
-"destination verse."
-msgstr ""
-"Exemplos de tradução exigem um versículo origem ativo pareado com um "
-"versículo destino."
+msgid "Translation examples require an active source verse paired with a destination verse."
+msgstr "Exemplos de tradução exigem um versículo origem ativo pareado com um versículo destino."
 
 #: project.stranslationexamplerequirestext
 msgctxt "project.stranslationexamplerequirestext"
@@ -2775,12 +3106,8 @@ msgstr "No fluxo de tradução"
 #: project.svaccumprojectconfirmation
 #, fuzzy
 msgctxt "project.svaccumprojectconfirmation"
-msgid ""
-"Vacuuming requires that your project be saved and reopened. Do you want to "
-"proceed?"
-msgstr ""
-"Para compactar um projeto é necessário fechá-lo e reabri-lo. Deseja "
-"prosseguir?"
+msgid "Vacuuming requires that your project be saved and reopened. Do you want to proceed?"
+msgstr "Para compactar um projeto é necessário fechá-lo e reabri-lo. Deseja prosseguir?"
 
 #: project.svacuumdone
 #, fuzzy
@@ -2855,50 +3182,42 @@ msgid "Interlinear view verse rules"
 msgstr "Regras de transformação (verse rules)"
 
 #: tforminterlinearverserules.stringgridinterlinear.columns[0].title.caption
-msgctxt ""
-"tforminterlinearverserules.stringgridinterlinear.columns[0].title.caption"
+msgctxt "tforminterlinearverserules.stringgridinterlinear.columns[0].title.caption"
 msgid "From"
 msgstr "De"
 
 #: tforminterlinearverserules.stringgridinterlinear.columns[1].title.caption
-msgctxt ""
-"tforminterlinearverserules.stringgridinterlinear.columns[1].title.caption"
+msgctxt "tforminterlinearverserules.stringgridinterlinear.columns[1].title.caption"
 msgid "To"
 msgstr "Para"
 
 #: tforminterlinearverserules.stringgridinterlinear.columns[2].title.caption
-msgctxt ""
-"tforminterlinearverserules.stringgridinterlinear.columns[2].title.caption"
+msgctxt "tforminterlinearverserules.stringgridinterlinear.columns[2].title.caption"
 msgid "Enable"
 msgstr "Habilitar"
 
 #: tforminterlinearverserules.stringgridinterlinear.columns[3].title.caption
-msgctxt ""
-"tforminterlinearverserules.stringgridinterlinear.columns[3].title.caption"
+msgctxt "tforminterlinearverserules.stringgridinterlinear.columns[3].title.caption"
 msgid "Export"
 msgstr "Exportar"
 
 #: tforminterlinearverserules.stringgridintralinear.columns[0].title.caption
-msgctxt ""
-"tforminterlinearverserules.stringgridintralinear.columns[0].title.caption"
+msgctxt "tforminterlinearverserules.stringgridintralinear.columns[0].title.caption"
 msgid "From"
 msgstr "De"
 
 #: tforminterlinearverserules.stringgridintralinear.columns[1].title.caption
-msgctxt ""
-"tforminterlinearverserules.stringgridintralinear.columns[1].title.caption"
+msgctxt "tforminterlinearverserules.stringgridintralinear.columns[1].title.caption"
 msgid "To"
 msgstr "Para"
 
 #: tforminterlinearverserules.stringgridintralinear.columns[2].title.caption
-msgctxt ""
-"tforminterlinearverserules.stringgridintralinear.columns[2].title.caption"
+msgctxt "tforminterlinearverserules.stringgridintralinear.columns[2].title.caption"
 msgid "Enable"
 msgstr "Habilitar"
 
 #: tforminterlinearverserules.stringgridintralinear.columns[3].title.caption
-msgctxt ""
-"tforminterlinearverserules.stringgridintralinear.columns[3].title.caption"
+msgctxt "tforminterlinearverserules.stringgridintralinear.columns[3].title.caption"
 msgid "Export"
 msgstr "Exportar"
 
@@ -2922,6 +3241,7 @@ msgid "Please wait..."
 msgstr "Por favor, aguarde..."
 
 #: tfrmapplypatch.btndeselectall.caption
+msgctxt "tfrmapplypatch.btndeselectall.caption"
 msgid "Deselect all"
 msgstr "Desmarcar tudo"
 
@@ -3140,6 +3460,7 @@ msgid "Create patch..."
 msgstr "Criar patch..."
 
 #: tfrmprincipal.actionfecharprojeto.caption
+msgctxt "tfrmprincipal.actionfecharprojeto.caption"
 msgid "Close"
 msgstr "Fechar"
 
@@ -3148,6 +3469,7 @@ msgid "Close current project"
 msgstr "Fechar o projeto atual"
 
 #: tfrmprincipal.actionlimparassociacoes.caption
+msgctxt "tfrmprincipal.actionlimparassociacoes.caption"
 msgid "Clear"
 msgstr "Limpar"
 
@@ -3207,6 +3529,7 @@ msgid "Exit the program"
 msgstr "Sair do programa"
 
 #: tfrmprincipal.actionsalvarprojeto.caption
+msgctxt "tfrmprincipal.actionsalvarprojeto.caption"
 msgid "Save"
 msgstr "Salvar"
 
@@ -3312,10 +3635,8 @@ msgid "Auto-associate unassociated verses"
 msgstr "Sugerir associações automaticamente"
 
 #: tfrmprincipal.menuitem22.hint
-msgid ""
-"Run the auto-association whenever you navigate to an unassociated verse"
-msgstr ""
-"Fazer a associação automática sempre que um versículo não tiver associações"
+msgid "Run the auto-association whenever you navigate to an unassociated verse"
+msgstr "Fazer a associação automática sempre que um versículo não tiver associações"
 
 #: tfrmprincipal.menuitem23.caption
 msgid "Language"
@@ -3347,11 +3668,8 @@ msgid "Alt + Mouse hover"
 msgstr "Alt + apontar palavra"
 
 #: tfrmprincipal.menuitemaltmousehover.hint
-msgid ""
-"Activate the popup dictionary whenever you hover the mouse pointer over a "
-"word while holding the Alt key"
-msgstr ""
-"Ativar a janela de definição apontando o mouse e segurando a tecla Alt"
+msgid "Activate the popup dictionary whenever you hover the mouse pointer over a word while holding the Alt key"
+msgstr "Ativar a janela de definição apontando o mouse e segurando a tecla Alt"
 
 #: tfrmprincipal.menuitemalwaysontop.caption
 msgid "Always on top"
@@ -3367,19 +3685,15 @@ msgstr "Salvamento automático"
 
 #: tfrmprincipal.menuitemautosave.hint
 msgid "Save changes automatically at every verse change"
-msgstr ""
-"Salvar alterações automaticamente sempre que houver mudança de versículo"
+msgstr "Salvar alterações automaticamente sempre que houver mudança de versículo"
 
 #: tfrmprincipal.menuitemctrlmousehover.caption
 msgid "Ctrl + Mouse hover"
 msgstr "Ctrl + apontar palavra"
 
 #: tfrmprincipal.menuitemctrlmousehover.hint
-msgid ""
-"Activate the popup dictionary whenever you hover the mouse pointer over a "
-"word while holding the Ctrl key"
-msgstr ""
-"Ativar a janela de definição apontando o mouse e segurando a tecla Ctrl"
+msgid "Activate the popup dictionary whenever you hover the mouse pointer over a word while holding the Ctrl key"
+msgstr "Ativar a janela de definição apontando o mouse e segurando a tecla Ctrl"
 
 #: tfrmprincipal.menuitemdictpopup.caption
 msgid "Dictionary popup trigger..."
@@ -3398,9 +3712,7 @@ msgid "Mouse hover"
 msgstr "Apontar palavra"
 
 #: tfrmprincipal.menuitemmousehover.hint
-msgid ""
-"Activate the popup dictionary whenever you hover the mouse pointer over a "
-"word"
+msgid "Activate the popup dictionary whenever you hover the mouse pointer over a word"
 msgstr "Ativar a janela de definição apontando o mouse para a palavra"
 
 #: tfrmprincipal.menuitemrecent.caption
@@ -3464,12 +3776,8 @@ msgid "Sync theWord to iBiblia verse"
 msgstr "Sincronizar theWord com o versículo do iBiblia"
 
 #: tfrmprincipal.menuitemsynctheword.hint
-msgid ""
-"Keeps theWord synchronized to iBiblia's current verse, and current word's "
-"strong, morphology and lemma."
-msgstr ""
-"Manter o theWord sincronizado com o versículo atual do iBiblia, além de "
-"sincronizar a definição de palavras clicadas."
+msgid "Keeps theWord synchronized to iBiblia's current verse, and current word's strong, morphology and lemma."
+msgstr "Manter o theWord sincronizado com o versículo atual do iBiblia, além de sincronizar a definição de palavras clicadas."
 
 #: tfrmprincipal.menuitemunregisterfileassoc.caption
 msgid "Unregister .bib files"
@@ -3494,6 +3802,7 @@ msgid "Save project as..."
 msgstr "Salvar projeto como..."
 
 #: tfrmprincipal.savedialog2.title
+msgctxt "tfrmprincipal.savedialog2.title"
 msgid "Save module as..."
 msgstr "Salvar módulo como..."
 
@@ -3680,46 +3989,6 @@ msgctxt "tfrmprojectproperties.labeltokenizerversion.caption"
 msgid "Tokenizer version"
 msgstr "Versão do tokenizador"
 
-#: formverserules.sverserulescount
-#, object-pascal-format
-msgctxt "formverserules.sverserulescount"
-msgid ""
-"%d rules found. Uncheck any rule that should not be applied to the imported "
-"text."
-msgstr ""
-"%d regras encontradas. Desmarque qualquer regra que não deve ser aplicada ao"
-" texto importado."
-
-#: formverserules.sverserulesdescription
-msgctxt "formverserules.sverserulesdescription"
-msgid ""
-"This module defines verse rules: regular-expression replacements that "
-"theWord applies while displaying verses. iBiblia imports fixed text, so "
-"selected rules are applied now. Keep them selected unless the module uses "
-"them only as optional display toggles."
-msgstr ""
-"Este módulo define regras de versículos: substituições por expressão regular"
-" que o theWord aplica ao exibir os versículos. O iBiblia importa texto fixo,"
-" então as regras selecionadas serão aplicadas agora. Mantenha-as "
-"selecionadas, a menos que o módulo as use apenas como alternâncias opcionais"
-" de exibição."
-
-#: formverserules.sverserulesmodule
-#, object-pascal-format
-msgctxt "formverserules.sverserulesmodule"
-msgid "Module: %s"
-msgstr "Módulo: %s"
-
-#: formverserules.sverserulestitle
-msgctxt "formverserules.sverserulestitle"
-msgid "theWord verse rules"
-msgstr "Regras de versículos do theWord"
-
-#: formverserules.sverserulesunknownmodule
-msgctxt "formverserules.sverserulesunknownmodule"
-msgid "(module not available)"
-msgstr "(módulo não disponível)"
-
 #: tfrmverserules.btnselectall.caption
 #, fuzzy
 msgctxt "tfrmverserules.btnselectall.caption"
@@ -3774,6 +4043,82 @@ msgctxt "tfrmverserules.stringgridverserules.columns[2].title.caption"
 msgid "To"
 msgstr "Para"
 
+#: theword_syntax_highlighter.selementattribute
+msgctxt "theword_syntax_highlighter.selementattribute"
+msgid "Attribute"
+msgstr "Atributo"
+
+#: theword_syntax_highlighter.selementattributevalue
+msgctxt "theword_syntax_highlighter.selementattributevalue"
+msgid "Attribute value"
+msgstr "Valor do atributo"
+
+#: theword_syntax_highlighter.selementdefaulttext
+msgctxt "theword_syntax_highlighter.selementdefaulttext"
+msgid "Default text"
+msgstr "Texto padrão"
+
+#: theword_syntax_highlighter.selementhtml
+msgctxt "theword_syntax_highlighter.selementhtml"
+msgid "HTML"
+msgstr "HTML"
+
+#: theword_syntax_highlighter.selementlink
+msgctxt "theword_syntax_highlighter.selementlink"
+msgid "Link"
+msgstr "Link"
+
+#: theword_syntax_highlighter.selementmorphology
+msgctxt "theword_syntax_highlighter.selementmorphology"
+msgid "Morphology"
+msgstr "Morfologia"
+
+#: theword_syntax_highlighter.selementnotereference
+msgctxt "theword_syntax_highlighter.selementnotereference"
+msgid "Note/reference"
+msgstr "Nota/referência"
+
+#: theword_syntax_highlighter.selementrtf
+msgctxt "theword_syntax_highlighter.selementrtf"
+msgid "RTF"
+msgstr "RTF"
+
+#: theword_syntax_highlighter.selementstrong
+msgctxt "theword_syntax_highlighter.selementstrong"
+msgid "Strong"
+msgstr "Strong"
+
+#: theword_syntax_highlighter.selementsymbol
+msgctxt "theword_syntax_highlighter.selementsymbol"
+msgid "Symbol"
+msgstr "Símbolo"
+
+#: theword_syntax_highlighter.selementthewordtag
+msgctxt "theword_syntax_highlighter.selementthewordtag"
+msgid "theWord tag"
+msgstr "Tag do theWord"
+
+#: theword_syntax_highlighter.selementunknown
+msgctxt "theword_syntax_highlighter.selementunknown"
+msgid "Unknown"
+msgstr "Desconhecido"
+
+#: theword_syntax_highlighter.selementwarning
+msgctxt "theword_syntax_highlighter.selementwarning"
+msgid "Warning"
+msgstr "Aviso"
+
+#: theword_syntax_highlighter.selementwordtoken
+msgctxt "theword_syntax_highlighter.selementwordtoken"
+msgid "Word token <wt>"
+msgstr "Token de palavra <wt>"
+
+#: twautomate.sregexerrorfmt
+#, object-pascal-format
+msgctxt "twautomate.sregexerrorfmt"
+msgid "Error in regex: %s"
+msgstr "Erro na expressão regular: %s"
+
 #: twautomate.stwsynchronizationerror
 msgid ""
 "Failed to detect theWord's current verse.\n"
@@ -3785,6 +4130,12 @@ msgstr ""
 #: twautomate.stwsynchronizationerrortitle
 msgid "Synchronization error"
 msgstr "Erro de sincronização"
+
+#: twautomate.stwwindownotfounddebugsavedfmt
+#, object-pascal-format
+msgctxt "twautomate.stwwindownotfounddebugsavedfmt"
+msgid "theWord window not found. Debug information has been saved to: %s"
+msgstr "Janela do theWord não encontrada. Informações de depuração foram salvas em: %s"
 
 #: unitpleasewait.sdefaultoperationtitle
 #, fuzzy
@@ -3803,6 +4154,11 @@ msgstr "Copiar JSON da associação para a área de transferência"
 msgctxt "verse.scopyinterlinearversetoclipboard"
 msgid "Copy &interlinear verse to clipboard"
 msgstr "Copiar o versículo interlinear para a área de transferência"
+
+#: verse.scopysyntagmasjsontoclipboard
+msgctxt "verse.scopysyntagmasjsontoclipboard"
+msgid "Copy syntagms as &JSON to clipboard"
+msgstr "Copiar sintagmas como &JSON para a área de transferência"
 
 #: verse.scopytags
 #, fuzzy
@@ -3852,46 +4208,10 @@ msgctxt "verse.ssavetofile"
 msgid "&Save text to file..."
 msgstr "&Exportar texto para arquivo..."
 
-#: versememo.schangeverse
-#, fuzzy
-msgctxt "versememo.schangeverse"
-msgid "Change verse text?"
-msgstr "Alterar o texto do versículo?"
-
-#: versememo.schangeverseconfirmation
-#, fuzzy
-msgctxt "versememo.schangeverseconfirmation"
-msgid ""
-"Are you sure you want to change the verse text? Some associations may be "
-"lost."
-msgstr ""
-"Tem certeza de que quer alterar o texto deste versículo? Algumas alterações "
-"podem ser perdidas."
-
-#: versememo.seditmodetitle
-msgctxt "versememo.seditmodetitle"
-msgid "Editing verse"
-msgstr "Editando versículo"
-
-#: versememo.seditmodesaved
-msgctxt "versememo.seditmodesaved"
-msgid "No changes"
-msgstr "Sem alterações"
-
-#: versememo.seditmodemodified
-msgctxt "versememo.seditmodemodified"
-msgid "Unsaved changes"
-msgstr "Alterações não salvas"
-
-#: versememo.ssaveeditbutton
-msgctxt "versememo.ssaveeditbutton"
-msgid "Save"
-msgstr "Salvar"
-
-#: versememo.ssaveedithint
-msgctxt "versememo.ssaveedithint"
-msgid "Save verse text and close the editor"
-msgstr "Salva o texto do versículo e fecha o editor"
+#: versememo.saddedwordstaghint
+msgctxt "versememo.saddedwordstaghint"
+msgid "Wrap the selection with <FI>...<Fi> for added words"
+msgstr "Envolve a seleção com <FI>...<Fi> para palavras adicionadas"
 
 #: versememo.scanceleditbutton
 msgctxt "versememo.scanceleditbutton"
@@ -3903,1251 +4223,59 @@ msgctxt "versememo.scanceledithint"
 msgid "Discard changes and close the editor"
 msgstr "Descarta as alterações e fecha o editor"
 
-#: versememo.saddedwordstaghint
-msgctxt "versememo.saddedwordstaghint"
-msgid "Wrap the selection with <FI>...<Fi> for added words"
-msgstr "Envolve a seleção com <FI>...<Fi> para palavras adicionadas"
+#: versememo.schangeverse
+#, fuzzy
+msgctxt "versememo.schangeverse"
+msgid "Change verse text?"
+msgstr "Alterar o texto do versículo?"
+
+#: versememo.schangeverseconfirmation
+#, fuzzy
+msgctxt "versememo.schangeverseconfirmation"
+msgid "Are you sure you want to change the verse text? Some associations may be lost."
+msgstr "Tem certeza de que quer alterar o texto deste versículo? Algumas alterações podem ser perdidas."
+
+#: versememo.seditmodemodified
+msgctxt "versememo.seditmodemodified"
+msgid "Unsaved changes"
+msgstr "Alterações não salvas"
+
+#: versememo.seditmodesaved
+msgctxt "versememo.seditmodesaved"
+msgid "No changes"
+msgstr "Sem alterações"
+
+#: versememo.seditmodetitle
+msgctxt "versememo.seditmodetitle"
+msgid "Editing verse"
+msgstr "Editando versículo"
 
 #: versememo.sjesuswordstaghint
 msgctxt "versememo.sjesuswordstaghint"
 msgid "Wrap the selection with <FR>...<Fr> for words of Jesus"
 msgstr "Envolve a seleção com <FR>...<Fr> para palavras de Jesus"
 
-#: versememo.soldtestamentquotetaghint
-msgctxt "versememo.soldtestamentquotetaghint"
-msgid "Wrap the selection with <FO>...<Fo> for Old Testament quotations"
-msgstr "Envolve a seleção com <FO>...<Fo> para citações do Antigo Testamento"
+#: versememo.slinebreaksineditor
+msgctxt "versememo.slinebreaksineditor"
+msgid "A verse cannot contain line breaks. Remove line breaks before saving."
+msgstr "Um versículo não pode conter quebras de linha. Remova as quebras de linha antes de salvar."
 
 #: versememo.slinebreaksineditortitle
 msgctxt "versememo.slinebreaksineditortitle"
 msgid "Edit error"
 msgstr "Erro de edição"
 
-#: versememo.slinebreaksineditor
-msgctxt "versememo.slinebreaksineditor"
-msgid "A verse cannot contain line breaks. Remove line breaks before saving."
-msgstr "Um versículo não pode conter quebras de linha. Remova as quebras de linha antes de salvar."
-
-#: formprincipal.smaincaption
-msgctxt "formprincipal.smaincaption"
-msgid "iBiblia"
-msgstr "iBiblia"
-
-#: formprincipal.smaincaptionprojectfmt
-msgctxt "formprincipal.smaincaptionprojectfmt"
-msgid "iBiblia | %s | %s (%s)"
-msgstr "iBiblia | %s | %s (%s)"
-
-#: formprincipal.sprojectfiletypename
-msgctxt "formprincipal.sprojectfiletypename"
-msgid "iBiblia Project File"
-msgstr "Arquivo de projeto iBiblia"
-
-#: formprincipal.sthewordhighlightcolorsmenu
-msgctxt "formprincipal.sthewordhighlightcolorsmenu"
-msgid "theWord highlight colors..."
-msgstr "Cores de destaque do theWord..."
-
-#: formprincipal.sregisterfileassociationtakeoverprompt
-msgctxt "formprincipal.sregisterfileassociationtakeoverprompt"
-msgid ""
-"The .bib extension is currently associated with: %s.\n"
-"Do you want to take over the association for iBiblia?"
-msgstr ""
-"A extensão .bib está associada atualmente a: %s.\n"
-"Deseja assumir a associação para o iBiblia?"
-
-#: formprincipal.sregisterfileassociationadminretry
-msgctxt "formprincipal.sregisterfileassociationadminretry"
-msgid ""
-"Failed to register file association. This operation requires administrator rights.\n"
-"Do you want to retry as administrator?"
-msgstr ""
-"Falha ao registrar a associação de arquivo. Esta operação requer direitos de administrador.\n"
-"Deseja tentar novamente como administrador?"
-
-#: project.saiconfigurationmissing
-msgctxt "project.saiconfigurationmissing"
-msgid "AI is not configured. Open LLM options and set a model and API key."
-msgstr ""
-"A IA não está configurada. Abra as opções de LLM e defina um modelo e uma "
-"chave de API."
-
-#: project.snoversetoassociate
-msgctxt "project.snoversetoassociate"
-msgid "No verse to associate."
-msgstr "Não há versículo para associar."
-
-#: project.saiassociationfailedfmt
-msgctxt "project.saiassociationfailedfmt"
-msgid "AI association failed: %s"
-msgstr "Falha na associação por IA: %s"
-
-#: project.saisingleresponsereceived
-msgctxt "project.saisingleresponsereceived"
-msgid "[AI Single] Response received, parsing..."
-msgstr "[AI Single] Resposta recebida, analisando..."
-
-#: project.saisingleapplyingresult
-msgctxt "project.saisingleapplyingresult"
-msgid "[AI Single] Applying result..."
-msgstr "[AI Single] Aplicando resultado..."
-
-#: project.saisingleresultapplied
-msgctxt "project.saisingleresultapplied"
-msgid "[AI Single] Result applied and saved."
-msgstr "[AI Single] Resultado aplicado e salvo."
-
-#: project.saisingleerrorfmt
-msgctxt "project.saisingleerrorfmt"
-msgid "[AI Single] Error: %s"
-msgstr "[AI Single] Erro: %s"
-
-#: project.sbuttonok
-msgctxt "project.sbuttonok"
-msgid "OK"
-msgstr "OK"
-
-#: project.sbuttoncancel
-msgctxt "project.sbuttoncancel"
-msgid "Cancel"
-msgstr "Cancelar"
-
-#: project.serrorwithdetailsfmt
-msgctxt "project.serrorwithdetailsfmt"
-msgid "%s: %s"
-msgstr "%s: %s"
-
-#: project.serrorclassmessagefmt
-msgctxt "project.serrorclassmessagefmt"
-msgid ""
-"%s: %s\n"
-"%s"
-msgstr ""
-"%s: %s\n"
-"%s"
-
-#: formthewordhighlightercolors.sthewordhighlightcolorstitle
-msgctxt "formthewordhighlightercolors.sthewordhighlightcolorstitle"
-msgid "theWord highlight colors"
-msgstr "Cores de destaque do theWord"
-
-#: formthewordhighlightercolors.sbuttonok
-msgctxt "formthewordhighlightercolors.sbuttonok"
-msgid "OK"
-msgstr "OK"
-
-#: formthewordhighlightercolors.sbuttoncancel
-msgctxt "formthewordhighlightercolors.sbuttoncancel"
-msgid "Cancel"
-msgstr "Cancelar"
-
-#: formthewordhighlightercolors.sbuttonapply
-msgctxt "formthewordhighlightercolors.sbuttonapply"
-msgid "Apply"
-msgstr "Aplicar"
-
-#: formthewordhighlightercolors.sforegroundbutton
-msgctxt "formthewordhighlightercolors.sforegroundbutton"
-msgid "Foreground..."
-msgstr "Texto..."
-
-#: formthewordhighlightercolors.sbackgroundbutton
-msgctxt "formthewordhighlightercolors.sbackgroundbutton"
-msgid "Background..."
-msgstr "Fundo..."
-
-#: formthewordhighlightercolors.snobackgroundbutton
-msgctxt "formthewordhighlightercolors.snobackgroundbutton"
-msgid "No background"
-msgstr "Sem fundo"
-
-#: formthewordhighlightercolors.sboldstyle
-msgctxt "formthewordhighlightercolors.sboldstyle"
-msgid "Bold"
-msgstr "Negrito"
-
-#: formthewordhighlightercolors.sitalicstyle
-msgctxt "formthewordhighlightercolors.sitalicstyle"
-msgid "Italic"
-msgstr "Itálico"
-
-#: formthewordhighlightercolors.sunderlinestyle
-msgctxt "formthewordhighlightercolors.sunderlinestyle"
-msgid "Underline"
-msgstr "Sublinhado"
-
-#: formthewordhighlightercolors.sresetselected
-msgctxt "formthewordhighlightercolors.sresetselected"
-msgid "Reset selected"
-msgstr "Redefinir selecionado"
-
-#: formthewordhighlightercolors.sresetall
-msgctxt "formthewordhighlightercolors.sresetall"
-msgid "Reset all"
-msgstr "Redefinir tudo"
-
-#: formthewordhighlightercolors.sfontbutton
-msgctxt "formthewordhighlightercolors.sfontbutton"
-msgid "Font..."
-msgstr "Fonte..."
-
-#: formthewordhighlightercolors.sresetfont
-msgctxt "formthewordhighlightercolors.sresetfont"
-msgid "Reset font"
-msgstr "Redefinir fonte"
-
-#: formthewordhighlightercolors.spreview
-msgctxt "formthewordhighlightercolors.spreview"
-msgid "Preview"
-msgstr "Pré-visualização"
-
-#: formthewordhighlightercolors.snocolor
-msgctxt "formthewordhighlightercolors.snocolor"
-msgid "none"
-msgstr "nenhuma"
-
-#: formthewordhighlightercolors.sdefaultcolor
-msgctxt "formthewordhighlightercolors.sdefaultcolor"
-msgid "default"
-msgstr "padrão"
-
-#: formthewordhighlightercolors.sfontsummaryfmt
-msgctxt "formthewordhighlightercolors.sfontsummaryfmt"
-msgid "%s, %d pt"
-msgstr "%s, %d pt"
-
-#: theword_syntax_highlighter.selementdefaulttext
-msgctxt "theword_syntax_highlighter.selementdefaulttext"
-msgid "Default text"
-msgstr "Texto padrão"
-
-#: theword_syntax_highlighter.selementthewordtag
-msgctxt "theword_syntax_highlighter.selementthewordtag"
-msgid "theWord tag"
-msgstr "Tag do theWord"
-
-#: theword_syntax_highlighter.selementstrong
-msgctxt "theword_syntax_highlighter.selementstrong"
-msgid "Strong"
-msgstr "Strong"
-
-#: theword_syntax_highlighter.selementmorphology
-msgctxt "theword_syntax_highlighter.selementmorphology"
-msgid "Morphology"
-msgstr "Morfologia"
-
-#: theword_syntax_highlighter.selementwordtoken
-msgctxt "theword_syntax_highlighter.selementwordtoken"
-msgid "Word token <wt>"
-msgstr "Token de palavra <wt>"
-
-#: theword_syntax_highlighter.selementnotereference
-msgctxt "theword_syntax_highlighter.selementnotereference"
-msgid "Note/reference"
-msgstr "Nota/referência"
-
-#: theword_syntax_highlighter.selementlink
-msgctxt "theword_syntax_highlighter.selementlink"
-msgid "Link"
-msgstr "Link"
-
-#: theword_syntax_highlighter.selementhtml
-msgctxt "theword_syntax_highlighter.selementhtml"
-msgid "HTML"
-msgstr "HTML"
-
-#: theword_syntax_highlighter.selementrtf
-msgctxt "theword_syntax_highlighter.selementrtf"
-msgid "RTF"
-msgstr "RTF"
-
-#: theword_syntax_highlighter.selementattribute
-msgctxt "theword_syntax_highlighter.selementattribute"
-msgid "Attribute"
-msgstr "Atributo"
-
-#: theword_syntax_highlighter.selementattributevalue
-msgctxt "theword_syntax_highlighter.selementattributevalue"
-msgid "Attribute value"
-msgstr "Valor do atributo"
-
-#: theword_syntax_highlighter.selementsymbol
-msgctxt "theword_syntax_highlighter.selementsymbol"
-msgid "Symbol"
-msgstr "Símbolo"
-
-#: theword_syntax_highlighter.selementwarning
-msgctxt "theword_syntax_highlighter.selementwarning"
-msgid "Warning"
-msgstr "Aviso"
-
-#: theword_syntax_highlighter.selementunknown
-msgctxt "theword_syntax_highlighter.selementunknown"
-msgid "Unknown"
-msgstr "Desconhecido"
-
-#: verse.scopysyntagmasjsontoclipboard
-msgctxt "verse.scopysyntagmasjsontoclipboard"
-msgid "Copy syntagms as &JSON to clipboard"
-msgstr "Copiar sintagmas como &JSON para a área de transferência"
-
-#: twautomate.sregexerrorfmt
-msgctxt "twautomate.sregexerrorfmt"
-msgid "Error in regex: %s"
-msgstr "Erro na expressão regular: %s"
-
-#: twautomate.stwwindownotfounddebugsavedfmt
-msgctxt "twautomate.stwwindownotfounddebugsavedfmt"
-msgid "theWord window not found. Debug information has been saved to: %s"
-msgstr ""
-"Janela do theWord não encontrada. Informações de depuração foram salvas em: "
-"%s"
-
-#: formllmoptions.rsbtnclose
-msgctxt "formllmoptions.rsbtnclose"
-msgid "Close"
-msgstr "Fechar"
-
-#: formllmoptions.rsformatinfofmt
-msgctxt "formllmoptions.rsformatinfofmt"
-msgid "Info: %s"
-msgstr "Informação: %s"
-
-#: formaiprocessing.saiprocessingerrorseelogs
-msgctxt "formaiprocessing.saiprocessingerrorseelogs"
-msgid "Error during AI processing (see logs)"
-msgstr "Erro durante o processamento de IA (consulte os logs)"
-
-msgctxt "project_setup_model.sscenariounknown"
-msgid "Unknown"
-msgstr "Desconhecido"
-
-msgctxt "project_setup_model.sscenarioassociation"
-msgid "Translation association project"
-msgstr "Projeto de associação de tradução"
-
-msgctxt "project_setup_model.sscenariotranslation"
-msgid "Translation project"
-msgstr "Projeto de tradução"
-
-msgctxt "bible_book_names.sgenesis"
-msgid "Genesis"
-msgstr "Gênesis"
-
-msgctxt "bible_book_names.sexodus"
-msgid "Exodus"
-msgstr "Êxodo"
-
-msgctxt "bible_book_names.sleviticus"
-msgid "Leviticus"
-msgstr "Levítico"
-
-msgctxt "bible_book_names.snumbers"
-msgid "Numbers"
-msgstr "Números"
-
-msgctxt "bible_book_names.sdeuteronomy"
-msgid "Deuteronomy"
-msgstr "Deuteronômio"
-
-msgctxt "bible_book_names.sjoshua"
-msgid "Joshua"
-msgstr "Josué"
-
-msgctxt "bible_book_names.sjudges"
-msgid "Judges"
-msgstr "Juízes"
-
-msgctxt "bible_book_names.sruth"
-msgid "Ruth"
-msgstr "Rute"
-
-msgctxt "bible_book_names.s1samuel"
-msgid "1 Samuel"
-msgstr "1 Samuel"
-
-msgctxt "bible_book_names.s2samuel"
-msgid "2 Samuel"
-msgstr "2 Samuel"
-
-msgctxt "bible_book_names.s1kings"
-msgid "1 Kings"
-msgstr "1 Reis"
-
-msgctxt "bible_book_names.s2kings"
-msgid "2 Kings"
-msgstr "2 Reis"
-
-msgctxt "bible_book_names.s1chronicles"
-msgid "1 Chronicles"
-msgstr "1 Crônicas"
-
-msgctxt "bible_book_names.s2chronicles"
-msgid "2 Chronicles"
-msgstr "2 Crônicas"
-
-msgctxt "bible_book_names.sezra"
-msgid "Ezra"
-msgstr "Esdras"
-
-msgctxt "bible_book_names.snehemiah"
-msgid "Nehemiah"
-msgstr "Neemias"
-
-msgctxt "bible_book_names.sesther"
-msgid "Esther"
-msgstr "Ester"
-
-msgctxt "bible_book_names.sjob"
-msgid "Job"
-msgstr "Jó"
-
-msgctxt "bible_book_names.spsalms"
-msgid "Psalms"
-msgstr "Salmos"
-
-msgctxt "bible_book_names.sproverbs"
-msgid "Proverbs"
-msgstr "Provérbios"
-
-msgctxt "bible_book_names.secclesiastes"
-msgid "Ecclesiastes"
-msgstr "Eclesiastes"
-
-msgctxt "bible_book_names.ssongofsolomon"
-msgid "Song of Solomon"
-msgstr "Cântico dos Cânticos"
-
-msgctxt "bible_book_names.sisaiah"
-msgid "Isaiah"
-msgstr "Isaías"
-
-msgctxt "bible_book_names.sjeremiah"
-msgid "Jeremiah"
-msgstr "Jeremias"
-
-msgctxt "bible_book_names.slamentations"
-msgid "Lamentations"
-msgstr "Lamentações"
-
-msgctxt "bible_book_names.sezekiel"
-msgid "Ezekiel"
-msgstr "Ezequiel"
-
-msgctxt "bible_book_names.sdaniel"
-msgid "Daniel"
-msgstr "Daniel"
-
-msgctxt "bible_book_names.shosea"
-msgid "Hosea"
-msgstr "Oseias"
-
-msgctxt "bible_book_names.sjoel"
-msgid "Joel"
-msgstr "Joel"
-
-msgctxt "bible_book_names.samos"
-msgid "Amos"
-msgstr "Amós"
-
-msgctxt "bible_book_names.sobadiah"
-msgid "Obadiah"
-msgstr "Obadias"
-
-msgctxt "bible_book_names.sjonah"
-msgid "Jonah"
-msgstr "Jonas"
-
-msgctxt "bible_book_names.smicah"
-msgid "Micah"
-msgstr "Miqueias"
-
-msgctxt "bible_book_names.snahum"
-msgid "Nahum"
-msgstr "Naum"
-
-msgctxt "bible_book_names.shabakkuk"
-msgid "Habakkuk"
-msgstr "Habacuque"
-
-msgctxt "bible_book_names.szephaniah"
-msgid "Zephaniah"
-msgstr "Sofonias"
-
-msgctxt "bible_book_names.shaggai"
-msgid "Haggai"
-msgstr "Ageu"
-
-msgctxt "bible_book_names.szechariah"
-msgid "Zechariah"
-msgstr "Zacarias"
-
-msgctxt "bible_book_names.smalachi"
-msgid "Malachi"
-msgstr "Malaquias"
-
-msgctxt "bible_book_names.smatthew"
-msgid "Matthew"
-msgstr "Mateus"
-
-msgctxt "bible_book_names.smark"
-msgid "Mark"
-msgstr "Marcos"
-
-msgctxt "bible_book_names.sluke"
-msgid "Luke"
-msgstr "Lucas"
-
-msgctxt "bible_book_names.sjohn"
-msgid "John"
-msgstr "João"
-
-msgctxt "bible_book_names.sacts"
-msgid "Acts"
-msgstr "Atos"
-
-msgctxt "bible_book_names.sromans"
-msgid "Romans"
-msgstr "Romanos"
-
-msgctxt "bible_book_names.s1corinthians"
-msgid "1 Corinthians"
-msgstr "1 Coríntios"
-
-msgctxt "bible_book_names.s2corinthians"
-msgid "2 Corinthians"
-msgstr "2 Coríntios"
-
-msgctxt "bible_book_names.sgalatians"
-msgid "Galatians"
-msgstr "Gálatas"
-
-msgctxt "bible_book_names.sephesians"
-msgid "Ephesians"
-msgstr "Efésios"
-
-msgctxt "bible_book_names.sphilippians"
-msgid "Philippians"
-msgstr "Filipenses"
-
-msgctxt "bible_book_names.scolossians"
-msgid "Colossians"
-msgstr "Colossenses"
-
-msgctxt "bible_book_names.s1thessalonians"
-msgid "1 Thessalonians"
-msgstr "1 Tessalonicenses"
-
-msgctxt "bible_book_names.s2thessalonians"
-msgid "2 Thessalonians"
-msgstr "2 Tessalonicenses"
-
-msgctxt "bible_book_names.s1timothy"
-msgid "1 Timothy"
-msgstr "1 Timóteo"
-
-msgctxt "bible_book_names.s2timothy"
-msgid "2 Timothy"
-msgstr "2 Timóteo"
-
-msgctxt "bible_book_names.stitus"
-msgid "Titus"
-msgstr "Tito"
-
-msgctxt "bible_book_names.sphilemon"
-msgid "Philemon"
-msgstr "Filemom"
-
-msgctxt "bible_book_names.shebrews"
-msgid "Hebrews"
-msgstr "Hebreus"
-
-msgctxt "bible_book_names.sjames"
-msgid "James"
-msgstr "Tiago"
-
-msgctxt "bible_book_names.s1peter"
-msgid "1 Peter"
-msgstr "1 Pedro"
-
-msgctxt "bible_book_names.s2peter"
-msgid "2 Peter"
-msgstr "2 Pedro"
-
-msgctxt "bible_book_names.s1john"
-msgid "1 John"
-msgstr "1 João"
-
-msgctxt "bible_book_names.s2john"
-msgid "2 John"
-msgstr "2 João"
-
-msgctxt "bible_book_names.s3john"
-msgid "3 John"
-msgstr "3 João"
-
-msgctxt "bible_book_names.sjude"
-msgid "Jude"
-msgstr "Judas"
-
-msgctxt "bible_book_names.srevelation"
-msgid "Revelation"
-msgstr "Apocalipse"
-
-#: formnewproject.schoosebiblemoduletitle
-msgid "Choose a theWord Bible module"
-msgstr "Escolha um módulo bíblico do theWord"
-
-#: formnewproject.schoosedictionarymoduletitle
-msgid "Choose a theWord dictionary module"
-msgstr "Escolha um módulo de dicionário do theWord"
-
-#: project_setup_validation.sscopeoldtestament
-msgctxt "project_setup_validation.sscopeoldtestament"
-msgid "Old Testament"
-msgstr "Antigo Testamento"
-
-#: project_setup_validation.sscopenewtestament
-msgctxt "project_setup_validation.sscopenewtestament"
-msgid "New Testament"
-msgstr "Novo Testamento"
-
-#: project_setup_validation.sscopewholebible
-msgctxt "project_setup_validation.sscopewholebible"
-msgid "Whole Bible"
-msgstr "Bíblia completa"
-
-#: project_setup_validation.sscopeunknown
-msgctxt "project_setup_validation.sscopeunknown"
-msgid "Unknown scope"
-msgstr "Escopo desconhecido"
-
-#: project_setup_validation.stextsource
-msgctxt "project_setup_validation.stextsource"
-msgid "Source"
-msgstr "Origem"
-
-#: project_setup_validation.stextdestination
-msgctxt "project_setup_validation.stextdestination"
-msgid "Destination"
-msgstr "Destino"
-
-#: project_setup_validation.stextreference1
-msgctxt "project_setup_validation.stextreference1"
-msgid "Reference 1"
-msgstr "Referência 1"
-
-#: project_setup_validation.stextreference2
-msgctxt "project_setup_validation.stextreference2"
-msgid "Reference 2"
-msgstr "Referência 2"
-
-#: project_setup_validation.sprojectnamerequired
-msgctxt "project_setup_validation.sprojectnamerequired"
-msgid "Please choose a name for the project."
-msgstr "Escolha um nome para o projeto."
-
-#: project_setup_validation.sprojectfilerequired
-msgctxt "project_setup_validation.sprojectfilerequired"
-msgid "Please choose where the .bib project file will be saved."
-msgstr "Escolha onde o arquivo .bib do projeto será salvo."
-
-#: project_setup_validation.sprojectfileextension
-msgctxt "project_setup_validation.sprojectfileextension"
-msgid "The project file must use the .bib extension."
-msgstr "O arquivo de projeto deve usar a extensão .bib."
-
-#: project_setup_validation.sprojectfileexists
-msgctxt "project_setup_validation.sprojectfileexists"
-msgid "A project file already exists at this location."
-msgstr "Já existe um arquivo de projeto neste local."
-
-#: project_setup_validation.ssourcerequired
-msgctxt "project_setup_validation.ssourcerequired"
-msgid "Please choose the source Bible text."
-msgstr "Escolha o texto bíblico de origem."
-
-#: project_setup_validation.sdestinationrequired
-msgctxt "project_setup_validation.sdestinationrequired"
-msgid "Please choose the destination Bible text for an association project."
-msgstr "Escolha o texto bíblico de destino para um projeto de associação."
-
-#: project_setup_validation.sstatuscataloginvalid
-#, object-pascal-format
-msgctxt "project_setup_validation.sstatuscataloginvalid"
-msgid "Status catalog is invalid: %s"
-msgstr "Catálogo de estados inválido: %s"
-
-#: project_setup_validation.smoduleoptional
-msgctxt "project_setup_validation.smoduleoptional"
-msgid "Optional."
-msgstr "Opcional."
-
-#: project_setup_validation.smodulerequired
-msgctxt "project_setup_validation.smodulerequired"
-msgid "Required module was not selected."
-msgstr "O módulo obrigatório não foi selecionado."
-
-#: project_setup_validation.smodulemissing
-msgctxt "project_setup_validation.smodulemissing"
-msgid "The selected Bible module does not exist."
-msgstr "O módulo bíblico selecionado não existe."
-
-#: project_setup_validation.smoduletypeinvalid
-msgctxt "project_setup_validation.smoduletypeinvalid"
-msgid "Only theWord Bible modules (.ont, .nt, .ot) are supported."
-msgstr "Apenas módulos bíblicos do theWord (.ont, .nt, .ot) são suportados."
-
-#: project_setup_validation.smodulescopemismatch
-#, object-pascal-format
-msgctxt "project_setup_validation.smodulescopemismatch"
-msgid "The selected %s module cannot be used in a %s project."
-msgstr "O módulo selecionado (%s) não pode ser usado em um projeto %s."
-
-#: project_setup_validation.smodulelinecountinvalid
-#, object-pascal-format
-msgctxt "project_setup_validation.smodulelinecountinvalid"
-msgid "The selected module has %d lines, but %d are required."
-msgstr "O módulo selecionado tem %d linhas, mas %d são necessárias."
-
-#: project_setup_validation.smodulepreviewempty
-msgctxt "project_setup_validation.smodulepreviewempty"
-msgid "Module looks valid, but the first verse preview is empty."
-msgstr ""
-"O módulo parece válido, mas a pré-visualização do primeiro versículo está "
-"vazia."
-
-#: project_setup_validation.smoduleready
-#, object-pascal-format
-msgctxt "project_setup_validation.smoduleready"
-msgid "Ready: %s, %d verses."
-msgstr "Pronto: %s, %d versículos."
-
-#: project_setup_validation.sdictionaryoptional
-msgctxt "project_setup_validation.sdictionaryoptional"
-msgid "Optional."
-msgstr "Opcional."
-
-#: project_setup_validation.sdictionarymissing
-msgctxt "project_setup_validation.sdictionarymissing"
-msgid "The selected dictionary does not exist."
-msgstr "O dicionário selecionado não existe."
-
-#: project_setup_validation.sdictionarystrongmissing
-msgctxt "project_setup_validation.sdictionarystrongmissing"
-msgid "This dictionary does not advertise Strong support."
-msgstr "Este dicionário não declara suporte a Strong."
-
-#: project_setup_validation.sdictionarymorphmissing
-msgctxt "project_setup_validation.sdictionarymorphmissing"
-msgid "This dictionary does not advertise morphology support."
-msgstr "Este dicionário não declara suporte a morfologia."
-
-#: project_setup_validation.sdictionaryencrypted
-msgctxt "project_setup_validation.sdictionaryencrypted"
-msgid "Encrypted dictionaries are not supported."
-msgstr "Dicionários criptografados não são suportados."
-
-#: project_setup_validation.sdictionarycompressed
-msgctxt "project_setup_validation.sdictionarycompressed"
-msgid "Compressed dictionaries are not supported."
-msgstr "Dicionários compactados não são suportados."
-
-#: project_setup_validation.sdictionarynonrtf
-msgctxt "project_setup_validation.sdictionarynonrtf"
-msgid "Only RTF dictionary content is supported."
-msgstr "Apenas conteúdo de dicionário em RTF é suportado."
-
-#: project_setup_validation.sdictionaryinvalid
-msgctxt "project_setup_validation.sdictionaryinvalid"
-msgid "The selected dictionary could not be validated."
-msgstr "Não foi possível validar o dicionário selecionado."
-
-#: project_setup_validation.sdictionaryready
-msgctxt "project_setup_validation.sdictionaryready"
-msgid "Dictionary ready."
-msgstr "Dicionário pronto."
-
-#: formstatuscatalog.sstatuscataloginfo
-msgid ""
-"Edit descriptions, colors and display order. Verse status IDs stay stable."
-msgstr ""
-"Edite descrições, cores e ordem de exibição. Os IDs dos estados dos "
-"versículos permanecem estáveis."
-
-#: formstatuscatalog.sstatuscatalogname
-msgid "Description"
-msgstr "Descrição"
-
-#: formstatuscatalog.sstatuscatalogcolor
-msgid "Color"
-msgstr "Cor"
-
-#: formstatuscatalog.sstatuscatalogdisplay
-msgid "Display"
-msgstr "Exibição"
-
-#: formstatuscatalog.sstatuscatalogused
-msgid "Used"
-msgstr "Usado"
-
-#: formstatuscatalog.sstatuscatalogadd
-msgid "Add"
-msgstr "Adicionar"
-
-#: formstatuscatalog.sstatuscatalogrename
-msgid "Rename..."
-msgstr "Renomear..."
-
-#: formstatuscatalog.sstatuscatalogremove
-msgid "Remove"
-msgstr "Remover"
-
-#: formstatuscatalog.sstatuscatalogchoosecolor
-msgid "Color..."
-msgstr "Cor..."
-
-#: formstatuscatalog.sstatuscatalogdisplayup
-msgid "Display up"
-msgstr "Mover para cima"
-
-#: formstatuscatalog.sstatuscatalogdisplaydown
-msgid "Display down"
-msgstr "Mover para baixo"
-
-#: formstatuscatalog.sstatuscatalogcannotremovelast
-msgid "At least one status is required."
-msgstr "É necessário manter pelo menos um estado."
-
-#: formstatuscatalog.sstatuscatalogmaxreached
-#, object-pascal-format
-msgid "At most %d statuses are allowed."
-msgstr "São permitidos no máximo %d estados."
-
-#: formstatuscatalog.sstatuscatalogremaptitle
-msgid "Remap status"
-msgstr "Remapear estado"
-
-#: formstatuscatalog.sstatuscatalogremapmessage
-#, object-pascal-format
-msgid ""
-"The status \"%s\" is used by %d verses. Choose another status for those "
-"verses before removing it."
-msgstr ""
-"O estado \"%s\" é usado por %d versículos. Escolha outro estado para esses "
-"versículos antes de removê-lo."
-
-#: formstatuscatalog.sstatuscatalognewstatus
-#, object-pascal-format
-msgid "Status %d"
-msgstr "Estado %d"
-
-#: formstatuscatalog.sstatuscatalogrenametitle
-msgid "Rename status"
-msgstr "Renomear estado"
-
-#: formstatuscatalog.sstatuscatalogrenameprompt
-msgid "Description:"
-msgstr "Descrição:"
-
-#: formstatuscatalog.sstatuscatalognamehint
-msgid ""
-"Status description shown in selectors, menus, legends and tree hints. "
-"Editable."
-msgstr ""
-"Descrição do estado exibida em seletores, menus, legendas e dicas da árvore."
-" Editável."
-
-#: formstatuscatalog.sstatuscatalogcolorhint
-msgid ""
-"Status color, shown as #RRGGBB. Edit the value, double-click, or use the "
-"Color button."
-msgstr ""
-"Cor do estado, exibida como #RRGGBB. Edite o valor, dê duplo clique ou use o"
-" botão Cor."
-
-#: formstatuscatalog.sstatuscatalogdisplayhint
-msgid ""
-"Visual order used in selectors, menus, legends and aggregate status bars. "
-"Change it with Display up/down."
-msgstr ""
-"Ordem visual usada em seletores, menus, legendas e barras de estado "
-"agregado. Altere com mover para cima/baixo."
-
-#: formstatuscatalog.sstatuscatalogusedhint
-msgid ""
-"Number of verses currently using this status in this project. Read-only."
-msgstr ""
-"Número de versículos que usam este estado no projeto atual. Somente leitura."
-
-#: formstatuscatalog.sstatuscatalogwindowtitle
-msgid "Status catalog editor"
-msgstr "Catálogo de estados"
-
-#: formprojectproperties.sprojectpropertiestitle
-msgid "Project properties"
-msgstr "Propriedades"
-
-#: formprojectproperties.spropertiesgroup
-msgid "Properties"
-msgstr "Propriedades"
-
-#: formprojectproperties.sprojectnamelabel
-msgid "Name"
-msgstr "Nome"
-
-#: formprojectproperties.sstrongdictionarylabel
-msgid "Strong's dictionary"
-msgstr "Dicionário Strong"
-
-#: formprojectproperties.smorphologydictionarylabel
-msgid "Morphology dictionary"
-msgstr "Dicionário morfológico"
-
-#: formprojectproperties.stextdescriptionlabel
-msgid "Text description"
-msgstr "Descrição do texto"
-
-#: formprojectproperties.sfontlabel
-msgid "Font"
-msgstr "Fonte"
-
-#: formprojectproperties.sapply
-msgid "Apply"
-msgstr "Aplicar"
-
-#: FormProjectExport.pas:55
-msgctxt "formprojectexport.stheworddictionarymodule"
-msgid "theWord dictionary module (*.dct.twm)"
-msgstr "Módulo de dicionário do theWord (*.dct.twm)"
-
-#: FormProjectExport.pas:56
-msgctxt "formprojectexport.ssavemoduleas"
-msgid "Save module as..."
-msgstr "Salvar módulo como..."
-
-#: FormExportPatch.pas:48
-msgctxt "formexportpatch.sexportpatchtitle"
-msgid "Export patch..."
-msgstr "Exportar patch..."
-
-#: FormExportPatch.pas:49
-msgctxt "formexportpatch.sselectall"
-msgid "Select all"
-msgstr "Marcar tudo"
-
-#: FormExportPatch.pas:50
-msgctxt "formexportpatch.sdeselectall"
-msgid "Deselect all"
-msgstr "Desmarcar tudo"
-
-#: FormExportPatch.pas:51
-msgctxt "formexportpatch.scancel"
-msgid "Cancel"
-msgstr "Cancelar"
-
-#: FormExportPatch.pas:52
-msgctxt "formexportpatch.sok"
-msgid "OK"
-msgstr "OK"
-
-#: FormExportPatch.lfm:6
-msgctxt "tfrmexportpatch.caption"
-msgid "Export patch..."
-msgstr "Exportar patch..."
-
-#: FormExportPatch.lfm:51
-msgctxt "tfrmexportpatch.btnselectall.caption"
-msgid "Select all"
-msgstr "Marcar tudo"
-
-#: FormExportPatch.lfm:61
-msgctxt "tfrmexportpatch.btndeselectall.caption"
-msgid "Deselect all"
-msgstr "Desmarcar tudo"
-
-#: FormExportPatch.lfm:32
-msgctxt "tfrmexportpatch.button2.caption"
-msgid "Cancel"
-msgstr "Cancelar"
-
-#: FormExportPatch.lfm:22
-msgctxt "tfrmexportpatch.button1.caption"
-msgid "OK"
-msgstr "OK"
-
-#: formprincipal.sguidemodemenu
-msgid "Guide mode"
-msgstr "Modo guia"
-
-#: formprincipal.sguidemodehint
-msgid "Show contextual guidance for the main workflow"
-msgstr "Mostrar orientação contextual para o fluxo principal"
-
-#: formprincipal.shideguidebutton
-msgid "Hide guide"
-msgstr "Ocultar guia"
-
-#: formprincipal.sguidenoprojecttitle
-msgid "Guide: start a project"
-msgstr "Guia: iniciar um projeto"
-
-#: formprincipal.sguidenoprojecttext
-msgid "Create or open a project. Association projects copy Strong's and morphology from Source to Destination; translation projects let you write Destination first."
-msgstr "Crie ou abra um projeto. Projetos de associação copiam Strong e morfologia da origem para o destino; projetos de tradução permitem escrever o destino primeiro."
-
-#: formprincipal.sguideassociationtitle
-msgid "Guide: associate words"
-msgstr "Guia: associar palavras"
-
-#: formprincipal.sguideassociationnoselectiontext
-msgid "Click a word in the source text to begin."
-msgstr "Clique numa palavra do texto origem para começar."
-
-#: formprincipal.sguideassociationselectedtitle
-msgid "Guide: complete the association"
-msgstr "Guia: concluir a associação"
-
-#: formprincipal.sguideassociationselectedaddtext
-msgid "To add words to the selection, hold Ctrl and click another word in the source text."
-msgstr "Para adicionar palavras à seleção, segure Ctrl e clique em outra palavra do texto origem."
-
-#: formprincipal.sguideassociationselectedassociatetext
-msgid "To associate this selection with the other text, hold Shift and select the equivalent word(s) in the destination text. Hold Ctrl too to add words to the selection."
-msgstr "Para associar esta seleção com o outro texto, mantenha Shift pressionado e selecione a(s) palavra(s) equivalentes no texto destino. Segure Ctrl também para adicionar palavras à seleção."
-
-#: formprincipal.sguideassociationselectedquicktext
-msgid "To associate this selection with one destination word and select the next word, right-click the equivalent word in the other text."
-msgstr "Para associar esta seleção a uma única palavra do texto destino e já selecionar a próxima palavra, clique com o botão direito na palavra equivalente do outro texto."
-
-#: formprincipal.sguideassociationexistingtitle
-msgid "Guide: adjust the association"
-msgstr "Guia: ajustar a associação"
-
-#: formprincipal.sguideassociationexistingdisassociatetext
-msgid "To disassociate, press Ctrl+Shift and click each associated word."
-msgstr "Para desassociar, pressione Ctrl+Shift e clique cada uma das palavras associadas."
-
-#: formprincipal.sguideassociationexistingaddtext
-msgid "To add words to the association, hold Ctrl+Shift and select new words."
-msgstr "Para adicionar palavras à associação, segure Ctrl+Shift e selecione novas palavras."
-
-#: formprincipal.sguideassociationexistingremovetext
-msgid "To remove words from the association, press Ctrl+Shift and click the word."
-msgstr "Para remover palavras da associação, pressione Ctrl+Shift e clique na palavra."
-
-#: formprincipal.sguidetranslationtitle
-msgid "Guide: translate the verse"
-msgstr "Guia: traduzir o versículo"
-
-#: formprincipal.sguidetranslationtext
-msgid "Double-click an empty area in Destination to write the translation. Use Save to apply or Cancel to discard; Esc also saves and closes. Once Destination has text, the guide will switch to association."
-msgstr "Dê duplo clique numa área vazia do destino para escrever a tradução. Use Salvar para aplicar ou Cancelar para descartar; Esc também salva e fecha. Quando houver texto no destino, o guia passará para associação."
-
-#: formaiprocessing.sapplysuccessfulfmt
-#, object-pascal-format
-msgid "Changes applied successfully (%d verses)"
-msgstr "Mudanças aplicadas com sucesso (%d versículos)"
-
-#: formaiprocessing.saireviewgroupcaption
-msgctxt "formaiprocessing.saireviewgroupcaption"
-msgid "Verses to apply"
-msgstr "Versículos a aplicar"
-
-#: formaiprocessing.saireviewairesultstab
-msgid "AI results"
-msgstr "Resultados da IA"
-
-#: formaiprocessing.saireviewcurrentprojecttab
-msgid "Current project"
-msgstr "Projeto atual"
-
-#: formaiprocessing.saireviewselectall
-msgctxt "formaiprocessing.saireviewselectall"
-msgid "Accept all"
-msgstr "Aceitar todos"
-
-#: formaiprocessing.saireviewdeselectall
-msgctxt "formaiprocessing.saireviewdeselectall"
-msgid "Reject all"
-msgstr "Rejeitar todos"
-
-#: formaiprocessing.saireviewapplyaccepted
-msgid "Apply accepted"
-msgstr "Aplicar aceitos"
-
-#: formaiprocessing.saireviewdiscard
-msgctxt "formaiprocessing.saireviewdiscard"
-msgid "Discard"
-msgstr "Descartar"
-
-#: formaiprocessing.saireviewcancel
-msgctxt "formaiprocessing.saireviewcancel"
-msgid "Cancel"
-msgstr "Cancelar"
-
-#: formaiprocessing.saireviewerrorprefix
-#, object-pascal-format
-msgid "Error: %s"
-msgstr "Erro: %s"
-
-#: formaiprocessing.saireviewsummaryfmt
-#, object-pascal-format
-msgid "Selected: %d verses; ready to apply: %d verses; failed: %d."
-msgstr "Selecionados: %d versículos; prontos para aplicar: %d versículos; falhas: %d."
-
-#: formaiprocessing.saireviewreadysummaryfmt
-#, object-pascal-format
-msgid "Ready to apply %d accepted verses."
-msgstr "Pronto para aplicar %d versículos aceitos."
-
-#: formaiprocessing.saireviewapplyquestion
-msgid "Apply the accepted AI changes now?"
-msgstr "Aplicar agora as mudanças aceitas da IA?"
-
-#: formaiprocessing.saireviewnoacceptedchanges
-msgid "There are no accepted AI changes selected to apply."
-msgstr "Não há mudanças da IA aceitas e selecionadas para aplicar."
-
-#: formaiprocessing.saireviewfailedwarningfmt
-#, object-pascal-format
-msgid "%d verses failed. They will not be applied unless you retry them successfully."
-msgstr "%d versículos falharam. Eles não serão aplicados, a menos que você os reprocesse com sucesso."
-
-#: formaiprocessing.saireviewacceptverse
-msgid "Accept verse"
-msgstr "Aceitar versículo"
-
-#: formaiprocessing.saireviewrejectverse
-msgid "Reject verse"
-msgstr "Rejeitar versículo"
-
-#: formaiprocessing.saireviewretryfailed
-msgid "Retry failed"
-msgstr "Tentar falhas novamente"
-
-#: formaiprocessing.saireviewselectallhint
-msgid "Mark all completed verses to apply their accepted AI proposals."
-msgstr "Marca todos os versículos concluídos para aplicar as propostas aceitas da IA."
-
-#: formaiprocessing.saireviewdeselectallhint
-msgid "Unmark all verses. Nothing will be applied until verses are accepted again."
-msgstr "Desmarca todos os versículos. Nada será aplicado até que versículos sejam aceitos novamente."
-
-#: formaiprocessing.saireviewacceptversehint
-msgid "Mark the current verse for application. Comments follow the selected comment option."
-msgstr "Marca o versículo atual para aplicação. Os comentários seguem a opção selecionada."
-
-#: formaiprocessing.saireviewrejectversehint
-msgid "Unmark the current verse so the project stays unchanged for this verse."
-msgstr "Desmarca o versículo atual para que o projeto permaneça inalterado neste versículo."
-
-#: formaiprocessing.saireviewretryfailedhint
-msgid "Run the AI again only for verses that failed."
-msgstr "Executa a IA novamente apenas para os versículos que falharam."
-
-#: formaiprocessing.saireviewapplyacceptedhint
-msgid "Apply only the marked verses."
-msgstr "Aplica apenas os versículos marcados."
-
-#: formaiprocessing.saireviewdiscardhint
-msgid "Close this review without applying AI results."
-msgstr "Fecha esta revisão sem aplicar os resultados da IA."
-
-#: formaiprocessing.saireviewcancelhint
-msgid "Stop the AI processing that is currently running."
-msgstr "Interrompe o processamento de IA em andamento."
-
-#: formaiprocessing.saireviewnofailedverses
-msgid "There are no failed verses to retry."
-msgstr "Não há versículos com falha para tentar novamente."
-
-#: formaiprocessing.saireviewretrystartedfmt
-#, object-pascal-format
-msgid "Retrying %d failed verses."
-msgstr "Tentando novamente %d versículos com falha."
-
-#: formaiprocessing.saireviewverseaccepted
-msgid "This verse is accepted and will be applied."
-msgstr "Este versículo está aceito e será aplicado."
-
-#: formaiprocessing.saireviewverserejected
-msgid "This verse is rejected and will not be applied."
-msgstr "Este versículo está rejeitado e não será aplicado."
-
-#: formaiprocessing.saireviewversenochanges
-msgid "The AI did not propose changes for this verse."
-msgstr "A IA não propôs mudanças para este versículo."
-
-#: formaiprocessing.saireviewversepending
-msgid "Waiting for AI result."
-msgstr "Aguardando resultado da IA."
-
-#: formaiprocessing.saireviewverseprocessing
-msgid "Processing this verse..."
-msgstr "Processando este versículo..."
-
-#: formaiprocessing.saireviewassociationsummaryfmt
-#, object-pascal-format
-msgid "Associations proposed: %d (current project: %d)."
-msgstr "Associações propostas: %d (projeto atual: %d)."
-
-#: formaiprocessing.saireviewassociationprogressfmt
-#, object-pascal-format
-msgid "Association coverage in displayed preview: %.0f%%."
-msgstr "Cobertura de associação na pré-visualização exibida: %.0f%%."
-
-#: formaiprocessing.saireviewtranslationsummary
-msgid "Review the proposed destination text above."
-msgstr "Revise acima o texto destino proposto."
-
-#: formaiprocessing.saireviewcommentsavailable
-msgid "AI comments are shown below."
-msgstr "Os comentários da IA são exibidos abaixo."
-
-#: formaiprocessing.saireviewnocomments
-msgid "No AI comments for this verse."
-msgstr "Nenhum comentário da IA para este versículo."
-
-#: formaiprocessing.saireviewcommentschangedfmt
-#, object-pascal-format
-msgid "AI proposed comments. Current choice: %s."
-msgstr "A IA propôs comentários. Escolha atual: %s."
-
-#: formaiprocessing.saireviewcommentssectionsummaryfmt
-#, object-pascal-format
-msgid "Comments: %s"
-msgstr "Comentários: %s"
-
-#: formaiprocessing.saireviewshowcomments
-msgid "Review comments"
-msgstr "Revisar comentários"
-
-#: formaiprocessing.saireviewhidecomments
-msgid "Hide comments"
-msgstr "Ocultar comentários"
-
-#: formaiprocessing.saireviewcurrentcomments
-msgid "Current comment"
-msgstr "Comentário atual"
-
-#: formaiprocessing.saireviewappliedcomments
-msgid "After applying"
-msgstr "Após aplicar"
-
-#: formaiprocessing.saireviewcommentsdecisioncaption
-msgid "Comment choice"
-msgstr "Escolha dos comentários"
-
-#: formaiprocessing.saireviewkeepcurrentcomments
-msgid "Keep current comment"
-msgstr "Manter comentário atual"
-
-#: formaiprocessing.saireviewuseaicomments
-msgid "Use AI comment"
-msgstr "Usar comentário da IA"
-
-#: formaiprocessing.saireviewmergecomments
-msgid "Keep both comments"
-msgstr "Manter ambos os comentários"
+#: versememo.soldtestamentquotetaghint
+msgctxt "versememo.soldtestamentquotetaghint"
+msgid "Wrap the selection with <FO>...<Fo> for Old Testament quotations"
+msgstr "Envolve a seleção com <FO>...<Fo> para citações do Antigo Testamento"
+
+#: versememo.ssaveeditbutton
+msgctxt "versememo.ssaveeditbutton"
+msgid "Save"
+msgstr "Salvar"
+
+#: versememo.ssaveedithint
+msgctxt "versememo.ssaveedithint"
+msgid "Save verse text and close the editor"
+msgstr "Salva o texto do versículo e fecha o editor"

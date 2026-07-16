@@ -10,6 +10,14 @@ uses
 
 type
 
+  TAssociationMemoryRebuildPhase = (
+    amrpWriting,
+    amrpValidating
+  );
+
+  TAssociationMemoryRebuildProgressEvent = procedure(
+    Phase: TAssociationMemoryRebuildPhase; Current, Total: Integer) of object;
+
   TSuggestionManager = class
   private
     FConnection: TSQLConnection;
@@ -20,6 +28,7 @@ type
     FRemovePairQuery: TSQLQuery;
     FGetSourcePhraseQuery: TSQLQuery;
     FGetTargetPhraseQuery: TSQLQuery;
+    FGetTranslationCountQuery: TSQLQuery;
     FGetNextSourcePhraseIdQuery: TSQLQuery;
     FGetNextTargetPhraseIdQuery: TSQLQuery;
     FInsertSourcePhraseQuery: TSQLQuery;
@@ -27,6 +36,7 @@ type
     FInsertSourcePhraseSyntagmQuery: TSQLQuery;
     FInsertTargetPhraseSyntagmQuery: TSQLQuery;
     FInsertTranslationQuery: TSQLQuery;
+    FInsertTranslationCountQuery: TSQLQuery;
     FUpdateTranslationQuery: TSQLQuery;
     FSuggestionsQuery: TSQLQuery;
     FSuggestionsWithoutMorphologyQuery: TSQLQuery;
@@ -35,6 +45,15 @@ type
     FVerbList: TStringList;
     FRecognizeVerbForms: Boolean;
     FRemoveMorphologyRegex: IRegex;
+    FRebuildSavepointActive: Boolean;
+    FBulkRebuildActive: Boolean;
+    FBulkTranslationsFlushed: Boolean;
+    FBulkSourcePhraseIds: TStringList;
+    FBulkTargetPhraseIds: TStringList;
+    FBulkTranslationCounts: TStringList;
+    FNextBulkSourcePhraseId: Integer;
+    FNextBulkTargetPhraseId: Integer;
+    FOnRebuildProgress: TAssociationMemoryRebuildProgressEvent;
     function GetOrCreateSourcePhraseId(const Phrase: string): Integer;
     function FindSourcePhraseId(const Phrase: string): Integer;
     function InsertSourcePhraseId(const Phrase: string): Integer;
@@ -47,6 +66,17 @@ type
     function NormalizeVerb(const Phrase: string): string;
     function GetSuggestions(const Key: string): TSQLQuery;
     function GetTranslationMemoryQuery(const Key: string): TSQLQuery;
+    procedure CleanupOrphanPhrases(SourcePhraseId, TargetPhraseId: Integer);
+    procedure InsertSourcePhraseWithId(const Phrase: string; PhraseId: Integer);
+    procedure InsertTargetPhraseWithId(const Phrase: string; PhraseId: Integer);
+    function GetOrCreateBulkSourcePhraseId(const Phrase: string): Integer;
+    function GetOrCreateBulkTargetPhraseId(const Phrase: string): Integer;
+    procedure AddBulkPair(const Source, Target: string);
+    procedure FlushBulkTranslations;
+    procedure StartBulkRebuild;
+    procedure ResetBulkRebuild;
+    procedure ReportRebuildProgress(Phase: TAssociationMemoryRebuildPhase;
+      Current, Total: Integer);
   public
     constructor Create(Owner: TComponent; Connection: TSQLConnection); overload;
     constructor Create(const DatabasePath: string); overload;
@@ -56,9 +86,20 @@ type
     procedure RemovePair(const Source, Target: string);
     procedure SuggestAssociations(SourceVerse: TVerse);
     procedure ClearAssociationDatabase;
+    procedure BeginRebuild;
+    procedure PrepareRebuildValidation;
+    procedure CommitRebuild;
+    procedure RollbackRebuild;
     procedure Commit;
     procedure Rollback;
+    function Validate(out ErrorMessage: string): Boolean;
+    function ValidatePreparedRebuild(out ErrorMessage: string): Boolean;
+    function ValidatePairs(ExpectedPairs: TStrings;
+      out ErrorMessage: string): Boolean;
+    function GetPairOccurrenceCount(const Source, Target: string): Integer;
     function GetTranslationAlternatives(Syntagm: TSyntagm): string;
+    property OnRebuildProgress: TAssociationMemoryRebuildProgressEvent
+      read FOnRebuildProgress write FOnRebuildProgress;
   end;
 
 implementation
@@ -71,7 +112,8 @@ begin
 
   FRemovePairQuery := TSQLQuery.Create(Owner);
   FRemovePairQuery.DataBase := FConnection;
-  FRemovePairQuery.SQL.Text := 'update traducoes set trad_ocorrencias = trad_ocorrencias - 1 where trad_lori_id = :lori and trad_ldes_id = :ldes';
+  FRemovePairQuery.SQL.Text := 'update traducoes set trad_ocorrencias = trad_ocorrencias - 1 ' +
+    'where trad_lori_id = :lori and trad_ldes_id = :ldes and trad_ocorrencias > 1';
   FRemovePairQuery.Prepare;
 
   FGetSourcePhraseQuery := TSQLQuery.Create(Owner);
@@ -83,6 +125,12 @@ begin
   FGetTargetPhraseQuery.DataBase := FConnection;
   FGetTargetPhraseQuery.SQL.Text := 'select ldes_id from locucoes_destino where ldes_locucao = :locucao';
   FGetTargetPhraseQuery.Prepare;
+
+  FGetTranslationCountQuery := TSQLQuery.Create(Owner);
+  FGetTranslationCountQuery.DataBase := FConnection;
+  FGetTranslationCountQuery.SQL.Text := 'select trad_ocorrencias from traducoes ' +
+    'where trad_lori_id = :lori and trad_ldes_id = :ldes';
+  FGetTranslationCountQuery.Prepare;
 
   FGetNextSourcePhraseIdQuery := TSQLQuery.Create(Owner);
   FGetNextSourcePhraseIdQuery.DataBase := FConnection;
@@ -119,6 +167,13 @@ begin
   FInsertTranslationQuery.SQL.Text := 'insert into traducoes (trad_lori_id, trad_ldes_id, trad_ocorrencias) values (:lori, :ldes, 1)';
   FInsertTranslationQuery.Prepare;
 
+  FInsertTranslationCountQuery := TSQLQuery.Create(Owner);
+  FInsertTranslationCountQuery.DataBase := FConnection;
+  FInsertTranslationCountQuery.SQL.Text := 'insert into traducoes ' +
+    '(trad_lori_id, trad_ldes_id, trad_ocorrencias) ' +
+    'values (:lori, :ldes, :ocorrencias)';
+  FInsertTranslationCountQuery.Prepare;
+
   FUpdateTranslationQuery := TSQLQuery.Create(Owner);
   FUpdateTranslationQuery.DataBase := FConnection;
   FUpdateTranslationQuery.SQL.Text := 'update traducoes set trad_ocorrencias = trad_ocorrencias + 1 where trad_lori_id = :lori and trad_ldes_id = :ldes';
@@ -129,7 +184,7 @@ begin
   FSuggestionsQuery.SQL.Text := 'select lori_locucao, ldes_locucao ' +
       'from sintagmas_locucoes_origem, traducoes, locucoes_origem, locucoes_destino ' +
       'where slor_sori_id = :sori and slor_ordem = 0 and slor_lori_id = trad_lori_id' +
-      '  and slor_lori_id = lori_id and trad_ldes_id = ldes_id ' +
+      '  and slor_lori_id = lori_id and trad_ldes_id = ldes_id and trad_ocorrencias > 0 ' +
       'order by lori_qtde_sintagmas desc, trad_ocorrencias desc';
   FSuggestionsQuery.Prepare;
 
@@ -138,16 +193,16 @@ begin
   FSuggestionsWithoutMorphologyQuery.SQL.Text := 'select lori_locucao, ldes_locucao ' +
       'from sintagmas_locucoes_origem, traducoes, locucoes_origem, locucoes_destino ' +
       'where slor_sori_id like :sori and slor_ordem = 0 and slor_lori_id = trad_lori_id' +
-      '  and slor_lori_id = lori_id and trad_ldes_id = ldes_id ' +
+      '  and slor_lori_id = lori_id and trad_ldes_id = ldes_id and trad_ocorrencias > 0 ' +
       'order by lori_qtde_sintagmas desc, trad_ocorrencias desc';
   FSuggestionsWithoutMorphologyQuery.Prepare;
 
   FTranslationMemoryQuery := TSQLQuery.Create(Owner);
   FTranslationMemoryQuery.DataBase := FConnection;
-  FTranslationMemoryQuery.SQL.Text := 'select ldes_locucao, count(*) ' +
+  FTranslationMemoryQuery.SQL.Text := 'select ldes_locucao, sum(trad_ocorrencias) ' +
       'from sintagmas_locucoes_origem, traducoes, locucoes_origem, locucoes_destino ' +
       'where slor_sori_id like :sori and slor_ordem = 0 and slor_lori_id = trad_lori_id' +
-      '  and slor_lori_id = lori_id and trad_ldes_id = ldes_id ' +
+      '  and slor_lori_id = lori_id and trad_ldes_id = ldes_id and trad_ocorrencias > 0 ' +
       'group by ldes_locucao order by 2 desc';
   FTranslationMemoryQuery.Prepare;
 
@@ -175,6 +230,21 @@ begin
   FVerbList := TStringList.Create;
   FRecognizeVerbForms := True;
   FRemoveMorphologyRegex := RegexCreate('<wt.*?>', [rcoUTF8]);
+  FRebuildSavepointActive := False;
+  FBulkRebuildActive := False;
+  FBulkTranslationsFlushed := False;
+  FBulkSourcePhraseIds := TStringList.Create;
+  FBulkSourcePhraseIds.Sorted := True;
+  FBulkSourcePhraseIds.CaseSensitive := True;
+  FBulkSourcePhraseIds.UseLocale := False;
+  FBulkTargetPhraseIds := TStringList.Create;
+  FBulkTargetPhraseIds.Sorted := True;
+  FBulkTargetPhraseIds.CaseSensitive := True;
+  FBulkTargetPhraseIds.UseLocale := False;
+  FBulkTranslationCounts := TStringList.Create;
+  FBulkTranslationCounts.Sorted := True;
+  FBulkTranslationCounts.CaseSensitive := True;
+  FBulkTranslationCounts.UseLocale := False;
 end;
 
 constructor TSuggestionManager.Create(const DatabasePath: string);
@@ -200,6 +270,7 @@ begin
   FRemovePairQuery.Free;
   FGetSourcePhraseQuery.Free;
   FGetTargetPhraseQuery.Free;
+  FGetTranslationCountQuery.Free;
   FGetNextSourcePhraseIdQuery.Free;
   FGetNextTargetPhraseIdQuery.Free;
   FInsertSourcePhraseQuery.Free;
@@ -207,6 +278,7 @@ begin
   FInsertSourcePhraseSyntagmQuery.Free;
   FInsertTargetPhraseSyntagmQuery.Free;
   FInsertTranslationQuery.Free;
+  FInsertTranslationCountQuery.Free;
   FUpdateTranslationQuery.Free;
   FSuggestionsQuery.Free;
   FSuggestionsWithoutMorphologyQuery.Free;
@@ -223,6 +295,9 @@ begin
 
   FDelimitedValues.Free;
   FVerbList.Free;
+  FBulkTranslationCounts.Free;
+  FBulkTargetPhraseIds.Free;
+  FBulkSourcePhraseIds.Free;
   inherited Destroy;
 end;
 
@@ -231,6 +306,12 @@ var
   SourcePhraseId: Integer;
   TargetPhraseId: Integer;
 begin
+  if FBulkRebuildActive then
+  begin
+    AddBulkPair(Source, Target);
+    Exit;
+  end;
+
   SourcePhraseId := GetOrCreateSourcePhraseId(Source.ToLower);
   TargetPhraseId := GetOrCreateTargetPhraseId(Target.ToLower);
 
@@ -238,13 +319,169 @@ begin
     InsertTranslation(SourcePhraseId, TargetPhraseId);
 end;
 
+procedure TSuggestionManager.InsertSourcePhraseWithId(const Phrase: string;
+  PhraseId: Integer);
+var
+  PhrasePartIndex: Integer;
+begin
+  FDelimitedValues.DelimitedText := Phrase;
+  FInsertSourcePhraseQuery.Close;
+  FInsertSourcePhraseQuery.Params[0].AsInteger := PhraseId;
+  FInsertSourcePhraseQuery.Params[1].AsInteger := FDelimitedValues.Count;
+  FInsertSourcePhraseQuery.Params[2].AsString := Phrase;
+  FInsertSourcePhraseQuery.ExecSQL;
+
+  for PhrasePartIndex := 0 to FDelimitedValues.Count - 1 do
+  begin
+    FInsertSourcePhraseSyntagmQuery.Close;
+    FInsertSourcePhraseSyntagmQuery.Params[0].AsInteger := PhraseId;
+    FInsertSourcePhraseSyntagmQuery.Params[1].AsString :=
+      FDelimitedValues[PhrasePartIndex];
+    FInsertSourcePhraseSyntagmQuery.Params[2].AsInteger := PhrasePartIndex;
+    FInsertSourcePhraseSyntagmQuery.ExecSQL;
+  end;
+end;
+
+procedure TSuggestionManager.InsertTargetPhraseWithId(const Phrase: string;
+  PhraseId: Integer);
+var
+  PhrasePartIndex: Integer;
+begin
+  FDelimitedValues.DelimitedText := Phrase;
+  FInsertTargetPhraseQuery.Close;
+  FInsertTargetPhraseQuery.Params[0].AsInteger := PhraseId;
+  FInsertTargetPhraseQuery.Params[1].AsInteger := FDelimitedValues.Count;
+  FInsertTargetPhraseQuery.Params[2].AsString := Phrase;
+  FInsertTargetPhraseQuery.ExecSQL;
+
+  for PhrasePartIndex := 0 to FDelimitedValues.Count - 1 do
+  begin
+    FInsertTargetPhraseSyntagmQuery.Close;
+    FInsertTargetPhraseSyntagmQuery.Params[0].AsInteger := PhraseId;
+    FInsertTargetPhraseSyntagmQuery.Params[1].AsString :=
+      FDelimitedValues[PhrasePartIndex];
+    FInsertTargetPhraseSyntagmQuery.Params[2].AsInteger := PhrasePartIndex;
+    FInsertTargetPhraseSyntagmQuery.ExecSQL;
+  end;
+end;
+
+function TSuggestionManager.GetOrCreateBulkSourcePhraseId(
+  const Phrase: string): Integer;
+var
+  PhraseIndex: Integer;
+begin
+  PhraseIndex := FBulkSourcePhraseIds.IndexOf(Phrase);
+  if PhraseIndex >= 0 then
+    Exit(PtrInt(FBulkSourcePhraseIds.Objects[PhraseIndex]));
+
+  Result := FNextBulkSourcePhraseId;
+  Inc(FNextBulkSourcePhraseId);
+  InsertSourcePhraseWithId(Phrase, Result);
+  FBulkSourcePhraseIds.AddObject(Phrase, TObject(PtrInt(Result)));
+end;
+
+function TSuggestionManager.GetOrCreateBulkTargetPhraseId(
+  const Phrase: string): Integer;
+var
+  PhraseIndex: Integer;
+begin
+  PhraseIndex := FBulkTargetPhraseIds.IndexOf(Phrase);
+  if PhraseIndex >= 0 then
+    Exit(PtrInt(FBulkTargetPhraseIds.Objects[PhraseIndex]));
+
+  Result := FNextBulkTargetPhraseId;
+  Inc(FNextBulkTargetPhraseId);
+  InsertTargetPhraseWithId(Phrase, Result);
+  FBulkTargetPhraseIds.AddObject(Phrase, TObject(PtrInt(Result)));
+end;
+
+procedure TSuggestionManager.AddBulkPair(const Source, Target: string);
+var
+  CountIndex: Integer;
+  PairKey: string;
+  SourcePhraseId: Integer;
+  TargetPhraseId: Integer;
+begin
+  if FBulkTranslationsFlushed then
+    raise Exception.Create('Cannot add pairs after rebuild validation');
+  SourcePhraseId := GetOrCreateBulkSourcePhraseId(Source.ToLower);
+  TargetPhraseId := GetOrCreateBulkTargetPhraseId(Target.ToLower);
+  PairKey := IntToStr(SourcePhraseId) + #1 + IntToStr(TargetPhraseId);
+  CountIndex := FBulkTranslationCounts.IndexOf(PairKey);
+  if CountIndex < 0 then
+    FBulkTranslationCounts.AddObject(PairKey, TObject(PtrInt(1)))
+  else
+    FBulkTranslationCounts.Objects[CountIndex] := TObject(
+      PtrInt(FBulkTranslationCounts.Objects[CountIndex]) + 1);
+end;
+
+procedure TSuggestionManager.FlushBulkTranslations;
+var
+  CountIndex: Integer;
+  SeparatorIndex: Integer;
+  PairKey: string;
+begin
+  if FBulkTranslationsFlushed then
+    Exit;
+  ReportRebuildProgress(amrpWriting, 0, FBulkTranslationCounts.Count);
+  for CountIndex := 0 to FBulkTranslationCounts.Count - 1 do
+  begin
+    PairKey := FBulkTranslationCounts[CountIndex];
+    SeparatorIndex := Pos(#1, PairKey);
+    if SeparatorIndex <= 1 then
+      raise Exception.Create('Invalid buffered association memory pair');
+
+    FInsertTranslationCountQuery.Close;
+    FInsertTranslationCountQuery.Params[0].AsInteger := StrToInt(
+      Copy(PairKey, 1, SeparatorIndex - 1));
+    FInsertTranslationCountQuery.Params[1].AsInteger := StrToInt(
+      Copy(PairKey, SeparatorIndex + 1, MaxInt));
+    FInsertTranslationCountQuery.Params[2].AsInteger := PtrInt(
+      FBulkTranslationCounts.Objects[CountIndex]);
+    FInsertTranslationCountQuery.ExecSQL;
+    if ((CountIndex + 1) mod 500) = 0 then
+      ReportRebuildProgress(amrpWriting, CountIndex + 1,
+        FBulkTranslationCounts.Count);
+  end;
+  FBulkTranslationsFlushed := True;
+  ReportRebuildProgress(amrpWriting, FBulkTranslationCounts.Count,
+    FBulkTranslationCounts.Count);
+end;
+
+procedure TSuggestionManager.StartBulkRebuild;
+begin
+  FBulkSourcePhraseIds.Clear;
+  FBulkTargetPhraseIds.Clear;
+  FBulkTranslationCounts.Clear;
+  FNextBulkSourcePhraseId := 1;
+  FNextBulkTargetPhraseId := 1;
+  FBulkRebuildActive := True;
+  FBulkTranslationsFlushed := False;
+end;
+
+procedure TSuggestionManager.ResetBulkRebuild;
+begin
+  FBulkRebuildActive := False;
+  FBulkTranslationsFlushed := False;
+  FBulkSourcePhraseIds.Clear;
+  FBulkTargetPhraseIds.Clear;
+  FBulkTranslationCounts.Clear;
+end;
+
+procedure TSuggestionManager.ReportRebuildProgress(
+  Phase: TAssociationMemoryRebuildPhase; Current, Total: Integer);
+begin
+  if Assigned(FOnRebuildProgress) then
+    FOnRebuildProgress(Phase, Current, Total);
+end;
+
 procedure TSuggestionManager.RemovePair(const Source, Target: string);
 var
   SourcePhraseId: Integer;
   TargetPhraseId: Integer;
 begin
-  SourcePhraseId := GetOrCreateSourcePhraseId(Source.ToLower);
-  TargetPhraseId := GetOrCreateTargetPhraseId(Target.ToLower);
+  SourcePhraseId := FindSourcePhraseId(Source.ToLower);
+  TargetPhraseId := FindTargetPhraseId(Target.ToLower);
 
   if (SourcePhraseId > 0) and (TargetPhraseId > 0) then
   begin
@@ -252,6 +489,52 @@ begin
     FRemovePairQuery.Params[0].AsInteger := SourcePhraseId;
     FRemovePairQuery.Params[1].AsInteger := TargetPhraseId;
     FRemovePairQuery.ExecSQL;
+
+    if FRemovePairQuery.RowsAffected = 0 then
+    begin
+      FQuery.Close;
+      FQuery.SQL.Text := 'delete from traducoes where trad_lori_id = :lori ' +
+        'and trad_ldes_id = :ldes and ' +
+        '(trad_ocorrencias is null or trad_ocorrencias <= 1)';
+      FQuery.Params.ParamByName('lori').AsInteger := SourcePhraseId;
+      FQuery.Params.ParamByName('ldes').AsInteger := TargetPhraseId;
+      FQuery.ExecSQL;
+    end;
+  end;
+  CleanupOrphanPhrases(SourcePhraseId, TargetPhraseId);
+end;
+
+procedure TSuggestionManager.CleanupOrphanPhrases(SourcePhraseId,
+  TargetPhraseId: Integer);
+begin
+  if SourcePhraseId > 0 then
+  begin
+    FQuery.Close;
+    FQuery.SQL.Text := 'delete from sintagmas_locucoes_origem where slor_lori_id = :id ' +
+      'and not exists (select 1 from traducoes where trad_lori_id = :id)';
+    FQuery.Params.ParamByName('id').AsInteger := SourcePhraseId;
+    FQuery.ExecSQL;
+
+    FQuery.Close;
+    FQuery.SQL.Text := 'delete from locucoes_origem where lori_id = :id ' +
+      'and not exists (select 1 from traducoes where trad_lori_id = :id)';
+    FQuery.Params.ParamByName('id').AsInteger := SourcePhraseId;
+    FQuery.ExecSQL;
+  end;
+
+  if TargetPhraseId > 0 then
+  begin
+    FQuery.Close;
+    FQuery.SQL.Text := 'delete from sintagmas_locucoes_destino where slde_ldes_id = :id ' +
+      'and not exists (select 1 from traducoes where trad_ldes_id = :id)';
+    FQuery.Params.ParamByName('id').AsInteger := TargetPhraseId;
+    FQuery.ExecSQL;
+
+    FQuery.Close;
+    FQuery.SQL.Text := 'delete from locucoes_destino where ldes_id = :id ' +
+      'and not exists (select 1 from traducoes where trad_ldes_id = :id)';
+    FQuery.Params.ParamByName('id').AsInteger := TargetPhraseId;
+    FQuery.ExecSQL;
   end;
 end;
 
@@ -268,7 +551,10 @@ begin
   FGetSourcePhraseQuery.Params[0].AsString := Phrase;
   FGetSourcePhraseQuery.Open;
 
-  Result := FGetSourcePhraseQuery.Fields[0].AsInteger;
+  if FGetSourcePhraseQuery.EOF then
+    Result := 0
+  else
+    Result := FGetSourcePhraseQuery.Fields[0].AsInteger;
 end;
 
 function TSuggestionManager.InsertSourcePhraseId(const Phrase: string): Integer;
@@ -316,7 +602,10 @@ begin
   FGetTargetPhraseQuery.Params[0].AsString := Phrase;
   FGetTargetPhraseQuery.Open;
 
-  Result := FGetTargetPhraseQuery.Fields[0].AsInteger;
+  if FGetTargetPhraseQuery.EOF then
+    Result := 0
+  else
+    Result := FGetTargetPhraseQuery.Fields[0].AsInteger;
 end;
 
 function TSuggestionManager.InsertTargetPhraseId(const Phrase: string): Integer;
@@ -628,6 +917,59 @@ begin
     SQL.Text := 'delete from locucoes_destino';
     ExecSQL;
   end;
+  StartBulkRebuild;
+end;
+
+procedure TSuggestionManager.BeginRebuild;
+begin
+  if FRebuildSavepointActive then
+    raise Exception.Create('Association memory rebuild is already active');
+  ResetBulkRebuild;
+  FConnection.ExecuteDirect('savepoint association_memory_rebuild');
+  FRebuildSavepointActive := True;
+end;
+
+procedure TSuggestionManager.CommitRebuild;
+begin
+  if not FRebuildSavepointActive then
+    Exit;
+  PrepareRebuildValidation;
+  FConnection.ExecuteDirect('release savepoint association_memory_rebuild');
+  FRebuildSavepointActive := False;
+  ResetBulkRebuild;
+end;
+
+procedure TSuggestionManager.PrepareRebuildValidation;
+begin
+  if FBulkRebuildActive then
+    FlushBulkTranslations;
+end;
+
+procedure TSuggestionManager.RollbackRebuild;
+begin
+  if not FRebuildSavepointActive then
+    Exit;
+  try
+    try
+      FConnection.ExecuteDirect(
+        'rollback to savepoint association_memory_rebuild');
+      FConnection.ExecuteDirect(
+        'release savepoint association_memory_rebuild');
+    except
+      // Some SQLDB/SQLite errors invalidate the prepared statement state
+      // before a savepoint command can be issued. Falling back to the clean
+      // transaction boundary still restores the previously committed cache.
+      if Assigned(FConnection.Transaction) and
+        FConnection.Transaction.Active then
+        FConnection.Transaction.Rollback;
+      if Assigned(FConnection.Transaction) and
+        not FConnection.Transaction.Active then
+        FConnection.StartTransaction;
+    end;
+  finally
+    FRebuildSavepointActive := False;
+    ResetBulkRebuild;
+  end;
 end;
 
 procedure TSuggestionManager.Commit;
@@ -638,8 +980,259 @@ end;
 
 procedure TSuggestionManager.Rollback;
 begin
+  FRebuildSavepointActive := False;
+  ResetBulkRebuild;
   FConnection.Transaction.Rollback;
   FConnection.StartTransaction;
+end;
+
+function TSuggestionManager.Validate(out ErrorMessage: string): Boolean;
+begin
+  ErrorMessage := '';
+  try
+    FQuery.Close;
+    FQuery.SQL.Text := 'select count(*) from traducoes where ' +
+      'trad_ocorrencias is null or trad_ocorrencias <= 0';
+    FQuery.Open;
+    if FQuery.Fields[0].AsInteger > 0 then
+    begin
+      ErrorMessage :=
+        'Association memory contains non-positive occurrence counts';
+      Exit(False);
+    end;
+
+    FQuery.Close;
+    FQuery.SQL.Text := 'select count(*) from traducoes t ' +
+      'left join locucoes_origem o on o.lori_id = t.trad_lori_id ' +
+      'left join locucoes_destino d on d.ldes_id = t.trad_ldes_id ' +
+      'where o.lori_id is null or d.ldes_id is null';
+    FQuery.Open;
+    if FQuery.Fields[0].AsInteger > 0 then
+    begin
+      ErrorMessage :=
+        'Association memory contains translations with missing phrases';
+      Exit(False);
+    end;
+
+    FQuery.Close;
+    FQuery.SQL.Text := 'select (' +
+      'select count(*) from locucoes_origem o where not exists ' +
+        '(select 1 from traducoes t where t.trad_lori_id = o.lori_id)' +
+      ') + (' +
+      'select count(*) from locucoes_destino d where not exists ' +
+        '(select 1 from traducoes t where t.trad_ldes_id = d.ldes_id)' +
+      ')';
+    FQuery.Open;
+    if FQuery.Fields[0].AsInteger > 0 then
+    begin
+      ErrorMessage := 'Association memory contains orphan phrases';
+      Exit(False);
+    end;
+
+    FQuery.Close;
+    FQuery.SQL.Text := 'select (' +
+      'select count(*) from sintagmas_locucoes_origem s left join ' +
+        'locucoes_origem o on o.lori_id = s.slor_lori_id ' +
+        'where o.lori_id is null' +
+      ') + (' +
+      'select count(*) from sintagmas_locucoes_destino s left join ' +
+        'locucoes_destino d on d.ldes_id = s.slde_ldes_id ' +
+        'where d.ldes_id is null' +
+      ')';
+    FQuery.Open;
+    if FQuery.Fields[0].AsInteger > 0 then
+    begin
+      ErrorMessage :=
+        'Association memory contains orphan syntagm mappings';
+      Exit(False);
+    end;
+
+    Result := True;
+  finally
+    FQuery.Close;
+  end;
+end;
+
+function TSuggestionManager.ValidatePreparedRebuild(
+  out ErrorMessage: string): Boolean;
+var
+  CountIndex: Integer;
+  ExpectedCount: Integer;
+  PairKey: string;
+  StoredCount: Integer;
+  StoredPairCount: Integer;
+begin
+  ErrorMessage := '';
+  if not FBulkRebuildActive or not FBulkTranslationsFlushed then
+  begin
+    ErrorMessage := 'Association memory rebuild has not been prepared';
+    Exit(False);
+  end;
+
+  StoredPairCount := 0;
+  ReportRebuildProgress(amrpValidating, 0, FBulkTranslationCounts.Count);
+  FQuery.Close;
+  FQuery.SQL.Text := 'select trad_lori_id, trad_ldes_id, ' +
+    'trad_ocorrencias from traducoes';
+  FQuery.Open;
+  try
+    while not FQuery.EOF do
+    begin
+      PairKey := IntToStr(FQuery.Fields[0].AsInteger) + #1 +
+        IntToStr(FQuery.Fields[1].AsInteger);
+      CountIndex := FBulkTranslationCounts.IndexOf(PairKey);
+      if CountIndex < 0 then
+      begin
+        ErrorMessage := Format(
+          'Association memory contains unexpected phrase IDs %d -> %d',
+          [FQuery.Fields[0].AsInteger, FQuery.Fields[1].AsInteger]);
+        Exit(False);
+      end;
+
+      ExpectedCount := PtrInt(FBulkTranslationCounts.Objects[CountIndex]);
+      StoredCount := FQuery.Fields[2].AsInteger;
+      if StoredCount <> ExpectedCount then
+      begin
+        ErrorMessage := Format(
+          'Association memory mismatch for phrase IDs %d -> %d ' +
+          '(expected %d, stored %d)',
+          [FQuery.Fields[0].AsInteger, FQuery.Fields[1].AsInteger,
+           ExpectedCount, StoredCount]);
+        Exit(False);
+      end;
+
+      Inc(StoredPairCount);
+      if (StoredPairCount mod 500) = 0 then
+        ReportRebuildProgress(amrpValidating, StoredPairCount,
+          FBulkTranslationCounts.Count);
+      FQuery.Next;
+    end;
+
+    if StoredPairCount <> FBulkTranslationCounts.Count then
+    begin
+      ErrorMessage := Format(
+        'Association memory is missing translation pairs ' +
+        '(expected %d, stored %d)',
+        [FBulkTranslationCounts.Count, StoredPairCount]);
+      Exit(False);
+    end;
+  finally
+    FQuery.Close;
+  end;
+
+  ReportRebuildProgress(amrpValidating, StoredPairCount,
+    FBulkTranslationCounts.Count);
+  Result := True;
+end;
+
+function TSuggestionManager.ValidatePairs(ExpectedPairs: TStrings;
+  out ErrorMessage: string): Boolean;
+var
+  ExpectedCounts: TStringList;
+  PairIndex: Integer;
+  CountIndex: Integer;
+  ExpectedCount: Integer;
+  PairKey: string;
+  SourcePhrase: string;
+  TargetPhrase: string;
+begin
+  Result := Validate(ErrorMessage);
+  if not Result then
+    Exit;
+
+  if not Assigned(ExpectedPairs) or ((ExpectedPairs.Count mod 2) <> 0) then
+  begin
+    ErrorMessage := 'Expected association pair list is invalid';
+    Exit(False);
+  end;
+
+    ExpectedCounts := TStringList.Create;
+  try
+    ExpectedCounts.Sorted := True;
+    ExpectedCounts.CaseSensitive := True;
+    ExpectedCounts.UseLocale := False;
+    for PairIndex := 0 to ExpectedPairs.Count - 1 do
+      if (PairIndex mod 2) = 0 then
+      begin
+        SourcePhrase := ExpectedPairs[PairIndex].ToLower;
+        TargetPhrase := ExpectedPairs[PairIndex + 1].ToLower;
+        PairKey := SourcePhrase + #1 + TargetPhrase;
+        CountIndex := ExpectedCounts.IndexOf(PairKey);
+        if CountIndex < 0 then
+          ExpectedCounts.AddObject(PairKey, TObject(PtrInt(1)))
+        else
+          ExpectedCounts.Objects[CountIndex] := TObject(
+            PtrInt(ExpectedCounts.Objects[CountIndex]) + 1);
+      end;
+
+    FQuery.Close;
+    FQuery.SQL.Text := 'select o.lori_locucao, d.ldes_locucao, ' +
+      't.trad_ocorrencias from traducoes t ' +
+      'join locucoes_origem o on o.lori_id = t.trad_lori_id ' +
+      'join locucoes_destino d on d.ldes_id = t.trad_ldes_id';
+    FQuery.Open;
+    while not FQuery.EOF do
+    begin
+      SourcePhrase := FQuery.Fields[0].AsString;
+      TargetPhrase := FQuery.Fields[1].AsString;
+      PairKey := SourcePhrase + #1 + TargetPhrase;
+      CountIndex := ExpectedCounts.IndexOf(PairKey);
+      if CountIndex < 0 then
+      begin
+        ErrorMessage := Format(
+          'Association memory contains unexpected pair "%s" -> "%s"',
+          [SourcePhrase, TargetPhrase]);
+        Exit(False);
+      end;
+      ExpectedCount := PtrInt(ExpectedCounts.Objects[CountIndex]);
+      if FQuery.Fields[2].AsInteger <> ExpectedCount then
+      begin
+        ErrorMessage := Format(
+          'Association memory mismatch for "%s" -> "%s" ' +
+          '(expected %d, stored %d)',
+          [SourcePhrase, TargetPhrase, ExpectedCount,
+           FQuery.Fields[2].AsInteger]);
+        Exit(False);
+      end;
+      ExpectedCounts.Delete(CountIndex);
+      FQuery.Next;
+    end;
+    if ExpectedCounts.Count > 0 then
+    begin
+      ErrorMessage := 'Association memory is missing expected translation pairs';
+      Exit(False);
+    end;
+  finally
+    FQuery.Close;
+    ExpectedCounts.Free;
+  end;
+  Result := True;
+end;
+
+function TSuggestionManager.GetPairOccurrenceCount(const Source,
+  Target: string): Integer;
+var
+  SourcePhraseId: Integer;
+  TargetPhraseId: Integer;
+begin
+  Result := 0;
+  SourcePhraseId := FindSourcePhraseId(Source.ToLower);
+  TargetPhraseId := FindTargetPhraseId(Target.ToLower);
+  if (SourcePhraseId <= 0) or (TargetPhraseId <= 0) then
+    Exit;
+
+  FGetTranslationCountQuery.Close;
+  FGetTranslationCountQuery.Params.ParamByName('lori').AsInteger :=
+    SourcePhraseId;
+  FGetTranslationCountQuery.Params.ParamByName('ldes').AsInteger :=
+    TargetPhraseId;
+  FGetTranslationCountQuery.Open;
+  try
+    if not FGetTranslationCountQuery.EOF then
+      Result := FGetTranslationCountQuery.Fields[0].AsInteger;
+  finally
+    FGetTranslationCountQuery.Close;
+  end;
 end;
 
 function TSuggestionManager.GetTranslationAlternatives(Syntagm: TSyntagm): string;

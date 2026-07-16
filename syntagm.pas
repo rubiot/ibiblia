@@ -716,8 +716,8 @@ begin
     FLabel.OnMouseLeave := @DoOnMouseLeave;
   end else
   begin
-    FStrong := nil;
-    FMorph   := nil;
+    FreeAndNil(FStrong);
+    FreeAndNil(FMorph);
   end;
 end;
 

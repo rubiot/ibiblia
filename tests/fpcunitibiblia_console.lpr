@@ -12,7 +12,9 @@ uses
   project_setup_validation_test,
   theword_syntax_highlighter_test,
   ai_processing_batch_test,
-  ai_flow_config_test;
+  ai_flow_config_test,
+  suggestionmanagertest,
+  associationmemoryservicetest;
 
 var
   Application: TTestRunner;

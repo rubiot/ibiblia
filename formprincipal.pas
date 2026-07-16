@@ -2329,16 +2329,14 @@ begin
   begin
     if ProjetoAtual.SuggestionMode = smAI then
     begin
-      Screen.Cursor := crHourGlass;
       StatusBar1.SimpleText := SAnalyzingVerse;
       try
         ProjetoAtual.SuggestAssociation;
+      finally
         if ProjetoAtual.LastLLMCallCompleted then
           StatusBar1.SimpleText := FormatLLMUsageStatus(ProjetoAtual.LastLLMUsage)
         else
           StatusBar1.SimpleText := '';
-      finally
-        Screen.Cursor := crDefault;
       end;
     end
     else

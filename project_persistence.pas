@@ -31,6 +31,7 @@ type
     function BOF: Boolean;
     procedure BeginCurrentEdit;
     procedure PostCurrentEdit;
+    procedure CancelCurrentEdit;
     function InsertInfo(const info, value: string): Boolean;
     function UpdateInfo(const info, value: string): Boolean;
     function ReadInfo(const info: string): string;
@@ -47,6 +48,8 @@ type
     procedure WriteCurrentPairs(const pairs: string);
     procedure WriteCurrentComments(const comments: string);
     procedure WriteCurrentStatus(status: Integer);
+    procedure CommitPairs;
+    procedure CommitInfo;
     procedure Commit;
     procedure Rollback;
     property PairsTable: TSqlite3Dataset read FPairsTable;
@@ -194,6 +197,12 @@ begin
     FPairsTable.Post;
 end;
 
+procedure TProjectPersistence.CancelCurrentEdit;
+begin
+  if Assigned(FPairsTable) and (FPairsTable.State in dsEditModes) then
+    FPairsTable.Cancel;
+end;
+
 function TProjectPersistence.InsertInfo(const info, value: string): Boolean;
 begin
   if not Assigned(FInfoTable) then
@@ -326,21 +335,21 @@ begin
   PostCurrentEdit;
 end;
 
-procedure TProjectPersistence.Commit;
+procedure ApplyPendingUpdates(Table: TSqlite3Dataset);
 var
   retryCount: Integer;
   maxRetries: Integer = 5;
   delayMs: Integer;
 begin
+  if not Assigned(Table) then
+    Exit;
+
   retryCount := 0;
   delayMs := 50;
   while retryCount < maxRetries do
   begin
     try
-      if Assigned(FPairsTable) then
-        FPairsTable.ApplyUpdates;
-      if Assigned(FInfoTable) then
-        FInfoTable.ApplyUpdates;
+      Table.ApplyUpdates;
       Break;
     except
       on E: Exception do
@@ -360,12 +369,51 @@ begin
   end;
 end;
 
-procedure TProjectPersistence.Rollback;
+procedure TProjectPersistence.CommitPairs;
 begin
+  ApplyPendingUpdates(FPairsTable);
+end;
+
+procedure TProjectPersistence.CommitInfo;
+begin
+  ApplyPendingUpdates(FInfoTable);
+end;
+
+procedure TProjectPersistence.Commit;
+begin
+  CommitPairs;
+  CommitInfo;
+end;
+
+procedure TProjectPersistence.Rollback;
+var
+  CurrentReference: string;
+begin
+  CurrentReference := CurrentPairId;
   if Assigned(FPairsTable) then
+  begin
+    if FPairsTable.State in dsEditModes then
+      FPairsTable.Cancel;
     FPairsTable.ClearUpdates;
+    if FPairsTable.Active then
+    begin
+      FPairsTable.Close;
+      FPairsTable.Open;
+    end;
+  end;
   if Assigned(FInfoTable) then
+  begin
+    if FInfoTable.State in dsEditModes then
+      FInfoTable.Cancel;
     FInfoTable.ClearUpdates;
+    if FInfoTable.Active then
+    begin
+      FInfoTable.Close;
+      FInfoTable.Open;
+    end;
+  end;
+  if not CurrentReference.IsEmpty then
+    LocateReference(CurrentReference);
 end;
 
 end.
