@@ -44,7 +44,8 @@ type
 
   TAssociationMemoryRebuildPhase = (
     amrpWriting,
-    amrpValidating
+    amrpValidating,
+    amrpFinalizing
   );
 
   TAssociationMemoryRebuildProgressEvent = procedure(
@@ -1286,6 +1287,7 @@ begin
   if not FRebuildSavepointActive then
     Exit;
   PrepareRebuildValidation;
+  ReportRebuildProgress(amrpFinalizing, 0, 0);
   FConnection.ExecuteDirect('release savepoint association_memory_rebuild');
   FRebuildSavepointActive := False;
   ResetBulkRebuild;
@@ -1578,7 +1580,11 @@ begin
 
   ReportRebuildProgress(amrpValidating, TotalExpectedCount,
     TotalExpectedCount);
-  Result := Validate(ErrorMessage);
+  // Every stored translation and occurrence was compared above with the
+  // complete buffers used to build it. Running Validate here repeated several
+  // whole-database scans, including an aggregate join, after progress had
+  // already reached 100%, blocking the UI on large projects.
+  Result := True;
 end;
 
 function TSuggestionManager.ValidatePairs(ExpectedPairs: TStrings;

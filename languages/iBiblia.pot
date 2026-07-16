@@ -2431,6 +2431,10 @@ msgstr ""
 msgid "Translation memory is unavailable because it could not be synchronized."
 msgstr ""
 
+#: project.sassociationmemoryfinalizing
+msgid "Finalizing association memory..."
+msgstr ""
+
 #: project.sassociationmemoryvalidating
 msgid "Validating association memory..."
 msgstr ""

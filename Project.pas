@@ -534,6 +534,7 @@ resourcestring
   SAssociationMemoryProgressDetailFmt = '%s (%d of %d)';
   SAssociationMemoryWriting = 'Writing association memory...';
   SAssociationMemoryValidating = 'Validating association memory...';
+  SAssociationMemoryFinalizing = 'Finalizing association memory...';
   SAssociationMemoryDatabaseProgressFmt = '%d of %d associations';
   SErrorWithDetailsFmt = '%s: %s';
   SErrorClassMessageFmt = '%s: %s'#13#10'%s';
@@ -4036,27 +4037,31 @@ var
   ProgressMaximum: Integer;
   DisplayedPosition: Integer;
 begin
-  ProgressMaximum := Total;
-  if ProgressMaximum <= 0 then
-    ProgressMaximum := 1;
-
   if Assigned(FAssociationMemoryProgressBar) then
   begin
-    FAssociationMemoryProgressBar.Style := pbstNormal;
-    FAssociationMemoryProgressBar.Min := 0;
-    FAssociationMemoryProgressBar.Max := ProgressMaximum;
-    DisplayedPosition := Current;
-    if DisplayedPosition < FAssociationMemoryProgressBar.Min then
-      DisplayedPosition := FAssociationMemoryProgressBar.Min
-    else if DisplayedPosition > ProgressMaximum then
-      DisplayedPosition := ProgressMaximum;
-    FAssociationMemoryProgressBar.Position := DisplayedPosition;
-    // The native Windows progress control animates large forward jumps. A
-    // one-step backward update makes phase changes visible immediately.
-    if DisplayedPosition > FAssociationMemoryProgressBar.Min then
+    if Phase = amrpFinalizing then
+      FAssociationMemoryProgressBar.Style := pbstMarquee
+    else
     begin
-      FAssociationMemoryProgressBar.Position := DisplayedPosition - 1;
+      ProgressMaximum := Total;
+      if ProgressMaximum <= 0 then
+        ProgressMaximum := 1;
+      FAssociationMemoryProgressBar.Style := pbstNormal;
+      FAssociationMemoryProgressBar.Min := 0;
+      FAssociationMemoryProgressBar.Max := ProgressMaximum;
+      DisplayedPosition := Current;
+      if DisplayedPosition < FAssociationMemoryProgressBar.Min then
+        DisplayedPosition := FAssociationMemoryProgressBar.Min
+      else if DisplayedPosition > ProgressMaximum then
+        DisplayedPosition := ProgressMaximum;
       FAssociationMemoryProgressBar.Position := DisplayedPosition;
+      // The native Windows progress control animates large forward jumps. A
+      // one-step backward update makes phase changes visible immediately.
+      if DisplayedPosition > FAssociationMemoryProgressBar.Min then
+      begin
+        FAssociationMemoryProgressBar.Position := DisplayedPosition - 1;
+        FAssociationMemoryProgressBar.Position := DisplayedPosition;
+      end;
     end;
     FAssociationMemoryProgressBar.Visible := True;
     FAssociationMemoryProgressBar.Update;
@@ -4070,9 +4075,14 @@ begin
         FormPleaseWait.SetMessage(SAssociationMemoryWriting);
       amrpValidating:
         FormPleaseWait.SetMessage(SAssociationMemoryValidating);
+      amrpFinalizing:
+        FormPleaseWait.SetMessage(SAssociationMemoryFinalizing);
     end;
-    FormPleaseWait.SetDetail(Format(
-      SAssociationMemoryDatabaseProgressFmt, [Current, Total]));
+    if Phase = amrpFinalizing then
+      FormPleaseWait.SetDetail('')
+    else
+      FormPleaseWait.SetDetail(Format(
+        SAssociationMemoryDatabaseProgressFmt, [Current, Total]));
   end;
   Application.ProcessMessages;
 end;

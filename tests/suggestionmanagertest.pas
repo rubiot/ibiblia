@@ -15,8 +15,12 @@ type
     FConnection: TSQLite3Connection;
     FTransaction: TSQLTransaction;
     FManager: TSuggestionManager;
+    FLastRebuildPhase: TAssociationMemoryRebuildPhase;
+    FRebuildProgressNotifications: Integer;
     function QueryInt(const SQL: string): Integer;
     function QueryString(const SQL: string): string;
+    procedure TrackRebuildProgress(Phase: TAssociationMemoryRebuildPhase;
+      Current, Total: Integer);
   protected
     procedure SetUp; override;
     procedure TearDown; override;
@@ -29,6 +33,7 @@ type
     procedure BulkRebuildKeepsUnicodePhrasesDistinct;
     procedure BulkFlushFailurePreservesPreviousCache;
     procedure PreparedRebuildValidationDetectsCountMismatch;
+    procedure PreparedRebuildReportsFinalizingPhase;
     procedure ValidatePairsUsesPairMultiplicity;
     procedure WorkspacePersistsIndividualCancellationAndIsIdempotent;
     procedure WorkspaceAutosaveKeepsAssociationBaseline;
@@ -135,6 +140,13 @@ begin
   finally
     Query.Free;
   end;
+end;
+
+procedure TSuggestionManagerTest.TrackRebuildProgress(
+  Phase: TAssociationMemoryRebuildPhase; Current, Total: Integer);
+begin
+  FLastRebuildPhase := Phase;
+  Inc(FRebuildProgressNotifications);
 end;
 
 procedure TSuggestionManagerTest.RepeatedAdditionAndPartialRemovalPreserveExactCount;
@@ -289,6 +301,28 @@ begin
     AssertFalse(FManager.ValidatePreparedRebuild(ErrorMessage));
     AssertTrue(Pos('expected 2, stored 1', ErrorMessage) > 0);
   finally
+    FManager.RollbackRebuild;
+  end;
+end;
+
+procedure TSuggestionManagerTest.PreparedRebuildReportsFinalizingPhase;
+var
+  ErrorMessage: string;
+begin
+  FRebuildProgressNotifications := 0;
+  FManager.OnRebuildProgress := @TrackRebuildProgress;
+  FManager.BeginRebuild;
+  try
+    FManager.ClearAssociationDatabase;
+    FManager.AddPairForReference('1,1,1', '<wg1>', 'word');
+    FManager.PrepareRebuildValidation;
+    AssertTrue(FManager.ValidatePreparedRebuild(ErrorMessage));
+    FManager.CommitRebuild;
+
+    AssertTrue(FRebuildProgressNotifications > 0);
+    AssertEquals(Ord(amrpFinalizing), Ord(FLastRebuildPhase));
+  finally
+    FManager.OnRebuildProgress := nil;
     FManager.RollbackRebuild;
   end;
 end;
