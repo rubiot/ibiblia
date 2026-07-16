@@ -35,6 +35,7 @@ type
     FBoundsContainer: TScrollBox;
     FVerse: TVerse;
     FOnVerseTextModified: TVerseTextModifiedEvent;
+    FOnPendingChange: TNotifyEvent;
     function GetText: TCaption;
     procedure OnMouseWheel(Sender: TObject; Shift: TShiftState;
              WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
@@ -65,9 +66,14 @@ type
     destructor Destroy; override;
     procedure Activate(Container: TScrollBox; Verse: TVerse);
     procedure Deactivate;
+    function HasPendingChange: Boolean;
+    function TryDeactivate: Boolean;
+    procedure DiscardEdit;
     property Text: TCaption read GetText;
     property Verse: TVerse read FVerse;
     property OnVerseTextModified: TVerseTextModifiedEvent read FOnVerseTextModified write FOnVerseTextModified;
+    property OnPendingChange: TNotifyEvent read FOnPendingChange
+      write FOnPendingChange;
   end;
 
 resourcestring
@@ -131,21 +137,12 @@ end;
 
 procedure TVerseMemo.CancelButtonClick(Sender: TObject);
 begin
-  CancelEdit;
+  DiscardEdit;
 end;
 
 procedure TVerseMemo.CancelEdit;
 begin
-  if not FEditorPanel.Visible then
-    Exit;
-
-  FModified := False;
-  FMemo.Visible := False;
-  FEditorPanel.Visible := False;
-  RestoreFocusAfterClose;
-  DetachContainerBoundsHandler;
-  FContainer := nil;
-  FVerse := nil;
+  DiscardEdit;
 end;
 
 procedure TVerseMemo.ContainerBoundsChanged(Sender: TObject);
@@ -369,8 +366,7 @@ end;
 
 procedure TVerseMemo.SaveAndClose;
 begin
-  if ValidateTextForSave then
-    Deactivate;
+  TryDeactivate;
 end;
 
 procedure TVerseMemo.SaveButtonClick(Sender: TObject);
@@ -471,8 +467,10 @@ begin
   if (not FActivating) and Assigned(TSynEdit(Sender).Parent) and
     TSynEdit(Sender).Visible then
   begin
-    FModified := True;
+    FModified := not Assigned(FVerse) or (Text <> FVerse.XML);
     UpdateEditorState;
+    if Assigned(FOnPendingChange) then
+      FOnPendingChange(Self);
   end;
 end;
 
@@ -601,6 +599,7 @@ begin
   FBoundsContainer := nil;
   FVerse := nil;
   FOnVerseTextModified := nil;
+  FOnPendingChange := nil;
   UpdateEditorState;
 end;
 
@@ -615,10 +614,10 @@ end;
 
 procedure TVerseMemo.Activate(Container: TScrollBox; Verse: TVerse);
 begin
-  if FEditorPanel.Visible and FModified and (FContainer <> Container) then
+  if FEditorPanel.Visible and (FContainer <> Container) then
   begin
-    ConfirmChange;
-    Exit;
+    if not TryDeactivate then
+      Exit;
   end;
 
   ApplyTheWordSyntaxEditorFont(FMemo);
@@ -660,11 +659,22 @@ end;
 
 procedure TVerseMemo.Deactivate;
 begin
+  TryDeactivate;
+end;
+
+function TVerseMemo.HasPendingChange: Boolean;
+begin
+  Result := Assigned(FEditorPanel) and FEditorPanel.Visible and FModified;
+end;
+
+function TVerseMemo.TryDeactivate: Boolean;
+begin
+  Result := True;
   if not FEditorPanel.Visible then
     Exit;
 
   if not ValidateTextForSave then
-    Exit;
+    Exit(False);
 
   FMemo.Visible := False;
   FEditorPanel.Visible := False;
@@ -675,6 +685,24 @@ begin
   FModified := False;
   FContainer := nil;
   FVerse := nil;
+  if Assigned(FOnPendingChange) then
+    FOnPendingChange(Self);
+end;
+
+procedure TVerseMemo.DiscardEdit;
+begin
+  if not FEditorPanel.Visible then
+    Exit;
+
+  FModified := False;
+  FMemo.Visible := False;
+  FEditorPanel.Visible := False;
+  RestoreFocusAfterClose;
+  DetachContainerBoundsHandler;
+  FContainer := nil;
+  FVerse := nil;
+  if Assigned(FOnPendingChange) then
+    FOnPendingChange(Self);
 end;
 
 end.

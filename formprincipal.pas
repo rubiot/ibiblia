@@ -24,6 +24,8 @@ type
   TFrmPrincipal = class(TForm)
   ActionKeyboardShortcuts: TAction;
   ActionGuideMode: TAction;
+  ActionHistoryBack: TAction;
+  ActionHistoryForward: TAction;
   ActionLlmOptions: TAction;
   ActionResetLayout: TAction;
   ActionTheWordHighlighterColors: TAction;
@@ -87,6 +89,9 @@ type
     MenuItemStrongsCountWords: TMenuItem;
     MenuItemStrongsCountStrongs: TMenuItem;
     MenuItemAbout: TMenuItem;
+    MenuItemHistoryBack: TMenuItem;
+    MenuItemHistoryForward: TMenuItem;
+    MenuItemHistorySeparator: TMenuItem;
     MenuItemGuideMode: TMenuItem;
     MenuItemKeyboardShortcuts: TMenuItem;
     MenuItemResetLayout: TMenuItem;
@@ -142,6 +147,9 @@ type
     ToolButton1: TToolButton;
     ToolButton10: TToolButton;
     ToolButtonExit: TToolButton;
+    ToolButtonHistoryBack: TToolButton;
+    ToolButtonHistoryForward: TToolButton;
+    ToolButtonHistorySeparator: TToolButton;
     ToolButton2: TToolButton;
     ToolButton3: TToolButton;
     ToolButton4: TToolButton;
@@ -160,6 +168,8 @@ type
     procedure ActionExportarTextoInterlinearExecute(Sender: TObject);
     procedure ActionExportPatchExecute(Sender: TObject);
     procedure ActionFecharProjetoExecute(Sender: TObject);
+    procedure ActionHistoryBackExecute(Sender: TObject);
+    procedure ActionHistoryForwardExecute(Sender: TObject);
     procedure ActionKeyboardShortcutsExecute(Sender: TObject);
     procedure ActionLimparAssociacoesExecute(Sender: TObject);
     procedure ActionMesclarProjetosExecute(Sender: TObject);
@@ -258,6 +268,7 @@ type
     procedure SetUpSyncThread;
     {$ENDIF}
     procedure NormalizeActionHints;
+    procedure UpdateNavigationHistoryActions;
     procedure ActionGuideModeExecute(Sender: TObject);
     function BuildKeyboardShortcutsText: string;
     procedure CreateGuidePanel;
@@ -401,6 +412,12 @@ resourcestring
   SShortcutCloseProject = 'Close project';
   SShortcutProjectSettings = 'Project settings';
   SShortcutExportProject = 'Export project';
+  SHistoryBack = 'Back';
+  SHistoryBackHint = 'Go back in navigation history';
+  SHistoryForward = 'Forward';
+  SHistoryForwardHint = 'Go forward in navigation history';
+  SShortcutHistoryBack = 'Back in navigation history';
+  SShortcutHistoryForward = 'Forward in navigation history';
   SShortcutPreviousVerse = 'Previous verse';
   SShortcutNextVerse = 'Next verse';
   SShortcutAutoAssociate = 'Auto-associate current verse';
@@ -592,6 +609,8 @@ begin
   NormalizeActionHint(ActionPropProjeto);
   NormalizeActionHint(ActionSalvarProjeto);
   NormalizeActionHint(ActionExportar);
+  NormalizeActionHint(ActionHistoryBack);
+  NormalizeActionHint(ActionHistoryForward);
   NormalizeActionHint(ActionVersoAnterior);
   NormalizeActionHint(ActionVersoSeguinte);
   NormalizeActionHint(ActionSugerirAssociacao);
@@ -669,6 +688,8 @@ begin
     AddActionShortcut(ActionExportar, SShortcutExportProject);
 
     AddSection(SShortcutNavigationSection);
+    AddActionShortcut(ActionHistoryBack, SShortcutHistoryBack);
+    AddActionShortcut(ActionHistoryForward, SShortcutHistoryForward);
     AddActionShortcut(ActionVersoAnterior, SShortcutPreviousVerse);
     AddActionShortcut(ActionVersoSeguinte, SShortcutNextVerse);
 
@@ -2044,10 +2065,12 @@ begin
      (ChapterViewTabCtrl.TabIndex <= Ord(tbInterlinear)) then
     ProjetoAtual.ChapterViewText :=
       TTipoTextoBiblico(ChapterViewTabCtrl.TabIndex);
-  ProjetoAtual.CloseProject(salvar);
+  if not ProjetoAtual.CloseProject(salvar) then
+    Exit;
   ProjetoAtual.Destroy;
   ProjetoAtual := nil;
   UpdateMainCaption;
+  UpdateNavigationHistoryActions;
 
   FCurrentRef := '';
 
@@ -2075,6 +2098,24 @@ begin
   UpdateStateHeader;
   UpdateStatusReviewPanel;
   LayoutVersePanelLabels;
+end;
+
+procedure TFrmPrincipal.ActionHistoryBackExecute(Sender: TObject);
+begin
+  if ProjetoAtual = nil then
+    Exit;
+
+  ProjetoAtual.GoBack;
+  UpdateNavigationHistoryActions;
+end;
+
+procedure TFrmPrincipal.ActionHistoryForwardExecute(Sender: TObject);
+begin
+  if ProjetoAtual = nil then
+    Exit;
+
+  ProjetoAtual.GoForward;
+  UpdateNavigationHistoryActions;
 end;
 
 procedure TFrmPrincipal.ActionKeyboardShortcutsExecute(Sender: TObject);
@@ -2235,6 +2276,7 @@ begin
     ChapterViewTabCtrlChange(ChapterViewTabCtrl);
 
     StatusBar1.SimpleText := '';
+    UpdateNavigationHistoryActions;
     UpdateStateHeader;
     UpdateStatusReviewPanel;
   finally
@@ -2271,6 +2313,7 @@ end;
 
 procedure TFrmPrincipal.ActionQuandoNovoVersiculoExecute(Sender: TObject);
 begin
+  UpdateNavigationHistoryActions;
   if ProjetoAtual <> nil then
   begin
     UpdateMainCaption;
@@ -2315,7 +2358,8 @@ end;
 procedure TFrmPrincipal.ActionSairExecute(Sender: TObject);
 begin
   ActionFecharProjetoExecute(nil);
-  Close;
+  if ProjetoAtual = nil then
+    Close;
 end;
 
 procedure TFrmPrincipal.ActionSalvarProjetoComoExecute(Sender: TObject);
@@ -2334,9 +2378,11 @@ procedure TFrmPrincipal.ActionSalvarProjetoExecute(Sender: TObject);
 begin
   if ProjetoAtual <> nil then
   begin
-    ProjetoAtual.SaveProject;
-    StatusBar1.SimpleText := '';
-    UpdateStateHeader;
+    if ProjetoAtual.SaveProject then
+    begin
+      StatusBar1.SimpleText := '';
+      UpdateStateHeader;
+    end;
   end;
 end;
 
@@ -2515,6 +2561,9 @@ begin
   TreeView1.OnKeyDown := @TreeViewKeyDown;
   TreeView1.OnShowHint := @TreeViewShowHint;
   TreeView1.Options := TreeView1.Options - [tvoToolTips];
+
+  ActionHistoryBack.ShortCut := ShortCut(VK_LEFT, [ssAlt]);
+  ActionHistoryForward.ShortCut := ShortCut(VK_RIGHT, [ssAlt]);
 
   ActionKeyboardShortcuts := TAction.Create(ActionList1);
   ActionKeyboardShortcuts.Caption := SKeyboardShortcutsMenu;
@@ -2886,6 +2935,12 @@ begin
   ActionQuandoNovoVersiculoExecute(nil);
 end;
 
+procedure TFrmPrincipal.UpdateNavigationHistoryActions;
+begin
+  ActionHistoryBack.Enabled := Assigned(ProjetoAtual) and ProjetoAtual.CanGoBack;
+  ActionHistoryForward.Enabled := Assigned(ProjetoAtual) and ProjetoAtual.CanGoForward;
+end;
+
 procedure TFrmPrincipal.QuandoPalavraClicada(Sender: TSyntagm);
 {$IFDEF WINDOWS}
 var
@@ -2924,7 +2979,10 @@ end;
 
 procedure TFrmPrincipal.QuandoAlterarVersiculo;
 begin
-  StatusBar1.SimpleText := SChanged;
+  if Assigned(ProjetoAtual) and ProjetoAtual.Modificado then
+    StatusBar1.SimpleText := SChanged
+  else
+    StatusBar1.SimpleText := '';
   UpdateStateHeader;
   UpdateStatusReviewPanel;
 end;
@@ -3230,6 +3288,10 @@ begin
     ActionRegisterFileAssociation.Caption := SRegisterFileAssociation;
   if Assigned(ActionUnregisterFileAssociation) then
     ActionUnregisterFileAssociation.Caption := SUnregisterFileAssociation;
+  ActionHistoryBack.Caption := SHistoryBack;
+  ActionHistoryBack.Hint := SHistoryBackHint;
+  ActionHistoryForward.Caption := SHistoryForward;
+  ActionHistoryForward.Hint := SHistoryForwardHint;
   if Assigned(FGuideHideButton) then
     FGuideHideButton.Caption := SHideGuideButton;
 
@@ -3320,6 +3382,7 @@ begin
   //ActionExportarDestinoComStrongs.Enabled := true;
   //ActionExportarTextoInterlinear.Enabled := true;
   StatusBar1.SimpleText := '';
+  UpdateNavigationHistoryActions;
   UpdateStateHeader;
   UpdateStatusReviewPanel;
   LayoutVersePanelLabels;

@@ -36,9 +36,12 @@ type
     FText: string;
     FReadOnly: boolean;
     FRawMemo: TRawCommentsMemo;
+    FUpdatingRawMemo: Boolean;
+    FOnTextChanged: TNotifyEvent;
     procedure HandleMouseWheel(Sender: TObject; Shift: TShiftState; 
       WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
     procedure HandleDoubleClick(Sender: TObject);
+    procedure HandleRawMemoChange(Sender: TObject);
     function GetText: string;
     procedure SetText(const AValue: string);
     procedure SetFontName(const AValue: string);
@@ -50,11 +53,14 @@ type
     destructor Destroy; override;
     
     procedure SetCommentsText(const CommentsText: string);
+    function HasPendingChange(const Baseline: string): Boolean;
+    procedure DiscardEdit;
     
     property FontSize: integer read FFontSize write SetFontSize;
     property FontName: string read FFontName write SetFontName;
     property Text: string read GetText write SetText;
     property ReadOnly: boolean read FReadOnly write FReadOnly;
+    property OnTextChanged: TNotifyEvent read FOnTextChanged write FOnTextChanged;
   end;
 
 implementation
@@ -97,6 +103,7 @@ begin
   Color      := clWindow; // Ensure it has a solid background
   ConfigureTheWordSyntaxEditor(Self, False);
   OnKeyDown  := @HandleOnKeyDown;
+  OnChange := @FCommentsView.HandleRawMemoChange;
   OnMouseWheel := @HandleOnMouseWheel;
 end;
 
@@ -108,7 +115,12 @@ end;
 procedure TRawCommentsMemo.Show(aText: string);
 begin
   ApplyTheWordSyntaxEditorFont(Self);
-  Text := aText;
+  FCommentsView.FUpdatingRawMemo := True;
+  try
+    Text := aText;
+  finally
+    FCommentsView.FUpdatingRawMemo := False;
+  end;
   
   // Position exactly over the CommentsView
   Left   := FCommentsView.Left;
@@ -143,6 +155,8 @@ begin
   FFontName := 'default';
   FFontSize := 10;
   FReadOnly := False; // Allow editing by default
+  FUpdatingRawMemo := False;
+  FOnTextChanged := nil;
   OnMouseWheel := @HandleMouseWheel;
   OnDblClick := @HandleDoubleClick;
   ScrollBars := ssAutoVertical;
@@ -167,8 +181,28 @@ procedure TCommentsView.SetCommentsText(const CommentsText: string);
 begin
   FText := CommentsText;
   if Assigned(FRawMemo) and FRawMemo.Visible then
-    FRawMemo.Text := CommentsText;
+  begin
+    FUpdatingRawMemo := True;
+    try
+      FRawMemo.Text := CommentsText;
+    finally
+      FUpdatingRawMemo := False;
+    end;
+  end;
   RenderHTML(CommentsText);
+end;
+
+function TCommentsView.HasPendingChange(const Baseline: string): Boolean;
+begin
+  Result := GetText <> Baseline;
+end;
+
+procedure TCommentsView.DiscardEdit;
+begin
+  if not Assigned(FRawMemo) or not FRawMemo.Visible then
+    Exit;
+  FRawMemo.Visible := False;
+  Visible := True;
 end;
 
 function TCommentsView.GetText: string;
@@ -214,6 +248,14 @@ begin
     
   // Show the raw memo for editing (it will handle hiding this component)
   FRawMemo.Show(FText);
+end;
+
+procedure TCommentsView.HandleRawMemoChange(Sender: TObject);
+begin
+  if FUpdatingRawMemo then
+    Exit;
+  if Assigned(FOnTextChanged) then
+    FOnTextChanged(Self);
 end;
 
 procedure TCommentsView.HandleMouseWheel(Sender: TObject; Shift: TShiftState;

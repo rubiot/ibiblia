@@ -28,10 +28,13 @@ type
     class function TextDescriptionKey(textIndex: Integer): string; static;
     function ReadString(const key: string; const defaultValue: string = ''): string;
     procedure WriteString(const key, value: string);
+    procedure WriteImmediateString(const key, value: string);
     function ReadInteger(const key: string; defaultValue: Integer): Integer;
     procedure WriteInteger(const key: string; value: Integer);
+    procedure WriteImmediateInteger(const key: string; value: Integer);
     function ReadBoolean(const key: string; defaultValue: Boolean = False): Boolean;
     procedure WriteBoolean(const key: string; value: Boolean);
+    procedure WriteImmediateBoolean(const key: string; value: Boolean);
     function ReadMarker(const defaultValue: string = ''): string;
     procedure WriteMarker(const value: string);
     function ReadChapterViewText(defaultValue: Integer): Integer;
@@ -46,6 +49,7 @@ type
     procedure WriteTokenizerVersion(value: Integer);
     function ReadTextDescription(textIndex: Integer; const defaultValue: string = ''): string;
     procedure WriteTextDescription(textIndex: Integer; const value: string);
+    procedure StageTextDescription(textIndex: Integer; const value: string);
     function ReadVerseRules(interlinear: Boolean): string;
   end;
 
@@ -86,8 +90,13 @@ end;
 procedure TProjectConfig.WriteString(const key, value: string);
 begin
   RequirePersistence;
-  if not FPersistence.UpdateInfo(key, value) then
-    FPersistence.InsertInfo(key, value);
+  FPersistence.StageInfo(key, value);
+end;
+
+procedure TProjectConfig.WriteImmediateString(const key, value: string);
+begin
+  RequirePersistence;
+  FPersistence.WriteInfoImmediate(key, value);
 end;
 
 function TProjectConfig.ReadInteger(const key: string; defaultValue: Integer): Integer;
@@ -98,6 +107,12 @@ end;
 procedure TProjectConfig.WriteInteger(const key: string; value: Integer);
 begin
   WriteString(key, IntToStr(value));
+end;
+
+procedure TProjectConfig.WriteImmediateInteger(const key: string;
+  value: Integer);
+begin
+  WriteImmediateString(key, IntToStr(value));
 end;
 
 function TProjectConfig.ReadBoolean(const key: string; defaultValue: Boolean): Boolean;
@@ -119,6 +134,15 @@ begin
     WriteString(key, '0');
 end;
 
+procedure TProjectConfig.WriteImmediateBoolean(const key: string;
+  value: Boolean);
+begin
+  if value then
+    WriteImmediateString(key, '1')
+  else
+    WriteImmediateString(key, '0');
+end;
+
 function TProjectConfig.ReadMarker(const defaultValue: string): string;
 begin
   Result := ReadString(PROJECT_CONFIG_KEY_MARKER, defaultValue);
@@ -126,7 +150,7 @@ end;
 
 procedure TProjectConfig.WriteMarker(const value: string);
 begin
-  WriteString(PROJECT_CONFIG_KEY_MARKER, value);
+  WriteImmediateString(PROJECT_CONFIG_KEY_MARKER, value);
 end;
 
 function TProjectConfig.ReadChapterViewText(defaultValue: Integer): Integer;
@@ -136,7 +160,7 @@ end;
 
 procedure TProjectConfig.WriteChapterViewText(value: Integer);
 begin
-  WriteInteger(PROJECT_CONFIG_KEY_CHAPTER_VIEW_TEXT, value);
+  WriteImmediateInteger(PROJECT_CONFIG_KEY_CHAPTER_VIEW_TEXT, value);
 end;
 
 function TProjectConfig.ReadChapterViewMode(defaultValue: Integer): Integer;
@@ -146,7 +170,7 @@ end;
 
 procedure TProjectConfig.WriteChapterViewMode(value: Integer);
 begin
-  WriteInteger(PROJECT_CONFIG_KEY_CHAPTER_VIEW_MODE, value);
+  WriteImmediateInteger(PROJECT_CONFIG_KEY_CHAPTER_VIEW_MODE, value);
 end;
 
 function TProjectConfig.ReadInterlinearMode(defaultValue: Integer): Integer;
@@ -156,7 +180,7 @@ end;
 
 procedure TProjectConfig.WriteInterlinearMode(value: Integer);
 begin
-  WriteInteger(PROJECT_CONFIG_KEY_INTERLINEAR_MODE, value);
+  WriteImmediateInteger(PROJECT_CONFIG_KEY_INTERLINEAR_MODE, value);
 end;
 
 function TProjectConfig.ReadParagraphMode(defaultValue: Integer): Integer;
@@ -166,7 +190,7 @@ end;
 
 procedure TProjectConfig.WriteParagraphMode(value: Integer);
 begin
-  WriteInteger(PROJECT_CONFIG_KEY_PARAGRAPH_MODE, value);
+  WriteImmediateInteger(PROJECT_CONFIG_KEY_PARAGRAPH_MODE, value);
 end;
 
 function TProjectConfig.ReadTokenizerVersion(defaultValue: Integer): Integer;
@@ -185,6 +209,12 @@ begin
 end;
 
 procedure TProjectConfig.WriteTextDescription(textIndex: Integer; const value: string);
+begin
+  WriteImmediateString(TextDescriptionKey(textIndex), value);
+end;
+
+procedure TProjectConfig.StageTextDescription(textIndex: Integer;
+  const value: string);
 begin
   WriteString(TextDescriptionKey(textIndex), value);
 end;

@@ -14,7 +14,9 @@ uses
   ai_processing_batch_test,
   ai_flow_config_test,
   suggestionmanagertest,
-  associationmemoryservicetest;
+  associationmemoryservicetest,
+  project_persistence_test,
+  navigation_history_test;
 
 var
   Application: TTestRunner;

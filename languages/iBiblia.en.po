@@ -143,39 +143,6 @@ msgstr "This flow expects plain text output without quotes or explanations"
 msgid "Beginning of chapter"
 msgstr "Beginning of chapter"
 
-#: chapterview.stranslationmemorycurrent
-msgctxt "chapterview.stranslationmemorycurrent"
-msgid "Current"
-msgstr "Current"
-
-#: chapterview.stranslationmemoryerrorfmt
-#, object-pascal-format
-msgid "Translation memory is unavailable: %s"
-msgstr "Translation memory is unavailable: %s"
-
-#: chapterview.stranslationmemoryformsfmt
-#, object-pascal-format
-msgid "Forms: %s"
-msgstr "Forms: %s"
-
-#: chapterview.stranslationmemorynosourcewords
-msgid "No source words are available for this verse."
-msgstr "No source words are available for this verse."
-
-#: chapterview.stranslationmemorynotranslations
-msgid "No translation recorded"
-msgstr "No translation recorded"
-
-#: chapterview.stranslationmemorystrongsfmt
-#, object-pascal-format
-msgid "Strong's: %s"
-msgstr "Strong's: %s"
-
-#: chapterview.stranslationmemorytitle
-msgctxt "chapterview.stranslationmemorytitle"
-msgid "Translation memory"
-msgstr "Translation memory"
-
 #: chapterview.sinterlinearmode
 msgid "Interlinear layout..."
 msgstr "Interlinear layout..."
@@ -209,6 +176,39 @@ msgstr "Print chapter"
 #: chapterview.ssetfont
 msgid "Choose &font..."
 msgstr "Choose &font..."
+
+#: chapterview.stranslationmemorycurrent
+msgctxt "chapterview.stranslationmemorycurrent"
+msgid "Current"
+msgstr "Current"
+
+#: chapterview.stranslationmemoryerrorfmt
+#, object-pascal-format
+msgid "Translation memory is unavailable: %s"
+msgstr "Translation memory is unavailable: %s"
+
+#: chapterview.stranslationmemoryformsfmt
+#, object-pascal-format
+msgid "Forms: %s"
+msgstr "Forms: %s"
+
+#: chapterview.stranslationmemorynosourcewords
+msgid "No source words are available for this verse."
+msgstr "No source words are available for this verse."
+
+#: chapterview.stranslationmemorynotranslations
+msgid "No translation recorded"
+msgstr "No translation recorded"
+
+#: chapterview.stranslationmemorystrongsfmt
+#, object-pascal-format
+msgid "Strong's: %s"
+msgstr "Strong's: %s"
+
+#: chapterview.stranslationmemorytitle
+msgctxt "chapterview.stranslationmemorytitle"
+msgid "Translation memory"
+msgstr "Translation memory"
 
 #: chapterview.sverserules
 msgid "Verse &rules..."
@@ -1191,14 +1191,30 @@ msgstr "Unsaved changes"
 msgid "Hide guide"
 msgstr "Hide guide"
 
+#: formprincipal.shistoryback
+msgctxt "formprincipal.shistoryback"
+msgid "Back"
+msgstr "Back"
+
+#: formprincipal.shistorybackhint
+msgctxt "formprincipal.shistorybackhint"
+msgid "Go back in navigation history"
+msgstr "Go back in navigation history"
+
+#: formprincipal.shistoryforward
+msgctxt "formprincipal.shistoryforward"
+msgid "Forward"
+msgstr "Forward"
+
+#: formprincipal.shistoryforwardhint
+msgctxt "formprincipal.shistoryforwardhint"
+msgid "Go forward in navigation history"
+msgstr "Go forward in navigation history"
+
 #: formprincipal.sinterlineartext
 msgctxt "formprincipal.sinterlineartext"
 msgid "Interlinear"
 msgstr "Interlinear"
-
-#: formprincipal.smemorytext
-msgid "Memory"
-msgstr "Memory"
 
 #: formprincipal.sinvalidprojectnamequery
 msgid "Do you want to choose a different name?"
@@ -1264,6 +1280,10 @@ msgstr "iBiblia"
 msgctxt "formprincipal.smaincaptionprojectfmt"
 msgid "iBiblia | %s | %s (%s)"
 msgstr "iBiblia | %s | %s (%s)"
+
+#: formprincipal.smemorytext
+msgid "Memory"
+msgstr "Memory"
 
 #: formprincipal.snewassociationproject
 msgctxt "formprincipal.snewassociationproject"
@@ -1447,6 +1467,16 @@ msgstr ""
 msgctxt "formprincipal.sshortcuthelpsection"
 msgid "Help"
 msgstr "Help"
+
+#: formprincipal.sshortcuthistoryback
+msgctxt "formprincipal.sshortcuthistoryback"
+msgid "Back in navigation history"
+msgstr "Back in navigation history"
+
+#: formprincipal.sshortcuthistoryforward
+msgctxt "formprincipal.sshortcuthistoryforward"
+msgid "Forward in navigation history"
+msgstr "Forward in navigation history"
 
 #: formprincipal.sshortcutnavigationsection
 #, fuzzy
@@ -2414,10 +2444,6 @@ msgctxt "project.sanalyzingverse"
 msgid "Analyzing verse..."
 msgstr ""
 
-#: project.sassociationmemoryunavailable
-msgid "Translation memory is unavailable because it could not be synchronized."
-msgstr "Translation memory is unavailable because it could not be synchronized."
-
 #: project.sapplyaito
 msgctxt "project.sapplyaito"
 msgid "Apply AI flow to..."
@@ -2469,6 +2495,10 @@ msgstr "Updating after an iBiblia or project change..."
 msgctxt "project.sassociationmemoryprogresstitle"
 msgid "Association memory"
 msgstr "Association memory"
+
+#: project.sassociationmemoryunavailable
+msgid "Translation memory is unavailable because it could not be synchronized."
+msgstr "Translation memory is unavailable because it could not be synchronized."
 
 #: project.sassociationmemoryvalidating
 msgid "Validating association memory..."
@@ -3206,6 +3236,86 @@ msgstr "Zecariah"
 msgctxt "project.szephaniah"
 msgid "Zephaniah"
 msgstr "Zephaniah"
+
+#: suggestionmanager.sassociationmemorymissingexpectedpairs
+msgctxt "suggestionmanager.sassociationmemorymissingexpectedpairs"
+msgid "Association memory is missing expected translation pairs"
+msgstr "Association memory is missing expected translation pairs"
+
+#: suggestionmanager.sassociationmemorymissingphrases
+msgctxt "suggestionmanager.sassociationmemorymissingphrases"
+msgid "Association memory contains translations with missing phrases"
+msgstr "Association memory contains translations with missing phrases"
+
+#: suggestionmanager.sassociationmemorymissingtranslationpairsfmt
+#, object-pascal-format
+msgctxt "suggestionmanager.sassociationmemorymissingtranslationpairsfmt"
+msgid "Association memory is missing translation pairs (expected %d, stored %d)"
+msgstr "Association memory is missing translation pairs (expected %d, stored %d)"
+
+#: suggestionmanager.sassociationmemorynonpositivecounts
+msgctxt "suggestionmanager.sassociationmemorynonpositivecounts"
+msgid "Association memory contains non-positive occurrence counts"
+msgstr "Association memory contains non-positive occurrence counts"
+
+#: suggestionmanager.sassociationmemoryorphanphrases
+msgctxt "suggestionmanager.sassociationmemoryorphanphrases"
+msgid "Association memory contains orphan phrases"
+msgstr "Association memory contains orphan phrases"
+
+#: suggestionmanager.sassociationmemoryorphansyntagmmappings
+msgctxt "suggestionmanager.sassociationmemoryorphansyntagmmappings"
+msgid "Association memory contains orphan syntagm mappings"
+msgstr "Association memory contains orphan syntagm mappings"
+
+#: suggestionmanager.sassociationmemorypairmismatchfmt
+#, object-pascal-format
+msgctxt "suggestionmanager.sassociationmemorypairmismatchfmt"
+msgid "Association memory mismatch for \"%s\" -> \"%s\" (expected %d, stored %d)"
+msgstr "Association memory mismatch for \"%s\" -> \"%s\" (expected %d, stored %d)"
+
+#: suggestionmanager.sassociationmemoryphraseidmismatchfmt
+#, object-pascal-format
+msgctxt "suggestionmanager.sassociationmemoryphraseidmismatchfmt"
+msgid "Association memory mismatch for phrase IDs %d -> %d (expected %d, stored %d)"
+msgstr "Association memory mismatch for phrase IDs %d -> %d (expected %d, stored %d)"
+
+#: suggestionmanager.sassociationmemoryrebuildalreadyactive
+msgctxt "suggestionmanager.sassociationmemoryrebuildalreadyactive"
+msgid "Association memory rebuild is already active"
+msgstr "Association memory rebuild is already active"
+
+#: suggestionmanager.sassociationmemoryrebuildnotprepared
+msgctxt "suggestionmanager.sassociationmemoryrebuildnotprepared"
+msgid "Association memory rebuild has not been prepared"
+msgstr "Association memory rebuild has not been prepared"
+
+#: suggestionmanager.sassociationmemoryunexpectedpairfmt
+#, object-pascal-format
+msgctxt "suggestionmanager.sassociationmemoryunexpectedpairfmt"
+msgid "Association memory contains unexpected pair \"%s\" -> \"%s\""
+msgstr "Association memory contains unexpected pair \"%s\" -> \"%s\""
+
+#: suggestionmanager.sassociationmemoryunexpectedphraseidsfmt
+#, object-pascal-format
+msgctxt "suggestionmanager.sassociationmemoryunexpectedphraseidsfmt"
+msgid "Association memory contains unexpected phrase IDs %d -> %d"
+msgstr "Association memory contains unexpected phrase IDs %d -> %d"
+
+#: suggestionmanager.scannotaddpairsafterrebuildvalidation
+msgctxt "suggestionmanager.scannotaddpairsafterrebuildvalidation"
+msgid "Cannot add pairs after rebuild validation"
+msgstr "Cannot add pairs after rebuild validation"
+
+#: suggestionmanager.sexpectedassociationpairlistinvalid
+msgctxt "suggestionmanager.sexpectedassociationpairlistinvalid"
+msgid "Expected association pair list is invalid"
+msgstr "Expected association pair list is invalid"
+
+#: suggestionmanager.sinvalidbufferedassociationmemorypair
+msgctxt "suggestionmanager.sinvalidbufferedassociationmemorypair"
+msgid "Invalid buffered association memory pair"
+msgstr "Invalid buffered association memory pair"
 
 #: tformabout.caption
 msgid "About iBiblia"
@@ -4337,151 +4447,3 @@ msgstr "Save"
 msgctxt "versememo.ssaveedithint"
 msgid "Save verse text and close the editor"
 msgstr "Save verse text and close the editor"
-
-#: association_memory_service.sassociationmemorydeltamismatchfmt
-msgctxt "association_memory_service.sassociationmemorydeltamismatchfmt"
-#, object-pascal-format
-msgid "Association memory delta mismatch for \"%s\" -> \"%s\" (expected %d, stored %d)"
-msgstr "Association memory delta mismatch for \"%s\" -> \"%s\" (expected %d, stored %d)"
-
-#: association_memory_service.sassociationmemorydeltamissingpairfmt
-msgctxt "association_memory_service.sassociationmemorydeltamissingpairfmt"
-#, object-pascal-format
-msgid "Association memory delta removes a missing pair \"%s\" -> \"%s\""
-msgstr "Association memory delta removes a missing pair \"%s\" -> \"%s\""
-
-#: association_memory_service.sassociationmemoryoutdatedfmt
-msgctxt "association_memory_service.sassociationmemoryoutdatedfmt"
-#, object-pascal-format
-msgid "Association memory is outdated (source revision %s, built revision %s)"
-msgstr "Association memory is outdated (source revision %s, built revision %s)"
-
-#: association_memory_service.sassociationmemoryrebuildalreadyactive
-msgctxt "association_memory_service.sassociationmemoryrebuildalreadyactive"
-msgid "Association memory rebuild is already active"
-msgstr "Association memory rebuild is already active"
-
-#: association_memory_service.sassociationmemoryrebuildnotactive
-msgctxt "association_memory_service.sassociationmemoryrebuildnotactive"
-msgid "Association memory rebuild is not active"
-msgstr "Association memory rebuild is not active"
-
-#: association_memory_service.sassociationmemoryservicenotattached
-msgctxt "association_memory_service.sassociationmemoryservicenotattached"
-msgid "Association memory service is not attached"
-msgstr "Association memory service is not attached"
-
-#: association_memory_service.scannotpublishoutdatedassociationmemory
-msgctxt "association_memory_service.scannotpublishoutdatedassociationmemory"
-msgid "Cannot publish an outdated association memory"
-msgstr "Cannot publish an outdated association memory"
-
-#: association_memory_service.snopendingsourcerevision
-msgctxt "association_memory_service.snopendingsourcerevision"
-msgid "There is no pending source revision to persist"
-msgstr "There is no pending source revision to persist"
-
-#: association_memory_service.spendingassociationmemorycannotreplay
-msgctxt "association_memory_service.spendingassociationmemorycannotreplay"
-msgid "Pending association memory cannot be replayed"
-msgstr "Pending association memory cannot be replayed"
-
-#: current_verse_workspace.sassociationdatanotcompletelyapplied
-msgctxt "current_verse_workspace.sassociationdatanotcompletelyapplied"
-msgid "Association data could not be applied completely to the verse pair"
-msgstr "Association data could not be applied completely to the verse pair"
-
-#: current_verse_workspace.sassociationpairlistunmatchedphrase
-msgctxt "current_verse_workspace.sassociationpairlistunmatchedphrase"
-msgid "Association pair list contains an unmatched phrase"
-msgstr "Association pair list contains an unmatched phrase"
-
-#: current_verse_workspace.sverserenderbufferunavailable
-msgctxt "current_verse_workspace.sverserenderbufferunavailable"
-msgid "Verse render buffer is not available"
-msgstr "Verse render buffer is not available"
-
-#: suggestionmanager.sassociationmemorymissingexpectedpairs
-msgctxt "suggestionmanager.sassociationmemorymissingexpectedpairs"
-msgid "Association memory is missing expected translation pairs"
-msgstr "Association memory is missing expected translation pairs"
-
-#: suggestionmanager.sassociationmemorymissingphrases
-msgctxt "suggestionmanager.sassociationmemorymissingphrases"
-msgid "Association memory contains translations with missing phrases"
-msgstr "Association memory contains translations with missing phrases"
-
-#: suggestionmanager.sassociationmemorymissingtranslationpairsfmt
-msgctxt "suggestionmanager.sassociationmemorymissingtranslationpairsfmt"
-#, object-pascal-format
-msgid "Association memory is missing translation pairs (expected %d, stored %d)"
-msgstr "Association memory is missing translation pairs (expected %d, stored %d)"
-
-#: suggestionmanager.sassociationmemorynonpositivecounts
-msgctxt "suggestionmanager.sassociationmemorynonpositivecounts"
-msgid "Association memory contains non-positive occurrence counts"
-msgstr "Association memory contains non-positive occurrence counts"
-
-#: suggestionmanager.sassociationmemoryorphanphrases
-msgctxt "suggestionmanager.sassociationmemoryorphanphrases"
-msgid "Association memory contains orphan phrases"
-msgstr "Association memory contains orphan phrases"
-
-#: suggestionmanager.sassociationmemoryorphansyntagmmappings
-msgctxt "suggestionmanager.sassociationmemoryorphansyntagmmappings"
-msgid "Association memory contains orphan syntagm mappings"
-msgstr "Association memory contains orphan syntagm mappings"
-
-#: suggestionmanager.sassociationmemorypairmismatchfmt
-msgctxt "suggestionmanager.sassociationmemorypairmismatchfmt"
-#, object-pascal-format
-msgid "Association memory mismatch for \"%s\" -> \"%s\" (expected %d, stored %d)"
-msgstr "Association memory mismatch for \"%s\" -> \"%s\" (expected %d, stored %d)"
-
-#: suggestionmanager.sassociationmemoryphraseidmismatchfmt
-msgctxt "suggestionmanager.sassociationmemoryphraseidmismatchfmt"
-#, object-pascal-format
-msgid "Association memory mismatch for phrase IDs %d -> %d (expected %d, stored %d)"
-msgstr "Association memory mismatch for phrase IDs %d -> %d (expected %d, stored %d)"
-
-#: suggestionmanager.sassociationmemoryrebuildalreadyactive
-msgctxt "suggestionmanager.sassociationmemoryrebuildalreadyactive"
-msgid "Association memory rebuild is already active"
-msgstr "Association memory rebuild is already active"
-
-#: suggestionmanager.sassociationmemoryrebuildnotprepared
-msgctxt "suggestionmanager.sassociationmemoryrebuildnotprepared"
-msgid "Association memory rebuild has not been prepared"
-msgstr "Association memory rebuild has not been prepared"
-
-#: suggestionmanager.sassociationmemoryunexpectedpairfmt
-msgctxt "suggestionmanager.sassociationmemoryunexpectedpairfmt"
-#, object-pascal-format
-msgid "Association memory contains unexpected pair \"%s\" -> \"%s\""
-msgstr "Association memory contains unexpected pair \"%s\" -> \"%s\""
-
-#: suggestionmanager.sassociationmemoryunexpectedphraseidsfmt
-msgctxt "suggestionmanager.sassociationmemoryunexpectedphraseidsfmt"
-#, object-pascal-format
-msgid "Association memory contains unexpected phrase IDs %d -> %d"
-msgstr "Association memory contains unexpected phrase IDs %d -> %d"
-
-#: suggestionmanager.scannotaddpairsafterrebuildvalidation
-msgctxt "suggestionmanager.scannotaddpairsafterrebuildvalidation"
-msgid "Cannot add pairs after rebuild validation"
-msgstr "Cannot add pairs after rebuild validation"
-
-#: suggestionmanager.sexpectedassociationpairlistinvalid
-msgctxt "suggestionmanager.sexpectedassociationpairlistinvalid"
-msgid "Expected association pair list is invalid"
-msgstr "Expected association pair list is invalid"
-
-#: suggestionmanager.sinvalidbufferedassociationmemorypair
-msgctxt "suggestionmanager.sinvalidbufferedassociationmemorypair"
-msgid "Invalid buffered association memory pair"
-msgstr "Invalid buffered association memory pair"
-
-#: verse_render_buffer.sassociationdatanotcompletelyapplied
-msgctxt "verse_render_buffer.sassociationdatanotcompletelyapplied"
-msgid "Association data could not be applied completely to the verse pair"
-msgstr "Association data could not be applied completely to the verse pair"

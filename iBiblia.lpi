@@ -218,8 +218,8 @@
         <Filename Value="Verse.pas"/>
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="13"/>
-        <TopLine Value="1336"/>
-        <CursorPos X="11" Y="1349"/>
+        <TopLine Value="423"/>
+        <CursorPos Y="449"/>
         <ExtraEditorCount Value="1"/>
         <ExtraEditor1>
           <EditorIndex Value="-1"/>
@@ -233,6 +233,7 @@
       <Unit3>
         <Filename Value="Project.pas"/>
         <IsPartOfProject Value="True"/>
+        <IsVisibleTab Value="True"/>
         <EditorIndex Value="4"/>
         <TopLine Value="617"/>
         <CursorPos Y="657"/>
@@ -295,9 +296,8 @@
         <ComponentName Value="FrmProjectProperties"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <IsVisibleTab Value="True"/>
         <EditorIndex Value="33"/>
-        <TopLine Value="45"/>
+        <TopLine Value="48"/>
         <CursorPos X="3" Y="88"/>
         <UsageCount Value="204"/>
         <Loaded Value="True"/>
@@ -855,133 +855,131 @@
       <Unit72>
         <Filename Value="theword_syntax_highlighter.pas"/>
         <IsPartOfProject Value="True"/>
+        <UsageCount Value="21"/>
       </Unit72>
       <Unit73>
         <Filename Value="formthewordhighlightercolors.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="FormTheWordHighlighterColors"/>
+        <UsageCount Value="21"/>
       </Unit73>
     </Units>
-    <JumpHistory Count="30" HistoryIndex="28">
+    <JumpHistory Count="29" HistoryIndex="28">
       <Position1>
         <Filename Value="syntagm.pas"/>
-        <Caret Line="795" TopLine="753"/>
+        <Caret Line="799" TopLine="753"/>
       </Position1>
       <Position2>
         <Filename Value="syntagm.pas"/>
-        <Caret Line="799" TopLine="753"/>
+        <Caret Line="198" TopLine="158"/>
       </Position2>
       <Position3>
         <Filename Value="syntagm.pas"/>
-        <Caret Line="198" TopLine="158"/>
+        <Caret Line="793" TopLine="753"/>
       </Position3>
       <Position4>
         <Filename Value="syntagm.pas"/>
-        <Caret Line="793" TopLine="753"/>
+        <Caret Line="795" TopLine="753"/>
       </Position4>
       <Position5>
         <Filename Value="syntagm.pas"/>
-        <Caret Line="795" TopLine="753"/>
+        <Caret Line="797" TopLine="753"/>
       </Position5>
       <Position6>
         <Filename Value="syntagm.pas"/>
-        <Caret Line="797" TopLine="753"/>
+        <Caret Line="798" TopLine="753"/>
       </Position6>
       <Position7>
         <Filename Value="syntagm.pas"/>
-        <Caret Line="798" TopLine="753"/>
+        <Caret Line="799" TopLine="753"/>
       </Position7>
       <Position8>
         <Filename Value="syntagm.pas"/>
-        <Caret Line="799" TopLine="753"/>
+        <Caret Line="800" TopLine="753"/>
       </Position8>
       <Position9>
         <Filename Value="syntagm.pas"/>
-        <Caret Line="800" TopLine="753"/>
+        <Caret Line="801" TopLine="753"/>
       </Position9>
       <Position10>
         <Filename Value="syntagm.pas"/>
-        <Caret Line="801" TopLine="753"/>
+        <Caret Line="802" TopLine="753"/>
       </Position10>
       <Position11>
         <Filename Value="syntagm.pas"/>
-        <Caret Line="802" TopLine="753"/>
+        <Caret Line="795" TopLine="753"/>
       </Position11>
       <Position12>
         <Filename Value="syntagm.pas"/>
-        <Caret Line="795" TopLine="753"/>
+        <Caret Line="806" TopLine="753"/>
       </Position12>
       <Position13>
         <Filename Value="syntagm.pas"/>
-        <Caret Line="806" TopLine="753"/>
+        <Caret Line="826" TopLine="753"/>
       </Position13>
       <Position14>
         <Filename Value="syntagm.pas"/>
-        <Caret Line="826" TopLine="753"/>
+        <Caret Line="892" TopLine="852"/>
       </Position14>
       <Position15>
         <Filename Value="syntagm.pas"/>
-        <Caret Line="892" TopLine="852"/>
+        <Caret Line="893" TopLine="852"/>
       </Position15>
       <Position16>
         <Filename Value="syntagm.pas"/>
-        <Caret Line="893" TopLine="852"/>
+        <Caret Line="896" TopLine="852"/>
       </Position16>
       <Position17>
         <Filename Value="syntagm.pas"/>
-        <Caret Line="896" TopLine="852"/>
+        <Caret Line="898" TopLine="852"/>
       </Position17>
       <Position18>
         <Filename Value="syntagm.pas"/>
-        <Caret Line="898" TopLine="852"/>
+        <Caret Line="900" TopLine="852"/>
       </Position18>
       <Position19>
         <Filename Value="syntagm.pas"/>
-        <Caret Line="900" TopLine="852"/>
+        <Caret Line="911" TopLine="852"/>
       </Position19>
       <Position20>
         <Filename Value="syntagm.pas"/>
-        <Caret Line="911" TopLine="852"/>
+        <Caret Line="913" TopLine="852"/>
       </Position20>
       <Position21>
         <Filename Value="syntagm.pas"/>
-        <Caret Line="913" TopLine="852"/>
+        <Caret Line="922" TopLine="852"/>
       </Position21>
       <Position22>
         <Filename Value="syntagm.pas"/>
-        <Caret Line="922" TopLine="852"/>
+        <Caret Line="215" TopLine="175"/>
       </Position22>
       <Position23>
-        <Filename Value="syntagm.pas"/>
-        <Caret Line="215" TopLine="175"/>
-      </Position23>
-      <Position24>
         <Filename Value="Project.pas"/>
         <Caret Line="1672" TopLine="1631"/>
-      </Position24>
-      <Position25>
+      </Position23>
+      <Position24>
         <Filename Value="project_database_bootstrap.pas"/>
         <Caret Line="190" TopLine="111"/>
-      </Position25>
-      <Position26>
+      </Position24>
+      <Position25>
         <Filename Value="ai_association_flow.pas"/>
         <Caret Line="110" TopLine="85"/>
+      </Position25>
+      <Position26>
+        <Filename Value="formaiprocessing.pas"/>
       </Position26>
       <Position27>
-        <Filename Value="formaiprocessing.pas"/>
-      </Position27>
-      <Position28>
         <Filename Value="syntagm.pas"/>
         <Caret Line="215" TopLine="175"/>
-      </Position28>
-      <Position29>
+      </Position27>
+      <Position28>
         <Filename Value="formprincipal.pas"/>
         <Caret Line="552" Column="11" TopLine="528"/>
+      </Position28>
+      <Position29>
+        <Filename Value="FormProjectProperties.pas"/>
+        <Caret Line="88" Column="3" TopLine="48"/>
       </Position29>
-      <Position30>
-        <Filename Value="formprincipal.pas"/>
-        <Caret Line="526" Column="13" TopLine="486"/>
-      </Position30>
     </JumpHistory>
   </ProjectOptions>
   <CompilerOptions>

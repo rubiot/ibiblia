@@ -1,0 +1,495 @@
+{
+  "schemaVersion": 1,
+  "project": "iBiblia",
+  "purpose": "Initial icon manifest based on the current Lazarus UI inventory. legacyImageIndex refers to the current ImageList index when one exists; null means the UI currently has no icon for that symbol.",
+  "icons": [
+    {
+      "symbol": "app-ibiblia",
+      "pascalAction": null,
+      "legacyImageIndex": null,
+      "contexts": ["app-icon", "windows-resource"],
+      "sizes": [16, 32, 48, 64, 128, 256],
+      "meaning": "Application identity: an open Bible or two-column text with a subtle association link."
+    },
+    {
+      "symbol": "project-open",
+      "pascalAction": "ActionAbrirProjeto",
+      "legacyImageIndex": 0,
+      "contexts": ["toolbar", "main-menu-project"],
+      "sizes": [16, 24, 32],
+      "meaning": "Open an existing association project."
+    },
+    {
+      "symbol": "project-close",
+      "pascalAction": "ActionFecharProjeto",
+      "legacyImageIndex": 1,
+      "contexts": ["toolbar", "main-menu-project"],
+      "sizes": [16, 24, 32],
+      "meaning": "Close the current project."
+    },
+    {
+      "symbol": "project-save",
+      "pascalAction": "ActionSalvarProjeto",
+      "legacyImageIndex": 2,
+      "contexts": ["toolbar", "main-menu-project"],
+      "sizes": [16, 24, 32],
+      "meaning": "Save current project changes."
+    },
+    {
+      "symbol": "project-save-as",
+      "pascalAction": "ActionSalvarProjetoComo",
+      "legacyImageIndex": 3,
+      "contexts": ["toolbar"],
+      "sizes": [16, 24, 32],
+      "meaning": "Save the current project under a new name."
+    },
+    {
+      "symbol": "association-auto",
+      "pascalAction": "ActionSugerirAssociacao",
+      "legacyImageIndex": 4,
+      "contexts": ["toolbar", "main-menu-edit"],
+      "sizes": [16, 24, 32],
+      "meaning": "Automatically suggest syntagm associations for the current verse pair."
+    },
+    {
+      "symbol": "association-clear",
+      "pascalAction": "ActionLimparAssociacoes",
+      "legacyImageIndex": 5,
+      "contexts": ["toolbar", "main-menu-edit"],
+      "sizes": [16, 24, 32],
+      "meaning": "Clear current verse associations."
+    },
+    {
+      "symbol": "project-new",
+      "pascalAction": "ActionNovoProjeto",
+      "legacyImageIndex": 6,
+      "contexts": ["toolbar", "main-menu-project"],
+      "sizes": [16, 24, 32],
+      "meaning": "Create a new association or translation project."
+    },
+    {
+      "symbol": "verse-previous",
+      "pascalAction": "ActionVersoAnterior",
+      "legacyImageIndex": 7,
+      "contexts": ["toolbar", "main-menu-navigation"],
+      "sizes": [16, 24, 32],
+      "meaning": "Navigate to the previous verse."
+    },
+    {
+      "symbol": "verse-next",
+      "pascalAction": "ActionVersoSeguinte",
+      "legacyImageIndex": 8,
+      "contexts": ["toolbar", "main-menu-navigation"],
+      "sizes": [16, 24, 32],
+      "meaning": "Navigate to the next verse."
+    },
+    {
+      "symbol": "association-rollback",
+      "pascalAction": "ActionReverterAssociacoes",
+      "legacyImageIndex": 9,
+      "contexts": ["toolbar", "main-menu-edit"],
+      "sizes": [16, 24, 32],
+      "meaning": "Rollback/revert current verse association changes."
+    },
+    {
+      "symbol": "app-exit",
+      "pascalAction": "ActionSair",
+      "legacyImageIndex": 10,
+      "contexts": ["toolbar", "main-menu-project"],
+      "sizes": [16, 24, 32],
+      "meaning": "Exit iBiblia."
+    },
+    {
+      "symbol": "project-settings",
+      "pascalAction": "ActionPropProjeto",
+      "legacyImageIndex": null,
+      "contexts": ["main-menu-project", "toolbar-gap"],
+      "sizes": [16, 24, 32],
+      "meaning": "Open current project settings."
+    },
+    {
+      "symbol": "verse-first",
+      "pascalAction": "ActionVersoPrimeiro",
+      "legacyImageIndex": null,
+      "contexts": ["main-menu-navigation", "toolbar-gap"],
+      "sizes": [16, 24, 32],
+      "meaning": "Navigate to the first verse."
+    },
+    {
+      "symbol": "verse-last",
+      "pascalAction": "ActionVersoUltimo",
+      "legacyImageIndex": null,
+      "contexts": ["main-menu-navigation", "toolbar-gap"],
+      "sizes": [16, 24, 32],
+      "meaning": "Navigate to the last verse."
+    },
+    {
+      "symbol": "project-export",
+      "pascalAction": "ActionExportar",
+      "legacyImageIndex": null,
+      "contexts": ["main-menu-project", "toolbar-gap"],
+      "sizes": [16, 24, 32],
+      "meaning": "Open the project export workflow."
+    },
+    {
+      "symbol": "export-destination-strongs",
+      "pascalAction": "ActionExportarDestinoComStrongs",
+      "legacyImageIndex": null,
+      "contexts": ["export-action-gap"],
+      "sizes": [16, 24, 32],
+      "meaning": "Export destination text with Strong's tags."
+    },
+    {
+      "symbol": "export-interlinear",
+      "pascalAction": "ActionExportarTextoInterlinear",
+      "legacyImageIndex": null,
+      "contexts": ["export-action-gap"],
+      "sizes": [16, 24, 32],
+      "meaning": "Export interlinear text."
+    },
+    {
+      "symbol": "projects-merge",
+      "pascalAction": "ActionMesclarProjetos",
+      "legacyImageIndex": null,
+      "contexts": ["main-menu-project-gap"],
+      "sizes": [16, 24, 32],
+      "meaning": "Merge two association projects."
+    },
+    {
+      "symbol": "association-memory-rebuild",
+      "pascalAction": "ActionRecriarBaseSugestoes",
+      "legacyImageIndex": null,
+      "contexts": ["main-menu-maintenance"],
+      "sizes": [16, 24, 32],
+      "meaning": "Recreate the association memory used by statistical suggestions."
+    },
+    {
+      "symbol": "sync-theword-verse",
+      "pascalAction": "ActionSyncTheWordVerse",
+      "legacyImageIndex": null,
+      "contexts": ["sync-action-gap"],
+      "sizes": [16, 24, 32],
+      "meaning": "Synchronize the current iBiblia verse with theWord."
+    },
+    {
+      "symbol": "tags-show",
+      "pascalAction": "ActionMostrarTags",
+      "legacyImageIndex": null,
+      "contexts": ["shortcut-action-gap"],
+      "sizes": [16, 24, 32],
+      "meaning": "Toggle display of Strong's and morphology tags."
+    },
+    {
+      "symbol": "patch-create",
+      "pascalAction": "ActionExportPatch",
+      "legacyImageIndex": null,
+      "contexts": ["main-menu-project"],
+      "sizes": [16, 24, 32],
+      "meaning": "Create an iBiblia patch file."
+    },
+    {
+      "symbol": "patch-apply",
+      "pascalAction": "ActionApplyPatch",
+      "legacyImageIndex": null,
+      "contexts": ["main-menu-project"],
+      "sizes": [16, 24, 32],
+      "meaning": "Apply an iBiblia patch file."
+    },
+    {
+      "symbol": "database-vacuum",
+      "pascalAction": "ActionVaccumProject",
+      "legacyImageIndex": null,
+      "contexts": ["main-menu-maintenance"],
+      "sizes": [16, 24, 32],
+      "meaning": "Vacuum/compact the current project database."
+    },
+    {
+      "symbol": "keyboard-shortcuts",
+      "pascalAction": "ActionKeyboardShortcuts",
+      "legacyImageIndex": null,
+      "contexts": ["main-menu-help"],
+      "sizes": [16, 24, 32],
+      "meaning": "Show keyboard shortcuts."
+    },
+    {
+      "symbol": "layout-reset",
+      "pascalAction": "ActionResetLayout",
+      "legacyImageIndex": null,
+      "contexts": ["main-menu-options"],
+      "sizes": [16, 24, 32],
+      "meaning": "Reset the main window layout."
+    },
+    {
+      "symbol": "guide-mode",
+      "pascalAction": "ActionGuideMode",
+      "legacyImageIndex": null,
+      "contexts": ["main-menu-options"],
+      "sizes": [16, 24, 32],
+      "meaning": "Toggle guide mode."
+    },
+    {
+      "symbol": "theword-highlighter-colors",
+      "pascalAction": "ActionTheWordHighlighterColors",
+      "legacyImageIndex": null,
+      "contexts": ["main-menu-options"],
+      "sizes": [16, 24, 32],
+      "meaning": "Configure theWord highlighter colors."
+    },
+    {
+      "symbol": "llm-options",
+      "pascalAction": "ActionLlmOptions",
+      "legacyImageIndex": null,
+      "contexts": ["main-menu-options"],
+      "sizes": [16, 24, 32],
+      "meaning": "Configure LLM provider and flow options."
+    },
+    {
+      "symbol": "internal-new-verse-hook",
+      "pascalAction": "ActionQuandoNovoVersiculo",
+      "legacyImageIndex": null,
+      "contexts": ["internal-no-icon"],
+      "sizes": [],
+      "meaning": "Internal hook fired when the current verse changes; no icon should be generated unless it becomes visible."
+    },
+    {
+      "symbol": "text-load",
+      "pascalAction": "ActionLoadText",
+      "legacyImageIndex": null,
+      "contexts": ["project-properties-button"],
+      "sizes": [16, 24],
+      "meaning": "Load or replace a Bible text in project properties."
+    },
+    {
+      "symbol": "text-clear",
+      "pascalAction": "ActionClearText",
+      "legacyImageIndex": null,
+      "contexts": ["project-properties-button"],
+      "sizes": [16, 24],
+      "meaning": "Clear a Bible text from project properties."
+    },
+    {
+      "symbol": "dictionary-strong-select",
+      "pascalAction": "ActionSelectStrongDictionary",
+      "legacyImageIndex": null,
+      "contexts": ["project-properties-button"],
+      "sizes": [16, 24],
+      "meaning": "Choose a Strong's dictionary."
+    },
+    {
+      "symbol": "dictionary-morphology-select",
+      "pascalAction": "ActionSelectMorphologyDictionary",
+      "legacyImageIndex": null,
+      "contexts": ["project-properties-button"],
+      "sizes": [16, 24],
+      "meaning": "Choose a morphology dictionary."
+    },
+    {
+      "symbol": "font-select",
+      "pascalAction": "ActionSelectFont",
+      "legacyImageIndex": null,
+      "contexts": ["project-properties-button"],
+      "sizes": [16, 24],
+      "meaning": "Choose a font for a Bible text."
+    },
+    {
+      "symbol": "internal-tab-change",
+      "pascalAction": "ActionChangeTab",
+      "legacyImageIndex": null,
+      "contexts": ["internal-no-icon"],
+      "sizes": [],
+      "meaning": "Internal action used to change project property tabs."
+    },
+    {
+      "symbol": "file-association-register",
+      "pascalAction": null,
+      "legacyImageIndex": null,
+      "contexts": ["main-menu-maintenance-gap"],
+      "sizes": [16, 24, 32],
+      "meaning": "Register .bib files for iBiblia; current menu item is not backed by a TAction."
+    },
+    {
+      "symbol": "file-association-unregister",
+      "pascalAction": null,
+      "legacyImageIndex": null,
+      "contexts": ["main-menu-maintenance-gap"],
+      "sizes": [16, 24, 32],
+      "meaning": "Unregister .bib files from iBiblia; current menu item is not backed by a TAction."
+    },
+    {
+      "symbol": "status-not-associated",
+      "pascalAction": null,
+      "legacyImageIndex": 0,
+      "contexts": ["tree-status", "tree-context-menu", "association-project-status"],
+      "sizes": [16],
+      "meaning": "Association project status: not associated."
+    },
+    {
+      "symbol": "status-associating",
+      "pascalAction": null,
+      "legacyImageIndex": 1,
+      "contexts": ["tree-status", "tree-context-menu", "association-project-status"],
+      "sizes": [16],
+      "meaning": "Association project status: associating/in progress."
+    },
+    {
+      "symbol": "status-needs-review",
+      "pascalAction": null,
+      "legacyImageIndex": 2,
+      "contexts": ["tree-status", "tree-context-menu", "association-project-status"],
+      "sizes": [16],
+      "meaning": "Association project status: needs review."
+    },
+    {
+      "symbol": "status-associated",
+      "pascalAction": null,
+      "legacyImageIndex": 3,
+      "contexts": ["tree-status", "tree-context-menu", "association-project-status"],
+      "sizes": [16],
+      "meaning": "Association project status: associated."
+    },
+    {
+      "symbol": "status-awaiting-translation",
+      "pascalAction": null,
+      "legacyImageIndex": 0,
+      "contexts": ["tree-status", "tree-context-menu", "translation-project-status"],
+      "sizes": [16],
+      "meaning": "Translation project status: awaiting translation."
+    },
+    {
+      "symbol": "status-translating",
+      "pascalAction": null,
+      "legacyImageIndex": 1,
+      "contexts": ["tree-status", "tree-context-menu", "translation-project-status"],
+      "sizes": [16],
+      "meaning": "Translation project status: translating."
+    },
+    {
+      "symbol": "status-ready-for-review",
+      "pascalAction": null,
+      "legacyImageIndex": 2,
+      "contexts": ["tree-status", "tree-context-menu", "translation-project-status"],
+      "sizes": [16],
+      "meaning": "Translation project status: ready for review."
+    },
+    {
+      "symbol": "status-pending-issues",
+      "pascalAction": null,
+      "legacyImageIndex": 3,
+      "contexts": ["tree-status", "tree-context-menu", "translation-project-status"],
+      "sizes": [16],
+      "meaning": "Translation project status: has pending issues."
+    },
+    {
+      "symbol": "status-reviewed",
+      "pascalAction": null,
+      "legacyImageIndex": 4,
+      "contexts": ["tree-status", "tree-context-menu", "translation-project-status"],
+      "sizes": [16],
+      "meaning": "Translation project status: reviewed."
+    },
+    {
+      "symbol": "status-mixed",
+      "pascalAction": null,
+      "legacyImageIndex": null,
+      "contexts": ["tree-status-aggregate"],
+      "sizes": [16],
+      "meaning": "Aggregate book/chapter state with multiple child statuses; currently generated dynamically as color segments."
+    },
+    {
+      "symbol": "checkbox-unchecked",
+      "pascalAction": null,
+      "legacyImageIndex": 0,
+      "contexts": ["bible-tree-state-checkbox"],
+      "sizes": [16],
+      "meaning": "Unchecked selectable verse/book/chapter state in TBibleTreeView."
+    },
+    {
+      "symbol": "checkbox-checked",
+      "pascalAction": null,
+      "legacyImageIndex": 1,
+      "contexts": ["bible-tree-state-checkbox"],
+      "sizes": [16],
+      "meaning": "Checked selectable verse/book/chapter state in TBibleTreeView."
+    },
+    {
+      "symbol": "checkbox-partial",
+      "pascalAction": null,
+      "legacyImageIndex": 2,
+      "contexts": ["bible-tree-state-checkbox"],
+      "sizes": [16],
+      "meaning": "Partially checked parent state in TBibleTreeView."
+    },
+    {
+      "symbol": "ai-pending",
+      "pascalAction": null,
+      "legacyImageIndex": 3,
+      "contexts": ["ai-processing-tree-state"],
+      "sizes": [16],
+      "meaning": "AI processing job is queued/pending."
+    },
+    {
+      "symbol": "ai-processing",
+      "pascalAction": null,
+      "legacyImageIndex": 4,
+      "contexts": ["ai-processing-tree-state"],
+      "sizes": [16],
+      "meaning": "AI processing job is currently running."
+    },
+    {
+      "symbol": "ai-success",
+      "pascalAction": null,
+      "legacyImageIndex": 5,
+      "contexts": ["ai-processing-tree-state"],
+      "sizes": [16],
+      "meaning": "AI processing job completed successfully."
+    },
+    {
+      "symbol": "ai-error",
+      "pascalAction": null,
+      "legacyImageIndex": 6,
+      "contexts": ["ai-processing-tree-state"],
+      "sizes": [16],
+      "meaning": "AI processing job failed."
+    },
+    {
+      "symbol": "tab-source",
+      "pascalAction": null,
+      "legacyImageIndex": null,
+      "contexts": ["chapter-view-tab", "tab-gap"],
+      "sizes": [16],
+      "meaning": "Source Bible text tab."
+    },
+    {
+      "symbol": "tab-destination",
+      "pascalAction": null,
+      "legacyImageIndex": null,
+      "contexts": ["chapter-view-tab", "tab-gap"],
+      "sizes": [16],
+      "meaning": "Destination Bible text tab."
+    },
+    {
+      "symbol": "tab-reference",
+      "pascalAction": null,
+      "legacyImageIndex": null,
+      "contexts": ["chapter-view-tab", "tab-gap"],
+      "sizes": [16],
+      "meaning": "Reference Bible text tab."
+    },
+    {
+      "symbol": "comments",
+      "pascalAction": null,
+      "legacyImageIndex": null,
+      "contexts": ["panel-gap", "verse-popup-gap"],
+      "sizes": [16, 24],
+      "meaning": "Comments or notes attached to the current verse."
+    },
+    {
+      "symbol": "status-review",
+      "pascalAction": null,
+      "legacyImageIndex": null,
+      "contexts": ["side-panel-gap", "review-filter"],
+      "sizes": [16, 24],
+      "meaning": "Review/filter verses by status."
+    }
+  ]
+}

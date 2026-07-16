@@ -1714,3 +1714,54 @@ msgstr ""
 msgid "&Save text to file..."
 msgstr ""
 
+#: formprincipal.shistoryback
+msgctxt "formprincipal.shistoryback"
+msgid "Back"
+msgstr ""
+
+#: formprincipal.shistorybackhint
+msgctxt "formprincipal.shistorybackhint"
+msgid "Go back in navigation history"
+msgstr ""
+
+#: formprincipal.shistoryforward
+msgctxt "formprincipal.shistoryforward"
+msgid "Forward"
+msgstr ""
+
+#: formprincipal.shistoryforwardhint
+msgctxt "formprincipal.shistoryforwardhint"
+msgid "Go forward in navigation history"
+msgstr ""
+
+#: formprincipal.sshortcuthistoryback
+msgctxt "formprincipal.sshortcuthistoryback"
+msgid "Back in navigation history"
+msgstr ""
+
+#: formprincipal.sshortcuthistoryforward
+msgctxt "formprincipal.sshortcuthistoryforward"
+msgid "Forward in navigation history"
+msgstr ""
+
+
+#: tfrmprincipal.actionhistoryback.caption
+msgctxt "tfrmprincipal.actionhistoryback.caption"
+msgid "Back"
+msgstr ""
+
+#: tfrmprincipal.actionhistoryback.hint
+msgctxt "tfrmprincipal.actionhistoryback.hint"
+msgid "Go back in navigation history"
+msgstr ""
+
+#: tfrmprincipal.actionhistoryforward.caption
+msgctxt "tfrmprincipal.actionhistoryforward.caption"
+msgid "Forward"
+msgstr ""
+
+#: tfrmprincipal.actionhistoryforward.hint
+msgctxt "tfrmprincipal.actionhistoryforward.hint"
+msgid "Go forward in navigation history"
+msgstr ""
+

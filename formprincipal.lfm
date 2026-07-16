@@ -72,13 +72,30 @@ object frmPrincipal: TfrmPrincipal
       Top = 2
       Action = ActionLimparAssociacoes
     end
-    object ToolButton8: TToolButton
+    object ToolButtonHistoryBack: TToolButton
       Left = 325
+      Top = 2
+      Action = ActionHistoryBack
+    end
+    object ToolButtonHistoryForward: TToolButton
+      Left = 361
+      Top = 2
+      Action = ActionHistoryForward
+    end
+    object ToolButtonHistorySeparator: TToolButton
+      Left = 397
+      Height = 34
+      Top = 2
+      Width = 8
+      Style = tbsSeparator
+    end
+    object ToolButton8: TToolButton
+      Left = 405
       Top = 2
       Action = ActionVersoAnterior
     end
     object ToolButton9: TToolButton
-      Left = 361
+      Left = 441
       Top = 2
       Action = ActionVersoSeguinte
     end
@@ -451,6 +468,15 @@ object frmPrincipal: TfrmPrincipal
     end
     object MenuItem5: TMenuItem
       Caption = 'Navigation'
+      object MenuItemHistoryBack: TMenuItem
+        Action = ActionHistoryBack
+      end
+      object MenuItemHistoryForward: TMenuItem
+        Action = ActionHistoryForward
+      end
+      object MenuItemHistorySeparator: TMenuItem
+        Caption = '-'
+      end
       object MenuItem6: TMenuItem
         Action = ActionVersoAnterior
       end
@@ -607,6 +633,20 @@ object frmPrincipal: TfrmPrincipal
       Hint = 'Exit the program'
       ImageIndex = 10
       OnExecute = ActionSairExecute
+    end
+    object ActionHistoryBack: TAction
+      Caption = 'Back'
+      Enabled = False
+      Hint = 'Go back in navigation history'
+      ImageIndex = 7
+      OnExecute = ActionHistoryBackExecute
+    end
+    object ActionHistoryForward: TAction
+      Caption = 'Forward'
+      Enabled = False
+      Hint = 'Go forward in navigation history'
+      ImageIndex = 8
+      OnExecute = ActionHistoryForwardExecute
     end
     object ActionVersoPrimeiro: TAction
       Caption = 'First'

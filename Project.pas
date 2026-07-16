@@ -24,7 +24,8 @@ uses
   project_patch_applier, bible_tree_coordinator, ai_batch_orchestrator,
   project_database_bootstrap, status_catalog,
   dictionary_manager, project_exporter, association_memory_service,
-  UnitPleaseWait, bible_book_names, translation_memory_model;
+  UnitPleaseWait, bible_book_names, translation_memory_model,
+  navigation_history;
 const
   // AI processing icon indices for ImageListTreeView in formprincipal
   // ImageListTreeView has indices 0-7 for normal states (0-3) and selected states (4-7)
@@ -163,6 +164,9 @@ type
     FAssociationMemoryRebuildRunning: Boolean;
     FAssociationMemoryRebuildFailed: Boolean;
     FAssociationMemoryProgressBar: TProgressBar;
+    FNavigationHistory: TNavigationHistory;
+    function GetCanGoBack: Boolean;
+    function GetCanGoForward: Boolean;
     function GetCaminho: string;
     function GetChapterViewText: TTipoTextoBiblico;
     function GetChapterViewMode: TChapterViewMode;
@@ -213,6 +217,7 @@ type
     procedure RebuildAssociationMemory(ProgressBar: TProgressBar);
     procedure AssociationMemoryRebuildProgress(
       Phase: TAssociationMemoryRebuildPhase; Current, Total: Integer);
+    procedure PendingEditorChanged(Sender: TObject);
   protected
     function CreateTableDataset(db, tableName, keyField: string): TSqlite3Dataset;
     function CreateQueryObject(db: string): TSQLQuery;
@@ -267,11 +272,13 @@ type
     procedure CreateProject(nomedb, descricao: string; tokenizerVersion: Integer); overload;
     procedure CreateProject(nomedbvelho, nomedbnovo, descricao: string; tokenizerVersion: Integer); overload;
     procedure OpenProject(Nome: string);
-    procedure CloseProject(_Commit: boolean);
+    function CloseProject(_Commit: boolean): Boolean;
     procedure Commit;
     procedure Rollback;
     procedure GoToReference(reference: string);
     procedure GoToReference(reference: TReference);
+    procedure GoBack;
+    procedure GoForward;
     procedure NextVerse;
     procedure PreviousVerse;
     procedure FirstVerse;
@@ -280,7 +287,7 @@ type
     procedure ClearAssociations;
     procedure ChangeTokenizerVersion(AValue: Integer;
       ProgressBar: TProgressBar = nil; MigrateAssociations: Boolean = True);
-    procedure SaveProject;
+    function SaveProject: Boolean;
     procedure SaveVersePairs(Verse: TVerse); // Save pairs from any verse object (public for AI flows)
     procedure ApplyVerseText(const newText: string; texto: TTipoTextoBiblico; replace: Boolean);
     procedure SuggestAssociationStatistical;
@@ -356,6 +363,8 @@ type
     property FormattedReference: string read GetFormattedReference;
     property Reference: TReference read FReference;
     property ID: string read GetID;
+    property CanGoBack: Boolean read GetCanGoBack;
+    property CanGoForward: Boolean read GetCanGoForward;
     property Modificado: boolean read GetModificado;
     property Arvore: TTreeView read FArvore write FArvore;
     property OnAlterarVersiculo: TOnAlterarVersiculoEvent read FOnAlterarVersiculo write SetOnAlterarVersiculo;
@@ -739,7 +748,8 @@ begin
   if not ValidateStatusDefinitions(Normalized, ErrorMessage) then
     raise Exception.Create(ErrorMessage);
 
-  SetInfo(STATUS_CATALOG_CONFIG_KEY, SaveStatusDefinitions(Normalized));
+  FConfig.WriteString(STATUS_CATALOG_CONFIG_KEY,
+    SaveStatusDefinitions(Normalized));
   RefreshStatusImages;
   RefreshStatusControl;
   if Assigned(FArvore) and Assigned(FArvore.PopupMenu) then
@@ -774,7 +784,7 @@ begin
     SetStatusDefinitions(Definitions);
   end
   else
-    SetInfo('status.description.' + IntToStr(index), description);
+    FConfig.WriteString('status.description.' + IntToStr(index), description);
 end;
 
 function TProject.StatusAutomationEnabled: Boolean;
@@ -1068,12 +1078,15 @@ begin
 end;
 
 procedure TProject.SetOnAlterarVersiculo(const AValue: TOnAlterarVersiculoEvent);
+var
+  TextType: TTipoTextoBiblico;
 begin
   if FOnAlterarVersiculo = AValue then exit;
   FOnAlterarVersiculo := AValue;
 
-  if assigned(FAVersiculo[tbOrigem]) then
-    FAVersiculo[tbOrigem].OnAlterarVersiculo := OnAlterarVersiculo;
+  for TextType := Low(FAVersiculo) to High(FAVersiculo) do
+    if assigned(FAVersiculo[TextType]) then
+      FAVersiculo[TextType].OnAlterarVersiculo := FOnAlterarVersiculo;
 end;
 
 procedure TProject.OnNewVerseSubscribe(const AValue: TOnNovoVersiculoEvent);
@@ -1438,6 +1451,12 @@ begin
   if FPalavrasComStrongEmNegrito=AValue then Exit;
   FPalavrasComStrongEmNegrito:=AValue;
   FCurrentVerseWorkspace.ApplyBoldStrongs(FAVersiculo, AValue);
+end;
+
+procedure TProject.PendingEditorChanged(Sender: TObject);
+begin
+  if Assigned(FOnAlterarVersiculo) then
+    FOnAlterarVersiculo;
 end;
 
 procedure TProject.RefreshStatusImages;
@@ -1988,12 +2007,10 @@ begin
 end;
 
 function TProject.GetModificado: boolean;
-var
-  srcPending: boolean;
 begin
-  srcPending   := (assigned(FAVersiculo[tbOrigem]) and FAVersiculo[tbOrigem].Modificado);
-
-  result := FPersistence.UpdatesPending or srcPending;
+  Result := Assigned(FCurrentVerseWorkspace) and
+    FCurrentVerseWorkspace.HasPendingChanges(FPersistence, FVerseMemo,
+      FMemoComentarios, FAVersiculo, FACamposTexto, Ord(tbOrigem));
 end;
 
 function TProject.GetCaminho: string;
@@ -2292,7 +2309,8 @@ begin
   FormPleaseWait.BeginOperation(Application.MainForm, SVacuumProgressTitle,
     SVacuumProgressMessage, 0, FFileName);
   try
-    CloseProject(true);
+    if not CloseProject(true) then
+      Exit;
     with TSqlite3Dataset.Create(nil) do
     begin
       FileName:=FFileName;
@@ -2309,6 +2327,16 @@ end;
 function TProject.GetID: string;
 begin
   Result := FPersistence.CurrentPairId;
+end;
+
+function TProject.GetCanGoBack: Boolean;
+begin
+  Result := Assigned(FNavigationHistory) and FNavigationHistory.CanGoBack;
+end;
+
+function TProject.GetCanGoForward: Boolean;
+begin
+  Result := Assigned(FNavigationHistory) and FNavigationHistory.CanGoForward;
 end;
 
 function TProject.GetInterlinearMode: TInterlinearMode;
@@ -2353,7 +2381,12 @@ procedure TProject.SetVerseText(versiculo: string;
   texto: TTipoTextoBiblico; replace: boolean);
 var
   corruptionDetails: string;
+  PreviousText: string;
+  PreviousPairs: string;
+  MemoryInputChanged: Boolean;
 begin
+  PreviousText := FPersistence.CurrentText(FACamposTexto[texto]);
+  PreviousPairs := FPersistence.CurrentPairs;
   FCurrentVerseWorkspace.SetCurrentVerseText(FPersistence, FVerseRenderBuffer,
     FACamposTexto, versiculo, Ord(texto), Ord(tbOrigem), Ord(tbDestino),
     replace, StatusAutomationEnabled, corruptionDetails);
@@ -2362,8 +2395,11 @@ begin
     MessageDlg(SError, SCorruptedData + #13#10#13#10 + FormattedReference + #13#10 +
          corruptionDetails,
          mtError, [mbOK], 0);
-  if corruptionDetails.IsEmpty and (texto in [tbOrigem, tbDestino]) and
-    Assigned(FAssociationMemory) then
+  MemoryInputChanged := (PreviousText <>
+    FPersistence.CurrentText(FACamposTexto[texto])) or
+    (PreviousPairs <> FPersistence.CurrentPairs);
+  if corruptionDetails.IsEmpty and MemoryInputChanged and
+    (texto in [tbOrigem, tbDestino]) and Assigned(FAssociationMemory) then
   begin
     FAssociationMemory.MarkSourceDirty;
     FAssociationMemory.InvalidateReplay;
@@ -2447,6 +2483,8 @@ begin
   end;
 
   FCurrentVerseWorkspace.FinalizeLoadedVerse(FAVersiculo);
+
+  FNavigationHistory.Visit(ID);
 
   FBibleTreeCoordinator.SelectReference(FEscopo, ID);
 
@@ -2591,7 +2629,8 @@ end;
 
 procedure TProject.SintagmaOnClick(Sender: TSyntagm);
 begin
-  FVerseMemo.Deactivate; // saving eventual changes on verse edit
+  if not FVerseMemo.TryDeactivate then
+    Exit;
 
   if assigned(FOnSintagmaClick) then
     FOnSintagmaClick(Sender);
@@ -3147,6 +3186,7 @@ begin
   FVerseRepository    := TProjectVerseRepository.Create(nil);
   FVerseRenderBuffer  := nil;
   FAssociationMemory  := TAssociationMemoryService.Create;
+  FNavigationHistory  := TNavigationHistory.Create;
   FProjectExporter    := TProjectExporter.Create(etNone, nil, nil);
   FDictionaryManager  := TDictionaryManager.Create;
   FPatchApplier       := TProjectPatchApplier.Create(nil);
@@ -3171,6 +3211,7 @@ begin
 
   FVerseMemo := TVerseMemo.Create;
   FVerseMemo.OnVerseTextModified := @OnAlterarTextoVersiculo;
+  FVerseMemo.OnPendingChange := @PendingEditorChanged;
 end;
 
 constructor TProject.Create(paineis: array of TScrollbox; navegador: TTreeView;
@@ -3189,6 +3230,8 @@ begin
   FBibleTreeCoordinator.Attach(FArvore);
   FRadioGroupSituacao := rsituacao;
   FMemoComentarios    := rcomentarios;
+  if FMemoComentarios is TCommentsView then
+    TCommentsView(FMemoComentarios).OnTextChanged := @PendingEditorChanged;
 end;
 
 destructor TProject.Destroy;
@@ -3205,6 +3248,7 @@ begin
   FreeAndNil(FDictionaryManager);
   FreeAndNil(FStatusAggregateImageCache);
   FreeAndNil(FStatusImages);
+  FreeAndNil(FNavigationHistory);
   FreeAndNil(FAssociationMemory);
   FreeAndNil(FVerseRenderBuffer);
   FreeAndNil(FVerseRepository);
@@ -3247,12 +3291,14 @@ begin
     exit;
   end;
 
+  FNavigationHistory.Clear;
+
   FAtivo := False;
   FAssociationMemoryRebuildRunning := False;
   FAssociationMemoryRebuildFailed := False;
   FScrollEventsEnabled := False;
   FCurrentVerseWorkspace.Clear;
-  FVerseMemo.Deactivate;
+  FVerseMemo.DiscardEdit;
   for t := Low(FAVersiculo) to High(FAVersiculo) do
     if Assigned(FAVersiculo[t]) then
     begin
@@ -3381,16 +3427,49 @@ begin
     end;
 end;
 
-procedure TProject.CloseProject(_Commit: boolean);
+function TProject.CloseProject(_Commit: boolean): Boolean;
 var
   t: TTipoTextoBiblico;
   SavedChapterViewMode: TChapterViewMode;
   SavedChapterViewText: TTipoTextoBiblico;
+  SavedMarker: string;
 begin
-  FClosing := true;
+  Result := False;
+  if not Assigned(FPersistence) then
+    Exit(True);
+  if _Commit and (FAssociationMemoryRebuildRunning or
+    (Assigned(FAssociationMemory) and FAssociationMemory.RebuildActive)) then
+    Exit(False);
+
   SavedChapterViewMode := ChapterViewMode;
   SavedChapterViewText := ChapterViewText;
+  SavedMarker := ID;
 
+  if _Commit then
+    try
+      BeforeVerseScroll(nil);
+    except
+      on EAbort do
+        Exit(False);
+    end
+  else
+    FVerseMemo.DiscardEdit;
+
+  if _Commit then
+    Commit
+  else
+    Rollback;
+
+  FConfig.WriteMarker(SavedMarker);
+  FConfig.WriteChapterViewMode(Ord(SavedChapterViewMode));
+  FConfig.WriteChapterViewText(Ord(SavedChapterViewText));
+
+  for t:=low(FAVersiculo) to high(FAVersiculo) do
+    if assigned(FAVersiculo[t]) then
+      SetInfo(format('fonte%d.tamanho', [t]),
+        IntToStr(FAVersiculo[t].Fonte.Size));
+
+  FClosing := true;
   if assigned(FArvore) then
   begin
     //FArvore.FullCollapse;
@@ -3401,27 +3480,6 @@ begin
   if Assigned(FStatusAggregateImageCache) then
     FStatusAggregateImageCache.Clear;
   FreeAndNil(FStatusImages);
-
-  BeforeVerseScroll(nil);
-
-  if _Commit then
-  begin
-    FConfig.WriteMarker(ID);
-    Commit;
-  end
-  else
-    Rollback;
-
-  // View preferences, like font sizes, are saved even when content changes
-  // are discarded.
-  FConfig.WriteChapterViewMode(Ord(SavedChapterViewMode));
-  FConfig.WriteChapterViewText(Ord(SavedChapterViewText));
-
-  // always saving font sizes
-  for t:=low(FAVersiculo) to high(FAVersiculo) do
-    if assigned(FAVersiculo[t]) then
-      SetInfo(format('fonte%d.tamanho', [t]), IntToStr(FAVersiculo[t].Fonte.Size));
-  Commit;
 
   if Assigned(FConfig) then
     FConfig.Attach(nil);
@@ -3437,12 +3495,14 @@ begin
   FTblPares := nil;
   FTblInfo := nil;
 
-  FVerseMemo.Deactivate;
+  FVerseMemo.DiscardEdit;
 
   FreeAndNil(FVerseRenderBuffer);
 
   if assigned(FMemoComentarios) then
   begin
+    if FMemoComentarios is TCommentsView then
+      TCommentsView(FMemoComentarios).DiscardEdit;
     FMemoComentarios.Enabled := false;
     if FMemoComentarios is TCommentsView then
       TCommentsView(FMemoComentarios).Text := ''
@@ -3457,6 +3517,8 @@ begin
 
   FClosing := false;
   FAtivo := false;
+  FNavigationHistory.Clear;
+  Result := True;
 end;
 
 function TProject.EnsureAssociationMemoryFresh: Boolean;
@@ -3496,6 +3558,8 @@ begin
     if Assigned(FPersistence) then
       FPersistence.Commit;
     FAssociationMemory.CommitSourceOutdated;
+    if Assigned(FPersistence) then
+      FPersistence.FlushImmediateInfo;
     Exit;
   end;
 
@@ -3561,6 +3625,8 @@ begin
       end;
     FAssociationMemory.CommitCompleted;
   end;
+  if Assigned(FPersistence) then
+    FPersistence.FlushImmediateInfo;
 end;
 
 procedure TProject.Rollback;
@@ -3577,6 +3643,8 @@ begin
   end;
   if Assigned(FSuggestionManager) then
     FSuggestionManager.Rollback;
+  if Assigned(FPersistence) then
+    FPersistence.FlushImmediateInfo;
   if Assigned(FAssociationMemory) then
     FAssociationMemory.ReloadRevisionState;
   if Assigned(FCurrentVerseWorkspace) then
@@ -3612,6 +3680,38 @@ end;
 procedure TProject.GoToReference(reference: TReference);
 begin
   GoToReference(format('%d,%d,%d', [reference.BookID, reference.Chapter, reference.Verse]));
+end;
+
+procedure TProject.GoBack;
+var
+  TargetReference: string;
+  RestoredReference: string;
+begin
+  if not FNavigationHistory.TryGoBack(TargetReference) then
+    Exit;
+
+  try
+    GoToReference(TargetReference);
+  except
+    FNavigationHistory.TryGoForward(RestoredReference);
+    raise;
+  end;
+end;
+
+procedure TProject.GoForward;
+var
+  TargetReference: string;
+  RestoredReference: string;
+begin
+  if not FNavigationHistory.TryGoForward(TargetReference) then
+    Exit;
+
+  try
+    GoToReference(TargetReference);
+  except
+    FNavigationHistory.TryGoBack(RestoredReference);
+    raise;
+  end;
 end;
 
 procedure TProject.NextVerse;
@@ -3677,25 +3777,27 @@ begin
   end;
 end;
 
-procedure TProject.SaveProject;
+function TProject.SaveProject: Boolean;
 var
   e: TOnNovoVersiculoEvent;
 begin
+  Result := False;
   if FAssociationMemoryRebuildRunning or
     (Assigned(FAssociationMemory) and FAssociationMemory.RebuildActive) then
     Exit;
-  BeforeVerseScroll(nil);
-  FConfig.WriteMarker(ID);
-  Commit;
-
-  if assigned(FAVersiculo[tbOrigem]) and assigned(FAVersiculo[tbDestino]) then
-  begin
-    FAVersiculo[tbOrigem].Modificado  := false;
-    FAVersiculo[tbDestino].Modificado := false;
+  try
+    BeforeVerseScroll(nil);
+  except
+    on EAbort do
+      Exit(False);
   end;
+  Commit;
+  FConfig.WriteMarker(ID);
+
   //UpdateTree;
   for e in FOnNovoVersiculo do
     e(Self);
+  Result := True;
 end;
 
 procedure TProject.SuggestAssociationStatistical;
@@ -4115,9 +4217,17 @@ var
   line: string;
   moduleScope: TEscopoTexto;
   oldCursor: TCursor;
+  ImportedDescription: string;
+  ImportedProperties: string;
+  HasImportedDescription: Boolean;
+  StageImportedProperties: Boolean;
 begin
+  modulo := nil;
+  propriedades := nil;
   rxVerseRulesFrom := nil;
   rxVerseRulesTo := nil;
+  HasImportedDescription := False;
+  StageImportedProperties := False;
   result := false;
   linesOffset := 0;
   projectOffset := 0;
@@ -4191,7 +4301,8 @@ begin
       mtDescription := reDescription.Match(line);
       if mtDescription.Success then
       begin
-        SetTextDescription(texto, mtDescription.Groups[1].Value);
+        ImportedDescription := mtDescription.Groups[1].Value;
+        HasImportedDescription := True;
         continue;
       end;
 
@@ -4203,12 +4314,10 @@ begin
      if ((texto = tbOrigem)  and (GetInfo('propriedades.origem')  = '')) or // não importar propriedades quando já existem
        ((texto = tbDestino) and (GetInfo('propriedades.destino') = '')) then
     begin
-      case texto of
-        tbOrigem:  SetInfo('propriedades.origem', propriedades.DataString);
-        tbDestino: SetInfo('propriedades.destino', propriedades.DataString);
-      end;
+      StageImportedProperties := True;
+      ImportedProperties := propriedades.DataString;
     end;
-    propriedades.Free;
+    FreeAndNil(propriedades);
 
     if FrmVerseRules.HasRules then
     begin
@@ -4266,10 +4375,20 @@ begin
     end;
     if texto in [tbOrigem, tbDestino] then
       RebuildAssociationMemory(pb);
+    if HasImportedDescription then
+      FConfig.StageTextDescription(Integer(texto), ImportedDescription);
+    if StageImportedProperties then
+      case texto of
+        tbOrigem: FConfig.WriteString('propriedades.origem',
+          ImportedProperties);
+        tbDestino: FConfig.WriteString('propriedades.destino',
+          ImportedProperties);
+      end;
     UpdateTree(FMarker);
     UpdateTree(FMarker);
   finally
     modulo.Free;
+    propriedades.Free;
     if assigned(pb) then
        pb.Visible := false;
     FreeAndNil(rxVerseRulesFrom);
@@ -4288,6 +4407,7 @@ begin
   if Assigned(FAVersiculo[texto]) then
   begin
     FAVersiculo[texto].TokenizerVersion := TokenizerVersion;
+    FAVersiculo[texto].OnAlterarVersiculo := FOnAlterarVersiculo;
     AttachProjectVersePopupMenu(texto);
   end;
 end;
@@ -4440,7 +4560,7 @@ begin
   begin
     RebuildAssociationMemory(nil);
   end;
-  SetTextDescription(texto, '');
+  FConfig.StageTextDescription(Integer(texto), '');
 end;
 
 function TProject.GetTextFont(texto: TTipoTextoBiblico): TFont;
@@ -4487,7 +4607,7 @@ end;
 
 procedure TProject.SetInfo(info, valor: string);
 begin
-  FConfig.WriteString(info, valor);
+  FConfig.WriteImmediateString(info, valor);
 end;
 
 function TProject.GetInfo(info: string): string;

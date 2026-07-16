@@ -5,7 +5,7 @@ unit project_persistence;
 interface
 
 uses
-  SysUtils, Sqlite3DS, sqlite3conn, sqldb, db;
+  Classes, SysUtils, Sqlite3DS, sqlite3conn, sqldb, db;
 
 type
   TProjectPersistence = class
@@ -13,8 +13,21 @@ type
     FPairsTable: TSqlite3Dataset;
     FInfoTable: TSqlite3Dataset;
     FFileName: string;
+    FPairOriginalValues: TStringList;
+    FStagedInfo: TStringList;
+    FCommittedInfo: TStringList;
+    FImmediateInfoPending: TStringList;
     procedure CloseTable(var Table: TSqlite3Dataset);
+    procedure SetNamedValue(List: TStringList; const Name, Value: string);
+    function PairChangeKey(const fieldName: string): string;
+    procedure TrackPairChange(const fieldName, originalValue,
+      newValue: string);
+    function InfoKeyExists(const info: string): Boolean;
+    function ReadCommittedInfo(const info: string): string;
+    function IsDatabaseBusy(const MessageText: string): Boolean;
+    procedure WriteInfoValues(const Values: TStrings);
   public
+    constructor Create;
     destructor Destroy; override;
     class function CreateTableDataset(const db, tableName, primaryKey: string): TSqlite3Dataset; static;
     class function CreateQueryObject(const db: string): TSQLQuery; static;
@@ -22,6 +35,7 @@ type
     procedure Open(const AFileName: string);
     procedure Close;
     function UpdatesPending: Boolean;
+    function ContentUpdatesPending: Boolean;
     function LocateReference(const reference: string): Boolean;
     procedure Next;
     procedure Prior;
@@ -34,6 +48,9 @@ type
     procedure CancelCurrentEdit;
     function InsertInfo(const info, value: string): Boolean;
     function UpdateInfo(const info, value: string): Boolean;
+    function StageInfo(const info, value: string): Boolean;
+    function WriteInfoImmediate(const info, value: string): Boolean;
+    procedure FlushImmediateInfo;
     function ReadInfo(const info: string): string;
     function CurrentPairId: string;
     function CurrentPairs: string;
@@ -59,6 +76,27 @@ type
 
 implementation
 
+constructor TProjectPersistence.Create;
+begin
+  inherited Create;
+  FPairOriginalValues := TStringList.Create;
+  FStagedInfo := TStringList.Create;
+  FCommittedInfo := TStringList.Create;
+  FImmediateInfoPending := TStringList.Create;
+end;
+
+procedure TProjectPersistence.SetNamedValue(List: TStringList;
+  const Name, Value: string);
+var
+  Index: Integer;
+begin
+  Index := List.IndexOfName(Name);
+  if Index < 0 then
+    List.Add(Name + '=' + Value)
+  else
+    List.Strings[Index] := Name + '=' + Value;
+end;
+
 procedure TProjectPersistence.CloseTable(var Table: TSqlite3Dataset);
 begin
   if not Assigned(Table) then
@@ -73,6 +111,10 @@ end;
 destructor TProjectPersistence.Destroy;
 begin
   Close;
+  FImmediateInfoPending.Free;
+  FCommittedInfo.Free;
+  FStagedInfo.Free;
+  FPairOriginalValues.Free;
   inherited Destroy;
 end;
 
@@ -122,19 +164,31 @@ begin
   FPairsTable.Open;
 
   FFileName := AFileName;
+  FPairOriginalValues.Clear;
+  FStagedInfo.Clear;
+  FCommittedInfo.Clear;
+  FImmediateInfoPending.Clear;
 end;
 
 procedure TProjectPersistence.Close;
 begin
   CloseTable(FPairsTable);
   CloseTable(FInfoTable);
+  FPairOriginalValues.Clear;
+  FStagedInfo.Clear;
+  FCommittedInfo.Clear;
+  FImmediateInfoPending.Clear;
   FFileName := '';
 end;
 
 function TProjectPersistence.UpdatesPending: Boolean;
 begin
-  Result := (Assigned(FPairsTable) and FPairsTable.UpdatesPending) or
-            (Assigned(FInfoTable) and FInfoTable.UpdatesPending);
+  Result := ContentUpdatesPending;
+end;
+
+function TProjectPersistence.ContentUpdatesPending: Boolean;
+begin
+  Result := (FPairOriginalValues.Count > 0) or (FStagedInfo.Count > 0);
 end;
 
 function TProjectPersistence.LocateReference(const reference: string): Boolean;
@@ -205,42 +259,193 @@ end;
 
 function TProjectPersistence.InsertInfo(const info, value: string): Boolean;
 begin
-  if not Assigned(FInfoTable) then
-    raise Exception.Create('Project info table is not open');
-
-  if FInfoTable.Locate('id', info, []) then
-  begin
-    Result := False;
-    Exit;
-  end;
-
-  FInfoTable.InsertRecord([info, value]);
-  Result := True;
+  Result := not InfoKeyExists(info);
+  if Result then
+    StageInfo(info, value);
 end;
 
 function TProjectPersistence.UpdateInfo(const info, value: string): Boolean;
 begin
+  Result := InfoKeyExists(info);
+  if Result then
+    StageInfo(info, value);
+end;
+
+function TProjectPersistence.InfoKeyExists(const info: string): Boolean;
+begin
+  Result := (FStagedInfo.IndexOfName(info) >= 0) or
+    (FCommittedInfo.IndexOfName(info) >= 0);
+  if not Result and Assigned(FInfoTable) then
+    Result := FInfoTable.Locate('id', info, []);
+end;
+
+function TProjectPersistence.ReadCommittedInfo(const info: string): string;
+var
+  Index: Integer;
+begin
+  Result := '';
+  Index := FCommittedInfo.IndexOfName(info);
+  if Index >= 0 then
+    Exit(FCommittedInfo.ValueFromIndex[Index]);
+
+  if Assigned(FInfoTable) and FInfoTable.Locate('id', info, []) then
+    Result := FInfoTable.Fields[1].AsString;
+end;
+
+function TProjectPersistence.IsDatabaseBusy(
+  const MessageText: string): Boolean;
+begin
+  Result := (Pos('SQLITE_BUSY', UpperCase(MessageText)) > 0) or
+    (Pos('DATABASE IS LOCKED', UpperCase(MessageText)) > 0);
+end;
+
+function TProjectPersistence.StageInfo(const info, value: string): Boolean;
+var
+  Index: Integer;
+  CommittedValue: string;
+begin
   if not Assigned(FInfoTable) then
     raise Exception.Create('Project info table is not open');
 
-  Result := FInfoTable.Locate('id', info, []);
-
-  if Result then
+  CommittedValue := ReadCommittedInfo(info);
+  Index := FStagedInfo.IndexOfName(info);
+  if value = CommittedValue then
   begin
-    FInfoTable.Edit;
-    FInfoTable.Fields[1].AsString := value;
-    FInfoTable.Post;
+    Result := Index >= 0;
+    if Result then
+      FStagedInfo.Delete(Index);
+    Exit;
+  end;
+
+  Result := (Index < 0) or (FStagedInfo.ValueFromIndex[Index] <> value);
+  if Result then
+    SetNamedValue(FStagedInfo, info, value);
+end;
+
+procedure TProjectPersistence.WriteInfoValues(const Values: TStrings);
+var
+  Connection: TSQLite3Connection;
+  Transaction: TSQLTransaction;
+  Query: TSQLQuery;
+  Index: Integer;
+begin
+  if Values.Count = 0 then
+    Exit;
+  if FFileName.IsEmpty then
+    raise Exception.Create('Project persistence is not open');
+
+  Connection := TSQLite3Connection.Create(nil);
+  Transaction := TSQLTransaction.Create(Connection);
+  Query := TSQLQuery.Create(nil);
+  try
+    try
+      Connection.DatabaseName := FFileName;
+      Connection.Transaction := Transaction;
+      Query.DataBase := Connection;
+      Query.Transaction := Transaction;
+      Query.SQL.Text :=
+        'insert or replace into info (id, valor) values (:id, :valor)';
+      Connection.Open;
+      Connection.ExecuteDirect('pragma busy_timeout = 250');
+      if not Transaction.Active then
+        Transaction.StartTransaction;
+      Query.Prepare;
+      for Index := 0 to Values.Count - 1 do
+      begin
+        Query.ParamByName('id').AsString := Values.Names[Index];
+        Query.ParamByName('valor').AsString := Values.ValueFromIndex[Index];
+        Query.ExecSQL;
+      end;
+      Transaction.Commit;
+    except
+      if Transaction.Active then
+        Transaction.Rollback;
+      raise;
+    end;
+  finally
+    Query.Free;
+    Connection.Free;
   end;
 end;
 
-function TProjectPersistence.ReadInfo(const info: string): string;
+function TProjectPersistence.WriteInfoImmediate(const info,
+  value: string): Boolean;
+var
+  Values: TStringList;
+  StagedIndex: Integer;
 begin
-  Result := '';
-  if not Assigned(FInfoTable) then
+  StagedIndex := FStagedInfo.IndexOfName(info);
+  if StagedIndex >= 0 then
+    FStagedInfo.Delete(StagedIndex);
+
+  Result := ReadCommittedInfo(info) <> value;
+  if not Result then
     Exit;
 
-  if FInfoTable.Locate('id', info, []) then
-    Result := FInfoTable.Fields[1].AsString;
+  Values := TStringList.Create;
+  try
+    SetNamedValue(Values, info, value);
+    try
+      WriteInfoValues(Values);
+      StagedIndex := FImmediateInfoPending.IndexOfName(info);
+      if StagedIndex >= 0 then
+        FImmediateInfoPending.Delete(StagedIndex);
+    except
+      on E: Exception do
+        if IsDatabaseBusy(E.Message) then
+          SetNamedValue(FImmediateInfoPending, info, value)
+        else
+          raise;
+    end;
+    SetNamedValue(FCommittedInfo, info, value);
+  finally
+    Values.Free;
+  end;
+end;
+
+procedure TProjectPersistence.FlushImmediateInfo;
+begin
+  if FImmediateInfoPending.Count = 0 then
+    Exit;
+  WriteInfoValues(FImmediateInfoPending);
+  FImmediateInfoPending.Clear;
+end;
+
+function TProjectPersistence.ReadInfo(const info: string): string;
+var
+  Index: Integer;
+begin
+  Index := FStagedInfo.IndexOfName(info);
+  if Index >= 0 then
+    Exit(FStagedInfo.ValueFromIndex[Index]);
+  Result := ReadCommittedInfo(info);
+end;
+
+function TProjectPersistence.PairChangeKey(const fieldName: string): string;
+begin
+  Result := CurrentPairId + #1 + fieldName;
+end;
+
+procedure TProjectPersistence.TrackPairChange(const fieldName, originalValue,
+  newValue: string);
+var
+  Key: string;
+  Index: Integer;
+  BaselineValue: string;
+begin
+  Key := PairChangeKey(fieldName);
+  Index := FPairOriginalValues.IndexOfName(Key);
+  if Index < 0 then
+  begin
+    BaselineValue := originalValue;
+    SetNamedValue(FPairOriginalValues, Key, BaselineValue);
+    Index := FPairOriginalValues.IndexOfName(Key);
+  end
+  else
+    BaselineValue := FPairOriginalValues.ValueFromIndex[Index];
+
+  if newValue = BaselineValue then
+    FPairOriginalValues.Delete(Index);
 end;
 
 function TProjectPersistence.CurrentPairId: string;
@@ -300,21 +505,45 @@ begin
 end;
 
 procedure TProjectPersistence.SetCurrentText(fieldIndex: Integer; const value: string);
+var
+  Field: TField;
+  OriginalValue: string;
 begin
+  Field := FPairsTable.Fields[fieldIndex];
+  OriginalValue := Field.AsString;
+  if OriginalValue = value then
+    Exit;
   BeginCurrentEdit;
-  FPairsTable.Fields[fieldIndex].AsString := value;
+  TrackPairChange(Field.FieldName, OriginalValue, value);
+  Field.AsString := value;
 end;
 
 procedure TProjectPersistence.SetCurrentFieldAsString(const fieldName, value: string);
+var
+  Field: TField;
+  OriginalValue: string;
 begin
+  Field := FPairsTable.FieldByName(fieldName);
+  OriginalValue := Field.AsString;
+  if OriginalValue = value then
+    Exit;
   BeginCurrentEdit;
-  FPairsTable.FieldByName(fieldName).AsString := value;
+  TrackPairChange(fieldName, OriginalValue, value);
+  Field.AsString := value;
 end;
 
 procedure TProjectPersistence.SetCurrentFieldAsInteger(const fieldName: string; value: Integer);
+var
+  Field: TField;
+  OriginalValue: string;
 begin
+  Field := FPairsTable.FieldByName(fieldName);
+  if Field.AsInteger = value then
+    Exit;
+  OriginalValue := Field.AsString;
   BeginCurrentEdit;
-  FPairsTable.FieldByName(fieldName).AsInteger := value;
+  TrackPairChange(fieldName, OriginalValue, IntToStr(value));
+  Field.AsInteger := value;
 end;
 
 procedure TProjectPersistence.WriteCurrentPairs(const pairs: string);
@@ -341,7 +570,7 @@ var
   maxRetries: Integer = 5;
   delayMs: Integer;
 begin
-  if not Assigned(Table) then
+  if not Assigned(Table) or not Table.UpdatesPending then
     Exit;
 
   retryCount := 0;
@@ -372,11 +601,34 @@ end;
 procedure TProjectPersistence.CommitPairs;
 begin
   ApplyPendingUpdates(FPairsTable);
+  FPairOriginalValues.Clear;
 end;
 
 procedure TProjectPersistence.CommitInfo;
+var
+  Index: Integer;
 begin
+  if FStagedInfo.Count = 0 then
+    Exit;
+
+  for Index := 0 to FStagedInfo.Count - 1 do
+  begin
+    if FInfoTable.Locate('id', FStagedInfo.Names[Index], []) then
+      FInfoTable.Edit
+    else
+    begin
+      FInfoTable.Append;
+      FInfoTable.FieldByName('id').AsString := FStagedInfo.Names[Index];
+    end;
+    FInfoTable.FieldByName('valor').AsString :=
+      FStagedInfo.ValueFromIndex[Index];
+    FInfoTable.Post;
+  end;
   ApplyPendingUpdates(FInfoTable);
+  for Index := 0 to FStagedInfo.Count - 1 do
+    SetNamedValue(FCommittedInfo, FStagedInfo.Names[Index],
+      FStagedInfo.ValueFromIndex[Index]);
+  FStagedInfo.Clear;
 end;
 
 procedure TProjectPersistence.Commit;
@@ -401,7 +653,10 @@ begin
       FPairsTable.Open;
     end;
   end;
-  if Assigned(FInfoTable) then
+  FPairOriginalValues.Clear;
+  FStagedInfo.Clear;
+  if Assigned(FInfoTable) and
+    ((FInfoTable.State in dsEditModes) or FInfoTable.UpdatesPending) then
   begin
     if FInfoTable.State in dsEditModes then
       FInfoTable.Cancel;

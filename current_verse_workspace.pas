@@ -20,11 +20,22 @@ type
   TCurrentVerseWorkspace = class
   private
     FOldPairs: TStringList;
+    FOldAssociations: string;
+    FAssociationComparer: TVerseRenderBuffer;
     FLoadedAssociationsInvalid: Boolean;
     function GetVerseView(const VerseViews: array of TVerse; Index: Integer): TVerse;
     function GetTextFieldIndex(const TextFieldIndexes: array of Integer; Index: Integer): Integer;
     function ReadCommentsText(CommentsControl: TControl): string;
-    procedure SaveComments(Persistence: TProjectPersistence; CommentsControl: TControl);
+    function AssociationsChanged(SourceVerse: TVerse;
+      const CurrentAssociations: string): Boolean;
+    function SavePairsValue(Persistence: TProjectPersistence;
+      const CurrentAssociations: string): Boolean;
+    function SaveAssociationsValue(Suggester: TSuggestionManager;
+      SourceVerse, DestinationVerse: TVerse;
+      MemoryService: TAssociationMemoryService;
+      const CurrentAssociations: string): Boolean;
+    function SaveComments(Persistence: TProjectPersistence;
+      CommentsControl: TControl): Boolean;
   public
     destructor Destroy; override;
     procedure Clear;
@@ -43,9 +54,16 @@ type
     procedure ApplyBoldStrongs(const VerseViews: array of TVerse; Enabled: Boolean);
     function ApplyEditedVerseText(const VerseViews: array of TVerse;
       EditedVerse: TVerse; const NewText: string): Integer;
-    procedure SavePairs(Persistence: TProjectPersistence; SourceVerse: TVerse);
-    procedure SaveTexts(Persistence: TProjectPersistence;
-      const VerseViews: array of TVerse; const TextFieldIndexes: array of Integer);
+    function SavePairs(Persistence: TProjectPersistence;
+      SourceVerse: TVerse): Boolean;
+    function SaveTexts(Persistence: TProjectPersistence;
+      const VerseViews: array of TVerse;
+      const TextFieldIndexes: array of Integer): Boolean;
+    function HasPendingChanges(Persistence: TProjectPersistence;
+      VerseMemo: TVerseMemo; CommentsControl: TControl;
+      const VerseViews: array of TVerse;
+      const TextFieldIndexes: array of Integer;
+      SourceVerseIndex: Integer): Boolean;
     procedure RemoveOldAssociations(Suggester: TSuggestionManager; SourceVerse, DestinationVerse: TVerse);
     function SaveAssociations(Suggester: TSuggestionManager;
       SourceVerse, DestinationVerse: TVerse;
@@ -111,16 +129,38 @@ begin
     Result := TMemo(CommentsControl).Text;
 end;
 
-procedure TCurrentVerseWorkspace.SaveComments(Persistence: TProjectPersistence;
-  CommentsControl: TControl);
+function TCurrentVerseWorkspace.AssociationsChanged(SourceVerse: TVerse;
+  const CurrentAssociations: string): Boolean;
+begin
+  Result := False;
+  if not Assigned(SourceVerse) or not Assigned(SourceVerse.Syntagms) then
+    Exit;
+  if FLoadedAssociationsInvalid then
+    Exit(SourceVerse.Modificado);
+
+  // Pares represents the complete association graph. Unlike
+  // GetListaPares(plMetaData), it includes italic/bracketed syntagms and other
+  // elements that are persisted even though they do not feed suggestion
+  // memory. The comparer normalizes pair and index order before comparing.
+  if Assigned(FAssociationComparer) then
+    Result := not FAssociationComparer.AssociationsEquivalent(
+      CurrentAssociations, FOldAssociations)
+  else
+    Result := CurrentAssociations <> FOldAssociations;
+end;
+
+function TCurrentVerseWorkspace.SaveComments(Persistence: TProjectPersistence;
+  CommentsControl: TControl): Boolean;
 var
   CommentsText: string;
 begin
+  Result := False;
   if not Assigned(Persistence) then
     Exit;
 
   CommentsText := ReadCommentsText(CommentsControl);
-  if Persistence.CurrentComments <> CommentsText then
+  Result := Persistence.CurrentComments <> CommentsText;
+  if Result then
     Persistence.WriteCurrentComments(CommentsText);
 end;
 
@@ -133,6 +173,8 @@ end;
 procedure TCurrentVerseWorkspace.Clear;
 begin
   FreeAndNil(FOldPairs);
+  FOldAssociations := '';
+  FAssociationComparer := nil;
   FLoadedAssociationsInvalid := False;
 end;
 
@@ -245,36 +287,103 @@ begin
     end;
 end;
 
-procedure TCurrentVerseWorkspace.SavePairs(Persistence: TProjectPersistence;
-  SourceVerse: TVerse);
+function TCurrentVerseWorkspace.SavePairs(Persistence: TProjectPersistence;
+  SourceVerse: TVerse): Boolean;
+var
+  CurrentAssociations: string;
 begin
-  if not Assigned(Persistence) or not Assigned(SourceVerse) then
+  Result := False;
+  if not Assigned(Persistence) or not Assigned(SourceVerse) or
+    not Assigned(SourceVerse.Syntagms) then
     Exit;
 
-  Persistence.WriteCurrentPairs(SourceVerse.Pares);
+  CurrentAssociations := SourceVerse.Pares;
+  Result := SavePairsValue(Persistence, CurrentAssociations);
 end;
 
-procedure TCurrentVerseWorkspace.SaveTexts(Persistence: TProjectPersistence;
-  const VerseViews: array of TVerse; const TextFieldIndexes: array of Integer);
+function TCurrentVerseWorkspace.SavePairsValue(
+  Persistence: TProjectPersistence;
+  const CurrentAssociations: string): Boolean;
+begin
+  Result := False;
+  if not Assigned(Persistence) then
+    Exit;
+
+  Result := Persistence.CurrentPairs <> CurrentAssociations;
+  if Result then
+    Persistence.WriteCurrentPairs(CurrentAssociations);
+end;
+
+function TCurrentVerseWorkspace.SaveTexts(Persistence: TProjectPersistence;
+  const VerseViews: array of TVerse;
+  const TextFieldIndexes: array of Integer): Boolean;
 var
   Index: Integer;
   VerseView: TVerse;
+  FieldIndex: Integer;
 begin
+  Result := False;
   if not Assigned(Persistence) then
     Exit;
 
   for Index := Low(VerseViews) to High(VerseViews) do
   begin
     VerseView := VerseViews[Index];
-    if Assigned(VerseView) and VerseView.XMLModificado then
+    if Assigned(VerseView) then
     begin
-      Persistence.BeginCurrentEdit;
-      Persistence.SetCurrentText(GetTextFieldIndex(TextFieldIndexes, Index), VerseView.XML);
-      Persistence.PostCurrentEdit;
+      FieldIndex := GetTextFieldIndex(TextFieldIndexes, Index);
+      if Persistence.CurrentText(FieldIndex) <> VerseView.XML then
+      begin
+        Persistence.SetCurrentText(FieldIndex, VerseView.XML);
+        Persistence.PostCurrentEdit;
+        Result := True;
+      end;
       VerseView.Modificado := False;
       VerseView.XMLModificado := False;
     end;
   end;
+end;
+
+function TCurrentVerseWorkspace.HasPendingChanges(
+  Persistence: TProjectPersistence; VerseMemo: TVerseMemo;
+  CommentsControl: TControl; const VerseViews: array of TVerse;
+  const TextFieldIndexes: array of Integer;
+  SourceVerseIndex: Integer): Boolean;
+var
+  Index: Integer;
+  VerseView: TVerse;
+begin
+  Result := False;
+  if not Assigned(Persistence) or not Assigned(Persistence.PairsTable) then
+    Exit;
+  if Persistence.ContentUpdatesPending then
+    Exit(True);
+  if Assigned(VerseMemo) and VerseMemo.HasPendingChange then
+    Exit(True);
+
+  for Index := Low(VerseViews) to High(VerseViews) do
+  begin
+    VerseView := VerseViews[Index];
+    if Assigned(VerseView) and
+      (VerseView.XML <> Persistence.CurrentText(
+        GetTextFieldIndex(TextFieldIndexes, Index))) then
+      Exit(True);
+  end;
+
+  if (SourceVerseIndex >= Low(VerseViews)) and
+    (SourceVerseIndex <= High(VerseViews)) then
+  begin
+    VerseView := VerseViews[SourceVerseIndex];
+    if Assigned(VerseView) and Assigned(VerseView.Syntagms) and
+      AssociationsChanged(VerseView, VerseView.Pares) then
+      Exit(True);
+  end;
+  if CommentsControl is TCommentsView then
+    Result := TCommentsView(CommentsControl).HasPendingChange(
+      Persistence.CurrentComments)
+  else
+    Result := ReadCommentsText(CommentsControl) <>
+      Persistence.CurrentComments;
 end;
 
 procedure TCurrentVerseWorkspace.RemoveOldAssociations(Suggester: TSuggestionManager;
@@ -293,9 +402,30 @@ begin
   FOldPairs.Clear;
 end;
 
-function TCurrentVerseWorkspace.SaveAssociations(Suggester: TSuggestionManager;
-  SourceVerse, DestinationVerse: TVerse;
+function TCurrentVerseWorkspace.SaveAssociations(
+  Suggester: TSuggestionManager; SourceVerse, DestinationVerse: TVerse;
   MemoryService: TAssociationMemoryService): Boolean;
+var
+  CurrentAssociations: string;
+begin
+  Result := False;
+  if not Assigned(Suggester) or not Assigned(SourceVerse) or
+    not Assigned(DestinationVerse) or not Assigned(SourceVerse.Syntagms) or
+    not Assigned(DestinationVerse.Syntagms) then
+    Exit;
+
+  // Validate the Verse Pair before taking the stable snapshot. A newly
+  // created TVerse has no syntagm list yet, so reading Pares is not valid.
+  CurrentAssociations := SourceVerse.Pares;
+  Result := SaveAssociationsValue(Suggester, SourceVerse, DestinationVerse,
+    MemoryService, CurrentAssociations);
+end;
+
+function TCurrentVerseWorkspace.SaveAssociationsValue(
+  Suggester: TSuggestionManager;
+  SourceVerse, DestinationVerse: TVerse;
+  MemoryService: TAssociationMemoryService;
+  const CurrentAssociations: string): Boolean;
 var
   Pairs: TStringList;
   SeenPairs: TStringList;
@@ -348,6 +478,7 @@ begin
       FreeAndNil(FOldPairs);
       FOldPairs := Pairs;
       Pairs := nil;
+      FOldAssociations := CurrentAssociations;
       FLoadedAssociationsInvalid := False;
       Result := True;
     finally
@@ -409,6 +540,7 @@ begin
       FreeAndNil(FOldPairs);
       FOldPairs := Pairs;
       Pairs := nil;
+      FOldAssociations := CurrentAssociations;
     except
       Suggester.RollbackRebuild;
       if Assigned(MemoryService) then
@@ -430,25 +562,42 @@ function TCurrentVerseWorkspace.SaveBeforeScroll(Persistence: TProjectPersistenc
 var
   SourceVerse: TVerse;
   DestinationVerse: TVerse;
-  AssociationsChanged: Boolean;
+  AssociationWasChanged: Boolean;
+  SourceTextChanged: Boolean;
+  DestinationTextChanged: Boolean;
+  CurrentAssociations: string;
 begin
   Result := False;
   SourceVerse := GetVerseView(VerseViews, SourceVerseIndex);
-  if not Assigned(SourceVerse) then
+  if not Assigned(SourceVerse) or not Assigned(SourceVerse.Syntagms) then
     Exit;
   DestinationVerse := GetVerseView(VerseViews, DestinationVerseIndex);
 
-  if Assigned(VerseMemo) then
-    VerseMemo.Deactivate;
+  if Assigned(VerseMemo) and not VerseMemo.TryDeactivate then
+    SysUtils.Abort;
 
-  AssociationsChanged := SaveAssociations(Suggester, SourceVerse,
-    DestinationVerse, MemoryService);
-  Result := AssociationsChanged or SourceVerse.XMLModified or
-    (Assigned(DestinationVerse) and DestinationVerse.XMLModified);
-  if SourceVerse.Modificado or AssociationsChanged then
-  begin
-    SavePairs(Persistence, SourceVerse);
-  end;
+  // Keep one stable serialization for the whole operation. In particular,
+  // do not enumerate SourceVerse.Syntagms again after SaveAssociations has
+  // updated the SQLite-backed suggestion memory.
+  CurrentAssociations := SourceVerse.Pares;
+
+  SourceTextChanged := Assigned(Persistence) and
+    (SourceVerse.XML <> Persistence.CurrentText(
+      GetTextFieldIndex(TextFieldIndexes, SourceVerseIndex)));
+  DestinationTextChanged := Assigned(Persistence) and
+    Assigned(DestinationVerse) and
+    (DestinationVerse.XML <> Persistence.CurrentText(
+      GetTextFieldIndex(TextFieldIndexes, DestinationVerseIndex)));
+  AssociationWasChanged := AssociationsChanged(SourceVerse,
+    CurrentAssociations);
+
+  if AssociationWasChanged then
+    SaveAssociationsValue(Suggester, SourceVerse, DestinationVerse,
+      MemoryService, CurrentAssociations);
+  Result := AssociationWasChanged or SourceTextChanged or
+    DestinationTextChanged;
+  if AssociationWasChanged or SourceTextChanged or DestinationTextChanged then
+    SavePairsValue(Persistence, CurrentAssociations);
 
   SaveTexts(Persistence, VerseViews, TextFieldIndexes);
   SaveComments(Persistence, CommentsControl);
@@ -508,8 +657,6 @@ begin
   if not Assigned(Persistence) then
     Exit;
 
-  Persistence.BeginCurrentEdit;
-
   SourceTextFieldIndex := GetTextFieldIndex(TextFieldIndexes, SourceVerseIndex);
   DestinationTextFieldIndex := GetTextFieldIndex(TextFieldIndexes, DestinationVerseIndex);
   ParticipatesInPairs := (TextIndex = SourceVerseIndex) or (TextIndex = DestinationVerseIndex);
@@ -518,19 +665,13 @@ begin
   if Replace and ParticipatesInPairs and not CurrentPairs.IsEmpty then
   begin
     if not Assigned(RenderBuffer) then
-    begin
-      Persistence.CancelCurrentEdit;
       raise Exception.Create(SVerseRenderBufferUnavailable);
-    end;
     if not RenderBuffer.TryReplaceTextKeepingAssociations(
       Persistence.CurrentText(SourceTextFieldIndex),
       Persistence.CurrentText(DestinationTextFieldIndex), CurrentPairs,
       TextIndex = SourceVerseIndex, VerseText, UpdatedPairs,
       CorruptionDetails) then
-    begin
-      Persistence.CancelCurrentEdit;
       Exit;
-    end;
     Persistence.SetCurrentFieldAsString('pare_pares', UpdatedPairs);
   end;
 
@@ -553,6 +694,7 @@ begin
   // clearing it there makes the next navigation treat every association as
   // newly added.
   Clear;
+  FAssociationComparer := RenderBuffer;
   if not Assigned(SourceVerse) then
     Exit;
 
@@ -563,11 +705,13 @@ begin
         Associations) then
       raise Exception.Create(SAssociationDataNotCompletelyApplied);
     FOldPairs := SourceVerse.GetListaPares(plMetaData);
+    FOldAssociations := SourceVerse.Pares;
   except
     // SetPares is atomic, but explicitly clear here as well so this recovery
     // remains safe for Verse implementations created by older callers.
     SourceVerse.Pares := '';
     FOldPairs := TStringList.Create;
+    FOldAssociations := '';
     FLoadedAssociationsInvalid := not Associations.IsEmpty;
     raise;
   end;
