@@ -143,6 +143,39 @@ msgstr "Este fluxo espera saída em texto simples, sem aspas ou explicações"
 msgid "Beginning of chapter"
 msgstr "Início do capítulo"
 
+#: chapterview.stranslationmemorycurrent
+msgctxt "chapterview.stranslationmemorycurrent"
+msgid "Current"
+msgstr "Atual"
+
+#: chapterview.stranslationmemoryerrorfmt
+#, object-pascal-format
+msgid "Translation memory is unavailable: %s"
+msgstr "A memória de tradução não está disponível: %s"
+
+#: chapterview.stranslationmemoryformsfmt
+#, object-pascal-format
+msgid "Forms: %s"
+msgstr "Formas: %s"
+
+#: chapterview.stranslationmemorynosourcewords
+msgid "No source words are available for this verse."
+msgstr "Nenhuma palavra do texto de origem está disponível para este versículo."
+
+#: chapterview.stranslationmemorynotranslations
+msgid "No translation recorded"
+msgstr "Nenhuma tradução registrada"
+
+#: chapterview.stranslationmemorystrongsfmt
+#, object-pascal-format
+msgid "Strong's: %s"
+msgstr "Strong's: %s"
+
+#: chapterview.stranslationmemorytitle
+msgctxt "chapterview.stranslationmemorytitle"
+msgid "Translation memory"
+msgstr "Memória de tradução"
+
 #: chapterview.sinterlinearmode
 msgid "Interlinear layout..."
 msgstr "Formato do interlinear..."
@@ -1157,6 +1190,10 @@ msgctxt "formprincipal.sinterlineartext"
 msgid "Interlinear"
 msgstr "Interlinear"
 
+#: formprincipal.smemorytext
+msgid "Memory"
+msgstr "Memória"
+
 #: formprincipal.sinvalidprojectnamequery
 msgid "Do you want to choose a different name?"
 msgstr "Deseja escolher outro nome?"
@@ -1532,6 +1569,18 @@ msgstr "Modo de sugestão"
 msgctxt "formprincipal.sthewordhighlightcolorsmenu"
 msgid "theWord highlight colors..."
 msgstr "Cores de destaque do theWord..."
+
+#: formprincipal.stranslationmemoryordermenu
+msgid "Translation memory order"
+msgstr "Ordem da memória de tradução"
+
+#: formprincipal.stranslationmemoryrarefirst
+msgid "Least frequent first"
+msgstr "Menos frequentes primeiro"
+
+#: formprincipal.stranslationmemoryverseorder
+msgid "Verse order"
+msgstr "Ordem do versículo"
 
 #: formprincipal.streelegendassociated
 msgid "Associated"
@@ -2364,6 +2413,10 @@ msgstr "Concordância Analítica"
 msgctxt "project.sanalyzingverse"
 msgid "Analyzing verse..."
 msgstr "Analisando versículo..."
+
+#: project.sassociationmemoryunavailable
+msgid "Translation memory is unavailable because it could not be synchronized."
+msgstr "A memória de tradução não está disponível porque não pôde ser sincronizada."
 
 #: project.sapplyaito
 msgctxt "project.sapplyaito"

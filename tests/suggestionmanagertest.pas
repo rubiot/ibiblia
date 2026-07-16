@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, fpcunit, testregistry, sqlite3conn, sqldb,
   SuggestionManager, current_verse_workspace, verse_render_buffer, Verse,
-  Syntagm;
+  Syntagm, translation_memory_model;
 
 type
   TSuggestionManagerTest = class(TTestCase)
@@ -37,6 +37,11 @@ type
     procedure WorkspaceReconcilesSourceAndDestinationTextChanges;
     procedure WorkspaceInvalidLoadIsAtomicAndRecoverable;
     procedure TranslationPopupUsesOccurrenceSum;
+    procedure StructuredTranslationAlternativesPreserveCountsAndOrder;
+    procedure PreloadedTranslationAlternativesAreCompleteAndInvalidated;
+    procedure TranslationMemoryModelGroupsAndMarksCurrentAlternatives;
+    procedure TranslationMemoryModelSortsByHistoricalFrequency;
+    procedure TranslationMemoryOrderValueFallsBackSafely;
   end;
 
 implementation
@@ -558,6 +563,228 @@ begin
   finally
     SourceVerse.Free;
   end;
+end;
+
+procedure TSuggestionManagerTest.
+  StructuredTranslationAlternativesPreserveCountsAndOrder;
+var
+  Alternatives: TTranslationAlternativeDataArray;
+begin
+  FManager.AddPair('<wg1>', 'two');
+  FManager.AddPair('<wg1>', 'one');
+  FManager.AddPair('<wg1>', 'one');
+
+  Alternatives := FManager.GetTranslationAlternativeData('<wg1>');
+  AssertEquals(2, Length(Alternatives));
+  AssertEquals('one', Alternatives[0].Translation);
+  AssertEquals(2, Alternatives[0].Occurrences);
+  AssertEquals('two', Alternatives[1].Translation);
+  AssertEquals(1, Alternatives[1].Occurrences);
+end;
+
+procedure TSuggestionManagerTest.
+  PreloadedTranslationAlternativesAreCompleteAndInvalidated;
+var
+  Alternatives: TTranslationAlternativeDataArray;
+  Keys: TStringList;
+begin
+  FManager.AddPair('<wg1><wtn-a>', 'one');
+  FManager.AddPair('<wg1><wtn-b>', 'one');
+  FManager.AddPair('<wg2><wtn-a>', 'other');
+
+  Keys := TStringList.Create;
+  try
+    Keys.Add('<wg1>');
+    Keys.Add('<wg2>');
+    FManager.PreloadTranslationAlternativeData(Keys);
+  finally
+    Keys.Free;
+  end;
+
+  Alternatives := FManager.GetTranslationAlternativeData('<wg1>');
+  AssertEquals(1, Length(Alternatives));
+  AssertEquals('one', Alternatives[0].Translation);
+  AssertEquals(2, Alternatives[0].Occurrences);
+  Alternatives := FManager.GetTranslationAlternativeData('<wg2>');
+  AssertEquals(1, Length(Alternatives));
+  AssertEquals('other', Alternatives[0].Translation);
+
+  FManager.AddPair('<wg1><wtn-c>', 'two');
+  Alternatives := FManager.GetTranslationAlternativeData('<wg1>');
+  AssertEquals('A memory mutation must invalidate preloaded alternatives',
+    2, Length(Alternatives));
+  AssertEquals('one', Alternatives[0].Translation);
+  AssertEquals(2, Alternatives[0].Occurrences);
+  AssertEquals('two', Alternatives[1].Translation);
+  AssertEquals(1, Alternatives[1].Occurrences);
+end;
+
+procedure TSuggestionManagerTest.
+  TranslationMemoryModelGroupsAndMarksCurrentAlternatives;
+var
+  SourceVerse: TVerse;
+  DestinationVerse: TVerse;
+  Entries: TTranslationMemoryEntryArray;
+begin
+  SourceVerse := TVerse.Create;
+  DestinationVerse := TVerse.Create;
+  try
+    SourceVerse.VersiculoPar := DestinationVerse;
+    SourceVerse.Texto :=
+      'λόγος<WG3056><WTN-NSM le="λόγος"> ' +
+      'λόγου<WG3056><WTN-GSM le="λόγος"> ' +
+      'καί<WG2532><WTCONJ le="καί"> plain plain ' +
+      'both<WG1><WG2>! none';
+    DestinationVerse.Texto := 'palavra mas atual inédita';
+
+    SourceVerse.Sintagmas[0].AddToSelection;
+    SourceVerse.Sintagmas[2].AddToSelection;
+    DestinationVerse.Sintagmas[0].AddToSelection;
+    SourceVerse.AssociarSintagmas;
+    SourceVerse.LimparSelecao;
+    DestinationVerse.LimparSelecao;
+
+    SourceVerse.Sintagmas[4].AddToSelection;
+    DestinationVerse.Sintagmas[2].AddToSelection;
+    SourceVerse.AssociarSintagmas;
+    SourceVerse.LimparSelecao;
+    DestinationVerse.LimparSelecao;
+
+    SourceVerse.Sintagmas[6].AddToSelection;
+    DestinationVerse.Sintagmas[6].AddToSelection;
+    SourceVerse.AssociarSintagmas;
+
+    FManager.AddPair('<wg3056>', 'termo');
+    FManager.AddPair('<wg3056>', 'termo');
+    FManager.AddPair('<wg3056>', 'termo');
+    FManager.AddPair('<wg3056>', 'palavra');
+    FManager.AddPair('<wg3056>', 'palavra');
+    FManager.AddPair('<wg2532>', 'porém');
+    FManager.AddPair('<wg2532>', 'porém');
+    FManager.AddPair('<wg2532>', 'porém');
+    FManager.AddPair('<wg2532>', 'porém');
+    FManager.AddPair('<wg2532>', 'mas');
+    FManager.AddPair('plain', 'usual');
+    FManager.AddPair('plain', 'usual');
+    FManager.AddPair('<wg1><wg2>', 'combined');
+
+    Entries := TTranslationMemoryModel.Build(SourceVerse, FManager);
+    AssertEquals(5, Length(Entries));
+
+    AssertEquals('λόγος', Entries[0].DisplayTerm);
+    AssertEquals(2, Length(Entries[0].Forms));
+    AssertEquals('λόγος', Entries[0].Forms[0]);
+    AssertEquals('λόγου', Entries[0].Forms[1]);
+    AssertEquals(2, Length(Entries[0].SyntagmIndexes));
+    AssertEquals('Repeated forms must query a Strong key only once',
+      3, Entries[0].Alternatives[0].Occurrences);
+    AssertEquals('termo', Entries[0].Alternatives[0].Translation);
+    AssertFalse(Entries[0].Alternatives[0].IsCurrent);
+    AssertEquals(2, Entries[0].Alternatives[1].Occurrences);
+    AssertEquals('palavra', Entries[0].Alternatives[1].Translation);
+    AssertTrue(Entries[0].Alternatives[1].IsCurrent);
+    AssertEquals(5, Entries[0].HistoricalOccurrences);
+
+    AssertEquals('καί', Entries[1].DisplayTerm);
+    AssertEquals('porém', Entries[1].Alternatives[0].Translation);
+    AssertEquals(4, Entries[1].Alternatives[0].Occurrences);
+    AssertFalse(Entries[1].Alternatives[0].IsCurrent);
+    AssertEquals('mas', Entries[1].Alternatives[1].Translation);
+    AssertTrue(Entries[1].Alternatives[1].IsCurrent);
+    AssertEquals(5, Entries[1].HistoricalOccurrences);
+
+    AssertEquals('plain', Entries[2].DisplayTerm);
+    AssertEquals(2, Length(Entries[2].SyntagmIndexes));
+    AssertEquals('usual', Entries[2].Alternatives[0].Translation);
+    AssertEquals(2, Entries[2].Alternatives[0].Occurrences);
+    AssertFalse(Entries[2].Alternatives[0].IsCurrent);
+    AssertEquals('inédita', Entries[2].Alternatives[1].Translation);
+    AssertEquals(0, Entries[2].Alternatives[1].Occurrences);
+    AssertTrue(Entries[2].Alternatives[1].IsCurrent);
+    AssertEquals(2, Entries[2].HistoricalOccurrences);
+
+    AssertEquals('both', Entries[3].DisplayTerm);
+    AssertEquals(2, Length(Entries[3].Strongs));
+    AssertEquals('G1', Entries[3].Strongs[0]);
+    AssertEquals('G2', Entries[3].Strongs[1]);
+    AssertEquals('combined', Entries[3].Alternatives[0].Translation);
+    AssertEquals(1, Entries[3].HistoricalOccurrences);
+
+    AssertEquals('none', Entries[4].DisplayTerm);
+    AssertEquals(0, Length(Entries[4].Alternatives));
+    AssertEquals(0, Entries[4].HistoricalOccurrences);
+  finally
+    DestinationVerse.Free;
+    SourceVerse.Free;
+  end;
+end;
+
+procedure TSuggestionManagerTest.
+  TranslationMemoryModelSortsByHistoricalFrequency;
+var
+  SourceVerse: TVerse;
+  DestinationVerse: TVerse;
+  Entries: TTranslationMemoryEntryArray;
+begin
+  SourceVerse := TVerse.Create;
+  DestinationVerse := TVerse.Create;
+  try
+    SourceVerse.VersiculoPar := DestinationVerse;
+    SourceVerse.Texto :=
+      'common<WG10><WTN-NSM le="shared"> ' +
+      'commonform<WG10><WTN-GSM le="shared"> ' +
+      'rare<WG20> unseen<WG30> tied<WG40>';
+    DestinationVerse.Texto := 'new';
+
+    SourceVerse.Sintagmas[6].AddToSelection;
+    DestinationVerse.Sintagmas[0].AddToSelection;
+    SourceVerse.AssociarSintagmas;
+
+    FManager.AddPair('<wg10>', 'common translation');
+    FManager.AddPair('<wg10>', 'common translation');
+    FManager.AddPair('<wg10>', 'common translation');
+    FManager.AddPair('<wg20>', 'rare translation');
+    FManager.AddPair('<wg40>', 'tied translation');
+
+    Entries := TTranslationMemoryModel.Build(SourceVerse, FManager);
+    AssertEquals(4, Length(Entries));
+    AssertEquals('shared', Entries[0].DisplayTerm);
+    AssertEquals('rare', Entries[1].DisplayTerm);
+    AssertEquals('unseen', Entries[2].DisplayTerm);
+    AssertEquals('tied', Entries[3].DisplayTerm);
+    AssertEquals('Repeated forms must not multiply historical frequency',
+      3, Entries[0].HistoricalOccurrences);
+    AssertEquals(2, Length(Entries[0].SyntagmIndexes));
+    AssertEquals(0, Entries[2].HistoricalOccurrences);
+    AssertEquals(1, Length(Entries[2].Alternatives));
+    AssertTrue(Entries[2].Alternatives[0].IsCurrent);
+    AssertEquals(0, Entries[2].Alternatives[0].Occurrences);
+
+    Entries := TTranslationMemoryModel.Build(SourceVerse, FManager,
+      tmoMemoryFrequencyAscending);
+    AssertEquals('unseen', Entries[0].DisplayTerm);
+    AssertEquals('rare', Entries[1].DisplayTerm);
+    AssertEquals('tied', Entries[2].DisplayTerm);
+    AssertEquals('shared', Entries[3].DisplayTerm);
+    AssertEquals(0, Entries[0].HistoricalOccurrences);
+    AssertEquals(1, Entries[1].HistoricalOccurrences);
+    AssertEquals(1, Entries[2].HistoricalOccurrences);
+    AssertEquals(3, Entries[3].HistoricalOccurrences);
+  finally
+    DestinationVerse.Free;
+    SourceVerse.Free;
+  end;
+end;
+
+procedure TSuggestionManagerTest.TranslationMemoryOrderValueFallsBackSafely;
+begin
+  AssertEquals(Ord(tmoVerseOccurrence),
+    Ord(TranslationMemoryOrderFromInteger(-1)));
+  AssertEquals(Ord(tmoVerseOccurrence),
+    Ord(TranslationMemoryOrderFromInteger(Ord(High(TTranslationMemoryOrder)) + 1)));
+  AssertEquals(Ord(tmoMemoryFrequencyAscending),
+    Ord(TranslationMemoryOrderFromInteger(
+      Ord(tmoMemoryFrequencyAscending))));
 end;
 
 initialization

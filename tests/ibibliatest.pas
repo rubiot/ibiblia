@@ -161,6 +161,22 @@ begin
   AssertEquals(2, s.Morph.Count);
   AssertEquals('V-AA3S', s.Morph[0]);
   AssertEquals('PREP', s.Morph[1]);
+
+  verse1.Texto := 'word<WTPREP l="prep">';
+  AssertEquals('prep', verse1.Sintagmas.First.Lemma);
+
+  verse1.Texto := 'word<WTPREP le="λόγος">';
+  AssertEquals('λόγος', verse1.Sintagmas.First.Lemma);
+
+  verse1.Texto := 'word<WTPREP lemma="מִלָּה">';
+  AssertEquals('מִלָּה', verse1.Sintagmas.First.Lemma);
+
+  verse1.Texto :=
+    'word<WTPREP l="ignored" le="first"><WTN lemma="second">';
+  AssertEquals('first;second', verse1.Sintagmas.First.Lemma);
+
+  verse1.Texto := 'word<WTPREP le="unterminated>';
+  AssertEquals('', verse1.Sintagmas.First.Lemma);
 end;
 
 procedure TVerseTests.AssociationOneToOne;

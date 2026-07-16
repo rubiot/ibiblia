@@ -24,7 +24,7 @@ uses
   project_patch_applier, bible_tree_coordinator, ai_batch_orchestrator,
   project_database_bootstrap, status_catalog,
   dictionary_manager, project_exporter, association_memory_service,
-  UnitPleaseWait, bible_book_names;
+  UnitPleaseWait, bible_book_names, translation_memory_model;
 const
   // AI processing icon indices for ImageListTreeView in formprincipal
   // ImageListTreeView has indices 0-7 for normal states (0-3) and selected states (4-7)
@@ -53,6 +53,8 @@ type
     tbInterlinear, // interlinear version of the destination text
     tbNone
   );
+
+  TChapterViewMode = (cvmChapterText, cvmTranslationMemory);
 
   TParagraphMode = (pmParagraph, pmNoParagraphs);
   TInterlinearMode = (imIntralinear, imInterlinear);
@@ -163,6 +165,7 @@ type
     FAssociationMemoryProgressBar: TProgressBar;
     function GetCaminho: string;
     function GetChapterViewText: TTipoTextoBiblico;
+    function GetChapterViewMode: TChapterViewMode;
     function GetComments: string;
     function GetID: string;
     function GetInterlinearMode: TInterlinearMode;
@@ -182,6 +185,7 @@ type
     procedure SetAtrasoExibicao(const AValue: Cardinal);
     procedure SetAutoSave(AValue: boolean);
     procedure SetChapterViewText(AValue: TTipoTextoBiblico);
+    procedure SetChapterViewMode(AValue: TChapterViewMode);
     procedure SetComments(const AValue: string);
     procedure SetDisplayTags(AValue: boolean);
     procedure SetInterlinearMode(AValue: TInterlinearMode);
@@ -314,6 +318,10 @@ type
     function GetPlainVerseText(texto: TTipoTextoBiblico): string;
     function GetPlainVerseText(Referencia: string; texto: TTipoTextoBiblico): string;
     function GetTranslationSuggestions(syntagm: TSyntagm): string;
+    function TryGetCurrentVerseTranslationMemory(
+      Order: TTranslationMemoryOrder;
+      out Entries: TTranslationMemoryEntryArray;
+      out ErrorMessage: string): Boolean;
     function GetChapterText: TStringList;
     procedure CompileInterlinearVerseRules(var rulesRx: TRegexList; var replaceTo: TStringList; mode: TInterlinearMode; exporting: boolean);
     procedure Translate;
@@ -372,6 +380,7 @@ type
     property Verse: integer read FReference.Verse;
     property ScrollEventsEnabled: boolean read FScrollEventsEnabled write FScrollEventsEnabled;
     property ChapterViewText: TTipoTextoBiblico read GetChapterViewText write SetChapterViewText;
+    property ChapterViewMode: TChapterViewMode read GetChapterViewMode write SetChapterViewMode;
     property InterlinearMode: TInterlinearMode read GetInterlinearMode write SetInterlinearMode;
     property ParagraphMode: TParagraphMode read GetParagraphMode write SetParagraphMode;
     property TokenizerVersion: Integer read GetTokenizerVersion write SetTokenizerVersion;
@@ -439,6 +448,8 @@ resourcestring
   SAISingleResultApplied = '[AI Single] Result applied and saved.';
   SAISingleErrorFmt = '[AI Single] Error: %s';
   SAnalyzingVerse = 'Analyzing verse...';
+  SAssociationMemoryUnavailable =
+    'Translation memory is unavailable because it could not be synchronized.';
 
   SStatusNotAssociated = 'Not associated';
   SStatusAssociating = 'Associating';
@@ -943,6 +954,11 @@ end;
 procedure TProject.SetChapterViewText(AValue: TTipoTextoBiblico);
 begin
   FConfig.WriteChapterViewText(Ord(AValue));
+end;
+
+procedure TProject.SetChapterViewMode(AValue: TChapterViewMode);
+begin
+  FConfig.WriteChapterViewMode(Ord(AValue));
 end;
 
 procedure TProject.SetComments(const AValue: string);
@@ -1990,12 +2006,23 @@ end;
 
 function TProject.GetChapterViewText: TTipoTextoBiblico;
 var
-  t: string;
+  TextIndex: Integer;
 begin
-  t := GetInfo('chapterview.text');
-  if t.IsEmpty then
-    t := Ord(tbDestino).ToString;
-  Result := TTipoTextoBiblico(t.ToInteger);
+  TextIndex := FConfig.ReadChapterViewText(Ord(tbDestino));
+  if (TextIndex < Ord(tbOrigem)) or (TextIndex > Ord(tbInterlinear)) then
+    TextIndex := Ord(tbDestino);
+  Result := TTipoTextoBiblico(TextIndex);
+end;
+
+function TProject.GetChapterViewMode: TChapterViewMode;
+var
+  ModeIndex: Integer;
+begin
+  ModeIndex := FConfig.ReadChapterViewMode(Ord(cvmChapterText));
+  if (ModeIndex < Ord(Low(TChapterViewMode))) or
+     (ModeIndex > Ord(High(TChapterViewMode))) then
+    ModeIndex := Ord(cvmChapterText);
+  Result := TChapterViewMode(ModeIndex);
 end;
 
 function TProject.GetChapterText: TStringList;
@@ -3357,8 +3384,12 @@ end;
 procedure TProject.CloseProject(_Commit: boolean);
 var
   t: TTipoTextoBiblico;
+  SavedChapterViewMode: TChapterViewMode;
+  SavedChapterViewText: TTipoTextoBiblico;
 begin
   FClosing := true;
+  SavedChapterViewMode := ChapterViewMode;
+  SavedChapterViewText := ChapterViewText;
 
   if assigned(FArvore) then
   begin
@@ -3380,6 +3411,11 @@ begin
   end
   else
     Rollback;
+
+  // View preferences, like font sizes, are saved even when content changes
+  // are discarded.
+  FConfig.WriteChapterViewMode(Ord(SavedChapterViewMode));
+  FConfig.WriteChapterViewText(Ord(SavedChapterViewText));
 
   // always saving font sizes
   for t:=low(FAVersiculo) to high(FAVersiculo) do
@@ -4599,6 +4635,42 @@ begin
   if EnsureAssociationMemoryFresh then
     Exit('');
   result := FSuggestionManager.GetTranslationAlternatives(syntagm);
+end;
+
+function TProject.TryGetCurrentVerseTranslationMemory(
+  Order: TTranslationMemoryOrder;
+  out Entries: TTranslationMemoryEntryArray;
+  out ErrorMessage: string): Boolean;
+begin
+  Result := False;
+  ErrorMessage := '';
+  SetLength(Entries, 0);
+  if not Assigned(FSuggestionManager) or not Assigned(FAssociationMemory) or
+     not Assigned(FAVersiculo[tbOrigem]) then
+  begin
+    ErrorMessage := SAssociationMemoryUnavailable;
+    Exit;
+  end;
+
+  try
+    EnsureAssociationMemoryFresh;
+    if FAssociationMemoryRebuildRunning or FAssociationMemory.RebuildActive or
+       FAssociationMemory.NeedsRebuild or
+       not FAssociationMemory.CacheValidated then
+    begin
+      ErrorMessage := SAssociationMemoryUnavailable;
+      Exit;
+    end;
+    Entries := TTranslationMemoryModel.Build(FAVersiculo[tbOrigem],
+      FSuggestionManager, Order);
+    Result := True;
+  except
+    on E: Exception do
+    begin
+      SetLength(Entries, 0);
+      ErrorMessage := E.Message;
+    end;
+  end;
 end;
 
 function TProject.HasStoredAssociations: Boolean;

@@ -16,7 +16,7 @@ uses
   ActnList, ComCtrls, ExtCtrls, StdCtrls, BibleScope, Project, IniFiles, Math,
   Syntagm, LCLTranslator, unitabout, PCRE, Verse, LCLProc, LazLogger,
   LCLType, LazUTF8, ChapterView, UnitPleaseWait, CommentsView, ONTTokenizer,
-  status_catalog, SynEdit, project_setup_model;
+  status_catalog, SynEdit, project_setup_model, translation_memory_model;
 
 type
   { TFrmPrincipal }
@@ -224,6 +224,10 @@ type
     FPopupTrigger: TPopupTrigger;
     FCurrentRef: string;
     FChapterView: TChapterView;
+    FTranslationMemoryOrder: TTranslationMemoryOrder;
+    FTranslationMemoryOrderMenu: TMenuItem;
+    FTranslationMemoryVerseOrderItem: TMenuItem;
+    FTranslationMemoryRareFirstItem: TMenuItem;
     FStateHeaderPanel: TPanel;
     FHeaderReferenceLabel: TLabel;
     FHeaderStatusLabel: TLabel;
@@ -292,12 +296,14 @@ type
     procedure TreeViewKeyDown(Sender: TObject; var Key: Word;
       Shift: TShiftState);
     procedure TreeViewShowHint(Sender: TObject; HintInfo: PHintInfo);
+    procedure TranslationMemoryOrderClick(Sender: TObject);
     procedure Translate;
     procedure NormalizeActionHint(AAction: TCustomAction);
     procedure UpdateMainCaption;
     procedure UpdateGuidePanel;
     procedure UpdateStateHeader;
     procedure UpdateStatusReviewPanel;
+    procedure UpdateTranslationMemoryOrderMenu;
     procedure ApplyStatusReviewFilter;
     procedure DoOpenProject(filename: string);
     procedure CheckFileAssociation;
@@ -321,6 +327,7 @@ var
 
 const
   MAX_MRU = 10;
+  CHAPTER_VIEW_MEMORY_TAB_INDEX = 5;
 
 resourcestring
   SMainCaption = 'iBiblia';
@@ -344,6 +351,10 @@ resourcestring
   SReference1Text = 'Reference1';
   SReference2Text = 'Reference2';
   SInterlinearText = 'Interlinear';
+  SMemoryText = 'Memory';
+  STranslationMemoryOrderMenu = 'Translation memory order';
+  STranslationMemoryVerseOrder = 'Verse order';
+  STranslationMemoryRareFirst = 'Least frequent first';
   SRegisterFileAssociationSuccess = 'Successfully registered file association for .bib files';
   SRegisterFileAssociationFailure = 'Failed to register file association for .bib files';
   SUnregisterFileAssociationSuccess = 'Successfully removed file association for .bib files';
@@ -2029,7 +2040,10 @@ begin
 
   AtualizarMRU(MenuItemRecent);
 
-  ProjetoAtual.ChapterViewText := TTipoTextoBiblico(ChapterViewTabCtrl.TabIndex);
+  if (ChapterViewTabCtrl.TabIndex >= Ord(tbOrigem)) and
+     (ChapterViewTabCtrl.TabIndex <= Ord(tbInterlinear)) then
+    ProjetoAtual.ChapterViewText :=
+      TTipoTextoBiblico(ChapterViewTabCtrl.TabIndex);
   ProjetoAtual.CloseProject(salvar);
   ProjetoAtual.Destroy;
   ProjetoAtual := nil;
@@ -2080,6 +2094,7 @@ begin
       mtConfirmation, [mbYes, mbCancel], 0) = mrYes then
   begin
     ProjetoAtual.ClearAssociations;
+    FChapterView.RefreshTranslationMemory;
     UpdateStateHeader;
     UpdateStatusReviewPanel;
   end;
@@ -2216,6 +2231,8 @@ begin
   if Assigned(ActionLlmOptions) then ActionLlmOptions.Enabled := true;
     FChapterView.Enabled := true;
     FChapterView.Project := ProjetoAtual;
+    ChapterViewTabCtrl.TabIndex := Ord(ProjetoAtual.ChapterViewText);
+    ChapterViewTabCtrlChange(ChapterViewTabCtrl);
 
     StatusBar1.SimpleText := '';
     UpdateStateHeader;
@@ -2342,8 +2359,10 @@ begin
     else
       ProjetoAtual.SuggestAssociation;
 
-    if ProjetoAtual.ChapterViewText = tbInterlinear then
+    if (FChapterView.ViewMode = cvmChapterText) and
+       (ProjetoAtual.ChapterViewText = tbInterlinear) then
       FChapterView.LoadChapter;
+    FChapterView.RefreshTranslationMemory;
     UpdateStateHeader;
   end;
 end;
@@ -2440,6 +2459,9 @@ begin
   MenuItemStrongNegrito.Checked := opts.ReadBool('opcoes', 'boldstrongs', false);
   MenuItemAutoSave.Checked := opts.ReadBool('opcoes', 'auto.save', false);
   FGuideModeEnabled := opts.ReadBool('opcoes', 'guide.mode', true);
+  modeInt := opts.ReadInteger('opcoes', 'translation.memory.order',
+    Ord(tmoVerseOccurrence));
+  FTranslationMemoryOrder := TranslationMemoryOrderFromInteger(modeInt);
 
   // association engine
   modeInt := opts.ReadInteger('opcoes', 'suggestion.mode', 0);
@@ -2473,6 +2495,7 @@ begin
     Align        := alClient;
     FontName     := opts.ReadString('leiaute', 'principal.chapterview.font.name', DefFontData.Name);
     FontSize     := opts.ReadInteger('leiaute', 'principal.chapterview.font.size', 0);
+    TranslationMemoryOrder := FTranslationMemoryOrder;
   end;
 
   language := opts.ReadString('opcoes', 'language', GetDefaultLang);
@@ -2530,6 +2553,18 @@ begin
   MenuItemTheWordHighlighterColors := TMenuItem.Create(MainMenu1);
   MenuItemTheWordHighlighterColors.Action := ActionTheWordHighlighterColors;
   MenuItem20.Add(MenuItemTheWordHighlighterColors);
+
+  FTranslationMemoryOrderMenu := TMenuItem.Create(MainMenu1);
+  FTranslationMemoryVerseOrderItem := TMenuItem.Create(MainMenu1);
+  FTranslationMemoryVerseOrderItem.RadioItem := True;
+  FTranslationMemoryVerseOrderItem.OnClick := @TranslationMemoryOrderClick;
+  FTranslationMemoryOrderMenu.Add(FTranslationMemoryVerseOrderItem);
+  FTranslationMemoryRareFirstItem := TMenuItem.Create(MainMenu1);
+  FTranslationMemoryRareFirstItem.RadioItem := True;
+  FTranslationMemoryRareFirstItem.OnClick := @TranslationMemoryOrderClick;
+  FTranslationMemoryOrderMenu.Add(FTranslationMemoryRareFirstItem);
+  MenuItem20.Add(FTranslationMemoryOrderMenu);
+  UpdateTranslationMemoryOrderMenu;
 
   ActionRegisterFileAssociation := TAction.Create(ActionList1);
   ActionRegisterFileAssociation.Caption := SRegisterFileAssociation;
@@ -2613,6 +2648,8 @@ begin
   opts.WriteInteger('opcoes', 'popuptrigger', LongInt(FPopupTrigger));
   opts.WriteBool('opcoes', 'auto.save', MenuItemAutoSave.Checked);
   opts.WriteBool('opcoes', 'guide.mode', FGuideModeEnabled);
+  opts.WriteInteger('opcoes', 'translation.memory.order',
+    Ord(FTranslationMemoryOrder));
   opts.Free;
 
   FChapterView.Free;
@@ -2719,6 +2756,33 @@ begin
   TMenuItem(Sender).Checked := not TMenuItem(Sender).Checked;
   if assigned(ProjetoAtual) then
     ProjetoAtual.AutoSave := TMenuItem(Sender).Checked;
+end;
+
+procedure TFrmPrincipal.TranslationMemoryOrderClick(Sender: TObject);
+begin
+  if Sender = FTranslationMemoryVerseOrderItem then
+    FTranslationMemoryOrder := tmoVerseOccurrence
+  else if Sender = FTranslationMemoryRareFirstItem then
+    FTranslationMemoryOrder := tmoMemoryFrequencyAscending
+  else
+    Exit;
+
+  UpdateTranslationMemoryOrderMenu;
+  if Assigned(FChapterView) then
+    FChapterView.TranslationMemoryOrder := FTranslationMemoryOrder;
+  if Assigned(opts) then
+    opts.WriteInteger('opcoes', 'translation.memory.order',
+      Ord(FTranslationMemoryOrder));
+end;
+
+procedure TFrmPrincipal.UpdateTranslationMemoryOrderMenu;
+begin
+  if Assigned(FTranslationMemoryVerseOrderItem) then
+    FTranslationMemoryVerseOrderItem.Checked :=
+      FTranslationMemoryOrder = tmoVerseOccurrence;
+  if Assigned(FTranslationMemoryRareFirstItem) then
+    FTranslationMemoryRareFirstItem.Checked :=
+      FTranslationMemoryOrder = tmoMemoryFrequencyAscending;
 end;
 
 procedure TFrmPrincipal.MenuItemLangEnClick(Sender: TObject);
@@ -2830,6 +2894,7 @@ var
 {$ENDIF}
 begin
   UpdateStateHeader;
+  FChapterView.FocusTranslationMemoryForSyntagm(Sender);
   {$IFDEF WINDOWS}
   if not syncTw2iBiblia then
     exit;
@@ -3080,9 +3145,17 @@ begin
 end;
 
 procedure TFrmPrincipal.ChapterViewTabCtrlChange(Sender: TObject);
+var
+  TabIndex: Integer;
 begin
-  if assigned(FChapterView) then
-    FChapterView.TextType := TTipoTextoBiblico(TTabControl(Sender).TabIndex);
+  if not Assigned(FChapterView) then
+    Exit;
+  TabIndex := TTabControl(Sender).TabIndex;
+  if TabIndex = CHAPTER_VIEW_MEMORY_TAB_INDEX then
+    FChapterView.ViewMode := cvmTranslationMemory
+  else if (TabIndex >= Ord(tbOrigem)) and
+          (TabIndex <= Ord(tbInterlinear)) then
+    FChapterView.TextType := TTipoTextoBiblico(TabIndex);
 end;
 
 procedure TFrmPrincipal.ToolButtonExitClick(Sender: TObject);
@@ -3121,7 +3194,10 @@ end;
 {$ENDIF}
 
 procedure TFrmPrincipal.Translate;
+var
+  SelectedChapterViewTab: Integer;
 begin
+  SelectedChapterViewTab := ChapterViewTabCtrl.TabIndex;
   if Assigned(ActionKeyboardShortcuts) then
   begin
     ActionKeyboardShortcuts.Caption := SKeyboardShortcutsMenu;
@@ -3141,6 +3217,15 @@ begin
   end;
   if Assigned(ActionTheWordHighlighterColors) then
     ActionTheWordHighlighterColors.Caption := STheWordHighlightColorsMenu;
+  if Assigned(FTranslationMemoryOrderMenu) then
+    FTranslationMemoryOrderMenu.Caption := STranslationMemoryOrderMenu;
+  if Assigned(FTranslationMemoryVerseOrderItem) then
+    FTranslationMemoryVerseOrderItem.Caption :=
+      STranslationMemoryVerseOrder;
+  if Assigned(FTranslationMemoryRareFirstItem) then
+    FTranslationMemoryRareFirstItem.Caption :=
+      STranslationMemoryRareFirst;
+  UpdateTranslationMemoryOrderMenu;
   if Assigned(ActionRegisterFileAssociation) then
     ActionRegisterFileAssociation.Caption := SRegisterFileAssociation;
   if Assigned(ActionUnregisterFileAssociation) then
@@ -3172,6 +3257,10 @@ begin
     Tabs.Add(SReference1Text);
     Tabs.Add(SReference2Text);
     Tabs.Add(SInterlinearText);
+    Tabs.Add(SMemoryText);
+    if (SelectedChapterViewTab >= 0) and
+       (SelectedChapterViewTab < Tabs.Count) then
+      TabIndex := SelectedChapterViewTab;
   end;
   if assigned(FrmNewProject) then
     FrmNewProject.Translate;
@@ -3204,9 +3293,13 @@ begin
   ProjetoAtual.SugerirAssociacaoAutomaticamente := MenuItem22.Checked;
   ProjetoAtual.PopupTrigger := FPopupTrigger;
 
-  ChapterViewTabCtrl.TabIndex := Ord(ProjetoAtual.ChapterViewText);
   FChapterView.Project := ProjetoAtual;
   FChapterView.Enabled := true;
+  if ProjetoAtual.ChapterViewMode = cvmTranslationMemory then
+    ChapterViewTabCtrl.TabIndex := CHAPTER_VIEW_MEMORY_TAB_INDEX
+  else
+    ChapterViewTabCtrl.TabIndex := Ord(ProjetoAtual.ChapterViewText);
+  ChapterViewTabCtrlChange(ChapterViewTabCtrl);
 
   ActionSalvarProjeto.Enabled := true;
   ActionSalvarProjetoComo.Enabled := true;

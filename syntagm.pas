@@ -92,6 +92,7 @@ type
     function GetStrongsCount: integer;
     function GetStrongWordsCount: integer;
     function GetTags: string;
+    function GetLemma: string;
     function GetHasStrongs: boolean;
     function GetHasMorph: boolean;
     procedure SetPointed(const AValue: boolean);
@@ -117,6 +118,7 @@ type
     function IsEqualTo(other : TSyntagm): boolean;
     property Strong: TStringList read FStrong write FStrong;
     property Morph: TStringList read FMorph write FMorph;
+    property Lemma: string read GetLemma;
     property Tags: string read GetTags;
     property LabelRef: TLabel read FLabel write FLabel;
     property Pairs: TSyntagmList read FPairs write FPairs;
@@ -145,6 +147,61 @@ implementation
 uses Verse;
 
 var Hint: THintWindow;
+
+function ExtractMorphAttribute(const Morphology, AttributeName: string): string;
+var
+  AttributePosition: Integer;
+  ValuePosition: Integer;
+  ValueEnd: Integer;
+  PaddedMorphology: string;
+  QuoteCharacter: Char;
+begin
+  Result := '';
+  PaddedMorphology := ' ' + Morphology;
+  AttributePosition := Pos(' ' + AttributeName + '=', PaddedMorphology);
+  if AttributePosition = 0 then
+    Exit;
+
+  ValuePosition := AttributePosition + Length(AttributeName) + 2;
+  while (ValuePosition <= Length(PaddedMorphology)) and
+        (PaddedMorphology[ValuePosition] in [' ', #9]) do
+    Inc(ValuePosition);
+  if ValuePosition > Length(PaddedMorphology) then
+    Exit;
+
+  if (PaddedMorphology[ValuePosition] = '\') and
+     (ValuePosition < Length(PaddedMorphology)) and
+     (PaddedMorphology[ValuePosition + 1] in ['"', '''']) then
+    Inc(ValuePosition);
+
+  if PaddedMorphology[ValuePosition] in ['"', ''''] then
+  begin
+    QuoteCharacter := PaddedMorphology[ValuePosition];
+    Inc(ValuePosition);
+    ValueEnd := ValuePosition;
+    while ValueEnd <= Length(PaddedMorphology) do
+    begin
+      if PaddedMorphology[ValueEnd] = QuoteCharacter then
+        Break;
+      if (PaddedMorphology[ValueEnd] = '\') and
+         (ValueEnd < Length(PaddedMorphology)) and
+         (PaddedMorphology[ValueEnd + 1] = QuoteCharacter) then
+        Break;
+      Inc(ValueEnd);
+    end;
+    if ValueEnd > Length(PaddedMorphology) then
+      Exit;
+    Result := Copy(PaddedMorphology, ValuePosition, ValueEnd - ValuePosition);
+  end
+  else
+  begin
+    ValueEnd := ValuePosition;
+    while (ValueEnd <= Length(PaddedMorphology)) and
+          not (PaddedMorphology[ValueEnd] in [' ', #9]) do
+      Inc(ValueEnd);
+    Result := Copy(PaddedMorphology, ValuePosition, ValueEnd - ValuePosition);
+  end;
+end;
 
 { TSyntagmListReverseEnumerator }
 
@@ -718,6 +775,42 @@ begin
   begin
     FreeAndNil(FStrong);
     FreeAndNil(FMorph);
+  end;
+end;
+
+function TSyntagm.GetLemma: string;
+var
+  Lemmas: TStringList;
+  Morphology: string;
+  Value: string;
+  LemmaIndex: Integer;
+begin
+  Result := '';
+  if not Assigned(FMorph) then
+    Exit;
+
+  Lemmas := TStringList.Create;
+  try
+    Lemmas.CaseSensitive := True;
+    Lemmas.Duplicates := dupIgnore;
+    for Morphology in FMorph do
+    begin
+      Value := ExtractMorphAttribute(Morphology, 'le');
+      if Value = '' then
+        Value := ExtractMorphAttribute(Morphology, 'l');
+      if Value = '' then
+        Value := ExtractMorphAttribute(Morphology, 'lemma');
+      if (Value <> '') and (Lemmas.IndexOf(Value) < 0) then
+        Lemmas.Add(Value);
+    end;
+    for LemmaIndex := 0 to Lemmas.Count - 1 do
+    begin
+      if Result <> '' then
+        Result := Result + ';';
+      Result := Result + Lemmas[LemmaIndex];
+    end;
+  finally
+    Lemmas.Free;
   end;
 end;
 

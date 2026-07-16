@@ -5,6 +5,39 @@ msgstr "Content-Type: text/plain; charset=UTF-8"
 msgid "Beginning of chapter"
 msgstr ""
 
+#: chapterview.stranslationmemorycurrent
+msgctxt "chapterview.stranslationmemorycurrent"
+msgid "Current"
+msgstr ""
+
+#: chapterview.stranslationmemoryerrorfmt
+#, object-pascal-format
+msgid "Translation memory is unavailable: %s"
+msgstr ""
+
+#: chapterview.stranslationmemoryformsfmt
+#, object-pascal-format
+msgid "Forms: %s"
+msgstr ""
+
+#: chapterview.stranslationmemorynosourcewords
+msgid "No source words are available for this verse."
+msgstr ""
+
+#: chapterview.stranslationmemorynotranslations
+msgid "No translation recorded"
+msgstr ""
+
+#: chapterview.stranslationmemorystrongsfmt
+#, object-pascal-format
+msgid "Strong's: %s"
+msgstr ""
+
+#: chapterview.stranslationmemorytitle
+msgctxt "chapterview.stranslationmemorytitle"
+msgid "Translation memory"
+msgstr ""
+
 #: chapterview.sinterlinearmode
 msgid "Interlinear layout..."
 msgstr ""
@@ -140,6 +173,22 @@ msgstr ""
 #: formprincipal.sinterlineartext
 msgctxt "formprincipal.sinterlineartext"
 msgid "Interlinear"
+msgstr ""
+
+#: formprincipal.smemorytext
+msgid "Memory"
+msgstr ""
+
+#: formprincipal.stranslationmemoryordermenu
+msgid "Translation memory order"
+msgstr ""
+
+#: formprincipal.stranslationmemoryrarefirst
+msgid "Least frequent first"
+msgstr ""
+
+#: formprincipal.stranslationmemoryverseorder
+msgid "Verse order"
 msgstr ""
 
 #: formprincipal.sinvalidprojectnamequery
@@ -825,6 +874,10 @@ msgstr ""
 
 #: project.stranslationmemory
 msgid "Translation memory"
+msgstr ""
+
+#: project.sassociationmemoryunavailable
+msgid "Translation memory is unavailable because it could not be synchronized."
 msgstr ""
 
 #: project.svaccumprojectconfirmation

@@ -10,6 +10,7 @@ uses
 const
   PROJECT_CONFIG_KEY_MARKER = 'marcador';
   PROJECT_CONFIG_KEY_CHAPTER_VIEW_TEXT = 'chapterview.text';
+  PROJECT_CONFIG_KEY_CHAPTER_VIEW_MODE = 'chapterview.mode';
   PROJECT_CONFIG_KEY_INTERLINEAR_MODE = 'interlinear.mode';
   PROJECT_CONFIG_KEY_PARAGRAPH_MODE = 'paragraph.mode';
   PROJECT_CONFIG_KEY_TOKENIZER_VERSION = 'tokenizer_version';
@@ -35,6 +36,8 @@ type
     procedure WriteMarker(const value: string);
     function ReadChapterViewText(defaultValue: Integer): Integer;
     procedure WriteChapterViewText(value: Integer);
+    function ReadChapterViewMode(defaultValue: Integer): Integer;
+    procedure WriteChapterViewMode(value: Integer);
     function ReadInterlinearMode(defaultValue: Integer): Integer;
     procedure WriteInterlinearMode(value: Integer);
     function ReadParagraphMode(defaultValue: Integer): Integer;
@@ -134,6 +137,16 @@ end;
 procedure TProjectConfig.WriteChapterViewText(value: Integer);
 begin
   WriteInteger(PROJECT_CONFIG_KEY_CHAPTER_VIEW_TEXT, value);
+end;
+
+function TProjectConfig.ReadChapterViewMode(defaultValue: Integer): Integer;
+begin
+  Result := ReadInteger(PROJECT_CONFIG_KEY_CHAPTER_VIEW_MODE, defaultValue);
+end;
+
+procedure TProjectConfig.WriteChapterViewMode(value: Integer);
+begin
+  WriteInteger(PROJECT_CONFIG_KEY_CHAPTER_VIEW_MODE, value);
 end;
 
 function TProjectConfig.ReadInterlinearMode(defaultValue: Integer): Integer;

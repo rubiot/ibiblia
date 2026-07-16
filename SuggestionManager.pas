@@ -10,6 +10,13 @@ uses
 
 type
 
+  TTranslationAlternativeData = record
+    Translation: string;
+    Occurrences: Integer;
+  end;
+
+  TTranslationAlternativeDataArray = array of TTranslationAlternativeData;
+
   TAssociationMemoryRebuildPhase = (
     amrpWriting,
     amrpValidating
@@ -51,6 +58,7 @@ type
     FBulkSourcePhraseIds: TStringList;
     FBulkTargetPhraseIds: TStringList;
     FBulkTranslationCounts: TStringList;
+    FTranslationAlternativeCache: TStringList;
     FNextBulkSourcePhraseId: Integer;
     FNextBulkTargetPhraseId: Integer;
     FOnRebuildProgress: TAssociationMemoryRebuildProgressEvent;
@@ -75,6 +83,7 @@ type
     procedure FlushBulkTranslations;
     procedure StartBulkRebuild;
     procedure ResetBulkRebuild;
+    procedure ClearTranslationAlternativeCache;
     procedure ReportRebuildProgress(Phase: TAssociationMemoryRebuildPhase;
       Current, Total: Integer);
   public
@@ -97,12 +106,64 @@ type
     function ValidatePairs(ExpectedPairs: TStrings;
       out ErrorMessage: string): Boolean;
     function GetPairOccurrenceCount(const Source, Target: string): Integer;
+    function GetTranslationAlternativeData(
+      const Key: string): TTranslationAlternativeDataArray;
+    procedure PreloadTranslationAlternativeData(Keys: TStrings);
     function GetTranslationAlternatives(Syntagm: TSyntagm): string;
     property OnRebuildProgress: TAssociationMemoryRebuildProgressEvent
       read FOnRebuildProgress write FOnRebuildProgress;
   end;
 
 implementation
+
+const
+  TRANSLATION_ALTERNATIVE_CACHE_LIMIT = 512;
+
+type
+  TTranslationAlternativeCacheItem = class
+  public
+    Data: TTranslationAlternativeDataArray;
+  end;
+
+procedure AddTranslationAlternative(
+  var Alternatives: TTranslationAlternativeDataArray;
+  const Translation: string; Occurrences: Integer);
+var
+  AlternativeIndex: Integer;
+begin
+  for AlternativeIndex := 0 to Length(Alternatives) - 1 do
+    if Alternatives[AlternativeIndex].Translation = Translation then
+    begin
+      Inc(Alternatives[AlternativeIndex].Occurrences, Occurrences);
+      Exit;
+    end;
+  AlternativeIndex := Length(Alternatives);
+  SetLength(Alternatives, AlternativeIndex + 1);
+  Alternatives[AlternativeIndex].Translation := Translation;
+  Alternatives[AlternativeIndex].Occurrences := Occurrences;
+end;
+
+procedure SortTranslationAlternatives(
+  var Alternatives: TTranslationAlternativeDataArray);
+var
+  LeftIndex: Integer;
+  RightIndex: Integer;
+  Temporary: TTranslationAlternativeData;
+begin
+  for LeftIndex := 0 to Length(Alternatives) - 2 do
+    for RightIndex := LeftIndex + 1 to Length(Alternatives) - 1 do
+      if (Alternatives[RightIndex].Occurrences >
+          Alternatives[LeftIndex].Occurrences) or
+         ((Alternatives[RightIndex].Occurrences =
+           Alternatives[LeftIndex].Occurrences) and
+          (CompareStr(Alternatives[RightIndex].Translation,
+           Alternatives[LeftIndex].Translation) < 0)) then
+      begin
+        Temporary := Alternatives[LeftIndex];
+        Alternatives[LeftIndex] := Alternatives[RightIndex];
+        Alternatives[RightIndex] := Temporary;
+      end;
+end;
 
 resourcestring
   SCannotAddPairsAfterRebuildValidation =
@@ -238,7 +299,7 @@ begin
       'from sintagmas_locucoes_origem, traducoes, locucoes_origem, locucoes_destino ' +
       'where slor_sori_id like :sori and slor_ordem = 0 and slor_lori_id = trad_lori_id' +
       '  and slor_lori_id = lori_id and trad_ldes_id = ldes_id and trad_ocorrencias > 0 ' +
-      'group by ldes_locucao order by 2 desc';
+      'group by ldes_locucao order by 2 desc, ldes_locucao';
   FTranslationMemoryQuery.Prepare;
 
   if FileExists('formas_verbos.db3') then
@@ -280,6 +341,10 @@ begin
   FBulkTranslationCounts.Sorted := True;
   FBulkTranslationCounts.CaseSensitive := True;
   FBulkTranslationCounts.UseLocale := False;
+  FTranslationAlternativeCache := TStringList.Create;
+  FTranslationAlternativeCache.Sorted := True;
+  FTranslationAlternativeCache.CaseSensitive := True;
+  FTranslationAlternativeCache.UseLocale := False;
 end;
 
 constructor TSuggestionManager.Create(const DatabasePath: string);
@@ -330,6 +395,8 @@ begin
 
   FDelimitedValues.Free;
   FVerbList.Free;
+  ClearTranslationAlternativeCache;
+  FTranslationAlternativeCache.Free;
   FBulkTranslationCounts.Free;
   FBulkTargetPhraseIds.Free;
   FBulkSourcePhraseIds.Free;
@@ -347,6 +414,7 @@ begin
     Exit;
   end;
 
+  ClearTranslationAlternativeCache;
   SourcePhraseId := GetOrCreateSourcePhraseId(Source.ToLower);
   TargetPhraseId := GetOrCreateTargetPhraseId(Target.ToLower);
 
@@ -503,6 +571,17 @@ begin
   FBulkTranslationCounts.Clear;
 end;
 
+procedure TSuggestionManager.ClearTranslationAlternativeCache;
+var
+  CacheIndex: Integer;
+begin
+  if not Assigned(FTranslationAlternativeCache) then
+    Exit;
+  for CacheIndex := 0 to FTranslationAlternativeCache.Count - 1 do
+    FTranslationAlternativeCache.Objects[CacheIndex].Free;
+  FTranslationAlternativeCache.Clear;
+end;
+
 procedure TSuggestionManager.ReportRebuildProgress(
   Phase: TAssociationMemoryRebuildPhase; Current, Total: Integer);
 begin
@@ -515,6 +594,7 @@ var
   SourcePhraseId: Integer;
   TargetPhraseId: Integer;
 begin
+  ClearTranslationAlternativeCache;
   SourcePhraseId := FindSourcePhraseId(Source.ToLower);
   TargetPhraseId := FindTargetPhraseId(Target.ToLower);
 
@@ -930,6 +1010,7 @@ end;
 
 procedure TSuggestionManager.ClearAssociationDatabase;
 begin
+  ClearTranslationAlternativeCache;
   with FQuery do
   begin
     Close;
@@ -959,6 +1040,7 @@ procedure TSuggestionManager.BeginRebuild;
 begin
   if FRebuildSavepointActive then
     raise Exception.Create(SAssociationMemoryRebuildAlreadyActive);
+  ClearTranslationAlternativeCache;
   ResetBulkRebuild;
   FConnection.ExecuteDirect('savepoint association_memory_rebuild');
   FRebuildSavepointActive := True;
@@ -1003,6 +1085,7 @@ begin
     end;
   finally
     FRebuildSavepointActive := False;
+    ClearTranslationAlternativeCache;
     ResetBulkRebuild;
   end;
 end;
@@ -1016,6 +1099,7 @@ end;
 procedure TSuggestionManager.Rollback;
 begin
   FRebuildSavepointActive := False;
+  ClearTranslationAlternativeCache;
   ResetBulkRebuild;
   FConnection.Transaction.Rollback;
   FConnection.StartTransaction;
@@ -1269,7 +1353,8 @@ end;
 
 function TSuggestionManager.GetTranslationAlternatives(Syntagm: TSyntagm): string;
 var
-  Suggestions: TSQLQuery;
+  Alternatives: TTranslationAlternativeDataArray;
+  Alternative: TTranslationAlternativeData;
   Phrase: string;
   Key: string;
 begin
@@ -1278,15 +1363,155 @@ begin
   if Key.IsEmpty then
     Exit;
 
-  Suggestions := GetTranslationMemoryQuery(Syntagm.GetSuggestionKey(plStrong));
-  while not Suggestions.EOF do
+  Alternatives := GetTranslationAlternativeData(
+    Syntagm.GetSuggestionKey(plStrong));
+  for Alternative in Alternatives do
   begin
-    Phrase := AnsiReplaceStr(Suggestions.Fields[0].AsString, ';', ' ') +
-              Format(' (%d)', [Suggestions.Fields[1].AsInteger]);
+    Phrase := AnsiReplaceStr(Alternative.Translation, ';', ' ') +
+              Format(' (%d)', [Alternative.Occurrences]);
     Result := Format('%s\par\li0 {\b\''95  } %s', [Result, UnicodeToRtf(Phrase)]);
-    Suggestions.Next;
   end;
-  Suggestions.Close;
+end;
+
+function TSuggestionManager.GetTranslationAlternativeData(
+  const Key: string): TTranslationAlternativeDataArray;
+var
+  Suggestions: TSQLQuery;
+  AlternativeIndex: Integer;
+  CacheIndex: Integer;
+  CacheItem: TTranslationAlternativeCacheItem;
+begin
+  SetLength(Result, 0);
+  if Key.IsEmpty then
+    Exit;
+
+  CacheIndex := FTranslationAlternativeCache.IndexOf(Key);
+  if CacheIndex >= 0 then
+  begin
+    Result := TTranslationAlternativeCacheItem(
+      FTranslationAlternativeCache.Objects[CacheIndex]).Data;
+    Exit;
+  end;
+
+  if FTranslationAlternativeCache.Count >=
+     TRANSLATION_ALTERNATIVE_CACHE_LIMIT then
+    ClearTranslationAlternativeCache;
+
+  CacheItem := TTranslationAlternativeCacheItem.Create;
+  Suggestions := nil;
+  try
+    Suggestions := GetTranslationMemoryQuery(Key);
+    while not Suggestions.EOF do
+    begin
+      AlternativeIndex := Length(Result);
+      SetLength(Result, AlternativeIndex + 1);
+      Result[AlternativeIndex].Translation := Suggestions.Fields[0].AsString;
+      Result[AlternativeIndex].Occurrences := Suggestions.Fields[1].AsInteger;
+      Suggestions.Next;
+    end;
+    CacheItem.Data := Result;
+    FTranslationAlternativeCache.AddObject(Key, CacheItem);
+    CacheItem := nil;
+  finally
+    if Assigned(Suggestions) then
+      Suggestions.Close;
+    CacheItem.Free;
+  end;
+end;
+
+procedure TSuggestionManager.PreloadTranslationAlternativeData(Keys: TStrings);
+var
+  CacheIndex: Integer;
+  CacheItem: TTranslationAlternativeCacheItem;
+  Key: string;
+  KeyIndex: Integer;
+  MissingKeys: TStringList;
+  Query: TSQLQuery;
+  SourceKey: string;
+  SQLText: string;
+begin
+  if not Assigned(Keys) or (Keys.Count = 0) then
+    Exit;
+
+  if FTranslationAlternativeCache.Count + Keys.Count >
+     TRANSLATION_ALTERNATIVE_CACHE_LIMIT then
+    ClearTranslationAlternativeCache;
+
+  MissingKeys := TStringList.Create;
+  try
+    MissingKeys.Sorted := True;
+    MissingKeys.CaseSensitive := True;
+    MissingKeys.UseLocale := False;
+    MissingKeys.Duplicates := dupIgnore;
+    for Key in Keys do
+      if (Key <> '') and
+         (FTranslationAlternativeCache.IndexOf(Key) < 0) then
+        MissingKeys.Add(Key);
+    if MissingKeys.Count = 0 then
+      Exit;
+
+    try
+      for KeyIndex := 0 to MissingKeys.Count - 1 do
+        FTranslationAlternativeCache.AddObject(MissingKeys[KeyIndex],
+          TTranslationAlternativeCacheItem.Create);
+
+      Query := TSQLQuery.Create(nil);
+      try
+        Query.DataBase := FConnection;
+        SQLText := 'select cast(s.slor_sori_id as text), d.ldes_locucao, ' +
+          'sum(t.trad_ocorrencias) ' +
+          'from sintagmas_locucoes_origem s ' +
+          'join traducoes t on t.trad_lori_id = s.slor_lori_id ' +
+          'join locucoes_origem o on o.lori_id = s.slor_lori_id ' +
+          'join locucoes_destino d on d.ldes_id = t.trad_ldes_id ' +
+          'where s.slor_ordem = 0 and t.trad_ocorrencias > 0 and (';
+        for KeyIndex := 0 to MissingKeys.Count - 1 do
+        begin
+          if KeyIndex > 0 then
+            SQLText := SQLText + ' or ';
+          SQLText := SQLText + 's.slor_sori_id like :key' +
+            IntToStr(KeyIndex);
+        end;
+        Query.SQL.Text := SQLText + ') group by s.slor_sori_id, ' +
+          'd.ldes_locucao';
+        for KeyIndex := 0 to MissingKeys.Count - 1 do
+          Query.Params.ParamByName('key' + IntToStr(KeyIndex)).AsString :=
+            MissingKeys[KeyIndex] + '%';
+        Query.Open;
+        while not Query.EOF do
+        begin
+          SourceKey := Query.Fields[0].AsString;
+          for KeyIndex := 0 to MissingKeys.Count - 1 do
+            if AnsiStartsStr(MissingKeys[KeyIndex], SourceKey) then
+            begin
+              CacheIndex := FTranslationAlternativeCache.IndexOf(
+                MissingKeys[KeyIndex]);
+              CacheItem := TTranslationAlternativeCacheItem(
+                FTranslationAlternativeCache.Objects[CacheIndex]);
+              AddTranslationAlternative(CacheItem.Data,
+                Query.Fields[1].AsString, Query.Fields[2].AsInteger);
+            end;
+          Query.Next;
+        end;
+
+        for KeyIndex := 0 to MissingKeys.Count - 1 do
+        begin
+          CacheIndex := FTranslationAlternativeCache.IndexOf(
+            MissingKeys[KeyIndex]);
+          CacheItem := TTranslationAlternativeCacheItem(
+            FTranslationAlternativeCache.Objects[CacheIndex]);
+          SortTranslationAlternatives(CacheItem.Data);
+        end;
+      finally
+        Query.Free;
+      end;
+    except
+      ClearTranslationAlternativeCache;
+      raise;
+    end;
+  finally
+    MissingKeys.Free;
+  end;
 end;
 
 end.
