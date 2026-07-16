@@ -57,6 +57,10 @@ type
 
 implementation
 
+resourcestring
+  SAssociationDataNotCompletelyApplied =
+    'Association data could not be applied completely to the verse pair';
+
 function CompareCanonicalIndexes(List: TStringList;
   Index1, Index2: Integer): Integer;
 var
@@ -218,8 +222,7 @@ begin
   LoadTexts(OriginalText, TranslatedText);
   FSourceVerse.Pares := Associations;
   if not AssociationsEquivalent(FSourceVerse.Pares, Associations) then
-    raise Exception.Create(
-      'Association data could not be applied completely to the verse pair');
+    raise Exception.Create(SAssociationDataNotCompletelyApplied);
 end;
 
 function TVerseRenderBuffer.FormatCorruptionDetails(const ErrorMessage,

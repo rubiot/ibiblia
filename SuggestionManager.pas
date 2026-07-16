@@ -104,6 +104,41 @@ type
 
 implementation
 
+resourcestring
+  SCannotAddPairsAfterRebuildValidation =
+    'Cannot add pairs after rebuild validation';
+  SInvalidBufferedAssociationMemoryPair =
+    'Invalid buffered association memory pair';
+  SAssociationMemoryRebuildAlreadyActive =
+    'Association memory rebuild is already active';
+  SAssociationMemoryNonPositiveCounts =
+    'Association memory contains non-positive occurrence counts';
+  SAssociationMemoryMissingPhrases =
+    'Association memory contains translations with missing phrases';
+  SAssociationMemoryOrphanPhrases =
+    'Association memory contains orphan phrases';
+  SAssociationMemoryOrphanSyntagmMappings =
+    'Association memory contains orphan syntagm mappings';
+  SAssociationMemoryRebuildNotPrepared =
+    'Association memory rebuild has not been prepared';
+  SAssociationMemoryUnexpectedPhraseIdsFmt =
+    'Association memory contains unexpected phrase IDs %d -> %d';
+  SAssociationMemoryPhraseIdMismatchFmt =
+    'Association memory mismatch for phrase IDs %d -> %d ' +
+    '(expected %d, stored %d)';
+  SAssociationMemoryMissingTranslationPairsFmt =
+    'Association memory is missing translation pairs ' +
+    '(expected %d, stored %d)';
+  SExpectedAssociationPairListInvalid =
+    'Expected association pair list is invalid';
+  SAssociationMemoryUnexpectedPairFmt =
+    'Association memory contains unexpected pair "%s" -> "%s"';
+  SAssociationMemoryPairMismatchFmt =
+    'Association memory mismatch for "%s" -> "%s" ' +
+    '(expected %d, stored %d)';
+  SAssociationMemoryMissingExpectedPairs =
+    'Association memory is missing expected translation pairs';
+
 constructor TSuggestionManager.Create(Owner: TComponent; Connection: TSQLConnection);
 begin
   FConnection := Connection;
@@ -403,7 +438,7 @@ var
   TargetPhraseId: Integer;
 begin
   if FBulkTranslationsFlushed then
-    raise Exception.Create('Cannot add pairs after rebuild validation');
+    raise Exception.Create(SCannotAddPairsAfterRebuildValidation);
   SourcePhraseId := GetOrCreateBulkSourcePhraseId(Source.ToLower);
   TargetPhraseId := GetOrCreateBulkTargetPhraseId(Target.ToLower);
   PairKey := IntToStr(SourcePhraseId) + #1 + IntToStr(TargetPhraseId);
@@ -429,7 +464,7 @@ begin
     PairKey := FBulkTranslationCounts[CountIndex];
     SeparatorIndex := Pos(#1, PairKey);
     if SeparatorIndex <= 1 then
-      raise Exception.Create('Invalid buffered association memory pair');
+      raise Exception.Create(SInvalidBufferedAssociationMemoryPair);
 
     FInsertTranslationCountQuery.Close;
     FInsertTranslationCountQuery.Params[0].AsInteger := StrToInt(
@@ -923,7 +958,7 @@ end;
 procedure TSuggestionManager.BeginRebuild;
 begin
   if FRebuildSavepointActive then
-    raise Exception.Create('Association memory rebuild is already active');
+    raise Exception.Create(SAssociationMemoryRebuildAlreadyActive);
   ResetBulkRebuild;
   FConnection.ExecuteDirect('savepoint association_memory_rebuild');
   FRebuildSavepointActive := True;
@@ -997,7 +1032,7 @@ begin
     if FQuery.Fields[0].AsInteger > 0 then
     begin
       ErrorMessage :=
-        'Association memory contains non-positive occurrence counts';
+        SAssociationMemoryNonPositiveCounts;
       Exit(False);
     end;
 
@@ -1010,7 +1045,7 @@ begin
     if FQuery.Fields[0].AsInteger > 0 then
     begin
       ErrorMessage :=
-        'Association memory contains translations with missing phrases';
+        SAssociationMemoryMissingPhrases;
       Exit(False);
     end;
 
@@ -1025,7 +1060,7 @@ begin
     FQuery.Open;
     if FQuery.Fields[0].AsInteger > 0 then
     begin
-      ErrorMessage := 'Association memory contains orphan phrases';
+      ErrorMessage := SAssociationMemoryOrphanPhrases;
       Exit(False);
     end;
 
@@ -1043,7 +1078,7 @@ begin
     if FQuery.Fields[0].AsInteger > 0 then
     begin
       ErrorMessage :=
-        'Association memory contains orphan syntagm mappings';
+        SAssociationMemoryOrphanSyntagmMappings;
       Exit(False);
     end;
 
@@ -1065,7 +1100,7 @@ begin
   ErrorMessage := '';
   if not FBulkRebuildActive or not FBulkTranslationsFlushed then
   begin
-    ErrorMessage := 'Association memory rebuild has not been prepared';
+    ErrorMessage := SAssociationMemoryRebuildNotPrepared;
     Exit(False);
   end;
 
@@ -1084,7 +1119,7 @@ begin
       if CountIndex < 0 then
       begin
         ErrorMessage := Format(
-          'Association memory contains unexpected phrase IDs %d -> %d',
+          SAssociationMemoryUnexpectedPhraseIdsFmt,
           [FQuery.Fields[0].AsInteger, FQuery.Fields[1].AsInteger]);
         Exit(False);
       end;
@@ -1094,8 +1129,7 @@ begin
       if StoredCount <> ExpectedCount then
       begin
         ErrorMessage := Format(
-          'Association memory mismatch for phrase IDs %d -> %d ' +
-          '(expected %d, stored %d)',
+          SAssociationMemoryPhraseIdMismatchFmt,
           [FQuery.Fields[0].AsInteger, FQuery.Fields[1].AsInteger,
            ExpectedCount, StoredCount]);
         Exit(False);
@@ -1111,8 +1145,7 @@ begin
     if StoredPairCount <> FBulkTranslationCounts.Count then
     begin
       ErrorMessage := Format(
-        'Association memory is missing translation pairs ' +
-        '(expected %d, stored %d)',
+        SAssociationMemoryMissingTranslationPairsFmt,
         [FBulkTranslationCounts.Count, StoredPairCount]);
       Exit(False);
     end;
@@ -1142,7 +1175,7 @@ begin
 
   if not Assigned(ExpectedPairs) or ((ExpectedPairs.Count mod 2) <> 0) then
   begin
-    ErrorMessage := 'Expected association pair list is invalid';
+    ErrorMessage := SExpectedAssociationPairListInvalid;
     Exit(False);
   end;
 
@@ -1180,7 +1213,7 @@ begin
       if CountIndex < 0 then
       begin
         ErrorMessage := Format(
-          'Association memory contains unexpected pair "%s" -> "%s"',
+          SAssociationMemoryUnexpectedPairFmt,
           [SourcePhrase, TargetPhrase]);
         Exit(False);
       end;
@@ -1188,8 +1221,7 @@ begin
       if FQuery.Fields[2].AsInteger <> ExpectedCount then
       begin
         ErrorMessage := Format(
-          'Association memory mismatch for "%s" -> "%s" ' +
-          '(expected %d, stored %d)',
+          SAssociationMemoryPairMismatchFmt,
           [SourcePhrase, TargetPhrase, ExpectedCount,
            FQuery.Fields[2].AsInteger]);
         Exit(False);
@@ -1199,7 +1231,7 @@ begin
     end;
     if ExpectedCounts.Count > 0 then
     begin
-      ErrorMessage := 'Association memory is missing expected translation pairs';
+      ErrorMessage := SAssociationMemoryMissingExpectedPairs;
       Exit(False);
     end;
   finally

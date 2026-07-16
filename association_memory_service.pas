@@ -80,6 +80,27 @@ implementation
 uses
   Syntagm;
 
+resourcestring
+  SAssociationMemoryServiceNotAttached =
+    'Association memory service is not attached';
+  SNoPendingSourceRevision =
+    'There is no pending source revision to persist';
+  SPendingAssociationMemoryCannotReplay =
+    'Pending association memory cannot be replayed';
+  SAssociationMemoryDeltaMissingPairFmt =
+    'Association memory delta removes a missing pair "%s" -> "%s"';
+  SAssociationMemoryDeltaMismatchFmt =
+    'Association memory delta mismatch for "%s" -> "%s" ' +
+    '(expected %d, stored %d)';
+  SAssociationMemoryRebuildAlreadyActive =
+    'Association memory rebuild is already active';
+  SAssociationMemoryRebuildNotActive =
+    'Association memory rebuild is not active';
+  SCannotPublishOutdatedAssociationMemory =
+    'Cannot publish an outdated association memory';
+  SAssociationMemoryOutdatedFmt =
+    'Association memory is outdated (source revision %s, built revision %s)';
+
 constructor TAssociationMemoryService.Create;
 begin
   inherited Create;
@@ -107,7 +128,7 @@ procedure TAssociationMemoryService.RequireAttached;
 begin
   if not Assigned(FConfig) or not Assigned(FManager) or
     not Assigned(FRenderBuffer) then
-    raise Exception.Create('Association memory service is not attached');
+    raise Exception.Create(SAssociationMemoryServiceNotAttached);
 end;
 
 procedure TAssociationMemoryService.Attach(Config: TProjectConfig;
@@ -184,7 +205,7 @@ procedure TAssociationMemoryService.MarkSourceRevisionPersisted;
 begin
   RequireAttached;
   if not FPendingDirty then
-    raise Exception.Create('There is no pending source revision to persist');
+    raise Exception.Create(SNoPendingSourceRevision);
   FSourceRevisionPersisted := True;
 end;
 
@@ -306,7 +327,7 @@ var
 begin
   RequireAttached;
   if not CanReplayPendingCache then
-    raise Exception.Create('Pending association memory cannot be replayed');
+    raise Exception.Create(SPendingAssociationMemoryCannotReplay);
 
   DeltaCounts := TStringList.Create;
   try
@@ -354,7 +375,7 @@ begin
             Dec(ExpectedCount);
           if ExpectedCount < 0 then
             raise Exception.CreateFmt(
-              'Association memory delta removes a missing pair "%s" -> "%s"',
+              SAssociationMemoryDeltaMissingPairFmt,
               [SourcePhrase, TargetPhrase]);
           DeltaCounts.Objects[DeltaIndex] := TObject(PtrInt(ExpectedCount));
           Inc(PairIndex, 3);
@@ -383,8 +404,7 @@ begin
             TargetPhrase);
           if ActualCount <> ExpectedCount then
             raise Exception.CreateFmt(
-              'Association memory delta mismatch for "%s" -> "%s" ' +
-              '(expected %d, stored %d)',
+              SAssociationMemoryDeltaMismatchFmt,
               [SourcePhrase, TargetPhrase, ExpectedCount, ActualCount]);
         end;
       end;
@@ -421,7 +441,7 @@ procedure TAssociationMemoryService.BeginRebuild;
 begin
   RequireAttached;
   if FRebuildActive then
-    raise Exception.Create('Association memory rebuild is already active');
+    raise Exception.Create(SAssociationMemoryRebuildAlreadyActive);
 
   if not FPendingDirty then
     MarkSourceDirty;
@@ -451,7 +471,7 @@ var
   DisplayReference: string;
 begin
   if not FRebuildActive then
-    raise Exception.Create('Association memory rebuild is not active');
+    raise Exception.Create(SAssociationMemoryRebuildNotActive);
   if Associations.IsEmpty then
     Exit;
 
@@ -489,7 +509,7 @@ var
   ErrorMessage: string;
 begin
   if not FRebuildActive then
-    raise Exception.Create('Association memory rebuild is not active');
+    raise Exception.Create(SAssociationMemoryRebuildNotActive);
   try
     FManager.PrepareRebuildValidation;
     if not FManager.ValidatePreparedRebuild(ErrorMessage) then
@@ -527,7 +547,7 @@ function TAssociationMemoryService.StageBuiltRevision: Boolean;
 begin
   RequireAttached;
   if not FCacheMatchesSource then
-    raise Exception.Create('Cannot publish an outdated association memory');
+    raise Exception.Create(SCannotPublishOutdatedAssociationMemory);
   Result := (FBuiltRevision <> FSourceRevision) or
     (FCacheVersion <> ASSOCIATION_MEMORY_CACHE_VERSION);
   if FBuiltRevision <> FSourceRevision then
@@ -560,7 +580,7 @@ begin
   RequireAttached;
   if not FCacheMatchesSource then
     raise Exception.CreateFmt(
-      'Association memory is outdated (source revision %s, built revision %s)',
+      SAssociationMemoryOutdatedFmt,
       [FSourceRevision, FBuiltRevision]);
   if FCacheValidated then
     Exit;

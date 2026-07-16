@@ -73,6 +73,14 @@ type
 
 implementation
 
+resourcestring
+  SAssociationPairListUnmatchedPhrase =
+    'Association pair list contains an unmatched phrase';
+  SVerseRenderBufferUnavailable =
+    'Verse render buffer is not available';
+  SAssociationDataNotCompletelyApplied =
+    'Association data could not be applied completely to the verse pair';
+
 function TCurrentVerseWorkspace.GetVerseView(const VerseViews: array of TVerse;
   Index: Integer): TVerse;
 begin
@@ -316,7 +324,7 @@ var
   procedure RequireValidPairs(const PairList: TStrings);
   begin
     if Assigned(PairList) and ((PairList.Count mod 2) <> 0) then
-      raise Exception.Create('Association pair list contains an unmatched phrase');
+      raise Exception.Create(SAssociationPairListUnmatchedPhrase);
   end;
 begin
   Result := False;
@@ -512,7 +520,7 @@ begin
     if not Assigned(RenderBuffer) then
     begin
       Persistence.CancelCurrentEdit;
-      raise Exception.Create('Verse render buffer is not available');
+      raise Exception.Create(SVerseRenderBufferUnavailable);
     end;
     if not RenderBuffer.TryReplaceTextKeepingAssociations(
       Persistence.CurrentText(SourceTextFieldIndex),
@@ -553,8 +561,7 @@ begin
     if Assigned(RenderBuffer) and
       not RenderBuffer.AssociationsEquivalent(SourceVerse.Pares,
         Associations) then
-      raise Exception.Create(
-        'Association data could not be applied completely to the verse pair');
+      raise Exception.Create(SAssociationDataNotCompletelyApplied);
     FOldPairs := SourceVerse.GetListaPares(plMetaData);
   except
     // SetPares is atomic, but explicitly clear here as well so this recovery
