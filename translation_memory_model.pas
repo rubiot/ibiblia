@@ -20,6 +20,7 @@ type
     Translation: string;
     Occurrences: Integer;
     IsCurrent: Boolean;
+    Matches: TTranslationPairMatchArray;
   end;
 
   TTranslationMemoryAlternativeArray = array of TTranslationMemoryAlternative;
@@ -185,24 +186,59 @@ procedure AddHistoricalAlternative(var Entry: TTranslationMemoryEntry;
 var
   AlternativeIndex: Integer;
   DisplayTranslation: string;
+  ExistingMatchIndex: Integer;
+  Match: TTranslationPairMatch;
+  MatchIndex: Integer;
 begin
   DisplayTranslation := NormalizeTranslationDisplay(Alternative.Translation);
   if DisplayTranslation = '' then
     Exit;
-  for AlternativeIndex := 0 to Length(Entry.Alternatives) - 1 do
-    if NormalizedKey(Entry.Alternatives[AlternativeIndex].Translation) =
+  AlternativeIndex := -1;
+  for MatchIndex := 0 to Length(Entry.Alternatives) - 1 do
+    if NormalizedKey(Entry.Alternatives[MatchIndex].Translation) =
        NormalizedKey(DisplayTranslation) then
     begin
-      Inc(Entry.Alternatives[AlternativeIndex].Occurrences,
-        Alternative.Occurrences);
-      Exit;
+      AlternativeIndex := MatchIndex;
+      Break;
     end;
 
-  AlternativeIndex := Length(Entry.Alternatives);
-  SetLength(Entry.Alternatives, AlternativeIndex + 1);
-  Entry.Alternatives[AlternativeIndex].Translation := DisplayTranslation;
-  Entry.Alternatives[AlternativeIndex].Occurrences := Alternative.Occurrences;
-  Entry.Alternatives[AlternativeIndex].IsCurrent := False;
+  if AlternativeIndex < 0 then
+  begin
+    AlternativeIndex := Length(Entry.Alternatives);
+    SetLength(Entry.Alternatives, AlternativeIndex + 1);
+    Entry.Alternatives[AlternativeIndex].Translation := DisplayTranslation;
+    Entry.Alternatives[AlternativeIndex].Occurrences := 0;
+    Entry.Alternatives[AlternativeIndex].IsCurrent := False;
+  end;
+
+  if Length(Alternative.Matches) = 0 then
+  begin
+    Inc(Entry.Alternatives[AlternativeIndex].Occurrences,
+      Alternative.Occurrences);
+    Exit;
+  end;
+
+  for Match in Alternative.Matches do
+  begin
+    ExistingMatchIndex := -1;
+    for MatchIndex := 0 to
+      Length(Entry.Alternatives[AlternativeIndex].Matches) - 1 do
+      if (Entry.Alternatives[AlternativeIndex].Matches[MatchIndex].SourcePhrase =
+          Match.SourcePhrase) and
+         (Entry.Alternatives[AlternativeIndex].Matches[MatchIndex].TargetPhrase =
+          Match.TargetPhrase) then
+      begin
+        ExistingMatchIndex := MatchIndex;
+        Break;
+      end;
+    if ExistingMatchIndex >= 0 then
+      Continue;
+    MatchIndex := Length(Entry.Alternatives[AlternativeIndex].Matches);
+    SetLength(Entry.Alternatives[AlternativeIndex].Matches, MatchIndex + 1);
+    Entry.Alternatives[AlternativeIndex].Matches[MatchIndex] := Match;
+    Inc(Entry.Alternatives[AlternativeIndex].Occurrences,
+      Match.Occurrences);
+  end;
 end;
 
 function CurrentTranslation(Syntagm: TSyntagm): string;

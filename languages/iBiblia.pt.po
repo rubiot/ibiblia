@@ -182,6 +182,10 @@ msgctxt "chapterview.stranslationmemorycurrent"
 msgid "Current"
 msgstr "Atual"
 
+#: chapterview.stranslationmemoryback
+msgid "Back to translation memory"
+msgstr "Voltar à memória de tradução"
+
 #: chapterview.stranslationmemoryerrorfmt
 #, object-pascal-format
 msgid "Translation memory is unavailable: %s"
@@ -199,6 +203,30 @@ msgstr "Nenhuma palavra do texto de origem está disponível para este versícul
 #: chapterview.stranslationmemorynotranslations
 msgid "No translation recorded"
 msgstr "Nenhuma tradução registrada"
+
+#: chapterview.stranslationmemorynooccurrences
+msgid "No verse currently uses this translation."
+msgstr "Nenhum versículo usa atualmente esta tradução."
+
+#: chapterview.stranslationmemoryoccurrencecountfmt
+#, object-pascal-format
+msgid "%d occurrences"
+msgstr "%d ocorrências"
+
+#: chapterview.stranslationmemoryoccurrencestitlefmt
+#, object-pascal-format
+msgid "%s → %s"
+msgstr "%s → %s"
+
+#: chapterview.stranslationmemoryoccurrencetotalsfmt
+#, object-pascal-format
+msgid "%d associations in %d verses"
+msgstr "%d associações em %d versículos"
+
+#: chapterview.stranslationmemoryshowmorefmt
+#, object-pascal-format
+msgid "Show 100 more (%d remaining)"
+msgstr "Mostrar mais 100 (%d restantes)"
 
 #: chapterview.stranslationmemorystrongsfmt
 #, object-pascal-format
@@ -3234,6 +3262,11 @@ msgctxt "suggestionmanager.sassociationmemorymissingexpectedpairs"
 msgid "Association memory is missing expected translation pairs"
 msgstr "Faltam pares de tradução esperados na memória de associação"
 
+#: suggestionmanager.sassociationmemorymissingoccurrencesfmt
+#, object-pascal-format
+msgid "Association memory is missing reference occurrences (expected %d, stored %d)"
+msgstr "Faltam ocorrências por referência na memória de associação (esperado %d, armazenado %d)"
+
 #: suggestionmanager.sassociationmemorymissingphrases
 msgctxt "suggestionmanager.sassociationmemorymissingphrases"
 msgid "Association memory contains translations with missing phrases"
@@ -3250,10 +3283,27 @@ msgctxt "suggestionmanager.sassociationmemorynonpositivecounts"
 msgid "Association memory contains non-positive occurrence counts"
 msgstr "A memória de associação contém contagens de ocorrências não positivas"
 
+#: suggestionmanager.sassociationmemorynonpositiveoccurrencereferences
+msgid "Association memory contains non-positive reference occurrence counts"
+msgstr "A memória de associação contém contagens de ocorrências por referência não positivas"
+
+#: suggestionmanager.sassociationmemoryoccurrencecountmismatchfmt
+#, object-pascal-format
+msgid "Association memory occurrence mismatch at %s for \"%s\" -> \"%s\" (expected %d, stored %d)"
+msgstr "Inconsistência de ocorrência na memória de associação em %s para \"%s\" -> \"%s\" (esperado %d, armazenado %d)"
+
+#: suggestionmanager.sassociationmemoryoccurrencemismatch
+msgid "Association memory reference occurrences do not match translation counts"
+msgstr "As ocorrências por referência da memória de associação não correspondem às contagens de tradução"
+
 #: suggestionmanager.sassociationmemoryorphanphrases
 msgctxt "suggestionmanager.sassociationmemoryorphanphrases"
 msgid "Association memory contains orphan phrases"
 msgstr "A memória de associação contém locuções órfãs"
+
+#: suggestionmanager.sassociationmemoryorphanoccurrencereferences
+msgid "Association memory contains occurrence references not found in the project"
+msgstr "A memória de associação contém referências de ocorrência que não existem no projeto"
 
 #: suggestionmanager.sassociationmemoryorphansyntagmmappings
 msgctxt "suggestionmanager.sassociationmemoryorphansyntagmmappings"
@@ -3287,6 +3337,11 @@ msgstr "A reconstrução da memória de associação não foi preparada"
 msgctxt "suggestionmanager.sassociationmemoryunexpectedpairfmt"
 msgid "Association memory contains unexpected pair \"%s\" -> \"%s\""
 msgstr "A memória de associação contém o par inesperado \"%s\" -> \"%s\""
+
+#: suggestionmanager.sassociationmemoryunexpectedoccurrencefmt
+#, object-pascal-format
+msgid "Association memory contains an unexpected occurrence at %s: \"%s\" -> \"%s\""
+msgstr "A memória de associação contém uma ocorrência inesperada em %s: \"%s\" -> \"%s\""
 
 #: suggestionmanager.sassociationmemoryunexpectedphraseidsfmt
 #, object-pascal-format

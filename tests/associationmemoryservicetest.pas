@@ -83,6 +83,9 @@ begin
     Connection.ExecuteDirect('insert into pares values (' +
       '''1,1,1'', ''Gen 1:1'', ''source<WG1>'', ''target'', '''', '''', ' +
       '''<par a="0" b="0">'', 0, '''')');
+    Connection.ExecuteDirect('insert into pares values (' +
+      '''1,1,2'', ''Gen 1:2'', ''source'', ''target'', '''', '''', ' +
+      '''<par a="0" b="0">'', 0, '''')');
     Transaction.Commit;
   finally
     Transaction.Free;
@@ -163,6 +166,10 @@ begin
     FService.MarkSourceDirty;
     FPersistence.CommitInfo;
     FPersistence.CommitPairs;
+    AssertTrue('Source revision must be present after the canonical commit',
+      FPersistence.InfoTable.Locate('id',
+      ASSOCIATION_MEMORY_SOURCE_REVISION_KEY, []));
+    AssertEquals('1', FPersistence.InfoTable.FieldByName('valor').AsString);
     FService.MarkSourceRevisionPersisted;
     FService.BeginRebuild;
     FService.AddVerse('1,1,1', 'Gen 1:1', 'source<WG1>', 'target',
@@ -177,13 +184,22 @@ begin
     FManager.Commit;
     AssertTrue(FService.StageBuiltRevision);
     FPersistence.CommitInfo;
+    AssertTrue('Source revision must remain present after publishing cache',
+      FPersistence.InfoTable.Locate('id',
+      ASSOCIATION_MEMORY_SOURCE_REVISION_KEY, []));
+    AssertEquals('1', FPersistence.InfoTable.FieldByName('valor').AsString);
     FService.CommitCompleted;
     AssertTrue(FService.RevisionsMatch);
 
     CloseServices;
     OpenServices;
-    AssertFalse('Matching durable revisions must survive reopen',
-      FService.NeedsRebuild);
+    AssertEquals('Published cache version must survive reopen',
+      ASSOCIATION_MEMORY_CACHE_VERSION,
+      FConfig.ReadString(ASSOCIATION_MEMORY_CACHE_VERSION_KEY, ''));
+    AssertFalse(Format('Matching durable revisions must survive reopen ' +
+      '(source=%s, built=%s, version=%s)', [FService.SourceRevision,
+      FService.BuiltRevision, FConfig.ReadString(
+      ASSOCIATION_MEMORY_CACHE_VERSION_KEY, '')]), FService.NeedsRebuild);
     AssertTrue('Matching published revisions must retain the validation ' +
       'certificate on reopen', FService.CacheValidated);
     FService.ValidateCurrentCache;

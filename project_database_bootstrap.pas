@@ -24,7 +24,7 @@ implementation
 {$INCLUDE include/bookdefs.inc}
 
 const
-  ProjectSchemaStatements: array[0..9] of string = (
+  ProjectSchemaStatements: array[0..10] of string = (
     'CREATE TABLE traducoes (' +
     ' trad_lori_id integer not null,' +
     ' trad_ldes_id integer not null,' +
@@ -65,14 +65,23 @@ const
     ' id text primary key,' +
     ' valor text' +
     ')',
+    'CREATE TABLE association_memory_occurrences (' +
+    ' amo_reference text not null,' +
+    ' amo_source text not null,' +
+    ' amo_target text not null,' +
+    ' amo_occurrences integer not null,' +
+    ' primary key (amo_reference, amo_source, amo_target)' +
+    ')',
     'CREATE UNIQUE INDEX trad_uk on traducoes(trad_lori_id, trad_ldes_id)',
     'CREATE UNIQUE INDEX slor_uk on sintagmas_locucoes_origem(slor_lori_id, slor_sori_id, slor_ordem)',
     'CREATE UNIQUE INDEX slde_uk on sintagmas_locucoes_destino(slde_ldes_id, slde_sdes_id, slde_ordem)'
   );
 
-  ProjectSchemaIndexStatements: array[0..1] of string = (
+  ProjectSchemaIndexStatements: array[0..2] of string = (
     'CREATE INDEX lori_locucao_idx ON locucoes_origem (lori_locucao)',
-    'CREATE INDEX ldes_locucao_idx ON locucoes_destino (ldes_locucao)'
+    'CREATE INDEX ldes_locucao_idx ON locucoes_destino (ldes_locucao)',
+    'CREATE INDEX association_memory_occurrence_pair_idx ON ' +
+      'association_memory_occurrences (amo_source, amo_target, amo_reference)'
   );
 
 resourcestring

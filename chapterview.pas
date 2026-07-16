@@ -9,7 +9,8 @@ uses
   LazUTF8, BibleScope, Project, Verse, Syntagm, PCRE, Controls, Menus, fgl, Dialogs, Math, Contnrs, KMemo,
   KEditCommon, KGraphics, KDialogs, FormInterlinearVerseRules,
   LCLTranslator, LazLogger, HTMLRenderer, CommentsView, SynEdit,
-  theword_syntax_highlighter, bible_book_names, translation_memory_model;
+  theword_syntax_highlighter, bible_book_names, translation_memory_model,
+  SuggestionManager;
 
 type
 
@@ -103,6 +104,11 @@ type
     FTranslationMemoryEntries: TTranslationMemoryEntryArray;
     FTranslationMemoryEntryBlocks: TTranslationMemoryIntegerArray;
     FTranslationMemoryPairsSnapshot: string;
+    FTranslationMemoryShowingOccurrences: Boolean;
+    FTranslationMemoryOccurrenceMatches: TTranslationPairMatchArray;
+    FTranslationMemoryOccurrenceSource: string;
+    FTranslationMemoryOccurrenceTranslation: string;
+    FTranslationMemoryOccurrenceLimit: Integer;
 
     function GetInterlinearMode: TInterlinearMode;
     function GetParagraphMode: TParagraphMode;
@@ -121,6 +127,10 @@ type
     procedure HandleNoteLinkClick(sender: TObject);
     procedure HandleNoteClick(sender: TObject);
     procedure HandleTranslationMemoryEntryClick(Sender: TObject);
+    procedure HandleTranslationMemoryAlternativeClick(Sender: TObject);
+    procedure HandleTranslationMemoryBackClick(Sender: TObject);
+    procedure HandleTranslationMemoryOccurrenceClick(Sender: TObject);
+    procedure HandleTranslationMemoryShowMoreClick(Sender: TObject);
     procedure HandleVerseChange(Sender: TProject);
     procedure HandleKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure HandlePopupKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
@@ -147,6 +157,8 @@ type
     function GetPreviousParagraphBlock: TKMemoParagraph;
     procedure SetTextType(AValue: TTipoTextoBiblico);
     procedure RenderTranslationMemory;
+    procedure RenderTranslationMemoryOccurrences;
+    procedure ResetTranslationMemoryOccurrences;
     procedure ClearTranslationMemoryHighlight;
   protected
     procedure SetEnabled(Value: Boolean); override;
@@ -198,6 +210,14 @@ resourcestring
   STranslationMemoryNoSourceWords =
     'No source words are available for this verse.';
   STranslationMemoryErrorFmt = 'Translation memory is unavailable: %s';
+  STranslationMemoryBack = 'Back to translation memory';
+  STranslationMemoryOccurrencesTitleFmt = '%s → %s';
+  STranslationMemoryOccurrenceTotalsFmt =
+    '%d associations in %d verses';
+  STranslationMemoryOccurrenceCountFmt = '%d occurrences';
+  STranslationMemoryNoOccurrences =
+    'No verse currently uses this translation.';
+  STranslationMemoryShowMoreFmt = 'Show 100 more (%d remaining)';
 
 implementation
 
@@ -727,6 +747,81 @@ begin
       SourceVerse.Syntagms[SyntagmIndex].ToggleStrongHighlight(True);
 end;
 
+procedure TChapterView.HandleTranslationMemoryAlternativeClick(
+  Sender: TObject);
+var
+  AlternativeIndex: Integer;
+  EntryIndex: Integer;
+  SeparatorIndex: Integer;
+  URL: string;
+begin
+  if not (Sender is TKMemoHyperlink) then
+    Exit;
+  URL := TKMemoHyperlink(Sender).URL;
+  SeparatorIndex := Pos(':', URL);
+  if SeparatorIndex <= 1 then
+    Exit;
+  EntryIndex := StrToIntDef(Copy(URL, 1, SeparatorIndex - 1), -1);
+  AlternativeIndex := StrToIntDef(Copy(URL, SeparatorIndex + 1, MaxInt), -1);
+  if (EntryIndex < 0) or
+     (EntryIndex >= Length(FTranslationMemoryEntries)) or
+     (AlternativeIndex < 0) or
+     (AlternativeIndex >= Length(
+       FTranslationMemoryEntries[EntryIndex].Alternatives)) then
+    Exit;
+  with FTranslationMemoryEntries[EntryIndex].Alternatives[AlternativeIndex] do
+  begin
+    if (Occurrences <= 0) or (Length(Matches) = 0) then
+      Exit;
+    FTranslationMemoryOccurrenceTranslation := Translation;
+    FTranslationMemoryOccurrenceMatches := Copy(Matches, 0, Length(Matches));
+  end;
+  FTranslationMemoryOccurrenceSource :=
+    FTranslationMemoryEntries[EntryIndex].DisplayTerm;
+  FTranslationMemoryOccurrenceLimit := 100;
+  FTranslationMemoryShowingOccurrences := True;
+  ClearTranslationMemoryHighlight;
+  RenderTranslationMemoryOccurrences;
+  TopPos := 0;
+end;
+
+procedure TChapterView.HandleTranslationMemoryBackClick(Sender: TObject);
+begin
+  ResetTranslationMemoryOccurrences;
+  RenderTranslationMemory;
+  TopPos := 0;
+end;
+
+procedure TChapterView.HandleTranslationMemoryOccurrenceClick(
+  Sender: TObject);
+var
+  ReferenceID: string;
+begin
+  if not Assigned(FProject) or not (Sender is TKMemoHyperlink) then
+    Exit;
+  ReferenceID := TKMemoHyperlink(Sender).URL;
+  FProject.GoToReference(ReferenceID);
+end;
+
+procedure TChapterView.HandleTranslationMemoryShowMoreClick(Sender: TObject);
+var
+  PreviousTop: Integer;
+begin
+  PreviousTop := TopPos;
+  Inc(FTranslationMemoryOccurrenceLimit, 100);
+  RenderTranslationMemoryOccurrences;
+  TopPos := PreviousTop;
+end;
+
+procedure TChapterView.ResetTranslationMemoryOccurrences;
+begin
+  FTranslationMemoryShowingOccurrences := False;
+  SetLength(FTranslationMemoryOccurrenceMatches, 0);
+  FTranslationMemoryOccurrenceSource := '';
+  FTranslationMemoryOccurrenceTranslation := '';
+  FTranslationMemoryOccurrenceLimit := 100;
+end;
+
 procedure TChapterView.HandleVerseChange(Sender: TProject);
 var
   verses: TStringList;
@@ -737,8 +832,13 @@ begin
   ClearTranslationMemoryHighlight;
   if FViewMode = cvmTranslationMemory then
   begin
-    RenderTranslationMemory;
-    TopPos := 0;
+    if FTranslationMemoryShowingOccurrences then
+      RenderTranslationMemoryOccurrences
+    else
+    begin
+      RenderTranslationMemory;
+      TopPos := 0;
+    end;
     Exit;
   end;
 
@@ -905,6 +1005,7 @@ procedure TChapterView.SetProject(AValue: TProject);
 begin
   if FProject = AValue then Exit;
   ClearTranslationMemoryHighlight;
+  ResetTranslationMemoryOccurrences;
   if Assigned(FProject) then
     FProject.OnNewVerseUnsubscribe(@HandleVerseChange);
   FProject := AValue;
@@ -942,8 +1043,13 @@ begin
   if Enabled and Assigned(FProject) and
      (FViewMode = cvmTranslationMemory) then
   begin
-    RenderTranslationMemory;
-    TopPos := 0;
+    if FTranslationMemoryShowingOccurrences then
+      RenderTranslationMemoryOccurrences
+    else
+    begin
+      RenderTranslationMemory;
+      TopPos := 0;
+    end;
   end;
 end;
 
@@ -1254,6 +1360,7 @@ begin
   if assigned(FProject) and not Value and Enabled then
   begin
     ClearTranslationMemoryHighlight;
+    ResetTranslationMemoryOccurrences;
     FProject.OnNewVerseUnsubscribe(@HandleVerseChange);
     FProject := nil;
   end;
@@ -1284,6 +1391,9 @@ begin
   SetLength(FTranslationMemoryEntries, 0);
   SetLength(FTranslationMemoryEntryBlocks, 0);
   FTranslationMemoryPairsSnapshot := '';
+  FTranslationMemoryShowingOccurrences := False;
+  SetLength(FTranslationMemoryOccurrenceMatches, 0);
+  FTranslationMemoryOccurrenceLimit := 100;
   InitPopupMenu;
 
   FRawMemo    := TRawChapterMemo.Create(Parent, Self);
@@ -1322,7 +1432,10 @@ procedure TChapterView.RefreshTranslationMemory;
 begin
   if Enabled and Assigned(FProject) and
      (FViewMode = cvmTranslationMemory) then
-    RenderTranslationMemory;
+    if FTranslationMemoryShowingOccurrences then
+      RenderTranslationMemoryOccurrences
+    else
+      RenderTranslationMemory;
 end;
 
 procedure TChapterView.FocusTranslationMemoryForSyntagm(
@@ -1336,7 +1449,8 @@ var
   SourceVerse: TVerse;
 begin
   if not Enabled or not Assigned(FProject) or
-     (FViewMode <> cvmTranslationMemory) then
+     (FViewMode <> cvmTranslationMemory) or
+     FTranslationMemoryShowingOccurrences then
     Exit;
 
   SourceVerse := FProject.VerseObjects[tbOrigem];
@@ -1385,12 +1499,147 @@ begin
     SourceVerse.DisableStrongHighlight;
 end;
 
+procedure TChapterView.RenderTranslationMemoryOccurrences;
+var
+  BlockBounds: TRect;
+  CurrentBlockIndex: Integer;
+  ErrorMessage: string;
+  ItemIndex: Integer;
+  LinkBlock: TKMemoHyperlink;
+  OccurrencePage: TTranslationOccurrencePage;
+  Remaining: Integer;
+  TextBlock: TKMemoTextBlock;
+begin
+  if not Assigned(FProject) then
+    Exit;
+
+  FRawMemo.Hide;
+  if not FProject.TryGetTranslationMemoryOccurrences(
+    FTranslationMemoryOccurrenceMatches,
+    FTranslationMemoryOccurrenceLimit, OccurrencePage, ErrorMessage) then
+  begin
+    OccurrencePage.TotalAssociations := 0;
+    OccurrencePage.TotalVerses := 0;
+    OccurrencePage.HasMore := False;
+    SetLength(OccurrencePage.Items, 0);
+  end;
+
+  CurrentBlockIndex := -1;
+  Blocks.LockUpdate;
+  try
+    Blocks.Clear;
+    ResetStyleStack;
+
+    LinkBlock := Blocks.AddHyperlink(STranslationMemoryBack, 'back');
+    LinkBlock.OnClick := @HandleTranslationMemoryBackClick;
+    LinkBlock.TextStyle.Font.Color := NoteLinkColor;
+    LinkBlock.TextStyle.Font.Style := [fsUnderline];
+    with Blocks.AddParagraph().ParaStyle do
+    begin
+      FirstIndent := 0;
+      BottomPadding := 8;
+    end;
+
+    TextBlock := Blocks.AddTextBlock(Format(
+      STranslationMemoryOccurrencesTitleFmt,
+      [FTranslationMemoryOccurrenceSource,
+       FTranslationMemoryOccurrenceTranslation]));
+    TextBlock.TextStyle.Font.Name := 'default';
+    TextBlock.TextStyle.Font.Size := TextStyle.Font.Size + 2;
+    TextBlock.TextStyle.Font.Bold := True;
+    TextBlock.TextStyle.Font.Color := NonBibleTextColor;
+    Blocks.AddParagraph().ParaStyle.FirstIndent := 0;
+
+    if ErrorMessage <> '' then
+    begin
+      TextBlock := Blocks.AddTextBlock(Format(
+        STranslationMemoryErrorFmt, [ErrorMessage]));
+      TextBlock.TextStyle.Font.Color := clRed;
+      Blocks.AddParagraph().ParaStyle.FirstIndent := 0;
+      Exit;
+    end;
+
+    TextBlock := Blocks.AddTextBlock(Format(
+      STranslationMemoryOccurrenceTotalsFmt,
+      [OccurrencePage.TotalAssociations, OccurrencePage.TotalVerses]));
+    TextBlock.TextStyle.Font.Color := clGray;
+    with Blocks.AddParagraph().ParaStyle do
+    begin
+      FirstIndent := 0;
+      BottomPadding := 10;
+    end;
+
+    if Length(OccurrencePage.Items) = 0 then
+    begin
+      TextBlock := Blocks.AddTextBlock(STranslationMemoryNoOccurrences);
+      TextBlock.TextStyle.Font.Italic := True;
+      TextBlock.TextStyle.Font.Color := clGray;
+      Blocks.AddParagraph().ParaStyle.FirstIndent := 0;
+      Exit;
+    end;
+
+    for ItemIndex := 0 to Length(OccurrencePage.Items) - 1 do
+      with OccurrencePage.Items[ItemIndex] do
+      begin
+        if ReferenceID = FProject.ID then
+          CurrentBlockIndex := Blocks.Count;
+        LinkBlock := Blocks.AddHyperlink(DisplayReference, ReferenceID);
+        LinkBlock.OnClick := @HandleTranslationMemoryOccurrenceClick;
+        LinkBlock.TextStyle.Font.Color := NoteLinkColor;
+        LinkBlock.TextStyle.Font.Style := [fsUnderline];
+        if ReferenceID = FProject.ID then
+        begin
+          LinkBlock.TextStyle.Font.Style := [fsBold, fsUnderline];
+          LinkBlock.TextStyle.Font.Color := ChapterNumberColor;
+        end;
+        if Occurrences > 1 then
+        begin
+          TextBlock := Blocks.AddTextBlock(' (' + Format(
+            STranslationMemoryOccurrenceCountFmt, [Occurrences]) + ')');
+          TextBlock.TextStyle.Font.Color := clGray;
+        end;
+        if DestinationText <> '' then
+          Blocks.AddTextBlock(' — ' + DestinationText);
+        with Blocks.AddParagraph().ParaStyle do
+        begin
+          FirstIndent := 0;
+          BottomPadding := 5;
+        end;
+      end;
+
+    if OccurrencePage.HasMore then
+    begin
+      Remaining := OccurrencePage.TotalVerses -
+        Length(OccurrencePage.Items);
+      LinkBlock := Blocks.AddHyperlink(Format(
+        STranslationMemoryShowMoreFmt, [Remaining]), 'more');
+      LinkBlock.OnClick := @HandleTranslationMemoryShowMoreClick;
+      LinkBlock.TextStyle.Font.Color := NoteLinkColor;
+      LinkBlock.TextStyle.Font.Style := [fsUnderline];
+      with Blocks.AddParagraph().ParaStyle do
+      begin
+        FirstIndent := 0;
+        TopPadding := 8;
+      end;
+    end;
+  finally
+    Blocks.UnLockUpdate;
+  end;
+
+  if (CurrentBlockIndex >= 0) and
+     (CurrentBlockIndex < Blocks.Count) then
+  begin
+    TopPos := 0;
+    BlockBounds := BlockRect(Blocks[CurrentBlockIndex]);
+    TopPos := BlockBounds.Top;
+  end;
+end;
+
 procedure TChapterView.RenderTranslationMemory;
 var
   ErrorMessage: string;
   EntryIndex: Integer;
   AlternativeIndex: Integer;
-  AlternativeText: string;
   MetadataText: string;
   TextBlock: TKMemoTextBlock;
   LinkBlock: TKMemoHyperlink;
@@ -1504,19 +1753,45 @@ begin
           with FTranslationMemoryEntries[EntryIndex].Alternatives[
             AlternativeIndex] do
           begin
-            AlternativeText := Format('%s (%d',
-              [Translation, Occurrences]);
-            if IsCurrent then
-              AlternativeText := AlternativeText + ', ' +
-                STranslationMemoryCurrent;
-            AlternativeText := AlternativeText + ')';
-            TextBlock := Blocks.AddTextBlock(AlternativeText);
+            TextBlock := Blocks.AddTextBlock(Translation + ' (');
             if IsCurrent then
             begin
               TextBlock.TextStyle.Font.Bold := True;
               TextBlock.TextStyle.Font.Color :=
                 TranslationMemoryCurrentColor;
             end;
+
+            if (Occurrences > 0) and (Length(Matches) > 0) then
+            begin
+              LinkBlock := Blocks.AddHyperlink(IntToStr(Occurrences),
+                IntToStr(EntryIndex) + ':' + IntToStr(AlternativeIndex));
+              LinkBlock.OnClick := @HandleTranslationMemoryAlternativeClick;
+              LinkBlock.TextStyle.Font.Color := NoteLinkColor;
+              LinkBlock.TextStyle.Font.Style := [fsUnderline];
+              if IsCurrent then
+                LinkBlock.TextStyle.Font.Style := [fsBold, fsUnderline];
+            end
+            else
+            begin
+              TextBlock := Blocks.AddTextBlock(IntToStr(Occurrences));
+              if IsCurrent then
+              begin
+                TextBlock.TextStyle.Font.Bold := True;
+                TextBlock.TextStyle.Font.Color :=
+                  TranslationMemoryCurrentColor;
+              end;
+            end;
+
+            if IsCurrent then
+            begin
+              TextBlock := Blocks.AddTextBlock(', ' +
+                STranslationMemoryCurrent + ')');
+              TextBlock.TextStyle.Font.Bold := True;
+              TextBlock.TextStyle.Font.Color :=
+                TranslationMemoryCurrentColor;
+            end;
+            if not IsCurrent then
+              Blocks.AddTextBlock(')');
           end;
         end;
         Blocks.AddParagraph().ParaStyle.FirstIndent := 8;

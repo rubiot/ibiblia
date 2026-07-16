@@ -1745,6 +1745,62 @@ msgid "Forward in navigation history"
 msgstr ""
 
 
+#: chapterview.stranslationmemoryback
+msgid "Back to translation memory"
+msgstr ""
+
+#: chapterview.stranslationmemorynooccurrences
+msgid "No verse currently uses this translation."
+msgstr ""
+
+#: chapterview.stranslationmemoryoccurrencecountfmt
+#, object-pascal-format
+msgid "%d occurrences"
+msgstr ""
+
+#: chapterview.stranslationmemoryoccurrencestitlefmt
+#, object-pascal-format
+msgid "%s → %s"
+msgstr ""
+
+#: chapterview.stranslationmemoryoccurrencetotalsfmt
+#, object-pascal-format
+msgid "%d associations in %d verses"
+msgstr ""
+
+#: chapterview.stranslationmemoryshowmorefmt
+#, object-pascal-format
+msgid "Show 100 more (%d remaining)"
+msgstr ""
+
+#: suggestionmanager.sassociationmemorymissingoccurrencesfmt
+#, object-pascal-format
+msgid "Association memory is missing reference occurrences (expected %d, stored %d)"
+msgstr ""
+
+#: suggestionmanager.sassociationmemorynonpositiveoccurrencereferences
+msgid "Association memory contains non-positive reference occurrence counts"
+msgstr ""
+
+#: suggestionmanager.sassociationmemoryoccurrencecountmismatchfmt
+#, object-pascal-format
+msgid "Association memory occurrence mismatch at %s for \"%s\" -> \"%s\" (expected %d, stored %d)"
+msgstr ""
+
+#: suggestionmanager.sassociationmemoryoccurrencemismatch
+msgid "Association memory reference occurrences do not match translation counts"
+msgstr ""
+
+#: suggestionmanager.sassociationmemoryorphanoccurrencereferences
+msgid "Association memory contains occurrence references not found in the project"
+msgstr ""
+
+#: suggestionmanager.sassociationmemoryunexpectedoccurrencefmt
+#, object-pascal-format
+msgid "Association memory contains an unexpected occurrence at %s: \"%s\" -> \"%s\""
+msgstr ""
+
+
 #: tfrmprincipal.actionhistoryback.caption
 msgctxt "tfrmprincipal.actionhistoryback.caption"
 msgid "Back"

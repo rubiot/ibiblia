@@ -33,6 +33,7 @@ type
     function SaveAssociationsValue(Suggester: TSuggestionManager;
       SourceVerse, DestinationVerse: TVerse;
       MemoryService: TAssociationMemoryService;
+      const ReferenceID: string;
       const CurrentAssociations: string): Boolean;
     function SaveComments(Persistence: TProjectPersistence;
       CommentsControl: TControl): Boolean;
@@ -67,7 +68,8 @@ type
     procedure RemoveOldAssociations(Suggester: TSuggestionManager; SourceVerse, DestinationVerse: TVerse);
     function SaveAssociations(Suggester: TSuggestionManager;
       SourceVerse, DestinationVerse: TVerse;
-      MemoryService: TAssociationMemoryService = nil): Boolean;
+      MemoryService: TAssociationMemoryService = nil;
+      const ReferenceID: string = ''): Boolean;
     function SaveBeforeScroll(Persistence: TProjectPersistence; Suggester: TSuggestionManager;
       VerseMemo: TVerseMemo; CommentsControl: TControl;
       const VerseViews: array of TVerse; const TextFieldIndexes: array of Integer;
@@ -404,7 +406,7 @@ end;
 
 function TCurrentVerseWorkspace.SaveAssociations(
   Suggester: TSuggestionManager; SourceVerse, DestinationVerse: TVerse;
-  MemoryService: TAssociationMemoryService): Boolean;
+  MemoryService: TAssociationMemoryService; const ReferenceID: string): Boolean;
 var
   CurrentAssociations: string;
 begin
@@ -418,13 +420,14 @@ begin
   // created TVerse has no syntagm list yet, so reading Pares is not valid.
   CurrentAssociations := SourceVerse.Pares;
   Result := SaveAssociationsValue(Suggester, SourceVerse, DestinationVerse,
-    MemoryService, CurrentAssociations);
+    MemoryService, ReferenceID, CurrentAssociations);
 end;
 
 function TCurrentVerseWorkspace.SaveAssociationsValue(
   Suggester: TSuggestionManager;
   SourceVerse, DestinationVerse: TVerse;
   MemoryService: TAssociationMemoryService;
+  const ReferenceID: string;
   const CurrentAssociations: string): Boolean;
 var
   Pairs: TStringList;
@@ -506,7 +509,8 @@ begin
             while Difference > 0 do
             begin
               if Assigned(MemoryService) then
-                MemoryService.ApplyRemovePair(FOldPairs[PairIndex],
+                MemoryService.ApplyRemovePair(ReferenceID,
+                  FOldPairs[PairIndex],
                   FOldPairs[PairIndex + 1])
               else
                 Suggester.RemovePair(FOldPairs[PairIndex],
@@ -527,7 +531,7 @@ begin
           while Difference > 0 do
           begin
             if Assigned(MemoryService) then
-              MemoryService.ApplyAddPair(Pairs[PairIndex],
+              MemoryService.ApplyAddPair(ReferenceID, Pairs[PairIndex],
                 Pairs[PairIndex + 1])
             else
               Suggester.AddPair(Pairs[PairIndex], Pairs[PairIndex + 1]);
@@ -566,6 +570,7 @@ var
   SourceTextChanged: Boolean;
   DestinationTextChanged: Boolean;
   CurrentAssociations: string;
+  ReferenceID: string;
 begin
   Result := False;
   SourceVerse := GetVerseView(VerseViews, SourceVerseIndex);
@@ -591,9 +596,12 @@ begin
   AssociationWasChanged := AssociationsChanged(SourceVerse,
     CurrentAssociations);
 
+  ReferenceID := '';
+  if Assigned(Persistence) then
+    ReferenceID := Persistence.CurrentPairId;
   if AssociationWasChanged then
     SaveAssociationsValue(Suggester, SourceVerse, DestinationVerse,
-      MemoryService, CurrentAssociations);
+      MemoryService, ReferenceID, CurrentAssociations);
   Result := AssociationWasChanged or SourceTextChanged or
     DestinationTextChanged;
   if AssociationWasChanged or SourceTextChanged or DestinationTextChanged then

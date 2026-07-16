@@ -42,6 +42,10 @@ type
     procedure TranslationMemoryModelGroupsAndMarksCurrentAlternatives;
     procedure TranslationMemoryModelSortsByHistoricalFrequency;
     procedure TranslationMemoryOrderValueFallsBackSafely;
+    procedure OccurrenceIndexTracksReferencesAndPagination;
+    procedure OccurrenceIndexConsolidatesExactMatches;
+    procedure OccurrenceIndexRollbackPreservesPreviousData;
+    procedure PreparedRebuildValidationDetectsOccurrenceMismatch;
   end;
 
 implementation
@@ -71,6 +75,15 @@ begin
   FConnection.ExecuteDirect('create table locucoes_destino (' +
     'ldes_id integer not null primary key, ldes_qtde_sintagmas integer, ' +
     'ldes_locucao varchar(200) unique)');
+  FConnection.ExecuteDirect('create table pares (' +
+    'pare_id text primary key, pare_ref text, pare_texto_origem text, ' +
+    'pare_texto_destino text, pare_texto_consulta1 text, ' +
+    'pare_texto_consulta2 text, pare_pares text, pare_situacao number, ' +
+    'pare_comentarios text)');
+  FConnection.ExecuteDirect('insert into pares values ' +
+    '(''1,1,1'', ''1,1,1'', '''', ''first destination'', '''', '''', '''', 0, ''''), ' +
+    '(''1,1,2'', ''1,1,2'', '''', ''second destination'', '''', '''', '''', 0, ''''), ' +
+    '(''1,1,3'', ''1,1,3'', '''', ''third destination'', '''', '''', '''', 0, '''')');
   FConnection.ExecuteDirect(
     'create unique index trad_uk on traducoes(trad_lori_id, trad_ldes_id)');
   FConnection.ExecuteDirect(
@@ -785,6 +798,113 @@ begin
   AssertEquals(Ord(tmoMemoryFrequencyAscending),
     Ord(TranslationMemoryOrderFromInteger(
       Ord(tmoMemoryFrequencyAscending))));
+end;
+
+procedure TSuggestionManagerTest.OccurrenceIndexTracksReferencesAndPagination;
+var
+  Alternatives: TTranslationAlternativeDataArray;
+  Page: TTranslationOccurrencePage;
+begin
+  FManager.AddPairForReference('1,1,1', '<wg1>', 'word');
+  FManager.AddPairForReference('1,1,1', '<wg1>', 'word');
+  FManager.AddPairForReference('1,1,2', '<wg1>', 'word');
+
+  Alternatives := FManager.GetTranslationAlternativeData('<wg1>');
+  AssertEquals(1, Length(Alternatives));
+  AssertEquals(3, Alternatives[0].Occurrences);
+  AssertEquals(1, Length(Alternatives[0].Matches));
+
+  Page := FManager.GetTranslationOccurrences(
+    Alternatives[0].Matches, 1);
+  AssertEquals(3, Page.TotalAssociations);
+  AssertEquals(2, Page.TotalVerses);
+  AssertTrue(Page.HasMore);
+  AssertEquals(1, Length(Page.Items));
+  AssertEquals('1,1,1', Page.Items[0].ReferenceID);
+  AssertEquals(2, Page.Items[0].Occurrences);
+  AssertEquals('first destination', Page.Items[0].DestinationText);
+
+  Page := FManager.GetTranslationOccurrences(
+    Alternatives[0].Matches, 100);
+  AssertFalse(Page.HasMore);
+  AssertEquals(2, Length(Page.Items));
+  AssertEquals('1,1,2', Page.Items[1].ReferenceID);
+
+  FManager.RemovePairForReference('1,1,1', '<wg1>', 'word');
+  Page := FManager.GetTranslationOccurrences(
+    Alternatives[0].Matches, 100);
+  AssertEquals(2, Page.TotalAssociations);
+  AssertEquals(1, Page.Items[0].Occurrences);
+
+  FManager.RemovePairForReference('1,1,1', '<wg1>', 'word');
+  FManager.RemovePairForReference('1,1,1', '<wg1>', 'word');
+  Page := FManager.GetTranslationOccurrences(
+    Alternatives[0].Matches, 100);
+  AssertEquals(1, Page.TotalAssociations);
+  AssertEquals(1, Page.TotalVerses);
+  AssertEquals('1,1,2', Page.Items[0].ReferenceID);
+end;
+
+procedure TSuggestionManagerTest.OccurrenceIndexConsolidatesExactMatches;
+var
+  Alternatives: TTranslationAlternativeDataArray;
+  Page: TTranslationOccurrencePage;
+begin
+  FManager.AddPairForReference('1,1,1', '<wg1><wtn-a>', 'word');
+  FManager.AddPairForReference('1,1,2', '<wg1><wtn-b>', 'word');
+
+  Alternatives := FManager.GetTranslationAlternativeData('<wg1>');
+  AssertEquals(1, Length(Alternatives));
+  AssertEquals(2, Alternatives[0].Occurrences);
+  AssertEquals('Equivalent display alternatives must retain both exact pairs',
+    2, Length(Alternatives[0].Matches));
+
+  Page := FManager.GetTranslationOccurrences(
+    Alternatives[0].Matches, 100);
+  AssertEquals(2, Page.TotalAssociations);
+  AssertEquals(2, Page.TotalVerses);
+  AssertEquals(2, Length(Page.Items));
+end;
+
+procedure TSuggestionManagerTest.OccurrenceIndexRollbackPreservesPreviousData;
+var
+  Alternatives: TTranslationAlternativeDataArray;
+  Page: TTranslationOccurrencePage;
+begin
+  FManager.AddPairForReference('1,1,1', '<wg1>', 'word');
+  FManager.BeginRebuild;
+  try
+    FManager.AddPairForReference('1,1,2', '<wg1>', 'word');
+    FManager.RollbackRebuild;
+  except
+    FManager.RollbackRebuild;
+    raise;
+  end;
+
+  Alternatives := FManager.GetTranslationAlternativeData('<wg1>');
+  Page := FManager.GetTranslationOccurrences(
+    Alternatives[0].Matches, 100);
+  AssertEquals(1, Page.TotalAssociations);
+  AssertEquals(1, Page.TotalVerses);
+  AssertEquals('1,1,1', Page.Items[0].ReferenceID);
+end;
+
+procedure TSuggestionManagerTest.
+  PreparedRebuildValidationDetectsOccurrenceMismatch;
+var
+  ErrorMessage: string;
+begin
+  FManager.BeginRebuild;
+  try
+    FManager.ClearAssociationDatabase;
+    FManager.AddPairForReference('1,1,1', '<wg1>', 'word');
+    FManager.PrepareRebuildValidation;
+    FConnection.ExecuteDirect('update association_memory_occurrences set ' +
+      'amo_occurrences = 2');
+    AssertFalse(FManager.ValidatePreparedRebuild(ErrorMessage));
+  finally
+    FManager.RollbackRebuild;
+  end;
 end;
 
 initialization

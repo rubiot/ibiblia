@@ -182,6 +182,10 @@ msgctxt "chapterview.stranslationmemorycurrent"
 msgid "Current"
 msgstr "Current"
 
+#: chapterview.stranslationmemoryback
+msgid "Back to translation memory"
+msgstr "Back to translation memory"
+
 #: chapterview.stranslationmemoryerrorfmt
 #, object-pascal-format
 msgid "Translation memory is unavailable: %s"
@@ -199,6 +203,30 @@ msgstr "No source words are available for this verse."
 #: chapterview.stranslationmemorynotranslations
 msgid "No translation recorded"
 msgstr "No translation recorded"
+
+#: chapterview.stranslationmemorynooccurrences
+msgid "No verse currently uses this translation."
+msgstr "No verse currently uses this translation."
+
+#: chapterview.stranslationmemoryoccurrencecountfmt
+#, object-pascal-format
+msgid "%d occurrences"
+msgstr "%d occurrences"
+
+#: chapterview.stranslationmemoryoccurrencestitlefmt
+#, object-pascal-format
+msgid "%s → %s"
+msgstr "%s → %s"
+
+#: chapterview.stranslationmemoryoccurrencetotalsfmt
+#, object-pascal-format
+msgid "%d associations in %d verses"
+msgstr "%d associations in %d verses"
+
+#: chapterview.stranslationmemoryshowmorefmt
+#, object-pascal-format
+msgid "Show 100 more (%d remaining)"
+msgstr "Show 100 more (%d remaining)"
 
 #: chapterview.stranslationmemorystrongsfmt
 #, object-pascal-format
@@ -3242,6 +3270,11 @@ msgctxt "suggestionmanager.sassociationmemorymissingexpectedpairs"
 msgid "Association memory is missing expected translation pairs"
 msgstr "Association memory is missing expected translation pairs"
 
+#: suggestionmanager.sassociationmemorymissingoccurrencesfmt
+#, object-pascal-format
+msgid "Association memory is missing reference occurrences (expected %d, stored %d)"
+msgstr "Association memory is missing reference occurrences (expected %d, stored %d)"
+
 #: suggestionmanager.sassociationmemorymissingphrases
 msgctxt "suggestionmanager.sassociationmemorymissingphrases"
 msgid "Association memory contains translations with missing phrases"
@@ -3258,10 +3291,27 @@ msgctxt "suggestionmanager.sassociationmemorynonpositivecounts"
 msgid "Association memory contains non-positive occurrence counts"
 msgstr "Association memory contains non-positive occurrence counts"
 
+#: suggestionmanager.sassociationmemorynonpositiveoccurrencereferences
+msgid "Association memory contains non-positive reference occurrence counts"
+msgstr "Association memory contains non-positive reference occurrence counts"
+
+#: suggestionmanager.sassociationmemoryoccurrencecountmismatchfmt
+#, object-pascal-format
+msgid "Association memory occurrence mismatch at %s for \"%s\" -> \"%s\" (expected %d, stored %d)"
+msgstr "Association memory occurrence mismatch at %s for \"%s\" -> \"%s\" (expected %d, stored %d)"
+
+#: suggestionmanager.sassociationmemoryoccurrencemismatch
+msgid "Association memory reference occurrences do not match translation counts"
+msgstr "Association memory reference occurrences do not match translation counts"
+
 #: suggestionmanager.sassociationmemoryorphanphrases
 msgctxt "suggestionmanager.sassociationmemoryorphanphrases"
 msgid "Association memory contains orphan phrases"
 msgstr "Association memory contains orphan phrases"
+
+#: suggestionmanager.sassociationmemoryorphanoccurrencereferences
+msgid "Association memory contains occurrence references not found in the project"
+msgstr "Association memory contains occurrence references not found in the project"
 
 #: suggestionmanager.sassociationmemoryorphansyntagmmappings
 msgctxt "suggestionmanager.sassociationmemoryorphansyntagmmappings"
@@ -3295,6 +3345,11 @@ msgstr "Association memory rebuild has not been prepared"
 msgctxt "suggestionmanager.sassociationmemoryunexpectedpairfmt"
 msgid "Association memory contains unexpected pair \"%s\" -> \"%s\""
 msgstr "Association memory contains unexpected pair \"%s\" -> \"%s\""
+
+#: suggestionmanager.sassociationmemoryunexpectedoccurrencefmt
+#, object-pascal-format
+msgid "Association memory contains an unexpected occurrence at %s: \"%s\" -> \"%s\""
+msgstr "Association memory contains an unexpected occurrence at %s: \"%s\" -> \"%s\""
 
 #: suggestionmanager.sassociationmemoryunexpectedphraseidsfmt
 #, object-pascal-format

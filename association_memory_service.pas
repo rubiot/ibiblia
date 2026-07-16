@@ -11,7 +11,7 @@ const
   ASSOCIATION_MEMORY_SOURCE_REVISION_KEY = 'association.memory.source_revision';
   ASSOCIATION_MEMORY_BUILT_REVISION_KEY = 'association.memory.built_revision';
   ASSOCIATION_MEMORY_CACHE_VERSION_KEY = 'association.memory.cache_version';
-  ASSOCIATION_MEMORY_CACHE_VERSION = '2';
+  ASSOCIATION_MEMORY_CACHE_VERSION = '3';
 
 type
   { TAssociationMemoryService }
@@ -22,6 +22,7 @@ type
     FManager: TSuggestionManager;
     FRenderBuffer: TVerseRenderBuffer;
     FExpectedPairs: TStringList;
+    FExpectedOccurrences: TStringList;
     FDeltaPairs: TStringList;
     FSkippedReferences: TStringList;
     FSourceRevision: string;
@@ -47,8 +48,10 @@ type
     procedure MarkSourceDirty;
     procedure MarkSourceRevisionPersisted;
     procedure MarkCacheSynchronized;
-    procedure ApplyAddPair(const Source, Target: string);
-    procedure ApplyRemovePair(const Source, Target: string);
+    procedure ApplyAddPair(const Source, Target: string); overload;
+    procedure ApplyAddPair(const ReferenceID, Source, Target: string); overload;
+    procedure ApplyRemovePair(const Source, Target: string); overload;
+    procedure ApplyRemovePair(const ReferenceID, Source, Target: string); overload;
     procedure InvalidateReplay;
     function CanReplayPendingCache: Boolean;
     function CanCommitCompletedRebuild: Boolean;
@@ -105,6 +108,7 @@ constructor TAssociationMemoryService.Create;
 begin
   inherited Create;
   FExpectedPairs := TStringList.Create;
+  FExpectedOccurrences := TStringList.Create;
   FDeltaPairs := TStringList.Create;
   FSkippedReferences := TStringList.Create;
 end;
@@ -113,6 +117,7 @@ destructor TAssociationMemoryService.Destroy;
 begin
   if FRebuildActive and Assigned(FManager) then
     FManager.RollbackRebuild;
+  FExpectedOccurrences.Free;
   FExpectedPairs.Free;
   FDeltaPairs.Free;
   FSkippedReferences.Free;
@@ -146,6 +151,7 @@ begin
   FPendingDirty := False;
   FRebuildActive := False;
   FExpectedPairs.Clear;
+  FExpectedOccurrences.Clear;
   FDeltaPairs.Clear;
   FSkippedReferences.Clear;
   FFullRebuildPending := False;
@@ -216,6 +222,12 @@ begin
 end;
 
 procedure TAssociationMemoryService.ApplyAddPair(const Source, Target: string);
+begin
+  ApplyAddPair('', Source, Target);
+end;
+
+procedure TAssociationMemoryService.ApplyAddPair(const ReferenceID, Source,
+  Target: string);
 var
   CanApplyIncrementally: Boolean;
 begin
@@ -223,7 +235,7 @@ begin
   CanApplyIncrementally := FCacheMatchesSource or
     (FPendingDirty and FReplayReady and not FFullRebuildPending);
   if CanApplyIncrementally then
-    FManager.AddPair(Source, Target);
+    FManager.AddPairForReference(ReferenceID, Source, Target);
   MarkSourceDirty;
   if not CanApplyIncrementally then
   begin
@@ -234,10 +246,14 @@ begin
   begin
     FExpectedPairs.Add(Source);
     FExpectedPairs.Add(Target);
+    FExpectedOccurrences.Add(ReferenceID);
+    FExpectedOccurrences.Add(Source);
+    FExpectedOccurrences.Add(Target);
   end
   else
   begin
     FDeltaPairs.Add('+');
+    FDeltaPairs.Add(ReferenceID);
     FDeltaPairs.Add(Source);
     FDeltaPairs.Add(Target);
   end;
@@ -245,6 +261,12 @@ begin
 end;
 
 procedure TAssociationMemoryService.ApplyRemovePair(const Source,
+  Target: string);
+begin
+  ApplyRemovePair('', Source, Target);
+end;
+
+procedure TAssociationMemoryService.ApplyRemovePair(const ReferenceID, Source,
   Target: string);
 var
   CanApplyIncrementally: Boolean;
@@ -254,7 +276,7 @@ begin
   CanApplyIncrementally := FCacheMatchesSource or
     (FPendingDirty and FReplayReady and not FFullRebuildPending);
   if CanApplyIncrementally then
-    FManager.RemovePair(Source, Target);
+    FManager.RemovePairForReference(ReferenceID, Source, Target);
   MarkSourceDirty;
   if not CanApplyIncrementally then
   begin
@@ -271,10 +293,25 @@ begin
         FExpectedPairs.Delete(PairIndex);
         Break;
       end;
+    PairIndex := 0;
+    while PairIndex < FExpectedOccurrences.Count do
+    begin
+      if (FExpectedOccurrences[PairIndex] = ReferenceID) and
+         (FExpectedOccurrences[PairIndex + 1] = Source) and
+         (FExpectedOccurrences[PairIndex + 2] = Target) then
+      begin
+        FExpectedOccurrences.Delete(PairIndex + 2);
+        FExpectedOccurrences.Delete(PairIndex + 1);
+        FExpectedOccurrences.Delete(PairIndex);
+        Break;
+      end;
+      Inc(PairIndex, 3);
+    end;
   end
   else
   begin
     FDeltaPairs.Add('-');
+    FDeltaPairs.Add(ReferenceID);
     FDeltaPairs.Add(Source);
     FDeltaPairs.Add(Target);
   end;
@@ -308,6 +345,7 @@ begin
   FCacheValidated := False;
   FDeltaPairs.Clear;
   FExpectedPairs.Clear;
+  FExpectedOccurrences.Clear;
   FFullRebuildPending := False;
   FReplayReady := True;
 end;
@@ -339,10 +377,14 @@ begin
       if FFullRebuildPending then
       begin
         FManager.ClearAssociationDatabase;
-        for PairIndex := 0 to FExpectedPairs.Count - 1 do
-          if (PairIndex mod 2) = 0 then
-            FManager.AddPair(FExpectedPairs[PairIndex],
-              FExpectedPairs[PairIndex + 1]);
+        PairIndex := 0;
+        while PairIndex < FExpectedOccurrences.Count do
+        begin
+          FManager.AddPairForReference(FExpectedOccurrences[PairIndex],
+            FExpectedOccurrences[PairIndex + 1],
+            FExpectedOccurrences[PairIndex + 2]);
+          Inc(PairIndex, 3);
+        end;
         FManager.PrepareRebuildValidation;
         if not FManager.ValidatePreparedRebuild(ErrorMessage) then
           raise Exception.Create(ErrorMessage);
@@ -355,8 +397,8 @@ begin
         PairIndex := 0;
         while PairIndex < FDeltaPairs.Count do
         begin
-          SourcePhrase := FDeltaPairs[PairIndex + 1].ToLower;
-          TargetPhrase := FDeltaPairs[PairIndex + 2].ToLower;
+          SourcePhrase := FDeltaPairs[PairIndex + 2].ToLower;
+          TargetPhrase := FDeltaPairs[PairIndex + 3].ToLower;
           PairKey := SourcePhrase + #1 + TargetPhrase;
           DeltaIndex := DeltaCounts.IndexOf(PairKey);
           if DeltaIndex < 0 then
@@ -378,19 +420,19 @@ begin
               SAssociationMemoryDeltaMissingPairFmt,
               [SourcePhrase, TargetPhrase]);
           DeltaCounts.Objects[DeltaIndex] := TObject(PtrInt(ExpectedCount));
-          Inc(PairIndex, 3);
+          Inc(PairIndex, 4);
         end;
 
         PairIndex := 0;
         while PairIndex < FDeltaPairs.Count do
         begin
           if FDeltaPairs[PairIndex] = '+' then
-            FManager.AddPair(FDeltaPairs[PairIndex + 1],
-              FDeltaPairs[PairIndex + 2])
+            FManager.AddPairForReference(FDeltaPairs[PairIndex + 1],
+              FDeltaPairs[PairIndex + 2], FDeltaPairs[PairIndex + 3])
           else
-            FManager.RemovePair(FDeltaPairs[PairIndex + 1],
-              FDeltaPairs[PairIndex + 2]);
-          Inc(PairIndex, 3);
+            FManager.RemovePairForReference(FDeltaPairs[PairIndex + 1],
+              FDeltaPairs[PairIndex + 2], FDeltaPairs[PairIndex + 3]);
+          Inc(PairIndex, 4);
         end;
 
         for DeltaIndex := 0 to DeltaCounts.Count - 1 do
@@ -407,6 +449,8 @@ begin
               SAssociationMemoryDeltaMismatchFmt,
               [SourcePhrase, TargetPhrase, ExpectedCount, ActualCount]);
         end;
+        if not FManager.Validate(ErrorMessage) then
+          raise Exception.Create(ErrorMessage);
       end;
       FManager.CommitRebuild;
       FCacheMatchesSource := True;
@@ -446,6 +490,7 @@ begin
   if not FPendingDirty then
     MarkSourceDirty;
   FExpectedPairs.Clear;
+  FExpectedOccurrences.Clear;
   FDeltaPairs.Clear;
   FSkippedReferences.Clear;
   FFullRebuildPending := True;
@@ -498,7 +543,13 @@ begin
     FExpectedPairs.AddStrings(Pairs);
     for PairIndex := 0 to Pairs.Count - 1 do
       if (PairIndex mod 2) = 0 then
-        FManager.AddPair(Pairs[PairIndex], Pairs[PairIndex + 1]);
+      begin
+        FExpectedOccurrences.Add(ReferenceID);
+        FExpectedOccurrences.Add(Pairs[PairIndex]);
+        FExpectedOccurrences.Add(Pairs[PairIndex + 1]);
+        FManager.AddPairForReference(ReferenceID, Pairs[PairIndex],
+          Pairs[PairIndex + 1]);
+      end;
   finally
     Pairs.Free;
   end;
@@ -567,6 +618,7 @@ begin
   FCacheValidated := True;
   FDeltaPairs.Clear;
   FExpectedPairs.Clear;
+  FExpectedOccurrences.Clear;
   FFullRebuildPending := False;
   FReplayReady := True;
   FSourceRevisionPersisted := False;

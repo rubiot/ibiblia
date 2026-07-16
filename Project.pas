@@ -329,6 +329,10 @@ type
       Order: TTranslationMemoryOrder;
       out Entries: TTranslationMemoryEntryArray;
       out ErrorMessage: string): Boolean;
+    function TryGetTranslationMemoryOccurrences(
+      const Matches: TTranslationPairMatchArray; Limit: Integer;
+      out Occurrences: TTranslationOccurrencePage;
+      out ErrorMessage: string): Boolean;
     function GetChapterText: TStringList;
     procedure CompileInterlinearVerseRules(var rulesRx: TRegexList; var replaceTo: TStringList; mode: TInterlinearMode; exporting: boolean);
     procedure Translate;
@@ -2542,7 +2546,8 @@ begin
   CacheWasCurrent := Assigned(FAssociationMemory) and
     not FAssociationMemory.NeedsRebuild;
   if FCurrentVerseWorkspace.SaveAssociations(FSuggestionManager,
-    FAVersiculo[tbOrigem], FAVersiculo[tbDestino], FAssociationMemory) and
+    FAVersiculo[tbOrigem], FAVersiculo[tbDestino], FAssociationMemory,
+    FPersistence.CurrentPairId) and
     Assigned(FAssociationMemory) then
   begin
     FAssociationMemory.MarkSourceDirty;
@@ -4788,6 +4793,120 @@ begin
     on E: Exception do
     begin
       SetLength(Entries, 0);
+      ErrorMessage := E.Message;
+    end;
+  end;
+end;
+
+function TProject.TryGetTranslationMemoryOccurrences(
+  const Matches: TTranslationPairMatchArray; Limit: Integer;
+  out Occurrences: TTranslationOccurrencePage;
+  out ErrorMessage: string): Boolean;
+var
+  ItemIndex: Integer;
+
+  function PlainDestinationText(const XML: string): string;
+  var
+    Token: TTagSintagma;
+    Tokenizer: TONTTokenizer;
+  begin
+    Result := '';
+    Tokenizer := TTokenizerFactory.CreateTokenizer(TokenizerVersion, XML);
+    try
+      while Tokenizer.LerSintagma(Token) <> tsNulo do
+      begin
+        if Token.tipo = tsTag then
+        begin
+          if Token.valor = '<RF>' then
+          begin
+            Tokenizer.LerAteTag(Token, '<Rf>');
+            Continue;
+          end;
+          if AnsiStartsStr('<TS', Token.valor) then
+          begin
+            Tokenizer.LerAteTag(Token, '<Ts>');
+            Continue;
+          end;
+        end;
+        if Token.tipo in [tsEspaco, tsSintagma, tsPontuacao] then
+          Result := Result + Token.valor;
+      end;
+    finally
+      Tokenizer.Free;
+    end;
+    Result := Trim(Result);
+  end;
+
+  function FormatOccurrenceReference(const ReferenceID: string): string;
+  var
+    BookNumber: Integer;
+    ChapterNumber: Integer;
+    Parts: TStringList;
+    VerseNumber: Integer;
+  begin
+    Result := ReferenceID;
+    Parts := TStringList.Create;
+    try
+      Parts.StrictDelimiter := True;
+      Parts.Delimiter := ',';
+      Parts.DelimitedText := ReferenceID;
+      if (Parts.Count = 3) and TryStrToInt(Parts[0], BookNumber) and
+         TryStrToInt(Parts[1], ChapterNumber) and
+         TryStrToInt(Parts[2], VerseNumber) then
+        Result := Format('%s %d:%d',
+          [LocalizedBookNameByID(BookNumber), ChapterNumber, VerseNumber]);
+    finally
+      Parts.Free;
+    end;
+  end;
+
+begin
+  Result := False;
+  ErrorMessage := '';
+  Occurrences.TotalAssociations := 0;
+  Occurrences.TotalVerses := 0;
+  Occurrences.HasMore := False;
+  SetLength(Occurrences.Items, 0);
+  if not Assigned(FSuggestionManager) or not Assigned(FAssociationMemory) then
+  begin
+    ErrorMessage := SAssociationMemoryUnavailable;
+    Exit;
+  end;
+
+  try
+    EnsureAssociationMemoryFresh;
+    if FAssociationMemoryRebuildRunning or FAssociationMemory.RebuildActive or
+       FAssociationMemory.NeedsRebuild or
+       not FAssociationMemory.CacheValidated then
+    begin
+      ErrorMessage := SAssociationMemoryUnavailable;
+      Exit;
+    end;
+
+    Occurrences := FSuggestionManager.GetTranslationOccurrences(Matches,
+      Limit);
+    for ItemIndex := 0 to Length(Occurrences.Items) - 1 do
+    begin
+      Occurrences.Items[ItemIndex].DisplayReference :=
+        FormatOccurrenceReference(
+          Occurrences.Items[ItemIndex].ReferenceID);
+      if (Occurrences.Items[ItemIndex].ReferenceID = ID) and
+         Assigned(FAVersiculo[tbDestino]) then
+        Occurrences.Items[ItemIndex].DestinationText :=
+          PlainDestinationText(FAVersiculo[tbDestino].XML)
+      else
+        Occurrences.Items[ItemIndex].DestinationText :=
+          PlainDestinationText(
+            Occurrences.Items[ItemIndex].DestinationText);
+    end;
+    Result := True;
+  except
+    on E: Exception do
+    begin
+      Occurrences.TotalAssociations := 0;
+      Occurrences.TotalVerses := 0;
+      Occurrences.HasMore := False;
+      SetLength(Occurrences.Items, 0);
       ErrorMessage := E.Message;
     end;
   end;
