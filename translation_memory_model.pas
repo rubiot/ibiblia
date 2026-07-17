@@ -80,6 +80,20 @@ begin
     Result := StringReplace(Result, '  ', ' ', [rfReplaceAll]);
 end;
 
+function NormalizedTranslationKey(const Value: string): string;
+begin
+  Result := NormalizedKey(NormalizeTranslationDisplay(Value));
+
+  // GetSuggestionKey(plText) marks a word followed by an attached suffix
+  // with a trailing hyphen (for example, "afligem-" before "-vos").
+  // Association memory built from plMetaData falls back to the same word
+  // without that boundary marker. They represent the same translation.
+  Result := StringReplace(Result, '- ', ' ', [rfReplaceAll]);
+  if Result.EndsWith('-') then
+    Delete(Result, Length(Result), 1);
+  Result := Trim(Result);
+end;
+
 function JoinValues(const Values: TStrings; const Separator: string): string;
 var
   ValueIndex: Integer;
@@ -176,6 +190,21 @@ begin
   Result := 'T:' + NormalizedKey(Syntagm.Text);
 end;
 
+function TranslationMemoryLookupKey(Syntagm: TSyntagm): string;
+begin
+  Result := '';
+  if Assigned(Syntagm.Strong) and (Syntagm.Strong.Count > 0) then
+    Result := Syntagm.GetSuggestionKey(plStrong);
+
+  // The canonical memory is built from plMetaData. In source texts without
+  // Strong numbers, querying by plain text misses entries stored under their
+  // morphology/lemma tag, such as <WTnnms l="δοῦλος">.
+  if Result = '' then
+    Result := Syntagm.GetSuggestionKey(plMetaData);
+  if Result = '' then
+    Result := Syntagm.GetSuggestionKey(plText);
+end;
+
 function FindEntry(const Keys: TStrings; const Key: string): Integer;
 begin
   Result := Keys.IndexOf(Key);
@@ -191,12 +220,13 @@ var
   MatchIndex: Integer;
 begin
   DisplayTranslation := NormalizeTranslationDisplay(Alternative.Translation);
-  if DisplayTranslation = '' then
+  if (DisplayTranslation = '') or (Alternative.Occurrences <= 0) then
     Exit;
   AlternativeIndex := -1;
   for MatchIndex := 0 to Length(Entry.Alternatives) - 1 do
-    if NormalizedKey(Entry.Alternatives[MatchIndex].Translation) =
-       NormalizedKey(DisplayTranslation) then
+    if NormalizedTranslationKey(
+         Entry.Alternatives[MatchIndex].Translation) =
+       NormalizedTranslationKey(DisplayTranslation) then
     begin
       AlternativeIndex := MatchIndex;
       Break;
@@ -267,18 +297,13 @@ begin
   if Translation = '' then
     Exit;
   for AlternativeIndex := 0 to Length(Entry.Alternatives) - 1 do
-    if NormalizedKey(Entry.Alternatives[AlternativeIndex].Translation) =
-       NormalizedKey(Translation) then
+    if NormalizedTranslationKey(
+         Entry.Alternatives[AlternativeIndex].Translation) =
+       NormalizedTranslationKey(Translation) then
     begin
       Entry.Alternatives[AlternativeIndex].IsCurrent := True;
       Exit;
     end;
-
-  AlternativeIndex := Length(Entry.Alternatives);
-  SetLength(Entry.Alternatives, AlternativeIndex + 1);
-  Entry.Alternatives[AlternativeIndex].Translation := Translation;
-  Entry.Alternatives[AlternativeIndex].Occurrences := 0;
-  Entry.Alternatives[AlternativeIndex].IsCurrent := True;
 end;
 
 function AlternativeComesBefore(const LeftValue,
@@ -431,9 +456,7 @@ begin
           AddUniqueString(Result[EntryIndex].Strongs, LookupKey);
       AddInteger(Result[EntryIndex].SyntagmIndexes, SyntagmIndex);
 
-      LookupKey := Syntagm.GetSuggestionKey(plStrong);
-      if LookupKey = '' then
-        LookupKey := Syntagm.GetSuggestionKey(plText);
+      LookupKey := TranslationMemoryLookupKey(Syntagm);
       LookupKey := NormalizedKey(LookupKey);
       if LookupKey <> '' then
         AllLookupKeys.Add(LookupKey);
@@ -455,9 +478,7 @@ begin
         for SyntagmIndex in Result[EntryIndex].SyntagmIndexes do
         begin
           Syntagm := SourceVerse.Syntagms[SyntagmIndex];
-          LookupKey := Syntagm.GetSuggestionKey(plStrong);
-          if LookupKey = '' then
-            LookupKey := Syntagm.GetSuggestionKey(plText);
+          LookupKey := TranslationMemoryLookupKey(Syntagm);
           LookupKey := NormalizedKey(LookupKey);
           if EntryLookupKeys.IndexOf(LookupKey) < 0 then
           begin

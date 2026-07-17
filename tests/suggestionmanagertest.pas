@@ -48,6 +48,8 @@ type
     procedure StructuredTranslationAlternativesPreserveCountsAndOrder;
     procedure PreloadedTranslationAlternativesAreCompleteAndInvalidated;
     procedure TranslationMemoryModelGroupsAndMarksCurrentAlternatives;
+    procedure TranslationMemoryModelUsesMetadataWithoutStrong;
+    procedure TranslationMemoryModelMatchesCurrentSuffixHyphen;
     procedure TranslationMemoryModelSortsByHistoricalFrequency;
     procedure TranslationMemoryOrderValueFallsBackSafely;
     procedure OccurrenceIndexTracksReferencesAndPagination;
@@ -761,9 +763,8 @@ begin
     AssertEquals('usual', Entries[2].Alternatives[0].Translation);
     AssertEquals(2, Entries[2].Alternatives[0].Occurrences);
     AssertFalse(Entries[2].Alternatives[0].IsCurrent);
-    AssertEquals('inédita', Entries[2].Alternatives[1].Translation);
-    AssertEquals(0, Entries[2].Alternatives[1].Occurrences);
-    AssertTrue(Entries[2].Alternatives[1].IsCurrent);
+    AssertEquals('Current translations without history must not be listed',
+      1, Length(Entries[2].Alternatives));
     AssertEquals(2, Entries[2].HistoricalOccurrences);
 
     AssertEquals('both', Entries[3].DisplayTerm);
@@ -776,6 +777,87 @@ begin
     AssertEquals('none', Entries[4].DisplayTerm);
     AssertEquals(0, Length(Entries[4].Alternatives));
     AssertEquals(0, Entries[4].HistoricalOccurrences);
+  finally
+    DestinationVerse.Free;
+    SourceVerse.Free;
+  end;
+end;
+
+procedure TSuggestionManagerTest.
+  TranslationMemoryModelUsesMetadataWithoutStrong;
+var
+  DestinationVerse: TVerse;
+  Entries: TTranslationMemoryEntryArray;
+  MemoryKey: string;
+  SourceVerse: TVerse;
+begin
+  SourceVerse := TVerse.Create;
+  DestinationVerse := TVerse.Create;
+  try
+    SourceVerse.VersiculoPar := DestinationVerse;
+    SourceVerse.Texto := 'δοῦλος<WTnnms l="δοῦλος">';
+    DestinationVerse.Texto := 'servo';
+
+    SourceVerse.Sintagmas[0].AddToSelection;
+    DestinationVerse.Sintagmas[0].AddToSelection;
+    SourceVerse.AssociarSintagmas;
+
+    AssertEquals('Without Strong, plStrong falls back to text',
+      'δοῦλος', SourceVerse.Sintagmas[0].GetSuggestionKey(plStrong));
+    MemoryKey := SourceVerse.Sintagmas[0].GetSuggestionKey(plMetaData);
+    AssertEquals('<wtnnms l="δοῦλος">', MemoryKey);
+    FManager.AddPair(MemoryKey, 'servo');
+
+    Entries := TTranslationMemoryModel.Build(SourceVerse, FManager);
+
+    AssertEquals(1, Length(Entries));
+    AssertEquals(1, Length(Entries[0].Alternatives));
+    AssertEquals('servo', Entries[0].Alternatives[0].Translation);
+    AssertEquals(1, Entries[0].Alternatives[0].Occurrences);
+    AssertTrue(Entries[0].Alternatives[0].IsCurrent);
+  finally
+    DestinationVerse.Free;
+    SourceVerse.Free;
+  end;
+end;
+
+procedure TSuggestionManagerTest.
+  TranslationMemoryModelMatchesCurrentSuffixHyphen;
+var
+  DestinationVerse: TVerse;
+  Entries: TTranslationMemoryEntryArray;
+  SourceVerse: TVerse;
+begin
+  SourceVerse := TVerse.Create;
+  DestinationVerse := TVerse.Create;
+  try
+    SourceVerse.VersiculoPar := DestinationVerse;
+    SourceVerse.Texto := 'word<WG1>';
+    DestinationVerse.Texto := 'que afligem-vos';
+
+    SourceVerse.Sintagmas[0].AddToSelection;
+    DestinationVerse.Sintagmas[0].AddToSelection;
+    DestinationVerse.Sintagmas[2].AddToSelection;
+    SourceVerse.AssociarSintagmas;
+
+    AssertEquals('The text key must retain the suffix boundary marker',
+      'afligem-', DestinationVerse.Sintagmas[2].GetSuggestionKey(plText));
+    AssertEquals('The metadata fallback does not retain the marker',
+      'afligem', DestinationVerse.Sintagmas[2].GetSuggestionKey(plMetaData));
+
+    FManager.AddPair('<wg1>', 'que;afligem');
+    FManager.AddPair('<wg1>', 'que;afligem-');
+    Entries := TTranslationMemoryModel.Build(SourceVerse, FManager);
+
+    AssertEquals(1, Length(Entries));
+    AssertEquals('Suffix boundary variants must be consolidated',
+      1, Length(Entries[0].Alternatives));
+    AssertEquals('que afligem', Entries[0].Alternatives[0].Translation);
+    AssertEquals(2, Entries[0].Alternatives[0].Occurrences);
+    AssertEquals('Both exact memory pairs must remain navigable',
+      2, Length(Entries[0].Alternatives[0].Matches));
+    AssertTrue('The historical alternative must be marked as current',
+      Entries[0].Alternatives[0].IsCurrent);
   finally
     DestinationVerse.Free;
     SourceVerse.Free;
@@ -819,9 +901,8 @@ begin
       3, Entries[0].HistoricalOccurrences);
     AssertEquals(2, Length(Entries[0].SyntagmIndexes));
     AssertEquals(0, Entries[2].HistoricalOccurrences);
-    AssertEquals(1, Length(Entries[2].Alternatives));
-    AssertTrue(Entries[2].Alternatives[0].IsCurrent);
-    AssertEquals(0, Entries[2].Alternatives[0].Occurrences);
+    AssertEquals('Alternatives without historical occurrences are hidden',
+      0, Length(Entries[2].Alternatives));
 
     Entries := TTranslationMemoryModel.Build(SourceVerse, FManager,
       tmoMemoryFrequencyAscending);
