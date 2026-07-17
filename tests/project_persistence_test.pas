@@ -6,7 +6,8 @@ interface
 
 uses
   Classes, SysUtils, StdCtrls, fpcunit, testregistry, sqlite3conn, sqldb,
-  Verse, current_verse_workspace, project_persistence, project_config;
+  Verse, current_verse_workspace, project_persistence, project_config,
+  CommentsView;
 
 type
   TProjectPersistenceTest = class(TTestCase)
@@ -27,6 +28,8 @@ type
     procedure ImmediateInfoFlushesAfterACompetingWriterFinishes;
     procedure WorkspaceDetectsAllVisibleContentChanges;
     procedure TypedConfigSeparatesMarkerAndTokenizer;
+    procedure CommentLineBreakTagsAreDecodedOnlyInRawEditor;
+    procedure CommentLineBreaksAreEncodedForStorage;
   end;
 
 implementation
@@ -356,6 +359,23 @@ begin
   finally
     Config.Free;
   end;
+end;
+
+procedure TProjectPersistenceTest.CommentLineBreakTagsAreDecodedOnlyInRawEditor;
+begin
+  AssertEquals(
+    'first' + LineEnding + 'second<br/>third' + LineEnding + 'fourth',
+    CommentsTextForRawEditor(
+      'first<lf/>second<br/>third<crlf/>fourth'));
+end;
+
+procedure TProjectPersistenceTest.CommentLineBreaksAreEncodedForStorage;
+begin
+  AssertEquals(
+    'first<lf/>second<br/>third<lf/>fourth<lf/>fifth',
+    CommentsTextForStorage(
+      'first' + #13#10 + 'second<br/>third' + #10 + 'fourth' + #13 +
+      'fifth'));
 end;
 
 initialization

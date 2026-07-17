@@ -8,6 +8,9 @@ uses
   Classes, SysUtils, Controls, HTMLRenderer, StdCtrls, Graphics, SynEdit,
   theword_syntax_highlighter;
 
+function CommentsTextForRawEditor(const Value: string): string;
+function CommentsTextForStorage(const Value: string): string;
+
 type
   TCommentsView = class;
 
@@ -68,6 +71,19 @@ implementation
 uses
   Math;
 
+function CommentsTextForRawEditor(const Value: string): string;
+begin
+  Result := StringReplace(Value, '<crlf/>', LineEnding, [rfReplaceAll]);
+  Result := StringReplace(Result, '<lf/>', LineEnding, [rfReplaceAll]);
+end;
+
+function CommentsTextForStorage(const Value: string): string;
+begin
+  Result := StringReplace(Value, #13#10, '<lf/>', [rfReplaceAll]);
+  Result := StringReplace(Result, #13, '<lf/>', [rfReplaceAll]);
+  Result := StringReplace(Result, #10, '<lf/>', [rfReplaceAll]);
+end;
+
 { TRawCommentsMemo }
 
 procedure TRawCommentsMemo.HandleOnKeyDown(Sender: TObject; var Key: word;
@@ -117,7 +133,7 @@ begin
   ApplyTheWordSyntaxEditorFont(Self);
   FCommentsView.FUpdatingRawMemo := True;
   try
-    Text := aText;
+    Text := CommentsTextForRawEditor(aText);
   finally
     FCommentsView.FUpdatingRawMemo := False;
   end;
@@ -142,7 +158,7 @@ begin
   // Update CommentsView text with any changes and show it again
   if Assigned(FCommentsView) then
   begin
-    FCommentsView.SetCommentsText(Text);
+    FCommentsView.SetCommentsText(CommentsTextForStorage(Text));
     FCommentsView.Visible := True;
   end;
 end;
@@ -184,7 +200,7 @@ begin
   begin
     FUpdatingRawMemo := True;
     try
-      FRawMemo.Text := CommentsText;
+      FRawMemo.Text := CommentsTextForRawEditor(CommentsText);
     finally
       FUpdatingRawMemo := False;
     end;
@@ -208,7 +224,7 @@ end;
 function TCommentsView.GetText: string;
 begin
   if Assigned(FRawMemo) and FRawMemo.Visible then
-    Result := FRawMemo.Text
+    Result := CommentsTextForStorage(FRawMemo.Text)
   else
     Result := FText;
 end;
