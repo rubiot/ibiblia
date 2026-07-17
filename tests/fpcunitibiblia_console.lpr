@@ -15,6 +15,7 @@ uses
   ai_flow_config_test,
   suggestionmanagertest,
   associationmemoryservicetest,
+  concordanceexporttest,
   project_persistence_test,
   navigation_history_test;
 

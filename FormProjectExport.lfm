@@ -129,7 +129,8 @@ object FrmProjectExport: TFrmProjectExport
         Left = 13
         Height = 74
         Top = 9
-        Width = 278
+        Width = 740
+        Anchors = [akTop, akLeft, akRight]
         Caption = 'Concordance type'
         ItemIndex = 0
         Items.Strings = (
@@ -142,12 +143,42 @@ object FrmProjectExport: TFrmProjectExport
       object leAbreviacao: TLabeledEdit
         Left = 13
         Height = 23
-        Top = 114
-        Width = 278
+        Top = 246
+        Width = 360
         EditLabel.Height = 15
         EditLabel.Width = 264
         EditLabel.Caption = 'Abbreviation'
         EditLabel.ParentColor = False
+        TabOrder = 2
+      end
+      object lblConcordanceDescription: TLabel
+        Left = 20
+        Height = 42
+        Top = 96
+        Width = 725
+        Anchors = [akTop, akLeft, akRight]
+        AutoSize = False
+        Caption = 'Shows each source form separately, with its translations and verse references.'
+        ParentColor = False
+        WordWrap = True
+      end
+      object lblConcordanceOutput: TLabel
+        Left = 20
+        Height = 36
+        Top = 148
+        Width = 725
+        Anchors = [akTop, akLeft, akRight]
+        AutoSize = False
+        Caption = 'The exported dictionary is organized by Strong''s number, with compact frequency totals and clickable verse references.'
+        ParentColor = False
+        WordWrap = True
+      end
+      object cbConcordanceVerseContext: TCheckBox
+        Left = 20
+        Height = 19
+        Top = 202
+        Width = 520
+        Caption = 'Include destination verse text beside each reference'
         TabOrder = 1
       end
     end

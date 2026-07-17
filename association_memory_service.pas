@@ -92,9 +92,6 @@ resourcestring
     'Pending association memory cannot be replayed';
   SAssociationMemoryDeltaMissingPairFmt =
     'Association memory delta removes a missing pair "%s" -> "%s"';
-  SAssociationMemoryDeltaMismatchFmt =
-    'Association memory delta mismatch for "%s" -> "%s" ' +
-    '(expected %d, stored %d)';
   SAssociationMemoryRebuildAlreadyActive =
     'Association memory rebuild is already active';
   SAssociationMemoryRebuildNotActive =
@@ -352,7 +349,6 @@ end;
 
 procedure TAssociationMemoryService.ReplayPendingCache;
 var
-  ActualCount: Integer;
   DeltaCounts: TStringList;
   DeltaIndex: Integer;
   ExpectedCount: Integer;
@@ -442,15 +438,10 @@ begin
           SourcePhrase := Copy(PairKey, 1, SeparatorIndex - 1);
           TargetPhrase := Copy(PairKey, SeparatorIndex + 1, MaxInt);
           ExpectedCount := PtrInt(DeltaCounts.Objects[DeltaIndex]);
-          ActualCount := FManager.GetPairOccurrenceCount(SourcePhrase,
-            TargetPhrase);
-          if ActualCount <> ExpectedCount then
-            raise Exception.CreateFmt(
-              SAssociationMemoryDeltaMismatchFmt,
-              [SourcePhrase, TargetPhrase, ExpectedCount, ActualCount]);
+          if not FManager.ValidatePairConsistency(SourcePhrase,
+            TargetPhrase, ExpectedCount, ErrorMessage) then
+            raise Exception.Create(ErrorMessage);
         end;
-        if not FManager.Validate(ErrorMessage) then
-          raise Exception.Create(ErrorMessage);
       end;
       FManager.CommitRebuild;
       FCacheMatchesSource := True;

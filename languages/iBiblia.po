@@ -5,9 +5,9 @@ msgstr "Content-Type: text/plain; charset=UTF-8"
 msgid "Beginning of chapter"
 msgstr ""
 
-#: chapterview.stranslationmemorycurrent
-msgctxt "chapterview.stranslationmemorycurrent"
-msgid "Current"
+#: chapterview.stranslationmemorycurrentlegend
+msgctxt "chapterview.stranslationmemorycurrentlegend"
+msgid "Blue translations are used in the current verse."
 msgstr ""
 
 #: chapterview.stranslationmemoryerrorfmt

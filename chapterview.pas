@@ -109,10 +109,13 @@ type
     FTranslationMemoryOccurrenceSource: string;
     FTranslationMemoryOccurrenceTranslation: string;
     FTranslationMemoryOccurrenceLimit: Integer;
+    FTranslationMemoryRefreshPending: Boolean;
+    FViewSelectionActive: Boolean;
 
     function GetInterlinearMode: TInterlinearMode;
     function GetParagraphMode: TParagraphMode;
     function GetTextType: TTipoTextoBiblico;
+    function IsTranslationMemoryVisible: Boolean;
     procedure RenderChapter(verses: TStringList; current: integer);
     procedure RenderChapterHeader;
     procedure RenderChapterFooter;
@@ -188,7 +191,7 @@ const
   NonBibleTextColor = $be7c41;
   NoteLinkColor = $4080ff;
   ChapterNumberColor = $2cba7d;
-  TranslationMemoryCurrentColor = $c87832;
+  TranslationMemoryCurrentColor = clBlue;
   DefaultFirstIndent = 20;
 
 resourcestring
@@ -205,13 +208,20 @@ resourcestring
   STranslationMemoryTitle = 'Translation memory';
   STranslationMemoryFormsFmt = 'Forms: %s';
   STranslationMemoryStrongsFmt = 'Strong''s: %s';
-  STranslationMemoryCurrent = 'Current';
+  STranslationMemoryCurrentLegend =
+    'Blue translations are used in the current verse.';
   STranslationMemoryNoTranslations = 'No translation recorded';
   STranslationMemoryNoSourceWords =
     'No source words are available for this verse.';
   STranslationMemoryErrorFmt = 'Translation memory is unavailable: %s';
   STranslationMemoryBack = 'Back to translation memory';
   STranslationMemoryOccurrencesTitleFmt = '%s → %s';
+  STranslationMemoryManyAssociationsOneVerseFmt =
+    '%d associations in 1 verse';
+  STranslationMemoryOneAssociationManyVersesFmt =
+    '1 association in %d verses';
+  STranslationMemoryOneAssociationOneVerse =
+    '1 association in 1 verse';
   STranslationMemoryOccurrenceTotalsFmt =
     '%d associations in %d verses';
   STranslationMemoryOccurrenceCountFmt = '%d occurrences';
@@ -220,6 +230,25 @@ resourcestring
   STranslationMemoryShowMoreFmt = 'Show 100 more (%d remaining)';
 
 implementation
+
+function TranslationMemoryOccurrenceTotalsText(AssociationCount,
+  VerseCount: Integer): string;
+begin
+  if AssociationCount = 1 then
+  begin
+    if VerseCount = 1 then
+      Result := STranslationMemoryOneAssociationOneVerse
+    else
+      Result := Format(STranslationMemoryOneAssociationManyVersesFmt,
+        [VerseCount]);
+  end
+  else if VerseCount = 1 then
+    Result := Format(STranslationMemoryManyAssociationsOneVerseFmt,
+      [AssociationCount])
+  else
+    Result := Format(STranslationMemoryOccurrenceTotalsFmt,
+      [AssociationCount, VerseCount]);
+end;
 
 function JoinMemoryValues(const Values: TTranslationMemoryStringArray;
   const Separator: string): string;
@@ -452,6 +481,12 @@ end;
 function TChapterView.GetTextType: TTipoTextoBiblico;
 begin
   result := FProject.ChapterViewText;
+end;
+
+function TChapterView.IsTranslationMemoryVisible: Boolean;
+begin
+  Result := FViewSelectionActive and Enabled and Assigned(FProject) and
+    (FViewMode = cvmTranslationMemory);
 end;
 
 procedure TChapterView.RenderSpan(cont: TKMemoBlocks; txt: string);
@@ -832,16 +867,19 @@ begin
   ClearTranslationMemoryHighlight;
   if FViewMode = cvmTranslationMemory then
   begin
-    if FTranslationMemoryShowingOccurrences then
-      RenderTranslationMemoryOccurrences
-    else
-    begin
-      RenderTranslationMemory;
-      TopPos := 0;
-    end;
+    FTranslationMemoryRefreshPending := True;
+    if IsTranslationMemoryVisible then
+      if FTranslationMemoryShowingOccurrences then
+        RenderTranslationMemoryOccurrences
+      else
+      begin
+        RenderTranslationMemory;
+        TopPos := 0;
+      end;
     Exit;
   end;
 
+  FTranslationMemoryRefreshPending := True;
   verses := FProject.GetChapterText;
   try
     RenderChapter(verses, Sender.Verse);
@@ -1009,6 +1047,8 @@ begin
   if Assigned(FProject) then
     FProject.OnNewVerseUnsubscribe(@HandleVerseChange);
   FProject := AValue;
+  FTranslationMemoryRefreshPending := True;
+  FViewSelectionActive := False;
 
   if assigned(FProject) then
   begin
@@ -1017,16 +1057,24 @@ begin
     SetParagraphMode(FProject.ParagraphMode);
     SetInterlinearMode(FProject.InterlinearMode);
     FProject.OnNewVerseSubscribe(@HandleVerseChange);
-    LoadChapter;
   end;
 end;
 
 procedure TChapterView.SetViewMode(AValue: TChapterViewMode);
 begin
+  FViewSelectionActive := True;
   if FViewMode = AValue then
+  begin
+    if (AValue = cvmTranslationMemory) and
+       FTranslationMemoryRefreshPending and
+       IsTranslationMemoryVisible then
+      LoadChapter;
     Exit;
+  end;
   ClearTranslationMemoryHighlight;
   FViewMode := AValue;
+  if AValue = cvmTranslationMemory then
+    FTranslationMemoryRefreshPending := True;
   if Assigned(FProject) then
   begin
     FProject.ChapterViewMode := AValue;
@@ -1040,8 +1088,8 @@ begin
   if FTranslationMemoryOrder = AValue then
     Exit;
   FTranslationMemoryOrder := AValue;
-  if Enabled and Assigned(FProject) and
-     (FViewMode = cvmTranslationMemory) then
+  FTranslationMemoryRefreshPending := True;
+  if IsTranslationMemoryVisible then
   begin
     if FTranslationMemoryShowingOccurrences then
       RenderTranslationMemoryOccurrences
@@ -1190,6 +1238,7 @@ procedure TChapterView.SetTextType(AValue: TTipoTextoBiblico);
 begin
   if not Assigned(FProject) then
     Exit;
+  FViewSelectionActive := True;
   if FViewMode <> cvmChapterText then
   begin
     ClearTranslationMemoryHighlight;
@@ -1363,6 +1412,8 @@ begin
     ResetTranslationMemoryOccurrences;
     FProject.OnNewVerseUnsubscribe(@HandleVerseChange);
     FProject := nil;
+    FViewSelectionActive := False;
+    FTranslationMemoryRefreshPending := True;
   end;
 
   inherited SetEnabled(Value);
@@ -1394,6 +1445,8 @@ begin
   FTranslationMemoryShowingOccurrences := False;
   SetLength(FTranslationMemoryOccurrenceMatches, 0);
   FTranslationMemoryOccurrenceLimit := 100;
+  FTranslationMemoryRefreshPending := True;
+  FViewSelectionActive := False;
   InitPopupMenu;
 
   FRawMemo    := TRawChapterMemo.Create(Parent, Self);
@@ -1430,12 +1483,13 @@ end;
 
 procedure TChapterView.RefreshTranslationMemory;
 begin
-  if Enabled and Assigned(FProject) and
-     (FViewMode = cvmTranslationMemory) then
-    if FTranslationMemoryShowingOccurrences then
-      RenderTranslationMemoryOccurrences
-    else
-      RenderTranslationMemory;
+  FTranslationMemoryRefreshPending := True;
+  if not IsTranslationMemoryVisible then
+    Exit;
+  if FTranslationMemoryShowingOccurrences then
+    RenderTranslationMemoryOccurrences
+  else
+    RenderTranslationMemory;
 end;
 
 procedure TChapterView.FocusTranslationMemoryForSyntagm(
@@ -1510,9 +1564,13 @@ var
   Remaining: Integer;
   TextBlock: TKMemoTextBlock;
 begin
-  if not Assigned(FProject) then
+  if not IsTranslationMemoryVisible then
+  begin
+    FTranslationMemoryRefreshPending := True;
     Exit;
+  end;
 
+  FTranslationMemoryRefreshPending := False;
   FRawMemo.Hide;
   if not FProject.TryGetTranslationMemoryOccurrences(
     FTranslationMemoryOccurrenceMatches,
@@ -1559,9 +1617,8 @@ begin
       Exit;
     end;
 
-    TextBlock := Blocks.AddTextBlock(Format(
-      STranslationMemoryOccurrenceTotalsFmt,
-      [OccurrencePage.TotalAssociations, OccurrencePage.TotalVerses]));
+    TextBlock := Blocks.AddTextBlock(TranslationMemoryOccurrenceTotalsText(
+      OccurrencePage.TotalAssociations, OccurrencePage.TotalVerses));
     TextBlock.TextStyle.Font.Color := clGray;
     with Blocks.AddParagraph().ParaStyle do
     begin
@@ -1644,10 +1701,15 @@ var
   TextBlock: TKMemoTextBlock;
   LinkBlock: TKMemoHyperlink;
   SourceVerse: TVerse;
+  HasCurrentAlternative: Boolean;
 begin
-  if not Assigned(FProject) then
+  if not IsTranslationMemoryVisible then
+  begin
+    FTranslationMemoryRefreshPending := True;
     Exit;
+  end;
 
+  FTranslationMemoryRefreshPending := False;
   FRawMemo.Hide;
   if not FProject.TryGetCurrentVerseTranslationMemory(
     FTranslationMemoryOrder,
@@ -1696,6 +1758,7 @@ begin
       Exit;
     end;
 
+    HasCurrentAlternative := False;
     for EntryIndex := 0 to Length(FTranslationMemoryEntries) - 1 do
     begin
       FTranslationMemoryEntryBlocks[EntryIndex] := Blocks.Count;
@@ -1753,13 +1816,15 @@ begin
           with FTranslationMemoryEntries[EntryIndex].Alternatives[
             AlternativeIndex] do
           begin
-            TextBlock := Blocks.AddTextBlock(Translation + ' (');
+            TextBlock := Blocks.AddTextBlock(Translation);
             if IsCurrent then
             begin
+              HasCurrentAlternative := True;
               TextBlock.TextStyle.Font.Bold := True;
               TextBlock.TextStyle.Font.Color :=
                 TranslationMemoryCurrentColor;
             end;
+            Blocks.AddTextBlock(' (');
 
             if (Occurrences > 0) and (Length(Matches) > 0) then
             begin
@@ -1768,33 +1833,27 @@ begin
               LinkBlock.OnClick := @HandleTranslationMemoryAlternativeClick;
               LinkBlock.TextStyle.Font.Color := NoteLinkColor;
               LinkBlock.TextStyle.Font.Style := [fsUnderline];
-              if IsCurrent then
-                LinkBlock.TextStyle.Font.Style := [fsBold, fsUnderline];
             end
             else
-            begin
-              TextBlock := Blocks.AddTextBlock(IntToStr(Occurrences));
-              if IsCurrent then
-              begin
-                TextBlock.TextStyle.Font.Bold := True;
-                TextBlock.TextStyle.Font.Color :=
-                  TranslationMemoryCurrentColor;
-              end;
-            end;
-
-            if IsCurrent then
-            begin
-              TextBlock := Blocks.AddTextBlock(', ' +
-                STranslationMemoryCurrent + ')');
-              TextBlock.TextStyle.Font.Bold := True;
-              TextBlock.TextStyle.Font.Color :=
-                TranslationMemoryCurrentColor;
-            end;
-            if not IsCurrent then
-              Blocks.AddTextBlock(')');
+              Blocks.AddTextBlock(IntToStr(Occurrences));
+            Blocks.AddTextBlock(')');
           end;
         end;
         Blocks.AddParagraph().ParaStyle.FirstIndent := 8;
+      end;
+    end;
+
+    if HasCurrentAlternative then
+    begin
+      TextBlock := Blocks.AddTextBlock(
+        STranslationMemoryCurrentLegend);
+      TextBlock.TextStyle.Font.Size := Max(1, TextStyle.Font.Size - 1);
+      TextBlock.TextStyle.Font.Italic := True;
+      TextBlock.TextStyle.Font.Color := TranslationMemoryCurrentColor;
+      with Blocks.AddParagraph().ParaStyle do
+      begin
+        FirstIndent := 0;
+        TopPadding := 14;
       end;
     end;
   finally

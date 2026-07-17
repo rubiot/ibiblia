@@ -177,14 +177,14 @@ msgstr "Imprimir capítulo..."
 msgid "Choose &font..."
 msgstr "Selecionar &fonte..."
 
-#: chapterview.stranslationmemorycurrent
-msgctxt "chapterview.stranslationmemorycurrent"
-msgid "Current"
-msgstr "Atual"
-
 #: chapterview.stranslationmemoryback
 msgid "Back to translation memory"
 msgstr "Voltar à memória de tradução"
+
+#: chapterview.stranslationmemorycurrentlegend
+msgctxt "chapterview.stranslationmemorycurrentlegend"
+msgid "Blue translations are used in the current verse."
+msgstr "As traduções em azul são usadas no versículo atual."
 
 #: chapterview.stranslationmemoryerrorfmt
 #, object-pascal-format
@@ -196,6 +196,15 @@ msgstr "A memória de tradução não está disponível: %s"
 msgid "Forms: %s"
 msgstr "Formas: %s"
 
+#: chapterview.stranslationmemorymanyassociationsoneversefmt
+#, object-pascal-format
+msgid "%d associations in 1 verse"
+msgstr "%d associações em 1 versículo"
+
+#: chapterview.stranslationmemorynooccurrences
+msgid "No verse currently uses this translation."
+msgstr "Nenhum versículo usa atualmente esta tradução."
+
 #: chapterview.stranslationmemorynosourcewords
 msgid "No source words are available for this verse."
 msgstr "Nenhuma palavra do texto de origem está disponível para este versículo."
@@ -204,12 +213,18 @@ msgstr "Nenhuma palavra do texto de origem está disponível para este versícul
 msgid "No translation recorded"
 msgstr "Nenhuma tradução registrada"
 
-#: chapterview.stranslationmemorynooccurrences
-msgid "No verse currently uses this translation."
-msgstr "Nenhum versículo usa atualmente esta tradução."
+#: chapterview.stranslationmemoryoneassociationmanyversesfmt
+#, object-pascal-format
+msgid "1 association in %d verses"
+msgstr "1 associação em %d versículos"
+
+#: chapterview.stranslationmemoryoneassociationoneverse
+msgid "1 association in 1 verse"
+msgstr "1 associação em 1 versículo"
 
 #: chapterview.stranslationmemoryoccurrencecountfmt
 #, object-pascal-format
+msgctxt "chapterview.stranslationmemoryoccurrencecountfmt"
 msgid "%d occurrences"
 msgstr "%d ocorrências"
 
@@ -241,6 +256,30 @@ msgstr "Memória de tradução"
 #: chapterview.sverserules
 msgid "Verse &rules..."
 msgstr "Regras de &transformação (verse rules)..."
+
+#: concordanceexport.sconcordancecountsummary
+#, object-pascal-format
+msgid "%s in %s"
+msgstr "%s em %s"
+
+#: concordanceexport.sconcordancemanyoccurrences
+#, object-pascal-format
+msgctxt "concordanceexport.sconcordancemanyoccurrences"
+msgid "%d occurrences"
+msgstr "%d ocorrências"
+
+#: concordanceexport.sconcordancemanyverses
+#, object-pascal-format
+msgid "%d verses"
+msgstr "%d versículos"
+
+#: concordanceexport.sconcordanceoneoccurrence
+msgid "1 occurrence"
+msgstr "1 ocorrência"
+
+#: concordanceexport.sconcordanceoneverse
+msgid "1 verse"
+msgstr "1 versículo"
 
 #: formaiprocessing.saiflowassociation
 msgctxt "formaiprocessing.saiflowassociation"
@@ -1689,6 +1728,50 @@ msgctxt "formprojectexport.sanalyticalconcordance"
 msgid "AnalyticalConcordance"
 msgstr "ConcordanciaAnalitica"
 
+#: formprojectexport.sconcordanceanalyticaldescription
+msgid "Shows each source form separately, with its translations and verse references."
+msgstr "Mostra cada forma do texto de origem separadamente, com suas traduções e referências bíblicas."
+
+#: formprojectexport.sconcordanceanalyticaltype
+msgid "Analytical concordance"
+msgstr "Concordância analítica"
+
+#: formprojectexport.sconcordancefinalizing
+msgid "Finalizing export..."
+msgstr "Finalizando a exportação..."
+
+#: formprojectexport.sconcordanceformattingentries
+msgid "Formatting concordance entries..."
+msgstr "Formatando as entradas da concordância..."
+
+#: formprojectexport.sconcordanceincludeversecontext
+msgid "Include destination verse text beside each reference"
+msgstr "Incluir o texto do versículo de destino ao lado de cada referência"
+
+#: formprojectexport.sconcordanceoutputdescription
+msgid "The exported dictionary is organized by Strong's number, with compact frequency totals and clickable verse references."
+msgstr "O dicionário exportado é organizado por número de Strong, com totais compactos de frequência e referências bíblicas clicáveis."
+
+#: formprojectexport.sconcordancereadingassociations
+msgid "Reading associations..."
+msgstr "Lendo as associações..."
+
+#: formprojectexport.sconcordancesyntheticdescription
+msgid "Groups all source forms by Strong's number for a compact translation overview."
+msgstr "Agrupa todas as formas do texto de origem pelo número de Strong para uma visão compacta das traduções."
+
+#: formprojectexport.sconcordancesynthetictype
+msgid "Synthetic concordance"
+msgstr "Concordância sintética"
+
+#: formprojectexport.sconcordancetypecaption
+msgid "Concordance type"
+msgstr "Tipo de concordância"
+
+#: formprojectexport.sconcordancewritingmodule
+msgid "Writing dictionary module..."
+msgstr "Gravando o módulo de dicionário..."
+
 #: formprojectexport.sexportcompletedprompt
 #, object-pascal-format
 msgid ""
@@ -2508,6 +2591,10 @@ msgstr "Exemplos de associação exigem um versículo origem ativo pareado com u
 msgid "%d of %d associations"
 msgstr "%d de %d associações"
 
+#: project.sassociationmemoryfinalizing
+msgid "Finalizing association memory..."
+msgstr "Finalizando memória de associação..."
+
 #: project.sassociationmemoryprogressdetailfmt
 #, object-pascal-format
 msgid "%s (%d of %d)"
@@ -2526,10 +2613,6 @@ msgstr "Memória de associação"
 #: project.sassociationmemoryunavailable
 msgid "Translation memory is unavailable because it could not be synchronized."
 msgstr "A memória de tradução não está disponível porque não pôde ser sincronizada."
-
-#: project.sassociationmemoryfinalizing
-msgid "Finalizing association memory..."
-msgstr "Finalizando memória de associação..."
 
 #: project.sassociationmemoryvalidating
 msgid "Validating association memory..."
@@ -3300,14 +3383,14 @@ msgstr "Inconsistência de ocorrência na memória de associação em %s para \"
 msgid "Association memory reference occurrences do not match translation counts"
 msgstr "As ocorrências por referência da memória de associação não correspondem às contagens de tradução"
 
+#: suggestionmanager.sassociationmemoryorphanoccurrencereferences
+msgid "Association memory contains occurrence references not found in the project"
+msgstr "A memória de associação contém referências de ocorrência que não existem no projeto"
+
 #: suggestionmanager.sassociationmemoryorphanphrases
 msgctxt "suggestionmanager.sassociationmemoryorphanphrases"
 msgid "Association memory contains orphan phrases"
 msgstr "A memória de associação contém locuções órfãs"
-
-#: suggestionmanager.sassociationmemoryorphanoccurrencereferences
-msgid "Association memory contains occurrence references not found in the project"
-msgstr "A memória de associação contém referências de ocorrência que não existem no projeto"
 
 #: suggestionmanager.sassociationmemoryorphansyntagmmappings
 msgctxt "suggestionmanager.sassociationmemoryorphansyntagmmappings"
@@ -3336,16 +3419,16 @@ msgctxt "suggestionmanager.sassociationmemoryrebuildnotprepared"
 msgid "Association memory rebuild has not been prepared"
 msgstr "A reconstrução da memória de associação não foi preparada"
 
+#: suggestionmanager.sassociationmemoryunexpectedoccurrencefmt
+#, object-pascal-format
+msgid "Association memory contains an unexpected occurrence at %s: \"%s\" -> \"%s\""
+msgstr "A memória de associação contém uma ocorrência inesperada em %s: \"%s\" -> \"%s\""
+
 #: suggestionmanager.sassociationmemoryunexpectedpairfmt
 #, object-pascal-format
 msgctxt "suggestionmanager.sassociationmemoryunexpectedpairfmt"
 msgid "Association memory contains unexpected pair \"%s\" -> \"%s\""
 msgstr "A memória de associação contém o par inesperado \"%s\" -> \"%s\""
-
-#: suggestionmanager.sassociationmemoryunexpectedoccurrencefmt
-#, object-pascal-format
-msgid "Association memory contains an unexpected occurrence at %s: \"%s\" -> \"%s\""
-msgstr "A memória de associação contém uma ocorrência inesperada em %s: \"%s\" -> \"%s\""
 
 #: suggestionmanager.sassociationmemoryunexpectedphraseidsfmt
 #, object-pascal-format

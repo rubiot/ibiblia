@@ -5,15 +5,26 @@ unit project_exporter;
 interface
 
 uses
-  Classes, SysUtils, StrUtils, Forms, Dialogs, ComCtrls, LCLIntf, fgl, PCRE,
+  Classes, SysUtils, StrUtils, Math, Forms, Dialogs, ComCtrls, LCLIntf, fgl, PCRE,
   BibleScope, MySwordModule, TheWordDictionary, ConcordanceExport,
-  ai_batch_work_item, syntagm, project_verse_repository, verse_render_buffer;
+  ai_batch_work_item, syntagm, Verse, project_verse_repository, verse_render_buffer,
+  SuggestionManager, ONTTokenizer;
 
 type
   TRegexList = specialize TFPGList<IRegex>;
 
   TExportSessionProc = procedure of object;
   TExportReferenceFunc = function: string of object;
+
+  TConcordanceExportPhase = (
+    cepReadingAssociations,
+    cepFormattingEntries,
+    cepWritingModule,
+    cepFinalizing
+  );
+
+  TConcordanceExportProgressEvent = procedure(
+    Phase: TConcordanceExportPhase; Current, Total: Integer) of object;
 
   TDestinationTextExportOptions = record
     ExportMorphology: Boolean;
@@ -41,6 +52,9 @@ type
 
   TConcordanceExportOptions = record
     Detailed: Boolean;
+    Mode: TConcordanceExportMode;
+    IncludeVerseContext: Boolean;
+    UseIndexedOccurrences: Boolean;
     Abbreviation: string;
     LanguageId: string;
     AnalyticalCaption: string;
@@ -56,6 +70,13 @@ type
     FScope: TEscopoTexto;
     FVerseRepository: TProjectVerseRepository;
     FVerseRenderBuffer: TVerseRenderBuffer;
+    FActiveConcordance: TConcordance;
+    FIndexedIncludeVerseContext: Boolean;
+    FIndexedProcessed: Integer;
+    FIndexedTotal: Integer;
+    FIndexedProgressEvent: TConcordanceExportProgressEvent;
+    FLastIndexedReference: string;
+    FLastIndexedContext: string;
     procedure RequireDependencies;
     class procedure ConfigureProgressBar(ProgressBar: TProgressBar;
       MaxValue: Integer); static;
@@ -73,6 +94,9 @@ type
       Properties: string); static;
     procedure WriteMySwordBible(Verses: TStringList; const FileName,
       Properties: string);
+    procedure AddIndexedConcordanceOccurrence(
+      const Data: TConcordanceOccurrenceData);
+    function PlainVerseText(const XML: string): string;
   public
     constructor Create(AScope: TEscopoTexto; AVerseRepository: TProjectVerseRepository;
       AVerseRenderBuffer: TVerseRenderBuffer);
@@ -90,7 +114,9 @@ type
     procedure ExportConcordance(const FileName: string;
       ProgressBar: TProgressBar; const Options: TConcordanceExportOptions;
       StartSession, FinishSession: TExportSessionProc;
-      GetReference: TExportReferenceFunc);
+      GetReference: TExportReferenceFunc;
+      SuggestionManager: TSuggestionManager = nil;
+      ProgressEvent: TConcordanceExportProgressEvent = nil);
   end;
 
 {$INCLUDE include/bookdefs.inc}
@@ -439,10 +465,75 @@ begin
   end;
 end;
 
+function TProjectExporter.PlainVerseText(const XML: string): string;
+var
+  Token: TTagSintagma;
+  Tokenizer: TONTTokenizer;
+begin
+  Result := '';
+  Tokenizer := TTokenizerFactory.CreateTokenizer(
+    FVerseRenderBuffer.DestinationVerse.TokenizerVersion, XML);
+  try
+    while Tokenizer.LerSintagma(Token) <> tsNulo do
+    begin
+      if Token.tipo = tsTag then
+      begin
+        if Token.valor = '<RF>' then
+        begin
+          Tokenizer.LerAteTag(Token, '<Rf>');
+          Continue;
+        end;
+        if AnsiStartsStr('<TS', Token.valor) then
+        begin
+          Tokenizer.LerAteTag(Token, '<Ts>');
+          Continue;
+        end;
+      end;
+      if Token.tipo in [tsEspaco, tsSintagma, tsPontuacao] then
+        Result := Result + Token.valor;
+    end;
+  finally
+    Tokenizer.Free;
+  end;
+  Result := Trim(Result);
+end;
+
+procedure TProjectExporter.AddIndexedConcordanceOccurrence(
+  const Data: TConcordanceOccurrenceData);
+var
+  Context: string;
+begin
+  if not Assigned(FActiveConcordance) then
+    Exit;
+
+  Context := '';
+  if FIndexedIncludeVerseContext then
+  begin
+    if Data.ReferenceID <> FLastIndexedReference then
+    begin
+      FLastIndexedReference := Data.ReferenceID;
+      FLastIndexedContext := PlainVerseText(Data.DestinationText);
+    end;
+    Context := FLastIndexedContext;
+  end;
+
+  FActiveConcordance.AddOccurrence(Data.SourcePhrase, Data.TargetPhrase,
+    Data.ReferenceID, Context, Data.Occurrences, Data.ReferenceOrder);
+  Inc(FIndexedProcessed);
+  if Assigned(FIndexedProgressEvent) and
+    ((FIndexedProcessed mod 100) = 0) then
+  begin
+    FIndexedProgressEvent(cepReadingAssociations,
+      FIndexedProcessed, FIndexedTotal);
+    Application.ProcessMessages;
+  end;
+end;
+
 procedure TProjectExporter.ExportConcordance(const FileName: string;
   ProgressBar: TProgressBar; const Options: TConcordanceExportOptions;
   StartSession, FinishSession: TExportSessionProc;
-  GetReference: TExportReferenceFunc);
+  GetReference: TExportReferenceFunc; SuggestionManager: TSuggestionManager;
+  ProgressEvent: TConcordanceExportProgressEvent);
 var
   VerseData: TVerseData;
   Concordance: TConcordance;
@@ -451,12 +542,254 @@ var
   Dictionary: TTheWordDictionary;
   LemmaRegex: IRegex;
   Match: IMatch;
-  Pairs: TStringList;
+  AssociationData: TAssociationPairDataArray;
   Entry: string;
   Strong: string;
   Lemma: string;
   CorruptionDetails: string;
   TitleText: string;
+  Context: string;
+  ReferenceOrder: Integer;
+  FormattedEntries: Integer;
+  ReadingTotal: Integer;
+  UseIndexedOccurrences: Boolean;
+  UnindexedReferences: TStringList;
+
+  procedure BuildDestinationContext(out PlainText: string;
+    out SyntagmRanges: TConcordanceHighlightRangeArray);
+  var
+    ClosingTag: string;
+    FirstVisibleByte: Integer;
+    Index: Integer;
+    LastVisibleByte: Integer;
+    Syntagm: TSyntagm;
+  begin
+    PlainText := '';
+    SyntagmRanges := nil;
+    SetLength(SyntagmRanges,
+      FVerseRenderBuffer.DestinationVerse.Syntagms.Count);
+    ClosingTag := '';
+    for Index := 0 to FVerseRenderBuffer.DestinationVerse.Syntagms.Count - 1 do
+    begin
+      Syntagm := FVerseRenderBuffer.DestinationVerse.Syntagms[Index];
+      if Syntagm.Kind = tsTag then
+      begin
+        if not ClosingTag.IsEmpty then
+        begin
+          if SameText(Syntagm.Text, ClosingTag) then
+            ClosingTag := '';
+        end
+        else if SameText(Syntagm.Text, '<RF>') then
+          ClosingTag := '<Rf>'
+        else if AnsiStartsText('<TS', Syntagm.Text) then
+          ClosingTag := '<Ts>';
+        Continue;
+      end;
+      if not ClosingTag.IsEmpty or
+         not (Syntagm.Kind in [tsEspaco, tsSintagma, tsPontuacao]) then
+        Continue;
+
+      SyntagmRanges[Index].StartIndex := Length(PlainText) + 1;
+      SyntagmRanges[Index].Length := Length(Syntagm.Text);
+      PlainText := PlainText + Syntagm.Text;
+    end;
+
+    FirstVisibleByte := 1;
+    while (FirstVisibleByte <= Length(PlainText)) and
+          (PlainText[FirstVisibleByte] <= ' ') do
+      Inc(FirstVisibleByte);
+    LastVisibleByte := Length(PlainText);
+    while (LastVisibleByte >= FirstVisibleByte) and
+          (PlainText[LastVisibleByte] <= ' ') do
+      Dec(LastVisibleByte);
+
+    if (FirstVisibleByte > 1) or (LastVisibleByte < Length(PlainText)) then
+    begin
+      PlainText := Copy(PlainText, FirstVisibleByte,
+        LastVisibleByte - FirstVisibleByte + 1);
+      for Index := 0 to High(SyntagmRanges) do
+        if SyntagmRanges[Index].Length > 0 then
+        begin
+          Dec(SyntagmRanges[Index].StartIndex, FirstVisibleByte - 1);
+          if (SyntagmRanges[Index].StartIndex < 1) or
+             (SyntagmRanges[Index].StartIndex +
+              SyntagmRanges[Index].Length - 1 > Length(PlainText)) then
+          begin
+            SyntagmRanges[Index].StartIndex := 0;
+            SyntagmRanges[Index].Length := 0;
+          end;
+        end;
+    end;
+  end;
+
+  function GetAssociationHighlightRanges(
+    const Data: TAssociationPairData;
+    const SyntagmRanges: TConcordanceHighlightRangeArray):
+    TConcordanceHighlightRangeArray;
+  var
+    Index: Integer;
+    RangeIndex: Integer;
+    SyntagmIndex: Integer;
+  begin
+    Result := nil;
+    for Index := 0 to High(Data.TargetSyntagmIndexes) do
+    begin
+      SyntagmIndex := Data.TargetSyntagmIndexes[Index];
+      if (SyntagmIndex < 0) or (SyntagmIndex > High(SyntagmRanges)) or
+         (SyntagmRanges[SyntagmIndex].Length <= 0) then
+      begin
+        Result := nil;
+        Exit;
+      end;
+      RangeIndex := Length(Result);
+      SetLength(Result, RangeIndex + 1);
+      Result[RangeIndex] := SyntagmRanges[SyntagmIndex];
+    end;
+  end;
+
+  procedure ReportProgress(Phase: TConcordanceExportPhase;
+    Current, Total: Integer; ForceMessages: Boolean = False);
+  begin
+    if Assigned(ProgressEvent) then
+      ProgressEvent(Phase, Current, Total)
+    else if Assigned(ProgressBar) then
+    begin
+      if Total > 0 then
+      begin
+        ProgressBar.Style := pbstNormal;
+        ProgressBar.Max := Total;
+        ProgressBar.Position := Min(Current, Total);
+      end
+      else
+        ProgressBar.Style := pbstMarquee;
+      ProgressBar.Visible := True;
+      ProgressBar.Update;
+    end;
+    if ForceMessages then
+      Application.ProcessMessages;
+  end;
+
+  procedure ReadCanonicalAssociations;
+  var
+    AssociationIndex: Integer;
+    HighlightRanges: TConcordanceHighlightRangeArray;
+    SyntagmRanges: TConcordanceHighlightRangeArray;
+  begin
+    HighlightRanges := nil;
+    SyntagmRanges := nil;
+    ReadingTotal := QLinhas[FScope];
+    ReportProgress(cepReadingAssociations, 0, ReadingTotal, True);
+    ReferenceOrder := 0;
+    FVerseRepository.First;
+    while not FVerseRepository.EOF do
+    begin
+      VerseData := FVerseRepository.ReadCurrentVerseData;
+      if VerseData.Associations <> '' then
+      begin
+        SetLength(AssociationData, 0);
+        if FVerseRenderBuffer.TryExtractAssociationPairData(
+            VerseData.OriginalText,
+            VerseData.TranslatedText,
+            VerseData.Associations,
+            plAll,
+            AssociationData,
+            CorruptionDetails) then
+        begin
+          Context := '';
+          SetLength(SyntagmRanges, 0);
+          if Options.IncludeVerseContext then
+            BuildDestinationContext(Context, SyntagmRanges);
+          for AssociationIndex := 0 to High(AssociationData) do
+          begin
+            HighlightRanges := GetAssociationHighlightRanges(
+              AssociationData[AssociationIndex], SyntagmRanges);
+            Concordance.AddOccurrence(
+              AssociationData[AssociationIndex].SourcePhrase,
+              AssociationData[AssociationIndex].TargetPhrase,
+              FVerseRepository.CurrentReferenceID, Context, 1,
+              ReferenceOrder, HighlightRanges);
+          end;
+        end
+        else
+          Errors.Add(FormatCorruptionMessage(Options.CorruptedDataMessage,
+            CurrentReference(GetReference), CorruptionDetails) + #13#10);
+      end;
+
+      Inc(ReferenceOrder);
+      if ((ReferenceOrder mod 20) = 0) then
+        ReportProgress(cepReadingAssociations, ReferenceOrder,
+          ReadingTotal, True);
+      FVerseRepository.Next;
+    end;
+    ReportProgress(cepReadingAssociations, ReadingTotal,
+      ReadingTotal, True);
+  end;
+
+  procedure ReadIndexedAssociations;
+  begin
+    ReadingTotal := SuggestionManager.IndexedConcordanceOccurrenceCount;
+    ReportProgress(cepReadingAssociations, 0, ReadingTotal, True);
+    FActiveConcordance := Concordance;
+    FIndexedIncludeVerseContext := Options.IncludeVerseContext;
+    FIndexedProcessed := 0;
+    FIndexedTotal := ReadingTotal;
+    FIndexedProgressEvent := ProgressEvent;
+    FLastIndexedReference := '';
+    FLastIndexedContext := '';
+    try
+      SuggestionManager.EnumerateIndexedConcordanceOccurrences(
+        @AddIndexedConcordanceOccurrence);
+      ReportProgress(cepReadingAssociations, ReadingTotal,
+        ReadingTotal, True);
+    finally
+      FActiveConcordance := nil;
+      FIndexedProgressEvent := nil;
+      FLastIndexedReference := '';
+      FLastIndexedContext := '';
+    end;
+  end;
+
+  function IndexedOccurrencesCoverCanonicalData(
+    References: TStringList): Boolean;
+  var
+    ReferenceIndex: Integer;
+    MissingPairs: TStringList;
+    MissingVerse: TVerseData;
+  begin
+    Result := True;
+    for ReferenceIndex := 0 to References.Count - 1 do
+    begin
+      if not FVerseRepository.TryReadVerseData(
+          References[ReferenceIndex], '', MissingVerse) then
+      begin
+        Result := False;
+        Exit;
+      end;
+
+      MissingPairs := nil;
+      if FVerseRenderBuffer.TryExtractPairsList(
+          MissingVerse.OriginalText, MissingVerse.TranslatedText,
+          MissingVerse.Associations, plAll, MissingPairs,
+          CorruptionDetails) then
+      begin
+        try
+          // An associated verse without an indexed pair means the cache is
+          // incomplete. A verse whose associations are all ignored syntagms
+          // legitimately contributes no concordance entry.
+          if MissingPairs.Count > 0 then
+          begin
+            Result := False;
+            Exit;
+          end;
+        finally
+          MissingPairs.Free;
+        end;
+      end
+      else
+        Errors.Add(FormatCorruptionMessage(Options.CorruptedDataMessage,
+          References[ReferenceIndex], CorruptionDetails) + #13#10);
+    end;
+  end;
 begin
   RequireDependencies;
 
@@ -465,13 +798,12 @@ begin
   Errors := nil;
   Dictionary := nil;
   try
-    ConfigureProgressBar(ProgressBar, QLinhas[FScope] + QStrongs[FScope]);
-
     Concordance := TConcordance.Create;
-    Concordance.Detailed := Options.Detailed;
+    Concordance.Mode := Options.Mode;
+    Concordance.IncludeVerseContext := Options.IncludeVerseContext;
     Errors := TStringList.Create;
 
-    if Options.Detailed then
+    if Options.Mode = cemAnalytical then
       TitleText := Format('%s %s', [Options.Abbreviation, Options.AnalyticalCaption])
     else
       TitleText := Format('%s %s', [Options.Abbreviation, Options.SyntheticCaption]);
@@ -481,7 +813,8 @@ begin
     begin
       Title := TitleText;
       TitleEnglish := Format('%s %s', [Options.Abbreviation,
-        IfThen(Options.Detailed, 'Analytical Concordance', 'Synthetic Concordance')]);
+        IfThen(Options.Mode = cemAnalytical,
+          'Analytical Concordance', 'Synthetic Concordance')]);
       Language := Options.LanguageId;
       Description := TitleText;
       EnglishDescription := TitleEnglish;
@@ -492,39 +825,31 @@ begin
     if Assigned(StartSession) then
       StartSession;
     try
-      FVerseRepository.First;
-      while not FVerseRepository.EOF do
+      UseIndexedOccurrences := Options.UseIndexedOccurrences and
+        (Options.Mode = cemSynthetic) and not Options.IncludeVerseContext and
+        Assigned(SuggestionManager);
+      if UseIndexedOccurrences then
       begin
-        VerseData := FVerseRepository.ReadCurrentVerseData;
-        if VerseData.Associations <> '' then
-        begin
-          Pairs := nil;
-          if FVerseRenderBuffer.TryExtractPairsList(
-              VerseData.OriginalText,
-              VerseData.TranslatedText,
-              VerseData.Associations,
-              plAll,
-              Pairs,
-              CorruptionDetails) then
-          begin
-            try
-              Concordance.AddPhrase(Pairs, FVerseRepository.CurrentReferenceID);
-            finally
-              Pairs.Free;
-            end;
-          end
-          else
-            Errors.Add(FormatCorruptionMessage(Options.CorruptedDataMessage,
-              CurrentReference(GetReference), CorruptionDetails) + #13#10);
+        UnindexedReferences := SuggestionManager.GetUnindexedAssociatedReferences;
+        try
+          UseIndexedOccurrences :=
+            not SuggestionManager.IndexedConcordanceHasTaggedTargets and
+            IndexedOccurrencesCoverCanonicalData(UnindexedReferences);
+        finally
+          UnindexedReferences.Free;
         end;
-
-        AdvanceProgressBar(ProgressBar, 20);
-        FVerseRepository.Next;
       end;
+
+      if UseIndexedOccurrences then
+        ReadIndexedAssociations
+      else
+        ReadCanonicalAssociations;
 
       Entries := TStringList.Create;
       Entries.LoadFromFile('lemmas.dat');
       LemmaRegex := RegexCreate('^(.*?),(.*?)$', [rcoUTF8]);
+      FormattedEntries := 0;
+      ReportProgress(cepFormattingEntries, 0, QStrongs[FScope], True);
       for Entry in Entries do
       begin
         Match := LemmaRegex.Match(Entry);
@@ -535,14 +860,19 @@ begin
           begin
             Lemma := Match.Groups[2].Value;
             Dictionary.AddEntry(Strong, Lemma, Concordance.GetStrongRtf(Lemma, Strong));
-            AdvanceProgressBar(ProgressBar, 20);
+            Inc(FormattedEntries);
+            if (FormattedEntries mod 20) = 0 then
+              ReportProgress(cepFormattingEntries, FormattedEntries,
+                QStrongs[FScope], True);
           end;
-        end
-        else
-          AdvanceProgressBar(ProgressBar, 20);
+        end;
       end;
 
+      ReportProgress(cepFormattingEntries, QStrongs[FScope],
+        QStrongs[FScope], True);
+      ReportProgress(cepWritingModule, 0, 0, True);
       Dictionary.Commit;
+      ReportProgress(cepFinalizing, 1, 1, True);
     finally
       if Assigned(FinishSession) then
         FinishSession;

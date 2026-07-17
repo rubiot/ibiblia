@@ -24,7 +24,7 @@ uses
   project_patch_applier, bible_tree_coordinator, ai_batch_orchestrator,
   project_database_bootstrap, status_catalog,
   dictionary_manager, project_exporter, association_memory_service,
-  UnitPleaseWait, bible_book_names, translation_memory_model,
+  UnitPleaseWait, bible_book_names, translation_memory_model, ConcordanceExport,
   navigation_history;
 const
   // AI processing icon indices for ImageListTreeView in formprincipal
@@ -305,7 +305,12 @@ type
     procedure ExportInterlinearText(arquivo: string; opcoes: TOpcoesExportacao);
     procedure ExportInterlinearText(arquivo: string; pb: TProgressBar; opcoes: TOpcoesExportacao);
     procedure ExportConcordance(arquivo: string; opcoes: TOpcoesExportacao; abbreviation: string);
-    procedure ExportConcordance(arquivo: string; pb: TProgressBar; opcoes: TOpcoesExportacao; abbreviation: string);
+    procedure ExportConcordance(arquivo: string; pb: TProgressBar;
+      opcoes: TOpcoesExportacao; abbreviation: string;
+      IncludeVerseContext: Boolean = False;
+      UseIndexedOccurrences: Boolean = False;
+      ProgressEvent: TConcordanceExportProgressEvent = nil);
+    function PrepareConcordanceExport(UseIndexedOccurrences: Boolean): Boolean;
     procedure AssignTextFont(fonte: TFont; textos: STextosBiblicos);
     procedure ClearText(texto: TTipoTextoBiblico);
     function GetTextFont(texto: TTipoTextoBiblico): TFont;
@@ -4514,7 +4519,9 @@ begin
 end;
 
 procedure TProject.ExportConcordance(arquivo: string;
-  pb: TProgressBar; opcoes: TOpcoesExportacao; abbreviation: string);
+  pb: TProgressBar; opcoes: TOpcoesExportacao; abbreviation: string;
+  IncludeVerseContext: Boolean; UseIndexedOccurrences: Boolean;
+  ProgressEvent: TConcordanceExportProgressEvent);
 var
   Options: TConcordanceExportOptions;
 begin
@@ -4525,6 +4532,12 @@ begin
     FExportando := true;
 
     Options.Detailed := oeConcordDetalhada in opcoes;
+    if Options.Detailed then
+      Options.Mode := cemAnalytical
+    else
+      Options.Mode := cemSynthetic;
+    Options.IncludeVerseContext := IncludeVerseContext;
+    Options.UseIndexedOccurrences := UseIndexedOccurrences;
     Options.Abbreviation := abbreviation;
     Options.LanguageId := SLanguageId;
     Options.AnalyticalCaption := SAnalyticalConcordance;
@@ -4535,7 +4548,8 @@ begin
     Options.ErrorReportCreatedMessage := SExportErrorReportCreated;
 
     FProjectExporter.ExportConcordance(arquivo, pb, Options,
-      @StartScrollingSession, @FinishScrollingSession, @GetID);
+      @StartScrollingSession, @FinishScrollingSession, @GetID,
+      FSuggestionManager, ProgressEvent);
   finally
     FExportando := false;
     AfterVerseScroll(nil);
@@ -4623,6 +4637,25 @@ end;
 procedure TProject.SetInfo(info, valor: string);
 begin
   FConfig.WriteImmediateString(info, valor);
+end;
+
+function TProject.PrepareConcordanceExport(
+  UseIndexedOccurrences: Boolean): Boolean;
+begin
+  Result := False;
+  if not UseIndexedOccurrences or not Assigned(FAssociationMemory) or
+    not Assigned(FSuggestionManager) then
+    Exit;
+
+  try
+    BeforeVerseScroll(nil);
+    EnsureAssociationMemoryFresh;
+    Result := not FAssociationMemory.NeedsRebuild;
+  except
+    // The canonical association data remains a safe export fallback. A cache
+    // validation or rebuild failure must not prevent concordance generation.
+    Result := False;
+  end;
 end;
 
 function TProject.GetInfo(info: string): string;

@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, fpcunit, testregistry, sqlite3conn, sqldb,
   SuggestionManager, project_persistence, project_config,
-  verse_render_buffer, association_memory_service;
+  Syntagm, Verse, verse_render_buffer, association_memory_service;
 
 type
   TAssociationMemoryServiceTest = class(TTestCase)
@@ -32,6 +32,7 @@ type
     procedure MatchingLegacyRevisionsWithoutCacheVersionRequireRebuild;
     procedure IncrementalReplayValidatesOnlyAffectedPairs;
     procedure NonCanonicalAssociationOrderIsAccepted;
+    procedure ExtractedPairDataPreservesExactDestinationIndexes;
     procedure RebuildSkipsInvalidAssociations;
     procedure RenderBufferReuseReleasesParsedSyntagmLists;
   end;
@@ -351,6 +352,26 @@ begin
     '<par a="2,0" b="2,0">');
   AssertEquals('Equivalent syntagm order must be normalized',
     '<par a="0,2" b="0,2">', FRenderBuffer.SourceVerse.Pares);
+end;
+
+procedure TAssociationMemoryServiceTest.
+  ExtractedPairDataPreservesExactDestinationIndexes;
+var
+  CorruptionDetails: string;
+  PairData: TAssociationPairDataArray;
+begin
+  PairData := nil;
+  FRenderBuffer.SetTokenizerVersion(1);
+  AssertTrue(FRenderBuffer.TryExtractAssociationPairData(
+    'source<WG3607>', 'um vaso como um grande lençol',
+    '<par a="0" b="6,10">', plAll, PairData, CorruptionDetails));
+
+  AssertEquals(1, Length(PairData));
+  AssertEquals('source<wg3607>', PairData[0].SourcePhrase);
+  AssertEquals('um;lençol', PairData[0].TargetPhrase);
+  AssertEquals(2, Length(PairData[0].TargetSyntagmIndexes));
+  AssertEquals(6, PairData[0].TargetSyntagmIndexes[0]);
+  AssertEquals(10, PairData[0].TargetSyntagmIndexes[1]);
 end;
 
 procedure TAssociationMemoryServiceTest.RebuildSkipsInvalidAssociations;

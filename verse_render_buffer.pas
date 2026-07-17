@@ -51,6 +51,13 @@ type
     function TryExtractPairsList(const OriginalText, TranslatedText,
       Associations: string; ListType: TPairsListType; out Pairs: TStringList;
       out CorruptionDetails: string): Boolean;
+    function ExtractAssociationPairData(const OriginalText, TranslatedText,
+      Associations: string;
+      ListType: TPairsListType): TAssociationPairDataArray;
+    function TryExtractAssociationPairData(const OriginalText, TranslatedText,
+      Associations: string; ListType: TPairsListType;
+      out PairData: TAssociationPairDataArray;
+      out CorruptionDetails: string): Boolean;
     property SourceVerse: TVerse read FSourceVerse;
     property DestinationVerse: TVerse read FDestinationVerse;
   end;
@@ -360,6 +367,35 @@ begin
     on E: Exception do
     begin
       Pairs := nil;
+      CorruptionDetails := FormatCorruptionDetails(E.Message, Associations);
+      Result := False;
+    end;
+  end;
+end;
+
+function TVerseRenderBuffer.ExtractAssociationPairData(const OriginalText,
+  TranslatedText, Associations: string;
+  ListType: TPairsListType): TAssociationPairDataArray;
+begin
+  LoadPair(OriginalText, TranslatedText, Associations);
+  Result := FSourceVerse.GetAssociationPairData(ListType);
+end;
+
+function TVerseRenderBuffer.TryExtractAssociationPairData(
+  const OriginalText, TranslatedText, Associations: string;
+  ListType: TPairsListType; out PairData: TAssociationPairDataArray;
+  out CorruptionDetails: string): Boolean;
+begin
+  CorruptionDetails := '';
+  PairData := nil;
+  try
+    PairData := ExtractAssociationPairData(OriginalText, TranslatedText,
+      Associations, ListType);
+    Result := True;
+  except
+    on E: Exception do
+    begin
+      PairData := nil;
       CorruptionDetails := FormatCorruptionDetails(E.Message, Associations);
       Result := False;
     end;

@@ -17,10 +17,13 @@ type
     FManager: TSuggestionManager;
     FLastRebuildPhase: TAssociationMemoryRebuildPhase;
     FRebuildProgressNotifications: Integer;
+    FConcordanceOccurrences: TStringList;
     function QueryInt(const SQL: string): Integer;
     function QueryString(const SQL: string): string;
     procedure TrackRebuildProgress(Phase: TAssociationMemoryRebuildPhase;
       Current, Total: Integer);
+    procedure CollectConcordanceOccurrence(
+      const Data: TConcordanceOccurrenceData);
   protected
     procedure SetUp; override;
     procedure TearDown; override;
@@ -51,6 +54,9 @@ type
     procedure OccurrenceIndexConsolidatesExactMatches;
     procedure OccurrenceIndexRollbackPreservesPreviousData;
     procedure PreparedRebuildValidationDetectsOccurrenceMismatch;
+    procedure AffectedPairValidationChecksOnlyTheChangedPair;
+    procedure ConcordanceOccurrenceEnumerationUsesReferenceIndex;
+    procedure ConcordanceOccurrenceIndexReportsUnsafeFallbacks;
   end;
 
 implementation
@@ -99,10 +105,12 @@ begin
     '(slde_ldes_id, slde_sdes_id, slde_ordem)');
 
   FManager := TSuggestionManager.Create(nil, FConnection);
+  FConcordanceOccurrences := TStringList.Create;
 end;
 
 procedure TSuggestionManagerTest.TearDown;
 begin
+  FConcordanceOccurrences.Free;
   FManager.Free;
   if FTransaction.Active then
     FTransaction.Rollback;
@@ -110,6 +118,14 @@ begin
   FConnection.Free;
   FTransaction.Free;
   inherited TearDown;
+end;
+
+procedure TSuggestionManagerTest.CollectConcordanceOccurrence(
+  const Data: TConcordanceOccurrenceData);
+begin
+  FConcordanceOccurrences.Add(Format('%s|%s|%s|%d|%d',
+    [Data.ReferenceID, Data.SourcePhrase, Data.TargetPhrase,
+     Data.Occurrences, Data.ReferenceOrder]));
 end;
 
 function TSuggestionManagerTest.QueryInt(const SQL: string): Integer;
@@ -900,6 +916,34 @@ begin
   AssertEquals(2, Length(Page.Items));
 end;
 
+procedure TSuggestionManagerTest.
+  AffectedPairValidationChecksOnlyTheChangedPair;
+var
+  ErrorMessage: string;
+begin
+  FManager.AddPairForReference('1,1,1', '<wg1>', 'word');
+  AssertTrue(FManager.ValidatePairConsistency('<wg1>', 'word', 1,
+    ErrorMessage));
+
+  FConnection.ExecuteDirect(
+    'update association_memory_occurrences set amo_occurrences = 2 ' +
+    'where amo_reference = ''1,1,1'' and amo_source = ''<wg1>'' ' +
+    'and amo_target = ''word''');
+  AssertFalse('A mismatch in the affected pair must be detected',
+    FManager.ValidatePairConsistency('<wg1>', 'word', 1, ErrorMessage));
+  AssertFalse(ErrorMessage.IsEmpty);
+
+  FConnection.ExecuteDirect(
+    'update association_memory_occurrences set amo_occurrences = 1 ' +
+    'where amo_reference = ''1,1,1'' and amo_source = ''<wg1>'' ' +
+    'and amo_target = ''word''');
+  FConnection.ExecuteDirect(
+    'insert into association_memory_occurrences values ' +
+    '(''missing'', ''unrelated'', ''broken'', -1)');
+  AssertTrue('Incremental validation must not scan unrelated cache rows',
+    FManager.ValidatePairConsistency('<wg1>', 'word', 1, ErrorMessage));
+end;
+
 procedure TSuggestionManagerTest.OccurrenceIndexRollbackPreservesPreviousData;
 var
   Alternatives: TTranslationAlternativeDataArray;
@@ -938,6 +982,44 @@ begin
     AssertFalse(FManager.ValidatePreparedRebuild(ErrorMessage));
   finally
     FManager.RollbackRebuild;
+  end;
+end;
+
+procedure TSuggestionManagerTest.
+  ConcordanceOccurrenceEnumerationUsesReferenceIndex;
+begin
+  FManager.AddPairForReference('1,1,1', '<wg1>', 'word');
+  FManager.AddPairForReference('1,1,1', '<wg1>', 'word');
+  FManager.AddPairForReference('1,1,2', '<wg2>', 'other');
+
+  AssertEquals('The export progress count represents indexed rows',
+    2, FManager.IndexedConcordanceOccurrenceCount);
+  FManager.EnumerateIndexedConcordanceOccurrences(
+    @CollectConcordanceOccurrence);
+  AssertEquals(2, FConcordanceOccurrences.Count);
+  AssertEquals('1,1,1|<wg1>|word|2|1', FConcordanceOccurrences[0]);
+  AssertEquals('1,1,2|<wg2>|other|1|2', FConcordanceOccurrences[1]);
+end;
+
+procedure TSuggestionManagerTest.
+  ConcordanceOccurrenceIndexReportsUnsafeFallbacks;
+var
+  References: TStringList;
+begin
+  FManager.AddPairForReference('1,1,1', '<wg1>', '<font>word</font>');
+  AssertFalse(FManager.IndexedConcordanceHasTaggedTargets);
+  FManager.AddPairForReference('1,1,2', '<wg2>', '<wtfoo>');
+  AssertTrue(FManager.IndexedConcordanceHasTaggedTargets);
+
+  FConnection.ExecuteDirect(
+    'update pares set pare_pares = ''<par a="0" b="0">'' ' +
+    'where pare_id = ''1,1,3''');
+  References := FManager.GetUnindexedAssociatedReferences;
+  try
+    AssertEquals(1, References.Count);
+    AssertEquals('1,1,3', References[0]);
+  finally
+    References.Free;
   end;
 end;
 

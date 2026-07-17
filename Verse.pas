@@ -25,6 +25,17 @@ type
 
   TStrongsCountMode = (scNone, scCountWords, scCountStrongs);
 
+  TSyntagmIndexArray = array of Integer;
+
+  TAssociationPairData = record
+    SourcePhrase: string;
+    TargetPhrase: string;
+    SourceSyntagmIndexes: TSyntagmIndexArray;
+    TargetSyntagmIndexes: TSyntagmIndexArray;
+  end;
+
+  TAssociationPairDataArray = array of TAssociationPairData;
+
   { TVerse }
 
   TVerse = class
@@ -129,6 +140,8 @@ type
     procedure SelectSyntagms(list: TSyntagmList);
     procedure ChangeText(_XML: string);
     function GetPairsList(tipo: TPairsListType): TStringList;
+    function GetAssociationPairData(
+      ListType: TPairsListType): TAssociationPairDataArray;
     procedure OnSyntagmPopupMenu(s: TSyntagm);
     procedure ShowTags;
     procedure HideTags;
@@ -439,43 +452,90 @@ end;
 
 function TVerse.GetListaPares(tipo: TPairsListType): TStringList;
 var
-  src, dst: string;
-  s, p: TSyntagm;
-  tmp: TSyntagmList;
+  PairData: TAssociationPairData;
 begin
   result := TStringList.Create;
+  for PairData in GetAssociationPairData(tipo) do
+  begin
+    result.Add(PairData.SourcePhrase);
+    result.Add(PairData.TargetPhrase);
+  end;
+end;
+
+function TVerse.GetAssociationPairData(
+  ListType: TPairsListType): TAssociationPairDataArray;
+var
+  DataIndex: Integer;
+  SourceIndex: Integer;
+  TargetIndex: Integer;
+  SourcePhrase: string;
+  TargetPhrase: string;
+  Syntagm: TSyntagm;
+  PairedSyntagm: TSyntagm;
+  Processed: TSyntagmList;
+begin
+  Result := nil;
   if not Assigned(FSintagmas) then
     Exit;
 
-  tmp := TSyntagmList.Create;
-  for s in FSintagmas do
-  begin
-    if not assigned(s.Pairs) or (s.Kind <> tsSintagma) or s.IsItalic or (tmp.IndexOf(s) >= 0) then
-      continue;
+  Processed := TSyntagmList.Create;
+  try
+    for Syntagm in FSintagmas do
+    begin
+      if not Assigned(Syntagm.Pairs) or
+         (Syntagm.Kind <> tsSintagma) or Syntagm.IsItalic or
+         (Processed.IndexOf(Syntagm) >= 0) then
+        continue;
 
-    src := s.GetSuggestionKey(tipo);
-    tmp.Add(s);
-    for p in s.Siblings do
-    begin
-      if p.IsItalic or (p.Kind <> tsSintagma) then
-        continue;
-      src := src + ';' + p.GetSuggestionKey(tipo);
-      tmp.Add(p);
+      SourcePhrase := Syntagm.GetSuggestionKey(ListType);
+      DataIndex := Length(Result);
+      SetLength(Result, DataIndex + 1);
+      SourceIndex := FSintagmas.IndexOf(Syntagm);
+      SetLength(Result[DataIndex].SourceSyntagmIndexes, 1);
+      Result[DataIndex].SourceSyntagmIndexes[0] := SourceIndex;
+      Processed.Add(Syntagm);
+
+      for PairedSyntagm in Syntagm.Siblings do
+      begin
+        if PairedSyntagm.IsItalic or
+           (PairedSyntagm.Kind <> tsSintagma) then
+          continue;
+        SourcePhrase := SourcePhrase + ';' +
+          PairedSyntagm.GetSuggestionKey(ListType);
+        SourceIndex := Length(Result[DataIndex].SourceSyntagmIndexes);
+        SetLength(Result[DataIndex].SourceSyntagmIndexes, SourceIndex + 1);
+        Result[DataIndex].SourceSyntagmIndexes[SourceIndex] :=
+          FSintagmas.IndexOf(PairedSyntagm);
+        Processed.Add(PairedSyntagm);
+      end;
+
+      TargetPhrase := '';
+      for PairedSyntagm in Syntagm.Pairs do
+      begin
+        if PairedSyntagm.IsItalic or
+           (PairedSyntagm.Kind <> tsSintagma) then
+          continue;
+        if not TargetPhrase.IsEmpty then
+          TargetPhrase := TargetPhrase + ';';
+        TargetPhrase := TargetPhrase +
+          PairedSyntagm.GetSuggestionKey(ListType);
+        TargetIndex := Length(Result[DataIndex].TargetSyntagmIndexes);
+        SetLength(Result[DataIndex].TargetSyntagmIndexes, TargetIndex + 1);
+        Result[DataIndex].TargetSyntagmIndexes[TargetIndex] :=
+          FVersiculoRef.Sintagmas.IndexOf(PairedSyntagm);
+      end;
+
+      if SourcePhrase.IsEmpty or TargetPhrase.IsEmpty then
+      begin
+        SetLength(Result, DataIndex);
+        Continue;
+      end;
+      Result[DataIndex].SourcePhrase := SourcePhrase;
+      Result[DataIndex].TargetPhrase := TargetPhrase;
     end;
-    dst := '';
-    for p in s.Pairs do
-    begin
-      if p.IsItalic or (p.Kind <> tsSintagma) then
-        continue;
-      dst := dst + p.GetSuggestionKey(tipo) + ';'
-    end;
-    if not src.IsEmpty and not dst.IsEmpty then
-    begin
-      result.Add(src);
-      result.Add(dst.TrimRight(';'));
-    end;
+  finally
+    Processed.Free;
   end;
-  tmp.Destroy;
 end;
 
 procedure TVerse.OnSintagmaPopupMenu(s: TSyntagm);

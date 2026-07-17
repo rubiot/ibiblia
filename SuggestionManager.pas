@@ -42,6 +42,18 @@ type
     Items: TTranslationOccurrenceDataArray;
   end;
 
+  TConcordanceOccurrenceData = record
+    ReferenceID: string;
+    SourcePhrase: string;
+    TargetPhrase: string;
+    DestinationText: string;
+    Occurrences: Integer;
+    ReferenceOrder: Integer;
+  end;
+
+  TConcordanceOccurrenceEvent = procedure(
+    const Data: TConcordanceOccurrenceData) of object;
+
   TAssociationMemoryRebuildPhase = (
     amrpWriting,
     amrpValidating,
@@ -140,12 +152,19 @@ type
     function ValidatePairs(ExpectedPairs: TStrings;
       out ErrorMessage: string): Boolean;
     function GetPairOccurrenceCount(const Source, Target: string): Integer;
+    function ValidatePairConsistency(const Source, Target: string;
+      ExpectedCount: Integer; out ErrorMessage: string): Boolean;
     function GetTranslationAlternativeData(
       const Key: string): TTranslationAlternativeDataArray;
     procedure PreloadTranslationAlternativeData(Keys: TStrings);
     function GetTranslationOccurrences(
       const Matches: TTranslationPairMatchArray;
       Limit: Integer): TTranslationOccurrencePage;
+    function IndexedConcordanceOccurrenceCount: Integer;
+    function IndexedConcordanceHasTaggedTargets: Boolean;
+    procedure EnumerateIndexedConcordanceOccurrences(
+      Handler: TConcordanceOccurrenceEvent);
+    function GetUnindexedAssociatedReferences: TStringList;
     function GetTranslationAlternatives(Syntagm: TSyntagm): string;
     property OnRebuildProgress: TAssociationMemoryRebuildProgressEvent
       read FOnRebuildProgress write FOnRebuildProgress;
@@ -1696,6 +1715,69 @@ begin
   end;
 end;
 
+function TSuggestionManager.ValidatePairConsistency(const Source,
+  Target: string; ExpectedCount: Integer; out ErrorMessage: string): Boolean;
+var
+  ActualCount: Integer;
+  InvalidOccurrenceRows: Integer;
+  NormalizedSource: string;
+  NormalizedTarget: string;
+  OrphanReferences: Integer;
+  ReferenceOccurrences: Integer;
+begin
+  Result := False;
+  ErrorMessage := '';
+  NormalizedSource := Source.ToLower;
+  NormalizedTarget := Target.ToLower;
+
+  ActualCount := GetPairOccurrenceCount(NormalizedSource, NormalizedTarget);
+  if ActualCount <> ExpectedCount then
+  begin
+    ErrorMessage := Format(SAssociationMemoryPairMismatchFmt,
+      [NormalizedSource, NormalizedTarget, ExpectedCount, ActualCount]);
+    Exit;
+  end;
+
+  FQuery.Close;
+  FQuery.SQL.Text :=
+    'select coalesce(sum(o.amo_occurrences), 0), ' +
+    'coalesce(sum(case when o.amo_occurrences <= 0 then 1 else 0 end), 0), ' +
+    'coalesce(sum(case when o.amo_reference <> '''' and not exists (' +
+      'select 1 from pares p where p.pare_id = o.amo_reference' +
+    ') then 1 else 0 end), 0) ' +
+    'from association_memory_occurrences o where ' +
+    'o.amo_source = :source and o.amo_target = :target';
+  FQuery.Params.ParamByName('source').AsString := NormalizedSource;
+  FQuery.Params.ParamByName('target').AsString := NormalizedTarget;
+  FQuery.Open;
+  try
+    ReferenceOccurrences := FQuery.Fields[0].AsInteger;
+    InvalidOccurrenceRows := FQuery.Fields[1].AsInteger;
+    OrphanReferences := FQuery.Fields[2].AsInteger;
+  finally
+    FQuery.Close;
+  end;
+
+  if InvalidOccurrenceRows > 0 then
+  begin
+    ErrorMessage := SAssociationMemoryNonPositiveOccurrenceReferences;
+    Exit;
+  end;
+  if OrphanReferences > 0 then
+  begin
+    ErrorMessage := SAssociationMemoryOrphanOccurrenceReferences;
+    Exit;
+  end;
+  if ReferenceOccurrences <> ExpectedCount then
+  begin
+    ErrorMessage := Format(SAssociationMemoryPairMismatchFmt,
+      [NormalizedSource, NormalizedTarget, ExpectedCount,
+       ReferenceOccurrences]);
+    Exit;
+  end;
+  Result := True;
+end;
+
 function TSuggestionManager.GetTranslationAlternatives(Syntagm: TSyntagm): string;
 var
   Alternatives: TTranslationAlternativeDataArray;
@@ -1831,6 +1913,90 @@ begin
     Query.Free;
     InsertQuery.Free;
     FConnection.ExecuteDirect('delete from association_memory_match_filter');
+  end;
+end;
+
+function TSuggestionManager.IndexedConcordanceOccurrenceCount: Integer;
+begin
+  FQuery.Close;
+  FQuery.SQL.Text := 'select count(*) from association_memory_occurrences o ' +
+    'join pares p on p.pare_id = o.amo_reference';
+  FQuery.Open;
+  try
+    Result := FQuery.Fields[0].AsInteger;
+  finally
+    FQuery.Close;
+  end;
+end;
+
+function TSuggestionManager.IndexedConcordanceHasTaggedTargets: Boolean;
+begin
+  FQuery.Close;
+  FQuery.SQL.Text := 'select 1 from association_memory_occurrences ' +
+    'where instr(lower(amo_target), ''<wg'') > 0 or ' +
+    'instr(lower(amo_target), ''<wh'') > 0 or ' +
+    'instr(lower(amo_target), ''<wt'') > 0 limit 1';
+  FQuery.Open;
+  try
+    Result := not FQuery.EOF;
+  finally
+    FQuery.Close;
+  end;
+end;
+
+procedure TSuggestionManager.EnumerateIndexedConcordanceOccurrences(
+  Handler: TConcordanceOccurrenceEvent);
+var
+  Data: TConcordanceOccurrenceData;
+  Query: TSQLQuery;
+begin
+  if not Assigned(Handler) then
+    Exit;
+  Query := TSQLQuery.Create(nil);
+  try
+    Query.DataBase := FConnection;
+    Query.SQL.Text := 'select o.amo_reference, o.amo_source, ' +
+      'o.amo_target, p.pare_texto_destino, o.amo_occurrences, p.rowid ' +
+      'from association_memory_occurrences o ' +
+      'join pares p on p.pare_id = o.amo_reference ' +
+      'order by p.rowid, o.amo_source, o.amo_target';
+    Query.Open;
+    while not Query.EOF do
+    begin
+      Data.ReferenceID := Query.Fields[0].AsString;
+      Data.SourcePhrase := Query.Fields[1].AsString;
+      Data.TargetPhrase := Query.Fields[2].AsString;
+      Data.DestinationText := Query.Fields[3].AsString;
+      Data.Occurrences := Query.Fields[4].AsInteger;
+      Data.ReferenceOrder := Query.Fields[5].AsInteger;
+      Handler(Data);
+      Query.Next;
+    end;
+  finally
+    Query.Free;
+  end;
+end;
+
+function TSuggestionManager.GetUnindexedAssociatedReferences: TStringList;
+var
+  Query: TSQLQuery;
+begin
+  Result := TStringList.Create;
+  Query := TSQLQuery.Create(nil);
+  try
+    Query.DataBase := FConnection;
+    Query.SQL.Text := 'select p.pare_id from pares p ' +
+      'where trim(coalesce(p.pare_pares, '''')) <> '''' and not exists (' +
+      'select 1 from association_memory_occurrences o ' +
+      'where o.amo_reference = p.pare_id) order by p.rowid';
+    Query.Open;
+    while not Query.EOF do
+    begin
+      Result.Add(Query.Fields[0].AsString);
+      Query.Next;
+    end;
+  finally
+    Query.Free;
   end;
 end;
 

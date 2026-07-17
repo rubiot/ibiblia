@@ -5,9 +5,9 @@ unit FormProjectExport;
 interface
 
 uses
-  Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
+  Classes, SysUtils, Math, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
   ComCtrls, StdCtrls, ExtCtrls, BibleScope, Project, LCLTranslator, LCLIntf,
-  LazUTF8, UnitPleaseWait;
+  LazUTF8, UnitPleaseWait, project_exporter;
 
 type
 
@@ -17,10 +17,13 @@ type
     cbExportarNAComoItalicos: TCheckBox;
     cbExportarMorfologia: TCheckBox;
     cbExportarComentarios: TCheckBox;
+    cbConcordanceVerseContext: TCheckBox;
     cbStrongsReutilizados: TCheckBox;
     cbStrongsNaoTraduzidos: TCheckBox;
     Label1: TLabel;
     Label2: TLabel;
+    lblConcordanceDescription: TLabel;
+    lblConcordanceOutput: TLabel;
     leAbreviacao: TLabeledEdit;
     MemoRodapeOrigem: TMemo;
     MemoRodapeDestino: TMemo;
@@ -35,6 +38,9 @@ type
     procedure ConcordanceTypeChange(Sender: TObject);
   private
     FProject: TProject;
+    FAnalyticalAbbreviation: string;
+    FSyntheticAbbreviation: string;
+    FLastConcordanceType: Integer;
     function BuildTaggedDestinationOptions: TOpcoesExportacao;
     function BuildConcordanceOptions: TOpcoesExportacao;
     function DefaultConcordanceAbbreviation: string;
@@ -52,6 +58,9 @@ type
     procedure PersistInterlinearOptions;
     procedure PersistConcordanceOptions(const Abbreviation: string);
     procedure UpdateConcordanceAbbreviationDefault;
+    procedure UpdateConcordanceDescription;
+    procedure ConcordanceExportProgress(Phase: TConcordanceExportPhase;
+      Current, Total: Integer);
   public
     procedure SetProject(Project: TProject);
   end;
@@ -74,6 +83,21 @@ resourcestring
   SExportInterlinearProgress = 'Exporting interlinear source text...';
   SExportConcordanceTitle = 'Export project';
   SExportConcordanceProgress = 'Exporting concordance...';
+  SConcordanceReadingAssociations = 'Reading associations...';
+  SConcordanceFormattingEntries = 'Formatting concordance entries...';
+  SConcordanceWritingModule = 'Writing dictionary module...';
+  SConcordanceFinalizing = 'Finalizing export...';
+  SConcordanceAnalyticalDescription =
+    'Shows each source form separately, with its translations and verse references.';
+  SConcordanceSyntheticDescription =
+    'Groups all source forms by Strong''s number for a compact translation overview.';
+  SConcordanceTypeCaption = 'Concordance type';
+  SConcordanceAnalyticalType = 'Analytical concordance';
+  SConcordanceSyntheticType = 'Synthetic concordance';
+  SConcordanceOutputDescription =
+    'The exported dictionary is organized by Strong''s number, with compact frequency totals and clickable verse references.';
+  SConcordanceIncludeVerseContext =
+    'Include destination verse text beside each reference';
   SExportCompletedTitle = 'Export completed';
   SExportCompletedPrompt = 'Export completed successfully.'#13#10#13#10'%s'#13#10#13#10'Open the exported file location?';
 
@@ -108,7 +132,56 @@ end;
 
 procedure TFrmProjectExport.ConcordanceTypeChange(Sender: TObject);
 begin
+  if FLastConcordanceType = 0 then
+    FAnalyticalAbbreviation := Trim(leAbreviacao.Text)
+  else if FLastConcordanceType = 1 then
+    FSyntheticAbbreviation := Trim(leAbreviacao.Text);
+
+  if rgConcordanceType.ItemIndex = 1 then
+    leAbreviacao.Text := FSyntheticAbbreviation
+  else
+    leAbreviacao.Text := FAnalyticalAbbreviation;
+  FLastConcordanceType := rgConcordanceType.ItemIndex;
   UpdateConcordanceAbbreviationDefault;
+  UpdateConcordanceDescription;
+end;
+
+procedure TFrmProjectExport.UpdateConcordanceDescription;
+begin
+  if rgConcordanceType.ItemIndex = 1 then
+    lblConcordanceDescription.Caption := SConcordanceSyntheticDescription
+  else
+    lblConcordanceDescription.Caption := SConcordanceAnalyticalDescription;
+end;
+
+procedure TFrmProjectExport.ConcordanceExportProgress(
+  Phase: TConcordanceExportPhase; Current, Total: Integer);
+begin
+  case Phase of
+    cepReadingAssociations:
+      FormPleaseWait.SetMessage(SConcordanceReadingAssociations);
+    cepFormattingEntries:
+      FormPleaseWait.SetMessage(SConcordanceFormattingEntries);
+    cepWritingModule:
+      FormPleaseWait.SetMessage(SConcordanceWritingModule);
+    cepFinalizing:
+      FormPleaseWait.SetMessage(SConcordanceFinalizing);
+  end;
+
+  if Total > 0 then
+  begin
+    FormPleaseWait.ProgressBar1.Style := pbstNormal;
+    FormPleaseWait.ProgressBar1.Max := Total;
+    FormPleaseWait.ProgressBar1.Position := Min(Current, Total);
+    FormPleaseWait.SetDetail(Format('%d / %d', [Current, Total]));
+  end
+  else
+  begin
+    FormPleaseWait.ProgressBar1.Style := pbstMarquee;
+    FormPleaseWait.SetDetail('');
+  end;
+  FormPleaseWait.ProgressBar1.Update;
+  Application.ProcessMessages;
 end;
 
 function TFrmProjectExport.BuildTaggedDestinationOptions: TOpcoesExportacao;
@@ -267,9 +340,19 @@ end;
 
 procedure TFrmProjectExport.PersistConcordanceOptions(const Abbreviation: string);
 begin
+  if rgConcordanceType.ItemIndex = 1 then
+    FSyntheticAbbreviation := Abbreviation
+  else
+    FAnalyticalAbbreviation := Abbreviation;
   FProject.SetInfo('propriedades.abbrev', Abbreviation);
+  FProject.SetInfo('opcoes.exportar.concordancia.analitica.abbrev',
+    FAnalyticalAbbreviation);
+  FProject.SetInfo('opcoes.exportar.concordancia.sintetica.abbrev',
+    FSyntheticAbbreviation);
   FProject.SetInfo('opcoes.exportar.concordancia.detalhada',
     BoolToConfigValue(oeConcordDetalhada in BuildConcordanceOptions));
+  FProject.SetInfo('opcoes.exportar.concordancia.contexto',
+    BoolToConfigValue(cbConcordanceVerseContext.Checked));
 end;
 
 procedure TFrmProjectExport.UpdateConcordanceAbbreviationDefault;
@@ -332,6 +415,7 @@ procedure TFrmProjectExport.ExportConcordance;
 var
   Options: TOpcoesExportacao;
   Abbreviation: string;
+  UseIndexedOccurrences: Boolean;
 begin
   Options := BuildConcordanceOptions;
   UpdateConcordanceAbbreviationDefault;
@@ -343,18 +427,23 @@ begin
   ConfigureConcordanceSaveDialog;
   if SaveDialogConcordancia.Execute then
   begin
-    SaveStoredExportFileName(ConcordanceLastFileKey,
-      SaveDialogConcordancia.FileName);
     leAbreviacao.Text := Abbreviation;
-    PersistConcordanceOptions(Abbreviation);
+    UseIndexedOccurrences := rgConcordanceType.ItemIndex = 1;
+    if UseIndexedOccurrences then
+      UseIndexedOccurrences := FProject.PrepareConcordanceExport(True);
     FormPleaseWait.BeginOperation(Self, SExportConcordanceTitle,
       SExportConcordanceProgress, 1, SaveDialogConcordancia.FileName);
     try
       FProject.ExportConcordance(SaveDialogConcordancia.FileName,
-        FormPleaseWait.ProgressBar1, Options, Abbreviation);
+        FormPleaseWait.ProgressBar1, Options, Abbreviation,
+        cbConcordanceVerseContext.Checked, UseIndexedOccurrences,
+        @ConcordanceExportProgress);
     finally
       FormPleaseWait.FinishOperation;
     end;
+    SaveStoredExportFileName(ConcordanceLastFileKey,
+      SaveDialogConcordancia.FileName);
+    PersistConcordanceOptions(Abbreviation);
     ConfirmOpenExportedFile(SaveDialogConcordancia.FileName);
   end;
 end;
@@ -376,16 +465,45 @@ begin
 end;
 
 procedure TFrmProjectExport.SetProject(Project: TProject);
+var
+  LegacyAbbreviation: string;
 begin
   FProject := Project;
+  rgConcordanceType.Caption := SConcordanceTypeCaption;
+  rgConcordanceType.Items.BeginUpdate;
+  try
+    rgConcordanceType.Items.Clear;
+    rgConcordanceType.Items.Add(SConcordanceAnalyticalType);
+    rgConcordanceType.Items.Add(SConcordanceSyntheticType);
+  finally
+    rgConcordanceType.Items.EndUpdate;
+  end;
+  lblConcordanceOutput.Caption := SConcordanceOutputDescription;
+  cbConcordanceVerseContext.Caption := SConcordanceIncludeVerseContext;
   MemoRodapeOrigem.Text := FProject.GetInfo('propriedades.origem');
   MemoRodapeDestino.Text := FProject.GetInfo('propriedades.destino');
-  leAbreviacao.Text := FProject.GetInfo('propriedades.abbrev');
+  LegacyAbbreviation := FProject.GetInfo('propriedades.abbrev');
+  FAnalyticalAbbreviation := FProject.GetInfo(
+    'opcoes.exportar.concordancia.analitica.abbrev');
+  FSyntheticAbbreviation := FProject.GetInfo(
+    'opcoes.exportar.concordancia.sintetica.abbrev');
+  if FAnalyticalAbbreviation = '' then
+    FAnalyticalAbbreviation := LegacyAbbreviation;
+  if FSyntheticAbbreviation = '' then
+    FSyntheticAbbreviation := LegacyAbbreviation;
   if FProject.GetInfo('opcoes.exportar.concordancia.detalhada') = '0' then
     rgConcordanceType.ItemIndex := 1
   else
     rgConcordanceType.ItemIndex := 0;
+  FLastConcordanceType := rgConcordanceType.ItemIndex;
+  if FLastConcordanceType = 1 then
+    leAbreviacao.Text := FSyntheticAbbreviation
+  else
+    leAbreviacao.Text := FAnalyticalAbbreviation;
   UpdateConcordanceAbbreviationDefault;
+  UpdateConcordanceDescription;
+  cbConcordanceVerseContext.Checked :=
+    FProject.GetInfo('opcoes.exportar.concordancia.contexto') = '1';
   cbExportarComentarios.Checked := FProject.GetInfo('opcoes.exportar.comentarios') = '1';
   cbExportarMorfologia.Checked := FProject.GetInfo('opcoes.exportar.morfologia') = '1';
   cbExportarNAComoItalicos.Checked := FProject.GetInfo('opcoes.exportar.na.como.italicos') = '1';

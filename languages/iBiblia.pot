@@ -167,9 +167,13 @@ msgstr ""
 msgid "Choose &font..."
 msgstr ""
 
-#: chapterview.stranslationmemorycurrent
-msgctxt "chapterview.stranslationmemorycurrent"
-msgid "Current"
+#: chapterview.stranslationmemoryback
+msgid "Back to translation memory"
+msgstr ""
+
+#: chapterview.stranslationmemorycurrentlegend
+msgctxt "chapterview.stranslationmemorycurrentlegend"
+msgid "Blue translations are used in the current verse."
 msgstr ""
 
 #: chapterview.stranslationmemoryerrorfmt
@@ -182,12 +186,51 @@ msgstr ""
 msgid "Forms: %s"
 msgstr ""
 
+#: chapterview.stranslationmemorymanyassociationsoneversefmt
+#, object-pascal-format
+msgid "%d associations in 1 verse"
+msgstr ""
+
+#: chapterview.stranslationmemorynooccurrences
+msgid "No verse currently uses this translation."
+msgstr ""
+
 #: chapterview.stranslationmemorynosourcewords
 msgid "No source words are available for this verse."
 msgstr ""
 
 #: chapterview.stranslationmemorynotranslations
 msgid "No translation recorded"
+msgstr ""
+
+#: chapterview.stranslationmemoryoneassociationmanyversesfmt
+#, object-pascal-format
+msgid "1 association in %d verses"
+msgstr ""
+
+#: chapterview.stranslationmemoryoneassociationoneverse
+msgid "1 association in 1 verse"
+msgstr ""
+
+#: chapterview.stranslationmemoryoccurrencecountfmt
+#, object-pascal-format
+msgctxt "chapterview.stranslationmemoryoccurrencecountfmt"
+msgid "%d occurrences"
+msgstr ""
+
+#: chapterview.stranslationmemoryoccurrencestitlefmt
+#, object-pascal-format
+msgid "%s → %s"
+msgstr ""
+
+#: chapterview.stranslationmemoryoccurrencetotalsfmt
+#, object-pascal-format
+msgid "%d associations in %d verses"
+msgstr ""
+
+#: chapterview.stranslationmemoryshowmorefmt
+#, object-pascal-format
+msgid "Show 100 more (%d remaining)"
 msgstr ""
 
 #: chapterview.stranslationmemorystrongsfmt
@@ -202,6 +245,30 @@ msgstr ""
 
 #: chapterview.sverserules
 msgid "Verse &rules..."
+msgstr ""
+
+#: concordanceexport.sconcordancecountsummary
+#, object-pascal-format
+msgid "%s in %s"
+msgstr ""
+
+#: concordanceexport.sconcordancemanyoccurrences
+#, object-pascal-format
+msgctxt "concordanceexport.sconcordancemanyoccurrences"
+msgid "%d occurrences"
+msgstr ""
+
+#: concordanceexport.sconcordancemanyverses
+#, object-pascal-format
+msgid "%d verses"
+msgstr ""
+
+#: concordanceexport.sconcordanceoneoccurrence
+msgid "1 occurrence"
+msgstr ""
+
+#: concordanceexport.sconcordanceoneverse
+msgid "1 verse"
 msgstr ""
 
 #: formaiprocessing.saiflowassociation
@@ -1628,6 +1695,50 @@ msgctxt "formprojectexport.sanalyticalconcordance"
 msgid "AnalyticalConcordance"
 msgstr ""
 
+#: formprojectexport.sconcordanceanalyticaldescription
+msgid "Shows each source form separately, with its translations and verse references."
+msgstr ""
+
+#: formprojectexport.sconcordanceanalyticaltype
+msgid "Analytical concordance"
+msgstr ""
+
+#: formprojectexport.sconcordancefinalizing
+msgid "Finalizing export..."
+msgstr ""
+
+#: formprojectexport.sconcordanceformattingentries
+msgid "Formatting concordance entries..."
+msgstr ""
+
+#: formprojectexport.sconcordanceincludeversecontext
+msgid "Include destination verse text beside each reference"
+msgstr ""
+
+#: formprojectexport.sconcordanceoutputdescription
+msgid "The exported dictionary is organized by Strong's number, with compact frequency totals and clickable verse references."
+msgstr ""
+
+#: formprojectexport.sconcordancereadingassociations
+msgid "Reading associations..."
+msgstr ""
+
+#: formprojectexport.sconcordancesyntheticdescription
+msgid "Groups all source forms by Strong's number for a compact translation overview."
+msgstr ""
+
+#: formprojectexport.sconcordancesynthetictype
+msgid "Synthetic concordance"
+msgstr ""
+
+#: formprojectexport.sconcordancetypecaption
+msgid "Concordance type"
+msgstr ""
+
+#: formprojectexport.sconcordancewritingmodule
+msgid "Writing dictionary module..."
+msgstr ""
+
 #: formprojectexport.sexportcompletedprompt
 #, object-pascal-format
 msgid ""
@@ -2412,6 +2523,10 @@ msgstr ""
 msgid "%d of %d associations"
 msgstr ""
 
+#: project.sassociationmemoryfinalizing
+msgid "Finalizing association memory..."
+msgstr ""
+
 #: project.sassociationmemoryprogressdetailfmt
 #, object-pascal-format
 msgid "%s (%d of %d)"
@@ -2429,10 +2544,6 @@ msgstr ""
 
 #: project.sassociationmemoryunavailable
 msgid "Translation memory is unavailable because it could not be synchronized."
-msgstr ""
-
-#: project.sassociationmemoryfinalizing
-msgid "Finalizing association memory..."
 msgstr ""
 
 #: project.sassociationmemoryvalidating
@@ -3111,6 +3222,11 @@ msgctxt "suggestionmanager.sassociationmemorymissingexpectedpairs"
 msgid "Association memory is missing expected translation pairs"
 msgstr ""
 
+#: suggestionmanager.sassociationmemorymissingoccurrencesfmt
+#, object-pascal-format
+msgid "Association memory is missing reference occurrences (expected %d, stored %d)"
+msgstr ""
+
 #: suggestionmanager.sassociationmemorymissingphrases
 msgctxt "suggestionmanager.sassociationmemorymissingphrases"
 msgid "Association memory contains translations with missing phrases"
@@ -3125,6 +3241,23 @@ msgstr ""
 #: suggestionmanager.sassociationmemorynonpositivecounts
 msgctxt "suggestionmanager.sassociationmemorynonpositivecounts"
 msgid "Association memory contains non-positive occurrence counts"
+msgstr ""
+
+#: suggestionmanager.sassociationmemorynonpositiveoccurrencereferences
+msgid "Association memory contains non-positive reference occurrence counts"
+msgstr ""
+
+#: suggestionmanager.sassociationmemoryoccurrencecountmismatchfmt
+#, object-pascal-format
+msgid "Association memory occurrence mismatch at %s for \"%s\" -> \"%s\" (expected %d, stored %d)"
+msgstr ""
+
+#: suggestionmanager.sassociationmemoryoccurrencemismatch
+msgid "Association memory reference occurrences do not match translation counts"
+msgstr ""
+
+#: suggestionmanager.sassociationmemoryorphanoccurrencereferences
+msgid "Association memory contains occurrence references not found in the project"
 msgstr ""
 
 #: suggestionmanager.sassociationmemoryorphanphrases
@@ -3157,6 +3290,11 @@ msgstr ""
 #: suggestionmanager.sassociationmemoryrebuildnotprepared
 msgctxt "suggestionmanager.sassociationmemoryrebuildnotprepared"
 msgid "Association memory rebuild has not been prepared"
+msgstr ""
+
+#: suggestionmanager.sassociationmemoryunexpectedoccurrencefmt
+#, object-pascal-format
+msgid "Association memory contains an unexpected occurrence at %s: \"%s\" -> \"%s\""
 msgstr ""
 
 #: suggestionmanager.sassociationmemoryunexpectedpairfmt
@@ -4293,60 +4431,4 @@ msgstr ""
 #: versememo.ssaveedithint
 msgctxt "versememo.ssaveedithint"
 msgid "Save verse text and close the editor"
-msgstr ""
-
-
-#: chapterview.stranslationmemoryback
-msgid "Back to translation memory"
-msgstr ""
-
-#: chapterview.stranslationmemorynooccurrences
-msgid "No verse currently uses this translation."
-msgstr ""
-
-#: chapterview.stranslationmemoryoccurrencecountfmt
-#, object-pascal-format
-msgid "%d occurrences"
-msgstr ""
-
-#: chapterview.stranslationmemoryoccurrencestitlefmt
-#, object-pascal-format
-msgid "%s → %s"
-msgstr ""
-
-#: chapterview.stranslationmemoryoccurrencetotalsfmt
-#, object-pascal-format
-msgid "%d associations in %d verses"
-msgstr ""
-
-#: chapterview.stranslationmemoryshowmorefmt
-#, object-pascal-format
-msgid "Show 100 more (%d remaining)"
-msgstr ""
-
-#: suggestionmanager.sassociationmemorymissingoccurrencesfmt
-#, object-pascal-format
-msgid "Association memory is missing reference occurrences (expected %d, stored %d)"
-msgstr ""
-
-#: suggestionmanager.sassociationmemorynonpositiveoccurrencereferences
-msgid "Association memory contains non-positive reference occurrence counts"
-msgstr ""
-
-#: suggestionmanager.sassociationmemoryoccurrencecountmismatchfmt
-#, object-pascal-format
-msgid "Association memory occurrence mismatch at %s for \"%s\" -> \"%s\" (expected %d, stored %d)"
-msgstr ""
-
-#: suggestionmanager.sassociationmemoryoccurrencemismatch
-msgid "Association memory reference occurrences do not match translation counts"
-msgstr ""
-
-#: suggestionmanager.sassociationmemoryorphanoccurrencereferences
-msgid "Association memory contains occurrence references not found in the project"
-msgstr ""
-
-#: suggestionmanager.sassociationmemoryunexpectedoccurrencefmt
-#, object-pascal-format
-msgid "Association memory contains an unexpected occurrence at %s: \"%s\" -> \"%s\""
 msgstr ""
