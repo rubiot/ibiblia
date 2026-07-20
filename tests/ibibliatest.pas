@@ -19,7 +19,9 @@ type
   private
     verse1: TVerse;
     verse2: TVerse;
+    FVerseChangeCount: Integer;
 
+    procedure VerseChanged;
     procedure Associate(const source: array of const; const dest: array of const);
     procedure AssociateByText(const pair: TPair);
     procedure AssociatePairs(const pairs: TPairs);
@@ -67,6 +69,7 @@ type
     procedure TokenizerVersionsKeepAsciiApostropheInsideWords;
     procedure TokenizerVersion3TreatsCurlyQuotesAsPunctuation;
     procedure VerseTokenizerVersionOverridesGlobalPreferredVersion;
+    procedure RepeatedModifiedAssignmentsNotifyEveryEdit;
     // New tests for FindAndSelectSyntagms
     procedure TestFindAndSelectSyntagms_SimpleSequence;
     procedure TestFindAndSelectSyntagms_NotFound;
@@ -83,6 +86,11 @@ type
   end;
 
 implementation
+
+procedure TVerseTests.VerseChanged;
+begin
+  Inc(FVerseChangeCount);
+end;
 
 procedure TVerseTests.TestHookUp;
 begin
@@ -177,6 +185,21 @@ begin
 
   verse1.Texto := 'word<WTPREP le="unterminated>';
   AssertEquals('', verse1.Sintagmas.First.Lemma);
+end;
+
+procedure TVerseTests.RepeatedModifiedAssignmentsNotifyEveryEdit;
+begin
+  verse1.OnAlterarVersiculo := @VerseChanged;
+  verse1.Modificado := True;
+  verse1.Modificado := True;
+
+  AssertEquals('Every completed edit must refresh the net pending state', 2,
+    FVerseChangeCount);
+  verse1.Modificado := False;
+  AssertEquals('Clearing the internal hint is not itself an edit', 2,
+    FVerseChangeCount);
+  verse1.Modificado := True;
+  AssertEquals(3, FVerseChangeCount);
 end;
 
 procedure TVerseTests.AssociationOneToOne;
@@ -1296,6 +1319,7 @@ begin
   verse1 := TVerse.Create();
   verse2 := TVerse.Create();
   verse1.VersiculoPar := verse2;
+  FVerseChangeCount := 0;
 end;
 
 procedure TVerseTests.TearDown;

@@ -3323,6 +3323,7 @@ begin
   FreeAndNil(FPersistence);
   FPersistence := TProjectPersistence.Create;
   FPersistence.Open(Nome);
+  FPersistence.OnContentPendingChanged := @PendingEditorChanged;
   if not Assigned(FConfig) then
     FConfig := TProjectConfig.Create(FPersistence)
   else

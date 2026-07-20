@@ -17,11 +17,15 @@ type
     FStagedInfo: TStringList;
     FCommittedInfo: TStringList;
     FImmediateInfoPending: TStringList;
+    FOnContentPendingChanged: TNotifyEvent;
+    FLastContentPending: Boolean;
     procedure CloseTable(var Table: TSqlite3Dataset);
     procedure SetNamedValue(List: TStringList; const Name, Value: string);
     function PairChangeKey(const fieldName: string): string;
     procedure TrackPairChange(const fieldName, originalValue,
       newValue: string);
+    procedure NotifyContentPendingChanged;
+    procedure SetOnContentPendingChanged(const AValue: TNotifyEvent);
     function InfoKeyExists(const info: string): Boolean;
     function ReadCommittedInfo(const info: string): string;
     function IsDatabaseBusy(const MessageText: string): Boolean;
@@ -72,6 +76,8 @@ type
     property PairsTable: TSqlite3Dataset read FPairsTable;
     property InfoTable: TSqlite3Dataset read FInfoTable;
     property FileName: string read FFileName;
+    property OnContentPendingChanged: TNotifyEvent
+      read FOnContentPendingChanged write SetOnContentPendingChanged;
   end;
 
 implementation
@@ -83,6 +89,27 @@ begin
   FStagedInfo := TStringList.Create;
   FCommittedInfo := TStringList.Create;
   FImmediateInfoPending := TStringList.Create;
+  FOnContentPendingChanged := nil;
+  FLastContentPending := False;
+end;
+
+procedure TProjectPersistence.SetOnContentPendingChanged(
+  const AValue: TNotifyEvent);
+begin
+  FOnContentPendingChanged := AValue;
+  FLastContentPending := ContentUpdatesPending;
+end;
+
+procedure TProjectPersistence.NotifyContentPendingChanged;
+var
+  Pending: Boolean;
+begin
+  Pending := ContentUpdatesPending;
+  if Pending = FLastContentPending then
+    Exit;
+  FLastContentPending := Pending;
+  if Assigned(FOnContentPendingChanged) then
+    FOnContentPendingChanged(Self);
 end;
 
 procedure TProjectPersistence.SetNamedValue(List: TStringList;
@@ -168,6 +195,7 @@ begin
   FStagedInfo.Clear;
   FCommittedInfo.Clear;
   FImmediateInfoPending.Clear;
+  FLastContentPending := False;
 end;
 
 procedure TProjectPersistence.Close;
@@ -178,6 +206,7 @@ begin
   FStagedInfo.Clear;
   FCommittedInfo.Clear;
   FImmediateInfoPending.Clear;
+  FLastContentPending := False;
   FFileName := '';
 end;
 
@@ -249,6 +278,7 @@ begin
 
   if FPairsTable.State in dsEditModes then
     FPairsTable.Post;
+  NotifyContentPendingChanged;
 end;
 
 procedure TProjectPersistence.CancelCurrentEdit;
@@ -314,12 +344,14 @@ begin
     Result := Index >= 0;
     if Result then
       FStagedInfo.Delete(Index);
+    NotifyContentPendingChanged;
     Exit;
   end;
 
   Result := (Index < 0) or (FStagedInfo.ValueFromIndex[Index] <> value);
   if Result then
     SetNamedValue(FStagedInfo, info, value);
+  NotifyContentPendingChanged;
 end;
 
 procedure TProjectPersistence.WriteInfoValues(const Values: TStrings);
@@ -376,7 +408,10 @@ var
 begin
   StagedIndex := FStagedInfo.IndexOfName(info);
   if StagedIndex >= 0 then
+  begin
     FStagedInfo.Delete(StagedIndex);
+    NotifyContentPendingChanged;
+  end;
 
   Result := ReadCommittedInfo(info) <> value;
   if not Result then
@@ -602,6 +637,7 @@ procedure TProjectPersistence.CommitPairs;
 begin
   ApplyPendingUpdates(FPairsTable);
   FPairOriginalValues.Clear;
+  NotifyContentPendingChanged;
 end;
 
 procedure TProjectPersistence.CommitInfo;
@@ -629,6 +665,7 @@ begin
     SetNamedValue(FCommittedInfo, FStagedInfo.Names[Index],
       FStagedInfo.ValueFromIndex[Index]);
   FStagedInfo.Clear;
+  NotifyContentPendingChanged;
 end;
 
 procedure TProjectPersistence.Commit;
@@ -669,6 +706,7 @@ begin
   end;
   if not CurrentReference.IsEmpty then
     LocateReference(CurrentReference);
+  NotifyContentPendingChanged;
 end;
 
 end.

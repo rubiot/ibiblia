@@ -14,9 +14,11 @@ type
   private
     FFileName: string;
     FPersistence: TProjectPersistence;
+    FPendingNotificationCount: Integer;
     procedure CreateDatabase;
     function ReadDatabaseInfo(const Key: string): string;
     function ReadDatabasePairField(const FieldName: string): string;
+    procedure PendingStateChanged(Sender: TObject);
   protected
     procedure SetUp; override;
     procedure TearDown; override;
@@ -30,9 +32,15 @@ type
     procedure TypedConfigSeparatesMarkerAndTokenizer;
     procedure CommentLineBreakTagsAreDecodedOnlyInRawEditor;
     procedure CommentLineBreaksAreEncodedForStorage;
+    procedure PendingStateNotificationsTrackNetChanges;
   end;
 
 implementation
+
+procedure TProjectPersistenceTest.PendingStateChanged(Sender: TObject);
+begin
+  Inc(FPendingNotificationCount);
+end;
 
 procedure TProjectPersistenceTest.CreateDatabase;
 var
@@ -137,6 +145,8 @@ begin
   CreateDatabase;
   FPersistence := TProjectPersistence.Create;
   FPersistence.Open(FFileName);
+  FPendingNotificationCount := 0;
+  FPersistence.OnContentPendingChanged := @PendingStateChanged;
 end;
 
 procedure TProjectPersistenceTest.TearDown;
@@ -218,6 +228,37 @@ begin
   FPersistence.CommitInfo;
   AssertFalse(FPersistence.ContentUpdatesPending);
   AssertEquals('', ReadDatabaseInfo('structural'));
+end;
+
+procedure TProjectPersistenceTest.PendingStateNotificationsTrackNetChanges;
+begin
+  AssertEquals(0, FPendingNotificationCount);
+
+  FPersistence.StageInfo('structural', 'pending-structure');
+  AssertEquals('Becoming dirty must notify the UI', 1,
+    FPendingNotificationCount);
+  FPersistence.StageInfo('structural', 'another-pending-structure');
+  AssertEquals('Changing an already pending value must not duplicate the ' +
+    'state notification', 1, FPendingNotificationCount);
+  FPersistence.StageInfo('structural', 'old-structure');
+  AssertEquals('Restoring the structural baseline must notify the UI', 2,
+    FPendingNotificationCount);
+
+  FPersistence.SetCurrentFieldAsString('pare_texto_origem', 'changed');
+  FPersistence.PostCurrentEdit;
+  AssertEquals('Posting the first content difference must notify the UI', 3,
+    FPendingNotificationCount);
+  FPersistence.SetCurrentFieldAsString('pare_texto_origem', 'changed again');
+  FPersistence.PostCurrentEdit;
+  AssertEquals(3, FPendingNotificationCount);
+  FPersistence.SetCurrentFieldAsString('pare_texto_origem', 'source');
+  FPersistence.PostCurrentEdit;
+  AssertEquals('Restoring the content baseline must notify the UI', 4,
+    FPendingNotificationCount);
+
+  FPersistence.WriteInfoImmediate('option', 'new-option');
+  AssertEquals('Immediate options must not affect the content indicator', 4,
+    FPendingNotificationCount);
 end;
 
 procedure TProjectPersistenceTest.

@@ -52,6 +52,7 @@ type
     FStrongCount: TSyntagm;
     FSelecao: TSyntagmList;
     FModificado: boolean;
+    FChangeNotificationsSuspended: Integer;
     FXMLModificado: boolean;
     FPanel: TScrollBox;
     FEdit: TEdit;
@@ -89,6 +90,7 @@ type
     procedure SetAtivo(const AValue: boolean);
     procedure SetFonte(const AValue: TFont);
     procedure SetModificado(const AValue: boolean);
+    procedure NotifyVerseChanged;
     procedure SetRightToLeft(AValue: Boolean);
     procedure SetStrongsCountMode(AValue: TStrongsCountMode);
     procedure SetPalavrasComStrongEmNegrito(AValue: boolean);
@@ -306,6 +308,7 @@ begin
   FOnSintagmaMouseEnter := nil;
   FOnSintagmaMouseLeave := nil;
   FModificado           := false;
+  FChangeNotificationsSuspended := 0;
   FXMLModificado        := false;
   FSelecao              := TSyntagmList.Create;
   FMostrarDicas         := false;
@@ -719,7 +722,7 @@ begin
 
   FXML := _XML;
   FXMLModificado := true;
-  FModificado := true;
+  Modificado := true;
   if assigned(VersiculoPar) then
     VersiculoPar.Modificado := true;
   SyntagmClipboard := nil;
@@ -767,50 +770,59 @@ begin
   if not assigned(VersiculoPar) then
     exit;
 
-  FExibirErro := true;
-  VersiculoPar.FExibirErro := true;
-
-  LimparAssociacoes;
-  LimparSelecao;
-  VersiculoPar.LimparSelecao;
-  if AValue.IsEmpty then
-  begin
-    Renderizar;
-    VersiculoPar.Renderizar;
-    Exit;
-  end;
-
-  varredorXML := CreateTokenizer(AValue);
+  // Applying serialized associations is a load operation. Avoid publishing
+  // a transient dirty state for every individual <par> element.
+  Inc(FChangeNotificationsSuspended);
+  Inc(VersiculoPar.FChangeNotificationsSuspended);
   try
+    FExibirErro := true;
+    VersiculoPar.FExibirErro := true;
+
+    LimparAssociacoes;
+    LimparSelecao;
+    VersiculoPar.LimparSelecao;
+    if AValue.IsEmpty then
+    begin
+      Renderizar;
+      VersiculoPar.Renderizar;
+      Exit;
+    end;
+
+    varredorXML := CreateTokenizer(AValue);
     try
-      while varredorXML.LerSintagma(s) <> tsNulo do
-      begin
-        if not AnsiStartsStr('<par ', s.valor) then
-          Continue;
+      try
+        while varredorXML.LerSintagma(s) <> tsNulo do
+        begin
+          if not AnsiStartsStr('<par ', s.valor) then
+            Continue;
 
-        //DebugLn('selecionando par: %s', [s.valor]);
-        SelecionarListaSintagmas(varredorXML.LerPropriedadeTag('a', s));
-        VersiculoPar.SelecionarListaSintagmas(
-          varredorXML.LerPropriedadeTag('b', s));
-        AssociarSintagmas;
+          //DebugLn('selecionando par: %s', [s.valor]);
+          SelecionarListaSintagmas(varredorXML.LerPropriedadeTag('a', s));
+          VersiculoPar.SelecionarListaSintagmas(
+            varredorXML.LerPropriedadeTag('b', s));
+          AssociarSintagmas;
 
+          LimparSelecao;
+          VersiculoPar.LimparSelecao;
+        end;
+      except
+        // Applying persisted associations is atomic from the Verse Pair point
+        // of view. Never expose the successfully parsed prefix of corrupt data.
         LimparSelecao;
         VersiculoPar.LimparSelecao;
+        LimparAssociacoes;
+        raise;
       end;
-    except
-      // Applying persisted associations is atomic from the Verse Pair point
-      // of view. Never expose the successfully parsed prefix of corrupt data.
-      LimparSelecao;
-      VersiculoPar.LimparSelecao;
-      LimparAssociacoes;
-      raise;
+    finally
+      varredorXML.Free;
     end;
-  finally
-    varredorXML.Free;
-  end;
 
-  Renderizar;
-  VersiculoPar.Renderizar;
+    Renderizar;
+    VersiculoPar.Renderizar;
+  finally
+    Dec(VersiculoPar.FChangeNotificationsSuspended);
+    Dec(FChangeNotificationsSuspended);
+  end;
 end;
 
 procedure TVerse.SetTokenizerVersion(AValue: Integer);
@@ -1327,10 +1339,16 @@ end;
 
 procedure TVerse.SetModificado(const AValue: boolean);
 begin
-  if FModificado = AValue then exit;
   FModificado := AValue;
-  if assigned(FOnAlterarVersiculo) and FModificado then
-     FOnAlterarVersiculo;
+  if FModificado then
+    NotifyVerseChanged;
+end;
+
+procedure TVerse.NotifyVerseChanged;
+begin
+  if (FChangeNotificationsSuspended = 0) and
+    assigned(FOnAlterarVersiculo) then
+    FOnAlterarVersiculo;
 end;
 
 procedure TVerse.SetRightToLeft(AValue: Boolean);
@@ -1563,7 +1581,7 @@ begin
     FXML := FXML + s.RawText;
 
   FXMLModificado := true;
-  FModificado := true;
+  Modificado := true;
 end;
 
 procedure TVerse.Renderizar;
@@ -1741,7 +1759,6 @@ begin
   end;
 
   AtualizarXMLInterno;
-  FModificado := true;
   VersiculoPar.Modificado := true;
 
   LimparSelecao;
