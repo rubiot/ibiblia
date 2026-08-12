@@ -47,6 +47,7 @@ type
     procedure TranslationPopupUsesOccurrenceSum;
     procedure StructuredTranslationAlternativesPreserveCountsAndOrder;
     procedure PreloadedTranslationAlternativesAreCompleteAndInvalidated;
+    procedure TranslationMemoryLookupDoesNotMatchTextPrefixes;
     procedure TranslationMemoryModelGroupsAndMarksCurrentAlternatives;
     procedure TranslationMemoryModelUsesMetadataWithoutStrong;
     procedure TranslationMemoryModelMatchesCurrentSuffixHyphen;
@@ -682,6 +683,53 @@ begin
   AssertEquals(2, Alternatives[0].Occurrences);
   AssertEquals('two', Alternatives[1].Translation);
   AssertEquals(1, Alternatives[1].Occurrences);
+end;
+
+procedure TSuggestionManagerTest.
+  TranslationMemoryLookupDoesNotMatchTextPrefixes;
+var
+  Alternatives: TTranslationAlternativeDataArray;
+  Keys: TStringList;
+begin
+  FManager.AddPair('man', 'homem');
+  FManager.AddPair('many', 'muitas');
+  FManager.AddPair('many', 'muitas');
+  FManager.AddPair('manifest', 'manifesta');
+
+  Alternatives := FManager.GetTranslationAlternativeData('man');
+  AssertEquals('The direct lookup must not include longer words',
+    1, Length(Alternatives));
+  AssertEquals('homem', Alternatives[0].Translation);
+  AssertEquals('man', Alternatives[0].Matches[0].SourcePhrase);
+
+  // A mutation invalidates the direct-query cache so the same assertions
+  // exercise the batch preload path below.
+  FManager.AddPair('unrelated', 'other');
+  Keys := TStringList.Create;
+  try
+    Keys.Add('man');
+    Keys.Add('many');
+    Keys.Add('manifest');
+    FManager.PreloadTranslationAlternativeData(Keys);
+  finally
+    Keys.Free;
+  end;
+
+  Alternatives := FManager.GetTranslationAlternativeData('man');
+  AssertEquals('The preloaded lookup must not include longer words',
+    1, Length(Alternatives));
+  AssertEquals('homem', Alternatives[0].Translation);
+  AssertEquals(1, Alternatives[0].Occurrences);
+
+  Alternatives := FManager.GetTranslationAlternativeData('many');
+  AssertEquals(1, Length(Alternatives));
+  AssertEquals('muitas', Alternatives[0].Translation);
+  AssertEquals(2, Alternatives[0].Occurrences);
+  AssertEquals('many', Alternatives[0].Matches[0].SourcePhrase);
+
+  Alternatives := FManager.GetTranslationAlternativeData('manifest');
+  AssertEquals(1, Length(Alternatives));
+  AssertEquals('manifesta', Alternatives[0].Translation);
 end;
 
 procedure TSuggestionManagerTest.

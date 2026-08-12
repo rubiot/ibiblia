@@ -244,6 +244,18 @@ begin
       end;
 end;
 
+function SuggestionKeyMatches(const LookupKey, StoredKey: string): Boolean;
+begin
+  Result := StoredKey = LookupKey;
+  if Result or (LookupKey = '') or
+     (Length(StoredKey) <= Length(LookupKey)) then
+    Exit;
+
+  Result :=
+    (StoredKey[Length(LookupKey) + 1] = '<') and
+    (Copy(StoredKey, 1, Length(LookupKey)) = LookupKey);
+end;
+
 resourcestring
   SCannotAddPairsAfterRebuildValidation =
     'Cannot add pairs after rebuild validation';
@@ -408,7 +420,10 @@ begin
   FSuggestionsWithoutMorphologyQuery.DataBase := FConnection;
   FSuggestionsWithoutMorphologyQuery.SQL.Text := 'select lori_locucao, ldes_locucao ' +
       'from sintagmas_locucoes_origem, traducoes, locucoes_origem, locucoes_destino ' +
-      'where slor_sori_id like :sori and slor_ordem = 0 and slor_lori_id = trad_lori_id' +
+      'where (slor_sori_id = :sori or (' +
+      'substr(slor_sori_id, 1, length(:sori_prefix)) = :sori_prefix and ' +
+      'substr(slor_sori_id, length(:sori_prefix) + 1, 1) = ''<'')) and ' +
+      'slor_ordem = 0 and slor_lori_id = trad_lori_id' +
       '  and slor_lori_id = lori_id and trad_ldes_id = ldes_id and trad_ocorrencias > 0 ' +
       'order by lori_qtde_sintagmas desc, trad_ocorrencias desc';
   FSuggestionsWithoutMorphologyQuery.Prepare;
@@ -418,7 +433,10 @@ begin
   FTranslationMemoryQuery.SQL.Text := 'select lori_locucao, ldes_locucao, ' +
       'trad_ocorrencias ' +
       'from sintagmas_locucoes_origem, traducoes, locucoes_origem, locucoes_destino ' +
-      'where slor_sori_id like :sori and slor_ordem = 0 and slor_lori_id = trad_lori_id' +
+      'where (slor_sori_id = :sori or (' +
+      'substr(slor_sori_id, 1, length(:sori_prefix)) = :sori_prefix and ' +
+      'substr(slor_sori_id, length(:sori_prefix) + 1, 1) = ''<'')) and ' +
+      'slor_ordem = 0 and slor_lori_id = trad_lori_id' +
       '  and slor_lori_id = lori_id and trad_ldes_id = ldes_id and trad_ocorrencias > 0 ' +
       'order by trad_ocorrencias desc, ldes_locucao, lori_locucao';
   FTranslationMemoryQuery.Prepare;
@@ -1067,7 +1085,10 @@ begin
 
     KeyWithoutMorphology := FRemoveMorphologyRegex.Replace(Key, '');
     FSuggestionsWithoutMorphologyQuery.Close;
-    FSuggestionsWithoutMorphologyQuery.Params[0].AsString := KeyWithoutMorphology + '%';
+    FSuggestionsWithoutMorphologyQuery.Params.ParamByName(
+      'sori').AsString := KeyWithoutMorphology;
+    FSuggestionsWithoutMorphologyQuery.Params.ParamByName(
+      'sori_prefix').AsString := KeyWithoutMorphology;
     FSuggestionsWithoutMorphologyQuery.Open;
     DebugLn('%d translation suggestions found without morphology', [FSuggestionsWithoutMorphologyQuery.RecordCount]);
   end;
@@ -1077,7 +1098,9 @@ function TSuggestionManager.GetTranslationMemoryQuery(const Key: string): TSQLQu
 begin
   Result := FTranslationMemoryQuery;
   FTranslationMemoryQuery.Close;
-  FTranslationMemoryQuery.Params[0].AsString := Key + '%';
+  FTranslationMemoryQuery.Params.ParamByName('sori').AsString := Key;
+  FTranslationMemoryQuery.Params.ParamByName(
+    'sori_prefix').AsString := Key;
   FTranslationMemoryQuery.Open;
 end;
 
@@ -2008,7 +2031,7 @@ var
   KeyIndex: Integer;
   MissingKeys: TStringList;
   Query: TSQLQuery;
-  SourceKey: string;
+  StoredSuggestionKey: string;
   SQLText: string;
 begin
   if not Assigned(Keys) or (Keys.Count = 0) then
@@ -2040,7 +2063,7 @@ begin
       try
         Query.DataBase := FConnection;
         SQLText := 'select o.lori_locucao, d.ldes_locucao, ' +
-          't.trad_ocorrencias ' +
+          't.trad_ocorrencias, cast(s.slor_sori_id as text) ' +
           'from sintagmas_locucoes_origem s ' +
           'join traducoes t on t.trad_lori_id = s.slor_lori_id ' +
           'join locucoes_origem o on o.lori_id = s.slor_lori_id ' +
@@ -2050,20 +2073,31 @@ begin
         begin
           if KeyIndex > 0 then
             SQLText := SQLText + ' or ';
-          SQLText := SQLText + 's.slor_sori_id like :key' +
-            IntToStr(KeyIndex);
+          SQLText := SQLText + '(s.slor_sori_id = :key' +
+            IntToStr(KeyIndex) + ' or (' +
+            'substr(s.slor_sori_id, 1, length(:key_prefix' +
+            IntToStr(KeyIndex) + ')) = :key_prefix' +
+            IntToStr(KeyIndex) + ' and ' +
+            'substr(s.slor_sori_id, length(:key_prefix' +
+            IntToStr(KeyIndex) + ') + 1, 1) = ''<''))';
         end;
         Query.SQL.Text := SQLText + ') order by t.trad_ocorrencias desc, ' +
           'd.ldes_locucao, o.lori_locucao';
         for KeyIndex := 0 to MissingKeys.Count - 1 do
+        begin
           Query.Params.ParamByName('key' + IntToStr(KeyIndex)).AsString :=
-            MissingKeys[KeyIndex] + '%';
+            MissingKeys[KeyIndex];
+          Query.Params.ParamByName(
+            'key_prefix' + IntToStr(KeyIndex)).AsString :=
+            MissingKeys[KeyIndex];
+        end;
         Query.Open;
         while not Query.EOF do
         begin
-          SourceKey := Query.Fields[0].AsString;
+          StoredSuggestionKey := Query.Fields[3].AsString;
           for KeyIndex := 0 to MissingKeys.Count - 1 do
-            if AnsiStartsStr(MissingKeys[KeyIndex], SourceKey) then
+            if SuggestionKeyMatches(MissingKeys[KeyIndex],
+              StoredSuggestionKey) then
             begin
               CacheIndex := FTranslationAlternativeCache.IndexOf(
                 MissingKeys[KeyIndex]);
