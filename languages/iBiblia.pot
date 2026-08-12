@@ -4186,48 +4186,48 @@ msgctxt "tfrmprojectproperties.labeltokenizerversion.caption"
 msgid "Tokenizer version"
 msgstr ""
 
-#: tfrmverserules.btnselectall.caption
-msgctxt "tfrmverserules.btnselectall.caption"
+#: tverserulesform.btnselectall.caption
+msgctxt "tverserulesform.btnselectall.caption"
 msgid "Select all"
 msgstr ""
 
-#: tfrmverserules.btnselectnone.caption
-msgctxt "tfrmverserules.btnselectnone.caption"
+#: tverserulesform.btnselectnone.caption
+msgctxt "tverserulesform.btnselectnone.caption"
 msgid "Select none"
 msgstr ""
 
-#: tfrmverserules.button1.caption
-msgctxt "tfrmverserules.button1.caption"
+#: tverserulesform.cancelbutton.caption
+msgctxt "tverserulesform.cancelbutton.caption"
 msgid "&Cancel"
 msgstr ""
 
-#: tfrmverserules.button2.caption
-msgctxt "tfrmverserules.button2.caption"
+#: tverserulesform.okbutton.caption
+msgctxt "tverserulesform.okbutton.caption"
 msgid "OK"
 msgstr ""
 
-#: tfrmverserules.caption
-msgctxt "tfrmverserules.caption"
+#: tverserulesform.caption
+msgctxt "tverserulesform.caption"
 msgid "Choose verse rules"
 msgstr ""
 
-#: tfrmverserules.panel1.caption
-msgctxt "tfrmverserules.panel1.caption"
+#: tverserulesform.rulespanel.caption
+msgctxt "tverserulesform.rulespanel.caption"
 msgid "Panel1"
 msgstr ""
 
-#: tfrmverserules.stringgridverserules.columns[0].title.caption
-msgctxt "tfrmverserules.stringgridverserules.columns[0].title.caption"
+#: tverserulesform.stringgridverserules.columns[0].title.caption
+msgctxt "tverserulesform.stringgridverserules.columns[0].title.caption"
 msgid "Apply"
 msgstr ""
 
-#: tfrmverserules.stringgridverserules.columns[1].title.caption
-msgctxt "tfrmverserules.stringgridverserules.columns[1].title.caption"
+#: tverserulesform.stringgridverserules.columns[1].title.caption
+msgctxt "tverserulesform.stringgridverserules.columns[1].title.caption"
 msgid "From"
 msgstr ""
 
-#: tfrmverserules.stringgridverserules.columns[2].title.caption
-msgctxt "tfrmverserules.stringgridverserules.columns[2].title.caption"
+#: tverserulesform.stringgridverserules.columns[2].title.caption
+msgctxt "tverserulesform.stringgridverserules.columns[2].title.caption"
 msgid "To"
 msgstr ""
 

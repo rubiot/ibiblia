@@ -4304,7 +4304,7 @@ begin
     reCharset      := RegexCreate('^\s*charset\s*=\s*(.*)$', [rcoUTF8]);
     reVerseRules   := RegexCreate('^\s*verse.rule\s*=\s*"(.*?)(?<!")"(?!")\s+"(.*?)"(?=\s*$|\s+"(.*?)(?<!")"(?!"))', [rcoUTF8]);
 
-    FrmVerseRules.Reset(arquivo);
+    VerseRulesForm.Reset(arquivo);
     propriedades := TStringStream.Create('');
 
     for i:=QLinhas[moduleScope] to modulo.Count-1 do
@@ -4334,7 +4334,7 @@ begin
 
       mtVerseRules := reVerseRules.Match(line);
       if mtVerseRules.Success then
-         FrmVerseRules.AddVerseRule(mtVerseRules.Groups[1].Value, mtVerseRules.Groups[2].Value);
+         VerseRulesForm.AddVerseRule(mtVerseRules.Groups[1].Value, mtVerseRules.Groups[2].Value);
     end;
 
      if ((texto = tbOrigem)  and (GetInfo('propriedades.origem')  = '')) or // não importar propriedades quando já existem
@@ -4345,13 +4345,13 @@ begin
     end;
     FreeAndNil(propriedades);
 
-    if FrmVerseRules.HasRules then
+    if VerseRulesForm.HasRules then
     begin
       oldCursor := Screen.Cursor;
       Screen.Cursor := crDefault;
       try
-        if FrmVerseRules.ShowModal = mrOK then
-          FrmVerseRules.CompileVerseRules(rxVerseRulesFrom, rxVerseRulesTo);
+        if VerseRulesForm.ShowModal = mrOK then
+          VerseRulesForm.CompileVerseRules(rxVerseRulesFrom, rxVerseRulesTo);
       finally
         Screen.Cursor := oldCursor;
       end;

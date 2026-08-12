@@ -12,14 +12,14 @@ type
 
   TRegexList = specialize TFPGList<IRegex>;
 
-  { TFrmVerseRules }
+  { TVerseRulesForm }
 
-  TFrmVerseRules = class(TForm)
-    Button1: TButton;
-    Button2: TButton;
+  TVerseRulesForm = class(TForm)
+    CancelButton: TButton;
+    OkButton: TButton;
     BtnSelectNone: TButton;
     BtnSelectAll: TButton;
-    Panel1: TPanel;
+    RulesPanel: TPanel;
     StringGridVerseRules: TStringGrid;
     procedure BtnSelectAllClick(Sender: TObject);
     procedure BtnSelectNoneClick(Sender: TObject);
@@ -33,18 +33,18 @@ type
     procedure LayoutControls;
     procedure UpdateInfoControls;
   public
-    procedure AddVerseRule(de: String; para: String);
+    procedure AddVerseRule(SourcePattern: string; ReplacementText: string);
     procedure Reset(const ModuleFileName: string = '');
     procedure CompileVerseRules(var rxFrom: TRegexList; var rxTo: TStringList);
     property HasRules: boolean read GetHasRules;
   end;
 
 var
-  FrmVerseRules: TFrmVerseRules;
+  VerseRulesForm: TVerseRulesForm;
 
 implementation
 
-{ TFrmVerseRules }
+{ TVerseRulesForm }
 
 resourcestring
   SVerseRulesTitle = 'theWord verse rules';
@@ -53,7 +53,7 @@ resourcestring
   SVerseRulesCount = '%d rules found. Uncheck any rule that should not be applied to the imported text.';
   SVerseRulesUnknownModule = '(module not available)';
 
-procedure TFrmVerseRules.FormShow(Sender: TObject);
+procedure TVerseRulesForm.FormShow(Sender: TObject);
 begin
   EnsureInfoControls;
   LayoutControls;
@@ -62,7 +62,7 @@ begin
   StringGridVerseRules.AutoAdjustColumns;
 end;
 
-procedure TFrmVerseRules.EnsureInfoControls;
+procedure TVerseRulesForm.EnsureInfoControls;
 begin
   if Assigned(FInfoPanel) then
     Exit;
@@ -84,7 +84,7 @@ begin
   FInfoMemo.Anchors := [akLeft, akTop, akRight, akBottom];
 end;
 
-procedure TFrmVerseRules.LayoutControls;
+procedure TVerseRulesForm.LayoutControls;
 const
   Margin = 12;
   ButtonTopMargin = 12;
@@ -118,21 +118,21 @@ begin
 
   ButtonTop := ClientHeight - ButtonBottomMargin - ButtonHeight;
   GridTop := FInfoPanel.Top + FInfoPanel.Height + GridTopGap;
-  Panel1.SetBounds(Margin, GridTop, ClientWidth - (Margin * 2),
+  RulesPanel.SetBounds(Margin, GridTop, ClientWidth - (Margin * 2),
     ButtonTop - GridTop - ButtonTopMargin);
-  Panel1.Caption := '';
+  RulesPanel.Caption := '';
 
-  Button2.SetBounds(ClientWidth - Margin - DialogButtonWidth, ButtonTop,
+  OkButton.SetBounds(ClientWidth - Margin - DialogButtonWidth, ButtonTop,
     DialogButtonWidth, ButtonHeight);
-  Button1.SetBounds(Button2.Left - ButtonGap - DialogButtonWidth, ButtonTop,
+  CancelButton.SetBounds(OkButton.Left - ButtonGap - DialogButtonWidth, ButtonTop,
     DialogButtonWidth, ButtonHeight);
-  BtnSelectNone.SetBounds(Button1.Left - ButtonGap - SelectButtonWidth,
+  BtnSelectNone.SetBounds(CancelButton.Left - ButtonGap - SelectButtonWidth,
     ButtonTop, SelectButtonWidth, ButtonHeight);
   BtnSelectAll.SetBounds(BtnSelectNone.Left - ButtonGap - SelectButtonWidth,
     ButtonTop, SelectButtonWidth, ButtonHeight);
 end;
 
-procedure TFrmVerseRules.UpdateInfoControls;
+procedure TVerseRulesForm.UpdateInfoControls;
 var
   ModuleText: string;
 begin
@@ -157,7 +157,7 @@ begin
   FInfoMemo.ShowHint := True;
 end;
 
-procedure TFrmVerseRules.BtnSelectAllClick(Sender: TObject);
+procedure TVerseRulesForm.BtnSelectAllClick(Sender: TObject);
 var
   r: integer;
 begin
@@ -165,7 +165,7 @@ begin
     StringGridVerseRules.Cells[0, r] := '1';
 end;
 
-procedure TFrmVerseRules.BtnSelectNoneClick(Sender: TObject);
+procedure TVerseRulesForm.BtnSelectNoneClick(Sender: TObject);
 var
   r: integer;
 begin
@@ -173,20 +173,20 @@ begin
     StringGridVerseRules.Cells[0, r] := '0';
 end;
 
-function TFrmVerseRules.GetHasRules: boolean;
+function TVerseRulesForm.GetHasRules: boolean;
 begin
   result := StringGridVerseRules.RowCount > 1;
 end;
 
-procedure TFrmVerseRules.AddVerseRule(de: String; para: String);
+procedure TVerseRulesForm.AddVerseRule(SourcePattern: string; ReplacementText: string);
 begin
   StringGridVerseRules.RowCount := StringGridVerseRules.RowCount + 1;
   StringGridVerseRules.Cells[0, StringGridVerseRules.RowCount-1] := '1';
-  StringGridVerseRules.Cells[1, StringGridVerseRules.RowCount-1] := de.Replace('""', '"', [rfReplaceAll]);
-  StringGridVerseRules.Cells[2, StringGridVerseRules.RowCount-1] := para.Replace('""', '"', [rfReplaceAll]);
+  StringGridVerseRules.Cells[1, StringGridVerseRules.RowCount-1] := SourcePattern.Replace('""', '"', [rfReplaceAll]);
+  StringGridVerseRules.Cells[2, StringGridVerseRules.RowCount-1] := ReplacementText.Replace('""', '"', [rfReplaceAll]);
 end;
 
-procedure TFrmVerseRules.Reset(const ModuleFileName: string);
+procedure TVerseRulesForm.Reset(const ModuleFileName: string);
 begin
   FModuleFileName := ModuleFileName;
   StringGridVerseRules.RowCount := 1;
@@ -197,7 +197,7 @@ begin
   end;
 end;
 
-procedure TFrmVerseRules.CompileVerseRules(var rxFrom: TRegexList; var rxTo: TStringList);
+procedure TVerseRulesForm.CompileVerseRules(var rxFrom: TRegexList; var rxTo: TStringList);
 var
   r: integer;
 begin

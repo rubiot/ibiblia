@@ -4319,57 +4319,57 @@ msgctxt "tfrmprojectproperties.labeltokenizerversion.caption"
 msgid "Tokenizer version"
 msgstr "Versão do tokenizador"
 
-#: tfrmverserules.btnselectall.caption
+#: tverserulesform.btnselectall.caption
 #, fuzzy
-msgctxt "tfrmverserules.btnselectall.caption"
+msgctxt "tverserulesform.btnselectall.caption"
 msgid "Select all"
 msgstr "Marcar tudo"
 
-#: tfrmverserules.btnselectnone.caption
+#: tverserulesform.btnselectnone.caption
 #, fuzzy
-msgctxt "tfrmverserules.btnselectnone.caption"
+msgctxt "tverserulesform.btnselectnone.caption"
 msgid "Select none"
 msgstr "Desmarcar tudo"
 
-#: tfrmverserules.button1.caption
+#: tverserulesform.cancelbutton.caption
 #, fuzzy
-msgctxt "tfrmverserules.button1.caption"
+msgctxt "tverserulesform.cancelbutton.caption"
 msgid "&Cancel"
 msgstr "&Cancelar"
 
-#: tfrmverserules.button2.caption
+#: tverserulesform.okbutton.caption
 #, fuzzy
-msgctxt "tfrmverserules.button2.caption"
+msgctxt "tverserulesform.okbutton.caption"
 msgid "OK"
 msgstr "OK"
 
-#: tfrmverserules.caption
+#: tverserulesform.caption
 #, fuzzy
-msgctxt "tfrmverserules.caption"
+msgctxt "tverserulesform.caption"
 msgid "Choose verse rules"
 msgstr "Escolher regras de versículos"
 
-#: tfrmverserules.panel1.caption
+#: tverserulesform.rulespanel.caption
 #, fuzzy
-msgctxt "tfrmverserules.panel1.caption"
+msgctxt "tverserulesform.rulespanel.caption"
 msgid "Panel1"
 msgstr "Panel1"
 
-#: tfrmverserules.stringgridverserules.columns[0].title.caption
+#: tverserulesform.stringgridverserules.columns[0].title.caption
 #, fuzzy
-msgctxt "tfrmverserules.stringgridverserules.columns[0].title.caption"
+msgctxt "tverserulesform.stringgridverserules.columns[0].title.caption"
 msgid "Apply"
 msgstr "Aplicar"
 
-#: tfrmverserules.stringgridverserules.columns[1].title.caption
+#: tverserulesform.stringgridverserules.columns[1].title.caption
 #, fuzzy
-msgctxt "tfrmverserules.stringgridverserules.columns[1].title.caption"
+msgctxt "tverserulesform.stringgridverserules.columns[1].title.caption"
 msgid "From"
 msgstr "De"
 
-#: tfrmverserules.stringgridverserules.columns[2].title.caption
+#: tverserulesform.stringgridverserules.columns[2].title.caption
 #, fuzzy
-msgctxt "tfrmverserules.stringgridverserules.columns[2].title.caption"
+msgctxt "tverserulesform.stringgridverserules.columns[2].title.caption"
 msgid "To"
 msgstr "Para"
 

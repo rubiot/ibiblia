@@ -93,7 +93,7 @@ begin
   Application.CreateForm(TFrmDictionaryPopup, FrmDictionaryPopup);
   Application.CreateForm(TFrmProjectProperties, FrmProjectProperties);
   Application.CreateForm(TFrmNewProject, FrmNewProject);
-  Application.CreateForm(TFrmVerseRules, FrmVerseRules);
+  Application.CreateForm(TVerseRulesForm, VerseRulesForm);
   Application.CreateForm(TProjectExportForm, ProjectExportForm);
   Application.CreateForm(TFormAbout, FormAbout);
   Application.CreateForm(TFrmExportPatch, FrmExportPatch);
