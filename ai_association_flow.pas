@@ -539,7 +539,7 @@ var
       ParsedSyntagms := Parser.ParseLine(Phrase, VerseOwner);
       try
         for J := 0 to ParsedSyntagms.Count - 1 do
-          if ParsedSyntagms[J].Kind in [ONTTokenizer.tsSintagma] then
+          if ParsedSyntagms[J].Kind in [ONTTokenizer.skSyntagm] then
             Texts.Add(ParsedSyntagms[J].Text);
       finally
         ParsedSyntagms.Free;

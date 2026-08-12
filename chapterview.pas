@@ -492,7 +492,7 @@ end;
 procedure TChapterView.RenderSpan(cont: TKMemoBlocks; txt: string);
 var
   FTokenizer: TONTTokenizer;
-  token: TTagSintagma;
+  token: TSyntagmToken;
   prop: string;
   chunk: string;
   size: integer;
@@ -505,31 +505,31 @@ begin
       FTokenizer := TTokenizerFactory.CreateTokenizer(TokenizerVersion, txt);
 
   cont.LockUpdate;
-  while FTokenizer.LerSintagma(token) <> tsNulo do
+  while FTokenizer.ReadSyntagm(token) <> skNull do
   begin
-    case token.tipo of
-      tsMetaDado:
+    case token.Kind of
+      skMetadata:
         ;
-      tsEspaco:
-        if token.valor <> '|' then
-          chunk := chunk + token.valor;
-      tsPontuacao, tsSintagma:
-        chunk := chunk + token.valor;
-      tsTag:
+      skWhitespace:
+        if token.Value <> '|' then
+          chunk := chunk + token.Value;
+      skPunctuation, skSyntagm:
+        chunk := chunk + token.Value;
+      skTag:
       begin
         if chunk.Length > 0 then
         begin
           cont.AddTextBlock(chunk).TextStyle.Assign(CurrentStyle);
           chunk := '';
         end;
-        if token.valor.StartsWith('<TS') then { title beginning }
+        if token.Value.StartsWith('<TS') then { title beginning }
         begin
           if assigned(cont.LastBlock) and (cont.LastBlock.ClassName <> 'TKMemoParagraph') then
             cont.AddParagraph().ParaStyle.FirstIndent := IfThen(GetParagraphMode = pmParagraph, DefaultFirstIndent);
 
           with PushNewStyle do
           begin
-            case token.valor[4] of
+            case token.Value[4] of
               '>','0':
               begin
                 Font.Size := Font.Size + 2;
@@ -555,87 +555,87 @@ begin
             end;
           end;
         end
-        else if token.valor = '<Ts>' then { title end }
+        else if token.Value = '<Ts>' then { title end }
         begin
           ResetStyleStack;
           lastpar := GetPreviousParagraphBlock;
           padding := IfThen(assigned(lastpar) and (lastpar.ParaStyle.BottomPadding = 0), 5);
           cont.AddParagraph().ParaStyle.TopPadding := padding;
         end
-        else if token.valor.StartsWith('<RF') then { translator note }
-          RenderNote(FTokenizer.LerPropriedadeTag('q', token), FTokenizer.ReadUntilExclusive('<Rf>'))
-        else if token.valor = '<Q>' then { interlinear block }
+        else if token.Value.StartsWith('<RF') then { translator note }
+          RenderNote(FTokenizer.ReadTagProperty('q', token), FTokenizer.ReadUntilExclusive('<Rf>'))
+        else if token.Value = '<Q>' then { interlinear block }
           RenderInterlinearBlock(cont, FTokenizer.ReadUntilExclusive('<q>'))
-        else if token.valor = '<E>' then { interlinear English block }
+        else if token.Value = '<E>' then { interlinear English block }
           RenderInterlinearUnit(cont, FTokenizer.ReadUntilExclusive('<e>'))
-        else if token.valor = '<T>' then { interlinear translation block }
+        else if token.Value = '<T>' then { interlinear translation block }
           RenderInterlinearUnit(cont, FTokenizer.ReadUntilExclusive('<t>'))
-        else if token.valor = '<X>' then { interlinear transliteration block }
+        else if token.Value = '<X>' then { interlinear transliteration block }
           RenderInterlinearUnit(cont, FTokenizer.ReadUntilExclusive('<x>'))
-        else if token.valor = '<H>' then { interlinear Hebrew block }
+        else if token.Value = '<H>' then { interlinear Hebrew block }
           RenderInterlinearUnit(cont, FTokenizer.ReadUntilExclusive('<h>'))
-        else if token.valor = '<G>' then { interlinear Greek block }
+        else if token.Value = '<G>' then { interlinear Greek block }
           RenderInterlinearUnit(cont, FTokenizer.ReadUntilExclusive('<g>'))
-        else if token.valor = '<FI>' then { added word(s) }
+        else if token.Value = '<FI>' then { added word(s) }
           with PushInheritedStyle do
           begin
             Font.Style := Font.Style + [fsItalic];
             Font.Color := clGray;
           end
-        else if token.valor = '<FR>' then { Jesus word(s) }
+        else if token.Value = '<FR>' then { Jesus word(s) }
           PushInheritedStyle.Font.Color := clRed
-        else if token.valor = '<FO>' then { Old Testament quotation }
+        else if token.Value = '<FO>' then { Old Testament quotation }
           PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsBold]
-        else if token.valor = '<CM>' then { new paragraph }
+        else if token.Value = '<CM>' then { new paragraph }
         begin
           if GetParagraphMode = pmParagraph then
             cont.AddParagraph().ParaStyle.FirstIndent := DefaultFirstIndent;
-        end else if token.valor = '<CL>' then { new line }
+        end else if token.Value = '<CL>' then { new line }
         begin
           if GetParagraphMode = pmParagraph then
             cont.AddParagraph().ParaStyle.FirstIndent := 0;
             //cont.InsertNewLine(Text.Length);
         end else
         begin
-          token.valor := token.valor.ToLower;
-          if token.valor.StartsWith('<font ') then { font change }
+          token.Value := token.Value.ToLower;
+          if token.Value.StartsWith('<font ') then { font change }
           begin
             PushInheritedStyle;
-            if token.valor.Contains(' color=') then
-              CurrentStyle.Font.Color := HTML2Color(FTokenizer.LerPropriedadeTag('color', token));
-            if token.valor.Contains(' size=') then
+            if token.Value.Contains(' color=') then
+              CurrentStyle.Font.Color := HTML2Color(FTokenizer.ReadTagProperty('color', token));
+            if token.Value.Contains(' size=') then
             begin
-              prop := FTokenizer.LerPropriedadeTag('size', token);
+              prop := FTokenizer.ReadTagProperty('size', token);
               if prop.Chars[0] in ['-', '+'] then
                 size := CurrentStyle.Font.Size + prop.ToInteger
               else
                 size := prop.ToInteger;
               CurrentStyle.Font.Size := size;
             end;
-          end else if token.valor = '<b>' then { bold }
+          end else if token.Value = '<b>' then { bold }
             PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsBold]
-          else if token.valor = '<i>' then { italic }
+          else if token.Value = '<i>' then { italic }
             PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsItalic]
-          else if token.valor = '<u>' then { underline }
+          else if token.Value = '<u>' then { underline }
             PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsUnderline]
-          else if token.valor = '<s>' then { strikeout }
+          else if token.Value = '<s>' then { strikeout }
             PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsStrikeOut]
-          else if token.valor = '<sup>' then { superscript }
+          else if token.Value = '<sup>' then { superscript }
             PushInheritedStyle.ScriptPosition := tpoSuperscript
-          else if token.valor = '<sub>' then { subscript }
+          else if token.Value = '<sub>' then { subscript }
             PushInheritedStyle.ScriptPosition := tpoSubscript
-          else if token.valor = '<br/>' then { line break }
+          else if token.Value = '<br/>' then { line break }
             cont.AddParagraph().ParaStyle.FirstIndent := 0
-          else if (token.valor = '</sub>')
-               or (token.valor = '</sup>')
-               or (token.valor = '</s>')
-               or (token.valor = '</u>')
-               or (token.valor = '</i>')
-               or (token.valor = '</b>')
-               or (token.valor = '<fo>')
-               or (token.valor = '<fr>')
-               or (token.valor = '<fi>')
-               or (token.valor = '</font>') then
+          else if (token.Value = '</sub>')
+               or (token.Value = '</sup>')
+               or (token.Value = '</s>')
+               or (token.Value = '</u>')
+               or (token.Value = '</i>')
+               or (token.Value = '</b>')
+               or (token.Value = '<fo>')
+               or (token.Value = '<fr>')
+               or (token.Value = '<fi>')
+               or (token.Value = '</font>') then
             PopStyle;
         end;
       end;

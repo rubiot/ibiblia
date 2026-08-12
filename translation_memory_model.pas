@@ -280,7 +280,7 @@ begin
     Exit;
   for PairedSyntagm in Syntagm.Pairs do
   begin
-    if (PairedSyntagm.Kind <> tsSintagma) or PairedSyntagm.IsItalic then
+    if (PairedSyntagm.Kind <> skSyntagm) or PairedSyntagm.IsItalic then
       Continue;
     if Result <> '' then
       Result := Result + ';';
@@ -436,7 +436,7 @@ begin
     for SyntagmIndex := 0 to SourceVerse.Syntagms.Count - 1 do
     begin
       Syntagm := SourceVerse.Syntagms[SyntagmIndex];
-      if (Syntagm.Kind <> tsSintagma) or (Trim(Syntagm.Text) = '') then
+      if (Syntagm.Kind <> skSyntagm) or (Trim(Syntagm.Text) = '') then
         Continue;
 
       Key := GroupKey(Syntagm);

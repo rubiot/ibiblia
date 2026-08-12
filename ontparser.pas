@@ -28,7 +28,7 @@ function TONTParser.ParseLine(line: string; owner: TObject): TSyntagmList;
 var
   i: Integer;
   tokenizer: TONTTokenizer;
-  token: TTagSintagma; // token
+  token: TSyntagmToken;
   sintagma: TSyntagm;
   sintagmas: TSyntagmList;
   FTmpCor: TColor;
@@ -43,59 +43,59 @@ begin
   tokenizer := nil;
   try
     tokenizer := TTokenizerFactory.CreateTokenizer(FTokenizerVersion, line);
-    while tokenizer.LerSintagma(token) <> tsNulo do
+    while tokenizer.ReadSyntagm(token) <> skNull do
     begin
-      if token.tipo = tsTag then
+      if token.Kind = skTag then
       begin
-        if token.valor.StartsWith('<RF') then
+        if token.Value.StartsWith('<RF') then
         begin
-          tokenizer.LerAteTag(token, '<Rf>');
-          token.tipo := tsMetaDado;
-        end else if AnsiStartsStr('<TS', token.valor) then
+          tokenizer.ReadToTag(token, '<Rf>');
+          token.Kind := skMetadata;
+        end else if AnsiStartsStr('<TS', token.Value) then
         begin
-          tokenizer.LerAteTag(token, '<Ts>');
-          token.tipo := tsMetaDado;
-        end else if (AnsiStartsStr('<WG', token.valor) or AnsiStartsStr('<WH', token.valor)) and
+          tokenizer.ReadToTag(token, '<Ts>');
+          token.Kind := skMetadata;
+        end else if (AnsiStartsStr('<WG', token.Value) or AnsiStartsStr('<WH', token.Value)) and
                      assigned(sintagma) and assigned(sintagma.Strong) and
-                     (sintagma.Kind = tsSintagma) then // atualizar sintagma anterior
+                     (sintagma.Kind = skSyntagm) then // atualizar sintagma anterior
         begin
-          //if (sintagma.Type <> tsSintagma) then
+          //if (sintagma.Type <> skSyntagm) then
           //  raise Exception.Create(sintagma.Gist);
-          sintagma.Strong.Add(copy(token.valor, 3, length(token.valor)-3));
-          sintagma.RawText := sintagma.RawText + token.valor;
+          sintagma.Strong.Add(copy(token.Value, 3, length(token.Value)-3));
+          sintagma.RawText := sintagma.RawText + token.Value;
           continue;
-        end else if AnsiStartsStr('<WT', token.valor) and assigned(sintagma) and assigned(sintagma.Morph) then // atualizar sintagma anterior
+        end else if AnsiStartsStr('<WT', token.Value) and assigned(sintagma) and assigned(sintagma.Morph) then // atualizar sintagma anterior
         begin
-          sintagma.Morph.Add(copy(token.valor, 4, length(token.valor)-4));
-          sintagma.RawText := sintagma.RawText + token.valor;
+          sintagma.Morph.Add(copy(token.Value, 4, length(token.Value)-4));
+          sintagma.RawText := sintagma.RawText + token.Value;
           continue;
-        end else if AnsiStartsStr('<font color', token.valor) then
+        end else if AnsiStartsStr('<font color', token.Value) then
         begin
-          FTmpCor := HTML2Color(tokenizer.LerPropriedadeTag('color', token));
-        end else if token.valor = '</font>' then
+          FTmpCor := HTML2Color(tokenizer.ReadTagProperty('color', token));
+        end else if token.Value = '</font>' then
         begin
           FTmpCor := clDefault;
-        end else if token.valor = '<sup>' then
+        end else if token.Value = '<sup>' then
         begin
           FTmpSobrescrito := true;
-        end else if token.valor = '</sup>' then
+        end else if token.Value = '</sup>' then
         begin
           FTmpSobrescrito := false;
-        end else if (token.valor = '<FI>') or (token.valor = '<Fi>') then
+        end else if (token.Value = '<FI>') or (token.Value = '<Fi>') then
         begin
-          FTmpItalico := token.valor[3] = 'I';
+          FTmpItalico := token.Value[3] = 'I';
           // nada a fazer. Para <FI> e <Fi>, queremos criar o label
         end else
-          token.tipo := tsMetaDado;
-      end else if (token.tipo = tsEspaco) and (token.valor = '|') then
+          token.Kind := skMetadata;
+      end else if (token.Kind = skWhitespace) and (token.Value = '|') then
       begin
         if assigned(sintagma) then
-          sintagma.RawText := sintagma.RawText + token.valor;
+          sintagma.RawText := sintagma.RawText + token.Value;
         continue;
       end;
-      token.cor         := FTmpCor;
-      token.italico     := FTmpItalico;
-      token.sobrescrito := FTmpSobrescrito;
+      token.Color         := FTmpCor;
+      token.Italic     := FTmpItalico;
+      token.Superscript := FTmpSobrescrito;
       sintagma := TSyntagm.Create(token, owner);
       sintagmas.Add(sintagma);
     end;

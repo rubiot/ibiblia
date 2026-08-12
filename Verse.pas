@@ -486,7 +486,7 @@ begin
     for Syntagm in FSintagmas do
     begin
       if not Assigned(Syntagm.Pairs) or
-         (Syntagm.Kind <> tsSintagma) or Syntagm.IsItalic or
+         (Syntagm.Kind <> skSyntagm) or Syntagm.IsItalic or
          (Processed.IndexOf(Syntagm) >= 0) then
         continue;
 
@@ -501,7 +501,7 @@ begin
       for PairedSyntagm in Syntagm.Siblings do
       begin
         if PairedSyntagm.IsItalic or
-           (PairedSyntagm.Kind <> tsSintagma) then
+           (PairedSyntagm.Kind <> skSyntagm) then
           continue;
         SourcePhrase := SourcePhrase + ';' +
           PairedSyntagm.GetSuggestionKey(ListType);
@@ -516,7 +516,7 @@ begin
       for PairedSyntagm in Syntagm.Pairs do
       begin
         if PairedSyntagm.IsItalic or
-           (PairedSyntagm.Kind <> tsSintagma) then
+           (PairedSyntagm.Kind <> skSyntagm) then
           continue;
         if not TargetPhrase.IsEmpty then
           TargetPhrase := TargetPhrase + ';';
@@ -665,7 +665,7 @@ begin
       begin
         with FSintagmas.First do
         begin
-          if Kind = tsSintagma then
+          if Kind = skSyntagm then
           begin
             Strong.Free;
             Morph.Free;
@@ -680,9 +680,9 @@ begin
         new.First.Destroy;
         new.Delete(0);
       end
-      else if FSintagmas.First.Kind <> tsSintagma then
+      else if FSintagmas.First.Kind <> skSyntagm then
         DeleteSyntagm(0, result)
-      else if new.First.Kind <> tsSintagma then
+      else if new.First.Kind <> skSyntagm then
       begin
         result.Add(new[0]);
         new.Delete(0);
@@ -765,7 +765,7 @@ end;
 procedure TVerse.SetPares(const AValue: string);
 var
   varredorXML: TONTTokenizer;
-  s: TTagSintagma;
+  s: TSyntagmToken;
 begin
   if not assigned(VersiculoPar) then
     exit;
@@ -791,15 +791,15 @@ begin
     varredorXML := CreateTokenizer(AValue);
     try
       try
-        while varredorXML.LerSintagma(s) <> tsNulo do
+        while varredorXML.ReadSyntagm(s) <> skNull do
         begin
-          if not AnsiStartsStr('<par ', s.valor) then
+          if not AnsiStartsStr('<par ', s.Value) then
             Continue;
 
-          //DebugLn('selecionando par: %s', [s.valor]);
-          SelecionarListaSintagmas(varredorXML.LerPropriedadeTag('a', s));
+          //DebugLn('selecionando par: %s', [s.Value]);
+          SelecionarListaSintagmas(varredorXML.ReadTagProperty('a', s));
           VersiculoPar.SelecionarListaSintagmas(
-            varredorXML.LerPropriedadeTag('b', s));
+            varredorXML.ReadTagProperty('b', s));
           AssociarSintagmas;
 
           LimparSelecao;
@@ -889,7 +889,7 @@ begin
   linha := TStringStream.Create('');
   try
     for s in FSintagmas do
-      if s.Kind in [tsEspaco, tsSintagma, tsPontuacao] then
+      if s.Kind in [skWhitespace, skSyntagm, skPunctuation] then
         linha.WriteString(s.Text);
     result := linha.DataString;
   finally
@@ -920,7 +920,7 @@ begin
   result := 0;
 
   for s in FSintagmas do
-    if s.Kind = tsSintagma then
+    if s.Kind = skSyntagm then
     begin
       inc(t);
       if s.IsAssociated then
@@ -941,9 +941,9 @@ function TVerse.GetTheWordInterlinearLine: string;
     if pair = syn.Pairs[0] then exit;
     for i:=FVersiculoRef.Sintagmas.IndexOf(pair)-1 downto 0 do
     begin
-      if FVersiculoRef.Sintagmas[i].Kind = tsSintagma then
+      if FVersiculoRef.Sintagmas[i].Kind = skSyntagm then
         break;
-      if FVersiculoRef.Sintagmas[i].Kind = tsEspaco then
+      if FVersiculoRef.Sintagmas[i].Kind = skWhitespace then
       begin
         result := ' ';
         break;
@@ -988,7 +988,7 @@ begin
         prox := nil;
         for n:=FSintagmas.IndexOf(s)+1 to Sintagmas.Count-1 do
         begin // procurando o próximo sintagma (saltando espaços, pontuação, etc.)
-          if Sintagmas[n].Kind = tsSintagma then
+          if Sintagmas[n].Kind = skSyntagm then
           begin
             prox := Sintagmas[n];
             break;
@@ -1023,9 +1023,9 @@ function TVerse.GetMySwordInterlinearLine: string;
     if pair = syn.Pairs[0] then exit;
     for i:=FVersiculoRef.Sintagmas.IndexOf(pair)-1 downto 0 do
     begin
-      if FVersiculoRef.Sintagmas[i].Kind = tsSintagma then
+      if FVersiculoRef.Sintagmas[i].Kind = skSyntagm then
         break;
-      if FVersiculoRef.Sintagmas[i].Kind = tsEspaco then
+      if FVersiculoRef.Sintagmas[i].Kind = skWhitespace then
       begin
         result := ' ';
         break;
@@ -1064,7 +1064,7 @@ function TVerse.GetMySwordInterlinearLine: string;
       nextSyn := FSintagmas[nextIdx];
 
       // Add any spaces between siblings
-      if nextSyn.Kind = tsEspaco then
+      if nextSyn.Kind = skWhitespace then
       begin
         combinedText := combinedText + nextSyn.Text;
         skipIndices.Add(Pointer(nextIdx));
@@ -1072,7 +1072,7 @@ function TVerse.GetMySwordInterlinearLine: string;
         continue;
       end
       // Handle '<wt>' tags between siblings - look ahead to see if followed by a sibling
-      else if (nextSyn.Kind = tsMetaDado) and (nextSyn.Text = '<wt>') then
+      else if (nextSyn.Kind = skMetadata) and (nextSyn.Text = '<wt>') then
       begin
         // Look ahead to find next syntagm after the tag
         lookAheadIdx := nextIdx + 1;
@@ -1080,7 +1080,7 @@ function TVerse.GetMySwordInterlinearLine: string;
 
         while (lookAheadIdx < FSintagmas.Count) do
         begin
-          if FSintagmas[lookAheadIdx].Kind = tsSintagma then
+          if FSintagmas[lookAheadIdx].Kind = skSyntagm then
           begin
             lookAheadSyn := FSintagmas[lookAheadIdx];
             break;
@@ -1099,7 +1099,7 @@ function TVerse.GetMySwordInterlinearLine: string;
         continue;
       end
       // If next syntagm is not a sibling or not a syntagm, we're done
-      else if (nextSyn.Kind <> tsSintagma) or
+      else if (nextSyn.Kind <> skSyntagm) or
               (startSyntagm.Siblings.IndexOf(nextSyn) < 0) then
         break;
 
@@ -1147,7 +1147,7 @@ begin
       end;
 
       case s.Kind of
-        tsSintagma:
+        skSyntagm:
         begin
           // Collect text from consecutive siblings
           combinedText := CollectConsecutiveSiblings(s, skipIndices);
@@ -1162,7 +1162,7 @@ begin
           for m in s.Morph do
             line.WriteString(format('<WT%s>', [m]));
 
-          if assigned(s.GetNext) and (s.GetNext.Kind = tsPontuacao) then
+          if assigned(s.GetNext) and (s.GetNext.Kind = skPunctuation) then
           begin
             line.WriteString(s.GetNext.Text);
             skip := true;
@@ -1191,10 +1191,10 @@ begin
 
           line.WriteString('<q>');
         end;
-        tsTag:       line.WriteString(s.RawText);
-        tsEspaco:    line.WriteString(s.RawText);
-        tsPontuacao: line.WriteString(s.RawText);
-        tsMetaDado:  if s.Text <> '<wt>' then line.WriteString(s.RawText);
+        skTag:       line.WriteString(s.RawText);
+        skWhitespace:    line.WriteString(s.RawText);
+        skPunctuation: line.WriteString(s.RawText);
+        skMetadata:  if s.Text <> '<wt>' then line.WriteString(s.RawText);
       end;
 
       Inc(i);
@@ -1235,18 +1235,18 @@ begin
       Inc(s);
       temp := '';
 
-      if autoitalico and (stg.Pairs.Count = 0) and (stg.Kind = tsSintagma) then
+      if autoitalico and (stg.Pairs.Count = 0) and (stg.Kind = skSyntagm) then
         temp := temp + '<FI>';
 
-      if autoitalico and (stg.Kind = tsTag) and ((stg.Text = '<FI>') or (stg.Text = '<Fi>')) then
+      if autoitalico and (stg.Kind = skTag) and ((stg.Text = '<FI>') or (stg.Text = '<Fi>')) then
         goto NextSyntagm; // quando auto-itálico, ignorar os itálicos originais
 
       temp := temp + stg.Text;
 
-      if autoitalico and (stg.Pairs.Count = 0) and (stg.Kind = tsSintagma) then
+      if autoitalico and (stg.Pairs.Count = 0) and (stg.Kind = skSyntagm) then
         temp := temp + '<Fi>';
 
-      if (stg.Pairs.Count > 0) and (stg.Kind = tsSintagma) then
+      if (stg.Pairs.Count > 0) and (stg.Kind = skSyntagm) then
       begin
         if (s < (Sintagmas.Count-1)) and // não é o último sintagma e
            (stg.Siblings.Count > 0) then // tem irmãos
@@ -1254,7 +1254,7 @@ begin
           prox := nil;
           for m := s+1 to Sintagmas.Count-1 do
           begin // procurando o próximo sintagma (saltando espaços, pontuação, etc.)
-            if Sintagmas[m].Kind = tsSintagma then
+            if Sintagmas[m].Kind = skSyntagm then
             begin
               prox := Sintagmas[m];
               break;
@@ -1391,12 +1391,12 @@ procedure TVerse.OrganizarSintagmas;
   begin
     result := false;
     prev := s.GetPrevVisible;
-    if (s.Kind = tsPontuacao) and
-       (not assigned(prev) or (prev.Kind <> tsPontuacao)) then // and not following another punctiation
+    if (s.Kind = skPunctuation) and
+       (not assigned(prev) or (prev.Kind <> skPunctuation)) then // and not following another punctiation
        exit;
 
     next := s.GetNextVisible;
-    if assigned(next) and (next.Kind = tsPontuacao) then
+    if assigned(next) and (next.Kind = skPunctuation) then
       punctWidth := next.LabelRef.Width
     else
       punctWidth := 0;
@@ -1427,7 +1427,7 @@ procedure TVerse.OrganizarSintagmas;
 
     s.LabelRef.SetBounds(x, y, s.LabelRef.Width, s.LabelRef.Height);
 
-    if firstLabel and (s.Kind = tsEspaco) then
+    if firstLabel and (s.Kind = skWhitespace) then
       s.LabelRef.Visible := false // hiding spaces at the beginning of the line
     else begin
       s.LabelRef.Show;
@@ -1485,7 +1485,7 @@ begin
         //AIDebugLogFmt('[SelecionarListaSintagmas] Index out of range: %d (Count=%d)', [idx, Sintagmas.Count]);
         Continue;
       end;
-      if not (Sintagmas[idx].Kind in [tsSintagma, tsPontuacao]) then
+      if not (Sintagmas[idx].Kind in [skSyntagm, skPunctuation]) then
       begin
         //AIDebugLogFmt('[SelecionarListaSintagmas] Index %d is not selectable (Kind=%d)', [idx, Ord(Sintagmas[idx].Kind)]);
         Continue;
@@ -1512,7 +1512,7 @@ end;
 
 procedure TVerse.EditConfirm;
 {var
-  s: TTagSintagma;
+  s: TSyntagmToken;
   varredorXML: TONTTokenizer;
   sintagma, novo: TSyntagm;
   i, offset, j: integer;}
@@ -1526,12 +1526,12 @@ begin
   novo := nil;
 
   varredorXML := TTokenizerFactory.CreateTokenizer(FTokenizerVersion, FEdit.Caption);
-  while varredorXML.LerSintagma(s) <> tsNulo do
+  while varredorXML.ReadSyntagm(s) <> skNull do
   begin
-    if (s.tipo = tsEspaco) and (s.valor = '|') then
+    if (s.Kind = skWhitespace) and (s.Value = '|') then
     begin
       if assigned(novo) then
-        novo.TextoBruto := novo.TextoBruto + s.valor;
+        novo.TextoBruto := novo.TextoBruto + s.Value;
       continue;
     end;
 
@@ -1545,7 +1545,7 @@ begin
   for j:=(i-Offset) to i+Offset do
   begin
     novo := FSintagmas[j];
-    if novo.Tipo = tsSintagma then
+    if novo.Tipo = skSyntagm then
     begin
       for i:=0 to sintagma.Irmaos.Count-1 do
       begin
@@ -1645,7 +1645,7 @@ procedure TVerse.AtualizarStrongCount;
   end;
 
 var
-  token: TTagSintagma;
+  token: TSyntagmToken;
   s, p: TSyntagm;
   count: integer;
   unique: TSyntagmList;
@@ -1654,7 +1654,7 @@ begin
   unique := TSyntagmList.Create;
   for s in FSintagmas do
   begin
-    if s.Kind <> tsSintagma then
+    if s.Kind <> skSyntagm then
       continue;
     if unique.IndexOf(s) <> -1 then
       continue;
@@ -1668,11 +1668,11 @@ begin
 
   with token do
   begin
-    tipo       := tsStrongCount;
-    valor      := format(' (%d strongs)', [count]);
-    cor        := clRed;
-    sobrescrito:= true;
-    italico    := false;
+    Kind        := skStrongCount;
+    Value       := Format(' (%d strongs)', [count]);
+    Color       := clRed;
+    Superscript := True;
+    Italic      := False;
   end;
   FStrongCount := TSyntagm.Create(token, self);
 end;
@@ -1936,7 +1936,7 @@ begin
       s := FSintagmas[i];
       strongsJSON := StringListToJSONArray(s.Strong);
       morphJSON := StringListToJSONArray(s.Morph);
-      kindStr := GetEnumName(TypeInfo(TTipoSintagma), Ord(s.Kind)); // convert kind to text
+      kindStr := GetEnumName(TypeInfo(TSyntagmKind), Ord(s.Kind)); // convert kind to text
       jsonItems.Add(Format('{"text": "%s", "index": %d, "kind": "%s", "strongs": %s, "morph": %s}'#13#10,
         [s.Text, i, kindStr, strongsJSON, morphJSON]));
     end;

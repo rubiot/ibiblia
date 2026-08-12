@@ -4786,7 +4786,7 @@ function TProject.GetPlainVerseText(Referencia: string;
   texto: TTipoTextoBiblico): string;
 var
   varredorXML: TONTTokenizer;
-  s: TTagSintagma;
+  s: TSyntagmToken;
   SourceText: string;
 begin
   result := '';
@@ -4798,24 +4798,24 @@ begin
 
   varredorXML := TTokenizerFactory.CreateTokenizer(TokenizerVersion, SourceText);
   try
-    while varredorXML.LerSintagma(s) <> tsNulo do
+    while varredorXML.ReadSyntagm(s) <> skNull do
     begin
-      if s.tipo = tsTag then
+      if s.Kind = skTag then
       begin
-        if s.valor = '<RF>' then
+        if s.Value = '<RF>' then
         begin
-          varredorXML.LerAteTag(s, '<Rf>');
-          s.tipo := tsMetaDado;
+          varredorXML.ReadToTag(s, '<Rf>');
+          s.Kind := skMetadata;
           continue;
-        end else if AnsiStartsStr('<TS', s.valor) then
+        end else if AnsiStartsStr('<TS', s.Value) then
         begin
-          varredorXML.LerAteTag(s, '<Ts>');
-          s.tipo := tsMetaDado;
+          varredorXML.ReadToTag(s, '<Ts>');
+          s.Kind := skMetadata;
           continue;
         end;
       end;
-      if s.tipo in [tsEspaco, tsSintagma, tsPontuacao] then
-        result := result + s.valor;
+      if s.Kind in [skWhitespace, skSyntagm, skPunctuation] then
+        result := result + s.Value;
     end;
   finally
     varredorXML.Destroy;
@@ -4874,29 +4874,29 @@ var
 
   function PlainDestinationText(const XML: string): string;
   var
-    Token: TTagSintagma;
+    Token: TSyntagmToken;
     Tokenizer: TONTTokenizer;
   begin
     Result := '';
     Tokenizer := TTokenizerFactory.CreateTokenizer(TokenizerVersion, XML);
     try
-      while Tokenizer.LerSintagma(Token) <> tsNulo do
+      while Tokenizer.ReadSyntagm(Token) <> skNull do
       begin
-        if Token.tipo = tsTag then
+        if Token.Kind = skTag then
         begin
-          if Token.valor = '<RF>' then
+          if Token.Value = '<RF>' then
           begin
-            Tokenizer.LerAteTag(Token, '<Rf>');
+            Tokenizer.ReadToTag(Token, '<Rf>');
             Continue;
           end;
-          if AnsiStartsStr('<TS', Token.valor) then
+          if AnsiStartsStr('<TS', Token.Value) then
           begin
-            Tokenizer.LerAteTag(Token, '<Ts>');
+            Tokenizer.ReadToTag(Token, '<Ts>');
             Continue;
           end;
         end;
-        if Token.tipo in [tsEspaco, tsSintagma, tsPontuacao] then
-          Result := Result + Token.valor;
+        if Token.Kind in [skWhitespace, skSyntagm, skPunctuation] then
+          Result := Result + Token.Value;
       end;
     finally
       Tokenizer.Free;

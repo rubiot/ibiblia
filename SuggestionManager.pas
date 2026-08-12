@@ -1185,7 +1185,7 @@ begin
       SourceVerse.ClearSelection;
       SelectedSyntagm := SourceVerse.Syntagms[SourceStartIndex];
 
-      if (SelectedSyntagm.Kind <> tsSintagma) or (SelectedSyntagm.Pairs.Count > 0) then
+      if (SelectedSyntagm.Kind <> skSyntagm) or (SelectedSyntagm.Pairs.Count > 0) then
         Continue;
 
       SelectedSyntagm.AddToSelection;
@@ -1204,7 +1204,7 @@ begin
         while (SourceScanIndex < SourceVerse.Syntagms.Count) and
               (SourcePhraseIndex < SourcePhrase.Count) do
         begin
-          if (SourceVerse.Syntagms[SourceScanIndex].Kind = tsSintagma) and
+          if (SourceVerse.Syntagms[SourceScanIndex].Kind = skSyntagm) and
              (SourceVerse.Syntagms[SourceScanIndex].IsItalic = False) then
           begin
             if not CompareSource(
@@ -1226,7 +1226,7 @@ begin
           begin
             TargetVerse.ClearSelection;
             SelectedSyntagm := TargetVerse.Syntagms[TargetStartIndex];
-            if (SelectedSyntagm.Kind <> tsSintagma) or SelectedSyntagm.IsItalic or
+            if (SelectedSyntagm.Kind <> skSyntagm) or SelectedSyntagm.IsItalic or
                (SelectedSyntagm.Pairs.Count > 0) then
               Continue;
 
@@ -1240,7 +1240,7 @@ begin
               while (TargetScanIndex < TargetVerse.Syntagms.Count) and
                     (TargetPhraseIndex < TargetPhrase.Count) do
               begin
-                if TargetVerse.Syntagms[TargetScanIndex].Kind = tsSintagma then
+                if TargetVerse.Syntagms[TargetScanIndex].Kind = skSyntagm then
                 begin
                   DebugLn('    searching phrase term: %s', [TargetPhrase.Strings[TargetPhraseIndex]]);
                   if CompareTarget(

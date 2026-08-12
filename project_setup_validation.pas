@@ -147,14 +147,14 @@ end;
 function PlainPreview(const XML: string; TokenizerVersion: Integer): string;
 var
   Tokenizer: TONTTokenizer;
-  Token: TTagSintagma;
+  Token: TSyntagmToken;
 begin
   Result := '';
   Tokenizer := TTokenizerFactory.CreateTokenizer(TokenizerVersion, XML);
   try
-    while Tokenizer.LerSintagma(Token) <> tsNulo do
-      if Token.tipo in [tsEspaco, tsSintagma, tsPontuacao] then
-        Result := Result + Token.valor;
+    while Tokenizer.ReadSyntagm(Token) <> skNull do
+      if Token.Kind in [skWhitespace, skSyntagm, skPunctuation] then
+        Result := Result + Token.Value;
   finally
     Tokenizer.Free;
   end;

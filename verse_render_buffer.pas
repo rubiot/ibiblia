@@ -134,7 +134,7 @@ end;
 function TVerseRenderBuffer.CanonicalizeAssociations(
   const Associations: string; Canonical: TStringList): Boolean;
 var
-  Parsed: TTagSintagma;
+  Parsed: TSyntagmToken;
   SourceIndexes: string;
   TargetIndexes: string;
   Tokenizer: TONTTokenizer;
@@ -147,16 +147,16 @@ begin
   Tokenizer := TTokenizerFactory.CreateTokenizer(
     FSourceVerse.TokenizerVersion, Associations);
   try
-    while Tokenizer.LerSintagma(Parsed) <> tsNulo do
+    while Tokenizer.ReadSyntagm(Parsed) <> skNull do
     begin
-      if Parsed.tipo = tsEspaco then
+      if Parsed.Kind = skWhitespace then
         Continue;
-      if not AnsiStartsStr('<par ', Parsed.valor) then
+      if not AnsiStartsStr('<par ', Parsed.Value) then
         Exit;
       if not CanonicalizeIndexList(
-        Tokenizer.LerPropriedadeTag('a', Parsed), SourceIndexes) or
+        Tokenizer.ReadTagProperty('a', Parsed), SourceIndexes) or
         not CanonicalizeIndexList(
-        Tokenizer.LerPropriedadeTag('b', Parsed), TargetIndexes) then
+        Tokenizer.ReadTagProperty('b', Parsed), TargetIndexes) then
         Exit;
       Canonical.Add(SourceIndexes + '=' + TargetIndexes);
     end;

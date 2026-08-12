@@ -109,7 +109,7 @@ end;
 procedure THTMLRenderer.RenderSpan(cont: TKMemoBlocks; txt: string);
 var
   FTokenizer: TONTTokenizer;
-  token: TTagSintagma;
+  token: TSyntagmToken;
   prop: string;
   chunk: string;
   size: integer;
@@ -119,17 +119,17 @@ begin
 
   cont.LockUpdate;
   try
-    while FTokenizer.LerSintagma(token) <> tsNulo do
+    while FTokenizer.ReadSyntagm(token) <> skNull do
     begin
-      case token.tipo of
-        tsMetaDado:
+      case token.Kind of
+        skMetadata:
           ;
-        tsEspaco:
-          if token.valor <> '|' then
-            chunk := chunk + token.valor;
-        tsPontuacao, tsSintagma:
-          chunk := chunk + token.valor;
-        tsTag:
+        skWhitespace:
+          if token.Value <> '|' then
+            chunk := chunk + token.Value;
+        skPunctuation, skSyntagm:
+          chunk := chunk + token.Value;
+        skTag:
         begin
           if chunk.Length > 0 then
           begin
@@ -137,42 +137,42 @@ begin
             chunk := '';
           end;
           
-          token.valor := token.valor.ToLower;
-          if token.valor.StartsWith('<font ') then { font change }
+          token.Value := token.Value.ToLower;
+          if token.Value.StartsWith('<font ') then { font change }
           begin
             PushInheritedStyle;
-            if token.valor.Contains(' color=') then
-              CurrentStyle.Font.Color := HTML2Color(FTokenizer.LerPropriedadeTag('color', token));
-            if token.valor.Contains(' size=') then
+            if token.Value.Contains(' color=') then
+              CurrentStyle.Font.Color := HTML2Color(FTokenizer.ReadTagProperty('color', token));
+            if token.Value.Contains(' size=') then
             begin
-              prop := FTokenizer.LerPropriedadeTag('size', token);
+              prop := FTokenizer.ReadTagProperty('size', token);
               if prop.Chars[0] in ['-', '+'] then
                 size := CurrentStyle.Font.Size + prop.ToInteger
               else
                 size := prop.ToInteger;
               CurrentStyle.Font.Size := size;
             end;
-          end else if token.valor = '<b>' then { bold }
+          end else if token.Value = '<b>' then { bold }
             PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsBold]
-          else if token.valor = '<i>' then { italic }
+          else if token.Value = '<i>' then { italic }
             PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsItalic]
-          else if token.valor = '<u>' then { underline }
+          else if token.Value = '<u>' then { underline }
             PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsUnderline]
-          else if token.valor = '<s>' then { strikeout }
+          else if token.Value = '<s>' then { strikeout }
             PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsStrikeOut]
-          else if token.valor = '<sup>' then { superscript }
+          else if token.Value = '<sup>' then { superscript }
             PushInheritedStyle.ScriptPosition := tpoSuperscript
-          else if token.valor = '<sub>' then { subscript }
+          else if token.Value = '<sub>' then { subscript }
             PushInheritedStyle.ScriptPosition := tpoSubscript
-          else if token.valor = '<br/>' then { line break }
+          else if token.Value = '<br/>' then { line break }
             cont.AddParagraph().ParaStyle.FirstIndent := 0
-          else if (token.valor = '</sub>')
-               or (token.valor = '</sup>')
-               or (token.valor = '</s>')
-               or (token.valor = '</u>')
-               or (token.valor = '</i>')
-               or (token.valor = '</b>')
-               or (token.valor = '</font>') then
+          else if (token.Value = '</sub>')
+               or (token.Value = '</sup>')
+               or (token.Value = '</s>')
+               or (token.Value = '</u>')
+               or (token.Value = '</i>')
+               or (token.Value = '</b>')
+               or (token.Value = '</font>') then
             PopStyle;
         end;
       end;

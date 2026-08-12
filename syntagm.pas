@@ -64,7 +64,7 @@ type
 
   TSyntagm = class
   private
-    FKind: TTipoSintagma;
+    FKind: TSyntagmKind;
     FText: string;
     FRawText: string;
     FPairs: TSyntagmList;
@@ -99,7 +99,7 @@ type
     procedure SetAssociated(const AValue: boolean);
     function GetGist: string;
   public
-    constructor Create(s: TTagSintagma; owner: TObject);
+    constructor Create(s: TSyntagmToken; owner: TObject);
     procedure Render;
     destructor Destroy; override;
     procedure AddToSelection;
@@ -129,7 +129,7 @@ type
     property IsPointed: boolean write SetPointed;
     property Text: string read FText write FText;
     property RawText: string read FRawText write FRawText;
-    property Kind: TTipoSintagma read FKind write FKind;
+    property Kind: TSyntagmKind read FKind write FKind;
     property IsItalic: boolean read FItalic;
     property IsSuperscript: boolean read FSuperscript;
     property HasStrongs: boolean read GetHasStrongs;
@@ -476,7 +476,7 @@ begin
     begin
       s := Sintagmas.IndexOf(Self);
       if (s >= 0) and (s < (Sintagmas.Count-1)) and
-         (Sintagmas[s+1].Kind = tsSintagma) and
+         (Sintagmas[s+1].Kind = skSyntagm) and
          Sintagmas[s+1].Text.StartsWith('-') then
         result := result + '-';
     end;
@@ -626,17 +626,17 @@ begin
 end;
 
 function TSyntagm.GetGist: string;
-  function KindToStr(t: TTipoSintagma): string;
+  function KindToStr(t: TSyntagmKind): string;
   begin
     result := '';
     case t of
-      tsNulo:     result := 'tsNulo';
-      tsSintagma: result := 'tsSintagma';
-      tsTag:      result := 'tsTag';
-      tsEspaco:   result := 'tsEspaco';
-      tsPontuacao:result := 'tsPontuacao';
-      tsMetaDado: result := 'tsMetaDado';
-      tsStrongCount: result := 'tsStrongCount';
+      skNull:     result := 'tsNulo';
+      skSyntagm: result := 'tsSintagma';
+      skTag:      result := 'tsTag';
+      skWhitespace:   result := 'tsEspaco';
+      skPunctuation:result := 'tsPontuacao';
+      skMetadata: result := 'tsMetaDado';
+      skStrongCount: result := 'tsStrongCount';
     end;
   end;
 begin
@@ -677,7 +677,7 @@ begin
     begin
       for i := i+1 to Sintagmas.Count-1 do
       begin
-        if Sintagmas[i].FKind = tsSintagma then
+        if Sintagmas[i].FKind = skSyntagm then
         begin
           result := Sintagmas[i];
           break;
@@ -720,15 +720,15 @@ begin
 end;
 
 { creates a basic instance of a syntagm, no label, no event handlers, etc. }
-constructor TSyntagm.Create(s: TTagSintagma; owner: TObject);
+constructor TSyntagm.Create(s: TSyntagmToken; owner: TObject);
 begin
   FVerse       := owner;
-  FText        := s.valor;
-  FRawText     := s.valor;
-  FKind        := s.tipo;
-  FColor       := s.cor;
-  FSuperscript := s.sobrescrito;
-  FItalic      := s.italico;
+  FText        := s.Value;
+  FRawText     := s.Value;
+  FKind        := s.Kind;
+  FColor       := s.Color;
+  FSuperscript := s.Superscript;
+  FItalic      := s.Italic;
   FLabel       := nil;
   FPairs       := TSyntagmList.Create;
   FSiblings    := TSyntagmList.Create;
@@ -739,7 +739,7 @@ end;
 { instantiates the visual representation of the syntagm (its label) }
 procedure TSyntagm.Render;
 begin
-  if (FKind in [tsSintagma, tsEspaco, tsPontuacao, tsStrongCount]) or
+  if (FKind in [skSyntagm, skWhitespace, skPunctuation, skStrongCount]) or
      (FText = '<FI>') or (FText = '<Fi>') then
   begin
     if not assigned(FLabel) then
@@ -754,7 +754,7 @@ begin
     FLabel.ParentColor := false;
     FLabel.Font.Color  := FColor;
     FLabel.Parent      := TVerse(FVerse).Painel;
-    FLabel.ParentFont  := FKind <> tsStrongCount;
+    FLabel.ParentFont  := FKind <> skStrongCount;
     FLabel.AutoSize    := true;
     if FSuperscript then
       FLabel.Font.Size := round(FLabel.Font.Size * 0.7);
@@ -763,7 +763,7 @@ begin
   end else
     FLabel := nil;
 
-  if FKind in [tsSintagma, tsPontuacao] then
+  if FKind in [skSyntagm, skPunctuation] then
   begin
     //FLabel.OnClick     := @DoOnClick;
     //FLabel.OnDblClick   := @DoOnDblClick;
@@ -950,7 +950,7 @@ begin
     begin
       for i := i+1 to Sintagmas.Count-1 do
       begin
-        if (Sintagmas[i].Kind = tsSintagma) and
+        if (Sintagmas[i].Kind = skSyntagm) and
            (not mustHaveTags or (Sintagmas[i].HasStrongs or Sintagmas[i].HasMorph)) and
            (not Sintagmas[i].IsAssociated) then
         begin
@@ -988,7 +988,7 @@ procedure TSyntagm.Disassociate;
 var
   s: TSyntagm;
 begin
-  if not (FKind in [tsSintagma, tsPontuacao]) then
+  if not (FKind in [skSyntagm, skPunctuation]) then
     exit;
 
   IsPointed := false;

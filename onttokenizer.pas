@@ -8,19 +8,33 @@ uses
   Classes, SysUtils, LCLProc, Dialogs, LazUTF8, Graphics;
 
 type
-  Simbolos = array of cardinal;
+  TCodepointArray = array of Cardinal;
 
 type
-  TTipoSintagma = (tsNulo, tsSintagma, tsTag, tsEspaco, tsPontuacao, tsMetaDado, tsStrongCount);
+  // Legacy enum member names are retained because they are exposed in copied JSON.
+  TSyntagmKind = (tsNulo, tsSintagma, tsTag, tsEspaco, tsPontuacao, tsMetaDado, tsStrongCount);
+  // Compatibility alias for existing integrations.
+  TTipoSintagma = TSyntagmKind;
+
+const
+  skNull = tsNulo;
+  skSyntagm = tsSintagma;
+  skTag = tsTag;
+  skWhitespace = tsEspaco;
+  skPunctuation = tsPontuacao;
+  skMetadata = tsMetaDado;
+  skStrongCount = tsStrongCount;
 
 type
-  TTagSintagma = record
-    tipo: TTipoSintagma;
-    valor: string;
-    cor: TColor;
-    sobrescrito: boolean;
-    italico: boolean;
+  TSyntagmToken = record
+    Kind: TSyntagmKind;
+    Value: string;
+    Color: TColor;
+    Superscript: Boolean;
+    Italic: Boolean;
   end;
+  // Compatibility alias for existing integrations.
+  TTagSintagma = TSyntagmToken;
 
   { TONTTokenizer }
   TONTTokenizer = class
@@ -28,10 +42,14 @@ type
     constructor Create(XML: string); virtual; abstract;
     constructor Create(XML: PChar); virtual; abstract;
     destructor Destroy; override;
-    function LerSintagma(var s: TTagSintagma): TTipoSintagma; virtual; abstract;
-    function LerPropriedadeTag(p: string; s: TTagSintagma): string; virtual; abstract;
-    procedure LerAteTag(var s: TTagSintagma; AteTag: string); virtual; abstract;
-    function ReadUntilExclusive(endTag: string): string; virtual; abstract;
+    function ReadSyntagm(var Token: TSyntagmToken): TSyntagmKind; virtual;
+    function ReadTagProperty(const PropertyName: string; const Token: TSyntagmToken): string; virtual;
+    procedure ReadToTag(var Token: TSyntagmToken; const EndTag: string); virtual;
+    // Legacy virtual extension points retained for source compatibility.
+    function LerSintagma(var Token: TTagSintagma): TTipoSintagma; virtual; abstract;
+    function LerPropriedadeTag(PropertyName: string; Token: TTagSintagma): string; virtual; abstract;
+    procedure LerAteTag(var Token: TTagSintagma; EndTag: string); virtual; abstract;
+    function ReadUntilExclusive(EndTag: string): string; virtual; abstract;
   end;
 
   { TONTTokenizerFactory }
@@ -59,51 +77,54 @@ type
   protected
     FXML: PChar;
     FPXML: PChar;
-    function CurrentCodepoint(out codepoint: Cardinal; out codepointLength: Integer): Boolean;
-    function IsSpaceCodepoint(codepoint: Cardinal): Boolean;
-    function IsTokenizerPunctuation(codepoint: Cardinal): Boolean; virtual;
+    function CurrentCodepoint(out Codepoint: Cardinal; out CodepointLength: Integer): Boolean;
+    function IsSpaceCodepoint(Codepoint: Cardinal): Boolean;
+    function IsTokenizerPunctuation(Codepoint: Cardinal): Boolean; virtual;
     function ConsumeSinglePunctuationCodepoint: Boolean; virtual;
-    procedure InitializeToken(var s: TTagSintagma);
-    procedure ReadGroupedPunctuation(var s: TTagSintagma);
-    procedure ReadPunctuationToken(var s: TTagSintagma);
-    procedure PularEspacos;
-    procedure PularTagAtual;
-    procedure LerEspacos(var s: TTagSintagma);
-    procedure LerPontuacao(var s: TTagSintagma); virtual;
-    procedure LerTag(var s: TTagSintagma);
-    procedure LerTexto(var s: TTagSintagma); virtual;
+    procedure InitializeToken(var Token: TSyntagmToken);
+    procedure ReadGroupedPunctuation(var Token: TSyntagmToken);
+    procedure ReadPunctuationToken(var Token: TSyntagmToken);
+    procedure SkipSpaces;
+    procedure SkipCurrentTag;
+    procedure ReadSpaces(var Token: TSyntagmToken);
+    procedure ReadPunctuation(var Token: TSyntagmToken); virtual;
+    procedure ReadTag(var Token: TSyntagmToken);
+    procedure ReadText(var Token: TSyntagmToken); virtual;
+    function ReadSyntagmCore(var Token: TSyntagmToken): TSyntagmKind;
+    function ReadTagPropertyCore(const PropertyName: string; const Token: TSyntagmToken): string;
+    procedure ReadToTagCore(var Token: TSyntagmToken; const EndTag: string);
   public
     constructor Create(XML: string); override;
     constructor Create(XML: PChar); override;
     destructor Destroy; override;
-    function LerSintagma(var s: TTagSintagma): TTipoSintagma; override;
-    function LerPropriedadeTag(p: string; s: TTagSintagma): string; override;
-    procedure LerAteTag(var s: TTagSintagma; AteTag: string); override;
-    function ReadUntilExclusive(endTag: string): string; override;
+    function LerSintagma(var Token: TTagSintagma): TTipoSintagma; override;
+    function LerPropriedadeTag(PropertyName: string; Token: TTagSintagma): string; override;
+    procedure LerAteTag(var Token: TTagSintagma; EndTag: string); override;
+    function ReadUntilExclusive(EndTag: string): string; override;
   end;
 
   { TONTTokenizerV2 }
   TONTTokenizerV2 = class(TONTTokenizerV1)
   protected
-    function IsTokenizerPunctuation(codepoint: Cardinal): Boolean; override;
+    function IsTokenizerPunctuation(Codepoint: Cardinal): Boolean; override;
     function ConsumeSinglePunctuationCodepoint: Boolean; override;
   end;
 
   { TONTTokenizerV3 }
   TONTTokenizerV3 = class(TONTTokenizerV2)
   protected
-    function IsTokenizerPunctuation(codepoint: Cardinal): Boolean; override;
+    function IsTokenizerPunctuation(Codepoint: Cardinal): Boolean; override;
   end;
 
 implementation
 
-function ContainsCodepoint(codepoint: Cardinal; const values: array of Cardinal): Boolean;
+function ContainsCodepoint(Codepoint: Cardinal; const values: array of Cardinal): Boolean;
 var
-  i: Integer;
+  Index: Integer;
 begin
   Result := False;
-  for i := Low(values) to High(values) do
-    if values[i] = codepoint then
+  for Index := Low(values) to High(values) do
+    if values[Index] = Codepoint then
       Exit(True);
 end;
 
@@ -120,6 +141,22 @@ begin
   inherited Destroy;
 end;
 
+function TONTTokenizer.ReadSyntagm(var Token: TSyntagmToken): TSyntagmKind;
+begin
+  Result := LerSintagma(Token);
+end;
+
+function TONTTokenizer.ReadTagProperty(const PropertyName: string;
+  const Token: TSyntagmToken): string;
+begin
+  Result := LerPropriedadeTag(PropertyName, Token);
+end;
+
+procedure TONTTokenizer.ReadToTag(var Token: TSyntagmToken;
+  const EndTag: string);
+begin
+  LerAteTag(Token, EndTag);
+end;
 { TTokenizerFactory }
 
 class constructor TTokenizerFactory.Create;
@@ -200,7 +237,7 @@ constructor TONTTokenizerV1.Create(XML: PChar);
 begin
   FXML := XML;
   FPXML := FXML;
-  if pos(#239#187#191, FPXML) = 1 then // saltando o UTF-8 BOM
+  if pos(#239#187#191, FPXML) = 1 then // Skip the UTF-8 BOM
      inc(FPXML, 3);
 end;
 
@@ -209,21 +246,21 @@ begin
   inherited Destroy;
 end;
 
-function TONTTokenizerV1.CurrentCodepoint(out codepoint: Cardinal;
-  out codepointLength: Integer): Boolean;
+function TONTTokenizerV1.CurrentCodepoint(out Codepoint: Cardinal;
+  out CodepointLength: Integer): Boolean;
 begin
-  codepoint := UTF8CodepointToUnicode(FPXML, codepointLength);
-  Result := codepoint <> 0;
+  Codepoint := UTF8CodepointToUnicode(FPXML, CodepointLength);
+  Result := Codepoint <> 0;
 end;
 
-function TONTTokenizerV1.IsSpaceCodepoint(codepoint: Cardinal): Boolean;
+function TONTTokenizerV1.IsSpaceCodepoint(Codepoint: Cardinal): Boolean;
 begin
-  Result := ContainsCodepoint(codepoint, [Ord(#32), Ord(#9), Ord('|')]);
+  Result := ContainsCodepoint(Codepoint, [Ord(#32), Ord(#9), Ord('|')]);
 end;
 
-function TONTTokenizerV1.IsTokenizerPunctuation(codepoint: Cardinal): Boolean;
+function TONTTokenizerV1.IsTokenizerPunctuation(Codepoint: Cardinal): Boolean;
 begin
-  Result := ContainsCodepoint(codepoint,
+  Result := ContainsCodepoint(Codepoint,
     [Ord('"'), Ord('.'), Ord(','), Ord(';'), Ord(':'), Ord('!'), Ord('?'),
      Ord('('), Ord(')'), 183, 903, 8220, 8221]);
 end;
@@ -233,45 +270,45 @@ begin
   Result := False;
 end;
 
-procedure TONTTokenizerV1.InitializeToken(var s: TTagSintagma);
+procedure TONTTokenizerV1.InitializeToken(var Token: TSyntagmToken);
 begin
-  s.valor := '';
-  s.cor := clDefault;
-  s.italico := False;
-  s.sobrescrito := False;
+  Token.Value := '';
+  Token.Color := clDefault;
+  Token.Italic := False;
+  Token.Superscript := False;
 end;
 
-procedure TONTTokenizerV1.ReadGroupedPunctuation(var s: TTagSintagma);
+procedure TONTTokenizerV1.ReadGroupedPunctuation(var Token: TSyntagmToken);
 var
-  start: PChar;
-  codepoint: Cardinal;
-  codepointLength: Integer;
+  Start: PChar;
+  Codepoint: Cardinal;
+  CodepointLength: Integer;
 begin
-  start := FPXML;
-  while CurrentCodepoint(codepoint, codepointLength) and IsTokenizerPunctuation(codepoint) do
-    Inc(FPXML, codepointLength);
+  Start := FPXML;
+  while CurrentCodepoint(Codepoint, CodepointLength) and IsTokenizerPunctuation(Codepoint) do
+    Inc(FPXML, CodepointLength);
 
-  s.valor := Copy(start, 0, FPXML - start);
-  s.tipo := tsPontuacao;
+  Token.Value := Copy(Start, 0, FPXML - Start);
+  Token.Kind := skPunctuation;
 end;
 
-procedure TONTTokenizerV1.ReadPunctuationToken(var s: TTagSintagma);
+procedure TONTTokenizerV1.ReadPunctuationToken(var Token: TSyntagmToken);
 var
-  codepoint: Cardinal;
-  codepointLength: Integer;
+  Codepoint: Cardinal;
+  CodepointLength: Integer;
 begin
-  if ConsumeSinglePunctuationCodepoint and CurrentCodepoint(codepoint, codepointLength) then
+  if ConsumeSinglePunctuationCodepoint and CurrentCodepoint(Codepoint, CodepointLength) then
   begin
-    Inc(FPXML, codepointLength);
-    s.valor := Copy(FPXML - codepointLength, 0, codepointLength);
-    s.tipo := tsPontuacao;
+    Inc(FPXML, CodepointLength);
+    Token.Value := Copy(FPXML - CodepointLength, 0, CodepointLength);
+    Token.Kind := skPunctuation;
     Exit;
   end;
 
-  ReadGroupedPunctuation(s);
+  ReadGroupedPunctuation(Token);
 end;
 
-procedure TONTTokenizerV1.PularEspacos;
+procedure TONTTokenizerV1.SkipSpaces;
 begin
   while (FPXML^ in [#13, #10, #32, #9, '|']) do
   begin
@@ -279,7 +316,7 @@ begin
   end;
 end;
 
-procedure TONTTokenizerV1.PularTagAtual;
+procedure TONTTokenizerV1.SkipCurrentTag;
 begin
   while (FPXML^ <> #0) and (FPXML^ <> '>') do
   begin
@@ -289,169 +326,176 @@ begin
     inc(FPXML);
 end;
 
-procedure TONTTokenizerV1.LerEspacos(var s: TTagSintagma);
+procedure TONTTokenizerV1.ReadSpaces(var Token: TSyntagmToken);
 var
-  c: integer;
+  CharacterCount: Integer;
 begin
-  c := 0;
+  CharacterCount := 0;
   while FPXML^ in [#32, #9, '|'] do
   begin
-    inc(c);
+    Inc(CharacterCount);
     inc(FPXML);
   end;
-  s.valor := copy(FPXML-c, 0, c);
-  s.tipo  := tsEspaco;
+  Token.Value := Copy(FPXML - CharacterCount, 0, CharacterCount);
+  Token.Kind  := skWhitespace;
 end;
 
-procedure TONTTokenizerV1.LerPontuacao(var s: TTagSintagma);
+procedure TONTTokenizerV1.ReadPunctuation(var Token: TSyntagmToken);
 begin
-  ReadGroupedPunctuation(s);
+  ReadGroupedPunctuation(Token);
 end;
 
-procedure TONTTokenizerV1.LerTag(var s: TTagSintagma);
+procedure TONTTokenizerV1.ReadTag(var Token: TSyntagmToken);
 var
-  c: integer;
+  CharacterCount: Integer;
 begin
-  c := 0;
+  CharacterCount := 0;
 
   while not (FPXML^ in [#0, '>']) do
   begin
     inc(FPXML);
-    inc(c);
+    Inc(CharacterCount);
   end;
 
   if FPXML^ = '>' then
   begin
     inc(FPXML);
-    inc(c);
+    Inc(CharacterCount);
   end;
-  s.valor := copy(FPXML-c, 0, c);
-  s.tipo := tsTag;
+  Token.Value := Copy(FPXML - CharacterCount, 0, CharacterCount);
+  Token.Kind := skTag;
 
-  //if s.valor = '<FI>' then
-  //  s.valor := '['
-  //else if s.valor = '<Fi>' then
-  //  s.valor := ']';
 end;
 
-procedure TONTTokenizerV1.LerTexto(var s: TTagSintagma);
+procedure TONTTokenizerV1.ReadText(var Token: TSyntagmToken);
 var
-  start: PChar;
-  codepoint: Cardinal;
-  codepointLength: Integer;
-  hifen: string;
+  Start: PChar;
+  Codepoint: Cardinal;
+  CodepointLength: Integer;
+  Hyphen: string;
 begin
   if FPXML^ = '-' then
   begin
-    hifen := '-';
+    Hyphen := '-';
     Inc(FPXML);
   end
   else
-    hifen := '';
+    Hyphen := '';
 
-  start := FPXML;
-  while CurrentCodepoint(codepoint, codepointLength)
-    and not IsSpaceCodepoint(codepoint)
-    and (codepoint <> Ord('<'))
-    and (codepoint <> Ord('-'))
-    and not IsTokenizerPunctuation(codepoint) do
-    Inc(FPXML, codepointLength);
+  Start := FPXML;
+  while CurrentCodepoint(Codepoint, CodepointLength)
+    and not IsSpaceCodepoint(Codepoint)
+    and (Codepoint <> Ord('<'))
+    and (Codepoint <> Ord('-'))
+    and not IsTokenizerPunctuation(Codepoint) do
+    Inc(FPXML, CodepointLength);
 
-  s.valor := hifen + Copy(start, 0, FPXML - start);
-  s.tipo := tsSintagma;
+  Token.Value := Hyphen + Copy(Start, 0, FPXML - Start);
+  Token.Kind := skSyntagm;
 end;
 
-function TONTTokenizerV1.LerSintagma(var s: TTagSintagma): TTipoSintagma;
-var
-  codepoint: Cardinal;
-  codepointLength: Integer;
+function TONTTokenizerV1.LerSintagma(var Token: TTagSintagma): TTipoSintagma;
 begin
-  InitializeToken(s);
+  Result := ReadSyntagmCore(Token);
+end;
 
-  if not CurrentCodepoint(codepoint, codepointLength) then
-    s.tipo := tsNulo
-  else if codepoint = Ord('<') then
-    s.tipo := tsTag
-  else if IsSpaceCodepoint(codepoint) then
-    s.tipo := tsEspaco
-  else if IsTokenizerPunctuation(codepoint) then
-    s.tipo := tsPontuacao
+function TONTTokenizerV1.LerPropriedadeTag(PropertyName: string;
+  Token: TTagSintagma): string;
+begin
+  Result := ReadTagPropertyCore(PropertyName, Token);
+end;
+
+procedure TONTTokenizerV1.LerAteTag(var Token: TTagSintagma; EndTag: string);
+begin
+  ReadToTagCore(Token, EndTag);
+end;
+
+function TONTTokenizerV1.ReadSyntagmCore(var Token: TSyntagmToken): TSyntagmKind;
+var
+  Codepoint: Cardinal;
+  CodepointLength: Integer;
+begin
+  InitializeToken(Token);
+
+  if not CurrentCodepoint(Codepoint, CodepointLength) then
+    Token.Kind := skNull
+  else if Codepoint = Ord('<') then
+    Token.Kind := skTag
+  else if IsSpaceCodepoint(Codepoint) then
+    Token.Kind := skWhitespace
+  else if IsTokenizerPunctuation(Codepoint) then
+    Token.Kind := skPunctuation
   else
-    s.tipo := tsSintagma;
+    Token.Kind := skSyntagm;
 
-  case s.tipo of
-    tsEspaco:
-      LerEspacos(s);
-    tsPontuacao:
-      ReadPunctuationToken(s);
-    tsTag:
-      LerTag(s);
-    tsSintagma:
-      LerTexto(s);
+  case Token.Kind of
+    skWhitespace:
+      ReadSpaces(Token);
+    skPunctuation:
+      ReadPunctuationToken(Token);
+    skTag:
+      ReadTag(Token);
+    skSyntagm:
+      ReadText(Token);
   end;
 
-  Result := s.tipo;
+  Result := Token.Kind;
 end;
 
-function TONTTokenizerV1.LerPropriedadeTag(p: string; s: TTagSintagma): string;
+function TONTTokenizerV1.ReadTagPropertyCore(const PropertyName: string; const Token: TSyntagmToken): string;
 var
-  i, f: smallint;
-  //quote: boolean;
+  StartIndex, EndIndex: SmallInt;
 begin
-  result := '';
-  //quote := false;
+  Result := '';
 
-  if s.valor[1] <> '<' then
+  if Token.Value[1] <> '<' then
     exit;
 
-  i := pos(p+'=', s.valor);
-  if i = 0 then
+  StartIndex := Pos(PropertyName + '=', Token.Value);
+  if StartIndex = 0 then
     exit;
 
-  i := i + length(p) + 1;
-  if s.valor[i] = '"' then
+  StartIndex := StartIndex + Length(PropertyName) + 1;
+  if Token.Value[StartIndex] = '"' then
   begin
-    inc(i);
-    //quote := true;
-    f := i + pos('"', copy(s.valor, i, length(s.valor))) - 1;
+    Inc(StartIndex);
+    EndIndex := StartIndex + Pos('"', Copy(Token.Value, StartIndex, Length(Token.Value))) - 1;
   end else
   begin
-    f := i + pos(' ', copy(s.valor, i, length(s.valor))) - 1; // será que temos mais de uma propriedade?
-    if f = (i-1) then
-      f := i + pos('>', copy(s.valor, i, length(s.valor))) - 1;
+    EndIndex := StartIndex + Pos(' ', Copy(Token.Value, StartIndex, Length(Token.Value))) - 1;
+    if EndIndex = (StartIndex - 1) then
+      EndIndex := StartIndex + Pos('>', Copy(Token.Value, StartIndex, Length(Token.Value))) - 1;
   end;
 
-  //i := i + pos('"', copy(s.valor, i, length(s.valor)));
-  //f := i + pos('"', copy(s.valor, i, length(s.valor))) - 1;
 
-  result := copy(s.valor, i, f-i);
+  Result := Copy(Token.Value, StartIndex, EndIndex - StartIndex);
 end;
 
-procedure TONTTokenizerV1.LerAteTag(var s: TTagSintagma; AteTag: string);
+procedure TONTTokenizerV1.ReadToTagCore(var Token: TSyntagmToken; const EndTag: string);
 var
-  valor: string;
+  Value: string;
 begin
-  valor := '';
+  Value := '';
   repeat
-    valor := concat(valor, s.valor);
-    LerSintagma(s);
-  until (s.tipo = tsNulo) or (s.valor = AteTag);
-  s.valor := valor + s.valor;
+    Value := Concat(Value, Token.Value);
+    ReadSyntagm(Token);
+  until (Token.Kind = skNull) or (Token.Value = EndTag);
+  Token.Value := Value + Token.Value;
 end;
 
-function TONTTokenizerV1.ReadUntilExclusive(endTag: string): string;
+function TONTTokenizerV1.ReadUntilExclusive(EndTag: string): string;
 var
-  token: TTagSintagma;
+  Token: TSyntagmToken;
 begin
-  LerAteTag(token, endTag);
-  result := token.valor.Replace(endTag, '');
+  ReadToTag(Token, EndTag);
+  Result := Token.Value.Replace(EndTag, '');
 end;
 
 { TONTTokenizerV2 }
 
-function TONTTokenizerV2.IsTokenizerPunctuation(codepoint: Cardinal): Boolean;
+function TONTTokenizerV2.IsTokenizerPunctuation(Codepoint: Cardinal): Boolean;
 begin
-  Result := ContainsCodepoint(codepoint,
+  Result := ContainsCodepoint(Codepoint,
     [Ord('"'), Ord('.'), Ord(','), Ord(';'), Ord(':'), Ord('!'), Ord('?'),
      Ord('('), Ord(')'), Ord('['), Ord(']'), 183, 903, 8220, 8221, 1470, 1472, 1475]);
 end;
@@ -463,9 +507,9 @@ end;
 
 { TONTTokenizerV3 }
 
-function TONTTokenizerV3.IsTokenizerPunctuation(codepoint: Cardinal): Boolean;
+function TONTTokenizerV3.IsTokenizerPunctuation(Codepoint: Cardinal): Boolean;
 begin
-  Result := ContainsCodepoint(codepoint,
+  Result := ContainsCodepoint(Codepoint,
     [Ord('"'), Ord('.'), Ord(','), Ord(';'), Ord(':'), Ord('!'), Ord('?'),
      Ord('('), Ord(')'), Ord('['), Ord(']'), 183, 8216, 8217, 903, 8220, 8221, 1470, 1472, 1475]);
 end;

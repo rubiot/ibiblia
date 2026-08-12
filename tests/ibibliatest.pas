@@ -1,4 +1,4 @@
-﻿unit ibibliatest;
+unit ibibliatest;
 
 {$mode objfpc}{$H+}
 
@@ -834,14 +834,14 @@ end;
 function TVerseTests.CollectTokenizerTokens(version: Integer; const AText: string): TStringList;
 var
   tokenizer: TONTTokenizer;
-  token: TTagSintagma;
+  token: TSyntagmToken;
 begin
   Result := TStringList.Create;
   tokenizer := TTokenizerFactory.CreateTokenizer(version, AText);
   try
-    while tokenizer.LerSintagma(token) <> tsNulo do
-      if token.tipo <> tsEspaco then
-        Result.Add(token.valor);
+    while tokenizer.ReadSyntagm(token) <> skNull do
+      if token.Kind <> skWhitespace then
+        Result.Add(token.Value);
   finally
     tokenizer.Destroy;
   end;
@@ -1083,7 +1083,7 @@ begin
   //     Syntagm := FSintagmas[I + J];
   // This implies direct adjacency in FSintagmas list for sequential matches.
   // This test will clarify that behavior. If FSintagmas[I+J] is not a word syntagm, it will fail.
-  // The current code only checks Syntagm.Kind = tsSintagma.
+  // The current code only checks Syntagm.Kind = skSyntagm.
   // If FSintagmas[I+J] is a space or tag, it won't match Words[J] unless Words[J] is that space/tag.
   // So, this test should behave as if direct adjacency of *word syntagms* is required.
 

@@ -974,7 +974,7 @@ begin
     Exit;
 
   for Syntagm in SourceVerse.Syntagms do
-    if Syntagm.Kind = tsSintagma then
+    if Syntagm.Kind = skSyntagm then
     begin
       Inc(Total);
       if Syntagm.IsAssociated then

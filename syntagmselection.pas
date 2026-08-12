@@ -23,7 +23,7 @@ end;
 
 function IsAvailableWordSyntagm(SyntagmNode: TSyntagm; const WordToFind: string): Boolean;
 begin
-  Result := Assigned(SyntagmNode) and (SyntagmNode.Kind = tsSintagma) and
+  Result := Assigned(SyntagmNode) and (SyntagmNode.Kind = skSyntagm) and
             AnsiSameText(SyntagmNode.Text, WordToFind) and
             not IsAssociatedSyntagm(SyntagmNode);
 end;
@@ -90,12 +90,12 @@ begin
       begin
         ScanNode := Syntagms[ScanIndex];
         case ScanNode.Kind of
-          tsEspaco, tsPontuacao:
+          skWhitespace, skPunctuation:
             begin
               Inc(ScanIndex);
               Continue;
             end;
-          tsSintagma:
+          skSyntagm:
             begin
               if IsAvailableWordSyntagm(ScanNode, RequestedWords[RequestedIndex]) then
                 CandidateIndex := ScanIndex;
@@ -194,9 +194,9 @@ begin
     begin
       IntermediateNode := Syntagms[IntermediateIndex];
       case IntermediateNode.Kind of
-        tsPontuacao:
+        skPunctuation:
           HasPunctuation := True;
-        tsTag, tsMetaDado:
+        skTag, skMetadata:
           begin
           end;
       else
@@ -211,7 +211,7 @@ begin
       Continue;
 
     for IntermediateIndex := CurrentIndex + 1 to NextIndex - 1 do
-      if Syntagms[IntermediateIndex].Kind = tsPontuacao then
+      if Syntagms[IntermediateIndex].Kind = skPunctuation then
         AddIndex(Result, IntermediateIndex);
   end;
 end;

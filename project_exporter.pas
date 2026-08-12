@@ -468,30 +468,30 @@ end;
 
 function TProjectExporter.PlainVerseText(const XML: string): string;
 var
-  Token: TTagSintagma;
+  Token: TSyntagmToken;
   Tokenizer: TONTTokenizer;
 begin
   Result := '';
   Tokenizer := TTokenizerFactory.CreateTokenizer(
     FVerseRenderBuffer.DestinationVerse.TokenizerVersion, XML);
   try
-    while Tokenizer.LerSintagma(Token) <> tsNulo do
+    while Tokenizer.ReadSyntagm(Token) <> skNull do
     begin
-      if Token.tipo = tsTag then
+      if Token.Kind = skTag then
       begin
-        if Token.valor = '<RF>' then
+        if Token.Value = '<RF>' then
         begin
-          Tokenizer.LerAteTag(Token, '<Rf>');
+          Tokenizer.ReadToTag(Token, '<Rf>');
           Continue;
         end;
-        if AnsiStartsStr('<TS', Token.valor) then
+        if AnsiStartsStr('<TS', Token.Value) then
         begin
-          Tokenizer.LerAteTag(Token, '<Ts>');
+          Tokenizer.ReadToTag(Token, '<Ts>');
           Continue;
         end;
       end;
-      if Token.tipo in [tsEspaco, tsSintagma, tsPontuacao] then
-        Result := Result + Token.valor;
+      if Token.Kind in [skWhitespace, skSyntagm, skPunctuation] then
+        Result := Result + Token.Value;
     end;
   finally
     Tokenizer.Free;
@@ -573,7 +573,7 @@ var
     for Index := 0 to FVerseRenderBuffer.DestinationVerse.Syntagms.Count - 1 do
     begin
       Syntagm := FVerseRenderBuffer.DestinationVerse.Syntagms[Index];
-      if Syntagm.Kind = tsTag then
+      if Syntagm.Kind = skTag then
       begin
         if not ClosingTag.IsEmpty then
         begin
@@ -587,7 +587,7 @@ var
         Continue;
       end;
       if not ClosingTag.IsEmpty or
-         not (Syntagm.Kind in [tsEspaco, tsSintagma, tsPontuacao]) then
+         not (Syntagm.Kind in [skWhitespace, skSyntagm, skPunctuation]) then
         Continue;
 
       SyntagmRanges[Index].StartIndex := Length(PlainText) + 1;
