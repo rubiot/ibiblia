@@ -9,6 +9,11 @@ uses
 
 type
   TConcordanceExportMode = (cemAnalytical, cemSynthetic);
+  TConcordanceContextMode = (
+    ccmReferencesOnly,
+    ccmRelevantExcerpt,
+    ccmFullVerse
+  );
 
   TConcordanceHighlightRange = record
     StartIndex: Integer;
@@ -16,6 +21,11 @@ type
   end;
 
   TConcordanceHighlightRangeArray = array of TConcordanceHighlightRange;
+
+const
+  CONCORDANCE_CONTEXT_MIN_CHARACTERS = 40;
+  CONCORDANCE_CONTEXT_DEFAULT_CHARACTERS = 120;
+  CONCORDANCE_CONTEXT_MAX_CHARACTERS = 500;
 
 function UnicodeToRtf(const Text: string): string;
 function MakeStrongLink(const Strong, Anchor: string): string;
@@ -121,6 +131,8 @@ type
 
   TConcordance = class
   private
+    FContextMaxCharacters: Integer;
+    FContextMode: TConcordanceContextMode;
     FMode: TConcordanceExportMode;
     FPhrases: TFPHashList;
     FRemoveMorphologyRegex: IRegex;
@@ -128,9 +140,11 @@ type
     FSyntagmRegex: IRegex;
     FTagRegex: IRegex;
     FStrongs: TFPHashList;
-    FIncludeVerseContext: Boolean;
     FNextReferenceOrder: Integer;
+    function GetIncludeVerseContext: Boolean;
     function GetDetailed: Boolean;
+    procedure SetContextMaxCharacters(AValue: Integer);
+    procedure SetIncludeVerseContext(AValue: Boolean);
     procedure SetDetailed(AValue: Boolean);
     function GetOrCreatePhrase(const SourcePhrase: string): TConcordancePhrase;
     function GetOrCreateStrong(const Strong: string): TConcordanceStrong;
@@ -148,9 +162,13 @@ type
       const HighlightRanges: TConcordanceHighlightRangeArray); overload;
     procedure AddPhrase(Pairs: TStringList; const Ref: string);
     function GetStrongRtf(const Lemma, Strong: string): string;
+    property ContextMaxCharacters: Integer read FContextMaxCharacters
+      write SetContextMaxCharacters;
+    property ContextMode: TConcordanceContextMode read FContextMode
+      write FContextMode;
     property Detailed: Boolean read GetDetailed write SetDetailed;
-    property IncludeVerseContext: Boolean read FIncludeVerseContext
-      write FIncludeVerseContext;
+    property IncludeVerseContext: Boolean read GetIncludeVerseContext
+      write SetIncludeVerseContext;
     property Mode: TConcordanceExportMode read FMode write FMode;
   end;
 
@@ -395,6 +413,224 @@ begin
   end;
   SetLength(Normalized, NormalizedIndex + 1);
   Result := True;
+end;
+
+type
+  TUTF8ByteOffsetArray = array of Integer;
+
+procedure BuildUTF8ByteOffsets(const Value: string;
+  out Offsets: TUTF8ByteOffsetArray; out CharacterCount: Integer);
+var
+  ByteIndex: Integer;
+  CharLength: Integer;
+  CodePoint: Cardinal;
+  Cursor: PChar;
+begin
+  CharacterCount := 0;
+  Offsets := nil;
+  SetLength(Offsets, Length(Value) + 2);
+  ByteIndex := 1;
+  while ByteIndex <= Length(Value) do
+  begin
+    Inc(CharacterCount);
+    Offsets[CharacterCount] := ByteIndex;
+    Cursor := PChar(Value) + ByteIndex - 1;
+    CodePoint := UTF8CodepointToUnicode(Cursor, CharLength);
+    if (CodePoint = 0) or (CharLength <= 0) or
+       (ByteIndex + CharLength - 1 > Length(Value)) then
+      CharLength := 1;
+    Inc(ByteIndex, CharLength);
+  end;
+  Offsets[CharacterCount + 1] := Length(Value) + 1;
+  SetLength(Offsets, CharacterCount + 2);
+end;
+
+function CharacterIndexForByteOffset(const Offsets: TUTF8ByteOffsetArray;
+  ByteOffset: Integer): Integer;
+begin
+  for Result := 1 to High(Offsets) do
+    if Offsets[Result] = ByteOffset then
+      Exit;
+  Result := 0;
+end;
+
+function CharacterCodePoint(const Value: string;
+  const Offsets: TUTF8ByteOffsetArray; CharacterIndex: Integer): Cardinal;
+var
+  CharLength: Integer;
+  Cursor: PChar;
+begin
+  Result := 0;
+  if (CharacterIndex < 1) or (CharacterIndex >= High(Offsets)) then
+    Exit;
+  Cursor := PChar(Value) + Offsets[CharacterIndex] - 1;
+  Result := UTF8CodepointToUnicode(Cursor, CharLength);
+end;
+
+function IsContextBoundary(CodePoint: Cardinal): Boolean;
+begin
+  Result := (CodePoint <= 32) or (CodePoint = $A0) or
+    ((CodePoint >= Ord('!')) and (CodePoint <= Ord('/'))) or
+    ((CodePoint >= Ord(':')) and (CodePoint <= Ord('@'))) or
+    ((CodePoint >= $5B) and (CodePoint <= $60)) or
+    ((CodePoint >= Ord('{')) and (CodePoint <= Ord('~'))) or
+    ((CodePoint >= $2000) and (CodePoint <= $206F));
+end;
+
+procedure BuildRelevantExcerpt(const Context: string;
+  const HighlightRanges: TConcordanceHighlightRangeArray;
+  MaxCharacters: Integer; out Excerpt: string;
+  out ExcerptRanges: TConcordanceHighlightRangeArray);
+var
+  ByteOffsets: TUTF8ByteOffsetArray;
+  CharacterCount: Integer;
+  EffectiveMax: Integer;
+  Ellipsis: string;
+  EndByte: Integer;
+  EndCharacter: Integer;
+  Expanded: Boolean;
+  FirstHighlightCharacter: Integer;
+  Index: Integer;
+  LastHighlightCharacter: Integer;
+  LeftExpansion: Integer;
+  NormalizedRanges: TConcordanceHighlightRangeArray;
+  Prefix: string;
+  PrefixByteLength: Integer;
+  RightExpansion: Integer;
+  StartByte: Integer;
+  StartCharacter: Integer;
+  Suffix: string;
+
+  function VisibleLength(AStartCharacter, AEndCharacter: Integer): Integer;
+  begin
+    Result := AEndCharacter - AStartCharacter + 1;
+    if AStartCharacter > 1 then
+      Inc(Result, 2);
+    if AEndCharacter < CharacterCount then
+      Inc(Result, 2);
+  end;
+
+  function TryExpandLeft: Boolean;
+  begin
+    Result := (StartCharacter > 1) and
+      (VisibleLength(StartCharacter - 1, EndCharacter) <= EffectiveMax);
+    if Result then
+    begin
+      Dec(StartCharacter);
+      Inc(LeftExpansion);
+    end;
+  end;
+
+  function TryExpandRight: Boolean;
+  begin
+    Result := (EndCharacter < CharacterCount) and
+      (VisibleLength(StartCharacter, EndCharacter + 1) <= EffectiveMax);
+    if Result then
+    begin
+      Inc(EndCharacter);
+      Inc(RightExpansion);
+    end;
+  end;
+
+begin
+  Excerpt := Context;
+  ExcerptRanges := HighlightRanges;
+  if Context.IsEmpty then
+    Exit;
+
+  BuildUTF8ByteOffsets(Context, ByteOffsets, CharacterCount);
+  EffectiveMax := MaxCharacters;
+  if EffectiveMax < 1 then
+    EffectiveMax := CONCORDANCE_CONTEXT_DEFAULT_CHARACTERS;
+  if CharacterCount <= EffectiveMax then
+    Exit;
+  if not NormalizeHighlightRanges(Context, HighlightRanges,
+      NormalizedRanges) then
+    Exit;
+
+  for Index := 0 to High(NormalizedRanges) do
+    if (CharacterIndexForByteOffset(ByteOffsets,
+        NormalizedRanges[Index].StartIndex) = 0) or
+       (CharacterIndexForByteOffset(ByteOffsets,
+        NormalizedRanges[Index].StartIndex +
+        NormalizedRanges[Index].Length) = 0) then
+      Exit;
+
+  FirstHighlightCharacter := CharacterIndexForByteOffset(ByteOffsets,
+    NormalizedRanges[0].StartIndex);
+  LastHighlightCharacter := CharacterIndexForByteOffset(ByteOffsets,
+    NormalizedRanges[High(NormalizedRanges)].StartIndex +
+    NormalizedRanges[High(NormalizedRanges)].Length) - 1;
+  if (FirstHighlightCharacter < 1) or
+     (LastHighlightCharacter < FirstHighlightCharacter) then
+    Exit;
+
+  StartCharacter := FirstHighlightCharacter;
+  EndCharacter := LastHighlightCharacter;
+  LeftExpansion := 0;
+  RightExpansion := 0;
+  repeat
+    if LeftExpansion <= RightExpansion then
+    begin
+      Expanded := TryExpandLeft;
+      if not Expanded then
+        Expanded := TryExpandRight;
+    end
+    else
+    begin
+      Expanded := TryExpandRight;
+      if not Expanded then
+        Expanded := TryExpandLeft;
+    end;
+  until not Expanded;
+
+  if StartCharacter > 1 then
+  begin
+    while (StartCharacter < FirstHighlightCharacter) and
+          not IsContextBoundary(CharacterCodePoint(Context, ByteOffsets,
+            StartCharacter - 1)) and
+          not IsContextBoundary(CharacterCodePoint(Context, ByteOffsets,
+            StartCharacter)) do
+      Inc(StartCharacter);
+    while (StartCharacter < FirstHighlightCharacter) and
+          IsContextBoundary(CharacterCodePoint(Context, ByteOffsets,
+            StartCharacter)) do
+      Inc(StartCharacter);
+  end;
+
+  if EndCharacter < CharacterCount then
+  begin
+    while (EndCharacter > LastHighlightCharacter) and
+          not IsContextBoundary(CharacterCodePoint(Context, ByteOffsets,
+            EndCharacter)) and
+          not IsContextBoundary(CharacterCodePoint(Context, ByteOffsets,
+            EndCharacter + 1)) do
+      Dec(EndCharacter);
+    while (EndCharacter > LastHighlightCharacter) and
+          IsContextBoundary(CharacterCodePoint(Context, ByteOffsets,
+            EndCharacter)) do
+      Dec(EndCharacter);
+  end;
+
+  Ellipsis := UTF8Encode(WideChar($2026));
+  Prefix := '';
+  Suffix := '';
+  if StartCharacter > 1 then
+    Prefix := Ellipsis + ' ';
+  if EndCharacter < CharacterCount then
+    Suffix := ' ' + Ellipsis;
+
+  StartByte := ByteOffsets[StartCharacter];
+  EndByte := ByteOffsets[EndCharacter + 1];
+  Excerpt := Prefix + Copy(Context, StartByte, EndByte - StartByte) + Suffix;
+  PrefixByteLength := Length(Prefix);
+  SetLength(ExcerptRanges, Length(NormalizedRanges));
+  for Index := 0 to High(NormalizedRanges) do
+  begin
+    ExcerptRanges[Index].StartIndex := PrefixByteLength +
+      NormalizedRanges[Index].StartIndex - StartByte + 1;
+    ExcerptRanges[Index].Length := NormalizedRanges[Index].Length;
+  end;
 end;
 
 function HighlightContextRanges(const Context: string;
@@ -720,6 +956,8 @@ end;
 constructor TConcordance.Create;
 begin
   inherited Create;
+  FContextMaxCharacters := CONCORDANCE_CONTEXT_DEFAULT_CHARACTERS;
+  FContextMode := ccmReferencesOnly;
   FMode := cemAnalytical;
   FPhrases := TFPHashList.Create;
   FStrongs := TFPHashList.Create;
@@ -746,9 +984,32 @@ begin
   inherited Destroy;
 end;
 
+function TConcordance.GetIncludeVerseContext: Boolean;
+begin
+  Result := FContextMode <> ccmReferencesOnly;
+end;
+
 function TConcordance.GetDetailed: Boolean;
 begin
   Result := FMode = cemAnalytical;
+end;
+
+procedure TConcordance.SetContextMaxCharacters(AValue: Integer);
+begin
+  if AValue < CONCORDANCE_CONTEXT_MIN_CHARACTERS then
+    FContextMaxCharacters := CONCORDANCE_CONTEXT_MIN_CHARACTERS
+  else if AValue > CONCORDANCE_CONTEXT_MAX_CHARACTERS then
+    FContextMaxCharacters := CONCORDANCE_CONTEXT_MAX_CHARACTERS
+  else
+    FContextMaxCharacters := AValue;
+end;
+
+procedure TConcordance.SetIncludeVerseContext(AValue: Boolean);
+begin
+  if not AValue then
+    FContextMode := ccmReferencesOnly
+  else if FContextMode = ccmReferencesOnly then
+    FContextMode := ccmFullVerse;
 end;
 
 procedure TConcordance.SetDetailed(AValue: Boolean);
@@ -947,6 +1208,8 @@ function TConcordance.GetTranslationRtf(
   Translation: TConcordanceTranslation): string;
 var
   Builder: TStringBuilder;
+  Context: string;
+  HighlightRanges: TConcordanceHighlightRangeArray;
   Index: Integer;
   Reference: TConcordanceReference;
   References: TList;
@@ -966,7 +1229,7 @@ begin
       Translation.TotalOccurrences, Translation.ReferenceCount)));
     Builder.Append('}\par ');
 
-    if FIncludeVerseContext then
+    if FContextMode <> ccmReferencesOnly then
       for Index := 0 to References.Count - 1 do
       begin
         Reference := TConcordanceReference(References[Index]);
@@ -978,8 +1241,16 @@ begin
         if not Reference.Context.IsEmpty then
         begin
           Builder.Append(UnicodeToRtf(' — '));
-          Builder.Append(HighlightContextRanges(Reference.Context,
-            Reference.HighlightRanges));
+          if FContextMode = ccmRelevantExcerpt then
+            BuildRelevantExcerpt(Reference.Context,
+              Reference.HighlightRanges,
+              FContextMaxCharacters, Context, HighlightRanges);
+          if FContextMode = ccmFullVerse then
+          begin
+            Context := Reference.Context;
+            HighlightRanges := Reference.HighlightRanges;
+          end;
+          Builder.Append(HighlightContextRanges(Context, HighlightRanges));
         end;
         Builder.Append('\par ');
       end

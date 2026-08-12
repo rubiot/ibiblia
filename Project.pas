@@ -310,6 +310,11 @@ type
       IncludeVerseContext: Boolean = False;
       UseIndexedOccurrences: Boolean = False;
       ProgressEvent: TConcordanceExportProgressEvent = nil);
+    procedure ExportConcordance(arquivo: string; pb: TProgressBar;
+      opcoes: TOpcoesExportacao; abbreviation: string;
+      ContextMode: TConcordanceContextMode; ContextMaxCharacters: Integer;
+      UseIndexedOccurrences: Boolean;
+      ProgressEvent: TConcordanceExportProgressEvent);
     function PrepareConcordanceExport(UseIndexedOccurrences: Boolean): Boolean;
     procedure AssignTextFont(fonte: TFont; textos: STextosBiblicos);
     procedure ClearText(texto: TTipoTextoBiblico);
@@ -4524,6 +4529,23 @@ procedure TProject.ExportConcordance(arquivo: string;
   IncludeVerseContext: Boolean; UseIndexedOccurrences: Boolean;
   ProgressEvent: TConcordanceExportProgressEvent);
 var
+  ContextMode: TConcordanceContextMode;
+begin
+  if IncludeVerseContext then
+    ContextMode := ccmFullVerse
+  else
+    ContextMode := ccmReferencesOnly;
+  ExportConcordance(arquivo, pb, opcoes, abbreviation, ContextMode,
+    CONCORDANCE_CONTEXT_DEFAULT_CHARACTERS, UseIndexedOccurrences,
+    ProgressEvent);
+end;
+
+procedure TProject.ExportConcordance(arquivo: string;
+  pb: TProgressBar; opcoes: TOpcoesExportacao; abbreviation: string;
+  ContextMode: TConcordanceContextMode; ContextMaxCharacters: Integer;
+  UseIndexedOccurrences: Boolean;
+  ProgressEvent: TConcordanceExportProgressEvent);
+var
   Options: TConcordanceExportOptions;
 begin
   if (FAVersiculo[tbOrigem] = nil) or (FAVersiculo[tbDestino] = nil) then
@@ -4537,7 +4559,8 @@ begin
       Options.Mode := cemAnalytical
     else
       Options.Mode := cemSynthetic;
-    Options.IncludeVerseContext := IncludeVerseContext;
+    Options.ContextMode := ContextMode;
+    Options.ContextMaxCharacters := ContextMaxCharacters;
     Options.UseIndexedOccurrences := UseIndexedOccurrences;
     Options.Abbreviation := abbreviation;
     Options.LanguageId := SLanguageId;

@@ -6,8 +6,8 @@ interface
 
 uses
   Classes, SysUtils, Math, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
-  ComCtrls, StdCtrls, ExtCtrls, BibleScope, Project, LCLTranslator, LCLIntf,
-  LazUTF8, UnitPleaseWait, project_exporter;
+  ComCtrls, StdCtrls, ExtCtrls, Spin, BibleScope, Project, LCLTranslator,
+  LCLIntf, LazUTF8, UnitPleaseWait, project_exporter, ConcordanceExport;
 
 type
 
@@ -17,24 +17,27 @@ type
     cbExportarNAComoItalicos: TCheckBox;
     cbExportarMorfologia: TCheckBox;
     cbExportarComentarios: TCheckBox;
-    cbConcordanceVerseContext: TCheckBox;
     cbStrongsReutilizados: TCheckBox;
     cbStrongsNaoTraduzidos: TCheckBox;
     Label1: TLabel;
     Label2: TLabel;
     lblConcordanceDescription: TLabel;
+    lblConcordanceMaxCharacters: TLabel;
     lblConcordanceOutput: TLabel;
     leAbreviacao: TLabeledEdit;
     MemoRodapeOrigem: TMemo;
     MemoRodapeDestino: TMemo;
     PageControl1: TPageControl;
+    rgConcordanceContext: TRadioGroup;
     rgConcordanceType: TRadioGroup;
     SaveDialog1: TSaveDialog;
     SaveDialogConcordancia: TSaveDialog;
+    seConcordanceMaxCharacters: TSpinEdit;
     TabSheet1: TTabSheet;
     TabSheet2: TTabSheet;
     TabSheet3: TTabSheet;
     procedure BtnExportClick(Sender: TObject);
+    procedure ConcordanceContextChange(Sender: TObject);
     procedure ConcordanceTypeChange(Sender: TObject);
   private
     FProject: TProject;
@@ -46,6 +49,7 @@ type
     function DefaultConcordanceAbbreviation: string;
     function ConcordanceFileSuffix: string;
     function ConcordanceLastFileKey: string;
+    function SelectedConcordanceContextMode: TConcordanceContextMode;
     function SuggestedBaseFileName(const Suffix: string): string;
     function StoredExportFileName(const Key, DefaultFileName: string): string;
     procedure ConfigureBibleSaveDialog(const Suffix, LastFileKey: string);
@@ -57,7 +61,10 @@ type
     procedure PersistTaggedDestinationOptions;
     procedure PersistInterlinearOptions;
     procedure PersistConcordanceOptions(const Abbreviation: string);
+    procedure SetSelectedConcordanceContextMode(
+      AValue: TConcordanceContextMode);
     procedure UpdateConcordanceAbbreviationDefault;
+    procedure UpdateConcordanceContextControls;
     procedure UpdateConcordanceDescription;
     procedure ConcordanceExportProgress(Phase: TConcordanceExportPhase;
       Current, Total: Integer);
@@ -96,8 +103,12 @@ resourcestring
   SConcordanceSyntheticType = 'Synthetic concordance';
   SConcordanceOutputDescription =
     'The exported dictionary is organized by Strong''s number, with compact frequency totals and clickable verse references.';
-  SConcordanceIncludeVerseContext =
-    'Include destination verse text beside each reference';
+  SConcordanceReferenceTextCaption = 'Reference text';
+  SConcordanceReferencesOnly = 'References only';
+  SConcordanceRelevantExcerpt = 'Relevant excerpt';
+  SConcordanceFullVerse = 'Full verse';
+  SConcordanceMaxExcerptCharacters =
+    'Maximum excerpt length (characters)';
   SExportCompletedTitle = 'Export completed';
   SExportCompletedPrompt = 'Export completed successfully.'#13#10#13#10'%s'#13#10#13#10'Open the exported file location?';
 
@@ -111,6 +122,13 @@ const
   SLastInterlinearSourceFileKey = 'last.interlinear.source.file';
   SLastAnalyticalConcordanceFileKey = 'last.strongs.analytical.concordance.file';
   SLastSyntheticConcordanceFileKey = 'last.strongs.synthetic.concordance.file';
+  SConcordanceContextModeKey =
+    'opcoes.exportar.concordancia.contexto.modo';
+  SConcordanceContextMaxCharactersKey =
+    'opcoes.exportar.concordancia.contexto.max.caracteres';
+  SConcordanceContextReferencesOnlyValue = 'references-only';
+  SConcordanceContextRelevantExcerptValue = 'relevant-excerpt';
+  SConcordanceContextFullVerseValue = 'full-verse';
 
 function BoolToConfigValue(Value: Boolean): string;
 begin
@@ -128,6 +146,11 @@ begin
     1: ExportInterlinearSourceText;
     2: ExportConcordance;
   end;
+end;
+
+procedure TFrmProjectExport.ConcordanceContextChange(Sender: TObject);
+begin
+  UpdateConcordanceContextControls;
 end;
 
 procedure TFrmProjectExport.ConcordanceTypeChange(Sender: TObject);
@@ -230,6 +253,17 @@ begin
     Result := SLastSyntheticConcordanceFileKey
   else
     Result := SLastAnalyticalConcordanceFileKey;
+end;
+
+function TFrmProjectExport.SelectedConcordanceContextMode:
+  TConcordanceContextMode;
+begin
+  case rgConcordanceContext.ItemIndex of
+    1: Result := ccmRelevantExcerpt;
+    2: Result := ccmFullVerse;
+    else
+      Result := ccmReferencesOnly;
+  end;
 end;
 
 function TFrmProjectExport.SuggestedBaseFileName(const Suffix: string): string;
@@ -339,6 +373,9 @@ begin
 end;
 
 procedure TFrmProjectExport.PersistConcordanceOptions(const Abbreviation: string);
+var
+  ContextMode: TConcordanceContextMode;
+  ContextModeValue: string;
 begin
   if rgConcordanceType.ItemIndex = 1 then
     FSyntheticAbbreviation := Abbreviation
@@ -351,8 +388,27 @@ begin
     FSyntheticAbbreviation);
   FProject.SetInfo('opcoes.exportar.concordancia.detalhada',
     BoolToConfigValue(oeConcordDetalhada in BuildConcordanceOptions));
+  ContextMode := SelectedConcordanceContextMode;
+  case ContextMode of
+    ccmRelevantExcerpt:
+      ContextModeValue := SConcordanceContextRelevantExcerptValue;
+    ccmFullVerse:
+      ContextModeValue := SConcordanceContextFullVerseValue;
+    else
+      ContextModeValue := SConcordanceContextReferencesOnlyValue;
+  end;
+  FProject.SetInfo(SConcordanceContextModeKey, ContextModeValue);
+  FProject.SetInfo(SConcordanceContextMaxCharactersKey,
+    IntToStr(seConcordanceMaxCharacters.Value));
   FProject.SetInfo('opcoes.exportar.concordancia.contexto',
-    BoolToConfigValue(cbConcordanceVerseContext.Checked));
+    BoolToConfigValue(ContextMode <> ccmReferencesOnly));
+end;
+
+procedure TFrmProjectExport.SetSelectedConcordanceContextMode(
+  AValue: TConcordanceContextMode);
+begin
+  rgConcordanceContext.ItemIndex := Ord(AValue);
+  UpdateConcordanceContextControls;
 end;
 
 procedure TFrmProjectExport.UpdateConcordanceAbbreviationDefault;
@@ -363,6 +419,16 @@ begin
   if (CurrentText = '') or SameText(CurrentText, SAnalyticalConcordance) or
     SameText(CurrentText, SSyntheticConcordance) then
     leAbreviacao.Text := DefaultConcordanceAbbreviation;
+end;
+
+procedure TFrmProjectExport.UpdateConcordanceContextControls;
+var
+  RelevantExcerptSelected: Boolean;
+begin
+  RelevantExcerptSelected :=
+    SelectedConcordanceContextMode = ccmRelevantExcerpt;
+  lblConcordanceMaxCharacters.Enabled := RelevantExcerptSelected;
+  seConcordanceMaxCharacters.Enabled := RelevantExcerptSelected;
 end;
 
 procedure TFrmProjectExport.ExportTaggedDestinationText;
@@ -415,9 +481,11 @@ procedure TFrmProjectExport.ExportConcordance;
 var
   Options: TOpcoesExportacao;
   Abbreviation: string;
+  ContextMode: TConcordanceContextMode;
   UseIndexedOccurrences: Boolean;
 begin
   Options := BuildConcordanceOptions;
+  ContextMode := SelectedConcordanceContextMode;
   UpdateConcordanceAbbreviationDefault;
 
   Abbreviation := Trim(leAbreviacao.Text);
@@ -428,7 +496,8 @@ begin
   if SaveDialogConcordancia.Execute then
   begin
     leAbreviacao.Text := Abbreviation;
-    UseIndexedOccurrences := rgConcordanceType.ItemIndex = 1;
+    UseIndexedOccurrences := (rgConcordanceType.ItemIndex = 1) and
+      (ContextMode = ccmReferencesOnly);
     if UseIndexedOccurrences then
       UseIndexedOccurrences := FProject.PrepareConcordanceExport(True);
     FormPleaseWait.BeginOperation(Self, SExportConcordanceTitle,
@@ -436,7 +505,8 @@ begin
     try
       FProject.ExportConcordance(SaveDialogConcordancia.FileName,
         FormPleaseWait.ProgressBar1, Options, Abbreviation,
-        cbConcordanceVerseContext.Checked, UseIndexedOccurrences,
+        ContextMode, seConcordanceMaxCharacters.Value,
+        UseIndexedOccurrences,
         @ConcordanceExportProgress);
     finally
       FormPleaseWait.FinishOperation;
@@ -466,6 +536,9 @@ end;
 
 procedure TFrmProjectExport.SetProject(Project: TProject);
 var
+  ContextMaxCharacters: Integer;
+  ContextMode: TConcordanceContextMode;
+  ContextModeValue: string;
   LegacyAbbreviation: string;
 begin
   FProject := Project;
@@ -478,8 +551,19 @@ begin
   finally
     rgConcordanceType.Items.EndUpdate;
   end;
+  rgConcordanceContext.Caption := SConcordanceReferenceTextCaption;
+  rgConcordanceContext.Items.BeginUpdate;
+  try
+    rgConcordanceContext.Items.Clear;
+    rgConcordanceContext.Items.Add(SConcordanceReferencesOnly);
+    rgConcordanceContext.Items.Add(SConcordanceRelevantExcerpt);
+    rgConcordanceContext.Items.Add(SConcordanceFullVerse);
+  finally
+    rgConcordanceContext.Items.EndUpdate;
+  end;
+  lblConcordanceMaxCharacters.Caption :=
+    SConcordanceMaxExcerptCharacters;
   lblConcordanceOutput.Caption := SConcordanceOutputDescription;
-  cbConcordanceVerseContext.Caption := SConcordanceIncludeVerseContext;
   MemoRodapeOrigem.Text := FProject.GetInfo('propriedades.origem');
   MemoRodapeDestino.Text := FProject.GetInfo('propriedades.destino');
   LegacyAbbreviation := FProject.GetInfo('propriedades.abbrev');
@@ -502,8 +586,29 @@ begin
     leAbreviacao.Text := FAnalyticalAbbreviation;
   UpdateConcordanceAbbreviationDefault;
   UpdateConcordanceDescription;
-  cbConcordanceVerseContext.Checked :=
-    FProject.GetInfo('opcoes.exportar.concordancia.contexto') = '1';
+  ContextModeValue := Trim(FProject.GetInfo(SConcordanceContextModeKey));
+  if SameText(ContextModeValue,
+      SConcordanceContextRelevantExcerptValue) then
+    ContextMode := ccmRelevantExcerpt
+  else if SameText(ContextModeValue,
+      SConcordanceContextFullVerseValue) then
+    ContextMode := ccmFullVerse
+  else if SameText(ContextModeValue,
+      SConcordanceContextReferencesOnlyValue) then
+    ContextMode := ccmReferencesOnly
+  else if FProject.GetInfo('opcoes.exportar.concordancia.contexto') = '1' then
+    ContextMode := ccmFullVerse
+  else
+    ContextMode := ccmReferencesOnly;
+  SetSelectedConcordanceContextMode(ContextMode);
+  ContextMaxCharacters := StrToIntDef(
+    FProject.GetInfo(SConcordanceContextMaxCharactersKey),
+    CONCORDANCE_CONTEXT_DEFAULT_CHARACTERS);
+  if ContextMaxCharacters < CONCORDANCE_CONTEXT_MIN_CHARACTERS then
+    ContextMaxCharacters := CONCORDANCE_CONTEXT_MIN_CHARACTERS
+  else if ContextMaxCharacters > CONCORDANCE_CONTEXT_MAX_CHARACTERS then
+    ContextMaxCharacters := CONCORDANCE_CONTEXT_MAX_CHARACTERS;
+  seConcordanceMaxCharacters.Value := ContextMaxCharacters;
   cbExportarComentarios.Checked := FProject.GetInfo('opcoes.exportar.comentarios') = '1';
   cbExportarMorfologia.Checked := FProject.GetInfo('opcoes.exportar.morfologia') = '1';
   cbExportarNAComoItalicos.Checked := FProject.GetInfo('opcoes.exportar.na.como.italicos') = '1';

@@ -1745,9 +1745,17 @@ msgstr "Finalizing export..."
 msgid "Formatting concordance entries..."
 msgstr "Formatting concordance entries..."
 
+#: formprojectexport.sconcordancefullverse
+msgid "Full verse"
+msgstr "Full verse"
+
 #: formprojectexport.sconcordanceincludeversecontext
 msgid "Include destination verse text beside each reference"
 msgstr "Include destination verse text beside each reference"
+
+#: formprojectexport.sconcordancemaxexcerptcharacters
+msgid "Maximum excerpt length (characters)"
+msgstr "Maximum excerpt length (characters)"
 
 #: formprojectexport.sconcordanceoutputdescription
 msgid "The exported dictionary is organized by Strong's number, with compact frequency totals and clickable verse references."
@@ -1756,6 +1764,18 @@ msgstr "The exported dictionary is organized by Strong's number, with compact fr
 #: formprojectexport.sconcordancereadingassociations
 msgid "Reading associations..."
 msgstr "Reading associations..."
+
+#: formprojectexport.sconcordancereferencetextcaption
+msgid "Reference text"
+msgstr "Reference text"
+
+#: formprojectexport.sconcordancereferencesonly
+msgid "References only"
+msgstr "References only"
+
+#: formprojectexport.sconcordancerelevantexcerpt
+msgid "Relevant excerpt"
+msgstr "Relevant excerpt"
 
 #: formprojectexport.sconcordancesyntheticdescription
 msgid "Groups all source forms by Strong's number for a compact translation overview."

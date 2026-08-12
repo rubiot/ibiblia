@@ -18,12 +18,79 @@ type
     procedure VerseContextHighlightsSeparatedAssociatedTerms;
     procedure VerseContextHighlightsAssociatedRepeatedWordOnly;
     procedure RepeatedAssociationsMergeTheirExactHighlightRanges;
+    procedure RelevantExcerptKeepsShortVerseWhole;
+    procedure RelevantExcerptCropsBothEdgesAtWordBoundaries;
+    procedure RelevantExcerptUsesAvailableContextAtVerseEdges;
+    procedure RelevantExcerptRebasesUnicodeHighlightRanges;
+    procedure RelevantExcerptPreservesAllMergedHighlights;
+    procedure RelevantExcerptFallsBackToFullVerseForInvalidRange;
     procedure InvalidHighlightRangeDoesNotUseTextFallback;
     procedure RtfEscapingPreservesUnicodeAndControlCharacters;
     procedure TargetMorphemesKeepLegacyVerbJoining;
   end;
 
 implementation
+
+function ExtractRenderedReferenceContext(const Rtf: string): string;
+var
+  ContextEnd: Integer;
+  ContextStart: Integer;
+  Separator: string;
+begin
+  Result := '';
+  Separator := UnicodeToRtf(' — ');
+  ContextStart := Pos(Separator, Rtf);
+  if ContextStart = 0 then
+    Exit;
+  Inc(ContextStart, Length(Separator));
+  ContextEnd := PosEx('\par ', Rtf, ContextStart);
+  if ContextEnd = 0 then
+    ContextEnd := Length(Rtf) + 1;
+  Result := Copy(Rtf, ContextStart, ContextEnd - ContextStart);
+end;
+
+function RenderedTextLength(const Rtf: string): Integer;
+var
+  Index: Integer;
+begin
+  Result := 0;
+  Index := 1;
+  while Index <= Length(Rtf) do
+  begin
+    if Copy(Rtf, Index, Length('{\b\ul ')) = '{\b\ul ' then
+    begin
+      Inc(Index, Length('{\b\ul '));
+      Continue;
+    end;
+    if Rtf[Index] = '}' then
+    begin
+      Inc(Index);
+      Continue;
+    end;
+    if (Rtf[Index] = '\') and (Index < Length(Rtf)) then
+    begin
+      if Rtf[Index + 1] = 'u' then
+      begin
+        Inc(Index, 2);
+        while (Index <= Length(Rtf)) and
+              (Rtf[Index] in ['-', '0'..'9']) do
+          Inc(Index);
+        if (Index <= Length(Rtf)) and (Rtf[Index] = '?') then
+          Inc(Index);
+        Inc(Result);
+        Continue;
+      end;
+      if Rtf[Index + 1] in ['\', '{', '}'] then
+      begin
+        Inc(Index, 2);
+        Inc(Result);
+        Continue;
+      end;
+    end;
+    Inc(Index);
+    Inc(Result);
+  end;
+end;
 
 procedure TConcordanceExportTest.
   AnalyticalOutputKeepsSurfaceFormsAndExactCounts;
@@ -223,6 +290,256 @@ begin
     AssertTrue(Pos('{\b\ul um} vaso como {\b\ul um} grande', Rtf) > 0);
     AssertTrue('The reference must preserve both association occurrences',
       Pos('\u215?2', Rtf) > 0);
+  finally
+    Concordance.Free;
+  end;
+end;
+
+procedure TConcordanceExportTest.RelevantExcerptKeepsShortVerseWhole;
+var
+  Concordance: TConcordance;
+  Context: string;
+  ContextRtf: string;
+  Ranges: TConcordanceHighlightRangeArray;
+  Rtf: string;
+begin
+  Concordance := TConcordance.Create;
+  try
+    Concordance.Mode := cemSynthetic;
+    Concordance.IncludeVerseContext := True;
+    AssertEquals('The compatibility property must retain full-verse mode',
+      Ord(ccmFullVerse), Ord(Concordance.ContextMode));
+    Concordance.ContextMode := ccmRelevantExcerpt;
+    Concordance.ContextMaxCharacters := 120;
+    Context := 'Uma frase curta mantém a palavra destacada.';
+    Ranges := nil;
+    SetLength(Ranges, 1);
+    Ranges[0].StartIndex := Pos('palavra', Context);
+    Ranges[0].Length := Length('palavra');
+
+    Concordance.AddOccurrence('<WG1>', 'palavra', '44,1,1',
+      Context, 1, 1, Ranges);
+    Rtf := Concordance.GetStrongRtf('alpha', 'G1');
+    ContextRtf := ExtractRenderedReferenceContext(Rtf);
+
+    AssertEquals('A short verse must not receive ellipses',
+      0, Pos('\u8230?', ContextRtf));
+    AssertTrue(Pos('Uma frase curta', ContextRtf) > 0);
+    AssertTrue(Pos('{\b\ul palavra}', ContextRtf) > 0);
+    AssertTrue(Pos('destacada.', ContextRtf) > 0);
+  finally
+    Concordance.Free;
+  end;
+end;
+
+procedure TConcordanceExportTest.
+  RelevantExcerptCropsBothEdgesAtWordBoundaries;
+var
+  Concordance: TConcordance;
+  Context: string;
+  ContextRtf: string;
+  Ranges: TConcordanceHighlightRangeArray;
+  Rtf: string;
+begin
+  Concordance := TConcordance.Create;
+  try
+    Concordance.Mode := cemSynthetic;
+    Concordance.ContextMode := ccmRelevantExcerpt;
+    Concordance.ContextMaxCharacters := 40;
+    Context := 'alpha bravo charlie delta echo foxtrot target golf hotel ' +
+      'india juliet kilo lima';
+    Ranges := nil;
+    SetLength(Ranges, 1);
+    Ranges[0].StartIndex := Pos('target', Context);
+    Ranges[0].Length := Length('target');
+
+    Concordance.AddOccurrence('<WG1>', 'target', '44,1,1',
+      Context, 1, 1, Ranges);
+    Rtf := Concordance.GetStrongRtf('alpha', 'G1');
+    ContextRtf := ExtractRenderedReferenceContext(Rtf);
+
+    AssertTrue('The visible excerpt must honor the configured limit',
+      RenderedTextLength(ContextRtf) <= 40);
+    AssertEquals('A central excerpt needs a leading ellipsis',
+      1, Pos('\u8230? ', ContextRtf));
+    AssertTrue('A central excerpt needs a trailing ellipsis',
+      RPos(' \u8230?', ContextRtf) > 1);
+    AssertEquals(0, Pos('alpha', ContextRtf));
+    AssertEquals(0, Pos('lima', ContextRtf));
+    AssertTrue(Pos('{\b\ul target}', ContextRtf) > 0);
+  finally
+    Concordance.Free;
+  end;
+end;
+
+procedure TConcordanceExportTest.
+  RelevantExcerptUsesAvailableContextAtVerseEdges;
+var
+  Concordance: TConcordance;
+  Context: string;
+  ContextRtf: string;
+  Ranges: TConcordanceHighlightRangeArray;
+  Rtf: string;
+begin
+  Concordance := TConcordance.Create;
+  try
+    Concordance.Mode := cemSynthetic;
+    Concordance.ContextMode := ccmRelevantExcerpt;
+    Concordance.ContextMaxCharacters := 40;
+    Context := 'target alpha bravo charlie delta echo foxtrot golf hotel ' +
+      'india juliet kilo lima';
+    Ranges := nil;
+    SetLength(Ranges, 1);
+    Ranges[0].StartIndex := 1;
+    Ranges[0].Length := Length('target');
+    Concordance.AddOccurrence('<WG1>', 'target', '44,1,1',
+      Context, 1, 1, Ranges);
+
+    Rtf := Concordance.GetStrongRtf('alpha', 'G1');
+    ContextRtf := ExtractRenderedReferenceContext(Rtf);
+    AssertEquals('An excerpt at the start needs no leading ellipsis',
+      0, Pos('\u8230? ', ContextRtf));
+    AssertTrue('An excerpt at the start needs a trailing ellipsis',
+      RPos(' \u8230?', ContextRtf) > 0);
+    AssertTrue(RenderedTextLength(ContextRtf) <= 40);
+  finally
+    Concordance.Free;
+  end;
+
+  Concordance := TConcordance.Create;
+  try
+    Concordance.Mode := cemSynthetic;
+    Concordance.ContextMode := ccmRelevantExcerpt;
+    Concordance.ContextMaxCharacters := 40;
+    Context := 'alpha bravo charlie delta echo foxtrot golf hotel india ' +
+      'juliet kilo lima omega';
+    SetLength(Ranges, 1);
+    Ranges[0].StartIndex := Pos('omega', Context);
+    Ranges[0].Length := Length('omega');
+    Concordance.AddOccurrence('<WG1>', 'omega', '44,1,1',
+      Context, 1, 1, Ranges);
+
+    Rtf := Concordance.GetStrongRtf('alpha', 'G1');
+    ContextRtf := ExtractRenderedReferenceContext(Rtf);
+    AssertEquals('An excerpt at the end needs a leading ellipsis',
+      1, Pos('\u8230? ', ContextRtf));
+    AssertEquals('An excerpt at the end needs no trailing ellipsis',
+      0, RPos(' \u8230?', ContextRtf));
+    AssertTrue(RenderedTextLength(ContextRtf) <= 40);
+  finally
+    Concordance.Free;
+  end;
+end;
+
+procedure TConcordanceExportTest.
+  RelevantExcerptRebasesUnicodeHighlightRanges;
+var
+  Concordance: TConcordance;
+  Context: string;
+  ContextRtf: string;
+  Ranges: TConcordanceHighlightRangeArray;
+  Rtf: string;
+  Target: string;
+begin
+  Concordance := TConcordance.Create;
+  try
+    Concordance.Mode := cemSynthetic;
+    Concordance.ContextMode := ccmRelevantExcerpt;
+    Concordance.ContextMaxCharacters := 40;
+    Target := 'coração';
+    Context := 'ação bênção esperança caminho distante ' + Target +
+      ' próximo bênção oração esperança distante final';
+    Ranges := nil;
+    SetLength(Ranges, 1);
+    Ranges[0].StartIndex := Pos(Target, Context);
+    Ranges[0].Length := Length(Target);
+    Concordance.AddOccurrence('<WG1>', Target, '44,1,1',
+      Context, 1, 1, Ranges);
+
+    Rtf := Concordance.GetStrongRtf('alpha', 'G1');
+    ContextRtf := ExtractRenderedReferenceContext(Rtf);
+    AssertTrue('The UTF-8 target must remain exactly highlighted',
+      Pos('{\b\ul ' + UnicodeToRtf(Target) + '}', ContextRtf) > 0);
+    AssertTrue('Unicode characters count as characters, not bytes',
+      RenderedTextLength(ContextRtf) <= 40);
+  finally
+    Concordance.Free;
+  end;
+end;
+
+procedure TConcordanceExportTest.
+  RelevantExcerptPreservesAllMergedHighlights;
+var
+  Concordance: TConcordance;
+  Context: string;
+  ContextRtf: string;
+  FirstRange: TConcordanceHighlightRangeArray;
+  Rtf: string;
+  SecondRange: TConcordanceHighlightRangeArray;
+begin
+  Concordance := TConcordance.Create;
+  try
+    Concordance.Mode := cemAnalytical;
+    Concordance.ContextMode := ccmRelevantExcerpt;
+    Concordance.ContextMaxCharacters := 40;
+    Context := 'prefix first one two three four five six seven eight nine ' +
+      'ten eleven twelve second suffix';
+    FirstRange := nil;
+    SetLength(FirstRange, 1);
+    FirstRange[0].StartIndex := Pos('first', Context);
+    FirstRange[0].Length := Length('first');
+    SecondRange := nil;
+    SetLength(SecondRange, 1);
+    SecondRange[0].StartIndex := Pos('second', Context);
+    SecondRange[0].Length := Length('second');
+
+    Concordance.AddOccurrence('pair<WG1>', 'pair', '44,1,1',
+      Context, 1, 1, FirstRange);
+    Concordance.AddOccurrence('pair<WG1>', 'pair', '44,1,1',
+      Context, 1, 1, SecondRange);
+    Rtf := Concordance.GetStrongRtf('alpha', 'G1');
+    ContextRtf := ExtractRenderedReferenceContext(Rtf);
+
+    AssertTrue(Pos('{\b\ul first}', ContextRtf) > 0);
+    AssertTrue(Pos('{\b\ul second}', ContextRtf) > 0);
+    AssertTrue('All highlights take precedence over the configured limit',
+      RenderedTextLength(ContextRtf) > 40);
+  finally
+    Concordance.Free;
+  end;
+end;
+
+procedure TConcordanceExportTest.
+  RelevantExcerptFallsBackToFullVerseForInvalidRange;
+var
+  Concordance: TConcordance;
+  Context: string;
+  ContextRtf: string;
+  Ranges: TConcordanceHighlightRangeArray;
+  Rtf: string;
+begin
+  Concordance := TConcordance.Create;
+  try
+    Concordance.Mode := cemSynthetic;
+    Concordance.ContextMode := ccmRelevantExcerpt;
+    Concordance.ContextMaxCharacters := 40;
+    Context := 'alpha bravo charlie delta echo foxtrot target golf hotel ' +
+      'india juliet kilo lima omega';
+    Ranges := nil;
+    SetLength(Ranges, 1);
+    Ranges[0].StartIndex := 999;
+    Ranges[0].Length := Length('target');
+    Concordance.AddOccurrence('<WG1>', 'target', '44,1,1',
+      Context, 1, 1, Ranges);
+
+    Rtf := Concordance.GetStrongRtf('alpha', 'G1');
+    ContextRtf := ExtractRenderedReferenceContext(Rtf);
+    AssertTrue(Pos('alpha', ContextRtf) > 0);
+    AssertTrue(Pos('omega', ContextRtf) > 0);
+    AssertEquals('An unsafe fallback must not add ellipses',
+      0, Pos('\u8230?', ContextRtf));
+    AssertEquals('An unsafe fallback must not guess a highlight',
+      0, Pos('{\b\ul ', ContextRtf));
   finally
     Concordance.Free;
   end;

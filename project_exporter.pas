@@ -53,7 +53,8 @@ type
   TConcordanceExportOptions = record
     Detailed: Boolean;
     Mode: TConcordanceExportMode;
-    IncludeVerseContext: Boolean;
+    ContextMode: TConcordanceContextMode;
+    ContextMaxCharacters: Integer;
     UseIndexedOccurrences: Boolean;
     Abbreviation: string;
     LanguageId: string;
@@ -697,7 +698,7 @@ var
         begin
           Context := '';
           SetLength(SyntagmRanges, 0);
-          if Options.IncludeVerseContext then
+          if Options.ContextMode <> ccmReferencesOnly then
             BuildDestinationContext(Context, SyntagmRanges);
           for AssociationIndex := 0 to High(AssociationData) do
           begin
@@ -730,7 +731,8 @@ var
     ReadingTotal := SuggestionManager.IndexedConcordanceOccurrenceCount;
     ReportProgress(cepReadingAssociations, 0, ReadingTotal, True);
     FActiveConcordance := Concordance;
-    FIndexedIncludeVerseContext := Options.IncludeVerseContext;
+    FIndexedIncludeVerseContext :=
+      Options.ContextMode <> ccmReferencesOnly;
     FIndexedProcessed := 0;
     FIndexedTotal := ReadingTotal;
     FIndexedProgressEvent := ProgressEvent;
@@ -800,7 +802,8 @@ begin
   try
     Concordance := TConcordance.Create;
     Concordance.Mode := Options.Mode;
-    Concordance.IncludeVerseContext := Options.IncludeVerseContext;
+    Concordance.ContextMode := Options.ContextMode;
+    Concordance.ContextMaxCharacters := Options.ContextMaxCharacters;
     Errors := TStringList.Create;
 
     if Options.Mode = cemAnalytical then
@@ -826,7 +829,8 @@ begin
       StartSession;
     try
       UseIndexedOccurrences := Options.UseIndexedOccurrences and
-        (Options.Mode = cemSynthetic) and not Options.IncludeVerseContext and
+        (Options.Mode = cemSynthetic) and
+        (Options.ContextMode = ccmReferencesOnly) and
         Assigned(SuggestionManager);
       if UseIndexedOccurrences then
       begin

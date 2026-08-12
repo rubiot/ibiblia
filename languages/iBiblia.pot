@@ -1711,8 +1711,16 @@ msgstr ""
 msgid "Formatting concordance entries..."
 msgstr ""
 
+#: formprojectexport.sconcordancefullverse
+msgid "Full verse"
+msgstr ""
+
 #: formprojectexport.sconcordanceincludeversecontext
 msgid "Include destination verse text beside each reference"
+msgstr ""
+
+#: formprojectexport.sconcordancemaxexcerptcharacters
+msgid "Maximum excerpt length (characters)"
 msgstr ""
 
 #: formprojectexport.sconcordanceoutputdescription
@@ -1721,6 +1729,18 @@ msgstr ""
 
 #: formprojectexport.sconcordancereadingassociations
 msgid "Reading associations..."
+msgstr ""
+
+#: formprojectexport.sconcordancereferencetextcaption
+msgid "Reference text"
+msgstr ""
+
+#: formprojectexport.sconcordancereferencesonly
+msgid "References only"
+msgstr ""
+
+#: formprojectexport.sconcordancerelevantexcerpt
+msgid "Relevant excerpt"
 msgstr ""
 
 #: formprojectexport.sconcordancesyntheticdescription
