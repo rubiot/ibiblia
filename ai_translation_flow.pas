@@ -363,8 +363,8 @@ begin
     Messages[1].Role := 'user';
     if Assigned(Verse) then
     begin
-      Messages[1].Content := Verse.TextoSimples;
-      AIDebugLogFmt('[Translation] PrepareRequest for verse: %s', [Verse.Referencia]);
+      Messages[1].Content := Verse.PlainText;
+      AIDebugLogFmt('[Translation] PrepareRequest for verse: %s', [Verse.Reference]);
       AIDebugLogFmt('[Translation] Original text: %s', [Messages[1].Content]);
     end
     else
@@ -415,14 +415,14 @@ begin
     Exit;
   end;
   
-  if (Verse.VersiculoPar = nil) then
+  if (Verse.PairedVerse = nil) then
   begin
-    AIDebugLogFmt('[Translation] ApplyResult for verse: %s - No paired verse', [Verse.Referencia]);
+    AIDebugLogFmt('[Translation] ApplyResult for verse: %s - No paired verse', [Verse.Reference]);
     Exit; // necessita par destino
   end;
   
-  AIDebugLogFmt('[Translation] ApplyResult for verse: %s', [Verse.Referencia]);
-  AIDebugLogFmt('[Translation] Target verse current text: "%s"', [Verse.VersiculoPar.TextoSimples]);
+  AIDebugLogFmt('[Translation] ApplyResult for verse: %s', [Verse.Reference]);
+  AIDebugLogFmt('[Translation] Target verse current text: "%s"', [Verse.PairedVerse.PlainText]);
   AIDebugLogFmt('[Translation] ForceOverwrite: %s', [BoolToStr(FForceOverwrite, True)]);
   AIDebugLogFmt('[Translation] Translated text: "%s"', [R.TranslatedText]);
   

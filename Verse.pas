@@ -20,8 +20,6 @@ type
   TOnSyntagmEvent = procedure (Sender: TSyntagm) of object;
   TOnVerseChangedEvent = procedure () of object;
   TOnExportTextEvent = procedure (Sender: TVerse) of object;
-  TOnSintagmaEvent = TOnSyntagmEvent;
-  TOnAlterarVersiculoEvent = TOnVerseChangedEvent;
 
   TStrongsCountMode = (scNone, scCountWords, scCountStrongs);
 
@@ -40,34 +38,34 @@ type
 
   TVerse = class
   private
-    FReferencia: string;
-    FReferenciaID: string;
+    FReference: string;
+    FReferenceID: string;
     FRightToLeft: Boolean;
     { Private declarations }
-    FMostrarDicas: boolean;
-    FOnAlterarVersiculo: TOnVerseChangedEvent;
+    FShowHints: boolean;
+    FOnVerseChanged: TOnVerseChangedEvent;
     //FStrongMorfoComoChave: boolean;
-    FVersiculoRef: TVerse;
-    FSintagmas: TSyntagmList;
+    FPairedVerse: TVerse;
+    FSyntagms: TSyntagmList;
     FStrongCount: TSyntagm;
-    FSelecao: TSyntagmList;
-    FModificado: boolean;
+    FSelection: TSyntagmList;
+    FModified: boolean;
     FChangeNotificationsSuspended: Integer;
-    FXMLModificado: boolean;
+    FXMLModified: boolean;
     FPanel: TScrollBox;
     FEdit: TEdit;
-    FAtivo: boolean;
-    FDestruindo: boolean;
+    FActive: boolean;
+    FDestroying: boolean;
     FRendering: Boolean;
-    FExibirErro: boolean;
-    FPalavrasComStrongEmNegrito: boolean;
+    FShowError: boolean;
+    FBoldWordsWithStrong: boolean;
     FStrongsCountMode: TStrongsCountMode;
     //FFontePadrao: TFont;
-    FCorAssociado: TColor;
-    FCorDesassociado: TColor;
-    FOnSintagmaClick: TOnSyntagmEvent;
-    FOnSintagmaMouseEnter: TOnSyntagmEvent;
-    FOnSintagmaMouseLeave: TOnSyntagmEvent;
+    FAssociatedColor: TColor;
+    FUnassociatedColor: TColor;
+    FOnSyntagmClick: TOnSyntagmEvent;
+    FOnSyntagmMouseEnter: TOnSyntagmEvent;
+    FOnSyntagmMouseLeave: TOnSyntagmEvent;
     FOnExportText: TOnExportTextEvent;
     FXML: string;
     FONTParser: TONTParser;
@@ -79,32 +77,32 @@ type
     FReadOnly: Boolean;
     { determines the auto select behaviour on right-click association }
     FNextAutoSelectWordMustHaveStrongMorpho: Boolean;
-    // function CompareSyntagmsInFSintagmas(Item1, Item2: Pointer): Integer; // Removed
+    // function CompareSyntagmsInFSyntagms(Item1, Item2: Pointer): Integer; // Removed
     //FOnNovaAssociacao: TOnAssociacaoEvent;
     //FOnRemoverAssociacao: TOnAssociacaoEvent;
-    function GetAndamentoAssociacao: Single;
-    function GetAtivo: boolean;
-    function GetFonte: TFont;
-    function GetPares: string;
-    function GetTextoSimples: string;
-    procedure SetAtivo(const AValue: boolean);
-    procedure SetFonte(const AValue: TFont);
-    procedure SetModificado(const AValue: boolean);
+    function GetAssociationProgress: Single;
+    function GetActive: boolean;
+    function GetFont: TFont;
+    function GetPairs: string;
+    function GetPlainText: string;
+    procedure SetActive(const AValue: boolean);
+    procedure SetFont(const AValue: TFont);
+    procedure SetModified(const AValue: boolean);
     procedure NotifyVerseChanged;
     procedure SetRightToLeft(AValue: Boolean);
     procedure SetStrongsCountMode(AValue: TStrongsCountMode);
-    procedure SetPalavrasComStrongEmNegrito(AValue: boolean);
-    procedure SetPares(const AValue: string);
+    procedure SetBoldWordsWithStrong(AValue: boolean);
+    procedure SetPairs(const AValue: string);
     procedure SetTokenizerVersion(AValue: Integer);
-    procedure SetTexto(_XML: string);
-    function GetTexto: string;
-    procedure SetVersiculoPar(Par: TVerse);
-    procedure SelecionarListaSintagmas(lst: string);
+    procedure SetText(_XML: string);
+    function GetText: string;
+    procedure SetPairedVerse(PairVerse: TVerse);
+    procedure SelectSyntagmList(lst: string);
     procedure EditKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure EditExit(Sender: TObject);
     procedure EditConfirm;
-    procedure AtualizarXMLInterno;
-    procedure AtualizarStrongCount;
+    procedure UpdateInternalXML;
+    procedure UpdateStrongCount;
     function GetTokens: string;
     procedure OnCopySyntagmTags(Sender: TObject);
     procedure OnPasteSyntagmTags(Sender: TObject);
@@ -120,15 +118,15 @@ type
     procedure InitSyntagmPopupMenu;
     procedure InitVersePopupMenu;
     procedure OnCopyAssociationsJSONToClipboard(Sender: TObject);
-    procedure OnCopySintagmasAsJSON(Sender: TObject);
+    procedure OnCopySyntagmsAsJSON(Sender: TObject);
     function CreateTokenizer(const XML: string): TONTTokenizer;
     procedure ReplaceTextPreservingAssociations(const _XML: string; ForceRetokenize: Boolean);
   protected
     { Protected declarations }
   public
     { Public declarations }
-    constructor Create(const AReferencia: string = ''); overload;
-    constructor Create(TheOwner: TScrollBox; const AReferencia: string = ''); overload;
+    constructor Create(const AReference: string = ''); overload;
+    constructor Create(TheOwner: TScrollBox; const AReference: string = ''); overload;
     destructor Destroy; override;
     procedure MarkDestroying;
     procedure ClearSyntagms;
@@ -141,31 +139,17 @@ type
     procedure OrganizeSyntagms;
     procedure SelectSyntagms(list: TSyntagmList);
     procedure ChangeText(_XML: string);
-    function GetPairsList(tipo: TPairsListType): TStringList;
+    function GetPairsList(ListType: TPairsListType): TStringList;
     function GetAssociationPairData(
       ListType: TPairsListType): TAssociationPairDataArray;
     procedure OnSyntagmPopupMenu(s: TSyntagm);
     procedure ShowTags;
     procedure HideTags;
     function GetONTLine: string; overload;
-    function GetONTLine(morfo: boolean; autoitalico: boolean; strongsreutilizados: boolean;
-      strongsnaotraduzidos: boolean): string; overload;
-    procedure LimparSintagmas;
-    procedure AssociarSintagmas;
-    procedure LimparSelecao;
-    procedure DesassociarPares;
-    procedure LimparAssociacoes;
-    procedure Renderizar;
-    procedure RenderizarStrongCount;
+    function GetONTLine(Morphology: boolean; AutoItalics: boolean; ReusedStrongs: boolean;
+      UntranslatedStrongs: boolean): string; overload;
     procedure ClearStrongCount;
-    procedure OrganizarSintagmas;
-    procedure SelecionarSintagmas(list: TSyntagmList);
-    procedure AlterarTexto(_XML: string);
     procedure RetokenizePreservingAssociations;
-    function GetListaPares(tipo: TPairsListType): TStringList;
-    procedure OnSintagmaPopupMenu(s: TSyntagm);
-    procedure MostrarTags;
-    procedure OcultarTags;
     procedure EnableStrongHighlight(strong: string);
     procedure DisableStrongHighlight;
     function GetAssociationsJSON: string;
@@ -175,69 +159,41 @@ type
 
     function GetTheWordInterlinearLine: string;
     function GetMySwordInterlinearLine: string;
-    function GetLinhaONT: string;
-    function GetLinhaONT(morfo: boolean; autoitalico: boolean; strongsreutilizados: boolean;
-          strongsnaotraduzidos: boolean): string;
 
-        property PairedVerse: TVerse read FVersiculoRef write SetVersiculoPar;
-        property Reference: string read FReferencia write FReferencia;
-        property ReferenceID: string read FReferenciaID write FReferenciaID;
-        property Text: string read GetTexto write SetTexto;
-        property Pairs: string read GetPares write SetPares;
-        property Panel: TScrollBox read FPanel write FPanel;
-        property Syntagms: TSyntagmList read FSintagmas;
-        property Selection: TSyntagmList read FSelecao write FSelecao;
-        property Modified: boolean read FModificado write SetModificado;
-        property XMLModified: boolean read FXMLModificado write FXMLModificado;
-        property OnClick: TOnSyntagmEvent read FOnSintagmaClick write FOnSintagmaClick;
-        property OnMouseEnter: TOnSyntagmEvent read FOnSintagmaMouseEnter write FOnSintagmaMouseEnter;
-        property OnMouseLeave: TOnSyntagmEvent read FOnSintagmaMouseLeave write FOnSintagmaMouseLeave;
-        property OnVerseChanged: TOnVerseChangedEvent read FOnAlterarVersiculo write FOnAlterarVersiculo;
-        property ShowHints: boolean read FMostrarDicas write FMostrarDicas;
-        property Active: boolean read GetAtivo write SetAtivo;
-        property PlainText: string read GetTextoSimples;
-        property AssociatedColor: TColor read FCorAssociado write FCorAssociado;
-        property UnassociatedColor: TColor read FCorDesassociado write FCorDesassociado;
-        property AssociationProgress: Single read GetAndamentoAssociacao;
-        property Font: TFont read GetFonte write SetFonte;
-        property BoldWordsWithStrong: boolean read FPalavrasComStrongEmNegrito write SetPalavrasComStrongEmNegrito;
-        property VersiculoPar: TVerse read FVersiculoRef write SetVersiculoPar;
-    property Referencia: string read FReferencia write FReferencia;
-    property ReferenciaID: string read FReferenciaID write FReferenciaID;
     property XML: string read FXML;
-    property Texto: string read GetTexto write SetTexto;
-    property Pares: string read GetPares write SetPares;
-    property Painel: TScrollBox read FPanel write FPanel;
     property VersePopupMenu: TPopupMenu read FVersePopupMenu;
-    property Sintagmas: TSyntagmList read FSintagmas;
-    property Selecao: TSyntagmList read FSelecao write FSelecao;
-    property Modificado: boolean read FModificado write SetModificado;
-    property XMLModificado: boolean read FXMLModificado write FXMLModificado;
-    property OnExportText: TOnExportTextEvent read FOnExportText write FOnExportText;
-    property OnAlterarVersiculo: TOnAlterarVersiculoEvent read FOnAlterarVersiculo write FOnAlterarVersiculo;
-    //property OnNovaAssociacao: TOnAssociacaoEvent read FOnNovaAssociacao write FOnNovaAssociacao;
-    //property OnRemoverAssociacao: TOnAssociacaoEvent read FOnRemoverAssociacao write FOnRemoverAssociacao;
-    property MostrarDicas: boolean read FMostrarDicas write FMostrarDicas;
-    property Ativo: boolean read GetAtivo write SetAtivo;
-    property TextoSimples: string read GetTextoSimples;
-    //property LinhaONT: string read GetLinhaONT;
-    //property LinhaInterlinear: string read GetLinhaInterlinear;
-    property CorAssociado: TColor read FCorAssociado write FCorAssociado;
-    property CorDesassociado: TColor read FCorDesassociado write FCorDesassociado;
-    //property StrongMorfoComoChave: boolean read FStrongMorfoComoChave write FStrongMorfoComoChave;
-    property AndamentoAssociacao: Single read GetAndamentoAssociacao;
-    property Fonte: TFont read GetFonte write SetFonte;
     property Edit: TEdit read FEdit write FEdit;
-    property PalavrasComStrongEmNegrito: boolean read FPalavrasComStrongEmNegrito write SetPalavrasComStrongEmNegrito;
+    property PairedVerse: TVerse read FPairedVerse write SetPairedVerse;
+    property Reference: string read FReference write FReference;
+    property ReferenceID: string read FReferenceID write FReferenceID;
+    property Text: string read GetText write SetText;
+    property Pairs: string read GetPairs write SetPairs;
+    property Panel: TScrollBox read FPanel write FPanel;
+    property Syntagms: TSyntagmList read FSyntagms;
+    property Selection: TSyntagmList read FSelection write FSelection;
+    property Modified: boolean read FModified write SetModified;
+    property XMLModified: boolean read FXMLModified write FXMLModified;
+    property OnClick: TOnSyntagmEvent read FOnSyntagmClick write FOnSyntagmClick;
+    property OnMouseEnter: TOnSyntagmEvent read FOnSyntagmMouseEnter write FOnSyntagmMouseEnter;
+    property OnMouseLeave: TOnSyntagmEvent read FOnSyntagmMouseLeave write FOnSyntagmMouseLeave;
+    property OnVerseChanged: TOnVerseChangedEvent read FOnVerseChanged write FOnVerseChanged;
+    property OnExportText: TOnExportTextEvent read FOnExportText write FOnExportText;
+    property ShowHints: boolean read FShowHints write FShowHints;
+    property Active: boolean read GetActive write SetActive;
+    property PlainText: string read GetPlainText;
+    property AssociatedColor: TColor read FAssociatedColor write FAssociatedColor;
+    property UnassociatedColor: TColor read FUnassociatedColor write FUnassociatedColor;
+    property AssociationProgress: Single read GetAssociationProgress;
+    property Font: TFont read GetFont write SetFont;
+    property BoldWordsWithStrong: boolean read FBoldWordsWithStrong write SetBoldWordsWithStrong;
     property StrongsCountMode: TStrongsCountMode read FStrongsCountMode write SetStrongsCountMode;
     property DebugTokens: string read GetTokens;
     property ReadOnly: Boolean read FReadOnly write FReadOnly default False;
     property RightToLeft: Boolean read FRightToLeft write SetRightToLeft default False;
     property NextAutoSelectWordMustHaveStrongMorpho: boolean read FNextAutoSelectWordMustHaveStrongMorpho write FNextAutoSelectWordMustHaveStrongMorpho;
     property TokenizerVersion: Integer read FTokenizerVersion write SetTokenizerVersion;
-     property Destroying: boolean read FDestruindo;
- published
-    { Published declarations }
+    property Destroying: boolean read FDestroying;
+ published{ Published declarations }
   end;
 
 resourcestring
@@ -248,7 +204,7 @@ resourcestring
   SSaveToFile = '&Save text to file...';
   SRightToLeft = 'Right to left text';
   SCopyTokensToClipboard = 'Copy &tokens to clipboard';
-  SCopySyntagmasJSONToClipboard = 'Copy syntagms as &JSON to clipboard';
+  SCopySyntagmsJSONToClipboard = 'Copy syntagms as &JSON to clipboard';
   SCopyInterlinearVerseToClipboard = 'Copy &interlinear verse to clipboard';
   SCopyXMLToClipboard = 'Copy association &XML to clipboard';
   SCopyAssociationsJSONToClipboard = 'Copy association &JSON to clipboard';
@@ -271,18 +227,18 @@ end;
 
 { TVerse }
 
-constructor TVerse.Create(TheOwner : TScrollBox; const AReferencia: string = '');
+constructor TVerse.Create(TheOwner : TScrollBox; const AReference: string = '');
 begin
   AIDebugLogFmt('[TVerse] Create called. Self=%s, Owner=%s, Reference=%s',
     [IntToHex(PtrUInt(Pointer(Self)), SizeOf(Pointer)*2),
      IntToHex(PtrUInt(Pointer(TheOwner)), SizeOf(Pointer)*2),
-     AReferencia]);
-  FReferencia := AReferencia;
+     AReference]);
+  FReference := AReference;
   FPanel := TheOwner;
 
-  FAtivo := assigned(FPanel);
+  FActive := assigned(FPanel);
 
-  if (FAtivo) then
+  if (FActive) then
   begin
     FPanel.Color   := clWindow;
     FPanel.Caption := '';
@@ -303,19 +259,19 @@ begin
 
   FStrongCount          := nil;
   FStrongsCountMode     := scNone;
-  FVersiculoRef         := nil;
-  FOnSintagmaClick      := nil;
-  FOnSintagmaMouseEnter := nil;
-  FOnSintagmaMouseLeave := nil;
-  FModificado           := false;
+  FPairedVerse         := nil;
+  FOnSyntagmClick      := nil;
+  FOnSyntagmMouseEnter := nil;
+  FOnSyntagmMouseLeave := nil;
+  FModified           := false;
   FChangeNotificationsSuspended := 0;
-  FXMLModificado        := false;
-  FSelecao              := TSyntagmList.Create;
-  FMostrarDicas         := false;
+  FXMLModified        := false;
+  FSelection              := TSyntagmList.Create;
+  FShowHints         := false;
   FNextAutoSelectWordMustHaveStrongMorpho := true;
-  FCorAssociado         := clWindowText;
-  FCorDesassociado      := $A3A3A3;
-  FDestruindo           := false;
+  FAssociatedColor         := clWindowText;
+  FUnassociatedColor      := $A3A3A3;
+  FDestroying           := false;
   FRendering            := false;
   FTokenizerVersion := TTokenizerFactory.PreferredVersion;
   FONTParser := TONTParser.Create(FTokenizerVersion);
@@ -329,11 +285,11 @@ begin
   AIDebugLogFmt('[TVerse] Destroy called. Self=%s, Panel=%s, Reference=%s',
     [IntToHex(PtrUInt(Pointer(Self)), SizeOf(Pointer)*2),
      IntToHex(PtrUInt(Pointer(FPanel)), SizeOf(Pointer)*2),
-     FReferencia]);
-  FDestruindo := true;
-  LimparSintagmas;
-  FSintagmas.Free;
-  FSelecao.Destroy;
+     FReference]);
+  FDestroying := true;
+  ClearSyntagms;
+  FSyntagms.Free;
+  FSelection.Destroy;
   if assigned(FPanel) then
   begin
     FEdit.Free;
@@ -349,103 +305,103 @@ end;
 
 procedure TVerse.MarkDestroying;
 begin
-  FDestruindo := true;
+  FDestroying := true;
 end;
 
-procedure TVerse.LimparSintagmas;
+procedure TVerse.ClearSyntagms;
 var
   s: TSyntagm;
 begin
-  if assigned(FSintagmas) then
+  if assigned(FSyntagms) then
   begin
-    if FAtivo and assigned(FPanel) then
+    if FActive and assigned(FPanel) then
       FPanel.DisableAutoSizing;
 
-    for s in FSintagmas do
+    for s in FSyntagms do
       s.Destroy;
 
     ClearStrongCount;
-    FSintagmas.Clear;
+    FSyntagms.Clear;
 
-    if FAtivo and assigned(FPanel) then
+    if FActive and assigned(FPanel) then
       FPanel.EnableAutoSizing;
   end;
-  FSelecao.Clear;
+  FSelection.Clear;
 end;
 
-procedure TVerse.AssociarSintagmas;
+procedure TVerse.AssociateSyntagms;
 var
   s: TSyntagm;
 begin
-  if not Assigned(VersiculoPar) then
+  if not Assigned(PairedVerse) then
     exit;
 
-  for s in Selecao do
+  for s in Selection do
   begin
     with s do
     begin
       Pairs.Clear;
-      Pairs.AddList(VersiculoPar.Selecao);
+      Pairs.AddList(PairedVerse.Selection);
       IsAssociated:=true;
       Siblings.Clear;
-      Siblings.AddList(Selecao);
+      Siblings.AddList(Selection);
       Siblings.Remove(s);
     end;
   end;
-  for s in VersiculoPar.Selecao do
+  for s in PairedVerse.Selection do
   begin
     with s do
     begin
       Pairs.Clear;
-      Pairs.AddList(Selecao);
+      Pairs.AddList(Selection);
       IsAssociated:=true;
       Siblings.Clear;
-      Siblings.AddList(VersiculoPar.Selecao);
+      Siblings.AddList(PairedVerse.Selection);
       Siblings.Remove(s);
     end;
   end;
 
-  Modificado := true;
-  VersiculoPar.Modificado := true;
+  Modified := true;
+  PairedVerse.Modified := true;
 end;
 
-procedure TVerse.LimparSelecao;
+procedure TVerse.ClearSelection;
 begin
-  while not Selecao.Empty do
-    TSyntagm(Selecao.First).RemoveFromSelection;
+  while not Selection.Empty do
+    TSyntagm(Selection.First).RemoveFromSelection;
 end;
 
-procedure TVerse.DesassociarPares;
+procedure TVerse.DisassociatePairs;
 var
   s: TSyntagm;
 begin
-  LimparSelecao;
-  VersiculoPar.LimparSelecao;
+  ClearSelection;
+  PairedVerse.ClearSelection;
 
-  for s in FSintagmas do
+  for s in FSyntagms do
     s.Disassociate;
 
-  for s in VersiculoPar.FSintagmas do
+  for s in PairedVerse.FSyntagms do
     s.Disassociate;
 
-  Renderizar;
-  VersiculoPar.Renderizar;
+  Render;
+  PairedVerse.Render;
 end;
 
-procedure TVerse.LimparAssociacoes;
+procedure TVerse.ClearAssociations;
 var
   s: TSyntagm;
 begin
-  for s in FSintagmas do
+  for s in FSyntagms do
     if not s.Pairs.Empty then
-    begin // desassociar somente se houver associacoes, para evitar falsos 'modificado = true'
-      DesassociarPares;
-      Modificado := true;
+    begin // disassociate only when associations exist, avoiding false 'modified = true' notifications
+      DisassociatePairs;
+      Modified := true;
       break;
     end;
 end;
 
-procedure TVerse.SelecionarSintagmas(list: TSyntagmList);
+procedure TVerse.SelectSyntagms(list: TSyntagmList);
 var
   s: TSyntagm;
 begin
@@ -453,12 +409,12 @@ begin
     s.AddToSelection;
 end;
 
-function TVerse.GetListaPares(tipo: TPairsListType): TStringList;
+function TVerse.GetPairsList(ListType: TPairsListType): TStringList;
 var
   PairData: TAssociationPairData;
 begin
   result := TStringList.Create;
-  for PairData in GetAssociationPairData(tipo) do
+  for PairData in GetAssociationPairData(ListType) do
   begin
     result.Add(PairData.SourcePhrase);
     result.Add(PairData.TargetPhrase);
@@ -478,12 +434,12 @@ var
   Processed: TSyntagmList;
 begin
   Result := nil;
-  if not Assigned(FSintagmas) then
+  if not Assigned(FSyntagms) then
     Exit;
 
   Processed := TSyntagmList.Create;
   try
-    for Syntagm in FSintagmas do
+    for Syntagm in FSyntagms do
     begin
       if not Assigned(Syntagm.Pairs) or
          (Syntagm.Kind <> skSyntagm) or Syntagm.IsItalic or
@@ -493,7 +449,7 @@ begin
       SourcePhrase := Syntagm.GetSuggestionKey(ListType);
       DataIndex := Length(Result);
       SetLength(Result, DataIndex + 1);
-      SourceIndex := FSintagmas.IndexOf(Syntagm);
+      SourceIndex := FSyntagms.IndexOf(Syntagm);
       SetLength(Result[DataIndex].SourceSyntagmIndexes, 1);
       Result[DataIndex].SourceSyntagmIndexes[0] := SourceIndex;
       Processed.Add(Syntagm);
@@ -508,7 +464,7 @@ begin
         SourceIndex := Length(Result[DataIndex].SourceSyntagmIndexes);
         SetLength(Result[DataIndex].SourceSyntagmIndexes, SourceIndex + 1);
         Result[DataIndex].SourceSyntagmIndexes[SourceIndex] :=
-          FSintagmas.IndexOf(PairedSyntagm);
+          FSyntagms.IndexOf(PairedSyntagm);
         Processed.Add(PairedSyntagm);
       end;
 
@@ -525,7 +481,7 @@ begin
         TargetIndex := Length(Result[DataIndex].TargetSyntagmIndexes);
         SetLength(Result[DataIndex].TargetSyntagmIndexes, TargetIndex + 1);
         Result[DataIndex].TargetSyntagmIndexes[TargetIndex] :=
-          FVersiculoRef.Sintagmas.IndexOf(PairedSyntagm);
+          FPairedVerse.Syntagms.IndexOf(PairedSyntagm);
       end;
 
       if SourcePhrase.IsEmpty or TargetPhrase.IsEmpty then
@@ -541,7 +497,7 @@ begin
   end;
 end;
 
-procedure TVerse.OnSintagmaPopupMenu(s: TSyntagm);
+procedure TVerse.OnSyntagmPopupMenu(s: TSyntagm);
 var
   p: TPoint;
 begin
@@ -550,16 +506,16 @@ begin
   FSyntagmPopupMenu.PopUp(p.x, p.y);
 end;
 
-procedure TVerse.MostrarTags;
+procedure TVerse.ShowTags;
 var
   s: TSyntagm;
   p: TPoint;
   tags: string;
 begin
-  if not FAtivo then
+  if not FActive then
     exit;
 
-  for s in FSintagmas do
+  for s in FSyntagms do
   begin
     if not assigned(s.LabelRef) or not s.HasStrongs then
       continue;
@@ -567,7 +523,7 @@ begin
     tags := s.Strong.CommaText;
     with FPanel.Canvas do
     begin
-      // Link para solução overriding Paint: http://forum.lazarus.freepascal.org/index.php?topic=23894.0
+      // Link to the Paint override solution: http://forum.lazarus.freepascal.org/index.php?topic=23894.0
       Brush.Color := clYellow;
       Font.Name   := DefFontData.Name;
       Font.Height := round(s.LabelRef.Font.Height * 0.6);
@@ -579,9 +535,9 @@ begin
   end;
 end;
 
-procedure TVerse.OcultarTags;
+procedure TVerse.HideTags;
 begin
-  if FAtivo then
+  if FActive then
     FPanel.Refresh;
 end;
 
@@ -589,7 +545,7 @@ procedure TVerse.EnableStrongHighlight(strong: string);
 var
   s: TSyntagm;
 begin
-  for s in FSintagmas do
+  for s in FSyntagms do
     s.HighlightStrong(strong);
 end;
 
@@ -597,19 +553,19 @@ procedure TVerse.DisableStrongHighlight;
 var
   s: TSyntagm;
 begin
-  for s in FSintagmas do
+  for s in FSyntagms do
     s.ToggleStrongHighlight(false);
 end;
 
-procedure TVerse.SetTexto(_XML: string);
+procedure TVerse.SetText(_XML: string);
 begin
   FXML := _XML;
-  LimparSintagmas;
-  FreeAndNil(FSintagmas);
-  FSintagmas := FONTParser.ParseLine(FXML, self);
-  Renderizar;
-  Modificado := true;
-  FXMLModificado := true;
+  ClearSyntagms;
+  FreeAndNil(FSyntagms);
+  FSyntagms := FONTParser.ParseLine(FXML, self);
+  Render;
+  Modified := true;
+  FXMLModified := true;
   SyntagmClipboard := nil;
 end;
 
@@ -621,10 +577,10 @@ procedure TVerse.ReplaceTextPreservingAssociations(const _XML: string;
   var
     s: TSyntagm;
   begin
-    s := FSintagmas[i];
+    s := FSyntagms[i];
     s.Disassociate;
     s.Destroy;
-    FSintagmas.Delete(i);
+    FSyntagms.Delete(i);
   end;
 
 var
@@ -635,35 +591,35 @@ begin
   if (not ForceRetokenize) and (FXML = _XML) then
     exit;
 
-  oldActive := FAtivo;
-  FAtivo := false; // we're potentially deleting labels
+  oldActive := FActive;
+  FActive := false; // we're potentially deleting labels
 
   new := FONTParser.ParseLine(_XML, self);
 
-  LimparSelecao;
+  ClearSelection;
 
-  if (not Assigned(FSintagmas)) or FSintagmas.Empty then
+  if (not Assigned(FSyntagms)) or FSyntagms.Empty then
   begin
-    FreeAndNil(FSintagmas);
-    FSintagmas := new;
+    FreeAndNil(FSyntagms);
+    FSyntagms := new;
     new := nil;
   end
   else
   begin
     result := TSyntagmList.Create;
 
-    while not (new.Empty and FSintagmas.Empty) do
+    while not (new.Empty and FSyntagms.Empty) do
     begin
       if new.Empty then
         DeleteSyntagm(0, result)
-      else if FSintagmas.Empty then
+      else if FSyntagms.Empty then
       begin
        result.Add(new[0]);
        new.Delete(0);
       end
-      else if FSintagmas.First.IsEqualTo(new.First) then
+      else if FSyntagms.First.IsEqualTo(new.First) then
       begin
-        with FSintagmas.First do
+        with FSyntagms.First do
         begin
           if Kind = skSyntagm then
           begin
@@ -675,12 +631,12 @@ begin
             new.First.Morph   := nil;
           end;
         end;
-        result.Add(FSintagmas.First);
-        FSintagmas.Delete(0);
+        result.Add(FSyntagms.First);
+        FSyntagms.Delete(0);
         new.First.Destroy;
         new.Delete(0);
       end
-      else if FSintagmas.First.Kind <> skSyntagm then
+      else if FSyntagms.First.Kind <> skSyntagm then
         DeleteSyntagm(0, result)
       else if new.First.Kind <> skSyntagm then
       begin
@@ -691,7 +647,7 @@ begin
       begin
         { checking if the old syntagm will be used in the future }
         found := false;
-        old := FSintagmas.First;
+        old := FSyntagms.First;
         if not old.Pairs.Empty then // does it have associations?
         begin
           for s in new do
@@ -711,27 +667,27 @@ begin
     if not new.Empty then
       raise Exception.Create('Ainda há sintagmas novos que não foram liberados!');
 
-    if not FSintagmas.Empty then
+    if not FSyntagms.Empty then
       raise Exception.Create('Ainda há sintagmas antigos que não foram liberados!');
 
     FreeAndNil(new);
-    LimparSintagmas;
-    FreeAndNil(FSintagmas);
-    FSintagmas := result;
+    ClearSyntagms;
+    FreeAndNil(FSyntagms);
+    FSyntagms := result;
   end;
 
   FXML := _XML;
-  FXMLModificado := true;
-  Modificado := true;
-  if assigned(VersiculoPar) then
-    VersiculoPar.Modificado := true;
+  FXMLModified := true;
+  Modified := true;
+  if assigned(PairedVerse) then
+    PairedVerse.Modified := true;
   SyntagmClipboard := nil;
 
-  FAtivo := oldActive;
-  Renderizar;
+  FActive := oldActive;
+  Render;
 end;
 
-procedure TVerse.AlterarTexto(_XML: string);
+procedure TVerse.ChangeText(_XML: string);
 begin
   ReplaceTextPreservingAssociations(_XML, False);
 end;
@@ -741,19 +697,19 @@ begin
   ReplaceTextPreservingAssociations(FXML, True);
 end;
 
-function TVerse.GetTexto: string;
+function TVerse.GetText: string;
 var
-  linha: TStringStream;
+  lineStream: TStringStream;
   s: TSyntagm;
 begin
   result := '';
   try
-    linha := TStringStream.Create('');
-    for s in FSintagmas do
-      linha.WriteString(s.Text);
+    lineStream := TStringStream.Create('');
+    for s in FSyntagms do
+      lineStream.WriteString(s.Text);
   finally
-    result := linha.DataString;
-    linha.Destroy;
+    result := lineStream.DataString;
+    lineStream.Destroy;
   end;
 end;
 
@@ -762,29 +718,29 @@ begin
   Result := TTokenizerFactory.CreateTokenizer(FTokenizerVersion, XML);
 end;
 
-procedure TVerse.SetPares(const AValue: string);
+procedure TVerse.SetPairs(const AValue: string);
 var
   varredorXML: TONTTokenizer;
   s: TSyntagmToken;
 begin
-  if not assigned(VersiculoPar) then
+  if not assigned(PairedVerse) then
     exit;
 
   // Applying serialized associations is a load operation. Avoid publishing
   // a transient dirty state for every individual <par> element.
   Inc(FChangeNotificationsSuspended);
-  Inc(VersiculoPar.FChangeNotificationsSuspended);
+  Inc(PairedVerse.FChangeNotificationsSuspended);
   try
-    FExibirErro := true;
-    VersiculoPar.FExibirErro := true;
+    FShowError := true;
+    PairedVerse.FShowError := true;
 
-    LimparAssociacoes;
-    LimparSelecao;
-    VersiculoPar.LimparSelecao;
+    ClearAssociations;
+    ClearSelection;
+    PairedVerse.ClearSelection;
     if AValue.IsEmpty then
     begin
-      Renderizar;
-      VersiculoPar.Renderizar;
+      Render;
+      PairedVerse.Render;
       Exit;
     end;
 
@@ -797,30 +753,30 @@ begin
             Continue;
 
           //DebugLn('selecionando par: %s', [s.Value]);
-          SelecionarListaSintagmas(varredorXML.ReadTagProperty('a', s));
-          VersiculoPar.SelecionarListaSintagmas(
+          SelectSyntagmList(varredorXML.ReadTagProperty('a', s));
+          PairedVerse.SelectSyntagmList(
             varredorXML.ReadTagProperty('b', s));
-          AssociarSintagmas;
+          AssociateSyntagms;
 
-          LimparSelecao;
-          VersiculoPar.LimparSelecao;
+          ClearSelection;
+          PairedVerse.ClearSelection;
         end;
       except
         // Applying persisted associations is atomic from the Verse Pair point
         // of view. Never expose the successfully parsed prefix of corrupt data.
-        LimparSelecao;
-        VersiculoPar.LimparSelecao;
-        LimparAssociacoes;
+        ClearSelection;
+        PairedVerse.ClearSelection;
+        ClearAssociations;
         raise;
       end;
     finally
       varredorXML.Free;
     end;
 
-    Renderizar;
-    VersiculoPar.Renderizar;
+    Render;
+    PairedVerse.Render;
   finally
-    Dec(VersiculoPar.FChangeNotificationsSuspended);
+    Dec(PairedVerse.FChangeNotificationsSuspended);
     Dec(FChangeNotificationsSuspended);
   end;
 end;
@@ -836,7 +792,7 @@ begin
     FONTParser.TokenizerVersion := AValue;
 end;
 
-function TVerse.GetPares: string;
+function TVerse.GetPairs: string;
 var
   b: integer;
   s, p: TSyntagm;
@@ -847,21 +803,21 @@ begin
 
   // gerar tags de Texto <p a="1,2,3" b="1,2,3">
   tmp := TSyntagmList.Create;
-  for s in FSintagmas do
+  for s in FSyntagms do
   begin
     if not s.Pairs.Empty and (tmp.IndexOf(s) < 0) then
     begin
-      _xml.WriteString(Format('<par a="%d', [FSintagmas.IndexOf(s)]));
+      _xml.WriteString(Format('<par a="%d', [FSyntagms.IndexOf(s)]));
       tmp.Add(s);
       for p in s.Siblings do
       begin
-        _xml.WriteString(Format(',%d', [FSintagmas.IndexOf(p)]));
+        _xml.WriteString(Format(',%d', [FSyntagms.IndexOf(p)]));
         tmp.Add(p);
       end;
       _xml.WriteString('" b="');
       for p in s.Pairs do
       begin
-        b := FVersiculoRef.Sintagmas.IndexOf(p);
+        b := FPairedVerse.Syntagms.IndexOf(p);
         if b < 0 then
            raise exception.Create('Pair not found in other verse');
         _xml.WriteString(Format('%d', [b]));
@@ -877,40 +833,40 @@ begin
   _xml.Destroy;
 end;
 
-function TVerse.GetTextoSimples: string;
+function TVerse.GetPlainText: string;
 var
-  linha: TStringStream;
+  lineStream: TStringStream;
   s: TSyntagm;
 begin
   result := '';
-  if not Assigned(FSintagmas) then
+  if not Assigned(FSyntagms) then
     Exit;
 
-  linha := TStringStream.Create('');
+  lineStream := TStringStream.Create('');
   try
-    for s in FSintagmas do
+    for s in FSyntagms do
       if s.Kind in [skWhitespace, skSyntagm, skPunctuation] then
-        linha.WriteString(s.Text);
-    result := linha.DataString;
+        lineStream.WriteString(s.Text);
+    result := lineStream.DataString;
   finally
-    linha.Destroy;
+    lineStream.Destroy;
   end;
 end;
 
-function TVerse.GetAtivo: boolean;
+function TVerse.GetActive: boolean;
 begin
-  result := FAtivo;
+  result := FActive;
 end;
 
-function TVerse.GetFonte: TFont;
+function TVerse.GetFont: TFont;
 begin
-  if FAtivo then
+  if FActive then
     result := FPanel.Font
   else
     result := nil;
 end;
 
-function TVerse.GetAndamentoAssociacao: Single;
+function TVerse.GetAssociationProgress: Single;
 var
   s: TSyntagm;
   t, p: smallint;
@@ -919,7 +875,7 @@ begin
   p := 0;
   result := 0;
 
-  for s in FSintagmas do
+  for s in FSyntagms do
     if s.Kind = skSyntagm then
     begin
       inc(t);
@@ -939,11 +895,11 @@ function TVerse.GetTheWordInterlinearLine: string;
   begin
     result := '';
     if pair = syn.Pairs[0] then exit;
-    for i:=FVersiculoRef.Sintagmas.IndexOf(pair)-1 downto 0 do
+    for i:=FPairedVerse.Syntagms.IndexOf(pair)-1 downto 0 do
     begin
-      if FVersiculoRef.Sintagmas[i].Kind = skSyntagm then
+      if FPairedVerse.Syntagms[i].Kind = skSyntagm then
         break;
-      if FVersiculoRef.Sintagmas[i].Kind = skWhitespace then
+      if FPairedVerse.Syntagms[i].Kind = skWhitespace then
       begin
         result := ' ';
         break;
@@ -952,7 +908,7 @@ function TVerse.GetTheWordInterlinearLine: string;
   end;
 
 var
-  linha: TStringStream;
+  lineStream: TStringStream;
   s, p, prox: TSyntagm;
   m: string;
   n: integer;
@@ -960,56 +916,56 @@ begin
   result := '';
 
   try
-    linha := TStringStream.Create('');
+    lineStream := TStringStream.Create('');
 
-    for s in FSintagmas do
+    for s in FSyntagms do
     begin
-      linha.WriteString(s.Text);
+      lineStream.WriteString(s.Text);
       if (assigned(s.Strong) and (s.Strong.Count > 0)) or (assigned(s.Morph) and (s.Morph.Count > 0)) then
-      begin // se este texto contém strongs
+      begin // if this text contains Strongs
         for m in s.Strong do // strongs
-          linha.WriteString(format('<W%s>', [m]));
-        for m in s.Morph do // morfologia
-          linha.WriteString(format('<WT%s>', [m]));
+          lineStream.WriteString(format('<W%s>', [m]));
+        for m in s.Morph do // Morphologylogia
+          lineStream.WriteString(format('<WT%s>', [m]));
       end else
-      begin // caso contrário, tentemos o texto relacionado
+      begin // otherwise, try the related text
         for p in s.Pairs do
         begin
           for m in p.Strong do // strongs
-            linha.WriteString(format('<W%s>', [m]));
-          for m in p.Morph do   // morfologia
-            linha.WriteString(format('<WT%s>', [m]));
+            lineStream.WriteString(format('<W%s>', [m]));
+          for m in p.Morph do   // Morphologylogia
+            lineStream.WriteString(format('<WT%s>', [m]));
         end;
       end;
 
-      if (FSintagmas.IndexOf(s) < (FSintagmas.Count-1)) and // não é o último sintagma e
+      if (FSyntagms.IndexOf(s) < (FSyntagms.Count-1)) and // is not the last syntagm and
          (s.Siblings.Count > 0) then   // tem irmãos
       begin
         prox := nil;
-        for n:=FSintagmas.IndexOf(s)+1 to Sintagmas.Count-1 do
-        begin // procurando o próximo sintagma (saltando espaços, pontuação, etc.)
-          if Sintagmas[n].Kind = skSyntagm then
+        for n:=FSyntagms.IndexOf(s)+1 to Syntagms.Count-1 do
+        begin // looking for the next syntagm (skipping spaces, punctuation, etc.)
+          if Syntagms[n].Kind = skSyntagm then
           begin
-            prox := Sintagmas[n];
+            prox := Syntagms[n];
             break;
           end;
         end;
-        if (prox <> nil) and (s.Siblings.IndexOf(prox) >= 0) then // o próximo sintagma é irmão deste?
+        if (prox <> nil) and (s.Siblings.IndexOf(prox) >= 0) then // o próximo syntagm é irmão deste?
           continue;
       end;
 
-      for p in s.Pairs do // pares
-        linha.WriteString(GetSpacingBefore(s, p) + '<sup>' + IfThen(p.IsItalic, format('<FI>%s<Fi>', [p.Text]), p.Text) + '</sup>');
+      for p in s.Pairs do // pairs
+        lineStream.WriteString(GetSpacingBefore(s, p) + '<sup>' + IfThen(p.IsItalic, format('<FI>%s<Fi>', [p.Text]), p.Text) + '</sup>');
     end;
 
   finally
-    result := linha.DataString.Replace('</sup> <sup>', ' ')
+    result := lineStream.DataString.Replace('</sup> <sup>', ' ')
                               .Replace('  ', ' ')
                               .Replace('<sup>', '<font size=+1 color="CC3300"><sup>')
                               .Replace('</sup>', '</sup></font>')
                               .Replace('<Fi><FI>', '')
                               .Replace(' -', '-');
-    linha.Destroy;
+    lineStream.Destroy;
   end;
 end;
 
@@ -1021,11 +977,11 @@ function TVerse.GetMySwordInterlinearLine: string;
   begin
     result := '';
     if pair = syn.Pairs[0] then exit;
-    for i:=FVersiculoRef.Sintagmas.IndexOf(pair)-1 downto 0 do
+    for i:=FPairedVerse.Syntagms.IndexOf(pair)-1 downto 0 do
     begin
-      if FVersiculoRef.Sintagmas[i].Kind = skSyntagm then
+      if FPairedVerse.Syntagms[i].Kind = skSyntagm then
         break;
-      if FVersiculoRef.Sintagmas[i].Kind = skWhitespace then
+      if FPairedVerse.Syntagms[i].Kind = skWhitespace then
       begin
         result := ' ';
         break;
@@ -1048,7 +1004,7 @@ function TVerse.GetMySwordInterlinearLine: string;
     foundSpace: Boolean;
   begin
     combinedText := startSyntagm.Text;
-    currentIdx := FSintagmas.IndexOf(startSyntagm);
+    currentIdx := FSyntagms.IndexOf(startSyntagm);
 
     // If we have siblings, check if any are consecutive
     if startSyntagm.Siblings.Count = 0 then
@@ -1059,9 +1015,9 @@ function TVerse.GetMySwordInterlinearLine: string;
 
     // Check next syntagms to find consecutive siblings
     nextIdx := currentIdx + 1;
-    while nextIdx < FSintagmas.Count do
+    while nextIdx < FSyntagms.Count do
     begin
-      nextSyn := FSintagmas[nextIdx];
+      nextSyn := FSyntagms[nextIdx];
 
       // Add any spaces between siblings
       if nextSyn.Kind = skWhitespace then
@@ -1078,11 +1034,11 @@ function TVerse.GetMySwordInterlinearLine: string;
         lookAheadIdx := nextIdx + 1;
         lookAheadSyn := nil;
 
-        while (lookAheadIdx < FSintagmas.Count) do
+        while (lookAheadIdx < FSyntagms.Count) do
         begin
-          if FSintagmas[lookAheadIdx].Kind = skSyntagm then
+          if FSyntagms[lookAheadIdx].Kind = skSyntagm then
           begin
-            lookAheadSyn := FSintagmas[lookAheadIdx];
+            lookAheadSyn := FSyntagms[lookAheadIdx];
             break;
           end;
           Inc(lookAheadIdx);
@@ -1130,7 +1086,7 @@ begin
 
     skip := false;
     i := 0;
-    while i < FSintagmas.Count do
+    while i < FSyntagms.Count do
     begin
       if skipIndices.IndexOf(Pointer(i)) >= 0 then
       begin
@@ -1138,7 +1094,7 @@ begin
         continue;
       end;
 
-      s := FSintagmas[i];
+      s := FSyntagms[i];
 
       if TestAndUnset(skip) then
       begin
@@ -1171,7 +1127,7 @@ begin
           if s.Pairs.Count > 0 then
           begin
             line.WriteString('<T>');
-            if (s.Siblings.Count = 0) or (i < FSintagmas.IndexOf(s.Siblings[0])) then
+            if (s.Siblings.Count = 0) or (i < FSyntagms.IndexOf(s.Siblings[0])) then
             begin // no siblings or is the first sibling
               for p in s.Pairs do
               begin
@@ -1207,117 +1163,117 @@ begin
   end;
 end;
 
-function TVerse.GetLinhaONT: string;
+function TVerse.GetONTLine: string;
 begin
-  result := GetLinhaONT(true, false, false, false);
+  Result := GetONTLine(True, False, False, False);
 end;
 
-function TVerse.GetLinhaONT(morfo: boolean; autoitalico: boolean; strongsreutilizados: boolean;
-      strongsnaotraduzidos: boolean): string;
+function TVerse.GetONTLine(Morphology: boolean; AutoItalics: boolean; ReusedStrongs: boolean;
+      UntranslatedStrongs: boolean): string;
 var
-  linha: TStringStream;
+  lineStream: TStringStream;
   stg, prox: TSyntagm;
   s, p, m: smallint;
-  ls: TList;
+  UsedStrongs: TList;
   temp: string;
   label NextSyntagm;
 begin
   result := '';
-  ls := TList.Create; // usado para armazenar os Strongs utilizados no versículo
+  UsedStrongs := TList.Create; // used to store the Strongs already used in the verse
   prox := nil;
 
   try
-    linha := TStringStream.Create('');
+    lineStream := TStringStream.Create('');
 
     s := -1;
-    for stg in FSintagmas do
-    begin // para cada sintagma, computa sua saída em uma variável temporária
+    for stg in FSyntagms do
+    begin // for each syntagm, compute its output in a temporary variable
       Inc(s);
       temp := '';
 
-      if autoitalico and (stg.Pairs.Count = 0) and (stg.Kind = skSyntagm) then
+      if AutoItalics and (stg.Pairs.Count = 0) and (stg.Kind = skSyntagm) then
         temp := temp + '<FI>';
 
-      if autoitalico and (stg.Kind = skTag) and ((stg.Text = '<FI>') or (stg.Text = '<Fi>')) then
-        goto NextSyntagm; // quando auto-itálico, ignorar os itálicos originais
+      if AutoItalics and (stg.Kind = skTag) and ((stg.Text = '<FI>') or (stg.Text = '<Fi>')) then
+        goto NextSyntagm; // when auto-italicizing, skip the original italics
 
       temp := temp + stg.Text;
 
-      if autoitalico and (stg.Pairs.Count = 0) and (stg.Kind = skSyntagm) then
+      if AutoItalics and (stg.Pairs.Count = 0) and (stg.Kind = skSyntagm) then
         temp := temp + '<Fi>';
 
       if (stg.Pairs.Count > 0) and (stg.Kind = skSyntagm) then
       begin
-        if (s < (Sintagmas.Count-1)) and // não é o último sintagma e
+        if (s < (Syntagms.Count-1)) and // is not the last syntagm and
            (stg.Siblings.Count > 0) then // tem irmãos
         begin
           prox := nil;
-          for m := s+1 to Sintagmas.Count-1 do
-          begin // procurando o próximo sintagma (saltando espaços, pontuação, etc.)
-            if Sintagmas[m].Kind = skSyntagm then
+          for m := s+1 to Syntagms.Count-1 do
+          begin // looking for the next syntagm (skipping spaces, punctuation, etc.)
+            if Syntagms[m].Kind = skSyntagm then
             begin
-              prox := Sintagmas[m];
+              prox := Syntagms[m];
               break;
             end;
           end;
-          if (prox <> nil) and (stg.Siblings.IndexOf(prox) >= 0) then // o próximo sintagma é irmão deste?
+          if (prox <> nil) and (stg.Siblings.IndexOf(prox) >= 0) then // o próximo syntagm é irmão deste?
             goto NextSyntagm;
         end;
 
         prox := nil;
         for p := 0 to stg.Pairs.Count-1 do
-        begin // pares
+        begin // pairs
           for m := 0 to stg.Pairs[p].Strong.Count-1 do // strongs
           begin
-            if (not strongsreutilizados) or (ls.IndexOf(stg.Pairs[p].Strong) = -1) then // este Strong já foi utilizado antes?
+            if (not ReusedStrongs) or (UsedStrongs.IndexOf(stg.Pairs[p].Strong) = -1) then // has this Strong already been used?
             begin // não
               temp := temp + format('<W%s>', [stg.Pairs[p].Strong[m]]);
-              ls.Add(stg.Pairs[p].Strong)
+              UsedStrongs.Add(stg.Pairs[p].Strong)
             end else // strong reutilizado
               temp := temp + format('<W%ss>', [stg.Pairs[p].Strong[m]]);
           end;
 
-          if not morfo then
+          if not Morphology then
             continue;
 
-          for m := 0 to stg.Pairs[p].Morph.Count-1 do // morfologia
+          for m := 0 to stg.Pairs[p].Morph.Count-1 do // Morphologylogia
             temp := temp + format('<WT%s>', [stg.Pairs[p].Morph[m]]);
         end;
       end;
 
       NextSyntagm:
-        // escreve o resultado do sintagma em 'linha' após computá-lo integralmente
-        if temp.Contains('<W') then // se houver strongs ou morfologia, então é um sintagma
-          linha.WriteString('<wt>');
-        linha.WriteString(temp);
+        // write the syntagm result to 'lineStream' after computing it completely
+        if temp.Contains('<W') then // se houver strongs ou Morphologylogia, então é um syntagm
+          lineStream.WriteString('<wt>');
+        lineStream.WriteString(temp);
     end;
 
-    if strongsnaotraduzidos then
+    if UntranslatedStrongs then
     begin
-      // verificando se ficaram palavras do original que não foram traduzidas
-      for s := 0 to VersiculoPar.Sintagmas.Count-1 do
+      // checking for untranslated words from the source
+      for s := 0 to PairedVerse.Syntagms.Count-1 do
       begin
-      stg := VersiculoPar.Sintagmas[s];
-      if assigned(stg.Strong) and (ls.IndexOf(stg.Strong) = -1) then
+      stg := PairedVerse.Syntagms[s];
+      if assigned(stg.Strong) and (UsedStrongs.IndexOf(stg.Strong) = -1) then
         for m := 0 to stg.Strong.Count-1 do // strongs
-        linha.WriteString(format('<W%sx>', [stg.Strong[m]]));
+        lineStream.WriteString(format('<W%sx>', [stg.Strong[m]]));
       end;
     end;
 
     // handling special cases for italics
-    result := FFixWrongFiTag.Replace(linha.DataString, '$2$1'); { fix '<wt>bla <FI>ble<WG1><Fi>' case }
+    result := FFixWrongFiTag.Replace(lineStream.DataString, '$2$1'); { fix '<wt>bla <FI>ble<WG1><Fi>' case }
     result := result.Replace('<FI><wt>', '<wt><FI>', [rfReplaceAll]);
   finally
-    linha.Destroy;
-    ls.Destroy;
+    lineStream.Destroy;
+    UsedStrongs.Destroy;
   end;
 end;
 
-procedure TVerse.SetAtivo(const AValue: boolean);
+procedure TVerse.SetActive(const AValue: boolean);
 begin
-  if (AValue <> FAtivo) then
+  if (AValue <> FActive) then
   begin
-    FAtivo := AValue;
+    FActive := AValue;
     if (AValue) then
     begin // ativar
 
@@ -1329,26 +1285,26 @@ begin
   end;
 end;
 
-procedure TVerse.SetFonte(const AValue: TFont);
+procedure TVerse.SetFont(const AValue: TFont);
 begin
-  if not FAtivo then
+  if not FActive then
     exit;
   FPanel.Font := AValue;
-  Renderizar;
+  Render;
 end;
 
-procedure TVerse.SetModificado(const AValue: boolean);
+procedure TVerse.SetModified(const AValue: boolean);
 begin
-  FModificado := AValue;
-  if FModificado then
+  FModified := AValue;
+  if FModified then
     NotifyVerseChanged;
 end;
 
 procedure TVerse.NotifyVerseChanged;
 begin
   if (FChangeNotificationsSuspended = 0) and
-    assigned(FOnAlterarVersiculo) then
-    FOnAlterarVersiculo;
+    assigned(FOnVerseChanged) then
+    FOnVerseChanged;
 end;
 
 procedure TVerse.SetRightToLeft(AValue: Boolean);
@@ -1356,7 +1312,7 @@ begin
   if FRightToLeft=AValue then Exit;
   FRightToLeft:=AValue;
   FRTLMenuItem.Checked := FRightToLeft;
-  Renderizar;
+  Render;
 end;
 
 procedure TVerse.SetStrongsCountMode(AValue: TStrongsCountMode);
@@ -1364,22 +1320,22 @@ begin
   if FStrongsCountMode = AValue
      then Exit;
   FStrongsCountMode := AValue;
-  Renderizar;
+  Render;
 end;
 
-procedure TVerse.SetPalavrasComStrongEmNegrito(AValue: boolean);
+procedure TVerse.SetBoldWordsWithStrong(AValue: boolean);
 begin
-  if FPalavrasComStrongEmNegrito=AValue then Exit;
-  FPalavrasComStrongEmNegrito:=AValue;
-  Renderizar;
+  if FBoldWordsWithStrong=AValue then Exit;
+  FBoldWordsWithStrong:=AValue;
+  Render;
 end;
 
-procedure TVerse.OrganizarSintagmas;
+procedure TVerse.OrganizeSyntagms;
 
   function StartingXPos: smallint;
   begin
     if FRightToLeft then
-      result := Painel.Width-MarginWidth
+      result := Panel.Width-MarginWidth
     else
       result := MarginWidth;
   end;
@@ -1404,7 +1360,7 @@ procedure TVerse.OrganizarSintagmas;
     if FRightToLeft then
       result := (x - punctWidth) < 15
     else
-      result := (x + s.LabelRef.Width + punctWidth) > (Painel.Width-15);
+      result := (x + s.LabelRef.Width + punctWidth) > (Panel.Width-15);
   end;
 
   procedure PositionSyntagm(s: TSyntagm; var x, y, a: smallint);
@@ -1440,13 +1396,13 @@ var
   syntagm: TSyntagm;
   x, y, h: smallint;
 begin
-  if not Ativo or FDestruindo or not assigned(FSintagmas) then
+  if not Active or FDestroying or not assigned(FSyntagms) then
     exit;
 
   x := StartingXPos; // starting x position
   y := 0;            // starting y position
   h := 0;            // line height
-  for syntagm in FSintagmas do
+  for syntagm in FSyntagms do
     if assigned(syntagm.LabelRef) then
       PositionSyntagm(syntagm, x, y, h);
 
@@ -1454,14 +1410,14 @@ begin
     PositionSyntagm(FStrongCount, x, y, h);
 end;
 
-procedure TVerse.SetVersiculoPar(Par: TVerse);
+procedure TVerse.SetPairedVerse(PairVerse: TVerse);
 begin
-  FVersiculoRef := Par;
-  if (Par.VersiculoPar <> self) then
-    Par.VersiculoPar := self;
+  FPairedVerse := PairVerse;
+  if (PairVerse.PairedVerse <> self) then
+    PairVerse.PairedVerse := self;
 end;
 
-procedure TVerse.SelecionarListaSintagmas(lst: string);
+procedure TVerse.SelectSyntagmList(lst: string);
 var
   tokens: TStringList;
   i: Integer;
@@ -1477,20 +1433,20 @@ begin
       ok := TryStrToInt(tokens[i], idx);
       if not ok then
       begin
-        //AIDebugLogFmt('[SelecionarListaSintagmas] Invalid token (not integer): %s', [tokens[i]]);
+        //AIDebugLogFmt('[SelectSyntagmList] Invalid token (not integer): %s', [tokens[i]]);
         Continue;
       end;
-      if (idx < 0) or (idx >= Sintagmas.Count) then
+      if (idx < 0) or (idx >= Syntagms.Count) then
       begin
-        //AIDebugLogFmt('[SelecionarListaSintagmas] Index out of range: %d (Count=%d)', [idx, Sintagmas.Count]);
+        //AIDebugLogFmt('[SelectSyntagmList] Index out of range: %d (Count=%d)', [idx, Syntagms.Count]);
         Continue;
       end;
-      if not (Sintagmas[idx].Kind in [skSyntagm, skPunctuation]) then
+      if not (Syntagms[idx].Kind in [skSyntagm, skPunctuation]) then
       begin
-        //AIDebugLogFmt('[SelecionarListaSintagmas] Index %d is not selectable (Kind=%d)', [idx, Ord(Sintagmas[idx].Kind)]);
+        //AIDebugLogFmt('[SelectSyntagmList] Index %d is not selectable (Kind=%d)', [idx, Ord(Syntagms[idx].Kind)]);
         Continue;
       end;
-      Sintagmas[idx].AddToSelection;
+      Syntagms[idx].AddToSelection;
     end;
   finally
     tokens.Free;
@@ -1514,82 +1470,82 @@ procedure TVerse.EditConfirm;
 {var
   s: TSyntagmToken;
   varredorXML: TONTTokenizer;
-  sintagma, novo: TSyntagm;
+  syntagm, newSyntagm: TSyntagm;
   i, offset, j: integer;}
 begin
   {
-  sintagma := TSyntagm(FEdit.Tag);
-  i := FSintagmas.IndexOf(sintagma);
-  FSintagmas.Remove(sintagma);
-  FSelecao.Remove(sintagma);
+  syntagm := TSyntagm(FEdit.Tag);
+  i := FSyntagms.IndexOf(syntagm);
+  FSyntagms.Remove(syntagm);
+  FSelection.Remove(syntagm);
   offset := 0;
-  novo := nil;
+  newSyntagm := nil;
 
   varredorXML := TTokenizerFactory.CreateTokenizer(FTokenizerVersion, FEdit.Caption);
   while varredorXML.ReadSyntagm(s) <> skNull do
   begin
     if (s.Kind = skWhitespace) and (s.Value = '|') then
     begin
-      if assigned(novo) then
-        novo.TextoBruto := novo.TextoBruto + s.Value;
+      if assigned(newSyntagm) then
+        newSyntagm.TextoBruto := newSyntagm.TextoBruto + s.Value;
       continue;
     end;
 
-    novo := TSyntagm.Create(self, s);
-    FSintagmas.Insert(i, novo);
+    newSyntagm := TSyntagm.Create(self, s);
+    FSyntagms.Insert(i, newSyntagm);
     Inc(i); Inc(Offset);
   end;
   varredorXML.Destruir;
 
-  // copiando dados do sintagma clicado para o primeiro sintagma parseado
+  // copying data from the clicked syntagm to the first parsed syntagm
   for j:=(i-Offset) to i+Offset do
   begin
-    novo := FSintagmas[j];
-    if novo.Tipo = skSyntagm then
+    newSyntagm := FSyntagms[j];
+    if newSyntagm.Tipo = skSyntagm then
     begin
-      for i:=0 to sintagma.Irmaos.Count-1 do
+      for i:=0 to syntagm.Irmaos.Count-1 do
       begin
-        novo.Irmaos.Add(sintagma.Irmaos[i]);
-        sintagma.Irmaos[i].Irmaos.Remove(sintagma);
-        sintagma.Irmaos[i].Irmaos.Add(novo);
+        newSyntagm.Irmaos.Add(syntagm.Irmaos[i]);
+        syntagm.Irmaos[i].Irmaos.Remove(syntagm);
+        syntagm.Irmaos[i].Irmaos.Add(newSyntagm);
       end;
-      for i:=0 to sintagma.Pares.Count-1 do
+      for i:=0 to syntagm.Pares.Count-1 do
       begin
-        novo.Correlacionado := true;
-        novo.Pares.Add(sintagma.Pares[i]);
-        sintagma.Pares[i].Pares.Remove(sintagma);
-        sintagma.Pares[i].Pares.Add(novo);
+        newSyntagm.Correlacionado := true;
+        newSyntagm.Pares.Add(syntagm.Pares[i]);
+        syntagm.Pares[i].Pares.Remove(syntagm);
+        syntagm.Pares[i].Pares.Add(newSyntagm);
       end;
       break;
     end;
   end;
 
-  sintagma.Destruir;
-  AtualizarXMLInterno;
+  syntagm.Destruir;
+  UpdateInternalXML;
   EditExit(Self);
-  OrganizarSintagmas;
+  OrganizeSyntagms;
   }
 end;
 
-{ Atualiza o XML interno a partir do texto dos sintagmas }
-procedure TVerse.AtualizarXMLInterno;
+{ Updates the internal XML from syntagm text }
+procedure TVerse.UpdateInternalXML;
 var
   s: TSyntagm;
 begin
   FXML := '';
-  for s in FSintagmas do
+  for s in FSyntagms do
     FXML := FXML + s.RawText;
 
-  FXMLModificado := true;
-  Modificado := true;
+  FXMLModified := true;
+  Modified := true;
 end;
 
-procedure TVerse.Renderizar;
+procedure TVerse.Render;
 var
   s: TSyntagm;
   //starttime: DWord;
 begin
-  if not FAtivo or not assigned(FSintagmas) or FRendering then
+  if not FActive or not assigned(FSyntagms) or FRendering then
     exit;
 
   //starttime := getTickCount;
@@ -1597,27 +1553,27 @@ begin
   try
     if assigned(FPanel) then
       FPanel.DisableAutoSizing;
-    for s in FSintagmas do
+    for s in FSyntagms do
       s.Render;
-    RenderizarStrongCount;
+    RenderStrongCount;
     if assigned(FPanel) then
       FPanel.EnableAutoSizing;
-    OrganizarSintagmas;
+    OrganizeSyntagms;
   finally
     FRendering := False;
   end;
   //DebugLn('  TVerse.Render: %d milliseconds', [getTickCount-starttime]);
 end;
 
-procedure TVerse.RenderizarStrongCount;
+procedure TVerse.RenderStrongCount;
 begin
   ClearStrongCount;
   if FStrongsCountMode = scNone then
     exit;
-  if FSintagmas.Empty then
+  if FSyntagms.Empty then
     exit;
 
-  AtualizarStrongCount;
+  UpdateStrongCount;
   FStrongCount.Render;
 end;
 
@@ -1630,7 +1586,7 @@ begin
   FStrongCount := nil;
 end;
 
-procedure TVerse.AtualizarStrongCount;
+procedure TVerse.UpdateStrongCount;
 
   function GetStrongsCount(s: TSyntagm): integer;
   begin
@@ -1652,7 +1608,7 @@ var
 begin
   count := 0;
   unique := TSyntagmList.Create;
-  for s in FSintagmas do
+  for s in FSyntagms do
   begin
     if s.Kind <> skSyntagm then
       continue;
@@ -1683,7 +1639,7 @@ var
   tokens: TStringStream;
 begin
   tokens := TStringStream.Create('');
-  for s in FSintagmas do
+  for s in FSyntagms do
     tokens.WriteString(s.Gist);
   result:= tokens.DataString;
   tokens.Destroy;
@@ -1695,28 +1651,28 @@ var
   SelectedIndexes: TSyntagmIndexArray;
 
 begin
-  LimparSelecao;
+  ClearSelection;
 
   if not Assigned(Words) or (Words.Count = 0) then
     Exit;
 
   AIDebugLogFmt('[FindAndSelectSyntagms] Verse: %s - Searching for %d words, Partial=%s, JoinConnected=%s',
-                [Referencia, Words.Count, BoolToStr(Partial, True), BoolToStr(JoinConnected, True)]);
+                [Reference, Words.Count, BoolToStr(Partial, True), BoolToStr(JoinConnected, True)]);
   for I := 0 to Words.Count - 1 do
     AIDebugLogFmt('[FindAndSelectSyntagms]   Word[%d]: "%s"', [I, Words[I]]);
-  AIDebugLogFmt('[FindAndSelectSyntagms] Total syntagms in verse: %d', [FSintagmas.Count]);
+  AIDebugLogFmt('[FindAndSelectSyntagms] Total syntagms in verse: %d', [FSyntagms.Count]);
 
-  SelectedIndexes := ResolveSyntagmSelectionIndexes(FSintagmas, Words, Partial, JoinConnected);
+  SelectedIndexes := ResolveSyntagmSelectionIndexes(FSyntagms, Words, Partial, JoinConnected);
   AIDebugLogVerboseFmt('[FindAndSelectSyntagms] Resolved %d syntagm indexes', [Length(SelectedIndexes)]);
 
   for I := 0 to High(SelectedIndexes) do
   begin
-    if (SelectedIndexes[I] < 0) or (SelectedIndexes[I] >= FSintagmas.Count) then
+    if (SelectedIndexes[I] < 0) or (SelectedIndexes[I] >= FSyntagms.Count) then
       Continue;
 
     AIDebugLogVerboseFmt('[FindAndSelectSyntagms]   Adding index %d to selection: "%s"',
-      [SelectedIndexes[I], FSintagmas[SelectedIndexes[I]].Text]);
-    FSintagmas[SelectedIndexes[I]].AddToSelection;
+      [SelectedIndexes[I], FSyntagms[SelectedIndexes[I]].Text]);
+    FSyntagms[SelectedIndexes[I]].AddToSelection;
   end;
 
   AIDebugLogVerbose('[FindAndSelectSyntagms] Completed successfully');
@@ -1758,14 +1714,14 @@ begin
     end;
   end;
 
-  AtualizarXMLInterno;
-  VersiculoPar.Modificado := true;
+  UpdateInternalXML;
+  PairedVerse.Modified := true;
 
-  LimparSelecao;
-  VersiculoPar.LimparSelecao;
+  ClearSelection;
+  PairedVerse.ClearSelection;
   s.AddToSelection;
 
-  Renderizar;
+  Render;
 end;
 
 procedure TVerse.OnSaveTextToFile(Sender: TObject);
@@ -1786,7 +1742,7 @@ end;
 
 procedure TVerse.OnCopyXMLToClipboard(Sender: TObject);
 begin
-  clipboard.AsText := GetPares;
+  clipboard.AsText := GetPairs;
 end;
 
 procedure TVerse.OnRightToLeft(Sender: TObject);
@@ -1805,7 +1761,7 @@ end;
 procedure TVerse.OnResize(Sender: TObject);
 begin
   if not FRendering then
-    OrganizarSintagmas;
+    OrganizeSyntagms;
 end;
 
 procedure TVerse.OnMouseWheel(Sender: TObject; Shift: TShiftState;
@@ -1814,7 +1770,7 @@ begin
   if ssCtrl in Shift then
   begin
     FPanel.Font.Size := FPanel.Font.Size + Sign(WheelDelta) * 1;
-    Renderizar;
+    Render;
   end;
 end;
 
@@ -1873,8 +1829,8 @@ begin
     FVersePopupMenu.Items.Add(Item);
 
     Item := TMenuItem.Create(FVersePopupMenu);
-    Item.Caption := SCopySyntagmasJSONToClipboard;
-    Item.OnClick := @OnCopySintagmasAsJSON;
+    Item.Caption := SCopySyntagmsJSONToClipboard;
+    Item.OnClick := @OnCopySyntagmsAsJSON;
     FVersePopupMenu.Items.Add(Item);
 
     Item := TMenuItem.Create(FVersePopupMenu);
@@ -1895,12 +1851,12 @@ begin
   {$ENDIF}
 end;
 
-constructor TVerse.Create(const AReferencia: string = '');
+constructor TVerse.Create(const AReference: string = '');
 begin
-  Create(nil, AReferencia);
+  Create(nil, AReference);
 end;
 
-procedure TVerse.OnCopySintagmasAsJSON(Sender: TObject);
+procedure TVerse.OnCopySyntagmsAsJSON(Sender: TObject);
   // local helper to convert a TStringList to a JSON array
   function StringListToJSONArray(lst: TStringList): string;
   var
@@ -1931,9 +1887,9 @@ var
 begin
   jsonItems := TStringList.Create;
   try
-    for i := 0 to FSintagmas.Count - 1 do
+    for i := 0 to FSyntagms.Count - 1 do
     begin
-      s := FSintagmas[i];
+      s := FSyntagms[i];
       strongsJSON := StringListToJSONArray(s.Strong);
       morphJSON := StringListToJSONArray(s.Morph);
       kindStr := GetEnumName(TypeInfo(TSyntagmKind), Ord(s.Kind)); // convert kind to text
@@ -1963,9 +1919,9 @@ begin
   associations := TStringList.Create;
   processed := TList.Create;
   try
-    for i := 0 to FSintagmas.Count - 1 do
+    for i := 0 to FSyntagms.Count - 1 do
     begin
-      s := FSintagmas[i];
+      s := FSyntagms[i];
       if (s.Pairs.Count = 0) or (processed.IndexOf(s) <> -1) then
         Continue;
       // Mark the group as processed
@@ -2008,8 +1964,8 @@ var
   s: TSyntagm;
 begin
   Result := False;
-  if not Assigned(FSintagmas) then Exit;
-  for s in FSintagmas do
+  if not Assigned(FSyntagms) then Exit;
+  for s in FSyntagms do
     if s.Pairs.Count > 0 then
     begin
       Result := True;
@@ -2020,87 +1976,6 @@ end;
 procedure TVerse.OnCopyAssociationsJSONToClipboard(Sender: TObject);
 begin
   clipboard.AsText := GetAssociationsJSON;
-end;
-
-procedure TVerse.ClearSyntagms;
-begin
-  LimparSintagmas;
-end;
-
-procedure TVerse.AssociateSyntagms;
-begin
-  AssociarSintagmas;
-end;
-
-procedure TVerse.ClearSelection;
-begin
-  LimparSelecao;
-end;
-
-procedure TVerse.DisassociatePairs;
-begin
-  DesassociarPares;
-end;
-
-procedure TVerse.ClearAssociations;
-begin
-  LimparAssociacoes;
-end;
-
-procedure TVerse.Render;
-begin
-  Renderizar;
-end;
-
-procedure TVerse.RenderStrongCount;
-begin
-  RenderizarStrongCount;
-end;
-
-procedure TVerse.OrganizeSyntagms;
-begin
-  OrganizarSintagmas;
-end;
-
-procedure TVerse.SelectSyntagms(list: TSyntagmList);
-begin
-  SelecionarSintagmas(list);
-end;
-
-procedure TVerse.ChangeText(_XML: string);
-begin
-  AlterarTexto(_XML);
-end;
-
-function TVerse.GetPairsList(tipo: TPairsListType): TStringList;
-begin
-  Result := GetListaPares(tipo);
-end;
-
-procedure TVerse.OnSyntagmPopupMenu(s: TSyntagm);
-begin
-  OnSintagmaPopupMenu(s);
-end;
-
-procedure TVerse.ShowTags;
-begin
-  MostrarTags;
-end;
-
-procedure TVerse.HideTags;
-begin
-  OcultarTags;
-end;
-
-function TVerse.GetONTLine: string;
-begin
-  Result := GetLinhaONT;
-end;
-
-function TVerse.GetONTLine(morfo: boolean; autoitalico: boolean; strongsreutilizados: boolean;
-  strongsnaotraduzidos: boolean): string;
-begin
-  Result := GetLinhaONT(morfo, autoitalico, strongsreutilizados, strongsnaotraduzidos);
 end;
 
 end.

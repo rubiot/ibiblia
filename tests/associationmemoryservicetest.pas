@@ -351,7 +351,7 @@ begin
   FRenderBuffer.LoadPair('alpha beta', 'one two',
     '<par a="2,0" b="2,0">');
   AssertEquals('Equivalent syntagm order must be normalized',
-    '<par a="0,2" b="0,2">', FRenderBuffer.SourceVerse.Pares);
+    '<par a="0,2" b="0,2">', FRenderBuffer.SourceVerse.Pairs);
 end;
 
 procedure TAssociationMemoryServiceTest.

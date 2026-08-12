@@ -382,18 +382,18 @@ begin
   SourceVerse := TVerse.Create;
   DestinationVerse := TVerse.Create;
   try
-    SourceVerse.VersiculoPar := DestinationVerse;
-    SourceVerse.Texto := 'source';
-    DestinationVerse.Texto := 'target';
-    SourceVerse.Sintagmas[0].AddToSelection;
-    DestinationVerse.Sintagmas[0].AddToSelection;
-    SourceVerse.AssociarSintagmas;
+    SourceVerse.PairedVerse := DestinationVerse;
+    SourceVerse.Text := 'source';
+    DestinationVerse.Text := 'target';
+    SourceVerse.Syntagms[0].AddToSelection;
+    DestinationVerse.Syntagms[0].AddToSelection;
+    SourceVerse.AssociateSyntagms;
 
     AssertTrue(Workspace.SaveAssociations(FManager, SourceVerse,
       DestinationVerse));
     AssertEquals(1, QueryInt('select trad_ocorrencias from traducoes'));
 
-    SourceVerse.Sintagmas[0].DisassociatePairs;
+    SourceVerse.Syntagms[0].DisassociatePairs;
     AssertTrue(Workspace.SaveAssociations(FManager, SourceVerse,
       DestinationVerse));
     AssertEquals(0, QueryInt('select count(*) from traducoes'));
@@ -419,20 +419,20 @@ begin
   SourceVerse := TVerse.Create;
   DestinationVerse := TVerse.Create;
   try
-    SourceVerse.VersiculoPar := DestinationVerse;
-    SourceVerse.Texto := 'source';
-    DestinationVerse.Texto := 'target';
-    SourceVerse.Sintagmas[0].AddToSelection;
-    DestinationVerse.Sintagmas[0].AddToSelection;
-    SourceVerse.AssociarSintagmas;
+    SourceVerse.PairedVerse := DestinationVerse;
+    SourceVerse.Text := 'source';
+    DestinationVerse.Text := 'target';
+    SourceVerse.Syntagms[0].AddToSelection;
+    DestinationVerse.Syntagms[0].AddToSelection;
+    SourceVerse.AssociateSyntagms;
 
     AssertTrue(Workspace.SaveAssociations(FManager, SourceVerse,
       DestinationVerse));
     AssertEquals(1, QueryInt('select trad_ocorrencias from traducoes'));
-    SourceVerse.Modificado := False;
-    SourceVerse.XMLModificado := False;
-    DestinationVerse.Modificado := False;
-    DestinationVerse.XMLModificado := False;
+    SourceVerse.Modified := False;
+    SourceVerse.XMLModified := False;
+    DestinationVerse.Modified := False;
+    DestinationVerse.XMLModified := False;
 
     VerseViews[0] := SourceVerse;
     VerseViews[1] := DestinationVerse;
@@ -464,10 +464,10 @@ begin
   SourceVerse := TVerse.Create;
   DestinationVerse := TVerse.Create;
   try
-    SourceVerse.VersiculoPar := DestinationVerse;
+    SourceVerse.PairedVerse := DestinationVerse;
     AssertFalse(Workspace.SaveAssociations(FManager, SourceVerse,
       DestinationVerse));
-    Pairs := SourceVerse.GetListaPares(plMetaData);
+    Pairs := SourceVerse.GetPairsList(plMetaData);
     try
       AssertEquals(0, Pairs.Count);
     finally
@@ -491,24 +491,24 @@ begin
   SourceVerse := TVerse.Create;
   DestinationVerse := TVerse.Create;
   try
-    SourceVerse.VersiculoPar := DestinationVerse;
-    SourceVerse.Texto := 'first<WG1> second<WG1>';
-    DestinationVerse.Texto := 'same same';
+    SourceVerse.PairedVerse := DestinationVerse;
+    SourceVerse.Text := 'first<WG1> second<WG1>';
+    DestinationVerse.Text := 'same same';
 
-    SourceVerse.Sintagmas[0].AddToSelection;
-    DestinationVerse.Sintagmas[0].AddToSelection;
-    SourceVerse.AssociarSintagmas;
-    SourceVerse.LimparSelecao;
-    DestinationVerse.LimparSelecao;
-    SourceVerse.Sintagmas[2].AddToSelection;
-    DestinationVerse.Sintagmas[2].AddToSelection;
-    SourceVerse.AssociarSintagmas;
+    SourceVerse.Syntagms[0].AddToSelection;
+    DestinationVerse.Syntagms[0].AddToSelection;
+    SourceVerse.AssociateSyntagms;
+    SourceVerse.ClearSelection;
+    DestinationVerse.ClearSelection;
+    SourceVerse.Syntagms[2].AddToSelection;
+    DestinationVerse.Syntagms[2].AddToSelection;
+    SourceVerse.AssociateSyntagms;
 
     AssertTrue(Workspace.SaveAssociations(FManager, SourceVerse,
       DestinationVerse));
     AssertEquals(2, QueryInt('select trad_ocorrencias from traducoes'));
 
-    SourceVerse.Sintagmas[0].DisassociatePairs;
+    SourceVerse.Syntagms[0].DisassociatePairs;
     AssertTrue(Workspace.SaveAssociations(FManager, SourceVerse,
       DestinationVerse));
     AssertEquals(1, QueryInt('select trad_ocorrencias from traducoes'));
@@ -529,28 +529,28 @@ begin
   SourceVerse := TVerse.Create;
   DestinationVerse := TVerse.Create;
   try
-    SourceVerse.VersiculoPar := DestinationVerse;
-    SourceVerse.Texto := 'source';
-    DestinationVerse.Texto := 'target';
-    SourceVerse.Sintagmas[0].AddToSelection;
-    DestinationVerse.Sintagmas[0].AddToSelection;
-    SourceVerse.AssociarSintagmas;
+    SourceVerse.PairedVerse := DestinationVerse;
+    SourceVerse.Text := 'source';
+    DestinationVerse.Text := 'target';
+    SourceVerse.Syntagms[0].AddToSelection;
+    DestinationVerse.Syntagms[0].AddToSelection;
+    SourceVerse.AssociateSyntagms;
     Workspace.SaveAssociations(FManager, SourceVerse, DestinationVerse);
 
-    SourceVerse.AlterarTexto('changed');
+    SourceVerse.ChangeText('changed');
     AssertTrue(Workspace.SaveAssociations(FManager, SourceVerse,
       DestinationVerse));
     AssertEquals(0, QueryInt('select count(*) from traducoes'));
 
-    SourceVerse.Sintagmas[0].AddToSelection;
-    DestinationVerse.Sintagmas[0].AddToSelection;
-    SourceVerse.AssociarSintagmas;
+    SourceVerse.Syntagms[0].AddToSelection;
+    DestinationVerse.Syntagms[0].AddToSelection;
+    SourceVerse.AssociateSyntagms;
     AssertTrue(Workspace.SaveAssociations(FManager, SourceVerse,
       DestinationVerse));
     AssertEquals('changed', QueryString(
       'select lori_locucao from locucoes_origem'));
 
-    DestinationVerse.AlterarTexto('translated');
+    DestinationVerse.ChangeText('translated');
     AssertTrue(Workspace.SaveAssociations(FManager, SourceVerse,
       DestinationVerse));
     AssertEquals(0, QueryInt('select count(*) from traducoes'));
@@ -574,9 +574,9 @@ begin
   SourceVerse := TVerse.Create;
   DestinationVerse := TVerse.Create;
   try
-    SourceVerse.VersiculoPar := DestinationVerse;
-    SourceVerse.Texto := 'first second';
-    DestinationVerse.Texto := 'target';
+    SourceVerse.PairedVerse := DestinationVerse;
+    SourceVerse.Text := 'first second';
+    DestinationVerse.Text := 'target';
     FManager.AddPair('unrelated', 'keep');
 
     FailureReported := False;
@@ -592,11 +592,11 @@ begin
     AssertTrue('The workspace must remember that recovery is required',
       Workspace.LoadedAssociationsInvalid);
     AssertEquals('A corrupt suffix must not leave its valid prefix visible',
-      '', SourceVerse.Pares);
+      '', SourceVerse.Pairs);
 
     // This is what the explicit Clear command does even though the atomic
     // load deliberately left no partial associations in the Verse Pair.
-    SourceVerse.Modificado := True;
+    SourceVerse.Modified := True;
     AssertTrue('The corrected empty set must replace the corrupt canonical row',
       Workspace.SaveAssociations(FManager, SourceVerse, DestinationVerse));
     AssertFalse(Workspace.LoadedAssociationsInvalid);
@@ -617,13 +617,13 @@ var
 begin
   SourceVerse := TVerse.Create;
   try
-    SourceVerse.Texto := 'source<WG1>';
+    SourceVerse.Text := 'source<WG1>';
     FManager.AddPair('<wg1>', 'one');
     FManager.AddPair('<wg1>', 'one');
     FManager.AddPair('<wg1>', 'two');
 
     Alternatives := FManager.GetTranslationAlternatives(
-      SourceVerse.Sintagmas[0]);
+      SourceVerse.Syntagms[0]);
     AssertTrue(Pos('one (2)', Alternatives) > 0);
     AssertTrue(Pos('two (1)', Alternatives) > 0);
   finally
@@ -742,30 +742,30 @@ begin
   SourceVerse := TVerse.Create;
   DestinationVerse := TVerse.Create;
   try
-    SourceVerse.VersiculoPar := DestinationVerse;
-    SourceVerse.Texto :=
+    SourceVerse.PairedVerse := DestinationVerse;
+    SourceVerse.Text :=
       'λόγος<WG3056><WTN-NSM le="λόγος"> ' +
       'λόγου<WG3056><WTN-GSM le="λόγος"> ' +
       'καί<WG2532><WTCONJ le="καί"> plain plain ' +
       'both<WG1><WG2>! none';
-    DestinationVerse.Texto := 'palavra mas atual inédita';
+    DestinationVerse.Text := 'palavra mas atual inédita';
 
-    SourceVerse.Sintagmas[0].AddToSelection;
-    SourceVerse.Sintagmas[2].AddToSelection;
-    DestinationVerse.Sintagmas[0].AddToSelection;
-    SourceVerse.AssociarSintagmas;
-    SourceVerse.LimparSelecao;
-    DestinationVerse.LimparSelecao;
+    SourceVerse.Syntagms[0].AddToSelection;
+    SourceVerse.Syntagms[2].AddToSelection;
+    DestinationVerse.Syntagms[0].AddToSelection;
+    SourceVerse.AssociateSyntagms;
+    SourceVerse.ClearSelection;
+    DestinationVerse.ClearSelection;
 
-    SourceVerse.Sintagmas[4].AddToSelection;
-    DestinationVerse.Sintagmas[2].AddToSelection;
-    SourceVerse.AssociarSintagmas;
-    SourceVerse.LimparSelecao;
-    DestinationVerse.LimparSelecao;
+    SourceVerse.Syntagms[4].AddToSelection;
+    DestinationVerse.Syntagms[2].AddToSelection;
+    SourceVerse.AssociateSyntagms;
+    SourceVerse.ClearSelection;
+    DestinationVerse.ClearSelection;
 
-    SourceVerse.Sintagmas[6].AddToSelection;
-    DestinationVerse.Sintagmas[6].AddToSelection;
-    SourceVerse.AssociarSintagmas;
+    SourceVerse.Syntagms[6].AddToSelection;
+    DestinationVerse.Syntagms[6].AddToSelection;
+    SourceVerse.AssociateSyntagms;
 
     FManager.AddPair('<wg3056>', 'termo');
     FManager.AddPair('<wg3056>', 'termo');
@@ -842,17 +842,17 @@ begin
   SourceVerse := TVerse.Create;
   DestinationVerse := TVerse.Create;
   try
-    SourceVerse.VersiculoPar := DestinationVerse;
-    SourceVerse.Texto := 'δοῦλος<WTnnms l="δοῦλος">';
-    DestinationVerse.Texto := 'servo';
+    SourceVerse.PairedVerse := DestinationVerse;
+    SourceVerse.Text := 'δοῦλος<WTnnms l="δοῦλος">';
+    DestinationVerse.Text := 'servo';
 
-    SourceVerse.Sintagmas[0].AddToSelection;
-    DestinationVerse.Sintagmas[0].AddToSelection;
-    SourceVerse.AssociarSintagmas;
+    SourceVerse.Syntagms[0].AddToSelection;
+    DestinationVerse.Syntagms[0].AddToSelection;
+    SourceVerse.AssociateSyntagms;
 
     AssertEquals('Without Strong, plStrong falls back to text',
-      'δοῦλος', SourceVerse.Sintagmas[0].GetSuggestionKey(plStrong));
-    MemoryKey := SourceVerse.Sintagmas[0].GetSuggestionKey(plMetaData);
+      'δοῦλος', SourceVerse.Syntagms[0].GetSuggestionKey(plStrong));
+    MemoryKey := SourceVerse.Syntagms[0].GetSuggestionKey(plMetaData);
     AssertEquals('<wtnnms l="δοῦλος">', MemoryKey);
     FManager.AddPair(MemoryKey, 'servo');
 
@@ -879,19 +879,19 @@ begin
   SourceVerse := TVerse.Create;
   DestinationVerse := TVerse.Create;
   try
-    SourceVerse.VersiculoPar := DestinationVerse;
-    SourceVerse.Texto := 'word<WG1>';
-    DestinationVerse.Texto := 'que afligem-vos';
+    SourceVerse.PairedVerse := DestinationVerse;
+    SourceVerse.Text := 'word<WG1>';
+    DestinationVerse.Text := 'que afligem-vos';
 
-    SourceVerse.Sintagmas[0].AddToSelection;
-    DestinationVerse.Sintagmas[0].AddToSelection;
-    DestinationVerse.Sintagmas[2].AddToSelection;
-    SourceVerse.AssociarSintagmas;
+    SourceVerse.Syntagms[0].AddToSelection;
+    DestinationVerse.Syntagms[0].AddToSelection;
+    DestinationVerse.Syntagms[2].AddToSelection;
+    SourceVerse.AssociateSyntagms;
 
     AssertEquals('The text key must retain the suffix boundary marker',
-      'afligem-', DestinationVerse.Sintagmas[2].GetSuggestionKey(plText));
+      'afligem-', DestinationVerse.Syntagms[2].GetSuggestionKey(plText));
     AssertEquals('The metadata fallback does not retain the marker',
-      'afligem', DestinationVerse.Sintagmas[2].GetSuggestionKey(plMetaData));
+      'afligem', DestinationVerse.Syntagms[2].GetSuggestionKey(plMetaData));
 
     FManager.AddPair('<wg1>', 'que;afligem');
     FManager.AddPair('<wg1>', 'que;afligem-');
@@ -922,16 +922,16 @@ begin
   SourceVerse := TVerse.Create;
   DestinationVerse := TVerse.Create;
   try
-    SourceVerse.VersiculoPar := DestinationVerse;
-    SourceVerse.Texto :=
+    SourceVerse.PairedVerse := DestinationVerse;
+    SourceVerse.Text :=
       'common<WG10><WTN-NSM le="shared"> ' +
       'commonform<WG10><WTN-GSM le="shared"> ' +
       'rare<WG20> unseen<WG30> tied<WG40>';
-    DestinationVerse.Texto := 'new';
+    DestinationVerse.Text := 'new';
 
-    SourceVerse.Sintagmas[6].AddToSelection;
-    DestinationVerse.Sintagmas[0].AddToSelection;
-    SourceVerse.AssociarSintagmas;
+    SourceVerse.Syntagms[6].AddToSelection;
+    DestinationVerse.Syntagms[0].AddToSelection;
+    SourceVerse.AssociateSyntagms;
 
     FManager.AddPair('<wg10>', 'common translation');
     FManager.AddPair('<wg10>', 'common translation');

@@ -87,7 +87,7 @@ begin
 
   FSrcVerse := TVerse.Create(ScrollBoxSrcText);
   FDstVerse := TVerse.Create(ScrollBoxDstText);
-  FSrcVerse.VersiculoPar := FDstVerse;
+  FSrcVerse.PairedVerse := FDstVerse;
   FSrcVerse.ReadOnly := true;
   FDstVerse.ReadOnly := true;
   if Assigned(CurrentProject) then
@@ -118,13 +118,13 @@ end;
 
 procedure TFrmApplyPatch.FormShow(Sender: TObject);
 begin
-  FSrcVerse.Fonte := CurrentProject.GetTextFont(tbOrigem);
-  FDstVerse.Fonte := CurrentProject.GetTextFont(tbDestino);
-  FSrcVerse.PalavrasComStrongEmNegrito := CurrentProject.PalavrasComStrongEmNegrito;
+  FSrcVerse.Font := CurrentProject.GetTextFont(tbOrigem);
+  FDstVerse.Font := CurrentProject.GetTextFont(tbDestino);
+  FSrcVerse.BoldWordsWithStrong := CurrentProject.PalavrasComStrongEmNegrito;
   FSrcVerse.StrongsCountMode := CurrentProject.MostrarQtdStrongs;
   FDstVerse.StrongsCountMode := CurrentProject.MostrarQtdStrongs;
-  FSrcVerse.Ativo := true;
-  FDstVerse.Ativo := true;
+  FSrcVerse.Active := true;
+  FDstVerse.Active := true;
 
   // Configure FActualCommentsMemo with appropriate font settings
   FActualCommentsMemo.FontName := 'default';
@@ -165,17 +165,17 @@ end;
 
 procedure TFrmApplyPatch.LoadControlsFromPatch;
 begin
-  FSrcVerse.Texto := FPatch.SourceText[FIndex];
-  FDstVerse.Texto := FPatch.DestinationText[FIndex];
-  FSrcVerse.Pares := FPatch.Pairs[FIndex];
+  FSrcVerse.Text := FPatch.SourceText[FIndex];
+  FDstVerse.Text := FPatch.DestinationText[FIndex];
+  FSrcVerse.Pairs := FPatch.Pairs[FIndex];
   FActualCommentsMemo.SetCommentsText(FPatch.Comments[FIndex]);
 end;
 
 procedure TFrmApplyPatch.LoadControlsFromProject;
 begin
-  FSrcVerse.Texto := CurrentProject.GetVerseText(FPatch.Reference[FIndex], tbOrigem);
-  FDstVerse.Texto := CurrentProject.GetVerseText(FPatch.Reference[FIndex], tbDestino);
-  FSrcVerse.Pares := CurrentProject.GetPairs(FPatch.Reference[FIndex]);
+  FSrcVerse.Text := CurrentProject.GetVerseText(FPatch.Reference[FIndex], tbOrigem);
+  FDstVerse.Text := CurrentProject.GetVerseText(FPatch.Reference[FIndex], tbDestino);
+  FSrcVerse.Pairs := CurrentProject.GetPairs(FPatch.Reference[FIndex]);
   FActualCommentsMemo.SetCommentsText(CurrentProject.GetComments(FPatch.Reference[FIndex]));
 end;
 

@@ -475,12 +475,12 @@ begin
     Messages[0].Role := 'system';
     Messages[0].Content := FPrompt;
     Messages[1].Role := 'user';
-    if Assigned(Verse.VersiculoPar) then
-      Messages[1].Content := Format('Original: "%s"\nTranslated: "%s"',[Verse.TextoSimples, Verse.VersiculoPar.TextoSimples])
+    if Assigned(Verse.PairedVerse) then
+      Messages[1].Content := Format('Original: "%s"\nTranslated: "%s"',[Verse.PlainText, Verse.PairedVerse.PlainText])
     else
-      Messages[1].Content := Format('Original: "%s"\nTranslated: ""',[Verse.TextoSimples]);
+      Messages[1].Content := Format('Original: "%s"\nTranslated: ""',[Verse.PlainText]);
     
-    AIDebugLogFmt('[Association] PrepareRequest for verse: %s', [Verse.Referencia]);
+    AIDebugLogFmt('[Association] PrepareRequest for verse: %s', [Verse.Reference]);
     AIDebugLogFmt('[Association] System prompt length: %d chars', [Length(Messages[0].Content)]);
     AIDebugLogFmt('[Association] User message: %s', [Messages[1].Content]);
   end;
@@ -553,10 +553,10 @@ begin
   if not Assigned(Verse) then
     raise Exception.Create('ApplyResult called with nil Verse');
   Assoc := TAssociationResult(ResultObj);
-  if Verse.VersiculoPar = nil then
-    raise Exception.CreateFmt('ApplyResult: Verse has no paired verse. VerseRef=%s', [Verse.Referencia]);
+  if Verse.PairedVerse = nil then
+    raise Exception.CreateFmt('ApplyResult: Verse has no paired verse. VerseRef=%s', [Verse.Reference]);
   
-  AIDebugLogFmt('[Association] ApplyResult for verse: %s', [Verse.Referencia]);
+  AIDebugLogFmt('[Association] ApplyResult for verse: %s', [Verse.Reference]);
   AIDebugLogFmt('[Association] Processing %d pairs', [Length(Assoc.Pairs)]);
 
   try
@@ -576,16 +576,16 @@ begin
       TranslatedTexts := TStringList.Create;
       try
         CollectTexts(Assoc.Pairs[I].OriginalPhrase, Verse, OriginalTexts);
-        CollectTexts(Assoc.Pairs[I].TranslatedPhrase, Verse.VersiculoPar, TranslatedTexts);
+        CollectTexts(Assoc.Pairs[I].TranslatedPhrase, Verse.PairedVerse, TranslatedTexts);
         
         AIDebugLogVerboseFmt('[Association]   Original syntagms collected: %d', [OriginalTexts.Count]);
         AIDebugLogVerboseFmt('[Association]   Translated syntagms collected: %d', [TranslatedTexts.Count]);
         
         Verse.FindAndSelectSyntagms(OriginalTexts);
-        Verse.VersiculoPar.FindAndSelectSyntagms(TranslatedTexts);
+        Verse.PairedVerse.FindAndSelectSyntagms(TranslatedTexts);
 
-        OriginalSelectionCount := Verse.Selecao.Count;
-        TranslatedSelectionCount := Verse.VersiculoPar.Selecao.Count;
+        OriginalSelectionCount := Verse.Selection.Count;
+        TranslatedSelectionCount := Verse.PairedVerse.Selection.Count;
 
         AIDebugLogFmt('[Association]   Selection counts: original=%d/%d, translated=%d/%d',
                       [OriginalSelectionCount, OriginalTexts.Count,
@@ -598,29 +598,29 @@ begin
           Continue;
         end;
 
-        Verse.AssociarSintagmas;
+        Verse.AssociateSyntagms;
       finally
         OriginalTexts.Free;
         TranslatedTexts.Free;
-        Verse.LimparSelecao;
-        Verse.VersiculoPar.LimparSelecao;
+        Verse.ClearSelection;
+        Verse.PairedVerse.ClearSelection;
       end;
     end;
 
     // Association review should only expose the fields this flow owns.
     // Applying associations on temporary TVerse instances can normalize verse
     // text, but that normalization must not be treated as an AI text edit.
-    Assoc.PairsXML := Verse.Pares;
+    Assoc.PairsXML := Verse.Pairs;
     Assoc.SetAcceptedPairs(Assoc.PairsXML);
     if FIncludeComments then
       Assoc.SetAcceptedComments(Assoc.Comments);
     AIDebugLogFmt('[Association] Associations complete. PairsXML length: %d chars', [Length(Assoc.PairsXML)]);
-    AIDebugLogFmt('[Association] Pairs updated in memory for verse: %s (NOT saved to DB yet)', [Verse.Referencia]);
+    AIDebugLogFmt('[Association] Pairs updated in memory for verse: %s (NOT saved to DB yet)', [Verse.Reference]);
 
   except
     on E: Exception do
     begin
-      AIDebugLogFmt('[Association] Exception in ApplyResult for verse %s: %s', [Verse.Referencia, E.Message]);
+      AIDebugLogFmt('[Association] Exception in ApplyResult for verse %s: %s', [Verse.Reference, E.Message]);
       raise; // re-raise so manager can mark job as failed and preserve job for inspection
     end;
   end;

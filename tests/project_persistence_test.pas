@@ -316,31 +316,31 @@ begin
       'pare_texto_consulta2').Index;
     for Index := Low(Views) to High(Views) do
     begin
-      Views[Index].Texto := FPersistence.CurrentText(TextFields[Index]);
-      Views[Index].Modificado := False;
-      Views[Index].XMLModificado := False;
+      Views[Index].Text := FPersistence.CurrentText(TextFields[Index]);
+      Views[Index].Modified := False;
+      Views[Index].XMLModified := False;
     end;
-    Views[0].VersiculoPar := Views[1];
+    Views[0].PairedVerse := Views[1];
     Comments.Text := FPersistence.CurrentComments;
     Workspace.ApplyLoadedAssociations(Views[0], FPersistence.CurrentPairs);
 
     AssertFalse(Workspace.HasPendingChanges(FPersistence, nil, Comments,
       Views, TextFields, 0));
 
-    Views[2].Texto := 'changed query 1';
+    Views[2].Text := 'changed query 1';
     AssertTrue('Reference text 1 must participate in pending state',
       Workspace.HasPendingChanges(FPersistence, nil, Comments, Views,
         TextFields, 0));
-    Views[2].Texto := 'query 1';
+    Views[2].Text := 'query 1';
     AssertFalse('Restoring reference text 1 must clear pending state',
       Workspace.HasPendingChanges(FPersistence, nil, Comments, Views,
         TextFields, 0));
 
-    Views[3].Texto := 'changed query 2';
+    Views[3].Text := 'changed query 2';
     AssertTrue('Reference text 2 must participate in pending state',
       Workspace.HasPendingChanges(FPersistence, nil, Comments, Views,
         TextFields, 0));
-    Views[3].Texto := 'query 2';
+    Views[3].Text := 'query 2';
     AssertFalse(Workspace.HasPendingChanges(FPersistence, nil, Comments,
       Views, TextFields, 0));
 
@@ -352,26 +352,26 @@ begin
     AssertFalse(Workspace.HasPendingChanges(FPersistence, nil, Comments,
       Views, TextFields, 0));
 
-    Views[0].Sintagmas[0].AddToSelection;
-    Views[1].Sintagmas[0].AddToSelection;
-    Views[0].AssociarSintagmas;
+    Views[0].Syntagms[0].AddToSelection;
+    Views[1].Syntagms[0].AddToSelection;
+    Views[0].AssociateSyntagms;
     AssertTrue(
       'Associations with bracketed/italic syntagms must participate in pending state',
       Workspace.HasPendingChanges(FPersistence, nil, Comments, Views,
         TextFields, 0));
-    Views[0].LimparAssociacoes;
+    Views[0].ClearAssociations;
     AssertFalse('Restoring the original association set must clear pending state',
       Workspace.HasPendingChanges(FPersistence, nil, Comments, Views,
         TextFields, 0));
 
-    Views[0].Sintagmas[0].AddToSelection;
-    Views[1].Sintagmas[0].AddToSelection;
-    Views[0].AssociarSintagmas;
+    Views[0].Syntagms[0].AddToSelection;
+    Views[1].Syntagms[0].AddToSelection;
+    Views[0].AssociateSyntagms;
     AssertTrue('Saving must prepare an association containing an italic syntagm',
       Workspace.SaveBeforeScroll(FPersistence, nil, nil, Comments, Views,
         TextFields, 0, 1));
     AssertTrue(FPersistence.ContentUpdatesPending);
-    AssertEquals(Views[0].Pares, FPersistence.CurrentPairs);
+    AssertEquals(Views[0].Pairs, FPersistence.CurrentPairs);
   finally
     for Index := Low(Views) to High(Views) do
       Views[Index].Free;

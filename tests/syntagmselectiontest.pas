@@ -1,4 +1,4 @@
-﻿unit syntagmselectiontest;
+unit syntagmselectiontest;
 
 {$mode objfpc}{$H+}
 
@@ -52,8 +52,8 @@ begin
   Verse := TVerse.Create();
   Words := CreateWords(['minha', 'locucao']);
   try
-    Verse.Texto := 'minha querida locucao minha locucao';
-    ResultIndexes := ResolveSyntagmSelectionIndexes(Verse.Sintagmas, Words, False, False);
+    Verse.Text := 'minha querida locucao minha locucao';
+    ResultIndexes := ResolveSyntagmSelectionIndexes(Verse.Syntagms, Words, False, False);
     AssertIndexesEqual([6, 8], ResultIndexes);
   finally
     Words.Free;
@@ -70,8 +70,8 @@ begin
   Verse := TVerse.Create();
   Words := CreateWords(['minha', 'locucao']);
   try
-    Verse.Texto := 'minha querida locucao';
-    ResultIndexes := ResolveSyntagmSelectionIndexes(Verse.Sintagmas, Words, False, False);
+    Verse.Text := 'minha querida locucao';
+    ResultIndexes := ResolveSyntagmSelectionIndexes(Verse.Syntagms, Words, False, False);
     AssertIndexesEqual([0, 4], ResultIndexes);
   finally
     Words.Free;
@@ -88,8 +88,8 @@ begin
   Verse := TVerse.Create();
   Words := CreateWords(['a', 'missing', 'b']);
   try
-    Verse.Texto := 'x a y b';
-    ResultIndexes := ResolveSyntagmSelectionIndexes(Verse.Sintagmas, Words, True, False);
+    Verse.Text := 'x a y b';
+    ResultIndexes := ResolveSyntagmSelectionIndexes(Verse.Syntagms, Words, True, False);
     AssertIndexesEqual([2, 6], ResultIndexes);
   finally
     Words.Free;
@@ -106,10 +106,10 @@ begin
   Verse := TVerse.Create();
   Words := CreateWords(['word1', 'word2']);
   try
-    Verse.Texto := 'word1 word2 word1 word2';
-    Verse.Sintagmas[0].Pairs.Add(Verse.Sintagmas[0]);
-    Verse.Sintagmas[2].Pairs.Add(Verse.Sintagmas[2]);
-    ResultIndexes := ResolveSyntagmSelectionIndexes(Verse.Sintagmas, Words, False, False);
+    Verse.Text := 'word1 word2 word1 word2';
+    Verse.Syntagms[0].Pairs.Add(Verse.Syntagms[0]);
+    Verse.Syntagms[2].Pairs.Add(Verse.Syntagms[2]);
+    ResultIndexes := ResolveSyntagmSelectionIndexes(Verse.Syntagms, Words, False, False);
     AssertIndexesEqual([4, 6], ResultIndexes);
   finally
     Words.Free;
@@ -126,8 +126,8 @@ begin
   Verse := TVerse.Create();
   Words := CreateWords(['word1', 'word2']);
   try
-    Verse.Texto := 'word1,word2';
-    ResultIndexes := ResolveSyntagmSelectionIndexes(Verse.Sintagmas, Words, False, True);
+    Verse.Text := 'word1,word2';
+    ResultIndexes := ResolveSyntagmSelectionIndexes(Verse.Syntagms, Words, False, True);
     AssertIndexesEqual([0, 1, 2], ResultIndexes);
   finally
     Words.Free;
@@ -144,8 +144,8 @@ begin
   Verse := TVerse.Create();
   Words := CreateWords(['word1', 'word2']);
   try
-    Verse.Texto := 'word1 , word2';
-    ResultIndexes := ResolveSyntagmSelectionIndexes(Verse.Sintagmas, Words, False, True);
+    Verse.Text := 'word1 , word2';
+    ResultIndexes := ResolveSyntagmSelectionIndexes(Verse.Syntagms, Words, False, True);
     AssertIndexesEqual([0, 4], ResultIndexes);
   finally
     Words.Free;
@@ -162,8 +162,8 @@ begin
   Verse := TVerse.Create();
   Words := CreateWords(['word1', 'word2']);
   try
-    Verse.Texto := 'word1 - word2';
-    ResultIndexes := ResolveSyntagmSelectionIndexes(Verse.Sintagmas, Words, False, False);
+    Verse.Text := 'word1 - word2';
+    ResultIndexes := ResolveSyntagmSelectionIndexes(Verse.Syntagms, Words, False, False);
     AssertIndexesEqual([0, 4], ResultIndexes);
   finally
     Words.Free;

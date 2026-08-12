@@ -1,4 +1,4 @@
-﻿unit current_verse_workspace;
+unit current_verse_workspace;
 
 {$mode objfpc}{$H+}
 
@@ -138,10 +138,10 @@ begin
   if not Assigned(SourceVerse) or not Assigned(SourceVerse.Syntagms) then
     Exit;
   if FLoadedAssociationsInvalid then
-    Exit(SourceVerse.Modificado);
+    Exit(SourceVerse.Modified);
 
   // Pares represents the complete association graph. Unlike
-  // GetListaPares(plMetaData), it includes italic/bracketed syntagms and other
+  // GetPairsList(plMetaData), it includes italic/bracketed syntagms and other
   // elements that are persisted even though they do not feed suggestion
   // memory. The comparer normalizes pair and index order before comparing.
   if Assigned(FAssociationComparer) then
@@ -220,12 +220,12 @@ begin
   VerseViews[VerseIndex].OnExportText := OnExportText;
 
   if (VerseIndex <> SourceVerseIndex) and (VerseIndex <> DestinationVerseIndex) then
-    VerseViews[VerseIndex].CorDesassociado := clWindowText;
+    VerseViews[VerseIndex].UnassociatedColor := clWindowText;
 
   if (VerseIndex = DestinationVerseIndex) and Assigned(GetVerseView(VerseViews, SourceVerseIndex)) then
-    VerseViews[DestinationVerseIndex].VersiculoPar := GetVerseView(VerseViews, SourceVerseIndex)
+    VerseViews[DestinationVerseIndex].PairedVerse := GetVerseView(VerseViews, SourceVerseIndex)
   else if (VerseIndex = SourceVerseIndex) and Assigned(GetVerseView(VerseViews, DestinationVerseIndex)) then
-    VerseViews[SourceVerseIndex].VersiculoPar := GetVerseView(VerseViews, DestinationVerseIndex);
+    VerseViews[SourceVerseIndex].PairedVerse := GetVerseView(VerseViews, DestinationVerseIndex);
 end;
 
 procedure TCurrentVerseWorkspace.ApplyDisplayTags(
@@ -236,9 +236,9 @@ begin
   for Index := Low(VerseViews) to High(VerseViews) do
     if Assigned(VerseViews[Index]) then
       if DisplayTags then
-        VerseViews[Index].MostrarTags
+        VerseViews[Index].ShowTags
       else
-        VerseViews[Index].OcultarTags;
+        VerseViews[Index].HideTags;
 end;
 
 procedure TCurrentVerseWorkspace.ApplyTokenizerVersion(
@@ -268,7 +268,7 @@ var
 begin
   for Index := Low(VerseViews) to High(VerseViews) do
     if Assigned(VerseViews[Index]) then
-      VerseViews[Index].PalavrasComStrongEmNegrito := Enabled;
+      VerseViews[Index].BoldWordsWithStrong := Enabled;
 end;
 
 function TCurrentVerseWorkspace.ApplyEditedVerseText(
@@ -281,10 +281,10 @@ begin
   for Index := Low(VerseViews) to High(VerseViews) do
     if VerseViews[Index] = EditedVerse then
     begin
-      if Assigned(EditedVerse.VersiculoPar) then
-        EditedVerse.AlterarTexto(NewText)
+      if Assigned(EditedVerse.PairedVerse) then
+        EditedVerse.ChangeText(NewText)
       else
-        EditedVerse.Texto := NewText;
+        EditedVerse.Text := NewText;
       Exit(Index);
     end;
 end;
@@ -299,7 +299,7 @@ begin
     not Assigned(SourceVerse.Syntagms) then
     Exit;
 
-  CurrentAssociations := SourceVerse.Pares;
+  CurrentAssociations := SourceVerse.Pairs;
   Result := SavePairsValue(Persistence, CurrentAssociations);
 end;
 
@@ -340,8 +340,8 @@ begin
         Persistence.PostCurrentEdit;
         Result := True;
       end;
-      VerseView.Modificado := False;
-      VerseView.XMLModificado := False;
+      VerseView.Modified := False;
+      VerseView.XMLModified := False;
     end;
   end;
 end;
@@ -377,7 +377,7 @@ begin
   begin
     VerseView := VerseViews[SourceVerseIndex];
     if Assigned(VerseView) and Assigned(VerseView.Syntagms) and
-      AssociationsChanged(VerseView, VerseView.Pares) then
+      AssociationsChanged(VerseView, VerseView.Pairs) then
       Exit(True);
   end;
   if CommentsControl is TCommentsView then
@@ -418,7 +418,7 @@ begin
 
   // Validate the Verse Pair before taking the stable snapshot. A newly
   // created TVerse has no syntagm list yet, so reading Pares is not valid.
-  CurrentAssociations := SourceVerse.Pares;
+  CurrentAssociations := SourceVerse.Pairs;
   Result := SaveAssociationsValue(Suggester, SourceVerse, DestinationVerse,
     MemoryService, ReferenceID, CurrentAssociations);
 end;
@@ -472,9 +472,9 @@ begin
     // corrupt canonical row. Once the user explicitly changes that Verse
     // Pair, persist the replacement and rebuild instead of trying to remove
     // semantic pairs that were never accepted into the cache.
-    if not SourceVerse.Modificado then
+    if not SourceVerse.Modified then
       Exit;
-    Pairs := SourceVerse.GetListaPares(plMetaData);
+    Pairs := SourceVerse.GetPairsList(plMetaData);
     try
       if Assigned(MemoryService) then
         MemoryService.InvalidateReplay;
@@ -490,7 +490,7 @@ begin
     Exit;
   end;
 
-  Pairs := SourceVerse.GetListaPares(plMetaData);
+  Pairs := SourceVerse.GetPairsList(plMetaData);
   SeenPairs := TStringList.Create;
   try
     RequireValidPairs(FOldPairs);
@@ -584,7 +584,7 @@ begin
   // Keep one stable serialization for the whole operation. In particular,
   // do not enumerate SourceVerse.Syntagms again after SaveAssociations has
   // updated the SQLite-backed suggestion memory.
-  CurrentAssociations := SourceVerse.Pares;
+  CurrentAssociations := SourceVerse.Pairs;
 
   SourceTextChanged := Assigned(Persistence) and
     (SourceVerse.XML <> Persistence.CurrentText(
@@ -632,10 +632,10 @@ begin
     VerseView := VerseViews[Index];
     if Assigned(VerseView) then
     begin
-      VerseView.Ativo := False;
-      VerseView.Texto := Persistence.CurrentText(GetTextFieldIndex(TextFieldIndexes, Index));
-      VerseView.Referencia := FormattedReference;
-      VerseView.ReferenciaID := ReferenceID;
+      VerseView.Active := False;
+      VerseView.Text := Persistence.CurrentText(GetTextFieldIndex(TextFieldIndexes, Index));
+      VerseView.Reference := FormattedReference;
+      VerseView.ReferenceID := ReferenceID;
     end;
   end;
 
@@ -707,17 +707,17 @@ begin
     Exit;
 
   try
-    SourceVerse.Pares := Associations;
+    SourceVerse.Pairs := Associations;
     if Assigned(RenderBuffer) and
-      not RenderBuffer.AssociationsEquivalent(SourceVerse.Pares,
+      not RenderBuffer.AssociationsEquivalent(SourceVerse.Pairs,
         Associations) then
       raise Exception.Create(SAssociationDataNotCompletelyApplied);
-    FOldPairs := SourceVerse.GetListaPares(plMetaData);
-    FOldAssociations := SourceVerse.Pares;
+    FOldPairs := SourceVerse.GetPairsList(plMetaData);
+    FOldAssociations := SourceVerse.Pairs;
   except
     // SetPares is atomic, but explicitly clear here as well so this recovery
     // remains safe for Verse implementations created by older callers.
-    SourceVerse.Pares := '';
+    SourceVerse.Pairs := '';
     FOldPairs := TStringList.Create;
     FOldAssociations := '';
     FLoadedAssociationsInvalid := not Associations.IsEmpty;
@@ -736,10 +736,10 @@ begin
     VerseView := VerseViews[Index];
     if Assigned(VerseView) then
     begin
-      VerseView.Modificado := False;
-      VerseView.XMLModificado := False;
-      VerseView.Ativo := True;
-      VerseView.Renderizar;
+      VerseView.Modified := False;
+      VerseView.XMLModified := False;
+      VerseView.Active := True;
+      VerseView.Render;
     end;
   end;
 end;

@@ -166,11 +166,11 @@ begin
   if not Assigned(Verse) then
     Exit;
 
-  SetAcceptedSourceText(Verse.Texto);
-  SetAcceptedPairs(Verse.Pares);
+  SetAcceptedSourceText(Verse.Text);
+  SetAcceptedPairs(Verse.Pairs);
 
-  if Assigned(Verse.VersiculoPar) then
-    SetAcceptedDestinationText(Verse.VersiculoPar.Texto);
+  if Assigned(Verse.PairedVerse) then
+    SetAcceptedDestinationText(Verse.PairedVerse.Text);
 end;
 
 procedure TAIFlowResult.SetAcceptedSourceText(const Value: string);

@@ -656,7 +656,7 @@ begin
               [IntToHex(PtrUInt(Pointer(job)), SizeOf(Pointer)*2), job.Index, BoolToStr(Assigned(job.WorkItem), True), BoolToStr(Assigned(job.Verse), True), Length(job.RawContent),
                IntToHex(PtrUInt(Pointer(job.Flow)), SizeOf(Pointer)*2), IntToHex(PtrUInt(Pointer(job.Parsed)), SizeOf(Pointer)*2)]);
             if Assigned(job.Verse) then
-              AIDebugLogFmt('[Manager]   VersePtr=%s, Verse ref: %s (ID=%s)', [IntToHex(PtrUInt(Pointer(job.Verse)), SizeOf(Pointer)*2), job.Verse.Referencia, job.Verse.ReferenciaID]);
+              AIDebugLogFmt('[Manager]   VersePtr=%s, Verse ref: %s (ID=%s)', [IntToHex(PtrUInt(Pointer(job.Verse)), SizeOf(Pointer)*2), job.Verse.Reference, job.Verse.ReferenceID]);
 
             // Call ApplyResult on main thread; protect against exceptions coming from UI code
             job.Flow.ApplyResult(job.Parsed, job.Verse);

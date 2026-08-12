@@ -1,4 +1,4 @@
-﻿unit ai_batch_work_item;
+unit ai_batch_work_item;
 
 {$mode objfpc}{$H+}
 
@@ -53,11 +53,11 @@ begin
   VersePair := TVerse.Create();
   Verse.TokenizerVersion := FTokenizerVersion;
   VersePair.TokenizerVersion := FTokenizerVersion;
-  Verse.Texto := FVerseData.OriginalText;
-  VersePair.Texto := FVerseData.TranslatedText;
-  Verse.Referencia := FVerseData.ReferenceName;
-  Verse.ReferenciaID := FVerseData.ReferenceID;
-  Verse.VersiculoPar := VersePair;
+  Verse.Text := FVerseData.OriginalText;
+  VersePair.Text := FVerseData.TranslatedText;
+  Verse.Reference := FVerseData.ReferenceName;
+  Verse.ReferenceID := FVerseData.ReferenceID;
+  Verse.PairedVerse := VersePair;
 end;
 
 function TAIBatchWorkItemList.GetItem(Index: Integer): TAIBatchWorkItem;

@@ -197,7 +197,7 @@ begin
   inherited Create;
   FSourceVerse := TVerse.Create();
   FDestinationVerse := TVerse.Create();
-  FSourceVerse.VersiculoPar := FDestinationVerse;
+  FSourceVerse.PairedVerse := FDestinationVerse;
 end;
 
 destructor TVerseRenderBuffer.Destroy;
@@ -219,16 +219,16 @@ end;
 procedure TVerseRenderBuffer.LoadTexts(const OriginalText, TranslatedText: string);
 begin
   EnsureReady;
-  FSourceVerse.Texto := OriginalText;
-  FDestinationVerse.Texto := TranslatedText;
+  FSourceVerse.Text := OriginalText;
+  FDestinationVerse.Text := TranslatedText;
 end;
 
 procedure TVerseRenderBuffer.LoadPair(const OriginalText, TranslatedText,
   Associations: string);
 begin
   LoadTexts(OriginalText, TranslatedText);
-  FSourceVerse.Pares := Associations;
-  if not AssociationsEquivalent(FSourceVerse.Pares, Associations) then
+  FSourceVerse.Pairs := Associations;
+  if not AssociationsEquivalent(FSourceVerse.Pairs, Associations) then
     raise Exception.Create(SAssociationDataNotCompletelyApplied);
 end;
 
@@ -245,10 +245,10 @@ function TVerseRenderBuffer.ReplaceTextKeepingAssociations(const OriginalText,
 begin
   LoadPair(OriginalText, TranslatedText, Associations);
   if ReplaceSourceText then
-    FSourceVerse.AlterarTexto(NewText)
+    FSourceVerse.ChangeText(NewText)
   else
-    FDestinationVerse.AlterarTexto(NewText);
-  Result := FSourceVerse.Pares;
+    FDestinationVerse.ChangeText(NewText);
+  Result := FSourceVerse.Pairs;
 end;
 
 function TVerseRenderBuffer.TryReplaceTextKeepingAssociations(
@@ -283,7 +283,7 @@ begin
   FDestinationVerse.TokenizerVersion := NewVersion;
   FDestinationVerse.RetokenizePreservingAssociations;
   FSourceVerse.RetokenizePreservingAssociations;
-  Result := FSourceVerse.Pares;
+  Result := FSourceVerse.Pairs;
 end;
 
 function TVerseRenderBuffer.BuildInterlinearLine(const OriginalText,
@@ -323,7 +323,7 @@ function TVerseRenderBuffer.BuildDestinationLineONT(const OriginalText,
   MarkReusedStrongs, MarkUntranslatedStrongs: Boolean): string;
 begin
   LoadPair(OriginalText, TranslatedText, Associations);
-  Result := FDestinationVerse.GetLinhaONT(ExportMorphology, ExportNAAsItalics,
+  Result := FDestinationVerse.GetONTLine(ExportMorphology, ExportNAAsItalics,
     MarkReusedStrongs, MarkUntranslatedStrongs);
 end;
 
@@ -352,7 +352,7 @@ function TVerseRenderBuffer.ExtractPairsList(const OriginalText,
   TranslatedText, Associations: string; ListType: TPairsListType): TStringList;
 begin
   LoadPair(OriginalText, TranslatedText, Associations);
-  Result := FSourceVerse.GetListaPares(ListType);
+  Result := FSourceVerse.GetPairsList(ListType);
 end;
 
 function TVerseRenderBuffer.TryExtractPairsList(const OriginalText,

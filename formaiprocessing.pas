@@ -1,4 +1,4 @@
-﻿unit formaiprocessing;
+unit formaiprocessing;
 
 {$mode objfpc}{$H+}
 
@@ -860,22 +860,22 @@ begin
   if not Assigned(FDstVerse) then
     FDstVerse := TVerse.Create(ScrollBoxDstText);
 
-  FSrcVerse.VersiculoPar := FDstVerse;
+  FSrcVerse.PairedVerse := FDstVerse;
   FSrcVerse.ReadOnly := true;
   FDstVerse.ReadOnly := true;
   FSrcVerse.TokenizerVersion := FPreviewOptions.TokenizerVersion;
   FDstVerse.TokenizerVersion := FPreviewOptions.TokenizerVersion;
 
   if Assigned(FPreviewOptions.SourceFont) then
-    FSrcVerse.Fonte := FPreviewOptions.SourceFont;
+    FSrcVerse.Font := FPreviewOptions.SourceFont;
   if Assigned(FPreviewOptions.DestinationFont) then
-    FDstVerse.Fonte := FPreviewOptions.DestinationFont;
+    FDstVerse.Font := FPreviewOptions.DestinationFont;
 
-  FSrcVerse.PalavrasComStrongEmNegrito := FPreviewOptions.BoldStrongs;
+  FSrcVerse.BoldWordsWithStrong := FPreviewOptions.BoldStrongs;
   FSrcVerse.StrongsCountMode := FPreviewOptions.StrongsCountMode;
   FDstVerse.StrongsCountMode := FPreviewOptions.StrongsCountMode;
-  FSrcVerse.Ativo := true;
-  FDstVerse.Ativo := true;
+  FSrcVerse.Active := true;
+  FDstVerse.Active := true;
 end;
 
 procedure TFrmAIProcessing.LoadControlsFromBatch;
@@ -884,20 +884,20 @@ begin
   if (FIndex < 0) or (FIndex >= FBatch.Count) then Exit;
   
   // Set text first, then pairs so SetPares can properly select syntagms
-  FSrcVerse.Texto := FBatch.SourceText[FIndex];
-  FDstVerse.Texto := FBatch.DestinationText[FIndex];
+  FSrcVerse.Text := FBatch.SourceText[FIndex];
+  FDstVerse.Text := FBatch.DestinationText[FIndex];
   
   // Set pairs AFTER text so syntagms exist and can be selected
   if FBatch.Pairs[FIndex] <> '' then
   begin
-    FSrcVerse.Pares := FBatch.Pairs[FIndex];
+    FSrcVerse.Pairs := FBatch.Pairs[FIndex];
     AIDebugLogFmt('[LoadControlsFromBatch] Pairs loaded and rendered for index %d', [FIndex]);
   end
   else
   begin
     // Clear any previous selections if no pairs
-    FSrcVerse.LimparSelecao;
-    FDstVerse.LimparSelecao;
+    FSrcVerse.ClearSelection;
+    FDstVerse.ClearSelection;
     AIDebugLogFmt('[LoadControlsFromBatch] No pairs for index %d, cleared selections', [FIndex]);
   end;
   
@@ -909,9 +909,9 @@ begin
   EnsureVersesCreated;
   if (FIndex < 0) or (FIndex >= FOriginalData.Count) then Exit;
   
-  FSrcVerse.Texto := FOriginalData.SourceText[FIndex];
-  FDstVerse.Texto := FOriginalData.DestinationText[FIndex];
-  FSrcVerse.Pares := FOriginalData.Pairs[FIndex];
+  FSrcVerse.Text := FOriginalData.SourceText[FIndex];
+  FDstVerse.Text := FOriginalData.DestinationText[FIndex];
+  FSrcVerse.Pairs := FOriginalData.Pairs[FIndex];
   FActualCommentsMemo.SetCommentsText(FOriginalData.Comments[FIndex]);
 end;
 
@@ -1119,7 +1119,7 @@ begin
         Lines.Add(Format(SAIReviewAssociationSummaryFmt,
           [ProposedAssociations, CurrentAssociations]));
         Lines.Add(Format(SAIReviewAssociationProgressFmt,
-          [FSrcVerse.AndamentoAssociacao * 100]));
+          [FSrcVerse.AssociationProgress * 100]));
       end
       else if FlowName = 'translation' then
         Lines.Add(SAIReviewTranslationSummary);

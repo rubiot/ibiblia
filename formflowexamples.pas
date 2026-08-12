@@ -327,11 +327,11 @@ procedure TFrmFlowExamples.CreateVersePreview;
 begin
   FSourceVerse := TVerse.Create(FScrollBoxSource);
   FTargetVerse := TVerse.Create(FScrollBoxTarget);
-  FSourceVerse.VersiculoPar := FTargetVerse;
+  FSourceVerse.PairedVerse := FTargetVerse;
   FSourceVerse.ReadOnly := True;
   FTargetVerse.ReadOnly := True;
-  FSourceVerse.Ativo := True;
-  FTargetVerse.Ativo := True;
+  FSourceVerse.Active := True;
+  FTargetVerse.Active := True;
 end;
 
 procedure TFrmFlowExamples.ConfigureVersePreview;
@@ -342,10 +342,10 @@ begin
   FSourceVerse.TokenizerVersion := FProject.TokenizerVersion;
   FTargetVerse.TokenizerVersion := FProject.TokenizerVersion;
   if Assigned(FProject.GetTextFont(tbOrigem)) then
-    FSourceVerse.Fonte := FProject.GetTextFont(tbOrigem);
+    FSourceVerse.Font := FProject.GetTextFont(tbOrigem);
   if Assigned(FProject.GetTextFont(tbDestino)) then
-    FTargetVerse.Fonte := FProject.GetTextFont(tbDestino);
-  FSourceVerse.PalavrasComStrongEmNegrito := FProject.PalavrasComStrongEmNegrito;
+    FTargetVerse.Font := FProject.GetTextFont(tbDestino);
+  FSourceVerse.BoldWordsWithStrong := FProject.PalavrasComStrongEmNegrito;
   FSourceVerse.StrongsCountMode := FProject.MostrarQtdStrongs;
   FTargetVerse.StrongsCountMode := FProject.MostrarQtdStrongs;
 end;
@@ -400,24 +400,24 @@ begin
 
   if (Index < 0) or (Index > High(FExamples)) then
   begin
-    FSourceVerse.Texto := '';
-    FTargetVerse.Texto := '';
+    FSourceVerse.Text := '';
+    FTargetVerse.Text := '';
     FMemoExpected.Text := rsNoExamples;
     ShowPreviewStatus(rsNoExamples, clGray);
     UpdateButtons;
     Exit;
   end;
 
-  FSourceVerse.Texto := SourcePreviewText(Index);
-  FTargetVerse.Texto := TargetPreviewText(Index);
-  FSourceVerse.LimparAssociacoes;
+  FSourceVerse.Text := SourcePreviewText(Index);
+  FTargetVerse.Text := TargetPreviewText(Index);
+  FSourceVerse.ClearAssociations;
   FMemoExpected.Text := FExamples[Index].ExpectedResponse;
 
   if IsAssociationFlow then
   begin
     if HasVisualAssociationData(Index) then
     begin
-      FSourceVerse.Pares := FExamples[Index].PairsXml;
+      FSourceVerse.Pairs := FExamples[Index].PairsXml;
       ShowPreviewStatus(rsPreviewReady, clGreen);
     end
     else

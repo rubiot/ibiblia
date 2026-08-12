@@ -96,8 +96,7 @@ type
   TOnNovoVersiculoEvent = procedure (Sender: TProject) of object;
   TOnNovoVersiculoEvents = specialize TFPGList<TOnNovoVersiculoEvent>;
   TOnSintagmaClickEvent = procedure (Sender: TSyntagm) of object;
-  //TOnAlterarVersiculoEvent = procedure (Sender: TProject) of object;
-
+  TOnProjectVerseChangedEvent = procedure () of object;
   AVersiculo = array[tbOrigem..tbConsulta2] of TVerse;
   ACamposTexto = array[tbOrigem..tbConsulta2] of integer;
   STextosBiblicos = set of TTipoTextoBiblico;
@@ -113,7 +112,7 @@ type
     FMarker: string;
     FScrollEventsEnabled: boolean;
     FExportando: boolean;
-    FOnAlterarVersiculo: TOnAlterarVersiculoEvent;
+    FOnAlterarVersiculo: TOnProjectVerseChangedEvent;
     FDisplayTags: boolean;
     FSugerirAssociacaoAuto: boolean;
     FPalavrasComStrongEmNegrito: boolean;
@@ -196,7 +195,7 @@ type
     procedure SetParagraphMode(AValue: TParagraphMode);
     procedure SetTokenizerVersion(AValue: Integer);
     procedure SetVerseStrongsCountMode(AValue: TStrongsCountMode);
-    procedure SetOnAlterarVersiculo(const AValue: TOnAlterarVersiculoEvent);
+    procedure SetOnAlterarVersiculo(const AValue: TOnProjectVerseChangedEvent);
     procedure SetOnSintagmaClick(const AValue: TOnSintagmaClickEvent);
     procedure SetPalavrasComStrongEmNegrito(AValue: boolean);
     procedure SetStatus(const AValue: Integer);
@@ -242,7 +241,7 @@ type
     procedure OnCopyAssociationExample(Sender: TObject);
     procedure OnSwitchDestinationAndReference1Texts(Sender: TObject);
     procedure OnMudancaVersiculo(Sender: TObject; Node: TTreeNode);
-    procedure OnAlterarTextoVersiculo(Sender: TVerseMemo);
+    procedure OnChangeTextVersiculo(Sender: TVerseMemo);
     procedure OnExibirDefinicao(Sender: TObject);
     procedure OnDblClickVersiculo(Sender: TObject);
     procedure OnBibleTreePopupItemClick(Sender: TObject);
@@ -381,7 +380,7 @@ type
     property CanGoForward: Boolean read GetCanGoForward;
     property Modificado: boolean read GetModificado;
     property Arvore: TTreeView read FArvore write FArvore;
-    property OnAlterarVersiculo: TOnAlterarVersiculoEvent read FOnAlterarVersiculo write SetOnAlterarVersiculo;
+    property OnAlterarVersiculo: TOnProjectVerseChangedEvent read FOnAlterarVersiculo write SetOnAlterarVersiculo;
     property OnSintagmaClick: TOnSintagmaClickEvent read FOnSintagmaClick write SetOnSintagmaClick;
     property AtrasoExibicaoDefinicao: Cardinal read FAtrasoExibicao write SetAtrasoExibicao;
     property Ativo: boolean read FAtivo;
@@ -820,7 +819,7 @@ begin
   SourceVerse := FAVersiculo[tbOrigem];
   TargetVerse := FAVersiculo[tbDestino];
 
-  if (not Assigned(SourceVerse)) or (not Assigned(TargetVerse)) or (SourceVerse.VersiculoPar <> TargetVerse) then
+  if (not Assigned(SourceVerse)) or (not Assigned(TargetVerse)) or (SourceVerse.PairedVerse <> TargetVerse) then
     raise Exception.Create(SAssociationExampleRequiresPair);
 
   if not SourceVerse.HasAssociations then
@@ -828,12 +827,12 @@ begin
 
   Result.ReferenceId := ID;
   Result.ReferenceCaption := FormattedReference;
-  Result.SourceText := SourceVerse.TextoSimples;
-  Result.TargetText := TargetVerse.TextoSimples;
+  Result.SourceText := SourceVerse.PlainText;
+  Result.TargetText := TargetVerse.PlainText;
   Result.SourceXml := SourceVerse.XML;
   Result.TargetXml := TargetVerse.XML;
   Result.ExpectedResponse := SourceVerse.GetAssociationsJSON;
-  Result.PairsXml := SourceVerse.Pares;
+  Result.PairsXml := SourceVerse.Pairs;
 end;
 
 function TProject.BuildTranslationFlowExample: TAIFlowExample;
@@ -843,19 +842,19 @@ begin
   SourceVerse := FAVersiculo[tbOrigem];
   TargetVerse := FAVersiculo[tbDestino];
 
-  if (not Assigned(SourceVerse)) or (not Assigned(TargetVerse)) or (SourceVerse.VersiculoPar <> TargetVerse) then
+  if (not Assigned(SourceVerse)) or (not Assigned(TargetVerse)) or (SourceVerse.PairedVerse <> TargetVerse) then
     raise Exception.Create(STranslationExampleRequiresPair);
 
-  if Trim(TargetVerse.TextoSimples) = '' then
+  if Trim(TargetVerse.PlainText) = '' then
     raise Exception.Create(STranslationExampleRequiresText);
 
   Result.ReferenceId := ID;
   Result.ReferenceCaption := FormattedReference;
-  Result.SourceText := SourceVerse.TextoSimples;
-  Result.TargetText := TargetVerse.TextoSimples;
+  Result.SourceText := SourceVerse.PlainText;
+  Result.TargetText := TargetVerse.PlainText;
   Result.SourceXml := SourceVerse.XML;
   Result.TargetXml := TargetVerse.XML;
-  Result.ExpectedResponse := TargetVerse.TextoSimples;
+  Result.ExpectedResponse := TargetVerse.PlainText;
   Result.PairsXml := '';
 end;
 
@@ -1092,7 +1091,7 @@ begin
   FCurrentVerseWorkspace.ApplyStrongsCountMode(FAVersiculo, AValue);
 end;
 
-procedure TProject.SetOnAlterarVersiculo(const AValue: TOnAlterarVersiculoEvent);
+procedure TProject.SetOnAlterarVersiculo(const AValue: TOnProjectVerseChangedEvent);
 var
   TextType: TTipoTextoBiblico;
 begin
@@ -1101,7 +1100,7 @@ begin
 
   for TextType := Low(FAVersiculo) to High(FAVersiculo) do
     if assigned(FAVersiculo[TextType]) then
-      FAVersiculo[TextType].OnAlterarVersiculo := FOnAlterarVersiculo;
+      FAVersiculo[TextType].OnVerseChanged := FOnAlterarVersiculo;
 end;
 
 procedure TProject.OnNewVerseSubscribe(const AValue: TOnNovoVersiculoEvent);
@@ -2521,7 +2520,7 @@ begin
   end;
 
   if loadResult.DestinationTextEmpty then // open verse to edition if is empty
-    OnDblClickVersiculo(FAVersiculo[tbDestino].Painel);
+    OnDblClickVersiculo(FAVersiculo[tbDestino].Panel);
 
   for e in FOnNovoVersiculo do
     e(self);
@@ -2542,7 +2541,7 @@ begin
   // Save pairs from a specific verse object (works for temp or visual verses)
   // Assumes database cursor is already positioned at the correct record
   if Verse = nil then Exit;
-  FPersistence.WriteCurrentPairs(Verse.Pares);
+  FPersistence.WriteCurrentPairs(Verse.Pairs);
 end;
 
 procedure TProject.SaveText;
@@ -2655,11 +2654,11 @@ begin
      assigned(FAVersiculo[tbOrigem]) and
      ((Sender.VerseRef = FAVersiculo[tbOrigem]) or (Sender.VerseRef = FAVersiculo[tbDestino])) then
   begin
-    if (FRadioGroupSituacao.ItemIndex = 0) and (FAVersiculo[tbOrigem].AndamentoAssociacao > 0) then
+    if (FRadioGroupSituacao.ItemIndex = 0) and (FAVersiculo[tbOrigem].AssociationProgress > 0) then
       FRadioGroupSituacao.ItemIndex := 1 // associando
-    else if (FRadioGroupSituacao.ItemIndex > 1) and (FAVersiculo[tbOrigem].AndamentoAssociacao = 0) then
+    else if (FRadioGroupSituacao.ItemIndex > 1) and (FAVersiculo[tbOrigem].AssociationProgress = 0) then
       FRadioGroupSituacao.ItemIndex := 0 // sem associação
-    else if (FRadioGroupSituacao.ItemIndex = 1) and ((FAVersiculo[tbOrigem].AndamentoAssociacao = 1) or (FAVersiculo[tbDestino].AndamentoAssociacao = 1)) then
+    else if (FRadioGroupSituacao.ItemIndex = 1) and ((FAVersiculo[tbOrigem].AssociationProgress = 1) or (FAVersiculo[tbDestino].AssociationProgress = 1)) then
       FRadioGroupSituacao.ItemIndex := 3; // associado
   end;
 end;
@@ -2744,8 +2743,8 @@ begin
     Exit;
 
   IsPrimaryVerse := VerseType = tbOrigem;
-  CanUseAssociationExample := IsPrimaryVerse and Assigned(ClickedVerse.VersiculoPar) and ClickedVerse.HasAssociations;
-  CanUseTranslationExample := IsPrimaryVerse and Assigned(ClickedVerse.VersiculoPar) and (Trim(ClickedVerse.VersiculoPar.TextoSimples) <> '');
+  CanUseAssociationExample := IsPrimaryVerse and Assigned(ClickedVerse.PairedVerse) and ClickedVerse.HasAssociations;
+  CanUseTranslationExample := IsPrimaryVerse and Assigned(ClickedVerse.PairedVerse) and (Trim(ClickedVerse.PairedVerse.PlainText) <> '');
 
   if Assigned(FUseAsExampleMenuItems[VerseType]) then
   begin
@@ -2781,7 +2780,7 @@ begin
     Exit;
 
   example := Format('Original: "%s"'#13#10'Tradução: "%s"'#13#10'Resposta esperada: %s',
-    [originalVerse.TextoSimples, destinationVerse.TextoSimples, originalVerse.GetAssociationsJSON]);
+    [originalVerse.PlainText, destinationVerse.PlainText, originalVerse.GetAssociationsJSON]);
   Clipboard.AsText := example;
 end;
 
@@ -2798,8 +2797,8 @@ begin
     Exit;
 
   destinationText := FAVersiculo[tbDestino].XML;
-  FAVersiculo[tbDestino].AlterarTexto(FAVersiculo[tbConsulta1].XML);
-  FAVersiculo[tbConsulta1].Texto := '(KJF original) ' + destinationText;
+  FAVersiculo[tbDestino].ChangeText(FAVersiculo[tbConsulta1].XML);
+  FAVersiculo[tbConsulta1].Text := '(KJF original) ' + destinationText;
 end;
 
 procedure TProject.AttachProjectVersePopupMenu(texto: TTipoTextoBiblico);
@@ -2848,7 +2847,7 @@ begin
   GoToReference(FBibleTreeCoordinator.NodeToReferenceID(FEscopo, Node));
 end;
 
-procedure TProject.OnAlterarTextoVersiculo(Sender: TVerseMemo);
+procedure TProject.OnChangeTextVersiculo(Sender: TVerseMemo);
 var
   editedIndex: Integer;
   e: TOnNovoVersiculoEvent;
@@ -3226,7 +3225,7 @@ begin
   FTemporizador.OnTimer  := @OnExibirDefinicao;
 
   FVerseMemo := TVerseMemo.Create;
-  FVerseMemo.OnVerseTextModified := @OnAlterarTextoVersiculo;
+  FVerseMemo.OnVerseTextModified := @OnChangeTextVersiculo;
   FVerseMemo.OnPendingChange := @PendingEditorChanged;
 end;
 
@@ -3318,9 +3317,9 @@ begin
   for t := Low(FAVersiculo) to High(FAVersiculo) do
     if Assigned(FAVersiculo[t]) then
     begin
-      FAVersiculo[t].ReferenciaID := '';
-      FAVersiculo[t].Modificado := False;
-      FAVersiculo[t].XMLModificado := False;
+      FAVersiculo[t].ReferenceID := '';
+      FAVersiculo[t].Modified := False;
+      FAVersiculo[t].XMLModified := False;
     end;
 
   FFileName := Nome;
@@ -3362,7 +3361,7 @@ begin
     if not s.IsEmpty then
       f.Bold := Boolean(StrToInt(s));
 
-    FAVersiculo[t].Fonte := f;
+    FAVersiculo[t].Font := f;
 
     { definindo dicionários }
     AssignStrongDictionary(GetInfo(format('dicstrong%d', [t])), t);
@@ -3427,7 +3426,7 @@ begin
     GoToReference(FConfig.ReadMarker);
     if Assigned(FAVersiculo[tbOrigem]) and
       ((not Assigned(FAVersiculo[tbOrigem].Syntagms)) or
-       (FAVersiculo[tbOrigem].ReferenciaID <> ID)) then
+       (FAVersiculo[tbOrigem].ReferenceID <> ID)) then
       AfterVerseScroll(nil);
   finally
     FExportando := OldExporting;
@@ -3484,7 +3483,7 @@ begin
   for t:=low(FAVersiculo) to high(FAVersiculo) do
     if assigned(FAVersiculo[t]) then
       SetInfo(format('fonte%d.tamanho', [t]),
-        IntToStr(FAVersiculo[t].Fonte.Size));
+        IntToStr(FAVersiculo[t].Font.Size));
 
   FClosing := true;
   if assigned(FArvore) then
@@ -3780,12 +3779,12 @@ begin
   begin
     RecoveringInvalidAssociations :=
       FCurrentVerseWorkspace.LoadedAssociationsInvalid;
-    FAVersiculo[tbOrigem].LimparAssociacoes;
+    FAVersiculo[tbOrigem].ClearAssociations;
     if RecoveringInvalidAssociations then
       // An invalid row is shown without its partially applicable prefix.
       // Treat the explicit Clear command as the user's decision to replace
       // that stored row with an empty, valid association set.
-      FAVersiculo[tbOrigem].Modificado := True;
+      FAVersiculo[tbOrigem].Modified := True;
     SaveAssociations;
     SavePairs;
     if StatusAutomationEnabled then
@@ -3821,12 +3820,12 @@ procedure TProject.SuggestAssociationStatistical;
 begin
   EnsureAssociationMemoryFresh;
   FSuggestionManager.SuggestAssociations(FAVersiculo[tbOrigem]);
-  FAVersiculo[tbOrigem].Renderizar;
-  FAVersiculo[tbDestino].Renderizar;
+  FAVersiculo[tbOrigem].Render;
+  FAVersiculo[tbDestino].Render;
 
   if not StatusAutomationEnabled then exit;
 
-  if (FRadioGroupSituacao.ItemIndex = 0) and (FAVersiculo[tbOrigem].AndamentoAssociacao > 0) then
+  if (FRadioGroupSituacao.ItemIndex = 0) and (FAVersiculo[tbOrigem].AssociationProgress > 0) then
     FRadioGroupSituacao.ItemIndex := 1; // associando
 end;
 
@@ -3873,7 +3872,7 @@ begin
   end;
 
   v := FAVersiculo[tbOrigem];
-  if not Assigned(v) or not Assigned(v.VersiculoPar) then
+  if not Assigned(v) or not Assigned(v.PairedVerse) then
   begin
     ShowMessage(SNoVerseToAssociate);
     Exit;
@@ -4433,7 +4432,7 @@ begin
   if Assigned(FAVersiculo[texto]) then
   begin
     FAVersiculo[texto].TokenizerVersion := TokenizerVersion;
-    FAVersiculo[texto].OnAlterarVersiculo := FOnAlterarVersiculo;
+    FAVersiculo[texto].OnVerseChanged := FOnAlterarVersiculo;
     AttachProjectVersePopupMenu(texto);
   end;
 end;
@@ -4587,7 +4586,7 @@ begin
   for t:=tbOrigem to tbConsulta2 do
     if t in textos then
     begin
-      FAVersiculo[t].Fonte := fonte;
+      FAVersiculo[t].Font := fonte;
       SetInfo(format('fonte%d.nome', [t]), fonte.Name);
       SetInfo(format('fonte%d.tamanho', [t]), IntToStr(fonte.Size));
       SetInfo(format('fonte%d.bold', [t]), IntToStr(Ord(fonte.Bold)));
@@ -4619,7 +4618,7 @@ end;
 function TProject.GetTextFont(texto: TTipoTextoBiblico): TFont;
 begin
    if assigned(FAVersiculo[texto]) then
-     result := FAVersiculo[texto].Fonte
+     result := FAVersiculo[texto].Font
    else
      result := nil;
 end;
