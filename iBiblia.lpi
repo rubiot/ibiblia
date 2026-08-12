@@ -556,7 +556,7 @@
       <Unit35>
         <Filename Value="FormInterlinearVerseRules.pas"/>
         <IsPartOfProject Value="True"/>
-        <ComponentName Value="FrmInterlinearVerseRules"/>
+        <ComponentName Value="InterlinearVerseRulesForm"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <EditorIndex Value="24"/>

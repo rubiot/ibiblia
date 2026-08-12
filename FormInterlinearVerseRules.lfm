@@ -1,4 +1,4 @@
-object FrmInterlinearVerseRules: TFrmInterlinearVerseRules
+object InterlinearVerseRulesForm: TInterlinearVerseRulesForm
   Left = 498
   Height = 237
   Top = 314
@@ -9,7 +9,7 @@ object FrmInterlinearVerseRules: TFrmInterlinearVerseRules
   DesignTimePPI = 101
   Position = poOwnerFormCenter
   LCLVersion = '4.0.0.4'
-  object ButtonOK: TButton
+  object OkButton: TButton
     Left = 762
     Height = 26
     Top = 182
@@ -19,9 +19,9 @@ object FrmInterlinearVerseRules: TFrmInterlinearVerseRules
     Default = True
     ModalResult = 1
     TabOrder = 0
-    OnClick = ButtonOKClick
+    OnClick = OkButtonClick
   end
-  object Button2: TButton
+  object CancelButton: TButton
     Left = 654
     Height = 26
     Top = 182
@@ -32,16 +32,16 @@ object FrmInterlinearVerseRules: TFrmInterlinearVerseRules
     ModalResult = 2
     TabOrder = 1
   end
-  object PageControlVerseRules: TPageControl
+  object VerseRulesPageControl: TPageControl
     Left = 8
     Height = 164
     Top = 8
     Width = 840
-    ActivePage = TabSheet1
+    ActivePage = InterlinearTab
     Anchors = [akTop, akLeft, akRight, akBottom]
     TabIndex = 0
     TabOrder = 2
-    object TabSheet1: TTabSheet
+    object InterlinearTab: TTabSheet
       Caption = 'Interlinear'
       ClientHeight = 139
       ClientWidth = 832
@@ -73,7 +73,7 @@ object FrmInterlinearVerseRules: TFrmInterlinearVerseRules
         TabOrder = 0
       end
     end
-    object TabSheet2: TTabSheet
+    object IntralinearTab: TTabSheet
       Caption = 'Intralinear'
       ClientHeight = 139
       ClientWidth = 832

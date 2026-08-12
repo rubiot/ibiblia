@@ -1006,8 +1006,8 @@ end;
 
 procedure TChapterView.HandleVerseRules(Sender: TObject);
 begin
-  FrmInterlinearVerseRules.Project := FProject;
-  if FrmInterlinearVerseRules.ShowModal = mrOK then
+  InterlinearVerseRulesForm.Project := FProject;
+  if InterlinearVerseRulesForm.ShowModal = mrOK then
     LoadChapter;
 end;
 

@@ -10,17 +10,17 @@ uses
 
 type
 
-  { TFrmInterlinearVerseRules }
+  { TInterlinearVerseRulesForm }
 
-  TFrmInterlinearVerseRules = class(TForm)
-    ButtonOK: TButton;
-    Button2: TButton;
-    PageControlVerseRules: TPageControl;
+  TInterlinearVerseRulesForm = class(TForm)
+    OkButton: TButton;
+    CancelButton: TButton;
+    VerseRulesPageControl: TPageControl;
     StringGridIntralinear: TStringGrid;
     StringGridInterlinear: TStringGrid;
-    TabSheet1: TTabSheet;
-    TabSheet2: TTabSheet;
-    procedure ButtonOKClick(Sender: TObject);
+    InterlinearTab: TTabSheet;
+    IntralinearTab: TTabSheet;
+    procedure OkButtonClick(Sender: TObject);
   private
     FProject: TProject;
     procedure SetProject(AValue: TProject);
@@ -31,27 +31,27 @@ type
   end;
 
 var
-  FrmInterlinearVerseRules: TFrmInterlinearVerseRules;
+  InterlinearVerseRulesForm: TInterlinearVerseRulesForm;
 
 implementation
 
-{ TFrmInterlinearVerseRules }
+{ TInterlinearVerseRulesForm }
 
-procedure TFrmInterlinearVerseRules.ButtonOKClick(Sender: TObject);
+procedure TInterlinearVerseRulesForm.OkButtonClick(Sender: TObject);
 begin
   FProject.SetInfo('propriedades.interlinearview.verserules', GetVerseRules(StringGridInterlinear));
   FProject.SetInfo('propriedades.intralinearview.verserules', GetVerseRules(StringGridIntralinear));
 end;
 
-procedure TFrmInterlinearVerseRules.SetProject(AValue: TProject);
+procedure TInterlinearVerseRulesForm.SetProject(AValue: TProject);
 begin
   FProject := AValue;
   LoadGrid(StringGridInterlinear, FProject.GetInfo('propriedades.interlinearview.verserules'));
   LoadGrid(StringGridIntralinear, FProject.GetInfo('propriedades.intralinearview.verserules'));
-  PageControlVerseRules.PageIndex := IfThen(FProject.InterlinearMode = imInterlinear, 0, 1);
+  VerseRulesPageControl.PageIndex := IfThen(FProject.InterlinearMode = imInterlinear, 0, 1);
 end;
 
-procedure TFrmInterlinearVerseRules.LoadGrid(grid: TStringGrid; values: string
+procedure TInterlinearVerseRulesForm.LoadGrid(grid: TStringGrid; values: string
   );
 var
   rule: string;
@@ -77,7 +77,7 @@ begin
   grid.AutoSizeColumns;
 end;
 
-function TFrmInterlinearVerseRules.GetVerseRules(grid: TStringGrid): string;
+function TInterlinearVerseRulesForm.GetVerseRules(grid: TStringGrid): string;
 var
   i: integer;
 begin

@@ -98,7 +98,7 @@ begin
   Application.CreateForm(TFormAbout, FormAbout);
   Application.CreateForm(TFrmExportPatch, FrmExportPatch);
   Application.CreateForm(TFrmApplyPatch, FrmApplyPatch);
-  Application.CreateForm(TFrmInterlinearVerseRules, FrmInterlinearVerseRules);
+  Application.CreateForm(TInterlinearVerseRulesForm, InterlinearVerseRulesForm);
   Application.CreateForm(TFormPleaseWait, FormPleaseWait);
   Application.CreateForm(TFrmLLMOptions, FrmLLMOptions);
   Application.CreateForm(TFrmAIProcessing, FrmAIProcessing);

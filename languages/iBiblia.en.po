@@ -3500,67 +3500,67 @@ msgstr "https://github.com/rubiot/ibiblia"
 msgid "iBiblia version"
 msgstr "iBiblia version"
 
-#: tforminterlinearverserules.button2.caption
-msgctxt "tforminterlinearverserules.button2.caption"
+#: tinterlinearverserulesform.cancelbutton.caption
+msgctxt "tinterlinearverserulesform.cancelbutton.caption"
 msgid "Cancel"
 msgstr "Cancel"
 
-#: tforminterlinearverserules.buttonok.caption
-msgctxt "tforminterlinearverserules.buttonok.caption"
+#: tinterlinearverserulesform.okbutton.caption
+msgctxt "tinterlinearverserulesform.okbutton.caption"
 msgid "OK"
 msgstr "OK"
 
-#: tforminterlinearverserules.caption
+#: tinterlinearverserulesform.caption
 msgid "Interlinear view verse rules"
 msgstr "Interlinear view verse rules"
 
-#: tforminterlinearverserules.stringgridinterlinear.columns[0].title.caption
-msgctxt "tforminterlinearverserules.stringgridinterlinear.columns[0].title.caption"
+#: tinterlinearverserulesform.stringgridinterlinear.columns[0].title.caption
+msgctxt "tinterlinearverserulesform.stringgridinterlinear.columns[0].title.caption"
 msgid "From"
 msgstr "From"
 
-#: tforminterlinearverserules.stringgridinterlinear.columns[1].title.caption
-msgctxt "tforminterlinearverserules.stringgridinterlinear.columns[1].title.caption"
+#: tinterlinearverserulesform.stringgridinterlinear.columns[1].title.caption
+msgctxt "tinterlinearverserulesform.stringgridinterlinear.columns[1].title.caption"
 msgid "To"
 msgstr "To"
 
-#: tforminterlinearverserules.stringgridinterlinear.columns[2].title.caption
-msgctxt "tforminterlinearverserules.stringgridinterlinear.columns[2].title.caption"
+#: tinterlinearverserulesform.stringgridinterlinear.columns[2].title.caption
+msgctxt "tinterlinearverserulesform.stringgridinterlinear.columns[2].title.caption"
 msgid "Enable"
 msgstr "Enable"
 
-#: tforminterlinearverserules.stringgridinterlinear.columns[3].title.caption
-msgctxt "tforminterlinearverserules.stringgridinterlinear.columns[3].title.caption"
+#: tinterlinearverserulesform.stringgridinterlinear.columns[3].title.caption
+msgctxt "tinterlinearverserulesform.stringgridinterlinear.columns[3].title.caption"
 msgid "Export"
 msgstr "Export"
 
-#: tforminterlinearverserules.stringgridintralinear.columns[0].title.caption
-msgctxt "tforminterlinearverserules.stringgridintralinear.columns[0].title.caption"
+#: tinterlinearverserulesform.stringgridintralinear.columns[0].title.caption
+msgctxt "tinterlinearverserulesform.stringgridintralinear.columns[0].title.caption"
 msgid "From"
 msgstr "From"
 
-#: tforminterlinearverserules.stringgridintralinear.columns[1].title.caption
-msgctxt "tforminterlinearverserules.stringgridintralinear.columns[1].title.caption"
+#: tinterlinearverserulesform.stringgridintralinear.columns[1].title.caption
+msgctxt "tinterlinearverserulesform.stringgridintralinear.columns[1].title.caption"
 msgid "To"
 msgstr "To"
 
-#: tforminterlinearverserules.stringgridintralinear.columns[2].title.caption
-msgctxt "tforminterlinearverserules.stringgridintralinear.columns[2].title.caption"
+#: tinterlinearverserulesform.stringgridintralinear.columns[2].title.caption
+msgctxt "tinterlinearverserulesform.stringgridintralinear.columns[2].title.caption"
 msgid "Enable"
 msgstr "Enable"
 
-#: tforminterlinearverserules.stringgridintralinear.columns[3].title.caption
-msgctxt "tforminterlinearverserules.stringgridintralinear.columns[3].title.caption"
+#: tinterlinearverserulesform.stringgridintralinear.columns[3].title.caption
+msgctxt "tinterlinearverserulesform.stringgridintralinear.columns[3].title.caption"
 msgid "Export"
 msgstr "Export"
 
-#: tforminterlinearverserules.tabsheet1.caption
-msgctxt "tforminterlinearverserules.tabsheet1.caption"
+#: tinterlinearverserulesform.interlineartab.caption
+msgctxt "tinterlinearverserulesform.interlineartab.caption"
 msgid "Interlinear"
 msgstr "Interlinear"
 
-#: tforminterlinearverserules.tabsheet2.caption
-msgctxt "tforminterlinearverserules.tabsheet2.caption"
+#: tinterlinearverserulesform.intralineartab.caption
+msgctxt "tinterlinearverserulesform.intralineartab.caption"
 msgid "Intralinear"
 msgstr "Intralinear"
 
