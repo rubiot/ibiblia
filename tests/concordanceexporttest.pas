@@ -112,7 +112,12 @@ begin
     AssertTrue('Inflected forms must be one point larger than body text',
       Pos('{\fs26 ', Rtf) > 0);
     AssertTrue('Subsequent inflected forms need extra vertical separation',
-      Pos('\pard\li240\sb60\sa40 ', Rtf) > 0);
+      Pos('\pard\li240\sb60\sa40', Rtf) > 0);
+    AssertTrue('The first analytical form needs paragraph shading',
+      Pos('\pard\li240\sa40\shading10000\cfpat16\cbpat16 ', Rtf) > 0);
+    AssertTrue('Subsequent analytical forms need paragraph shading',
+      Pos('\pard\li240\sb60\sa40\shading10000\cfpat16\cbpat16 ',
+        Rtf) > 0);
     AssertTrue(Pos('logos', Rtf) > 0);
     AssertTrue(Pos('logou', Rtf) > 0);
     AssertTrue(Pos('3 occurrences', Rtf) > 0);
@@ -139,6 +144,8 @@ begin
     AssertTrue(Pos('word', Rtf) > 0);
     AssertTrue(Pos('5 occurrences', Rtf) > 0);
     AssertTrue(Pos('2 verses', Rtf) > 0);
+    AssertEquals('Synthetic output must not add analytical paragraph shading',
+      0, Pos('\shading10000\cfpat16\cbpat16 ', Rtf));
     AssertEquals('The synthetic output must render the translation once',
       Pos('word', Rtf), RPos('word', Rtf));
   finally

@@ -1313,9 +1313,11 @@ begin
       begin
         Phrase := TConcordancePhrase(Phrases[Index]);
         if Index > 0 then
-          Builder.Append('\pard\li240\sb60\sa40 ')
+          Builder.Append(
+            '\pard\li240\sb60\sa40\shading10000\cfpat16\cbpat16 ')
         else
-          Builder.Append('\pard\li240\sa40 ');
+          Builder.Append(
+            '\pard\li240\sa40\shading10000\cfpat16\cbpat16 ');
         Builder.Append('{\fs26 ');
         Builder.Append(GetPhraseRtf(Phrase));
         Builder.Append('}');
