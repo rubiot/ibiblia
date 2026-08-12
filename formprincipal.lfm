@@ -1,4 +1,4 @@
-object frmPrincipal: TfrmPrincipal
+object MainForm: TMainForm
   Left = 368
   Height = 716
   Top = 150
@@ -40,37 +40,37 @@ object frmPrincipal: TfrmPrincipal
     object ToolButton1: TToolButton
       Left = 37
       Top = 2
-      Action = ActionAbrirProjeto
+      Action = ActionOpenProject
     end
     object ToolButton2: TToolButton
       Left = 73
       Top = 2
-      Action = ActionFecharProjeto
+      Action = ActionCloseProject
     end
     object ToolButton3: TToolButton
       Left = 109
       Top = 2
-      Action = ActionNovoProjeto
+      Action = ActionNewProject
     end
     object ToolButton4: TToolButton
       Left = 253
       Top = 2
-      Action = ActionSalvarProjeto
+      Action = ActionSaveProject
     end
     object ToolButton5: TToolButton
       Left = 145
       Top = 2
-      Action = ActionSalvarProjetoComo
+      Action = ActionSaveProjectAs
     end
     object ToolButton6: TToolButton
       Left = 289
       Top = 2
-      Action = ActionSugerirAssociacao
+      Action = ActionSuggestAssociation
     end
     object ToolButton7: TToolButton
       Left = 181
       Top = 2
-      Action = ActionLimparAssociacoes
+      Action = ActionClearAssociations
     end
     object ToolButtonHistoryBack: TToolButton
       Left = 325
@@ -92,17 +92,17 @@ object frmPrincipal: TfrmPrincipal
     object ToolButton8: TToolButton
       Left = 405
       Top = 2
-      Action = ActionVersoAnterior
+      Action = ActionPreviousVerse
     end
     object ToolButton9: TToolButton
       Left = 441
       Top = 2
-      Action = ActionVersoSeguinte
+      Action = ActionNextVerse
     end
     object ToolButton10: TToolButton
       Left = 217
       Top = 2
-      Action = ActionReverterAssociacoes
+      Action = ActionRollbackCurrentVerse
     end
     object ToolButtonExit: TToolButton
       Left = 1
@@ -402,25 +402,25 @@ object frmPrincipal: TfrmPrincipal
     object MenuItem1: TMenuItem
       Caption = 'Project'
       object MenuItem2: TMenuItem
-        Action = ActionNovoProjeto
+        Action = ActionNewProject
       end
       object MenuItem3: TMenuItem
-        Action = ActionAbrirProjeto
+        Action = ActionOpenProject
       end
       object MenuItemRecent: TMenuItem
         Caption = 'Open recent'
       end
       object MenuItem9: TMenuItem
-        Action = ActionSalvarProjeto
+        Action = ActionSaveProject
       end
       object MenuItem8: TMenuItem
-        Action = ActionFecharProjeto
+        Action = ActionCloseProject
       end
       object MenuItem19: TMenuItem
-        Action = ActionPropProjeto
+        Action = ActionProjectProperties
       end
       object MenuItem16: TMenuItem
-        Action = ActionExportar
+        Action = ActionExportProject
         Caption = 'Export project...'
       end
       object MenuItem18: TMenuItem
@@ -447,23 +447,23 @@ object frmPrincipal: TfrmPrincipal
           Caption = 'Unregister .bib files'
         end
         object MenuItem26: TMenuItem
-          Action = ActionRecriarBaseSugestoes
+          Action = ActionRebuildSuggestionDatabase
         end
       end
       object MenuItem4: TMenuItem
-        Action = ActionSair
+        Action = ActionExit
       end
     end
     object MenuItem10: TMenuItem
       Caption = 'Edit'
       object MenuItem12: TMenuItem
-        Action = ActionReverterAssociacoes
+        Action = ActionRollbackCurrentVerse
       end
       object MenuItem11: TMenuItem
-        Action = ActionSugerirAssociacao
+        Action = ActionSuggestAssociation
       end
       object MenuItem13: TMenuItem
-        Action = ActionLimparAssociacoes
+        Action = ActionClearAssociations
       end
     end
     object MenuItem5: TMenuItem
@@ -478,16 +478,16 @@ object frmPrincipal: TfrmPrincipal
         Caption = '-'
       end
       object MenuItem6: TMenuItem
-        Action = ActionVersoAnterior
+        Action = ActionPreviousVerse
       end
       object MenuItem7: TMenuItem
-        Action = ActionVersoSeguinte
+        Action = ActionNextVerse
       end
       object MenuItem14: TMenuItem
-        Action = ActionVersoPrimeiro
+        Action = ActionFirstVerse
       end
       object MenuItem15: TMenuItem
-        Action = ActionVersoUltimo
+        Action = ActionLastVerse
       end
     end
     object MenuItem20: TMenuItem
@@ -570,10 +570,10 @@ object frmPrincipal: TfrmPrincipal
         Hint = 'Keeps iBiblia synchronized to theWord''s current verse'
         OnClick = MenuItemSynciBibliaClick
       end
-      object MenuItemStrongNegrito: TMenuItem
+      object MenuItemBoldStrongs: TMenuItem
         Caption = 'Words with strongs in bold'
         Hint = 'Words with associated strong''s tags are displayed in bold font'
-        OnClick = MenuItemStrongNegritoClick
+        OnClick = MenuItemBoldStrongsClick
       end
       object MenuItemAlwaysOnTop: TMenuItem
         Caption = 'Always on top'
@@ -592,47 +592,47 @@ object frmPrincipal: TfrmPrincipal
   object ActionList1: TActionList
     Left = 42
     Top = 202
-    object ActionNovoProjeto: TAction
+    object ActionNewProject: TAction
       Caption = 'New...'
       Hint = 'Create new association project'
       ImageIndex = 6
       ShortCut = 16462
-      OnExecute = ActionNovoProjetoExecute
+      OnExecute = ActionNewProjectExecute
     end
-    object ActionSalvarProjetoComo: TAction
+    object ActionSaveProjectAs: TAction
       Caption = 'Save as...'
       Enabled = False
       Hint = 'Save as a new project'
       ImageIndex = 3
-      OnExecute = ActionSalvarProjetoComoExecute
+      OnExecute = ActionSaveProjectAsExecute
     end
-    object ActionAbrirProjeto: TAction
+    object ActionOpenProject: TAction
       Caption = 'Open...'
       Hint = 'Open an existent project'
       ImageIndex = 0
       ShortCut = 16449
-      OnExecute = ActionAbrirProjetoExecute
+      OnExecute = ActionOpenProjectExecute
     end
-    object ActionFecharProjeto: TAction
+    object ActionCloseProject: TAction
       Caption = 'Close'
       Enabled = False
       Hint = 'Close current project'
       ImageIndex = 1
       ShortCut = 16499
-      OnExecute = ActionFecharProjetoExecute
+      OnExecute = ActionCloseProjectExecute
     end
-    object ActionPropProjeto: TAction
+    object ActionProjectProperties: TAction
       Caption = 'Settings...'
       Enabled = False
       Hint = 'Current project settings...'
       ShortCut = 16464
-      OnExecute = ActionPropProjetoExecute
+      OnExecute = ActionProjectPropertiesExecute
     end
-    object ActionSair: TAction
+    object ActionExit: TAction
       Caption = 'Exit'
       Hint = 'Exit the program'
       ImageIndex = 10
-      OnExecute = ActionSairExecute
+      OnExecute = ActionExitExecute
     end
     object ActionHistoryBack: TAction
       Caption = 'Back'
@@ -648,103 +648,103 @@ object frmPrincipal: TfrmPrincipal
       ImageIndex = 8
       OnExecute = ActionHistoryForwardExecute
     end
-    object ActionVersoPrimeiro: TAction
+    object ActionFirstVerse: TAction
       Caption = 'First'
       Enabled = False
       Hint = 'Go to first verse'
-      OnExecute = ActionVersoPrimeiroExecute
+      OnExecute = ActionFirstVerseExecute
     end
-    object ActionVersoUltimo: TAction
+    object ActionLastVerse: TAction
       Caption = 'Last'
       Enabled = False
       Hint = 'Go to last verse'
-      OnExecute = ActionVersoUltimoExecute
+      OnExecute = ActionLastVerseExecute
     end
-    object ActionVersoSeguinte: TAction
+    object ActionNextVerse: TAction
       Caption = 'Next'
       Enabled = False
       Hint = 'Next verse'
       ImageIndex = 8
       ShortCut = 34
-      OnExecute = ActionVersoSeguinteExecute
+      OnExecute = ActionNextVerseExecute
     end
-    object ActionVersoAnterior: TAction
+    object ActionPreviousVerse: TAction
       Caption = 'Previous'
       Enabled = False
       Hint = 'Previous verse'
       ImageIndex = 7
       ShortCut = 33
-      OnExecute = ActionVersoAnteriorExecute
+      OnExecute = ActionPreviousVerseExecute
     end
-    object ActionSugerirAssociacao: TAction
+    object ActionSuggestAssociation: TAction
       Caption = 'Auto-associate'
       Enabled = False
       Hint = 'Auto associate verse'
       ImageIndex = 4
       ShortCut = 114
-      OnExecute = ActionSugerirAssociacaoExecute
+      OnExecute = ActionSuggestAssociationExecute
     end
-    object ActionQuandoNovoVersiculo: TAction
-      Caption = 'ActionQuandoNovoVersiculo'
-      OnExecute = ActionQuandoNovoVersiculoExecute
+    object ActionNewVerse: TAction
+      Caption = 'ActionNewVerse'
+      OnExecute = ActionNewVerseExecute
     end
-    object ActionSalvarProjeto: TAction
+    object ActionSaveProject: TAction
       Caption = 'Save'
       Enabled = False
       Hint = 'Save changes'
       ImageIndex = 2
       ShortCut = 16467
-      OnExecute = ActionSalvarProjetoExecute
+      OnExecute = ActionSaveProjectExecute
     end
-    object ActionReverterAssociacoes: TAction
+    object ActionRollbackCurrentVerse: TAction
       Caption = 'Rollback'
       Enabled = False
       Hint = 'Rollback changes'
       ImageIndex = 9
       ShortCut = 116
-      OnExecute = ActionReverterAssociacoesExecute
+      OnExecute = ActionRollbackCurrentVerseExecute
     end
-    object ActionLimparAssociacoes: TAction
+    object ActionClearAssociations: TAction
       Caption = 'Clear'
       Enabled = False
       Hint = 'Clear verse associations'
       ImageIndex = 5
       ShortCut = 113
-      OnExecute = ActionLimparAssociacoesExecute
+      OnExecute = ActionClearAssociationsExecute
     end
-    object ActionExportarDestinoComStrongs: TAction
+    object ActionExportDestinationWithStrongs: TAction
       Caption = 'Export destination text'
       Enabled = False
-      OnExecute = ActionExportarDestinoComStrongsExecute
+      OnExecute = ActionExportDestinationWithStrongsExecute
     end
-    object ActionExportarTextoInterlinear: TAction
+    object ActionExportInterlinearText: TAction
       Caption = 'Export interlinear text'
       Enabled = False
-      OnExecute = ActionExportarTextoInterlinearExecute
+      OnExecute = ActionExportInterlinearTextExecute
     end
-    object ActionExportar: TAction
+    object ActionExportProject: TAction
       Caption = 'Export...'
       Enabled = False
       ShortCut = 16453
-      OnExecute = ActionExportarExecute
+      OnExecute = ActionExportProjectExecute
     end
-    object ActionMesclarProjetos: TAction
+    object ActionMergeProjects: TAction
       Caption = 'Merge projects...'
       Enabled = False
-      OnExecute = ActionMesclarProjetosExecute
+      OnExecute = ActionMergeProjectsExecute
     end
-    object ActionRecriarBaseSugestoes: TAction
+    object ActionRebuildSuggestionDatabase: TAction
       Caption = 'Recreate association memory'
-      OnExecute = ActionRecriarBaseSugestoesExecute
+      OnExecute = ActionRebuildSuggestionDatabaseExecute
     end
     object ActionSyncTheWordVerse: TAction
       Caption = 'ActionSyncTheWordVerse'
       OnExecute = ActionSyncTheWordVerseExecute
     end
-    object ActionMostrarTags: TAction
-      Caption = 'ActionMostrarTags'
+    object ActionShowTags: TAction
+      Caption = 'ActionShowTags'
       ShortCut = 119
-      OnExecute = ActionMostrarTagsExecute
+      OnExecute = ActionShowTagsExecute
     end
     object ActionExportPatch: TAction
       Caption = 'Create patch...'

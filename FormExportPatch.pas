@@ -90,24 +90,24 @@ var
   ref: string;
 begin
   result := TPatchFile.Create;
-  result.StatusCatalog := SaveStatusDefinitions(ProjetoAtual.GetStatusDefinitions);
+  result.StatusCatalog := SaveStatusDefinitions(CurrentProject.GetStatusDefinitions);
   refs := FBibleTreeView.VerseList;
   try
-    ProjetoAtual.StartScrollingSession;
+    CurrentProject.StartScrollingSession;
     for ref in refs do
     begin
-      ProjetoAtual.GoToReference(ref);
-      DebugLn('exporting %s (%s)', [ref, ProjetoAtual.FormattedReference]);
+      CurrentProject.GoToReference(ref);
+      DebugLn('exporting %s (%s)', [ref, CurrentProject.FormattedReference]);
       result.Add(ref,
-                 ProjetoAtual.GetVerseText(tbOrigem),
-                 ProjetoAtual.GetVerseText(tbDestino),
-                 ProjetoAtual.Pairs,
-                 ProjetoAtual.Comments,
-                 ProjetoAtual.Status
+                 CurrentProject.GetVerseText(tbOrigem),
+                 CurrentProject.GetVerseText(tbDestino),
+                 CurrentProject.Pairs,
+                 CurrentProject.Comments,
+                 CurrentProject.Status
                 );
     end;
   finally
-    ProjetoAtual.FinishScrollingSession;
+    CurrentProject.FinishScrollingSession;
     refs.Free;
   end;
 end;
@@ -128,9 +128,9 @@ end;
 procedure TFrmExportPatch.FormShow(Sender: TObject);
 begin
   ApplyLocalizedCaptions;
-  Scope := ProjetoAtual.Escopo;
+  Scope := CurrentProject.Escopo;
   Position := poScreenCenter; // necessary to force alignment after setting height
-  Height := Trunc(FrmPrincipal.Height * 0.9);
+  Height := Trunc(MainForm.Height * 0.9);
   LayoutControls;
   Position := poMainFormCenter;
 end;

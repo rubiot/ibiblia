@@ -89,7 +89,7 @@ begin
   {$ENDIF}
 
   Application.Initialize;
-  Application.CreateForm(TFrmPrincipal, FrmPrincipal);
+  Application.CreateForm(TMainForm, MainForm);
   Application.CreateForm(TFrmDictionaryPopup, FrmDictionaryPopup);
   Application.CreateForm(TFrmProjectProperties, FrmProjectProperties);
   Application.CreateForm(TFrmNewProject, FrmNewProject);

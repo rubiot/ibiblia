@@ -95,7 +95,7 @@ begin
   if Key = VK_ESCAPE then
   begin
     Visible := false;
-    FrmPrincipal.SetFocus;
+    MainForm.SetFocus;
   end;
 end;
 

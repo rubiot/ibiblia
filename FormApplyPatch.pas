@@ -90,8 +90,8 @@ begin
   FSrcVerse.VersiculoPar := FDstVerse;
   FSrcVerse.ReadOnly := true;
   FDstVerse.ReadOnly := true;
-  if Assigned(ProjetoAtual) then
-    tokenizerVersion := ProjetoAtual.TokenizerVersion
+  if Assigned(CurrentProject) then
+    tokenizerVersion := CurrentProject.TokenizerVersion
   else
     tokenizerVersion := TTokenizerFactory.PreferredVersion;
   FSrcVerse.TokenizerVersion := tokenizerVersion;
@@ -118,11 +118,11 @@ end;
 
 procedure TFrmApplyPatch.FormShow(Sender: TObject);
 begin
-  FSrcVerse.Fonte := ProjetoAtual.GetTextFont(tbOrigem);
-  FDstVerse.Fonte := ProjetoAtual.GetTextFont(tbDestino);
-  FSrcVerse.PalavrasComStrongEmNegrito := ProjetoAtual.PalavrasComStrongEmNegrito;
-  FSrcVerse.StrongsCountMode := ProjetoAtual.MostrarQtdStrongs;
-  FDstVerse.StrongsCountMode := ProjetoAtual.MostrarQtdStrongs;
+  FSrcVerse.Fonte := CurrentProject.GetTextFont(tbOrigem);
+  FDstVerse.Fonte := CurrentProject.GetTextFont(tbDestino);
+  FSrcVerse.PalavrasComStrongEmNegrito := CurrentProject.PalavrasComStrongEmNegrito;
+  FSrcVerse.StrongsCountMode := CurrentProject.MostrarQtdStrongs;
+  FDstVerse.StrongsCountMode := CurrentProject.MostrarQtdStrongs;
   FSrcVerse.Ativo := true;
   FDstVerse.Ativo := true;
 
@@ -146,11 +146,11 @@ begin
     0: LoadControlsFromPatch;
     1: LoadControlsFromProject;
   end;
-  SetLabelColor(LabelSrcText,      ProjetoAtual.GetVerseText(FPatch.Reference[FIndex], tbOrigem ) = FPatch.SourceText[FIndex]);
-  SetLabelColor(LabelDstText,      ProjetoAtual.GetVerseText(FPatch.Reference[FIndex], tbDestino) = FPatch.DestinationText[FIndex]);
-  SetLabelColor(LabelAssociations, ProjetoAtual.GetPairs           (FPatch.Reference[FIndex]           ) = FPatch.Pairs[FIndex]);
-  SetLabelColor(LabelComments,     ProjetoAtual.GetComments        (FPatch.Reference[FIndex]           ) = FPatch.Comments[FIndex]);
-  SetLabelColor(LabelStatus,       IntToStr(ProjetoAtual.GetStatus(FPatch.Reference[FIndex])           ) = FPatch.Status[FIndex]);
+  SetLabelColor(LabelSrcText,      CurrentProject.GetVerseText(FPatch.Reference[FIndex], tbOrigem ) = FPatch.SourceText[FIndex]);
+  SetLabelColor(LabelDstText,      CurrentProject.GetVerseText(FPatch.Reference[FIndex], tbDestino) = FPatch.DestinationText[FIndex]);
+  SetLabelColor(LabelAssociations, CurrentProject.GetPairs           (FPatch.Reference[FIndex]           ) = FPatch.Pairs[FIndex]);
+  SetLabelColor(LabelComments,     CurrentProject.GetComments        (FPatch.Reference[FIndex]           ) = FPatch.Comments[FIndex]);
+  SetLabelColor(LabelStatus,       IntToStr(CurrentProject.GetStatus(FPatch.Reference[FIndex])           ) = FPatch.Status[FIndex]);
 end;
 
 procedure TFrmApplyPatch.OnVerseChange(index: integer);
@@ -173,10 +173,10 @@ end;
 
 procedure TFrmApplyPatch.LoadControlsFromProject;
 begin
-  FSrcVerse.Texto := ProjetoAtual.GetVerseText(FPatch.Reference[FIndex], tbOrigem);
-  FDstVerse.Texto := ProjetoAtual.GetVerseText(FPatch.Reference[FIndex], tbDestino);
-  FSrcVerse.Pares := ProjetoAtual.GetPairs(FPatch.Reference[FIndex]);
-  FActualCommentsMemo.SetCommentsText(ProjetoAtual.GetComments(FPatch.Reference[FIndex]));
+  FSrcVerse.Texto := CurrentProject.GetVerseText(FPatch.Reference[FIndex], tbOrigem);
+  FDstVerse.Texto := CurrentProject.GetVerseText(FPatch.Reference[FIndex], tbDestino);
+  FSrcVerse.Pares := CurrentProject.GetPairs(FPatch.Reference[FIndex]);
+  FActualCommentsMemo.SetCommentsText(CurrentProject.GetComments(FPatch.Reference[FIndex]));
 end;
 
 function TFrmApplyPatch.LoadPatch(filename: string): boolean;
@@ -184,7 +184,7 @@ begin
   if assigned(FPatch) then
     FPatch.Free;
 
-  FPatch := TPatchFile.Create(filename, ProjetoAtual);
+  FPatch := TPatchFile.Create(filename, CurrentProject);
   if FPatch.SourceText.Count = 0 then
   begin
     MessageDlg(SInfo, SNoUpdatedVersesOnPatch, mtInformation, [mbOK], 0);
@@ -207,7 +207,7 @@ var
 begin
   indexes := FBibleTreeView.IndexesList;
   try
-    ProjetoAtual.ApplyProjectPatch(FPatch, indexes);
+    CurrentProject.ApplyProjectPatch(FPatch, indexes);
   finally
     indexes.Free;
     FreeAndNil(FPatch);

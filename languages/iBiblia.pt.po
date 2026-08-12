@@ -3760,393 +3760,393 @@ msgctxt "tfrmnewproject.radiogroupscope.caption"
 msgid "Scope"
 msgstr "Escopo"
 
-#: tfrmprincipal.actionabrirprojeto.caption
+#: tmainform.actionopenproject.caption
 msgid "Open..."
 msgstr "Abrir..."
 
-#: tfrmprincipal.actionabrirprojeto.hint
+#: tmainform.actionopenproject.hint
 msgid "Open an existent project"
 msgstr "Abrir um projeto existente"
 
-#: tfrmprincipal.actionapplypatch.caption
-msgctxt "tfrmprincipal.actionapplypatch.caption"
+#: tmainform.actionapplypatch.caption
+msgctxt "tmainform.actionapplypatch.caption"
 msgid "Apply patch..."
 msgstr "Aplicar patch..."
 
-#: tfrmprincipal.actionexportar.caption
+#: tmainform.actionexportproject.caption
 msgid "Export..."
 msgstr "Exportar..."
 
-#: tfrmprincipal.actionexportardestinocomstrongs.caption
+#: tmainform.actionexportdestinationwithstrongs.caption
 msgid "Export destination text"
 msgstr "Exportar texto destino"
 
-#: tfrmprincipal.actionexportartextointerlinear.caption
+#: tmainform.actionexportinterlineartext.caption
 msgid "Export interlinear text"
 msgstr "Exportar texto interlinear"
 
-#: tfrmprincipal.actionexportpatch.caption
+#: tmainform.actionexportpatch.caption
 msgid "Create patch..."
 msgstr "Criar patch..."
 
-#: tfrmprincipal.actionfecharprojeto.caption
-msgctxt "tfrmprincipal.actionfecharprojeto.caption"
+#: tmainform.actioncloseproject.caption
+msgctxt "tmainform.actioncloseproject.caption"
 msgid "Close"
 msgstr "Fechar"
 
-#: tfrmprincipal.actionfecharprojeto.hint
+#: tmainform.actioncloseproject.hint
 msgid "Close current project"
 msgstr "Fechar o projeto atual"
 
-#: tfrmprincipal.actionlimparassociacoes.caption
-msgctxt "tfrmprincipal.actionlimparassociacoes.caption"
+#: tmainform.actionclearassociations.caption
+msgctxt "tmainform.actionclearassociations.caption"
 msgid "Clear"
 msgstr "Limpar"
 
-#: tfrmprincipal.actionlimparassociacoes.hint
+#: tmainform.actionclearassociations.hint
 msgid "Clear verse associations"
 msgstr "Limpar as associações do versículo"
 
-#: tfrmprincipal.actionmesclarprojetos.caption
+#: tmainform.actionmergeprojects.caption
 msgid "Merge projects..."
 msgstr "Mesclar projetos..."
 
-#: tfrmprincipal.actionmostrartags.caption
+#: tmainform.actionshowtags.caption
 msgid "ActionMostrarTags"
 msgstr "ActionsMostrarTags"
 
-#: tfrmprincipal.actionnovoprojeto.caption
+#: tmainform.actionnewproject.caption
 msgid "New..."
 msgstr "Novo..."
 
-#: tfrmprincipal.actionnovoprojeto.hint
+#: tmainform.actionnewproject.hint
 msgid "Create new association project"
 msgstr "Criar novo projeto de associação"
 
-#: tfrmprincipal.actionpropprojeto.caption
+#: tmainform.actionprojectproperties.caption
 msgid "Settings..."
 msgstr "Propriedades..."
 
-#: tfrmprincipal.actionpropprojeto.hint
+#: tmainform.actionprojectproperties.hint
 msgid "Current project settings..."
 msgstr "Propriedades do projeto atual..."
 
-#: tfrmprincipal.actionquandonovoversiculo.caption
+#: tmainform.actionnewverse.caption
 msgid "ActionQuandoNovoVersiculo"
 msgstr "ActionQuandoNovoVersiculo"
 
-#: tfrmprincipal.actionrecriarbasesugestoes.caption
+#: tmainform.actionrebuildsuggestiondatabase.caption
 msgid "Recreate association memory"
 msgstr "Recriar base de sugestões"
 
-#: tfrmprincipal.actionreverterassociacoes.caption
+#: tmainform.actionrollbackcurrentverse.caption
 msgid "Rollback"
 msgstr "Reverter"
 
-#: tfrmprincipal.actionreverterassociacoes.hint
-msgctxt "tfrmprincipal.actionreverterassociacoes.hint"
+#: tmainform.actionrollbackcurrentverse.hint
+msgctxt "tmainform.actionrollbackcurrentverse.hint"
 msgid "Rollback changes"
 msgstr "Reverter para alterações salvas"
 
-#: tfrmprincipal.actionsair.caption
-msgctxt "tfrmprincipal.actionsair.caption"
+#: tmainform.actionexit.caption
+msgctxt "tmainform.actionexit.caption"
 msgid "Exit"
 msgstr "Sair"
 
-#: tfrmprincipal.actionsair.hint
-msgctxt "tfrmprincipal.actionsair.hint"
+#: tmainform.actionexit.hint
+msgctxt "tmainform.actionexit.hint"
 msgid "Exit the program"
 msgstr "Sair do programa"
 
-#: tfrmprincipal.actionsalvarprojeto.caption
-msgctxt "tfrmprincipal.actionsalvarprojeto.caption"
+#: tmainform.actionsaveproject.caption
+msgctxt "tmainform.actionsaveproject.caption"
 msgid "Save"
 msgstr "Salvar"
 
-#: tfrmprincipal.actionsalvarprojeto.hint
+#: tmainform.actionsaveproject.hint
 msgid "Save changes"
 msgstr "Salvar alterações"
 
-#: tfrmprincipal.actionsalvarprojetocomo.caption
+#: tmainform.actionsaveprojectas.caption
 msgid "Save as..."
 msgstr "Salvar como..."
 
-#: tfrmprincipal.actionsalvarprojetocomo.hint
+#: tmainform.actionsaveprojectas.hint
 msgid "Save as a new project"
 msgstr "Salvar como um novo projeto"
 
-#: tfrmprincipal.actionsugerirassociacao.caption
+#: tmainform.actionsuggestassociation.caption
 msgid "Auto-associate"
 msgstr "Sugerir associações"
 
-#: tfrmprincipal.actionsugerirassociacao.hint
+#: tmainform.actionsuggestassociation.hint
 msgid "Auto associate verse"
 msgstr "Sugerir associações do versículo"
 
-#: tfrmprincipal.actionsyncthewordverse.caption
+#: tmainform.actionsyncthewordverse.caption
 msgid "ActionSyncTheWordVerse"
 msgstr "ActionSyncTheWordVerse"
 
-#: tfrmprincipal.actionvaccumproject.caption
+#: tmainform.actionvaccumproject.caption
 msgid "Vacuum project"
 msgstr "Compactar arquivo do projeto"
 
-#: tfrmprincipal.actionversoanterior.caption
+#: tmainform.actionpreviousverse.caption
 msgid "Previous"
 msgstr "Anterior"
 
-#: tfrmprincipal.actionversoanterior.hint
-msgctxt "tfrmprincipal.actionversoanterior.hint"
+#: tmainform.actionpreviousverse.hint
+msgctxt "tmainform.actionpreviousverse.hint"
 msgid "Previous verse"
 msgstr "Versículo anterior"
 
-#: tfrmprincipal.actionversoprimeiro.caption
+#: tmainform.actionfirstverse.caption
 msgid "First"
 msgstr "Primeiro"
 
-#: tfrmprincipal.actionversoprimeiro.hint
+#: tmainform.actionfirstverse.hint
 msgid "Go to first verse"
 msgstr "Ir para o primeiro versículo"
 
-#: tfrmprincipal.actionversoseguinte.caption
+#: tmainform.actionnextverse.caption
 msgid "Next"
 msgstr "Próximo"
 
-#: tfrmprincipal.actionversoseguinte.hint
-msgctxt "tfrmprincipal.actionversoseguinte.hint"
+#: tmainform.actionnextverse.hint
+msgctxt "tmainform.actionnextverse.hint"
 msgid "Next verse"
 msgstr "Próximo versículo"
 
-#: tfrmprincipal.actionversoultimo.caption
+#: tmainform.actionlastverse.caption
 msgid "Last"
 msgstr "Último"
 
-#: tfrmprincipal.actionversoultimo.hint
+#: tmainform.actionlastverse.hint
 msgid "Go to last verse"
 msgstr "Ir par o último versículo"
 
-#: tfrmprincipal.bottompanel.caption
+#: tmainform.bottompanel.caption
 msgid "BottomPanel"
 msgstr "BottomPanel"
 
-#: tfrmprincipal.caption
-msgctxt "tfrmprincipal.caption"
+#: tmainform.caption
+msgctxt "tmainform.caption"
 msgid "iBiblia"
 msgstr "iBiblia"
 
-#: tfrmprincipal.centerpanel.caption
+#: tmainform.centerpanel.caption
 msgid "CenterPanel"
 msgstr "CenterPanel"
 
-#: tfrmprincipal.menuitem1.caption
-msgctxt "tfrmprincipal.menuitem1.caption"
+#: tmainform.menuitem1.caption
+msgctxt "tmainform.menuitem1.caption"
 msgid "Project"
 msgstr "Projeto"
 
-#: tfrmprincipal.menuitem10.caption
+#: tmainform.menuitem10.caption
 msgid "Edit"
 msgstr "Editar"
 
-#: tfrmprincipal.menuitem16.caption
+#: tmainform.menuitem16.caption
 msgid "Export project..."
 msgstr "Exportar projeto..."
 
-#: tfrmprincipal.menuitem17.caption
-msgctxt "tfrmprincipal.menuitem17.caption"
+#: tmainform.menuitem17.caption
+msgctxt "tmainform.menuitem17.caption"
 msgid "Help"
 msgstr "Ajuda"
 
-#: tfrmprincipal.menuitem20.caption
+#: tmainform.menuitem20.caption
 msgid "Options"
 msgstr "Opções"
 
-#: tfrmprincipal.menuitem22.caption
+#: tmainform.menuitem22.caption
 msgid "Auto-associate unassociated verses"
 msgstr "Sugerir associações automaticamente"
 
-#: tfrmprincipal.menuitem22.hint
+#: tmainform.menuitem22.hint
 msgid "Run the auto-association whenever you navigate to an unassociated verse"
 msgstr "Fazer a associação automática sempre que um versículo não tiver associações"
 
-#: tfrmprincipal.menuitem23.caption
+#: tmainform.menuitem23.caption
 msgid "Language"
 msgstr "Language/Idioma"
 
-#: tfrmprincipal.menuitem24.caption
+#: tmainform.menuitem24.caption
 msgid "Maintenance"
 msgstr "Manutenção"
 
-#: tfrmprincipal.menuitem27.caption
+#: tmainform.menuitem27.caption
 msgid "Association engine"
 msgstr "Motor de associação"
 
-#: tfrmprincipal.menuitem5.caption
-msgctxt "tfrmprincipal.menuitem5.caption"
+#: tmainform.menuitem5.caption
+msgctxt "tmainform.menuitem5.caption"
 msgid "Navigation"
 msgstr "Navegação"
 
-#: tfrmprincipal.menuitemabout.caption
+#: tmainform.menuitemabout.caption
 msgid "About..."
 msgstr "Sobre..."
 
-#: tfrmprincipal.menuitemaisuggestion.caption
+#: tmainform.menuitemaisuggestion.caption
 msgid "AI assisted"
 msgstr "Inteligência Artificial"
 
-#: tfrmprincipal.menuitemaltmousehover.caption
+#: tmainform.menuitemaltmousehover.caption
 msgid "Alt + Mouse hover"
 msgstr "Alt + apontar palavra"
 
-#: tfrmprincipal.menuitemaltmousehover.hint
+#: tmainform.menuitemaltmousehover.hint
 msgid "Activate the popup dictionary whenever you hover the mouse pointer over a word while holding the Alt key"
 msgstr "Ativar a janela de definição apontando o mouse e segurando a tecla Alt"
 
-#: tfrmprincipal.menuitemalwaysontop.caption
+#: tmainform.menuitemalwaysontop.caption
 msgid "Always on top"
 msgstr "Sempre visível"
 
-#: tfrmprincipal.menuitemalwaysontop.hint
+#: tmainform.menuitemalwaysontop.hint
 msgid "Keep iBiblia window always on top of other windows"
 msgstr "Manter a janela do iBiblia sempre visível"
 
-#: tfrmprincipal.menuitemautosave.caption
+#: tmainform.menuitemautosave.caption
 msgid "Auto-save on verse change"
 msgstr "Salvamento automático"
 
-#: tfrmprincipal.menuitemautosave.hint
+#: tmainform.menuitemautosave.hint
 msgid "Save changes automatically at every verse change"
 msgstr "Salvar alterações automaticamente sempre que houver mudança de versículo"
 
-#: tfrmprincipal.menuitemctrlmousehover.caption
+#: tmainform.menuitemctrlmousehover.caption
 msgid "Ctrl + Mouse hover"
 msgstr "Ctrl + apontar palavra"
 
-#: tfrmprincipal.menuitemctrlmousehover.hint
+#: tmainform.menuitemctrlmousehover.hint
 msgid "Activate the popup dictionary whenever you hover the mouse pointer over a word while holding the Ctrl key"
 msgstr "Ativar a janela de definição apontando o mouse e segurando a tecla Ctrl"
 
-#: tfrmprincipal.menuitemdictpopup.caption
+#: tmainform.menuitemdictpopup.caption
 msgid "Dictionary popup trigger..."
 msgstr "Ativar definição da palavra com..."
 
-#: tfrmprincipal.menuitemlangen.caption
+#: tmainform.menuitemlangen.caption
 msgid "English"
 msgstr "English"
 
-#: tfrmprincipal.menuitemlangpt.caption
+#: tmainform.menuitemlangpt.caption
 msgid "Português"
 msgstr "Português"
 
-#: tfrmprincipal.menuitemmousehover.caption
+#: tmainform.menuitemmousehover.caption
 msgid "Mouse hover"
 msgstr "Apontar palavra"
 
-#: tfrmprincipal.menuitemmousehover.hint
+#: tmainform.menuitemmousehover.hint
 msgid "Activate the popup dictionary whenever you hover the mouse pointer over a word"
 msgstr "Ativar a janela de definição apontando o mouse para a palavra"
 
-#: tfrmprincipal.menuitemrecent.caption
+#: tmainform.menuitemrecent.caption
 msgid "Open recent"
 msgstr "Abrir recente"
 
-#: tfrmprincipal.menuitemregisterfileassoc.caption
+#: tmainform.menuitemregisterfileassoc.caption
 msgid "Register .bib files"
 msgstr "Registrar arquivos .bib"
 
-#: tfrmprincipal.menuitemstatisticalsuggestion.caption
+#: tmainform.menuitemstatisticalsuggestion.caption
 msgid "Statistical engine"
 msgstr "Motor estatístico"
 
-#: tfrmprincipal.menuitemstrongnegrito.caption
+#: tmainform.menuitemboldstrongs.caption
 msgid "Words with strongs in bold"
 msgstr "Palavras com strongs em negrito"
 
-#: tfrmprincipal.menuitemstrongnegrito.hint
+#: tmainform.menuitemboldstrongs.hint
 msgid "Words with associated strong's tags are displayed in bold font"
 msgstr "Exibir em negrito palavras que contêm strongs associados"
 
-#: tfrmprincipal.menuitemstrongscount.caption
+#: tmainform.menuitemstrongscount.caption
 msgid "Strongs count"
 msgstr "Contagem de strongs"
 
-#: tfrmprincipal.menuitemstrongscountnone.caption
+#: tmainform.menuitemstrongscountnone.caption
 msgid "Hide"
 msgstr "Ocultar"
 
-#: tfrmprincipal.menuitemstrongscountnone.hint
+#: tmainform.menuitemstrongscountnone.hint
 msgid "Don't show any count"
 msgstr "Não exibir nenhuma contagem de strongs"
 
-#: tfrmprincipal.menuitemstrongscountstrongs.caption
+#: tmainform.menuitemstrongscountstrongs.caption
 msgid "Count Strong's tags"
 msgstr "Contagem de strongs"
 
-#: tfrmprincipal.menuitemstrongscountstrongs.hint
+#: tmainform.menuitemstrongscountstrongs.hint
 msgid "Show a count of all strong's tags in verse"
 msgstr "Mostrar a contagem de todos os strongs do versículo"
 
-#: tfrmprincipal.menuitemstrongscountwords.caption
+#: tmainform.menuitemstrongscountwords.caption
 msgid "Count words"
 msgstr "Contagem de palavras com strongs"
 
-#: tfrmprincipal.menuitemstrongscountwords.hint
+#: tmainform.menuitemstrongscountwords.hint
 msgid "Show a count of words having strong's tags"
 msgstr "Mostrar a contagem de palavras que contêm strongs"
 
-#: tfrmprincipal.menuitemsyncibiblia.caption
+#: tmainform.menuitemsyncibiblia.caption
 msgid "Sync iBiblia to theWord verse"
 msgstr "Sincronizar iBiblia com o versículo do theWord"
 
-#: tfrmprincipal.menuitemsyncibiblia.hint
+#: tmainform.menuitemsyncibiblia.hint
 msgid "Keeps iBiblia synchronized to theWord's current verse"
 msgstr "Manter o iBiblia sincronizado com o versículo do theWord"
 
-#: tfrmprincipal.menuitemsynctheword.caption
+#: tmainform.menuitemsynctheword.caption
 msgid "Sync theWord to iBiblia verse"
 msgstr "Sincronizar theWord com o versículo do iBiblia"
 
-#: tfrmprincipal.menuitemsynctheword.hint
+#: tmainform.menuitemsynctheword.hint
 msgid "Keeps theWord synchronized to iBiblia's current verse, and current word's strong, morphology and lemma."
 msgstr "Manter o theWord sincronizado com o versículo atual do iBiblia, além de sincronizar a definição de palavras clicadas."
 
-#: tfrmprincipal.menuitemunregisterfileassoc.caption
+#: tmainform.menuitemunregisterfileassoc.caption
 msgid "Unregister .bib files"
 msgstr "Desassociar com arquivos .bib"
 
-#: tfrmprincipal.opendialog1.title
+#: tmainform.opendialog1.title
 msgid "Open existing association project"
 msgstr "Abrir projeto de associação existente"
 
-#: tfrmprincipal.panel1.caption
-msgctxt "tfrmprincipal.panel1.caption"
+#: tmainform.panel1.caption
+msgctxt "tmainform.panel1.caption"
 msgid "Panel1"
 msgstr "Panel1"
 
-#: tfrmprincipal.radiogroupstatus.caption
-msgctxt "tfrmprincipal.radiogroupstatus.caption"
+#: tmainform.radiogroupstatus.caption
+msgctxt "tmainform.radiogroupstatus.caption"
 msgid "Status"
 msgstr "Andamento"
 
-#: tfrmprincipal.savedialog1.title
+#: tmainform.savedialog1.title
 msgid "Save project as..."
 msgstr "Salvar projeto como..."
 
-#: tfrmprincipal.savedialog2.title
-msgctxt "tfrmprincipal.savedialog2.title"
+#: tmainform.savedialog2.title
+msgctxt "tmainform.savedialog2.title"
 msgid "Save module as..."
 msgstr "Salvar módulo como..."
 
-#: tfrmprincipal.toolbar1.caption
+#: tmainform.toolbar1.caption
 msgid "ToolBar1"
 msgstr "ToolBar1"
 
-#: tfrmprincipal.toolbuttonexit.caption
-msgctxt "tfrmprincipal.toolbuttonexit.caption"
+#: tmainform.toolbuttonexit.caption
+msgctxt "tmainform.toolbuttonexit.caption"
 msgid "Exit"
 msgstr "Sair"
 
-#: tfrmprincipal.toolbuttonexit.hint
-msgctxt "tfrmprincipal.toolbuttonexit.hint"
+#: tmainform.toolbuttonexit.hint
+msgctxt "tmainform.toolbuttonexit.hint"
 msgid "Exit the program"
 msgstr "Sair do programa"
 
