@@ -94,7 +94,7 @@ begin
   Application.CreateForm(TFrmProjectProperties, FrmProjectProperties);
   Application.CreateForm(TFrmNewProject, FrmNewProject);
   Application.CreateForm(TFrmVerseRules, FrmVerseRules);
-  Application.CreateForm(TFrmProjectExport, FrmProjectExport);
+  Application.CreateForm(TProjectExportForm, ProjectExportForm);
   Application.CreateForm(TFormAbout, FormAbout);
   Application.CreateForm(TFrmExportPatch, FrmExportPatch);
   Application.CreateForm(TFrmApplyPatch, FrmApplyPatch);

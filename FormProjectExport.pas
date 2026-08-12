@@ -11,34 +11,34 @@ uses
 
 type
 
-  TFrmProjectExport = class(TForm)
-    btExportar: TButton;
-    Button2: TButton;
-    cbExportarNAComoItalicos: TCheckBox;
-    cbExportarMorfologia: TCheckBox;
-    cbExportarComentarios: TCheckBox;
-    cbStrongsReutilizados: TCheckBox;
-    cbStrongsNaoTraduzidos: TCheckBox;
-    Label1: TLabel;
-    Label2: TLabel;
+  TProjectExportForm = class(TForm)
+    BtnExport: TButton;
+    BtnCancel: TButton;
+    CbExportUnassociatedAsItalics: TCheckBox;
+    CbExportMorphology: TCheckBox;
+    CbExportComments: TCheckBox;
+    CbMarkReusedStrongs: TCheckBox;
+    CbMarkUntranslatedStrongs: TCheckBox;
+    LblTaggedDestinationProperties: TLabel;
+    LblInterlinearSourceProperties: TLabel;
     lblConcordanceDescription: TLabel;
     lblConcordanceMaxCharacters: TLabel;
     lblConcordanceOutput: TLabel;
-    leAbreviacao: TLabeledEdit;
-    MemoRodapeOrigem: TMemo;
-    MemoRodapeDestino: TMemo;
-    PageControl1: TPageControl;
+    EditAbbreviation: TLabeledEdit;
+    MemoSourceFooter: TMemo;
+    MemoDestinationFooter: TMemo;
+    ExportPageControl: TPageControl;
     rgConcordanceContext: TRadioGroup;
     rgConcordanceType: TRadioGroup;
-    SaveDialog1: TSaveDialog;
-    SaveDialogConcordancia: TSaveDialog;
+    SaveBibleModuleDialog: TSaveDialog;
+    SaveConcordanceDialog: TSaveDialog;
     seConcordanceMaxCharacters: TSpinEdit;
-    TabSheet1: TTabSheet;
-    TabSheet2: TTabSheet;
-    TabSheet3: TTabSheet;
-    procedure BtnExportClick(Sender: TObject);
-    procedure ConcordanceContextChange(Sender: TObject);
-    procedure ConcordanceTypeChange(Sender: TObject);
+    TaggedDestinationTab: TTabSheet;
+    InterlinearSourceTab: TTabSheet;
+    ConcordanceTab: TTabSheet;
+    procedure ExportButtonClick(Sender: TObject);
+    procedure ConcordanceContextClick(Sender: TObject);
+    procedure ConcordanceTypeClick(Sender: TObject);
   private
     FProject: TProject;
     FAnalyticalAbbreviation: string;
@@ -73,7 +73,7 @@ type
   end;
 
 var
-  FrmProjectExport: TFrmProjectExport;
+  ProjectExportForm: TProjectExportForm;
 
 resourcestring
   STheWordOTModule = 'theWord Bible module (*.ot)';
@@ -138,38 +138,38 @@ begin
     Result := '0';
 end;
 
-procedure TFrmProjectExport.BtnExportClick(Sender: TObject);
+procedure TProjectExportForm.ExportButtonClick(Sender: TObject);
 begin
   ModalResult := mrNone;
-  case PageControl1.PageIndex of
+  case ExportPageControl.PageIndex of
     0: ExportTaggedDestinationText;
     1: ExportInterlinearSourceText;
     2: ExportConcordance;
   end;
 end;
 
-procedure TFrmProjectExport.ConcordanceContextChange(Sender: TObject);
+procedure TProjectExportForm.ConcordanceContextClick(Sender: TObject);
 begin
   UpdateConcordanceContextControls;
 end;
 
-procedure TFrmProjectExport.ConcordanceTypeChange(Sender: TObject);
+procedure TProjectExportForm.ConcordanceTypeClick(Sender: TObject);
 begin
   if FLastConcordanceType = 0 then
-    FAnalyticalAbbreviation := Trim(leAbreviacao.Text)
+    FAnalyticalAbbreviation := Trim(EditAbbreviation.Text)
   else if FLastConcordanceType = 1 then
-    FSyntheticAbbreviation := Trim(leAbreviacao.Text);
+    FSyntheticAbbreviation := Trim(EditAbbreviation.Text);
 
   if rgConcordanceType.ItemIndex = 1 then
-    leAbreviacao.Text := FSyntheticAbbreviation
+    EditAbbreviation.Text := FSyntheticAbbreviation
   else
-    leAbreviacao.Text := FAnalyticalAbbreviation;
+    EditAbbreviation.Text := FAnalyticalAbbreviation;
   FLastConcordanceType := rgConcordanceType.ItemIndex;
   UpdateConcordanceAbbreviationDefault;
   UpdateConcordanceDescription;
 end;
 
-procedure TFrmProjectExport.UpdateConcordanceDescription;
+procedure TProjectExportForm.UpdateConcordanceDescription;
 begin
   if rgConcordanceType.ItemIndex = 1 then
     lblConcordanceDescription.Caption := SConcordanceSyntheticDescription
@@ -177,7 +177,7 @@ begin
     lblConcordanceDescription.Caption := SConcordanceAnalyticalDescription;
 end;
 
-procedure TFrmProjectExport.ConcordanceExportProgress(
+procedure TProjectExportForm.ConcordanceExportProgress(
   Phase: TConcordanceExportPhase; Current, Total: Integer);
 begin
   case Phase of
@@ -207,22 +207,22 @@ begin
   Application.ProcessMessages;
 end;
 
-function TFrmProjectExport.BuildTaggedDestinationOptions: TOpcoesExportacao;
+function TProjectExportForm.BuildTaggedDestinationOptions: TOpcoesExportacao;
 begin
   Result := [];
-  if cbExportarNAComoItalicos.Checked then
+  if CbExportUnassociatedAsItalics.Checked then
     Include(Result, oeExportarNAComoItalicos);
-  if cbExportarComentarios.Checked then
+  if CbExportComments.Checked then
     Include(Result, oeExportarComentarios);
-  if cbExportarMorfologia.Checked then
+  if CbExportMorphology.Checked then
     Include(Result, oeExportarMorfologia);
-  if cbStrongsReutilizados.Checked then
+  if CbMarkReusedStrongs.Checked then
     Include(Result, oeStrongsReutilizados);
-  if cbStrongsNaoTraduzidos.Checked then
+  if CbMarkUntranslatedStrongs.Checked then
     Include(Result, oeStrongsNaoTraduzidos);
 end;
 
-function TFrmProjectExport.BuildConcordanceOptions: TOpcoesExportacao;
+function TProjectExportForm.BuildConcordanceOptions: TOpcoesExportacao;
 begin
   Result := [];
   if rgConcordanceType.ItemIndex < 0 then
@@ -231,7 +231,7 @@ begin
     Include(Result, oeConcordDetalhada);
 end;
 
-function TFrmProjectExport.DefaultConcordanceAbbreviation: string;
+function TProjectExportForm.DefaultConcordanceAbbreviation: string;
 begin
   if rgConcordanceType.ItemIndex = 1 then
     Result := SSyntheticConcordance
@@ -239,7 +239,7 @@ begin
     Result := SAnalyticalConcordance;
 end;
 
-function TFrmProjectExport.ConcordanceFileSuffix: string;
+function TProjectExportForm.ConcordanceFileSuffix: string;
 begin
   if rgConcordanceType.ItemIndex = 1 then
     Result := 'synthetic-concordance'
@@ -247,7 +247,7 @@ begin
     Result := 'analytical-concordance';
 end;
 
-function TFrmProjectExport.ConcordanceLastFileKey: string;
+function TProjectExportForm.ConcordanceLastFileKey: string;
 begin
   if rgConcordanceType.ItemIndex = 1 then
     Result := SLastSyntheticConcordanceFileKey
@@ -255,7 +255,7 @@ begin
     Result := SLastAnalyticalConcordanceFileKey;
 end;
 
-function TFrmProjectExport.SelectedConcordanceContextMode:
+function TProjectExportForm.SelectedConcordanceContextMode:
   TConcordanceContextMode;
 begin
   case rgConcordanceContext.ItemIndex of
@@ -266,7 +266,7 @@ begin
   end;
 end;
 
-function TFrmProjectExport.SuggestedBaseFileName(const Suffix: string): string;
+function TProjectExportForm.SuggestedBaseFileName(const Suffix: string): string;
 var
   BaseName: string;
   Directory: string;
@@ -287,7 +287,7 @@ begin
     Result := Result + '-' + Suffix;
 end;
 
-function TFrmProjectExport.StoredExportFileName(const Key,
+function TProjectExportForm.StoredExportFileName(const Key,
   DefaultFileName: string): string;
 var
   StoredFileName: string;
@@ -312,7 +312,7 @@ begin
     opts.WriteString(SExportIniSection, Key, FileName);
 end;
 
-procedure TFrmProjectExport.ConfigureBibleSaveDialog(const Suffix,
+procedure TProjectExportForm.ConfigureBibleSaveDialog(const Suffix,
   LastFileKey: string);
 var
   SuggestedFileName: string;
@@ -320,59 +320,59 @@ begin
   case FProject.Escopo of
     etOT:
     begin
-      SaveDialog1.DefaultExt := '.ot';
-      SaveDialog1.Filter := STheWordOTModule + '|*.ot' + '|' + SMySwordModule + '|*.bbl.mybible';
+      SaveBibleModuleDialog.DefaultExt := '.ot';
+      SaveBibleModuleDialog.Filter := STheWordOTModule + '|*.ot' + '|' + SMySwordModule + '|*.bbl.mybible';
     end;
     etNT:
     begin
-      SaveDialog1.DefaultExt := '.nt';
-      SaveDialog1.Filter := STheWordNTModule + '|*.nt' + '|' + SMySwordModule + '|*.bbl.mybible';
+      SaveBibleModuleDialog.DefaultExt := '.nt';
+      SaveBibleModuleDialog.Filter := STheWordNTModule + '|*.nt' + '|' + SMySwordModule + '|*.bbl.mybible';
     end;
     etONT:
     begin
-      SaveDialog1.DefaultExt := '.ont';
-      SaveDialog1.Filter := STheWordONTModule + '|*.ont' + '|' + SMySwordModule + '|*.bbl.mybible';
+      SaveBibleModuleDialog.DefaultExt := '.ont';
+      SaveBibleModuleDialog.Filter := STheWordONTModule + '|*.ont' + '|' + SMySwordModule + '|*.bbl.mybible';
     end;
   end;
-  SaveDialog1.Title := SSaveModuleAs;
-  SaveDialog1.FilterIndex := 1;
-  SuggestedFileName := SuggestedBaseFileName(Suffix) + SaveDialog1.DefaultExt;
-  SaveDialog1.FileName := StoredExportFileName(LastFileKey, SuggestedFileName);
-  if LowerCase(SaveDialog1.FileName).EndsWith('.mybible') then
-    SaveDialog1.FilterIndex := 2;
-  SaveDialog1.Options := SaveDialog1.Options + [ofOverwritePrompt, ofPathMustExist];
+  SaveBibleModuleDialog.Title := SSaveModuleAs;
+  SaveBibleModuleDialog.FilterIndex := 1;
+  SuggestedFileName := SuggestedBaseFileName(Suffix) + SaveBibleModuleDialog.DefaultExt;
+  SaveBibleModuleDialog.FileName := StoredExportFileName(LastFileKey, SuggestedFileName);
+  if LowerCase(SaveBibleModuleDialog.FileName).EndsWith('.mybible') then
+    SaveBibleModuleDialog.FilterIndex := 2;
+  SaveBibleModuleDialog.Options := SaveBibleModuleDialog.Options + [ofOverwritePrompt, ofPathMustExist];
 end;
 
-procedure TFrmProjectExport.ConfigureConcordanceSaveDialog;
+procedure TProjectExportForm.ConfigureConcordanceSaveDialog;
 var
   SuggestedFileName: string;
 begin
-  SaveDialogConcordancia.Title := SSaveModuleAs;
-  SaveDialogConcordancia.DefaultExt := '.dct.twm';
-  SaveDialogConcordancia.Filter := STheWordDictionaryModule + '|*.dct.twm';
-  SaveDialogConcordancia.FilterIndex := 1;
+  SaveConcordanceDialog.Title := SSaveModuleAs;
+  SaveConcordanceDialog.DefaultExt := '.dct.twm';
+  SaveConcordanceDialog.Filter := STheWordDictionaryModule + '|*.dct.twm';
+  SaveConcordanceDialog.FilterIndex := 1;
   SuggestedFileName := SuggestedBaseFileName(ConcordanceFileSuffix) + '.dct.twm';
-  SaveDialogConcordancia.FileName := StoredExportFileName(
+  SaveConcordanceDialog.FileName := StoredExportFileName(
     ConcordanceLastFileKey, SuggestedFileName);
-  SaveDialogConcordancia.Options := SaveDialogConcordancia.Options + [ofOverwritePrompt, ofPathMustExist];
+  SaveConcordanceDialog.Options := SaveConcordanceDialog.Options + [ofOverwritePrompt, ofPathMustExist];
 end;
 
-procedure TFrmProjectExport.PersistTaggedDestinationOptions;
+procedure TProjectExportForm.PersistTaggedDestinationOptions;
 begin
-  FProject.SetInfo('propriedades.destino', MemoRodapeDestino.Text);
-  FProject.SetInfo('opcoes.exportar.comentarios', BoolToConfigValue(cbExportarComentarios.Checked));
-  FProject.SetInfo('opcoes.exportar.morfologia', BoolToConfigValue(cbExportarMorfologia.Checked));
-  FProject.SetInfo('opcoes.exportar.na.como.italicos', BoolToConfigValue(cbExportarNAComoItalicos.Checked));
-  FProject.SetInfo('opcoes.exportar.strongs.reutilizados', BoolToConfigValue(cbStrongsReutilizados.Checked));
-  FProject.SetInfo('opcoes.exportar.strongs.nao.traduzidos', BoolToConfigValue(cbStrongsNaoTraduzidos.Checked));
+  FProject.SetInfo('propriedades.destino', MemoDestinationFooter.Text);
+  FProject.SetInfo('opcoes.exportar.comentarios', BoolToConfigValue(CbExportComments.Checked));
+  FProject.SetInfo('opcoes.exportar.morfologia', BoolToConfigValue(CbExportMorphology.Checked));
+  FProject.SetInfo('opcoes.exportar.na.como.italicos', BoolToConfigValue(CbExportUnassociatedAsItalics.Checked));
+  FProject.SetInfo('opcoes.exportar.strongs.reutilizados', BoolToConfigValue(CbMarkReusedStrongs.Checked));
+  FProject.SetInfo('opcoes.exportar.strongs.nao.traduzidos', BoolToConfigValue(CbMarkUntranslatedStrongs.Checked));
 end;
 
-procedure TFrmProjectExport.PersistInterlinearOptions;
+procedure TProjectExportForm.PersistInterlinearOptions;
 begin
-  FProject.SetInfo('propriedades.origem', MemoRodapeOrigem.Text);
+  FProject.SetInfo('propriedades.origem', MemoSourceFooter.Text);
 end;
 
-procedure TFrmProjectExport.PersistConcordanceOptions(const Abbreviation: string);
+procedure TProjectExportForm.PersistConcordanceOptions(const Abbreviation: string);
 var
   ContextMode: TConcordanceContextMode;
   ContextModeValue: string;
@@ -404,24 +404,24 @@ begin
     BoolToConfigValue(ContextMode <> ccmReferencesOnly));
 end;
 
-procedure TFrmProjectExport.SetSelectedConcordanceContextMode(
+procedure TProjectExportForm.SetSelectedConcordanceContextMode(
   AValue: TConcordanceContextMode);
 begin
   rgConcordanceContext.ItemIndex := Ord(AValue);
   UpdateConcordanceContextControls;
 end;
 
-procedure TFrmProjectExport.UpdateConcordanceAbbreviationDefault;
+procedure TProjectExportForm.UpdateConcordanceAbbreviationDefault;
 var
   CurrentText: string;
 begin
-  CurrentText := Trim(leAbreviacao.Text);
+  CurrentText := Trim(EditAbbreviation.Text);
   if (CurrentText = '') or SameText(CurrentText, SAnalyticalConcordance) or
     SameText(CurrentText, SSyntheticConcordance) then
-    leAbreviacao.Text := DefaultConcordanceAbbreviation;
+    EditAbbreviation.Text := DefaultConcordanceAbbreviation;
 end;
 
-procedure TFrmProjectExport.UpdateConcordanceContextControls;
+procedure TProjectExportForm.UpdateConcordanceContextControls;
 var
   RelevantExcerptSelected: Boolean;
 begin
@@ -431,53 +431,53 @@ begin
   seConcordanceMaxCharacters.Enabled := RelevantExcerptSelected;
 end;
 
-procedure TFrmProjectExport.ExportTaggedDestinationText;
+procedure TProjectExportForm.ExportTaggedDestinationText;
 var
   Options: TOpcoesExportacao;
 begin
   Options := BuildTaggedDestinationOptions;
   ConfigureBibleSaveDialog('tagged-destination', SLastTaggedDestinationFileKey);
 
-  if SaveDialog1.Execute then
+  if SaveBibleModuleDialog.Execute then
   begin
-    SaveStoredExportFileName(SLastTaggedDestinationFileKey, SaveDialog1.FileName);
+    SaveStoredExportFileName(SLastTaggedDestinationFileKey, SaveBibleModuleDialog.FileName);
     PersistTaggedDestinationOptions;
     FormPleaseWait.BeginOperation(Self, SExportTaggedDestinationTitle,
-      SExportTaggedDestinationProgress, 1, SaveDialog1.FileName);
+      SExportTaggedDestinationProgress, 1, SaveBibleModuleDialog.FileName);
     try
-      FProject.ExportDestinationTextWithStrongs(SaveDialog1.FileName,
+      FProject.ExportDestinationTextWithStrongs(SaveBibleModuleDialog.FileName,
         FormPleaseWait.ProgressBar1, Options);
     finally
       FormPleaseWait.FinishOperation;
     end;
-    ConfirmOpenExportedFile(SaveDialog1.FileName);
+    ConfirmOpenExportedFile(SaveBibleModuleDialog.FileName);
   end;
 end;
 
-procedure TFrmProjectExport.ExportInterlinearSourceText;
+procedure TProjectExportForm.ExportInterlinearSourceText;
 var
   Options: TOpcoesExportacao;
 begin
   Options := [];
   ConfigureBibleSaveDialog('interlinear-source', SLastInterlinearSourceFileKey);
 
-  if SaveDialog1.Execute then
+  if SaveBibleModuleDialog.Execute then
   begin
-    SaveStoredExportFileName(SLastInterlinearSourceFileKey, SaveDialog1.FileName);
+    SaveStoredExportFileName(SLastInterlinearSourceFileKey, SaveBibleModuleDialog.FileName);
     PersistInterlinearOptions;
     FormPleaseWait.BeginOperation(Self, SExportInterlinearTitle,
-      SExportInterlinearProgress, 1, SaveDialog1.FileName);
+      SExportInterlinearProgress, 1, SaveBibleModuleDialog.FileName);
     try
-      FProject.ExportInterlinearText(SaveDialog1.FileName,
+      FProject.ExportInterlinearText(SaveBibleModuleDialog.FileName,
         FormPleaseWait.ProgressBar1, Options);
     finally
       FormPleaseWait.FinishOperation;
     end;
-    ConfirmOpenExportedFile(SaveDialog1.FileName);
+    ConfirmOpenExportedFile(SaveBibleModuleDialog.FileName);
   end;
 end;
 
-procedure TFrmProjectExport.ExportConcordance;
+procedure TProjectExportForm.ExportConcordance;
 var
   Options: TOpcoesExportacao;
   Abbreviation: string;
@@ -488,22 +488,22 @@ begin
   ContextMode := SelectedConcordanceContextMode;
   UpdateConcordanceAbbreviationDefault;
 
-  Abbreviation := Trim(leAbreviacao.Text);
+  Abbreviation := Trim(EditAbbreviation.Text);
   if Abbreviation = '' then
     Abbreviation := DefaultConcordanceAbbreviation;
 
   ConfigureConcordanceSaveDialog;
-  if SaveDialogConcordancia.Execute then
+  if SaveConcordanceDialog.Execute then
   begin
-    leAbreviacao.Text := Abbreviation;
+    EditAbbreviation.Text := Abbreviation;
     UseIndexedOccurrences := (rgConcordanceType.ItemIndex = 1) and
       (ContextMode = ccmReferencesOnly);
     if UseIndexedOccurrences then
       UseIndexedOccurrences := FProject.PrepareConcordanceExport(True);
     FormPleaseWait.BeginOperation(Self, SExportConcordanceTitle,
-      SExportConcordanceProgress, 1, SaveDialogConcordancia.FileName);
+      SExportConcordanceProgress, 1, SaveConcordanceDialog.FileName);
     try
-      FProject.ExportConcordance(SaveDialogConcordancia.FileName,
+      FProject.ExportConcordance(SaveConcordanceDialog.FileName,
         FormPleaseWait.ProgressBar1, Options, Abbreviation,
         ContextMode, seConcordanceMaxCharacters.Value,
         UseIndexedOccurrences,
@@ -512,13 +512,13 @@ begin
       FormPleaseWait.FinishOperation;
     end;
     SaveStoredExportFileName(ConcordanceLastFileKey,
-      SaveDialogConcordancia.FileName);
+      SaveConcordanceDialog.FileName);
     PersistConcordanceOptions(Abbreviation);
-    ConfirmOpenExportedFile(SaveDialogConcordancia.FileName);
+    ConfirmOpenExportedFile(SaveConcordanceDialog.FileName);
   end;
 end;
 
-procedure TFrmProjectExport.ConfirmOpenExportedFile(const FileName: string);
+procedure TProjectExportForm.ConfirmOpenExportedFile(const FileName: string);
 begin
   if not FileExists(FileName) then
     Exit;
@@ -534,7 +534,7 @@ begin
   {$ENDIF}
 end;
 
-procedure TFrmProjectExport.SetProject(Project: TProject);
+procedure TProjectExportForm.SetProject(Project: TProject);
 var
   ContextMaxCharacters: Integer;
   ContextMode: TConcordanceContextMode;
@@ -564,8 +564,8 @@ begin
   lblConcordanceMaxCharacters.Caption :=
     SConcordanceMaxExcerptCharacters;
   lblConcordanceOutput.Caption := SConcordanceOutputDescription;
-  MemoRodapeOrigem.Text := FProject.GetInfo('propriedades.origem');
-  MemoRodapeDestino.Text := FProject.GetInfo('propriedades.destino');
+  MemoSourceFooter.Text := FProject.GetInfo('propriedades.origem');
+  MemoDestinationFooter.Text := FProject.GetInfo('propriedades.destino');
   LegacyAbbreviation := FProject.GetInfo('propriedades.abbrev');
   FAnalyticalAbbreviation := FProject.GetInfo(
     'opcoes.exportar.concordancia.analitica.abbrev');
@@ -581,9 +581,9 @@ begin
     rgConcordanceType.ItemIndex := 0;
   FLastConcordanceType := rgConcordanceType.ItemIndex;
   if FLastConcordanceType = 1 then
-    leAbreviacao.Text := FSyntheticAbbreviation
+    EditAbbreviation.Text := FSyntheticAbbreviation
   else
-    leAbreviacao.Text := FAnalyticalAbbreviation;
+    EditAbbreviation.Text := FAnalyticalAbbreviation;
   UpdateConcordanceAbbreviationDefault;
   UpdateConcordanceDescription;
   ContextModeValue := Trim(FProject.GetInfo(SConcordanceContextModeKey));
@@ -609,11 +609,11 @@ begin
   else if ContextMaxCharacters > CONCORDANCE_CONTEXT_MAX_CHARACTERS then
     ContextMaxCharacters := CONCORDANCE_CONTEXT_MAX_CHARACTERS;
   seConcordanceMaxCharacters.Value := ContextMaxCharacters;
-  cbExportarComentarios.Checked := FProject.GetInfo('opcoes.exportar.comentarios') = '1';
-  cbExportarMorfologia.Checked := FProject.GetInfo('opcoes.exportar.morfologia') = '1';
-  cbExportarNAComoItalicos.Checked := FProject.GetInfo('opcoes.exportar.na.como.italicos') = '1';
-  cbStrongsReutilizados.Checked := FProject.GetInfo('opcoes.exportar.strongs.reutilizados') = '1';
-  cbStrongsNaoTraduzidos.Checked := FProject.GetInfo('opcoes.exportar.strongs.nao.traduzidos') = '1';
+  CbExportComments.Checked := FProject.GetInfo('opcoes.exportar.comentarios') = '1';
+  CbExportMorphology.Checked := FProject.GetInfo('opcoes.exportar.morfologia') = '1';
+  CbExportUnassociatedAsItalics.Checked := FProject.GetInfo('opcoes.exportar.na.como.italicos') = '1';
+  CbMarkReusedStrongs.Checked := FProject.GetInfo('opcoes.exportar.strongs.reutilizados') = '1';
+  CbMarkUntranslatedStrongs.Checked := FProject.GetInfo('opcoes.exportar.strongs.nao.traduzidos') = '1';
 end;
 
 initialization

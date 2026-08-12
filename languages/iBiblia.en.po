@@ -4154,88 +4154,88 @@ msgctxt "tmainform.toolbuttonexit.hint"
 msgid "Exit the program"
 msgstr "Exit the program"
 
-#: tfrmprojectexport.btexportar.caption
-msgctxt "tfrmprojectexport.btexportar.caption"
+#: tprojectexportform.btnexport.caption
+msgctxt "tprojectexportform.btnexport.caption"
 msgid "Export"
 msgstr "Export"
 
-#: tfrmprojectexport.button2.caption
-msgctxt "tfrmprojectexport.button2.caption"
+#: tprojectexportform.btncancel.caption
+msgctxt "tprojectexportform.btncancel.caption"
 msgid "Cancel"
 msgstr "Cancel"
 
-#: tfrmprojectexport.caption
-msgctxt "tfrmprojectexport.caption"
+#: tprojectexportform.caption
+msgctxt "tprojectexportform.caption"
 msgid "Export project"
 msgstr "Export project"
 
-#: tfrmprojectexport.cbconcordanciadetalhada.caption
-msgctxt "tfrmprojectexport.cbconcordanciadetalhada.caption"
+#: tprojectexportform.cbconcordanciadetalhada.caption
+msgctxt "tprojectexportform.cbconcordanciadetalhada.caption"
 msgid "Group by inflected forms"
 msgstr "Group by inflected forms"
 
-#: tfrmprojectexport.cbexportarcomentarios.caption
-msgctxt "tfrmprojectexport.cbexportarcomentarios.caption"
+#: tprojectexportform.cbexportcomments.caption
+msgctxt "tprojectexportform.cbexportcomments.caption"
 msgid "Export comments as translator notes"
 msgstr "Export comments as translator notes"
 
-#: tfrmprojectexport.cbexportarmorfologia.caption
-msgctxt "tfrmprojectexport.cbexportarmorfologia.caption"
+#: tprojectexportform.cbexportmorphology.caption
+msgctxt "tprojectexportform.cbexportmorphology.caption"
 msgid "Export morphology tags"
 msgstr "Export morphology tags"
 
-#: tfrmprojectexport.cbexportarnacomoitalicos.caption
-msgctxt "tfrmprojectexport.cbexportarnacomoitalicos.caption"
+#: tprojectexportform.cbexportunassociatedasitalics.caption
+msgctxt "tprojectexportform.cbexportunassociatedasitalics.caption"
 msgid "Export unassociated words as added words (italics)"
 msgstr "Export unassociated words as added words (italics)"
 
-#: tfrmprojectexport.cbstrongsnaotraduzidos.caption
-msgctxt "tfrmprojectexport.cbstrongsnaotraduzidos.caption"
+#: tprojectexportform.cbmarkuntranslatedstrongs.caption
+msgctxt "tprojectexportform.cbmarkuntranslatedstrongs.caption"
 msgid "Mark unused strongs"
 msgstr "Mark unused strongs"
 
-#: tfrmprojectexport.cbstrongsreutilizados.caption
-msgctxt "tfrmprojectexport.cbstrongsreutilizados.caption"
+#: tprojectexportform.cbmarkreusedstrongs.caption
+msgctxt "tprojectexportform.cbmarkreusedstrongs.caption"
 msgid "Mark reused strongs"
 msgstr "Mark reused strongs"
 
-#: tfrmprojectexport.label1.caption
-msgctxt "tfrmprojectexport.label1.caption"
+#: tprojectexportform.lbltaggeddestinationproperties.caption
+msgctxt "tprojectexportform.lbltaggeddestinationproperties.caption"
 msgid "Module properties"
 msgstr "Module properties"
 
-#: tfrmprojectexport.label2.caption
-msgctxt "tfrmprojectexport.label2.caption"
+#: tprojectexportform.lblinterlinearsourceproperties.caption
+msgctxt "tprojectexportform.lblinterlinearsourceproperties.caption"
 msgid "Module properties"
 msgstr "Module properties"
 
-#: tfrmprojectexport.leabreviacao.editlabel.caption
-msgctxt "tfrmprojectexport.leabreviacao.editlabel.caption"
+#: tprojectexportform.editabbreviation.editlabel.caption
+msgctxt "tprojectexportform.editabbreviation.editlabel.caption"
 msgid "Abbreviation"
 msgstr "Abbreviation"
 
-#: tfrmprojectexport.savedialog1.title
-msgctxt "tfrmprojectexport.savedialog1.title"
+#: tprojectexportform.savebiblemoduledialog.title
+msgctxt "tprojectexportform.savebiblemoduledialog.title"
 msgid "Save module as..."
 msgstr "Save module as..."
 
-#: tfrmprojectexport.savedialogconcordancia.title
-msgctxt "tfrmprojectexport.savedialogconcordancia.title"
+#: tprojectexportform.saveconcordancedialog.title
+msgctxt "tprojectexportform.saveconcordancedialog.title"
 msgid "Save module as..."
 msgstr "Save module as..."
 
-#: tfrmprojectexport.tabsheet1.caption
-msgctxt "tfrmprojectexport.tabsheet1.caption"
+#: tprojectexportform.taggeddestinationtab.caption
+msgctxt "tprojectexportform.taggeddestinationtab.caption"
 msgid "Tagged destination text"
 msgstr "Tagged destination text"
 
-#: tfrmprojectexport.tabsheet2.caption
-msgctxt "tfrmprojectexport.tabsheet2.caption"
+#: tprojectexportform.interlinearsourcetab.caption
+msgctxt "tprojectexportform.interlinearsourcetab.caption"
 msgid "Interlinear source text"
 msgstr "Interlinear source text"
 
-#: tfrmprojectexport.tabsheet3.caption
-msgctxt "tfrmprojectexport.tabsheet3.caption"
+#: tprojectexportform.concordancetab.caption
+msgctxt "tprojectexportform.concordancetab.caption"
 msgid "Strong's concordance"
 msgstr "Strong's concordance"
 

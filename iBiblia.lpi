@@ -323,7 +323,7 @@
       <Unit11>
         <Filename Value="FormProjectExport.pas"/>
         <IsPartOfProject Value="True"/>
-        <ComponentName Value="FrmProjectExport"/>
+        <ComponentName Value="ProjectExportForm"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <EditorIndex Value="23"/>

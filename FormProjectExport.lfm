@@ -1,4 +1,4 @@
-object FrmProjectExport: TFrmProjectExport
+object ProjectExportForm: TProjectExportForm
   Left = 506
   Height = 516
   Top = 265
@@ -9,20 +9,20 @@ object FrmProjectExport: TFrmProjectExport
   DesignTimePPI = 101
   Position = poMainFormCenter
   LCLVersion = '4.0.0.4'
-  object PageControl1: TPageControl
+  object ExportPageControl: TPageControl
     Left = 8
     Height = 416
     Top = 17
     Width = 775
-    ActivePage = TabSheet1
+    ActivePage = TaggedDestinationTab
     Anchors = [akTop, akLeft, akRight, akBottom]
     TabIndex = 0
     TabOrder = 0
-    object TabSheet1: TTabSheet
+    object TaggedDestinationTab: TTabSheet
       Caption = 'Tagged destination text'
       ClientHeight = 392
       ClientWidth = 767
-      object MemoRodapeDestino: TMemo
+      object MemoDestinationFooter: TMemo
         Left = 14
         Height = 265
         Top = 115
@@ -35,13 +35,13 @@ object FrmProjectExport: TFrmProjectExport
         Font.Pitch = fpFixed
         Font.Quality = fqDraft
         Lines.Strings = (
-          'MemoRodapeDestino'
+          'MemoDestinationFooter'
         )
         ParentFont = False
         ScrollBars = ssAutoBoth
         TabOrder = 0
       end
-      object Label1: TLabel
+      object LblTaggedDestinationProperties: TLabel
         Left = 14
         Height = 15
         Top = 94
@@ -49,7 +49,7 @@ object FrmProjectExport: TFrmProjectExport
         Caption = 'Module properties'
         ParentColor = False
       end
-      object cbExportarNAComoItalicos: TCheckBox
+      object CbExportUnassociatedAsItalics: TCheckBox
         Left = 14
         Height = 19
         Top = 9
@@ -57,7 +57,7 @@ object FrmProjectExport: TFrmProjectExport
         Caption = 'Export unassociated words as added words (italics)'
         TabOrder = 1
       end
-      object cbExportarMorfologia: TCheckBox
+      object CbExportMorphology: TCheckBox
         Left = 14
         Height = 19
         Top = 35
@@ -65,7 +65,7 @@ object FrmProjectExport: TFrmProjectExport
         Caption = 'Export morphology tags'
         TabOrder = 2
       end
-      object cbExportarComentarios: TCheckBox
+      object CbExportComments: TCheckBox
         Left = 14
         Height = 19
         Top = 60
@@ -73,7 +73,7 @@ object FrmProjectExport: TFrmProjectExport
         Caption = 'Export comments as translator notes'
         TabOrder = 3
       end
-      object cbStrongsReutilizados: TCheckBox
+      object CbMarkReusedStrongs: TCheckBox
         Left = 391
         Height = 19
         Top = 9
@@ -81,7 +81,7 @@ object FrmProjectExport: TFrmProjectExport
         Caption = 'Mark reused Strong''s numbers'
         TabOrder = 4
       end
-      object cbStrongsNaoTraduzidos: TCheckBox
+      object CbMarkUntranslatedStrongs: TCheckBox
         Left = 391
         Height = 19
         Top = 35
@@ -90,11 +90,11 @@ object FrmProjectExport: TFrmProjectExport
         TabOrder = 5
       end
     end
-    object TabSheet2: TTabSheet
+    object InterlinearSourceTab: TTabSheet
       Caption = 'Interlinear source text'
       ClientHeight = 392
       ClientWidth = 767
-      object MemoRodapeOrigem: TMemo
+      object MemoSourceFooter: TMemo
         Left = 14
         Height = 229
         Top = 149
@@ -106,13 +106,13 @@ object FrmProjectExport: TFrmProjectExport
         Font.Pitch = fpFixed
         Font.Quality = fqDraft
         Lines.Strings = (
-          'MemoRodapeOrigem'
+          'MemoSourceFooter'
         )
         ParentFont = False
         ScrollBars = ssAutoBoth
         TabOrder = 0
       end
-      object Label2: TLabel
+      object LblInterlinearSourceProperties: TLabel
         Left = 14
         Height = 15
         Top = 132
@@ -121,7 +121,7 @@ object FrmProjectExport: TFrmProjectExport
         ParentColor = False
       end
     end
-    object TabSheet3: TTabSheet
+    object ConcordanceTab: TTabSheet
       Caption = 'Strong''s concordance'
       ClientHeight = 392
       ClientWidth = 767
@@ -138,9 +138,9 @@ object FrmProjectExport: TFrmProjectExport
           'Synthetic concordance'
         )
         TabOrder = 0
-        OnClick = ConcordanceTypeChange
+        OnClick = ConcordanceTypeClick
       end
-      object leAbreviacao: TLabeledEdit
+      object EditAbbreviation: TLabeledEdit
         Left = 13
         Height = 23
         Top = 338
@@ -188,7 +188,7 @@ object FrmProjectExport: TFrmProjectExport
           'Full verse'
         )
         TabOrder = 1
-        OnClick = ConcordanceContextChange
+        OnClick = ConcordanceContextClick
       end
       object lblConcordanceMaxCharacters: TLabel
         Left = 20
@@ -213,7 +213,7 @@ object FrmProjectExport: TFrmProjectExport
       end
     end
   end
-  object btExportar: TButton
+  object BtnExport: TButton
     Left = 699
     Height = 26
     Top = 450
@@ -222,9 +222,9 @@ object FrmProjectExport: TFrmProjectExport
     Caption = 'Export'
     Default = True
     TabOrder = 1
-    OnClick = BtnExportClick
+    OnClick = ExportButtonClick
   end
-  object Button2: TButton
+  object BtnCancel: TButton
     Left = 606
     Height = 26
     Top = 450
@@ -235,14 +235,14 @@ object FrmProjectExport: TFrmProjectExport
     ModalResult = 2
     TabOrder = 2
   end
-  object SaveDialog1: TSaveDialog
+  object SaveBibleModuleDialog: TSaveDialog
     Title = 'Save module as...'
     DefaultExt = '.nt'
     Filter = 'theWord Bible module (*.nt)|*.nt'
     Left = 728
     Top = 231
   end
-  object SaveDialogConcordancia: TSaveDialog
+  object SaveConcordanceDialog: TSaveDialog
     Title = 'Save module as...'
     DefaultExt = '.dct.twm'
     Filter = 'theWord dictionary module (*.dct.twm)|*.dct.twm'

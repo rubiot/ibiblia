@@ -1959,8 +1959,8 @@ procedure TMainForm.ActionExportProjectExecute(Sender: TObject);
 begin
   if not assigned(CurrentProject) then
     exit;
-  FrmProjectExport.SetProject(CurrentProject);
-  FrmProjectExport.ShowModal;
+  ProjectExportForm.SetProject(CurrentProject);
+  ProjectExportForm.ShowModal;
 end;
 
 procedure TMainForm.ActionApplyPatchExecute(Sender: TObject);
