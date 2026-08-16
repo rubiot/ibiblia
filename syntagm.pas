@@ -71,6 +71,8 @@ type
     FSiblings: TSyntagmList;
     FLabel: TLabel;
     FSelected: boolean;
+    FPointed: boolean;
+    FStrongHighlighted: boolean;
     FVerse: TObject; // TVerse; avoiding circular reference
     FStrong: TStringList;
     FMorph: TStringList;
@@ -97,6 +99,7 @@ type
     function GetHasMorph: boolean;
     procedure SetPointed(const AValue: boolean);
     procedure SetAssociated(const AValue: boolean);
+    procedure NotifyVisualChange;
     function GetGist: string;
   public
     constructor Create(s: TSyntagmToken; owner: TObject);
@@ -109,6 +112,10 @@ type
     procedure DisassociatePairs;
     procedure HighlightStrong(strong: string);
     procedure ToggleStrongHighlight(enable: boolean);
+    procedure HandleMouseDown(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
+    procedure HandleMouseEnter(Sender: TObject);
+    procedure HandleMouseLeave(Sender: TObject);
     function GetNext: TSyntagm;
     function GetNextSyntagm: TSyntagm;
     function GetNextVisible: TSyntagm;
@@ -126,11 +133,13 @@ type
     property VerseRef: TObject{TVerse} read FVerse write FVerse;
     property IsSelected: boolean read FSelected;
     property IsAssociated: boolean read GetIsAssociated write SetAssociated;
-    property IsPointed: boolean write SetPointed;
+    property IsPointed: boolean read FPointed write SetPointed;
+    property IsStrongHighlighted: boolean read FStrongHighlighted;
     property Text: string read FText write FText;
     property RawText: string read FRawText write FRawText;
     property Kind: TSyntagmKind read FKind write FKind;
     property IsItalic: boolean read FItalic;
+    property TextColor: TColor read FColor;
     property IsSuperscript: boolean read FSuperscript;
     property HasStrongs: boolean read GetHasStrongs;
     property StrongsCount: integer read GetStrongsCount;
@@ -323,6 +332,22 @@ begin
     DoOnMiddleClick(Sender, Shift);
 end;
 
+procedure TSyntagm.HandleMouseDown(Sender: TObject; Button: TMouseButton;
+  Shift: TShiftState; X, Y: Integer);
+begin
+  DoOnMouseDown(Sender, Button, Shift, X, Y);
+end;
+
+procedure TSyntagm.HandleMouseEnter(Sender: TObject);
+begin
+  DoOnMouseEnter(Sender);
+end;
+
+procedure TSyntagm.HandleMouseLeave(Sender: TObject);
+begin
+  DoOnMouseLeave(Sender);
+end;
+
 procedure TSyntagm.DoOnMouseUp(Sender: TObject; Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
 begin
@@ -351,7 +376,7 @@ begin
   if not verse.ShowHints then exit;
 
   if not assigned(Hint) then
-    Hint := THintWindow.Create(Self.LabelRef);
+    Hint := THintWindow.Create(nil);
 
   //if FStrong.Count > 0 then
   //begin
@@ -361,10 +386,10 @@ begin
 
     txt := 'Pares:';
     for i:=0 to Pairs.Count-1 do
-      txt := Concat(txt, #13#10, Pairs[i].LabelRef.Caption);
+      txt := Concat(txt, #13#10, Pairs[i].Text);
     txt := Concat(txt, #13#10#13#10'Irmãos:');
     for i:=0 to Siblings.Count-1 do
-      txt := Concat(txt, #13#10, Siblings[i].LabelRef.Caption);
+      txt := Concat(txt, #13#10, Siblings[i].Text);
 
     if length(txt) > 0 then
     begin
@@ -390,11 +415,7 @@ begin
   for i:=0 to Siblings.Count-1 do
     Siblings[i].SetPointed(False);
 
-  if assigned(Hint) then
-  begin
-    Hint.Destroy;
-    Hint := nil;
-  end;
+  FreeAndNil(Hint);
 
   if assigned(TVerse(VerseRef).OnMouseLeave) then
     TVerse(VerseRef).OnMouseLeave(self);
@@ -579,18 +600,19 @@ end;
 
 procedure TSyntagm.SetPointed(const AValue: boolean);
 begin
+  if FPointed = AValue then
+    Exit;
+  FPointed := AValue;
+
   //TVerse(FVerse).Panel.Refresh; // ocultando tags, se estiverem sendo exibidas
 
-  if not assigned(FLabel) then
-    exit;
-
-  if AValue then
+  if assigned(FLabel) and AValue then
   begin // IsPointed
     FLabel.Font.Underline := true;
     if not IsSelected then
       FLabel.Color:= clHighlight;
   end
-  else
+  else if assigned(FLabel) then
   begin // não IsPointed
     FLabel.Font.Underline := false;
     if IsSelected then
@@ -598,16 +620,15 @@ begin
     else
       FLabel.Color:= clDefault;
   end;
+  NotifyVisualChange;
 end;
 
 procedure TSyntagm.SetAssociated(const AValue: boolean);
 begin
-  if (not assigned(FVerse)) or
-    (not TVerse(FVerse).Active) or
-     (not assigned(FLabel)) then
+  if not assigned(FVerse) then
     exit;
 
-  if AValue then // IsAssociated
+  if assigned(FLabel) and AValue then // IsAssociated
   begin
     //FLabel.Font.Italic := false;
     //FLabel.Font.Color := FColor; //clWindowText;
@@ -615,7 +636,7 @@ begin
       FLabel.Font.Color := TVerse(FVerse).AssociatedColor //clGrayText
     else
       FLabel.Font.Color := FColor;
-  end else // nao IsAssociated
+  end else if assigned(FLabel) then // nao IsAssociated
   begin
     //FLabel.Font.Italic := true;
     if FColor = clDefault then
@@ -623,6 +644,13 @@ begin
     else
       FLabel.Font.Color := FColor;
   end;
+  NotifyVisualChange;
+end;
+
+procedure TSyntagm.NotifyVisualChange;
+begin
+  if Assigned(FVerse) then
+    TVerse(FVerse).InvalidateSyntagmVisual(Self);
 end;
 
 function TSyntagm.GetGist: string;
@@ -646,10 +674,12 @@ end;
 
 procedure TSyntagm.ToggleStrongHighlight(enable: boolean);
 begin
-  if not assigned(FLabel) then
-    exit;
-
+  if FStrongHighlighted = enable then
+    Exit;
+  FStrongHighlighted := enable;
+  if assigned(FLabel) then
   FLabel.Font.Underline := enable;
+  NotifyVisualChange;
 end;
 
 function TSyntagm.GetNext: TSyntagm;
@@ -699,7 +729,9 @@ begin
     begin
       for i := i+1 to Syntagms.Count-1 do
       begin
-        if assigned(Syntagms[i].FLabel) then
+        if (Syntagms[i].Kind in [skSyntagm, skWhitespace, skPunctuation,
+             skStrongCount]) or (Syntagms[i].Text = '<FI>') or
+           (Syntagms[i].Text = '<Fi>') then
         begin
           result := Syntagms[i];
           break;
@@ -730,6 +762,8 @@ begin
   FSuperscript := s.Superscript;
   FItalic      := s.Italic;
   FLabel       := nil;
+  FPointed     := False;
+  FStrongHighlighted := False;
   FPairs       := TSyntagmList.Create;
   FSiblings    := TSyntagmList.Create;
   FStrong      := TStringList.Create;
@@ -818,6 +852,8 @@ destructor TSyntagm.Destroy;
 var
   verse: TVerse;
 begin
+  FreeAndNil(Hint);
+
   verse := nil;
   if Assigned(FVerse) then
     verse := TVerse(FVerse);
@@ -862,6 +898,7 @@ begin
   if TVerse(FVerse).Active and assigned(FLabel) then
     FLabel.Color:= clYellow;
   TVerse(FVerse).Selection.Add(Self);
+  NotifyVisualChange;
 end;
 
 procedure TSyntagm.RemoveFromSelection;
@@ -870,6 +907,7 @@ begin
   if TVerse(FVerse).Active and assigned(FLabel) then
     FLabel.Color:= clWindow;
   TVerse(FVerse).Selection.Remove(Self);
+  NotifyVisualChange;
 end;
 
 procedure TSyntagm.InvertSelection;
@@ -972,9 +1010,11 @@ begin
     i := Syntagms.IndexOf(Self);
     if (i >= 0) and (i > 0) then
     begin
-      for i := i-1 to 0 do
+      for i := i-1 downto 0 do
       begin
-        if assigned(Syntagms[i].FLabel)then
+        if (Syntagms[i].Kind in [skSyntagm, skWhitespace, skPunctuation,
+             skStrongCount]) or (Syntagms[i].Text = '<FI>') or
+           (Syntagms[i].Text = '<Fi>') then
         begin
           result := Syntagms[i];
           break;
@@ -1066,6 +1106,9 @@ begin
     if IndexOf(s) = -1 then
        Add(s);
 end;
+
+finalization
+  FreeAndNil(Hint);
 
 end.
 

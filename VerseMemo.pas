@@ -346,6 +346,9 @@ procedure TVerseMemo.RestoreFocusAfterClose;
 var
   FocusTarget: TWinControl;
 begin
+  if Assigned(FVerse) then
+    FVerse.RefreshAfterEditorClose;
+
   FocusTarget := nil;
   if Assigned(FContainer) then
   begin

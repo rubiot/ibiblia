@@ -25,7 +25,7 @@ uses
   project_database_bootstrap, status_catalog,
   dictionary_manager, project_exporter, association_memory_service,
   UnitPleaseWait, bible_book_names, translation_memory_model, ConcordanceExport,
-  navigation_history;
+  navigation_history, text_direction;
 const
   // AI processing icon indices for ImageListTreeView in formprincipal
   // ImageListTreeView has indices 0-7 for normal states (0-3) and selected states (4-7)
@@ -250,6 +250,11 @@ type
     function GetVerseReferenceString(Verse: TVerse): string;
     procedure AttachProjectVersePopupMenu(texto: TTipoTextoBiblico);
     function FindVerseType(Verse: TVerse; out VerseType: TTipoTextoBiblico): Boolean;
+    function IsVerseObjectText(text: TTipoTextoBiblico): Boolean;
+    procedure ApplyTextDirectionToVerse(text: TTipoTextoBiblico;
+      Direction: TTextDirection);
+    procedure OnTextDirectionChange(Sender: TVerse;
+      Direction: TTextDirection);
     { AI Visual Feedback }
     procedure MarkNodeAsAIPending(node: TTreeNode; const ref: string);
     procedure MarkNodeAsAIProcessing(const ref: string);
@@ -359,6 +364,8 @@ type
     function GetStatus(ref: string): Integer;
     procedure SetTextDescription(text: TTipoTextoBiblico; description: string);
     function GetTextDescription(text: TTipoTextoBiblico): string;
+    procedure SetTextDirection(text: TTipoTextoBiblico; direction: TTextDirection);
+    function GetTextDirection(text: TTipoTextoBiblico): TTextDirection;
     function HasStoredAssociations: Boolean;
     procedure ClearStoredAssociations(ProgressBar: TProgressBar = nil);
     procedure Vacuum;
@@ -2315,6 +2322,62 @@ begin
   Result := FConfig.ReadTextDescription(Integer(text));
 end;
 
+procedure TProject.SetTextDirection(text: TTipoTextoBiblico;
+  direction: TTextDirection);
+begin
+  if text = tbNone then
+    Exit;
+  if Assigned(FConfig) and Assigned(FPersistence) then
+    FConfig.WriteTextDirection(Integer(text), direction);
+  ApplyTextDirectionToVerse(text, direction);
+end;
+
+function TProject.IsVerseObjectText(text: TTipoTextoBiblico): Boolean;
+begin
+  Result := (Ord(text) >= Ord(Low(FAVersiculo))) and
+    (Ord(text) <= Ord(High(FAVersiculo)));
+end;
+
+procedure TProject.ApplyTextDirectionToVerse(text: TTipoTextoBiblico;
+  Direction: TTextDirection);
+var
+  SavedHandler: TOnTextDirectionChangeEvent;
+  VerseObject: TVerse;
+begin
+  if not IsVerseObjectText(text) then
+    Exit;
+  VerseObject := FAVersiculo[text];
+  if not Assigned(VerseObject) then
+    Exit;
+
+  SavedHandler := VerseObject.OnTextDirectionChange;
+  VerseObject.OnTextDirectionChange := nil;
+  try
+    VerseObject.BaseDirection := Direction;
+  finally
+    VerseObject.OnTextDirectionChange := SavedHandler;
+  end;
+end;
+
+function TProject.GetTextDirection(text: TTipoTextoBiblico): TTextDirection;
+var
+  ModuleProperties: string;
+begin
+  if not Assigned(FConfig) then
+    Exit(tdLeftToRight);
+
+  case text of
+    tbOrigem:
+      ModuleProperties := FConfig.ReadString('propriedades.origem');
+    tbDestino:
+      ModuleProperties := FConfig.ReadString('propriedades.destino');
+  else
+    ModuleProperties := '';
+  end;
+  Result := FConfig.ReadTextDirection(Integer(text),
+    ParseTheWordR2LProperties(ModuleProperties));
+end;
+
 procedure TProject.Vacuum;
 begin
   if MessageDlg(SConfirmation, SVaccumProjectConfirmation, mtConfirmation, [mbYes, mbNo],0) = mrNo then
@@ -2625,6 +2688,7 @@ var
   v: TTipoTextoBiblico;
 begin
   FTemporizador.Enabled := false;
+  FTemporizador.Tag := 0;
   hide := true;
 
   case FPopupTrigger of
@@ -2723,6 +2787,15 @@ begin
     end;
 
   Result := False;
+end;
+
+procedure TProject.OnTextDirectionChange(Sender: TVerse;
+  Direction: TTextDirection);
+var
+  VerseType: TTipoTextoBiblico;
+begin
+  if FindVerseType(Sender, VerseType) then
+    SetTextDirection(VerseType, Direction);
 end;
 
 procedure TProject.OnVersePopup(Sender: TObject);
@@ -2872,19 +2945,31 @@ var
   StrongEntries: TDictionaryEntryArray;
   MorphologyEntries: TDictionaryEntryArray;
   EntryIndex: Integer;
+  Candidate: TSyntagm;
+  Timer: TTimer;
   v: TTipoTextoBiblico;
   point: TPoint;
   s: TSyntagm;
   rtf: string;
 begin
+  if not (Sender is TTimer) then
+    Exit;
+  Timer := TTimer(Sender);
+  Timer.Enabled := False;
+  Candidate := TSyntagm(Timer.Tag);
+  Timer.Tag := 0;
+
+  if not Assigned(Candidate) then
+    Exit;
   if frmDictionaryPopup.Visible then
     exit;
 
-  s := TSyntagm(TTimer(Sender).Tag);
   for v:=low(FAVersiculo) to high(FAVersiculo) do
   begin
-    if (FAVersiculo[v] = s.VerseRef) then
+    if Assigned(FAVersiculo[v]) and Assigned(FAVersiculo[v].Syntagms) and
+      (FAVersiculo[v].Syntagms.IndexOf(Candidate) >= 0) then
     begin
+      s := Candidate;
       FDictionaryManager.CollectPopupEntries(s, Ord(v), StrongEntries, MorphologyEntries);
 
       for EntryIndex := Low(MorphologyEntries) to High(MorphologyEntries) do
@@ -2906,8 +2991,8 @@ begin
 
       if (FrmDictionaryPopup.Strongs.Count > 0) or (FrmDictionaryPopup.Morphologies.Count > 0) then
       begin
-        point := s.LabelRef.ClientToScreen(s.LabelRef.ClientRect.BottomRight);
-        FrmDictionaryPopup.ShowAt(point.x, point.y);
+        if FAVersiculo[v].TryGetSyntagmScreenAnchor(s, point) then
+          FrmDictionaryPopup.ShowAt(point.x, point.y);
       end;
       break;
     end;
@@ -3346,6 +3431,7 @@ begin
        continue;
 
     FAVersiculo[t].TokenizerVersion := TokenizerVersion;
+    ApplyTextDirectionToVerse(t, GetTextDirection(t));
 
     { definindo fontes }
     f.Name := 'default';
@@ -3648,6 +3734,7 @@ end;
 procedure TProject.Rollback;
 var
   OldScrollEventsEnabled: Boolean;
+  TextType: TTipoTextoBiblico;
 begin
   OldScrollEventsEnabled := FScrollEventsEnabled;
   FScrollEventsEnabled := False;
@@ -3665,6 +3752,8 @@ begin
     FAssociationMemory.ReloadRevisionState;
   if Assigned(FCurrentVerseWorkspace) then
     FCurrentVerseWorkspace.Clear;
+  for TextType := Low(FAVersiculo) to High(FAVersiculo) do
+    ApplyTextDirectionToVerse(TextType, GetTextDirection(TextType));
   if FAtivo and OldScrollEventsEnabled and not FClosing then
   begin
     FExportando := True;
@@ -4243,8 +4332,10 @@ var
   moduleScope: TEscopoTexto;
   oldCursor: TCursor;
   ImportedDescription: string;
+  ImportedDirection: TTextDirection;
   ImportedProperties: string;
   HasImportedDescription: Boolean;
+  ModuleProperties: string;
   StageImportedProperties: Boolean;
 begin
   modulo := nil;
@@ -4336,11 +4427,14 @@ begin
          VerseRulesForm.AddVerseRule(mtVerseRules.Groups[1].Value, mtVerseRules.Groups[2].Value);
     end;
 
+    ModuleProperties := propriedades.DataString;
+    ImportedDirection := ParseTheWordR2LProperties(ModuleProperties);
      if ((texto = tbOrigem)  and (GetInfo('propriedades.origem')  = '')) or // não importar propriedades quando já existem
        ((texto = tbDestino) and (GetInfo('propriedades.destino') = '')) then
     begin
       StageImportedProperties := True;
-      ImportedProperties := propriedades.DataString;
+      ImportedProperties := NormalizeTheWordR2LProperties(ModuleProperties,
+        ImportedDirection);
     end;
     FreeAndNil(propriedades);
 
@@ -4398,8 +4492,8 @@ begin
       FinishScrollingSession;
       FExportando := false;
     end;
-    if texto in [tbOrigem, tbDestino] then
-      RebuildAssociationMemory(pb);
+    if not FConfig.HasTextDirection(Integer(texto)) then
+      SetTextDirection(texto, ImportedDirection);
     if HasImportedDescription then
       FConfig.StageTextDescription(Integer(texto), ImportedDescription);
     if StageImportedProperties then
@@ -4409,6 +4503,8 @@ begin
         tbDestino: FConfig.WriteString('propriedades.destino',
           ImportedProperties);
       end;
+    if texto in [tbOrigem, tbDestino] then
+      RebuildAssociationMemory(pb);
     UpdateTree(FMarker);
     UpdateTree(FMarker);
   finally
@@ -4432,6 +4528,8 @@ begin
   if Assigned(FAVersiculo[texto]) then
   begin
     FAVersiculo[texto].TokenizerVersion := TokenizerVersion;
+    FAVersiculo[texto].BaseDirection := GetTextDirection(texto);
+    FAVersiculo[texto].OnTextDirectionChange := @OnTextDirectionChange;
     FAVersiculo[texto].OnVerseChanged := FOnAlterarVersiculo;
     AttachProjectVersePopupMenu(texto);
   end;
@@ -4459,6 +4557,7 @@ begin
     Options.MarkUntranslatedStrongs := oeStrongsNaoTraduzidos in opcoes;
     Options.ExportComments := oeExportarComentarios in opcoes;
     Options.Properties := ReadInfo('propriedades.destino');
+    Options.Direction := GetTextDirection(tbDestino);
     Options.ErrorDialogTitle := SError;
     Options.CorruptedDataMessage := SCorruptedData;
     Options.ExportToFileErrorMessage := SExportToFileError;
@@ -4500,6 +4599,7 @@ begin
     FExportando := true;
 
     Options.Properties := ReadInfo('propriedades.origem');
+    Options.Direction := GetTextDirection(tbOrigem);
     Options.ErrorDialogTitle := SError;
     Options.CorruptedDataMessage := SCorruptedData;
     Options.ExportToFileErrorMessage := SExportToFileError;

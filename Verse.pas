@@ -11,7 +11,8 @@ interface
 uses
   Classes, SysUtils, StrUtils, ExtCtrls, StdCtrls, Controls, Graphics,
   ONTTokenizer, Syntagm, Forms, LCLType, Math, LCLProc, Dialogs, LazUTF8,
-  ONTParser, dbugintf, Menus, Clipbrd, PCRE, ai_debug;
+  ONTParser, dbugintf, Menus, Clipbrd, PCRE, ai_debug, text_direction,
+  verse_view_intf;
 
 type
 
@@ -19,6 +20,8 @@ type
 
   TOnSyntagmEvent = procedure (Sender: TSyntagm) of object;
   TOnVerseChangedEvent = procedure () of object;
+  TOnTextDirectionChangeEvent = procedure(Sender: TVerse;
+    Direction: TTextDirection) of object;
   TOnExportTextEvent = procedure (Sender: TVerse) of object;
 
   TStrongsCountMode = (scNone, scCountWords, scCountStrongs);
@@ -40,7 +43,15 @@ type
   private
     FReference: string;
     FReferenceID: string;
-    FRightToLeft: Boolean;
+    FBaseDirection: TTextDirection;
+    FVerseView: IVerseView;
+    FVerseViewControl: TCustomControl;
+    FVisualRevision: QWord;
+    FVisualUpdatesSuspended: Integer;
+    FVisualRefreshQueued: Boolean;
+    FLastHoverLogicalIndex: Integer;
+    FDisplayTags: Boolean;
+    FOnTextDirectionChange: TOnTextDirectionChangeEvent;
     { Private declarations }
     FShowHints: boolean;
     FOnVerseChanged: TOnVerseChangedEvent;
@@ -86,10 +97,19 @@ type
     function GetPairs: string;
     function GetPlainText: string;
     procedure SetActive(const AValue: boolean);
+    function GetRightToLeft: Boolean;
     procedure SetFont(const AValue: TFont);
     procedure SetModified(const AValue: boolean);
     procedure NotifyVerseChanged;
     procedure SetRightToLeft(AValue: Boolean);
+    procedure SetBaseDirection(AValue: TTextDirection);
+    procedure RefreshVisualDocument(ContentChanged: Boolean = False);
+    procedure FlushVisualRefresh(Data: PtrInt);
+    procedure OnVisualMouseDown(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; const Hit: TVerseHit);
+    procedure OnVisualDoubleClick(Sender: TObject);
+    procedure OnVisualHover(Sender: TObject; const Hit: TVerseHit);
+    procedure OnVisualContentHeightChanged(Sender: TObject);
     procedure SetStrongsCountMode(AValue: TStrongsCountMode);
     procedure SetBoldWordsWithStrong(AValue: boolean);
     procedure SetPairs(const AValue: string);
@@ -130,6 +150,8 @@ type
     destructor Destroy; override;
     procedure MarkDestroying;
     procedure ClearSyntagms;
+    procedure InvalidateSyntagmVisual(Syntagm: TSyntagm);
+    procedure RefreshAfterEditorClose;
     procedure AssociateSyntagms;
     procedure ClearSelection;
     procedure DisassociatePairs;
@@ -144,6 +166,8 @@ type
       ListType: TPairsListType): TAssociationPairDataArray;
     procedure OnSyntagmPopupMenu(s: TSyntagm);
     procedure ShowTags;
+    function TryGetSyntagmScreenAnchor(Syntagm: TSyntagm;
+      out Anchor: TPoint): Boolean;
     procedure HideTags;
     function GetONTLine: string; overload;
     function GetONTLine(Morphology: boolean; AutoItalics: boolean; ReusedStrongs: boolean;
@@ -179,6 +203,8 @@ type
     property OnVerseChanged: TOnVerseChangedEvent read FOnVerseChanged write FOnVerseChanged;
     property OnExportText: TOnExportTextEvent read FOnExportText write FOnExportText;
     property ShowHints: boolean read FShowHints write FShowHints;
+    property OnTextDirectionChange: TOnTextDirectionChangeEvent
+      read FOnTextDirectionChange write FOnTextDirectionChange;
     property Active: boolean read GetActive write SetActive;
     property PlainText: string read GetPlainText;
     property AssociatedColor: TColor read FAssociatedColor write FAssociatedColor;
@@ -189,7 +215,8 @@ type
     property StrongsCountMode: TStrongsCountMode read FStrongsCountMode write SetStrongsCountMode;
     property DebugTokens: string read GetTokens;
     property ReadOnly: Boolean read FReadOnly write FReadOnly default False;
-    property RightToLeft: Boolean read FRightToLeft write SetRightToLeft default False;
+    property BaseDirection: TTextDirection read FBaseDirection write SetBaseDirection;
+    property RightToLeft: Boolean read GetRightToLeft write SetRightToLeft default False;
     property NextAutoSelectWordMustHaveStrongMorpho: boolean read FNextAutoSelectWordMustHaveStrongMorpho write FNextAutoSelectWordMustHaveStrongMorpho;
     property TokenizerVersion: Integer read FTokenizerVersion write SetTokenizerVersion;
     property Destroying: boolean read FDestroying;
@@ -212,7 +239,8 @@ resourcestring
 implementation
 
 uses
-  TypInfo, SyntagmSelection;
+  TypInfo, SyntagmSelection, verse_visual_adapter,
+  directwrite_syntagm_view;
 
 const
   MarginWidth = 10; // text's distance from the margin
@@ -225,9 +253,25 @@ begin
   Result := List[Index1].ToInteger - List[Index2].ToInteger;
 end;
 
+function CopySelectionInLogicalOrder(AVerse: TVerse;
+  ASelection: TSyntagmList): TSyntagmList;
+var
+  Syntagm: TSyntagm;
+begin
+  Result := TSyntagmList.Create;
+  if not Assigned(AVerse) or not Assigned(ASelection) or
+     not Assigned(AVerse.Syntagms) then
+    Exit;
+  for Syntagm in AVerse.Syntagms do
+    if ASelection.IndexOf(Syntagm) >= 0 then
+      Result.Add(Syntagm);
+end;
+
 { TVerse }
 
 constructor TVerse.Create(TheOwner : TScrollBox; const AReference: string = '');
+var
+  DirectWriteView: TDirectWriteSyntagmView;
 begin
   AIDebugLogFmt('[TVerse] Create called. Self=%s, Owner=%s, Reference=%s',
     [IntToHex(PtrUInt(Pointer(Self)), SizeOf(Pointer)*2),
@@ -236,6 +280,14 @@ begin
   FReference := AReference;
   FPanel := TheOwner;
 
+  FBaseDirection := tdLeftToRight;
+  FVisualRevision := 1;
+  FVisualUpdatesSuspended := 0;
+  FVisualRefreshQueued := False;
+  FLastHoverLogicalIndex := -1;
+  FDisplayTags := False;
+  FVerseView := nil;
+  FVerseViewControl := nil;
   FActive := assigned(FPanel);
 
   if (FActive) then
@@ -244,6 +296,24 @@ begin
     FPanel.Caption := '';
 
     InitSyntagmPopupMenu;
+    DirectWriteView := TDirectWriteSyntagmView.Create(FPanel);
+    if DirectWriteView.BackendAvailable then
+    begin
+      DirectWriteView.Parent := FPanel;
+      DirectWriteView.Align := alTop;
+      DirectWriteView.Font.Assign(FPanel.Font);
+      DirectWriteView.Color := FPanel.Color;
+      DirectWriteView.OnVerseMouseDown := @OnVisualMouseDown;
+      DirectWriteView.OnVerseDoubleClick := @OnVisualDoubleClick;
+      DirectWriteView.OnVerseHover := @OnVisualHover;
+      DirectWriteView.OnContentHeightChanged :=
+        @OnVisualContentHeightChanged;
+      FVerseViewControl := DirectWriteView;
+      FVerseView := DirectWriteView;
+    end
+    else
+      DirectWriteView.Free;
+
     InitVersePopupMenu;
 
     FEdit            := TEdit.Create(FPanel);
@@ -282,6 +352,8 @@ end;
 
 destructor TVerse.Destroy;
 begin
+  Application.RemoveAsyncCalls(Self);
+  FVisualRefreshQueued := False;
   AIDebugLogFmt('[TVerse] Destroy called. Self=%s, Panel=%s, Reference=%s',
     [IntToHex(PtrUInt(Pointer(Self)), SizeOf(Pointer)*2),
      IntToHex(PtrUInt(Pointer(FPanel)), SizeOf(Pointer)*2),
@@ -294,6 +366,8 @@ begin
   begin
     FEdit.Free;
     FSyntagmPopupMenu.Free;
+    FVerseView := nil;
+    FreeAndNil(FVerseViewControl);
     FVersePopupMenu.Free;
     FPanel.OnMouseDown  := nil;
     FPanel.OnResize     := nil;
@@ -308,57 +382,210 @@ begin
   FDestroying := true;
 end;
 
+procedure TVerse.RefreshAfterEditorClose;
+begin
+  if FDestroying or not FActive then
+    Exit;
+
+  { The editor is a sibling overlay. Hiding it does not reliably generate a
+    paint for the DirectWrite child on Win32. Hit testing deliberately rejects
+    stale geometry, so force one synchronous paint before accepting input. }
+  if Assigned(FVerseViewControl) then
+  begin
+    FVerseViewControl.Invalidate;
+    FVerseViewControl.Repaint;
+  end
+  else if Assigned(FPanel) then
+    FPanel.Repaint;
+end;
+
 procedure TVerse.ClearSyntagms;
 var
   s: TSyntagm;
 begin
   if assigned(FSyntagms) then
   begin
-    if FActive and assigned(FPanel) then
-      FPanel.DisableAutoSizing;
+    Inc(FVisualUpdatesSuspended);
+    try
+      Application.RemoveAsyncCalls(Self);
+      FVisualRefreshQueued := False;
 
-    for s in FSyntagms do
-      s.Destroy;
+      if FActive and assigned(FPanel) then
+        FPanel.DisableAutoSizing;
+      Inc(FVisualRevision);
+      if Assigned(FVerseView) then
+        FVerseView.SetDocument(nil);
+      FLastHoverLogicalIndex := -1;
 
-    ClearStrongCount;
-    FSyntagms.Clear;
+      for s in FSyntagms do
+        s.Destroy;
 
-    if FActive and assigned(FPanel) then
-      FPanel.EnableAutoSizing;
+      ClearStrongCount;
+      FSyntagms.Clear;
+    finally
+      if FActive and assigned(FPanel) then
+        FPanel.EnableAutoSizing;
+      Dec(FVisualUpdatesSuspended);
+    end;
   end;
   FSelection.Clear;
+end;
+
+procedure TVerse.InvalidateSyntagmVisual(Syntagm: TSyntagm);
+begin
+  if FDestroying or (FVisualUpdatesSuspended > 0) then
+    Exit;
+  if Assigned(FVerseView) then
+  begin
+    if not FVisualRefreshQueued then
+    begin
+      FVisualRefreshQueued := True;
+      Application.QueueAsyncCall(@FlushVisualRefresh, 0);
+    end;
+  end
+  else if FActive and Assigned(FPanel) then
+    FPanel.Invalidate;
+end;
+
+procedure TVerse.FlushVisualRefresh(Data: PtrInt);
+begin
+  FVisualRefreshQueued := False;
+  if FDestroying or (FVisualUpdatesSuspended > 0) or
+     not Assigned(FVerseView) then
+    Exit;
+  RefreshVisualDocument;
+end;
+
+procedure TVerse.RefreshVisualDocument(ContentChanged: Boolean);
+begin
+  if not Assigned(FVerseView) or not Assigned(FSyntagms) then
+    Exit;
+  if ContentChanged then
+    Inc(FVisualRevision);
+  FVerseView.SetDocument(BuildVerseVisualDocument(FSyntagms, FStrongCount,
+    FBaseDirection, FVisualRevision, FAssociatedColor, FUnassociatedColor,
+    FBoldWordsWithStrong));
+  FVerseView.DisplayTags := FDisplayTags;
+end;
+
+procedure TVerse.OnVisualMouseDown(Sender: TObject; Button: TMouseButton;
+  Shift: TShiftState; const Hit: TVerseHit);
+var
+  Syntagm: TSyntagm;
+begin
+  if FDestroying or (Hit.Revision <> FVisualRevision) or
+     (Hit.LogicalIndex < 0) or not Assigned(FSyntagms) or
+     (Hit.LogicalIndex >= FSyntagms.Count) then
+  begin
+    OnVerseMouseDown(Sender, Button, Shift, 0, 0);
+    Exit;
+  end;
+  Syntagm := FSyntagms[Hit.LogicalIndex];
+  if Assigned(Syntagm) then
+    Syntagm.HandleMouseDown(Sender, Button, Shift, 0, 0);
+end;
+
+procedure TVerse.OnVisualDoubleClick(Sender: TObject);
+begin
+  if Assigned(FPanel) and Assigned(FPanel.OnDblClick) then
+    FPanel.OnDblClick(FPanel);
+end;
+
+procedure TVerse.OnVisualHover(Sender: TObject; const Hit: TVerseHit);
+var
+  NewIndex: Integer;
+  OldIndex: Integer;
+begin
+  if FDestroying or not Assigned(FSyntagms) then
+    Exit;
+  OldIndex := FLastHoverLogicalIndex;
+  NewIndex := Hit.LogicalIndex;
+  if (Hit.Revision <> FVisualRevision) or
+     (NewIndex < 0) or (NewIndex >= FSyntagms.Count) then
+    NewIndex := -1;
+  if NewIndex = OldIndex then
+    Exit;
+  FLastHoverLogicalIndex := NewIndex;
+  if (OldIndex >= 0) and (OldIndex < FSyntagms.Count) then
+    FSyntagms[OldIndex].HandleMouseLeave(Sender);
+  if NewIndex >= 0 then
+    FSyntagms[NewIndex].HandleMouseEnter(Sender);
+end;
+
+procedure TVerse.OnVisualContentHeightChanged(Sender: TObject);
+var
+  NewHeight: Integer;
+begin
+  if FDestroying or not Assigned(FVerseViewControl) or
+     not (Sender is TDirectWriteSyntagmView) then
+    Exit;
+  NewHeight := Max(1, TDirectWriteSyntagmView(Sender).ContentHeight);
+  if FVerseViewControl.Height <> NewHeight then
+    FVerseViewControl.Height := NewHeight;
+end;
+
+function TVerse.TryGetSyntagmScreenAnchor(Syntagm: TSyntagm;
+  out Anchor: TPoint): Boolean;
+var
+  LogicalIndex: Integer;
+begin
+  Anchor := Point(0, 0);
+  Result := False;
+  if not Assigned(Syntagm) or not Assigned(FSyntagms) then
+    Exit;
+  LogicalIndex := FSyntagms.IndexOf(Syntagm);
+  if LogicalIndex < 0 then
+    Exit;
+  if Assigned(FVerseView) then
+    Exit(FVerseView.TryGetLogicalScreenAnchor(LogicalIndex, Anchor));
+  if Assigned(Syntagm.LabelRef) then
+  begin
+    Anchor := Syntagm.LabelRef.ClientToScreen(
+      Syntagm.LabelRef.ClientRect.BottomRight);
+    Result := True;
+  end;
 end;
 
 procedure TVerse.AssociateSyntagms;
 var
   s: TSyntagm;
+  SourceSelection: TSyntagmList;
+  TargetSelection: TSyntagmList;
 begin
   if not Assigned(PairedVerse) then
     exit;
 
-  for s in Selection do
-  begin
-    with s do
+  SourceSelection := CopySelectionInLogicalOrder(Self, Selection);
+  TargetSelection := CopySelectionInLogicalOrder(PairedVerse,
+    PairedVerse.Selection);
+  try
+    for s in SourceSelection do
     begin
-      Pairs.Clear;
-      Pairs.AddList(PairedVerse.Selection);
-      IsAssociated:=true;
-      Siblings.Clear;
-      Siblings.AddList(Selection);
-      Siblings.Remove(s);
+      with s do
+      begin
+        Pairs.Clear;
+        Pairs.AddList(TargetSelection);
+        IsAssociated:=true;
+        Siblings.Clear;
+        Siblings.AddList(SourceSelection);
+        Siblings.Remove(s);
+      end;
     end;
-  end;
-  for s in PairedVerse.Selection do
-  begin
-    with s do
+    for s in TargetSelection do
     begin
-      Pairs.Clear;
-      Pairs.AddList(Selection);
-      IsAssociated:=true;
-      Siblings.Clear;
-      Siblings.AddList(PairedVerse.Selection);
-      Siblings.Remove(s);
+      with s do
+      begin
+        Pairs.Clear;
+        Pairs.AddList(SourceSelection);
+        IsAssociated:=true;
+        Siblings.Clear;
+        Siblings.AddList(TargetSelection);
+        Siblings.Remove(s);
+      end;
     end;
+  finally
+    TargetSelection.Free;
+    SourceSelection.Free;
   end;
 
   Modified := true;
@@ -502,7 +729,8 @@ var
   p: TPoint;
 begin
   FSyntagmPopupMenu.Tag := PtrInt(s);
-  p := s.LabelRef.ClientToScreen(s.LabelRef.ClientRect.BottomRight);
+  if not TryGetSyntagmScreenAnchor(s, p) then
+    p := Mouse.CursorPos;
   FSyntagmPopupMenu.PopUp(p.x, p.y);
 end;
 
@@ -512,8 +740,14 @@ var
   p: TPoint;
   tags: string;
 begin
+  FDisplayTags := True;
   if not FActive then
-    exit;
+    Exit;
+  if Assigned(FVerseView) then
+  begin
+    FVerseView.DisplayTags := True;
+    Exit;
+  end;
 
   for s in FSyntagms do
   begin
@@ -537,7 +771,13 @@ end;
 
 procedure TVerse.HideTags;
 begin
-  if FActive then
+  FDisplayTags := False;
+  if Assigned(FVerseView) then
+  begin
+    FVerseView.DisplayTags := False;
+    Exit;
+  end;
+  if FActive and Assigned(FPanel) then
     FPanel.Refresh;
 end;
 
@@ -592,9 +832,20 @@ begin
     exit;
 
   oldActive := FActive;
-  FActive := false; // we're potentially deleting labels
+  Inc(FVisualUpdatesSuspended);
+  try
+    { End hover and cancel queued paints while the original logical-index map
+      is still intact. Reconciliation below destroys and moves syntagms. }
+    Application.RemoveAsyncCalls(Self);
+    FVisualRefreshQueued := False;
+    Inc(FVisualRevision);
+    if Assigned(FVerseView) then
+      FVerseView.SetDocument(nil);
+    FLastHoverLogicalIndex := -1;
 
-  new := FONTParser.ParseLine(_XML, self);
+    FActive := false; // we're potentially deleting labels
+
+    new := FONTParser.ParseLine(_XML, self);
 
   ClearSelection;
 
@@ -683,7 +934,10 @@ begin
     PairedVerse.Modified := true;
   SyntagmClipboard := nil;
 
-  FActive := oldActive;
+  finally
+    FActive := oldActive;
+    Dec(FVisualUpdatesSuspended);
+  end;
   Render;
 end;
 
@@ -1287,6 +1541,8 @@ end;
 
 procedure TVerse.SetFont(const AValue: TFont);
 begin
+  if Assigned(FVerseViewControl) then
+    FVerseViewControl.Font.Assign(AValue);
   if not FActive then
     exit;
   FPanel.Font := AValue;
@@ -1307,12 +1563,32 @@ begin
     FOnVerseChanged;
 end;
 
+function TVerse.GetRightToLeft: Boolean;
+begin
+  Result := FBaseDirection = tdRightToLeft;
+end;
+
+procedure TVerse.SetBaseDirection(AValue: TTextDirection);
+begin
+  if FBaseDirection = AValue then
+    Exit;
+  FBaseDirection := AValue;
+  if Assigned(FRTLMenuItem) then
+    FRTLMenuItem.Checked := GetRightToLeft;
+  if Assigned(FVerseView) then
+    RefreshVisualDocument
+  else
+    Render;
+  if Assigned(FOnTextDirectionChange) then
+    FOnTextDirectionChange(Self, FBaseDirection);
+end;
+
 procedure TVerse.SetRightToLeft(AValue: Boolean);
 begin
-  if FRightToLeft=AValue then Exit;
-  FRightToLeft:=AValue;
-  FRTLMenuItem.Checked := FRightToLeft;
-  Render;
+  if AValue then
+    SetBaseDirection(tdRightToLeft)
+  else
+    SetBaseDirection(tdLeftToRight);
 end;
 
 procedure TVerse.SetStrongsCountMode(AValue: TStrongsCountMode);
@@ -1334,7 +1610,7 @@ procedure TVerse.OrganizeSyntagms;
 
   function StartingXPos: smallint;
   begin
-    if FRightToLeft then
+    if GetRightToLeft then
       result := Panel.Width-MarginWidth
     else
       result := MarginWidth;
@@ -1357,7 +1633,7 @@ procedure TVerse.OrganizeSyntagms;
     else
       punctWidth := 0;
 
-    if FRightToLeft then
+    if GetRightToLeft then
       result := (x - punctWidth) < 15
     else
       result := (x + s.LabelRef.Width + punctWidth) > (Panel.Width-15);
@@ -1370,14 +1646,14 @@ procedure TVerse.OrganizeSyntagms;
     a := max(a, s.LabelRef.Height);
 
     firstLabel := x = StartingXPos;
-    if FRightToLeft then
+    if GetRightToLeft then
       dec(x, s.LabelRef.Width);
 
     if WrapLine(s, x) then
     begin
       inc(y, a);
       a := 0;
-      x := IfThen(FRightToLeft, StartingXPos-s.LabelRef.Width, StartingXPos);
+      x := IfThen(GetRightToLeft, StartingXPos-s.LabelRef.Width, StartingXPos);
       firstLabel := true;
     end;
 
@@ -1387,7 +1663,7 @@ procedure TVerse.OrganizeSyntagms;
       s.LabelRef.Visible := false // hiding spaces at the beginning of the line
     else begin
       s.LabelRef.Show;
-      if not FRightToLeft then
+      if not GetRightToLeft then
         inc(x, s.LabelRef.Width);
     end;
   end;
@@ -1396,6 +1672,9 @@ var
   syntagm: TSyntagm;
   x, y, h: smallint;
 begin
+  if Assigned(FVerseView) then
+    Exit;
+
   if not Active or FDestroying or not assigned(FSyntagms) then
     exit;
 
@@ -1413,7 +1692,7 @@ end;
 procedure TVerse.SetPairedVerse(PairVerse: TVerse);
 begin
   FPairedVerse := PairVerse;
-  if (PairVerse.PairedVerse <> self) then
+  if Assigned(PairVerse) and (PairVerse.PairedVerse <> self) then
     PairVerse.PairedVerse := self;
 end;
 
@@ -1549,6 +1828,13 @@ begin
     exit;
 
   //starttime := getTickCount;
+  if Assigned(FVerseView) then
+  begin
+    RenderStrongCount;
+    RefreshVisualDocument;
+    Exit;
+  end;
+
   FRendering := True;
   try
     if assigned(FPanel) then
@@ -1574,7 +1860,8 @@ begin
     exit;
 
   UpdateStrongCount;
-  FStrongCount.Render;
+  if not Assigned(FVerseView) then
+    FStrongCount.Render;
 end;
 
 procedure TVerse.ClearStrongCount;
@@ -1747,7 +2034,7 @@ end;
 
 procedure TVerse.OnRightToLeft(Sender: TObject);
 begin
-  RightToLeft := not FRightToLeft;
+  RightToLeft := not GetRightToLeft;
 end;
 
 procedure TVerse.OnVerseMouseDown(Sender: TObject; Button: TMouseButton;
@@ -1760,7 +2047,14 @@ end;
 
 procedure TVerse.OnResize(Sender: TObject);
 begin
-  if not FRendering then
+  if FRendering then
+    Exit;
+  if Assigned(FVerseView) then
+  begin
+    FVerseView.NotifyChanges([vvcViewport], FVisualRevision);
+    OnVisualContentHeightChanged(FVerseViewControl);
+  end
+  else
     OrganizeSyntagms;
 end;
 
@@ -1770,7 +2064,10 @@ begin
   if ssCtrl in Shift then
   begin
     FPanel.Font.Size := FPanel.Font.Size + Sign(WheelDelta) * 1;
+    if Assigned(FVerseViewControl) then
+      FVerseViewControl.Font.Assign(FPanel.Font);
     Render;
+    Handled := True;
   end;
 end;
 

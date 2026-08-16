@@ -8,7 +8,7 @@ uses
   Classes, SysUtils, StrUtils, Math, Forms, Dialogs, ComCtrls, LCLIntf, fgl, PCRE,
   BibleScope, MySwordModule, TheWordDictionary, ConcordanceExport,
   ai_batch_work_item, syntagm, Verse, project_verse_repository, verse_render_buffer,
-  SuggestionManager, ONTTokenizer;
+  SuggestionManager, ONTTokenizer, text_direction;
 
 type
   TRegexList = specialize TFPGList<IRegex>;
@@ -33,6 +33,7 @@ type
     MarkUntranslatedStrongs: Boolean;
     ExportComments: Boolean;
     Properties: string;
+    Direction: TTextDirection;
     ErrorDialogTitle: string;
     CorruptedDataMessage: string;
     ExportToFileErrorMessage: string;
@@ -42,6 +43,7 @@ type
 
   TInterlinearTextExportOptions = record
     Properties: string;
+    Direction: TTextDirection;
     ErrorDialogTitle: string;
     CorruptedDataMessage: string;
     ExportToFileErrorMessage: string;
@@ -92,7 +94,7 @@ type
       DialogTitle, DialogMessage: string); static;
     class function EncodeComments(const Comments: string): string; static;
     class procedure WriteTheWordBible(Verses: TStringList; const FileName,
-      Properties: string); static;
+      Properties: string; Direction: TTextDirection); static;
     procedure WriteMySwordBible(Verses: TStringList; const FileName,
       Properties: string);
     procedure AddIndexedConcordanceOccurrence(
@@ -241,12 +243,12 @@ begin
 end;
 
 class procedure TProjectExporter.WriteTheWordBible(Verses: TStringList;
-  const FileName, Properties: string);
+  const FileName, Properties: string; Direction: TTextDirection);
 var
   Stream: TFileStream;
 begin
   Verses.Add('');
-  Verses.Add(Properties);
+  Verses.Add(NormalizeTheWordR2LProperties(Properties, Direction));
   Verses[0] := #239#187#191 + Verses.Strings[0];
   Stream := TFileStream.Create(FileName, fmCreate or fmOpenWrite or fmShareDenyNone);
   try
@@ -353,7 +355,8 @@ begin
         if (Lines.Count > 0) and not HasTags then
           Lines[0] := Lines[0] + '<_MORPH_>';
 
-        WriteTheWordBible(Lines, FileName, Options.Properties);
+        WriteTheWordBible(Lines, FileName, Options.Properties,
+          Options.Direction);
       end;
     except
       on E: Exception do
@@ -447,7 +450,8 @@ begin
       if FileName.EndsWith('.mybible') then
         WriteMySwordBible(Lines, FileName, Options.Properties)
       else
-        WriteTheWordBible(Lines, FileName, Options.Properties);
+        WriteTheWordBible(Lines, FileName, Options.Properties,
+          Options.Direction);
     except
       on E: Exception do
         MessageDlg(Options.ErrorDialogTitle,

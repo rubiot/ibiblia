@@ -27,6 +27,7 @@ type
     procedure TestFindAndSelectSyntagms_Brackets;
     procedure TestRetokenizePreservesAssociationsAcrossTokenizerVersions;
     procedure TestDisassociatePairs_ToleratesAsymmetricSiblingLists;
+    procedure TestAssociateSyntagms_ReverseVisualSelectionUsesLogicalOrder;
     procedure TestAssociation_Greek;
     procedure TestAssociation_Hebrew;
   end;
@@ -530,6 +531,98 @@ begin
     AssertEquals('Right syntagm pairs cleared', 0, rightSyn.Pairs.Count);
     AssertEquals('Right syntagm siblings cleared', 0, rightSyn.Siblings.Count);
     AssertEquals('Destination syntagm pairs cleared', 0, destSyn.Pairs.Count);
+  finally
+    vOrig.Free;
+    vDest.Free;
+  end;
+end;
+
+procedure TVersiculoTest.
+  TestAssociateSyntagms_ReverseVisualSelectionUsesLogicalOrder;
+var
+  vOrig, vDest: TVerse;
+  sourceAlpha, sourceBeta, sourceGamma: TSyntagm;
+  targetUm, targetDois, targetTres: TSyntagm;
+begin
+  vOrig := TVerse.Create;
+  vDest := TVerse.Create;
+  try
+    vOrig.Text := 'alpha beta gamma';
+    vDest.Text := 'um dois tres';
+    vOrig.PairedVerse := vDest;
+    vDest.PairedVerse := vOrig;
+
+    sourceAlpha := vOrig.Syntagms[0];
+    sourceBeta := vOrig.Syntagms[2];
+    sourceGamma := vOrig.Syntagms[4];
+    targetUm := vDest.Syntagms[0];
+    targetDois := vDest.Syntagms[2];
+    targetTres := vDest.Syntagms[4];
+
+    { Simulate clicking the visual RTL order, rightmost/last logical item first. }
+    sourceGamma.AddToSelection;
+    sourceBeta.AddToSelection;
+    sourceAlpha.AddToSelection;
+    targetTres.AddToSelection;
+    targetDois.AddToSelection;
+    targetUm.AddToSelection;
+
+    AssertTrue('Source selection records click order',
+      vOrig.Selection[0] = sourceGamma);
+    AssertTrue('Target selection records click order',
+      vDest.Selection[0] = targetTres);
+
+    vOrig.AssociateSyntagms;
+
+    AssertEquals('Source selection remains transient and complete', 3,
+      vOrig.Selection.Count);
+    AssertTrue('Source selection keeps reverse visual click order 0',
+      vOrig.Selection[0] = sourceGamma);
+    AssertTrue('Source selection keeps reverse visual click order 1',
+      vOrig.Selection[1] = sourceBeta);
+    AssertTrue('Source selection keeps reverse visual click order 2',
+      vOrig.Selection[2] = sourceAlpha);
+    AssertEquals('Target selection remains transient and complete', 3,
+      vDest.Selection.Count);
+    AssertTrue('Target selection keeps reverse visual click order 0',
+      vDest.Selection[0] = targetTres);
+    AssertTrue('Target selection keeps reverse visual click order 1',
+      vDest.Selection[1] = targetDois);
+    AssertTrue('Target selection keeps reverse visual click order 2',
+      vDest.Selection[2] = targetUm);
+
+    AssertTrue('Source pairs start in target logical order',
+      sourceAlpha.Pairs[0] = targetUm);
+    AssertTrue('Source pairs continue in target logical order',
+      sourceAlpha.Pairs[1] = targetDois);
+    AssertTrue('Source pairs end in target logical order',
+      sourceAlpha.Pairs[2] = targetTres);
+    AssertTrue('Every source syntagm receives the same logical pair order',
+      (sourceBeta.Pairs[0] = targetUm) and
+      (sourceGamma.Pairs[2] = targetTres));
+
+    AssertTrue('Alpha siblings are logical beta, gamma',
+      (sourceAlpha.Siblings[0] = sourceBeta) and
+      (sourceAlpha.Siblings[1] = sourceGamma));
+    AssertTrue('Beta siblings are logical alpha, gamma',
+      (sourceBeta.Siblings[0] = sourceAlpha) and
+      (sourceBeta.Siblings[1] = sourceGamma));
+    AssertTrue('Gamma siblings are logical alpha, beta',
+      (sourceGamma.Siblings[0] = sourceAlpha) and
+      (sourceGamma.Siblings[1] = sourceBeta));
+
+    AssertTrue('Target pairs start in source logical order',
+      targetUm.Pairs[0] = sourceAlpha);
+    AssertTrue('Target pairs continue in source logical order',
+      targetUm.Pairs[1] = sourceBeta);
+    AssertTrue('Target pairs end in source logical order',
+      targetUm.Pairs[2] = sourceGamma);
+    AssertTrue('Target siblings remain in logical order',
+      (targetTres.Siblings[0] = targetUm) and
+      (targetTres.Siblings[1] = targetDois));
+
+    AssertEquals('Association serialization uses logical model indexes',
+      '<par a="0,2,4" b="0,2,4">', vOrig.Pairs);
   finally
     vOrig.Free;
     vDest.Free;

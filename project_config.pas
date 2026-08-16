@@ -5,7 +5,7 @@ unit project_config;
 interface
 
 uses
-  SysUtils, project_persistence;
+  SysUtils, project_persistence, text_direction;
 
 const
   PROJECT_CONFIG_KEY_MARKER = 'marcador';
@@ -26,6 +26,7 @@ type
     constructor Create(APersistence: TProjectPersistence);
     procedure Attach(APersistence: TProjectPersistence);
     class function TextDescriptionKey(textIndex: Integer): string; static;
+    class function TextDirectionKey(textIndex: Integer): string; static;
     function ReadString(const key: string; const defaultValue: string = ''): string;
     procedure WriteString(const key, value: string);
     procedure WriteImmediateString(const key, value: string);
@@ -50,6 +51,10 @@ type
     function ReadTextDescription(textIndex: Integer; const defaultValue: string = ''): string;
     procedure WriteTextDescription(textIndex: Integer; const value: string);
     procedure StageTextDescription(textIndex: Integer; const value: string);
+    function HasTextDirection(textIndex: Integer): Boolean;
+    function ReadTextDirection(textIndex: Integer;
+      defaultValue: TTextDirection = tdLeftToRight): TTextDirection;
+    procedure WriteTextDirection(textIndex: Integer; value: TTextDirection);
     function ReadVerseRules(interlinear: Boolean): string;
   end;
 
@@ -75,6 +80,11 @@ end;
 class function TProjectConfig.TextDescriptionKey(textIndex: Integer): string;
 begin
   Result := Format('description.text%d', [textIndex]);
+end;
+
+class function TProjectConfig.TextDirectionKey(textIndex: Integer): string;
+begin
+  Result := Format('direction.text%d', [textIndex]);
 end;
 
 function TProjectConfig.ReadString(const key: string; const defaultValue: string): string;
@@ -217,6 +227,25 @@ procedure TProjectConfig.StageTextDescription(textIndex: Integer;
   const value: string);
 begin
   WriteString(TextDescriptionKey(textIndex), value);
+end;
+
+function TProjectConfig.HasTextDirection(textIndex: Integer): Boolean;
+begin
+  Result := not ReadString(TextDirectionKey(textIndex)).IsEmpty;
+end;
+
+function TProjectConfig.ReadTextDirection(textIndex: Integer;
+  defaultValue: TTextDirection): TTextDirection;
+begin
+  Result := TextDirectionFromConfigValue(
+    ReadString(TextDirectionKey(textIndex)), defaultValue);
+end;
+
+procedure TProjectConfig.WriteTextDirection(textIndex: Integer;
+  value: TTextDirection);
+begin
+  WriteString(TextDirectionKey(textIndex),
+    TextDirectionToConfigValue(value));
 end;
 
 function TProjectConfig.ReadVerseRules(interlinear: Boolean): string;

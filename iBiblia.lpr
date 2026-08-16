@@ -89,6 +89,9 @@ begin
   {$ENDIF}
 
   Application.Initialize;
+  {$IFDEF WINDOWS}
+  Application.MainFormOnTaskBar := True;
+  {$ENDIF}
   Application.CreateForm(TMainForm, MainForm);
   Application.CreateForm(TFrmDictionaryPopup, FrmDictionaryPopup);
   Application.CreateForm(TFrmProjectProperties, FrmProjectProperties);

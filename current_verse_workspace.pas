@@ -197,6 +197,14 @@ procedure TCurrentVerseWorkspace.DestroyVerseViews(
 var
   Index: Integer;
 begin
+  { Break reciprocal references while every verse is still alive. Syntagm
+    destruction must never inspect a paired verse already freed earlier. }
+  for Index := Low(VerseViews) to High(VerseViews) do
+    if Assigned(VerseViews[Index]) then
+    begin
+      VerseViews[Index].MarkDestroying;
+      VerseViews[Index].PairedVerse := nil;
+    end;
   for Index := Low(VerseViews) to High(VerseViews) do
     if Assigned(VerseViews[Index]) then
     begin

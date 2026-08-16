@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, StdCtrls, fpcunit, testregistry, sqlite3conn, sqldb,
   Verse, current_verse_workspace, project_persistence, project_config,
-  CommentsView;
+  CommentsView, text_direction, Project;
 
 type
   TProjectPersistenceTest = class(TTestCase)
@@ -30,6 +30,8 @@ type
     procedure ImmediateInfoFlushesAfterACompetingWriterFinishes;
     procedure WorkspaceDetectsAllVisibleContentChanges;
     procedure TypedConfigSeparatesMarkerAndTokenizer;
+    procedure TextDirectionConfigUsesStablePerTextKeys;
+    procedure TextDirectionSetterDoesNotIndexNonVerseTypes;
     procedure CommentLineBreakTagsAreDecodedOnlyInRawEditor;
     procedure CommentLineBreaksAreEncodedForStorage;
     procedure PendingStateNotificationsTrackNetChanges;
@@ -399,6 +401,56 @@ begin
     AssertEquals('1,1,1', ReadDatabaseInfo(PROJECT_CONFIG_KEY_MARKER));
   finally
     Config.Free;
+  end;
+end;
+
+procedure TProjectPersistenceTest.TextDirectionConfigUsesStablePerTextKeys;
+var
+  Config: TProjectConfig;
+begin
+  Config := TProjectConfig.Create(FPersistence);
+  try
+    AssertEquals('direction.text2', TProjectConfig.TextDirectionKey(2));
+    AssertFalse('missing direction is not explicit',
+      Config.HasTextDirection(0));
+    AssertEquals('missing directions default to LTR', Ord(tdLeftToRight),
+      Ord(Config.ReadTextDirection(0)));
+    AssertEquals('callers may supply a migration default',
+      Ord(tdRightToLeft),
+      Ord(Config.ReadTextDirection(3, tdRightToLeft)));
+
+    Config.WriteTextDirection(0, tdLeftToRight);
+    Config.WriteTextDirection(1, tdRightToLeft);
+
+    AssertTrue('saved LTR is explicit', Config.HasTextDirection(0));
+    AssertTrue('saved RTL is explicit', Config.HasTextDirection(1));
+
+    AssertEquals('ltr', FPersistence.ReadInfo('direction.text0'));
+    AssertEquals('rtl', FPersistence.ReadInfo('direction.text1'));
+    AssertEquals(Ord(tdLeftToRight),
+      Ord(Config.ReadTextDirection(0, tdRightToLeft)));
+    AssertEquals(Ord(tdRightToLeft),
+      Ord(Config.ReadTextDirection(1)));
+    AssertTrue('text direction is structural project content',
+      FPersistence.ContentUpdatesPending);
+  finally
+    Config.Free;
+  end;
+end;
+
+procedure TProjectPersistenceTest.TextDirectionSetterDoesNotIndexNonVerseTypes;
+var
+  ProjectInstance: TProject;
+begin
+  ProjectInstance := TProject.Create;
+  try
+    ProjectInstance.SetTextDirection(tbInterlinear, tdRightToLeft);
+    ProjectInstance.SetTextDirection(tbNone, tdRightToLeft);
+    AssertEquals('a detached project still uses the safe default',
+      Ord(tdLeftToRight),
+      Ord(ProjectInstance.GetTextDirection(tbInterlinear)));
+  finally
+    ProjectInstance.Free;
   end;
 end;
 
