@@ -7,7 +7,8 @@ interface
 uses
   Classes, SysUtils, fpcunit, testregistry, sqlite3conn, sqldb,
   SuggestionManager, project_persistence, project_config,
-  Syntagm, Verse, verse_render_buffer, association_memory_service;
+  Syntagm, Verse, verse_render_buffer, association_memory_service,
+  current_verse_workspace, text_edit_provenance;
 
 type
   TAssociationMemoryServiceTest = class(TTestCase)
@@ -31,6 +32,7 @@ type
     procedure CommitRollbackReopenAndFailedRebuildRemainConsistent;
     procedure MatchingLegacyRevisionsWithoutCacheVersionRequireRebuild;
     procedure IncrementalReplayValidatesOnlyAffectedPairs;
+    procedure WorkspaceIndexShiftKeepsPersistenceAndMemoryInvariant;
     procedure NonCanonicalAssociationOrderIsAccepted;
     procedure ExtractedPairDataPreservesExactDestinationIndexes;
     procedure RebuildSkipsInvalidAssociations;
@@ -315,6 +317,91 @@ begin
   AssertTrue('A cache written before the baseline fix must be rebuilt once',
     FService.NeedsRebuild);
   AssertFalse(FService.CacheValidated);
+end;
+
+procedure TAssociationMemoryServiceTest.
+  WorkspaceIndexShiftKeepsPersistenceAndMemoryInvariant;
+var
+  DestinationSyntagm: TSyntagm;
+  DestinationVerse: TVerse;
+  Impact: TAssociationEditImpact;
+  OriginalPairs: string;
+  SourceSyntagm: TSyntagm;
+  SourceVerse: TVerse;
+  Trace: TVerseEditTrace;
+  Workspace: TCurrentVerseWorkspace;
+begin
+  FService.MarkSourceDirty;
+  FPersistence.CommitInfo;
+  FPersistence.CommitPairs;
+  FService.MarkSourceRevisionPersisted;
+  FService.BeginRebuild;
+  FService.AddVerse('1,1,1', 'Gen 1:1', 'source<WG1>', 'target',
+    '<par a="0" b="0">');
+  FService.FinishRebuild;
+  FManager.Commit;
+  AssertTrue(FService.StageBuiltRevision);
+  FPersistence.CommitInfo;
+  FService.CommitCompleted;
+  AssertEquals(1, FManager.GetPairOccurrenceCount('<wg1>', 'target'));
+
+  Workspace := TCurrentVerseWorkspace.Create;
+  SourceVerse := TVerse.Create;
+  DestinationVerse := TVerse.Create;
+  Trace := nil;
+  try
+    SourceVerse.PairedVerse := DestinationVerse;
+    DestinationVerse.PairedVerse := SourceVerse;
+    SourceVerse.Text := 'source<WG1>';
+    DestinationVerse.Text := 'target';
+    AssertTrue(FPersistence.LocateReference('1,1,1'));
+    Workspace.ApplyLoadedAssociations(SourceVerse,
+      FPersistence.CurrentPairs);
+    OriginalPairs := SourceVerse.Pairs;
+    SourceSyntagm := SourceVerse.Syntagms[0];
+    DestinationSyntagm := DestinationVerse.Syntagms[0];
+
+    Trace := TVerseEditTrace.CreateIdentity('source',
+      SourceVerse.TokenizerVersion);
+    Trace.ApplyReplacement(0, 0, 'prefix ');
+    AssertTrue('the traced prefix insertion must apply',
+      SourceVerse.TryApplyTracedEdit('prefix source<WG1>', Trace, Impact));
+    AssertEquals('the associated source member must be preserved', 1,
+      Impact.PreservedMembers);
+    AssertEquals('an index-only shift must remove no member', 0,
+      Impact.RemovedMembers);
+    AssertTrue('the original Syntagm object must move to its new index',
+      SourceVerse.Syntagms[2] = SourceSyntagm);
+    AssertTrue('serialized indexes must reflect the inserted prefix',
+      SourceVerse.Pairs <> OriginalPairs);
+    AssertEquals(1, SourceSyntagm.Pairs.Count);
+    AssertTrue(SourceSyntagm.Pairs[0] = DestinationSyntagm);
+    AssertEquals(1, DestinationSyntagm.Pairs.Count);
+    AssertTrue(DestinationSyntagm.Pairs[0] = SourceSyntagm);
+
+    AssertFalse('index-only shifts must not mutate Association memory',
+      Workspace.SaveAssociations(FManager, SourceVerse, DestinationVerse,
+        FService, '1,1,1'));
+    AssertFalse('index-only shifts must not dirty Association memory',
+      FService.PendingDirty);
+    AssertEquals('index shifts must not decrement or duplicate memory', 1,
+      FManager.GetPairOccurrenceCount('<wg1>', 'target'));
+
+    AssertTrue('the shifted indexes must still be persisted',
+      Workspace.SavePairs(FPersistence, SourceVerse));
+    AssertEquals(SourceVerse.Pairs, FPersistence.CurrentPairs);
+    FPersistence.CommitPairs;
+    AssertTrue(FPersistence.LocateReference('1,1,1'));
+    AssertEquals('the shifted topology must survive persistence',
+      SourceVerse.Pairs, FPersistence.CurrentPairs);
+    AssertEquals('persistence must not alter Association memory', 1,
+      FManager.GetPairOccurrenceCount('<wg1>', 'target'));
+  finally
+    Trace.Free;
+    DestinationVerse.Free;
+    SourceVerse.Free;
+    Workspace.Free;
+  end;
 end;
 
 procedure TAssociationMemoryServiceTest.

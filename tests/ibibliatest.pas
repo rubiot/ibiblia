@@ -5,10 +5,21 @@ unit ibibliatest;
 interface
 
 uses
-  Classes, SysUtils, fpcunit, testutils, testregistry, Verse, Syntagm,
-  ONTTokenizer, theword_ont_codec_v2, theword_wysiwyg_session_v2;
+  Classes, SysUtils, Forms, fpcunit, testutils, testregistry, Verse, Syntagm,
+  ONTTokenizer, theword_ont_codec_v2, theword_wysiwyg_session_v2,
+  text_edit_provenance;
 
 type
+
+  TRenderFailingVerse = class(TVerse)
+  private
+    FFailRender: Boolean;
+    FRenderAttempts: Integer;
+  public
+    procedure Render; override;
+    property FailRender: Boolean read FFailRender write FFailRender;
+    property RenderAttempts: Integer read FRenderAttempts;
+  end;
 
   TPair = array of array of string;
   TPairs = array of TPair;
@@ -40,6 +51,8 @@ type
     procedure AssertSemanticPunctuationTogglePreservesAssociation(
       AKind: TTheWordSemanticKind);
     procedure AssertSemanticApplyPreservesAssociation(
+      AKind: TTheWordSemanticKind);
+    procedure AssertTracedSemanticRoundTripPreservesAssociations(
       AKind: TTheWordSemanticKind);
     procedure AssertSelectionEqualsIndices(const ExpectedIndices: array of Integer); // Helper
     function CollectTokenizerTokens(version: Integer; const AText: string): TStringList;
@@ -88,6 +101,25 @@ type
     procedure SemanticFUApplyPreservesAssociation;
     procedure SemanticTogglePreflightProtectsAssociationIdentity;
     procedure SemanticTogglePreflightRejectsSplitWhitespace;
+    procedure TracedEditPreservesUntouchedRepeatedWord;
+    procedure TracedInsertionsPreserveShiftedAssociations;
+    procedure TracedSplitAndMergeRemoveOnlyAffectedMembers;
+    procedure TracedEditShrinksManyToManyAssociation;
+    procedure TracedEditPreservesPunctuationAfterProtectedTitle;
+    procedure TracedEditProjectsStructuralBoundaries;
+    procedure TracedEditPairsRoundTripWithShiftedIndexes;
+    procedure TracedRawEditDoesNotStealExactRepeatedWord;
+    procedure TracedEditProjectionFailureIsAtomic;
+    procedure TracedUnicodeReplacementPreservesUntouchedLexicalWord;
+    procedure TracedEditRejectsTouchedStrongWordAtomically;
+    procedure TracedEditCanPopulateEmptyVerse;
+    procedure TracedSemanticRoundTripPreservesAssociations;
+    procedure TracedCutPasteDoesNotTransferAssociation;
+    procedure TracedSemanticSplitRemovesOnlyAffectedAssociation;
+    procedure TracedLegacyFallbackValidatesTraceAndProtectedWords;
+    procedure TracedLegacyFallbackUsesHistoricalHeuristic;
+    procedure TracedEditRenderFailureRemainsCommitted;
+    procedure TracedFallbackRenderFailureRemainsCommitted;
     procedure TokenizerVersion1KeepsCurlyQuotesInsideWords;
     procedure TokenizerVersion2KeepsCurlyQuotesInsideWords;
     procedure TokenizerVersion1KeepsHebrewMaqafInsideWord;
@@ -112,6 +144,14 @@ type
   end;
 
 implementation
+
+procedure TRenderFailingVerse.Render;
+begin
+  Inc(FRenderAttempts);
+  if FFailRender then
+    raise Exception.Create('deliberate post-commit render failure');
+  inherited Render;
+end;
 
 procedure TVerseTests.VerseChanged;
 begin
@@ -620,6 +660,92 @@ begin
   end;
 end;
 
+procedure TVerseTests.AssertTracedSemanticRoundTripPreservesAssociations(
+  AKind: TTheWordSemanticKind);
+const
+  RAW: UnicodeString = 'prefix target<WG123><WTN-NSM>! suffix';
+var
+  Impact: TAssociationEditImpact;
+  PunctuationOffset, TargetOffset: Integer;
+  Session: TTheWordWysiwygSessionV2;
+  SourcePunctuation, SourceWord, TargetPunctuation, TargetWord: TSyntagm;
+  Trace: TVerseEditTrace;
+
+  procedure ApplySessionToVerse(AEditingSession: TTheWordWysiwygSessionV2);
+  begin
+    Trace := AEditingSession.CloneEditTrace;
+    try
+      AssertTrue('the traced semantic save must apply',
+        verse2.TryApplyTracedEdit(UTF8Encode(AEditingSession.RawText),
+          Trace, Impact));
+    finally
+      Trace.Free;
+    end;
+    AssertEquals('semantic-only save preserves both associated members', 2,
+      Impact.PreservedMembers);
+    AssertEquals('semantic-only save removes no associated member', 0,
+      Impact.RemovedMembers);
+  end;
+
+  procedure AssertLiveAssociationAndLexicalState;
+  begin
+    AssertTrue('associated word object must remain in the live Verse',
+      verse2.Syntagms.IndexOf(TargetWord) >= 0);
+    AssertTrue('associated punctuation object must remain in the live Verse',
+      verse2.Syntagms.IndexOf(TargetPunctuation) >= 0);
+    AssertPairsAndSiblings(SourceWord, [TargetWord], []);
+    AssertPairsAndSiblings(TargetWord, [SourceWord], []);
+    AssertPairsAndSiblings(SourcePunctuation, [TargetPunctuation], []);
+    AssertPairsAndSiblings(TargetPunctuation, [SourcePunctuation], []);
+    AssertEquals('Strong must survive the traced semantic save', 1,
+      TargetWord.Strong.Count);
+    AssertEquals('G123', TargetWord.Strong[0]);
+    AssertEquals('morphology must survive the traced semantic save', 1,
+      TargetWord.Morph.Count);
+    AssertEquals('N-NSM', TargetWord.Morph[0]);
+  end;
+
+begin
+  verse1.Text := 'sourceWord sourcePunctuation';
+  verse2.Text := UTF8Encode(RAW);
+  TargetOffset := Length(UnicodeString('prefix '));
+  PunctuationOffset := TargetOffset + Length(UnicodeString('target'));
+  TargetWord := verse2.Syntagms[2];
+  TargetPunctuation := verse2.Syntagms[3];
+  Associate([0], [2]);
+  Associate([2], [3]);
+  SourceWord := verse1.Syntagms[0];
+  SourcePunctuation := verse1.Syntagms[2];
+
+  Session := TTheWordWysiwygSessionV2.Create(RAW,
+    verse2.TokenizerVersion);
+  try
+    AssertTrue(Session.ApplySemantic(AKind, TargetOffset,
+      Length(UnicodeString('target'))));
+    AssertTrue(Session.ApplySemantic(AKind, PunctuationOffset, 1));
+    ApplySessionToVerse(Session);
+  finally
+    Session.Free;
+  end;
+  AssertLiveAssociationAndLexicalState;
+
+  { Toggle the exact same whole-Syntagm ranges again. The adjacent marks may
+    have merged, so this also covers the close/reopen split used by removal. }
+  Session := TTheWordWysiwygSessionV2.Create(UTF8Decode(verse2.XML),
+    verse2.TokenizerVersion);
+  try
+    AssertTrue(Session.ApplySemantic(AKind, TargetOffset,
+      Length(UnicodeString('target'))));
+    AssertTrue(Session.ApplySemantic(AKind, PunctuationOffset, 1));
+    ApplySessionToVerse(Session);
+  finally
+    Session.Free;
+  end;
+  AssertEquals('removing the semantic mark restores the original ONT',
+    UTF8Encode(RAW), verse2.XML);
+  AssertLiveAssociationAndLexicalState;
+end;
+
 procedure TVerseTests.SemanticFIFormattingPreservesAssociation;
 begin
   AssertSemanticFormattingRoundTripPreservesAssociation('<FI>', '<Fi>');
@@ -700,6 +826,14 @@ begin
   AssertSemanticApplyPreservesAssociation(twsmUnderline);
 end;
 
+procedure TVerseTests.TracedSemanticRoundTripPreservesAssociations;
+var
+  Kind: TTheWordSemanticKind;
+begin
+  for Kind := Low(TTheWordSemanticKind) to High(TTheWordSemanticKind) do
+    AssertTracedSemanticRoundTripPreservesAssociations(Kind);
+end;
+
 procedure TVerseTests.SemanticTogglePreflightProtectsAssociationIdentity;
 const
   ORIGINAL: string = '<FR>prefix target suffix<Fr>';
@@ -758,6 +892,692 @@ begin
     verse2.Syntagms.IndexOf(TargetSyntagm) >= 0);
   AssertPairsAndSiblings(SourceSyntagm, [TargetSyntagm], []);
   AssertPairsAndSiblings(TargetSyntagm, [SourceSyntagm], []);
+end;
+
+procedure TVerseTests.TracedEditPreservesUntouchedRepeatedWord;
+var
+  FirstSource, FirstTarget, SecondSource: TSyntagm;
+  Impact: TAssociationEditImpact;
+  Trace: TVerseEditTrace;
+begin
+  verse1.Text := 'source1 source2';
+  verse2.Text := 'same same';
+  Associate([0], [0]);
+  Associate([2], [2]);
+  FirstSource := verse1.Syntagms[0];
+  SecondSource := verse1.Syntagms[2];
+  FirstTarget := verse2.Syntagms[0];
+
+  Trace := TVerseEditTrace.CreateIdentity('same same',
+    verse2.TokenizerVersion);
+  try
+    Trace.ApplyReplacement(5, 4, 'changed');
+    AssertTrue(verse2.TryApplyTracedEdit('same changed', Trace, Impact));
+  finally
+    Trace.Free;
+  end;
+
+  AssertTrue('the untouched repeated occurrence keeps object identity',
+    verse2.Syntagms[0] = FirstTarget);
+  AssertPairsAndSiblings(FirstSource, [FirstTarget], []);
+  AssertPairsAndSiblings(FirstTarget, [FirstSource], []);
+  AssertPairsAndSiblings(SecondSource, [], []);
+  AssertPairsAndSiblings(verse2.Syntagms[2], [], []);
+  AssertEquals(1, Impact.PreservedMembers);
+  AssertEquals(1, Impact.RemovedMembers);
+end;
+
+procedure TVerseTests.TracedInsertionsPreserveShiftedAssociations;
+var
+  FirstSource, FirstTarget, SecondSource, SecondTarget: TSyntagm;
+  Impact: TAssociationEditImpact;
+  Trace: TVerseEditTrace;
+begin
+  verse1.Text := 'source1 source2';
+  verse2.Text := 'one two';
+  Associate([0], [0]);
+  Associate([2], [2]);
+  FirstSource := verse1.Syntagms[0];
+  SecondSource := verse1.Syntagms[2];
+  FirstTarget := verse2.Syntagms[0];
+  SecondTarget := verse2.Syntagms[2];
+
+  Trace := TVerseEditTrace.CreateIdentity('one two',
+    verse2.TokenizerVersion);
+  try
+    Trace.ApplyReplacement(0, 0, 'new ');
+    Trace.ApplyReplacement(7, 0, ',');
+    AssertEquals(UnicodeString('new one, two'), Trace.CurrentText);
+    AssertTrue(verse2.TryApplyTracedEdit('new one, two', Trace, Impact));
+  finally
+    Trace.Free;
+  end;
+
+  AssertTrue(verse2.Syntagms[2] = FirstTarget);
+  AssertTrue(verse2.Syntagms[5] = SecondTarget);
+  AssertPairsAndSiblings(FirstSource, [FirstTarget], []);
+  AssertPairsAndSiblings(SecondSource, [SecondTarget], []);
+  AssertEquals(2, Impact.PreservedMembers);
+  AssertEquals(0, Impact.RemovedMembers);
+end;
+
+procedure TVerseTests.TracedSplitAndMergeRemoveOnlyAffectedMembers;
+var
+  KeepSource, KeepTarget, LeftSource, RightSource: TSyntagm;
+  Impact: TAssociationEditImpact;
+  Trace: TVerseEditTrace;
+begin
+  verse1.Text := 'target keep';
+  verse2.Text := 'target keep';
+  Associate([0], [0]);
+  Associate([2], [2]);
+  KeepSource := verse1.Syntagms[2];
+  KeepTarget := verse2.Syntagms[2];
+
+  Trace := TVerseEditTrace.CreateIdentity('target keep',
+    verse2.TokenizerVersion);
+  try
+    Trace.ApplyReplacement(3, 0, ' ');
+    AssertTrue(verse2.TryApplyTracedEdit('tar get keep', Trace, Impact));
+  finally
+    Trace.Free;
+  end;
+  AssertTrue(verse2.Syntagms[4] = KeepTarget);
+  AssertPairsAndSiblings(KeepSource, [KeepTarget], []);
+  AssertEquals(1, Impact.PreservedMembers);
+  AssertEquals(1, Impact.RemovedMembers);
+
+  verse1.Text := 'left right keep';
+  verse2.Text := 'left right keep';
+  Associate([0], [0]);
+  Associate([2], [2]);
+  Associate([4], [4]);
+  LeftSource := verse1.Syntagms[0];
+  RightSource := verse1.Syntagms[2];
+  KeepSource := verse1.Syntagms[4];
+  KeepTarget := verse2.Syntagms[4];
+
+  Trace := TVerseEditTrace.CreateIdentity('left right keep',
+    verse2.TokenizerVersion);
+  try
+    Trace.ApplyReplacement(4, 1, '');
+    AssertTrue(verse2.TryApplyTracedEdit('leftright keep', Trace, Impact));
+  finally
+    Trace.Free;
+  end;
+  AssertPairsAndSiblings(LeftSource, [], []);
+  AssertPairsAndSiblings(RightSource, [], []);
+  AssertTrue(verse2.Syntagms[2] = KeepTarget);
+  AssertPairsAndSiblings(KeepSource, [KeepTarget], []);
+  AssertEquals(1, Impact.PreservedMembers);
+  AssertEquals(2, Impact.RemovedMembers);
+end;
+
+procedure TVerseTests.TracedEditShrinksManyToManyAssociation;
+var
+  SourceA, SourceB, TargetY: TSyntagm;
+  Impact: TAssociationEditImpact;
+  Trace: TVerseEditTrace;
+begin
+  verse1.Text := 'a b';
+  verse2.Text := 'x y';
+  Associate([0, 2], [0, 2]);
+  SourceA := verse1.Syntagms[0];
+  SourceB := verse1.Syntagms[2];
+  TargetY := verse2.Syntagms[2];
+
+  Trace := TVerseEditTrace.CreateIdentity('x y',
+    verse2.TokenizerVersion);
+  try
+    Trace.ApplyReplacement(0, 1, 'z');
+    AssertTrue(verse2.TryApplyTracedEdit('z y', Trace, Impact));
+  finally
+    Trace.Free;
+  end;
+
+  AssertPairsAndSiblings(SourceA, [TargetY], [SourceB]);
+  AssertPairsAndSiblings(SourceB, [TargetY], [SourceA]);
+  AssertPairsAndSiblings(TargetY, [SourceA, SourceB], []);
+  AssertPairsAndSiblings(verse2.Syntagms[0], [], []);
+  AssertEquals(1, Impact.PreservedMembers);
+  AssertEquals(1, Impact.RemovedMembers);
+end;
+
+procedure TVerseTests.TracedEditPreservesPunctuationAfterProtectedTitle;
+var
+  Punctuation, Source: TSyntagm;
+  Impact: TAssociationEditImpact;
+  Trace: TVerseEditTrace;
+begin
+  verse1.Text := 'source';
+  verse2.Text := '<TS>Heading<Ts>word!';
+  Source := verse1.Syntagms[0];
+  Punctuation := verse2.Syntagms[2];
+  Associate([0], [2]);
+
+  Trace := TVerseEditTrace.CreateIdentity('Headingword!',
+    verse2.TokenizerVersion);
+  try
+    Trace.ApplyReplacement(7, 0, 'new ');
+    AssertTrue(verse2.TryApplyTracedEdit(
+      '<TS>Heading<Ts>new word!', Trace, Impact));
+  finally
+    Trace.Free;
+  end;
+
+  AssertTrue(verse2.Syntagms[4] = Punctuation);
+  AssertPairsAndSiblings(Source, [Punctuation], []);
+  AssertPairsAndSiblings(Punctuation, [Source], []);
+  AssertEquals(1, Impact.PreservedMembers);
+  AssertEquals(0, Impact.RemovedMembers);
+end;
+
+procedure TVerseTests.TracedEditProjectsStructuralBoundaries;
+var
+  CompactA, CompactB, SpacedA, SpacedB: TSyntagm;
+  Impact: TAssociationEditImpact;
+  Trace: TVerseEditTrace;
+begin
+  verse1.Text := 'source1 source2';
+  verse2.Text := 'a|b';
+  Associate([0], [0]);
+  Associate([2], [1]);
+  CompactA := verse2.Syntagms[0];
+  CompactB := verse2.Syntagms[1];
+
+  Trace := TVerseEditTrace.CreateIdentity('ab',
+    verse2.TokenizerVersion);
+  try
+    Trace.ApplyReplacement(0, 0, 'x ');
+    AssertTrue(verse2.TryApplyTracedEdit('x a|b', Trace, Impact));
+  finally
+    Trace.Free;
+  end;
+  AssertTrue(verse2.Syntagms[2] = CompactA);
+  AssertTrue(verse2.Syntagms[3] = CompactB);
+  AssertEquals(2, Impact.PreservedMembers);
+
+  verse1.Text := 'source1 source2';
+  verse2.Text := 'a | b';
+  Associate([0], [0]);
+  Associate([2], [2]);
+  SpacedA := verse2.Syntagms[0];
+  SpacedB := verse2.Syntagms[2];
+
+  Trace := TVerseEditTrace.CreateIdentity('a  b',
+    verse2.TokenizerVersion);
+  try
+    Trace.ApplyReplacement(0, 0, 'x ');
+    AssertTrue(verse2.TryApplyTracedEdit('x a | b', Trace, Impact));
+  finally
+    Trace.Free;
+  end;
+  AssertTrue(verse2.Syntagms[2] = SpacedA);
+  AssertTrue(verse2.Syntagms[4] = SpacedB);
+  AssertEquals(2, Impact.PreservedMembers);
+end;
+
+procedure TVerseTests.TracedEditPairsRoundTripWithShiftedIndexes;
+var
+  Impact: TAssociationEditImpact;
+  Pairs: string;
+  ReloadedSource, ReloadedTarget: TVerse;
+  Trace: TVerseEditTrace;
+begin
+  verse1.Text := 'source1 source2';
+  verse2.Text := 'one two';
+  Associate([0], [0]);
+  Associate([2], [2]);
+
+  Trace := TVerseEditTrace.CreateIdentity('one two',
+    verse2.TokenizerVersion);
+  try
+    Trace.ApplyReplacement(0, 0, 'new ');
+    Trace.ApplyReplacement(7, 0, ',');
+    AssertTrue(verse2.TryApplyTracedEdit('new one, two', Trace, Impact));
+  finally
+    Trace.Free;
+  end;
+  Pairs := verse1.Pairs;
+
+  ReloadedSource := TVerse.Create;
+  ReloadedTarget := TVerse.Create;
+  try
+    ReloadedSource.PairedVerse := ReloadedTarget;
+    ReloadedSource.Text := verse1.XML;
+    ReloadedTarget.Text := verse2.XML;
+    ReloadedSource.Pairs := Pairs;
+    AssertPairsAndSiblings(ReloadedSource.Syntagms[0],
+      [ReloadedTarget.Syntagms[2]], []);
+    AssertPairsAndSiblings(ReloadedSource.Syntagms[2],
+      [ReloadedTarget.Syntagms[5]], []);
+  finally
+    ReloadedSource.Free;
+    ReloadedTarget.Free;
+  end;
+end;
+
+procedure TVerseTests.TracedRawEditDoesNotStealExactRepeatedWord;
+var
+  FirstSource, LastSource, LastTarget: TSyntagm;
+  Impact: TAssociationEditImpact;
+  Trace: TVerseEditTrace;
+begin
+  verse1.Text := 'first last';
+  verse2.Text := 'repeat old repeat';
+  Associate([0], [0]);
+  Associate([2], [4]);
+  FirstSource := verse1.Syntagms[0];
+  LastSource := verse1.Syntagms[2];
+  LastTarget := verse2.Syntagms[4];
+
+  Trace := TVerseEditTrace.CreateIdentity('repeat old repeat',
+    verse2.TokenizerVersion);
+  try
+    Trace.ApplyRawVisibleChange('gone repeat');
+    AssertEquals(Ord(vetmRawConservative), Ord(Trace.Mode));
+    AssertTrue(verse2.TryApplyTracedEdit('gone repeat', Trace, Impact));
+  finally
+    Trace.Free;
+  end;
+
+  AssertPairsAndSiblings(FirstSource, [], []);
+  AssertTrue(verse2.Syntagms[2] = LastTarget);
+  AssertPairsAndSiblings(LastSource, [LastTarget], []);
+  AssertPairsAndSiblings(LastTarget, [LastSource], []);
+  AssertEquals(1, Impact.PreservedMembers);
+  AssertEquals(1, Impact.RemovedMembers);
+  AssertFalse(Impact.UsedLegacyFallback);
+end;
+
+procedure TVerseTests.TracedEditProjectionFailureIsAtomic;
+var
+  OriginalSource, OriginalTarget: TSyntagm;
+  Impact: TAssociationEditImpact;
+  Trace: TVerseEditTrace;
+begin
+  verse1.Text := 'source';
+  verse2.Text := 'target';
+  Associate([0], [0]);
+  OriginalSource := verse1.Syntagms[0];
+  OriginalTarget := verse2.Syntagms[0];
+
+  Trace := TVerseEditTrace.CreateIdentity('target',
+    verse2.TokenizerVersion);
+  try
+    AssertFalse(verse2.TryApplyTracedEdit('changed', Trace, Impact));
+  finally
+    Trace.Free;
+  end;
+
+  AssertEquals('target', verse2.XML);
+  AssertTrue(Impact.ErrorMessage <> '');
+  AssertTrue(verse2.Syntagms[0] = OriginalTarget);
+  AssertPairsAndSiblings(OriginalSource, [OriginalTarget], []);
+  AssertPairsAndSiblings(OriginalTarget, [OriginalSource], []);
+end;
+
+procedure TVerseTests.TracedUnicodeReplacementPreservesUntouchedLexicalWord;
+var
+  Emoji, Hebrew: UnicodeString;
+  HebrewSource, HebrewTarget, KeepSource, KeepTarget: TSyntagm;
+  Impact: TAssociationEditImpact;
+  Trace: TVerseEditTrace;
+begin
+  Emoji := UnicodeString(#$D83D) + UnicodeString(#$DE00);
+  verse1.Text := 'emoji keep';
+  verse2.Text := UTF8Encode(Emoji + ' keep<WG1><WTN-NSM>');
+  Associate([0], [0]);
+  Associate([2], [2]);
+  KeepSource := verse1.Syntagms[2];
+  KeepTarget := verse2.Syntagms[2];
+
+  Trace := TVerseEditTrace.CreateIdentity(Emoji + ' keep',
+    verse2.TokenizerVersion);
+  try
+    Trace.ApplyReplacement(0, 2, 'X');
+    AssertTrue(verse2.TryApplyTracedEdit(
+      'X keep<WG1><WTN-NSM>', Trace, Impact));
+  finally
+    Trace.Free;
+  end;
+
+  AssertTrue(verse2.Syntagms[2] = KeepTarget);
+  AssertPairsAndSiblings(KeepSource, [KeepTarget], []);
+  AssertEquals(1, KeepTarget.Strong.Count);
+  AssertEquals('G1', KeepTarget.Strong[0]);
+  AssertEquals(1, KeepTarget.Morph.Count);
+  AssertEquals('N-NSM', KeepTarget.Morph[0]);
+  AssertEquals(1, Impact.PreservedMembers);
+  AssertEquals(1, Impact.RemovedMembers);
+
+  Hebrew := UTF8Decode('שָׁלוֹם');
+  verse1.Text := 'source';
+  verse2.Text := UTF8Encode(Hebrew);
+  Associate([0], [0]);
+  HebrewSource := verse1.Syntagms[0];
+  HebrewTarget := verse2.Syntagms[0];
+
+  Trace := TVerseEditTrace.CreateIdentity(Hebrew,
+    verse2.TokenizerVersion);
+  try
+    Trace.ApplyReplacement(0, 0, 'novo ');
+    AssertTrue(verse2.TryApplyTracedEdit(
+      UTF8Encode(Trace.CurrentText), Trace, Impact));
+  finally
+    Trace.Free;
+  end;
+  AssertTrue(verse2.Syntagms[2] = HebrewTarget);
+  AssertPairsAndSiblings(HebrewSource, [HebrewTarget], []);
+  AssertEquals(1, Impact.PreservedMembers);
+  AssertEquals(0, Impact.RemovedMembers);
+end;
+
+procedure TVerseTests.TracedEditRejectsTouchedStrongWordAtomically;
+var
+  SourceWord, TargetWord: TSyntagm;
+  Impact: TAssociationEditImpact;
+  Trace: TVerseEditTrace;
+begin
+  verse1.Text := 'source';
+  verse2.Text := 'word<WG1>';
+  Associate([0], [0]);
+  SourceWord := verse1.Syntagms[0];
+  TargetWord := verse2.Syntagms[0];
+
+  Trace := TVerseEditTrace.CreateIdentity('word',
+    verse2.TokenizerVersion);
+  try
+    Trace.ApplyReplacement(0, 4, 'term');
+    AssertFalse(verse2.TryApplyTracedEdit('term<WG1>', Trace, Impact));
+  finally
+    Trace.Free;
+  end;
+
+  AssertEquals('word<WG1>', verse2.XML);
+  AssertTrue(Pos('Strong', Impact.ErrorMessage) > 0);
+  AssertTrue(verse2.Syntagms[0] = TargetWord);
+  AssertPairsAndSiblings(SourceWord, [TargetWord], []);
+  AssertPairsAndSiblings(TargetWord, [SourceWord], []);
+end;
+
+procedure TVerseTests.TracedEditCanPopulateEmptyVerse;
+var
+  Impact: TAssociationEditImpact;
+  Trace: TVerseEditTrace;
+begin
+  Trace := TVerseEditTrace.CreateIdentity('', verse2.TokenizerVersion);
+  try
+    Trace.ApplyReplacement(0, 0, 'first text');
+    AssertTrue(verse2.TryApplyTracedEdit('first text', Trace, Impact));
+  finally
+    Trace.Free;
+  end;
+  AssertEquals('first text', verse2.XML);
+  AssertEquals(3, verse2.Syntagms.Count);
+  AssertEquals(0, Impact.PreservedMembers);
+  AssertEquals(0, Impact.RemovedMembers);
+end;
+
+procedure TVerseTests.TracedCutPasteDoesNotTransferAssociation;
+var
+  CopySource, CopyTarget, StaySource, StayTarget: TSyntagm;
+  Impact: TAssociationEditImpact;
+  InsertedLength: Integer;
+  Payload: string;
+  PlainText: UnicodeString;
+  Session: TTheWordWysiwygSessionV2;
+  Trace: TVerseEditTrace;
+  UsedPrivatePayload: Boolean;
+begin
+  verse1.Text := 'copySource staySource';
+  verse2.Text := 'copy stay';
+  Associate([0], [0]);
+  Associate([2], [2]);
+  CopySource := verse1.Syntagms[0];
+  StaySource := verse1.Syntagms[2];
+  CopyTarget := verse2.Syntagms[0];
+  StayTarget := verse2.Syntagms[2];
+
+  Session := TTheWordWysiwygSessionV2.Create('copy stay',
+    verse2.TokenizerVersion);
+  Trace := nil;
+  try
+    AssertTrue(Session.CutSelection(0, 4, PlainText, Payload));
+    AssertEquals('copy', UTF8Encode(PlainText));
+    AssertTrue(Session.Paste(0, 0, Payload, '', InsertedLength,
+      UsedPrivatePayload));
+    AssertTrue(UsedPrivatePayload);
+    AssertEquals(4, InsertedLength);
+    AssertEquals('the text can be restored while its origin remains new',
+      'copy stay', UTF8Encode(Session.RawText));
+    AssertTrue('cut and paste of the same text must remain a traced edit',
+      Session.Dirty);
+
+    Trace := Session.CloneEditTrace;
+    AssertTrue(verse2.TryApplyTracedEdit(UTF8Encode(Session.RawText),
+      Trace, Impact));
+  finally
+    Trace.Free;
+    Session.Free;
+  end;
+
+  AssertTrue('the pasted occurrence must be a new Syntagm object',
+    verse2.Syntagms[0] <> CopyTarget);
+  AssertPairsAndSiblings(CopySource, [], []);
+  AssertPairsAndSiblings(verse2.Syntagms[0], [], []);
+  AssertTrue('the untouched word must retain object identity',
+    verse2.Syntagms[2] = StayTarget);
+  AssertPairsAndSiblings(StaySource, [StayTarget], []);
+  AssertPairsAndSiblings(StayTarget, [StaySource], []);
+  AssertEquals(1, Impact.PreservedMembers);
+  AssertEquals(1, Impact.RemovedMembers);
+end;
+
+procedure TVerseTests.TracedSemanticSplitRemovesOnlyAffectedAssociation;
+var
+  Impact: TAssociationEditImpact;
+  KeepSource, KeepTarget, WordSource, WordTarget: TSyntagm;
+  Session: TTheWordWysiwygSessionV2;
+  Trace: TVerseEditTrace;
+begin
+  verse1.Text := 'wordSource keepSource';
+  verse2.Text := 'word keep';
+  Associate([0], [0]);
+  Associate([2], [2]);
+  WordSource := verse1.Syntagms[0];
+  KeepSource := verse1.Syntagms[2];
+  WordTarget := verse2.Syntagms[0];
+  KeepTarget := verse2.Syntagms[2];
+
+  Session := TTheWordWysiwygSessionV2.Create('word keep',
+    verse2.TokenizerVersion);
+  Trace := nil;
+  try
+    AssertTrue('formatting an interior slice must be accepted by the editor',
+      Session.ApplySemantic(twsmWordsOfJesus, 1, 2));
+    Trace := Session.CloneEditTrace;
+    AssertTrue('the reconciler must apply the semantic split',
+      verse2.TryApplyTracedEdit(UTF8Encode(Session.RawText), Trace, Impact));
+  finally
+    Trace.Free;
+    Session.Free;
+  end;
+
+  AssertTrue('the structurally split word must not retain its old object',
+    verse2.Syntagms.IndexOf(WordTarget) < 0);
+  AssertPairsAndSiblings(WordSource, [], []);
+  AssertTrue('the untouched word must retain its object and Association',
+    verse2.Syntagms.IndexOf(KeepTarget) >= 0);
+  AssertPairsAndSiblings(KeepSource, [KeepTarget], []);
+  AssertPairsAndSiblings(KeepTarget, [KeepSource], []);
+  AssertEquals(1, Impact.PreservedMembers);
+  AssertEquals(1, Impact.RemovedMembers);
+end;
+
+procedure TVerseTests.TracedLegacyFallbackValidatesTraceAndProtectedWords;
+var
+  Impact: TAssociationEditImpact;
+  SourceWord, TargetWord: TSyntagm;
+  Trace: TVerseEditTrace;
+begin
+  verse1.Text := 'source';
+  verse2.Text := 'target';
+  Associate([0], [0]);
+  SourceWord := verse1.Syntagms[0];
+  TargetWord := verse2.Syntagms[0];
+
+  Trace := TVerseEditTrace.CreateIdentity('stale', verse2.TokenizerVersion);
+  try
+    Trace.MarkLegacyFallback;
+    AssertFalse('fallback must not bypass a stale trace baseline',
+      verse2.TryApplyTracedEdit('changed', Trace, Impact));
+  finally
+    Trace.Free;
+  end;
+  AssertEquals('target', verse2.XML);
+  AssertTrue(Impact.ErrorMessage <> '');
+  AssertPairsAndSiblings(SourceWord, [TargetWord], []);
+
+  verse1.DisassociatePairs;
+  verse1.Text := 'source';
+  verse2.Text := 'word<WG1>';
+  Associate([0], [0]);
+  SourceWord := verse1.Syntagms[0];
+  TargetWord := verse2.Syntagms[0];
+  Trace := TVerseEditTrace.CreateIdentity('word', verse2.TokenizerVersion);
+  try
+    Trace.ApplyRawVisibleChange('term');
+    Trace.MarkLegacyFallback;
+    AssertFalse('fallback must not guess across a protected Strong word',
+      verse2.TryApplyTracedEdit('term<WG1>', Trace, Impact));
+  finally
+    Trace.Free;
+  end;
+  AssertEquals('word<WG1>', verse2.XML);
+  AssertTrue(Pos('Strong', Impact.ErrorMessage) > 0);
+  AssertPairsAndSiblings(SourceWord, [TargetWord], []);
+end;
+
+procedure TVerseTests.TracedLegacyFallbackUsesHistoricalHeuristic;
+var
+  Impact: TAssociationEditImpact;
+  SourceWord, TargetWord: TSyntagm;
+  Trace: TVerseEditTrace;
+begin
+  verse1.Text := 'source';
+  verse2.Text := 'old';
+  Associate([0], [0]);
+  SourceWord := verse1.Syntagms[0];
+  TargetWord := verse2.Syntagms[0];
+
+  Trace := TVerseEditTrace.CreateIdentity('old', verse2.TokenizerVersion);
+  try
+    Trace.ApplyRawVisibleChange('new old');
+    Trace.MarkLegacyFallback;
+    AssertTrue(verse2.TryApplyTracedEdit('new old', Trace, Impact));
+  finally
+    Trace.Free;
+  end;
+
+  AssertTrue(Impact.UsedLegacyFallback);
+  AssertTrue('the historical fallback may retain an unchanged occurrence',
+    verse2.Syntagms[2] = TargetWord);
+  AssertPairsAndSiblings(SourceWord, [TargetWord], []);
+  AssertEquals(1, Impact.PreservedMembers);
+  AssertEquals(0, Impact.RemovedMembers);
+end;
+
+procedure TVerseTests.TracedEditRenderFailureRemainsCommitted;
+var
+  AttemptsBeforeSave: Integer;
+  FailingVerse: TRenderFailingVerse;
+  Impact: TAssociationEditImpact;
+  SourceWord, TargetWord: TSyntagm;
+  Trace: TVerseEditTrace;
+begin
+  verse1.PairedVerse := nil;
+  FreeAndNil(verse2);
+  FailingVerse := TRenderFailingVerse.Create;
+  verse2 := FailingVerse;
+  verse1.PairedVerse := verse2;
+
+  verse1.Text := 'source';
+  verse2.Text := 'target';
+  Associate([0], [0]);
+  SourceWord := verse1.Syntagms[0];
+  TargetWord := verse2.Syntagms[0];
+
+  Trace := TVerseEditTrace.CreateIdentity('target', verse2.TokenizerVersion);
+  try
+    Trace.ApplyReplacement(0, 0, 'new ');
+    AttemptsBeforeSave := FailingVerse.RenderAttempts;
+    FailingVerse.FailRender := True;
+    AssertTrue('a presentation failure after commit must not reject the save',
+      verse2.TryApplyTracedEdit('new target', Trace, Impact));
+  finally
+    Trace.Free;
+  end;
+
+  AssertEquals('new target', verse2.XML);
+  AssertEquals('', Impact.ErrorMessage);
+  AssertTrue(verse2.Syntagms[2] = TargetWord);
+  AssertPairsAndSiblings(SourceWord, [TargetWord], []);
+  AssertEquals(1, Impact.PreservedMembers);
+  AssertEquals(0, Impact.RemovedMembers);
+  AssertEquals(AttemptsBeforeSave + 1, FailingVerse.RenderAttempts);
+
+  FailingVerse.FailRender := False;
+  Application.ProcessMessages;
+  AssertTrue('the committed Verse must receive a deferred render retry',
+    FailingVerse.RenderAttempts >= AttemptsBeforeSave + 2);
+end;
+
+procedure TVerseTests.TracedFallbackRenderFailureRemainsCommitted;
+var
+  AttemptsBeforeSave: Integer;
+  FailingVerse: TRenderFailingVerse;
+  Impact: TAssociationEditImpact;
+  SourceWord, TargetWord: TSyntagm;
+  Trace: TVerseEditTrace;
+begin
+  verse1.PairedVerse := nil;
+  FreeAndNil(verse2);
+  FailingVerse := TRenderFailingVerse.Create;
+  verse2 := FailingVerse;
+  verse1.PairedVerse := verse2;
+
+  verse1.Text := 'source';
+  verse2.Text := 'old';
+  Associate([0], [0]);
+  SourceWord := verse1.Syntagms[0];
+  TargetWord := verse2.Syntagms[0];
+
+  Trace := TVerseEditTrace.CreateIdentity('old', verse2.TokenizerVersion);
+  try
+    Trace.ApplyRawVisibleChange('new old');
+    Trace.MarkLegacyFallback;
+    AttemptsBeforeSave := FailingVerse.RenderAttempts;
+    FailingVerse.FailRender := True;
+    AssertTrue('a fallback render failure must not reject a committed save',
+      verse2.TryApplyTracedEdit('new old', Trace, Impact));
+  finally
+    Trace.Free;
+  end;
+
+  AssertEquals('new old', verse2.XML);
+  AssertEquals('', Impact.ErrorMessage);
+  AssertTrue(Impact.UsedLegacyFallback);
+  AssertTrue(verse2.Syntagms[2] = TargetWord);
+  AssertPairsAndSiblings(SourceWord, [TargetWord], []);
+  AssertEquals(1, Impact.PreservedMembers);
+  AssertEquals(0, Impact.RemovedMembers);
+  AssertEquals(AttemptsBeforeSave + 1, FailingVerse.RenderAttempts);
+
+  FailingVerse.FailRender := False;
+  Application.ProcessMessages;
+  AssertTrue('the fallback commit must receive a deferred render retry',
+    FailingVerse.RenderAttempts >= AttemptsBeforeSave + 2);
 end;
 
 procedure TVerseTests.ReplaceSourceTextChangeBeginning;

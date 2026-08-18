@@ -21,6 +21,7 @@ uses
   verse_visual_adapter_test,
   verse_visual_document_test,
   text_direction_test,
+  text_edit_provenance_test,
   versememotest,
   theword_ont_codec_v2_test,
   theword_wysiwyg_session_v2_test,

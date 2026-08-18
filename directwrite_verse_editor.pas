@@ -95,6 +95,7 @@ type
     procedure Resize; override;
   public
     constructor Create(AOwner: TComponent); override;
+    procedure FocusEditor;
     procedure SetEditorDocument(const ADocument: IVerseVisualDocument);
     procedure SetSelection(StartUTF16, LengthUTF16: Integer);
     procedure SelectAll;
@@ -238,6 +239,14 @@ begin
     SetLength(FCaretStops, 1);
     FCaretStops[0] := 0;
   end;
+end;
+
+procedure TDirectWriteVerseEditor.FocusEditor;
+begin
+  if FMode = vimEdit then
+    FocusInputBroker
+  else if CanSetFocus then
+    SetFocus;
 end;
 
 function TDirectWriteVerseEditor.IsInteractiveCaretStop(

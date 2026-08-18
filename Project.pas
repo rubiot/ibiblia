@@ -25,7 +25,7 @@ uses
   project_database_bootstrap, status_catalog,
   dictionary_manager, project_exporter, association_memory_service,
   UnitPleaseWait, bible_book_names, translation_memory_model, ConcordanceExport,
-  navigation_history, text_direction;
+  navigation_history, text_direction, text_edit_provenance;
 const
   // AI processing icon indices for ImageListTreeView in formprincipal
   // ImageListTreeView has indices 0-7 for normal states (0-3) and selected states (4-7)
@@ -156,6 +156,7 @@ type
     FLastLLMUsage: TLLMUsage;
     FLastLLMCallCompleted: Boolean;
     FOnNovoVersiculo: TOnNovoVersiculoEvents;
+    FNewVerseNotificationQueued: Boolean;
     FOnSintagmaClick: TOnSintagmaClickEvent;
     FClosing: boolean;
     FAutoSave: boolean;
@@ -218,6 +219,8 @@ type
       Phase: TAssociationMemoryRebuildPhase; Current, Total: Integer);
     procedure PendingEditorChanged(Sender: TObject);
   protected
+    procedure DispatchNewVerseObserversAfterEdit(Data: PtrInt);
+    procedure NotifyNewVerseObserversAfterEdit;
     function CreateTableDataset(db, tableName, keyField: string): TSqlite3Dataset;
     function CreateQueryObject(db: string): TSQLQuery;
     function InsertInfo(info, value: string): boolean;
@@ -241,7 +244,9 @@ type
     procedure OnCopyAssociationExample(Sender: TObject);
     procedure OnSwitchDestinationAndReference1Texts(Sender: TObject);
     procedure OnMudancaVersiculo(Sender: TObject; Node: TTreeNode);
-    procedure OnChangeTextVersiculo(Sender: TVerseMemo);
+    function OnChangeTextVersiculo(Sender: TVerseMemo;
+      const ATrace: TVerseEditTrace;
+      out AImpact: TAssociationEditImpact): Boolean;
     procedure OnExibirDefinicao(Sender: TObject);
     procedure OnDblClickVersiculo(Sender: TObject);
     procedure OnBibleTreePopupItemClick(Sender: TObject);
@@ -533,8 +538,6 @@ resourcestring
                                  'Apply the saved integer values anyway?';
   SPatchStatusLabelFmt = '%s (ID %d)';
   SVerseAbsentFromProject = '[This project does not contain this verse]';
-  SLineBreaksInTextTitle = 'Edit error';
-  SLineBreaksInText = 'A verse cannot contain line breaks. Your changes will be discarded.';
   SInvalidInterlinearVerseRule = 'There is something wrong with your interlinear verse rule.'#13#10'[%s]';
   SInterlinearVerseRuleReplaceError = 'There is something wrong with one of your interlinear verse rules.'#13#10'Please review them.';
   SModuleDoesNotIncludeScope = 'This module is incompatible with the scope of the project. Please choose a valid module.';
@@ -2920,24 +2923,56 @@ begin
   GoToReference(FBibleTreeCoordinator.NodeToReferenceID(FEscopo, Node));
 end;
 
-procedure TProject.OnChangeTextVersiculo(Sender: TVerseMemo);
+function TProject.OnChangeTextVersiculo(Sender: TVerseMemo;
+  const ATrace: TVerseEditTrace;
+  out AImpact: TAssociationEditImpact): Boolean;
 var
   editedIndex: Integer;
-  e: TOnNovoVersiculoEvent;
 begin
+  Result := False;
+  AImpact.PreservedMembers := 0;
+  AImpact.RemovedMembers := 0;
+  AImpact.UsedLegacyFallback := False;
+  AImpact.ErrorMessage := '';
   if ContainsText(Sender.Text, #13) or ContainsText(Sender.Text, #10) then
   begin
-    MessageDlg(SLineBreaksInTextTitle, SLineBreaksInText, mtError, [mbOK], 0);
+    AImpact.ErrorMessage := 'A verse cannot contain line breaks.';
     exit;
   end;
 
-  editedIndex := FCurrentVerseWorkspace.ApplyEditedVerseText(FAVersiculo,
-    Sender.Verse, Sender.Text);
+  Result := FCurrentVerseWorkspace.ApplyEditedVerseText(FAVersiculo,
+    Sender.Verse, Sender.Text, ATrace, editedIndex, AImpact);
+  if not Result then
+    Exit;
   if editedIndex = Ord(tbDestino) then
-    for e in FOnNovoVersiculo do
-      e(self);
+    NotifyNewVerseObserversAfterEdit;
 
   //MessageDlg('Versículo modificado', format('Versiculo modificado: %s', [Sender.Text]), mtError, [mbOK], 0);
+end;
+
+procedure TProject.NotifyNewVerseObserversAfterEdit;
+begin
+  if FNewVerseNotificationQueued then
+    Exit;
+  FNewVerseNotificationQueued := True;
+  Application.QueueAsyncCall(@DispatchNewVerseObserversAfterEdit, 0);
+end;
+
+procedure TProject.DispatchNewVerseObserversAfterEdit(Data: PtrInt);
+var
+  Observer: TOnNovoVersiculoEvent;
+begin
+  FNewVerseNotificationQueued := False;
+  { The editor has accepted and closed its session before this queued refresh
+    runs. Observers may therefore save/navigate without re-entering the old
+    edit baseline. }
+  for Observer in FOnNovoVersiculo do
+    try
+      Observer(Self);
+    except
+      on E: Exception do
+        DebugLn('Post-commit Verse observer failed: ' + E.Message);
+    end;
 end;
 
 procedure TProject.OnExibirDefinicao(Sender: TObject);
@@ -3289,6 +3324,7 @@ begin
   end;
 
   FOnNovoVersiculo    := TOnNovoVersiculoEvents.Create;
+  FNewVerseNotificationQueued := False;
   FOnAlterarVersiculo := nil;
   FSuggestionManager  := nil;
   FAIManager          := nil;
@@ -3351,6 +3387,8 @@ end;
 
 destructor TProject.Destroy;
 begin
+  Application.RemoveAsyncCalls(Self);
+  FNewVerseNotificationQueued := False;
   FCurrentVerseWorkspace.DestroyVerseViews(FAVersiculo);
 
   if Assigned(FAIProcessingNodes) then

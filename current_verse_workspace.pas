@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, Controls, StdCtrls, Forms, Graphics,
   Verse, VerseMemo, commentsview, SuggestionManager, syntagm, project_persistence,
-  verse_render_buffer, association_memory_service;
+  verse_render_buffer, association_memory_service, text_edit_provenance;
 
 type
   TCurrentVerseLoadResult = record
@@ -54,7 +54,9 @@ type
       StrongsCountMode: TStrongsCountMode);
     procedure ApplyBoldStrongs(const VerseViews: array of TVerse; Enabled: Boolean);
     function ApplyEditedVerseText(const VerseViews: array of TVerse;
-      EditedVerse: TVerse; const NewText: string): Integer;
+      EditedVerse: TVerse; const NewText: string;
+      const Trace: TVerseEditTrace; out EditedIndex: Integer;
+      out Impact: TAssociationEditImpact): Boolean;
     function SavePairs(Persistence: TProjectPersistence;
       SourceVerse: TVerse): Boolean;
     function SaveTexts(Persistence: TProjectPersistence;
@@ -281,19 +283,23 @@ end;
 
 function TCurrentVerseWorkspace.ApplyEditedVerseText(
   const VerseViews: array of TVerse; EditedVerse: TVerse;
-  const NewText: string): Integer;
+  const NewText: string; const Trace: TVerseEditTrace;
+  out EditedIndex: Integer; out Impact: TAssociationEditImpact): Boolean;
 var
   Index: Integer;
 begin
-  Result := -1;
+  Result := False;
+  EditedIndex := -1;
+  Impact.PreservedMembers := 0;
+  Impact.RemovedMembers := 0;
+  Impact.UsedLegacyFallback := False;
+  Impact.ErrorMessage := 'The edited Verse is not part of the current workspace.';
   for Index := Low(VerseViews) to High(VerseViews) do
     if VerseViews[Index] = EditedVerse then
     begin
-      if Assigned(EditedVerse.PairedVerse) then
-        EditedVerse.ChangeText(NewText)
-      else
-        EditedVerse.Text := NewText;
-      Exit(Index);
+      EditedIndex := Index;
+      Result := EditedVerse.TryApplyTracedEdit(NewText, Trace, Impact);
+      Exit;
     end;
 end;
 

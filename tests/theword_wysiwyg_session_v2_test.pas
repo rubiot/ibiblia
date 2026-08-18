@@ -32,12 +32,20 @@ type
     procedure SemanticToggleUndoRedoPreservesOntObjects;
     procedure NonSemanticEventOrderControlsSemanticOnlyClassification;
     procedure RejectedSemanticToggleCannotBeRedone;
+    procedure VisualEditsProduceExactOriginTrace;
+    procedure SemanticToggleDoesNotChangeOriginTrace;
+    procedure UndoRedoRestoresOriginTrace;
+    procedure CutAndPasteTrackDeletedAndInsertedUnits;
+    procedure RawVisibleChangeUsesConservativeTrace;
+    procedure IdenticalRetypeRemainsDirtyUntilUndo;
+    procedure RawProtectsLexicalObjectsButAllowsExternalEdits;
   end;
 
 implementation
 
 uses
-  Graphics, text_direction, verse_visual_document, theword_ont_codec_v2,
+  Graphics, text_direction, text_edit_provenance, verse_visual_document,
+  theword_ont_codec_v2,
   theword_verse_visual_adapter_v2, theword_wysiwyg_session_v2;
 
 function SemanticMask(const ARaw: UnicodeString;
@@ -747,6 +755,283 @@ begin
       Session.CanUndo);
     AssertFalse('a rejected command must not be available through redo',
       Session.CanRedo);
+  finally
+    Session.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.VisualEditsProduceExactOriginTrace;
+var
+  CurrentStart: Integer;
+  Session: TTheWordWysiwygSessionV2;
+  Trace: TVerseEditTrace;
+begin
+  Session := TTheWordWysiwygSessionV2.Create('one two three', 42);
+  try
+    AssertTrue(Session.ReplaceText(4, 3, 'TWO'));
+    Trace := Session.CloneEditTrace;
+    try
+      AssertEquals(42, Trace.TokenizerVersion);
+      AssertEquals(Ord(vetmExact), Ord(Trace.Mode));
+      AssertEquals(UnicodeString('one two three'), Trace.OriginalText);
+      AssertEquals(UnicodeString('one TWO three'), Trace.CurrentText);
+      AssertTrue(Trace.OriginMap.TryProjectOriginalRange(0, 4,
+        CurrentStart));
+      AssertEquals(0, CurrentStart);
+      AssertFalse(Trace.OriginMap.TryProjectOriginalRange(4, 3,
+        CurrentStart));
+      AssertTrue(Trace.OriginMap.TryProjectOriginalRange(7, 6,
+        CurrentStart));
+      AssertEquals(7, CurrentStart);
+    finally
+      Trace.Free;
+    end;
+    Session.AcceptChanges;
+    AssertFalse(Session.Dirty);
+    Trace := Session.CloneEditTrace;
+    try
+      AssertEquals(UnicodeString('one TWO three'), Trace.OriginalText);
+      AssertTrue(Trace.IsBaselineIdentity);
+      AssertTrue(Trace.OriginMap.TryProjectOriginalRange(4, 3,
+        CurrentStart));
+    finally
+      Trace.Free;
+    end;
+  finally
+    Session.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
+  SemanticToggleDoesNotChangeOriginTrace;
+var
+  CurrentStart: Integer;
+  Session: TTheWordWysiwygSessionV2;
+  Trace: TVerseEditTrace;
+begin
+  Session := TTheWordWysiwygSessionV2.Create('word', 7);
+  try
+    AssertTrue(Session.ApplySemantic(twsmItalic, 0, 4));
+    Trace := Session.CloneEditTrace;
+    try
+      AssertEquals(Ord(vetmExact), Ord(Trace.Mode));
+      AssertEquals(UnicodeString('word'), Trace.OriginalText);
+      AssertEquals(UnicodeString('word'), Trace.CurrentText);
+      AssertTrue(Trace.OriginMap.TryProjectOriginalRange(0, 4,
+        CurrentStart));
+      AssertEquals(0, CurrentStart);
+    finally
+      Trace.Free;
+    end;
+  finally
+    Session.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.UndoRedoRestoresOriginTrace;
+var
+  CurrentStart: Integer;
+  Session: TTheWordWysiwygSessionV2;
+  Trace: TVerseEditTrace;
+begin
+  Session := TTheWordWysiwygSessionV2.Create('abc def', 3);
+  try
+    AssertTrue(Session.ReplaceText(0, 3, 'ABC'));
+    AssertTrue(Session.Undo);
+    Trace := Session.CloneEditTrace;
+    try
+      AssertEquals(UnicodeString('abc def'), Trace.CurrentText);
+      AssertTrue(Trace.OriginMap.TryProjectOriginalRange(0, 3,
+        CurrentStart));
+    finally
+      Trace.Free;
+    end;
+
+    AssertTrue(Session.Redo);
+    Trace := Session.CloneEditTrace;
+    try
+      AssertEquals(UnicodeString('ABC def'), Trace.CurrentText);
+      AssertFalse(Trace.OriginMap.TryProjectOriginalRange(0, 3,
+        CurrentStart));
+      AssertTrue(Trace.OriginMap.TryProjectOriginalRange(3, 4,
+        CurrentStart));
+    finally
+      Trace.Free;
+    end;
+  finally
+    Session.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
+  CutAndPasteTrackDeletedAndInsertedUnits;
+var
+  CurrentStart, InsertedLength: Integer;
+  Payload: string;
+  PlainText: UnicodeString;
+  Session: TTheWordWysiwygSessionV2;
+  Trace: TVerseEditTrace;
+  UsedPrivatePayload: Boolean;
+begin
+  Session := TTheWordWysiwygSessionV2.Create('one two', 11);
+  try
+    AssertTrue(Session.CutSelection(0, 3, PlainText, Payload));
+    AssertEquals(UnicodeString('one'), PlainText);
+    Trace := Session.CloneEditTrace;
+    try
+      AssertFalse(Trace.OriginMap.TryProjectOriginalRange(0, 3,
+        CurrentStart));
+      AssertTrue(Trace.OriginMap.TryProjectOriginalRange(3, 4,
+        CurrentStart));
+      AssertEquals(0, CurrentStart);
+    finally
+      Trace.Free;
+    end;
+
+    AssertTrue(Session.Paste(0, 0, Payload, PlainText, InsertedLength,
+      UsedPrivatePayload));
+    AssertTrue(UsedPrivatePayload);
+    AssertEquals(3, InsertedLength);
+    AssertEquals(UnicodeString('one two'), Session.VisibleText);
+    Trace := Session.CloneEditTrace;
+    try
+      AssertFalse('pasted text is new even with the private payload',
+        Trace.OriginMap.TryProjectOriginalRange(0, 3, CurrentStart));
+      AssertTrue(Trace.OriginMap.TryProjectOriginalRange(3, 4,
+        CurrentStart));
+      AssertEquals(3, CurrentStart);
+    finally
+      Trace.Free;
+    end;
+  finally
+    Session.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
+  RawVisibleChangeUsesConservativeTrace;
+var
+  CurrentStart: Integer;
+  Session: TTheWordWysiwygSessionV2;
+  Trace: TVerseEditTrace;
+begin
+  Session := TTheWordWysiwygSessionV2.Create('prefix middle suffix', 15);
+  try
+    AssertTrue(Session.ReplaceRawText('<FI>prefix changed suffix<Fi>'));
+    Trace := Session.CloneEditTrace;
+    try
+      AssertEquals(Ord(vetmRawConservative), Ord(Trace.Mode));
+      AssertEquals(UnicodeString('prefix changed suffix'),
+        Trace.CurrentText);
+      AssertTrue(Trace.OriginMap.TryProjectOriginalRange(0, 7,
+        CurrentStart));
+      AssertFalse(Trace.OriginMap.TryProjectOriginalRange(7, 6,
+        CurrentStart));
+      AssertTrue(Trace.OriginMap.TryProjectOriginalRange(13, 7,
+        CurrentStart));
+      AssertEquals(14, CurrentStart);
+    finally
+      Trace.Free;
+    end;
+
+    AssertTrue(Session.ReplaceRawText(
+      '<FU><FI>prefix changed suffix<Fi><Fu>'));
+    Trace := Session.CloneEditTrace;
+    try
+      AssertEquals('semantic-only Raw change keeps the existing map mode',
+        Ord(vetmRawConservative), Ord(Trace.Mode));
+      AssertTrue(Trace.OriginMap.TryProjectOriginalRange(13, 7,
+        CurrentStart));
+    finally
+      Trace.Free;
+    end;
+  finally
+    Session.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
+  IdenticalRetypeRemainsDirtyUntilUndo;
+var
+  CurrentStart: Integer;
+  Session: TTheWordWysiwygSessionV2;
+  Trace: TVerseEditTrace;
+begin
+  Session := TTheWordWysiwygSessionV2.Create('same', 8);
+  try
+    AssertTrue(Session.ReplaceText(0, 4, 'same'));
+    AssertEquals(UnicodeString('same'), Session.RawText);
+    AssertTrue('provenance makes an identical manual retype dirty',
+      Session.Dirty);
+    Trace := Session.CloneEditTrace;
+    try
+      AssertFalse(Trace.OriginMap.TryProjectOriginalRange(0, 4,
+        CurrentStart));
+    finally
+      Trace.Free;
+    end;
+    AssertTrue(Session.Undo);
+    AssertFalse(Session.Dirty);
+  finally
+    Session.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
+  RawProtectsLexicalObjectsButAllowsExternalEdits;
+const
+  ORIGINAL: UnicodeString = 'one<WG123><WTN-NSM><wt> two';
+var
+  Session: TTheWordWysiwygSessionV2;
+begin
+  Session := TTheWordWysiwygSessionV2.Create(ORIGINAL, 8);
+  try
+    AssertTrue('baseline lexical objects are unchanged',
+      Session.ProtectedLexicalObjectsUnchanged);
+    AssertTrue(Session.ReplaceRawText(
+      'new one<WG123><WTN-NSM><wt> two'));
+    AssertTrue('insertion before a protected word only shifts its anchor',
+      Session.ProtectedLexicalObjectsUnchanged);
+  finally
+    Session.Free;
+  end;
+
+  Session := TTheWordWysiwygSessionV2.Create(ORIGINAL, 8);
+  try
+    AssertTrue(Session.ReplaceRawText(
+      'one<WG123><WTN-NSM><wt> TWO'));
+    AssertTrue('text outside the lexical word remains editable',
+      Session.ProtectedLexicalObjectsUnchanged);
+  finally
+    Session.Free;
+  end;
+
+  Session := TTheWordWysiwygSessionV2.Create(ORIGINAL, 8);
+  try
+    AssertTrue(Session.ReplaceRawText(
+      'ONE<WG123><WTN-NSM><wt> two'));
+    AssertFalse('the word carrying Strong/Morph remains protected',
+      Session.ProtectedLexicalObjectsUnchanged);
+  finally
+    Session.Free;
+  end;
+
+  Session := TTheWordWysiwygSessionV2.Create(ORIGINAL, 8);
+  try
+    AssertTrue(Session.ReplaceRawText(
+      'one<WG124><WTN-NSM><wt> two'));
+    AssertFalse('lexical raw payload cannot be changed',
+      Session.ProtectedLexicalObjectsUnchanged);
+  finally
+    Session.Free;
+  end;
+
+  Session := TTheWordWysiwygSessionV2.Create(ORIGINAL, 8);
+  try
+    AssertTrue(Session.ReplaceRawText(
+      'one<WTN-NSM><WG123><wt> two'));
+    AssertFalse('lexical order cannot be changed',
+      Session.ProtectedLexicalObjectsUnchanged);
   finally
     Session.Free;
   end;

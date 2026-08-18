@@ -8,7 +8,7 @@ interface
 uses
   Classes, SysUtils, Controls, Graphics, SynEdit, directwrite_verse_editor,
   verse_visual_document, theword_ont_codec_v2, theword_wysiwyg_session_v2,
-  text_direction;
+  text_direction, text_edit_provenance;
 
 type
   TTheWordWysiwygEditorControl = class;
@@ -30,6 +30,7 @@ type
     FRawEditor: TSynEdit;
     FRawMode: Boolean;
     FSession: TTheWordWysiwygSessionV2;
+    FTokenizerVersion: Integer;
     FUpdating: Boolean;
     FVisualDocument: IVerseVisualDocument;
     function GetCapability: TTheWordLayerCapability;
@@ -72,10 +73,13 @@ type
     function ApplySemantic(AKind: TTheWordSemanticKind): Boolean;
     function CanApplySemantic: Boolean;
     function CommitRaw: Boolean;
+    function CloneEditTrace: TVerseEditTrace;
+    function ProtectedLexicalObjectsUnchanged: Boolean;
     function Undo: Boolean;
     function Redo: Boolean;
     function RejectLastChange: Boolean;
     procedure Cancel;
+    procedure AcceptChanges;
     procedure FocusEditor;
     procedure SetEditorFont(AFont: TFont);
     property BaseDirection: TTextDirection read FBaseDirection
@@ -89,6 +93,8 @@ type
     property SelectionLength: Integer read GetSelectionLength;
     property SelectionStart: Integer read GetSelectionStart;
     property Text: string read GetText write SetText;
+    property TokenizerVersion: Integer read FTokenizerVersion
+      write FTokenizerVersion;
     property OnChanged: TTheWordEditorChangedEvent read FOnChanged
       write FOnChanged;
     property OnCommand: TTheWordEditorCommandEvent read FOnCommand
@@ -112,6 +118,7 @@ begin
   FEditable := True;
   FRawMode := False;
   FUpdating := False;
+  FTokenizerVersion := 0;
 
   FDirectEditor := TDirectWriteVerseEditor.Create(Self);
   FDirectEditor.Parent := Self;
@@ -154,7 +161,8 @@ begin
     FVisualDocument := nil;
     FreeAndNil(FSession);
     FLoadedRaw := UTF8Decode(AValue);
-    FSession := TTheWordWysiwygSessionV2.Create(FLoadedRaw);
+    FSession := TTheWordWysiwygSessionV2.Create(FLoadedRaw,
+      FTokenizerVersion);
     FRawEditor.Text := AValue;
     FRawMode := False;
     FRawEditor.Visible := False;
@@ -319,6 +327,21 @@ end;
 function TTheWordWysiwygEditorControl.CommitRaw: Boolean;
 begin
   Result := (not FRawMode) or SyncRawEditor;
+end;
+
+function TTheWordWysiwygEditorControl.CloneEditTrace: TVerseEditTrace;
+begin
+  if Assigned(FSession) then
+    Result := FSession.CloneEditTrace
+  else
+    Result := nil;
+end;
+
+function TTheWordWysiwygEditorControl.ProtectedLexicalObjectsUnchanged:
+  Boolean;
+begin
+  Result := Assigned(FSession) and
+    FSession.ProtectedLexicalObjectsUnchanged;
 end;
 
 procedure TTheWordWysiwygEditorControl.SetRawMode(AValue: Boolean);
@@ -645,10 +668,8 @@ begin
   end
   else
   begin
-    FDirectEditor.InteractionMode := vimAssociation;
     FDirectEditor.InteractionMode := vimEdit;
-    if FDirectEditor.CanSetFocus then
-      FDirectEditor.SetFocus;
+    FDirectEditor.FocusEditor;
   end;
 end;
 
@@ -658,6 +679,15 @@ begin
     Exit;
   FDirectEditor.Font.Assign(AFont);
   FDirectEditor.Invalidate;
+end;
+
+procedure TTheWordWysiwygEditorControl.AcceptChanges;
+begin
+  if not Assigned(FSession) then
+    Exit;
+  FSession.AcceptChanges;
+  FLoadedRaw := FSession.RawText;
+  FRawEditor.Modified := False;
 end;
 
 end.

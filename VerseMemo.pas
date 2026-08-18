@@ -7,11 +7,16 @@ interface
 uses
   Classes, SysUtils, Controls, Forms, LCLType, Dialogs, ExtCtrls, StdCtrls,
   Graphics, Verse, Math, directwrite_verse_editor, theword_ont_codec_v2,
-  theword_wysiwyg_editor_control, theword_wysiwyg_session_v2;
+  theword_wysiwyg_editor_control, text_edit_provenance;
 
 type
   TVerseMemo = class;
-  TVerseTextModifiedEvent = procedure(Sender: TVerseMemo) of object;
+  { ATrace remains owned by TVerseMemo and is valid only for the duration of
+    the callback. Returning False leaves the editor and its pending change
+    open. }
+  TVerseTextModifiedEvent = function(Sender: TVerseMemo;
+    const ATrace: TVerseEditTrace;
+    out AImpact: TAssociationEditImpact): Boolean of object;
 
   TVerseMemo = class
   private
@@ -28,6 +33,7 @@ type
     FOldTestamentQuoteButton: TButton;
     FUnderlineButton: TButton;
     FRawModeButton: TButton;
+    FSaveErrorActive: Boolean;
     FEditor: TTheWordWysiwygEditorControl;
     FContainer: TScrollBox;
     FBoundsContainer: TScrollBox;
@@ -51,6 +57,7 @@ type
     procedure RestoreFocusAfterClose;
     procedure SaveAndClose;
     procedure SaveButtonClick(Sender: TObject);
+    procedure ShowSaveError(const AMessage: string);
     procedure ToggleRawMode(Sender: TObject);
     procedure ToolbarResize(Sender: TObject);
     procedure UpdateEditorBounds;
@@ -94,20 +101,9 @@ resourcestring
   SRawModeHint = 'Switch between semantic editing and the raw ONT fallback';
   SLineBreaksInEditorTitle = 'Edit error';
   SLineBreaksInEditor = 'A verse cannot contain line breaks. Remove line breaks before saving.';
-  SAssociationEditBlockedTitle = 'Associations protected';
-  SAssociationEditBlocked =
-    'This verse has Associations. Until the Verse Pair editor is connected ' +
-    'to the new atomic session, only FI, FR, FO and FU semantic formatting ' +
-    'can be saved. Undo or cancel textual/structural changes before saving ' +
-    'or navigating.';
-  SAssociationBoundaryFormattingUndone =
-    'The selected formatting would change Syntagm boundaries while this ' +
-    'verse has Associations. The operation was undone. Adjust the selection ' +
-    'to complete words, whitespace or punctuation.';
-  SAssociationBoundarySaveBlocked =
-    'This semantic edit changes Syntagm boundaries while the verse has ' +
-    'Associations, so it cannot be saved. In Raw mode, move formatting tags ' +
-    'to boundaries between complete words, whitespace or punctuation.';
+  SEditApplyFailed = 'The edit could not be applied';
+  SProtectedLexicalObjectsChanged =
+    'Strong and morphology data are protected in this editing cycle';
 
 implementation
 
@@ -118,15 +114,7 @@ end;
 
 procedure TVerseMemo.ApplySemantic(AKind: TTheWordSemanticKind);
 begin
-  if not FEditor.ApplySemantic(AKind) then
-    Exit;
-  if Assigned(FVerse) and
-     not FVerse.CanChangeTextPreservingAssociationIdentity(FEditor.Text) then
-  begin
-    FEditor.RejectLastChange;
-    MessageDlg(SAssociationEditBlockedTitle,
-      SAssociationBoundaryFormattingUndone, mtWarning, [mbOK], 0);
-  end;
+  FEditor.ApplySemantic(AKind);
 end;
 
 procedure TVerseMemo.CancelButtonClick(Sender: TObject);
@@ -152,6 +140,7 @@ procedure TVerseMemo.EditorChanged(Sender: TTheWordWysiwygEditorControl);
 begin
   if FActivating or not FEditor.Visible then
     Exit;
+  FSaveErrorActive := False;
   FModified := FEditor.Modified;
   UpdateEditorState;
   if Assigned(FOnPendingChange) then
@@ -198,8 +187,10 @@ const
   Margin = 6;
   Gap = 5;
   SemanticButtonWidth = 64;
+  ButtonRowHeight = 38;
+  ErrorRowHeight = 24;
 var
-  X, RightEdge, ButtonHeight, SaveWidth, CancelWidth, ModeWidth,
+  X, RightEdge, ButtonHeight, ButtonTop, SaveWidth, CancelWidth, ModeWidth,
     StatusLeft, StatusWidth: Integer;
 begin
   if not Assigned(FEditorPanel) or not Assigned(FToolbarPanel) or
@@ -207,8 +198,14 @@ begin
      (FToolbarPanel.ClientWidth <= 0) then
     Exit;
 
+  if FSaveErrorActive then
+    FToolbarPanel.Height := ButtonRowHeight + ErrorRowHeight
+  else
+    FToolbarPanel.Height := ButtonRowHeight;
+
   FToolbarPanel.Canvas.Font.Assign(FToolbarPanel.Font);
   ButtonHeight := Max(26, FToolbarPanel.Canvas.TextHeight('Hg') + 10);
+  ButtonTop := (ButtonRowHeight - ButtonHeight) div 2;
   SaveWidth := Max(72, FToolbarPanel.Canvas.TextWidth(FSaveButton.Caption) + 26);
   CancelWidth := Max(72,
     FToolbarPanel.Canvas.TextWidth(FCancelButton.Caption) + 26);
@@ -217,44 +214,52 @@ begin
 
   RightEdge := FToolbarPanel.ClientWidth - Margin;
   FCancelButton.SetBounds(RightEdge - CancelWidth,
-    (FToolbarPanel.ClientHeight - ButtonHeight) div 2,
+    ButtonTop,
     CancelWidth, ButtonHeight);
   Dec(RightEdge, CancelWidth + Gap);
   FSaveButton.SetBounds(RightEdge - SaveWidth,
-    (FToolbarPanel.ClientHeight - ButtonHeight) div 2,
+    ButtonTop,
     SaveWidth, ButtonHeight);
   Dec(RightEdge, SaveWidth + Gap);
 
   X := Margin;
-  FModeLabel.SetBounds(X, 0, ModeWidth, FToolbarPanel.ClientHeight);
+  FModeLabel.SetBounds(X, 0, ModeWidth, ButtonRowHeight);
   Inc(X, ModeWidth + Gap);
   FAddedWordsButton.SetBounds(X,
-    (FToolbarPanel.ClientHeight - ButtonHeight) div 2,
+    ButtonTop,
     SemanticButtonWidth, ButtonHeight);
   Inc(X, SemanticButtonWidth + Gap);
   FJesusWordsButton.SetBounds(X,
-    (FToolbarPanel.ClientHeight - ButtonHeight) div 2,
+    ButtonTop,
     SemanticButtonWidth, ButtonHeight);
   Inc(X, SemanticButtonWidth + Gap);
   FOldTestamentQuoteButton.SetBounds(X,
-    (FToolbarPanel.ClientHeight - ButtonHeight) div 2,
+    ButtonTop,
     SemanticButtonWidth, ButtonHeight);
   Inc(X, SemanticButtonWidth + Gap);
   FUnderlineButton.SetBounds(X,
-    (FToolbarPanel.ClientHeight - ButtonHeight) div 2,
+    ButtonTop,
     SemanticButtonWidth, ButtonHeight);
   Inc(X, SemanticButtonWidth + Gap);
   FRawModeButton.SetBounds(X,
-    (FToolbarPanel.ClientHeight - ButtonHeight) div 2,
+    ButtonTop,
     SemanticButtonWidth, ButtonHeight);
   Inc(X, SemanticButtonWidth + Gap);
 
-  StatusLeft := X;
-  StatusWidth := RightEdge - StatusLeft;
-  FStatusLabel.Visible := StatusWidth >= 80;
-  if FStatusLabel.Visible then
-    FStatusLabel.SetBounds(StatusLeft, 0, StatusWidth,
-      FToolbarPanel.ClientHeight);
+  if FSaveErrorActive then
+  begin
+    FStatusLabel.Visible := True;
+    FStatusLabel.SetBounds(Margin, ButtonRowHeight,
+      Max(0, FToolbarPanel.ClientWidth - (2 * Margin)), ErrorRowHeight);
+  end
+  else
+  begin
+    StatusLeft := X;
+    StatusWidth := RightEdge - StatusLeft;
+    FStatusLabel.Visible := StatusWidth >= 80;
+    if FStatusLabel.Visible then
+      FStatusLabel.SetBounds(StatusLeft, 0, StatusWidth, ButtonRowHeight);
+  end;
 end;
 
 procedure TVerseMemo.RefreshLocalizedCaptions;
@@ -308,6 +313,22 @@ begin
   SaveAndClose;
 end;
 
+procedure TVerseMemo.ShowSaveError(const AMessage: string);
+begin
+  { Restore keyboard/IME focus before publishing the error. Focus changes can
+    cause selection notifications, so doing this first prevents a generic
+    editor-state refresh from replacing the concrete failure reason. }
+  FEditor.FocusEditor;
+  FSaveErrorActive := True;
+  if AMessage <> '' then
+    FStatusLabel.Caption := AMessage
+  else
+    FStatusLabel.Caption := SEditApplyFailed;
+  FStatusLabel.Font.Color := clRed;
+  FEditorPanel.Hint := FStatusLabel.Caption;
+  LayoutEditorToolbar;
+end;
+
 procedure TVerseMemo.ToolbarResize(Sender: TObject);
 begin
   LayoutEditorToolbar;
@@ -330,7 +351,9 @@ var
 begin
   if not Assigned(FStatusLabel) then
     Exit;
-  if FModified then
+  if FSaveErrorActive then
+    FStatusLabel.Font.Color := clRed
+  else if FModified then
   begin
     FStatusLabel.Caption := SEditModeModified;
     FStatusLabel.Font.Color := clRed;
@@ -435,6 +458,7 @@ begin
 
   FActivating := False;
   FModified := False;
+  FSaveErrorActive := False;
   FContainer := nil;
   FBoundsContainer := nil;
   FVerse := nil;
@@ -483,6 +507,7 @@ begin
   Activated := False;
   try
     FModified := False;
+    FSaveErrorActive := False;
     DetachContainerBoundsHandler;
     FContainer := Container;
     FVerse := Verse;
@@ -503,6 +528,7 @@ begin
     FEditor.BaseDirection := Verse.BaseDirection;
     FEditor.Editable := not Verse.ReadOnly;
     FEditor.SetEditorFont(Verse.Font);
+    FEditor.TokenizerVersion := Verse.TokenizerVersion;
     FEditor.Text := Verse.XML;
     if FEditor.Capability = twlcRawOnly then
       FEditor.RawMode := True;
@@ -538,36 +564,73 @@ begin
 end;
 
 function TVerseMemo.TryDeactivate: Boolean;
+var
+  Impact: TAssociationEditImpact;
+  Trace: TVerseEditTrace;
 begin
   Result := True;
+  Impact.PreservedMembers := 0;
+  Impact.RemovedMembers := 0;
+  Impact.UsedLegacyFallback := False;
+  Impact.ErrorMessage := '';
   if not FEditorPanel.Visible then
     Exit;
-  if not FEditor.CommitRaw then
-    Exit(False);
+  try
+    if not FEditor.CommitRaw then
+    begin
+      ShowSaveError(SEditApplyFailed);
+      Exit(False);
+    end;
+  except
+    on E: Exception do
+    begin
+      ShowSaveError(E.Message);
+      Exit(False);
+    end;
+  end;
+  FModified := FEditor.Modified;
   if not ValidateTextForSave then
     Exit(False);
-  if Assigned(FVerse) and not CanCommitLegacyWysiwygChangeV2(
-    FVerse.HasAssociations, FEditor.ChangesAreSemanticOnly) then
+  if not FEditor.ProtectedLexicalObjectsUnchanged then
   begin
-    MessageDlg(SAssociationEditBlockedTitle, SAssociationEditBlocked,
-      mtWarning, [mbOK], 0);
+    ShowSaveError(SProtectedLexicalObjectsChanged);
     Exit(False);
   end;
-  if Assigned(FVerse) and
-     not FVerse.CanChangeTextPreservingAssociationIdentity(FEditor.Text) then
-  begin
-    MessageDlg(SAssociationEditBlockedTitle, SAssociationBoundarySaveBlocked,
-      mtWarning, [mbOK], 0);
-    Exit(False);
+  Trace := nil;
+  try
+    if FModified then
+    begin
+      Trace := FEditor.CloneEditTrace;
+      if not Assigned(Trace) or not Assigned(FOnVerseTextModified) then
+      begin
+        ShowSaveError(SEditApplyFailed);
+        Exit(False);
+      end;
+      try
+        if not FOnVerseTextModified(Self, Trace, Impact) then
+        begin
+          ShowSaveError(Impact.ErrorMessage);
+          Exit(False);
+        end;
+      except
+        on E: Exception do
+        begin
+          ShowSaveError(E.Message);
+          Exit(False);
+        end;
+      end;
+      FEditor.AcceptChanges;
+    end;
+  finally
+    Trace.Free;
   end;
 
   FEditor.Visible := False;
   FEditorPanel.Visible := False;
   DetachContainerBoundsHandler;
-  if Assigned(FOnVerseTextModified) and FModified then
-    FOnVerseTextModified(Self);
   RestoreFocusAfterClose;
   FModified := False;
+  FSaveErrorActive := False;
   FContainer := nil;
   FVerse := nil;
   if Assigned(FOnPendingChange) then
@@ -580,6 +643,7 @@ begin
     Exit;
   FEditor.Cancel;
   FModified := False;
+  FSaveErrorActive := False;
   FEditor.Visible := False;
   FEditorPanel.Visible := False;
   RestoreFocusAfterClose;

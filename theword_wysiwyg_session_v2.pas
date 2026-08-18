@@ -6,24 +6,36 @@ unit theword_wysiwyg_session_v2;
 interface
 
 uses
-  Classes, SysUtils, theword_ont_codec_v2;
+  Classes, Contnrs, SysUtils, text_edit_provenance,
+  theword_ont_codec_v2;
 
 type
   ETheWordWysiwygSession = class(Exception);
 
+  TTheWordWysiwygSessionSnapshot = class
+  private
+    FRaw: UnicodeString;
+    FTrace: TVerseEditTrace;
+  public
+    constructor Create(const ARaw: UnicodeString; ATrace: TVerseEditTrace);
+    destructor Destroy; override;
+    property Raw: UnicodeString read FRaw;
+    property Trace: TVerseEditTrace read FTrace;
+  end;
+
   { The codec document is the single source of truth for both the visual and
-    raw surfaces. Snapshots are ONT strings, so undo also restores unknown and
-    lexical objects exactly as the codec understands them. }
+    raw surfaces. Snapshots pair the ONT string with its origin map, so undo
+    restores unknown/lexical objects and edit provenance atomically. }
   TTheWordWysiwygSessionV2 = class
   private
     FCodec: ITheWordOntCodecV2;
     FDocument: TTheWordVerseDocument;
     FOriginalRaw: UnicodeString;
-    FUndo: TStringList;
-    FRedo: TStringList;
+    FUndo: TFPObjectList;
+    FRedo: TFPObjectList;
+    FTrace: TVerseEditTrace;
     FRevision: QWord;
-    function DecodeSnapshot(const AValue: string): UnicodeString;
-    function EncodeSnapshot(const AValue: UnicodeString): string;
+    function CaptureSnapshot: TTheWordWysiwygSessionSnapshot;
     function GetCanRedo: Boolean;
     function GetCanUndo: Boolean;
     function GetCapability: TTheWordLayerCapability;
@@ -31,11 +43,12 @@ type
     function GetRawText: UnicodeString;
     function GetChangesAreSemanticOnly: Boolean;
     function GetVisibleText: UnicodeString;
-    procedure PushUndo(const ASnapshot: UnicodeString);
+    procedure PushUndo(ASnapshot: TTheWordWysiwygSessionSnapshot);
     procedure ReplaceDocument(const ARaw: UnicodeString);
-    procedure RestoreFromStack(ASource, ADestination: TStringList);
+    procedure RestoreFromStack(ASource, ADestination: TFPObjectList);
   public
-    constructor Create(const ARaw: UnicodeString);
+    constructor Create(const ARaw: UnicodeString;
+      ATokenizerVersion: Integer = 0);
     destructor Destroy; override;
     function ApplySemantic(AKind: TTheWordSemanticKind; AStartUTF16,
       ALengthUTF16: Integer): Boolean;
@@ -52,6 +65,8 @@ type
     function ReplaceText(AStartUTF16, ALengthUTF16: Integer;
       const AReplacement: UnicodeString): Boolean;
     function ReplaceRawText(const ARaw: UnicodeString): Boolean;
+    function CloneEditTrace: TVerseEditTrace;
+    function ProtectedLexicalObjectsUnchanged: Boolean;
     function Undo: Boolean;
     function Redo: Boolean;
     function RejectLastChange: Boolean;
@@ -94,36 +109,56 @@ begin
       Exit(True);
 end;
 
-constructor TTheWordWysiwygSessionV2.Create(const ARaw: UnicodeString);
+constructor TTheWordWysiwygSessionSnapshot.Create(
+  const ARaw: UnicodeString; ATrace: TVerseEditTrace);
+begin
+  inherited Create;
+  if not Assigned(ATrace) then
+    raise EArgumentNilException.Create('ATrace');
+  FRaw := ARaw;
+  FTrace := ATrace;
+end;
+
+destructor TTheWordWysiwygSessionSnapshot.Destroy;
+begin
+  FTrace.Free;
+  inherited Destroy;
+end;
+
+constructor TTheWordWysiwygSessionV2.Create(const ARaw: UnicodeString;
+  ATokenizerVersion: Integer);
 begin
   inherited Create;
   FCodec := TTheWordOntCodecV2.Create;
-  FUndo := TStringList.Create;
-  FRedo := TStringList.Create;
+  FUndo := TFPObjectList.Create(True);
+  FRedo := TFPObjectList.Create(True);
   FOriginalRaw := ARaw;
   FDocument := FCodec.DecodeVerse(ARaw);
+  FTrace := TVerseEditTrace.CreateIdentity(FDocument.VisibleText,
+    ATokenizerVersion);
   FRevision := 0;
 end;
 
 destructor TTheWordWysiwygSessionV2.Destroy;
 begin
   FDocument.Free;
+  FTrace.Free;
   FRedo.Free;
   FUndo.Free;
   FCodec := nil;
   inherited Destroy;
 end;
 
-function TTheWordWysiwygSessionV2.EncodeSnapshot(
-  const AValue: UnicodeString): string;
+function TTheWordWysiwygSessionV2.CaptureSnapshot:
+  TTheWordWysiwygSessionSnapshot;
 begin
-  Result := UTF8Encode(AValue);
+  Result := TTheWordWysiwygSessionSnapshot.Create(GetRawText,
+    FTrace.Clone);
 end;
 
-function TTheWordWysiwygSessionV2.DecodeSnapshot(
-  const AValue: string): UnicodeString;
+function TTheWordWysiwygSessionV2.CloneEditTrace: TVerseEditTrace;
 begin
-  Result := UTF8Decode(AValue);
+  Result := FTrace.Clone;
 end;
 
 function TTheWordWysiwygSessionV2.GetRawText: UnicodeString;
@@ -143,7 +178,8 @@ end;
 
 function TTheWordWysiwygSessionV2.GetDirty: Boolean;
 begin
-  Result := GetRawText <> FOriginalRaw;
+  Result := (GetRawText <> FOriginalRaw) or
+    not FTrace.IsBaselineIdentity;
 end;
 
 function TTheWordWysiwygSessionV2.GetCanUndo: Boolean;
@@ -270,6 +306,47 @@ begin
   Original.Free;
 end;
 
+function TTheWordWysiwygSessionV2.ProtectedLexicalObjectsUnchanged: Boolean;
+var
+  CurrentItem, OriginalItem: TTheWordLexicalItem;
+  CurrentStart, Index, OriginalLength, OriginalStart: Integer;
+  OriginalDocument: TTheWordVerseDocument;
+begin
+  OriginalDocument := nil;
+  try
+    OriginalDocument := FCodec.DecodeVerse(FOriginalRaw);
+    try
+      Result := OriginalDocument.LexicalItemCount =
+        FDocument.LexicalItemCount;
+      if not Result then
+        Exit;
+
+      for Index := 0 to OriginalDocument.LexicalItemCount - 1 do
+      begin
+        OriginalItem := OriginalDocument.LexicalItems[Index];
+        CurrentItem := FDocument.LexicalItems[Index];
+        if (OriginalItem.Kind <> CurrentItem.Kind) or
+           (OriginalItem.RawLexeme <> CurrentItem.RawLexeme) or
+           (OriginalItem.Value <> CurrentItem.Value) then
+          Exit(False);
+
+        OriginalStart := OriginalDocument.LexicalProtectedStart(Index);
+        OriginalLength := OriginalItem.Offset - OriginalStart;
+        if not FTrace.OriginMap.TryProjectOriginalRange(OriginalStart,
+          OriginalLength, CurrentStart) or
+           (FDocument.LexicalProtectedStart(Index) <> CurrentStart) or
+           (CurrentItem.Offset <> CurrentStart + OriginalLength) then
+          Exit(False);
+      end;
+    finally
+      OriginalDocument.Free;
+      OriginalDocument := nil;
+    end;
+  except
+    Result := False;
+  end;
+end;
+
 function CanCommitLegacyWysiwygChangeV2(AHasAssociations,
   AChangesAreSemanticOnly: Boolean): Boolean;
 begin
@@ -288,7 +365,9 @@ function TTheWordWysiwygSessionV2.CutSelection(AStartUTF16,
   ALengthUTF16: Integer; out APlainText: UnicodeString;
   out APayload: string): Boolean;
 var
-  Raw, Snapshot: UnicodeString;
+  NewTrace: TVerseEditTrace;
+  Raw, SnapshotRaw: UnicodeString;
+  Snapshot: TTheWordWysiwygSessionSnapshot;
 begin
   Result := not TouchesTheWordTitle(FDocument, AStartUTF16,
     ALengthUTF16) and
@@ -296,10 +375,24 @@ begin
     TTheWordClipboardCodecV2.BuildCutRaw(FDocument, AStartUTF16,
       ALengthUTF16, Raw);
   if not Result then Exit;
-  Snapshot := GetRawText;
-  if Raw = Snapshot then Exit(False);
-  ReplaceDocument(Raw);
-  PushUndo(Snapshot);
+  SnapshotRaw := GetRawText;
+  if Raw = SnapshotRaw then Exit(False);
+  Snapshot := nil;
+  NewTrace := nil;
+  try
+    Snapshot := CaptureSnapshot;
+    NewTrace := FTrace.Clone;
+    NewTrace.ApplyReplacement(AStartUTF16, ALengthUTF16, '');
+    ReplaceDocument(Raw);
+    FTrace.Free;
+    FTrace := NewTrace;
+    NewTrace := nil;
+    PushUndo(Snapshot);
+    Snapshot := nil;
+  finally
+    NewTrace.Free;
+    Snapshot.Free;
+  end;
 end;
 
 function TTheWordWysiwygSessionV2.Paste(AStartUTF16,
@@ -308,7 +401,9 @@ function TTheWordWysiwygSessionV2.Paste(AStartUTF16,
   out AUsedPrivatePayload: Boolean): Boolean;
 var
   Fragment: TTheWordClipboardFragmentV2;
-  Raw, Snapshot: UnicodeString;
+  NewTrace: TVerseEditTrace;
+  Raw, SnapshotRaw: UnicodeString;
+  Snapshot: TTheWordWysiwygSessionSnapshot;
 begin
   Fragment := nil;
   AInsertedLengthUTF16 := 0;
@@ -321,18 +416,36 @@ begin
     Result := TTheWordClipboardCodecV2.BuildPasteRaw(FDocument,
       AStartUTF16, ALengthUTF16, Fragment, Raw);
     if not Result then Exit;
-    Snapshot := GetRawText;
-    if Raw = Snapshot then Exit(False);
-    ReplaceDocument(Raw);
-    PushUndo(Snapshot);
+    SnapshotRaw := GetRawText;
+    if Raw = SnapshotRaw then Exit(False);
+    Snapshot := nil;
+    NewTrace := nil;
+    try
+      Snapshot := CaptureSnapshot;
+      NewTrace := FTrace.Clone;
+      NewTrace.ApplyReplacement(AStartUTF16, ALengthUTF16,
+        Fragment.Text);
+      ReplaceDocument(Raw);
+      FTrace.Free;
+      FTrace := NewTrace;
+      NewTrace := nil;
+      PushUndo(Snapshot);
+      Snapshot := nil;
+    finally
+      NewTrace.Free;
+      Snapshot.Free;
+    end;
   finally
     Fragment.Free;
   end;
 end;
 
-procedure TTheWordWysiwygSessionV2.PushUndo(const ASnapshot: UnicodeString);
+procedure TTheWordWysiwygSessionV2.PushUndo(
+  ASnapshot: TTheWordWysiwygSessionSnapshot);
 begin
-  FUndo.Add(EncodeSnapshot(ASnapshot));
+  if not Assigned(ASnapshot) then
+    raise EArgumentNilException.Create('ASnapshot');
+  FUndo.Add(ASnapshot);
   FRedo.Clear;
 end;
 
@@ -348,16 +461,29 @@ begin
 end;
 
 procedure TTheWordWysiwygSessionV2.RestoreFromStack(ASource,
-  ADestination: TStringList);
+  ADestination: TFPObjectList);
 var
-  Snapshot: UnicodeString;
+  Current, Snapshot: TTheWordWysiwygSessionSnapshot;
+  RestoredTrace: TVerseEditTrace;
 begin
   if ASource.Count = 0 then
     Exit;
-  ADestination.Add(EncodeSnapshot(GetRawText));
-  Snapshot := DecodeSnapshot(ASource[ASource.Count - 1]);
-  ASource.Delete(ASource.Count - 1);
-  ReplaceDocument(Snapshot);
+  Snapshot := TTheWordWysiwygSessionSnapshot(
+    ASource[ASource.Count - 1]);
+  RestoredTrace := Snapshot.Trace.Clone;
+  Current := CaptureSnapshot;
+  try
+    ReplaceDocument(Snapshot.Raw);
+    FTrace.Free;
+    FTrace := RestoredTrace;
+    RestoredTrace := nil;
+    ADestination.Add(Current);
+    Current := nil;
+    ASource.Delete(ASource.Count - 1);
+  finally
+    RestoredTrace.Free;
+    Current.Free;
+  end;
 end;
 
 function TTheWordWysiwygSessionV2.CanApplySemantic(AStartUTF16,
@@ -376,28 +502,33 @@ end;
 function TTheWordWysiwygSessionV2.ApplySemantic(
   AKind: TTheWordSemanticKind; AStartUTF16, ALengthUTF16: Integer): Boolean;
 var
-  Snapshot, UpdatedRaw: UnicodeString;
+  Snapshot: TTheWordWysiwygSessionSnapshot;
+  SnapshotRaw, UpdatedRaw: UnicodeString;
   WorkingDocument: TTheWordVerseDocument;
 begin
   Result := False;
   if not CanApplySemantic(AStartUTF16, ALengthUTF16) then
     Exit;
-  Snapshot := GetRawText;
-  WorkingDocument := FCodec.DecodeVerse(Snapshot);
+  SnapshotRaw := GetRawText;
+  WorkingDocument := FCodec.DecodeVerse(SnapshotRaw);
+  Snapshot := nil;
   try
     if not WorkingDocument.ToggleSemanticMark(AKind, AStartUTF16,
       AStartUTF16 + ALengthUTF16) then
       Exit;
     UpdatedRaw := FCodec.EncodeVerse(WorkingDocument);
-    if UpdatedRaw = Snapshot then
+    if UpdatedRaw = SnapshotRaw then
       Exit;
 
     { ReplaceDocument decodes before swapping FDocument, so a codec failure
       cannot leave the live session partially mutated. }
+    Snapshot := CaptureSnapshot;
     ReplaceDocument(UpdatedRaw);
     PushUndo(Snapshot);
+    Snapshot := nil;
     Result := True;
   finally
+    Snapshot.Free;
     WorkingDocument.Free;
   end;
 end;
@@ -405,31 +536,74 @@ end;
 function TTheWordWysiwygSessionV2.ReplaceText(AStartUTF16,
   ALengthUTF16: Integer; const AReplacement: UnicodeString): Boolean;
 var
-  Snapshot: UnicodeString;
+  NewTrace: TVerseEditTrace;
+  Snapshot: TTheWordWysiwygSessionSnapshot;
+  UpdatedRaw: UnicodeString;
+  WorkingDocument: TTheWordVerseDocument;
 begin
   Result := False;
   if not CanReplaceText(AStartUTF16, ALengthUTF16) then
     Exit;
   if (ALengthUTF16 = 0) and (AReplacement = '') then
     Exit;
-  Snapshot := GetRawText;
-  FDocument.ReplaceVisibleText(AStartUTF16, ALengthUTF16, AReplacement);
-  PushUndo(Snapshot);
-  Inc(FRevision);
-  Result := True;
+  Snapshot := nil;
+  NewTrace := nil;
+  WorkingDocument := nil;
+  try
+    Snapshot := CaptureSnapshot;
+    NewTrace := FTrace.Clone;
+    WorkingDocument := FCodec.DecodeVerse(Snapshot.Raw);
+    WorkingDocument.ReplaceVisibleText(AStartUTF16, ALengthUTF16,
+      AReplacement);
+    UpdatedRaw := FCodec.EncodeVerse(WorkingDocument);
+    NewTrace.ApplyReplacement(AStartUTF16, ALengthUTF16, AReplacement);
+    ReplaceDocument(UpdatedRaw);
+    FTrace.Free;
+    FTrace := NewTrace;
+    NewTrace := nil;
+    PushUndo(Snapshot);
+    Snapshot := nil;
+    Result := True;
+  finally
+    WorkingDocument.Free;
+    NewTrace.Free;
+    Snapshot.Free;
+  end;
 end;
 
 function TTheWordWysiwygSessionV2.ReplaceRawText(
   const ARaw: UnicodeString): Boolean;
 var
-  Snapshot: UnicodeString;
+  NewDocument: TTheWordVerseDocument;
+  NewTrace: TVerseEditTrace;
+  Snapshot: TTheWordWysiwygSessionSnapshot;
+  SnapshotRaw: UnicodeString;
 begin
-  Snapshot := GetRawText;
-  Result := ARaw <> Snapshot;
+  SnapshotRaw := GetRawText;
+  Result := ARaw <> SnapshotRaw;
   if not Result then
     Exit;
-  ReplaceDocument(ARaw);
-  PushUndo(Snapshot);
+  NewDocument := FCodec.DecodeVerse(ARaw);
+  Snapshot := nil;
+  NewTrace := nil;
+  try
+    NewTrace := FTrace.Clone;
+    NewTrace.ApplyRawVisibleChange(NewDocument.VisibleText);
+    Snapshot := CaptureSnapshot;
+    FDocument.Free;
+    FDocument := NewDocument;
+    NewDocument := nil;
+    FTrace.Free;
+    FTrace := NewTrace;
+    NewTrace := nil;
+    Inc(FRevision);
+    PushUndo(Snapshot);
+    Snapshot := nil;
+  finally
+    Snapshot.Free;
+    NewTrace.Free;
+    NewDocument.Free;
+  end;
 end;
 
 function TTheWordWysiwygSessionV2.Undo: Boolean;
@@ -456,6 +630,7 @@ end;
 procedure TTheWordWysiwygSessionV2.Cancel;
 begin
   ReplaceDocument(FOriginalRaw);
+  FTrace.ResetBaseline(FDocument.VisibleText, FTrace.TokenizerVersion);
   FUndo.Clear;
   FRedo.Clear;
 end;
@@ -463,6 +638,7 @@ end;
 procedure TTheWordWysiwygSessionV2.AcceptChanges;
 begin
   FOriginalRaw := GetRawText;
+  FTrace.ResetBaseline(FDocument.VisibleText, FTrace.TokenizerVersion);
   FUndo.Clear;
   FRedo.Clear;
 end;

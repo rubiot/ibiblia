@@ -12,7 +12,7 @@ uses
   Classes, SysUtils, StrUtils, ExtCtrls, StdCtrls, Controls, Graphics,
   ONTTokenizer, Syntagm, Forms, LCLType, Math, LCLProc, Dialogs, LazUTF8,
   ONTParser, dbugintf, Menus, Clipbrd, PCRE, ai_debug, text_direction,
-  verse_view_intf;
+  verse_view_intf, text_edit_provenance;
 
 type
 
@@ -36,6 +36,13 @@ type
   end;
 
   TAssociationPairDataArray = array of TAssociationPairData;
+
+  TAssociationEditImpact = record
+    PreservedMembers: Integer;
+    RemovedMembers: Integer;
+    UsedLegacyFallback: Boolean;
+    ErrorMessage: string;
+  end;
 
   { TVerse }
 
@@ -105,6 +112,8 @@ type
     procedure SetBaseDirection(AValue: TTextDirection);
     procedure RefreshVisualDocument(ContentChanged: Boolean = False);
     procedure FlushVisualRefresh(Data: PtrInt);
+    procedure RenderCommittedState;
+    procedure RetryRenderAfterCommit(Data: PtrInt);
     procedure OnVisualMouseDown(Sender: TObject; Button: TMouseButton;
       Shift: TShiftState; const Hit: TVerseHit);
     procedure OnVisualDoubleClick(Sender: TObject);
@@ -156,7 +165,7 @@ type
     procedure ClearSelection;
     procedure DisassociatePairs;
     procedure ClearAssociations;
-    procedure Render;
+    procedure Render; virtual;
     procedure RenderStrongCount;
     procedure OrganizeSyntagms;
     procedure SelectSyntagms(list: TSyntagmList);
@@ -180,6 +189,9 @@ type
     function HasAssociations: boolean;
     function CanChangeTextPreservingAssociationIdentity(
       const AXML: string): Boolean;
+    function TryApplyTracedEdit(const ANewXML: string;
+      const ATrace: TVerseEditTrace;
+      out AImpact: TAssociationEditImpact): Boolean;
 
     procedure FindAndSelectSyntagms(Words: TStringList; Partial: Boolean = False; JoinConnected: Boolean = True);
 
@@ -241,8 +253,8 @@ resourcestring
 implementation
 
 uses
-  TypInfo, SyntagmSelection, verse_visual_adapter,
-  directwrite_syntagm_view;
+  TypInfo, LazLoggerBase, SyntagmSelection, verse_visual_adapter,
+  directwrite_syntagm_view, theword_ont_codec_v2;
 
 const
   MarginWidth = 10; // text's distance from the margin
@@ -347,6 +359,7 @@ begin
   FRendering            := false;
   FTokenizerVersion := TTokenizerFactory.PreferredVersion;
   FONTParser := TONTParser.Create(FTokenizerVersion);
+  FSyntagms := TSyntagmList.Create;
 
   { regex to fix cases in which a <Fi> tag ends up misplaced }
   FFixWrongFiTag := RegexCreate('((?:<W[THG][^>]+>)+)(<Fi>)', [rcoUTF8]);
@@ -456,6 +469,41 @@ begin
      not Assigned(FVerseView) then
     Exit;
   RefreshVisualDocument;
+end;
+
+procedure TVerse.RenderCommittedState;
+begin
+  try
+    Render;
+  except
+    on E: Exception do
+    begin
+      { The model is already committed. Reporting a presentation exception as
+        a rejected save would leave the editor with a stale provenance trace. }
+      DebugLogger.DebugLn('Post-commit Verse render failed: ' + E.Message);
+      try
+        Application.QueueAsyncCall(@RetryRenderAfterCommit, 0);
+      except
+        on QueueError: Exception do
+          DebugLogger.DebugLn(
+            'Could not queue post-commit Verse render retry: ' +
+            QueueError.Message);
+      end;
+    end;
+  end;
+end;
+
+procedure TVerse.RetryRenderAfterCommit(Data: PtrInt);
+begin
+  if FDestroying then
+    Exit;
+  try
+    Render;
+  except
+    on E: Exception do
+      DebugLogger.DebugLn(
+        'Deferred post-commit Verse render failed: ' + E.Message);
+  end;
 end;
 
 procedure TVerse.RefreshVisualDocument(ContentChanged: Boolean);
@@ -947,7 +995,7 @@ begin
     FActive := oldActive;
     Dec(FVisualUpdatesSuspended);
   end;
-  Render;
+  RenderCommittedState;
 end;
 
 procedure TVerse.ChangeText(_XML: string);
@@ -2355,6 +2403,559 @@ begin
     end;
   finally
     FreeParsedSyntagms(CandidateSyntagms);
+  end;
+end;
+
+function TVerse.TryApplyTracedEdit(const ANewXML: string;
+  const ATrace: TVerseEditTrace;
+  out AImpact: TAssociationEditImpact): Boolean;
+type
+  TContentSpan = record
+    Syntagm: TSyntagm;
+    ListIndex: Integer;
+    StartOffset: Integer;
+    EndOffset: Integer;
+  end;
+  TContentSpanArray = array of TContentSpan;
+  TIntegerArray = array of Integer;
+
+  function IsContentUnit(ASyntagm: TSyntagm): Boolean;
+  begin
+    Result := Assigned(ASyntagm) and
+      (ASyntagm.Kind in [skSyntagm, skWhitespace, skPunctuation]);
+  end;
+
+  function IsAssociationUnit(ASyntagm: TSyntagm): Boolean;
+  begin
+    Result := Assigned(ASyntagm) and
+      (ASyntagm.Kind in [skSyntagm, skPunctuation]);
+  end;
+
+  function HasExactIdentity(AExisting, ACandidate: TSyntagm): Boolean;
+  begin
+    Result := Assigned(AExisting) and Assigned(ACandidate) and
+      (AExisting.Kind = ACandidate.Kind) and
+      (AExisting.Text = ACandidate.Text) and
+      (AExisting.RawText = ACandidate.RawText);
+  end;
+
+  function HasLegacyIdentity(AExisting, ACandidate: TSyntagm): Boolean;
+  begin
+    Result := Assigned(AExisting) and Assigned(ACandidate) and
+      (AExisting.Kind = ACandidate.Kind) and
+      (AExisting.Text = ACandidate.Text);
+  end;
+
+  procedure FreeParsedSyntagms(var AList: TSyntagmList);
+  var
+    Index: Integer;
+  begin
+    if not Assigned(AList) then
+      Exit;
+    for Index := AList.Count - 1 downto 0 do
+      AList[Index].Free;
+    FreeAndNil(AList);
+  end;
+
+  function DecodeVisibleFragment(const ARaw: string;
+    const ACodec: ITheWordOntCodecV2;
+    out AVisible: UnicodeString): Boolean;
+  var
+    MetadataDocument: TTheWordVerseDocument;
+  begin
+    AVisible := '';
+    MetadataDocument := nil;
+    try
+      MetadataDocument := ACodec.DecodeVerse(UTF8Decode(ARaw));
+      AVisible := MetadataDocument.VisibleText;
+      Result := True;
+    except
+      Result := False;
+    end;
+    MetadataDocument.Free;
+  end;
+
+  function BuildContentSpans(AList: TSyntagmList;
+    const AVisibleText: UnicodeString; const ACodec: ITheWordOntCodecV2;
+    out ASpans: TContentSpanArray): Boolean;
+  var
+    Content, ProtectedText: UnicodeString;
+    Cursor, Index, SpanIndex: Integer;
+    Syntagm: TSyntagm;
+  begin
+    ASpans := nil;
+    Cursor := 0;
+    Result := Assigned(AList);
+    if not Result then
+      Exit;
+
+    for Index := 0 to AList.Count - 1 do
+    begin
+      Syntagm := AList[Index];
+      if IsContentUnit(Syntagm) then
+      begin
+        { Text is already the visible value for words and punctuation. The
+          legacy tokenizer can keep a structural `|` inside whitespace, even
+          though the editor correctly gives it zero visual width. Avoid a
+          full codec document allocation for every ordinary Syntagm. }
+        if Syntagm.Kind = skWhitespace then
+          Content := UTF8Decode(StringReplace(Syntagm.Text, '|', '',
+            [rfReplaceAll]))
+        else
+          Content := UTF8Decode(Syntagm.Text);
+        if (Length(Content) > Length(AVisibleText) - Cursor) or
+           (Copy(AVisibleText, Cursor + 1, Length(Content)) <> Content) then
+          Exit(False);
+        SpanIndex := Length(ASpans);
+        SetLength(ASpans, SpanIndex + 1);
+        ASpans[SpanIndex].Syntagm := Syntagm;
+        ASpans[SpanIndex].ListIndex := Index;
+        ASpans[SpanIndex].StartOffset := Cursor;
+        Inc(Cursor, Length(Content));
+        ASpans[SpanIndex].EndOffset := Cursor;
+      end
+      else
+      begin
+        if not DecodeVisibleFragment(Syntagm.Text, ACodec,
+          ProtectedText) then
+          Exit(False);
+        if (Length(ProtectedText) > Length(AVisibleText) - Cursor) or
+           (Copy(AVisibleText, Cursor + 1, Length(ProtectedText)) <>
+            ProtectedText) then
+          Exit(False);
+        Inc(Cursor, Length(ProtectedText));
+      end;
+    end;
+    Result := Cursor = Length(AVisibleText);
+  end;
+
+  procedure InitializeMapping(var AValues: TIntegerArray; ALength: Integer);
+  var
+    Index: Integer;
+  begin
+    SetLength(AValues, ALength);
+    for Index := 0 to High(AValues) do
+      AValues[Index] := -1;
+  end;
+
+  function ReserveExactMatches(const AOldSpans,
+    ANewSpans: TContentSpanArray; const AOriginMap: TTextOriginMap;
+    var AOldToNew, ANewToOld: TIntegerArray): Boolean;
+  var
+    CandidateCount, CandidateIndex, CurrentStart, HighIndex, Index,
+      LowIndex, MatchIndex, MiddleIndex, OriginalLength: Integer;
+  begin
+    Result := Assigned(AOriginMap);
+    if not Result then
+      Exit;
+    for Index := 0 to High(AOldSpans) do
+    begin
+      OriginalLength := AOldSpans[Index].EndOffset -
+        AOldSpans[Index].StartOffset;
+      if (OriginalLength <= 0) or
+         not AOriginMap.TryProjectOriginalRange(
+           AOldSpans[Index].StartOffset, OriginalLength,
+           CurrentStart) then
+        Continue;
+
+      { Spans are ordered by their visible start. Locate only the candidates
+        at this projected position instead of scanning the whole Verse for
+        every original Syntagm. }
+      LowIndex := 0;
+      HighIndex := Length(ANewSpans);
+      while LowIndex < HighIndex do
+      begin
+        MiddleIndex := LowIndex + (HighIndex - LowIndex) div 2;
+        if ANewSpans[MiddleIndex].StartOffset < CurrentStart then
+          LowIndex := MiddleIndex + 1
+        else
+          HighIndex := MiddleIndex;
+      end;
+
+      CandidateCount := 0;
+      MatchIndex := -1;
+      CandidateIndex := LowIndex;
+      while (CandidateIndex <= High(ANewSpans)) and
+            (ANewSpans[CandidateIndex].StartOffset = CurrentStart) do
+      begin
+        if (ANewSpans[CandidateIndex].EndOffset =
+             CurrentStart + OriginalLength) and
+           HasExactIdentity(AOldSpans[Index].Syntagm,
+             ANewSpans[CandidateIndex].Syntagm) then
+        begin
+          Inc(CandidateCount);
+          MatchIndex := CandidateIndex;
+        end;
+        Inc(CandidateIndex);
+      end;
+      if CandidateCount = 1 then
+      begin
+        if ANewToOld[MatchIndex] >= 0 then
+          Exit(False);
+        AOldToNew[Index] := MatchIndex;
+        ANewToOld[MatchIndex] := Index;
+      end;
+    end;
+  end;
+
+  procedure ReconcileLegacyGap(const AOldSpans,
+    ANewSpans: TContentSpanArray; AOldStart, AOldFinish,
+    ANewStart, ANewFinish: Integer;
+    var AOldToNew, ANewToOld: TIntegerArray);
+  var
+    CandidateIndex, OldIndex, SearchIndex: Integer;
+    Found: Boolean;
+  begin
+    OldIndex := AOldStart;
+    CandidateIndex := ANewStart;
+    while (OldIndex <= AOldFinish) and
+          (CandidateIndex <= ANewFinish) do
+    begin
+      if HasLegacyIdentity(AOldSpans[OldIndex].Syntagm,
+        ANewSpans[CandidateIndex].Syntagm) then
+      begin
+        AOldToNew[OldIndex] := CandidateIndex;
+        ANewToOld[CandidateIndex] := OldIndex;
+        Inc(OldIndex);
+        Inc(CandidateIndex);
+      end
+      else if not IsAssociationUnit(AOldSpans[OldIndex].Syntagm) then
+        Inc(OldIndex)
+      else if not IsAssociationUnit(
+        ANewSpans[CandidateIndex].Syntagm) then
+        Inc(CandidateIndex)
+      else
+      begin
+        Found := False;
+        if AOldSpans[OldIndex].Syntagm.Pairs.Count > 0 then
+          for SearchIndex := CandidateIndex to ANewFinish do
+            if HasLegacyIdentity(AOldSpans[OldIndex].Syntagm,
+              ANewSpans[SearchIndex].Syntagm) then
+            begin
+              Found := True;
+              CandidateIndex := SearchIndex;
+              Break;
+            end;
+        if Found then
+        begin
+          AOldToNew[OldIndex] := CandidateIndex;
+          ANewToOld[CandidateIndex] := OldIndex;
+          Inc(OldIndex);
+          Inc(CandidateIndex);
+        end
+        else
+          Inc(OldIndex);
+      end;
+    end;
+  end;
+
+  function ReconcileRawGaps(const AOldSpans,
+    ANewSpans: TContentSpanArray; var AOldToNew,
+    ANewToOld: TIntegerArray): Boolean;
+  var
+    AnchorNew, Index, PreviousNew, PreviousOld: Integer;
+  begin
+    PreviousOld := 0;
+    PreviousNew := 0;
+    for Index := 0 to High(AOldSpans) do
+      if AOldToNew[Index] >= 0 then
+      begin
+        AnchorNew := AOldToNew[Index];
+        if AnchorNew < PreviousNew then
+          Exit(False);
+        ReconcileLegacyGap(AOldSpans, ANewSpans,
+          PreviousOld, Index - 1, PreviousNew, AnchorNew - 1,
+          AOldToNew, ANewToOld);
+        PreviousOld := Index + 1;
+        PreviousNew := AnchorNew + 1;
+      end;
+    ReconcileLegacyGap(AOldSpans, ANewSpans,
+      PreviousOld, High(AOldSpans), PreviousNew, High(ANewSpans),
+      AOldToNew, ANewToOld);
+    Result := True;
+  end;
+
+  procedure ClearOrphanedSiblingGroups(AList: TSyntagmList);
+  var
+    Index: Integer;
+    Syntagm: TSyntagm;
+  begin
+    if not Assigned(AList) then
+      Exit;
+    for Index := 0 to AList.Count - 1 do
+    begin
+      Syntagm := AList[Index];
+      if IsAssociationUnit(Syntagm) and
+         (Syntagm.Pairs.Count = 0) and
+         (Syntagm.Siblings.Count > 0) then
+        Syntagm.Disassociate;
+    end;
+  end;
+
+  function ApplyLegacyFallback: Boolean;
+  var
+    AssociatedBefore: TList;
+    Candidate: TSyntagmList;
+    Index: Integer;
+    Syntagm: TSyntagm;
+  begin
+    Result := False;
+    Candidate := nil;
+    AssociatedBefore := TList.Create;
+    try
+      { Parse once before entering the legacy mutating path. Structural input
+        failures therefore leave the live Verse untouched. }
+      Candidate := FONTParser.ParseLine(ANewXML, nil);
+      FreeParsedSyntagms(Candidate);
+      for Syntagm in FSyntagms do
+        if Syntagm.Pairs.Count > 0 then
+          AssociatedBefore.Add(Syntagm);
+
+      ReplaceTextPreservingAssociations(ANewXML, False);
+      AImpact.UsedLegacyFallback := True;
+      for Index := 0 to AssociatedBefore.Count - 1 do
+        if FSyntagms.IndexOf(AssociatedBefore[Index]) >= 0 then
+          Inc(AImpact.PreservedMembers)
+        else
+          Inc(AImpact.RemovedMembers);
+      Result := True;
+    finally
+      FreeParsedSyntagms(Candidate);
+      AssociatedBefore.Free;
+    end;
+  end;
+
+var
+  CandidateSyntagms, ResultSyntagms: TSyntagmList;
+  Codec: ITheWordOntCodecV2;
+  OldDocument, NewDocument: TTheWordVerseDocument;
+  OldSpans, NewSpans: TContentSpanArray;
+  OldToNew, NewToOld: TIntegerArray;
+  OldReused: array of Boolean;
+  CandidateReused: array of Boolean;
+  CandidateIndex, Index, OldIndex: Integer;
+  OldActive, RawFallbackAllowed, TraceValidated: Boolean;
+  OldSyntagm, NewSyntagm: TSyntagm;
+begin
+  AImpact.PreservedMembers := 0;
+  AImpact.RemovedMembers := 0;
+  AImpact.UsedLegacyFallback := False;
+  AImpact.ErrorMessage := '';
+  Result := False;
+
+  if not Assigned(ATrace) then
+  begin
+    AImpact.ErrorMessage := 'The edit provenance trace is missing.';
+    Exit;
+  end;
+  if (ATrace.TokenizerVersion <> 0) and
+     (TTokenizerFactory.NormalizeVersion(ATrace.TokenizerVersion) <>
+      FTokenizerVersion) then
+  begin
+    AImpact.ErrorMessage := 'The edit trace uses a different tokenizer version.';
+    Exit;
+  end;
+
+  Codec := TTheWordOntCodecV2.Create;
+  OldDocument := nil;
+  NewDocument := nil;
+  CandidateSyntagms := nil;
+  ResultSyntagms := nil;
+  TraceValidated := False;
+  RawFallbackAllowed := False;
+  try
+    try
+      OldDocument := Codec.DecodeVerse(UTF8Decode(FXML));
+      NewDocument := Codec.DecodeVerse(UTF8Decode(ANewXML));
+      if ATrace.OriginalText <> OldDocument.VisibleText then
+        raise Exception.Create(
+          'The edit trace baseline does not match the current Verse text.');
+      if ATrace.CurrentText <> NewDocument.VisibleText then
+        raise Exception.Create(
+          'The edit trace result does not match the edited Verse text.');
+      if (ATrace.OriginMap.OriginalLength <> Length(ATrace.OriginalText)) or
+         (ATrace.OriginMap.CurrentLength <> Length(ATrace.CurrentText)) then
+        raise Exception.Create('The edit provenance map is inconsistent.');
+      TraceValidated := True;
+      RawFallbackAllowed := True;
+
+      if ATrace.Mode = vetmLegacyFallback then
+      begin
+        for Index := 0 to FSyntagms.Count - 1 do
+          if FSyntagms[Index].HasStrongs or FSyntagms[Index].HasMorph then
+            raise Exception.Create(
+              'A legacy fallback cannot prove a Strong or morphology word intact.');
+        Result := ApplyLegacyFallback;
+        Exit;
+      end;
+
+      CandidateSyntagms := FONTParser.ParseLine(ANewXML, Self);
+      for Index := 0 to FSyntagms.Count - 1 do
+        if FSyntagms[Index].HasStrongs or FSyntagms[Index].HasMorph then
+        begin
+          { Until spans prove every lexical word intact, an imprecise Raw
+            fallback would be able to edit protected annotations. }
+          RawFallbackAllowed := False;
+          Break;
+        end;
+      if not BuildContentSpans(FSyntagms, OldDocument.VisibleText,
+        Codec, OldSpans) then
+        raise Exception.Create(
+          'Could not project the existing Syntagms into visible text.');
+      if not BuildContentSpans(CandidateSyntagms,
+        NewDocument.VisibleText, Codec, NewSpans) then
+        raise Exception.Create(
+          'Could not project the edited Syntagms into visible text.');
+
+      InitializeMapping(OldToNew, Length(OldSpans));
+      InitializeMapping(NewToOld, Length(NewSpans));
+      if not ReserveExactMatches(OldSpans, NewSpans,
+        ATrace.OriginMap, OldToNew, NewToOld) then
+        raise Exception.Create('The exact Syntagm projection is ambiguous.');
+      for Index := 0 to High(OldSpans) do
+        if (OldSpans[Index].Syntagm.HasStrongs or
+            OldSpans[Index].Syntagm.HasMorph) and
+           (OldToNew[Index] < 0) then
+        begin
+          { Lexically annotated words remain protected in this milestone.
+            They must be proven byte-for-byte intact by provenance; the Raw
+            heuristic is deliberately not allowed to guess their identity. }
+          RawFallbackAllowed := False;
+          raise Exception.Create(
+            'A word with Strong or morphology data was edited.');
+        end;
+      RawFallbackAllowed := True;
+      if (ATrace.Mode = vetmRawConservative) and
+         not ReconcileRawGaps(OldSpans, NewSpans,
+           OldToNew, NewToOld) then
+        raise Exception.Create('The conservative Raw projection is ambiguous.');
+
+      SetLength(OldReused, FSyntagms.Count);
+      SetLength(CandidateReused, CandidateSyntagms.Count);
+      for Index := 0 to High(OldSpans) do
+        if OldToNew[Index] >= 0 then
+        begin
+          OldReused[OldSpans[Index].ListIndex] := True;
+          CandidateReused[NewSpans[OldToNew[Index]].ListIndex] := True;
+        end;
+
+      { Allocate and populate the replacement list before changing any live
+        object or Association. From this point onward the commit consists only
+        of deterministic pointer/list operations. }
+      ResultSyntagms := TSyntagmList.Create;
+      for CandidateIndex := 0 to CandidateSyntagms.Count - 1 do
+      begin
+        OldIndex := -1;
+        for Index := 0 to High(NewSpans) do
+          if NewSpans[Index].ListIndex = CandidateIndex then
+          begin
+            if NewToOld[Index] >= 0 then
+              OldIndex := OldSpans[NewToOld[Index]].ListIndex;
+            Break;
+          end;
+        if OldIndex >= 0 then
+          ResultSyntagms.Add(FSyntagms[OldIndex])
+        else
+          ResultSyntagms.Add(CandidateSyntagms[CandidateIndex]);
+      end;
+
+      for Index := 0 to FSyntagms.Count - 1 do
+        if FSyntagms[Index].Pairs.Count > 0 then
+        begin
+          if OldReused[Index] then
+            Inc(AImpact.PreservedMembers)
+          else
+            Inc(AImpact.RemovedMembers);
+        end;
+    except
+      on E: Exception do
+      begin
+        AImpact.ErrorMessage := E.Message;
+        FreeParsedSyntagms(CandidateSyntagms);
+        FreeAndNil(ResultSyntagms);
+        if TraceValidated and RawFallbackAllowed and
+           (ATrace.Mode = vetmRawConservative) then
+        begin
+          AImpact.PreservedMembers := 0;
+          AImpact.RemovedMembers := 0;
+          AImpact.ErrorMessage := '';
+          try
+            Result := ApplyLegacyFallback;
+          except
+            on FallbackError: Exception do
+            begin
+              AImpact.ErrorMessage := FallbackError.Message;
+              Result := False;
+            end;
+          end;
+          Exit;
+        end;
+        Exit(False);
+      end;
+    end;
+
+    OldActive := FActive;
+    Inc(FVisualUpdatesSuspended);
+    try
+      Application.RemoveAsyncCalls(Self);
+      FVisualRefreshQueued := False;
+      Inc(FVisualRevision);
+      if Assigned(FVerseView) then
+        FVerseView.SetDocument(nil);
+      FLastHoverLogicalIndex := -1;
+      FActive := False;
+      ClearSelection;
+
+      { First detach only the members that provenance could not preserve.
+        TSyntagm.Disassociate shrinks an N:M group without disturbing its
+        surviving members. }
+      for Index := 0 to FSyntagms.Count - 1 do
+        if not OldReused[Index] then
+          FSyntagms[Index].Disassociate;
+      ClearOrphanedSiblingGroups(FSyntagms);
+      if Assigned(PairedVerse) then
+        ClearOrphanedSiblingGroups(PairedVerse.Syntagms);
+
+      for Index := 0 to CandidateSyntagms.Count - 1 do
+      begin
+        NewSyntagm := CandidateSyntagms[Index];
+        if CandidateReused[Index] then
+        begin
+          OldSyntagm := TSyntagm(ResultSyntagms[Index]);
+          OldSyntagm.AdoptParsedState(NewSyntagm);
+          NewSyntagm.Free;
+        end;
+      end;
+      for Index := 0 to FSyntagms.Count - 1 do
+        if not OldReused[Index] then
+          FSyntagms[Index].Free;
+
+      CandidateSyntagms.Clear;
+      FreeAndNil(CandidateSyntagms);
+      FSyntagms.Clear;
+      FreeAndNil(FSyntagms);
+      FSyntagms := ResultSyntagms;
+      ResultSyntagms := nil;
+      ClearStrongCount;
+
+      FXML := ANewXML;
+      FXMLModified := True;
+      Modified := True;
+      if Assigned(PairedVerse) then
+        PairedVerse.Modified := True;
+      SyntagmClipboard := nil;
+      Result := True;
+    finally
+      FActive := OldActive;
+      Dec(FVisualUpdatesSuspended);
+    end;
+    RenderCommittedState;
+  finally
+    FreeParsedSyntagms(CandidateSyntagms);
+    ResultSyntagms.Free;
+    OldDocument.Free;
+    NewDocument.Free;
+    Codec := nil;
   end;
 end;
 
