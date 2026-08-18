@@ -46,6 +46,7 @@ type
     procedure EditorFontSavesCustomValues;
     procedure EditorFontAppliesToEditor;
     procedure WysiwygEditorKeepsRawSyntaxFont;
+    procedure WysiwygRawEditorCtrlWheelZoomsWithoutModifyingText;
     procedure TagPairFindsClosingTheWordTag;
     procedure TagPairFindsOpeningTheWordTag;
     procedure TagPairHandlesNestedTheWordTags;
@@ -504,6 +505,44 @@ begin
     VerseFont.Free;
     Editor.Free;
     ResetTheWordSyntaxEditorFont;
+  end;
+end;
+
+procedure TTheWordSyntaxHighlighterTests.
+  WysiwygRawEditorCtrlWheelZoomsWithoutModifyingText;
+var
+  ComponentIndex: Integer;
+  Editor: TTheWordWysiwygEditorControl;
+  Handled: Boolean;
+  InitialSize: Integer;
+  RawEditor: TSynEdit;
+begin
+  Editor := TTheWordWysiwygEditorControl.Create(nil);
+  try
+    RawEditor := nil;
+    for ComponentIndex := 0 to Editor.ComponentCount - 1 do
+      if Editor.Components[ComponentIndex] is TSynEdit then
+      begin
+        RawEditor := TSynEdit(Editor.Components[ComponentIndex]);
+        Break;
+      end;
+    AssertTrue('raw editor exists', Assigned(RawEditor));
+
+    Editor.Text := '<FI>word<Fi>';
+    Editor.RawMode := True;
+    AssertFalse('entering raw mode does not modify verse text',
+      Editor.Modified);
+    InitialSize := RawEditor.Font.Size;
+    Handled := False;
+    RawEditor.OnMouseWheel(RawEditor, [ssCtrl], 120, Point(0, 0), Handled);
+
+    AssertTrue('Ctrl+wheel is handled', Handled);
+    AssertEquals('raw editor font grows', InitialSize + 1,
+      RawEditor.Font.Size);
+    AssertFalse('font zoom does not modify verse text', Editor.Modified);
+    AssertEquals('raw text remains unchanged', '<FI>word<Fi>', Editor.Text);
+  finally
+    Editor.Free;
   end;
 end;
 

@@ -35,6 +35,7 @@ type
     function GetCapability: TTheWordLayerCapability;
     function GetChangesAreSemanticOnly: Boolean;
     function GetModified: Boolean;
+    function GetRawEditorText: UnicodeString;
     function GetSelectionLength: Integer;
     function GetSelectionStart: Integer;
     function GetText: string;
@@ -51,6 +52,8 @@ type
     procedure DoChanged;
     procedure RawChanged(Sender: TObject);
     procedure RawKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure RawMouseWheel(Sender: TObject; Shift: TShiftState;
+      WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
     procedure RefreshDirectDocument;
     procedure SetBaseDirection(AValue: TTextDirection);
     procedure SetRawMode(AValue: Boolean);
@@ -127,6 +130,7 @@ begin
   ConfigureTheWordSyntaxEditor(FRawEditor, False);
   FRawEditor.OnChange := @RawChanged;
   FRawEditor.OnKeyDown := @RawKeyDown;
+  FRawEditor.OnMouseWheel := @RawMouseWheel;
 end;
 
 destructor TTheWordWysiwygEditorControl.Destroy;
@@ -174,9 +178,22 @@ begin
   if not Assigned(FSession) then
     Exit(False);
   if FRawMode then
-    Result := UTF8Decode(FRawEditor.Text) <> FLoadedRaw
+    Result := GetRawEditorText <> FLoadedRaw
   else
     Result := FSession.Dirty;
+end;
+
+function TTheWordWysiwygEditorControl.GetRawEditorText: UnicodeString;
+begin
+  Result := UTF8Decode(FRawEditor.Text);
+  { TSynEdit exposes one final platform line ending even for a single logical
+    line. Verse text does not contain that editor-owned terminator. }
+  if (Length(Result) >= 2) and
+    (Copy(Result, Length(Result) - 1, 2) = #13#10) then
+    SetLength(Result, Length(Result) - 2)
+  else if (Length(Result) >= 1) and
+    (Result[Length(Result)] in [#10, #13]) then
+    SetLength(Result, Length(Result) - 1);
 end;
 
 function TTheWordWysiwygEditorControl.GetCapability:
@@ -293,7 +310,7 @@ begin
   Result := Assigned(FSession);
   if not Result then
     Exit;
-  Raw := UTF8Decode(FRawEditor.Text);
+  Raw := GetRawEditorText;
   if Raw <> FSession.RawText then
     FSession.ReplaceRawText(Raw);
 end;
@@ -359,6 +376,25 @@ begin
   FDirectEditor.SetEditorDocument(Visual);
   if HadSelection then
     TrySetDocumentSelection(DocumentStart, DocumentLength);
+end;
+
+procedure TTheWordWysiwygEditorControl.RawMouseWheel(Sender: TObject;
+  Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint;
+  var Handled: Boolean);
+var
+  NewSize: Integer;
+begin
+  if not (ssCtrl in Shift) or (WheelDelta = 0) then
+    Exit;
+
+  NewSize := FRawEditor.Font.Size;
+  if WheelDelta > 0 then
+    Inc(NewSize)
+  else if NewSize > 1 then
+    Dec(NewSize);
+  if NewSize <> FRawEditor.Font.Size then
+    FRawEditor.Font.Size := NewSize;
+  Handled := True;
 end;
 
 procedure TTheWordWysiwygEditorControl.DirectReplaceText(Sender: TObject;
@@ -608,7 +644,6 @@ procedure TTheWordWysiwygEditorControl.SetEditorFont(AFont: TFont);
 begin
   if not Assigned(AFont) then
     Exit;
-  ApplyTheWordSyntaxEditorFont(FRawEditor);
   FDirectEditor.Font.Assign(AFont);
   FDirectEditor.Invalidate;
 end;

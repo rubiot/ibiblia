@@ -83,6 +83,8 @@ begin
 
     Form.HandleNeeded;
     View.HandleNeeded;
+    Form.Show;
+    Application.ProcessMessages;
     View.PaintNow;
     Bitmap.SetSize(View.Width, View.Height);
     View.PaintTo(Bitmap.Canvas, 0, 0);
@@ -107,18 +109,15 @@ begin
     Require(Hit.LogicalIndex = 2,
       'HitTest returned the wrong logical index after wrapping');
 
-    { Closing the verse editor removes a sibling overlay. On Win32 that does
-      not necessarily repaint the DirectWrite child, while viewport changes
-      invalidate the geometry used by hit testing. The editor-close path now
-      forces this paint before returning control to the verse. }
+    { A viewport/document/style update can invalidate geometry after the last
+      paint, particularly when Paint itself triggers an auto-height resize.
+      Input must repair that state immediately; requiring an application
+      activation change here reproduces the user-visible hover/click stall. }
     View.NotifyChanges([vvcViewport], Document.Revision);
-    Require(not View.HitTest(HitPoint, Hit),
-      'HitTest accepted geometry invalidated by a viewport change');
-    View.PaintNow;
     Require(View.HitTest(HitPoint, Hit),
-      'HitTest did not recover after the editor-close repaint');
+      'HitTest did not recover stale geometry on first input');
     Require(Hit.LogicalIndex = 2,
-      'Editor-close repaint changed the logical hit index');
+      'Input geometry recovery changed the logical hit index');
 
     Builder.Free;
     Builder := TVerseVisualDocumentBuilder.Create(tdLeftToRight);
@@ -132,7 +131,6 @@ begin
     Builder.AddText(12, ' normal', Style, True);
     Document := Builder.Build(2);
     View.SetDocument(Document);
-    Form.Show;
     Application.ProcessMessages;
     View.PaintNow;
     Application.ProcessMessages;

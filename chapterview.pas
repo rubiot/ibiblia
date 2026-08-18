@@ -104,6 +104,7 @@ type
     FTranslationMemoryEntries: TTranslationMemoryEntryArray;
     FTranslationMemoryEntryBlocks: TTranslationMemoryIntegerArray;
     FTranslationMemoryPairsSnapshot: string;
+    FTranslationMemoryReferenceSnapshot: string;
     FTranslationMemoryShowingOccurrences: Boolean;
     FTranslationMemoryOccurrenceMatches: TTranslationPairMatchArray;
     FTranslationMemoryOccurrenceSource: string;
@@ -860,11 +861,18 @@ end;
 procedure TChapterView.HandleVerseChange(Sender: TProject);
 var
   verses: TStringList;
+  ReferenceChanged: Boolean;
 begin
   if not assigned(FProject) or (Width < 2) then
     exit;
 
   ClearTranslationMemoryHighlight;
+  // The same notification also fires after saving or editing the current
+  // verse. Leave occurrence drill-down only when navigation really occurred.
+  ReferenceChanged := FTranslationMemoryReferenceSnapshot <> FProject.ID;
+  FTranslationMemoryReferenceSnapshot := FProject.ID;
+  if ReferenceChanged then
+    ResetTranslationMemoryOccurrences;
   if FViewMode = cvmTranslationMemory then
   begin
     FTranslationMemoryRefreshPending := True;
@@ -1048,6 +1056,7 @@ begin
     FProject.OnNewVerseUnsubscribe(@HandleVerseChange);
   FProject := AValue;
   FTranslationMemoryRefreshPending := True;
+  FTranslationMemoryReferenceSnapshot := '';
   FViewSelectionActive := False;
 
   if assigned(FProject) then
@@ -1414,6 +1423,7 @@ begin
     FProject := nil;
     FViewSelectionActive := False;
     FTranslationMemoryRefreshPending := True;
+    FTranslationMemoryReferenceSnapshot := '';
   end;
 
   inherited SetEnabled(Value);
@@ -1442,6 +1452,7 @@ begin
   SetLength(FTranslationMemoryEntries, 0);
   SetLength(FTranslationMemoryEntryBlocks, 0);
   FTranslationMemoryPairsSnapshot := '';
+  FTranslationMemoryReferenceSnapshot := '';
   FTranslationMemoryShowingOccurrences := False;
   SetLength(FTranslationMemoryOccurrenceMatches, 0);
   FTranslationMemoryOccurrenceLimit := 100;

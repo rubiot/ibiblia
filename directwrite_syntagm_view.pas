@@ -42,6 +42,7 @@ type
     FLayoutPadding: Integer;
     FLastContentHeight: Integer;
     FGeometryMatchesPaint: Boolean;
+    FRecoveringInputGeometry: Boolean;
     FOnContentHeightChanged: TNotifyEvent;
     FOnVerseDoubleClick: TNotifyEvent;
     FOnVerseMouseDown: TVerseMouseDownEvent;
@@ -82,6 +83,7 @@ type
     function GetContentHeight: Integer;
     function GetDisplayTags: Boolean;
     function GetDocument: IVerseVisualDocument;
+    function EnsureInputGeometry: Boolean;
     procedure InvalidateLayout;
     procedure PaintFallback;
     procedure PaintLogicalTags;
@@ -188,6 +190,7 @@ begin
   FLayoutPadding := 4;
   FLastContentHeight := -1;
   FGeometryMatchesPaint := False;
+  FRecoveringInputGeometry := False;
   {$IFDEF MSWINDOWS}
   FSuperscriptObjects := TList.Create;
   {$ENDIF}
@@ -391,6 +394,50 @@ begin
   inherited Resize;
   InvalidateLayout;
   NotifyContentHeightChanged;
+  { Auto-height changes can happen from the tail of Paint. On Win32 that
+    resize does not invariably leave another WM_PAINT pending, so without an
+    explicit invalidation hit testing can remain disabled until the window is
+    activated again. }
+  Invalidate;
+end;
+
+function TDirectWriteSyntagmView.EnsureInputGeometry: Boolean;
+const
+  MaxPaintAttempts = 2;
+var
+  Attempt: Integer;
+begin
+  Result := False;
+  if not Assigned(FDocument) then
+    Exit;
+  {$IFDEF MSWINDOWS}
+  if not EnsureLayout then
+    Exit;
+  if FGeometryMatchesPaint then
+    Exit(True);
+
+  { Layout/document/style changes deliberately invalidate hit-test geometry.
+    Usually the queued paint refreshes it. When an auto-height resize occurs
+    while Paint is unwinding, however, Windows can coalesce that paint away.
+    Recover locally on the first input instead of requiring an activation
+    change (Alt+Tab). Two bounded passes cover the paint -> auto-height resize
+    -> repaint sequence without allowing recursive painting. }
+  if FRecoveringInputGeometry or IsProcessingPaintMsg or
+     not HandleAllocated or not IsVisible then
+    Exit;
+  FRecoveringInputGeometry := True;
+  try
+    for Attempt := 1 to MaxPaintAttempts do
+    begin
+      Repaint;
+      if FGeometryMatchesPaint then
+        Break;
+    end;
+  finally
+    FRecoveringInputGeometry := False;
+  end;
+  Result := EnsureLayout and FGeometryMatchesPaint;
+  {$ENDIF}
 end;
 
 procedure TDirectWriteSyntagmView.PaintFallback;
@@ -567,7 +614,7 @@ begin
   FillChar(Hit, SizeOf(Hit), 0);
   Hit.LogicalIndex := -1;
   Hit.UTF16Offset := -1;
-  if not Assigned(FDocument) or not FGeometryMatchesPaint then
+  if not Assigned(FDocument) or not EnsureInputGeometry then
     Exit(False);
   Hit.Revision := FDocument.Revision;
   {$IFDEF MSWINDOWS}
@@ -608,7 +655,7 @@ var
 {$ENDIF}
 begin
   SetLength(Rects, 0);
-  if not Assigned(FDocument) or not FGeometryMatchesPaint then
+  if not Assigned(FDocument) or not EnsureInputGeometry then
     Exit(False);
   {$IFDEF MSWINDOWS}
   if not FDocument.TryGetUTF16Range(LogicalIndex, StartUTF16,
