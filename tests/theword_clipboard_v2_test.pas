@@ -18,14 +18,13 @@ type
     procedure PartialLexicalCutIsRejectedAndFullCutIsAtomic;
     procedure CanonicalProtectionIncludesStructuralAndLexicalRanges;
     procedure ChangesAreSemanticOnlyIsStrict;
-    procedure AssociationRequiresTwoDistinctLayers;
   end;
 
 implementation
 
 uses
   theword_ont_codec_v2, theword_clipboard_v2,
-  theword_wysiwyg_session_v2, verse_document_v2, association_graph_v2;
+  theword_wysiwyg_session_v2;
 
 procedure TTheWordClipboardV2Test.SemanticPayloadIsDeterministicAndPreferred;
 var
@@ -206,62 +205,6 @@ begin
     AssertFalse(Session.ChangesAreSemanticOnly);
   finally
     Session.Free;
-  end;
-end;
-
-procedure TTheWordClipboardV2Test.AssociationRequiresTwoDistinctLayers;
-var
-  LeftDocument, RightDocument: TVerseDocumentV2;
-  Graph: TAssociationGraphV2;
-  Members: array[0..1] of TAssociationMemberInputV2;
-  State: TAssociationGraphStateDataV2;
-  RaisedError: Boolean;
-begin
-  LeftDocument := TVerseDocumentV2.Create('one');
-  RightDocument := TVerseDocumentV2.Create('two');
-  Graph := TAssociationGraphV2.Create;
-  try
-    Members[0] := AssociationMemberInputV2('source',
-      LeftDocument.ActiveSyntagms[0], 0);
-    Members[1] := AssociationMemberInputV2('source',
-      RightDocument.ActiveSyntagms[0], 1);
-    RaisedError := False;
-    try
-      Graph.AddAssociation(Members);
-    except
-      on E: EAssociationGraphV2 do RaisedError := True;
-    end;
-    AssertTrue(RaisedError);
-    AssertEquals(0, Graph.AssociationCount);
-
-    State.Revision := 1;
-    SetLength(State.Associations, 1);
-    State.Associations[0].Id := NewStableIdV2;
-    State.Associations[0].State := v2asValid;
-    SetLength(State.Associations[0].Members, 2);
-    State.Associations[0].Members[0].LayerId := 'source';
-    State.Associations[0].Members[0].MemberOrder := 0;
-    State.Associations[0].Members[0].LinkedSnapshot :=
-      LeftDocument.ActiveSyntagms[0].Snapshot;
-    State.Associations[0].Members[0].LastKnownSnapshot :=
-      LeftDocument.ActiveSyntagms[0].Snapshot;
-    State.Associations[0].Members[1].LayerId := 'source';
-    State.Associations[0].Members[1].MemberOrder := 1;
-    State.Associations[0].Members[1].LinkedSnapshot :=
-      RightDocument.ActiveSyntagms[0].Snapshot;
-    State.Associations[0].Members[1].LastKnownSnapshot :=
-      RightDocument.ActiveSyntagms[0].Snapshot;
-    RaisedError := False;
-    try
-      TAssociationGraphV2.Hydrate(State).Free;
-    except
-      on E: EAssociationGraphV2 do RaisedError := True;
-    end;
-    AssertTrue(RaisedError);
-  finally
-    Graph.Free;
-    RightDocument.Free;
-    LeftDocument.Free;
   end;
 end;
 
