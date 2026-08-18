@@ -27,6 +27,7 @@ type
   {$IFDEF MSWINDOWS}
   TDWriteHitTestMetricsArray = array of TDWriteHitTestMetrics;
   {$ENDIF}
+  TVerseTextOffsetArray = array of Integer;
 
 
   { A single paragraph surface. The document keeps logical syntagm identity;
@@ -112,6 +113,16 @@ type
     procedure SetDocument(const ADocument: IVerseVisualDocument);
     procedure NotifyChanges(Changes: TVerseVisualChanges; Revision: QWord);
     function HitTest(const ClientPoint: TPoint; out Hit: TVerseHit): Boolean;
+    { Editor geometry works with layout UTF-16 offsets instead of Syntagm
+      indexes. It intentionally accepts whitespace and the nearest position
+      outside the ink bounds. }
+    function HitTestTextOffset(const ClientPoint: TPoint;
+      out UTF16Offset: Integer; out IsTrailing, IsInside: Boolean): Boolean;
+    function GetTextPositionClientRect(UTF16Offset: Integer;
+      out CaretRect: TRect): Boolean;
+    function GetTextRangeClientRects(StartUTF16, LengthUTF16: Integer;
+      out Rects: TRectArray): Boolean;
+    function GetCaretStops(out Stops: TVerseTextOffsetArray): Boolean;
     function GetLogicalRects(LogicalIndex: Integer;
       out Rects: TRectArray): Boolean;
     function TryGetLogicalScreenAnchor(LogicalIndex: Integer;
@@ -1077,5 +1088,244 @@ begin
 end;
 
 {$ENDIF}
+
+function TDirectWriteSyntagmView.HitTestTextOffset(
+  const ClientPoint: TPoint; out UTF16Offset: Integer;
+  out IsTrailing, IsInside: Boolean): Boolean;
+{$IFDEF MSWINDOWS}
+var
+  Dpi: Integer;
+  HR: HRESULT;
+  NativeInside: TDWriteBool;
+  NativeTrailing: TDWriteBool;
+  Metrics: TDWriteHitTestMetrics;
+  Origin: TD2DPoint2F;
+  PointX: Single;
+  PointY: Single;
+  TextLength: Integer;
+{$ENDIF}
+begin
+  UTF16Offset := 0;
+  IsTrailing := False;
+  IsInside := False;
+  if not Assigned(FDocument) then
+    Exit(False);
+  {$IFDEF MSWINDOWS}
+  if not EnsureLayout then
+    Exit(False);
+  Dpi := FLayoutDpi;
+  if Dpi <= 0 then
+    Dpi := 96;
+  Origin := LayoutOriginDIP(Dpi);
+  PointX := ClientPoint.X * 96 / Dpi - Origin.X;
+  PointY := ClientPoint.Y * 96 / Dpi - Origin.Y;
+  FillChar(Metrics, SizeOf(Metrics), 0);
+  HR := FTextLayout.HitTestPoint(PointX, PointY, NativeTrailing,
+    NativeInside, Metrics);
+  if not Succeeded(HR) then
+    Exit(False);
+
+  UTF16Offset := Metrics.TextPosition;
+  if NativeTrailing then
+    Inc(UTF16Offset, Metrics.Length);
+  TextLength := Length(FDocument.Text);
+  if UTF16Offset < 0 then
+    UTF16Offset := 0
+  else if UTF16Offset > TextLength then
+    UTF16Offset := TextLength;
+  IsTrailing := NativeTrailing;
+  IsInside := NativeInside;
+  Result := True;
+  {$ELSE}
+  Result := False;
+  {$ENDIF}
+end;
+
+function TDirectWriteSyntagmView.GetTextPositionClientRect(
+  UTF16Offset: Integer; out CaretRect: TRect): Boolean;
+{$IFDEF MSWINDOWS}
+var
+  Dpi: Integer;
+  HR: HRESULT;
+  Metrics: TDWriteHitTestMetrics;
+  Origin: TD2DPoint2F;
+  PointX: Single;
+  PointY: Single;
+  QueryPosition: Integer;
+  QueryTrailing: TDWriteBool;
+  TextLength: Integer;
+{$ENDIF}
+begin
+  FillChar(CaretRect, SizeOf(CaretRect), 0);
+  if not Assigned(FDocument) then
+    Exit(False);
+  {$IFDEF MSWINDOWS}
+  if not EnsureLayout then
+    Exit(False);
+  Dpi := FLayoutDpi;
+  if Dpi <= 0 then
+    Dpi := 96;
+  TextLength := Length(FDocument.Text);
+  if UTF16Offset < 0 then
+    UTF16Offset := 0
+  else if UTF16Offset > TextLength then
+    UTF16Offset := TextLength;
+
+  Origin := LayoutOriginDIP(Dpi);
+  if TextLength = 0 then
+  begin
+    CaretRect.Left := Round(Origin.X * Dpi / 96);
+    CaretRect.Top := Round(Origin.Y * Dpi / 96);
+    CaretRect.Right := CaretRect.Left + Max(1, Round(Dpi / 96));
+    CaretRect.Bottom := CaretRect.Top +
+      Max(1, Canvas.TextHeight('Mg'));
+    Exit(True);
+  end;
+
+  QueryPosition := UTF16Offset;
+  QueryTrailing := False;
+  if QueryPosition = TextLength then
+  begin
+    QueryPosition := TextLength - 1;
+    QueryTrailing := True;
+  end;
+  FillChar(Metrics, SizeOf(Metrics), 0);
+  HR := FTextLayout.HitTestTextPosition(QueryPosition, QueryTrailing,
+    PointX, PointY, Metrics);
+  if not Succeeded(HR) then
+    Exit(False);
+
+  CaretRect.Left := Round((Origin.X + PointX) * Dpi / 96);
+  CaretRect.Top := Round((Origin.Y + PointY) * Dpi / 96);
+  CaretRect.Right := CaretRect.Left + Max(1, Round(Dpi / 96));
+  CaretRect.Bottom := CaretRect.Top +
+    Max(1, Ceil(Metrics.Height * Dpi / 96));
+  Result := True;
+  {$ELSE}
+  Result := False;
+  {$ENDIF}
+end;
+
+function TDirectWriteSyntagmView.GetTextRangeClientRects(
+  StartUTF16, LengthUTF16: Integer; out Rects: TRectArray): Boolean;
+{$IFDEF MSWINDOWS}
+var
+  Dpi: Integer;
+  HitMetrics: TDWriteHitTestMetricsArray;
+  Index: Integer;
+  Origin: TD2DPoint2F;
+  TextLength: Integer;
+{$ENDIF}
+begin
+  SetLength(Rects, 0);
+  if not Assigned(FDocument) then
+    Exit(False);
+  {$IFDEF MSWINDOWS}
+  if not EnsureLayout then
+    Exit(False);
+  TextLength := Length(FDocument.Text);
+  if StartUTF16 < 0 then
+    StartUTF16 := 0;
+  if StartUTF16 > TextLength then
+    StartUTF16 := TextLength;
+  if LengthUTF16 > TextLength - StartUTF16 then
+    LengthUTF16 := TextLength - StartUTF16;
+  if (LengthUTF16 <= 0) or
+     not GetHitTestMetrics(StartUTF16, LengthUTF16, HitMetrics) then
+    Exit(False);
+
+  Dpi := FLayoutDpi;
+  if Dpi <= 0 then
+    Dpi := 96;
+  Origin := LayoutOriginDIP(Dpi);
+  SetLength(Rects, Length(HitMetrics));
+  for Index := 0 to High(HitMetrics) do
+  begin
+    Rects[Index].Left := Floor((Origin.X + HitMetrics[Index].Left) *
+      Dpi / 96);
+    Rects[Index].Top := Floor((Origin.Y + HitMetrics[Index].Top) *
+      Dpi / 96);
+    Rects[Index].Right := Ceil((Origin.X + HitMetrics[Index].Left +
+      HitMetrics[Index].Width) * Dpi / 96);
+    Rects[Index].Bottom := Ceil((Origin.Y + HitMetrics[Index].Top +
+      HitMetrics[Index].Height) * Dpi / 96);
+  end;
+  Result := Length(Rects) > 0;
+  {$ELSE}
+  Result := False;
+  {$ENDIF}
+end;
+
+function TDirectWriteSyntagmView.GetCaretStops(
+  out Stops: TVerseTextOffsetArray): Boolean;
+{$IFDEF MSWINDOWS}
+type
+  TClusterMetricsArray = array of TDWriteClusterMetrics;
+var
+  ActualCount: TDWriteUInt32;
+  ClusterIndex: Integer;
+  FilledCount: TDWriteUInt32;
+  HR: HRESULT;
+  Metrics: TClusterMetricsArray;
+  Position: Integer;
+  StopCount: Integer;
+  TextLength: Integer;
+{$ENDIF}
+begin
+  SetLength(Stops, 0);
+  if not Assigned(FDocument) then
+    Exit(False);
+  {$IFDEF MSWINDOWS}
+  if not EnsureLayout then
+    Exit(False);
+  TextLength := Length(FDocument.Text);
+  ActualCount := 0;
+  HR := FTextLayout.GetClusterMetrics(nil, 0, ActualCount);
+  if (HR <> E_NOT_SUFFICIENT_BUFFER) and not Succeeded(HR) then
+    Exit(False);
+
+  if ActualCount = 0 then
+  begin
+    SetLength(Stops, 1);
+    Stops[0] := 0;
+    Exit(True);
+  end;
+  if ActualCount > 1048576 then
+    Exit(False);
+
+  SetLength(Metrics, ActualCount);
+  FilledCount := 0;
+  HR := FTextLayout.GetClusterMetrics(@Metrics[0], ActualCount,
+    FilledCount);
+  if not Succeeded(HR) then
+    Exit(False);
+  SetLength(Metrics, FilledCount);
+
+  SetLength(Stops, Length(Metrics) + 2);
+  Stops[0] := 0;
+  StopCount := 1;
+  Position := 0;
+  for ClusterIndex := 0 to High(Metrics) do
+  begin
+    Inc(Position, Metrics[ClusterIndex].Length);
+    if Position > TextLength then
+      Position := TextLength;
+    if Stops[StopCount - 1] <> Position then
+    begin
+      Stops[StopCount] := Position;
+      Inc(StopCount);
+    end;
+  end;
+  if Stops[StopCount - 1] <> TextLength then
+  begin
+    Stops[StopCount] := TextLength;
+    Inc(StopCount);
+  end;
+  SetLength(Stops, StopCount);
+  Result := True;
+  {$ELSE}
+  Result := False;
+  {$ENDIF}
+end;
 
 end.

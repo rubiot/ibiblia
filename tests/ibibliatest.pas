@@ -33,6 +33,8 @@ type
     procedure AssertPairsAndSiblings(syntagm: TSyntagm; const pairs, siblings: array of const);
     function FindIndexOf(verse: TVerse; word: string): Integer;
     function CreateStringList(const AWords: array of string): TStringList; // Helper
+    procedure AssertSemanticFormattingRoundTripPreservesAssociation(
+      const OpenTag, CloseTag: string);
     procedure AssertSelectionEqualsIndices(const ExpectedIndices: array of Integer); // Helper
     function CollectTokenizerTokens(version: Integer; const AText: string): TStringList;
     procedure AssertTokenizerTokens(version: Integer; const AText: string; const Expected: array of string);
@@ -62,6 +64,10 @@ type
     procedure ReplaceDestinationTextVerticalBar;
     procedure ReplaceDestinationTextManyWords;
     procedure ReplaceSourceTextAddPunctuation;
+    procedure SemanticFIFormattingPreservesAssociation;
+    procedure SemanticFRFormattingPreservesAssociation;
+    procedure SemanticFOFormattingPreservesAssociation;
+    procedure SemanticFUFormattingPreservesAssociation;
     procedure TokenizerVersion1KeepsCurlyQuotesInsideWords;
     procedure TokenizerVersion2KeepsCurlyQuotesInsideWords;
     procedure TokenizerVersion1KeepsHebrewMaqafInsideWord;
@@ -312,6 +318,57 @@ begin
   AssertPairsAndSiblings(original2,    [translation2], []);
   AssertPairsAndSiblings(translation1, [original1   ], []);
   AssertPairsAndSiblings(translation2, [original2   ], []);
+end;
+
+procedure TVerseTests.AssertSemanticFormattingRoundTripPreservesAssociation(
+  const OpenTag, CloseTag: string);
+var
+  SourceSyntagm: TSyntagm;
+  TargetSyntagm: TSyntagm;
+  FormattedText: string;
+begin
+  verse1.Text := 'source';
+  verse2.Text := 'prefix target suffix';
+  Associate([0], [2]);
+
+  SourceSyntagm := verse1.Syntagms[0];
+  TargetSyntagm := verse2.Syntagms[2];
+  FormattedText := 'prefix ' + OpenTag + 'target' + CloseTag + ' suffix';
+
+  verse2.ChangeText(FormattedText);
+
+  AssertEquals('semantic markup must be retained', FormattedText, verse2.XML);
+  AssertTrue('applying semantic markup must retain the target syntagm object',
+    verse2.Syntagms.IndexOf(TargetSyntagm) >= 0);
+  AssertPairsAndSiblings(SourceSyntagm, [TargetSyntagm], []);
+  AssertPairsAndSiblings(TargetSyntagm, [SourceSyntagm], []);
+
+  verse2.ChangeText('prefix target suffix');
+
+  AssertTrue('removing semantic markup must retain the target syntagm object',
+    verse2.Syntagms.IndexOf(TargetSyntagm) >= 0);
+  AssertPairsAndSiblings(SourceSyntagm, [TargetSyntagm], []);
+  AssertPairsAndSiblings(TargetSyntagm, [SourceSyntagm], []);
+end;
+
+procedure TVerseTests.SemanticFIFormattingPreservesAssociation;
+begin
+  AssertSemanticFormattingRoundTripPreservesAssociation('<FI>', '<Fi>');
+end;
+
+procedure TVerseTests.SemanticFRFormattingPreservesAssociation;
+begin
+  AssertSemanticFormattingRoundTripPreservesAssociation('<FR>', '<Fr>');
+end;
+
+procedure TVerseTests.SemanticFOFormattingPreservesAssociation;
+begin
+  AssertSemanticFormattingRoundTripPreservesAssociation('<FO>', '<Fo>');
+end;
+
+procedure TVerseTests.SemanticFUFormattingPreservesAssociation;
+begin
+  AssertSemanticFormattingRoundTripPreservesAssociation('<FU>', '<Fu>');
 end;
 
 procedure TVerseTests.ReplaceSourceTextChangeBeginning;

@@ -813,6 +813,18 @@ end;
 procedure TVerse.ReplaceTextPreservingAssociations(const _XML: string;
   ForceRetokenize: Boolean);
 
+  function HasSameAssociationIdentity(const Existing,
+    Candidate: TSyntagm): Boolean;
+  begin
+    { Association identity is the structural text unit, not its presentation.
+      Semantic wrappers such as FI/FR/FO/FU can change style fields or insert
+      metadata syntagms without changing the associated word itself. Strong
+      and morphology payloads are deliberately refreshed from Candidate below. }
+    Result := Assigned(Existing) and Assigned(Candidate) and
+      (Existing.Kind = Candidate.Kind) and
+      (Existing.Text = Candidate.Text);
+  end;
+
   procedure DeleteSyntagm(i: integer; newlist: TSyntagmList);
   var
     s: TSyntagm;
@@ -868,7 +880,7 @@ begin
        result.Add(new[0]);
        new.Delete(0);
       end
-      else if FSyntagms.First.IsEqualTo(new.First) then
+      else if HasSameAssociationIdentity(FSyntagms.First, new.First) then
       begin
         with FSyntagms.First do
         begin
@@ -902,7 +914,7 @@ begin
         if not old.Pairs.Empty then // does it have associations?
         begin
           for s in new do
-            if old.IsEqualTo(s) then
+            if HasSameAssociationIdentity(old, s) then
             begin
               result.Add(new[0]);
               new.Delete(0);

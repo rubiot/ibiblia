@@ -56,6 +56,16 @@ type
   end;
   PDWriteHitTestMetrics = ^TDWriteHitTestMetrics;
 
+  { DWRITE_CLUSTER_METRICS uses two packed 16-bit bit-field values after
+    Length. Keeping the flags opaque preserves the native ABI while exposing
+    the cluster length needed for legal caret stops. }
+  TDWriteClusterMetrics = record
+    Width: TDWriteFloat;
+    Length: Word;
+    Flags: Word;
+  end;
+  PDWriteClusterMetrics = ^TDWriteClusterMetrics;
+
   TDWriteLineMetrics = record
     Length: TDWriteUInt32;
     TrailingWhitespaceLength: TDWriteUInt32;
@@ -267,7 +277,9 @@ type
       stdcall;
     function GetMetrics(out Metrics: TDWriteTextMetrics): HRESULT; stdcall;
     procedure _LayoutSlot33; stdcall;
-    procedure _LayoutSlot34; stdcall;
+    function GetClusterMetrics(Metrics: PDWriteClusterMetrics;
+      MaxClusterCount: TDWriteUInt32;
+      out ActualClusterCount: TDWriteUInt32): HRESULT; stdcall;
     procedure _LayoutSlot35; stdcall;
     function HitTestPoint(PointX, PointY: Single; out IsTrailingHit,
       IsInside: TDWriteBool; out Metrics: TDWriteHitTestMetrics): HRESULT; stdcall;
