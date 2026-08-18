@@ -33,6 +33,9 @@ type
   { Colors are opaque values interpreted by the view implementation. }
   TVisualTextStyle = record
     Flags: TVisualTextStyleFlags;
+    { Point-size adjustment relative to the view's base font. The DirectWrite
+      backend converts it to device-independent pixels when building a run. }
+    FontSizeDelta: Integer;
     HasForegroundColor: Boolean;
     ForegroundColor: LongInt;
     HasBackgroundColor: Boolean;

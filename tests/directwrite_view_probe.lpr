@@ -4,9 +4,9 @@ program directwrite_view_probe;
 {$codepage utf8}
 
 uses
-  Windows, Interfaces, Forms, SysUtils, Types, Graphics,
+  Windows, Interfaces, Forms, SysUtils, Types, Graphics, Controls,
   text_direction, verse_visual_document, verse_view_intf,
-  directwrite_syntagm_view;
+  directwrite_syntagm_view, directwrite_verse_editor;
 
 procedure Require(Condition: Boolean; const MessageText: string);
 begin
@@ -17,14 +17,32 @@ begin
 end;
 
 type
-  TProbeDirectWriteSyntagmView = class(TDirectWriteSyntagmView)
+  TProbeDirectWriteSyntagmView = class(TDirectWriteVerseEditor)
   public
     procedure PaintNow;
+    procedure MouseDownAt(X, Y: Integer);
+    procedure MouseMoveAt(X, Y: Integer);
+    procedure MouseUpAt(X, Y: Integer);
   end;
 
 procedure TProbeDirectWriteSyntagmView.PaintNow;
 begin
   Paint;
+end;
+
+procedure TProbeDirectWriteSyntagmView.MouseDownAt(X, Y: Integer);
+begin
+  MouseDown(mbLeft, [], X, Y);
+end;
+
+procedure TProbeDirectWriteSyntagmView.MouseMoveAt(X, Y: Integer);
+begin
+  MouseMove([], X, Y);
+end;
+
+procedure TProbeDirectWriteSyntagmView.MouseUpAt(X, Y: Integer);
+begin
+  MouseUp(mbLeft, [], X, Y);
 end;
 
 var
@@ -38,6 +56,11 @@ var
   PortugueseRects: TRectArray;
   NormalRects: TRectArray;
   SuperscriptRects: TRectArray;
+  TitleRects: TRectArray;
+  BodyRects: TRectArray;
+  FirstBodyRects: TRectArray;
+  MiddleTitleRects: TRectArray;
+  SecondBodyRects: TRectArray;
   Style: TVisualTextStyle;
   View: TProbeDirectWriteSyntagmView;
   ViewInterface: IVerseView;
@@ -45,6 +68,9 @@ var
   RedValue, GreenValue, BlueValue: Byte;
   X, Y: Integer;
   MinNormalY, MinSuperscriptY: Integer;
+  BodyStart, BodyEnd: Integer;
+  FirstRegionStart, FirstRegionEnd: Integer;
+  SecondRegionStart, SecondRegionEnd: Integer;
   ViewDC: HDC;
 begin
   Application.Initialize;
@@ -124,6 +150,7 @@ begin
     Style := DefaultVisualTextStyle;
     Builder.AddText(10, 'normal ', Style, True);
     Include(Style.Flags, vtsfSuperscript);
+    Style.FontSizeDelta := 2;
     Style.HasForegroundColor := True;
     Style.ForegroundColor := clRed;
     Builder.AddText(11, 'sup', Style, True);
@@ -177,6 +204,119 @@ begin
       'HitTest missed the superscript inline object');
     Require(Hit.LogicalIndex = 11,
       'Superscript hit-test returned the wrong logical index');
+
+    Builder.Free;
+    Builder := TVerseVisualDocumentBuilder.Create(tdLeftToRight);
+    Style := DefaultVisualTextStyle;
+    Include(Style.Flags, vtsfBold);
+    Style.FontSizeDelta := 4;
+    Builder.AddText(20, 'Prefácio', Style, False, 'heading');
+    Builder.AddText(21, #10, DefaultVisualTextStyle, False,
+      'heading-break');
+    Builder.AddText(22, 'corpo ', DefaultVisualTextStyle, True);
+    Builder.AddText(23, ' ', DefaultVisualTextStyle, False,
+      'protected-anchor');
+    Builder.AddText(24, 'editável', DefaultVisualTextStyle, True);
+    Document := Builder.Build(3);
+    BodyStart := Document.Spans[2].StartUTF16;
+    BodyEnd := Document.Spans[4].StartUTF16 +
+      Document.Spans[4].LengthUTF16;
+    View.InteractionMode := vimAssociation;
+    View.SetEditorDocument(Document);
+    Application.ProcessMessages;
+    View.PaintNow;
+    Require(View.GetLogicalRects(20, TitleRects) and
+      (Length(TitleRects) > 0), 'No rectangle for noninteractive heading');
+    Require(View.GetLogicalRects(22, BodyRects) and
+      (Length(BodyRects) > 0), 'No rectangle for interactive body');
+    Require((TitleRects[0].Bottom - TitleRects[0].Top) >
+      (BodyRects[0].Bottom - BodyRects[0].Top),
+      'Heading FontSizeDelta was not applied');
+    HitPoint.X := (TitleRects[0].Left + TitleRects[0].Right) div 2;
+    HitPoint.Y := (TitleRects[0].Top + TitleRects[0].Bottom) div 2;
+    Require(not View.HitTest(HitPoint, Hit),
+      'Association hit-test exposed the noninteractive heading');
+
+    View.InteractionMode := vimEdit;
+    Require(View.CaretOffset = BodyStart,
+      'Initial editor caret did not skip the heading');
+    View.MouseDownAt(HitPoint.X, HitPoint.Y);
+    Require(View.CaretOffset = BodyStart,
+      'Mouse input moved the caret into the heading');
+    View.SelectAll;
+    Require(View.SelectionStart = BodyStart,
+      'Ctrl+A selection included the heading');
+    Require(View.SelectionLength = BodyEnd - BodyStart,
+      'Ctrl+A did not cover the full body including its protected anchor');
+
+    Builder.Free;
+    Builder := TVerseVisualDocumentBuilder.Create(tdLeftToRight);
+    Builder.AddText(30, 'antes', DefaultVisualTextStyle, True);
+    Builder.AddText(31, ' ', DefaultVisualTextStyle, False,
+      'protected-anchor');
+    Builder.AddText(32, ' ainda', DefaultVisualTextStyle, True);
+    Builder.AddText(33, #10, DefaultVisualTextStyle, False,
+      'title-break');
+    Style := DefaultVisualTextStyle;
+    Include(Style.Flags, vtsfBold);
+    Style.FontSizeDelta := 2;
+    Builder.AddText(34, 'Intertítulo', Style, False, 'title-level-0');
+    Builder.AddText(35, #10, DefaultVisualTextStyle, False,
+      'title-break');
+    Builder.AddText(36, 'depois', DefaultVisualTextStyle, True);
+    Document := Builder.Build(4);
+    FirstRegionStart := Document.Spans[0].StartUTF16;
+    FirstRegionEnd := Document.Spans[2].StartUTF16 +
+      Document.Spans[2].LengthUTF16;
+    SecondRegionStart := Document.Spans[6].StartUTF16;
+    SecondRegionEnd := SecondRegionStart + Document.Spans[6].LengthUTF16;
+    View.SetEditorDocument(Document);
+    View.SetSelection(0, 0);
+    Application.ProcessMessages;
+    View.PaintNow;
+    Require(View.GetLogicalRects(30, FirstBodyRects) and
+      (Length(FirstBodyRects) > 0), 'No rectangle for first body region');
+    Require(View.GetLogicalRects(34, MiddleTitleRects) and
+      (Length(MiddleTitleRects) > 0), 'No rectangle for middle heading');
+    Require(View.GetLogicalRects(36, SecondBodyRects) and
+      (Length(SecondBodyRects) > 0), 'No rectangle for second body region');
+
+    View.SelectAll;
+    Require((View.SelectionStart = FirstRegionStart) and
+      (View.SelectionLength = FirstRegionEnd - FirstRegionStart),
+      'Ctrl+A crossed a middle heading from the first body region');
+    HitPoint.X := (MiddleTitleRects[0].Left +
+      MiddleTitleRects[0].Right) div 2;
+    HitPoint.Y := (MiddleTitleRects[0].Top +
+      MiddleTitleRects[0].Bottom) div 2;
+    View.MouseDownAt(HitPoint.X, HitPoint.Y);
+    Require((View.SelectionStart = FirstRegionStart) and
+      (View.SelectionLength = FirstRegionEnd - FirstRegionStart),
+      'Clicking a middle heading changed the body selection');
+
+    HitPoint.X := (FirstBodyRects[0].Left +
+      FirstBodyRects[0].Right) div 2;
+    HitPoint.Y := (FirstBodyRects[0].Top +
+      FirstBodyRects[0].Bottom) div 2;
+    View.MouseDownAt(HitPoint.X, HitPoint.Y);
+    HitPoint.X := (SecondBodyRects[0].Left +
+      SecondBodyRects[0].Right) div 2;
+    HitPoint.Y := (SecondBodyRects[0].Top +
+      SecondBodyRects[0].Bottom) div 2;
+    View.MouseMoveAt(HitPoint.X, HitPoint.Y);
+    View.MouseUpAt(HitPoint.X, HitPoint.Y);
+    Require(View.SelectionStart + View.SelectionLength <= FirstRegionEnd,
+      'Mouse drag crossed a middle heading');
+
+    View.MouseDownAt(HitPoint.X, HitPoint.Y);
+    View.MouseUpAt(HitPoint.X, HitPoint.Y);
+    Require((View.CaretOffset >= SecondRegionStart) and
+      (View.CaretOffset <= SecondRegionEnd),
+      'Click after a middle heading did not enter its body region');
+    View.SelectAll;
+    Require((View.SelectionStart = SecondRegionStart) and
+      (View.SelectionLength = SecondRegionEnd - SecondRegionStart),
+      'Ctrl+A crossed a middle heading from the second body region');
 
     WriteLn('OK: ', View.BackendName, '; content height=',
       View.ContentHeight, '; superscript rise=',

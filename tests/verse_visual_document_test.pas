@@ -32,6 +32,7 @@ function TVerseVisualDocumentTests.NewStyle: TVisualTextStyle;
 begin
   Result := DefaultVisualTextStyle;
   Result.Flags := [vtsfBold, vtsfSuperscript, vtsfSelected];
+  Result.FontSizeDelta := 4;
   Result.HasForegroundColor := True;
   Result.ForegroundColor := $00112233;
   Result.HasBackgroundColor := True;
@@ -217,6 +218,7 @@ begin
     AssertTrue(vtsfBold in Document.Spans[0].Style.Flags);
     AssertTrue(vtsfSuperscript in Document.Spans[0].Style.Flags);
     AssertTrue(vtsfSelected in Document.Spans[0].Style.Flags);
+    AssertEquals(4, Document.Spans[0].Style.FontSizeDelta);
     AssertTrue(Document.Spans[0].Style.HasForegroundColor);
     AssertEquals(LongInt($00112233),
       Document.Spans[0].Style.ForegroundColor);

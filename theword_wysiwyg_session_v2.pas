@@ -76,6 +76,23 @@ implementation
 uses
   theword_verse_visual_adapter_v2, theword_clipboard_v2;
 
+function TouchesTheWordTitle(ADocument: TTheWordVerseDocument;
+  AStartUTF16, ALengthUTF16: Integer): Boolean;
+var
+  Finish, Index: Integer;
+  Titles: TTheWordTitleRangeArray;
+begin
+  Result := False;
+  if not Assigned(ADocument) then
+    Exit;
+  Finish := AStartUTF16 + ALengthUTF16;
+  CollectTheWordTitleRanges(ADocument, Titles);
+  for Index := 0 to High(Titles) do
+    if (AStartUTF16 < Titles[Index].EndOffset) and
+       (Finish > Titles[Index].StartOffset) then
+      Exit(True);
+end;
+
 constructor TTheWordWysiwygSessionV2.Create(const ARaw: UnicodeString);
 begin
   inherited Create;
@@ -208,7 +225,9 @@ function TTheWordWysiwygSessionV2.CutSelection(AStartUTF16,
 var
   Raw, Snapshot: UnicodeString;
 begin
-  Result := CopySelection(AStartUTF16, ALengthUTF16, APlainText, APayload) and
+  Result := not TouchesTheWordTitle(FDocument, AStartUTF16,
+    ALengthUTF16) and
+    CopySelection(AStartUTF16, ALengthUTF16, APlainText, APayload) and
     TTheWordClipboardCodecV2.BuildCutRaw(FDocument, AStartUTF16,
       ALengthUTF16, Raw);
   if not Result then Exit;

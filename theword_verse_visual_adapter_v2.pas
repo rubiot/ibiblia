@@ -50,7 +50,12 @@ uses
 
 type
   TIntArray = array of Integer;
-  TBoolArray = array of Boolean;
+  TSyntheticAnchorKind = (
+    tsakNone,
+    tsakProtectedSpace,
+    tsakTitleBreak
+  );
+  TSyntheticAnchorArray = array of TSyntheticAnchorKind;
 
   TTheWordMappedVisualDocument = class(TInterfacedObject,
     IVerseVisualDocument, ITheWordVisualOffsetMap)
@@ -252,20 +257,44 @@ begin
   Result := False;
 end;
 
+procedure PromoteSyntheticAnchor(var AAnchors: TSyntheticAnchorArray;
+  AOffset: Integer; AKind: TSyntheticAnchorKind);
+begin
+  if (AOffset < 0) or (AOffset > High(AAnchors)) then
+    Exit;
+  if Ord(AKind) > Ord(AAnchors[AOffset]) then
+    AAnchors[AOffset] := AKind;
+end;
+
 procedure BuildSyntheticAnchors(ADocument: TTheWordVerseDocument;
-  out AAnchors: TBoolArray);
+  const ATitles: TTheWordTitleRangeArray;
+  out AAnchors: TSyntheticAnchorArray);
 var
-  Offset: Integer;
+  Offset, TitleIndex: Integer;
 begin
   SetLength(AAnchors, Length(ADocument.VisibleText) + 1);
   for Offset := 1 to Length(ADocument.VisibleText) - 1 do
-    AAnchors[Offset] :=
-      IsVisualWordCodeUnit(ADocument.VisibleText[Offset]) and
+    if IsVisualWordCodeUnit(ADocument.VisibleText[Offset]) and
       IsVisualWordCodeUnit(ADocument.VisibleText[Offset + 1]) and
-      HasProtectedAnchor(ADocument, Offset);
+      HasProtectedAnchor(ADocument, Offset) then
+      PromoteSyntheticAnchor(AAnchors, Offset, tsakProtectedSpace);
+
+  { Titles are structural blocks. A synthetic line break has no document
+    width, but gives every well-formed TS block the same paragraph boundary
+    used by the chapter view. One break is enough where consecutive titles
+    share a closing/opening anchor. }
+  for TitleIndex := 0 to High(ATitles) do
+  begin
+    if ATitles[TitleIndex].StartOffset > 0 then
+      PromoteSyntheticAnchor(AAnchors, ATitles[TitleIndex].StartOffset,
+        tsakTitleBreak);
+    if ATitles[TitleIndex].EndOffset < Length(ADocument.VisibleText) then
+      PromoteSyntheticAnchor(AAnchors, ATitles[TitleIndex].EndOffset,
+        tsakTitleBreak);
+  end;
 end;
 
-procedure BuildOffsetMaps(const AAnchors: TBoolArray;
+procedure BuildOffsetMaps(const AAnchors: TSyntheticAnchorArray;
   ADocumentLength: Integer; out ADocumentToLayoutBefore,
   ADocumentToLayoutAfter, ALayoutToDocument: TIntArray);
 var
@@ -273,7 +302,7 @@ var
 begin
   SyntheticCount := 0;
   for DocumentOffset := 0 to High(AAnchors) do
-    if AAnchors[DocumentOffset] then
+    if AAnchors[DocumentOffset] <> tsakNone then
       Inc(SyntheticCount);
   SetLength(ADocumentToLayoutBefore, ADocumentLength + 1);
   SetLength(ADocumentToLayoutAfter, ADocumentLength + 1);
@@ -284,7 +313,7 @@ begin
   begin
     ADocumentToLayoutBefore[DocumentOffset] := LayoutOffset;
     ALayoutToDocument[LayoutOffset] := DocumentOffset;
-    if AAnchors[DocumentOffset] then
+    if AAnchors[DocumentOffset] <> tsakNone then
     begin
       Inc(LayoutOffset);
       ALayoutToDocument[LayoutOffset] := DocumentOffset;
@@ -296,6 +325,72 @@ begin
       ALayoutToDocument[LayoutOffset] := DocumentOffset + 1;
     end;
   end;
+end;
+
+procedure AppendSyntheticAnchor(ABuilder: TVerseVisualDocumentBuilder;
+  AKind: TSyntheticAnchorKind; var ASpanIndex: Integer);
+begin
+  if AKind = tsakNone then
+    Exit;
+  if AKind = tsakTitleBreak then
+    ABuilder.AddText(ASpanIndex, #10, DefaultVisualTextStyle, False,
+      'title-break')
+  else
+    ABuilder.AddText(ASpanIndex, ' ', DefaultVisualTextStyle, False,
+      'protected-anchor');
+  Inc(ASpanIndex);
+end;
+
+function TryGetTitleForSegment(const ATitles: TTheWordTitleRangeArray;
+  AStartOffset, AEndOffset: Integer; out ATitle: TTheWordTitleRange): Boolean;
+var
+  Index: Integer;
+begin
+  for Index := 0 to High(ATitles) do
+    if (ATitles[Index].EndOffset > ATitles[Index].StartOffset) and
+       (ATitles[Index].StartOffset <= AStartOffset) and
+       (ATitles[Index].EndOffset >= AEndOffset) then
+    begin
+      ATitle := ATitles[Index];
+      Exit(True);
+    end;
+  ATitle.StartOffset := 0;
+  ATitle.EndOffset := 0;
+  ATitle.Level := 0;
+  ATitle.OpenOrdinal := 0;
+  ATitle.CloseOrdinal := 0;
+  Result := False;
+end;
+
+procedure ApplyTitleStyle(const ATitle: TTheWordTitleRange;
+  var AStyle: TVisualTextStyle; var AAnnotation: UnicodeString);
+begin
+  case ATitle.Level of
+    0:
+      begin
+        Include(AStyle.Flags, vtsfBold);
+        AStyle.FontSizeDelta := 2;
+        AStyle.HasForegroundColor := True;
+        AStyle.ForegroundColor := LongInt($424242);
+      end;
+    1:
+      begin
+        Include(AStyle.Flags, vtsfBold);
+        Include(AStyle.Flags, vtsfItalic);
+        AStyle.FontSizeDelta := 1;
+      end;
+    2:
+      begin
+        Include(AStyle.Flags, vtsfBold);
+        Include(AStyle.Flags, vtsfItalic);
+      end;
+    3:
+      Include(AStyle.Flags, vtsfItalic);
+  end;
+  if AAnnotation <> '' then
+    AAnnotation := AAnnotation + ',';
+  AAnnotation := AAnnotation + UnicodeString('title-level-') +
+    UnicodeString(IntToStr(ATitle.Level));
 end;
 
 procedure AddBoundary(var ABoundaries: TIntArray; AValue: Integer);
@@ -353,13 +448,16 @@ function BuildTheWordVerseVisualDocument(ADocument: TTheWordVerseDocument;
 var
   Boundaries, DocumentToLayoutBefore, DocumentToLayoutAfter,
     LayoutToDocument: TIntArray;
+  Titles: TTheWordTitleRangeArray;
   Builder: TVerseVisualDocumentBuilder;
   Index, MarkIndex, SegmentStart, SegmentFinish, SpanIndex: Integer;
   Mark: TTheWordSemanticMark;
+  Title: TTheWordTitleRange;
   Style: TVisualTextStyle;
   Annotation, SegmentText: UnicodeString;
-  SyntheticAnchors: TBoolArray;
+  SyntheticAnchors: TSyntheticAnchorArray;
   Inner: IVerseVisualDocument;
+  IsTitle: Boolean;
 begin
   if not Assigned(ADocument) then
     raise ETheWordOntCodec.Create('Cannot visualize a nil ONT document');
@@ -367,10 +465,16 @@ begin
   Boundaries := nil;
   AddBoundary(Boundaries, 0);
   AddBoundary(Boundaries, Length(ADocument.VisibleText));
-  BuildSyntheticAnchors(ADocument, SyntheticAnchors);
+  CollectTheWordTitleRanges(ADocument, Titles);
+  BuildSyntheticAnchors(ADocument, Titles, SyntheticAnchors);
   for Index := 0 to High(SyntheticAnchors) do
-    if SyntheticAnchors[Index] then
+    if SyntheticAnchors[Index] <> tsakNone then
       AddBoundary(Boundaries, Index);
+  for Index := 0 to High(Titles) do
+  begin
+    AddBoundary(Boundaries, Titles[Index].StartOffset);
+    AddBoundary(Boundaries, Titles[Index].EndOffset);
+  end;
   for MarkIndex := 0 to ADocument.MarkCount - 1 do
   begin
     Mark := ADocument.Marks[MarkIndex];
@@ -388,14 +492,14 @@ begin
       begin
         SegmentStart := Boundaries[Index];
         SegmentFinish := Boundaries[Index + 1];
-        if SyntheticAnchors[SegmentStart] then
-        begin
-          Builder.AddText(SpanIndex, ' ', DefaultVisualTextStyle, False,
-            'protected-anchor');
-          Inc(SpanIndex);
-        end;
+        AppendSyntheticAnchor(Builder, SyntheticAnchors[SegmentStart],
+          SpanIndex);
         Style := DefaultVisualTextStyle;
         Annotation := '';
+        IsTitle := TryGetTitleForSegment(Titles, SegmentStart,
+          SegmentFinish, Title);
+        if IsTitle then
+          ApplyTitleStyle(Title, Style, Annotation);
         for MarkIndex := 0 to ADocument.MarkCount - 1 do
         begin
           Mark := ADocument.Marks[MarkIndex];
@@ -406,9 +510,15 @@ begin
         end;
         SegmentText := Copy(ADocument.VisibleText, SegmentStart + 1,
           SegmentFinish - SegmentStart);
-        Builder.AddText(SpanIndex, SegmentText, Style, True, Annotation);
+        Builder.AddText(SpanIndex, SegmentText, Style, not IsTitle,
+          Annotation);
         Inc(SpanIndex);
       end;
+    { A structural anchor at the document end has no following segment from
+      which it can be emitted. Emit it explicitly so the visual text and the
+      offset maps always describe the same layout length. }
+    AppendSyntheticAnchor(Builder,
+      SyntheticAnchors[Length(ADocument.VisibleText)], SpanIndex);
     Inner := Builder.Build(ARevision);
     BuildOffsetMaps(SyntheticAnchors, Length(ADocument.VisibleText),
       DocumentToLayoutBefore, DocumentToLayoutAfter, LayoutToDocument);
@@ -433,13 +543,20 @@ end;
 function CanApplyTheWordSemanticMark(ADocument: TTheWordVerseDocument;
   AStartUTF16, ALengthUTF16: Integer): Boolean;
 var
-  Index: Integer;
+  Finish, Index: Integer;
+  Titles: TTheWordTitleRangeArray;
 begin
   Result := Assigned(ADocument) and (ALengthUTF16 > 0) and
     (AStartUTF16 >= 0) and
     (AStartUTF16 + ALengthUTF16 <= Length(ADocument.VisibleText));
   if not Result then
     Exit;
+  Finish := AStartUTF16 + ALengthUTF16;
+  CollectTheWordTitleRanges(ADocument, Titles);
+  for Index := 0 to High(Titles) do
+    if (AStartUTF16 < Titles[Index].EndOffset) and
+       (Finish > Titles[Index].StartOffset) then
+      Exit(False);
   for Index := 0 to ADocument.OpaqueItemCount - 1 do
     if PointTouchesRange(ADocument.OpaqueItems[Index].Offset,
       AStartUTF16, ALengthUTF16) then

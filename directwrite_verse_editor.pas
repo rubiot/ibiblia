@@ -59,11 +59,18 @@ type
     function GetSelectionLength: Integer;
     function GetSelectionStart: Integer;
     function GetTextLength: Integer;
+    function IsInteractiveCaretStop(Value: Integer): Boolean;
+    function IsInteractiveHitOffset(Value: Integer;
+      IsTrailing: Boolean): Boolean;
+    function IsTraversableNonInteractiveSpan(
+      const Span: TVisualSpan): Boolean;
     function IsWordCodeUnit(Value: WideChar): Boolean;
     procedure MoveCaretHorizontal(Direction: Integer; ExtendSelection,
       ByWord: Boolean);
     procedure MoveCaretVertical(Direction: Integer; ExtendSelection: Boolean);
     function NearestCaretStop(Value: Integer): Integer;
+    function NearestCaretStopInRegion(Value, RegionStart,
+      RegionFinish: Integer): Integer;
     function NextCaretStop(Value: Integer): Integer;
     procedure PasteText;
     function PreviousCaretStop(Value: Integer): Integer;
@@ -74,6 +81,8 @@ type
     procedure SelectWordAt(UTF16Offset: Integer);
     procedure SetCaret(Value: Integer; ExtendSelection: Boolean);
     procedure SetInteractionMode(Value: TVerseInteractionMode);
+    function TryGetCaretRegion(Value: Integer; out RegionStart,
+      RegionFinish: Integer): Boolean;
     procedure UpdateInputBrokerPosition;
   protected
     procedure DblClick; override;
@@ -180,34 +189,131 @@ end;
 
 procedure TDirectWriteVerseEditor.RefreshCaretStops;
 var
+  CandidateStops: TVerseTextOffsetArray;
   DocText: UnicodeString;
   Index: Integer;
   StopCount: Integer;
 begin
-  if GetCaretStops(FCaretStops) then
-    Exit;
-
   DocText := '';
   if Assigned(Document) then
     DocText := Document.Text;
-  SetLength(FCaretStops, Length(DocText) + 1);
-  StopCount := 1;
-  FCaretStops[0] := 0;
-  Index := 1;
-  while Index <= Length(DocText) do
+
+  if not GetCaretStops(CandidateStops) then
   begin
-    if (Ord(DocText[Index]) >= $D800) and
-       (Ord(DocText[Index]) <= $DBFF) and
-       (Index < Length(DocText)) and
-       (Ord(DocText[Index + 1]) >= $DC00) and
-       (Ord(DocText[Index + 1]) <= $DFFF) then
-      Inc(Index, 2)
-    else
-      Inc(Index);
-    FCaretStops[StopCount] := Index - 1;
-    Inc(StopCount);
+    SetLength(CandidateStops, Length(DocText) + 1);
+    StopCount := 1;
+    CandidateStops[0] := 0;
+    Index := 1;
+    while Index <= Length(DocText) do
+    begin
+      if (Ord(DocText[Index]) >= $D800) and
+         (Ord(DocText[Index]) <= $DBFF) and
+         (Index < Length(DocText)) and
+         (Ord(DocText[Index + 1]) >= $DC00) and
+         (Ord(DocText[Index + 1]) <= $DFFF) then
+        Inc(Index, 2)
+      else
+        Inc(Index);
+      CandidateStops[StopCount] := Index - 1;
+      Inc(StopCount);
+    end;
+    SetLength(CandidateStops, StopCount);
   end;
+
+  SetLength(FCaretStops, Length(CandidateStops));
+  StopCount := 0;
+  for Index := 0 to High(CandidateStops) do
+    if IsInteractiveCaretStop(CandidateStops[Index]) and
+       ((StopCount = 0) or
+        (FCaretStops[StopCount - 1] <> CandidateStops[Index])) then
+    begin
+      FCaretStops[StopCount] := CandidateStops[Index];
+      Inc(StopCount);
+    end;
   SetLength(FCaretStops, StopCount);
+
+  { An empty document still needs its sole insertion position. }
+  if (Length(FCaretStops) = 0) and (Length(DocText) = 0) then
+  begin
+    SetLength(FCaretStops, 1);
+    FCaretStops[0] := 0;
+  end;
+end;
+
+function TDirectWriteVerseEditor.IsInteractiveCaretStop(
+  Value: Integer): Boolean;
+var
+  Index: Integer;
+  Span: TVisualSpan;
+begin
+  Result := False;
+  if not Assigned(Document) then
+    Exit;
+  for Index := 0 to Document.SpanCount - 1 do
+  begin
+    Span := Document.Spans[Index];
+    if Span.Interactive and (Span.LengthUTF16 > 0) and
+       (Value >= Span.StartUTF16) and
+       (Value <= Span.StartUTF16 + Span.LengthUTF16) then
+      Exit(True);
+  end;
+end;
+
+function TDirectWriteVerseEditor.IsInteractiveHitOffset(Value: Integer;
+  IsTrailing: Boolean): Boolean;
+var
+  LogicalIndex: Integer;
+begin
+  Result := False;
+  if not Assigned(Document) then
+    Exit;
+  if IsTrailing and (Value > 0) then
+    Dec(Value);
+  Result := Document.TryGetInteractiveLogicalIndexAt(Value, LogicalIndex);
+end;
+
+function TDirectWriteVerseEditor.IsTraversableNonInteractiveSpan(
+  const Span: TVisualSpan): Boolean;
+begin
+  Result := (Span.LengthUTF16 = 0) or
+    (Span.Kind = vskDirectionControl) or
+    (Span.Annotation = UnicodeString('protected-anchor'));
+end;
+
+function TDirectWriteVerseEditor.TryGetCaretRegion(Value: Integer;
+  out RegionStart, RegionFinish: Integer): Boolean;
+var
+  Index: Integer;
+  Span: TVisualSpan;
+begin
+  Result := False;
+  RegionStart := -1;
+  RegionFinish := -1;
+  if not Assigned(Document) then
+    Exit;
+
+  for Index := 0 to Document.SpanCount - 1 do
+  begin
+    Span := Document.Spans[Index];
+    if Span.Interactive and (Span.LengthUTF16 > 0) then
+    begin
+      if RegionStart < 0 then
+        RegionStart := Span.StartUTF16;
+      RegionFinish := Max(RegionFinish,
+        Span.StartUTF16 + Span.LengthUTF16);
+    end
+    else if not IsTraversableNonInteractiveSpan(Span) then
+    begin
+      if (RegionStart >= 0) and (Value >= RegionStart) and
+         (Value <= RegionFinish) then
+        Exit(True);
+      RegionStart := -1;
+      RegionFinish := -1;
+    end;
+  end;
+
+  Result := (RegionStart >= 0) and (Value >= RegionStart) and
+    (Value <= RegionFinish);
 end;
 
 function TDirectWriteVerseEditor.NearestCaretStop(Value: Integer): Integer;
@@ -222,6 +328,8 @@ begin
     Value := GetTextLength;
   if Length(FCaretStops) = 0 then
     RefreshCaretStops;
+  if Length(FCaretStops) = 0 then
+    Exit(0);
   Result := Value;
   BestDistance := MaxInt;
   for Index := 0 to High(FCaretStops) do
@@ -235,27 +343,71 @@ begin
   end;
 end;
 
+function TDirectWriteVerseEditor.NearestCaretStopInRegion(Value,
+  RegionStart, RegionFinish: Integer): Integer;
+var
+  BestDistance: Integer;
+  Distance: Integer;
+  Index: Integer;
+begin
+  if Length(FCaretStops) = 0 then
+    RefreshCaretStops;
+  if Length(FCaretStops) = 0 then
+    Exit(0);
+  if Value < RegionStart then
+    Value := RegionStart
+  else if Value > RegionFinish then
+    Value := RegionFinish;
+  Result := RegionStart;
+  BestDistance := MaxInt;
+  for Index := 0 to High(FCaretStops) do
+    if (FCaretStops[Index] >= RegionStart) and
+       (FCaretStops[Index] <= RegionFinish) then
+    begin
+      Distance := Abs(FCaretStops[Index] - Value);
+      if Distance < BestDistance then
+      begin
+        Result := FCaretStops[Index];
+        BestDistance := Distance;
+      end;
+    end;
+end;
+
 function TDirectWriteVerseEditor.PreviousCaretStop(Value: Integer): Integer;
 var
   Index: Integer;
+  RegionFinish: Integer;
+  RegionStart: Integer;
 begin
-  Result := 0;
   if Length(FCaretStops) = 0 then
     RefreshCaretStops;
+  if Length(FCaretStops) = 0 then
+    Exit(0);
+  if not TryGetCaretRegion(Value, RegionStart, RegionFinish) then
+    Exit(NearestCaretStop(Value));
+  Result := RegionStart;
   for Index := High(FCaretStops) downto 0 do
-    if FCaretStops[Index] < Value then
+    if (FCaretStops[Index] >= RegionStart) and
+       (FCaretStops[Index] < Value) then
       Exit(FCaretStops[Index]);
 end;
 
 function TDirectWriteVerseEditor.NextCaretStop(Value: Integer): Integer;
 var
   Index: Integer;
+  RegionFinish: Integer;
+  RegionStart: Integer;
 begin
-  Result := GetTextLength;
   if Length(FCaretStops) = 0 then
     RefreshCaretStops;
+  if Length(FCaretStops) = 0 then
+    Exit(0);
+  if not TryGetCaretRegion(Value, RegionStart, RegionFinish) then
+    Exit(NearestCaretStop(Value));
+  Result := RegionFinish;
   for Index := 0 to High(FCaretStops) do
-    if FCaretStops[Index] > Value then
+    if (FCaretStops[Index] <= RegionFinish) and
+       (FCaretStops[Index] > Value) then
       Exit(FCaretStops[Index]);
 end;
 
@@ -271,25 +423,52 @@ procedure TDirectWriteVerseEditor.SetSelection(StartUTF16,
   LengthUTF16: Integer);
 var
   EndOffset: Integer;
+  RegionFinish: Integer;
+  RegionStart: Integer;
 begin
   RefreshCaretStops;
   EndOffset := StartUTF16 + LengthUTF16;
   FAnchorOffset := NearestCaretStop(StartUTF16);
-  FActiveOffset := NearestCaretStop(EndOffset);
+  if TryGetCaretRegion(FAnchorOffset, RegionStart, RegionFinish) then
+    FActiveOffset := NearestCaretStopInRegion(EndOffset, RegionStart,
+      RegionFinish)
+  else
+    FActiveOffset := FAnchorOffset;
   DoSelectionChanged;
 end;
 
 procedure TDirectWriteVerseEditor.SelectAll;
+var
+  RegionFinish: Integer;
+  RegionStart: Integer;
 begin
-  FAnchorOffset := 0;
-  FActiveOffset := GetTextLength;
+  RefreshCaretStops;
+  if Length(FCaretStops) = 0 then
+  begin
+    FAnchorOffset := 0;
+    FActiveOffset := 0;
+  end
+  else
+  begin
+    if not TryGetCaretRegion(FActiveOffset, RegionStart, RegionFinish) then
+      TryGetCaretRegion(FCaretStops[0], RegionStart, RegionFinish);
+    FAnchorOffset := RegionStart;
+    FActiveOffset := RegionFinish;
+  end;
   DoSelectionChanged;
 end;
 
 procedure TDirectWriteVerseEditor.SetCaret(Value: Integer;
   ExtendSelection: Boolean);
+var
+  RegionFinish: Integer;
+  RegionStart: Integer;
 begin
-  Value := NearestCaretStop(Value);
+  if ExtendSelection and
+     TryGetCaretRegion(FAnchorOffset, RegionStart, RegionFinish) then
+    Value := NearestCaretStopInRegion(Value, RegionStart, RegionFinish)
+  else
+    Value := NearestCaretStop(Value);
   if not ExtendSelection then
     FAnchorOffset := Value;
   FActiveOffset := Value;
@@ -298,25 +477,44 @@ end;
 
 procedure TDirectWriteVerseEditor.SetEditorDocument(
   const ADocument: IVerseVisualDocument);
+var
+  RegionFinish: Integer;
+  RegionStart: Integer;
 begin
   SetDocument(ADocument);
   SetLength(FCaretStops, 0);
   RefreshCaretStops;
   FAnchorOffset := NearestCaretStop(FAnchorOffset);
-  FActiveOffset := NearestCaretStop(FActiveOffset);
+  if TryGetCaretRegion(FAnchorOffset, RegionStart, RegionFinish) then
+    FActiveOffset := NearestCaretStopInRegion(FActiveOffset, RegionStart,
+      RegionFinish)
+  else
+    FActiveOffset := FAnchorOffset;
   UpdateInputBrokerPosition;
   Invalidate;
 end;
 
 procedure TDirectWriteVerseEditor.SetInteractionMode(
   Value: TVerseInteractionMode);
+var
+  RegionFinish: Integer;
+  RegionStart: Integer;
 begin
   if FMode = Value then
     Exit;
   FMode := Value;
   FDragging := False;
   if FMode = vimEdit then
+  begin
+    RefreshCaretStops;
+    FAnchorOffset := NearestCaretStop(FAnchorOffset);
+    if TryGetCaretRegion(FAnchorOffset, RegionStart, RegionFinish) then
+      FActiveOffset := NearestCaretStopInRegion(FActiveOffset, RegionStart,
+        RegionFinish)
+    else
+      FActiveOffset := FAnchorOffset;
     FocusInputBroker
+  end
   else
   begin
     FInputBroker.Visible := False;
@@ -465,6 +663,8 @@ procedure TDirectWriteVerseEditor.MoveCaretHorizontal(Direction: Integer;
   ExtendSelection, ByWord: Boolean);
 var
   DocText: UnicodeString;
+  FirstOffset: Integer;
+  LastOffset: Integer;
   NewOffset: Integer;
 begin
   if not ExtendSelection and (SelectionLength > 0) then
@@ -487,24 +687,29 @@ begin
   end
   else
   begin
+    if Length(FCaretStops) = 0 then
+      RefreshCaretStops;
+    if (Length(FCaretStops) = 0) or
+       not TryGetCaretRegion(NewOffset, FirstOffset, LastOffset) then
+      Exit;
     DocText := '';
     if Assigned(Document) then
       DocText := Document.Text;
     if Direction < 0 then
     begin
-      while (NewOffset > 0) and
+      while (NewOffset > FirstOffset) and
         not IsWordCodeUnit(DocText[NewOffset]) do
         Dec(NewOffset);
-      while (NewOffset > 0) and
+      while (NewOffset > FirstOffset) and
         IsWordCodeUnit(DocText[NewOffset]) do
         Dec(NewOffset);
     end
     else
     begin
-      while (NewOffset < Length(DocText)) and
+      while (NewOffset < LastOffset) and
         not IsWordCodeUnit(DocText[NewOffset + 1]) do
         Inc(NewOffset);
-      while (NewOffset < Length(DocText)) and
+      while (NewOffset < LastOffset) and
         IsWordCodeUnit(DocText[NewOffset + 1]) do
         Inc(NewOffset);
     end;
@@ -555,6 +760,8 @@ procedure TDirectWriteVerseEditor.BrokerKeyDown(Sender: TObject;
   var Key: Word; Shift: TShiftState);
 var
   BasicShift: TShiftState;
+  RegionFinish: Integer;
+  RegionStart: Integer;
 begin
   if FMode <> vimEdit then
     Exit;
@@ -575,9 +782,17 @@ begin
     VK_DOWN:
       MoveCaretVertical(1, ssShift in BasicShift);
     VK_HOME:
-      SetCaret(0, ssShift in BasicShift);
+      begin
+        RefreshCaretStops;
+        if TryGetCaretRegion(FActiveOffset, RegionStart, RegionFinish) then
+          SetCaret(RegionStart, ssShift in BasicShift);
+      end;
     VK_END:
-      SetCaret(GetTextLength, ssShift in BasicShift);
+      begin
+        RefreshCaretStops;
+        if TryGetCaretRegion(FActiveOffset, RegionStart, RegionFinish) then
+          SetCaret(RegionFinish, ssShift in BasicShift);
+      end;
     VK_A:
       if ssCtrl in BasicShift then
         SelectAll
@@ -666,17 +881,11 @@ begin
   if (Button <> mbLeft) or
      not HitTestTextOffset(Point(X, Y), Offset, Trailing, Inside) then
     Exit;
-  FDragging := True;
   RefreshCaretStops;
-  Offset := NearestCaretStop(Offset);
-  if ssShift in Shift then
-    FActiveOffset := Offset
-  else
-  begin
-    FAnchorOffset := Offset;
-    FActiveOffset := Offset;
-  end;
-  DoSelectionChanged;
+  if not IsInteractiveHitOffset(Offset, Trailing) then
+    Exit;
+  FDragging := True;
+  SetCaret(Offset, ssShift in Shift);
   FocusInputBroker;
 end;
 
@@ -685,6 +894,8 @@ procedure TDirectWriteVerseEditor.MouseMove(Shift: TShiftState;
 var
   Inside: Boolean;
   Offset: Integer;
+  RegionFinish: Integer;
+  RegionStart: Integer;
   Trailing: Boolean;
 begin
   if FMode <> vimEdit then
@@ -695,7 +906,10 @@ begin
   if FDragging and HitTestTextOffset(Point(X, Y), Offset, Trailing,
     Inside) then
   begin
-    FActiveOffset := NearestCaretStop(Offset);
+    if not TryGetCaretRegion(FAnchorOffset, RegionStart, RegionFinish) then
+      Exit;
+    FActiveOffset := NearestCaretStopInRegion(Offset, RegionStart,
+      RegionFinish);
     DoSelectionChanged;
   end;
 end;
@@ -716,17 +930,26 @@ procedure TDirectWriteVerseEditor.SelectWordAt(UTF16Offset: Integer);
 var
   DocText: UnicodeString;
   Finish: Integer;
+  FirstOffset: Integer;
+  LastOffset: Integer;
   Start: Integer;
 begin
   if not Assigned(Document) or (GetTextLength = 0) then
     Exit;
+  RefreshCaretStops;
+  if Length(FCaretStops) = 0 then
+    Exit;
+  UTF16Offset := NearestCaretStop(UTF16Offset);
+  if not TryGetCaretRegion(UTF16Offset, FirstOffset, LastOffset) then
+    Exit;
   DocText := Document.Text;
-  UTF16Offset := Min(UTF16Offset, Length(DocText) - 1);
+  UTF16Offset := Min(UTF16Offset, LastOffset - 1);
+  UTF16Offset := Max(UTF16Offset, FirstOffset);
   Start := UTF16Offset;
   Finish := UTF16Offset;
-  while (Start > 0) and IsWordCodeUnit(DocText[Start]) do
+  while (Start > FirstOffset) and IsWordCodeUnit(DocText[Start]) do
     Dec(Start);
-  while (Finish < Length(DocText)) and
+  while (Finish < LastOffset) and
     IsWordCodeUnit(DocText[Finish + 1]) do
     Inc(Finish);
   SetSelection(Start, Finish - Start);
@@ -745,7 +968,8 @@ begin
     Exit;
   end;
   CursorPoint := ScreenToClient(Mouse.CursorPos);
-  if HitTestTextOffset(CursorPoint, Offset, Trailing, Inside) then
+  if HitTestTextOffset(CursorPoint, Offset, Trailing, Inside) and
+     IsInteractiveHitOffset(Offset, Trailing) then
     SelectWordAt(Offset);
 end;
 

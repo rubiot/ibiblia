@@ -661,8 +661,21 @@ procedure AddDocumentObjectsForSelection(ADocument: TTheWordVerseDocument;
 var
   I, Finish, WordStart: Integer;
   Obj: TTheWordClipboardObjectV2;
+  TitleRanges: TTheWordTitleRangeArray;
+
+  function IsTitleAnchor(AOrdinal: Integer): Boolean;
+  var
+    TitleIndex: Integer;
+  begin
+    for TitleIndex := 0 to High(TitleRanges) do
+      if (TitleRanges[TitleIndex].OpenOrdinal = AOrdinal) or
+         (TitleRanges[TitleIndex].CloseOrdinal = AOrdinal) then
+        Exit(True);
+    Result := False;
+  end;
 begin
   Finish := AStart + ALength;
+  CollectTheWordTitleRanges(ADocument, TitleRanges);
   for I := 0 to ADocument.LexicalItemCount - 1 do
   begin
     WordStart := ADocument.LexicalProtectedStart(I);
@@ -678,7 +691,8 @@ begin
     end;
   end;
   for I := 0 to ADocument.OpaqueItemCount - 1 do
-    if (ADocument.OpaqueItems[I].Offset >= AStart) and
+    if not IsTitleAnchor(ADocument.OpaqueItems[I].Ordinal) and
+       (ADocument.OpaqueItems[I].Offset >= AStart) and
        (ADocument.OpaqueItems[I].Offset < Finish) then
     begin
       Obj.ObjectKind := twcokOpaque;
@@ -843,7 +857,19 @@ var
   Mark: TTheWordSemanticMark;
   ClipboardMark: TTheWordClipboardMarkV2;
   Obj: TTheWordClipboardObjectV2;
-  Finish, I, WordStart: Integer;
+  Finish, I, RangeIndex, WordStart: Integer;
+  TitleRanges: TTheWordTitleRangeArray;
+
+  function IsTitleAnchor(AOrdinal: Integer): Boolean;
+  var
+    TitleIndex: Integer;
+  begin
+    for TitleIndex := 0 to High(TitleRanges) do
+      if (TitleRanges[TitleIndex].OpenOrdinal = AOrdinal) or
+         (TitleRanges[TitleIndex].CloseOrdinal = AOrdinal) then
+        Exit(True);
+    Result := False;
+  end;
 begin
   Result := False;
   ARaw := '';
@@ -851,6 +877,11 @@ begin
      not IsValidRange(ADocument.VisibleText, AStartUTF16, ALengthUTF16) then
     Exit;
   Finish := AStartUTF16 + ALengthUTF16;
+  CollectTheWordTitleRanges(ADocument, TitleRanges);
+  for RangeIndex := 0 to High(TitleRanges) do
+    if (AStartUTF16 < TitleRanges[RangeIndex].EndOffset) and
+       (Finish > TitleRanges[RangeIndex].StartOffset) then
+      Exit;
 
   { A lexical object may be cut only with its complete protected word. }
   for I := 0 to ADocument.LexicalItemCount - 1 do
@@ -902,9 +933,10 @@ begin
         Obj.RawLexeme := ADocument.LexicalItems[I].RawLexeme;
         Obj.SourceOrder := ADocument.LexicalItems[I].Ordinal;
         Fragment.AddObject(Obj);
-      end;
+    end;
     for I := 0 to ADocument.OpaqueItemCount - 1 do
-      if not ((ADocument.OpaqueItems[I].Offset >= AStartUTF16) and
+      if IsTitleAnchor(ADocument.OpaqueItems[I].Ordinal) or
+         not ((ADocument.OpaqueItems[I].Offset >= AStartUTF16) and
               (ADocument.OpaqueItems[I].Offset < Finish)) then
       begin
         Obj.ObjectKind := twcokOpaque;

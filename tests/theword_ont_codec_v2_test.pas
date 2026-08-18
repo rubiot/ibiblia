@@ -25,6 +25,10 @@ type
     procedure AllFourSemanticPairsBecomeMarks;
     procedure LessThanWithoutClosingBracketRemainsText;
     procedure UnknownAndMalformedTagsAreOpaqueAndLiteral;
+    procedure TitleRangesCollectAllLevelsInSourceOrder;
+    procedure TitleRangesUseNestedStackAndIgnoreMalformedCase;
+    procedure TitleRangesProtectTextButAllowBodyAtEnd;
+    procedure SemanticEditOutsideTitlePreservesLiteralRaw;
     procedure StrongAndMorphologyItemsKeepOrderAndRawLexemes;
     procedure MalformedStrongIsOpaque;
     procedure NewSemanticMarksUseCanonicalLexemes;
@@ -188,6 +192,123 @@ begin
       Ord(Document.OpaqueItems[2].Kind));
     AssertUnicodeEquals('literal round trip', Raw,
       FCodec.EncodeVerse(Document));
+  finally
+    Document.Free;
+  end;
+end;
+
+procedure TTheWordOntCodecV2Tests.TitleRangesCollectAllLevelsInSourceOrder;
+var
+  Document: TTheWordVerseDocument;
+  Ranges: TTheWordTitleRangeArray;
+begin
+  Document := FCodec.DecodeVerse(
+    '<TS>A<Ts> <TS0>B<Ts> <TS1>C<Ts> <TS2>D<Ts> <TS3>E<Ts>');
+  try
+    AssertEquals('all title levels collected', 5,
+      CollectTheWordTitleRanges(Document, Ranges));
+    AssertEquals('TS start', 0, Ranges[0].StartOffset);
+    AssertEquals('TS end', 1, Ranges[0].EndOffset);
+    AssertEquals('TS default level', 0, Ranges[0].Level);
+    AssertEquals('TS open ordinal', 0, Ranges[0].OpenOrdinal);
+    AssertEquals('TS close ordinal', 1, Ranges[0].CloseOrdinal);
+    AssertEquals('TS0 level', 0, Ranges[1].Level);
+    AssertEquals('TS1 level', 1, Ranges[2].Level);
+    AssertEquals('TS2 level', 2, Ranges[3].Level);
+    AssertEquals('TS3 level', 3, Ranges[4].Level);
+    AssertEquals('last title start follows visible separators', 8,
+      Ranges[4].StartOffset);
+    AssertEquals('last title end', 9, Ranges[4].EndOffset);
+    AssertTrue('ranges retain source order',
+      (Ranges[0].OpenOrdinal < Ranges[1].OpenOrdinal) and
+      (Ranges[1].OpenOrdinal < Ranges[2].OpenOrdinal) and
+      (Ranges[2].OpenOrdinal < Ranges[3].OpenOrdinal) and
+      (Ranges[3].OpenOrdinal < Ranges[4].OpenOrdinal));
+  finally
+    Document.Free;
+  end;
+end;
+
+procedure TTheWordOntCodecV2Tests.TitleRangesUseNestedStackAndIgnoreMalformedCase;
+var
+  Document: TTheWordVerseDocument;
+  Ranges: TTheWordTitleRangeArray;
+  Raw: UnicodeString;
+begin
+  Raw := '<TS>A<TS2>B<Ts>C<Ts> <ts>x</ts> <TS4>y<Ts> <TS>open';
+  Document := FCodec.DecodeVerse(Raw);
+  try
+    AssertEquals('only balanced case-sensitive title pairs', 2,
+      CollectTheWordTitleRanges(Document, Ranges));
+    AssertEquals('outer title is first by opening order', 0,
+      Ranges[0].StartOffset);
+    AssertEquals('outer title includes nested title text', 3,
+      Ranges[0].EndOffset);
+    AssertEquals('outer level', 0, Ranges[0].Level);
+    AssertEquals('inner title start', 1, Ranges[1].StartOffset);
+    AssertEquals('inner title end', 2, Ranges[1].EndOffset);
+    AssertEquals('inner level', 2, Ranges[1].Level);
+    AssertTrue('nested ranges are returned in opening order',
+      Ranges[0].OpenOrdinal < Ranges[1].OpenOrdinal);
+    AssertEquals('all title-looking tokens remain opaque', 9,
+      Document.OpaqueItemCount);
+    AssertUnicodeEquals('malformed and wrong-case lexemes remain literal',
+      Raw, FCodec.EncodeVerse(Document));
+  finally
+    Document.Free;
+  end;
+end;
+
+procedure TTheWordOntCodecV2Tests.TitleRangesProtectTextButAllowBodyAtEnd;
+var
+  Document: TTheWordVerseDocument;
+  Ranges: TTheWordTitleRangeArray;
+  Rejected: Boolean;
+begin
+  Document := FCodec.DecodeVerse('<TS>Heading<Ts>body');
+  try
+    AssertEquals('one protected title', 1,
+      CollectTheWordTitleRanges(Document, Ranges));
+    AssertFalse('exact title replacement is protected',
+      Document.CanReplaceVisibleText(0, 7));
+    AssertFalse('insertion inside title is protected',
+      Document.CanReplaceVisibleText(3, 0));
+    AssertFalse('range crossing title end is protected',
+      Document.CanReplaceVisibleText(6, 2));
+
+    Rejected := False;
+    try
+      Document.ReplaceVisibleText(0, 7, 'Other');
+    except
+      on E: ETheWordOntProtectedEdit do
+        Rejected := True;
+    end;
+    AssertTrue('exact title replacement raises protected edit', Rejected);
+    AssertFalse('rejected title replacement is atomic', Document.Modified);
+
+    AssertTrue('body begins at the title end offset',
+      Document.CanReplaceVisibleText(7, 0));
+    Document.ReplaceVisibleText(7, 0, 'New ');
+    AssertUnicodeEquals('body insertion does not enter title',
+      '<TS>Heading<Ts>New body', FCodec.EncodeVerse(Document));
+    AssertEquals('title end remains before inserted body', 1,
+      CollectTheWordTitleRanges(Document, Ranges));
+    AssertEquals('title range did not absorb body insertion', 7,
+      Ranges[0].EndOffset);
+  finally
+    Document.Free;
+  end;
+end;
+
+procedure TTheWordOntCodecV2Tests.SemanticEditOutsideTitlePreservesLiteralRaw;
+var
+  Document: TTheWordVerseDocument;
+begin
+  Document := FCodec.DecodeVerse('<TS1>Heading<Ts> body');
+  try
+    Document.AddSemanticMark(twsmItalic, 8, 12);
+    AssertUnicodeEquals('literal title surrounds regenerated body markup',
+      '<TS1>Heading<Ts> <FI>body<Fi>', FCodec.EncodeVerse(Document));
   finally
     Document.Free;
   end;

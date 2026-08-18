@@ -64,6 +64,16 @@ type
     tworkUnknown
   );
 
+  TTheWordTitleRange = record
+    StartOffset: Integer;
+    EndOffset: Integer;
+    Level: Integer;
+    OpenOrdinal: Integer;
+    CloseOrdinal: Integer;
+  end;
+
+  TTheWordTitleRangeArray = array of TTheWordTitleRange;
+
   { Offsets are zero-based UTF-16 code-unit offsets between characters. }
   TTheWordSemanticMark = class
   private
@@ -273,6 +283,8 @@ function TheWordCanonicalOpen(AKind: TTheWordSemanticKind): UnicodeString;
 function TheWordCanonicalClose(AKind: TTheWordSemanticKind): UnicodeString;
 function TheWordClassifyOntRecord(const ARaw: UnicodeString):
   TTheWordOntRecordKind;
+function CollectTheWordTitleRanges(ADocument: TTheWordVerseDocument;
+  out ARanges: TTheWordTitleRangeArray): Integer;
 
 implementation
 
@@ -303,6 +315,14 @@ type
     OpenEvent: TTheWordInlineEvent;
   end;
 
+  TPendingTitle = record
+    StartOffset: Integer;
+    Level: Integer;
+    OpenOrdinal: Integer;
+  end;
+
+  TPendingTitleArray = array of TPendingTitle;
+
   TPhysicalLine = class
   public
     Content: RawByteString;
@@ -332,6 +352,121 @@ begin
     twsmOldTestamentQuote: Result := '<Fo>';
     twsmUnderline: Result := '<Fu>';
   end;
+end;
+
+function TheWordTitleOpenLevel(const ARaw: UnicodeString;
+  out ALevel: Integer): Boolean;
+begin
+  Result := True;
+  if (ARaw = '<TS>') or (ARaw = '<TS0>') then
+    ALevel := 0
+  else if ARaw = '<TS1>' then
+    ALevel := 1
+  else if ARaw = '<TS2>' then
+    ALevel := 2
+  else if ARaw = '<TS3>' then
+    ALevel := 3
+  else
+  begin
+    ALevel := 0;
+    Result := False;
+  end;
+end;
+
+function CollectTheWordTitleRanges(ADocument: TTheWordVerseDocument;
+  out ARanges: TTheWordTitleRangeArray): Integer;
+var
+  EventIndex, Level, StackCount, RangeIndex, SortIndex: Integer;
+  Event: TTheWordInlineEvent;
+  Stack: TPendingTitleArray;
+  Pending: TPendingTitle;
+  SwapRange: TTheWordTitleRange;
+begin
+  ARanges := nil;
+  if ADocument = nil then
+    Exit(0);
+
+  Stack := nil;
+  StackCount := 0;
+  for EventIndex := 0 to ADocument.FEvents.Count - 1 do
+  begin
+    Event := TTheWordInlineEvent(ADocument.FEvents[EventIndex]);
+    if (Event.Kind <> twiekOpaque) then
+      Continue;
+
+    if TheWordTitleOpenLevel(Event.RawLexeme, Level) then
+    begin
+      SetLength(Stack, StackCount + 1);
+      Stack[StackCount].StartOffset := Event.Offset;
+      Stack[StackCount].Level := Level;
+      Stack[StackCount].OpenOrdinal := Event.Ordinal;
+      Inc(StackCount);
+    end
+    else if Event.RawLexeme = '<Ts>' then
+    begin
+      if StackCount = 0 then
+        Continue;
+      Dec(StackCount);
+      Pending := Stack[StackCount];
+      SetLength(Stack, StackCount);
+      if Event.Offset < Pending.StartOffset then
+        Continue;
+
+      RangeIndex := Length(ARanges);
+      SetLength(ARanges, RangeIndex + 1);
+      ARanges[RangeIndex].StartOffset := Pending.StartOffset;
+      ARanges[RangeIndex].EndOffset := Event.Offset;
+      ARanges[RangeIndex].Level := Pending.Level;
+      ARanges[RangeIndex].OpenOrdinal := Pending.OpenOrdinal;
+      ARanges[RangeIndex].CloseOrdinal := Event.Ordinal;
+    end;
+  end;
+
+  { Nested titles close in reverse order. Expose every result in source/open
+    order so consumers never have to depend on that implementation detail. }
+  for RangeIndex := 1 to High(ARanges) do
+  begin
+    SortIndex := RangeIndex;
+    while (SortIndex > 0) and
+          (ARanges[SortIndex - 1].OpenOrdinal >
+           ARanges[SortIndex].OpenOrdinal) do
+    begin
+      SwapRange := ARanges[SortIndex - 1];
+      ARanges[SortIndex - 1] := ARanges[SortIndex];
+      ARanges[SortIndex] := SwapRange;
+      Dec(SortIndex);
+    end;
+  end;
+  Result := Length(ARanges);
+end;
+
+function IsTheWordTitleAnchor(AOrdinal: Integer;
+  const ARanges: TTheWordTitleRangeArray): Boolean;
+var
+  Index: Integer;
+begin
+  for Index := 0 to High(ARanges) do
+    if (ARanges[Index].OpenOrdinal = AOrdinal) or
+       (ARanges[Index].CloseOrdinal = AOrdinal) then
+      Exit(True);
+  Result := False;
+end;
+
+function KeepTheWordTitleAnchorAtBodyInsertion(AOrdinal, AOffset: Integer;
+  const ARanges: TTheWordTitleRangeArray): Boolean;
+var
+  Index: Integer;
+begin
+  for Index := 0 to High(ARanges) do
+    if ARanges[Index].EndOffset = AOffset then
+    begin
+      if ARanges[Index].CloseOrdinal = AOrdinal then
+        Exit(True);
+      if (ARanges[Index].StartOffset = ARanges[Index].EndOffset) and
+         (ARanges[Index].OpenOrdinal = AOrdinal) then
+        Exit(True);
+    end;
+  Result := False;
 end;
 
 function NewInlineEvent(ADocument: TTheWordVerseDocument;
@@ -1042,7 +1177,10 @@ end;
 function TTheWordVerseDocument.CanReplaceVisibleText(AStartUTF16,
   ALengthUTF16: Integer): Boolean;
 var
-  Anchor, EndOffset, Index, WordStart: Integer;
+  Anchor, EndOffset, Index, RangeIndex, WordStart: Integer;
+  TitleRanges: TTheWordTitleRangeArray;
+  TitleRange: TTheWordTitleRange;
+  OpaqueItem: TTheWordOpaqueItem;
 begin
   if not FCanEdit then
     Exit(False);
@@ -1056,9 +1194,34 @@ begin
      not IsUtf16Boundary(FVisibleText, EndOffset) then
     Exit(False);
 
+  CollectTheWordTitleRanges(Self, TitleRanges);
+  for RangeIndex := 0 to High(TitleRanges) do
+  begin
+    TitleRange := TitleRanges[RangeIndex];
+    if ALengthUTF16 = 0 then
+    begin
+      { EndOffset is the beginning of the Bible text that follows a title. }
+      if (AStartUTF16 >= TitleRange.StartOffset) and
+         (AStartUTF16 < TitleRange.EndOffset) then
+        Exit(False);
+    end
+    else if TitleRange.StartOffset = TitleRange.EndOffset then
+    begin
+      if (AStartUTF16 < TitleRange.StartOffset) and
+         (EndOffset > TitleRange.EndOffset) then
+        Exit(False);
+    end
+    else if (AStartUTF16 < TitleRange.EndOffset) and
+            (EndOffset > TitleRange.StartOffset) then
+      Exit(False);
+  end;
+
   for Index := 0 to FOpaqueItems.Count - 1 do
   begin
-    Anchor := TTheWordOpaqueItem(FOpaqueItems[Index]).FOffset;
+    OpaqueItem := TTheWordOpaqueItem(FOpaqueItems[Index]);
+    if IsTheWordTitleAnchor(OpaqueItem.FOrdinal, TitleRanges) then
+      Continue;
+    Anchor := OpaqueItem.FOffset;
     if ((ALengthUTF16 = 0) and (Anchor = AStartUTF16)) or
        ((ALengthUTF16 > 0) and (Anchor > AStartUTF16) and
         (Anchor < EndOffset)) then
@@ -1148,6 +1311,7 @@ var
   Lexical: TTheWordLexicalItem;
   Opaque: TTheWordOpaqueItem;
   Structural: TTheWordStructuralItem;
+  TitleRanges: TTheWordTitleRangeArray;
 begin
   if (AStartUTF16 < 0) or (ALengthUTF16 < 0) or
      (AStartUTF16 > Length(FVisibleText)) or
@@ -1170,6 +1334,7 @@ begin
     raise ETheWordOntProtectedEdit.CreateFmt(
       'Replacement intersects a protected ONT region at UTF-16 range [%d,%d)',
       [AStartUTF16, EndOffset]);
+  CollectTheWordTitleRanges(Self, TitleRanges);
 
   ReplacementLength := Length(AReplacement);
   Candidate := Copy(FVisibleText, 1, AStartUTF16) + AReplacement +
@@ -1210,8 +1375,11 @@ begin
   for Index := 0 to FOpaqueItems.Count - 1 do
   begin
     Opaque := TTheWordOpaqueItem(FOpaqueItems[Index]);
-    Opaque.FOffset := TransformProtectedAnchor(Opaque.FOffset,
-      AStartUTF16, EndOffset, ReplacementLength);
+    if not ((ALengthUTF16 = 0) and
+      KeepTheWordTitleAnchorAtBodyInsertion(Opaque.FOrdinal,
+        AStartUTF16, TitleRanges)) then
+      Opaque.FOffset := TransformProtectedAnchor(Opaque.FOffset,
+        AStartUTF16, EndOffset, ReplacementLength);
   end;
 
   for Index := 0 to FStructuralItems.Count - 1 do
@@ -1231,7 +1399,13 @@ begin
       twiekSemanticClose:
         if Event.SemanticMark <> nil then
           Event.Offset := Event.SemanticMark.FEndOffset;
-      twiekLexical, twiekOpaque, twiekStructural:
+      twiekOpaque:
+        if not ((ALengthUTF16 = 0) and
+          KeepTheWordTitleAnchorAtBodyInsertion(Event.Ordinal,
+            AStartUTF16, TitleRanges)) then
+          Event.Offset := TransformProtectedAnchor(Event.Offset,
+            AStartUTF16, EndOffset, ReplacementLength);
+      twiekLexical, twiekStructural:
         Event.Offset := TransformProtectedAnchor(Event.Offset,
           AStartUTF16, EndOffset, ReplacementLength);
     end;

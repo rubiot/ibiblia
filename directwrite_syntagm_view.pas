@@ -776,6 +776,8 @@ begin
 end;
 
 function TDirectWriteSyntagmView.BuildLayout(ADpi: Integer): Boolean;
+const
+  MIN_FONT_SIZE_DIP = 1.0;
 var
   BaseFontSize: Single;
   BaseFontStyle: LongInt;
@@ -792,6 +794,7 @@ var
   LocaleName: UnicodeString;
   Range: TDWriteTextRange;
   Span: TVisualSpan;
+  SpanFontSize: Single;
   DocumentText: UnicodeString;
 begin
   Result := False;
@@ -853,6 +856,10 @@ begin
       Continue;
     Range.StartPosition := Span.StartUTF16;
     Range.Length := Span.LengthUTF16;
+    SpanFontSize := Max(Single(MIN_FONT_SIZE_DIP), BaseFontSize +
+      Span.Style.FontSizeDelta * (96.0 / 72.0));
+    if Span.Style.FontSizeDelta <> 0 then
+      FTextLayout.SetFontSize(SpanFontSize, Range);
     if vtsfBold in Span.Style.Flags then
       FTextLayout.SetFontWeight(700, Range);
     if vtsfItalic in Span.Style.Flags then
@@ -864,7 +871,7 @@ begin
       SuperscriptText := Copy(DocumentText, Span.StartUTF16 + 1,
         Span.LengthUTF16);
       Superscript := TDirectWriteSuperscriptInline.Create(FDWriteFactory,
-        SuperscriptText, FamilyName, LocaleName, BaseFontSize, Span.Style,
+        SuperscriptText, FamilyName, LocaleName, SpanFontSize, Span.Style,
         Span.Direction, Index, SuperscriptStatus);
       if Succeeded(SuperscriptStatus) then
       begin
@@ -876,13 +883,15 @@ begin
         else
         begin
           SuperscriptInterface := nil;
-          FTextLayout.SetFontSize(BaseFontSize * 0.72, Range);
+          FTextLayout.SetFontSize(Max(Single(MIN_FONT_SIZE_DIP),
+            SpanFontSize * 0.72), Range);
         end;
       end
       else
       begin
         Superscript.Free;
-        FTextLayout.SetFontSize(BaseFontSize * 0.72, Range);
+        FTextLayout.SetFontSize(Max(Single(MIN_FONT_SIZE_DIP),
+          SpanFontSize * 0.72), Range);
       end;
     end;
   end;

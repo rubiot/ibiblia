@@ -18,6 +18,10 @@ type
     procedure OpaqueAndLexicalObjectsProtectTextEdits;
     procedure VisualAdapterCombinesOverlappingStyles;
     procedure VisualAdapterMapsSyntheticProtectedSeparators;
+    procedure TitleRendersAsProtectedChapterHeading;
+    procedure TitleCannotBeEditedFormattedOrCutVisually;
+    procedure MultipleTitleLevelsAndMalformedTitleRemainExplicit;
+    procedure TerminalEmptyTitleKeepsOffsetMapReversible;
     procedure ProtectedAnchorsAllowAdjacentButNotCrossingEdits;
     procedure RawFallbackReentersTheSameCodecSession;
   end;
@@ -147,6 +151,187 @@ begin
     AssertTrue(vtsfItalic in Style.Flags);
     AssertTrue(Style.HasForegroundColor);
     AssertEquals(LongInt(clRed), Style.ForegroundColor);
+  finally
+    Source.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
+  TitleRendersAsProtectedChapterHeading;
+const
+  RAW: UnicodeString = '<TS>Prefácio<Ts>Revelação';
+var
+  Codec: ITheWordOntCodecV2;
+  DocumentLength, DocumentOffset, LayoutOffset, TitleLength: Integer;
+  Source: TTheWordVerseDocument;
+  Span: TVisualSpan;
+  Visual: IVerseVisualDocument;
+begin
+  Codec := TTheWordOntCodecV2.Create;
+  Source := Codec.DecodeVerse(RAW);
+  try
+    TitleLength := Length(UnicodeString('Prefácio'));
+    Visual := BuildTheWordVerseVisualDocument(Source, tdLeftToRight, 11);
+    AssertEquals(UnicodeString('Prefácio') + #10 + 'Revelação',
+      Visual.Text);
+    Span := Visual.Spans[0];
+    AssertFalse('title span is not interactive', Span.Interactive);
+    AssertTrue('default title is bold', vtsfBold in Span.Style.Flags);
+    AssertEquals('default title grows by two points', 2,
+      Span.Style.FontSizeDelta);
+    AssertTrue('default title uses chapter heading color',
+      Span.Style.HasForegroundColor);
+    AssertEquals('default title annotation', UnicodeString('title-level-0'),
+      Span.Annotation);
+    AssertTrue(TryTheWordDocumentToLayoutOffset(Visual, TitleLength,
+      twoaBefore, LayoutOffset));
+    AssertEquals('title closes before synthetic newline', TitleLength,
+      LayoutOffset);
+    AssertTrue(TryTheWordDocumentToLayoutOffset(Visual, TitleLength,
+      twoaAfter, LayoutOffset));
+    AssertEquals('body begins after synthetic newline', TitleLength + 1,
+      LayoutOffset);
+    AssertTrue(TryTheWordLayoutRangeToDocument(Visual, TitleLength + 1,
+      Length(UnicodeString('Revelação')), DocumentOffset, DocumentLength));
+    AssertEquals('body document offset follows title text', TitleLength,
+      DocumentOffset);
+    AssertEquals(Length(UnicodeString('Revelação')), DocumentLength);
+    AssertEquals('visualization never changes raw title', RAW,
+      Codec.EncodeVerse(Source));
+  finally
+    Source.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
+  TitleCannotBeEditedFormattedOrCutVisually;
+const
+  RAW: UnicodeString = '<TS>Prefácio<Ts>Revelação';
+var
+  InsertedLength: Integer;
+  Payload: string;
+  Plain: UnicodeString;
+  Session: TTheWordWysiwygSessionV2;
+  TitleLength: Integer;
+  UsedPrivate: Boolean;
+begin
+  TitleLength := Length(UnicodeString('Prefácio'));
+  Session := TTheWordWysiwygSessionV2.Create(RAW);
+  try
+    AssertFalse('title text is protected from replacement',
+      Session.CanReplaceText(0, TitleLength));
+    AssertFalse('title text cannot receive FI/FR/FO/FU',
+      Session.CanApplySemantic(0, TitleLength));
+    AssertFalse('visual Cut cannot remove a title',
+      Session.CutSelection(0, TitleLength, Plain, Payload));
+    AssertFalse('rejected Cut creates no undo entry', Session.CanUndo);
+    AssertTrue('first body word can be copied without its closing title tag',
+      Session.CopySelection(TitleLength, Length(UnicodeString('Revelação')),
+        Plain, Payload));
+    AssertEquals(UnicodeString('Revelação'), Plain);
+    AssertEquals('clipboard payload excludes structural title lexemes', 0,
+      Pos('<Ts>', Payload));
+    AssertTrue('first body character can be cut without deleting Ts',
+      Session.CutSelection(TitleLength, 1, Plain, Payload));
+    AssertEquals(UnicodeString('<TS>Prefácio<Ts>evelação'), Session.RawText);
+    AssertTrue(Session.Undo);
+    AssertEquals(RAW, Session.RawText);
+    AssertTrue('paste at the body boundary keeps Ts before inserted text',
+      Session.Paste(TitleLength, 0, '', 'X', InsertedLength,
+        UsedPrivate));
+    AssertEquals(1, InsertedLength);
+    AssertFalse(UsedPrivate);
+    AssertEquals(UnicodeString('<TS>Prefácio<Ts>XRevelação'),
+      Session.RawText);
+    AssertTrue(Session.Undo);
+    AssertEquals(RAW, Session.RawText);
+    AssertTrue('body is editable immediately after closing Ts',
+      Session.CanReplaceText(TitleLength, 1));
+    AssertTrue('body accepts semantic formatting',
+      Session.ApplySemantic(twsmItalic, TitleLength,
+        Length(UnicodeString('Revelação'))));
+    AssertEquals(UnicodeString('<TS>Prefácio<Ts><FI>Revelação<Fi>'),
+      Session.RawText);
+    AssertTrue('semantic-only body edit keeps existing Associations safe',
+      Session.ChangesAreSemanticOnly);
+  finally
+    Session.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
+  MultipleTitleLevelsAndMalformedTitleRemainExplicit;
+var
+  Codec: ITheWordOntCodecV2;
+  Source: TTheWordVerseDocument;
+  Visual: IVerseVisualDocument;
+begin
+  Codec := TTheWordOntCodecV2.Create;
+  Source := Codec.DecodeVerse('<TS1>A<Ts><TS2>B<Ts>C');
+  try
+    Visual := BuildTheWordVerseVisualDocument(Source, tdLeftToRight, 12);
+    AssertEquals(UnicodeString('A') + #10 + 'B' + #10 + 'C', Visual.Text);
+    AssertTrue(vtsfBold in Visual.Spans[0].Style.Flags);
+    AssertTrue(vtsfItalic in Visual.Spans[0].Style.Flags);
+    AssertEquals(1, Visual.Spans[0].Style.FontSizeDelta);
+    AssertFalse(Visual.Spans[0].Interactive);
+    AssertEquals(UnicodeString('title-level-1'),
+      Visual.Spans[0].Annotation);
+    AssertEquals(UnicodeString('<TS1>A<Ts><TS2>B<Ts>C'),
+      Codec.EncodeVerse(Source));
+  finally
+    Source.Free;
+  end;
+
+  Source := Codec.DecodeVerse('<TS>Unclosed body');
+  try
+    Visual := BuildTheWordVerseVisualDocument(Source, tdLeftToRight, 13);
+    AssertEquals('malformed title text is never silently hidden',
+      UnicodeString('Unclosed body'), Visual.Text);
+    AssertTrue('malformed title does not masquerade as a protected heading',
+      Visual.Spans[0].Interactive);
+    AssertEquals(UnicodeString('<TS>Unclosed body'),
+      Codec.EncodeVerse(Source));
+  finally
+    Source.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
+  TerminalEmptyTitleKeepsOffsetMapReversible;
+const
+  RAW: UnicodeString = 'body<TS><Ts>';
+var
+  Codec: ITheWordOntCodecV2;
+  DocumentOffset, LayoutOffset: Integer;
+  Source: TTheWordVerseDocument;
+  Visual: IVerseVisualDocument;
+begin
+  Codec := TTheWordOntCodecV2.Create;
+  Source := Codec.DecodeVerse(RAW);
+  try
+    Visual := BuildTheWordVerseVisualDocument(Source, tdLeftToRight, 14);
+    AssertEquals('terminal empty title emits its structural line break',
+      UnicodeString('body') + #10, Visual.Text);
+
+    AssertTrue(TryTheWordDocumentToLayoutOffset(Visual, 4, twoaBefore,
+      LayoutOffset));
+    AssertEquals('before terminal title break', 4, LayoutOffset);
+    AssertTrue(TryTheWordLayoutToDocumentOffset(Visual, LayoutOffset,
+      DocumentOffset));
+    AssertEquals('before affinity reverses to document end', 4,
+      DocumentOffset);
+
+    AssertTrue(TryTheWordDocumentToLayoutOffset(Visual, 4, twoaAfter,
+      LayoutOffset));
+    AssertEquals('after terminal title break is a valid layout offset',
+      Length(Visual.Text), LayoutOffset);
+    AssertTrue(TryTheWordLayoutToDocumentOffset(Visual, LayoutOffset,
+      DocumentOffset));
+    AssertEquals('after affinity reverses to document end', 4,
+      DocumentOffset);
+    AssertEquals('raw terminal title remains literal', RAW,
+      Codec.EncodeVerse(Source));
   finally
     Source.Free;
   end;
