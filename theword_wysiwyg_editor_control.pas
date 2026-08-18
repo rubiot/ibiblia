@@ -7,7 +7,8 @@ interface
 
 uses
   Classes, SysUtils, Controls, Graphics, SynEdit, directwrite_verse_editor,
-  theword_ont_codec_v2, theword_wysiwyg_session_v2, text_direction;
+  verse_visual_document, theword_ont_codec_v2, theword_wysiwyg_session_v2,
+  text_direction;
 
 type
   TTheWordWysiwygEditorControl = class;
@@ -30,6 +31,7 @@ type
     FRawMode: Boolean;
     FSession: TTheWordWysiwygSessionV2;
     FUpdating: Boolean;
+    FVisualDocument: IVerseVisualDocument;
     function GetCapability: TTheWordLayerCapability;
     function GetChangesAreSemanticOnly: Boolean;
     function GetModified: Boolean;
@@ -43,7 +45,7 @@ type
     procedure DirectCommand(Sender: TObject; Command: TVerseEditorCommand);
     procedure DirectReplaceText(Sender: TObject; StartUTF16,
       LengthUTF16: Integer; const Replacement: UnicodeString;
-      var Accepted: Boolean);
+      var Accepted: Boolean; var NewCaretUTF16: Integer);
     procedure DirectSelectionChanged(Sender: TObject; StartUTF16,
       LengthUTF16: Integer);
     procedure DoChanged;
@@ -55,6 +57,10 @@ type
     procedure SetEditable(AValue: Boolean);
     procedure SetText(const AValue: string);
     function SyncRawEditor: Boolean;
+    function TryGetDocumentSelection(out AStartUTF16,
+      ALengthUTF16: Integer): Boolean;
+    function TrySetDocumentSelection(AStartUTF16,
+      ALengthUTF16: Integer): Boolean;
   protected
     procedure Resize; override;
   public
@@ -88,8 +94,7 @@ type
 implementation
 
 uses
-  LCLType, Clipbrd, verse_visual_document,
-  theword_clipboard_v2, theword_verse_visual_adapter_v2,
+  LCLType, Clipbrd, theword_clipboard_v2, theword_verse_visual_adapter_v2,
   theword_syntax_highlighter;
 
 constructor TTheWordWysiwygEditorControl.Create(AOwner: TComponent);
@@ -141,6 +146,7 @@ procedure TTheWordWysiwygEditorControl.SetText(const AValue: string);
 begin
   FUpdating := True;
   try
+    FVisualDocument := nil;
     FreeAndNil(FSession);
     FLoadedRaw := UTF8Decode(AValue);
     FSession := TTheWordWysiwygSessionV2.Create(FLoadedRaw);
@@ -197,19 +203,57 @@ begin
 end;
 
 function TTheWordWysiwygEditorControl.GetSelectionStart: Integer;
+var
+  MappedLength: Integer;
 begin
-  if FRawMode or not Assigned(FDirectEditor) then
-    Result := 0
-  else
-    Result := FDirectEditor.SelectionStart;
+  Result := 0;
+  if FRawMode or not TryGetDocumentSelection(Result, MappedLength) then
+    Result := 0;
 end;
 
 function TTheWordWysiwygEditorControl.GetSelectionLength: Integer;
+var
+  StartUTF16: Integer;
 begin
-  if FRawMode or not Assigned(FDirectEditor) then
-    Result := 0
+  Result := 0;
+  if FRawMode or not TryGetDocumentSelection(StartUTF16, Result) then
+    Result := 0;
+end;
+
+function TTheWordWysiwygEditorControl.TryGetDocumentSelection(
+  out AStartUTF16, ALengthUTF16: Integer): Boolean;
+begin
+  AStartUTF16 := 0;
+  ALengthUTF16 := 0;
+  Result := Assigned(FDirectEditor) and Assigned(FVisualDocument) and
+    TryTheWordLayoutRangeToDocument(FVisualDocument,
+      FDirectEditor.SelectionStart, FDirectEditor.SelectionLength,
+      AStartUTF16, ALengthUTF16);
+end;
+
+function TTheWordWysiwygEditorControl.TrySetDocumentSelection(
+  AStartUTF16, ALengthUTF16: Integer): Boolean;
+var
+  LayoutStart, LayoutFinish: Integer;
+begin
+  Result := Assigned(FDirectEditor) and Assigned(FVisualDocument) and
+    (AStartUTF16 >= 0) and (ALengthUTF16 >= 0);
+  if not Result then
+    Exit;
+  if ALengthUTF16 = 0 then
+  begin
+    Result := TryTheWordDocumentToLayoutOffset(FVisualDocument,
+      AStartUTF16, twoaAfter, LayoutStart);
+    LayoutFinish := LayoutStart;
+  end
   else
-    Result := FDirectEditor.SelectionLength;
+    Result := TryTheWordDocumentToLayoutOffset(FVisualDocument,
+      AStartUTF16, twoaAfter, LayoutStart) and
+      TryTheWordDocumentToLayoutOffset(FVisualDocument,
+        AStartUTF16 + ALengthUTF16, twoaBefore, LayoutFinish) and
+      (LayoutFinish >= LayoutStart);
+  if Result then
+    FDirectEditor.SetSelection(LayoutStart, LayoutFinish - LayoutStart);
 end;
 
 procedure TTheWordWysiwygEditorControl.DoChanged;
@@ -302,30 +346,44 @@ end;
 
 procedure TTheWordWysiwygEditorControl.RefreshDirectDocument;
 var
+  DocumentLength, DocumentStart: Integer;
+  HadSelection: Boolean;
   Visual: IVerseVisualDocument;
 begin
   if not Assigned(FSession) then
     Exit;
+  HadSelection := TryGetDocumentSelection(DocumentStart, DocumentLength);
   Visual := BuildTheWordVerseVisualDocument(FSession.Document,
     FBaseDirection, FSession.Revision);
+  FVisualDocument := Visual;
   FDirectEditor.SetEditorDocument(Visual);
+  if HadSelection then
+    TrySetDocumentSelection(DocumentStart, DocumentLength);
 end;
 
 procedure TTheWordWysiwygEditorControl.DirectReplaceText(Sender: TObject;
   StartUTF16, LengthUTF16: Integer; const Replacement: UnicodeString;
-  var Accepted: Boolean);
+  var Accepted: Boolean; var NewCaretUTF16: Integer);
+var
+  DocumentLength, DocumentStart, DocumentCaret: Integer;
 begin
   Accepted := False;
   try
     Accepted := FEditable and Assigned(FSession) and
-      FSession.ReplaceText(StartUTF16, LengthUTF16, Replacement);
+      TryTheWordLayoutRangeToDocument(FVisualDocument, StartUTF16,
+        LengthUTF16, DocumentStart, DocumentLength) and
+      FSession.ReplaceText(DocumentStart, DocumentLength, Replacement);
   except
     on E: ETheWordOntProtectedEdit do Accepted := False;
     on E: ETheWordOntCodec do Accepted := False;
   end;
   if Accepted then
   begin
+    DocumentCaret := DocumentStart + Length(Replacement);
     RefreshDirectDocument;
+    if not TryTheWordDocumentToLayoutOffset(FVisualDocument,
+      DocumentCaret, twoaAfter, NewCaretUTF16) then
+      NewCaretUTF16 := StartUTF16 + Length(Replacement);
     DoChanged;
   end
   else
@@ -378,6 +436,7 @@ end;
 procedure TTheWordWysiwygEditorControl.DirectClipboardCopy(Sender: TObject;
   StartUTF16, LengthUTF16: Integer; ACut: Boolean; var Handled: Boolean);
 var
+  DocumentLength, DocumentStart: Integer;
   Payload: string;
   PlainText: UnicodeString;
   Succeeded: Boolean;
@@ -385,12 +444,14 @@ begin
   Handled := True;
   Succeeded := False;
   try
-    if Assigned(FSession) and ((not ACut) or FEditable) then
+    if Assigned(FSession) and ((not ACut) or FEditable) and
+      TryTheWordLayoutRangeToDocument(FVisualDocument, StartUTF16,
+        LengthUTF16, DocumentStart, DocumentLength) then
       if ACut then
-        Succeeded := FSession.CutSelection(StartUTF16, LengthUTF16,
+        Succeeded := FSession.CutSelection(DocumentStart, DocumentLength,
           PlainText, Payload)
       else
-        Succeeded := FSession.CopySelection(StartUTF16, LengthUTF16,
+        Succeeded := FSession.CopySelection(DocumentStart, DocumentLength,
           PlainText, Payload);
     if not Succeeded then
     begin
@@ -401,7 +462,7 @@ begin
     if ACut then
     begin
       RefreshDirectDocument;
-      FDirectEditor.SetSelection(StartUTF16, 0);
+      TrySetDocumentSelection(DocumentStart, 0);
       DoChanged;
     end;
   except
@@ -412,6 +473,7 @@ end;
 procedure TTheWordWysiwygEditorControl.DirectClipboardPaste(Sender: TObject;
   StartUTF16, LengthUTF16: Integer; var Handled: Boolean);
 var
+  DocumentLength, DocumentStart: Integer;
   InsertedLength: Integer;
   UsedPrivate: Boolean;
   Payload: string;
@@ -424,16 +486,22 @@ begin
     Exit;
   end;
   try
+    if not TryTheWordLayoutRangeToDocument(FVisualDocument, StartUTF16,
+      LengthUTF16, DocumentStart, DocumentLength) then
+    begin
+      Beep;
+      Exit;
+    end;
     Payload := ReadTheWordClipboardV2;
     PlainText := UTF8Decode(Clipboard.AsText);
-    if not FSession.Paste(StartUTF16, LengthUTF16, Payload, PlainText,
+    if not FSession.Paste(DocumentStart, DocumentLength, Payload, PlainText,
       InsertedLength, UsedPrivate) then
     begin
       Beep;
       Exit;
     end;
     RefreshDirectDocument;
-    FDirectEditor.SetSelection(StartUTF16 + InsertedLength, 0);
+    TrySetDocumentSelection(DocumentStart + InsertedLength, 0);
     DoChanged;
   except
     on E: Exception do Beep;

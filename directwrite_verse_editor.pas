@@ -16,7 +16,7 @@ type
 
   TVerseTextReplaceEvent = procedure(Sender: TObject; StartUTF16,
     LengthUTF16: Integer; const Replacement: UnicodeString;
-    var Accepted: Boolean) of object;
+    var Accepted: Boolean; var NewCaretUTF16: Integer) of object;
   TVerseEditorCommandEvent = procedure(Sender: TObject;
     Command: TVerseEditorCommand) of object;
   TVerseSelectionChangedEvent = procedure(Sender: TObject;
@@ -370,7 +370,7 @@ begin
   NewCaret := StartUTF16 + Length(SafeReplacement);
   Accepted := False;
   FOnReplaceText(Self, StartUTF16, LengthUTF16, SafeReplacement,
-    Accepted);
+    Accepted, NewCaret);
   if not Accepted then
     Exit;
   SetLength(FCaretStops, 0);

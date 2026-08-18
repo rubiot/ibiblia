@@ -1060,7 +1060,7 @@ begin
   begin
     Anchor := TTheWordOpaqueItem(FOpaqueItems[Index]).FOffset;
     if ((ALengthUTF16 = 0) and (Anchor = AStartUTF16)) or
-       ((ALengthUTF16 > 0) and (Anchor >= AStartUTF16) and
+       ((ALengthUTF16 > 0) and (Anchor > AStartUTF16) and
         (Anchor < EndOffset)) then
       Exit(False);
   end;
@@ -1068,7 +1068,7 @@ begin
   begin
     Anchor := TTheWordStructuralItem(FStructuralItems[Index]).FOffset;
     if ((ALengthUTF16 = 0) and (Anchor = AStartUTF16)) or
-       ((ALengthUTF16 > 0) and (Anchor >= AStartUTF16) and
+       ((ALengthUTF16 > 0) and (Anchor > AStartUTF16) and
         (Anchor < EndOffset)) then
       Exit(False);
   end;

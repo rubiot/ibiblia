@@ -17,6 +17,8 @@ type
     procedure RejectedReplacementDoesNotPolluteUndo;
     procedure OpaqueAndLexicalObjectsProtectTextEdits;
     procedure VisualAdapterCombinesOverlappingStyles;
+    procedure VisualAdapterMapsSyntheticProtectedSeparators;
+    procedure ProtectedAnchorsAllowAdjacentButNotCrossingEdits;
     procedure RawFallbackReentersTheSameCodecSession;
   end;
 
@@ -147,6 +149,120 @@ begin
     AssertEquals(LongInt(clRed), Style.ForegroundColor);
   finally
     Source.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
+  VisualAdapterMapsSyntheticProtectedSeparators;
+var
+  Codec: ITheWordOntCodecV2;
+  DocumentLength, DocumentOffset, LayoutOffset: Integer;
+  Hebrew: UnicodeString;
+  Source: TTheWordVerseDocument;
+  Visual: IVerseVisualDocument;
+begin
+  Codec := TTheWordOntCodecV2.Create;
+
+  Source := Codec.DecodeVerse('existe<x>NO');
+  try
+    Visual := BuildTheWordVerseVisualDocument(Source, tdLeftToRight, 1);
+    AssertEquals(UnicodeString('existe NO'), Visual.Text);
+    AssertTrue(TryTheWordDocumentToLayoutOffset(Visual, 6, twoaBefore,
+      LayoutOffset));
+    AssertEquals('document anchor before separator', 6, LayoutOffset);
+    AssertTrue(TryTheWordDocumentToLayoutOffset(Visual, 6, twoaAfter,
+      LayoutOffset));
+    AssertEquals('document anchor after separator', 7, LayoutOffset);
+    AssertTrue(TryTheWordLayoutToDocumentOffset(Visual, 6,
+      DocumentOffset));
+    AssertEquals('layout before separator maps to anchor', 6,
+      DocumentOffset);
+    AssertTrue(TryTheWordLayoutToDocumentOffset(Visual, 7,
+      DocumentOffset));
+    AssertEquals('layout after separator maps to anchor', 6,
+      DocumentOffset);
+    AssertTrue(TryTheWordLayoutRangeToDocument(Visual, 7, 2,
+      DocumentOffset, DocumentLength));
+    AssertEquals('right word starts at document anchor', 6,
+      DocumentOffset);
+    AssertEquals('right word document length', 2, DocumentLength);
+    AssertTrue(TryTheWordLayoutRangeToDocument(Visual, 6, 1,
+      DocumentOffset, DocumentLength));
+    AssertEquals('synthetic separator has no document width', 0,
+      DocumentLength);
+  finally
+    Source.Free;
+  end;
+
+  Source := Codec.DecodeVerse('a||b');
+  try
+    Visual := BuildTheWordVerseVisualDocument(Source, tdLeftToRight, 2);
+    AssertEquals('adjacent structural objects add one separator',
+      UnicodeString('a b'), Visual.Text);
+  finally
+    Source.Free;
+  end;
+
+  Source := Codec.DecodeVerse('a <x>b');
+  try
+    Visual := BuildTheWordVerseVisualDocument(Source, tdLeftToRight, 3);
+    AssertEquals('existing whitespace is not duplicated',
+      UnicodeString('a b'), Visual.Text);
+  finally
+    Source.Free;
+  end;
+
+  Hebrew := UnicodeString(WideChar($05D1)) +
+    UnicodeString(WideChar($05B0)) + UnicodeString(WideChar($05BC));
+  Source := Codec.DecodeVerse(Hebrew + '<x>gloss');
+  try
+    Visual := BuildTheWordVerseVisualDocument(Source, tdRightToLeft, 4);
+    AssertEquals('mixed Hebrew and gloss remain visibly separated',
+      Hebrew + ' gloss', Visual.Text);
+    AssertTrue(TryTheWordDocumentToLayoutOffset(Visual, Length(Hebrew),
+      twoaAfter, LayoutOffset));
+    AssertEquals('Hebrew anchor accounts for synthetic layout unit',
+      Length(Hebrew) + 1, LayoutOffset);
+  finally
+    Source.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
+  ProtectedAnchorsAllowAdjacentButNotCrossingEdits;
+var
+  Session: TTheWordWysiwygSessionV2;
+begin
+  Session := TTheWordWysiwygSessionV2.Create('a|b');
+  try
+    AssertFalse('caret cannot insert on structural separator',
+      Session.CanReplaceText(1, 0));
+    AssertFalse('edit cannot cross structural separator',
+      Session.CanReplaceText(0, 2));
+    AssertTrue('right-hand text remains editable',
+      Session.CanReplaceText(1, 1));
+    AssertTrue(Session.ReplaceText(1, 1, 'B'));
+    AssertEquals(UnicodeString('a|B'), Session.RawText);
+  finally
+    Session.Free;
+  end;
+
+  Session := TTheWordWysiwygSessionV2.Create('a<x>b');
+  try
+    AssertFalse('caret cannot insert on opaque separator',
+      Session.CanReplaceText(1, 0));
+    AssertFalse('edit cannot cross opaque separator',
+      Session.CanReplaceText(0, 2));
+    AssertTrue('text adjacent to opaque object remains editable',
+      Session.CanReplaceText(1, 1));
+    AssertTrue(Session.ReplaceText(1, 1, 'B'));
+    AssertEquals(UnicodeString('a<x>B'), Session.RawText);
+    AssertTrue('semantic formatting adjacent to opaque object is allowed',
+      Session.CanApplySemantic(1, 1));
+    AssertTrue(Session.ApplySemantic(twsmItalic, 1, 1));
+    AssertEquals(UnicodeString('a<x><FI>B<Fi>'), Session.RawText);
+  finally
+    Session.Free;
   end;
 end;
 
