@@ -3000,11 +3000,27 @@ begin
 end;
 
 procedure TProject.OnDblClickVersiculo(Sender: TObject);
+var
+  Container: TScrollBox;
+  TextType: TTipoTextoBiblico;
+  VerseView: TVerse;
 begin
-  if not Ativo then
+  if not Ativo or not (Sender is TScrollBox) then
     exit;
 
-  FVerseMemo.Activate(TScrollBox(Sender), TVerse(TScrollBox(Sender).Tag));
+  Container := TScrollBox(Sender);
+  VerseView := nil;
+  for TextType := Low(FAVersiculo) to High(FAVersiculo) do
+    if Assigned(FAVersiculo[TextType]) and
+      (FAVersiculo[TextType].Panel = Container) then
+    begin
+      VerseView := FAVersiculo[TextType];
+      Break;
+    end;
+  if not Assigned(VerseView) then
+    Exit;
+
+  FVerseMemo.Activate(Container, VerseView);
 end;
 
 procedure TProject.OnBibleTreePopupItemClick(Sender: TObject);
@@ -3324,7 +3340,6 @@ begin
   for v:=low(paineis) to high(paineis) do
     if (v <= Ord(tbConsulta2)) and assigned(paineis[v]) then
       CreateVerseObject(paineis[v], TTipoTextoBiblico(v));
-  CreateVerseObject(paineis[v], TTipoTextoBiblico(v));
 
   Arvore              := navegador;
   FBibleTreeCoordinator.Attach(FArvore);

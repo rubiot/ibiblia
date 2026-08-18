@@ -6,7 +6,8 @@ interface
 
 uses
   Classes, SysUtils, Types, Graphics, IniFiles, SynEdit, SynEditHighlighter,
-  fpcunit, testregistry, theword_syntax_highlighter;
+  fpcunit, testregistry, theword_syntax_highlighter,
+  theword_wysiwyg_editor_control;
 
 type
 
@@ -44,6 +45,7 @@ type
     procedure EditorFontInvalidValuesFallBackToDefaults;
     procedure EditorFontSavesCustomValues;
     procedure EditorFontAppliesToEditor;
+    procedure WysiwygEditorKeepsRawSyntaxFont;
     procedure TagPairFindsClosingTheWordTag;
     procedure TagPairFindsOpeningTheWordTag;
     procedure TagPairHandlesNestedTheWordTags;
@@ -462,6 +464,44 @@ begin
     AssertEquals('font size', 15, Editor.Font.Size);
     AssertEquals('font quality', Ord(fqAntialiased), Ord(Editor.Font.Quality));
   finally
+    Editor.Free;
+    ResetTheWordSyntaxEditorFont;
+  end;
+end;
+
+procedure TTheWordSyntaxHighlighterTests.WysiwygEditorKeepsRawSyntaxFont;
+var
+  ComponentIndex: Integer;
+  Editor: TTheWordWysiwygEditorControl;
+  RawEditor: TSynEdit;
+  SyntaxFont: TTheWordSyntaxEditorFont;
+  VerseFont: TFont;
+begin
+  SyntaxFont.Name := 'Courier New';
+  SyntaxFont.Size := 12;
+  SetTheWordSyntaxEditorFont(SyntaxFont);
+  Editor := TTheWordWysiwygEditorControl.Create(nil);
+  VerseFont := TFont.Create;
+  try
+    RawEditor := nil;
+    for ComponentIndex := 0 to Editor.ComponentCount - 1 do
+      if Editor.Components[ComponentIndex] is TSynEdit then
+      begin
+        RawEditor := TSynEdit(Editor.Components[ComponentIndex]);
+        Break;
+      end;
+    AssertTrue('raw editor exists', Assigned(RawEditor));
+
+    VerseFont.Name := 'Times New Roman';
+    VerseFont.Size := 22;
+    Editor.SetEditorFont(VerseFont);
+
+    AssertEquals('raw editor keeps configured font name', SyntaxFont.Name,
+      RawEditor.Font.Name);
+    AssertEquals('raw editor keeps configured font size', SyntaxFont.Size,
+      RawEditor.Font.Size);
+  finally
+    VerseFont.Free;
     Editor.Free;
     ResetTheWordSyntaxEditorFont;
   end;

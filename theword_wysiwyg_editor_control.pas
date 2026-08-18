@@ -608,7 +608,7 @@ procedure TTheWordWysiwygEditorControl.SetEditorFont(AFont: TFont);
 begin
   if not Assigned(AFont) then
     Exit;
-  FRawEditor.Font.Assign(AFont);
+  ApplyTheWordSyntaxEditorFont(FRawEditor);
   FDirectEditor.Font.Assign(AFont);
   FDirectEditor.Invalidate;
 end;

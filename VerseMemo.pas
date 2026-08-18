@@ -438,48 +438,76 @@ begin
 end;
 
 procedure TVerseMemo.Activate(Container: TScrollBox; Verse: TVerse);
+var
+  Activated: Boolean;
+  OverlayParent: TWinControl;
 begin
-  if FEditorPanel.Visible and (FContainer <> Container) then
+  if not Assigned(Container) or not Assigned(Verse) then
+    Exit;
+
+  { The editor is a sibling overlay. Without a parent for the verse container
+    there is no window in which that overlay can safely be created. }
+  OverlayParent := Container.Parent;
+  if not Assigned(OverlayParent) then
+    Exit;
+
+  if FEditorPanel.Visible then
+  begin
+    if FContainer = Container then
+    begin
+      FEditor.FocusEditor;
+      Exit;
+    end;
     if not TryDeactivate then
       Exit;
+  end;
 
   RefreshLocalizedCaptions;
   FActivating := True;
-  FModified := False;
-  DetachContainerBoundsHandler;
-  FContainer := Container;
-  FVerse := Verse;
-  FEditorPanel.Visible := False;
-  FEditorPanel.Parent := nil;
-  FEditor.BaseDirection := Verse.BaseDirection;
-  FEditor.Editable := not Verse.ReadOnly;
-  FEditor.SetEditorFont(Verse.Font);
-  FEditor.Text := Verse.XML;
-  if FEditor.Capability = twlcRawOnly then
-    FEditor.RawMode := True;
+  Activated := False;
+  try
+    FModified := False;
+    DetachContainerBoundsHandler;
+    FContainer := Container;
+    FVerse := Verse;
+    FEditor.Visible := False;
+    FEditorPanel.Visible := False;
 
-  if Assigned(Container.Parent) then
-  begin
+    { Attach the complete control hierarchy before loading the document.
+      Loading an empty document positions the hidden keyboard/IME broker at
+      its first caret and may create its native window immediately. }
     FEditorPanel.Align := alNone;
-    FEditorPanel.Parent := Container.Parent;
+    FEditorPanel.Parent := OverlayParent;
     FEditorPanel.SetBounds(Container.Left, Container.Top, Container.Width,
       Container.Height);
     FEditorPanel.Anchors := Container.Anchors;
     FBoundsContainer := Container;
     FBoundsContainer.AddHandlerOnChangeBounds(@ContainerBoundsChanged);
-  end
-  else
-  begin
-    FEditorPanel.Align := alClient;
-    FEditorPanel.Parent := Container;
-  end;
 
-  FEditor.Visible := True;
-  UpdateEditorState;
-  FEditorPanel.BringToFront;
-  FEditorPanel.Visible := True;
-  UpdateEditorBounds;
-  FActivating := False;
+    FEditor.BaseDirection := Verse.BaseDirection;
+    FEditor.Editable := not Verse.ReadOnly;
+    FEditor.SetEditorFont(Verse.Font);
+    FEditor.Text := Verse.XML;
+    if FEditor.Capability = twlcRawOnly then
+      FEditor.RawMode := True;
+
+    FEditor.Visible := True;
+    UpdateEditorState;
+    FEditorPanel.BringToFront;
+    FEditorPanel.Visible := True;
+    UpdateEditorBounds;
+    Activated := True;
+  finally
+    FActivating := False;
+    if not Activated then
+    begin
+      FEditor.Visible := False;
+      FEditorPanel.Visible := False;
+      DetachContainerBoundsHandler;
+      FContainer := nil;
+      FVerse := nil;
+    end;
+  end;
   FEditor.FocusEditor;
 end;
 

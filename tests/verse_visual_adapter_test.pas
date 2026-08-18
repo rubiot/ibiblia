@@ -12,6 +12,7 @@ type
   TVerseVisualAdapterTests = class(TTestCase)
   published
     procedure MixedHebrewPortuguesePreservesMetadataAnnotationsAndStyles;
+    procedure AddedWordBracketsShareItalicStyleAndPreserveOnt;
   end;
 
 implementation
@@ -121,6 +122,68 @@ begin
     AssertTrue('Font tag is hidden metadata',
       Document.Spans[FindSyntagmIndex(VerseModel.Syntagms,
         '<font color=red>')].Kind = vskHidden);
+  finally
+    VerseModel.Free;
+  end;
+end;
+
+procedure TVerseVisualAdapterTests.
+  AddedWordBracketsShareItalicStyleAndPreserveOnt;
+const
+  RAW: string = 'Então <FI>já<Fi> veio, <FI>mas<Fi> voltou.';
+var
+  VerseModel: TVerse;
+  Document: IVerseVisualDocument;
+  FirstOpenIndex, FirstCloseIndex, SecondOpenIndex,
+    SecondCloseIndex: Integer;
+begin
+  VerseModel := TVerse.Create;
+  try
+    VerseModel.Text := RAW;
+    FirstOpenIndex := FindSyntagmIndex(VerseModel.Syntagms, '<FI>');
+    FirstCloseIndex := FindSyntagmIndex(VerseModel.Syntagms, '<Fi>');
+    AssertTrue('first FI delimiter parsed', FirstOpenIndex >= 0);
+    AssertTrue('first Fi delimiter parsed', FirstCloseIndex > FirstOpenIndex);
+
+    SecondOpenIndex := FirstCloseIndex + 1;
+    while (SecondOpenIndex < VerseModel.Syntagms.Count) and
+          (VerseModel.Syntagms[SecondOpenIndex].Text <> '<FI>') do
+      Inc(SecondOpenIndex);
+    SecondCloseIndex := SecondOpenIndex + 1;
+    while (SecondCloseIndex < VerseModel.Syntagms.Count) and
+          (VerseModel.Syntagms[SecondCloseIndex].Text <> '<Fi>') do
+      Inc(SecondCloseIndex);
+    AssertTrue('second FI delimiter parsed',
+      SecondOpenIndex < VerseModel.Syntagms.Count);
+    AssertTrue('second Fi delimiter parsed',
+      SecondCloseIndex < VerseModel.Syntagms.Count);
+
+    Document := BuildVerseVisualDocument(VerseModel.Syntagms, nil,
+      tdLeftToRight, 74, clGreen, clGray, False);
+    AssertTrue('FI tags are represented by balanced brackets',
+      Document.Text = UnicodeString('Então [já] veio, [mas] voltou.'));
+    AssertTrue('first opening bracket is italic',
+      vtsfItalic in Document.Spans[FirstOpenIndex].Style.Flags);
+    AssertTrue('first closing bracket is italic',
+      vtsfItalic in Document.Spans[FirstCloseIndex].Style.Flags);
+    AssertTrue('first bracket pair uses identical style flags',
+      Document.Spans[FirstOpenIndex].Style.Flags =
+      Document.Spans[FirstCloseIndex].Style.Flags);
+    AssertEquals('first bracket pair uses identical foreground color',
+      Document.Spans[FirstOpenIndex].Style.ForegroundColor,
+      Document.Spans[FirstCloseIndex].Style.ForegroundColor);
+    AssertTrue('second opening bracket is italic',
+      vtsfItalic in Document.Spans[SecondOpenIndex].Style.Flags);
+    AssertTrue('second closing bracket is italic',
+      vtsfItalic in Document.Spans[SecondCloseIndex].Style.Flags);
+    AssertTrue('second bracket pair uses identical style flags',
+      Document.Spans[SecondOpenIndex].Style.Flags =
+      Document.Spans[SecondCloseIndex].Style.Flags);
+    AssertEquals('second bracket pair uses identical foreground color',
+      Document.Spans[SecondOpenIndex].Style.ForegroundColor,
+      Document.Spans[SecondCloseIndex].Style.ForegroundColor);
+    AssertEquals('visualization does not rewrite literal ONT', RAW,
+      VerseModel.Text);
   finally
     VerseModel.Free;
   end;

@@ -23,7 +23,12 @@ var
   Foreground: TColor;
 begin
   Result := DefaultVisualTextStyle;
-  if Syntagm.IsItalic then
+  { The FI delimiters are rendered as visible brackets. The parser turns
+    italic state off while producing the closing <Fi> token, so relying only
+    on IsItalic made '[' italic and ']' upright. Both synthetic brackets are
+    part of the same visual semantic and must use the same style. }
+  if Syntagm.IsItalic or (Syntagm.Text = '<FI>') or
+     (Syntagm.Text = '<Fi>') then
     Include(Result.Flags, vtsfItalic);
   if Syntagm.IsSuperscript then
     Include(Result.Flags, vtsfSuperscript);
