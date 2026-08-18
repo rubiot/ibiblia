@@ -546,9 +546,9 @@ var
   Finish, Index: Integer;
   Titles: TTheWordTitleRangeArray;
 begin
-  Result := Assigned(ADocument) and (ALengthUTF16 > 0) and
-    (AStartUTF16 >= 0) and
-    (AStartUTF16 + ALengthUTF16 <= Length(ADocument.VisibleText));
+  Result := Assigned(ADocument) and
+    ADocument.CanApplySemanticRange(AStartUTF16,
+      AStartUTF16 + ALengthUTF16);
   if not Result then
     Exit;
   Finish := AStartUTF16 + ALengthUTF16;

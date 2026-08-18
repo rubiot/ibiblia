@@ -178,6 +178,8 @@ type
     procedure DisableStrongHighlight;
     function GetAssociationsJSON: string;
     function HasAssociations: boolean;
+    function CanChangeTextPreservingAssociationIdentity(
+      const AXML: string): Boolean;
 
     procedure FindAndSelectSyntagms(Words: TStringList; Partial: Boolean = False; JoinConnected: Boolean = True);
 
@@ -825,6 +827,12 @@ procedure TVerse.ReplaceTextPreservingAssociations(const _XML: string;
       (Existing.Text = Candidate.Text);
   end;
 
+  function IsAssociationUnit(ASyntagm: TSyntagm): Boolean;
+  begin
+    Result := Assigned(ASyntagm) and
+      (ASyntagm.Kind in [skSyntagm, skPunctuation]);
+  end;
+
   procedure DeleteSyntagm(i: integer; newlist: TSyntagmList);
   var
     s: TSyntagm;
@@ -882,26 +890,15 @@ begin
       end
       else if HasSameAssociationIdentity(FSyntagms.First, new.First) then
       begin
-        with FSyntagms.First do
-        begin
-          if Kind = skSyntagm then
-          begin
-            Strong.Free;
-            Morph.Free;
-            Strong := new.First.Strong;
-            Morph   := new.First.Morph;
-            new.First.Strong := nil;
-            new.First.Morph   := nil;
-          end;
-        end;
+        FSyntagms.First.AdoptParsedState(new.First);
         result.Add(FSyntagms.First);
         FSyntagms.Delete(0);
         new.First.Destroy;
         new.Delete(0);
       end
-      else if FSyntagms.First.Kind <> skSyntagm then
+      else if not IsAssociationUnit(FSyntagms.First) then
         DeleteSyntagm(0, result)
-      else if new.First.Kind <> skSyntagm then
+      else if not IsAssociationUnit(new.First) then
       begin
         result.Add(new[0]);
         new.Delete(0);
@@ -2280,6 +2277,85 @@ begin
       Result := True;
       Break;
     end;
+end;
+
+function TVerse.CanChangeTextPreservingAssociationIdentity(
+  const AXML: string): Boolean;
+
+  function NextContentUnit(AList: TSyntagmList; var AIndex: Integer;
+    out AUnit: TSyntagm): Boolean;
+  begin
+    AUnit := nil;
+    while Assigned(AList) and (AIndex < AList.Count) do
+    begin
+      AUnit := AList[AIndex];
+      Inc(AIndex);
+      if AUnit.Kind in [skSyntagm, skWhitespace, skPunctuation] then
+        Exit(True);
+    end;
+    AUnit := nil;
+    Result := False;
+  end;
+
+  procedure FreeParsedSyntagms(var AList: TSyntagmList);
+  var
+    Index: Integer;
+  begin
+    if not Assigned(AList) then
+      Exit;
+    for Index := AList.Count - 1 downto 0 do
+      AList[Index].Free;
+    FreeAndNil(AList);
+  end;
+
+var
+  ExistingIndex, CandidateIndex: Integer;
+  ExistingUnit, CandidateUnit: TSyntagm;
+  HasExistingUnit, HasCandidateUnit: Boolean;
+  CandidateSyntagms: TSyntagmList;
+begin
+  { Formatting is unrestricted when there is no persisted identity to keep.
+    With Associations, tags may be added only at existing content-unit
+    boundaries. Parsing the candidate catches a tag inserted in the middle of
+    a word or whitespace because that unit would be split in two. }
+  if not HasAssociations then
+    Exit(True);
+
+  Result := False;
+  CandidateSyntagms := nil;
+  try
+    try
+      CandidateSyntagms := FONTParser.ParseLine(AXML, nil);
+      ExistingIndex := 0;
+      CandidateIndex := 0;
+      Result := True;
+      repeat
+        HasExistingUnit := NextContentUnit(FSyntagms, ExistingIndex,
+          ExistingUnit);
+        HasCandidateUnit := NextContentUnit(CandidateSyntagms, CandidateIndex,
+          CandidateUnit);
+        if HasExistingUnit <> HasCandidateUnit then
+        begin
+          Result := False;
+          Break;
+        end;
+        if not HasExistingUnit then
+          Break;
+        if (ExistingUnit.Kind <> CandidateUnit.Kind) or
+           (ExistingUnit.Text <> CandidateUnit.Text) or
+           (ExistingUnit.RawText <> CandidateUnit.RawText) then
+        begin
+          Result := False;
+          Break;
+        end;
+      until False;
+    except
+      on E: Exception do
+        Result := False;
+    end;
+  finally
+    FreeParsedSyntagms(CandidateSyntagms);
+  end;
 end;
 
 procedure TVerse.OnCopyAssociationsJSONToClipboard(Sender: TObject);

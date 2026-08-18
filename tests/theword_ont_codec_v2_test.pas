@@ -5,7 +5,8 @@ unit theword_ont_codec_v2_test;
 interface
 
 uses
-  Classes, SysUtils, fpcunit, testregistry, theword_ont_codec_v2;
+  Classes, SysUtils, fpcunit, testregistry, theword_ont_codec_v2, ONTParser,
+  ONTTokenizer, Syntagm;
 
 type
   TTheWordOntCodecV2Tests = class(TTestCase)
@@ -39,6 +40,8 @@ type
     procedure ReplaceVisibleTextIsUtf16Safe;
     procedure ReplaceRefusesProtectedLexicalAndOpaqueContent;
     procedure CrossingMarksSerializeBalancedAndDeterministically;
+    procedure CrossingSemanticTransitionsKeepLexicalTagsWithWord;
+    procedure CrossingSemanticTransitionStopsLexicalPromotionAtOpaque;
     procedure UnmodifiedCrossingMarkupRoundTripsLiterally;
     procedure ImportedSemanticEventOrderSurvivesOutsideEdits;
     procedure OpaqueEventOrdinalSurvivesSemanticEdit;
@@ -660,6 +663,141 @@ begin
     finally
       Restored.Free;
     end;
+  finally
+    Document.Free;
+  end;
+end;
+
+procedure TTheWordOntCodecV2Tests.CrossingSemanticTransitionsKeepLexicalTagsWithWord;
+const
+  LEXICAL: UnicodeString = '<WG123><WTV-AAI-3S l="lemma"><wt>';
+var
+  Document: TTheWordVerseDocument;
+  Encoded, Expected: UnicodeString;
+  EndingKind, ReopenedKind: TTheWordSemanticKind;
+  Index: Integer;
+  Parser: TONTParser;
+  Parsed: TSyntagmList;
+  ParsedWord: TSyntagm;
+begin
+  Parser := TONTParser.Create;
+  try
+    for ReopenedKind := Low(TTheWordSemanticKind) to
+      High(TTheWordSemanticKind) do
+    begin
+      if ReopenedKind = High(TTheWordSemanticKind) then
+        EndingKind := Low(TTheWordSemanticKind)
+      else
+        EndingKind := TTheWordSemanticKind(Ord(ReopenedKind) + 1);
+
+      Document := FCodec.DecodeVerse('ab' + LEXICAL + '<X>|c');
+      try
+        Document.AddSemanticMark(EndingKind, 0, 2);
+        Document.AddSemanticMark(ReopenedKind, 1, 3);
+        Encoded := FCodec.EncodeVerse(Document);
+        Expected := TheWordCanonicalOpen(EndingKind) + 'a' +
+          TheWordCanonicalOpen(ReopenedKind) + 'b' + LEXICAL +
+          TheWordCanonicalClose(ReopenedKind) +
+          TheWordCanonicalClose(EndingKind) + '<X>|' +
+          TheWordCanonicalOpen(ReopenedKind) + 'c' +
+          TheWordCanonicalClose(ReopenedKind);
+        AssertUnicodeEquals('lexical events precede regenerated crossing ' +
+          IntToStr(Ord(ReopenedKind)), Expected, Encoded);
+
+        Parsed := Parser.ParseLine(UTF8Encode(Encoded), nil);
+        try
+          ParsedWord := nil;
+          for Index := 0 to Parsed.Count - 1 do
+            if (Parsed[Index].Kind = skSyntagm) and
+               (Parsed[Index].Text = 'b') then
+            begin
+              ParsedWord := Parsed[Index];
+              Break;
+            end;
+          AssertTrue('lexical owner word remains parsed',
+            Assigned(ParsedWord));
+          AssertEquals('Strong remains attached to word', 1,
+            ParsedWord.Strong.Count);
+          AssertEquals('morphology remains attached to word', 1,
+            ParsedWord.Morph.Count);
+        finally
+          for Index := Parsed.Count - 1 downto 0 do
+            Parsed[Index].Free;
+          Parsed.Free;
+        end;
+      finally
+        Document.Free;
+      end;
+    end;
+  finally
+    Parser.Free;
+  end;
+end;
+
+procedure TTheWordOntCodecV2Tests.CrossingSemanticTransitionStopsLexicalPromotionAtOpaque;
+const
+  LEXICAL: UnicodeString = '<WG123><WTV-AAI-3S l="lemma"><wt>';
+
+  procedure AssertParsedLexicalCounts(const AEncoded: UnicodeString;
+    AStrongCount, AMorphCount: Integer);
+  var
+    Index: Integer;
+    Parser: TONTParser;
+    Parsed: TSyntagmList;
+    ParsedWord: TSyntagm;
+  begin
+    Parser := TONTParser.Create;
+    try
+      Parsed := Parser.ParseLine(UTF8Encode(AEncoded), nil);
+      try
+        ParsedWord := nil;
+        for Index := 0 to Parsed.Count - 1 do
+          if (Parsed[Index].Kind = skSyntagm) and
+             (Parsed[Index].Text = 'b') then
+          begin
+            ParsedWord := Parsed[Index];
+            Break;
+          end;
+        if not Assigned(ParsedWord) then
+          Fail('lexical owner word was not parsed');
+        AssertEquals('Strong attachment count', AStrongCount,
+          ParsedWord.Strong.Count);
+        AssertEquals('morphology attachment count', AMorphCount,
+          ParsedWord.Morph.Count);
+      finally
+        for Index := Parsed.Count - 1 downto 0 do
+          Parsed[Index].Free;
+        Parsed.Free;
+      end;
+    finally
+      Parser.Free;
+    end;
+  end;
+
+var
+  Document: TTheWordVerseDocument;
+  Encoded: UnicodeString;
+begin
+  Document := FCodec.DecodeVerse('ab<X>' + LEXICAL + 'c');
+  try
+    AssertTrue(Document.ToggleSemanticMark(twsmWordsOfJesus, 0, 2));
+    AssertTrue(Document.ToggleSemanticMark(twsmItalic, 1, 3));
+    Encoded := FCodec.EncodeVerse(Document);
+    AssertUnicodeEquals('opaque boundary retains later lexical order',
+      '<FR>a<FI>b<Fi><Fr><X>' + LEXICAL + '<FI>c<Fi>', Encoded);
+    AssertParsedLexicalCounts(Encoded, 0, 0);
+  finally
+    Document.Free;
+  end;
+
+  Document := FCodec.DecodeVerse('ab' + LEXICAL + '<X>c');
+  try
+    AssertTrue(Document.ToggleSemanticMark(twsmWordsOfJesus, 0, 2));
+    AssertTrue(Document.ToggleSemanticMark(twsmItalic, 1, 3));
+    Encoded := FCodec.EncodeVerse(Document);
+    AssertUnicodeEquals('leading lexical prefix remains attached',
+      '<FR>a<FI>b' + LEXICAL + '<Fi><Fr><X><FI>c<Fi>', Encoded);
+    AssertParsedLexicalCounts(Encoded, 1, 1);
   finally
     Document.Free;
   end;

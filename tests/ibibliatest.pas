@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, fpcunit, testutils, testregistry, Verse, Syntagm,
-  ONTTokenizer;
+  ONTTokenizer, theword_ont_codec_v2, theword_wysiwyg_session_v2;
 
 type
 
@@ -35,6 +35,12 @@ type
     function CreateStringList(const AWords: array of string): TStringList; // Helper
     procedure AssertSemanticFormattingRoundTripPreservesAssociation(
       const OpenTag, CloseTag: string);
+    procedure AssertSemanticToggleSplitPreservesAssociation(
+      AKind: TTheWordSemanticKind);
+    procedure AssertSemanticPunctuationTogglePreservesAssociation(
+      AKind: TTheWordSemanticKind);
+    procedure AssertSemanticApplyPreservesAssociation(
+      AKind: TTheWordSemanticKind);
     procedure AssertSelectionEqualsIndices(const ExpectedIndices: array of Integer); // Helper
     function CollectTokenizerTokens(version: Integer; const AText: string): TStringList;
     procedure AssertTokenizerTokens(version: Integer; const AText: string; const Expected: array of string);
@@ -68,6 +74,20 @@ type
     procedure SemanticFRFormattingPreservesAssociation;
     procedure SemanticFOFormattingPreservesAssociation;
     procedure SemanticFUFormattingPreservesAssociation;
+    procedure SemanticFIToggleSplitPreservesAssociation;
+    procedure SemanticFRToggleSplitPreservesAssociation;
+    procedure SemanticFOToggleSplitPreservesAssociation;
+    procedure SemanticFUToggleSplitPreservesAssociation;
+    procedure SemanticFIPunctuationTogglePreservesAssociation;
+    procedure SemanticFRPunctuationTogglePreservesAssociation;
+    procedure SemanticFOPunctuationTogglePreservesAssociation;
+    procedure SemanticFUPunctuationTogglePreservesAssociation;
+    procedure SemanticFIApplyPreservesAssociation;
+    procedure SemanticFRApplyPreservesAssociation;
+    procedure SemanticFOApplyPreservesAssociation;
+    procedure SemanticFUApplyPreservesAssociation;
+    procedure SemanticTogglePreflightProtectsAssociationIdentity;
+    procedure SemanticTogglePreflightRejectsSplitWhitespace;
     procedure TokenizerVersion1KeepsCurlyQuotesInsideWords;
     procedure TokenizerVersion2KeepsCurlyQuotesInsideWords;
     procedure TokenizerVersion1KeepsHebrewMaqafInsideWord;
@@ -351,6 +371,255 @@ begin
   AssertPairsAndSiblings(TargetSyntagm, [SourceSyntagm], []);
 end;
 
+procedure TVerseTests.AssertSemanticToggleSplitPreservesAssociation(
+  AKind: TTheWordSemanticKind);
+var
+  CloseTag, Expected, OpenTag, Raw: UnicodeString;
+  UpdatedPairs: string;
+  PrefixSyntagm, SourceSyntagm, SuffixSyntagm, TargetSyntagm: TSyntagm;
+  ReloadedSource, ReloadedTarget: TVerse;
+  ReloadedSourceSyntagm, ReloadedTargetSyntagm: TSyntagm;
+  Session: TTheWordWysiwygSessionV2;
+  ReloadedSourceIndex, ReloadedTargetIndex, TargetIndex: Integer;
+begin
+  OpenTag := TheWordCanonicalOpen(AKind);
+  CloseTag := TheWordCanonicalClose(AKind);
+  Raw := OpenTag + 'prefix target<WG123><WTN-NSM><wt> suffix' + CloseTag;
+  Expected := OpenTag + 'prefix ' + CloseTag +
+    'target<WG123><WTN-NSM><wt>' + OpenTag + ' suffix' + CloseTag;
+
+  verse1.Text := 'source';
+  verse2.Text := UTF8Encode(Raw);
+  TargetIndex := FindIndexOf(verse2, 'target');
+  PrefixSyntagm := verse2.Syntagms[FindIndexOf(verse2, 'prefix')];
+  TargetSyntagm := verse2.Syntagms[TargetIndex];
+  SuffixSyntagm := verse2.Syntagms[FindIndexOf(verse2, 'suffix')];
+  if AKind = twsmItalic then
+    AssertTrue('fixture target must initially be italic',
+      TargetSyntagm.IsItalic);
+  AssertEquals('fixture target must have its Strong payload', 1,
+    TargetSyntagm.Strong.Count);
+  AssertEquals('G123', TargetSyntagm.Strong[0]);
+  AssertEquals('fixture target must have its morphology payload', 1,
+    TargetSyntagm.Morph.Count);
+  AssertEquals('N-NSM', TargetSyntagm.Morph[0]);
+  Associate([0], [TargetIndex]);
+  SourceSyntagm := verse1.Syntagms[0];
+
+  Session := TTheWordWysiwygSessionV2.Create(Raw);
+  try
+    AssertTrue(Session.ApplySemantic(AKind,
+      Length(UnicodeString('prefix ')), Length(UnicodeString('target'))));
+    AssertEquals(Expected, Session.RawText);
+    AssertTrue('semantic split must be safe for legacy Associations',
+      Session.ChangesAreSemanticOnly);
+    AssertTrue(CanCommitLegacyWysiwygChangeV2(True,
+      Session.ChangesAreSemanticOnly));
+
+    verse2.ChangeText(UTF8Encode(Session.RawText));
+    AssertEquals(UTF8Encode(Expected), verse2.XML);
+  finally
+    Session.Free;
+  end;
+
+  AssertTrue('prefix Syntagm identity must survive semantic split',
+    verse2.Syntagms.IndexOf(PrefixSyntagm) >= 0);
+  AssertTrue('associated target Syntagm identity must survive semantic split',
+    verse2.Syntagms.IndexOf(TargetSyntagm) >= 0);
+  AssertTrue('suffix Syntagm identity must survive semantic split',
+    verse2.Syntagms.IndexOf(SuffixSyntagm) >= 0);
+  if AKind = twsmItalic then
+  begin
+    AssertTrue('prefix must retain refreshed italic presentation',
+      PrefixSyntagm.IsItalic);
+    AssertFalse('target must adopt the parsed non-italic presentation',
+      TargetSyntagm.IsItalic);
+    AssertTrue('suffix must retain refreshed italic presentation',
+      SuffixSyntagm.IsItalic);
+  end;
+  AssertPairsAndSiblings(SourceSyntagm, [TargetSyntagm], []);
+  AssertPairsAndSiblings(TargetSyntagm, [SourceSyntagm], []);
+  AssertEquals('semantic split must retain the associated Strong payload', 1,
+    TargetSyntagm.Strong.Count);
+  AssertEquals('G123', TargetSyntagm.Strong[0]);
+  AssertEquals('semantic split must retain the associated morphology', 1,
+    TargetSyntagm.Morph.Count);
+  AssertEquals('N-NSM', TargetSyntagm.Morph[0]);
+
+  { Extra semantic tags legitimately shift the persisted Syntagm indexes.
+    Verify the real contract by loading the updated text and updated pairs in
+    a fresh Verse Pair. }
+  UpdatedPairs := verse1.Pairs;
+  AssertTrue('updated Association serialization must not be empty',
+    UpdatedPairs <> '');
+  ReloadedSource := TVerse.Create;
+  ReloadedTarget := TVerse.Create;
+  try
+    ReloadedSource.PairedVerse := ReloadedTarget;
+    ReloadedSource.Text := verse1.XML;
+    ReloadedTarget.Text := verse2.XML;
+    ReloadedSourceIndex := FindIndexOf(ReloadedSource, 'source');
+    ReloadedTargetIndex := FindIndexOf(ReloadedTarget, 'target');
+    ReloadedSourceSyntagm := ReloadedSource.Syntagms[ReloadedSourceIndex];
+    ReloadedTargetSyntagm := ReloadedTarget.Syntagms[ReloadedTargetIndex];
+
+    ReloadedSource.Pairs := UpdatedPairs;
+
+    AssertPairsAndSiblings(ReloadedSourceSyntagm,
+      [ReloadedTargetSyntagm], []);
+    AssertPairsAndSiblings(ReloadedTargetSyntagm,
+      [ReloadedSourceSyntagm], []);
+    AssertEquals('reloaded target must retain its Strong payload', 1,
+      ReloadedTargetSyntagm.Strong.Count);
+    AssertEquals('G123', ReloadedTargetSyntagm.Strong[0]);
+    AssertEquals('reloaded target must retain its morphology payload', 1,
+      ReloadedTargetSyntagm.Morph.Count);
+    AssertEquals('N-NSM', ReloadedTargetSyntagm.Morph[0]);
+  finally
+    ReloadedSource.Free;
+    ReloadedTarget.Free;
+  end;
+end;
+
+procedure TVerseTests.AssertSemanticPunctuationTogglePreservesAssociation(
+  AKind: TTheWordSemanticKind);
+var
+  CloseTag, Expected, OpenTag, Raw: UnicodeString;
+  PunctuationIndex, ReloadedSourceIndex, ReloadedTargetIndex: Integer;
+  ReloadedSource, ReloadedTarget: TVerse;
+  ReloadedSourceSyntagm, ReloadedTargetSyntagm: TSyntagm;
+  Session: TTheWordWysiwygSessionV2;
+  SourceSyntagm, TargetSyntagm: TSyntagm;
+  UpdatedPairs: string;
+begin
+  OpenTag := TheWordCanonicalOpen(AKind);
+  CloseTag := TheWordCanonicalClose(AKind);
+  Raw := OpenTag + 'word!' + CloseTag;
+  Expected := OpenTag + 'word' + CloseTag + '!';
+
+  verse1.Text := 'source';
+  verse2.Text := UTF8Encode(Raw);
+  PunctuationIndex := FindIndexOf(verse2, '!');
+  Associate([0], [PunctuationIndex]);
+  SourceSyntagm := verse1.Syntagms[0];
+  TargetSyntagm := verse2.Syntagms[PunctuationIndex];
+
+  Session := TTheWordWysiwygSessionV2.Create(Raw);
+  try
+    AssertTrue(Session.ApplySemantic(AKind, Length(UnicodeString('word')), 1));
+    AssertEquals(Expected, Session.RawText);
+    AssertTrue(Session.ChangesAreSemanticOnly);
+    AssertTrue(CanCommitLegacyWysiwygChangeV2(True,
+      Session.ChangesAreSemanticOnly));
+    verse2.ChangeText(UTF8Encode(Session.RawText));
+  finally
+    Session.Free;
+  end;
+
+  AssertTrue('associated punctuation identity must survive semantic toggle',
+    verse2.Syntagms.IndexOf(TargetSyntagm) >= 0);
+  AssertPairsAndSiblings(SourceSyntagm, [TargetSyntagm], []);
+  AssertPairsAndSiblings(TargetSyntagm, [SourceSyntagm], []);
+
+  UpdatedPairs := verse1.Pairs;
+  ReloadedSource := TVerse.Create;
+  ReloadedTarget := TVerse.Create;
+  try
+    ReloadedSource.PairedVerse := ReloadedTarget;
+    ReloadedSource.Text := verse1.XML;
+    ReloadedTarget.Text := verse2.XML;
+    ReloadedSourceIndex := FindIndexOf(ReloadedSource, 'source');
+    ReloadedTargetIndex := FindIndexOf(ReloadedTarget, '!');
+    ReloadedSourceSyntagm := ReloadedSource.Syntagms[ReloadedSourceIndex];
+    ReloadedTargetSyntagm := ReloadedTarget.Syntagms[ReloadedTargetIndex];
+    ReloadedSource.Pairs := UpdatedPairs;
+    AssertPairsAndSiblings(ReloadedSourceSyntagm,
+      [ReloadedTargetSyntagm], []);
+    AssertPairsAndSiblings(ReloadedTargetSyntagm,
+      [ReloadedSourceSyntagm], []);
+  finally
+    ReloadedSource.Free;
+    ReloadedTarget.Free;
+  end;
+end;
+
+procedure TVerseTests.AssertSemanticApplyPreservesAssociation(
+  AKind: TTheWordSemanticKind);
+var
+  CloseTag, Expected, OpenTag, Raw: UnicodeString;
+  ReloadedSource, ReloadedTarget: TVerse;
+  ReloadedSourceIndex, ReloadedTargetIndex, TargetIndex: Integer;
+  ReloadedSourceSyntagm, ReloadedTargetSyntagm: TSyntagm;
+  Session: TTheWordWysiwygSessionV2;
+  SourceSyntagm, TargetSyntagm: TSyntagm;
+  UpdatedPairs: string;
+begin
+  OpenTag := TheWordCanonicalOpen(AKind);
+  CloseTag := TheWordCanonicalClose(AKind);
+  Raw := 'prefix target<WG123><WTN-NSM><wt> suffix';
+  Expected := 'prefix ' + OpenTag +
+    'target<WG123><WTN-NSM><wt>' + CloseTag + ' suffix';
+
+  verse1.Text := 'source';
+  verse2.Text := UTF8Encode(Raw);
+  TargetIndex := FindIndexOf(verse2, 'target');
+  Associate([0], [TargetIndex]);
+  SourceSyntagm := verse1.Syntagms[0];
+  TargetSyntagm := verse2.Syntagms[TargetIndex];
+
+  Session := TTheWordWysiwygSessionV2.Create(Raw);
+  try
+    AssertTrue(Session.ApplySemantic(AKind,
+      Length(UnicodeString('prefix ')), Length(UnicodeString('target'))));
+    AssertEquals(Expected, Session.RawText);
+    AssertTrue(Session.ChangesAreSemanticOnly);
+    AssertTrue(CanCommitLegacyWysiwygChangeV2(True,
+      Session.ChangesAreSemanticOnly));
+    AssertTrue(verse2.CanChangeTextPreservingAssociationIdentity(
+      UTF8Encode(Session.RawText)));
+    verse2.ChangeText(UTF8Encode(Session.RawText));
+  finally
+    Session.Free;
+  end;
+
+  AssertTrue('associated target identity must survive semantic apply',
+    verse2.Syntagms.IndexOf(TargetSyntagm) >= 0);
+  AssertPairsAndSiblings(SourceSyntagm, [TargetSyntagm], []);
+  AssertPairsAndSiblings(TargetSyntagm, [SourceSyntagm], []);
+  AssertEquals(1, TargetSyntagm.Strong.Count);
+  AssertEquals('G123', TargetSyntagm.Strong[0]);
+  AssertEquals(1, TargetSyntagm.Morph.Count);
+  AssertEquals('N-NSM', TargetSyntagm.Morph[0]);
+  if AKind = twsmItalic then
+    AssertTrue('associated target must adopt italic presentation immediately',
+      TargetSyntagm.IsItalic);
+
+  UpdatedPairs := verse1.Pairs;
+  ReloadedSource := TVerse.Create;
+  ReloadedTarget := TVerse.Create;
+  try
+    ReloadedSource.PairedVerse := ReloadedTarget;
+    ReloadedSource.Text := verse1.XML;
+    ReloadedTarget.Text := verse2.XML;
+    ReloadedSourceIndex := FindIndexOf(ReloadedSource, 'source');
+    ReloadedTargetIndex := FindIndexOf(ReloadedTarget, 'target');
+    ReloadedSourceSyntagm := ReloadedSource.Syntagms[ReloadedSourceIndex];
+    ReloadedTargetSyntagm := ReloadedTarget.Syntagms[ReloadedTargetIndex];
+    ReloadedSource.Pairs := UpdatedPairs;
+    AssertPairsAndSiblings(ReloadedSourceSyntagm,
+      [ReloadedTargetSyntagm], []);
+    AssertPairsAndSiblings(ReloadedTargetSyntagm,
+      [ReloadedSourceSyntagm], []);
+    AssertEquals(1, ReloadedTargetSyntagm.Strong.Count);
+    AssertEquals('G123', ReloadedTargetSyntagm.Strong[0]);
+    AssertEquals(1, ReloadedTargetSyntagm.Morph.Count);
+    AssertEquals('N-NSM', ReloadedTargetSyntagm.Morph[0]);
+  finally
+    ReloadedSource.Free;
+    ReloadedTarget.Free;
+  end;
+end;
+
 procedure TVerseTests.SemanticFIFormattingPreservesAssociation;
 begin
   AssertSemanticFormattingRoundTripPreservesAssociation('<FI>', '<Fi>');
@@ -369,6 +638,126 @@ end;
 procedure TVerseTests.SemanticFUFormattingPreservesAssociation;
 begin
   AssertSemanticFormattingRoundTripPreservesAssociation('<FU>', '<Fu>');
+end;
+
+procedure TVerseTests.SemanticFIToggleSplitPreservesAssociation;
+begin
+  AssertSemanticToggleSplitPreservesAssociation(twsmItalic);
+end;
+
+procedure TVerseTests.SemanticFRToggleSplitPreservesAssociation;
+begin
+  AssertSemanticToggleSplitPreservesAssociation(twsmWordsOfJesus);
+end;
+
+procedure TVerseTests.SemanticFOToggleSplitPreservesAssociation;
+begin
+  AssertSemanticToggleSplitPreservesAssociation(twsmOldTestamentQuote);
+end;
+
+procedure TVerseTests.SemanticFUToggleSplitPreservesAssociation;
+begin
+  AssertSemanticToggleSplitPreservesAssociation(twsmUnderline);
+end;
+
+procedure TVerseTests.SemanticFIPunctuationTogglePreservesAssociation;
+begin
+  AssertSemanticPunctuationTogglePreservesAssociation(twsmItalic);
+end;
+
+procedure TVerseTests.SemanticFRPunctuationTogglePreservesAssociation;
+begin
+  AssertSemanticPunctuationTogglePreservesAssociation(twsmWordsOfJesus);
+end;
+
+procedure TVerseTests.SemanticFOPunctuationTogglePreservesAssociation;
+begin
+  AssertSemanticPunctuationTogglePreservesAssociation(twsmOldTestamentQuote);
+end;
+
+procedure TVerseTests.SemanticFUPunctuationTogglePreservesAssociation;
+begin
+  AssertSemanticPunctuationTogglePreservesAssociation(twsmUnderline);
+end;
+
+procedure TVerseTests.SemanticFIApplyPreservesAssociation;
+begin
+  AssertSemanticApplyPreservesAssociation(twsmItalic);
+end;
+
+procedure TVerseTests.SemanticFRApplyPreservesAssociation;
+begin
+  AssertSemanticApplyPreservesAssociation(twsmWordsOfJesus);
+end;
+
+procedure TVerseTests.SemanticFOApplyPreservesAssociation;
+begin
+  AssertSemanticApplyPreservesAssociation(twsmOldTestamentQuote);
+end;
+
+procedure TVerseTests.SemanticFUApplyPreservesAssociation;
+begin
+  AssertSemanticApplyPreservesAssociation(twsmUnderline);
+end;
+
+procedure TVerseTests.SemanticTogglePreflightProtectsAssociationIdentity;
+const
+  ORIGINAL: string = '<FR>prefix target suffix<Fr>';
+  VALID: string = '<FR>prefix <Fr>target<FR> suffix<Fr>';
+  INVALID: string = '<FR>prefix ta<Fr>rg<FR>et suffix<Fr>';
+var
+  SourceSyntagm, TargetSyntagm: TSyntagm;
+  TargetIndex: Integer;
+begin
+  verse1.Text := 'source';
+  verse2.Text := ORIGINAL;
+  TargetIndex := FindIndexOf(verse2, 'target');
+  Associate([0], [TargetIndex]);
+  SourceSyntagm := verse1.Syntagms[0];
+  TargetSyntagm := verse2.Syntagms[TargetIndex];
+
+  AssertTrue('tags placed at Syntagm boundaries preserve identity',
+    verse2.CanChangeTextPreservingAssociationIdentity(VALID));
+  AssertEquals('preflight is read-only', ORIGINAL, verse2.XML);
+  verse2.ChangeText(VALID);
+  AssertEquals(VALID, verse2.XML);
+  AssertTrue(verse2.Syntagms.IndexOf(TargetSyntagm) >= 0);
+  AssertPairsAndSiblings(SourceSyntagm, [TargetSyntagm], []);
+  AssertPairsAndSiblings(TargetSyntagm, [SourceSyntagm], []);
+
+  AssertFalse('semantic tags cannot split an associated Syntagm',
+    verse2.CanChangeTextPreservingAssociationIdentity(INVALID));
+  AssertEquals('rejected preflight leaves XML intact', VALID, verse2.XML);
+  AssertTrue('rejected preflight leaves the target object intact',
+    verse2.Syntagms.IndexOf(TargetSyntagm) >= 0);
+  AssertPairsAndSiblings(SourceSyntagm, [TargetSyntagm], []);
+  AssertPairsAndSiblings(TargetSyntagm, [SourceSyntagm], []);
+end;
+
+procedure TVerseTests.SemanticTogglePreflightRejectsSplitWhitespace;
+const
+  ORIGINAL: string = '<FR>prefix  target suffix<Fr>';
+  SPLIT_WHITESPACE: string =
+    '<FR>prefix <Fr><FR> target suffix<Fr>';
+var
+  SourceSyntagm, TargetSyntagm: TSyntagm;
+  TargetIndex: Integer;
+begin
+  verse1.Text := 'source';
+  verse2.Text := ORIGINAL;
+  TargetIndex := FindIndexOf(verse2, 'target');
+  Associate([0], [TargetIndex]);
+  SourceSyntagm := verse1.Syntagms[0];
+  TargetSyntagm := verse2.Syntagms[TargetIndex];
+
+  AssertFalse('a semantic boundary cannot split one whitespace unit',
+    verse2.CanChangeTextPreservingAssociationIdentity(SPLIT_WHITESPACE));
+  AssertEquals('rejected whitespace preflight leaves XML intact', ORIGINAL,
+    verse2.XML);
+  AssertTrue('rejected whitespace preflight leaves target identity intact',
+    verse2.Syntagms.IndexOf(TargetSyntagm) >= 0);
+  AssertPairsAndSiblings(SourceSyntagm, [TargetSyntagm], []);
+  AssertPairsAndSiblings(TargetSyntagm, [SourceSyntagm], []);
 end;
 
 procedure TVerseTests.ReplaceSourceTextChangeBeginning;
@@ -1362,10 +1751,14 @@ begin
   Result := -1;
 
   for i := 0 to list.Count - 1 do
-    if not list[i].IsAssociated and (list[i].RawText = word) then
+  begin
+    if not list[i].IsAssociated and (list[i].Text = word) then
+    begin
       if Result <> -1 then
         raise Exception.Create(Format('Duplicated word in verse', [word, Result, i]));
       result := i;
+    end;
+  end;
 
   if Result = -1 then
     raise Exception.Create(Format('Word [%s] not found in verse', [word]));

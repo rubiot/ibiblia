@@ -165,11 +165,15 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+    function CanApplySemanticRange(AStartOffset,
+      AEndOffset: Integer): Boolean;
     function CanReplaceVisibleText(AStartUTF16,
       ALengthUTF16: Integer): Boolean;
     function AddSemanticMark(AKind: TTheWordSemanticKind;
       AStartOffset, AEndOffset: Integer): TTheWordSemanticMark;
     procedure RemoveSemanticMark(AMark: TTheWordSemanticMark);
+    function ToggleSemanticMark(AKind: TTheWordSemanticKind;
+      AStartOffset, AEndOffset: Integer): Boolean;
     procedure ReplaceVisibleText(AStartUTF16, ALengthUTF16: Integer;
       const AReplacement: UnicodeString);
     function LexicalProtectedStart(AIndex: Integer): Integer;
@@ -1174,6 +1178,16 @@ begin
     Dec(Result);
 end;
 
+function TTheWordVerseDocument.CanApplySemanticRange(AStartOffset,
+  AEndOffset: Integer): Boolean;
+begin
+  Result := FCanEdit and (AStartOffset >= 0) and
+    (AEndOffset > AStartOffset) and
+    (AEndOffset <= Length(FVisibleText)) and
+    IsUtf16Boundary(FVisibleText, AStartOffset) and
+    IsUtf16Boundary(FVisibleText, AEndOffset);
+end;
+
 function TTheWordVerseDocument.CanReplaceVisibleText(AStartUTF16,
   ALengthUTF16: Integer): Boolean;
 var
@@ -1298,6 +1312,120 @@ begin
       FEvents.Delete(Index);
   FMarks.Remove(AMark);
   FModified := True;
+end;
+
+function TTheWordVerseDocument.ToggleSemanticMark(
+  AKind: TTheWordSemanticKind; AStartOffset, AEndOffset: Integer): Boolean;
+var
+  Affected: TList;
+  BestEnd, ComponentEnd, ComponentStart, CoverageEnd, Index: Integer;
+  Expanded, FullyCovered: Boolean;
+  Mark: TTheWordSemanticMark;
+begin
+  Result := False;
+  EnsureEditable;
+  if (AStartOffset < 0) or (AEndOffset < AStartOffset) or
+     (AEndOffset > Length(FVisibleText)) then
+    raise ETheWordOntCodec.CreateFmt(
+      'Invalid semantic range [%d,%d) for text length %d',
+      [AStartOffset, AEndOffset, Length(FVisibleText)]);
+  if not IsUtf16Boundary(FVisibleText, AStartOffset) or
+     not IsUtf16Boundary(FVisibleText, AEndOffset) then
+    raise ETheWordOntCodec.Create(
+      'Semantic range splits a UTF-16 surrogate pair');
+  if AStartOffset = AEndOffset then
+    Exit;
+
+  { Treat all marks of this kind as one effective coverage.  Adjacent marks
+    have no visible gap and therefore also count as continuous coverage. }
+  CoverageEnd := AStartOffset;
+  repeat
+    BestEnd := CoverageEnd;
+    for Index := 0 to FMarks.Count - 1 do
+    begin
+      Mark := TTheWordSemanticMark(FMarks[Index]);
+      if (Mark.FKind = AKind) and
+         (Mark.FStartOffset <= CoverageEnd) and
+         (Mark.FEndOffset > BestEnd) then
+        BestEnd := Mark.FEndOffset;
+    end;
+    if BestEnd = CoverageEnd then
+      Break;
+    CoverageEnd := BestEnd;
+  until CoverageEnd >= AEndOffset;
+  FullyCovered := CoverageEnd >= AEndOffset;
+
+  Affected := TList.Create;
+  try
+    if FullyCovered then
+    begin
+      { Subtract the selection from the effective marked interval.  Marks
+        wholly outside the selection are deliberately left untouched. }
+      ComponentStart := AStartOffset;
+      ComponentEnd := AEndOffset;
+      for Index := 0 to FMarks.Count - 1 do
+      begin
+        Mark := TTheWordSemanticMark(FMarks[Index]);
+        if (Mark.FKind = AKind) and
+           (Mark.FStartOffset < AEndOffset) and
+           (Mark.FEndOffset > AStartOffset) then
+        begin
+          Affected.Add(Mark);
+          if Mark.FStartOffset < ComponentStart then
+            ComponentStart := Mark.FStartOffset;
+          if Mark.FEndOffset > ComponentEnd then
+            ComponentEnd := Mark.FEndOffset;
+        end;
+      end;
+
+      for Index := Affected.Count - 1 downto 0 do
+        RemoveSemanticMark(TTheWordSemanticMark(Affected[Index]));
+      if ComponentStart < AStartOffset then
+        AddSemanticMark(AKind, ComponentStart, AStartOffset);
+      if ComponentEnd > AEndOffset then
+        AddSemanticMark(AKind, AEndOffset, ComponentEnd);
+    end
+    else
+    begin
+      { Fill the selection and merge every overlapping or adjacent mark in
+        the connected component.  Repeating the scan is necessary when an
+        interval discovered later expands the component towards an earlier
+        mark in list order. }
+      ComponentStart := AStartOffset;
+      ComponentEnd := AEndOffset;
+      repeat
+        Expanded := False;
+        for Index := 0 to FMarks.Count - 1 do
+        begin
+          Mark := TTheWordSemanticMark(FMarks[Index]);
+          if (Mark.FKind <> AKind) or (Affected.IndexOf(Mark) >= 0) then
+            Continue;
+          if (Mark.FStartOffset <= ComponentEnd) and
+             (Mark.FEndOffset >= ComponentStart) then
+          begin
+            Affected.Add(Mark);
+            if Mark.FStartOffset < ComponentStart then
+            begin
+              ComponentStart := Mark.FStartOffset;
+              Expanded := True;
+            end;
+            if Mark.FEndOffset > ComponentEnd then
+            begin
+              ComponentEnd := Mark.FEndOffset;
+              Expanded := True;
+            end;
+          end;
+        end;
+      until not Expanded;
+
+      for Index := Affected.Count - 1 downto 0 do
+        RemoveSemanticMark(TTheWordSemanticMark(Affected[Index]));
+      AddSemanticMark(AKind, ComponentStart, ComponentEnd);
+    end;
+    Result := True;
+  finally
+    Affected.Free;
+  end;
 end;
 
 procedure TTheWordVerseDocument.ReplaceVisibleText(AStartUTF16,
@@ -1605,8 +1733,46 @@ begin
   end;
 end;
 
+procedure AppendLeadingPostfixEvents(ADocument: TTheWordVerseDocument;
+  AOffset: Integer; ARegenerated, AEmitted: TList;
+  var AOutput: UnicodeString);
+var
+  Index: Integer;
+  Event: TTheWordInlineEvent;
+begin
+  AEmitted.Clear;
+  for Index := 0 to ADocument.FEvents.Count - 1 do
+  begin
+    Event := TTheWordInlineEvent(ADocument.FEvents[Index]);
+    if Event.Offset <> AOffset then
+      Continue;
+    case Event.Kind of
+      twiekLexical, twiekStructural:
+        begin
+          AOutput := AOutput + Event.RawLexeme;
+          AEmitted.Add(Event);
+        end;
+      twiekSemanticOpen, twiekSemanticClose:
+        begin
+          { Regenerated semantic events are replaced by the transition below
+            and do not interrupt the original postfix prefix. }
+          if (Event.SemanticMark <> nil) and
+             ListContainsMark(ARegenerated, Event.SemanticMark) then
+            Continue;
+          Break;
+        end;
+    else
+      { An opaque or otherwise preserved object breaks attachment to the
+        word.  Lexical events after it must retain their original position so
+        the legacy parser does not acquire an association that never existed. }
+      Break;
+    end;
+  end;
+end;
+
 procedure AppendPreservedEvents(ADocument: TTheWordVerseDocument;
-  AOffset: Integer; ARegenerated: TList; var AOutput: UnicodeString);
+  AOffset: Integer; ARegenerated, AEmitted: TList;
+  var AOutput: UnicodeString);
 var
   Index: Integer;
   Event: TTheWordInlineEvent;
@@ -1622,7 +1788,8 @@ begin
          not ListContainsMark(ARegenerated, Event.SemanticMark) then
         AOutput := AOutput + Event.RawLexeme;
     end
-    else if Event.Kind in [twiekLexical, twiekOpaque, twiekStructural] then
+    else if (Event.Kind in [twiekLexical, twiekOpaque, twiekStructural]) and
+            ((AEmitted = nil) or (AEmitted.IndexOf(Event) < 0)) then
       AOutput := AOutput + Event.RawLexeme;
   end;
 end;
@@ -1880,7 +2047,8 @@ function TTheWordOntCodecV2.EncodeVerse(
   ADocument: TTheWordVerseDocument): UnicodeString;
 var
   Offset, Index, CommonCount: Integer;
-  CurrentMarks, TargetMarks, RegeneratedMarks: TList;
+  HasSemanticTransition: Boolean;
+  CurrentMarks, TargetMarks, RegeneratedMarks, EmittedEvents: TList;
   Mark: TTheWordSemanticMark;
 begin
   if ADocument = nil then
@@ -1892,6 +2060,7 @@ begin
   CurrentMarks := TList.Create;
   TargetMarks := TList.Create;
   RegeneratedMarks := TList.Create;
+  EmittedEvents := TList.Create;
   try
     BuildRegeneratedSemanticMarks(ADocument, RegeneratedMarks);
     for Offset := 0 to Length(ADocument.FVisibleText) do
@@ -1904,6 +2073,20 @@ begin
             (CurrentMarks[CommonCount] = TargetMarks[CommonCount]) do
         Inc(CommonCount);
 
+      HasSemanticTransition := (CommonCount < CurrentMarks.Count) or
+        (CommonCount < TargetMarks.Count);
+      EmittedEvents.Clear;
+      if HasSemanticTransition then
+      begin
+        { WG/WH/WT/wt are postfix data of the content unit immediately to
+          their left.  A regenerated crossing may need to close and reopen
+          semantic spans at the same document offset; emitting those tags
+          first would make the legacy TONTParser attach lexical data to a
+          semantic metadata token instead of to the word. }
+        AppendLeadingPostfixEvents(ADocument, Offset, RegeneratedMarks,
+          EmittedEvents, Result);
+      end;
+
       for Index := CurrentMarks.Count - 1 downto CommonCount do
       begin
         Mark := TTheWordSemanticMark(CurrentMarks[Index]);
@@ -1912,7 +2095,8 @@ begin
       end;
 
       { Imported events keep their original ordinal at this anchor. }
-      AppendPreservedEvents(ADocument, Offset, RegeneratedMarks, Result);
+      AppendPreservedEvents(ADocument, Offset, RegeneratedMarks,
+        EmittedEvents, Result);
 
       for Index := CommonCount to TargetMarks.Count - 1 do
       begin
@@ -1926,6 +2110,7 @@ begin
         Result := Result + ADocument.FVisibleText[Offset + 1];
     end;
   finally
+    EmittedEvents.Free;
     RegeneratedMarks.Free;
     TargetMarks.Free;
     CurrentMarks.Free;

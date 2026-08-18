@@ -123,6 +123,7 @@ type
     function GetPrevVisible: TSyntagm;
     function GetSuggestionKey(t: TPairsListType): string;
     function IsEqualTo(other : TSyntagm): boolean;
+    procedure AdoptParsedState(ACandidate: TSyntagm);
     property Strong: TStringList read FStrong write FStrong;
     property Morph: TStringList read FMorph write FMorph;
     property Lemma: string read GetLemma;
@@ -749,6 +750,28 @@ begin
             (FColor = other.FColor) and
             (FSuperscript = other.FSuperscript) and
             (FItalic = other.FItalic);
+end;
+
+procedure TSyntagm.AdoptParsedState(ACandidate: TSyntagm);
+begin
+  if not Assigned(ACandidate) then
+    raise EArgumentNilException.Create('ACandidate');
+
+  { Keep this object's Association, sibling, selection and UI identity while
+    refreshing every value produced by parsing the edited ONT. }
+  FKind := ACandidate.FKind;
+  FText := ACandidate.FText;
+  FRawText := ACandidate.FRawText;
+  FColor := ACandidate.FColor;
+  FSuperscript := ACandidate.FSuperscript;
+  FItalic := ACandidate.FItalic;
+
+  FreeAndNil(FStrong);
+  FreeAndNil(FMorph);
+  FStrong := ACandidate.FStrong;
+  FMorph := ACandidate.FMorph;
+  ACandidate.FStrong := nil;
+  ACandidate.FMorph := nil;
 end;
 
 { creates a basic instance of a syntagm, no label, no event handlers, etc. }

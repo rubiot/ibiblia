@@ -100,6 +100,14 @@ resourcestring
     'to the new atomic session, only FI, FR, FO and FU semantic formatting ' +
     'can be saved. Undo or cancel textual/structural changes before saving ' +
     'or navigating.';
+  SAssociationBoundaryFormattingUndone =
+    'The selected formatting would change Syntagm boundaries while this ' +
+    'verse has Associations. The operation was undone. Adjust the selection ' +
+    'to complete words, whitespace or punctuation.';
+  SAssociationBoundarySaveBlocked =
+    'This semantic edit changes Syntagm boundaries while the verse has ' +
+    'Associations, so it cannot be saved. In Raw mode, move formatting tags ' +
+    'to boundaries between complete words, whitespace or punctuation.';
 
 implementation
 
@@ -110,7 +118,15 @@ end;
 
 procedure TVerseMemo.ApplySemantic(AKind: TTheWordSemanticKind);
 begin
-  FEditor.ApplySemantic(AKind);
+  if not FEditor.ApplySemantic(AKind) then
+    Exit;
+  if Assigned(FVerse) and
+     not FVerse.CanChangeTextPreservingAssociationIdentity(FEditor.Text) then
+  begin
+    FEditor.RejectLastChange;
+    MessageDlg(SAssociationEditBlockedTitle,
+      SAssociationBoundaryFormattingUndone, mtWarning, [mbOK], 0);
+  end;
 end;
 
 procedure TVerseMemo.CancelButtonClick(Sender: TObject);
@@ -534,6 +550,13 @@ begin
     FVerse.HasAssociations, FEditor.ChangesAreSemanticOnly) then
   begin
     MessageDlg(SAssociationEditBlockedTitle, SAssociationEditBlocked,
+      mtWarning, [mbOK], 0);
+    Exit(False);
+  end;
+  if Assigned(FVerse) and
+     not FVerse.CanChangeTextPreservingAssociationIdentity(FEditor.Text) then
+  begin
+    MessageDlg(SAssociationEditBlockedTitle, SAssociationBoundarySaveBlocked,
       mtWarning, [mbOK], 0);
     Exit(False);
   end;

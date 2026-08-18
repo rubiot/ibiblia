@@ -54,6 +54,7 @@ type
     function ReplaceRawText(const ARaw: UnicodeString): Boolean;
     function Undo: Boolean;
     function Redo: Boolean;
+    function RejectLastChange: Boolean;
     procedure Cancel;
     procedure AcceptChanges;
     property CanRedo: Boolean read GetCanRedo;
@@ -155,38 +156,102 @@ begin
   Result := FRedo.Count > 0;
 end;
 
+type
+  TNonSemanticEventCategory = (
+    nsecLexical,
+    nsecOpaque,
+    nsecStructural
+  );
+
+  TNonSemanticEventSnapshot = record
+    Category: TNonSemanticEventCategory;
+    Kind: Integer;
+    Offset: Integer;
+    RawLexeme: UnicodeString;
+    Ordinal: Integer;
+  end;
+
+  TNonSemanticEventSequence = array of TNonSemanticEventSnapshot;
+
+procedure SortNonSemanticEvents(var AEvents: TNonSemanticEventSequence);
+var
+  Event: TNonSemanticEventSnapshot;
+  Index, Position: Integer;
+begin
+  for Index := 1 to High(AEvents) do
+  begin
+    Event := AEvents[Index];
+    Position := Index - 1;
+    while (Position >= 0) and
+      (AEvents[Position].Ordinal > Event.Ordinal) do
+    begin
+      AEvents[Position + 1] := AEvents[Position];
+      Dec(Position);
+    end;
+    AEvents[Position + 1] := Event;
+  end;
+end;
+
+function BuildNonSemanticEventSequence(
+  ADocument: TTheWordVerseDocument): TNonSemanticEventSequence;
+var
+  Index, Position: Integer;
+begin
+  Result := nil;
+  if not Assigned(ADocument) then
+    Exit;
+  SetLength(Result, ADocument.LexicalItemCount +
+    ADocument.OpaqueItemCount + ADocument.StructuralItemCount);
+  Position := 0;
+  for Index := 0 to ADocument.LexicalItemCount - 1 do
+  begin
+    Result[Position].Category := nsecLexical;
+    Result[Position].Kind := Ord(ADocument.LexicalItems[Index].Kind);
+    Result[Position].Offset := ADocument.LexicalItems[Index].Offset;
+    Result[Position].RawLexeme := ADocument.LexicalItems[Index].RawLexeme;
+    Result[Position].Ordinal := ADocument.LexicalItems[Index].Ordinal;
+    Inc(Position);
+  end;
+  for Index := 0 to ADocument.OpaqueItemCount - 1 do
+  begin
+    Result[Position].Category := nsecOpaque;
+    Result[Position].Kind := Ord(ADocument.OpaqueItems[Index].Kind);
+    Result[Position].Offset := ADocument.OpaqueItems[Index].Offset;
+    Result[Position].RawLexeme := ADocument.OpaqueItems[Index].RawLexeme;
+    Result[Position].Ordinal := ADocument.OpaqueItems[Index].Ordinal;
+    Inc(Position);
+  end;
+  for Index := 0 to ADocument.StructuralItemCount - 1 do
+  begin
+    Result[Position].Category := nsecStructural;
+    Result[Position].Kind := Ord(ADocument.StructuralItems[Index].Kind);
+    Result[Position].Offset := ADocument.StructuralItems[Index].Offset;
+    Result[Position].RawLexeme := ADocument.StructuralItems[Index].RawLexeme;
+    Result[Position].Ordinal := ADocument.StructuralItems[Index].Ordinal;
+    Inc(Position);
+  end;
+  SortNonSemanticEvents(Result);
+end;
+
 function SameNonSemanticContent(ALeft,
   ARight: TTheWordVerseDocument): Boolean;
 var
   Index: Integer;
+  LeftEvents, RightEvents: TNonSemanticEventSequence;
 begin
   Result := Assigned(ALeft) and Assigned(ARight) and
-    (ALeft.VisibleText = ARight.VisibleText) and
-    (ALeft.LexicalItemCount = ARight.LexicalItemCount) and
-    (ALeft.OpaqueItemCount = ARight.OpaqueItemCount) and
-    (ALeft.StructuralItemCount = ARight.StructuralItemCount);
-  if not Result then Exit;
-  for Index := 0 to ALeft.LexicalItemCount - 1 do
-    if (ALeft.LexicalItems[Index].Kind <> ARight.LexicalItems[Index].Kind) or
-       (ALeft.LexicalItems[Index].Offset <> ARight.LexicalItems[Index].Offset) or
-       (ALeft.LexicalItems[Index].RawLexeme <>
-        ARight.LexicalItems[Index].RawLexeme) or
-       (ALeft.LexicalItems[Index].Value <>
-        ARight.LexicalItems[Index].Value) then
-      Exit(False);
-  for Index := 0 to ALeft.OpaqueItemCount - 1 do
-    if (ALeft.OpaqueItems[Index].Kind <> ARight.OpaqueItems[Index].Kind) or
-       (ALeft.OpaqueItems[Index].Offset <> ARight.OpaqueItems[Index].Offset) or
-       (ALeft.OpaqueItems[Index].RawLexeme <>
-        ARight.OpaqueItems[Index].RawLexeme) then
-      Exit(False);
-  for Index := 0 to ALeft.StructuralItemCount - 1 do
-    if (ALeft.StructuralItems[Index].Kind <>
-        ARight.StructuralItems[Index].Kind) or
-       (ALeft.StructuralItems[Index].Offset <>
-        ARight.StructuralItems[Index].Offset) or
-       (ALeft.StructuralItems[Index].RawLexeme <>
-        ARight.StructuralItems[Index].RawLexeme) then
+    (ALeft.VisibleText = ARight.VisibleText);
+  if not Result then
+    Exit;
+  LeftEvents := BuildNonSemanticEventSequence(ALeft);
+  RightEvents := BuildNonSemanticEventSequence(ARight);
+  if Length(LeftEvents) <> Length(RightEvents) then
+    Exit(False);
+  for Index := 0 to High(LeftEvents) do
+    if (LeftEvents[Index].Category <> RightEvents[Index].Category) or
+       (LeftEvents[Index].Kind <> RightEvents[Index].Kind) or
+       (LeftEvents[Index].Offset <> RightEvents[Index].Offset) or
+       (LeftEvents[Index].RawLexeme <> RightEvents[Index].RawLexeme) then
       Exit(False);
 end;
 
@@ -311,31 +376,30 @@ end;
 function TTheWordWysiwygSessionV2.ApplySemantic(
   AKind: TTheWordSemanticKind; AStartUTF16, ALengthUTF16: Integer): Boolean;
 var
-  Index: Integer;
-  Mark: TTheWordSemanticMark;
-  Snapshot: UnicodeString;
+  Snapshot, UpdatedRaw: UnicodeString;
+  WorkingDocument: TTheWordVerseDocument;
 begin
   Result := False;
   if not CanApplySemantic(AStartUTF16, ALengthUTF16) then
     Exit;
   Snapshot := GetRawText;
-  for Index := 0 to FDocument.MarkCount - 1 do
-  begin
-    Mark := FDocument.Marks[Index];
-    if (Mark.Kind = AKind) and (Mark.StartOffset = AStartUTF16) and
-       (Mark.EndOffset = AStartUTF16 + ALengthUTF16) then
-    begin
-      FDocument.RemoveSemanticMark(Mark);
-      PushUndo(Snapshot);
-      Inc(FRevision);
-      Exit(True);
-    end;
+  WorkingDocument := FCodec.DecodeVerse(Snapshot);
+  try
+    if not WorkingDocument.ToggleSemanticMark(AKind, AStartUTF16,
+      AStartUTF16 + ALengthUTF16) then
+      Exit;
+    UpdatedRaw := FCodec.EncodeVerse(WorkingDocument);
+    if UpdatedRaw = Snapshot then
+      Exit;
+
+    { ReplaceDocument decodes before swapping FDocument, so a codec failure
+      cannot leave the live session partially mutated. }
+    ReplaceDocument(UpdatedRaw);
+    PushUndo(Snapshot);
+    Result := True;
+  finally
+    WorkingDocument.Free;
   end;
-  FDocument.AddSemanticMark(AKind, AStartUTF16,
-    AStartUTF16 + ALengthUTF16);
-  PushUndo(Snapshot);
-  Inc(FRevision);
-  Result := True;
 end;
 
 function TTheWordWysiwygSessionV2.ReplaceText(AStartUTF16,
@@ -380,6 +444,13 @@ begin
   Result := CanRedo;
   if Result then
     RestoreFromStack(FRedo, FUndo);
+end;
+
+function TTheWordWysiwygSessionV2.RejectLastChange: Boolean;
+begin
+  Result := Undo;
+  if Result then
+    FRedo.Clear;
 end;
 
 procedure TTheWordWysiwygSessionV2.Cancel;

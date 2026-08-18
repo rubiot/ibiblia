@@ -74,6 +74,7 @@ type
     function CommitRaw: Boolean;
     function Undo: Boolean;
     function Redo: Boolean;
+    function RejectLastChange: Boolean;
     procedure Cancel;
     procedure FocusEditor;
     procedure SetEditorFont(AFont: TFont);
@@ -604,6 +605,17 @@ begin
     Exit(True);
   end;
   Result := Assigned(FSession) and FSession.Redo;
+  if Result then
+  begin
+    RefreshDirectDocument;
+    DoChanged;
+  end;
+end;
+
+function TTheWordWysiwygEditorControl.RejectLastChange: Boolean;
+begin
+  Result := (not FRawMode) and Assigned(FSession) and
+    FSession.RejectLastChange;
   if Result then
   begin
     RefreshDirectDocument;

@@ -24,6 +24,14 @@ type
     procedure TerminalEmptyTitleKeepsOffsetMapReversible;
     procedure ProtectedAnchorsAllowAdjacentButNotCrossingEdits;
     procedure RawFallbackReentersTheSameCodecSession;
+    procedure SemanticToggleRemovesAnySliceForAllKinds;
+    procedure SemanticToggleAppliesAcrossMixedCoverageAndMerges;
+    procedure SemanticToggleHandlesAdjacentNestedAndCrossingMarks;
+    procedure SemanticToggleUsesUtf16BoundariesAtomically;
+    procedure SemanticToggleRejectsTitleAndAllowsBodyBoundary;
+    procedure SemanticToggleUndoRedoPreservesOntObjects;
+    procedure NonSemanticEventOrderControlsSemanticOnlyClassification;
+    procedure RejectedSemanticToggleCannotBeRedone;
   end;
 
 implementation
@@ -31,6 +39,34 @@ implementation
 uses
   Graphics, text_direction, verse_visual_document, theword_ont_codec_v2,
   theword_verse_visual_adapter_v2, theword_wysiwyg_session_v2;
+
+function SemanticMask(const ARaw: UnicodeString;
+  AKind: TTheWordSemanticKind): UnicodeString;
+var
+  Codec: ITheWordOntCodecV2;
+  Document: TTheWordVerseDocument;
+  Mark: TTheWordSemanticMark;
+  MarkIndex, Offset: Integer;
+begin
+  Result := '';
+  Codec := TTheWordOntCodecV2.Create;
+  Document := Codec.DecodeVerse(ARaw);
+  try
+    SetLength(Result, Length(Document.VisibleText));
+    for Offset := 1 to Length(Result) do
+      Result[Offset] := '0';
+    for MarkIndex := 0 to Document.MarkCount - 1 do
+    begin
+      Mark := Document.Marks[MarkIndex];
+      if Mark.Kind <> AKind then
+        Continue;
+      for Offset := Mark.StartOffset to Mark.EndOffset - 1 do
+        Result[Offset + 1] := '1';
+    end;
+  finally
+    Document.Free;
+  end;
+end;
 
 procedure TTheWordWysiwygSessionV2Test.
   AppliesFourSemanticsWithoutExposingTagsAsText;
@@ -463,6 +499,254 @@ begin
     AssertEquals(Ord(twlcProtectedRegions), Ord(Session.Capability));
     AssertTrue(Session.Undo);
     AssertEquals(UnicodeString('word'), Session.RawText);
+  finally
+    Session.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
+  SemanticToggleRemovesAnySliceForAllKinds;
+const
+  STARTS: array[0..3] of Integer = (0, 0, 2, 4);
+  LENGTHS: array[0..3] of Integer = (6, 2, 2, 2);
+var
+  CaseIndex: Integer;
+  CloseTag, Expected, OpenTag, Raw: UnicodeString;
+  Kind: TTheWordSemanticKind;
+  Session: TTheWordWysiwygSessionV2;
+begin
+  for Kind := Low(TTheWordSemanticKind) to High(TTheWordSemanticKind) do
+  begin
+    OpenTag := TheWordCanonicalOpen(Kind);
+    CloseTag := TheWordCanonicalClose(Kind);
+    Raw := OpenTag + 'abcdef' + CloseTag;
+    for CaseIndex := 0 to High(STARTS) do
+    begin
+      case CaseIndex of
+        0: Expected := 'abcdef';
+        1: Expected := 'ab' + OpenTag + 'cdef' + CloseTag;
+        2: Expected := OpenTag + 'ab' + CloseTag + 'cd' + OpenTag +
+          'ef' + CloseTag;
+        3: Expected := OpenTag + 'abcd' + CloseTag + 'ef';
+      end;
+      Session := TTheWordWysiwygSessionV2.Create(Raw);
+      try
+        AssertTrue('covered selection must remove semantic kind ' +
+          IntToStr(Ord(Kind)), Session.ApplySemantic(Kind,
+            STARTS[CaseIndex], LENGTHS[CaseIndex]));
+        AssertEquals('toggle must subtract the selected interval', Expected,
+          Session.RawText);
+        AssertEquals('semantic toggle never changes visible text',
+          UnicodeString('abcdef'), Session.VisibleText);
+      finally
+        Session.Free;
+      end;
+    end;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
+  SemanticToggleAppliesAcrossMixedCoverageAndMerges;
+var
+  Session: TTheWordWysiwygSessionV2;
+begin
+  Session := TTheWordWysiwygSessionV2.Create('<FR>ab<Fr>cd');
+  try
+    AssertTrue(Session.ApplySemantic(twsmWordsOfJesus, 1, 3));
+    AssertEquals('a partially covered selection becomes wholly formatted',
+      UnicodeString('<FR>abcd<Fr>'), Session.RawText);
+    AssertEquals(UnicodeString('1111'),
+      SemanticMask(Session.RawText, twsmWordsOfJesus));
+  finally
+    Session.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
+  SemanticToggleHandlesAdjacentNestedAndCrossingMarks;
+var
+  Changed: UnicodeString;
+  Restored, Session: TTheWordWysiwygSessionV2;
+begin
+  Session := TTheWordWysiwygSessionV2.Create(
+    '<FI>ab<Fi><FI>cd<Fi>');
+  try
+    AssertTrue('adjacent marks form continuous coverage',
+      Session.ApplySemantic(twsmItalic, 1, 2));
+    AssertEquals(UnicodeString('<FI>a<Fi>bc<FI>d<Fi>'), Session.RawText);
+    AssertEquals(UnicodeString('1001'),
+      SemanticMask(Session.RawText, twsmItalic));
+  finally
+    Session.Free;
+  end;
+
+  Session := TTheWordWysiwygSessionV2.Create(
+    '<FI>a<FI>bc<Fi>d<Fi>');
+  try
+    AssertTrue('nested marks are evaluated by effective coverage',
+      Session.ApplySemantic(twsmItalic, 1, 2));
+    AssertEquals(UnicodeString('<FI>a<Fi>bc<FI>d<Fi>'), Session.RawText);
+    AssertEquals(UnicodeString('1001'),
+      SemanticMask(Session.RawText, twsmItalic));
+  finally
+    Session.Free;
+  end;
+
+  Session := TTheWordWysiwygSessionV2.Create(
+    '<FR>ab<FI>cd<Fr>ef<Fi>');
+  try
+    AssertTrue(Session.ApplySemantic(twsmWordsOfJesus, 1, 2));
+    Changed := Session.RawText;
+    AssertEquals('only the requested kind is subtracted',
+      UnicodeString('100100'), SemanticMask(Changed, twsmWordsOfJesus));
+    AssertEquals('crossing italic coverage remains unchanged',
+      UnicodeString('001111'), SemanticMask(Changed, twsmItalic));
+    Restored := TTheWordWysiwygSessionV2.Create(Changed);
+    try
+      AssertEquals('crossing serialization is stable after decode', Changed,
+        Restored.RawText);
+    finally
+      Restored.Free;
+    end;
+  finally
+    Session.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
+  SemanticToggleUsesUtf16BoundariesAtomically;
+var
+  Emoji, Original: UnicodeString;
+  Session: TTheWordWysiwygSessionV2;
+begin
+  Emoji := UnicodeString(WideChar($D83D)) + UnicodeString(WideChar($DE00));
+  Original := '<FR>A' + Emoji + 'B<Fr>';
+  Session := TTheWordWysiwygSessionV2.Create(Original);
+  try
+    AssertFalse('a semantic boundary cannot split a surrogate pair',
+      Session.CanApplySemantic(2, 1));
+    AssertFalse('rejected UTF-16 selection is a normal failed command',
+      Session.ApplySemantic(twsmWordsOfJesus, 2, 1));
+    AssertEquals('rejected UTF-16 toggle is atomic', Original,
+      Session.RawText);
+    AssertFalse('rejected UTF-16 toggle creates no undo entry',
+      Session.CanUndo);
+
+    AssertTrue(Session.ApplySemantic(twsmWordsOfJesus, 1, 2));
+    AssertEquals(UnicodeString('<FR>A<Fr>') + Emoji + '<FR>B<Fr>',
+      Session.RawText);
+  finally
+    Session.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
+  SemanticToggleRejectsTitleAndAllowsBodyBoundary;
+const
+  ORIGINAL: UnicodeString = '<TS>Head<Ts><FR>abcdef<Fr>';
+var
+  Session: TTheWordWysiwygSessionV2;
+begin
+  Session := TTheWordWysiwygSessionV2.Create(ORIGINAL);
+  try
+    AssertFalse('selection crossing title and body is protected',
+      Session.CanApplySemantic(3, 2));
+    AssertFalse(Session.ApplySemantic(twsmWordsOfJesus, 3, 2));
+    AssertEquals(ORIGINAL, Session.RawText);
+    AssertFalse(Session.CanUndo);
+
+    AssertTrue('body starts at the same document offset as closing Ts',
+      Session.ApplySemantic(twsmWordsOfJesus, 4, 2));
+    AssertEquals(UnicodeString('<TS>Head<Ts>ab<FR>cdef<Fr>'),
+      Session.RawText);
+  finally
+    Session.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
+  SemanticToggleUndoRedoPreservesOntObjects;
+const
+  ORIGINAL: UnicodeString =
+    '<X z="1"><FR>ab<WG123><WTN-NSM><wt>|cd<Fr><fi>tail</fi>';
+  EXPECTED: UnicodeString =
+    '<X z="1"><FR>a<Fr>b<WG123><WTN-NSM><wt>|c<FR>d<Fr><fi>tail</fi>';
+var
+  Changed: UnicodeString;
+  Session: TTheWordWysiwygSessionV2;
+begin
+  Session := TTheWordWysiwygSessionV2.Create(ORIGINAL);
+  try
+    AssertTrue(Session.ApplySemantic(twsmWordsOfJesus, 1, 2));
+    Changed := Session.RawText;
+    AssertEquals('unaffected ONT objects remain literal and ordered',
+      EXPECTED, Changed);
+    AssertEquals(UnicodeString('abcdtail'), Session.VisibleText);
+    AssertEquals(UnicodeString('10010000'),
+      SemanticMask(Changed, twsmWordsOfJesus));
+    AssertTrue(Session.ChangesAreSemanticOnly);
+    AssertTrue(CanCommitLegacyWysiwygChangeV2(True,
+      Session.ChangesAreSemanticOnly));
+
+    AssertTrue('one undo restores the literal source snapshot', Session.Undo);
+    AssertEquals(ORIGINAL, Session.RawText);
+    AssertFalse('toggle was exactly one command', Session.CanUndo);
+    AssertTrue(Session.Redo);
+    AssertEquals(Changed, Session.RawText);
+    AssertEquals(UnicodeString('10010000'),
+      SemanticMask(Session.RawText, twsmWordsOfJesus));
+  finally
+    Session.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
+  NonSemanticEventOrderControlsSemanticOnlyClassification;
+var
+  Session: TTheWordWysiwygSessionV2;
+begin
+  Session := TTheWordWysiwygSessionV2.Create('word<WG123><X>');
+  try
+    AssertTrue(Session.ReplaceRawText('word<X><WG123>'));
+    AssertFalse('reordering lexical and opaque events is not semantic-only',
+      Session.ChangesAreSemanticOnly);
+    AssertFalse('Associations block reordered non-semantic ONT objects',
+      CanCommitLegacyWysiwygChangeV2(True,
+        Session.ChangesAreSemanticOnly));
+    AssertTrue('without Associations the raw change remains allowed',
+      CanCommitLegacyWysiwygChangeV2(False,
+        Session.ChangesAreSemanticOnly));
+  finally
+    Session.Free;
+  end;
+
+  Session := TTheWordWysiwygSessionV2.Create('word<WG123><X>');
+  try
+    AssertTrue(Session.ApplySemantic(twsmItalic, 0, 4));
+    AssertTrue('visual toggle preserves the global non-semantic event order',
+      Session.ChangesAreSemanticOnly);
+    AssertTrue('semantic toggle remains committable with Associations',
+      CanCommitLegacyWysiwygChangeV2(True,
+        Session.ChangesAreSemanticOnly));
+  finally
+    Session.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.RejectedSemanticToggleCannotBeRedone;
+var
+  Session: TTheWordWysiwygSessionV2;
+begin
+  Session := TTheWordWysiwygSessionV2.Create('<FR>abcdef<Fr>');
+  try
+    AssertTrue(Session.ApplySemantic(twsmWordsOfJesus, 2, 2));
+    AssertTrue(Session.CanUndo);
+    AssertTrue(Session.RejectLastChange);
+    AssertEquals(UnicodeString('<FR>abcdef<Fr>'), Session.RawText);
+    AssertFalse('a rejected command must not remain undoable',
+      Session.CanUndo);
+    AssertFalse('a rejected command must not be available through redo',
+      Session.CanRedo);
   finally
     Session.Free;
   end;
