@@ -120,6 +120,8 @@ type
     procedure TracedLegacyFallbackUsesHistoricalHeuristic;
     procedure TracedEditRenderFailureRemainsCommitted;
     procedure TracedFallbackRenderFailureRemainsCommitted;
+    procedure TracedTranslatorNoteCrudPreservesManyToManyAssociation;
+    procedure TracedTranslatorNotesRoundTripPairsAtSameAnchor;
     procedure TokenizerVersion1KeepsCurlyQuotesInsideWords;
     procedure TokenizerVersion2KeepsCurlyQuotesInsideWords;
     procedure TokenizerVersion1KeepsHebrewMaqafInsideWord;
@@ -1607,6 +1609,246 @@ begin
   Application.ProcessMessages;
   AssertTrue('the fallback commit must receive a deferred render retry',
     FailingVerse.RenderAttempts >= AttemptsBeforeSave + 2);
+end;
+
+procedure TVerseTests.
+  TracedTranslatorNoteCrudPreservesManyToManyAssociation;
+const
+  ORIGINAL: UnicodeString = 'word<WG123><WTN-NSM><wt> tail';
+  INSERTED: UnicodeString =
+    'word<WG123><WTN-NSM><wt><RF>same<Rf><RF>same<Rf> tail';
+  UPDATED: UnicodeString =
+    'word<WG123><WTN-NSM><wt><RF>same<Rf>' +
+    '<RF q=*><i>changed</i><Rf> tail';
+  REMOVED: UnicodeString =
+    'word<WG123><WTN-NSM><wt><RF q=*><i>changed</i><Rf> tail';
+var
+  Impact: TAssociationEditImpact;
+  FirstId, SecondId: QWord;
+  Session: TTheWordWysiwygSessionV2;
+  SourceA, SourceB, TargetTail, TargetWord: TSyntagm;
+  TargetTailIndex: Integer;
+
+  procedure ApplySession(AEditingSession: TTheWordWysiwygSessionV2;
+    const AStage: string);
+  var
+    Trace: TVerseEditTrace;
+  begin
+    Trace := AEditingSession.CloneEditTrace;
+    try
+      AssertTrue(AStage + ': traced RF edit must apply',
+        verse2.TryApplyTracedEdit(UTF8Encode(AEditingSession.RawText),
+          Trace, Impact));
+    finally
+      Trace.Free;
+    end;
+    AssertEquals(AStage + ': both target Association members survive',
+      2, Impact.PreservedMembers);
+    AssertEquals(AStage + ': no target Association member is removed',
+      0, Impact.RemovedMembers);
+  end;
+
+  procedure AssertLiveTopology(const AStage: string);
+  begin
+    AssertTrue(AStage + ': target word identity survives',
+      verse2.Syntagms.IndexOf(TargetWord) >= 0);
+    AssertTrue(AStage + ': target tail identity survives',
+      verse2.Syntagms.IndexOf(TargetTail) >= 0);
+    AssertPairsAndSiblings(SourceA, [TargetWord, TargetTail], [SourceB]);
+    AssertPairsAndSiblings(SourceB, [TargetWord, TargetTail], [SourceA]);
+    AssertPairsAndSiblings(TargetWord, [SourceA, SourceB], [TargetTail]);
+    AssertPairsAndSiblings(TargetTail, [SourceA, SourceB], [TargetWord]);
+    AssertEquals(AStage + ': Strong survives RF edit', 1,
+      TargetWord.Strong.Count);
+    AssertEquals('G123', TargetWord.Strong[0]);
+    AssertEquals(AStage + ': morphology survives RF edit', 1,
+      TargetWord.Morph.Count);
+    AssertEquals('N-NSM', TargetWord.Morph[0]);
+  end;
+
+begin
+  verse1.Text := 'sourceA sourceB';
+  verse2.Text := UTF8Encode(ORIGINAL);
+  TargetTailIndex := FindIndexOf(verse2, 'tail');
+  Associate([0, 2], [0, TargetTailIndex]);
+  SourceA := verse1.Syntagms[0];
+  SourceB := verse1.Syntagms[2];
+  TargetWord := verse2.Syntagms[0];
+  TargetTail := verse2.Syntagms[TargetTailIndex];
+  AssertLiveTopology('baseline');
+
+  Session := TTheWordWysiwygSessionV2.Create(ORIGINAL,
+    verse2.TokenizerVersion);
+  try
+    AssertTrue(Session.InsertTranslatorNote(4, '', 'same', FirstId));
+    AssertTrue(Session.InsertTranslatorNote(4, '', 'same', SecondId));
+    AssertTrue('same-anchor identical RFs retain distinct IDs',
+      FirstId <> SecondId);
+    AssertEquals(INSERTED, Session.RawText);
+    ApplySession(Session, 'insert');
+  finally
+    Session.Free;
+  end;
+  AssertEquals(UTF8Encode(INSERTED), verse2.XML);
+  AssertLiveTopology('insert');
+
+  Session := TTheWordWysiwygSessionV2.Create(UTF8Decode(verse2.XML),
+    verse2.TokenizerVersion);
+  try
+    AssertEquals(2, Session.Document.TranslatorNoteCount);
+    SecondId := Session.Document.TranslatorNotes[1].Id;
+    AssertTrue(Session.UpdateTranslatorNote(SecondId, '*',
+      '<i>changed</i>'));
+    AssertEquals(UnicodeString('same'),
+      Session.Document.TranslatorNotes[0].BodyRaw);
+    AssertEquals(UPDATED, Session.RawText);
+    ApplySession(Session, 'update second');
+  finally
+    Session.Free;
+  end;
+  AssertEquals(UTF8Encode(UPDATED), verse2.XML);
+  AssertLiveTopology('update second');
+
+  Session := TTheWordWysiwygSessionV2.Create(UTF8Decode(verse2.XML),
+    verse2.TokenizerVersion);
+  try
+    AssertEquals(2, Session.Document.TranslatorNoteCount);
+    FirstId := Session.Document.TranslatorNotes[0].Id;
+    AssertTrue(Session.RemoveTranslatorNote(FirstId));
+    AssertEquals('only selected same-anchor RF is removed', 1,
+      Session.Document.TranslatorNoteCount);
+    AssertEquals(UnicodeString('<i>changed</i>'),
+      Session.Document.TranslatorNotes[0].BodyRaw);
+    AssertEquals(REMOVED, Session.RawText);
+    ApplySession(Session, 'remove first');
+  finally
+    Session.Free;
+  end;
+  AssertEquals(UTF8Encode(REMOVED), verse2.XML);
+  AssertLiveTopology('remove first');
+end;
+
+procedure TVerseTests.TracedTranslatorNotesRoundTripPairsAtSameAnchor;
+const
+  ORIGINAL: UnicodeString = 'word<WG123><WTN-NSM><wt> tail';
+  WITH_NOTES: UnicodeString =
+    'word<WG123><WTN-NSM><wt><RF>same<Rf><RF>same<Rf> tail';
+var
+  Impact: TAssociationEditImpact;
+  FirstId, SecondId: QWord;
+  Pairs: string;
+  ReloadedSource, ReloadedTarget: TVerse;
+  ReloadedSourceWord, ReloadedTargetTail,
+    ReloadedTargetWord: TSyntagm;
+  Session: TTheWordWysiwygSessionV2;
+  SourceWord, TargetTail, TargetWord: TSyntagm;
+  TargetTailIndex: Integer;
+  Trace: TVerseEditTrace;
+begin
+  verse1.Text := 'source';
+  verse2.Text := UTF8Encode(ORIGINAL);
+  TargetTailIndex := FindIndexOf(verse2, 'tail');
+  Associate([0], [0, TargetTailIndex]);
+  SourceWord := verse1.Syntagms[0];
+  TargetWord := verse2.Syntagms[0];
+  TargetTail := verse2.Syntagms[TargetTailIndex];
+
+  Session := TTheWordWysiwygSessionV2.Create(ORIGINAL,
+    verse2.TokenizerVersion);
+  Trace := nil;
+  try
+    AssertTrue('first same-anchor note inserts',
+      Session.InsertTranslatorNote(4, '', 'same', FirstId));
+    AssertTrue('second same-anchor note inserts',
+      Session.InsertTranslatorNote(4, '', 'same', SecondId));
+    AssertTrue('same-anchor note IDs differ', FirstId <> SecondId);
+    AssertEquals('notes follow lexical postfixes', WITH_NOTES,
+      Session.RawText);
+    Trace := Session.CloneEditTrace;
+    AssertTrue('same-anchor note trace applies',
+      verse2.TryApplyTracedEdit(UTF8Encode(Session.RawText),
+        Trace, Impact));
+  finally
+    Trace.Free;
+    Session.Free;
+  end;
+
+  AssertEquals('both 1:N target members survive RF insertion', 2,
+    Impact.PreservedMembers);
+  AssertEquals('no 1:N member is removed', 0, Impact.RemovedMembers);
+  AssertTrue('live word identity survives',
+    verse2.Syntagms.IndexOf(TargetWord) >= 0);
+  AssertTrue('live tail identity survives',
+    verse2.Syntagms.IndexOf(TargetTail) >= 0);
+  AssertEquals('live source Pair count', 2, SourceWord.Pairs.Count);
+  AssertEquals('live source sibling count', 0, SourceWord.Siblings.Count);
+  AssertEquals('live word Pair count', 1, TargetWord.Pairs.Count);
+  AssertEquals('live word sibling count', 1, TargetWord.Siblings.Count);
+  AssertEquals('live tail Pair count', 1, TargetTail.Pairs.Count);
+  AssertEquals('live tail sibling count', 1, TargetTail.Siblings.Count);
+  AssertPairsAndSiblings(SourceWord, [TargetWord, TargetTail], []);
+  AssertPairsAndSiblings(TargetWord, [SourceWord], [TargetTail]);
+  AssertPairsAndSiblings(TargetTail, [SourceWord], [TargetWord]);
+  AssertEquals(1, TargetWord.Strong.Count);
+  AssertEquals('G123', TargetWord.Strong[0]);
+  AssertEquals(1, TargetWord.Morph.Count);
+  AssertEquals('N-NSM', TargetWord.Morph[0]);
+
+  Pairs := verse1.Pairs;
+  ReloadedSource := TVerse.Create;
+  ReloadedTarget := TVerse.Create;
+  try
+    ReloadedSource.PairedVerse := ReloadedTarget;
+    ReloadedSource.Text := verse1.XML;
+    ReloadedTarget.Text := verse2.XML;
+    ReloadedSourceWord := ReloadedSource.Syntagms[
+      FindIndexOf(ReloadedSource, 'source')];
+    ReloadedTargetWord := ReloadedTarget.Syntagms[
+      FindIndexOf(ReloadedTarget, 'word')];
+    ReloadedTargetTail := ReloadedTarget.Syntagms[
+      FindIndexOf(ReloadedTarget, 'tail')];
+    ReloadedSource.Pairs := Pairs;
+    AssertEquals('reloaded source Pair count', 2,
+      ReloadedSourceWord.Pairs.Count);
+    AssertEquals('reloaded source sibling count', 0,
+      ReloadedSourceWord.Siblings.Count);
+    AssertEquals('reloaded target word Pair count', 1,
+      ReloadedTargetWord.Pairs.Count);
+    AssertEquals('reloaded target word sibling count', 1,
+      ReloadedTargetWord.Siblings.Count);
+    AssertEquals('reloaded target tail Pair count', 1,
+      ReloadedTargetTail.Pairs.Count);
+    AssertEquals('reloaded target tail sibling count', 1,
+      ReloadedTargetTail.Siblings.Count);
+    AssertPairsAndSiblings(ReloadedSourceWord,
+      [ReloadedTargetWord, ReloadedTargetTail], []);
+    AssertPairsAndSiblings(ReloadedTargetWord,
+      [ReloadedSourceWord], [ReloadedTargetTail]);
+    AssertPairsAndSiblings(ReloadedTargetTail,
+      [ReloadedSourceWord], [ReloadedTargetWord]);
+    AssertEquals(1, ReloadedTargetWord.Strong.Count);
+    AssertEquals('G123', ReloadedTargetWord.Strong[0]);
+    AssertEquals(1, ReloadedTargetWord.Morph.Count);
+    AssertEquals('N-NSM', ReloadedTargetWord.Morph[0]);
+
+    Session := TTheWordWysiwygSessionV2.Create(
+      UTF8Decode(ReloadedTarget.XML), ReloadedTarget.TokenizerVersion);
+    try
+      AssertEquals('both same-anchor RFs survive save/reopen', 2,
+        Session.Document.TranslatorNoteCount);
+      AssertEquals(4, Session.Document.TranslatorNotes[0].OffsetUTF16);
+      AssertEquals(4, Session.Document.TranslatorNotes[1].OffsetUTF16);
+      AssertEquals(UnicodeString('same'),
+        Session.Document.TranslatorNotes[0].BodyRaw);
+      AssertEquals(UnicodeString('same'),
+        Session.Document.TranslatorNotes[1].BodyRaw);
+    finally
+      Session.Free;
+    end;
+  finally
+    ReloadedSource.Free;
+    ReloadedTarget.Free;
+  end;
 end;
 
 procedure TVerseTests.ReplaceSourceTextChangeBeginning;

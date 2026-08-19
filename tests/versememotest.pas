@@ -14,6 +14,7 @@ type
     procedure FailedSaveCallbackKeepsPendingEditorOpen;
     procedure FailedVisualSaveKeepsConcreteErrorVisible;
     procedure NavigatingToAnotherVerseClearsVisualSelectionAndCaret;
+    procedure TranslatorNoteHoverEndsOnSaveCancelHideAndReload;
     procedure PostCommitObserverFailureStillClosesAppliedEdit;
     procedure RawSaveCannotChangeProtectedLexicalObjects;
     procedure SemanticToolbarButtonsAreCompactTypographicAndNonOverlapping;
@@ -24,7 +25,8 @@ implementation
 uses
   SysUtils, Forms, Controls, ExtCtrls, StdCtrls, Buttons, Graphics, SynEdit, Verse,
   VerseMemo, Project,
-  directwrite_verse_editor, theword_ont_codec_v2,
+  directwrite_syntagm_view, directwrite_verse_editor, verse_view_intf,
+  verse_visual_document, theword_ont_codec_v2,
   theword_wysiwyg_editor_control, text_edit_provenance;
 
 type
@@ -424,6 +426,100 @@ begin
     Editor.Free;
     VerseB.Free;
     VerseA.Free;
+    Host.Free;
+  end;
+end;
+
+procedure TVerseMemoTests.TranslatorNoteHoverEndsOnSaveCancelHideAndReload;
+var
+  Composite: TTheWordWysiwygEditorControl;
+  Container: TScrollBox;
+  DirectEditor: TDirectWriteVerseEditor;
+  Editor: TVerseMemo;
+  Hit: TVerseHit;
+  Host: TForm;
+  Probe: TTracedSaveProbe;
+  VerseView: TVerse;
+
+  procedure BeginPendingHover;
+  var
+    HoverHandler: TVerseHitEvent;
+  begin
+    FillChar(Hit, SizeOf(Hit), 0);
+    Hit.Revision := 1;
+    Hit.Role := vsrTranslatorNote;
+    Hit.ObjectId := 999;
+    HoverHandler := DirectEditor.OnVisualObjectHover;
+    AssertTrue('the composite editor must own the hover callback',
+      Assigned(HoverHandler));
+    HoverHandler(DirectEditor, Hit);
+    AssertTrue('hover must arm the note preview lifecycle',
+      Composite.TranslatorNotePreviewActive);
+  end;
+
+begin
+  Forms.Application.Initialize;
+  Host := TForm.CreateNew(nil);
+  Host.SetBounds(0, 0, 800, 300);
+  Container := TScrollBox.Create(Host);
+  Container.Parent := Host;
+  Container.Align := alClient;
+  VerseView := TVerse.Create(Container);
+  Editor := TVerseMemo.Create;
+  Probe := TTracedSaveProbe.Create;
+  try
+    Host.Show;
+    Application.ProcessMessages;
+    VerseView.Text := 'alpha<RF>note<Rf> beta';
+    Editor.OnVerseTextModified := @Probe.Save;
+    Editor.Activate(Container, VerseView);
+    Composite := FindWysiwygEditor(Host);
+    DirectEditor := FindDirectEditor(Composite);
+    AssertTrue(Assigned(Composite));
+    AssertTrue(Assigned(DirectEditor));
+
+    DirectEditor.SetSelection(0, 5);
+    AssertTrue('save precondition: semantic change is pending',
+      Composite.ApplySemantic(twsmItalic));
+    BeginPendingHover;
+    Probe.Apply := True;
+    AssertTrue('save must close the active editor', Editor.TryDeactivate);
+    AssertFalse('save must cancel timer and preview',
+      Composite.TranslatorNotePreviewActive);
+
+    Editor.Activate(Container, VerseView);
+    Composite := FindWysiwygEditor(Host);
+    DirectEditor := FindDirectEditor(Composite);
+    BeginPendingHover;
+    Editor.DiscardEdit;
+    AssertFalse('cancel must cancel timer and preview',
+      Composite.TranslatorNotePreviewActive);
+
+    Editor.Activate(Container, VerseView);
+    Composite := FindWysiwygEditor(Host);
+    DirectEditor := FindDirectEditor(Composite);
+    BeginPendingHover;
+    Composite.Visible := False;
+    AssertFalse('hiding the control must cancel timer and preview',
+      Composite.TranslatorNotePreviewActive);
+    Composite.Visible := True;
+
+    BeginPendingHover;
+    Composite.Text := 'replacement';
+    AssertFalse('loading another verse must cancel timer and preview',
+      Composite.TranslatorNotePreviewActive);
+
+    BeginPendingHover;
+    Composite.DismissTranslatorNotePreview;
+    AssertFalse('the explicit lifecycle API must be idempotent',
+      Composite.TranslatorNotePreviewActive);
+    Composite.DismissTranslatorNotePreview;
+    AssertFalse(Composite.TranslatorNotePreviewActive);
+    Editor.DiscardEdit;
+  finally
+    Probe.Free;
+    Editor.Free;
+    VerseView.Free;
     Host.Free;
   end;
 end;

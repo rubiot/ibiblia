@@ -124,6 +124,8 @@ type
       out CaretRect: TRect): Boolean;
     function GetTextRangeClientRects(StartUTF16, LengthUTF16: Integer;
       out Rects: TRectArray): Boolean;
+    function GetVisualObjectClientRect(Role: TVisualSpanRole;
+      ObjectId: QWord; out ObjectRect: TRect): Boolean;
     function GetCaretStops(out Stops: TVerseTextOffsetArray): Boolean;
     function GetLogicalRects(LogicalIndex: Integer;
       out Rects: TRectArray): Boolean;
@@ -604,7 +606,7 @@ var
   HR: HRESULT;
   IsInside: TDWriteBool;
   IsTrailing: TDWriteBool;
-  LogicalIndex: Integer;
+  Span: TVisualSpan;
   Metrics: TDWriteHitTestMetrics;
   Origin: TD2DPoint2F;
   PointX: Single;
@@ -630,12 +632,16 @@ begin
     Metrics);
   if not Succeeded(HR) or not IsInside then
     Exit(False);
-  if not FDocument.TryGetInteractiveLogicalIndexAt(Metrics.TextPosition,
-    LogicalIndex) then
+  if not FDocument.TryGetSpanAt(Metrics.TextPosition, Span) or
+     not (((Span.Role = vsrContent) and Span.Interactive) or
+          ((Span.Role = vsrTranslatorNote) and
+           (Span.ObjectId <> 0))) then
     Exit(False);
-  Hit.LogicalIndex := LogicalIndex;
+  Hit.LogicalIndex := Span.LogicalIndex;
   Hit.UTF16Offset := Metrics.TextPosition;
   Hit.Trailing := IsTrailing;
+  Hit.Role := Span.Role;
+  Hit.ObjectId := Span.ObjectId;
   Result := True;
   {$ELSE}
   Result := False;
@@ -1310,6 +1316,31 @@ begin
   {$ELSE}
   Result := False;
   {$ENDIF}
+end;
+
+function TDirectWriteSyntagmView.GetVisualObjectClientRect(
+  Role: TVisualSpanRole; ObjectId: QWord; out ObjectRect: TRect): Boolean;
+var
+  Index: Integer;
+  Rects: TRectArray;
+  Span: TVisualSpan;
+begin
+  FillChar(ObjectRect, SizeOf(ObjectRect), 0);
+  Result := False;
+  if not Assigned(FDocument) or (Role = vsrContent) then
+    Exit;
+  for Index := 0 to FDocument.SpanCount - 1 do
+  begin
+    Span := FDocument.Spans[Index];
+    if (Span.Role <> Role) or (Span.ObjectId <> ObjectId) or
+       (Span.LengthUTF16 <= 0) then
+      Continue;
+    if not GetTextRangeClientRects(Span.StartUTF16, Span.LengthUTF16,
+      Rects) or (Length(Rects) = 0) then
+      Exit;
+    ObjectRect := Rects[0];
+    Exit(True);
+  end;
 end;
 
 function TDirectWriteSyntagmView.GetCaretStops(

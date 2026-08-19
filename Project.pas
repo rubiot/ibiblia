@@ -25,7 +25,8 @@ uses
   project_database_bootstrap, status_catalog,
   dictionary_manager, project_exporter, association_memory_service,
   UnitPleaseWait, bible_book_names, translation_memory_model, ConcordanceExport,
-  navigation_history, text_direction, text_edit_provenance;
+  navigation_history, text_direction, text_edit_provenance,
+  rf_note_scanner;
 const
   // AI processing icon indices for ImageListTreeView in formprincipal
   // ImageListTreeView has indices 0-7 for normal states (0-3) and selected states (4-7)
@@ -2133,7 +2134,7 @@ function TProject.GetChapterText: TStringList;
   end;
 
 var
-  bkch, verseComments: string;
+  bkch: string;
   rulesRx: TRegexList;
   replaceTo: TStringList;
 begin
@@ -2142,28 +2143,27 @@ begin
 
   rulesRx := nil;
   replaceTo := nil;
-  if ChapterViewText = tbInterlinear then
-    CompileInterlinearVerseRules(rulesRx, replaceTo, InterlinearMode, false);
+  try
+    if ChapterViewText = tbInterlinear then
+      CompileInterlinearVerseRules(rulesRx, replaceTo, InterlinearMode, false);
 
-  StartScrollingSession;
-  RewindChapter;
-  while not FPersistence.EOF and GetID().StartsWith(bkch) do
-  begin
-    verseComments := IfThen(
-      ChapterViewText = tbDestino,
-      Comments
-        .Replace(#13#10, '<br/>', [rfReplaceAll])
-        .Replace(#13, '<br/>', [rfReplaceAll])
-        .Replace(#10, '<br/>', [rfReplaceAll]),
-      ''
-    );
-    result.Add(Format('%s%s', [GetText(rulesRx, replaceTo), IfThen(verseComments.IsEmpty, '', Format('<RF>%s<Rf>', [verseComments]))]));
-    NextVerse;
-  end;
-  FinishScrollingSession;
-
-  if ChapterViewText = tbInterlinear then
-  begin
+    try
+      StartScrollingSession;
+      try
+        RewindChapter;
+        while not FPersistence.EOF and GetID().StartsWith(bkch) do
+        begin
+          result.Add(GetText(rulesRx, replaceTo));
+          NextVerse;
+        end;
+      finally
+        FinishScrollingSession;
+      end;
+    except
+      FreeAndNil(result);
+      raise;
+    end;
+  finally
     rulesRx.Free;
     replaceTo.Free;
   end;
@@ -3036,6 +3036,7 @@ end;
 
 procedure TProject.OnDblClickVersiculo(Sender: TObject);
 var
+  AutomaticNoteStart: Integer;
   Container: TScrollBox;
   TextType: TTipoTextoBiblico;
   VerseView: TVerse;
@@ -3055,7 +3056,9 @@ begin
   if not Assigned(VerseView) then
     Exit;
 
-  FVerseMemo.Activate(Container, VerseView);
+  AutomaticNoteStart := FVerseRepository.CountAutomaticRFNotesBefore(
+    VerseView.ReferenceID, FACamposTexto[TextType]);
+  FVerseMemo.Activate(Container, VerseView, AutomaticNoteStart);
 end;
 
 procedure TProject.OnBibleTreePopupItemClick(Sender: TObject);
@@ -4940,6 +4943,8 @@ var
   varredorXML: TONTTokenizer;
   s: TSyntagmToken;
   SourceText: string;
+  RFBody: string;
+  RFClosingTag: string;
 begin
   result := '';
 
@@ -4954,9 +4959,9 @@ begin
     begin
       if s.Kind = skTag then
       begin
-        if s.Value = '<RF>' then
+        if IsRFOpeningTag(s.Value) then
         begin
-          varredorXML.ReadToTag(s, '<Rf>');
+          ReadRFNoteBody(varredorXML, RFBody, RFClosingTag);
           s.Kind := skMetadata;
           continue;
         end else if AnsiStartsStr('<TS', s.Value) then
@@ -5026,6 +5031,8 @@ var
 
   function PlainDestinationText(const XML: string): string;
   var
+    RFBody: string;
+    RFClosingTag: string;
     Token: TSyntagmToken;
     Tokenizer: TONTTokenizer;
   begin
@@ -5036,9 +5043,9 @@ var
       begin
         if Token.Kind = skTag then
         begin
-          if Token.Value = '<RF>' then
+          if IsRFOpeningTag(Token.Value) then
           begin
-            Tokenizer.ReadToTag(Token, '<Rf>');
+            ReadRFNoteBody(Tokenizer, RFBody, RFClosingTag);
             Continue;
           end;
           if AnsiStartsStr('<TS', Token.Value) then

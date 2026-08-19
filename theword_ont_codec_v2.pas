@@ -5,7 +5,7 @@ unit theword_ont_codec_v2;
 interface
 
 uses
-  Classes, SysUtils, Contnrs;
+  Classes, SysUtils, Contnrs, theword_translator_note_body_v2;
 
 type
   ETheWordOntCodec = class(Exception);
@@ -73,6 +73,31 @@ type
   end;
 
   TTheWordTitleRangeArray = array of TTheWordTitleRange;
+
+  TTheWordTranslatorNote = class
+  private
+    FId: QWord;
+    FOffsetUTF16: Integer;
+    FOrdinal: Integer;
+    FQ: UnicodeString;
+    FBodyRaw: UnicodeString;
+    FOpenLexeme: UnicodeString;
+    FCloseLexeme: UnicodeString;
+    FCapability: TTheWordLayerCapability;
+    FImported: Boolean;
+    FModified: Boolean;
+  public
+    property Id: QWord read FId;
+    property OffsetUTF16: Integer read FOffsetUTF16;
+    property Ordinal: Integer read FOrdinal;
+    property Q: UnicodeString read FQ;
+    property BodyRaw: UnicodeString read FBodyRaw;
+    property OpenLexeme: UnicodeString read FOpenLexeme;
+    property CloseLexeme: UnicodeString read FCloseLexeme;
+    property Capability: TTheWordLayerCapability read FCapability;
+    property Imported: Boolean read FImported;
+    property Modified: Boolean read FModified;
+  end;
 
   { Offsets are zero-based UTF-16 code-unit offsets between characters. }
   TTheWordSemanticMark = class
@@ -145,8 +170,10 @@ type
     FLexicalItems: TObjectList;
     FOpaqueItems: TObjectList;
     FStructuralItems: TObjectList;
+    FTranslatorNotes: TObjectList;
     FEvents: TObjectList;
     FNextOrdinal: Integer;
+    FNextTranslatorNoteId: QWord;
     FModified: Boolean;
     FSourceBytes: RawByteString;
     FLineEndingBytes: RawByteString;
@@ -162,17 +189,27 @@ type
     function GetOpaqueItemCount: Integer;
     function GetStructuralItem(AIndex: Integer): TTheWordStructuralItem;
     function GetStructuralItemCount: Integer;
+    function GetTranslatorNote(AIndex: Integer): TTheWordTranslatorNote;
+    function GetTranslatorNoteCount: Integer;
   public
     constructor Create;
     destructor Destroy; override;
     function CanApplySemanticRange(AStartOffset,
       AEndOffset: Integer): Boolean;
     function CanInsertParagraphMark(AOffsetUTF16: Integer): Boolean;
+    function CanInsertTranslatorNote(AOffsetUTF16: Integer): Boolean;
     function CanReplaceVisibleText(AStartUTF16,
       ALengthUTF16: Integer): Boolean;
     function InsertParagraphMark(AOffsetUTF16: Integer): Boolean;
     function RemoveParagraphMark(AOffsetUTF16: Integer;
       AFromEnd: Boolean): Boolean;
+    function InsertTranslatorNote(AOffsetUTF16: Integer;
+      const AQ, ABodyRaw: UnicodeString): TTheWordTranslatorNote;
+    function UpdateTranslatorNote(ANoteId: QWord;
+      const AQ, ABodyRaw: UnicodeString): Boolean;
+    function RemoveTranslatorNote(ANoteId: QWord): Boolean;
+    function TryGetTranslatorNote(ANoteId: QWord;
+      out ANote: TTheWordTranslatorNote): Boolean;
     function AddSemanticMark(AKind: TTheWordSemanticKind;
       AStartOffset, AEndOffset: Integer): TTheWordSemanticMark;
     procedure RemoveSemanticMark(AMark: TTheWordSemanticMark);
@@ -194,6 +231,9 @@ type
     property StructuralItemCount: Integer read GetStructuralItemCount;
     property StructuralItems[AIndex: Integer]: TTheWordStructuralItem
       read GetStructuralItem;
+    property TranslatorNoteCount: Integer read GetTranslatorNoteCount;
+    property TranslatorNotes[AIndex: Integer]: TTheWordTranslatorNote
+      read GetTranslatorNote;
     property Modified: Boolean read FModified;
     property CanEdit: Boolean read FCanEdit;
     property EditBlockReason: UnicodeString read FEditBlockReason;
@@ -293,6 +333,11 @@ function TheWordClassifyOntRecord(const ARaw: UnicodeString):
   TTheWordOntRecordKind;
 function CollectTheWordTitleRanges(ADocument: TTheWordVerseDocument;
   out ARanges: TTheWordTitleRangeArray): Integer;
+function AnalyzeTheWordTranslatorNoteBody(const ARaw: UnicodeString):
+  TTheWordLayerCapability;
+function TryCanonicalizeTheWordTranslatorNoteBody(
+  const ARaw: UnicodeString; out ACanonical: UnicodeString;
+  out ACapability: TTheWordLayerCapability): Boolean;
 
 implementation
 
@@ -303,7 +348,8 @@ type
     twiekSemanticClose,
     twiekLexical,
     twiekOpaque,
-    twiekStructural
+    twiekStructural,
+    twiekTranslatorNote
   );
 
   TTheWordInlineEvent = class
@@ -313,6 +359,7 @@ type
     Ordinal: Integer;
     RawLexeme: UnicodeString;
     SemanticMark: TTheWordSemanticMark;
+    TranslatorNote: TTheWordTranslatorNote;
   end;
 
   TPendingSemantic = class
@@ -488,6 +535,7 @@ begin
   Inc(ADocument.FNextOrdinal);
   Result.RawLexeme := ARaw;
   Result.SemanticMark := nil;
+  Result.TranslatorNote := nil;
   ADocument.FEvents.Add(Result);
 end;
 
@@ -602,6 +650,303 @@ begin
     else if AText[Index] = '>' then
       Exit(Index);
   end;
+end;
+
+function IsWellFormedUtf16(const AText: UnicodeString): Boolean; forward;
+
+function NoteBodyCapabilityToLayer(
+  ACapability: TTheWordNoteBodyCapability): TTheWordLayerCapability;
+begin
+  case ACapability of
+    twnbcFullWysiwyg: Result := twlcFullWysiwyg;
+    twnbcProtectedRegions: Result := twlcProtectedRegions;
+  else
+    Result := twlcRawOnly;
+  end;
+end;
+
+function AnalyzeTheWordTranslatorNoteBody(const ARaw: UnicodeString):
+  TTheWordLayerCapability;
+begin
+  Result := NoteBodyCapabilityToLayer(
+    TTheWordTranslatorNoteBodyCodec.Analyze(ARaw));
+end;
+
+function TryCanonicalizeTheWordTranslatorNoteBody(
+  const ARaw: UnicodeString; out ACanonical: UnicodeString;
+  out ACapability: TTheWordLayerCapability): Boolean;
+var
+  BodyCapability: TTheWordNoteBodyCapability;
+begin
+  Result := TTheWordTranslatorNoteBodyCodec.TryCanonicalize(ARaw,
+    ACanonical, BodyCapability);
+  ACapability := NoteBodyCapabilityToLayer(BodyCapability);
+end;
+
+function TranslatorNoteOpenNameEnd(const ARaw: UnicodeString): Integer;
+var
+  Index: Integer;
+begin
+  Result := 0;
+  if (Length(ARaw) < 4) or (ARaw[1] <> '<') then
+    Exit;
+
+  Index := 2;
+  while (Index <= Length(ARaw)) and
+    (ARaw[Index] in [' ', #9, #10, #13]) do
+    Inc(Index);
+  if (Index + 1 > Length(ARaw)) or
+     (Copy(ARaw, Index, 2) <> 'RF') then
+    Exit;
+  Inc(Index, 2);
+  if (Index > Length(ARaw)) or
+     not ((ARaw[Index] = '>') or
+       (ARaw[Index] in [' ', #9, #10, #13])) then
+    Exit;
+  Result := Index;
+end;
+
+function IsTranslatorNoteOpenTag(const ARaw: UnicodeString): Boolean;
+begin
+  Result := TranslatorNoteOpenNameEnd(ARaw) <> 0;
+end;
+
+function IsTranslatorNoteCloseTag(const ARaw: UnicodeString): Boolean;
+var
+  Index: Integer;
+begin
+  Result := False;
+  if (Length(ARaw) < 4) or (ARaw[1] <> '<') then
+    Exit;
+
+  Index := 2;
+  while (Index <= Length(ARaw)) and
+    (ARaw[Index] in [' ', #9, #10, #13]) do
+    Inc(Index);
+  if (Index + 1 > Length(ARaw)) or
+     (Copy(ARaw, Index, 2) <> 'Rf') then
+    Exit;
+  Inc(Index, 2);
+  while (Index <= Length(ARaw)) and
+    (ARaw[Index] in [' ', #9, #10, #13]) do
+    Inc(Index);
+  if Index > Length(ARaw) then
+    Exit;
+  Result := (Index = Length(ARaw)) and (ARaw[Index] = '>');
+end;
+
+function ContainsTranslatorNoteOpenTag(const AText: UnicodeString): Boolean;
+var
+  Index, NameIndex: Integer;
+begin
+  Index := 1;
+  while Index <= Length(AText) do
+  begin
+    if AText[Index] <> '<' then
+    begin
+      Inc(Index);
+      Continue;
+    end;
+    NameIndex := Index + 1;
+    while (NameIndex <= Length(AText)) and
+      (AText[NameIndex] in [' ', #9, #10, #13]) do
+      Inc(NameIndex);
+    if (Copy(AText, NameIndex, 2) = 'RF') and
+       (NameIndex + 2 <= Length(AText)) and
+       ((AText[NameIndex + 2] = '>') or
+         (AText[NameIndex + 2] in [' ', #9, #10, #13])) then
+      Exit(True);
+    Inc(Index);
+  end;
+  Result := False;
+end;
+
+function ContainsTranslatorNoteCloseTag(const AText: UnicodeString): Boolean;
+var
+  Index, TagEnd: Integer;
+  RawTag: UnicodeString;
+begin
+  Index := 1;
+  while Index <= Length(AText) do
+  begin
+    if AText[Index] <> '<' then
+    begin
+      Inc(Index);
+      Continue;
+    end;
+    TagEnd := FindTagEnd(AText, Index);
+    if TagEnd = 0 then
+      Exit(False);
+    RawTag := Copy(AText, Index, TagEnd - Index + 1);
+    if IsTranslatorNoteCloseTag(RawTag) then
+      Exit(True);
+    Index := TagEnd + 1;
+  end;
+  Result := False;
+end;
+
+function TryParseTranslatorNoteOpen(const ARaw: UnicodeString;
+  out AQ: UnicodeString; out AOnlySupportedAttributes: Boolean): Boolean;
+var
+  AttrName, Inner: UnicodeString;
+  Index, NameEnd, NameStart, ValueStart: Integer;
+  Quote: WideChar;
+  SeenQ: Boolean;
+begin
+  NameEnd := TranslatorNoteOpenNameEnd(ARaw);
+  Result := (NameEnd <> 0) and
+    (ARaw[Length(ARaw)] = '>');
+  AQ := '';
+  AOnlySupportedAttributes := Result;
+  if not Result then
+    Exit;
+
+  Inner := Copy(ARaw, NameEnd, Length(ARaw) - NameEnd);
+  Index := 1;
+  SeenQ := False;
+  while Index <= Length(Inner) do
+  begin
+    while (Index <= Length(Inner)) and
+      (Inner[Index] in [' ', #9, #10, #13]) do
+      Inc(Index);
+    if Index > Length(Inner) then
+      Break;
+    NameStart := Index;
+    while (Index <= Length(Inner)) and not
+      (Inner[Index] in [' ', #9, #10, #13, '=']) do
+      Inc(Index);
+    AttrName := Copy(Inner, NameStart, Index - NameStart);
+    while (Index <= Length(Inner)) and
+      (Inner[Index] in [' ', #9, #10, #13]) do
+      Inc(Index);
+    if (Index > Length(Inner)) or (Inner[Index] <> '=') then
+    begin
+      AOnlySupportedAttributes := False;
+      while (Index <= Length(Inner)) and not
+        (Inner[Index] in [' ', #9, #10, #13]) do
+        Inc(Index);
+      Continue;
+    end;
+    Inc(Index);
+    while (Index <= Length(Inner)) and
+      (Inner[Index] in [' ', #9, #10, #13]) do
+      Inc(Index);
+    if Index > Length(Inner) then
+    begin
+      AOnlySupportedAttributes := False;
+      Break;
+    end;
+
+    Quote := #0;
+    if Inner[Index] in ['"', ''''] then
+    begin
+      Quote := Inner[Index];
+      Inc(Index);
+    end;
+    ValueStart := Index;
+    if Quote <> #0 then
+    begin
+      while (Index <= Length(Inner)) and (Inner[Index] <> Quote) do
+        Inc(Index);
+      if Index > Length(Inner) then
+      begin
+        AOnlySupportedAttributes := False;
+        Break;
+      end;
+    end
+    else
+      while (Index <= Length(Inner)) and not
+        (Inner[Index] in [' ', #9, #10, #13]) do
+        Inc(Index);
+
+    if (AttrName <> 'q') or SeenQ then
+      AOnlySupportedAttributes := False
+    else
+    begin
+      SeenQ := True;
+      AQ := TrimUnicode(Copy(Inner, ValueStart, Index - ValueStart));
+    end;
+    if Quote <> #0 then
+      Inc(Index);
+  end;
+end;
+
+function TryCanonicalTranslatorNoteOpen(const AQ: UnicodeString;
+  out AOpen: UnicodeString): Boolean;
+var
+  Index: Integer;
+  CanUseUnquoted, HasDoubleQuote, HasSingleQuote: Boolean;
+begin
+  Result := IsWellFormedUtf16(AQ);
+  AOpen := '';
+  if not Result then
+    Exit;
+  if AQ = '' then
+  begin
+    AOpen := '<RF>';
+    Exit(True);
+  end;
+
+  CanUseUnquoted := True;
+  HasDoubleQuote := False;
+  HasSingleQuote := False;
+  for Index := 1 to Length(AQ) do
+  begin
+    if AQ[Index] in [' ', #9, #10, #13, '<', '>', '"', ''''] then
+      CanUseUnquoted := False;
+    if AQ[Index] = '"' then
+      HasDoubleQuote := True;
+    if AQ[Index] = '''' then
+      HasSingleQuote := True;
+    if AQ[Index] in [#10, #13, '<', '>'] then
+      Exit(False);
+  end;
+  if CanUseUnquoted then
+    AOpen := '<RF q=' + AQ + '>'
+  else if not HasDoubleQuote then
+    AOpen := '<RF q="' + AQ + '">'
+  else if not HasSingleQuote then
+    AOpen := '<RF q=''' + AQ + '''>'
+  else
+    Exit(False);
+  Result := True;
+end;
+
+function FindTranslatorNoteClose(const ARaw: UnicodeString;
+  ABodyStart: Integer; out ACloseStart, ACloseEnd: Integer;
+  out ANested: Boolean): Boolean;
+var
+  Index, TagEnd: Integer;
+  RawTag: UnicodeString;
+begin
+  ACloseStart := 0;
+  ACloseEnd := 0;
+  ANested := False;
+  Index := ABodyStart;
+  while Index <= Length(ARaw) do
+  begin
+    if ARaw[Index] <> '<' then
+    begin
+      Inc(Index);
+      Continue;
+    end;
+    TagEnd := FindTagEnd(ARaw, Index);
+    if TagEnd = 0 then
+      Break;
+    RawTag := Copy(ARaw, Index, TagEnd - Index + 1);
+    if IsTranslatorNoteOpenTag(RawTag) then
+      ANested := True
+    else if IsTranslatorNoteCloseTag(RawTag) then
+    begin
+      { theWord treats RF containers as non-greedy: even malformed nested
+        openings are delimited by the first compatible closing tag. }
+      ACloseStart := Index;
+      ACloseEnd := TagEnd;
+      Exit(True);
+    end;
+    Index := TagEnd + 1;
+  end;
+  Result := False;
 end;
 
 function IsValidUtf8(const ABytes: RawByteString): Boolean;
@@ -1083,6 +1428,12 @@ begin
   Result := AChar in [' ', #9, #10, #13];
 end;
 
+function IsTranslatorNoteWordChar(AChar: WideChar): Boolean;
+begin
+  Result := (AChar >= #$0080) or
+    (AChar in ['A'..'Z', 'a'..'z', '0'..'9', '_', '-', '''']);
+end;
+
 function TransformProtectedAnchor(AOffset, AStartOffset, AEndOffset,
   AReplacementLength: Integer): Integer;
 var
@@ -1109,7 +1460,9 @@ begin
   FLexicalItems := TObjectList.Create(True);
   FOpaqueItems := TObjectList.Create(True);
   FStructuralItems := TObjectList.Create(True);
+  FTranslatorNotes := TObjectList.Create(True);
   FEvents := TObjectList.Create(True);
+  FNextTranslatorNoteId := 1;
 end;
 
 procedure TTheWordVerseDocument.EnsureEditable;
@@ -1121,6 +1474,7 @@ end;
 destructor TTheWordVerseDocument.Destroy;
 begin
   FEvents.Free;
+  FTranslatorNotes.Free;
   FStructuralItems.Free;
   FOpaqueItems.Free;
   FLexicalItems.Free;
@@ -1170,6 +1524,17 @@ end;
 function TTheWordVerseDocument.GetStructuralItemCount: Integer;
 begin
   Result := FStructuralItems.Count;
+end;
+
+function TTheWordVerseDocument.GetTranslatorNote(AIndex: Integer):
+  TTheWordTranslatorNote;
+begin
+  Result := TTheWordTranslatorNote(FTranslatorNotes[AIndex]);
+end;
+
+function TTheWordVerseDocument.GetTranslatorNoteCount: Integer;
+begin
+  Result := FTranslatorNotes.Count;
 end;
 
 function TTheWordVerseDocument.LexicalProtectedStart(AIndex: Integer): Integer;
@@ -1238,6 +1603,17 @@ begin
   end;
 end;
 
+function TTheWordVerseDocument.CanInsertTranslatorNote(
+  AOffsetUTF16: Integer): Boolean;
+begin
+  Result := CanInsertParagraphMark(AOffsetUTF16);
+  if Result and (AOffsetUTF16 > 0) and
+     (AOffsetUTF16 < Length(FVisibleText)) and
+     IsTranslatorNoteWordChar(FVisibleText[AOffsetUTF16]) and
+     IsTranslatorNoteWordChar(FVisibleText[AOffsetUTF16 + 1]) then
+    Result := False;
+end;
+
 function TTheWordVerseDocument.CanReplaceVisibleText(AStartUTF16,
   ALengthUTF16: Integer): Boolean;
 var
@@ -1289,6 +1665,13 @@ begin
     if ((ALengthUTF16 = 0) and (Anchor = AStartUTF16)) or
        ((ALengthUTF16 > 0) and (Anchor > AStartUTF16) and
         (Anchor < EndOffset)) then
+      Exit(False);
+  end;
+  for Index := 0 to FTranslatorNotes.Count - 1 do
+  begin
+    Anchor := TTheWordTranslatorNote(FTranslatorNotes[Index]).FOffsetUTF16;
+    if (ALengthUTF16 > 0) and (Anchor > AStartUTF16) and
+       (Anchor < EndOffset) then
       Exit(False);
   end;
   for Index := 0 to FStructuralItems.Count - 1 do
@@ -1439,6 +1822,162 @@ begin
   Result := True;
 end;
 
+function TTheWordVerseDocument.InsertTranslatorNote(AOffsetUTF16: Integer;
+  const AQ, ABodyRaw: UnicodeString): TTheWordTranslatorNote;
+var
+  Body, OpenTag, Raw: UnicodeString;
+  BodyCapability: TTheWordLayerCapability;
+  EncodedCandidate: RawByteString;
+  Event: TTheWordInlineEvent;
+begin
+  Result := nil;
+  if not CanInsertTranslatorNote(AOffsetUTF16) or
+     not IsWellFormedUtf16(ABodyRaw) or
+     ContainsTranslatorNoteOpenTag(ABodyRaw) or
+     ContainsTranslatorNoteCloseTag(ABodyRaw) or
+     not TryCanonicalTranslatorNoteOpen(AQ, OpenTag) then
+    Exit;
+  if not TryCanonicalizeTheWordTranslatorNoteBody(ABodyRaw, Body,
+    BodyCapability) then
+  begin
+    Body := ABodyRaw;
+    BodyCapability := AnalyzeTheWordTranslatorNoteBody(Body);
+  end;
+  Raw := OpenTag + Body + '<Rf>';
+  if not TryEncodeBytes(Raw, FRequiredCodePage, EncodedCandidate) then
+    Exit;
+
+  EnsureEditable;
+  Result := TTheWordTranslatorNote.Create;
+  Result.FId := FNextTranslatorNoteId;
+  Inc(FNextTranslatorNoteId);
+  Result.FOffsetUTF16 := AOffsetUTF16;
+  Result.FQ := AQ;
+  Result.FBodyRaw := Body;
+  Result.FOpenLexeme := OpenTag;
+  Result.FCloseLexeme := '<Rf>';
+  Result.FCapability := BodyCapability;
+  Result.FImported := False;
+  Result.FModified := True;
+  Event := NewInlineEvent(Self, twiekTranslatorNote, AOffsetUTF16, Raw);
+  Event.TranslatorNote := Result;
+  Result.FOrdinal := Event.Ordinal;
+  FTranslatorNotes.Add(Result);
+  FModified := True;
+end;
+
+function TTheWordVerseDocument.TryGetTranslatorNote(ANoteId: QWord;
+  out ANote: TTheWordTranslatorNote): Boolean;
+var
+  Index: Integer;
+begin
+  ANote := nil;
+  for Index := 0 to FTranslatorNotes.Count - 1 do
+    if TTheWordTranslatorNote(FTranslatorNotes[Index]).FId = ANoteId then
+    begin
+      ANote := TTheWordTranslatorNote(FTranslatorNotes[Index]);
+      Exit(True);
+    end;
+  Result := False;
+end;
+
+function TTheWordVerseDocument.UpdateTranslatorNote(ANoteId: QWord;
+  const AQ, ABodyRaw: UnicodeString): Boolean;
+var
+  Body, CloseTag, ExistingQ, OpenTag, Raw: UnicodeString;
+  BodyCapability: TTheWordLayerCapability;
+  EncodedCandidate: RawByteString;
+  Event: TTheWordInlineEvent;
+  Index: Integer;
+  MarkerChanged, OpenAttributesSupported: Boolean;
+  Note: TTheWordTranslatorNote;
+begin
+  Result := False;
+  if not TryGetTranslatorNote(ANoteId, Note) or
+     not IsWellFormedUtf16(ABodyRaw) or
+     ContainsTranslatorNoteOpenTag(ABodyRaw) or
+     ContainsTranslatorNoteCloseTag(ABodyRaw) then
+    Exit;
+
+  MarkerChanged := Note.FQ <> AQ;
+  if MarkerChanged then
+  begin
+    TryParseTranslatorNoteOpen(Note.FOpenLexeme, ExistingQ,
+      OpenAttributesSupported);
+    if not OpenAttributesSupported or
+       not TryCanonicalTranslatorNoteOpen(AQ, OpenTag) then
+      Exit;
+  end
+  else
+    OpenTag := Note.FOpenLexeme;
+
+  if not MarkerChanged and (Note.FBodyRaw = ABodyRaw) then
+    Exit;
+  if not TryCanonicalizeTheWordTranslatorNoteBody(ABodyRaw, Body,
+    BodyCapability) then
+  begin
+    Body := ABodyRaw;
+    BodyCapability := AnalyzeTheWordTranslatorNoteBody(Body);
+  end;
+
+  { Editing only the body must not normalize imported RF whitespace, quote
+    style, supported attributes, or a malformed missing close. }
+  CloseTag := Note.FCloseLexeme;
+  Raw := OpenTag + Body + CloseTag;
+  if not TryEncodeBytes(Raw, FRequiredCodePage, EncodedCandidate) then
+    Exit;
+
+  EnsureEditable;
+  Note.FQ := AQ;
+  Note.FBodyRaw := Body;
+  Note.FOpenLexeme := OpenTag;
+  Note.FCloseLexeme := CloseTag;
+  Note.FCapability := BodyCapability;
+  TryParseTranslatorNoteOpen(OpenTag, ExistingQ,
+    OpenAttributesSupported);
+  if not OpenAttributesSupported or (CloseTag = '') then
+    Note.FCapability := twlcRawOnly;
+  Note.FModified := True;
+  for Index := 0 to FEvents.Count - 1 do
+  begin
+    Event := TTheWordInlineEvent(FEvents[Index]);
+    if Event.TranslatorNote = Note then
+    begin
+      Event.RawLexeme := Raw;
+      Break;
+    end;
+  end;
+  FModified := True;
+  Result := True;
+end;
+
+function TTheWordVerseDocument.RemoveTranslatorNote(
+  ANoteId: QWord): Boolean;
+var
+  Event: TTheWordInlineEvent;
+  EventIndex, NoteIndex: Integer;
+  Note: TTheWordTranslatorNote;
+begin
+  Result := False;
+  if not TryGetTranslatorNote(ANoteId, Note) then
+    Exit;
+  EnsureEditable;
+  for EventIndex := FEvents.Count - 1 downto 0 do
+  begin
+    Event := TTheWordInlineEvent(FEvents[EventIndex]);
+    if Event.TranslatorNote = Note then
+    begin
+      FEvents.Delete(EventIndex);
+      Break;
+    end;
+  end;
+  NoteIndex := FTranslatorNotes.IndexOf(Note);
+  if NoteIndex >= 0 then
+    FTranslatorNotes.Delete(NoteIndex);
+  FModified := True;
+  Result := True;
+end;
+
 function TTheWordVerseDocument.ToggleSemanticMark(
   AKind: TTheWordSemanticKind; AStartOffset, AEndOffset: Integer): Boolean;
 var
@@ -1564,6 +2103,7 @@ var
   Lexical: TTheWordLexicalItem;
   Opaque: TTheWordOpaqueItem;
   Structural: TTheWordStructuralItem;
+  TranslatorNote: TTheWordTranslatorNote;
   TitleRanges: TTheWordTitleRangeArray;
 begin
   if (AStartUTF16 < 0) or (ALengthUTF16 < 0) or
@@ -1635,6 +2175,14 @@ begin
         AStartUTF16, EndOffset, ReplacementLength);
   end;
 
+  for Index := 0 to FTranslatorNotes.Count - 1 do
+  begin
+    TranslatorNote := TTheWordTranslatorNote(FTranslatorNotes[Index]);
+    TranslatorNote.FOffsetUTF16 := TransformProtectedAnchor(
+      TranslatorNote.FOffsetUTF16, AStartUTF16, EndOffset,
+      ReplacementLength);
+  end;
+
   for Index := 0 to FStructuralItems.Count - 1 do
   begin
     Structural := TTheWordStructuralItem(FStructuralItems[Index]);
@@ -1658,6 +2206,9 @@ begin
             AStartUTF16, TitleRanges)) then
           Event.Offset := TransformProtectedAnchor(Event.Offset,
             AStartUTF16, EndOffset, ReplacementLength);
+      twiekTranslatorNote:
+        if Event.TranslatorNote <> nil then
+          Event.Offset := Event.TranslatorNote.FOffsetUTF16;
       twiekLexical, twiekStructural:
         Event.Offset := TransformProtectedAnchor(Event.Offset,
           AStartUTF16, EndOffset, ReplacementLength);
@@ -1901,6 +2452,27 @@ procedure AppendPreservedEvents(ADocument: TTheWordVerseDocument;
 var
   Index: Integer;
   Event: TTheWordInlineEvent;
+
+  procedure AppendInsertedNotes;
+  var
+    NoteIndex: Integer;
+    NoteEvent: TTheWordInlineEvent;
+  begin
+    for NoteIndex := 0 to ADocument.FEvents.Count - 1 do
+    begin
+      NoteEvent := TTheWordInlineEvent(ADocument.FEvents[NoteIndex]);
+      if (NoteEvent.Offset <> AOffset) or
+         (NoteEvent.Kind <> twiekTranslatorNote) or
+         (NoteEvent.TranslatorNote = nil) or
+         NoteEvent.TranslatorNote.Imported or
+         ((AEmitted <> nil) and (AEmitted.IndexOf(NoteEvent) >= 0)) then
+        Continue;
+      AOutput := AOutput + NoteEvent.RawLexeme;
+      if AEmitted <> nil then
+        AEmitted.Add(NoteEvent);
+    end;
+  end;
+
 begin
   for Index := 0 to ADocument.FEvents.Count - 1 do
   begin
@@ -1909,14 +2481,22 @@ begin
       Continue;
     if Event.Kind in [twiekSemanticOpen, twiekSemanticClose] then
     begin
+      if Event.Kind = twiekSemanticOpen then
+        AppendInsertedNotes;
       if (Event.SemanticMark <> nil) and
          not ListContainsMark(ARegenerated, Event.SemanticMark) then
         AOutput := AOutput + Event.RawLexeme;
     end
-    else if (Event.Kind in [twiekLexical, twiekOpaque, twiekStructural]) and
+    else if (Event.Kind = twiekTranslatorNote) and
+            (Event.TranslatorNote <> nil) and
+            not Event.TranslatorNote.Imported then
+      Continue
+    else if (Event.Kind in [twiekLexical, twiekOpaque, twiekStructural,
+             twiekTranslatorNote]) and
             ((AEmitted = nil) or (AEmitted.IndexOf(Event) < 0)) then
       AOutput := AOutput + Event.RawLexeme;
   end;
+  AppendInsertedNotes;
 end;
 
 procedure AppendZeroLengthMarks(ADocument: TTheWordVerseDocument;
@@ -2013,13 +2593,15 @@ end;
 function TTheWordOntCodecV2.DecodeVerse(const ARaw: UnicodeString):
   TTheWordVerseDocument;
 var
-  Index, TextStart, TagEnd, Offset: Integer;
-  RawTag, Value: UnicodeString;
+  CloseEnd, CloseStart, Index, NoteEnd, TextStart, TagEnd, Offset: Integer;
+  Body, CloseTag, Q, RawNote, RawTag, Value: UnicodeString;
   SemanticKind, StackKind: TTheWordSemanticKind;
   Stacks: array[TTheWordSemanticKind] of TList;
+  HasClose, Nested, OpenAttributesSupported: Boolean;
   Pending: TPendingSemantic;
   Event: TTheWordInlineEvent;
   Mark: TTheWordSemanticMark;
+  Note: TTheWordTranslatorNote;
   OpaqueItem: TTheWordOpaqueItem;
   Stack: TList;
 begin
@@ -2061,7 +2643,50 @@ begin
         Offset := Length(Result.FVisibleText);
         RawTag := Copy(ARaw, Index, TagEnd - Index + 1);
 
-        if SemanticOpenKind(RawTag, SemanticKind) then
+        if IsTranslatorNoteOpenTag(RawTag) then
+        begin
+          HasClose := FindTranslatorNoteClose(ARaw, TagEnd + 1,
+            CloseStart, CloseEnd, Nested);
+          if HasClose then
+          begin
+            Body := Copy(ARaw, TagEnd + 1, CloseStart - TagEnd - 1);
+            CloseTag := Copy(ARaw, CloseStart, CloseEnd - CloseStart + 1);
+            NoteEnd := CloseEnd;
+          end
+          else
+          begin
+            Body := Copy(ARaw, TagEnd + 1, MaxInt);
+            CloseTag := '';
+            NoteEnd := Length(ARaw);
+          end;
+          RawNote := Copy(ARaw, Index, NoteEnd - Index + 1);
+          TryParseTranslatorNoteOpen(RawTag, Q,
+            OpenAttributesSupported);
+
+          Note := TTheWordTranslatorNote.Create;
+          Note.FId := Result.FNextTranslatorNoteId;
+          Inc(Result.FNextTranslatorNoteId);
+          Note.FOffsetUTF16 := Offset;
+          Note.FQ := Q;
+          Note.FBodyRaw := Body;
+          Note.FOpenLexeme := RawTag;
+          Note.FCloseLexeme := CloseTag;
+          Note.FCapability := AnalyzeTheWordTranslatorNoteBody(Body);
+          if not OpenAttributesSupported or Nested or not HasClose then
+            Note.FCapability := twlcRawOnly;
+          Note.FImported := True;
+          Note.FModified := False;
+          Event := NewInlineEvent(Result, twiekTranslatorNote, Offset,
+            RawNote);
+          Event.TranslatorNote := Note;
+          Note.FOrdinal := Event.Ordinal;
+          Result.FTranslatorNotes.Add(Note);
+
+          Index := NoteEnd + 1;
+          TextStart := Index;
+          Continue;
+        end
+        else if SemanticOpenKind(RawTag, SemanticKind) then
         begin
           Event := NewInlineEvent(Result, twiekPendingSemantic, Offset,
             RawTag);

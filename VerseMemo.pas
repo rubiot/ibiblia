@@ -32,6 +32,7 @@ type
     FJesusWordsButton: TSpeedButton;
     FOldTestamentQuoteButton: TSpeedButton;
     FUnderlineButton: TSpeedButton;
+    FTranslatorNoteButton: TSpeedButton;
     FRawModeButton: TButton;
     FSaveErrorActive: Boolean;
     FEditor: TTheWordWysiwygEditorControl;
@@ -52,6 +53,7 @@ type
     procedure InsertJesusWords(Sender: TObject);
     procedure InsertOldTestamentQuote(Sender: TObject);
     procedure InsertUnderline(Sender: TObject);
+    procedure InsertTranslatorNote(Sender: TObject);
     procedure LayoutEditorToolbar;
     procedure RefreshLocalizedCaptions;
     procedure RestoreFocusAfterClose;
@@ -66,7 +68,8 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    procedure Activate(Container: TScrollBox; Verse: TVerse);
+    procedure Activate(Container: TScrollBox; Verse: TVerse;
+      AAutomaticNoteStart: Integer = 0);
     procedure Deactivate;
     function HasPendingChange: Boolean;
     function TryDeactivate: Boolean;
@@ -92,6 +95,7 @@ resourcestring
   SJesusWordsButton = 'J';
   SOldTestamentQuoteButton = 'O';
   SUnderlineButton = 'S';
+  STranslatorNoteButton = 'N¹';
   SRawModeButton = 'Raw';
   SVisualModeButton = 'Visual';
   SAddedWordsHint =
@@ -101,6 +105,8 @@ resourcestring
   SOldTestamentQuoteHint =
     'Old Testament quotation: apply or remove bold formatting (Ctrl+O)';
   SUnderlineHint = 'Underline: apply or remove underlining';
+  STranslatorNoteHint =
+    'Insert translator note at the caret (Ctrl+Shift+N)';
   SRawModeHint = 'Switch between semantic editing and the raw ONT fallback';
   SLineBreaksInEditorTitle = 'Edit error';
   SLineBreaksInEditor = 'A verse cannot contain line breaks. Remove line breaks before saving.';
@@ -179,6 +185,11 @@ begin
   ApplySemantic(twsmUnderline);
 end;
 
+procedure TVerseMemo.InsertTranslatorNote(Sender: TObject);
+begin
+  FEditor.InsertTranslatorNote;
+end;
+
 procedure TVerseMemo.ToggleRawMode(Sender: TObject);
 begin
   FEditor.RawMode := not FEditor.RawMode;
@@ -245,6 +256,10 @@ begin
     ButtonTop,
     SemanticButtonWidth, ButtonHeight);
   Inc(X, SemanticButtonWidth + Gap);
+  FTranslatorNoteButton.SetBounds(X,
+    ButtonTop,
+    SemanticButtonWidth, ButtonHeight);
+  Inc(X, SemanticButtonWidth + Gap);
   FRawModeButton.SetBounds(X,
     ButtonTop,
     RawModeButtonWidth, ButtonHeight);
@@ -281,6 +296,8 @@ begin
   FOldTestamentQuoteButton.Hint := SOldTestamentQuoteHint;
   FUnderlineButton.Caption := SUnderlineButton;
   FUnderlineButton.Hint := SUnderlineHint;
+  FTranslatorNoteButton.Caption := STranslatorNoteButton;
+  FTranslatorNoteButton.Hint := STranslatorNoteHint;
   FRawModeButton.Hint := SRawModeHint;
 end;
 
@@ -378,6 +395,7 @@ begin
   FJesusWordsButton.Enabled := CanMark;
   FOldTestamentQuoteButton.Enabled := CanMark;
   FUnderlineButton.Enabled := CanMark;
+  FTranslatorNoteButton.Enabled := FEditor.CanInsertTranslatorNote;
   if FEditor.RawMode then
     FRawModeButton.Caption := SVisualModeButton
   else
@@ -462,6 +480,10 @@ begin
   FUnderlineButton := NewSemanticButton(SUnderlineButton,
     SUnderlineHint, @InsertUnderline);
   FUnderlineButton.Font.Style := [fsUnderline];
+  FTranslatorNoteButton := NewSemanticButton(STranslatorNoteButton,
+    STranslatorNoteHint, @InsertTranslatorNote);
+  FTranslatorNoteButton.Font.Color := clBlue;
+  FTranslatorNoteButton.Font.Style := [fsItalic];
   FRawModeButton := NewToolbarButton(SRawModeButton,
     SRawModeHint, @ToggleRawMode);
   FSaveButton := NewToolbarButton(SSaveEditButton,
@@ -491,13 +513,15 @@ end;
 destructor TVerseMemo.Destroy;
 begin
   DetachContainerBoundsHandler;
+  FEditor.DismissTranslatorNotePreview;
   FEditor.Parent := nil;
   FEditor.Free;
   FEditorPanel.Free;
   inherited Destroy;
 end;
 
-procedure TVerseMemo.Activate(Container: TScrollBox; Verse: TVerse);
+procedure TVerseMemo.Activate(Container: TScrollBox; Verse: TVerse;
+  AAutomaticNoteStart: Integer);
 var
   Activated: Boolean;
   OverlayParent: TWinControl;
@@ -549,6 +573,7 @@ begin
     FEditor.Editable := not Verse.ReadOnly;
     FEditor.SetEditorFont(Verse.Font);
     FEditor.TokenizerVersion := Verse.TokenizerVersion;
+    FEditor.AutomaticNoteStart := AAutomaticNoteStart;
     FEditor.Text := Verse.XML;
     if FEditor.Capability = twlcRawOnly then
       FEditor.RawMode := True;
@@ -593,6 +618,7 @@ begin
   Impact.RemovedMembers := 0;
   Impact.UsedLegacyFallback := False;
   Impact.ErrorMessage := '';
+  FEditor.DismissTranslatorNotePreview;
   if not FEditorPanel.Visible then
     Exit;
   try
@@ -659,6 +685,7 @@ end;
 
 procedure TVerseMemo.DiscardEdit;
 begin
+  FEditor.DismissTranslatorNotePreview;
   if not FEditorPanel.Visible then
     Exit;
   FEditor.Cancel;

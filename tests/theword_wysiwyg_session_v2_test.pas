@@ -42,6 +42,9 @@ type
     procedure RawVisibleChangeUsesConservativeTrace;
     procedure IdenticalRetypeRemainsDirtyUntilUndo;
     procedure RawProtectsLexicalObjectsButAllowsExternalEdits;
+    procedure TranslatorNoteCommandsAreAtomicAndPreserveProvenance;
+    procedure TranslatorNoteMarkerResolvesSavedDraftWithStableId;
+    procedure TranslatorNoteAnchorsProtectTextEditing;
   end;
 
 implementation
@@ -1450,6 +1453,224 @@ begin
       'one<WTN-NSM><WG123><wt> two'));
     AssertFalse('lexical order cannot be changed',
       Session.ProtectedLexicalObjectsUnchanged);
+  finally
+    Session.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
+  TranslatorNoteCommandsAreAtomicAndPreserveProvenance;
+const
+  ORIGINAL: UnicodeString = 'word<WG123><WTN-NSM><wt> tail';
+  INSERTED: UnicodeString =
+    'word<WG123><WTN-NSM><wt><RF q=*><b>note</b><Rf> tail';
+  UPDATED: UnicodeString =
+    'word<WG123><WTN-NSM><wt><RF q="A B"><i>changed</i><Rf> tail';
+var
+  FirstId, NoteId, RevisionBefore, SecondId: QWord;
+  Note: TTheWordTranslatorNote;
+  Session: TTheWordWysiwygSessionV2;
+  Trace: TVerseEditTrace;
+begin
+  Session := TTheWordWysiwygSessionV2.Create(ORIGINAL, 73);
+  try
+    AssertFalse('RF cannot split a protected lexical word',
+      Session.CanInsertTranslatorNote(2));
+    AssertTrue(Session.CanInsertTranslatorNote(4));
+    AssertTrue(Session.InsertTranslatorNote(4, '*', '<B>note</B>',
+      NoteId));
+    AssertTrue(NoteId <> 0);
+    AssertEquals('one structural edit advances one revision', QWord(1),
+      Session.Revision);
+    AssertEquals(INSERTED, Session.RawText);
+    AssertEquals(UnicodeString('word tail'), Session.VisibleText);
+    AssertEquals(1, Session.Document.TranslatorNoteCount);
+    AssertFalse('RF is a non-semantic ONT object',
+      Session.ChangesAreSemanticOnly);
+    AssertTrue('lexical identity remains unchanged',
+      Session.ProtectedLexicalObjectsUnchanged);
+    Trace := Session.CloneEditTrace;
+    try
+      AssertTrue('RF insertion leaves every text origin untouched',
+        Trace.IsBaselineIdentity);
+      AssertEquals(73, Trace.TokenizerVersion);
+    finally
+      Trace.Free;
+    end;
+
+    AssertTrue(Session.UpdateTranslatorNote(NoteId, 'A B',
+      '<i>changed</i>'));
+    AssertEquals('update is one more revision', QWord(2),
+      Session.Revision);
+    AssertEquals(UPDATED, Session.RawText);
+    AssertTrue('one undo restores the complete previous note', Session.Undo);
+    AssertEquals(INSERTED, Session.RawText);
+    Trace := Session.CloneEditTrace;
+    try
+      AssertTrue('undo restores exact unchanged provenance',
+        Trace.IsBaselineIdentity);
+    finally
+      Trace.Free;
+    end;
+    AssertTrue(Session.Redo);
+    AssertEquals(UPDATED, Session.RawText);
+
+    NoteId := Session.Document.TranslatorNotes[0].Id;
+    AssertTrue(Session.RemoveTranslatorNote(NoteId));
+    AssertEquals(ORIGINAL, Session.RawText);
+    AssertEquals(0, Session.Document.TranslatorNoteCount);
+    AssertTrue('one undo restores the removed note atomically', Session.Undo);
+    AssertEquals(UPDATED, Session.RawText);
+    AssertEquals(1, Session.Document.TranslatorNoteCount);
+  finally
+    Session.Free;
+  end;
+
+  Session := TTheWordWysiwygSessionV2.Create(
+    'a<RF   q="x" >same<Rf>b');
+  try
+    NoteId := Session.Document.TranslatorNotes[0].Id;
+    RevisionBefore := Session.Revision;
+    AssertTrue('saving an unchanged note is a successful no-op',
+      Session.UpdateTranslatorNote(NoteId, 'x', 'same'));
+    AssertEquals('no-op does not advance revision', RevisionBefore,
+      Session.Revision);
+    AssertFalse('no-op does not create undo history', Session.CanUndo);
+    AssertEquals('no-op preserves imported RF literally',
+      'a<RF   q="x" >same<Rf>b', Session.RawText);
+    AssertTrue(Session.UpdateTranslatorNote(NoteId, 'x', '<i>new</i>'));
+    AssertEquals('session body update preserves RF opening',
+      'a<RF   q="x" ><i>new</i><Rf>b', Session.RawText);
+  finally
+    Session.Free;
+  end;
+
+  Session := TTheWordWysiwygSessionV2.Create('a b');
+  try
+    AssertTrue(Session.InsertTranslatorNote(1, '*', '<b>x</b>',
+      FirstId));
+    AssertTrue(Session.InsertTranslatorNote(1, '*', '<b>x</b>',
+      SecondId));
+    AssertTrue('identical notes at one anchor have distinct IDs',
+      FirstId <> SecondId);
+    AssertEquals(2, Session.Document.TranslatorNoteCount);
+    AssertTrue(Session.UpdateTranslatorNote(SecondId, '*',
+      '<i>second</i>'));
+    AssertTrue(Session.TryGetTranslatorNote(FirstId, Note));
+    AssertEquals('first identical note remains untouched',
+      '<b>x</b>', Note.BodyRaw);
+    AssertTrue(Session.TryGetTranslatorNote(SecondId, Note));
+    AssertEquals('the newly inserted identical note is targeted',
+      '<i>second</i>', Note.BodyRaw);
+    AssertTrue(Session.RemoveTranslatorNote(SecondId));
+    AssertEquals(1, Session.Document.TranslatorNoteCount);
+    AssertTrue(Session.TryGetTranslatorNote(FirstId, Note));
+    AssertEquals('<b>x</b>', Note.BodyRaw);
+  finally
+    Session.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
+  TranslatorNoteMarkerResolvesSavedDraftWithStableId;
+var
+  FirstId, MarkerId, SecondId: QWord;
+  FoundFirstMarker, FoundSecondMarker: Boolean;
+  Index: Integer;
+  Note: TTheWordTranslatorNote;
+  Session: TTheWordWysiwygSessionV2;
+  Span: TVisualSpan;
+  Visual: IVerseVisualDocument;
+begin
+  Session := TTheWordWysiwygSessionV2.Create('A B C');
+  try
+    AssertTrue(Session.InsertTranslatorNote(4, '',
+      '<b>saved draft</b>', FirstId));
+    Visual := BuildTheWordVerseVisualDocument(Session.Document,
+      tdLeftToRight, Session.Revision);
+    MarkerId := 0;
+    for Index := 0 to Visual.SpanCount - 1 do
+    begin
+      Span := Visual.Spans[Index];
+      if Span.Role = vsrTranslatorNote then
+      begin
+        MarkerId := Span.ObjectId;
+        Break;
+      end;
+    end;
+    AssertTrue('inserted RF produces a marker ObjectId', MarkerId <> 0);
+    AssertTrue('marker keeps the ID returned by Session.Insert',
+      MarkerId = FirstId);
+    AssertTrue('marker ObjectId resolves through the live session',
+      Session.TryGetTranslatorNote(MarkerId, Note));
+    AssertEquals('resolved marker reloads the saved draft body',
+      '<b>saved draft</b>', Note.BodyRaw);
+
+    AssertTrue(Session.InsertTranslatorNote(4, '',
+      '<i>second note</i>', SecondId));
+    AssertTrue('same-anchor notes retain distinct stable IDs',
+      SecondId <> FirstId);
+    AssertTrue(Session.TryGetTranslatorNote(FirstId, Note));
+    AssertEquals('<b>saved draft</b>', Note.BodyRaw);
+    AssertTrue(Session.TryGetTranslatorNote(SecondId, Note));
+    AssertEquals('<i>second note</i>', Note.BodyRaw);
+
+    Visual := BuildTheWordVerseVisualDocument(Session.Document,
+      tdLeftToRight, Session.Revision);
+    FoundFirstMarker := False;
+    FoundSecondMarker := False;
+    for Index := 0 to Visual.SpanCount - 1 do
+    begin
+      Span := Visual.Spans[Index];
+      if Span.Role <> vsrTranslatorNote then
+        Continue;
+      AssertTrue('every rebuilt marker resolves through Session',
+        Session.TryGetTranslatorNote(Span.ObjectId, Note));
+      AssertTrue('no rebuilt marker resolves an empty draft',
+        Note.BodyRaw <> '');
+      if Span.ObjectId = FirstId then
+        FoundFirstMarker := True
+      else if Span.ObjectId = SecondId then
+        FoundSecondMarker := True;
+    end;
+    AssertTrue('first same-anchor marker remains present',
+      FoundFirstMarker);
+    AssertTrue('second same-anchor marker remains present',
+      FoundSecondMarker);
+  finally
+    Session.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
+  TranslatorNoteAnchorsProtectTextEditing;
+var
+  Session: TTheWordWysiwygSessionV2;
+begin
+  Session := TTheWordWysiwygSessionV2.Create('a<RF>note<Rf>b');
+  try
+    AssertEquals(UnicodeString('ab'), Session.VisibleText);
+    AssertTrue('caret can insert immediately before the right-sticky RF',
+      Session.CanReplaceText(1, 0));
+    AssertFalse('replacement cannot cross the RF anchor',
+      Session.CanReplaceText(0, 2));
+    AssertTrue(Session.ReplaceText(1, 0, 'X'));
+    AssertEquals(UnicodeString('aX<RF>note<Rf>b'), Session.RawText);
+    AssertEquals('RF shifts after text inserted at its anchor', 2,
+      Session.Document.TranslatorNotes[0].OffsetUTF16);
+
+    AssertTrue('text beginning immediately after shifted RF remains editable',
+      Session.CanReplaceText(2, 1));
+    AssertTrue(Session.ReplaceText(2, 1, 'B'));
+    AssertEquals(UnicodeString('aX<RF>note<Rf>B'), Session.RawText);
+    AssertEquals(2, Session.Document.TranslatorNotes[0].OffsetUTF16);
+
+    AssertTrue('an edit strictly before RF shifts its anchor safely',
+      Session.ReplaceText(0, 0, 'X'));
+    AssertEquals(UnicodeString('XaX<RF>note<Rf>B'), Session.RawText);
+    AssertEquals(3, Session.Document.TranslatorNotes[0].OffsetUTF16);
+    AssertTrue('shifted anchor remains right-sticky',
+      Session.CanReplaceText(3, 0));
   finally
     Session.Free;
   end;

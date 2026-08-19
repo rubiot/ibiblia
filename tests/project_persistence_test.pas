@@ -5,9 +5,9 @@ unit project_persistence_test;
 interface
 
 uses
-  Classes, SysUtils, StdCtrls, fpcunit, testregistry, sqlite3conn, sqldb,
+  Classes, SysUtils, DB, StdCtrls, fpcunit, testregistry, sqlite3conn, sqldb,
   Verse, current_verse_workspace, project_persistence, project_config,
-  CommentsView, text_direction, Project;
+  project_verse_repository, CommentsView, text_direction, Project;
 
 type
   TProjectPersistenceTest = class(TTestCase)
@@ -15,10 +15,14 @@ type
     FFileName: string;
     FPersistence: TProjectPersistence;
     FPendingNotificationCount: Integer;
+    FPairBeforeScrollCount: Integer;
+    FPairAfterScrollCount: Integer;
     procedure CreateDatabase;
     function ReadDatabaseInfo(const Key: string): string;
     function ReadDatabasePairField(const FieldName: string): string;
     procedure PendingStateChanged(Sender: TObject);
+    procedure PairBeforeScroll(DataSet: TDataSet);
+    procedure PairAfterScroll(DataSet: TDataSet);
   protected
     procedure SetUp; override;
     procedure TearDown; override;
@@ -35,6 +39,7 @@ type
     procedure CommentLineBreakTagsAreDecodedOnlyInRawEditor;
     procedure CommentLineBreaksAreEncodedForStorage;
     procedure PendingStateNotificationsTrackNetChanges;
+    procedure AutomaticRFCountUsesPendingRowsAndRestoresDatasetState;
   end;
 
 implementation
@@ -42,6 +47,16 @@ implementation
 procedure TProjectPersistenceTest.PendingStateChanged(Sender: TObject);
 begin
   Inc(FPendingNotificationCount);
+end;
+
+procedure TProjectPersistenceTest.PairBeforeScroll(DataSet: TDataSet);
+begin
+  Inc(FPairBeforeScrollCount);
+end;
+
+procedure TProjectPersistenceTest.PairAfterScroll(DataSet: TDataSet);
+begin
+  Inc(FPairAfterScrollCount);
 end;
 
 procedure TProjectPersistenceTest.CreateDatabase;
@@ -70,6 +85,16 @@ begin
     Connection.ExecuteDirect('insert into pares values (' +
       '''1,1,1'', ''Gen 1:1'', ''source'', ''[target]'', ''query 1'', ' +
       '''query 2'', '''', 0, ''comment'')');
+    Connection.ExecuteDirect('insert into pares values (' +
+      '''1,1,2'', ''Gen 1:2'', ''source 2'', ' +
+      '''second<RF>two<Rf><RF q=x>custom<Rf><RF legacy=1>hidden<Rf>'', ' +
+      '''query 1'', ''query 2'', '''', 0, '''')');
+    Connection.ExecuteDirect('insert into pares values (' +
+      '''1,1,3'', ''Gen 1:3'', ''source 3'', ' +
+      '''third<RF>current<Rf>'', ''query 1'', ''query 2'', '''', 0, '''')');
+    Connection.ExecuteDirect('insert into pares values (' +
+      '''1,2,1'', ''Gen 2:1'', ''source 4'', ' +
+      '''other chapter<RF>note<Rf>'', ''query 1'', ''query 2'', '''', 0, '''')');
     Transaction.Commit;
   finally
     Transaction.Free;
@@ -148,6 +173,8 @@ begin
   FPersistence := TProjectPersistence.Create;
   FPersistence.Open(FFileName);
   FPendingNotificationCount := 0;
+  FPairBeforeScrollCount := 0;
+  FPairAfterScrollCount := 0;
   FPersistence.OnContentPendingChanged := @PendingStateChanged;
 end;
 
@@ -469,6 +496,62 @@ begin
     CommentsTextForStorage(
       'first' + #13#10 + 'second<br/>third' + #10 + 'fourth' + #13 +
       'fifth'));
+end;
+
+procedure TProjectPersistenceTest.
+  AutomaticRFCountUsesPendingRowsAndRestoresDatasetState;
+var
+  DestinationTextIndex: Integer;
+  Repository: TProjectVerseRepository;
+begin
+  Repository := TProjectVerseRepository.Create(FPersistence);
+  try
+    AssertTrue(FPersistence.LocateReference('1,1,1'));
+    DestinationTextIndex := FPersistence.PairsTable.FieldByName(
+      'pare_texto_destino').Index;
+    FPersistence.SetCurrentText(DestinationTextIndex,
+      'pending<RF>one<Rf><RF q=x>custom<Rf>');
+    FPersistence.PostCurrentEdit;
+    AssertTrue('edited first verse remains a cached update',
+      FPersistence.ContentUpdatesPending);
+    AssertEquals('cached update is not yet durable', '[target]',
+      ReadDatabasePairField('pare_texto_destino'));
+
+    AssertTrue(FPersistence.LocateReference('1,1,3'));
+    FPersistence.PairsTable.BeforeScroll := @PairBeforeScroll;
+    FPersistence.PairsTable.AfterScroll := @PairAfterScroll;
+
+    AssertFalse(FPersistence.PairsTable.ControlsDisabled);
+    AssertEquals('only automatic RFs in previous verses are counted', 2,
+      Repository.CountAutomaticRFNotesBefore('1,1,3',
+        DestinationTextIndex));
+    AssertEquals('current Verse Pair is restored', '1,1,3',
+      FPersistence.CurrentPairId);
+    AssertEquals('internal scan suppresses BeforeScroll', 0,
+      FPairBeforeScrollCount);
+    AssertEquals('internal scan suppresses AfterScroll', 0,
+      FPairAfterScrollCount);
+    AssertFalse('controls are re-enabled after the scan',
+      FPersistence.PairsTable.ControlsDisabled);
+
+    FPersistence.PairsTable.DisableControls;
+    try
+      AssertEquals(2, Repository.CountAutomaticRFNotesBefore('1,1,3',
+        DestinationTextIndex));
+      AssertTrue('a pre-existing disabled state is preserved',
+        FPersistence.PairsTable.ControlsDisabled);
+    finally
+      FPersistence.PairsTable.EnableControls;
+    end;
+
+    AssertTrue(FPersistence.LocateReference('1,1,2'));
+    AssertTrue('BeforeScroll callback is restored',
+      FPairBeforeScrollCount > 0);
+    AssertTrue('AfterScroll callback is restored',
+      FPairAfterScrollCount > 0);
+  finally
+    Repository.Free;
+  end;
 end;
 
 initialization

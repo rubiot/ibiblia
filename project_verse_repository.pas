@@ -5,7 +5,7 @@ unit project_verse_repository;
 interface
 
 uses
-  SysUtils, ai_batch_work_item, project_persistence;
+  SysUtils, DB, ai_batch_work_item, project_persistence, rf_note_scanner;
 
 type
   TProjectVerseRepository = class
@@ -34,6 +34,8 @@ type
       out VerseData: TVerseData): Boolean;
     function TryReadText(const ReferenceID: string; TextIndex: Integer;
       var TextValue: string): Boolean;
+    function CountAutomaticRFNotesBefore(const ReferenceID: string;
+      TextIndex: Integer): Integer;
   end;
 
 implementation
@@ -166,6 +168,68 @@ begin
     FPersistence.LocateReference(ReferenceID);
   if Result then
     TextValue := FPersistence.CurrentText(TextIndex);
+end;
+
+function TProjectVerseRepository.CountAutomaticRFNotesBefore(
+  const ReferenceID: string; TextIndex: Integer): Integer;
+var
+  AfterScrollHandler, BeforeScrollHandler: TDataSetNotifyEvent;
+  BookID, ChapterNumber, PreviousVerse, VerseNumber: Integer;
+  PairTable: TDataSet;
+  Parts: TStringArray;
+  PreviousReference, SavedReference: string;
+begin
+  RequirePersistence;
+  PairTable := FPersistence.PairsTable;
+  if not Assigned(PairTable) or not PairTable.Active then
+    raise Exception.Create('Project pairs table is not open');
+  if (TextIndex < 0) or (TextIndex >= PairTable.FieldCount) then
+    raise Exception.Create(
+      'Project verse repository text index is not attached');
+
+  Parts := ReferenceID.Split(',');
+  if (Length(Parts) <> 3) or
+     not TryStrToInt(Parts[0], BookID) or
+     not TryStrToInt(Parts[1], ChapterNumber) or
+     not TryStrToInt(Parts[2], VerseNumber) or
+     (BookID <= 0) or (ChapterNumber <= 0) or (VerseNumber <= 0) then
+    raise Exception.CreateFmt('Invalid project reference [%s]', [ReferenceID]);
+
+  Result := 0;
+  if VerseNumber = 1 then
+    Exit;
+
+  SavedReference := FPersistence.CurrentPairId;
+  if SavedReference.IsEmpty then
+    raise Exception.Create('Project has no current Verse Pair');
+
+  BeforeScrollHandler := PairTable.BeforeScroll;
+  AfterScrollHandler := PairTable.AfterScroll;
+  PairTable.DisableControls;
+  PairTable.BeforeScroll := nil;
+  PairTable.AfterScroll := nil;
+  try
+    try
+      for PreviousVerse := 1 to VerseNumber - 1 do
+      begin
+        PreviousReference := Format('%d,%d,%d',
+          [BookID, ChapterNumber, PreviousVerse]);
+        if FPersistence.LocateReference(PreviousReference) then
+          Inc(Result, CountAutomaticRFNotes(UnicodeString(
+            FPersistence.CurrentText(TextIndex))));
+      end;
+    finally
+      if (FPersistence.CurrentPairId <> SavedReference) and
+         not FPersistence.LocateReference(SavedReference) then
+        raise Exception.CreateFmt(
+          'Unable to restore current project reference [%s]',
+          [SavedReference]);
+    end;
+  finally
+    PairTable.BeforeScroll := BeforeScrollHandler;
+    PairTable.AfterScroll := AfterScrollHandler;
+    PairTable.EnableControls;
+  end;
 end;
 
 end.

@@ -19,7 +19,8 @@ type
     vecCancel,
     vecItalic,
     vecWordsOfJesus,
-    vecOldTestamentQuote
+    vecOldTestamentQuote,
+    vecInsertTranslatorNote
   );
 
   TVerseTextReplaceEvent = procedure(Sender: TObject; StartUTF16,
@@ -63,6 +64,10 @@ type
     FOnParagraphEdit: TVerseParagraphEditEvent;
     FOnReplaceText: TVerseTextReplaceEvent;
     FOnSelectionChanged: TVerseSelectionChangedEvent;
+    FOnVisualObjectClick: TVerseHitEvent;
+    FOnVisualObjectHover: TVerseHitEvent;
+    FLastVisualObjectId: QWord;
+    FLastVisualObjectRole: TVisualSpanRole;
     procedure BrokerChange(Sender: TObject);
     procedure BrokerKeyDown(Sender: TObject; var Key: Word;
       Shift: TShiftState);
@@ -72,6 +77,8 @@ type
     procedure DeleteBackward;
     procedure DeleteForward;
     procedure DoSelectionChanged;
+    procedure ClearVisualObjectHover;
+    procedure UpdateVisualObjectHover(X, Y: Integer);
     procedure FocusInputBroker;
     function GetCaretOffset: Integer;
     function GetSelectionLength: Integer;
@@ -110,6 +117,7 @@ type
     procedure DblClick; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState;
       X, Y: Integer); override;
+    procedure MouseLeave; override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState;
       X, Y: Integer); override;
@@ -138,6 +146,10 @@ type
       write FOnReplaceText;
     property OnSelectionChanged: TVerseSelectionChangedEvent
       read FOnSelectionChanged write FOnSelectionChanged;
+    property OnVisualObjectClick: TVerseHitEvent
+      read FOnVisualObjectClick write FOnVisualObjectClick;
+    property OnVisualObjectHover: TVerseHitEvent
+      read FOnVisualObjectHover write FOnVisualObjectHover;
   published
     property OnMouseWheel;
   end;
@@ -178,6 +190,8 @@ begin
   FActiveOffset := 0;
   FDragging := False;
   FBrokerChanging := False;
+  FLastVisualObjectId := 0;
+  FLastVisualObjectRole := vsrContent;
 
   FInputBroker := TEdit.Create(Self);
   FInputBroker.Parent := Self;
@@ -287,7 +301,8 @@ begin
   for Index := 0 to Document.SpanCount - 1 do
   begin
     Span := Document.Spans[Index];
-    if Span.Interactive and (Span.LengthUTF16 > 0) and
+    if Span.Interactive and (Span.Role = vsrContent) and
+       (Span.LengthUTF16 > 0) and
        (Value >= Span.StartUTF16) and
        (Value <= Span.StartUTF16 + Span.LengthUTF16) then
       Exit(True);
@@ -297,14 +312,15 @@ end;
 function TDirectWriteVerseEditor.IsInteractiveHitOffset(Value: Integer;
   IsTrailing: Boolean): Boolean;
 var
-  LogicalIndex: Integer;
+  Span: TVisualSpan;
 begin
   Result := False;
   if not Assigned(Document) then
     Exit;
   if IsTrailing and (Value > 0) then
     Dec(Value);
-  Result := Document.TryGetInteractiveLogicalIndexAt(Value, LogicalIndex);
+  Result := Document.TryGetInteractiveSpanAt(Value, Span) and
+    (Span.Role = vsrContent);
 end;
 
 function TDirectWriteVerseEditor.IsParagraphMarkAt(Value: Integer): Boolean;
@@ -319,7 +335,7 @@ begin
   for Index := 0 to Document.SpanCount - 1 do
   begin
     Span := Document.Spans[Index];
-    if (Span.Annotation = UnicodeString('paragraph-mark')) and
+    if (Span.Role = vsrParagraphMark) and
        (Value >= Span.StartUTF16) and
        (Value < Span.StartUTF16 + Span.LengthUTF16) then
       Exit(True);
@@ -341,8 +357,8 @@ function TDirectWriteVerseEditor.IsTraversableNonInteractiveSpan(
 begin
   Result := (Span.LengthUTF16 = 0) or
     (Span.Kind = vskDirectionControl) or
-    (Span.Annotation = UnicodeString('protected-anchor')) or
-    (Span.Annotation = UnicodeString('paragraph-mark'));
+    (Span.Role in [vsrProtectedAnchor, vsrParagraphMark,
+      vsrTitleBreak, vsrTranslatorNote]);
 end;
 
 function TDirectWriteVerseEditor.TryGetCaretRegion(Value: Integer;
@@ -360,7 +376,8 @@ begin
   for Index := 0 to Document.SpanCount - 1 do
   begin
     Span := Document.Spans[Index];
-    if Span.Interactive and (Span.LengthUTF16 > 0) then
+    if Span.Interactive and (Span.Role = vsrContent) and
+       (Span.LengthUTF16 > 0) then
     begin
       if RegionStart < 0 then
         RegionStart := Span.StartUTF16;
@@ -546,6 +563,7 @@ var
   RegionFinish: Integer;
   RegionStart: Integer;
 begin
+  ClearVisualObjectHover;
   SetDocument(ADocument);
   SetLength(FCaretStops, 0);
   RefreshCaretStops;
@@ -973,6 +991,14 @@ begin
       end
       else
         Exit;
+    VK_N:
+      if BasicShift = [ssCtrl, ssShift] then
+      begin
+        if Assigned(FOnCommand) then
+          FOnCommand(Self, vecInsertTranslatorNote);
+      end
+      else
+        Exit;
     VK_RETURN:
       if BasicShift = [] then
         RequestParagraphEdit(vpekInsert, SelectionStart, SelectionLength)
@@ -997,16 +1023,67 @@ begin
   UTF8Key := '';
 end;
 
+procedure TDirectWriteVerseEditor.ClearVisualObjectHover;
+var
+  LeaveHit: TVerseHit;
+begin
+  if FLastVisualObjectRole = vsrContent then
+    Exit;
+  FillChar(LeaveHit, SizeOf(LeaveHit), 0);
+  LeaveHit.LogicalIndex := -1;
+  LeaveHit.UTF16Offset := -1;
+  if Assigned(Document) then
+    LeaveHit.Revision := Document.Revision;
+  if Assigned(FOnVisualObjectHover) then
+    FOnVisualObjectHover(Self, LeaveHit);
+  FLastVisualObjectRole := vsrContent;
+  FLastVisualObjectId := 0;
+end;
+
+procedure TDirectWriteVerseEditor.UpdateVisualObjectHover(X, Y: Integer);
+var
+  Hit: TVerseHit;
+begin
+  if HitTest(Point(X, Y), Hit) and
+     (Hit.Role = vsrTranslatorNote) then
+  begin
+    Cursor := crHandPoint;
+    if (Hit.Role <> FLastVisualObjectRole) or
+       (Hit.ObjectId <> FLastVisualObjectId) then
+    begin
+      ClearVisualObjectHover;
+      FLastVisualObjectRole := Hit.Role;
+      FLastVisualObjectId := Hit.ObjectId;
+      if Assigned(FOnVisualObjectHover) then
+        FOnVisualObjectHover(Self, Hit);
+    end;
+  end
+  else
+  begin
+    Cursor := crDefault;
+    ClearVisualObjectHover;
+  end;
+end;
+
 procedure TDirectWriteVerseEditor.MouseDown(Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
 var
   Inside: Boolean;
   Offset: Integer;
   Trailing: Boolean;
+  Hit: TVerseHit;
 begin
   if FMode <> vimEdit then
   begin
     inherited MouseDown(Button, Shift, X, Y);
+    Exit;
+  end;
+  if (Button = mbLeft) and HitTest(Point(X, Y), Hit) and
+     (Hit.Role = vsrTranslatorNote) then
+  begin
+    if Assigned(FOnVisualObjectClick) then
+      FOnVisualObjectClick(Self, Hit);
+    FocusInputBroker;
     Exit;
   end;
   if (Button <> mbLeft) or
@@ -1018,6 +1095,12 @@ begin
   FDragging := True;
   SetCaret(Offset, ssShift in Shift);
   FocusInputBroker;
+end;
+
+procedure TDirectWriteVerseEditor.MouseLeave;
+begin
+  ClearVisualObjectHover;
+  inherited MouseLeave;
 end;
 
 procedure TDirectWriteVerseEditor.MouseMove(Shift: TShiftState;
@@ -1042,7 +1125,9 @@ begin
     FActiveOffset := NearestCaretStopInRegion(Offset, RegionStart,
       RegionFinish);
     DoSelectionChanged;
-  end;
+  end
+  else
+    UpdateVisualObjectHover(X, Y);
 end;
 
 procedure TDirectWriteVerseEditor.MouseUp(Button: TMouseButton;

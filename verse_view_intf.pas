@@ -28,6 +28,8 @@ type
     LogicalIndex: Integer;
     UTF16Offset: Integer;
     Trailing: Boolean;
+    Role: TVisualSpanRole;
+    ObjectId: QWord;
   end;
 
   IVerseView = interface

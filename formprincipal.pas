@@ -454,7 +454,7 @@ resourcestring
   SPanelLabelDestination = 'Destination';
   SPanelLabelReference1 = 'Reference 1';
   SPanelLabelReference2 = 'Reference 2';
-  SPanelLabelComments = 'Comments';
+  SPanelLabelComments = 'Editorial comments';
   STreeLegendTitle = 'Tree legend';
   STreeLegendStatusFmt = '%d: %s';
   STreeLegendCounts = 'Hover tree items for status counts';

@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, fpcunit, testregistry, theword_ont_codec_v2, ONTParser,
-  ONTTokenizer, Syntagm;
+  ONTTokenizer, Syntagm, theword_translator_note_body_v2;
 
 type
   TTheWordOntCodecV2Tests = class(TTestCase)
@@ -57,6 +57,10 @@ type
     procedure Windows1252BytesDecodeAndRoundTrip;
     procedure UnsupportedDeclaredCharsetBlocksEditing;
     procedure DeclaredCodePageRejectsUnrepresentableEdit;
+    procedure TranslatorNotesAreInvisibleAndRoundTripLiterally;
+    procedure TranslatorNoteBodyCapabilitiesMatchTheWordSubset;
+    procedure NestedAndUnclosedTranslatorNotesAreRawOnlyAndHidden;
+    procedure TranslatorNoteCrudPreservesLexicalOrderAndVisibleText;
   end;
 
 implementation
@@ -1204,6 +1208,311 @@ begin
       FCodec.EncodeModule(Module) = Bytes);
   finally
     Module.Free;
+  end;
+end;
+
+procedure TTheWordOntCodecV2Tests.
+  TranslatorNotesAreInvisibleAndRoundTripLiterally;
+const
+  RAW: UnicodeString =
+    'A<RF   q="a&amp;b" ><b>note</b><p>line<CL><Rf>B';
+var
+  Document: TTheWordVerseDocument;
+  Note: TTheWordTranslatorNote;
+begin
+  Document := FCodec.DecodeVerse(RAW);
+  try
+    AssertUnicodeEquals('RF body is excluded from visible text', 'AB',
+      Document.VisibleText);
+    AssertEquals('one RF block', 1, Document.TranslatorNoteCount);
+    Note := Document.TranslatorNotes[0];
+    AssertEquals('anchor is a zero-based UTF-16 offset', 1,
+      Note.OffsetUTF16);
+    AssertUnicodeEquals('q follows theWord literal attribute semantics',
+      'a&amp;b', Note.Q);
+    AssertUnicodeEquals('body stays available to the note editor',
+      '<b>note</b><p>line<CL>', Note.BodyRaw);
+    AssertEquals(Ord(twlcFullWysiwyg), Ord(Note.Capability));
+    AssertTrue(Note.Imported);
+    AssertFalse(Note.Modified);
+    AssertUnicodeEquals('untouched imported note is byte-for-byte literal',
+      RAW, FCodec.EncodeVerse(Document));
+  finally
+    Document.Free;
+  end;
+
+  Document := FCodec.DecodeVerse(
+    'A<  RF   q="x" >note<Rf>B');
+  try
+    AssertUnicodeEquals('whitespace RF body is hidden', 'AB',
+      Document.VisibleText);
+    AssertEquals('whitespace RF remains one note', 1,
+      Document.TranslatorNoteCount);
+    AssertUnicodeEquals('whitespace RF marker is parsed', 'x',
+      Document.TranslatorNotes[0].Q);
+    AssertUnicodeEquals('whitespace RF opening stays literal',
+      '<  RF   q="x" >', Document.TranslatorNotes[0].OpenLexeme);
+    AssertUnicodeEquals('whitespace RF round-trips literally',
+      'A<  RF   q="x" >note<Rf>B', FCodec.EncodeVerse(Document));
+  finally
+    Document.Free;
+  end;
+
+  Document := FCodec.DecodeVerse('A<  RF>note<  Rf >tail');
+  try
+    AssertUnicodeEquals('whitespace RF closing hides only its body',
+      'Atail', Document.VisibleText);
+    AssertEquals('whitespace closing remains one RF', 1,
+      Document.TranslatorNoteCount);
+    AssertUnicodeEquals('whitespace RF closing stays literal',
+      '<  Rf >', Document.TranslatorNotes[0].CloseLexeme);
+    AssertUnicodeEquals('whitespace RF closing round-trips literally',
+      'A<  RF>note<  Rf >tail', FCodec.EncodeVerse(Document));
+  finally
+    Document.Free;
+  end;
+end;
+
+procedure TTheWordOntCodecV2Tests.
+  TranslatorNoteBodyCapabilitiesMatchTheWordSubset;
+const
+  SAFE: UnicodeString =
+    '<b>bold</b><font color="#FF0000">red</font>' +
+    '<a href="https://example.test/?a=1&b=2">link</a><p><CL>' +
+    '<span style="background:#AABBCC">bg</span>';
+var
+  Canonical: UnicodeString;
+  Capability: TTheWordLayerCapability;
+  Body: TTheWordTranslatorNoteBodyDocument;
+begin
+  Body := TTheWordTranslatorNoteBodyCodec.Decode(SAFE);
+  try
+    AssertEquals(Ord(twnbcFullWysiwyg), Ord(Body.Capability));
+    AssertEquals('safe body exposes stable editor tokens', 14,
+      Body.TokenCount);
+    AssertEquals(Ord(twnbtkTagOpen), Ord(Body.Tokens[6].Kind));
+    AssertEquals(Ord(twnbLink), Ord(Body.Tokens[6].TagKind));
+    AssertUnicodeEquals('ampersand is literal in theWord attributes',
+      'https://example.test/?a=1&b=2', Body.Tokens[6].Href);
+    AssertEquals(Ord(twnbSpanBackground),
+      Ord(Body.Tokens[11].TagKind));
+    AssertUnicodeEquals('theWord background value is exposed',
+      '#AABBCC', Body.Tokens[11].BackgroundColor);
+  finally
+    Body.Free;
+  end;
+  AssertTrue(TryCanonicalizeTheWordTranslatorNoteBody(SAFE,
+    Canonical, Capability));
+  AssertEquals(Ord(twlcFullWysiwyg), Ord(Capability));
+  AssertUnicodeEquals('safe subset has deterministic serialization',
+    SAFE, Canonical);
+
+  AssertEquals('Bible semantic tags are preserved protected regions',
+    Ord(twlcProtectedRegions),
+    Ord(AnalyzeTheWordTranslatorNoteBody('<FI>x<Fi>')));
+  AssertFalse('protected body is not normalized by WYSIWYG canonicalizer',
+    TryCanonicalizeTheWordTranslatorNoteBody('<FI>x<Fi>',
+      Canonical, Capability));
+  AssertUnicodeEquals('protected body remains literal', '<FI>x<Fi>',
+    Canonical);
+  AssertEquals('unknown tags require raw editing', Ord(twlcRawOnly),
+    Ord(AnalyzeTheWordTranslatorNoteBody('<mystery>x</mystery>')));
+
+  AssertEquals('unknown font attributes require Raw editing',
+    Ord(twlcRawOnly), Ord(AnalyzeTheWordTranslatorNoteBody(
+    '<font color=red x=1>text</font>')));
+  AssertFalse('unknown font attributes are never discarded',
+    TryCanonicalizeTheWordTranslatorNoteBody(
+      '<font color=red x=1>text</font>', Canonical, Capability));
+  AssertUnicodeEquals('literal source remains unchanged',
+    '<font color=red x=1>text</font>', Canonical);
+  AssertEquals('unknown link attributes require Raw editing',
+    Ord(twlcRawOnly), Ord(AnalyzeTheWordTranslatorNoteBody(
+    '<a href=https://example.test title=x>link</a>')));
+  AssertEquals('unknown span attributes require Raw editing',
+    Ord(twlcRawOnly), Ord(AnalyzeTheWordTranslatorNoteBody(
+    '<span style="background:red" x=1>text</span>')));
+  AssertEquals('duplicate known attributes require Raw editing',
+    Ord(twlcRawOnly), Ord(AnalyzeTheWordTranslatorNoteBody(
+    '<font color=red color=blue>text</font>')));
+  AssertEquals('named font colors are preserved outside Visual editing',
+    Ord(twlcProtectedRegions), Ord(AnalyzeTheWordTranslatorNoteBody(
+    '<font color="red">text</font>')));
+  AssertEquals('absolute font sizes are not reinterpreted as relative',
+    Ord(twlcProtectedRegions), Ord(AnalyzeTheWordTranslatorNoteBody(
+    '<font size="14">text</font>')));
+  AssertEquals('short background colors remain protected literally',
+    Ord(twlcProtectedRegions), Ord(AnalyzeTheWordTranslatorNoteBody(
+    '<span style="background:#ABC">text</span>')));
+  AssertEquals('links unsafe for the modal require Raw editing',
+    Ord(twlcRawOnly), Ord(AnalyzeTheWordTranslatorNoteBody(
+    '<a href="https://example.test/a b">link</a>')));
+  AssertEquals('free RTF payload always requires Raw editing',
+    Ord(twlcRawOnly), Ord(AnalyzeTheWordTranslatorNoteBody(
+    UnicodeString(#123#92'rtf1'#92'ansi note}'))));
+end;
+
+procedure TTheWordOntCodecV2Tests.
+  NestedAndUnclosedTranslatorNotesAreRawOnlyAndHidden;
+var
+  Document: TTheWordVerseDocument;
+begin
+  Document := FCodec.DecodeVerse(
+    'a<RF q=x>outer<RF>inner<Rf>tail<Rf>b');
+  try
+    AssertUnicodeEquals('first RF close delimits malformed nested body',
+      'atailb',
+      Document.VisibleText);
+    AssertEquals(1, Document.TranslatorNoteCount);
+    AssertEquals(Ord(twlcRawOnly),
+      Ord(Document.TranslatorNotes[0].Capability));
+    AssertUnicodeEquals('malformed nested body stops at first close',
+      'outer<RF>inner', Document.TranslatorNotes[0].BodyRaw);
+    AssertUnicodeEquals('nested RF round-trips without repair',
+      'a<RF q=x>outer<RF>inner<Rf>tail<Rf>b',
+      FCodec.EncodeVerse(Document));
+  finally
+    Document.Free;
+  end;
+
+  Document := FCodec.DecodeVerse('a<RF>unfinished <b>note');
+  try
+    AssertUnicodeEquals('unclosed RF body does not leak into Bible text',
+      'a', Document.VisibleText);
+    AssertEquals(1, Document.TranslatorNoteCount);
+    AssertEquals(Ord(twlcRawOnly),
+      Ord(Document.TranslatorNotes[0].Capability));
+    AssertUnicodeEquals('unclosed source stays literal until Raw edit',
+      'a<RF>unfinished <b>note', FCodec.EncodeVerse(Document));
+  finally
+    Document.Free;
+  end;
+end;
+
+procedure TTheWordOntCodecV2Tests.
+  TranslatorNoteCrudPreservesLexicalOrderAndVisibleText;
+const
+  ORIGINAL: UnicodeString = 'word<WG123><WTN-NSM><wt> tail';
+var
+  Document, Restored: TTheWordVerseDocument;
+  Note, Found: TTheWordTranslatorNote;
+  NoteId: QWord;
+  Raw: UnicodeString;
+begin
+  Document := FCodec.DecodeVerse(ORIGINAL);
+  try
+    AssertFalse('note cannot split the protected lexical word',
+      Document.CanInsertTranslatorNote(2));
+    AssertTrue('note is valid after all lexical postfixes',
+      Document.CanInsertTranslatorNote(4));
+    Note := Document.InsertTranslatorNote(4, '*', '<B>note</B>');
+    AssertTrue(Assigned(Note));
+    NoteId := Note.Id;
+    AssertTrue(Document.TryGetTranslatorNote(NoteId, Found));
+    AssertTrue(Found = Note);
+    AssertUnicodeEquals('note insertion never changes visible text',
+      'word tail', Document.VisibleText);
+    AssertFalse(
+      'lexical postfix still protects insertion at the shared note anchor',
+      Document.CanReplaceVisibleText(4, 0));
+    AssertFalse('text replacement cannot cross a note anchor',
+      Document.CanReplaceVisibleText(3, 2));
+    AssertFalse('new note body cannot contain whitespace-style nested RF',
+      Assigned(Document.InsertTranslatorNote(4, '',
+        '<  RF>nested<Rf>')));
+    AssertFalse('new note body cannot contain whitespace-style RF close',
+      Assigned(Document.InsertTranslatorNote(4, '',
+        'nested<  Rf >tail')));
+    Raw := FCodec.EncodeVerse(Document);
+    AssertUnicodeEquals('RF follows Strong/morphology postfix data',
+      'word<WG123><WTN-NSM><wt><RF q=*><b>note</b><Rf> tail', Raw);
+
+    Restored := FCodec.DecodeVerse(Raw);
+    try
+      AssertUnicodeEquals('save/reopen keeps Bible text', 'word tail',
+        Restored.VisibleText);
+      AssertEquals(1, Restored.TranslatorNoteCount);
+      AssertTrue(Restored.UpdateTranslatorNote(
+        Restored.TranslatorNotes[0].Id, 'A B', '<i>changed</i>'));
+      AssertUnicodeEquals('changed note is serialized canonically',
+        'word<WG123><WTN-NSM><wt><RF q="A B"><i>changed</i><Rf> tail',
+        FCodec.EncodeVerse(Restored));
+      AssertTrue(Restored.RemoveTranslatorNote(
+        Restored.TranslatorNotes[0].Id));
+      AssertUnicodeEquals('removing RF restores all surrounding ONT',
+        ORIGINAL, FCodec.EncodeVerse(Restored));
+    finally
+      Restored.Free;
+    end;
+  finally
+    Document.Free;
+  end;
+
+  Document := FCodec.DecodeVerse(
+    'A<RF   q="x" ><b>old</b><Rf>B');
+  try
+    AssertTrue('body update succeeds without changing marker',
+      Document.UpdateTranslatorNote(Document.TranslatorNotes[0].Id,
+        'x', '<i>new</i>'));
+    AssertUnicodeEquals('body update preserves imported RF opening',
+      'A<RF   q="x" ><i>new</i><Rf>B', FCodec.EncodeVerse(Document));
+  finally
+    Document.Free;
+  end;
+
+  Document := FCodec.DecodeVerse('a<RF>note<Rf>b');
+  try
+    AssertTrue('collapsed insertion at RF anchor is right-sticky',
+      Document.CanReplaceVisibleText(1, 0));
+    Document.ReplaceVisibleText(1, 0, 'X');
+    AssertUnicodeEquals('inserted text precedes and shifts RF',
+      'aX<RF>note<Rf>b', FCodec.EncodeVerse(Document));
+    AssertEquals('RF anchor moves after inserted text', 2,
+      Document.TranslatorNotes[0].OffsetUTF16);
+    AssertFalse('replacement crossing RF remains protected',
+      Document.CanReplaceVisibleText(1, 2));
+  finally
+    Document.Free;
+  end;
+
+  Document := FCodec.DecodeVerse(
+    'A<RF q=x future=1>old<Rf>B');
+  try
+    AssertEquals(Ord(twlcRawOnly),
+      Ord(Document.TranslatorNotes[0].Capability));
+    AssertTrue('Raw body edit preserves unknown opening attributes',
+      Document.UpdateTranslatorNote(Document.TranslatorNotes[0].Id,
+        'x', 'new'));
+    AssertUnicodeEquals('unknown RF attributes remain literal',
+      'A<RF q=x future=1>new<Rf>B', FCodec.EncodeVerse(Document));
+    AssertEquals('unknown opening keeps note Raw-only after body edit',
+      Ord(twlcRawOnly), Ord(Document.TranslatorNotes[0].Capability));
+    AssertFalse('typed marker change cannot discard unknown attributes',
+      Document.UpdateTranslatorNote(Document.TranslatorNotes[0].Id,
+        'y', 'new'));
+  finally
+    Document.Free;
+  end;
+
+  Document := FCodec.DecodeVerse('A<FI> B<Fi>');
+  try
+    AssertTrue(Assigned(Document.InsertTranslatorNote(1, '', 'note')));
+    AssertUnicodeEquals('RF precedes a semantic opening at its anchor',
+      'A<RF>note<Rf><FI> B<Fi>', FCodec.EncodeVerse(Document));
+  finally
+    Document.Free;
+  end;
+
+  Document := FCodec.DecodeVerse(
+    'A<WG123><WTN-NSM><wt><FI> B<Fi>');
+  try
+    AssertTrue(Assigned(Document.InsertTranslatorNote(1, '', 'note')));
+    AssertUnicodeEquals(
+      'RF follows lexical postfixes and precedes the next semantic opening',
+      'A<WG123><WTN-NSM><wt><RF>note<Rf><FI> B<Fi>',
+      FCodec.EncodeVerse(Document));
+  finally
+    Document.Free;
   end;
 end;
 

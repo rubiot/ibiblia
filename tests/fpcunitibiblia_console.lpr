@@ -25,7 +25,10 @@ uses
   versememotest,
   theword_ont_codec_v2_test,
   theword_wysiwyg_session_v2_test,
-  theword_clipboard_v2_test;
+  theword_clipboard_v2_test,
+  rf_note_scanner_test,
+  theword_translator_note_visual_test,
+  project_exporter_integration_test;
 
 var
   Application: TTestRunner;

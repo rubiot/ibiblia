@@ -5,7 +5,8 @@ unit ONTParser;
 interface
 
 uses
-  Classes, SysUtils, ONTTokenizer, Syntagm, StrUtils, Graphics, HTMLColors;
+  Classes, SysUtils, ONTTokenizer, Syntagm, StrUtils, Graphics, HTMLColors,
+  rf_note_scanner;
 
 type
 
@@ -47,9 +48,9 @@ begin
     begin
       if Token.Kind = skTag then
       begin
-        if Token.Value.StartsWith('<RF') then
+        if IsRFOpeningTag(Token.Value) then
         begin
-          Tokenizer.ReadToTag(Token, '<Rf>');
+          ReadRFNoteBlock(Tokenizer, Token);
           Token.Kind := skMetadata;
         end else if AnsiStartsStr('<TS', Token.Value) then
         begin
@@ -118,4 +119,3 @@ begin
 end;
 
 end.
-

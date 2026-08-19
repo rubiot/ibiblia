@@ -24,7 +24,8 @@ type
   end;
 
 function BuildTheWordVerseVisualDocument(ADocument: TTheWordVerseDocument;
-  ABaseDirection: TTextDirection; ARevision: QWord): IVerseVisualDocument;
+  ABaseDirection: TTextDirection; ARevision: QWord;
+  AAutomaticNoteStart: Integer = 0): IVerseVisualDocument;
 
 function CanApplyTheWordSemanticMark(ADocument: TTheWordVerseDocument;
   AStartUTF16, ALengthUTF16: Integer): Boolean;
@@ -52,10 +53,16 @@ function TryCollectTheWordParagraphMarkOffsets(
 implementation
 
 uses
-  SysUtils;
+  SysUtils, rf_note_scanner;
 
 type
   TIntArray = array of Integer;
+  TTranslatorNoteVisual = record
+    ObjectId: QWord;
+    Ordinal: Integer;
+    Marker: UnicodeString;
+  end;
+  TTranslatorNoteVisualArray = array of TTranslatorNoteVisual;
   TSyntheticAnchorKind = (
     tsakNone,
     tsakProtectedSpace,
@@ -66,6 +73,7 @@ type
     ParagraphMarksBeforeBreak: Integer;
     ParagraphMarksAfterBreak: Integer;
     TitleBreakOrdinal: Integer;
+    TranslatorNotes: TTranslatorNoteVisualArray;
   end;
   TSyntheticAnchorArray = array of TSyntheticAnchor;
 
@@ -91,6 +99,10 @@ type
       out LogicalIndex: Integer): Boolean;
     function TryGetInteractiveLogicalIndexAt(UTF16Offset: Integer;
       out LogicalIndex: Integer): Boolean;
+    function TryGetSpanAt(UTF16Offset: Integer;
+      out Span: TVisualSpan): Boolean;
+    function TryGetInteractiveSpanAt(UTF16Offset: Integer;
+      out Span: TVisualSpan): Boolean;
     function TryDocumentToLayoutOffset(ADocumentOffset: Integer;
       AAffinity: TTheWordOffsetAffinity; out ALayoutOffset: Integer): Boolean;
     function TryLayoutToDocumentOffset(ALayoutOffset: Integer;
@@ -158,6 +170,18 @@ function TTheWordMappedVisualDocument.TryGetInteractiveLogicalIndexAt(
 begin
   Result := FInner.TryGetInteractiveLogicalIndexAt(UTF16Offset,
     LogicalIndex);
+end;
+
+function TTheWordMappedVisualDocument.TryGetSpanAt(
+  UTF16Offset: Integer; out Span: TVisualSpan): Boolean;
+begin
+  Result := FInner.TryGetSpanAt(UTF16Offset, Span);
+end;
+
+function TTheWordMappedVisualDocument.TryGetInteractiveSpanAt(
+  UTF16Offset: Integer; out Span: TVisualSpan): Boolean;
+begin
+  Result := FInner.TryGetInteractiveSpanAt(UTF16Offset, Span);
 end;
 
 function TTheWordMappedVisualDocument.TryDocumentToLayoutOffset(
@@ -349,18 +373,25 @@ begin
 end;
 
 function SyntheticAnchorLength(const AAnchor: TSyntheticAnchor): Integer;
+var
+  Index: Integer;
 begin
   Result := AAnchor.ParagraphMarksBeforeBreak +
     AAnchor.ParagraphMarksAfterBreak;
   if AAnchor.Kind <> tsakNone then
     Inc(Result);
+  for Index := 0 to High(AAnchor.TranslatorNotes) do
+    Inc(Result, Length(AAnchor.TranslatorNotes[Index].Marker));
 end;
 
 procedure BuildSyntheticAnchors(ADocument: TTheWordVerseDocument;
   const ATitles: TTheWordTitleRangeArray;
-  out AAnchors: TSyntheticAnchorArray);
+  AAutomaticNoteStart: Integer; out AAnchors: TSyntheticAnchorArray);
 var
-  Index, Offset, TitleIndex: Integer;
+  InsertAt, Index, NoteIndex, Offset, TitleIndex: Integer;
+  Marker: UnicodeString;
+  Note: TTheWordTranslatorNote;
+  Numberer: TRFNoteNumberer;
 begin
   SetLength(AAnchors, Length(ADocument.VisibleText) + 1);
   for Offset := 1 to Length(ADocument.VisibleText) - 1 do
@@ -387,6 +418,39 @@ begin
     if ADocument.OpaqueItems[Index].RawLexeme = '<CM>' then
       AddParagraphMark(AAnchors, ADocument.OpaqueItems[Index].Offset,
         ADocument.OpaqueItems[Index].Ordinal);
+
+  Numberer := TRFNoteNumberer.Create;
+  try
+    Numberer.Reset(AAutomaticNoteStart);
+    for NoteIndex := 0 to ADocument.TranslatorNoteCount - 1 do
+    begin
+      Note := ADocument.TranslatorNotes[NoteIndex];
+      if not Numberer.ResolveMarker(Note.OpenLexeme, Marker) then
+        Continue;
+      if (Note.OffsetUTF16 < 0) or
+         (Note.OffsetUTF16 > High(AAnchors)) then
+        Continue;
+      InsertAt := Length(AAnchors[Note.OffsetUTF16].TranslatorNotes);
+      SetLength(AAnchors[Note.OffsetUTF16].TranslatorNotes, InsertAt + 1);
+      for Index := 0 to InsertAt - 1 do
+        if AAnchors[Note.OffsetUTF16].TranslatorNotes[Index].Ordinal >
+           Note.Ordinal then
+        begin
+          InsertAt := Index;
+          Break;
+        end;
+      for Index := High(AAnchors[Note.OffsetUTF16].TranslatorNotes) downto
+        InsertAt + 1 do
+        AAnchors[Note.OffsetUTF16].TranslatorNotes[Index] :=
+          AAnchors[Note.OffsetUTF16].TranslatorNotes[Index - 1];
+      AAnchors[Note.OffsetUTF16].TranslatorNotes[InsertAt].ObjectId := Note.Id;
+      AAnchors[Note.OffsetUTF16].TranslatorNotes[InsertAt].Ordinal :=
+        Note.Ordinal;
+      AAnchors[Note.OffsetUTF16].TranslatorNotes[InsertAt].Marker := Marker;
+    end;
+  finally
+    Numberer.Free;
+  end;
 end;
 
 procedure BuildOffsetMaps(const AAnchors: TSyntheticAnchorArray;
@@ -437,13 +501,16 @@ begin
   Style := DefaultVisualTextStyle;
   Style.HasForegroundColor := True;
   Style.ForegroundColor := LongInt($808080);
-  ABuilder.AddText(ASpanIndex, MarkerText, Style, False,
-    'paragraph-mark');
+  ABuilder.AddRoleText(ASpanIndex, MarkerText, Style, False,
+    vsrParagraphMark, 0, 'paragraph-mark');
   Inc(ASpanIndex);
 end;
 
 procedure AppendSyntheticAnchor(ABuilder: TVerseVisualDocumentBuilder;
   const AAnchor: TSyntheticAnchor; var ASpanIndex: Integer);
+var
+  Index: Integer;
+  Style: TVisualTextStyle;
 begin
   { CM and TS may share a zero-width document anchor. Their imported ordinals
     decide which side of the single visual title break receives each pilcrow. }
@@ -451,18 +518,31 @@ begin
     ASpanIndex);
   if AAnchor.Kind = tsakTitleBreak then
   begin
-    ABuilder.AddText(ASpanIndex, #10, DefaultVisualTextStyle, False,
-      'title-break');
+    ABuilder.AddRoleText(ASpanIndex, #10, DefaultVisualTextStyle, False,
+      vsrTitleBreak, 0, 'title-break');
     Inc(ASpanIndex);
   end
   else if AAnchor.Kind = tsakProtectedSpace then
   begin
-    ABuilder.AddText(ASpanIndex, ' ', DefaultVisualTextStyle, False,
-      'protected-anchor');
+    ABuilder.AddRoleText(ASpanIndex, ' ', DefaultVisualTextStyle, False,
+      vsrProtectedAnchor, 0, 'protected-anchor');
     Inc(ASpanIndex);
   end;
   AppendParagraphMarks(ABuilder, AAnchor.ParagraphMarksAfterBreak,
     ASpanIndex);
+  for Index := 0 to High(AAnchor.TranslatorNotes) do
+  begin
+    Style := DefaultVisualTextStyle;
+    Include(Style.Flags, vtsfItalic);
+    Include(Style.Flags, vtsfSuperscript);
+    Style.FontSizeDelta := -1;
+    Style.HasForegroundColor := True;
+    Style.ForegroundColor := LongInt(clBlue);
+    ABuilder.AddObjectText(ASpanIndex,
+      AAnchor.TranslatorNotes[Index].Marker, Style, vsrTranslatorNote,
+      AAnchor.TranslatorNotes[Index].ObjectId, 'translator-note');
+    Inc(ASpanIndex);
+  end;
 end;
 
 function TryGetTitleForSegment(const ATitles: TTheWordTitleRangeArray;
@@ -559,7 +639,8 @@ begin
 end;
 
 function BuildTheWordVerseVisualDocument(ADocument: TTheWordVerseDocument;
-  ABaseDirection: TTextDirection; ARevision: QWord): IVerseVisualDocument;
+  ABaseDirection: TTextDirection; ARevision: QWord;
+  AAutomaticNoteStart: Integer): IVerseVisualDocument;
 var
   Boundaries, DocumentToLayoutBefore, DocumentToLayoutAfter,
     LayoutToDocument: TIntArray;
@@ -581,7 +662,8 @@ begin
   AddBoundary(Boundaries, 0);
   AddBoundary(Boundaries, Length(ADocument.VisibleText));
   CollectTheWordTitleRanges(ADocument, Titles);
-  BuildSyntheticAnchors(ADocument, Titles, SyntheticAnchors);
+  BuildSyntheticAnchors(ADocument, Titles, AAutomaticNoteStart,
+    SyntheticAnchors);
   for Index := 0 to High(SyntheticAnchors) do
     if SyntheticAnchorLength(SyntheticAnchors[Index]) > 0 then
       AddBoundary(Boundaries, Index);

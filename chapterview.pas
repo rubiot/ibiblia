@@ -8,9 +8,10 @@ uses
   Classes, SysUtils, Forms, Graphics, ONTTokenizer, LCLType, HTMLColors,
   LazUTF8, BibleScope, Project, Verse, Syntagm, PCRE, Controls, Menus, fgl, Dialogs, Math, Contnrs, KMemo,
   KEditCommon, KGraphics, KDialogs, FormInterlinearVerseRules,
-  LCLTranslator, LazLogger, HTMLRenderer, CommentsView, SynEdit,
+  LCLTranslator, LazLogger, HTMLRenderer, SynEdit,
   theword_syntax_highlighter, bible_book_names, translation_memory_model,
-  SuggestionManager;
+  SuggestionManager, rf_note_scanner,
+  theword_translator_note_preview;
 
 type
 
@@ -61,7 +62,7 @@ type
 
   TNoteWindow = class(THintWindow)
   private
-    FNoteView: TCommentsView;
+    FNoteView: TTranslatorNoteBodyView;
     function GetScrollBarsVisible: boolean;
     procedure InitNoteView;
     procedure SetNoteText(const AText: string; const AStyle: TKMemoTextStyle);
@@ -86,6 +87,7 @@ type
     FProject: TProject;
     FRxVerseHeading: IRegex;
     FNoteID: integer;
+    FNoteNumberer: TRFNoteNumberer;
     FHint: TNoteWindow;
     FSetFontItem: TMenuItem;
     FParagraphModeItem: TMenuItem;
@@ -123,7 +125,7 @@ type
     procedure RenderVerse(txt: string);
     procedure RenderVerseNumber(number: integer);
     procedure RenderSpan(cont: TKMemoBlocks; txt: string); override;
-    procedure RenderNote(link: string; note: string);
+    procedure RenderNote(const OpeningTag, Note: string);
     procedure RenderNotes;
     procedure RenderInterlinearBlock(cont: TKMemoBlocks; blockText: string);
     procedure RenderInterlinearUnit(cont: TKMemoBlocks; translation: string);
@@ -320,8 +322,8 @@ end;
 
 procedure TNoteWindow.InitNoteView;
 begin
-  InsertControl(TCommentsView.Create(nil));
-  FNoteView := Controls[0] as TCommentsView;
+  InsertControl(TTranslatorNoteBodyView.Create(nil));
+  FNoteView := Controls[0] as TTranslatorNoteBodyView;
   with FNoteView do
   begin
     OnMouseEnter:= @HandlePopupMouseEnter;
@@ -344,9 +346,9 @@ begin
   FNoteView.Blocks.LockUpdate;
   Width := 500;
   FNoteView.Clear(false);
-  FNoteView.FontName := AStyle.Font.Name;
-  FNoteView.FontSize := AStyle.Font.Size - 1;
-  FNoteView.SetCommentsText(AText);
+  FNoteView.TextStyle.Font.Name := AStyle.Font.Name;
+  FNoteView.TextStyle.Font.Size := AStyle.Font.Size - 1;
+  FNoteView.SetNoteBody(UTF8Decode(AText));
   FNoteView.Background.Color := $00CCFBFB;
   FNoteView.Blocks.UnLockUpdate;
 end;
@@ -496,6 +498,8 @@ var
   token: TSyntagmToken;
   prop: string;
   chunk: string;
+  NoteBody: string;
+  NoteClosingTag: string;
   size: integer;
   padding: longint;
   lastpar: TKMemoParagraph;
@@ -563,8 +567,11 @@ begin
           padding := IfThen(assigned(lastpar) and (lastpar.ParaStyle.BottomPadding = 0), 5);
           cont.AddParagraph().ParaStyle.TopPadding := padding;
         end
-        else if token.Value.StartsWith('<RF') then { translator note }
-          RenderNote(FTokenizer.ReadTagProperty('q', token), FTokenizer.ReadUntilExclusive('<Rf>'))
+        else if IsRFOpeningTag(token.Value) then { translator note }
+        begin
+          ReadRFNoteBody(FTokenizer, NoteBody, NoteClosingTag);
+          RenderNote(token.Value, NoteBody);
+        end
         else if token.Value = '<Q>' then { interlinear block }
           RenderInterlinearBlock(cont, FTokenizer.ReadUntilExclusive('<q>'))
         else if token.Value = '<E>' then { interlinear English block }
@@ -654,16 +661,20 @@ begin
   cont.UnLockUpdate;
 end;
 
-procedure TChapterView.RenderNote(link: string; note: string);
+procedure TChapterView.RenderNote(const OpeningTag, Note: string);
+var
+  Link: UnicodeString;
 begin
-  if link.IsEmpty then
-    link := FNoteID.ToString;
+  if not FNoteNumberer.ResolveMarker(UnicodeString(OpeningTag), Link) then
+    Exit;
+  if Link = '' then
+    Exit;
 
-  FNotes.Add(TNoteInfo.Create(FNoteID, FCurrentVerse, note, link));
+  FNotes.Add(TNoteInfo.Create(FNoteID, FCurrentVerse, Note, string(Link)));
   if assigned(Blocks.LastBlock) and not Blocks.LastBlock.Text.EndsWith(' ') then
-    link := ' ' + link;
+    Link := ' ' + Link;
 
-  with Blocks.AddHyperlink(link, (FNoteID-1).ToString) do
+  with Blocks.AddHyperlink(string(Link), (FNoteID-1).ToString) do
   begin
     TextStyle.Assign(TextStyle);
     TextStyle.Font.Color := NoteLinkColor;
@@ -1444,6 +1455,7 @@ begin
   FProject        := nil;
   FRxVerseHeading := RegexCreate('^((?:<TS[0-3]?>.*?<Ts>)*)(.*?)$', [rcoUTF8]);
   FNotes          := TNoteList.Create;
+  FNoteNumberer   := TRFNoteNumberer.Create;
   FHint           := TNoteWindow.Create(Self);
   FHideVerseNumber:= false;
   FPrintMode      := false;
@@ -1466,6 +1478,7 @@ end;
 destructor TChapterView.Destroy;
 begin
   FRawMemo.Free;
+  FNoteNumberer.Free;
   FNotes.Free;
   FHint.Free;
   if assigned(FProject) then
@@ -1887,6 +1900,7 @@ begin
     ResetStyleStack;
 
     FNoteID := 1;
+    FNoteNumberer.Reset;
     FNotes.Clear;
 
     RenderChapterHeader;

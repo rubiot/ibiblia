@@ -53,6 +53,14 @@ type
     function ApplySemantic(AKind: TTheWordSemanticKind; AStartUTF16,
       ALengthUTF16: Integer): Boolean;
     function CanApplySemantic(AStartUTF16, ALengthUTF16: Integer): Boolean;
+    function CanInsertTranslatorNote(AOffsetUTF16: Integer): Boolean;
+    function InsertTranslatorNote(AOffsetUTF16: Integer;
+      const AQ, ABodyRaw: UnicodeString; out ANoteId: QWord): Boolean;
+    function UpdateTranslatorNote(ANoteId: QWord;
+      const AQ, ABodyRaw: UnicodeString): Boolean;
+    function RemoveTranslatorNote(ANoteId: QWord): Boolean;
+    function TryGetTranslatorNote(ANoteId: QWord;
+      out ANote: TTheWordTranslatorNote): Boolean;
     function CanReplaceText(AStartUTF16, ALengthUTF16: Integer): Boolean;
     function CopySelection(AStartUTF16, ALengthUTF16: Integer;
       out APlainText: UnicodeString; out APayload: string): Boolean;
@@ -203,7 +211,8 @@ type
   TNonSemanticEventCategory = (
     nsecLexical,
     nsecOpaque,
-    nsecStructural
+    nsecStructural,
+    nsecTranslatorNote
   );
 
   TNonSemanticEventSnapshot = record
@@ -244,7 +253,8 @@ begin
   if not Assigned(ADocument) then
     Exit;
   SetLength(Result, ADocument.LexicalItemCount +
-    ADocument.OpaqueItemCount + ADocument.StructuralItemCount);
+    ADocument.OpaqueItemCount + ADocument.StructuralItemCount +
+    ADocument.TranslatorNoteCount);
   Position := 0;
   for Index := 0 to ADocument.LexicalItemCount - 1 do
   begin
@@ -271,6 +281,18 @@ begin
     Result[Position].Offset := ADocument.StructuralItems[Index].Offset;
     Result[Position].RawLexeme := ADocument.StructuralItems[Index].RawLexeme;
     Result[Position].Ordinal := ADocument.StructuralItems[Index].Ordinal;
+    Inc(Position);
+  end;
+  for Index := 0 to ADocument.TranslatorNoteCount - 1 do
+  begin
+    Result[Position].Category := nsecTranslatorNote;
+    Result[Position].Kind := Ord(ADocument.TranslatorNotes[Index].Capability);
+    Result[Position].Offset := ADocument.TranslatorNotes[Index].OffsetUTF16;
+    Result[Position].RawLexeme :=
+      ADocument.TranslatorNotes[Index].OpenLexeme +
+      ADocument.TranslatorNotes[Index].BodyRaw +
+      ADocument.TranslatorNotes[Index].CloseLexeme;
+    Result[Position].Ordinal := ADocument.TranslatorNotes[Index].Ordinal;
     Inc(Position);
   end;
   SortNonSemanticEvents(Result);
@@ -498,6 +520,186 @@ function TTheWordWysiwygSessionV2.CanApplySemantic(AStartUTF16,
 begin
   Result := CanApplyTheWordSemanticMark(FDocument, AStartUTF16,
     ALengthUTF16);
+end;
+
+function TTheWordWysiwygSessionV2.CanInsertTranslatorNote(
+  AOffsetUTF16: Integer): Boolean;
+begin
+  Result := Assigned(FDocument) and
+    FDocument.CanInsertTranslatorNote(AOffsetUTF16);
+end;
+
+function TTheWordWysiwygSessionV2.TryGetTranslatorNote(ANoteId: QWord;
+  out ANote: TTheWordTranslatorNote): Boolean;
+begin
+  Result := Assigned(FDocument) and
+    FDocument.TryGetTranslatorNote(ANoteId, ANote);
+  if not Result then
+    ANote := nil;
+end;
+
+function TTheWordWysiwygSessionV2.InsertTranslatorNote(
+  AOffsetUTF16: Integer; const AQ, ABodyRaw: UnicodeString;
+  out ANoteId: QWord): Boolean;
+var
+  AnchorRank, CandidateRank, Index: Integer;
+  Candidate, Inserted: TTheWordTranslatorNote;
+  FoundInserted: Boolean;
+  Replacement, WorkingDocument: TTheWordVerseDocument;
+  Snapshot: TTheWordWysiwygSessionSnapshot;
+  UpdatedRaw: UnicodeString;
+begin
+  Result := False;
+  ANoteId := 0;
+  if not CanInsertTranslatorNote(AOffsetUTF16) then
+    Exit;
+  Snapshot := nil;
+  Replacement := nil;
+  WorkingDocument := nil;
+  try
+    WorkingDocument := FCodec.DecodeVerse(GetRawText);
+    Inserted := WorkingDocument.InsertTranslatorNote(AOffsetUTF16,
+      AQ, ABodyRaw);
+    if Inserted = nil then
+      Exit;
+
+    { IDs are assigned again when the encoded document is validated. Locate
+      the new note by its rank among notes at this anchor, so identical RFs
+      at the same offset remain distinct. }
+    FoundInserted := False;
+    AnchorRank := -1;
+    for Index := 0 to WorkingDocument.TranslatorNoteCount - 1 do
+      if WorkingDocument.TranslatorNotes[Index].OffsetUTF16 =
+         Inserted.OffsetUTF16 then
+      begin
+        Inc(AnchorRank);
+        if WorkingDocument.TranslatorNotes[Index] = Inserted then
+        begin
+          FoundInserted := True;
+          Break;
+        end;
+      end;
+    if not FoundInserted then
+      Exit;
+
+    if WorkingDocument.VisibleText <> FDocument.VisibleText then
+      Exit;
+    UpdatedRaw := FCodec.EncodeVerse(WorkingDocument);
+    Replacement := FCodec.DecodeVerse(UpdatedRaw);
+    if Replacement.VisibleText <> FDocument.VisibleText then
+      Exit;
+
+    Candidate := nil;
+    CandidateRank := -1;
+    for Index := 0 to Replacement.TranslatorNoteCount - 1 do
+      if Replacement.TranslatorNotes[Index].OffsetUTF16 =
+         Inserted.OffsetUTF16 then
+      begin
+        Inc(CandidateRank);
+        if CandidateRank = AnchorRank then
+        begin
+          Candidate := Replacement.TranslatorNotes[Index];
+          Break;
+        end;
+      end;
+    if Candidate = nil then
+      Exit;
+    ANoteId := Candidate.Id;
+
+    Snapshot := CaptureSnapshot;
+    FDocument.Free;
+    FDocument := Replacement;
+    Replacement := nil;
+    Inc(FRevision);
+    PushUndo(Snapshot);
+    Snapshot := nil;
+    Result := True;
+  finally
+    Snapshot.Free;
+    Replacement.Free;
+    WorkingDocument.Free;
+  end;
+end;
+
+function TTheWordWysiwygSessionV2.UpdateTranslatorNote(ANoteId: QWord;
+  const AQ, ABodyRaw: UnicodeString): Boolean;
+var
+  Existing: TTheWordTranslatorNote;
+  Replacement, WorkingDocument: TTheWordVerseDocument;
+  Snapshot: TTheWordWysiwygSessionSnapshot;
+  UpdatedRaw: UnicodeString;
+begin
+  Result := False;
+  if not FDocument.TryGetTranslatorNote(ANoteId, Existing) then
+    Exit;
+  if (Existing.Q = AQ) and (Existing.BodyRaw = ABodyRaw) then
+    Exit(True);
+
+  Snapshot := nil;
+  Replacement := nil;
+  WorkingDocument := nil;
+  try
+    WorkingDocument := FCodec.DecodeVerse(GetRawText);
+    if not WorkingDocument.UpdateTranslatorNote(ANoteId, AQ,
+      ABodyRaw) then
+      Exit;
+    if WorkingDocument.VisibleText <> FDocument.VisibleText then
+      Exit;
+    UpdatedRaw := FCodec.EncodeVerse(WorkingDocument);
+    Replacement := FCodec.DecodeVerse(UpdatedRaw);
+    if Replacement.VisibleText <> FDocument.VisibleText then
+      Exit;
+
+    Snapshot := CaptureSnapshot;
+    FDocument.Free;
+    FDocument := Replacement;
+    Replacement := nil;
+    Inc(FRevision);
+    PushUndo(Snapshot);
+    Snapshot := nil;
+    Result := True;
+  finally
+    Snapshot.Free;
+    Replacement.Free;
+    WorkingDocument.Free;
+  end;
+end;
+
+function TTheWordWysiwygSessionV2.RemoveTranslatorNote(
+  ANoteId: QWord): Boolean;
+var
+  Replacement, WorkingDocument: TTheWordVerseDocument;
+  Snapshot: TTheWordWysiwygSessionSnapshot;
+  UpdatedRaw: UnicodeString;
+begin
+  Result := False;
+  Snapshot := nil;
+  Replacement := nil;
+  WorkingDocument := nil;
+  try
+    WorkingDocument := FCodec.DecodeVerse(GetRawText);
+    if not WorkingDocument.RemoveTranslatorNote(ANoteId) then
+      Exit;
+    if WorkingDocument.VisibleText <> FDocument.VisibleText then
+      Exit;
+    UpdatedRaw := FCodec.EncodeVerse(WorkingDocument);
+    Replacement := FCodec.DecodeVerse(UpdatedRaw);
+    if Replacement.VisibleText <> FDocument.VisibleText then
+      Exit;
+
+    Snapshot := CaptureSnapshot;
+    FDocument.Free;
+    FDocument := Replacement;
+    Replacement := nil;
+    Inc(FRevision);
+    PushUndo(Snapshot);
+    Snapshot := nil;
+    Result := True;
+  finally
+    Snapshot.Free;
+    Replacement.Free;
+    WorkingDocument.Free;
+  end;
 end;
 
 function TTheWordWysiwygSessionV2.CanReplaceText(AStartUTF16,

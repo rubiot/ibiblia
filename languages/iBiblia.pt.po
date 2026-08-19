@@ -1367,8 +1367,8 @@ msgstr "Abrir projeto"
 
 #: formprincipal.spanellabelcomments
 msgctxt "formprincipal.spanellabelcomments"
-msgid "Comments"
-msgstr "Comentários"
+msgid "Editorial comments"
+msgstr "Comentários editoriais"
 
 #: formprincipal.spanellabeldestination
 msgctxt "formprincipal.spanellabeldestination"
@@ -4172,8 +4172,8 @@ msgstr "Agrupar por formas flexionadas"
 
 #: tprojectexportform.cbexportcomments.caption
 msgctxt "tprojectexportform.cbexportcomments.caption"
-msgid "Export comments as translator notes"
-msgstr "Exportar comentários como notas do tradutor"
+msgid "Export editorial comments as translator notes"
+msgstr "Exportar comentários editoriais como notas do tradutor"
 
 #: tprojectexportform.cbexportmorphology.caption
 msgctxt "tprojectexportform.cbexportmorphology.caption"
@@ -4609,3 +4609,203 @@ msgstr "Salvar"
 msgctxt "versememo.ssaveedithint"
 msgid "Save verse text and close the editor"
 msgstr "Salva o texto do versículo e fecha o editor"
+
+#: versememo.stranslatornotebutton
+msgctxt "versememo.stranslatornotebutton"
+msgid "N¹"
+msgstr "N¹"
+
+#: versememo.stranslatornotehint
+msgid "Insert translator note at the caret (Ctrl+Shift+N)"
+msgstr "Insere uma nota do tradutor na posição do cursor (Ctrl+Shift+N)"
+
+#: theword_translator_note_editor.stranslatornotetitle
+msgctxt "theword_translator_note_editor.stranslatornotetitle"
+msgid "Translator note"
+msgstr "Nota do tradutor"
+
+#: theword_translator_note_editor.sautomaticmarker
+msgid "Automatic marker"
+msgstr "Marcador automático"
+
+#: theword_translator_note_editor.scustommarker
+msgid "Custom:"
+msgstr "Personalizado:"
+
+#: theword_translator_note_editor.svisualtab
+msgctxt "theword_translator_note_editor.svisualtab"
+msgid "Visual"
+msgstr "Visual"
+
+#: theword_translator_note_editor.srawtab
+msgctxt "theword_translator_note_editor.srawtab"
+msgid "Raw"
+msgstr "Raw"
+
+#: theword_translator_note_editor.ssavenote
+msgctxt "theword_translator_note_editor.ssavenote"
+msgid "Save"
+msgstr "Salvar"
+
+#: theword_translator_note_editor.scancelnote
+msgctxt "theword_translator_note_editor.scancelnote"
+msgid "Cancel"
+msgstr "Cancelar"
+
+#: theword_translator_note_editor.sdeletenote
+msgctxt "theword_translator_note_editor.sdeletenote"
+msgid "Delete"
+msgstr "Excluir"
+
+#: theword_translator_note_editor.sdeletenoteconfirm
+msgid "Delete this translator note?"
+msgstr "Excluir esta nota do tradutor?"
+
+#: theword_translator_note_editor.sdeletenoteconfirmtitle
+msgctxt "theword_translator_note_editor.sdeletenoteconfirmtitle"
+msgid "Translator note"
+msgstr "Nota do tradutor"
+
+#: theword_translator_note_editor.sprotectednotebody
+msgid "This note contains protected or unknown markup and can only be edited in Raw mode."
+msgstr "Esta nota contém marcação protegida ou desconhecida e só pode ser editada no modo Raw."
+
+#: theword_translator_note_editor.sinvalidvisualnote
+msgid "The visual note could not be serialized safely. Use Raw mode for this content."
+msgstr "A nota visual não pôde ser serializada com segurança. Use o modo Raw para este conteúdo."
+
+#: theword_translator_note_editor.sliterallessthan
+msgid "A literal \"<\" cannot be saved safely in Visual mode. Use Raw mode."
+msgstr "Um sinal \"<\" literal não pode ser salvo com segurança no modo Visual. Use o modo Raw."
+
+#: theword_translator_note_editor.slinkprompt
+msgid "Link (http://, https:// or tw://):"
+msgstr "Link (http://, https:// ou tw://):"
+
+#: theword_translator_note_editor.slinktitle
+msgid "Translator note link"
+msgstr "Link da nota do tradutor"
+
+#: theword_translator_note_editor.sinvalidlink
+msgid "Links must use http://, https:// or tw:// and cannot contain spaces, quotes or angle brackets."
+msgstr "Os links devem usar http://, https:// ou tw:// e não podem conter espaços, aspas ou sinais de maior/menor."
+
+#: theword_translator_note_editor.semptynotebody
+msgid "The translator note cannot be empty."
+msgstr "A nota do tradutor não pode estar vazia."
+
+#: theword_translator_note_editor.sinvalidcustommarker
+msgid "The custom marker cannot be empty or contain control characters, quotes or angle brackets."
+msgstr "O marcador personalizado não pode estar vazio nem conter caracteres de controle, aspas ou sinais de maior/menor."
+
+#: theword_translator_note_editor.sphysicallinebreaks
+msgid "Use paragraph or soft-break markup; physical line breaks cannot be stored in a verse."
+msgstr "Use marcação de parágrafo ou quebra suave; quebras de linha físicas não podem ser armazenadas em um versículo."
+
+#: theword_translator_note_editor.sapplynotefailed
+msgid "The translator note could not be applied."
+msgstr "A nota do tradutor não pôde ser aplicada."
+
+#: theword_translator_note_editor.sboldlabel
+msgid "B"
+msgstr "B"
+
+#: theword_translator_note_editor.sboldhint
+msgctxt "theword_translator_note_editor.sboldhint"
+msgid "Bold"
+msgstr "Negrito"
+
+#: theword_translator_note_editor.sitaliclabel
+msgctxt "theword_translator_note_editor.sitaliclabel"
+msgid "I"
+msgstr "I"
+
+#: theword_translator_note_editor.sitalichint
+msgctxt "theword_translator_note_editor.sitalichint"
+msgid "Italic"
+msgstr "Itálico"
+
+#: theword_translator_note_editor.sunderlinelabel
+msgctxt "theword_translator_note_editor.sunderlinelabel"
+msgid "U"
+msgstr "U"
+
+#: theword_translator_note_editor.sunderlinehint
+msgctxt "theword_translator_note_editor.sunderlinehint"
+msgid "Underline"
+msgstr "Sublinhado"
+
+#: theword_translator_note_editor.sstrikelabel
+msgctxt "theword_translator_note_editor.sstrikelabel"
+msgid "S"
+msgstr "S"
+
+#: theword_translator_note_editor.sstrikehint
+msgid "Strikeout"
+msgstr "Tachado"
+
+#: theword_translator_note_editor.ssuperscriptlabel
+msgid "x²"
+msgstr "x²"
+
+#: theword_translator_note_editor.ssuperscripthint
+msgctxt "theword_translator_note_editor.ssuperscripthint"
+msgid "Superscript"
+msgstr "Sobrescrito"
+
+#: theword_translator_note_editor.ssubscriptlabel
+msgid "x₂"
+msgstr "x₂"
+
+#: theword_translator_note_editor.ssubscripthint
+msgctxt "theword_translator_note_editor.ssubscripthint"
+msgid "Subscript"
+msgstr "Subscrito"
+
+#: theword_translator_note_editor.slinklabel
+msgid "🔗"
+msgstr "🔗"
+
+#: theword_translator_note_editor.sinlineltrlabel
+msgid "L→"
+msgstr "L→"
+
+#: theword_translator_note_editor.sinlineltrhint
+msgid "Inline left-to-right"
+msgstr "Trecho da esquerda para a direita"
+
+#: theword_translator_note_editor.sinlinertllabel
+msgid "R←"
+msgstr "R←"
+
+#: theword_translator_note_editor.sinlinertlhint
+msgid "Inline right-to-left"
+msgstr "Trecho da direita para a esquerda"
+
+#: theword_translator_note_editor.sparagraphltrlabel
+msgid "L¶"
+msgstr "L¶"
+
+#: theword_translator_note_editor.sparagraphltrhint
+msgid "Paragraph left-to-right"
+msgstr "Parágrafo da esquerda para a direita"
+
+#: theword_translator_note_editor.sparagraphrtllabel
+msgid "R¶"
+msgstr "R¶"
+
+#: theword_translator_note_editor.sparagraphrtlhint
+msgid "Paragraph right-to-left"
+msgstr "Parágrafo da direita para a esquerda"
+
+#: theword_translator_note_editor.srelativefontsizehint
+msgid "Relative font size"
+msgstr "Tamanho relativo da fonte"
+
+#: theword_translator_note_editor.stextcolorhint
+msgid "Text color"
+msgstr "Cor do texto"
+
+#: theword_translator_note_editor.sbackgroundcolorhint
+msgid "Background color"
+msgstr "Cor de fundo"

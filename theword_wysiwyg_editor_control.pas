@@ -6,9 +6,10 @@ unit theword_wysiwyg_editor_control;
 interface
 
 uses
-  Classes, SysUtils, Controls, Graphics, SynEdit, directwrite_verse_editor,
+  Classes, SysUtils, Controls, ExtCtrls, Graphics, SynEdit,
+  directwrite_verse_editor, verse_view_intf,
   verse_visual_document, theword_ont_codec_v2, theword_wysiwyg_session_v2,
-  text_direction, text_edit_provenance;
+  text_direction, text_edit_provenance, theword_translator_note_editor;
 
 type
   TTheWordWysiwygEditorControl = class;
@@ -21,19 +22,30 @@ type
     mode decodes through the same codec session before DirectWrite is shown. }
   TTheWordWysiwygEditorControl = class(TCustomControl)
   private
+    FAutomaticNoteStart: Integer;
     FBaseDirection: TTextDirection;
     FDirectEditor: TDirectWriteVerseEditor;
     FDirectZoomSize: Integer;
     FEditable: Boolean;
+    FEditingNoteId: QWord;
+    FEditingNoteOffset: Integer;
     FLoadedRaw: UnicodeString;
+    FNoteHoverTimer: TTimer;
+    FNotePreview: TTranslatorNotePreviewWindow;
     FOnChanged: TTheWordEditorChangedEvent;
     FOnCommand: TTheWordEditorCommandEvent;
+    FPendingNoteId: QWord;
+    FPendingNoteRevision: QWord;
     FRawEditor: TSynEdit;
     FRawMode: Boolean;
     FSession: TTheWordWysiwygSessionV2;
     FTokenizerVersion: Integer;
     FUpdating: Boolean;
     FVisualDocument: IVerseVisualDocument;
+    function GetCanInsertTranslatorNote: Boolean;
+    function ApplyTranslatorNoteFromDialog(Sender: TObject;
+      AAction: TTranslatorNoteEditorAction; const AQ,
+      ABodyRaw: UnicodeString; out AErrorMessage: string): Boolean;
     function GetCapability: TTheWordLayerCapability;
     function GetChangesAreSemanticOnly: Boolean;
     function GetModified: Boolean;
@@ -46,6 +58,8 @@ type
     procedure DirectClipboardPaste(Sender: TObject; StartUTF16,
       LengthUTF16: Integer; var Handled: Boolean);
     procedure DirectCommand(Sender: TObject; Command: TVerseEditorCommand);
+    procedure DirectVisualObjectClick(Sender: TObject; const Hit: TVerseHit);
+    procedure DirectVisualObjectHover(Sender: TObject; const Hit: TVerseHit);
     procedure DirectParagraphEdit(Sender: TObject;
       Kind: TVerseParagraphEditKind; StartUTF16, LengthUTF16: Integer;
       var Accepted: Boolean; var NewCaretUTF16: Integer);
@@ -57,11 +71,17 @@ type
     procedure DirectMouseWheel(Sender: TObject; Shift: TShiftState;
       WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
     procedure DoChanged;
+    function GetAnchorScreenRect(ARole: TVisualSpanRole;
+      AObjectId: QWord; out ARect: TRect): Boolean;
+    procedure HideNotePreview;
+    procedure NoteHoverTimer(Sender: TObject);
+    procedure OpenTranslatorNote(ANoteId: QWord);
     procedure RawChanged(Sender: TObject);
     procedure RawKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure RawMouseWheel(Sender: TObject; Shift: TShiftState;
       WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
     procedure RefreshDirectDocument;
+    procedure SetAutomaticNoteStart(AValue: Integer);
     procedure SetBaseDirection(AValue: TTextDirection);
     procedure SetRawMode(AValue: Boolean);
     procedure SetEditable(AValue: Boolean);
@@ -73,6 +93,7 @@ type
       ALengthUTF16: Integer): Boolean;
   protected
     procedure Resize; override;
+    procedure VisibleChanged; override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -81,13 +102,19 @@ type
     function CommitRaw: Boolean;
     function CloneEditTrace: TVerseEditTrace;
     function ProtectedLexicalObjectsUnchanged: Boolean;
+    function InsertTranslatorNote: Boolean;
     function Undo: Boolean;
     function Redo: Boolean;
     function RejectLastChange: Boolean;
     procedure Cancel;
     procedure AcceptChanges;
     procedure FocusEditor;
+    procedure DismissTranslatorNotePreview;
+    function TranslatorNotePreviewActive: Boolean;
     procedure SetEditorFont(AFont: TFont);
+    property AutomaticNoteStart: Integer read FAutomaticNoteStart
+      write SetAutomaticNoteStart;
+    property CanInsertTranslatorNote: Boolean read GetCanInsertTranslatorNote;
     property BaseDirection: TTextDirection read FBaseDirection
       write SetBaseDirection;
     property Capability: TTheWordLayerCapability read GetCapability;
@@ -110,7 +137,7 @@ type
 implementation
 
 uses
-  LCLType, Clipbrd, theword_clipboard_v2, theword_verse_visual_adapter_v2,
+  LCLType, Clipbrd, Math, theword_clipboard_v2, theword_verse_visual_adapter_v2,
   theword_syntax_highlighter;
 
 constructor TTheWordWysiwygEditorControl.Create(AOwner: TComponent);
@@ -122,10 +149,15 @@ begin
   TabStop := True;
   FBaseDirection := tdLeftToRight;
   FEditable := True;
+  FEditingNoteId := 0;
+  FEditingNoteOffset := 0;
   FRawMode := False;
   FUpdating := False;
   FTokenizerVersion := 0;
   FDirectZoomSize := 0;
+  FAutomaticNoteStart := 0;
+  FPendingNoteId := 0;
+  FPendingNoteRevision := 0;
 
   FDirectEditor := TDirectWriteVerseEditor.Create(Self);
   FDirectEditor.Parent := Self;
@@ -139,6 +171,8 @@ begin
   FDirectEditor.OnSelectionChanged := @DirectSelectionChanged;
   FDirectEditor.OnCommand := @DirectCommand;
   FDirectEditor.OnMouseWheel := @DirectMouseWheel;
+  FDirectEditor.OnVisualObjectClick := @DirectVisualObjectClick;
+  FDirectEditor.OnVisualObjectHover := @DirectVisualObjectHover;
 
   FRawEditor := TSynEdit.Create(Self);
   FRawEditor.Parent := Self;
@@ -148,10 +182,16 @@ begin
   FRawEditor.OnChange := @RawChanged;
   FRawEditor.OnKeyDown := @RawKeyDown;
   FRawEditor.OnMouseWheel := @RawMouseWheel;
+
+  FNoteHoverTimer := TTimer.Create(Self);
+  FNoteHoverTimer.Enabled := False;
+  FNoteHoverTimer.Interval := 400;
+  FNoteHoverTimer.OnTimer := @NoteHoverTimer;
 end;
 
 destructor TTheWordWysiwygEditorControl.Destroy;
 begin
+  HideNotePreview;
   FSession.Free;
   inherited Destroy;
 end;
@@ -163,8 +203,16 @@ begin
     FDirectEditor.Invalidate;
 end;
 
+procedure TTheWordWysiwygEditorControl.VisibleChanged;
+begin
+  if not Visible then
+    DismissTranslatorNotePreview;
+  inherited VisibleChanged;
+end;
+
 procedure TTheWordWysiwygEditorControl.SetText(const AValue: string);
 begin
+  DismissTranslatorNotePreview;
   FUpdating := True;
   try
     FVisualDocument := nil;
@@ -254,6 +302,241 @@ begin
   Result := 0;
   if FRawMode or not TryGetDocumentSelection(StartUTF16, Result) then
     Result := 0;
+end;
+
+function TTheWordWysiwygEditorControl.GetCanInsertTranslatorNote: Boolean;
+var
+  DocumentLength, DocumentStart: Integer;
+begin
+  Result := FEditable and (not FRawMode) and Assigned(FSession) and
+    TryGetDocumentSelection(DocumentStart, DocumentLength) and
+    (DocumentLength = 0) and
+    FSession.CanInsertTranslatorNote(DocumentStart);
+end;
+
+procedure TTheWordWysiwygEditorControl.HideNotePreview;
+begin
+  if Assigned(FNoteHoverTimer) then
+  begin
+    FNoteHoverTimer.Enabled := False;
+    FNoteHoverTimer.Interval := 400;
+  end;
+  FPendingNoteId := 0;
+  FPendingNoteRevision := 0;
+  FreeAndNil(FNotePreview);
+end;
+
+procedure TTheWordWysiwygEditorControl.DismissTranslatorNotePreview;
+begin
+  HideNotePreview;
+end;
+
+function TTheWordWysiwygEditorControl.TranslatorNotePreviewActive: Boolean;
+begin
+  Result := Assigned(FNotePreview) or
+    (Assigned(FNoteHoverTimer) and FNoteHoverTimer.Enabled) or
+    (FPendingNoteId <> 0);
+end;
+
+function TTheWordWysiwygEditorControl.GetAnchorScreenRect(
+  ARole: TVisualSpanRole; AObjectId: QWord; out ARect: TRect): Boolean;
+var
+  P1, P2: TPoint;
+begin
+  if ARole = vsrTranslatorNote then
+    Result := FDirectEditor.GetVisualObjectClientRect(ARole,
+      AObjectId, ARect)
+  else
+    Result := FDirectEditor.GetTextPositionClientRect(
+      FDirectEditor.CaretOffset, ARect);
+  if not Result then Exit;
+  P1 := FDirectEditor.ClientToScreen(Point(ARect.Left, ARect.Top));
+  P2 := FDirectEditor.ClientToScreen(Point(ARect.Right, ARect.Bottom));
+  ARect := Rect(P1.X, P1.Y, P2.X, P2.Y);
+end;
+
+procedure TTheWordWysiwygEditorControl.DirectVisualObjectHover(
+  Sender: TObject; const Hit: TVerseHit);
+begin
+  if (Hit.Role <> vsrTranslatorNote) or (Hit.ObjectId = 0) then
+  begin
+    if Assigned(FNotePreview) and (FPendingNoteId <> 0) then
+    begin
+      FNoteHoverTimer.Interval := 100;
+      FNoteHoverTimer.Enabled := True;
+    end
+    else
+    begin
+      FNoteHoverTimer.Enabled := False;
+      FPendingNoteId := 0;
+      FPendingNoteRevision := 0;
+    end;
+    Exit;
+  end;
+  if (FPendingNoteId = Hit.ObjectId) and
+     (FNoteHoverTimer.Enabled or Assigned(FNotePreview)) then
+    Exit;
+  HideNotePreview;
+  FPendingNoteId := Hit.ObjectId;
+  FPendingNoteRevision := Hit.Revision;
+  FNoteHoverTimer.Interval := 400;
+  FNoteHoverTimer.Enabled := True;
+end;
+
+procedure TTheWordWysiwygEditorControl.NoteHoverTimer(Sender: TObject);
+var
+  AnchorRect, HoverRect: TRect;
+  CursorPoint: TPoint;
+  Note: TTheWordTranslatorNote;
+begin
+  FNoteHoverTimer.Enabled := False;
+  if (FPendingNoteId = 0) or not Assigned(FSession) or
+     (FPendingNoteRevision <> FSession.Revision) or
+     not FSession.TryGetTranslatorNote(FPendingNoteId, Note) or
+     not GetAnchorScreenRect(vsrTranslatorNote, FPendingNoteId,
+       AnchorRect) then
+  begin
+    HideNotePreview;
+    Exit;
+  end;
+  if Assigned(FNotePreview) then
+  begin
+    HoverRect := Rect(Min(AnchorRect.Left, FNotePreview.Left),
+      Min(AnchorRect.Top, FNotePreview.Top),
+      Max(AnchorRect.Right, FNotePreview.Left + FNotePreview.Width),
+      Max(AnchorRect.Bottom, FNotePreview.Top + FNotePreview.Height));
+    Dec(HoverRect.Left, 8);
+    Dec(HoverRect.Top, 8);
+    Inc(HoverRect.Right, 8);
+    Inc(HoverRect.Bottom, 8);
+    CursorPoint := Mouse.CursorPos;
+    if (CursorPoint.X >= HoverRect.Left) and
+       (CursorPoint.X < HoverRect.Right) and
+       (CursorPoint.Y >= HoverRect.Top) and
+       (CursorPoint.Y < HoverRect.Bottom) then
+    begin
+      FNoteHoverTimer.Interval := 100;
+      FNoteHoverTimer.Enabled := True;
+    end
+    else
+      HideNotePreview;
+    Exit;
+  end;
+  FNotePreview := TTranslatorNotePreviewWindow.Create(nil);
+  FNotePreview.ShowNote(Note.BodyRaw, AnchorRect);
+  FNoteHoverTimer.Interval := 100;
+  FNoteHoverTimer.Enabled := True;
+end;
+
+function TTheWordWysiwygEditorControl.ApplyTranslatorNoteFromDialog(
+  Sender: TObject; AAction: TTranslatorNoteEditorAction; const AQ,
+  ABodyRaw: UnicodeString; out AErrorMessage: string): Boolean;
+var
+  NewNoteId: QWord;
+begin
+  Result := False;
+  AErrorMessage := '';
+  if not Assigned(FSession) then Exit;
+  try
+    case AAction of
+      tneaSave:
+        if FEditingNoteId = 0 then
+        begin
+          NewNoteId := 0;
+          Result := FSession.InsertTranslatorNote(FEditingNoteOffset,
+            AQ, ABodyRaw, NewNoteId);
+          if Result then FEditingNoteId := NewNoteId;
+        end
+        else
+          Result := FSession.UpdateTranslatorNote(FEditingNoteId,
+            AQ, ABodyRaw);
+      tneaDelete:
+        Result := (FEditingNoteId <> 0) and
+          FSession.RemoveTranslatorNote(FEditingNoteId);
+    end;
+  except
+    on E: Exception do
+    begin
+      AErrorMessage := E.Message;
+      Result := False;
+    end;
+  end;
+end;
+
+procedure TTheWordWysiwygEditorControl.DirectVisualObjectClick(
+  Sender: TObject; const Hit: TVerseHit);
+begin
+  if (Hit.Role = vsrTranslatorNote) and (Hit.ObjectId <> 0) then
+    OpenTranslatorNote(Hit.ObjectId);
+end;
+
+procedure TTheWordWysiwygEditorControl.OpenTranslatorNote(ANoteId: QWord);
+var
+  EditorAction: TTranslatorNoteEditorAction;
+  AnchorRect: TRect;
+  InitialBody, InitialQ: UnicodeString;
+  Note: TTheWordTranslatorNote;
+  NoteOffset: Integer;
+begin
+  HideNotePreview;
+  if not FEditable or not Assigned(FSession) or
+     not FSession.TryGetTranslatorNote(ANoteId, Note) or
+     not GetAnchorScreenRect(vsrTranslatorNote, ANoteId,
+       AnchorRect) then Exit;
+  InitialQ := Note.Q;
+  InitialBody := Note.BodyRaw;
+  NoteOffset := Note.OffsetUTF16;
+  FEditingNoteId := ANoteId;
+  FEditingNoteOffset := NoteOffset;
+  try
+    EditorAction := ExecuteTranslatorNoteEditor(Self, AnchorRect, True,
+      Note.Capability, InitialQ, InitialBody,
+      @ApplyTranslatorNoteFromDialog);
+  finally
+    FEditingNoteId := 0;
+    FEditingNoteOffset := 0;
+  end;
+  if EditorAction = tneaCancel then Exit;
+  RefreshDirectDocument;
+  TrySetDocumentSelection(NoteOffset, 0);
+  DoChanged;
+  FocusEditor;
+end;
+
+function TTheWordWysiwygEditorControl.InsertTranslatorNote: Boolean;
+var
+  EditorAction: TTranslatorNoteEditorAction;
+  AnchorRect: TRect;
+  InitialBody, InitialQ: UnicodeString;
+  DocumentLength, DocumentStart: Integer;
+begin
+  Result := False;
+  if not GetCanInsertTranslatorNote or
+     not TryGetDocumentSelection(DocumentStart, DocumentLength) then
+  begin Beep; Exit; end;
+  if not GetAnchorScreenRect(vsrContent, 0, AnchorRect) then
+  begin
+    AnchorRect.TopLeft := ClientToScreen(Point(0, 0));
+    AnchorRect.BottomRight := AnchorRect.TopLeft;
+  end;
+  InitialQ := '';
+  InitialBody := '';
+  FEditingNoteId := 0;
+  FEditingNoteOffset := DocumentStart;
+  try
+    EditorAction := ExecuteTranslatorNoteEditor(Self, AnchorRect, False,
+      twlcFullWysiwyg, InitialQ, InitialBody,
+      @ApplyTranslatorNoteFromDialog);
+    Result := EditorAction = tneaSave;
+  finally
+    FEditingNoteId := 0;
+    FEditingNoteOffset := 0;
+  end;
+  if not Result then Exit;
+  RefreshDirectDocument;
+  TrySetDocumentSelection(DocumentStart, 0);
+  DoChanged;
+  FocusEditor;
 end;
 
 function TTheWordWysiwygEditorControl.TryGetDocumentSelection(
@@ -358,6 +641,7 @@ procedure TTheWordWysiwygEditorControl.SetRawMode(AValue: Boolean);
 begin
   if (FRawMode = AValue) or not Assigned(FSession) then
     Exit;
+  DismissTranslatorNotePreview;
   FUpdating := True;
   try
     if AValue then
@@ -382,8 +666,19 @@ begin
   if FEditable = AValue then
     Exit;
   FEditable := AValue;
+  if not FEditable then
+    DismissTranslatorNotePreview;
   FRawEditor.ReadOnly := not FEditable;
   DoChanged;
+end;
+
+procedure TTheWordWysiwygEditorControl.SetAutomaticNoteStart(
+  AValue: Integer);
+begin
+  if AValue < 0 then AValue := 0;
+  if FAutomaticNoteStart = AValue then Exit;
+  FAutomaticNoteStart := AValue;
+  RefreshDirectDocument;
 end;
 
 procedure TTheWordWysiwygEditorControl.SetBaseDirection(
@@ -403,9 +698,10 @@ var
 begin
   if not Assigned(FSession) then
     Exit;
+  HideNotePreview;
   HadSelection := TryGetDocumentSelection(DocumentStart, DocumentLength);
   Visual := BuildTheWordVerseVisualDocument(FSession.Document,
-    FBaseDirection, FSession.Revision);
+    FBaseDirection, FSession.Revision, FAutomaticNoteStart);
   FVisualDocument := Visual;
   FDirectEditor.SetEditorDocument(Visual);
   if HadSelection then
@@ -679,6 +975,7 @@ begin
     vecItalic: ApplySemantic(twsmItalic);
     vecWordsOfJesus: ApplySemantic(twsmWordsOfJesus);
     vecOldTestamentQuote: ApplySemantic(twsmOldTestamentQuote);
+    vecInsertTranslatorNote: InsertTranslatorNote;
     vecSave, vecCancel:
       if Assigned(FOnCommand) then
         FOnCommand(Self, Command);
@@ -747,6 +1044,7 @@ end;
 
 procedure TTheWordWysiwygEditorControl.Cancel;
 begin
+  DismissTranslatorNotePreview;
   if not Assigned(FSession) then
     Exit;
   FSession.Cancel;

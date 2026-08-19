@@ -44,6 +44,17 @@ type
 
   TVisualSpanKind = (vskText, vskHidden, vskDirectionControl);
 
+  { Role describes why a rendered span exists. Object spans remain part of
+    DirectWrite's layout, but they are not editable verse text. ObjectId is
+    meaningful only for roles backed by a domain object. }
+  TVisualSpanRole = (
+    vsrContent,
+    vsrProtectedAnchor,
+    vsrParagraphMark,
+    vsrTitleBreak,
+    vsrTranslatorNote
+  );
+
   TVisualSpan = record
     LogicalIndex: Integer;
     StartUTF16: Integer;
@@ -53,6 +64,8 @@ type
     Style: TVisualTextStyle;
     Interactive: Boolean;
     Annotation: UnicodeString;
+    Role: TVisualSpanRole;
+    ObjectId: QWord;
   end;
 
   IVerseVisualDocument = interface
@@ -68,6 +81,10 @@ type
       out LogicalIndex: Integer): Boolean;
     function TryGetInteractiveLogicalIndexAt(UTF16Offset: Integer;
       out LogicalIndex: Integer): Boolean;
+    function TryGetSpanAt(UTF16Offset: Integer;
+      out Span: TVisualSpan): Boolean;
+    function TryGetInteractiveSpanAt(UTF16Offset: Integer;
+      out Span: TVisualSpan): Boolean;
     property Text: UnicodeString read GetText;
     property BaseDirection: TTextDirection read GetBaseDirection;
     property Revision: QWord read GetRevision;
@@ -102,6 +119,14 @@ type
     procedure AddText(LogicalIndex: Integer; const Text: UnicodeString;
       const Style: TVisualTextStyle; Interactive: Boolean;
       const Annotation: UnicodeString = '');
+    procedure AddRoleText(LogicalIndex: Integer;
+      const Text: UnicodeString; const Style: TVisualTextStyle;
+      Interactive: Boolean; Role: TVisualSpanRole; ObjectId: QWord;
+      const Annotation: UnicodeString = '');
+    procedure AddObjectText(LogicalIndex: Integer;
+      const Text: UnicodeString; const Style: TVisualTextStyle;
+      Role: TVisualSpanRole; ObjectId: QWord;
+      const Annotation: UnicodeString = '');
     procedure AddMarkup(LogicalIndex: Integer; const Markup: UnicodeString);
     procedure AddHidden(LogicalIndex: Integer);
     function Build(Revision: QWord): IVerseVisualDocument;
@@ -134,6 +159,10 @@ type
       out LogicalIndex: Integer): Boolean;
     function TryGetInteractiveLogicalIndexAt(UTF16Offset: Integer;
       out LogicalIndex: Integer): Boolean;
+    function TryGetSpanAt(UTF16Offset: Integer;
+      out Span: TVisualSpan): Boolean;
+    function TryGetInteractiveSpanAt(UTF16Offset: Integer;
+      out Span: TVisualSpan): Boolean;
   end;
 
 function DefaultVisualTextStyle: TVisualTextStyle;
@@ -244,6 +273,28 @@ begin
   Result := False;
 end;
 
+function TVerseVisualDocument.TryGetSpanAt(UTF16Offset: Integer;
+  out Span: TVisualSpan): Boolean;
+begin
+  Span := Default(TVisualSpan);
+  if (UTF16Offset < 0) or (UTF16Offset >= Length(FText)) then
+    Exit(False);
+  for Span in FSpans do
+    if (Span.LengthUTF16 > 0) and
+       (UTF16Offset >= Span.StartUTF16) and
+       (UTF16Offset < Span.StartUTF16 + Span.LengthUTF16) then
+      Exit(True);
+  Span := Default(TVisualSpan);
+  Result := False;
+end;
+
+function TVerseVisualDocument.TryGetInteractiveSpanAt(
+  UTF16Offset: Integer; out Span: TVisualSpan): Boolean;
+begin
+  Result := TryGetSpanAt(UTF16Offset, Span) and Span.Interactive;
+  if not Result then Span := Default(TVisualSpan);
+end;
+
 { TVerseVisualDocumentBuilder }
 
 constructor TVerseVisualDocumentBuilder.Create(BaseDirection: TTextDirection);
@@ -301,6 +352,8 @@ begin
   FSpans[SpanIndex].Interactive := Interactive and (Kind = vskText) and
     (Length(Text) > 0);
   FSpans[SpanIndex].Annotation := Annotation;
+  FSpans[SpanIndex].Role := vsrContent;
+  FSpans[SpanIndex].ObjectId := 0;
   FText := FText + Text;
 end;
 
@@ -319,6 +372,8 @@ begin
   FSpans[SpanIndex].Style := DefaultVisualTextStyle;
   FSpans[SpanIndex].Interactive := False;
   FSpans[SpanIndex].Annotation := '';
+  FSpans[SpanIndex].Role := vsrContent;
+  FSpans[SpanIndex].ObjectId := 0;
   FText := FText + UnicodeString(POP_DIRECTIONAL_ISOLATE);
 end;
 
@@ -366,6 +421,31 @@ procedure TVerseVisualDocumentBuilder.AddText(LogicalIndex: Integer;
 begin
   AppendSpan(LogicalIndex, Text, vskText, CurrentDirection, Style,
     Interactive, Annotation);
+end;
+
+procedure TVerseVisualDocumentBuilder.AddRoleText(LogicalIndex: Integer;
+  const Text: UnicodeString; const Style: TVisualTextStyle;
+  Interactive: Boolean; Role: TVisualSpanRole; ObjectId: QWord;
+  const Annotation: UnicodeString);
+var
+  SpanIndex: Integer;
+begin
+  if Role = vsrContent then
+    raise EVerseVisualDocument.Create(
+      'Role text requires a non-content visual role');
+  AppendSpan(LogicalIndex, Text, vskText, CurrentDirection, Style,
+    Interactive, Annotation);
+  SpanIndex := High(FSpans);
+  FSpans[SpanIndex].Role := Role;
+  FSpans[SpanIndex].ObjectId := ObjectId;
+end;
+
+procedure TVerseVisualDocumentBuilder.AddObjectText(LogicalIndex: Integer;
+  const Text: UnicodeString; const Style: TVisualTextStyle;
+  Role: TVisualSpanRole; ObjectId: QWord; const Annotation: UnicodeString);
+begin
+  AddRoleText(LogicalIndex, Text, Style, False, Role, ObjectId,
+    Annotation);
 end;
 
 procedure TVerseVisualDocumentBuilder.AddMarkup(LogicalIndex: Integer;

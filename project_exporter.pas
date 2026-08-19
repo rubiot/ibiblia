@@ -8,7 +8,7 @@ uses
   Classes, SysUtils, StrUtils, Math, Forms, Dialogs, ComCtrls, LCLIntf, fgl, PCRE,
   BibleScope, MySwordModule, TheWordDictionary, ConcordanceExport,
   ai_batch_work_item, syntagm, Verse, project_verse_repository, verse_render_buffer,
-  SuggestionManager, ONTTokenizer, text_direction;
+  SuggestionManager, ONTTokenizer, text_direction, rf_note_scanner;
 
 type
   TRegexList = specialize TFPGList<IRegex>;
@@ -92,7 +92,7 @@ type
       Scope: TEscopoTexto): Boolean; static;
     class procedure SaveErrorReport(Errors: TStringList; const FileName,
       DialogTitle, DialogMessage: string); static;
-    class function EncodeComments(const Comments: string): string; static;
+
     class procedure WriteTheWordBible(Verses: TStringList; const FileName,
       Properties: string; Direction: TTextDirection); static;
     procedure WriteMySwordBible(Verses: TStringList; const FileName,
@@ -233,15 +233,6 @@ begin
   MessageDlg(DialogTitle, MessageText, mtWarning, [mbOK], 0);
 end;
 
-class function TProjectExporter.EncodeComments(const Comments: string): string;
-begin
-  Result := AnsiReplaceStr(
-              AnsiReplaceStr(
-                AnsiReplaceStr(Comments, #13#10, '<CM>'),
-                #13, '<CM>'),
-              #10, '<CM>');
-end;
-
 class procedure TProjectExporter.WriteTheWordBible(Verses: TStringList;
   const FileName, Properties: string; Direction: TTextDirection);
 var
@@ -297,6 +288,8 @@ var
   HasTags: Boolean;
   RenderedLine: string;
   CorruptionDetails: string;
+  ProjectionBaseMessage: string;
+  Reference: string;
 begin
   RequireDependencies;
 
@@ -332,8 +325,25 @@ begin
           RenderedLine := VerseData.TranslatedText;
         end;
 
-        if Options.ExportComments and not VerseData.Comments.IsEmpty then
-          RenderedLine := RenderedLine + '<RF>' + EncodeComments(VerseData.Comments) + '<Rf>';
+        try
+          RenderedLine := string(AppendEditorialCommentAsRF(
+            UnicodeString(RenderedLine), UnicodeString(VerseData.Comments),
+            Options.ExportComments));
+        except
+          on E: ERFEditorialCommentProjectionError do
+          begin
+            Reference := CurrentReference(GetReference);
+            if Reference = '' then
+              Reference := FVerseRepository.CurrentReferenceID;
+            ProjectionBaseMessage := Options.CorruptedDataMessage;
+            if ProjectionBaseMessage = '' then
+              ProjectionBaseMessage :=
+                'Unable to export editorial comment as a translator note.';
+            raise ERFEditorialCommentProjectionError.Create(
+              FormatCorruptionMessage(ProjectionBaseMessage, Reference,
+                E.Message));
+          end;
+        end;
 
         Lines.Add(RenderedLine);
 
@@ -474,6 +484,8 @@ function TProjectExporter.PlainVerseText(const XML: string): string;
 var
   Token: TSyntagmToken;
   Tokenizer: TONTTokenizer;
+  RFBody: string;
+  RFClosingTag: string;
 begin
   Result := '';
   Tokenizer := TTokenizerFactory.CreateTokenizer(
@@ -483,9 +495,9 @@ begin
     begin
       if Token.Kind = skTag then
       begin
-        if Token.Value = '<RF>' then
+        if IsRFOpeningTag(Token.Value) then
         begin
-          Tokenizer.ReadToTag(Token, '<Rf>');
+          ReadRFNoteBody(Tokenizer, RFBody, RFClosingTag);
           Continue;
         end;
         if AnsiStartsStr('<TS', Token.Value) then
@@ -563,7 +575,8 @@ var
   procedure BuildDestinationContext(out PlainText: string;
     out SyntagmRanges: TConcordanceHighlightRangeArray);
   var
-    ClosingTag: string;
+    InRFNote: Boolean;
+    InTitle: Boolean;
     FirstVisibleByte: Integer;
     Index: Integer;
     LastVisibleByte: Integer;
@@ -573,24 +586,30 @@ var
     SyntagmRanges := nil;
     SetLength(SyntagmRanges,
       FVerseRenderBuffer.DestinationVerse.Syntagms.Count);
-    ClosingTag := '';
+    InRFNote := False;
+    InTitle := False;
     for Index := 0 to FVerseRenderBuffer.DestinationVerse.Syntagms.Count - 1 do
     begin
       Syntagm := FVerseRenderBuffer.DestinationVerse.Syntagms[Index];
       if Syntagm.Kind = skTag then
       begin
-        if not ClosingTag.IsEmpty then
+        if InRFNote then
         begin
-          if SameText(Syntagm.Text, ClosingTag) then
-            ClosingTag := '';
+          if IsRFClosingTag(Syntagm.Text) then
+            InRFNote := False;
         end
-        else if SameText(Syntagm.Text, '<RF>') then
-          ClosingTag := '<Rf>'
+        else if InTitle then
+        begin
+          if SameText(Syntagm.Text, '<Ts>') then
+            InTitle := False;
+        end
+        else if IsRFOpeningTag(Syntagm.Text) then
+          InRFNote := True
         else if AnsiStartsText('<TS', Syntagm.Text) then
-          ClosingTag := '<Ts>';
+          InTitle := True;
         Continue;
       end;
-      if not ClosingTag.IsEmpty or
+      if InRFNote or InTitle or
          not (Syntagm.Kind in [skWhitespace, skSyntagm, skPunctuation]) then
         Continue;
 
