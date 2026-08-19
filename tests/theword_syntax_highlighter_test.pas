@@ -48,6 +48,7 @@ type
     procedure EditorFontAppliesToEditor;
     procedure WysiwygEditorKeepsRawSyntaxFont;
     procedure WysiwygRawEditorCtrlWheelZoomsWithoutModifyingText;
+    procedure WysiwygVisualCtrlWheelZoomsAndPersistsWithoutModifyingText;
     procedure WysiwygVisualKeyboardRoutesParagraphAndSemantics;
     procedure TagPairFindsClosingTheWordTag;
     procedure TagPairFindsOpeningTheWordTag;
@@ -544,6 +545,87 @@ begin
     AssertFalse('font zoom does not modify verse text', Editor.Modified);
     AssertEquals('raw text remains unchanged', '<FI>word<Fi>', Editor.Text);
   finally
+    Editor.Free;
+  end;
+end;
+
+procedure TTheWordSyntaxHighlighterTests.
+  WysiwygVisualCtrlWheelZoomsAndPersistsWithoutModifyingText;
+var
+  BaseFont: TFont;
+  ComponentIndex: Integer;
+  DirectEditor: TDirectWriteVerseEditor;
+  Editor: TTheWordWysiwygEditorControl;
+  Handled: Boolean;
+  InitialSize: Integer;
+begin
+  Editor := TTheWordWysiwygEditorControl.Create(nil);
+  BaseFont := TFont.Create;
+  try
+    DirectEditor := nil;
+    for ComponentIndex := 0 to Editor.ComponentCount - 1 do
+      if Editor.Components[ComponentIndex] is TDirectWriteVerseEditor then
+      begin
+        DirectEditor := TDirectWriteVerseEditor(
+          Editor.Components[ComponentIndex]);
+        Break;
+      end;
+    AssertTrue('DirectWrite editor exists', Assigned(DirectEditor));
+
+    BaseFont.Name := 'Times New Roman';
+    BaseFont.Size := 18;
+    Editor.SetEditorFont(BaseFont);
+    Editor.Text := '<FO>word<Fo>';
+    DirectEditor.SetSelection(1, 2);
+    InitialSize := DirectEditor.Font.Size;
+
+    Handled := False;
+    DirectEditor.OnMouseWheel(DirectEditor, [], 120, Point(0, 0), Handled);
+    AssertFalse('wheel without Ctrl remains available for scrolling', Handled);
+    AssertEquals('ordinary wheel does not zoom', InitialSize,
+      DirectEditor.Font.Size);
+
+    Handled := False;
+    DirectEditor.OnMouseWheel(DirectEditor, [ssCtrl], 120,
+      Point(0, 0), Handled);
+    AssertTrue('Ctrl+wheel is handled', Handled);
+    AssertEquals('DirectWrite font grows', InitialSize + 1,
+      DirectEditor.Font.Size);
+    AssertFalse('visual zoom does not modify verse text', Editor.Modified);
+    AssertEquals('raw text remains unchanged', '<FO>word<Fo>', Editor.Text);
+    AssertEquals('visual zoom keeps selection start', 1,
+      DirectEditor.SelectionStart);
+    AssertEquals('visual zoom keeps selection length', 2,
+      DirectEditor.SelectionLength);
+    AssertEquals('visual zoom keeps active caret', 3,
+      DirectEditor.CaretOffset);
+    AssertFalse('visual zoom does not create an undo step', Editor.Undo);
+
+    Editor.Text := 'next verse';
+    AssertEquals('zoom survives reloading the visual document',
+      InitialSize + 1, DirectEditor.Font.Size);
+    BaseFont.Size := 20;
+    Editor.SetEditorFont(BaseFont);
+    AssertEquals('zoom size survives verse font reload', InitialSize + 1,
+      DirectEditor.Font.Size);
+
+    while DirectEditor.Font.Size > 1 do
+    begin
+      Handled := False;
+      DirectEditor.OnMouseWheel(DirectEditor, [ssCtrl], -120,
+        Point(0, 0), Handled);
+      AssertTrue('Ctrl+wheel down is handled', Handled);
+    end;
+    Handled := False;
+    DirectEditor.OnMouseWheel(DirectEditor, [ssCtrl], -120,
+      Point(0, 0), Handled);
+    AssertTrue('Ctrl+wheel at minimum is handled', Handled);
+    AssertEquals('DirectWrite font has a one-point minimum', 1,
+      DirectEditor.Font.Size);
+    AssertFalse('minimum-size zoom does not modify verse text',
+      Editor.Modified);
+  finally
+    BaseFont.Free;
     Editor.Free;
   end;
 end;

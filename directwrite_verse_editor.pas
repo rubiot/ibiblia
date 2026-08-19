@@ -138,6 +138,8 @@ type
       write FOnReplaceText;
     property OnSelectionChanged: TVerseSelectionChangedEvent
       read FOnSelectionChanged write FOnSelectionChanged;
+  published
+    property OnMouseWheel;
   end;
 
 implementation

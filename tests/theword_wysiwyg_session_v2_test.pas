@@ -17,6 +17,7 @@ type
     procedure RejectedReplacementDoesNotPolluteUndo;
     procedure OpaqueAndLexicalObjectsProtectTextEdits;
     procedure VisualAdapterCombinesOverlappingStyles;
+    procedure VisualAdapterRendersOldTestamentQuoteBoldBlack;
     procedure VisualAdapterMapsSyntheticProtectedSeparators;
     procedure ParagraphMarkIsSyntheticMappedAndNonInteractive;
     procedure ParagraphMarkEditingPreservesRawUndoAndProvenance;
@@ -200,6 +201,52 @@ begin
   finally
     Source.Free;
   end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
+  VisualAdapterRendersOldTestamentQuoteBoldBlack;
+const
+  FO_ONLY: UnicodeString = '<FO>a<Fo>';
+  COMBINED: UnicodeString = '<FO><FI><FU>a<Fu><Fi><Fo>';
+  FO_OUTSIDE_FR: UnicodeString = '<FO><FR>a<Fr><Fo>';
+  FR_OUTSIDE_FO: UnicodeString = '<FR><FO>a<Fo><Fr>';
+var
+  Codec: ITheWordOntCodecV2;
+  Source: TTheWordVerseDocument;
+  Style: TVisualTextStyle;
+  Visual: IVerseVisualDocument;
+
+  procedure AssertVisualStyle(const ARaw: UnicodeString;
+    AExpectedColor: TColor; const AExpectedFlags: TVisualTextStyleFlags);
+  begin
+    Source := Codec.DecodeVerse(ARaw);
+    try
+      Visual := BuildTheWordVerseVisualDocument(Source, tdLeftToRight, 8);
+      AssertEquals(UnicodeString('a'), Visual.Text);
+      AssertTrue('semantic span has an explicit foreground color',
+        Visual.Spans[0].Style.HasForegroundColor);
+      AssertEquals('semantic foreground color', LongInt(AExpectedColor),
+        Visual.Spans[0].Style.ForegroundColor);
+      Style := Visual.Spans[0].Style;
+      AssertTrue('semantic style flags', Style.Flags = AExpectedFlags);
+      AssertEquals('visualization preserves the original ONT', ARaw,
+        Codec.EncodeVerse(Source));
+    finally
+      Source.Free;
+      Source := nil;
+      Visual := nil;
+    end;
+  end;
+
+begin
+  Codec := TTheWordOntCodecV2.Create;
+  AssertVisualStyle(FO_ONLY, clBlack, [vtsfBold]);
+  AssertVisualStyle(COMBINED, clBlack,
+    [vtsfBold, vtsfItalic, vtsfUnderline]);
+  { FO remains black where it overlaps FR. The result must not depend on
+    which wrapper is outermost. }
+  AssertVisualStyle(FO_OUTSIDE_FR, clBlack, [vtsfBold]);
+  AssertVisualStyle(FR_OUTSIDE_FO, clBlack, [vtsfBold]);
 end;
 
 procedure TTheWordWysiwygSessionV2Test.

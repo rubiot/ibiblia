@@ -548,17 +548,8 @@ begin
   case AMark.Kind of
     twsmItalic:
       Include(AStyle.Flags, vtsfItalic);
-    twsmWordsOfJesus:
-      begin
-        AStyle.HasForegroundColor := True;
-        AStyle.ForegroundColor := LongInt(clRed);
-      end;
     twsmOldTestamentQuote:
-      begin
-        Include(AStyle.Flags, vtsfBold);
-        AStyle.HasForegroundColor := True;
-        AStyle.ForegroundColor := LongInt(clNavy);
-      end;
+      Include(AStyle.Flags, vtsfBold);
     twsmUnderline:
       Include(AStyle.Flags, vtsfUnderline);
   end;
@@ -581,7 +572,7 @@ var
   Annotation, SegmentText: UnicodeString;
   SyntheticAnchors: TSyntheticAnchorArray;
   Inner: IVerseVisualDocument;
-  IsTitle: Boolean;
+  HasOldTestamentQuote, HasWordsOfJesus, IsTitle: Boolean;
 begin
   if not Assigned(ADocument) then
     raise ETheWordOntCodec.Create('Cannot visualize a nil ONT document');
@@ -623,6 +614,8 @@ begin
           SpanIndex);
         Style := DefaultVisualTextStyle;
         Annotation := '';
+        HasOldTestamentQuote := False;
+        HasWordsOfJesus := False;
         IsTitle := TryGetTitleForSegment(Titles, SegmentStart,
           SegmentFinish, Title);
         if IsTitle then
@@ -633,7 +626,27 @@ begin
           if (Mark.StartOffset <= SegmentStart) and
              (Mark.EndOffset >= SegmentFinish) and
              (Mark.EndOffset > Mark.StartOffset) then
+          begin
             ApplyMarkStyle(Mark, Style, Annotation);
+            case Mark.Kind of
+              twsmWordsOfJesus:
+                HasWordsOfJesus := True;
+              twsmOldTestamentQuote:
+                HasOldTestamentQuote := True;
+            end;
+          end;
+        end;
+        { Semantic colors have an explicit, order-independent priority. FO is
+          bold black even where it overlaps FR; FR remains red elsewhere. }
+        if HasOldTestamentQuote then
+        begin
+          Style.HasForegroundColor := True;
+          Style.ForegroundColor := LongInt(clBlack);
+        end
+        else if HasWordsOfJesus then
+        begin
+          Style.HasForegroundColor := True;
+          Style.ForegroundColor := LongInt(clRed);
         end;
         SegmentText := Copy(ADocument.VisibleText, SegmentStart + 1,
           SegmentFinish - SegmentStart);

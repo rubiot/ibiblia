@@ -23,6 +23,7 @@ type
   private
     FBaseDirection: TTextDirection;
     FDirectEditor: TDirectWriteVerseEditor;
+    FDirectZoomSize: Integer;
     FEditable: Boolean;
     FLoadedRaw: UnicodeString;
     FOnChanged: TTheWordEditorChangedEvent;
@@ -53,6 +54,8 @@ type
       var Accepted: Boolean; var NewCaretUTF16: Integer);
     procedure DirectSelectionChanged(Sender: TObject; StartUTF16,
       LengthUTF16: Integer);
+    procedure DirectMouseWheel(Sender: TObject; Shift: TShiftState;
+      WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
     procedure DoChanged;
     procedure RawChanged(Sender: TObject);
     procedure RawKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
@@ -122,6 +125,7 @@ begin
   FRawMode := False;
   FUpdating := False;
   FTokenizerVersion := 0;
+  FDirectZoomSize := 0;
 
   FDirectEditor := TDirectWriteVerseEditor.Create(Self);
   FDirectEditor.Parent := Self;
@@ -134,6 +138,7 @@ begin
   FDirectEditor.OnReplaceText := @DirectReplaceText;
   FDirectEditor.OnSelectionChanged := @DirectSelectionChanged;
   FDirectEditor.OnCommand := @DirectCommand;
+  FDirectEditor.OnMouseWheel := @DirectMouseWheel;
 
   FRawEditor := TSynEdit.Create(Self);
   FRawEditor.Parent := Self;
@@ -423,6 +428,29 @@ begin
     Dec(NewSize);
   if NewSize <> FRawEditor.Font.Size then
     FRawEditor.Font.Size := NewSize;
+  Handled := True;
+end;
+
+procedure TTheWordWysiwygEditorControl.DirectMouseWheel(Sender: TObject;
+  Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint;
+  var Handled: Boolean);
+var
+  NewSize: Integer;
+begin
+  if not (ssCtrl in Shift) or (WheelDelta = 0) then
+    Exit;
+
+  NewSize := FDirectEditor.Font.Size;
+  if WheelDelta > 0 then
+    Inc(NewSize)
+  else if NewSize > 1 then
+    Dec(NewSize);
+  if NewSize <> FDirectEditor.Font.Size then
+  begin
+    FDirectEditor.Font.Size := NewSize;
+    FDirectZoomSize := NewSize;
+    FDirectEditor.Invalidate;
+  end;
   Handled := True;
 end;
 
@@ -749,6 +777,10 @@ begin
   if not Assigned(AFont) then
     Exit;
   FDirectEditor.Font.Assign(AFont);
+  if FDirectZoomSize > 0 then
+    FDirectEditor.Font.Size := FDirectZoomSize
+  else if FDirectEditor.Font.Size < 1 then
+    FDirectEditor.Font.Size := 1;
   FDirectEditor.Invalidate;
 end;
 
