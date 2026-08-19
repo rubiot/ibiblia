@@ -444,7 +444,10 @@ begin
   FEditorPanel.BevelOuter := bvLowered;
   FEditorPanel.ParentColor := False;
   FEditorPanel.Color := clWindow;
-  FEditorPanel.ShowHint := True;
+  { The toolbar already displays the editor status.  Do not repeat it as a
+    tooltip over the WYSIWYG surface, especially over translator-note
+    previews.  Button hints remain enabled individually below. }
+  FEditorPanel.ShowHint := False;
 
   FToolbarPanel := TPanel.Create(FEditorPanel);
   FToolbarPanel.Parent := FEditorPanel;
@@ -493,6 +496,7 @@ begin
 
   FEditor := TTheWordWysiwygEditorControl.Create(nil);
   FEditor.Visible := False;
+  FEditor.ShowHint := False;
   FEditor.Parent := FEditorPanel;
   FEditor.Align := alClient;
   FEditor.OnChanged := @EditorChanged;
