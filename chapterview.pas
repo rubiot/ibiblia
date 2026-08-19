@@ -750,11 +750,17 @@ end;
 procedure TChapterView.HandleNoteLinkClick(sender: TObject);
 var
   note: TNoteInfo;
+  noteIndex: integer;
   c: integer = 0;
 begin
-  note := FNotes[TKMemoHyperlink(Sender).URL.ToInteger];
+  if not (sender is TKMemoHyperlink) then
+    Exit;
+  noteIndex := StrToIntDef(string(TKMemoHyperlink(sender).URL), -1);
+  if (noteIndex < 0) or (noteIndex >= FNotes.Count) then
+    Exit;
+  note := FNotes[noteIndex];
   repeat { working around TKMemo.ClientRect, which always gives wrong results the first time }
-    inc(c);
+    Inc(c);
     FHint.ActivateHint(note.Text, TextStyle);
   until not FHint.ScrollBarsVisible or (c = 2);
 end;
@@ -762,8 +768,14 @@ end;
 procedure TChapterView.HandleNoteClick(sender: TObject);
 var
   note: TNoteInfo;
+  noteIndex: integer;
 begin
-  note := FNotes[TKMemoHyperlink(Sender).URL.ToInteger];
+  if not (sender is TKMemoHyperlink) then
+    Exit;
+  noteIndex := StrToIntDef(string(TKMemoHyperlink(sender).URL), -1);
+  if (noteIndex < 0) or (noteIndex >= FNotes.Count) then
+    Exit;
+  note := FNotes[noteIndex];
 
   HighlightRange(note.Range, clDefault); // un-highlight current note text
   HighlightRange(FVerseRanges[note.Verse], clSilver); // un-highlight current note text
