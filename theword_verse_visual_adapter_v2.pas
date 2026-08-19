@@ -10,6 +10,7 @@ uses
 
 type
   TTheWordOffsetAffinity = (twoaBefore, twoaAfter);
+  TTheWordVisualOffsetArray = array of Integer;
 
   { DirectWrite may contain synthetic spacing for protected zero-width ONT
     objects. This map keeps every editor command in canonical document
@@ -43,6 +44,11 @@ function TryTheWordLayoutRangeToDocument(
   const AVisual: IVerseVisualDocument; ALayoutStart, ALayoutLength: Integer;
   out ADocumentStart, ADocumentLength: Integer): Boolean;
 
+function TryCollectTheWordParagraphMarkOffsets(
+  const AVisual: IVerseVisualDocument; ALayoutStart,
+  ALayoutLength: Integer; out ADocumentOffsets:
+  TTheWordVisualOffsetArray): Boolean;
+
 implementation
 
 uses
@@ -55,7 +61,13 @@ type
     tsakProtectedSpace,
     tsakTitleBreak
   );
-  TSyntheticAnchorArray = array of TSyntheticAnchorKind;
+  TSyntheticAnchor = record
+    Kind: TSyntheticAnchorKind;
+    ParagraphMarksBeforeBreak: Integer;
+    ParagraphMarksAfterBreak: Integer;
+    TitleBreakOrdinal: Integer;
+  end;
+  TSyntheticAnchorArray = array of TSyntheticAnchor;
 
   TTheWordMappedVisualDocument = class(TInterfacedObject,
     IVerseVisualDocument, ITheWordVisualOffsetMap)
@@ -232,6 +244,49 @@ begin
     ADocumentLength := DocumentFinish - ADocumentStart;
 end;
 
+function TryCollectTheWordParagraphMarkOffsets(
+  const AVisual: IVerseVisualDocument; ALayoutStart,
+  ALayoutLength: Integer; out ADocumentOffsets:
+  TTheWordVisualOffsetArray): Boolean;
+var
+  DocumentOffset, Index, LayoutFinish, MarkerFinish, MarkerStart,
+    Offset: Integer;
+  Span: TVisualSpan;
+begin
+  SetLength(ADocumentOffsets, 0);
+  Result := Assigned(AVisual) and (ALayoutStart >= 0) and
+    (ALayoutLength >= 0) and (ALayoutStart <= Length(AVisual.Text)) and
+    (ALayoutLength <= Length(AVisual.Text) - ALayoutStart);
+  if not Result then
+    Exit;
+
+  LayoutFinish := ALayoutStart + ALayoutLength;
+  for Index := 0 to AVisual.SpanCount - 1 do
+  begin
+    Span := AVisual.Spans[Index];
+    if (Span.Annotation <> UnicodeString('paragraph-mark')) or
+       (Span.LengthUTF16 <= 0) then
+      Continue;
+    MarkerStart := Span.StartUTF16;
+    if MarkerStart < ALayoutStart then
+      MarkerStart := ALayoutStart;
+    MarkerFinish := Span.StartUTF16 + Span.LengthUTF16;
+    if MarkerFinish > LayoutFinish then
+      MarkerFinish := LayoutFinish;
+    for Offset := MarkerStart to MarkerFinish - 1 do
+    begin
+      if not TryTheWordLayoutToDocumentOffset(AVisual, Offset,
+        DocumentOffset) then
+      begin
+        SetLength(ADocumentOffsets, 0);
+        Exit(False);
+      end;
+      SetLength(ADocumentOffsets, Length(ADocumentOffsets) + 1);
+      ADocumentOffsets[High(ADocumentOffsets)] := DocumentOffset;
+    end;
+  end;
+end;
+
 function IsVisualWordCodeUnit(AChar: WideChar): Boolean;
 begin
   { Non-ASCII letters and combining marks (notably pointed Hebrew) are word
@@ -262,15 +317,50 @@ procedure PromoteSyntheticAnchor(var AAnchors: TSyntheticAnchorArray;
 begin
   if (AOffset < 0) or (AOffset > High(AAnchors)) then
     Exit;
-  if Ord(AKind) > Ord(AAnchors[AOffset]) then
-    AAnchors[AOffset] := AKind;
+  if Ord(AKind) > Ord(AAnchors[AOffset].Kind) then
+    AAnchors[AOffset].Kind := AKind;
+end;
+
+procedure PromoteTitleBreak(var AAnchors: TSyntheticAnchorArray;
+  AOffset, AOrdinal: Integer);
+begin
+  if (AOffset < 0) or (AOffset > High(AAnchors)) then
+    Exit;
+  if (AAnchors[AOffset].Kind <> tsakTitleBreak) or
+     (AOrdinal > AAnchors[AOffset].TitleBreakOrdinal) then
+    AAnchors[AOffset].TitleBreakOrdinal := AOrdinal;
+  AAnchors[AOffset].Kind := tsakTitleBreak;
+end;
+
+procedure AddParagraphMark(var AAnchors: TSyntheticAnchorArray;
+  AOffset, AOrdinal: Integer);
+begin
+  if (AOffset < 0) or (AOffset > High(AAnchors)) then
+    Exit;
+  if (AAnchors[AOffset].Kind = tsakTitleBreak) and
+     (AOrdinal > AAnchors[AOffset].TitleBreakOrdinal) then
+    Inc(AAnchors[AOffset].ParagraphMarksAfterBreak)
+  else
+    Inc(AAnchors[AOffset].ParagraphMarksBeforeBreak);
+  { The pilcrow itself separates adjacent words, so a generic protected space
+    at the same anchor would only add misleading visual whitespace. }
+  if AAnchors[AOffset].Kind = tsakProtectedSpace then
+    AAnchors[AOffset].Kind := tsakNone;
+end;
+
+function SyntheticAnchorLength(const AAnchor: TSyntheticAnchor): Integer;
+begin
+  Result := AAnchor.ParagraphMarksBeforeBreak +
+    AAnchor.ParagraphMarksAfterBreak;
+  if AAnchor.Kind <> tsakNone then
+    Inc(Result);
 end;
 
 procedure BuildSyntheticAnchors(ADocument: TTheWordVerseDocument;
   const ATitles: TTheWordTitleRangeArray;
   out AAnchors: TSyntheticAnchorArray);
 var
-  Offset, TitleIndex: Integer;
+  Index, Offset, TitleIndex: Integer;
 begin
   SetLength(AAnchors, Length(ADocument.VisibleText) + 1);
   for Offset := 1 to Length(ADocument.VisibleText) - 1 do
@@ -286,24 +376,28 @@ begin
   for TitleIndex := 0 to High(ATitles) do
   begin
     if ATitles[TitleIndex].StartOffset > 0 then
-      PromoteSyntheticAnchor(AAnchors, ATitles[TitleIndex].StartOffset,
-        tsakTitleBreak);
+      PromoteTitleBreak(AAnchors, ATitles[TitleIndex].StartOffset,
+        ATitles[TitleIndex].OpenOrdinal);
     if ATitles[TitleIndex].EndOffset < Length(ADocument.VisibleText) then
-      PromoteSyntheticAnchor(AAnchors, ATitles[TitleIndex].EndOffset,
-        tsakTitleBreak);
+      PromoteTitleBreak(AAnchors, ATitles[TitleIndex].EndOffset,
+        ATitles[TitleIndex].CloseOrdinal);
   end;
+
+  for Index := 0 to ADocument.OpaqueItemCount - 1 do
+    if ADocument.OpaqueItems[Index].RawLexeme = '<CM>' then
+      AddParagraphMark(AAnchors, ADocument.OpaqueItems[Index].Offset,
+        ADocument.OpaqueItems[Index].Ordinal);
 end;
 
 procedure BuildOffsetMaps(const AAnchors: TSyntheticAnchorArray;
   ADocumentLength: Integer; out ADocumentToLayoutBefore,
   ADocumentToLayoutAfter, ALayoutToDocument: TIntArray);
 var
-  DocumentOffset, LayoutOffset, SyntheticCount: Integer;
+  AnchorUnit, DocumentOffset, LayoutOffset, SyntheticCount: Integer;
 begin
   SyntheticCount := 0;
   for DocumentOffset := 0 to High(AAnchors) do
-    if AAnchors[DocumentOffset] <> tsakNone then
-      Inc(SyntheticCount);
+    Inc(SyntheticCount, SyntheticAnchorLength(AAnchors[DocumentOffset]));
   SetLength(ADocumentToLayoutBefore, ADocumentLength + 1);
   SetLength(ADocumentToLayoutAfter, ADocumentLength + 1);
   SetLength(ALayoutToDocument, ADocumentLength + SyntheticCount + 1);
@@ -313,7 +407,8 @@ begin
   begin
     ADocumentToLayoutBefore[DocumentOffset] := LayoutOffset;
     ALayoutToDocument[LayoutOffset] := DocumentOffset;
-    if AAnchors[DocumentOffset] <> tsakNone then
+    for AnchorUnit := 1 to SyntheticAnchorLength(
+      AAnchors[DocumentOffset]) do
     begin
       Inc(LayoutOffset);
       ALayoutToDocument[LayoutOffset] := DocumentOffset;
@@ -327,18 +422,47 @@ begin
   end;
 end;
 
-procedure AppendSyntheticAnchor(ABuilder: TVerseVisualDocumentBuilder;
-  AKind: TSyntheticAnchorKind; var ASpanIndex: Integer);
+procedure AppendParagraphMarks(ABuilder: TVerseVisualDocumentBuilder;
+  ACount: Integer; var ASpanIndex: Integer);
+var
+  Index: Integer;
+  MarkerText: UnicodeString;
+  Style: TVisualTextStyle;
 begin
-  if AKind = tsakNone then
+  if ACount <= 0 then
     Exit;
-  if AKind = tsakTitleBreak then
+  MarkerText := '';
+  for Index := 1 to ACount do
+    MarkerText := MarkerText + UnicodeString(WideChar($00B6));
+  Style := DefaultVisualTextStyle;
+  Style.HasForegroundColor := True;
+  Style.ForegroundColor := LongInt($808080);
+  ABuilder.AddText(ASpanIndex, MarkerText, Style, False,
+    'paragraph-mark');
+  Inc(ASpanIndex);
+end;
+
+procedure AppendSyntheticAnchor(ABuilder: TVerseVisualDocumentBuilder;
+  const AAnchor: TSyntheticAnchor; var ASpanIndex: Integer);
+begin
+  { CM and TS may share a zero-width document anchor. Their imported ordinals
+    decide which side of the single visual title break receives each pilcrow. }
+  AppendParagraphMarks(ABuilder, AAnchor.ParagraphMarksBeforeBreak,
+    ASpanIndex);
+  if AAnchor.Kind = tsakTitleBreak then
+  begin
     ABuilder.AddText(ASpanIndex, #10, DefaultVisualTextStyle, False,
-      'title-break')
-  else
+      'title-break');
+    Inc(ASpanIndex);
+  end
+  else if AAnchor.Kind = tsakProtectedSpace then
+  begin
     ABuilder.AddText(ASpanIndex, ' ', DefaultVisualTextStyle, False,
       'protected-anchor');
-  Inc(ASpanIndex);
+    Inc(ASpanIndex);
+  end;
+  AppendParagraphMarks(ABuilder, AAnchor.ParagraphMarksAfterBreak,
+    ASpanIndex);
 end;
 
 function TryGetTitleForSegment(const ATitles: TTheWordTitleRangeArray;
@@ -468,7 +592,7 @@ begin
   CollectTheWordTitleRanges(ADocument, Titles);
   BuildSyntheticAnchors(ADocument, Titles, SyntheticAnchors);
   for Index := 0 to High(SyntheticAnchors) do
-    if SyntheticAnchors[Index] <> tsakNone then
+    if SyntheticAnchorLength(SyntheticAnchors[Index]) > 0 then
       AddBoundary(Boundaries, Index);
   for Index := 0 to High(Titles) do
   begin
@@ -486,7 +610,10 @@ begin
   try
     SpanIndex := 0;
     if Length(Boundaries) = 1 then
-      Builder.AddText(0, '', DefaultVisualTextStyle, True)
+    begin
+      if SyntheticAnchorLength(SyntheticAnchors[0]) = 0 then
+        Builder.AddText(0, '', DefaultVisualTextStyle, True);
+    end
     else
       for Index := 0 to High(Boundaries) - 1 do
       begin

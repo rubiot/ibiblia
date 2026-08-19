@@ -12,7 +12,15 @@ uses
 
 type
   TVerseInteractionMode = (vimAssociation, vimEdit);
-  TVerseEditorCommand = (vecUndo, vecRedo, vecSave, vecCancel);
+  TVerseEditorCommand = (
+    vecUndo,
+    vecRedo,
+    vecSave,
+    vecCancel,
+    vecItalic,
+    vecWordsOfJesus,
+    vecOldTestamentQuote
+  );
 
   TVerseTextReplaceEvent = procedure(Sender: TObject; StartUTF16,
     LengthUTF16: Integer; const Replacement: UnicodeString;
@@ -26,6 +34,15 @@ type
     var Handled: Boolean) of object;
   TVerseClipboardPasteEvent = procedure(Sender: TObject;
     StartUTF16, LengthUTF16: Integer; var Handled: Boolean) of object;
+  TVerseParagraphEditKind = (
+    vpekInsert,
+    vpekDeleteSelection,
+    vpekDeleteBackward,
+    vpekDeleteForward
+  );
+  TVerseParagraphEditEvent = procedure(Sender: TObject;
+    Kind: TVerseParagraphEditKind; StartUTF16, LengthUTF16: Integer;
+    var Accepted: Boolean; var NewCaretUTF16: Integer) of object;
 
   { DirectWrite remains responsible for shaping and visual navigation. A tiny
     native edit control owns keyboard/IME focus at the painted caret; committed
@@ -43,6 +60,7 @@ type
     FOnCommand: TVerseEditorCommandEvent;
     FOnClipboardCopy: TVerseClipboardCopyEvent;
     FOnClipboardPaste: TVerseClipboardPasteEvent;
+    FOnParagraphEdit: TVerseParagraphEditEvent;
     FOnReplaceText: TVerseTextReplaceEvent;
     FOnSelectionChanged: TVerseSelectionChangedEvent;
     procedure BrokerChange(Sender: TObject);
@@ -62,6 +80,8 @@ type
     function IsInteractiveCaretStop(Value: Integer): Boolean;
     function IsInteractiveHitOffset(Value: Integer;
       IsTrailing: Boolean): Boolean;
+    function IsParagraphMarkAt(Value: Integer): Boolean;
+    function SelectionContainsParagraphMark: Boolean;
     function IsTraversableNonInteractiveSpan(
       const Span: TVisualSpan): Boolean;
     function IsWordCodeUnit(Value: WideChar): Boolean;
@@ -78,6 +98,8 @@ type
     procedure ReplaceSelection(const Replacement: UnicodeString);
     procedure RequestReplace(StartUTF16, LengthUTF16: Integer;
       const Replacement: UnicodeString);
+    procedure RequestParagraphEdit(Kind: TVerseParagraphEditKind;
+      StartUTF16, LengthUTF16: Integer);
     procedure SelectWordAt(UTF16Offset: Integer);
     procedure SetCaret(Value: Integer; ExtendSelection: Boolean);
     procedure SetInteractionMode(Value: TVerseInteractionMode);
@@ -110,6 +132,8 @@ type
       read FOnClipboardPaste write FOnClipboardPaste;
     property OnCommand: TVerseEditorCommandEvent read FOnCommand
       write FOnCommand;
+    property OnParagraphEdit: TVerseParagraphEditEvent
+      read FOnParagraphEdit write FOnParagraphEdit;
     property OnReplaceText: TVerseTextReplaceEvent read FOnReplaceText
       write FOnReplaceText;
     property OnSelectionChanged: TVerseSelectionChangedEvent
@@ -281,12 +305,42 @@ begin
   Result := Document.TryGetInteractiveLogicalIndexAt(Value, LogicalIndex);
 end;
 
+function TDirectWriteVerseEditor.IsParagraphMarkAt(Value: Integer): Boolean;
+var
+  Index: Integer;
+  Span: TVisualSpan;
+begin
+  Result := False;
+  if not Assigned(Document) or (Value < 0) or
+     (Value >= Length(Document.Text)) then
+    Exit;
+  for Index := 0 to Document.SpanCount - 1 do
+  begin
+    Span := Document.Spans[Index];
+    if (Span.Annotation = UnicodeString('paragraph-mark')) and
+       (Value >= Span.StartUTF16) and
+       (Value < Span.StartUTF16 + Span.LengthUTF16) then
+      Exit(True);
+  end;
+end;
+
+function TDirectWriteVerseEditor.SelectionContainsParagraphMark: Boolean;
+var
+  Offset: Integer;
+begin
+  Result := False;
+  for Offset := SelectionStart to SelectionStart + SelectionLength - 1 do
+    if IsParagraphMarkAt(Offset) then
+      Exit(True);
+end;
+
 function TDirectWriteVerseEditor.IsTraversableNonInteractiveSpan(
   const Span: TVisualSpan): Boolean;
 begin
   Result := (Span.LengthUTF16 = 0) or
     (Span.Kind = vskDirectionControl) or
-    (Span.Annotation = UnicodeString('protected-anchor'));
+    (Span.Annotation = UnicodeString('protected-anchor')) or
+    (Span.Annotation = UnicodeString('paragraph-mark'));
 end;
 
 function TDirectWriteVerseEditor.TryGetCaretRegion(Value: Integer;
@@ -587,6 +641,27 @@ begin
   DoSelectionChanged;
 end;
 
+procedure TDirectWriteVerseEditor.RequestParagraphEdit(
+  Kind: TVerseParagraphEditKind; StartUTF16, LengthUTF16: Integer);
+var
+  Accepted: Boolean;
+  NewCaret: Integer;
+begin
+  if not Assigned(FOnParagraphEdit) then
+    Exit;
+  Accepted := False;
+  NewCaret := FActiveOffset;
+  FOnParagraphEdit(Self, Kind, StartUTF16, LengthUTF16, Accepted,
+    NewCaret);
+  if not Accepted then
+    Exit;
+  SetLength(FCaretStops, 0);
+  RefreshCaretStops;
+  FAnchorOffset := NearestCaretStop(NewCaret);
+  FActiveOffset := FAnchorOffset;
+  DoSelectionChanged;
+end;
+
 procedure TDirectWriteVerseEditor.ReplaceSelection(
   const Replacement: UnicodeString);
 begin
@@ -599,7 +674,16 @@ var
 begin
   if SelectionLength > 0 then
   begin
-    ReplaceSelection('');
+    if SelectionContainsParagraphMark then
+      RequestParagraphEdit(vpekDeleteSelection, SelectionStart,
+        SelectionLength)
+    else
+      ReplaceSelection('');
+    Exit;
+  end;
+  if IsParagraphMarkAt(FActiveOffset - 1) then
+  begin
+    RequestParagraphEdit(vpekDeleteBackward, FActiveOffset - 1, 1);
     Exit;
   end;
   Previous := PreviousCaretStop(FActiveOffset);
@@ -613,7 +697,16 @@ var
 begin
   if SelectionLength > 0 then
   begin
-    ReplaceSelection('');
+    if SelectionContainsParagraphMark then
+      RequestParagraphEdit(vpekDeleteSelection, SelectionStart,
+        SelectionLength)
+    else
+      ReplaceSelection('');
+    Exit;
+  end;
+  if IsParagraphMarkAt(FActiveOffset) then
+  begin
+    RequestParagraphEdit(vpekDeleteForward, FActiveOffset, 1);
     Exit;
   end;
   Following := NextCaretStop(FActiveOffset);
@@ -774,7 +867,7 @@ var
 begin
   if FMode <> vimEdit then
     Exit;
-  BasicShift := Shift * [ssShift, ssCtrl];
+  BasicShift := Shift * [ssShift, ssCtrl, ssAlt];
   case Key of
     VK_BACK:
       if not (ssCtrl in BasicShift) then
@@ -854,8 +947,35 @@ begin
         if Assigned(FOnCommand) then
           FOnCommand(Self, vecCancel);
       end;
+    VK_I:
+      if BasicShift = [ssCtrl] then
+      begin
+        if Assigned(FOnCommand) then
+          FOnCommand(Self, vecItalic);
+      end
+      else
+        Exit;
+    VK_J:
+      if BasicShift = [ssCtrl] then
+      begin
+        if Assigned(FOnCommand) then
+          FOnCommand(Self, vecWordsOfJesus);
+      end
+      else
+        Exit;
+    VK_O:
+      if BasicShift = [ssCtrl] then
+      begin
+        if Assigned(FOnCommand) then
+          FOnCommand(Self, vecOldTestamentQuote);
+      end
+      else
+        Exit;
     VK_RETURN:
-      ;
+      if BasicShift = [] then
+        RequestParagraphEdit(vpekInsert, SelectionStart, SelectionLength)
+      else
+        Exit;
   else
     Exit;
   end;

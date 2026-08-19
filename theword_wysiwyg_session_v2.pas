@@ -58,12 +58,19 @@ type
       out APlainText: UnicodeString; out APayload: string): Boolean;
     function CutSelection(AStartUTF16, ALengthUTF16: Integer;
       out APlainText: UnicodeString; out APayload: string): Boolean;
+    function DeleteSelectionWithParagraphMarks(AStartUTF16,
+      ALengthUTF16: Integer; const AParagraphMarkOffsets:
+      array of Integer): Boolean;
+    function InsertParagraphMark(AStartUTF16,
+      ALengthUTF16: Integer): Boolean;
     function Paste(AStartUTF16, ALengthUTF16: Integer;
       const APayload: string; const APlainText: UnicodeString;
       out AInsertedLengthUTF16: Integer;
       out AUsedPrivatePayload: Boolean): Boolean;
     function ReplaceText(AStartUTF16, ALengthUTF16: Integer;
       const AReplacement: UnicodeString): Boolean;
+    function RemoveParagraphMark(AOffsetUTF16: Integer;
+      AFromEnd: Boolean): Boolean;
     function ReplaceRawText(const ARaw: UnicodeString): Boolean;
     function CloneEditTrace: TVerseEditTrace;
     function ProtectedLexicalObjectsUnchanged: Boolean;
@@ -567,6 +574,144 @@ begin
   finally
     WorkingDocument.Free;
     NewTrace.Free;
+    Snapshot.Free;
+  end;
+end;
+
+function TTheWordWysiwygSessionV2.InsertParagraphMark(AStartUTF16,
+  ALengthUTF16: Integer): Boolean;
+var
+  NewTrace: TVerseEditTrace;
+  Snapshot: TTheWordWysiwygSessionSnapshot;
+  UpdatedRaw: UnicodeString;
+  WorkingDocument: TTheWordVerseDocument;
+begin
+  Result := False;
+  if (AStartUTF16 < 0) or (ALengthUTF16 < 0) or
+     (AStartUTF16 > Length(FDocument.VisibleText)) or
+     (ALengthUTF16 > Length(FDocument.VisibleText) - AStartUTF16) then
+    Exit;
+  if (ALengthUTF16 > 0) and
+     not CanReplaceText(AStartUTF16, ALengthUTF16) then
+    Exit;
+
+  Snapshot := nil;
+  NewTrace := nil;
+  WorkingDocument := nil;
+  try
+    Snapshot := CaptureSnapshot;
+    NewTrace := FTrace.Clone;
+    WorkingDocument := FCodec.DecodeVerse(Snapshot.Raw);
+    if ALengthUTF16 > 0 then
+    begin
+      WorkingDocument.ReplaceVisibleText(AStartUTF16, ALengthUTF16, '');
+      NewTrace.ApplyReplacement(AStartUTF16, ALengthUTF16, '');
+    end;
+    if not WorkingDocument.InsertParagraphMark(AStartUTF16) then
+      Exit;
+    UpdatedRaw := FCodec.EncodeVerse(WorkingDocument);
+    if UpdatedRaw = Snapshot.Raw then
+      Exit;
+
+    ReplaceDocument(UpdatedRaw);
+    FTrace.Free;
+    FTrace := NewTrace;
+    NewTrace := nil;
+    PushUndo(Snapshot);
+    Snapshot := nil;
+    Result := True;
+  finally
+    WorkingDocument.Free;
+    NewTrace.Free;
+    Snapshot.Free;
+  end;
+end;
+
+function TTheWordWysiwygSessionV2.DeleteSelectionWithParagraphMarks(
+  AStartUTF16, ALengthUTF16: Integer;
+  const AParagraphMarkOffsets: array of Integer): Boolean;
+var
+  EndOffset, Index: Integer;
+  NewTrace: TVerseEditTrace;
+  Snapshot: TTheWordWysiwygSessionSnapshot;
+  UpdatedRaw: UnicodeString;
+  WorkingDocument: TTheWordVerseDocument;
+begin
+  Result := False;
+  if (AStartUTF16 < 0) or (ALengthUTF16 < 0) or
+     (AStartUTF16 > Length(FDocument.VisibleText)) or
+     (ALengthUTF16 > Length(FDocument.VisibleText) - AStartUTF16) or
+     ((ALengthUTF16 = 0) and (Length(AParagraphMarkOffsets) = 0)) then
+    Exit;
+  EndOffset := AStartUTF16 + ALengthUTF16;
+  for Index := 0 to High(AParagraphMarkOffsets) do
+    if (AParagraphMarkOffsets[Index] < AStartUTF16) or
+       (AParagraphMarkOffsets[Index] > EndOffset) then
+      Exit;
+
+  Snapshot := nil;
+  NewTrace := nil;
+  WorkingDocument := nil;
+  try
+    Snapshot := CaptureSnapshot;
+    NewTrace := FTrace.Clone;
+    WorkingDocument := FCodec.DecodeVerse(Snapshot.Raw);
+    for Index := 0 to High(AParagraphMarkOffsets) do
+      if not WorkingDocument.RemoveParagraphMark(
+        AParagraphMarkOffsets[Index], False) then
+        Exit;
+    if ALengthUTF16 > 0 then
+    begin
+      if not WorkingDocument.CanReplaceVisibleText(AStartUTF16,
+        ALengthUTF16) then
+        Exit;
+      WorkingDocument.ReplaceVisibleText(AStartUTF16, ALengthUTF16, '');
+      NewTrace.ApplyReplacement(AStartUTF16, ALengthUTF16, '');
+    end;
+    UpdatedRaw := FCodec.EncodeVerse(WorkingDocument);
+    if UpdatedRaw = Snapshot.Raw then
+      Exit;
+
+    ReplaceDocument(UpdatedRaw);
+    FTrace.Free;
+    FTrace := NewTrace;
+    NewTrace := nil;
+    PushUndo(Snapshot);
+    Snapshot := nil;
+    Result := True;
+  finally
+    WorkingDocument.Free;
+    NewTrace.Free;
+    Snapshot.Free;
+  end;
+end;
+
+function TTheWordWysiwygSessionV2.RemoveParagraphMark(
+  AOffsetUTF16: Integer; AFromEnd: Boolean): Boolean;
+var
+  Snapshot: TTheWordWysiwygSessionSnapshot;
+  UpdatedRaw: UnicodeString;
+  WorkingDocument: TTheWordVerseDocument;
+begin
+  Result := False;
+  Snapshot := nil;
+  WorkingDocument := nil;
+  try
+    Snapshot := CaptureSnapshot;
+    WorkingDocument := FCodec.DecodeVerse(Snapshot.Raw);
+    if not WorkingDocument.RemoveParagraphMark(AOffsetUTF16,
+      AFromEnd) then
+      Exit;
+    UpdatedRaw := FCodec.EncodeVerse(WorkingDocument);
+    if UpdatedRaw = Snapshot.Raw then
+      Exit;
+
+    ReplaceDocument(UpdatedRaw);
+    PushUndo(Snapshot);
+    Snapshot := nil;
+    Result := True;
+  finally
+    WorkingDocument.Free;
     Snapshot.Free;
   end;
 end;

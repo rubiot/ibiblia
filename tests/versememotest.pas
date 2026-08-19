@@ -13,14 +13,17 @@ type
     procedure ActivateEmptyVerseKeepsEditorAttachedToWindow;
     procedure FailedSaveCallbackKeepsPendingEditorOpen;
     procedure FailedVisualSaveKeepsConcreteErrorVisible;
+    procedure NavigatingToAnotherVerseClearsVisualSelectionAndCaret;
     procedure PostCommitObserverFailureStillClosesAppliedEdit;
     procedure RawSaveCannotChangeProtectedLexicalObjects;
+    procedure SemanticToolbarButtonsAreCompactTypographicAndNonOverlapping;
   end;
 
 implementation
 
 uses
-  SysUtils, Forms, Controls, ExtCtrls, StdCtrls, SynEdit, Verse, VerseMemo, Project,
+  SysUtils, Forms, Controls, ExtCtrls, StdCtrls, Buttons, Graphics, SynEdit, Verse,
+  VerseMemo, Project,
   directwrite_verse_editor, theword_ont_codec_v2,
   theword_wysiwyg_editor_control, text_edit_provenance;
 
@@ -155,6 +158,52 @@ begin
     if AParent.Controls[ChildIndex] is TWinControl then
     begin
       Result := FindDirectEditor(TWinControl(AParent.Controls[ChildIndex]));
+      if Assigned(Result) then
+        Exit;
+    end;
+  end;
+end;
+
+function FindButtonWithCaption(AParent: TWinControl;
+  const ACaption: string): TButton;
+var
+  ChildIndex: Integer;
+begin
+  Result := nil;
+  if not Assigned(AParent) then
+    Exit;
+  for ChildIndex := 0 to AParent.ControlCount - 1 do
+  begin
+    if (AParent.Controls[ChildIndex] is TButton) and
+       (TButton(AParent.Controls[ChildIndex]).Caption = ACaption) then
+      Exit(TButton(AParent.Controls[ChildIndex]));
+    if AParent.Controls[ChildIndex] is TWinControl then
+    begin
+      Result := FindButtonWithCaption(
+        TWinControl(AParent.Controls[ChildIndex]), ACaption);
+      if Assigned(Result) then
+        Exit;
+    end;
+  end;
+end;
+
+function FindSpeedButtonWithCaption(AParent: TWinControl;
+  const ACaption: string): TSpeedButton;
+var
+  ChildIndex: Integer;
+begin
+  Result := nil;
+  if not Assigned(AParent) then
+    Exit;
+  for ChildIndex := 0 to AParent.ControlCount - 1 do
+  begin
+    if (AParent.Controls[ChildIndex] is TSpeedButton) and
+       (TSpeedButton(AParent.Controls[ChildIndex]).Caption = ACaption) then
+      Exit(TSpeedButton(AParent.Controls[ChildIndex]));
+    if AParent.Controls[ChildIndex] is TWinControl then
+    begin
+      Result := FindSpeedButtonWithCaption(
+        TWinControl(AParent.Controls[ChildIndex]), ACaption);
       if Assigned(Result) then
         Exit;
     end;
@@ -320,6 +369,176 @@ begin
     Editor.DiscardEdit;
   finally
     Probe.Free;
+    Editor.Free;
+    VerseView.Free;
+    Host.Free;
+  end;
+end;
+
+procedure TVerseMemoTests.NavigatingToAnotherVerseClearsVisualSelectionAndCaret;
+var
+  Container: TScrollBox;
+  DirectEditor: TDirectWriteVerseEditor;
+  Editor: TVerseMemo;
+  Host: TForm;
+  VerseA: TVerse;
+  VerseB: TVerse;
+begin
+  Forms.Application.Initialize;
+  Host := TForm.CreateNew(nil);
+  Host.SetBounds(0, 0, 800, 300);
+  Container := TScrollBox.Create(Host);
+  Container.Parent := Host;
+  Container.Align := alClient;
+  VerseA := TVerse.Create(Container);
+  VerseB := TVerse.Create(Container);
+  Editor := TVerseMemo.Create;
+  try
+    Host.Show;
+    Application.ProcessMessages;
+    VerseA.Text := 'alpha beta gamma';
+    VerseB.Text := 'one two three four';
+
+    Editor.Activate(Container, VerseA);
+    DirectEditor := FindDirectEditor(Host);
+    AssertTrue('the DirectWrite editor must be attached',
+      Assigned(DirectEditor));
+    DirectEditor.SetSelection(6, 4);
+    AssertEquals('precondition: verse A selection start', 6,
+      DirectEditor.SelectionStart);
+    AssertEquals('precondition: verse A selection length', 4,
+      DirectEditor.SelectionLength);
+    AssertTrue('leaving an unmodified verse must close its editor',
+      Editor.TryDeactivate);
+
+    Editor.Activate(Container, VerseB);
+    DirectEditor := FindDirectEditor(Host);
+    AssertTrue('the DirectWrite editor must remain attached',
+      Assigned(DirectEditor));
+    AssertEquals('a new verse must not inherit the previous selection', 0,
+      DirectEditor.SelectionLength);
+    AssertEquals('a new verse must start at its first editable caret', 0,
+      DirectEditor.CaretOffset);
+    Editor.DiscardEdit;
+  finally
+    Editor.Free;
+    VerseB.Free;
+    VerseA.Free;
+    Host.Free;
+  end;
+end;
+
+procedure TVerseMemoTests.
+  SemanticToolbarButtonsAreCompactTypographicAndNonOverlapping;
+var
+  AddedButton, JesusButton, OldTestamentButton,
+    UnderlineButton: TSpeedButton;
+  RawButton: TButton;
+  Composite: TTheWordWysiwygEditorControl;
+  Container: TScrollBox;
+  DirectEditor: TDirectWriteVerseEditor;
+  Editor: TVerseMemo;
+  Host: TForm;
+  VerseView: TVerse;
+begin
+  Forms.Application.Initialize;
+  Host := TForm.CreateNew(nil);
+  Host.SetBounds(0, 0, 800, 300);
+  Container := TScrollBox.Create(Host);
+  Container.Parent := Host;
+  Container.Align := alClient;
+  VerseView := TVerse.Create(Container);
+  Editor := TVerseMemo.Create;
+  try
+    Host.Show;
+    Application.ProcessMessages;
+    VerseView.Text := 'alpha';
+    Editor.Activate(Container, VerseView);
+
+    AddedButton := FindSpeedButtonWithCaption(Host, 'I');
+    JesusButton := FindSpeedButtonWithCaption(Host, 'J');
+    OldTestamentButton := FindSpeedButtonWithCaption(Host, 'O');
+    UnderlineButton := FindSpeedButtonWithCaption(Host, 'S');
+    RawButton := FindButtonWithCaption(Host, 'Raw');
+    AssertTrue('italic semantic button must exist', Assigned(AddedButton));
+    AssertTrue('Jesus semantic button must exist', Assigned(JesusButton));
+    AssertTrue('Old Testament semantic button must exist',
+      Assigned(OldTestamentButton));
+    AssertTrue('underline semantic button must exist',
+      Assigned(UnderlineButton));
+    AssertTrue('raw-mode button must exist', Assigned(RawButton));
+
+    AssertTrue('I must be italic', fsItalic in AddedButton.Font.Style);
+    AssertEquals('J must be red', LongInt(clRed),
+      LongInt(JesusButton.Font.Color));
+    AssertTrue('O must be bold', fsBold in OldTestamentButton.Font.Style);
+    AssertTrue('S must be underlined',
+      fsUnderline in UnderlineButton.Font.Style);
+    AssertTrue('semantic buttons must be narrower than Raw',
+      AddedButton.Width < RawButton.Width);
+    AssertEquals('semantic buttons share the compact width',
+      AddedButton.Width, JesusButton.Width);
+    AssertEquals('semantic buttons share the compact width',
+      AddedButton.Width, OldTestamentButton.Width);
+    AssertEquals('semantic buttons share the compact width',
+      AddedButton.Width, UnderlineButton.Width);
+
+    AssertTrue('I and J must not overlap',
+      AddedButton.Left + AddedButton.Width <= JesusButton.Left);
+    AssertTrue('J and O must not overlap',
+      JesusButton.Left + JesusButton.Width <= OldTestamentButton.Left);
+    AssertTrue('O and S must not overlap',
+      OldTestamentButton.Left + OldTestamentButton.Width <=
+        UnderlineButton.Left);
+    AssertTrue('S and Raw must not overlap',
+      UnderlineButton.Left + UnderlineButton.Width <= RawButton.Left);
+    AssertTrue('italic hint identifies added words',
+      Pos('Added words', AddedButton.Hint) > 0);
+    AssertTrue('italic hint exposes Ctrl+I',
+      Pos('Ctrl+I', AddedButton.Hint) > 0);
+    AssertTrue('red hint identifies words of Jesus',
+      Pos('Words of Jesus', JesusButton.Hint) > 0);
+    AssertTrue('red hint exposes Ctrl+J',
+      Pos('Ctrl+J', JesusButton.Hint) > 0);
+    AssertTrue('bold hint identifies the Old Testament quotation',
+      Pos('Old Testament', OldTestamentButton.Hint) > 0);
+    AssertTrue('bold hint exposes Ctrl+O',
+      Pos('Ctrl+O', OldTestamentButton.Hint) > 0);
+    AssertTrue('underline hint identifies its action',
+      Pos('Underline', UnderlineButton.Hint) > 0);
+
+    Composite := FindWysiwygEditor(Host);
+    DirectEditor := FindDirectEditor(Host);
+    AssertTrue(Assigned(Composite));
+    AssertTrue(Assigned(DirectEditor));
+    AssertFalse('semantic commands require a selection', AddedButton.Enabled);
+    DirectEditor.SetSelection(0, 5);
+    AssertTrue('semantic commands become enabled for selected text',
+      AddedButton.Enabled and JesusButton.Enabled and
+      OldTestamentButton.Enabled and UnderlineButton.Enabled);
+
+    AddedButton.Click;
+    AssertEquals('I keeps the added-words callback', '<FI>alpha<Fi>',
+      UTF8Encode(Composite.Text));
+    AddedButton.Click;
+    AssertEquals('I toggles the semantic back off', 'alpha',
+      UTF8Encode(Composite.Text));
+    JesusButton.Click;
+    AssertEquals('J keeps the words-of-Jesus callback', '<FR>alpha<Fr>',
+      UTF8Encode(Composite.Text));
+    JesusButton.Click;
+    OldTestamentButton.Click;
+    AssertEquals('O keeps the Old Testament quotation callback',
+      '<FO>alpha<Fo>', UTF8Encode(Composite.Text));
+    OldTestamentButton.Click;
+    UnderlineButton.Click;
+    AssertEquals('S keeps the underline callback', '<FU>alpha<Fu>',
+      UTF8Encode(Composite.Text));
+    UnderlineButton.Click;
+    AssertEquals('all semantic toggles restore the original text', 'alpha',
+      UTF8Encode(Composite.Text));
+    Editor.DiscardEdit;
+  finally
     Editor.Free;
     VerseView.Free;
     Host.Free;

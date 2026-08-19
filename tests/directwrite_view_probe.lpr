@@ -60,6 +60,7 @@ var
   BodyRects: TRectArray;
   FirstBodyRects: TRectArray;
   MiddleTitleRects: TRectArray;
+  ParagraphMarkRects: TRectArray;
   SecondBodyRects: TRectArray;
   Style: TVisualTextStyle;
   View: TProbeDirectWriteSyntagmView;
@@ -251,6 +252,34 @@ begin
 
     Builder.Free;
     Builder := TVerseVisualDocumentBuilder.Create(tdLeftToRight);
+    Builder.AddText(25, 'antes', DefaultVisualTextStyle, True);
+    Builder.AddText(26, UnicodeString(WideChar($00B6)),
+      DefaultVisualTextStyle, False, 'paragraph-mark');
+    Builder.AddText(27, 'depois', DefaultVisualTextStyle, True);
+    Document := Builder.Build(4);
+    View.SetEditorDocument(Document);
+    View.SetSelection(0, 0);
+    Application.ProcessMessages;
+    View.PaintNow;
+    Require(View.GetLogicalRects(26, ParagraphMarkRects) and
+      (Length(ParagraphMarkRects) > 0),
+      'No rectangle for the noninteractive paragraph mark');
+    View.SelectAll;
+    Require((View.SelectionStart = 0) and
+      (View.SelectionLength = Length(Document.Text)),
+      'Ctrl+A could not traverse the paragraph mark');
+    View.SetSelection(0, 0);
+    HitPoint.X := (ParagraphMarkRects[0].Left +
+      ParagraphMarkRects[0].Right) div 2;
+    HitPoint.Y := (ParagraphMarkRects[0].Top +
+      ParagraphMarkRects[0].Bottom) div 2;
+    View.MouseDownAt(HitPoint.X, HitPoint.Y);
+    View.MouseUpAt(HitPoint.X, HitPoint.Y);
+    Require(View.CaretOffset = 0,
+      'Clicking the paragraph mark moved the caret into it');
+
+    Builder.Free;
+    Builder := TVerseVisualDocumentBuilder.Create(tdLeftToRight);
     Builder.AddText(30, 'antes', DefaultVisualTextStyle, True);
     Builder.AddText(31, ' ', DefaultVisualTextStyle, False,
       'protected-anchor');
@@ -264,7 +293,7 @@ begin
     Builder.AddText(35, #10, DefaultVisualTextStyle, False,
       'title-break');
     Builder.AddText(36, 'depois', DefaultVisualTextStyle, True);
-    Document := Builder.Build(4);
+    Document := Builder.Build(5);
     FirstRegionStart := Document.Spans[0].StartUTF16;
     FirstRegionEnd := Document.Spans[2].StartUTF16 +
       Document.Spans[2].LengthUTF16;

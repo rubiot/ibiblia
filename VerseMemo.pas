@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Controls, Forms, LCLType, Dialogs, ExtCtrls, StdCtrls,
-  Graphics, Verse, Math, directwrite_verse_editor, theword_ont_codec_v2,
+  Buttons, Graphics, Verse, Math, directwrite_verse_editor, theword_ont_codec_v2,
   theword_wysiwyg_editor_control, text_edit_provenance;
 
 type
@@ -28,10 +28,10 @@ type
     FStatusLabel: TLabel;
     FSaveButton: TButton;
     FCancelButton: TButton;
-    FAddedWordsButton: TButton;
-    FJesusWordsButton: TButton;
-    FOldTestamentQuoteButton: TButton;
-    FUnderlineButton: TButton;
+    FAddedWordsButton: TSpeedButton;
+    FJesusWordsButton: TSpeedButton;
+    FOldTestamentQuoteButton: TSpeedButton;
+    FUnderlineButton: TSpeedButton;
     FRawModeButton: TButton;
     FSaveErrorActive: Boolean;
     FEditor: TTheWordWysiwygEditorControl;
@@ -88,16 +88,19 @@ resourcestring
   SSaveEditHint = 'Save verse text and close the editor';
   SCancelEditButton = 'Cancel';
   SCancelEditHint = 'Discard changes and close the editor';
-  SAddedWordsButton = 'Added';
-  SJesusWordsButton = 'Jesus';
-  SOldTestamentQuoteButton = 'OT quote';
-  SUnderlineButton = 'Underline';
+  SAddedWordsButton = 'I';
+  SJesusWordsButton = 'J';
+  SOldTestamentQuoteButton = 'O';
+  SUnderlineButton = 'S';
   SRawModeButton = 'Raw';
   SVisualModeButton = 'Visual';
-  SAddedWordsHint = 'Apply or remove added-words semantics';
-  SJesusWordsHint = 'Apply or remove words-of-Jesus semantics';
-  SOldTestamentQuoteHint = 'Apply or remove Old Testament quotation semantics';
-  SUnderlineHint = 'Apply or remove underline semantics';
+  SAddedWordsHint =
+    'Added words: apply or remove italic formatting (Ctrl+I)';
+  SJesusWordsHint =
+    'Words of Jesus: apply or remove red formatting (Ctrl+J)';
+  SOldTestamentQuoteHint =
+    'Old Testament quotation: apply or remove bold formatting (Ctrl+O)';
+  SUnderlineHint = 'Underline: apply or remove underlining';
   SRawModeHint = 'Switch between semantic editing and the raw ONT fallback';
   SLineBreaksInEditorTitle = 'Edit error';
   SLineBreaksInEditor = 'A verse cannot contain line breaks. Remove line breaks before saving.';
@@ -186,7 +189,8 @@ procedure TVerseMemo.LayoutEditorToolbar;
 const
   Margin = 6;
   Gap = 5;
-  SemanticButtonWidth = 64;
+  SemanticButtonWidth = 34;
+  RawModeButtonWidth = 64;
   ButtonRowHeight = 38;
   ErrorRowHeight = 24;
 var
@@ -243,8 +247,8 @@ begin
   Inc(X, SemanticButtonWidth + Gap);
   FRawModeButton.SetBounds(X,
     ButtonTop,
-    SemanticButtonWidth, ButtonHeight);
-  Inc(X, SemanticButtonWidth + Gap);
+    RawModeButtonWidth, ButtonHeight);
+  Inc(X, RawModeButtonWidth + Gap);
 
   if FSaveErrorActive then
   begin
@@ -392,6 +396,18 @@ end;
 
 constructor TVerseMemo.Create;
 
+  function NewSemanticButton(const ACaption, AHint: string;
+    AHandler: TNotifyEvent): TSpeedButton;
+  begin
+    Result := TSpeedButton.Create(FEditorPanel);
+    Result.Parent := FToolbarPanel;
+    Result.Caption := ACaption;
+    Result.Flat := True;
+    Result.Hint := AHint;
+    Result.ShowHint := True;
+    Result.OnClick := AHandler;
+  end;
+
   function NewToolbarButton(const ACaption, AHint: string;
     AHandler: TNotifyEvent): TButton;
   begin
@@ -434,14 +450,18 @@ begin
   FStatusLabel.Layout := tlCenter;
   FStatusLabel.Transparent := True;
 
-  FAddedWordsButton := NewToolbarButton(SAddedWordsButton,
+  FAddedWordsButton := NewSemanticButton(SAddedWordsButton,
     SAddedWordsHint, @InsertAddedWords);
-  FJesusWordsButton := NewToolbarButton(SJesusWordsButton,
+  FAddedWordsButton.Font.Style := [fsItalic];
+  FJesusWordsButton := NewSemanticButton(SJesusWordsButton,
     SJesusWordsHint, @InsertJesusWords);
-  FOldTestamentQuoteButton := NewToolbarButton(SOldTestamentQuoteButton,
+  FJesusWordsButton.Font.Color := clRed;
+  FOldTestamentQuoteButton := NewSemanticButton(SOldTestamentQuoteButton,
     SOldTestamentQuoteHint, @InsertOldTestamentQuote);
-  FUnderlineButton := NewToolbarButton(SUnderlineButton,
+  FOldTestamentQuoteButton.Font.Style := [fsBold];
+  FUnderlineButton := NewSemanticButton(SUnderlineButton,
     SUnderlineHint, @InsertUnderline);
+  FUnderlineButton.Font.Style := [fsUnderline];
   FRawModeButton := NewToolbarButton(SRawModeButton,
     SRawModeHint, @ToggleRawMode);
   FSaveButton := NewToolbarButton(SSaveEditButton,

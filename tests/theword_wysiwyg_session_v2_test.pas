@@ -18,6 +18,8 @@ type
     procedure OpaqueAndLexicalObjectsProtectTextEdits;
     procedure VisualAdapterCombinesOverlappingStyles;
     procedure VisualAdapterMapsSyntheticProtectedSeparators;
+    procedure ParagraphMarkIsSyntheticMappedAndNonInteractive;
+    procedure ParagraphMarkEditingPreservesRawUndoAndProvenance;
     procedure TitleRendersAsProtectedChapterHeading;
     procedure TitleCannotBeEditedFormattedOrCutVisually;
     procedure MultipleTitleLevelsAndMalformedTitleRemainExplicit;
@@ -454,6 +456,375 @@ begin
       Length(Hebrew) + 1, LayoutOffset);
   finally
     Source.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
+  ParagraphMarkIsSyntheticMappedAndNonInteractive;
+const
+  RAW: UnicodeString = 'alpha<CM>beta';
+var
+  Codec: ITheWordOntCodecV2;
+  DocumentLength, DocumentOffset, LayoutOffset, LogicalIndex: Integer;
+  Source: TTheWordVerseDocument;
+  Visual: IVerseVisualDocument;
+begin
+  Codec := TTheWordOntCodecV2.Create;
+  Source := Codec.DecodeVerse(RAW);
+  try
+    Visual := BuildTheWordVerseVisualDocument(Source, tdLeftToRight, 15);
+    AssertEquals('CM is exposed as a pilcrow only in the visual layout',
+      UnicodeString('alpha¶beta'), Visual.Text);
+    AssertEquals('rendering keeps the literal ONT source untouched', RAW,
+      Codec.EncodeVerse(Source));
+
+    AssertTrue(TryTheWordDocumentToLayoutOffset(Visual, 5, twoaBefore,
+      LayoutOffset));
+    AssertEquals('document caret before CM precedes the pilcrow', 5,
+      LayoutOffset);
+    AssertTrue(TryTheWordDocumentToLayoutOffset(Visual, 5, twoaAfter,
+      LayoutOffset));
+    AssertEquals('document caret after CM follows the pilcrow', 6,
+      LayoutOffset);
+
+    AssertTrue(TryTheWordLayoutToDocumentOffset(Visual, 5,
+      DocumentOffset));
+    AssertEquals('pilcrow start maps to the CM document anchor', 5,
+      DocumentOffset);
+    AssertTrue(TryTheWordLayoutToDocumentOffset(Visual, 6,
+      DocumentOffset));
+    AssertEquals('pilcrow end maps to the same zero-width anchor', 5,
+      DocumentOffset);
+    AssertTrue(TryTheWordLayoutRangeToDocument(Visual, 5, 1,
+      DocumentOffset, DocumentLength));
+    AssertEquals('pilcrow selection starts at the CM anchor', 5,
+      DocumentOffset);
+    AssertEquals('synthetic pilcrow has no document width', 0,
+      DocumentLength);
+
+    AssertFalse('pilcrow must not participate in editing or selection',
+      Visual.TryGetInteractiveLogicalIndexAt(5, LogicalIndex));
+  finally
+    Source.Free;
+  end;
+
+  Source := Codec.DecodeVerse('alpha<CM><CM>beta');
+  try
+    Visual := BuildTheWordVerseVisualDocument(Source, tdLeftToRight, 16);
+    AssertEquals('each consecutive CM has its own visual marker',
+      UnicodeString('alpha¶¶beta'), Visual.Text);
+    AssertTrue(TryTheWordDocumentToLayoutOffset(Visual, 5, twoaAfter,
+      LayoutOffset));
+    AssertEquals('after affinity crosses both consecutive pilcrows', 7,
+      LayoutOffset);
+    AssertTrue(TryTheWordLayoutRangeToDocument(Visual, 5, 2,
+      DocumentOffset, DocumentLength));
+    AssertEquals('consecutive pilcrows share the CM document anchor', 5,
+      DocumentOffset);
+    AssertEquals('consecutive pilcrows remain zero-width in the document', 0,
+      DocumentLength);
+    AssertFalse('first consecutive pilcrow is not interactive',
+      Visual.TryGetInteractiveLogicalIndexAt(5, LogicalIndex));
+    AssertFalse('second consecutive pilcrow is not interactive',
+      Visual.TryGetInteractiveLogicalIndexAt(6, LogicalIndex));
+  finally
+    Source.Free;
+  end;
+
+  Source := Codec.DecodeVerse('<CM>body');
+  try
+    Visual := BuildTheWordVerseVisualDocument(Source, tdLeftToRight, 17);
+    AssertEquals('CM at document start remains visible',
+      UnicodeString('¶body'), Visual.Text);
+    AssertTrue(TryTheWordDocumentToLayoutOffset(Visual, 0, twoaBefore,
+      LayoutOffset));
+    AssertEquals('before initial CM is layout start', 0, LayoutOffset);
+    AssertTrue(TryTheWordDocumentToLayoutOffset(Visual, 0, twoaAfter,
+      LayoutOffset));
+    AssertEquals('after initial CM follows its pilcrow', 1, LayoutOffset);
+    AssertFalse('initial pilcrow is not interactive',
+      Visual.TryGetInteractiveLogicalIndexAt(0, LogicalIndex));
+    AssertEquals('initial CM raw source remains literal',
+      UnicodeString('<CM>body'), Codec.EncodeVerse(Source));
+  finally
+    Source.Free;
+  end;
+
+  Source := Codec.DecodeVerse('body<CM>');
+  try
+    Visual := BuildTheWordVerseVisualDocument(Source, tdLeftToRight, 18);
+    AssertEquals('CM at document end remains visible',
+      UnicodeString('body¶'), Visual.Text);
+    AssertTrue(TryTheWordDocumentToLayoutOffset(Visual, 4, twoaBefore,
+      LayoutOffset));
+    AssertEquals('before terminal CM precedes its pilcrow', 4,
+      LayoutOffset);
+    AssertTrue(TryTheWordDocumentToLayoutOffset(Visual, 4, twoaAfter,
+      LayoutOffset));
+    AssertEquals('after terminal CM is layout end', 5, LayoutOffset);
+    AssertFalse('terminal pilcrow is not interactive',
+      Visual.TryGetInteractiveLogicalIndexAt(4, LogicalIndex));
+    AssertEquals('terminal CM raw source remains literal',
+      UnicodeString('body<CM>'), Codec.EncodeVerse(Source));
+  finally
+    Source.Free;
+  end;
+
+  Source := Codec.DecodeVerse('<TS>Head<Ts><CM>body');
+  try
+    Visual := BuildTheWordVerseVisualDocument(Source, tdLeftToRight, 20);
+    AssertEquals('title break is emitted before a following pilcrow',
+      UnicodeString('Head' + #10 + '¶body'), Visual.Text);
+    AssertTrue(TryTheWordDocumentToLayoutOffset(Visual, 4, twoaAfter,
+      LayoutOffset));
+    AssertEquals('body caret follows the adjacent pilcrow', 6,
+      LayoutOffset);
+    AssertFalse('pilcrow after title remains non-interactive',
+      Visual.TryGetInteractiveLogicalIndexAt(5, LogicalIndex));
+    AssertEquals('reordered synthetic layout preserves raw ONT',
+      UnicodeString('<TS>Head<Ts><CM>body'), Codec.EncodeVerse(Source));
+  finally
+    Source.Free;
+  end;
+
+  Source := Codec.DecodeVerse('body<CM><TS>Head<Ts>');
+  try
+    Visual := BuildTheWordVerseVisualDocument(Source, tdLeftToRight, 21);
+    AssertEquals('CM before a title remains before its title break',
+      UnicodeString('body¶' + #10 + 'Head'), Visual.Text);
+    AssertFalse('prefix pilcrow remains non-interactive',
+      Visual.TryGetInteractiveLogicalIndexAt(4, LogicalIndex));
+    AssertEquals('prefix CM and title retain original raw order',
+      UnicodeString('body<CM><TS>Head<Ts>'), Codec.EncodeVerse(Source));
+  finally
+    Source.Free;
+  end;
+
+  Source := Codec.DecodeVerse('body<CM><TS><Ts><CM>tail');
+  try
+    Visual := BuildTheWordVerseVisualDocument(Source, tdLeftToRight, 22);
+    AssertEquals('empty title partitions CMs by their event ordinals',
+      UnicodeString('body¶' + #10 + '¶tail'), Visual.Text);
+    AssertFalse('CM before empty title remains non-interactive',
+      Visual.TryGetInteractiveLogicalIndexAt(4, LogicalIndex));
+    AssertFalse('CM after empty title remains non-interactive',
+      Visual.TryGetInteractiveLogicalIndexAt(6, LogicalIndex));
+    AssertEquals('empty title boundary preserves literal raw order',
+      UnicodeString('body<CM><TS><Ts><CM>tail'), Codec.EncodeVerse(Source));
+  finally
+    Source.Free;
+  end;
+
+  Source := Codec.DecodeVerse('<CM><CM>');
+  try
+    Visual := BuildTheWordVerseVisualDocument(Source, tdLeftToRight, 19);
+    AssertEquals('empty visible document still exposes every CM',
+      UnicodeString('¶¶'), Visual.Text);
+    AssertTrue(TryTheWordDocumentToLayoutOffset(Visual, 0, twoaBefore,
+      LayoutOffset));
+    AssertEquals('empty document starts before both pilcrows', 0,
+      LayoutOffset);
+    AssertTrue(TryTheWordDocumentToLayoutOffset(Visual, 0, twoaAfter,
+      LayoutOffset));
+    AssertEquals('empty document after affinity crosses both pilcrows', 2,
+      LayoutOffset);
+    AssertFalse('first empty-document pilcrow is not interactive',
+      Visual.TryGetInteractiveLogicalIndexAt(0, LogicalIndex));
+    AssertFalse('second empty-document pilcrow is not interactive',
+      Visual.TryGetInteractiveLogicalIndexAt(1, LogicalIndex));
+    AssertEquals('empty-document CM source remains literal',
+      UnicodeString('<CM><CM>'), Codec.EncodeVerse(Source));
+  finally
+    Source.Free;
+  end;
+
+  Source := Codec.DecodeVerse('alpha<cm>beta');
+  try
+    Visual := BuildTheWordVerseVisualDocument(Source, tdLeftToRight, 20);
+    AssertEquals('wrong-case cm remains an unknown protected tag', 0,
+      Pos(UnicodeString(WideChar($00B6)), Visual.Text));
+    AssertEquals('wrong-case cm raw source remains literal',
+      UnicodeString('alpha<cm>beta'), Codec.EncodeVerse(Source));
+  finally
+    Source.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
+  ParagraphMarkEditingPreservesRawUndoAndProvenance;
+var
+  CurrentStart: Integer;
+  Session: TTheWordWysiwygSessionV2;
+  Trace: TVerseEditTrace;
+begin
+  Session := TTheWordWysiwygSessionV2.Create('alpha beta', 51);
+  try
+    AssertTrue('Enter inserts one CM at the document caret',
+      Session.InsertParagraphMark(5, 0));
+    AssertEquals(UnicodeString('alpha<CM> beta'), Session.RawText);
+    AssertEquals('CM never becomes visible document text',
+      UnicodeString('alpha beta'), Session.VisibleText);
+    Trace := Session.CloneEditTrace;
+    try
+      AssertTrue('structural-only insertion keeps exact provenance',
+        Trace.IsBaselineIdentity);
+      AssertEquals(51, Trace.TokenizerVersion);
+    finally
+      Trace.Free;
+    end;
+
+    AssertTrue(Session.Undo);
+    AssertEquals(UnicodeString('alpha beta'), Session.RawText);
+    AssertTrue(Session.Redo);
+    AssertEquals(UnicodeString('alpha<CM> beta'), Session.RawText);
+    Trace := Session.CloneEditTrace;
+    try
+      AssertTrue('redo restores the same exact provenance',
+        Trace.IsBaselineIdentity);
+    finally
+      Trace.Free;
+    end;
+
+    AssertTrue('Backspace removes the adjacent CM',
+      Session.RemoveParagraphMark(5, True));
+    AssertEquals(UnicodeString('alpha beta'), Session.RawText);
+    Trace := Session.CloneEditTrace;
+    try
+      AssertTrue('removing a zero-width object does not touch text origins',
+        Trace.IsBaselineIdentity);
+    finally
+      Trace.Free;
+    end;
+  finally
+    Session.Free;
+  end;
+
+  Session := TTheWordWysiwygSessionV2.Create('alpha beta');
+  try
+    AssertTrue('Enter replaces selected visible text with one CM atomically',
+      Session.InsertParagraphMark(0, 5));
+    AssertEquals(UnicodeString('<CM> beta'), Session.RawText);
+    AssertEquals(UnicodeString(' beta'), Session.VisibleText);
+    Trace := Session.CloneEditTrace;
+    try
+      AssertFalse('removed selection is absent from the origin map',
+        Trace.OriginMap.TryProjectOriginalRange(0, 5, CurrentStart));
+      AssertTrue('untouched suffix keeps its exact origin',
+        Trace.OriginMap.TryProjectOriginalRange(5, 5, CurrentStart));
+      AssertEquals(0, CurrentStart);
+    finally
+      Trace.Free;
+    end;
+    AssertTrue(Session.Undo);
+    AssertEquals(UnicodeString('alpha beta'), Session.RawText);
+    AssertTrue(Session.Redo);
+    AssertEquals(UnicodeString('<CM> beta'), Session.RawText);
+  finally
+    Session.Free;
+  end;
+
+  Session := TTheWordWysiwygSessionV2.Create('a<CM><CM>b');
+  try
+    AssertTrue('Backspace removes only the last consecutive CM',
+      Session.RemoveParagraphMark(1, True));
+    AssertEquals(UnicodeString('a<CM>b'), Session.RawText);
+    AssertTrue(Session.Undo);
+    AssertEquals(UnicodeString('a<CM><CM>b'), Session.RawText);
+    AssertTrue(Session.Redo);
+    AssertEquals(UnicodeString('a<CM>b'), Session.RawText);
+    AssertTrue('Delete removes the one remaining CM',
+      Session.RemoveParagraphMark(1, False));
+    AssertEquals(UnicodeString('ab'), Session.RawText);
+  finally
+    Session.Free;
+  end;
+
+  Session := TTheWordWysiwygSessionV2.Create('alpha<CM> beta');
+  try
+    AssertTrue('selection deletion removes its CM and visible text together',
+      Session.DeleteSelectionWithParagraphMarks(0, 6, [5]));
+    AssertEquals(UnicodeString('beta'), Session.RawText);
+    Trace := Session.CloneEditTrace;
+    try
+      AssertFalse('selected text is removed from provenance',
+        Trace.OriginMap.TryProjectOriginalRange(0, 6, CurrentStart));
+      AssertTrue('untouched suffix keeps exact provenance',
+        Trace.OriginMap.TryProjectOriginalRange(6, 4, CurrentStart));
+      AssertEquals(0, CurrentStart);
+    finally
+      Trace.Free;
+    end;
+    AssertTrue(Session.Undo);
+    AssertEquals('combined deletion is one undo step',
+      UnicodeString('alpha<CM> beta'), Session.RawText);
+    AssertTrue(Session.Redo);
+    AssertEquals(UnicodeString('beta'), Session.RawText);
+  finally
+    Session.Free;
+  end;
+
+  Session := TTheWordWysiwygSessionV2.Create('<CM><CM>body');
+  try
+    AssertTrue('one selected pilcrow removes one CM only',
+      Session.DeleteSelectionWithParagraphMarks(0, 0, [0]));
+    AssertEquals(UnicodeString('<CM>body'), Session.RawText);
+    AssertTrue('two selected pilcrows remove both remaining occurrences',
+      Session.Undo);
+    AssertTrue(Session.DeleteSelectionWithParagraphMarks(0, 0, [0, 0]));
+    AssertEquals(UnicodeString('body'), Session.RawText);
+  finally
+    Session.Free;
+  end;
+
+  Session := TTheWordWysiwygSessionV2.Create('a<CM><x>b');
+  try
+    AssertFalse('another protected object makes combined deletion atomic',
+      Session.DeleteSelectionWithParagraphMarks(0, 2, [1]));
+    AssertEquals(UnicodeString('a<CM><x>b'), Session.RawText);
+    AssertFalse('failed combined deletion creates no undo entry',
+      Session.CanUndo);
+  finally
+    Session.Free;
+  end;
+
+  Session := TTheWordWysiwygSessionV2.Create('<TS>Head<Ts>body');
+  try
+    AssertFalse('Enter cannot insert CM inside a protected title',
+      Session.InsertParagraphMark(1, 0));
+    AssertEquals(UnicodeString('<TS>Head<Ts>body'), Session.RawText);
+    AssertTrue('Enter remains available at the title/body boundary',
+      Session.InsertParagraphMark(4, 0));
+    AssertEquals(UnicodeString('<TS>Head<Ts><CM>body'), Session.RawText);
+  finally
+    Session.Free;
+  end;
+
+  Session := TTheWordWysiwygSessionV2.Create(
+    'word<WG123><WTN-NSM><wt>');
+  try
+    AssertFalse('Enter cannot split a protected lexical object',
+      Session.InsertParagraphMark(2, 0));
+    AssertEquals(UnicodeString('word<WG123><WTN-NSM><wt>'),
+      Session.RawText);
+    AssertTrue('Enter is allowed exactly after a lexical word',
+      Session.InsertParagraphMark(4, 0));
+    AssertEquals('CM follows every ordered lexical postfix event',
+      UnicodeString('word<WG123><WTN-NSM><wt><CM>'), Session.RawText);
+  finally
+    Session.Free;
+  end;
+
+  Session := TTheWordWysiwygSessionV2.Create('a<x>b');
+  try
+    AssertFalse('Enter cannot share an anchor with another opaque object',
+      Session.InsertParagraphMark(1, 0));
+    AssertFalse('Delete cannot remove a non-CM opaque object',
+      Session.RemoveParagraphMark(1, False));
+    AssertEquals(UnicodeString('a<x>b'), Session.RawText);
+    AssertFalse('rejected structural edits create no undo history',
+      Session.CanUndo);
+  finally
+    Session.Free;
   end;
 end;
 

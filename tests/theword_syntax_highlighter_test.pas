@@ -5,9 +5,10 @@ unit theword_syntax_highlighter_test;
 interface
 
 uses
-  Classes, SysUtils, Types, Graphics, IniFiles, SynEdit, SynEditHighlighter,
+  Classes, SysUtils, Types, Graphics, IniFiles, StdCtrls, LCLType, SynEdit,
+  SynEditHighlighter,
   fpcunit, testregistry, theword_syntax_highlighter,
-  theword_wysiwyg_editor_control;
+  directwrite_verse_editor, theword_wysiwyg_editor_control;
 
 type
 
@@ -47,6 +48,7 @@ type
     procedure EditorFontAppliesToEditor;
     procedure WysiwygEditorKeepsRawSyntaxFont;
     procedure WysiwygRawEditorCtrlWheelZoomsWithoutModifyingText;
+    procedure WysiwygVisualKeyboardRoutesParagraphAndSemantics;
     procedure TagPairFindsClosingTheWordTag;
     procedure TagPairFindsOpeningTheWordTag;
     procedure TagPairHandlesNestedTheWordTags;
@@ -541,6 +543,131 @@ begin
       RawEditor.Font.Size);
     AssertFalse('font zoom does not modify verse text', Editor.Modified);
     AssertEquals('raw text remains unchanged', '<FI>word<Fi>', Editor.Text);
+  finally
+    Editor.Free;
+  end;
+end;
+
+procedure TTheWordSyntaxHighlighterTests.
+  WysiwygVisualKeyboardRoutesParagraphAndSemantics;
+var
+  Broker: TEdit;
+  ComponentIndex: Integer;
+  DirectEditor: TDirectWriteVerseEditor;
+  Editor: TTheWordWysiwygEditorControl;
+
+  function PressKey(AKey: Word; AShift: TShiftState): Word;
+  begin
+    Result := AKey;
+    AssertTrue('input broker key handler exists', Assigned(Broker.OnKeyDown));
+    Broker.OnKeyDown(Broker, Result, AShift);
+  end;
+
+begin
+  Editor := TTheWordWysiwygEditorControl.Create(nil);
+  try
+    DirectEditor := nil;
+    for ComponentIndex := 0 to Editor.ComponentCount - 1 do
+      if Editor.Components[ComponentIndex] is TDirectWriteVerseEditor then
+      begin
+        DirectEditor := TDirectWriteVerseEditor(
+          Editor.Components[ComponentIndex]);
+        Break;
+      end;
+    AssertTrue('DirectWrite editor exists', Assigned(DirectEditor));
+
+    Broker := nil;
+    for ComponentIndex := 0 to DirectEditor.ComponentCount - 1 do
+      if DirectEditor.Components[ComponentIndex] is TEdit then
+      begin
+        Broker := TEdit(DirectEditor.Components[ComponentIndex]);
+        Break;
+      end;
+    AssertTrue('native input broker exists', Assigned(Broker));
+
+    Editor.Text := 'alpha beta';
+    DirectEditor.SetSelection(5, 0);
+    AssertEquals('plain Enter is consumed', 0, PressKey(VK_RETURN, []));
+    AssertEquals('Enter inserts structural CM rather than visible text',
+      'alpha<CM> beta', Editor.Text);
+    AssertEquals('caret follows the synthetic pilcrow', 6,
+      DirectEditor.CaretOffset);
+    AssertEquals('Backspace next to pilcrow is consumed', 0,
+      PressKey(VK_BACK, []));
+    AssertEquals('Backspace removes the adjacent CM', 'alpha beta',
+      Editor.Text);
+    AssertEquals('caret returns to the document anchor', 5,
+      DirectEditor.CaretOffset);
+
+    Editor.Text := 'alpha<CM> beta';
+    DirectEditor.SetSelection(0, 7);
+    AssertEquals('Backspace consumes a selection containing a pilcrow', 0,
+      PressKey(VK_BACK, []));
+    AssertEquals('Backspace removes selected text and CM atomically',
+      'beta', Editor.Text);
+    AssertTrue(Editor.Undo);
+    AssertEquals('combined Backspace deletion is one undo step',
+      'alpha<CM> beta', Editor.Text);
+    DirectEditor.SetSelection(0, 7);
+    AssertEquals('Delete consumes a selection containing a pilcrow', 0,
+      PressKey(VK_DELETE, []));
+    AssertEquals('Delete follows the same atomic structural route',
+      'beta', Editor.Text);
+
+    Editor.Text := 'a<CM><CM>b';
+    DirectEditor.SetSelection(1, 2);
+    AssertEquals('Delete consumes two selected consecutive pilcrows', 0,
+      PressKey(VK_DELETE, []));
+    AssertEquals('each selected pilcrow removes one corresponding CM',
+      'ab', Editor.Text);
+
+    Editor.Text := '<TS>Head<Ts><CM>body';
+    DirectEditor.SetSelection(6, 0);
+    AssertEquals('Backspace at body start reaches the CM after title break',
+      0, PressKey(VK_BACK, []));
+    AssertEquals('title remains protected while adjacent CM is removed',
+      '<TS>Head<Ts>body', Editor.Text);
+    AssertEquals('caret remains at the beginning of the body', 5,
+      DirectEditor.CaretOffset);
+
+    Editor.Text := 'alpha beta';
+    DirectEditor.SetSelection(0, 5);
+    AssertEquals(0, PressKey(VK_RETURN, []));
+    AssertEquals('Enter replaces a visual selection with one CM',
+      '<CM> beta', Editor.Text);
+    AssertTrue(Editor.Undo);
+    AssertEquals('selection replacement is one undo step', 'alpha beta',
+      Editor.Text);
+
+    Editor.Text := 'alpha<CM><CM>beta';
+    DirectEditor.SetSelection(7, 0);
+    AssertEquals(0, PressKey(VK_BACK, []));
+    AssertEquals('Backspace removes only one consecutive CM',
+      'alpha<CM>beta', Editor.Text);
+    DirectEditor.SetSelection(5, 0);
+    AssertEquals(0, PressKey(VK_DELETE, []));
+    AssertEquals('Delete removes the one forward CM', 'alphabeta',
+      Editor.Text);
+
+    Editor.Text := 'word';
+    DirectEditor.SetSelection(0, 4);
+    AssertEquals(0, PressKey(VK_I, [ssCtrl]));
+    AssertEquals('Ctrl+I routes to FI', '<FI>word<Fi>', Editor.Text);
+    AssertTrue(Editor.Undo);
+    AssertEquals(0, PressKey(VK_J, [ssCtrl]));
+    AssertEquals('Ctrl+J routes to FR', '<FR>word<Fr>', Editor.Text);
+    AssertTrue(Editor.Undo);
+    AssertEquals(0, PressKey(VK_O, [ssCtrl]));
+    AssertEquals('Ctrl+O routes to FO', '<FO>word<Fo>', Editor.Text);
+    AssertTrue(Editor.Undo);
+
+    AssertEquals('AltGr-like Ctrl+Alt must not be captured', VK_I,
+      PressKey(VK_I, [ssCtrl, ssAlt]));
+    AssertEquals('ignored AltGr-like chord does not change text', 'word',
+      Editor.Text);
+    AssertEquals('modified Enter must not be captured', VK_RETURN,
+      PressKey(VK_RETURN, [ssShift]));
+    AssertEquals('modified Enter does not insert CM', 'word', Editor.Text);
   finally
     Editor.Free;
   end;

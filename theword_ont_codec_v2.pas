@@ -167,8 +167,12 @@ type
     destructor Destroy; override;
     function CanApplySemanticRange(AStartOffset,
       AEndOffset: Integer): Boolean;
+    function CanInsertParagraphMark(AOffsetUTF16: Integer): Boolean;
     function CanReplaceVisibleText(AStartUTF16,
       ALengthUTF16: Integer): Boolean;
+    function InsertParagraphMark(AOffsetUTF16: Integer): Boolean;
+    function RemoveParagraphMark(AOffsetUTF16: Integer;
+      AFromEnd: Boolean): Boolean;
     function AddSemanticMark(AKind: TTheWordSemanticKind;
       AStartOffset, AEndOffset: Integer): TTheWordSemanticMark;
     procedure RemoveSemanticMark(AMark: TTheWordSemanticMark);
@@ -1188,6 +1192,52 @@ begin
     IsUtf16Boundary(FVisibleText, AEndOffset);
 end;
 
+function TTheWordVerseDocument.CanInsertParagraphMark(
+  AOffsetUTF16: Integer): Boolean;
+var
+  Anchor, Index, RangeIndex, WordStart: Integer;
+  OpaqueItem: TTheWordOpaqueItem;
+  TitleRanges: TTheWordTitleRangeArray;
+begin
+  Result := FCanEdit and (AOffsetUTF16 >= 0) and
+    (AOffsetUTF16 <= Length(FVisibleText)) and
+    IsUtf16Boundary(FVisibleText, AOffsetUTF16);
+  if not Result then
+    Exit;
+
+  CollectTheWordTitleRanges(Self, TitleRanges);
+  for RangeIndex := 0 to High(TitleRanges) do
+    if (AOffsetUTF16 >= TitleRanges[RangeIndex].StartOffset) and
+       (AOffsetUTF16 < TitleRanges[RangeIndex].EndOffset) then
+      Exit(False);
+
+  for Index := 0 to FOpaqueItems.Count - 1 do
+  begin
+    OpaqueItem := TTheWordOpaqueItem(FOpaqueItems[Index]);
+    if OpaqueItem.FOffset <> AOffsetUTF16 then
+      Continue;
+    if IsTheWordTitleAnchor(OpaqueItem.FOrdinal, TitleRanges) then
+      Continue;
+    { Consecutive paragraph marks are valid. Other opaque objects remain
+      protected and cannot acquire new structure at their exact anchor. }
+    if OpaqueItem.FRawLexeme <> '<CM>' then
+      Exit(False);
+  end;
+
+  for Index := 0 to FStructuralItems.Count - 1 do
+    if TTheWordStructuralItem(FStructuralItems[Index]).FOffset =
+       AOffsetUTF16 then
+      Exit(False);
+
+  for Index := 0 to FLexicalItems.Count - 1 do
+  begin
+    Anchor := TTheWordLexicalItem(FLexicalItems[Index]).FOffset;
+    WordStart := LexicalProtectedStart(Index);
+    if (AOffsetUTF16 > WordStart) and (AOffsetUTF16 < Anchor) then
+      Exit(False);
+  end;
+end;
+
 function TTheWordVerseDocument.CanReplaceVisibleText(AStartUTF16,
   ALengthUTF16: Integer): Boolean;
 var
@@ -1312,6 +1362,81 @@ begin
       FEvents.Delete(Index);
   FMarks.Remove(AMark);
   FModified := True;
+end;
+
+function TTheWordVerseDocument.InsertParagraphMark(
+  AOffsetUTF16: Integer): Boolean;
+var
+  Event: TTheWordInlineEvent;
+  Item: TTheWordOpaqueItem;
+begin
+  Result := CanInsertParagraphMark(AOffsetUTF16);
+  if not Result then
+    Exit;
+  EnsureEditable;
+  { New events are appended after imported events at the same anchor. At a
+    lexical word end this keeps WG/WH/WT/wt attached to the word and emits
+    the paragraph mark only after that ordered postfix data. }
+  Event := NewInlineEvent(Self, twiekOpaque, AOffsetUTF16, '<CM>');
+  Item := TTheWordOpaqueItem.Create;
+  Item.FKind := twokUnknownTag;
+  Item.FOffset := AOffsetUTF16;
+  Item.FRawLexeme := '<CM>';
+  Item.FOrdinal := Event.Ordinal;
+  FOpaqueItems.Add(Item);
+  FModified := True;
+end;
+
+function TTheWordVerseDocument.RemoveParagraphMark(AOffsetUTF16: Integer;
+  AFromEnd: Boolean): Boolean;
+var
+  CandidateIndex, CandidateOrdinal, EventIndex, Index, RangeIndex: Integer;
+  Item: TTheWordOpaqueItem;
+  TitleRanges: TTheWordTitleRangeArray;
+begin
+  Result := False;
+  if not FCanEdit or (AOffsetUTF16 < 0) or
+     (AOffsetUTF16 > Length(FVisibleText)) or
+     not IsUtf16Boundary(FVisibleText, AOffsetUTF16) then
+    Exit;
+
+  CollectTheWordTitleRanges(Self, TitleRanges);
+  for RangeIndex := 0 to High(TitleRanges) do
+    if (AOffsetUTF16 >= TitleRanges[RangeIndex].StartOffset) and
+       (AOffsetUTF16 < TitleRanges[RangeIndex].EndOffset) then
+      Exit;
+
+  CandidateIndex := -1;
+  CandidateOrdinal := 0;
+  for Index := 0 to FOpaqueItems.Count - 1 do
+  begin
+    Item := TTheWordOpaqueItem(FOpaqueItems[Index]);
+    if (Item.FOffset <> AOffsetUTF16) or
+       (Item.FRawLexeme <> '<CM>') then
+      Continue;
+    if (CandidateIndex < 0) or
+       (AFromEnd and (Item.FOrdinal > CandidateOrdinal)) or
+       ((not AFromEnd) and (Item.FOrdinal < CandidateOrdinal)) then
+    begin
+      CandidateIndex := Index;
+      CandidateOrdinal := Item.FOrdinal;
+    end;
+  end;
+  if CandidateIndex < 0 then
+    Exit;
+
+  EnsureEditable;
+  for EventIndex := FEvents.Count - 1 downto 0 do
+    if (TTheWordInlineEvent(FEvents[EventIndex]).Kind = twiekOpaque) and
+       (TTheWordInlineEvent(FEvents[EventIndex]).Ordinal =
+        CandidateOrdinal) then
+    begin
+      FEvents.Delete(EventIndex);
+      Break;
+    end;
+  FOpaqueItems.Delete(CandidateIndex);
+  FModified := True;
+  Result := True;
 end;
 
 function TTheWordVerseDocument.ToggleSemanticMark(

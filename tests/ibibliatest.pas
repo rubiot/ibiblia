@@ -1074,8 +1074,9 @@ end;
 
 procedure TVerseTests.TracedEditProjectsStructuralBoundaries;
 var
-  CompactA, CompactB, SpacedA, SpacedB: TSyntagm;
+  CompactA, CompactB, ParagraphA, ParagraphB, SpacedA, SpacedB: TSyntagm;
   Impact: TAssociationEditImpact;
+  Session: TTheWordWysiwygSessionV2;
   Trace: TVerseEditTrace;
 begin
   verse1.Text := 'source1 source2';
@@ -1115,6 +1116,34 @@ begin
   AssertTrue(verse2.Syntagms[2] = SpacedA);
   AssertTrue(verse2.Syntagms[4] = SpacedB);
   AssertEquals(2, Impact.PreservedMembers);
+
+  verse1.Text := 'source1 source2';
+  verse2.Text := 'a b';
+  Associate([0], [0]);
+  Associate([2], [2]);
+  ParagraphA := verse2.Syntagms[0];
+  ParagraphB := verse2.Syntagms[2];
+  Session := TTheWordWysiwygSessionV2.Create(verse2.XML,
+    verse2.TokenizerVersion);
+  Trace := nil;
+  try
+    AssertTrue('Enter inserts CM between associated words',
+      Session.InsertParagraphMark(1, 0));
+    Trace := Session.CloneEditTrace;
+    AssertTrue(verse2.TryApplyTracedEdit(UTF8Encode(Session.RawText),
+      Trace, Impact));
+  finally
+    Trace.Free;
+    Session.Free;
+  end;
+  AssertTrue('word before CM keeps object identity',
+    verse2.Syntagms[0] = ParagraphA);
+  AssertTrue('word after CM keeps object identity',
+    verse2.Syntagms[3] = ParagraphB);
+  AssertEquals('CM insertion preserves both Association members', 2,
+    Impact.PreservedMembers);
+  AssertEquals('CM insertion removes no Association member', 0,
+    Impact.RemovedMembers);
 end;
 
 procedure TVerseTests.TracedEditPairsRoundTripWithShiftedIndexes;

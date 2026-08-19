@@ -45,6 +45,9 @@ type
     procedure DirectClipboardPaste(Sender: TObject; StartUTF16,
       LengthUTF16: Integer; var Handled: Boolean);
     procedure DirectCommand(Sender: TObject; Command: TVerseEditorCommand);
+    procedure DirectParagraphEdit(Sender: TObject;
+      Kind: TVerseParagraphEditKind; StartUTF16, LengthUTF16: Integer;
+      var Accepted: Boolean; var NewCaretUTF16: Integer);
     procedure DirectReplaceText(Sender: TObject; StartUTF16,
       LengthUTF16: Integer; const Replacement: UnicodeString;
       var Accepted: Boolean; var NewCaretUTF16: Integer);
@@ -127,6 +130,7 @@ begin
   FDirectEditor.InteractionMode := vimEdit;
   FDirectEditor.OnClipboardCopy := @DirectClipboardCopy;
   FDirectEditor.OnClipboardPaste := @DirectClipboardPaste;
+  FDirectEditor.OnParagraphEdit := @DirectParagraphEdit;
   FDirectEditor.OnReplaceText := @DirectReplaceText;
   FDirectEditor.OnSelectionChanged := @DirectSelectionChanged;
   FDirectEditor.OnCommand := @DirectCommand;
@@ -168,6 +172,7 @@ begin
     FRawEditor.Visible := False;
     FDirectEditor.Visible := True;
     RefreshDirectDocument;
+    FDirectEditor.SetSelection(0, 0);
   finally
     FUpdating := False;
   end;
@@ -450,6 +455,69 @@ begin
     Beep;
 end;
 
+procedure TTheWordWysiwygEditorControl.DirectParagraphEdit(Sender: TObject;
+  Kind: TVerseParagraphEditKind; StartUTF16, LengthUTF16: Integer;
+  var Accepted: Boolean; var NewCaretUTF16: Integer);
+var
+  Affinity: TTheWordOffsetAffinity;
+  DocumentLength, DocumentStart: Integer;
+  ParagraphMarkOffsets: TTheWordVisualOffsetArray;
+begin
+  Accepted := False;
+  DocumentStart := 0;
+  DocumentLength := 0;
+  Affinity := twoaBefore;
+  try
+    if not FEditable or not Assigned(FSession) then
+      Exit;
+    case Kind of
+      vpekInsert:
+        begin
+          Accepted := TryTheWordLayoutRangeToDocument(FVisualDocument,
+            StartUTF16, LengthUTF16, DocumentStart, DocumentLength) and
+            FSession.InsertParagraphMark(DocumentStart, DocumentLength);
+          Affinity := twoaAfter;
+        end;
+      vpekDeleteSelection:
+        begin
+          Accepted := TryTheWordLayoutRangeToDocument(FVisualDocument,
+            StartUTF16, LengthUTF16, DocumentStart, DocumentLength) and
+            TryCollectTheWordParagraphMarkOffsets(FVisualDocument,
+              StartUTF16, LengthUTF16, ParagraphMarkOffsets) and
+            (Length(ParagraphMarkOffsets) > 0) and
+            FSession.DeleteSelectionWithParagraphMarks(DocumentStart,
+              DocumentLength, ParagraphMarkOffsets);
+        end;
+      vpekDeleteBackward, vpekDeleteForward:
+        begin
+          Accepted := TryTheWordLayoutToDocumentOffset(FVisualDocument,
+            StartUTF16, DocumentStart) and
+            FSession.RemoveParagraphMark(DocumentStart,
+              Kind = vpekDeleteBackward);
+          if Kind = vpekDeleteBackward then
+            Affinity := twoaAfter
+          else
+            Affinity := twoaBefore;
+        end;
+    end;
+  except
+    on E: ETheWordOntProtectedEdit do Accepted := False;
+    on E: ETheWordOntCodec do Accepted := False;
+  end;
+  if Accepted then
+  begin
+    RefreshDirectDocument;
+    if Kind = vpekDeleteSelection then
+      NewCaretUTF16 := StartUTF16
+    else if not TryTheWordDocumentToLayoutOffset(FVisualDocument,
+      DocumentStart, Affinity, NewCaretUTF16) then
+        NewCaretUTF16 := StartUTF16;
+    DoChanged;
+  end
+  else
+    Beep;
+end;
+
 function PrivateClipboardFormatV2: TClipboardFormat;
 begin
   Result := RegisterClipboardFormat(THEWORD_CLIPBOARD_FORMAT_V2);
@@ -580,6 +648,9 @@ begin
   case Command of
     vecUndo: Undo;
     vecRedo: Redo;
+    vecItalic: ApplySemantic(twsmItalic);
+    vecWordsOfJesus: ApplySemantic(twsmWordsOfJesus);
+    vecOldTestamentQuote: ApplySemantic(twsmOldTestamentQuote);
     vecSave, vecCancel:
       if Assigned(FOnCommand) then
         FOnCommand(Self, Command);
