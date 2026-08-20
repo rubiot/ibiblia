@@ -16,7 +16,8 @@ uses
   ActnList, ComCtrls, ExtCtrls, StdCtrls, BibleScope, Project, IniFiles, Math,
   Syntagm, LCLTranslator, unitabout, PCRE, Verse, LCLProc, LazLogger,
   LCLType, LazUTF8, ChapterView, UnitPleaseWait, CommentsView, ONTTokenizer,
-  status_catalog, SynEdit, project_setup_model, translation_memory_model;
+  status_catalog, SynEdit, project_setup_model, translation_memory_model,
+  project_creation_staging;
 
 type
   { TMainForm }
@@ -323,13 +324,6 @@ type
     language: string;
   end;
 
-type
-  TTextLoadingParams = record
-    TextType: TTipoTextoBiblico;
-    FileName: string;
-    ProgressBar: TProgressBar;
-  end;
-
 var
   MainForm: TMainForm;
   CurrentProject: TProject;
@@ -555,6 +549,16 @@ resourcestring
   SLoadingDestinationTextProgress = 'Loading destination text...';
   SLoadingReference1TextProgress = 'Loading reference 1 text...';
   SLoadingReference2TextProgress = 'Loading reference 2 text...';
+  SNewProjectNotCreatedTitle = 'Project not created';
+  SNewProjectOpenFailedTitle = 'Project created but not opened';
+  SNewProjectImportCancelled = 'Project creation was cancelled while importing %s.';
+  SNewProjectImportFailed = 'Could not import %s from:'#13#10'%s';
+  SNewProjectCloseFailed = 'Could not safely close the newly created project before publishing it.';
+  SNewProjectOpenFailed = 'The project was created but could not be opened:'#13#10'%s';
+  SNewProjectCleanupFailed = 'Cleanup also failed:'#13#10'%s';
+  SNewProjectCleanupCloseFailed = 'Could not close the incomplete project.';
+  SNewProjectCleanupDeleteFailed = 'Could not remove the incomplete project file:'#13#10'%s';
+  SNewProjectUnknownFailure = 'An unexpected error prevented the project from being created.';
   SRebuildAssociationMemoryTitle = 'Association memory';
   SRebuildAssociationMemoryProgress = 'Recreating association memory...';
   SChanged = 'changed';
@@ -2153,18 +2157,6 @@ begin
     CurrentProject.ToggleDisplayTags;
 end;
 
-function LoadText(par: pointer): ptrint;
-var
-  p: TTextLoadingParams;
-begin
-  p := TTextLoadingParams(par^);
-
-  if p.FileName <> '' then
-    CurrentProject.ImportTheWordModule(p.FileName, p.TextType, p.ProgressBar, false);
-
-  result := 0;
-end;
-
 procedure TMainForm.ActionNewProjectExecute(Sender: TObject);
   function GetTextTypeName(v: TTipoTextoBiblico): string;
   begin
@@ -2190,10 +2182,25 @@ procedure TMainForm.ActionNewProjectExecute(Sender: TObject);
     end;
   end;
 
+  procedure AppendFailure(var AFailure: string; const ADetail: string);
+  begin
+    if Trim(ADetail) = '' then
+      Exit;
+    if AFailure <> '' then
+      AFailure := AFailure + LineEnding + LineEnding;
+    AFailure := AFailure + ADetail;
+  end;
+
 var
   v: TTipoTextoBiblico;
-  TextLoadingParams: TTextLoadingParams;
   Draft: TProjectSetupDraft;
+  Staging: TProjectCreationStaging;
+  ImportResult: TTheWordModuleImportResult;
+  FinalProjectFileName: string;
+  FailureMessage: string;
+  CleanupMessage: string;
+  BuildSucceeded: Boolean;
+  ImportCancelled: Boolean;
 begin
   ActionCloseProjectExecute(nil);
 
@@ -2205,83 +2212,166 @@ begin
   if FrmNewProject.ShowModal <> mrOK then
     exit;
 
-  Application.ProcessMessages;
   Draft := FrmNewProject.GetDraft;
+  FinalProjectFileName := Draft.ProjectFileName;
+  Staging := nil;
+  FailureMessage := '';
+  BuildSucceeded := False;
+  ImportCancelled := False;
 
   try
     FormPleaseWait.BeginOperation(Self, SNewProjectProgressTitle,
-      SCreatingProjectProgress, 1, Draft.ProjectFileName);
+      SCreatingProjectProgress, 1, FinalProjectFileName);
+    try
+      try
+        Staging := TProjectCreationStaging.Create(FinalProjectFileName);
+        CurrentProject := TProject.Create([ScrollBoxSrcVerse,
+          ScrollBoxDstVerse, ScrollBoxRef1Verse, ScrollBoxRef2Verse],
+          TreeView1, RadioGroupStatus, FActualCommentsMemo);
+        CurrentProject.Escopo := Draft.Scope;
+        CurrentProject.PalavrasComStrongEmNegrito :=
+          MenuItemBoldStrongs.Checked;
+        CurrentProject.MostrarQtdStrongs := FStrongsCountMode;
+        CurrentProject.OnNewVerseSubscribe(@ProjectNewVerse);
+        CurrentProject.OnAlterarVersiculo := @VerseChanged;
+        CurrentProject.OnSintagmaClick := @SyntagmClick;
+        CurrentProject.CreateProject(Staging.StagingFileName,
+          Draft.ProjectName, Draft.TokenizerVersion);
+        CurrentProject.SetInfo(PROJECT_SCENARIO_CONFIG_KEY,
+          ProjectScenarioToConfig(Draft.Scenario));
+        if Draft.HasCustomStatusCatalog then
+          CurrentProject.SetStatusDefinitions(Draft.StatusDefinitions);
+        CurrentProject.ExibirDefinicoesSoComCtrl := MenuItemDictPopup.Checked;
+        CurrentProject.SugerirAssociacaoAutomaticamente := MenuItem22.Checked;
+        CurrentProject.SuggestionMode := FSuggestionMode;
+        CurrentProject.PopupTrigger := FPopupTrigger;
 
-    CurrentProject := TProject.Create([ScrollBoxSrcVerse, ScrollBoxDstVerse, ScrollBoxRef1Verse, ScrollBoxRef2Verse], TreeView1, RadioGroupStatus, FActualCommentsMemo);
-    CurrentProject.Escopo := Draft.Scope;
-    CurrentProject.PalavrasComStrongEmNegrito := MenuItemBoldStrongs.Checked;
-    CurrentProject.MostrarQtdStrongs := FStrongsCountMode;
-    CurrentProject.OnNewVerseSubscribe(@ProjectNewVerse);
-    CurrentProject.OnAlterarVersiculo := @VerseChanged;
-    CurrentProject.OnSintagmaClick := @SyntagmClick;
-    CurrentProject.CreateProject(Draft.ProjectFileName, Draft.ProjectName,
-      Draft.TokenizerVersion);
-    CurrentProject.SetInfo(PROJECT_SCENARIO_CONFIG_KEY,
-      ProjectScenarioToConfig(Draft.Scenario));
-    if Draft.HasCustomStatusCatalog then
-      CurrentProject.SetStatusDefinitions(Draft.StatusDefinitions);
-    CurrentProject.ExibirDefinicoesSoComCtrl := MenuItemDictPopup.Checked;
-    CurrentProject.SugerirAssociacaoAutomaticamente := MenuItem22.Checked;
-    CurrentProject.SuggestionMode := FSuggestionMode;
-    CurrentProject.PopupTrigger := FPopupTrigger;
+        for v := tbOrigem to tbConsulta2 do
+        begin
+          if Draft.Texts[v].ModulePath = '' then
+            Continue;
+          StatusBar1.Caption := Format(SLoadingFile, [GetTextTypeName(v)]);
+          FormPleaseWait.SetMessage(GetLoadingMessage(v));
+          FormPleaseWait.SetDetail(Draft.Texts[v].ModulePath);
+          if not CurrentProject.ImportTheWordModule(
+              Draft.Texts[v].ModulePath, v, FormPleaseWait.ProgressBar1,
+              False, ImportResult, True) then
+          begin
+            ImportCancelled := ImportResult.Status = twmisCancelled;
+            if ImportCancelled then
+              FailureMessage := Format(SNewProjectImportCancelled,
+                [GetTextTypeName(v)])
+            else
+            begin
+              FailureMessage := Format(SNewProjectImportFailed,
+                [GetTextTypeName(v), Draft.Texts[v].ModulePath]);
+              if Trim(ImportResult.ErrorMessage) <> '' then
+                AppendFailure(FailureMessage, ImportResult.ErrorMessage);
+            end;
+            raise Exception.Create(FailureMessage);
+          end;
+        end;
+        StatusBar1.Caption := '';
 
-    //TextLoadingParams.ProgressBar := ProgressBar1;
-    for v:=tbOrigem to tbConsulta2 do
-    begin
-      StatusBar1.Caption := Format(SLoadingFile, [GetTextTypeName(v)]);
-      FormPleaseWait.SetMessage(GetLoadingMessage(v));
-      FormPleaseWait.SetDetail(Draft.Texts[v].ModulePath);
-      TextLoadingParams.TextType := v;
-      TextLoadingParams.FileName := Draft.Texts[v].ModulePath;
-      TextLoadingParams.ProgressBar := FormPleaseWait.ProgressBar1;
-      Application.ProcessMessages;
-      //WaitForThreadTerminate(BeginThread(@LoadText, Pointer(@TextLoadingParams)), 0);
-      LoadText(Pointer(@TextLoadingParams));
+        for v := tbOrigem to tbConsulta2 do
+        begin
+          if Draft.Texts[v].StrongDictionaryPath <> '' then
+            CurrentProject.AssignStrongDictionary(
+              Draft.Texts[v].StrongDictionaryPath, [v]);
+          if Draft.Texts[v].MorphologyDictionaryPath <> '' then
+            CurrentProject.AssignMorphologyDictionary(
+              Draft.Texts[v].MorphologyDictionaryPath, [v]);
+        end;
+
+        CurrentProject.Commit;
+        if not CurrentProject.CloseProject(True) then
+          raise Exception.Create(SNewProjectCloseFailed);
+        FreeAndNil(CurrentProject);
+
+        Staging.Publish;
+        BuildSucceeded := True;
+      except
+        on E: Exception do
+          if FailureMessage = '' then
+          begin
+            FailureMessage := E.Message;
+            if FailureMessage = '' then
+              FailureMessage := SNewProjectUnknownFailure;
+          end;
+      end;
+
+      if not BuildSucceeded then
+      begin
+        CleanupMessage := '';
+        if Assigned(CurrentProject) then
+        begin
+          try
+            if not CurrentProject.CloseProject(False) then
+              AppendFailure(CleanupMessage,
+                SNewProjectCleanupCloseFailed);
+          except
+            on E: Exception do
+              AppendFailure(CleanupMessage, E.Message);
+          end;
+          try
+            FreeAndNil(CurrentProject);
+          except
+            on E: Exception do
+              AppendFailure(CleanupMessage, E.Message);
+          end;
+        end;
+        if Assigned(Staging) then
+          try
+            Staging.Discard;
+          except
+            on E: Exception do
+              AppendFailure(CleanupMessage,
+                Format(SNewProjectCleanupDeleteFailed, [E.Message]));
+          end;
+        if CleanupMessage <> '' then
+          AppendFailure(FailureMessage,
+            Format(SNewProjectCleanupFailed, [CleanupMessage]));
+      end;
+    finally
+      StatusBar1.Caption := '';
+      FormPleaseWait.FinishOperation;
     end;
-    StatusBar1.Caption:='';
 
-    for v:=tbOrigem to tbConsulta2 do
+    if BuildSucceeded then
     begin
-      if Draft.Texts[v].StrongDictionaryPath <> '' then
-        CurrentProject.AssignStrongDictionary(Draft.Texts[v].StrongDictionaryPath, [v]);
-      if Draft.Texts[v].MorphologyDictionaryPath <> '' then
-        CurrentProject.AssignMorphologyDictionary(Draft.Texts[v].MorphologyDictionaryPath, [v]);
+      try
+        DoOpenProject(FinalProjectFileName);
+      except
+        on E: Exception do
+        begin
+          BuildSucceeded := False;
+          FailureMessage := Format(SNewProjectOpenFailed, [E.Message]);
+          if Assigned(CurrentProject) then
+          begin
+            try
+              CurrentProject.CloseProject(False);
+            except
+            end;
+            FreeAndNil(CurrentProject);
+          end;
+          MessageDlg(SNewProjectOpenFailedTitle, FailureMessage,
+            mtError, [mbOK], 0);
+          Exit;
+        end;
+      end;
     end;
 
-    CurrentProject.Commit;
-    CurrentProject.RefreshUI;
-
-    //ProgressBar1.Visible := false;
-    ActionSaveProject.Enabled := true;
-    ActionSaveProjectAs.Enabled := true;
-    ActionCloseProject.Enabled := true;
-    ActionProjectProperties.Enabled := true;
-    ActionFirstVerse.Enabled := true;
-    ActionLastVerse.Enabled := true;
-    ActionNextVerse.Enabled := true;
-    ActionPreviousVerse.Enabled := true;
-    ActionSuggestAssociation.Enabled := true;
-    ActionRollbackCurrentVerse.Enabled := true;
-    ActionClearAssociations.Enabled := true;
-    ActionExportProject.Enabled := true;
-  if Assigned(ActionLlmOptions) then ActionLlmOptions.Enabled := true;
-    FChapterView.Enabled := true;
-    FChapterView.Project := CurrentProject;
-    ChapterViewTabCtrl.TabIndex := Ord(CurrentProject.ChapterViewText);
-    ChapterViewTabCtrlChange(ChapterViewTabCtrl);
-
-    StatusBar1.SimpleText := '';
-    UpdateNavigationHistoryActions;
-    UpdateStateHeader;
-    UpdateStatusReviewPanel;
+    if not BuildSucceeded then
+    begin
+      if ImportCancelled then
+        MessageDlg(SNewProjectNotCreatedTitle, FailureMessage,
+          mtInformation, [mbOK], 0)
+      else
+        MessageDlg(SNewProjectNotCreatedTitle, FailureMessage,
+          mtError, [mbOK], 0);
+    end;
   finally
-    StatusBar1.Caption := '';
-    FormPleaseWait.FinishOperation;
+    Staging.Free;
   end;
 end;
 

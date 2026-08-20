@@ -81,11 +81,11 @@ type
       const VerseViews: array of TVerse; const TextFieldIndexes: array of Integer;
       const FormattedReference, ReferenceID: string; SourceVerseIndex,
       DestinationVerseIndex: Integer): TCurrentVerseLoadResult;
-    procedure SetCurrentVerseText(Persistence: TProjectPersistence;
+    function SetCurrentVerseText(Persistence: TProjectPersistence;
       RenderBuffer: TVerseRenderBuffer; const TextFieldIndexes: array of Integer;
       const VerseText: string; TextIndex, SourceVerseIndex,
       DestinationVerseIndex: Integer; Replace, ResetStatus: Boolean;
-      out CorruptionDetails: string);
+      out CorruptionDetails: string): Boolean;
     procedure ApplyLoadedAssociations(SourceVerse: TVerse;
       const Associations: string; RenderBuffer: TVerseRenderBuffer = nil);
     procedure FinalizeLoadedVerse(const VerseViews: array of TVerse);
@@ -663,11 +663,11 @@ begin
     Clear;
 end;
 
-procedure TCurrentVerseWorkspace.SetCurrentVerseText(
+function TCurrentVerseWorkspace.SetCurrentVerseText(
   Persistence: TProjectPersistence; RenderBuffer: TVerseRenderBuffer;
   const TextFieldIndexes: array of Integer; const VerseText: string; TextIndex,
   SourceVerseIndex, DestinationVerseIndex: Integer; Replace,
-  ResetStatus: Boolean; out CorruptionDetails: string);
+  ResetStatus: Boolean; out CorruptionDetails: string): Boolean;
 var
   CurrentPairs: string;
   UpdatedPairs: string;
@@ -675,6 +675,7 @@ var
   SourceTextFieldIndex: Integer;
   DestinationTextFieldIndex: Integer;
 begin
+  Result := False;
   CorruptionDetails := '';
   if not Assigned(Persistence) then
     Exit;
@@ -706,6 +707,7 @@ begin
   end;
 
   Persistence.PostCurrentEdit;
+  Result := True;
 end;
 
 procedure TCurrentVerseWorkspace.ApplyLoadedAssociations(SourceVerse: TVerse;

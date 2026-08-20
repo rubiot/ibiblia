@@ -176,6 +176,13 @@ resourcestring
   SWholeBibleFilter = 'theWord Bible modules (*.ont, *.ot, *.nt)|*.ont;*.ot;*.nt';
   SDictionaryFilter = 'theWord dictionary modules (*.dct.twm)|*.dct.twm|All files|*.*';
   SNewTextImportedSuccessfully = 'New text imported successfully';
+  STextImportTitle = 'Import Bible text';
+  STextImportProgress = 'Importing Bible text...';
+  STextImportCancelledFmt = 'The import of "%s" was cancelled.';
+  STextImportFailedFmt = 'The text could not be imported from "%s".';
+  STextImportPartialChanges = 'Changes completed before this import failure were kept.';
+  STextImportRequiresSavedProject = 'Save or discard the current project changes before replacing a Bible text.';
+  STextImportConflictingChanges = 'Apply tokenizer, status catalog, or text removal changes separately before replacing a Bible text.';
   SProjectTab = 'Project';
   STextsTab = 'Texts';
   SDictionariesTab = 'Dictionaries';
@@ -1114,11 +1121,43 @@ var
   RemapIndex: Integer;
   TextType: TTipoTextoBiblico;
   MessageText: string;
+  ImportResult: TTheWordModuleImportResult;
+  ImportSucceeded: Boolean;
+  HasTextImport: Boolean;
 begin
   if Assigned(FProject) then
   begin
     if not ValidatePendingChanges(MessageText) then
       raise Exception.Create(MessageText);
+
+    HasTextImport := False;
+    for TextType := tbOrigem to tbConsulta2 do
+      if FPendingTextActions[TextType] = ptaLoad then
+        HasTextImport := True;
+
+    if HasTextImport then
+    begin
+      if FProject.Modificado then
+      begin
+        MessageDlg(STextImportTitle, STextImportRequiresSavedProject,
+          mtWarning, [mbOK], 0);
+        Exit;
+      end;
+      if (GetSelectedTokenizerVersion <> FProject.TokenizerVersion) or
+        FStatusCatalogChanged then
+      begin
+        MessageDlg(STextImportTitle, STextImportConflictingChanges,
+          mtWarning, [mbOK], 0);
+        Exit;
+      end;
+      for TextType := tbOrigem to tbConsulta2 do
+        if FPendingTextActions[TextType] = ptaClear then
+        begin
+          MessageDlg(STextImportTitle, STextImportConflictingChanges,
+            mtWarning, [mbOK], 0);
+          Exit;
+        end;
+    end;
 
     FProject.SetInfo('descricao', EditProjectName.Text);
 
@@ -1190,12 +1229,43 @@ begin
       case FPendingTextActions[TextType] of
         ptaLoad:
           begin
-            Enabled := False;
+            FormPleaseWait.BeginOperation(Self, STextImportTitle,
+              STextImportProgress, 1, FPendingTextFiles[TextType]);
             try
-              FProject.ImportTheWordModule(FPendingTextFiles[TextType],
-                TextType, ProgressBarOperation, FPendingTextReplace[TextType]);
+              ImportSucceeded := FProject.ImportTheWordModule(
+                FPendingTextFiles[TextType], TextType,
+                FormPleaseWait.ProgressBar1,
+                FPendingTextReplace[TextType], ImportResult, True);
             finally
-              Enabled := True;
+              FormPleaseWait.FinishOperation;
+            end;
+
+            if not ImportSucceeded then
+            begin
+              MessageText := Trim(ImportResult.ErrorMessage);
+              if MessageText = '' then
+                if ImportResult.Status = twmisCancelled then
+                  MessageText := Format(STextImportCancelledFmt,
+                    [FPendingTextFiles[TextType]])
+                else
+                  MessageText := Format(STextImportFailedFmt,
+                    [FPendingTextFiles[TextType]]);
+              MessageText := MessageText + LineEnding + LineEnding +
+                STextImportPartialChanges;
+
+              { A previous text or another property may already have been
+                committed. Reload the current Verse and reset the pending UI
+                before reporting the partial result. }
+              FProject.RefreshUI;
+              InitializePendingState;
+              ActionChangeTabExecute(nil);
+              UpdateReview;
+              if ImportResult.Status = twmisCancelled then
+                MessageDlg(STextImportTitle, MessageText, mtInformation,
+                  [mbOK], 0)
+              else
+                MessageDlg(STextImportTitle, MessageText, mtError, [mbOK], 0);
+              Exit;
             end;
           end;
         ptaClear:

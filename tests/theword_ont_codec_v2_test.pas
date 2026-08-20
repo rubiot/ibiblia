@@ -1284,6 +1284,7 @@ var
   Canonical: UnicodeString;
   Capability: TTheWordLayerCapability;
   Body: TTheWordTranslatorNoteBodyDocument;
+  ColorValue: LongInt;
 begin
   Body := TTheWordTranslatorNoteBodyCodec.Decode(SAFE);
   try
@@ -1335,9 +1336,36 @@ begin
   AssertEquals('duplicate known attributes require Raw editing',
     Ord(twlcRawOnly), Ord(AnalyzeTheWordTranslatorNoteBody(
     '<font color=red color=blue>text</font>')));
-  AssertEquals('named font colors are preserved outside Visual editing',
-    Ord(twlcProtectedRegions), Ord(AnalyzeTheWordTranslatorNoteBody(
+  AssertEquals('theWord named font colors are editable visually',
+    Ord(twlcFullWysiwyg), Ord(AnalyzeTheWordTranslatorNoteBody(
     '<font color="red">text</font>')));
+  Body := TTheWordTranslatorNoteBodyCodec.Decode(
+    '<font color="ReD">text</font>');
+  try
+    AssertEquals('named colors are case-insensitive',
+      Ord(twnbcFullWysiwyg), Ord(Body.Capability));
+    AssertUnicodeEquals('untouched named color remains literal',
+      '<font color="ReD">text</font>',
+      TTheWordTranslatorNoteBodyCodec.Encode(Body));
+  finally
+    Body.Free;
+  end;
+  AssertEquals('unknown color names stay outside Visual editing',
+    Ord(twlcProtectedRegions), Ord(AnalyzeTheWordTranslatorNoteBody(
+    '<font color="not-a-color">text</font>')));
+  AssertEquals('unsupported extended HTML names stay outside Visual editing',
+    Ord(twlcProtectedRegions), Ord(AnalyzeTheWordTranslatorNoteBody(
+    '<font color="orange">text</font>')));
+  AssertEquals('theWord theme-dependent colors stay outside Visual editing',
+    Ord(twlcProtectedRegions), Ord(AnalyzeTheWordTranslatorNoteBody(
+    '<font color="defclr5">text</font>')));
+  AssertEquals('theWord named backgrounds use the same safe color subset',
+    Ord(twlcFullWysiwyg), Ord(AnalyzeTheWordTranslatorNoteBody(
+    '<span style="background:red">text</span>')));
+  AssertTrue('theWord silver color is recognized',
+    TryTheWordTranslatorNoteHtmlColor('silver', ColorValue));
+  AssertEquals('theWord silver has its legacy gray value',
+    LongInt($00808080), ColorValue);
   AssertEquals('absolute font sizes are not reinterpreted as relative',
     Ord(twlcProtectedRegions), Ord(AnalyzeTheWordTranslatorNoteBody(
     '<font size="14">text</font>')));

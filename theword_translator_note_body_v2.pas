@@ -107,6 +107,9 @@ type
       out ACapability: TTheWordNoteBodyCapability): Boolean; static;
   end;
 
+function TryTheWordTranslatorNoteHtmlColor(const AValue: UnicodeString;
+  out AColor: LongInt): Boolean;
+
 implementation
 
 type
@@ -114,6 +117,33 @@ type
   public
     Kind: TTheWordNoteBodyTagKind;
   end;
+
+  TTheWordNamedColor = record
+    Name: string;
+    Value: LongInt;
+  end;
+
+const
+  { These are the 16 names handled by theWord's HTML parser. Its "silver"
+    intentionally resolves to the same COLORREF as "gray". }
+  THEWORD_NAMED_COLORS: array[0..15] of TTheWordNamedColor = (
+    (Name: 'white'; Value: $00FFFFFF),
+    (Name: 'black'; Value: $00000000),
+    (Name: 'red'; Value: $000000FF),
+    (Name: 'green'; Value: $00008000),
+    (Name: 'blue'; Value: $00FF0000),
+    (Name: 'aqua'; Value: $00FFFF00),
+    (Name: 'fuchsia'; Value: $00FF00FF),
+    (Name: 'gray'; Value: $00808080),
+    (Name: 'lime'; Value: $0000FF00),
+    (Name: 'maroon'; Value: $00000080),
+    (Name: 'navy'; Value: $00800000),
+    (Name: 'olive'; Value: $00008080),
+    (Name: 'purple'; Value: $00800080),
+    (Name: 'silver'; Value: $00808080),
+    (Name: 'teal'; Value: $00808000),
+    (Name: 'yellow'; Value: $0000FFFF)
+  );
 
 function FoldAscii(AChar: WideChar): WideChar;
 begin
@@ -378,15 +408,45 @@ begin
   Result := True;
 end;
 
+function TryTheWordTranslatorNoteHtmlColor(const AValue: UnicodeString;
+  out AColor: LongInt): Boolean;
+var
+  B, G, Index, R, TableIndex: Integer;
+  Work: string;
+begin
+  AColor := 0;
+  Work := UTF8Encode(TrimUnicode(AValue));
+  Result := (Length(Work) = 7) and (Work[1] = '#');
+  if Result then
+  begin
+    for Index := 2 to 7 do
+      if not (Work[Index] in ['0'..'9', 'a'..'f', 'A'..'F']) then
+        Exit(False);
+    if not TryStrToInt('$' + Copy(Work, 2, 2), R) or
+       not TryStrToInt('$' + Copy(Work, 4, 2), G) or
+       not TryStrToInt('$' + Copy(Work, 6, 2), B) then
+      Exit(False);
+    AColor := R or (G shl 8) or (B shl 16);
+  end
+  else
+  begin
+    for TableIndex := Low(THEWORD_NAMED_COLORS) to
+      High(THEWORD_NAMED_COLORS) do
+      if SameText(THEWORD_NAMED_COLORS[TableIndex].Name, Work) then
+      begin
+        Result := True;
+        AColor := THEWORD_NAMED_COLORS[TableIndex].Value;
+        Break;
+      end;
+    if not Result then Exit;
+  end;
+end;
+
 function IsVisualHtmlColor(const AValue: UnicodeString): Boolean;
 var
-  Index: Integer;
+  Color: LongInt;
 begin
-  Result := (Length(AValue) = 7) and (AValue[1] = '#');
-  if not Result then Exit;
-  for Index := 2 to 7 do
-    if not (AValue[Index] in ['0'..'9', 'a'..'f', 'A'..'F']) then
-      Exit(False);
+  Result := TryTheWordTranslatorNoteHtmlColor(AValue, Color);
 end;
 
 function IsVisualRelativeFontSize(const AValue: UnicodeString): Boolean;

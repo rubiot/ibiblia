@@ -193,17 +193,12 @@ end;
 function TryHtmlColor(const AValue: UnicodeString;
   out AColor: TColor): Boolean;
 var
-  B, G, R: Integer;
-  S: string;
+  Color: LongInt;
 begin
   AColor := clNone;
-  S := UTF8Encode(Trim(AValue));
-  Result := (Length(S) = 7) and (S[1] = '#') and
-    TryStrToInt('$' + Copy(S, 2, 2), R) and
-    TryStrToInt('$' + Copy(S, 4, 2), G) and
-    TryStrToInt('$' + Copy(S, 6, 2), B);
+  Result := TryTheWordTranslatorNoteHtmlColor(AValue, Color);
   if Result then
-    AColor := RGBToColor(R, G, B);
+    AColor := TColor(Color);
 end;
 
 procedure ApplyStateToRun(ARun: TTranslatorNoteRun;

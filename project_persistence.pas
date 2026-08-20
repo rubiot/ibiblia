@@ -8,6 +8,8 @@ uses
   Classes, SysUtils, Sqlite3DS, sqlite3conn, sqldb, db;
 
 type
+  EProjectPersistenceRecoveryRequired = class(Exception);
+
   TProjectPersistence = class
   private
     FPairsTable: TSqlite3Dataset;
@@ -19,6 +21,7 @@ type
     FImmediateInfoPending: TStringList;
     FOnContentPendingChanged: TNotifyEvent;
     FLastContentPending: Boolean;
+    FPairCommitMayBePartial: Boolean;
     procedure CloseTable(var Table: TSqlite3Dataset);
     procedure SetNamedValue(List: TStringList; const Name, Value: string);
     function PairChangeKey(const fieldName: string): string;
@@ -30,6 +33,8 @@ type
     function ReadCommittedInfo(const info: string): string;
     function IsDatabaseBusy(const MessageText: string): Boolean;
     procedure WriteInfoValues(const Values: TStrings);
+    procedure RebuildPendingPairUpdates;
+    procedure RestorePairBaselineAfterFailedCommit;
   public
     constructor Create;
     destructor Destroy; override;
@@ -91,6 +96,7 @@ begin
   FImmediateInfoPending := TStringList.Create;
   FOnContentPendingChanged := nil;
   FLastContentPending := False;
+  FPairCommitMayBePartial := False;
 end;
 
 procedure TProjectPersistence.SetOnContentPendingChanged(
@@ -196,6 +202,7 @@ begin
   FCommittedInfo.Clear;
   FImmediateInfoPending.Clear;
   FLastContentPending := False;
+  FPairCommitMayBePartial := False;
 end;
 
 procedure TProjectPersistence.Close;
@@ -207,6 +214,7 @@ begin
   FCommittedInfo.Clear;
   FImmediateInfoPending.Clear;
   FLastContentPending := False;
+  FPairCommitMayBePartial := False;
   FFileName := '';
 end;
 
@@ -217,7 +225,8 @@ end;
 
 function TProjectPersistence.ContentUpdatesPending: Boolean;
 begin
-  Result := (FPairOriginalValues.Count > 0) or (FStagedInfo.Count > 0);
+  Result := FPairCommitMayBePartial or (FPairOriginalValues.Count > 0) or
+    (FStagedInfo.Count > 0);
 end;
 
 function TProjectPersistence.LocateReference(const reference: string): Boolean;
@@ -480,7 +489,13 @@ begin
     BaselineValue := FPairOriginalValues.ValueFromIndex[Index];
 
   if newValue = BaselineValue then
-    FPairOriginalValues.Delete(Index);
+  begin
+    // Once ApplyUpdates has failed, some earlier batches may already be
+    // durable. Keep the original value until retry or Rollback has reconciled
+    // that possibly partial commit.
+    if not FPairCommitMayBePartial then
+      FPairOriginalValues.Delete(Index);
+  end;
 end;
 
 function TProjectPersistence.CurrentPairId: string;
@@ -600,42 +615,204 @@ begin
 end;
 
 procedure ApplyPendingUpdates(Table: TSqlite3Dataset);
-var
-  retryCount: Integer;
-  maxRetries: Integer = 5;
-  delayMs: Integer;
 begin
   if not Assigned(Table) or not Table.UpdatesPending then
     Exit;
 
-  retryCount := 0;
-  delayMs := 50;
-  while retryCount < maxRetries do
-  begin
+  // TSqlite3Dataset clears its internal update lists before it checks whether
+  // the final COMMIT succeeded. Retrying ApplyUpdates after SQLITE_BUSY would
+  // therefore report success while silently discarding the pending rows.
+  Table.ApplyUpdates;
+end;
+
+function PairReferenceFromChangeKey(const ChangeKey: string): string;
+var
+  SeparatorIndex: Integer;
+begin
+  SeparatorIndex := Pos(#1, ChangeKey);
+  if SeparatorIndex <= 0 then
+    Exit('');
+  Result := Copy(ChangeKey, 1, SeparatorIndex - 1);
+end;
+
+function PairFieldFromChangeKey(const ChangeKey: string): string;
+var
+  SeparatorIndex: Integer;
+begin
+  SeparatorIndex := Pos(#1, ChangeKey);
+  if SeparatorIndex <= 0 then
+    Exit('');
+  Result := Copy(ChangeKey, SeparatorIndex + 1, MaxInt);
+end;
+
+procedure TProjectPersistence.RebuildPendingPairUpdates;
+var
+  References: TStringList;
+  ChangeKey: string;
+  Reference: string;
+  CurrentReference: string;
+  ControlsWereDisabled: Boolean;
+  BeforeScrollHandler: TDataSetNotifyEvent;
+  AfterScrollHandler: TDataSetNotifyEvent;
+  Index: Integer;
+begin
+  if FPairOriginalValues.Count = 0 then
+    raise EProjectPersistenceRecoveryRequired.Create(
+      'The failed pair commit cannot be reconstructed. Roll back and reload ' +
+      'the project before making more changes.');
+
+  References := TStringList.Create;
+  try
+    References.Sorted := True;
+    References.Duplicates := dupIgnore;
+    for Index := 0 to FPairOriginalValues.Count - 1 do
+    begin
+      ChangeKey := FPairOriginalValues.Names[Index];
+      Reference := PairReferenceFromChangeKey(ChangeKey);
+      if not Reference.IsEmpty then
+        References.Add(Reference);
+    end;
+
+    CurrentReference := CurrentPairId;
+    ControlsWereDisabled := FPairsTable.ControlsDisabled;
+    BeforeScrollHandler := FPairsTable.BeforeScroll;
+    AfterScrollHandler := FPairsTable.AfterScroll;
+    if not ControlsWereDisabled then
+      FPairsTable.DisableControls;
+    FPairsTable.BeforeScroll := nil;
+    FPairsTable.AfterScroll := nil;
     try
-      Table.ApplyUpdates;
-      Break;
-    except
-      on E: Exception do
-      begin
-        if (Pos('SQLITE_BUSY', E.Message) > 0) or (Pos('database is locked', E.Message) > 0) then
+      try
+        for Index := 0 to References.Count - 1 do
         begin
-          Inc(retryCount);
-          if retryCount >= maxRetries then
-            raise;
-          Sleep(delayMs);
-          delayMs := delayMs * 2;
-        end
-        else
-          raise;
+          if not FPairsTable.Locate('pare_id', References[Index], []) then
+            raise EProjectPersistenceRecoveryRequired.CreateFmt(
+              'Verse Pair %s could not be reloaded after a failed commit.',
+              [References[Index]]);
+          // InternalPost adds this record back to FUpdatedItems even when the
+          // values are unchanged. ApplyUpdates may have cleared that list
+          // before propagating SQLITE_BUSY.
+          FPairsTable.Edit;
+          FPairsTable.Post;
+        end;
+      finally
+        if not CurrentReference.IsEmpty then
+          FPairsTable.Locate('pare_id', CurrentReference, []);
       end;
+    finally
+      FPairsTable.BeforeScroll := BeforeScrollHandler;
+      FPairsTable.AfterScroll := AfterScrollHandler;
+      if not ControlsWereDisabled then
+        FPairsTable.EnableControls;
+    end;
+  finally
+    References.Free;
+  end;
+end;
+
+procedure TProjectPersistence.RestorePairBaselineAfterFailedCommit;
+var
+  ChangeKey: string;
+  Reference: string;
+  FieldName: string;
+  CurrentReference: string;
+  ActiveReference: string;
+  ControlsWereDisabled: Boolean;
+  BeforeScrollHandler: TDataSetNotifyEvent;
+  AfterScrollHandler: TDataSetNotifyEvent;
+  Index: Integer;
+begin
+  if FPairOriginalValues.Count = 0 then
+    raise EProjectPersistenceRecoveryRequired.Create(
+      'The original Verse Pair values are unavailable after a failed commit.');
+
+  CurrentReference := CurrentPairId;
+  ControlsWereDisabled := FPairsTable.ControlsDisabled;
+  BeforeScrollHandler := FPairsTable.BeforeScroll;
+  AfterScrollHandler := FPairsTable.AfterScroll;
+  if not ControlsWereDisabled then
+    FPairsTable.DisableControls;
+  FPairsTable.BeforeScroll := nil;
+  FPairsTable.AfterScroll := nil;
+  try
+    if FPairsTable.State in dsEditModes then
+      FPairsTable.Cancel;
+    FPairsTable.ClearUpdates;
+    FPairsTable.Close;
+    FPairsTable.Open;
+
+    ActiveReference := '';
+    for Index := 0 to FPairOriginalValues.Count - 1 do
+    begin
+      ChangeKey := FPairOriginalValues.Names[Index];
+      Reference := PairReferenceFromChangeKey(ChangeKey);
+      FieldName := PairFieldFromChangeKey(ChangeKey);
+      if Reference.IsEmpty or FieldName.IsEmpty then
+        raise EProjectPersistenceRecoveryRequired.Create(
+          'A tracked Verse Pair change is invalid and cannot be restored.');
+
+      if Reference <> ActiveReference then
+      begin
+        if FPairsTable.State = dsEdit then
+          FPairsTable.Post;
+        if not FPairsTable.Locate('pare_id', Reference, []) then
+          raise EProjectPersistenceRecoveryRequired.CreateFmt(
+            'Verse Pair %s could not be restored after a failed commit.',
+            [Reference]);
+        FPairsTable.Edit;
+        ActiveReference := Reference;
+      end;
+      FPairsTable.FieldByName(FieldName).AsString :=
+        FPairOriginalValues.ValueFromIndex[Index];
+    end;
+    if FPairsTable.State = dsEdit then
+      FPairsTable.Post;
+
+    ApplyPendingUpdates(FPairsTable);
+  finally
+    try
+      if FPairsTable.State in dsEditModes then
+        FPairsTable.Cancel;
+      if not CurrentReference.IsEmpty and FPairsTable.Active then
+        FPairsTable.Locate('pare_id', CurrentReference, []);
+    finally
+      FPairsTable.BeforeScroll := BeforeScrollHandler;
+      FPairsTable.AfterScroll := AfterScrollHandler;
+      if not ControlsWereDisabled then
+        FPairsTable.EnableControls;
     end;
   end;
 end;
 
 procedure TProjectPersistence.CommitPairs;
 begin
-  ApplyPendingUpdates(FPairsTable);
+  if not FPairCommitMayBePartial and (FPairOriginalValues.Count = 0) then
+  begin
+    // TSqlite3Dataset can retain an update item after a field was changed and
+    // then restored to its baseline. There is no logical change to publish;
+    // discarding that no-op avoids entering recovery merely because another
+    // SQLite writer is active.
+    if Assigned(FPairsTable) and FPairsTable.UpdatesPending then
+      FPairsTable.ClearUpdates;
+    NotifyContentPendingChanged;
+    Exit;
+  end;
+
+  if FPairCommitMayBePartial and not FPairsTable.UpdatesPending then
+    RebuildPendingPairUpdates;
+
+  try
+    ApplyPendingUpdates(FPairsTable);
+  except
+    FPairCommitMayBePartial := True;
+    try
+      RebuildPendingPairUpdates;
+    finally
+      NotifyContentPendingChanged;
+    end;
+    raise;
+  end;
+  FPairCommitMayBePartial := False;
   FPairOriginalValues.Clear;
   NotifyContentPendingChanged;
 end;
@@ -681,15 +858,21 @@ begin
   CurrentReference := CurrentPairId;
   if Assigned(FPairsTable) then
   begin
-    if FPairsTable.State in dsEditModes then
-      FPairsTable.Cancel;
-    FPairsTable.ClearUpdates;
-    if FPairsTable.Active then
+    if FPairCommitMayBePartial then
+      RestorePairBaselineAfterFailedCommit
+    else
     begin
-      FPairsTable.Close;
-      FPairsTable.Open;
+      if FPairsTable.State in dsEditModes then
+        FPairsTable.Cancel;
+      FPairsTable.ClearUpdates;
+      if FPairsTable.Active then
+      begin
+        FPairsTable.Close;
+        FPairsTable.Open;
+      end;
     end;
   end;
+  FPairCommitMayBePartial := False;
   FPairOriginalValues.Clear;
   FStagedInfo.Clear;
   if Assigned(FInfoTable) and

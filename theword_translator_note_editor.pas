@@ -11,6 +11,7 @@ uses
 
 type
   TTranslatorNoteEditorAction = (tneaCancel, tneaSave, tneaDelete);
+{$IFDEF FPCUNIT}
   TTranslatorNoteDpiFontProbe = record
     PlainBody: UnicodeString;
     PositiveBody: UnicodeString;
@@ -29,6 +30,7 @@ type
     TerminalSoftBreakBody: UnicodeString;
     BeforeLastCharacterBody: UnicodeString;
   end;
+{$ENDIF}
   TTranslatorNoteApplyEvent = function(Sender: TObject;
     AAction: TTranslatorNoteEditorAction; const AQ,
     ABodyRaw: UnicodeString; out AErrorMessage: string): Boolean of object;
@@ -62,17 +64,26 @@ function TryApplyTranslatorNoteEditorDraft(
 function TryRoundTripTranslatorNoteVisualBody(
   const ABodyRaw: UnicodeString; out ACanonical: UnicodeString;
   out AErrorMessage: string): Boolean;
+{$IFDEF FPCUNIT}
+{ White-box UI drivers are available only to the FPCUnit targets. }
 function TryExerciseTranslatorNoteEditorInitialFocus(
   out AErrorMessage: string): Boolean;
 function TryExerciseTranslatorNoteEditorTyping(
   const AInput: UnicodeString; out ABodyRaw: UnicodeString;
   out ACaretPosition: Integer; out AErrorMessage: string): Boolean;
+function TryExerciseTranslatorNoteEditorNamedColor(
+  const ABodyRaw: UnicodeString; AEditStart, AEditLength: Integer;
+  const AEditText: UnicodeString;
+  out ANoOpBodyRaw, AEditedBodyRaw: UnicodeString;
+  out AErrorMessage: string): Boolean;
 function TryExerciseTranslatorNoteEditorDpiFontDrift(
+  const APlainText: UnicodeString;
   out AProbe: TTranslatorNoteDpiFontProbe;
   out AErrorMessage: string): Boolean;
 function TryExerciseTranslatorNoteEditorBreakEditing(
   out AProbe: TTranslatorNoteEditorBreakProbe;
   out AErrorMessage: string): Boolean;
+{$ENDIF}
 
 implementation
 
@@ -171,16 +182,20 @@ type
     procedure ExpectInputAfterParagraph;
     procedure MoveCaretToDocumentEnd;
     procedure ResetRelativeFontInsertion;
+{$IFDEF FPCUNIT}
     procedure SimulatePhysicalReturn;
     procedure SimulateReturnKey(Shift: TShiftState);
     procedure SimulateTextInput(const AText: UnicodeString);
+{$ENDIF}
   end;
 
   TTranslatorNoteRawEditor = class(TSynEdit)
   protected
     procedure UTF8KeyPress(var Key: TUTF8Char); override;
   public
+{$IFDEF FPCUNIT}
     procedure SimulatePhysicalReturn;
+{$ENDIF}
   end;
 
   TTranslatorNoteEditorForm = class(TForm)
@@ -274,17 +289,12 @@ type
 function TryHtmlColor(const AValue: UnicodeString;
   out AColor: TColor): Boolean;
 var
-  B, G, R: Integer;
-  S: string;
+  Color: LongInt;
 begin
   AColor := clNone;
-  S := UTF8Encode(Trim(AValue));
-  Result := (Length(S) = 7) and (S[1] = '#') and
-    TryStrToInt('$' + Copy(S, 2, 2), R) and
-    TryStrToInt('$' + Copy(S, 4, 2), G) and
-    TryStrToInt('$' + Copy(S, 6, 2), B);
+  Result := TryTheWordTranslatorNoteHtmlColor(AValue, Color);
   if Result then
-    AColor := RGBToColor(R, G, B);
+    AColor := TColor(Color);
 end;
 
 function HtmlColor(AColor: TColor): UnicodeString;
@@ -1423,6 +1433,7 @@ begin
   end;
 end;
 
+{$IFDEF FPCUNIT}
 function TryExerciseTranslatorNoteEditorInitialFocus(
   out AErrorMessage: string): Boolean;
 var
@@ -1450,6 +1461,7 @@ begin
     Form.Free;
   end;
 end;
+{$ENDIF}
 
 function TTranslatorNoteEditorMemo.EnsureTranslatorRun(
   ABlock: TKMemoBlock): TTranslatorNoteRun;
@@ -1612,6 +1624,7 @@ begin
   FAdvanceAfterNextInput := True;
 end;
 
+{$IFDEF FPCUNIT}
 procedure TTranslatorNoteEditorMemo.SimulatePhysicalReturn;
 var
   Key: TUTF8Char;
@@ -1632,12 +1645,15 @@ begin
   UTF8KeyPress(KeyChar);
 end;
 
+{$ENDIF}
+
 procedure TTranslatorNoteEditorMemo.MoveCaretToDocumentEnd;
 begin
   Blocks.UpdateAttributes;
   SelectionInit(Blocks.SelectableLength, True, eolEnd);
 end;
 
+{$IFDEF FPCUNIT}
 procedure TTranslatorNoteEditorMemo.SimulateTextInput(
   const AText: UnicodeString);
 var
@@ -1652,6 +1668,7 @@ begin
     UTF8KeyPress(Key);
   end;
 end;
+{$ENDIF}
 
 procedure TTranslatorNoteRawEditor.UTF8KeyPress(var Key: TUTF8Char);
 begin
@@ -1663,6 +1680,7 @@ begin
   inherited UTF8KeyPress(Key);
 end;
 
+{$IFDEF FPCUNIT}
 procedure TTranslatorNoteRawEditor.SimulatePhysicalReturn;
 var
   Key: TUTF8Char;
@@ -1719,13 +1737,40 @@ begin
   end;
 end;
 
+function TryExerciseTranslatorNoteEditorNamedColor(
+  const ABodyRaw: UnicodeString; AEditStart, AEditLength: Integer;
+  const AEditText: UnicodeString;
+  out ANoOpBodyRaw, AEditedBodyRaw: UnicodeString;
+  out AErrorMessage: string): Boolean;
+var
+  Form: TTranslatorNoteEditorForm;
+begin
+  Result := False;
+  ANoOpBodyRaw := '';
+  AEditedBodyRaw := '';
+  AErrorMessage := '';
+  Form := TTranslatorNoteEditorForm.Create(nil);
+  try
+    try
+      Form.LoadNote(True, twlcFullWysiwyg, '', ABodyRaw);
+      ANoOpBodyRaw := Form.ResolvedVisualBodyRaw;
+      Form.FMemo.Select(AEditStart, AEditLength);
+      TTranslatorNoteEditorMemo(Form.FMemo).SimulateTextInput(
+        AEditText);
+      AEditedBodyRaw := Form.ResolvedVisualBodyRaw;
+      Result := True;
+    except
+      on E: Exception do AErrorMessage := E.Message;
+    end;
+  finally
+    Form.Free;
+  end;
+end;
+
 function TryExerciseTranslatorNoteEditorDpiFontDrift(
+  const APlainText: UnicodeString;
   out AProbe: TTranslatorNoteDpiFontProbe;
   out AErrorMessage: string): Boolean;
-const
-  NOTE_TEXT: UnicodeString =
-    'O verbo traduzido por "compreender" também significa ' +
-    '"apropriar-se, tomar para si".';
 var
   Block: TKMemoBlock;
   Form: TTranslatorNoteEditorForm;
@@ -1748,7 +1793,7 @@ begin
       Form.LoadNote(False, twlcFullWysiwyg, '', '');
       Form.Show;
       Application.ProcessMessages;
-      TTranslatorNoteEditorMemo(Form.FMemo).SimulateTextInput(NOTE_TEXT);
+      TTranslatorNoteEditorMemo(Form.FMemo).SimulateTextInput(APlainText);
       Block := Form.FMemo.Blocks[0];
       if not (Block is TKMemoTextBlock) then
         raise Exception.Create('The typed note did not create a text run');
@@ -1886,6 +1931,7 @@ begin
     Form.Free;
   end;
 end;
+{$ENDIF}
 
 function ExecuteTranslatorNoteEditor(AOwner: TComponent;
   const AAnchorScreenRect: TRect; AExisting: Boolean;

@@ -31,6 +31,9 @@ type
     procedure StagedInfoCommitsAndRollsBackIndependently;
     procedure PairAssignmentsTrackOnlyNetChanges;
     procedure EmptyValuesRemainTrackable;
+    procedure NetZeroPairChangeDoesNotEnterFailedCommitRecovery;
+    procedure FailedPairCommitCanRetryAfterWriterReleases;
+    procedure RollbackAfterFailedPairCommitRestoresDurableBaseline;
     procedure ImmediateInfoFlushesAfterACompetingWriterFinishes;
     procedure WorkspaceDetectsAllVisibleContentChanges;
     procedure TypedConfigSeparatesMarkerAndTokenizer;
@@ -257,6 +260,139 @@ begin
   FPersistence.CommitInfo;
   AssertFalse(FPersistence.ContentUpdatesPending);
   AssertEquals('', ReadDatabaseInfo('structural'));
+end;
+
+procedure TProjectPersistenceTest.FailedPairCommitCanRetryAfterWriterReleases;
+var
+  Connection: TSQLite3Connection;
+  Transaction: TSQLTransaction;
+  FirstCommitFailed: Boolean;
+begin
+  FPersistence.SetCurrentFieldAsString('pare_texto_origem', 'changed');
+  FPersistence.PostCurrentEdit;
+
+  Connection := TSQLite3Connection.Create(nil);
+  Transaction := TSQLTransaction.Create(nil);
+  try
+    Connection.Transaction := Transaction;
+    Connection.DatabaseName := FFileName;
+    Connection.Open;
+    Transaction.StartTransaction;
+    Connection.ExecuteDirect(
+      'update pares set pare_ref = pare_ref where pare_id = ''1,1,1''');
+
+    FirstCommitFailed := False;
+    try
+      FPersistence.CommitPairs;
+    except
+      on E: Exception do
+        FirstCommitFailed := True;
+    end;
+    AssertTrue('the competing SQLite writer must make the first commit fail',
+      FirstCommitFailed);
+    AssertTrue('a failed commit must remain visibly pending',
+      FPersistence.ContentUpdatesPending);
+    AssertEquals('the failed commit must not alter durable content', 'source',
+      ReadDatabasePairField('pare_texto_origem'));
+
+    Transaction.Rollback;
+
+    FPersistence.CommitPairs;
+    AssertFalse('the successful retry clears the tracked baseline',
+      FPersistence.ContentUpdatesPending);
+    AssertEquals('the retry must reconstruct and write the lost update',
+      'changed',
+      ReadDatabasePairField('pare_texto_origem'));
+  finally
+    if Transaction.Active then
+      Transaction.Rollback;
+    Transaction.Free;
+    Connection.Free;
+  end;
+end;
+
+procedure TProjectPersistenceTest.
+  NetZeroPairChangeDoesNotEnterFailedCommitRecovery;
+var
+  Connection: TSQLite3Connection;
+  Transaction: TSQLTransaction;
+begin
+  FPersistence.SetCurrentFieldAsString('pare_texto_origem', 'changed');
+  FPersistence.PostCurrentEdit;
+  FPersistence.SetCurrentFieldAsString('pare_texto_origem', 'source');
+  FPersistence.PostCurrentEdit;
+  AssertFalse('returning to the baseline is not a logical project change',
+    FPersistence.ContentUpdatesPending);
+
+  Connection := TSQLite3Connection.Create(nil);
+  Transaction := TSQLTransaction.Create(nil);
+  try
+    Connection.Transaction := Transaction;
+    Connection.DatabaseName := FFileName;
+    Connection.Open;
+    Transaction.StartTransaction;
+    Connection.ExecuteDirect(
+      'update pares set pare_ref = pare_ref where pare_id = ''1,1,1''');
+
+    // A net-zero cached update must be discarded without touching SQLite, so
+    // an unrelated writer cannot turn it into a failed recovery state.
+    FPersistence.CommitPairs;
+    AssertFalse(FPersistence.ContentUpdatesPending);
+    AssertEquals('source', FPersistence.CurrentFieldAsString(
+      'pare_texto_origem'));
+    AssertEquals('source', ReadDatabasePairField('pare_texto_origem'));
+  finally
+    if Transaction.Active then
+      Transaction.Rollback;
+    Transaction.Free;
+    Connection.Free;
+  end;
+end;
+
+procedure TProjectPersistenceTest.
+  RollbackAfterFailedPairCommitRestoresDurableBaseline;
+var
+  Connection: TSQLite3Connection;
+  Transaction: TSQLTransaction;
+  FirstCommitFailed: Boolean;
+begin
+  FPersistence.SetCurrentFieldAsString('pare_texto_origem', 'changed');
+  FPersistence.PostCurrentEdit;
+
+  Connection := TSQLite3Connection.Create(nil);
+  Transaction := TSQLTransaction.Create(nil);
+  try
+    Connection.Transaction := Transaction;
+    Connection.DatabaseName := FFileName;
+    Connection.Open;
+    Transaction.StartTransaction;
+    Connection.ExecuteDirect(
+      'update pares set pare_ref = pare_ref where pare_id = ''1,1,1''');
+
+    FirstCommitFailed := False;
+    try
+      FPersistence.CommitPairs;
+    except
+      on E: Exception do
+        FirstCommitFailed := True;
+    end;
+    AssertTrue('the competing SQLite writer must make the commit fail',
+      FirstCommitFailed);
+    Transaction.Rollback;
+
+    FPersistence.Rollback;
+    AssertFalse('rollback clears the failed commit state only after restoring ' +
+      'the durable baseline', FPersistence.ContentUpdatesPending);
+    AssertEquals('source', FPersistence.CurrentFieldAsString(
+      'pare_texto_origem'));
+    AssertEquals('rollback must preserve the value from before the edit',
+      'source', ReadDatabasePairField('pare_texto_origem'));
+  finally
+    if Transaction.Active then
+      Transaction.Rollback;
+    Transaction.Free;
+    Connection.Free;
+  end;
 end;
 
 procedure TProjectPersistenceTest.PendingStateNotificationsTrackNetChanges;

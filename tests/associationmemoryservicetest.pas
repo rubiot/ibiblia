@@ -221,6 +221,10 @@ begin
       'validation certificate', FService.CacheValidated);
     AssertTrue(FManager.ValidatePairs(Expected, ErrorMessage));
 
+    // The validation query opens a read transaction on the independent
+    // Association-memory connection. Release it before publishing canonical
+    // project rows through the persistence connection.
+    FManager.Rollback;
     FService.MarkSourceDirty;
     FPersistence.CommitInfo;
     FPersistence.CommitPairs;
@@ -390,6 +394,9 @@ begin
     AssertTrue('the shifted indexes must still be persisted',
       Workspace.SavePairs(FPersistence, SourceVerse));
     AssertEquals(SourceVerse.Pairs, FPersistence.CurrentPairs);
+    // GetPairOccurrenceCount above leaves the independent memory connection
+    // in a read transaction, which must not block the canonical writer.
+    FManager.Rollback;
     FPersistence.CommitPairs;
     AssertTrue(FPersistence.LocateReference('1,1,1'));
     AssertEquals('the shifted topology must survive persistence',

@@ -67,6 +67,24 @@ type
   TIntegerArray = array of Integer;
   TPopupTrigger = (ptMouseHover, ptAltMouseHover, ptCtrlMouseHover);
 
+  TTheWordModuleImportStatus = (
+    twmisNotStarted,
+    twmisSucceeded,
+    twmisCancelled,
+    twmisFailed
+  );
+
+  TTheWordModuleImportResult = record
+    Status: TTheWordModuleImportStatus;
+    FileName: string;
+    TextType: TTipoTextoBiblico;
+    ExpectedVerseCount: Integer;
+    AvailableVerseCount: Integer;
+    ImportedVerseCount: Integer;
+    LastReference: string;
+    ErrorMessage: string;
+  end;
+
   { AI Node State Tracking }
   TAINodeState = (ansNormal, ansPending, ansProcessing);
 
@@ -228,6 +246,8 @@ type
     function UpdateInfo(info, value: string): boolean;
     function UpdateConfigTable(table: TSqlite3Dataset; name, value: string): boolean;
     function ReadInfo(info: string): string;
+    function TrySetVerseText(versiculo: string; texto: TTipoTextoBiblico;
+      replace: boolean; out ErrorDetails: string): Boolean;
     procedure SetVerseText(versiculo: string; texto: TTipoTextoBiblico; replace: boolean);
     procedure BeforeVerseScroll(DataSet: TDataSet);
     procedure AfterVerseScroll(DataSet: TDataSet);
@@ -309,6 +329,10 @@ type
     procedure RebuildSuggestionDatabase(pb: TProgressBar);
     function ImportTheWordModule(arquivo: string; texto: TTipoTextoBiblico; replace: boolean): boolean;
     function ImportTheWordModule(arquivo: string; texto: TTipoTextoBiblico; pb: TProgressBar; replace: boolean): boolean;
+    function ImportTheWordModule(arquivo: string; texto: TTipoTextoBiblico;
+      pb: TProgressBar; replace: boolean;
+      out AImportResult: TTheWordModuleImportResult;
+      AEnableStagedBatching: Boolean = False): boolean;
     procedure CreateVerseObject(owner: TScrollBox; texto: TTipoTextoBiblico);
     procedure ExportDestinationTextWithStrongs(arquivo: string; opcoes: TOpcoesExportacao);
     procedure ExportDestinationTextWithStrongs(arquivo: string; pb: TProgressBar; opcoes: TOpcoesExportacao);
@@ -520,10 +544,18 @@ resourcestring
   SOpenProject = 'Open project';
   SProjectDoesntExist = 'The selected project doesn''t exist: %s';
   SInvalidLineCount = 'Invalid file, it must have at least %d lines';
-  SPotentialNonUTF8ModuleWarning = 'This module has a ''charset'' property and this may be an indication that this is a non-UTF8 module. ' +
-                                   'iBiblia was not designed to work with non-UTF8 modules. ' +
-                                   'Please choose ''Ignore'' to ignore this warning and continue at your own risk or ''Abort'' ' +
-                                   'to abort the operation and choose another module.';
+  SPotentialNonUTF8ModuleWarning = 'This module is not valid UTF-8 (invalid byte at offset %d). ' +
+                                   'iBiblia was not designed to import legacy or malformed encodings. ' +
+                                   'Choose ''Ignore'' to continue at your own risk, or ''Abort'' to choose another module.';
+  SModuleImportCancelled = 'The module import was cancelled.';
+  SModuleImportRulesCancelled = 'The module import was cancelled while choosing verse rules.';
+  SModuleImportProgressCountFmt = '%d of %d verses';
+  SModuleImportRestoring = 'Restoring project text after import failure...';
+  SStagedImportRequiresCleanPairBaseline =
+    'Staged module import requires a clean pair baseline.';
+  SModuleImportCapacityError = 'The project has %d verse rows available for this module, but %d are required. No text was imported.';
+  SModuleImportIncompleteError = 'The import stopped after %d of %d verses. Last imported reference: %s.';
+  SModuleImportExceptionError = 'The module could not be imported after %d of %d verses. Last imported reference: %s.'#13#10'%s';
   SFailedToCreateFile = 'Failed to create file: %s';
   SExportToFileError = 'iBiblia found an error while exporting the Bible module file.';
   SExportErrorReportCreated = 'Some verses could not be exported correctly. Review the error report:'#13#10'%s';
@@ -566,7 +598,8 @@ procedure UpdateDefaultStatusDescription;
 
 implementation
 
-uses FormDictionaryPopup, FormVerseRules, formaiprocessing;
+uses FormDictionaryPopup, FormVerseRules, formaiprocessing,
+  theword_module_encoding;
 
 type
   { Executes only the blocking network request outside the LCL thread. Verse
@@ -2457,33 +2490,43 @@ begin
     Result := '';
 end;
 
-procedure TProject.SetVerseText(versiculo: string;
-  texto: TTipoTextoBiblico; replace: boolean);
+function TProject.TrySetVerseText(versiculo: string;
+  texto: TTipoTextoBiblico; replace: boolean;
+  out ErrorDetails: string): Boolean;
 var
-  corruptionDetails: string;
   PreviousText: string;
   PreviousPairs: string;
   MemoryInputChanged: Boolean;
 begin
+  ErrorDetails := '';
   PreviousText := FPersistence.CurrentText(FACamposTexto[texto]);
   PreviousPairs := FPersistence.CurrentPairs;
-  FCurrentVerseWorkspace.SetCurrentVerseText(FPersistence, FVerseRenderBuffer,
+  Result := FCurrentVerseWorkspace.SetCurrentVerseText(FPersistence,
+    FVerseRenderBuffer,
     FACamposTexto, versiculo, Ord(texto), Ord(tbOrigem), Ord(tbDestino),
-    replace, StatusAutomationEnabled, corruptionDetails);
+    replace, StatusAutomationEnabled, ErrorDetails);
 
-  if not corruptionDetails.IsEmpty then
-    MessageDlg(SError, SCorruptedData + #13#10#13#10 + FormattedReference + #13#10 +
-         corruptionDetails,
-         mtError, [mbOK], 0);
   MemoryInputChanged := (PreviousText <>
     FPersistence.CurrentText(FACamposTexto[texto])) or
     (PreviousPairs <> FPersistence.CurrentPairs);
-  if corruptionDetails.IsEmpty and MemoryInputChanged and
+  if Result and MemoryInputChanged and
     (texto in [tbOrigem, tbDestino]) and Assigned(FAssociationMemory) then
   begin
     FAssociationMemory.MarkSourceDirty;
     FAssociationMemory.InvalidateReplay;
   end;
+end;
+
+procedure TProject.SetVerseText(versiculo: string;
+  texto: TTipoTextoBiblico; replace: boolean);
+var
+  ErrorDetails: string;
+begin
+  ErrorDetails := '';
+  if not TrySetVerseText(versiculo, texto, replace, ErrorDetails) and
+    not ErrorDetails.IsEmpty then
+    MessageDlg(SError, SCorruptedData + #13#10#13#10 +
+      FormattedReference + #13#10 + ErrorDetails, mtError, [mbOK], 0);
 end;
 
 procedure TProject.ApplyVerseText(const newText: string; texto: TTipoTextoBiblico; replace: Boolean);
@@ -2585,7 +2628,8 @@ begin
       FRadioGroupSituacao.ItemIndex := 0;
   end;
 
-  if loadResult.DestinationTextEmpty then // open verse to edition if is empty
+  if loadResult.DestinationTextEmpty and Assigned(FAVersiculo[tbDestino]) then
+    // Open an empty destination verse for editing only when a visual verse exists.
     OnDblClickVersiculo(FAVersiculo[tbDestino].Panel);
 
   for e in FOnNovoVersiculo do
@@ -3554,9 +3598,12 @@ begin
 
   FTblPares.BeforeScroll := @BeforeVerseScroll;
   FTblPares.AfterScroll  := @AfterVerseScroll;
-  FArvore.OnChange       := @OnMudancaVersiculo;
-  FArvore.OnContextPopup := @OnBibleTreeContextPopup;
-  FArvore.PopupMenu := CreateBibleTreeContextMenu;
+  if Assigned(FArvore) then
+  begin
+    FArvore.OnChange       := @OnMudancaVersiculo;
+    FArvore.OnContextPopup := @OnBibleTreeContextPopup;
+    FArvore.PopupMenu := CreateBibleTreeContextMenu;
+  end;
 
   // set tokenizer version
   TTokenizerFactory.PreferredVersion := TokenizerVersion;
@@ -3581,7 +3628,10 @@ begin
       RebuildSuggestionDatabase(nil);
     except
       on E: Exception do
-        MessageDlg(SError, E.Message, mtError, [mbOK], 0);
+        if Assigned(FArvore) then
+          MessageDlg(SError, E.Message, mtError, [mbOK], 0)
+        else
+          raise;
     end;
 end;
 
@@ -3756,7 +3806,14 @@ begin
     end;
   end
   else if Assigned(FPersistence) then
+  begin
+    // Cache validation and suggestion lookups can leave a read transaction on
+    // the independent Association-memory connection. Release that reader
+    // before the canonical dataset tries to publish unrelated project edits.
+    if Assigned(FSuggestionManager) then
+      FSuggestionManager.Rollback;
     FPersistence.Commit;
+  end;
 
   if assigned(FSuggestionManager) then
     try
@@ -3792,6 +3849,11 @@ var
   OldScrollEventsEnabled: Boolean;
   TextType: TTipoTextoBiblico;
 begin
+  // The Association-memory database uses an independent SQLite connection.
+  // Release any reader or writer it owns before restoring canonical project
+  // rows, otherwise the persistence rollback can fail with SQLITE_BUSY.
+  if Assigned(FSuggestionManager) then
+    FSuggestionManager.Rollback;
   OldScrollEventsEnabled := FScrollEventsEnabled;
   FScrollEventsEnabled := False;
   try
@@ -3800,8 +3862,6 @@ begin
   finally
     FScrollEventsEnabled := OldScrollEventsEnabled;
   end;
-  if Assigned(FSuggestionManager) then
-    FSuggestionManager.Rollback;
   if Assigned(FPersistence) then
     FPersistence.FlushImmediateInfo;
   if Assigned(FAssociationMemory) then
@@ -4238,8 +4298,13 @@ begin
     else
       FormPleaseWait.SetDetail(Format(
         SAssociationMemoryDatabaseProgressFmt, [Current, Total]));
+    TFormPleaseWait.PumpProgressPaintMessages(FormPleaseWait);
+  end
+  else if Assigned(FAssociationMemoryProgressBar) then
+  begin
+    TFormPleaseWait.PumpProgressPaintMessages(
+      FAssociationMemoryProgressBar);
   end;
-  Application.ProcessMessages;
 end;
 
 procedure TProject.RebuildAssociationMemory(ProgressBar: TProgressBar);
@@ -4250,6 +4315,9 @@ var
   OldExporting: Boolean;
   OwnProgressForm: Boolean;
   RebuildSucceeded: Boolean;
+  UsesActiveProgressForm: Boolean;
+  LastProgressPulse: QWord;
+  ProgressPulse: QWord;
 begin
   if not Assigned(FAssociationMemory) or not Assigned(FVerseRepository) then
     exit;
@@ -4262,17 +4330,27 @@ begin
   OldScrollEventsEnabled := FScrollEventsEnabled;
   OldExporting := FExportando;
   OwnProgressForm := False;
+  UsesActiveProgressForm := False;
+  LastProgressPulse := 0;
   SavedMarker := '';
   try
     SavedMarker := ID;
     if not Assigned(ProgressBar) and Assigned(FormPleaseWait) then
     begin
-      FormPleaseWait.BeginOperation(Application.MainForm,
-        SAssociationMemoryProgressTitle, SAssociationMemoryProgressMessage,
-        QLinhas[FEscopo], ExtractFileName(FFileName));
+      if not FormPleaseWait.OperationActive then
+      begin
+        FormPleaseWait.BeginOperation(Application.MainForm,
+          SAssociationMemoryProgressTitle, SAssociationMemoryProgressMessage,
+          QLinhas[FEscopo], ExtractFileName(FFileName));
+        OwnProgressForm := True;
+      end;
       ProgressBar := FormPleaseWait.ProgressBar1;
-      OwnProgressForm := True;
+      UsesActiveProgressForm := True;
     end;
+    if Assigned(ProgressBar) and Assigned(FormPleaseWait) and
+      FormPleaseWait.OperationActive and
+      (ProgressBar = FormPleaseWait.ProgressBar1) then
+      UsesActiveProgressForm := True;
 
     if assigned(ProgressBar) then
     begin
@@ -4282,6 +4360,12 @@ begin
       ProgressBar.Max := QLinhas[FEscopo];
       ProgressBar.Step := 1;
       ProgressBar.Visible := true;
+      ProgressBar.Update;
+      if UsesActiveProgressForm then
+        TFormPleaseWait.PumpProgressPaintMessages(FormPleaseWait)
+      else
+        TFormPleaseWait.PumpProgressPaintMessages(ProgressBar);
+      LastProgressPulse := GetTickCount64;
     end;
 
     FScrollEventsEnabled := False;
@@ -4315,15 +4399,22 @@ begin
         if assigned(ProgressBar) then
         begin
            ProgressBar.StepIt;
-           if (ProgressBar.Position mod 50) = 0 then
+           ProgressPulse := GetTickCount64;
+           if (ProgressBar.Position >= ProgressBar.Max) or
+             ((ProgressBar.Position mod 50) = 0) or
+             (ProgressPulse - LastProgressPulse >= 150) then
            begin
-             if Assigned(FormPleaseWait) and
-               (ProgressBar = FormPleaseWait.ProgressBar1) then
+             if UsesActiveProgressForm then
                FormPleaseWait.SetDetail(Format(
                  SAssociationMemoryProgressDetailFmt,
                  [verseData.ReferenceName, ProgressBar.Position,
                   ProgressBar.Max]));
-             Application.ProcessMessages;
+             ProgressBar.Update;
+             if UsesActiveProgressForm then
+               TFormPleaseWait.PumpProgressPaintMessages(FormPleaseWait)
+             else
+               TFormPleaseWait.PumpProgressPaintMessages(ProgressBar);
+             LastProgressPulse := ProgressPulse;
            end;
         end;
         FVerseRepository.Next;
@@ -4332,7 +4423,7 @@ begin
         (ProgressBar = FormPleaseWait.ProgressBar1) then
       begin
         FormPleaseWait.SetMessage(SAssociationMemoryWriting);
-        Application.ProcessMessages;
+        TFormPleaseWait.PumpProgressPaintMessages(FormPleaseWait);
       end;
       FAssociationMemory.FinishRebuild;
       RebuildSucceeded := True;
@@ -4360,7 +4451,7 @@ begin
     end
     else
       FExportando := OldExporting;
-    if assigned(ProgressBar) then
+    if assigned(ProgressBar) and not UsesActiveProgressForm then
       ProgressBar.Visible := false;
     if OwnProgressForm then
       FormPleaseWait.FinishOperation;
@@ -4376,203 +4467,613 @@ end;
 function TProject.ImportTheWordModule(arquivo: string;
   texto: TTipoTextoBiblico; pb: TProgressBar; replace: boolean): boolean;
 var
-  modulo: TStringList;
-  i, linesOffset, projectOffset: smallint;
-  reVazio, reComments, reDescription, reCharset, reVerseRules, verseRule: IRegex;
-  mtVerseRules, mtDescription: IMatch;
-  rxVerseRulesFrom: TRegexList;
-  rxVerseRulesTo: TStringList;
-  propriedades: TStringStream;
-  m: smallint;
-  line: string;
-  moduleScope: TEscopoTexto;
-  oldCursor: TCursor;
+  ImportResult: TTheWordModuleImportResult;
+begin
+  Result := ImportTheWordModule(arquivo, texto, pb, replace, ImportResult);
+  if (not Result) and (ImportResult.Status = twmisFailed) and
+    not ImportResult.ErrorMessage.IsEmpty then
+    MessageDlg(arquivo, ImportResult.ErrorMessage, mtError, [mbOK], 0);
+end;
+
+function TProject.ImportTheWordModule(arquivo: string;
+  texto: TTipoTextoBiblico; pb: TProgressBar; replace: boolean;
+  out AImportResult: TTheWordModuleImportResult;
+  AEnableStagedBatching: Boolean): boolean;
+const
+  STAGED_IMPORT_BATCH_SIZE = 200;
+type
+  TImportVerseSnapshot = record
+    ReferenceID: string;
+    TextValue: string;
+    PairsValue: string;
+    StatusValue: Integer;
+  end;
+  TImportVerseSnapshots = array of TImportVerseSnapshot;
+var
+  AvailableCount: Integer;
+  EncodingInfo: TTheWordModuleEncodingInfo;
+  HasImportedDescription: Boolean;
+  I, M: Integer;
   ImportedDescription: string;
   ImportedDirection: TTextDirection;
   ImportedProperties: string;
-  HasImportedDescription: Boolean;
+  ImportError: string;
+  Line: string;
+  LinesOffset: Integer;
+  ModuleExtension: string;
   ModuleProperties: string;
+  ModuleScope: TEscopoTexto;
+  Modulo: TStringList;
+  MtDescription, MtVerseRules: IMatch;
+  OldCursor: TCursor;
+  OwnVerseRulesForm: Boolean;
+  ProjectOffset: Integer;
+  Propriedades: TStringStream;
+  ReComments, ReDescription, ReVazio, ReVerseRules: IRegex;
+  RowsMayBeCommitted: Boolean;
+  RxVerseRulesFrom: TRegexList;
+  RxVerseRulesTo: TStringList;
+  RulesForm: TVerseRulesForm;
+  SessionStarted: Boolean;
+  SnapshotCount: Integer;
+  Snapshots: TImportVerseSnapshots;
+  SnapshotsRestored: Boolean;
   StageImportedProperties: Boolean;
-begin
-  modulo := nil;
-  propriedades := nil;
-  rxVerseRulesFrom := nil;
-  rxVerseRulesTo := nil;
-  HasImportedDescription := False;
-  StageImportedProperties := False;
-  result := false;
-  linesOffset := 0;
-  projectOffset := 0;
-  if arquivo.EndsWith('.ont') then
+  VerseRuleSources: TStringList;
+  VerseRuleTargets: TStringList;
+  StagedBatchingEnabled: Boolean;
+  LastProgressPulse: QWord;
+  UsesActiveProgressForm: Boolean;
+  WaitFormTemporarilyHidden: Boolean;
+
+  procedure SetFailure(const AMessage: string);
   begin
-    moduleScope := etONT;
-    if FEscopo = etNT then
-      linesOffset := QLinhas[etOT]; // saltando o velho testamento
-  end
-  else if arquivo.EndsWith('.nt') then
-  begin
-    moduleScope := etNT;
-    if FEscopo = etOT then
-    begin
-      MessageDlg(arquivo, SModuleDoesNotIncludeScope, mtError, [mbOK], 0);
-      exit;
-    end;
-    if FEscopo = etONT then
-      projectOffset := QLinhas[etOT];
-  end
-  else if arquivo.EndsWith('.ot') then
-  begin
-    moduleScope := etOT;
-    if FEscopo = etNT then
-    begin
-      MessageDlg(arquivo, SModuleDoesNotIncludeScope, mtError, [mbOK], 0);
-      exit;
-    end;
-  end else
-  begin
-    MessageDlg(arquivo, SInvalidModuleType, mtError, [mbOK], 0);
-    exit;
+    AImportResult.Status := twmisFailed;
+    AImportResult.ErrorMessage := AMessage;
+    Result := False;
   end;
 
-  try
-    modulo := TStringList.Create;
-    modulo.LoadFromFile(arquivo);
+  procedure PositionAtFirstProjectVerse;
+  var
+    OffsetIndex: Integer;
+  begin
+    FPersistence.First;
+    for OffsetIndex := 1 to ProjectOffset do
+      if not FPersistence.EOF then
+        FPersistence.Next;
+  end;
 
-    if modulo.Count < QLinhas[moduleScope] then
+  procedure PulseImportProgress(ACurrent: Integer;
+    const AReference: string; AForce: Boolean);
+  var
+    CurrentPulse: QWord;
+    DetailText: string;
+  begin
+    if not Assigned(pb) then
+      Exit;
+
+    if ACurrent < pb.Min then
+      pb.Position := pb.Min
+    else if ACurrent > pb.Max then
+      pb.Position := pb.Max
+    else
+      pb.Position := ACurrent;
+
+    CurrentPulse := GetTickCount64;
+    if not AForce and (LastProgressPulse <> 0) and
+      (CurrentPulse - LastProgressPulse < 150) then
+      Exit;
+
+    pb.Update;
+    if UsesActiveProgressForm then
     begin
-      MessageDlg(arquivo, format(SInvalidLineCount, [QLinhas[moduleScope]]), mtError, [mbOK], 0);
-      exit;
+      if Trim(AReference) = '' then
+        DetailText := Format(SModuleImportProgressCountFmt,
+          [pb.Position, pb.Max])
+      else
+        DetailText := Format(SAssociationMemoryProgressDetailFmt,
+          [AReference, pb.Position, pb.Max]);
+      FormPleaseWait.SetDetail(DetailText);
+      TFormPleaseWait.PumpProgressPaintMessages(FormPleaseWait);
+    end
+    else
+      TFormPleaseWait.PumpProgressPaintMessages(pb);
+    LastProgressPulse := CurrentPulse;
+  end;
+
+  procedure CommitStagedPairChanges(ACurrent: Integer;
+    const AReference: string);
+  begin
+    PulseImportProgress(ACurrent, AReference, True);
+    // From this point onward rollback must also be made durable.
+    RowsMayBeCommitted := True;
+    FPersistence.CommitPairs;
+    PulseImportProgress(ACurrent, AReference, True);
+  end;
+
+  function CountAvailableProjectVerses: Integer;
+  var
+    LastReference: string;
+  begin
+    Result := 0;
+    LastReference := '';
+    PositionAtFirstProjectVerse;
+    while not FPersistence.EOF do
+    begin
+      Inc(Result);
+      LastReference := FPersistence.CurrentPairId;
+      PulseImportProgress(Result, LastReference,
+        (Result mod 75) = 0);
+      FPersistence.Next;
+    end;
+    PulseImportProgress(Result, LastReference, True);
+  end;
+
+  procedure RestoreSnapshots;
+  var
+    Index: Integer;
+    OldExporting: Boolean;
+    OldScrollEventsEnabled: Boolean;
+    SavedReference: string;
+  begin
+    if SnapshotCount = 0 then
+    begin
+      SnapshotsRestored := True;
+      Exit;
     end;
 
-    reVazio        := RegexCreate('^\s*$', [rcoUTF8]);
-    reComments     := RegexCreate('\s*#.*$', [rcoUTF8]);
-    reDescription  := RegexCreate('^\s*description\s*=\s*(.*)$', [rcoUTF8]);
-    reCharset      := RegexCreate('^\s*charset\s*=\s*(.*)$', [rcoUTF8]);
-    reVerseRules   := RegexCreate('^\s*verse.rule\s*=\s*"(.*?)(?<!")"(?!")\s+"(.*?)"(?=\s*$|\s+"(.*?)(?<!")"(?!"))', [rcoUTF8]);
-
-    VerseRulesForm.Reset(arquivo);
-    propriedades := TStringStream.Create('');
-
-    for i:=QLinhas[moduleScope] to modulo.Count-1 do
-    begin
-      line := modulo[i];
-      { eliminando comentários }
-      line := reComments.Replace(line, '');
-
-      if reVazio.IsMatch(line) then
-        continue;
-
-      if reCharset.IsMatch(line) then
-      begin
-        if MessageDlg(arquivo, SPotentialNonUTF8ModuleWarning, mtWarning, [mbIgnore, mbAbort], 0) = mrAbort then
-          exit;
-      end;
-
-      propriedades.WriteString(modulo[i] + #13#10);
-
-      mtDescription := reDescription.Match(line);
-      if mtDescription.Success then
-      begin
-        ImportedDescription := mtDescription.Groups[1].Value;
-        HasImportedDescription := True;
-        continue;
-      end;
-
-      mtVerseRules := reVerseRules.Match(line);
-      if mtVerseRules.Success then
-         VerseRulesForm.AddVerseRule(mtVerseRules.Groups[1].Value, mtVerseRules.Groups[2].Value);
-    end;
-
-    ModuleProperties := propriedades.DataString;
-    ImportedDirection := ParseTheWordR2LProperties(ModuleProperties);
-     if ((texto = tbOrigem)  and (GetInfo('propriedades.origem')  = '')) or // não importar propriedades quando já existem
-       ((texto = tbDestino) and (GetInfo('propriedades.destino') = '')) then
-    begin
-      StageImportedProperties := True;
-      ImportedProperties := NormalizeTheWordR2LProperties(ModuleProperties,
-        ImportedDirection);
-    end;
-    FreeAndNil(propriedades);
-
-    if VerseRulesForm.HasRules then
-    begin
-      oldCursor := Screen.Cursor;
-      Screen.Cursor := crDefault;
-      try
-        if VerseRulesForm.ShowModal = mrOK then
-          VerseRulesForm.CompileVerseRules(rxVerseRulesFrom, rxVerseRulesTo);
-      finally
-        Screen.Cursor := oldCursor;
-      end;
-    end;
-
-    //modulo.SaveToFile(arquivo + '.txt');
-    if assigned(pb) then
-    begin
-      pb.Style := pbstNormal;
-      pb.Position := 0;
-      pb.Min := 0;
-      pb.Max := QLinhas[FEscopo];
-      pb.Step := 1;
-      pb.Visible := true;
-    end;
-
-    FExportando := true;
-    StartScrollingSession;
+    SavedReference := FPersistence.CurrentPairId;
+    OldScrollEventsEnabled := FScrollEventsEnabled;
+    OldExporting := FExportando;
+    FScrollEventsEnabled := False;
+    FExportando := True;
     try
-      FirstVerse;
-
-      for i:=0 to projectOffset-1 do
-        NextVerse;
-
-      for i:=linesOffset to QLinhas[moduleScope] - 1 do
+      if UsesActiveProgressForm then
+        FormPleaseWait.SetMessage(SModuleImportRestoring);
+      LastProgressPulse := 0;
+      PulseImportProgress(0, '', True);
+      for Index := 0 to SnapshotCount - 1 do
       begin
-        if FTblPares.EOF then break;
-
-        { aplicando verse.rules }
-        if assigned(rxVerseRulesFrom) then
-          for m:=0 to rxVerseRulesFrom.Count-1 do
-            modulo[i] := rxVerseRulesFrom[m].Replace(modulo[i], rxVerseRulesTo[m]);
-
-        SetVerseText(modulo[i], texto, replace);
-        NextVerse;
-
-        if assigned(pb) then
-        begin
-          pb.StepIt;
-          if (pb.Position mod 75) = 0 then
-             Application.ProcessMessages;
-        end;
+        if not FPersistence.LocateReference(Snapshots[Index].ReferenceID) then
+          raise Exception.CreateFmt('Could not restore imported verse %s.',
+            [Snapshots[Index].ReferenceID]);
+        FPersistence.SetCurrentText(FACamposTexto[texto],
+          Snapshots[Index].TextValue);
+        FPersistence.SetCurrentFieldAsString('pare_pares',
+          Snapshots[Index].PairsValue);
+        FPersistence.SetCurrentFieldAsInteger('pare_situacao',
+          Snapshots[Index].StatusValue);
+        FPersistence.PostCurrentEdit;
+        if StagedBatchingEnabled and RowsMayBeCommitted and
+          (((Index + 1) mod STAGED_IMPORT_BATCH_SIZE) = 0) then
+          CommitStagedPairChanges(Index + 1,
+            Snapshots[Index].ReferenceID);
+        PulseImportProgress(Index + 1, Snapshots[Index].ReferenceID,
+          (((Index + 1) mod 75) = 0) or
+          (Index = SnapshotCount - 1));
+      end;
+      if StagedBatchingEnabled and RowsMayBeCommitted then
+        CommitStagedPairChanges(SnapshotCount,
+          Snapshots[SnapshotCount - 1].ReferenceID);
+      SnapshotsRestored := True;
+      if Assigned(FAssociationMemory) and
+        (texto in [tbOrigem, tbDestino]) then
+      begin
+        FAssociationMemory.MarkSourceDirty;
+        FAssociationMemory.MarkCacheOutdated;
+        FAssociationMemory.InvalidateReplay;
       end;
     finally
-      FinishScrollingSession;
-      FExportando := false;
+      if not SavedReference.IsEmpty then
+        FPersistence.LocateReference(SavedReference);
+      FScrollEventsEnabled := OldScrollEventsEnabled;
+      FExportando := OldExporting;
     end;
-    if not FConfig.HasTextDirection(Integer(texto)) then
-      SetTextDirection(texto, ImportedDirection);
-    if HasImportedDescription then
-      FConfig.StageTextDescription(Integer(texto), ImportedDescription);
-    if StageImportedProperties then
-      case texto of
-        tbOrigem: FConfig.WriteString('propriedades.origem',
-          ImportedProperties);
-        tbDestino: FConfig.WriteString('propriedades.destino',
-          ImportedProperties);
-      end;
-    if texto in [tbOrigem, tbDestino] then
-      RebuildAssociationMemory(pb);
-    UpdateTree(FMarker);
-    UpdateTree(FMarker);
-  finally
-    modulo.Free;
-    propriedades.Free;
-    if assigned(pb) then
-       pb.Visible := false;
-    FreeAndNil(rxVerseRulesFrom);
-    FreeAndNil(rxVerseRulesTo);
   end;
-  //FTblPares.ApplyUpdates;
-  result := true;
+
+begin
+  Result := False;
+  AImportResult := Default(TTheWordModuleImportResult);
+  AImportResult.Status := twmisNotStarted;
+  AImportResult.FileName := arquivo;
+  AImportResult.TextType := texto;
+  Modulo := nil;
+  Propriedades := nil;
+  RxVerseRulesFrom := nil;
+  RxVerseRulesTo := nil;
+  RulesForm := nil;
+  VerseRuleSources := nil;
+  VerseRuleTargets := nil;
+  HasImportedDescription := False;
+  LinesOffset := 0;
+  OwnVerseRulesForm := False;
+  ProjectOffset := 0;
+  RowsMayBeCommitted := False;
+  SessionStarted := False;
+  SnapshotCount := 0;
+  SnapshotsRestored := False;
+  StageImportedProperties := False;
+  StagedBatchingEnabled := AEnableStagedBatching;
+  LastProgressPulse := 0;
+  UsesActiveProgressForm := Assigned(pb) and Assigned(FormPleaseWait) and
+    FormPleaseWait.OperationActive and (pb = FormPleaseWait.ProgressBar1);
+
+  try
+    try
+      ModuleExtension := LowerCase(ExtractFileExt(arquivo));
+      if ModuleExtension = '.ont' then
+      begin
+        ModuleScope := etONT;
+        if FEscopo = etNT then
+          LinesOffset := QLinhas[etOT];
+      end
+      else if ModuleExtension = '.nt' then
+      begin
+        ModuleScope := etNT;
+        if FEscopo = etOT then
+        begin
+          SetFailure(SModuleDoesNotIncludeScope);
+          Exit;
+        end;
+        if FEscopo = etONT then
+          ProjectOffset := QLinhas[etOT];
+      end
+      else if ModuleExtension = '.ot' then
+      begin
+        ModuleScope := etOT;
+        if FEscopo = etNT then
+        begin
+          SetFailure(SModuleDoesNotIncludeScope);
+          Exit;
+        end;
+      end
+      else
+      begin
+        SetFailure(SInvalidModuleType);
+        Exit;
+      end;
+
+      if ModuleScope = etONT then
+        case FEscopo of
+          etOT:
+            AImportResult.ExpectedVerseCount := QLinhas[etOT];
+          etNT:
+            AImportResult.ExpectedVerseCount := QLinhas[etNT];
+        else
+          AImportResult.ExpectedVerseCount := QLinhas[etONT];
+        end
+      else
+        AImportResult.ExpectedVerseCount := QLinhas[ModuleScope];
+
+      EncodingInfo := InspectTheWordModuleEncodingFile(arquivo);
+      if EncodingInfo.RequiresConfirmation and
+        (MessageDlg(arquivo, Format(SPotentialNonUTF8ModuleWarning,
+          [EncodingInfo.InvalidByteOffset]), mtWarning,
+          [mbIgnore, mbAbort], 0) = mrAbort) then
+      begin
+        AImportResult.Status := twmisCancelled;
+        AImportResult.ErrorMessage := SModuleImportCancelled;
+        Exit;
+      end;
+
+      Modulo := TStringList.Create;
+      Modulo.LoadFromFile(arquivo);
+      if Modulo.Count < QLinhas[ModuleScope] then
+      begin
+        SetFailure(Format(SInvalidLineCount, [QLinhas[ModuleScope]]));
+        Exit;
+      end;
+
+      ReVazio := RegexCreate('^\s*$', [rcoUTF8]);
+      ReComments := RegexCreate('\s*#.*$', [rcoUTF8]);
+      ReDescription :=
+        RegexCreate('^\s*description\s*=\s*(.*)$', [rcoUTF8]);
+      ReVerseRules := RegexCreate(
+        '^\s*verse.rule\s*=\s*"(.*?)(?<!")"(?!")\s+"(.*?)"(?=\s*$|\s+"(.*?)(?<!")"(?!"))',
+        [rcoUTF8]);
+
+      Propriedades := TStringStream.Create('');
+      VerseRuleSources := TStringList.Create;
+      VerseRuleTargets := TStringList.Create;
+      for I := QLinhas[ModuleScope] to Modulo.Count - 1 do
+      begin
+        Line := ReComments.Replace(Modulo[I], '');
+        if ReVazio.IsMatch(Line) then
+          Continue;
+
+        Propriedades.WriteString(Modulo[I] + #13#10);
+        MtDescription := ReDescription.Match(Line);
+        if MtDescription.Success then
+        begin
+          ImportedDescription := MtDescription.Groups[1].Value;
+          HasImportedDescription := True;
+          Continue;
+        end;
+
+        MtVerseRules := ReVerseRules.Match(Line);
+        if MtVerseRules.Success then
+        begin
+          VerseRuleSources.Add(MtVerseRules.Groups[1].Value);
+          VerseRuleTargets.Add(MtVerseRules.Groups[2].Value);
+        end;
+      end;
+
+      ModuleProperties := Propriedades.DataString;
+      ImportedDirection := ParseTheWordR2LProperties(ModuleProperties);
+      if ((texto = tbOrigem) and
+          (GetInfo('propriedades.origem') = '')) or
+         ((texto = tbDestino) and
+          (GetInfo('propriedades.destino') = '')) then
+      begin
+        StageImportedProperties := True;
+        ImportedProperties := NormalizeTheWordR2LProperties(
+          ModuleProperties, ImportedDirection);
+      end;
+
+      if VerseRuleSources.Count > 0 then
+      begin
+        RulesForm := VerseRulesForm;
+        if not Assigned(RulesForm) then
+        begin
+          RulesForm := TVerseRulesForm.Create(nil);
+          OwnVerseRulesForm := True;
+        end;
+        RulesForm.Reset(arquivo);
+        for I := 0 to VerseRuleSources.Count - 1 do
+          RulesForm.AddVerseRule(VerseRuleSources[I], VerseRuleTargets[I]);
+
+        WaitFormTemporarilyHidden := Assigned(FormPleaseWait) and
+          FormPleaseWait.OperationActive and FormPleaseWait.Visible;
+        if WaitFormTemporarilyHidden then
+          // Keep the stay-on-top progress form from covering the rule chooser.
+          FormPleaseWait.Hide;
+
+        OldCursor := Screen.Cursor;
+        Screen.Cursor := crDefault;
+        try
+          if RulesForm.ShowModal <> mrOK then
+          begin
+            AImportResult.Status := twmisCancelled;
+            AImportResult.ErrorMessage := SModuleImportRulesCancelled;
+            Exit;
+          end;
+          RulesForm.CompileVerseRules(RxVerseRulesFrom,
+            RxVerseRulesTo);
+        finally
+          Screen.Cursor := OldCursor;
+          if WaitFormTemporarilyHidden and Assigned(FormPleaseWait) and
+            FormPleaseWait.OperationActive then
+          begin
+            FormPleaseWait.Show;
+            FormPleaseWait.BringToFront;
+            TFormPleaseWait.PumpProgressPaintMessages(FormPleaseWait);
+          end;
+        end;
+      end;
+
+      StartScrollingSession;
+      SessionStarted := True;
+      if StagedBatchingEnabled and
+        ((FPersistence.PairsTable.State in dsEditModes) or
+         FPersistence.PairsTable.UpdatesPending) then
+        raise Exception.Create(
+          SStagedImportRequiresCleanPairBaseline);
+      if StagedBatchingEnabled and Assigned(FSuggestionManager) then
+        // Release a reader left by a previous suggestion lookup before the
+        // first canonical batch tries to acquire the SQLite writer.
+        FSuggestionManager.Rollback;
+      try
+        if Assigned(pb) then
+        begin
+          pb.Style := pbstNormal;
+          pb.Position := 0;
+          pb.Min := 0;
+          pb.Max := AImportResult.ExpectedVerseCount;
+          pb.Step := 1;
+          pb.Visible := True;
+        end;
+        LastProgressPulse := 0;
+        PulseImportProgress(0, '', True);
+
+        AvailableCount := CountAvailableProjectVerses;
+        AImportResult.AvailableVerseCount := AvailableCount;
+        if AvailableCount < AImportResult.ExpectedVerseCount then
+        begin
+          SetFailure(Format(SModuleImportCapacityError,
+            [AvailableCount, AImportResult.ExpectedVerseCount]));
+          Exit;
+        end;
+        LastProgressPulse := 0;
+        PulseImportProgress(0, '', True);
+
+        SetLength(Snapshots, AImportResult.ExpectedVerseCount);
+        PositionAtFirstProjectVerse;
+        for I := LinesOffset to
+          LinesOffset + AImportResult.ExpectedVerseCount - 1 do
+        begin
+          if FPersistence.EOF then
+            Break;
+
+          if Assigned(RxVerseRulesFrom) then
+            for M := 0 to RxVerseRulesFrom.Count - 1 do
+              Modulo[I] := RxVerseRulesFrom[M].Replace(Modulo[I],
+                RxVerseRulesTo[M]);
+
+          Snapshots[SnapshotCount].ReferenceID :=
+            FPersistence.CurrentPairId;
+          Snapshots[SnapshotCount].TextValue :=
+            FPersistence.CurrentText(FACamposTexto[texto]);
+          Snapshots[SnapshotCount].PairsValue :=
+            FPersistence.CurrentPairs;
+          Snapshots[SnapshotCount].StatusValue :=
+            FPersistence.CurrentStatus;
+          Inc(SnapshotCount);
+
+          if not TrySetVerseText(Modulo[I], texto, replace,
+            ImportError) then
+          begin
+            if ImportError.IsEmpty then
+              ImportError := SCorruptedData;
+            raise Exception.Create(ImportError);
+          end;
+          Inc(AImportResult.ImportedVerseCount);
+          AImportResult.LastReference :=
+            Snapshots[SnapshotCount - 1].ReferenceID;
+          FPersistence.Next;
+
+          if StagedBatchingEnabled and
+            ((AImportResult.ImportedVerseCount mod
+              STAGED_IMPORT_BATCH_SIZE) = 0) then
+            CommitStagedPairChanges(AImportResult.ImportedVerseCount,
+              AImportResult.LastReference);
+          PulseImportProgress(AImportResult.ImportedVerseCount,
+            AImportResult.LastReference,
+            ((AImportResult.ImportedVerseCount mod 75) = 0) or
+            (AImportResult.ImportedVerseCount =
+             AImportResult.ExpectedVerseCount));
+        end;
+
+        if AImportResult.ImportedVerseCount <>
+          AImportResult.ExpectedVerseCount then
+        begin
+          RestoreSnapshots;
+          SetFailure(Format(SModuleImportIncompleteError,
+            [AImportResult.ImportedVerseCount,
+             AImportResult.ExpectedVerseCount,
+             AImportResult.LastReference]));
+          Exit;
+        end;
+
+        if StagedBatchingEnabled and
+          (AImportResult.ImportedVerseCount > 0) then
+          CommitStagedPairChanges(AImportResult.ImportedVerseCount,
+            AImportResult.LastReference);
+      finally
+        if SessionStarted then
+        begin
+          try
+            FinishScrollingSession;
+          finally
+            SessionStarted := False;
+          end;
+        end;
+      end;
+
+      if texto in [tbOrigem, tbDestino] then
+      begin
+        if UsesActiveProgressForm then
+        begin
+          FormPleaseWait.SetMessage(
+            SAssociationMemoryProgressMessage);
+          FormPleaseWait.SetDetail('');
+          TFormPleaseWait.PumpProgressPaintMessages(
+            FormPleaseWait);
+        end;
+        RowsMayBeCommitted := True;
+        RebuildAssociationMemory(pb);
+      end;
+      if not FConfig.HasTextDirection(Integer(texto)) then
+        SetTextDirection(texto, ImportedDirection);
+      if HasImportedDescription then
+        FConfig.StageTextDescription(Integer(texto), ImportedDescription);
+      if StageImportedProperties then
+        case texto of
+          tbOrigem:
+            FConfig.WriteString('propriedades.origem',
+              ImportedProperties);
+          tbDestino:
+            FConfig.WriteString('propriedades.destino',
+              ImportedProperties);
+        end;
+
+      // A completed Association-memory rebuild still owns a write
+      // transaction until Commit publishes it. Staged project creation must
+      // release that writer before importing the next module; otherwise the
+      // canonical dataset receives SQLITE_BUSY and cannot safely be retried.
+      if StagedBatchingEnabled then
+        Self.Commit;
+
+      UpdateTree(FMarker);
+      AImportResult.Status := twmisSucceeded;
+      AImportResult.ErrorMessage := '';
+      Result := True;
+    except
+      on E: Exception do
+      begin
+        ImportError := E.Message;
+        if RowsMayBeCommitted and Assigned(FSuggestionManager) then
+          try
+            // A completed or aborted rebuild can still own the independent
+            // Association-memory transaction. Release it before restoring
+            // canonical rows through the project persistence connection.
+            FSuggestionManager.Rollback;
+          except
+            on MemoryRollbackError: Exception do
+              ImportError := ImportError + #13#10 +
+                'Association-memory rollback failed: ' +
+                MemoryRollbackError.Message;
+          end;
+        if RowsMayBeCommitted and Assigned(FPersistence) then
+          try
+            // ApplyUpdates invalidates its internal change list when a write
+            // fails. Reload the durable baseline before replaying the saved
+            // snapshots so rollback never relies on that invalid state.
+            FPersistence.Rollback;
+          except
+            on PersistenceRollbackError: Exception do
+              ImportError := ImportError + #13#10 +
+                'Project persistence rollback failed: ' +
+                PersistenceRollbackError.Message;
+          end;
+        if (SnapshotCount > 0) and not SnapshotsRestored then
+          try
+            RestoreSnapshots;
+          except
+            on RestoreError: Exception do
+              ImportError := ImportError + #13#10 +
+                'Rollback failed: ' + RestoreError.Message;
+          end;
+
+        if RowsMayBeCommitted and SnapshotsRestored then
+          try
+            FPersistence.CommitPairs;
+          except
+            on RestoreCommitError: Exception do
+              ImportError := ImportError + #13#10 +
+                'Rollback commit failed: ' + RestoreCommitError.Message;
+          end;
+
+        AImportResult.Status := twmisFailed;
+        AImportResult.ErrorMessage := Format(
+          SModuleImportExceptionError,
+          [AImportResult.ImportedVerseCount,
+           AImportResult.ExpectedVerseCount,
+           AImportResult.LastReference, ImportError]);
+        Result := False;
+      end;
+    end;
+  finally
+    if SessionStarted then
+    begin
+      try
+        FinishScrollingSession;
+      except
+        { Preserve the primary import result while restoring UI state. }
+      end;
+    end;
+    if Assigned(pb) and not (Assigned(FormPleaseWait) and
+      FormPleaseWait.OperationActive and
+      (pb = FormPleaseWait.ProgressBar1)) then
+      pb.Visible := False;
+    Modulo.Free;
+    Propriedades.Free;
+    FreeAndNil(RxVerseRulesFrom);
+    FreeAndNil(RxVerseRulesTo);
+    VerseRuleSources.Free;
+    VerseRuleTargets.Free;
+    if OwnVerseRulesForm then
+      RulesForm.Free;
+  end;
 end;
 
 procedure TProject.CreateVerseObject(owner: TScrollBox;

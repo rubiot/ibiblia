@@ -19,6 +19,7 @@ type
     procedure InitialFormattingIsSafeBeforeBodyReceivesFocus;
     procedure EmptyVisualBodyTypingKeepsFirstCharacterOrder;
     procedure PlainQuotedHyphenatedNoteSerializesVisually;
+    procedure NamedTheWordColorPreservesNoOpAndCanonicalizesRealEdit;
     procedure LogicalFontSizeSurvivesPhysicalDpiDrift;
     procedure ImplicitWhiteBackgroundIsOmittedButExplicitWhiteRoundTrips;
     procedure EditorBreakKeysSerializeMarkupWithoutPhysicalNewlines;
@@ -278,6 +279,26 @@ begin
     AssertTrue('soft break uses the shared non-text block',
       View.Blocks[1] is TTranslatorNoteSoftBreak);
 
+    View.SetNoteBody('<font color="red">Gn 1</font>');
+    AssertEquals('theWord named colors remain visually editable',
+      Ord(twnbcFullWysiwyg), Ord(View.Capability));
+    AssertTrue('named-color text is rendered as a typed run',
+      View.Blocks[0] is TTranslatorNoteRun);
+    NoteRun := TTranslatorNoteRun(View.Blocks[0]);
+    AssertEquals('named red is rendered in the shared preview',
+      LongInt(ColorToRGB(clRed)),
+      LongInt(ColorToRGB(NoteRun.TextStyle.Font.Color)));
+
+    View.SetNoteBody('<span style="background:red">named bg</span>');
+    AssertEquals('named backgrounds remain visually editable',
+      Ord(twnbcFullWysiwyg), Ord(View.Capability));
+    NoteRun := TTranslatorNoteRun(View.Blocks[0]);
+    AssertTrue('named background is rendered',
+      NoteRun.TextStyle.AllowBrush);
+    AssertEquals('named red background uses theWord color semantics',
+      LongInt(ColorToRGB(clRed)),
+      LongInt(ColorToRGB(NoteRun.TextStyle.Brush.Color)));
+
     View.SetNoteBody('<FI>protected<Fi>');
     AssertEquals('protected markup stays visibly protected',
       Ord(twnbcProtectedRegions), Ord(View.Capability));
@@ -408,14 +429,38 @@ begin
 end;
 
 procedure TTheWordTranslatorNoteVisualTests.
+  NamedTheWordColorPreservesNoOpAndCanonicalizesRealEdit;
+var
+  Body: UnicodeString;
+  EditedBody, NoOpBody: UnicodeString;
+  ErrorMessage: string;
+begin
+  Forms.Application.Initialize;
+  ErrorMessage := '';
+  Body := '<font color="ReD">Gn 1:</font> rest';
+  AssertTrue(UTF8Encode(ErrorMessage),
+    TryExerciseTranslatorNoteEditorNamedColor(Body, 3, 1, '2',
+      NoOpBody, EditedBody, ErrorMessage));
+  AssertEquals('opening and saving without edits keeps the literal color',
+    '<font color="ReD">Gn 1:</font> rest', UTF8Encode(NoOpBody));
+  AssertEquals('a real Visual edit serializes the named color canonically',
+    '<font color="#FF0000">Gn 2:</font> rest', UTF8Encode(EditedBody));
+end;
+
+procedure TTheWordTranslatorNoteVisualTests.
   LogicalFontSizeSurvivesPhysicalDpiDrift;
 var
   ErrorMessage: string;
+  PlainText: UnicodeString;
   Probe: TTranslatorNoteDpiFontProbe;
 begin
   Forms.Application.Initialize;
+  PlainText :=
+    'O verbo traduzido por "compreender" também significa ' +
+    '"apropriar-se, tomar para si".';
   AssertTrue(ErrorMessage,
-    TryExerciseTranslatorNoteEditorDpiFontDrift(Probe, ErrorMessage));
+    TryExerciseTranslatorNoteEditorDpiFontDrift(PlainText, Probe,
+      ErrorMessage));
   AssertEquals('physical one-point drift is not semantic font markup',
     'O verbo traduzido por "compreender" também significa ' +
     '"apropriar-se, tomar para si".', UTF8Encode(Probe.PlainBody));

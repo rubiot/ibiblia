@@ -25,6 +25,7 @@ type
     procedure EnsureDetailLabel;
     procedure LayoutControls;
   public
+    class procedure PumpProgressPaintMessages(AControl: TWinControl); static;
     constructor Create(TheOwner: TComponent); override;
     procedure BeginOperation(AOwnerForm: TCustomForm; const ATitle,
       AMessage: string; AMax: Integer = 0; const ADetail: string = '');
@@ -32,6 +33,7 @@ type
     procedure SetDetail(const ADetail: string);
     procedure Step(AIncrement: Integer = 1);
     procedure FinishOperation;
+    property OperationActive: Boolean read FInOperation;
   end;
 
 var
@@ -39,8 +41,39 @@ var
 
 implementation
 
+{$IFDEF MSWINDOWS}
+uses
+  Windows;
+{$ENDIF}
+
 resourcestring
   SDefaultOperationTitle = 'Operation in progress';
+  SOperationAlreadyActive =
+    'Cannot begin an operation while another operation is already active.';
+
+class procedure TFormPleaseWait.PumpProgressPaintMessages(
+  AControl: TWinControl);
+{$IFDEF MSWINDOWS}
+var
+  Message: TMsg;
+  NativeHandle: HWND;
+begin
+  Message := Default(TMsg);
+  if not Assigned(AControl) or not AControl.HandleAllocated then
+    Exit;
+
+  NativeHandle := HWND(AControl.Handle);
+  Windows.PeekMessage(Message, NativeHandle, WM_PAINT, WM_PAINT,
+    PM_NOREMOVE or PM_NOYIELD or (QS_PAINT shl 16));
+  Windows.RedrawWindow(NativeHandle, nil, 0,
+    RDW_INVALIDATE or RDW_UPDATENOW or RDW_ALLCHILDREN or RDW_FRAME);
+end;
+{$ELSE}
+begin
+  if Assigned(AControl) and AControl.HandleAllocated then
+    AControl.Update;
+end;
+{$ENDIF}
 
 constructor TFormPleaseWait.Create(TheOwner: TComponent);
 begin
@@ -93,7 +126,7 @@ procedure TFormPleaseWait.BeginOperation(AOwnerForm: TCustomForm;
   const ATitle, AMessage: string; AMax: Integer; const ADetail: string);
 begin
   if FInOperation then
-    FinishOperation;
+    raise Exception.Create(SOperationAlreadyActive);
 
   FOwnerForm := AOwnerForm;
   FOwnerWasActive := Assigned(FOwnerForm) and
@@ -133,8 +166,7 @@ begin
 
   Show;
   BringToFront;
-  Update;
-  Application.ProcessMessages;
+  PumpProgressPaintMessages(Self);
 end;
 
 procedure TFormPleaseWait.SetMessage(const AMessage: string);
@@ -200,7 +232,8 @@ begin
   FOwnerWasActive := False;
   FOwnerWasEnabled := False;
   FInOperation := False;
-  Application.ProcessMessages;
+  if Assigned(OwnerForm) then
+    PumpProgressPaintMessages(OwnerForm);
 end;
 
 initialization

@@ -28,7 +28,10 @@ uses
   theword_clipboard_v2_test,
   rf_note_scanner_test,
   theword_translator_note_visual_test,
-  project_exporter_integration_test;
+  project_exporter_integration_test,
+  theword_module_encoding_test,
+  theword_module_import_test,
+  project_creation_staging_test;
 
 var
   Application: TTestRunner;
