@@ -29,6 +29,7 @@ type
     procedure DirectEditorKeepsMixedMarkersAtomicAcrossParagraphDirections;
     procedure DirectEditorKeepsScriptTextEditableWrappedAndCaretLineSized;
     procedure DirectEditorReservesScriptInkAcrossConsecutiveLines;
+    procedure DirectEditorDoubleClickSelectsUnicodeWords;
   end;
 
 implementation
@@ -72,6 +73,7 @@ type
   TDirectWriteVerseEditorAccess = class(TDirectWriteVerseEditor)
   public
     procedure SimulateClick(X, Y: Integer);
+    procedure SimulateDoubleClick(X, Y: Integer);
     procedure SimulateHover(X, Y: Integer);
   end;
 
@@ -116,6 +118,12 @@ end;
 procedure TDirectWriteVerseEditorAccess.SimulateClick(X, Y: Integer);
 begin
   MouseDown(mbLeft, [], X, Y);
+end;
+
+procedure TDirectWriteVerseEditorAccess.SimulateDoubleClick(X, Y: Integer);
+begin
+  Mouse.CursorPos := ClientToScreen(Point(X, Y));
+  DblClick;
 end;
 
 procedure TDirectWriteVerseEditorAccess.SimulateHover(X, Y: Integer);
@@ -1165,6 +1173,76 @@ begin
       (SubOnlyCaret.Bottom <= SubOnlyLineRect.Bottom));
   finally
     Host.Free;
+  end;
+end;
+
+procedure TTheWordTranslatorNoteVisualTests.
+  DirectEditorDoubleClickSelectsUnicodeWords;
+const
+  RAW: UnicodeString =
+    '<font color=green>sofrerão punição olá—mundo</font>';
+var
+  AlternateRaw: UnicodeString;
+  Codec: ITheWordOntCodecV2;
+  Editor: TDirectWriteVerseEditorAccess;
+  Host: TForm;
+  Rects: TRectArray;
+  Source: TTheWordVerseDocument;
+  Visual: IVerseVisualDocument;
+
+  procedure DoubleClickAt(AOffset, AExpectedStart,
+    AExpectedLength: Integer; const ALabel: string);
+  var
+    Rect: TRect;
+  begin
+    AssertTrue(ALabel + ' has text geometry',
+      Editor.GetTextRangeClientRects(AOffset, 1, Rects));
+    AssertTrue(ALabel + ' exposes a rectangle', Length(Rects) > 0);
+    Rect := Rects[0];
+    Editor.SimulateDoubleClick((Rect.Left + Rect.Right) div 2,
+      (Rect.Top + Rect.Bottom) div 2);
+    AssertEquals(ALabel + ' selection start', AExpectedStart,
+      Editor.SelectionStart);
+    AssertEquals(ALabel + ' selection length', AExpectedLength,
+      Editor.SelectionLength);
+  end;
+
+begin
+  Forms.Application.Initialize;
+  Codec := TTheWordOntCodecV2.Create;
+  Source := Codec.DecodeVerse(RAW);
+  Host := TForm.CreateNew(nil);
+  try
+    Visual := BuildTheWordVerseVisualDocument(Source, tdLeftToRight, 119);
+    Editor := TDirectWriteVerseEditorAccess.Create(Host);
+    Editor.Parent := Host;
+    Editor.Align := alClient;
+    Editor.InteractionMode := vimEdit;
+    Host.SetBounds(50, 50, 640, 220);
+    Host.Show;
+    Editor.SetEditorDocument(Visual);
+    Application.ProcessMessages;
+
+    DoubleClickAt(2, 0, 8, 'precomposed sofrerão');
+    DoubleClickAt(11, 9, 7, 'precomposed punição');
+    DoubleClickAt(18, 17, 3, 'word before Unicode dash');
+    DoubleClickAt(22, 21, 5, 'word after Unicode dash');
+
+    Visual := nil;
+    FreeAndNil(Source);
+    AlternateRaw := '<font color=green>olá' + WideChar($00A0) +
+      'mundo cafe' + WideChar($0301) + '</font>';
+    Source := Codec.DecodeVerse(AlternateRaw);
+    Visual := BuildTheWordVerseVisualDocument(Source, tdLeftToRight, 120);
+    Editor.SetEditorDocument(Visual);
+    Application.ProcessMessages;
+
+    DoubleClickAt(1, 0, 3, 'word before nonbreaking space');
+    DoubleClickAt(5, 4, 5, 'word after nonbreaking space');
+    DoubleClickAt(11, 10, 5, 'decomposed accented word');
+  finally
+    Host.Free;
+    Source.Free;
   end;
 end;
 

@@ -6,7 +6,7 @@ unit directwrite_verse_editor;
 interface
 
 uses
-  Classes, SysUtils, Types, Controls, StdCtrls, Graphics, LCLType, LCLProc,
+  Classes, SysUtils, Character, Types, Controls, StdCtrls, Graphics, LCLType, LCLProc,
   Clipbrd, verse_visual_document, verse_view_intf,
   directwrite_syntagm_view;
 
@@ -94,7 +94,8 @@ type
     function SelectionContainsParagraphMark: Boolean;
     function IsTraversableNonInteractiveSpan(
       const Span: TVisualSpan): Boolean;
-    function IsWordCodeUnit(Value: WideChar): Boolean;
+    function IsWordCodeUnit(const AText: UnicodeString;
+      AIndex: Integer): Boolean;
     procedure MoveCaretHorizontal(Direction: Integer; ExtendSelection,
       ByWord: Boolean);
     procedure MoveCaretVertical(Direction: Integer; ExtendSelection: Boolean);
@@ -777,11 +778,57 @@ begin
   ReplaceSelection(UTF8Decode(Clipboard.AsText));
 end;
 
-function TDirectWriteVerseEditor.IsWordCodeUnit(Value: WideChar): Boolean;
+function TDirectWriteVerseEditor.IsWordCodeUnit(
+  const AText: UnicodeString; AIndex: Integer): Boolean;
+var
+  Category: TUnicodeCategory;
+  Value: WideChar;
 begin
-  Result := (Value > ' ') and
-    not (Value in ['.', ',', ';', ':', '!', '?', '(', ')', '[', ']',
-      '{', '}', '"', '''', '/', '\', '-']);
+  Result := False;
+  if (AIndex < 1) or (AIndex > Length(AText)) then
+    Exit;
+  Value := AText[AIndex];
+  if Ord(Value) < 128 then
+  begin
+    { Keep the editor's established ASCII boundaries without converting a
+      Unicode code unit through the process code page. }
+    case Ord(Value) of
+      0..32, $21, $22, $27..$29, $2C..$2F, $3A, $3B, $3F,
+      $5B..$5D, $7B, $7D:
+        Exit(False);
+    end;
+    Exit(True);
+  end;
+
+  { TCharacter needs the high-surrogate index. DirectWrite caret stops keep
+    the whole pair or combining cluster atomic, but scans can approach it
+    from either side. }
+  if TCharacter.IsLowSurrogate(Value) then
+  begin
+    if (AIndex <= 1) or
+       not TCharacter.IsHighSurrogate(AText[AIndex - 1]) then
+      Exit(False);
+    Dec(AIndex);
+  end
+  else if TCharacter.IsHighSurrogate(Value) and
+          ((AIndex >= Length(AText)) or
+           not TCharacter.IsLowSurrogate(AText[AIndex + 1])) then
+    Exit(False);
+
+  Category := TCharacter.GetUnicodeCategory(AText, AIndex);
+  Result := Category in [
+    TUnicodeCategory.ucUppercaseLetter,
+    TUnicodeCategory.ucLowercaseLetter,
+    TUnicodeCategory.ucTitlecaseLetter,
+    TUnicodeCategory.ucModifierLetter,
+    TUnicodeCategory.ucOtherLetter,
+    TUnicodeCategory.ucNonSpacingMark,
+    TUnicodeCategory.ucCombiningMark,
+    TUnicodeCategory.ucEnclosingMark,
+    TUnicodeCategory.ucDecimalNumber,
+    TUnicodeCategory.ucLetterNumber,
+    TUnicodeCategory.ucOtherNumber,
+    TUnicodeCategory.ucConnectPunctuation];
 end;
 
 procedure TDirectWriteVerseEditor.MoveCaretHorizontal(Direction: Integer;
@@ -823,19 +870,19 @@ begin
     if Direction < 0 then
     begin
       while (NewOffset > FirstOffset) and
-        not IsWordCodeUnit(DocText[NewOffset]) do
+        not IsWordCodeUnit(DocText, NewOffset) do
         Dec(NewOffset);
       while (NewOffset > FirstOffset) and
-        IsWordCodeUnit(DocText[NewOffset]) do
+        IsWordCodeUnit(DocText, NewOffset) do
         Dec(NewOffset);
     end
     else
     begin
       while (NewOffset < LastOffset) and
-        not IsWordCodeUnit(DocText[NewOffset + 1]) do
+        not IsWordCodeUnit(DocText, NewOffset + 1) do
         Inc(NewOffset);
       while (NewOffset < LastOffset) and
-        IsWordCodeUnit(DocText[NewOffset + 1]) do
+        IsWordCodeUnit(DocText, NewOffset + 1) do
         Inc(NewOffset);
     end;
   end;
@@ -1187,10 +1234,10 @@ begin
   UTF16Offset := Max(UTF16Offset, FirstOffset);
   Start := UTF16Offset;
   Finish := UTF16Offset;
-  while (Start > FirstOffset) and IsWordCodeUnit(DocText[Start]) do
+  while (Start > FirstOffset) and IsWordCodeUnit(DocText, Start) do
     Dec(Start);
   while (Finish < LastOffset) and
-    IsWordCodeUnit(DocText[Finish + 1]) do
+    IsWordCodeUnit(DocText, Finish + 1) do
     Inc(Finish);
   SetSelection(Start, Finish - Start);
 end;
