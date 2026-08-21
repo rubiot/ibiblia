@@ -23,7 +23,7 @@ type
     procedure TearDown; override;
   published
     procedure SemanticTagsAreStrictlyCaseSensitive;
-    procedure AllFourSemanticPairsBecomeMarks;
+    procedure AllSevenSemanticPairsBecomeMarks;
     procedure LessThanWithoutClosingBracketRemainsText;
     procedure UnknownAndMalformedTagsAreOpaqueAndLiteral;
     procedure TitleRangesCollectAllLevelsInSourceOrder;
@@ -133,16 +133,17 @@ begin
   end;
 end;
 
-procedure TTheWordOntCodecV2Tests.AllFourSemanticPairsBecomeMarks;
+procedure TTheWordOntCodecV2Tests.AllSevenSemanticPairsBecomeMarks;
 var
   Document: TTheWordVerseDocument;
   Raw: UnicodeString;
 begin
-  Raw := '<FI>i<Fi><FR>r<Fr><FO>o<Fo><FU>u<Fu>';
+  Raw := '<FI>i<Fi><FR>r<Fr><FO>o<Fo><FU>u<Fu>' +
+    '<s>s</s><sup>p</sup><sub>b</sub>';
   Document := FCodec.DecodeVerse(Raw);
   try
-    AssertUnicodeEquals('visible text', 'irou', Document.VisibleText);
-    AssertEquals('mark count', 4, Document.MarkCount);
+    AssertUnicodeEquals('visible text', 'irouspb', Document.VisibleText);
+    AssertEquals('mark count', 7, Document.MarkCount);
     AssertEquals('italic', Ord(twsmItalic), Ord(Document.Marks[0].Kind));
     AssertEquals('red words', Ord(twsmWordsOfJesus),
       Ord(Document.Marks[1].Kind));
@@ -150,6 +151,12 @@ begin
       Ord(Document.Marks[2].Kind));
     AssertEquals('underline', Ord(twsmUnderline),
       Ord(Document.Marks[3].Kind));
+    AssertEquals('strikethrough', Ord(twsmStrikethrough),
+      Ord(Document.Marks[4].Kind));
+    AssertEquals('superscript', Ord(twsmSuperscript),
+      Ord(Document.Marks[5].Kind));
+    AssertEquals('subscript', Ord(twsmSubscript),
+      Ord(Document.Marks[6].Kind));
     AssertEquals('italic starts at zero', 0,
       Document.Marks[0].StartOffset);
     AssertEquals('italic ends at one', 1, Document.Marks[0].EndOffset);

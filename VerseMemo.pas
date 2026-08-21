@@ -32,6 +32,9 @@ type
     FJesusWordsButton: TSpeedButton;
     FOldTestamentQuoteButton: TSpeedButton;
     FUnderlineButton: TSpeedButton;
+    FStrikethroughButton: TSpeedButton;
+    FSuperscriptButton: TSpeedButton;
+    FSubscriptButton: TSpeedButton;
     FTranslatorNoteButton: TSpeedButton;
     FRawModeButton: TButton;
     FSaveErrorActive: Boolean;
@@ -53,6 +56,9 @@ type
     procedure InsertJesusWords(Sender: TObject);
     procedure InsertOldTestamentQuote(Sender: TObject);
     procedure InsertUnderline(Sender: TObject);
+    procedure InsertStrikethrough(Sender: TObject);
+    procedure InsertSuperscript(Sender: TObject);
+    procedure InsertSubscript(Sender: TObject);
     procedure InsertTranslatorNote(Sender: TObject);
     procedure LayoutEditorToolbar;
     procedure RefreshLocalizedCaptions;
@@ -95,6 +101,9 @@ resourcestring
   SJesusWordsButton = 'J';
   SOldTestamentQuoteButton = 'O';
   SUnderlineButton = 'S';
+  SStrikethroughButton = 'S';
+  SSuperscriptButton = 'x²';
+  SSubscriptButton = 'x₂';
   STranslatorNoteButton = 'N¹';
   SRawModeButton = 'Raw';
   SVisualModeButton = 'Visual';
@@ -105,6 +114,11 @@ resourcestring
   SOldTestamentQuoteHint =
     'Old Testament quotation: apply or remove bold formatting (Ctrl+O)';
   SUnderlineHint = 'Underline: apply or remove underlining';
+  SStrikethroughHint =
+    'Strikethrough: apply or remove strikethrough (Ctrl+Shift+S)';
+  SSuperscriptHint =
+    'Superscript: apply or remove superscript (Ctrl+Shift+=)';
+  SSubscriptHint = 'Subscript: apply or remove subscript (Ctrl+=)';
   STranslatorNoteHint =
     'Insert translator note at the caret (Ctrl+Shift+N)';
   SRawModeHint = 'Switch between semantic editing and the raw ONT fallback';
@@ -185,6 +199,21 @@ begin
   ApplySemantic(twsmUnderline);
 end;
 
+procedure TVerseMemo.InsertStrikethrough(Sender: TObject);
+begin
+  ApplySemantic(twsmStrikethrough);
+end;
+
+procedure TVerseMemo.InsertSuperscript(Sender: TObject);
+begin
+  ApplySemantic(twsmSuperscript);
+end;
+
+procedure TVerseMemo.InsertSubscript(Sender: TObject);
+begin
+  ApplySemantic(twsmSubscript);
+end;
+
 procedure TVerseMemo.InsertTranslatorNote(Sender: TObject);
 begin
   FEditor.InsertTranslatorNote;
@@ -256,6 +285,18 @@ begin
     ButtonTop,
     SemanticButtonWidth, ButtonHeight);
   Inc(X, SemanticButtonWidth + Gap);
+  FStrikethroughButton.SetBounds(X,
+    ButtonTop,
+    SemanticButtonWidth, ButtonHeight);
+  Inc(X, SemanticButtonWidth + Gap);
+  FSuperscriptButton.SetBounds(X,
+    ButtonTop,
+    SemanticButtonWidth, ButtonHeight);
+  Inc(X, SemanticButtonWidth + Gap);
+  FSubscriptButton.SetBounds(X,
+    ButtonTop,
+    SemanticButtonWidth, ButtonHeight);
+  Inc(X, SemanticButtonWidth + Gap);
   FTranslatorNoteButton.SetBounds(X,
     ButtonTop,
     SemanticButtonWidth, ButtonHeight);
@@ -296,6 +337,12 @@ begin
   FOldTestamentQuoteButton.Hint := SOldTestamentQuoteHint;
   FUnderlineButton.Caption := SUnderlineButton;
   FUnderlineButton.Hint := SUnderlineHint;
+  FStrikethroughButton.Caption := SStrikethroughButton;
+  FStrikethroughButton.Hint := SStrikethroughHint;
+  FSuperscriptButton.Caption := SSuperscriptButton;
+  FSuperscriptButton.Hint := SSuperscriptHint;
+  FSubscriptButton.Caption := SSubscriptButton;
+  FSubscriptButton.Hint := SSubscriptHint;
   FTranslatorNoteButton.Caption := STranslatorNoteButton;
   FTranslatorNoteButton.Hint := STranslatorNoteHint;
   FRawModeButton.Hint := SRawModeHint;
@@ -395,6 +442,9 @@ begin
   FJesusWordsButton.Enabled := CanMark;
   FOldTestamentQuoteButton.Enabled := CanMark;
   FUnderlineButton.Enabled := CanMark;
+  FStrikethroughButton.Enabled := CanMark;
+  FSuperscriptButton.Enabled := CanMark;
+  FSubscriptButton.Enabled := CanMark;
   FTranslatorNoteButton.Enabled := FEditor.CanInsertTranslatorNote;
   if FEditor.RawMode then
     FRawModeButton.Caption := SVisualModeButton
@@ -483,6 +533,13 @@ begin
   FUnderlineButton := NewSemanticButton(SUnderlineButton,
     SUnderlineHint, @InsertUnderline);
   FUnderlineButton.Font.Style := [fsUnderline];
+  FStrikethroughButton := NewSemanticButton(SStrikethroughButton,
+    SStrikethroughHint, @InsertStrikethrough);
+  FStrikethroughButton.Font.Style := [fsStrikeOut];
+  FSuperscriptButton := NewSemanticButton(SSuperscriptButton,
+    SSuperscriptHint, @InsertSuperscript);
+  FSubscriptButton := NewSemanticButton(SSubscriptButton,
+    SSubscriptHint, @InsertSubscript);
   FTranslatorNoteButton := NewSemanticButton(STranslatorNoteButton,
     STranslatorNoteHint, @InsertTranslatorNote);
   FTranslatorNoteButton.Font.Color := clBlue;

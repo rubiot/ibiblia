@@ -15,13 +15,18 @@ uses
   text_direction;
 
 type
+  TDirectWriteScriptPosition = (dwspSuperscript, dwspSubscript);
+
   { DirectWrite has no baseline-offset property on text ranges. Replacing a
-    superscript range with this inline layout gives it explicit ascent and
+    script range with this inline layout gives it explicit ascent and
     baseline metrics while retaining the parent paragraph's logical range. }
   TDirectWriteSuperscriptInline = class(TInterfacedObject,
     IWinDWriteInlineObject)
   private
+    FBreakConditionAfter: LongInt;
+    FBreakConditionBefore: LongInt;
     FLayout: IWinDWriteTextLayout;
+    FLayoutIsRightToLeft: Boolean;
     FMetrics: TDWriteInlineObjectMetrics;
     FRange: TDWriteTextRange;
     FSpanIndex: Integer;
@@ -29,7 +34,9 @@ type
     constructor Create(Factory: IWinDWriteFactory; const Text, FamilyName,
       LocaleName: UnicodeString; BaseFontSize: Single;
       const Style: TVisualTextStyle; Direction: TTextDirection;
-      ASpanIndex: Integer; out Status: HRESULT);
+      APosition: TDirectWriteScriptPosition; ASpanIndex,
+      ABreakConditionBefore, ABreakConditionAfter: Integer;
+      out Status: HRESULT);
     procedure SetDrawingEffect(Effect: IUnknown);
 
     function Draw(ClientDrawingContext: Pointer;
@@ -53,6 +60,7 @@ const
   E_FAIL_VALUE = HRESULT(-2147467259); // $80004005
   SUPERSCRIPT_SCALE = 0.72;
   SUPERSCRIPT_RISE = 0.30;
+  SUBSCRIPT_DROP = 0.20;
 
 function Succeeded(Status: HRESULT): Boolean; inline;
 begin
@@ -62,7 +70,9 @@ end;
 constructor TDirectWriteSuperscriptInline.Create(Factory: IWinDWriteFactory;
   const Text, FamilyName, LocaleName: UnicodeString; BaseFontSize: Single;
   const Style: TVisualTextStyle; Direction: TTextDirection;
-  ASpanIndex: Integer; out Status: HRESULT);
+  APosition: TDirectWriteScriptPosition; ASpanIndex,
+  ABreakConditionBefore, ABreakConditionAfter: Integer;
+  out Status: HRESULT);
 var
   FontStyle: LongInt;
   FontWeight: LongInt;
@@ -72,11 +82,14 @@ var
   TextFormat: IWinDWriteTextFormat;
   TextMetrics: TDWriteTextMetrics;
   TextWidth: Single;
-  Rise: Single;
+  BaselineOffset: Single;
 begin
   inherited Create;
   FSpanIndex := ASpanIndex;
+  FBreakConditionBefore := ABreakConditionBefore;
+  FBreakConditionAfter := ABreakConditionAfter;
   FLayout := nil;
+  FLayoutIsRightToLeft := Direction = tdRightToLeft;
   FillChar(FMetrics, SizeOf(FMetrics), 0);
   FillChar(FRange, SizeOf(FRange), 0);
   Status := E_FAIL_VALUE;
@@ -118,6 +131,8 @@ begin
   FRange.Length := Length(Text);
   if vtsfUnderline in Style.Flags then
     FLayout.SetUnderline(True, FRange);
+  if vtsfStrikethrough in Style.Flags then
+    FLayout.SetStrikethrough(True, FRange);
 
   Status := FLayout.GetMetrics(TextMetrics);
   if not Succeeded(Status) then
@@ -143,10 +158,20 @@ begin
     LineMetrics.Baseline := TextMetrics.Height * 0.8;
   end;
 
-  Rise := BaseFontSize * SUPERSCRIPT_RISE;
   FMetrics.Width := TextMetrics.WidthIncludingTrailingWhitespace;
-  FMetrics.Height := LineMetrics.Height + Rise;
-  FMetrics.Baseline := LineMetrics.Baseline + Rise;
+  if APosition = dwspSuperscript then
+  begin
+    BaselineOffset := BaseFontSize * SUPERSCRIPT_RISE;
+    FMetrics.Height := LineMetrics.Height + BaselineOffset;
+    FMetrics.Baseline := LineMetrics.Baseline + BaselineOffset;
+  end
+  else
+  begin
+    BaselineOffset := BaseFontSize * SUBSCRIPT_DROP;
+    FMetrics.Height := LineMetrics.Height;
+    FMetrics.Baseline := Max(Single(0),
+      LineMetrics.Baseline - BaselineOffset);
+  end;
   FMetrics.SupportsSideways := False;
   Status := S_OK_VALUE;
 end;
@@ -161,9 +186,30 @@ function TDirectWriteSuperscriptInline.Draw(ClientDrawingContext: Pointer;
   Renderer: IWinDWriteTextRenderer; OriginX, OriginY: Single;
   IsSideways, IsRightToLeft: TDWriteBool;
   ClientDrawingEffect: IUnknown): HRESULT; stdcall;
+var
+  LayoutFormat: IWinDWriteTextFormat;
+  RequestedRightToLeft: Boolean;
 begin
   if not Assigned(FLayout) or not Assigned(Renderer) then
     Exit(E_FAIL_VALUE);
+  RequestedRightToLeft := IsRightToLeft <> False;
+  if FLayoutIsRightToLeft <> RequestedRightToLeft then
+  begin
+    LayoutFormat := FLayout;
+    if RequestedRightToLeft then
+      Result := LayoutFormat.SetReadingDirection(
+        DWRITE_READING_DIRECTION_RIGHT_TO_LEFT)
+    else
+      Result := LayoutFormat.SetReadingDirection(
+        DWRITE_READING_DIRECTION_LEFT_TO_RIGHT);
+    if not Succeeded(Result) then
+      Exit;
+    FLayoutIsRightToLeft := RequestedRightToLeft;
+  end;
+  { DirectWrite defines OriginX as the inline object's left edge even in an
+    RTL run. Synchronize the nested textual layout with the resolved outer
+    run, but never mirror or shift its origin as if it were directional
+    graphics. The no-wrap layout's width and line metrics remain unchanged. }
   Result := FLayout.Draw(ClientDrawingContext, Renderer, OriginX, OriginY);
 end;
 
@@ -184,8 +230,8 @@ end;
 function TDirectWriteSuperscriptInline.GetBreakConditions(
   out BreakConditionBefore, BreakConditionAfter: LongInt): HRESULT; stdcall;
 begin
-  BreakConditionBefore := DWRITE_BREAK_CONDITION_NEUTRAL;
-  BreakConditionAfter := DWRITE_BREAK_CONDITION_NEUTRAL;
+  BreakConditionBefore := FBreakConditionBefore;
+  BreakConditionAfter := FBreakConditionAfter;
   Result := S_OK_VALUE;
 end;
 

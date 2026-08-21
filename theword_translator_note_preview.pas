@@ -351,7 +351,8 @@ begin
       AMemo.Blocks.AddAt(Run);
     end;
     ApplyTranslatorNoteParagraphDirections(AMemo);
-    AMemo.Select(0, 0);
+    // Callers can hold Blocks.LockUpdate while the line cache still describes
+    // the previous body. Selecting here would index that stale cache.
     AMemo.Modified := False;
   finally
     Body.Free;

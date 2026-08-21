@@ -194,6 +194,9 @@ begin
     twsmWordsOfJesus: Result := 'FR';
     twsmOldTestamentQuote: Result := 'FO';
     twsmUnderline: Result := 'FU';
+    twsmStrikethrough: Result := 'S';
+    twsmSuperscript: Result := 'SUP';
+    twsmSubscript: Result := 'SUB';
   end;
 end;
 
@@ -203,6 +206,9 @@ begin
   if AName = 'FR' then Exit(twsmWordsOfJesus);
   if AName = 'FO' then Exit(twsmOldTestamentQuote);
   if AName = 'FU' then Exit(twsmUnderline);
+  if AName = 'S' then Exit(twsmStrikethrough);
+  if AName = 'SUP' then Exit(twsmSuperscript);
+  if AName = 'SUB' then Exit(twsmSubscript);
   raise ETheWordClipboardV2.CreateFmt('Unknown semantic kind: %s', [AName]);
 end;
 

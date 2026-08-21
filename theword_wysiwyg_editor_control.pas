@@ -66,6 +66,8 @@ type
     procedure DirectReplaceText(Sender: TObject; StartUTF16,
       LengthUTF16: Integer; const Replacement: UnicodeString;
       var Accepted: Boolean; var NewCaretUTF16: Integer);
+    function DirectResolveInsertionStyle(Sender: TObject;
+      LayoutOffsetUTF16: Integer; out Style: TVisualTextStyle): Boolean;
     procedure DirectSelectionChanged(Sender: TObject; StartUTF16,
       LengthUTF16: Integer);
     procedure DirectMouseWheel(Sender: TObject; Shift: TShiftState;
@@ -168,6 +170,7 @@ begin
   FDirectEditor.OnClipboardPaste := @DirectClipboardPaste;
   FDirectEditor.OnParagraphEdit := @DirectParagraphEdit;
   FDirectEditor.OnReplaceText := @DirectReplaceText;
+  FDirectEditor.OnResolveInsertionStyle := @DirectResolveInsertionStyle;
   FDirectEditor.OnSelectionChanged := @DirectSelectionChanged;
   FDirectEditor.OnCommand := @DirectCommand;
   FDirectEditor.OnMouseWheel := @DirectMouseWheel;
@@ -966,6 +969,20 @@ begin
   DoChanged;
 end;
 
+function TTheWordWysiwygEditorControl.DirectResolveInsertionStyle(
+  Sender: TObject; LayoutOffsetUTF16: Integer;
+  out Style: TVisualTextStyle): Boolean;
+var
+  DocumentOffset: Integer;
+begin
+  Style := DefaultVisualTextStyle;
+  Result := Assigned(FSession) and Assigned(FVisualDocument) and
+    TryTheWordLayoutToDocumentOffset(FVisualDocument, LayoutOffsetUTF16,
+      DocumentOffset) and
+    TryResolveTheWordInsertionVisualStyle(FSession.Document,
+      DocumentOffset, Style);
+end;
+
 procedure TTheWordWysiwygEditorControl.DirectCommand(Sender: TObject;
   Command: TVerseEditorCommand);
 begin
@@ -975,6 +992,9 @@ begin
     vecItalic: ApplySemantic(twsmItalic);
     vecWordsOfJesus: ApplySemantic(twsmWordsOfJesus);
     vecOldTestamentQuote: ApplySemantic(twsmOldTestamentQuote);
+    vecStrikethrough: ApplySemantic(twsmStrikethrough);
+    vecSuperscript: ApplySemantic(twsmSuperscript);
+    vecSubscript: ApplySemantic(twsmSubscript);
     vecInsertTranslatorNote: InsertTranslatorNote;
     vecSave, vecCancel:
       if Assigned(FOnCommand) then

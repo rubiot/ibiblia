@@ -16,7 +16,10 @@ type
     twsmItalic,
     twsmWordsOfJesus,
     twsmOldTestamentQuote,
-    twsmUnderline
+    twsmUnderline,
+    twsmStrikethrough,
+    twsmSuperscript,
+    twsmSubscript
   );
 
   TTheWordLexicalKind = (
@@ -395,6 +398,9 @@ begin
     twsmWordsOfJesus: Result := '<FR>';
     twsmOldTestamentQuote: Result := '<FO>';
     twsmUnderline: Result := '<FU>';
+    twsmStrikethrough: Result := '<s>';
+    twsmSuperscript: Result := '<sup>';
+    twsmSubscript: Result := '<sub>';
   end;
 end;
 
@@ -406,6 +412,9 @@ begin
     twsmWordsOfJesus: Result := '<Fr>';
     twsmOldTestamentQuote: Result := '<Fo>';
     twsmUnderline: Result := '<Fu>';
+    twsmStrikethrough: Result := '</s>';
+    twsmSuperscript: Result := '</sup>';
+    twsmSubscript: Result := '</sub>';
   end;
 end;
 
@@ -610,6 +619,12 @@ begin
     AKind := twsmOldTestamentQuote
   else if ARaw = '<FU>' then
     AKind := twsmUnderline
+  else if ARaw = '<s>' then
+    AKind := twsmStrikethrough
+  else if ARaw = '<sup>' then
+    AKind := twsmSuperscript
+  else if ARaw = '<sub>' then
+    AKind := twsmSubscript
   else
     Result := False;
 end;
@@ -626,6 +641,12 @@ begin
     AKind := twsmOldTestamentQuote
   else if ARaw = '<Fu>' then
     AKind := twsmUnderline
+  else if ARaw = '</s>' then
+    AKind := twsmStrikethrough
+  else if ARaw = '</sup>' then
+    AKind := twsmSuperscript
+  else if ARaw = '</sub>' then
+    AKind := twsmSubscript
   else
     Result := False;
 end;

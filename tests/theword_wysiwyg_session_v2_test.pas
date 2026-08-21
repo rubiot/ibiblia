@@ -11,12 +11,16 @@ uses
 type
   TTheWordWysiwygSessionV2Test = class(TTestCase)
   published
-    procedure AppliesFourSemanticsWithoutExposingTagsAsText;
+    procedure AppliesSevenSemanticsWithoutExposingTagsAsText;
     procedure UndoRedoRestoresOntSnapshots;
     procedure TextReplacementUsesUTF16Offsets;
     procedure RejectedReplacementDoesNotPolluteUndo;
     procedure OpaqueAndLexicalObjectsProtectTextEdits;
     procedure VisualAdapterCombinesOverlappingStyles;
+    procedure VisualAdapterRendersScriptAndStrikeStyles;
+    procedure InsertionStyleMatchesSemanticReplacementBoundaries;
+    procedure VisualAdapterRendersImportedFontColorsAndPreservesRaw;
+    procedure InsertionStyleMatchesOpaqueFontAnchors;
     procedure VisualAdapterRendersOldTestamentQuoteBoldBlack;
     procedure VisualAdapterMapsSyntheticProtectedSeparators;
     procedure ParagraphMarkIsSyntheticMappedAndNonInteractive;
@@ -83,19 +87,22 @@ begin
 end;
 
 procedure TTheWordWysiwygSessionV2Test.
-  AppliesFourSemanticsWithoutExposingTagsAsText;
+  AppliesSevenSemanticsWithoutExposingTagsAsText;
 var
   Session: TTheWordWysiwygSessionV2;
 begin
-  Session := TTheWordWysiwygSessionV2.Create('abcd');
+  Session := TTheWordWysiwygSessionV2.Create('abcdefg');
   try
     AssertTrue(Session.ApplySemantic(twsmItalic, 0, 1));
     AssertTrue(Session.ApplySemantic(twsmWordsOfJesus, 1, 1));
     AssertTrue(Session.ApplySemantic(twsmOldTestamentQuote, 2, 1));
     AssertTrue(Session.ApplySemantic(twsmUnderline, 3, 1));
-    AssertEquals(UnicodeString('abcd'), Session.VisibleText);
-    AssertEquals(UnicodeString('<FI>a<Fi><FR>b<Fr><FO>c<Fo><FU>d<Fu>'),
-      Session.RawText);
+    AssertTrue(Session.ApplySemantic(twsmStrikethrough, 4, 1));
+    AssertTrue(Session.ApplySemantic(twsmSuperscript, 5, 1));
+    AssertTrue(Session.ApplySemantic(twsmSubscript, 6, 1));
+    AssertEquals(UnicodeString('abcdefg'), Session.VisibleText);
+    AssertEquals(UnicodeString('<FI>a<Fi><FR>b<Fr><FO>c<Fo><FU>d<Fu>' +
+      '<s>e</s><sup>f</sup><sub>g</sub>'), Session.RawText);
   finally
     Session.Free;
   end;
@@ -203,6 +210,189 @@ begin
     AssertEquals(LongInt(clRed), Style.ForegroundColor);
   finally
     Source.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
+  VisualAdapterRendersScriptAndStrikeStyles;
+var
+  Codec: ITheWordOntCodecV2;
+  Source: TTheWordVerseDocument;
+  Visual: IVerseVisualDocument;
+begin
+  Codec := TTheWordOntCodecV2.Create;
+  Source := Codec.DecodeVerse(
+    '<s><sup>a</sup></s><sub>b</sub>');
+  try
+    Visual := BuildTheWordVerseVisualDocument(Source, tdLeftToRight, 8);
+    AssertEquals(UnicodeString('ab'), Visual.Text);
+    AssertEquals('script tags split the visual runs', 2, Visual.SpanCount);
+    AssertTrue('the first run is struck',
+      vtsfStrikethrough in Visual.Spans[0].Style.Flags);
+    AssertTrue('the first run is superscript',
+      vtsfSuperscript in Visual.Spans[0].Style.Flags);
+    AssertFalse('the first run is not subscript',
+      vtsfSubscript in Visual.Spans[0].Style.Flags);
+    AssertTrue('the second run is subscript',
+      vtsfSubscript in Visual.Spans[1].Style.Flags);
+    AssertFalse('the second run is not superscript',
+      vtsfSuperscript in Visual.Spans[1].Style.Flags);
+  finally
+    Source.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
+  InsertionStyleMatchesSemanticReplacementBoundaries;
+const
+  RAW: UnicodeString = '<sup>ab</sup>X<sub>cd</sub>';
+var
+  Session: TTheWordWysiwygSessionV2;
+  Style: TVisualTextStyle;
+begin
+  Session := TTheWordWysiwygSessionV2.Create(RAW);
+  try
+    AssertTrue(TryResolveTheWordInsertionVisualStyle(Session.Document, 0,
+      Style));
+    AssertFalse('sup start inserts outside the tag',
+      vtsfSuperscript in Style.Flags);
+    AssertTrue(TryResolveTheWordInsertionVisualStyle(Session.Document, 1,
+      Style));
+    AssertTrue('strict interior inherits superscript',
+      vtsfSuperscript in Style.Flags);
+    AssertTrue(TryResolveTheWordInsertionVisualStyle(Session.Document, 2,
+      Style));
+    AssertFalse('sup end inserts outside the tag',
+      vtsfSuperscript in Style.Flags);
+
+    AssertTrue(TryResolveTheWordInsertionVisualStyle(Session.Document, 3,
+      Style));
+    AssertFalse('sub start inserts outside the tag',
+      vtsfSubscript in Style.Flags);
+    AssertTrue(TryResolveTheWordInsertionVisualStyle(Session.Document, 4,
+      Style));
+    AssertTrue('strict interior inherits subscript',
+      vtsfSubscript in Style.Flags);
+    AssertTrue(TryResolveTheWordInsertionVisualStyle(Session.Document, 5,
+      Style));
+    AssertFalse('sub end inserts outside the tag',
+      vtsfSubscript in Style.Flags);
+
+    AssertTrue(Session.ReplaceText(1, 0, 'S'));
+    AssertEquals('the same strict-interior rule formats typed text',
+      UnicodeString('<sup>aSb</sup>X<sub>cd</sub>'), Session.RawText);
+  finally
+    Session.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
+  VisualAdapterRendersImportedFontColorsAndPreservesRaw;
+const
+  REAL_RAW: UnicodeString =
+    'os quais <font color=green>(tais que)</font> justica pagarao ' +
+    '<font color=green>(sofrerao punicao)</font> destruicao';
+  NESTED_RAW: UnicodeString =
+    '<font color=red>A<font color=green>B</font>C</font>' +
+    '<font color="#123456">D</font>';
+var
+  Codec: ITheWordOntCodecV2;
+  Source: TTheWordVerseDocument;
+  Span: TVisualSpan;
+  Visual: IVerseVisualDocument;
+
+  procedure AssertColorAt(const AText: UnicodeString;
+    AExpectedColor: LongInt);
+  var
+    Offset: Integer;
+  begin
+    Offset := Pos(AText, Visual.Text) - 1;
+    AssertTrue('colored text exists in the visual document', Offset >= 0);
+    AssertTrue('colored text resolves to a visual span',
+      Visual.TryGetSpanAt(Offset, Span));
+    AssertTrue('font color becomes an explicit visual foreground',
+      Span.Style.HasForegroundColor);
+    AssertEquals('font color keeps its TColor/BGR value', AExpectedColor,
+      Span.Style.ForegroundColor);
+  end;
+
+begin
+  Codec := TTheWordOntCodecV2.Create;
+  Source := Codec.DecodeVerse(REAL_RAW);
+  try
+    Visual := BuildTheWordVerseVisualDocument(Source, tdLeftToRight, 23);
+    AssertColorAt('(tais que)', LongInt(clGreen));
+    AssertColorAt('(sofrerao punicao)', LongInt(clGreen));
+    AssertEquals('rendering never canonicalizes imported font lexemes',
+      REAL_RAW, Codec.EncodeVerse(Source));
+  finally
+    Source.Free;
+  end;
+
+  Source := Codec.DecodeVerse(NESTED_RAW);
+  try
+    Visual := BuildTheWordVerseVisualDocument(Source, tdLeftToRight, 24);
+    AssertColorAt('A', LongInt(clRed));
+    AssertColorAt('B', LongInt(clGreen));
+    AssertColorAt('C', LongInt(clRed));
+    AssertColorAt('D', LongInt($00563412));
+    AssertEquals('nested and hexadecimal font tags remain byte-for-byte raw',
+      NESTED_RAW, Codec.EncodeVerse(Source));
+  finally
+    Source.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
+  InsertionStyleMatchesOpaqueFontAnchors;
+const
+  RAW: UnicodeString = '<font color=red>ab</font>';
+var
+  Session: TTheWordWysiwygSessionV2;
+  Style: TVisualTextStyle;
+begin
+  Session := TTheWordWysiwygSessionV2.Create(RAW);
+  try
+    AssertTrue(TryResolveTheWordInsertionVisualStyle(
+      Session.Document, 0, Style));
+    AssertFalse('OPEN anchor does not leak its following color',
+      Style.HasForegroundColor);
+    AssertFalse('typing exactly at an opaque OPEN anchor stays protected',
+      Session.CanReplaceText(0, 0));
+    AssertFalse('ReplaceText rejects an opaque OPEN anchor',
+      Session.ReplaceText(0, 0, 'X'));
+    AssertEquals('blocked OPEN insertion preserves the imported raw text',
+      RAW, Session.RawText);
+
+    AssertTrue(TryResolveTheWordInsertionVisualStyle(
+      Session.Document, 1, Style));
+    AssertTrue('strictly interior caret inherits the font color',
+      Style.HasForegroundColor);
+    AssertEquals('strictly interior caret is red', LongInt(clRed),
+      Style.ForegroundColor);
+    AssertTrue('typing strictly inside the font range is editable',
+      Session.CanReplaceText(1, 0));
+    AssertTrue(Session.ReplaceText(1, 0, 'X'));
+    AssertEquals('interior insertion is serialized inside the original tags',
+      '<font color=red>aXb</font>', Session.RawText);
+  finally
+    Session.Free;
+  end;
+
+  Session := TTheWordWysiwygSessionV2.Create(RAW);
+  try
+    AssertTrue(TryResolveTheWordInsertionVisualStyle(
+      Session.Document, 2, Style));
+    AssertFalse('CLOSE anchor does not inherit its preceding color',
+      Style.HasForegroundColor);
+    AssertFalse('typing exactly at an opaque CLOSE anchor stays protected',
+      Session.CanReplaceText(2, 0));
+    AssertFalse('ReplaceText rejects an opaque CLOSE anchor',
+      Session.ReplaceText(2, 0, 'X'));
+    AssertEquals('blocked CLOSE insertion preserves the imported raw text',
+      RAW, Session.RawText);
+  finally
+    Session.Free;
   end;
 end;
 

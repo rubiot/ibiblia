@@ -24,8 +24,12 @@ type
   TVerseMouseDownEvent = procedure(Sender: TObject; Button: TMouseButton;
     Shift: TShiftState; const Hit: TVerseHit) of object;
 
+  TVerseResolveInsertionStyleEvent = function(Sender: TObject;
+    LayoutOffsetUTF16: Integer; out Style: TVisualTextStyle): Boolean of object;
+
   {$IFDEF MSWINDOWS}
   TDWriteHitTestMetricsArray = array of TDWriteHitTestMetrics;
+  TDWriteLineMetricsArray = array of TDWriteLineMetrics;
   {$ENDIF}
   TVerseTextOffsetArray = array of Integer;
 
@@ -44,11 +48,15 @@ type
     FGeometryMatchesPaint: Boolean;
     FRecoveringInputGeometry: Boolean;
     FOnContentHeightChanged: TNotifyEvent;
+    FOnResolveInsertionStyle: TVerseResolveInsertionStyleEvent;
     FOnVerseDoubleClick: TNotifyEvent;
     FOnVerseMouseDown: TVerseMouseDownEvent;
     FOnVerseHover: TVerseHitEvent;
     {$IFDEF MSWINDOWS}
     FD2DFactory: IWinD2D1Factory;
+    FBaseCaretBaseline: Single;
+    FBaseCaretDescent: Single;
+    FBaseFontSizeDIP: Single;
     FDWriteFactory: IWinDWriteFactory;
     FDefaultBrush: IWinD2D1SolidColorBrush;
     FDrawingEffectsReady: Boolean;
@@ -60,6 +68,7 @@ type
     FLayoutRevision: QWord;
     FLayoutWidth: Integer;
     FRangeBrushes: array of IWinD2D1SolidColorBrush;
+    FScriptEffects: array of IUnknown;
     FSuperscriptObjects: TList;
     FRenderTarget: IWinD2D1DCRenderTarget;
     FTextFormat: IWinDWriteTextFormat;
@@ -90,6 +99,8 @@ type
     procedure NotifyContentHeightChanged;
     procedure SetDisplayTags(Value: Boolean);
     procedure SetLayoutPadding(Value: Integer);
+    function ResolveInsertionStyle(UTF16Offset: Integer;
+      out Style: TVisualTextStyle): Boolean;
   protected
     procedure DblClick; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState;
@@ -122,6 +133,8 @@ type
       out UTF16Offset: Integer; out IsTrailing, IsInside: Boolean): Boolean;
     function GetTextPositionClientRect(UTF16Offset: Integer;
       out CaretRect: TRect): Boolean;
+    function GetTextLineClientRect(UTF16Offset: Integer;
+      out LineRect: TRect): Boolean;
     function GetTextRangeClientRects(StartUTF16, LengthUTF16: Integer;
       out Rects: TRectArray): Boolean;
     function GetVisualObjectClientRect(Role: TVisualSpanRole;
@@ -136,6 +149,8 @@ type
     property BackendError: UnicodeString read GetBackendError;
     property BackendName: string read GetBackendName;
     property ContentHeight: Integer read GetContentHeight;
+    property OnResolveInsertionStyle: TVerseResolveInsertionStyleEvent
+      read FOnResolveInsertionStyle write FOnResolveInsertionStyle;
     property Document: IVerseVisualDocument read GetDocument;
   published
     property Align;
@@ -165,7 +180,7 @@ implementation
 uses
   Math, Forms, text_direction
   {$IFDEF MSWINDOWS}
-  , directwrite_superscript_inline
+  , directwrite_script_renderer, directwrite_superscript_inline
   {$ENDIF};
 
 const
@@ -175,6 +190,147 @@ function Succeeded(HR: LongInt): Boolean; inline;
 begin
   Result := HR >= 0;
 end;
+
+{$IFDEF MSWINDOWS}
+function GetLayoutLineMetrics(const Layout: IWinDWriteTextLayout;
+  out Metrics: TDWriteLineMetricsArray): Boolean;
+var
+  ActualCount: TDWriteUInt32;
+  FilledCount: TDWriteUInt32;
+  HR: HRESULT;
+begin
+  SetLength(Metrics, 0);
+  Result := False;
+  if not Assigned(Layout) then
+    Exit;
+  ActualCount := 0;
+  HR := Layout.GetLineMetrics(nil, 0, ActualCount);
+  if (HR <> E_NOT_SUFFICIENT_BUFFER) and not Succeeded(HR) then
+    Exit;
+  if (ActualCount = 0) or (ActualCount > 1048576) then
+    Exit;
+  SetLength(Metrics, ActualCount);
+  FilledCount := 0;
+  HR := Layout.GetLineMetrics(@Metrics[0], ActualCount, FilledCount);
+  if not Succeeded(HR) then
+  begin
+    SetLength(Metrics, 0);
+    Exit;
+  end;
+  SetLength(Metrics, FilledCount);
+  Result := FilledCount > 0;
+end;
+
+function GetLayoutLineBox(const Layout: IWinDWriteTextLayout;
+  TextPosition: Integer; out LineTop, LineHeight,
+  LineBaseline: Single): Boolean;
+var
+  Index, Position: Integer;
+  Metrics: TDWriteLineMetricsArray;
+begin
+  Result := False;
+  LineTop := 0;
+  LineHeight := 0;
+  LineBaseline := 0;
+  if not GetLayoutLineMetrics(Layout, Metrics) then
+    Exit;
+  Position := 0;
+  for Index := 0 to High(Metrics) do
+  begin
+    if (TextPosition < Position + Integer(Metrics[Index].Length)) or
+       (Index = High(Metrics)) then
+    begin
+      LineHeight := Metrics[Index].Height;
+      LineBaseline := Metrics[Index].Baseline;
+      Exit(True);
+    end;
+    Inc(Position, Metrics[Index].Length);
+    LineTop := LineTop + Metrics[Index].Height;
+  end;
+end;
+
+function MeasureTextFormatLineMetrics(const Factory: IWinDWriteFactory;
+  const TextFormat: IWinDWriteTextFormat; const ProbeText: UnicodeString;
+  FontSize: Single;
+  Bold, Italic: Boolean; out Baseline, Descent, TopOverhang,
+  BottomOverhang: Single): Boolean;
+var
+  HR: HRESULT;
+  Index: Integer;
+  Layout: IWinDWriteTextLayout;
+  Metrics: TDWriteLineMetricsArray;
+  Overhangs: TDWriteOverhangMetrics;
+  Probe: UnicodeString;
+  Range: TDWriteTextRange;
+  TextMetrics: TDWriteTextMetrics;
+begin
+  Baseline := 0;
+  Descent := 0;
+  TopOverhang := 0;
+  BottomOverhang := 0;
+  Result := False;
+  if not Assigned(Factory) or not Assigned(TextFormat) then
+    Exit;
+  Probe := ProbeText;
+  if Probe = '' then
+    Probe := 'Mg';
+  Layout := nil;
+  HR := Factory.CreateTextLayout(PWideChar(Probe), Length(Probe),
+    TextFormat, 1048576, 1048576, Layout);
+  if not Succeeded(HR) or not Assigned(Layout) then
+    Exit;
+  Range.StartPosition := 0;
+  Range.Length := Length(Probe);
+  HR := Layout.SetFontSize(Max(Single(1), FontSize), Range);
+  if not Succeeded(HR) then
+    Exit;
+  if Bold then
+  begin
+    HR := Layout.SetFontWeight(700, Range);
+    if not Succeeded(HR) then
+      Exit;
+  end;
+  if Italic then
+  begin
+    HR := Layout.SetFontStyle(2, Range);
+    if not Succeeded(HR) then
+      Exit;
+  end;
+  FillChar(TextMetrics, SizeOf(TextMetrics), 0);
+  HR := Layout.GetMetrics(TextMetrics);
+  if not Succeeded(HR) then
+    Exit;
+  { GetOverhangMetrics reports ink outside the layout box. Tighten the probe
+    to its measured content first; the initial effectively-infinite height
+    would otherwise hide any bottom overhang. The extra horizontal DIP avoids
+    introducing a wrap at a floating-point boundary. }
+  HR := Layout.SetMaxWidth(Max(Single(1),
+    TextMetrics.WidthIncludingTrailingWhitespace + 1));
+  if not Succeeded(HR) then
+    Exit;
+  HR := Layout.SetMaxHeight(Max(Single(1), TextMetrics.Height));
+  if not Succeeded(HR) then
+    Exit;
+  if not GetLayoutLineMetrics(Layout, Metrics) or (Length(Metrics) = 0) then
+    Exit;
+  for Index := 0 to High(Metrics) do
+  begin
+    Baseline := Max(Baseline, Metrics[Index].Baseline);
+    Descent := Max(Descent,
+      Metrics[Index].Height - Metrics[Index].Baseline);
+  end;
+  FillChar(Overhangs, SizeOf(Overhangs), 0);
+  HR := Layout.GetOverhangMetrics(Overhangs);
+  if not Succeeded(HR) then
+    Exit;
+  { Keep the sign. A negative overhang means the visible ink stays inside the
+    typographic box, so it lets the caller reserve less than the whole em box;
+    a positive value extends the ink beyond that box. }
+  TopOverhang := Overhangs.Top;
+  BottomOverhang := Overhangs.Bottom;
+  Result := (Baseline > 0) and (Descent >= 0);
+end;
+{$ENDIF}
 
 { TDirectWriteSyntagmView }
 
@@ -291,6 +447,58 @@ begin
   Result := FDocument;
 end;
 
+function TDirectWriteSyntagmView.ResolveInsertionStyle(
+  UTF16Offset: Integer; out Style: TVisualTextStyle): Boolean;
+var
+  Index: Integer;
+  Span: TVisualSpan;
+begin
+  Style := DefaultVisualTextStyle;
+  if Assigned(FOnResolveInsertionStyle) and
+     FOnResolveInsertionStyle(Self, UTF16Offset, Style) then
+    Exit(True);
+  if not Assigned(FDocument) then
+    Exit(False);
+
+  { Standalone views have no domain resolver. Prefer the following editable
+    character at a boundary; the composite supplies the authoritative
+    strict-interior insertion style through OnResolveInsertionStyle. }
+  for Index := 0 to FDocument.SpanCount - 1 do
+  begin
+    Span := FDocument.Spans[Index];
+    if Span.Interactive and (Span.Role = vsrContent) and
+       (Span.LengthUTF16 > 0) and
+       (UTF16Offset >= Span.StartUTF16) and
+       (UTF16Offset < Span.StartUTF16 + Span.LengthUTF16) then
+    begin
+      Style := Span.Style;
+      Exit(True);
+    end;
+  end;
+  for Index := 0 to FDocument.SpanCount - 1 do
+  begin
+    Span := FDocument.Spans[Index];
+    if Span.Interactive and (Span.Role = vsrContent) and
+       (Span.LengthUTF16 > 0) and (Span.StartUTF16 >= UTF16Offset) then
+    begin
+      Style := Span.Style;
+      Exit(True);
+    end;
+  end;
+  for Index := FDocument.SpanCount - 1 downto 0 do
+  begin
+    Span := FDocument.Spans[Index];
+    if Span.Interactive and (Span.Role = vsrContent) and
+       (Span.LengthUTF16 > 0) and
+       (Span.StartUTF16 + Span.LengthUTF16 <= UTF16Offset) then
+    begin
+      Style := Span.Style;
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
 function TDirectWriteSyntagmView.GetDisplayTags: Boolean;
 begin
   Result := FDisplayTags;
@@ -325,8 +533,12 @@ begin
   FTextFormat := nil;
   FDefaultBrush := nil;
   SetLength(FRangeBrushes, 0);
+  SetLength(FScriptEffects, 0);
   FDrawingEffectsReady := False;
   FillChar(FTextMetrics, SizeOf(FTextMetrics), 0);
+  FBaseCaretBaseline := 0;
+  FBaseCaretDescent := 0;
+  FBaseFontSizeDIP := 0;
   FLayoutWidth := -1;
   FLayoutDpi := 0;
   FLayoutRevision := 0;
@@ -740,6 +952,7 @@ procedure TDirectWriteSyntagmView.DiscardRenderTarget;
 begin
   FDefaultBrush := nil;
   SetLength(FRangeBrushes, 0);
+  SetLength(FScriptEffects, 0);
   if Assigned(FSuperscriptObjects) then
     FSuperscriptObjects.Clear;
   FRenderTarget := nil;
@@ -784,17 +997,42 @@ end;
 function TDirectWriteSyntagmView.BuildLayout(ADpi: Integer): Boolean;
 const
   MIN_FONT_SIZE_DIP = 1.0;
+  SUPERSCRIPT_RISE = 0.30;
+  SUBSCRIPT_DROP = 0.20;
 var
   BaseFontSize: Single;
   BaseFontStyle: LongInt;
   BaseFontWeight: LongInt;
+  BaseBottomOverhang: Single;
+  BaseTopOverhang: Single;
   FamilyName: UnicodeString;
+  ExtraBottom: Single;
+  ExtraTop: Single;
+  HasContentScript: Boolean;
   HR: HRESULT;
   Index: Integer;
+  LineIndex: Integer;
+  LineMetrics: TDWriteLineMetricsArray;
+  LineSpacing: Single;
+  LayoutFormat: IWinDWriteTextFormat;
+  MaxScriptBottomExtent: Single;
+  MaxScriptTopExtent: Single;
+  NaturalBaseline: Single;
+  NaturalDescent: Single;
+  ScriptBaseline: Single;
+  ScriptBottomOverhang: Single;
+  ScriptCaretBaseline: Single;
+  ScriptCaretDescent: Single;
+  ScriptDescent: Single;
+  ScriptFontSize: Single;
+  ScriptBottomExtent: Single;
+  ScriptTopOverhang: Single;
+  ScriptTopExtent: Single;
   Superscript: TDirectWriteSuperscriptInline;
   SuperscriptInterface: IWinDWriteInlineObject;
   SuperscriptStatus: HRESULT;
   SuperscriptText: UnicodeString;
+  ScriptPosition: TDirectWriteScriptPosition;
   LayoutHeight: Single;
   LayoutWidth: Single;
   LocaleName: UnicodeString;
@@ -854,6 +1092,17 @@ begin
     Exit;
   end;
 
+  HasContentScript := False;
+  MaxScriptTopExtent := 0;
+  MaxScriptBottomExtent := 0;
+  FBaseFontSizeDIP := BaseFontSize;
+  if not MeasureTextFormatLineMetrics(FDWriteFactory, FTextFormat, 'Mg',
+    BaseFontSize, False, False, FBaseCaretBaseline,
+    FBaseCaretDescent, BaseTopOverhang, BaseBottomOverhang) then
+  begin
+    FBaseCaretBaseline := BaseFontSize * 0.8;
+    FBaseCaretDescent := BaseFontSize * 0.2;
+  end;
   for Index := 0 to FDocument.SpanCount - 1 do
   begin
     Span := FDocument.Spans[Index];
@@ -872,13 +1121,113 @@ begin
       FTextLayout.SetFontStyle(2, Range);
     if vtsfUnderline in Span.Style.Flags then
       FTextLayout.SetUnderline(True, Range);
+    if vtsfStrikethrough in Span.Style.Flags then
+      FTextLayout.SetStrikethrough(True, Range);
     if vtsfSuperscript in Span.Style.Flags then
     begin
+      ScriptFontSize := Max(Single(MIN_FONT_SIZE_DIP), SpanFontSize * 0.72);
+      FTextLayout.SetFontSize(ScriptFontSize, Range);
+      if Span.Role = vsrContent then
+      begin
+        HasContentScript := True;
+        ScriptCaretBaseline := FBaseCaretBaseline *
+          (ScriptFontSize / BaseFontSize);
+        ScriptCaretDescent := FBaseCaretDescent *
+          (ScriptFontSize / BaseFontSize);
+        if not MeasureTextFormatLineMetrics(FDWriteFactory, FTextFormat,
+          Copy(DocumentText, Span.StartUTF16 + 1, Span.LengthUTF16),
+          ScriptFontSize, vtsfBold in Span.Style.Flags,
+          vtsfItalic in Span.Style.Flags, ScriptBaseline,
+          ScriptDescent, ScriptTopOverhang,
+          ScriptBottomOverhang) then
+        begin
+          ScriptBaseline := FBaseCaretBaseline *
+            (ScriptFontSize / BaseFontSize);
+          ScriptDescent := FBaseCaretDescent *
+            (ScriptFontSize / BaseFontSize);
+          ScriptTopOverhang := 0;
+          ScriptBottomOverhang := 0;
+        end;
+        { Reserve whichever is taller: actual glyph ink (including positive
+          overhang) or the adaptive caret's typographic box. This keeps the
+          caret inside the line without returning to the old full-size script
+          reservation. It also protects decorations, which DirectWrite does
+          not include in text overhang metrics. }
+        ScriptTopExtent := Max(ScriptCaretBaseline, Max(Single(0),
+          ScriptBaseline + ScriptTopOverhang));
+        MaxScriptTopExtent := Max(MaxScriptTopExtent, ScriptTopExtent +
+          SpanFontSize * SUPERSCRIPT_RISE);
+        ScriptBottomExtent := Max(Single(0), Max(ScriptCaretDescent,
+          ScriptDescent + ScriptBottomOverhang) -
+          SpanFontSize * SUPERSCRIPT_RISE);
+        MaxScriptBottomExtent := Max(MaxScriptBottomExtent,
+          ScriptBottomExtent);
+      end;
+    end
+    else if vtsfSubscript in Span.Style.Flags then
+    begin
+      ScriptFontSize := Max(Single(MIN_FONT_SIZE_DIP), SpanFontSize * 0.72);
+      FTextLayout.SetFontSize(ScriptFontSize, Range);
+      if Span.Role = vsrContent then
+      begin
+        HasContentScript := True;
+        ScriptCaretBaseline := FBaseCaretBaseline *
+          (ScriptFontSize / BaseFontSize);
+        ScriptCaretDescent := FBaseCaretDescent *
+          (ScriptFontSize / BaseFontSize);
+        if not MeasureTextFormatLineMetrics(FDWriteFactory, FTextFormat,
+          Copy(DocumentText, Span.StartUTF16 + 1, Span.LengthUTF16),
+          ScriptFontSize, vtsfBold in Span.Style.Flags,
+          vtsfItalic in Span.Style.Flags, ScriptBaseline,
+          ScriptDescent, ScriptTopOverhang,
+          ScriptBottomOverhang) then
+        begin
+          ScriptBaseline := FBaseCaretBaseline *
+            (ScriptFontSize / BaseFontSize);
+          ScriptDescent := FBaseCaretDescent *
+            (ScriptFontSize / BaseFontSize);
+          ScriptTopOverhang := 0;
+          ScriptBottomOverhang := 0;
+        end;
+        ScriptBottomExtent := Max(ScriptCaretDescent, Max(Single(0),
+          ScriptDescent + ScriptBottomOverhang));
+        ScriptTopExtent := Max(Single(0), Max(ScriptCaretBaseline,
+          ScriptBaseline + ScriptTopOverhang) -
+          SpanFontSize * SUBSCRIPT_DROP);
+        MaxScriptTopExtent := Max(MaxScriptTopExtent, ScriptTopExtent);
+        MaxScriptBottomExtent := Max(MaxScriptBottomExtent,
+          ScriptBottomExtent + SpanFontSize * SUBSCRIPT_DROP);
+      end;
+    end;
+  end;
+
+  for Index := 0 to FDocument.SpanCount - 1 do
+  begin
+    Span := FDocument.Spans[Index];
+    if (Span.LengthUTF16 <= 0) or (Span.StartUTF16 < 0) or
+       (Span.StartUTF16 + Span.LengthUTF16 > Length(DocumentText)) or
+       not ((vtsfSuperscript in Span.Style.Flags) or
+         (vtsfSubscript in Span.Style.Flags)) or
+       (Span.Role = vsrContent) then
+      Continue;
+    Range.StartPosition := Span.StartUTF16;
+    Range.Length := Span.LengthUTF16;
+    SpanFontSize := Max(Single(MIN_FONT_SIZE_DIP), BaseFontSize +
+      Span.Style.FontSizeDelta * (96.0 / 72.0));
+    if (vtsfSuperscript in Span.Style.Flags) or
+       (vtsfSubscript in Span.Style.Flags) then
+    begin
+      if vtsfSuperscript in Span.Style.Flags then
+        ScriptPosition := dwspSuperscript
+      else
+        ScriptPosition := dwspSubscript;
       SuperscriptText := Copy(DocumentText, Span.StartUTF16 + 1,
         Span.LengthUTF16);
       Superscript := TDirectWriteSuperscriptInline.Create(FDWriteFactory,
         SuperscriptText, FamilyName, LocaleName, SpanFontSize, Span.Style,
-        Span.Direction, Index, SuperscriptStatus);
+        Span.Direction, ScriptPosition, Index,
+        DWRITE_BREAK_CONDITION_NEUTRAL, DWRITE_BREAK_CONDITION_NEUTRAL,
+        SuperscriptStatus);
       if Succeeded(SuperscriptStatus) then
       begin
         SuperscriptInterface := Superscript;
@@ -887,18 +1236,51 @@ begin
         if Succeeded(SuperscriptStatus) then
           FSuperscriptObjects.Add(Superscript)
         else
-        begin
           SuperscriptInterface := nil;
-          FTextLayout.SetFontSize(Max(Single(MIN_FONT_SIZE_DIP),
-            SpanFontSize * 0.72), Range);
-        end;
       end
       else
-      begin
         Superscript.Free;
-        FTextLayout.SetFontSize(Max(Single(MIN_FONT_SIZE_DIP),
-          SpanFontSize * 0.72), Range);
+    end;
+  end;
+
+  { Baseline offsets happen only at paint time, so native line metrics need
+    explicit headroom. Measure after installing inline note markers because
+    they can change both wrapping and natural ascent/descent. Uniform spacing
+    keeps caret geometry and ContentHeight consistent with the final ink. }
+  if HasContentScript then
+  begin
+    NaturalBaseline := 0;
+    NaturalDescent := 0;
+    if GetLayoutLineMetrics(FTextLayout, LineMetrics) then
+      for LineIndex := 0 to High(LineMetrics) do
+      begin
+        NaturalBaseline := Max(NaturalBaseline,
+          LineMetrics[LineIndex].Baseline);
+        NaturalDescent := Max(NaturalDescent,
+          LineMetrics[LineIndex].Height - LineMetrics[LineIndex].Baseline);
       end;
+    NaturalBaseline := Max(NaturalBaseline, FBaseCaretBaseline);
+    NaturalDescent := Max(NaturalDescent, FBaseCaretDescent);
+    if (NaturalBaseline <= 0) or (NaturalDescent < 0) then
+    begin
+      NaturalBaseline := BaseFontSize * 0.8;
+      NaturalDescent := BaseFontSize * 0.2;
+    end;
+    ExtraTop := Max(Single(0), MaxScriptTopExtent - NaturalBaseline);
+    ExtraBottom := Max(Single(0), MaxScriptBottomExtent - NaturalDescent);
+    { Even when the shifted ink fits within a normal line box, a line that
+      contains only 72%-sized script has smaller native metrics. Install the
+      base strut for every scripted document so such lines cannot overlap or
+      shrink ContentHeight; ExtraTop/ExtraBottom remain only the net overhang. }
+    LineSpacing := NaturalBaseline + NaturalDescent + ExtraTop + ExtraBottom;
+    LayoutFormat := FTextLayout;
+    HR := LayoutFormat.SetLineSpacing(DWRITE_LINE_SPACING_METHOD_UNIFORM,
+      LineSpacing, NaturalBaseline + ExtraTop);
+    if not Succeeded(HR) then
+    begin
+      FBackendError := 'SetLineSpacing failed: ' + HResultText(HR);
+      FTextLayout := nil;
+      Exit;
     end;
   end;
 
@@ -965,13 +1347,23 @@ begin
 end;
 
 function TDirectWriteSyntagmView.ApplyDrawingEffects: Boolean;
+const
+  SUPERSCRIPT_RISE = 0.30;
+  SUBSCRIPT_DROP = 0.20;
 var
+  BaseFontSize: Single;
+  BaselineOffset: Single;
+  DrawingEffect: IUnknown;
+  EffectBrush: IWinD2D1Brush;
   RangeBrush: IWinD2D1SolidColorBrush;
   D2DColor: TD2DColorF;
   HR: HRESULT;
   Index: Integer;
+  IsScriptContent: Boolean;
   Range: TDWriteTextRange;
+  ScriptEffect: IWinDWriteScriptEffect;
   Span: TVisualSpan;
+  SpanFontSize: Single;
   Superscript: TDirectWriteSuperscriptInline;
   SuperscriptIndex: Integer;
 begin
@@ -994,37 +1386,69 @@ begin
       FSuperscriptObjects[SuperscriptIndex]);
     Superscript.SetDrawingEffect(FDefaultBrush);
   end;
+  BaseFontSize := Font.Size * 96 / 72;
+  if BaseFontSize <= 0 then
+    BaseFontSize := 13.333;
   SetLength(FRangeBrushes, 0);
+  SetLength(FScriptEffects, 0);
   for Index := 0 to FDocument.SpanCount - 1 do
   begin
     Span := FDocument.Spans[Index];
-    if not Span.Style.HasForegroundColor or (Span.LengthUTF16 <= 0) then
+    if Span.LengthUTF16 <= 0 then
       Continue;
-    D2DColor := ColorToD2D(TColor(Span.Style.ForegroundColor));
-    RangeBrush := nil;
-    HR := FRenderTarget.CreateSolidColorBrush(@D2DColor, nil, RangeBrush);
-    if not Succeeded(HR) then
+    IsScriptContent := (Span.Role = vsrContent) and
+      ((vtsfSuperscript in Span.Style.Flags) or
+       (vtsfSubscript in Span.Style.Flags));
+    if not Span.Style.HasForegroundColor and not IsScriptContent then
+      Continue;
+    EffectBrush := FDefaultBrush;
+    if Span.Style.HasForegroundColor then
     begin
-      FBackendError := 'Range brush creation failed: ' + HResultText(HR);
-      Exit;
+      D2DColor := ColorToD2D(TColor(Span.Style.ForegroundColor));
+      RangeBrush := nil;
+      HR := FRenderTarget.CreateSolidColorBrush(@D2DColor, nil, RangeBrush);
+      if not Succeeded(HR) then
+      begin
+        FBackendError := 'Range brush creation failed: ' + HResultText(HR);
+        Exit;
+      end;
+      SetLength(FRangeBrushes, Length(FRangeBrushes) + 1);
+      FRangeBrushes[High(FRangeBrushes)] := RangeBrush;
+      EffectBrush := RangeBrush;
     end;
     Range.StartPosition := Span.StartUTF16;
     Range.Length := Span.LengthUTF16;
-    HR := FTextLayout.SetDrawingEffect(RangeBrush, Range);
+    DrawingEffect := EffectBrush;
+    if (Span.Role = vsrContent) and
+       ((vtsfSuperscript in Span.Style.Flags) or
+        (vtsfSubscript in Span.Style.Flags)) then
+    begin
+      SpanFontSize := Max(Single(1), BaseFontSize +
+        Span.Style.FontSizeDelta * (96.0 / 72.0));
+      if vtsfSuperscript in Span.Style.Flags then
+        BaselineOffset := -SpanFontSize * SUPERSCRIPT_RISE
+      else
+        BaselineOffset := SpanFontSize * SUBSCRIPT_DROP;
+      ScriptEffect := CreateDirectWriteScriptEffect(EffectBrush,
+        BaselineOffset);
+      DrawingEffect := ScriptEffect;
+      SetLength(FScriptEffects, Length(FScriptEffects) + 1);
+      FScriptEffects[High(FScriptEffects)] := ScriptEffect;
+    end;
+    HR := FTextLayout.SetDrawingEffect(DrawingEffect, Range);
     if not Succeeded(HR) then
     begin
       FBackendError := 'SetDrawingEffect failed: ' + HResultText(HR);
       Exit;
     end;
-    for SuperscriptIndex := 0 to FSuperscriptObjects.Count - 1 do
+    if Span.Style.HasForegroundColor then
+      for SuperscriptIndex := 0 to FSuperscriptObjects.Count - 1 do
     begin
       Superscript := TDirectWriteSuperscriptInline(
         FSuperscriptObjects[SuperscriptIndex]);
       if Superscript.SpanIndex = Index then
-        Superscript.SetDrawingEffect(RangeBrush);
+        Superscript.SetDrawingEffect(EffectBrush);
     end;
-    SetLength(FRangeBrushes, Length(FRangeBrushes) + 1);
-    FRangeBrushes[High(FRangeBrushes)] := RangeBrush;
   end;
   FDrawingEffectsReady := True;
   Result := True;
@@ -1115,7 +1539,9 @@ var
   Background: TD2DColorF;
   Client: TRect;
   HR: HRESULT;
+  LayoutHR: HRESULT;
   Origin: TD2DPoint2F;
+  Renderer: IWinDWriteTextRenderer;
 begin
   FGeometryMatchesPaint := False;
   Client := ClientRect;
@@ -1132,8 +1558,9 @@ begin
   FRenderTarget.BeginDraw;
   FRenderTarget.Clear(@Background);
   PaintSpanBackgrounds(ADpi);
-  FRenderTarget.DrawTextLayout(Origin, FTextLayout, FDefaultBrush,
-    D2D1_DRAW_TEXT_OPTIONS_CLIP);
+  Renderer := TDirectWriteScriptRenderer.Create(FRenderTarget,
+    FDefaultBrush);
+  LayoutHR := FTextLayout.Draw(nil, Renderer, Origin.X, Origin.Y);
   HR := FRenderTarget.EndDraw(nil, nil);
   if HR = D2DERR_RECREATE_TARGET then
   begin
@@ -1144,6 +1571,10 @@ begin
   begin
     FBackendError := 'EndDraw failed: ' + HResultText(HR);
     DiscardRenderTarget;
+  end
+  else if not Succeeded(LayoutHR) then
+  begin
+    FBackendError := 'TextLayout.Draw failed: ' + HResultText(LayoutHR);
   end
   else
     FGeometryMatchesPaint := True;
@@ -1206,16 +1637,31 @@ end;
 function TDirectWriteSyntagmView.GetTextPositionClientRect(
   UTF16Offset: Integer; out CaretRect: TRect): Boolean;
 {$IFDEF MSWINDOWS}
+const
+  MIN_FONT_SIZE_DIP = 1.0;
+  SCRIPT_SCALE = 0.72;
+  SUPERSCRIPT_RISE = 0.30;
+  SUBSCRIPT_DROP = 0.20;
 var
+  BaselineOffset: Single;
+  CaretBaseline: Single;
+  CaretDescent: Single;
   Dpi: Integer;
   HR: HRESULT;
+  LineBaseline: Single;
+  LineHeight: Single;
+  LineTop: Single;
   Metrics: TDWriteHitTestMetrics;
   Origin: TD2DPoint2F;
   PointX: Single;
   PointY: Single;
   QueryPosition: Integer;
   QueryTrailing: TDWriteBool;
+  Scale: Single;
+  SpanFontSize: Single;
+  Style: TVisualTextStyle;
   TextLength: Integer;
+  VisualBaseline: Single;
 {$ENDIF}
 begin
   FillChar(CaretRect, SizeOf(CaretRect), 0);
@@ -1257,11 +1703,103 @@ begin
   if not Succeeded(HR) then
     Exit(False);
 
+  if not GetLayoutLineBox(FTextLayout, UTF16Offset, LineTop, LineHeight,
+    LineBaseline) then
+  begin
+    LineTop := Metrics.Top;
+    LineHeight := Metrics.Height;
+    LineBaseline := Metrics.Height * 0.8;
+  end;
+
+  Style := DefaultVisualTextStyle;
+  ResolveInsertionStyle(UTF16Offset, Style);
+  SpanFontSize := Max(Single(MIN_FONT_SIZE_DIP), FBaseFontSizeDIP +
+    Style.FontSizeDelta * (96.0 / 72.0));
+  if FBaseFontSizeDIP > 0 then
+    Scale := SpanFontSize / FBaseFontSizeDIP
+  else
+    Scale := 1;
+  BaselineOffset := 0;
+  if vtsfSuperscript in Style.Flags then
+  begin
+    Scale := Scale * SCRIPT_SCALE;
+    BaselineOffset := -SpanFontSize * SUPERSCRIPT_RISE;
+  end
+  else if vtsfSubscript in Style.Flags then
+  begin
+    Scale := Scale * SCRIPT_SCALE;
+    BaselineOffset := SpanFontSize * SUBSCRIPT_DROP;
+  end;
+  CaretBaseline := FBaseCaretBaseline * Scale;
+  CaretDescent := FBaseCaretDescent * Scale;
+  if (CaretBaseline <= 0) or (CaretDescent < 0) then
+  begin
+    if (vtsfSuperscript in Style.Flags) or
+       (vtsfSubscript in Style.Flags) then
+      SpanFontSize := SpanFontSize * SCRIPT_SCALE;
+    CaretBaseline := Max(Single(1), SpanFontSize * 0.8);
+    CaretDescent := Max(Single(0), SpanFontSize * 0.2);
+  end;
+  VisualBaseline := LineTop + LineBaseline + BaselineOffset;
   CaretRect.Left := Round((Origin.X + PointX) * Dpi / 96);
-  CaretRect.Top := Round((Origin.Y + PointY) * Dpi / 96);
+  CaretRect.Top := Round((Origin.Y + VisualBaseline - CaretBaseline) *
+    Dpi / 96);
   CaretRect.Right := CaretRect.Left + Max(1, Round(Dpi / 96));
-  CaretRect.Bottom := CaretRect.Top +
-    Max(1, Ceil(Metrics.Height * Dpi / 96));
+  CaretRect.Bottom := Round((Origin.Y + VisualBaseline + CaretDescent) *
+    Dpi / 96);
+  if CaretRect.Bottom <= CaretRect.Top then
+    CaretRect.Bottom := CaretRect.Top + 1;
+  Result := True;
+  {$ELSE}
+  Result := False;
+  {$ENDIF}
+end;
+
+function TDirectWriteSyntagmView.GetTextLineClientRect(
+  UTF16Offset: Integer; out LineRect: TRect): Boolean;
+{$IFDEF MSWINDOWS}
+var
+  Dpi: Integer;
+  LineBaseline: Single;
+  LineHeight: Single;
+  LineTop: Single;
+  Origin: TD2DPoint2F;
+  TextLength: Integer;
+{$ENDIF}
+begin
+  FillChar(LineRect, SizeOf(LineRect), 0);
+  if not Assigned(FDocument) then
+    Exit(False);
+  {$IFDEF MSWINDOWS}
+  if not EnsureLayout then
+    Exit(False);
+  Dpi := FLayoutDpi;
+  if Dpi <= 0 then
+    Dpi := 96;
+  TextLength := Length(FDocument.Text);
+  if UTF16Offset < 0 then
+    UTF16Offset := 0
+  else if UTF16Offset > TextLength then
+    UTF16Offset := TextLength;
+  Origin := LayoutOriginDIP(Dpi);
+  if TextLength = 0 then
+  begin
+    LineRect.Left := Round(Origin.X * Dpi / 96);
+    LineRect.Top := Round(Origin.Y * Dpi / 96);
+    LineRect.Right := Max(LineRect.Left + 1,
+      ClientWidth - FLayoutPadding);
+    LineRect.Bottom := LineRect.Top + Max(1, Canvas.TextHeight('Mg'));
+    Exit(True);
+  end;
+  if not GetLayoutLineBox(FTextLayout, UTF16Offset, LineTop,
+    LineHeight, LineBaseline) then
+    Exit(False);
+  LineRect.Left := Round(Origin.X * Dpi / 96);
+  LineRect.Top := Round((Origin.Y + LineTop) * Dpi / 96);
+  LineRect.Right := Max(LineRect.Left + 1,
+    ClientWidth - FLayoutPadding);
+  LineRect.Bottom := LineRect.Top + Max(1,
+    Ceil(LineHeight * Dpi / 96));
   Result := True;
   {$ELSE}
   Result := False;
@@ -1322,6 +1860,7 @@ function TDirectWriteSyntagmView.GetVisualObjectClientRect(
   Role: TVisualSpanRole; ObjectId: QWord; out ObjectRect: TRect): Boolean;
 var
   Index: Integer;
+  RectIndex: Integer;
   Rects: TRectArray;
   Span: TVisualSpan;
 begin
@@ -1338,7 +1877,14 @@ begin
     if not GetTextRangeClientRects(Span.StartUTF16, Span.LengthUTF16,
       Rects) or (Length(Rects) = 0) then
       Exit;
+    { A mixed-direction inline range may expose a zero-width boundary metric
+      before its actual object metric. Use the widest rectangle from that
+      atomic, no-wrap range instead of making the boundary its click anchor. }
     ObjectRect := Rects[0];
+    for RectIndex := 1 to High(Rects) do
+      if Rects[RectIndex].Right - Rects[RectIndex].Left >
+         ObjectRect.Right - ObjectRect.Left then
+        ObjectRect := Rects[RectIndex];
     Exit(True);
   end;
 end;

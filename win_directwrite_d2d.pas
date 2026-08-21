@@ -56,6 +56,66 @@ type
   end;
   PDWriteHitTestMetrics = ^TDWriteHitTestMetrics;
 
+  TDWriteMatrix = record
+    M11: TDWriteFloat;
+    M12: TDWriteFloat;
+    M21: TDWriteFloat;
+    M22: TDWriteFloat;
+    DX: TDWriteFloat;
+    DY: TDWriteFloat;
+  end;
+  PDWriteMatrix = ^TDWriteMatrix;
+
+  TDWriteGlyphOffset = record
+    AdvanceOffset: TDWriteFloat;
+    AscenderOffset: TDWriteFloat;
+  end;
+  PDWriteGlyphOffset = ^TDWriteGlyphOffset;
+
+  TDWriteGlyphRun = record
+    FontFace: Pointer;
+    FontEmSize: TDWriteFloat;
+    GlyphCount: TDWriteUInt32;
+    GlyphIndices: PWord;
+    GlyphAdvances: PDWriteFloat;
+    GlyphOffsets: PDWriteGlyphOffset;
+    IsSideways: TDWriteBool;
+    BidiLevel: TDWriteUInt32;
+  end;
+  PDWriteGlyphRun = ^TDWriteGlyphRun;
+
+  TDWriteGlyphRunDescription = record
+    LocaleName: PWideChar;
+    Text: PWideChar;
+    StringLength: TDWriteUInt32;
+    ClusterMap: PWord;
+    TextPosition: TDWriteUInt32;
+  end;
+  PDWriteGlyphRunDescription = ^TDWriteGlyphRunDescription;
+
+  TDWriteUnderline = record
+    Width: TDWriteFloat;
+    Thickness: TDWriteFloat;
+    Offset: TDWriteFloat;
+    RunHeight: TDWriteFloat;
+    ReadingDirection: LongInt;
+    FlowDirection: LongInt;
+    LocaleName: PWideChar;
+    MeasuringMode: LongInt;
+  end;
+  PDWriteUnderline = ^TDWriteUnderline;
+
+  TDWriteStrikethrough = record
+    Width: TDWriteFloat;
+    Thickness: TDWriteFloat;
+    Offset: TDWriteFloat;
+    ReadingDirection: LongInt;
+    FlowDirection: LongInt;
+    LocaleName: PWideChar;
+    MeasuringMode: LongInt;
+  end;
+  PDWriteStrikethrough = ^TDWriteStrikethrough;
+
   { DWRITE_CLUSTER_METRICS uses two packed 16-bit bit-field values after
     Length. Keeping the flags opaque preserves the native ABI while exposing
     the cluster length needed for legal caret stops. }
@@ -138,6 +198,7 @@ const
   DWRITE_READING_DIRECTION_LEFT_TO_RIGHT = 0;
   DWRITE_READING_DIRECTION_RIGHT_TO_LEFT = 1;
   DWRITE_FLOW_DIRECTION_TOP_TO_BOTTOM = 0;
+  DWRITE_LINE_SPACING_METHOD_UNIFORM = 1;
   DWRITE_BREAK_CONDITION_NEUTRAL = 0;
 
   D2D1_FACTORY_TYPE_SINGLE_THREADED = 0;
@@ -156,13 +217,16 @@ const
   IID_IWinDWriteTextFormat: TGUID = '{9C906818-31D7-4FD3-A151-7C5E225DB55A}';
   IID_IWinDWriteTextLayout: TGUID = '{53737037-6D14-410B-9BFE-0B182BB70961}';
   IID_IWinDWriteInlineObject: TGUID = '{8339FDE3-106F-47AB-8373-1C6295EB10B3}';
+  IID_IWinDWritePixelSnapping: TGUID = '{EAF3A2DA-ECF4-4D24-B644-B34F6842024B}';
   IID_IWinDWriteTextRenderer: TGUID = '{EF8A8135-5CC6-45FE-8825-C5A0724EB819}';
+  IID_IWinD2D1Brush: TGUID = '{2CD906A8-12E2-11DC-9FED-001143A055F9}';
   IID_IWinD2D1Factory: TGUID = '{06152247-6F50-465A-9245-118BFD3B6007}';
 
 type
   IWinDWriteTextFormat = interface;
   IWinDWriteTextLayout = interface;
   IWinDWriteInlineObject = interface;
+  IWinDWritePixelSnapping = interface;
   IWinDWriteTextRenderer = interface;
   IWinD2D1Factory = interface;
   IWinD2D1Resource = interface;
@@ -208,7 +272,8 @@ type
     function SetFlowDirection(Value: LongInt): HRESULT; stdcall;
     procedure _Slot05; stdcall;
     procedure _Slot06; stdcall;
-    procedure _Slot07; stdcall;
+    function SetLineSpacing(Method: LongInt; LineSpacing,
+      Baseline: TDWriteFloat): HRESULT; stdcall;
     procedure _Slot08; stdcall;
     procedure _Slot09; stdcall;
     procedure _Slot10; stdcall;
@@ -276,7 +341,8 @@ type
       MaxLineCount: TDWriteUInt32; out ActualLineCount: TDWriteUInt32): HRESULT;
       stdcall;
     function GetMetrics(out Metrics: TDWriteTextMetrics): HRESULT; stdcall;
-    procedure _LayoutSlot33; stdcall;
+    function GetOverhangMetrics(
+      out Overhangs: TDWriteOverhangMetrics): HRESULT; stdcall;
     function GetClusterMetrics(Metrics: PDWriteClusterMetrics;
       MaxClusterCount: TDWriteUInt32;
       out ActualClusterCount: TDWriteUInt32): HRESULT; stdcall;
@@ -292,8 +358,35 @@ type
       out ActualMetricsCount: TDWriteUInt32): HRESULT; stdcall;
   end;
 
-  IWinDWriteTextRenderer = interface(IUnknown)
+  IWinDWritePixelSnapping = interface(IUnknown)
+    ['{EAF3A2DA-ECF4-4D24-B644-B34F6842024B}']
+    function IsPixelSnappingDisabled(ClientDrawingContext: Pointer;
+      out IsDisabled: TDWriteBool): HRESULT; stdcall;
+    function GetCurrentTransform(ClientDrawingContext: Pointer;
+      out Transform: TDWriteMatrix): HRESULT; stdcall;
+    function GetPixelsPerDip(ClientDrawingContext: Pointer;
+      out PixelsPerDip: TDWriteFloat): HRESULT; stdcall;
+  end;
+
+  IWinDWriteTextRenderer = interface(IWinDWritePixelSnapping)
     ['{EF8A8135-5CC6-45FE-8825-C5A0724EB819}']
+    function DrawGlyphRun(ClientDrawingContext: Pointer;
+      BaselineOriginX, BaselineOriginY: TDWriteFloat;
+      MeasuringMode: LongInt; GlyphRun: PDWriteGlyphRun;
+      GlyphRunDescription: PDWriteGlyphRunDescription;
+      ClientDrawingEffect: IUnknown): HRESULT; stdcall;
+    function DrawUnderline(ClientDrawingContext: Pointer;
+      BaselineOriginX, BaselineOriginY: TDWriteFloat;
+      Underline: PDWriteUnderline; ClientDrawingEffect: IUnknown): HRESULT;
+      stdcall;
+    function DrawStrikethrough(ClientDrawingContext: Pointer;
+      BaselineOriginX, BaselineOriginY: TDWriteFloat;
+      Strikethrough: PDWriteStrikethrough;
+      ClientDrawingEffect: IUnknown): HRESULT; stdcall;
+    function DrawInlineObject(ClientDrawingContext: Pointer;
+      OriginX, OriginY: TDWriteFloat; InlineObject: IWinDWriteInlineObject;
+      IsSideways, IsRightToLeft: TDWriteBool;
+      ClientDrawingEffect: IUnknown): HRESULT; stdcall;
   end;
 
   IWinDWriteInlineObject = interface(IUnknown)
@@ -359,9 +452,11 @@ type
     procedure DrawTextLayout(Origin: TD2DPoint2F;
       TextLayout: IWinDWriteTextLayout; DefaultFillBrush: IWinD2D1Brush;
       Options: LongInt); stdcall;
-    procedure _RTSlot25; stdcall;
+    procedure DrawGlyphRun(BaselineOrigin: TD2DPoint2F;
+      GlyphRun: PDWriteGlyphRun; ForegroundBrush: IWinD2D1Brush;
+      MeasuringMode: LongInt); stdcall;
     procedure _RTSlot26; stdcall;
-    procedure _RTSlot27; stdcall;
+    procedure GetTransform(out Transform: TDWriteMatrix); stdcall;
     procedure _RTSlot28; stdcall;
     procedure _RTSlot29; stdcall;
     procedure _RTSlot30; stdcall;

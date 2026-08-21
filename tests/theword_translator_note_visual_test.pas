@@ -15,6 +15,7 @@ type
     procedure ValidationRejectsEmptyMarkupUnsafeMarkerBreaksAndLinks;
     procedure VisualBodyRoundTripsUnicodeRelativeSizeAndBreaks;
     procedure SharedBodyPreviewRendersRichAndProtectedContent;
+    procedure ChapterPopupReusesPreviewForRomansElevenSevenNote;
     procedure BidiRunsRenderWithIsolatesWithoutChangingLogicalText;
     procedure InitialFormattingIsSafeBeforeBodyReceivesFocus;
     procedure EmptyVisualBodyTypingKeepsFirstCharacterOrder;
@@ -25,6 +26,9 @@ type
     procedure EditorBreakKeysSerializeMarkupWithoutPhysicalNewlines;
     procedure AdapterCreatesTypedNonTextMarkersWithSharedNumbering;
     procedure DirectEditorRoutesShortcutHoverAndClickForNoteMarker;
+    procedure DirectEditorKeepsMixedMarkersAtomicAcrossParagraphDirections;
+    procedure DirectEditorKeepsScriptTextEditableWrappedAndCaretLineSized;
+    procedure DirectEditorReservesScriptInkAcrossConsecutiveLines;
   end;
 
 implementation
@@ -34,8 +38,8 @@ uses
   Types, KMemo, text_direction, verse_view_intf, verse_visual_document,
   directwrite_syntagm_view, directwrite_verse_editor,
   theword_ont_codec_v2, theword_verse_visual_adapter_v2,
-  theword_translator_note_editor, theword_translator_note_body_v2,
-  theword_translator_note_preview;
+  theword_wysiwyg_editor_control, theword_translator_note_editor, theword_translator_note_body_v2,
+  theword_translator_note_preview, chapterview;
 
 type
   TApplyProbe = class
@@ -74,6 +78,7 @@ type
   TEditAccess = class(TEdit)
   public
     procedure SimulateKey(var Key: Word; Shift: TShiftState);
+    procedure SimulateUTF8Key(var UTF8Key: TUTF8Char);
   end;
 
 function TApplyProbe.Apply(Sender: TObject;
@@ -121,6 +126,11 @@ end;
 procedure TEditAccess.SimulateKey(var Key: Word; Shift: TShiftState);
 begin
   KeyDown(Key, Shift);
+end;
+
+procedure TEditAccess.SimulateUTF8Key(var UTF8Key: TUTF8Char);
+begin
+  UTF8KeyPress(UTF8Key);
 end;
 
 procedure TTheWordTranslatorNoteVisualTests.
@@ -312,6 +322,37 @@ begin
       NoteRun.TextStyle.Font.Name);
   finally
     View.Free;
+  end;
+end;
+
+procedure TTheWordTranslatorNoteVisualTests.
+  ChapterPopupReusesPreviewForRomansElevenSevenNote;
+const
+  PREVIOUS_BODY: UnicodeString =
+    '<b>a</b><i>b</i><u>c</u><s>d</s><sup>e</sup>' +
+    '<sub>f</sub><font color="red">g</font><b>h</b><i>i</i><u>j</u>';
+  ROMANS_BODY: UnicodeString =
+    '<font color="red">Rm 11:7 "eleição"</font> refere-se ao ' +
+    'remanescente fiel, aos israelitas que creram.';
+var
+  Hint: TNoteWindow;
+  Memo: TKMemo;
+begin
+  Forms.Application.Initialize;
+  Memo := TKMemo.Create(nil);
+  Hint := TNoteWindow.Create(nil);
+  try
+    Memo.TextStyle.Font.Name := 'Arial';
+    Memo.TextStyle.Font.Size := 10;
+    Hint.ActivateHint(UTF8Encode(PREVIOUS_BODY), Memo.TextStyle);
+    Hint.Hide;
+    Hint.ActivateHint(UTF8Encode(ROMANS_BODY), Memo.TextStyle);
+    AssertTrue('chapter popup remains visible after reusing its note view',
+      Hint.Visible);
+    Hint.Hide;
+  finally
+    Hint.Free;
+    Memo.Free;
   end;
 end;
 
@@ -678,6 +719,452 @@ begin
     Probe.Free;
     Host.Free;
     Source.Free;
+  end;
+end;
+
+procedure TTheWordTranslatorNoteVisualTests.
+  DirectEditorKeepsMixedMarkersAtomicAcrossParagraphDirections;
+var
+  Anchor: TRect;
+  Codec: ITheWordOntCodecV2;
+  Editor: TDirectWriteVerseEditorAccess;
+  Host: TForm;
+  Index: Integer;
+  MarkerId: QWord;
+  MarkerSpan: TVisualSpan;
+  Probe: TVisualEventProbe;
+  Source: TTheWordVerseDocument;
+  Visual: IVerseVisualDocument;
+
+  function ClickMarkerInside(const ARect: TRect;
+    AObjectId: QWord): Boolean;
+  var
+    Hit: TVerseHit;
+    X: Integer;
+    Y: Integer;
+  begin
+    Result := False;
+    for Y := ARect.Top to ARect.Bottom - 1 do
+      for X := ARect.Left to ARect.Right - 1 do
+        if Editor.HitTest(Point(X, Y), Hit) and
+           (Hit.Role = vsrTranslatorNote) and
+           (Hit.ObjectId = AObjectId) then
+        begin
+          Editor.SimulateClick(X, Y);
+          Exit(True);
+        end;
+  end;
+
+begin
+  Forms.Application.Initialize;
+  Codec := TTheWordOntCodecV2.Create;
+  Host := TForm.CreateNew(nil);
+  Probe := TVisualEventProbe.Create;
+  Source := nil;
+  try
+    Editor := TDirectWriteVerseEditorAccess.Create(Host);
+    Editor.Parent := Host;
+    Editor.Align := alClient;
+    Editor.InteractionMode := vimEdit;
+    Editor.OnVisualObjectClick := @Probe.Click;
+    Host.SetBounds(50, 50, 640, 220);
+    Host.Show;
+
+    Source := Codec.DecodeVerse(
+      UnicodeString('left <RF q="אב-A">note<Rf> right'));
+    Visual := BuildTheWordVerseVisualDocument(Source, tdLeftToRight, 93);
+    MarkerId := Source.TranslatorNotes[0].Id;
+    for Index := 0 to Visual.SpanCount - 1 do
+      if Visual.Spans[Index].Role = vsrTranslatorNote then
+      begin
+        MarkerSpan := Visual.Spans[Index];
+        Break;
+      end;
+    AssertEquals('LTR paragraph keeps its metadata direction',
+      Ord(tdLeftToRight), Ord(MarkerSpan.Direction));
+    AssertEquals('Hebrew-leading mixed q is retained literally', 'אב-A',
+      UTF8Encode(Copy(Visual.Text, MarkerSpan.StartUTF16 + 1,
+      MarkerSpan.LengthUTF16)));
+    Editor.SetEditorDocument(Visual);
+    Application.ProcessMessages;
+    AssertTrue('Hebrew-leading marker geometry is available in LTR text',
+      Editor.GetVisualObjectClientRect(vsrTranslatorNote, MarkerId, Anchor));
+    AssertTrue('Hebrew-leading marker has positive width',
+      Anchor.Right > Anchor.Left);
+    AssertTrue('Hebrew-leading marker has a hit inside its geometry',
+      ClickMarkerInside(Anchor, MarkerId));
+    AssertEquals('Hebrew-leading marker remains one clickable object', 1,
+      Probe.FClickCount);
+    AssertTrue(Probe.FLastHit.ObjectId = MarkerId);
+    Visual := nil;
+    FreeAndNil(Source);
+
+    Source := Codec.DecodeVerse(
+      UnicodeString('אב <RF q="A-אב">note<Rf> גד'));
+    Visual := BuildTheWordVerseVisualDocument(Source, tdRightToLeft, 94);
+    MarkerId := Source.TranslatorNotes[0].Id;
+    for Index := 0 to Visual.SpanCount - 1 do
+      if Visual.Spans[Index].Role = vsrTranslatorNote then
+      begin
+        MarkerSpan := Visual.Spans[Index];
+        Break;
+      end;
+    AssertEquals('RTL paragraph keeps its metadata direction',
+      Ord(tdRightToLeft), Ord(MarkerSpan.Direction));
+    AssertEquals('Latin-leading mixed q is retained literally', 'A-אב',
+      UTF8Encode(Copy(Visual.Text, MarkerSpan.StartUTF16 + 1,
+      MarkerSpan.LengthUTF16)));
+    Editor.SetEditorDocument(Visual);
+    Application.ProcessMessages;
+    AssertTrue('Latin-leading marker geometry is available in RTL text',
+      Editor.GetVisualObjectClientRect(vsrTranslatorNote, MarkerId, Anchor));
+    AssertTrue('Latin-leading marker has positive width',
+      Anchor.Right > Anchor.Left);
+    AssertTrue('Latin-leading marker has a hit inside its geometry',
+      ClickMarkerInside(Anchor, MarkerId));
+    AssertEquals('Latin-leading marker remains one clickable object', 2,
+      Probe.FClickCount);
+    AssertTrue(Probe.FLastHit.ObjectId = MarkerId);
+  finally
+    Source.Free;
+    Probe.Free;
+    Host.Free;
+  end;
+end;
+
+procedure TTheWordTranslatorNoteVisualTests.
+  DirectEditorKeepsScriptTextEditableWrappedAndCaretLineSized;
+const
+  LONG_SCRIPT = 'long script words that must wrap naturally across lines';
+var
+  Broker: TEditAccess;
+  CaretNormal: TRect;
+  CaretSubEnd: TRect;
+  CaretSubInside: TRect;
+  CaretSubStart: TRect;
+  CaretSupEnd: TRect;
+  CaretSupInside: TRect;
+  CaretSupStart: TRect;
+  Composite: TTheWordWysiwygEditorControl;
+  Editor: TDirectWriteVerseEditor;
+  Host: TForm;
+  HasWrappedLine: Boolean;
+  Index: Integer;
+  Key: Word;
+  KeyText: TUTF8Char;
+  Rects: TRectArray;
+  Stops: TVerseTextOffsetArray;
+  UnicodeScript: UnicodeString;
+begin
+  Forms.Application.Initialize;
+  Host := TForm.CreateNew(nil);
+  try
+    Host.SetBounds(50, 50, 420, 220);
+    Composite := TTheWordWysiwygEditorControl.Create(Host);
+    Composite.Parent := Host;
+    Composite.Align := alClient;
+    Composite.Editable := True;
+    Composite.Text := 'A<sup>bc</sup>D<sub>ef</sub>G';
+    Host.Show;
+    Application.ProcessMessages;
+
+    Editor := nil;
+    for Index := 0 to Composite.ControlCount - 1 do
+      if Composite.Controls[Index] is TDirectWriteVerseEditor then
+        Editor := TDirectWriteVerseEditor(Composite.Controls[Index]);
+    AssertTrue('the composite owns its DirectWrite editor', Assigned(Editor));
+
+    Broker := nil;
+    for Index := 0 to Editor.ControlCount - 1 do
+      if Editor.Controls[Index] is TEdit then
+        Broker := TEditAccess(Editor.Controls[Index]);
+    AssertTrue('the native input broker is present', Assigned(Broker));
+
+    AssertTrue('script layout exposes caret stops', Editor.GetCaretStops(Stops));
+    AssertEquals('every ASCII cluster remains editable', 8, Length(Stops));
+    for Index := 0 to High(Stops) do
+      AssertEquals('caret stop ' + IntToStr(Index), Index, Stops[Index]);
+
+    AssertTrue('normal caret rectangle is available',
+      Editor.GetTextPositionClientRect(0, CaretNormal));
+    AssertTrue('superscript start caret rectangle is available',
+      Editor.GetTextPositionClientRect(1, CaretSupStart));
+    AssertTrue('superscript interior caret rectangle is available',
+      Editor.GetTextPositionClientRect(2, CaretSupInside));
+    AssertTrue('superscript end caret rectangle is available',
+      Editor.GetTextPositionClientRect(3, CaretSupEnd));
+    AssertTrue('subscript start caret rectangle is available',
+      Editor.GetTextPositionClientRect(4, CaretSubStart));
+    AssertTrue('subscript interior caret rectangle is available',
+      Editor.GetTextPositionClientRect(5, CaretSubInside));
+    AssertTrue('subscript end caret rectangle is available',
+      Editor.GetTextPositionClientRect(6, CaretSubEnd));
+
+    AssertTrue('superscript caret is shorter than normal text',
+      CaretSupInside.Bottom - CaretSupInside.Top <
+      CaretNormal.Bottom - CaretNormal.Top);
+    AssertTrue('superscript caret is raised above normal text',
+      CaretSupInside.Top <= CaretNormal.Top);
+    AssertTrue('superscript caret ends above the normal caret',
+      CaretSupInside.Bottom < CaretNormal.Bottom);
+    AssertTrue('subscript caret is shorter than normal text',
+      CaretSubInside.Bottom - CaretSubInside.Top <
+      CaretNormal.Bottom - CaretNormal.Top);
+    AssertTrue('subscript caret starts below the normal caret',
+      CaretSubInside.Top > CaretNormal.Top);
+    AssertTrue('subscript caret extends below the normal caret',
+      CaretSubInside.Bottom > CaretNormal.Bottom);
+    AssertTrue('superscript opening boundary uses normal caret top',
+      Abs(CaretSupStart.Top - CaretNormal.Top) <= 1);
+    AssertEquals('superscript opening boundary uses normal caret height',
+      CaretNormal.Bottom - CaretNormal.Top,
+      CaretSupStart.Bottom - CaretSupStart.Top);
+    AssertTrue('superscript closing boundary uses normal caret top',
+      Abs(CaretSupEnd.Top - CaretNormal.Top) <= 1);
+    AssertEquals('superscript closing boundary uses normal caret height',
+      CaretNormal.Bottom - CaretNormal.Top,
+      CaretSupEnd.Bottom - CaretSupEnd.Top);
+    AssertTrue('subscript opening boundary uses normal caret top',
+      Abs(CaretSubStart.Top - CaretNormal.Top) <= 1);
+    AssertEquals('subscript opening boundary uses normal caret height',
+      CaretNormal.Bottom - CaretNormal.Top,
+      CaretSubStart.Bottom - CaretSubStart.Top);
+    AssertTrue('subscript closing boundary uses normal caret top',
+      Abs(CaretSubEnd.Top - CaretNormal.Top) <= 1);
+    AssertEquals('subscript closing boundary uses normal caret height',
+      CaretNormal.Bottom - CaretNormal.Top,
+      CaretSubEnd.Bottom - CaretSubEnd.Top);
+
+    Editor.SetSelection(2, 0);
+    AssertEquals('caret enters the middle of superscript text', 2,
+      Editor.CaretOffset);
+    AssertTrue('input broker follows raised superscript caret',
+      Abs(Broker.Top - CaretSupInside.Top) <= 1);
+    AssertEquals('input broker uses superscript caret height',
+      CaretSupInside.Bottom - CaretSupInside.Top, Broker.Height);
+    KeyText := 'X';
+    Broker.SimulateUTF8Key(KeyText);
+    AssertEquals('typing edits only the selected superscript position',
+      'A<sup>bXc</sup>D<sub>ef</sub>G', Composite.Text);
+    Editor.SetSelection(3, 0);
+    Key := VK_BACK;
+    Broker.SimulateKey(Key, []);
+    AssertEquals('backspace removes one cluster inside superscript text',
+      'A<sup>bc</sup>D<sub>ef</sub>G', Composite.Text);
+
+    Composite.Text := 'A<sub>bc</sub>D';
+    Application.ProcessMessages;
+    Editor.SetSelection(2, 0);
+    AssertEquals('caret enters the middle of subscript text', 2,
+      Editor.CaretOffset);
+    KeyText := 'X';
+    Broker.SimulateUTF8Key(KeyText);
+    AssertEquals('typing edits only the selected subscript position',
+      'A<sub>bXc</sub>D', Composite.Text);
+
+    UnicodeScript := UnicodeString(WideChar($D83D)) + WideChar($DE00) +
+      'e' + WideChar($0301);
+    Composite.Text := 'A<sup>' + UTF8Encode(UnicodeScript) + '</sup>Z';
+    Application.ProcessMessages;
+    AssertTrue('Unicode script layout exposes caret stops',
+      Editor.GetCaretStops(Stops));
+    AssertEquals('surrogate and combining clusters remain indivisible',
+      5, Length(Stops));
+    AssertEquals(0, Stops[0]);
+    AssertEquals(1, Stops[1]);
+    AssertEquals(3, Stops[2]);
+    AssertEquals(5, Stops[3]);
+    AssertEquals(6, Stops[4]);
+
+    Host.ClientWidth := 190;
+    Composite.Text := 'A<sup>' + LONG_SCRIPT + '</sup>Z';
+    Application.ProcessMessages;
+    AssertTrue('long script range exposes visual rectangles',
+      Editor.GetTextRangeClientRects(1, Length(LONG_SCRIPT), Rects));
+    HasWrappedLine := False;
+    for Index := 1 to High(Rects) do
+      if Rects[Index].Top <> Rects[0].Top then
+        HasWrappedLine := True;
+    AssertTrue('long script text wraps instead of becoming one atomic object',
+      HasWrappedLine);
+  finally
+    Host.Free;
+  end;
+end;
+
+procedure TTheWordTranslatorNoteVisualTests.
+  DirectEditorReservesScriptInkAcrossConsecutiveLines;
+var
+  Builder: TVerseVisualDocumentBuilder;
+  Editor: TDirectWriteVerseEditorAccess;
+  FirstCaret: TRect;
+  FirstLineHeight: Integer;
+  FirstLineRect: TRect;
+  Host: TForm;
+  NormalCaret: TRect;
+  NormalContentHeight: Integer;
+  NormalLineHeight: Integer;
+  NormalLineRect: TRect;
+  NormalStyle: TVisualTextStyle;
+  NormalVisual: IVerseVisualDocument;
+  ScriptContentHeight: Integer;
+  ScriptVisual: IVerseVisualDocument;
+  SecondCaret: TRect;
+  SecondLineRect: TRect;
+  SubOnlyCaret: TRect;
+  SubOnlyLineRect: TRect;
+  SubOnlyVisual: IVerseVisualDocument;
+  SubscriptStyle: TVisualTextStyle;
+  SupOnlyCaret: TRect;
+  SupOnlyLineRect: TRect;
+  SupOnlyVisual: IVerseVisualDocument;
+  SuperscriptStyle: TVisualTextStyle;
+  ThirdCaret: TRect;
+  ThirdLineRect: TRect;
+begin
+  Forms.Application.Initialize;
+  NormalStyle := DefaultVisualTextStyle;
+  Builder := TVerseVisualDocumentBuilder.Create(tdLeftToRight);
+  try
+    { Five/six UTF-16 units combine CJK fallback with Hebrew marks whose ink
+      can extend beyond ordinary Latin ascent/descent. }
+    Builder.AddText(0, '漢שָׁa', NormalStyle, True);
+    Builder.AddRoleText(1, #10, NormalStyle, False, vsrTitleBreak,
+      901, 'line-break');
+    Builder.AddText(2, '漢שָׁab', NormalStyle, True);
+    Builder.AddRoleText(3, #10, NormalStyle, False, vsrTitleBreak,
+      902, 'line-break');
+    Builder.AddText(4, '漢שָׁa', NormalStyle, True);
+    NormalVisual := Builder.Build(91);
+  finally
+    Builder.Free;
+  end;
+
+  SuperscriptStyle := DefaultVisualTextStyle;
+  Include(SuperscriptStyle.Flags, vtsfSuperscript);
+  SubscriptStyle := DefaultVisualTextStyle;
+  Include(SubscriptStyle.Flags, vtsfSubscript);
+  Builder := TVerseVisualDocumentBuilder.Create(tdLeftToRight);
+  try
+    Builder.AddText(0, '漢שָׁa', SuperscriptStyle, True);
+    SupOnlyVisual := Builder.Build(93);
+  finally
+    Builder.Free;
+  end;
+  Builder := TVerseVisualDocumentBuilder.Create(tdLeftToRight);
+  try
+    Builder.AddText(0, '漢שָׁa', SubscriptStyle, True);
+    SubOnlyVisual := Builder.Build(94);
+  finally
+    Builder.Free;
+  end;
+
+  Builder := TVerseVisualDocumentBuilder.Create(tdLeftToRight);
+  try
+    Builder.AddText(0, '漢שָׁa', SuperscriptStyle, True);
+    Builder.AddRoleText(1, #10, NormalStyle, False, vsrTitleBreak,
+      903, 'line-break');
+    Builder.AddText(2, '漢שָׁab', SubscriptStyle, True);
+    Builder.AddRoleText(3, #10, NormalStyle, False, vsrTitleBreak,
+      904, 'line-break');
+    Builder.AddText(4, '漢שָׁa', SuperscriptStyle, True);
+    ScriptVisual := Builder.Build(92);
+  finally
+    Builder.Free;
+  end;
+
+  Host := TForm.CreateNew(nil);
+  try
+    Host.SetBounds(50, 50, 420, 260);
+    Editor := TDirectWriteVerseEditorAccess.Create(Host);
+    Editor.Parent := Host;
+    Editor.Align := alClient;
+    Editor.InteractionMode := vimEdit;
+    Host.Show;
+
+    Editor.SetEditorDocument(NormalVisual);
+    Application.ProcessMessages;
+    AssertTrue('normal first-line caret is available',
+      Editor.GetTextPositionClientRect(0, NormalCaret));
+    AssertTrue('normal first-line box is available',
+      Editor.GetTextLineClientRect(0, NormalLineRect));
+    NormalContentHeight := Editor.ContentHeight;
+    NormalLineHeight := NormalLineRect.Bottom - NormalLineRect.Top;
+
+    Editor.SetEditorDocument(ScriptVisual);
+    Application.ProcessMessages;
+    AssertTrue('script-only first-line caret is available',
+      Editor.GetTextPositionClientRect(0, FirstCaret));
+    AssertTrue('script-only middle-line caret is available',
+      Editor.GetTextPositionClientRect(6, SecondCaret));
+    AssertTrue('script-only last-line caret is available',
+      Editor.GetTextPositionClientRect(13, ThirdCaret));
+    AssertTrue('script-only first-line box is available',
+      Editor.GetTextLineClientRect(0, FirstLineRect));
+    AssertTrue('script-only middle-line box is available',
+      Editor.GetTextLineClientRect(6, SecondLineRect));
+    AssertTrue('script-only last-line box is available',
+      Editor.GetTextLineClientRect(13, ThirdLineRect));
+    ScriptContentHeight := Editor.ContentHeight;
+    FirstLineHeight := FirstLineRect.Bottom - FirstLineRect.Top;
+
+    AssertTrue('fallback-font script keeps at least the natural line height',
+      FirstLineHeight >= NormalLineHeight);
+    AssertTrue('script line reserves only its net overhang',
+      FirstLineHeight <= NormalLineHeight + NormalLineHeight div 3 + 1);
+    AssertEquals('all consecutive script lines share reserved height',
+      FirstLineHeight, SecondLineRect.Bottom - SecondLineRect.Top);
+    AssertEquals('last script line shares reserved height',
+      FirstLineHeight, ThirdLineRect.Bottom - ThirdLineRect.Top);
+    AssertTrue('first and middle script lines are consecutive',
+      Abs((SecondLineRect.Top - FirstLineRect.Top) - FirstLineHeight) <= 1);
+    AssertTrue('middle and last script lines are consecutive',
+      Abs((ThirdLineRect.Top - SecondLineRect.Top) - FirstLineHeight) <= 1);
+    AssertTrue('superscript caret is smaller than a normal caret',
+      FirstCaret.Bottom - FirstCaret.Top <
+      NormalCaret.Bottom - NormalCaret.Top);
+    AssertTrue('subscript caret is smaller than a normal caret',
+      SecondCaret.Bottom - SecondCaret.Top <
+      NormalCaret.Bottom - NormalCaret.Top);
+    AssertTrue('subscript caret sits lower than superscript within the line box',
+      SecondCaret.Top - SecondLineRect.Top >
+      FirstCaret.Top - FirstLineRect.Top);
+    AssertTrue('script caret remains inside first line box',
+      (FirstCaret.Top >= FirstLineRect.Top) and
+      (FirstCaret.Bottom <= FirstLineRect.Bottom));
+    AssertTrue('script caret remains inside middle line box',
+      (SecondCaret.Top >= SecondLineRect.Top) and
+      (SecondCaret.Bottom <= SecondLineRect.Bottom));
+    AssertTrue('reserved lines do not shrink reported content height',
+      ScriptContentHeight >= NormalContentHeight);
+    AssertTrue('the final script line remains inside reported content',
+      ThirdLineRect.Bottom + Editor.LayoutPadding <= ScriptContentHeight);
+
+    Editor.SetEditorDocument(SupOnlyVisual);
+    Application.ProcessMessages;
+    AssertTrue('sup-only caret is available',
+      Editor.GetTextPositionClientRect(2, SupOnlyCaret));
+    AssertTrue('sup-only line box is available',
+      Editor.GetTextLineClientRect(2, SupOnlyLineRect));
+    AssertTrue('sup-only line retains a normal text strut',
+      SupOnlyLineRect.Bottom - SupOnlyLineRect.Top >= NormalLineHeight);
+    AssertTrue('sup-only caret stays inside its line',
+      (SupOnlyCaret.Top >= SupOnlyLineRect.Top) and
+      (SupOnlyCaret.Bottom <= SupOnlyLineRect.Bottom));
+
+    Editor.SetEditorDocument(SubOnlyVisual);
+    Application.ProcessMessages;
+    AssertTrue('sub-only caret is available',
+      Editor.GetTextPositionClientRect(2, SubOnlyCaret));
+    AssertTrue('sub-only line box is available',
+      Editor.GetTextLineClientRect(2, SubOnlyLineRect));
+    AssertTrue('sub-only line retains a normal text strut',
+      SubOnlyLineRect.Bottom - SubOnlyLineRect.Top >= NormalLineHeight);
+    AssertTrue('sub-only caret stays inside its line',
+      (SubOnlyCaret.Top >= SubOnlyLineRect.Top) and
+      (SubOnlyCaret.Bottom <= SubOnlyLineRect.Bottom));
+  finally
+    Host.Free;
   end;
 end;
 

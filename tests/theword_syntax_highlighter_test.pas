@@ -743,6 +743,18 @@ begin
     AssertEquals('Ctrl+O routes to FO', '<FO>word<Fo>', Editor.Text);
     AssertTrue(Editor.Undo);
 
+    AssertEquals(0, PressKey(VK_S, [ssCtrl, ssShift]));
+    AssertEquals('Ctrl+Shift+S routes to strike', '<s>word</s>',
+      Editor.Text);
+    AssertTrue(Editor.Undo);
+    AssertEquals(0, PressKey(VK_OEM_PLUS, [ssCtrl, ssShift]));
+    AssertEquals('Ctrl+Shift+= routes to superscript',
+      '<sup>word</sup>', Editor.Text);
+    AssertTrue(Editor.Undo);
+    AssertEquals(0, PressKey(VK_OEM_PLUS, [ssCtrl]));
+    AssertEquals('Ctrl+= routes to subscript', '<sub>word</sub>',
+      Editor.Text);
+    AssertTrue(Editor.Undo);
     AssertEquals('AltGr-like Ctrl+Alt must not be captured', VK_I,
       PressKey(VK_I, [ssCtrl, ssAlt]));
     AssertEquals('ignored AltGr-like chord does not change text', 'word',

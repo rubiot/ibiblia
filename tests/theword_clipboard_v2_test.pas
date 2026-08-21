@@ -34,23 +34,27 @@ var
   Inserted: Integer;
   UsedPrivate: Boolean;
 begin
-  Source := TTheWordWysiwygSessionV2.Create('<FI>ab<Fi><FR>cd<Fr>');
+  Source := TTheWordWysiwygSessionV2.Create(
+    '<FI>ab<Fi><FR>cd<Fr><s>e</s><sup>f</sup><sub>g</sub>');
   Target := TTheWordWysiwygSessionV2.Create('XY');
   try
-    AssertTrue(Source.CopySelection(0, 4, Plain, Payload));
-    AssertTrue(Source.CopySelection(0, 4, Plain, SecondPayload));
+    AssertTrue(Source.CopySelection(0, 7, Plain, Payload));
+    AssertTrue(Source.CopySelection(0, 7, Plain, SecondPayload));
     AssertEquals(Payload, SecondPayload);
     AssertTrue(Pos('ibiblia.theword-semantic-fragment', Payload) > 0);
     AssertTrue(Target.Paste(1, 0, Payload, 'wrong', Inserted, UsedPrivate));
     AssertTrue(UsedPrivate);
-    AssertEquals(4, Inserted);
-    AssertEquals(UnicodeString('XabcdY'), Target.VisibleText);
+    AssertEquals(7, Inserted);
+    AssertEquals(UnicodeString('XabcdefgY'), Target.VisibleText);
     AssertTrue(Pos('<FI>ab<Fi>', Target.RawText) > 0);
     AssertTrue(Pos('<FR>cd<Fr>', Target.RawText) > 0);
+    AssertTrue(Pos('<s>e</s>', Target.RawText) > 0);
+    AssertTrue(Pos('<sup>f</sup>', Target.RawText) > 0);
+    AssertTrue(Pos('<sub>g</sub>', Target.RawText) > 0);
     AssertTrue(Target.Undo);
     AssertEquals(UnicodeString('XY'), Target.RawText);
     AssertTrue(Target.Redo);
-    AssertEquals(UnicodeString('XabcdY'), Target.VisibleText);
+    AssertEquals(UnicodeString('XabcdefgY'), Target.VisibleText);
   finally
     Target.Free;
     Source.Free;

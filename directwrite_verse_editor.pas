@@ -20,6 +20,9 @@ type
     vecItalic,
     vecWordsOfJesus,
     vecOldTestamentQuote,
+    vecStrikethrough,
+    vecSuperscript,
+    vecSubscript,
     vecInsertTranslatorNote
   );
 
@@ -844,18 +847,21 @@ procedure TDirectWriteVerseEditor.MoveCaretVertical(Direction: Integer;
 var
   CaretRect: TRect;
   Inside: Boolean;
+  LineRect: TRect;
   Offset: Integer;
   Point: TPoint;
   Trailing: Boolean;
 begin
   if not GetTextPositionClientRect(FActiveOffset, CaretRect) then
     Exit;
+  if not GetTextLineClientRect(FActiveOffset, LineRect) then
+    LineRect := CaretRect;
   Point.X := CaretRect.Left;
   if Direction < 0 then
-    Point.Y := CaretRect.Top - Max(1, CaretRect.Bottom - CaretRect.Top) div 2
+    Point.Y := LineRect.Top - Max(1, LineRect.Bottom - LineRect.Top) div 2
   else
-    Point.Y := CaretRect.Bottom +
-      Max(1, CaretRect.Bottom - CaretRect.Top) div 2;
+    Point.Y := LineRect.Bottom +
+      Max(1, LineRect.Bottom - LineRect.Top) div 2;
   if HitTestTextOffset(Point, Offset, Trailing, Inside) then
     SetCaret(Offset, ExtendSelection);
 end;
@@ -955,7 +961,12 @@ begin
       else
         Exit;
     VK_S:
-      if ssCtrl in BasicShift then
+      if BasicShift = [ssCtrl, ssShift] then
+      begin
+        if Assigned(FOnCommand) then
+          FOnCommand(Self, vecStrikethrough);
+      end
+      else if BasicShift = [ssCtrl] then
       begin
         if Assigned(FOnCommand) then
           FOnCommand(Self, vecSave);
@@ -988,6 +999,19 @@ begin
       begin
         if Assigned(FOnCommand) then
           FOnCommand(Self, vecOldTestamentQuote);
+      end
+      else
+        Exit;
+    VK_OEM_PLUS:
+      if BasicShift = [ssCtrl, ssShift] then
+      begin
+        if Assigned(FOnCommand) then
+          FOnCommand(Self, vecSuperscript);
+      end
+      else if BasicShift = [ssCtrl] then
+      begin
+        if Assigned(FOnCommand) then
+          FOnCommand(Self, vecSubscript);
       end
       else
         Exit;

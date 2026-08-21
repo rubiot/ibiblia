@@ -212,6 +212,29 @@ begin
   end;
 end;
 
+function FindSpeedButtonWithStyle(AParent: TWinControl;
+  AStyle: TFontStyle): TSpeedButton;
+var
+  ChildIndex: Integer;
+begin
+  Result := nil;
+  if not Assigned(AParent) then
+    Exit;
+  for ChildIndex := 0 to AParent.ControlCount - 1 do
+  begin
+    if (AParent.Controls[ChildIndex] is TSpeedButton) and
+       (AStyle in TSpeedButton(AParent.Controls[ChildIndex]).Font.Style) then
+      Exit(TSpeedButton(AParent.Controls[ChildIndex]));
+    if AParent.Controls[ChildIndex] is TWinControl then
+    begin
+      Result := FindSpeedButtonWithStyle(
+        TWinControl(AParent.Controls[ChildIndex]), AStyle);
+      if Assigned(Result) then
+        Exit;
+    end;
+  end;
+end;
+
 function FindLabelWithCaption(AParent: TWinControl;
   const ACaption: string): TLabel;
 var
@@ -527,8 +550,8 @@ end;
 procedure TVerseMemoTests.
   SemanticToolbarButtonsAreCompactTypographicAndNonOverlapping;
 var
-  AddedButton, JesusButton, OldTestamentButton,
-    UnderlineButton: TSpeedButton;
+  AddedButton, JesusButton, OldTestamentButton, UnderlineButton,
+    StrikethroughButton, SuperscriptButton, SubscriptButton: TSpeedButton;
   RawButton: TButton;
   Composite: TTheWordWysiwygEditorControl;
   Container: TScrollBox;
@@ -555,6 +578,9 @@ begin
     JesusButton := FindSpeedButtonWithCaption(Host, 'J');
     OldTestamentButton := FindSpeedButtonWithCaption(Host, 'O');
     UnderlineButton := FindSpeedButtonWithCaption(Host, 'S');
+    StrikethroughButton := FindSpeedButtonWithStyle(Host, fsStrikeOut);
+    SuperscriptButton := FindSpeedButtonWithCaption(Host, 'x²');
+    SubscriptButton := FindSpeedButtonWithCaption(Host, 'x₂');
     RawButton := FindButtonWithCaption(Host, 'Raw');
     AssertTrue('italic semantic button must exist', Assigned(AddedButton));
     AssertTrue('Jesus semantic button must exist', Assigned(JesusButton));
@@ -562,6 +588,12 @@ begin
       Assigned(OldTestamentButton));
     AssertTrue('underline semantic button must exist',
       Assigned(UnderlineButton));
+    AssertTrue('strikethrough semantic button must exist',
+      Assigned(StrikethroughButton));
+    AssertTrue('superscript semantic button must exist',
+      Assigned(SuperscriptButton));
+    AssertTrue('subscript semantic button must exist',
+      Assigned(SubscriptButton));
     AssertTrue('raw-mode button must exist', Assigned(RawButton));
 
     AssertTrue('I must be italic', fsItalic in AddedButton.Font.Style);
@@ -570,6 +602,8 @@ begin
     AssertTrue('O must be bold', fsBold in OldTestamentButton.Font.Style);
     AssertTrue('S must be underlined',
       fsUnderline in UnderlineButton.Font.Style);
+    AssertTrue('strike button must be struck',
+      fsStrikeOut in StrikethroughButton.Font.Style);
     AssertTrue('semantic buttons must be narrower than Raw',
       AddedButton.Width < RawButton.Width);
     AssertEquals('semantic buttons share the compact width',
@@ -578,6 +612,12 @@ begin
       AddedButton.Width, OldTestamentButton.Width);
     AssertEquals('semantic buttons share the compact width',
       AddedButton.Width, UnderlineButton.Width);
+    AssertEquals('semantic buttons share the compact width',
+      AddedButton.Width, StrikethroughButton.Width);
+    AssertEquals('semantic buttons share the compact width',
+      AddedButton.Width, SuperscriptButton.Width);
+    AssertEquals('semantic buttons share the compact width',
+      AddedButton.Width, SubscriptButton.Width);
 
     AssertTrue('I and J must not overlap',
       AddedButton.Left + AddedButton.Width <= JesusButton.Left);
@@ -586,8 +626,17 @@ begin
     AssertTrue('O and S must not overlap',
       OldTestamentButton.Left + OldTestamentButton.Width <=
         UnderlineButton.Left);
-    AssertTrue('S and Raw must not overlap',
-      UnderlineButton.Left + UnderlineButton.Width <= RawButton.Left);
+    AssertTrue('underline and strike must not overlap',
+      UnderlineButton.Left + UnderlineButton.Width <=
+        StrikethroughButton.Left);
+    AssertTrue('strike and superscript must not overlap',
+      StrikethroughButton.Left + StrikethroughButton.Width <=
+        SuperscriptButton.Left);
+    AssertTrue('superscript and subscript must not overlap',
+      SuperscriptButton.Left + SuperscriptButton.Width <=
+        SubscriptButton.Left);
+    AssertTrue('subscript and Raw must not overlap',
+      SubscriptButton.Left + SubscriptButton.Width <= RawButton.Left);
     AssertTrue('italic hint identifies added words',
       Pos('Added words', AddedButton.Hint) > 0);
     AssertTrue('italic hint exposes Ctrl+I',
@@ -602,6 +651,12 @@ begin
       Pos('Ctrl+O', OldTestamentButton.Hint) > 0);
     AssertTrue('underline hint identifies its action',
       Pos('Underline', UnderlineButton.Hint) > 0);
+    AssertTrue('strike hint exposes its shortcut',
+      Pos('Ctrl+Shift+S', StrikethroughButton.Hint) > 0);
+    AssertTrue('superscript hint exposes its shortcut',
+      Pos('Ctrl+Shift+=', SuperscriptButton.Hint) > 0);
+    AssertTrue('subscript hint exposes its shortcut',
+      Pos('Ctrl+=', SubscriptButton.Hint) > 0);
 
     Composite := FindWysiwygEditor(Host);
     DirectEditor := FindDirectEditor(Host);
@@ -611,7 +666,9 @@ begin
     DirectEditor.SetSelection(0, 5);
     AssertTrue('semantic commands become enabled for selected text',
       AddedButton.Enabled and JesusButton.Enabled and
-      OldTestamentButton.Enabled and UnderlineButton.Enabled);
+      OldTestamentButton.Enabled and UnderlineButton.Enabled and
+      StrikethroughButton.Enabled and SuperscriptButton.Enabled and
+      SubscriptButton.Enabled);
 
     AddedButton.Click;
     AssertEquals('I keeps the added-words callback', '<FI>alpha<Fi>',
@@ -631,6 +688,18 @@ begin
     AssertEquals('S keeps the underline callback', '<FU>alpha<Fu>',
       UTF8Encode(Composite.Text));
     UnderlineButton.Click;
+    StrikethroughButton.Click;
+    AssertEquals('strike callback uses the canonical tag', '<s>alpha</s>',
+      UTF8Encode(Composite.Text));
+    StrikethroughButton.Click;
+    SuperscriptButton.Click;
+    AssertEquals('superscript callback uses the canonical tag',
+      '<sup>alpha</sup>', UTF8Encode(Composite.Text));
+    SuperscriptButton.Click;
+    SubscriptButton.Click;
+    AssertEquals('subscript callback uses the canonical tag',
+      '<sub>alpha</sub>', UTF8Encode(Composite.Text));
+    SubscriptButton.Click;
     AssertEquals('all semantic toggles restore the original text', 'alpha',
       UTF8Encode(Composite.Text));
     Editor.DiscardEdit;

@@ -23,6 +23,8 @@ type
     vtsfItalic,
     vtsfUnderline,
     vtsfSuperscript,
+    vtsfSubscript,
+    vtsfStrikethrough,
     vtsfSelected,
     vtsfAssociated,
     vtsfPointed,
