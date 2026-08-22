@@ -8,6 +8,8 @@ uses
   SysUtils, DB, ai_batch_work_item, project_persistence, rf_note_scanner;
 
 type
+  TAutomaticRFNoteCountArray = array of Integer;
+
   TProjectVerseRepository = class
   private
     FPersistence: TProjectPersistence;
@@ -34,6 +36,8 @@ type
       out VerseData: TVerseData): Boolean;
     function TryReadText(const ReferenceID: string; TextIndex: Integer;
       var TextValue: string): Boolean;
+    function CountAutomaticRFNotesBeforeMany(const ReferenceID: string;
+      const TextIndexes: array of Integer): TAutomaticRFNoteCountArray;
     function CountAutomaticRFNotesBefore(const ReferenceID: string;
       TextIndex: Integer): Integer;
   end;
@@ -173,19 +177,34 @@ end;
 function TProjectVerseRepository.CountAutomaticRFNotesBefore(
   const ReferenceID: string; TextIndex: Integer): Integer;
 var
+  Counts: TAutomaticRFNoteCountArray;
+begin
+  Counts := CountAutomaticRFNotesBeforeMany(ReferenceID, [TextIndex]);
+  if Length(Counts) = 0 then
+    Exit(0);
+  Result := Counts[0];
+end;
+
+function TProjectVerseRepository.CountAutomaticRFNotesBeforeMany(
+  const ReferenceID: string;
+  const TextIndexes: array of Integer): TAutomaticRFNoteCountArray;
+var
   AfterScrollHandler, BeforeScrollHandler: TDataSetNotifyEvent;
-  BookID, ChapterNumber, PreviousVerse, VerseNumber: Integer;
+  BookID, ChapterNumber, Index, PreviousVerse, VerseNumber: Integer;
   PairTable: TDataSet;
   Parts: TStringArray;
   PreviousReference, SavedReference: string;
 begin
   RequirePersistence;
+  SetLength(Result, Length(TextIndexes));
   PairTable := FPersistence.PairsTable;
   if not Assigned(PairTable) or not PairTable.Active then
     raise Exception.Create('Project pairs table is not open');
-  if (TextIndex < 0) or (TextIndex >= PairTable.FieldCount) then
-    raise Exception.Create(
-      'Project verse repository text index is not attached');
+  for Index := 0 to High(TextIndexes) do
+    if (TextIndexes[Index] < 0) or
+       (TextIndexes[Index] >= PairTable.FieldCount) then
+      raise Exception.Create(
+        'Project verse repository text index is not attached');
 
   Parts := ReferenceID.Split(',');
   if (Length(Parts) <> 3) or
@@ -195,7 +214,6 @@ begin
      (BookID <= 0) or (ChapterNumber <= 0) or (VerseNumber <= 0) then
     raise Exception.CreateFmt('Invalid project reference [%s]', [ReferenceID]);
 
-  Result := 0;
   if VerseNumber = 1 then
     Exit;
 
@@ -215,8 +233,9 @@ begin
         PreviousReference := Format('%d,%d,%d',
           [BookID, ChapterNumber, PreviousVerse]);
         if FPersistence.LocateReference(PreviousReference) then
-          Inc(Result, CountAutomaticRFNotes(UnicodeString(
-            FPersistence.CurrentText(TextIndex))));
+          for Index := 0 to High(TextIndexes) do
+            Inc(Result[Index], CountAutomaticRFNotes(UnicodeString(
+              FPersistence.CurrentText(TextIndexes[Index]))));
       end;
     finally
       if (FPersistence.CurrentPairId <> SavedReference) and

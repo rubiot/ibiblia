@@ -12,7 +12,8 @@ uses
   Classes, SysUtils, StrUtils, ExtCtrls, StdCtrls, Controls, Graphics,
   ONTTokenizer, Syntagm, Forms, LCLType, Math, LCLProc, Dialogs, LazUTF8,
   ONTParser, dbugintf, Menus, Clipbrd, PCRE, ai_debug, text_direction,
-  verse_view_intf, text_edit_provenance;
+  verse_view_intf, text_edit_provenance, verse_visual_adapter,
+  translator_note_hover_controller;
 
 type
 
@@ -23,6 +24,8 @@ type
   TOnTextDirectionChangeEvent = procedure(Sender: TVerse;
     Direction: TTextDirection) of object;
   TOnExportTextEvent = procedure (Sender: TVerse) of object;
+  TOnTranslatorNoteClickEvent = procedure(Sender: TVerse; ANoteId,
+    ARevision: QWord) of object;
 
   TStrongsCountMode = (scNone, scCountWords, scCountStrongs);
 
@@ -57,6 +60,9 @@ type
     FVisualUpdatesSuspended: Integer;
     FVisualRefreshQueued: Boolean;
     FLastHoverLogicalIndex: Integer;
+    FAutomaticNoteStart: Integer;
+    FNoteHover: TTranslatorNoteHoverController;
+    FRenderedTranslatorNotes: TVerseRenderedTranslatorNoteArray;
     FDisplayTags: Boolean;
     FOnTextDirectionChange: TOnTextDirectionChangeEvent;
     { Private declarations }
@@ -85,6 +91,7 @@ type
     FOnSyntagmMouseEnter: TOnSyntagmEvent;
     FOnSyntagmMouseLeave: TOnSyntagmEvent;
     FOnExportText: TOnExportTextEvent;
+    FOnTranslatorNoteClick: TOnTranslatorNoteClickEvent;
     FXML: string;
     FONTParser: TONTParser;
     FTokenizerVersion: Integer;
@@ -104,6 +111,7 @@ type
     function GetPairs: string;
     function GetPlainText: string;
     procedure SetActive(const AValue: boolean);
+    procedure SetAutomaticNoteStart(AValue: Integer);
     function GetRightToLeft: Boolean;
     procedure SetFont(const AValue: TFont);
     procedure SetModified(const AValue: boolean);
@@ -118,6 +126,11 @@ type
       Shift: TShiftState; const Hit: TVerseHit);
     procedure OnVisualDoubleClick(Sender: TObject);
     procedure OnVisualHover(Sender: TObject; const Hit: TVerseHit);
+    function ResolveTranslatorNoteHover(Sender: TObject; ARevision,
+      ANoteId: QWord; out ABodyRaw: UnicodeString;
+      out AAnchorScreenRect: TRect): Boolean;
+    function TryGetRenderedTranslatorNote(ANoteId: QWord;
+      out ANote: TVerseRenderedTranslatorNote): Boolean;
     procedure OnVisualContentHeightChanged(Sender: TObject);
     procedure SetStrongsCountMode(AValue: TStrongsCountMode);
     procedure SetBoldWordsWithStrong(AValue: boolean);
@@ -159,6 +172,8 @@ type
     destructor Destroy; override;
     procedure MarkDestroying;
     procedure ClearSyntagms;
+    procedure DismissTranslatorNotePreview;
+    function TranslatorNotePreviewActive: Boolean;
     procedure InvalidateSyntagmVisual(Syntagm: TSyntagm);
     procedure RefreshAfterEditorClose;
     procedure AssociateSyntagms;
@@ -216,6 +231,8 @@ type
     property OnMouseLeave: TOnSyntagmEvent read FOnSyntagmMouseLeave write FOnSyntagmMouseLeave;
     property OnVerseChanged: TOnVerseChangedEvent read FOnVerseChanged write FOnVerseChanged;
     property OnExportText: TOnExportTextEvent read FOnExportText write FOnExportText;
+    property OnTranslatorNoteClick: TOnTranslatorNoteClickEvent
+      read FOnTranslatorNoteClick write FOnTranslatorNoteClick;
     property ShowHints: boolean read FShowHints write FShowHints;
     property OnTextDirectionChange: TOnTextDirectionChangeEvent
       read FOnTextDirectionChange write FOnTextDirectionChange;
@@ -233,6 +250,9 @@ type
     property RightToLeft: Boolean read GetRightToLeft write SetRightToLeft default False;
     property NextAutoSelectWordMustHaveStrongMorpho: boolean read FNextAutoSelectWordMustHaveStrongMorpho write FNextAutoSelectWordMustHaveStrongMorpho;
     property TokenizerVersion: Integer read FTokenizerVersion write SetTokenizerVersion;
+    property AutomaticNoteStart: Integer read FAutomaticNoteStart
+      write SetAutomaticNoteStart;
+    property VisualRevision: QWord read FVisualRevision;
     property Destroying: boolean read FDestroying;
  published{ Published declarations }
   end;
@@ -253,7 +273,7 @@ resourcestring
 implementation
 
 uses
-  TypInfo, LazLoggerBase, SyntagmSelection, verse_visual_adapter,
+  TypInfo, LazLoggerBase, SyntagmSelection, verse_visual_document,
   directwrite_syntagm_view, theword_ont_codec_v2;
 
 const
@@ -299,6 +319,11 @@ begin
   FVisualUpdatesSuspended := 0;
   FVisualRefreshQueued := False;
   FLastHoverLogicalIndex := -1;
+  FAutomaticNoteStart := 0;
+  FRenderedTranslatorNotes := nil;
+  FOnTranslatorNoteClick := nil;
+  FNoteHover := TTranslatorNoteHoverController.Create(nil);
+  FNoteHover.OnResolve := @ResolveTranslatorNoteHover;
   FDisplayTags := False;
   FVerseView := nil;
   FVerseViewControl := nil;
@@ -374,6 +399,7 @@ begin
      IntToHex(PtrUInt(Pointer(FPanel)), SizeOf(Pointer)*2),
      FReference]);
   FDestroying := true;
+  DismissTranslatorNotePreview;
   ClearSyntagms;
   FSyntagms.Free;
   FSelection.Destroy;
@@ -389,12 +415,14 @@ begin
     FPanel.OnMouseWheel := nil;
   end;
   FONTParser.Destroy;
+  FreeAndNil(FNoteHover);
   inherited Destroy;
 end;
 
 procedure TVerse.MarkDestroying;
 begin
   FDestroying := true;
+  DismissTranslatorNotePreview;
 end;
 
 procedure TVerse.RefreshAfterEditorClose;
@@ -418,6 +446,8 @@ procedure TVerse.ClearSyntagms;
 var
   s: TSyntagm;
 begin
+  DismissTranslatorNotePreview;
+  FRenderedTranslatorNotes := nil;
   if assigned(FSyntagms) then
   begin
     Inc(FVisualUpdatesSuspended);
@@ -444,6 +474,17 @@ begin
     end;
   end;
   FSelection.Clear;
+end;
+
+procedure TVerse.DismissTranslatorNotePreview;
+begin
+  if Assigned(FNoteHover) then
+    FNoteHover.Dismiss;
+end;
+
+function TVerse.TranslatorNotePreviewActive: Boolean;
+begin
+  Result := Assigned(FNoteHover) and FNoteHover.Active;
 end;
 
 procedure TVerse.InvalidateSyntagmVisual(Syntagm: TSyntagm);
@@ -511,10 +552,14 @@ begin
   if not Assigned(FVerseView) or not Assigned(FSyntagms) then
     Exit;
   if ContentChanged then
+  begin
+    DismissTranslatorNotePreview;
     Inc(FVisualRevision);
+  end;
   FVerseView.SetDocument(BuildVerseVisualDocument(FSyntagms, FStrongCount,
     FBaseDirection, FVisualRevision, FAssociatedColor, FUnassociatedColor,
-    FBoldWordsWithStrong, FXML));
+    FBoldWordsWithStrong, FXML, FAutomaticNoteStart,
+    FRenderedTranslatorNotes));
   FVerseView.DisplayTags := FDisplayTags;
 end;
 
@@ -523,8 +568,24 @@ procedure TVerse.OnVisualMouseDown(Sender: TObject; Button: TMouseButton;
 var
   Syntagm: TSyntagm;
 begin
-  if FDestroying or (Hit.Revision <> FVisualRevision) or
-     (Hit.LogicalIndex < 0) or not Assigned(FSyntagms) or
+  if FDestroying then
+    Exit;
+  if Hit.Role = vsrTranslatorNote then
+  begin
+    DismissTranslatorNotePreview;
+    { Route stale hits as well so the editor can report that the note is no
+      longer present, instead of silently ignoring the user's click. }
+    if (Button = mbLeft) and (Hit.ObjectId <> 0) and
+       Assigned(FOnTranslatorNoteClick) then
+      FOnTranslatorNoteClick(Self, Hit.ObjectId, Hit.Revision);
+    Exit;
+  end;
+  if Hit.Revision <> FVisualRevision then
+  begin
+    OnVerseMouseDown(Sender, Button, Shift, 0, 0);
+    Exit;
+  end;
+  if (Hit.LogicalIndex < 0) or not Assigned(FSyntagms) or
      (Hit.LogicalIndex >= FSyntagms.Count) then
   begin
     OnVerseMouseDown(Sender, Button, Shift, 0, 0);
@@ -549,6 +610,22 @@ begin
   if FDestroying or not Assigned(FSyntagms) then
     Exit;
   OldIndex := FLastHoverLogicalIndex;
+  if Hit.Role = vsrTranslatorNote then
+  begin
+    if OldIndex >= 0 then
+    begin
+      FLastHoverLogicalIndex := -1;
+      if OldIndex < FSyntagms.Count then
+        FSyntagms[OldIndex].HandleMouseLeave(Sender);
+    end;
+    if (Hit.Revision = FVisualRevision) and (Hit.ObjectId <> 0) then
+      FNoteHover.Hover(Hit.Revision, Hit.ObjectId)
+    else
+      FNoteHover.Leave;
+    Exit;
+  end;
+
+  FNoteHover.Leave;
   NewIndex := Hit.LogicalIndex;
   if (Hit.Revision <> FVisualRevision) or
      (NewIndex < 0) or (NewIndex >= FSyntagms.Count) then
@@ -560,6 +637,46 @@ begin
     FSyntagms[OldIndex].HandleMouseLeave(Sender);
   if NewIndex >= 0 then
     FSyntagms[NewIndex].HandleMouseEnter(Sender);
+end;
+
+function TVerse.TryGetRenderedTranslatorNote(ANoteId: QWord;
+  out ANote: TVerseRenderedTranslatorNote): Boolean;
+var
+  Index: Integer;
+begin
+  ANote := Default(TVerseRenderedTranslatorNote);
+  for Index := 0 to High(FRenderedTranslatorNotes) do
+    if FRenderedTranslatorNotes[Index].Id = ANoteId then
+    begin
+      ANote := FRenderedTranslatorNotes[Index];
+      Exit(True);
+    end;
+  Result := False;
+end;
+
+function TVerse.ResolveTranslatorNoteHover(Sender: TObject; ARevision,
+  ANoteId: QWord; out ABodyRaw: UnicodeString;
+  out AAnchorScreenRect: TRect): Boolean;
+var
+  AnchorRect: TRect;
+  Note: TVerseRenderedTranslatorNote;
+  P1, P2: TPoint;
+begin
+  ABodyRaw := '';
+  AAnchorScreenRect := Rect(0, 0, 0, 0);
+  Result := not FDestroying and (ARevision = FVisualRevision) and
+    TryGetRenderedTranslatorNote(ANoteId, Note) and
+    (FVerseViewControl is TDirectWriteSyntagmView) and
+    TDirectWriteSyntagmView(FVerseViewControl).GetVisualObjectClientRect(
+      vsrTranslatorNote, ANoteId, AnchorRect);
+  if not Result then
+    Exit;
+  P1 := FVerseViewControl.ClientToScreen(
+    Point(AnchorRect.Left, AnchorRect.Top));
+  P2 := FVerseViewControl.ClientToScreen(
+    Point(AnchorRect.Right, AnchorRect.Bottom));
+  AAnchorScreenRect := Rect(P1.X, P1.Y, P2.X, P2.Y);
+  ABodyRaw := Note.BodyRaw;
 end;
 
 procedure TVerse.OnVisualContentHeightChanged(Sender: TObject);
@@ -904,6 +1021,8 @@ begin
   try
     { End hover and cancel queued paints while the original logical-index map
       is still intact. Reconciliation below destroys and moves syntagms. }
+    DismissTranslatorNotePreview;
+    FRenderedTranslatorNotes := nil;
     Application.RemoveAsyncCalls(Self);
     FVisualRefreshQueued := False;
     Inc(FVisualRevision);
@@ -1584,6 +1703,8 @@ procedure TVerse.SetActive(const AValue: boolean);
 begin
   if (AValue <> FActive) then
   begin
+    if not AValue then
+      DismissTranslatorNotePreview;
     FActive := AValue;
     if (AValue) then
     begin // ativar
@@ -1596,8 +1717,22 @@ begin
   end;
 end;
 
+procedure TVerse.SetAutomaticNoteStart(AValue: Integer);
+begin
+  if AValue < 0 then
+    AValue := 0;
+  if FAutomaticNoteStart = AValue then
+    Exit;
+  DismissTranslatorNotePreview;
+  FAutomaticNoteStart := AValue;
+  Inc(FVisualRevision);
+  if FActive and Assigned(FVerseView) then
+    RefreshVisualDocument;
+end;
+
 procedure TVerse.SetFont(const AValue: TFont);
 begin
+  DismissTranslatorNotePreview;
   if Assigned(FVerseViewControl) then
     FVerseViewControl.Font.Assign(AValue);
   if not FActive then
@@ -1629,6 +1764,7 @@ procedure TVerse.SetBaseDirection(AValue: TTextDirection);
 begin
   if FBaseDirection = AValue then
     Exit;
+  DismissTranslatorNotePreview;
   FBaseDirection := AValue;
   if Assigned(FRTLMenuItem) then
     FRTLMenuItem.Checked := GetRightToLeft;
@@ -2897,6 +3033,8 @@ begin
     OldActive := FActive;
     Inc(FVisualUpdatesSuspended);
     try
+      DismissTranslatorNotePreview;
+      FRenderedTranslatorNotes := nil;
       Application.RemoveAsyncCalls(Self);
       FVisualRefreshQueued := False;
       Inc(FVisualRevision);

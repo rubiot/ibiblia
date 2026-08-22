@@ -85,7 +85,9 @@ type
     constructor Create;
     destructor Destroy; override;
     procedure Activate(Container: TScrollBox; Verse: TVerse;
-      AAutomaticNoteStart: Integer = 0);
+      AAutomaticNoteStart: Integer = 0;
+      ATranslatorNoteId: QWord = 0;
+      ATranslatorNoteRevision: QWord = 0);
     procedure Deactivate;
     function HasPendingChange: Boolean;
     function TryDeactivate: Boolean;
@@ -143,6 +145,8 @@ resourcestring
   SEditApplyFailed = 'The edit could not be applied';
   SProtectedLexicalObjectsChanged =
     'Strong and morphology data are protected in this editing cycle';
+  STranslatorNoteNotFound =
+    'The translator note could not be located in the current verse.';
 
 implementation
 
@@ -661,10 +665,30 @@ begin
 end;
 
 procedure TVerseMemo.Activate(Container: TScrollBox; Verse: TVerse;
-  AAutomaticNoteStart: Integer);
+  AAutomaticNoteStart: Integer; ATranslatorNoteId,
+  ATranslatorNoteRevision: QWord);
 var
   Activated: Boolean;
   OverlayParent: TWinControl;
+
+  procedure EditDirectedTranslatorNote;
+  begin
+    try
+      { Never resolve a stale ID in a newer document: IDs are only meaningful
+        within the visual revision that produced the clicked marker. }
+      if (ATranslatorNoteRevision <> 0) and
+         (ATranslatorNoteRevision <> Verse.VisualRevision) then
+      begin
+        ShowSaveError(STranslatorNoteNotFound);
+        Exit;
+      end;
+      if not FEditor.EditTranslatorNote(ATranslatorNoteId) then
+        ShowSaveError(STranslatorNoteNotFound);
+    except
+      on E: Exception do
+        ShowSaveError(E.Message);
+    end;
+  end;
 begin
   if not Assigned(Container) or not Assigned(Verse) then
     Exit;
@@ -679,6 +703,8 @@ begin
   begin
     if FContainer = Container then
     begin
+      if ATranslatorNoteId <> 0 then
+        EditDirectedTranslatorNote;
       FEditor.FocusEditor;
       Exit;
     end;
@@ -735,6 +761,8 @@ begin
       FVerse := nil;
     end;
   end;
+  if Activated and (ATranslatorNoteId <> 0) then
+    EditDirectedTranslatorNote;
   FEditor.FocusEditor;
 end;
 

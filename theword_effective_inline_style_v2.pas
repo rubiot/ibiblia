@@ -25,12 +25,26 @@ type
     VisibleLengthUTF16: Integer;
     Style: TTheWordEffectiveInlineStyleV2;
   end;
+  TTheWordProjectedTranslatorNoteV2 = record
+    Id: QWord;
+    OffsetUTF16: Integer;
+    Ordinal: Integer;
+    Q: UnicodeString;
+    BodyRaw: UnicodeString;
+    OpenLexeme: UnicodeString;
+    CloseLexeme: UnicodeString;
+    Capability: TTheWordLayerCapability;
+  end;
   TTheWordEffectiveInlineProjectionV2 = class
   private
     FVisibleText: UnicodeString;
     FRuns: array of TTheWordEffectiveInlineRunV2;
+    FTranslatorNotes: array of TTheWordProjectedTranslatorNoteV2;
     function GetRun(AIndex: Integer): TTheWordEffectiveInlineRunV2;
     function GetRunCount: Integer;
+    function GetTranslatorNote(AIndex: Integer):
+      TTheWordProjectedTranslatorNoteV2;
+    function GetTranslatorNoteCount: Integer;
   public
     class function Resolve(const ARaw: UnicodeString):
       TTheWordEffectiveInlineProjectionV2; overload; static;
@@ -42,6 +56,9 @@ type
     property VisibleText: UnicodeString read FVisibleText;
     property RunCount: Integer read GetRunCount;
     property Runs[AIndex: Integer]: TTheWordEffectiveInlineRunV2 read GetRun;
+    property TranslatorNoteCount: Integer read GetTranslatorNoteCount;
+    property TranslatorNotes[AIndex: Integer]:
+      TTheWordProjectedTranslatorNoteV2 read GetTranslatorNote;
   end;
 
 function DefaultTheWordEffectiveInlineStyleV2: TTheWordEffectiveInlineStyleV2;
@@ -181,6 +198,24 @@ begin
   Result := TTheWordEffectiveInlineProjectionV2.Create;
   try
     Result.FVisibleText := ADocument.VisibleText;
+    SetLength(Result.FTranslatorNotes, ADocument.TranslatorNoteCount);
+    for I := 0 to ADocument.TranslatorNoteCount - 1 do
+    begin
+      Result.FTranslatorNotes[I].Id := ADocument.TranslatorNotes[I].Id;
+      Result.FTranslatorNotes[I].OffsetUTF16 :=
+        ADocument.TranslatorNotes[I].OffsetUTF16;
+      Result.FTranslatorNotes[I].Ordinal :=
+        ADocument.TranslatorNotes[I].Ordinal;
+      Result.FTranslatorNotes[I].Q := ADocument.TranslatorNotes[I].Q;
+      Result.FTranslatorNotes[I].BodyRaw :=
+        ADocument.TranslatorNotes[I].BodyRaw;
+      Result.FTranslatorNotes[I].OpenLexeme :=
+        ADocument.TranslatorNotes[I].OpenLexeme;
+      Result.FTranslatorNotes[I].CloseLexeme :=
+        ADocument.TranslatorNotes[I].CloseLexeme;
+      Result.FTranslatorNotes[I].Capability :=
+        ADocument.TranslatorNotes[I].Capability;
+    end;
     AddBoundary(B, 0); AddBoundary(B, Length(ADocument.VisibleText));
     for I := 0 to ADocument.MarkCount - 1 do begin
       AddBoundary(B, ADocument.Marks[I].StartOffset);
@@ -220,6 +255,20 @@ end;
 
 function TTheWordEffectiveInlineProjectionV2.GetRunCount: Integer;
 begin Result := Length(FRuns) end;
+
+function TTheWordEffectiveInlineProjectionV2.GetTranslatorNote(
+  AIndex: Integer): TTheWordProjectedTranslatorNoteV2;
+begin
+  if (AIndex < 0) or (AIndex >= Length(FTranslatorNotes)) then
+    raise ERangeError.CreateFmt(
+      'Projected translator note index %d is out of range', [AIndex]);
+  Result := FTranslatorNotes[AIndex];
+end;
+
+function TTheWordEffectiveInlineProjectionV2.GetTranslatorNoteCount: Integer;
+begin
+  Result := Length(FTranslatorNotes);
+end;
 
 function TTheWordEffectiveInlineProjectionV2.TryStyleAtVisibleUTF16(
   AOffsetUTF16: Integer; out AStyle: TTheWordEffectiveInlineStyleV2): Boolean;

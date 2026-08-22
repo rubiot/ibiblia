@@ -637,14 +637,20 @@ end;
 procedure TProjectPersistenceTest.
   AutomaticRFCountUsesPendingRowsAndRestoresDatasetState;
 var
+  Counts: TAutomaticRFNoteCountArray;
   DestinationTextIndex: Integer;
   Repository: TProjectVerseRepository;
+  SourceTextIndex: Integer;
 begin
   Repository := TProjectVerseRepository.Create(FPersistence);
   try
     AssertTrue(FPersistence.LocateReference('1,1,1'));
     DestinationTextIndex := FPersistence.PairsTable.FieldByName(
       'pare_texto_destino').Index;
+    SourceTextIndex := FPersistence.PairsTable.FieldByName(
+      'pare_texto_origem').Index;
+    FPersistence.SetCurrentText(SourceTextIndex,
+      'source<RF>source one<Rf><RF>source two<Rf>');
     FPersistence.SetCurrentText(DestinationTextIndex,
       'pending<RF>one<Rf><RF q=x>custom<Rf>');
     FPersistence.PostCurrentEdit;
@@ -663,6 +669,16 @@ begin
         DestinationTextIndex));
     AssertEquals('current Verse Pair is restored', '1,1,3',
       FPersistence.CurrentPairId);
+    Counts := Repository.CountAutomaticRFNotesBeforeMany(
+      '1,1,3', [DestinationTextIndex, SourceTextIndex]);
+    AssertEquals('bulk result follows requested field order', 2,
+      Length(Counts));
+    AssertEquals('destination count is calculated in the shared scan',
+      2, Counts[0]);
+    AssertEquals('source count is independent in the shared scan',
+      2, Counts[1]);
+    AssertEquals('bulk scan also restores the current Verse Pair',
+      '1,1,3', FPersistence.CurrentPairId);
     AssertEquals('internal scan suppresses BeforeScroll', 0,
       FPairBeforeScrollCount);
     AssertEquals('internal scan suppresses AfterScroll', 0,

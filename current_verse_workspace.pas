@@ -46,7 +46,9 @@ type
     procedure CreateVerseView(Owner: TScrollBox; VerseIndex,
       SourceVerseIndex, DestinationVerseIndex: Integer;
       var VerseViews: array of TVerse; OnVerseDoubleClick: TNotifyEvent;
-      OnSyntagmClick: TOnSyntagmEvent; OnExportText: TOnExportTextEvent);
+      OnSyntagmClick: TOnSyntagmEvent;
+      OnTranslatorNoteClick: TOnTranslatorNoteClickEvent;
+      OnExportText: TOnExportTextEvent);
     procedure ApplyDisplayTags(const VerseViews: array of TVerse; DisplayTags: Boolean);
     procedure ApplyTokenizerVersion(const VerseViews: array of TVerse;
       TokenizerVersion: Integer);
@@ -218,7 +220,9 @@ end;
 procedure TCurrentVerseWorkspace.CreateVerseView(Owner: TScrollBox;
   VerseIndex, SourceVerseIndex, DestinationVerseIndex: Integer;
   var VerseViews: array of TVerse; OnVerseDoubleClick: TNotifyEvent;
-  OnSyntagmClick: TOnSyntagmEvent; OnExportText: TOnExportTextEvent);
+  OnSyntagmClick: TOnSyntagmEvent;
+  OnTranslatorNoteClick: TOnTranslatorNoteClickEvent;
+  OnExportText: TOnExportTextEvent);
 begin
   if (VerseIndex < Low(VerseViews)) or (VerseIndex > High(VerseViews)) then
     raise Exception.CreateFmt('Current verse view index out of bounds [%d]', [VerseIndex]);
@@ -227,6 +231,7 @@ begin
   Owner.Tag := PtrInt(VerseViews[VerseIndex]);
   Owner.OnDblClick := OnVerseDoubleClick;
   VerseViews[VerseIndex].OnClick := OnSyntagmClick;
+  VerseViews[VerseIndex].OnTranslatorNoteClick := OnTranslatorNoteClick;
   VerseViews[VerseIndex].OnExportText := OnExportText;
 
   if (VerseIndex <> SourceVerseIndex) and (VerseIndex <> DestinationVerseIndex) then

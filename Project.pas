@@ -251,6 +251,7 @@ type
     procedure SetVerseText(versiculo: string; texto: TTipoTextoBiblico; replace: boolean);
     procedure BeforeVerseScroll(DataSet: TDataSet);
     procedure AfterVerseScroll(DataSet: TDataSet);
+    procedure RefreshAutomaticNoteStarts;
     procedure SavePairs;
     procedure SaveText;
     procedure SaveAssociations;
@@ -270,6 +271,8 @@ type
       out AImpact: TAssociationEditImpact): Boolean;
     procedure OnExibirDefinicao(Sender: TObject);
     procedure OnDblClickVersiculo(Sender: TObject);
+    procedure OnTranslatorNoteClick(Sender: TVerse; ANoteId,
+      ARevision: QWord);
     procedure OnBibleTreePopupItemClick(Sender: TObject);
     procedure OnBibleTreeContextPopup(Sender: TObject; MousePos: TPoint; var Handled: Boolean);
     procedure HandleAutoSave(Sender: TObject);
@@ -2572,6 +2575,35 @@ begin
   //DebugLn('  TProject.BeforeVerseScroll: %d milliseconds', [getTickCount-starttime]);
 end;
 
+procedure TProject.RefreshAutomaticNoteStarts;
+var
+  Count, Index: Integer;
+  NoteStarts: TAutomaticRFNoteCountArray;
+  TextIndexes: TIntegerArray;
+  TextType: TTipoTextoBiblico;
+  TextTypes: array of TTipoTextoBiblico;
+begin
+  Count := 0;
+  SetLength(TextIndexes, Length(FAVersiculo));
+  SetLength(TextTypes, Length(FAVersiculo));
+  for TextType := Low(FAVersiculo) to High(FAVersiculo) do
+    if Assigned(FAVersiculo[TextType]) then
+    begin
+      TextIndexes[Count] := FACamposTexto[TextType];
+      TextTypes[Count] := TextType;
+      Inc(Count);
+    end;
+  SetLength(TextIndexes, Count);
+  SetLength(TextTypes, Count);
+  if Count = 0 then
+    Exit;
+
+  NoteStarts := FVerseRepository.CountAutomaticRFNotesBeforeMany(GetID(),
+    TextIndexes);
+  for Index := 0 to Count - 1 do
+    FAVersiculo[TextTypes[Index]].AutomaticNoteStart := NoteStarts[Index];
+end;
+
 procedure TProject.AfterVerseScroll(DataSet: TDataSet);
 var
   e: TOnNovoVersiculoEvent;
@@ -2588,6 +2620,8 @@ begin
   loadResult := FCurrentVerseWorkspace.LoadCurrentVerse(FPersistence,
     FAVersiculo, FACamposTexto, FormattedReference, GetID(),
     Ord(tbOrigem), Ord(tbDestino));
+
+  RefreshAutomaticNoteStarts;
 
   if assigned(FAVersiculo[tbOrigem]) and assigned(FAVersiculo[tbDestino]) then
   begin
@@ -3080,7 +3114,6 @@ end;
 
 procedure TProject.OnDblClickVersiculo(Sender: TObject);
 var
-  AutomaticNoteStart: Integer;
   Container: TScrollBox;
   TextType: TTipoTextoBiblico;
   VerseView: TVerse;
@@ -3100,9 +3133,21 @@ begin
   if not Assigned(VerseView) then
     Exit;
 
-  AutomaticNoteStart := FVerseRepository.CountAutomaticRFNotesBefore(
-    VerseView.ReferenceID, FACamposTexto[TextType]);
-  FVerseMemo.Activate(Container, VerseView, AutomaticNoteStart);
+  FVerseMemo.Activate(Container, VerseView, VerseView.AutomaticNoteStart);
+end;
+
+procedure TProject.OnTranslatorNoteClick(Sender: TVerse; ANoteId,
+  ARevision: QWord);
+var
+  TextType: TTipoTextoBiblico;
+begin
+  if not Ativo or not Assigned(Sender) or (ANoteId = 0) or
+     not FindVerseType(Sender, TextType) or not Assigned(Sender.Panel) then
+    Exit;
+
+  Sender.DismissTranslatorNotePreview;
+  FVerseMemo.Activate(Sender.Panel, Sender, Sender.AutomaticNoteStart,
+    ANoteId, ARevision);
 end;
 
 procedure TProject.OnBibleTreePopupItemClick(Sender: TObject);
@@ -5081,7 +5126,7 @@ procedure TProject.CreateVerseObject(owner: TScrollBox;
 begin
   FCurrentVerseWorkspace.CreateVerseView(owner, Ord(texto), Ord(tbOrigem),
     Ord(tbDestino), FAVersiculo, @OnDblClickVersiculo, @SintagmaOnClick,
-    @OnExportText);
+    @OnTranslatorNoteClick, @OnExportText);
   if Assigned(FAVersiculo[texto]) then
   begin
     FAVersiculo[texto].TokenizerVersion := TokenizerVersion;

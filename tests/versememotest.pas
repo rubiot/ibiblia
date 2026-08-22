@@ -13,6 +13,8 @@ type
     procedure ActivateEmptyVerseKeepsEditorAttachedToWindow;
     procedure FailedSaveCallbackKeepsPendingEditorOpen;
     procedure FailedVisualSaveKeepsConcreteErrorVisible;
+    procedure DirectedMissingTranslatorNoteKeepsEditorOpenAndReportsError;
+    procedure DirectedStaleTranslatorNoteRevisionReportsErrorWithoutEditing;
     procedure NavigatingToAnotherVerseClearsVisualSelectionAndCaret;
     procedure TranslatorNoteHoverEndsOnSaveCancelHideAndReload;
     procedure PostCommitObserverFailureStillClosesAppliedEdit;
@@ -27,7 +29,8 @@ uses
   VerseMemo, Project,
   directwrite_syntagm_view, directwrite_verse_editor, verse_view_intf,
   verse_visual_document, theword_ont_codec_v2,
-  theword_wysiwyg_editor_control, text_edit_provenance;
+  theword_effective_inline_style_v2, theword_wysiwyg_editor_control,
+  text_edit_provenance;
 
 type
   TTestableProject = class;
@@ -394,6 +397,108 @@ begin
     Editor.DiscardEdit;
   finally
     Probe.Free;
+    Editor.Free;
+    VerseView.Free;
+    Host.Free;
+  end;
+end;
+
+procedure TVerseMemoTests.
+  DirectedMissingTranslatorNoteKeepsEditorOpenAndReportsError;
+const
+  ExpectedError =
+    'The translator note could not be located in the current verse.';
+var
+  Composite: TTheWordWysiwygEditorControl;
+  Container: TScrollBox;
+  Editor: TVerseMemo;
+  ErrorLabel: TLabel;
+  Host: TForm;
+  VerseView: TVerse;
+begin
+  Forms.Application.Initialize;
+  Host := TForm.CreateNew(nil);
+  Host.SetBounds(0, 0, 800, 300);
+  Container := TScrollBox.Create(Host);
+  Container.Parent := Host;
+  Container.Align := alClient;
+  VerseView := TVerse.Create(Container);
+  Editor := TVerseMemo.Create;
+  try
+    Host.Show;
+    Application.ProcessMessages;
+    VerseView.Text := 'alpha<RF>note<Rf> beta';
+    Editor.Activate(Container, VerseView, 0, 999);
+
+    Composite := FindWysiwygEditor(Host);
+    AssertTrue('directed activation keeps the WYSIWYG attached',
+      Assigned(Composite) and Composite.Visible);
+    ErrorLabel := FindLabelWithCaption(Host, ExpectedError);
+    AssertTrue('a stale note reports an explicit error',
+      Assigned(ErrorLabel) and ErrorLabel.Visible);
+    AssertSame('the verse editor remains open after the failed lookup',
+      VerseView, Editor.Verse);
+    AssertFalse('a failed lookup does not create a pending edit',
+      Editor.HasPendingChange);
+    Editor.DiscardEdit;
+  finally
+    Editor.Free;
+    VerseView.Free;
+    Host.Free;
+  end;
+end;
+
+procedure TVerseMemoTests.
+  DirectedStaleTranslatorNoteRevisionReportsErrorWithoutEditing;
+const
+  ExpectedError =
+    'The translator note could not be located in the current verse.';
+  Raw: UnicodeString = 'alpha<RF>note<Rf> beta';
+var
+  Composite: TTheWordWysiwygEditorControl;
+  Container: TScrollBox;
+  Editor: TVerseMemo;
+  ErrorLabel: TLabel;
+  Host: TForm;
+  NoteId: QWord;
+  Projection: TTheWordEffectiveInlineProjectionV2;
+  VerseView: TVerse;
+begin
+  Forms.Application.Initialize;
+  Host := TForm.CreateNew(nil);
+  Host.SetBounds(0, 0, 800, 300);
+  Container := TScrollBox.Create(Host);
+  Container.Parent := Host;
+  Container.Align := alClient;
+  VerseView := TVerse.Create(Container);
+  Editor := TVerseMemo.Create;
+  try
+    Host.Show;
+    Application.ProcessMessages;
+    VerseView.Text := UTF8Encode(Raw);
+    Projection := TTheWordEffectiveInlineProjectionV2.Resolve(Raw);
+    try
+      AssertEquals(1, Projection.TranslatorNoteCount);
+      NoteId := Projection.TranslatorNotes[0].Id;
+    finally
+      Projection.Free;
+    end;
+
+    Editor.Activate(Container, VerseView, 0, NoteId,
+      VerseView.VisualRevision + 1);
+
+    Composite := FindWysiwygEditor(Host);
+    AssertTrue('a stale marker still activates the WYSIWYG',
+      Assigned(Composite) and Composite.Visible);
+    ErrorLabel := FindLabelWithCaption(Host, ExpectedError);
+    AssertTrue('the stale revision is reported explicitly',
+      Assigned(ErrorLabel) and ErrorLabel.Visible);
+    AssertSame('the verse editor remains open after the stale click',
+      VerseView, Editor.Verse);
+    AssertFalse('the stale ID is never resolved or edited',
+      Editor.HasPendingChange);
+    Editor.DiscardEdit;
+  finally
     Editor.Free;
     VerseView.Free;
     Host.Free;
