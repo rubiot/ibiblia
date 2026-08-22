@@ -18,6 +18,12 @@ type
     vecSave,
     vecCancel,
     vecItalic,
+    vecHtmlBold,
+    vecHtmlItalic,
+    vecHtmlUnderline,
+    vecFontSizeDecrease,
+    vecFontSizeIncrease,
+    vecClearPendingFormatting,
     vecWordsOfJesus,
     vecOldTestamentQuote,
     vecStrikethrough,
@@ -941,6 +947,9 @@ begin
   if FMode <> vimEdit then
     Exit;
   BasicShift := Shift * [ssShift, ssCtrl, ssAlt];
+  if (Key in [VK_LEFT, VK_RIGHT, VK_UP, VK_DOWN, VK_HOME, VK_END]) and
+     Assigned(FOnCommand) then
+    FOnCommand(Self, vecClearPendingFormatting);
   case Key of
     VK_BACK:
       if not (ssCtrl in BasicShift) then
@@ -1025,14 +1034,42 @@ begin
         if Assigned(FOnCommand) then
           FOnCommand(Self, vecCancel);
       end;
-    VK_I:
+    VK_B:
       if BasicShift = [ssCtrl] then
+      begin
+        if Assigned(FOnCommand) then FOnCommand(Self, vecHtmlBold);
+      end
+      else Exit;
+    VK_I:
+      if BasicShift = [ssCtrl, ssShift] then
+      begin
+        if Assigned(FOnCommand) then FOnCommand(Self, vecHtmlItalic);
+      end
+      else if BasicShift = [ssCtrl] then
       begin
         if Assigned(FOnCommand) then
           FOnCommand(Self, vecItalic);
       end
       else
         Exit;
+    VK_U:
+      if BasicShift = [ssCtrl] then
+      begin
+        if Assigned(FOnCommand) then FOnCommand(Self, vecHtmlUnderline);
+      end
+      else Exit;
+    VK_OEM_COMMA:
+      if BasicShift = [ssCtrl, ssShift] then
+      begin
+        if Assigned(FOnCommand) then FOnCommand(Self, vecFontSizeDecrease);
+      end
+      else Exit;
+    VK_OEM_PERIOD:
+      if BasicShift = [ssCtrl, ssShift] then
+      begin
+        if Assigned(FOnCommand) then FOnCommand(Self, vecFontSizeIncrease);
+      end
+      else Exit;
     VK_J:
       if BasicShift = [ssCtrl] then
       begin
@@ -1149,6 +1186,8 @@ begin
     inherited MouseDown(Button, Shift, X, Y);
     Exit;
   end;
+  if Assigned(FOnCommand) then
+    FOnCommand(Self, vecClearPendingFormatting);
   if (Button = mbLeft) and HitTest(Point(X, Y), Hit) and
      (Hit.Role = vsrTranslatorNote) then
   begin

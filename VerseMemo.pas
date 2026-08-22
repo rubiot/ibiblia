@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Controls, Forms, LCLType, Dialogs, ExtCtrls, StdCtrls,
-  Buttons, Graphics, Verse, Math, directwrite_verse_editor, theword_ont_codec_v2,
+  Buttons, Graphics, Menus, Verse, Math, directwrite_verse_editor, theword_ont_codec_v2,
   theword_wysiwyg_editor_control, text_edit_provenance;
 
 type
@@ -35,6 +35,10 @@ type
     FStrikethroughButton: TSpeedButton;
     FSuperscriptButton: TSpeedButton;
     FSubscriptButton: TSpeedButton;
+    FHtmlFormatButton: TSpeedButton;
+    FFontSizeDecreaseButton: TSpeedButton;
+    FFontSizeIncreaseButton: TSpeedButton;
+    FHtmlFormatMenu: TPopupMenu;
     FTranslatorNoteButton: TSpeedButton;
     FRawModeButton: TButton;
     FSaveErrorActive: Boolean;
@@ -59,6 +63,12 @@ type
     procedure InsertStrikethrough(Sender: TObject);
     procedure InsertSuperscript(Sender: TObject);
     procedure InsertSubscript(Sender: TObject);
+    procedure InsertHtmlBold(Sender: TObject);
+    procedure InsertHtmlItalic(Sender: TObject);
+    procedure InsertHtmlUnderline(Sender: TObject);
+    procedure ShowHtmlFormatMenu(Sender: TObject);
+    procedure DecreaseFontSize(Sender: TObject);
+    procedure IncreaseFontSize(Sender: TObject);
     procedure InsertTranslatorNote(Sender: TObject);
     procedure LayoutEditorToolbar;
     procedure RefreshLocalizedCaptions;
@@ -104,6 +114,9 @@ resourcestring
   SStrikethroughButton = 'S';
   SSuperscriptButton = 'x²';
   SSubscriptButton = 'x₂';
+  SHtmlFormatButton = 'B/I/U';
+  SFontSizeDecreaseButton = 'A−';
+  SFontSizeIncreaseButton = 'A+';
   STranslatorNoteButton = 'N¹';
   SRawModeButton = 'Raw';
   SVisualModeButton = 'Visual';
@@ -119,6 +132,9 @@ resourcestring
   SSuperscriptHint =
     'Superscript: apply or remove superscript (Ctrl+Shift+=)';
   SSubscriptHint = 'Subscript: apply or remove subscript (Ctrl+=)';
+  SHtmlFormatHint = 'HTML bold, italic or underline';
+  SFontSizeDecreaseHint = 'Decrease relative font size (Ctrl+Shift+,)';
+  SFontSizeIncreaseHint = 'Increase relative font size (Ctrl+Shift+.)';
   STranslatorNoteHint =
     'Insert translator note at the caret (Ctrl+Shift+N)';
   SRawModeHint = 'Switch between semantic editing and the raw ONT fallback';
@@ -214,6 +230,38 @@ begin
   ApplySemantic(twsmSubscript);
 end;
 
+procedure TVerseMemo.InsertHtmlBold(Sender: TObject);
+begin
+  ApplySemantic(twsmHtmlBold);
+end;
+
+procedure TVerseMemo.InsertHtmlItalic(Sender: TObject);
+begin
+  ApplySemantic(twsmHtmlItalic);
+end;
+
+procedure TVerseMemo.InsertHtmlUnderline(Sender: TObject);
+begin
+  ApplySemantic(twsmHtmlUnderline);
+end;
+
+procedure TVerseMemo.ShowHtmlFormatMenu(Sender: TObject);
+var P: TPoint;
+begin
+  P := Mouse.CursorPos;
+  FHtmlFormatMenu.PopUp(P.X, P.Y);
+end;
+
+procedure TVerseMemo.DecreaseFontSize(Sender: TObject);
+begin
+  FEditor.AdjustRelativeFontSize(-1);
+end;
+
+procedure TVerseMemo.IncreaseFontSize(Sender: TObject);
+begin
+  FEditor.AdjustRelativeFontSize(1);
+end;
+
 procedure TVerseMemo.InsertTranslatorNote(Sender: TObject);
 begin
   FEditor.InsertTranslatorNote;
@@ -295,6 +343,15 @@ begin
   Inc(X, SemanticButtonWidth + Gap);
   FSubscriptButton.SetBounds(X,
     ButtonTop,
+    SemanticButtonWidth, ButtonHeight);
+  Inc(X, SemanticButtonWidth + Gap);
+  FHtmlFormatButton.SetBounds(X, ButtonTop,
+    SemanticButtonWidth + 14, ButtonHeight);
+  Inc(X, SemanticButtonWidth + 14 + Gap);
+  FFontSizeDecreaseButton.SetBounds(X, ButtonTop,
+    SemanticButtonWidth, ButtonHeight);
+  Inc(X, SemanticButtonWidth + Gap);
+  FFontSizeIncreaseButton.SetBounds(X, ButtonTop,
     SemanticButtonWidth, ButtonHeight);
   Inc(X, SemanticButtonWidth + Gap);
   FTranslatorNoteButton.SetBounds(X,
@@ -445,6 +502,9 @@ begin
   FStrikethroughButton.Enabled := CanMark;
   FSuperscriptButton.Enabled := CanMark;
   FSubscriptButton.Enabled := CanMark;
+  FHtmlFormatButton.Enabled := CanMark;
+  FFontSizeDecreaseButton.Enabled := FEditor.Editable and not FEditor.RawMode;
+  FFontSizeIncreaseButton.Enabled := FEditor.Editable and not FEditor.RawMode;
   FTranslatorNoteButton.Enabled := FEditor.CanInsertTranslatorNote;
   if FEditor.RawMode then
     FRawModeButton.Caption := SVisualModeButton
@@ -485,6 +545,15 @@ constructor TVerseMemo.Create;
     Result.Hint := AHint;
     Result.ShowHint := True;
     Result.OnClick := AHandler;
+  end;
+
+  procedure AddHtmlMenuItem(const ACaption: string; AHandler: TNotifyEvent);
+  var Item: TMenuItem;
+  begin
+    Item := TMenuItem.Create(FHtmlFormatMenu);
+    Item.Caption := ACaption;
+    Item.OnClick := AHandler;
+    FHtmlFormatMenu.Items.Add(Item);
   end;
 
 begin
@@ -540,6 +609,16 @@ begin
     SSuperscriptHint, @InsertSuperscript);
   FSubscriptButton := NewSemanticButton(SSubscriptButton,
     SSubscriptHint, @InsertSubscript);
+  FHtmlFormatMenu := TPopupMenu.Create(FEditorPanel);
+  AddHtmlMenuItem('Bold (<b>)', @InsertHtmlBold);
+  AddHtmlMenuItem('Italic (<i>)', @InsertHtmlItalic);
+  AddHtmlMenuItem('Underline (<u>)', @InsertHtmlUnderline);
+  FHtmlFormatButton := NewSemanticButton(SHtmlFormatButton,
+    SHtmlFormatHint, @ShowHtmlFormatMenu);
+  FFontSizeDecreaseButton := NewSemanticButton(SFontSizeDecreaseButton,
+    SFontSizeDecreaseHint, @DecreaseFontSize);
+  FFontSizeIncreaseButton := NewSemanticButton(SFontSizeIncreaseButton,
+    SFontSizeIncreaseHint, @IncreaseFontSize);
   FTranslatorNoteButton := NewSemanticButton(STranslatorNoteButton,
     STranslatorNoteHint, @InsertTranslatorNote);
   FTranslatorNoteButton.Font.Color := clBlue;

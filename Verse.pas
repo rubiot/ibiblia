@@ -514,7 +514,7 @@ begin
     Inc(FVisualRevision);
   FVerseView.SetDocument(BuildVerseVisualDocument(FSyntagms, FStrongCount,
     FBaseDirection, FVisualRevision, FAssociatedColor, FUnassociatedColor,
-    FBoldWordsWithStrong));
+    FBoldWordsWithStrong, FXML));
   FVerseView.DisplayTags := FDisplayTags;
 end;
 

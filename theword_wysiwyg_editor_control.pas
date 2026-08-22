@@ -34,6 +34,9 @@ type
     FNotePreview: TTranslatorNotePreviewWindow;
     FOnChanged: TTheWordEditorChangedEvent;
     FOnCommand: TTheWordEditorCommandEvent;
+    FPendingFontSizeActive: Boolean;
+    FPendingFontSizeLevel: Integer;
+    FPendingFontSizeAnchor: Integer;
     FPendingNoteId: QWord;
     FPendingNoteRevision: QWord;
     FRawEditor: TSynEdit;
@@ -53,6 +56,7 @@ type
     function GetSelectionLength: Integer;
     function GetSelectionStart: Integer;
     function GetText: string;
+    procedure ClearPendingFontSize;
     procedure DirectClipboardCopy(Sender: TObject; StartUTF16,
       LengthUTF16: Integer; ACut: Boolean; var Handled: Boolean);
     procedure DirectClipboardPaste(Sender: TObject; StartUTF16,
@@ -100,6 +104,7 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     function ApplySemantic(AKind: TTheWordSemanticKind): Boolean;
+    function AdjustRelativeFontSize(ADelta: Integer): Boolean;
     function CanApplySemantic: Boolean;
     function CommitRaw: Boolean;
     function CloneEditTrace: TVerseEditTrace;
@@ -216,6 +221,7 @@ end;
 procedure TTheWordWysiwygEditorControl.SetText(const AValue: string);
 begin
   DismissTranslatorNotePreview;
+  ClearPendingFontSize;
   FUpdating := True;
   try
     FVisualDocument := nil;
@@ -642,6 +648,7 @@ end;
 
 procedure TTheWordWysiwygEditorControl.SetRawMode(AValue: Boolean);
 begin
+  ClearPendingFontSize;
   if (FRawMode = AValue) or not Assigned(FSession) then
     Exit;
   DismissTranslatorNotePreview;
@@ -757,14 +764,28 @@ procedure TTheWordWysiwygEditorControl.DirectReplaceText(Sender: TObject;
   StartUTF16, LengthUTF16: Integer; const Replacement: UnicodeString;
   var Accepted: Boolean; var NewCaretUTF16: Integer);
 var
-  DocumentLength, DocumentStart, DocumentCaret: Integer;
+  CurrentLevel, DocumentLength, DocumentStart, DocumentCaret: Integer;
+  InsertionStyle: TVisualTextStyle;
 begin
   Accepted := False;
   try
     Accepted := FEditable and Assigned(FSession) and
       TryTheWordLayoutRangeToDocument(FVisualDocument, StartUTF16,
-        LengthUTF16, DocumentStart, DocumentLength) and
-      FSession.ReplaceText(DocumentStart, DocumentLength, Replacement);
+        LengthUTF16, DocumentStart, DocumentLength);
+    if Accepted and FPendingFontSizeActive and (DocumentLength = 0) and
+       (Replacement <> '') then
+    begin
+      InsertionStyle := DefaultVisualTextStyle;
+      if not TryResolveTheWordInsertionVisualStyle(FSession.Document,
+        DocumentStart, InsertionStyle) then
+        InsertionStyle := DefaultVisualTextStyle;
+      CurrentLevel := InsertionStyle.FontSizeDelta div 2;
+      Accepted := FSession.ReplaceTextWithRelativeFontSize(DocumentStart,
+        DocumentLength, Replacement, CurrentLevel, FPendingFontSizeLevel);
+    end
+    else if Accepted then
+      Accepted := FSession.ReplaceText(DocumentStart, DocumentLength,
+        Replacement);
   except
     on E: ETheWordOntProtectedEdit do Accepted := False;
     on E: ETheWordOntCodec do Accepted := False;
@@ -772,6 +793,8 @@ begin
   if Accepted then
   begin
     DocumentCaret := DocumentStart + Length(Replacement);
+    if FPendingFontSizeActive then
+      FPendingFontSizeAnchor := DocumentCaret;
     RefreshDirectDocument;
     if not TryTheWordDocumentToLayoutOffset(FVisualDocument,
       DocumentCaret, twoaAfter, NewCaretUTF16) then
@@ -935,6 +958,7 @@ var
   PlainText: UnicodeString;
 begin
   Handled := True;
+  ClearPendingFontSize;
   if not FEditable or not Assigned(FSession) then
   begin
     Beep;
@@ -965,7 +989,14 @@ end;
 
 procedure TTheWordWysiwygEditorControl.DirectSelectionChanged(
   Sender: TObject; StartUTF16, LengthUTF16: Integer);
+var
+  DocumentOffset: Integer;
 begin
+  if FPendingFontSizeActive and
+     ((LengthUTF16 <> 0) or
+      (not TryTheWordLayoutToDocumentOffset(FVisualDocument, StartUTF16,
+        DocumentOffset)) or (DocumentOffset <> FPendingFontSizeAnchor)) then
+    ClearPendingFontSize;
   DoChanged;
 end;
 
@@ -981,6 +1012,8 @@ begin
       DocumentOffset) and
     TryResolveTheWordInsertionVisualStyle(FSession.Document,
       DocumentOffset, Style);
+  if Result and FPendingFontSizeActive then
+    Style.FontSizeDelta := 2 * FPendingFontSizeLevel;
 end;
 
 procedure TTheWordWysiwygEditorControl.DirectCommand(Sender: TObject;
@@ -990,6 +1023,12 @@ begin
     vecUndo: Undo;
     vecRedo: Redo;
     vecItalic: ApplySemantic(twsmItalic);
+    vecHtmlBold: ApplySemantic(twsmHtmlBold);
+    vecHtmlItalic: ApplySemantic(twsmHtmlItalic);
+    vecHtmlUnderline: ApplySemantic(twsmHtmlUnderline);
+    vecFontSizeDecrease: AdjustRelativeFontSize(-1);
+    vecFontSizeIncrease: AdjustRelativeFontSize(1);
+    vecClearPendingFormatting: ClearPendingFontSize;
     vecWordsOfJesus: ApplySemantic(twsmWordsOfJesus);
     vecOldTestamentQuote: ApplySemantic(twsmOldTestamentQuote);
     vecStrikethrough: ApplySemantic(twsmStrikethrough);
@@ -1021,8 +1060,53 @@ begin
   end;
 end;
 
+procedure TTheWordWysiwygEditorControl.ClearPendingFontSize;
+begin
+  FPendingFontSizeActive := False;
+  FPendingFontSizeAnchor := -1;
+end;
+
+function TTheWordWysiwygEditorControl.AdjustRelativeFontSize(
+  ADelta: Integer): Boolean;
+var
+  DocumentLength, DocumentStart, Level: Integer;
+  Style: TVisualTextStyle;
+begin
+  Result := False;
+  if not FEditable or FRawMode or not Assigned(FSession) or
+     ((ADelta <> -1) and (ADelta <> 1)) or
+     not TryGetDocumentSelection(DocumentStart, DocumentLength) then Exit;
+  if DocumentLength > 0 then
+  begin
+    ClearPendingFontSize;
+    Result := FSession.AdjustRelativeFontSize(DocumentStart,
+      DocumentLength, ADelta);
+    if Result then
+    begin
+      RefreshDirectDocument;
+      TrySetDocumentSelection(DocumentStart, DocumentLength);
+      DoChanged;
+      FocusEditor;
+    end;
+    Exit;
+  end;
+  Style := DefaultVisualTextStyle;
+  if not TryResolveTheWordInsertionVisualStyle(FSession.Document,
+    DocumentStart, Style) then Exit;
+  if FPendingFontSizeActive then Level := FPendingFontSizeLevel
+  else Level := Style.FontSizeDelta div 2;
+  Level := EnsureRange(Level + ADelta, -4, 10);
+  FPendingFontSizeLevel := Level;
+  FPendingFontSizeAnchor := DocumentStart;
+  FPendingFontSizeActive := True;
+  FDirectEditor.Invalidate;
+  FocusEditor;
+  Result := True;
+end;
+
 function TTheWordWysiwygEditorControl.Undo: Boolean;
 begin
+  ClearPendingFontSize;
   if FRawMode then
   begin
     FRawEditor.Undo;
@@ -1038,6 +1122,7 @@ end;
 
 function TTheWordWysiwygEditorControl.Redo: Boolean;
 begin
+  ClearPendingFontSize;
   if FRawMode then
   begin
     FRawEditor.Redo;
@@ -1064,6 +1149,7 @@ end;
 
 procedure TTheWordWysiwygEditorControl.Cancel;
 begin
+  ClearPendingFontSize;
   DismissTranslatorNotePreview;
   if not Assigned(FSession) then
     Exit;
@@ -1104,6 +1190,7 @@ end;
 
 procedure TTheWordWysiwygEditorControl.AcceptChanges;
 begin
+  ClearPendingFontSize;
   if not Assigned(FSession) then
     Exit;
   FSession.AcceptChanges;

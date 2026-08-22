@@ -52,6 +52,11 @@ type
     destructor Destroy; override;
     function ApplySemantic(AKind: TTheWordSemanticKind; AStartUTF16,
       ALengthUTF16: Integer): Boolean;
+    function AdjustRelativeFontSize(AStartUTF16, ALengthUTF16,
+      ADelta: Integer): Boolean;
+    function ReplaceTextWithRelativeFontSize(AStartUTF16,
+      ALengthUTF16: Integer; const AReplacement: UnicodeString;
+      ACurrentLevel, ATargetLevel: Integer): Boolean;
     function CanApplySemantic(AStartUTF16, ALengthUTF16: Integer): Boolean;
     function CanInsertTranslatorNote(AOffsetUTF16: Integer): Boolean;
     function InsertTranslatorNote(AOffsetUTF16: Integer;
@@ -105,7 +110,8 @@ function CanCommitLegacyWysiwygChangeV2(AHasAssociations,
 implementation
 
 uses
-  theword_verse_visual_adapter_v2, theword_clipboard_v2;
+  theword_verse_visual_adapter_v2, theword_clipboard_v2,
+  theword_font_size_mutation_v2;
 
 function TouchesTheWordTitle(ADocument: TTheWordVerseDocument;
   AStartUTF16, ALengthUTF16: Integer): Boolean;
@@ -739,6 +745,79 @@ begin
   finally
     Snapshot.Free;
     WorkingDocument.Free;
+  end;
+end;
+
+function TTheWordWysiwygSessionV2.AdjustRelativeFontSize(
+  AStartUTF16, ALengthUTF16, ADelta: Integer): Boolean;
+var
+  Candidate, SnapshotRaw: UnicodeString;
+  Plan: TTheWordFontSizeLeafPlanArrayV2;
+  Snapshot: TTheWordWysiwygSessionSnapshot;
+begin
+  Result := False;
+  if (ALengthUTF16 <= 0) or ((ADelta <> -1) and (ADelta <> 1)) then
+    Exit;
+  SnapshotRaw := GetRawText;
+  if not TryPlanTheWordRelativeFontSizeV2(FDocument, AStartUTF16,
+    ALengthUTF16, ADelta, Plan) then
+    Exit;
+  if not FDocument.TryBuildRawWithFontTopology(Plan, Candidate) then
+    Exit;
+  if Candidate = SnapshotRaw then
+    Exit;
+
+  Snapshot := nil;
+  try
+    { ReplaceDocument decodes before swapping FDocument. The trace is left
+      untouched because this command changes presentation, not text. }
+    Snapshot := CaptureSnapshot;
+    ReplaceDocument(Candidate);
+    PushUndo(Snapshot);
+    Snapshot := nil;
+    Result := True;
+  finally
+    Snapshot.Free;
+  end;
+end;
+
+function TTheWordWysiwygSessionV2.ReplaceTextWithRelativeFontSize(
+  AStartUTF16, ALengthUTF16: Integer; const AReplacement: UnicodeString;
+  ACurrentLevel, ATargetLevel: Integer): Boolean;
+var
+  InitialUndoCount, Step: Integer;
+begin
+  Result := False;
+  if (AReplacement = '') or
+     (ATargetLevel < THEWORD_MIN_AUTHORIAL_SIZE_V2) or
+     (ATargetLevel > THEWORD_MAX_AUTHORIAL_SIZE_V2) then
+    Exit;
+  InitialUndoCount := FUndo.Count;
+  if not ReplaceText(AStartUTF16, ALengthUTF16, AReplacement) then
+    Exit;
+  try
+    while ACurrentLevel <> ATargetLevel do
+    begin
+      if ACurrentLevel < ATargetLevel then
+        Step := 1
+      else
+        Step := -1;
+      if not AdjustRelativeFontSize(AStartUTF16,
+        Length(AReplacement), Step) then
+        raise ETheWordWysiwygSession.Create(
+          'Unable to apply pending relative font size');
+      Inc(ACurrentLevel, Step);
+    end;
+    { Keep the original pre-command snapshot and discard intermediate
+      snapshots produced while materializing the pending size. }
+    while FUndo.Count > InitialUndoCount + 1 do
+      FUndo.Delete(FUndo.Count - 1);
+    Result := True;
+  except
+    while FUndo.Count > InitialUndoCount do
+      Undo;
+    FRedo.Clear;
+    Result := False;
   end;
 end;
 

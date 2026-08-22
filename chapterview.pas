@@ -11,7 +11,7 @@ uses
   LCLTranslator, LazLogger, HTMLRenderer, SynEdit,
   theword_syntax_highlighter, bible_book_names, translation_memory_model,
   SuggestionManager, rf_note_scanner,
-  theword_translator_note_preview;
+  theword_translator_note_preview, theword_effective_inline_style_v2;
 
 type
 
@@ -169,6 +169,9 @@ type
   protected
     procedure SetEnabled(Value: Boolean); override;
     procedure SetupDefaultStyle; override;
+    procedure ApplyProjectedInlineStyle(ABlock: TKMemoTextBlock;
+      ABaseStyle: TKMemoTextStyle;
+      const AEffective: TTheWordEffectiveInlineStyleV2); override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -473,12 +476,18 @@ end;
 
 function TChapterView.GetInterlinearMode: TInterlinearMode;
 begin
-  result := FProject.InterlinearMode;
+  if Assigned(FProject) then
+    result := FProject.InterlinearMode
+  else
+    result := imIntralinear;
 end;
 
 function TChapterView.GetParagraphMode: TParagraphMode;
 begin
-  result := FProject.ParagraphMode;
+  if Assigned(FProject) then
+    result := FProject.ParagraphMode
+  else
+    result := pmNoParagraphs;
 end;
 
 function TChapterView.GetTextType: TTipoTextoBiblico;
@@ -492,173 +501,184 @@ begin
     (FViewMode = cvmTranslationMemory);
 end;
 
+procedure TChapterView.ApplyProjectedInlineStyle(ABlock: TKMemoTextBlock;
+  ABaseStyle: TKMemoTextStyle;
+  const AEffective: TTheWordEffectiveInlineStyleV2);
+begin
+  inherited ApplyProjectedInlineStyle(ABlock, ABaseStyle, AEffective);
+  if (tweifv2AddedWords in AEffective.Flags) and
+    (not AEffective.HasExplicitColor) then
+    ABlock.TextStyle.Font.Color := clGray;
+end;
+
 procedure TChapterView.RenderSpan(cont: TKMemoBlocks; txt: string);
 var
   FTokenizer: TONTTokenizer;
   token: TSyntagmToken;
-  prop: string;
   chunk: string;
+  OpeningTag, ConsumedBody, ConsumedClose: string;
   NoteBody: string;
   NoteClosingTag: string;
-  size: integer;
   padding: longint;
   lastpar: TKMemoParagraph;
+  Projection: TTheWordEffectiveInlineProjectionV2;
+  VisibleOffsetUTF16, RunIndex: Integer;
 begin
   chunk := '';
-      if Assigned(FProject) then
-        TokenizerVersion := FProject.TokenizerVersion;
-      FTokenizer := TTokenizerFactory.CreateTokenizer(TokenizerVersion, txt);
+  FTokenizer := nil;
+  Projection := nil;
+  VisibleOffsetUTF16 := 0;
+  RunIndex := 0;
+  if Assigned(FProject) then
+    TokenizerVersion := FProject.TokenizerVersion;
+  try
+    FTokenizer := TTokenizerFactory.CreateTokenizer(TokenizerVersion, txt);
+    TryResolveInlineProjection(UTF8Decode(txt), Projection);
 
-  cont.LockUpdate;
-  while FTokenizer.ReadSyntagm(token) <> skNull do
-  begin
-    case token.Kind of
-      skMetadata:
-        ;
-      skWhitespace:
-        if token.Value <> '|' then
+    cont.LockUpdate;
+    try
+      while FTokenizer.ReadSyntagm(token) <> skNull do
+    begin
+      case token.Kind of
+        skMetadata:
+          ;
+        skWhitespace:
+          if token.Value <> '|' then
+            chunk := chunk + token.Value;
+        skPunctuation, skSyntagm:
           chunk := chunk + token.Value;
-      skPunctuation, skSyntagm:
-        chunk := chunk + token.Value;
-      skTag:
-      begin
-        if chunk.Length > 0 then
+        skTag:
         begin
-          cont.AddTextBlock(chunk).TextStyle.Assign(CurrentStyle);
-          chunk := '';
-        end;
-        if token.Value.StartsWith('<TS') then { title beginning }
-        begin
-          if assigned(cont.LastBlock) and (cont.LastBlock.ClassName <> 'TKMemoParagraph') then
-            cont.AddParagraph().ParaStyle.FirstIndent := IfThen(GetParagraphMode = pmParagraph, DefaultFirstIndent);
-
-          with PushNewStyle do
+          if chunk.Length > 0 then
           begin
-            case token.Value[4] of
-              '>','0':
-              begin
-                Font.Size := Font.Size + 2;
-                Font.Style := [fsBold];
-                Font.Color := $424242;
-              end;
-              '1':
-              begin
-                Font.Size := Font.Size + 1;
-                Font.Style := [fsBold, fsItalic];
-                Font.Color := clDefault;
-              end;
-              '2':
-              begin
-                Font.Style := [fsBold, fsItalic];
-                Font.Color := clDefault;
-              end;
-              '3':
-              begin
-                Font.Style := [fsItalic];
-                Font.Color := clDefault;
-              end;
-            end;
+            RenderProjectedChunk(cont, chunk, Projection,
+              VisibleOffsetUTF16, RunIndex);
+            chunk := '';
           end;
-        end
-        else if token.Value = '<Ts>' then { title end }
-        begin
-          ResetStyleStack;
-          lastpar := GetPreviousParagraphBlock;
-          padding := IfThen(assigned(lastpar) and (lastpar.ParaStyle.BottomPadding = 0), 5);
-          cont.AddParagraph().ParaStyle.TopPadding := padding;
-        end
-        else if IsRFOpeningTag(token.Value) then { translator note }
-        begin
-          ReadRFNoteBody(FTokenizer, NoteBody, NoteClosingTag);
-          RenderNote(token.Value, NoteBody);
-        end
-        else if token.Value = '<Q>' then { interlinear block }
-          RenderInterlinearBlock(cont, FTokenizer.ReadUntilExclusive('<q>'))
-        else if token.Value = '<E>' then { interlinear English block }
-          RenderInterlinearUnit(cont, FTokenizer.ReadUntilExclusive('<e>'))
-        else if token.Value = '<T>' then { interlinear translation block }
-          RenderInterlinearUnit(cont, FTokenizer.ReadUntilExclusive('<t>'))
-        else if token.Value = '<X>' then { interlinear transliteration block }
-          RenderInterlinearUnit(cont, FTokenizer.ReadUntilExclusive('<x>'))
-        else if token.Value = '<H>' then { interlinear Hebrew block }
-          RenderInterlinearUnit(cont, FTokenizer.ReadUntilExclusive('<h>'))
-        else if token.Value = '<G>' then { interlinear Greek block }
-          RenderInterlinearUnit(cont, FTokenizer.ReadUntilExclusive('<g>'))
-        else if token.Value = '<FI>' then { added word(s) }
-          with PushInheritedStyle do
+
+          OpeningTag := token.Value;
+          if OpeningTag.StartsWith('<TS') then { title beginning }
           begin
-            Font.Style := Font.Style + [fsItalic];
-            Font.Color := clGray;
+            if assigned(cont.LastBlock) and
+              (cont.LastBlock.ClassName <> 'TKMemoParagraph') then
+              cont.AddParagraph().ParaStyle.FirstIndent :=
+                IfThen(GetParagraphMode = pmParagraph, DefaultFirstIndent);
+            with PushNewStyle do
+              case OpeningTag[4] of
+                '>','0':
+                begin
+                  Font.Size := Font.Size + 2;
+                  Font.Style := [fsBold];
+                  Font.Color := $424242;
+                end;
+                '1':
+                begin
+                  Font.Size := Font.Size + 1;
+                  Font.Style := [fsBold, fsItalic];
+                  Font.Color := clDefault;
+                end;
+                '2':
+                begin
+                  Font.Style := [fsBold, fsItalic];
+                  Font.Color := clDefault;
+                end;
+                '3':
+                begin
+                  Font.Style := [fsItalic];
+                  Font.Color := clDefault;
+                end;
+              end;
           end
-        else if token.Value = '<FR>' then { Jesus word(s) }
-          PushInheritedStyle.Font.Color := clRed
-        else if token.Value = '<FO>' then { Old Testament quotation }
-          PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsBold]
-        else if token.Value = '<CM>' then { new paragraph }
-        begin
-          if GetParagraphMode = pmParagraph then
-            cont.AddParagraph().ParaStyle.FirstIndent := DefaultFirstIndent;
-        end else if token.Value = '<CL>' then { new line }
-        begin
-          if GetParagraphMode = pmParagraph then
-            cont.AddParagraph().ParaStyle.FirstIndent := 0;
-            //cont.InsertNewLine(Text.Length);
-        end else
-        begin
-          token.Value := token.Value.ToLower;
-          if token.Value.StartsWith('<font ') then { font change }
+          else if OpeningTag = '<Ts>' then { title end }
           begin
-            PushInheritedStyle;
-            if token.Value.Contains(' color=') then
-              CurrentStyle.Font.Color := HTML2Color(FTokenizer.ReadTagProperty('color', token));
-            if token.Value.Contains(' size=') then
-            begin
-              prop := FTokenizer.ReadTagProperty('size', token);
-              if prop.Chars[0] in ['-', '+'] then
-                size := CurrentStyle.Font.Size + prop.ToInteger
-              else
-                size := prop.ToInteger;
-              CurrentStyle.Font.Size := size;
-            end;
-          end else if token.Value = '<b>' then { bold }
-            PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsBold]
-          else if token.Value = '<i>' then { italic }
-            PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsItalic]
-          else if token.Value = '<u>' then { underline }
-            PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsUnderline]
-          else if token.Value = '<s>' then { strikeout }
-            PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsStrikeOut]
-          else if token.Value = '<sup>' then { superscript }
-            PushInheritedStyle.ScriptPosition := tpoSuperscript
-          else if token.Value = '<sub>' then { subscript }
-            PushInheritedStyle.ScriptPosition := tpoSubscript
-          else if token.Value = '<br/>' then { line break }
+            ResetStyleStack;
+            lastpar := GetPreviousParagraphBlock;
+            padding := IfThen(assigned(lastpar) and
+              (lastpar.ParaStyle.BottomPadding = 0), 5);
+            cont.AddParagraph().ParaStyle.TopPadding := padding;
+          end
+          else if IsRFOpeningTag(OpeningTag) then { translator note }
+          begin
+            ReadRFNoteBody(FTokenizer, NoteBody, NoteClosingTag);
+            RenderNote(OpeningTag, NoteBody);
+            AdvanceProjectionForConsumedRaw(UTF8Decode(OpeningTag + NoteBody +
+              NoteClosingTag), Projection, VisibleOffsetUTF16, RunIndex);
+          end
+          else if OpeningTag = '<Q>' then
+          begin
+            ConsumedBody := FTokenizer.ReadUntilExclusive('<q>');
+            RenderInterlinearBlock(cont, ConsumedBody);
+            AdvanceProjectionForConsumedRaw(UTF8Decode(OpeningTag +
+              ConsumedBody + '<q>'), Projection, VisibleOffsetUTF16, RunIndex);
+          end
+          else if OpeningTag = '<E>' then
+          begin
+            ConsumedBody := FTokenizer.ReadUntilExclusive('<e>');
+            RenderInterlinearUnit(cont, ConsumedBody);
+            AdvanceProjectionForConsumedRaw(UTF8Decode(OpeningTag +
+              ConsumedBody + '<e>'), Projection, VisibleOffsetUTF16, RunIndex);
+          end
+          else if OpeningTag = '<T>' then
+          begin
+            ConsumedBody := FTokenizer.ReadUntilExclusive('<t>');
+            RenderInterlinearUnit(cont, ConsumedBody);
+            AdvanceProjectionForConsumedRaw(UTF8Decode(OpeningTag +
+              ConsumedBody + '<t>'), Projection, VisibleOffsetUTF16, RunIndex);
+          end
+          else if OpeningTag = '<X>' then
+          begin
+            ConsumedBody := FTokenizer.ReadUntilExclusive('<x>');
+            RenderInterlinearUnit(cont, ConsumedBody);
+            AdvanceProjectionForConsumedRaw(UTF8Decode(OpeningTag +
+              ConsumedBody + '<x>'), Projection, VisibleOffsetUTF16, RunIndex);
+          end
+          else if OpeningTag = '<H>' then
+          begin
+            ConsumedBody := FTokenizer.ReadUntilExclusive('<h>');
+            RenderInterlinearUnit(cont, ConsumedBody);
+            AdvanceProjectionForConsumedRaw(UTF8Decode(OpeningTag +
+              ConsumedBody + '<h>'), Projection, VisibleOffsetUTF16, RunIndex);
+          end
+          else if OpeningTag = '<G>' then
+          begin
+            ConsumedBody := FTokenizer.ReadUntilExclusive('<g>');
+            RenderInterlinearUnit(cont, ConsumedBody);
+            AdvanceProjectionForConsumedRaw(UTF8Decode(OpeningTag +
+              ConsumedBody + '<g>'), Projection, VisibleOffsetUTF16, RunIndex);
+          end
+          else if OpeningTag = '<CM>' then
+          begin
+            if GetParagraphMode = pmParagraph then
+              cont.AddParagraph().ParaStyle.FirstIndent := DefaultFirstIndent;
+          end
+          else if OpeningTag = '<CL>' then
+          begin
+            if GetParagraphMode = pmParagraph then
+              cont.AddParagraph().ParaStyle.FirstIndent := 0;
+          end
+          else if LowerCase(OpeningTag) = '<br/>' then
             cont.AddParagraph().ParaStyle.FirstIndent := 0
-          else if (token.Value = '</sub>')
-               or (token.Value = '</sup>')
-               or (token.Value = '</s>')
-               or (token.Value = '</u>')
-               or (token.Value = '</i>')
-               or (token.Value = '</b>')
-               or (token.Value = '<fo>')
-               or (token.Value = '<fr>')
-               or (token.Value = '<fi>')
-               or (token.Value = '</font>') then
-            PopStyle;
+          else
+            ConsumedClose := ''; { inline/metadata tags are projected or hidden }
         end;
       end;
     end;
-  end;
 
-  if chunk.Length > 0 then
-  begin
-    if assigned(cont.LastBlock) and (cont.LastBlock.ClassName = 'TKMemoParagraph') then
-      cont.LastBlock.ParaStyle.FirstIndent := DefaultFirstIndent;
-    cont.AddTextBlock(chunk).TextStyle.Assign(CurrentStyle);
+    if chunk.Length > 0 then
+    begin
+      if assigned(cont.LastBlock) and
+        (cont.LastBlock.ClassName = 'TKMemoParagraph') then
+        cont.LastBlock.ParaStyle.FirstIndent := DefaultFirstIndent;
+      RenderProjectedChunk(cont, chunk, Projection,
+        VisibleOffsetUTF16, RunIndex);
+    end;
+    finally
+      cont.UnLockUpdate;
+    end;
+  finally
+    FreeAndNil(FTokenizer);
+    FreeAndNil(Projection);
   end;
-
-  FreeAndNil(FTokenizer);
-  cont.UnLockUpdate;
 end;
 
 procedure TChapterView.RenderNote(const OpeningTag, Note: string);

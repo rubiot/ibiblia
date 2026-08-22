@@ -19,6 +19,7 @@ uses
   project_persistence_test,
   navigation_history_test,
   verse_visual_adapter_test,
+  verse_inline_style_projection_test,
   verse_visual_document_test,
   text_direction_test,
   text_edit_provenance_test,
@@ -31,6 +32,10 @@ uses
   project_exporter_integration_test,
   theword_module_encoding_test,
   theword_module_import_test,
+  theword_effective_inline_style_v2_test,
+  theword_effective_inline_style_v2_review_test,
+  chapter_inline_style_projection_test,
+  theword_font_size_mutation_v2_test,
   project_creation_staging_test;
 
 var

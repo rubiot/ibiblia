@@ -6,7 +6,8 @@ interface
 
 uses
   Classes, SysUtils, fpcunit, testregistry, theword_ont_codec_v2, ONTParser,
-  ONTTokenizer, Syntagm, theword_translator_note_body_v2;
+  ONTTokenizer, Syntagm, theword_translator_note_body_v2,
+  theword_inline_format_v2, theword_font_size_mutation_v2;
 
 type
   TTheWordOntCodecV2Tests = class(TTestCase)
@@ -18,11 +19,14 @@ type
       const AExpected, AActual: RawByteString);
     function FindMark(ADocument: TTheWordVerseDocument;
       AKind: TTheWordSemanticKind): TTheWordSemanticMark;
+    function InlineSpanText(const ARaw: UnicodeString;
+      const ASpanUTF16: TTheWordUTF16SpanV2): UnicodeString;
   protected
     procedure SetUp; override;
     procedure TearDown; override;
   published
     procedure SemanticTagsAreStrictlyCaseSensitive;
+    procedure HtmlSemanticTagsAreCaseInsensitiveAndSafe;
     procedure AllSevenSemanticPairsBecomeMarks;
     procedure LessThanWithoutClosingBracketRemainsText;
     procedure UnknownAndMalformedTagsAreOpaqueAndLiteral;
@@ -61,6 +65,18 @@ type
     procedure TranslatorNoteBodyCapabilitiesMatchTheWordSubset;
     procedure NestedAndUnclosedTranslatorNotesAreRawOnlyAndHidden;
     procedure TranslatorNoteCrudPreservesLexicalOrderAndVisibleText;
+    procedure InlineFormatSimpleTagsHonorCaseRules;
+    procedure InlineFormatFontAttributesAreLossless;
+    procedure InlineFormatColorsResolveToBgr;
+    procedure InlineFormatSizesAndMalformedTagsAreRejected;
+    procedure InlineFormatFontNameSpansUseUtf16CodeUnits;
+    procedure FontMarksAreFirstClassLosslessAndStrict;
+    procedure FontMarkLexemesOwnPairedEventSerialization;
+    procedure FontRangesShiftUtf16AndKeepLexicalPostfixes;
+    procedure FontTopologyBuilderIsPureUtf16SafeAndCrossingAware;
+    procedure FontTopologyBuilderPreservesSameAnchorAffinity;
+    procedure FontTopologyBuilderPreservesImportedZeroOutsideSelection;
+    procedure FontTopologyBuilderPreservesNestedSeamPayload;
   end;
 
 implementation
@@ -112,6 +128,13 @@ begin
   Result := nil;
 end;
 
+function TTheWordOntCodecV2Tests.InlineSpanText(const ARaw: UnicodeString;
+  const ASpanUTF16: TTheWordUTF16SpanV2): UnicodeString;
+begin
+  Result := Copy(ARaw, ASpanUTF16.StartUTF16,
+    ASpanUTF16.LengthUTF16);
+end;
+
 procedure TTheWordOntCodecV2Tests.SemanticTagsAreStrictlyCaseSensitive;
 var
   Document: TTheWordVerseDocument;
@@ -127,6 +150,107 @@ begin
     AssertEquals('capability', Ord(twlcProtectedRegions),
       Ord(TTheWordCapabilityAnalyzer.AnalyzeVerse(Document)));
     AssertUnicodeEquals('literal round trip', Raw,
+      FCodec.EncodeVerse(Document));
+  finally
+    Document.Free;
+  end;
+end;
+
+procedure TTheWordOntCodecV2Tests.HtmlSemanticTagsAreCaseInsensitiveAndSafe;
+var
+  Document: TTheWordVerseDocument;
+  Mark: TTheWordSemanticMark;
+  Raw: UnicodeString;
+begin
+  Raw := '<FI>fi<Fi><B>bold <I>both</i> tail</b><U>under</U>';
+  Document := FCodec.DecodeVerse(Raw);
+  try
+    AssertUnicodeEquals('visible text', 'fibold both tailunder',
+      Document.VisibleText);
+    AssertEquals('FI and HTML marks stay distinct', 4, Document.MarkCount);
+
+    Mark := FindMark(Document, twsmItalic);
+    AssertUnicodeEquals('FI remains distinct', '<FI>', Mark.OpenLexeme);
+
+    Mark := FindMark(Document, twsmHtmlBold);
+    AssertUnicodeEquals('bold opening lexeme is preserved', '<B>',
+      Mark.OpenLexeme);
+    AssertUnicodeEquals('bold closing lexeme is preserved', '</b>',
+      Mark.CloseLexeme);
+
+    Mark := FindMark(Document, twsmHtmlItalic);
+    AssertUnicodeEquals('nested italic opening is preserved', '<I>',
+      Mark.OpenLexeme);
+    AssertUnicodeEquals('nested italic closing is preserved', '</i>',
+      Mark.CloseLexeme);
+
+    AssertUnicodeEquals('case-insensitive nested markup is a no-op',
+      Raw, FCodec.EncodeVerse(Document));
+    Document.ReplaceVisibleText(Length(Document.VisibleText), 0, '!');
+    AssertUnicodeEquals('outside edit preserves imported spellings',
+      Raw + '!', FCodec.EncodeVerse(Document));
+  finally
+    Document.Free;
+  end;
+
+  Raw := '<S>strike</s><SuP>up</sUP><SUB>down</SuB>';
+  Document := FCodec.DecodeVerse(Raw);
+  try
+    AssertEquals('S SUP SUB are uniformly case-insensitive', 3,
+      Document.MarkCount);
+    AssertEquals(0, Document.OpaqueItemCount);
+    AssertUnicodeEquals('mixed-case S SUP SUB no-op is literal', Raw,
+      FCodec.EncodeVerse(Document));
+  finally
+    Document.Free;
+  end;
+  Document := FCodec.DecodeVerse('bold italic under');
+  try
+    Mark := Document.AddSemanticMark(twsmHtmlBold, 0, 4);
+    AssertUnicodeEquals('canonical bold opening', '<b>', Mark.OpenLexeme);
+    AssertUnicodeEquals('canonical bold closing', '</b>', Mark.CloseLexeme);
+    Mark := Document.AddSemanticMark(twsmHtmlItalic, 5, 11);
+    AssertUnicodeEquals('canonical italic opening', '<i>', Mark.OpenLexeme);
+    AssertUnicodeEquals('canonical italic closing', '</i>', Mark.CloseLexeme);
+    Mark := Document.AddSemanticMark(twsmHtmlUnderline, 12, 17);
+    AssertUnicodeEquals('canonical underline opening', '<u>',
+      Mark.OpenLexeme);
+    AssertUnicodeEquals('canonical underline closing', '</u>',
+      Mark.CloseLexeme);
+    AssertUnicodeEquals('canonical HTML serialization',
+      '<b>bold</b> <i>italic</i> <u>under</u>',
+      FCodec.EncodeVerse(Document));
+  finally
+    Document.Free;
+  end;
+
+  Raw := 'a<b class="x">b</b x><i/>c<u />d</i>e';
+  Document := FCodec.DecodeVerse(Raw);
+  try
+    AssertUnicodeEquals('unsupported HTML remains outside visible text',
+      'abcde', Document.VisibleText);
+    AssertEquals('attributes and self-closing tags are opaque', 5,
+      Document.OpaqueItemCount);
+    AssertEquals('unmatched known close is malformed',
+      Ord(twokMalformedTag), Ord(Document.OpaqueItems[4].Kind));
+    AssertUnicodeEquals('opaque HTML remains literal', Raw,
+      FCodec.EncodeVerse(Document));
+  finally
+    Document.Free;
+  end;
+
+  Raw := 'A<RF><B>note <I>body</i></B><Rf>B';
+  Document := FCodec.DecodeVerse(Raw);
+  try
+    AssertUnicodeEquals('RF body is isolated from verse semantics', 'AB',
+      Document.VisibleText);
+    AssertEquals('RF body creates no verse semantic marks', 0,
+      Document.MarkCount);
+    AssertEquals('one isolated RF body', 1, Document.TranslatorNoteCount);
+    AssertUnicodeEquals('RF body stays literal',
+      '<B>note <I>body</i></B>',
+      Document.TranslatorNotes[0].BodyRaw);
+    AssertUnicodeEquals('RF isolation round trips literally', Raw,
       FCodec.EncodeVerse(Document));
   finally
     Document.Free;
@@ -1546,6 +1670,944 @@ begin
       'RF follows lexical postfixes and precedes the next semantic opening',
       'A<WG123><WTN-NSM><wt><RF>note<Rf><FI> B<Fi>',
       FCodec.EncodeVerse(Document));
+  finally
+    Document.Free;
+  end;
+end;
+
+procedure TTheWordOntCodecV2Tests.InlineFormatSimpleTagsHonorCaseRules;
+var
+  ErrorText: UnicodeString;
+  Kind: TTheWordInlineFormatTagKindV2;
+  Tag: TTheWordInlineFormatTagV2;
+begin
+  AssertTrue(TryClassifyTheWordSimpleInlineFormatNameV2('B', Kind));
+  AssertEquals(Ord(twiftv2Bold), Ord(Kind));
+  AssertTrue(TryClassifyTheWordSimpleInlineFormatNameV2('i', Kind));
+  AssertEquals(Ord(twiftv2Italic), Ord(Kind));
+  AssertTrue(TryClassifyTheWordSimpleInlineFormatNameV2('U', Kind));
+  AssertEquals(Ord(twiftv2Underline), Ord(Kind));
+  AssertTrue(TryClassifyTheWordSimpleInlineFormatNameV2('s', Kind));
+  AssertEquals(Ord(twiftv2Strikeout), Ord(Kind));
+  AssertTrue(TryClassifyTheWordSimpleInlineFormatNameV2('SuP', Kind));
+  AssertEquals(Ord(twiftv2Superscript), Ord(Kind));
+  AssertTrue(TryClassifyTheWordSimpleInlineFormatNameV2('sUb', Kind));
+  AssertEquals(Ord(twiftv2Subscript), Ord(Kind));
+  AssertFalse(TryClassifyTheWordSimpleInlineFormatNameV2('font', Kind));
+
+  AssertTrue(TryParseTheWordInlineFormatTagV2('<B>', Tag, ErrorText));
+  AssertEquals(Ord(twiftv2Bold), Ord(Tag.Kind));
+  AssertFalse(Tag.IsClosing);
+  AssertUnicodeEquals('simple tag spelling is lossless', 'B', Tag.NameRaw);
+  AssertUnicodeEquals('simple canonical name', 'b', Tag.CanonicalName);
+  AssertTrue(TryParseTheWordInlineFormatTagV2('</sUP>', Tag, ErrorText));
+  AssertTrue(Tag.IsClosing);
+  AssertEquals(Ord(twiftv2Superscript), Ord(Tag.Kind));
+  AssertTrue(TryParseTheWordInlineFormatTagV2('</font>', Tag, ErrorText));
+  AssertEquals(Ord(twiftv2Font), Ord(Tag.Kind));
+  AssertTrue(Tag.IsClosing);
+  AssertFalse(TryParseTheWordInlineFormatTagV2('<FONT color=red>',
+    Tag, ErrorText));
+  AssertFalse(TryParseTheWordInlineFormatTagV2('</FONT>', Tag, ErrorText));
+  AssertFalse(TryParseTheWordInlineFormatTagV2('</font >', Tag, ErrorText));
+end;
+
+procedure TTheWordOntCodecV2Tests.InlineFormatFontAttributesAreLossless;
+const
+  RAW: UnicodeString =
+    '<font  color = " ReD " size = +01 name=''A B''   >';
+var
+  Attribute: TTheWordInlineFormatAttributeV2;
+  ErrorText: UnicodeString;
+  Tag: TTheWordInlineFormatTagV2;
+begin
+  AssertTrue(TryParseTheWordInlineFormatTagV2(RAW, Tag, ErrorText));
+  AssertUnicodeEquals('full tag raw', RAW, Tag.Raw);
+  AssertUnicodeEquals('raw span', RAW,
+    InlineSpanText(Tag.Raw, Tag.RawSpanUTF16));
+  AssertUnicodeEquals('tag name span', 'font',
+    InlineSpanText(Tag.Raw, Tag.NameSpanUTF16));
+  AssertEquals('three attributes in source order', 3,
+    Length(Tag.Attributes));
+
+  Attribute := Tag.Attributes[0];
+  AssertUnicodeEquals('color full attribute span', '  color = " ReD "',
+    InlineSpanText(Tag.Raw, Attribute.FullSpanUTF16));
+  AssertUnicodeEquals('color raw', '  color = " ReD "', Attribute.Raw);
+  AssertUnicodeEquals('color leading separator', '  ',
+    InlineSpanText(Tag.Raw, Attribute.LeadingSeparatorSpanUTF16));
+  AssertUnicodeEquals('color name span', 'color',
+    InlineSpanText(Tag.Raw, Attribute.NameSpanUTF16));
+  AssertUnicodeEquals('color trivia before equals', ' ',
+    InlineSpanText(Tag.Raw, Attribute.BeforeEqualsTriviaSpanUTF16));
+  AssertUnicodeEquals('color equals span', '=',
+    InlineSpanText(Tag.Raw, Attribute.EqualsSpanUTF16));
+  AssertUnicodeEquals('color trivia after equals', ' ',
+    InlineSpanText(Tag.Raw, Attribute.AfterEqualsTriviaSpanUTF16));
+  AssertUnicodeEquals('color lexical value', '" ReD "',
+    InlineSpanText(Tag.Raw, Attribute.LexicalValueSpanUTF16));
+  AssertUnicodeEquals('color payload value', ' ReD ',
+    InlineSpanText(Tag.Raw, Attribute.PayloadValueSpanUTF16));
+  AssertUnicodeEquals('color raw value', ' ReD ', Attribute.ValueRaw);
+  AssertUnicodeEquals('color canonical value', 'red',
+    Attribute.CanonicalValue);
+  AssertTrue(Attribute.WasQuoted);
+  AssertEquals('double quote is preserved', Ord('"'),
+    Ord(Attribute.QuoteChar));
+
+  Attribute := Tag.Attributes[1];
+  AssertUnicodeEquals('size full attribute', ' size = +01',
+    InlineSpanText(Tag.Raw, Attribute.FullSpanUTF16));
+  AssertFalse(Attribute.WasQuoted);
+  AssertUnicodeEquals('unquoted size lexical value', '+01',
+    InlineSpanText(Tag.Raw, Attribute.LexicalValueSpanUTF16));
+  AssertUnicodeEquals('size canonical value', '+1',
+    Attribute.CanonicalValue);
+
+  Attribute := Tag.Attributes[2];
+  AssertUnicodeEquals('name raw', ' name=''A B''', Attribute.Raw);
+  AssertTrue(Attribute.WasQuoted);
+  AssertEquals('single quote is preserved', Ord(''''),
+    Ord(Attribute.QuoteChar));
+  AssertUnicodeEquals('name payload', 'A B',
+    InlineSpanText(Tag.Raw, Attribute.PayloadValueSpanUTF16));
+  AssertUnicodeEquals('closing trivia', '   ',
+    InlineSpanText(Tag.Raw, Tag.ClosingTriviaSpanUTF16));
+  AssertUnicodeEquals('lossless font name', 'A B', Tag.FontNameRaw);
+
+  AssertTrue(TryParseTheWordInlineFormatTagV2(
+    '<font name="Times New Roman" color=blue size=''-4''>',
+    Tag, ErrorText));
+  AssertUnicodeEquals('permuted name', 'Times New Roman', Tag.FontNameRaw);
+  AssertEquals('permuted size', -4, Tag.RelativeSize);
+  AssertEquals('permuted color', LongInt($00FF0000), Tag.ResolvedColor);
+  AssertTrue(TryParseTheWordInlineFormatTagV2(
+    '<font name=Noto/Sans>', Tag, ErrorText));
+  AssertUnicodeEquals('slash is valid inside an unquoted font name',
+    'Noto/Sans', Tag.FontNameRaw);
+end;
+
+procedure TTheWordOntCodecV2Tests.InlineFormatColorsResolveToBgr;
+var
+  CanonicalValue, ColorNameRaw, ErrorText: UnicodeString;
+  ColorValue: LongInt;
+  Tag: TTheWordInlineFormatTagV2;
+begin
+  AssertTrue(TryResolveTheWordInlineColorV2('ReD', ColorValue,
+    ColorNameRaw, CanonicalValue));
+  AssertEquals('red is COLORREF/BGR', LongInt($000000FF), ColorValue);
+  AssertUnicodeEquals('mixed-case raw named color', 'ReD', ColorNameRaw);
+  AssertUnicodeEquals('canonical named color', 'red', CanonicalValue);
+  AssertTrue(TryResolveTheWordInlineColorV2('silver', ColorValue,
+    ColorNameRaw, CanonicalValue));
+  AssertEquals('legacy silver matches gray', LongInt($00808080),
+    ColorValue);
+  AssertTrue(TryResolveTheWordInlineColorV2('YeLLoW', ColorValue,
+    ColorNameRaw, CanonicalValue));
+  AssertEquals('yellow remains available despite its six letters',
+    LongInt($0000FFFF), ColorValue);
+  AssertTrue(TryResolveTheWordInlineColorV2('#cc3300', ColorValue,
+    ColorNameRaw, CanonicalValue));
+  AssertEquals('#CC3300 is converted from RGB to BGR',
+    LongInt($000033CC), ColorValue);
+  AssertUnicodeEquals('hash hex canonical form', '#CC3300',
+    CanonicalValue);
+  AssertTrue(TryResolveTheWordInlineColorV2('CC3300', ColorValue,
+    ColorNameRaw, CanonicalValue));
+  AssertEquals('bare CC3300 is converted from RGB to BGR',
+    LongInt($000033CC), ColorValue);
+  AssertUnicodeEquals('bare hex canonical form', '#CC3300',
+    CanonicalValue);
+  AssertTrue(TryParseTheWordInlineFormatTagV2(
+    '<font color="  #cC3300  ">', Tag, ErrorText));
+  AssertEquals('quoted color payload is trimmed only for resolution',
+    LongInt($000033CC), Tag.ResolvedColor);
+  AssertUnicodeEquals('quoted color payload stays raw', '  #cC3300  ',
+    Tag.Attributes[0].ValueRaw);
+  AssertFalse(TryResolveTheWordInlineColorV2('#ABC', ColorValue,
+    ColorNameRaw, CanonicalValue));
+  AssertFalse(TryResolveTheWordInlineColorV2('orange', ColorValue,
+    ColorNameRaw, CanonicalValue));
+end;
+
+procedure TTheWordOntCodecV2Tests.
+  InlineFormatSizesAndMalformedTagsAreRejected;
+var
+  ErrorText: UnicodeString;
+  Tag: TTheWordInlineFormatTagV2;
+begin
+  AssertTrue(TryParseTheWordInlineFormatTagV2('<font size=+0>',
+    Tag, ErrorText));
+  AssertEquals(0, Tag.RelativeSize);
+  AssertEquals(Ord('+'), Ord(Tag.SizeSignRaw));
+  AssertTrue(TryParseTheWordInlineFormatTagV2('<font size=-0>',
+    Tag, ErrorText));
+  AssertEquals(0, Tag.RelativeSize);
+  AssertEquals(Ord('-'), Ord(Tag.SizeSignRaw));
+  AssertTrue(TryParseTheWordInlineFormatTagV2('<font size=-4>',
+    Tag, ErrorText));
+  AssertEquals(-4, Tag.RelativeSize);
+  AssertTrue(TryParseTheWordInlineFormatTagV2('<font size=+10>',
+    Tag, ErrorText));
+  AssertEquals(10, Tag.RelativeSize);
+  AssertTrue(TryParseTheWordInlineFormatTagV2('<font size=+01>',
+    Tag, ErrorText));
+  AssertUnicodeEquals('leading zero spelling is raw', '+01',
+    Tag.Attributes[0].ValueRaw);
+  AssertUnicodeEquals('leading zero value is canonicalized', '+1',
+    Tag.Attributes[0].CanonicalValue);
+  AssertTrue('terminal close without trivia is accepted',
+    TryParseTheWordInlineFormatTagV2('<font color=red>', Tag, ErrorText));
+  AssertEquals('absent closing trivia has zero UTF-16 length', 0,
+    Tag.ClosingTriviaSpanUTF16.LengthUTF16);
+  AssertTrue('terminal close after trivia is accepted',
+    TryParseTheWordInlineFormatTagV2('<font color=red   >', Tag, ErrorText));
+  AssertUnicodeEquals('closing trivia remains lossless', '   ',
+    InlineSpanText(Tag.Raw, Tag.ClosingTriviaSpanUTF16));
+
+  AssertFalse(TryParseTheWordInlineFormatTagV2('<font>', Tag, ErrorText));
+  AssertFalse(TryParseTheWordInlineFormatTagV2('<font size=14>',
+    Tag, ErrorText));
+  AssertFalse(TryParseTheWordInlineFormatTagV2('<font size=-5>',
+    Tag, ErrorText));
+  AssertFalse(TryParseTheWordInlineFormatTagV2('<font size=+11>',
+    Tag, ErrorText));
+  AssertFalse(TryParseTheWordInlineFormatTagV2(
+    '<font size=+999999999999999999999999>', Tag, ErrorText));
+  AssertFalse(TryParseTheWordInlineFormatTagV2(
+    '<font color=red color=blue>', Tag, ErrorText));
+  AssertFalse(TryParseTheWordInlineFormatTagV2(
+    '<font color=red x=1>', Tag, ErrorText));
+  AssertFalse(TryParseTheWordInlineFormatTagV2(
+    '<font COLOR=red>', Tag, ErrorText));
+  AssertFalse(TryParseTheWordInlineFormatTagV2(
+    '<font color="">', Tag, ErrorText));
+  AssertFalse(TryParseTheWordInlineFormatTagV2(
+    '<font color="red>', Tag, ErrorText));
+  AssertFalse(TryParseTheWordInlineFormatTagV2(
+    '<font color="red"size=+1>', Tag, ErrorText));
+  AssertFalse(TryParseTheWordInlineFormatTagV2(
+    '<font color=red>junk>', Tag, ErrorText));
+  AssertFalse(TryParseTheWordInlineFormatTagV2(
+    '<font name="bad<name">', Tag, ErrorText));
+  AssertFalse(TryParseTheWordInlineFormatTagV2(
+    '<font color=red/>', Tag, ErrorText));
+  AssertFalse(TryParseTheWordInlineFormatTagV2(
+    '<font name="line' + UnicodeString(#10) + 'break">',
+    Tag, ErrorText));
+end;
+
+procedure TTheWordOntCodecV2Tests.
+  InlineFormatFontNameSpansUseUtf16CodeUnits;
+var
+  Emoji, ErrorText, Raw: UnicodeString;
+  Attribute: TTheWordInlineFormatAttributeV2;
+  Tag: TTheWordInlineFormatTagV2;
+begin
+  Emoji := UnicodeString(WideChar($D83D)) + WideChar($DE00);
+  Raw := '<font name="A' + Emoji + 'B">';
+  AssertTrue(TryParseTheWordInlineFormatTagV2(Raw, Tag, ErrorText));
+  AssertUnicodeEquals('non-BMP full raw is lossless', Raw, Tag.Raw);
+  AssertUnicodeEquals('non-BMP font name is lossless', 'A' + Emoji + 'B',
+    Tag.FontNameRaw);
+  Attribute := Tag.Attributes[0];
+  AssertEquals('payload length counts UTF-16 code units', 4,
+    Attribute.PayloadValueSpanUTF16.LengthUTF16);
+  AssertUnicodeEquals('payload span preserves surrogate pair',
+    'A' + Emoji + 'B',
+    InlineSpanText(Tag.Raw, Attribute.PayloadValueSpanUTF16));
+  AssertUnicodeEquals('lexical span includes quotes around surrogate pair',
+    '"A' + Emoji + 'B"',
+    InlineSpanText(Tag.Raw, Attribute.LexicalValueSpanUTF16));
+  AssertUnicodeEquals('full attribute span includes its separator',
+    ' name="A' + Emoji + 'B"',
+    InlineSpanText(Tag.Raw, Attribute.FullSpanUTF16));
+end;
+
+procedure TTheWordOntCodecV2Tests.FontMarksAreFirstClassLosslessAndStrict;
+const
+  RAW: UnicodeString =
+    '<font  size=+1 color=" ReD " name=''A B''   >x</font>';
+  INVALID: array[0..5] of UnicodeString = (
+    '<font color=red color=blue>x</font>',
+    '<font size=14>x</font>',
+    '<font size=+11>x</font>',
+    '<FONT color=red>x</font>',
+    '<font color=red>x</FONT>',
+    '<font color=red>x');
+var
+  Attribute: TTheWordInlineFormatAttributeV2;
+  Document: TTheWordVerseDocument;
+  Index: Integer;
+  Mark: TTheWordFontMark;
+  NestedRaw: UnicodeString;
+begin
+  Document := FCodec.DecodeVerse(RAW);
+  try
+    AssertEquals(1, Document.FontMarkCount);
+    AssertEquals(0, Document.OpaqueItemCount);
+    Mark := Document.FontMarks[0];
+    AssertEquals(0, Mark.StartOffset);
+    AssertEquals(1, Mark.EndOffset);
+    AssertTrue(Mark.Imported);
+    AssertTrue(Mark.HasColor);
+    AssertEquals(LongInt($000000FF), Mark.ResolvedColor);
+    AssertUnicodeEquals('color raw', ' ReD ', Mark.ColorRaw);
+    AssertTrue(Mark.HasSize);
+    AssertEquals(1, Mark.RelativeSize);
+    AssertEquals(Ord('+'), Ord(Mark.SizeSignRaw));
+    AssertTrue(Mark.HasFontName);
+    AssertUnicodeEquals('font name', 'A B', Mark.FontNameRaw);
+    AssertUnicodeEquals('open raw', Copy(RAW, 1, Length(Mark.OpenLexeme)),
+      Mark.OpenLexeme);
+    Attribute := Mark.OpeningData.Attributes[0];
+    AssertUnicodeEquals('attribute span remains relative to open raw',
+      Attribute.Raw, InlineSpanText(Mark.OpenLexeme,
+      Attribute.FullSpanUTF16));
+    AssertUnicodeEquals('no-op is literal', RAW, FCodec.EncodeVerse(Document));
+  finally
+    Document.Free;
+  end;
+
+  Document := FCodec.DecodeVerse('<font color=red></font>');
+  try
+    AssertEquals('zero-length font is a mark', 1, Document.FontMarkCount);
+    AssertEquals(0, Document.FontMarks[0].StartOffset);
+    AssertEquals(0, Document.FontMarks[0].EndOffset);
+    AssertEquals(0, Document.OpaqueItemCount);
+  finally
+    Document.Free;
+  end;
+
+  NestedRaw := '<font color=red>A<font x=1>B</font>C</font>';
+  Document := FCodec.DecodeVerse(NestedRaw);
+  try
+    AssertEquals('invalid nested font cannot steal outer close', 1,
+      Document.FontMarkCount);
+    AssertEquals(0, Document.FontMarks[0].StartOffset);
+    AssertEquals(3, Document.FontMarks[0].EndOffset);
+    AssertTrue(Document.FontMarks[0].HasColor);
+    AssertEquals(LongInt($000000FF), Document.FontMarks[0].ResolvedColor);
+    AssertEquals('invalid nested open and close stay opaque', 2,
+      Document.OpaqueItemCount);
+    AssertFalse('invalid nested open remains protected',
+      Document.CanReplaceVisibleText(1, 0));
+    AssertFalse('invalid nested close remains protected',
+      Document.CanReplaceVisibleText(2, 0));
+    AssertUnicodeEquals('nested-invalid no-op stays literal', NestedRaw,
+      FCodec.EncodeVerse(Document));
+  finally
+    Document.Free;
+  end;
+  NestedRaw := '<font color=red>A<font color=blue/>B</font>';
+  Document := FCodec.DecodeVerse(NestedRaw);
+  try
+    AssertEquals('self-closing invalid font does not consume outer close', 1,
+      Document.FontMarkCount);
+    AssertEquals(0, Document.FontMarks[0].StartOffset);
+    AssertEquals(2, Document.FontMarks[0].EndOffset);
+    AssertEquals('self-closing font remains one opaque lexeme', 1,
+      Document.OpaqueItemCount);
+    AssertUnicodeEquals('nested self-closing no-op stays literal', NestedRaw,
+      FCodec.EncodeVerse(Document));
+  finally
+    Document.Free;
+  end;
+  NestedRaw := '<font color=red><b>x</font>y</b>';
+  Document := FCodec.DecodeVerse(NestedRaw);
+  try
+    AssertEquals('imported font crossing semantic is not first-class', 0,
+      Document.FontMarkCount);
+    AssertTrue('crossing font pair stays protected',
+      Document.OpaqueItemCount >= 2);
+    AssertUnicodeEquals('crossing font-semantic remains literal', NestedRaw,
+      FCodec.EncodeVerse(Document));
+  finally
+    Document.Free;
+  end;
+
+  NestedRaw := '<b><font color=red>x</b>y</font>';
+  Document := FCodec.DecodeVerse(NestedRaw);
+  try
+    AssertEquals('reverse imported crossing is not first-class', 0,
+      Document.FontMarkCount);
+    AssertTrue('reverse crossing stays protected',
+      Document.OpaqueItemCount >= 2);
+    AssertUnicodeEquals('reverse crossing remains literal', NestedRaw,
+      FCodec.EncodeVerse(Document));
+  finally
+    Document.Free;
+  end;
+  for Index := Low(INVALID) to High(INVALID) do
+  begin
+    Document := FCodec.DecodeVerse(INVALID[Index]);
+    try
+      AssertEquals('invalid font never becomes a mark', 0,
+        Document.FontMarkCount);
+      AssertTrue('invalid font stays protected',
+        Document.OpaqueItemCount > 0);
+      AssertUnicodeEquals('invalid source stays literal', INVALID[Index],
+        FCodec.EncodeVerse(Document));
+      AssertFalse('invalid anchor remains protected',
+        Document.CanReplaceVisibleText(0, 0));
+    finally
+      Document.Free;
+    end;
+  end;
+end;
+
+procedure TTheWordOntCodecV2Tests.
+  FontMarkLexemesOwnPairedEventSerialization;
+const
+  ORIGINAL: UnicodeString = '<font color=red>x</font>';
+  UPDATED_OPEN: UnicodeString =
+    '<font  size = "+2" color=''BLUE'' name="New Face" >';
+var
+  Document, Restored: TTheWordVerseDocument;
+  Encoded, OriginalClose, OriginalOpen: UnicodeString;
+begin
+  Document := FCodec.DecodeVerse(ORIGINAL);
+  try
+    AssertEquals(1, Document.FontMarkCount);
+    AssertFalse('decoded document starts unmodified', Document.Modified);
+    OriginalOpen := Document.FontMarks[0].OpenLexeme;
+    OriginalClose := Document.FontMarks[0].CloseLexeme;
+    AssertTrue('identical lexemes are a successful no-op',
+      Document.UpdateFontMarkLexemes(Document.FontMarks[0], OriginalOpen,
+        OriginalClose));
+    AssertFalse('identical update does not mark document modified',
+      Document.Modified);
+    AssertTrue('identical update preserves imported state',
+      Document.FontMarks[0].Imported);
+    AssertUnicodeEquals('identical update remains literal', ORIGINAL,
+      FCodec.EncodeVerse(Document));
+
+    AssertTrue('valid API update owns both paired lexemes',
+      Document.UpdateFontMarkLexemes(Document.FontMarks[0], UPDATED_OPEN,
+        '</font>'));
+    Encoded := UPDATED_OPEN + 'x</font>';
+    AssertUnicodeEquals('encoder reads paired lexemes from font mark',
+      Encoded, FCodec.EncodeVerse(Document));
+    AssertTrue('valid update marks document modified', Document.Modified);
+    AssertFalse('updated mark is no longer imported',
+      Document.FontMarks[0].Imported);
+    AssertUnicodeEquals('opening data follows updated lexeme', UPDATED_OPEN,
+      Document.FontMarks[0].OpeningData.Raw);
+    AssertTrue('updated mark has color', Document.FontMarks[0].HasColor);
+    AssertEquals('updated blue is COLORREF/BGR', LongInt($00FF0000),
+      Document.FontMarks[0].ResolvedColor);
+    AssertUnicodeEquals('updated color raw spelling', 'BLUE',
+      Document.FontMarks[0].ColorRaw);
+    AssertTrue('updated mark has size', Document.FontMarks[0].HasSize);
+    AssertEquals('updated relative size', 2,
+      Document.FontMarks[0].RelativeSize);
+    AssertTrue('updated mark has font name',
+      Document.FontMarks[0].HasFontName);
+    AssertUnicodeEquals('updated font name', 'New Face',
+      Document.FontMarks[0].FontNameRaw);
+
+    AssertFalse('invalid open rejects the whole update',
+      Document.UpdateFontMarkLexemes(Document.FontMarks[0],
+        '<font COLOR=green>', '</font>'));
+    AssertFalse('invalid close rejects the whole update',
+      Document.UpdateFontMarkLexemes(Document.FontMarks[0],
+        '<font color=green>', '</FONT>'));
+    AssertUnicodeEquals('failed updates preserve open', UPDATED_OPEN,
+      Document.FontMarks[0].OpenLexeme);
+    AssertUnicodeEquals('failed updates preserve close', '</font>',
+      Document.FontMarks[0].CloseLexeme);
+    AssertUnicodeEquals('failed updates preserve encoding', Encoded,
+      FCodec.EncodeVerse(Document));
+
+    Restored := FCodec.DecodeVerse(Encoded);
+    try
+      AssertEquals('re-decoded pair remains first class', 1,
+        Restored.FontMarkCount);
+      AssertEquals('re-decoded pair has no opaque orphan', 0,
+        Restored.OpaqueItemCount);
+      AssertUnicodeEquals('re-decoded pair remains literal', Encoded,
+        FCodec.EncodeVerse(Restored));
+    finally
+      Restored.Free;
+    end;
+  finally
+    Document.Free;
+  end;
+end;
+
+procedure TTheWordOntCodecV2Tests.
+  FontRangesShiftUtf16AndKeepLexicalPostfixes;
+var
+  Document, Restored: TTheWordVerseDocument;
+  Emoji, Encoded: UnicodeString;
+  Mark: TTheWordFontMark;
+begin
+  Emoji := UnicodeString(WideChar($D83D)) + WideChar($DE00);
+  Document := FCodec.DecodeVerse('A<font color=red>B' + Emoji +
+    'C</font>D');
+  try
+    Mark := Document.FontMarks[0];
+    AssertEquals(1, Mark.StartOffset);
+    AssertEquals(5, Mark.EndOffset);
+    AssertTrue('start anchor is editable',
+      Document.CanReplaceVisibleText(1, 0));
+    AssertFalse('surrogate cannot be split',
+      Document.CanReplaceVisibleText(3, 1));
+    Document.ReplaceVisibleText(0, 0, 'X');
+    AssertEquals(2, Mark.StartOffset);
+    AssertEquals(6, Mark.EndOffset);
+    Document.ReplaceVisibleText(3, 2, 'Z');
+    AssertEquals(2, Mark.StartOffset);
+    AssertEquals(5, Mark.EndOffset);
+    Document.ReplaceVisibleText(Length(Document.VisibleText), 0, '!');
+    AssertEquals(2, Mark.StartOffset);
+    AssertEquals(5, Mark.EndOffset);
+    AssertUnicodeEquals('shifted range keeps imported lexemes',
+      'XA<font color=red>BZC</font>D!', FCodec.EncodeVerse(Document));
+  finally
+    Document.Free;
+  end;
+
+  Document := FCodec.DecodeVerse('A<font color=red>BC</font>D');
+  try
+    AssertTrue('insertion at font start is allowed',
+      Document.CanReplaceVisibleText(1, 0));
+    Document.ReplaceVisibleText(1, 0, 'X');
+    AssertUnicodeEquals('start insertion stays outside font',
+      'AX<font color=red>BC</font>D', FCodec.EncodeVerse(Document));
+    AssertEquals(2, Document.FontMarks[0].StartOffset);
+    AssertEquals(4, Document.FontMarks[0].EndOffset);
+  finally
+    Document.Free;
+  end;
+
+  Document := FCodec.DecodeVerse('A<font color=red>BC</font>D');
+  try
+    AssertTrue('insertion at font end is allowed',
+      Document.CanReplaceVisibleText(3, 0));
+    Document.ReplaceVisibleText(3, 0, 'X');
+    AssertUnicodeEquals('end insertion stays outside font',
+      'A<font color=red>BC</font>XD', FCodec.EncodeVerse(Document));
+    AssertEquals(1, Document.FontMarks[0].StartOffset);
+    AssertEquals(3, Document.FontMarks[0].EndOffset);
+  finally
+    Document.Free;
+  end;
+
+  Document := FCodec.DecodeVerse('A<font color=red>BC</font>D');
+  try
+    AssertTrue('replacement crossing both font boundaries is allowed',
+      Document.CanReplaceVisibleText(0, 4));
+    Document.ReplaceVisibleText(0, 4, 'Q');
+    AssertUnicodeEquals('crossing replacement follows semantic range rules',
+      '<font color=red>Q</font>', FCodec.EncodeVerse(Document));
+  finally
+    Document.Free;
+  end;
+
+  Document := FCodec.DecodeVerse('<font color=red>ab</font>');
+  try
+    AssertTrue(Document.InsertParagraphMark(0));
+    AssertUnicodeEquals('paragraph at font start stays outside',
+      '<CM><font color=red>ab</font>', FCodec.EncodeVerse(Document));
+  finally
+    Document.Free;
+  end;
+
+  Document := FCodec.DecodeVerse('<font color=red>ab</font>');
+  try
+    AssertTrue(Document.InsertParagraphMark(2));
+    AssertUnicodeEquals('paragraph at font end stays outside',
+      '<font color=red>ab</font><CM>', FCodec.EncodeVerse(Document));
+  finally
+    Document.Free;
+  end;
+
+  Document := FCodec.DecodeVerse('<font color=red>ab</font>');
+  try
+    AssertTrue('translator note at font start is allowed',
+      Assigned(Document.InsertTranslatorNote(0, '', 'note')));
+    AssertUnicodeEquals('translator note at font start stays outside',
+      '<RF>note<Rf><font color=red>ab</font>', FCodec.EncodeVerse(Document));
+  finally
+    Document.Free;
+  end;
+  Document := FCodec.DecodeVerse('<font color=red>ab</font>');
+  try
+    AssertTrue('translator note at font end is allowed',
+      Assigned(Document.InsertTranslatorNote(2, '', 'note')));
+    AssertUnicodeEquals('translator note at font end stays outside',
+      '<font color=red>ab</font><RF>note<Rf>', FCodec.EncodeVerse(Document));
+  finally
+    Document.Free;
+  end;
+  Document := FCodec.DecodeVerse(
+    '<font color=red>a<RF>n<Rf></font>');
+  try
+    AssertTrue('font close permits insertion beside RF postfix',
+      Document.CanReplaceVisibleText(1, 0));
+    Document.ReplaceVisibleText(1, 0, 'X');
+    AssertUnicodeEquals('RF remains left of font close by ordinal',
+      '<font color=red>a<RF>n<Rf></font>X', FCodec.EncodeVerse(Document));
+  finally
+    Document.Free;
+  end;
+
+  Document := FCodec.DecodeVerse(
+    '<font color=red>word<WG123><wt></font>');
+  try
+    AssertFalse('lexical postfix still protects collapsed insertion',
+      Document.CanReplaceVisibleText(4, 0));
+    AssertUnicodeEquals('protected postfix remains before font close',
+      '<font color=red>word<WG123><wt></font>', FCodec.EncodeVerse(Document));
+  finally
+    Document.Free;
+  end;
+
+  Document := FCodec.DecodeVerse(
+    '<font color=red>a</font><font color=blue>b</font>');
+  try
+    Document.ReplaceVisibleText(1, 0, 'X');
+    AssertUnicodeEquals('adjacent font boundary inserts between ranges',
+      '<font color=red>a</font>X<font color=blue>b</font>',
+      FCodec.EncodeVerse(Document));
+  finally
+    Document.Free;
+  end;
+
+  Document := FCodec.DecodeVerse('<font color=red></font>');
+  try
+    Document.ReplaceVisibleText(0, 0, 'X');
+    AssertUnicodeEquals('zero-length font uses opening-boundary affinity',
+      'X<font color=red></font>', FCodec.EncodeVerse(Document));
+  finally
+    Document.Free;
+  end;
+  Document := FCodec.DecodeVerse(
+    '<RF>n<Rf><font color=red>x</font>');
+  try
+    Document.ReplaceVisibleText(0, 0, 'X');
+    AssertUnicodeEquals('RF before font opener stays left of insertion',
+      '<RF>n<Rf>X<font color=red>x</font>', FCodec.EncodeVerse(Document));
+  finally
+    Document.Free;
+  end;
+
+  Document := FCodec.DecodeVerse(
+    'word<WG123><wt><font color=red>x</font>');
+  try
+    AssertFalse('WG postfix still protects shared font start anchor',
+      Document.CanReplaceVisibleText(4, 0));
+    AssertUnicodeEquals('WG stays left of font opener',
+      'word<WG123><wt><font color=red>x</font>', FCodec.EncodeVerse(Document));
+  finally
+    Document.Free;
+  end;
+  Document := FCodec.DecodeVerse(
+    '<font color=red>head word<WG123><wt></font> tail');
+  try
+    Document.ReplaceVisibleText(1, 1, 'E');
+    Document.ReplaceVisibleText(Length(Document.VisibleText), 0, '!');
+    Encoded := FCodec.EncodeVerse(Document);
+    AssertUnicodeEquals('lexical postfixes precede font close',
+      '<font color=red>hEad word<WG123><wt></font> tail!', Encoded);
+    Restored := FCodec.DecodeVerse(Encoded);
+    try
+      AssertEquals(1, Restored.FontMarkCount);
+      AssertEquals(0, Restored.OpaqueItemCount);
+      AssertEquals(2, Restored.LexicalItemCount);
+      AssertEquals(Ord(twlkStrongGreek),
+        Ord(Restored.LexicalItems[0].Kind));
+      AssertUnicodeEquals('strong value', '123',
+        Restored.LexicalItems[0].Value);
+      AssertEquals(9, Restored.LexicalItems[0].Offset);
+      AssertEquals(Ord(twlkWordTokenEnd),
+        Ord(Restored.LexicalItems[1].Kind));
+    finally
+      Restored.Free;
+    end;
+  finally
+    Document.Free;
+  end;
+end;
+
+procedure TTheWordOntCodecV2Tests.
+  FontTopologyBuilderIsPureUtf16SafeAndCrossingAware;
+var
+  Candidate, Emoji, OriginalRaw, Raw: UnicodeString;
+  Document, Restored: TTheWordVerseDocument;
+  Index: Integer;
+  OriginalModified: Boolean;
+  Plan: TTheWordFontSizeLeafPlanArrayV2;
+begin
+  Emoji := UnicodeString(WideChar($D83D)) + WideChar($DE00);
+  Raw := '<font size=''+1'' color=" ReD " name=''A B'' >A<FI>B' +
+    '<font size=+2>C<WG123>D' + Emoji +
+    '</font>E<Fi>F</font>';
+  Document := FCodec.DecodeVerse(Raw);
+  try
+    OriginalRaw := Document.OriginalRaw;
+    OriginalModified := Document.Modified;
+    AssertTrue('partial range plan crosses semantic, nested font and emoji',
+      TryPlanTheWordRelativeFontSizeV2(Document, 1, 6, -1, Plan));
+    AssertTrue('candidate builds without mutating the document',
+      Document.TryBuildRawWithFontTopology(Plan, Candidate));
+    AssertUnicodeEquals('source raw remains owned and literal', OriginalRaw,
+      Document.OriginalRaw);
+    AssertEquals('source Modified remains unchanged', OriginalModified,
+      Document.Modified);
+    AssertTrue('no explicit positive zero is authored',
+      Pos('size=+0', LowerCase(Candidate)) = 0);
+    AssertTrue('outer color spelling survives split',
+      Pos('color=" ReD "', Candidate) > 0);
+    AssertTrue('outer font name spelling survives split',
+      Pos('name=''A B''', Candidate) > 0);
+    AssertTrue('nested size substitutes the outer size',
+      Pos('size=+1>C<WG123>D', Candidate) > 0);
+    AssertTrue('lexical lexeme is still literal',
+      Pos('<WG123>', Candidate) > 0);
+
+    Restored := FCodec.DecodeVerse(Candidate);
+    try
+      AssertUnicodeEquals('UTF-16 visible text and emoji survive',
+        Document.VisibleText, Restored.VisibleText);
+      AssertEquals('semantic topology survives crossing', Document.MarkCount,
+        Restored.MarkCount);
+      AssertEquals('WG object survives', Document.LexicalItemCount,
+        Restored.LexicalItemCount);
+      AssertEquals('WG affinity survives', Document.LexicalItems[0].Offset,
+        Restored.LexicalItems[0].Offset);
+      AssertUnicodeEquals('WG literal survives',
+        Document.LexicalItems[0].RawLexeme,
+        Restored.LexicalItems[0].RawLexeme);
+      for Index := 0 to Restored.FontMarkCount - 1 do
+        AssertFalse('decoded candidate has no explicit zero',
+          Restored.FontMarks[Index].HasSize and
+          (Restored.FontMarks[Index].RelativeSize = 0));
+    finally
+      Restored.Free;
+    end;
+
+    { Reconciliation failure is also pure and clears an unusable candidate. }
+    Plan[0].Actions[0].Mark.OpenOrdinal := 2147483647;
+    Candidate := 'sentinel';
+    AssertFalse('stale plan is rejected',
+      Document.TryBuildRawWithFontTopology(Plan, Candidate));
+    AssertUnicodeEquals('failure clears candidate', '', Candidate);
+    AssertUnicodeEquals('failure leaves raw untouched', OriginalRaw,
+      Document.OriginalRaw);
+    AssertEquals('failure leaves Modified untouched', OriginalModified,
+      Document.Modified);
+  finally
+    Document.Free;
+  end;
+end;
+
+procedure TTheWordOntCodecV2Tests.
+  FontTopologyBuilderPreservesSameAnchorAffinity;
+  procedure AssertLegacyStrong(const ARaw, AWord: UnicodeString);
+  var
+    Index: Integer;
+    Parser: TONTParser;
+    Parsed: TSyntagmList;
+    ParsedWord: TSyntagm;
+  begin
+    Parser := TONTParser.Create;
+    try
+      Parsed := Parser.ParseLine(UTF8Encode(ARaw), nil);
+      try
+        ParsedWord := nil;
+        for Index := 0 to Parsed.Count - 1 do
+          if (Parsed[Index].Kind = skSyntagm) and
+             (Parsed[Index].Text = AWord) then
+          begin
+            ParsedWord := Parsed[Index];
+            Break;
+          end;
+        AssertTrue('legacy lexical owner is parsed', Assigned(ParsedWord));
+        AssertEquals('legacy Strong remains attached', 1,
+          ParsedWord.Strong.Count);
+      finally
+        for Index := Parsed.Count - 1 downto 0 do Parsed[Index].Free;
+        Parsed.Free;
+      end;
+    finally
+      Parser.Free;
+    end;
+  end;
+var
+  Candidate, Raw: UnicodeString;
+  Document, Restored: TTheWordVerseDocument;
+  Plan: TTheWordFontSizeLeafPlanArrayV2;
+begin
+  Raw := '<font size=+1>word<WG456></font>x';
+  Document := FCodec.DecodeVerse(Raw);
+  try
+    AssertTrue(TryPlanTheWordRelativeFontSizeV2(Document, 0, 4, 1, Plan));
+    AssertTrue(Document.TryBuildRawWithFontTopology(Plan, Candidate));
+    AssertUnicodeEquals('WG remains before font close',
+      '<font size=+2>word<WG456></font>x', Candidate);
+    AssertUnicodeEquals('close-side source identity is pure', Raw,
+      Document.OriginalRaw);
+    AssertLegacyStrong(Candidate, 'word');
+    Restored := FCodec.DecodeVerse(Candidate);
+    try
+      AssertUnicodeEquals('close-side candidate round trips', Candidate,
+        FCodec.EncodeVerse(Restored));
+      AssertUnicodeEquals('close-side WG literal', '<WG456>',
+        Restored.LexicalItems[0].RawLexeme);
+    finally
+      Restored.Free;
+    end;
+  finally
+    Document.Free;
+  end;
+
+  Raw := 'word<WG123><font size=+1>x</font>';
+  Document := FCodec.DecodeVerse(Raw);
+  try
+    AssertTrue(TryPlanTheWordRelativeFontSizeV2(Document, 4, 1, 1, Plan));
+    AssertTrue(Document.TryBuildRawWithFontTopology(Plan, Candidate));
+    AssertUnicodeEquals('WG remains before font open',
+      'word<WG123><font size=+2>x</font>', Candidate);
+    AssertUnicodeEquals('open-side source identity is pure', Raw,
+      Document.OriginalRaw);
+    AssertLegacyStrong(Candidate, 'word');
+    Restored := FCodec.DecodeVerse(Candidate);
+    try
+      AssertUnicodeEquals('open-side candidate round trips', Candidate,
+        FCodec.EncodeVerse(Restored));
+      AssertEquals('open-side WG offset', 4,
+        Restored.LexicalItems[0].Offset);
+    finally
+      Restored.Free;
+    end;
+  finally
+    Document.Free;
+  end;
+
+  Raw := '<font size=+1>a</font><FI><RF q=*>note<Rf><Fi>' +
+    '<font color=blue><ZZ></font><font color=red>b</font>';
+  Document := FCodec.DecodeVerse(Raw);
+  try
+    AssertTrue(TryPlanTheWordRelativeFontSizeV2(Document, 0, 1, 1, Plan));
+    AssertTrue(Document.TryBuildRawWithFontTopology(Plan, Candidate));
+    AssertUnicodeEquals('zero wrappers, RF and opaque retain anchor order',
+      '<font size=+2>a</font><FI><RF q=*>note<Rf><Fi>' +
+      '<font color=blue><ZZ></font><font color=red>b</font>', Candidate);
+    AssertUnicodeEquals('same-anchor source identity is pure', Raw,
+      Document.OriginalRaw);
+    Restored := FCodec.DecodeVerse(Candidate);
+    try
+      AssertEquals('zero semantic survives', 1, Restored.MarkCount);
+      AssertEquals('zero font survives', 3, Restored.FontMarkCount);
+      AssertEquals('RF survives', 1, Restored.TranslatorNoteCount);
+      AssertEquals('opaque survives', 1, Restored.OpaqueItemCount);
+      AssertUnicodeEquals('RF body survives', 'note',
+        Restored.TranslatorNotes[0].BodyRaw);
+      AssertUnicodeEquals('opaque literal survives', '<ZZ>',
+        Restored.OpaqueItems[0].RawLexeme);
+      AssertUnicodeEquals('same-anchor candidate round trips', Candidate,
+        FCodec.EncodeVerse(Restored));
+    finally
+      Restored.Free;
+    end;
+  finally
+    Document.Free;
+  end;
+end;
+
+procedure TTheWordOntCodecV2Tests.
+  FontTopologyBuilderPreservesImportedZeroOutsideSelection;
+const
+  RAW: UnicodeString =
+    '<font size=+0 color=blue>a</font><font size=+1>b</font>' +
+    '<RF q=*>size=+0<Rf><ZZ size=+0>';
+var
+  Candidate: UnicodeString;
+  Document, Restored: TTheWordVerseDocument;
+  Plan: TTheWordFontSizeLeafPlanArrayV2;
+begin
+  Document := FCodec.DecodeVerse(RAW);
+  try
+    AssertTrue(TryPlanTheWordRelativeFontSizeV2(
+      Document, 1, 1, 1, Plan));
+    AssertTrue(Document.TryBuildRawWithFontTopology(
+      Plan, Candidate));
+    AssertTrue('imported +0 outside the selection is preserved',
+      Pos('<font size=+0 color=blue>a</font>', Candidate) > 0);
+    AssertTrue('size-looking translator note data is preserved',
+      Pos('<RF q=*>size=+0<Rf>', Candidate) > 0);
+    AssertTrue('size-looking opaque data is preserved',
+      Pos('<ZZ size=+0>', Candidate) > 0);
+    Restored := FCodec.DecodeVerse(Candidate);
+    try
+      AssertEquals(2, Restored.FontMarkCount);
+      AssertTrue(Restored.FontMarks[0].HasSize);
+      AssertEquals(0, Restored.FontMarks[0].RelativeSize);
+      AssertTrue(Restored.FontMarks[0].HasColor);
+      AssertTrue(Restored.FontMarks[1].HasSize);
+      AssertEquals(2, Restored.FontMarks[1].RelativeSize);
+      AssertUnicodeEquals('candidate remains lossless',
+        Candidate, FCodec.EncodeVerse(Restored));
+    finally
+      Restored.Free;
+    end;
+  finally
+    Document.Free;
+  end;
+end;
+
+procedure TTheWordOntCodecV2Tests.
+  FontTopologyBuilderPreservesNestedSeamPayload;
+const
+  FONT_OUTER: UnicodeString =
+    '<font size=+1 color=red><FI>a<RF q=*>n<Rf>b<Fi></font>';
+  SEMANTIC_OUTER: UnicodeString =
+    '<FI><font size=+1 color=red>a<RF q=*>n<Rf>b</font><Fi>';
+var
+  Candidate: UnicodeString;
+  Document, Restored: TTheWordVerseDocument;
+  Plan: TTheWordFontSizeLeafPlanArrayV2;
+begin
+  Document := FCodec.DecodeVerse(FONT_OUTER);
+  try
+    AssertTrue(TryPlanTheWordRelativeFontSizeV2(
+      Document, 1, 1, 1, Plan));
+    AssertTrue(Document.TryBuildRawWithFontTopology(
+      Plan, Candidate));
+    AssertUnicodeEquals('payload remains inside persistent font and FI',
+      '<font size=+1 color=red><FI>a<RF q=*>n<Rf><Fi></font>' +
+      '<font size=+2 color=red><FI>b<Fi></font>', Candidate);
+    Restored := FCodec.DecodeVerse(Candidate);
+    try
+      AssertEquals(1, Restored.TranslatorNoteCount);
+      AssertEquals(1, Restored.MarkCount);
+      AssertEquals(2, Restored.FontMarkCount);
+    finally
+      Restored.Free;
+    end;
+  finally
+    Document.Free;
+  end;
+
+  Document := FCodec.DecodeVerse(SEMANTIC_OUTER);
+  try
+    AssertTrue(TryPlanTheWordRelativeFontSizeV2(
+      Document, 1, 1, 1, Plan));
+    AssertTrue(Document.TryBuildRawWithFontTopology(
+      Plan, Candidate));
+    AssertUnicodeEquals('semantic outer wrapper stays continuous',
+      '<FI><font size=+1 color=red>a<RF q=*>n<Rf></font>' +
+      '<font size=+2 color=red>b</font><Fi>', Candidate);
+    Restored := FCodec.DecodeVerse(Candidate);
+    try
+      AssertEquals(1, Restored.TranslatorNoteCount);
+      AssertEquals(1, Restored.MarkCount);
+      AssertEquals(2, Restored.FontMarkCount);
+    finally
+      Restored.Free;
+    end;
   finally
     Document.Free;
   end;

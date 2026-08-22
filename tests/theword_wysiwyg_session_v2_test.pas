@@ -18,9 +18,10 @@ type
     procedure OpaqueAndLexicalObjectsProtectTextEdits;
     procedure VisualAdapterCombinesOverlappingStyles;
     procedure VisualAdapterRendersScriptAndStrikeStyles;
+    procedure VisualAdapterRendersHtmlSemanticStyles;
     procedure InsertionStyleMatchesSemanticReplacementBoundaries;
     procedure VisualAdapterRendersImportedFontColorsAndPreservesRaw;
-    procedure InsertionStyleMatchesOpaqueFontAnchors;
+    procedure InsertionStyleMatchesFirstClassFontAnchors;
     procedure VisualAdapterRendersOldTestamentQuoteBoldBlack;
     procedure VisualAdapterMapsSyntheticProtectedSeparators;
     procedure ParagraphMarkIsSyntheticMappedAndNonInteractive;
@@ -49,6 +50,10 @@ type
     procedure TranslatorNoteCommandsAreAtomicAndPreserveProvenance;
     procedure TranslatorNoteMarkerResolvesSavedDraftWithStableId;
     procedure TranslatorNoteAnchorsProtectTextEditing;
+    procedure VisualAdapterResolvesNestedFontDimensions;
+    procedure FontAndSemanticCrossingsStayBalanced;
+    procedure FontOnlyRawChangeIsSemanticPresentation;
+    procedure RelativeFontSizeIsAtomicUndoableAndProtected;
   end;
 
 implementation
@@ -243,6 +248,35 @@ begin
 end;
 
 procedure TTheWordWysiwygSessionV2Test.
+  VisualAdapterRendersHtmlSemanticStyles;
+var
+  Codec: ITheWordOntCodecV2;
+  Source: TTheWordVerseDocument;
+  Visual: IVerseVisualDocument;
+begin
+  Codec := TTheWordOntCodecV2.Create;
+  Source := Codec.DecodeVerse(
+    '<B>bold</b><I>italic</i><U>under</u>');
+  try
+    Visual := BuildTheWordVerseVisualDocument(Source, tdLeftToRight, 9);
+    AssertEquals(UnicodeString('bolditalicunder'), Visual.Text);
+    AssertEquals('HTML semantic tags produce three visual runs', 3,
+      Visual.SpanCount);
+    AssertTrue('HTML bold maps to vtsfBold',
+      vtsfBold in Visual.Spans[0].Style.Flags);
+    AssertEquals(UnicodeString('html-bold'), Visual.Spans[0].Annotation);
+    AssertTrue('HTML italic maps to vtsfItalic',
+      vtsfItalic in Visual.Spans[1].Style.Flags);
+    AssertEquals(UnicodeString('html-italic'), Visual.Spans[1].Annotation);
+    AssertTrue('HTML underline maps to vtsfUnderline',
+      vtsfUnderline in Visual.Spans[2].Style.Flags);
+    AssertEquals(UnicodeString('html-underline'), Visual.Spans[2].Annotation);
+  finally
+    Source.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
   InsertionStyleMatchesSemanticReplacementBoundaries;
 const
   RAW: UnicodeString = '<sup>ab</sup>X<sub>cd</sub>';
@@ -344,7 +378,7 @@ begin
 end;
 
 procedure TTheWordWysiwygSessionV2Test.
-  InsertionStyleMatchesOpaqueFontAnchors;
+  InsertionStyleMatchesFirstClassFontAnchors;
 const
   RAW: UnicodeString = '<font color=red>ab</font>';
 var
@@ -357,24 +391,24 @@ begin
       Session.Document, 0, Style));
     AssertFalse('OPEN anchor does not leak its following color',
       Style.HasForegroundColor);
-    AssertFalse('typing exactly at an opaque OPEN anchor stays protected',
+    AssertTrue('typing exactly at a first-class OPEN anchor is editable',
       Session.CanReplaceText(0, 0));
-    AssertFalse('ReplaceText rejects an opaque OPEN anchor',
+    AssertTrue('ReplaceText accepts a first-class OPEN anchor',
       Session.ReplaceText(0, 0, 'X'));
-    AssertEquals('blocked OPEN insertion preserves the imported raw text',
-      RAW, Session.RawText);
+    AssertEquals('OPEN insertion stays outside the font range',
+      'X' + RAW, Session.RawText);
 
     AssertTrue(TryResolveTheWordInsertionVisualStyle(
-      Session.Document, 1, Style));
+      Session.Document, 2, Style));
     AssertTrue('strictly interior caret inherits the font color',
       Style.HasForegroundColor);
     AssertEquals('strictly interior caret is red', LongInt(clRed),
       Style.ForegroundColor);
     AssertTrue('typing strictly inside the font range is editable',
-      Session.CanReplaceText(1, 0));
-    AssertTrue(Session.ReplaceText(1, 0, 'X'));
+      Session.CanReplaceText(2, 0));
+    AssertTrue(Session.ReplaceText(2, 0, 'X'));
     AssertEquals('interior insertion is serialized inside the original tags',
-      '<font color=red>aXb</font>', Session.RawText);
+      'X<font color=red>aXb</font>', Session.RawText);
   finally
     Session.Free;
   end;
@@ -385,12 +419,12 @@ begin
       Session.Document, 2, Style));
     AssertFalse('CLOSE anchor does not inherit its preceding color',
       Style.HasForegroundColor);
-    AssertFalse('typing exactly at an opaque CLOSE anchor stays protected',
+    AssertTrue('typing exactly at a first-class CLOSE anchor is editable',
       Session.CanReplaceText(2, 0));
-    AssertFalse('ReplaceText rejects an opaque CLOSE anchor',
+    AssertTrue('ReplaceText accepts a first-class CLOSE anchor',
       Session.ReplaceText(2, 0, 'X'));
-    AssertEquals('blocked CLOSE insertion preserves the imported raw text',
-      RAW, Session.RawText);
+    AssertEquals('CLOSE insertion stays outside the font range',
+      '<font color=red>ab</font>X', Session.RawText);
   finally
     Session.Free;
   end;
@@ -1861,6 +1895,205 @@ begin
     AssertEquals(3, Session.Document.TranslatorNotes[0].OffsetUTF16);
     AssertTrue('shifted anchor remains right-sticky',
       Session.CanReplaceText(3, 0));
+  finally
+    Session.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
+  VisualAdapterResolvesNestedFontDimensions;
+const
+  RAW: UnicodeString =
+    '<font color=red size=+1>aa' +
+    '<font color=green>bb</font>' +
+    '<font size=-1>cc</font>' +
+    '<font size=+0>ee</font>dd</font>';
+  PRIORITY_RAW: UnicodeString =
+    '<font color=blue><FR>x<Fr><FO>y<Fo></font>';
+var
+  Codec: ITheWordOntCodecV2;
+  Document: TTheWordVerseDocument;
+  Span: TVisualSpan;
+  Style: TVisualTextStyle;
+  Visual: IVerseVisualDocument;
+
+  procedure AssertStyleAt(AOffset, ASize: Integer; AColor: LongInt);
+  begin
+    AssertTrue(Visual.TryGetSpanAt(AOffset, Span));
+    AssertEquals('font size delta', ASize, Span.Style.FontSizeDelta);
+    AssertTrue(Span.Style.HasForegroundColor);
+    AssertEquals('font color', AColor, Span.Style.ForegroundColor);
+  end;
+
+begin
+  Codec := TTheWordOntCodecV2.Create;
+  Document := Codec.DecodeVerse(RAW);
+  try
+    AssertEquals(4, Document.FontMarkCount);
+    Visual := BuildTheWordVerseVisualDocument(Document, tdLeftToRight, 31);
+    AssertStyleAt(0, 2, LongInt(clRed));
+    AssertStyleAt(2, 2, LongInt(clGreen));
+    AssertStyleAt(4, -2, LongInt(clRed));
+    AssertStyleAt(6, 0, LongInt(clRed));
+    AssertStyleAt(8, 2, LongInt(clRed));
+    AssertTrue(TryResolveTheWordInsertionVisualStyle(Document, 3, Style));
+    AssertEquals(2, Style.FontSizeDelta);
+    AssertEquals(LongInt(clGreen), Style.ForegroundColor);
+    AssertTrue(TryResolveTheWordInsertionVisualStyle(Document, 5, Style));
+    AssertEquals(-2, Style.FontSizeDelta);
+    AssertEquals(LongInt(clRed), Style.ForegroundColor);
+    AssertTrue(TryResolveTheWordInsertionVisualStyle(Document, 7, Style));
+    AssertEquals('explicit +0 replaces outer size', 0, Style.FontSizeDelta);
+    AssertTrue(TryResolveTheWordInsertionVisualStyle(Document, 9, Style));
+    AssertEquals('outer size restores after +0 close', 2, Style.FontSizeDelta);
+    AssertTrue(TryResolveTheWordInsertionVisualStyle(Document, 0, Style));
+    AssertEquals('font boundary does not leak size', 0, Style.FontSizeDelta);
+    AssertTrue('font boundary remains editable',
+      Document.CanReplaceVisibleText(0, 0));
+    AssertTrue(TryResolveTheWordInsertionVisualStyle(Document, 10, Style));
+    AssertEquals('closing boundary restores default size', 0,
+      Style.FontSizeDelta);
+  finally
+    Document.Free;
+  end;
+
+  Document := Codec.DecodeVerse(PRIORITY_RAW);
+  try
+    Visual := BuildTheWordVerseVisualDocument(Document, tdLeftToRight, 32);
+    AssertTrue(Visual.TryGetSpanAt(0, Span));
+    AssertEquals('FR overrides font blue', LongInt(clRed),
+      Span.Style.ForegroundColor);
+    AssertTrue(Visual.TryGetSpanAt(1, Span));
+    AssertEquals('FO overrides font and FR', LongInt(clBlack),
+      Span.Style.ForegroundColor);
+  finally
+    Document.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
+  FontAndSemanticCrossingsStayBalanced;
+var
+  Codec: ITheWordOntCodecV2;
+  Restored: TTheWordVerseDocument;
+  Session: TTheWordWysiwygSessionV2;
+  Raw: UnicodeString;
+
+  procedure AssertRestores(const AExpectedText: UnicodeString);
+  begin
+    Raw := Session.RawText;
+    Restored := Codec.DecodeVerse(Raw);
+    try
+      AssertEquals(AExpectedText, Restored.VisibleText);
+      AssertEquals(0, Restored.OpaqueItemCount);
+      AssertEquals(1, Restored.FontMarkCount);
+      AssertEquals('synthetic reopen merges to one logical semantic mark',
+        1, Restored.MarkCount);
+      AssertEquals('no-op after re-decode is stable', Raw,
+        Codec.EncodeVerse(Restored));
+    finally
+      Restored.Free;
+    end;
+  end;
+
+begin
+  Codec := TTheWordOntCodecV2.Create;
+  Session := TTheWordWysiwygSessionV2.Create(
+    '<font color=red>x</font> y');
+  try
+    AssertTrue(Session.ApplySemantic(twsmHtmlBold, 0, 3));
+    AssertTrue('enclosing semantic closes and reopens at font boundary',
+      Pos('</b></font><b>', Session.RawText) > 0);
+    AssertRestores('x y');
+  finally
+    Session.Free;
+  end;
+
+  Session := TTheWordWysiwygSessionV2.Create(
+    '<font color=red>x</font> y');
+  try
+    AssertTrue(Session.ApplySemantic(twsmHtmlBold, 0, 1));
+    AssertFalse('same anchors need no synthetic crossing',
+      Pos('</b></font><b>', Session.RawText) > 0);
+    AssertRestores('x y');
+  finally
+    Session.Free;
+  end;
+
+  Session := TTheWordWysiwygSessionV2.Create(
+    '<font color=red>xy</font> z');
+  try
+    AssertTrue(Session.ApplySemantic(twsmHtmlBold, 1, 3));
+    AssertTrue('real crossing is split at font close',
+      Pos('</b></font><b>', Session.RawText) > 0);
+    AssertRestores('xy z');
+  finally
+    Session.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
+  FontOnlyRawChangeIsSemanticPresentation;
+var
+  Session: TTheWordWysiwygSessionV2;
+begin
+  Session := TTheWordWysiwygSessionV2.Create('ab');
+  try
+    AssertTrue(Session.ReplaceRawText('<font size=+1>ab</font>'));
+    AssertTrue(Session.Dirty);
+    AssertTrue('font presentation is semantic-only',
+      Session.ChangesAreSemanticOnly);
+    AssertTrue('associations permit presentation-only font changes',
+      CanCommitLegacyWysiwygChangeV2(True, Session.ChangesAreSemanticOnly));
+  finally
+    Session.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
+  RelativeFontSizeIsAtomicUndoableAndProtected;
+const
+  ORIGINAL: UnicodeString = '<font size=+1 color=red>ab</font>c';
+var
+  Session: TTheWordWysiwygSessionV2;
+begin
+  Session := TTheWordWysiwygSessionV2.Create(ORIGINAL);
+  try
+    AssertTrue(Session.AdjustRelativeFontSize(0, 1, 1));
+    AssertEquals('<font size=+2 color=red>a</font>' +
+      '<font size=+1 color=red>b</font>c', Session.RawText);
+    AssertTrue(Session.ChangesAreSemanticOnly);
+    AssertTrue(CanCommitLegacyWysiwygChangeV2(True,
+      Session.ChangesAreSemanticOnly));
+    AssertTrue(Session.Undo);
+    AssertEquals(ORIGINAL, Session.RawText);
+    AssertFalse('one selection command creates one undo entry',
+      Session.CanUndo);
+    AssertTrue(Session.Redo);
+    AssertEquals('<font size=+2 color=red>a</font>' +
+      '<font size=+1 color=red>b</font>c', Session.RawText);
+  finally
+    Session.Free;
+  end;
+
+  Session := TTheWordWysiwygSessionV2.Create(
+    '<font size=+1>ab</font>');
+  try
+    AssertTrue(Session.ReplaceTextWithRelativeFontSize(
+      1, 0, 'x', 1, 0));
+    AssertEquals('<font size=+1>a</font>x' +
+      '<font size=+1>b</font>', Session.RawText);
+    AssertTrue('pending typing is one command', Session.Undo);
+    AssertEquals('<font size=+1>ab</font>', Session.RawText);
+    AssertFalse(Session.CanUndo);
+  finally
+    Session.Free;
+  end;
+
+  Session := TTheWordWysiwygSessionV2.Create('<TS>head<Ts>body');
+  try
+    AssertFalse(Session.AdjustRelativeFontSize(0, 1, 1));
+    AssertFalse(Session.CanUndo);
   finally
     Session.Free;
   end;

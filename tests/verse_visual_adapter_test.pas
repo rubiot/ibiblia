@@ -19,7 +19,8 @@ implementation
 
 uses
   SysUtils, Graphics, ONTTokenizer, Syntagm, Verse, text_direction,
-  verse_visual_document, verse_visual_adapter;
+  verse_visual_document, verse_visual_adapter,
+  theword_effective_inline_style_v2;
 
 function FindSyntagmIndex(Syntagms: TSyntagmList;
   const Text: string): Integer;
@@ -61,7 +62,7 @@ begin
     HebrewSyntagm.ToggleStrongHighlight(True);
 
     Document := BuildVerseVisualDocument(VerseModel.Syntagms, nil,
-      tdLeftToRight, 73, clGreen, clGray, True);
+      tdLeftToRight, 73, clGreen, clGray, True, VerseModel.Text);
 
     ExpectedText := UnicodeString(RTL_ISOLATE) +
       UnicodeString('בְּרֵאשִׁית ') + UnicodeString(LTR_ISOLATE) +
@@ -101,9 +102,10 @@ begin
       vtsfStrongHighlight in HebrewSpan.Style.Flags);
     AssertTrue('Point/highlight produces underline',
       vtsfUnderline in HebrewSpan.Style.Flags);
-    AssertTrue('Explicit text color is preserved',
+    AssertTrue('Explicit text color is projected',
       HebrewSpan.Style.HasForegroundColor);
-    AssertEquals('Explicit font color', LongInt(clRed),
+    AssertEquals('Unassociated explicit font color is faded',
+      FadeTheWordExplicitColorV2(LongInt(clRed)),
       HebrewSpan.Style.ForegroundColor);
     AssertTrue('Selected background is preserved',
       HebrewSpan.Style.HasBackgroundColor);
@@ -159,29 +161,19 @@ begin
       SecondCloseIndex < VerseModel.Syntagms.Count);
 
     Document := BuildVerseVisualDocument(VerseModel.Syntagms, nil,
-      tdLeftToRight, 74, clGreen, clGray, False);
-    AssertTrue('FI tags are represented by balanced brackets',
-      Document.Text = UnicodeString('Então [já] veio, [mas] voltou.'));
-    AssertTrue('first opening bracket is italic',
-      vtsfItalic in Document.Spans[FirstOpenIndex].Style.Flags);
-    AssertTrue('first closing bracket is italic',
-      vtsfItalic in Document.Spans[FirstCloseIndex].Style.Flags);
-    AssertTrue('first bracket pair uses identical style flags',
-      Document.Spans[FirstOpenIndex].Style.Flags =
-      Document.Spans[FirstCloseIndex].Style.Flags);
-    AssertEquals('first bracket pair uses identical foreground color',
-      Document.Spans[FirstOpenIndex].Style.ForegroundColor,
-      Document.Spans[FirstCloseIndex].Style.ForegroundColor);
-    AssertTrue('second opening bracket is italic',
-      vtsfItalic in Document.Spans[SecondOpenIndex].Style.Flags);
-    AssertTrue('second closing bracket is italic',
-      vtsfItalic in Document.Spans[SecondCloseIndex].Style.Flags);
-    AssertTrue('second bracket pair uses identical style flags',
-      Document.Spans[SecondOpenIndex].Style.Flags =
-      Document.Spans[SecondCloseIndex].Style.Flags);
-    AssertEquals('second bracket pair uses identical foreground color',
-      Document.Spans[SecondOpenIndex].Style.ForegroundColor,
-      Document.Spans[SecondCloseIndex].Style.ForegroundColor);
+      tdLeftToRight, 74, clGreen, clGray, False, VerseModel.Text);
+    AssertTrue('FI tags are hidden without synthetic brackets',
+      Document.Text = UnicodeString('Então já veio, mas voltou.'));
+    AssertTrue('first opening FI is hidden',
+      Document.Spans[FirstOpenIndex].Kind = vskHidden);
+    AssertTrue('first closing Fi is hidden',
+      Document.Spans[FirstCloseIndex].Kind = vskHidden);
+    AssertTrue('second opening FI is hidden',
+      Document.Spans[SecondOpenIndex].Kind = vskHidden);
+    AssertTrue('second closing Fi is hidden',
+      Document.Spans[SecondCloseIndex].Kind = vskHidden);
+    AssertTrue('added word keeps italic projection',
+      vtsfItalic in Document.Spans[FirstOpenIndex + 1].Style.Flags);
     AssertEquals('visualization does not rewrite literal ONT', RAW,
       VerseModel.Text);
   finally

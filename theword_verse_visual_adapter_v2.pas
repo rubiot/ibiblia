@@ -57,26 +57,20 @@ function TryCollectTheWordParagraphMarkOffsets(
 implementation
 
 uses
-  SysUtils, rf_note_scanner, theword_translator_note_body_v2;
+  SysUtils, rf_note_scanner;
 
 type
   TIntArray = array of Integer;
-  TFontTagFrame = record
-    StartOffset: Integer;
-    OpenOrdinal: Integer;
-    HasColorAttribute: Boolean;
-    HasResolvedColor: Boolean;
-    Color: LongInt;
-  end;
-  TFontTagFrameArray = array of TFontTagFrame;
-  TFontColorRange = record
+  TFontFormatRange = record
     StartOffset: Integer;
     EndOffset: Integer;
     OpenOrdinal: Integer;
-    HasResolvedColor: Boolean;
+    HasColor: Boolean;
     Color: LongInt;
+    HasSize: Boolean;
+    RelativeSize: Integer;
   end;
-  TFontColorRangeArray = array of TFontColorRange;
+  TFontFormatRangeArray = array of TFontFormatRange;
   TTranslatorNoteVisual = record
     ObjectId: QWord;
     Ordinal: Integer;
@@ -565,160 +559,97 @@ begin
   end;
 end;
 
-function TryClassifyFontTag(const ARaw: UnicodeString;
-  out AClosing: Boolean): Boolean;
+procedure CollectFontFormatRanges(ADocument: TTheWordVerseDocument;
+  out ARanges: TFontFormatRangeArray);
 var
   Index: Integer;
-  Name, Work: string;
+  Mark: TTheWordFontMark;
 begin
-  AClosing := False;
-  Work := Trim(UTF8Encode(ARaw));
-  Result := (Length(Work) >= 3) and (Work[1] = '<') and
-    (Work[Length(Work)] = '>');
-  if not Result then
-    Exit;
-  Work := Trim(Copy(Work, 2, Length(Work) - 2));
-  if Work = '' then
-    Exit(False);
-  if Work[1] = '/' then
+  SetLength(ARanges, ADocument.FontMarkCount);
+  for Index := 0 to ADocument.FontMarkCount - 1 do
   begin
-    AClosing := True;
-    Work := Trim(Copy(Work, 2, MaxInt));
-  end;
-  Index := 1;
-  while (Index <= Length(Work)) and
-    not (Work[Index] in [' ', #9, #10, #13]) do
-    Inc(Index);
-  Name := Copy(Work, 1, Index - 1);
-  Result := CompareText(Name, 'font') = 0;
-end;
-
-procedure ResolveFontOpenColor(const ARaw: UnicodeString;
-  out AHasColorAttribute, AHasResolvedColor: Boolean;
-  out AColor: LongInt);
-var
-  Body: TTheWordTranslatorNoteBodyDocument;
-  Token: TTheWordNoteBodyToken;
-begin
-  AHasColorAttribute := False;
-  AHasResolvedColor := False;
-  AColor := 0;
-  Body := TTheWordTranslatorNoteBodyCodec.Decode(
-    ARaw + UnicodeString('x</font>'));
-  try
-    if Body.TokenCount = 0 then
-      Exit;
-    Token := Body.Tokens[0];
-    if (Token.Kind <> twnbtkTagOpen) or
-       (Token.TagKind <> twnbFont) or
-       (Token.RawLexeme <> ARaw) then
-      Exit;
-    AHasColorAttribute := Token.ForegroundColor <> '';
-    if AHasColorAttribute then
-      AHasResolvedColor := TryTheWordTranslatorNoteHtmlColor(
-        Token.ForegroundColor, AColor);
-  finally
-    Body.Free;
+    Mark := ADocument.FontMarks[Index];
+    ARanges[Index].StartOffset := Mark.StartOffset;
+    ARanges[Index].EndOffset := Mark.EndOffset;
+    ARanges[Index].OpenOrdinal := Mark.OpenOrdinal;
+    ARanges[Index].HasColor := Mark.HasColor;
+    ARanges[Index].Color := Mark.ResolvedColor;
+    ARanges[Index].HasSize := Mark.HasSize;
+    ARanges[Index].RelativeSize := Mark.RelativeSize;
   end;
 end;
-
-procedure CollectFontColorRanges(ADocument: TTheWordVerseDocument;
-  out ARanges: TFontColorRangeArray);
-var
-  Closing: Boolean;
-  Frame: TFontTagFrame;
-  Index, RangeIndex, StackIndex: Integer;
-  Item: TTheWordOpaqueItem;
-  Stack: TFontTagFrameArray;
-begin
-  ARanges := nil;
-  Stack := nil;
-  for Index := 0 to ADocument.OpaqueItemCount - 1 do
-  begin
-    Item := ADocument.OpaqueItems[Index];
-    if not TryClassifyFontTag(Item.RawLexeme, Closing) then
-      Continue;
-    if not Closing then
-    begin
-      Frame.StartOffset := Item.Offset;
-      Frame.OpenOrdinal := Item.Ordinal;
-      ResolveFontOpenColor(Item.RawLexeme, Frame.HasColorAttribute,
-        Frame.HasResolvedColor, Frame.Color);
-      StackIndex := Length(Stack);
-      SetLength(Stack, StackIndex + 1);
-      Stack[StackIndex] := Frame;
-      Continue;
-    end;
-    StackIndex := Length(Stack) - 1;
-    if StackIndex < 0 then
-      Continue;
-    Frame := Stack[StackIndex];
-    SetLength(Stack, StackIndex);
-    if not Frame.HasColorAttribute or
-       (Item.Offset < Frame.StartOffset) then
-      Continue;
-    RangeIndex := Length(ARanges);
-    SetLength(ARanges, RangeIndex + 1);
-    ARanges[RangeIndex].StartOffset := Frame.StartOffset;
-    ARanges[RangeIndex].EndOffset := Item.Offset;
-    ARanges[RangeIndex].OpenOrdinal := Frame.OpenOrdinal;
-    ARanges[RangeIndex].HasResolvedColor := Frame.HasResolvedColor;
-    ARanges[RangeIndex].Color := Frame.Color;
-  end;
-end;
-
-procedure ApplyFontColorForSegment(const ARanges: TFontColorRangeArray;
+procedure ApplyFontFormatForSegment(const ARanges: TFontFormatRangeArray;
   AStartOffset, AEndOffset: Integer; var AStyle: TVisualTextStyle);
 var
-  BestIndex, BestOrdinal, Index: Integer;
+  BestColorIndex, BestColorOrdinal, BestSizeIndex, BestSizeOrdinal,
+    Index: Integer;
 begin
-  BestIndex := -1;
-  BestOrdinal := -1;
+  BestColorIndex := -1;
+  BestColorOrdinal := -1;
+  BestSizeIndex := -1;
+  BestSizeOrdinal := -1;
   for Index := 0 to High(ARanges) do
     if (ARanges[Index].StartOffset <= AStartOffset) and
        (ARanges[Index].EndOffset >= AEndOffset) and
-       (ARanges[Index].EndOffset > ARanges[Index].StartOffset) and
-       (ARanges[Index].OpenOrdinal > BestOrdinal) then
+       (ARanges[Index].EndOffset > ARanges[Index].StartOffset) then
     begin
-      BestIndex := Index;
-      BestOrdinal := ARanges[Index].OpenOrdinal;
+      if ARanges[Index].HasColor and
+         (ARanges[Index].OpenOrdinal > BestColorOrdinal) then
+      begin
+        BestColorIndex := Index;
+        BestColorOrdinal := ARanges[Index].OpenOrdinal;
+      end;
+      if ARanges[Index].HasSize and
+         (ARanges[Index].OpenOrdinal > BestSizeOrdinal) then
+      begin
+        BestSizeIndex := Index;
+        BestSizeOrdinal := ARanges[Index].OpenOrdinal;
+      end;
     end;
-  if BestIndex < 0 then
-    Exit;
-  AStyle.HasForegroundColor := ARanges[BestIndex].HasResolvedColor;
-  if AStyle.HasForegroundColor then
-    AStyle.ForegroundColor := ARanges[BestIndex].Color
-  else
-    AStyle.ForegroundColor := 0;
+  if BestColorIndex >= 0 then
+  begin
+    AStyle.HasForegroundColor := True;
+    AStyle.ForegroundColor := ARanges[BestColorIndex].Color;
+  end;
+  if BestSizeIndex >= 0 then
+    AStyle.FontSizeDelta := 2 * ARanges[BestSizeIndex].RelativeSize;
 end;
 
-procedure ApplyFontColorForInsertion(const ARanges: TFontColorRangeArray;
+procedure ApplyFontFormatForInsertion(const ARanges: TFontFormatRangeArray;
   AOffset: Integer; var AStyle: TVisualTextStyle);
 var
-  BestIndex, BestOrdinal, Index: Integer;
+  BestColorIndex, BestColorOrdinal, BestSizeIndex, BestSizeOrdinal,
+    Index: Integer;
 begin
-  BestIndex := -1;
-  BestOrdinal := -1;
+  BestColorIndex := -1;
+  BestColorOrdinal := -1;
+  BestSizeIndex := -1;
+  BestSizeOrdinal := -1;
   for Index := 0 to High(ARanges) do
-    { Both tag anchors are protected. Only a strict interior insertion can
-      inherit the imported font color. }
     if (ARanges[Index].StartOffset < AOffset) and
-       (ARanges[Index].EndOffset > AOffset) and
-       (ARanges[Index].EndOffset > ARanges[Index].StartOffset) and
-       (ARanges[Index].OpenOrdinal > BestOrdinal) then
+       (ARanges[Index].EndOffset > AOffset) then
     begin
-      BestIndex := Index;
-      BestOrdinal := ARanges[Index].OpenOrdinal;
+      if ARanges[Index].HasColor and
+         (ARanges[Index].OpenOrdinal > BestColorOrdinal) then
+      begin
+        BestColorIndex := Index;
+        BestColorOrdinal := ARanges[Index].OpenOrdinal;
+      end;
+      if ARanges[Index].HasSize and
+         (ARanges[Index].OpenOrdinal > BestSizeOrdinal) then
+      begin
+        BestSizeIndex := Index;
+        BestSizeOrdinal := ARanges[Index].OpenOrdinal;
+      end;
     end;
-  if BestIndex < 0 then
-    Exit;
-  AStyle.HasForegroundColor := ARanges[BestIndex].HasResolvedColor;
-  if AStyle.HasForegroundColor then
-    AStyle.ForegroundColor := ARanges[BestIndex].Color
-  else
-    AStyle.ForegroundColor := 0;
+  if BestColorIndex >= 0 then
+  begin
+    AStyle.HasForegroundColor := True;
+    AStyle.ForegroundColor := ARanges[BestColorIndex].Color;
+  end;
+  if BestSizeIndex >= 0 then
+    AStyle.FontSizeDelta := 2 * ARanges[BestSizeIndex].RelativeSize;
 end;
-
 function TryGetTitleForSegment(const ATitles: TTheWordTitleRangeArray;
   AStartOffset, AEndOffset: Integer; out ATitle: TTheWordTitleRange): Boolean;
 var
@@ -797,15 +728,16 @@ procedure ApplyMarkStyle(AMark: TTheWordSemanticMark;
 const
   KIND_NAMES: array[TTheWordSemanticKind] of UnicodeString = (
     'added-words', 'words-of-jesus', 'old-testament-quote', 'underline',
-    'strikethrough', 'superscript', 'subscript'
+    'strikethrough', 'superscript', 'subscript',
+    'html-bold', 'html-italic', 'html-underline'
   );
 begin
   case AMark.Kind of
-    twsmItalic:
+    twsmItalic, twsmHtmlItalic:
       Include(AStyle.Flags, vtsfItalic);
-    twsmOldTestamentQuote:
+    twsmOldTestamentQuote, twsmHtmlBold:
       Include(AStyle.Flags, vtsfBold);
-    twsmUnderline:
+    twsmUnderline, twsmHtmlUnderline:
       Include(AStyle.Flags, vtsfUnderline);
     twsmStrikethrough:
       Include(AStyle.Flags, vtsfStrikethrough);
@@ -830,7 +762,7 @@ function TryResolveTheWordInsertionVisualStyle(
   out AStyle: TVisualTextStyle): Boolean;
 var
   Annotation: UnicodeString;
-  FontColorRanges: TFontColorRangeArray;
+  FontFormatRanges: TFontFormatRangeArray;
   HasOldTestamentQuote: Boolean;
   HasWordsOfJesus: Boolean;
   Mark: TTheWordSemanticMark;
@@ -842,10 +774,11 @@ begin
   if not Result then
     Exit;
 
-  CollectFontColorRanges(ADocument, FontColorRanges);
+  CollectFontFormatRanges(ADocument, FontFormatRanges);
   Annotation := '';
   HasOldTestamentQuote := False;
   HasWordsOfJesus := False;
+  ApplyFontFormatForInsertion(FontFormatRanges, AOffsetUTF16, AStyle);
   for MarkIndex := 0 to ADocument.MarkCount - 1 do
   begin
     Mark := ADocument.Marks[MarkIndex];
@@ -865,7 +798,6 @@ begin
     end;
   end;
 
-  ApplyFontColorForInsertion(FontColorRanges, AOffsetUTF16, AStyle);
 
   if HasOldTestamentQuote then
   begin
@@ -885,7 +817,7 @@ function BuildTheWordVerseVisualDocument(ADocument: TTheWordVerseDocument;
 var
   Boundaries, DocumentToLayoutBefore, DocumentToLayoutAfter,
     LayoutToDocument: TIntArray;
-  FontColorRanges: TFontColorRangeArray;
+  FontFormatRanges: TFontFormatRangeArray;
   Titles: TTheWordTitleRangeArray;
   Builder: TVerseVisualDocumentBuilder;
   Index, MarkIndex, SegmentStart, SegmentFinish, SpanIndex: Integer;
@@ -904,7 +836,7 @@ begin
   AddBoundary(Boundaries, 0);
   AddBoundary(Boundaries, Length(ADocument.VisibleText));
   CollectTheWordTitleRanges(ADocument, Titles);
-  CollectFontColorRanges(ADocument, FontColorRanges);
+  CollectFontFormatRanges(ADocument, FontFormatRanges);
   BuildSyntheticAnchors(ADocument, Titles, AAutomaticNoteStart,
     SyntheticAnchors);
   for Index := 0 to High(SyntheticAnchors) do
@@ -915,10 +847,10 @@ begin
     AddBoundary(Boundaries, Titles[Index].StartOffset);
     AddBoundary(Boundaries, Titles[Index].EndOffset);
   end;
-  for Index := 0 to High(FontColorRanges) do
+  for Index := 0 to High(FontFormatRanges) do
   begin
-    AddBoundary(Boundaries, FontColorRanges[Index].StartOffset);
-    AddBoundary(Boundaries, FontColorRanges[Index].EndOffset);
+    AddBoundary(Boundaries, FontFormatRanges[Index].StartOffset);
+    AddBoundary(Boundaries, FontFormatRanges[Index].EndOffset);
   end;
   for MarkIndex := 0 to ADocument.MarkCount - 1 do
   begin
@@ -950,6 +882,8 @@ begin
           SegmentFinish, Title);
         if IsTitle then
           ApplyTitleStyle(Title, Style, Annotation);
+        ApplyFontFormatForSegment(FontFormatRanges, SegmentStart,
+          SegmentFinish, Style);
         for MarkIndex := 0 to ADocument.MarkCount - 1 do
         begin
           Mark := ADocument.Marks[MarkIndex];
@@ -966,8 +900,6 @@ begin
             end;
           end;
         end;
-        ApplyFontColorForSegment(FontColorRanges, SegmentStart,
-          SegmentFinish, Style);
         { Semantic colors have an explicit, order-independent priority. FO is
           bold black even where it overlaps FR; FR remains red elsewhere. }
         if HasOldTestamentQuote then
