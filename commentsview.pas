@@ -5,46 +5,25 @@ unit CommentsView;
 interface
 
 uses
-  Classes, SysUtils, Controls, HTMLRenderer, StdCtrls, Graphics, SynEdit,
-  theword_syntax_highlighter;
+  Classes, SysUtils, Controls, HTMLRenderer, StdCtrls, Graphics;
 
-function CommentsTextForRawEditor(const Value: string): string;
-function CommentsTextForStorage(const Value: string): string;
+function CommentsTextForWysiwygEditor(const Value: string): string;
+function CommentsTextFromWysiwygEditor(const Value: string): string;
+function CommentsTextForPreview(const Value: string): string;
 
 type
-  TCommentsView = class;
-
-  { TRawCommentsMemo }
-
-  TRawCommentsMemo = class(TSynEdit)
-  private
-    FCommentsView: TCommentsView;
-    procedure HandleOnKeyDown(Sender: TObject; var Key: word; Shift: TShiftState);
-    procedure HandleOnMouseWheel(Sender: TObject; Shift: TShiftState;
-      WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
-  public
-    constructor Create(AOwner: TComponent; CommentsView: TCommentsView); overload;
-    destructor Destroy; override;
-
-    procedure Show(aText: string);
-    procedure Hide;
-  end;
-
   { TCommentsView }
-  
+
   TCommentsView = class(THTMLRenderer)
   private
     FFontName: string;
     FFontSize: integer;
     FText: string;
     FReadOnly: boolean;
-    FRawMemo: TRawCommentsMemo;
-    FUpdatingRawMemo: Boolean;
     FOnTextChanged: TNotifyEvent;
-    procedure HandleMouseWheel(Sender: TObject; Shift: TShiftState; 
+    procedure HandleMouseWheel(Sender: TObject; Shift: TShiftState;
       WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
     procedure HandleDoubleClick(Sender: TObject);
-    procedure HandleRawMemoChange(Sender: TObject);
     function GetText: string;
     procedure SetText(const AValue: string);
     procedure SetFontName(const AValue: string);
@@ -54,11 +33,11 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    
+
     procedure SetCommentsText(const CommentsText: string);
     function HasPendingChange(const Baseline: string): Boolean;
     procedure DiscardEdit;
-    
+
     property FontSize: integer read FFontSize write SetFontSize;
     property FontName: string read FFontName write SetFontName;
     property Text: string read GetText write SetText;
@@ -69,98 +48,46 @@ type
 implementation
 
 uses
-  Math;
+  Math, theword_translator_note_editor;
 
-function CommentsTextForRawEditor(const Value: string): string;
+resourcestring
+  SEditorialCommentsTitle = 'Editorial comments';
+
+function CommentsTextForWysiwygEditor(const Value: string): string;
 begin
-  Result := StringReplace(Value, '<crlf/>', LineEnding, [rfReplaceAll]);
-  Result := StringReplace(Result, '<lf/>', LineEnding, [rfReplaceAll]);
+  Result := StringReplace(Value, #13#10, '<p>', [rfReplaceAll]);
+  Result := StringReplace(Result, #13, '<p>', [rfReplaceAll]);
+  Result := StringReplace(Result, #10, '<p>', [rfReplaceAll]);
+  Result := StringReplace(Result, '<crlf/>', '<p>',
+    [rfReplaceAll, rfIgnoreCase]);
+  Result := StringReplace(Result, '<lf/>', '<p>',
+    [rfReplaceAll, rfIgnoreCase]);
+  Result := StringReplace(Result, '<br/>', '<CL>',
+    [rfReplaceAll, rfIgnoreCase]);
+  Result := StringReplace(Result, '<br>', '<CL>',
+    [rfReplaceAll, rfIgnoreCase]);
 end;
 
-function CommentsTextForStorage(const Value: string): string;
+function CommentsTextFromWysiwygEditor(const Value: string): string;
 begin
-  Result := StringReplace(Value, #13#10, '<lf/>', [rfReplaceAll]);
-  Result := StringReplace(Result, #13, '<lf/>', [rfReplaceAll]);
-  Result := StringReplace(Result, #10, '<lf/>', [rfReplaceAll]);
+  Result := CommentsTextForWysiwygEditor(Value);
 end;
 
-{ TRawCommentsMemo }
-
-procedure TRawCommentsMemo.HandleOnKeyDown(Sender: TObject; var Key: word;
-  Shift: TShiftState);
+function CommentsTextForPreview(const Value: string): string;
 begin
-  if Key = 27 then // VK_ESCAPE
-    Hide;
-end;
-
-procedure TRawCommentsMemo.HandleOnMouseWheel(Sender: TObject;
-  Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint;
-  var Handled: Boolean);
-begin
-  if ssCtrl in Shift then
-    Font.Size := Font.Size + Sign(WheelDelta) * 1;
-end;
-
-constructor TRawCommentsMemo.Create(AOwner: TComponent; CommentsView: TCommentsView);
-begin
-  inherited Create(AOwner);
-
-  Visible    := False;
-  Parent     := CommentsView.Parent; // Use the same parent as CommentsView
-  FCommentsView := CommentsView;
-  
-  // Position exactly over the CommentsView
-  Left       := CommentsView.Left;
-  Top        := CommentsView.Top;
-  Width      := CommentsView.Width;
-  Height     := CommentsView.Height;
-  Anchors    := CommentsView.Anchors;
-  
-  Color      := clWindow; // Ensure it has a solid background
-  ConfigureTheWordSyntaxEditor(Self, False);
-  OnKeyDown  := @HandleOnKeyDown;
-  OnChange := @FCommentsView.HandleRawMemoChange;
-  OnMouseWheel := @HandleOnMouseWheel;
-end;
-
-destructor TRawCommentsMemo.Destroy;
-begin
-  inherited Destroy;
-end;
-
-procedure TRawCommentsMemo.Show(aText: string);
-begin
-  ApplyTheWordSyntaxEditorFont(Self);
-  FCommentsView.FUpdatingRawMemo := True;
-  try
-    Text := CommentsTextForRawEditor(aText);
-  finally
-    FCommentsView.FUpdatingRawMemo := False;
-  end;
-  
-  // Position exactly over the CommentsView
-  Left   := FCommentsView.Left;
-  Top    := FCommentsView.Top;
-  Width  := FCommentsView.Width;
-  Height := FCommentsView.Height;
-  
-  // Hide the CommentsView and show this memo
-  FCommentsView.Visible := False;
-  Visible := True;
-  BringToFront;
-  SetFocus;
-end;
-
-procedure TRawCommentsMemo.Hide;
-begin
-  Visible := false;
-  
-  // Update CommentsView text with any changes and show it again
-  if Assigned(FCommentsView) then
-  begin
-    FCommentsView.SetCommentsText(CommentsTextForStorage(Text));
-    FCommentsView.Visible := True;
-  end;
+  Result := StringReplace(Value, #13#10, '<br/>', [rfReplaceAll]);
+  Result := StringReplace(Result, #13, '<br/>', [rfReplaceAll]);
+  Result := StringReplace(Result, #10, '<br/>', [rfReplaceAll]);
+  Result := StringReplace(Result, '<crlf/>', '<br/>',
+    [rfReplaceAll, rfIgnoreCase]);
+  Result := StringReplace(Result, '<lf/>', '<br/>',
+    [rfReplaceAll, rfIgnoreCase]);
+  Result := StringReplace(Result, '<p>', '<br/>',
+    [rfReplaceAll, rfIgnoreCase]);
+  Result := StringReplace(Result, '<CL>', '<br/>',
+    [rfReplaceAll, rfIgnoreCase]);
+  Result := StringReplace(Result, '<br>', '<br/>',
+    [rfReplaceAll, rfIgnoreCase]);
 end;
 
 { TCommentsView }
@@ -170,19 +97,15 @@ begin
   inherited Create(AOwner);
   FFontName := 'default';
   FFontSize := 10;
-  FReadOnly := False; // Allow editing by default
-  FUpdatingRawMemo := False;
+  FReadOnly := False;
   FOnTextChanged := nil;
   OnMouseWheel := @HandleMouseWheel;
   OnDblClick := @HandleDoubleClick;
   ScrollBars := ssAutoVertical;
-  FRawMemo := nil; // Will be created when needed
 end;
 
 destructor TCommentsView.Destroy;
 begin
-  if Assigned(FRawMemo) then
-    FRawMemo.Free;
   inherited Destroy;
 end;
 
@@ -196,16 +119,7 @@ end;
 procedure TCommentsView.SetCommentsText(const CommentsText: string);
 begin
   FText := CommentsText;
-  if Assigned(FRawMemo) and FRawMemo.Visible then
-  begin
-    FUpdatingRawMemo := True;
-    try
-      FRawMemo.Text := CommentsTextForRawEditor(CommentsText);
-    finally
-      FUpdatingRawMemo := False;
-    end;
-  end;
-  RenderHTML(CommentsText);
+  RenderHTML(CommentsTextForPreview(CommentsText));
 end;
 
 function TCommentsView.HasPendingChange(const Baseline: string): Boolean;
@@ -215,18 +129,12 @@ end;
 
 procedure TCommentsView.DiscardEdit;
 begin
-  if not Assigned(FRawMemo) or not FRawMemo.Visible then
-    Exit;
-  FRawMemo.Visible := False;
-  Visible := True;
+  { Editing is modal and only updates FText after Save. }
 end;
 
 function TCommentsView.GetText: string;
 begin
-  if Assigned(FRawMemo) and FRawMemo.Visible then
-    Result := CommentsTextForStorage(FRawMemo.Text)
-  else
-    Result := FText;
+  Result := FText;
 end;
 
 procedure TCommentsView.SetText(const AValue: string);
@@ -240,7 +148,7 @@ begin
   FFontName := AValue;
   SetupDefaultStyle;
   if FText <> '' then
-    RenderHTML(FText);
+    RenderHTML(CommentsTextForPreview(FText));
 end;
 
 procedure TCommentsView.SetFontSize(const AValue: integer);
@@ -249,27 +157,31 @@ begin
   FFontSize := AValue;
   SetupDefaultStyle;
   if FText <> '' then
-    RenderHTML(FText);
+    RenderHTML(CommentsTextForPreview(FText));
 end;
 
 procedure TCommentsView.HandleDoubleClick(Sender: TObject);
+var
+  AnchorRect: TRect;
+  EditedBody, InitialBody: UnicodeString;
+  NewText: string;
+  ScreenOrigin: TPoint;
 begin
-  // Don't allow editing if ReadOnly is true
   if FReadOnly then
     Exit;
-    
-  // Create the raw memo if it doesn't exist yet
-  if not Assigned(FRawMemo) then
-    FRawMemo := TRawCommentsMemo.Create(Self, Self);
-    
-  // Show the raw memo for editing (it will handle hiding this component)
-  FRawMemo.Show(FText);
-end;
 
-procedure TCommentsView.HandleRawMemoChange(Sender: TObject);
-begin
-  if FUpdatingRawMemo then
+  ScreenOrigin := ClientToScreen(Point(0, 0));
+  AnchorRect := Rect(ScreenOrigin.X, ScreenOrigin.Y,
+    ScreenOrigin.X + ClientWidth, ScreenOrigin.Y + ClientHeight);
+  InitialBody := UTF8Decode(CommentsTextForWysiwygEditor(FText));
+  if not ExecuteTheWordBodyEditor(Self, AnchorRect,
+    SEditorialCommentsTitle, InitialBody, EditedBody) then
     Exit;
+
+  NewText := CommentsTextFromWysiwygEditor(UTF8Encode(EditedBody));
+  if NewText = FText then
+    Exit;
+  SetCommentsText(NewText);
   if Assigned(FOnTextChanged) then
     FOnTextChanged(Self);
 end;
@@ -281,16 +193,14 @@ begin
   begin
     FFontSize := Max(6, FFontSize + Sign(WheelDelta));
     SetupDefaultStyle;
-    RenderHTML(FText); // Re-render with new font size
+    RenderHTML(CommentsTextForPreview(FText));
     Handled := true;
   end;
 end;
 
 {$IFDEF FPC}
 initialization
-  // Component registration not needed for FPC/Lazarus runtime
+  { Component registration not needed for FPC/Lazarus runtime. }
 {$ENDIF}
 
 end.
-
-

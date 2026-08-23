@@ -433,10 +433,10 @@ end;
 procedure TTheWordWysiwygSessionV2Test.
   VisualAdapterRendersOldTestamentQuoteBoldBlack;
 const
-  FO_ONLY: UnicodeString = '<FO>a<Fo>';
-  COMBINED: UnicodeString = '<FO><FI><FU>a<Fu><Fi><Fo>';
-  FO_OUTSIDE_FR: UnicodeString = '<FO><FR>a<Fr><Fo>';
-  FR_OUTSIDE_FO: UnicodeString = '<FR><FO>a<Fo><Fr>';
+  FO_ONLY: UnicodeString = '<FO>ab<Fo>';
+  COMBINED: UnicodeString = '<FO><FI><FU>ab<Fu><Fi><Fo>';
+  FO_OUTSIDE_FR: UnicodeString = '<FO><FR>ab<Fr><Fo>';
+  FR_OUTSIDE_FO: UnicodeString = '<FR><FO>ab<Fo><Fr>';
 var
   Codec: ITheWordOntCodecV2;
   Source: TTheWordVerseDocument;
@@ -449,13 +449,21 @@ var
     Source := Codec.DecodeVerse(ARaw);
     try
       Visual := BuildTheWordVerseVisualDocument(Source, tdLeftToRight, 8);
-      AssertEquals(UnicodeString('a'), Visual.Text);
+      AssertEquals(UnicodeString('ab'), Visual.Text);
       AssertTrue('semantic span has an explicit foreground color',
         Visual.Spans[0].Style.HasForegroundColor);
       AssertEquals('semantic foreground color', LongInt(AExpectedColor),
         Visual.Spans[0].Style.ForegroundColor);
       Style := Visual.Spans[0].Style;
       AssertTrue('semantic style flags', Style.Flags = AExpectedFlags);
+      AssertTrue('strict-interior insertion style resolves',
+        TryResolveTheWordInsertionVisualStyle(Source, 1, Style));
+      AssertTrue('insertion semantic style flags',
+        Style.Flags = AExpectedFlags);
+      AssertTrue('insertion has an explicit semantic foreground',
+        Style.HasForegroundColor);
+      AssertEquals('insertion semantic foreground',
+        LongInt(AExpectedColor), Style.ForegroundColor);
       AssertEquals('visualization preserves the original ONT', ARaw,
         Codec.EncodeVerse(Source));
     finally
@@ -470,10 +478,10 @@ begin
   AssertVisualStyle(FO_ONLY, clBlack, [vtsfBold]);
   AssertVisualStyle(COMBINED, clBlack,
     [vtsfBold, vtsfItalic, vtsfUnderline]);
-  { FO remains black where it overlaps FR. The result must not depend on
-    which wrapper is outermost. }
-  AssertVisualStyle(FO_OUTSIDE_FR, clBlack, [vtsfBold]);
-  AssertVisualStyle(FR_OUTSIDE_FO, clBlack, [vtsfBold]);
+  { FR supplies the color where it overlaps FO, while FO still supplies
+    bold. The result must not depend on which wrapper is outermost. }
+  AssertVisualStyle(FO_OUTSIDE_FR, clRed, [vtsfBold]);
+  AssertVisualStyle(FR_OUTSIDE_FO, clRed, [vtsfBold]);
 end;
 
 procedure TTheWordWysiwygSessionV2Test.
@@ -1964,7 +1972,7 @@ begin
     AssertEquals('FR overrides font blue', LongInt(clRed),
       Span.Style.ForegroundColor);
     AssertTrue(Visual.TryGetSpanAt(1, Span));
-    AssertEquals('FO overrides font and FR', LongInt(clBlack),
+    AssertEquals('FO overrides font color outside FR', LongInt(clBlack),
       Span.Style.ForegroundColor);
   finally
     Document.Free;

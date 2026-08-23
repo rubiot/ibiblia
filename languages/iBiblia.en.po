@@ -2234,6 +2234,43 @@ msgctxt "formprojectproperties.stextdescriptionlabel"
 msgid "Text description"
 msgstr "Text description"
 
+#: formprojectproperties.stextimportcancelledfmt
+#, object-pascal-format
+msgctxt "formprojectproperties.stextimportcancelledfmt"
+msgid "The import of \"%s\" was cancelled."
+msgstr "The import of \"%s\" was cancelled."
+
+#: formprojectproperties.stextimportconflictingchanges
+msgctxt "formprojectproperties.stextimportconflictingchanges"
+msgid "Apply tokenizer, status catalog, or text removal changes separately before replacing a Bible text."
+msgstr "Apply tokenizer, status catalog, or text removal changes separately before replacing a Bible text."
+
+#: formprojectproperties.stextimportfailedfmt
+#, object-pascal-format
+msgctxt "formprojectproperties.stextimportfailedfmt"
+msgid "The text could not be imported from \"%s\"."
+msgstr "The text could not be imported from \"%s\"."
+
+#: formprojectproperties.stextimportpartialchanges
+msgctxt "formprojectproperties.stextimportpartialchanges"
+msgid "Changes completed before this import failure were kept."
+msgstr "Changes completed before this import failure were kept."
+
+#: formprojectproperties.stextimportprogress
+msgctxt "formprojectproperties.stextimportprogress"
+msgid "Importing Bible text..."
+msgstr "Importing Bible text..."
+
+#: formprojectproperties.stextimportrequiressavedproject
+msgctxt "formprojectproperties.stextimportrequiressavedproject"
+msgid "Save or discard the current project changes before replacing a Bible text."
+msgstr "Save or discard the current project changes before replacing a Bible text."
+
+#: formprojectproperties.stextimporttitle
+msgctxt "formprojectproperties.stextimporttitle"
+msgid "Import Bible text"
+msgstr "Import Bible text"
+
 #: formprojectproperties.stextpendingclear
 msgid "Pending clear on OK."
 msgstr "Pending clear on OK."

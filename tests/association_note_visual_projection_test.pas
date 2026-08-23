@@ -21,7 +21,7 @@ implementation
 uses
   SysUtils, Graphics, ONTTokenizer, Syntagm, Verse, text_direction,
   verse_visual_document, verse_visual_adapter,
-  theword_effective_inline_style_v2, theword_ont_codec_v2;
+  theword_effective_inline_style_v2, theword_ont_codec_v2, theword_translator_note_style;
 
 function FindSyntagmIndex(Syntagms: TSyntagmList;
   const AText: string): Integer;
@@ -141,7 +141,9 @@ begin
       AssertTrue(vtsfSuperscript in Span.Style.Flags);
       AssertEquals(-1, Span.Style.FontSizeDelta);
       AssertTrue(Span.Style.HasForegroundColor);
-      AssertEquals(LongInt(clBlue), Span.Style.ForegroundColor);
+      AssertEquals('marker uses theWord orange',
+        LongInt(TheWordTranslatorNoteMarkerColor),
+        Span.Style.ForegroundColor);
       AssertTrue('marker keeps its logical index for object hit-testing',
         Document.TryGetLogicalIndexAt(Span.StartUTF16, HitIndex));
       AssertEquals(LogicalIndex, HitIndex);

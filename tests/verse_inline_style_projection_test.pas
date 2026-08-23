@@ -12,6 +12,7 @@ type
   TVerseInlineStyleProjectionTests = class(TTestCase)
   published
     procedure ProjectsInlineStyleWithoutChangingAssociationIdentity;
+    procedure WordsOfJesusColorWinsOldTestamentQuoteInBothOrders;
     procedure ConsumedBlocksAndEmojiKeepEffectiveStyleOffsets;
     procedure MalformedInnerFontIsHiddenAndOuterStyleSurvives;
     procedure LegacyCallWithoutRawKeepsSyntagmState;
@@ -155,8 +156,8 @@ begin
     AssertFalse(vtsfSuperscript in BSpan.Style.Flags);
     CSpan := RequiredSpan(Document, CIndex);
     AssertTrue('FO implies bold', vtsfBold in CSpan.Style.Flags);
-    AssertEquals('FO overrides FR and font, then fades',
-      FadeTheWordExplicitColorV2($00000000),
+    AssertEquals('FR overrides FO and font, then fades',
+      FadeTheWordExplicitColorV2($000000FF),
       CSpan.Style.ForegroundColor);
     DSpan := RequiredSpan(Document, DIndex);
     AssertEquals('FR restores after FO',
@@ -210,6 +211,40 @@ begin
   finally
     TargetVerse.Free;
     SourceVerse.Free;
+  end;
+end;
+
+procedure TVerseInlineStyleProjectionTests.
+  WordsOfJesusColorWinsOldTestamentQuoteInBothOrders;
+const
+  RAW = '<FO><FR>foOutside<Fr><Fo> ' +
+    '<FR><FO>frOutside<Fo><Fr>';
+var
+  VerseModel: TVerse;
+  Document: IVerseVisualDocument;
+  FOOutsideSpan, FROutsideSpan: TVisualSpan;
+begin
+  VerseModel := TVerse.Create;
+  try
+    VerseModel.Text := RAW;
+    Document := BuildVerseVisualDocument(VerseModel.Syntagms, nil,
+      tdLeftToRight, 911, clGreen, clGray, False, RAW);
+    FOOutsideSpan := RequiredSpan(Document,
+      FindSyntagmIndex(VerseModel.Syntagms, 'foOutside'));
+    FROutsideSpan := RequiredSpan(Document,
+      FindSyntagmIndex(VerseModel.Syntagms, 'frOutside'));
+    AssertTrue('FO outside FR still supplies bold',
+      vtsfBold in FOOutsideSpan.Style.Flags);
+    AssertEquals('FR inside FO supplies the faded red color',
+      FadeTheWordExplicitColorV2($000000FF),
+      FOOutsideSpan.Style.ForegroundColor);
+    AssertTrue('FO inside FR still supplies bold',
+      vtsfBold in FROutsideSpan.Style.Flags);
+    AssertEquals('FR outside FO supplies the faded red color',
+      FadeTheWordExplicitColorV2($000000FF),
+      FROutsideSpan.Style.ForegroundColor);
+  finally
+    VerseModel.Free;
   end;
 end;
 

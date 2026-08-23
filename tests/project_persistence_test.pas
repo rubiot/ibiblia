@@ -7,7 +7,8 @@ interface
 uses
   Classes, SysUtils, DB, StdCtrls, fpcunit, testregistry, sqlite3conn, sqldb,
   Verse, current_verse_workspace, project_persistence, project_config,
-  project_verse_repository, CommentsView, text_direction, Project;
+  project_verse_repository, CommentsView, text_direction, Project,
+  theword_ont_codec_v2;
 
 type
   TProjectPersistenceTest = class(TTestCase)
@@ -39,8 +40,10 @@ type
     procedure TypedConfigSeparatesMarkerAndTokenizer;
     procedure TextDirectionConfigUsesStablePerTextKeys;
     procedure TextDirectionSetterDoesNotIndexNonVerseTypes;
-    procedure CommentLineBreakTagsAreDecodedOnlyInRawEditor;
-    procedure CommentLineBreaksAreEncodedForStorage;
+    procedure CommentBreaksMapToAndFromWysiwygSession;
+    procedure CommentWysiwygSaveCanonicalizesLegacyBreaks;
+    procedure CommentPreviewProjectsBreaksAndPreservesOpaqueTags;
+    procedure UnknownEditorialMarkupUsesRawOnlyMode;
     procedure PendingStateNotificationsTrackNetChanges;
     procedure AutomaticRFCountUsesPendingRowsAndRestoresDatasetState;
   end;
@@ -617,21 +620,48 @@ begin
   end;
 end;
 
-procedure TProjectPersistenceTest.CommentLineBreakTagsAreDecodedOnlyInRawEditor;
+procedure TProjectPersistenceTest.CommentBreaksMapToAndFromWysiwygSession;
+var
+  Source: string;
 begin
+  Source := 'first' + #13#10 + 'second<lf/>third<crlf/>fourth' +
+    '<br/>fifth<br>sixth';
   AssertEquals(
-    'first' + LineEnding + 'second<br/>third' + LineEnding + 'fourth',
-    CommentsTextForRawEditor(
-      'first<lf/>second<br/>third<crlf/>fourth'));
+    'first<p>second<p>third<p>fourth<CL>fifth<CL>sixth',
+    CommentsTextForWysiwygEditor(Source));
+  AssertEquals('first<p>second<CL>third<p>fourth',
+    CommentsTextFromWysiwygEditor(
+      'first<p>second<CL>third' + #10 + 'fourth'));
 end;
 
-procedure TProjectPersistenceTest.CommentLineBreaksAreEncodedForStorage;
+procedure TProjectPersistenceTest.CommentWysiwygSaveCanonicalizesLegacyBreaks;
+var
+  Initial, Original: string;
 begin
-  AssertEquals(
-    'first<lf/>second<br/>third<lf/>fourth<lf/>fifth',
-    CommentsTextForStorage(
-      'first' + #13#10 + 'second<br/>third' + #10 + 'fourth' + #13 +
-      'fifth'));
+  Original := 'one<crlf/>two<br>three' + #10 + '<b>four</b>';
+  Initial := CommentsTextForWysiwygEditor(Original);
+  AssertEquals('saving migrates mixed legacy breaks to canonical body tags',
+    'one<p>two<CL>three<p><b>four</b>',
+    CommentsTextFromWysiwygEditor(Initial));
+  AssertEquals('a real edit also keeps canonical body tags',
+    'one<p>changed<CL>three<p><b>four</b>',
+    CommentsTextFromWysiwygEditor(
+      'one<p>changed<CL>three<p><b>four</b>'));
+end;
+
+procedure TProjectPersistenceTest.
+  CommentPreviewProjectsBreaksAndPreservesOpaqueTags;
+begin
+  AssertEquals('one<br/>two<br/>three<br/>four<br/>five<CM>opaque<CI>',
+    CommentsTextForPreview(
+      'one<lf/>two<p>three<CL>four<br>five<CM>opaque<CI>'));
+end;
+
+procedure TProjectPersistenceTest.UnknownEditorialMarkupUsesRawOnlyMode;
+begin
+  AssertEquals(Ord(twlcRawOnly), Ord(AnalyzeTheWordTranslatorNoteBody(
+    UTF8Decode(CommentsTextForWysiwygEditor(
+      'known<lf/>before<CM>opaque<CI>after')))));
 end;
 
 procedure TProjectPersistenceTest.

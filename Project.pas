@@ -598,6 +598,8 @@ const
   QStrongs: array[etOT..etONT] of smallint = (8674, 5624, 14298);
 
 procedure UpdateDefaultStatusDescription;
+function TextTypeParticipatesInAssociations(
+  ATextType: TTipoTextoBiblico): Boolean;
 
 implementation
 
@@ -622,6 +624,12 @@ type
     property ErrorMessage: string read FErrorMessage;
     property Response: TLLMResponse read FResponse;
   end;
+
+function TextTypeParticipatesInAssociations(
+  ATextType: TTipoTextoBiblico): Boolean;
+begin
+  Result := ATextType in [tbOrigem, tbDestino];
+end;
 
 { TProject }
 
@@ -2512,8 +2520,8 @@ begin
   MemoryInputChanged := (PreviousText <>
     FPersistence.CurrentText(FACamposTexto[texto])) or
     (PreviousPairs <> FPersistence.CurrentPairs);
-  if Result and MemoryInputChanged and
-    (texto in [tbOrigem, tbDestino]) and Assigned(FAssociationMemory) then
+  if Result and MemoryInputChanged and TextTypeParticipatesInAssociations(
+    texto) and Assigned(FAssociationMemory) then
   begin
     FAssociationMemory.MarkSourceDirty;
     FAssociationMemory.InvalidateReplay;
@@ -4702,7 +4710,7 @@ var
           Snapshots[SnapshotCount - 1].ReferenceID);
       SnapshotsRestored := True;
       if Assigned(FAssociationMemory) and
-        (texto in [tbOrigem, tbDestino]) then
+        TextTypeParticipatesInAssociations(texto) then
       begin
         FAssociationMemory.MarkSourceDirty;
         FAssociationMemory.MarkCacheOutdated;
@@ -5004,7 +5012,7 @@ begin
         end;
       end;
 
-      if texto in [tbOrigem, tbDestino] then
+      if TextTypeParticipatesInAssociations(texto) then
       begin
         if UsesActiveProgressForm then
         begin

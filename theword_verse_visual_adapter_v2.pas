@@ -57,7 +57,7 @@ function TryCollectTheWordParagraphMarkOffsets(
 implementation
 
 uses
-  SysUtils, rf_note_scanner;
+  SysUtils, rf_note_scanner, theword_translator_note_style;
 
 type
   TIntArray = array of Integer;
@@ -551,7 +551,7 @@ begin
     Include(Style.Flags, vtsfSuperscript);
     Style.FontSizeDelta := -1;
     Style.HasForegroundColor := True;
-    Style.ForegroundColor := LongInt(clBlue);
+    Style.ForegroundColor := LongInt(TheWordTranslatorNoteMarkerColor);
     ABuilder.AddObjectText(ASpanIndex,
       AAnchor.TranslatorNotes[Index].Marker, Style, vsrTranslatorNote,
       AAnchor.TranslatorNotes[Index].ObjectId, 'translator-note');
@@ -799,15 +799,15 @@ begin
   end;
 
 
-  if HasOldTestamentQuote then
-  begin
-    AStyle.HasForegroundColor := True;
-    AStyle.ForegroundColor := LongInt(clBlack);
-  end
-  else if HasWordsOfJesus then
+  if HasWordsOfJesus then
   begin
     AStyle.HasForegroundColor := True;
     AStyle.ForegroundColor := LongInt(clRed);
+  end
+  else if HasOldTestamentQuote then
+  begin
+    AStyle.HasForegroundColor := True;
+    AStyle.ForegroundColor := LongInt(clBlack);
   end;
 end;
 
@@ -900,17 +900,17 @@ begin
             end;
           end;
         end;
-        { Semantic colors have an explicit, order-independent priority. FO is
-          bold black even where it overlaps FR; FR remains red elsewhere. }
-        if HasOldTestamentQuote then
-        begin
-          Style.HasForegroundColor := True;
-          Style.ForegroundColor := LongInt(clBlack);
-        end
-        else if HasWordsOfJesus then
+        { Semantic colors have an explicit, order-independent priority. FR
+          stays red where it overlaps FO; FO still contributes bold. }
+        if HasWordsOfJesus then
         begin
           Style.HasForegroundColor := True;
           Style.ForegroundColor := LongInt(clRed);
+        end
+        else if HasOldTestamentQuote then
+        begin
+          Style.HasForegroundColor := True;
+          Style.ForegroundColor := LongInt(clBlack);
         end;
         SegmentText := Copy(ADocument.VisibleText, SegmentStart + 1,
           SegmentFinish - SegmentStart);

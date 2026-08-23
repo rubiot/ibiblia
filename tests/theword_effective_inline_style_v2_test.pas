@@ -99,16 +99,23 @@ var
   Style: TTheWordEffectiveInlineStyleV2;
 begin
   Projection := TTheWordEffectiveInlineProjectionV2.Resolve(
-    '<font color=blue><FR><B>x</b><FO>y<Fo><Fr></font>');
+    '<font color=blue><FR><B>x</b><FO>y<Fo><Fr>' +
+    '<FO><FR>z<Fr><Fo></font>');
   try
     Style := RequiredStyleAt(Projection, 0);
     AssertTrue('uppercase HTML B is recognized', tweifv2Bold in Style.Flags);
     AssertEquals('FR overrides font color', LongInt($000000FF),
       Style.ExplicitColor);
     Style := RequiredStyleAt(Projection, 1);
-    AssertTrue('FO implies bold', tweifv2Bold in Style.Flags);
-    AssertEquals('FO overrides FR and font', LongInt($00000000),
-      Style.ExplicitColor);
+    AssertTrue('FO implies bold with FR outside',
+      tweifv2Bold in Style.Flags);
+    AssertEquals('FR outside FO keeps words-of-Jesus red',
+      LongInt($000000FF), Style.ExplicitColor);
+    Style := RequiredStyleAt(Projection, 2);
+    AssertTrue('FO implies bold with FO outside',
+      tweifv2Bold in Style.Flags);
+    AssertEquals('FR inside FO keeps words-of-Jesus red',
+      LongInt($000000FF), Style.ExplicitColor);
   finally
     Projection.Free;
   end;

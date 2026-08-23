@@ -108,7 +108,7 @@ type
     function GetSelectedTokenizerVersion: Integer;
   public
     procedure SetProject(Project: TProject);
-    procedure ApplyChanges;
+    procedure ApplyChanges(AProgressOwner: TCustomForm = nil);
     procedure Translate;
   end;
 
@@ -840,7 +840,7 @@ begin
   TextScopeName := SelectedTextScopeName;
   TextType := CurrentTextType;
   ReplaceExistingText := False;
-  if TextType in [tbOrigem, tbDestino] then
+  if TextTypeParticipatesInAssociations(TextType) then
   begin
     case MessageDlg(SChooseAnotherText, Format(SChangeTextConfirmationAssociation,
         [TextScopeName]), mtConfirmation, [mbYes, mbNo, mbCancel], 0) of
@@ -884,15 +884,17 @@ procedure TFrmProjectProperties.ActionClearTextExecute(Sender: TObject);
 var
   Msg: string;
   TextScopeName: string;
+  TextType: TTipoTextoBiblico;
 begin
+  TextType := CurrentTextType;
   TextScopeName := SelectedTextScopeName;
-  Msg := IfThen(TTipoTextoBiblico(TabControlTextType.TabIndex) in [tbOrigem, tbDestino],
+  Msg := IfThen(TextTypeParticipatesInAssociations(TextType),
                 Format(SClearTextConfirmationAssociation, [TextScopeName]),
                 Format(SClearTextConfirmation, [TextScopeName]));
   if MessageDlg(SClearText, Msg, mtConfirmation, [mbYes, mbCancel], 0) = mrYes then
   begin
-    FPendingTextActions[CurrentTextType] := ptaClear;
-    FPendingTextFiles[CurrentTextType] := '';
+    FPendingTextActions[TextType] := ptaClear;
+    FPendingTextFiles[TextType] := '';
     MemoTextPreview.Clear;
     UpdateReview;
   end;
@@ -1111,7 +1113,8 @@ begin
   UpdateReview;
 end;
 
-procedure TFrmProjectProperties.ApplyChanges;
+procedure TFrmProjectProperties.ApplyChanges(
+  AProgressOwner: TCustomForm);
 var
   CurrentVersion: Integer;
   SelectedVersion: Integer;
@@ -1124,7 +1127,13 @@ var
   ImportResult: TTheWordModuleImportResult;
   ImportSucceeded: Boolean;
   HasTextImport: Boolean;
+  ReplaceAssociations: Boolean;
 begin
+  if not Assigned(AProgressOwner) then
+    AProgressOwner := Application.MainForm;
+  if not Assigned(AProgressOwner) then
+    AProgressOwner := Self;
+
   if Assigned(FProject) then
   begin
     if not ValidatePendingChanges(MessageText) then
@@ -1180,7 +1189,7 @@ begin
                 TTokenizerFactory.GetVersionCaption(CurrentVersion),
                 TTokenizerFactory.GetVersionCaption(SelectedVersion)
               ]);
-              FormPleaseWait.BeginOperation(Self, STokenizerVersionChangeTitle,
+              FormPleaseWait.BeginOperation(AProgressOwner, STokenizerVersionChangeTitle,
                 SClearingTokenizerAssociationsProgress, 0,
                 VersionChangeDetail);
               try
@@ -1202,10 +1211,10 @@ begin
           TTokenizerFactory.GetVersionCaption(SelectedVersion)
         ]);
         if HasAssociations then
-          FormPleaseWait.BeginOperation(Self, STokenizerVersionChangeTitle,
+          FormPleaseWait.BeginOperation(AProgressOwner, STokenizerVersionChangeTitle,
             SMigratingTokenizerAssociationsProgress, 0, VersionChangeDetail)
         else
-          FormPleaseWait.BeginOperation(Self, STokenizerVersionChangeTitle,
+          FormPleaseWait.BeginOperation(AProgressOwner, STokenizerVersionChangeTitle,
             SChangingTokenizerVersionProgress, 0, VersionChangeDetail);
         try
           FProject.ChangeTokenizerVersion(SelectedVersion,
@@ -1229,13 +1238,15 @@ begin
       case FPendingTextActions[TextType] of
         ptaLoad:
           begin
-            FormPleaseWait.BeginOperation(Self, STextImportTitle,
+            FormPleaseWait.BeginOperation(AProgressOwner, STextImportTitle,
               STextImportProgress, 1, FPendingTextFiles[TextType]);
             try
+              ReplaceAssociations := FPendingTextReplace[TextType] and
+                TextTypeParticipatesInAssociations(TextType);
               ImportSucceeded := FProject.ImportTheWordModule(
                 FPendingTextFiles[TextType], TextType,
                 FormPleaseWait.ProgressBar1,
-                FPendingTextReplace[TextType], ImportResult, True);
+                ReplaceAssociations, ImportResult, True);
             finally
               FormPleaseWait.FinishOperation;
             end;

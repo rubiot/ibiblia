@@ -24,6 +24,7 @@ type
     procedure LogicalFontSizeSurvivesPhysicalDpiDrift;
     procedure ImplicitWhiteBackgroundIsOmittedButExplicitWhiteRoundTrips;
     procedure EditorBreakKeysSerializeMarkupWithoutPhysicalNewlines;
+    procedure BodyOnlyEditorHidesMarkerAndAcceptsEmptyAndRawBreaks;
     procedure AdapterCreatesTypedNonTextMarkersWithSharedNumbering;
     procedure DirectEditorRoutesShortcutHoverAndClickForNoteMarker;
     procedure DirectEditorKeepsMixedMarkersAtomicAcrossParagraphDirections;
@@ -40,7 +41,7 @@ uses
   directwrite_syntagm_view, directwrite_verse_editor,
   theword_ont_codec_v2, theword_verse_visual_adapter_v2,
   theword_wysiwyg_editor_control, theword_translator_note_editor, theword_translator_note_body_v2,
-  theword_translator_note_preview, chapterview;
+  theword_translator_note_preview, theword_translator_note_style, chapterview;
 
 type
   TApplyProbe = class
@@ -589,6 +590,53 @@ begin
     Pos(UnicodeString('alpha'), Probe.RawInteriorNewlineBody) = 1);
   AssertTrue('text after the intentional Raw line break is retained',
     Pos(UnicodeString('beta'), Probe.RawInteriorNewlineBody) > 1);
+
+  AssertEquals('body-only Raw Enter and Shift+Enter keep ONT semantics',
+    'raw-only<CM>opaque<CI><p><CL>',
+    UTF8Encode(Probe.BodyOnlyRawBody));
+  AssertEquals('body-only Raw output contains no physical CR', 0,
+    Pos(#13, Probe.BodyOnlyRawBody));
+  AssertEquals('body-only Raw output contains no physical LF', 0,
+    Pos(#10, Probe.BodyOnlyRawBody));
+end;
+
+procedure TTheWordTranslatorNoteVisualTests.
+  BodyOnlyEditorHidesMarkerAndAcceptsEmptyAndRawBreaks;
+var
+  Body: UnicodeString;
+  DeleteVisible, MarkerControlsVisible, VisualEditing: Boolean;
+  ErrorMessage: string;
+begin
+  Forms.Application.Initialize;
+  AssertTrue(ErrorMessage, TryExerciseTheWordBodyEditorMode(
+    'editorial', Body, MarkerControlsVisible, DeleteVisible,
+    VisualEditing, ErrorMessage));
+  AssertFalse('body-only mode hides RF marker controls',
+    MarkerControlsVisible);
+  AssertFalse('body-only mode does not offer note deletion',
+    DeleteVisible);
+  AssertTrue('supported comments open in Visual mode', VisualEditing);
+  AssertEquals('body-only keeps Enter and Shift+Enter parity with RF notes',
+    'editorial<p><CL>', UTF8Encode(Body));
+
+  AssertTrue('empty editorial comments can be saved',
+    TryExerciseTheWordBodyEditorSave('', Body, VisualEditing,
+      ErrorMessage));
+  AssertEquals('empty save remains empty', '', UTF8Encode(Body));
+  AssertTrue('empty supported body stays visual', VisualEditing);
+
+  AssertTrue('unknown comments can still be saved in Raw mode',
+    TryExerciseTheWordBodyEditorSave(
+      'alpha<CM>opaque<CI>' + LineEnding + 'beta', Body,
+      VisualEditing, ErrorMessage));
+  AssertFalse('unknown comment markup falls back to Raw mode',
+    VisualEditing);
+  AssertEquals('Raw physical line breaks normalize before comment save',
+    'alpha<CM>opaque<CI><p>beta', UTF8Encode(Body));
+  AssertEquals('normalized Raw body contains no physical CR', 0,
+    Pos(#13, Body));
+  AssertEquals('normalized Raw body contains no physical LF', 0,
+    Pos(#10, Body));
 end;
 
 procedure TTheWordTranslatorNoteVisualTests.
@@ -619,7 +667,8 @@ begin
         vtsfSuperscript in Span.Style.Flags);
       AssertEquals('marker is one point smaller', -1,
         Span.Style.FontSizeDelta);
-      AssertEquals('marker is blue', LongInt(clBlue),
+      AssertEquals('marker uses theWord orange',
+        LongInt(TheWordTranslatorNoteMarkerColor),
         Span.Style.ForegroundColor);
       if MarkerCount = 1 then
         AssertEquals('automatic numbering continues from chapter base',

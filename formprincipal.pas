@@ -2380,7 +2380,7 @@ begin
   FrmProjectProperties.SetProject(CurrentProject);
   if FrmProjectProperties.ShowModal = mrOK then
   begin
-    FrmProjectProperties.ApplyChanges;
+    FrmProjectProperties.ApplyChanges(Self);
     ActionNewVerse.Execute;
     UpdateStatusReviewPanel;
     LayoutVersePanelLabels;

@@ -11,7 +11,7 @@ uses
   LCLTranslator, LazLogger, HTMLRenderer, SynEdit,
   theword_syntax_highlighter, bible_book_names, translation_memory_model,
   SuggestionManager, rf_note_scanner,
-  theword_translator_note_preview, theword_effective_inline_style_v2;
+  theword_translator_note_preview, theword_effective_inline_style_v2, theword_translator_note_style;
 
 type
 
@@ -195,7 +195,7 @@ type
 
 const
   NonBibleTextColor = $be7c41;
-  NoteLinkColor = $4080ff;
+  NoteLinkColor = TheWordTranslatorNoteMarkerColor;
   ChapterNumberColor = $2cba7d;
   TranslationMemoryCurrentColor = clBlue;
   DefaultFirstIndent = 20;

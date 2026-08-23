@@ -45,7 +45,7 @@ function BuildVerseVisualDocument(Syntagms: TSyntagmList;
 implementation
 
 uses
-  SysUtils, rf_note_scanner;
+  SysUtils, rf_note_scanner, theword_translator_note_style;
 
 type
   TBooleanArray = array of Boolean;
@@ -263,7 +263,7 @@ begin
   Include(Result.Flags, vtsfSuperscript);
   Result.FontSizeDelta := -1;
   Result.HasForegroundColor := True;
-  Result.ForegroundColor := LongInt(clBlue);
+  Result.ForegroundColor := LongInt(TheWordTranslatorNoteMarkerColor);
 end;
 
 procedure AddRenderedTranslatorNote(var RenderedNotes:

@@ -27,6 +27,7 @@ type
     VisualBody: UnicodeString;
     RawBody: UnicodeString;
     RawInteriorNewlineBody: UnicodeString;
+    BodyOnlyRawBody: UnicodeString;
     TerminalSoftBreakBody: UnicodeString;
     BeforeLastCharacterBody: UnicodeString;
   end;
@@ -51,6 +52,11 @@ function ExecuteTranslatorNoteEditor(AOwner: TComponent;
   AInitialBodyRaw: UnicodeString;
   AOnApply: TTranslatorNoteApplyEvent):
   TTranslatorNoteEditorAction;
+
+function ExecuteTheWordBodyEditor(AOwner: TComponent;
+  const AAnchorScreenRect: TRect; const ATitle: string;
+  const AInitialBodyRaw: UnicodeString;
+  out AEditedBodyRaw: UnicodeString): Boolean;
 
 function IsTranslatorNoteVisualEditingEnabled(
   ACapability: TTheWordLayerCapability): Boolean;
@@ -82,6 +88,15 @@ function TryExerciseTranslatorNoteEditorDpiFontDrift(
   out AErrorMessage: string): Boolean;
 function TryExerciseTranslatorNoteEditorBreakEditing(
   out AProbe: TTranslatorNoteEditorBreakProbe;
+  out AErrorMessage: string): Boolean;
+function TryExerciseTheWordBodyEditorMode(
+  const AInitialBodyRaw: UnicodeString;
+  out ASerializedBody: UnicodeString;
+  out AMarkerControlsVisible, ADeleteVisible, AVisualEditing: Boolean;
+  out AErrorMessage: string): Boolean;
+function TryExerciseTheWordBodyEditorSave(
+  const AInitialBodyRaw: UnicodeString;
+  out ASavedBody: UnicodeString; out AVisualEditing: Boolean;
   out AErrorMessage: string): Boolean;
 {$ENDIF}
 
@@ -207,6 +222,7 @@ type
     FCustomMarker: TEdit;
     FDeleteButton: TButton;
     FExisting: Boolean;
+    FBodyOnly: Boolean;
     FHasVisualSource: Boolean;
     FVisualSourceCanonical: UnicodeString;
     FVisualSourceRaw: UnicodeString;
@@ -281,6 +297,8 @@ type
     procedure LoadNote(AExisting: Boolean;
       ACapability: TTheWordLayerCapability; const AQ,
       ABodyRaw: UnicodeString);
+    procedure LoadBody(ACapability: TTheWordLayerCapability;
+      const ABodyRaw: UnicodeString);
     function MarkerQ: UnicodeString;
     function NoteBodyRaw: UnicodeString;
     property OnApply: TTranslatorNoteApplyEvent read FOnApply write FOnApply;
@@ -895,8 +913,12 @@ procedure TTranslatorNoteEditorForm.LoadNote(AExisting: Boolean;
   ACapability: TTheWordLayerCapability; const AQ,
   ABodyRaw: UnicodeString);
 begin
+  FBodyOnly := False;
   FExisting := AExisting;
   FDeleteButton.Visible := FExisting;
+  FAutoMarker.Visible := True;
+  FParagraphLabel.Visible := True;
+  FCustomMarker.Visible := True;
   FAutoMarker.Checked := AQ = '';
   FCustomMarker.Text := UTF8Encode(AQ);
   AutoMarkerChanged(nil);
@@ -924,6 +946,26 @@ begin
     FPageControl.ActivePage := FRawPage;
     ActiveControl := FRawEditor;
   end;
+end;
+
+procedure TTranslatorNoteEditorForm.LoadBody(
+  ACapability: TTheWordLayerCapability; const ABodyRaw: UnicodeString);
+var
+  Index: Integer;
+begin
+  LoadNote(False, ACapability, '', ABodyRaw);
+  FBodyOnly := True;
+  FDeleteButton.Visible := False;
+  FAutoMarker.Visible := False;
+  FParagraphLabel.Visible := False;
+  FCustomMarker.Visible := False;
+  for Index := 0 to FToolbar.ControlCount - 1 do
+    if (FToolbar.Controls[Index] <> FAutoMarker) and
+       (FToolbar.Controls[Index] <> FParagraphLabel) and
+       (FToolbar.Controls[Index] <> FCustomMarker) and
+       (FToolbar.Controls[Index].Top >= 38) then
+      FToolbar.Controls[Index].Top := FToolbar.Controls[Index].Top - 31;
+  FToolbar.Height := 41;
 end;
 
 procedure TTranslatorNoteEditorForm.FocusBodyEditor;
@@ -1002,6 +1044,9 @@ begin
 end;
 
 function TTranslatorNoteEditorForm.RawBodyText: UnicodeString;
+var
+  Index: Integer;
+  Normalized: UnicodeString;
 begin
   Result := UTF8Decode(FRawEditor.Text);
   { TSynEdit exposes one final platform line ending that belongs to the
@@ -1013,6 +1058,26 @@ begin
   else if (Length(Result) >= 1) and
           (Result[Length(Result)] in [#10, #13]) then
     SetLength(Result, Length(Result) - 1);
+  if FBodyOnly then
+  begin
+    Normalized := '';
+    Index := 1;
+    while Index <= Length(Result) do
+    begin
+      if Result[Index] = #13 then
+      begin
+        if (Index < Length(Result)) and (Result[Index + 1] = #10) then
+          Inc(Index);
+        Normalized := Normalized + '<p>';
+      end
+      else if Result[Index] = #10 then
+        Normalized := Normalized + '<p>'
+      else
+        Normalized := Normalized + Result[Index];
+      Inc(Index);
+    end;
+    Result := Normalized;
+  end;
 end;
 
 function TTranslatorNoteEditorForm.SyncRawToVisual(
@@ -1360,6 +1425,13 @@ var
   ErrorMessage: string;
 begin
   try
+    if FBodyOnly then
+    begin
+      Body := NoteBodyRaw;
+      ModalResult := mrOK;
+      Exit;
+    end;
+
     Body := NoteBodyRaw;
     Q := MarkerQ;
     ErrorMessage := '';
@@ -1874,6 +1946,7 @@ begin
   AProbe.VisualBody := '';
   AProbe.RawBody := '';
   AProbe.RawInteriorNewlineBody := '';
+  AProbe.BodyOnlyRawBody := '';
   AProbe.TerminalSoftBreakBody := '';
   AProbe.BeforeLastCharacterBody := '';
   Form := TTranslatorNoteEditorForm.Create(nil);
@@ -1922,7 +1995,92 @@ begin
 
       Form.FRawEditor.Text := 'alpha' + LineEnding + 'beta';
       AProbe.RawInteriorNewlineBody := Form.RawBodyText;
+
+      Form.LoadBody(twlcRawOnly, '<CM>opaque<CI>');
+      Form.FRawEditor.Text := 'raw-only<CM>opaque<CI>';
+      Form.FRawEditor.SelStart := Length(Form.FRawEditor.Text);
+      Key := VK_RETURN;
+      Form.RawKeyDown(Form.FRawEditor, Key, []);
+      TTranslatorNoteRawEditor(Form.FRawEditor).SimulatePhysicalReturn;
+      Key := VK_RETURN;
+      Form.RawKeyDown(Form.FRawEditor, Key, [ssShift]);
+      TTranslatorNoteRawEditor(Form.FRawEditor).SimulatePhysicalReturn;
+      AProbe.BodyOnlyRawBody := Form.RawBodyText;
       Result := True;
+    except
+      on E: Exception do AErrorMessage := E.Message;
+    end;
+  finally
+    Form.Hide;
+    Form.Free;
+  end;
+end;
+{$ENDIF}
+
+{$IFDEF FPCUNIT}
+function TryExerciseTheWordBodyEditorMode(
+  const AInitialBodyRaw: UnicodeString;
+  out ASerializedBody: UnicodeString;
+  out AMarkerControlsVisible, ADeleteVisible, AVisualEditing: Boolean;
+  out AErrorMessage: string): Boolean;
+var
+  Form: TTranslatorNoteEditorForm;
+begin
+  Result := False;
+  ASerializedBody := '';
+  AMarkerControlsVisible := True;
+  ADeleteVisible := True;
+  AVisualEditing := False;
+  AErrorMessage := '';
+  Form := TTranslatorNoteEditorForm.Create(nil);
+  try
+    try
+      Form.LoadBody(AnalyzeTheWordTranslatorNoteBody(AInitialBodyRaw),
+        AInitialBodyRaw);
+      AMarkerControlsVisible := Form.FAutoMarker.Visible or
+        Form.FParagraphLabel.Visible or Form.FCustomMarker.Visible;
+      ADeleteVisible := Form.FDeleteButton.Visible;
+      AVisualEditing := Form.FPageControl.ActivePage = Form.FVisualPage;
+      if AVisualEditing then
+      begin
+        TTranslatorNoteEditorMemo(Form.FMemo).MoveCaretToDocumentEnd;
+        TTranslatorNoteEditorMemo(Form.FMemo).SimulateReturnKey([]);
+        TTranslatorNoteEditorMemo(Form.FMemo).SimulateReturnKey([ssShift]);
+        ASerializedBody := Form.ResolvedVisualBodyRaw;
+      end
+      else
+        ASerializedBody := Form.RawBodyText;
+      Result := True;
+    except
+      on E: Exception do AErrorMessage := E.Message;
+    end;
+  finally
+    Form.Hide;
+    Form.Free;
+  end;
+end;
+
+function TryExerciseTheWordBodyEditorSave(
+  const AInitialBodyRaw: UnicodeString;
+  out ASavedBody: UnicodeString; out AVisualEditing: Boolean;
+  out AErrorMessage: string): Boolean;
+var
+  Form: TTranslatorNoteEditorForm;
+begin
+  Result := False;
+  ASavedBody := '';
+  AVisualEditing := False;
+  AErrorMessage := '';
+  Form := TTranslatorNoteEditorForm.Create(nil);
+  try
+    try
+      Form.LoadBody(AnalyzeTheWordTranslatorNoteBody(AInitialBodyRaw),
+        AInitialBodyRaw);
+      AVisualEditing := Form.FPageControl.ActivePage = Form.FVisualPage;
+      Form.SaveClick(nil);
+      Result := Form.ModalResult = mrOK;
+      if Result then
+        ASavedBody := Form.NoteBodyRaw;
     except
       on E: Exception do AErrorMessage := E.Message;
     end;
@@ -1962,6 +2120,42 @@ begin
     case Form.ShowModal of
       mrOK: Result := tneaSave;
       mrAbort: Result := tneaDelete;
+    end;
+  finally
+    Form.Free;
+  end;
+end;
+
+function ExecuteTheWordBodyEditor(AOwner: TComponent;
+  const AAnchorScreenRect: TRect; const ATitle: string;
+  const AInitialBodyRaw: UnicodeString;
+  out AEditedBodyRaw: UnicodeString): Boolean;
+var
+  Form: TTranslatorNoteEditorForm;
+  Work: TRect;
+  TargetMonitor: TMonitor;
+begin
+  Result := False;
+  AEditedBodyRaw := AInitialBodyRaw;
+  Form := TTranslatorNoteEditorForm.Create(AOwner);
+  try
+    TargetMonitor := Screen.MonitorFromRect(AAnchorScreenRect);
+    if Assigned(TargetMonitor) then
+      Work := TargetMonitor.WorkareaRect
+    else
+      Work := Screen.WorkAreaRect;
+    Form.Left := EnsureRange(AAnchorScreenRect.Left, Work.Left,
+      Max(Work.Left, Work.Right - Form.Width));
+    Form.Top := AAnchorScreenRect.Bottom + 6;
+    if Form.Top + Form.Height > Work.Bottom then
+      Form.Top := Max(Work.Top, AAnchorScreenRect.Top - Form.Height - 6);
+    Form.Caption := ATitle;
+    Form.LoadBody(AnalyzeTheWordTranslatorNoteBody(AInitialBodyRaw),
+      AInitialBodyRaw);
+    if Form.ShowModal = mrOK then
+    begin
+      AEditedBodyRaw := Form.NoteBodyRaw;
+      Result := True;
     end;
   finally
     Form.Free;

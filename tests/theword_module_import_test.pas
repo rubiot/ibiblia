@@ -65,7 +65,9 @@ type
     procedure SetUp; override;
     procedure TearDown; override;
   published
+    procedure AssociationParticipationIsLimitedToSourceAndDestination;
     procedure Utf8BomWithCharsetZeroDoesNotRequireConfirmation;
+    procedure Reference2ImportPreservesAssociationsAndStatus;
     procedure FullONTImportsAll31102Verses;
     procedure ONTIntoOTUsesOldTestamentCapacity;
     procedure ProjectExhaustionFailsWithCountsAndLeavesNoPartialText;
@@ -332,13 +334,15 @@ begin
     Query.Transaction := Transaction;
     Query.SQL.Text :=
       'update pares set pare_texto_origem = :source, ' +
-      'pare_texto_destino = :destination, pare_pares = :pairs ' +
+      'pare_texto_destino = :destination, pare_pares = :pairs, ' +
+      'pare_situacao = :status ' +
       'where rowid = :row_number';
     Connection.Open;
     Transaction.StartTransaction;
     Query.ParamByName('source').AsString := 'Original associated text';
     Query.ParamByName('destination').AsString := 'Destination associated text';
     Query.ParamByName('pairs').AsString := '<par a="bad" b="0">';
+    Query.ParamByName('status').AsInteger := 2;
     Query.ParamByName('row_number').AsInteger := ARowNumber;
     Query.ExecSQL;
     Transaction.Commit;
@@ -387,6 +391,17 @@ begin
 end;
 
 procedure TTheWordModuleImportTests.
+  AssociationParticipationIsLimitedToSourceAndDestination;
+begin
+  AssertTrue(TextTypeParticipatesInAssociations(tbOrigem));
+  AssertTrue(TextTypeParticipatesInAssociations(tbDestino));
+  AssertFalse(TextTypeParticipatesInAssociations(tbConsulta1));
+  AssertFalse(TextTypeParticipatesInAssociations(tbConsulta2));
+  AssertFalse(TextTypeParticipatesInAssociations(tbInterlinear));
+  AssertFalse(TextTypeParticipatesInAssociations(tbNone));
+end;
+
+procedure TTheWordModuleImportTests.
   Utf8BomWithCharsetZeroDoesNotRequireConfirmation;
 var
   ModuleFile: string;
@@ -403,6 +418,50 @@ begin
   AssertEquals('encoding kind', Ord(twmekUtf8Bom), Ord(EncodingInfo.Kind));
   AssertFalse('charset=0 is metadata and must not override valid UTF-8 bytes',
     EncodingInfo.RequiresConfirmation);
+end;
+
+procedure TTheWordModuleImportTests.
+  Reference2ImportPreservesAssociationsAndStatus;
+const
+  FIRST_NT_REFERENCE = '40,1,1';
+var
+  DatabaseFile: string;
+  ImportResult: TTheWordModuleImportResult;
+  ModuleFile: string;
+  ProjectInstance: TProject;
+begin
+  DatabaseFile := TempPath('reference2-preserves-associations.bib');
+  ModuleFile := CreateONTModule('reference2-preserves-associations.nt',
+    'Reference two', QLinhas[etNT], False, True);
+  TProjectDatabaseBootstrap.CreateProjectDatabase(DatabaseFile, etNT);
+  SeedFirstAssociatedPair(DatabaseFile);
+
+  ProjectInstance := TProject.Create;
+  try
+    ProjectInstance.Escopo := etNT;
+    ProjectInstance.OpenProject(DatabaseFile);
+    AssertTrue('a reference import must complete even when replace is true',
+      ProjectInstance.ImportTheWordModule(ModuleFile, tbConsulta2, nil, True,
+        ImportResult, True));
+    AssertEquals('status', Ord(twmisSucceeded), Ord(ImportResult.Status));
+    ProjectInstance.Commit;
+  finally
+    ProjectInstance.CloseProject(False);
+    ProjectInstance.Free;
+  end;
+
+  AssertEquals('reference 2 receives the imported text', 'Reference two 1',
+    ReadVerseText(DatabaseFile, 'pare_texto_consulta2',
+      FIRST_NT_REFERENCE));
+  AssertEquals('source text is untouched', 'Original associated text',
+    ReadVerseText(DatabaseFile, 'pare_texto_origem', FIRST_NT_REFERENCE));
+  AssertEquals('destination text is untouched',
+    'Destination associated text', ReadVerseText(DatabaseFile,
+      'pare_texto_destino', FIRST_NT_REFERENCE));
+  AssertEquals('the Association is untouched', '<par a="bad" b="0">',
+    ReadVerseText(DatabaseFile, 'pare_pares', FIRST_NT_REFERENCE));
+  AssertEquals('the review status is untouched', '2',
+    ReadVerseText(DatabaseFile, 'pare_situacao', FIRST_NT_REFERENCE));
 end;
 
 procedure TTheWordModuleImportTests.FullONTImportsAll31102Verses;

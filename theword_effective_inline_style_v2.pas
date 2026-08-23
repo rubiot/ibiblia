@@ -171,10 +171,10 @@ begin
         end;
     end;
   end;
-  if HasFO then begin
-    Result.HasExplicitColor := True; Result.ExplicitColor := $00000000;
-  end else if HasFR then begin
+  if HasFR then begin
     Result.HasExplicitColor := True; Result.ExplicitColor := $000000FF;
+  end else if HasFO then begin
+    Result.HasExplicitColor := True; Result.ExplicitColor := $00000000;
   end;
 end;
 

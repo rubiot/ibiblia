@@ -8,7 +8,7 @@ interface
 uses
   Classes, SysUtils, fpcunit, testregistry, Graphics, KMemo,
   HTMLRenderer, ChapterView, theword_ont_codec_v2,
-  theword_effective_inline_style_v2;
+  theword_effective_inline_style_v2, theword_translator_note_style;
 
 type
   TProjectionFailureMode = (pfmNone, pfmCodec, pfmOther);
@@ -152,6 +152,7 @@ begin
   FRenderer.RenderHTML(
     '<b><i><u><s><sup>all</sup></s></u></i></b>' +
     '<sub>sub</sub><FR>red<Fr><font color=#00ff00><FO>old<Fo></font>' +
+    '<FR><FO>frOutside<Fo><Fr><FO><FR>foOutside<Fr><Fo>' +
     '<FI>added<Fi><FU>under<Fu>');
   B := TextBlock(FRenderer, 'all');
   AssertTrue(fsBold in B.TextStyle.Font.Style);
@@ -166,6 +167,14 @@ begin
   AssertEquals(LongInt(clBlack),
     LongInt(TextBlock(FRenderer, 'old').TextStyle.Font.Color));
   AssertTrue(fsBold in TextBlock(FRenderer, 'old').TextStyle.Font.Style);
+  B := TextBlock(FRenderer, 'frOutside');
+  AssertEquals('FR outside FO is red', LongInt(clRed),
+    LongInt(B.TextStyle.Font.Color));
+  AssertTrue('FO inside FR remains bold', fsBold in B.TextStyle.Font.Style);
+  B := TextBlock(FRenderer, 'foOutside');
+  AssertEquals('FR inside FO is red', LongInt(clRed),
+    LongInt(B.TextStyle.Font.Color));
+  AssertTrue('FO outside FR remains bold', fsBold in B.TextStyle.Font.Style);
   AssertTrue(fsItalic in TextBlock(FRenderer, 'added').TextStyle.Font.Style);
   AssertTrue(fsUnderline in TextBlock(FRenderer, 'under').TextStyle.Font.Style);
 end;
@@ -276,6 +285,8 @@ begin
     Chapter.TextStyle.Font.Color := $00554433;
     Chapter.RenderHTML('<FI>added<Fi><i>html</i>' +
       '<FI><FR>red<Fr><Fi><FI><FO>old<Fo><Fi>' +
+      '<FI><FR><FO>frOutside<Fo><Fr><Fi>' +
+      '<FI><FO><FR>foOutside<Fr><Fo><Fi>' +
       '<FI><font color=#00ff00>green</font><Fi>plain');
     B := TextBlock(Chapter, 'added');
     AssertTrue(fsItalic in B.TextStyle.Font.Style);
@@ -287,6 +298,12 @@ begin
       LongInt(TextBlock(Chapter, 'red').TextStyle.Font.Color));
     B := TextBlock(Chapter, 'old');
     AssertEquals(LongInt(clBlack), LongInt(B.TextStyle.Font.Color));
+    AssertTrue(fsBold in B.TextStyle.Font.Style);
+    B := TextBlock(Chapter, 'frOutside');
+    AssertEquals(LongInt(clRed), LongInt(B.TextStyle.Font.Color));
+    AssertTrue(fsBold in B.TextStyle.Font.Style);
+    B := TextBlock(Chapter, 'foOutside');
+    AssertEquals(LongInt(clRed), LongInt(B.TextStyle.Font.Color));
     AssertTrue(fsBold in B.TextStyle.Font.Style);
     AssertEquals(LongInt($0000FF00),
       LongInt(TextBlock(Chapter, 'green').TextStyle.Font.Color));
@@ -318,7 +335,9 @@ begin
     Chapter.RenderHTML('<RF>note<Rf>tail');
     AssertTrue('translator-note marker hyperlink',
       FirstHyperlink(Chapter.Blocks, B));
-    AssertEquals(LongInt(NoteLinkColor), LongInt(B.TextStyle.Font.Color));
+    AssertEquals('chapter RF marker uses theWord orange',
+      LongInt(TheWordTranslatorNoteMarkerColor),
+      LongInt(B.TextStyle.Font.Color));
     AssertTrue(fsItalic in B.TextStyle.Font.Style);
     AssertEquals(11, B.TextStyle.Font.Size);
     AssertEquals(Ord(tpoSuperscript), Ord(B.TextStyle.ScriptPosition));
