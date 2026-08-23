@@ -266,6 +266,13 @@ begin
   Result.ForegroundColor := LongInt(TheWordTranslatorNoteMarkerColor);
 end;
 
+function SoftLineBreakStyle: TVisualTextStyle;
+begin
+  Result := DefaultVisualTextStyle;
+  Result.HasForegroundColor := True;
+  Result.ForegroundColor := LongInt(clGrayText);
+end;
+
 procedure AddRenderedTranslatorNote(var RenderedNotes:
   TVerseRenderedTranslatorNoteArray; LogicalIndex: Integer;
   const Note: TTheWordProjectedTranslatorNoteV2;
@@ -337,6 +344,18 @@ begin
     end
     else
       Builder.AddHidden(LogicalIndex);
+    Exit;
+  end;
+
+  { CL is structural metadata, not an associable syntagm. Keep the original
+    logical index while projecting a visible editing aid and a real line
+    break. It deliberately consumes no visible ONT offset. }
+  if (Syntagm.Kind = skMetadata) and
+     (UTF8Decode(Syntagm.RawText) = UnicodeString('<CL>')) then
+  begin
+    Builder.AddRoleText(LogicalIndex,
+      UnicodeString(WideChar($21B5)) + #10, SoftLineBreakStyle, False,
+      vsrSoftLineBreak, 0, 'soft-line-break');
     Exit;
   end;
 

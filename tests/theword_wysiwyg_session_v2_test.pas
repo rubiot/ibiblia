@@ -28,6 +28,7 @@ type
     procedure ParagraphMarkEditingPreservesRawUndoAndProvenance;
     procedure TitleRendersAsProtectedChapterHeading;
     procedure TitleCannotBeEditedFormattedOrCutVisually;
+    procedure TitleCommandsAreAtomicUndoableAndPreserveBodyTrace;
     procedure MultipleTitleLevelsAndMalformedTitleRemainExplicit;
     procedure TerminalEmptyTitleKeepsOffsetMapReversible;
     procedure ProtectedAnchorsAllowAdjacentButNotCrossingEdits;
@@ -53,6 +54,7 @@ type
     procedure VisualAdapterResolvesNestedFontDimensions;
     procedure FontAndSemanticCrossingsStayBalanced;
     procedure FontOnlyRawChangeIsSemanticPresentation;
+    procedure FontColorSelectionPreservesTopologyAndIsAtomicPresentation;
     procedure RelativeFontSizeIsAtomicUndoableAndProtected;
   end;
 
@@ -503,13 +505,15 @@ begin
     AssertEquals(UnicodeString('Prefácio') + #10 + 'Revelação',
       Visual.Text);
     Span := Visual.Spans[0];
-    AssertFalse('title span is not interactive', Span.Interactive);
+    AssertTrue('simple title text is interactive', Span.Interactive);
+    AssertEquals('title has a dedicated visual role', Ord(vsrTitleContent),
+      Ord(Span.Role));
     AssertTrue('default title is bold', vtsfBold in Span.Style.Flags);
     AssertEquals('default title grows by two points', 2,
       Span.Style.FontSizeDelta);
     AssertTrue('default title uses chapter heading color',
       Span.Style.HasForegroundColor);
-    AssertEquals('default title annotation', UnicodeString('title-level-0'),
+    AssertEquals('default title annotation', UnicodeString('title-level-1'),
       Span.Annotation);
     AssertTrue(TryTheWordDocumentToLayoutOffset(Visual, TitleLength,
       twoaBefore, LayoutOffset));
@@ -588,6 +592,102 @@ begin
 end;
 
 procedure TTheWordWysiwygSessionV2Test.
+  TitleCommandsAreAtomicUndoableAndPreserveBodyTrace;
+var
+  CurrentStart: Integer;
+  Session: TTheWordWysiwygSessionV2;
+  Title: TTheWordTitleRange;
+  Trace: TVerseEditTrace;
+begin
+  Session := TTheWordWysiwygSessionV2.Create(
+    'left<TS1>Head<Ts>right');
+  try
+    AssertTrue(Session.TryGetTitle(0, Title));
+    AssertTrue(Title.Editable);
+    AssertTrue(Session.ReplaceTitleText(Title.OpenOrdinal, 0, 4,
+      'Heading'));
+    AssertEquals(UnicodeString('left<TS1>Heading<Ts>right'),
+      Session.RawText);
+    Trace := Session.CloneEditTrace;
+    try
+      AssertTrue('unchanged body suffix keeps its origin after title growth',
+        Trace.OriginMap.TryProjectOriginalRange(8, 5, CurrentStart));
+      AssertEquals(11, CurrentStart);
+    finally
+      Trace.Free;
+    end;
+    AssertTrue('one title text edit creates one undo command',
+      Session.Undo);
+    AssertEquals(UnicodeString('left<TS1>Head<Ts>right'),
+      Session.RawText);
+    AssertFalse(Session.CanUndo);
+    AssertTrue(Session.Redo);
+    AssertEquals(UnicodeString('left<TS1>Heading<Ts>right'),
+      Session.RawText);
+  finally
+    Session.Free;
+  end;
+
+  Session := TTheWordWysiwygSessionV2.Create(
+    'left<TS1>Head<Ts>right');
+  try
+    AssertTrue(Session.TryGetTitle(0, Title));
+    AssertTrue(Session.ChangeTitleLevel(Title.OpenOrdinal, 2));
+    AssertEquals(UnicodeString('left<TS2>Head<Ts>right'),
+      Session.RawText);
+    AssertTrue('level-only change is presentation and keeps Associations',
+      Session.ChangesAreSemanticOnly);
+    Trace := Session.CloneEditTrace;
+    try
+      AssertTrue('level-only change leaves body origins untouched',
+        Trace.IsBaselineIdentity);
+    finally
+      Trace.Free;
+    end;
+    AssertTrue(Session.Undo);
+    AssertEquals(UnicodeString('left<TS1>Head<Ts>right'),
+      Session.RawText);
+    AssertTrue(Session.Redo);
+    AssertEquals(UnicodeString('left<TS2>Head<Ts>right'),
+      Session.RawText);
+    AssertTrue(Session.TryGetTitle(0, Title));
+    AssertTrue(Session.RemoveTitle(Title.OpenOrdinal));
+    AssertEquals(UnicodeString('left right'), Session.RawText);
+    Trace := Session.CloneEditTrace;
+    try
+      AssertTrue('body suffix survives removal of the title',
+        Trace.OriginMap.TryProjectOriginalRange(8, 5, CurrentStart));
+      AssertEquals(5, CurrentStart);
+    finally
+      Trace.Free;
+    end;
+    AssertTrue('remove is one undo command', Session.Undo);
+    AssertEquals(UnicodeString('left<TS2>Head<Ts>right'),
+      Session.RawText);
+  finally
+    Session.Free;
+  end;
+
+  Session := TTheWordWysiwygSessionV2.Create('left right');
+  try
+    AssertTrue(Session.CanInsertTitle(5));
+    AssertTrue(Session.InsertTitle(5, 3, 'Heading'));
+    AssertEquals(UnicodeString('left <TS3>Heading<Ts>right'),
+      Session.RawText);
+    AssertTrue(Session.TryGetTitle(0, Title));
+    AssertEquals(3, Title.Level);
+    AssertTrue('insert is one undo command', Session.Undo);
+    AssertEquals(UnicodeString('left right'), Session.RawText);
+    AssertFalse(Session.CanUndo);
+    AssertTrue(Session.Redo);
+    AssertEquals(UnicodeString('left <TS3>Heading<Ts>right'),
+      Session.RawText);
+  finally
+    Session.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
   MultipleTitleLevelsAndMalformedTitleRemainExplicit;
 var
   Codec: ITheWordOntCodecV2;
@@ -600,9 +700,9 @@ begin
     Visual := BuildTheWordVerseVisualDocument(Source, tdLeftToRight, 12);
     AssertEquals(UnicodeString('A') + #10 + 'B' + #10 + 'C', Visual.Text);
     AssertTrue(vtsfBold in Visual.Spans[0].Style.Flags);
-    AssertTrue(vtsfItalic in Visual.Spans[0].Style.Flags);
-    AssertEquals(1, Visual.Spans[0].Style.FontSizeDelta);
-    AssertFalse(Visual.Spans[0].Interactive);
+    AssertFalse(vtsfItalic in Visual.Spans[0].Style.Flags);
+    AssertEquals(2, Visual.Spans[0].Style.FontSizeDelta);
+    AssertTrue(Visual.Spans[0].Interactive);
     AssertEquals(UnicodeString('title-level-1'),
       Visual.Spans[0].Annotation);
     AssertEquals(UnicodeString('<TS1>A<Ts><TS2>B<Ts>C'),
@@ -616,8 +716,9 @@ begin
     Visual := BuildTheWordVerseVisualDocument(Source, tdLeftToRight, 13);
     AssertEquals('malformed title text is never silently hidden',
       UnicodeString('Unclosed body'), Visual.Text);
-    AssertTrue('malformed title does not masquerade as a protected heading',
+    AssertFalse('malformed title body requires Raw editing',
       Visual.Spans[0].Interactive);
+    AssertEquals(UnicodeString('malformed-title'), Visual.Spans[0].Annotation);
     AssertEquals(UnicodeString('<TS>Unclosed body'),
       Codec.EncodeVerse(Source));
   finally
@@ -2054,6 +2155,111 @@ begin
     AssertTrue('associations permit presentation-only font changes',
       CanCommitLegacyWysiwygChangeV2(True, Session.ChangesAreSemanticOnly));
   finally
+    Session.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
+  FontColorSelectionPreservesTopologyAndIsAtomicPresentation;
+const
+  ORIGINAL: UnicodeString =
+    '<font size="+1" name=''Tahoma'' color=red>abcd</font>';
+  TARGET_COLOR = $00563412;
+var
+  Changed: UnicodeString;
+  Codec: ITheWordOntCodecV2;
+  Document: TTheWordVerseDocument;
+  Session: TTheWordWysiwygSessionV2;
+
+  procedure AssertEffectiveAt(AOffset: Integer; AExpectedColor: LongInt);
+  var
+    BestColorOrdinal: Integer;
+    BestNameOrdinal: Integer;
+    BestSizeOrdinal: Integer;
+    EffectiveColor: LongInt;
+    EffectiveName: UnicodeString;
+    EffectiveSize: Integer;
+    Index: Integer;
+    Mark: TTheWordFontMark;
+  begin
+    BestColorOrdinal := -1;
+    BestNameOrdinal := -1;
+    BestSizeOrdinal := -1;
+    EffectiveColor := -1;
+    EffectiveName := '';
+    EffectiveSize := 0;
+    for Index := 0 to Document.FontMarkCount - 1 do
+    begin
+      Mark := Document.FontMarks[Index];
+      if (Mark.StartOffset > AOffset) or (Mark.EndOffset <= AOffset) then
+        Continue;
+      if Mark.HasColor and (Mark.OpenOrdinal > BestColorOrdinal) then
+      begin
+        BestColorOrdinal := Mark.OpenOrdinal;
+        EffectiveColor := Mark.ResolvedColor;
+      end;
+      if Mark.HasSize and (Mark.OpenOrdinal > BestSizeOrdinal) then
+      begin
+        BestSizeOrdinal := Mark.OpenOrdinal;
+        EffectiveSize := Mark.RelativeSize;
+      end;
+      if Mark.HasFontName and (Mark.OpenOrdinal > BestNameOrdinal) then
+      begin
+        BestNameOrdinal := Mark.OpenOrdinal;
+        EffectiveName := Mark.FontNameRaw;
+      end;
+    end;
+    AssertTrue('effective color exists', BestColorOrdinal >= 0);
+    AssertEquals('effective color', AExpectedColor, EffectiveColor);
+    AssertTrue('relative size remains present', BestSizeOrdinal >= 0);
+    AssertEquals('relative size remains +1', 1, EffectiveSize);
+    AssertTrue('font name remains present', BestNameOrdinal >= 0);
+    AssertEquals('font name remains unchanged', 'Tahoma',
+      UTF8Encode(EffectiveName));
+  end;
+
+begin
+  Codec := TTheWordOntCodecV2.Create;
+  Session := TTheWordWysiwygSessionV2.Create(ORIGINAL);
+  Document := nil;
+  try
+    AssertTrue('selection color is applied through the session',
+      Session.ApplyFontColor(1, 2, True, TARGET_COLOR));
+    Changed := Session.RawText;
+    AssertTrue('the raw topology changes', Changed <> ORIGINAL);
+    AssertEquals('visible text is preserved', UnicodeString('abcd'),
+      Session.VisibleText);
+    AssertTrue('font-only mutation is presentation-only',
+      Session.ChangesAreSemanticOnly);
+    AssertTrue('associations accept the presentation-only change',
+      CanCommitLegacyWysiwygChangeV2(True,
+        Session.ChangesAreSemanticOnly));
+
+    Document := Codec.DecodeVerse(Changed);
+    AssertEquals('changed raw remains decodable', UnicodeString('abcd'),
+      Document.VisibleText);
+    AssertEquals('no malformed topology is introduced', 0,
+      Document.OpaqueItemCount);
+    AssertEquals('re-encoding the rebuilt topology is stable', Changed,
+      Codec.EncodeVerse(Document));
+    AssertTrue('the imported font name lexeme is retained',
+      Pos('name=''Tahoma''', Changed) > 0);
+    AssertEffectiveAt(0, $000000FF);
+    AssertEffectiveAt(1, TARGET_COLOR);
+    AssertEffectiveAt(2, TARGET_COLOR);
+    AssertEffectiveAt(3, $000000FF);
+
+    AssertTrue('selection command creates one undo entry', Session.CanUndo);
+    AssertTrue(Session.Undo);
+    AssertEquals('one undo restores the exact imported raw', ORIGINAL,
+      Session.RawText);
+    AssertFalse('color topology did not create auxiliary undo entries',
+      Session.CanUndo);
+    AssertTrue(Session.Redo);
+    AssertEquals('redo restores the exact rebuilt topology', Changed,
+      Session.RawText);
+  finally
+    Document.Free;
     Session.Free;
   end;
 end;

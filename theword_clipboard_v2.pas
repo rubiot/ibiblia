@@ -6,7 +6,7 @@ unit theword_clipboard_v2;
 interface
 
 uses
-  Classes, SysUtils, theword_ont_codec_v2;
+  Classes, SysUtils, theword_ont_codec_v2, theword_break_v2;
 
 const
   THEWORD_CLIPBOARD_FORMAT_V2 =
@@ -87,7 +87,12 @@ type
   public
     class function EncodeSelection(ADocument: TTheWordVerseDocument;
       AStartUTF16, ALengthUTF16: Integer; out APlainText: UnicodeString;
-      out APayload: string): Boolean; static;
+      out APayload: string): Boolean; static; overload;
+    class function EncodeSelection(ADocument: TTheWordVerseDocument;
+      AStartUTF16, ALengthUTF16: Integer;
+      const ABreaks: TTheWordBreakIdentityArray;
+      out APlainText: UnicodeString; out APayload: string): Boolean;
+      static; overload;
     class function TryDecodePayload(const APayload: string;
       out AFragment: TTheWordClipboardFragmentV2): Boolean; static;
     class function NewPlainFragment(const AText: UnicodeString):
@@ -97,10 +102,26 @@ type
     class function BuildPasteRaw(ADocument: TTheWordVerseDocument;
       AStartUTF16, ALengthUTF16: Integer;
       AFragment: TTheWordClipboardFragmentV2;
-      out ARaw: UnicodeString): Boolean; static;
+      out ARaw: UnicodeString): Boolean; static; overload;
+    class function BuildPasteRaw(ADocument: TTheWordVerseDocument;
+      AStartUTF16, ALengthUTF16: Integer;
+      const ABreaks: TTheWordBreakIdentityArray;
+      AAfterAnchors: Boolean; AFragment: TTheWordClipboardFragmentV2;
+      out ARaw: UnicodeString): Boolean; static; overload;
+    class function BuildPasteRaw(ADocument: TTheWordVerseDocument;
+      AStartUTF16, ALengthUTF16: Integer;
+      const ABreaks: TTheWordBreakIdentityArray;
+      AAfterAnchors, AHasInsertBefore: Boolean;
+      const AInsertBefore: TTheWordBreakIdentity;
+      AFragment: TTheWordClipboardFragmentV2;
+      out ARaw: UnicodeString): Boolean; static; overload;
     class function BuildCutRaw(ADocument: TTheWordVerseDocument;
       AStartUTF16, ALengthUTF16: Integer;
-      out ARaw: UnicodeString): Boolean; static;
+      out ARaw: UnicodeString): Boolean; static; overload;
+    class function BuildCutRaw(ADocument: TTheWordVerseDocument;
+      AStartUTF16, ALengthUTF16: Integer;
+      const ABreaks: TTheWordBreakIdentityArray;
+      out ARaw: UnicodeString): Boolean; static; overload;
   end;
 
 function NormalizeTheWordClipboardText(
@@ -1505,6 +1526,131 @@ begin
   end;
 end;
 
+function IsClipboardBreakRaw(const ARaw: UnicodeString): Boolean;
+begin
+  Result := (ARaw = '<CM>') or (ARaw = '<CL>');
+end;
+
+function TryFindClipboardBreak(ADocument: TTheWordVerseDocument;
+  const AIdentity: TTheWordBreakIdentity; out AIndex: Integer): Boolean;
+var
+  BreakKind: TTheWordBreakKind;
+  Index: Integer;
+begin
+  AIndex := -1;
+  if not Assigned(ADocument) then
+    Exit(False);
+  for Index := 0 to ADocument.OpaqueItemCount - 1 do
+    if (ADocument.OpaqueItems[Index].Offset = AIdentity.OffsetUTF16) and
+       (ADocument.OpaqueItems[Index].Ordinal = AIdentity.Ordinal) and
+       TryTheWordBreakKindFromLexeme(
+         ADocument.OpaqueItems[Index].RawLexeme, BreakKind) and
+       (BreakKind = AIdentity.Kind) then
+    begin
+      AIndex := Index;
+      Exit(True);
+    end;
+  AIndex := -1;
+  Result := False;
+end;
+
+function ValidateAndSortClipboardBreaks(ADocument: TTheWordVerseDocument;
+  AStart, ALength: Integer; const ABreaks: TTheWordBreakIdentityArray;
+  out ASorted: TTheWordBreakIdentityArray): Boolean;
+var
+  Current: TTheWordBreakIdentity;
+  Finish, I, J, OpaqueIndex: Integer;
+begin
+  SetLength(ASorted, Length(ABreaks));
+  Finish := AStart + ALength;
+  for I := 0 to High(ABreaks) do
+  begin
+    if (ABreaks[I].OffsetUTF16 < AStart) or
+       (ABreaks[I].OffsetUTF16 > Finish) or
+       not TryFindClipboardBreak(ADocument, ABreaks[I], OpaqueIndex) then
+      Exit(False);
+    for J := 0 to I - 1 do
+      if SameTheWordBreak(ABreaks[I], ABreaks[J]) then
+        Exit(False);
+    ASorted[I] := ABreaks[I];
+  end;
+  for I := 1 to High(ASorted) do
+  begin
+    Current := ASorted[I];
+    J := I - 1;
+    while (J >= 0) and
+      ((ASorted[J].OffsetUTF16 > Current.OffsetUTF16) or
+       ((ASorted[J].OffsetUTF16 = Current.OffsetUTF16) and
+        (ASorted[J].Ordinal > Current.Ordinal))) do
+    begin
+      ASorted[J + 1] := ASorted[J];
+      Dec(J);
+    end;
+    ASorted[J + 1] := Current;
+  end;
+  Result := True;
+end;
+
+procedure CollectClipboardBreaksInVisibleRange(
+  ADocument: TTheWordVerseDocument; AStart, ALength: Integer;
+  out ASelected: TTheWordBreakIdentityArray);
+var
+  AllBreaks: TTheWordBreakIdentityArray;
+  Finish, I: Integer;
+begin
+  SetLength(ASelected, 0);
+  if not Assigned(ADocument) or (ALength <= 0) then
+    Exit;
+  Finish := AStart + ALength;
+  CollectTheWordBreaks(ADocument, AllBreaks);
+  for I := 0 to High(AllBreaks) do
+    if (AllBreaks[I].OffsetUTF16 >= AStart) and
+       (AllBreaks[I].OffsetUTF16 < Finish) then
+    begin
+      SetLength(ASelected, Length(ASelected) + 1);
+      ASelected[High(ASelected)] := AllBreaks[I];
+    end;
+end;
+
+function BuildClipboardPlainText(ADocument: TTheWordVerseDocument;
+  AStart, ALength: Integer; const ABreaks: TTheWordBreakIdentityArray):
+  UnicodeString;
+var
+  Cursor, I, RelativeOffset: Integer;
+  SelectedText: UnicodeString;
+begin
+  Result := '';
+  SelectedText := Copy(ADocument.VisibleText, AStart + 1, ALength);
+  Cursor := 0;
+  for I := 0 to High(ABreaks) do
+  begin
+    RelativeOffset := ABreaks[I].OffsetUTF16 - AStart;
+    Result := Result + Copy(SelectedText, Cursor + 1,
+      RelativeOffset - Cursor) + LineEnding;
+    Cursor := RelativeOffset;
+  end;
+  Result := Result + Copy(SelectedText, Cursor + 1, MaxInt);
+end;
+
+procedure AddSelectedClipboardBreaks(ADocument: TTheWordVerseDocument;
+  AStart: Integer; const ABreaks: TTheWordBreakIdentityArray;
+  AFragment: TTheWordClipboardFragmentV2);
+var
+  I, OpaqueIndex: Integer;
+  Obj: TTheWordClipboardObjectV2;
+begin
+  for I := 0 to High(ABreaks) do
+    if TryFindClipboardBreak(ADocument, ABreaks[I], OpaqueIndex) then
+    begin
+      Obj.ObjectKind := twcokOpaque;
+      Obj.SubKind := Ord(ADocument.OpaqueItems[OpaqueIndex].Kind);
+      Obj.Offset := ABreaks[I].OffsetUTF16 - AStart;
+      Obj.RawLexeme := ADocument.OpaqueItems[OpaqueIndex].RawLexeme;
+      Obj.SourceOrder := ABreaks[I].Ordinal;
+      AFragment.AddObject(Obj);
+    end;
+end;
+
 procedure AddDocumentObjectsForSelection(ADocument: TTheWordVerseDocument;
   AStart, ALength: Integer; AFragment: TTheWordClipboardFragmentV2);
 var
@@ -1541,6 +1687,7 @@ begin
   end;
   for I := 0 to ADocument.OpaqueItemCount - 1 do
     if not IsTitleAnchor(ADocument.OpaqueItems[I].Ordinal) and
+       not IsClipboardBreakRaw(ADocument.OpaqueItems[I].RawLexeme) and
        (ADocument.OpaqueItems[I].Offset >= AStart) and
        (ADocument.OpaqueItems[I].Offset < Finish) then
     begin
@@ -1568,24 +1715,45 @@ class function TTheWordClipboardCodecV2.EncodeSelection(
   ADocument: TTheWordVerseDocument; AStartUTF16, ALengthUTF16: Integer;
   out APlainText: UnicodeString; out APayload: string): Boolean;
 var
+  Breaks: TTheWordBreakIdentityArray;
+begin
+  SetLength(Breaks, 0);
+  if Assigned(ADocument) then
+    CollectClipboardBreaksInVisibleRange(ADocument, AStartUTF16,
+      ALengthUTF16, Breaks);
+  Result := EncodeSelection(ADocument, AStartUTF16, ALengthUTF16,
+    Breaks, APlainText, APayload);
+end;
+
+class function TTheWordClipboardCodecV2.EncodeSelection(
+  ADocument: TTheWordVerseDocument; AStartUTF16, ALengthUTF16: Integer;
+  const ABreaks: TTheWordBreakIdentityArray;
+  out APlainText: UnicodeString; out APayload: string): Boolean;
+var
   Fragment: TTheWordClipboardFragmentV2;
   Mark: TTheWordSemanticMark;
   FontMark: TTheWordFontMark;
   ClipboardMark: TTheWordClipboardMarkV2;
   ClipboardFontMark: TTheWordClipboardFontMarkV2;
+  SelectedBreaks: TTheWordBreakIdentityArray;
   Raw: UnicodeString;
   I, Finish, MarkStart, MarkEnd: Integer;
 begin
   APlainText := '';
   APayload := '';
-  Result := Assigned(ADocument) and (ALengthUTF16 > 0) and
-    IsValidRange(ADocument.VisibleText, AStartUTF16, ALengthUTF16);
+  Result := Assigned(ADocument) and
+    ((ALengthUTF16 > 0) or (Length(ABreaks) > 0)) and
+    IsValidRange(ADocument.VisibleText, AStartUTF16, ALengthUTF16) and
+    ValidateAndSortClipboardBreaks(ADocument, AStartUTF16,
+      ALengthUTF16, ABreaks, SelectedBreaks);
   if not Result then Exit;
   Finish := AStartUTF16 + ALengthUTF16;
-  APlainText := Copy(ADocument.VisibleText, AStartUTF16 + 1, ALengthUTF16);
+  APlainText := BuildClipboardPlainText(ADocument, AStartUTF16,
+    ALengthUTF16, SelectedBreaks);
   Fragment := TTheWordClipboardFragmentV2.Create;
   try
-    Fragment.FText := APlainText;
+    Fragment.FText := Copy(ADocument.VisibleText, AStartUTF16 + 1,
+      ALengthUTF16);
     for I := 0 to ADocument.MarkCount - 1 do
     begin
       Mark := ADocument.Marks[I];
@@ -1621,10 +1789,13 @@ begin
     end;
     AddDocumentObjectsForSelection(ADocument, AStartUTF16, ALengthUTF16,
       Fragment);
+    AddSelectedClipboardBreaks(ADocument, AStartUTF16, SelectedBreaks,
+      Fragment);
     SortFragment(Fragment);
     if not BuildFragmentRaw(Fragment, Raw) then
     begin
-      if Fragment.FontMarkCount > 0 then Exit(False);
+      if (Fragment.FontMarkCount > 0) or
+         (Length(SelectedBreaks) > 0) then Exit(False);
       Fragment.ClearObjects;
       if not BuildFragmentRaw(Fragment, Raw) then
         Exit(True);
@@ -1663,15 +1834,46 @@ class function TTheWordClipboardCodecV2.BuildPasteRaw(
   AFragment: TTheWordClipboardFragmentV2;
   out ARaw: UnicodeString): Boolean;
 var
+  Breaks: TTheWordBreakIdentityArray;
+begin
+  SetLength(Breaks, 0);
+  Result := BuildPasteRaw(ADocument, AStartUTF16, ALengthUTF16,
+    Breaks, False, AFragment, ARaw);
+end;
+
+class function TTheWordClipboardCodecV2.BuildPasteRaw(
+  ADocument: TTheWordVerseDocument; AStartUTF16, ALengthUTF16: Integer;
+  const ABreaks: TTheWordBreakIdentityArray; AAfterAnchors: Boolean;
+  AFragment: TTheWordClipboardFragmentV2; out ARaw: UnicodeString): Boolean;
+var
+  InsertBefore: TTheWordBreakIdentity;
+begin
+  FillChar(InsertBefore, SizeOf(InsertBefore), 0);
+  Result := BuildPasteRaw(ADocument, AStartUTF16, ALengthUTF16,
+    ABreaks, AAfterAnchors, False, InsertBefore, AFragment, ARaw);
+end;
+
+class function TTheWordClipboardCodecV2.BuildPasteRaw(
+  ADocument: TTheWordVerseDocument; AStartUTF16, ALengthUTF16: Integer;
+  const ABreaks: TTheWordBreakIdentityArray;
+  AAfterAnchors, AHasInsertBefore: Boolean;
+  const AInsertBefore: TTheWordBreakIdentity;
+  AFragment: TTheWordClipboardFragmentV2;
+  out ARaw: UnicodeString): Boolean;
+var
   Codec: ITheWordOntCodecV2;
   Working, Check: TTheWordVerseDocument;
+  SelectedBreaks: TTheWordBreakIdentityArray;
   ExpectedText, FragmentRaw, Marker, ContainerRaw, OriginalRaw: UnicodeString;
-  MarkerPos: Integer;
+  I, MarkerPos: Integer;
 begin
   Result := False;
   ARaw := '';
   if not Assigned(ADocument) or not Assigned(AFragment) or
-     not ADocument.CanReplaceVisibleText(AStartUTF16, ALengthUTF16) then
+     not IsValidRange(ADocument.VisibleText, AStartUTF16,
+       ALengthUTF16) or
+     not ValidateAndSortClipboardBreaks(ADocument, AStartUTF16,
+       ALengthUTF16, ABreaks, SelectedBreaks) then
     Exit;
   Codec := TTheWordOntCodecV2.Create;
   try
@@ -1680,7 +1882,21 @@ begin
     Marker := FindUniqueMarker(OriginalRaw + FragmentRaw);
     Working := Codec.DecodeVerse(OriginalRaw);
     try
-      Working.ReplaceVisibleText(AStartUTF16, ALengthUTF16, Marker);
+      for I := 0 to High(SelectedBreaks) do
+        if not Working.RemoveBreak(SelectedBreaks[I]) then
+          Exit;
+      if not Working.CanReplaceVisibleText(AStartUTF16,
+        ALengthUTF16) then Exit;
+      if AHasInsertBefore then
+        Result := Working.ReplaceVisibleTextBeforeBreak(AStartUTF16,
+          ALengthUTF16, Marker, AInsertBefore)
+      else
+      begin
+        Working.ReplaceVisibleTextWithAffinity(AStartUTF16,
+          ALengthUTF16, Marker, AAfterAnchors);
+        Result := True;
+      end;
+      if not Result then Exit;
       ContainerRaw := Codec.EncodeVerse(Working);
     finally
       Working.Free;
@@ -1932,6 +2148,7 @@ begin
     end;
     for I := 0 to ADocument.OpaqueItemCount - 1 do
       if IsTitleAnchor(ADocument.OpaqueItems[I].Ordinal) or
+         IsClipboardBreakRaw(ADocument.OpaqueItems[I].RawLexeme) or
          not ((ADocument.OpaqueItems[I].Offset >= AStartUTF16) and
               (ADocument.OpaqueItems[I].Offset < Finish)) then
       begin
@@ -1959,6 +2176,67 @@ begin
     Result := BuildCutFragmentRaw(Fragment, ARaw);
   finally
     Fragment.Free;
+  end;
+end;
+
+class function TTheWordClipboardCodecV2.BuildCutRaw(
+  ADocument: TTheWordVerseDocument; AStartUTF16, ALengthUTF16: Integer;
+  const ABreaks: TTheWordBreakIdentityArray;
+  out ARaw: UnicodeString): Boolean;
+var
+  Check, Working: TTheWordVerseDocument;
+  Codec: ITheWordOntCodecV2;
+  ExpectedText, OriginalRaw: UnicodeString;
+  I: Integer;
+  SelectedBreaks: TTheWordBreakIdentityArray;
+begin
+  Result := False;
+  ARaw := '';
+  if Length(ABreaks) = 0 then
+    Exit(BuildCutRaw(ADocument, AStartUTF16, ALengthUTF16, ARaw));
+  if not Assigned(ADocument) or
+     (ALengthUTF16 < 0) or
+     not IsValidRange(ADocument.VisibleText, AStartUTF16,
+       ALengthUTF16) or
+     not ValidateAndSortClipboardBreaks(ADocument, AStartUTF16,
+       ALengthUTF16, ABreaks, SelectedBreaks) then
+    Exit;
+  Codec := TTheWordOntCodecV2.Create;
+  Working := nil;
+  Check := nil;
+  try
+    try
+      OriginalRaw := Codec.EncodeVerse(ADocument);
+      Working := Codec.DecodeVerse(OriginalRaw);
+      for I := 0 to High(SelectedBreaks) do
+        if not Working.RemoveBreak(SelectedBreaks[I]) then
+          Exit;
+      if ALengthUTF16 > 0 then
+      begin
+        { Keep the established cut path for visible text: it knows how to
+          retain and split semantic/font ranges, lexical objects and notes.
+          The exact break identities have already been removed from the
+          working copy, so the two operations remain one atomic result. }
+        if not BuildCutRaw(Working, AStartUTF16, ALengthUTF16, ARaw) then
+        begin
+          ARaw := '';
+          Exit;
+        end;
+      end
+      else
+        ARaw := Codec.EncodeVerse(Working);
+      ExpectedText := Copy(ADocument.VisibleText, 1, AStartUTF16) +
+        Copy(ADocument.VisibleText,
+          AStartUTF16 + ALengthUTF16 + 1, MaxInt);
+      Check := Codec.DecodeVerse(ARaw);
+      Result := Check.VisibleText = ExpectedText;
+    except
+      Result := False;
+      ARaw := '';
+    end;
+  finally
+    Check.Free;
+    Working.Free;
   end;
 end;
 

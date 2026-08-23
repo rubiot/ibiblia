@@ -5,8 +5,8 @@ unit theword_ont_codec_v2;
 interface
 
 uses
-  Classes, SysUtils, Contnrs, theword_translator_note_body_v2,
-  theword_inline_format_v2;
+  Classes, SysUtils, Character, Contnrs, theword_translator_note_body_v2,
+  theword_inline_format_v2, theword_break_v2;
 
 type
   ETheWordOntCodec = class(Exception);
@@ -104,6 +104,40 @@ type
   end;
   TTheWordFontSizeLeafPlanArrayV2 = array of TTheWordFontSizeLeafPlanV2;
 
+  TTheWordFontColorActionKindV2 = (
+    twfcakRemoveColor,
+    twfcakSetColor,
+    twfcakAddColor
+  );
+
+  TTheWordFontColorMarkActionV2 = record
+    Kind: TTheWordFontColorActionKindV2;
+    Mark: TTheWordFontMarkIdentityV2;
+    LeafStartUTF16: Integer;
+    LeafLengthUTF16: Integer;
+    OriginalHadColor: Boolean;
+    OriginalColor: LongInt;
+    OriginalColorRaw: UnicodeString;
+    TargetHasColor: Boolean;
+    TargetColor: LongInt;
+  end;
+  TTheWordFontColorMarkActionArrayV2 =
+    array of TTheWordFontColorMarkActionV2;
+
+  TTheWordFontColorLeafPlanV2 = record
+    StartUTF16: Integer;
+    LengthUTF16: Integer;
+    CurrentHasExplicitColor: Boolean;
+    CurrentEffectiveColor: LongInt;
+    TargetHasExplicitColor: Boolean;
+    TargetEffectiveColor: LongInt;
+    Carrier: TTheWordFontMarkIdentityV2;
+    CarrierIsNew: Boolean;
+    Actions: TTheWordFontColorMarkActionArrayV2;
+  end;
+  TTheWordFontColorLeafPlanArrayV2 =
+    array of TTheWordFontColorLeafPlanV2;
+
   TTheWordOntRecordKind = (
     tworkBlank,
     tworkProperty,
@@ -118,6 +152,9 @@ type
     Level: Integer;
     OpenOrdinal: Integer;
     CloseOrdinal: Integer;
+    OpenLexeme: UnicodeString;
+    CloseLexeme: UnicodeString;
+    Editable: Boolean;
   end;
 
   TTheWordTitleRangeArray = array of TTheWordTitleRange;
@@ -279,11 +316,27 @@ type
     destructor Destroy; override;
     function CanApplySemanticRange(AStartOffset,
       AEndOffset: Integer): Boolean;
+    function CanInsertBreak(AOffsetUTF16: Integer): Boolean;
     function CanInsertParagraphMark(AOffsetUTF16: Integer): Boolean;
     function CanInsertTranslatorNote(AOffsetUTF16: Integer): Boolean;
     function CanReplaceVisibleText(AStartUTF16,
       ALengthUTF16: Integer): Boolean;
+    function CanInsertTitle(AOffsetUTF16: Integer): Boolean;
+    function ReplaceTitleVisibleText(AOpenOrdinal, ARelativeStartUTF16,
+      ALengthUTF16: Integer; const AReplacement: UnicodeString): Boolean;
+    function InsertTitle(AOffsetUTF16, ALevel: Integer;
+      const AText: UnicodeString; out AOpenOrdinal: Integer): Boolean;
+    function ChangeTitleLevel(AOpenOrdinal, ALevel: Integer): Boolean;
+    function RemoveTitle(AOpenOrdinal: Integer;
+      out AReplacementText: UnicodeString): Boolean;
     function InsertParagraphMark(AOffsetUTF16: Integer): Boolean;
+    function InsertBreak(AOffsetUTF16: Integer;
+      AKind: TTheWordBreakKind; AAfterAnchors: Boolean;
+      out AIdentity: TTheWordBreakIdentity): Boolean; overload;
+    function InsertBreak(AOffsetUTF16: Integer;
+      AKind: TTheWordBreakKind; const AInsertBefore: TTheWordBreakIdentity;
+      out AIdentity: TTheWordBreakIdentity): Boolean; overload;
+    function RemoveBreak(const AIdentity: TTheWordBreakIdentity): Boolean;
     function RemoveParagraphMark(AOffsetUTF16: Integer;
       AFromEnd: Boolean): Boolean;
     function InsertTranslatorNote(AOffsetUTF16: Integer;
@@ -302,10 +355,20 @@ type
       AStartOffset, AEndOffset: Integer): Boolean;
     procedure ReplaceVisibleText(AStartUTF16, ALengthUTF16: Integer;
       const AReplacement: UnicodeString);
+    procedure ReplaceVisibleTextWithAffinity(AStartUTF16,
+      ALengthUTF16: Integer; const AReplacement: UnicodeString;
+      AAfterAnchors: Boolean);
+    function ReplaceVisibleTextBeforeBreak(AStartUTF16,
+      ALengthUTF16: Integer; const AReplacement: UnicodeString;
+      const AInsertBefore: TTheWordBreakIdentity): Boolean;
+
     { Builds and validates a replacement raw verse.  This is deliberately
       pure: no event, mark, ownership, ordinal or Modified state is changed. }
     function TryBuildRawWithFontTopology(
       const APlan: TTheWordFontSizeLeafPlanArrayV2;
+      out ACandidateRaw: UnicodeString): Boolean;
+    function TryBuildRawWithFontColorTopology(
+      const APlan: TTheWordFontColorLeafPlanArrayV2;
       out ACandidateRaw: UnicodeString): Boolean;
     function LexicalProtectedStart(AIndex: Integer): Integer;
     property VisibleText: UnicodeString read FVisibleText;
@@ -426,6 +489,8 @@ function TheWordClassifyOntRecord(const ARaw: UnicodeString):
   TTheWordOntRecordKind;
 function CollectTheWordTitleRanges(ADocument: TTheWordVerseDocument;
   out ARanges: TTheWordTitleRangeArray): Integer;
+function CollectTheWordBreaks(ADocument: TTheWordVerseDocument;
+  out ABreaks: TTheWordBreakIdentityArray): Integer;
 function AnalyzeTheWordTranslatorNoteBody(const ARaw: UnicodeString):
   TTheWordLayerCapability;
 function TryCanonicalizeTheWordTranslatorNoteBody(
@@ -479,6 +544,8 @@ type
     StartOffset: Integer;
     Level: Integer;
     OpenOrdinal: Integer;
+    OpenLexeme: UnicodeString;
+    ValidOpen: Boolean;
   end;
 
   TPendingTitleArray = array of TPendingTitle;
@@ -530,10 +597,10 @@ function TheWordTitleOpenLevel(const ARaw: UnicodeString;
   out ALevel: Integer): Boolean;
 begin
   Result := True;
-  if (ARaw = '<TS>') or (ARaw = '<TS0>') then
-    ALevel := 0
-  else if ARaw = '<TS1>' then
+  if (ARaw = '<TS>') or (ARaw = '<TS1>') then
     ALevel := 1
+  else if ARaw = '<TS0>' then
+    ALevel := 0
   else if ARaw = '<TS2>' then
     ALevel := 2
   else if ARaw = '<TS3>' then
@@ -545,14 +612,74 @@ begin
   end;
 end;
 
+function IsTheWordTitleLikeOpen(const ARaw: UnicodeString;
+  out ALevel: Integer; out AValid: Boolean): Boolean;
+var
+  LowerRaw: UnicodeString;
+begin
+  AValid := TheWordTitleOpenLevel(ARaw, ALevel);
+  if AValid then
+    Exit(True);
+  ALevel := -1;
+  if (ARaw = '<Ts>') or (Length(ARaw) < 4) or
+     (ARaw[1] <> '<') or (ARaw[Length(ARaw)] <> '>') or
+     (ARaw[Length(ARaw) - 1] = '/') then
+    Exit(False);
+  LowerRaw := LowerCase(ARaw);
+  Result := (Copy(LowerRaw, 2, 2) = 'ts') and
+    ((Length(ARaw) = 4) or
+     (ARaw[4] in ['0'..'9', ' ', #9]));
+end;
+
+function IsTheWordTitleLikeClose(const ARaw: UnicodeString;
+  out AValid: Boolean): Boolean;
+var
+  LowerRaw: UnicodeString;
+begin
+  AValid := ARaw = '<Ts>';
+  if AValid then
+    Exit(True);
+  if (Length(ARaw) < 5) or (ARaw[1] <> '<') or
+     (ARaw[2] <> '/') or (ARaw[Length(ARaw)] <> '>') then
+    Exit(False);
+  LowerRaw := LowerCase(ARaw);
+  Result := (Copy(LowerRaw, 3, 2) = 'ts') and
+    ((Length(ARaw) = 5) or
+     (ARaw[5] in ['0'..'9', ' ', #9]));
+end;
 function CollectTheWordTitleRanges(ADocument: TTheWordVerseDocument;
   out ARanges: TTheWordTitleRangeArray): Integer;
 var
-  EventIndex, Level, StackCount, RangeIndex, SortIndex: Integer;
+  EventIndex, Level, OtherIndex, StackCount, RangeIndex,
+    SortIndex: Integer;
   Event: TTheWordInlineEvent;
   Stack: TPendingTitleArray;
   Pending: TPendingTitle;
   SwapRange: TTheWordTitleRange;
+  ValidClose, ValidOpen: Boolean;
+
+  procedure AppendRange(const APending: TPendingTitle; AEndOffset,
+    ACloseOrdinal: Integer; const ACloseLexeme: UnicodeString;
+    AValidPair: Boolean);
+  var
+    NewIndex: Integer;
+  begin
+    NewIndex := Length(ARanges);
+    SetLength(ARanges, NewIndex + 1);
+    ARanges[NewIndex].StartOffset := APending.StartOffset;
+    ARanges[NewIndex].EndOffset := AEndOffset;
+    if AValidPair then
+      ARanges[NewIndex].Level := APending.Level
+    else
+      ARanges[NewIndex].Level := -1;
+    ARanges[NewIndex].OpenOrdinal := APending.OpenOrdinal;
+    ARanges[NewIndex].CloseOrdinal := ACloseOrdinal;
+    ARanges[NewIndex].OpenLexeme := APending.OpenLexeme;
+    ARanges[NewIndex].CloseLexeme := ACloseLexeme;
+    { A balanced, otherwise simple empty title is still an editable title:
+      callers may populate it or remove its zero-width wrapper explicitly. }
+    ARanges[NewIndex].Editable := AValidPair;
+  end;
 begin
   ARanges := nil;
   if ADocument = nil then
@@ -566,15 +693,17 @@ begin
     if (Event.Kind <> twiekOpaque) then
       Continue;
 
-    if TheWordTitleOpenLevel(Event.RawLexeme, Level) then
+    if IsTheWordTitleLikeOpen(Event.RawLexeme, Level, ValidOpen) then
     begin
       SetLength(Stack, StackCount + 1);
       Stack[StackCount].StartOffset := Event.Offset;
       Stack[StackCount].Level := Level;
       Stack[StackCount].OpenOrdinal := Event.Ordinal;
+      Stack[StackCount].OpenLexeme := Event.RawLexeme;
+      Stack[StackCount].ValidOpen := ValidOpen;
       Inc(StackCount);
     end
-    else if Event.RawLexeme = '<Ts>' then
+    else if IsTheWordTitleLikeClose(Event.RawLexeme, ValidClose) then
     begin
       if StackCount = 0 then
         Continue;
@@ -584,15 +713,17 @@ begin
       if Event.Offset < Pending.StartOffset then
         Continue;
 
-      RangeIndex := Length(ARanges);
-      SetLength(ARanges, RangeIndex + 1);
-      ARanges[RangeIndex].StartOffset := Pending.StartOffset;
-      ARanges[RangeIndex].EndOffset := Event.Offset;
-      ARanges[RangeIndex].Level := Pending.Level;
-      ARanges[RangeIndex].OpenOrdinal := Pending.OpenOrdinal;
-      ARanges[RangeIndex].CloseOrdinal := Event.Ordinal;
+      AppendRange(Pending, Event.Offset, Event.Ordinal, Event.RawLexeme,
+        Pending.ValidOpen and ValidClose);
     end;
   end;
+  { An unmatched title-looking opener owns the remaining visible text, but it
+    is not a title for presentation or editing purposes. Keeping it as a
+    protected range makes the malformed construct Raw-only without styling
+    safely delimited text after a matching malformed closer as a title. }
+  for EventIndex := 0 to StackCount - 1 do
+    AppendRange(Stack[EventIndex], Length(ADocument.FVisibleText), -1, '',
+      False);
 
   { Nested titles close in reverse order. Expose every result in source/open
     order so consumers never have to depend on that implementation detail. }
@@ -609,7 +740,78 @@ begin
       Dec(SortIndex);
     end;
   end;
+
+  { Any ONT object between the pair makes the title complex. This also
+    rejects nested titles while leaving imported lexemes untouched. }
+  for RangeIndex := 0 to High(ARanges) do
+    if ARanges[RangeIndex].Editable then
+    begin
+      for OtherIndex := 0 to ADocument.FEvents.Count - 1 do
+      begin
+        Event := TTheWordInlineEvent(ADocument.FEvents[OtherIndex]);
+        if (Event.Ordinal > ARanges[RangeIndex].OpenOrdinal) and
+           (Event.Ordinal < ARanges[RangeIndex].CloseOrdinal) then
+        begin
+          ARanges[RangeIndex].Editable := False;
+          Break;
+        end;
+      end;
+    end;
+
+  { The inner pair of a nested title has no event strictly between its own
+    delimiters, so the pass above only rejects the outer pair. Reject the
+    inner pair explicitly as well: nested TS markup is preserved literally
+    and remains available only in Raw mode. }
+  for RangeIndex := 0 to High(ARanges) do
+    if ARanges[RangeIndex].Editable then
+      for OtherIndex := 0 to High(ARanges) do
+        if (OtherIndex <> RangeIndex) and
+           (ARanges[OtherIndex].CloseOrdinal >= 0) and
+           (ARanges[OtherIndex].OpenOrdinal <
+            ARanges[RangeIndex].OpenOrdinal) and
+           (ARanges[OtherIndex].CloseOrdinal >
+            ARanges[RangeIndex].CloseOrdinal) then
+        begin
+          ARanges[RangeIndex].Editable := False;
+          Break;
+        end;
   Result := Length(ARanges);
+end;
+
+function CollectTheWordBreaks(ADocument: TTheWordVerseDocument;
+  out ABreaks: TTheWordBreakIdentityArray): Integer;
+var
+  BreakIdentity, Swap: TTheWordBreakIdentity;
+  Index, InsertAt: Integer;
+  Item: TTheWordOpaqueItem;
+begin
+  ABreaks := nil;
+  if ADocument = nil then
+    Exit(0);
+  for Index := 0 to ADocument.OpaqueItemCount - 1 do
+  begin
+    Item := ADocument.OpaqueItems[Index];
+    if Item.RawLexeme = '<CM>' then
+      BreakIdentity.Kind := twbkParagraph
+    else if Item.RawLexeme = '<CL>' then
+      BreakIdentity.Kind := twbkSoftLine
+    else
+      Continue;
+    BreakIdentity.OffsetUTF16 := Item.Offset;
+    BreakIdentity.Ordinal := Item.Ordinal;
+    InsertAt := Length(ABreaks);
+    SetLength(ABreaks, InsertAt + 1);
+    ABreaks[InsertAt] := BreakIdentity;
+    while (InsertAt > 0) and
+          (ABreaks[InsertAt - 1].Ordinal > ABreaks[InsertAt].Ordinal) do
+    begin
+      Swap := ABreaks[InsertAt - 1];
+      ABreaks[InsertAt - 1] := ABreaks[InsertAt];
+      ABreaks[InsertAt] := Swap;
+      Dec(InsertAt);
+    end;
+  end;
+  Result := Length(ABreaks);
 end;
 
 function IsTheWordTitleAnchor(AOrdinal: Integer;
@@ -618,8 +820,9 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(ARanges) do
-    if (ARanges[Index].OpenOrdinal = AOrdinal) or
-       (ARanges[Index].CloseOrdinal = AOrdinal) then
+    if (ARanges[Index].Level >= 0) and
+       ((ARanges[Index].OpenOrdinal = AOrdinal) or
+        (ARanges[Index].CloseOrdinal = AOrdinal)) then
       Exit(True);
   Result := False;
 end;
@@ -630,7 +833,8 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(ARanges) do
-    if ARanges[Index].EndOffset = AOffset then
+    if (ARanges[Index].Level >= 0) and
+       (ARanges[Index].EndOffset = AOffset) then
     begin
       if ARanges[Index].CloseOrdinal = AOrdinal then
         Exit(True);
@@ -655,6 +859,63 @@ begin
   Result.TranslatorNote := nil;
   ADocument.FEvents.Add(Result);
 end;
+procedure OpenInlineOrdinalSlot(ADocument: TTheWordVerseDocument;
+  APivotOrdinal: Integer);
+var
+  Event: TTheWordInlineEvent;
+  FontMark: TTheWordFontMark;
+  Index: Integer;
+  Lexical: TTheWordLexicalItem;
+  Mark: TTheWordSemanticMark;
+  Note: TTheWordTranslatorNote;
+  Opaque: TTheWordOpaqueItem;
+  Structural: TTheWordStructuralItem;
+begin
+  if (ADocument = nil) or (APivotOrdinal < 0) or
+     (APivotOrdinal >= ADocument.FNextOrdinal) then
+    raise ETheWordOntCodec.CreateFmt('Invalid ordinal insertion pivot %d',
+      [APivotOrdinal]);
+  for Index := 0 to ADocument.FEvents.Count - 1 do
+  begin
+    Event := TTheWordInlineEvent(ADocument.FEvents[Index]);
+    if Event.Ordinal >= APivotOrdinal then
+      Inc(Event.Ordinal);
+  end;
+  for Index := 0 to ADocument.FMarks.Count - 1 do
+  begin
+    Mark := TTheWordSemanticMark(ADocument.FMarks[Index]);
+    if Mark.FOpenOrdinal >= APivotOrdinal then Inc(Mark.FOpenOrdinal);
+    if Mark.FCloseOrdinal >= APivotOrdinal then Inc(Mark.FCloseOrdinal);
+  end;
+  for Index := 0 to ADocument.FFontMarks.Count - 1 do
+  begin
+    FontMark := TTheWordFontMark(ADocument.FFontMarks[Index]);
+    if FontMark.FOpenOrdinal >= APivotOrdinal then Inc(FontMark.FOpenOrdinal);
+    if FontMark.FCloseOrdinal >= APivotOrdinal then Inc(FontMark.FCloseOrdinal);
+  end;
+  for Index := 0 to ADocument.FLexicalItems.Count - 1 do
+  begin
+    Lexical := TTheWordLexicalItem(ADocument.FLexicalItems[Index]);
+    if Lexical.FOrdinal >= APivotOrdinal then Inc(Lexical.FOrdinal);
+  end;
+  for Index := 0 to ADocument.FOpaqueItems.Count - 1 do
+  begin
+    Opaque := TTheWordOpaqueItem(ADocument.FOpaqueItems[Index]);
+    if Opaque.FOrdinal >= APivotOrdinal then Inc(Opaque.FOrdinal);
+  end;
+  for Index := 0 to ADocument.FStructuralItems.Count - 1 do
+  begin
+    Structural := TTheWordStructuralItem(ADocument.FStructuralItems[Index]);
+    if Structural.FOrdinal >= APivotOrdinal then Inc(Structural.FOrdinal);
+  end;
+  for Index := 0 to ADocument.FTranslatorNotes.Count - 1 do
+  begin
+    Note := TTheWordTranslatorNote(ADocument.FTranslatorNotes[Index]);
+    if Note.FOrdinal >= APivotOrdinal then Inc(Note.FOrdinal);
+  end;
+  Inc(ADocument.FNextOrdinal);
+end;
+
 
 procedure MoveInsertedEventBeforeFontOpenAtStart(
   ADocument: TTheWordVerseDocument; AEvent: TTheWordInlineEvent);
@@ -1680,6 +1941,47 @@ begin
   Result := (AChar >= #$0080) or
     (AChar in ['A'..'Z', 'a'..'z', '0'..'9', '_', '-', '''']);
 end;
+function IsTitleJoinWordCodeUnit(const AText: UnicodeString;
+  AIndex: Integer): Boolean;
+var
+  Category: TUnicodeCategory;
+  Value: WideChar;
+begin
+  Result := False;
+  if (AIndex < 1) or (AIndex > Length(AText)) then
+    Exit;
+  Value := AText[AIndex];
+  if Ord(Value) < 128 then
+    Exit(Value in ['A'..'Z', 'a'..'z', '0'..'9', '_']);
+
+  if TCharacter.IsLowSurrogate(Value) then
+  begin
+    if (AIndex <= 1) or
+       not TCharacter.IsHighSurrogate(AText[AIndex - 1]) then
+      Exit;
+    Dec(AIndex);
+  end
+  else if TCharacter.IsHighSurrogate(Value) and
+          ((AIndex >= Length(AText)) or
+           not TCharacter.IsLowSurrogate(AText[AIndex + 1])) then
+    Exit;
+
+  Category := TCharacter.GetUnicodeCategory(AText, AIndex);
+  Result := Category in [
+    TUnicodeCategory.ucUppercaseLetter,
+    TUnicodeCategory.ucLowercaseLetter,
+    TUnicodeCategory.ucTitlecaseLetter,
+    TUnicodeCategory.ucModifierLetter,
+    TUnicodeCategory.ucOtherLetter,
+    TUnicodeCategory.ucNonSpacingMark,
+    TUnicodeCategory.ucCombiningMark,
+    TUnicodeCategory.ucEnclosingMark,
+    TUnicodeCategory.ucDecimalNumber,
+    TUnicodeCategory.ucLetterNumber,
+    TUnicodeCategory.ucOtherNumber,
+    TUnicodeCategory.ucConnectPunctuation];
+end;
+
 
 function TransformProtectedAnchor(AOffset, AStartOffset, AEndOffset,
   AReplacementLength: Integer): Integer;
@@ -1817,7 +2119,7 @@ begin
     IsUtf16Boundary(FVisibleText, AEndOffset);
 end;
 
-function TTheWordVerseDocument.CanInsertParagraphMark(
+function TTheWordVerseDocument.CanInsertBreak(
   AOffsetUTF16: Integer): Boolean;
 var
   Anchor, Index, RangeIndex, WordStart: Integer;
@@ -1843,9 +2145,10 @@ begin
       Continue;
     if IsTheWordTitleAnchor(OpaqueItem.FOrdinal, TitleRanges) then
       Continue;
-    { Consecutive paragraph marks are valid. Other opaque objects remain
+    { Consecutive typed breaks are valid. Other opaque objects remain
       protected and cannot acquire new structure at their exact anchor. }
-    if OpaqueItem.FRawLexeme <> '<CM>' then
+    if (OpaqueItem.FRawLexeme <> '<CM>') and
+       (OpaqueItem.FRawLexeme <> '<CL>') then
       Exit(False);
   end;
 
@@ -1861,6 +2164,12 @@ begin
     if (AOffsetUTF16 > WordStart) and (AOffsetUTF16 < Anchor) then
       Exit(False);
   end;
+end;
+
+function TTheWordVerseDocument.CanInsertParagraphMark(
+  AOffsetUTF16: Integer): Boolean;
+begin
+  Result := CanInsertBreak(AOffsetUTF16);
 end;
 
 function TTheWordVerseDocument.CanInsertTranslatorNote(
@@ -1922,9 +2231,16 @@ begin
     if IsTheWordTitleAnchor(OpaqueItem.FOrdinal, TitleRanges) then
       Continue;
     Anchor := OpaqueItem.FOffset;
-    if ((ALengthUTF16 = 0) and (Anchor = AStartUTF16)) or
-       ((ALengthUTF16 > 0) and (Anchor > AStartUTF16) and
-        (Anchor < EndOffset)) then
+    if (ALengthUTF16 = 0) and (Anchor = AStartUTF16) then
+    begin
+      { CM/CL are typed caret boundaries. Affinity decides which side of
+        their zero-width anchor receives inserted text. }
+      if not ((OpaqueItem.FRawLexeme = '<CM>') or
+              (OpaqueItem.FRawLexeme = '<CL>')) then
+        Exit(False);
+    end
+    else if (ALengthUTF16 > 0) and (Anchor > AStartUTF16) and
+            (Anchor < EndOffset) then
       Exit(False);
   end;
 
@@ -2086,28 +2402,175 @@ begin
   Result := True;
 end;
 
-function TTheWordVerseDocument.InsertParagraphMark(
-  AOffsetUTF16: Integer): Boolean;
+function TTheWordVerseDocument.InsertBreak(AOffsetUTF16: Integer;
+  AKind: TTheWordBreakKind; AAfterAnchors: Boolean;
+  out AIdentity: TTheWordBreakIdentity): Boolean;
 var
-  Event: TTheWordInlineEvent;
+  BeforeIdentity: TTheWordBreakIdentity;
+  BreakKind: TTheWordBreakKind;
+  Event, Existing: TTheWordInlineEvent;
+  Index: Integer;
   Item: TTheWordOpaqueItem;
+  Lexeme: UnicodeString;
 begin
-  Result := CanInsertParagraphMark(AOffsetUTF16);
+  FillChar(AIdentity, SizeOf(AIdentity), 0);
+  Lexeme := TheWordBreakLexeme(AKind);
+  Result := (Lexeme <> '') and CanInsertBreak(AOffsetUTF16);
   if not Result then
     Exit;
+  if not AAfterAnchors then
+    for Index := 0 to FEvents.Count - 1 do
+    begin
+      Existing := TTheWordInlineEvent(FEvents[Index]);
+      if (Existing.Kind = twiekOpaque) and
+         (Existing.Offset = AOffsetUTF16) and
+         TryTheWordBreakKindFromLexeme(Existing.RawLexeme, BreakKind) then
+      begin
+        BeforeIdentity.Kind := BreakKind;
+        BeforeIdentity.OffsetUTF16 := Existing.Offset;
+        BeforeIdentity.Ordinal := Existing.Ordinal;
+        Exit(InsertBreak(AOffsetUTF16, AKind, BeforeIdentity, AIdentity));
+      end;
+    end;
   EnsureEditable;
   { New events are appended after imported events at the same anchor. At a
     lexical word end this keeps WG/WH/WT/wt attached to the word and emits
-    the paragraph mark only after that ordered postfix data. }
-  Event := NewInlineEvent(Self, twiekOpaque, AOffsetUTF16, '<CM>');
+    the break only after that ordered postfix data. A later reconciliation
+    moves it before an existing break bundle when AAfterAnchors is false. }
+  Event := NewInlineEvent(Self, twiekOpaque, AOffsetUTF16, Lexeme);
   MoveInsertedEventBeforeFontOpenAtStart(Self, Event);
   Item := TTheWordOpaqueItem.Create;
   Item.FKind := twokUnknownTag;
   Item.FOffset := AOffsetUTF16;
-  Item.FRawLexeme := '<CM>';
+  Item.FRawLexeme := Lexeme;
   Item.FOrdinal := Event.Ordinal;
   FOpaqueItems.Add(Item);
+  AIdentity.Kind := AKind;
+  AIdentity.OffsetUTF16 := AOffsetUTF16;
+  AIdentity.Ordinal := Event.Ordinal;
   FModified := True;
+end;
+
+function TTheWordVerseDocument.InsertBreak(AOffsetUTF16: Integer;
+  AKind: TTheWordBreakKind;
+  const AInsertBefore: TTheWordBreakIdentity;
+  out AIdentity: TTheWordBreakIdentity): Boolean;
+var
+  Event, TargetEvent: TTheWordInlineEvent;
+  Index, TargetIndex, TargetOrdinal: Integer;
+  Item: TTheWordOpaqueItem;
+  Lexeme, TargetLexeme: UnicodeString;
+begin
+  FillChar(AIdentity, SizeOf(AIdentity), 0);
+  Result := False;
+  Lexeme := TheWordBreakLexeme(AKind);
+  if (Lexeme = '') or not CanInsertBreak(AOffsetUTF16) then
+    Exit;
+  if AInsertBefore.OffsetUTF16 <> AOffsetUTF16 then
+    Exit;
+  TargetLexeme := TheWordBreakLexeme(AInsertBefore.Kind);
+  if TargetLexeme = '' then
+    Exit;
+  TargetEvent := nil;
+  for Index := 0 to FEvents.Count - 1 do
+  begin
+    Event := TTheWordInlineEvent(FEvents[Index]);
+    if (Event.Kind = twiekOpaque) and
+       (Event.Offset = AInsertBefore.OffsetUTF16) and
+       (Event.Ordinal = AInsertBefore.Ordinal) and
+       (Event.RawLexeme = TargetLexeme) then
+    begin
+      TargetEvent := Event;
+      Break;
+    end;
+  end;
+  if not Assigned(TargetEvent) then
+    Exit;
+  TargetIndex := FEvents.IndexOf(TargetEvent);
+  if TargetIndex < 0 then Exit;
+
+  Event := TTheWordInlineEvent.Create;
+  Item := TTheWordOpaqueItem.Create;
+  try
+    EnsureEditable;
+    FEvents.Capacity := FEvents.Count + 1;
+    FOpaqueItems.Capacity := FOpaqueItems.Count + 1;
+    TargetOrdinal := TargetEvent.Ordinal;
+    OpenInlineOrdinalSlot(Self, TargetOrdinal);
+
+    Event.Kind := twiekOpaque;
+    Event.Offset := AOffsetUTF16;
+    Event.Ordinal := TargetOrdinal;
+    Event.RawLexeme := Lexeme;
+    Event.SemanticMark := nil;
+    Event.FontMark := nil;
+    Event.TranslatorNote := nil;
+    FEvents.Insert(TargetIndex, Event);
+    Event := nil;
+
+    Item.FKind := twokUnknownTag;
+    Item.FOffset := AOffsetUTF16;
+    Item.FRawLexeme := Lexeme;
+    Item.FOrdinal := TargetOrdinal;
+    FOpaqueItems.Add(Item);
+    Item := nil;
+
+    AIdentity.Kind := AKind;
+    AIdentity.OffsetUTF16 := AOffsetUTF16;
+    AIdentity.Ordinal := TargetOrdinal;
+    FModified := True;
+    Result := True;
+  finally
+    Item.Free;
+    Event.Free;
+  end;
+end;
+
+function TTheWordVerseDocument.InsertParagraphMark(
+  AOffsetUTF16: Integer): Boolean;
+var
+  Identity: TTheWordBreakIdentity;
+begin
+  Result := InsertBreak(AOffsetUTF16, twbkParagraph, True, Identity);
+end;
+
+function TTheWordVerseDocument.RemoveBreak(
+  const AIdentity: TTheWordBreakIdentity): Boolean;
+var
+  EventIndex, Index: Integer;
+  Item: TTheWordOpaqueItem;
+  Lexeme: UnicodeString;
+begin
+  Result := False;
+  Lexeme := TheWordBreakLexeme(AIdentity.Kind);
+  if not FCanEdit or (Lexeme = '') or
+     (AIdentity.OffsetUTF16 < 0) or
+     (AIdentity.OffsetUTF16 > Length(FVisibleText)) or
+     not IsUtf16Boundary(FVisibleText, AIdentity.OffsetUTF16) then
+    Exit;
+  for Index := 0 to FOpaqueItems.Count - 1 do
+  begin
+    Item := TTheWordOpaqueItem(FOpaqueItems[Index]);
+    if (Item.FOffset <> AIdentity.OffsetUTF16) or
+       (Item.FOrdinal <> AIdentity.Ordinal) or
+       (Item.FRawLexeme <> Lexeme) then
+      Continue;
+    EnsureEditable;
+    for EventIndex := FEvents.Count - 1 downto 0 do
+      if (TTheWordInlineEvent(FEvents[EventIndex]).Kind = twiekOpaque) and
+         (TTheWordInlineEvent(FEvents[EventIndex]).Offset =
+          AIdentity.OffsetUTF16) and
+         (TTheWordInlineEvent(FEvents[EventIndex]).Ordinal =
+          AIdentity.Ordinal) and
+         (TTheWordInlineEvent(FEvents[EventIndex]).RawLexeme = Lexeme) then
+      begin
+        FEvents.Delete(EventIndex);
+        FOpaqueItems.Delete(Index);
+        FModified := True;
+        Exit(True);
+      end;
+    Exit(False);
+  end;
 end;
 
 function TTheWordVerseDocument.RemoveParagraphMark(AOffsetUTF16: Integer;
@@ -2435,6 +2898,14 @@ end;
 
 procedure TTheWordVerseDocument.ReplaceVisibleText(AStartUTF16,
   ALengthUTF16: Integer; const AReplacement: UnicodeString);
+begin
+  ReplaceVisibleTextWithAffinity(AStartUTF16, ALengthUTF16,
+    AReplacement, False);
+end;
+
+procedure TTheWordVerseDocument.ReplaceVisibleTextWithAffinity(AStartUTF16,
+  ALengthUTF16: Integer; const AReplacement: UnicodeString;
+  AAfterAnchors: Boolean);
 var
   EndOffset, ReplacementLength, Delta, Index: Integer;
   Candidate: UnicodeString;
@@ -2533,8 +3004,9 @@ begin
   begin
     Lexical := TTheWordLexicalItem(FLexicalItems[Index]);
     if not ((ALengthUTF16 = 0) and (Lexical.FOffset = AStartUTF16) and
-      KeepEventLeftOfFontBoundaryAtInsertion(Self, Lexical.FOrdinal,
-        AStartUTF16)) then
+      (AAfterAnchors or
+       KeepEventLeftOfFontBoundaryAtInsertion(Self, Lexical.FOrdinal,
+         AStartUTF16))) then
       Lexical.FOffset := TransformProtectedAnchor(Lexical.FOffset,
         AStartUTF16, EndOffset, ReplacementLength);
   end;
@@ -2542,7 +3014,8 @@ begin
   begin
     Opaque := TTheWordOpaqueItem(FOpaqueItems[Index]);
     if not ((ALengthUTF16 = 0) and
-      (KeepTheWordTitleAnchorAtBodyInsertion(Opaque.FOrdinal,
+      (((Opaque.FOffset = AStartUTF16) and AAfterAnchors) or
+       KeepTheWordTitleAnchorAtBodyInsertion(Opaque.FOrdinal,
          AStartUTF16, TitleRanges) or
        ((Opaque.FOffset = AStartUTF16) and
         KeepEventLeftOfFontBoundaryAtInsertion(Self, Opaque.FOrdinal,
@@ -2556,8 +3029,9 @@ begin
     TranslatorNote := TTheWordTranslatorNote(FTranslatorNotes[Index]);
     if not ((ALengthUTF16 = 0) and
       (TranslatorNote.FOffsetUTF16 = AStartUTF16) and
-      KeepEventLeftOfFontBoundaryAtInsertion(Self, TranslatorNote.FOrdinal,
-        AStartUTF16)) then
+      (AAfterAnchors or
+       KeepEventLeftOfFontBoundaryAtInsertion(Self,
+         TranslatorNote.FOrdinal, AStartUTF16))) then
       TranslatorNote.FOffsetUTF16 := TransformProtectedAnchor(
         TranslatorNote.FOffsetUTF16, AStartUTF16, EndOffset,
         ReplacementLength);
@@ -2568,8 +3042,9 @@ begin
     Structural := TTheWordStructuralItem(FStructuralItems[Index]);
     if not ((ALengthUTF16 = 0) and
       (Structural.FOffset = AStartUTF16) and
-      KeepEventLeftOfFontBoundaryAtInsertion(Self, Structural.FOrdinal,
-        AStartUTF16)) then
+      (AAfterAnchors or
+       KeepEventLeftOfFontBoundaryAtInsertion(Self,
+         Structural.FOrdinal, AStartUTF16))) then
       Structural.FOffset := TransformProtectedAnchor(Structural.FOffset,
         AStartUTF16, EndOffset, ReplacementLength);
   end;
@@ -2592,7 +3067,8 @@ begin
           Event.Offset := Event.FontMark.FEndOffset;
       twiekOpaque:
         if not ((ALengthUTF16 = 0) and
-          (KeepTheWordTitleAnchorAtBodyInsertion(Event.Ordinal,
+          (((Event.Offset = AStartUTF16) and AAfterAnchors) or
+           KeepTheWordTitleAnchorAtBodyInsertion(Event.Ordinal,
              AStartUTF16, TitleRanges) or
            ((Event.Offset = AStartUTF16) and
             KeepEventLeftOfFontBoundaryAtInsertion(Self, Event.Ordinal,
@@ -2604,8 +3080,9 @@ begin
           Event.Offset := Event.TranslatorNote.FOffsetUTF16;
       twiekLexical, twiekStructural:
         if not ((ALengthUTF16 = 0) and (Event.Offset = AStartUTF16) and
-          KeepEventLeftOfFontBoundaryAtInsertion(Self, Event.Ordinal,
-            AStartUTF16)) then
+          (AAfterAnchors or
+           KeepEventLeftOfFontBoundaryAtInsertion(Self, Event.Ordinal,
+             AStartUTF16))) then
           Event.Offset := TransformProtectedAnchor(Event.Offset,
             AStartUTF16, EndOffset, ReplacementLength);
     end;
@@ -2614,6 +3091,57 @@ begin
   FVisibleText := Copy(FVisibleText, 1, AStartUTF16) + AReplacement +
     Copy(FVisibleText, EndOffset + 1, MaxInt);
   FModified := True;
+end;
+
+function TTheWordVerseDocument.ReplaceVisibleTextBeforeBreak(
+  AStartUTF16, ALengthUTF16: Integer;
+  const AReplacement: UnicodeString;
+  const AInsertBefore: TTheWordBreakIdentity): Boolean;
+var
+  Event: TTheWordInlineEvent;
+  Index, NewAnchor, TargetOrdinal: Integer;
+  Item: TTheWordOpaqueItem;
+  TargetLexeme: UnicodeString;
+begin
+  Result := False;
+  if AInsertBefore.OffsetUTF16 <> AStartUTF16 + ALengthUTF16 then
+    Exit;
+  TargetLexeme := TheWordBreakLexeme(AInsertBefore.Kind);
+  if TargetLexeme = '' then Exit;
+  TargetOrdinal := -1;
+  for Index := 0 to FEvents.Count - 1 do
+  begin
+    Event := TTheWordInlineEvent(FEvents[Index]);
+    if (Event.Kind = twiekOpaque) and
+       (Event.Offset = AInsertBefore.OffsetUTF16) and
+       (Event.Ordinal = AInsertBefore.Ordinal) and
+       (Event.RawLexeme = TargetLexeme) then
+    begin
+      TargetOrdinal := Event.Ordinal;
+      Break;
+    end;
+  end;
+  if TargetOrdinal < 0 then Exit;
+
+  ReplaceVisibleTextWithAffinity(AStartUTF16, ALengthUTF16,
+    AReplacement, False);
+  NewAnchor := AStartUTF16 + Length(AReplacement);
+  for Index := 0 to FOpaqueItems.Count - 1 do
+  begin
+    Item := TTheWordOpaqueItem(FOpaqueItems[Index]);
+    if (Item.FOffset = NewAnchor) and (Item.FOrdinal < TargetOrdinal) and
+       ((Item.FRawLexeme = '<CM>') or (Item.FRawLexeme = '<CL>')) then
+      Item.FOffset := AStartUTF16;
+  end;
+  for Index := 0 to FEvents.Count - 1 do
+  begin
+    Event := TTheWordInlineEvent(FEvents[Index]);
+    if (Event.Kind = twiekOpaque) and (Event.Offset = NewAnchor) and
+       (Event.Ordinal < TargetOrdinal) and
+       ((Event.RawLexeme = '<CM>') or (Event.RawLexeme = '<CL>')) then
+      Event.Offset := AStartUTF16;
+  end;
+  Result := True;
 end;
 
 { TTheWordOntRecord }
@@ -4584,6 +5112,694 @@ begin
   Result := True;
 end;
 
+function RecoveryColorIsValid(AColor: LongInt): Boolean;
+begin
+  Result := (AColor >= 0) and (AColor <= $00FFFFFF);
+end;
+
+function RecoveryColorHexByte(AValue: Integer): UnicodeString;
+const
+  DIGITS: UnicodeString = '0123456789ABCDEF';
+begin
+  SetLength(Result, 2);
+  Result[1] := DIGITS[((AValue shr 4) and $F) + 1];
+  Result[2] := DIGITS[(AValue and $F) + 1];
+end;
+
+function RecoveryCanonicalColor(AColor: LongInt): UnicodeString;
+var
+  Blue, Green, Red: Integer;
+begin
+  if not RecoveryColorIsValid(AColor) then
+    Exit('');
+  { ResolvedColor follows the Windows COLORREF/BGR layout. }
+  Red := AColor and $FF;
+  Green := (AColor shr 8) and $FF;
+  Blue := (AColor shr 16) and $FF;
+  Result := '#' + RecoveryColorHexByte(Red) +
+    RecoveryColorHexByte(Green) + RecoveryColorHexByte(Blue);
+end;
+
+function RecoveryRewriteFontColorOpen(const AOpenLexeme: UnicodeString;
+  AHasColor: Boolean; AColor: LongInt; out ARewritten: UnicodeString;
+  out AWrapperNeeded: Boolean): Boolean;
+var
+  Attribute: TTheWordInlineFormatAttributeV2;
+  ColorText, ErrorText: UnicodeString;
+  ColorIndex, Index, InsertAt: Integer;
+  Parsed, Reparsed: TTheWordInlineFormatTagV2;
+begin
+  Result := False;
+  ARewritten := '';
+  AWrapperNeeded := False;
+  if AHasColor and not RecoveryColorIsValid(AColor) then
+    Exit;
+  if not TryParseTheWordInlineFormatTagV2(AOpenLexeme,
+    Parsed, ErrorText) or (Parsed.Kind <> twiftv2Font) or
+    Parsed.IsClosing then
+    Exit;
+
+  ColorIndex := -1;
+  for Index := 0 to High(Parsed.Attributes) do
+    if Parsed.Attributes[Index].NameRaw = 'color' then
+    begin
+      ColorIndex := Index;
+      Break;
+    end;
+
+  if not AHasColor then
+  begin
+    if ColorIndex < 0 then
+      ARewritten := AOpenLexeme
+    else if Length(Parsed.Attributes) = 1 then
+    begin
+      Result := True;
+      Exit;
+    end
+    else
+    begin
+      Attribute := Parsed.Attributes[ColorIndex];
+      ARewritten := Copy(AOpenLexeme, 1,
+        Attribute.FullSpanUTF16.StartUTF16 - 1) +
+        Copy(AOpenLexeme,
+          Attribute.FullSpanUTF16.StartUTF16 +
+          Attribute.FullSpanUTF16.LengthUTF16, MaxInt);
+    end;
+  end
+  else if Parsed.HasColor and (Parsed.ResolvedColor = AColor) then
+    ARewritten := AOpenLexeme
+  else
+  begin
+    ColorText := RecoveryCanonicalColor(AColor);
+    if ColorIndex >= 0 then
+    begin
+      Attribute := Parsed.Attributes[ColorIndex];
+      ARewritten := Copy(AOpenLexeme, 1,
+        Attribute.PayloadValueSpanUTF16.StartUTF16 - 1) + ColorText +
+        Copy(AOpenLexeme,
+          Attribute.PayloadValueSpanUTF16.StartUTF16 +
+          Attribute.PayloadValueSpanUTF16.LengthUTF16, MaxInt);
+    end
+    else
+    begin
+      InsertAt := Parsed.ClosingTriviaSpanUTF16.StartUTF16;
+      if InsertAt = 0 then
+        InsertAt := Length(AOpenLexeme);
+      ARewritten := Copy(AOpenLexeme, 1, InsertAt - 1) +
+        ' color=' + ColorText + Copy(AOpenLexeme, InsertAt, MaxInt);
+    end;
+  end;
+
+  if ARewritten = '' then
+  begin
+    Result := True;
+    Exit;
+  end;
+  if not TryParseTheWordInlineFormatTagV2(ARewritten,
+    Reparsed, ErrorText) or (Reparsed.Kind <> twiftv2Font) or
+    Reparsed.IsClosing then
+    Exit;
+  AWrapperNeeded := True;
+  Result := True;
+end;
+
+function RecoveryFindColorLeaf(
+  const APlan: TTheWordFontColorLeafPlanArrayV2;
+  AOffset: Integer): Integer;
+var
+  Index: Integer;
+begin
+  for Index := 0 to High(APlan) do
+    if (APlan[Index].StartUTF16 <= AOffset) and
+       (AOffset < APlan[Index].StartUTF16 +
+        APlan[Index].LengthUTF16) then
+      Exit(Index);
+  Result := -1;
+end;
+
+function RecoveryFindColorAction(
+  const ALeaf: TTheWordFontColorLeafPlanV2;
+  AMark: TTheWordFontMark): Integer;
+var
+  Index: Integer;
+begin
+  for Index := 0 to High(ALeaf.Actions) do
+    if (AMark <> nil) and
+       (ALeaf.Actions[Index].Mark.OpenOrdinal = AMark.FOpenOrdinal) and
+       (ALeaf.Actions[Index].Mark.StartUTF16 = AMark.FStartOffset) and
+       (ALeaf.Actions[Index].Mark.EndUTF16 = AMark.FEndOffset) then
+      Exit(Index);
+  Result := -1;
+end;
+
+function RecoveryEffectiveColor(ADocument: TTheWordVerseDocument;
+  AOffset: Integer; out AColor: LongInt): Boolean;
+var
+  BestOrdinal, Index: Integer;
+  Mark: TTheWordFontMark;
+begin
+  AColor := 0;
+  Result := False;
+  BestOrdinal := -1;
+  for Index := 0 to ADocument.FFontMarks.Count - 1 do
+  begin
+    Mark := TTheWordFontMark(ADocument.FFontMarks[Index]);
+    if (Mark.FStartOffset <= AOffset) and
+       (AOffset < Mark.FEndOffset) and Mark.HasColor and
+       (Mark.FOpenOrdinal > BestOrdinal) then
+    begin
+      AColor := Mark.ResolvedColor;
+      Result := True;
+      BestOrdinal := Mark.FOpenOrdinal;
+    end;
+  end;
+end;
+
+function RecoverySameFontIdentity(
+  const ALeft, ARight: TTheWordFontMarkIdentityV2): Boolean;
+begin
+  Result := (ALeft.OpenOrdinal = ARight.OpenOrdinal) and
+    (ALeft.StartUTF16 = ARight.StartUTF16) and
+    (ALeft.EndUTF16 = ARight.EndUTF16);
+end;
+
+function RecoveryColorLeafHasAction(
+  const ALeaf: TTheWordFontColorLeafPlanV2;
+  AMark: TTheWordFontMark;
+  AKind: TTheWordFontColorActionKindV2): Boolean;
+var
+  ActionIndex, Index: Integer;
+begin
+  if AMark <> nil then
+  begin
+    ActionIndex := RecoveryFindColorAction(ALeaf, AMark);
+    Exit((ActionIndex >= 0) and
+      (ALeaf.Actions[ActionIndex].Kind = AKind));
+  end;
+  for Index := 0 to High(ALeaf.Actions) do
+    if (ALeaf.Actions[Index].Mark.OpenOrdinal = -1) and
+       (ALeaf.Actions[Index].Kind = AKind) then
+      Exit(True);
+  Result := False;
+end;
+
+function RecoveryColorPlanIsReconciled(
+  ADocument: TTheWordVerseDocument;
+  const APlan: TTheWordFontColorLeafPlanArrayV2): Boolean;
+var
+  Action: TTheWordFontColorMarkActionV2;
+  ActionIndex, ActiveIndex, DuplicateIndex, EffectiveColor,
+    ExpectedActionCount, Index, PreviousEnd: Integer;
+  Carrier, Mark, PlanCarrier: TTheWordFontMark;
+  ExpectedAction, HasEffectiveColor, NeedsChange: Boolean;
+  ExpectedKind: TTheWordFontColorActionKindV2;
+begin
+  Result := False;
+  if Length(APlan) = 0 then
+    Exit;
+  PreviousEnd := -1;
+  for Index := 0 to High(APlan) do
+  begin
+    if (APlan[Index].LengthUTF16 <= 0) or
+       (APlan[Index].StartUTF16 < 0) or
+       ((Index > 0) and (APlan[Index].StartUTF16 <> PreviousEnd)) or
+       (APlan[Index].StartUTF16 < PreviousEnd) or
+       (APlan[Index].StartUTF16 + APlan[Index].LengthUTF16 >
+        Length(ADocument.FVisibleText)) or
+       not ADocument.CanApplySemanticRange(APlan[Index].StartUTF16,
+         APlan[Index].StartUTF16 + APlan[Index].LengthUTF16) or
+       (APlan[Index].CurrentHasExplicitColor and
+        not RecoveryColorIsValid(APlan[Index].CurrentEffectiveColor)) or
+       (APlan[Index].TargetHasExplicitColor and
+        not RecoveryColorIsValid(APlan[Index].TargetEffectiveColor)) or
+       (not APlan[Index].CurrentHasExplicitColor and
+        (APlan[Index].CurrentEffectiveColor <> 0)) or
+       (not APlan[Index].TargetHasExplicitColor and
+        (APlan[Index].TargetEffectiveColor <> 0)) then
+      Exit;
+    PreviousEnd := APlan[Index].StartUTF16 +
+      APlan[Index].LengthUTF16;
+
+    HasEffectiveColor := RecoveryEffectiveColor(ADocument,
+      APlan[Index].StartUTF16, EffectiveColor);
+    if (HasEffectiveColor <> APlan[Index].CurrentHasExplicitColor) or
+       (HasEffectiveColor and
+        (EffectiveColor <> APlan[Index].CurrentEffectiveColor)) then
+      Exit;
+
+    Carrier := nil;
+    for ActiveIndex := 0 to ADocument.FFontMarks.Count - 1 do
+    begin
+      Mark := TTheWordFontMark(ADocument.FFontMarks[ActiveIndex]);
+      if (Mark.FStartOffset <= APlan[Index].StartUTF16) and
+         (Mark.FEndOffset >= PreviousEnd) and
+         ((Carrier = nil) or
+          (Mark.FOpenOrdinal > Carrier.FOpenOrdinal)) then
+        Carrier := Mark;
+    end;
+
+    if APlan[Index].CarrierIsNew then
+    begin
+      if (Carrier <> nil) or
+         (APlan[Index].Carrier.OpenOrdinal <> -1) or
+         (APlan[Index].Carrier.StartUTF16 <> APlan[Index].StartUTF16) or
+         (APlan[Index].Carrier.EndUTF16 <> PreviousEnd) then
+        Exit;
+    end
+    else
+    begin
+      PlanCarrier := RecoveryFindFont(ADocument,
+        APlan[Index].Carrier);
+      if (Carrier = nil) or (PlanCarrier <> Carrier) then
+        Exit;
+    end;
+
+    NeedsChange :=
+      (APlan[Index].CurrentHasExplicitColor <>
+       APlan[Index].TargetHasExplicitColor) or
+      (APlan[Index].TargetHasExplicitColor and
+       (APlan[Index].CurrentEffectiveColor <>
+        APlan[Index].TargetEffectiveColor));
+    if not NeedsChange and (Length(APlan[Index].Actions) <> 0) then
+      Exit;
+
+    for ActionIndex := 0 to High(APlan[Index].Actions) do
+    begin
+      Action := APlan[Index].Actions[ActionIndex];
+      if (Action.LeafStartUTF16 <> APlan[Index].StartUTF16) or
+         (Action.LeafLengthUTF16 <> APlan[Index].LengthUTF16) or
+         (Action.TargetHasColor <> APlan[Index].TargetHasExplicitColor) or
+         (Action.TargetColor <> APlan[Index].TargetEffectiveColor) then
+        Exit;
+      for DuplicateIndex := 0 to ActionIndex - 1 do
+        if RecoverySameFontIdentity(Action.Mark,
+          APlan[Index].Actions[DuplicateIndex].Mark) then
+          Exit;
+
+      if Action.Mark.OpenOrdinal = -1 then
+      begin
+        if (Action.Kind <> twfcakAddColor) or
+           not Action.TargetHasColor or
+           not RecoveryColorIsValid(Action.TargetColor) or
+           not APlan[Index].CarrierIsNew or
+           not RecoverySameFontIdentity(Action.Mark,
+             APlan[Index].Carrier) then
+          Exit;
+        Continue;
+      end;
+
+      Mark := RecoveryFindFont(ADocument, Action.Mark);
+      if (Mark = nil) or
+         (Mark.FStartOffset > APlan[Index].StartUTF16) or
+         (Mark.FEndOffset < PreviousEnd) or
+         (Mark.HasColor <> Action.OriginalHadColor) or
+         (Mark.HasColor and
+          ((Mark.ResolvedColor <> Action.OriginalColor) or
+           (Mark.ColorRaw <> Action.OriginalColorRaw))) or
+         (not Mark.HasColor and
+          ((Action.OriginalColor <> 0) or
+           (Action.OriginalColorRaw <> ''))) then
+        Exit;
+
+      case Action.Kind of
+        twfcakRemoveColor:
+          if not Action.OriginalHadColor or Action.TargetHasColor or
+             (Action.TargetColor <> 0) then
+            Exit;
+        twfcakSetColor:
+          if not Action.OriginalHadColor or
+             not Action.TargetHasColor or
+             not RecoveryColorIsValid(Action.TargetColor) then
+            Exit;
+        twfcakAddColor:
+          if Action.OriginalHadColor or not Action.TargetHasColor or
+             not RecoveryColorIsValid(Action.TargetColor) then
+            Exit;
+      end;
+    end;
+
+    ExpectedActionCount := 0;
+    if NeedsChange then
+    begin
+      for ActiveIndex := 0 to ADocument.FFontMarks.Count - 1 do
+      begin
+        Mark := TTheWordFontMark(ADocument.FFontMarks[ActiveIndex]);
+        ExpectedKind := twfcakRemoveColor;
+        if (Mark.FStartOffset > APlan[Index].StartUTF16) or
+           (Mark.FEndOffset < PreviousEnd) then
+          Continue;
+        ExpectedAction := False;
+        if not APlan[Index].TargetHasExplicitColor then
+        begin
+          if Mark.HasColor then
+          begin
+            ExpectedAction := True;
+            ExpectedKind := twfcakRemoveColor;
+          end;
+        end
+        else if Mark = Carrier then
+        begin
+          ExpectedAction := True;
+          if Mark.HasColor then
+            ExpectedKind := twfcakSetColor
+          else
+            ExpectedKind := twfcakAddColor;
+        end
+        else if Mark.HasColor then
+        begin
+          ExpectedAction := True;
+          ExpectedKind := twfcakRemoveColor;
+        end;
+        if ExpectedAction then
+        begin
+          Inc(ExpectedActionCount);
+          if not RecoveryColorLeafHasAction(APlan[Index],
+            Mark, ExpectedKind) then
+            Exit;
+        end;
+      end;
+      if APlan[Index].TargetHasExplicitColor and (Carrier = nil) then
+      begin
+        Inc(ExpectedActionCount);
+        if not RecoveryColorLeafHasAction(APlan[Index],
+          nil, twfcakAddColor) then
+          Exit;
+      end;
+    end;
+    if Length(APlan[Index].Actions) <> ExpectedActionCount then
+      Exit;
+  end;
+  Result := True;
+end;
+
+function RecoveryBuildCombinedColorTarget(
+  ADocument: TTheWordVerseDocument;
+  const APlan: TTheWordFontColorLeafPlanArrayV2;
+  AOffset: Integer; ATarget: TList): Boolean;
+var
+  Action: TTheWordFontColorMarkActionV2;
+  ActionIndex, Color, Index, LeafIndex: Integer;
+  FontMark: TTheWordFontMark;
+  HasColor, WrapperNeeded: Boolean;
+  OpenLexeme: UnicodeString;
+  SemanticMark: TTheWordSemanticMark;
+  Wrapper: TRecoveryCombinedWrapper;
+begin
+  Result := False;
+  RecoveryClearCombinedWrappers(ATarget);
+  if AOffset >= Length(ADocument.FVisibleText) then
+    Exit(True);
+  LeafIndex := RecoveryFindColorLeaf(APlan, AOffset);
+
+  for Index := 0 to ADocument.FMarks.Count - 1 do
+  begin
+    SemanticMark := TTheWordSemanticMark(ADocument.FMarks[Index]);
+    if not ((SemanticMark.FStartOffset <= AOffset) and
+      (AOffset < SemanticMark.FEndOffset)) then
+      Continue;
+    Wrapper := TRecoveryCombinedWrapper.Create;
+    Wrapper.Kind := rcwkSemantic;
+    Wrapper.SemanticMark := SemanticMark;
+    Wrapper.FontMark := nil;
+    Wrapper.StartOffset := SemanticMark.FStartOffset;
+    Wrapper.EndOffset := SemanticMark.FEndOffset;
+    Wrapper.OpenOrdinal := SemanticMark.FOpenOrdinal;
+    Wrapper.OpenLexeme := SemanticMark.FOpenLexeme;
+    Wrapper.CloseLexeme := SemanticMark.FCloseLexeme;
+    RecoveryInsertCombinedWrapper(ATarget, Wrapper);
+  end;
+
+  for Index := 0 to ADocument.FFontMarks.Count - 1 do
+  begin
+    FontMark := TTheWordFontMark(ADocument.FFontMarks[Index]);
+    if not ((FontMark.FStartOffset <= AOffset) and
+      (AOffset < FontMark.FEndOffset)) then
+      Continue;
+    HasColor := FontMark.HasColor;
+    if HasColor then
+      Color := FontMark.ResolvedColor
+    else
+      Color := 0;
+    OpenLexeme := FontMark.FOpenLexeme;
+    if LeafIndex >= 0 then
+    begin
+      ActionIndex := RecoveryFindColorAction(
+        APlan[LeafIndex], FontMark);
+      if ActionIndex >= 0 then
+      begin
+        Action := APlan[LeafIndex].Actions[ActionIndex];
+        case Action.Kind of
+          twfcakRemoveColor:
+            begin
+              HasColor := False;
+              Color := 0;
+            end;
+          twfcakSetColor, twfcakAddColor:
+            begin
+              HasColor := True;
+              Color := Action.TargetColor;
+            end;
+        end;
+        if not RecoveryRewriteFontColorOpen(FontMark.FOpenLexeme,
+          HasColor, Color, OpenLexeme, WrapperNeeded) then
+          Exit;
+        if not WrapperNeeded then
+          Continue;
+      end;
+    end;
+    Wrapper := TRecoveryCombinedWrapper.Create;
+    Wrapper.Kind := rcwkFont;
+    Wrapper.SemanticMark := nil;
+    Wrapper.FontMark := FontMark;
+    Wrapper.StartOffset := FontMark.FStartOffset;
+    Wrapper.EndOffset := FontMark.FEndOffset;
+    Wrapper.OpenOrdinal := FontMark.FOpenOrdinal;
+    Wrapper.OpenLexeme := OpenLexeme;
+    Wrapper.CloseLexeme := FontMark.FCloseLexeme;
+    RecoveryInsertCombinedWrapper(ATarget, Wrapper);
+  end;
+
+  if LeafIndex >= 0 then
+    for ActionIndex := 0 to High(APlan[LeafIndex].Actions) do
+    begin
+      Action := APlan[LeafIndex].Actions[ActionIndex];
+      if Action.Mark.OpenOrdinal <> -1 then
+        Continue;
+      if (Action.Kind <> twfcakAddColor) or
+         not Action.TargetHasColor or
+         not RecoveryColorIsValid(Action.TargetColor) then
+        Exit;
+      Wrapper := TRecoveryCombinedWrapper.Create;
+      Wrapper.Kind := rcwkFont;
+      Wrapper.SemanticMark := nil;
+      Wrapper.FontMark := nil;
+      Wrapper.StartOffset := APlan[LeafIndex].StartUTF16;
+      Wrapper.EndOffset := APlan[LeafIndex].StartUTF16 +
+        APlan[LeafIndex].LengthUTF16;
+      Wrapper.OpenOrdinal := MaxInt;
+      Wrapper.OpenLexeme := '<font color=' +
+        RecoveryCanonicalColor(Action.TargetColor) + '>';
+      Wrapper.CloseLexeme := '</font>';
+      RecoveryInsertCombinedWrapper(ATarget, Wrapper);
+    end;
+  Result := True;
+end;
+
+function RecoveryBuildColorEventPresentationStack(
+  ADocument: TTheWordVerseDocument;
+  const APlan: TTheWordFontColorLeafPlanArrayV2;
+  AEvent: TTheWordInlineEvent; ATarget: TList): Boolean;
+var
+  LeftStack, RightStack: TList;
+begin
+  Result := False;
+  LeftStack := TList.Create;
+  RightStack := TList.Create;
+  try
+    if (AEvent.Offset > 0) and
+       not RecoveryBuildCombinedColorTarget(ADocument, APlan,
+         AEvent.Offset - 1, LeftStack) then
+      Exit;
+    if not RecoveryBuildCombinedColorTarget(ADocument, APlan,
+      AEvent.Offset, RightStack) then
+      Exit;
+    if AEvent.Kind = twiekLexical then
+      RecoveryCopyCombinedWrappers(LeftStack, ATarget)
+    else
+      RecoveryBuildPayloadStack(ADocument, AEvent,
+        LeftStack, RightStack, ATarget);
+    Result := True;
+  finally
+    RecoveryClearCombinedWrappers(RightStack);
+    RecoveryClearCombinedWrappers(LeftStack);
+    RightStack.Free;
+    LeftStack.Free;
+  end;
+end;
+
+function RecoveryColorFontProjectionEqual(AExpected,
+  AActual: TTheWordVerseDocument;
+  const APlan: TTheWordFontColorLeafPlanArrayV2): Boolean;
+var
+  ActualStack, ExpectedStack: TList;
+  Offset: Integer;
+begin
+  Result := False;
+  if AExpected.FVisibleText <> AActual.FVisibleText then
+    Exit;
+  ActualStack := TList.Create;
+  ExpectedStack := TList.Create;
+  try
+    for Offset := 0 to Length(AExpected.FVisibleText) - 1 do
+    begin
+      if not RecoveryBuildCombinedColorTarget(AExpected, APlan,
+        Offset, ExpectedStack) or
+         not RecoveryBuildCombinedColorTarget(AActual, nil,
+           Offset, ActualStack) or
+         not RecoveryCombinedPresentationEqual(ExpectedStack,
+           ActualStack, True) then
+        Exit;
+    end;
+    Result := True;
+  finally
+    RecoveryClearCombinedWrappers(ExpectedStack);
+    RecoveryClearCombinedWrappers(ActualStack);
+    ExpectedStack.Free;
+    ActualStack.Free;
+  end;
+end;
+
+function RecoveryColorPayloadAffinityEqualPlan(AExpected,
+  AActual: TTheWordVerseDocument;
+  const APlan: TTheWordFontColorLeafPlanArrayV2): Boolean;
+var
+  ActualEvent, ExpectedEvent: TTheWordInlineEvent;
+  ActualIndex, ExpectedIndex: Integer;
+  ActualStack, ExpectedStack: TList;
+begin
+  Result := False;
+  ActualIndex := 0;
+  ExpectedIndex := 0;
+  ActualStack := TList.Create;
+  ExpectedStack := TList.Create;
+  try
+    while True do
+    begin
+      ExpectedEvent := RecoveryNextPayloadEvent(
+        AExpected, ExpectedIndex);
+      ActualEvent := RecoveryNextPayloadEvent(
+        AActual, ActualIndex);
+      if (ExpectedEvent = nil) or (ActualEvent = nil) then
+        Exit((ExpectedEvent = nil) and (ActualEvent = nil));
+      if (ExpectedEvent.Kind <> ActualEvent.Kind) or
+         (ExpectedEvent.Offset <> ActualEvent.Offset) or
+         (PreservedEventLexeme(ExpectedEvent) <>
+          PreservedEventLexeme(ActualEvent)) then
+        Exit;
+      if not RecoveryBuildColorEventPresentationStack(AExpected,
+        APlan, ExpectedEvent, ExpectedStack) or
+         not RecoveryBuildColorEventPresentationStack(AActual,
+           nil, ActualEvent, ActualStack) or
+         not RecoveryCombinedPresentationEqual(ExpectedStack,
+           ActualStack, False) then
+        Exit;
+    end;
+  finally
+    RecoveryClearCombinedWrappers(ExpectedStack);
+    RecoveryClearCombinedWrappers(ActualStack);
+    ExpectedStack.Free;
+    ActualStack.Free;
+  end;
+end;
+
+function RecoveryColorPlanTargetsMatch(
+  ADocument: TTheWordVerseDocument;
+  const APlan: TTheWordFontColorLeafPlanArrayV2): Boolean;
+var
+  Color, Index, Offset: Integer;
+  HasColor: Boolean;
+begin
+  for Index := 0 to High(APlan) do
+    for Offset := APlan[Index].StartUTF16 to
+      APlan[Index].StartUTF16 + APlan[Index].LengthUTF16 - 1 do
+    begin
+      HasColor := RecoveryEffectiveColor(ADocument, Offset, Color);
+      if (HasColor <> APlan[Index].TargetHasExplicitColor) or
+         (HasColor and
+          (Color <> APlan[Index].TargetEffectiveColor)) then
+        Exit(False);
+    end;
+  Result := True;
+end;
+
+function TTheWordVerseDocument.TryBuildRawWithFontColorTopology(
+  const APlan: TTheWordFontColorLeafPlanArrayV2;
+  out ACandidateRaw: UnicodeString): Boolean;
+var
+  Codec: ITheWordOntCodecV2;
+  CurrentStack, LeftStack, Payloads, PayloadStack, TargetStack: TList;
+  Offset: Integer;
+  Restored: TTheWordVerseDocument;
+begin
+  Result := False;
+  ACandidateRaw := '';
+  if not RecoveryColorPlanIsReconciled(Self, APlan) then
+    Exit;
+  CurrentStack := TList.Create;
+  LeftStack := TList.Create;
+  Payloads := TList.Create;
+  PayloadStack := TList.Create;
+  TargetStack := TList.Create;
+  try
+    for Offset := 0 to Length(FVisibleText) do
+    begin
+      if not RecoveryBuildCombinedColorTarget(Self, APlan,
+        Offset, TargetStack) then
+      begin
+        ACandidateRaw := '';
+        Exit;
+      end;
+      RecoveryCopyCombinedWrappers(CurrentStack, LeftStack);
+      RecoveryAppendCombinedAnchor(Self, Offset,
+        LeftStack, TargetStack, CurrentStack,
+        Payloads, PayloadStack, ACandidateRaw);
+      if Offset < Length(FVisibleText) then
+        ACandidateRaw := ACandidateRaw + FVisibleText[Offset + 1];
+    end;
+  finally
+    RecoveryClearCombinedWrappers(TargetStack);
+    RecoveryClearCombinedWrappers(PayloadStack);
+    RecoveryClearCombinedWrappers(LeftStack);
+    RecoveryClearCombinedWrappers(CurrentStack);
+    TargetStack.Free;
+    PayloadStack.Free;
+    Payloads.Free;
+    LeftStack.Free;
+    CurrentStack.Free;
+  end;
+
+  Codec := TTheWordOntCodecV2.Create;
+  try
+    Restored := Codec.DecodeVerse(ACandidateRaw);
+    try
+      if not RecoveryObjectsEqual(Self, Restored) or
+         not RecoveryColorFontProjectionEqual(Self, Restored, APlan) or
+         not RecoveryColorPayloadAffinityEqualPlan(Self, Restored, APlan) or
+         not RecoveryColorPlanTargetsMatch(Restored, APlan) then
+      begin
+        ACandidateRaw := '';
+        Exit;
+      end;
+    finally
+      Restored.Free;
+    end;
+  except
+    ACandidateRaw := '';
+    Exit;
+  end;
+  Result := True;
+end;
+
 function TTheWordOntCodecV2.EncodeVerse(
   ADocument: TTheWordVerseDocument): UnicodeString;
 var
@@ -4816,6 +6032,309 @@ begin
     if Ord(VerseCapability) > Ord(Result) then
       Result := VerseCapability;
   end;
+end;
+function TTheWordVerseDocument.CanInsertTitle(
+  AOffsetUTF16: Integer): Boolean;
+var
+  Index: Integer;
+  Event: TTheWordInlineEvent;
+  Mark: TTheWordSemanticMark;
+  FontMark: TTheWordFontMark;
+  Titles: TTheWordTitleRangeArray;
+begin
+  Result := FCanEdit and (AOffsetUTF16 >= 0) and
+    (AOffsetUTF16 <= Length(FVisibleText)) and
+    IsUtf16Boundary(FVisibleText, AOffsetUTF16);
+  if not Result then
+    Exit;
+  if (AOffsetUTF16 > 0) and
+     (AOffsetUTF16 < Length(FVisibleText)) and
+     IsTranslatorNoteWordChar(FVisibleText[AOffsetUTF16]) and
+     IsTranslatorNoteWordChar(FVisibleText[AOffsetUTF16 + 1]) then
+    Exit(False);
+  CollectTheWordTitleRanges(Self, Titles);
+  for Index := 0 to High(Titles) do
+    if (AOffsetUTF16 >= Titles[Index].StartOffset) and
+       (AOffsetUTF16 <= Titles[Index].EndOffset) then
+      Exit(False);
+  for Index := 0 to FEvents.Count - 1 do
+  begin
+    Event := TTheWordInlineEvent(FEvents[Index]);
+    if Event.Offset = AOffsetUTF16 then
+      Exit(False);
+  end;
+  for Index := 0 to FMarks.Count - 1 do
+  begin
+    Mark := TTheWordSemanticMark(FMarks[Index]);
+    if (Mark.StartOffset < AOffsetUTF16) and
+       (Mark.EndOffset > AOffsetUTF16) then
+      Exit(False);
+  end;
+  for Index := 0 to FFontMarks.Count - 1 do
+  begin
+    FontMark := TTheWordFontMark(FFontMarks[Index]);
+    if (FontMark.StartOffset < AOffsetUTF16) and
+       (FontMark.EndOffset > AOffsetUTF16) then
+      Exit(False);
+  end;
+end;
+
+function TryFindTheWordTitle(ADocument: TTheWordVerseDocument;
+  AOpenOrdinal: Integer; out ATitle: TTheWordTitleRange): Boolean;
+var
+  Index: Integer;
+  Titles: TTheWordTitleRangeArray;
+begin
+  FillChar(ATitle, SizeOf(ATitle), 0);
+  CollectTheWordTitleRanges(ADocument, Titles);
+  for Index := 0 to High(Titles) do
+    if Titles[Index].OpenOrdinal = AOpenOrdinal then
+    begin
+      ATitle := Titles[Index];
+      Exit(True);
+    end;
+  Result := False;
+end;
+
+function FindTitleOpaque(ADocument: TTheWordVerseDocument;
+  AOrdinal: Integer): TTheWordOpaqueItem;
+var
+  Index: Integer;
+begin
+  for Index := 0 to ADocument.FOpaqueItems.Count - 1 do
+    if TTheWordOpaqueItem(ADocument.FOpaqueItems[Index]).FOrdinal =
+       AOrdinal then
+      Exit(TTheWordOpaqueItem(ADocument.FOpaqueItems[Index]));
+  Result := nil;
+end;
+
+function FindTitleEvent(ADocument: TTheWordVerseDocument;
+  AOrdinal: Integer): TTheWordInlineEvent;
+var
+  Index: Integer;
+begin
+  for Index := 0 to ADocument.FEvents.Count - 1 do
+    if TTheWordInlineEvent(ADocument.FEvents[Index]).Ordinal =
+       AOrdinal then
+      Exit(TTheWordInlineEvent(ADocument.FEvents[Index]));
+  Result := nil;
+end;
+
+procedure RestoreObjectPair(AList: TObjectList; AFirst: TObject;
+  AFirstIndex: Integer; ASecond: TObject; ASecondIndex: Integer);
+begin
+  if AFirstIndex <= ASecondIndex then
+  begin
+    AList.Insert(AFirstIndex, AFirst);
+    AList.Insert(ASecondIndex, ASecond);
+  end
+  else
+  begin
+    AList.Insert(ASecondIndex, ASecond);
+    AList.Insert(AFirstIndex, AFirst);
+  end;
+end;
+
+function CanonicalTheWordTitleOpen(ALevel: Integer): UnicodeString;
+begin
+  case ALevel of
+    1: Result := '<TS>';
+    2: Result := '<TS2>';
+    3: Result := '<TS3>';
+  else
+    Result := '';
+  end;
+end;
+
+function TTheWordVerseDocument.ReplaceTitleVisibleText(AOpenOrdinal,
+  ARelativeStartUTF16, ALengthUTF16: Integer;
+  const AReplacement: UnicodeString): Boolean;
+var
+  AbsoluteStart, CloseEventIndex, CloseOpaqueIndex: Integer;
+  OpenEventIndex, OpenOpaqueIndex, ReplacementLength: Integer;
+  CloseEvent, OpenEvent: TTheWordInlineEvent;
+  CloseOpaque, OpenOpaque: TTheWordOpaqueItem;
+  Title: TTheWordTitleRange;
+  Succeeded: Boolean;
+begin
+  Result := False;
+  if not TryFindTheWordTitle(Self, AOpenOrdinal, Title) or
+     not Title.Editable or (AReplacement = '') and
+       (ALengthUTF16 = Title.EndOffset - Title.StartOffset) then
+    Exit;
+  Result := (ARelativeStartUTF16 >= 0) and (ALengthUTF16 >= 0) and
+    (ARelativeStartUTF16 <= Title.EndOffset - Title.StartOffset) and
+    (ALengthUTF16 <= Title.EndOffset - Title.StartOffset -
+      ARelativeStartUTF16) and
+    (Pos('<', AReplacement) = 0) and (Pos('|', AReplacement) = 0) and
+    (Pos(#13, AReplacement) = 0) and (Pos(#10, AReplacement) = 0) and
+    IsWellFormedUtf16(AReplacement);
+  if not Result then
+    Exit;
+  AbsoluteStart := Title.StartOffset + ARelativeStartUTF16;
+  if (ALengthUTF16 = Length(AReplacement)) and
+     (Copy(FVisibleText, AbsoluteStart + 1, ALengthUTF16) =
+       AReplacement) then
+    Exit(True);
+
+  OpenOpaque := FindTitleOpaque(Self, Title.OpenOrdinal);
+  CloseOpaque := FindTitleOpaque(Self, Title.CloseOrdinal);
+  OpenEvent := FindTitleEvent(Self, Title.OpenOrdinal);
+  CloseEvent := FindTitleEvent(Self, Title.CloseOrdinal);
+  if not Assigned(OpenOpaque) or not Assigned(CloseOpaque) or
+     not Assigned(OpenEvent) or not Assigned(CloseEvent) then
+    Exit(False);
+  OpenOpaqueIndex := FOpaqueItems.IndexOf(OpenOpaque);
+  CloseOpaqueIndex := FOpaqueItems.IndexOf(CloseOpaque);
+  OpenEventIndex := FEvents.IndexOf(OpenEvent);
+  CloseEventIndex := FEvents.IndexOf(CloseEvent);
+  FOpaqueItems.Extract(OpenOpaque);
+  FOpaqueItems.Extract(CloseOpaque);
+  FEvents.Extract(OpenEvent);
+  FEvents.Extract(CloseEvent);
+  Succeeded := False;
+  try
+    ReplaceVisibleText(AbsoluteStart, ALengthUTF16, AReplacement);
+    ReplacementLength := Length(AReplacement);
+    OpenOpaque.FOffset := Title.StartOffset;
+    OpenEvent.Offset := Title.StartOffset;
+    CloseOpaque.FOffset := Title.EndOffset +
+      ReplacementLength - ALengthUTF16;
+    CloseEvent.Offset := CloseOpaque.FOffset;
+    Succeeded := True;
+  finally
+    RestoreObjectPair(FOpaqueItems, OpenOpaque, OpenOpaqueIndex,
+      CloseOpaque, CloseOpaqueIndex);
+    RestoreObjectPair(FEvents, OpenEvent, OpenEventIndex,
+      CloseEvent, CloseEventIndex);
+  end;
+  Result := Succeeded;
+end;
+
+function TTheWordVerseDocument.InsertTitle(AOffsetUTF16, ALevel: Integer;
+  const AText: UnicodeString; out AOpenOrdinal: Integer): Boolean;
+var
+  CloseEvent, OpenEvent: TTheWordInlineEvent;
+  CloseOpaque, OpenOpaque: TTheWordOpaqueItem;
+  OpenLexeme: UnicodeString;
+begin
+  Result := False;
+  AOpenOrdinal := -1;
+  OpenLexeme := CanonicalTheWordTitleOpen(ALevel);
+  if (OpenLexeme = '') or (AText = '') or
+     (Pos('<', AText) > 0) or (Pos('|', AText) > 0) or
+     (Pos(#13, AText) > 0) or (Pos(#10, AText) > 0) or
+     not IsWellFormedUtf16(AText) or not CanInsertTitle(AOffsetUTF16) then
+    Exit;
+
+  ReplaceVisibleText(AOffsetUTF16, 0, AText);
+  OpenEvent := NewInlineEvent(Self, twiekOpaque, AOffsetUTF16,
+    OpenLexeme);
+  CloseEvent := NewInlineEvent(Self, twiekOpaque,
+    AOffsetUTF16 + Length(AText), '<Ts>');
+  OpenOpaque := TTheWordOpaqueItem.Create;
+  OpenOpaque.FKind := twokUnknownTag;
+  OpenOpaque.FOffset := OpenEvent.Offset;
+  OpenOpaque.FRawLexeme := OpenLexeme;
+  OpenOpaque.FOrdinal := OpenEvent.Ordinal;
+  CloseOpaque := TTheWordOpaqueItem.Create;
+  CloseOpaque.FKind := twokUnknownTag;
+  CloseOpaque.FOffset := CloseEvent.Offset;
+  CloseOpaque.FRawLexeme := '<Ts>';
+  CloseOpaque.FOrdinal := CloseEvent.Ordinal;
+  FOpaqueItems.Add(OpenOpaque);
+  FOpaqueItems.Add(CloseOpaque);
+  AOpenOrdinal := OpenEvent.Ordinal;
+  FModified := True;
+  Result := True;
+end;
+
+function TTheWordVerseDocument.ChangeTitleLevel(AOpenOrdinal,
+  ALevel: Integer): Boolean;
+var
+  Event: TTheWordInlineEvent;
+  Lexeme: UnicodeString;
+  Opaque: TTheWordOpaqueItem;
+  Title: TTheWordTitleRange;
+begin
+  Result := False;
+  Lexeme := CanonicalTheWordTitleOpen(ALevel);
+  if (Lexeme = '') or not TryFindTheWordTitle(Self, AOpenOrdinal,
+    Title) or not Title.Editable then
+    Exit;
+  if Title.Level = ALevel then
+    Exit(True);
+  Event := FindTitleEvent(Self, Title.OpenOrdinal);
+  Opaque := FindTitleOpaque(Self, Title.OpenOrdinal);
+  if not Assigned(Event) or not Assigned(Opaque) then
+    Exit;
+  Event.RawLexeme := Lexeme;
+  Opaque.FRawLexeme := Lexeme;
+  FModified := True;
+  Result := True;
+end;
+
+function TTheWordVerseDocument.RemoveTitle(AOpenOrdinal: Integer;
+  out AReplacementText: UnicodeString): Boolean;
+var
+  CloseEventIndex, CloseOpaqueIndex, OpenEventIndex: Integer;
+  OpenOpaqueIndex, TitleLength: Integer;
+  CloseEvent, OpenEvent: TTheWordInlineEvent;
+  CloseOpaque, OpenOpaque: TTheWordOpaqueItem;
+  Title: TTheWordTitleRange;
+  Succeeded: Boolean;
+begin
+  Result := False;
+  AReplacementText := '';
+  if not TryFindTheWordTitle(Self, AOpenOrdinal, Title) or
+     not Title.Editable then
+    Exit;
+  if (Title.StartOffset > 0) and
+     (Title.EndOffset < Length(FVisibleText)) and
+     IsTitleJoinWordCodeUnit(FVisibleText, Title.StartOffset) and
+     IsTitleJoinWordCodeUnit(FVisibleText, Title.EndOffset + 1) then
+    AReplacementText := ' ';
+
+  OpenOpaque := FindTitleOpaque(Self, Title.OpenOrdinal);
+  CloseOpaque := FindTitleOpaque(Self, Title.CloseOrdinal);
+  OpenEvent := FindTitleEvent(Self, Title.OpenOrdinal);
+  CloseEvent := FindTitleEvent(Self, Title.CloseOrdinal);
+  if not Assigned(OpenOpaque) or not Assigned(CloseOpaque) or
+     not Assigned(OpenEvent) or not Assigned(CloseEvent) then
+    Exit;
+  OpenOpaqueIndex := FOpaqueItems.IndexOf(OpenOpaque);
+  CloseOpaqueIndex := FOpaqueItems.IndexOf(CloseOpaque);
+  OpenEventIndex := FEvents.IndexOf(OpenEvent);
+  CloseEventIndex := FEvents.IndexOf(CloseEvent);
+  FOpaqueItems.Extract(OpenOpaque);
+  FOpaqueItems.Extract(CloseOpaque);
+  FEvents.Extract(OpenEvent);
+  FEvents.Extract(CloseEvent);
+  Succeeded := False;
+  try
+    TitleLength := Title.EndOffset - Title.StartOffset;
+    ReplaceVisibleText(Title.StartOffset, TitleLength,
+      AReplacementText);
+    Succeeded := True;
+  finally
+    if Succeeded then
+    begin
+      OpenOpaque.Free;
+      CloseOpaque.Free;
+      OpenEvent.Free;
+      CloseEvent.Free;
+      { Empty-title removal may leave VisibleText unchanged. }
+      FModified := True;
+    end
+    else
+    begin
+      RestoreObjectPair(FOpaqueItems, OpenOpaque, OpenOpaqueIndex,
+        CloseOpaque, CloseOpaqueIndex);
+      RestoreObjectPair(FEvents, OpenEvent, OpenEventIndex,
+        CloseEvent, CloseEventIndex);
+    end;
+  end;
+  Result := Succeeded;
 end;
 
 end.

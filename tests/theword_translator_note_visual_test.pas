@@ -30,6 +30,7 @@ type
     procedure DirectEditorKeepsMixedMarkersAtomicAcrossParagraphDirections;
     procedure DirectEditorKeepsScriptTextEditableWrappedAndCaretLineSized;
     procedure DirectEditorReservesScriptInkAcrossConsecutiveLines;
+    procedure DirectEditorPlacesTerminalSoftBreakCaretAtNextLineStart;
     procedure DirectEditorDoubleClickSelectsUnicodeWords;
   end;
 
@@ -1221,6 +1222,90 @@ begin
       (SubOnlyCaret.Top >= SubOnlyLineRect.Top) and
       (SubOnlyCaret.Bottom <= SubOnlyLineRect.Bottom));
   finally
+    Host.Free;
+  end;
+end;
+
+procedure TTheWordTranslatorNoteVisualTests.
+  DirectEditorPlacesTerminalSoftBreakCaretAtNextLineStart;
+var
+  Codec: ITheWordOntCodecV2;
+  Editor: TDirectWriteVerseEditorAccess;
+  Host: TForm;
+  LineRect: TRect;
+  PopulatedCaret: TRect;
+  Source: TTheWordVerseDocument;
+  TerminalCaret: TRect;
+  Visual: IVerseVisualDocument;
+
+  procedure CheckDirection(ADirection: TTextDirection;
+    const ALabel: string);
+  var
+    ExpectedLeadingEdge: Integer;
+    OffsetAfterBreak: Integer;
+    PopulatedRaw: UnicodeString;
+    TerminalRaw: UnicodeString;
+  begin
+    if ADirection = tdRightToLeft then
+    begin
+      TerminalRaw := 'אבג<CL>';
+      PopulatedRaw := 'אבג<CL>ד';
+    end
+    else
+    begin
+      TerminalRaw := 'abc<CL>';
+      PopulatedRaw := 'abc<CL>x';
+    end;
+    Source := Codec.DecodeVerse(TerminalRaw);
+    Visual := BuildTheWordVerseVisualDocument(Source, ADirection, 121);
+    Editor.SetEditorDocument(Visual);
+    Application.ProcessMessages;
+    OffsetAfterBreak := Length(Visual.Text);
+    AssertTrue(ALabel + ' terminal soft-break caret is available',
+      Editor.GetTextPositionClientRect(OffsetAfterBreak, TerminalCaret));
+    AssertTrue(ALabel + ' empty line box is available',
+      Editor.GetTextLineClientRect(OffsetAfterBreak, LineRect));
+    if ADirection = tdRightToLeft then
+      ExpectedLeadingEdge := LineRect.Right
+    else
+      ExpectedLeadingEdge := LineRect.Left;
+    AssertTrue(ALabel + ' terminal caret uses the empty-line leading edge',
+      Abs(TerminalCaret.Left - ExpectedLeadingEdge) <= 1);
+    Visual := nil;
+    FreeAndNil(Source);
+
+    Source := Codec.DecodeVerse(PopulatedRaw);
+    Visual := BuildTheWordVerseVisualDocument(Source, ADirection, 122);
+    Editor.SetEditorDocument(Visual);
+    Application.ProcessMessages;
+    OffsetAfterBreak := Length(Visual.Text) - 1;
+    AssertTrue(ALabel + ' populated-line caret is available',
+      Editor.GetTextPositionClientRect(OffsetAfterBreak, PopulatedCaret));
+    AssertTrue(ALabel + ' terminal and populated caret share the line start',
+      Abs(TerminalCaret.Left - PopulatedCaret.Left) <= 1);
+    AssertTrue(ALabel + ' terminal and populated caret share the line top',
+      Abs(TerminalCaret.Top - PopulatedCaret.Top) <= 1);
+    Visual := nil;
+    FreeAndNil(Source);
+  end;
+
+begin
+  Forms.Application.Initialize;
+  Codec := TTheWordOntCodecV2.Create;
+  Source := nil;
+  Host := TForm.CreateNew(nil);
+  try
+    Host.SetBounds(50, 50, 420, 220);
+    Editor := TDirectWriteVerseEditorAccess.Create(Host);
+    Editor.Parent := Host;
+    Editor.Align := alClient;
+    Editor.InteractionMode := vimEdit;
+    Host.Show;
+    CheckDirection(tdLeftToRight, 'LTR');
+    CheckDirection(tdRightToLeft, 'RTL');
+  finally
+    Visual := nil;
+    Source.Free;
     Host.Free;
   end;
 end;

@@ -7,7 +7,7 @@ interface
 
 uses
   Classes, SysUtils, Character, Types, Controls, StdCtrls, Graphics, LCLType, LCLProc,
-  Clipbrd, verse_visual_document, verse_view_intf,
+  Clipbrd, verse_visual_document, verse_view_intf, theword_break_v2,
   directwrite_syntagm_view;
 
 type
@@ -53,6 +53,11 @@ type
   TVerseParagraphEditEvent = procedure(Sender: TObject;
     Kind: TVerseParagraphEditKind; StartUTF16, LengthUTF16: Integer;
     var Accepted: Boolean; var NewCaretUTF16: Integer) of object;
+  TVerseBreakEditEvent = procedure(Sender: TObject;
+    Kind: TVerseParagraphEditKind; InsertKind: TTheWordBreakKind;
+    StartUTF16, LengthUTF16: Integer;
+    const Breaks: TTheWordBreakIdentityArray;
+    var Accepted: Boolean; var NewCaretUTF16: Integer) of object;
 
   { DirectWrite remains responsible for shaping and visual navigation. A tiny
     native edit control owns keyboard/IME focus at the painted caret; committed
@@ -71,6 +76,7 @@ type
     FOnClipboardCopy: TVerseClipboardCopyEvent;
     FOnClipboardPaste: TVerseClipboardPasteEvent;
     FOnParagraphEdit: TVerseParagraphEditEvent;
+    FOnBreakEdit: TVerseBreakEditEvent;
     FOnReplaceText: TVerseTextReplaceEvent;
     FOnSelectionChanged: TVerseSelectionChangedEvent;
     FOnVisualObjectClick: TVerseHitEvent;
@@ -94,10 +100,15 @@ type
     function GetSelectionStart: Integer;
     function GetTextLength: Integer;
     function IsInteractiveCaretStop(Value: Integer): Boolean;
+    function IsEmptyTitleBoundaryCaretStop(Value: Integer): Boolean;
     function IsInteractiveHitOffset(Value: Integer;
       IsTrailing: Boolean): Boolean;
     function IsParagraphMarkAt(Value: Integer): Boolean;
     function SelectionContainsParagraphMark: Boolean;
+    function IsBreakAt(Value: Integer; out AIdentity: TTheWordBreakIdentity;
+      out ABreakStart, ABreakLength: Integer): Boolean;
+    function SelectionContainsBreak(
+      out ABreaks: TTheWordBreakIdentityArray): Boolean;
     function IsTraversableNonInteractiveSpan(
       const Span: TVisualSpan): Boolean;
     function IsWordCodeUnit(const AText: UnicodeString;
@@ -117,6 +128,10 @@ type
       const Replacement: UnicodeString);
     procedure RequestParagraphEdit(Kind: TVerseParagraphEditKind;
       StartUTF16, LengthUTF16: Integer);
+    procedure RequestBreakEdit(Kind: TVerseParagraphEditKind;
+      InsertKind: TTheWordBreakKind; StartUTF16, LengthUTF16: Integer;
+      const Breaks: TTheWordBreakIdentityArray);
+    procedure InsertBreak(ABreakKind: TTheWordBreakKind);
     procedure SelectWordAt(UTF16Offset: Integer);
     procedure SetCaret(Value: Integer; ExtendSelection: Boolean);
     procedure SetInteractionMode(Value: TVerseInteractionMode);
@@ -152,6 +167,8 @@ type
       write FOnCommand;
     property OnParagraphEdit: TVerseParagraphEditEvent
       read FOnParagraphEdit write FOnParagraphEdit;
+    property OnBreakEdit: TVerseBreakEditEvent
+      read FOnBreakEdit write FOnBreakEdit;
     property OnReplaceText: TVerseTextReplaceEvent read FOnReplaceText
       write FOnReplaceText;
     property OnSelectionChanged: TVerseSelectionChangedEvent
@@ -167,7 +184,7 @@ type
 implementation
 
 uses
-  Math;
+  Math, theword_verse_visual_adapter_v2;
 
 function NormalizeInsertedText(const Value: UnicodeString): UnicodeString;
 var
@@ -299,6 +316,55 @@ begin
     SetFocus;
 end;
 
+function TDirectWriteVerseEditor.IsEmptyTitleBoundaryCaretStop(
+  Value: Integer): Boolean;
+var
+  BreakIndex, Index: Integer;
+  Span: TVisualSpan;
+begin
+  Result := False;
+  if not Assigned(Document) then
+    Exit;
+  BreakIndex := -1;
+  for Index := 0 to Document.SpanCount - 1 do
+  begin
+    Span := Document.Spans[Index];
+    if (Span.Role = vsrTitleBreak) and (Span.LengthUTF16 > 0) and
+       (Span.StartUTF16 = Value) then
+    begin
+      BreakIndex := Index;
+      Break;
+    end;
+  end;
+  if BreakIndex < 0 then
+    Exit;
+
+  { A non-empty title has title content on one side of its structural break.
+    For an empty title the opening and closing anchors collapse to one break,
+    leaving no title-content span on either side. Skip transparent objects so
+    notes or paragraph markers at the same document offset do not change that
+    classification. }
+  for Index := BreakIndex - 1 downto 0 do
+  begin
+    Span := Document.Spans[Index];
+    if IsTraversableNonInteractiveSpan(Span) then
+      Continue;
+    if Span.Role = vsrTitleContent then
+      Exit(False);
+    Break;
+  end;
+  for Index := BreakIndex + 1 to Document.SpanCount - 1 do
+  begin
+    Span := Document.Spans[Index];
+    if IsTraversableNonInteractiveSpan(Span) then
+      Continue;
+    if Span.Role = vsrTitleContent then
+      Exit(False);
+    Break;
+  end;
+  Result := True;
+end;
+
 function TDirectWriteVerseEditor.IsInteractiveCaretStop(
   Value: Integer): Boolean;
 var
@@ -308,14 +374,25 @@ begin
   Result := False;
   if not Assigned(Document) then
     Exit;
+  if IsEmptyTitleBoundaryCaretStop(Value) then
+    Exit(True);
   for Index := 0 to Document.SpanCount - 1 do
   begin
     Span := Document.Spans[Index];
-    if Span.Interactive and (Span.Role = vsrContent) and
+    if Span.Interactive and
+       (Span.Role in [vsrContent, vsrTitleContent]) and
        (Span.LengthUTF16 > 0) and
        (Value >= Span.StartUTF16) and
        (Value <= Span.StartUTF16 + Span.LengthUTF16) then
       Exit(True);
+    if (Span.Role in [vsrParagraphMark, vsrSoftLineBreak]) and
+       (Span.LengthUTF16 > 0) then
+    begin
+      if Value = Span.StartUTF16 then
+        Exit(True);
+      if Value = Span.StartUTF16 + Span.LengthUTF16 then
+        Exit(True);
+    end;
   end;
 end;
 
@@ -327,10 +404,12 @@ begin
   Result := False;
   if not Assigned(Document) then
     Exit;
+  if (not IsTrailing) and IsEmptyTitleBoundaryCaretStop(Value) then
+    Exit(True);
   if IsTrailing and (Value > 0) then
     Dec(Value);
   Result := Document.TryGetInteractiveSpanAt(Value, Span) and
-    (Span.Role = vsrContent);
+    (Span.Role in [vsrContent, vsrTitleContent]);
 end;
 
 function TDirectWriteVerseEditor.IsParagraphMarkAt(Value: Integer): Boolean;
@@ -362,13 +441,34 @@ begin
       Exit(True);
 end;
 
+function TDirectWriteVerseEditor.IsBreakAt(Value: Integer;
+  out AIdentity: TTheWordBreakIdentity; out ABreakStart,
+  ABreakLength: Integer): Boolean;
+begin
+  AIdentity := Default(TTheWordBreakIdentity);
+  ABreakStart := 0;
+  ABreakLength := 0;
+  Result := Assigned(Document) and
+    TryGetTheWordBreakIdentityAtLayoutOffset(Document, Value,
+      AIdentity, ABreakStart, ABreakLength);
+end;
+
+function TDirectWriteVerseEditor.SelectionContainsBreak(
+  out ABreaks: TTheWordBreakIdentityArray): Boolean;
+begin
+  SetLength(ABreaks, 0);
+  Result := Assigned(Document) and (SelectionLength > 0) and
+    TryCollectTheWordBreakIdentities(Document, SelectionStart,
+      SelectionLength, ABreaks) and (Length(ABreaks) > 0);
+end;
+
 function TDirectWriteVerseEditor.IsTraversableNonInteractiveSpan(
   const Span: TVisualSpan): Boolean;
 begin
   Result := (Span.LengthUTF16 = 0) or
     (Span.Kind = vskDirectionControl) or
     (Span.Role in [vsrProtectedAnchor, vsrParagraphMark,
-      vsrTitleBreak, vsrTranslatorNote]);
+      vsrSoftLineBreak, vsrTranslatorNote]);
 end;
 
 function TDirectWriteVerseEditor.TryGetCaretRegion(Value: Integer;
@@ -386,8 +486,17 @@ begin
   for Index := 0 to Document.SpanCount - 1 do
   begin
     Span := Document.Spans[Index];
-    if Span.Interactive and (Span.Role = vsrContent) and
+    if Span.Interactive and
+       (Span.Role in [vsrContent, vsrTitleContent]) and
        (Span.LengthUTF16 > 0) then
+    begin
+      if RegionStart < 0 then
+        RegionStart := Span.StartUTF16;
+      RegionFinish := Max(RegionFinish,
+        Span.StartUTF16 + Span.LengthUTF16);
+    end
+    else if (Span.Role in [vsrParagraphMark, vsrSoftLineBreak]) and
+            (Span.LengthUTF16 > 0) then
     begin
       if RegionStart < 0 then
         RegionStart := Span.StartUTF16;
@@ -674,15 +783,38 @@ end;
 procedure TDirectWriteVerseEditor.RequestParagraphEdit(
   Kind: TVerseParagraphEditKind; StartUTF16, LengthUTF16: Integer);
 var
-  Accepted: Boolean;
-  NewCaret: Integer;
+  Breaks: TTheWordBreakIdentityArray;
 begin
-  if not Assigned(FOnParagraphEdit) then
+  SetLength(Breaks, 0);
+  RequestBreakEdit(Kind, twbkParagraph, StartUTF16, LengthUTF16, Breaks);
+end;
+
+procedure TDirectWriteVerseEditor.RequestBreakEdit(
+  Kind: TVerseParagraphEditKind; InsertKind: TTheWordBreakKind;
+  StartUTF16, LengthUTF16: Integer;
+  const Breaks: TTheWordBreakIdentityArray);
+var
+  Accepted, AllParagraphs: Boolean;
+  Index, NewCaret: Integer;
+begin
+  if not Assigned(FOnBreakEdit) and not Assigned(FOnParagraphEdit) then
     Exit;
   Accepted := False;
   NewCaret := FActiveOffset;
-  FOnParagraphEdit(Self, Kind, StartUTF16, LengthUTF16, Accepted,
-    NewCaret);
+  if Assigned(FOnBreakEdit) then
+    FOnBreakEdit(Self, Kind, InsertKind, StartUTF16, LengthUTF16,
+      Breaks, Accepted, NewCaret)
+  else
+  begin
+    { Compatibility for controls that only know the original CM contract. }
+    AllParagraphs := InsertKind = twbkParagraph;
+    for Index := 0 to High(Breaks) do
+      AllParagraphs := AllParagraphs and
+        (Breaks[Index].Kind = twbkParagraph);
+    if AllParagraphs then
+      FOnParagraphEdit(Self, Kind, StartUTF16, LengthUTF16, Accepted,
+        NewCaret);
+  end;
   if not Accepted then
     Exit;
   SetLength(FCaretStops, 0);
@@ -690,6 +822,19 @@ begin
   FAnchorOffset := NearestCaretStop(NewCaret);
   FActiveOffset := FAnchorOffset;
   DoSelectionChanged;
+end;
+
+procedure TDirectWriteVerseEditor.InsertBreak(
+  ABreakKind: TTheWordBreakKind);
+var
+  Breaks: TTheWordBreakIdentityArray;
+begin
+  SetLength(Breaks, 0);
+  if SelectionLength > 0 then
+    TryCollectTheWordBreakIdentities(Document, SelectionStart,
+      SelectionLength, Breaks);
+  RequestBreakEdit(vpekInsert, ABreakKind, SelectionStart,
+    SelectionLength, Breaks);
 end;
 
 procedure TDirectWriteVerseEditor.ReplaceSelection(
@@ -700,20 +845,27 @@ end;
 
 procedure TDirectWriteVerseEditor.DeleteBackward;
 var
+  BreakIdentity: TTheWordBreakIdentity;
+  Breaks: TTheWordBreakIdentityArray;
+  BreakStart, BreakLength: Integer;
   Previous: Integer;
 begin
   if SelectionLength > 0 then
   begin
-    if SelectionContainsParagraphMark then
-      RequestParagraphEdit(vpekDeleteSelection, SelectionStart,
-        SelectionLength)
+    if SelectionContainsBreak(Breaks) then
+      RequestBreakEdit(vpekDeleteSelection, Breaks[0].Kind,
+        SelectionStart, SelectionLength, Breaks)
     else
       ReplaceSelection('');
     Exit;
   end;
-  if IsParagraphMarkAt(FActiveOffset - 1) then
+  if IsBreakAt(FActiveOffset - 1, BreakIdentity, BreakStart,
+    BreakLength) then
   begin
-    RequestParagraphEdit(vpekDeleteBackward, FActiveOffset - 1, 1);
+    SetLength(Breaks, 1);
+    Breaks[0] := BreakIdentity;
+    RequestBreakEdit(vpekDeleteBackward, BreakIdentity.Kind,
+      BreakStart, BreakLength, Breaks);
     Exit;
   end;
   Previous := PreviousCaretStop(FActiveOffset);
@@ -723,20 +875,27 @@ end;
 
 procedure TDirectWriteVerseEditor.DeleteForward;
 var
+  BreakIdentity: TTheWordBreakIdentity;
+  Breaks: TTheWordBreakIdentityArray;
+  BreakStart, BreakLength: Integer;
   Following: Integer;
 begin
   if SelectionLength > 0 then
   begin
-    if SelectionContainsParagraphMark then
-      RequestParagraphEdit(vpekDeleteSelection, SelectionStart,
-        SelectionLength)
+    if SelectionContainsBreak(Breaks) then
+      RequestBreakEdit(vpekDeleteSelection, Breaks[0].Kind,
+        SelectionStart, SelectionLength, Breaks)
     else
       ReplaceSelection('');
     Exit;
   end;
-  if IsParagraphMarkAt(FActiveOffset) then
+  if IsBreakAt(FActiveOffset, BreakIdentity, BreakStart,
+    BreakLength) then
   begin
-    RequestParagraphEdit(vpekDeleteForward, FActiveOffset, 1);
+    SetLength(Breaks, 1);
+    Breaks[0] := BreakIdentity;
+    RequestBreakEdit(vpekDeleteForward, BreakIdentity.Kind,
+      BreakStart, BreakLength, Breaks);
     Exit;
   end;
   Following := NextCaretStop(FActiveOffset);
@@ -842,8 +1001,9 @@ procedure TDirectWriteVerseEditor.MoveCaretHorizontal(Direction: Integer;
 var
   DocText: UnicodeString;
   FirstOffset: Integer;
+  Index: Integer;
   LastOffset: Integer;
-  NewOffset: Integer;
+  NewOffset, OriginalOffset: Integer;
 begin
   if not ExtendSelection and (SelectionLength > 0) then
   begin
@@ -856,6 +1016,7 @@ begin
   end;
 
   NewOffset := FActiveOffset;
+  OriginalOffset := NewOffset;
   if not ByWord then
   begin
     if Direction < 0 then
@@ -890,6 +1051,29 @@ begin
       while (NewOffset < LastOffset) and
         IsWordCodeUnit(DocText, NewOffset + 1) do
         Inc(NewOffset);
+    end;
+  end;
+  { A title break is a selection barrier, not a keyboard dead end. Plain
+    arrows may cross to the adjacent region; Shift selections never do. }
+  if not ExtendSelection and (NewOffset = OriginalOffset) then
+  begin
+    if Direction < 0 then
+    begin
+      for Index := High(FCaretStops) downto 0 do
+        if FCaretStops[Index] < OriginalOffset then
+        begin
+          NewOffset := FCaretStops[Index];
+          Break;
+        end;
+    end
+    else
+    begin
+      for Index := 0 to High(FCaretStops) do
+        if FCaretStops[Index] > OriginalOffset then
+        begin
+          NewOffset := FCaretStops[Index];
+          Break;
+        end;
     end;
   end;
   SetCaret(NewOffset, ExtendSelection);
@@ -1109,7 +1293,9 @@ begin
         Exit;
     VK_RETURN:
       if BasicShift = [] then
-        RequestParagraphEdit(vpekInsert, SelectionStart, SelectionLength)
+        InsertBreak(twbkParagraph)
+      else if BasicShift = [ssShift] then
+        InsertBreak(twbkSoftLine)
       else
         Exit;
   else

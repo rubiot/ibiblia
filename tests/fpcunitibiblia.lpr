@@ -8,7 +8,7 @@ uses
   ai_processing_batch_test, ai_flow_config_test, suggestionmanagertest,
   associationmemoryservicetest, concordanceexporttest, project_persistence_test,
   navigation_history_test, verse_visual_adapter_test, verse_visual_document_test,
-  text_direction_test;
+  text_direction_test, translation_memory_focus_controller_test;
 
 {$R *.res}
 

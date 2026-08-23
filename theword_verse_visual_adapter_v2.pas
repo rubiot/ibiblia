@@ -6,7 +6,8 @@ unit theword_verse_visual_adapter_v2;
 interface
 
 uses
-  Graphics, verse_visual_document, theword_ont_codec_v2;
+  Graphics, verse_visual_document, theword_break_v2,
+  theword_ont_codec_v2;
 
 type
   TTheWordOffsetAffinity = (twoaBefore, twoaAfter);
@@ -21,6 +22,22 @@ type
       AAffinity: TTheWordOffsetAffinity; out ALayoutOffset: Integer): Boolean;
     function TryLayoutToDocumentOffset(ALayoutOffset: Integer;
       out ADocumentOffset: Integer): Boolean;
+    function TryLayoutToDocumentPosition(ALayoutOffset: Integer;
+      out ADocumentOffset: Integer;
+      out AAffinity: TTheWordOffsetAffinity): Boolean;
+  end;
+
+  { Optional object map implemented by the WYSIWYG projection. Break
+    identities include kind, document anchor and imported event ordinal, so
+    callers never have to guess which of several CM/CL objects is selected. }
+  ITheWordVisualBreakMap = interface
+    ['{7CB8C061-39A2-437C-8F91-EAB07346C0BB}']
+    function TryGetBreakAtLayoutOffset(ALayoutOffset: Integer;
+      out AIdentity: TTheWordBreakIdentity; out ALayoutStart,
+      ALayoutLength: Integer): Boolean;
+    function TryCollectBreakIdentities(ALayoutStart,
+      ALayoutLength: Integer;
+      out AIdentities: TTheWordBreakIdentityArray): Boolean;
   end;
 
 function BuildTheWordVerseVisualDocument(ADocument: TTheWordVerseDocument;
@@ -45,6 +62,11 @@ function TryTheWordLayoutToDocumentOffset(
   const AVisual: IVerseVisualDocument; ALayoutOffset: Integer;
   out ADocumentOffset: Integer): Boolean;
 
+function TryTheWordLayoutToDocumentPosition(
+  const AVisual: IVerseVisualDocument; ALayoutOffset: Integer;
+  out ADocumentOffset: Integer;
+  out AAffinity: TTheWordOffsetAffinity): Boolean;
+
 function TryTheWordLayoutRangeToDocument(
   const AVisual: IVerseVisualDocument; ALayoutStart, ALayoutLength: Integer;
   out ADocumentStart, ADocumentLength: Integer): Boolean;
@@ -54,6 +76,16 @@ function TryCollectTheWordParagraphMarkOffsets(
   ALayoutLength: Integer; out ADocumentOffsets:
   TTheWordVisualOffsetArray): Boolean;
 
+function TryCollectTheWordBreakIdentities(
+  const AVisual: IVerseVisualDocument; ALayoutStart,
+  ALayoutLength: Integer;
+  out AIdentities: TTheWordBreakIdentityArray): Boolean;
+
+function TryGetTheWordBreakIdentityAtLayoutOffset(
+  const AVisual: IVerseVisualDocument; ALayoutOffset: Integer;
+  out AIdentity: TTheWordBreakIdentity; out ABreakLayoutStart,
+  ABreakLayoutLength: Integer): Boolean;
+
 implementation
 
 uses
@@ -61,6 +93,7 @@ uses
 
 type
   TIntArray = array of Integer;
+  TTheWordOffsetAffinityArray = array of TTheWordOffsetAffinity;
   TFontFormatRange = record
     StartOffset: Integer;
     EndOffset: Integer;
@@ -77,6 +110,11 @@ type
     Marker: UnicodeString;
   end;
   TTranslatorNoteVisualArray = array of TTranslatorNoteVisual;
+  TBreakVisual = record
+    Identity: TTheWordBreakIdentity;
+    ObjectId: QWord;
+  end;
+  TBreakVisualArray = array of TBreakVisual;
   TSyntheticAnchorKind = (
     tsakNone,
     tsakProtectedSpace,
@@ -84,20 +122,21 @@ type
   );
   TSyntheticAnchor = record
     Kind: TSyntheticAnchorKind;
-    ParagraphMarksBeforeBreak: Integer;
-    ParagraphMarksAfterBreak: Integer;
+    Breaks: TBreakVisualArray;
     TitleBreakOrdinal: Integer;
     TranslatorNotes: TTranslatorNoteVisualArray;
   end;
   TSyntheticAnchorArray = array of TSyntheticAnchor;
 
   TTheWordMappedVisualDocument = class(TInterfacedObject,
-    IVerseVisualDocument, ITheWordVisualOffsetMap)
+    IVerseVisualDocument, ITheWordVisualOffsetMap, ITheWordVisualBreakMap)
   private
     FInner: IVerseVisualDocument;
     FDocumentToLayoutBefore: TIntArray;
     FDocumentToLayoutAfter: TIntArray;
     FLayoutToDocument: TIntArray;
+    FLayoutToAffinity: TTheWordOffsetAffinityArray;
+    FBreaks: TTheWordBreakIdentityArray;
     function GetText: UnicodeString;
     function GetBaseDirection: TTextDirection;
     function GetRevision: QWord;
@@ -106,7 +145,9 @@ type
   public
     constructor Create(const AInner: IVerseVisualDocument;
       const ADocumentToLayoutBefore, ADocumentToLayoutAfter,
-      ALayoutToDocument: TIntArray);
+      ALayoutToDocument: TIntArray;
+      const ALayoutToAffinity: TTheWordOffsetAffinityArray;
+      const ABreaks: TTheWordBreakIdentityArray);
     function TryGetUTF16Range(LogicalIndex: Integer; out StartUTF16,
       LengthUTF16: Integer): Boolean;
     function TryGetLogicalIndexAt(UTF16Offset: Integer;
@@ -121,16 +162,28 @@ type
       AAffinity: TTheWordOffsetAffinity; out ALayoutOffset: Integer): Boolean;
     function TryLayoutToDocumentOffset(ALayoutOffset: Integer;
       out ADocumentOffset: Integer): Boolean;
+    function TryLayoutToDocumentPosition(ALayoutOffset: Integer;
+      out ADocumentOffset: Integer;
+      out AAffinity: TTheWordOffsetAffinity): Boolean;
+    function TryGetBreakAtLayoutOffset(ALayoutOffset: Integer;
+      out AIdentity: TTheWordBreakIdentity; out ALayoutStart,
+      ALayoutLength: Integer): Boolean;
+    function TryCollectBreakIdentities(ALayoutStart,
+      ALayoutLength: Integer;
+      out AIdentities: TTheWordBreakIdentityArray): Boolean;
   end;
 
 constructor TTheWordMappedVisualDocument.Create(
   const AInner: IVerseVisualDocument; const ADocumentToLayoutBefore,
-  ADocumentToLayoutAfter, ALayoutToDocument: TIntArray);
+  ADocumentToLayoutAfter, ALayoutToDocument: TIntArray;
+  const ALayoutToAffinity: TTheWordOffsetAffinityArray;
+  const ABreaks: TTheWordBreakIdentityArray);
 var
   Index: Integer;
 begin
   inherited Create;
   FInner := AInner;
+
   SetLength(FDocumentToLayoutBefore, Length(ADocumentToLayoutBefore));
   for Index := 0 to High(ADocumentToLayoutBefore) do
     FDocumentToLayoutBefore[Index] := ADocumentToLayoutBefore[Index];
@@ -140,6 +193,12 @@ begin
   SetLength(FLayoutToDocument, Length(ALayoutToDocument));
   for Index := 0 to High(ALayoutToDocument) do
     FLayoutToDocument[Index] := ALayoutToDocument[Index];
+  SetLength(FLayoutToAffinity, Length(ALayoutToAffinity));
+  for Index := 0 to High(ALayoutToAffinity) do
+    FLayoutToAffinity[Index] := ALayoutToAffinity[Index];
+  SetLength(FBreaks, Length(ABreaks));
+  for Index := 0 to High(ABreaks) do
+    FBreaks[Index] := ABreaks[Index];
 end;
 
 function TTheWordMappedVisualDocument.GetText: UnicodeString;
@@ -223,6 +282,89 @@ begin
     ADocumentOffset := FLayoutToDocument[ALayoutOffset];
 end;
 
+function TTheWordMappedVisualDocument.TryLayoutToDocumentPosition(
+  ALayoutOffset: Integer; out ADocumentOffset: Integer;
+  out AAffinity: TTheWordOffsetAffinity): Boolean;
+begin
+  ADocumentOffset := 0;
+  AAffinity := twoaBefore;
+  Result := (ALayoutOffset >= 0) and
+    (ALayoutOffset < Length(FLayoutToDocument)) and
+    (ALayoutOffset < Length(FLayoutToAffinity));
+  if not Result then
+    Exit;
+  ADocumentOffset := FLayoutToDocument[ALayoutOffset];
+  AAffinity := FLayoutToAffinity[ALayoutOffset];
+end;
+
+function TTheWordMappedVisualDocument.TryGetBreakAtLayoutOffset(
+  ALayoutOffset: Integer; out AIdentity: TTheWordBreakIdentity;
+  out ALayoutStart, ALayoutLength: Integer): Boolean;
+var
+  BreakIndex, Index: Integer;
+  Span: TVisualSpan;
+begin
+  AIdentity := Default(TTheWordBreakIdentity);
+  ALayoutStart := 0;
+  ALayoutLength := 0;
+  Result := Assigned(FInner) and (ALayoutOffset >= 0) and
+    (ALayoutOffset < Length(FInner.Text));
+  if not Result then
+    Exit;
+  for Index := 0 to FInner.SpanCount - 1 do
+  begin
+    Span := FInner.Spans[Index];
+    if not (Span.Role in [vsrParagraphMark, vsrSoftLineBreak]) or
+       (Span.LengthUTF16 <= 0) or
+       (ALayoutOffset < Span.StartUTF16) or
+       (ALayoutOffset >= Span.StartUTF16 + Span.LengthUTF16) then
+      Continue;
+    if (Span.ObjectId = 0) or (Span.ObjectId > QWord(Length(FBreaks))) then
+      Exit(False);
+    BreakIndex := Integer(Span.ObjectId - 1);
+    AIdentity := FBreaks[BreakIndex];
+    ALayoutStart := Span.StartUTF16;
+    ALayoutLength := Span.LengthUTF16;
+    Exit(True);
+  end;
+  Result := False;
+end;
+
+function TTheWordMappedVisualDocument.TryCollectBreakIdentities(
+  ALayoutStart, ALayoutLength: Integer;
+  out AIdentities: TTheWordBreakIdentityArray): Boolean;
+var
+  BreakIndex, Index, LayoutFinish: Integer;
+  Span: TVisualSpan;
+begin
+  SetLength(AIdentities, 0);
+  Result := Assigned(FInner) and (ALayoutStart >= 0) and
+    (ALayoutLength >= 0) and (ALayoutStart <= Length(FInner.Text)) and
+    (ALayoutLength <= Length(FInner.Text) - ALayoutStart);
+  if not Result then
+    Exit;
+  LayoutFinish := ALayoutStart + ALayoutLength;
+  if ALayoutLength = 0 then
+    Exit(True);
+  for Index := 0 to FInner.SpanCount - 1 do
+  begin
+    Span := FInner.Spans[Index];
+    if not (Span.Role in [vsrParagraphMark, vsrSoftLineBreak]) or
+       (Span.LengthUTF16 <= 0) or
+       (Span.StartUTF16 >= LayoutFinish) or
+       (Span.StartUTF16 + Span.LengthUTF16 <= ALayoutStart) then
+      Continue;
+    if (Span.ObjectId = 0) or (Span.ObjectId > QWord(Length(FBreaks))) then
+    begin
+      SetLength(AIdentities, 0);
+      Exit(False);
+    end;
+    BreakIndex := Integer(Span.ObjectId - 1);
+    SetLength(AIdentities, Length(AIdentities) + 1);
+    AIdentities[High(AIdentities)] := FBreaks[BreakIndex];
+  end;
+end;
+
 function TryTheWordDocumentToLayoutOffset(
   const AVisual: IVerseVisualDocument; ADocumentOffset: Integer;
   AAffinity: TTheWordOffsetAffinity; out ALayoutOffset: Integer): Boolean;
@@ -261,6 +403,27 @@ begin
     ADocumentOffset := ALayoutOffset;
 end;
 
+function TryTheWordLayoutToDocumentPosition(
+  const AVisual: IVerseVisualDocument; ALayoutOffset: Integer;
+  out ADocumentOffset: Integer;
+  out AAffinity: TTheWordOffsetAffinity): Boolean;
+var
+  OffsetMap: ITheWordVisualOffsetMap;
+begin
+  ADocumentOffset := 0;
+  AAffinity := twoaBefore;
+  Result := Assigned(AVisual);
+  if not Result then
+    Exit;
+  if Supports(AVisual, ITheWordVisualOffsetMap, OffsetMap) then
+    Exit(OffsetMap.TryLayoutToDocumentPosition(ALayoutOffset,
+      ADocumentOffset, AAffinity));
+  Result := (ALayoutOffset >= 0) and
+    (ALayoutOffset <= Length(AVisual.Text));
+  if Result then
+    ADocumentOffset := ALayoutOffset;
+end;
+
 function TryTheWordLayoutRangeToDocument(
   const AVisual: IVerseVisualDocument; ALayoutStart, ALayoutLength: Integer;
   out ADocumentStart, ADocumentLength: Integer): Boolean;
@@ -287,42 +450,53 @@ function TryCollectTheWordParagraphMarkOffsets(
   ALayoutLength: Integer; out ADocumentOffsets:
   TTheWordVisualOffsetArray): Boolean;
 var
-  DocumentOffset, Index, LayoutFinish, MarkerFinish, MarkerStart,
-    Offset: Integer;
-  Span: TVisualSpan;
+  Breaks: TTheWordBreakIdentityArray;
+  Index: Integer;
 begin
   SetLength(ADocumentOffsets, 0);
-  Result := Assigned(AVisual) and (ALayoutStart >= 0) and
-    (ALayoutLength >= 0) and (ALayoutStart <= Length(AVisual.Text)) and
-    (ALayoutLength <= Length(AVisual.Text) - ALayoutStart);
+  Result := TryCollectTheWordBreakIdentities(AVisual, ALayoutStart,
+    ALayoutLength, Breaks);
   if not Result then
     Exit;
-
-  LayoutFinish := ALayoutStart + ALayoutLength;
-  for Index := 0 to AVisual.SpanCount - 1 do
-  begin
-    Span := AVisual.Spans[Index];
-    if (Span.Annotation <> UnicodeString('paragraph-mark')) or
-       (Span.LengthUTF16 <= 0) then
-      Continue;
-    MarkerStart := Span.StartUTF16;
-    if MarkerStart < ALayoutStart then
-      MarkerStart := ALayoutStart;
-    MarkerFinish := Span.StartUTF16 + Span.LengthUTF16;
-    if MarkerFinish > LayoutFinish then
-      MarkerFinish := LayoutFinish;
-    for Offset := MarkerStart to MarkerFinish - 1 do
+  for Index := 0 to High(Breaks) do
+    if Breaks[Index].Kind = twbkParagraph then
     begin
-      if not TryTheWordLayoutToDocumentOffset(AVisual, Offset,
-        DocumentOffset) then
-      begin
-        SetLength(ADocumentOffsets, 0);
-        Exit(False);
-      end;
       SetLength(ADocumentOffsets, Length(ADocumentOffsets) + 1);
-      ADocumentOffsets[High(ADocumentOffsets)] := DocumentOffset;
+      ADocumentOffsets[High(ADocumentOffsets)] :=
+        Breaks[Index].OffsetUTF16;
     end;
-  end;
+end;
+
+function TryCollectTheWordBreakIdentities(
+  const AVisual: IVerseVisualDocument; ALayoutStart,
+  ALayoutLength: Integer;
+  out AIdentities: TTheWordBreakIdentityArray): Boolean;
+var
+  BreakMap: ITheWordVisualBreakMap;
+begin
+  SetLength(AIdentities, 0);
+  Result := Assigned(AVisual) and
+    Supports(AVisual, ITheWordVisualBreakMap, BreakMap);
+  if Result then
+    Result := BreakMap.TryCollectBreakIdentities(ALayoutStart,
+      ALayoutLength, AIdentities);
+end;
+
+function TryGetTheWordBreakIdentityAtLayoutOffset(
+  const AVisual: IVerseVisualDocument; ALayoutOffset: Integer;
+  out AIdentity: TTheWordBreakIdentity; out ABreakLayoutStart,
+  ABreakLayoutLength: Integer): Boolean;
+var
+  BreakMap: ITheWordVisualBreakMap;
+begin
+  AIdentity := Default(TTheWordBreakIdentity);
+  ABreakLayoutStart := 0;
+  ABreakLayoutLength := 0;
+  Result := Assigned(AVisual) and
+    Supports(AVisual, ITheWordVisualBreakMap, BreakMap);
+  if Result then
+    Result := BreakMap.TryGetBreakAtLayoutOffset(ALayoutOffset,
+      AIdentity, ABreakLayoutStart, ABreakLayoutLength);
 end;
 
 function IsVisualWordCodeUnit(AChar: WideChar): Boolean;
@@ -370,28 +544,43 @@ begin
   AAnchors[AOffset].Kind := tsakTitleBreak;
 end;
 
-procedure AddParagraphMark(var AAnchors: TSyntheticAnchorArray;
-  AOffset, AOrdinal: Integer);
+procedure AddBreak(var AAnchors: TSyntheticAnchorArray;
+  const AIdentity: TTheWordBreakIdentity; ABreakIndex: Integer);
+var
+  Index, InsertAt: Integer;
 begin
-  if (AOffset < 0) or (AOffset > High(AAnchors)) then
+  if (AIdentity.OffsetUTF16 < 0) or
+     (AIdentity.OffsetUTF16 > High(AAnchors)) or (ABreakIndex < 0) then
     Exit;
-  if (AAnchors[AOffset].Kind = tsakTitleBreak) and
-     (AOrdinal > AAnchors[AOffset].TitleBreakOrdinal) then
-    Inc(AAnchors[AOffset].ParagraphMarksAfterBreak)
-  else
-    Inc(AAnchors[AOffset].ParagraphMarksBeforeBreak);
-  { The pilcrow itself separates adjacent words, so a generic protected space
-    at the same anchor would only add misleading visual whitespace. }
-  if AAnchors[AOffset].Kind = tsakProtectedSpace then
-    AAnchors[AOffset].Kind := tsakNone;
+  InsertAt := Length(AAnchors[AIdentity.OffsetUTF16].Breaks);
+  SetLength(AAnchors[AIdentity.OffsetUTF16].Breaks, InsertAt + 1);
+  for Index := 0 to InsertAt - 1 do
+    if AAnchors[AIdentity.OffsetUTF16].Breaks[Index].Identity.Ordinal >
+       AIdentity.Ordinal then
+    begin
+      InsertAt := Index;
+      Break;
+    end;
+  for Index := High(AAnchors[AIdentity.OffsetUTF16].Breaks) downto
+    InsertAt + 1 do
+    AAnchors[AIdentity.OffsetUTF16].Breaks[Index] :=
+      AAnchors[AIdentity.OffsetUTF16].Breaks[Index - 1];
+  AAnchors[AIdentity.OffsetUTF16].Breaks[InsertAt].Identity := AIdentity;
+  AAnchors[AIdentity.OffsetUTF16].Breaks[InsertAt].ObjectId :=
+    QWord(ABreakIndex + 1);
+  { Either visual break already separates adjacent words. }
+  if AAnchors[AIdentity.OffsetUTF16].Kind = tsakProtectedSpace then
+    AAnchors[AIdentity.OffsetUTF16].Kind := tsakNone;
 end;
 
 function SyntheticAnchorLength(const AAnchor: TSyntheticAnchor): Integer;
 var
   Index: Integer;
 begin
-  Result := AAnchor.ParagraphMarksBeforeBreak +
-    AAnchor.ParagraphMarksAfterBreak;
+  Result := 0;
+  for Index := 0 to High(AAnchor.Breaks) do
+    Inc(Result, Length(TheWordBreakVisualText(
+      AAnchor.Breaks[Index].Identity.Kind)));
   if AAnchor.Kind <> tsakNone then
     Inc(Result);
   for Index := 0 to High(AAnchor.TranslatorNotes) do
@@ -400,6 +589,7 @@ end;
 
 procedure BuildSyntheticAnchors(ADocument: TTheWordVerseDocument;
   const ATitles: TTheWordTitleRangeArray;
+  const ABreaks: TTheWordBreakIdentityArray;
   AAutomaticNoteStart: Integer; out AAnchors: TSyntheticAnchorArray);
 var
   InsertAt, Index, NoteIndex, Offset, TitleIndex: Integer;
@@ -420,6 +610,10 @@ begin
     share a closing/opening anchor. }
   for TitleIndex := 0 to High(ATitles) do
   begin
+    { Malformed/title-looking ranges protect editing without becoming title
+      paragraphs in the visual editor. }
+    if ATitles[TitleIndex].Level < 0 then
+      Continue;
     if ATitles[TitleIndex].StartOffset > 0 then
       PromoteTitleBreak(AAnchors, ATitles[TitleIndex].StartOffset,
         ATitles[TitleIndex].OpenOrdinal);
@@ -428,10 +622,8 @@ begin
         ATitles[TitleIndex].CloseOrdinal);
   end;
 
-  for Index := 0 to ADocument.OpaqueItemCount - 1 do
-    if ADocument.OpaqueItems[Index].RawLexeme = '<CM>' then
-      AddParagraphMark(AAnchors, ADocument.OpaqueItems[Index].Offset,
-        ADocument.OpaqueItems[Index].Ordinal);
+  for Index := 0 to High(ABreaks) do
+    AddBreak(AAnchors, ABreaks[Index], Index);
 
   Numberer := TRFNoteNumberer.Create;
   try
@@ -469,7 +661,8 @@ end;
 
 procedure BuildOffsetMaps(const AAnchors: TSyntheticAnchorArray;
   ADocumentLength: Integer; out ADocumentToLayoutBefore,
-  ADocumentToLayoutAfter, ALayoutToDocument: TIntArray);
+  ADocumentToLayoutAfter, ALayoutToDocument: TIntArray;
+  out ALayoutToAffinity: TTheWordOffsetAffinityArray);
 var
   AnchorUnit, DocumentOffset, LayoutOffset, SyntheticCount: Integer;
 begin
@@ -479,57 +672,74 @@ begin
   SetLength(ADocumentToLayoutBefore, ADocumentLength + 1);
   SetLength(ADocumentToLayoutAfter, ADocumentLength + 1);
   SetLength(ALayoutToDocument, ADocumentLength + SyntheticCount + 1);
+  SetLength(ALayoutToAffinity, ADocumentLength + SyntheticCount + 1);
 
   LayoutOffset := 0;
   for DocumentOffset := 0 to ADocumentLength do
   begin
     ADocumentToLayoutBefore[DocumentOffset] := LayoutOffset;
     ALayoutToDocument[LayoutOffset] := DocumentOffset;
+    ALayoutToAffinity[LayoutOffset] := twoaBefore;
     for AnchorUnit := 1 to SyntheticAnchorLength(
       AAnchors[DocumentOffset]) do
     begin
       Inc(LayoutOffset);
       ALayoutToDocument[LayoutOffset] := DocumentOffset;
+      ALayoutToAffinity[LayoutOffset] := twoaAfter;
     end;
     ADocumentToLayoutAfter[DocumentOffset] := LayoutOffset;
     if DocumentOffset < ADocumentLength then
     begin
       Inc(LayoutOffset);
       ALayoutToDocument[LayoutOffset] := DocumentOffset + 1;
+      ALayoutToAffinity[LayoutOffset] := twoaBefore;
     end;
   end;
 end;
 
-procedure AppendParagraphMarks(ABuilder: TVerseVisualDocumentBuilder;
-  ACount: Integer; var ASpanIndex: Integer);
+procedure AppendBreak(ABuilder: TVerseVisualDocumentBuilder;
+  const ABreak: TBreakVisual; var ASpanIndex: Integer);
 var
-  Index: Integer;
-  MarkerText: UnicodeString;
+  Annotation, MarkerText: UnicodeString;
+  Role: TVisualSpanRole;
   Style: TVisualTextStyle;
 begin
-  if ACount <= 0 then
-    Exit;
-  MarkerText := '';
-  for Index := 1 to ACount do
-    MarkerText := MarkerText + UnicodeString(WideChar($00B6));
+  MarkerText := TheWordBreakVisualText(ABreak.Identity.Kind);
   Style := DefaultVisualTextStyle;
   Style.HasForegroundColor := True;
   Style.ForegroundColor := LongInt($808080);
-  ABuilder.AddRoleText(ASpanIndex, MarkerText, Style, False,
-    vsrParagraphMark, 0, 'paragraph-mark');
+  if ABreak.Identity.Kind = twbkSoftLine then
+  begin
+    Role := vsrSoftLineBreak;
+    Annotation := 'soft-line-break';
+  end
+  else
+  begin
+    Role := vsrParagraphMark;
+    Annotation := 'paragraph-mark';
+  end;
+  ABuilder.AddObjectText(ASpanIndex, MarkerText, Style, Role,
+    ABreak.ObjectId, Annotation);
   Inc(ASpanIndex);
 end;
 
 procedure AppendSyntheticAnchor(ABuilder: TVerseVisualDocumentBuilder;
   const AAnchor: TSyntheticAnchor; var ASpanIndex: Integer);
 var
-  Index: Integer;
+  BreakIndex, Index: Integer;
   Style: TVisualTextStyle;
 begin
-  { CM and TS may share a zero-width document anchor. Their imported ordinals
-    decide which side of the single visual title break receives each pilcrow. }
-  AppendParagraphMarks(ABuilder, AAnchor.ParagraphMarksBeforeBreak,
-    ASpanIndex);
+  { Breaks sharing an anchor retain codec event order. TS contributes one
+    visual boundary, so its ordinal decides which side receives each break. }
+  BreakIndex := 0;
+  if AAnchor.Kind = tsakTitleBreak then
+    while (BreakIndex <= High(AAnchor.Breaks)) and
+      (AAnchor.Breaks[BreakIndex].Identity.Ordinal <=
+       AAnchor.TitleBreakOrdinal) do
+    begin
+      AppendBreak(ABuilder, AAnchor.Breaks[BreakIndex], ASpanIndex);
+      Inc(BreakIndex);
+    end;
   if AAnchor.Kind = tsakTitleBreak then
   begin
     ABuilder.AddRoleText(ASpanIndex, #10, DefaultVisualTextStyle, False,
@@ -542,8 +752,11 @@ begin
       vsrProtectedAnchor, 0, 'protected-anchor');
     Inc(ASpanIndex);
   end;
-  AppendParagraphMarks(ABuilder, AAnchor.ParagraphMarksAfterBreak,
-    ASpanIndex);
+  while BreakIndex <= High(AAnchor.Breaks) do
+  begin
+    AppendBreak(ABuilder, AAnchor.Breaks[BreakIndex], ASpanIndex);
+    Inc(BreakIndex);
+  end;
   for Index := 0 to High(AAnchor.TranslatorNotes) do
   begin
     Style := DefaultVisualTextStyle;
@@ -668,30 +881,35 @@ begin
   ATitle.Level := 0;
   ATitle.OpenOrdinal := 0;
   ATitle.CloseOrdinal := 0;
+  ATitle.OpenLexeme := '';
+  ATitle.CloseLexeme := '';
+  ATitle.Editable := False;
   Result := False;
 end;
 
 procedure ApplyTitleStyle(const ATitle: TTheWordTitleRange;
   var AStyle: TVisualTextStyle; var AAnnotation: UnicodeString);
 begin
+  if ATitle.Level < 0 then
+  begin
+    if AAnnotation <> '' then
+      AAnnotation := AAnnotation + ',';
+    AAnnotation := AAnnotation + 'malformed-title';
+    Exit;
+  end;
   case ATitle.Level of
-    0:
+    0, 1:
       begin
         Include(AStyle.Flags, vtsfBold);
         AStyle.FontSizeDelta := 2;
         AStyle.HasForegroundColor := True;
         AStyle.ForegroundColor := LongInt($424242);
       end;
-    1:
-      begin
-        Include(AStyle.Flags, vtsfBold);
-        Include(AStyle.Flags, vtsfItalic);
-        AStyle.FontSizeDelta := 1;
-      end;
     2:
       begin
         Include(AStyle.Flags, vtsfBold);
         Include(AStyle.Flags, vtsfItalic);
+        AStyle.FontSizeDelta := 1;
       end;
     3:
       Include(AStyle.Flags, vtsfItalic);
@@ -817,6 +1035,8 @@ function BuildTheWordVerseVisualDocument(ADocument: TTheWordVerseDocument;
 var
   Boundaries, DocumentToLayoutBefore, DocumentToLayoutAfter,
     LayoutToDocument: TIntArray;
+  Breaks: TTheWordBreakIdentityArray;
+  LayoutToAffinity: TTheWordOffsetAffinityArray;
   FontFormatRanges: TFontFormatRangeArray;
   Titles: TTheWordTitleRangeArray;
   Builder: TVerseVisualDocumentBuilder;
@@ -837,7 +1057,8 @@ begin
   AddBoundary(Boundaries, Length(ADocument.VisibleText));
   CollectTheWordTitleRanges(ADocument, Titles);
   CollectFontFormatRanges(ADocument, FontFormatRanges);
-  BuildSyntheticAnchors(ADocument, Titles, AAutomaticNoteStart,
+  CollectTheWordBreaks(ADocument, Breaks);
+  BuildSyntheticAnchors(ADocument, Titles, Breaks, AAutomaticNoteStart,
     SyntheticAnchors);
   for Index := 0 to High(SyntheticAnchors) do
     if SyntheticAnchorLength(SyntheticAnchors[Index]) > 0 then
@@ -914,8 +1135,12 @@ begin
         end;
         SegmentText := Copy(ADocument.VisibleText, SegmentStart + 1,
           SegmentFinish - SegmentStart);
-        Builder.AddText(SpanIndex, SegmentText, Style, not IsTitle,
-          Annotation);
+        if IsTitle then
+          Builder.AddRoleText(SpanIndex, SegmentText, Style,
+            Title.Editable, vsrTitleContent, QWord(Title.OpenOrdinal),
+            Annotation)
+        else
+          Builder.AddText(SpanIndex, SegmentText, Style, True, Annotation);
         Inc(SpanIndex);
       end;
     { A structural anchor at the document end has no following segment from
@@ -925,9 +1150,11 @@ begin
       SyntheticAnchors[Length(ADocument.VisibleText)], SpanIndex);
     Inner := Builder.Build(ARevision);
     BuildOffsetMaps(SyntheticAnchors, Length(ADocument.VisibleText),
-      DocumentToLayoutBefore, DocumentToLayoutAfter, LayoutToDocument);
+      DocumentToLayoutBefore, DocumentToLayoutAfter, LayoutToDocument,
+      LayoutToAffinity);
     Result := TTheWordMappedVisualDocument.Create(Inner,
-      DocumentToLayoutBefore, DocumentToLayoutAfter, LayoutToDocument);
+      DocumentToLayoutBefore, DocumentToLayoutAfter, LayoutToDocument,
+      LayoutToAffinity, Breaks);
   finally
     Builder.Free;
   end;

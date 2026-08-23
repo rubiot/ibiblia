@@ -5,7 +5,7 @@ unit VerseMemo;
 interface
 
 uses
-  Classes, SysUtils, Controls, Forms, LCLType, Dialogs, ExtCtrls, StdCtrls,
+  Classes, SysUtils, Controls, Forms, LCLType, Dialogs, ExtCtrls, StdCtrls, ColorBox,
   Buttons, Graphics, Menus, Verse, Math, directwrite_verse_editor, theword_ont_codec_v2,
   theword_wysiwyg_editor_control, text_edit_provenance;
 
@@ -38,7 +38,10 @@ type
     FHtmlFormatButton: TSpeedButton;
     FFontSizeDecreaseButton: TSpeedButton;
     FFontSizeIncreaseButton: TSpeedButton;
+    FFontColorBox: TColorBox;
     FHtmlFormatMenu: TPopupMenu;
+    FTitleButton: TSpeedButton;
+    FTitleMenu: TPopupMenu;
     FTranslatorNoteButton: TSpeedButton;
     FRawModeButton: TButton;
     FSaveErrorActive: Boolean;
@@ -67,8 +70,12 @@ type
     procedure InsertHtmlItalic(Sender: TObject);
     procedure InsertHtmlUnderline(Sender: TObject);
     procedure ShowHtmlFormatMenu(Sender: TObject);
+    procedure ShowTitleMenu(Sender: TObject);
+    procedure TitleMenuClick(Sender: TObject);
+    procedure UpdateTitleMenu;
     procedure DecreaseFontSize(Sender: TObject);
     procedure IncreaseFontSize(Sender: TObject);
+    procedure SelectFontColor(Sender: TObject);
     procedure InsertTranslatorNote(Sender: TObject);
     procedure LayoutEditorToolbar;
     procedure RefreshLocalizedCaptions;
@@ -119,6 +126,7 @@ resourcestring
   SHtmlFormatButton = 'B/I/U';
   SFontSizeDecreaseButton = 'A−';
   SFontSizeIncreaseButton = 'A+';
+  STitleButton = 'T▾';
   STranslatorNoteButton = 'N¹';
   SRawModeButton = 'Raw';
   SVisualModeButton = 'Visual';
@@ -137,6 +145,19 @@ resourcestring
   SHtmlFormatHint = 'HTML bold, italic or underline';
   SFontSizeDecreaseHint = 'Decrease relative font size (Ctrl+Shift+,)';
   SFontSizeIncreaseHint = 'Increase relative font size (Ctrl+Shift+.)';
+  SFontColorHint = 'Font color; choose Default to remove explicit color';
+  STitleHint = 'Insert, change or remove a title';
+  SNewTitleLevel1 = 'New level 1 title...';
+  SNewTitleLevel2 = 'New level 2 title...';
+  SNewTitleLevel3 = 'New level 3 title...';
+  SChangeTitleLevel1 = 'Change to level 1';
+  SChangeTitleLevel2 = 'Change to level 2';
+  SChangeTitleLevel3 = 'Change to level 3';
+  SRemoveTitle = 'Remove title';
+  SInsertTitleDialogTitle = 'Insert title';
+  SInsertTitlePrompt = 'Title text:';
+  STitleEditErrorTitle = 'Title edit error';
+  STitleEditError = 'The title could not be changed at this position.';
   STranslatorNoteHint =
     'Insert translator note at the caret (Ctrl+Shift+N)';
   SRawModeHint = 'Switch between semantic editing and the raw ONT fallback';
@@ -260,6 +281,87 @@ procedure TVerseMemo.DecreaseFontSize(Sender: TObject);
 begin
   FEditor.AdjustRelativeFontSize(-1);
 end;
+procedure TVerseMemo.SelectFontColor(Sender: TObject);
+begin
+  FEditor.ApplyFontColor(FFontColorBox.Selected <> clDefault,
+    LongInt(FFontColorBox.Selected));
+end;
+
+procedure TVerseMemo.UpdateTitleMenu;
+var
+  HasTitle: Boolean;
+  Index: Integer;
+  Item: TMenuItem;
+  Title: TTheWordTitleRange;
+begin
+  HasTitle := FEditor.TryGetCurrentTitle(Title);
+  for Index := 0 to FTitleMenu.Items.Count - 1 do
+  begin
+    Item := FTitleMenu.Items[Index];
+    case Item.Tag of
+      1..3:
+        begin
+          Item.Enabled := FEditor.CanInsertTitle;
+          Item.Checked := False;
+        end;
+      11..13:
+        begin
+          Item.Enabled := HasTitle;
+          Item.Checked := HasTitle and (Title.Level = Item.Tag - 10);
+        end;
+      20:
+        begin
+          Item.Enabled := HasTitle;
+          Item.Checked := False;
+        end;
+    end;
+  end;
+end;
+
+procedure TVerseMemo.ShowTitleMenu(Sender: TObject);
+var
+  P: TPoint;
+begin
+  UpdateTitleMenu;
+  P := Mouse.CursorPos;
+  FTitleMenu.PopUp(P.X, P.Y);
+end;
+
+procedure TVerseMemo.TitleMenuClick(Sender: TObject);
+var
+  Item: TMenuItem;
+  Succeeded: Boolean;
+  TitleText: string;
+begin
+  if not (Sender is TMenuItem) then
+    Exit;
+  Item := TMenuItem(Sender);
+  Succeeded := False;
+  case Item.Tag of
+    1..3:
+      begin
+        TitleText := '';
+        if not InputQuery(SInsertTitleDialogTitle, SInsertTitlePrompt,
+          TitleText) then
+          Exit;
+        if Trim(TitleText) = '' then
+        begin
+          MessageDlg(STitleEditErrorTitle, STitleEditError, mtError,
+            [mbOK], 0);
+          Exit;
+        end;
+        Succeeded := FEditor.InsertTitle(Item.Tag,
+          UTF8Decode(TitleText));
+      end;
+    11..13:
+      Succeeded := FEditor.ChangeCurrentTitleLevel(Item.Tag - 10);
+    20:
+      Succeeded := FEditor.RemoveCurrentTitle;
+  end;
+  if not Succeeded then
+    MessageDlg(STitleEditErrorTitle, STitleEditError, mtError, [mbOK], 0);
+  UpdateEditorState;
+end;
 
 procedure TVerseMemo.IncreaseFontSize(Sender: TObject);
 begin
@@ -358,8 +460,12 @@ begin
   FFontSizeIncreaseButton.SetBounds(X, ButtonTop,
     SemanticButtonWidth, ButtonHeight);
   Inc(X, SemanticButtonWidth + Gap);
-  FTranslatorNoteButton.SetBounds(X,
-    ButtonTop,
+  FFontColorBox.SetBounds(X, ButtonTop, 92, ButtonHeight);
+  Inc(X, 92 + Gap);
+  FTitleButton.SetBounds(X, ButtonTop,
+    SemanticButtonWidth + 8, ButtonHeight);
+  Inc(X, SemanticButtonWidth + 8 + Gap);
+  FTranslatorNoteButton.SetBounds(X, ButtonTop,
     SemanticButtonWidth, ButtonHeight);
   Inc(X, SemanticButtonWidth + Gap);
   FRawModeButton.SetBounds(X,
@@ -405,6 +511,9 @@ begin
   FSubscriptButton.Caption := SSubscriptButton;
   FSubscriptButton.Hint := SSubscriptHint;
   FTranslatorNoteButton.Caption := STranslatorNoteButton;
+  FTitleButton.Caption := STitleButton;
+  FTitleButton.Hint := STitleHint;
+  FFontColorBox.Hint := SFontColorHint;
   FTranslatorNoteButton.Hint := STranslatorNoteHint;
   FRawModeButton.Hint := SRawModeHint;
 end;
@@ -477,6 +586,7 @@ end;
 procedure TVerseMemo.UpdateEditorState;
 var
   CanMark: Boolean;
+  Title: TTheWordTitleRange;
 begin
   if not Assigned(FStatusLabel) then
     Exit;
@@ -510,6 +620,9 @@ begin
   FFontSizeDecreaseButton.Enabled := FEditor.Editable and not FEditor.RawMode;
   FFontSizeIncreaseButton.Enabled := FEditor.Editable and not FEditor.RawMode;
   FTranslatorNoteButton.Enabled := FEditor.CanInsertTranslatorNote;
+  FTitleButton.Enabled := FEditor.CanInsertTitle or
+    FEditor.TryGetCurrentTitle(Title);
+  FFontColorBox.Enabled := FEditor.Editable and not FEditor.RawMode;
   if FEditor.RawMode then
     FRawModeButton.Caption := SVisualModeButton
   else
@@ -558,6 +671,26 @@ constructor TVerseMemo.Create;
     Item.Caption := ACaption;
     Item.OnClick := AHandler;
     FHtmlFormatMenu.Items.Add(Item);
+  end;
+
+  procedure AddTitleMenuItem(const ACaption: string; ATag: Integer);
+  var Item: TMenuItem;
+  begin
+    Item := TMenuItem.Create(FTitleMenu);
+    Item.Caption := ACaption;
+    Item.Tag := ATag;
+    Item.AutoCheck := False;
+    Item.OnClick := @TitleMenuClick;
+    FTitleMenu.Items.Add(Item);
+  end;
+
+  procedure AddTitleSeparator;
+  var Item: TMenuItem;
+  begin
+    Item := TMenuItem.Create(FTitleMenu);
+    Item.Caption := '-';
+    Item.Tag := 0;
+    FTitleMenu.Items.Add(Item);
   end;
 
 begin
@@ -625,6 +758,28 @@ begin
     SFontSizeIncreaseHint, @IncreaseFontSize);
   FTranslatorNoteButton := NewSemanticButton(STranslatorNoteButton,
     STranslatorNoteHint, @InsertTranslatorNote);
+  FFontColorBox := TColorBox.Create(FEditorPanel);
+  FFontColorBox.Parent := FToolbarPanel;
+  FFontColorBox.Style := [cbStandardColors, cbExtendedColors,
+    cbIncludeDefault, cbCustomColor, cbPrettyNames];
+  FFontColorBox.Selected := clDefault;
+  FFontColorBox.Hint := SFontColorHint;
+  FFontColorBox.ShowHint := True;
+  FFontColorBox.OnChange := @SelectFontColor;
+  FTitleMenu := TPopupMenu.Create(FEditorPanel);
+  AddTitleMenuItem(SNewTitleLevel1, 1);
+  AddTitleMenuItem(SNewTitleLevel2, 2);
+  AddTitleMenuItem(SNewTitleLevel3, 3);
+  AddTitleSeparator;
+  AddTitleMenuItem(SChangeTitleLevel1, 11);
+  AddTitleMenuItem(SChangeTitleLevel2, 12);
+  AddTitleMenuItem(SChangeTitleLevel3, 13);
+  AddTitleSeparator;
+  AddTitleMenuItem(SRemoveTitle, 20);
+  FTitleButton := NewSemanticButton(STitleButton,
+    STitleHint, @ShowTitleMenu);
+  FTitleButton.Font.Style := [fsBold];
+
   FTranslatorNoteButton.Font.Color := clBlue;
   FTranslatorNoteButton.Font.Style := [fsItalic];
   FRawModeButton := NewToolbarButton(SRawModeButton,

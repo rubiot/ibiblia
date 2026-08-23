@@ -7,7 +7,7 @@ interface
 
 uses
   Classes, Contnrs, SysUtils, text_edit_provenance,
-  theword_ont_codec_v2;
+  theword_ont_codec_v2, theword_break_v2;
 
 type
   ETheWordWysiwygSession = class(Exception);
@@ -46,18 +46,40 @@ type
     procedure PushUndo(ASnapshot: TTheWordWysiwygSessionSnapshot);
     procedure ReplaceDocument(const ARaw: UnicodeString);
     procedure RestoreFromStack(ASource, ADestination: TFPObjectList);
+    function ReplaceSelectionWithBreakInternal(AStartUTF16,
+      ALengthUTF16: Integer; const ABreaks: TTheWordBreakIdentityArray;
+      AKind: TTheWordBreakKind; AAfterAnchors,
+      AHasInsertBefore: Boolean; const AInsertBefore:
+      TTheWordBreakIdentity): Boolean;
   public
     constructor Create(const ARaw: UnicodeString;
       ATokenizerVersion: Integer = 0);
     destructor Destroy; override;
     function ApplySemantic(AKind: TTheWordSemanticKind; AStartUTF16,
       ALengthUTF16: Integer): Boolean;
+    function ApplyFontColor(AStartUTF16, ALengthUTF16: Integer;
+      AHasColor: Boolean; AColor: LongInt): Boolean;
+    function ReplaceTextWithPendingFormatting(AStartUTF16,
+      ALengthUTF16: Integer; const AReplacement: UnicodeString;
+      AAfterAnchors, AApplyFontSize: Boolean;
+      ACurrentLevel, ATargetLevel: Integer;
+      AApplyFontColor, ATargetHasColor: Boolean;
+      ATargetColor: LongInt): Boolean;
     function AdjustRelativeFontSize(AStartUTF16, ALengthUTF16,
       ADelta: Integer): Boolean;
     function ReplaceTextWithRelativeFontSize(AStartUTF16,
       ALengthUTF16: Integer; const AReplacement: UnicodeString;
       ACurrentLevel, ATargetLevel: Integer): Boolean;
     function CanApplySemantic(AStartUTF16, ALengthUTF16: Integer): Boolean;
+    function CanInsertTitle(AOffsetUTF16: Integer): Boolean;
+    function TryGetTitle(AOpenOrdinal: Integer;
+      out ATitle: TTheWordTitleRange): Boolean;
+    function ReplaceTitleText(AOpenOrdinal, ARelativeStartUTF16,
+      ALengthUTF16: Integer; const AReplacement: UnicodeString): Boolean;
+    function InsertTitle(AOffsetUTF16, ALevel: Integer;
+      const AText: UnicodeString): Boolean;
+    function ChangeTitleLevel(AOpenOrdinal, ALevel: Integer): Boolean;
+    function RemoveTitle(AOpenOrdinal: Integer): Boolean;
     function CanInsertTranslatorNote(AOffsetUTF16: Integer): Boolean;
     function InsertTranslatorNote(AOffsetUTF16: Integer;
       const AQ, ABodyRaw: UnicodeString; out ANoteId: QWord): Boolean;
@@ -68,18 +90,48 @@ type
       out ANote: TTheWordTranslatorNote): Boolean;
     function CanReplaceText(AStartUTF16, ALengthUTF16: Integer): Boolean;
     function CopySelection(AStartUTF16, ALengthUTF16: Integer;
-      out APlainText: UnicodeString; out APayload: string): Boolean;
+      out APlainText: UnicodeString; out APayload: string): Boolean; overload;
+    function CopySelection(AStartUTF16, ALengthUTF16: Integer;
+      const ABreaks: TTheWordBreakIdentityArray;
+      out APlainText: UnicodeString; out APayload: string): Boolean; overload;
     function CutSelection(AStartUTF16, ALengthUTF16: Integer;
-      out APlainText: UnicodeString; out APayload: string): Boolean;
+      out APlainText: UnicodeString; out APayload: string): Boolean; overload;
+    function CutSelection(AStartUTF16, ALengthUTF16: Integer;
+      const ABreaks: TTheWordBreakIdentityArray;
+      out APlainText: UnicodeString; out APayload: string): Boolean; overload;
     function DeleteSelectionWithParagraphMarks(AStartUTF16,
       ALengthUTF16: Integer; const AParagraphMarkOffsets:
       array of Integer): Boolean;
+    function DeleteSelectionWithBreaks(AStartUTF16,
+      ALengthUTF16: Integer;
+      const ABreaks: TTheWordBreakIdentityArray): Boolean;
+    function ReplaceSelectionWithBreak(AStartUTF16,
+      ALengthUTF16: Integer; const ABreaks: TTheWordBreakIdentityArray;
+      AKind: TTheWordBreakKind; AAfterAnchors: Boolean): Boolean; overload;
+    function ReplaceSelectionWithBreak(AStartUTF16,
+      ALengthUTF16: Integer; const ABreaks: TTheWordBreakIdentityArray;
+      AKind: TTheWordBreakKind; const AInsertBefore:
+      TTheWordBreakIdentity): Boolean; overload;
+    function RemoveBreak(const AIdentity: TTheWordBreakIdentity): Boolean;
     function InsertParagraphMark(AStartUTF16,
       ALengthUTF16: Integer): Boolean;
     function Paste(AStartUTF16, ALengthUTF16: Integer;
       const APayload: string; const APlainText: UnicodeString;
       out AInsertedLengthUTF16: Integer;
-      out AUsedPrivatePayload: Boolean): Boolean;
+      out AUsedPrivatePayload: Boolean): Boolean; overload;
+    function Paste(AStartUTF16, ALengthUTF16: Integer;
+      const ABreaks: TTheWordBreakIdentityArray;
+      AAfterAnchors: Boolean; const APayload: string;
+      const APlainText: UnicodeString;
+      out AInsertedLengthUTF16: Integer;
+      out AUsedPrivatePayload: Boolean): Boolean; overload;
+    function Paste(AStartUTF16, ALengthUTF16: Integer;
+      const ABreaks: TTheWordBreakIdentityArray;
+      AAfterAnchors, AHasInsertBefore: Boolean;
+      const AInsertBefore: TTheWordBreakIdentity; const APayload: string;
+      const APlainText: UnicodeString;
+      out AInsertedLengthUTF16: Integer;
+      out AUsedPrivatePayload: Boolean): Boolean; overload;
     function ReplaceText(AStartUTF16, ALengthUTF16: Integer;
       const AReplacement: UnicodeString): Boolean;
     function RemoveParagraphMark(AOffsetUTF16: Integer;
@@ -111,7 +163,7 @@ implementation
 
 uses
   theword_verse_visual_adapter_v2, theword_clipboard_v2,
-  theword_font_size_mutation_v2;
+  theword_font_size_mutation_v2, theword_font_color_mutation_v2;
 
 function TouchesTheWordTitle(ADocument: TTheWordVerseDocument;
   AStartUTF16, ALengthUTF16: Integer): Boolean;
@@ -250,6 +302,17 @@ begin
   end;
 end;
 
+function IsPresentationTitleOpen(const ARaw: UnicodeString): Boolean;
+begin
+  Result := (ARaw = '<TS>') or (ARaw = '<TS0>') or
+    (ARaw = '<TS1>') or (ARaw = '<TS2>') or (ARaw = '<TS3>');
+end;
+function IsPresentationBreak(const ARaw: UnicodeString): Boolean;
+begin
+  Result := (ARaw = '<CM>') or (ARaw = '<CL>');
+end;
+
+
 function BuildNonSemanticEventSequence(
   ADocument: TTheWordVerseDocument): TNonSemanticEventSequence;
 var
@@ -273,10 +336,15 @@ begin
   end;
   for Index := 0 to ADocument.OpaqueItemCount - 1 do
   begin
+    if IsPresentationBreak(ADocument.OpaqueItems[Index].RawLexeme) then
+      Continue;
     Result[Position].Category := nsecOpaque;
     Result[Position].Kind := Ord(ADocument.OpaqueItems[Index].Kind);
     Result[Position].Offset := ADocument.OpaqueItems[Index].Offset;
-    Result[Position].RawLexeme := ADocument.OpaqueItems[Index].RawLexeme;
+    if IsPresentationTitleOpen(ADocument.OpaqueItems[Index].RawLexeme) then
+      Result[Position].RawLexeme := '<TS#>'
+    else
+      Result[Position].RawLexeme := ADocument.OpaqueItems[Index].RawLexeme;
     Result[Position].Ordinal := ADocument.OpaqueItems[Index].Ordinal;
     Inc(Position);
   end;
@@ -301,6 +369,7 @@ begin
     Result[Position].Ordinal := ADocument.TranslatorNotes[Index].Ordinal;
     Inc(Position);
   end;
+  SetLength(Result, Position);
   SortNonSemanticEvents(Result);
 end;
 
@@ -396,6 +465,14 @@ begin
     AStartUTF16, ALengthUTF16, APlainText, APayload);
 end;
 
+function TTheWordWysiwygSessionV2.CopySelection(AStartUTF16,
+  ALengthUTF16: Integer; const ABreaks: TTheWordBreakIdentityArray;
+  out APlainText: UnicodeString; out APayload: string): Boolean;
+begin
+  Result := TTheWordClipboardCodecV2.EncodeSelection(FDocument,
+    AStartUTF16, ALengthUTF16, ABreaks, APlainText, APayload);
+end;
+
 function TTheWordWysiwygSessionV2.CutSelection(AStartUTF16,
   ALengthUTF16: Integer; out APlainText: UnicodeString;
   out APayload: string): Boolean;
@@ -424,6 +501,43 @@ begin
     NewTrace := nil;
     PushUndo(Snapshot);
     Snapshot := nil;
+  finally
+    NewTrace.Free;
+    Snapshot.Free;
+  end;
+end;
+
+function TTheWordWysiwygSessionV2.CutSelection(AStartUTF16,
+  ALengthUTF16: Integer; const ABreaks: TTheWordBreakIdentityArray;
+  out APlainText: UnicodeString; out APayload: string): Boolean;
+var
+  NewTrace: TVerseEditTrace;
+  Raw, SnapshotRaw: UnicodeString;
+  Snapshot: TTheWordWysiwygSessionSnapshot;
+begin
+  Result := not TouchesTheWordTitle(FDocument, AStartUTF16,
+    ALengthUTF16) and
+    CopySelection(AStartUTF16, ALengthUTF16, ABreaks,
+      APlainText, APayload) and
+    TTheWordClipboardCodecV2.BuildCutRaw(FDocument, AStartUTF16,
+      ALengthUTF16, ABreaks, Raw);
+  if not Result then Exit;
+  SnapshotRaw := GetRawText;
+  if Raw = SnapshotRaw then Exit(False);
+  Snapshot := nil;
+  NewTrace := nil;
+  try
+    Snapshot := CaptureSnapshot;
+    NewTrace := FTrace.Clone;
+    if ALengthUTF16 > 0 then
+      NewTrace.ApplyReplacement(AStartUTF16, ALengthUTF16, '');
+    ReplaceDocument(Raw);
+    FTrace.Free;
+    FTrace := NewTrace;
+    NewTrace := nil;
+    PushUndo(Snapshot);
+    Snapshot := nil;
+    Result := True;
   finally
     NewTrace.Free;
     Snapshot.Free;
@@ -466,6 +580,69 @@ begin
       NewTrace := nil;
       PushUndo(Snapshot);
       Snapshot := nil;
+    finally
+      NewTrace.Free;
+      Snapshot.Free;
+    end;
+  finally
+    Fragment.Free;
+  end;
+end;
+
+function TTheWordWysiwygSessionV2.Paste(AStartUTF16,
+  ALengthUTF16: Integer; const ABreaks: TTheWordBreakIdentityArray;
+  AAfterAnchors: Boolean; const APayload: string;
+  const APlainText: UnicodeString; out AInsertedLengthUTF16: Integer;
+  out AUsedPrivatePayload: Boolean): Boolean;
+var
+  InsertBefore: TTheWordBreakIdentity;
+begin
+  FillChar(InsertBefore, SizeOf(InsertBefore), 0);
+  Result := Paste(AStartUTF16, ALengthUTF16, ABreaks,
+    AAfterAnchors, False, InsertBefore, APayload, APlainText,
+    AInsertedLengthUTF16, AUsedPrivatePayload);
+end;
+
+function TTheWordWysiwygSessionV2.Paste(AStartUTF16,
+  ALengthUTF16: Integer; const ABreaks: TTheWordBreakIdentityArray;
+  AAfterAnchors, AHasInsertBefore: Boolean;
+  const AInsertBefore: TTheWordBreakIdentity; const APayload: string;
+  const APlainText: UnicodeString; out AInsertedLengthUTF16: Integer;
+  out AUsedPrivatePayload: Boolean): Boolean;
+var
+  Fragment: TTheWordClipboardFragmentV2;
+  NewTrace: TVerseEditTrace;
+  Raw, SnapshotRaw: UnicodeString;
+  Snapshot: TTheWordWysiwygSessionSnapshot;
+begin
+  Fragment := nil;
+  AInsertedLengthUTF16 := 0;
+  AUsedPrivatePayload := TTheWordClipboardCodecV2.TryDecodePayload(
+    APayload, Fragment);
+  if not AUsedPrivatePayload then
+    Fragment := TTheWordClipboardCodecV2.NewPlainFragment(APlainText);
+  try
+    AInsertedLengthUTF16 := Length(Fragment.Text);
+    Result := TTheWordClipboardCodecV2.BuildPasteRaw(FDocument,
+      AStartUTF16, ALengthUTF16, ABreaks, AAfterAnchors,
+      AHasInsertBefore, AInsertBefore, Fragment, Raw);
+    if not Result then Exit;
+    SnapshotRaw := GetRawText;
+    if Raw = SnapshotRaw then Exit(False);
+    Snapshot := nil;
+    NewTrace := nil;
+    try
+      Snapshot := CaptureSnapshot;
+      NewTrace := FTrace.Clone;
+      NewTrace.ApplyReplacement(AStartUTF16, ALengthUTF16,
+        Fragment.Text);
+      ReplaceDocument(Raw);
+      FTrace.Free;
+      FTrace := NewTrace;
+      NewTrace := nil;
+      PushUndo(Snapshot);
+      Snapshot := nil;
+      Result := True;
     finally
       NewTrace.Free;
       Snapshot.Free;
@@ -526,6 +703,181 @@ function TTheWordWysiwygSessionV2.CanApplySemantic(AStartUTF16,
 begin
   Result := CanApplyTheWordSemanticMark(FDocument, AStartUTF16,
     ALengthUTF16);
+end;
+
+function TTheWordWysiwygSessionV2.CanInsertTitle(
+  AOffsetUTF16: Integer): Boolean;
+begin
+  Result := Assigned(FDocument) and FDocument.CanInsertTitle(AOffsetUTF16);
+end;
+
+function TTheWordWysiwygSessionV2.TryGetTitle(AOpenOrdinal: Integer;
+  out ATitle: TTheWordTitleRange): Boolean;
+var
+  Index: Integer;
+  Titles: TTheWordTitleRangeArray;
+begin
+  CollectTheWordTitleRanges(FDocument, Titles);
+  for Index := 0 to High(Titles) do
+    if Titles[Index].OpenOrdinal = AOpenOrdinal then
+    begin
+      ATitle := Titles[Index];
+      Exit(True);
+    end;
+  FillChar(ATitle, SizeOf(ATitle), 0);
+  Result := False;
+end;
+
+function TTheWordWysiwygSessionV2.ReplaceTitleText(AOpenOrdinal,
+  ARelativeStartUTF16, ALengthUTF16: Integer;
+  const AReplacement: UnicodeString): Boolean;
+var
+  AbsoluteStart, TitleLength: Integer;
+  NewTrace: TVerseEditTrace;
+  Snapshot: TTheWordWysiwygSessionSnapshot;
+  Title: TTheWordTitleRange;
+  UpdatedRaw: UnicodeString;
+  WorkingDocument: TTheWordVerseDocument;
+begin
+  Result := False;
+  if not TryGetTitle(AOpenOrdinal, Title) or not Title.Editable then
+    Exit;
+  TitleLength := Title.EndOffset - Title.StartOffset;
+  if (ARelativeStartUTF16 = 0) and
+     (ALengthUTF16 = TitleLength) and (AReplacement = '') then
+    Exit(RemoveTitle(AOpenOrdinal));
+  AbsoluteStart := Title.StartOffset + ARelativeStartUTF16;
+  Snapshot := nil;
+  NewTrace := nil;
+  WorkingDocument := nil;
+  try
+    Snapshot := CaptureSnapshot;
+    NewTrace := FTrace.Clone;
+    WorkingDocument := FCodec.DecodeVerse(Snapshot.Raw);
+    if not WorkingDocument.ReplaceTitleVisibleText(AOpenOrdinal,
+      ARelativeStartUTF16, ALengthUTF16, AReplacement) then
+      Exit;
+    UpdatedRaw := FCodec.EncodeVerse(WorkingDocument);
+    NewTrace.ApplyReplacement(AbsoluteStart, ALengthUTF16,
+      AReplacement);
+    ReplaceDocument(UpdatedRaw);
+    FTrace.Free;
+    FTrace := NewTrace;
+    NewTrace := nil;
+    PushUndo(Snapshot);
+    Snapshot := nil;
+    Result := True;
+  finally
+    WorkingDocument.Free;
+    NewTrace.Free;
+    Snapshot.Free;
+  end;
+end;
+
+function TTheWordWysiwygSessionV2.InsertTitle(AOffsetUTF16,
+  ALevel: Integer; const AText: UnicodeString): Boolean;
+var
+  NewOpenOrdinal: Integer;
+  NewTrace: TVerseEditTrace;
+  Snapshot: TTheWordWysiwygSessionSnapshot;
+  UpdatedRaw: UnicodeString;
+  WorkingDocument: TTheWordVerseDocument;
+begin
+  Result := False;
+  if not CanInsertTitle(AOffsetUTF16) then
+    Exit;
+  Snapshot := nil;
+  NewTrace := nil;
+  WorkingDocument := nil;
+  try
+    Snapshot := CaptureSnapshot;
+    NewTrace := FTrace.Clone;
+    WorkingDocument := FCodec.DecodeVerse(Snapshot.Raw);
+    if not WorkingDocument.InsertTitle(AOffsetUTF16, ALevel,
+      AText, NewOpenOrdinal) then
+      Exit;
+    UpdatedRaw := FCodec.EncodeVerse(WorkingDocument);
+    NewTrace.ApplyReplacement(AOffsetUTF16, 0, AText);
+    ReplaceDocument(UpdatedRaw);
+    FTrace.Free;
+    FTrace := NewTrace;
+    NewTrace := nil;
+    PushUndo(Snapshot);
+    Snapshot := nil;
+    Result := True;
+  finally
+    WorkingDocument.Free;
+    NewTrace.Free;
+    Snapshot.Free;
+  end;
+end;
+
+function TTheWordWysiwygSessionV2.ChangeTitleLevel(AOpenOrdinal,
+  ALevel: Integer): Boolean;
+var
+  Snapshot: TTheWordWysiwygSessionSnapshot;
+  UpdatedRaw: UnicodeString;
+  WorkingDocument: TTheWordVerseDocument;
+begin
+  Result := False;
+  Snapshot := nil;
+  WorkingDocument := nil;
+  try
+    Snapshot := CaptureSnapshot;
+    WorkingDocument := FCodec.DecodeVerse(Snapshot.Raw);
+    if not WorkingDocument.ChangeTitleLevel(AOpenOrdinal, ALevel) then
+      Exit;
+    UpdatedRaw := FCodec.EncodeVerse(WorkingDocument);
+    if UpdatedRaw = Snapshot.Raw then
+      Exit(True);
+    ReplaceDocument(UpdatedRaw);
+    PushUndo(Snapshot);
+    Snapshot := nil;
+    Result := True;
+  finally
+    WorkingDocument.Free;
+    Snapshot.Free;
+  end;
+end;
+
+function TTheWordWysiwygSessionV2.RemoveTitle(
+  AOpenOrdinal: Integer): Boolean;
+var
+  ReplacementText: UnicodeString;
+  NewTrace: TVerseEditTrace;
+  Snapshot: TTheWordWysiwygSessionSnapshot;
+  Title: TTheWordTitleRange;
+  UpdatedRaw: UnicodeString;
+  WorkingDocument: TTheWordVerseDocument;
+begin
+  Result := False;
+  if not TryGetTitle(AOpenOrdinal, Title) or not Title.Editable then
+    Exit;
+  Snapshot := nil;
+  NewTrace := nil;
+  WorkingDocument := nil;
+  try
+    Snapshot := CaptureSnapshot;
+    NewTrace := FTrace.Clone;
+    WorkingDocument := FCodec.DecodeVerse(Snapshot.Raw);
+    if not WorkingDocument.RemoveTitle(AOpenOrdinal,
+      ReplacementText) then
+      Exit;
+    UpdatedRaw := FCodec.EncodeVerse(WorkingDocument);
+    NewTrace.ApplyReplacement(Title.StartOffset,
+      Title.EndOffset - Title.StartOffset, ReplacementText);
+    ReplaceDocument(UpdatedRaw);
+    FTrace.Free;
+    FTrace := NewTrace;
+    NewTrace := nil;
+    PushUndo(Snapshot);
+    Snapshot := nil;
+    Result := True;
+  finally
+    WorkingDocument.Free;
+    NewTrace.Free;
+    Snapshot.Free;
+  end;
 end;
 
 function TTheWordWysiwygSessionV2.CanInsertTranslatorNote(
@@ -748,6 +1100,137 @@ begin
   end;
 end;
 
+function TTheWordWysiwygSessionV2.ApplyFontColor(AStartUTF16,
+  ALengthUTF16: Integer; AHasColor: Boolean; AColor: LongInt): Boolean;
+var
+  Candidate, SnapshotRaw: UnicodeString;
+  Plan: TTheWordFontColorLeafPlanArrayV2;
+  Snapshot: TTheWordWysiwygSessionSnapshot;
+begin
+  Result := False;
+  SnapshotRaw := GetRawText;
+  if not TryPlanTheWordFontColorV2(FDocument, AStartUTF16,
+    ALengthUTF16, AHasColor, AColor, Plan) then
+    Exit;
+  if not TheWordFontColorPlanHasChangesV2(Plan) then
+    Exit(True);
+  if not FDocument.TryBuildRawWithFontColorTopology(Plan, Candidate) then
+    Exit;
+  if Candidate = SnapshotRaw then
+    Exit(True);
+
+  Snapshot := nil;
+  try
+    Snapshot := CaptureSnapshot;
+    ReplaceDocument(Candidate);
+    PushUndo(Snapshot);
+    Snapshot := nil;
+    Result := True;
+  finally
+    Snapshot.Free;
+  end;
+end;
+
+function TTheWordWysiwygSessionV2.ReplaceTextWithPendingFormatting(
+  AStartUTF16, ALengthUTF16: Integer;
+  const AReplacement: UnicodeString;
+  AAfterAnchors, AApplyFontSize: Boolean;
+  ACurrentLevel, ATargetLevel: Integer;
+  AApplyFontColor, ATargetHasColor: Boolean;
+  ATargetColor: LongInt): Boolean;
+var
+  Candidate, NextCandidate: UnicodeString;
+  ColorPlan: TTheWordFontColorLeafPlanArrayV2;
+  CurrentLevel, Step: Integer;
+  NewTrace: TVerseEditTrace;
+  SizePlan: TTheWordFontSizeLeafPlanArrayV2;
+  Snapshot: TTheWordWysiwygSessionSnapshot;
+  WorkingDocument: TTheWordVerseDocument;
+begin
+  Result := False;
+  if (AReplacement = '') or
+     (AApplyFontSize and
+       ((ATargetLevel < THEWORD_MIN_AUTHORIAL_SIZE_V2) or
+        (ATargetLevel > THEWORD_MAX_AUTHORIAL_SIZE_V2))) or
+     (AApplyFontColor and ATargetHasColor and
+       ((ATargetColor < 0) or (ATargetColor > $00FFFFFF))) or
+     not CanReplaceText(AStartUTF16, ALengthUTF16) then
+    Exit;
+
+  Snapshot := nil;
+  NewTrace := nil;
+  WorkingDocument := nil;
+  try
+    Snapshot := CaptureSnapshot;
+    NewTrace := FTrace.Clone;
+    WorkingDocument := FCodec.DecodeVerse(Snapshot.Raw);
+    WorkingDocument.ReplaceVisibleTextWithAffinity(AStartUTF16,
+      ALengthUTF16, AReplacement, AAfterAnchors);
+    Candidate := FCodec.EncodeVerse(WorkingDocument);
+    FreeAndNil(WorkingDocument);
+    NewTrace.ApplyReplacement(AStartUTF16, ALengthUTF16,
+      AReplacement);
+
+    if AApplyFontSize then
+    begin
+      CurrentLevel := ACurrentLevel;
+      while CurrentLevel <> ATargetLevel do
+      begin
+        if CurrentLevel < ATargetLevel then
+          Step := 1
+        else
+          Step := -1;
+        WorkingDocument := FCodec.DecodeVerse(Candidate);
+        try
+          if not TryPlanTheWordRelativeFontSizeV2(WorkingDocument,
+            AStartUTF16, Length(AReplacement), Step, SizePlan) or
+             not WorkingDocument.TryBuildRawWithFontTopology(SizePlan,
+               NextCandidate) then
+            Exit;
+        finally
+          FreeAndNil(WorkingDocument);
+        end;
+        Candidate := NextCandidate;
+        Inc(CurrentLevel, Step);
+      end;
+    end;
+
+    if AApplyFontColor then
+    begin
+      WorkingDocument := FCodec.DecodeVerse(Candidate);
+      try
+        if not TryPlanTheWordFontColorV2(WorkingDocument,
+          AStartUTF16, Length(AReplacement), ATargetHasColor,
+          ATargetColor, ColorPlan) then
+          Exit;
+        if TheWordFontColorPlanHasChangesV2(ColorPlan) then
+        begin
+          if not WorkingDocument.TryBuildRawWithFontColorTopology(
+            ColorPlan, NextCandidate) then
+            Exit;
+          Candidate := NextCandidate;
+        end;
+      finally
+        FreeAndNil(WorkingDocument);
+      end;
+    end;
+
+    if Candidate = Snapshot.Raw then
+      Exit(True);
+    ReplaceDocument(Candidate);
+    FTrace.Free;
+    FTrace := NewTrace;
+    NewTrace := nil;
+    PushUndo(Snapshot);
+    Snapshot := nil;
+    Result := True;
+  finally
+    WorkingDocument.Free;
+    NewTrace.Free;
+    Snapshot.Free;
+  end;
+end;
+
 function TTheWordWysiwygSessionV2.AdjustRelativeFontSize(
   AStartUTF16, ALengthUTF16, ADelta: Integer): Boolean;
 var
@@ -784,41 +1267,10 @@ end;
 function TTheWordWysiwygSessionV2.ReplaceTextWithRelativeFontSize(
   AStartUTF16, ALengthUTF16: Integer; const AReplacement: UnicodeString;
   ACurrentLevel, ATargetLevel: Integer): Boolean;
-var
-  InitialUndoCount, Step: Integer;
 begin
-  Result := False;
-  if (AReplacement = '') or
-     (ATargetLevel < THEWORD_MIN_AUTHORIAL_SIZE_V2) or
-     (ATargetLevel > THEWORD_MAX_AUTHORIAL_SIZE_V2) then
-    Exit;
-  InitialUndoCount := FUndo.Count;
-  if not ReplaceText(AStartUTF16, ALengthUTF16, AReplacement) then
-    Exit;
-  try
-    while ACurrentLevel <> ATargetLevel do
-    begin
-      if ACurrentLevel < ATargetLevel then
-        Step := 1
-      else
-        Step := -1;
-      if not AdjustRelativeFontSize(AStartUTF16,
-        Length(AReplacement), Step) then
-        raise ETheWordWysiwygSession.Create(
-          'Unable to apply pending relative font size');
-      Inc(ACurrentLevel, Step);
-    end;
-    { Keep the original pre-command snapshot and discard intermediate
-      snapshots produced while materializing the pending size. }
-    while FUndo.Count > InitialUndoCount + 1 do
-      FUndo.Delete(FUndo.Count - 1);
-    Result := True;
-  except
-    while FUndo.Count > InitialUndoCount do
-      Undo;
-    FRedo.Clear;
-    Result := False;
-  end;
+  Result := ReplaceTextWithPendingFormatting(AStartUTF16,
+    ALengthUTF16, AReplacement, False, True,
+    ACurrentLevel, ATargetLevel, False, False, 0);
 end;
 
 function TTheWordWysiwygSessionV2.ReplaceText(AStartUTF16,
@@ -855,6 +1307,185 @@ begin
   finally
     WorkingDocument.Free;
     NewTrace.Free;
+    Snapshot.Free;
+  end;
+end;
+
+function TTheWordWysiwygSessionV2.DeleteSelectionWithBreaks(
+  AStartUTF16, ALengthUTF16: Integer;
+  const ABreaks: TTheWordBreakIdentityArray): Boolean;
+var
+  EndOffset, Index: Integer;
+  NewTrace: TVerseEditTrace;
+  Snapshot: TTheWordWysiwygSessionSnapshot;
+  UpdatedRaw: UnicodeString;
+  WorkingDocument: TTheWordVerseDocument;
+begin
+  Result := False;
+  if (AStartUTF16 < 0) or (ALengthUTF16 < 0) or
+     (AStartUTF16 > Length(FDocument.VisibleText)) or
+     (ALengthUTF16 > Length(FDocument.VisibleText) - AStartUTF16) or
+     ((ALengthUTF16 = 0) and (Length(ABreaks) = 0)) then
+    Exit;
+  EndOffset := AStartUTF16 + ALengthUTF16;
+  for Index := 0 to High(ABreaks) do
+    if (ABreaks[Index].OffsetUTF16 < AStartUTF16) or
+       (ABreaks[Index].OffsetUTF16 > EndOffset) then
+      Exit;
+
+  Snapshot := nil;
+  NewTrace := nil;
+  WorkingDocument := nil;
+  try
+    Snapshot := CaptureSnapshot;
+    NewTrace := FTrace.Clone;
+    WorkingDocument := FCodec.DecodeVerse(Snapshot.Raw);
+    for Index := 0 to High(ABreaks) do
+      if not WorkingDocument.RemoveBreak(ABreaks[Index]) then
+        Exit;
+    if ALengthUTF16 > 0 then
+    begin
+      if not WorkingDocument.CanReplaceVisibleText(AStartUTF16,
+        ALengthUTF16) then
+        Exit;
+      WorkingDocument.ReplaceVisibleTextWithAffinity(AStartUTF16,
+        ALengthUTF16, '', False);
+      NewTrace.ApplyReplacement(AStartUTF16, ALengthUTF16, '');
+    end;
+    UpdatedRaw := FCodec.EncodeVerse(WorkingDocument);
+    if UpdatedRaw = Snapshot.Raw then
+      Exit;
+
+    ReplaceDocument(UpdatedRaw);
+    FTrace.Free;
+    FTrace := NewTrace;
+    NewTrace := nil;
+    PushUndo(Snapshot);
+    Snapshot := nil;
+    Result := True;
+  finally
+    WorkingDocument.Free;
+    NewTrace.Free;
+    Snapshot.Free;
+  end;
+end;
+
+function TTheWordWysiwygSessionV2.ReplaceSelectionWithBreak(
+  AStartUTF16, ALengthUTF16: Integer;
+  const ABreaks: TTheWordBreakIdentityArray;
+  AKind: TTheWordBreakKind; AAfterAnchors: Boolean): Boolean;
+var
+  InsertBefore: TTheWordBreakIdentity;
+begin
+  FillChar(InsertBefore, SizeOf(InsertBefore), 0);
+  Result := ReplaceSelectionWithBreakInternal(AStartUTF16,
+    ALengthUTF16, ABreaks, AKind, AAfterAnchors, False, InsertBefore);
+end;
+
+function TTheWordWysiwygSessionV2.ReplaceSelectionWithBreak(
+  AStartUTF16, ALengthUTF16: Integer;
+  const ABreaks: TTheWordBreakIdentityArray;
+  AKind: TTheWordBreakKind; const AInsertBefore:
+  TTheWordBreakIdentity): Boolean;
+begin
+  Result := ReplaceSelectionWithBreakInternal(AStartUTF16,
+    ALengthUTF16, ABreaks, AKind, True, True, AInsertBefore);
+end;
+
+function TTheWordWysiwygSessionV2.ReplaceSelectionWithBreakInternal(
+  AStartUTF16, ALengthUTF16: Integer;
+  const ABreaks: TTheWordBreakIdentityArray;
+  AKind: TTheWordBreakKind; AAfterAnchors,
+  AHasInsertBefore: Boolean; const AInsertBefore:
+  TTheWordBreakIdentity): Boolean;
+var
+  EndOffset, Index: Integer;
+  InsertedBreak: TTheWordBreakIdentity;
+  NewTrace: TVerseEditTrace;
+  Snapshot: TTheWordWysiwygSessionSnapshot;
+  UpdatedRaw: UnicodeString;
+  WorkingDocument: TTheWordVerseDocument;
+begin
+  Result := False;
+  if (AStartUTF16 < 0) or (ALengthUTF16 < 0) or
+     (AStartUTF16 > Length(FDocument.VisibleText)) or
+     (ALengthUTF16 > Length(FDocument.VisibleText) - AStartUTF16) then
+    Exit;
+  EndOffset := AStartUTF16 + ALengthUTF16;
+  for Index := 0 to High(ABreaks) do
+    if (ABreaks[Index].OffsetUTF16 < AStartUTF16) or
+       (ABreaks[Index].OffsetUTF16 > EndOffset) then
+      Exit;
+
+  Snapshot := nil;
+  NewTrace := nil;
+  WorkingDocument := nil;
+  try
+    Snapshot := CaptureSnapshot;
+    NewTrace := FTrace.Clone;
+    WorkingDocument := FCodec.DecodeVerse(Snapshot.Raw);
+    for Index := 0 to High(ABreaks) do
+      if not WorkingDocument.RemoveBreak(ABreaks[Index]) then
+        Exit;
+    if ALengthUTF16 > 0 then
+    begin
+      if not WorkingDocument.CanReplaceVisibleText(AStartUTF16,
+        ALengthUTF16) then
+        Exit;
+      WorkingDocument.ReplaceVisibleTextWithAffinity(AStartUTF16,
+        ALengthUTF16, '', False);
+      NewTrace.ApplyReplacement(AStartUTF16, ALengthUTF16, '');
+    end;
+    if AHasInsertBefore then
+      Result := WorkingDocument.InsertBreak(AStartUTF16, AKind,
+        AInsertBefore, InsertedBreak)
+    else
+      Result := WorkingDocument.InsertBreak(AStartUTF16, AKind,
+        AAfterAnchors, InsertedBreak);
+    if not Result then Exit;
+    UpdatedRaw := FCodec.EncodeVerse(WorkingDocument);
+    if UpdatedRaw = Snapshot.Raw then
+      Exit;
+
+    ReplaceDocument(UpdatedRaw);
+    FTrace.Free;
+    FTrace := NewTrace;
+    NewTrace := nil;
+    PushUndo(Snapshot);
+    Snapshot := nil;
+    Result := True;
+  finally
+    WorkingDocument.Free;
+    NewTrace.Free;
+    Snapshot.Free;
+  end;
+end;
+
+function TTheWordWysiwygSessionV2.RemoveBreak(
+  const AIdentity: TTheWordBreakIdentity): Boolean;
+var
+  Snapshot: TTheWordWysiwygSessionSnapshot;
+  UpdatedRaw: UnicodeString;
+  WorkingDocument: TTheWordVerseDocument;
+begin
+  Result := False;
+  Snapshot := nil;
+  WorkingDocument := nil;
+  try
+    Snapshot := CaptureSnapshot;
+    WorkingDocument := FCodec.DecodeVerse(Snapshot.Raw);
+    if not WorkingDocument.RemoveBreak(AIdentity) then
+      Exit;
+    UpdatedRaw := FCodec.EncodeVerse(WorkingDocument);
+    if UpdatedRaw = Snapshot.Raw then
+      Exit;
+
+    ReplaceDocument(UpdatedRaw);
+    PushUndo(Snapshot);
+    Snapshot := nil;
+    Result := True;
+  finally
+    WorkingDocument.Free;
     Snapshot.Free;
   end;
 end;

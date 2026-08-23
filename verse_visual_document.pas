@@ -51,10 +51,14 @@ type
     meaningful only for roles backed by a domain object. }
   TVisualSpanRole = (
     vsrContent,
+    vsrTitleContent,
     vsrProtectedAnchor,
     vsrParagraphMark,
     vsrTitleBreak,
-    vsrTranslatorNote
+    vsrTranslatorNote,
+    { A rendered <CL> marker followed by a real line feed. It is a visual
+      object, never editable or associable verse text. }
+    vsrSoftLineBreak
   );
 
   TVisualSpan = record

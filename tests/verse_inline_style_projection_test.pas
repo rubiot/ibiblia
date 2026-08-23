@@ -20,6 +20,7 @@ type
     procedure CodecFailureFallsBackToLegacySyntagmState;
     procedure CodecFailureInConsumedBlockKeepsLogicalSpans;
     procedure NonCodecResolverFailurePropagates;
+    procedure SoftLineBreakIsVisibleButNeverAssociable;
     procedure EmptyZeroRunAndStrongCountPastLastRunAreSafe;
   end;
 
@@ -520,6 +521,53 @@ begin
       Document.Spans[Document.SpanCount - 1].Style.ForegroundColor);
   finally
     StrongCount.Free;
+    VerseModel.Free;
+  end;
+end;
+
+procedure TVerseInlineStyleProjectionTests.
+  SoftLineBreakIsVisibleButNeverAssociable;
+const
+  RAW = 'before<CL>after';
+var
+  VerseModel: TVerse;
+  Document: IVerseVisualDocument;
+  BreakIndex, Index, HitIndex: Integer;
+  BreakSpan: TVisualSpan;
+begin
+  VerseModel := TVerse.Create;
+  try
+    VerseModel.Text := RAW;
+    BreakIndex := -1;
+    for Index := 0 to VerseModel.Syntagms.Count - 1 do
+      if (VerseModel.Syntagms[Index].Kind = skMetadata) and
+         (UTF8Decode(VerseModel.Syntagms[Index].RawText) =
+          UnicodeString('<CL>')) then
+      begin
+        BreakIndex := Index;
+        Break;
+      end;
+    AssertTrue('CL remains represented by one metadata syntagm',
+      BreakIndex >= 0);
+
+    Document := BuildVerseVisualDocument(VerseModel.Syntagms, nil,
+      tdLeftToRight, 102, clGreen, clGray, False, RAW);
+    AssertEquals('projection keeps logical-index cardinality',
+      VerseModel.Syntagms.Count, Document.SpanCount);
+    BreakSpan := Document.Spans[BreakIndex];
+    AssertTrue('CL is rendered as a soft-line-break object',
+      BreakSpan.Role = vsrSoftLineBreak);
+    AssertFalse('CL is never interactive', BreakSpan.Interactive);
+    AssertEquals('marker plus real line break occupy two UTF-16 units',
+      2, BreakSpan.LengthUTF16);
+    AssertEquals('visible marker precedes the layout line break',
+      UnicodeString(WideChar($21B5)) + #10,
+      Copy(Document.Text, BreakSpan.StartUTF16 + 1,
+        BreakSpan.LengthUTF16));
+    AssertFalse('CL cannot resolve to an interactive logical index',
+      Document.TryGetInteractiveLogicalIndexAt(BreakSpan.StartUTF16,
+        HitIndex));
+  finally
     VerseModel.Free;
   end;
 end;

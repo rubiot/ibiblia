@@ -33,13 +33,22 @@ type
     procedure FontMarksSurviveCutAndUndoAtomically;
     procedure CanonicalProtectionIncludesStructuralAndLexicalRanges;
     procedure ChangesAreSemanticOnlyIsStrict;
+    procedure ExactBreakOnlySelectionRoundTripsPrivately;
+    procedure BoundaryBreakCutUsesExactIdentityAndOneUndo;
+    procedure PasteRemovesSelectedBreakAndRespectsAffinityAtomically;
+    procedure PasteReplacingMiddleBreakPreservesExactBundleSlot;
+    procedure InsertBeforeFirstBreakUsesValidUniqueOrdinal;
+    procedure DirectInsertBeforeFirstBreakKeepsVisualOrder;
+    procedure VisibleCutWithoutBreakSelectionPreservesAnchoredBreak;
+    procedure VisibleCutRemovesOnlySelectedBreakFromBundle;
   end;
 
 implementation
 
 uses
   fpjson, jsonparser, ontparser, ONTTokenizer, syntagm, theword_ont_codec_v2,
-  theword_clipboard_v2, theword_wysiwyg_session_v2;
+  theword_clipboard_v2, theword_wysiwyg_session_v2, theword_break_v2,
+  text_direction, verse_visual_document, theword_verse_visual_adapter_v2;
 
 procedure TTheWordClipboardV2Test.SemanticPayloadIsDeterministicAndPreferred;
 var
@@ -1046,6 +1055,303 @@ begin
   try
     AssertTrue(Session.ReplaceText(5, 0, '!'));
     AssertFalse(Session.ChangesAreSemanticOnly);
+  finally
+    Session.Free;
+  end;
+end;
+
+procedure TTheWordClipboardV2Test.ExactBreakOnlySelectionRoundTripsPrivately;
+var
+  AllBreaks, Selected, NoBreaks: TTheWordBreakIdentityArray;
+  Source, Target: TTheWordWysiwygSessionV2;
+  Plain: UnicodeString;
+  Payload: string;
+  Inserted: Integer;
+  UsedPrivate: Boolean;
+begin
+  Source := TTheWordWysiwygSessionV2.Create('a<CM><CL><CM>b');
+  Target := TTheWordWysiwygSessionV2.Create('XY');
+  try
+    AssertEquals(3, CollectTheWordBreaks(Source.Document, AllBreaks));
+    SetLength(Selected, 1);
+    Selected[0] := AllBreaks[1];
+    AssertEquals(Ord(twbkSoftLine), Ord(Selected[0].Kind));
+    AssertTrue(Source.CopySelection(1, 0, Selected, Plain, Payload));
+    AssertEquals(UnicodeString(LineEnding), Plain);
+    AssertTrue(Pos('<CL>', Payload) > 0);
+    AssertFalse('adjacent CM must not leak into the private fragment',
+      Pos('<CM>', Payload) > 0);
+
+    SetLength(NoBreaks, 0);
+    AssertTrue(Target.Paste(1, 0, NoBreaks, False, Payload, 'ignored',
+      Inserted, UsedPrivate));
+    AssertTrue(UsedPrivate);
+    AssertEquals(0, Inserted);
+    AssertEquals(UnicodeString('X<CL>Y'), Target.RawText);
+  finally
+    Target.Free;
+    Source.Free;
+  end;
+end;
+
+procedure TTheWordClipboardV2Test.
+  BoundaryBreakCutUsesExactIdentityAndOneUndo;
+var
+  AllBreaks, Selected: TTheWordBreakIdentityArray;
+  Session: TTheWordWysiwygSessionV2;
+  Plain: UnicodeString;
+  Payload: string;
+begin
+  Session := TTheWordWysiwygSessionV2.Create('a<CM><CL><CM>b');
+  try
+    AssertEquals(3, CollectTheWordBreaks(Session.Document, AllBreaks));
+    SetLength(Selected, 1);
+    Selected[0] := AllBreaks[1];
+    AssertTrue(Session.CutSelection(0, 1, Selected, Plain, Payload));
+    AssertEquals(UnicodeString('a' + LineEnding), Plain);
+    AssertEquals(UnicodeString('<CM><CM>b'), Session.RawText);
+    AssertTrue(Session.CanUndo);
+    Session.Undo;
+    AssertEquals(UnicodeString('a<CM><CL><CM>b'), Session.RawText);
+    AssertFalse('cut must create exactly one undo entry', Session.CanUndo);
+  finally
+    Session.Free;
+  end;
+end;
+
+procedure TTheWordClipboardV2Test.
+  PasteRemovesSelectedBreakAndRespectsAffinityAtomically;
+var
+  AllBreaks, Selected, NoBreaks: TTheWordBreakIdentityArray;
+  Source, Target: TTheWordWysiwygSessionV2;
+  Plain: UnicodeString;
+  Payload: string;
+  Inserted: Integer;
+  UsedPrivate: Boolean;
+begin
+  Source := TTheWordWysiwygSessionV2.Create('X');
+  Target := TTheWordWysiwygSessionV2.Create('a<CM><CL>b');
+  try
+    SetLength(NoBreaks, 0);
+    AssertTrue(Source.CopySelection(0, 1, NoBreaks, Plain, Payload));
+    AssertEquals(2, CollectTheWordBreaks(Target.Document, AllBreaks));
+    SetLength(Selected, 1);
+    Selected[0] := AllBreaks[1];
+    AssertEquals(Ord(twbkSoftLine), Ord(Selected[0].Kind));
+
+    AssertTrue(Target.Paste(1, 0, Selected, True, Payload, 'ignored',
+      Inserted, UsedPrivate));
+    AssertTrue(UsedPrivate);
+    AssertEquals(1, Inserted);
+    AssertEquals(UnicodeString('a<CM>Xb'), Target.RawText);
+    AssertTrue(Target.CanUndo);
+    Target.Undo;
+    AssertEquals(UnicodeString('a<CM><CL>b'), Target.RawText);
+    AssertFalse('paste must create exactly one undo entry', Target.CanUndo);
+  finally
+    Target.Free;
+    Source.Free;
+  end;
+
+  Source := TTheWordWysiwygSessionV2.Create('X');
+  Target := TTheWordWysiwygSessionV2.Create('a<CM>b');
+  try
+    SetLength(NoBreaks, 0);
+    AssertTrue(Source.CopySelection(0, 1, NoBreaks, Plain, Payload));
+    AssertTrue(Target.Paste(1, 0, NoBreaks, False, Payload, 'ignored',
+      Inserted, UsedPrivate));
+    AssertEquals(UnicodeString('aX<CM>b'), Target.RawText);
+  finally
+    Target.Free;
+    Source.Free;
+  end;
+end;
+
+procedure TTheWordClipboardV2Test.
+  PasteReplacingMiddleBreakPreservesExactBundleSlot;
+var
+  AllBreaks, NoBreaks, Selected: TTheWordBreakIdentityArray;
+  Source, Target: TTheWordWysiwygSessionV2;
+  Inserted: Integer;
+  Payload: string;
+  Plain: UnicodeString;
+  UsedPrivate: Boolean;
+begin
+  Source := TTheWordWysiwygSessionV2.Create('X');
+  Target := TTheWordWysiwygSessionV2.Create('a<CM><CL><CM>b');
+  try
+    SetLength(NoBreaks, 0);
+    AssertTrue(Source.CopySelection(0, 1, NoBreaks, Plain, Payload));
+    AssertEquals(3, CollectTheWordBreaks(Target.Document, AllBreaks));
+    SetLength(Selected, 1);
+    Selected[0] := AllBreaks[1];
+    AssertEquals(Ord(twbkSoftLine), Ord(Selected[0].Kind));
+
+    AssertTrue(Target.Paste(1, 0, Selected, False, True, AllBreaks[2],
+      Payload, 'ignored', Inserted, UsedPrivate));
+    AssertTrue(UsedPrivate);
+    AssertEquals(1, Inserted);
+    AssertEquals(UnicodeString('a<CM>X<CM>b'), Target.RawText);
+    AssertTrue(Target.Undo);
+    AssertEquals(UnicodeString('a<CM><CL><CM>b'), Target.RawText);
+    AssertFalse('paste must create exactly one undo entry', Target.CanUndo);
+  finally
+    Target.Free;
+    Source.Free;
+  end;
+end;
+
+procedure TTheWordClipboardV2Test.
+  InsertBeforeFirstBreakUsesValidUniqueOrdinal;
+var
+  Breaks, NoBreaks, Selected: TTheWordBreakIdentityArray;
+  Session, Target: TTheWordWysiwygSessionV2;
+  I, J, Inserted: Integer;
+  Payload: string;
+  Plain: UnicodeString;
+  UsedPrivate: Boolean;
+  Visual: IVerseVisualDocument;
+begin
+  Session := TTheWordWysiwygSessionV2.Create('a<CM><CL><CM>b');
+  Target := TTheWordWysiwygSessionV2.Create('XY');
+  try
+    AssertEquals(3, CollectTheWordBreaks(Session.Document, Breaks));
+    SetLength(NoBreaks, 0);
+    AssertTrue(Session.ReplaceSelectionWithBreak(1, 0, NoBreaks,
+      twbkSoftLine, Breaks[0]));
+    AssertEquals(UnicodeString('a<CL><CM><CL><CM>b'), Session.RawText);
+    Visual := BuildTheWordVerseVisualDocument(Session.Document,
+      tdLeftToRight, Session.Revision);
+    AssertEquals('visual breaks must follow the requested exact order',
+      UnicodeString('a') + TheWordBreakVisualText(twbkSoftLine) +
+      TheWordBreakVisualText(twbkParagraph) +
+      TheWordBreakVisualText(twbkSoftLine) +
+      TheWordBreakVisualText(twbkParagraph) + 'b', Visual.Text);
+    AssertEquals(4, CollectTheWordBreaks(Session.Document, Breaks));
+    for I := 0 to High(Breaks) do
+    begin
+      AssertTrue('break ordinal must never be negative',
+        Breaks[I].Ordinal >= 0);
+      for J := I + 1 to High(Breaks) do
+        AssertTrue('break ordinals at one anchor must be unique',
+          Breaks[I].Ordinal <> Breaks[J].Ordinal);
+    end;
+
+    AssertEquals('break identities must follow visual order',
+      Ord(twbkSoftLine), Ord(Breaks[0].Kind));
+    AssertEquals(Ord(twbkParagraph), Ord(Breaks[1].Kind));
+    AssertEquals(Ord(twbkSoftLine), Ord(Breaks[2].Kind));
+    AssertEquals(Ord(twbkParagraph), Ord(Breaks[3].Kind));
+    SetLength(Selected, 1);
+    Selected[0] := Breaks[0];
+    AssertTrue(Session.CopySelection(1, 0, Selected, Plain, Payload));
+    AssertTrue('private payload must preserve the inserted break',
+      Pos('<CL>', Payload) > 0);
+    AssertTrue(Target.Paste(1, 0, NoBreaks, False, Payload, 'ignored',
+      Inserted, UsedPrivate));
+    AssertTrue(UsedPrivate);
+    AssertEquals(0, Inserted);
+    AssertEquals(UnicodeString('X<CL>Y'), Target.RawText);
+  finally
+    Target.Free;
+    Session.Free;
+  end;
+end;
+
+procedure TTheWordClipboardV2Test.
+  DirectInsertBeforeFirstBreakKeepsVisualOrder;
+var
+  Breaks: TTheWordBreakIdentityArray;
+  Codec: ITheWordOntCodecV2;
+  Document: TTheWordVerseDocument;
+  InsertedBreak: TTheWordBreakIdentity;
+  Visual: IVerseVisualDocument;
+  Raw: UnicodeString;
+  I, J: Integer;
+begin
+  Codec := TTheWordOntCodecV2.Create;
+  Document := Codec.DecodeVerse('a<CM><CL><CM>b');
+  try
+    AssertEquals(3, CollectTheWordBreaks(Document, Breaks));
+    AssertTrue(Document.InsertBreak(1, twbkSoftLine, Breaks[0],
+      InsertedBreak));
+    AssertTrue('returned ordinal must never be negative',
+      InsertedBreak.Ordinal >= 0);
+    Raw := Codec.EncodeVerse(Document);
+    AssertEquals('raw order must place the inserted break first',
+      UnicodeString('a<CL><CM><CL><CM>b'), Raw);
+    Visual := BuildTheWordVerseVisualDocument(Document, tdLeftToRight, 1);
+    AssertEquals('visual order must match raw order before redecoding',
+      UnicodeString('a') + TheWordBreakVisualText(twbkSoftLine) +
+      TheWordBreakVisualText(twbkParagraph) +
+      TheWordBreakVisualText(twbkSoftLine) +
+      TheWordBreakVisualText(twbkParagraph) + 'b', Visual.Text);
+
+    AssertEquals(4, CollectTheWordBreaks(Document, Breaks));
+    for I := 0 to High(Breaks) do
+    begin
+      AssertTrue('break ordinal must never be negative',
+        Breaks[I].Ordinal >= 0);
+      for J := I + 1 to High(Breaks) do
+        AssertTrue('break ordinals at one anchor must be unique',
+          Breaks[I].Ordinal <> Breaks[J].Ordinal);
+    end;
+    AssertEquals('identity order must match visual order',
+      Ord(twbkSoftLine), Ord(Breaks[0].Kind));
+    AssertEquals(Ord(twbkParagraph), Ord(Breaks[1].Kind));
+    AssertEquals(Ord(twbkSoftLine), Ord(Breaks[2].Kind));
+    AssertEquals(Ord(twbkParagraph), Ord(Breaks[3].Kind));
+  finally
+    Document.Free;
+  end;
+end;
+
+procedure TTheWordClipboardV2Test.
+  VisibleCutWithoutBreakSelectionPreservesAnchoredBreak;
+var
+  Breaks, NoBreaks: TTheWordBreakIdentityArray;
+  Payload: string;
+  Plain: UnicodeString;
+  Session: TTheWordWysiwygSessionV2;
+begin
+  Session := TTheWordWysiwygSessionV2.Create('a<CM>b');
+  try
+    SetLength(NoBreaks, 0);
+    AssertTrue(Session.CutSelection(1, 1, NoBreaks, Plain, Payload));
+    AssertEquals(UnicodeString('b'), Plain);
+    AssertEquals(UnicodeString('a<CM>'), Session.RawText);
+    AssertEquals(1, CollectTheWordBreaks(Session.Document, Breaks));
+    AssertEquals(Ord(twbkParagraph), Ord(Breaks[0].Kind));
+    AssertTrue(Session.Undo);
+    AssertEquals(UnicodeString('a<CM>b'), Session.RawText);
+    AssertFalse('cut must create exactly one undo entry', Session.CanUndo);
+  finally
+    Session.Free;
+  end;
+end;
+
+procedure TTheWordClipboardV2Test.
+  VisibleCutRemovesOnlySelectedBreakFromBundle;
+var
+  Breaks, Selected: TTheWordBreakIdentityArray;
+  Payload: string;
+  Plain: UnicodeString;
+  Session: TTheWordWysiwygSessionV2;
+begin
+  Session := TTheWordWysiwygSessionV2.Create('a<CM><CL><CM>b');
+  try
+    AssertEquals(3, CollectTheWordBreaks(Session.Document, Breaks));
+    SetLength(Selected, 1);
+    Selected[0] := Breaks[1];
+    AssertEquals(Ord(twbkSoftLine), Ord(Selected[0].Kind));
+    AssertTrue(Session.CutSelection(1, 1, Selected, Plain, Payload));
+    AssertEquals(UnicodeString('a<CM><CM>'), Session.RawText);
+    AssertEquals(2, CollectTheWordBreaks(Session.Document, Breaks));
+    AssertEquals(Ord(twbkParagraph), Ord(Breaks[0].Kind));
+    AssertEquals(Ord(twbkParagraph), Ord(Breaks[1].Kind));
+    AssertTrue(Session.Undo);
+    AssertEquals(UnicodeString('a<CM><CL><CM>b'), Session.RawText);
+    AssertFalse('cut must create exactly one undo entry', Session.CanUndo);
   finally
     Session.Free;
   end;

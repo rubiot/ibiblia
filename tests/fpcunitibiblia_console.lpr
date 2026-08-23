@@ -34,11 +34,14 @@ uses
   theword_module_import_test,
   theword_effective_inline_style_v2_test,
   theword_effective_inline_style_v2_review_test,
+  theword_font_color_mutation_v2_test,
+  theword_pending_formatting_lifecycle_test,
   chapter_inline_style_projection_test,
   theword_font_size_mutation_v2_test,
   association_note_visual_projection_test,
   association_note_verse_interaction_test,
   translator_note_hover_controller_test,
+  translation_memory_focus_controller_test,
   project_creation_staging_test;
 
 var

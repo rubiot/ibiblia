@@ -8,7 +8,8 @@ uses
   Classes, SysUtils, Types, Graphics, IniFiles, StdCtrls, LCLType, SynEdit,
   SynEditHighlighter,
   fpcunit, testregistry, theword_syntax_highlighter,
-  directwrite_verse_editor, theword_wysiwyg_editor_control;
+  directwrite_verse_editor, theword_wysiwyg_editor_control,
+  theword_ont_codec_v2;
 
 type
 
@@ -50,6 +51,7 @@ type
     procedure WysiwygRawEditorCtrlWheelZoomsWithoutModifyingText;
     procedure WysiwygVisualCtrlWheelZoomsAndPersistsWithoutModifyingText;
     procedure WysiwygVisualKeyboardRoutesParagraphAndSemantics;
+    procedure WysiwygEmptyTitleCommandsAndWholeTitleDeletion;
     procedure TagPairFindsClosingTheWordTag;
     procedure TagPairFindsOpeningTheWordTag;
     procedure TagPairHandlesNestedTheWordTags;
@@ -759,14 +761,106 @@ begin
       PressKey(VK_I, [ssCtrl, ssAlt]));
     AssertEquals('ignored AltGr-like chord does not change text', 'word',
       Editor.Text);
-    AssertEquals('modified Enter must not be captured', VK_RETURN,
+    DirectEditor.SetSelection(0, 0);
+    AssertEquals('Shift+Enter routes to a soft line break', 0,
       PressKey(VK_RETURN, [ssShift]));
-    AssertEquals('modified Enter does not insert CM', 'word', Editor.Text);
+    AssertEquals('Shift+Enter inserts CL', '<CL>word', Editor.Text);
+    AssertTrue(Editor.Undo);
+    AssertEquals('unsupported modified Enter must not be captured',
+      VK_RETURN, PressKey(VK_RETURN, [ssCtrl]));
+    AssertEquals('unsupported modified Enter does not alter text', 'word',
+      Editor.Text);
   finally
     Editor.Free;
   end;
 end;
 
+procedure TTheWordSyntaxHighlighterTests.
+  WysiwygEmptyTitleCommandsAndWholeTitleDeletion;
+var
+  Broker: TEdit;
+  ComponentIndex: Integer;
+  DirectEditor: TDirectWriteVerseEditor;
+  Editor: TTheWordWysiwygEditorControl;
+  Key: Word;
+  Title: TTheWordTitleRange;
+begin
+  Editor := TTheWordWysiwygEditorControl.Create(nil);
+  try
+    DirectEditor := nil;
+    for ComponentIndex := 0 to Editor.ComponentCount - 1 do
+      if Editor.Components[ComponentIndex] is TDirectWriteVerseEditor then
+      begin
+        DirectEditor := TDirectWriteVerseEditor(
+          Editor.Components[ComponentIndex]);
+        Break;
+      end;
+    AssertTrue('DirectWrite editor exists', Assigned(DirectEditor));
+
+    Broker := nil;
+    for ComponentIndex := 0 to DirectEditor.ComponentCount - 1 do
+      if DirectEditor.Components[ComponentIndex] is TEdit then
+      begin
+        Broker := TEdit(DirectEditor.Components[ComponentIndex]);
+        Break;
+      end;
+    AssertTrue('native input broker exists', Assigned(Broker));
+
+    Editor.Text := '<TS><Ts>body';
+    DirectEditor.SetSelection(0, 0);
+    AssertEquals('title-side caret remains before the synthetic break', 0,
+      DirectEditor.SelectionStart);
+
+    DirectEditor.SetSelection(1, 0);
+    AssertEquals('body-side caret remains after the synthetic break', 1,
+      DirectEditor.SelectionStart);
+    AssertFalse('body-side caret does not resolve the empty title',
+      Editor.TryGetCurrentTitle(Title));
+    DirectEditor.SetSelection(0, 0);
+    AssertTrue('empty title is resolved at its title-side caret',
+      Editor.TryGetCurrentTitle(Title));
+    AssertEquals('empty title starts at document anchor', 0,
+      Title.StartOffset);
+    AssertEquals('empty title has zero length', 0, Title.EndOffset);
+    AssertEquals('legacy TS is level one', 1, Title.Level);
+    AssertTrue('empty title level can be changed without a placeholder',
+      Editor.ChangeCurrentTitleLevel(2));
+    AssertEquals('level change preserves empty title literally',
+      '<TS2><Ts>body', Editor.Text);
+    AssertTrue('empty title remains selected after refresh',
+      Editor.TryGetCurrentTitle(Title));
+    AssertTrue('empty title can be removed from its caret',
+      Editor.RemoveCurrentTitle);
+    AssertEquals('removal leaves body intact', 'body', Editor.Text);
+
+    Editor.Text := '<TS><Ts><TS2><Ts>body';
+    DirectEditor.SetSelection(0, 0);
+    AssertFalse('two empty titles at one anchor are intentionally ambiguous',
+      Editor.TryGetCurrentTitle(Title));
+    AssertFalse('ambiguous empty title cannot change level',
+      Editor.ChangeCurrentTitleLevel(3));
+    AssertFalse('ambiguous empty title cannot be removed',
+      Editor.RemoveCurrentTitle);
+    AssertEquals('ambiguous titles remain untouched',
+      '<TS><Ts><TS2><Ts>body', Editor.Text);
+
+    Editor.Text := 'left<TS>Title<Ts>right';
+    { The title is laid out after the synthetic break following "left". }
+    DirectEditor.SetSelection(5, 5);
+    Key := VK_DELETE;
+    AssertTrue('native input broker key handler exists',
+      Assigned(Broker.OnKeyDown));
+    Broker.OnKeyDown(Broker, Key, []);
+    AssertEquals('Delete is consumed for the selected whole title', 0, Key);
+    AssertEquals('deleting all title text removes its wrapper and joins body',
+      'left right', Editor.Text);
+    AssertTrue('whole-title deletion is one undo step', Editor.Undo);
+    AssertEquals('undo restores title text and wrapper',
+      'left<TS>Title<Ts>right', Editor.Text);
+  finally
+    Editor.Free;
+  end;
+end;
 procedure TTheWordSyntaxHighlighterTests.TagPairFindsClosingTheWordTag;
 var
   Lines: TStringList;

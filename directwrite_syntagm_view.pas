@@ -1646,6 +1646,7 @@ var
   BaselineOffset: Single;
   CaretBaseline: Single;
   CaretDescent: Single;
+  DocumentText: UnicodeString;
   Dpi: Integer;
   HR: HRESULT;
   LineBaseline: Single;
@@ -1673,7 +1674,8 @@ begin
   Dpi := FLayoutDpi;
   if Dpi <= 0 then
     Dpi := 96;
-  TextLength := Length(FDocument.Text);
+  DocumentText := FDocument.Text;
+  TextLength := Length(DocumentText);
   if UTF16Offset < 0 then
     UTF16Offset := 0
   else if UTF16Offset > TextLength then
@@ -1702,6 +1704,20 @@ begin
     PointX, PointY, Metrics);
   if not Succeeded(HR) then
     Exit(False);
+
+  { Hit-testing the trailing edge of a terminal LF returns the horizontal
+    edge of the preceding line, even though the insertion position belongs
+    to the empty line below it. Keep the line metrics from DirectWrite, but
+    place this caret at the leading edge of that empty line. As soon as text
+    is inserted after the LF, ordinary hit testing produces the same point. }
+  if (UTF16Offset = TextLength) and (TextLength > 0) and
+     (DocumentText[TextLength] = #10) then
+  begin
+    if FDocument.BaseDirection = text_direction.tdRightToLeft then
+      PointX := Max(1, ClientWidth - 2 * FLayoutPadding) * 96 / Dpi
+    else
+      PointX := 0;
+  end;
 
   if not GetLayoutLineBox(FTextLayout, UTF16Offset, LineTop, LineHeight,
     LineBaseline) then

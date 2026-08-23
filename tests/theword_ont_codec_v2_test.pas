@@ -7,7 +7,8 @@ interface
 uses
   Classes, SysUtils, fpcunit, testregistry, theword_ont_codec_v2, ONTParser,
   ONTTokenizer, Syntagm, theword_translator_note_body_v2,
-  theword_inline_format_v2, theword_font_size_mutation_v2;
+  theword_inline_format_v2, theword_font_size_mutation_v2,
+  text_direction, verse_visual_document, theword_verse_visual_adapter_v2;
 
 type
   TTheWordOntCodecV2Tests = class(TTestCase)
@@ -32,7 +33,9 @@ type
     procedure UnknownAndMalformedTagsAreOpaqueAndLiteral;
     procedure TitleRangesCollectAllLevelsInSourceOrder;
     procedure TitleRangesUseNestedStackAndIgnoreMalformedCase;
+    procedure MalformedTitlesAreProtectedWithoutTitlePresentation;
     procedure TitleRangesProtectTextButAllowBodyAtEnd;
+    procedure TitleEditingOperationsAreAtomicAndLossless;
     procedure SemanticEditOutsideTitlePreservesLiteralRaw;
     procedure StrongAndMorphologyItemsKeepOrderAndRawLexemes;
     procedure MalformedStrongIsOpaque;
@@ -347,9 +350,14 @@ begin
       CollectTheWordTitleRanges(Document, Ranges));
     AssertEquals('TS start', 0, Ranges[0].StartOffset);
     AssertEquals('TS end', 1, Ranges[0].EndOffset);
-    AssertEquals('TS default level', 0, Ranges[0].Level);
+    AssertEquals('TS default level', 1, Ranges[0].Level);
     AssertEquals('TS open ordinal', 0, Ranges[0].OpenOrdinal);
     AssertEquals('TS close ordinal', 1, Ranges[0].CloseOrdinal);
+    AssertUnicodeEquals('TS lexeme retained', '<TS>',
+      Ranges[0].OpenLexeme);
+    AssertTrue('simple TS title is editable', Ranges[0].Editable);
+    AssertTrue('simple TS0 title is editable', Ranges[1].Editable);
+    AssertTrue('simple TS1 title is editable', Ranges[2].Editable);
     AssertEquals('TS0 level', 0, Ranges[1].Level);
     AssertEquals('TS1 level', 1, Ranges[2].Level);
     AssertEquals('TS2 level', 2, Ranges[3].Level);
@@ -376,23 +384,82 @@ begin
   Raw := '<TS>A<TS2>B<Ts>C<Ts> <ts>x</ts> <TS4>y<Ts> <TS>open';
   Document := FCodec.DecodeVerse(Raw);
   try
-    AssertEquals('only balanced case-sensitive title pairs', 2,
+    AssertEquals('balanced and malformed title regions are delimited', 5,
       CollectTheWordTitleRanges(Document, Ranges));
     AssertEquals('outer title is first by opening order', 0,
       Ranges[0].StartOffset);
     AssertEquals('outer title includes nested title text', 3,
       Ranges[0].EndOffset);
-    AssertEquals('outer level', 0, Ranges[0].Level);
+    AssertEquals('outer level', 1, Ranges[0].Level);
+    AssertFalse('nested outer title remains protected', Ranges[0].Editable);
+    AssertFalse('nested inner title remains protected', Ranges[1].Editable);
     AssertEquals('inner title start', 1, Ranges[1].StartOffset);
     AssertEquals('inner title end', 2, Ranges[1].EndOffset);
     AssertEquals('inner level', 2, Ranges[1].Level);
-    AssertTrue('nested ranges are returned in opening order',
-      Ranges[0].OpenOrdinal < Ranges[1].OpenOrdinal);
+    AssertEquals('wrong-case title is a protected sentinel', -1,
+      Ranges[2].Level);
+    AssertFalse('wrong-case title body is not editable', Ranges[2].Editable);
+    AssertEquals(4, Ranges[2].StartOffset);
+    AssertEquals(5, Ranges[2].EndOffset);
+    AssertEquals('unsupported TS level is a protected sentinel', -1,
+      Ranges[3].Level);
+    AssertFalse('unsupported TS body is not editable', Ranges[3].Editable);
+    AssertEquals(6, Ranges[3].StartOffset);
+    AssertEquals(7, Ranges[3].EndOffset);
+    AssertEquals('unclosed title is a protected sentinel', -1,
+      Ranges[4].Level);
+    AssertFalse('unclosed title body is not editable', Ranges[4].Editable);
+    AssertEquals(8, Ranges[4].StartOffset);
+    AssertEquals(12, Ranges[4].EndOffset);
+    AssertFalse('wrong-case title requires Raw editing',
+      Document.CanReplaceVisibleText(4, 1));
+    AssertFalse('unsupported title level requires Raw editing',
+      Document.CanReplaceVisibleText(6, 1));
+    AssertFalse('unclosed title requires Raw editing',
+      Document.CanReplaceVisibleText(8, 4));
+    AssertTrue('text safely outside malformed pairs remains editable',
+      Document.CanReplaceVisibleText(3, 1));
+    AssertTrue('ranges retain source order',
+      (Ranges[0].OpenOrdinal < Ranges[1].OpenOrdinal) and
+      (Ranges[1].OpenOrdinal < Ranges[2].OpenOrdinal) and
+      (Ranges[2].OpenOrdinal < Ranges[3].OpenOrdinal) and
+      (Ranges[3].OpenOrdinal < Ranges[4].OpenOrdinal));
     AssertEquals('all title-looking tokens remain opaque', 9,
       Document.OpaqueItemCount);
     AssertUnicodeEquals('malformed and wrong-case lexemes remain literal',
       Raw, FCodec.EncodeVerse(Document));
   finally
+    Document.Free;
+  end;
+end;
+
+procedure TTheWordOntCodecV2Tests.
+  MalformedTitlesAreProtectedWithoutTitlePresentation;
+var
+  Document: TTheWordVerseDocument;
+  Span: TVisualSpan;
+  Visual: IVerseVisualDocument;
+begin
+  Document := FCodec.DecodeVerse('pre <TS4>bad<Ts> tail');
+  try
+    Visual := BuildTheWordVerseVisualDocument(Document, tdLeftToRight, 1);
+    AssertUnicodeEquals('malformed title adds no title line breaks',
+      'pre bad tail', Visual.Text);
+    AssertTrue('malformed body remains represented visually',
+      Visual.TryGetSpanAt(4, Span));
+    AssertFalse('malformed body is protected in visual mode',
+      Span.Interactive);
+    AssertEquals('malformed body uses protected title-content role',
+      Ord(vsrTitleContent), Ord(Span.Role));
+    AssertTrue('malformed body is identified without title styling',
+      Pos('malformed-title', Span.Annotation) > 0);
+    AssertTrue('following safe body remains represented visually',
+      Visual.TryGetSpanAt(8, Span));
+    AssertTrue('following safe body remains editable', Span.Interactive);
+    AssertEquals('following body is ordinary content', Ord(vsrContent),
+      Ord(Span.Role));
+  finally
+    Visual := nil;
     Document.Free;
   end;
 end;
@@ -433,6 +500,165 @@ begin
       CollectTheWordTitleRanges(Document, Ranges));
     AssertEquals('title range did not absorb body insertion', 7,
       Ranges[0].EndOffset);
+  finally
+    Document.Free;
+  end;
+end;
+
+procedure TTheWordOntCodecV2Tests.TitleEditingOperationsAreAtomicAndLossless;
+var
+  Document: TTheWordVerseDocument;
+  OpenOrdinal: Integer;
+  Ranges: TTheWordTitleRangeArray;
+  Replacement: UnicodeString;
+  UnicodeLeft, UnicodeRight: UnicodeString;
+begin
+  Document := FCodec.DecodeVerse('left<TS1>Head<Ts>right');
+  try
+    AssertEquals(1, CollectTheWordTitleRanges(Document, Ranges));
+    AssertTrue(Ranges[0].Editable);
+    AssertUnicodeEquals('imported TS1 lexeme is retained', '<TS1>',
+      Ranges[0].OpenLexeme);
+    AssertTrue(Document.ReplaceTitleVisibleText(Ranges[0].OpenOrdinal,
+      0, 4, 'Title'));
+    AssertUnicodeEquals('title text edit keeps imported lexemes',
+      'left<TS1>Title<Ts>right', FCodec.EncodeVerse(Document));
+    AssertEquals(1, CollectTheWordTitleRanges(Document, Ranges));
+    AssertTrue('same effective level is a literal no-op',
+      Document.ChangeTitleLevel(Ranges[0].OpenOrdinal, 1));
+    AssertUnicodeEquals('TS1 survives a level-1 no-op',
+      'left<TS1>Title<Ts>right', FCodec.EncodeVerse(Document));
+    AssertTrue(Document.ChangeTitleLevel(Ranges[0].OpenOrdinal, 2));
+    AssertUnicodeEquals('changed level uses canonical TS2',
+      'left<TS2>Title<Ts>right', FCodec.EncodeVerse(Document));
+    AssertEquals(1, CollectTheWordTitleRanges(Document, Ranges));
+    AssertTrue(Document.RemoveTitle(Ranges[0].OpenOrdinal, Replacement));
+    AssertUnicodeEquals('touching body fragments receive one separator',
+      'left right', FCodec.EncodeVerse(Document));
+    AssertUnicodeEquals('reported replacement matches inserted separator',
+      ' ', Replacement);
+  finally
+    Document.Free;
+  end;
+  Document := FCodec.DecodeVerse('foo<TS>Title<Ts>,bar');
+  try
+    AssertEquals(1, CollectTheWordTitleRanges(Document, Ranges));
+    AssertTrue(Document.RemoveTitle(Ranges[0].OpenOrdinal, Replacement));
+    AssertUnicodeEquals('punctuation on the right needs no separator',
+      'foo,bar', FCodec.EncodeVerse(Document));
+    AssertUnicodeEquals('punctuation removal reports no separator', '',
+      Replacement);
+  finally
+    Document.Free;
+  end;
+
+  Document := FCodec.DecodeVerse('foo,<TS>Title<Ts>bar');
+  try
+    AssertEquals(1, CollectTheWordTitleRanges(Document, Ranges));
+    AssertTrue(Document.RemoveTitle(Ranges[0].OpenOrdinal, Replacement));
+    AssertUnicodeEquals('punctuation on the left needs no separator',
+      'foo,bar', FCodec.EncodeVerse(Document));
+    AssertUnicodeEquals('left punctuation reports no separator', '',
+      Replacement);
+  finally
+    Document.Free;
+  end;
+
+  UnicodeLeft := 'caf' + UnicodeString(WideChar($00E9));
+  UnicodeRight := UnicodeString(WideChar($00F3)) + 'rg' +
+    WideChar($00E3) + 'o';
+  Document := FCodec.DecodeVerse(UnicodeLeft + '<TS>Title<Ts>' + UnicodeRight);
+  try
+    AssertEquals(1, CollectTheWordTitleRanges(Document, Ranges));
+    AssertTrue(Document.RemoveTitle(Ranges[0].OpenOrdinal, Replacement));
+    AssertUnicodeEquals('Unicode letters on both sides receive one separator',
+      UnicodeLeft + ' ' + UnicodeRight, FCodec.EncodeVerse(Document));
+    AssertUnicodeEquals('Unicode word join reports exactly one separator',
+      ' ', Replacement);
+  finally
+    Document.Free;
+  end;
+
+  Document := FCodec.DecodeVerse('left right');
+  try
+    AssertTrue('title can be inserted at an empty safe boundary',
+      Document.InsertTitle(5, 3, 'Heading', OpenOrdinal));
+    AssertTrue(OpenOrdinal >= 0);
+    AssertUnicodeEquals('new level 3 title uses canonical tags at caret',
+      'left <TS3>Heading<Ts>right', FCodec.EncodeVerse(Document));
+    AssertEquals(1, CollectTheWordTitleRanges(Document, Ranges));
+    AssertTrue(Ranges[0].Editable);
+    AssertEquals(OpenOrdinal, Ranges[0].OpenOrdinal);
+  finally
+    Document.Free;
+  end;
+
+  Document := FCodec.DecodeVerse('left<TS><Ts>right');
+  try
+    AssertEquals(1, CollectTheWordTitleRanges(Document, Ranges));
+    AssertTrue('a simple empty title remains explicitly removable',
+      Ranges[0].Editable);
+    AssertTrue(Document.RemoveTitle(Ranges[0].OpenOrdinal, Replacement));
+    AssertUnicodeEquals('empty wrapper removal joins touching words once',
+      'left right', FCodec.EncodeVerse(Document));
+    AssertUnicodeEquals('empty wrapper reports the joining space', ' ',
+      Replacement);
+  finally
+    Document.Free;
+  end;
+
+  Document := FCodec.DecodeVerse('<TS><Ts>');
+  try
+    AssertEquals(1, CollectTheWordTitleRanges(Document, Ranges));
+    AssertTrue(Document.RemoveTitle(Ranges[0].OpenOrdinal, Replacement));
+    AssertUnicodeEquals('standalone empty wrapper is serialized away', '',
+      FCodec.EncodeVerse(Document));
+    AssertUnicodeEquals('standalone empty wrapper needs no separator', '',
+      Replacement);
+  finally
+    Document.Free;
+  end;
+
+  Document := FCodec.DecodeVerse('a <TS0>Legacy<Ts> b');
+  try
+    AssertEquals(1, CollectTheWordTitleRanges(Document, Ranges));
+    AssertEquals('legacy TS0 keeps its distinct imported level', 0,
+      Ranges[0].Level);
+    AssertUnicodeEquals('legacy TS0 round-trips literally',
+      'a <TS0>Legacy<Ts> b', FCodec.EncodeVerse(Document));
+    AssertTrue(Document.ChangeTitleLevel(Ranges[0].OpenOrdinal, 1));
+    AssertUnicodeEquals('editing TS0 to level 1 uses canonical TS',
+      'a <TS>Legacy<Ts> b', FCodec.EncodeVerse(Document));
+  finally
+    Document.Free;
+  end;
+
+  Document := FCodec.DecodeVerse('<TS>A<TS2>B<Ts>C<Ts> body');
+  try
+    AssertEquals(2, CollectTheWordTitleRanges(Document, Ranges));
+    AssertFalse(Ranges[0].Editable);
+    AssertFalse(Ranges[1].Editable);
+    AssertFalse('nested title cannot be edited',
+      Document.ReplaceTitleVisibleText(Ranges[0].OpenOrdinal, 0, 1, 'X'));
+    AssertFalse('nested title cannot change level',
+      Document.ChangeTitleLevel(Ranges[1].OpenOrdinal, 3));
+    AssertFalse('nested title cannot be removed',
+      Document.RemoveTitle(Ranges[0].OpenOrdinal, Replacement));
+    AssertUnicodeEquals('rejected nested edits are atomic',
+      '<TS>A<TS2>B<Ts>C<Ts> body', FCodec.EncodeVerse(Document));
+  finally
+    Document.Free;
+  end;
+
+  Document := FCodec.DecodeVerse('<TS><i>Styled</i><Ts> body');
+  try
+    AssertEquals(1, CollectTheWordTitleRanges(Document, Ranges));
+    AssertFalse('title containing formatting remains protected',
+      Ranges[0].Editable);
+    AssertFalse(Document.ReplaceTitleVisibleText(Ranges[0].OpenOrdinal,
+      0, 6, 'Plain'));
+    AssertUnicodeEquals('internal title tags remain literal',
+      '<TS><i>Styled</i><Ts> body', FCodec.EncodeVerse(Document));
   finally
     Document.Free;
   end;
