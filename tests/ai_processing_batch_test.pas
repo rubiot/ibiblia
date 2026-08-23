@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, fpcunit, testregistry, ai_flows, ai_processing_batch,
-  PatchFile;
+  PatchFile, ai_batch_orchestrator, ai_batch_work_item, project_config;
 
 type
   TAIProcessingBatchTests = class(TTestCase)
@@ -19,6 +19,10 @@ type
     procedure SelectedIndexesLimitAcceptedVerseApplication;
     procedure AssociationProposalAppliesOnlyPairsAndComments;
     procedure TranslationProposalAppliesOnlyDestinationText;
+    procedure TranslationWithAssociationsProposalAppliesAtomically;
+    procedure RejectedTranslationWithAssociationsProposalAppliesNothing;
+    procedure TranslationOverwriteCanClearStaleAssociations;
+    procedure TranslationPreparationFiltersFilledDestinations;
     procedure CommentsDefaultDecisionMergesCurrentAndAI;
     procedure KeepCurrentCommentsStillAppliesOtherChanges;
     procedure UseAICommentsReplacesCurrentComments;
@@ -307,6 +311,217 @@ begin
     FlowResult.Free;
     Batch.Free;
     OriginalData.Free;
+  end;
+end;
+
+
+procedure TAIProcessingBatchTests.TranslationWithAssociationsProposalAppliesAtomically;
+var
+  OriginalData: TAIProcessingBatch;
+  Batch: TAIProcessingBatch;
+  FlowResult: TAIFlowResult;
+  Patch: TPatchFile;
+  AppliedCount: Integer;
+begin
+  OriginalData := TAIProcessingBatch.Create;
+  Batch := TAIProcessingBatch.Create;
+  FlowResult := TAIFlowResult.Create;
+  try
+    OriginalData.Add('40,1,1', 'source old', 'destination old',
+      'pairs old', 'comments old', 1);
+    Batch.Add('40,1,1', 'source old', 'destination old',
+      'pairs old', 'comments old', 1);
+
+    FlowResult.SetAcceptedDestinationText('destination new');
+    FlowResult.SetAcceptedPairs('pairs new');
+    Batch.ApplyAcceptedResult(0, FlowResult);
+    Batch.AcceptVerseProposal(OriginalData, 0);
+
+    AssertTrue(Batch.IsFieldAccepted(0, arfDestinationText));
+    AssertTrue(Batch.IsFieldAccepted(0, arfAssociations));
+    AssertEquals(2, Batch.AcceptedFieldChanges(OriginalData, 0));
+
+    Patch := Batch.CreatePatch(OriginalData, nil, AppliedCount);
+    try
+      AssertEquals(1, AppliedCount);
+      AssertEquals('source old', Patch.SourceText[0]);
+      AssertEquals('destination new', Patch.DestinationText[0]);
+      AssertEquals('pairs new', Patch.Pairs[0]);
+      AssertEquals('comments old', Patch.Comments[0]);
+      AssertEquals('1', Patch.Status[0]);
+    finally
+      Patch.Free;
+    end;
+  finally
+    FlowResult.Free;
+    Batch.Free;
+    OriginalData.Free;
+  end;
+end;
+
+procedure TAIProcessingBatchTests.RejectedTranslationWithAssociationsProposalAppliesNothing;
+var
+  OriginalData: TAIProcessingBatch;
+  Batch: TAIProcessingBatch;
+  FlowResult: TAIFlowResult;
+  Patch: TPatchFile;
+  AppliedCount: Integer;
+begin
+  OriginalData := TAIProcessingBatch.Create;
+  Batch := TAIProcessingBatch.Create;
+  FlowResult := TAIFlowResult.Create;
+  try
+    OriginalData.Add('40,1,1', 'source old', 'destination old',
+      'pairs old', 'comments old', 1);
+    Batch.Add('40,1,1', 'source old', 'destination old',
+      'pairs old', 'comments old', 1);
+
+    FlowResult.SetAcceptedDestinationText('destination new');
+    FlowResult.SetAcceptedPairs('pairs new');
+    Batch.ApplyAcceptedResult(0, FlowResult);
+    Batch.AcceptVerseProposal(OriginalData, 0);
+    Batch.RejectVerseProposal(0);
+
+    AssertFalse(Batch.IsFieldAccepted(0, arfDestinationText));
+    AssertFalse(Batch.IsFieldAccepted(0, arfAssociations));
+
+    Patch := Batch.CreatePatch(OriginalData, nil, AppliedCount);
+    try
+      AssertEquals(0, AppliedCount);
+      AssertEquals(0, Patch.Reference.Count);
+    finally
+      Patch.Free;
+    end;
+  finally
+    FlowResult.Free;
+    Batch.Free;
+    OriginalData.Free;
+  end;
+end;
+
+procedure TAIProcessingBatchTests.TranslationOverwriteCanClearStaleAssociations;
+var
+  OriginalData: TAIProcessingBatch;
+  Batch: TAIProcessingBatch;
+  FlowResult: TAIFlowResult;
+  Patch: TPatchFile;
+  AppliedCount: Integer;
+begin
+  OriginalData := TAIProcessingBatch.Create;
+  Batch := TAIProcessingBatch.Create;
+  FlowResult := TAIFlowResult.Create;
+  try
+    OriginalData.Add('40,1,1', 'source old', 'destination old',
+      'pairs old', 'comments old', 1);
+    Batch.Add('40,1,1', 'source old', 'destination old',
+      'pairs old', 'comments old', 1);
+
+    FlowResult.SetAcceptedDestinationText('destination new');
+    FlowResult.SetAcceptedPairs('');
+    Batch.ApplyAcceptedResult(0, FlowResult);
+    Batch.AcceptVerseProposal(OriginalData, 0);
+
+    AssertTrue(Batch.IsFieldAccepted(0, arfDestinationText));
+    AssertTrue(Batch.IsFieldAccepted(0, arfAssociations));
+
+    Patch := Batch.CreatePatch(OriginalData, nil, AppliedCount);
+    try
+      AssertEquals(1, AppliedCount);
+      AssertEquals('source old', Patch.SourceText[0]);
+      AssertEquals('destination new', Patch.DestinationText[0]);
+      AssertEquals('', Patch.Pairs[0]);
+      AssertEquals('comments old', Patch.Comments[0]);
+      AssertEquals('1', Patch.Status[0]);
+    finally
+      Patch.Free;
+    end;
+  finally
+    FlowResult.Free;
+    Batch.Free;
+    OriginalData.Free;
+  end;
+end;
+
+procedure TAIProcessingBatchTests.TranslationPreparationFiltersFilledDestinations;
+
+  function NewWorkItem(const ReferenceId, DestinationText: string): TAIBatchWorkItem;
+  var
+    VerseData: TVerseData;
+  begin
+    VerseData := Default(TVerseData);
+    VerseData.ReferenceID := ReferenceId;
+    VerseData.ReferenceName := ReferenceId;
+    VerseData.OriginalText := 'source ' + ReferenceId;
+    VerseData.TranslatedText := DestinationText;
+    Result := TAIBatchWorkItem.Create(1, VerseData);
+  end;
+
+  procedure ReleasePreparation(var Preparation: TAIBatchPreparation);
+  begin
+    Preparation.Flow := nil;
+    FreeAndNil(Preparation.Manager);
+  end;
+
+var
+  Config: TProjectConfig;
+  Orchestrator: TAIBatchOrchestrator;
+  Items: TAIBatchWorkItemList;
+  Preparation: TAIBatchPreparation;
+begin
+  Config := TProjectConfig.Create(nil);
+  Orchestrator := TAIBatchOrchestrator.Create(Config, nil);
+  try
+    Items := TAIBatchWorkItemList.Create;
+    try
+      Items.AddItem(NewWorkItem('filled-1', 'translation one'));
+      Items.AddItem(NewWorkItem('filled-2', 'translation two'));
+
+      Preparation := Orchestrator.PrepareBatch('translation', Items, 2);
+
+      AssertEquals(2, Preparation.SkippedCount);
+      AssertEquals(0, Items.Count);
+      AssertFalse(Assigned(Preparation.Flow));
+      AssertFalse(Assigned(Preparation.Manager));
+    finally
+      ReleasePreparation(Preparation);
+      Items.Free;
+    end;
+
+    Items := TAIBatchWorkItemList.Create;
+    try
+      Items.AddItem(NewWorkItem('filled', 'existing translation'));
+      Items.AddItem(NewWorkItem('empty', ''));
+
+      Preparation := Orchestrator.PrepareBatch('translation', Items, 2);
+
+      AssertEquals(1, Preparation.SkippedCount);
+      AssertEquals(1, Items.Count);
+      AssertEquals('empty', Items[0].VerseData.ReferenceID);
+      AssertTrue(Assigned(Preparation.Flow));
+      AssertTrue(Assigned(Preparation.Manager));
+    finally
+      ReleasePreparation(Preparation);
+      Items.Free;
+    end;
+
+    Items := TAIBatchWorkItemList.Create;
+    try
+      Items.AddItem(NewWorkItem('empty-1', ''));
+      Items.AddItem(NewWorkItem('empty-2', '   '));
+
+      Preparation := Orchestrator.PrepareBatch('translation', Items, 2);
+
+      AssertEquals(0, Preparation.SkippedCount);
+      AssertEquals(2, Items.Count);
+      AssertTrue(Assigned(Preparation.Flow));
+      AssertTrue(Assigned(Preparation.Manager));
+    finally
+      ReleasePreparation(Preparation);
+      Items.Free;
+    end;
+  finally
+    Orchestrator.Free;
+    Config.Free;
   end;
 end;
 

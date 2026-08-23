@@ -110,6 +110,12 @@ type
 
   // Helper to parse raw json into TAssociationResult (pure)
   function ParseAssociationJson(const RawJson: string): TAssociationResult; // Parses expected JSON structure
+  function ExtractJsonFromMarkdown(const RawContent: string): string;
+  function BuildAssociationPromptSection(const CustomInstructions,
+    SerializedExamples, OutputObject: string;
+    ExamplesAsDataValue: Boolean = False): string;
+  function ApplyAssociationPairs(Association: TAssociationResult;
+    Verse: TVerse): Integer;
 
 resourcestring
   SDisplayNameAssociation = 'Association';
@@ -151,7 +157,87 @@ begin
   end;
 end;
 
-// Helper function to extract JSON from markdown code blocks
+function ExtractAssociationDataValue(const ExpectedResponse: string): string;
+var
+  Parser: TJSONParser;
+  Data, DataNode: TJSONData;
+begin
+  Result := '[]';
+  Data := nil;
+  try
+    try
+      Parser := TJSONParser.Create(
+        ExtractJsonFromMarkdown(ExpectedResponse), []);
+      try
+        Data := Parser.Parse;
+      finally
+        Parser.Free;
+      end;
+      if Data is TJSONObject then
+      begin
+        DataNode := TJSONObject(Data).Find('data');
+        if DataNode is TJSONArray then
+          Result := DataNode.AsJSON;
+      end;
+    except
+      on E: Exception do
+        AIDebugLogFmt('[Association] Invalid configured example ignored: %s',
+          [E.Message]);
+    end;
+  finally
+    Data.Free;
+  end;
+end;
+
+function FormatAssociationDataExamplesPromptSection(
+  const Examples: TAIFlowExampleArray): string;
+var
+  I: Integer;
+begin
+  Result := '';
+  if Length(Examples) = 0 then
+    Exit;
+
+  Result := '=== Association Examples ===' + LineEnding +
+    'Use these examples as guidance for the value of the "data" field.';
+  for I := 0 to High(Examples) do
+    Result := Result + LineEnding + LineEnding +
+      Format('Example %d - %s', [I + 1, Examples[I].ReferenceCaption]) +
+      LineEnding +
+      Format('Original: "%s"', [Examples[I].SourceText]) + LineEnding +
+      Format('Translation: "%s"', [Examples[I].TargetText]) + LineEnding +
+      'Expected "data" value: ' +
+      ExtractAssociationDataValue(Examples[I].ExpectedResponse);
+end;
+
+function BuildAssociationPromptSection(const CustomInstructions,
+  SerializedExamples, OutputObject: string;
+  ExamplesAsDataValue: Boolean): string;
+var
+  ExamplesSection: string;
+begin
+  Result :=
+    ASSOCIATION_PROMPT_HEADER + LineEnding + LineEnding +
+    ASSOCIATION_PROMPT_RULES + LineEnding + LineEnding +
+    ASSOCIATION_PROMPT_FORMAT_HEADER + LineEnding +
+    OutputObject + LineEnding + LineEnding +
+    ASSOCIATION_PROMPT_FOOTER;
+
+  if Trim(CustomInstructions) <> '' then
+    Result := Result + LineEnding + LineEnding +
+      '=== Additional Project-Specific Instructions ===' + LineEnding +
+      Trim(CustomInstructions);
+
+  if ExamplesAsDataValue then
+    ExamplesSection := FormatAssociationDataExamplesPromptSection(
+      LoadFlowExamples(SerializedExamples))
+  else
+    ExamplesSection := FormatAssociationExamplesPromptSection(
+      LoadFlowExamples(SerializedExamples));
+  if ExamplesSection <> '' then
+    Result := Result + LineEnding + LineEnding + ExamplesSection;
+end;
+
 function ExtractJsonFromMarkdown(const RawContent: string): string;
 var
   StartPos, EndPos: Integer;
@@ -200,7 +286,9 @@ var
   CleanJson: string;
 begin
   Result := TAssociationResult.Create;
+  Data := nil;
   try
+    try
     // Extract JSON from markdown code blocks if present
     CleanJson := ExtractJsonFromMarkdown(RawJson);
     
@@ -244,6 +332,9 @@ begin
     begin
       Result.ParseError := E.Message;
     end;
+  end;
+  finally
+    Data.Free;
   end;
 end;
 
@@ -324,7 +415,7 @@ var
   customInstructions: string;
   includeComments: Boolean;
   serializedExamples: string;
-  examplesSection: string;
+  outputObject: string;
   I: Integer;
 begin
   includeComments := False;
@@ -360,30 +451,17 @@ begin
     Inc(I, 2);
   end;
 
-  Result := 
-    ASSOCIATION_PROMPT_HEADER + LineEnding + LineEnding +
-    ASSOCIATION_PROMPT_RULES + LineEnding + LineEnding +
-    ASSOCIATION_PROMPT_FORMAT_HEADER + LineEnding +
+  outputObject :=
     '{' + LineEnding +
     '  "data": [["phrase_from_original", "phrase_from_translation"], ...]';
     
   if includeComments then
-    Result := Result + ',' + LineEnding + '  "comments": "explanation of difficult associations"';
-    
-  Result := Result + LineEnding +
-    '}' + LineEnding + LineEnding +
-    ASSOCIATION_PROMPT_FOOTER;
-  
-  if customInstructions <> '' then
-  begin
-    Result := Result + LineEnding + LineEnding +
-              '=== Additional Project-Specific Instructions ===' + LineEnding +
-              customInstructions;
-  end;
+    outputObject := outputObject + ',' + LineEnding +
+      '  "comments": "explanation of difficult associations"';
 
-  examplesSection := FormatAssociationExamplesPromptSection(LoadFlowExamples(serializedExamples));
-  if examplesSection <> '' then
-    Result := Result + LineEnding + LineEnding + examplesSection;
+  outputObject := outputObject + LineEnding + '}';
+  Result := BuildAssociationPromptSection(customInstructions,
+    serializedExamples, outputObject);
 end;
 
 function TAIAssociationFlowConfig.CreateFlowInstance(Context: IAIFlowContext): IAIVerseFlow;
@@ -520,9 +598,9 @@ begin
   end;
 end;
 
-procedure TAIAssociationFlow.ApplyResult(ResultObj: TAIFlowResult; Verse: TVerse);
+function ApplyAssociationPairs(Association: TAssociationResult;
+  Verse: TVerse): Integer;
 var
-  Assoc: TAssociationResult;
   I: Integer;
   OriginalTexts, TranslatedTexts: TStringList;
   Parser: TONTParser;
@@ -549,74 +627,100 @@ var
     end;
   end;
 begin
-  if not (ResultObj is TAssociationResult) then Exit;
+  Result := 0;
+  if not Assigned(Association) then
+    raise Exception.Create('ApplyAssociationPairs called with nil association result');
+  if not Assigned(Verse) then
+    raise Exception.Create('ApplyAssociationPairs called with nil Verse');
+  if Verse.PairedVerse = nil then
+    raise Exception.CreateFmt(
+      'ApplyAssociationPairs: Verse has no paired verse. VerseRef=%s',
+      [Verse.Reference]);
+
+  Verse.ClearSelection;
+  Verse.PairedVerse.ClearSelection;
+  for I := 0 to High(Association.Pairs) do
+  begin
+    if (Trim(Association.Pairs[I].OriginalPhrase) = '') or
+       (Trim(Association.Pairs[I].TranslatedPhrase) = '') then
+      Continue;
+
+    AIDebugLogFmt('[Association] Pair %d: "%s" <-> "%s"',
+      [I, Association.Pairs[I].OriginalPhrase,
+       Association.Pairs[I].TranslatedPhrase]);
+
+    OriginalTexts := TStringList.Create;
+    TranslatedTexts := TStringList.Create;
+    try
+      CollectTexts(Association.Pairs[I].OriginalPhrase, Verse, OriginalTexts);
+      CollectTexts(Association.Pairs[I].TranslatedPhrase,
+        Verse.PairedVerse, TranslatedTexts);
+
+      AIDebugLogVerboseFmt('[Association]   Original syntagms collected: %d',
+        [OriginalTexts.Count]);
+      AIDebugLogVerboseFmt('[Association]   Translated syntagms collected: %d',
+        [TranslatedTexts.Count]);
+
+      Verse.FindAndSelectSyntagms(OriginalTexts);
+      Verse.PairedVerse.FindAndSelectSyntagms(TranslatedTexts);
+
+      OriginalSelectionCount := Verse.Selection.Count;
+      TranslatedSelectionCount := Verse.PairedVerse.Selection.Count;
+
+      AIDebugLogFmt(
+        '[Association]   Selection counts: original=%d/%d, translated=%d/%d',
+        [OriginalSelectionCount, OriginalTexts.Count,
+         TranslatedSelectionCount, TranslatedTexts.Count]);
+
+      if (OriginalSelectionCount = 0) or
+         (TranslatedSelectionCount = 0) then
+      begin
+        AIDebugLogFmt(
+          '[Association]   Skipping pair %d due to incomplete selection: "%s" <-> "%s"',
+          [I, Association.Pairs[I].OriginalPhrase,
+           Association.Pairs[I].TranslatedPhrase]);
+        Continue;
+      end;
+
+      Verse.AssociateSyntagms;
+      Inc(Result);
+    finally
+      OriginalTexts.Free;
+      TranslatedTexts.Free;
+      Verse.ClearSelection;
+      Verse.PairedVerse.ClearSelection;
+    end;
+  end;
+
+  Association.PairsXML := Verse.Pairs;
+end;
+
+procedure TAIAssociationFlow.ApplyResult(ResultObj: TAIFlowResult; Verse: TVerse);
+var
+  Assoc: TAssociationResult;
+begin
+  if not (ResultObj is TAssociationResult) then
+    Exit;
   if not Assigned(Verse) then
     raise Exception.Create('ApplyResult called with nil Verse');
   Assoc := TAssociationResult(ResultObj);
   if Verse.PairedVerse = nil then
-    raise Exception.CreateFmt('ApplyResult: Verse has no paired verse. VerseRef=%s', [Verse.Reference]);
-  
+    raise Exception.CreateFmt('ApplyResult: Verse has no paired verse. VerseRef=%s',
+      [Verse.Reference]);
+
   AIDebugLogFmt('[Association] ApplyResult for verse: %s', [Verse.Reference]);
   AIDebugLogFmt('[Association] Processing %d pairs', [Length(Assoc.Pairs)]);
 
   try
-    // Work directly with the verse objects in memory.
-    // These are temporary verse objects created for batch processing.
-    // We only modify them in memory - NO database access here!
-    
-    for I := 0 to High(Assoc.Pairs) do
-    begin
-      if (Trim(Assoc.Pairs[I].OriginalPhrase)='') or (Trim(Assoc.Pairs[I].TranslatedPhrase)='') then
-        Continue;
-      
-      AIDebugLogFmt('[Association] Pair %d: "%s" <-> "%s"', 
-                    [I, Assoc.Pairs[I].OriginalPhrase, Assoc.Pairs[I].TranslatedPhrase]);
-      
-      OriginalTexts := TStringList.Create;
-      TranslatedTexts := TStringList.Create;
-      try
-        CollectTexts(Assoc.Pairs[I].OriginalPhrase, Verse, OriginalTexts);
-        CollectTexts(Assoc.Pairs[I].TranslatedPhrase, Verse.PairedVerse, TranslatedTexts);
-        
-        AIDebugLogVerboseFmt('[Association]   Original syntagms collected: %d', [OriginalTexts.Count]);
-        AIDebugLogVerboseFmt('[Association]   Translated syntagms collected: %d', [TranslatedTexts.Count]);
-        
-        Verse.FindAndSelectSyntagms(OriginalTexts);
-        Verse.PairedVerse.FindAndSelectSyntagms(TranslatedTexts);
-
-        OriginalSelectionCount := Verse.Selection.Count;
-        TranslatedSelectionCount := Verse.PairedVerse.Selection.Count;
-
-        AIDebugLogFmt('[Association]   Selection counts: original=%d/%d, translated=%d/%d',
-                      [OriginalSelectionCount, OriginalTexts.Count,
-                       TranslatedSelectionCount, TranslatedTexts.Count]);
-
-        if (OriginalSelectionCount = 0) or (TranslatedSelectionCount = 0) then
-        begin
-          AIDebugLogFmt('[Association]   Skipping pair %d due to incomplete selection: "%s" <-> "%s"',
-                        [I, Assoc.Pairs[I].OriginalPhrase, Assoc.Pairs[I].TranslatedPhrase]);
-          Continue;
-        end;
-
-        Verse.AssociateSyntagms;
-      finally
-        OriginalTexts.Free;
-        TranslatedTexts.Free;
-        Verse.ClearSelection;
-        Verse.PairedVerse.ClearSelection;
-      end;
-    end;
-
-    // Association review should only expose the fields this flow owns.
-    // Applying associations on temporary TVerse instances can normalize verse
-    // text, but that normalization must not be treated as an AI text edit.
-    Assoc.PairsXML := Verse.Pairs;
+    ApplyAssociationPairs(Assoc, Verse);
     Assoc.SetAcceptedPairs(Assoc.PairsXML);
     if FIncludeComments then
       Assoc.SetAcceptedComments(Assoc.Comments);
-    AIDebugLogFmt('[Association] Associations complete. PairsXML length: %d chars', [Length(Assoc.PairsXML)]);
-    AIDebugLogFmt('[Association] Pairs updated in memory for verse: %s (NOT saved to DB yet)', [Verse.Reference]);
-
+    AIDebugLogFmt('[Association] Associations complete. PairsXML length: %d chars',
+      [Length(Assoc.PairsXML)]);
+    AIDebugLogFmt(
+      '[Association] Pairs updated in memory for verse: %s (NOT saved to DB yet)',
+      [Verse.Reference]);
   except
     on E: Exception do
     begin

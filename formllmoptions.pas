@@ -21,6 +21,7 @@ type
     MemoInstructions: TMemo;
     ChkIncludeComments: TCheckBox;
     ChkForceOverwrite: TCheckBox;
+    ChkIncludeAssociations: TCheckBox;
     chkUseOverride: TCheckBox;
     gbOverride: TGroupBox;
     CbProvider: TComboBox;
@@ -362,6 +363,7 @@ begin
   SetWidthIfAssigned(tabControls.MemoInstructions, contentWidth);
   SetWidthIfAssigned(tabControls.ChkIncludeComments, contentWidth);
   SetWidthIfAssigned(tabControls.ChkForceOverwrite, contentWidth);
+  SetWidthIfAssigned(tabControls.ChkIncludeAssociations, contentWidth);
   SetWidthIfAssigned(tabControls.chkUseOverride, contentWidth);
   SetWidthIfAssigned(tabControls.gbOverride, contentWidth);
   SetWidthIfAssigned(tabControls.LblExamplesSummary, contentWidth);
@@ -717,6 +719,20 @@ begin
   end;
   Inc(yPos, 32);
 
+  tabControls.ChkIncludeAssociations := TCheckBox.Create(tabControls.ScrollBox);
+  with tabControls.ChkIncludeAssociations do
+  begin
+    Parent := tabControls.ScrollBox;
+    Left := 8;
+    Top := yPos;
+    Width := 600;
+    Anchors := [akTop, akLeft];
+    Caption := ai_translation_flow.SConfigIncludeAssociationsDisplayName;
+    Hint := ai_translation_flow.SConfigIncludeAssociationsDescription;
+    ShowHint := True;
+  end;
+  Inc(yPos, 32);
+
   AddProviderOverrideSection(tabControls.ScrollBox, yPos, TabIdx, tabControls);
   AddExamplesSection(tabControls.ScrollBox, yPos, TabIdx, tabControls);
   AddPromptButtonsAndFormatInfo(tabControls.ScrollBox, yPos, TabIdx, tabControls,
@@ -832,6 +848,10 @@ begin
       FFlowTabs[tabIdx].ChkForceOverwrite.Checked :=
         LowerCase(StoredOrDefault(AI_TRANSLATION_CONFIG_KEY_FORCE_OVERWRITE, 'false')) = 'true';
 
+    if Assigned(FFlowTabs[tabIdx].ChkIncludeAssociations) then
+      FFlowTabs[tabIdx].ChkIncludeAssociations.Checked :=
+        LowerCase(StoredOrDefault(AI_TRANSLATION_CONFIG_KEY_INCLUDE_ASSOCIATIONS, 'false')) = 'true';
+
     providerValue := FProject.GetInfo(AI_TRANSLATION_CONFIG_KEY_PROVIDER);
     modelValue := FProject.GetInfo(AI_TRANSLATION_CONFIG_KEY_MODEL);
     apiKeyValue := FProject.GetInfo(AI_TRANSLATION_CONFIG_KEY_API_KEY);
@@ -899,6 +919,9 @@ begin
     if Assigned(tabControls.ChkForceOverwrite) then
       FProject.SetInfo(AI_TRANSLATION_CONFIG_KEY_FORCE_OVERWRITE,
         BoolToStr(tabControls.ChkForceOverwrite.Checked, True));
+    if Assigned(tabControls.ChkIncludeAssociations) then
+      FProject.SetInfo(AI_TRANSLATION_CONFIG_KEY_INCLUDE_ASSOCIATIONS,
+        BoolToStr(tabControls.ChkIncludeAssociations.Checked, True));
     if Assigned(tabControls.CbProvider) then
       FProject.SetInfo(AI_TRANSLATION_CONFIG_KEY_PROVIDER, tabControls.CbProvider.Text);
     if Assigned(tabControls.CbModel) then
@@ -1048,6 +1071,8 @@ begin
       tabControls.MemoInstructions.Lines.Text := DEFAULT_TRANSLATION_CUSTOM_INSTRUCTIONS;
     if Assigned(tabControls.ChkForceOverwrite) then
       tabControls.ChkForceOverwrite.Checked := False;
+    if Assigned(tabControls.ChkIncludeAssociations) then
+      tabControls.ChkIncludeAssociations.Checked := False;
   end;
 
   SetFlowProviderValues(btn.Tag, '', '', '');
@@ -1062,9 +1087,11 @@ end;
 function TFrmLLMOptions.BuildCurrentPrompt(TabIdx: Integer): string;
 var
   tabControls: TFlowTabControls;
+  associationTabControls: TFlowTabControls;
   flowConfig: IAIFlowConfig;
   customInstructions, serializedExamples: string;
-  includeComments: Boolean;
+  associationInstructions, serializedAssociationExamples: string;
+  includeComments, includeAssociations: Boolean;
 begin
   Result := '';
   if (TabIdx < 0) or (TabIdx >= Length(FFlowTabs)) then Exit;
@@ -1090,10 +1117,27 @@ begin
   end
   else if SameText(tabControls.FlowId, 'translation') then
   begin
+    includeAssociations := Assigned(tabControls.ChkIncludeAssociations) and
+      tabControls.ChkIncludeAssociations.Checked;
+
+    associationTabControls := GetFlowTabByFlowId('association');
+    associationInstructions := '';
+    serializedAssociationExamples := '';
+    if includeAssociations then
+    begin
+      if Assigned(associationTabControls.MemoInstructions) then
+        associationInstructions := associationTabControls.MemoInstructions.Lines.Text;
+      serializedAssociationExamples :=
+        SaveFlowExamples(associationTabControls.WorkingExamples);
+    end;
+
     Result := flowConfig.BuildPromptFromConfig([
       AI_TRANSLATION_CONFIG_KEY_TARGET_LANGUAGE, tabControls.EditTargetLanguage.Text,
       AI_TRANSLATION_CONFIG_KEY_CUSTOM_INSTRUCTIONS, customInstructions,
-      AI_TRANSLATION_EXAMPLES_KEY, serializedExamples
+      AI_TRANSLATION_CONFIG_KEY_INCLUDE_ASSOCIATIONS, includeAssociations,
+      AI_TRANSLATION_EXAMPLES_KEY, serializedExamples,
+      AI_ASSOCIATION_CONFIG_KEY_CUSTOM_INSTRUCTIONS, associationInstructions,
+      AI_ASSOCIATION_EXAMPLES_KEY, serializedAssociationExamples
     ]);
   end;
 end;

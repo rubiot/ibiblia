@@ -46,12 +46,15 @@ type
   TAIBatchPreparation = record
     Flow: IAIVerseFlow;
     Manager: TAIProcessingManager;
+    SkippedCount: Integer;
   end;
 
   TAIBatchOrchestrator = class
   private
     FConfig: TProjectConfig;
     FContext: IAIBatchContext;
+    function FilterIneligibleTranslationItems(WorkItems: TAIBatchWorkItemList;
+      ForceOverwrite: Boolean): Integer;
     procedure MarkPendingNodes(WorkItems: TAIBatchWorkItemList);
   public
     constructor Create(AConfig: TProjectConfig; AContext: IAIBatchContext);
@@ -60,6 +63,8 @@ type
   end;
 
 implementation
+
+uses ai_translation_flow;
 
 { TAIBatchContextAdapter }
 
@@ -115,6 +120,28 @@ begin
   FContext := AContext;
 end;
 
+function TAIBatchOrchestrator.FilterIneligibleTranslationItems(
+  WorkItems: TAIBatchWorkItemList; ForceOverwrite: Boolean): Integer;
+var
+  I: Integer;
+  SkippedItem: TAIBatchWorkItem;
+begin
+  Result := 0;
+  if not Assigned(WorkItems) then
+    Exit;
+
+  for I := WorkItems.Count - 1 downto 0 do
+  begin
+    if IsTranslationDestinationEligible(
+        WorkItems[I].VerseData.TranslatedText, ForceOverwrite) then
+      Continue;
+
+    SkippedItem := WorkItems.ExtractItem(I);
+    SkippedItem.Free;
+    Inc(Result);
+  end;
+end;
+
 procedure TAIBatchOrchestrator.MarkPendingNodes(WorkItems: TAIBatchWorkItemList);
 var
   I: Integer;
@@ -143,12 +170,26 @@ function TAIBatchOrchestrator.PrepareBatch(const FlowId: string;
   WorkItems: TAIBatchWorkItemList; MaxParallel: Integer): TAIBatchPreparation;
 var
   FlowConfig: IAIFlowConfig;
+  ForceOverwrite: Boolean;
 begin
   Result.Flow := nil;
   Result.Manager := nil;
+  Result.SkippedCount := 0;
 
   if not Assigned(WorkItems) or (WorkItems.Count = 0) then
     Exit;
+
+  if SameText(FlowId, 'translation') then
+  begin
+    ForceOverwrite := False;
+    if Assigned(FConfig) then
+      ForceOverwrite := LowerCase(Trim(FConfig.ReadString(
+        AI_TRANSLATION_CONFIG_KEY_FORCE_OVERWRITE))) = 'true';
+    Result.SkippedCount := FilterIneligibleTranslationItems(
+      WorkItems, ForceOverwrite);
+    if WorkItems.Count = 0 then
+      Exit;
+  end;
 
   if MaxParallel <= 0 then
     MaxParallel := 1;

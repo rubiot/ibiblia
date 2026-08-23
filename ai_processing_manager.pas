@@ -310,6 +310,11 @@ begin
         // Decide whether to retry
         if job.AttemptCount < FManager.FMaxRetries then
         begin
+          // Results and temporary verses belong to the failed attempt. Release
+          // them before re-queueing so a parsing retry cannot leak stale state.
+          FreeAndNil(job.Parsed);
+          job.ReleaseTempVerses;
+
           // Calculate exponential backoff: base_delay * 2^(attempt-1)
           retryDelay := FManager.FRetryBaseDelay * (1 shl (job.AttemptCount - 1));
           job.NextRetryTime := Now + (retryDelay / (24 * 60 * 60 * 1000)); // Convert ms to days
