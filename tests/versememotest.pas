@@ -657,7 +657,7 @@ procedure TVerseMemoTests.
 var
   AddedButton, JesusButton, OldTestamentButton, UnderlineButton,
     StrikethroughButton, SuperscriptButton, SubscriptButton: TSpeedButton;
-  RawButton: TButton;
+  CancelButton, RawButton, SaveButton: TButton;
   Composite: TTheWordWysiwygEditorControl;
   Container: TScrollBox;
   DirectEditor: TDirectWriteVerseEditor;
@@ -687,6 +687,8 @@ begin
     SuperscriptButton := FindSpeedButtonWithCaption(Host, 'x²');
     SubscriptButton := FindSpeedButtonWithCaption(Host, 'x₂');
     RawButton := FindButtonWithCaption(Host, 'Raw');
+    SaveButton := FindButtonWithCaption(Host, 'Save');
+    CancelButton := FindButtonWithCaption(Host, 'Cancel');
     AssertTrue('italic semantic button must exist', Assigned(AddedButton));
     AssertTrue('Jesus semantic button must exist', Assigned(JesusButton));
     AssertTrue('Old Testament semantic button must exist',
@@ -700,6 +702,10 @@ begin
     AssertTrue('subscript semantic button must exist',
       Assigned(SubscriptButton));
     AssertTrue('raw-mode button must exist', Assigned(RawButton));
+    AssertTrue('save button must exist', Assigned(SaveButton));
+    AssertTrue('cancel button must exist', Assigned(CancelButton));
+
+    Application.ProcessMessages;
 
     AssertTrue('I must be italic', fsItalic in AddedButton.Font.Style);
     AssertEquals('J must be red', LongInt(clRed),
@@ -740,8 +746,32 @@ begin
     AssertTrue('superscript and subscript must not overlap',
       SuperscriptButton.Left + SuperscriptButton.Width <=
         SubscriptButton.Left);
-    AssertTrue('subscript and Raw must not overlap',
-      SubscriptButton.Left + SubscriptButton.Width <= RawButton.Left);
+    AssertTrue('subscript and Raw must not overlap across toolbar rows',
+      (SubscriptButton.Top + SubscriptButton.Height <= RawButton.Top) or
+      (RawButton.Top + RawButton.Height <= SubscriptButton.Top) or
+      (SubscriptButton.Left + SubscriptButton.Width <= RawButton.Left));
+    AssertTrue('narrow toolbar moves actions below formatting controls',
+      RawButton.Top > AddedButton.Top);
+    AssertEquals('Raw, Save and Cancel share the wrapped action row',
+      RawButton.Top, SaveButton.Top);
+    AssertEquals('Raw, Save and Cancel share the wrapped action row',
+      SaveButton.Top, CancelButton.Top);
+    AssertTrue('Raw must not overlap Save in the wrapped row',
+      RawButton.Left + RawButton.Width <= SaveButton.Left);
+    AssertTrue('Save must not overlap Cancel in the wrapped row',
+      SaveButton.Left + SaveButton.Width <= CancelButton.Left);
+
+    Host.ClientWidth := 1200;
+    Application.ProcessMessages;
+    AssertEquals('wide toolbar restores Raw to the formatting row',
+      AddedButton.Top, RawButton.Top);
+    AssertEquals('wide toolbar keeps Save on the same row',
+      RawButton.Top, SaveButton.Top);
+    AssertTrue('Raw remains separate from Save after expanding',
+      RawButton.Left + RawButton.Width <= SaveButton.Left);
+    AssertTrue('Save remains separate from Cancel after expanding',
+      SaveButton.Left + SaveButton.Width <= CancelButton.Left);
+
     AssertTrue('italic hint identifies added words',
       Pos('Added words', AddedButton.Hint) > 0);
     AssertTrue('italic hint exposes Ctrl+I',

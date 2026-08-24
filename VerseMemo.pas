@@ -389,17 +389,13 @@ const
   ErrorRowHeight = 24;
 var
   X, RightEdge, ButtonHeight, ButtonTop, SaveWidth, CancelWidth, ModeWidth,
-    StatusLeft, StatusWidth: Integer;
+    ActionButtonTop, ErrorTop, StatusLeft, StatusTop, StatusWidth: Integer;
+  ActionsWrapped: Boolean;
 begin
   if not Assigned(FEditorPanel) or not Assigned(FToolbarPanel) or
      not Assigned(FEditorPanel.Parent) or
      (FToolbarPanel.ClientWidth <= 0) then
     Exit;
-
-  if FSaveErrorActive then
-    FToolbarPanel.Height := ButtonRowHeight + ErrorRowHeight
-  else
-    FToolbarPanel.Height := ButtonRowHeight;
 
   FToolbarPanel.Canvas.Font.Assign(FToolbarPanel.Font);
   ButtonHeight := Max(26, FToolbarPanel.Canvas.TextHeight('Hg') + 10);
@@ -409,16 +405,6 @@ begin
     FToolbarPanel.Canvas.TextWidth(FCancelButton.Caption) + 26);
   ModeWidth := Max(90,
     FToolbarPanel.Canvas.TextWidth(FModeLabel.Caption) + 10);
-
-  RightEdge := FToolbarPanel.ClientWidth - Margin;
-  FCancelButton.SetBounds(RightEdge - CancelWidth,
-    ButtonTop,
-    CancelWidth, ButtonHeight);
-  Dec(RightEdge, CancelWidth + Gap);
-  FSaveButton.SetBounds(RightEdge - SaveWidth,
-    ButtonTop,
-    SaveWidth, ButtonHeight);
-  Dec(RightEdge, SaveWidth + Gap);
 
   X := Margin;
   FModeLabel.SetBounds(X, 0, ModeWidth, ButtonRowHeight);
@@ -468,15 +454,48 @@ begin
   FTranslatorNoteButton.SetBounds(X, ButtonTop,
     SemanticButtonWidth, ButtonHeight);
   Inc(X, SemanticButtonWidth + Gap);
-  FRawModeButton.SetBounds(X,
-    ButtonTop,
+
+  { Keep the mode/save actions together, but move them to a second row when
+    the formatting controls consume their reserved area. This preserves every
+    command at narrow widths instead of allowing Raw to slide under Save. }
+  RightEdge := FToolbarPanel.ClientWidth - Margin - CancelWidth - Gap -
+    SaveWidth - Gap;
+  ActionsWrapped := X + RawModeButtonWidth > RightEdge;
+  if ActionsWrapped then
+  begin
+    ActionButtonTop := ButtonTop + ButtonRowHeight;
+    ErrorTop := 2 * ButtonRowHeight;
+    StatusTop := ButtonRowHeight;
+  end
+  else
+  begin
+    ActionButtonTop := ButtonTop;
+    ErrorTop := ButtonRowHeight;
+    StatusTop := 0;
+  end;
+  if FSaveErrorActive then
+    FToolbarPanel.Height := ErrorTop + ErrorRowHeight
+  else
+    FToolbarPanel.Height := ErrorTop;
+
+  RightEdge := FToolbarPanel.ClientWidth - Margin;
+  FCancelButton.SetBounds(RightEdge - CancelWidth, ActionButtonTop,
+    CancelWidth, ButtonHeight);
+  Dec(RightEdge, CancelWidth + Gap);
+  FSaveButton.SetBounds(RightEdge - SaveWidth, ActionButtonTop,
+    SaveWidth, ButtonHeight);
+  Dec(RightEdge, SaveWidth + Gap);
+
+  if ActionsWrapped then
+    X := Margin;
+  FRawModeButton.SetBounds(X, ActionButtonTop,
     RawModeButtonWidth, ButtonHeight);
-  Inc(X, RawModeButtonWidth + Gap);
+  X := FRawModeButton.Left + FRawModeButton.Width + Gap;
 
   if FSaveErrorActive then
   begin
     FStatusLabel.Visible := True;
-    FStatusLabel.SetBounds(Margin, ButtonRowHeight,
+    FStatusLabel.SetBounds(Margin, ErrorTop,
       Max(0, FToolbarPanel.ClientWidth - (2 * Margin)), ErrorRowHeight);
   end
   else
@@ -485,7 +504,8 @@ begin
     StatusWidth := RightEdge - StatusLeft;
     FStatusLabel.Visible := StatusWidth >= 80;
     if FStatusLabel.Visible then
-      FStatusLabel.SetBounds(StatusLeft, 0, StatusWidth, ButtonRowHeight);
+      FStatusLabel.SetBounds(StatusLeft, StatusTop,
+        StatusWidth, ButtonRowHeight);
   end;
 end;
 
