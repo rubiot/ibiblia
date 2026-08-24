@@ -31,6 +31,7 @@ type
     procedure TranslationCombinedParserRejectsEmptyForNonEmptySource;
     procedure TranslationCombinedApplyAcceptsEmptyVerse;
     procedure TranslationCombinedApplyPublishesTextAndPairs;
+    procedure TranslationCombinedApostropheVariantPublishesTextAndPairs;
     procedure TranslationCombinedApplyRollsBackWhenNoPairMatches;
     procedure TranslationApplyRespectsForceOverwrite;
     procedure TranslationOverwriteClearsPairsOnlyWhenTextChanges;
@@ -741,6 +742,59 @@ begin
     AssertFalse(Parsed.AcceptedStatusSet);
     AssertEquals('source one source two', SourceVerse.PlainText);
     AssertEquals('target one target two', DestinationVerse.PlainText);
+  finally
+    Parsed.Free;
+    Flow := nil;
+    SourceVerse.PairedVerse := nil;
+    DestinationVerse.PairedVerse := nil;
+    DestinationVerse.Free;
+    SourceVerse.Free;
+  end;
+end;
+
+procedure TAIFlowConfigTests.TranslationCombinedApostropheVariantPublishesTextAndPairs;
+var
+  Flow: IAIVerseFlow;
+  Parsed: TAIFlowResult;
+  SourceVerse, DestinationVerse: TVerse;
+begin
+  SourceVerse := TVerse.Create;
+  DestinationVerse := TVerse.Create;
+  Parsed := nil;
+  try
+    SourceVerse.Text := 'οὕτω τὸ κατ᾽ ἐμὲ πρόθυμον';
+    DestinationVerse.Text := '';
+    SourceVerse.PairedVerse := DestinationVerse;
+    DestinationVerse.PairedVerse := SourceVerse;
+
+    Flow := TAITranslationFlow.Create(
+      DEFAULT_TRANSLATION_PROMPT, False, True);
+    Parsed := Flow.ParseResponse(
+      '{"translation":"Assim, quanto a mim, estou pronto.","data":' +
+      '[["κατ’ ἐμὲ","quanto a mim"]]}', SourceVerse);
+
+    AssertEquals('An apostrophe variant must survive response parsing', '',
+      Parsed.ParseError);
+    AssertEquals(1, Length(TAITranslationResult(Parsed).Pairs));
+
+    Flow.ApplyResult(Parsed, SourceVerse);
+
+    AssertTrue(Parsed.AcceptedDestinationTextSet);
+    AssertEquals('Assim, quanto a mim, estou pronto.',
+      Parsed.AcceptedDestinationText);
+    AssertTrue(Parsed.AcceptedPairsSet);
+    AssertTrue(Trim(Parsed.AcceptedPairs) <> '');
+    AssertTrue(Pos('<par ', LowerCase(Parsed.AcceptedPairs)) > 0);
+    AssertEquals('Assim, quanto a mim, estou pronto.',
+      DestinationVerse.PlainText);
+    FreeAndNil(Parsed);
+
+    Parsed := Flow.ParseResponse(
+      '{"translation":"Assim, quanto a mim, estou pronto.","data":' +
+      '[["κατ ἐμὲ","quanto a mim"]]}', SourceVerse);
+    AssertTrue('Removing the apostrophe must not produce a literal match',
+      Trim(Parsed.ParseError) <> '');
+    AssertEquals(0, Length(TAITranslationResult(Parsed).Pairs));
   finally
     Parsed.Free;
     Flow := nil;

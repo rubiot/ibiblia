@@ -144,7 +144,7 @@ resourcestring
 implementation
 
 uses
-  ai_flow_config, fpjson, jsonparser;
+  ai_flow_config, fpjson, jsonparser, AssociationTextMatching;
 
 function TranslationExampleExpectedText(const Example: TAIFlowExample;
   MarkAddedWords: Boolean): string;
@@ -722,7 +722,8 @@ begin
     begin
       ValidPairCount := 0;
       for I := 0 to High(R.Pairs) do
-        if Pos(R.Pairs[I].OriginalPhrase, Verse.PlainText) > 0 then
+        if AssociationPhraseOccursInText(R.Pairs[I].OriginalPhrase,
+          Verse.PlainText) then
         begin
           R.Pairs[ValidPairCount] := R.Pairs[I];
           Inc(ValidPairCount);

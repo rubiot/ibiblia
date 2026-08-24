@@ -139,7 +139,8 @@ resourcestring
 implementation
 
 uses
-  ai_flow_config, ai_added_words_markup, SyntagmSelection, StrUtils;
+  ai_flow_config, ai_added_words_markup, SyntagmSelection,
+  AssociationTextMatching, StrUtils;
 
 function FormatAssociationExamplesPromptSection(const Examples: TAIFlowExampleArray): string;
 var
@@ -780,7 +781,7 @@ var
     out StyleRequirements: TSyntagmStyleRequirementArray;
     out PhraseValid: Boolean);
   var
-    J, RequirementIndex: Integer;
+    J, PreviousContentIndex, RequirementIndex: Integer;
     PhraseToParse, MarkupError: string;
     Markup: TAddedWordMarkup;
   begin
@@ -802,22 +803,40 @@ var
       PhraseToParse := Markup.CanonicalText;
     end;
 
-    Parser := TONTParser.Create;
+    Parser := TONTParser.Create(VerseOwner.TokenizerVersion);
     try
       ParsedSyntagms := Parser.ParseLine(PhraseToParse, VerseOwner);
       try
         for J := 0 to ParsedSyntagms.Count - 1 do
-          if ParsedSyntagms[J].Kind in [ONTTokenizer.skSyntagm] then
-          begin
-            Texts.Add(ParsedSyntagms[J].Text);
-            if InterpretAdditionMarkers then
+          case ParsedSyntagms[J].Kind of
+            ONTTokenizer.skSyntagm:
             begin
-              RequirementIndex := Length(StyleRequirements);
-              SetLength(StyleRequirements, RequirementIndex + 1);
-              if ParsedSyntagms[J].IsItalic then
-                StyleRequirements[RequirementIndex] := ssrItalic
-              else
-                StyleRequirements[RequirementIndex] := ssrRegular;
+              Texts.Add(ParsedSyntagms[J].Text);
+              if InterpretAdditionMarkers then
+              begin
+                RequirementIndex := Length(StyleRequirements);
+                SetLength(StyleRequirements, RequirementIndex + 1);
+                if ParsedSyntagms[J].IsItalic then
+                  StyleRequirements[RequirementIndex] := ssrItalic
+                else
+                  StyleRequirements[RequirementIndex] := ssrRegular;
+              end;
+            end;
+            ONTTokenizer.skPunctuation:
+            begin
+              PreviousContentIndex := J - 1;
+              while (PreviousContentIndex >= 0) and
+                    (ParsedSyntagms[PreviousContentIndex].Kind in
+                      [ONTTokenizer.skTag, ONTTokenizer.skMetadata]) do
+                Dec(PreviousContentIndex);
+              if (PreviousContentIndex >= 0) and
+                 (ParsedSyntagms[PreviousContentIndex].Kind =
+                   ONTTokenizer.skSyntagm) and
+                 (Texts.Count > 0) and
+                 AssociationApostropheCanAttach(Texts[Texts.Count - 1],
+                   ParsedSyntagms[J].Text) then
+                Texts[Texts.Count - 1] := Texts[Texts.Count - 1] +
+                  ParsedSyntagms[J].Text;
             end;
           end;
       finally

@@ -20,6 +20,9 @@ function ResolveSyntagmSelectionIndexes(Syntagms: TSyntagmList; Words: TStrings;
 
 implementation
 
+uses
+  AssociationTextMatching;
+
 function IsAssociatedSyntagm(SyntagmNode: TSyntagm): Boolean;
 begin
   Result := Assigned(SyntagmNode) and Assigned(SyntagmNode.Pairs) and
@@ -37,12 +40,53 @@ begin
   end;
 end;
 
-function IsAvailableWordSyntagm(SyntagmNode: TSyntagm; const WordToFind: string;
-  StyleRequirement: TSyntagmStyleRequirement): Boolean;
+function FindAttachedApostropheIndex(Syntagms: TSyntagmList;
+  SyntagmIndex: Integer): Integer;
+var
+  ScanIndex: Integer;
 begin
+  Result := -1;
+  if (SyntagmIndex < 0) or (SyntagmIndex >= Syntagms.Count) or
+     (Syntagms[SyntagmIndex].Kind <> skSyntagm) then
+    Exit;
+
+  ScanIndex := SyntagmIndex + 1;
+  while (ScanIndex < Syntagms.Count) and
+        (Syntagms[ScanIndex].Kind in [skTag, skMetadata]) do
+    Inc(ScanIndex);
+  if (ScanIndex < Syntagms.Count) and
+     (Syntagms[ScanIndex].Kind in [skSyntagm, skPunctuation]) and
+     AssociationApostropheCanAttach(Syntagms[SyntagmIndex].Text,
+       Syntagms[ScanIndex].Text) then
+    Result := ScanIndex;
+end;
+
+function ComparableSyntagmText(Syntagms: TSyntagmList;
+  SyntagmIndex: Integer): string;
+var
+  ApostropheIndex: Integer;
+begin
+  Result := Syntagms[SyntagmIndex].Text;
+  ApostropheIndex := FindAttachedApostropheIndex(Syntagms, SyntagmIndex);
+  if ApostropheIndex >= 0 then
+    Result := Result + Syntagms[ApostropheIndex].Text;
+end;
+
+function IsAvailableWordSyntagm(Syntagms: TSyntagmList;
+  SyntagmIndex: Integer; const WordToFind: string;
+  StyleRequirement: TSyntagmStyleRequirement): Boolean;
+var
+  ApostropheIndex: Integer;
+  SyntagmNode: TSyntagm;
+begin
+  SyntagmNode := Syntagms[SyntagmIndex];
+  ApostropheIndex := FindAttachedApostropheIndex(Syntagms, SyntagmIndex);
   Result := Assigned(SyntagmNode) and (SyntagmNode.Kind = skSyntagm) and
-            AnsiSameText(SyntagmNode.Text, WordToFind) and
+            AssociationSyntagmTextsEquivalent(
+              ComparableSyntagmText(Syntagms, SyntagmIndex), WordToFind) and
             not IsAssociatedSyntagm(SyntagmNode) and
+            ((ApostropheIndex < 0) or
+              not IsAssociatedSyntagm(Syntagms[ApostropheIndex])) and
             StyleMatches(SyntagmNode, StyleRequirement);
 end;
 
@@ -123,7 +167,7 @@ begin
 
   for StartIndex := 0 to Syntagms.Count - 1 do
   begin
-    if not IsAvailableWordSyntagm(Syntagms[StartIndex], RequestedWords[0],
+    if not IsAvailableWordSyntagm(Syntagms, StartIndex, RequestedWords[0],
       RequirementAt(StyleRequirements, 0)) then
       Continue;
 
@@ -148,7 +192,8 @@ begin
             end;
           skSyntagm:
             begin
-              if IsAvailableWordSyntagm(ScanNode, RequestedWords[RequestedIndex],
+              if IsAvailableWordSyntagm(Syntagms, ScanIndex,
+                RequestedWords[RequestedIndex],
                 RequirementAt(StyleRequirements, RequestedIndex)) then
                 CandidateIndex := ScanIndex;
               Break;
@@ -192,7 +237,7 @@ begin
     CandidateScanIndex := ScanIndex;
     while CandidateScanIndex < Syntagms.Count do
     begin
-      if IsAvailableWordSyntagm(Syntagms[CandidateScanIndex],
+      if IsAvailableWordSyntagm(Syntagms, CandidateScanIndex,
         RequestedWords[RequestedIndex],
         RequirementAt(StyleRequirements, RequestedIndex)) then
       begin
@@ -271,6 +316,34 @@ begin
   end;
 end;
 
+function ExpandAttachedApostrophes(Syntagms: TSyntagmList;
+  BaseIndexes: TSyntagmIndexArray): TSyntagmIndexArray;
+var
+  I, CurrentIndex, ApostropheIndex: Integer;
+begin
+  Result := BaseIndexes;
+  if not Assigned(Syntagms) or (Length(BaseIndexes) = 0) then
+    Exit;
+
+  SetLength(Result, 0);
+  for I := 0 to High(BaseIndexes) do
+  begin
+    CurrentIndex := BaseIndexes[I];
+    AddIndex(Result, CurrentIndex);
+    if (CurrentIndex < 0) or (CurrentIndex >= Syntagms.Count - 1) or
+       (Syntagms[CurrentIndex].Kind <> skSyntagm) then
+      Continue;
+
+    ApostropheIndex := FindAttachedApostropheIndex(Syntagms, CurrentIndex);
+    if ApostropheIndex < 0 then
+      Continue;
+    if (I < High(BaseIndexes)) and
+       (BaseIndexes[I + 1] = ApostropheIndex) then
+      Continue;
+    AddIndex(Result, ApostropheIndex);
+  end;
+end;
+
 function ResolveSyntagmSelectionIndexes(Syntagms: TSyntagmList; Words: TStrings;
   Partial: Boolean; JoinConnected: Boolean): TSyntagmIndexArray;
 var
@@ -300,8 +373,12 @@ begin
       Result := ResolveOrderedFallback(Syntagms, RequestedWords,
         RequestedStyles, Partial);
 
-    if JoinConnected and (Length(Result) > 1) then
-      Result := ExpandConnectedPunctuation(Syntagms, Result);
+    if JoinConnected then
+    begin
+      if Length(Result) > 1 then
+        Result := ExpandConnectedPunctuation(Syntagms, Result);
+      Result := ExpandAttachedApostrophes(Syntagms, Result);
+    end;
   finally
     RequestedWords.Free;
   end;
