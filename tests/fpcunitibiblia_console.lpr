@@ -16,6 +16,7 @@ uses
   suggestionmanagertest,
   associationmemoryservicetest,
   concordanceexporttest,
+  association_highlight_projection_test,
   project_persistence_test,
   navigation_history_test,
   verse_visual_adapter_test,

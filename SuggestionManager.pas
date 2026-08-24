@@ -29,8 +29,11 @@ type
   TTranslationOccurrenceData = record
     ReferenceID: string;
     DisplayReference: string;
+    OriginalText: string;
     DestinationText: string;
+    Associations: string;
     Occurrences: Integer;
+    HighlightRanges: TConcordanceHighlightRangeArray;
   end;
 
   TTranslationOccurrenceDataArray = array of TTranslationOccurrenceData;
@@ -1913,12 +1916,14 @@ begin
     Query.Close;
 
     Query.SQL.Text := 'select o.amo_reference, ' +
-      'sum(o.amo_occurrences), p.pare_texto_destino ' +
+      'sum(o.amo_occurrences), p.pare_texto_destino, ' +
+      'p.pare_texto_origem, p.pare_pares ' +
       'from association_memory_occurrences o ' +
       'join association_memory_match_filter f on ' +
       'f.amo_source = o.amo_source and f.amo_target = o.amo_target ' +
       'join pares p on p.pare_id = o.amo_reference ' +
-      'group by p.rowid, o.amo_reference, p.pare_texto_destino ' +
+      'group by p.rowid, o.amo_reference, p.pare_texto_destino, ' +
+      'p.pare_texto_origem, p.pare_pares ' +
       'order by p.rowid limit :limit';
     Query.Params.ParamByName('limit').AsInteger := Limit;
     Query.Open;
@@ -1929,6 +1934,8 @@ begin
       Result.Items[ItemIndex].ReferenceID := Query.Fields[0].AsString;
       Result.Items[ItemIndex].Occurrences := Query.Fields[1].AsInteger;
       Result.Items[ItemIndex].DestinationText := Query.Fields[2].AsString;
+      Result.Items[ItemIndex].OriginalText := Query.Fields[3].AsString;
+      Result.Items[ItemIndex].Associations := Query.Fields[4].AsString;
       Query.Next;
     end;
     Result.HasMore := Length(Result.Items) < Result.TotalVerses;

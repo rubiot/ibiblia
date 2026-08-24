@@ -8,7 +8,8 @@ uses
   Classes, SysUtils, StrUtils, Math, Forms, Dialogs, ComCtrls, LCLIntf, fgl, PCRE,
   BibleScope, MySwordModule, TheWordDictionary, ConcordanceExport,
   ai_batch_work_item, syntagm, Verse, project_verse_repository, verse_render_buffer,
-  SuggestionManager, ONTTokenizer, text_direction, rf_note_scanner;
+  SuggestionManager, ONTTokenizer, text_direction, rf_note_scanner,
+  association_highlight_projection;
 
 type
   TRegexList = specialize TFPGList<IRegex>;
@@ -572,105 +573,6 @@ var
   UseIndexedOccurrences: Boolean;
   UnindexedReferences: TStringList;
 
-  procedure BuildDestinationContext(out PlainText: string;
-    out SyntagmRanges: TConcordanceHighlightRangeArray);
-  var
-    InRFNote: Boolean;
-    InTitle: Boolean;
-    FirstVisibleByte: Integer;
-    Index: Integer;
-    LastVisibleByte: Integer;
-    Syntagm: TSyntagm;
-  begin
-    PlainText := '';
-    SyntagmRanges := nil;
-    SetLength(SyntagmRanges,
-      FVerseRenderBuffer.DestinationVerse.Syntagms.Count);
-    InRFNote := False;
-    InTitle := False;
-    for Index := 0 to FVerseRenderBuffer.DestinationVerse.Syntagms.Count - 1 do
-    begin
-      Syntagm := FVerseRenderBuffer.DestinationVerse.Syntagms[Index];
-      if Syntagm.Kind = skTag then
-      begin
-        if InRFNote then
-        begin
-          if IsRFClosingTag(Syntagm.Text) then
-            InRFNote := False;
-        end
-        else if InTitle then
-        begin
-          if SameText(Syntagm.Text, '<Ts>') then
-            InTitle := False;
-        end
-        else if IsRFOpeningTag(Syntagm.Text) then
-          InRFNote := True
-        else if AnsiStartsText('<TS', Syntagm.Text) then
-          InTitle := True;
-        Continue;
-      end;
-      if InRFNote or InTitle or
-         not (Syntagm.Kind in [skWhitespace, skSyntagm, skPunctuation]) then
-        Continue;
-
-      SyntagmRanges[Index].StartIndex := Length(PlainText) + 1;
-      SyntagmRanges[Index].Length := Length(Syntagm.Text);
-      PlainText := PlainText + Syntagm.Text;
-    end;
-
-    FirstVisibleByte := 1;
-    while (FirstVisibleByte <= Length(PlainText)) and
-          (PlainText[FirstVisibleByte] <= ' ') do
-      Inc(FirstVisibleByte);
-    LastVisibleByte := Length(PlainText);
-    while (LastVisibleByte >= FirstVisibleByte) and
-          (PlainText[LastVisibleByte] <= ' ') do
-      Dec(LastVisibleByte);
-
-    if (FirstVisibleByte > 1) or (LastVisibleByte < Length(PlainText)) then
-    begin
-      PlainText := Copy(PlainText, FirstVisibleByte,
-        LastVisibleByte - FirstVisibleByte + 1);
-      for Index := 0 to High(SyntagmRanges) do
-        if SyntagmRanges[Index].Length > 0 then
-        begin
-          Dec(SyntagmRanges[Index].StartIndex, FirstVisibleByte - 1);
-          if (SyntagmRanges[Index].StartIndex < 1) or
-             (SyntagmRanges[Index].StartIndex +
-              SyntagmRanges[Index].Length - 1 > Length(PlainText)) then
-          begin
-            SyntagmRanges[Index].StartIndex := 0;
-            SyntagmRanges[Index].Length := 0;
-          end;
-        end;
-    end;
-  end;
-
-  function GetAssociationHighlightRanges(
-    const Data: TAssociationPairData;
-    const SyntagmRanges: TConcordanceHighlightRangeArray):
-    TConcordanceHighlightRangeArray;
-  var
-    Index: Integer;
-    RangeIndex: Integer;
-    SyntagmIndex: Integer;
-  begin
-    Result := nil;
-    for Index := 0 to High(Data.TargetSyntagmIndexes) do
-    begin
-      SyntagmIndex := Data.TargetSyntagmIndexes[Index];
-      if (SyntagmIndex < 0) or (SyntagmIndex > High(SyntagmRanges)) or
-         (SyntagmRanges[SyntagmIndex].Length <= 0) then
-      begin
-        Result := nil;
-        Exit;
-      end;
-      RangeIndex := Length(Result);
-      SetLength(Result, RangeIndex + 1);
-      Result[RangeIndex] := SyntagmRanges[SyntagmIndex];
-    end;
-  end;
-
   procedure ReportProgress(Phase: TConcordanceExportPhase;
     Current, Total: Integer; ForceMessages: Boolean = False);
   begin
@@ -722,11 +624,14 @@ var
           Context := '';
           SetLength(SyntagmRanges, 0);
           if Options.ContextMode <> ccmReferencesOnly then
-            BuildDestinationContext(Context, SyntagmRanges);
+            BuildVisibleDestinationProjection(
+              FVerseRenderBuffer.DestinationVerse, Context, SyntagmRanges);
           for AssociationIndex := 0 to High(AssociationData) do
           begin
-            HighlightRanges := GetAssociationHighlightRanges(
-              AssociationData[AssociationIndex], SyntagmRanges);
+            if not TryProjectAssociationHighlightRanges(
+                AssociationData[AssociationIndex], Context, SyntagmRanges,
+                HighlightRanges) then
+              HighlightRanges := nil;
             Concordance.AddOccurrence(
               AssociationData[AssociationIndex].SourcePhrase,
               AssociationData[AssociationIndex].TargetPhrase,

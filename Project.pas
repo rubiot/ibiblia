@@ -26,7 +26,7 @@ uses
   dictionary_manager, project_exporter, association_memory_service,
   UnitPleaseWait, bible_book_names, translation_memory_model, ConcordanceExport,
   navigation_history, text_direction, text_edit_provenance,
-  rf_note_scanner;
+  rf_note_scanner, association_highlight_projection;
 const
   // AI processing icon indices for ImageListTreeView in formprincipal
   // ImageListTreeView has indices 0-7 for normal states (0-3) and selected states (4-7)
@@ -5581,6 +5581,7 @@ function TProject.TryGetTranslationMemoryOccurrences(
   out Occurrences: TTranslationOccurrencePage;
   out ErrorMessage: string): Boolean;
 var
+  ProjectionBuffer: TVerseRenderBuffer;
   ItemIndex: Integer;
 
   function PlainDestinationText(const XML: string): string;
@@ -5640,6 +5641,64 @@ var
     end;
   end;
 
+  procedure BuildPlainOccurrenceText(RenderBuffer: TVerseRenderBuffer;
+    const OriginalText, DestinationText: string; out PlainText: string);
+  var
+    IgnoredRanges: TConcordanceHighlightRangeArray;
+  begin
+    try
+      RenderBuffer.LoadTexts(OriginalText, DestinationText);
+      BuildVisibleDestinationProjection(RenderBuffer.DestinationVerse,
+        PlainText, IgnoredRanges);
+    except
+      PlainText := PlainDestinationText(DestinationText);
+    end;
+  end;
+
+  procedure ProjectOccurrence(var Occurrence: TTranslationOccurrenceData;
+    RenderBuffer: TVerseRenderBuffer);
+  var
+    AssociationData: TAssociationPairDataArray;
+    Associations: string;
+    CorruptionDetails: string;
+    DestinationText: string;
+    HighlightRanges: TConcordanceHighlightRangeArray;
+    OriginalText: string;
+    SyntagmRanges: TConcordanceHighlightRangeArray;
+    VisibleText: string;
+  begin
+    OriginalText := Occurrence.OriginalText;
+    DestinationText := Occurrence.DestinationText;
+    Associations := Occurrence.Associations;
+    if (Occurrence.ReferenceID = ID) and
+       Assigned(FAVersiculo[tbOrigem]) and
+       Assigned(FAVersiculo[tbDestino]) then
+    begin
+      OriginalText := FAVersiculo[tbOrigem].XML;
+      DestinationText := FAVersiculo[tbDestino].XML;
+      Associations := FAVersiculo[tbOrigem].Pairs;
+    end;
+
+    Occurrence.HighlightRanges := nil;
+    AssociationData := nil;
+    if RenderBuffer.TryExtractAssociationPairData(OriginalText,
+        DestinationText, Associations, plMetaData, AssociationData,
+        CorruptionDetails) then
+    begin
+      BuildVisibleDestinationProjection(RenderBuffer.DestinationVerse,
+        VisibleText, SyntagmRanges);
+      HighlightRanges := nil;
+      if TryProjectMatchingAssociationHighlightRanges(AssociationData,
+          Matches, VisibleText, SyntagmRanges, HighlightRanges) then
+        Occurrence.HighlightRanges := HighlightRanges;
+    end
+    else
+      BuildPlainOccurrenceText(RenderBuffer, OriginalText,
+        DestinationText, VisibleText);
+
+    Occurrence.DestinationText := VisibleText;
+  end;
+
 begin
   Result := False;
   ErrorMessage := '';
@@ -5665,19 +5724,18 @@ begin
 
     Occurrences := FSuggestionManager.GetTranslationOccurrences(Matches,
       Limit);
-    for ItemIndex := 0 to Length(Occurrences.Items) - 1 do
-    begin
-      Occurrences.Items[ItemIndex].DisplayReference :=
-        FormatOccurrenceReference(
-          Occurrences.Items[ItemIndex].ReferenceID);
-      if (Occurrences.Items[ItemIndex].ReferenceID = ID) and
-         Assigned(FAVersiculo[tbDestino]) then
-        Occurrences.Items[ItemIndex].DestinationText :=
-          PlainDestinationText(FAVersiculo[tbDestino].XML)
-      else
-        Occurrences.Items[ItemIndex].DestinationText :=
-          PlainDestinationText(
-            Occurrences.Items[ItemIndex].DestinationText);
+    ProjectionBuffer := TVerseRenderBuffer.Create;
+    try
+      ProjectionBuffer.SetTokenizerVersion(TokenizerVersion);
+      for ItemIndex := 0 to Length(Occurrences.Items) - 1 do
+      begin
+        Occurrences.Items[ItemIndex].DisplayReference :=
+          FormatOccurrenceReference(
+            Occurrences.Items[ItemIndex].ReferenceID);
+        ProjectOccurrence(Occurrences.Items[ItemIndex], ProjectionBuffer);
+      end;
+    finally
+      ProjectionBuffer.Free;
     end;
     Result := True;
   except

@@ -8,7 +8,8 @@ interface
 uses
   Classes, SysUtils, fpcunit, testregistry, Graphics, KMemo,
   HTMLRenderer, ChapterView, theword_ont_codec_v2,
-  theword_effective_inline_style_v2, theword_translator_note_style;
+  theword_effective_inline_style_v2, theword_translator_note_style,
+  SuggestionManager;
 
 type
   TProjectionFailureMode = (pfmNone, pfmCodec, pfmOther);
@@ -27,6 +28,12 @@ type
   public
     property FailureMode: TProjectionFailureMode read FFailureMode
       write FFailureMode;
+  end;
+
+  TChapterViewProbe = class(TChapterView)
+  public
+    procedure AppendTranslationMemoryOccurrence(
+      const Occurrence: TTranslationOccurrenceData);
   end;
 
   TChapterInlineStyleProjectionTest = class(TTestCase)
@@ -52,6 +59,7 @@ type
     procedure CodecFailureFallsBackButOtherExceptionsPropagate;
     procedure ChapterPreservesFIAndSemanticPrecedence;
     procedure ChapterPreservesTitleNoteAndInterlinearBases;
+    procedure TranslationMemoryOccurrenceHighlightsExactRanges;
   end;
 
 implementation
@@ -64,6 +72,12 @@ begin
     pfmOther: raise Exception.Create('injected ordinary failure');
   end;
   Result := inherited ResolveInlineProjection(ARaw);
+end;
+
+procedure TChapterViewProbe.AppendTranslationMemoryOccurrence(
+  const Occurrence: TTranslationOccurrenceData);
+begin
+  AppendTranslationMemoryOccurrenceText(Occurrence);
 end;
 
 function TChapterInlineStyleProjectionTest.FindTextBlock(
@@ -350,6 +364,93 @@ begin
       LongInt(TextBlock(Chapter, 'unit').TextStyle.Font.Color));
     AssertEquals(LongInt($00FF0000),
       LongInt(TextBlock(Chapter, 'tail').TextStyle.Font.Color));
+  finally
+    Chapter.Free;
+  end;
+end;
+
+procedure TChapterInlineStyleProjectionTest.
+  TranslationMemoryOccurrenceHighlightsExactRanges;
+const
+  DESTINATION_TEXT = 'um vaso como um grande lençol';
+var
+  Chapter: TChapterViewProbe;
+  Occurrence: TTranslationOccurrenceData;
+
+  function TextBlockCount: Integer;
+  var
+    BlockIndex: Integer;
+  begin
+    Result := 0;
+    for BlockIndex := 0 to Chapter.Blocks.Count - 1 do
+      if Chapter.Blocks[BlockIndex].ClassType = TKMemoTextBlock then
+        Inc(Result);
+  end;
+
+  function TextBlockAt(AIndex: Integer): TKMemoTextBlock;
+  var
+    BlockIndex: Integer;
+    TextIndex: Integer;
+  begin
+    TextIndex := 0;
+    for BlockIndex := 0 to Chapter.Blocks.Count - 1 do
+      if Chapter.Blocks[BlockIndex].ClassType = TKMemoTextBlock then
+      begin
+        if TextIndex = AIndex then
+          Exit(TKMemoTextBlock(Chapter.Blocks[BlockIndex]));
+        Inc(TextIndex);
+      end;
+    Fail(Format('Text block %d not found', [AIndex]));
+    Result := nil;
+  end;
+
+  procedure AssertBlock(AIndex: Integer; const AText: string;
+    AStyle: TFontStyles);
+  var
+    Block: TKMemoTextBlock;
+  begin
+    Block := TextBlockAt(AIndex);
+    AssertEquals(AText, Block.Text);
+    AssertTrue('unexpected block style',
+      Block.TextStyle.Font.Style = AStyle);
+  end;
+
+begin
+  Chapter := TChapterViewProbe.Create(nil);
+  try
+    Chapter.Blocks.Clear;
+    Occurrence := Default(TTranslationOccurrenceData);
+    Occurrence.DestinationText := DESTINATION_TEXT;
+    SetLength(Occurrence.HighlightRanges, 2);
+    Occurrence.HighlightRanges[0].StartIndex := 14;
+    Occurrence.HighlightRanges[0].Length := 2;
+    Occurrence.HighlightRanges[1].StartIndex := 24;
+    Occurrence.HighlightRanges[1].Length :=
+      Length(UTF8Encode(UnicodeString('lençol')));
+
+    Chapter.AppendTranslationMemoryOccurrence(Occurrence);
+    AssertEquals(5, TextBlockCount);
+    AssertBlock(0, ' — ', []);
+    AssertBlock(1, 'um vaso como ', []);
+    AssertBlock(2, 'um', [fsBold, fsUnderline]);
+    AssertBlock(3, ' grande ', []);
+    AssertBlock(4, 'lençol', [fsBold, fsUnderline]);
+
+    Chapter.Blocks.Clear;
+    SetLength(Occurrence.HighlightRanges, 1);
+    Occurrence.HighlightRanges[0].StartIndex := 999;
+    Occurrence.HighlightRanges[0].Length := 2;
+    Chapter.AppendTranslationMemoryOccurrence(Occurrence);
+    AssertEquals(2, TextBlockCount);
+    AssertBlock(0, ' — ', []);
+    AssertBlock(1, DESTINATION_TEXT, []);
+
+    Chapter.Blocks.Clear;
+    SetLength(Occurrence.HighlightRanges, 0);
+    Chapter.AppendTranslationMemoryOccurrence(Occurrence);
+    AssertEquals(2, TextBlockCount);
+    AssertBlock(0, ' — ', []);
+    AssertBlock(1, DESTINATION_TEXT, []);
   finally
     Chapter.Free;
   end;

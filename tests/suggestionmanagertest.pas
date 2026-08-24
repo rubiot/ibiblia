@@ -984,6 +984,12 @@ var
   Alternatives: TTranslationAlternativeDataArray;
   Page: TTranslationOccurrencePage;
 begin
+  FConnection.ExecuteDirect('update pares set ' +
+    'pare_texto_origem = ''first source<WG1>'', ' +
+    'pare_pares = ''<par a="0" b="0">'' where pare_id = ''1,1,1''');
+  FConnection.ExecuteDirect('update pares set ' +
+    'pare_texto_origem = ''second source<WG1>'', ' +
+    'pare_pares = ''<par a="0" b="0">'' where pare_id = ''1,1,2''');
   FManager.AddPairForReference('1,1,1', '<wg1>', 'word');
   FManager.AddPairForReference('1,1,1', '<wg1>', 'word');
   FManager.AddPairForReference('1,1,2', '<wg1>', 'word');
@@ -1002,12 +1008,17 @@ begin
   AssertEquals('1,1,1', Page.Items[0].ReferenceID);
   AssertEquals(2, Page.Items[0].Occurrences);
   AssertEquals('first destination', Page.Items[0].DestinationText);
+  AssertEquals('first source<WG1>', Page.Items[0].OriginalText);
+  AssertEquals('<par a="0" b="0">', Page.Items[0].Associations);
+  AssertEquals(0, Length(Page.Items[0].HighlightRanges));
 
   Page := FManager.GetTranslationOccurrences(
     Alternatives[0].Matches, 100);
   AssertFalse(Page.HasMore);
   AssertEquals(2, Length(Page.Items));
   AssertEquals('1,1,2', Page.Items[1].ReferenceID);
+  AssertEquals('second source<WG1>', Page.Items[1].OriginalText);
+  AssertEquals('<par a="0" b="0">', Page.Items[1].Associations);
 
   FManager.RemovePairForReference('1,1,1', '<wg1>', 'word');
   Page := FManager.GetTranslationOccurrences(

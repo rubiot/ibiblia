@@ -175,6 +175,8 @@ type
     procedure ApplyProjectedInlineStyle(ABlock: TKMemoTextBlock;
       ABaseStyle: TKMemoTextStyle;
       const AEffective: TTheWordEffectiveInlineStyleV2); override;
+    procedure AppendTranslationMemoryOccurrenceText(
+      const Occurrence: TTranslationOccurrenceData);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -271,6 +273,58 @@ begin
       Result := Result + Separator;
     Result := Result + Value;
   end;
+end;
+
+procedure TChapterView.AppendTranslationMemoryOccurrenceText(
+  const Occurrence: TTranslationOccurrenceData);
+var
+  TextCursor: Integer;
+  Index: Integer;
+  TextBlock: TKMemoTextBlock;
+begin
+  if Occurrence.DestinationText = '' then
+    Exit;
+
+  Blocks.AddTextBlock(' — ');
+  if Length(Occurrence.HighlightRanges) = 0 then
+  begin
+    Blocks.AddTextBlock(Occurrence.DestinationText);
+    Exit;
+  end;
+
+  for Index := 0 to High(Occurrence.HighlightRanges) do
+    if (Occurrence.HighlightRanges[Index].StartIndex < 1) or
+       (Occurrence.HighlightRanges[Index].Length <= 0) or
+       (Occurrence.HighlightRanges[Index].StartIndex >
+        Length(Occurrence.DestinationText)) or
+       (Occurrence.HighlightRanges[Index].Length >
+        Length(Occurrence.DestinationText) -
+        Occurrence.HighlightRanges[Index].StartIndex + 1) or
+       ((Index > 0) and
+        (Occurrence.HighlightRanges[Index].StartIndex <
+         Occurrence.HighlightRanges[Index - 1].StartIndex +
+         Occurrence.HighlightRanges[Index - 1].Length)) then
+    begin
+      Blocks.AddTextBlock(Occurrence.DestinationText);
+      Exit;
+    end;
+
+  TextCursor := 1;
+  for Index := 0 to High(Occurrence.HighlightRanges) do
+  begin
+    if Occurrence.HighlightRanges[Index].StartIndex > TextCursor then
+      Blocks.AddTextBlock(Copy(Occurrence.DestinationText, TextCursor,
+        Occurrence.HighlightRanges[Index].StartIndex - TextCursor));
+    TextBlock := Blocks.AddTextBlock(Copy(Occurrence.DestinationText,
+      Occurrence.HighlightRanges[Index].StartIndex,
+      Occurrence.HighlightRanges[Index].Length));
+    TextBlock.TextStyle.Font.Style := [fsBold, fsUnderline];
+    TextCursor := Occurrence.HighlightRanges[Index].StartIndex +
+      Occurrence.HighlightRanges[Index].Length;
+  end;
+  if TextCursor <= Length(Occurrence.DestinationText) then
+    Blocks.AddTextBlock(Copy(Occurrence.DestinationText, TextCursor,
+      Length(Occurrence.DestinationText) - TextCursor + 1));
 end;
 
 { TRawChapterMemo }
@@ -1736,8 +1790,8 @@ begin
             STranslationMemoryOccurrenceCountFmt, [Occurrences]) + ')');
           TextBlock.TextStyle.Font.Color := clGray;
         end;
-        if DestinationText <> '' then
-          Blocks.AddTextBlock(' — ' + DestinationText);
+        AppendTranslationMemoryOccurrenceText(
+          OccurrencePage.Items[ItemIndex]);
         with Blocks.AddParagraph().ParaStyle do
         begin
           FirstIndent := 0;
