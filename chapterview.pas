@@ -20,6 +20,14 @@ type
     first, last: integer;
   end;
 
+  TTranslationMemoryInputSnapshot = record
+    Initialized: Boolean;
+    ReferenceID: string;
+    SourceXML: string;
+    DestinationXML: string;
+    Associations: string;
+  end;
+
   TChapterView = class;
 
   { TRawChapterMemo }
@@ -107,8 +115,7 @@ type
     FTranslationMemoryEntries: TTranslationMemoryEntryArray;
     FTranslationMemoryFocusEntries: TTranslationMemoryFocusEntryArray;
     FTranslationMemoryFocus: TTranslationMemoryFocusController;
-    FTranslationMemoryPairsSnapshot: string;
-    FTranslationMemoryReferenceSnapshot: string;
+    FTranslationMemoryInputSnapshot: TTranslationMemoryInputSnapshot;
     FTranslationMemoryShowingOccurrences: Boolean;
     FTranslationMemoryOccurrenceMatches: TTranslationPairMatchArray;
     FTranslationMemoryOccurrenceSource: string;
@@ -121,6 +128,9 @@ type
     function GetParagraphMode: TParagraphMode;
     function GetTextType: TTipoTextoBiblico;
     function IsTranslationMemoryVisible: Boolean;
+    function CurrentTranslationMemoryInputSnapshot:
+      TTranslationMemoryInputSnapshot;
+    procedure CaptureTranslationMemoryInputSnapshot;
     procedure RenderChapter(verses: TStringList; current: integer);
     procedure RenderChapterHeader;
     procedure RenderChapterFooter;
@@ -198,6 +208,11 @@ type
     property PrintMode: boolean read FPrintMode write SetPrintMode;
   end;
 
+function TranslationMemoryInputSnapshotsEqual(
+  const ALeft, ARight: TTranslationMemoryInputSnapshot): Boolean;
+function ShouldResetTranslationMemoryOccurrences(AShowingOccurrences: Boolean;
+  const APrevious, ACurrent: TTranslationMemoryInputSnapshot): Boolean;
+
 const
   NonBibleTextColor = $be7c41;
   NoteLinkColor = TheWordTranslatorNoteMarkerColor;
@@ -241,6 +256,24 @@ resourcestring
   STranslationMemoryShowMoreFmt = 'Show 100 more (%d remaining)';
 
 implementation
+
+function TranslationMemoryInputSnapshotsEqual(
+  const ALeft, ARight: TTranslationMemoryInputSnapshot): Boolean;
+begin
+  Result := (ALeft.Initialized = ARight.Initialized) and
+    (not ALeft.Initialized or
+      ((ALeft.ReferenceID = ARight.ReferenceID) and
+       (ALeft.SourceXML = ARight.SourceXML) and
+       (ALeft.DestinationXML = ARight.DestinationXML) and
+       (ALeft.Associations = ARight.Associations)));
+end;
+
+function ShouldResetTranslationMemoryOccurrences(AShowingOccurrences: Boolean;
+  const APrevious, ACurrent: TTranslationMemoryInputSnapshot): Boolean;
+begin
+  Result := AShowingOccurrences and
+    not TranslationMemoryInputSnapshotsEqual(APrevious, ACurrent);
+end;
 
 function TranslationMemoryOccurrenceTotalsText(AssociationCount,
   VerseCount: Integer): string;
@@ -556,6 +589,38 @@ function TChapterView.IsTranslationMemoryVisible: Boolean;
 begin
   Result := FViewSelectionActive and Enabled and Assigned(FProject) and
     (FViewMode = cvmTranslationMemory);
+end;
+
+function TChapterView.CurrentTranslationMemoryInputSnapshot:
+  TTranslationMemoryInputSnapshot;
+var
+  DestinationVerse: TVerse;
+  SourceVerse: TVerse;
+begin
+  Result.Initialized := Assigned(FProject);
+  Result.ReferenceID := '';
+  Result.SourceXML := '';
+  Result.DestinationXML := '';
+  Result.Associations := '';
+  if not Result.Initialized then
+    Exit;
+
+  Result.ReferenceID := FProject.ID;
+  SourceVerse := FProject.VerseObjects[tbOrigem];
+  if Assigned(SourceVerse) then
+  begin
+    Result.SourceXML := SourceVerse.XML;
+    Result.Associations := SourceVerse.Pairs;
+  end;
+  DestinationVerse := FProject.VerseObjects[tbDestino];
+  if Assigned(DestinationVerse) then
+    Result.DestinationXML := DestinationVerse.XML;
+end;
+
+procedure TChapterView.CaptureTranslationMemoryInputSnapshot;
+begin
+  FTranslationMemoryInputSnapshot :=
+    CurrentTranslationMemoryInputSnapshot;
 end;
 
 procedure TChapterView.ApplyProjectedInlineStyle(ABlock: TKMemoTextBlock;
@@ -888,12 +953,23 @@ procedure TChapterView.HandleTranslationMemoryAlternativeClick(
   Sender: TObject);
 var
   AlternativeIndex: Integer;
+  CurrentSnapshot: TTranslationMemoryInputSnapshot;
   EntryIndex: Integer;
   SeparatorIndex: Integer;
   URL: string;
 begin
   if not (Sender is TKMemoHyperlink) then
     Exit;
+  CurrentSnapshot := CurrentTranslationMemoryInputSnapshot;
+  if not TranslationMemoryInputSnapshotsEqual(
+    FTranslationMemoryInputSnapshot, CurrentSnapshot) then
+  begin
+    FTranslationMemoryInputSnapshot := CurrentSnapshot;
+    ResetTranslationMemoryOccurrences;
+    RenderTranslationMemory;
+    TopPos := 0;
+    Exit;
+  end;
   URL := TKMemoHyperlink(Sender).URL;
   SeparatorIndex := Pos(':', URL);
   if SeparatorIndex <= 1 then
@@ -964,7 +1040,6 @@ end;
 procedure TChapterView.HandleVerseChange(Sender: TProject);
 var
   verses: TStringList;
-  ReferenceChanged: Boolean;
 begin
   if Assigned(FTranslationMemoryFocus) then
     FTranslationMemoryFocus.Unbind;
@@ -972,12 +1047,6 @@ begin
     exit;
 
   ClearTranslationMemorySourceHighlight;
-  // The same notification also fires after saving or editing the current
-  // verse. Leave occurrence drill-down only when navigation really occurred.
-  ReferenceChanged := FTranslationMemoryReferenceSnapshot <> FProject.ID;
-  FTranslationMemoryReferenceSnapshot := FProject.ID;
-  if ReferenceChanged then
-    ResetTranslationMemoryOccurrences;
   if FViewMode = cvmTranslationMemory then
   begin
     FTranslationMemoryRefreshPending := True;
@@ -1163,7 +1232,8 @@ begin
     FProject.OnNewVerseUnsubscribe(@HandleVerseChange);
   FProject := AValue;
   FTranslationMemoryRefreshPending := True;
-  FTranslationMemoryReferenceSnapshot := '';
+  FTranslationMemoryInputSnapshot :=
+    Default(TTranslationMemoryInputSnapshot);
   FViewSelectionActive := False;
 
   if assigned(FProject) then
@@ -1538,7 +1608,8 @@ begin
     FProject := nil;
     FViewSelectionActive := False;
     FTranslationMemoryRefreshPending := True;
-    FTranslationMemoryReferenceSnapshot := '';
+    FTranslationMemoryInputSnapshot :=
+      Default(TTranslationMemoryInputSnapshot);
   end;
 
   inherited SetEnabled(Value);
@@ -1568,8 +1639,8 @@ begin
   SetLength(FTranslationMemoryEntries, 0);
   SetLength(FTranslationMemoryFocusEntries, 0);
   FTranslationMemoryFocus := TTranslationMemoryFocusController.Create;
-  FTranslationMemoryPairsSnapshot := '';
-  FTranslationMemoryReferenceSnapshot := '';
+  FTranslationMemoryInputSnapshot :=
+    Default(TTranslationMemoryInputSnapshot);
   FTranslationMemoryShowingOccurrences := False;
   SetLength(FTranslationMemoryOccurrenceMatches, 0);
   FTranslationMemoryOccurrenceLimit := 100;
@@ -1631,12 +1702,34 @@ end;
 procedure TChapterView.FocusTranslationMemoryForSyntagm(
   ASyntagm: TSyntagm);
 var
+  CurrentSnapshot: TTranslationMemoryInputSnapshot;
   SyntagmIndex: Integer;
   SourceVerse: TVerse;
 begin
   if not Enabled or not Assigned(FProject) or
-     (FViewMode <> cvmTranslationMemory) or
-     FTranslationMemoryShowingOccurrences then
+     (FViewMode <> cvmTranslationMemory) then
+  begin
+    ClearTranslationMemoryEntryFocus;
+    Exit;
+  end;
+
+  // A normal selection does not change the memory data. Avoid rebuilding the
+  // entire view unless this click actually changed one of its canonical inputs.
+  CurrentSnapshot := CurrentTranslationMemoryInputSnapshot;
+  if not TranslationMemoryInputSnapshotsEqual(
+    FTranslationMemoryInputSnapshot, CurrentSnapshot) then
+  begin
+    if FTranslationMemoryShowingOccurrences then
+    begin
+      ResetTranslationMemoryOccurrences;
+      RenderTranslationMemory;
+      TopPos := 0;
+    end
+    else
+      RenderTranslationMemory;
+  end;
+
+  if FTranslationMemoryShowingOccurrences then
   begin
     ClearTranslationMemoryEntryFocus;
     Exit;
@@ -1648,11 +1741,6 @@ begin
     ClearTranslationMemoryEntryFocus;
     Exit;
   end;
-
-  // A normal selection does not change the memory data. Avoid rebuilding the
-  // entire view unless this click actually changed an association.
-  if SourceVerse.Pairs <> FTranslationMemoryPairsSnapshot then
-    RenderTranslationMemory;
 
   if not Assigned(ASyntagm) or
      (ASyntagm.VerseRef <> SourceVerse) then
@@ -1690,6 +1778,7 @@ procedure TChapterView.RenderTranslationMemoryOccurrences;
 var
   BlockBounds: TRect;
   CurrentBlockIndex: Integer;
+  CurrentSnapshot: TTranslationMemoryInputSnapshot;
   ErrorMessage: string;
   ItemIndex: Integer;
   LinkBlock: TKMemoHyperlink;
@@ -1705,6 +1794,18 @@ begin
     Exit;
   end;
 
+  CurrentSnapshot := CurrentTranslationMemoryInputSnapshot;
+  if ShouldResetTranslationMemoryOccurrences(
+    FTranslationMemoryShowingOccurrences,
+    FTranslationMemoryInputSnapshot, CurrentSnapshot) then
+  begin
+    FTranslationMemoryInputSnapshot := CurrentSnapshot;
+    ResetTranslationMemoryOccurrences;
+    RenderTranslationMemory;
+    TopPos := 0;
+    Exit;
+  end;
+  FTranslationMemoryInputSnapshot := CurrentSnapshot;
   FTranslationMemoryRefreshPending := False;
   FRawMemo.Hide;
   if not FProject.TryGetTranslationMemoryOccurrences(
@@ -1835,7 +1936,6 @@ var
   MetadataText: string;
   TextBlock: TKMemoTextBlock;
   LinkBlock: TKMemoHyperlink;
-  SourceVerse: TVerse;
   HasCurrentAlternative: Boolean;
   SyntagmIndex: Integer;
 begin
@@ -1853,11 +1953,7 @@ begin
     FTranslationMemoryOrder,
     FTranslationMemoryEntries, ErrorMessage) then
     SetLength(FTranslationMemoryEntries, 0);
-  SourceVerse := FProject.VerseObjects[tbOrigem];
-  if Assigned(SourceVerse) then
-    FTranslationMemoryPairsSnapshot := SourceVerse.Pairs
-  else
-    FTranslationMemoryPairsSnapshot := '';
+  CaptureTranslationMemoryInputSnapshot;
   SetLength(FTranslationMemoryFocusEntries,
     Length(FTranslationMemoryEntries));
   for EntryIndex := 0 to High(FTranslationMemoryFocusEntries) do

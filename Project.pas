@@ -182,6 +182,8 @@ type
     FIgnoreMissingPatchWarnings: Boolean;
     FAssociationMemoryRebuildRunning: Boolean;
     FAssociationMemoryRebuildFailed: Boolean;
+    FAssociationMemoryLiveEditPending: Boolean;
+    FAssociationMemorySpeculativeEditPending: Boolean;
     FAssociationMemoryProgressBar: TProgressBar;
     FNavigationHistory: TNavigationHistory;
     function GetCanGoBack: Boolean;
@@ -236,6 +238,8 @@ type
     procedure RebuildAssociationMemory(ProgressBar: TProgressBar);
     procedure AssociationMemoryRebuildProgress(
       Phase: TAssociationMemoryRebuildPhase; Current, Total: Integer);
+    procedure ReconcileEditedVerseAssociationMemory;
+    function ReconcileChangedVerseAssociations: Boolean;
     procedure PendingEditorChanged(Sender: TObject);
   protected
     procedure DispatchNewVerseObserversAfterEdit(Data: PtrInt);
@@ -317,6 +321,7 @@ type
     procedure FirstVerse;
     procedure LastVerse;
     procedure RefreshUI;
+    procedure RollbackCurrentVerse;
     procedure ClearAssociations;
     procedure ChangeTokenizerVersion(AValue: Integer;
       ProgressBar: TProgressBar = nil; MigrateAssociations: Boolean = True);
@@ -1080,6 +1085,9 @@ begin
   currentVersion := TokenizerVersion;
   if currentVersion = AValue then
     Exit;
+
+  if FAssociationMemorySpeculativeEditPending then
+    BeforeVerseScroll(nil);
 
   if MigrateAssociations then
     MigrateStoredAssociationsToTokenizerVersion(currentVersion, AValue,
@@ -2563,11 +2571,18 @@ begin
       FVerseMemo, FMemoComentarios, FAVersiculo, FACamposTexto,
       Ord(tbOrigem), Ord(tbDestino), FAssociationMemory);
   except
+    FAssociationMemoryLiveEditPending := True;
     if Assigned(FAssociationMemory) then
     begin
-      FAssociationMemory.MarkSourceDirty;
       FAssociationMemory.MarkCacheOutdated;
       FAssociationMemory.InvalidateReplay;
+      try
+        FAssociationMemory.MarkSourceDirty;
+      except
+        on RecoveryError: Exception do
+          DebugLn('Association-memory recovery after autosave failed: ' +
+            RecoveryError.Message);
+      end;
     end;
     raise;
   end;
@@ -2579,6 +2594,8 @@ begin
     else
       FAssociationMemory.MarkCacheSynchronized;
   end;
+  FAssociationMemoryLiveEditPending := False;
+  FAssociationMemorySpeculativeEditPending := False;
 
   //DebugLn('  TProject.BeforeVerseScroll: %d milliseconds', [getTickCount-starttime]);
 end;
@@ -2720,6 +2737,46 @@ begin
   end;
 end;
 
+procedure TProject.ReconcileEditedVerseAssociationMemory;
+begin
+  FAssociationMemoryLiveEditPending := False;
+  try
+    SaveAssociations;
+    FAssociationMemoryLiveEditPending :=
+      Assigned(FAssociationMemory) and FAssociationMemory.NeedsRebuild;
+  except
+    on E: Exception do
+    begin
+      FAssociationMemoryLiveEditPending := True;
+      if Assigned(FAssociationMemory) then
+        try
+          FAssociationMemory.MarkCacheOutdated;
+          FAssociationMemory.InvalidateReplay;
+          FAssociationMemory.MarkSourceDirty;
+        except
+          on RecoveryError: Exception do
+            DebugLn('Association-memory recovery after a live edit failed: ' +
+              RecoveryError.Message);
+        end;
+      DebugLn('Association-memory live edit reconciliation failed: ' +
+        E.Message);
+    end;
+  end;
+end;
+
+function TProject.ReconcileChangedVerseAssociations: Boolean;
+begin
+  Result := False;
+  if not Assigned(FAVersiculo[tbOrigem]) or
+     not FCurrentVerseWorkspace.HasAssociationChanges(
+       FAVersiculo[tbOrigem]) then
+    Exit;
+
+  Result := True;
+  FAssociationMemorySpeculativeEditPending := True;
+  ReconcileEditedVerseAssociationMemory;
+end;
+
 procedure TProject.RemoveAssociations;
 var
   CacheWasCurrent: Boolean;
@@ -2799,6 +2856,8 @@ procedure TProject.SintagmaOnClick(Sender: TSyntagm);
 begin
   if not FVerseMemo.TryDeactivate then
     Exit;
+
+  ReconcileChangedVerseAssociations;
 
   if assigned(FOnSintagmaClick) then
     FOnSintagmaClick(Sender);
@@ -3030,8 +3089,12 @@ begin
     Sender.Verse, Sender.Text, ATrace, editedIndex, AImpact);
   if not Result then
     Exit;
-  if editedIndex = Ord(tbDestino) then
+  if editedIndex in [Ord(tbOrigem), Ord(tbDestino)] then
+  begin
+    FAssociationMemorySpeculativeEditPending := True;
+    ReconcileEditedVerseAssociationMemory;
     NotifyNewVerseObserversAfterEdit;
+  end;
 
   //MessageDlg('Versículo modificado', format('Versiculo modificado: %s', [Sender.Text]), mtError, [mbOK], 0);
 end;
@@ -3449,6 +3512,8 @@ begin
   FClosing            := false;
   FAssociationMemoryRebuildRunning := False;
   FAssociationMemoryRebuildFailed := False;
+  FAssociationMemoryLiveEditPending := False;
+  FAssociationMemorySpeculativeEditPending := False;
   FAssociationMemoryProgressBar := nil;
   FVerseStrongsCountMode := scNone;
   FLastLLMUsage.PromptTokens := 0;
@@ -3549,6 +3614,8 @@ begin
   FAtivo := False;
   FAssociationMemoryRebuildRunning := False;
   FAssociationMemoryRebuildFailed := False;
+  FAssociationMemoryLiveEditPending := False;
+  FAssociationMemorySpeculativeEditPending := False;
   FScrollEventsEnabled := False;
   FCurrentVerseWorkspace.Clear;
   FVerseMemo.DiscardEdit;
@@ -3789,6 +3856,8 @@ begin
     Exit;
   if FAssociationMemoryRebuildRunning or FAssociationMemory.RebuildActive then
     Exit(True);
+  if FAssociationMemoryLiveEditPending then
+    Exit(True);
   if FAssociationMemoryRebuildFailed and
     FAssociationMemory.NeedsRebuild then
     Exit(True);
@@ -3895,6 +3964,8 @@ begin
   end;
   if Assigned(FPersistence) then
     FPersistence.FlushImmediateInfo;
+  FAssociationMemoryLiveEditPending := False;
+  FAssociationMemorySpeculativeEditPending := False;
 end;
 
 procedure TProject.Rollback;
@@ -3919,6 +3990,8 @@ begin
     FPersistence.FlushImmediateInfo;
   if Assigned(FAssociationMemory) then
     FAssociationMemory.ReloadRevisionState;
+  FAssociationMemoryLiveEditPending := False;
+  FAssociationMemorySpeculativeEditPending := False;
   if Assigned(FCurrentVerseWorkspace) then
     FCurrentVerseWorkspace.Clear;
   for TextType := Low(FAVersiculo) to High(FAVersiculo) do
@@ -4026,6 +4099,49 @@ end;
 
 procedure TProject.RefreshUI;
 begin
+  if FAssociationMemorySpeculativeEditPending then
+    BeforeVerseScroll(nil);
+  AfterVerseScroll(FTblPares);
+end;
+
+procedure TProject.RollbackCurrentVerse;
+var
+  DestinationVerse: TVerse;
+  SourceVerse: TVerse;
+begin
+  if FAssociationMemorySpeculativeEditPending and
+    Assigned(FPersistence) then
+  begin
+    SourceVerse := FAVersiculo[tbOrigem];
+    DestinationVerse := FAVersiculo[tbDestino];
+    if Assigned(SourceVerse) and Assigned(DestinationVerse) and
+      not FAssociationMemoryLiveEditPending then
+      try
+        // Keep the live semantic baseline until the inverse cache delta has
+        // been recorded; the reload below will replace that baseline.
+        SourceVerse.ChangeText(FPersistence.CurrentText(
+          FACamposTexto[tbOrigem]));
+        DestinationVerse.ChangeText(FPersistence.CurrentText(
+          FACamposTexto[tbDestino]));
+        SourceVerse.Pairs := FPersistence.CurrentPairs;
+        SaveAssociations;
+      except
+        on E: Exception do
+        begin
+          if Assigned(FAssociationMemory) then
+          begin
+            FAssociationMemory.MarkCacheOutdated;
+            FAssociationMemory.InvalidateReplay;
+          end;
+          FAssociationMemoryRebuildFailed := True;
+          FAssociationMemoryLiveEditPending := True;
+          DebugLn('Association-memory current Verse rollback failed: ' +
+            E.Message);
+        end;
+      end;
+  end;
+  FAssociationMemorySpeculativeEditPending := False;
+  FAssociationMemoryLiveEditPending := False;
   AfterVerseScroll(FTblPares);
 end;
 
@@ -4076,8 +4192,19 @@ end;
 
 procedure TProject.SuggestAssociationStatistical;
 begin
+  if not Assigned(FAssociationMemory) then
+    Exit;
   EnsureAssociationMemoryFresh;
+  if FAssociationMemoryLiveEditPending or
+     FAssociationMemoryRebuildRunning or
+     FAssociationMemory.RebuildActive or
+     FAssociationMemory.NeedsRebuild or
+     not FAssociationMemory.CacheValidated then
+    Exit;
+
   FSuggestionManager.SuggestAssociations(FAVersiculo[tbOrigem]);
+  if ReconcileChangedVerseAssociations then
+    NotifyNewVerseObserversAfterEdit;
   FAVersiculo[tbOrigem].Render;
   FAVersiculo[tbDestino].Render;
 
@@ -4116,7 +4243,9 @@ var
   v: TVerse;
   ErrorMessage: string;
   WaitFormStarted: Boolean;
+  AssociationChanged: Boolean;
 begin
+  AssociationChanged := False;
   FLastLLMUsage.PromptTokens := 0;
   FLastLLMUsage.CompletionTokens := 0;
   FLastLLMUsage.TotalTokens := 0;
@@ -4161,8 +4290,46 @@ begin
       try
         AIDebugLog(SAISingleApplyingResult);
         flow.ApplyResult(parsed, v);
-        SaveAssociations;
-        SaveVersePairs(v);
+        AssociationChanged :=
+          FCurrentVerseWorkspace.HasAssociationChanges(v);
+        if AssociationChanged then
+          FAssociationMemorySpeculativeEditPending := True;
+        try
+          // Persist the canonical association before advancing the derived
+          // memory baseline. A failed write must leave the old cache blocked.
+          SaveVersePairs(v);
+        except
+          on SaveError: Exception do
+          begin
+            try
+              if Assigned(FPersistence) then
+                FPersistence.CancelCurrentEdit;
+            except
+              on CancelError: Exception do
+              begin
+                if Assigned(FAssociationMemory) then
+                begin
+                  FAssociationMemory.MarkCacheOutdated;
+                  FAssociationMemory.InvalidateReplay;
+                end;
+                FAssociationMemoryRebuildFailed := True;
+                DebugLn('Association persistence cancel failed after "' +
+                  SaveError.Message + '": ' + CancelError.Message);
+              end;
+            end;
+            if AssociationChanged then
+            begin
+              FAssociationMemoryLiveEditPending := True;
+              NotifyNewVerseObserversAfterEdit;
+            end;
+            raise;
+          end;
+        end;
+        if AssociationChanged then
+        begin
+          ReconcileEditedVerseAssociationMemory;
+          NotifyNewVerseObserversAfterEdit;
+        end;
         AIDebugLog(SAISingleResultApplied);
       finally
         parsed.Free;
@@ -4486,6 +4653,11 @@ begin
     end;
   finally
     FAssociationMemoryRebuildFailed := not RebuildSucceeded;
+    if RebuildSucceeded then
+    begin
+      FAssociationMemoryLiveEditPending := False;
+      FAssociationMemorySpeculativeEditPending := False;
+    end;
     if Assigned(FSuggestionManager) then
       FSuggestionManager.OnRebuildProgress := nil;
     FAssociationMemoryProgressBar := nil;

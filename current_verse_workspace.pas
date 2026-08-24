@@ -70,6 +70,7 @@ type
       const TextFieldIndexes: array of Integer;
       SourceVerseIndex: Integer): Boolean;
     procedure RemoveOldAssociations(Suggester: TSuggestionManager; SourceVerse, DestinationVerse: TVerse);
+    function HasAssociationChanges(SourceVerse: TVerse): Boolean;
     function SaveAssociations(Suggester: TSuggestionManager;
       SourceVerse, DestinationVerse: TVerse;
       MemoryService: TAssociationMemoryService = nil;
@@ -423,6 +424,19 @@ begin
   FOldPairs.Clear;
 end;
 
+function TCurrentVerseWorkspace.HasAssociationChanges(
+  SourceVerse: TVerse): Boolean;
+var
+  CurrentAssociations: string;
+begin
+  Result := False;
+  if not Assigned(SourceVerse) or not Assigned(SourceVerse.Syntagms) then
+    Exit;
+
+  CurrentAssociations := SourceVerse.Pairs;
+  Result := AssociationsChanged(SourceVerse, CurrentAssociations);
+end;
+
 function TCurrentVerseWorkspace.SaveAssociations(
   Suggester: TSuggestionManager; SourceVerse, DestinationVerse: TVerse;
   MemoryService: TAssociationMemoryService; const ReferenceID: string): Boolean;
@@ -587,6 +601,7 @@ var
   DestinationVerse: TVerse;
   AssociationWasChanged: Boolean;
   SourceTextChanged: Boolean;
+  AssociationPersistenceChanged: Boolean;
   DestinationTextChanged: Boolean;
   CurrentAssociations: string;
   ReferenceID: string;
@@ -618,13 +633,13 @@ begin
   ReferenceID := '';
   if Assigned(Persistence) then
     ReferenceID := Persistence.CurrentPairId;
-  if AssociationWasChanged then
+  if AssociationWasChanged or SourceTextChanged or DestinationTextChanged then
     SaveAssociationsValue(Suggester, SourceVerse, DestinationVerse,
       MemoryService, ReferenceID, CurrentAssociations);
-  Result := AssociationWasChanged or SourceTextChanged or
-    DestinationTextChanged;
-  if AssociationWasChanged or SourceTextChanged or DestinationTextChanged then
-    SavePairsValue(Persistence, CurrentAssociations);
+  AssociationPersistenceChanged := SavePairsValue(Persistence,
+    CurrentAssociations);
+  Result := AssociationWasChanged or AssociationPersistenceChanged or
+    SourceTextChanged or DestinationTextChanged;
 
   SaveTexts(Persistence, VerseViews, TextFieldIndexes);
   SaveComments(Persistence, CommentsControl);

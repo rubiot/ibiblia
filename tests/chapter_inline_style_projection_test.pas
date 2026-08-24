@@ -60,6 +60,7 @@ type
     procedure ChapterPreservesFIAndSemanticPrecedence;
     procedure ChapterPreservesTitleNoteAndInterlinearBases;
     procedure TranslationMemoryOccurrenceHighlightsExactRanges;
+    procedure TranslationMemorySnapshotControlsOccurrenceReset;
   end;
 
 implementation
@@ -454,6 +455,58 @@ begin
   finally
     Chapter.Free;
   end;
+end;
+
+procedure TChapterInlineStyleProjectionTest.
+  TranslationMemorySnapshotControlsOccurrenceReset;
+var
+  Current: TTranslationMemoryInputSnapshot;
+  Previous: TTranslationMemoryInputSnapshot;
+
+  procedure AssertInputChangeResets(const AMessage: string;
+    const AChanged: TTranslationMemoryInputSnapshot);
+  begin
+    AssertFalse(AMessage + ' must invalidate the snapshot',
+      TranslationMemoryInputSnapshotsEqual(Previous, AChanged));
+    AssertTrue(AMessage + ' must close occurrence details',
+      ShouldResetTranslationMemoryOccurrences(True, Previous, AChanged));
+    AssertFalse(AMessage + ' must keep the main list mode',
+      ShouldResetTranslationMemoryOccurrences(False, Previous, AChanged));
+  end;
+
+begin
+  Previous := Default(TTranslationMemoryInputSnapshot);
+  Previous.Initialized := True;
+  Previous.ReferenceID := '40,14,16';
+  Previous.SourceXML := 'chreia<WG5532>';
+  Previous.DestinationXML := 'é mister';
+  Previous.Associations := '0=0';
+
+  Current := Previous;
+  AssertTrue('unchanged inputs must keep the same snapshot',
+    TranslationMemoryInputSnapshotsEqual(Previous, Current));
+  AssertFalse('status-only refresh must preserve occurrence details',
+    ShouldResetTranslationMemoryOccurrences(True, Previous, Current));
+
+  Current := Previous;
+  Current.ReferenceID := '40,14,17';
+  AssertInputChangeResets('reference change', Current);
+
+  Current := Previous;
+  Current.SourceXML := 'necessidade<WG5532>';
+  AssertInputChangeResets('source text change', Current);
+
+  Current := Previous;
+  Current.DestinationXML := 'é necessário';
+  AssertInputChangeResets('destination text change', Current);
+
+  Current := Previous;
+  Current.Associations := '0=1';
+  AssertInputChangeResets('association change', Current);
+
+  Current := Previous;
+  Current.Initialized := False;
+  AssertInputChangeResets('snapshot reset', Current);
 end;
 
 initialization

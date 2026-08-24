@@ -31,7 +31,10 @@ type
   published
     procedure CommitRollbackReopenAndFailedRebuildRemainConsistent;
     procedure MatchingLegacyRevisionsWithoutCacheVersionRequireRebuild;
+    procedure MatchingV3RevisionsRequireRebuildAndV4IsAccepted;
     procedure IncrementalReplayValidatesOnlyAffectedPairs;
+    procedure StableTopologyTextReplacementSurvivesCommitAndReopen;
+    procedure RevertedStableTopologyEditSurvivesCacheReplayAndReopen;
     procedure WorkspaceIndexShiftKeepsPersistenceAndMemoryInvariant;
     procedure NonCanonicalAssociationOrderIsAccepted;
     procedure ExtractedPairDataPreservesExactDestinationIndexes;
@@ -308,6 +311,287 @@ begin
 end;
 
 procedure TAssociationMemoryServiceTest.
+  StableTopologyTextReplacementSurvivesCommitAndReopen;
+var
+  Associations: string;
+  DestinationTextFieldIndex: Integer;
+  DestinationVerse: TVerse;
+  NewSourcePhrase: string;
+  NewTargetPhrase: string;
+  OldSourcePhrase: string;
+  OldTargetPhrase: string;
+  PairList: TStringList;
+  SourceVerse: TVerse;
+  Workspace: TCurrentVerseWorkspace;
+begin
+  AssertTrue(FPersistence.LocateReference('1,1,1'));
+  DestinationTextFieldIndex := FPersistence.PairsTable.FieldByName(
+    'pare_texto_destino').Index;
+
+  // Publish a version-4 baseline whose canonical target is the old wording.
+  FPersistence.SetCurrentText(DestinationTextFieldIndex, 'mister');
+  FPersistence.PostCurrentEdit;
+  FService.MarkSourceDirty;
+  FPersistence.CommitInfo;
+  FPersistence.CommitPairs;
+  FService.MarkSourceRevisionPersisted;
+  FService.BeginRebuild;
+  FService.AddVerse('1,1,1', 'Gen 1:1', 'source<WG1>', 'mister',
+    '<par a="0" b="0">');
+  FService.FinishRebuild;
+  FManager.Commit;
+  AssertTrue(FService.StageBuiltRevision);
+  FPersistence.CommitInfo;
+  FService.CommitCompleted;
+  AssertEquals(ASSOCIATION_MEMORY_CACHE_VERSION,
+    FConfig.ReadString(ASSOCIATION_MEMORY_CACHE_VERSION_KEY, ''));
+
+  Workspace := TCurrentVerseWorkspace.Create;
+  SourceVerse := TVerse.Create;
+  DestinationVerse := TVerse.Create;
+  try
+    SourceVerse.PairedVerse := DestinationVerse;
+    DestinationVerse.PairedVerse := SourceVerse;
+    SourceVerse.Text := 'source<WG1>';
+    DestinationVerse.Text := 'mister';
+    Associations := FPersistence.CurrentPairs;
+    Workspace.ApplyLoadedAssociations(SourceVerse, Associations);
+
+    PairList := SourceVerse.GetPairsList(plMetaData);
+    try
+      AssertEquals(2, PairList.Count);
+      OldSourcePhrase := PairList[0];
+      OldTargetPhrase := PairList[1];
+    finally
+      PairList.Free;
+    end;
+    AssertEquals(1, FManager.GetPairOccurrenceCount(OldSourcePhrase,
+      OldTargetPhrase));
+
+    DestinationVerse.Text := 'necessario';
+    SourceVerse.Pairs := Associations;
+    AssertEquals('A lexical replacement must preserve association topology',
+      Associations, SourceVerse.Pairs);
+    PairList := SourceVerse.GetPairsList(plMetaData);
+    try
+      AssertEquals(2, PairList.Count);
+      NewSourcePhrase := PairList[0];
+      NewTargetPhrase := PairList[1];
+    finally
+      PairList.Free;
+    end;
+    AssertEquals(OldSourcePhrase, NewSourcePhrase);
+    AssertTrue('The live target phrase must replace the old wording',
+      OldTargetPhrase <> NewTargetPhrase);
+
+    AssertTrue('Live verses must reconcile the semantic pair immediately',
+      Workspace.SaveAssociations(FManager, SourceVerse, DestinationVerse,
+        FService, '1,1,1'));
+    AssertEquals('The speculative cache must remove the old target', 0,
+      FManager.GetPairOccurrenceCount(OldSourcePhrase, OldTargetPhrase));
+    AssertEquals('The speculative cache must expose the live target', 1,
+      FManager.GetPairOccurrenceCount(NewSourcePhrase, NewTargetPhrase));
+    AssertEquals('Canonical text must still be unchanged before persistence',
+      'mister', FPersistence.CurrentText(DestinationTextFieldIndex));
+    AssertTrue(FService.CanReplayPendingCache);
+
+    // Stage the canonical edit, then mirror TProject.Commit: discard the
+    // speculative cache transaction, publish canonical rows and revision,
+    // replay the recorded delta, and finally publish the built revision.
+    FPersistence.SetCurrentText(DestinationTextFieldIndex,
+      DestinationVerse.XML);
+    FPersistence.WriteCurrentPairs(SourceVerse.Pairs);
+    FManager.Rollback;
+    FService.MarkCacheOutdated;
+    FPersistence.CommitInfo;
+    FPersistence.CommitPairs;
+    FService.MarkSourceRevisionPersisted;
+    AssertTrue(FService.CanReplayPendingCache);
+    FService.ReplayPendingCache;
+    FManager.Commit;
+    AssertTrue(FService.StageBuiltRevision);
+    FPersistence.CommitInfo;
+    FService.CommitCompleted;
+
+    AssertEquals('necessario',
+      FPersistence.CurrentText(DestinationTextFieldIndex));
+    AssertEquals(0, FManager.GetPairOccurrenceCount(OldSourcePhrase,
+      OldTargetPhrase));
+    AssertEquals(1, FManager.GetPairOccurrenceCount(NewSourcePhrase,
+      NewTargetPhrase));
+    AssertFalse(FService.NeedsRebuild);
+
+    CloseServices;
+    OpenServices;
+    AssertTrue(FPersistence.LocateReference('1,1,1'));
+    DestinationTextFieldIndex := FPersistence.PairsTable.FieldByName(
+      'pare_texto_destino').Index;
+    AssertEquals('The committed text must survive reopening', 'necessario',
+      FPersistence.CurrentText(DestinationTextFieldIndex));
+    AssertEquals('The obsolete pair must stay absent after reopening', 0,
+      FManager.GetPairOccurrenceCount(OldSourcePhrase, OldTargetPhrase));
+    AssertEquals('The replacement pair must survive reopening', 1,
+      FManager.GetPairOccurrenceCount(NewSourcePhrase, NewTargetPhrase));
+    AssertFalse('Published version-4 revisions must remain current',
+      FService.NeedsRebuild);
+  finally
+    DestinationVerse.Free;
+    SourceVerse.Free;
+    Workspace.Free;
+  end;
+end;
+
+procedure TAssociationMemoryServiceTest.
+  RevertedStableTopologyEditSurvivesCacheReplayAndReopen;
+var
+  Associations: string;
+  DestinationTextFieldIndex: Integer;
+  DestinationVerse: TVerse;
+  NewSourcePhrase: string;
+  NewTargetPhrase: string;
+  OldSourcePhrase: string;
+  OldTargetPhrase: string;
+  RestoredSourcePhrase: string;
+  RestoredTargetPhrase: string;
+  SourceVerse: TVerse;
+  Workspace: TCurrentVerseWorkspace;
+
+  procedure ReadSemanticPair(out SourcePhrase, TargetPhrase: string);
+  var
+    PairList: TStringList;
+  begin
+    PairList := SourceVerse.GetPairsList(plMetaData);
+    try
+      AssertEquals('The Verse Pair must contain one semantic association', 2,
+        PairList.Count);
+      SourcePhrase := PairList[0];
+      TargetPhrase := PairList[1];
+    finally
+      PairList.Free;
+    end;
+  end;
+
+begin
+  Associations := '<par a="0" b="0,2">';
+  AssertTrue(FPersistence.LocateReference('1,1,1'));
+  DestinationTextFieldIndex := FPersistence.PairsTable.FieldByName(
+    'pare_texto_destino').Index;
+
+  // Publish the real UTF-8 wording as the version-4 canonical baseline.
+  FPersistence.SetCurrentText(DestinationTextFieldIndex, 'é mister');
+  FPersistence.WriteCurrentPairs(Associations);
+  FService.MarkSourceDirty;
+  FPersistence.CommitInfo;
+  FPersistence.CommitPairs;
+  FService.MarkSourceRevisionPersisted;
+  FService.BeginRebuild;
+  FService.AddVerse('1,1,1', 'Gen 1:1', 'source<WG1>', 'é mister',
+    Associations);
+  FService.FinishRebuild;
+  FManager.Commit;
+  AssertTrue(FService.StageBuiltRevision);
+  FPersistence.CommitInfo;
+  FService.CommitCompleted;
+
+  Workspace := TCurrentVerseWorkspace.Create;
+  SourceVerse := TVerse.Create;
+  DestinationVerse := TVerse.Create;
+  try
+    SourceVerse.PairedVerse := DestinationVerse;
+    DestinationVerse.PairedVerse := SourceVerse;
+    SourceVerse.Text := 'source<WG1>';
+    DestinationVerse.Text := 'é mister';
+    Workspace.ApplyLoadedAssociations(SourceVerse, Associations);
+    ReadSemanticPair(OldSourcePhrase, OldTargetPhrase);
+    AssertEquals('é;mister', OldTargetPhrase);
+    AssertEquals(1, FManager.GetPairOccurrenceCount(OldSourcePhrase,
+      OldTargetPhrase));
+
+    DestinationVerse.Text := 'é necessário';
+    SourceVerse.Pairs := Associations;
+    AssertEquals('The replacement must keep the serialized indexes',
+      Associations, SourceVerse.Pairs);
+    ReadSemanticPair(NewSourcePhrase, NewTargetPhrase);
+    AssertEquals(OldSourcePhrase, NewSourcePhrase);
+    AssertEquals('é;necessário', NewTargetPhrase);
+
+    AssertTrue('The replacement must update the speculative cache',
+      Workspace.SaveAssociations(FManager, SourceVerse, DestinationVerse,
+        FService, '1,1,1'));
+    AssertEquals(0, FManager.GetPairOccurrenceCount(OldSourcePhrase,
+      OldTargetPhrase));
+    AssertEquals(1, FManager.GetPairOccurrenceCount(NewSourcePhrase,
+      NewTargetPhrase));
+
+    // Restore the live canonical Verse Pair without replacing Workspace's
+    // semantic baseline, so the second save must generate inverse deltas.
+    SourceVerse.Text := 'source<WG1>';
+    DestinationVerse.Text := 'é mister';
+    SourceVerse.Pairs := Associations;
+    AssertEquals('Restoring text must preserve association serialization',
+      Associations, SourceVerse.Pairs);
+    ReadSemanticPair(RestoredSourcePhrase, RestoredTargetPhrase);
+    AssertEquals(OldSourcePhrase, RestoredSourcePhrase);
+    AssertEquals(OldTargetPhrase, RestoredTargetPhrase);
+
+    AssertTrue('Saving the restored verses must reverse the speculative pair',
+      Workspace.SaveAssociations(FManager, SourceVerse, DestinationVerse,
+        FService, '1,1,1'));
+    AssertEquals('The canonical UTF-8 pair must be restored immediately', 1,
+      FManager.GetPairOccurrenceCount(OldSourcePhrase, OldTargetPhrase));
+    AssertEquals('The reverted replacement must disappear immediately', 0,
+      FManager.GetPairOccurrenceCount(NewSourcePhrase, NewTargetPhrase));
+    AssertEquals(Associations, SourceVerse.Pairs);
+    AssertEquals('é mister',
+      FPersistence.CurrentText(DestinationTextFieldIndex));
+    AssertEquals(Associations, FPersistence.CurrentPairs);
+    AssertTrue(FService.CanReplayPendingCache);
+
+    // Mirror Commit: roll back all speculative cache writes, replay the net
+    // delta over the canonical baseline, publish, and then reopen.
+    FManager.Rollback;
+    FService.MarkCacheOutdated;
+    AssertFalse(FService.CacheValidated);
+    FPersistence.CommitInfo;
+    FPersistence.CommitPairs;
+    FService.MarkSourceRevisionPersisted;
+    AssertTrue(FService.CanReplayPendingCache);
+    FService.ReplayPendingCache;
+    AssertTrue('Only the replayed final state may receive a certificate',
+      FService.CacheValidated);
+    FManager.Commit;
+    AssertTrue(FService.StageBuiltRevision);
+    FPersistence.CommitInfo;
+    FService.CommitCompleted;
+
+    AssertEquals(1, FManager.GetPairOccurrenceCount(OldSourcePhrase,
+      OldTargetPhrase));
+    AssertEquals(0, FManager.GetPairOccurrenceCount(NewSourcePhrase,
+      NewTargetPhrase));
+    AssertFalse(FService.NeedsRebuild);
+
+    CloseServices;
+    OpenServices;
+    AssertTrue(FPersistence.LocateReference('1,1,1'));
+    DestinationTextFieldIndex := FPersistence.PairsTable.FieldByName(
+      'pare_texto_destino').Index;
+    AssertEquals('é mister',
+      FPersistence.CurrentText(DestinationTextFieldIndex));
+    AssertEquals(Associations, FPersistence.CurrentPairs);
+    AssertEquals('The canonical pair must survive service reopening', 1,
+      FManager.GetPairOccurrenceCount(OldSourcePhrase, OldTargetPhrase));
+    AssertEquals('The reverted pair must not be certified after reopening', 0,
+      FManager.GetPairOccurrenceCount(NewSourcePhrase, NewTargetPhrase));
+    AssertFalse(FService.NeedsRebuild);
+    AssertTrue(FService.CacheValidated);
+  finally
+    DestinationVerse.Free;
+    SourceVerse.Free;
+    Workspace.Free;
+  end;
+end;
+
+procedure TAssociationMemoryServiceTest.
   MatchingLegacyRevisionsWithoutCacheVersionRequireRebuild;
 begin
   FConfig.WriteString(ASSOCIATION_MEMORY_SOURCE_REVISION_KEY, '7');
@@ -321,6 +605,37 @@ begin
   AssertTrue('A cache written before the baseline fix must be rebuilt once',
     FService.NeedsRebuild);
   AssertFalse(FService.CacheValidated);
+end;
+
+procedure TAssociationMemoryServiceTest.
+  MatchingV3RevisionsRequireRebuildAndV4IsAccepted;
+begin
+  AssertEquals('The current cache contract must be version 4', '4',
+    ASSOCIATION_MEMORY_CACHE_VERSION);
+  FConfig.WriteString(ASSOCIATION_MEMORY_SOURCE_REVISION_KEY, '7');
+  FConfig.WriteString(ASSOCIATION_MEMORY_BUILT_REVISION_KEY, '7');
+  FConfig.WriteString(ASSOCIATION_MEMORY_CACHE_VERSION_KEY, '3');
+  FPersistence.CommitInfo;
+
+  FService.ReloadRevisionState;
+  AssertTrue('The durable source and built revisions should match',
+    FService.RevisionsMatch);
+  AssertTrue('A version 3 cache must be rebuilt once for version 4',
+    FService.NeedsRebuild);
+  AssertFalse('An obsolete cache version cannot retain its certificate',
+    FService.CacheValidated);
+
+  FConfig.WriteString(ASSOCIATION_MEMORY_CACHE_VERSION_KEY,
+    ASSOCIATION_MEMORY_CACHE_VERSION);
+  FPersistence.CommitInfo;
+
+  FService.ReloadRevisionState;
+  AssertTrue('The durable source and built revisions should still match',
+    FService.RevisionsMatch);
+  AssertFalse('A version 4 cache with matching revisions is current',
+    FService.NeedsRebuild);
+  AssertTrue('A version 4 cache with matching revisions is certified',
+    FService.CacheValidated);
 end;
 
 procedure TAssociationMemoryServiceTest.

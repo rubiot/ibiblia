@@ -11,7 +11,7 @@ const
   ASSOCIATION_MEMORY_SOURCE_REVISION_KEY = 'association.memory.source_revision';
   ASSOCIATION_MEMORY_BUILT_REVISION_KEY = 'association.memory.built_revision';
   ASSOCIATION_MEMORY_CACHE_VERSION_KEY = 'association.memory.cache_version';
-  ASSOCIATION_MEMORY_CACHE_VERSION = '3';
+  ASSOCIATION_MEMORY_CACHE_VERSION = '4';
 
 type
   { TAssociationMemoryService }

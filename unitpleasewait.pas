@@ -57,14 +57,40 @@ class procedure TFormPleaseWait.PumpProgressPaintMessages(
 var
   Message: TMsg;
   NativeHandle: HWND;
+  ProcessedMessageCount: Integer;
+const
+  MAX_MESSAGES_PER_PUMP = 64;
 begin
-  Message := Default(TMsg);
   if not Assigned(AControl) or not AControl.HandleAllocated then
     Exit;
 
   NativeHandle := HWND(AControl.Handle);
-  Windows.PeekMessage(Message, NativeHandle, WM_PAINT, WM_PAINT,
-    PM_NOREMOVE or PM_NOYIELD or (QS_PAINT shl 16));
+  Windows.RedrawWindow(NativeHandle, nil, 0,
+    RDW_INVALIDATE or RDW_ALLCHILDREN or RDW_FRAME);
+
+  // Dispatch only messages addressed to the progress control (and its
+  // children). Application.ProcessMessages would also run queued navigation
+  // and other project actions while the current operation is incomplete.
+  Message := Default(TMsg);
+  ProcessedMessageCount := 0;
+  while (ProcessedMessageCount < MAX_MESSAGES_PER_PUMP) and
+    Windows.PeekMessage(Message, NativeHandle, 0, 0, PM_REMOVE) do
+  begin
+    Inc(ProcessedMessageCount);
+    if Message.message = WM_QUIT then
+    begin
+      Windows.PostQuitMessage(Message.wParam);
+      Break;
+    end;
+    if (Message.message = WM_CLOSE) or
+      ((Message.message = WM_SYSCOMMAND) and
+       ((Message.wParam and $FFF0) = SC_CLOSE)) then
+      Continue;
+
+    Windows.TranslateMessage(Message);
+    Windows.DispatchMessage(Message);
+  end;
+
   Windows.RedrawWindow(NativeHandle, nil, 0,
     RDW_INVALIDATE or RDW_UPDATENOW or RDW_ALLCHILDREN or RDW_FRAME);
 end;

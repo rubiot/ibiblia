@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, fpcunit, testregistry, sqlite3conn, sqldb,
   SuggestionManager, current_verse_workspace, verse_render_buffer, Verse,
-  Syntagm, translation_memory_model;
+  Syntagm, translation_memory_model, project_persistence;
 
 type
   TSuggestionManagerTest = class(TTestCase)
@@ -43,6 +43,8 @@ type
     procedure WorkspaceSkipsUninitializedVersePair;
     procedure WorkspaceReconcilesDuplicatePairsAsMultiset;
     procedure WorkspaceReconcilesSourceAndDestinationTextChanges;
+    procedure WorkspaceSaveBeforeScrollReconcilesTextOnlySemanticChanges;
+    procedure WorkspaceSpeculativeReconcileUsesLiveText;
     procedure WorkspaceInvalidLoadIsAtomicAndRecoverable;
     procedure TranslationPopupUsesOccurrenceSum;
     procedure StructuredTranslationAlternativesPreserveCountsAndOrder;
@@ -558,6 +560,261 @@ begin
     Workspace.Free;
     SourceVerse.Free;
     DestinationVerse.Free;
+  end;
+end;
+
+procedure TSuggestionManagerTest.
+  WorkspaceSaveBeforeScrollReconcilesTextOnlySemanticChanges;
+var
+  Workspace: TCurrentVerseWorkspace;
+  SourceVerse: TVerse;
+  DestinationVerse: TVerse;
+  Persistence: TProjectPersistence;
+  PersistenceFileName: string;
+  VerseViews: array[0..1] of TVerse;
+  TextFieldIndexes: array[0..1] of Integer;
+  OriginalAssociations: string;
+  ChangedAssociations: string;
+  OldSourceKey: string;
+  OldTargetKey: string;
+  CurrentSourceKey: string;
+  CurrentTargetKey: string;
+
+  procedure ReadSemanticPair(out SourceKey, TargetKey: string);
+  var
+    PairList: TStringList;
+  begin
+    PairList := SourceVerse.GetPairsList(plMetaData);
+    try
+      AssertEquals('The Verse Pair must expose one semantic pair', 2,
+        PairList.Count);
+      SourceKey := PairList[0];
+      TargetKey := PairList[1];
+    finally
+      PairList.Free;
+    end;
+  end;
+
+  procedure CreatePersistenceDatabase;
+  var
+    Connection: TSQLite3Connection;
+    Transaction: TSQLTransaction;
+  begin
+    Connection := TSQLite3Connection.Create(nil);
+    Transaction := TSQLTransaction.Create(nil);
+    try
+      Connection.Transaction := Transaction;
+      Connection.DatabaseName := PersistenceFileName;
+      Connection.Open;
+      Transaction.StartTransaction;
+      Connection.ExecuteDirect(
+        'create table info (id text primary key, valor text)');
+      Connection.ExecuteDirect('create table pares (' +
+        'pare_id text primary key, pare_ref text, pare_texto_origem text, ' +
+        'pare_texto_destino text, pare_texto_consulta1 text, ' +
+        'pare_texto_consulta2 text, pare_pares text, pare_situacao number, ' +
+        'pare_comentarios text)');
+      Connection.ExecuteDirect('insert into pares values (' +
+        '''1,1,1'', ''Gen 1:1'', ''source<WG1>'', ' +
+        '''e mister extra'', '''', '''', ''' +
+        OriginalAssociations + ''', 0, '''')');
+      Transaction.Commit;
+    finally
+      Transaction.Free;
+      Connection.Free;
+    end;
+  end;
+
+begin
+  Workspace := TCurrentVerseWorkspace.Create;
+  SourceVerse := TVerse.Create;
+  DestinationVerse := TVerse.Create;
+  Persistence := nil;
+  PersistenceFileName := GetTempFileName(GetTempDir, 'smp');
+  try
+    SourceVerse.PairedVerse := DestinationVerse;
+    DestinationVerse.PairedVerse := SourceVerse;
+    SourceVerse.Text := 'source<WG1>';
+    DestinationVerse.Text := 'e mister extra';
+    SourceVerse.Syntagms[0].AddToSelection;
+    DestinationVerse.Syntagms[0].AddToSelection;
+    DestinationVerse.Syntagms[2].AddToSelection;
+    SourceVerse.AssociateSyntagms;
+    OriginalAssociations := SourceVerse.Pairs;
+    ReadSemanticPair(OldSourceKey, OldTargetKey);
+
+    AssertTrue(Workspace.SaveAssociations(FManager, SourceVerse,
+      DestinationVerse));
+    AssertEquals(1, FManager.GetPairOccurrenceCount(OldSourceKey,
+      OldTargetKey));
+
+    CreatePersistenceDatabase;
+    Persistence := TProjectPersistence.Create;
+    Persistence.Open(PersistenceFileName);
+    VerseViews[0] := SourceVerse;
+    VerseViews[1] := DestinationVerse;
+    TextFieldIndexes[0] := Persistence.PairsTable.FieldByName(
+      'pare_texto_origem').Index;
+    TextFieldIndexes[1] := Persistence.PairsTable.FieldByName(
+      'pare_texto_destino').Index;
+    SourceVerse.Modified := False;
+    SourceVerse.XMLModified := False;
+    DestinationVerse.Modified := False;
+    DestinationVerse.XMLModified := False;
+
+    DestinationVerse.Text := 'e necessario extra';
+    SourceVerse.Pairs := OriginalAssociations;
+    AssertEquals('A lexical replacement with stable topology keeps indexes',
+      OriginalAssociations, SourceVerse.Pairs);
+    ReadSemanticPair(CurrentSourceKey, CurrentTargetKey);
+    AssertEquals(OldSourceKey, CurrentSourceKey);
+    AssertTrue('The target semantic phrase must reflect the live text',
+      OldTargetKey <> CurrentTargetKey);
+
+    AssertTrue('A destination-only XML edit must trigger autosave reconciliation',
+      Workspace.SaveBeforeScroll(Persistence, FManager, nil, nil, VerseViews,
+        TextFieldIndexes, 0, 1));
+    AssertEquals('The stale destination phrase must be removed', 0,
+      FManager.GetPairOccurrenceCount(OldSourceKey, OldTargetKey));
+    AssertEquals('The live destination phrase must replace it', 1,
+      FManager.GetPairOccurrenceCount(CurrentSourceKey, CurrentTargetKey));
+    AssertEquals(DestinationVerse.XML,
+      Persistence.CurrentText(TextFieldIndexes[1]));
+    AssertEquals(OriginalAssociations, Persistence.CurrentPairs);
+
+    OldSourceKey := CurrentSourceKey;
+    OldTargetKey := CurrentTargetKey;
+    SourceVerse.ChangeText('source<WG2>');
+    AssertEquals('A metadata-only source edit keeps association indexes',
+      OriginalAssociations, SourceVerse.Pairs);
+    ReadSemanticPair(CurrentSourceKey, CurrentTargetKey);
+    AssertTrue('The source semantic phrase must reflect the live metadata',
+      OldSourceKey <> CurrentSourceKey);
+    AssertEquals(OldTargetKey, CurrentTargetKey);
+
+    AssertTrue('A source-only XML edit must trigger autosave reconciliation',
+      Workspace.SaveBeforeScroll(Persistence, FManager, nil, nil, VerseViews,
+        TextFieldIndexes, 0, 1));
+    AssertEquals('The stale source phrase must be removed', 0,
+      FManager.GetPairOccurrenceCount(OldSourceKey, OldTargetKey));
+    AssertEquals('The live source phrase must replace it', 1,
+      FManager.GetPairOccurrenceCount(CurrentSourceKey, CurrentTargetKey));
+
+    OldSourceKey := CurrentSourceKey;
+    OldTargetKey := CurrentTargetKey;
+    DestinationVerse.ChangeText('e necessario outside');
+    AssertEquals('Editing an unassociated word keeps association indexes',
+      OriginalAssociations, SourceVerse.Pairs);
+    ReadSemanticPair(CurrentSourceKey, CurrentTargetKey);
+    AssertEquals(OldSourceKey, CurrentSourceKey);
+    AssertEquals(OldTargetKey, CurrentTargetKey);
+
+    AssertTrue('An unassociated text edit still participates in autosave',
+      Workspace.SaveBeforeScroll(Persistence, FManager, nil, nil, VerseViews,
+        TextFieldIndexes, 0, 1));
+    AssertEquals('Unchanged semantic pairs must not be duplicated', 1,
+      FManager.GetPairOccurrenceCount(CurrentSourceKey, CurrentTargetKey));
+    AssertFalse('A repeated autosave must be idempotent',
+      Workspace.SaveBeforeScroll(Persistence, FManager, nil, nil, VerseViews,
+        TextFieldIndexes, 0, 1));
+    AssertEquals(1, FManager.GetPairOccurrenceCount(CurrentSourceKey,
+      CurrentTargetKey));
+
+    OldSourceKey := CurrentSourceKey;
+    OldTargetKey := CurrentTargetKey;
+    SourceVerse.ClearAssociations;
+    SourceVerse.Syntagms[0].AddToSelection;
+    DestinationVerse.Syntagms[2].AddToSelection;
+    SourceVerse.AssociateSyntagms;
+    ChangedAssociations := SourceVerse.Pairs;
+    AssertTrue('The live association must differ from persistence',
+      ChangedAssociations <> Persistence.CurrentPairs);
+    AssertTrue('The workspace must detect a real association edit',
+      Workspace.HasAssociationChanges(SourceVerse));
+    AssertTrue('The speculative click path must reconcile memory immediately',
+      Workspace.SaveAssociations(FManager, SourceVerse, DestinationVerse));
+    AssertFalse('Immediate reconciliation must advance only the memory baseline',
+      Workspace.HasAssociationChanges(SourceVerse));
+    ReadSemanticPair(CurrentSourceKey, CurrentTargetKey);
+    AssertEquals(OldSourceKey, CurrentSourceKey);
+    AssertTrue(OldTargetKey <> CurrentTargetKey);
+    AssertEquals(0, FManager.GetPairOccurrenceCount(OldSourceKey,
+      OldTargetKey));
+    AssertEquals(1, FManager.GetPairOccurrenceCount(CurrentSourceKey,
+      CurrentTargetKey));
+
+    AssertTrue('Autosave must persist an association whose memory baseline ' +
+      'was already reconciled', Workspace.SaveBeforeScroll(Persistence,
+        FManager, nil, nil, VerseViews, TextFieldIndexes, 0, 1));
+    AssertEquals(ChangedAssociations, Persistence.CurrentPairs);
+    AssertFalse('Persisting the reconciled association must be idempotent',
+      Workspace.SaveBeforeScroll(Persistence, FManager, nil, nil, VerseViews,
+        TextFieldIndexes, 0, 1));
+  finally
+    Persistence.Free;
+    if FileExists(PersistenceFileName) then
+      DeleteFile(PersistenceFileName);
+    DestinationVerse.Free;
+    SourceVerse.Free;
+    Workspace.Free;
+  end;
+end;
+
+procedure TSuggestionManagerTest.
+  WorkspaceSpeculativeReconcileUsesLiveText;
+var
+  Workspace: TCurrentVerseWorkspace;
+  SourceVerse: TVerse;
+  DestinationVerse: TVerse;
+  PairList: TStringList;
+  Associations: string;
+  SourceKey: string;
+  OldTargetKey: string;
+  NewTargetKey: string;
+begin
+  Workspace := TCurrentVerseWorkspace.Create;
+  SourceVerse := TVerse.Create;
+  DestinationVerse := TVerse.Create;
+  try
+    SourceVerse.PairedVerse := DestinationVerse;
+    DestinationVerse.PairedVerse := SourceVerse;
+    SourceVerse.Text := 'source<WG1>';
+    DestinationVerse.Text := 'mister';
+    SourceVerse.Syntagms[0].AddToSelection;
+    DestinationVerse.Syntagms[0].AddToSelection;
+    SourceVerse.AssociateSyntagms;
+    Associations := SourceVerse.Pairs;
+
+    PairList := SourceVerse.GetPairsList(plMetaData);
+    try
+      SourceKey := PairList[0];
+      OldTargetKey := PairList[1];
+    finally
+      PairList.Free;
+    end;
+    AssertTrue(Workspace.SaveAssociations(FManager, SourceVerse,
+      DestinationVerse));
+
+    DestinationVerse.Text := 'necessario';
+    SourceVerse.Pairs := Associations;
+    PairList := SourceVerse.GetPairsList(plMetaData);
+    try
+      AssertEquals(SourceKey, PairList[0]);
+      NewTargetKey := PairList[1];
+    finally
+      PairList.Free;
+    end;
+
+    AssertTrue('The speculative editor path must reconcile from live verses',
+      Workspace.SaveAssociations(FManager, SourceVerse, DestinationVerse));
+    AssertEquals(0, FManager.GetPairOccurrenceCount(SourceKey, OldTargetKey));
+    AssertEquals(1, FManager.GetPairOccurrenceCount(SourceKey, NewTargetKey));
+    AssertFalse('Repeating speculative reconciliation must be idempotent',
+      Workspace.SaveAssociations(FManager, SourceVerse, DestinationVerse));
+  finally
+    DestinationVerse.Free;
+    SourceVerse.Free;
+    Workspace.Free;
   end;
 end;
 

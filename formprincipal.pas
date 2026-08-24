@@ -2440,7 +2440,7 @@ begin
       mtConfirmation,
       [mrYes, SButtonYes, 'isdefault', mrCancel, SButtonCancel, 'iscancel'], 0) = mrYes then
   begin
-    CurrentProject.RefreshUI;
+    CurrentProject.RollbackCurrentVerse;
     UpdateStateHeader;
   end;
 end;

@@ -5,9 +5,13 @@ unit theword_module_import_test;
 interface
 
 uses
-  Classes, SysUtils, Forms, ComCtrls, fpcunit, testregistry, sqlite3conn,
+  Classes,
+  {$IFDEF MSWINDOWS}
+  Windows,
+  {$ENDIF}
+  SysUtils, Forms, ComCtrls, fpcunit, testregistry, sqlite3conn,
   sqldb, BibleScope, Project, project_database_bootstrap,
-  theword_module_encoding;
+  theword_module_encoding, UnitPleaseWait, LMessages;
 
 type
   TImportProgressSpy = class(TProgressBar)
@@ -73,6 +77,9 @@ type
     procedure ProjectExhaustionFailsWithCountsAndLeavesNoPartialText;
     procedure RejectedAssociatedReplacementFailsAndRollsBack;
     procedure ProgressUpdatesDoNotDispatchQueuedNavigation;
+    {$IFDEF MSWINDOWS}
+    procedure ProgressWindowPumpDispatchesOnlyTargetMessages;
+    {$ENDIF}
     procedure StagedBatchFailureRestoresCommittedPrefix;
     procedure ExistingDestinationStagedFailureRestoresOriginalText;
     procedure SequentialStagedSourceAndDestinationSurviveReopen;
@@ -82,6 +89,21 @@ implementation
 
 const
   UTF8_BOM: array[0..2] of Byte = ($EF, $BB, $BF);
+
+{$IFDEF MSWINDOWS}
+const
+  WM_PROGRESS_PUMP_PROBE = WM_APP + 731;
+
+type
+  TProgressPumpProbeForm = class(TForm)
+  private
+    FProbeMessageCount: Integer;
+  protected
+    procedure WndProc(var TheMessage: TLMessage); override;
+  public
+    property ProbeMessageCount: Integer read FProbeMessageCount;
+  end;
+{$ENDIF}
 
 procedure TImportProgressSpy.Update;
 begin
@@ -359,6 +381,46 @@ begin
   if Assigned(FAsyncProject) then
     FAsyncProject.LastVerse;
 end;
+
+{$IFDEF MSWINDOWS}
+procedure TProgressPumpProbeForm.WndProc(var TheMessage: TLMessage);
+begin
+  if TheMessage.Msg = WM_PROGRESS_PUMP_PROBE then
+  begin
+    Inc(FProbeMessageCount);
+    TheMessage.Result := 0;
+    Exit;
+  end;
+  inherited WndProc(TheMessage);
+end;
+
+procedure TTheWordModuleImportTests.
+  ProgressWindowPumpDispatchesOnlyTargetMessages;
+var
+  ProbeForm: TProgressPumpProbeForm;
+begin
+  ProbeForm := TProgressPumpProbeForm.CreateNew(nil);
+  try
+    FAsyncCallbackRan := False;
+    Application.QueueAsyncCall(@MoveProjectCursorAsync, 0);
+    AssertTrue('probe message must be queued for the progress window',
+      Windows.PostMessage(HWND(ProbeForm.Handle), WM_PROGRESS_PUMP_PROBE,
+        0, 0));
+
+    TFormPleaseWait.PumpProgressPaintMessages(ProbeForm);
+
+    AssertEquals(
+      'the progress window must dispatch messages addressed to itself', 1,
+      ProbeForm.ProbeMessageCount);
+    AssertFalse(
+      'the progress window pump must not dispatch application async calls',
+      FAsyncCallbackRan);
+  finally
+    Application.RemoveAsyncCalls(Self);
+    ProbeForm.Free;
+  end;
+end;
+{$ENDIF}
 
 procedure TTheWordModuleImportTests.SetUp;
 begin
