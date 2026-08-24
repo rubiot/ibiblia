@@ -42,3 +42,16 @@ pcre-6.7-lazarus/dftables
 
 # Editor swap files
 *.sw[nop]
+
+# Local Codex and development scratch artifacts
+/.codex-*.patch
+/.codex-*.ps1
+/.codex_*.patch
+/.codex-*-work/
+/.tmp_*
+/_root_*
+/association_chapter_stage/
+/note*_probe*.lpr
+/outputs/
+/tmp/
+/zz_*_probe.txt
