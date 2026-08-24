@@ -5,7 +5,8 @@ unit ai_translation_flow;
 interface
 
 uses
-  Classes, SysUtils, ai_flows, ai_association_flow, llmclient, Verse, ai_debug;
+  Classes, SysUtils, ai_flows, ai_association_flow, ai_added_words_markup,
+  llmclient, Verse, ai_debug;
 
 const
   TRANSLATION_PROMPT_HEADER =
@@ -39,6 +40,7 @@ const
   AI_TRANSLATION_CONFIG_KEY_TARGET_LANGUAGE = 'ai.flow.translation.target_language';
   AI_TRANSLATION_CONFIG_KEY_FORCE_OVERWRITE = 'ai.flow.translation.force_overwrite';
   AI_TRANSLATION_CONFIG_KEY_INCLUDE_ASSOCIATIONS = 'ai.flow.translation.include_associations';
+  AI_TRANSLATION_CONFIG_KEY_MARK_ADDED_WORDS = 'ai.flow.translation.mark_added_words';
   AI_TRANSLATION_CONFIG_KEY_MODEL = 'ai.flow.translation.model';
   AI_TRANSLATION_CONFIG_KEY_API_KEY = 'ai.flow.translation.api_key';
   AI_TRANSLATION_CONFIG_KEY_PROVIDER = 'ai.flow.translation.provider';
@@ -76,6 +78,7 @@ const
      FPrompt: string; // system prompt orientando tradução
      FForceOverwrite: Boolean;
      FIncludeAssociations: Boolean;
+     FMarkAddedWords: Boolean;
      FProviderOverride: string;
      FModelOverride: string;
      FApiKeyOverride: string;
@@ -100,9 +103,16 @@ const
                         const AProvider: string = '';
                         const AModel: string = '';
                         const AApiKey: string = ''); overload;
+     constructor Create(const APrompt: string; AForceOverwrite,
+                        AIncludeAssociations, AMarkAddedWords: Boolean;
+                        const AProvider: string = '';
+                        const AModel: string = '';
+                        const AApiKey: string = ''); overload;
      property ForceOverwrite: Boolean read FForceOverwrite write FForceOverwrite;
      property IncludeAssociations: Boolean read FIncludeAssociations
        write FIncludeAssociations;
+     property MarkAddedWords: Boolean read FMarkAddedWords
+       write FMarkAddedWords;
    end;
 
  function ParseTranslationWithAssociationsJson(
@@ -122,6 +132,8 @@ resourcestring
   SConfigForceOverwriteDescription = 'If checked, overwrites existing translations. If unchecked, only translates empty verses.';
   SConfigIncludeAssociationsDisplayName = 'Include association of translated text';
   SConfigIncludeAssociationsDescription = 'If checked, returns and applies associations between the original text and the new translation.';
+  SConfigMarkAddedWordsDisplayName = 'Mark added words';
+  SConfigMarkAddedWordsDescription = 'If checked, asks the translator to identify words supplied without a direct textual counterpart in the original.';
   SConfigModelOverrideDisplayName = 'Model';
   SConfigModelOverrideDescription = 'Specify a different model for this flow. Leave empty to use global setting.';
   SConfigApiKeyOverrideDisplayName = 'API Key';
@@ -134,10 +146,36 @@ implementation
 uses
   ai_flow_config, fpjson, jsonparser;
 
+function TranslationExampleExpectedText(const Example: TAIFlowExample;
+  MarkAddedWords: Boolean): string;
+var
+  ExampleVerse: TVerse;
+  MarkedXml: string;
+begin
+  Result := Example.ExpectedResponse;
+  if (not MarkAddedWords) or (Trim(Example.TargetXml) = '') then
+    Exit;
+
+  MarkedXml := StringReplace(Example.TargetXml, '<FI>', '[', [rfReplaceAll]);
+  MarkedXml := StringReplace(MarkedXml, '<Fi>', ']', [rfReplaceAll]);
+  ExampleVerse := TVerse.Create;
+  try
+    try
+      ExampleVerse.Text := MarkedXml;
+      Result := ExampleVerse.PlainText;
+    except
+      Result := Example.ExpectedResponse;
+    end;
+  finally
+    ExampleVerse.Free;
+  end;
+end;
+
 function FormatTranslationExamplesPromptSection(const Examples: TAIFlowExampleArray;
-  IncludeAssociations: Boolean): string;
+  IncludeAssociations, MarkAddedWords: Boolean): string;
 var
   I: Integer;
+  ExpectedText: string;
 begin
   Result := '';
   if Length(Examples) = 0 then
@@ -152,16 +190,39 @@ begin
       'Use these examples as guidance for tone, terminology, and expected output.';
   for I := 0 to High(Examples) do
   begin
+    ExpectedText := TranslationExampleExpectedText(Examples[I], MarkAddedWords);
     Result := Result + LineEnding + LineEnding +
               Format('Example %d - %s', [I + 1, Examples[I].ReferenceCaption]) + LineEnding +
               Format('Original: "%s"', [Examples[I].SourceText]) + LineEnding;
     if IncludeAssociations then
       Result := Result + Format('Expected "translation" value: "%s"',
-        [Examples[I].ExpectedResponse])
+        [ExpectedText])
     else
       Result := Result + Format('Expected translation: "%s"',
-        [Examples[I].ExpectedResponse]);
+        [ExpectedText]);
   end;
+end;
+
+function BuildAddedWordsPromptSection(IncludeAssociations: Boolean): string;
+begin
+  Result :=
+    '=== Added Words ===' + LineEnding +
+    'Mark only words or expressions required or supplied for grammatical ' +
+    'fluency or clarity that have no direct textual counterpart in the ' +
+    'original.' + LineEnding +
+    'Enclose each added span in ASCII square brackets. Notation example: ' +
+    '"As for me, [I am] ready [to] preach."' + LineEnding +
+    'Do not mark ordinary inflection, rearrangement, or an expression that as ' +
+    'a whole translates wording from the original.' + LineEnding +
+    'Multiple and multi-word spans are allowed. Do not nest brackets, leave ' +
+    'them empty, put whitespace just inside them, or span lines. Keep ' +
+    'punctuation outside the brackets.' + LineEnding +
+    'Square brackets are reserved for this notation. If there are no added ' +
+    'words, return the translation without brackets.';
+  if IncludeAssociations then
+    Result := Result + LineEnding +
+      'Added words may be associated. In every destination phrase in "data", ' +
+      'copy any square brackets exactly as they appear in "translation".';
 end;
 
 function ParseTranslationWithAssociationsJson(
@@ -228,6 +289,49 @@ begin
   end;
 end;
 
+procedure ApplyAddedWordMarkupToResult(R: TAITranslationResult;
+  FilterAssociationPairs: Boolean);
+var
+  TranslationMarkup, PairMarkup: TAddedWordMarkup;
+  ErrorMessage: string;
+  I, ValidPairCount: Integer;
+begin
+  TranslationMarkup := Default(TAddedWordMarkup);
+  PairMarkup := Default(TAddedWordMarkup);
+  if not TryParseAddedWordMarkup(R.TranslatedText, TranslationMarkup,
+    ErrorMessage) then
+  begin
+    R.ParseError := 'Invalid added-word notation in translation: ' +
+      ErrorMessage;
+    Exit;
+  end;
+
+  if FilterAssociationPairs then
+  begin
+    ValidPairCount := 0;
+    for I := 0 to High(R.Pairs) do
+      if TryParseAddedWordMarkup(R.Pairs[I].TranslatedPhrase, PairMarkup,
+           ErrorMessage) and
+         HasStyledOccurrence(TranslationMarkup, PairMarkup) then
+      begin
+        R.Pairs[ValidPairCount] := R.Pairs[I];
+        Inc(ValidPairCount);
+      end;
+    SetLength(R.Pairs, ValidPairCount);
+
+    if (Trim(TranslationMarkup.VisibleText) <> '') and
+       (ValidPairCount = 0) then
+    begin
+      R.ParseError :=
+        'A non-empty translation requires at least one association pair ' +
+        'whose destination phrase occurs with the same added-word notation';
+      Exit;
+    end;
+  end;
+
+  R.TranslatedText := TranslationMarkup.CanonicalText;
+end;
+
 function IsTranslationDestinationEligible(const DestinationText: string;
   ForceOverwrite: Boolean): Boolean;
 begin
@@ -263,7 +367,7 @@ end;
 
 function TAITranslationFlowConfig.GetConfigFields: TAIFlowConfigFieldArray;
 begin
-  SetLength(Result, 7);
+  SetLength(Result, 8);
   
   // Target language field
   Result[0].Key := AI_TRANSLATION_CONFIG_KEY_TARGET_LANGUAGE;
@@ -297,29 +401,37 @@ begin
   Result[3].Description := SConfigIncludeAssociationsDescription;
   Result[3].Required := False;
 
-  // Provider override
-  Result[4].Key := AI_TRANSLATION_CONFIG_KEY_PROVIDER;
-  Result[4].DisplayName := SConfigProviderOverrideDisplayName;
-  Result[4].FieldType := 'provider';
-  Result[4].DefaultValue := '';
-  Result[4].Description := SConfigProviderOverrideDescription;
+  // Mark added words field
+  Result[4].Key := AI_TRANSLATION_CONFIG_KEY_MARK_ADDED_WORDS;
+  Result[4].DisplayName := SConfigMarkAddedWordsDisplayName;
+  Result[4].FieldType := 'boolean';
+  Result[4].DefaultValue := 'false';
+  Result[4].Description := SConfigMarkAddedWordsDescription;
   Result[4].Required := False;
 
-  // Model override
-  Result[5].Key := AI_TRANSLATION_CONFIG_KEY_MODEL;
-  Result[5].DisplayName := SConfigModelOverrideDisplayName;
-  Result[5].FieldType := 'model';
+  // Provider override
+  Result[5].Key := AI_TRANSLATION_CONFIG_KEY_PROVIDER;
+  Result[5].DisplayName := SConfigProviderOverrideDisplayName;
+  Result[5].FieldType := 'provider';
   Result[5].DefaultValue := '';
-  Result[5].Description := SConfigModelOverrideDescription;
+  Result[5].Description := SConfigProviderOverrideDescription;
   Result[5].Required := False;
 
-  // API Key override
-  Result[6].Key := AI_TRANSLATION_CONFIG_KEY_API_KEY;
-  Result[6].DisplayName := SConfigApiKeyOverrideDisplayName;
-  Result[6].FieldType := 'password';
+  // Model override
+  Result[6].Key := AI_TRANSLATION_CONFIG_KEY_MODEL;
+  Result[6].DisplayName := SConfigModelOverrideDisplayName;
+  Result[6].FieldType := 'model';
   Result[6].DefaultValue := '';
-  Result[6].Description := SConfigApiKeyOverrideDescription;
+  Result[6].Description := SConfigModelOverrideDescription;
   Result[6].Required := False;
+
+  // API Key override
+  Result[7].Key := AI_TRANSLATION_CONFIG_KEY_API_KEY;
+  Result[7].DisplayName := SConfigApiKeyOverrideDisplayName;
+  Result[7].FieldType := 'password';
+  Result[7].DefaultValue := '';
+  Result[7].Description := SConfigApiKeyOverrideDescription;
+  Result[7].Required := False;
 end;
 
 function TAITranslationFlowConfig.BuildPromptFromConfig(const ConfigValues: array of const): string;
@@ -328,7 +440,7 @@ var
   key, value: string;
   targetLanguage, customInstructions, serializedExamples, examplesSection: string;
   associationInstructions, associationExamples, outputObject: string;
-  includeAssociations: Boolean;
+  includeAssociations, markAddedWords: Boolean;
 begin
   targetLanguage := '';
   customInstructions := '';
@@ -336,6 +448,7 @@ begin
   associationInstructions := '';
   associationExamples := '';
   includeAssociations := False;
+  markAddedWords := False;
   
   // Extract config values (expecting key-value pairs)
   i := 0;
@@ -349,6 +462,14 @@ begin
         case ConfigValues[i+1].VType of
           vtBoolean: includeAssociations := ConfigValues[i+1].VBoolean;
           vtAnsiString: includeAssociations :=
+            LowerCase(string(ConfigValues[i+1].VAnsiString)) = 'true';
+        end;
+      end
+      else if key = AI_TRANSLATION_CONFIG_KEY_MARK_ADDED_WORDS then
+      begin
+        case ConfigValues[i+1].VType of
+          vtBoolean: markAddedWords := ConfigValues[i+1].VBoolean;
+          vtAnsiString: markAddedWords :=
             LowerCase(string(ConfigValues[i+1].VAnsiString)) = 'true';
         end;
       end
@@ -392,9 +513,13 @@ begin
   end;
 
   examplesSection := FormatTranslationExamplesPromptSection(
-    LoadFlowExamples(serializedExamples), includeAssociations);
+    LoadFlowExamples(serializedExamples), includeAssociations, markAddedWords);
   if examplesSection <> '' then
     Result := Result + LineEnding + LineEnding + examplesSection;
+
+  if markAddedWords then
+    Result := Result + LineEnding + LineEnding +
+      BuildAddedWordsPromptSection(includeAssociations);
 
   if includeAssociations then
   begin
@@ -413,7 +538,8 @@ begin
       '"translation" value. Every source phrase must be copied verbatim from ' +
       'the original input.' + LineEnding + LineEnding +
       BuildAssociationPromptSection(associationInstructions,
-        associationExamples, outputObject, True) + LineEnding + LineEnding +
+        associationExamples, outputObject, True, markAddedWords) +
+      LineEnding + LineEnding +
       'Return only the JSON object. Do not add commentary or Markdown fences.';
   end;
 end;
@@ -421,7 +547,7 @@ end;
 function TAITranslationFlowConfig.CreateFlowInstance(Context: IAIFlowContext): IAIVerseFlow;
 var
   targetLanguage, customInstructions: string;
-  forceOverwrite, includeAssociations: Boolean;
+  forceOverwrite, includeAssociations, markAddedWords: Boolean;
   overrideEnabled: Boolean;
   overrideEnabledValue: string;
   providerOverride, modelOverride, apiKeyOverride: string;
@@ -438,6 +564,8 @@ begin
   forceOverwrite := LowerCase(Context.GetProjectInfo(AI_TRANSLATION_CONFIG_KEY_FORCE_OVERWRITE)) = 'true';
   includeAssociations := LowerCase(
     Context.GetProjectInfo(AI_TRANSLATION_CONFIG_KEY_INCLUDE_ASSOCIATIONS)) = 'true';
+  markAddedWords := LowerCase(
+    Context.GetProjectInfo(AI_TRANSLATION_CONFIG_KEY_MARK_ADDED_WORDS)) = 'true';
   providerOverride := Context.GetProjectInfo(AI_TRANSLATION_CONFIG_KEY_PROVIDER);
   modelOverride := Context.GetProjectInfo(AI_TRANSLATION_CONFIG_KEY_MODEL);
   apiKeyOverride := Context.GetProjectInfo(AI_TRANSLATION_CONFIG_KEY_API_KEY);
@@ -463,12 +591,14 @@ begin
       AI_TRANSLATION_CONFIG_KEY_TARGET_LANGUAGE, targetLanguage,
       AI_TRANSLATION_CONFIG_KEY_CUSTOM_INSTRUCTIONS, customInstructions,
       AI_TRANSLATION_CONFIG_KEY_INCLUDE_ASSOCIATIONS, includeAssociations,
+      AI_TRANSLATION_CONFIG_KEY_MARK_ADDED_WORDS, markAddedWords,
       AI_TRANSLATION_EXAMPLES_KEY, serializedExamples,
       AI_ASSOCIATION_CONFIG_KEY_CUSTOM_INSTRUCTIONS, associationInstructions,
       AI_ASSOCIATION_EXAMPLES_KEY, associationExamples
     ]),
     forceOverwrite,
     includeAssociations,
+    markAddedWords,
     providerOverride,
     modelOverride,
     apiKeyOverride
@@ -486,6 +616,7 @@ begin
   FPrompt := APrompt;
   FForceOverwrite := AForceOverwrite;
   FIncludeAssociations := False;
+  FMarkAddedWords := False;
   FProviderOverride := AProvider;
   FModelOverride := AModel;
   FApiKeyOverride := AApiKey;
@@ -499,6 +630,21 @@ begin
   FPrompt := APrompt;
   FForceOverwrite := AForceOverwrite;
   FIncludeAssociations := AIncludeAssociations;
+  FMarkAddedWords := False;
+  FProviderOverride := AProvider;
+  FModelOverride := AModel;
+  FApiKeyOverride := AApiKey;
+end;
+
+constructor TAITranslationFlow.Create(const APrompt: string;
+  AForceOverwrite, AIncludeAssociations, AMarkAddedWords: Boolean;
+  const AProvider, AModel, AApiKey: string);
+begin
+  inherited Create;
+  FPrompt := APrompt;
+  FForceOverwrite := AForceOverwrite;
+  FIncludeAssociations := AIncludeAssociations;
+  FMarkAddedWords := AMarkAddedWords;
   FProviderOverride := AProvider;
   FModelOverride := AModel;
   FApiKeyOverride := AApiKey;
@@ -568,6 +714,9 @@ begin
        (Trim(Verse.PlainText) <> '') and (Trim(R.TranslatedText) = '') then
       R.ParseError := 'A non-empty original requires a non-empty translation';
 
+    if (R.ParseError = '') and FMarkAddedWords then
+      ApplyAddedWordMarkupToResult(R, True);
+
     if (R.ParseError = '') and Assigned(Verse) and
        (Trim(R.TranslatedText) <> '') then
     begin
@@ -596,6 +745,15 @@ begin
     
     // Primeira versão: resposta já é a tradução em texto puro
     R.TranslatedText := Trim(RawContent);
+    if FMarkAddedWords then
+    begin
+      ApplyAddedWordMarkupToResult(R, False);
+      if R.ParseError <> '' then
+      begin
+        Result := R;
+        Exit;
+      end;
+    end;
     Result := R;
   except
     R.Free;
@@ -629,6 +787,8 @@ begin
   AIDebugLogFmt('[Translation] ForceOverwrite: %s', [BoolToStr(FForceOverwrite, True)]);
   AIDebugLogFmt('[Translation] IncludeAssociations: %s',
     [BoolToStr(FIncludeAssociations, True)]);
+  AIDebugLogFmt('[Translation] MarkAddedWords: %s',
+    [BoolToStr(FMarkAddedWords, True)]);
   AIDebugLogFmt('[Translation] Translated text: "%s"', [R.TranslatedText]);
   
   if not IsTranslationDestinationEligible(Verse.PairedVerse.PlainText,
@@ -651,10 +811,14 @@ begin
   try
     Verse.ClearAssociations;
     Verse.PairedVerse.Text := R.TranslatedText;
-    AppliedPairCount := ApplyAssociationPairs(R, Verse);
-    if AppliedPairCount = 0 then
-      raise Exception.Create(
-        'No association pair could be applied to the translated verse');
+    AppliedPairCount := 0;
+    if (Trim(R.TranslatedText) <> '') or (Length(R.Pairs) > 0) then
+    begin
+      AppliedPairCount := ApplyAssociationPairs(R, Verse, FMarkAddedWords);
+      if AppliedPairCount = 0 then
+        raise Exception.Create(
+          'No association pair could be applied to the translated verse');
+    end;
 
     R.SetAcceptedDestinationText(R.TranslatedText);
     R.SetAcceptedPairs(R.PairsXML);

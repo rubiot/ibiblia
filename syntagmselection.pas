@@ -9,9 +9,14 @@ uses
 
 type
   TSyntagmIndexArray = array of Integer;
+  TSyntagmStyleRequirement = (ssrAny, ssrRegular, ssrItalic);
+  TSyntagmStyleRequirementArray = array of TSyntagmStyleRequirement;
 
 function ResolveSyntagmSelectionIndexes(Syntagms: TSyntagmList; Words: TStrings;
-  Partial: Boolean = False; JoinConnected: Boolean = True): TSyntagmIndexArray;
+  Partial: Boolean = False; JoinConnected: Boolean = True): TSyntagmIndexArray; overload;
+function ResolveSyntagmSelectionIndexes(Syntagms: TSyntagmList; Words: TStrings;
+  const StyleRequirements: TSyntagmStyleRequirementArray;
+  Partial: Boolean = False; JoinConnected: Boolean = True): TSyntagmIndexArray; overload;
 
 implementation
 
@@ -21,11 +26,24 @@ begin
             (SyntagmNode.Pairs.Count > 0);
 end;
 
-function IsAvailableWordSyntagm(SyntagmNode: TSyntagm; const WordToFind: string): Boolean;
+function StyleMatches(SyntagmNode: TSyntagm;
+  StyleRequirement: TSyntagmStyleRequirement): Boolean;
+begin
+  case StyleRequirement of
+    ssrRegular: Result := not SyntagmNode.IsItalic;
+    ssrItalic: Result := SyntagmNode.IsItalic;
+  else
+    Result := True;
+  end;
+end;
+
+function IsAvailableWordSyntagm(SyntagmNode: TSyntagm; const WordToFind: string;
+  StyleRequirement: TSyntagmStyleRequirement): Boolean;
 begin
   Result := Assigned(SyntagmNode) and (SyntagmNode.Kind = skSyntagm) and
             AnsiSameText(SyntagmNode.Text, WordToFind) and
-            not IsAssociatedSyntagm(SyntagmNode);
+            not IsAssociatedSyntagm(SyntagmNode) and
+            StyleMatches(SyntagmNode, StyleRequirement);
 end;
 
 procedure AddIndex(var Indexes: TSyntagmIndexArray; Index: Integer);
@@ -57,7 +75,39 @@ begin
   end;
 end;
 
-function TryResolveExactSequence(Syntagms: TSyntagmList; RequestedWords: TStrings): TSyntagmIndexArray;
+function BuildRequestedStyleRequirements(Words: TStrings;
+  const StyleRequirements: TSyntagmStyleRequirementArray): TSyntagmStyleRequirementArray;
+var
+  I: Integer;
+  Requirement: TSyntagmStyleRequirement;
+begin
+  SetLength(Result, 0);
+  if not Assigned(Words) then
+    Exit;
+
+  for I := 0 to Words.Count - 1 do
+  begin
+    if Trim(Words[I]) = '' then
+      Continue;
+
+    Requirement := ssrAny;
+    if I <= High(StyleRequirements) then
+      Requirement := StyleRequirements[I];
+    SetLength(Result, Length(Result) + 1);
+    Result[High(Result)] := Requirement;
+  end;
+end;
+
+function RequirementAt(const StyleRequirements: TSyntagmStyleRequirementArray;
+  Index: Integer): TSyntagmStyleRequirement;
+begin
+  Result := ssrAny;
+  if (Index >= 0) and (Index <= High(StyleRequirements)) then
+    Result := StyleRequirements[Index];
+end;
+
+function TryResolveExactSequence(Syntagms: TSyntagmList; RequestedWords: TStrings;
+  const StyleRequirements: TSyntagmStyleRequirementArray): TSyntagmIndexArray;
 var
   StartIndex: Integer;
   CandidateIndex: Integer;
@@ -73,7 +123,8 @@ begin
 
   for StartIndex := 0 to Syntagms.Count - 1 do
   begin
-    if not IsAvailableWordSyntagm(Syntagms[StartIndex], RequestedWords[0]) then
+    if not IsAvailableWordSyntagm(Syntagms[StartIndex], RequestedWords[0],
+      RequirementAt(StyleRequirements, 0)) then
       Continue;
 
     SetLength(Candidate, 0);
@@ -97,7 +148,8 @@ begin
             end;
           skSyntagm:
             begin
-              if IsAvailableWordSyntagm(ScanNode, RequestedWords[RequestedIndex]) then
+              if IsAvailableWordSyntagm(ScanNode, RequestedWords[RequestedIndex],
+                RequirementAt(StyleRequirements, RequestedIndex)) then
                 CandidateIndex := ScanIndex;
               Break;
             end;
@@ -121,6 +173,7 @@ begin
 end;
 
 function ResolveOrderedFallback(Syntagms: TSyntagmList; RequestedWords: TStrings;
+  const StyleRequirements: TSyntagmStyleRequirementArray;
   Partial: Boolean): TSyntagmIndexArray;
 var
   RequestedIndex: Integer;
@@ -139,7 +192,9 @@ begin
     CandidateScanIndex := ScanIndex;
     while CandidateScanIndex < Syntagms.Count do
     begin
-      if IsAvailableWordSyntagm(Syntagms[CandidateScanIndex], RequestedWords[RequestedIndex]) then
+      if IsAvailableWordSyntagm(Syntagms[CandidateScanIndex],
+        RequestedWords[RequestedIndex],
+        RequirementAt(StyleRequirements, RequestedIndex)) then
       begin
         CandidateIndex := CandidateScanIndex;
         Break;
@@ -219,7 +274,19 @@ end;
 function ResolveSyntagmSelectionIndexes(Syntagms: TSyntagmList; Words: TStrings;
   Partial: Boolean; JoinConnected: Boolean): TSyntagmIndexArray;
 var
+  NoStyleRequirements: TSyntagmStyleRequirementArray;
+begin
+  SetLength(NoStyleRequirements, 0);
+  Result := ResolveSyntagmSelectionIndexes(Syntagms, Words,
+    NoStyleRequirements, Partial, JoinConnected);
+end;
+
+function ResolveSyntagmSelectionIndexes(Syntagms: TSyntagmList; Words: TStrings;
+  const StyleRequirements: TSyntagmStyleRequirementArray;
+  Partial: Boolean; JoinConnected: Boolean): TSyntagmIndexArray;
+var
   RequestedWords: TStringList;
+  RequestedStyles: TSyntagmStyleRequirementArray;
 begin
   SetLength(Result, 0);
   RequestedWords := BuildRequestedWords(Words);
@@ -227,9 +294,11 @@ begin
     if RequestedWords.Count = 0 then
       Exit;
 
-    Result := TryResolveExactSequence(Syntagms, RequestedWords);
+    RequestedStyles := BuildRequestedStyleRequirements(Words, StyleRequirements);
+    Result := TryResolveExactSequence(Syntagms, RequestedWords, RequestedStyles);
     if Length(Result) <> RequestedWords.Count then
-      Result := ResolveOrderedFallback(Syntagms, RequestedWords, Partial);
+      Result := ResolveOrderedFallback(Syntagms, RequestedWords,
+        RequestedStyles, Partial);
 
     if JoinConnected and (Length(Result) > 1) then
       Result := ExpandConnectedPunctuation(Syntagms, Result);

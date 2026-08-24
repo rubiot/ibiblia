@@ -13,7 +13,7 @@ uses
   ONTTokenizer, Syntagm, Forms, LCLType, Math, LCLProc, Dialogs, LazUTF8,
   ONTParser, dbugintf, Menus, Clipbrd, PCRE, ai_debug, text_direction,
   verse_view_intf, text_edit_provenance, verse_visual_adapter,
-  translator_note_hover_controller;
+  translator_note_hover_controller, SyntagmSelection;
 
 type
 
@@ -208,7 +208,11 @@ type
       const ATrace: TVerseEditTrace;
       out AImpact: TAssociationEditImpact): Boolean;
 
-    procedure FindAndSelectSyntagms(Words: TStringList; Partial: Boolean = False; JoinConnected: Boolean = True);
+    procedure FindAndSelectSyntagms(Words: TStringList; Partial: Boolean = False;
+      JoinConnected: Boolean = True); overload;
+    procedure FindAndSelectSyntagms(Words: TStringList;
+      const StyleRequirements: TSyntagmStyleRequirementArray;
+      Partial: Boolean = False; JoinConnected: Boolean = True); overload;
 
     function GetTheWordInterlinearLine: string;
     function GetMySwordInterlinearLine: string;
@@ -273,7 +277,7 @@ resourcestring
 implementation
 
 uses
-  TypInfo, LazLoggerBase, SyntagmSelection, verse_visual_document,
+  TypInfo, LazLoggerBase, verse_visual_document,
   directwrite_syntagm_view, theword_ont_codec_v2;
 
 const
@@ -2125,7 +2129,18 @@ begin
   tokens.Destroy;
 end;
 
-procedure TVerse.FindAndSelectSyntagms(Words: TStringList; Partial: Boolean = False; JoinConnected: Boolean = True);
+procedure TVerse.FindAndSelectSyntagms(Words: TStringList; Partial: Boolean;
+  JoinConnected: Boolean);
+var
+  NoStyleRequirements: TSyntagmStyleRequirementArray;
+begin
+  SetLength(NoStyleRequirements, 0);
+  FindAndSelectSyntagms(Words, NoStyleRequirements, Partial, JoinConnected);
+end;
+
+procedure TVerse.FindAndSelectSyntagms(Words: TStringList;
+  const StyleRequirements: TSyntagmStyleRequirementArray;
+  Partial: Boolean; JoinConnected: Boolean);
 var
   I: Integer;
   SelectedIndexes: TSyntagmIndexArray;
@@ -2142,7 +2157,8 @@ begin
     AIDebugLogFmt('[FindAndSelectSyntagms]   Word[%d]: "%s"', [I, Words[I]]);
   AIDebugLogFmt('[FindAndSelectSyntagms] Total syntagms in verse: %d', [FSyntagms.Count]);
 
-  SelectedIndexes := ResolveSyntagmSelectionIndexes(FSyntagms, Words, Partial, JoinConnected);
+  SelectedIndexes := ResolveSyntagmSelectionIndexes(FSyntagms, Words,
+    StyleRequirements, Partial, JoinConnected);
   AIDebugLogVerboseFmt('[FindAndSelectSyntagms] Resolved %d syntagm indexes', [Length(SelectedIndexes)]);
 
   for I := 0 to High(SelectedIndexes) do

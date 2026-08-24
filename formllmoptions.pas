@@ -22,6 +22,7 @@ type
     ChkIncludeComments: TCheckBox;
     ChkForceOverwrite: TCheckBox;
     ChkIncludeAssociations: TCheckBox;
+    ChkMarkAddedWords: TCheckBox;
     chkUseOverride: TCheckBox;
     gbOverride: TGroupBox;
     CbProvider: TComboBox;
@@ -364,6 +365,7 @@ begin
   SetWidthIfAssigned(tabControls.ChkIncludeComments, contentWidth);
   SetWidthIfAssigned(tabControls.ChkForceOverwrite, contentWidth);
   SetWidthIfAssigned(tabControls.ChkIncludeAssociations, contentWidth);
+  SetWidthIfAssigned(tabControls.ChkMarkAddedWords, contentWidth);
   SetWidthIfAssigned(tabControls.chkUseOverride, contentWidth);
   SetWidthIfAssigned(tabControls.gbOverride, contentWidth);
   SetWidthIfAssigned(tabControls.LblExamplesSummary, contentWidth);
@@ -733,6 +735,20 @@ begin
   end;
   Inc(yPos, 32);
 
+  tabControls.ChkMarkAddedWords := TCheckBox.Create(tabControls.ScrollBox);
+  with tabControls.ChkMarkAddedWords do
+  begin
+    Parent := tabControls.ScrollBox;
+    Left := 8;
+    Top := yPos;
+    Width := 600;
+    Anchors := [akTop, akLeft];
+    Caption := ai_translation_flow.SConfigMarkAddedWordsDisplayName;
+    Hint := ai_translation_flow.SConfigMarkAddedWordsDescription;
+    ShowHint := True;
+  end;
+  Inc(yPos, 32);
+
   AddProviderOverrideSection(tabControls.ScrollBox, yPos, TabIdx, tabControls);
   AddExamplesSection(tabControls.ScrollBox, yPos, TabIdx, tabControls);
   AddPromptButtonsAndFormatInfo(tabControls.ScrollBox, yPos, TabIdx, tabControls,
@@ -852,6 +868,10 @@ begin
       FFlowTabs[tabIdx].ChkIncludeAssociations.Checked :=
         LowerCase(StoredOrDefault(AI_TRANSLATION_CONFIG_KEY_INCLUDE_ASSOCIATIONS, 'false')) = 'true';
 
+    if Assigned(FFlowTabs[tabIdx].ChkMarkAddedWords) then
+      FFlowTabs[tabIdx].ChkMarkAddedWords.Checked :=
+        LowerCase(StoredOrDefault(AI_TRANSLATION_CONFIG_KEY_MARK_ADDED_WORDS, 'false')) = 'true';
+
     providerValue := FProject.GetInfo(AI_TRANSLATION_CONFIG_KEY_PROVIDER);
     modelValue := FProject.GetInfo(AI_TRANSLATION_CONFIG_KEY_MODEL);
     apiKeyValue := FProject.GetInfo(AI_TRANSLATION_CONFIG_KEY_API_KEY);
@@ -922,6 +942,9 @@ begin
     if Assigned(tabControls.ChkIncludeAssociations) then
       FProject.SetInfo(AI_TRANSLATION_CONFIG_KEY_INCLUDE_ASSOCIATIONS,
         BoolToStr(tabControls.ChkIncludeAssociations.Checked, True));
+    if Assigned(tabControls.ChkMarkAddedWords) then
+      FProject.SetInfo(AI_TRANSLATION_CONFIG_KEY_MARK_ADDED_WORDS,
+        BoolToStr(tabControls.ChkMarkAddedWords.Checked, True));
     if Assigned(tabControls.CbProvider) then
       FProject.SetInfo(AI_TRANSLATION_CONFIG_KEY_PROVIDER, tabControls.CbProvider.Text);
     if Assigned(tabControls.CbModel) then
@@ -1073,6 +1096,8 @@ begin
       tabControls.ChkForceOverwrite.Checked := False;
     if Assigned(tabControls.ChkIncludeAssociations) then
       tabControls.ChkIncludeAssociations.Checked := False;
+    if Assigned(tabControls.ChkMarkAddedWords) then
+      tabControls.ChkMarkAddedWords.Checked := False;
   end;
 
   SetFlowProviderValues(btn.Tag, '', '', '');
@@ -1091,7 +1116,7 @@ var
   flowConfig: IAIFlowConfig;
   customInstructions, serializedExamples: string;
   associationInstructions, serializedAssociationExamples: string;
-  includeComments, includeAssociations: Boolean;
+  includeComments, includeAssociations, markAddedWords: Boolean;
 begin
   Result := '';
   if (TabIdx < 0) or (TabIdx >= Length(FFlowTabs)) then Exit;
@@ -1119,6 +1144,8 @@ begin
   begin
     includeAssociations := Assigned(tabControls.ChkIncludeAssociations) and
       tabControls.ChkIncludeAssociations.Checked;
+    markAddedWords := Assigned(tabControls.ChkMarkAddedWords) and
+      tabControls.ChkMarkAddedWords.Checked;
 
     associationTabControls := GetFlowTabByFlowId('association');
     associationInstructions := '';
@@ -1135,6 +1162,7 @@ begin
       AI_TRANSLATION_CONFIG_KEY_TARGET_LANGUAGE, tabControls.EditTargetLanguage.Text,
       AI_TRANSLATION_CONFIG_KEY_CUSTOM_INSTRUCTIONS, customInstructions,
       AI_TRANSLATION_CONFIG_KEY_INCLUDE_ASSOCIATIONS, includeAssociations,
+      AI_TRANSLATION_CONFIG_KEY_MARK_ADDED_WORDS, markAddedWords,
       AI_TRANSLATION_EXAMPLES_KEY, serializedExamples,
       AI_ASSOCIATION_CONFIG_KEY_CUSTOM_INSTRUCTIONS, associationInstructions,
       AI_ASSOCIATION_EXAMPLES_KEY, serializedAssociationExamples

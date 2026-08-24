@@ -113,9 +113,13 @@ type
   function ExtractJsonFromMarkdown(const RawContent: string): string;
   function BuildAssociationPromptSection(const CustomInstructions,
     SerializedExamples, OutputObject: string;
-    ExamplesAsDataValue: Boolean = False): string;
+    ExamplesAsDataValue: Boolean = False;
+    MarkTargetAddedWords: Boolean = False): string;
   function ApplyAssociationPairs(Association: TAssociationResult;
-    Verse: TVerse): Integer;
+    Verse: TVerse): Integer; overload;
+  function ApplyAssociationPairs(Association: TAssociationResult;
+    Verse: TVerse;
+    InterpretTargetAdditionMarkers: Boolean): Integer; overload;
 
 resourcestring
   SDisplayNameAssociation = 'Association';
@@ -135,7 +139,7 @@ resourcestring
 implementation
 
 uses
-  ai_flow_config;
+  ai_flow_config, ai_added_words_markup, SyntagmSelection, StrUtils;
 
 function FormatAssociationExamplesPromptSection(const Examples: TAIFlowExampleArray): string;
 var
@@ -157,13 +161,124 @@ begin
   end;
 end;
 
-function ExtractAssociationDataValue(const ExpectedResponse: string): string;
+function AssociationExampleTargetText(const Example: TAIFlowExample;
+  MarkAddedWords: Boolean): string;
+var
+  ExampleVerse: TVerse;
+  MarkedXml: string;
+begin
+  Result := Example.TargetText;
+  if (not MarkAddedWords) or (Trim(Example.TargetXml) = '') then
+    Exit;
+
+  MarkedXml := StringReplace(Example.TargetXml, '<FI>', '[', [rfReplaceAll]);
+  MarkedXml := StringReplace(MarkedXml, '<Fi>', ']', [rfReplaceAll]);
+  ExampleVerse := TVerse.Create;
+  try
+    try
+      ExampleVerse.Text := MarkedXml;
+      Result := ExampleVerse.PlainText;
+    except
+      Result := Example.TargetText;
+    end;
+  finally
+    ExampleVerse.Free;
+  end;
+end;
+
+function MarkedPhraseAt(const FullMarkup: TAddedWordMarkup;
+  StartIndex, PhraseLength: Integer): string;
+var
+  I: Integer;
+  InAddedSpan, IsAdded: Boolean;
+begin
+  Result := '';
+  InAddedSpan := False;
+  for I := 0 to PhraseLength - 1 do
+  begin
+    IsAdded := FullMarkup.AddedMask[StartIndex + I - 1];
+    if IsAdded <> InAddedSpan then
+    begin
+      if IsAdded then
+        Result := Result + '['
+      else
+        Result := Result + ']';
+      InAddedSpan := IsAdded;
+    end;
+    Result := Result + FullMarkup.VisibleText[StartIndex + I];
+  end;
+  if InAddedSpan then
+    Result := Result + ']';
+end;
+
+function TryProjectAssociationTargetPhrase(const MarkedTargetText,
+  Phrase: string; out ProjectedPhrase: string): Boolean;
+var
+  FullMarkup, PhraseMarkup, CandidateMarkup: TAddedWordMarkup;
+  ErrorMessage, CandidatePhrase, UniqueProjection: string;
+  CandidateIndex, SearchFrom: Integer;
+begin
+  FullMarkup := Default(TAddedWordMarkup);
+  PhraseMarkup := Default(TAddedWordMarkup);
+  CandidateMarkup := Default(TAddedWordMarkup);
+  Result := False;
+  ProjectedPhrase := '';
+  if (Trim(Phrase) = '') or
+     (not TryParseAddedWordMarkup(MarkedTargetText, FullMarkup,
+       ErrorMessage)) or
+     (not TryParseAddedWordMarkup(Phrase, PhraseMarkup, ErrorMessage)) or
+     (PhraseMarkup.VisibleText = '') then
+    Exit;
+
+  if (Phrase <> PhraseMarkup.VisibleText) and
+     (Pos(Phrase, MarkedTargetText) > 0) and
+     HasStyledOccurrence(FullMarkup, PhraseMarkup) then
+  begin
+    ProjectedPhrase := Phrase;
+    Exit(True);
+  end;
+
+  UniqueProjection := '';
+  SearchFrom := 1;
+  repeat
+    CandidateIndex := PosEx(PhraseMarkup.VisibleText,
+      FullMarkup.VisibleText, SearchFrom);
+    if CandidateIndex = 0 then
+      Break;
+    CandidatePhrase := MarkedPhraseAt(FullMarkup, CandidateIndex,
+      Length(PhraseMarkup.VisibleText));
+    if (Pos(CandidatePhrase, MarkedTargetText) = 0) or
+       (not TryParseAddedWordMarkup(CandidatePhrase, CandidateMarkup,
+         ErrorMessage)) or
+       (not HasStyledOccurrence(FullMarkup, CandidateMarkup)) then
+      Exit;
+    if UniqueProjection = '' then
+      UniqueProjection := CandidatePhrase
+    else if UniqueProjection <> CandidatePhrase then
+      Exit;
+    SearchFrom := CandidateIndex + 1;
+  until SearchFrom > Length(FullMarkup.VisibleText);
+
+  if UniqueProjection <> '' then
+  begin
+    ProjectedPhrase := UniqueProjection;
+    Result := True;
+  end;
+end;
+
+function ExtractAssociationDataValue(const ExpectedResponse,
+  MarkedTargetText: string; MarkTargetAddedWords: Boolean): string;
 var
   Parser: TJSONParser;
-  Data, DataNode: TJSONData;
+  Data, DataNode, PairNode: TJSONData;
+  PairArray, NewPair: TJSONArray;
+  ProjectedPhrase: string;
+  OutputData: TJSONArray;
+  I: Integer;
 begin
   Result := '[]';
   Data := nil;
+  OutputData := nil;
   try
     try
       Parser := TJSONParser.Create(
@@ -177,7 +292,40 @@ begin
       begin
         DataNode := TJSONObject(Data).Find('data');
         if DataNode is TJSONArray then
-          Result := DataNode.AsJSON;
+        begin
+          if not MarkTargetAddedWords then
+            Result := DataNode.AsJSON
+          else
+          begin
+            OutputData := TJSONArray.Create;
+            for I := 0 to TJSONArray(DataNode).Count - 1 do
+            begin
+              PairNode := TJSONArray(DataNode).Items[I];
+              if not (PairNode is TJSONArray) then
+                Continue;
+              PairArray := TJSONArray(PairNode);
+              if (PairArray.Count <> 2) or
+                 not (PairArray.Items[0] is TJSONString) or
+                 not (PairArray.Items[1] is TJSONString) then
+                Continue;
+              if not TryProjectAssociationTargetPhrase(MarkedTargetText,
+                TJSONString(PairArray.Items[1]).Value,
+                ProjectedPhrase) then
+                Continue;
+
+              NewPair := TJSONArray.Create;
+              try
+                NewPair.Add(string(TJSONString(PairArray.Items[0]).Value));
+                NewPair.Add(ProjectedPhrase);
+                OutputData.Add(NewPair);
+                NewPair := nil;
+              finally
+                NewPair.Free;
+              end;
+            end;
+            Result := OutputData.AsJSON;
+          end;
+        end;
       end;
     except
       on E: Exception do
@@ -185,14 +333,17 @@ begin
           [E.Message]);
     end;
   finally
+    OutputData.Free;
     Data.Free;
   end;
 end;
 
 function FormatAssociationDataExamplesPromptSection(
-  const Examples: TAIFlowExampleArray): string;
+  const Examples: TAIFlowExampleArray;
+  MarkTargetAddedWords: Boolean): string;
 var
   I: Integer;
+  TargetText, DataValue: string;
 begin
   Result := '';
   if Length(Examples) = 0 then
@@ -201,18 +352,26 @@ begin
   Result := '=== Association Examples ===' + LineEnding +
     'Use these examples as guidance for the value of the "data" field.';
   for I := 0 to High(Examples) do
+  begin
+    TargetText := AssociationExampleTargetText(Examples[I],
+      MarkTargetAddedWords);
+    DataValue := ExtractAssociationDataValue(Examples[I].ExpectedResponse,
+      TargetText, MarkTargetAddedWords);
+    if MarkTargetAddedWords and (Trim(TargetText) <> '') and
+       (DataValue = '[]') then
+      Continue;
     Result := Result + LineEnding + LineEnding +
       Format('Example %d - %s', [I + 1, Examples[I].ReferenceCaption]) +
       LineEnding +
       Format('Original: "%s"', [Examples[I].SourceText]) + LineEnding +
-      Format('Translation: "%s"', [Examples[I].TargetText]) + LineEnding +
-      'Expected "data" value: ' +
-      ExtractAssociationDataValue(Examples[I].ExpectedResponse);
+      Format('Translation: "%s"', [TargetText]) + LineEnding +
+      'Expected "data" value: ' + DataValue;
+  end;
 end;
 
 function BuildAssociationPromptSection(const CustomInstructions,
   SerializedExamples, OutputObject: string;
-  ExamplesAsDataValue: Boolean): string;
+  ExamplesAsDataValue, MarkTargetAddedWords: Boolean): string;
 var
   ExamplesSection: string;
 begin
@@ -230,7 +389,7 @@ begin
 
   if ExamplesAsDataValue then
     ExamplesSection := FormatAssociationDataExamplesPromptSection(
-      LoadFlowExamples(SerializedExamples))
+      LoadFlowExamples(SerializedExamples), MarkTargetAddedWords)
   else
     ExamplesSection := FormatAssociationExamplesPromptSection(
       LoadFlowExamples(SerializedExamples));
@@ -600,25 +759,67 @@ end;
 
 function ApplyAssociationPairs(Association: TAssociationResult;
   Verse: TVerse): Integer;
+begin
+  Result := ApplyAssociationPairs(Association, Verse, False);
+end;
+
+function ApplyAssociationPairs(Association: TAssociationResult;
+  Verse: TVerse; InterpretTargetAdditionMarkers: Boolean): Integer;
 var
   I: Integer;
   OriginalTexts, TranslatedTexts: TStringList;
   Parser: TONTParser;
   ParsedSyntagms: TSyntagmList;
   OriginalSelectionCount, TranslatedSelectionCount: Integer;
+  OriginalStyleRequirements, TranslatedStyleRequirements:
+    TSyntagmStyleRequirementArray;
+  TargetPairValid: Boolean;
   
-  procedure CollectTexts(const Phrase: string; VerseOwner: TVerse; Texts: TStringList);
+  procedure CollectTexts(const Phrase: string; VerseOwner: TVerse;
+    Texts: TStringList; InterpretAdditionMarkers: Boolean;
+    out StyleRequirements: TSyntagmStyleRequirementArray;
+    out PhraseValid: Boolean);
   var
-    J: Integer;
+    J, RequirementIndex: Integer;
+    PhraseToParse, MarkupError: string;
+    Markup: TAddedWordMarkup;
   begin
-    if Trim(Phrase) = '' then Exit;
+    SetLength(StyleRequirements, 0);
+    PhraseValid := True;
+    if Trim(Phrase) = '' then
+      Exit;
+
+    PhraseToParse := Phrase;
+    if InterpretAdditionMarkers then
+    begin
+      if not TryParseAddedWordMarkup(Phrase, Markup, MarkupError) then
+      begin
+        PhraseValid := False;
+        AIDebugLogFmt('[Association] Invalid target addition markers: %s',
+          [MarkupError]);
+        Exit;
+      end;
+      PhraseToParse := Markup.CanonicalText;
+    end;
+
     Parser := TONTParser.Create;
     try
-      ParsedSyntagms := Parser.ParseLine(Phrase, VerseOwner);
+      ParsedSyntagms := Parser.ParseLine(PhraseToParse, VerseOwner);
       try
         for J := 0 to ParsedSyntagms.Count - 1 do
           if ParsedSyntagms[J].Kind in [ONTTokenizer.skSyntagm] then
+          begin
             Texts.Add(ParsedSyntagms[J].Text);
+            if InterpretAdditionMarkers then
+            begin
+              RequirementIndex := Length(StyleRequirements);
+              SetLength(StyleRequirements, RequirementIndex + 1);
+              if ParsedSyntagms[J].IsItalic then
+                StyleRequirements[RequirementIndex] := ssrItalic
+              else
+                StyleRequirements[RequirementIndex] := ssrRegular;
+            end;
+          end;
       finally
         ParsedSyntagms.Free;
       end;
@@ -652,9 +853,13 @@ begin
     OriginalTexts := TStringList.Create;
     TranslatedTexts := TStringList.Create;
     try
-      CollectTexts(Association.Pairs[I].OriginalPhrase, Verse, OriginalTexts);
+      CollectTexts(Association.Pairs[I].OriginalPhrase, Verse, OriginalTexts,
+        False, OriginalStyleRequirements, TargetPairValid);
       CollectTexts(Association.Pairs[I].TranslatedPhrase,
-        Verse.PairedVerse, TranslatedTexts);
+        Verse.PairedVerse, TranslatedTexts, InterpretTargetAdditionMarkers,
+        TranslatedStyleRequirements, TargetPairValid);
+      if not TargetPairValid then
+        Continue;
 
       AIDebugLogVerboseFmt('[Association]   Original syntagms collected: %d',
         [OriginalTexts.Count]);
@@ -662,7 +867,8 @@ begin
         [TranslatedTexts.Count]);
 
       Verse.FindAndSelectSyntagms(OriginalTexts);
-      Verse.PairedVerse.FindAndSelectSyntagms(TranslatedTexts);
+      Verse.PairedVerse.FindAndSelectSyntagms(TranslatedTexts,
+        TranslatedStyleRequirements);
 
       OriginalSelectionCount := Verse.Selection.Count;
       TranslatedSelectionCount := Verse.PairedVerse.Selection.Count;

@@ -6,7 +6,8 @@ interface
 
 uses
   Classes, SysUtils, fpcunit, testregistry, ai_flows, ai_flow_config,
-  ai_association_flow, ai_translation_flow, Verse;
+  ai_association_flow, ai_translation_flow, ai_added_words_markup, Verse,
+  syntagm, ONTTokenizer;
 
 type
   TAIFlowConfigTests = class(TTestCase)
@@ -15,13 +16,20 @@ type
     procedure LegacyExamplesWithoutPairsXmlStillLoad;
     procedure AssociationPromptUsesExpectedResponseNotPairsXml;
     procedure TranslationConfigDefaultsIncludeAssociationsToFalse;
+    procedure TranslationConfigDefaultsMarkAddedWordsToFalse;
     procedure TranslationPromptWithoutAssociationsStaysPlainText;
     procedure TranslationPromptWithAssociationsUsesCombinedContract;
+    procedure TranslationPromptWithAddedWordsUsesBracketProtocol;
+    procedure TranslationAddedWordMarkupParsesStrictly;
+    procedure TranslationAddedWordsParserConvertsAndRejectsMarkers;
+    procedure TranslationCombinedAddedWordsSelectsStyledOccurrences;
+    procedure TranslationCombinedAddedWordsRejectsStyleMismatches;
     procedure TranslationCombinedParserAcceptsDirectAndMarkdownJson;
     procedure TranslationCombinedParserRejectsInvalidEnvelopes;
     procedure TranslationCombinedParserRejectsNonLiteralDestinations;
     procedure TranslationCombinedParserRejectsNonLiteralSources;
     procedure TranslationCombinedParserRejectsEmptyForNonEmptySource;
+    procedure TranslationCombinedApplyAcceptsEmptyVerse;
     procedure TranslationCombinedApplyPublishesTextAndPairs;
     procedure TranslationCombinedApplyRollsBackWhenNoPairMatches;
     procedure TranslationApplyRespectsForceOverwrite;
@@ -129,6 +137,29 @@ begin
   AssertTrue('Translation include-associations config field was not exposed', Found);
 end;
 
+procedure TAIFlowConfigTests.TranslationConfigDefaultsMarkAddedWordsToFalse;
+var
+  FlowConfig: IAIFlowConfig;
+  Fields: TAIFlowConfigFieldArray;
+  I: Integer;
+  Found: Boolean;
+begin
+  FlowConfig := TAITranslationFlowConfig.Create;
+  Fields := FlowConfig.GetConfigFields;
+  Found := False;
+
+  for I := 0 to High(Fields) do
+    if Fields[I].Key = AI_TRANSLATION_CONFIG_KEY_MARK_ADDED_WORDS then
+    begin
+      Found := True;
+      AssertEquals('boolean', Fields[I].FieldType);
+      AssertEquals('false', LowerCase(Fields[I].DefaultValue));
+      AssertFalse(Fields[I].Required);
+    end;
+
+  AssertTrue('Translation mark-added-words config field was not exposed', Found);
+end;
+
 procedure TAIFlowConfigTests.TranslationPromptWithoutAssociationsStaysPlainText;
 var
   FlowConfig: IAIFlowConfig;
@@ -137,6 +168,7 @@ begin
   FlowConfig := TAITranslationFlowConfig.Create;
   Prompt := FlowConfig.BuildPromptFromConfig([
     AI_TRANSLATION_CONFIG_KEY_INCLUDE_ASSOCIATIONS, False,
+    AI_TRANSLATION_CONFIG_KEY_MARK_ADDED_WORDS, False,
     AI_ASSOCIATION_CONFIG_KEY_CUSTOM_INSTRUCTIONS,
       'association-instruction-must-be-ignored',
     AI_ASSOCIATION_EXAMPLES_KEY, '[]'
@@ -146,6 +178,280 @@ begin
   AssertTrue(Pos('Return ONLY the translated text', Prompt) > 0);
   AssertEquals(0, Pos('"translation"', Prompt));
   AssertEquals(0, Pos('association-instruction-must-be-ignored', Prompt));
+end;
+
+procedure TAIFlowConfigTests.TranslationPromptWithAddedWordsUsesBracketProtocol;
+var
+  Examples, AssociationExamples: TAIFlowExampleArray;
+  SerializedExamples, SerializedAssociationExamples, Prompt: string;
+  FlowConfig: IAIFlowConfig;
+begin
+  SetLength(Examples, 1);
+  Examples[0].ReferenceId := '45,1,15';
+  Examples[0].ReferenceCaption := 'Romans 1:15';
+  Examples[0].SourceText := 'source example';
+  Examples[0].TargetText := 'Assim, estou pronto';
+  Examples[0].TargetXml := 'Assim, <FI>estou<Fi> pronto';
+  Examples[0].ExpectedResponse := 'legacy-expected-response-secret';
+  SerializedExamples := SaveFlowExamples(Examples);
+
+  SetLength(AssociationExamples, 2);
+  AssociationExamples[0].ReferenceId := '45,1,15';
+  AssociationExamples[0].ReferenceCaption := 'Romans 1:15';
+  AssociationExamples[0].SourceText := 'origem adicionada';
+  AssociationExamples[0].TargetText := 'estou';
+  AssociationExamples[0].TargetXml := '<FI>estou<Fi>';
+  AssociationExamples[0].ExpectedResponse :=
+    '{"data":[["origem adicionada","estou"]]}';
+  AssociationExamples[1].ReferenceId := '45,1,16';
+  AssociationExamples[1].ReferenceCaption := 'Romans 1:16';
+  AssociationExamples[1].SourceText := 'origem ambigua';
+  AssociationExamples[1].TargetText := 'ele disse a ele';
+  AssociationExamples[1].TargetXml := '<FI>ele<Fi> disse a ele';
+  AssociationExamples[1].ExpectedResponse :=
+    '{"data":[["origem ambigua","ele"]]}';
+  SerializedAssociationExamples := SaveFlowExamples(AssociationExamples);
+
+  FlowConfig := TAITranslationFlowConfig.Create;
+  Prompt := FlowConfig.BuildPromptFromConfig([
+    AI_TRANSLATION_CONFIG_KEY_INCLUDE_ASSOCIATIONS, False,
+    AI_TRANSLATION_CONFIG_KEY_MARK_ADDED_WORDS, True,
+    AI_TRANSLATION_EXAMPLES_KEY, SerializedExamples
+  ]);
+
+  AssertTrue('Added-word guidance must describe brackets',
+    Pos('bracket', LowerCase(Prompt)) > 0);
+  AssertTrue('Added-word guidance must include grammatical additions',
+    Pos('grammatical', LowerCase(Prompt)) > 0);
+  AssertTrue('Added-word guidance must keep punctuation outside markers',
+    Pos('punctuation outside', LowerCase(Prompt)) > 0);
+  AssertTrue('Canonical example markup must be projected to brackets',
+    Pos('[estou]', Prompt) > 0);
+  AssertEquals(0, Pos('legacy-expected-response-secret', Prompt));
+  AssertEquals(0, Pos('<FI>', Prompt));
+  AssertEquals(0, Pos('<Fi>', Prompt));
+
+  Prompt := FlowConfig.BuildPromptFromConfig([
+    AI_TRANSLATION_CONFIG_KEY_INCLUDE_ASSOCIATIONS, True,
+    AI_TRANSLATION_CONFIG_KEY_MARK_ADDED_WORDS, True,
+    AI_TRANSLATION_EXAMPLES_KEY, SerializedExamples,
+    AI_ASSOCIATION_EXAMPLES_KEY, SerializedAssociationExamples
+  ]);
+  AssertTrue(Pos('"data"', Prompt) > 0);
+  AssertTrue(Pos('[estou]', Prompt) > 0);
+  AssertTrue('Association target text must project added words to brackets',
+    Pos('Translation: "[estou]"', Prompt) > 0);
+  AssertTrue('Association data must project added words to brackets',
+    (Pos('"origem adicionada","[estou]"', Prompt) > 0) or
+    (Pos('"origem adicionada", "[estou]"', Prompt) > 0));
+  AssertEquals(0, Pos('"origem adicionada","estou"', Prompt));
+  AssertEquals(0, Pos('"origem adicionada", "estou"', Prompt));
+  AssertEquals('An entirely ambiguous example must be omitted', 0,
+    Pos('Romans 1:16', Prompt));
+  AssertEquals(0, Pos('"origem ambigua","ele"', Prompt));
+  AssertEquals(0, Pos('"origem ambigua", "ele"', Prompt));
+  AssertEquals(0, Pos('<FI>', Prompt));
+  AssertEquals(0, Pos('<Fi>', Prompt));
+end;
+
+procedure TAIFlowConfigTests.TranslationAddedWordMarkupParsesStrictly;
+var
+  Markup, FullText, Phrase: TAddedWordMarkup;
+  ErrorMessage: string;
+  AddedIndex: Integer;
+
+  procedure AssertInvalid(const Value: string);
+  var
+    InvalidMarkup: TAddedWordMarkup;
+    InvalidError: string;
+  begin
+    AssertFalse('Expected invalid added-word markup: ' + Value,
+      TryParseAddedWordMarkup(Value, InvalidMarkup, InvalidError));
+    AssertTrue('Invalid markup must explain the failure',
+      Trim(InvalidError) <> '');
+  end;
+
+begin
+  AssertTrue(ErrorMessage, TryParseAddedWordMarkup(
+    'Assim, [quanto a mim], [estou] pronto.', Markup, ErrorMessage));
+  AssertEquals('Assim, quanto a mim, estou pronto.', Markup.VisibleText);
+  AssertEquals('Assim, <FI>quanto a mim<Fi>, <FI>estou<Fi> pronto.',
+    Markup.CanonicalText);
+  AssertEquals(Length(Markup.VisibleText), Length(Markup.AddedMask));
+  AddedIndex := Pos('estou', Markup.VisibleText);
+  AssertTrue(Markup.AddedMask[AddedIndex - 1]);
+  AssertFalse(Markup.AddedMask[1]);
+
+  AssertTrue(TryParseAddedWordMarkup('[ele] disse a ele', FullText,
+    ErrorMessage));
+  AssertTrue(TryParseAddedWordMarkup('[ele]', Phrase, ErrorMessage));
+  AssertTrue(HasStyledOccurrence(FullText, Phrase));
+  AssertTrue(TryParseAddedWordMarkup('ele', Phrase, ErrorMessage));
+  AssertTrue(HasStyledOccurrence(FullText, Phrase));
+
+  AssertTrue(TryParseAddedWordMarkup('[ele] disse', FullText, ErrorMessage));
+  AssertTrue(TryParseAddedWordMarkup('ele', Phrase, ErrorMessage));
+  AssertFalse(HasStyledOccurrence(FullText, Phrase));
+  AssertTrue(TryParseAddedWordMarkup('ele disse', FullText, ErrorMessage));
+  AssertTrue(TryParseAddedWordMarkup('[ele]', Phrase, ErrorMessage));
+  AssertFalse(HasStyledOccurrence(FullText, Phrase));
+
+  AssertInvalid('[]');
+  AssertInvalid('[ ]');
+  AssertInvalid('[ leading]');
+  AssertInvalid('[trailing ]');
+  AssertInvalid('[[nested]]');
+  AssertInvalid('opening [only');
+  AssertInvalid('closing only]');
+  AssertInvalid('[two' + LineEnding + 'lines]');
+end;
+
+procedure TAIFlowConfigTests.TranslationAddedWordsParserConvertsAndRejectsMarkers;
+var
+  Flow: IAIVerseFlow;
+  Parsed: TAIFlowResult;
+begin
+  Parsed := nil;
+  Flow := TAITranslationFlow.Create(
+    DEFAULT_TRANSLATION_PROMPT, False, False, True);
+  try
+    Parsed := Flow.ParseResponse('Assim, [estou] pronto', nil);
+    AssertEquals('', Parsed.ParseError);
+    AssertEquals('Assim, <FI>estou<Fi> pronto',
+      TAITranslationResult(Parsed).TranslatedText);
+    FreeAndNil(Parsed);
+
+    Parsed := Flow.ParseResponse('Assim, [estou pronto', nil);
+    AssertTrue(Trim(Parsed.ParseError) <> '');
+    AssertFalse(Parsed.AcceptedDestinationTextSet);
+    FreeAndNil(Parsed);
+
+    Flow := TAITranslationFlow.Create(
+      DEFAULT_TRANSLATION_PROMPT, False, False);
+    Parsed := Flow.ParseResponse('Assim, [estou] pronto', nil);
+    AssertEquals('', Parsed.ParseError);
+    AssertEquals('Assim, [estou] pronto',
+      TAITranslationResult(Parsed).TranslatedText);
+  finally
+    Parsed.Free;
+    Flow := nil;
+  end;
+end;
+
+procedure TAIFlowConfigTests.TranslationCombinedAddedWordsSelectsStyledOccurrences;
+var
+  Flow: IAIVerseFlow;
+  Parsed: TAIFlowResult;
+  TranslationResult: TAITranslationResult;
+  SourceVerse, DestinationVerse: TVerse;
+  AddedSyntagm, RegularSyntagm: TSyntagm;
+  I: Integer;
+begin
+  SourceVerse := TVerse.Create;
+  DestinationVerse := TVerse.Create;
+  Parsed := nil;
+  AddedSyntagm := nil;
+  RegularSyntagm := nil;
+  try
+    SourceVerse.Text := 'added regular';
+    DestinationVerse.Text := '';
+    SourceVerse.PairedVerse := DestinationVerse;
+    DestinationVerse.PairedVerse := SourceVerse;
+    Flow := TAITranslationFlow.Create(
+      DEFAULT_TRANSLATION_PROMPT, False, True, True);
+
+    Parsed := Flow.ParseResponse(
+      '{"translation":"[ele] disse a ele","data":' +
+      '[["added","[ele]"],["regular","ele"]]}', SourceVerse);
+    AssertEquals('', Parsed.ParseError);
+    AssertTrue(Parsed is TAITranslationResult);
+    TranslationResult := TAITranslationResult(Parsed);
+    AssertEquals('<FI>ele<Fi> disse a ele', TranslationResult.TranslatedText);
+    AssertEquals(2, Length(TranslationResult.Pairs));
+    AssertEquals('[ele]', TranslationResult.Pairs[0].TranslatedPhrase);
+    AssertEquals('ele', TranslationResult.Pairs[1].TranslatedPhrase);
+
+    Flow.ApplyResult(Parsed, SourceVerse);
+    AssertEquals('<FI>ele<Fi> disse a ele', DestinationVerse.Text);
+    AssertEquals('ele disse a ele', DestinationVerse.PlainText);
+    for I := 0 to DestinationVerse.Syntagms.Count - 1 do
+      if (DestinationVerse.Syntagms[I].Kind = skSyntagm) and
+         (DestinationVerse.Syntagms[I].Text = 'ele') then
+      begin
+        if DestinationVerse.Syntagms[I].IsItalic then
+          AddedSyntagm := DestinationVerse.Syntagms[I]
+        else
+          RegularSyntagm := DestinationVerse.Syntagms[I];
+      end;
+    AssertTrue('The added occurrence must remain identifiable',
+      Assigned(AddedSyntagm));
+    AssertTrue('The regular occurrence must remain identifiable',
+      Assigned(RegularSyntagm));
+    AssertTrue('The added occurrence may be associated',
+      AddedSyntagm.Pairs.Count > 0);
+    AssertTrue('The plain occurrence must receive its own association',
+      RegularSyntagm.Pairs.Count > 0);
+    AssertTrue(Parsed.AcceptedDestinationTextSet);
+    AssertTrue(Parsed.AcceptedPairsSet);
+  finally
+    Parsed.Free;
+    Flow := nil;
+    SourceVerse.PairedVerse := nil;
+    DestinationVerse.PairedVerse := nil;
+    DestinationVerse.Free;
+    SourceVerse.Free;
+  end;
+end;
+
+procedure TAIFlowConfigTests.TranslationCombinedAddedWordsRejectsStyleMismatches;
+var
+  Flow: IAIVerseFlow;
+  Parsed: TAIFlowResult;
+  TranslationResult: TAITranslationResult;
+  SourceVerse: TVerse;
+begin
+  SourceVerse := TVerse.Create;
+  Parsed := nil;
+  try
+    SourceVerse.Text := 'bad good';
+    Flow := TAITranslationFlow.Create(
+      DEFAULT_TRANSLATION_PROMPT, False, True, True);
+
+    Parsed := Flow.ParseResponse(
+      '{"translation":"[ele] disse","data":[["bad","ele"]]}',
+      SourceVerse);
+    AssertTrue('Plain data must not match an added-only occurrence',
+      Trim(Parsed.ParseError) <> '');
+    FreeAndNil(Parsed);
+
+    Parsed := Flow.ParseResponse(
+      '{"translation":"ele disse","data":[["bad","[ele]"]]}',
+      SourceVerse);
+    AssertTrue('Added data must not match a regular-only occurrence',
+      Trim(Parsed.ParseError) <> '');
+    FreeAndNil(Parsed);
+
+    Parsed := Flow.ParseResponse(
+      '{"translation":"[ele","data":[["bad","[ele"]]}',
+      SourceVerse);
+    AssertTrue('Malformed markers in translation must reject the envelope',
+      Trim(Parsed.ParseError) <> '');
+    FreeAndNil(Parsed);
+
+    Parsed := Flow.ParseResponse(
+      '{"translation":"[ele] palavra","data":' +
+      '[["bad","[ele"],["good","palavra"]]}', SourceVerse);
+    AssertEquals('Malformed individual pairs may be ignored', '',
+      Parsed.ParseError);
+    TranslationResult := TAITranslationResult(Parsed);
+    AssertEquals(1, Length(TranslationResult.Pairs));
+    AssertEquals('good', TranslationResult.Pairs[0].OriginalPhrase);
+    AssertEquals('palavra', TranslationResult.Pairs[0].TranslatedPhrase);
+  finally
+    Parsed.Free;
+    Flow := nil;
+    SourceVerse.Free;
+  end;
 end;
 
 procedure TAIFlowConfigTests.TranslationPromptWithAssociationsUsesCombinedContract;
@@ -358,6 +664,44 @@ begin
   finally
     Parsed.Free;
     Flow := nil;
+    SourceVerse.Free;
+  end;
+end;
+
+procedure TAIFlowConfigTests.TranslationCombinedApplyAcceptsEmptyVerse;
+var
+  Flow: IAIVerseFlow;
+  Parsed: TAIFlowResult;
+  SourceVerse, DestinationVerse: TVerse;
+begin
+  SourceVerse := TVerse.Create;
+  DestinationVerse := TVerse.Create;
+  Parsed := nil;
+  try
+    SourceVerse.Text := '';
+    DestinationVerse.Text := '';
+    SourceVerse.PairedVerse := DestinationVerse;
+    DestinationVerse.PairedVerse := SourceVerse;
+
+    Flow := TAITranslationFlow.Create(
+      DEFAULT_TRANSLATION_PROMPT, False, True, True);
+    Parsed := Flow.ParseResponse(
+      '{"translation":"","data":[]}', SourceVerse);
+    AssertEquals('', Parsed.ParseError);
+
+    Flow.ApplyResult(Parsed, SourceVerse);
+
+    AssertTrue(Parsed.AcceptedDestinationTextSet);
+    AssertEquals('', Parsed.AcceptedDestinationText);
+    AssertTrue(Parsed.AcceptedPairsSet);
+    AssertEquals('', Parsed.AcceptedPairs);
+    AssertEquals('', DestinationVerse.PlainText);
+  finally
+    Parsed.Free;
+    Flow := nil;
+    SourceVerse.PairedVerse := nil;
+    DestinationVerse.PairedVerse := nil;
+    DestinationVerse.Free;
     SourceVerse.Free;
   end;
 end;
