@@ -508,6 +508,7 @@ resourcestring
   SButtonYes = 'Yes';
   SButtonNo = 'No';
   SAIConfigurationMissing = 'AI is not configured. Open LLM options and set a model and API key.';
+  SNoEmptyTranslationsInScope = 'There are no empty translations in the selected scope.';
   SNoVerseToAssociate = 'No verse to associate.';
   SAIAssociationFailedFmt = 'AI association failed: %s';
   SAISingleResponseReceived = '[AI Single] Response received, parsing...';
@@ -2037,6 +2038,13 @@ begin
       batchPrep := orchestrator.PrepareBatch(flowId, list, maxPar);
     finally
       orchestrator.Free;
+    end;
+
+    if SameText(flowId, 'translation') and (list.Count = 0) and
+       (batchPrep.SkippedCount > 0) then
+    begin
+      ShowMessage(SNoEmptyTranslationsInScope);
+      Exit;
     end;
 
     flow := batchPrep.Flow;
@@ -4415,6 +4423,12 @@ begin
     batchPrep := orchestrator.PrepareBatch('translation', NodesVerses, MaxParallel);
   finally
     orchestrator.Free;
+  end;
+
+  if (NodesVerses.Count = 0) and (batchPrep.SkippedCount > 0) then
+  begin
+    ShowMessage(SNoEmptyTranslationsInScope);
+    Exit;
   end;
 
   flow := batchPrep.Flow;

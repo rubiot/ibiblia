@@ -1122,7 +1122,19 @@ begin
           [FSrcVerse.AssociationProgress * 100]));
       end
       else if FlowName = 'translation' then
+      begin
         Lines.Add(SAIReviewTranslationSummary);
+        if (Trim(FBatch.Pairs[FIndex]) <> '') or
+           (FBatch.Pairs[FIndex] <> FOriginalData.Pairs[FIndex]) then
+        begin
+          ProposedAssociations := CountAssociations(FBatch.Pairs[FIndex]);
+          CurrentAssociations := CountAssociations(FOriginalData.Pairs[FIndex]);
+          Lines.Add(Format(SAIReviewAssociationSummaryFmt,
+            [ProposedAssociations, CurrentAssociations]));
+          Lines.Add(Format(SAIReviewAssociationProgressFmt,
+            [FSrcVerse.AssociationProgress * 100]));
+        end;
+      end;
 
       if CurrentVerseHasCommentProposal then
       begin
