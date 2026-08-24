@@ -96,6 +96,7 @@ type
       ATranslatorNoteId: QWord = 0;
       ATranslatorNoteRevision: QWord = 0);
     procedure Deactivate;
+    procedure Translate;
     function HasPendingChange: Boolean;
     function TryDeactivate: Boolean;
     procedure DiscardEdit;
@@ -124,6 +125,9 @@ resourcestring
   SSuperscriptButton = 'x²';
   SSubscriptButton = 'x₂';
   SHtmlFormatButton = 'B/I/U';
+  SHtmlBoldMenuItem = 'Bold (<b>)';
+  SHtmlItalicMenuItem = 'Italic (<i>)';
+  SHtmlUnderlineMenuItem = 'Underline (<u>)';
   SFontSizeDecreaseButton = 'A−';
   SFontSizeIncreaseButton = 'A+';
   STitleButton = 'T▾';
@@ -510,6 +514,8 @@ begin
 end;
 
 procedure TVerseMemo.RefreshLocalizedCaptions;
+var
+  ColorBoxStyle: TColorBoxStyle;
 begin
   FModeLabel.Caption := SEditModeTitle;
   FSaveButton.Caption := SSaveEditButton;
@@ -530,12 +536,43 @@ begin
   FSuperscriptButton.Hint := SSuperscriptHint;
   FSubscriptButton.Caption := SSubscriptButton;
   FSubscriptButton.Hint := SSubscriptHint;
+  FHtmlFormatButton.Caption := SHtmlFormatButton;
+  FHtmlFormatButton.Hint := SHtmlFormatHint;
+  FFontSizeDecreaseButton.Caption := SFontSizeDecreaseButton;
+  FFontSizeDecreaseButton.Hint := SFontSizeDecreaseHint;
+  FFontSizeIncreaseButton.Caption := SFontSizeIncreaseButton;
+  FFontSizeIncreaseButton.Hint := SFontSizeIncreaseHint;
   FTranslatorNoteButton.Caption := STranslatorNoteButton;
   FTitleButton.Caption := STitleButton;
   FTitleButton.Hint := STitleHint;
   FFontColorBox.Hint := SFontColorHint;
   FTranslatorNoteButton.Hint := STranslatorNoteHint;
+  if FEditor.RawMode then
+    FRawModeButton.Caption := SVisualModeButton
+  else
+    FRawModeButton.Caption := SRawModeButton;
   FRawModeButton.Hint := SRawModeHint;
+
+  FHtmlFormatMenu.Items[0].Caption := SHtmlBoldMenuItem;
+  FHtmlFormatMenu.Items[1].Caption := SHtmlItalicMenuItem;
+  FHtmlFormatMenu.Items[2].Caption := SHtmlUnderlineMenuItem;
+  FTitleMenu.Items[0].Caption := SNewTitleLevel1;
+  FTitleMenu.Items[1].Caption := SNewTitleLevel2;
+  FTitleMenu.Items[2].Caption := SNewTitleLevel3;
+  FTitleMenu.Items[4].Caption := SChangeTitleLevel1;
+  FTitleMenu.Items[5].Caption := SChangeTitleLevel2;
+  FTitleMenu.Items[6].Caption := SChangeTitleLevel3;
+  FTitleMenu.Items[8].Caption := SRemoveTitle;
+
+  { TColorBox caches the LCL resource strings when its list is built. Rebuild
+    that list after SetDefaultLang so an already open editor changes language
+    along with the rest of the application. }
+  ColorBoxStyle := FFontColorBox.Style;
+  if cbPrettyNames in ColorBoxStyle then
+  begin
+    FFontColorBox.Style := ColorBoxStyle - [cbPrettyNames];
+    FFontColorBox.Style := ColorBoxStyle;
+  end;
 end;
 
 procedure TVerseMemo.RestoreFocusAfterClose;
@@ -767,9 +804,9 @@ begin
   FSubscriptButton := NewSemanticButton(SSubscriptButton,
     SSubscriptHint, @InsertSubscript);
   FHtmlFormatMenu := TPopupMenu.Create(FEditorPanel);
-  AddHtmlMenuItem('Bold (<b>)', @InsertHtmlBold);
-  AddHtmlMenuItem('Italic (<i>)', @InsertHtmlItalic);
-  AddHtmlMenuItem('Underline (<u>)', @InsertHtmlUnderline);
+  AddHtmlMenuItem(SHtmlBoldMenuItem, @InsertHtmlBold);
+  AddHtmlMenuItem(SHtmlItalicMenuItem, @InsertHtmlItalic);
+  AddHtmlMenuItem(SHtmlUnderlineMenuItem, @InsertHtmlUnderline);
   FHtmlFormatButton := NewSemanticButton(SHtmlFormatButton,
     SHtmlFormatHint, @ShowHtmlFormatMenu);
   FFontSizeDecreaseButton := NewSemanticButton(SFontSizeDecreaseButton,
@@ -944,6 +981,12 @@ end;
 procedure TVerseMemo.Deactivate;
 begin
   TryDeactivate;
+end;
+
+procedure TVerseMemo.Translate;
+begin
+  RefreshLocalizedCaptions;
+  UpdateEditorState;
 end;
 
 function TVerseMemo.HasPendingChange: Boolean;

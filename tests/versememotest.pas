@@ -20,13 +20,14 @@ type
     procedure PostCommitObserverFailureStillClosesAppliedEdit;
     procedure RawSaveCannotChangeProtectedLexicalObjects;
     procedure SemanticToolbarButtonsAreCompactTypographicAndNonOverlapping;
+    procedure PortugueseLocalizationRefreshesWysiwygToolbarAndMenus;
   end;
 
 implementation
 
 uses
-  SysUtils, Forms, Controls, ExtCtrls, StdCtrls, Buttons, Graphics, SynEdit, Verse,
-  VerseMemo, Project,
+  Classes, SysUtils, Forms, Controls, ExtCtrls, StdCtrls, Buttons, Graphics,
+  Menus, ColorBox, LCLTranslator, SynEdit, Verse, VerseMemo, Project,
   directwrite_syntagm_view, directwrite_verse_editor, verse_view_intf,
   verse_visual_document, theword_ont_codec_v2,
   theword_effective_inline_style_v2, theword_wysiwyg_editor_control,
@@ -259,6 +260,59 @@ begin
         Exit;
     end;
   end;
+end;
+
+function FindColorBox(AParent: TWinControl): TColorBox;
+var
+  ChildIndex: Integer;
+begin
+  Result := nil;
+  if not Assigned(AParent) then
+    Exit;
+  for ChildIndex := 0 to AParent.ControlCount - 1 do
+  begin
+    if AParent.Controls[ChildIndex] is TColorBox then
+      Exit(TColorBox(AParent.Controls[ChildIndex]));
+    if AParent.Controls[ChildIndex] is TWinControl then
+    begin
+      Result := FindColorBox(TWinControl(AParent.Controls[ChildIndex]));
+      if Assigned(Result) then
+        Exit;
+    end;
+  end;
+end;
+
+function FindPopupMenuWithItemTag(AOwner: TComponent;
+  ATag: PtrInt): TPopupMenu;
+var
+  ComponentIndex, ItemIndex: Integer;
+  Popup: TPopupMenu;
+begin
+  Result := nil;
+  if not Assigned(AOwner) then
+    Exit;
+  for ComponentIndex := 0 to AOwner.ComponentCount - 1 do
+    if AOwner.Components[ComponentIndex] is TPopupMenu then
+    begin
+      Popup := TPopupMenu(AOwner.Components[ComponentIndex]);
+      for ItemIndex := 0 to Popup.Items.Count - 1 do
+        if Popup.Items[ItemIndex].Tag = ATag then
+          Exit(Popup);
+    end;
+end;
+
+function FindPopupMenuWithItemCount(AOwner: TComponent;
+  ACount: Integer): TPopupMenu;
+var
+  ComponentIndex: Integer;
+begin
+  Result := nil;
+  if not Assigned(AOwner) then
+    Exit;
+  for ComponentIndex := 0 to AOwner.ComponentCount - 1 do
+    if (AOwner.Components[ComponentIndex] is TPopupMenu) and
+       (TPopupMenu(AOwner.Components[ComponentIndex]).Items.Count = ACount) then
+      Exit(TPopupMenu(AOwner.Components[ComponentIndex]));
 end;
 
 procedure TVerseMemoTests.ActivateEmptyVerseKeepsEditorAttachedToWindow;
@@ -842,6 +896,100 @@ begin
     Editor.Free;
     VerseView.Free;
     Host.Free;
+  end;
+end;
+
+procedure TVerseMemoTests.PortugueseLocalizationRefreshesWysiwygToolbarAndMenus;
+var
+  AddedButton, DecreaseButton, HtmlButton, TitleButton: TSpeedButton;
+  CancelButton, SaveButton: TButton;
+  ColorSelector: TColorBox;
+  Composite: TTheWordWysiwygEditorControl;
+  Container: TScrollBox;
+  Editor: TVerseMemo;
+  EditorPanel: TWinControl;
+  Host: TForm;
+  HtmlMenu, TitleMenu: TPopupMenu;
+  LanguagesDir: string;
+  VerseView: TVerse;
+begin
+  Forms.Application.Initialize;
+  LanguagesDir := ExpandFileName(IncludeTrailingPathDelimiter(
+    ExtractFilePath(ParamStr(0))) + '..\languages');
+  AssertTrue('Portuguese application catalog must be available to the test',
+    FileExists(IncludeTrailingPathDelimiter(LanguagesDir) + 'iBiblia.pt.po'));
+  AssertTrue('Portuguese LCL catalog must be available to the test',
+    FileExists(IncludeTrailingPathDelimiter(LanguagesDir) +
+      'lclstrconsts.pt.po'));
+
+  SetDefaultLang('en', LanguagesDir, 'iBiblia', False);
+  Host := TForm.CreateNew(nil);
+  Container := TScrollBox.Create(Host);
+  Container.Parent := Host;
+  Container.Align := alClient;
+  VerseView := TVerse.Create(Container);
+  Editor := TVerseMemo.Create;
+  try
+    Host.Show;
+    Application.ProcessMessages;
+    VerseView.Text := 'alpha';
+    Editor.Activate(Container, VerseView);
+    Composite := FindWysiwygEditor(Host);
+    AssertTrue(Assigned(Composite));
+    EditorPanel := Composite.Parent;
+    TitleMenu := FindPopupMenuWithItemTag(EditorPanel, 20);
+    AssertTrue(Assigned(TitleMenu));
+    AssertEquals('New level 1 title...', TitleMenu.Items[0].Caption);
+
+    SetDefaultLang('pt', LanguagesDir, 'iBiblia', False);
+    Editor.Translate;
+    Application.ProcessMessages;
+
+    SaveButton := FindButtonWithCaption(Host, 'Salvar');
+    CancelButton := FindButtonWithCaption(Host, 'Cancelar');
+    AddedButton := FindSpeedButtonWithCaption(Host, 'I');
+    HtmlButton := FindSpeedButtonWithCaption(Host, 'B/I/U');
+    DecreaseButton := FindSpeedButtonWithCaption(Host, 'A−');
+    TitleButton := FindSpeedButtonWithCaption(Host, 'T▾');
+    AssertTrue(Assigned(SaveButton));
+    AssertTrue(Assigned(CancelButton));
+    AssertTrue(Assigned(AddedButton));
+    AssertTrue(Assigned(HtmlButton));
+    AssertTrue(Assigned(DecreaseButton));
+    AssertTrue(Assigned(TitleButton));
+    AssertTrue(Pos('Salva o texto do versículo', SaveButton.Hint) > 0);
+    AssertTrue(Pos('Palavras adicionadas', AddedButton.Hint) > 0);
+    AssertTrue(Pos('Negrito, itálico ou sublinhado', HtmlButton.Hint) > 0);
+    AssertTrue(Pos('Diminuir o tamanho relativo', DecreaseButton.Hint) > 0);
+    AssertTrue(Pos('Inserir, alterar ou remover', TitleButton.Hint) > 0);
+
+    HtmlMenu := FindPopupMenuWithItemCount(EditorPanel, 3);
+    AssertTrue(Assigned(HtmlMenu));
+    AssertEquals('Negrito (<b>)', HtmlMenu.Items[0].Caption);
+    AssertEquals('Itálico (<i>)', HtmlMenu.Items[1].Caption);
+    AssertEquals('Sublinhado (<u>)', HtmlMenu.Items[2].Caption);
+    AssertEquals('Novo título de nível 1...', TitleMenu.Items[0].Caption);
+    AssertEquals('Novo título de nível 2...', TitleMenu.Items[1].Caption);
+    AssertEquals('Novo título de nível 3...', TitleMenu.Items[2].Caption);
+    AssertEquals('Alterar para o nível 1', TitleMenu.Items[4].Caption);
+    AssertEquals('Alterar para o nível 2', TitleMenu.Items[5].Caption);
+    AssertEquals('Alterar para o nível 3', TitleMenu.Items[6].Caption);
+    AssertEquals('Remover título', TitleMenu.Items[8].Caption);
+
+    ColorSelector := FindColorBox(Host);
+    AssertTrue(Assigned(ColorSelector));
+    AssertTrue('Default color must be localized',
+      ColorSelector.Items.IndexOf('Padrão') >= 0);
+    AssertTrue('Custom color must be localized',
+      ColorSelector.Items.IndexOf('Personalizado ...') >= 0);
+    AssertFalse('changing language must not modify the verse',
+      Editor.HasPendingChange);
+    Editor.DiscardEdit;
+  finally
+    Editor.Free;
+    VerseView.Free;
+    Host.Free;
+    SetDefaultLang('en', LanguagesDir, 'iBiblia', False);
   end;
 end;
 

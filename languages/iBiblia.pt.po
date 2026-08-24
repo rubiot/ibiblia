@@ -4846,3 +4846,233 @@ msgstr "Cor do texto"
 #: theword_translator_note_editor.sbackgroundcolorhint
 msgid "Background color"
 msgstr "Cor de fundo"
+
+#: versememo.sprotectedregions
+msgctxt "versememo.sprotectedregions"
+msgid "Protected ONT objects"
+msgstr "Objetos ONT protegidos"
+
+#: versememo.saddedwordsbutton
+msgctxt "versememo.saddedwordsbutton"
+msgid "I"
+msgstr "I"
+
+#: versememo.sjesuswordsbutton
+msgctxt "versememo.sjesuswordsbutton"
+msgid "J"
+msgstr "J"
+
+#: versememo.soldtestamentquotebutton
+msgctxt "versememo.soldtestamentquotebutton"
+msgid "O"
+msgstr "O"
+
+#: versememo.sunderlinebutton
+msgctxt "versememo.sunderlinebutton"
+msgid "S"
+msgstr "S"
+
+#: versememo.sstrikethroughbutton
+msgctxt "versememo.sstrikethroughbutton"
+msgid "S"
+msgstr "S"
+
+#: versememo.ssuperscriptbutton
+msgctxt "versememo.ssuperscriptbutton"
+msgid "x²"
+msgstr "x²"
+
+#: versememo.ssubscriptbutton
+msgctxt "versememo.ssubscriptbutton"
+msgid "x₂"
+msgstr "x₂"
+
+#: versememo.shtmlformatbutton
+msgctxt "versememo.shtmlformatbutton"
+msgid "B/I/U"
+msgstr "B/I/U"
+
+#: versememo.shtmlboldmenuitem
+msgctxt "versememo.shtmlboldmenuitem"
+msgid "Bold (<b>)"
+msgstr "Negrito (<b>)"
+
+#: versememo.shtmlitalicmenuitem
+msgctxt "versememo.shtmlitalicmenuitem"
+msgid "Italic (<i>)"
+msgstr "Itálico (<i>)"
+
+#: versememo.shtmlunderlinemenuitem
+msgctxt "versememo.shtmlunderlinemenuitem"
+msgid "Underline (<u>)"
+msgstr "Sublinhado (<u>)"
+
+#: versememo.sfontsizedecreasebutton
+msgctxt "versememo.sfontsizedecreasebutton"
+msgid "A−"
+msgstr "A−"
+
+#: versememo.sfontsizeincreasebutton
+msgctxt "versememo.sfontsizeincreasebutton"
+msgid "A+"
+msgstr "A+"
+
+#: versememo.stitlebutton
+msgctxt "versememo.stitlebutton"
+msgid "T▾"
+msgstr "T▾"
+
+#: versememo.srawmodebutton
+msgctxt "versememo.srawmodebutton"
+msgid "Raw"
+msgstr "Raw"
+
+#: versememo.svisualmodebutton
+msgctxt "versememo.svisualmodebutton"
+msgid "Visual"
+msgstr "Visual"
+
+#: versememo.saddedwordshint
+msgctxt "versememo.saddedwordshint"
+msgid "Added words: apply or remove italic formatting (Ctrl+I)"
+msgstr "Palavras adicionadas: aplica ou remove a formatação em itálico (Ctrl+I)"
+
+#: versememo.sjesuswordshint
+msgctxt "versememo.sjesuswordshint"
+msgid "Words of Jesus: apply or remove red formatting (Ctrl+J)"
+msgstr "Palavras de Jesus: aplica ou remove a formatação vermelha (Ctrl+J)"
+
+#: versememo.soldtestamentquotehint
+msgctxt "versememo.soldtestamentquotehint"
+msgid "Old Testament quotation: apply or remove bold formatting (Ctrl+O)"
+msgstr "Citação do Antigo Testamento: aplica ou remove a formatação em negrito (Ctrl+O)"
+
+#: versememo.sunderlinehint
+msgctxt "versememo.sunderlinehint"
+msgid "Underline: apply or remove underlining"
+msgstr "Sublinhado: aplica ou remove o sublinhado"
+
+#: versememo.sstrikethroughhint
+msgctxt "versememo.sstrikethroughhint"
+msgid "Strikethrough: apply or remove strikethrough (Ctrl+Shift+S)"
+msgstr "Tachado: aplica ou remove o tachado (Ctrl+Shift+S)"
+
+#: versememo.ssuperscripthint
+msgctxt "versememo.ssuperscripthint"
+msgid "Superscript: apply or remove superscript (Ctrl+Shift+=)"
+msgstr "Sobrescrito: aplica ou remove o sobrescrito (Ctrl+Shift+=)"
+
+#: versememo.ssubscripthint
+msgctxt "versememo.ssubscripthint"
+msgid "Subscript: apply or remove subscript (Ctrl+=)"
+msgstr "Subscrito: aplica ou remove o subscrito (Ctrl+=)"
+
+#: versememo.shtmlformathint
+msgctxt "versememo.shtmlformathint"
+msgid "HTML bold, italic or underline"
+msgstr "Negrito, itálico ou sublinhado HTML"
+
+#: versememo.sfontsizedecreasehint
+msgctxt "versememo.sfontsizedecreasehint"
+msgid "Decrease relative font size (Ctrl+Shift+,)"
+msgstr "Diminuir o tamanho relativo da fonte (Ctrl+Shift+,)"
+
+#: versememo.sfontsizeincreasehint
+msgctxt "versememo.sfontsizeincreasehint"
+msgid "Increase relative font size (Ctrl+Shift+.)"
+msgstr "Aumentar o tamanho relativo da fonte (Ctrl+Shift+.)"
+
+#: versememo.sfontcolorhint
+msgctxt "versememo.sfontcolorhint"
+msgid "Font color; choose Default to remove explicit color"
+msgstr "Cor da fonte; escolha Padrão para remover a cor explícita"
+
+#: versememo.stitlehint
+msgctxt "versememo.stitlehint"
+msgid "Insert, change or remove a title"
+msgstr "Inserir, alterar ou remover um título"
+
+#: versememo.snewtitlelevel1
+msgctxt "versememo.snewtitlelevel1"
+msgid "New level 1 title..."
+msgstr "Novo título de nível 1..."
+
+#: versememo.snewtitlelevel2
+msgctxt "versememo.snewtitlelevel2"
+msgid "New level 2 title..."
+msgstr "Novo título de nível 2..."
+
+#: versememo.snewtitlelevel3
+msgctxt "versememo.snewtitlelevel3"
+msgid "New level 3 title..."
+msgstr "Novo título de nível 3..."
+
+#: versememo.schangetitlelevel1
+msgctxt "versememo.schangetitlelevel1"
+msgid "Change to level 1"
+msgstr "Alterar para o nível 1"
+
+#: versememo.schangetitlelevel2
+msgctxt "versememo.schangetitlelevel2"
+msgid "Change to level 2"
+msgstr "Alterar para o nível 2"
+
+#: versememo.schangetitlelevel3
+msgctxt "versememo.schangetitlelevel3"
+msgid "Change to level 3"
+msgstr "Alterar para o nível 3"
+
+#: versememo.sremovetitle
+msgctxt "versememo.sremovetitle"
+msgid "Remove title"
+msgstr "Remover título"
+
+#: versememo.sinserttitledialogtitle
+msgctxt "versememo.sinserttitledialogtitle"
+msgid "Insert title"
+msgstr "Inserir título"
+
+#: versememo.sinserttitleprompt
+msgctxt "versememo.sinserttitleprompt"
+msgid "Title text:"
+msgstr "Texto do título:"
+
+#: versememo.stitleediterrortitle
+msgctxt "versememo.stitleediterrortitle"
+msgid "Title edit error"
+msgstr "Erro ao editar título"
+
+#: versememo.stitleediterror
+msgctxt "versememo.stitleediterror"
+msgid "The title could not be changed at this position."
+msgstr "Não foi possível alterar o título nesta posição."
+
+#: versememo.stranslatornotehint
+msgctxt "versememo.stranslatornotehint"
+msgid "Insert translator note at the caret (Ctrl+Shift+N)"
+msgstr "Insere uma nota do tradutor na posição do cursor (Ctrl+Shift+N)"
+
+#: versememo.srawmodehint
+msgctxt "versememo.srawmodehint"
+msgid "Switch between semantic editing and the raw ONT fallback"
+msgstr "Alterna entre a edição semântica e o modo Raw ONT"
+
+#: versememo.seditapplyfailed
+msgctxt "versememo.seditapplyfailed"
+msgid "The edit could not be applied"
+msgstr "Não foi possível aplicar a edição"
+
+#: versememo.sprotectedlexicalobjectschanged
+msgctxt "versememo.sprotectedlexicalobjectschanged"
+msgid "Strong and morphology data are protected in this editing cycle"
+msgstr "Os dados de Strong e morfologia estão protegidos neste ciclo de edição"
+
+#: versememo.stranslatornotenotfound
+msgctxt "versememo.stranslatornotenotfound"
+msgid "The translator note could not be located in the current verse."
+msgstr "Não foi possível localizar a nota do tradutor no versículo atual."
+
+#: commentsview.seditorialcommentstitle
+msgctxt "commentsview.seditorialcommentstitle"
+msgid "Editorial comments"
+msgstr "Comentários editoriais"

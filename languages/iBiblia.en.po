@@ -4646,3 +4646,238 @@ msgstr "Save"
 msgctxt "versememo.ssaveedithint"
 msgid "Save verse text and close the editor"
 msgstr "Save verse text and close the editor"
+
+#: versememo.sprotectedregions
+msgctxt "versememo.sprotectedregions"
+msgid "Protected ONT objects"
+msgstr "Protected ONT objects"
+
+#: versememo.saddedwordsbutton
+msgctxt "versememo.saddedwordsbutton"
+msgid "I"
+msgstr "I"
+
+#: versememo.sjesuswordsbutton
+msgctxt "versememo.sjesuswordsbutton"
+msgid "J"
+msgstr "J"
+
+#: versememo.soldtestamentquotebutton
+msgctxt "versememo.soldtestamentquotebutton"
+msgid "O"
+msgstr "O"
+
+#: versememo.sunderlinebutton
+msgctxt "versememo.sunderlinebutton"
+msgid "S"
+msgstr "S"
+
+#: versememo.sstrikethroughbutton
+msgctxt "versememo.sstrikethroughbutton"
+msgid "S"
+msgstr "S"
+
+#: versememo.ssuperscriptbutton
+msgctxt "versememo.ssuperscriptbutton"
+msgid "x²"
+msgstr "x²"
+
+#: versememo.ssubscriptbutton
+msgctxt "versememo.ssubscriptbutton"
+msgid "x₂"
+msgstr "x₂"
+
+#: versememo.shtmlformatbutton
+msgctxt "versememo.shtmlformatbutton"
+msgid "B/I/U"
+msgstr "B/I/U"
+
+#: versememo.shtmlboldmenuitem
+msgctxt "versememo.shtmlboldmenuitem"
+msgid "Bold (<b>)"
+msgstr "Bold (<b>)"
+
+#: versememo.shtmlitalicmenuitem
+msgctxt "versememo.shtmlitalicmenuitem"
+msgid "Italic (<i>)"
+msgstr "Italic (<i>)"
+
+#: versememo.shtmlunderlinemenuitem
+msgctxt "versememo.shtmlunderlinemenuitem"
+msgid "Underline (<u>)"
+msgstr "Underline (<u>)"
+
+#: versememo.sfontsizedecreasebutton
+msgctxt "versememo.sfontsizedecreasebutton"
+msgid "A−"
+msgstr "A−"
+
+#: versememo.sfontsizeincreasebutton
+msgctxt "versememo.sfontsizeincreasebutton"
+msgid "A+"
+msgstr "A+"
+
+#: versememo.stitlebutton
+msgctxt "versememo.stitlebutton"
+msgid "T▾"
+msgstr "T▾"
+
+#: versememo.stranslatornotebutton
+msgctxt "versememo.stranslatornotebutton"
+msgid "N¹"
+msgstr "N¹"
+
+#: versememo.srawmodebutton
+msgctxt "versememo.srawmodebutton"
+msgid "Raw"
+msgstr "Raw"
+
+#: versememo.svisualmodebutton
+msgctxt "versememo.svisualmodebutton"
+msgid "Visual"
+msgstr "Visual"
+
+#: versememo.saddedwordshint
+msgctxt "versememo.saddedwordshint"
+msgid "Added words: apply or remove italic formatting (Ctrl+I)"
+msgstr "Added words: apply or remove italic formatting (Ctrl+I)"
+
+#: versememo.sjesuswordshint
+msgctxt "versememo.sjesuswordshint"
+msgid "Words of Jesus: apply or remove red formatting (Ctrl+J)"
+msgstr "Words of Jesus: apply or remove red formatting (Ctrl+J)"
+
+#: versememo.soldtestamentquotehint
+msgctxt "versememo.soldtestamentquotehint"
+msgid "Old Testament quotation: apply or remove bold formatting (Ctrl+O)"
+msgstr "Old Testament quotation: apply or remove bold formatting (Ctrl+O)"
+
+#: versememo.sunderlinehint
+msgctxt "versememo.sunderlinehint"
+msgid "Underline: apply or remove underlining"
+msgstr "Underline: apply or remove underlining"
+
+#: versememo.sstrikethroughhint
+msgctxt "versememo.sstrikethroughhint"
+msgid "Strikethrough: apply or remove strikethrough (Ctrl+Shift+S)"
+msgstr "Strikethrough: apply or remove strikethrough (Ctrl+Shift+S)"
+
+#: versememo.ssuperscripthint
+msgctxt "versememo.ssuperscripthint"
+msgid "Superscript: apply or remove superscript (Ctrl+Shift+=)"
+msgstr "Superscript: apply or remove superscript (Ctrl+Shift+=)"
+
+#: versememo.ssubscripthint
+msgctxt "versememo.ssubscripthint"
+msgid "Subscript: apply or remove subscript (Ctrl+=)"
+msgstr "Subscript: apply or remove subscript (Ctrl+=)"
+
+#: versememo.shtmlformathint
+msgctxt "versememo.shtmlformathint"
+msgid "HTML bold, italic or underline"
+msgstr "HTML bold, italic or underline"
+
+#: versememo.sfontsizedecreasehint
+msgctxt "versememo.sfontsizedecreasehint"
+msgid "Decrease relative font size (Ctrl+Shift+,)"
+msgstr "Decrease relative font size (Ctrl+Shift+,)"
+
+#: versememo.sfontsizeincreasehint
+msgctxt "versememo.sfontsizeincreasehint"
+msgid "Increase relative font size (Ctrl+Shift+.)"
+msgstr "Increase relative font size (Ctrl+Shift+.)"
+
+#: versememo.sfontcolorhint
+msgctxt "versememo.sfontcolorhint"
+msgid "Font color; choose Default to remove explicit color"
+msgstr "Font color; choose Default to remove explicit color"
+
+#: versememo.stitlehint
+msgctxt "versememo.stitlehint"
+msgid "Insert, change or remove a title"
+msgstr "Insert, change or remove a title"
+
+#: versememo.snewtitlelevel1
+msgctxt "versememo.snewtitlelevel1"
+msgid "New level 1 title..."
+msgstr "New level 1 title..."
+
+#: versememo.snewtitlelevel2
+msgctxt "versememo.snewtitlelevel2"
+msgid "New level 2 title..."
+msgstr "New level 2 title..."
+
+#: versememo.snewtitlelevel3
+msgctxt "versememo.snewtitlelevel3"
+msgid "New level 3 title..."
+msgstr "New level 3 title..."
+
+#: versememo.schangetitlelevel1
+msgctxt "versememo.schangetitlelevel1"
+msgid "Change to level 1"
+msgstr "Change to level 1"
+
+#: versememo.schangetitlelevel2
+msgctxt "versememo.schangetitlelevel2"
+msgid "Change to level 2"
+msgstr "Change to level 2"
+
+#: versememo.schangetitlelevel3
+msgctxt "versememo.schangetitlelevel3"
+msgid "Change to level 3"
+msgstr "Change to level 3"
+
+#: versememo.sremovetitle
+msgctxt "versememo.sremovetitle"
+msgid "Remove title"
+msgstr "Remove title"
+
+#: versememo.sinserttitledialogtitle
+msgctxt "versememo.sinserttitledialogtitle"
+msgid "Insert title"
+msgstr "Insert title"
+
+#: versememo.sinserttitleprompt
+msgctxt "versememo.sinserttitleprompt"
+msgid "Title text:"
+msgstr "Title text:"
+
+#: versememo.stitleediterrortitle
+msgctxt "versememo.stitleediterrortitle"
+msgid "Title edit error"
+msgstr "Title edit error"
+
+#: versememo.stitleediterror
+msgctxt "versememo.stitleediterror"
+msgid "The title could not be changed at this position."
+msgstr "The title could not be changed at this position."
+
+#: versememo.stranslatornotehint
+msgctxt "versememo.stranslatornotehint"
+msgid "Insert translator note at the caret (Ctrl+Shift+N)"
+msgstr "Insert translator note at the caret (Ctrl+Shift+N)"
+
+#: versememo.srawmodehint
+msgctxt "versememo.srawmodehint"
+msgid "Switch between semantic editing and the raw ONT fallback"
+msgstr "Switch between semantic editing and the raw ONT fallback"
+
+#: versememo.seditapplyfailed
+msgctxt "versememo.seditapplyfailed"
+msgid "The edit could not be applied"
+msgstr "The edit could not be applied"
+
+#: versememo.sprotectedlexicalobjectschanged
+msgctxt "versememo.sprotectedlexicalobjectschanged"
+msgid "Strong and morphology data are protected in this editing cycle"
+msgstr "Strong and morphology data are protected in this editing cycle"
+
+#: versememo.stranslatornotenotfound
+msgctxt "versememo.stranslatornotenotfound"
+msgid "The translator note could not be located in the current verse."
+msgstr "The translator note could not be located in the current verse."
+
+#: commentsview.seditorialcommentstitle
+msgctxt "commentsview.seditorialcommentstitle"
+msgid "Editorial comments"
+msgstr "Editorial comments"

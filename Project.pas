@@ -3081,7 +3081,7 @@ begin
   AImpact.ErrorMessage := '';
   if ContainsText(Sender.Text, #13) or ContainsText(Sender.Text, #10) then
   begin
-    AImpact.ErrorMessage := 'A verse cannot contain line breaks.';
+    AImpact.ErrorMessage := SLineBreaksInEditor;
     exit;
   end;
 
@@ -5979,6 +5979,8 @@ begin
   UpdateDefaultStatusDescription;
   if Assigned(FPersistence) and (ID <> '') then
     UpdateReference(ID);
+  if Assigned(FVerseMemo) then
+    FVerseMemo.Translate;
   if not assigned(FArvore) then
     exit;
 
