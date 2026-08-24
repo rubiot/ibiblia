@@ -425,6 +425,7 @@ end;
 procedure TSyntagm.DoOnRightClick(Sender: TObject; Shift: TShiftState);
 var
   LastSelected, NextUnassociated: TSyntagm;
+  ClickSyntagm: TSyntagm;
   verse: TVerse;
   i: integer;
 begin
@@ -436,6 +437,7 @@ begin
   }
 
   verse := TVerse(VerseRef);
+  ClickSyntagm := Self;
   if not assigned(verse.PairedVerse) then
     exit;
 
@@ -471,13 +473,15 @@ begin
       if Assigned(NextUnassociated) then
       begin
         NextUnassociated.AddToSelection;
-        if Assigned(TVerse(NextUnassociated.VerseRef).OnClick) then
-          TVerse(NextUnassociated.VerseRef).OnClick(NextUnassociated);
+        ClickSyntagm := NextUnassociated;
       end;
     end;
   end;
 
   verse.Render;
+  if Assigned(TVerse(ClickSyntagm.VerseRef).OnClick) then
+    TVerse(ClickSyntagm.VerseRef).OnClick(ClickSyntagm);
+
 end;
 
 procedure TSyntagm.DoOnMiddleClick(Sender: TObject; Shift: TShiftState);
