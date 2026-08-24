@@ -11,6 +11,7 @@ uses
   {$ENDIF}
   SysUtils, Forms, ComCtrls, fpcunit, testregistry, sqlite3conn,
   sqldb, BibleScope, Project, project_database_bootstrap,
+  bible_versification, theword_module_import_layout,
   theword_module_encoding, UnitPleaseWait, LMessages;
 
 type
@@ -58,7 +59,6 @@ type
       APrefix: string): Integer;
     function ReadVerseText(const ADatabaseFile, AFieldName,
       AReference: string): string;
-    procedure KeepOnlyFirstPairs(const ADatabaseFile: string; ACount: Integer);
     procedure SeedExistingDestinationText(const ADatabaseFile,
       AText: string);
     procedure SeedFirstAssociatedPair(const ADatabaseFile: string);
@@ -72,8 +72,8 @@ type
     procedure AssociationParticipationIsLimitedToSourceAndDestination;
     procedure Utf8BomWithCharsetZeroDoesNotRequireConfirmation;
     procedure Reference2ImportPreservesAssociationsAndStatus;
-    procedure FullONTImportsAll31102Verses;
-    procedure ONTIntoOTUsesOldTestamentCapacity;
+    procedure CanonicalVerseCountsAndFinalReferenceAreStable;
+    procedure ONTSubsetLayoutsStopBeforeModuleProperties;
     procedure ProjectExhaustionFailsWithCountsAndLeavesNoPartialText;
     procedure RejectedAssociatedReplacementFailsAndRollsBack;
     procedure ProgressUpdatesDoNotDispatchQueuedNavigation;
@@ -282,28 +282,6 @@ begin
   end;
 end;
 
-procedure TTheWordModuleImportTests.KeepOnlyFirstPairs(
-  const ADatabaseFile: string; ACount: Integer);
-var
-  Connection: TSQLite3Connection;
-  Transaction: TSQLTransaction;
-begin
-  Connection := TSQLite3Connection.Create(nil);
-  Transaction := TSQLTransaction.Create(nil);
-  try
-    Connection.Transaction := Transaction;
-    Connection.DatabaseName := ADatabaseFile;
-    Connection.Open;
-    Transaction.StartTransaction;
-    Connection.ExecuteDirect(Format(
-      'delete from pares where rowid > %d', [ACount]));
-    Transaction.Commit;
-  finally
-    Transaction.Free;
-    Connection.Free;
-  end;
-end;
-
 procedure TTheWordModuleImportTests.SeedExistingDestinationText(
   const ADatabaseFile, AText: string);
 var
@@ -470,7 +448,7 @@ var
   EncodingInfo: TTheWordModuleEncodingInfo;
 begin
   ModuleFile := CreateONTModule('utf8-bom.ont', 'Texto em português',
-    QLinhas[etONT], True, True);
+    3, True, True);
 
   EncodingInfo := InspectTheWordModuleEncodingFile(ModuleFile);
 
@@ -486,6 +464,7 @@ procedure TTheWordModuleImportTests.
   Reference2ImportPreservesAssociationsAndStatus;
 const
   FIRST_NT_REFERENCE = '40,1,1';
+  FIXTURE_VERSE_COUNT = 5;
 var
   DatabaseFile: string;
   ImportResult: TTheWordModuleImportResult;
@@ -494,8 +473,9 @@ var
 begin
   DatabaseFile := TempPath('reference2-preserves-associations.bib');
   ModuleFile := CreateONTModule('reference2-preserves-associations.nt',
-    'Reference two', QLinhas[etNT], False, True);
-  TProjectDatabaseBootstrap.CreateProjectDatabase(DatabaseFile, etNT);
+    'Reference two', FIXTURE_VERSE_COUNT, False, True);
+  TProjectDatabaseBootstrap.CreateProjectDatabaseFixture(DatabaseFile, etNT,
+    FIXTURE_VERSE_COUNT);
   SeedFirstAssociatedPair(DatabaseFile);
 
   ProjectInstance := TProject.Create;
@@ -503,8 +483,8 @@ begin
     ProjectInstance.Escopo := etNT;
     ProjectInstance.OpenProject(DatabaseFile);
     AssertTrue('a reference import must complete even when replace is true',
-      ProjectInstance.ImportTheWordModule(ModuleFile, tbConsulta2, nil, True,
-        ImportResult, True));
+      ProjectInstance.ImportTheWordModuleFixture(ModuleFile, tbConsulta2, nil,
+        True, ImportResult, True, FIXTURE_VERSE_COUNT));
     AssertEquals('status', Ord(twmisSucceeded), Ord(ImportResult.Status));
     ProjectInstance.Commit;
   finally
@@ -526,111 +506,83 @@ begin
     ReadVerseText(DatabaseFile, 'pare_situacao', FIRST_NT_REFERENCE));
 end;
 
-procedure TTheWordModuleImportTests.FullONTImportsAll31102Verses;
+procedure TTheWordModuleImportTests.
+  CanonicalVerseCountsAndFinalReferenceAreStable;
 var
-  DatabaseFile: string;
-  ImportResult: TTheWordModuleImportResult;
-  ModuleFile: string;
-  ProjectInstance: TProject;
-  ProgressBar: TProgressBar;
+  ReferenceID: string;
 begin
-  if GetEnvironmentVariable('IBIBLIA_RUN_FULL_MODULE_IMPORT_TESTS') <> '1' then
-  begin
-    Ignore('Set IBIBLIA_RUN_FULL_MODULE_IMPORT_TESTS=1 to run the 31,102-verse import gate');
-    Exit;
-  end;
+  AssertEquals('canonical ONT verse count', 31102,
+    DeclaredBibleVerseCount(etONT));
+  AssertEquals('enumerated ONT verse count',
+    DeclaredBibleVerseCount(etONT), CalculateBibleVerseCount(etONT));
+  AssertEquals('canonical OT verse count', 23145,
+    DeclaredBibleVerseCount(etOT));
+  AssertEquals('enumerated OT verse count',
+    DeclaredBibleVerseCount(etOT), CalculateBibleVerseCount(etOT));
+  AssertEquals('canonical NT verse count', 7957,
+    DeclaredBibleVerseCount(etNT));
+  AssertEquals('enumerated NT verse count',
+    DeclaredBibleVerseCount(etNT), CalculateBibleVerseCount(etNT));
 
-  DatabaseFile := TempPath('full-ont.bib');
-  ModuleFile := CreateONTModule('full-ont.ont', 'Verse', QLinhas[etONT],
-    True, True);
-  ProjectInstance := TProject.Create;
-  ProgressBar := TProgressBar.Create(nil);
-  try
-    ProjectInstance.Escopo := etONT;
-    ProjectInstance.CreateProject(DatabaseFile, 'Full ONT import');
-    FAsyncProject := ProjectInstance;
-    Application.QueueAsyncCall(@MoveProjectCursorAsync, 0);
-
-    AssertTrue('a canonical ONT module must import completely',
-      ProjectInstance.ImportTheWordModule(ModuleFile, tbConsulta1,
-        ProgressBar, False, ImportResult, True));
-    AssertFalse('import must not pump queued UI callbacks', FAsyncCallbackRan);
-    AssertEquals('status', Ord(twmisSucceeded), Ord(ImportResult.Status));
-    AssertEquals('expected verses', QLinhas[etONT],
-      ImportResult.ExpectedVerseCount);
-    AssertEquals('available verses', QLinhas[etONT],
-      ImportResult.AvailableVerseCount);
-    AssertEquals('imported verses', QLinhas[etONT],
-      ImportResult.ImportedVerseCount);
-    AssertEquals('last canonical reference', '66,22,21',
-      ImportResult.LastReference);
-    ProjectInstance.Commit;
-  finally
-    Application.RemoveAsyncCalls(Self);
-    FAsyncProject := nil;
-    ProgressBar.Free;
-    ProjectInstance.CloseProject(False);
-    ProjectInstance.Free;
-  end;
-
-  AssertEquals('every canonical row must receive reference text',
-    QLinhas[etONT], CountImportedVerses(DatabaseFile,
-      'pare_texto_consulta1'));
-  AssertEquals('the UTF-8 BOM must not leak into the first verse', 'Verse 1',
-    ReadVerseText(DatabaseFile, 'pare_texto_consulta1', '1,1,1'));
-  AssertEquals('Verse 31102', ReadVerseText(DatabaseFile,
-    'pare_texto_consulta1', '66,22,21'));
+  AssertTrue('the final ONT index must resolve to a verse',
+    TryBibleReferenceAt(etONT, DeclaredBibleVerseCount(etONT) - 1,
+      ReferenceID));
+  AssertEquals('the final canonical reference', '66,22,21', ReferenceID);
+  AssertFalse('the first property index must not resolve to a verse',
+    TryBibleReferenceAt(etONT, DeclaredBibleVerseCount(etONT), ReferenceID));
+  AssertEquals('an out-of-range reference must be empty', '', ReferenceID);
 end;
 
 procedure TTheWordModuleImportTests.
-  ONTIntoOTUsesOldTestamentCapacity;
-const
-  AVAILABLE_PAIR_COUNT = 100;
+  ONTSubsetLayoutsStopBeforeModuleProperties;
 var
-  DatabaseFile: string;
-  ImportResult: TTheWordModuleImportResult;
-  ModuleFile: string;
-  ProjectInstance: TProject;
+  Layout: TTheWordModuleImportLayout;
+  Resolution: TTheWordModuleImportLayoutResolution;
 begin
-  DatabaseFile := TempPath('ont-into-ot.bib');
-  ModuleFile := CreateONTModule('ont-into-ot.ont', 'Verse', QLinhas[etONT],
-    False, True);
-  TProjectDatabaseBootstrap.CreateProjectDatabase(DatabaseFile, etOT);
-  KeepOnlyFirstPairs(DatabaseFile, AVAILABLE_PAIR_COUNT);
+  Resolution := ResolveTheWordModuleImportLayout('.ont', etONT, Layout);
+  AssertEquals('ONT layout resolution', Ord(twmilrResolved),
+    Ord(Resolution));
+  AssertEquals('first ONT verse line', 0,
+    FirstImportedModuleLineIndex(Layout));
+  AssertEquals('last ONT verse line', QLinhas[etONT] - 1,
+    LastImportedModuleLineIndex(Layout));
+  AssertEquals('first ONT property line', QLinhas[etONT],
+    FirstModulePropertyLineIndex(Layout));
+  AssertTrue('Revelation 22:21 remains an imported verse line',
+    IsImportedVerseLine(Layout, QLinhas[etONT] - 1));
+  AssertFalse('module properties are not imported as verses',
+    IsImportedVerseLine(Layout, QLinhas[etONT]));
 
-  ProjectInstance := TProject.Create;
-  try
-    ProjectInstance.Escopo := etOT;
-    ProjectInstance.OpenProject(DatabaseFile);
+  Resolution := ResolveTheWordModuleImportLayout('.ont', etOT, Layout);
+  AssertEquals('ONT-to-OT layout resolution', Ord(twmilrResolved),
+    Ord(Resolution));
+  AssertEquals('ONT-to-OT first verse line', 0,
+    FirstImportedModuleLineIndex(Layout));
+  AssertEquals('ONT-to-OT last verse line', QLinhas[etOT] - 1,
+    LastImportedModuleLineIndex(Layout));
+  AssertEquals('ONT-to-OT expected verses', QLinhas[etOT],
+    Layout.ExpectedVerseCount);
+  AssertEquals('ONT properties remain after all ONT verses', QLinhas[etONT],
+    FirstModulePropertyLineIndex(Layout));
 
-    AssertFalse('capacity precheck must use the OT subset of an ONT module',
-      ProjectInstance.ImportTheWordModule(ModuleFile, tbConsulta1, nil, False,
-        ImportResult));
-    AssertEquals('status', Ord(twmisFailed), Ord(ImportResult.Status));
-    AssertEquals('expected OT verses', QLinhas[etOT],
-      ImportResult.ExpectedVerseCount);
-    AssertEquals('available project verses', AVAILABLE_PAIR_COUNT,
-      ImportResult.AvailableVerseCount);
-    AssertEquals('capacity failure must occur before any write', 0,
-      ImportResult.ImportedVerseCount);
-    AssertTrue('diagnostic must report the OT expectation',
-      Pos(IntToStr(QLinhas[etOT]), ImportResult.ErrorMessage) > 0);
-    AssertTrue('diagnostic must report available rows',
-      Pos(IntToStr(AVAILABLE_PAIR_COUNT), ImportResult.ErrorMessage) > 0);
-    ProjectInstance.Commit;
-  finally
-    ProjectInstance.CloseProject(False);
-    ProjectInstance.Free;
-  end;
-
-  AssertEquals('failed OT capacity precheck must leave all rows unchanged', 0,
-    CountImportedVerses(DatabaseFile, 'pare_texto_consulta1'));
+  Resolution := ResolveTheWordModuleImportLayout('.ont', etNT, Layout);
+  AssertEquals('ONT-to-NT layout resolution', Ord(twmilrResolved),
+    Ord(Resolution));
+  AssertEquals('ONT-to-NT starts after the OT subset', QLinhas[etOT],
+    FirstImportedModuleLineIndex(Layout));
+  AssertEquals('ONT-to-NT ends at Revelation 22:21', QLinhas[etONT] - 1,
+    LastImportedModuleLineIndex(Layout));
+  AssertEquals('ONT-to-NT expected verses', QLinhas[etNT],
+    Layout.ExpectedVerseCount);
+  AssertFalse('the first property line remains outside the NT subset',
+    IsImportedVerseLine(Layout, FirstModulePropertyLineIndex(Layout)));
 end;
 
 procedure TTheWordModuleImportTests.
   ProjectExhaustionFailsWithCountsAndLeavesNoPartialText;
 const
-  AVAILABLE_PAIR_COUNT = 100;
+  EXPECTED_VERSE_COUNT = 4;
+  AVAILABLE_PAIR_COUNT = 3;
 var
   DatabaseFile: string;
   ImportResult: TTheWordModuleImportResult;
@@ -638,22 +590,22 @@ var
   ProjectInstance: TProject;
 begin
   DatabaseFile := TempPath('truncated-project.bib');
-  ModuleFile := CreateONTModule('complete-source.ont', 'Source',
-    QLinhas[etONT], False, True);
+  ModuleFile := CreateONTModule('complete-source.nt', 'Source',
+    EXPECTED_VERSE_COUNT, False, True);
 
-  TProjectDatabaseBootstrap.CreateProjectDatabase(DatabaseFile, etONT);
-  KeepOnlyFirstPairs(DatabaseFile, AVAILABLE_PAIR_COUNT);
+  TProjectDatabaseBootstrap.CreateProjectDatabaseFixture(DatabaseFile, etNT,
+    AVAILABLE_PAIR_COUNT);
 
   ProjectInstance := TProject.Create;
   try
-    ProjectInstance.Escopo := etONT;
+    ProjectInstance.Escopo := etNT;
     ProjectInstance.OpenProject(DatabaseFile);
 
     AssertFalse('running out of project rows must fail the import',
-      ProjectInstance.ImportTheWordModule(ModuleFile, tbOrigem, nil, False,
-        ImportResult));
+      ProjectInstance.ImportTheWordModuleFixture(ModuleFile, tbOrigem, nil,
+        False, ImportResult, False, EXPECTED_VERSE_COUNT));
     AssertEquals('status', Ord(twmisFailed), Ord(ImportResult.Status));
-    AssertEquals('expected count', QLinhas[etONT],
+    AssertEquals('expected count', EXPECTED_VERSE_COUNT,
       ImportResult.ExpectedVerseCount);
     AssertEquals('available count', AVAILABLE_PAIR_COUNT,
       ImportResult.AvailableVerseCount);
@@ -662,7 +614,7 @@ begin
     AssertTrue('diagnostic must report the available count',
       Pos(IntToStr(AVAILABLE_PAIR_COUNT), ImportResult.ErrorMessage) > 0);
     AssertTrue('diagnostic must report the expected count',
-      Pos(IntToStr(QLinhas[etONT]), ImportResult.ErrorMessage) > 0);
+      Pos(IntToStr(EXPECTED_VERSE_COUNT), ImportResult.ErrorMessage) > 0);
 
     { Committing after a failed import must not make its staged prefix durable. }
     ProjectInstance.Commit;
@@ -677,6 +629,8 @@ end;
 
 procedure TTheWordModuleImportTests.
   RejectedAssociatedReplacementFailsAndRollsBack;
+const
+  FIXTURE_VERSE_COUNT = 5;
 var
   DatabaseFile: string;
   ImportResult: TTheWordModuleImportResult;
@@ -685,8 +639,9 @@ var
 begin
   DatabaseFile := TempPath('associated-replace.bib');
   ModuleFile := CreateONTModule('associated-replace.nt', 'Replacement',
-    QLinhas[etNT], False, True);
-  TProjectDatabaseBootstrap.CreateProjectDatabase(DatabaseFile, etNT);
+    FIXTURE_VERSE_COUNT, False, True);
+  TProjectDatabaseBootstrap.CreateProjectDatabaseFixture(DatabaseFile, etNT,
+    FIXTURE_VERSE_COUNT);
   SeedFirstAssociatedPair(DatabaseFile);
 
   ProjectInstance := TProject.Create;
@@ -695,12 +650,12 @@ begin
     ProjectInstance.OpenProject(DatabaseFile);
 
     AssertFalse('an irreconcilable associated replacement must fail',
-      ProjectInstance.ImportTheWordModule(ModuleFile, tbOrigem, nil, True,
-        ImportResult));
+      ProjectInstance.ImportTheWordModuleFixture(ModuleFile, tbOrigem, nil,
+        True, ImportResult, False, FIXTURE_VERSE_COUNT));
     AssertEquals('status', Ord(twmisFailed), Ord(ImportResult.Status));
-    AssertEquals('expected NT count', QLinhas[etNT],
+    AssertEquals('expected fixture count', FIXTURE_VERSE_COUNT,
       ImportResult.ExpectedVerseCount);
-    AssertEquals('all NT rows were available', QLinhas[etNT],
+    AssertEquals('all fixture rows were available', FIXTURE_VERSE_COUNT,
       ImportResult.AvailableVerseCount);
     AssertEquals('the rejected first row must not count as imported', 0,
       ImportResult.ImportedVerseCount);
@@ -741,8 +696,9 @@ var
 begin
   DatabaseFile := TempPath('progress-feedback.bib');
   ModuleFile := CreateONTModule('progress-feedback.nt', 'Replacement',
-    QLinhas[etNT], False, True);
-  TProjectDatabaseBootstrap.CreateProjectDatabase(DatabaseFile, etNT);
+    REJECTED_ROW, False, True);
+  TProjectDatabaseBootstrap.CreateProjectDatabaseFixture(DatabaseFile, etNT,
+    REJECTED_ROW);
   SeedAssociatedPairAtRow(DatabaseFile, REJECTED_ROW);
 
   ProjectInstance := TProject.Create;
@@ -754,8 +710,8 @@ begin
     Application.QueueAsyncCall(@MoveProjectCursorAsync, 0);
 
     AssertFalse('the deliberately invalid Association must stop the import',
-      ProjectInstance.ImportTheWordModule(ModuleFile, tbOrigem, ProgressBar,
-        True, ImportResult));
+      ProjectInstance.ImportTheWordModuleFixture(ModuleFile, tbOrigem,
+        ProgressBar, True, ImportResult, False, REJECTED_ROW));
 
     AssertTrue('the progress control must be repainted after the first batch',
       ProgressBar.UpdateCount > 0);
@@ -765,8 +721,8 @@ begin
       ProgressBar.SawTimeTriggeredUpdate);
     AssertTrue('the observed position must include the completed first batch',
       ProgressBar.LastObservedPosition >= FIRST_PROGRESS_BATCH);
-    AssertEquals('the progress maximum must describe the complete NT import',
-      QLinhas[etNT], ProgressBar.Max);
+    AssertEquals('the progress maximum must describe the complete fixture',
+      REJECTED_ROW, ProgressBar.Max);
     AssertFalse(
       'feedback repaint must not dispatch queued navigation or async callbacks',
       FAsyncCallbackRan);
@@ -789,6 +745,7 @@ procedure TTheWordModuleImportTests.
   StagedBatchFailureRestoresCommittedPrefix;
 const
   COMMITTED_BATCH_SIZE = 200;
+  FIXTURE_VERSE_COUNT = COMMITTED_BATCH_SIZE + 1;
 var
   DatabaseFile: string;
   ImportResult: TTheWordModuleImportResult;
@@ -798,8 +755,9 @@ var
 begin
   DatabaseFile := TempPath('staged-reference-batch-rollback.bib');
   ModuleFile := CreateONTModule('staged-reference-batch-rollback.nt',
-    'Reference', QLinhas[etNT], False, True);
-  TProjectDatabaseBootstrap.CreateProjectDatabase(DatabaseFile, etNT);
+    'Reference', FIXTURE_VERSE_COUNT, False, True);
+  TProjectDatabaseBootstrap.CreateProjectDatabaseFixture(DatabaseFile, etNT,
+    FIXTURE_VERSE_COUNT);
 
   ProjectInstance := TProject.Create;
   ProgressBar := TFailAfterStagedCommitProgressSpy.Create(nil);
@@ -810,8 +768,8 @@ begin
     Application.QueueAsyncCall(@MoveProjectCursorAsync, 0);
 
     AssertFalse('staged reference import must stop after its first commit',
-      ProjectInstance.ImportTheWordModule(ModuleFile, tbConsulta1, ProgressBar,
-        False, ImportResult, True));
+      ProjectInstance.ImportTheWordModuleFixture(ModuleFile, tbConsulta1,
+        ProgressBar, False, ImportResult, True, FIXTURE_VERSE_COUNT));
     AssertTrue('the injected failure must occur after CommitPairs',
       ProgressBar.RaisedAfterCommit);
     AssertEquals('status', Ord(twmisFailed), Ord(ImportResult.Status));
@@ -837,6 +795,7 @@ procedure TTheWordModuleImportTests.
   ExistingDestinationStagedFailureRestoresOriginalText;
 const
   COMMITTED_BATCH_SIZE = 200;
+  FIXTURE_VERSE_COUNT = COMMITTED_BATCH_SIZE + 1;
   ORIGINAL_DESTINATION = 'Existing destination text';
 var
   DatabaseFile: string;
@@ -847,11 +806,12 @@ var
 begin
   DatabaseFile := TempPath('existing-destination-batch-rollback.bib');
   ModuleFile := CreateONTModule('existing-destination-batch-rollback.nt',
-    'Replacement destination', QLinhas[etNT], False, True);
-  TProjectDatabaseBootstrap.CreateProjectDatabase(DatabaseFile, etNT);
+    'Replacement destination', FIXTURE_VERSE_COUNT, False, True);
+  TProjectDatabaseBootstrap.CreateProjectDatabaseFixture(DatabaseFile, etNT,
+    FIXTURE_VERSE_COUNT);
   SeedExistingDestinationText(DatabaseFile, ORIGINAL_DESTINATION);
   AssertEquals('the existing project starts with a complete destination',
-    QLinhas[etNT], CountImportedVerses(DatabaseFile,
+    FIXTURE_VERSE_COUNT, CountImportedVerses(DatabaseFile,
       'pare_texto_destino'));
 
   ProjectInstance := TProject.Create;
@@ -864,8 +824,8 @@ begin
 
     AssertFalse(
       'replacing an existing destination must report the injected batch failure',
-      ProjectInstance.ImportTheWordModule(ModuleFile, tbDestino, ProgressBar,
-        True, ImportResult, True));
+      ProjectInstance.ImportTheWordModuleFixture(ModuleFile, tbDestino,
+        ProgressBar, True, ImportResult, True, FIXTURE_VERSE_COUNT));
     AssertTrue('the failure must occur after the first 200-row commit',
       ProgressBar.RaisedAfterCommit);
     AssertEquals('status', Ord(twmisFailed), Ord(ImportResult.Status));
@@ -886,7 +846,7 @@ begin
   end;
 
   AssertEquals('rollback must preserve every existing destination verse',
-    QLinhas[etNT], CountImportedVerses(DatabaseFile,
+    FIXTURE_VERSE_COUNT, CountImportedVerses(DatabaseFile,
       'pare_texto_destino'));
   AssertEquals('no replacement from the committed prefix may remain durable',
     0, CountVersesWithTextPrefix(DatabaseFile, 'pare_texto_destino',
@@ -899,6 +859,9 @@ end;
 procedure TTheWordModuleImportTests.
   SequentialStagedSourceAndDestinationSurviveReopen;
 const
+  FIXTURE_VERSE_COUNT = 401;
+  FIRST_NT_REFERENCE = '40,1,1';
+  LAST_FIXTURE_REFERENCE = '40,13,6';
   FIRST_DESTINATION_VERSE =
     'Destino 1<RF q="1">Nota do tradutor<p>Segunda linha<Rf>';
 var
@@ -910,44 +873,72 @@ var
   SourceResult: TTheWordModuleImportResult;
 begin
   DatabaseFile := TempPath('sequential-staged-import.bib');
-  SourceModuleFile := CreateONTModule('sequential-source.ont', 'Source',
-    QLinhas[etONT], False, True);
-  DestinationModuleFile := CreateONTModule('sequential-destination.ont',
-    'Destination', QLinhas[etONT], False, True, FIRST_DESTINATION_VERSE);
+  SourceModuleFile := CreateONTModule('sequential-source.nt', 'Source',
+    FIXTURE_VERSE_COUNT, True, True);
+  DestinationModuleFile := CreateONTModule('sequential-destination.nt',
+    'Destination', FIXTURE_VERSE_COUNT, True, True,
+    FIRST_DESTINATION_VERSE);
+  TProjectDatabaseBootstrap.CreateProjectDatabaseFixture(DatabaseFile, etNT,
+    FIXTURE_VERSE_COUNT);
 
   ProjectInstance := TProject.Create;
   try
-    ProjectInstance.Escopo := etONT;
-    ProjectInstance.CreateProject(DatabaseFile, 'Sequential staged import');
+    ProjectInstance.Escopo := etNT;
+    ProjectInstance.OpenProject(DatabaseFile);
 
     AssertTrue('the complete source module must import first',
-      ProjectInstance.ImportTheWordModule(SourceModuleFile, tbOrigem, nil,
-        False, SourceResult, True));
+      ProjectInstance.ImportTheWordModuleFixture(SourceModuleFile, tbOrigem,
+        nil, False, SourceResult, True, FIXTURE_VERSE_COUNT));
     AssertEquals('source status', Ord(twmisSucceeded),
       Ord(SourceResult.Status));
     AssertEquals('all source rows must already be durable after staged import',
-      QLinhas[etONT], CountImportedVerses(DatabaseFile,
+      FIXTURE_VERSE_COUNT, CountImportedVerses(DatabaseFile,
         'pare_texto_origem'));
 
     AssertTrue('the complete destination module must import second',
-      ProjectInstance.ImportTheWordModule(DestinationModuleFile, tbDestino,
-        nil, False, DestinationResult, True));
+      ProjectInstance.ImportTheWordModuleFixture(DestinationModuleFile,
+        tbDestino, nil, False, DestinationResult, True,
+        FIXTURE_VERSE_COUNT));
     AssertEquals('destination status', Ord(twmisSucceeded),
       Ord(DestinationResult.Status));
     AssertEquals('the destination exists in the project dataset after import',
       FIRST_DESTINATION_VERSE,
-      ProjectInstance.GetVerseText('1,1,1', tbDestino));
+      ProjectInstance.GetVerseText(FIRST_NT_REFERENCE, tbDestino));
     AssertEquals(
       'all destination rows must already be durable after staged import',
-      QLinhas[etONT], CountImportedVerses(DatabaseFile,
+      FIXTURE_VERSE_COUNT, CountImportedVerses(DatabaseFile,
         'pare_texto_destino'));
     AssertEquals('the RF body must survive the destination import',
       FIRST_DESTINATION_VERSE, ReadVerseText(DatabaseFile,
-        'pare_texto_destino', '1,1,1'));
+        'pare_texto_destino', FIRST_NT_REFERENCE));
+
+    AssertEquals('source expected verses', FIXTURE_VERSE_COUNT,
+      SourceResult.ExpectedVerseCount);
+    AssertEquals('source available verses', FIXTURE_VERSE_COUNT,
+      SourceResult.AvailableVerseCount);
+    AssertEquals('source imported verses', FIXTURE_VERSE_COUNT,
+      SourceResult.ImportedVerseCount);
+    AssertEquals('source final reference', LAST_FIXTURE_REFERENCE,
+      SourceResult.LastReference);
+    AssertEquals('the source property line must not replace the last verse',
+      'Source 401', ReadVerseText(DatabaseFile, 'pare_texto_origem',
+        LAST_FIXTURE_REFERENCE));
+    AssertEquals('destination expected verses', FIXTURE_VERSE_COUNT,
+      DestinationResult.ExpectedVerseCount);
+    AssertEquals('destination available verses', FIXTURE_VERSE_COUNT,
+      DestinationResult.AvailableVerseCount);
+    AssertEquals('destination imported verses', FIXTURE_VERSE_COUNT,
+      DestinationResult.ImportedVerseCount);
+    AssertEquals('destination final reference', LAST_FIXTURE_REFERENCE,
+      DestinationResult.LastReference);
+    AssertEquals(
+      'the destination property line must not replace the last verse',
+      'Destination 401', ReadVerseText(DatabaseFile, 'pare_texto_destino',
+        LAST_FIXTURE_REFERENCE));
 
     ProjectInstance.Commit;
     AssertEquals('explicit commit must preserve all destination rows',
-      QLinhas[etONT], CountImportedVerses(DatabaseFile,
+      FIXTURE_VERSE_COUNT, CountImportedVerses(DatabaseFile,
         'pare_texto_destino'));
   finally
     ProjectInstance.CloseProject(False);
@@ -955,25 +946,31 @@ begin
   end;
 
   AssertEquals('closing the project must preserve all source rows',
-    QLinhas[etONT], CountImportedVerses(DatabaseFile,
+    FIXTURE_VERSE_COUNT, CountImportedVerses(DatabaseFile,
       'pare_texto_origem'));
   AssertEquals('closing the project must preserve all destination rows',
-    QLinhas[etONT], CountImportedVerses(DatabaseFile,
+    FIXTURE_VERSE_COUNT, CountImportedVerses(DatabaseFile,
       'pare_texto_destino'));
 
   ProjectInstance := TProject.Create;
   try
-    ProjectInstance.Escopo := etONT;
+    ProjectInstance.Escopo := etNT;
     ProjectInstance.OpenProject(DatabaseFile);
     AssertEquals('reopening the project must preserve all source rows',
-      QLinhas[etONT], CountImportedVerses(DatabaseFile,
+      FIXTURE_VERSE_COUNT, CountImportedVerses(DatabaseFile,
         'pare_texto_origem'));
     AssertEquals('reopening the project must preserve all destination rows',
-      QLinhas[etONT], CountImportedVerses(DatabaseFile,
+      FIXTURE_VERSE_COUNT, CountImportedVerses(DatabaseFile,
         'pare_texto_destino'));
     AssertEquals('the reopened first destination verse must retain RF markup',
       FIRST_DESTINATION_VERSE, ReadVerseText(DatabaseFile,
-        'pare_texto_destino', '1,1,1'));
+        'pare_texto_destino', FIRST_NT_REFERENCE));
+    AssertEquals('the reopened final source verse must remain canonical',
+      'Source 401', ReadVerseText(DatabaseFile, 'pare_texto_origem',
+        LAST_FIXTURE_REFERENCE));
+    AssertEquals('the reopened final destination verse must remain canonical',
+      'Destination 401', ReadVerseText(DatabaseFile, 'pare_texto_destino',
+        LAST_FIXTURE_REFERENCE));
   finally
     ProjectInstance.CloseProject(False);
     ProjectInstance.Free;

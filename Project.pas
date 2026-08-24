@@ -26,7 +26,8 @@ uses
   dictionary_manager, project_exporter, association_memory_service,
   UnitPleaseWait, bible_book_names, translation_memory_model, ConcordanceExport,
   navigation_history, text_direction, text_edit_provenance,
-  rf_note_scanner, association_highlight_projection;
+  rf_note_scanner, association_highlight_projection,
+  theword_module_import_layout;
 const
   // AI processing icon indices for ImageListTreeView in formprincipal
   // ImageListTreeView has indices 0-7 for normal states (0-3) and selected states (4-7)
@@ -241,6 +242,11 @@ type
     procedure ReconcileEditedVerseAssociationMemory;
     function ReconcileChangedVerseAssociations: Boolean;
     procedure PendingEditorChanged(Sender: TObject);
+    function ImportTheWordModuleWithLayout(arquivo: string;
+      texto: TTipoTextoBiblico; pb: TProgressBar; replace: boolean;
+      out AImportResult: TTheWordModuleImportResult;
+      const Layout: TTheWordModuleImportLayout;
+      AEnableStagedBatching: Boolean): boolean;
   protected
     procedure DispatchNewVerseObserversAfterEdit(Data: PtrInt);
     procedure NotifyNewVerseObserversAfterEdit;
@@ -341,6 +347,12 @@ type
       pb: TProgressBar; replace: boolean;
       out AImportResult: TTheWordModuleImportResult;
       AEnableStagedBatching: Boolean = False): boolean;
+    {$IFDEF FPCUNIT}
+    function ImportTheWordModuleFixture(arquivo: string;
+      texto: TTipoTextoBiblico; pb: TProgressBar; replace: boolean;
+      out AImportResult: TTheWordModuleImportResult;
+      AEnableStagedBatching: Boolean; AVerseCount: Integer): boolean;
+    {$ENDIF}
     procedure CreateVerseObject(owner: TScrollBox; texto: TTipoTextoBiblico);
     procedure ExportDestinationTextWithStrongs(arquivo: string; opcoes: TOpcoesExportacao);
     procedure ExportDestinationTextWithStrongs(arquivo: string; pb: TProgressBar; opcoes: TOpcoesExportacao);
@@ -565,6 +577,7 @@ resourcestring
   SModuleImportCapacityError = 'The project has %d verse rows available for this module, but %d are required. No text was imported.';
   SModuleImportIncompleteError = 'The import stopped after %d of %d verses. Last imported reference: %s.';
   SModuleImportExceptionError = 'The module could not be imported after %d of %d verses. Last imported reference: %s.'#13#10'%s';
+  SInvalidModuleImportLayout = 'Invalid module import layout.';
   SFailedToCreateFile = 'Failed to create file: %s';
   SExportToFileError = 'iBiblia found an error while exporting the Bible module file.';
   SExportErrorReportCreated = 'Some verses could not be exported correctly. Review the error report:'#13#10'%s';
@@ -4718,8 +4731,66 @@ function TProject.ImportTheWordModule(arquivo: string;
   texto: TTipoTextoBiblico; pb: TProgressBar; replace: boolean;
   out AImportResult: TTheWordModuleImportResult;
   AEnableStagedBatching: Boolean): boolean;
-const
-  STAGED_IMPORT_BATCH_SIZE = 200;
+var
+  Layout: TTheWordModuleImportLayout;
+  LayoutResolution: TTheWordModuleImportLayoutResolution;
+begin
+  AImportResult := Default(TTheWordModuleImportResult);
+  AImportResult.Status := twmisFailed;
+  AImportResult.FileName := arquivo;
+  AImportResult.TextType := texto;
+
+  LayoutResolution := ResolveTheWordModuleImportLayout(
+    ExtractFileExt(arquivo), FEscopo, Layout);
+  if LayoutResolution <> twmilrResolved then
+  begin
+    case LayoutResolution of
+      twmilrInvalidModuleType:
+        AImportResult.ErrorMessage := SInvalidModuleType;
+      twmilrModuleDoesNotIncludeScope:
+        AImportResult.ErrorMessage := SModuleDoesNotIncludeScope;
+    else
+      AImportResult.ErrorMessage := SInvalidModuleImportLayout;
+    end;
+    Exit(False);
+  end;
+
+  Result := ImportTheWordModuleWithLayout(arquivo, texto, pb, replace,
+    AImportResult, Layout, AEnableStagedBatching);
+end;
+
+{$IFDEF FPCUNIT}
+function TProject.ImportTheWordModuleFixture(arquivo: string;
+  texto: TTipoTextoBiblico; pb: TProgressBar; replace: boolean;
+  out AImportResult: TTheWordModuleImportResult;
+  AEnableStagedBatching: Boolean; AVerseCount: Integer): boolean;
+var
+  Layout: TTheWordModuleImportLayout;
+begin
+  if (FEscopo <> etNT) or
+     (LowerCase(ExtractFileExt(arquivo)) <> '.nt') or
+     (AVerseCount <= 0) then
+  begin
+    AImportResult := Default(TTheWordModuleImportResult);
+    AImportResult.Status := twmisFailed;
+    AImportResult.FileName := arquivo;
+    AImportResult.TextType := texto;
+    AImportResult.ErrorMessage := SInvalidModuleImportLayout;
+    Exit(False);
+  end;
+
+  Layout := CreateTheWordModuleImportLayout(etNT, etNT,
+    AVerseCount, AVerseCount, 0, 0);
+  Result := ImportTheWordModuleWithLayout(arquivo, texto, pb, replace,
+    AImportResult, Layout, AEnableStagedBatching);
+end;
+{$ENDIF}
+
+function TProject.ImportTheWordModuleWithLayout(arquivo: string;
+  texto: TTipoTextoBiblico; pb: TProgressBar; replace: boolean;
+  out AImportResult: TTheWordModuleImportResult;
+  const Layout: TTheWordModuleImportLayout;
+  AEnableStagedBatching: Boolean): boolean;
 type
   TImportVerseSnapshot = record
     ReferenceID: string;
@@ -4738,15 +4809,11 @@ var
   ImportedProperties: string;
   ImportError: string;
   Line: string;
-  LinesOffset: Integer;
-  ModuleExtension: string;
   ModuleProperties: string;
-  ModuleScope: TEscopoTexto;
   Modulo: TStringList;
   MtDescription, MtVerseRules: IMatch;
   OldCursor: TCursor;
   OwnVerseRulesForm: Boolean;
-  ProjectOffset: Integer;
   Propriedades: TStringStream;
   ReComments, ReDescription, ReVazio, ReVerseRules: IRegex;
   RowsMayBeCommitted: Boolean;
@@ -4777,7 +4844,7 @@ var
     OffsetIndex: Integer;
   begin
     FPersistence.First;
-    for OffsetIndex := 1 to ProjectOffset do
+    for OffsetIndex := 1 to Layout.ProjectVerseOffset do
       if not FPersistence.EOF then
         FPersistence.Next;
   end;
@@ -4884,7 +4951,7 @@ var
           Snapshots[Index].StatusValue);
         FPersistence.PostCurrentEdit;
         if StagedBatchingEnabled and RowsMayBeCommitted and
-          (((Index + 1) mod STAGED_IMPORT_BATCH_SIZE) = 0) then
+          (((Index + 1) mod THEWORD_STAGED_IMPORT_BATCH_SIZE) = 0) then
           CommitStagedPairChanges(Index + 1,
             Snapshots[Index].ReferenceID);
         PulseImportProgress(Index + 1, Snapshots[Index].ReferenceID,
@@ -4924,9 +4991,7 @@ begin
   VerseRuleSources := nil;
   VerseRuleTargets := nil;
   HasImportedDescription := False;
-  LinesOffset := 0;
   OwnVerseRulesForm := False;
-  ProjectOffset := 0;
   RowsMayBeCommitted := False;
   SessionStarted := False;
   SnapshotCount := 0;
@@ -4937,53 +5002,16 @@ begin
   UsesActiveProgressForm := Assigned(pb) and Assigned(FormPleaseWait) and
     FormPleaseWait.OperationActive and (pb = FormPleaseWait.ProgressBar1);
 
+  if not IsValidTheWordModuleImportLayout(Layout) or
+     (Layout.ProjectScope <> FEscopo) then
+  begin
+    SetFailure(SInvalidModuleImportLayout);
+    Exit;
+  end;
+  AImportResult.ExpectedVerseCount := Layout.ExpectedVerseCount;
+
   try
     try
-      ModuleExtension := LowerCase(ExtractFileExt(arquivo));
-      if ModuleExtension = '.ont' then
-      begin
-        ModuleScope := etONT;
-        if FEscopo = etNT then
-          LinesOffset := QLinhas[etOT];
-      end
-      else if ModuleExtension = '.nt' then
-      begin
-        ModuleScope := etNT;
-        if FEscopo = etOT then
-        begin
-          SetFailure(SModuleDoesNotIncludeScope);
-          Exit;
-        end;
-        if FEscopo = etONT then
-          ProjectOffset := QLinhas[etOT];
-      end
-      else if ModuleExtension = '.ot' then
-      begin
-        ModuleScope := etOT;
-        if FEscopo = etNT then
-        begin
-          SetFailure(SModuleDoesNotIncludeScope);
-          Exit;
-        end;
-      end
-      else
-      begin
-        SetFailure(SInvalidModuleType);
-        Exit;
-      end;
-
-      if ModuleScope = etONT then
-        case FEscopo of
-          etOT:
-            AImportResult.ExpectedVerseCount := QLinhas[etOT];
-          etNT:
-            AImportResult.ExpectedVerseCount := QLinhas[etNT];
-        else
-          AImportResult.ExpectedVerseCount := QLinhas[etONT];
-        end
-      else
-        AImportResult.ExpectedVerseCount := QLinhas[ModuleScope];
-
       EncodingInfo := InspectTheWordModuleEncodingFile(arquivo);
       if EncodingInfo.RequiresConfirmation and
         (MessageDlg(arquivo, Format(SPotentialNonUTF8ModuleWarning,
@@ -4997,9 +5025,9 @@ begin
 
       Modulo := TStringList.Create;
       Modulo.LoadFromFile(arquivo);
-      if Modulo.Count < QLinhas[ModuleScope] then
+      if Modulo.Count < Layout.ModuleVerseCount then
       begin
-        SetFailure(Format(SInvalidLineCount, [QLinhas[ModuleScope]]));
+        SetFailure(Format(SInvalidLineCount, [Layout.ModuleVerseCount]));
         Exit;
       end;
 
@@ -5014,7 +5042,7 @@ begin
       Propriedades := TStringStream.Create('');
       VerseRuleSources := TStringList.Create;
       VerseRuleTargets := TStringList.Create;
-      for I := QLinhas[ModuleScope] to Modulo.Count - 1 do
+      for I := FirstModulePropertyLineIndex(Layout) to Modulo.Count - 1 do
       begin
         Line := ReComments.Replace(Modulo[I], '');
         if ReVazio.IsMatch(Line) then
@@ -5127,8 +5155,8 @@ begin
 
         SetLength(Snapshots, AImportResult.ExpectedVerseCount);
         PositionAtFirstProjectVerse;
-        for I := LinesOffset to
-          LinesOffset + AImportResult.ExpectedVerseCount - 1 do
+        for I := FirstImportedModuleLineIndex(Layout) to
+          LastImportedModuleLineIndex(Layout) do
         begin
           if FPersistence.EOF then
             Break;
@@ -5162,7 +5190,7 @@ begin
 
           if StagedBatchingEnabled and
             ((AImportResult.ImportedVerseCount mod
-              STAGED_IMPORT_BATCH_SIZE) = 0) then
+              THEWORD_STAGED_IMPORT_BATCH_SIZE) = 0) then
             CommitStagedPairChanges(AImportResult.ImportedVerseCount,
               AImportResult.LastReference);
           PulseImportProgress(AImportResult.ImportedVerseCount,

@@ -12,16 +12,24 @@ type
   private
     class procedure RequireValidScope(const Scope: TEscopoTexto); static;
     class procedure CreateSchema(Connection: TSQLite3Connection); static;
+    class procedure InsertEmptyPair(InsertQuery: TSQLQuery;
+      const ReferenceID: string); static;
     class procedure PopulatePairs(Connection: TSQLite3Connection;
-      Transaction: TSQLTransaction; const Scope: TEscopoTexto); static;
+      Transaction: TSQLTransaction; const Scope: TEscopoTexto;
+      PairLimit: Integer = 0); static;
   public
     class procedure CreateProjectDatabase(const FileName: string;
       const Scope: TEscopoTexto); static;
+    {$IFDEF FPCUNIT}
+    class procedure CreateProjectDatabaseFixture(const FileName: string;
+      const Scope: TEscopoTexto; PairCount: Integer); static;
+    {$ENDIF}
   end;
 
 implementation
 
-{$INCLUDE include/bookdefs.inc}
+uses
+  bible_versification;
 
 const
   ProjectSchemaStatements: array[0..10] of string = (
@@ -87,6 +95,9 @@ const
 resourcestring
   SProjectOverrideError = 'A project with this name already exists. Delete it first or choose another name';
   SProjectScopeRequired = 'Project scope must be defined before creating a project database';
+  {$IFDEF FPCUNIT}
+  SProjectPairCountInvalid = 'The fixture pair count must fit inside the selected Bible scope';
+  {$ENDIF}
 
 class procedure TProjectDatabaseBootstrap.RequireValidScope(const Scope: TEscopoTexto);
 begin
@@ -106,18 +117,32 @@ begin
     Connection.ExecuteDirect(Statement);
 end;
 
+class procedure TProjectDatabaseBootstrap.InsertEmptyPair(
+  InsertQuery: TSQLQuery; const ReferenceID: string);
+begin
+  InsertQuery.Params.ParamByName('pare_id').AsString := ReferenceID;
+  InsertQuery.Params.ParamByName('pare_ref').AsString := ReferenceID;
+  InsertQuery.Params.ParamByName('pare_texto_origem').AsString := '';
+  InsertQuery.Params.ParamByName('pare_texto_destino').AsString := '';
+  InsertQuery.Params.ParamByName('pare_texto_consulta1').AsString := '';
+  InsertQuery.Params.ParamByName('pare_texto_consulta2').AsString := '';
+  InsertQuery.Params.ParamByName('pare_pares').AsString := '';
+  InsertQuery.Params.ParamByName('pare_situacao').AsInteger := 0;
+  InsertQuery.Params.ParamByName('pare_comentarios').AsString := '';
+  InsertQuery.ExecSQL;
+end;
+
 class procedure TProjectDatabaseBootstrap.PopulatePairs(
   Connection: TSQLite3Connection; Transaction: TSQLTransaction;
-  const Scope: TEscopoTexto);
+  const Scope: TEscopoTexto; PairLimit: Integer);
 var
   InsertQuery: TSQLQuery;
-  BookIndex: Integer;
-  BookID: Integer;
-  ChapterNumber: Integer;
-  VerseNumber: Integer;
-  VerseCount: Integer;
+  Enumerator: TBibleReferenceEnumerator;
+  InsertedCount: Integer;
 begin
   InsertQuery := TSQLQuery.Create(nil);
+  Enumerator := TBibleReferenceEnumerator.Create(Scope);
+  InsertedCount := 0;
   try
     InsertQuery.DataBase := Connection;
     InsertQuery.Transaction := Transaction;
@@ -133,30 +158,14 @@ begin
       ')';
     InsertQuery.Prepare;
 
-    for BookIndex := 0 to QLivros[Scope] - 1 do
+    while Enumerator.MoveNext and
+      ((PairLimit = 0) or (InsertedCount < PairLimit)) do
     begin
-      BookID := BookIndex + OffsetLivros[Scope] + 1;
-      for ChapterNumber := 1 to QCapitulos[Scope][BookIndex] do
-      begin
-        VerseCount := QVersiculos[Scope][QCapLivros[Scope][BookIndex] + ChapterNumber - 2];
-        for VerseNumber := 1 to VerseCount do
-        begin
-          InsertQuery.Params.ParamByName('pare_id').AsString :=
-            Format('%d,%d,%d', [BookID, ChapterNumber, VerseNumber]);
-          InsertQuery.Params.ParamByName('pare_ref').AsString :=
-            InsertQuery.Params.ParamByName('pare_id').AsString;
-          InsertQuery.Params.ParamByName('pare_texto_origem').AsString := '';
-          InsertQuery.Params.ParamByName('pare_texto_destino').AsString := '';
-          InsertQuery.Params.ParamByName('pare_texto_consulta1').AsString := '';
-          InsertQuery.Params.ParamByName('pare_texto_consulta2').AsString := '';
-          InsertQuery.Params.ParamByName('pare_pares').AsString := '';
-          InsertQuery.Params.ParamByName('pare_situacao').AsInteger := 0;
-          InsertQuery.Params.ParamByName('pare_comentarios').AsString := '';
-          InsertQuery.ExecSQL;
-        end;
-      end;
+      InsertEmptyPair(InsertQuery, Enumerator.ReferenceID);
+      Inc(InsertedCount);
     end;
   finally
+    Enumerator.Free;
     InsertQuery.Free;
   end;
 end;
@@ -199,5 +208,49 @@ begin
     Connection.Free;
   end;
 end;
+
+{$IFDEF FPCUNIT}
+class procedure TProjectDatabaseBootstrap.CreateProjectDatabaseFixture(
+  const FileName: string; const Scope: TEscopoTexto; PairCount: Integer);
+var
+  Connection: TSQLite3Connection;
+  Transaction: TSQLTransaction;
+begin
+  RequireValidScope(Scope);
+  if (PairCount <= 0) or
+     (PairCount > DeclaredBibleVerseCount(Scope)) then
+    raise Exception.Create(SProjectPairCountInvalid);
+
+  if FileExists(FileName) then
+    raise Exception.Create(SProjectOverrideError);
+
+  Connection := TSQLite3Connection.Create(nil);
+  Transaction := TSQLTransaction.Create(nil);
+  try
+    Connection.Transaction := Transaction;
+    Connection.DatabaseName := FileName;
+    Connection.Open;
+
+    Transaction.StartTransaction;
+    try
+      CreateSchema(Connection);
+      PopulatePairs(Connection, Transaction, Scope, PairCount);
+      Transaction.Commit;
+    except
+      on E: Exception do
+      begin
+        if Transaction.Active then
+          Transaction.Rollback;
+        if FileExists(FileName) then
+          DeleteFile(FileName);
+        raise;
+      end;
+    end;
+  finally
+    Transaction.Free;
+    Connection.Free;
+  end;
+end;
+{$ENDIF}
 
 end.
