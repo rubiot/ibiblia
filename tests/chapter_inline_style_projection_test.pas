@@ -334,6 +334,7 @@ procedure TChapterInlineStyleProjectionTest.
 var
   Chapter: TChapterView;
   B: TKMemoTextBlock;
+  BlockIndex: Integer;
 begin
   Chapter := TChapterView.Create(nil);
   try
@@ -346,6 +347,45 @@ begin
     B := TextBlock(Chapter, 'tail');
     AssertEquals(10, B.TextStyle.Font.Size);
     AssertEquals(LongInt($00554433), LongInt(B.TextStyle.Font.Color));
+
+    Chapter.RenderHTML(
+      '<i><font color=#123456 size=+1><TS>wrapped<Ts>after</font></i>');
+    B := TextBlock(Chapter, 'after');
+    AssertTrue('inline italic enveloping a title is restored after Ts',
+      fsItalic in B.TextStyle.Font.Style);
+    AssertEquals('font color enveloping a title is restored after Ts',
+      LongInt($00563412), LongInt(B.TextStyle.Font.Color));
+    AssertEquals('relative font size enveloping a title is restored after Ts',
+      12, B.TextStyle.Font.Size);
+
+    Chapter.RenderHTML('<TS>legacy<Ts><TS1>one<Ts>' +
+      '<TS2><u>two</u><Ts>' +
+      '<TS3><font color=red>three</font><Ts>');
+    B := TextBlock(Chapter, 'legacy');
+    AssertEquals('legacy TS is level one', 12, B.TextStyle.Font.Size);
+    AssertTrue(fsBold in B.TextStyle.Font.Style);
+    AssertEquals(LongInt($00424242), LongInt(B.TextStyle.Font.Color));
+    B := TextBlock(Chapter, 'one');
+    AssertEquals('explicit TS1 matches legacy TS', 12,
+      B.TextStyle.Font.Size);
+    AssertTrue(fsBold in B.TextStyle.Font.Style);
+    AssertEquals(LongInt($00424242), LongInt(B.TextStyle.Font.Color));
+    B := TextBlock(Chapter, 'two');
+    AssertEquals('TS2 uses a one-point relative increase', 11,
+      B.TextStyle.Font.Size);
+    AssertTrue(fsBold in B.TextStyle.Font.Style);
+    AssertTrue(fsItalic in B.TextStyle.Font.Style);
+    AssertTrue('inline formatting remains visible inside TS2',
+      fsUnderline in B.TextStyle.Font.Style);
+    B := TextBlock(Chapter, 'three');
+    AssertEquals('TS3 keeps the base size', 10, B.TextStyle.Font.Size);
+    AssertTrue(fsItalic in B.TextStyle.Font.Style);
+    AssertEquals('explicit inline color remains visible inside TS3',
+      LongInt(clRed), LongInt(B.TextStyle.Font.Color));
+    for BlockIndex := 1 to Chapter.Blocks.Count - 1 do
+      AssertFalse('consecutive titles do not create an empty paragraph',
+        (Chapter.Blocks[BlockIndex - 1] is TKMemoParagraph) and
+        (Chapter.Blocks[BlockIndex] is TKMemoParagraph));
 
     Chapter.RenderHTML('<RF>note<Rf>tail');
     AssertTrue('translator-note marker hyperlink',

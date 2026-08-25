@@ -59,6 +59,15 @@ type
       EditedVerse: TVerse; const NewText: string;
       const Trace: TVerseEditTrace; out EditedIndex: Integer;
       out Impact: TAssociationEditImpact): Boolean;
+    function PreviewEditedVerseText(const VerseViews: array of TVerse;
+      EditedVerse: TVerse; const NewText: string;
+      const Trace: TVerseEditTrace; out EditedIndex: Integer;
+      out Plan: TVerseEditReconciliationPlan;
+      out Impact: TAssociationEditImpact): Boolean;
+    function ApplyEditedVersePlan(const VerseViews: array of TVerse;
+      EditedVerse: TVerse; EditedIndex: Integer;
+      Plan: TVerseEditReconciliationPlan;
+      out Impact: TAssociationEditImpact): Boolean;
     function SavePairs(Persistence: TProjectPersistence;
       SourceVerse: TVerse): Boolean;
     function SaveTexts(Persistence: TProjectPersistence;
@@ -292,21 +301,65 @@ function TCurrentVerseWorkspace.ApplyEditedVerseText(
   const NewText: string; const Trace: TVerseEditTrace;
   out EditedIndex: Integer; out Impact: TAssociationEditImpact): Boolean;
 var
+  Plan: TVerseEditReconciliationPlan;
+begin
+  Plan := nil;
+  if not PreviewEditedVerseText(VerseViews, EditedVerse, NewText, Trace,
+    EditedIndex, Plan, Impact) then
+    Exit(False);
+  try
+    Result := ApplyEditedVersePlan(VerseViews, EditedVerse, EditedIndex,
+      Plan, Impact);
+  finally
+    Plan.Free;
+  end;
+end;
+
+function TCurrentVerseWorkspace.PreviewEditedVerseText(
+  const VerseViews: array of TVerse; EditedVerse: TVerse;
+  const NewText: string; const Trace: TVerseEditTrace;
+  out EditedIndex: Integer; out Plan: TVerseEditReconciliationPlan;
+  out Impact: TAssociationEditImpact): Boolean;
+var
   Index: Integer;
 begin
   Result := False;
   EditedIndex := -1;
+  Plan := nil;
   Impact.PreservedMembers := 0;
   Impact.RemovedMembers := 0;
   Impact.UsedLegacyFallback := False;
+  Impact.Cancelled := False;
   Impact.ErrorMessage := 'The edited Verse is not part of the current workspace.';
   for Index := Low(VerseViews) to High(VerseViews) do
     if VerseViews[Index] = EditedVerse then
     begin
       EditedIndex := Index;
-      Result := EditedVerse.TryApplyTracedEdit(NewText, Trace, Impact);
+      Result := EditedVerse.PreviewTracedEdit(NewText, Trace, Plan, Impact);
       Exit;
     end;
+end;
+
+function TCurrentVerseWorkspace.ApplyEditedVersePlan(
+  const VerseViews: array of TVerse; EditedVerse: TVerse;
+  EditedIndex: Integer; Plan: TVerseEditReconciliationPlan;
+  out Impact: TAssociationEditImpact): Boolean;
+begin
+  Impact.PreservedMembers := 0;
+  Impact.RemovedMembers := 0;
+  Impact.UsedLegacyFallback := False;
+  Impact.Cancelled := False;
+  Impact.ErrorMessage := '';
+  Result := (EditedIndex >= Low(VerseViews)) and
+    (EditedIndex <= High(VerseViews)) and
+    Assigned(EditedVerse) and (VerseViews[EditedIndex] = EditedVerse);
+  if not Result then
+  begin
+    Impact.ErrorMessage :=
+      'The edited Verse is not part of the current workspace.';
+    Exit;
+  end;
+  Result := EditedVerse.ApplyTracedEditPlan(Plan, Impact);
 end;
 
 function TCurrentVerseWorkspace.SavePairs(Persistence: TProjectPersistence;

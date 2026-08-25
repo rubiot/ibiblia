@@ -32,6 +32,11 @@ type
     procedure TitleRendersAsProtectedChapterHeading;
     procedure TitleCannotBeEditedFormattedOrCutVisually;
     procedure TitleCommandsAreAtomicUndoableAndPreserveBodyTrace;
+    procedure TitleWrapUnwrapArePresentationOnlyAndUndoable;
+    procedure TitleWrapPartialFormattingIsOneUndoCommand;
+    procedure TitleFormattingSupportsSemanticColorAndSize;
+    procedure TitlePendingInsertionFormattingIsAtomic;
+    procedure TitleWrapRejectsCrossingAndProtectedContent;
     procedure MultipleTitleLevelsAndMalformedTitleRemainExplicit;
     procedure TerminalEmptyTitleKeepsOffsetMapReversible;
     procedure ProtectedAnchorsAllowAdjacentButNotCrossingEdits;
@@ -55,6 +60,7 @@ type
     procedure TranslatorNoteMarkerResolvesSavedDraftWithStableId;
     procedure TranslatorNoteAnchorsProtectTextEditing;
     procedure VisualAdapterResolvesNestedFontDimensions;
+    procedure VisualAdapterComposesTitleAndRelativeFontSizes;
     procedure FontAndSemanticCrossingsStayBalanced;
     procedure FontOnlyRawChangeIsSemanticPresentation;
     procedure FontColorSelectionPreservesTopologyAndIsAtomicPresentation;
@@ -670,8 +676,13 @@ begin
   try
     AssertFalse('title text is protected from replacement',
       Session.CanReplaceText(0, TitleLength));
-    AssertFalse('title text cannot receive FI/FR/FO/FU',
+    AssertTrue('title text can receive WYSIWYG presentation formatting',
       Session.CanApplySemantic(0, TitleLength));
+    AssertTrue(Session.ApplySemantic(twsmItalic, 0, TitleLength));
+    AssertEquals(UnicodeString('<TS><FI>Prefácio<Fi><Ts>Revelação'),
+      Session.RawText);
+    AssertTrue(Session.Undo);
+    AssertEquals(RAW, Session.RawText);
     AssertFalse('visual Cut cannot remove a title',
       Session.CutSelection(0, TitleLength, Plain, Payload));
     AssertFalse('rejected Cut creates no undo entry', Session.CanUndo);
@@ -799,6 +810,298 @@ begin
     AssertFalse(Session.CanUndo);
     AssertTrue(Session.Redo);
     AssertEquals(UnicodeString('left <TS3>Heading<Ts>right'),
+      Session.RawText);
+  finally
+    Session.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
+  TitleWrapUnwrapArePresentationOnlyAndUndoable;
+const
+  ORIGINAL: UnicodeString = '<FI>Head<Fi> body';
+  WRAPPED: UnicodeString = '<TS2><FI>Head<Fi><Ts> body';
+var
+  OpenOrdinal: Integer;
+  Session: TTheWordWysiwygSessionV2;
+  Trace: TVerseEditTrace;
+begin
+  Session := TTheWordWysiwygSessionV2.Create(ORIGINAL, 23);
+  try
+    AssertTrue(Session.CanWrapTitle(0, 4));
+    AssertTrue(Session.WrapTitle(0, 4, 2, OpenOrdinal));
+    AssertTrue(OpenOrdinal >= 0);
+    AssertEquals(WRAPPED, Session.RawText);
+    AssertEquals(UnicodeString('Head body'), Session.VisibleText);
+    AssertTrue('title wrapping is presentation-only',
+      Session.ChangesAreSemanticOnly);
+    Trace := Session.CloneEditTrace;
+    try
+      AssertTrue('wrapping preserves the origin trace identity',
+        Trace.IsBaselineIdentity);
+    finally
+      Trace.Free;
+    end;
+
+    AssertTrue(Session.Undo);
+    AssertEquals(ORIGINAL, Session.RawText);
+    AssertFalse('wrap is exactly one undo command', Session.CanUndo);
+    AssertTrue(Session.Redo);
+    AssertEquals(WRAPPED, Session.RawText);
+    AssertTrue(Session.UnwrapTitle(OpenOrdinal));
+    AssertEquals('unwrap retains title content and formatting', ORIGINAL,
+      Session.RawText);
+    AssertTrue('unwrap is also presentation-only',
+      Session.ChangesAreSemanticOnly);
+    AssertTrue(Session.Undo);
+    AssertEquals('unwrap is exactly one command', WRAPPED,
+      Session.RawText);
+  finally
+    Session.Free;
+  end;
+
+  Session := TTheWordWysiwygSessionV2.Create('<TS1>A<Ts>B body');
+  try
+    AssertTrue(Session.WrapTitle(1, 1, 3, OpenOrdinal));
+    AssertEquals('consecutive titles serialize without nesting',
+      UnicodeString('<TS1>A<Ts><TS3>B<Ts> body'), Session.RawText);
+  finally
+    Session.Free;
+  end;
+
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
+  TitleWrapPartialFormattingIsOneUndoCommand;
+const
+  ORIGINAL: UnicodeString = '<b>ABCD</b> EF';
+  WRAPPED: UnicodeString = '<b>AB</b><TS2><b>CD</b> E<Ts>F';
+var
+  OpenOrdinal: Integer;
+  Session: TTheWordWysiwygSessionV2;
+  Title: TTheWordTitleRange;
+  Trace: TVerseEditTrace;
+begin
+  Session := TTheWordWysiwygSessionV2.Create(ORIGINAL, 41);
+  try
+    AssertTrue('session preflight accepts supported partial formatting',
+      Session.CanWrapTitle(2, 4));
+    AssertTrue(Session.WrapTitle(2, 4, 2, OpenOrdinal));
+    AssertEquals('the session publishes only balanced split markup',
+      WRAPPED, Session.RawText);
+    AssertEquals(UnicodeString('ABCD EF'), Session.VisibleText);
+    AssertEquals('both pieces retain bold presentation',
+      2, Session.Document.MarkCount);
+    AssertTrue(Session.TryGetTitle(OpenOrdinal, Title));
+    AssertTrue(Title.Editable);
+    AssertTrue('title-only fission remains a presentation edit',
+      Session.ChangesAreSemanticOnly);
+    Trace := Session.CloneEditTrace;
+    try
+      AssertTrue('fission does not change UTF-16 origin provenance',
+        Trace.IsBaselineIdentity);
+    finally
+      Trace.Free;
+    end;
+
+    AssertTrue(Session.Undo);
+    AssertEquals('one undo restores literal input and topology',
+      ORIGINAL, Session.RawText);
+    AssertFalse('wrap and all fission are one atomic command',
+      Session.CanUndo);
+    AssertTrue(Session.Redo);
+    AssertEquals('redo restores the complete balanced transformation',
+      WRAPPED, Session.RawText);
+    AssertEquals(2, Session.Document.MarkCount);
+  finally
+    Session.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
+  TitleFormattingSupportsSemanticColorAndSize;
+var
+  Index: Integer;
+  Session: TTheWordWysiwygSessionV2;
+  Title: TTheWordTitleRange;
+begin
+  Session := TTheWordWysiwygSessionV2.Create('<TS1>Abc<Ts> body');
+  try
+    AssertTrue(Session.TryGetTitle(0, Title));
+    AssertTrue(Title.Editable);
+    AssertTrue(Session.CanApplySemantic(0, 3));
+    AssertTrue(Session.ApplySemantic(twsmHtmlBold, 0, 3));
+    AssertEquals(UnicodeString('<TS1><b>Abc</b><Ts> body'),
+      Session.RawText);
+
+    AssertTrue(Session.ApplyFontColor(0, 3, True, clRed));
+    AssertTrue('font edit preserves imported title spelling',
+      Pos('<TS1>', Session.RawText) > 0);
+    AssertTrue(Session.AdjustRelativeFontSize(0, 3, 1));
+    AssertTrue('combined font edit preserves imported title spelling',
+      Pos('<TS1>', Session.RawText) > 0);
+    AssertTrue(Session.TryGetTitle(0, Title));
+    AssertTrue('formatted title remains editable', Title.Editable);
+    AssertEquals('one combined font range', 1,
+      Session.Document.FontMarkCount);
+    Index := 0;
+    AssertTrue(Session.Document.FontMarks[Index].HasColor);
+    AssertEquals(clRed, Session.Document.FontMarks[Index].ResolvedColor);
+    AssertTrue(Session.Document.FontMarks[Index].HasSize);
+    AssertEquals(1, Session.Document.FontMarks[Index].RelativeSize);
+    AssertTrue('all title formatting remains presentation-only',
+      Session.ChangesAreSemanticOnly);
+  finally
+    Session.Free;
+  end;
+
+  Session := TTheWordWysiwygSessionV2.Create('<TS>Head<Ts>');
+  try
+    AssertTrue('an imported terminal title accepts semantic formatting',
+      Session.ApplySemantic(twsmHtmlItalic, 0, 4));
+    AssertTrue('an imported terminal title accepts font color',
+      Session.ApplyFontColor(0, 4, True, clRed));
+    AssertTrue('an imported terminal title accepts relative size',
+      Session.AdjustRelativeFontSize(0, 4, 1));
+    AssertTrue('terminal formatting keeps the original title wrapper',
+      Pos('<TS>', Session.RawText) > 0);
+    AssertTrue(Session.TryGetTitle(0, Title));
+    AssertTrue('a formatted terminal title remains editable', Title.Editable);
+    AssertEquals(1, Session.Document.FontMarkCount);
+    AssertTrue(Session.Document.FontMarks[0].HasColor);
+    AssertTrue(Session.Document.FontMarks[0].HasSize);
+  finally
+    Session.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
+  TitlePendingInsertionFormattingIsAtomic;
+var
+  BadUtf16: UnicodeString;
+  NewOrdinal, OriginalOrdinal: Integer;
+  Session: TTheWordWysiwygSessionV2;
+  Span: TVisualSpan;
+  Title: TTheWordTitleRange;
+  Trace: TVerseEditTrace;
+  Visual: IVerseVisualDocument;
+begin
+  Session := TTheWordWysiwygSessionV2.Create(
+    '<TS1><font color=red size=+1>ab</font><Ts>body');
+  try
+    AssertTrue(Session.TryGetTitle(0, Title));
+    OriginalOrdinal := Title.OpenOrdinal;
+    AssertTrue('pending formatting inserts inside a title',
+      Session.ReplaceTitleTextWithPendingFormatting(
+        OriginalOrdinal, 1, 0, 'XY', True, 1, 2,
+        True, False, 0, NewOrdinal));
+    AssertTrue('restored title has a usable identity', NewOrdinal >= 0);
+    AssertEquals(UnicodeString('aXYbbody'), Session.VisibleText);
+    AssertTrue(Session.TryGetTitle(NewOrdinal, Title));
+    AssertEquals('title grows with inserted text', 4,
+      Title.EndOffset - Title.StartOffset);
+    AssertTrue('original title spelling is preserved',
+      Pos('<TS1>', Session.RawText) > 0);
+    AssertTrue('original title close is preserved',
+      Pos('<Ts>', Session.RawText) > 0);
+
+    Visual := BuildTheWordVerseVisualDocument(Session.Document,
+      tdLeftToRight, 91);
+    AssertTrue(Visual.TryGetSpanAt(1, Span));
+    AssertEquals('TS1 + pending size +2 composes to +6 pt',
+      6, Span.Style.FontSizeDelta);
+    AssertTrue('Default color reveals TS1 structural gray',
+      Span.Style.HasForegroundColor);
+    AssertEquals(THEWORD_TITLE_LEVEL1_COLOR,
+      Span.Style.ForegroundColor);
+    AssertTrue(Visual.TryGetSpanAt(0, Span));
+    AssertEquals('surrounding imported +1 remains +4 pt with TS1',
+      4, Span.Style.FontSizeDelta);
+    AssertEquals('surrounding imported red remains red',
+      LongInt(clRed), Span.Style.ForegroundColor);
+
+    AssertTrue('formatted title insertion is one undo command',
+      Session.Undo);
+    AssertEquals(
+      UnicodeString('<TS1><font color=red size=+1>ab</font><Ts>body'),
+      Session.RawText);
+    AssertFalse('formatted insertion adds exactly one undo entry',
+      Session.CanUndo);
+
+    AssertTrue(Session.TryGetTitle(0, Title));
+    AssertFalse('markup delimiter is rejected in pending title typing',
+      Session.ReplaceTitleTextWithPendingFormatting(
+        Title.OpenOrdinal, 1, 0, '<b>', True, 1, 2,
+        False, False, 0, NewOrdinal));
+    AssertFalse('attribute delimiter is rejected in pending title typing',
+      Session.ReplaceTitleTextWithPendingFormatting(
+        Title.OpenOrdinal, 1, 0, '|', True, 1, 2,
+        False, False, 0, NewOrdinal));
+    AssertFalse('line break is rejected in pending title typing',
+      Session.ReplaceTitleTextWithPendingFormatting(
+        Title.OpenOrdinal, 1, 0, #10, True, 1, 2,
+        False, False, 0, NewOrdinal));
+    BadUtf16 := UnicodeString(WideChar($D800));
+    AssertFalse('unpaired surrogate is rejected atomically',
+      Session.ReplaceTitleTextWithPendingFormatting(
+        Title.OpenOrdinal, 1, 0, BadUtf16, True, 1, 2,
+        False, False, 0, NewOrdinal));
+    AssertEquals('all rejected input leaves raw text untouched',
+      UnicodeString('<TS1><font color=red size=+1>ab</font><Ts>body'),
+      Session.RawText);
+    AssertFalse('rejected pending input creates no undo entry',
+      Session.CanUndo);
+    Trace := Session.CloneEditTrace;
+    try
+      AssertTrue('rejected input leaves provenance untouched',
+        Trace.IsBaselineIdentity);
+    finally
+      Trace.Free;
+    end;
+  finally
+    Session.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
+  TitleWrapRejectsCrossingAndProtectedContent;
+var
+  OpenOrdinal: Integer;
+  Session: TTheWordWysiwygSessionV2;
+begin
+  Session := TTheWordWysiwygSessionV2.Create('<TS>Head<Ts>body');
+  try
+    AssertFalse('selection crossing an existing title is rejected',
+      Session.CanWrapTitle(3, 2));
+    AssertFalse(Session.WrapTitle(3, 2, 1, OpenOrdinal));
+    AssertEquals(UnicodeString('<TS>Head<Ts>body'), Session.RawText);
+    AssertFalse(Session.CanUndo);
+    AssertFalse('formatting cannot cross a title boundary',
+      Session.CanApplySemantic(3, 2));
+    AssertFalse(Session.ApplyFontColor(3, 2, True, clRed));
+    AssertFalse(Session.AdjustRelativeFontSize(3, 2, 1));
+  finally
+    Session.Free;
+  end;
+
+  Session := TTheWordWysiwygSessionV2.Create('word<WG123>');
+  try
+    AssertFalse('protected lexical content cannot be wrapped',
+      Session.CanWrapTitle(0, 4));
+    AssertFalse(Session.WrapTitle(0, 4, 1, OpenOrdinal));
+    AssertEquals(UnicodeString('word<WG123>'), Session.RawText);
+    AssertFalse(Session.CanUndo);
+  finally
+    Session.Free;
+  end;
+
+  Session := TTheWordWysiwygSessionV2.Create(
+    '<TS>A<RF>note<Rf>B<Ts> body');
+  try
+    AssertFalse('title with a translator note remains protected',
+      Session.CanApplySemantic(0, 2));
+    AssertFalse(Session.ApplySemantic(twsmItalic, 0, 2));
+    AssertEquals(UnicodeString('<TS>A<RF>note<Rf>B<Ts> body'),
       Session.RawText);
   finally
     Session.Free;
@@ -2199,6 +2502,70 @@ begin
 end;
 
 procedure TTheWordWysiwygSessionV2Test.
+  VisualAdapterComposesTitleAndRelativeFontSizes;
+const
+  RAW: UnicodeString =
+    '<TS><font size=+1>aa</font><font size=-1>bb</font><Ts>' +
+    '<TS2><font size=+1>cc</font><font size=-1>dd</font><Ts>' +
+    '<font size=+1>ee</font><font size=-1>ff</font>' +
+    '<TS3><font size=+1>gg</font><Ts>';
+var
+  Codec: ITheWordOntCodecV2;
+  Document: TTheWordVerseDocument;
+  Span: TVisualSpan;
+  Style: TVisualTextStyle;
+  Visual: IVerseVisualDocument;
+
+  procedure AssertVisualSize(const AText: UnicodeString;
+    AExpectedDelta: Integer);
+  var
+    Offset: Integer;
+  begin
+    Offset := Pos(AText, Visual.Text) - 1;
+    AssertTrue('visual text exists: ' + UTF8Encode(AText), Offset >= 0);
+    AssertTrue('visual span resolves: ' + UTF8Encode(AText),
+      Visual.TryGetSpanAt(Offset, Span));
+    AssertEquals('visual font delta: ' + UTF8Encode(AText),
+      AExpectedDelta, Span.Style.FontSizeDelta);
+  end;
+
+  procedure AssertInsertionSize(AOffset, AExpectedDelta: Integer;
+    const AExpectedFlags: TVisualTextStyleFlags);
+  begin
+    AssertTrue('insertion style resolves',
+      TryResolveTheWordInsertionVisualStyle(Document, AOffset, Style));
+    AssertEquals('insertion font delta', AExpectedDelta,
+      Style.FontSizeDelta);
+    AssertTrue('insertion title flags', Style.Flags = AExpectedFlags);
+  end;
+
+begin
+  Codec := TTheWordOntCodecV2.Create;
+  Document := Codec.DecodeVerse(RAW);
+  try
+    Visual := BuildTheWordVerseVisualDocument(Document,
+      tdLeftToRight, 41);
+    AssertVisualSize('aa', 4);
+    AssertVisualSize('bb', 0);
+    AssertVisualSize('cc', 3);
+    AssertVisualSize('dd', -1);
+    AssertVisualSize('ee', 2);
+    AssertVisualSize('ff', -2);
+    AssertVisualSize('gg', 2);
+
+    AssertInsertionSize(1, 4, [vtsfBold]);
+    AssertInsertionSize(3, 0, [vtsfBold]);
+    AssertInsertionSize(5, 3, [vtsfBold, vtsfItalic]);
+    AssertInsertionSize(7, -1, [vtsfBold, vtsfItalic]);
+    AssertInsertionSize(9, 2, []);
+    AssertInsertionSize(11, -2, []);
+    AssertInsertionSize(13, 2, [vtsfItalic]);
+  finally
+    Document.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
   FontAndSemanticCrossingsStayBalanced;
 var
   Codec: ITheWordOntCodecV2;
@@ -2424,8 +2791,11 @@ begin
 
   Session := TTheWordWysiwygSessionV2.Create('<TS>head<Ts>body');
   try
-    AssertFalse(Session.AdjustRelativeFontSize(0, 1, 1));
-    AssertFalse(Session.CanUndo);
+    AssertTrue('an editable title accepts relative font size',
+      Session.AdjustRelativeFontSize(0, 1, 1));
+    AssertEquals(UnicodeString(
+      '<TS><font size=+1>h</font>ead<Ts>body'), Session.RawText);
+    AssertTrue(Session.CanUndo);
   finally
     Session.Free;
   end;

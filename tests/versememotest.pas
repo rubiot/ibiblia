@@ -12,6 +12,7 @@ type
   published
     procedure ActivateEmptyVerseKeepsEditorAttachedToWindow;
     procedure FailedSaveCallbackKeepsPendingEditorOpen;
+    procedure CancelledAssociationConfirmationKeepsPendingEditorOpen;
     procedure FailedVisualSaveKeepsConcreteErrorVisible;
     procedure DirectedMissingTranslatorNoteKeepsEditorOpenAndReportsError;
     procedure DirectedStaleTranslatorNoteRevisionReportsErrorWithoutEditing;
@@ -39,6 +40,7 @@ type
   TTracedSaveProbe = class
   private
     FApply: Boolean;
+    FCancelled: Boolean;
     FCalls: Integer;
     FCurrentText: UnicodeString;
     FErrorMessage: string;
@@ -50,6 +52,7 @@ type
       const ATrace: TVerseEditTrace;
       out AImpact: TAssociationEditImpact): Boolean;
     property Apply: Boolean read FApply write FApply;
+    property Cancelled: Boolean read FCancelled write FCancelled;
     property Calls: Integer read FCalls;
     property CurrentText: UnicodeString read FCurrentText;
     property ErrorMessage: string read FErrorMessage write FErrorMessage;
@@ -86,7 +89,10 @@ begin
   AImpact.PreservedMembers := 0;
   AImpact.RemovedMembers := 0;
   AImpact.UsedLegacyFallback := False;
+  AImpact.Cancelled := FCancelled;
   AImpact.ErrorMessage := FErrorMessage;
+  if FCancelled then
+    Exit(False);
   Result := FApply and Sender.Verse.TryApplyTracedEdit(Sender.Text,
     ATrace, AImpact);
   if Result and Assigned(FPostCommitProject) then
@@ -403,6 +409,61 @@ begin
   end;
 end;
 
+procedure TVerseMemoTests.CancelledAssociationConfirmationKeepsPendingEditorOpen;
+var
+  Composite: TTheWordWysiwygEditorControl;
+  Container: TScrollBox;
+  Editor: TVerseMemo;
+  Host: TForm;
+  Probe: TTracedSaveProbe;
+  RawEditor: TSynEdit;
+  VerseView: TVerse;
+begin
+  Forms.Application.Initialize;
+  Host := TForm.CreateNew(nil);
+  Container := TScrollBox.Create(Host);
+  Container.Parent := Host;
+  Container.Align := alClient;
+  VerseView := TVerse.Create(Container);
+  Editor := TVerseMemo.Create;
+  Probe := TTracedSaveProbe.Create;
+  try
+    Host.Show;
+    Application.ProcessMessages;
+    VerseView.Text := 'alpha beta';
+    Editor.OnVerseTextModified := @Probe.Save;
+    Editor.Activate(Container, VerseView);
+    Composite := FindWysiwygEditor(Host);
+    AssertTrue('WYSIWYG control must be attached', Assigned(Composite));
+    Composite.RawMode := True;
+    RawEditor := FindRawEditor(Composite);
+    AssertTrue('Raw editor must be available', Assigned(RawEditor));
+    RawEditor.Text := 'alpha changed';
+
+    Probe.Cancelled := True;
+    AssertFalse('declining association removal must keep the editor open',
+      Editor.TryDeactivate);
+    AssertSame('the active verse must remain available', VerseView,
+      Editor.Verse);
+    AssertTrue('the pending edit must remain intact', Editor.HasPendingChange);
+    AssertEquals('declining the prompt must not mutate the verse',
+      'alpha beta', VerseView.XML);
+    AssertEquals(1, Probe.Calls);
+
+    Probe.Cancelled := False;
+    Probe.Apply := True;
+    AssertTrue('the same pending edit may be saved after confirmation',
+      Editor.TryDeactivate);
+    AssertEquals(2, Probe.Calls);
+    AssertEquals('alpha changed', VerseView.XML);
+  finally
+    Probe.Free;
+    Editor.Free;
+    VerseView.Free;
+    Host.Free;
+  end;
+end;
+
 procedure TVerseMemoTests.FailedVisualSaveKeepsConcreteErrorVisible;
 const
   ExpectedError = 'deliberate traced-save failure';
@@ -710,7 +771,8 @@ procedure TVerseMemoTests.
   SemanticToolbarButtonsAreCompactTypographicAndNonOverlapping;
 var
   AddedButton, JesusButton, OldTestamentButton, UnderlineButton,
-    StrikethroughButton, SuperscriptButton, SubscriptButton: TSpeedButton;
+    StrikethroughButton, SuperscriptButton, SubscriptButton,
+    TitleButton: TSpeedButton;
   CancelButton, RawButton, SaveButton: TButton;
   Composite: TTheWordWysiwygEditorControl;
   Container: TScrollBox;
@@ -730,7 +792,7 @@ begin
   try
     Host.Show;
     Application.ProcessMessages;
-    VerseView.Text := 'alpha';
+    VerseView.Text := 'alpha body';
     Editor.Activate(Container, VerseView);
 
     AddedButton := FindSpeedButtonWithCaption(Host, 'I');
@@ -740,6 +802,7 @@ begin
     StrikethroughButton := FindSpeedButtonWithStyle(Host, fsStrikeOut);
     SuperscriptButton := FindSpeedButtonWithCaption(Host, 'x²');
     SubscriptButton := FindSpeedButtonWithCaption(Host, 'x₂');
+    TitleButton := FindSpeedButtonWithCaption(Host, 'T▾');
     RawButton := FindButtonWithCaption(Host, 'Raw');
     SaveButton := FindButtonWithCaption(Host, 'Save');
     CancelButton := FindButtonWithCaption(Host, 'Cancel');
@@ -755,6 +818,7 @@ begin
       Assigned(SuperscriptButton));
     AssertTrue('subscript semantic button must exist',
       Assigned(SubscriptButton));
+    AssertTrue('title formatting button must exist', Assigned(TitleButton));
     AssertTrue('raw-mode button must exist', Assigned(RawButton));
     AssertTrue('save button must exist', Assigned(SaveButton));
     AssertTrue('cancel button must exist', Assigned(CancelButton));
@@ -852,44 +916,53 @@ begin
     AssertTrue(Assigned(Composite));
     AssertTrue(Assigned(DirectEditor));
     AssertFalse('semantic commands require a selection', AddedButton.Enabled);
+    AssertFalse('title formatting requires a body selection',
+      TitleButton.Enabled);
     DirectEditor.SetSelection(0, 5);
     AssertTrue('semantic commands become enabled for selected text',
       AddedButton.Enabled and JesusButton.Enabled and
       OldTestamentButton.Enabled and UnderlineButton.Enabled and
       StrikethroughButton.Enabled and SuperscriptButton.Enabled and
       SubscriptButton.Enabled);
+    AssertTrue('title formatting becomes enabled for selected text',
+      TitleButton.Enabled);
 
     AddedButton.Click;
-    AssertEquals('I keeps the added-words callback', '<FI>alpha<Fi>',
+    AssertEquals('I keeps the added-words callback',
+      '<FI>alpha<Fi> body',
       UTF8Encode(Composite.Text));
     AddedButton.Click;
-    AssertEquals('I toggles the semantic back off', 'alpha',
+    AssertEquals('I toggles the semantic back off', 'alpha body',
       UTF8Encode(Composite.Text));
     JesusButton.Click;
-    AssertEquals('J keeps the words-of-Jesus callback', '<FR>alpha<Fr>',
+    AssertEquals('J keeps the words-of-Jesus callback',
+      '<FR>alpha<Fr> body',
       UTF8Encode(Composite.Text));
     JesusButton.Click;
     OldTestamentButton.Click;
     AssertEquals('O keeps the Old Testament quotation callback',
-      '<FO>alpha<Fo>', UTF8Encode(Composite.Text));
+      '<FO>alpha<Fo> body', UTF8Encode(Composite.Text));
     OldTestamentButton.Click;
     UnderlineButton.Click;
-    AssertEquals('S keeps the underline callback', '<FU>alpha<Fu>',
+    AssertEquals('S keeps the underline callback',
+      '<FU>alpha<Fu> body',
       UTF8Encode(Composite.Text));
     UnderlineButton.Click;
     StrikethroughButton.Click;
-    AssertEquals('strike callback uses the canonical tag', '<s>alpha</s>',
+    AssertEquals('strike callback uses the canonical tag',
+      '<s>alpha</s> body',
       UTF8Encode(Composite.Text));
     StrikethroughButton.Click;
     SuperscriptButton.Click;
     AssertEquals('superscript callback uses the canonical tag',
-      '<sup>alpha</sup>', UTF8Encode(Composite.Text));
+      '<sup>alpha</sup> body', UTF8Encode(Composite.Text));
     SuperscriptButton.Click;
     SubscriptButton.Click;
     AssertEquals('subscript callback uses the canonical tag',
-      '<sub>alpha</sub>', UTF8Encode(Composite.Text));
+      '<sub>alpha</sub> body', UTF8Encode(Composite.Text));
     SubscriptButton.Click;
-    AssertEquals('all semantic toggles restore the original text', 'alpha',
+    AssertEquals('all semantic toggles restore the original text',
+      'alpha body',
       UTF8Encode(Composite.Text));
     Editor.DiscardEdit;
   finally
@@ -939,7 +1012,8 @@ begin
     EditorPanel := Composite.Parent;
     TitleMenu := FindPopupMenuWithItemTag(EditorPanel, 20);
     AssertTrue(Assigned(TitleMenu));
-    AssertEquals('New level 1 title...', TitleMenu.Items[0].Caption);
+    AssertEquals(5, TitleMenu.Items.Count);
+    AssertEquals('Title level 1', TitleMenu.Items[0].Caption);
 
     SetDefaultLang('pt', LanguagesDir, 'iBiblia', False);
     Editor.Translate;
@@ -961,20 +1035,18 @@ begin
     AssertTrue(Pos('Palavras adicionadas', AddedButton.Hint) > 0);
     AssertTrue(Pos('Negrito, itálico ou sublinhado', HtmlButton.Hint) > 0);
     AssertTrue(Pos('Diminuir o tamanho relativo', DecreaseButton.Hint) > 0);
-    AssertTrue(Pos('Inserir, alterar ou remover', TitleButton.Hint) > 0);
+    AssertTrue(Pos('Aplicar, alterar ou remover', TitleButton.Hint) > 0);
 
     HtmlMenu := FindPopupMenuWithItemCount(EditorPanel, 3);
     AssertTrue(Assigned(HtmlMenu));
     AssertEquals('Negrito (<b>)', HtmlMenu.Items[0].Caption);
     AssertEquals('Itálico (<i>)', HtmlMenu.Items[1].Caption);
     AssertEquals('Sublinhado (<u>)', HtmlMenu.Items[2].Caption);
-    AssertEquals('Novo título de nível 1...', TitleMenu.Items[0].Caption);
-    AssertEquals('Novo título de nível 2...', TitleMenu.Items[1].Caption);
-    AssertEquals('Novo título de nível 3...', TitleMenu.Items[2].Caption);
-    AssertEquals('Alterar para o nível 1', TitleMenu.Items[4].Caption);
-    AssertEquals('Alterar para o nível 2', TitleMenu.Items[5].Caption);
-    AssertEquals('Alterar para o nível 3', TitleMenu.Items[6].Caption);
-    AssertEquals('Remover título', TitleMenu.Items[8].Caption);
+    AssertEquals('Título de nível 1', TitleMenu.Items[0].Caption);
+    AssertEquals('Título de nível 2', TitleMenu.Items[1].Caption);
+    AssertEquals('Título de nível 3', TitleMenu.Items[2].Caption);
+    AssertEquals('Remover formatação de título',
+      TitleMenu.Items[4].Caption);
 
     ColorSelector := FindColorBox(Host);
     AssertTrue(Assigned(ColorSelector));

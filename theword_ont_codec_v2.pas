@@ -312,6 +312,11 @@ type
     function GetStructuralItemCount: Integer;
     function GetTranslatorNote(AIndex: Integer): TTheWordTranslatorNote;
     function GetTranslatorNoteCount: Integer;
+    function CanWrapTitleInternal(AStartUTF16, ALengthUTF16: Integer;
+      ARequireOrdinaryBody: Boolean): Boolean;
+    function WrapTitleInternal(AStartUTF16, ALengthUTF16, ALevel: Integer;
+      const AOpenLexeme, ACloseLexeme: UnicodeString;
+      ARequireOrdinaryBody: Boolean; out AOpenOrdinal: Integer): Boolean;
   public
     constructor Create;
     destructor Destroy; override;
@@ -323,10 +328,20 @@ type
     function CanReplaceVisibleText(AStartUTF16,
       ALengthUTF16: Integer): Boolean;
     function CanInsertTitle(AOffsetUTF16: Integer): Boolean;
+    function CanWrapTitle(AStartUTF16, ALengthUTF16: Integer): Boolean;
     function ReplaceTitleVisibleText(AOpenOrdinal, ARelativeStartUTF16,
       ALengthUTF16: Integer; const AReplacement: UnicodeString): Boolean;
     function InsertTitle(AOffsetUTF16, ALevel: Integer;
       const AText: UnicodeString; out AOpenOrdinal: Integer): Boolean;
+    function WrapTitle(AStartUTF16, ALengthUTF16, ALevel: Integer;
+      out AOpenOrdinal: Integer): Boolean; overload;
+    function WrapTitle(AStartUTF16, ALengthUTF16, ALevel: Integer;
+      const AOpenLexeme, ACloseLexeme: UnicodeString;
+      out AOpenOrdinal: Integer): Boolean; overload;
+    function RestoreTitle(AStartUTF16, ALengthUTF16, ALevel: Integer;
+      const AOpenLexeme, ACloseLexeme: UnicodeString;
+      out AOpenOrdinal: Integer): Boolean;
+    function UnwrapTitle(AOpenOrdinal: Integer): Boolean;
     function ChangeTitleLevel(AOpenOrdinal, ALevel: Integer): Boolean;
     function RemoveTitle(AOpenOrdinal: Integer;
       out AReplacementText: UnicodeString): Boolean;
@@ -651,9 +666,11 @@ end;
 function CollectTheWordTitleRanges(ADocument: TTheWordVerseDocument;
   out ARanges: TTheWordTitleRangeArray): Integer;
 var
-  EventIndex, Level, OtherIndex, StackCount, RangeIndex,
+  EventIndex, Level, MarkIndex, OtherIndex, StackCount, RangeIndex,
     SortIndex: Integer;
   Event: TTheWordInlineEvent;
+  FontMark: TTheWordFontMark;
+  SemanticMark: TTheWordSemanticMark;
   Stack: TPendingTitleArray;
   Pending: TPendingTitle;
   SwapRange: TTheWordTitleRange;
@@ -680,6 +697,17 @@ var
     { A balanced, otherwise simple empty title is still an editable title:
       callers may populate it or remove its zero-width wrapper explicitly. }
     ARanges[NewIndex].Editable := AValidPair;
+  end;
+
+  function MarkIsCompatibleWithTitle(AMarkStart, AMarkEnd: Integer;
+    const ATitle: TTheWordTitleRange): Boolean;
+  begin
+    Result := (AMarkEnd <= ATitle.StartOffset) or
+      (AMarkStart >= ATitle.EndOffset) or
+      ((AMarkStart >= ATitle.StartOffset) and
+       (AMarkEnd <= ATitle.EndOffset)) or
+      ((AMarkStart <= ATitle.StartOffset) and
+       (AMarkEnd >= ATitle.EndOffset));
   end;
 begin
   ARanges := nil;
@@ -742,8 +770,10 @@ begin
     end;
   end;
 
-  { Any ONT object between the pair makes the title complex. This also
-    rejects nested titles while leaving imported lexemes untouched. }
+  { Semantic and font wrappers are presentation and may be wholly inside a
+    title or may enclose it. Every other ONT object remains protected. A
+    partially crossing wrapper is rejected by the event endpoint that falls
+    between the TS pair. }
   for RangeIndex := 0 to High(ARanges) do
     if ARanges[RangeIndex].Editable then
     begin
@@ -752,6 +782,57 @@ begin
         Event := TTheWordInlineEvent(ADocument.FEvents[OtherIndex]);
         if (Event.Ordinal > ARanges[RangeIndex].OpenOrdinal) and
            (Event.Ordinal < ARanges[RangeIndex].CloseOrdinal) then
+        begin
+          case Event.Kind of
+            twiekSemanticOpen, twiekSemanticClose:
+              begin
+                SemanticMark := Event.SemanticMark;
+                if (SemanticMark <> nil) and
+                   (SemanticMark.FOpenOrdinal < SemanticMark.FCloseOrdinal) and
+                   MarkIsCompatibleWithTitle(SemanticMark.FStartOffset,
+                     SemanticMark.FEndOffset, ARanges[RangeIndex]) then
+                  Continue;
+              end;
+            twiekFontOpen, twiekFontClose:
+              begin
+                FontMark := Event.FontMark;
+                if (FontMark <> nil) and
+                   (FontMark.FOpenOrdinal < FontMark.FCloseOrdinal) and
+                   MarkIsCompatibleWithTitle(FontMark.FStartOffset,
+                     FontMark.FEndOffset, ARanges[RangeIndex]) then
+                  Continue;
+              end;
+          end;
+          ARanges[RangeIndex].Editable := False;
+          Break;
+        end;
+      end;
+    end;
+
+  { Newly authored semantic marks are regenerated and may have ordinals after
+    the imported TS pair until the next encode/decode cycle. Validate their
+    geometry directly as well, so partial crossings never become editable. }
+  for RangeIndex := 0 to High(ARanges) do
+    if ARanges[RangeIndex].Editable then
+    begin
+      for MarkIndex := 0 to ADocument.FMarks.Count - 1 do
+      begin
+        SemanticMark := TTheWordSemanticMark(
+          ADocument.FMarks[MarkIndex]);
+        if not MarkIsCompatibleWithTitle(SemanticMark.FStartOffset,
+          SemanticMark.FEndOffset, ARanges[RangeIndex]) then
+        begin
+          ARanges[RangeIndex].Editable := False;
+          Break;
+        end;
+      end;
+      if not ARanges[RangeIndex].Editable then
+        Continue;
+      for MarkIndex := 0 to ADocument.FFontMarks.Count - 1 do
+      begin
+        FontMark := TTheWordFontMark(ADocument.FFontMarks[MarkIndex]);
+        if not MarkIsCompatibleWithTitle(FontMark.FStartOffset,
+          FontMark.FEndOffset, ARanges[RangeIndex]) then
         begin
           ARanges[RangeIndex].Editable := False;
           Break;
@@ -3506,8 +3587,10 @@ var
   CloseIndex, OpenIndex, BetweenIndex, EventIndex: Integer;
   CloseEvent, OpenEvent, BetweenEvent, Event: TTheWordInlineEvent;
   LeftMark, RightMark: TTheWordSemanticMark;
-  HasDifferentSemanticBetween: Boolean;
+  HasDifferentSemanticBetween, HasTitleBoundaryBetween: Boolean;
   Merged: Boolean;
+  TitleLevel: Integer;
+  ValidTitleBoundary: Boolean;
 begin
   repeat
     Merged := False;
@@ -3527,23 +3610,29 @@ begin
            (OpenEvent.SemanticMark.FKind <> CloseEvent.SemanticMark.FKind) then
           Continue;
         HasDifferentSemanticBetween := False;
+        HasTitleBoundaryBetween := False;
         for BetweenIndex := CloseIndex + 1 to OpenIndex - 1 do
         begin
           BetweenEvent := TTheWordInlineEvent(ADocument.FEvents[BetweenIndex]);
-          if BetweenEvent.Kind in [twiekFontOpen, twiekFontClose] then
+          if BetweenEvent.Kind = twiekOpaque then
           begin
-            HasDifferentSemanticBetween := True;
-            Break;
+            ValidTitleBoundary := TheWordTitleOpenLevel(
+              BetweenEvent.RawLexeme, TitleLevel) or
+              (BetweenEvent.RawLexeme = '<Ts>');
+            if ValidTitleBoundary then
+            begin
+              HasTitleBoundaryBetween := True;
+              Break;
+            end;
           end;
+          if BetweenEvent.Kind in [twiekFontOpen, twiekFontClose] then
+            HasDifferentSemanticBetween := True;
           if (BetweenEvent.Kind in [twiekSemanticOpen, twiekSemanticClose]) and
              (BetweenEvent.SemanticMark <> nil) and
              (BetweenEvent.SemanticMark.FKind <> CloseEvent.SemanticMark.FKind) then
-          begin
             HasDifferentSemanticBetween := True;
-            Break;
-          end;
         end;
-        if not HasDifferentSemanticBetween then
+        if HasTitleBoundaryBetween or not HasDifferentSemanticBetween then
           Continue;
 
         LeftMark := CloseEvent.SemanticMark;
@@ -6072,6 +6161,311 @@ begin
       Result := VerseCapability;
   end;
 end;
+function TitleRangeTouchesSelection(const ATitle: TTheWordTitleRange;
+  AStartUTF16, AEndUTF16: Integer): Boolean;
+begin
+  if ATitle.StartOffset = ATitle.EndOffset then
+    Result := (ATitle.StartOffset > AStartUTF16) and
+      (ATitle.StartOffset < AEndUTF16)
+  else
+    Result := (AStartUTF16 < ATitle.EndOffset) and
+      (AEndUTF16 > ATitle.StartOffset);
+end;
+
+function TitleMarkPartiallyCrosses(AMarkStart, AMarkEnd,
+  AStartUTF16, AEndUTF16: Integer): Boolean;
+begin
+  Result := ((AMarkStart < AStartUTF16) and
+             (AMarkEnd > AStartUTF16) and
+             (AMarkEnd < AEndUTF16)) or
+            ((AMarkStart > AStartUTF16) and
+             (AMarkStart < AEndUTF16) and
+             (AMarkEnd > AEndUTF16));
+end;
+
+function TitleHasPartialFormatting(ADocument: TTheWordVerseDocument;
+  AStartUTF16, AEndUTF16: Integer): Boolean;
+var
+  Index: Integer;
+begin
+  for Index := 0 to ADocument.FMarks.Count - 1 do
+    if TitleMarkPartiallyCrosses(
+      TTheWordSemanticMark(ADocument.FMarks[Index]).FStartOffset,
+      TTheWordSemanticMark(ADocument.FMarks[Index]).FEndOffset,
+      AStartUTF16, AEndUTF16) then
+      Exit(True);
+  for Index := 0 to ADocument.FFontMarks.Count - 1 do
+    if TitleMarkPartiallyCrosses(
+      TTheWordFontMark(ADocument.FFontMarks[Index]).FStartOffset,
+      TTheWordFontMark(ADocument.FFontMarks[Index]).FEndOffset,
+      AStartUTF16, AEndUTF16) then
+      Exit(True);
+  Result := False;
+end;
+
+procedure TitleApplyBoundaryIdentity(AWrapper: TRecoveryCombinedWrapper;
+  AOffset, AStartUTF16, AEndUTF16: Integer);
+var
+  MarkEnd, MarkStart: Integer;
+begin
+  if AWrapper.Kind = rcwkSemantic then
+  begin
+    MarkStart := AWrapper.SemanticMark.FStartOffset;
+    MarkEnd := AWrapper.SemanticMark.FEndOffset;
+  end
+  else
+  begin
+    MarkStart := AWrapper.FontMark.FStartOffset;
+    MarkEnd := AWrapper.FontMark.FEndOffset;
+  end;
+
+  if (MarkStart < AStartUTF16) and
+     (MarkEnd > AStartUTF16) and (MarkEnd < AEndUTF16) then
+  begin
+    if AOffset < AStartUTF16 then
+      AWrapper.EndOffset := AStartUTF16
+    else
+      AWrapper.StartOffset := AStartUTF16;
+  end
+  else if (MarkStart > AStartUTF16) and
+          (MarkStart < AEndUTF16) and (MarkEnd > AEndUTF16) then
+  begin
+    if AOffset < AEndUTF16 then
+      AWrapper.EndOffset := AEndUTF16
+    else
+      AWrapper.StartOffset := AEndUTF16;
+  end;
+end;
+
+procedure TitleApplyBoundaryIdentities(AWrappers: TList; AOffset,
+  AStartUTF16, AEndUTF16: Integer);
+var
+  Index: Integer;
+begin
+  for Index := 0 to AWrappers.Count - 1 do
+    TitleApplyBoundaryIdentity(
+      TRecoveryCombinedWrapper(AWrappers[Index]), AOffset,
+      AStartUTF16, AEndUTF16);
+end;
+
+function TitleCombinedProjectionEqual(AExpected,
+  AActual: TTheWordVerseDocument): Boolean;
+var
+  ActualStack, ExpectedStack: TList;
+  Offset: Integer;
+begin
+  Result := False;
+  if AExpected.FVisibleText <> AActual.FVisibleText then
+    Exit;
+  ActualStack := TList.Create;
+  ExpectedStack := TList.Create;
+  try
+    for Offset := 0 to Length(AExpected.FVisibleText) - 1 do
+      if not RecoveryBuildCombinedTarget(AExpected, nil,
+           Offset, ExpectedStack) or
+         not RecoveryBuildCombinedTarget(AActual, nil,
+           Offset, ActualStack) or
+         not RecoveryCombinedPresentationEqual(ExpectedStack,
+           ActualStack, False) then
+        Exit;
+    Result := True;
+  finally
+    RecoveryClearCombinedWrappers(ExpectedStack);
+    RecoveryClearCombinedWrappers(ActualStack);
+    ExpectedStack.Free;
+    ActualStack.Free;
+  end;
+end;
+
+function TitleSplitMergedSemanticAt(ADocument: TTheWordVerseDocument;
+  AMark: TTheWordSemanticMark; ABoundaryUTF16: Integer): Boolean;
+var
+  CloseEvent, Event, OpenEvent: TTheWordInlineEvent;
+  Index: Integer;
+  RightMark: TTheWordSemanticMark;
+begin
+  Result := False;
+  CloseEvent := nil;
+  OpenEvent := nil;
+  for Index := 0 to ADocument.FEvents.Count - 1 do
+  begin
+    Event := TTheWordInlineEvent(ADocument.FEvents[Index]);
+    if (Event.SemanticMark <> AMark) or
+       (Event.Offset <> ABoundaryUTF16) then
+      Continue;
+    if Event.Kind = twiekSemanticClose then
+      CloseEvent := Event
+    else if (Event.Kind = twiekSemanticOpen) and
+            Assigned(CloseEvent) and
+            (Event.Ordinal > CloseEvent.Ordinal) then
+    begin
+      OpenEvent := Event;
+      Break;
+    end;
+  end;
+  if not Assigned(CloseEvent) or not Assigned(OpenEvent) then
+    Exit;
+
+  RightMark := TTheWordSemanticMark.Create;
+  try
+    RightMark.FKind := AMark.FKind;
+    RightMark.FStartOffset := ABoundaryUTF16;
+    RightMark.FEndOffset := AMark.FEndOffset;
+    RightMark.FOpenLexeme := OpenEvent.RawLexeme;
+    RightMark.FCloseLexeme := AMark.FCloseLexeme;
+    RightMark.FImported := AMark.FImported;
+    RightMark.FOpenOrdinal := OpenEvent.Ordinal;
+    RightMark.FCloseOrdinal := AMark.FCloseOrdinal;
+
+    AMark.FEndOffset := ABoundaryUTF16;
+    AMark.FCloseLexeme := CloseEvent.RawLexeme;
+    AMark.FCloseOrdinal := CloseEvent.Ordinal;
+    for Index := 0 to ADocument.FEvents.Count - 1 do
+    begin
+      Event := TTheWordInlineEvent(ADocument.FEvents[Index]);
+      if Event.SemanticMark <> AMark then
+        Continue;
+      if (Event.Offset > ABoundaryUTF16) or
+         ((Event.Offset = ABoundaryUTF16) and
+          (Event.Kind = twiekSemanticOpen)) then
+        Event.SemanticMark := RightMark;
+    end;
+    ADocument.FMarks.Add(RightMark);
+    RightMark := nil;
+    ADocument.FModified := True;
+    Result := True;
+  finally
+    RightMark.Free;
+  end;
+end;
+
+function TitleEnsureSemanticSeams(ADocument: TTheWordVerseDocument;
+  AStartUTF16, AEndUTF16: Integer): Boolean;
+var
+  Boundary, Index: Integer;
+  Mark: TTheWordSemanticMark;
+begin
+  Index := 0;
+  while Index < ADocument.FMarks.Count do
+  begin
+    Mark := TTheWordSemanticMark(ADocument.FMarks[Index]);
+    if TitleMarkPartiallyCrosses(Mark.FStartOffset, Mark.FEndOffset,
+      AStartUTF16, AEndUTF16) then
+    begin
+      if (Mark.FStartOffset < AStartUTF16) and
+         (Mark.FEndOffset < AEndUTF16) then
+        Boundary := AStartUTF16
+      else
+        Boundary := AEndUTF16;
+      if not TitleSplitMergedSemanticAt(ADocument, Mark, Boundary) then
+        Exit(False);
+    end;
+    Inc(Index);
+  end;
+  Result := not TitleHasPartialFormatting(ADocument,
+    AStartUTF16, AEndUTF16);
+end;
+
+function TitleTryPrepareFormattingSeams(ASource: TTheWordVerseDocument;
+  AStartUTF16, AEndUTF16: Integer; ACodec: ITheWordOntCodecV2;
+  out APrepared: TTheWordVerseDocument): Boolean;
+var
+  CurrentStack, LeftStack, Payloads, PayloadStack, TargetStack: TList;
+  Offset: Integer;
+  Raw: UnicodeString;
+begin
+  Result := False;
+  APrepared := nil;
+  Raw := '';
+  CurrentStack := TList.Create;
+  LeftStack := TList.Create;
+  Payloads := TList.Create;
+  PayloadStack := TList.Create;
+  TargetStack := TList.Create;
+  try
+    for Offset := 0 to Length(ASource.FVisibleText) do
+    begin
+      if not RecoveryBuildCombinedTarget(ASource, nil,
+        Offset, TargetStack) then
+        Exit;
+      TitleApplyBoundaryIdentities(TargetStack, Offset,
+        AStartUTF16, AEndUTF16);
+      RecoveryCopyCombinedWrappers(CurrentStack, LeftStack);
+      RecoveryAppendCombinedAnchor(ASource, Offset,
+        LeftStack, TargetStack, CurrentStack,
+        Payloads, PayloadStack, Raw);
+      if Offset < Length(ASource.FVisibleText) then
+        Raw := Raw + ASource.FVisibleText[Offset + 1];
+    end;
+  finally
+    RecoveryClearCombinedWrappers(TargetStack);
+    RecoveryClearCombinedWrappers(PayloadStack);
+    RecoveryClearCombinedWrappers(LeftStack);
+    RecoveryClearCombinedWrappers(CurrentStack);
+    TargetStack.Free;
+    PayloadStack.Free;
+    Payloads.Free;
+    LeftStack.Free;
+    CurrentStack.Free;
+  end;
+
+  try
+    APrepared := ACodec.DecodeVerse(Raw);
+    if not TitleEnsureSemanticSeams(APrepared,
+      AStartUTF16, AEndUTF16) or
+       not RecoveryObjectsEqual(ASource, APrepared) or
+       not TitleCombinedProjectionEqual(ASource, APrepared) or
+       not RecoveryPayloadAffinityEqualPlan(ASource, APrepared, nil) then
+    begin
+      FreeAndNil(APrepared);
+      Exit;
+    end;
+    APrepared.FModified := True;
+    Result := True;
+  except
+    FreeAndNil(APrepared);
+  end;
+end;
+
+function IsTitleBoundaryOrdinal(AOrdinal, AOffsetUTF16: Integer;
+  const ATitles: TTheWordTitleRangeArray): Boolean;
+var
+  Index: Integer;
+begin
+  for Index := 0 to High(ATitles) do
+    if (((ATitles[Index].StartOffset = AOffsetUTF16) and
+         (ATitles[Index].OpenOrdinal = AOrdinal)) or
+        ((ATitles[Index].EndOffset = AOffsetUTF16) and
+         (ATitles[Index].CloseOrdinal = AOrdinal))) then
+      Exit(True);
+  Result := False;
+end;
+
+function HasOrdinaryBodyAfter(const AText: UnicodeString;
+  AOffsetUTF16: Integer; const ATitles: TTheWordTitleRangeArray): Boolean;
+var
+  CharacterIndex, Index, TextOffset: Integer;
+  InsideTitle: Boolean;
+begin
+  Result := False;
+  for CharacterIndex := AOffsetUTF16 + 1 to Length(AText) do
+  begin
+    if AText[CharacterIndex] <= ' ' then
+      Continue;
+    TextOffset := CharacterIndex - 1;
+    InsideTitle := False;
+    for Index := 0 to High(ATitles) do
+      if (TextOffset >= ATitles[Index].StartOffset) and
+         (TextOffset < ATitles[Index].EndOffset) then
+      begin
+        InsideTitle := True;
+        Break;
+      end;
+    if not InsideTitle then
+      Exit(True);
+  end;
+end;
+
 function TTheWordVerseDocument.CanInsertTitle(
   AOffsetUTF16: Integer): Boolean;
 var
@@ -6092,14 +6486,17 @@ begin
      IsTranslatorNoteWordChar(FVisibleText[AOffsetUTF16 + 1]) then
     Exit(False);
   CollectTheWordTitleRanges(Self, Titles);
+  if not HasOrdinaryBodyAfter(FVisibleText, AOffsetUTF16, Titles) then
+    Exit(False);
   for Index := 0 to High(Titles) do
-    if (AOffsetUTF16 >= Titles[Index].StartOffset) and
-       (AOffsetUTF16 <= Titles[Index].EndOffset) then
+    if (AOffsetUTF16 > Titles[Index].StartOffset) and
+       (AOffsetUTF16 < Titles[Index].EndOffset) then
       Exit(False);
   for Index := 0 to FEvents.Count - 1 do
   begin
     Event := TTheWordInlineEvent(FEvents[Index]);
-    if Event.Offset = AOffsetUTF16 then
+    if (Event.Offset = AOffsetUTF16) and
+       not IsTitleBoundaryOrdinal(Event.Ordinal, AOffsetUTF16, Titles) then
       Exit(False);
   end;
   for Index := 0 to FMarks.Count - 1 do
@@ -6116,6 +6513,63 @@ begin
        (FontMark.EndOffset > AOffsetUTF16) then
       Exit(False);
   end;
+end;
+
+function TTheWordVerseDocument.CanWrapTitle(AStartUTF16,
+  ALengthUTF16: Integer): Boolean;
+begin
+  Result := CanWrapTitleInternal(AStartUTF16, ALengthUTF16, True);
+end;
+
+function TTheWordVerseDocument.CanWrapTitleInternal(AStartUTF16,
+  ALengthUTF16: Integer; ARequireOrdinaryBody: Boolean): Boolean;
+var
+  EndUTF16, Index: Integer;
+  Titles: TTheWordTitleRangeArray;
+begin
+  Result := FCanEdit and (AStartUTF16 >= 0) and
+    (ALengthUTF16 > 0) and
+    (AStartUTF16 <= Length(FVisibleText)) and
+    (ALengthUTF16 <= Length(FVisibleText) - AStartUTF16);
+  if not Result then
+    Exit;
+  EndUTF16 := AStartUTF16 + ALengthUTF16;
+  if not IsUtf16Boundary(FVisibleText, AStartUTF16) or
+     not IsUtf16Boundary(FVisibleText, EndUTF16) then
+    Exit(False);
+
+  CollectTheWordTitleRanges(Self, Titles);
+  if (Trim(Copy(FVisibleText, AStartUTF16 + 1, ALengthUTF16)) = '') or
+     (ARequireOrdinaryBody and
+      not HasOrdinaryBodyAfter(FVisibleText, EndUTF16, Titles)) then
+    Exit(False);
+  for Index := 0 to High(Titles) do
+    if TitleRangeTouchesSelection(Titles[Index], AStartUTF16,
+      EndUTF16) then
+      Exit(False);
+
+  for Index := 0 to FOpaqueItems.Count - 1 do
+    if not IsTheWordTitleAnchor(
+      TTheWordOpaqueItem(FOpaqueItems[Index]).FOrdinal, Titles) and
+       (TTheWordOpaqueItem(FOpaqueItems[Index]).FOffset >= AStartUTF16) and
+       (TTheWordOpaqueItem(FOpaqueItems[Index]).FOffset <= EndUTF16) then
+      Exit(False);
+  for Index := 0 to FLexicalItems.Count - 1 do
+    if (TTheWordLexicalItem(FLexicalItems[Index]).FOffset >= AStartUTF16) and
+       (TTheWordLexicalItem(FLexicalItems[Index]).FOffset <= EndUTF16) then
+      Exit(False);
+  for Index := 0 to FStructuralItems.Count - 1 do
+    if (TTheWordStructuralItem(FStructuralItems[Index]).FOffset >=
+        AStartUTF16) and
+       (TTheWordStructuralItem(FStructuralItems[Index]).FOffset <=
+        EndUTF16) then
+      Exit(False);
+  for Index := 0 to FTranslatorNotes.Count - 1 do
+    if (TTheWordTranslatorNote(FTranslatorNotes[Index]).FOffsetUTF16 >=
+        AStartUTF16) and
+       (TTheWordTranslatorNote(FTranslatorNotes[Index]).FOffsetUTF16 <=
+        EndUTF16) then
+      Exit(False);
 end;
 
 function TryFindTheWordTitle(ADocument: TTheWordVerseDocument;
@@ -6183,6 +6637,556 @@ begin
   else
     Result := '';
   end;
+end;
+
+function TitleEventBeforeOpen(AEvent: TTheWordInlineEvent;
+  AStartUTF16, AEndUTF16: Integer;
+  const ATitles: TTheWordTitleRangeArray): Boolean;
+var
+  Index: Integer;
+begin
+  Result := False;
+  case AEvent.Kind of
+    twiekSemanticOpen:
+      Result := (AEvent.SemanticMark <> nil) and
+        ((AEvent.SemanticMark.FStartOffset < AStartUTF16) or
+         ((AEvent.SemanticMark.FStartOffset = AStartUTF16) and
+          (AEvent.SemanticMark.FEndOffset > AEndUTF16)));
+    twiekSemanticClose:
+      Result := (AEvent.SemanticMark <> nil) and
+        (AEvent.SemanticMark.FEndOffset <= AStartUTF16);
+    twiekFontOpen:
+      Result := (AEvent.FontMark <> nil) and
+        ((AEvent.FontMark.FStartOffset < AStartUTF16) or
+         ((AEvent.FontMark.FStartOffset = AStartUTF16) and
+          (AEvent.FontMark.FEndOffset > AEndUTF16)));
+    twiekFontClose:
+      Result := (AEvent.FontMark <> nil) and
+        (AEvent.FontMark.FEndOffset <= AStartUTF16);
+    twiekOpaque:
+      for Index := 0 to High(ATitles) do
+      begin
+        if (ATitles[Index].EndOffset = AStartUTF16) and
+           (ATitles[Index].CloseOrdinal = AEvent.Ordinal) then
+          Exit(True);
+        if (ATitles[Index].StartOffset = ATitles[Index].EndOffset) and
+           (ATitles[Index].StartOffset = AStartUTF16) and
+           (ATitles[Index].OpenOrdinal = AEvent.Ordinal) then
+          Exit(True);
+      end;
+  end;
+end;
+
+function TitleEventBeforeClose(AEvent: TTheWordInlineEvent;
+  AStartUTF16, AEndUTF16: Integer): Boolean;
+begin
+  Result := False;
+  case AEvent.Kind of
+    twiekSemanticClose:
+      Result := (AEvent.SemanticMark <> nil) and
+        (AEvent.SemanticMark.FEndOffset = AEndUTF16) and
+        (AEvent.SemanticMark.FStartOffset >= AStartUTF16);
+    twiekFontClose:
+      Result := (AEvent.FontMark <> nil) and
+        (AEvent.FontMark.FEndOffset = AEndUTF16) and
+        (AEvent.FontMark.FStartOffset >= AStartUTF16);
+  end;
+end;
+
+function FindTitleBoundaryInsertIndex(ADocument: TTheWordVerseDocument;
+  AOffsetUTF16, AOtherOffsetUTF16: Integer; AIsOpen: Boolean;
+  const ATitles: TTheWordTitleRangeArray): Integer;
+var
+  Event: TTheWordInlineEvent;
+begin
+  Result := ADocument.FEvents.Count;
+  for Result := 0 to ADocument.FEvents.Count - 1 do
+  begin
+    Event := TTheWordInlineEvent(ADocument.FEvents[Result]);
+    if Event.Offset < AOffsetUTF16 then
+      Continue;
+    if Event.Offset > AOffsetUTF16 then
+      Exit;
+    if AIsOpen then
+    begin
+      if TitleEventBeforeOpen(Event, AOffsetUTF16,
+        AOtherOffsetUTF16, ATitles) then
+        Continue;
+    end
+    else if TitleEventBeforeClose(Event, AOtherOffsetUTF16,
+      AOffsetUTF16) then
+      Continue;
+    Exit;
+  end;
+  Result := ADocument.FEvents.Count;
+end;
+
+function InsertTitleOpaqueAt(ADocument: TTheWordVerseDocument;
+  AEventIndex, AOffsetUTF16: Integer; const ALexeme: UnicodeString;
+  out AEvent: TTheWordInlineEvent): Boolean;
+var
+  Item: TTheWordOpaqueItem;
+  TargetOrdinal: Integer;
+begin
+  Result := False;
+  AEvent := nil;
+  Item := TTheWordOpaqueItem.Create;
+  try
+    if AEventIndex < ADocument.FEvents.Count then
+    begin
+      TargetOrdinal := TTheWordInlineEvent(
+        ADocument.FEvents[AEventIndex]).Ordinal;
+      OpenInlineOrdinalSlot(ADocument, TargetOrdinal);
+      AEvent := TTheWordInlineEvent.Create;
+      AEvent.Kind := twiekOpaque;
+      AEvent.Offset := AOffsetUTF16;
+      AEvent.Ordinal := TargetOrdinal;
+      AEvent.RawLexeme := ALexeme;
+      AEvent.SemanticMark := nil;
+      AEvent.FontMark := nil;
+      AEvent.TranslatorNote := nil;
+      ADocument.FEvents.Insert(AEventIndex, AEvent);
+    end
+    else
+      AEvent := NewInlineEvent(ADocument, twiekOpaque,
+        AOffsetUTF16, ALexeme);
+
+    Item.FKind := twokUnknownTag;
+    Item.FOffset := AOffsetUTF16;
+    Item.FRawLexeme := ALexeme;
+    Item.FOrdinal := AEvent.Ordinal;
+    ADocument.FOpaqueItems.Add(Item);
+    Item := nil;
+    Result := True;
+  finally
+    if not Result and (AEvent <> nil) then
+    begin
+      ADocument.FEvents.Remove(AEvent);
+      AEvent := nil;
+    end;
+    Item.Free;
+  end;
+end;
+
+function InsertTitlePairDirect(ADocument: TTheWordVerseDocument;
+  AStartUTF16, ALengthUTF16: Integer;
+  const AOpenLexeme, ACloseLexeme: UnicodeString;
+  out AOpenOrdinal: Integer): Boolean;
+var
+  CloseEvent, OpenEvent: TTheWordInlineEvent;
+  CloseIndex, EndUTF16, OpenIndex: Integer;
+  Titles: TTheWordTitleRangeArray;
+begin
+  Result := False;
+  AOpenOrdinal := -1;
+  EndUTF16 := AStartUTF16 + ALengthUTF16;
+  CollectTheWordTitleRanges(ADocument, Titles);
+  OpenIndex := FindTitleBoundaryInsertIndex(ADocument, AStartUTF16,
+    EndUTF16, True, Titles);
+  if not InsertTitleOpaqueAt(ADocument, OpenIndex, AStartUTF16,
+    AOpenLexeme, OpenEvent) then
+    Exit;
+  CloseEvent := nil;
+  try
+    CollectTheWordTitleRanges(ADocument, Titles);
+    CloseIndex := FindTitleBoundaryInsertIndex(ADocument, EndUTF16,
+      AStartUTF16, False, Titles);
+    if not InsertTitleOpaqueAt(ADocument, CloseIndex, EndUTF16,
+      ACloseLexeme, CloseEvent) then
+      Exit;
+    AOpenOrdinal := OpenEvent.Ordinal;
+    ADocument.FModified := True;
+    Result := True;
+  finally
+    if not Result then
+    begin
+      if CloseEvent <> nil then
+      begin
+        ADocument.FOpaqueItems.Remove(
+          FindTitleOpaque(ADocument, CloseEvent.Ordinal));
+        ADocument.FEvents.Remove(CloseEvent);
+      end;
+      ADocument.FOpaqueItems.Remove(
+        FindTitleOpaque(ADocument, OpenEvent.Ordinal));
+      ADocument.FEvents.Remove(OpenEvent);
+    end;
+  end;
+end;
+
+function TitleFindInsertedRange(ADocument: TTheWordVerseDocument;
+  AStartUTF16, AEndUTF16, ALevel: Integer;
+  const AOpenLexeme, ACloseLexeme: UnicodeString;
+  out ATitle: TTheWordTitleRange): Boolean;
+var
+  Index: Integer;
+  Titles: TTheWordTitleRangeArray;
+begin
+  FillChar(ATitle, SizeOf(ATitle), 0);
+  CollectTheWordTitleRanges(ADocument, Titles);
+  for Index := 0 to High(Titles) do
+    if Titles[Index].Editable and
+       (Titles[Index].StartOffset = AStartUTF16) and
+       (Titles[Index].EndOffset = AEndUTF16) and
+       (Titles[Index].Level = ALevel) and
+       (Titles[Index].OpenLexeme = AOpenLexeme) and
+       (Titles[Index].CloseLexeme = ACloseLexeme) then
+    begin
+      ATitle := Titles[Index];
+      Exit(True);
+    end;
+  Result := False;
+end;
+
+function TitleNextPayloadEvent(ADocument: TTheWordVerseDocument;
+  var AIndex: Integer; ASkipFirstOrdinal,
+  ASkipSecondOrdinal: Integer): TTheWordInlineEvent;
+begin
+  Result := nil;
+  while AIndex < ADocument.FEvents.Count do
+  begin
+    Result := TTheWordInlineEvent(ADocument.FEvents[AIndex]);
+    Inc(AIndex);
+    if not RecoveryIsAnchorPayload(Result) or
+       (Result.Ordinal = ASkipFirstOrdinal) or
+       (Result.Ordinal = ASkipSecondOrdinal) then
+      Continue;
+    Exit;
+  end;
+  Result := nil;
+end;
+
+function TitlePayloadSequencePreserved(AExpected,
+  AActual: TTheWordVerseDocument; AInsertedOpenOrdinal,
+  AInsertedCloseOrdinal: Integer): Boolean;
+var
+  ActualEvent, ExpectedEvent: TTheWordInlineEvent;
+  ActualIndex, ExpectedIndex: Integer;
+  ActualStack, ExpectedStack: TList;
+begin
+  Result := False;
+  ActualIndex := 0;
+  ExpectedIndex := 0;
+  ActualStack := TList.Create;
+  ExpectedStack := TList.Create;
+  try
+    while True do
+    begin
+      ExpectedEvent := TitleNextPayloadEvent(AExpected,
+        ExpectedIndex, -1, -1);
+      ActualEvent := TitleNextPayloadEvent(AActual,
+        ActualIndex, AInsertedOpenOrdinal, AInsertedCloseOrdinal);
+      if (ExpectedEvent = nil) or (ActualEvent = nil) then
+        Exit((ExpectedEvent = nil) and (ActualEvent = nil));
+      if (ExpectedEvent.Kind <> ActualEvent.Kind) or
+         (ExpectedEvent.Offset <> ActualEvent.Offset) or
+         (PreservedEventLexeme(ExpectedEvent) <>
+          PreservedEventLexeme(ActualEvent)) or
+         not RecoveryBuildEventPresentationStack(AExpected,
+           nil, ExpectedEvent, ExpectedStack) or
+         not RecoveryBuildEventPresentationStack(AActual,
+           nil, ActualEvent, ActualStack) or
+         not RecoveryCombinedPresentationEqual(ExpectedStack,
+           ActualStack, False) then
+        Exit(False);
+    end;
+  finally
+    RecoveryClearCombinedWrappers(ExpectedStack);
+    RecoveryClearCombinedWrappers(ActualStack);
+    ExpectedStack.Free;
+    ActualStack.Free;
+  end;
+end;
+
+function TitleFindSemanticOrigin(ASource: TTheWordVerseDocument;
+  AMark: TTheWordSemanticMark): TTheWordSemanticMark;
+var
+  BestLength, Index, MarkLength: Integer;
+  Candidate: TTheWordSemanticMark;
+begin
+  Result := nil;
+  BestLength := MaxInt;
+  for Index := 0 to ASource.FMarks.Count - 1 do
+  begin
+    Candidate := TTheWordSemanticMark(ASource.FMarks[Index]);
+    if (Candidate.FKind <> AMark.FKind) or
+       (Candidate.FOpenLexeme <> AMark.FOpenLexeme) or
+       (Candidate.FCloseLexeme <> AMark.FCloseLexeme) or
+       (Candidate.FStartOffset > AMark.FStartOffset) or
+       (Candidate.FEndOffset < AMark.FEndOffset) then
+      Continue;
+    MarkLength := Candidate.FEndOffset - Candidate.FStartOffset;
+    if MarkLength < BestLength then
+    begin
+      Result := Candidate;
+      BestLength := MarkLength;
+    end;
+  end;
+end;
+
+function TitleFindFontOrigin(ASource: TTheWordVerseDocument;
+  AMark: TTheWordFontMark): TTheWordFontMark;
+var
+  BestLength, Index, MarkLength: Integer;
+  Candidate: TTheWordFontMark;
+begin
+  Result := nil;
+  BestLength := MaxInt;
+  for Index := 0 to ASource.FFontMarks.Count - 1 do
+  begin
+    Candidate := TTheWordFontMark(ASource.FFontMarks[Index]);
+    if (Candidate.FOpenLexeme <> AMark.FOpenLexeme) or
+       (Candidate.FCloseLexeme <> AMark.FCloseLexeme) or
+       (Candidate.FStartOffset > AMark.FStartOffset) or
+       (Candidate.FEndOffset < AMark.FEndOffset) then
+      Continue;
+    MarkLength := Candidate.FEndOffset - Candidate.FStartOffset;
+    if MarkLength < BestLength then
+    begin
+      Result := Candidate;
+      BestLength := MarkLength;
+    end;
+  end;
+end;
+
+function TitleCopyProvenance(ASource,
+  ADestination: TTheWordVerseDocument): Boolean;
+var
+  DestinationFont: TTheWordFontMark;
+  DestinationMark: TTheWordSemanticMark;
+  Index: Integer;
+  SourceFont: TTheWordFontMark;
+  SourceMark: TTheWordSemanticMark;
+  SourceNote, DestinationNote: TTheWordTranslatorNote;
+begin
+  Result := False;
+  for Index := 0 to ADestination.FMarks.Count - 1 do
+  begin
+    DestinationMark := TTheWordSemanticMark(
+      ADestination.FMarks[Index]);
+    SourceMark := TitleFindSemanticOrigin(ASource, DestinationMark);
+    if not Assigned(SourceMark) then
+      Exit;
+    DestinationMark.FImported := SourceMark.FImported;
+  end;
+  for Index := 0 to ADestination.FFontMarks.Count - 1 do
+  begin
+    DestinationFont := TTheWordFontMark(
+      ADestination.FFontMarks[Index]);
+    SourceFont := TitleFindFontOrigin(ASource, DestinationFont);
+    if not Assigned(SourceFont) then
+      Exit;
+    DestinationFont.FImported := SourceFont.FImported;
+  end;
+  if ASource.FTranslatorNotes.Count <>
+     ADestination.FTranslatorNotes.Count then
+    Exit;
+  for Index := 0 to ASource.FTranslatorNotes.Count - 1 do
+  begin
+    SourceNote := TTheWordTranslatorNote(
+      ASource.FTranslatorNotes[Index]);
+    DestinationNote := TTheWordTranslatorNote(
+      ADestination.FTranslatorNotes[Index]);
+    DestinationNote.FId := SourceNote.FId;
+    DestinationNote.FImported := SourceNote.FImported;
+    DestinationNote.FModified := SourceNote.FModified;
+  end;
+  Result := True;
+end;
+
+procedure TitleSwapObjectLists(var ALeft, ARight: TObjectList);
+var
+  Temporary: TObjectList;
+begin
+  Temporary := ALeft;
+  ALeft := ARight;
+  ARight := Temporary;
+end;
+
+procedure TitleAdoptDocumentContent(ATarget,
+  ASource: TTheWordVerseDocument);
+begin
+  TitleSwapObjectLists(ATarget.FMarks, ASource.FMarks);
+  TitleSwapObjectLists(ATarget.FFontMarks, ASource.FFontMarks);
+  TitleSwapObjectLists(ATarget.FLexicalItems, ASource.FLexicalItems);
+  TitleSwapObjectLists(ATarget.FOpaqueItems, ASource.FOpaqueItems);
+  TitleSwapObjectLists(ATarget.FStructuralItems,
+    ASource.FStructuralItems);
+  TitleSwapObjectLists(ATarget.FTranslatorNotes,
+    ASource.FTranslatorNotes);
+  TitleSwapObjectLists(ATarget.FEvents, ASource.FEvents);
+  ATarget.FNextOrdinal := ASource.FNextOrdinal;
+  ATarget.FModified := True;
+end;
+
+function TTheWordVerseDocument.WrapTitle(AStartUTF16, ALengthUTF16,
+  ALevel: Integer; out AOpenOrdinal: Integer): Boolean;
+var
+  OpenLexeme: UnicodeString;
+begin
+  OpenLexeme := CanonicalTheWordTitleOpen(ALevel);
+  Result := (OpenLexeme <> '') and WrapTitle(AStartUTF16,
+    ALengthUTF16, ALevel, OpenLexeme, '<Ts>', AOpenOrdinal);
+  if not Result then
+    AOpenOrdinal := -1;
+end;
+
+function TTheWordVerseDocument.WrapTitle(AStartUTF16, ALengthUTF16,
+  ALevel: Integer; const AOpenLexeme, ACloseLexeme: UnicodeString;
+  out AOpenOrdinal: Integer): Boolean;
+begin
+  Result := WrapTitleInternal(AStartUTF16, ALengthUTF16, ALevel,
+    AOpenLexeme, ACloseLexeme, True, AOpenOrdinal);
+end;
+
+function TTheWordVerseDocument.RestoreTitle(AStartUTF16, ALengthUTF16,
+  ALevel: Integer; const AOpenLexeme, ACloseLexeme: UnicodeString;
+  out AOpenOrdinal: Integer): Boolean;
+begin
+  Result := WrapTitleInternal(AStartUTF16, ALengthUTF16, ALevel,
+    AOpenLexeme, ACloseLexeme, False, AOpenOrdinal);
+end;
+
+function TTheWordVerseDocument.WrapTitleInternal(AStartUTF16,
+  ALengthUTF16, ALevel: Integer;
+  const AOpenLexeme, ACloseLexeme: UnicodeString;
+  ARequireOrdinaryBody: Boolean; out AOpenOrdinal: Integer): Boolean;
+var
+  Codec: ITheWordOntCodecV2;
+  EncodedBytes: RawByteString;
+  EndUTF16, ParsedLevel, WorkingOpenOrdinal: Integer;
+  FinalDocument, PreparedDocument,
+    WorkingDocument: TTheWordVerseDocument;
+  FinalRaw, SnapshotRaw: UnicodeString;
+  InsertedTitle: TTheWordTitleRange;
+begin
+  Result := False;
+  AOpenOrdinal := -1;
+  if not TheWordTitleOpenLevel(AOpenLexeme, ParsedLevel) or
+     (ParsedLevel <> ALevel) or (ACloseLexeme <> '<Ts>') or
+     not CanWrapTitleInternal(AStartUTF16, ALengthUTF16,
+       ARequireOrdinaryBody) then
+    Exit;
+
+  EndUTF16 := AStartUTF16 + ALengthUTF16;
+  Codec := TTheWordOntCodecV2.Create;
+  WorkingDocument := nil;
+  PreparedDocument := nil;
+  FinalDocument := nil;
+  try
+    try
+      SnapshotRaw := Codec.EncodeVerse(Self);
+      WorkingDocument := Codec.DecodeVerse(SnapshotRaw);
+      if (WorkingDocument.FVisibleText <> FVisibleText) or
+         not RecoverySemanticCoverageEqual(Self, WorkingDocument) or
+         not RecoveryPayloadSequenceEqual(Self, WorkingDocument) or
+         not TitleCombinedProjectionEqual(Self, WorkingDocument) or
+         not RecoveryPayloadAffinityEqualPlan(Self,
+           WorkingDocument, nil) then
+        Exit;
+      if TitleHasPartialFormatting(WorkingDocument,
+        AStartUTF16, EndUTF16) then
+      begin
+        if not TitleTryPrepareFormattingSeams(WorkingDocument,
+          AStartUTF16, EndUTF16, Codec, PreparedDocument) then
+          Exit;
+        WorkingDocument.Free;
+        WorkingDocument := PreparedDocument;
+        PreparedDocument := nil;
+      end;
+      if TitleHasPartialFormatting(WorkingDocument,
+        AStartUTF16, EndUTF16) or
+         not InsertTitlePairDirect(WorkingDocument, AStartUTF16,
+           ALengthUTF16, AOpenLexeme, ACloseLexeme,
+           WorkingOpenOrdinal) then
+        Exit;
+      FinalRaw := Codec.EncodeVerse(WorkingDocument);
+      if not TryEncodeBytes(FinalRaw, FRequiredCodePage,
+        EncodedBytes) then
+        Exit;
+      FinalDocument := Codec.DecodeVerse(FinalRaw);
+      if FinalDocument.FVisibleText <> FVisibleText then
+        Exit;
+      if TitleHasPartialFormatting(FinalDocument,
+        AStartUTF16, EndUTF16) then
+        Exit;
+      if not RecoverySemanticCoverageEqual(Self, FinalDocument) then
+        Exit;
+      if not TitleCombinedProjectionEqual(Self, FinalDocument) then
+        Exit;
+      if not TitleFindInsertedRange(FinalDocument, AStartUTF16,
+        EndUTF16, ALevel, AOpenLexeme, ACloseLexeme,
+        InsertedTitle) then
+        Exit;
+      if not TitlePayloadSequencePreserved(Self, FinalDocument,
+        InsertedTitle.OpenOrdinal, InsertedTitle.CloseOrdinal) then
+        Exit;
+      if not TitleCopyProvenance(Self, FinalDocument) then
+        Exit;
+
+      AOpenOrdinal := InsertedTitle.OpenOrdinal;
+      TitleAdoptDocumentContent(Self, FinalDocument);
+      Result := True;
+    except
+      Result := False;
+      AOpenOrdinal := -1;
+    end;
+  finally
+    PreparedDocument.Free;
+    WorkingDocument.Free;
+    FinalDocument.Free;
+  end;
+  if not Result then
+  begin
+    AOpenOrdinal := -1;
+    Exit(False);
+  end;
+end;
+
+function TTheWordVerseDocument.UnwrapTitle(AOpenOrdinal: Integer): Boolean;
+var
+  CloseEventIndex, CloseOpaqueIndex, OpenEventIndex,
+    OpenOpaqueIndex: Integer;
+  CloseEvent, OpenEvent: TTheWordInlineEvent;
+  CloseOpaque, OpenOpaque: TTheWordOpaqueItem;
+  Title: TTheWordTitleRange;
+begin
+  Result := False;
+  if not TryFindTheWordTitle(Self, AOpenOrdinal, Title) or
+     not Title.Editable then
+    Exit;
+  OpenOpaque := FindTitleOpaque(Self, Title.OpenOrdinal);
+  CloseOpaque := FindTitleOpaque(Self, Title.CloseOrdinal);
+  OpenEvent := FindTitleEvent(Self, Title.OpenOrdinal);
+  CloseEvent := FindTitleEvent(Self, Title.CloseOrdinal);
+  if not Assigned(OpenOpaque) or not Assigned(CloseOpaque) or
+     not Assigned(OpenEvent) or not Assigned(CloseEvent) then
+    Exit;
+  OpenOpaqueIndex := FOpaqueItems.IndexOf(OpenOpaque);
+  CloseOpaqueIndex := FOpaqueItems.IndexOf(CloseOpaque);
+  OpenEventIndex := FEvents.IndexOf(OpenEvent);
+  CloseEventIndex := FEvents.IndexOf(CloseEvent);
+  if OpenOpaqueIndex > CloseOpaqueIndex then
+  begin
+    FOpaqueItems.Delete(OpenOpaqueIndex);
+    FOpaqueItems.Delete(CloseOpaqueIndex);
+  end
+  else
+  begin
+    FOpaqueItems.Delete(CloseOpaqueIndex);
+    FOpaqueItems.Delete(OpenOpaqueIndex);
+  end;
+  if OpenEventIndex > CloseEventIndex then
+  begin
+    FEvents.Delete(OpenEventIndex);
+    FEvents.Delete(CloseEventIndex);
+  end
+  else
+  begin
+    FEvents.Delete(CloseEventIndex);
+    FEvents.Delete(OpenEventIndex);
+  end;
+  FModified := True;
+  Result := True;
 end;
 
 function TTheWordVerseDocument.ReplaceTitleVisibleText(AOpenOrdinal,
@@ -6253,8 +7257,6 @@ end;
 function TTheWordVerseDocument.InsertTitle(AOffsetUTF16, ALevel: Integer;
   const AText: UnicodeString; out AOpenOrdinal: Integer): Boolean;
 var
-  CloseEvent, OpenEvent: TTheWordInlineEvent;
-  CloseOpaque, OpenOpaque: TTheWordOpaqueItem;
   OpenLexeme: UnicodeString;
 begin
   Result := False;
@@ -6267,25 +7269,8 @@ begin
     Exit;
 
   ReplaceVisibleText(AOffsetUTF16, 0, AText);
-  OpenEvent := NewInlineEvent(Self, twiekOpaque, AOffsetUTF16,
-    OpenLexeme);
-  CloseEvent := NewInlineEvent(Self, twiekOpaque,
-    AOffsetUTF16 + Length(AText), '<Ts>');
-  OpenOpaque := TTheWordOpaqueItem.Create;
-  OpenOpaque.FKind := twokUnknownTag;
-  OpenOpaque.FOffset := OpenEvent.Offset;
-  OpenOpaque.FRawLexeme := OpenLexeme;
-  OpenOpaque.FOrdinal := OpenEvent.Ordinal;
-  CloseOpaque := TTheWordOpaqueItem.Create;
-  CloseOpaque.FKind := twokUnknownTag;
-  CloseOpaque.FOffset := CloseEvent.Offset;
-  CloseOpaque.FRawLexeme := '<Ts>';
-  CloseOpaque.FOrdinal := CloseEvent.Ordinal;
-  FOpaqueItems.Add(OpenOpaque);
-  FOpaqueItems.Add(CloseOpaque);
-  AOpenOrdinal := OpenEvent.Ordinal;
-  FModified := True;
-  Result := True;
+  Result := WrapTitle(AOffsetUTF16, Length(AText), ALevel,
+    OpenLexeme, '<Ts>', AOpenOrdinal);
 end;
 
 function TTheWordVerseDocument.ChangeTitleLevel(AOpenOrdinal,

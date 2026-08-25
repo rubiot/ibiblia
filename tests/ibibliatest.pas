@@ -33,6 +33,7 @@ type
     FVerseChangeCount: Integer;
 
     procedure VerseChanged;
+    procedure FailingVerseChanged;
     procedure Associate(const source: array of const; const dest: array of const);
     procedure AssociateByText(const pair: TPair);
     procedure AssociatePairs(const pairs: TPairs);
@@ -116,6 +117,10 @@ type
     procedure TracedSemanticRoundTripPreservesAssociations;
     procedure TracedCutPasteDoesNotTransferAssociation;
     procedure TracedSemanticSplitRemovesOnlyAffectedAssociation;
+    procedure TracedEditPreviewIsNonMutatingAndAppliesExactPlan;
+    procedure TracedEditPreviewRejectsStaleAssociationState;
+    procedure TracedEditPlanCanOnlyBeAppliedOnce;
+    procedure TracedEditObserverFailureRemainsCommitted;
     procedure TracedLegacyFallbackValidatesTraceAndProtectedWords;
     procedure TracedLegacyFallbackUsesHistoricalHeuristic;
     procedure TracedEditRenderFailureRemainsCommitted;
@@ -158,6 +163,11 @@ end;
 procedure TVerseTests.VerseChanged;
 begin
   Inc(FVerseChangeCount);
+end;
+
+procedure TVerseTests.FailingVerseChanged;
+begin
+  raise Exception.Create('deliberate synchronous Verse observer failure');
 end;
 
 procedure TVerseTests.TestHookUp;
@@ -1444,6 +1454,152 @@ begin
   AssertPairsAndSiblings(KeepTarget, [KeepSource], []);
   AssertEquals(1, Impact.PreservedMembers);
   AssertEquals(1, Impact.RemovedMembers);
+end;
+
+procedure TVerseTests.TracedEditPreviewIsNonMutatingAndAppliesExactPlan;
+var
+  AlphaSource, AlphaTarget, BetaSource, BetaTarget: TSyntagm;
+  BaselinePairs, BaselineXML: string;
+  Impact: TAssociationEditImpact;
+  OpenOrdinal: Integer;
+  Plan: TVerseEditReconciliationPlan;
+  Session: TTheWordWysiwygSessionV2;
+  Trace: TVerseEditTrace;
+begin
+  verse1.Text := 'alpha beta';
+  verse2.Text := 'alpha beta';
+  Associate([0], [0]);
+  Associate([2], [2]);
+  AlphaSource := verse1.Syntagms[0];
+  AlphaTarget := verse2.Syntagms[0];
+  BetaSource := verse1.Syntagms[2];
+  BetaTarget := verse2.Syntagms[2];
+  BaselineXML := verse2.XML;
+  BaselinePairs := verse1.Pairs;
+
+  Session := TTheWordWysiwygSessionV2.Create('alpha beta',
+    verse2.TokenizerVersion);
+  Trace := nil;
+  Plan := nil;
+  try
+    AssertTrue(Session.WrapTitle(0, 5, 1, OpenOrdinal));
+    Trace := Session.CloneEditTrace;
+    AssertTrue('preview must reconcile without committing',
+      verse2.PreviewTracedEdit(UTF8Encode(Session.RawText), Trace,
+        Plan, Impact));
+    AssertEquals('preview keeps Verse text unchanged', BaselineXML,
+      verse2.XML);
+    AssertEquals('preview keeps serialized Associations unchanged',
+      BaselinePairs, verse1.Pairs);
+    AssertTrue('preview keeps the title candidate target alive in place',
+      verse2.Syntagms[0] = AlphaTarget);
+    AssertTrue('preview keeps the untouched target alive in place',
+      verse2.Syntagms[2] = BetaTarget);
+    AssertPairsAndSiblings(AlphaSource, [AlphaTarget], []);
+    AssertPairsAndSiblings(BetaSource, [BetaTarget], []);
+    AssertEquals(1, Impact.PreservedMembers);
+    AssertEquals(1, Impact.RemovedMembers);
+
+    AssertTrue('the exact preview can be applied',
+      verse2.ApplyTracedEditPlan(Plan, Impact));
+    AssertEquals('<TS>alpha<Ts> beta', verse2.XML);
+    AssertPairsAndSiblings(AlphaSource, [], []);
+    AssertTrue('the untouched target object must be reused',
+      verse2.Syntagms.IndexOf(BetaTarget) >= 0);
+    AssertPairsAndSiblings(BetaSource, [BetaTarget], []);
+    AssertPairsAndSiblings(BetaTarget, [BetaSource], []);
+  finally
+    Plan.Free;
+    Trace.Free;
+    Session.Free;
+  end;
+end;
+
+procedure TVerseTests.TracedEditPreviewRejectsStaleAssociationState;
+var
+  BaselineXML: string;
+  Impact: TAssociationEditImpact;
+  OpenOrdinal: Integer;
+  Plan: TVerseEditReconciliationPlan;
+  Session: TTheWordWysiwygSessionV2;
+  Trace: TVerseEditTrace;
+begin
+  verse1.Text := 'source';
+  verse2.Text := 'target body';
+  Associate([0], [0]);
+  BaselineXML := verse2.XML;
+  Session := TTheWordWysiwygSessionV2.Create('target body',
+    verse2.TokenizerVersion);
+  Trace := nil;
+  Plan := nil;
+  try
+    AssertTrue(Session.WrapTitle(0, 6, 1, OpenOrdinal));
+    Trace := Session.CloneEditTrace;
+    AssertTrue(verse2.PreviewTracedEdit(UTF8Encode(Session.RawText), Trace,
+      Plan, Impact));
+    verse1.DisassociatePairs;
+    AssertFalse('an association change makes the preview stale',
+      verse2.ApplyTracedEditPlan(Plan, Impact));
+    AssertTrue('stale failure must be explicit', Impact.ErrorMessage <> '');
+    AssertEquals('stale apply must not change text', BaselineXML, verse2.XML);
+  finally
+    Plan.Free;
+    Trace.Free;
+    Session.Free;
+  end;
+end;
+
+procedure TVerseTests.TracedEditPlanCanOnlyBeAppliedOnce;
+var
+  AppliedXML: string;
+  Impact: TAssociationEditImpact;
+  OpenOrdinal: Integer;
+  Plan: TVerseEditReconciliationPlan;
+  Session: TTheWordWysiwygSessionV2;
+  Trace: TVerseEditTrace;
+begin
+  verse2.Text := 'title body';
+  Session := TTheWordWysiwygSessionV2.Create('title body',
+    verse2.TokenizerVersion);
+  Trace := nil;
+  Plan := nil;
+  try
+    AssertTrue(Session.WrapTitle(0, 5, 2, OpenOrdinal));
+    Trace := Session.CloneEditTrace;
+    AssertTrue(verse2.PreviewTracedEdit(UTF8Encode(Session.RawText), Trace,
+      Plan, Impact));
+    AssertTrue(verse2.ApplyTracedEditPlan(Plan, Impact));
+    AppliedXML := verse2.XML;
+    AssertFalse('a reconciliation plan is single-use',
+      verse2.ApplyTracedEditPlan(Plan, Impact));
+    AssertTrue(Pos('already been applied', Impact.ErrorMessage) > 0);
+    AssertEquals('second apply must not mutate the Verse', AppliedXML,
+      verse2.XML);
+  finally
+    Plan.Free;
+    Trace.Free;
+    Session.Free;
+  end;
+end;
+
+procedure TVerseTests.TracedEditObserverFailureRemainsCommitted;
+var
+  Impact: TAssociationEditImpact;
+  Trace: TVerseEditTrace;
+begin
+  verse2.Text := 'old';
+  verse2.OnVerseChanged := @FailingVerseChanged;
+  Trace := TVerseEditTrace.CreateIdentity('old', verse2.TokenizerVersion);
+  try
+    Trace.ApplyReplacement(0, 3, 'new');
+    AssertTrue('a post-commit callback cannot reject an applied edit',
+      verse2.TryApplyTracedEdit('new', Trace, Impact));
+  finally
+    Trace.Free;
+    verse2.OnVerseChanged := nil;
+  end;
+  AssertEquals('new', verse2.XML);
+  AssertEquals('', Impact.ErrorMessage);
 end;
 
 procedure TVerseTests.TracedLegacyFallbackValidatesTraceAndProtectedWords;

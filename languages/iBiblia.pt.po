@@ -3227,6 +3227,22 @@ msgctxt "project.spsalms"
 msgid "Psalms"
 msgstr "Salmos"
 
+#: project.sremoveeditassociationprompt
+msgctxt "project.sremoveeditassociationprompt"
+msgid "This edit will remove 1 associated text member. Continue?"
+msgstr "Esta edição removerá 1 membro de texto associado. Continuar?"
+
+#: project.sremoveeditassociationsprompt
+#, object-pascal-format
+msgctxt "project.sremoveeditassociationsprompt"
+msgid "This edit will remove %d associated text members. Continue?"
+msgstr "Esta edição removerá %d membros de texto associados. Continuar?"
+
+#: project.sremoveeditassociationstitle
+msgctxt "project.sremoveeditassociationstitle"
+msgid "Remove associations?"
+msgstr "Remover associações?"
+
 #: project.sreferencenotfound
 #, fuzzy
 msgctxt "project.sreferencenotfound"
@@ -4989,53 +5005,28 @@ msgstr "Cor da fonte; escolha Padrão para remover a cor explícita"
 
 #: versememo.stitlehint
 msgctxt "versememo.stitlehint"
-msgid "Insert, change or remove a title"
-msgstr "Inserir, alterar ou remover um título"
+msgid "Apply, change or remove title formatting"
+msgstr "Aplicar, alterar ou remover a formatação de título"
 
-#: versememo.snewtitlelevel1
-msgctxt "versememo.snewtitlelevel1"
-msgid "New level 1 title..."
-msgstr "Novo título de nível 1..."
+#: versememo.stitlelevel1
+msgctxt "versememo.stitlelevel1"
+msgid "Title level 1"
+msgstr "Título de nível 1"
 
-#: versememo.snewtitlelevel2
-msgctxt "versememo.snewtitlelevel2"
-msgid "New level 2 title..."
-msgstr "Novo título de nível 2..."
+#: versememo.stitlelevel2
+msgctxt "versememo.stitlelevel2"
+msgid "Title level 2"
+msgstr "Título de nível 2"
 
-#: versememo.snewtitlelevel3
-msgctxt "versememo.snewtitlelevel3"
-msgid "New level 3 title..."
-msgstr "Novo título de nível 3..."
-
-#: versememo.schangetitlelevel1
-msgctxt "versememo.schangetitlelevel1"
-msgid "Change to level 1"
-msgstr "Alterar para o nível 1"
-
-#: versememo.schangetitlelevel2
-msgctxt "versememo.schangetitlelevel2"
-msgid "Change to level 2"
-msgstr "Alterar para o nível 2"
-
-#: versememo.schangetitlelevel3
-msgctxt "versememo.schangetitlelevel3"
-msgid "Change to level 3"
-msgstr "Alterar para o nível 3"
+#: versememo.stitlelevel3
+msgctxt "versememo.stitlelevel3"
+msgid "Title level 3"
+msgstr "Título de nível 3"
 
 #: versememo.sremovetitle
 msgctxt "versememo.sremovetitle"
-msgid "Remove title"
-msgstr "Remover título"
-
-#: versememo.sinserttitledialogtitle
-msgctxt "versememo.sinserttitledialogtitle"
-msgid "Insert title"
-msgstr "Inserir título"
-
-#: versememo.sinserttitleprompt
-msgctxt "versememo.sinserttitleprompt"
-msgid "Title text:"
-msgstr "Texto do título:"
+msgid "Remove title formatting"
+msgstr "Remover formatação de título"
 
 #: versememo.stitleediterrortitle
 msgctxt "versememo.stitleediterrortitle"

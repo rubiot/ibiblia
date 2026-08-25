@@ -37,10 +37,12 @@ type
     FPendingFontSizeActive: Boolean;
     FPendingFontSizeLevel: Integer;
     FPendingFontSizeAnchor: Integer;
+    FPendingFontSizeTitleOrdinal: Integer;
     FPendingFontColorActive: Boolean;
     FPendingFontColorHasColor: Boolean;
     FPendingFontColor: LongInt;
     FPendingFontColorAnchor: Integer;
+    FPendingFontColorTitleOrdinal: Integer;
     FRawEditor: TSynEdit;
     FRawMode: Boolean;
     FSession: TTheWordWysiwygSessionV2;
@@ -107,6 +109,8 @@ type
     function TryGetTitleLayoutSelection(ALayoutStart, ALayoutLength: Integer;
       out ATitleId: QWord; out ARelativeStartUTF16,
       ADocumentLength: Integer; out ATitle: TTheWordTitleRange): Boolean;
+    function LayoutSelectionTouchesTitle(ALayoutStart,
+      ALayoutLength: Integer): Boolean;
     function TrySetDocumentSelection(AStartUTF16,
       ALengthUTF16: Integer): Boolean;
     function TrySetTitleDocumentSelection(AOpenOrdinal,
@@ -120,6 +124,8 @@ type
     function ApplySemantic(AKind: TTheWordSemanticKind): Boolean;
     function AdjustRelativeFontSize(ADelta: Integer): Boolean;
     function ApplyFontColor(AHasColor: Boolean; AColor: LongInt): Boolean;
+    function CanApplyTitle: Boolean;
+    function ApplyTitleLevel(ALevel: Integer): Boolean;
     function CanInsertTitle: Boolean;
     function InsertTitle(ALevel: Integer; const AText: UnicodeString): Boolean;
     function ChangeCurrentTitleLevel(ALevel: Integer): Boolean;
@@ -185,7 +191,9 @@ begin
   FDirectZoomSize := 0;
   FAutomaticNoteStart := 0;
   FPendingFontSizeAnchor := -1;
+  FPendingFontSizeTitleOrdinal := -1;
   FPendingFontColorAnchor := -1;
+  FPendingFontColorTitleOrdinal := -1;
   FPendingFontColorHasColor := False;
   FPendingFontColor := 0;
 
@@ -537,9 +545,9 @@ function TTheWordWysiwygEditorControl.TryGetTitleLayoutSelection(
   out ARelativeStartUTF16, ADocumentLength: Integer;
   out ATitle: TTheWordTitleRange): Boolean;
 var
-  DocumentStart, EmptyTitleCount, Index, LayoutFinish, SpanFinish,
-    TitleLayoutStart: Integer;
-  FoundTitle: Boolean;
+  CoveredLength, DocumentStart, EmptyTitleCount, Index, IntersectFinish,
+    IntersectStart, LayoutFinish, SpanFinish, TitleLayoutStart: Integer;
+  FoundTitle, SpanTouchesSelection: Boolean;
   Span: TVisualSpan;
   Titles: TTheWordTitleRangeArray;
 begin
@@ -548,6 +556,7 @@ begin
   FoundTitle := False;
   ARelativeStartUTF16 := 0;
   ADocumentLength := 0;
+  CoveredLength := 0;
   FillChar(ATitle, SizeOf(ATitle), 0);
   if not Assigned(FSession) or not Assigned(FVisualDocument) or
      (ALayoutStart < 0) or (ALayoutLength < 0) or
@@ -562,18 +571,29 @@ begin
        (Span.LengthUTF16 <= 0) then
       Continue;
     SpanFinish := Span.StartUTF16 + Span.LengthUTF16;
-    if ((ALayoutLength = 0) and
-        (ALayoutStart >= Span.StartUTF16) and
-        (ALayoutStart <= SpanFinish)) or
-       ((ALayoutLength > 0) and
-        (ALayoutStart >= Span.StartUTF16) and
-        (LayoutFinish <= SpanFinish)) then
+    if ALayoutLength = 0 then
+      SpanTouchesSelection := (ALayoutStart >= Span.StartUTF16) and
+        (ALayoutStart <= SpanFinish)
+    else
+      SpanTouchesSelection := (ALayoutStart < SpanFinish) and
+        (LayoutFinish > Span.StartUTF16);
+    if SpanTouchesSelection then
     begin
+      if FoundTitle and (ATitleId <> Span.ObjectId) then
+        Exit(False);
       ATitleId := Span.ObjectId;
       FoundTitle := True;
-      Break;
+      if ALayoutLength > 0 then
+      begin
+        IntersectStart := Max(ALayoutStart, Span.StartUTF16);
+        IntersectFinish := Min(LayoutFinish, SpanFinish);
+        Inc(CoveredLength, IntersectFinish - IntersectStart);
+      end;
     end;
   end;
+  if FoundTitle and (ALayoutLength > 0) and
+     (CoveredLength <> ALayoutLength) then
+    Exit(False);
   if not TryTheWordLayoutRangeToDocument(FVisualDocument,
     ALayoutStart, ALayoutLength, DocumentStart, ADocumentLength) then
     Exit(False);
@@ -614,6 +634,31 @@ begin
     (ARelativeStartUTF16 <= ATitle.EndOffset - ATitle.StartOffset) and
     (ADocumentLength <= ATitle.EndOffset - ATitle.StartOffset -
       ARelativeStartUTF16);
+end;
+
+function TTheWordWysiwygEditorControl.LayoutSelectionTouchesTitle(
+  ALayoutStart, ALayoutLength: Integer): Boolean;
+var
+  Index, LayoutFinish, SpanFinish: Integer;
+  Span: TVisualSpan;
+begin
+  Result := False;
+  if not Assigned(FVisualDocument) or (ALayoutLength <= 0) or
+     (ALayoutStart < 0) or
+     (ALayoutStart > Length(FVisualDocument.Text)) or
+     (ALayoutLength > Length(FVisualDocument.Text) - ALayoutStart) then
+    Exit;
+  LayoutFinish := ALayoutStart + ALayoutLength;
+  for Index := 0 to FVisualDocument.SpanCount - 1 do
+  begin
+    Span := FVisualDocument.Spans[Index];
+    if (Span.Role <> vsrTitleContent) or (Span.LengthUTF16 <= 0) then
+      Continue;
+    SpanFinish := Span.StartUTF16 + Span.LengthUTF16;
+    if (ALayoutStart < SpanFinish) and
+       (LayoutFinish > Span.StartUTF16) then
+      Exit(True);
+  end;
 end;
 
 function TTheWordWysiwygEditorControl.TrySetDocumentSelection(
@@ -873,28 +918,64 @@ procedure TTheWordWysiwygEditorControl.DirectReplaceText(Sender: TObject;
   StartUTF16, LengthUTF16: Integer; const Replacement: UnicodeString;
   var Accepted: Boolean; var NewCaretUTF16: Integer);
 var
-  CurrentLevel, DocumentLength, DocumentStart, DocumentCaret: Integer;
+  CurrentLevel, DocumentLength, DocumentStart, DocumentCaret,
+    UpdatedTitleOrdinal: Integer;
   RelativeStart: Integer;
   Affinity: TTheWordOffsetAffinity;
   InsertionStyle: TVisualTextStyle;
-  IsTitle, TitleRemoved: Boolean;
+  ApplyPendingFontColor, ApplyPendingFontSize, IsTitle,
+    TitleRemoved: Boolean;
   Title: TTheWordTitleRange;
   TitleId: QWord;
 begin
   Accepted := False;
   DocumentStart := 0;
   DocumentLength := 0;
+  UpdatedTitleOrdinal := -1;
   Affinity := twoaBefore;
   IsTitle := TryGetTitleLayoutSelection(StartUTF16, LengthUTF16,
     TitleId, RelativeStart, DocumentLength, Title);
+  ApplyPendingFontSize := FPendingFontSizeActive and
+    (((IsTitle) and (TitleId <= QWord(High(Integer))) and
+      (FPendingFontSizeTitleOrdinal = Integer(TitleId))) or
+     ((not IsTitle) and (FPendingFontSizeTitleOrdinal < 0)));
+  ApplyPendingFontColor := FPendingFontColorActive and
+    (((IsTitle) and (TitleId <= QWord(High(Integer))) and
+      (FPendingFontColorTitleOrdinal = Integer(TitleId))) or
+     ((not IsTitle) and (FPendingFontColorTitleOrdinal < 0)));
   try
     Accepted := FEditable and Assigned(FSession);
     if Accepted and IsTitle then
     begin
-      Accepted := (TitleId <= QWord(High(Integer))) and
-        FSession.ReplaceTitleText(Integer(TitleId), RelativeStart,
-          DocumentLength, Replacement);
       DocumentStart := Title.StartOffset + RelativeStart;
+      Accepted := TitleId <= QWord(High(Integer));
+      if Accepted and (Replacement <> '') and
+         (ApplyPendingFontSize or ApplyPendingFontColor) then
+      begin
+        InsertionStyle := DefaultVisualTextStyle;
+        if TryResolveTheWordInsertionVisualStyle(FSession.Document,
+          DocumentStart, Integer(TitleId), InsertionStyle) then
+          CurrentLevel := (InsertionStyle.FontSizeDelta -
+            TheWordTitleFontSizeDelta(Title.Level)) div 2
+        else
+          CurrentLevel := 0;
+        Accepted := FSession.ReplaceTitleTextWithPendingFormatting(
+          Integer(TitleId), RelativeStart, DocumentLength, Replacement,
+          ApplyPendingFontSize, CurrentLevel, FPendingFontSizeLevel,
+          ApplyPendingFontColor, FPendingFontColorHasColor,
+          FPendingFontColor, UpdatedTitleOrdinal);
+        if Accepted then
+        begin
+          TitleId := QWord(UpdatedTitleOrdinal);
+          if ApplyPendingFontSize then
+            FPendingFontSizeTitleOrdinal := UpdatedTitleOrdinal;
+          if ApplyPendingFontColor then
+            FPendingFontColorTitleOrdinal := UpdatedTitleOrdinal;
+        end;
+      end
+      else if Accepted then
+        Accepted := FSession.ReplaceTitleText(Integer(TitleId),
+          RelativeStart, DocumentLength, Replacement);
     end
     else if Accepted and (LengthUTF16 = 0) then
     begin
@@ -916,8 +997,8 @@ begin
       CurrentLevel := InsertionStyle.FontSizeDelta div 2;
       Accepted := FSession.ReplaceTextWithPendingFormatting(DocumentStart,
         0, Replacement, Affinity = twoaAfter,
-        FPendingFontSizeActive, CurrentLevel, FPendingFontSizeLevel,
-        FPendingFontColorActive, FPendingFontColorHasColor,
+        ApplyPendingFontSize, CurrentLevel, FPendingFontSizeLevel,
+        ApplyPendingFontColor, FPendingFontColorHasColor,
         FPendingFontColor);
     end
     else if Accepted and (not IsTitle) then
@@ -934,9 +1015,9 @@ begin
       (DocumentLength = Title.EndOffset - Title.StartOffset);
     DocumentCaret := DocumentStart + Length(Replacement);
     RefreshDirectDocument;
-    if FPendingFontSizeActive and not IsTitle and (Replacement <> '') then
+    if ApplyPendingFontSize and (Replacement <> '') then
       FPendingFontSizeAnchor := DocumentCaret;
-    if FPendingFontColorActive and not IsTitle and (Replacement <> '') then
+    if ApplyPendingFontColor and (Replacement <> '') then
       FPendingFontColorAnchor := DocumentCaret;
     if IsTitle and not TitleRemoved then
       Affinity := twoaBefore
@@ -1169,15 +1250,14 @@ begin
          (TitleId <= QWord(High(Integer))) then
       begin
         DocumentStart := Title.StartOffset + RelativeStart;
-        PlainText := Copy(FSession.Document.VisibleText,
-          DocumentStart + 1, DocumentLength);
-        Payload := '';
-        if ACut then
+        Succeeded := FSession.CopySelection(DocumentStart,
+          DocumentLength, PlainText, Payload);
+        if Succeeded and ACut then
           Succeeded := FSession.ReplaceTitleText(Integer(TitleId),
-            RelativeStart, DocumentLength, '')
-        else
-          Succeeded := True;
+            RelativeStart, DocumentLength, '');
       end
+      else if LayoutSelectionTouchesTitle(StartUTF16, LengthUTF16) then
+        Succeeded := False
       else if TryTheWordLayoutRangeToDocument(FVisualDocument, StartUTF16,
         LengthUTF16, DocumentStart, DocumentLength) and
         TryCollectTheWordBreakIdentities(FVisualDocument, StartUTF16,
@@ -1241,12 +1321,10 @@ begin
     PlainText := UTF8Decode(Clipboard.AsText);
     if IsTitle and (TitleId <= QWord(High(Integer))) then
     begin
-      PlainText := NormalizeTheWordClipboardText(PlainText);
-      InsertedLength := Length(PlainText);
       DocumentStart := Title.StartOffset + RelativeStart;
-      Succeeded := FSession.ReplaceTitleText(Integer(TitleId),
-        RelativeStart, DocumentLength, PlainText);
-      UsedPrivate := False;
+      Payload := ReadTheWordClipboardV2;
+      Succeeded := FSession.PasteTitle(Integer(TitleId), RelativeStart,
+        DocumentLength, Payload, PlainText, InsertedLength, UsedPrivate);
     end
     else
     begin
@@ -1295,16 +1373,27 @@ end;
 procedure TTheWordWysiwygEditorControl.DirectSelectionChanged(
   Sender: TObject; StartUTF16, LengthUTF16: Integer);
 var
-  DocumentOffset: Integer;
+  DocumentLength, DocumentOffset, RelativeStart,
+    TitleOrdinal: Integer;
+  Title: TTheWordTitleRange;
+  TitleId: QWord;
 begin
+  TitleOrdinal := -1;
+  if LengthUTF16 = 0 then
+    if TryGetTitleLayoutSelection(StartUTF16, 0, TitleId,
+      RelativeStart, DocumentLength, Title) and
+      (TitleId <= QWord(High(Integer))) then
+      TitleOrdinal := Integer(TitleId);
   if (FPendingFontSizeActive or FPendingFontColorActive) and
      ((LengthUTF16 <> 0) or
       (not TryTheWordLayoutToDocumentOffset(FVisualDocument, StartUTF16,
         DocumentOffset)) or
       (FPendingFontSizeActive and
-        (DocumentOffset <> FPendingFontSizeAnchor)) or
+        ((DocumentOffset <> FPendingFontSizeAnchor) or
+         (TitleOrdinal <> FPendingFontSizeTitleOrdinal))) or
       (FPendingFontColorActive and
-        (DocumentOffset <> FPendingFontColorAnchor))) then
+        ((DocumentOffset <> FPendingFontColorAnchor) or
+         (TitleOrdinal <> FPendingFontColorTitleOrdinal)))) then
     ClearPendingFormatting;
   DoChanged;
 end;
@@ -1313,25 +1402,54 @@ function TTheWordWysiwygEditorControl.DirectResolveInsertionStyle(
   Sender: TObject; LayoutOffsetUTF16: Integer;
   out Style: TVisualTextStyle): Boolean;
 var
-  DocumentOffset, Index: Integer;
-  HasOldTestamentQuote, HasWordsOfJesus: Boolean;
+  ActiveTitleOrdinal, DocumentLength, DocumentOffset, Index,
+    RelativeStart: Integer;
+  Affinity: TTheWordOffsetAffinity;
+  ApplyPendingFontColor, ApplyPendingFontSize, HasActiveTitle,
+    HasOldTestamentQuote, HasWordsOfJesus: Boolean;
   Mark: TTheWordSemanticMark;
+  Title: TTheWordTitleRange;
+  TitleId: QWord;
 begin
   Style := DefaultVisualTextStyle;
+  ActiveTitleOrdinal := -1;
+  HasActiveTitle := TryGetTitleLayoutSelection(LayoutOffsetUTF16, 0,
+    TitleId, RelativeStart, DocumentLength, Title) and
+    (TitleId <= QWord(High(Integer)));
+  if HasActiveTitle then
+    ActiveTitleOrdinal := Integer(TitleId);
+  ApplyPendingFontSize := FPendingFontSizeActive and
+    (FPendingFontSizeTitleOrdinal = ActiveTitleOrdinal);
+  ApplyPendingFontColor := FPendingFontColorActive and
+    (FPendingFontColorTitleOrdinal = ActiveTitleOrdinal);
   Result := Assigned(FSession) and Assigned(FVisualDocument) and
-    TryTheWordLayoutToDocumentOffset(FVisualDocument, LayoutOffsetUTF16,
-      DocumentOffset) and
+    TryTheWordLayoutToDocumentPosition(FVisualDocument,
+      LayoutOffsetUTF16, DocumentOffset, Affinity) and
     TryResolveTheWordInsertionVisualStyle(FSession.Document,
-      DocumentOffset, Style);
+      DocumentOffset, ActiveTitleOrdinal, Style);
   if not Result then
     Exit;
-  if FPendingFontSizeActive then
-    Style.FontSizeDelta := 2 * FPendingFontSizeLevel;
-  if FPendingFontColorActive then
+  if ApplyPendingFontSize then
   begin
-    Style.HasForegroundColor := FPendingFontColorHasColor;
+    Style.FontSizeDelta := 2 * FPendingFontSizeLevel;
+    if HasActiveTitle then
+      Inc(Style.FontSizeDelta,
+        TheWordTitleFontSizeDelta(Title.Level));
+  end;
+  if ApplyPendingFontColor then
+  begin
     if FPendingFontColorHasColor then
+    begin
+      Style.HasForegroundColor := True;
       Style.ForegroundColor := FPendingFontColor;
+    end
+    else if HasActiveTitle and (Title.Level in [0, 1]) then
+    begin
+      Style.HasForegroundColor := True;
+      Style.ForegroundColor := THEWORD_TITLE_LEVEL1_COLOR;
+    end
+    else
+      Style.HasForegroundColor := False;
   end;
 
   { Explicit font color is presentation. Semantic color keeps theWord's
@@ -1421,6 +1539,46 @@ begin
     (DocumentLength = 0) and FSession.CanInsertTitle(DocumentStart);
 end;
 
+function TTheWordWysiwygEditorControl.CanApplyTitle: Boolean;
+var
+  DocumentLength, DocumentStart: Integer;
+  Title: TTheWordTitleRange;
+begin
+  Result := FEditable and (not FRawMode) and Assigned(FSession);
+  if not Result then
+    Exit;
+  if TryGetCurrentTitle(Title) then
+    Exit(True);
+  Result := TryGetDocumentSelection(DocumentStart, DocumentLength) and
+    (DocumentLength > 0) and
+    FSession.CanWrapTitle(DocumentStart, DocumentLength);
+end;
+
+function TTheWordWysiwygEditorControl.ApplyTitleLevel(
+  ALevel: Integer): Boolean;
+var
+  DocumentLength, DocumentStart, OpenOrdinal: Integer;
+  Title: TTheWordTitleRange;
+begin
+  Result := False;
+  if (ALevel < 1) or (ALevel > 3) or not CanApplyTitle then
+    Exit;
+  if TryGetCurrentTitle(Title) then
+    Exit(ChangeCurrentTitleLevel(ALevel));
+  if not TryGetDocumentSelection(DocumentStart, DocumentLength) or
+     (DocumentLength <= 0) then
+    Exit;
+  ClearPendingFormatting;
+  Result := FSession.WrapTitle(DocumentStart, DocumentLength, ALevel,
+    OpenOrdinal);
+  if not Result then
+    Exit;
+  RefreshDirectDocument;
+  TrySetTitleDocumentSelection(OpenOrdinal, 0, DocumentLength);
+  DoChanged;
+  FocusEditor;
+end;
+
 function TTheWordWysiwygEditorControl.InsertTitle(ALevel: Integer;
   const AText: UnicodeString): Boolean;
 var
@@ -1496,11 +1654,12 @@ begin
        DocumentLength, Title) or (TitleId > QWord(High(Integer))) then
     Exit;
   ClearPendingFormatting;
-  Result := FSession.RemoveTitle(Integer(TitleId));
+  Result := FSession.UnwrapTitle(Integer(TitleId));
   if not Result then
     Exit;
   RefreshDirectDocument;
-  TrySetDocumentSelection(Title.StartOffset, 0);
+  TrySetDocumentSelection(Title.StartOffset + RelativeStart,
+    DocumentLength);
   DoChanged;
   FocusEditor;
 end;
@@ -1527,13 +1686,14 @@ function TTheWordWysiwygEditorControl.ApplyFontColor(
   AHasColor: Boolean; AColor: LongInt): Boolean;
 var
   DocumentLength, DocumentStart: Integer;
+  HasTitleSelection: Boolean;
   Title: TTheWordTitleRange;
 begin
   Result := False;
   if not FEditable or FRawMode or not Assigned(FSession) or
-     not TryGetDocumentSelection(DocumentStart, DocumentLength) or
-     TryGetCurrentTitle(Title) then
+     not TryGetDocumentSelection(DocumentStart, DocumentLength) then
     Exit;
+  HasTitleSelection := TryGetCurrentTitle(Title);
   if AHasColor then
     AColor := LongInt(ColorToRGB(TColor(AColor))) and $00FFFFFF
   else
@@ -1547,7 +1707,11 @@ begin
     if Result then
     begin
       RefreshDirectDocument;
-      TrySetDocumentSelection(DocumentStart, DocumentLength);
+      if HasTitleSelection then
+        TrySetTitleDocumentSelection(Title.OpenOrdinal,
+          DocumentStart - Title.StartOffset, DocumentLength)
+      else
+        TrySetDocumentSelection(DocumentStart, DocumentLength);
       DoChanged;
       FocusEditor;
     end;
@@ -1558,6 +1722,10 @@ begin
   FPendingFontColorHasColor := AHasColor;
   FPendingFontColor := AColor;
   FPendingFontColorAnchor := DocumentStart;
+  if HasTitleSelection then
+    FPendingFontColorTitleOrdinal := Title.OpenOrdinal
+  else
+    FPendingFontColorTitleOrdinal := -1;
   FDirectEditor.Invalidate;
   FocusEditor;
   Result := True;
@@ -1572,10 +1740,12 @@ begin
   HadPending := FPendingFontSizeActive or FPendingFontColorActive;
   FPendingFontSizeActive := False;
   FPendingFontSizeAnchor := -1;
+  FPendingFontSizeTitleOrdinal := -1;
   FPendingFontColorActive := False;
   FPendingFontColorHasColor := False;
   FPendingFontColor := 0;
   FPendingFontColorAnchor := -1;
+  FPendingFontColorTitleOrdinal := -1;
   if HadPending and Assigned(FDirectEditor) then
     FDirectEditor.Invalidate;
 end;
@@ -1584,14 +1754,15 @@ function TTheWordWysiwygEditorControl.AdjustRelativeFontSize(
   ADelta: Integer): Boolean;
 var
   DocumentLength, DocumentStart, Level: Integer;
+  HasTitleSelection: Boolean;
   Style: TVisualTextStyle;
   Title: TTheWordTitleRange;
 begin
   Result := False;
   if not FEditable or FRawMode or not Assigned(FSession) or
      ((ADelta <> -1) and (ADelta <> 1)) or
-     not TryGetDocumentSelection(DocumentStart, DocumentLength) or
-     TryGetCurrentTitle(Title) then Exit;
+     not TryGetDocumentSelection(DocumentStart, DocumentLength) then Exit;
+  HasTitleSelection := TryGetCurrentTitle(Title);
   if DocumentLength > 0 then
   begin
     ClearPendingFormatting;
@@ -1600,20 +1771,37 @@ begin
     if Result then
     begin
       RefreshDirectDocument;
-      TrySetDocumentSelection(DocumentStart, DocumentLength);
+      if HasTitleSelection then
+        TrySetTitleDocumentSelection(Title.OpenOrdinal,
+          DocumentStart - Title.StartOffset, DocumentLength)
+      else
+        TrySetDocumentSelection(DocumentStart, DocumentLength);
       DoChanged;
       FocusEditor;
     end;
     Exit;
   end;
   Style := DefaultVisualTextStyle;
-  if not TryResolveTheWordInsertionVisualStyle(FSession.Document,
-    DocumentStart, Style) then Exit;
+  if HasTitleSelection then
+  begin
+    if not TryResolveTheWordInsertionVisualStyle(FSession.Document,
+      DocumentStart, Title.OpenOrdinal, Style) then
+      Exit;
+    Dec(Style.FontSizeDelta,
+      TheWordTitleFontSizeDelta(Title.Level));
+  end
+  else if not TryResolveTheWordInsertionVisualStyle(FSession.Document,
+    DocumentStart, Style) then
+    Exit;
   if FPendingFontSizeActive then Level := FPendingFontSizeLevel
   else Level := Style.FontSizeDelta div 2;
   Level := EnsureRange(Level + ADelta, -4, 10);
   FPendingFontSizeLevel := Level;
   FPendingFontSizeAnchor := DocumentStart;
+  if HasTitleSelection then
+    FPendingFontSizeTitleOrdinal := Title.OpenOrdinal
+  else
+    FPendingFontSizeTitleOrdinal := -1;
   FPendingFontSizeActive := True;
   FDirectEditor.Invalidate;
   FocusEditor;

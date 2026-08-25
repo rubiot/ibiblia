@@ -36,6 +36,9 @@ type
     procedure MalformedTitlesAreProtectedWithoutTitlePresentation;
     procedure TitleRangesProtectTextButAllowBodyAtEnd;
     procedure TitleEditingOperationsAreAtomicAndLossless;
+    procedure TitleWrapUnwrapPreservesTextFormattingAndRaw;
+    procedure TitleWrapOrdersConsecutiveAndFontBoundaries;
+    procedure TitleWrapSplitsPartialFormattingUtf16AndNesting;
     procedure SemanticEditOutsideTitlePreservesLiteralRaw;
     procedure StrongAndMorphologyItemsKeepOrderAndRawLexemes;
     procedure MalformedStrongIsOpaque;
@@ -653,12 +656,275 @@ begin
   Document := FCodec.DecodeVerse('<TS><i>Styled</i><Ts> body');
   try
     AssertEquals(1, CollectTheWordTitleRanges(Document, Ranges));
-    AssertFalse('title containing formatting remains protected',
+    AssertTrue('well-formed formatting inside a title stays editable',
       Ranges[0].Editable);
-    AssertFalse(Document.ReplaceTitleVisibleText(Ranges[0].OpenOrdinal,
+    AssertTrue(Document.ReplaceTitleVisibleText(Ranges[0].OpenOrdinal,
       0, 6, 'Plain'));
-    AssertUnicodeEquals('internal title tags remain literal',
-      '<TS><i>Styled</i><Ts> body', FCodec.EncodeVerse(Document));
+    AssertUnicodeEquals('editing formatted title text retains its style',
+      '<TS><i>Plain</i><Ts> body', FCodec.EncodeVerse(Document));
+  finally
+    Document.Free;
+  end;
+end;
+
+procedure TTheWordOntCodecV2Tests.
+  TitleWrapUnwrapPreservesTextFormattingAndRaw;
+const
+  ORIGINAL: UnicodeString =
+    'pre <FI><font color=red>A</font>B<Fi> post';
+  WRAPPED: UnicodeString =
+    'pre <TS2><FI><font color=red>A</font>B<Fi><Ts> post';
+var
+  Document: TTheWordVerseDocument;
+  OpenOrdinal: Integer;
+  Ranges: TTheWordTitleRangeArray;
+begin
+  Document := FCodec.DecodeVerse(ORIGINAL);
+  try
+    AssertTrue('a formatted existing selection can become a title',
+      Document.CanWrapTitle(4, 2));
+    AssertTrue(Document.WrapTitle(4, 2, 2, OpenOrdinal));
+    AssertUnicodeEquals('wrapping changes tags only', 'pre AB post',
+      Document.VisibleText);
+    AssertUnicodeEquals('TS encloses semantic and font wrappers exactly',
+      WRAPPED, FCodec.EncodeVerse(Document));
+    AssertEquals(1, CollectTheWordTitleRanges(Document, Ranges));
+    AssertTrue('wrapped formatted title remains editable',
+      Ranges[0].Editable);
+    AssertEquals(OpenOrdinal, Ranges[0].OpenOrdinal);
+    AssertTrue(Document.UnwrapTitle(OpenOrdinal));
+    AssertUnicodeEquals('unwrap preserves all selected content and lexemes',
+      ORIGINAL, FCodec.EncodeVerse(Document));
+    AssertUnicodeEquals('unwrap never changes visible text', 'pre AB post',
+      Document.VisibleText);
+  finally
+    Document.Free;
+  end;
+
+  Document := FCodec.DecodeVerse('A<WG123>');
+  try
+    AssertFalse('lexical postfix remains protected from title wrapping',
+      Document.CanWrapTitle(0, 1));
+    AssertFalse(Document.WrapTitle(0, 1, 1, OpenOrdinal));
+    AssertUnicodeEquals('rejected protected wrap is atomic', 'A<WG123>',
+      FCodec.EncodeVerse(Document));
+  finally
+    Document.Free;
+  end;
+
+  Document := FCodec.DecodeVerse(
+    '<FI><font color=red><TS>AB<Ts>C</font><Fi>');
+  try
+    AssertEquals(1, CollectTheWordTitleRanges(Document, Ranges));
+    AssertTrue('semantic and font marks may envelop an editable title',
+      Ranges[0].Editable);
+  finally
+    Document.Free;
+  end;
+
+  Document := FCodec.DecodeVerse('<TS>AB<Ts>C');
+  try
+    Document.AddSemanticMark(twsmItalic, 1, 3);
+    AssertEquals(1, CollectTheWordTitleRanges(Document, Ranges));
+    AssertFalse('a newly authored partial semantic crossing protects title',
+      Ranges[0].Editable);
+  finally
+    Document.Free;
+  end;
+end;
+
+procedure TTheWordOntCodecV2Tests.
+  TitleWrapOrdersConsecutiveAndFontBoundaries;
+var
+  Document: TTheWordVerseDocument;
+  OpenOrdinal: Integer;
+  Ranges: TTheWordTitleRangeArray;
+begin
+  Document := FCodec.DecodeVerse('A<TS1>B<Ts>C');
+  try
+    AssertTrue(Document.WrapTitle(0, 1, 2, OpenOrdinal));
+    AssertUnicodeEquals('new close precedes the next title opener',
+      '<TS2>A<Ts><TS1>B<Ts>C', FCodec.EncodeVerse(Document));
+  finally
+    Document.Free;
+  end;
+
+  Document := FCodec.DecodeVerse('<TS1>A<Ts>BC');
+  try
+    AssertTrue(Document.WrapTitle(1, 1, 2, OpenOrdinal));
+    AssertUnicodeEquals('new open follows the previous title closer',
+      '<TS1>A<Ts><TS2>B<Ts>C', FCodec.EncodeVerse(Document));
+  finally
+    Document.Free;
+  end;
+
+  Document := FCodec.DecodeVerse('   body');
+  try
+    AssertFalse('a whitespace-only selection cannot become a title',
+      Document.CanWrapTitle(0, 3));
+    AssertFalse(Document.WrapTitle(0, 3, 1, OpenOrdinal));
+  finally
+    Document.Free;
+  end;
+
+  Document := FCodec.DecodeVerse('Head');
+  try
+    AssertFalse('a new title must leave ordinary Bible text after it',
+      Document.CanWrapTitle(0, 4));
+    AssertFalse('legacy insertion at the terminal caret follows the same rule',
+      Document.CanInsertTitle(4));
+  finally
+    Document.Free;
+  end;
+
+  Document := FCodec.DecodeVerse('<TS>Head<Ts>');
+  try
+    AssertEquals(1, CollectTheWordTitleRanges(Document, Ranges));
+    AssertTrue('an imported terminal title remains editable',
+      Document.ChangeTitleLevel(Ranges[0].OpenOrdinal, 2));
+    AssertUnicodeEquals('imported terminal title level changes in place',
+      '<TS2>Head<Ts>', FCodec.EncodeVerse(Document));
+  finally
+    Document.Free;
+  end;
+
+  Document := FCodec.DecodeVerse(
+    '<font color=red>L</font>A<font size=+1>R</font>');
+  try
+    AssertTrue(Document.WrapTitle(1, 1, 1, OpenOrdinal));
+    AssertUnicodeEquals('left font closes before TS and right font opens after',
+      '<font color=red>L</font><TS>A<Ts><font size=+1>R</font>',
+      FCodec.EncodeVerse(Document));
+  finally
+    Document.Free;
+  end;
+
+  Document := FCodec.DecodeVerse('<font color=red>A</font> body');
+  try
+    AssertTrue(Document.WrapTitle(0, 1, 1, OpenOrdinal));
+    AssertUnicodeEquals('font belonging to selection stays inside TS',
+      '<TS><font color=red>A</font><Ts> body',
+      FCodec.EncodeVerse(Document));
+  finally
+    Document.Free;
+  end;
+
+  Document := FCodec.DecodeVerse('<font color=red>ABC</font>');
+  try
+    AssertTrue(Document.WrapTitle(1, 1, 1, OpenOrdinal));
+    AssertUnicodeEquals('font enveloping selection stays outside TS',
+      '<font color=red>A<TS>B<Ts>C</font>', FCodec.EncodeVerse(Document));
+  finally
+    Document.Free;
+  end;
+end;
+
+procedure TTheWordOntCodecV2Tests.
+  TitleWrapSplitsPartialFormattingUtf16AndNesting;
+const
+  FONT_OPEN: UnicodeString =
+    '<font color="Red" size=+1 name=''Tahoma''>';
+var
+  Document: TTheWordVerseDocument;
+  Emoji, ExpectedRaw, Raw: UnicodeString;
+  Index, OpenOrdinal: Integer;
+  Ranges: TTheWordTitleRangeArray;
+begin
+  Document := FCodec.DecodeVerse('<B>ABCD</b> EF');
+  try
+    AssertTrue('a supported semantic mark may cross the left TS boundary',
+      Document.CanWrapTitle(2, 4));
+    AssertTrue(Document.WrapTitle(2, 4, 2, OpenOrdinal));
+    AssertUnicodeEquals('semantic lexemes are cloned around the TS seam',
+      '<B>AB</b><TS2><B>CD</b> E<Ts>F',
+      FCodec.EncodeVerse(Document));
+    AssertEquals('the crossing bold mark is split into two ranges',
+      2, Document.MarkCount);
+    for Index := 0 to Document.MarkCount - 1 do
+    begin
+      AssertEquals(Ord(twsmHtmlBold), Ord(Document.Marks[Index].Kind));
+      AssertUnicodeEquals('opening spelling survives fission', '<B>',
+        Document.Marks[Index].OpenLexeme);
+      AssertUnicodeEquals('closing spelling survives fission', '</b>',
+        Document.Marks[Index].CloseLexeme);
+      AssertTrue('import provenance survives fission',
+        Document.Marks[Index].Imported);
+    end;
+    AssertEquals(1, CollectTheWordTitleRanges(Document, Ranges));
+    AssertTrue('the resulting title is balanced and editable',
+      Ranges[0].Editable);
+  finally
+    Document.Free;
+  end;
+
+  Raw := '<font color=red><i>ABCD</i>E</font>F G';
+  Document := FCodec.DecodeVerse(Raw);
+  try
+    AssertTrue('nested semantic and font ranges may share a partial seam',
+      Document.CanWrapTitle(2, 4));
+    AssertTrue('nested semantic/font seam is wrapped transactionally',
+      Document.WrapTitle(2, 4, 2, OpenOrdinal));
+    ExpectedRaw := '<font color=red><i>AB</i></font>' +
+      '<TS2><font color=red><i>CD</i>E</font>F<Ts> G';
+    AssertUnicodeEquals(
+      'decoder must not recombine a semantic mark across a TS boundary',
+      ExpectedRaw, FCodec.EncodeVerse(Document));
+    AssertEquals(2, Document.MarkCount);
+    AssertEquals(2, Document.FontMarkCount);
+    AssertEquals(1, CollectTheWordTitleRanges(Document, Ranges));
+    AssertTrue('nested split result remains a normal editable title',
+      Ranges[0].Editable);
+  finally
+    Document.Free;
+  end;
+
+  Raw := 'A<i>B' + FONT_OPEN + 'CDEF</font>G</i> H';
+  Document := FCodec.DecodeVerse(Raw);
+  try
+    AssertTrue('nested semantic and font presentation may cross TS',
+      Document.CanWrapTitle(1, 4));
+    AssertTrue(Document.WrapTitle(1, 4, 1, OpenOrdinal));
+    ExpectedRaw := 'A<i><TS>B' + FONT_OPEN + 'CDE</font><Ts>' +
+      FONT_OPEN + 'F</font>G</i> H';
+    AssertUnicodeEquals('font is split while the enclosing italic remains',
+      ExpectedRaw, FCodec.EncodeVerse(Document));
+    AssertEquals('enclosing italic remains one semantic range',
+      1, Document.MarkCount);
+    AssertEquals(Ord(twsmHtmlItalic), Ord(Document.Marks[0].Kind));
+    AssertEquals('combined font attributes are cloned on both sides',
+      2, Document.FontMarkCount);
+    for Index := 0 to Document.FontMarkCount - 1 do
+    begin
+      AssertUnicodeEquals('all original font attributes remain literal',
+        FONT_OPEN, Document.FontMarks[Index].OpenLexeme);
+      AssertTrue(Document.FontMarks[Index].HasColor);
+      AssertTrue(Document.FontMarks[Index].HasSize);
+      AssertEquals(1, Document.FontMarks[Index].RelativeSize);
+      AssertTrue(Document.FontMarks[Index].HasFontName);
+    end;
+    AssertEquals(1, CollectTheWordTitleRanges(Document, Ranges));
+    AssertTrue(Ranges[0].Editable);
+  finally
+    Document.Free;
+  end;
+
+  Emoji := UnicodeString(WideChar($D83D)) + WideChar($DE00);
+  Raw := '<i>A' + Emoji + 'B</i> CD';
+  Document := FCodec.DecodeVerse(Raw);
+  try
+    AssertFalse('a title boundary cannot split a surrogate pair',
+      Document.CanWrapTitle(2, 3));
+    AssertTrue('UTF-16 selection around the complete emoji is valid',
+      Document.CanWrapTitle(1, 4));
+    AssertTrue(Document.WrapTitle(1, 4, 3, OpenOrdinal));
+    ExpectedRaw := '<i>A</i><TS3><i>' + Emoji + 'B</i> <Ts>CD';
+    AssertUnicodeEquals('UTF-16 fission keeps balanced raw and exact text',
+      ExpectedRaw, FCodec.EncodeVerse(Document));
+    AssertUnicodeEquals('emoji and visible code units are unchanged',
+      'A' + Emoji + 'B CD', Document.VisibleText);
+    AssertEquals(2, Document.MarkCount);
+    AssertEquals(1, CollectTheWordTitleRanges(Document, Ranges));
+    AssertTrue(Ranges[0].Editable);
   finally
     Document.Free;
   end;

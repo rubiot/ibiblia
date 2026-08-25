@@ -46,6 +46,19 @@ type
     procedure PushUndo(ASnapshot: TTheWordWysiwygSessionSnapshot);
     procedure ReplaceDocument(const ARaw: UnicodeString);
     procedure RestoreFromStack(ASource, ADestination: TFPObjectList);
+    function TryResolveEditableTitleScope(AStartUTF16,
+      ALengthUTF16: Integer; out AHasTitle: Boolean;
+      out ATitle: TTheWordTitleRange): Boolean;
+    function TryPrepareTitleFreeDocument(AStartUTF16,
+      ALengthUTF16: Integer; out ADocument: TTheWordVerseDocument;
+      out AHasTitle: Boolean; out ATitle: TTheWordTitleRange): Boolean;
+    function RestoreTitleInCandidate(const ATitle: TTheWordTitleRange;
+      const ATitleFreeRaw: UnicodeString;
+      out ACandidateRaw: UnicodeString): Boolean; overload;
+    function RestoreTitleInCandidate(const ATitle: TTheWordTitleRange;
+      const ATitleFreeRaw: UnicodeString;
+      out ACandidateRaw: UnicodeString;
+      out AOpenOrdinal: Integer): Boolean; overload;
     function ReplaceSelectionWithBreakInternal(AStartUTF16,
       ALengthUTF16: Integer; const ABreaks: TTheWordBreakIdentityArray;
       AKind: TTheWordBreakKind; AAfterAnchors,
@@ -65,6 +78,13 @@ type
       ACurrentLevel, ATargetLevel: Integer;
       AApplyFontColor, ATargetHasColor: Boolean;
       ATargetColor: LongInt): Boolean;
+    function ReplaceTitleTextWithPendingFormatting(AOpenOrdinal,
+      ARelativeStartUTF16, ALengthUTF16: Integer;
+      const AReplacement: UnicodeString;
+      AApplyFontSize: Boolean; ACurrentLevel, ATargetLevel: Integer;
+      AApplyFontColor, ATargetHasColor: Boolean;
+      ATargetColor: LongInt;
+      out AResultOpenOrdinal: Integer): Boolean;
     function AdjustRelativeFontSize(AStartUTF16, ALengthUTF16,
       ADelta: Integer): Boolean;
     function ReplaceTextWithRelativeFontSize(AStartUTF16,
@@ -72,12 +92,16 @@ type
       ACurrentLevel, ATargetLevel: Integer): Boolean;
     function CanApplySemantic(AStartUTF16, ALengthUTF16: Integer): Boolean;
     function CanInsertTitle(AOffsetUTF16: Integer): Boolean;
+    function CanWrapTitle(AStartUTF16, ALengthUTF16: Integer): Boolean;
     function TryGetTitle(AOpenOrdinal: Integer;
       out ATitle: TTheWordTitleRange): Boolean;
     function ReplaceTitleText(AOpenOrdinal, ARelativeStartUTF16,
       ALengthUTF16: Integer; const AReplacement: UnicodeString): Boolean;
     function InsertTitle(AOffsetUTF16, ALevel: Integer;
       const AText: UnicodeString): Boolean;
+    function WrapTitle(AStartUTF16, ALengthUTF16, ALevel: Integer;
+      out AOpenOrdinal: Integer): Boolean;
+    function UnwrapTitle(AOpenOrdinal: Integer): Boolean;
     function ChangeTitleLevel(AOpenOrdinal, ALevel: Integer): Boolean;
     function RemoveTitle(AOpenOrdinal: Integer): Boolean;
     function CanInsertTranslatorNote(AOffsetUTF16: Integer): Boolean;
@@ -119,6 +143,10 @@ type
       const APayload: string; const APlainText: UnicodeString;
       out AInsertedLengthUTF16: Integer;
       out AUsedPrivatePayload: Boolean): Boolean; overload;
+    function PasteTitle(AOpenOrdinal, ARelativeStartUTF16,
+      ALengthUTF16: Integer; const APayload: string;
+      const APlainText: UnicodeString; out AInsertedLengthUTF16: Integer;
+      out AUsedPrivatePayload: Boolean): Boolean;
     function Paste(AStartUTF16, ALengthUTF16: Integer;
       const ABreaks: TTheWordBreakIdentityArray;
       AAfterAnchors: Boolean; const APayload: string;
@@ -302,14 +330,23 @@ begin
   end;
 end;
 
-function IsPresentationTitleOpen(const ARaw: UnicodeString): Boolean;
-begin
-  Result := (ARaw = '<TS>') or (ARaw = '<TS0>') or
-    (ARaw = '<TS1>') or (ARaw = '<TS2>') or (ARaw = '<TS3>');
-end;
 function IsPresentationBreak(const ARaw: UnicodeString): Boolean;
 begin
   Result := (ARaw = '<CM>') or (ARaw = '<CL>');
+end;
+
+function IsPresentationTitleOrdinal(AOrdinal: Integer;
+  const ATitles: TTheWordTitleRangeArray): Boolean;
+var
+  Index: Integer;
+begin
+  for Index := 0 to High(ATitles) do
+    if (ATitles[Index].Level >= 0) and
+       (ATitles[Index].CloseOrdinal >= 0) and
+       ((ATitles[Index].OpenOrdinal = AOrdinal) or
+        (ATitles[Index].CloseOrdinal = AOrdinal)) then
+      Exit(True);
+  Result := False;
 end;
 
 
@@ -317,6 +354,7 @@ function BuildNonSemanticEventSequence(
   ADocument: TTheWordVerseDocument): TNonSemanticEventSequence;
 var
   Index, Position: Integer;
+  Titles: TTheWordTitleRangeArray;
 begin
   Result := nil;
   if not Assigned(ADocument) then
@@ -324,6 +362,7 @@ begin
   SetLength(Result, ADocument.LexicalItemCount +
     ADocument.OpaqueItemCount + ADocument.StructuralItemCount +
     ADocument.TranslatorNoteCount);
+  CollectTheWordTitleRanges(ADocument, Titles);
   Position := 0;
   for Index := 0 to ADocument.LexicalItemCount - 1 do
   begin
@@ -336,15 +375,14 @@ begin
   end;
   for Index := 0 to ADocument.OpaqueItemCount - 1 do
   begin
-    if IsPresentationBreak(ADocument.OpaqueItems[Index].RawLexeme) then
+    if IsPresentationBreak(ADocument.OpaqueItems[Index].RawLexeme) or
+       IsPresentationTitleOrdinal(ADocument.OpaqueItems[Index].Ordinal,
+         Titles) then
       Continue;
     Result[Position].Category := nsecOpaque;
     Result[Position].Kind := Ord(ADocument.OpaqueItems[Index].Kind);
     Result[Position].Offset := ADocument.OpaqueItems[Index].Offset;
-    if IsPresentationTitleOpen(ADocument.OpaqueItems[Index].RawLexeme) then
-      Result[Position].RawLexeme := '<TS#>'
-    else
-      Result[Position].RawLexeme := ADocument.OpaqueItems[Index].RawLexeme;
+    Result[Position].RawLexeme := ADocument.OpaqueItems[Index].RawLexeme;
     Result[Position].Ordinal := ADocument.OpaqueItems[Index].Ordinal;
     Inc(Position);
   end;
@@ -589,6 +627,108 @@ begin
   end;
 end;
 
+function TTheWordWysiwygSessionV2.PasteTitle(AOpenOrdinal,
+  ARelativeStartUTF16, ALengthUTF16: Integer; const APayload: string;
+  const APlainText: UnicodeString; out AInsertedLengthUTF16: Integer;
+  out AUsedPrivatePayload: Boolean): Boolean;
+var
+  AbsoluteStart, I, TitleLength: Integer;
+  AdjustedTitle, CandidateTitle, Title: TTheWordTitleRange;
+  CandidateTitles: TTheWordTitleRangeArray;
+  Candidate, SnapshotRaw, TitleFreeRaw: UnicodeString;
+  Fragment: TTheWordClipboardFragmentV2;
+  NewTrace: TVerseEditTrace;
+  Snapshot: TTheWordWysiwygSessionSnapshot;
+  TitlePreserved: Boolean;
+  WorkingDocument: TTheWordVerseDocument;
+begin
+  Result := False;
+  Fragment := nil;
+  AInsertedLengthUTF16 := 0;
+  AUsedPrivatePayload := TTheWordClipboardCodecV2.TryDecodePayload(
+    APayload, Fragment);
+  if not AUsedPrivatePayload then
+    Fragment := TTheWordClipboardCodecV2.NewPlainFragment(APlainText);
+  try
+    if (Fragment.ObjectCount <> 0) or
+       not TryGetTitle(AOpenOrdinal, Title) or not Title.Editable then
+      Exit;
+    TitleLength := Title.EndOffset - Title.StartOffset;
+    if (ARelativeStartUTF16 < 0) or (ALengthUTF16 < 0) or
+       (ARelativeStartUTF16 > TitleLength) or
+       (ALengthUTF16 > TitleLength - ARelativeStartUTF16) then
+      Exit;
+    AInsertedLengthUTF16 := Length(Fragment.Text);
+    if (ARelativeStartUTF16 = 0) and (ALengthUTF16 = TitleLength) and
+       (Fragment.Text = '') then
+      Exit(RemoveTitle(AOpenOrdinal));
+
+    AbsoluteStart := Title.StartOffset + ARelativeStartUTF16;
+    SnapshotRaw := GetRawText;
+    WorkingDocument := FCodec.DecodeVerse(SnapshotRaw);
+    try
+      if not WorkingDocument.UnwrapTitle(AOpenOrdinal) or
+         not TTheWordClipboardCodecV2.BuildPasteRaw(WorkingDocument,
+           AbsoluteStart, ALengthUTF16, Fragment, TitleFreeRaw) then
+        Exit;
+    finally
+      WorkingDocument.Free;
+    end;
+
+    AdjustedTitle := Title;
+    AdjustedTitle.EndOffset := AdjustedTitle.EndOffset - ALengthUTF16 +
+      AInsertedLengthUTF16;
+    if not RestoreTitleInCandidate(AdjustedTitle, TitleFreeRaw,
+      Candidate) or (Candidate = SnapshotRaw) then
+      Exit;
+
+    WorkingDocument := FCodec.DecodeVerse(Candidate);
+    try
+      CollectTheWordTitleRanges(WorkingDocument, CandidateTitles);
+      TitlePreserved := False;
+      for I := 0 to High(CandidateTitles) do
+      begin
+        CandidateTitle := CandidateTitles[I];
+        if CandidateTitle.Editable and
+           (CandidateTitle.StartOffset = AdjustedTitle.StartOffset) and
+           (CandidateTitle.EndOffset = AdjustedTitle.EndOffset) and
+           (CandidateTitle.Level = AdjustedTitle.Level) and
+           (CandidateTitle.OpenLexeme = AdjustedTitle.OpenLexeme) and
+           (CandidateTitle.CloseLexeme = AdjustedTitle.CloseLexeme) then
+        begin
+          TitlePreserved := True;
+          Break;
+        end;
+      end;
+      if not TitlePreserved then
+        Exit;
+    finally
+      WorkingDocument.Free;
+    end;
+
+    Snapshot := nil;
+    NewTrace := nil;
+    try
+      Snapshot := CaptureSnapshot;
+      NewTrace := FTrace.Clone;
+      NewTrace.ApplyReplacement(AbsoluteStart, ALengthUTF16,
+        Fragment.Text);
+      ReplaceDocument(Candidate);
+      FTrace.Free;
+      FTrace := NewTrace;
+      NewTrace := nil;
+      PushUndo(Snapshot);
+      Snapshot := nil;
+      Result := True;
+    finally
+      NewTrace.Free;
+      Snapshot.Free;
+    end;
+  finally
+    Fragment.Free;
+  end;
+end;
+
 function TTheWordWysiwygSessionV2.Paste(AStartUTF16,
   ALengthUTF16: Integer; const ABreaks: TTheWordBreakIdentityArray;
   AAfterAnchors: Boolean; const APayload: string;
@@ -698,17 +838,119 @@ begin
   end;
 end;
 
+function TTheWordWysiwygSessionV2.TryResolveEditableTitleScope(
+  AStartUTF16, ALengthUTF16: Integer; out AHasTitle: Boolean;
+  out ATitle: TTheWordTitleRange): Boolean;
+var
+  EndUTF16, Index: Integer;
+  Titles: TTheWordTitleRangeArray;
+  Touches: Boolean;
+begin
+  AHasTitle := False;
+  FillChar(ATitle, SizeOf(ATitle), 0);
+  Result := Assigned(FDocument) and
+    FDocument.CanApplySemanticRange(AStartUTF16,
+      AStartUTF16 + ALengthUTF16);
+  if not Result then
+    Exit;
+  EndUTF16 := AStartUTF16 + ALengthUTF16;
+  CollectTheWordTitleRanges(FDocument, Titles);
+  for Index := 0 to High(Titles) do
+  begin
+    if Titles[Index].StartOffset = Titles[Index].EndOffset then
+      Touches := (Titles[Index].StartOffset > AStartUTF16) and
+        (Titles[Index].StartOffset < EndUTF16)
+    else
+      Touches := (AStartUTF16 < Titles[Index].EndOffset) and
+        (EndUTF16 > Titles[Index].StartOffset);
+    if not Touches then
+      Continue;
+    if AHasTitle or not Titles[Index].Editable or
+       (AStartUTF16 < Titles[Index].StartOffset) or
+       (EndUTF16 > Titles[Index].EndOffset) then
+      Exit(False);
+    AHasTitle := True;
+    ATitle := Titles[Index];
+  end;
+end;
+
+function TTheWordWysiwygSessionV2.TryPrepareTitleFreeDocument(
+  AStartUTF16, ALengthUTF16: Integer;
+  out ADocument: TTheWordVerseDocument; out AHasTitle: Boolean;
+  out ATitle: TTheWordTitleRange): Boolean;
+begin
+  ADocument := nil;
+  Result := TryResolveEditableTitleScope(AStartUTF16,
+    ALengthUTF16, AHasTitle, ATitle);
+  if not Result then
+    Exit;
+  ADocument := FCodec.DecodeVerse(GetRawText);
+  if AHasTitle and not ADocument.UnwrapTitle(ATitle.OpenOrdinal) then
+  begin
+    FreeAndNil(ADocument);
+    Exit(False);
+  end;
+end;
+
+function TTheWordWysiwygSessionV2.RestoreTitleInCandidate(
+  const ATitle: TTheWordTitleRange;
+  const ATitleFreeRaw: UnicodeString;
+  out ACandidateRaw: UnicodeString): Boolean;
+var
+  OpenOrdinal: Integer;
+begin
+  Result := RestoreTitleInCandidate(ATitle, ATitleFreeRaw,
+    ACandidateRaw, OpenOrdinal);
+end;
+
+function TTheWordWysiwygSessionV2.RestoreTitleInCandidate(
+  const ATitle: TTheWordTitleRange;
+  const ATitleFreeRaw: UnicodeString;
+  out ACandidateRaw: UnicodeString;
+  out AOpenOrdinal: Integer): Boolean;
+var
+  CandidateDocument: TTheWordVerseDocument;
+begin
+  Result := False;
+  ACandidateRaw := '';
+  AOpenOrdinal := -1;
+  CandidateDocument := FCodec.DecodeVerse(ATitleFreeRaw);
+  try
+    if not CandidateDocument.RestoreTitle(ATitle.StartOffset,
+      ATitle.EndOffset - ATitle.StartOffset, ATitle.Level,
+      ATitle.OpenLexeme, ATitle.CloseLexeme, AOpenOrdinal) then
+      Exit;
+    ACandidateRaw := FCodec.EncodeVerse(CandidateDocument);
+    Result := True;
+  finally
+    CandidateDocument.Free;
+  end;
+end;
+
 function TTheWordWysiwygSessionV2.CanApplySemantic(AStartUTF16,
   ALengthUTF16: Integer): Boolean;
+var
+  HasTitle: Boolean;
+  Title: TTheWordTitleRange;
 begin
-  Result := CanApplyTheWordSemanticMark(FDocument, AStartUTF16,
-    ALengthUTF16);
+  Result := TryResolveEditableTitleScope(AStartUTF16,
+    ALengthUTF16, HasTitle, Title);
+  if Result and not HasTitle then
+    Result := CanApplyTheWordSemanticMark(FDocument, AStartUTF16,
+      ALengthUTF16);
 end;
 
 function TTheWordWysiwygSessionV2.CanInsertTitle(
   AOffsetUTF16: Integer): Boolean;
 begin
   Result := Assigned(FDocument) and FDocument.CanInsertTitle(AOffsetUTF16);
+end;
+
+function TTheWordWysiwygSessionV2.CanWrapTitle(AStartUTF16,
+  ALengthUTF16: Integer): Boolean;
+begin
+  Result := Assigned(FDocument) and
+    FDocument.CanWrapTitle(AStartUTF16, ALengthUTF16);
 end;
 
 function TTheWordWysiwygSessionV2.TryGetTitle(AOpenOrdinal: Integer;
@@ -808,6 +1050,70 @@ begin
   finally
     WorkingDocument.Free;
     NewTrace.Free;
+    Snapshot.Free;
+  end;
+end;
+
+function TTheWordWysiwygSessionV2.WrapTitle(AStartUTF16,
+  ALengthUTF16, ALevel: Integer; out AOpenOrdinal: Integer): Boolean;
+var
+  Snapshot: TTheWordWysiwygSessionSnapshot;
+  UpdatedRaw: UnicodeString;
+  WorkingDocument: TTheWordVerseDocument;
+begin
+  Result := False;
+  AOpenOrdinal := -1;
+  if not CanWrapTitle(AStartUTF16, ALengthUTF16) then
+    Exit;
+  Snapshot := nil;
+  WorkingDocument := nil;
+  try
+    Snapshot := CaptureSnapshot;
+    WorkingDocument := FCodec.DecodeVerse(Snapshot.Raw);
+    if not WorkingDocument.WrapTitle(AStartUTF16, ALengthUTF16,
+      ALevel, AOpenOrdinal) then
+      Exit;
+    UpdatedRaw := FCodec.EncodeVerse(WorkingDocument);
+    if (UpdatedRaw = Snapshot.Raw) or
+       (WorkingDocument.VisibleText <> FDocument.VisibleText) then
+      Exit;
+    ReplaceDocument(UpdatedRaw);
+    PushUndo(Snapshot);
+    Snapshot := nil;
+    Result := True;
+  finally
+    WorkingDocument.Free;
+    Snapshot.Free;
+    if not Result then
+      AOpenOrdinal := -1;
+  end;
+end;
+
+function TTheWordWysiwygSessionV2.UnwrapTitle(
+  AOpenOrdinal: Integer): Boolean;
+var
+  Snapshot: TTheWordWysiwygSessionSnapshot;
+  UpdatedRaw: UnicodeString;
+  WorkingDocument: TTheWordVerseDocument;
+begin
+  Result := False;
+  Snapshot := nil;
+  WorkingDocument := nil;
+  try
+    Snapshot := CaptureSnapshot;
+    WorkingDocument := FCodec.DecodeVerse(Snapshot.Raw);
+    if not WorkingDocument.UnwrapTitle(AOpenOrdinal) then
+      Exit;
+    UpdatedRaw := FCodec.EncodeVerse(WorkingDocument);
+    if (UpdatedRaw = Snapshot.Raw) or
+       (WorkingDocument.VisibleText <> FDocument.VisibleText) then
+      Exit;
+    ReplaceDocument(UpdatedRaw);
+    PushUndo(Snapshot);
+    Snapshot := nil;
+    Result := True;
+  finally
+    WorkingDocument.Free;
     Snapshot.Free;
   end;
 end;
@@ -1103,30 +1409,45 @@ end;
 function TTheWordWysiwygSessionV2.ApplyFontColor(AStartUTF16,
   ALengthUTF16: Integer; AHasColor: Boolean; AColor: LongInt): Boolean;
 var
-  Candidate, SnapshotRaw: UnicodeString;
+  Candidate, SnapshotRaw, TitleFreeCandidate: UnicodeString;
+  HasTitle: Boolean;
   Plan: TTheWordFontColorLeafPlanArrayV2;
   Snapshot: TTheWordWysiwygSessionSnapshot;
+  Title: TTheWordTitleRange;
+  WorkingDocument: TTheWordVerseDocument;
 begin
   Result := False;
   SnapshotRaw := GetRawText;
-  if not TryPlanTheWordFontColorV2(FDocument, AStartUTF16,
-    ALengthUTF16, AHasColor, AColor, Plan) then
-    Exit;
-  if not TheWordFontColorPlanHasChangesV2(Plan) then
-    Exit(True);
-  if not FDocument.TryBuildRawWithFontColorTopology(Plan, Candidate) then
-    Exit;
-  if Candidate = SnapshotRaw then
-    Exit(True);
-
   Snapshot := nil;
+  WorkingDocument := nil;
   try
+    if not TryPrepareTitleFreeDocument(AStartUTF16,
+      ALengthUTF16, WorkingDocument, HasTitle, Title) or
+       not TryPlanTheWordFontColorV2(WorkingDocument, AStartUTF16,
+         ALengthUTF16, AHasColor, AColor, Plan) then
+      Exit;
+    if not TheWordFontColorPlanHasChangesV2(Plan) then
+      Exit(True);
+    if not WorkingDocument.TryBuildRawWithFontColorTopology(Plan,
+      Candidate) then
+      Exit;
+    if HasTitle then
+    begin
+      TitleFreeCandidate := Candidate;
+      if not RestoreTitleInCandidate(Title,
+        TitleFreeCandidate, Candidate) then
+        Exit;
+    end;
+    if Candidate = SnapshotRaw then
+      Exit(True);
+
     Snapshot := CaptureSnapshot;
     ReplaceDocument(Candidate);
     PushUndo(Snapshot);
     Snapshot := nil;
     Result := True;
   finally
+    WorkingDocument.Free;
     Snapshot.Free;
   end;
 end;
@@ -1231,27 +1552,163 @@ begin
   end;
 end;
 
+function TTheWordWysiwygSessionV2.
+  ReplaceTitleTextWithPendingFormatting(AOpenOrdinal,
+  ARelativeStartUTF16, ALengthUTF16: Integer;
+  const AReplacement: UnicodeString;
+  AApplyFontSize: Boolean; ACurrentLevel, ATargetLevel: Integer;
+  AApplyFontColor, ATargetHasColor: Boolean;
+  ATargetColor: LongInt;
+  out AResultOpenOrdinal: Integer): Boolean;
+var
+  AbsoluteStart, CurrentLevel, Step, TitleLength: Integer;
+  AdjustedTitle, Title: TTheWordTitleRange;
+  Candidate, NextCandidate, TitleFreeCandidate: UnicodeString;
+  ColorPlan: TTheWordFontColorLeafPlanArrayV2;
+  NewTrace: TVerseEditTrace;
+  SizePlan: TTheWordFontSizeLeafPlanArrayV2;
+  Snapshot: TTheWordWysiwygSessionSnapshot;
+  WorkingDocument: TTheWordVerseDocument;
+begin
+  Result := False;
+  AResultOpenOrdinal := -1;
+  if (AReplacement = '') or
+     (AApplyFontSize and
+       ((ATargetLevel < THEWORD_MIN_AUTHORIAL_SIZE_V2) or
+        (ATargetLevel > THEWORD_MAX_AUTHORIAL_SIZE_V2))) or
+     (AApplyFontColor and ATargetHasColor and
+       ((ATargetColor < 0) or (ATargetColor > $00FFFFFF))) or
+     not TryGetTitle(AOpenOrdinal, Title) or not Title.Editable then
+    Exit;
+  TitleLength := Title.EndOffset - Title.StartOffset;
+  if (ARelativeStartUTF16 < 0) or (ALengthUTF16 < 0) or
+     (ARelativeStartUTF16 > TitleLength) or
+     (ALengthUTF16 > TitleLength - ARelativeStartUTF16) then
+    Exit;
+  AbsoluteStart := Title.StartOffset + ARelativeStartUTF16;
+
+  Snapshot := nil;
+  NewTrace := nil;
+  WorkingDocument := nil;
+  try
+    Snapshot := CaptureSnapshot;
+    NewTrace := FTrace.Clone;
+    WorkingDocument := FCodec.DecodeVerse(Snapshot.Raw);
+    { Route through the title edit primitive first. Besides preserving its
+      range rules, this rejects markup delimiters, paragraph characters and
+      malformed UTF-16 exactly like ordinary title typing. }
+    if not WorkingDocument.ReplaceTitleVisibleText(AOpenOrdinal,
+      ARelativeStartUTF16, ALengthUTF16, AReplacement) or
+       not WorkingDocument.UnwrapTitle(AOpenOrdinal) then
+      Exit;
+    Candidate := FCodec.EncodeVerse(WorkingDocument);
+    FreeAndNil(WorkingDocument);
+    NewTrace.ApplyReplacement(AbsoluteStart, ALengthUTF16,
+      AReplacement);
+
+    if AApplyFontSize then
+    begin
+      CurrentLevel := ACurrentLevel;
+      while CurrentLevel <> ATargetLevel do
+      begin
+        if CurrentLevel < ATargetLevel then
+          Step := 1
+        else
+          Step := -1;
+        WorkingDocument := FCodec.DecodeVerse(Candidate);
+        try
+          if not TryPlanTheWordRelativeFontSizeV2(WorkingDocument,
+            AbsoluteStart, Length(AReplacement), Step, SizePlan) or
+             not WorkingDocument.TryBuildRawWithFontTopology(SizePlan,
+               NextCandidate) then
+            Exit;
+        finally
+          FreeAndNil(WorkingDocument);
+        end;
+        Candidate := NextCandidate;
+        Inc(CurrentLevel, Step);
+      end;
+    end;
+
+    if AApplyFontColor then
+    begin
+      WorkingDocument := FCodec.DecodeVerse(Candidate);
+      try
+        if not TryPlanTheWordFontColorV2(WorkingDocument,
+          AbsoluteStart, Length(AReplacement), ATargetHasColor,
+          ATargetColor, ColorPlan) then
+          Exit;
+        if TheWordFontColorPlanHasChangesV2(ColorPlan) then
+        begin
+          if not WorkingDocument.TryBuildRawWithFontColorTopology(
+            ColorPlan, NextCandidate) then
+            Exit;
+          Candidate := NextCandidate;
+        end;
+      finally
+        FreeAndNil(WorkingDocument);
+      end;
+    end;
+
+    AdjustedTitle := Title;
+    AdjustedTitle.EndOffset := AdjustedTitle.EndOffset -
+      ALengthUTF16 + Length(AReplacement);
+    TitleFreeCandidate := Candidate;
+    if not RestoreTitleInCandidate(AdjustedTitle,
+      TitleFreeCandidate, Candidate, AResultOpenOrdinal) then
+      Exit;
+    if Candidate = Snapshot.Raw then
+      Exit(True);
+    ReplaceDocument(Candidate);
+    FTrace.Free;
+    FTrace := NewTrace;
+    NewTrace := nil;
+    PushUndo(Snapshot);
+    Snapshot := nil;
+    Result := True;
+  finally
+    WorkingDocument.Free;
+    NewTrace.Free;
+    Snapshot.Free;
+    if not Result then
+      AResultOpenOrdinal := -1;
+  end;
+end;
+
 function TTheWordWysiwygSessionV2.AdjustRelativeFontSize(
   AStartUTF16, ALengthUTF16, ADelta: Integer): Boolean;
 var
-  Candidate, SnapshotRaw: UnicodeString;
+  Candidate, SnapshotRaw, TitleFreeCandidate: UnicodeString;
+  HasTitle: Boolean;
   Plan: TTheWordFontSizeLeafPlanArrayV2;
   Snapshot: TTheWordWysiwygSessionSnapshot;
+  Title: TTheWordTitleRange;
+  WorkingDocument: TTheWordVerseDocument;
 begin
   Result := False;
   if (ALengthUTF16 <= 0) or ((ADelta <> -1) and (ADelta <> 1)) then
     Exit;
   SnapshotRaw := GetRawText;
-  if not TryPlanTheWordRelativeFontSizeV2(FDocument, AStartUTF16,
-    ALengthUTF16, ADelta, Plan) then
-    Exit;
-  if not FDocument.TryBuildRawWithFontTopology(Plan, Candidate) then
-    Exit;
-  if Candidate = SnapshotRaw then
-    Exit;
-
   Snapshot := nil;
+  WorkingDocument := nil;
   try
+    if not TryPrepareTitleFreeDocument(AStartUTF16,
+      ALengthUTF16, WorkingDocument, HasTitle, Title) or
+       not TryPlanTheWordRelativeFontSizeV2(WorkingDocument,
+         AStartUTF16, ALengthUTF16, ADelta, Plan) or
+       not WorkingDocument.TryBuildRawWithFontTopology(Plan,
+         Candidate) then
+      Exit;
+    if HasTitle then
+    begin
+      TitleFreeCandidate := Candidate;
+      if not RestoreTitleInCandidate(Title,
+        TitleFreeCandidate, Candidate) then
+        Exit;
+    end;
+    if Candidate = SnapshotRaw then
+      Exit;
+
     { ReplaceDocument decodes before swapping FDocument. The trace is left
       untouched because this command changes presentation, not text. }
     Snapshot := CaptureSnapshot;
@@ -1260,6 +1717,7 @@ begin
     Snapshot := nil;
     Result := True;
   finally
+    WorkingDocument.Free;
     Snapshot.Free;
   end;
 end;

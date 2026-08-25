@@ -44,7 +44,32 @@ type
     PreservedMembers: Integer;
     RemovedMembers: Integer;
     UsedLegacyFallback: Boolean;
+    Cancelled: Boolean;
     ErrorMessage: string;
+  end;
+
+  TSyntagmReferenceArray = array of TSyntagm;
+  TBooleanArray = array of Boolean;
+
+  { TVerseEditReconciliationPlan }
+
+  TVerseEditReconciliationPlan = class
+  private
+    FVerse: TVerse;
+    FVerseRevision: QWord;
+    FBaselineXML: string;
+    FBaselinePairs: string;
+    FNewXML: string;
+    FTokenizerVersion: Integer;
+    FOldSyntagms: TSyntagmReferenceArray;
+    FOldReused: TBooleanArray;
+    FCandidateSyntagms: TSyntagmList;
+    FExistingByCandidate: TSyntagmReferenceArray;
+    FImpact: TAssociationEditImpact;
+    FConsumed: Boolean;
+  public
+    destructor Destroy; override;
+    property Impact: TAssociationEditImpact read FImpact;
   end;
 
   { TVerse }
@@ -207,6 +232,12 @@ type
     function TryApplyTracedEdit(const ANewXML: string;
       const ATrace: TVerseEditTrace;
       out AImpact: TAssociationEditImpact): Boolean;
+    function PreviewTracedEdit(const ANewXML: string;
+      const ATrace: TVerseEditTrace;
+      out APlan: TVerseEditReconciliationPlan;
+      out AImpact: TAssociationEditImpact): Boolean;
+    function ApplyTracedEditPlan(APlan: TVerseEditReconciliationPlan;
+      out AImpact: TAssociationEditImpact): Boolean;
 
     procedure FindAndSelectSyntagms(Words: TStringList; Partial: Boolean = False;
       JoinConnected: Boolean = True); overload;
@@ -303,6 +334,27 @@ begin
   for Syntagm in AVerse.Syntagms do
     if ASelection.IndexOf(Syntagm) >= 0 then
       Result.Add(Syntagm);
+end;
+
+{ TVerseEditReconciliationPlan }
+
+destructor TVerseEditReconciliationPlan.Destroy;
+var
+  Index: Integer;
+begin
+  if Assigned(FCandidateSyntagms) then
+  begin
+    for Index := FCandidateSyntagms.Count - 1 downto 0 do
+      if Assigned(FCandidateSyntagms[Index]) then
+      begin
+        { A discarded preview may outlive its Verse. Candidates have no
+          Associations, so detach the parsing owner before destruction. }
+        FCandidateSyntagms[Index].VerseRef := nil;
+        FCandidateSyntagms[Index].Free;
+      end;
+    FCandidateSyntagms.Free;
+  end;
+  inherited Destroy;
 end;
 
 { TVerse }
@@ -2558,8 +2610,9 @@ begin
   end;
 end;
 
-function TVerse.TryApplyTracedEdit(const ANewXML: string;
+function TVerse.PreviewTracedEdit(const ANewXML: string;
   const ATrace: TVerseEditTrace;
+  out APlan: TVerseEditReconciliationPlan;
   out AImpact: TAssociationEditImpact): Boolean;
 type
   TContentSpan = record
@@ -2570,6 +2623,18 @@ type
   end;
   TContentSpanArray = array of TContentSpan;
   TIntegerArray = array of Integer;
+
+var
+  CandidateSyntagms: TSyntagmList;
+  Codec: ITheWordOntCodecV2;
+  OldDocument, NewDocument: TTheWordVerseDocument;
+  OldSpans, NewSpans: TContentSpanArray;
+  OldToNew, NewToOld: TIntegerArray;
+  OldReused: TBooleanArray;
+  ExistingByCandidate: TSyntagmReferenceArray;
+  PreparedPlan: TVerseEditReconciliationPlan;
+  Index: Integer;
+  RawFallbackAllowed, TraceValidated: Boolean;
 
   function IsContentUnit(ASyntagm: TSyntagm): Boolean;
   begin
@@ -2844,54 +2909,94 @@ type
     end;
   end;
 
-  function ApplyLegacyFallback: Boolean;
+  function BuildLegacyFallback: Boolean;
   var
-    AssociatedBefore: TList;
-    Candidate: TSyntagmList;
-    Index: Integer;
-    Syntagm: TSyntagm;
+    CandidateIndex, Index, OldIndex, SearchIndex: Integer;
+    Found: Boolean;
   begin
     Result := False;
-    Candidate := nil;
-    AssociatedBefore := TList.Create;
-    try
-      { Parse once before entering the legacy mutating path. Structural input
-        failures therefore leave the live Verse untouched. }
-      Candidate := FONTParser.ParseLine(ANewXML, nil);
-      FreeParsedSyntagms(Candidate);
-      for Syntagm in FSyntagms do
-        if Syntagm.Pairs.Count > 0 then
-          AssociatedBefore.Add(Syntagm);
-
-      ReplaceTextPreservingAssociations(ANewXML, False);
-      AImpact.UsedLegacyFallback := True;
-      for Index := 0 to AssociatedBefore.Count - 1 do
-        if FSyntagms.IndexOf(AssociatedBefore[Index]) >= 0 then
+    FreeParsedSyntagms(CandidateSyntagms);
+    CandidateSyntagms := FONTParser.ParseLine(ANewXML, Self);
+    SetLength(OldReused, FSyntagms.Count);
+    SetLength(ExistingByCandidate, CandidateSyntagms.Count);
+    OldIndex := 0;
+    CandidateIndex := 0;
+    while (OldIndex < FSyntagms.Count) and
+          (CandidateIndex < CandidateSyntagms.Count) do
+    begin
+      if HasLegacyIdentity(FSyntagms[OldIndex],
+        CandidateSyntagms[CandidateIndex]) then
+      begin
+        OldReused[OldIndex] := True;
+        ExistingByCandidate[CandidateIndex] := FSyntagms[OldIndex];
+        Inc(OldIndex);
+        Inc(CandidateIndex);
+      end
+      else if not IsAssociationUnit(FSyntagms[OldIndex]) then
+        Inc(OldIndex)
+      else if not IsAssociationUnit(CandidateSyntagms[CandidateIndex]) then
+        Inc(CandidateIndex)
+      else
+      begin
+        Found := False;
+        if FSyntagms[OldIndex].Pairs.Count > 0 then
+          for SearchIndex := CandidateIndex to
+            CandidateSyntagms.Count - 1 do
+            if HasLegacyIdentity(FSyntagms[OldIndex],
+              CandidateSyntagms[SearchIndex]) then
+            begin
+              Found := True;
+              Break;
+            end;
+        if Found then
+          Inc(CandidateIndex)
+        else
+          Inc(OldIndex);
+      end;
+    end;
+    AImpact.UsedLegacyFallback := True;
+    for Index := 0 to FSyntagms.Count - 1 do
+      if FSyntagms[Index].Pairs.Count > 0 then
+      begin
+        if OldReused[Index] then
           Inc(AImpact.PreservedMembers)
         else
           Inc(AImpact.RemovedMembers);
-      Result := True;
-    finally
-      FreeParsedSyntagms(Candidate);
-      AssociatedBefore.Free;
-    end;
+      end;
+    Result := True;
   end;
 
-var
-  CandidateSyntagms, ResultSyntagms: TSyntagmList;
-  Codec: ITheWordOntCodecV2;
-  OldDocument, NewDocument: TTheWordVerseDocument;
-  OldSpans, NewSpans: TContentSpanArray;
-  OldToNew, NewToOld: TIntegerArray;
-  OldReused: array of Boolean;
-  CandidateReused: array of Boolean;
-  CandidateIndex, Index, OldIndex: Integer;
-  OldActive, RawFallbackAllowed, TraceValidated: Boolean;
-  OldSyntagm, NewSyntagm: TSyntagm;
+  procedure PublishPlan;
+  var
+    Index: Integer;
+  begin
+    PreparedPlan := TVerseEditReconciliationPlan.Create;
+    PreparedPlan.FVerse := Self;
+    PreparedPlan.FVerseRevision := FVisualRevision;
+    PreparedPlan.FBaselineXML := FXML;
+    PreparedPlan.FBaselinePairs := Pairs;
+    PreparedPlan.FNewXML := ANewXML;
+    PreparedPlan.FTokenizerVersion := FTokenizerVersion;
+    SetLength(PreparedPlan.FOldSyntagms, FSyntagms.Count);
+    for Index := 0 to FSyntagms.Count - 1 do
+      PreparedPlan.FOldSyntagms[Index] := FSyntagms[Index];
+    PreparedPlan.FOldReused := Copy(OldReused, 0, Length(OldReused));
+    PreparedPlan.FCandidateSyntagms := CandidateSyntagms;
+    CandidateSyntagms := nil;
+    PreparedPlan.FExistingByCandidate := Copy(ExistingByCandidate, 0,
+      Length(ExistingByCandidate));
+    PreparedPlan.FImpact := AImpact;
+    PreparedPlan.FConsumed := False;
+    APlan := PreparedPlan;
+    PreparedPlan := nil;
+  end;
+
 begin
+  APlan := nil;
   AImpact.PreservedMembers := 0;
   AImpact.RemovedMembers := 0;
   AImpact.UsedLegacyFallback := False;
+  AImpact.Cancelled := False;
   AImpact.ErrorMessage := '';
   Result := False;
 
@@ -2912,7 +3017,7 @@ begin
   OldDocument := nil;
   NewDocument := nil;
   CandidateSyntagms := nil;
-  ResultSyntagms := nil;
+  PreparedPlan := nil;
   TraceValidated := False;
   RawFallbackAllowed := False;
   try
@@ -2937,8 +3042,10 @@ begin
           if FSyntagms[Index].HasStrongs or FSyntagms[Index].HasMorph then
             raise Exception.Create(
               'A legacy fallback cannot prove a Strong or morphology word intact.');
-        Result := ApplyLegacyFallback;
-        Exit;
+        if not BuildLegacyFallback then
+          raise Exception.Create('The legacy edit could not be reconciled.');
+        PublishPlan;
+        Exit(True);
       end;
 
       CandidateSyntagms := FONTParser.ParseLine(ANewXML, Self);
@@ -2983,33 +3090,14 @@ begin
         raise Exception.Create('The conservative Raw projection is ambiguous.');
 
       SetLength(OldReused, FSyntagms.Count);
-      SetLength(CandidateReused, CandidateSyntagms.Count);
+      SetLength(ExistingByCandidate, CandidateSyntagms.Count);
       for Index := 0 to High(OldSpans) do
         if OldToNew[Index] >= 0 then
         begin
           OldReused[OldSpans[Index].ListIndex] := True;
-          CandidateReused[NewSpans[OldToNew[Index]].ListIndex] := True;
+          ExistingByCandidate[NewSpans[OldToNew[Index]].ListIndex] :=
+            FSyntagms[OldSpans[Index].ListIndex];
         end;
-
-      { Allocate and populate the replacement list before changing any live
-        object or Association. From this point onward the commit consists only
-        of deterministic pointer/list operations. }
-      ResultSyntagms := TSyntagmList.Create;
-      for CandidateIndex := 0 to CandidateSyntagms.Count - 1 do
-      begin
-        OldIndex := -1;
-        for Index := 0 to High(NewSpans) do
-          if NewSpans[Index].ListIndex = CandidateIndex then
-          begin
-            if NewToOld[Index] >= 0 then
-              OldIndex := OldSpans[NewToOld[Index]].ListIndex;
-            Break;
-          end;
-        if OldIndex >= 0 then
-          ResultSyntagms.Add(FSyntagms[OldIndex])
-        else
-          ResultSyntagms.Add(CandidateSyntagms[CandidateIndex]);
-      end;
 
       for Index := 0 to FSyntagms.Count - 1 do
         if FSyntagms[Index].Pairs.Count > 0 then
@@ -3024,15 +3112,22 @@ begin
       begin
         AImpact.ErrorMessage := E.Message;
         FreeParsedSyntagms(CandidateSyntagms);
-        FreeAndNil(ResultSyntagms);
+        OldReused := nil;
+        ExistingByCandidate := nil;
         if TraceValidated and RawFallbackAllowed and
            (ATrace.Mode = vetmRawConservative) then
         begin
           AImpact.PreservedMembers := 0;
           AImpact.RemovedMembers := 0;
+          AImpact.UsedLegacyFallback := False;
+          AImpact.Cancelled := False;
           AImpact.ErrorMessage := '';
           try
-            Result := ApplyLegacyFallback;
+            if not BuildLegacyFallback then
+              raise Exception.Create(
+                'The legacy edit could not be reconciled.');
+            PublishPlan;
+            Result := True;
           except
             on FallbackError: Exception do
             begin
@@ -3045,7 +3140,120 @@ begin
         Exit(False);
       end;
     end;
+    PublishPlan;
+    Result := True;
+  finally
+    FreeParsedSyntagms(CandidateSyntagms);
+    PreparedPlan.Free;
+    OldDocument.Free;
+    NewDocument.Free;
+    Codec := nil;
+  end;
+end;
 
+function TVerse.ApplyTracedEditPlan(APlan: TVerseEditReconciliationPlan;
+  out AImpact: TAssociationEditImpact): Boolean;
+
+  procedure ClearOrphanedSiblingGroups(AList: TSyntagmList);
+  var
+    Index: Integer;
+    Syntagm: TSyntagm;
+  begin
+    if not Assigned(AList) then
+      Exit;
+    for Index := 0 to AList.Count - 1 do
+    begin
+      Syntagm := AList[Index];
+      if Assigned(Syntagm) and
+         (Syntagm.Kind in [skSyntagm, skPunctuation]) and
+         (Syntagm.Pairs.Count = 0) and
+         (Syntagm.Siblings.Count > 0) then
+        Syntagm.Disassociate;
+    end;
+  end;
+
+  procedure SetStaleError;
+  begin
+    AImpact.ErrorMessage := 'The edit reconciliation preview is stale.';
+  end;
+
+  procedure NotifyCommittedChangeSafely(AVerse: TVerse);
+  begin
+    if not Assigned(AVerse) then
+      Exit;
+    try
+      AVerse.NotifyVerseChanged;
+    except
+      on E: Exception do
+        DebugLogger.DebugLn(
+          'Post-commit Verse change notification failed: ' + E.Message);
+    end;
+  end;
+
+var
+  Candidate, Existing: TSyntagm;
+  Index: Integer;
+  OldActive: Boolean;
+  OldSyntagms: TSyntagmList;
+  ReplacementSyntagms: TSyntagmList;
+begin
+  AImpact.PreservedMembers := 0;
+  AImpact.RemovedMembers := 0;
+  AImpact.UsedLegacyFallback := False;
+  AImpact.Cancelled := False;
+  AImpact.ErrorMessage := '';
+  Result := False;
+
+  if not Assigned(APlan) then
+  begin
+    AImpact.ErrorMessage := 'The edit reconciliation plan is missing.';
+    Exit;
+  end;
+  AImpact := APlan.FImpact;
+  AImpact.Cancelled := False;
+  if APlan.FConsumed then
+  begin
+    AImpact.ErrorMessage :=
+      'The edit reconciliation plan has already been applied.';
+    Exit;
+  end;
+  if (APlan.FVerse <> Self) or FDestroying or
+     (FVisualRevision <> APlan.FVerseRevision) or
+     (FXML <> APlan.FBaselineXML) or
+     (FTokenizerVersion <> APlan.FTokenizerVersion) or
+     (Pairs <> APlan.FBaselinePairs) or
+     not Assigned(FSyntagms) or
+     (FSyntagms.Count <> Length(APlan.FOldSyntagms)) or
+     (Length(APlan.FOldReused) <> FSyntagms.Count) then
+  begin
+    SetStaleError;
+    Exit;
+  end;
+  for Index := 0 to FSyntagms.Count - 1 do
+    if FSyntagms[Index] <> APlan.FOldSyntagms[Index] then
+    begin
+      SetStaleError;
+      Exit;
+    end;
+  if not Assigned(APlan.FCandidateSyntagms) or
+     (APlan.FCandidateSyntagms.Count <>
+       Length(APlan.FExistingByCandidate)) then
+  begin
+    AImpact.ErrorMessage := 'The edit reconciliation plan is incomplete.';
+    Exit;
+  end;
+
+  ReplacementSyntagms := TSyntagmList.Create;
+  try
+    { Allocate and populate the replacement list before touching the current
+      Verse, so an allocation failure cannot leave a half-applied edit. }
+    for Index := 0 to APlan.FCandidateSyntagms.Count - 1 do
+      if Assigned(APlan.FExistingByCandidate[Index]) then
+        ReplacementSyntagms.Add(APlan.FExistingByCandidate[Index])
+      else
+        ReplacementSyntagms.Add(APlan.FCandidateSyntagms[Index]);
+
+    APlan.FConsumed := True;
     OldActive := FActive;
     Inc(FVisualUpdatesSuspended);
     try
@@ -3060,56 +3268,76 @@ begin
       FActive := False;
       ClearSelection;
 
-      { First detach only the members that provenance could not preserve.
-        TSyntagm.Disassociate shrinks an N:M group without disturbing its
-        surviving members. }
       for Index := 0 to FSyntagms.Count - 1 do
-        if not OldReused[Index] then
+        if not APlan.FOldReused[Index] then
           FSyntagms[Index].Disassociate;
       ClearOrphanedSiblingGroups(FSyntagms);
       if Assigned(PairedVerse) then
         ClearOrphanedSiblingGroups(PairedVerse.Syntagms);
 
-      for Index := 0 to CandidateSyntagms.Count - 1 do
+      for Index := 0 to APlan.FCandidateSyntagms.Count - 1 do
       begin
-        NewSyntagm := CandidateSyntagms[Index];
-        if CandidateReused[Index] then
+        Candidate := APlan.FCandidateSyntagms[Index];
+        Existing := APlan.FExistingByCandidate[Index];
+        if Assigned(Existing) then
         begin
-          OldSyntagm := TSyntagm(ResultSyntagms[Index]);
-          OldSyntagm.AdoptParsedState(NewSyntagm);
-          NewSyntagm.Free;
+          Existing.AdoptParsedState(Candidate);
+          { The plan owns candidates until this exact transfer point. Niling
+            the slot first keeps its destructor safe if cleanup later fails. }
+          APlan.FCandidateSyntagms[Index] := nil;
+          Candidate.Free;
         end;
       end;
       for Index := 0 to FSyntagms.Count - 1 do
-        if not OldReused[Index] then
+        if not APlan.FOldReused[Index] then
           FSyntagms[Index].Free;
 
-      CandidateSyntagms.Clear;
-      FreeAndNil(CandidateSyntagms);
-      FSyntagms.Clear;
-      FreeAndNil(FSyntagms);
-      FSyntagms := ResultSyntagms;
-      ResultSyntagms := nil;
+      OldSyntagms := FSyntagms;
+      FSyntagms := ReplacementSyntagms;
+      ReplacementSyntagms := nil;
+      { Newly parsed members now belong to the live Verse list. Reused
+        candidates were already consumed above. }
+      for Index := 0 to APlan.FCandidateSyntagms.Count - 1 do
+        APlan.FCandidateSyntagms[Index] := nil;
+      APlan.FCandidateSyntagms.Clear;
+      OldSyntagms.Clear;
+      OldSyntagms.Free;
       ClearStrongCount;
 
-      FXML := ANewXML;
+      FXML := APlan.FNewXML;
       FXMLModified := True;
-      Modified := True;
+      FModified := True;
       if Assigned(PairedVerse) then
-        PairedVerse.Modified := True;
+        PairedVerse.FModified := True;
       SyntagmClipboard := nil;
       Result := True;
     finally
       FActive := OldActive;
       Dec(FVisualUpdatesSuspended);
     end;
+    { Change callbacks are post-commit observers. They must never turn an
+      already applied model transaction into a rejected editor save. }
+    NotifyCommittedChangeSafely(Self);
+    NotifyCommittedChangeSafely(PairedVerse);
     RenderCommittedState;
   finally
-    FreeParsedSyntagms(CandidateSyntagms);
-    ResultSyntagms.Free;
-    OldDocument.Free;
-    NewDocument.Free;
-    Codec := nil;
+    ReplacementSyntagms.Free;
+  end;
+end;
+
+function TVerse.TryApplyTracedEdit(const ANewXML: string;
+  const ATrace: TVerseEditTrace;
+  out AImpact: TAssociationEditImpact): Boolean;
+var
+  Plan: TVerseEditReconciliationPlan;
+begin
+  Plan := nil;
+  if not PreviewTracedEdit(ANewXML, ATrace, Plan, AImpact) then
+    Exit(False);
+  try
+    Result := ApplyTracedEditPlan(Plan, AImpact);
+  finally
+    Plan.Free;
   end;
 end;
 

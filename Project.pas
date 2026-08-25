@@ -538,6 +538,11 @@ resourcestring
   SAnalyzingVerse = 'Analyzing verse...';
   SAssociationMemoryUnavailable =
     'Translation memory is unavailable because it could not be synchronized.';
+  SRemoveEditAssociationsTitle = 'Remove associations?';
+  SRemoveEditAssociationPrompt =
+    'This edit will remove 1 associated text member. Continue?';
+  SRemoveEditAssociationsPrompt =
+    'This edit will remove %d associated text members. Continue?';
 
   SStatusNotAssociated = 'Not associated';
   SStatusAssociating = 'Associating';
@@ -3102,11 +3107,15 @@ function TProject.OnChangeTextVersiculo(Sender: TVerseMemo;
   out AImpact: TAssociationEditImpact): Boolean;
 var
   editedIndex: Integer;
+  Plan: TVerseEditReconciliationPlan;
+  Prompt: string;
 begin
   Result := False;
+  Plan := nil;
   AImpact.PreservedMembers := 0;
   AImpact.RemovedMembers := 0;
   AImpact.UsedLegacyFallback := False;
+  AImpact.Cancelled := False;
   AImpact.ErrorMessage := '';
   if ContainsText(Sender.Text, #13) or ContainsText(Sender.Text, #10) then
   begin
@@ -3114,15 +3123,41 @@ begin
     exit;
   end;
 
-  Result := FCurrentVerseWorkspace.ApplyEditedVerseText(FAVersiculo,
-    Sender.Verse, Sender.Text, ATrace, editedIndex, AImpact);
-  if not Result then
-    Exit;
-  if editedIndex in [Ord(tbOrigem), Ord(tbDestino)] then
-  begin
-    FAssociationMemorySpeculativeEditPending := True;
-    ReconcileEditedVerseAssociationMemory;
-    NotifyNewVerseObserversAfterEdit;
+  try
+    Result := FCurrentVerseWorkspace.PreviewEditedVerseText(FAVersiculo,
+      Sender.Verse, Sender.Text, ATrace, editedIndex, Plan, AImpact);
+    if not Result then
+      Exit;
+
+    if (editedIndex in [Ord(tbOrigem), Ord(tbDestino)]) and
+       (AImpact.RemovedMembers > 0) then
+    begin
+      if AImpact.RemovedMembers = 1 then
+        Prompt := SRemoveEditAssociationPrompt
+      else
+        Prompt := Format(SRemoveEditAssociationsPrompt,
+          [AImpact.RemovedMembers]);
+      if MessageDlg(SRemoveEditAssociationsTitle, Prompt, mtConfirmation,
+        [mbYes, mbCancel], 0) <> mrYes then
+      begin
+        AImpact.Cancelled := True;
+        AImpact.ErrorMessage := '';
+        Exit(False);
+      end;
+    end;
+
+    Result := FCurrentVerseWorkspace.ApplyEditedVersePlan(FAVersiculo,
+      Sender.Verse, editedIndex, Plan, AImpact);
+    if not Result then
+      Exit;
+    if editedIndex in [Ord(tbOrigem), Ord(tbDestino)] then
+    begin
+      FAssociationMemorySpeculativeEditPending := True;
+      ReconcileEditedVerseAssociationMemory;
+      NotifyNewVerseObserversAfterEdit;
+    end;
+  finally
+    Plan.Free;
   end;
 
   //MessageDlg('Versículo modificado', format('Versiculo modificado: %s', [Sender.Text]), mtError, [mbOK], 0);

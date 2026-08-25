@@ -5,11 +5,13 @@ unit theword_syntax_highlighter_test;
 interface
 
 uses
-  Classes, SysUtils, Types, Graphics, IniFiles, StdCtrls, LCLType, SynEdit,
+  Classes, SysUtils, Types, Graphics, IniFiles, StdCtrls, LCLType, Clipbrd,
+  SynEdit,
   SynEditHighlighter,
   fpcunit, testregistry, theword_syntax_highlighter,
   directwrite_verse_editor, theword_wysiwyg_editor_control,
-  theword_ont_codec_v2;
+  theword_ont_codec_v2, theword_verse_visual_adapter_v2,
+  verse_visual_document;
 
 type
 
@@ -52,6 +54,9 @@ type
     procedure WysiwygVisualCtrlWheelZoomsAndPersistsWithoutModifyingText;
     procedure WysiwygVisualKeyboardRoutesParagraphAndSemantics;
     procedure WysiwygEmptyTitleCommandsAndWholeTitleDeletion;
+    procedure WysiwygTitleSelectionWrapsChangesAndUnwraps;
+    procedure WysiwygTitleClipboardPreservesFormattingAndBoundaries;
+    procedure WysiwygTitleCaretAndPendingFormatting;
     procedure TagPairFindsClosingTheWordTag;
     procedure TagPairFindsOpeningTheWordTag;
     procedure TagPairHandlesNestedTheWordTags;
@@ -861,6 +866,296 @@ begin
     Editor.Free;
   end;
 end;
+
+procedure TTheWordSyntaxHighlighterTests.
+  WysiwygTitleSelectionWrapsChangesAndUnwraps;
+var
+  ComponentIndex: Integer;
+  DirectEditor: TDirectWriteVerseEditor;
+  Editor: TTheWordWysiwygEditorControl;
+  Title: TTheWordTitleRange;
+begin
+  Editor := TTheWordWysiwygEditorControl.Create(nil);
+  try
+    DirectEditor := nil;
+    for ComponentIndex := 0 to Editor.ComponentCount - 1 do
+      if Editor.Components[ComponentIndex] is TDirectWriteVerseEditor then
+      begin
+        DirectEditor := TDirectWriteVerseEditor(
+          Editor.Components[ComponentIndex]);
+        Break;
+      end;
+    AssertTrue('DirectWrite editor exists', Assigned(DirectEditor));
+
+    Editor.Text := 'alphabeta body';
+    DirectEditor.SetSelection(0, 0);
+    AssertFalse('ordinary body caret cannot create an empty title',
+      Editor.CanApplyTitle);
+    DirectEditor.SetSelection(0, 5);
+    AssertTrue('a body selection can become a title', Editor.CanApplyTitle);
+    AssertTrue(Editor.ApplyTitleLevel(1));
+    AssertEquals('<TS>alpha<Ts>beta body', Editor.Text);
+    AssertEquals('wrapping preserves the selected title text', 5,
+      DirectEditor.SelectionLength);
+
+    DirectEditor.SetSelection(1, 3);
+    AssertTrue('inline HTML remains editable inside a title',
+      Editor.ApplySemantic(twsmHtmlBold));
+    AssertEquals('<TS>a<b>lph</b>a<Ts>beta body', Editor.Text);
+    DirectEditor.SetSelection(0, 5);
+    AssertTrue('one title is recognized across differently styled spans',
+      Editor.TryGetCurrentTitle(Title));
+    AssertTrue('the unified command changes the current title level',
+      Editor.ApplyTitleLevel(2));
+    AssertEquals('<TS2>a<b>lph</b>a<Ts>beta body', Editor.Text);
+    AssertEquals('changing level preserves a multi-span selection', 5,
+      DirectEditor.SelectionLength);
+
+    AssertTrue('font color remains editable inside a title',
+      Editor.ApplyFontColor(True, LongInt(clRed)));
+    AssertEquals('font color preserves the title selection', 5,
+      DirectEditor.SelectionLength);
+    AssertTrue('relative size remains editable inside a title',
+      Editor.AdjustRelativeFontSize(1));
+    AssertEquals('relative size preserves the title selection', 5,
+      DirectEditor.SelectionLength);
+    AssertTrue('removing title formatting keeps inline formatting',
+      Editor.RemoveCurrentTitle);
+    AssertEquals('unwrapping preserves the selection', 5,
+      DirectEditor.SelectionLength);
+    AssertEquals('title opening tag is removed', 0,
+      Pos('<TS', Editor.Text));
+    AssertEquals('title closing tag is removed', 0,
+      Pos('<Ts>', Editor.Text));
+    AssertTrue('inline bold opening survives title removal',
+      Pos('<b>', Editor.Text) > 0);
+    AssertTrue('inline bold closing survives title removal',
+      Pos('</b>', Editor.Text) > 0);
+
+    Editor.Text := 'alphabeta body';
+    DirectEditor.SetSelection(0, 5);
+    AssertTrue(Editor.ApplyTitleLevel(1));
+    DirectEditor.SetSelection(6, 4);
+    AssertTrue('the adjacent body range can become a second title',
+      Editor.ApplyTitleLevel(2));
+    AssertEquals('consecutive titles need no empty separator paragraph',
+      '<TS>alpha<Ts><TS2>beta<Ts> body', Editor.Text);
+    AssertEquals('consecutive title visual text has one line boundary', 1,
+      Pos(UTF8Encode('alpha' + #10 + 'beta'),
+        UTF8Encode(DirectEditor.Document.Text)));
+  finally
+    Editor.Free;
+  end;
+end;
+
+procedure TTheWordSyntaxHighlighterTests.
+  WysiwygTitleClipboardPreservesFormattingAndBoundaries;
+var
+  ComponentIndex: Integer;
+  Handled: Boolean;
+  SourceDirect, TargetDirect: TDirectWriteVerseEditor;
+  Source, Target: TTheWordWysiwygEditorControl;
+begin
+  Source := TTheWordWysiwygEditorControl.Create(nil);
+  Target := TTheWordWysiwygEditorControl.Create(nil);
+  try
+    SourceDirect := nil;
+    for ComponentIndex := 0 to Source.ComponentCount - 1 do
+      if Source.Components[ComponentIndex] is TDirectWriteVerseEditor then
+      begin
+        SourceDirect := TDirectWriteVerseEditor(
+          Source.Components[ComponentIndex]);
+        Break;
+      end;
+    TargetDirect := nil;
+    for ComponentIndex := 0 to Target.ComponentCount - 1 do
+      if Target.Components[ComponentIndex] is TDirectWriteVerseEditor then
+      begin
+        TargetDirect := TDirectWriteVerseEditor(
+          Target.Components[ComponentIndex]);
+        Break;
+      end;
+    AssertTrue('source DirectWrite editor exists', Assigned(SourceDirect));
+    AssertTrue('target DirectWrite editor exists', Assigned(TargetDirect));
+
+    Source.Text := '<TS><b>A</b><i>B</i><u>C</u>' +
+      '<font color=red size=+1>D</font><Ts>body';
+    Handled := False;
+    SourceDirect.OnClipboardCopy(SourceDirect, 0, 4, False, Handled);
+    AssertTrue('copy inside one title is handled semantically', Handled);
+    AssertEquals('formatted title copy exposes its visible text', 'ABCD',
+      Clipboard.AsText);
+
+    Handled := False;
+    SourceDirect.OnClipboardCopy(SourceDirect, 3, 3, False, Handled);
+    AssertTrue('copy crossing the title boundary is consumed', Handled);
+    AssertEquals('cross-boundary copy preserves the prior valid clipboard',
+      'ABCD', Clipboard.AsText);
+
+    Target.Text := '<TS2>XY<Ts>tail';
+    Handled := False;
+    TargetDirect.OnClipboardPaste(TargetDirect, 1, 1, Handled);
+    AssertTrue('private title payload is accepted inside a title', Handled);
+    AssertEquals('private payload keeps formatting and the target TS pair',
+      '<TS2>X<b>A</b><i>B</i><u>C</u>' +
+      '<font color=red size=+1>D</font><Ts>tail', Target.Text);
+
+    Handled := False;
+    TargetDirect.OnClipboardPaste(TargetDirect, 4, 2, Handled);
+    AssertTrue('paste crossing the title boundary is consumed', Handled);
+    AssertEquals('cross-boundary paste leaves the title unchanged',
+      '<TS2>X<b>A</b><i>B</i><u>C</u>' +
+      '<font color=red size=+1>D</font><Ts>tail', Target.Text);
+
+    AssertTrue('formatted title paste is undoable', Target.Undo);
+    AssertEquals('one undo restores the complete target title',
+      '<TS2>XY<Ts>tail', Target.Text);
+    AssertFalse('formatted title paste creates exactly one undo entry',
+      Target.Undo);
+  finally
+    Target.Free;
+    Source.Free;
+  end;
+end;
+
+procedure TTheWordSyntaxHighlighterTests.
+  WysiwygTitleCaretAndPendingFormatting;
+var
+  Accepted: Boolean;
+  ComponentIndex, NewCaret: Integer;
+  DirectEditor: TDirectWriteVerseEditor;
+  Editor: TTheWordWysiwygEditorControl;
+  Span: TVisualSpan;
+  Style: TVisualTextStyle;
+
+  procedure AssertInsertionStyle(ALayoutOffset, AFontDelta: Integer;
+    const AFlags: TVisualTextStyleFlags);
+  begin
+    AssertTrue('insertion style callback exists',
+      Assigned(DirectEditor.OnResolveInsertionStyle));
+    AssertTrue('insertion style resolves at layout offset ' +
+      IntToStr(ALayoutOffset),
+      DirectEditor.OnResolveInsertionStyle(DirectEditor,
+        ALayoutOffset, Style));
+    AssertEquals('insertion font delta at layout offset ' +
+      IntToStr(ALayoutOffset), AFontDelta, Style.FontSizeDelta);
+    AssertTrue('insertion flags at layout offset ' +
+      IntToStr(ALayoutOffset), Style.Flags = AFlags);
+  end;
+
+  procedure TypeAt(ALayoutOffset: Integer;
+    const AText: UnicodeString);
+  begin
+    Accepted := False;
+    NewCaret := -1;
+    AssertTrue('text replace callback exists',
+      Assigned(DirectEditor.OnReplaceText));
+    DirectEditor.OnReplaceText(DirectEditor, ALayoutOffset, 0,
+      AText, Accepted, NewCaret);
+    AssertTrue('title text input is accepted', Accepted);
+    AssertTrue('new caret is returned', NewCaret >= 0);
+    DirectEditor.SetSelection(NewCaret, 0);
+  end;
+
+begin
+  Editor := TTheWordWysiwygEditorControl.Create(nil);
+  try
+    DirectEditor := nil;
+    for ComponentIndex := 0 to Editor.ComponentCount - 1 do
+      if Editor.Components[ComponentIndex] is TDirectWriteVerseEditor then
+      begin
+        DirectEditor := TDirectWriteVerseEditor(
+          Editor.Components[ComponentIndex]);
+        Break;
+      end;
+    AssertTrue('DirectWrite editor exists', Assigned(DirectEditor));
+
+    Editor.Text := '<TS>one<Ts><TS2>two<Ts>body';
+    AssertEquals(UnicodeString('one' + #10 + 'two' + #10 + 'body'),
+      DirectEditor.Document.Text);
+    AssertInsertionStyle(3, 2, [vtsfBold]);
+    AssertInsertionStyle(4, 1, [vtsfBold, vtsfItalic]);
+    AssertInsertionStyle(7, 1, [vtsfBold, vtsfItalic]);
+    AssertInsertionStyle(8, 0, []);
+
+    Editor.Text := '<TS><Ts>body';
+    DirectEditor.SetSelection(0, 0);
+    AssertTrue('A+ can be armed in an empty title',
+      Editor.AdjustRelativeFontSize(1));
+    AssertTrue('font color can be armed in an empty title',
+      Editor.ApplyFontColor(True, LongInt(clRed)));
+    AssertInsertionStyle(0, 4, [vtsfBold]);
+    AssertTrue(Style.HasForegroundColor);
+    AssertEquals(LongInt(clRed), Style.ForegroundColor);
+    TypeAt(0, 'X');
+    TypeAt(NewCaret, 'Y');
+    AssertEquals(UnicodeString('XY' + #10 + 'body'),
+      DirectEditor.Document.Text);
+    AssertTrue(DirectEditor.Document.TryGetSpanAt(0, Span));
+    AssertEquals('first typed character keeps title + pending size',
+      4, Span.Style.FontSizeDelta);
+    AssertEquals(LongInt(clRed), Span.Style.ForegroundColor);
+    AssertTrue(DirectEditor.Document.TryGetSpanAt(1, Span));
+    AssertEquals('second contiguous character keeps pending size',
+      4, Span.Style.FontSizeDelta);
+    AssertEquals('second contiguous character keeps pending color',
+      LongInt(clRed), Span.Style.ForegroundColor);
+    AssertTrue('second character is one undo command', Editor.Undo);
+    AssertEquals(UnicodeString('X' + #10 + 'body'),
+      DirectEditor.Document.Text);
+    AssertTrue('first character is one undo command', Editor.Undo);
+    AssertEquals('<TS><Ts>body', Editor.Text);
+    AssertFalse('no hidden extra undo is created', Editor.Undo);
+
+    Editor.Text := '<TS1><font color=red>ab</font><Ts>body';
+    DirectEditor.SetSelection(1, 0);
+    AssertTrue('Default color can be armed inside TS1',
+      Editor.ApplyFontColor(False, 0));
+    AssertInsertionStyle(1, 2, [vtsfBold]);
+    AssertTrue('TS1 structural gray remains visible in preview',
+      Style.HasForegroundColor);
+    AssertEquals(THEWORD_TITLE_LEVEL1_COLOR, Style.ForegroundColor);
+    TypeAt(1, 'X');
+    AssertTrue(DirectEditor.Document.TryGetSpanAt(1, Span));
+    AssertTrue('typed Default color reveals structural gray',
+      Span.Style.HasForegroundColor);
+    AssertEquals(THEWORD_TITLE_LEVEL1_COLOR,
+      Span.Style.ForegroundColor);
+    AssertTrue(Editor.Undo);
+    AssertEquals('<TS1><font color=red>ab</font><Ts>body', Editor.Text);
+
+    Editor.Text := '<TS2><font color=red>ab</font><Ts>body';
+    DirectEditor.SetSelection(1, 0);
+    AssertTrue(Editor.ApplyFontColor(False, 0));
+    AssertInsertionStyle(1, 1, [vtsfBold, vtsfItalic]);
+    AssertFalse('TS2 Default color inherits the editor default',
+      Style.HasForegroundColor);
+
+    Editor.Text := '<TS3><font color=red>ab</font><Ts>body';
+    DirectEditor.SetSelection(1, 0);
+    AssertTrue(Editor.ApplyFontColor(False, 0));
+    AssertInsertionStyle(1, 0, [vtsfItalic]);
+    AssertFalse('TS3 Default color inherits the editor default',
+      Style.HasForegroundColor);
+
+    Editor.Text := '<TS1><FR>ab<Fr><Ts>body';
+    DirectEditor.SetSelection(1, 0);
+    AssertTrue(Editor.ApplyFontColor(False, 0));
+    AssertInsertionStyle(1, 2, [vtsfBold]);
+    AssertEquals('FR keeps semantic priority over pending Default',
+      LongInt(clRed), Style.ForegroundColor);
+
+    Editor.Text := '<TS1><FO>ab<Fo><Ts>body';
+    DirectEditor.SetSelection(1, 0);
+    AssertTrue(Editor.ApplyFontColor(False, 0));
+    AssertInsertionStyle(1, 2, [vtsfBold]);
+    AssertEquals('FO keeps semantic priority over pending Default',
+      LongInt(clBlack), Style.ForegroundColor);
+  finally
+    Editor.Free;
+  end;
+end;
+
 procedure TTheWordSyntaxHighlighterTests.TagPairFindsClosingTheWordTag;
 var
   Lines: TStringList;

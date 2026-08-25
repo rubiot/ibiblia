@@ -904,20 +904,15 @@ begin
                 IfThen(GetParagraphMode = pmParagraph, DefaultFirstIndent);
             with PushNewStyle do
               case OpeningTag[4] of
-                '>','0':
+                '>','0','1':
                 begin
                   Font.Size := Font.Size + 2;
                   Font.Style := [fsBold];
                   Font.Color := $424242;
                 end;
-                '1':
-                begin
-                  Font.Size := Font.Size + 1;
-                  Font.Style := [fsBold, fsItalic];
-                  Font.Color := clDefault;
-                end;
                 '2':
                 begin
+                  Font.Size := Font.Size + 1;
                   Font.Style := [fsBold, fsItalic];
                   Font.Color := clDefault;
                 end;
@@ -930,7 +925,7 @@ begin
           end
           else if OpeningTag = '<Ts>' then { title end }
           begin
-            ResetStyleStack;
+            PopStyle;
             lastpar := GetPreviousParagraphBlock;
             padding := IfThen(assigned(lastpar) and
               (lastpar.ParaStyle.BottomPadding = 0), 5);

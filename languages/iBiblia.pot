@@ -3106,6 +3106,22 @@ msgctxt "project.spsalms"
 msgid "Psalms"
 msgstr ""
 
+#: project.sremoveeditassociationprompt
+msgctxt "project.sremoveeditassociationprompt"
+msgid "This edit will remove 1 associated text member. Continue?"
+msgstr ""
+
+#: project.sremoveeditassociationsprompt
+#, object-pascal-format
+msgctxt "project.sremoveeditassociationsprompt"
+msgid "This edit will remove %d associated text members. Continue?"
+msgstr ""
+
+#: project.sremoveeditassociationstitle
+msgctxt "project.sremoveeditassociationstitle"
+msgid "Remove associations?"
+msgstr ""
+
 #: project.sreferencenotfound
 msgctxt "project.sreferencenotfound"
 msgid "Reference not found"
@@ -4832,52 +4848,27 @@ msgstr ""
 
 #: versememo.stitlehint
 msgctxt "versememo.stitlehint"
-msgid "Insert, change or remove a title"
+msgid "Apply, change or remove title formatting"
 msgstr ""
 
-#: versememo.snewtitlelevel1
-msgctxt "versememo.snewtitlelevel1"
-msgid "New level 1 title..."
+#: versememo.stitlelevel1
+msgctxt "versememo.stitlelevel1"
+msgid "Title level 1"
 msgstr ""
 
-#: versememo.snewtitlelevel2
-msgctxt "versememo.snewtitlelevel2"
-msgid "New level 2 title..."
+#: versememo.stitlelevel2
+msgctxt "versememo.stitlelevel2"
+msgid "Title level 2"
 msgstr ""
 
-#: versememo.snewtitlelevel3
-msgctxt "versememo.snewtitlelevel3"
-msgid "New level 3 title..."
-msgstr ""
-
-#: versememo.schangetitlelevel1
-msgctxt "versememo.schangetitlelevel1"
-msgid "Change to level 1"
-msgstr ""
-
-#: versememo.schangetitlelevel2
-msgctxt "versememo.schangetitlelevel2"
-msgid "Change to level 2"
-msgstr ""
-
-#: versememo.schangetitlelevel3
-msgctxt "versememo.schangetitlelevel3"
-msgid "Change to level 3"
+#: versememo.stitlelevel3
+msgctxt "versememo.stitlelevel3"
+msgid "Title level 3"
 msgstr ""
 
 #: versememo.sremovetitle
 msgctxt "versememo.sremovetitle"
-msgid "Remove title"
-msgstr ""
-
-#: versememo.sinserttitledialogtitle
-msgctxt "versememo.sinserttitledialogtitle"
-msgid "Insert title"
-msgstr ""
-
-#: versememo.sinserttitleprompt
-msgctxt "versememo.sinserttitleprompt"
-msgid "Title text:"
+msgid "Remove title formatting"
 msgstr ""
 
 #: versememo.stitleediterrortitle

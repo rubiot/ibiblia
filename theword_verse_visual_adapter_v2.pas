@@ -40,6 +40,9 @@ type
       out AIdentities: TTheWordBreakIdentityArray): Boolean;
   end;
 
+const
+  THEWORD_TITLE_LEVEL1_COLOR = LongInt($424242);
+
 function BuildTheWordVerseVisualDocument(ADocument: TTheWordVerseDocument;
   ABaseDirection: TTextDirection; ARevision: QWord;
   AAutomaticNoteStart: Integer = 0): IVerseVisualDocument;
@@ -52,7 +55,14 @@ function CanReplaceTheWordText(ADocument: TTheWordVerseDocument;
 
 function TryResolveTheWordInsertionVisualStyle(
   ADocument: TTheWordVerseDocument; AOffsetUTF16: Integer;
-  out AStyle: TVisualTextStyle): Boolean;
+  out AStyle: TVisualTextStyle): Boolean; overload;
+
+function TryResolveTheWordInsertionVisualStyle(
+  ADocument: TTheWordVerseDocument; AOffsetUTF16,
+  AActiveTitleOpenOrdinal: Integer;
+  out AStyle: TVisualTextStyle): Boolean; overload;
+
+function TheWordTitleFontSizeDelta(ALevel: Integer): Integer;
 
 function TryTheWordDocumentToLayoutOffset(
   const AVisual: IVerseVisualDocument; ADocumentOffset: Integer;
@@ -887,6 +897,53 @@ begin
   Result := False;
 end;
 
+function TryGetTitleForInsertion(const ATitles: TTheWordTitleRangeArray;
+  AOffset: Integer; out ATitle: TTheWordTitleRange): Boolean;
+var
+  Index: Integer;
+begin
+  for Index := 0 to High(ATitles) do
+    if (ATitles[Index].Level >= 0) and
+       (ATitles[Index].StartOffset <= AOffset) and
+       (ATitles[Index].EndOffset > AOffset) then
+    begin
+      ATitle := ATitles[Index];
+      Exit(True);
+    end;
+  FillChar(ATitle, SizeOf(ATitle), 0);
+  Result := False;
+end;
+
+function TryGetTitleForInsertion(const ATitles: TTheWordTitleRangeArray;
+  AOffset, AOpenOrdinal: Integer; out ATitle: TTheWordTitleRange): Boolean;
+var
+  Index: Integer;
+begin
+  if AOpenOrdinal < 0 then
+    Exit(TryGetTitleForInsertion(ATitles, AOffset, ATitle));
+  for Index := 0 to High(ATitles) do
+    if (ATitles[Index].OpenOrdinal = AOpenOrdinal) and
+       (ATitles[Index].Level >= 0) and
+       (ATitles[Index].StartOffset <= AOffset) and
+       (ATitles[Index].EndOffset >= AOffset) then
+    begin
+      ATitle := ATitles[Index];
+      Exit(True);
+    end;
+  FillChar(ATitle, SizeOf(ATitle), 0);
+  Result := False;
+end;
+
+function TheWordTitleFontSizeDelta(ALevel: Integer): Integer;
+begin
+  case ALevel of
+    0, 1: Result := 2;
+    2: Result := 1;
+  else
+    Result := 0;
+  end;
+end;
+
 procedure ApplyTitleStyle(const ATitle: TTheWordTitleRange;
   var AStyle: TVisualTextStyle; var AAnnotation: UnicodeString);
 begin
@@ -901,15 +958,20 @@ begin
     0, 1:
       begin
         Include(AStyle.Flags, vtsfBold);
-        AStyle.FontSizeDelta := 2;
-        AStyle.HasForegroundColor := True;
-        AStyle.ForegroundColor := LongInt($424242);
+        Inc(AStyle.FontSizeDelta,
+          TheWordTitleFontSizeDelta(ATitle.Level));
+        if not AStyle.HasForegroundColor then
+        begin
+          AStyle.HasForegroundColor := True;
+          AStyle.ForegroundColor := THEWORD_TITLE_LEVEL1_COLOR;
+        end;
       end;
     2:
       begin
         Include(AStyle.Flags, vtsfBold);
         Include(AStyle.Flags, vtsfItalic);
-        AStyle.FontSizeDelta := 1;
+        Inc(AStyle.FontSizeDelta,
+          TheWordTitleFontSizeDelta(ATitle.Level));
       end;
     3:
       Include(AStyle.Flags, vtsfItalic);
@@ -978,6 +1040,15 @@ end;
 function TryResolveTheWordInsertionVisualStyle(
   ADocument: TTheWordVerseDocument; AOffsetUTF16: Integer;
   out AStyle: TVisualTextStyle): Boolean;
+begin
+  Result := TryResolveTheWordInsertionVisualStyle(ADocument,
+    AOffsetUTF16, -1, AStyle);
+end;
+
+function TryResolveTheWordInsertionVisualStyle(
+  ADocument: TTheWordVerseDocument; AOffsetUTF16,
+  AActiveTitleOpenOrdinal: Integer;
+  out AStyle: TVisualTextStyle): Boolean;
 var
   Annotation: UnicodeString;
   FontFormatRanges: TFontFormatRangeArray;
@@ -985,6 +1056,8 @@ var
   HasWordsOfJesus: Boolean;
   Mark: TTheWordSemanticMark;
   MarkIndex: Integer;
+  Title: TTheWordTitleRange;
+  Titles: TTheWordTitleRangeArray;
 begin
   AStyle := DefaultVisualTextStyle;
   Result := Assigned(ADocument) and (AOffsetUTF16 >= 0) and
@@ -997,6 +1070,10 @@ begin
   HasOldTestamentQuote := False;
   HasWordsOfJesus := False;
   ApplyFontFormatForInsertion(FontFormatRanges, AOffsetUTF16, AStyle);
+  CollectTheWordTitleRanges(ADocument, Titles);
+  if TryGetTitleForInsertion(Titles, AOffsetUTF16,
+    AActiveTitleOpenOrdinal, Title) then
+    ApplyTitleStyle(Title, AStyle, Annotation);
   for MarkIndex := 0 to ADocument.MarkCount - 1 do
   begin
     Mark := ADocument.Marks[MarkIndex];
@@ -1101,10 +1178,10 @@ begin
         HasWordsOfJesus := False;
         IsTitle := TryGetTitleForSegment(Titles, SegmentStart,
           SegmentFinish, Title);
-        if IsTitle then
-          ApplyTitleStyle(Title, Style, Annotation);
         ApplyFontFormatForSegment(FontFormatRanges, SegmentStart,
           SegmentFinish, Style);
+        if IsTitle then
+          ApplyTitleStyle(Title, Style, Annotation);
         for MarkIndex := 0 to ADocument.MarkCount - 1 do
         begin
           Mark := ADocument.Marks[MarkIndex];
@@ -1174,7 +1251,7 @@ end;
 function CanApplyTheWordSemanticMark(ADocument: TTheWordVerseDocument;
   AStartUTF16, ALengthUTF16: Integer): Boolean;
 var
-  Finish, Index: Integer;
+  Finish, Index, OverlappingTitle: Integer;
   Titles: TTheWordTitleRangeArray;
 begin
   Result := Assigned(ADocument) and
@@ -1184,10 +1261,17 @@ begin
     Exit;
   Finish := AStartUTF16 + ALengthUTF16;
   CollectTheWordTitleRanges(ADocument, Titles);
+  OverlappingTitle := -1;
   for Index := 0 to High(Titles) do
     if (AStartUTF16 < Titles[Index].EndOffset) and
        (Finish > Titles[Index].StartOffset) then
-      Exit(False);
+    begin
+      if (OverlappingTitle >= 0) or not Titles[Index].Editable or
+         (AStartUTF16 < Titles[Index].StartOffset) or
+         (Finish > Titles[Index].EndOffset) then
+        Exit(False);
+      OverlappingTitle := Index;
+    end;
   for Index := 0 to ADocument.OpaqueItemCount - 1 do
     if PointTouchesRange(ADocument.OpaqueItems[Index].Offset,
       AStartUTF16, ALengthUTF16) then

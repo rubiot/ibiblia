@@ -150,16 +150,11 @@ resourcestring
   SFontSizeDecreaseHint = 'Decrease relative font size (Ctrl+Shift+,)';
   SFontSizeIncreaseHint = 'Increase relative font size (Ctrl+Shift+.)';
   SFontColorHint = 'Font color; choose Default to remove explicit color';
-  STitleHint = 'Insert, change or remove a title';
-  SNewTitleLevel1 = 'New level 1 title...';
-  SNewTitleLevel2 = 'New level 2 title...';
-  SNewTitleLevel3 = 'New level 3 title...';
-  SChangeTitleLevel1 = 'Change to level 1';
-  SChangeTitleLevel2 = 'Change to level 2';
-  SChangeTitleLevel3 = 'Change to level 3';
-  SRemoveTitle = 'Remove title';
-  SInsertTitleDialogTitle = 'Insert title';
-  SInsertTitlePrompt = 'Title text:';
+  STitleHint = 'Apply, change or remove title formatting';
+  STitleLevel1 = 'Title level 1';
+  STitleLevel2 = 'Title level 2';
+  STitleLevel3 = 'Title level 3';
+  SRemoveTitle = 'Remove title formatting';
   STitleEditErrorTitle = 'Title edit error';
   STitleEditError = 'The title could not be changed at this position.';
   STranslatorNoteHint =
@@ -305,13 +300,8 @@ begin
     case Item.Tag of
       1..3:
         begin
-          Item.Enabled := FEditor.CanInsertTitle;
-          Item.Checked := False;
-        end;
-      11..13:
-        begin
-          Item.Enabled := HasTitle;
-          Item.Checked := HasTitle and (Title.Level = Item.Tag - 10);
+          Item.Enabled := FEditor.CanApplyTitle;
+          Item.Checked := HasTitle and (Title.Level = Item.Tag);
         end;
       20:
         begin
@@ -335,7 +325,6 @@ procedure TVerseMemo.TitleMenuClick(Sender: TObject);
 var
   Item: TMenuItem;
   Succeeded: Boolean;
-  TitleText: string;
 begin
   if not (Sender is TMenuItem) then
     Exit;
@@ -343,22 +332,7 @@ begin
   Succeeded := False;
   case Item.Tag of
     1..3:
-      begin
-        TitleText := '';
-        if not InputQuery(SInsertTitleDialogTitle, SInsertTitlePrompt,
-          TitleText) then
-          Exit;
-        if Trim(TitleText) = '' then
-        begin
-          MessageDlg(STitleEditErrorTitle, STitleEditError, mtError,
-            [mbOK], 0);
-          Exit;
-        end;
-        Succeeded := FEditor.InsertTitle(Item.Tag,
-          UTF8Decode(TitleText));
-      end;
-    11..13:
-      Succeeded := FEditor.ChangeCurrentTitleLevel(Item.Tag - 10);
+      Succeeded := FEditor.ApplyTitleLevel(Item.Tag);
     20:
       Succeeded := FEditor.RemoveCurrentTitle;
   end;
@@ -556,13 +530,10 @@ begin
   FHtmlFormatMenu.Items[0].Caption := SHtmlBoldMenuItem;
   FHtmlFormatMenu.Items[1].Caption := SHtmlItalicMenuItem;
   FHtmlFormatMenu.Items[2].Caption := SHtmlUnderlineMenuItem;
-  FTitleMenu.Items[0].Caption := SNewTitleLevel1;
-  FTitleMenu.Items[1].Caption := SNewTitleLevel2;
-  FTitleMenu.Items[2].Caption := SNewTitleLevel3;
-  FTitleMenu.Items[4].Caption := SChangeTitleLevel1;
-  FTitleMenu.Items[5].Caption := SChangeTitleLevel2;
-  FTitleMenu.Items[6].Caption := SChangeTitleLevel3;
-  FTitleMenu.Items[8].Caption := SRemoveTitle;
+  FTitleMenu.Items[0].Caption := STitleLevel1;
+  FTitleMenu.Items[1].Caption := STitleLevel2;
+  FTitleMenu.Items[2].Caption := STitleLevel3;
+  FTitleMenu.Items[4].Caption := SRemoveTitle;
 
   { TColorBox caches the LCL resource strings when its list is built. Rebuild
     that list after SetDefaultLang so an already open editor changes language
@@ -677,7 +648,7 @@ begin
   FFontSizeDecreaseButton.Enabled := FEditor.Editable and not FEditor.RawMode;
   FFontSizeIncreaseButton.Enabled := FEditor.Editable and not FEditor.RawMode;
   FTranslatorNoteButton.Enabled := FEditor.CanInsertTranslatorNote;
-  FTitleButton.Enabled := FEditor.CanInsertTitle or
+  FTitleButton.Enabled := FEditor.CanApplyTitle or
     FEditor.TryGetCurrentTitle(Title);
   FFontColorBox.Enabled := FEditor.Editable and not FEditor.RawMode;
   if FEditor.RawMode then
@@ -824,13 +795,9 @@ begin
   FFontColorBox.ShowHint := True;
   FFontColorBox.OnChange := @SelectFontColor;
   FTitleMenu := TPopupMenu.Create(FEditorPanel);
-  AddTitleMenuItem(SNewTitleLevel1, 1);
-  AddTitleMenuItem(SNewTitleLevel2, 2);
-  AddTitleMenuItem(SNewTitleLevel3, 3);
-  AddTitleSeparator;
-  AddTitleMenuItem(SChangeTitleLevel1, 11);
-  AddTitleMenuItem(SChangeTitleLevel2, 12);
-  AddTitleMenuItem(SChangeTitleLevel3, 13);
+  AddTitleMenuItem(STitleLevel1, 1);
+  AddTitleMenuItem(STitleLevel2, 2);
+  AddTitleMenuItem(STitleLevel3, 3);
   AddTitleSeparator;
   AddTitleMenuItem(SRemoveTitle, 20);
   FTitleButton := NewSemanticButton(STitleButton,
@@ -1003,6 +970,7 @@ begin
   Impact.PreservedMembers := 0;
   Impact.RemovedMembers := 0;
   Impact.UsedLegacyFallback := False;
+  Impact.Cancelled := False;
   Impact.ErrorMessage := '';
   FEditor.DismissTranslatorNotePreview;
   if not FEditorPanel.Visible then
@@ -1041,7 +1009,10 @@ begin
       try
         if not FOnVerseTextModified(Self, Trace, Impact) then
         begin
-          ShowSaveError(Impact.ErrorMessage);
+          if Impact.Cancelled then
+            FEditor.FocusEditor
+          else
+            ShowSaveError(Impact.ErrorMessage);
           Exit(False);
         end;
       except
