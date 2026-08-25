@@ -43,6 +43,7 @@ uses
   association_note_verse_interaction_test,
   translator_note_hover_controller_test,
   translation_memory_focus_controller_test,
+  translation_memory_preview_test,
   project_creation_staging_test;
 
 var

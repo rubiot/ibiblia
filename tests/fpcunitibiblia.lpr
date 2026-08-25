@@ -9,7 +9,8 @@ uses
   associationmemoryservicetest, concordanceexporttest,
   association_highlight_projection_test, project_persistence_test,
   navigation_history_test, verse_visual_adapter_test, verse_visual_document_test,
-  text_direction_test, translation_memory_focus_controller_test;
+  text_direction_test, translation_memory_focus_controller_test,
+  translation_memory_preview_test;
 
 {$R *.res}
 

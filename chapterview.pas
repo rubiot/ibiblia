@@ -5,12 +5,12 @@ unit ChapterView;
 interface
 
 uses
-  Classes, SysUtils, Forms, Graphics, ONTTokenizer, LCLType, HTMLColors,
+  Classes, SysUtils, Types, Forms, Graphics, ONTTokenizer, LCLType, HTMLColors,
   LazUTF8, BibleScope, Project, Verse, Syntagm, PCRE, Controls, Menus, fgl, Dialogs, Math, Contnrs, KMemo,
   KEditCommon, KGraphics, KDialogs, FormInterlinearVerseRules,
   LCLTranslator, LazLogger, HTMLRenderer, SynEdit,
   theword_syntax_highlighter, bible_book_names, translation_memory_model,
-  translation_memory_focus_controller,
+  translation_memory_focus_controller, translation_memory_preview,
   SuggestionManager, rf_note_scanner,
   theword_translator_note_preview, theword_effective_inline_style_v2, theword_translator_note_style;
 
@@ -85,6 +85,9 @@ type
   end;
 
   TNoteList = specialize TFPGList<TNoteInfo>;
+  TTranslationMemoryCounterLinkArray = array of TKMemoHyperlink;
+  TTranslationMemoryCounterLinkMatrix =
+    array of TTranslationMemoryCounterLinkArray;
 
   { TChapterView }
 
@@ -122,6 +125,11 @@ type
     FTranslationMemoryOccurrenceTranslation: string;
     FTranslationMemoryOccurrenceLimit: Integer;
     FTranslationMemoryRefreshPending: Boolean;
+    FTranslationMemoryPreviewController: TTranslationMemoryHoverController;
+    FTranslationMemoryPreviewFontSize: Integer;
+    FOnTranslationMemoryPreviewFontSizeChanged: TNotifyEvent;
+    FTranslationMemoryPreviewGeneration: QWord;
+    FTranslationMemoryCounterLinks: TTranslationMemoryCounterLinkMatrix;
     FViewSelectionActive: Boolean;
 
     function GetInterlinearMode: TInterlinearMode;
@@ -153,7 +161,10 @@ type
     procedure HandleKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure HandlePopupKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure HandleMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
+    procedure HandleMouseLeave(Sender: TObject);
     procedure HandleMouseWheel(Sender: TObject; Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
+    procedure HandleTranslationMemoryPreviewFontSizeChanged(Sender: TObject;
+      AFontSize: Integer);
     procedure HandleDoubleClick(Sender: TObject);
     procedure HandleContextPopup(Sender: TObject; MousePos: TPoint; var Handled: Boolean);
     procedure HandleSetFont(Sender: TObject);
@@ -171,6 +182,7 @@ type
     procedure SetParagraphMode(AValue: TParagraphMode);
     procedure SetFontSize(AValue: integer);
     procedure SetFontName(AValue: string);
+    procedure SetTranslationMemoryPreviewFontSize(AValue: Integer);
     procedure HighlightRange(range: TBlockRange; bgcolor: TColor);
     function GetPreviousParagraphBlock: TKMemoParagraph;
     procedure SetTextType(AValue: TTipoTextoBiblico);
@@ -179,6 +191,17 @@ type
     procedure ResetTranslationMemoryOccurrences;
     procedure ClearTranslationMemorySourceHighlight;
     procedure ClearTranslationMemoryEntryFocus;
+    procedure DismissTranslationMemoryPreview;
+    procedure InvalidateTranslationMemoryPreview;
+    function TryResolveTranslationMemoryHoverTarget(
+      ALinkBlock: TKMemoHyperlink;
+      out ATarget: TTranslationMemoryHoverTarget): Boolean;
+    function ValidateTranslationMemoryPreviewTarget(
+      const ATarget: TTranslationMemoryHoverTarget;
+      out AAnchorScreenRect: TRect): Boolean;
+    function LoadTranslationMemoryPreviewPayload(
+      const ATarget: TTranslationMemoryHoverTarget;
+      out APayload: TTranslationMemoryPreviewPayload): Boolean;
   protected
     procedure SetEnabled(Value: Boolean); override;
     procedure SetupDefaultStyle; override;
@@ -203,9 +226,29 @@ type
     property InterlinearMode: TInterlinearMode read GetInterlinearMode write SetInterlinearMode;
     property FontSize: integer read FFontSize write SetFontSize;
     property FontName: string read FFontName write SetFontName;
+    property TranslationMemoryPreviewFontSize: Integer
+      read FTranslationMemoryPreviewFontSize
+      write SetTranslationMemoryPreviewFontSize;
+    property OnTranslationMemoryPreviewFontSizeChanged: TNotifyEvent
+      read FOnTranslationMemoryPreviewFontSizeChanged
+      write FOnTranslationMemoryPreviewFontSizeChanged;
     property CurrentStyle: TKMemoTextStyle read GetCurrentStyle;
     property HideVerseNumber: boolean read FHideVerseNumber write FHideVerseNumber default false;
     property PrintMode: boolean read FPrintMode write SetPrintMode;
+    {$IFDEF FPCUNIT}
+    procedure ConfigureTranslationMemoryInteractionFixture(
+      const AEntries: TTranslationMemoryEntryArray;
+      const ACounterLinks: TTranslationMemoryCounterLinkMatrix);
+    function ResolveTranslationMemoryHoverTargetFixture(
+      ALinkBlock: TKMemoHyperlink;
+      out ATarget: TTranslationMemoryHoverTarget): Boolean;
+    procedure BeginTranslationMemoryHoverFixture(
+      const ATarget: TTranslationMemoryHoverTarget);
+    function TranslationMemoryPreviewActiveFixture: Boolean;
+    procedure ReadTranslationMemoryOccurrenceStateFixture(
+      out AMatches: TTranslationPairMatchArray; out ALimit: Integer;
+      out AShowingOccurrences: Boolean);
+    {$ENDIF}
   end;
 
 function TranslationMemoryInputSnapshotsEqual(
@@ -254,6 +297,10 @@ resourcestring
   STranslationMemoryNoOccurrences =
     'No verse currently uses this translation.';
   STranslationMemoryShowMoreFmt = 'Show 100 more (%d remaining)';
+  STranslationMemoryPreviewRemainingFmt =
+    '%d more verses — click the count to see all.';
+  STranslationMemoryPreviewUnavailable =
+    'Preview unavailable — click to open the occurrences.';
 
 implementation
 
@@ -310,54 +357,9 @@ end;
 
 procedure TChapterView.AppendTranslationMemoryOccurrenceText(
   const Occurrence: TTranslationOccurrenceData);
-var
-  TextCursor: Integer;
-  Index: Integer;
-  TextBlock: TKMemoTextBlock;
 begin
-  if Occurrence.DestinationText = '' then
-    Exit;
-
-  Blocks.AddTextBlock(' — ');
-  if Length(Occurrence.HighlightRanges) = 0 then
-  begin
-    Blocks.AddTextBlock(Occurrence.DestinationText);
-    Exit;
-  end;
-
-  for Index := 0 to High(Occurrence.HighlightRanges) do
-    if (Occurrence.HighlightRanges[Index].StartIndex < 1) or
-       (Occurrence.HighlightRanges[Index].Length <= 0) or
-       (Occurrence.HighlightRanges[Index].StartIndex >
-        Length(Occurrence.DestinationText)) or
-       (Occurrence.HighlightRanges[Index].Length >
-        Length(Occurrence.DestinationText) -
-        Occurrence.HighlightRanges[Index].StartIndex + 1) or
-       ((Index > 0) and
-        (Occurrence.HighlightRanges[Index].StartIndex <
-         Occurrence.HighlightRanges[Index - 1].StartIndex +
-         Occurrence.HighlightRanges[Index - 1].Length)) then
-    begin
-      Blocks.AddTextBlock(Occurrence.DestinationText);
-      Exit;
-    end;
-
-  TextCursor := 1;
-  for Index := 0 to High(Occurrence.HighlightRanges) do
-  begin
-    if Occurrence.HighlightRanges[Index].StartIndex > TextCursor then
-      Blocks.AddTextBlock(Copy(Occurrence.DestinationText, TextCursor,
-        Occurrence.HighlightRanges[Index].StartIndex - TextCursor));
-    TextBlock := Blocks.AddTextBlock(Copy(Occurrence.DestinationText,
-      Occurrence.HighlightRanges[Index].StartIndex,
-      Occurrence.HighlightRanges[Index].Length));
-    TextBlock.TextStyle.Font.Style := [fsBold, fsUnderline];
-    TextCursor := Occurrence.HighlightRanges[Index].StartIndex +
-      Occurrence.HighlightRanges[Index].Length;
-  end;
-  if TextCursor <= Length(Occurrence.DestinationText) then
-    Blocks.AddTextBlock(Copy(Occurrence.DestinationText, TextCursor,
-      Length(Occurrence.DestinationText) - TextCursor + 1));
+  translation_memory_preview.AppendTranslationMemoryOccurrenceText(
+    Blocks, Occurrence);
 end;
 
 { TRawChapterMemo }
@@ -621,6 +623,221 @@ procedure TChapterView.CaptureTranslationMemoryInputSnapshot;
 begin
   FTranslationMemoryInputSnapshot :=
     CurrentTranslationMemoryInputSnapshot;
+end;
+
+procedure TChapterView.DismissTranslationMemoryPreview;
+begin
+  if Assigned(FTranslationMemoryPreviewController) then
+    FTranslationMemoryPreviewController.Dismiss;
+end;
+
+procedure TChapterView.InvalidateTranslationMemoryPreview;
+begin
+  Inc(FTranslationMemoryPreviewGeneration);
+  SetLength(FTranslationMemoryCounterLinks, 0);
+  if Assigned(FTranslationMemoryPreviewController) then
+    FTranslationMemoryPreviewController.Invalidate;
+end;
+
+function TChapterView.TryResolveTranslationMemoryHoverTarget(
+  ALinkBlock: TKMemoHyperlink;
+  out ATarget: TTranslationMemoryHoverTarget): Boolean;
+var
+  AlternativeIndex: Integer;
+  EntryIndex: Integer;
+begin
+  Result := False;
+  ATarget := Default(TTranslationMemoryHoverTarget);
+  if not Assigned(ALinkBlock) or
+     not TryParseTranslationMemoryHoverURL(
+       ALinkBlock.URL, EntryIndex, AlternativeIndex) or
+     (EntryIndex < 0) or
+     (EntryIndex >= Length(FTranslationMemoryEntries)) or
+     (AlternativeIndex < 0) or
+     (AlternativeIndex >= Length(
+       FTranslationMemoryEntries[EntryIndex].Alternatives)) or
+     (EntryIndex >= Length(FTranslationMemoryCounterLinks)) or
+     (AlternativeIndex >= Length(
+       FTranslationMemoryCounterLinks[EntryIndex])) or
+     (FTranslationMemoryCounterLinks[EntryIndex][AlternativeIndex] <>
+       ALinkBlock) then
+    Exit;
+
+  with FTranslationMemoryEntries[EntryIndex].Alternatives[
+    AlternativeIndex] do
+    if (Occurrences <= 0) or (Length(Matches) = 0) then
+      Exit;
+
+  ATarget.Generation := FTranslationMemoryPreviewGeneration;
+  ATarget.EntryIndex := EntryIndex;
+  ATarget.AlternativeIndex := AlternativeIndex;
+  Result := True;
+end;
+
+function TChapterView.ValidateTranslationMemoryPreviewTarget(
+  const ATarget: TTranslationMemoryHoverTarget;
+  out AAnchorScreenRect: TRect): Boolean;
+var
+  AnchorClientRect: TRect;
+  AnchorScreenBottomRight: TPoint;
+  AnchorScreenTopLeft: TPoint;
+  AlternativeIndex: Integer;
+  CurrentSnapshot: TTranslationMemoryInputSnapshot;
+  EntryIndex: Integer;
+  LinkBlock: TKMemoHyperlink;
+  ViewRect: TRect;
+begin
+  Result := False;
+  AAnchorScreenRect := Rect(0, 0, 0, 0);
+  if not Assigned(FProject) or not IsTranslationMemoryVisible or
+     FTranslationMemoryShowingOccurrences or FTranslationMemoryRefreshPending or
+     (ATarget.Generation <> FTranslationMemoryPreviewGeneration) then
+    Exit;
+
+  CurrentSnapshot := CurrentTranslationMemoryInputSnapshot;
+  if not TranslationMemoryInputSnapshotsEqual(
+    FTranslationMemoryInputSnapshot, CurrentSnapshot) then
+    Exit;
+
+  EntryIndex := ATarget.EntryIndex;
+  AlternativeIndex := ATarget.AlternativeIndex;
+  if (EntryIndex < 0) or
+     (EntryIndex >= Length(FTranslationMemoryEntries)) or
+     (AlternativeIndex < 0) or
+     (AlternativeIndex >= Length(
+       FTranslationMemoryEntries[EntryIndex].Alternatives)) or
+     (EntryIndex >= Length(FTranslationMemoryCounterLinks)) or
+     (AlternativeIndex >= Length(
+       FTranslationMemoryCounterLinks[EntryIndex])) then
+    Exit;
+  with FTranslationMemoryEntries[EntryIndex].Alternatives[
+    AlternativeIndex] do
+    if (Occurrences <= 0) or (Length(Matches) = 0) then
+      Exit;
+
+  LinkBlock := FTranslationMemoryCounterLinks[EntryIndex][AlternativeIndex];
+  if not Assigned(LinkBlock) or
+     not TryParseTranslationMemoryHoverURL(LinkBlock.URL, EntryIndex,
+       AlternativeIndex) or
+     (EntryIndex <> ATarget.EntryIndex) or
+     (AlternativeIndex <> ATarget.AlternativeIndex) then
+    Exit;
+
+  AnchorClientRect := BlockRect(LinkBlock);
+  ViewRect := ClientRect;
+  AnchorClientRect.Left := Max(AnchorClientRect.Left, ViewRect.Left);
+  AnchorClientRect.Top := Max(AnchorClientRect.Top, ViewRect.Top);
+  AnchorClientRect.Right := Min(AnchorClientRect.Right, ViewRect.Right);
+  AnchorClientRect.Bottom := Min(AnchorClientRect.Bottom, ViewRect.Bottom);
+  if (AnchorClientRect.Right <= AnchorClientRect.Left) or
+     (AnchorClientRect.Bottom <= AnchorClientRect.Top) then
+    Exit;
+
+  AnchorScreenTopLeft := ClientToScreen(
+    Point(AnchorClientRect.Left, AnchorClientRect.Top));
+  AnchorScreenBottomRight := ClientToScreen(
+    Point(AnchorClientRect.Right, AnchorClientRect.Bottom));
+  AAnchorScreenRect := Rect(AnchorScreenTopLeft.X, AnchorScreenTopLeft.Y,
+    AnchorScreenBottomRight.X, AnchorScreenBottomRight.Y);
+  Result := True;
+end;
+
+{$IFDEF FPCUNIT}
+procedure TChapterView.ConfigureTranslationMemoryInteractionFixture(
+  const AEntries: TTranslationMemoryEntryArray;
+  const ACounterLinks: TTranslationMemoryCounterLinkMatrix);
+var
+  AlternativeIndex: Integer;
+  EntryIndex: Integer;
+begin
+  InvalidateTranslationMemoryPreview;
+  ResetTranslationMemoryOccurrences;
+  FTranslationMemoryEntries := Copy(AEntries, 0, Length(AEntries));
+  FTranslationMemoryCounterLinks := Copy(
+    ACounterLinks, 0, Length(ACounterLinks));
+  FTranslationMemoryInputSnapshot := CurrentTranslationMemoryInputSnapshot;
+  FTranslationMemoryRefreshPending := False;
+  for EntryIndex := 0 to High(FTranslationMemoryCounterLinks) do
+    for AlternativeIndex := 0 to
+      High(FTranslationMemoryCounterLinks[EntryIndex]) do
+      if Assigned(
+        FTranslationMemoryCounterLinks[EntryIndex][AlternativeIndex]) then
+        FTranslationMemoryCounterLinks[EntryIndex][AlternativeIndex].OnClick :=
+          @HandleTranslationMemoryAlternativeClick;
+end;
+
+function TChapterView.ResolveTranslationMemoryHoverTargetFixture(
+  ALinkBlock: TKMemoHyperlink;
+  out ATarget: TTranslationMemoryHoverTarget): Boolean;
+begin
+  Result := TryResolveTranslationMemoryHoverTarget(ALinkBlock, ATarget);
+end;
+
+procedure TChapterView.BeginTranslationMemoryHoverFixture(
+  const ATarget: TTranslationMemoryHoverTarget);
+begin
+  FTranslationMemoryPreviewController.Hover(ATarget);
+end;
+
+function TChapterView.TranslationMemoryPreviewActiveFixture: Boolean;
+begin
+  Result := Assigned(FTranslationMemoryPreviewController) and
+    FTranslationMemoryPreviewController.Active;
+end;
+
+procedure TChapterView.ReadTranslationMemoryOccurrenceStateFixture(
+  out AMatches: TTranslationPairMatchArray; out ALimit: Integer;
+  out AShowingOccurrences: Boolean);
+begin
+  AMatches := Copy(FTranslationMemoryOccurrenceMatches, 0,
+    Length(FTranslationMemoryOccurrenceMatches));
+  ALimit := FTranslationMemoryOccurrenceLimit;
+  AShowingOccurrences := FTranslationMemoryShowingOccurrences;
+end;
+{$ENDIF}
+
+function TChapterView.LoadTranslationMemoryPreviewPayload(
+  const ATarget: TTranslationMemoryHoverTarget;
+  out APayload: TTranslationMemoryPreviewPayload): Boolean;
+var
+  Alternative: TTranslationMemoryAlternative;
+  AnchorScreenRect: TRect;
+  ErrorMessage: string;
+  Remaining: Integer;
+begin
+  Result := False;
+  APayload := Default(TTranslationMemoryPreviewPayload);
+  if not ValidateTranslationMemoryPreviewTarget(ATarget, AnchorScreenRect) then
+    Exit;
+
+  Alternative := FTranslationMemoryEntries[ATarget.EntryIndex].Alternatives[
+    ATarget.AlternativeIndex];
+  APayload.SourceTerm :=
+    FTranslationMemoryEntries[ATarget.EntryIndex].DisplayTerm;
+  APayload.Translation := Alternative.Translation;
+  APayload.TitleText := Format(STranslationMemoryOccurrencesTitleFmt,
+    [APayload.SourceTerm, APayload.Translation]);
+  APayload.NoOccurrencesText := STranslationMemoryNoOccurrences;
+  APayload.OccurrenceCountFormat := STranslationMemoryOccurrenceCountFmt;
+  APayload.CurrentReferenceID := FProject.ID;
+  APayload.FontName := TextStyle.Font.Name;
+  APayload.FontSize := FTranslationMemoryPreviewFontSize;
+
+  if not FProject.TryGetReadyTranslationMemoryOccurrences(
+    Alternative.Matches, TRANSLATION_MEMORY_PREVIEW_LIMIT, APayload.Page,
+    ErrorMessage) then
+  begin
+    APayload.ErrorMessage := STranslationMemoryPreviewUnavailable;
+    Exit(True);
+  end;
+
+  APayload.TotalsText := TranslationMemoryOccurrenceTotalsText(
+    APayload.Page.TotalAssociations, APayload.Page.TotalVerses);
+  Remaining := APayload.Page.TotalVerses - Length(APayload.Page.Items);
+  if Remaining > 0 then
+    APayload.FooterText := Format(
+      STranslationMemoryPreviewRemainingFmt, [Remaining]);
+  Result := True;
 end;
 
 procedure TChapterView.ApplyProjectedInlineStyle(ABlock: TKMemoTextBlock;
@@ -929,6 +1146,7 @@ var
   SyntagmIndex: Integer;
   SourceVerse: TVerse;
 begin
+  DismissTranslationMemoryPreview;
   if not Assigned(FProject) or
      not (Sender is TKMemoHyperlink) then
     Exit;
@@ -955,9 +1173,8 @@ var
   AlternativeIndex: Integer;
   CurrentSnapshot: TTranslationMemoryInputSnapshot;
   EntryIndex: Integer;
-  SeparatorIndex: Integer;
-  URL: string;
 begin
+  DismissTranslationMemoryPreview;
   if not (Sender is TKMemoHyperlink) then
     Exit;
   CurrentSnapshot := CurrentTranslationMemoryInputSnapshot;
@@ -970,12 +1187,9 @@ begin
     TopPos := 0;
     Exit;
   end;
-  URL := TKMemoHyperlink(Sender).URL;
-  SeparatorIndex := Pos(':', URL);
-  if SeparatorIndex <= 1 then
+  if not TryParseTranslationMemoryHoverURL(
+    TKMemoHyperlink(Sender).URL, EntryIndex, AlternativeIndex) then
     Exit;
-  EntryIndex := StrToIntDef(Copy(URL, 1, SeparatorIndex - 1), -1);
-  AlternativeIndex := StrToIntDef(Copy(URL, SeparatorIndex + 1, MaxInt), -1);
   if (EntryIndex < 0) or
      (EntryIndex >= Length(FTranslationMemoryEntries)) or
      (AlternativeIndex < 0) or
@@ -1041,6 +1255,7 @@ procedure TChapterView.HandleVerseChange(Sender: TProject);
 var
   verses: TStringList;
 begin
+  InvalidateTranslationMemoryPreview;
   if Assigned(FTranslationMemoryFocus) then
     FTranslationMemoryFocus.Unbind;
   if not assigned(FProject) or (Width < 2) then
@@ -1073,6 +1288,9 @@ end;
 procedure TChapterView.HandleKeyDown(Sender: TObject; var Key: Word;
   Shift: TShiftState);
 begin
+  if Key in [VK_ESCAPE, VK_PRIOR, VK_NEXT, VK_HOME, VK_END, VK_UP, VK_DOWN,
+     VK_LEFT, VK_RIGHT] then
+    DismissTranslationMemoryPreview;
   if (ssCtrl in Shift) and (Key in [VK_SUBTRACT, VK_OEM_MINUS]) and (FFontSize > 1) then
   begin
     FFontSize := FFontSize-1;
@@ -1094,13 +1312,50 @@ end;
 
 procedure TChapterView.HandleMouseMove(Sender: TObject; Shift: TShiftState; X,
   Y: Integer);
+var
+  HitBlock: TKMemoBlock;
+  HitRect: TRect;
+  LinkBlock: TKMemoHyperlink;
+  Target: TTranslationMemoryHoverTarget;
 begin
-  // Mouse move handling can be implemented later if needed
+  if not Assigned(FTranslationMemoryPreviewController) or
+     not IsTranslationMemoryVisible or FTranslationMemoryShowingOccurrences then
+    Exit;
+
+  HitBlock := BlockAt(Point(X, Y));
+  if not (HitBlock is TKMemoHyperlink) then
+  begin
+    FTranslationMemoryPreviewController.Leave;
+    Exit;
+  end;
+  LinkBlock := TKMemoHyperlink(HitBlock);
+  if not TryResolveTranslationMemoryHoverTarget(LinkBlock, Target) then
+  begin
+    FTranslationMemoryPreviewController.Leave;
+    Exit;
+  end;
+
+  HitRect := BlockRect(LinkBlock);
+  if (X < HitRect.Left) or (X >= HitRect.Right) or
+     (Y < HitRect.Top) or (Y >= HitRect.Bottom) then
+  begin
+    FTranslationMemoryPreviewController.Leave;
+    Exit;
+  end;
+
+  FTranslationMemoryPreviewController.Hover(Target);
+end;
+
+procedure TChapterView.HandleMouseLeave(Sender: TObject);
+begin
+  if Assigned(FTranslationMemoryPreviewController) then
+    FTranslationMemoryPreviewController.Leave;
 end;
 
 procedure TChapterView.HandleMouseWheel(Sender: TObject; Shift: TShiftState;
   WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
 begin
+  DismissTranslationMemoryPreview;
   if ssCtrl in Shift then
   begin
     Blocks.LockUpdate;
@@ -1109,6 +1364,12 @@ begin
     Blocks.UnlockUpdate;
     Handled := true;
   end;
+end;
+
+procedure TChapterView.HandleTranslationMemoryPreviewFontSizeChanged(
+  Sender: TObject; AFontSize: Integer);
+begin
+  TranslationMemoryPreviewFontSize := AFontSize;
 end;
 
 procedure TChapterView.HandleDoubleClick(Sender: TObject);
@@ -1130,6 +1391,7 @@ end;
 procedure TChapterView.HandleContextPopup(Sender: TObject; MousePos: TPoint;
   var Handled: Boolean);
 begin
+  DismissTranslationMemoryPreview;
   if not assigned(FProject) then
   begin
     Handled := true;
@@ -1224,6 +1486,7 @@ end;
 procedure TChapterView.SetProject(AValue: TProject);
 begin
   if FProject = AValue then Exit;
+  InvalidateTranslationMemoryPreview;
   ClearTranslationMemorySourceHighlight;
   if Assigned(FTranslationMemoryFocus) then
     FTranslationMemoryFocus.Unbind;
@@ -1249,6 +1512,7 @@ end;
 procedure TChapterView.SetViewMode(AValue: TChapterViewMode);
 begin
   FViewSelectionActive := True;
+  InvalidateTranslationMemoryPreview;
   if FViewMode = AValue then
   begin
     if (AValue = cvmTranslationMemory) and
@@ -1275,6 +1539,7 @@ procedure TChapterView.SetTranslationMemoryOrder(
 begin
   if FTranslationMemoryOrder = AValue then
     Exit;
+  InvalidateTranslationMemoryPreview;
   if Assigned(FTranslationMemoryFocus) then
     FTranslationMemoryFocus.Unbind;
   FTranslationMemoryOrder := AValue;
@@ -1388,6 +1653,19 @@ begin
   Blocks.UnlockUpdate;
 end;
 
+procedure TChapterView.SetTranslationMemoryPreviewFontSize(AValue: Integer);
+var
+  NormalizedSize: Integer;
+begin
+  NormalizedSize := NormalizeTranslationMemoryPreviewFontSize(AValue);
+  if FTranslationMemoryPreviewFontSize = NormalizedSize then
+    Exit;
+
+  FTranslationMemoryPreviewFontSize := NormalizedSize;
+  if Assigned(FOnTranslationMemoryPreviewFontSizeChanged) then
+    FOnTranslationMemoryPreviewFontSizeChanged(Self);
+end;
+
 procedure TChapterView.SetupDefaultStyle;
 begin
   inherited SetupDefaultStyle;
@@ -1428,6 +1706,7 @@ procedure TChapterView.SetTextType(AValue: TTipoTextoBiblico);
 begin
   if not Assigned(FProject) then
     Exit;
+  InvalidateTranslationMemoryPreview;
   if Assigned(FTranslationMemoryFocus) then
     FTranslationMemoryFocus.Unbind;
   FViewSelectionActive := True;
@@ -1598,6 +1877,8 @@ end;
 
 procedure TChapterView.SetEnabled(Value: Boolean);
 begin
+  if not Value then
+    InvalidateTranslationMemoryPreview;
   if not Value and Enabled and Assigned(FTranslationMemoryFocus) then
     FTranslationMemoryFocus.Unbind;
   if assigned(FProject) and not Value and Enabled then
@@ -1623,10 +1904,13 @@ begin
   OnKeyDown    := @HandleKeyDown;
   OnMouseWheel := @HandleMouseWheel;
   OnDblClick   := @HandleDoubleClick;
-  //OnMouseMove  := @HandleMouseMove;
+  OnMouseMove  := @HandleMouseMove;
+  OnMouseLeave := @HandleMouseLeave;
   OnContextPopup := @HandleContextPopup;
   FFontName       := 'default';
   FFontSize       := 10;
+  FTranslationMemoryPreviewFontSize :=
+    NormalizeTranslationMemoryPreviewFontSize(FFontSize);
   FProject        := nil;
   FRxVerseHeading := RegexCreate('^((?:<TS[0-3]?>.*?<Ts>)*)(.*?)$', [rcoUTF8]);
   FNotes          := TNoteList.Create;
@@ -1645,6 +1929,16 @@ begin
   SetLength(FTranslationMemoryOccurrenceMatches, 0);
   FTranslationMemoryOccurrenceLimit := 100;
   FTranslationMemoryRefreshPending := True;
+  FTranslationMemoryPreviewGeneration := 0;
+  SetLength(FTranslationMemoryCounterLinks, 0);
+  FTranslationMemoryPreviewController :=
+    TTranslationMemoryHoverController.Create(Self);
+  FTranslationMemoryPreviewController.OnValidateTarget :=
+    @ValidateTranslationMemoryPreviewTarget;
+  FTranslationMemoryPreviewController.OnLoadPayload :=
+    @LoadTranslationMemoryPreviewPayload;
+  FTranslationMemoryPreviewController.OnFontSizeChanged :=
+    @HandleTranslationMemoryPreviewFontSizeChanged;
   FViewSelectionActive := False;
   InitPopupMenu;
 
@@ -1653,6 +1947,8 @@ end;
 
 destructor TChapterView.Destroy;
 begin
+  InvalidateTranslationMemoryPreview;
+  FreeAndNil(FTranslationMemoryPreviewController);
   if Assigned(FTranslationMemoryFocus) then
     FTranslationMemoryFocus.Unbind;
   FreeAndNil(FTranslationMemoryFocus);
@@ -1686,6 +1982,7 @@ end;
 
 procedure TChapterView.RefreshTranslationMemory;
 begin
+  InvalidateTranslationMemoryPreview;
   FTranslationMemoryRefreshPending := True;
   if not IsTranslationMemoryVisible then
   begin
@@ -1706,6 +2003,7 @@ var
   SyntagmIndex: Integer;
   SourceVerse: TVerse;
 begin
+  DismissTranslationMemoryPreview;
   if not Enabled or not Assigned(FProject) or
      (FViewMode <> cvmTranslationMemory) then
   begin
@@ -1786,6 +2084,7 @@ var
   Remaining: Integer;
   TextBlock: TKMemoTextBlock;
 begin
+  InvalidateTranslationMemoryPreview;
   if Assigned(FTranslationMemoryFocus) then
     FTranslationMemoryFocus.Unbind;
   if not IsTranslationMemoryVisible then
@@ -1939,6 +2238,7 @@ var
   HasCurrentAlternative: Boolean;
   SyntagmIndex: Integer;
 begin
+  InvalidateTranslationMemoryPreview;
   if Assigned(FTranslationMemoryFocus) then
     FTranslationMemoryFocus.Unbind;
   if not IsTranslationMemoryVisible then
@@ -1956,8 +2256,12 @@ begin
   CaptureTranslationMemoryInputSnapshot;
   SetLength(FTranslationMemoryFocusEntries,
     Length(FTranslationMemoryEntries));
+  SetLength(FTranslationMemoryCounterLinks,
+    Length(FTranslationMemoryEntries));
   for EntryIndex := 0 to High(FTranslationMemoryFocusEntries) do
   begin
+    SetLength(FTranslationMemoryCounterLinks[EntryIndex],
+      Length(FTranslationMemoryEntries[EntryIndex].Alternatives));
     FTranslationMemoryFocusEntries[EntryIndex].AnchorBlockIndex := -1;
     FTranslationMemoryFocusEntries[EntryIndex].FirstParagraphBlockIndex := -1;
     FTranslationMemoryFocusEntries[EntryIndex].LastParagraphBlockIndex := -1;
@@ -2083,6 +2387,8 @@ begin
               LinkBlock.OnClick := @HandleTranslationMemoryAlternativeClick;
               LinkBlock.TextStyle.Font.Color := NoteLinkColor;
               LinkBlock.TextStyle.Font.Style := [fsUnderline];
+              FTranslationMemoryCounterLinks[EntryIndex][AlternativeIndex] :=
+                LinkBlock;
             end
             else
               Blocks.AddTextBlock(IntToStr(Occurrences));
@@ -2119,6 +2425,7 @@ var
   verse: string;
   //starttime: DWord;
 begin
+  InvalidateTranslationMemoryPreview;
   //starttime := getTickCount;
   SetLength(FVerseRanges, verses.Count + 1);
   FRawMemo.Hide;

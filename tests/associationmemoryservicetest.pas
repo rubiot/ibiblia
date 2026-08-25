@@ -5,12 +5,26 @@ unit associationmemoryservicetest;
 interface
 
 uses
-  Classes, SysUtils, fpcunit, testregistry, sqlite3conn, sqldb,
+  Classes, SysUtils, ComCtrls, fpcunit, testregistry, sqlite3conn, sqldb,
   SuggestionManager, project_persistence, project_config,
   Syntagm, Verse, verse_render_buffer, association_memory_service,
-  current_verse_workspace, text_edit_provenance;
+  current_verse_workspace, text_edit_provenance, BibleScope, Project,
+  project_database_bootstrap;
 
 type
+  TProjectReadyOccurrenceRebuildProbe = class(TProgressBar)
+  private
+    FAttempted: Boolean;
+    FCallCount: Integer;
+    FErrorMessage: string;
+    FMatches: TTranslationPairMatchArray;
+    FPage: TTranslationOccurrencePage;
+    FProject: TProject;
+    FReady: Boolean;
+  public
+    procedure Update; override;
+  end;
+
   TAssociationMemoryServiceTest = class(TTestCase)
   private
     FFileName: string;
@@ -24,6 +38,8 @@ type
     procedure CreateDatabase;
     procedure OpenServices;
     procedure CloseServices;
+    procedure CreateProjectOccurrenceFixture(const AFileName: string;
+      AVerseCount: Integer);
     function ExpectedPair: TStringList;
   protected
     procedure SetUp; override;
@@ -40,9 +56,58 @@ type
     procedure ExtractedPairDataPreservesExactDestinationIndexes;
     procedure RebuildSkipsInvalidAssociations;
     procedure RenderBufferReuseReleasesParsedSyntagmLists;
+    procedure ProjectReadyOccurrencesHonorLimitAndGlobalTotals;
+    procedure ProjectReadyOccurrencesNeverRebuildUnavailableMemory;
   end;
 
 implementation
+
+{ TProjectReadyOccurrenceRebuildProbe }
+
+procedure TProjectReadyOccurrenceRebuildProbe.Update;
+begin
+  if not FAttempted and Assigned(FProject) and
+     (Style = pbstMarquee) then
+  begin
+    FAttempted := True;
+    Inc(FCallCount);
+    FReady := FProject.TryGetReadyTranslationMemoryOccurrences(
+      FMatches, 10, FPage, FErrorMessage);
+  end;
+  inherited Update;
+end;
+
+procedure TAssociationMemoryServiceTest.CreateProjectOccurrenceFixture(
+  const AFileName: string; AVerseCount: Integer);
+var
+  Connection: TSQLite3Connection;
+  Transaction: TSQLTransaction;
+begin
+  TProjectDatabaseBootstrap.CreateProjectDatabaseFixture(AFileName, etNT,
+    AVerseCount);
+  Connection := TSQLite3Connection.Create(nil);
+  Transaction := TSQLTransaction.Create(nil);
+  try
+    Connection.Transaction := Transaction;
+    Connection.DatabaseName := AFileName;
+    Connection.Open;
+    Transaction.StartTransaction;
+    try
+      Connection.ExecuteDirect(
+        'update pares set pare_texto_origem = ''source<WG1>'', ' +
+        'pare_texto_destino = ''word'', ' +
+        'pare_pares = ''<par a="0" b="0">''');
+      Transaction.Commit;
+    except
+      if Transaction.Active then
+        Transaction.Rollback;
+      raise;
+    end;
+  finally
+    Transaction.Free;
+    Connection.Free;
+  end;
+end;
 
 procedure TAssociationMemoryServiceTest.CreateDatabase;
 var
@@ -803,6 +868,155 @@ begin
       FManager.ValidatePairs(Expected, ErrorMessage));
   finally
     Expected.Free;
+  end;
+end;
+
+procedure TAssociationMemoryServiceTest.
+  ProjectReadyOccurrencesHonorLimitAndGlobalTotals;
+const
+  PREVIEW_LIMIT = 10;
+  VERSE_COUNT = 12;
+var
+  ErrorMessage: string;
+  ItemIndex: Integer;
+  Matches: TTranslationPairMatchArray;
+  Page: TTranslationOccurrencePage;
+  ProjectFile: string;
+  ProjectInstance: TProject;
+begin
+  ProjectFile := FFileName + '.ready-limit.bib';
+  ProjectInstance := nil;
+  try
+    CreateProjectOccurrenceFixture(ProjectFile, VERSE_COUNT);
+    ProjectInstance := TProject.Create;
+    ProjectInstance.Escopo := etNT;
+    ProjectInstance.OpenProject(ProjectFile);
+
+    Matches := nil;
+    SetLength(Matches, 1);
+    Matches[0].SourcePhrase := '<wg1>';
+    Matches[0].TargetPhrase := 'word';
+    Matches[0].Occurrences := VERSE_COUNT;
+
+    AssertTrue(ProjectInstance.TryGetReadyTranslationMemoryOccurrences(
+      Matches, PREVIEW_LIMIT, Page, ErrorMessage));
+    AssertEquals('', ErrorMessage);
+    AssertEquals('the page limit must not truncate the global association ' +
+      'total', VERSE_COUNT, Page.TotalAssociations);
+    AssertEquals('the page limit must not truncate the global verse total',
+      VERSE_COUNT, Page.TotalVerses);
+    AssertTrue(Page.HasMore);
+    AssertEquals(PREVIEW_LIMIT, Length(Page.Items));
+    for ItemIndex := 0 to High(Page.Items) do
+    begin
+      AssertEquals(1, Page.Items[ItemIndex].Occurrences);
+      AssertEquals('word', Page.Items[ItemIndex].DestinationText);
+      AssertFalse(Page.Items[ItemIndex].DisplayReference.IsEmpty);
+    end;
+  finally
+    ProjectInstance.Free;
+    if FileExists(ProjectFile) then
+      DeleteFile(ProjectFile);
+  end;
+end;
+
+procedure TAssociationMemoryServiceTest.
+  ProjectReadyOccurrencesNeverRebuildUnavailableMemory;
+const
+  PREVIEW_LIMIT = 10;
+  VERSE_COUNT = 12;
+var
+  BuiltRevisionBefore: string;
+  ErrorMessage: string;
+  Matches: TTranslationPairMatchArray;
+  Page: TTranslationOccurrencePage;
+  Probe: TProjectReadyOccurrenceRebuildProbe;
+  ProjectFile: string;
+  ProjectInstance: TProject;
+  ReadyBuiltRevision: string;
+  ReadySourceRevision: string;
+  SourceRevisionBefore: string;
+begin
+  ProjectFile := FFileName + '.ready-state.bib';
+  Probe := nil;
+  ProjectInstance := nil;
+  try
+    CreateProjectOccurrenceFixture(ProjectFile, VERSE_COUNT);
+    ProjectInstance := TProject.Create;
+    ProjectInstance.Escopo := etNT;
+    ProjectInstance.OpenProject(ProjectFile);
+    ReadySourceRevision := ProjectInstance.GetInfo(
+      ASSOCIATION_MEMORY_SOURCE_REVISION_KEY);
+    ReadyBuiltRevision := ProjectInstance.GetInfo(
+      ASSOCIATION_MEMORY_BUILT_REVISION_KEY);
+    AssertEquals(ReadySourceRevision, ReadyBuiltRevision);
+
+    Matches := nil;
+    SetLength(Matches, 1);
+    Matches[0].SourcePhrase := '<wg1>';
+    Matches[0].TargetPhrase := 'word';
+    Matches[0].Occurrences := VERSE_COUNT;
+
+    ProjectInstance.ApplyVerseText('replacement source', tbOrigem, False);
+    SourceRevisionBefore := ProjectInstance.GetInfo(
+      ASSOCIATION_MEMORY_SOURCE_REVISION_KEY);
+    BuiltRevisionBefore := ProjectInstance.GetInfo(
+      ASSOCIATION_MEMORY_BUILT_REVISION_KEY);
+    AssertFalse('the edit must advance the source revision',
+      SourceRevisionBefore = ReadySourceRevision);
+    AssertEquals('the edit must not publish a new built revision',
+      ReadyBuiltRevision, BuiltRevisionBefore);
+    AssertFalse('the edit must leave a revision mismatch requiring rebuild',
+      SourceRevisionBefore = BuiltRevisionBefore);
+
+    Page.TotalAssociations := 999;
+    Page.TotalVerses := 999;
+    Page.HasMore := True;
+    SetLength(Page.Items, 1);
+    AssertFalse('ready-only lookup must reject a cache needing rebuild',
+      ProjectInstance.TryGetReadyTranslationMemoryOccurrences(
+        Matches, PREVIEW_LIMIT, Page, ErrorMessage));
+    AssertFalse(ErrorMessage.IsEmpty);
+    AssertEquals(0, Page.TotalAssociations);
+    AssertEquals(0, Page.TotalVerses);
+    AssertFalse(Page.HasMore);
+    AssertEquals(0, Length(Page.Items));
+    AssertEquals('ready-only lookup must not advance the source revision',
+      SourceRevisionBefore, ProjectInstance.GetInfo(
+        ASSOCIATION_MEMORY_SOURCE_REVISION_KEY));
+    AssertEquals('ready-only lookup must not publish a built revision',
+      BuiltRevisionBefore, ProjectInstance.GetInfo(
+        ASSOCIATION_MEMORY_BUILT_REVISION_KEY));
+
+    AssertTrue('the regular API is the control that performs the rebuild',
+      ProjectInstance.TryGetTranslationMemoryOccurrences(
+        Matches, PREVIEW_LIMIT, Page, ErrorMessage));
+    AssertEquals(SourceRevisionBefore, ProjectInstance.GetInfo(
+      ASSOCIATION_MEMORY_BUILT_REVISION_KEY));
+    AssertEquals(VERSE_COUNT - 1, Page.TotalAssociations);
+
+    Probe := TProjectReadyOccurrenceRebuildProbe.Create(nil);
+    Probe.FProject := ProjectInstance;
+    Probe.FMatches := Matches;
+    ProjectInstance.RebuildSuggestionDatabase(Probe);
+    AssertTrue('the probe must run after the rebuild becomes active',
+      Probe.FAttempted);
+    AssertEquals(1, Probe.FCallCount);
+    AssertFalse('ready-only lookup must reject an active rebuild',
+      Probe.FReady);
+    AssertFalse(Probe.FErrorMessage.IsEmpty);
+    AssertEquals(0, Probe.FPage.TotalAssociations);
+    AssertEquals(0, Probe.FPage.TotalVerses);
+    AssertEquals(0, Length(Probe.FPage.Items));
+
+    AssertTrue('the completed rebuild restores ready-only access',
+      ProjectInstance.TryGetReadyTranslationMemoryOccurrences(
+        Matches, PREVIEW_LIMIT, Page, ErrorMessage));
+  finally
+    Probe.Free;
+    ProjectInstance.Free;
+    if FileExists(ProjectFile) then
+      DeleteFile(ProjectFile);
   end;
 end;
 

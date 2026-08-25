@@ -236,6 +236,10 @@ type
     procedure MigrateStoredAssociationsToTokenizerVersion(OldVersion,
       NewVersion: Integer; ProgressBar: TProgressBar = nil);
     function EnsureAssociationMemoryFresh: Boolean;
+    function TryGetTranslationMemoryOccurrencesCore(
+      const Matches: TTranslationPairMatchArray; Limit: Integer;
+      out Occurrences: TTranslationOccurrencePage;
+      out ErrorMessage: string): Boolean;
     procedure RebuildAssociationMemory(ProgressBar: TProgressBar);
     procedure AssociationMemoryRebuildProgress(
       Phase: TAssociationMemoryRebuildPhase; Current, Total: Integer);
@@ -394,6 +398,10 @@ type
       out Entries: TTranslationMemoryEntryArray;
       out ErrorMessage: string): Boolean;
     function TryGetTranslationMemoryOccurrences(
+      const Matches: TTranslationPairMatchArray; Limit: Integer;
+      out Occurrences: TTranslationOccurrencePage;
+      out ErrorMessage: string): Boolean;
+    function TryGetReadyTranslationMemoryOccurrences(
       const Matches: TTranslationPairMatchArray; Limit: Integer;
       out Occurrences: TTranslationOccurrencePage;
       out ErrorMessage: string): Boolean;
@@ -5794,6 +5802,71 @@ function TProject.TryGetTranslationMemoryOccurrences(
   const Matches: TTranslationPairMatchArray; Limit: Integer;
   out Occurrences: TTranslationOccurrencePage;
   out ErrorMessage: string): Boolean;
+begin
+  Result := False;
+  ErrorMessage := '';
+  Occurrences.TotalAssociations := 0;
+  Occurrences.TotalVerses := 0;
+  Occurrences.HasMore := False;
+  SetLength(Occurrences.Items, 0);
+  if not Assigned(FSuggestionManager) or not Assigned(FAssociationMemory) then
+  begin
+    ErrorMessage := SAssociationMemoryUnavailable;
+    Exit;
+  end;
+
+  try
+    EnsureAssociationMemoryFresh;
+    if FAssociationMemoryRebuildRunning or FAssociationMemory.RebuildActive or
+       FAssociationMemory.NeedsRebuild or
+       not FAssociationMemory.CacheValidated then
+    begin
+      ErrorMessage := SAssociationMemoryUnavailable;
+      Exit;
+    end;
+
+    Result := TryGetTranslationMemoryOccurrencesCore(Matches, Limit,
+      Occurrences, ErrorMessage);
+  except
+    on E: Exception do
+    begin
+      Occurrences.TotalAssociations := 0;
+      Occurrences.TotalVerses := 0;
+      Occurrences.HasMore := False;
+      SetLength(Occurrences.Items, 0);
+      ErrorMessage := E.Message;
+    end;
+  end;
+end;
+
+function TProject.TryGetReadyTranslationMemoryOccurrences(
+  const Matches: TTranslationPairMatchArray; Limit: Integer;
+  out Occurrences: TTranslationOccurrencePage;
+  out ErrorMessage: string): Boolean;
+begin
+  Result := False;
+  ErrorMessage := '';
+  Occurrences.TotalAssociations := 0;
+  Occurrences.TotalVerses := 0;
+  Occurrences.HasMore := False;
+  SetLength(Occurrences.Items, 0);
+  if not Assigned(FSuggestionManager) or not Assigned(FAssociationMemory) or
+     FAssociationMemoryRebuildRunning or FAssociationMemory.RebuildActive or
+     FAssociationMemory.NeedsRebuild or
+     not FAssociationMemory.CacheValidated then
+  begin
+    ErrorMessage := SAssociationMemoryUnavailable;
+    Exit;
+  end;
+
+  Result := TryGetTranslationMemoryOccurrencesCore(Matches, Limit,
+    Occurrences, ErrorMessage);
+end;
+
+function TProject.TryGetTranslationMemoryOccurrencesCore(
+  const Matches: TTranslationPairMatchArray; Limit: Integer;
+  out Occurrences: TTranslationOccurrencePage;
+  out ErrorMessage: string): Boolean;
 var
   ProjectionBuffer: TVerseRenderBuffer;
   ItemIndex: Integer;
@@ -5920,22 +5993,8 @@ begin
   Occurrences.TotalVerses := 0;
   Occurrences.HasMore := False;
   SetLength(Occurrences.Items, 0);
-  if not Assigned(FSuggestionManager) or not Assigned(FAssociationMemory) then
-  begin
-    ErrorMessage := SAssociationMemoryUnavailable;
-    Exit;
-  end;
 
   try
-    EnsureAssociationMemoryFresh;
-    if FAssociationMemoryRebuildRunning or FAssociationMemory.RebuildActive or
-       FAssociationMemory.NeedsRebuild or
-       not FAssociationMemory.CacheValidated then
-    begin
-      ErrorMessage := SAssociationMemoryUnavailable;
-      Exit;
-    end;
-
     Occurrences := FSuggestionManager.GetTranslationOccurrences(Matches,
       Limit);
     ProjectionBuffer := TVerseRenderBuffer.Create;

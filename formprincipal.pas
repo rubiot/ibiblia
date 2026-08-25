@@ -309,6 +309,7 @@ type
       Shift: TShiftState);
     procedure TreeViewShowHint(Sender: TObject; HintInfo: PHintInfo);
     procedure TranslationMemoryOrderClick(Sender: TObject);
+    procedure HandleTranslationMemoryPreviewFontSizeChanged(Sender: TObject);
     procedure Translate;
     procedure NormalizeActionHint(AAction: TCustomAction);
     procedure UpdateMainCaption;
@@ -461,7 +462,7 @@ implementation
 
 uses FormNewProject, FormProjectProperties, FormProjectExport, FormMergeProjects,
   FormExportPatch, FormApplyPatch, FormLlmOptions, FormTheWordHighlighterColors,
-  llmclient, theword_syntax_highlighter;
+  llmclient, theword_syntax_highlighter, translation_memory_preview;
 
 {$R *.lfm}
 
@@ -2631,6 +2632,10 @@ begin
     Align        := alClient;
     FontName     := opts.ReadString('leiaute', 'principal.chapterview.font.name', DefFontData.Name);
     FontSize     := opts.ReadInteger('leiaute', 'principal.chapterview.font.size', 0);
+    TranslationMemoryPreviewFontSize :=
+      ReadTranslationMemoryPreviewFontSize(opts, FontSize);
+    OnTranslationMemoryPreviewFontSizeChanged :=
+      @HandleTranslationMemoryPreviewFontSizeChanged;
     TranslationMemoryOrder := FTranslationMemoryOrder;
   end;
 
@@ -2774,6 +2779,8 @@ begin
   opts.WriteInteger('leiaute', 'principal.contextpanel.width', ContextPanel.Width);
   opts.WriteInteger('leiaute', 'principal.chapterview.font.size', FChapterView.FontSize);
   opts.WriteString('leiaute', 'principal.chapterview.font.name', FChapterView.FontName);
+  WriteTranslationMemoryPreviewFontSize(opts,
+    FChapterView.TranslationMemoryPreviewFontSize);
   opts.WriteInteger('leiaute', 'principal.commentsmemo.font.size', FActualCommentsMemo.FontSize);
   opts.WriteString('leiaute', 'principal.commentsmemo.font.name', FActualCommentsMemo.FontName);
   opts.WriteBool('opcoes', 'sugestoes.automaticas', MenuItem22.Checked);
@@ -2912,6 +2919,14 @@ begin
   if Assigned(opts) then
     opts.WriteInteger('opcoes', 'translation.memory.order',
       Ord(FTranslationMemoryOrder));
+end;
+
+procedure TMainForm.HandleTranslationMemoryPreviewFontSizeChanged(
+  Sender: TObject);
+begin
+  if Assigned(opts) and Assigned(FChapterView) then
+    WriteTranslationMemoryPreviewFontSize(opts,
+      FChapterView.TranslationMemoryPreviewFontSize);
 end;
 
 procedure TMainForm.UpdateTranslationMemoryOrderMenu;
