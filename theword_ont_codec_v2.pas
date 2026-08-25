@@ -299,6 +299,7 @@ type
     FRequiredCodePage: Integer;
     FEditBlockReason: UnicodeString;
     procedure EnsureEditable;
+    procedure RemoveFontMark(AMark: TTheWordFontMark);
     function GetMark(AIndex: Integer): TTheWordSemanticMark;
     function GetMarkCount: Integer;
     function GetFontMark(AIndex: Integer): TTheWordFontMark;
@@ -2324,6 +2325,21 @@ begin
   FModified := True;
 end;
 
+procedure TTheWordVerseDocument.RemoveFontMark(
+  AMark: TTheWordFontMark);
+var
+  Index: Integer;
+begin
+  if (AMark = nil) or (FFontMarks.IndexOf(AMark) < 0) then
+    Exit;
+  EnsureEditable;
+  for Index := FEvents.Count - 1 downto 0 do
+    if TTheWordInlineEvent(FEvents[Index]).FontMark = AMark then
+      FEvents.Delete(Index);
+  FFontMarks.Remove(AMark);
+  FModified := True;
+end;
+
 function TTheWordVerseDocument.UpdateFontMarkLexemes(
   AMark: TTheWordFontMark; const AOpenLexeme,
   ACloseLexeme: UnicodeString): Boolean;
@@ -2951,6 +2967,29 @@ begin
       [FRequiredCodePage]);
 
   Delta := ReplacementLength - ALengthUTF16;
+  if (ALengthUTF16 > 0) and (AReplacement = '') then
+  begin
+    { Formatting wrappers that used to cover text must not survive as
+      invisible empty tags after their complete visible range is deleted.
+      Pre-existing empty imported marks are deliberately preserved. }
+    for Index := FMarks.Count - 1 downto 0 do
+    begin
+      Mark := TTheWordSemanticMark(FMarks[Index]);
+      if (Mark.FEndOffset > Mark.FStartOffset) and
+         (Mark.FStartOffset >= AStartUTF16) and
+         (Mark.FEndOffset <= EndOffset) then
+        RemoveSemanticMark(Mark);
+    end;
+    for Index := FFontMarks.Count - 1 downto 0 do
+    begin
+      FontMark := TTheWordFontMark(FFontMarks[Index]);
+      if (FontMark.FEndOffset > FontMark.FStartOffset) and
+         (FontMark.FStartOffset >= AStartUTF16) and
+         (FontMark.FEndOffset <= EndOffset) then
+        RemoveFontMark(FontMark);
+    end;
+  end;
+
   for Index := 0 to FMarks.Count - 1 do
   begin
     Mark := TTheWordSemanticMark(FMarks[Index]);

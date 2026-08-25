@@ -14,6 +14,9 @@ type
     procedure AppliesSevenSemanticsWithoutExposingTagsAsText;
     procedure UndoRedoRestoresOntSnapshots;
     procedure TextReplacementUsesUTF16Offsets;
+    procedure FullVisibleDeletionRemovesPresentationWrappersAndIsUndoable;
+    procedure PartialDeletionPrunesOnlyFullyCoveredNonemptyWrappers;
+    procedure FullVisibleDeletionRejectsProtectedOntObjectsAtomically;
     procedure RejectedReplacementDoesNotPolluteUndo;
     procedure OpaqueAndLexicalObjectsProtectTextEdits;
     procedure VisualAdapterCombinesOverlappingStyles;
@@ -149,6 +152,121 @@ begin
     AssertEquals(4, Length(Session.VisibleText));
     AssertTrue(Session.Undo);
     AssertEquals(UnicodeString('abcd'), Session.VisibleText);
+  finally
+    Session.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
+  FullVisibleDeletionRemovesPresentationWrappersAndIsUndoable;
+const
+  ORIGINAL: UnicodeString =
+    '<FI>Teste <i>com</i> <font color=red size=+1>' +
+    '<b>formatação</b></font>.<Fi>';
+var
+  Session: TTheWordWysiwygSessionV2;
+begin
+  Session := TTheWordWysiwygSessionV2.Create(ORIGINAL);
+  try
+    AssertTrue('deleting all visible text must be accepted',
+      Session.ReplaceText(0, Length(Session.VisibleText), ''));
+    AssertEquals('the visual surface is empty', UnicodeString(''),
+      Session.VisibleText);
+    AssertEquals('fully-covered presentation tags must not survive',
+      UnicodeString(''), Session.RawText);
+
+    AssertTrue('full deletion creates one undoable edit', Session.Undo);
+    AssertEquals('undo restores text and original tag spelling', ORIGINAL,
+      Session.RawText);
+    AssertTrue('the deletion can be redone', Session.Redo);
+    AssertEquals('redo removes text and wrappers again', UnicodeString(''),
+      Session.RawText);
+  finally
+    Session.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
+  PartialDeletionPrunesOnlyFullyCoveredNonemptyWrappers;
+const
+  PARTIAL_RAW: UnicodeString = '<FI>abcd<Fi>';
+  EXACT_RAW: UnicodeString = '<FI>ab<Fi>';
+  EMPTY_MARKS_RAW: UnicodeString =
+    '<FU><Fu>a<FI><Fi>bc<font color=red></font>' +
+    'd<font size=+1></font>';
+  EMPTY_MARKS_AFTER_DELETE: UnicodeString =
+    '<FU><Fu>a<FI><Fi><font color=red></font>' +
+    'd<font size=+1></font>';
+var
+  Session: TTheWordWysiwygSessionV2;
+begin
+  Session := TTheWordWysiwygSessionV2.Create(PARTIAL_RAW);
+  try
+    AssertTrue('partial deletion inside FI must be accepted',
+      Session.ReplaceText(1, 2, ''));
+    AssertEquals('the remaining FI range stays formatted',
+      UnicodeString('<FI>ad<Fi>'), Session.RawText);
+  finally
+    Session.Free;
+  end;
+
+  Session := TTheWordWysiwygSessionV2.Create(EXACT_RAW);
+  try
+    AssertTrue('deleting the exact FI payload must be accepted',
+      Session.ReplaceText(0, Length(Session.VisibleText), ''));
+    AssertEquals('a newly emptied FI wrapper is removed', UnicodeString(''),
+      Session.RawText);
+  finally
+    Session.Free;
+  end;
+
+  Session := TTheWordWysiwygSessionV2.Create(EMPTY_MARKS_RAW);
+  try
+    AssertTrue('deletion between original empty marks must be accepted',
+      Session.ReplaceText(1, 2, ''));
+    AssertEquals('original empty marks outside and on both boundaries remain',
+      EMPTY_MARKS_AFTER_DELETE, Session.RawText);
+  finally
+    Session.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
+  FullVisibleDeletionRejectsProtectedOntObjectsAtomically;
+const
+  NOTE_RAW: UnicodeString = '<FI>a<RF>note<Rf>b<Fi>';
+  LEXICAL_RAW: UnicodeString = 'word<WG123><WTN-NSM><wt>';
+  OPAQUE_RAW: UnicodeString = 'a<unknown x="1">b';
+var
+  Session: TTheWordWysiwygSessionV2;
+begin
+  Session := TTheWordWysiwygSessionV2.Create(NOTE_RAW);
+  try
+    AssertFalse('a full deletion cannot cross an RF anchor',
+      Session.ReplaceText(0, Length(Session.VisibleText), ''));
+    AssertEquals('RF rejection is atomic', NOTE_RAW, Session.RawText);
+    AssertFalse('RF rejection creates no undo entry', Session.CanUndo);
+  finally
+    Session.Free;
+  end;
+
+  Session := TTheWordWysiwygSessionV2.Create(LEXICAL_RAW);
+  try
+    AssertFalse('a full deletion cannot remove a protected lexical word',
+      Session.ReplaceText(0, Length(Session.VisibleText), ''));
+    AssertEquals('lexical rejection is atomic', LEXICAL_RAW,
+      Session.RawText);
+    AssertFalse('lexical rejection creates no undo entry', Session.CanUndo);
+  finally
+    Session.Free;
+  end;
+
+  Session := TTheWordWysiwygSessionV2.Create(OPAQUE_RAW);
+  try
+    AssertFalse('a full deletion cannot cross an opaque ONT object',
+      Session.ReplaceText(0, Length(Session.VisibleText), ''));
+    AssertEquals('opaque rejection is atomic', OPAQUE_RAW, Session.RawText);
+    AssertFalse('opaque rejection creates no undo entry', Session.CanUndo);
   finally
     Session.Free;
   end;
