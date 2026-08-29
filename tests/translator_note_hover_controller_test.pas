@@ -26,11 +26,14 @@ type
     TTranslatorNoteHoverController)
   private
     FCursorPoint: TPoint;
+    FPreviewCreateCount: Integer;
   protected
+    function CreatePreviewWindow: TCustomForm; override;
     function CurrentCursorScreenPoint: TPoint; override;
   public
     procedure ProcessNow;
     property CursorPoint: TPoint read FCursorPoint write FCursorPoint;
+    property PreviewCreateCount: Integer read FPreviewCreateCount;
   end;
 
   TTranslatorNoteHoverControllerTests = class(TTestCase)
@@ -58,6 +61,13 @@ function TTranslatorNoteHoverControllerAccess.CurrentCursorScreenPoint:
   TPoint;
 begin
   Result := FCursorPoint;
+end;
+
+function TTranslatorNoteHoverControllerAccess.CreatePreviewWindow:
+  TCustomForm;
+begin
+  Inc(FPreviewCreateCount);
+  Result := inherited CreatePreviewWindow;
 end;
 
 procedure TTranslatorNoteHoverControllerAccess.ProcessNow;
@@ -168,6 +178,7 @@ begin
     Controller.ProcessNow;
 
     AssertTrue(Controller.PreviewVisible);
+    AssertEquals(1, Controller.PreviewCreateCount);
     AssertTrue(Controller.TimerEnabled);
     AssertEquals(TRANSLATOR_NOTE_HOVER_RECHECK_MS,
       Controller.TimerInterval);
@@ -186,6 +197,13 @@ begin
     AssertFalse(Controller.Active);
     AssertFalse(Controller.PreviewVisible);
     AssertFalse(Controller.TimerEnabled);
+
+    Controller.CursorPoint := Point(110, 110);
+    Controller.Hover(11, 12);
+    Controller.ProcessNow;
+    AssertTrue(Controller.PreviewVisible);
+    AssertEquals('ordinary dismissal reuses the translator-note window',
+      1, Controller.PreviewCreateCount);
   finally
     Controller.Free;
     Resolver.Free;

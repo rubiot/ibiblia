@@ -9,8 +9,12 @@ uses
 
 type
   TVersiculoTest = class(TTestCase)
+  private
+    FVerseChangedCount: Integer;
+    procedure VerseChanged;
   published
     procedure TestInit;
+    procedure TestLoadTransactionSuppressesDirtyNotification;
     procedure TestFindByIndex;
     procedure TestFindAndSelectSyntagms_Basic;
     procedure TestFindAndSelectSyntagms_Partial;
@@ -34,6 +38,11 @@ type
 
 implementation
 
+procedure TVersiculoTest.VerseChanged;
+begin
+  Inc(FVerseChangedCount);
+end;
+
 procedure TVersiculoTest.TestInit;
 var
   v: TVerse;
@@ -44,6 +53,34 @@ begin
     AssertEquals('Init', 'This is a test verse', v.Text);
   finally
     v.Free;
+  end;
+end;
+
+procedure TVersiculoTest.TestLoadTransactionSuppressesDirtyNotification;
+var
+  Verse: TVerse;
+begin
+  FVerseChangedCount := 0;
+  Verse := TVerse.Create;
+  try
+    Verse.OnVerseChanged := @VerseChanged;
+    Verse.BeginLoad;
+    Verse.Text := 'Loaded verse';
+    Verse.Reference := 'Genesis 1:1';
+    Verse.ReferenceID := '1,1,1';
+    AssertEquals('load does not publish a transient dirty state', 0,
+      FVerseChangedCount);
+    Verse.EndLoad(False);
+    AssertFalse('loaded verse is clean', Verse.Modified);
+    AssertFalse('loaded XML is clean', Verse.XMLModified);
+    AssertEquals('finishing load does not publish a change', 0,
+      FVerseChangedCount);
+
+    Verse.Text := 'Edited verse';
+    AssertEquals('normal edits still publish changes', 1,
+      FVerseChangedCount);
+  finally
+    Verse.Free;
   end;
 end;
 

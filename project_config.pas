@@ -38,6 +38,7 @@ type
     procedure WriteImmediateBoolean(const key: string; value: Boolean);
     function ReadMarker(const defaultValue: string = ''): string;
     procedure WriteMarker(const value: string);
+    procedure StageMarkerForCommit(const value: string);
     function ReadChapterViewText(defaultValue: Integer): Integer;
     procedure WriteChapterViewText(value: Integer);
     function ReadChapterViewMode(defaultValue: Integer): Integer;
@@ -161,6 +162,11 @@ end;
 procedure TProjectConfig.WriteMarker(const value: string);
 begin
   WriteImmediateString(PROJECT_CONFIG_KEY_MARKER, value);
+end;
+
+procedure TProjectConfig.StageMarkerForCommit(const value: string);
+begin
+  FPersistence.StageInfoSilently(PROJECT_CONFIG_KEY_MARKER, value);
 end;
 
 function TProjectConfig.ReadChapterViewText(defaultValue: Integer): Integer;

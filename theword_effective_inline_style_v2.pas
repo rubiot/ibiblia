@@ -46,6 +46,7 @@ type
       TTheWordProjectedTranslatorNoteV2;
     function GetTranslatorNoteCount: Integer;
   public
+    function Clone: TTheWordEffectiveInlineProjectionV2;
     class function Resolve(const ARaw: UnicodeString):
       TTheWordEffectiveInlineProjectionV2; overload; static;
     { ADocument remains owned by the caller. }
@@ -69,6 +70,26 @@ function FadeTheWordExplicitColorV2(AColor: LongInt): LongInt;
 implementation
 
 type TIntegerArray = array of Integer;
+
+function TTheWordEffectiveInlineProjectionV2.Clone:
+  TTheWordEffectiveInlineProjectionV2;
+var
+  Index: Integer;
+begin
+  Result := TTheWordEffectiveInlineProjectionV2.Create;
+  try
+    Result.FVisibleText := FVisibleText;
+    SetLength(Result.FRuns, Length(FRuns));
+    for Index := 0 to High(FRuns) do
+      Result.FRuns[Index] := FRuns[Index];
+    SetLength(Result.FTranslatorNotes, Length(FTranslatorNotes));
+    for Index := 0 to High(FTranslatorNotes) do
+      Result.FTranslatorNotes[Index] := FTranslatorNotes[Index];
+  except
+    Result.Free;
+    raise;
+  end;
+end;
 
 function DefaultTheWordEffectiveInlineStyleV2: TTheWordEffectiveInlineStyleV2;
 begin

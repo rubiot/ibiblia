@@ -56,6 +56,7 @@ type
     procedure TranslationMemoryModelSortsByHistoricalFrequency;
     procedure TranslationMemoryOrderValueFallsBackSafely;
     procedure OccurrenceIndexTracksReferencesAndPagination;
+    procedure OccurrenceRangeReturnsOnlyRequestedWindow;
     procedure OccurrenceIndexConsolidatesExactMatches;
     procedure OccurrenceIndexRollbackPreservesPreviousData;
     procedure PreparedRebuildValidationDetectsOccurrenceMismatch;
@@ -1290,6 +1291,44 @@ begin
   AssertEquals(1, Page.TotalAssociations);
   AssertEquals(1, Page.TotalVerses);
   AssertEquals('1,1,2', Page.Items[0].ReferenceID);
+end;
+
+procedure TSuggestionManagerTest.OccurrenceRangeReturnsOnlyRequestedWindow;
+var
+  Alternatives: TTranslationAlternativeDataArray;
+  Page: TTranslationOccurrencePage;
+begin
+  FManager.AddPairForReference('1,1,1', '<wg1>', 'word');
+  FManager.AddPairForReference('1,1,2', '<wg1>', 'word');
+  FManager.AddPairForReference('1,1,3', '<wg1>', 'word');
+  Alternatives := FManager.GetTranslationAlternativeData('<wg1>');
+
+  Page := FManager.GetTranslationOccurrenceRange(
+    Alternatives[0].Matches, 0, 1);
+  AssertEquals(3, Page.TotalAssociations);
+  AssertEquals(3, Page.TotalVerses);
+  AssertEquals(1, Length(Page.Items));
+  AssertEquals('1,1,1', Page.Items[0].ReferenceID);
+  AssertTrue(Page.HasMore);
+
+  Page := FManager.GetTranslationOccurrenceRange(
+    Alternatives[0].Matches, 1, 1);
+  AssertEquals(3, Page.TotalAssociations);
+  AssertEquals(3, Page.TotalVerses);
+  AssertEquals(1, Length(Page.Items));
+  AssertEquals('Only the requested window must be returned',
+    '1,1,2', Page.Items[0].ReferenceID);
+  AssertTrue(Page.HasMore);
+
+  Page := FManager.GetTranslationOccurrenceRange(
+    Alternatives[0].Matches, 2, 100);
+  AssertEquals(1, Length(Page.Items));
+  AssertEquals('1,1,3', Page.Items[0].ReferenceID);
+  AssertFalse(Page.HasMore);
+
+  Page := FManager.GetTranslationOccurrenceRange(
+    Alternatives[0].Matches, -10, 1);
+  AssertEquals('1,1,1', Page.Items[0].ReferenceID);
 end;
 
 procedure TSuggestionManagerTest.OccurrenceIndexConsolidatesExactMatches;

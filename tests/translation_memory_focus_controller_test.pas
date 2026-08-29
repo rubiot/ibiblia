@@ -30,6 +30,7 @@ type
     procedure FocusesWholeEntriesWithoutChangingGeometry;
     procedure LastEntryScrollSaturatesAtMaximumReachablePosition;
     procedure MissingClearUnbindAndRebindAreSafe;
+    procedure DiscardDropsBindingWithoutRestoringDiscardedDocument;
   end;
 
 implementation
@@ -286,6 +287,30 @@ begin
   AssertTrue('bind after another rebuild has no stale references',
     FController.FocusSyntagmIndex(20));
   AssertEntryFocused(1, True);
+end;
+
+procedure TTranslationMemoryFocusControllerTests.
+  DiscardDropsBindingWithoutRestoringDiscardedDocument;
+var
+  FocusedParagraph: TKMemoParagraph;
+begin
+  AssertTrue(FController.FocusEntry(1));
+  FocusedParagraph := TKMemoParagraph(
+    FMemo.Blocks[FEntries[1].FirstParagraphBlockIndex]);
+  AssertEquals(Ord(bsSolid),
+    Ord(FocusedParagraph.ParaStyle.Brush.Style));
+
+  FController.Discard;
+  AssertEquals('discard does not repaint a document that is about to die',
+    Ord(bsSolid), Ord(FocusedParagraph.ParaStyle.Brush.Style));
+  AssertFalse('discarded controller rejects stale entry indexes',
+    FController.FocusEntry(1));
+
+  BuildDocument;
+  FController.Bind(FMemo, FEntries);
+  AssertTrue('controller can bind the replacement document',
+    FController.FocusSyntagmIndex(40));
+  AssertEntryFocused(3, True);
 end;
 
 initialization

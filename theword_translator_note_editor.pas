@@ -7,7 +7,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Types, KMemo,
-  KFunctions, theword_ont_codec_v2;
+  theword_ont_codec_v2;
 
 type
   TTranslatorNoteEditorAction = (tneaCancel, tneaSave, tneaDelete);
@@ -38,6 +38,8 @@ type
 
   TTranslatorNotePreviewWindow = class(TForm)
   private
+    FBodyRaw: UnicodeString;
+    FBodyRendered: Boolean;
     FMemo: TKMemo;
   public
     constructor Create(AOwner: TComponent); override;
@@ -106,7 +108,7 @@ uses
   Buttons, ComCtrls, Dialogs, ExtCtrls, LCLType, Math, Spin, StdCtrls,
   ColorBox, LazUTF8, SynEdit, KEditCommon, theword_syntax_highlighter,
   theword_translator_note_body_v2,
-  theword_translator_note_preview;
+  theword_translator_note_preview, performance_debug;
 
 resourcestring
   STranslatorNoteTitle = 'Translator note';
@@ -121,8 +123,6 @@ resourcestring
   SDeleteNoteConfirmTitle = 'Translator note';
   SProtectedNoteBody =
     'This note contains protected or unknown markup and can only be edited in Raw mode.';
-  SInvalidVisualNote =
-    'The visual note could not be serialized safely. Use Raw mode for this content.';
   SLiteralLessThan =
     'A literal "<" cannot be saved safely in Visual mode. Use Raw mode.';
   SLinkPrompt = 'Link (http://, https:// or tw://):';
@@ -224,7 +224,6 @@ type
     FExisting: Boolean;
     FBodyOnly: Boolean;
     FHasVisualSource: Boolean;
-    FVisualSourceCanonical: UnicodeString;
     FVisualSourceRaw: UnicodeString;
     FOnApply: TTranslatorNoteApplyEvent;
     FFontColor: TColorBox;
@@ -451,7 +450,8 @@ begin
   ARun.ParagraphDirection := AState.ParagraphDirection;
 end;
 
-procedure LoadBodyIntoMemo(AMemo: TKMemo; const ABodyRaw: UnicodeString);
+procedure LoadBodyIntoMemo(AMemo: TKMemo; const ABodyRaw: UnicodeString;
+  out ACapability: TTheWordNoteBodyCapability); overload;
 var
   Body: TTheWordTranslatorNoteBodyDocument;
   Current, Saved: TNoteStyleState;
@@ -463,6 +463,9 @@ var
 begin
   Body := TTheWordTranslatorNoteBodyCodec.Decode(ABodyRaw);
   try
+    ACapability := Body.Capability;
+    if ACapability <> twnbcFullWysiwyg then
+      Exit;
     Current.FontName := UTF8Decode(AMemo.TextStyle.Font.Name);
     Current.FontSize := AMemo.TextStyle.Font.Size;
     Current.HasRelativeFontSize := False;
@@ -567,6 +570,14 @@ begin
   finally
     Body.Free;
   end;
+end;
+
+procedure LoadBodyIntoMemo(AMemo: TKMemo;
+  const ABodyRaw: UnicodeString); overload;
+var
+  Capability: TTheWordNoteBodyCapability;
+begin
+  LoadBodyIntoMemo(AMemo, ABodyRaw, Capability);
 end;
 
 procedure AddStyledText(ADocument: TTheWordTranslatorNoteBodyDocument;
@@ -721,8 +732,14 @@ var
   TargetMonitor: TMonitor;
   Work: TRect;
 begin
-  theword_translator_note_preview.TTranslatorNoteBodyView(FMemo).
-    SetNoteBody(ABodyRaw);
+  if not FBodyRendered or (FBodyRaw <> ABodyRaw) then
+  begin
+    IBibliaPerfIncrement(ipcNotePreviewRenders);
+    theword_translator_note_preview.TTranslatorNoteBodyView(FMemo).
+      SetNoteBody(ABodyRaw);
+    FBodyRaw := ABodyRaw;
+    FBodyRendered := True;
+  end;
   TargetMonitor := Screen.MonitorFromRect(AAnchorScreenRect);
   if Assigned(TargetMonitor) then
     Work := TargetMonitor.WorkareaRect
@@ -923,18 +940,15 @@ begin
   FCustomMarker.Text := UTF8Encode(AQ);
   AutoMarkerChanged(nil);
   FVisualSourceRaw := ABodyRaw;
-  FVisualSourceCanonical := '';
   FHasVisualSource := False;
   FRawEditor.Text := UTF8Encode(ABodyRaw);
   FRawEditor.Modified := False;
   TTranslatorNoteEditorMemo(FMemo).ResetRelativeFontInsertion;
+  IBibliaPerfIncrement(ipcNoteEditorDecodes);
   LoadBodyIntoMemo(FMemo, ABodyRaw);
   FVisualPage.TabVisible := IsTranslatorNoteVisualEditingEnabled(ACapability);
   if FVisualPage.TabVisible then
-  begin
-    FVisualSourceCanonical := SerializeVisual;
     FHasVisualSource := True;
-  end;
   SetVisualFormattingEnabled(FVisualPage.TabVisible);
   if FVisualPage.TabVisible then
   begin
@@ -1013,26 +1027,19 @@ begin
 end;
 
 function TTranslatorNoteEditorForm.SerializeVisual: UnicodeString;
-var
-  Capability: TTheWordNoteBodyCapability;
-  Canonical: UnicodeString;
 begin
+  IBibliaPerfIncrement(ipcNoteEditorEncodes);
   Result := SerializeMemo(FMemo);
-  if not TTheWordTranslatorNoteBodyCodec.TryCanonicalize(Result,
-    Canonical, Capability) or (Capability = twnbcRawOnly) then
-    raise ETheWordOntCodec.Create(SInvalidVisualNote);
-  Result := Canonical;
 end;
 
 function TTranslatorNoteEditorForm.ResolvedVisualBodyRaw: UnicodeString;
-var
-  Canonical: UnicodeString;
 begin
-  Canonical := SerializeVisual;
-  if FHasVisualSource and (Canonical = FVisualSourceCanonical) then
-    Result := FVisualSourceRaw
-  else
-    Result := Canonical;
+  if FHasVisualSource and not FMemo.Modified then
+    Exit(FVisualSourceRaw);
+  Result := SerializeVisual;
+  FVisualSourceRaw := Result;
+  FHasVisualSource := True;
+  FMemo.Modified := False;
 end;
 
 function TTranslatorNoteEditorForm.NoteBodyRaw: UnicodeString;
@@ -1083,27 +1090,22 @@ end;
 function TTranslatorNoteEditorForm.SyncRawToVisual(
   AShowError: Boolean): Boolean;
 var
-  Body: TTheWordTranslatorNoteBodyDocument;
+  Capability: TTheWordNoteBodyCapability;
   Raw: UnicodeString;
 begin
   Result := False;
   Raw := RawBodyText;
-  Body := TTheWordTranslatorNoteBodyCodec.Decode(Raw);
-  try
-    if Body.Capability <> twnbcFullWysiwyg then
-    begin
-      if AShowError then
-        MessageDlg(STranslatorNoteTitle, SProtectedNoteBody,
-          mtInformation, [mbOK], 0);
-      Exit;
-    end;
-  finally
-    Body.Free;
-  end;
   TTranslatorNoteEditorMemo(FMemo).ResetRelativeFontInsertion;
-  LoadBodyIntoMemo(FMemo, Raw);
+  IBibliaPerfIncrement(ipcNoteEditorDecodes);
+  LoadBodyIntoMemo(FMemo, Raw, Capability);
+  if Capability <> twnbcFullWysiwyg then
+  begin
+    if AShowError then
+      MessageDlg(STranslatorNoteTitle, SProtectedNoteBody,
+        mtInformation, [mbOK], 0);
+    Exit;
+  end;
   FVisualSourceRaw := Raw;
-  FVisualSourceCanonical := SerializeVisual;
   FHasVisualSource := True;
   Result := True;
 end;
@@ -1114,7 +1116,10 @@ begin
   FUpdatingPage := True;
   try
     if FPageControl.ActivePage = FRawPage then
-      FRawEditor.Text := UTF8Encode(ResolvedVisualBodyRaw)
+    begin
+      FRawEditor.Text := UTF8Encode(ResolvedVisualBodyRaw);
+      FRawEditor.Modified := False;
+    end
     else if not SyncRawToVisual(True) then
       FPageControl.ActivePage := FRawPage;
   finally

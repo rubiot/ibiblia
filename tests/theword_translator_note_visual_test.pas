@@ -42,7 +42,8 @@ uses
   directwrite_syntagm_view, directwrite_verse_editor,
   theword_ont_codec_v2, theword_verse_visual_adapter_v2,
   theword_wysiwyg_editor_control, theword_translator_note_editor, theword_translator_note_body_v2,
-  theword_translator_note_preview, theword_translator_note_style, chapterview;
+  theword_translator_note_preview, theword_translator_note_style, chapterview,
+  performance_debug;
 
 type
   TApplyProbe = class
@@ -345,22 +346,30 @@ const
     '<font color="red">Rm 11:7 "eleição"</font> refere-se ao ' +
     'remanescente fiel, aos israelitas que creram.';
 var
+  Counters: TIBibliaPerfCounterValues;
   Hint: TNoteWindow;
   Memo: TKMemo;
 begin
   Forms.Application.Initialize;
   Memo := TKMemo.Create(nil);
   Hint := TNoteWindow.Create(nil);
+  IBibliaPerfSetEnabledForTests(True);
   try
+    IBibliaPerfReset;
     Memo.TextStyle.Font.Name := 'Arial';
     Memo.TextStyle.Font.Size := 10;
     Hint.ActivateHint(UTF8Encode(PREVIOUS_BODY), Memo.TextStyle);
     Hint.Hide;
     Hint.ActivateHint(UTF8Encode(ROMANS_BODY), Memo.TextStyle);
+    Hint.ActivateHint(UTF8Encode(ROMANS_BODY), Memo.TextStyle);
+    Counters := IBibliaPerfSnapshot;
+    AssertEquals('two distinct bodies render once each', 2,
+      Int64(Counters[ipcNotePreviewRenders]));
     AssertTrue('chapter popup remains visible after reusing its note view',
       Hint.Visible);
     Hint.Hide;
   finally
+    IBibliaPerfSetEnabledForTests(False);
     Hint.Free;
     Memo.Free;
   end;
@@ -485,17 +494,28 @@ var
   Body: UnicodeString;
   EditedBody, NoOpBody: UnicodeString;
   ErrorMessage: string;
+  Perf: TIBibliaPerfCounterValues;
 begin
   Forms.Application.Initialize;
   ErrorMessage := '';
   Body := '<font color="ReD">Gn 1:</font> rest';
-  AssertTrue(UTF8Encode(ErrorMessage),
-    TryExerciseTranslatorNoteEditorNamedColor(Body, 3, 1, '2',
-      NoOpBody, EditedBody, ErrorMessage));
-  AssertEquals('opening and saving without edits keeps the literal color',
-    '<font color="ReD">Gn 1:</font> rest', UTF8Encode(NoOpBody));
-  AssertEquals('a real Visual edit serializes the named color canonically',
-    '<font color="#FF0000">Gn 2:</font> rest', UTF8Encode(EditedBody));
+  IBibliaPerfSetEnabledForTests(True);
+  try
+    AssertTrue(UTF8Encode(ErrorMessage),
+      TryExerciseTranslatorNoteEditorNamedColor(Body, 3, 1, '2',
+        NoOpBody, EditedBody, ErrorMessage));
+    Perf := IBibliaPerfSnapshot;
+    AssertEquals('opening the structured note decodes it once', 1,
+      Perf[ipcNoteEditorDecodes]);
+    AssertEquals('the no-op read is cached and the edit encodes once', 1,
+      Perf[ipcNoteEditorEncodes]);
+    AssertEquals('opening and saving without edits keeps the literal color',
+      '<font color="ReD">Gn 1:</font> rest', UTF8Encode(NoOpBody));
+    AssertEquals('a real Visual edit serializes the named color canonically',
+      '<font color="#FF0000">Gn 2:</font> rest', UTF8Encode(EditedBody));
+  finally
+    IBibliaPerfSetEnabledForTests(False);
+  end;
 end;
 
 procedure TTheWordTranslatorNoteVisualTests.

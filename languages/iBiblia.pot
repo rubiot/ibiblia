@@ -1103,6 +1103,31 @@ msgstr ""
 msgid "Creating project..."
 msgstr ""
 
+#: formprincipal.sdefaultversemodeassociation
+msgctxt "formprincipal.sdefaultversemodeassociation"
+msgid "Association"
+msgstr ""
+
+#: formprincipal.sdefaultversemodeassociationhint
+msgid "Open each verse in association mode"
+msgstr ""
+
+#: formprincipal.sdefaultversemodeediting
+msgid "WYSIWYG editing"
+msgstr ""
+
+#: formprincipal.sdefaultversemodeeditinghint
+msgid "Open Destination in the WYSIWYG editor when navigating to a verse"
+msgstr ""
+
+#: formprincipal.sdefaultversemodehint
+msgid "Choose how verses open by default"
+msgstr ""
+
+#: formprincipal.sdefaultversemodemenu
+msgid "Default verse mode"
+msgstr ""
+
 #: formprincipal.sdestination
 msgctxt "formprincipal.sdestination"
 msgid "destination"

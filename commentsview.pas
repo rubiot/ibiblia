@@ -18,12 +18,15 @@ type
   private
     FFontName: string;
     FFontSize: integer;
+    FPreviewText: string;
+    FRenderGeneration: QWord;
     FText: string;
     FReadOnly: boolean;
     FOnTextChanged: TNotifyEvent;
     procedure HandleMouseWheel(Sender: TObject; Shift: TShiftState;
       WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
     procedure HandleDoubleClick(Sender: TObject);
+    procedure RenderComments;
     function GetText: string;
     procedure SetText(const AValue: string);
     procedure SetFontName(const AValue: string);
@@ -43,6 +46,9 @@ type
     property Text: string read GetText write SetText;
     property ReadOnly: boolean read FReadOnly write FReadOnly;
     property OnTextChanged: TNotifyEvent read FOnTextChanged write FOnTextChanged;
+    {$IFDEF FPCUNIT}
+    function RenderGenerationFixture: QWord;
+    {$ENDIF}
   end;
 
 implementation
@@ -117,10 +123,31 @@ begin
 end;
 
 procedure TCommentsView.SetCommentsText(const CommentsText: string);
+var
+  PreviewText: string;
 begin
+  if FText = CommentsText then
+    Exit;
   FText := CommentsText;
-  RenderHTML(CommentsTextForPreview(CommentsText));
+  PreviewText := CommentsTextForPreview(CommentsText);
+  if FPreviewText = PreviewText then
+    Exit;
+  FPreviewText := PreviewText;
+  RenderComments;
 end;
+
+procedure TCommentsView.RenderComments;
+begin
+  Inc(FRenderGeneration);
+  RenderHTML(FPreviewText);
+end;
+
+{$IFDEF FPCUNIT}
+function TCommentsView.RenderGenerationFixture: QWord;
+begin
+  Result := FRenderGeneration;
+end;
+{$ENDIF}
 
 function TCommentsView.HasPendingChange(const Baseline: string): Boolean;
 begin
@@ -144,11 +171,15 @@ end;
 
 procedure TCommentsView.SetFontName(const AValue: string);
 begin
-  if FFontName = AValue then Exit;
+  if SameText(FFontName, AValue) then
+  begin
+    FFontName := AValue;
+    Exit;
+  end;
   FFontName := AValue;
   SetupDefaultStyle;
-  if FText <> '' then
-    RenderHTML(CommentsTextForPreview(FText));
+  if FPreviewText <> '' then
+    RenderComments;
 end;
 
 procedure TCommentsView.SetFontSize(const AValue: integer);
@@ -156,8 +187,8 @@ begin
   if FFontSize = AValue then Exit;
   FFontSize := AValue;
   SetupDefaultStyle;
-  if FText <> '' then
-    RenderHTML(CommentsTextForPreview(FText));
+  if FPreviewText <> '' then
+    RenderComments;
 end;
 
 procedure TCommentsView.HandleDoubleClick(Sender: TObject);
@@ -188,13 +219,18 @@ end;
 
 procedure TCommentsView.HandleMouseWheel(Sender: TObject; Shift: TShiftState;
   WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
+var
+  NewFontSize: Integer;
 begin
   if ssCtrl in Shift then
   begin
-    FFontSize := Max(6, FFontSize + Sign(WheelDelta));
+    Handled := True;
+    NewFontSize := Max(6, FFontSize + Sign(WheelDelta));
+    if NewFontSize = FFontSize then
+      Exit;
+    FFontSize := NewFontSize;
     SetupDefaultStyle;
-    RenderHTML(CommentsTextForPreview(FText));
-    Handled := true;
+    RenderComments;
   end;
 end;
 

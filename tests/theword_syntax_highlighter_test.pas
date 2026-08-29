@@ -5,7 +5,7 @@ unit theword_syntax_highlighter_test;
 interface
 
 uses
-  Classes, SysUtils, Types, Graphics, IniFiles, StdCtrls, LCLType, Clipbrd,
+  Classes, SysUtils, Types, Graphics, IniFiles, StdCtrls, LCLType,
   SynEdit,
   SynEditHighlighter,
   fpcunit, testregistry, theword_syntax_highlighter,
@@ -956,6 +956,7 @@ var
   SourceDirect, TargetDirect: TDirectWriteVerseEditor;
   Source, Target: TTheWordWysiwygEditorControl;
 begin
+  EnableTheWordClipboardFixture('');
   Source := TTheWordWysiwygEditorControl.Create(nil);
   Target := TTheWordWysiwygEditorControl.Create(nil);
   try
@@ -984,13 +985,13 @@ begin
     SourceDirect.OnClipboardCopy(SourceDirect, 0, 4, False, Handled);
     AssertTrue('copy inside one title is handled semantically', Handled);
     AssertEquals('formatted title copy exposes its visible text', 'ABCD',
-      Clipboard.AsText);
+      UTF8Encode(TheWordClipboardPlainTextFixture));
 
     Handled := False;
     SourceDirect.OnClipboardCopy(SourceDirect, 3, 3, False, Handled);
     AssertTrue('copy crossing the title boundary is consumed', Handled);
     AssertEquals('cross-boundary copy preserves the prior valid clipboard',
-      'ABCD', Clipboard.AsText);
+      'ABCD', UTF8Encode(TheWordClipboardPlainTextFixture));
 
     Target.Text := '<TS2>XY<Ts>tail';
     Handled := False;
@@ -1013,6 +1014,7 @@ begin
     AssertFalse('formatted title paste creates exactly one undo entry',
       Target.Undo);
   finally
+    DisableTheWordClipboardFixture;
     Target.Free;
     Source.Free;
   end;

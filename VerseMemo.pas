@@ -11,6 +11,12 @@ uses
 
 type
   TVerseMemo = class;
+  TVerseMemoTransitionState = (
+    vmtsNone,
+    vmtsRequested,
+    vmtsSealed,
+    vmtsRetargeted
+  );
   { ATrace remains owned by TVerseMemo and is valid only for the duration of
     the callback. Returning False leaves the editor and its pending change
     open. }
@@ -45,6 +51,14 @@ type
     FTranslatorNoteButton: TSpeedButton;
     FRawModeButton: TButton;
     FSaveErrorActive: Boolean;
+    FTransitionState: TVerseMemoTransitionState;
+    FTransitionSourceVerse: TVerse;
+    FTransitionSourceReferenceID: string;
+    FTransitionSourceVisualRevision: QWord;
+    FTransitionTargetReferenceID: string;
+    FTransitionTargetEditable: Boolean;
+    FTransitionTargetRawMode: Boolean;
+    FToolbarLayoutKey: string;
     FEditor: TTheWordWysiwygEditorControl;
     FContainer: TScrollBox;
     FBoundsContainer: TScrollBox;
@@ -57,6 +71,7 @@ type
     procedure ContainerBoundsChanged(Sender: TObject);
     procedure DetachContainerBoundsHandler;
     procedure EditorChanged(Sender: TTheWordWysiwygEditorControl);
+    procedure EditorSelectionChanged(Sender: TTheWordWysiwygEditorControl);
     procedure EditorCommand(Sender: TTheWordWysiwygEditorControl;
       ACommand: TVerseEditorCommand);
     procedure InsertAddedWords(Sender: TObject);
@@ -78,6 +93,8 @@ type
     procedure SelectFontColor(Sender: TObject);
     procedure InsertTranslatorNote(Sender: TObject);
     procedure LayoutEditorToolbar;
+    procedure CloseEditor(ARestoreFocus, ANotifyPendingChange: Boolean);
+    procedure ClearTransitionState;
     procedure RefreshLocalizedCaptions;
     procedure RestoreFocusAfterClose;
     procedure SaveAndClose;
@@ -86,7 +103,10 @@ type
     procedure ToggleRawMode(Sender: TObject);
     procedure ToolbarResize(Sender: TObject);
     procedure UpdateEditorBounds;
+    procedure UpdateEditorStatus;
     procedure UpdateEditorState;
+    procedure SetEditorEditableSilently(AEditable: Boolean);
+    function TryCommitActiveEdit: Boolean;
     function ValidateTextForSave: Boolean;
   public
     constructor Create;
@@ -97,7 +117,14 @@ type
       ATranslatorNoteRevision: QWord = 0);
     procedure Deactivate;
     procedure Translate;
+    function BeginVerseTransition: Boolean;
+    function RetargetVerseTransition(Container: TScrollBox; Verse: TVerse;
+      AAutomaticNoteStart: Integer = 0): Boolean;
+    procedure CompleteVerseTransition;
+    procedure AbortVerseTransition;
     function HasPendingChange: Boolean;
+    function IsActiveFor(Verse: TVerse): Boolean;
+    function IsTransitioning: Boolean;
     function TryDeactivate: Boolean;
     procedure DiscardEdit;
     property Text: TCaption read GetText;
@@ -170,6 +197,9 @@ resourcestring
 
 implementation
 
+uses
+  performance_debug;
+
 function TVerseMemo.GetText: TCaption;
 begin
   Result := FEditor.Text;
@@ -177,11 +207,15 @@ end;
 
 procedure TVerseMemo.ApplySemantic(AKind: TTheWordSemanticKind);
 begin
+  if IsTransitioning then
+    Exit;
   FEditor.ApplySemantic(AKind);
 end;
 
 procedure TVerseMemo.CancelButtonClick(Sender: TObject);
 begin
+  if IsTransitioning then
+    Exit;
   DiscardEdit;
 end;
 
@@ -201,7 +235,7 @@ end;
 
 procedure TVerseMemo.EditorChanged(Sender: TTheWordWysiwygEditorControl);
 begin
-  if FActivating or not FEditor.Visible then
+  if FActivating or IsTransitioning or not FEditor.Visible then
     Exit;
   FSaveErrorActive := False;
   FModified := FEditor.Modified;
@@ -210,9 +244,19 @@ begin
     FOnPendingChange(Self);
 end;
 
+procedure TVerseMemo.EditorSelectionChanged(
+  Sender: TTheWordWysiwygEditorControl);
+begin
+  if FActivating or IsTransitioning or not FEditor.Visible then
+    Exit;
+  UpdateEditorState;
+end;
+
 procedure TVerseMemo.EditorCommand(Sender: TTheWordWysiwygEditorControl;
   ACommand: TVerseEditorCommand);
 begin
+  if IsTransitioning then
+    Exit;
   case ACommand of
     vecSave: SaveAndClose;
     vecCancel: DiscardEdit;
@@ -272,16 +316,22 @@ end;
 procedure TVerseMemo.ShowHtmlFormatMenu(Sender: TObject);
 var P: TPoint;
 begin
+  if IsTransitioning then
+    Exit;
   P := Mouse.CursorPos;
   FHtmlFormatMenu.PopUp(P.X, P.Y);
 end;
 
 procedure TVerseMemo.DecreaseFontSize(Sender: TObject);
 begin
+  if IsTransitioning then
+    Exit;
   FEditor.AdjustRelativeFontSize(-1);
 end;
 procedure TVerseMemo.SelectFontColor(Sender: TObject);
 begin
+  if IsTransitioning then
+    Exit;
   FEditor.ApplyFontColor(FFontColorBox.Selected <> clDefault,
     LongInt(FFontColorBox.Selected));
 end;
@@ -316,6 +366,8 @@ procedure TVerseMemo.ShowTitleMenu(Sender: TObject);
 var
   P: TPoint;
 begin
+  if IsTransitioning then
+    Exit;
   UpdateTitleMenu;
   P := Mouse.CursorPos;
   FTitleMenu.PopUp(P.X, P.Y);
@@ -326,6 +378,8 @@ var
   Item: TMenuItem;
   Succeeded: Boolean;
 begin
+  if IsTransitioning then
+    Exit;
   if not (Sender is TMenuItem) then
     Exit;
   Item := TMenuItem(Sender);
@@ -343,16 +397,22 @@ end;
 
 procedure TVerseMemo.IncreaseFontSize(Sender: TObject);
 begin
+  if IsTransitioning then
+    Exit;
   FEditor.AdjustRelativeFontSize(1);
 end;
 
 procedure TVerseMemo.InsertTranslatorNote(Sender: TObject);
 begin
+  if IsTransitioning then
+    Exit;
   FEditor.InsertTranslatorNote;
 end;
 
 procedure TVerseMemo.ToggleRawMode(Sender: TObject);
 begin
+  if IsTransitioning then
+    Exit;
   FEditor.RawMode := not FEditor.RawMode;
   UpdateEditorState;
 end;
@@ -369,11 +429,22 @@ var
   X, RightEdge, ButtonHeight, ButtonTop, SaveWidth, CancelWidth, ModeWidth,
     ActionButtonTop, ErrorTop, StatusLeft, StatusTop, StatusWidth: Integer;
   ActionsWrapped: Boolean;
+  LayoutKey: string;
 begin
   if not Assigned(FEditorPanel) or not Assigned(FToolbarPanel) or
      not Assigned(FEditorPanel.Parent) or
      (FToolbarPanel.ClientWidth <= 0) then
     Exit;
+  LayoutKey := Format('%d|%d|%s|%s|%s|%s|%s|%d', [
+    FToolbarPanel.ClientWidth, Ord(FSaveErrorActive), FModeLabel.Caption,
+    FRawModeButton.Caption, FSaveButton.Caption, FCancelButton.Caption,
+    FToolbarPanel.Font.Name, FToolbarPanel.Font.Size]);
+  if LayoutKey = FToolbarLayoutKey then
+    Exit;
+  { Store the key before SetBounds: changing the toolbar height can re-enter
+    resize handlers synchronously on Win32. }
+  FToolbarLayoutKey := LayoutKey;
+  IBibliaPerfIncrement(ipcToolbarLayouts);
 
   FToolbarPanel.Canvas.Font.Assign(FToolbarPanel.Font);
   ButtonHeight := Max(26, FToolbarPanel.Canvas.TextHeight('Hg') + 10);
@@ -546,6 +617,49 @@ begin
   end;
 end;
 
+procedure TVerseMemo.ClearTransitionState;
+begin
+  FTransitionState := vmtsNone;
+  FTransitionSourceVerse := nil;
+  FTransitionSourceReferenceID := '';
+  FTransitionSourceVisualRevision := 0;
+  FTransitionTargetReferenceID := '';
+  FTransitionTargetEditable := False;
+  FTransitionTargetRawMode := False;
+  FToolbarLayoutKey := '';
+end;
+
+procedure TVerseMemo.CloseEditor(ARestoreFocus,
+  ANotifyPendingChange: Boolean);
+begin
+  FEditor.DismissTranslatorNotePreview;
+  FEditor.Visible := False;
+  FEditorPanel.Visible := False;
+  DetachContainerBoundsHandler;
+  if ARestoreFocus then
+    RestoreFocusAfterClose;
+  FModified := False;
+  FSaveErrorActive := False;
+  FContainer := nil;
+  FVerse := nil;
+  ClearTransitionState;
+  if ANotifyPendingChange and Assigned(FOnPendingChange) then
+    FOnPendingChange(Self);
+end;
+
+procedure TVerseMemo.SetEditorEditableSilently(AEditable: Boolean);
+var
+  WasActivating: Boolean;
+begin
+  WasActivating := FActivating;
+  FActivating := True;
+  try
+    FEditor.Editable := AEditable;
+  finally
+    FActivating := WasActivating;
+  end;
+end;
+
 procedure TVerseMemo.RestoreFocusAfterClose;
 var
   FocusTarget: TWinControl;
@@ -611,10 +725,7 @@ begin
   LayoutEditorToolbar;
 end;
 
-procedure TVerseMemo.UpdateEditorState;
-var
-  CanMark: Boolean;
-  Title: TTheWordTitleRange;
+procedure TVerseMemo.UpdateEditorStatus;
 begin
   if not Assigned(FStatusLabel) then
     Exit;
@@ -635,6 +746,25 @@ begin
     FStatusLabel.Caption := SEditModeSaved;
     FStatusLabel.Font.Color := clGrayText;
   end;
+  FEditorPanel.Hint := FStatusLabel.Caption;
+end;
+
+procedure TVerseMemo.UpdateEditorState;
+var
+  CanMark: Boolean;
+  Title: TTheWordTitleRange;
+begin
+  if not Assigned(FStatusLabel) then
+    Exit;
+  { Keep the toolbar visually stable while the dataset and the editor session
+    are being retargeted. CompleteVerseTransition refreshes it after editing
+    has been enabled for the new verse. }
+  if IsTransitioning then
+  begin
+    LayoutEditorToolbar;
+    Exit;
+  end;
+  UpdateEditorStatus;
 
   CanMark := FEditor.CanApplySemantic;
   FAddedWordsButton.Enabled := CanMark;
@@ -655,7 +785,6 @@ begin
     FRawModeButton.Caption := SVisualModeButton
   else
     FRawModeButton.Caption := SRawModeButton;
-  FEditorPanel.Hint := FStatusLabel.Caption;
   LayoutEditorToolbar;
 end;
 
@@ -819,11 +948,13 @@ begin
   FEditor.Parent := FEditorPanel;
   FEditor.Align := alClient;
   FEditor.OnChanged := @EditorChanged;
+  FEditor.OnSelectionChanged := @EditorSelectionChanged;
   FEditor.OnCommand := @EditorCommand;
 
   FActivating := False;
   FModified := False;
   FSaveErrorActive := False;
+  ClearTransitionState;
   FContainer := nil;
   FBoundsContainer := nil;
   FVerse := nil;
@@ -871,6 +1002,10 @@ var
 begin
   if not Assigned(Container) or not Assigned(Verse) then
     Exit;
+  { A queued activation from the old navigation path must not interrupt a
+    sealed or already retargeted continuous transition. }
+  if IsTransitioning then
+    Exit;
 
   { The editor is a sibling overlay. Without a parent for the verse container
     there is no window in which that overlay can safely be created. }
@@ -914,12 +1049,9 @@ begin
     FBoundsContainer := Container;
     FBoundsContainer.AddHandlerOnChangeBounds(@ContainerBoundsChanged);
 
-    FEditor.BaseDirection := Verse.BaseDirection;
     FEditor.Editable := not Verse.ReadOnly;
-    FEditor.SetEditorFont(Verse.Font);
-    FEditor.TokenizerVersion := Verse.TokenizerVersion;
-    FEditor.AutomaticNoteStart := AAutomaticNoteStart;
-    FEditor.Text := Verse.XML;
+    FEditor.LoadVerseContext(Verse.XML, Verse.BaseDirection, Verse.Font,
+      Verse.TokenizerVersion, AAutomaticNoteStart);
     if FEditor.Capability = twlcRawOnly then
       FEditor.RawMode := True;
 
@@ -961,20 +1093,29 @@ begin
   Result := Assigned(FEditorPanel) and FEditorPanel.Visible and FModified;
 end;
 
-function TVerseMemo.TryDeactivate: Boolean;
+function TVerseMemo.IsActiveFor(Verse: TVerse): Boolean;
+begin
+  Result := Assigned(Verse) and Assigned(FEditorPanel) and
+    FEditorPanel.Visible and (FVerse = Verse);
+end;
+
+function TVerseMemo.IsTransitioning: Boolean;
+begin
+  Result := FTransitionState <> vmtsNone;
+end;
+
+function TVerseMemo.TryCommitActiveEdit: Boolean;
 var
   Impact: TAssociationEditImpact;
   Trace: TVerseEditTrace;
 begin
-  Result := True;
+  Result := False;
   Impact.PreservedMembers := 0;
   Impact.RemovedMembers := 0;
   Impact.UsedLegacyFallback := False;
   Impact.Cancelled := False;
   Impact.ErrorMessage := '';
   FEditor.DismissTranslatorNotePreview;
-  if not FEditorPanel.Visible then
-    Exit;
   try
     if not FEditor.CommitRaw then
     begin
@@ -1028,34 +1169,193 @@ begin
     Trace.Free;
   end;
 
-  FEditor.Visible := False;
-  FEditorPanel.Visible := False;
-  DetachContainerBoundsHandler;
-  RestoreFocusAfterClose;
   FModified := False;
   FSaveErrorActive := False;
-  FContainer := nil;
-  FVerse := nil;
-  if Assigned(FOnPendingChange) then
-    FOnPendingChange(Self);
+  Result := True;
+end;
+
+function TVerseMemo.BeginVerseTransition: Boolean;
+var
+  RestoreEditable: Boolean;
+begin
+  if IsTransitioning then
+    Exit(True);
+  if not Assigned(FEditorPanel) or not FEditorPanel.Visible or
+     not Assigned(FVerse) then
+    Exit(False);
+
+  FTransitionState := vmtsRequested;
+  FTransitionSourceVerse := FVerse;
+  FTransitionSourceReferenceID := FVerse.ReferenceID;
+  FTransitionSourceVisualRevision := 0;
+  FTransitionTargetReferenceID := '';
+  FTransitionTargetEditable := FEditor.Editable;
+  FTransitionTargetRawMode := False;
+  SetEditorEditableSilently(False);
+
+  if not TryCommitActiveEdit then
+  begin
+    RestoreEditable := FTransitionTargetEditable;
+    ClearTransitionState;
+    SetEditorEditableSilently(RestoreEditable);
+    Exit(False);
+  end;
+
+  { Capture the revision after applying the edit. A dataset load mutates the
+    persistent TVerse instance in place, so pointer identity alone cannot tell
+    whether an aborted navigation is still showing the source verse. }
+  FTransitionSourceReferenceID := FVerse.ReferenceID;
+  FTransitionSourceVisualRevision := FVerse.VisualRevision;
+  FTransitionState := vmtsSealed;
+  Result := True;
+end;
+
+function TVerseMemo.RetargetVerseTransition(Container: TScrollBox;
+  Verse: TVerse; AAutomaticNoteStart: Integer): Boolean;
+var
+  OverlayParent: TWinControl;
+  WasActivating: Boolean;
+begin
+  Result := False;
+  if FTransitionState = vmtsRetargeted then
+    Exit(Assigned(Container) and Assigned(Verse) and
+      (FContainer = Container) and (FVerse = Verse) and
+      (FTransitionTargetReferenceID = Verse.ReferenceID));
+  if FTransitionState <> vmtsSealed then
+    Exit;
+  if not Assigned(Container) or not Assigned(Verse) or
+     not Assigned(Container.Parent) then
+  begin
+    AbortVerseTransition;
+    Exit;
+  end;
+
+  OverlayParent := Container.Parent;
+  WasActivating := FActivating;
+  FActivating := True;
+  try
+    try
+      FEditor.DismissTranslatorNotePreview;
+      FModified := False;
+      FSaveErrorActive := False;
+
+      if FBoundsContainer <> Container then
+      begin
+        DetachContainerBoundsHandler;
+        FBoundsContainer := Container;
+        FBoundsContainer.AddHandlerOnChangeBounds(@ContainerBoundsChanged);
+      end;
+      FContainer := Container;
+      FEditorPanel.Align := alNone;
+      if FEditorPanel.Parent <> OverlayParent then
+        FEditorPanel.Parent := OverlayParent;
+      FEditorPanel.SetBounds(Container.Left, Container.Top, Container.Width,
+        Container.Height);
+      FEditorPanel.Anchors := Container.Anchors;
+
+      FTransitionTargetEditable := not Verse.ReadOnly;
+      FVerse := Verse;
+      FTransitionTargetReferenceID := Verse.ReferenceID;
+      FEditor.LoadVerseContext(Verse.XML, Verse.BaseDirection, Verse.Font,
+        Verse.TokenizerVersion, AAutomaticNoteStart);
+      FTransitionTargetRawMode := FEditor.Capability = twlcRawOnly;
+
+      FEditor.Visible := True;
+      FEditorPanel.BringToFront;
+      FEditorPanel.Visible := True;
+      UpdateEditorBounds;
+      FTransitionState := vmtsRetargeted;
+      Result := True;
+    except
+      AbortVerseTransition;
+      raise;
+    end;
+  finally
+    FActivating := WasActivating;
+  end;
+end;
+
+procedure TVerseMemo.CompleteVerseTransition;
+var
+  TargetEditable, TargetRawMode: Boolean;
+begin
+  if not IsTransitioning then
+    Exit;
+  if FTransitionState <> vmtsRetargeted then
+  begin
+    AbortVerseTransition;
+    Exit;
+  end;
+
+  TargetEditable := FTransitionTargetEditable;
+  TargetRawMode := FTransitionTargetRawMode;
+  ClearTransitionState;
+  SetEditorEditableSilently(TargetEditable);
+  if TargetRawMode then
+  begin
+    FActivating := True;
+    try
+      FEditor.RawMode := True;
+    finally
+      FActivating := False;
+    end;
+  end;
+  FModified := FEditor.Modified;
+  FSaveErrorActive := False;
+  UpdateEditorState;
+  FEditor.FocusEditor;
+end;
+
+procedure TVerseMemo.AbortVerseTransition;
+var
+  KeepEditor, RestoreEditable: Boolean;
+begin
+  if not IsTransitioning then
+    Exit;
+
+  RestoreEditable := FTransitionTargetEditable;
+  KeepEditor := Assigned(FEditorPanel) and FEditorPanel.Visible and
+    Assigned(FVerse) and (FVerse = FTransitionSourceVerse) and
+    (FVerse.ReferenceID = FTransitionSourceReferenceID) and
+    (FVerse.VisualRevision = FTransitionSourceVisualRevision);
+  ClearTransitionState;
+  if KeepEditor then
+  begin
+    SetEditorEditableSilently(RestoreEditable);
+    FModified := FEditor.Modified;
+    FSaveErrorActive := False;
+    UpdateEditorState;
+    FEditor.FocusEditor;
+  end
+  else
+    CloseEditor(True, True);
+end;
+
+function TVerseMemo.TryDeactivate: Boolean;
+begin
+  Result := True;
+  { SaveProject, chapter-view refreshes and other observers can re-enter this
+    method while navigation is in flight. The source session was already
+    committed by BeginVerseTransition and must remain visible. }
+  if IsTransitioning then
+    Exit;
+  if not FEditorPanel.Visible then
+    Exit;
+  if not TryCommitActiveEdit then
+    Exit(False);
+
+  CloseEditor(True, True);
 end;
 
 procedure TVerseMemo.DiscardEdit;
 begin
+  if IsTransitioning then
+    Exit;
   FEditor.DismissTranslatorNotePreview;
   if not FEditorPanel.Visible then
     Exit;
   FEditor.Cancel;
-  FModified := False;
-  FSaveErrorActive := False;
-  FEditor.Visible := False;
-  FEditorPanel.Visible := False;
-  RestoreFocusAfterClose;
-  DetachContainerBoundsHandler;
-  FContainer := nil;
-  FVerse := nil;
-  if Assigned(FOnPendingChange) then
-    FOnPendingChange(Self);
+  CloseEditor(True, True);
 end;
 
 end.

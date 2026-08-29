@@ -43,6 +43,7 @@ type
     procedure CommentBreaksMapToAndFromWysiwygSession;
     procedure CommentWysiwygSaveCanonicalizesLegacyBreaks;
     procedure CommentPreviewProjectsBreaksAndPreservesOpaqueTags;
+    procedure CommentPreviewSkipsNoOpAssignments;
     procedure UnknownEditorialMarkupUsesRawOnlyMode;
     procedure PendingStateNotificationsTrackNetChanges;
     procedure AutomaticRFCountUsesPendingRowsAndRestoresDatasetState;
@@ -559,12 +560,31 @@ begin
       FPersistence.ContentUpdatesPending);
     AssertEquals('1,1,1', ReadDatabaseInfo(PROJECT_CONFIG_KEY_MARKER));
 
+    Config.StageMarkerForCommit('1,1,2');
+    AssertFalse('staged navigation marker is not project content',
+      FPersistence.ContentUpdatesPending);
+    AssertEquals('staged marker is visible through typed configuration',
+      '1,1,2', Config.ReadMarker(''));
+    AssertEquals('staged marker is not written through a second connection',
+      '1,1,1', ReadDatabaseInfo(PROJECT_CONFIG_KEY_MARKER));
+    FPersistence.CommitInfo;
+    AssertEquals('staged marker is published by the project commit',
+      '1,1,2', ReadDatabaseInfo(PROJECT_CONFIG_KEY_MARKER));
+
+    Config.StageMarkerForCommit('1,1,3');
+    AssertFalse('a later staged marker remains silent',
+      FPersistence.ContentUpdatesPending);
+    AssertEquals('the later staged marker remains readable before rollback',
+      '1,1,3', Config.ReadMarker(''));
+
     Config.WriteTokenizerVersion(3);
     AssertTrue('Tokenizer version remains structural project content',
       FPersistence.ContentUpdatesPending);
     FPersistence.Rollback;
     AssertEquals('', ReadDatabaseInfo(PROJECT_CONFIG_KEY_TOKENIZER_VERSION));
-    AssertEquals('1,1,1', ReadDatabaseInfo(PROJECT_CONFIG_KEY_MARKER));
+    AssertEquals('1,1,2', ReadDatabaseInfo(PROJECT_CONFIG_KEY_MARKER));
+    AssertEquals('rollback restores the committed marker value',
+      '1,1,2', Config.ReadMarker(''));
   finally
     Config.Free;
   end;
@@ -657,6 +677,33 @@ begin
       'one<lf/>two<p>three<CL>four<br>five<CM>opaque<CI>'));
 end;
 
+procedure TProjectPersistenceTest.CommentPreviewSkipsNoOpAssignments;
+var
+  Generation: QWord;
+  View: TCommentsView;
+begin
+  View := TCommentsView.Create(nil);
+  try
+    View.Text := 'same<p>comment';
+    Generation := View.RenderGenerationFixture;
+    View.Text := 'same<p>comment';
+    View.Text := 'same<lf/>comment';
+    AssertEquals('equivalent legacy breaks reuse the rendered preview',
+      'same<lf/>comment', View.Text);
+    View.FontName := View.FontName;
+    View.FontName := UpperCase(View.FontName);
+    View.FontSize := View.FontSize;
+    AssertTrue('effectively identical text and style do not rerender',
+      View.RenderGenerationFixture = Generation);
+
+    View.FontSize := View.FontSize + 1;
+    AssertTrue('an effective font change still rerenders',
+      View.RenderGenerationFixture = Generation + 1);
+  finally
+    View.Free;
+  end;
+end;
+
 procedure TProjectPersistenceTest.UnknownEditorialMarkupUsesRawOnlyMode;
 begin
   AssertEquals(Ord(twlcRawOnly), Ord(AnalyzeTheWordTranslatorNoteBody(
@@ -670,6 +717,9 @@ var
   Counts: TAutomaticRFNoteCountArray;
   DestinationTextIndex: Integer;
   Repository: TProjectVerseRepository;
+  Snapshot: TChapterSnapshot;
+  SnapshotEntry: TChapterSnapshotEntry;
+  SnapshotRevision: QWord;
   SourceTextIndex: Integer;
 begin
   Repository := TProjectVerseRepository.Create(FPersistence);
@@ -694,6 +744,59 @@ begin
     FPersistence.PairsTable.AfterScroll := @PairAfterScroll;
 
     AssertFalse(FPersistence.PairsTable.ControlsDisabled);
+    Snapshot := Repository.LoadChapterSnapshot(1, 1,
+      [DestinationTextIndex, SourceTextIndex]);
+    try
+      AssertEquals('snapshot contains only the requested chapter', 3,
+        Snapshot.Count);
+      AssertEquals('snapshot load does not move the active Verse Pair',
+        '1,1,3', FPersistence.CurrentPairId);
+      SnapshotEntry := Snapshot.Entry(0);
+      AssertEquals('snapshot overlays pending destination text',
+        'pending<RF>one<Rf><RF q=x>custom<Rf>',
+        SnapshotEntry.Texts[0]);
+      AssertEquals('snapshot overlays pending source text',
+        'source<RF>source one<Rf><RF>source two<Rf>',
+        SnapshotEntry.Texts[1]);
+      AssertEquals('first verse starts automatic numbering at zero', 0,
+        SnapshotEntry.AutomaticNoteStarts[0]);
+      SnapshotEntry := Snapshot.Entry(2);
+      AssertEquals('prefix count is stored on the target verse', 2,
+        SnapshotEntry.AutomaticNoteStarts[0]);
+      AssertEquals('snapshot lookups use the requested field index', 2,
+        Snapshot.AutomaticNoteStart('1,1,3', DestinationTextIndex));
+      AssertEquals('snapshot query never invokes BeforeScroll', 0,
+        FPairBeforeScrollCount);
+      AssertEquals('snapshot query never invokes AfterScroll', 0,
+        FPairAfterScrollCount);
+
+      SnapshotRevision := Snapshot.ContentRevision;
+      AssertFalse('unknown fields reject the patch atomically',
+        Snapshot.UpdateEntry('1,1,1', [High(Integer)], ['invalid'],
+          'invalid-pairs', SnapshotRevision + 1));
+      AssertEquals('a rejected patch keeps the snapshot revision',
+        Int64(SnapshotRevision), Int64(Snapshot.ContentRevision));
+      AssertTrue('the current Verse can update the existing snapshot',
+        Snapshot.UpdateEntry('1,1,1',
+          [DestinationTextIndex, SourceTextIndex],
+          ['updated<RF>one<Rf><RF>two<Rf><RF>three<Rf>',
+           'updated source'], 'updated-pairs', SnapshotRevision + 1));
+      AssertTrue('the patched revision remains a cache match',
+        Snapshot.Matches(1, 1, SnapshotRevision + 1,
+          [DestinationTextIndex, SourceTextIndex]));
+      SnapshotEntry := Snapshot.Entry(0);
+      AssertEquals('incremental patch replaces destination text',
+        'updated<RF>one<Rf><RF>two<Rf><RF>three<Rf>',
+        SnapshotEntry.Texts[0]);
+      AssertEquals('incremental patch replaces associations',
+        'updated-pairs', SnapshotEntry.Associations);
+      SnapshotEntry := Snapshot.Entry(2);
+      AssertEquals('RF prefixes are rebuilt after an earlier Verse changes',
+        4, SnapshotEntry.AutomaticNoteStarts[0]);
+    finally
+      Snapshot.Free;
+    end;
+
     AssertEquals('only automatic RFs in previous verses are counted', 2,
       Repository.CountAutomaticRFNotesBefore('1,1,3',
         DestinationTextIndex));

@@ -60,7 +60,8 @@ type
     FMemo: TKMemo;
     FOnFontSizeChanged: TTranslationMemoryPreviewFontSizeChangedEvent;
     FPayload: TTranslationMemoryPreviewPayload;
-    procedure ApplyPayloadLayout(AResetScroll: Boolean);
+    procedure ApplyPayloadLayout(AResetScroll: Boolean;
+      ARenderPayload: Boolean = True);
     function GetFontSize: Integer;
     procedure HandleMemoMouseWheel(Sender: TObject; Shift: TShiftState;
       WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
@@ -73,6 +74,8 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     procedure ShowPayload(const APayload: TTranslationMemoryPreviewPayload;
+      const AAnchorScreenRect: TRect); virtual;
+    procedure ShowCachedPayload(
       const AAnchorScreenRect: TRect); virtual;
     procedure HidePreview; virtual;
     property FontSize: Integer read GetFontSize;
@@ -96,6 +99,8 @@ type
     FPendingTarget: TTranslationMemoryHoverTarget;
     FPreview: TTranslationMemoryPreviewWindow;
     FPreviewAnchorScreenRect: TRect;
+    FPreviewTarget: TTranslationMemoryHoverTarget;
+    FPreviewTargetValid: Boolean;
     FTimer: TTimer;
     procedure ClearCache;
     function GetActive: Boolean;
@@ -151,7 +156,7 @@ function TryParseTranslationMemoryHoverURL(const AURL: string;
 implementation
 
 uses
-  Math
+  Math, performance_debug
   {$IFDEF WINDOWS}, Windows{$ENDIF};
 
 const
@@ -389,6 +394,7 @@ var
   ReferenceText: string;
   TextBlock: TKMemoTextBlock;
 begin
+  IBibliaPerfIncrement(ipcTranslationMemoryPreviewRenders);
   FMemo.Blocks.LockUpdate;
   try
     FMemo.Blocks.Clear;
@@ -482,7 +488,7 @@ begin
 end;
 
 procedure TTranslationMemoryPreviewWindow.ApplyPayloadLayout(
-  AResetScroll: Boolean);
+  AResetScroll: Boolean; ARenderPayload: Boolean = True);
 var
   DesiredHeight: Integer;
   EffectiveWidth: Integer;
@@ -530,7 +536,8 @@ begin
 
   Width := EffectiveWidth;
   Height := MaximumHeight;
-  RenderPayload(FPayload);
+  if ARenderPayload then
+    RenderPayload(FPayload);
   DesiredHeight := EnsureRange(
     FMemo.ContentHeight + Scale96ToForm(PREVIEW_CONTENT_PADDING_LOGICAL_PX),
     MinimumHeight, MaximumHeight);
@@ -559,6 +566,15 @@ begin
   end
   else
     ActivateRendered;
+end;
+
+procedure TTranslationMemoryPreviewWindow.ShowCachedPayload(
+  const AAnchorScreenRect: TRect);
+begin
+  if not FHasPayload then
+    Exit;
+  FAnchorScreenRect := AAnchorScreenRect;
+  ApplyPayloadLayout(True, False);
 end;
 
 procedure TTranslationMemoryPreviewWindow.ShowPayload(
@@ -605,6 +621,7 @@ begin
     FApplicationKeyHandlerRegistered := False;
   end;
   Dismiss;
+  FreeAndNil(FPreview);
   ClearCache;
   inherited Destroy;
 end;
@@ -642,12 +659,16 @@ begin
   FHasPendingTarget := False;
   FPendingTarget := Default(TTranslationMemoryHoverTarget);
   FPreviewAnchorScreenRect := Types.Rect(0, 0, 0, 0);
-  FreeAndNil(FPreview);
+  if Assigned(FPreview) then
+    // Keep the already rendered payload available for a cache hit.  A real
+    // invalidation clears FPreviewTargetValid, so the next target is rendered
+    // normally even though the window object remains reusable.
+    FPreview.Hide;
 end;
 
 function TTranslationMemoryHoverController.GetActive: Boolean;
 begin
-  Result := Assigned(FPreview) or GetTimerEnabled or FHasPendingTarget;
+  Result := GetPreviewVisible or GetTimerEnabled or FHasPendingTarget;
 end;
 
 function TTranslationMemoryHoverController.GetPreviewVisible: Boolean;
@@ -694,7 +715,7 @@ begin
     Exit;
   end;
   if FHasPendingTarget and HoverTargetsEqual(FPendingTarget, ATarget) and
-     (GetTimerEnabled or Assigned(FPreview)) then
+     (GetTimerEnabled or GetPreviewVisible) then
     Exit;
 
   Dismiss;
@@ -706,12 +727,13 @@ end;
 procedure TTranslationMemoryHoverController.Invalidate;
 begin
   Dismiss;
+  FPreviewTargetValid := False;
   ClearCache;
 end;
 
 procedure TTranslationMemoryHoverController.Leave;
 begin
-  if Assigned(FPreview) and FHasPendingTarget then
+  if GetPreviewVisible and FHasPendingTarget then
     Schedule(TRANSLATION_MEMORY_HOVER_RECHECK_MS)
   else
     Dismiss;
@@ -749,7 +771,7 @@ begin
   end;
   CursorPoint := CurrentCursorScreenPoint;
 
-  if Assigned(FPreview) then
+  if GetPreviewVisible then
   begin
     if not RectsEqual(AnchorScreenRect, FPreviewAnchorScreenRect) then
     begin
@@ -810,7 +832,8 @@ begin
     FCacheValid := True;
   end;
 
-  FPreview := CreatePreviewWindow;
+  if not Assigned(FPreview) then
+    FPreview := CreatePreviewWindow;
   if not Assigned(FPreview) then
   begin
     Dismiss;
@@ -818,7 +841,15 @@ begin
   end;
   FPreviewAnchorScreenRect := AnchorScreenRect;
   FPreview.OnFontSizeChanged := @HandlePreviewFontSizeChanged;
-  FPreview.ShowPayload(Payload, FPreviewAnchorScreenRect);
+  if LoadedFromCache and FPreviewTargetValid and
+     HoverTargetsEqual(FPreviewTarget, Target) then
+    FPreview.ShowCachedPayload(FPreviewAnchorScreenRect)
+  else
+  begin
+    FPreview.ShowPayload(Payload, FPreviewAnchorScreenRect);
+    FPreviewTarget := Target;
+    FPreviewTargetValid := Payload.ErrorMessage = '';
+  end;
   Schedule(TRANSLATION_MEMORY_HOVER_RECHECK_MS);
 end;
 

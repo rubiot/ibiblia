@@ -62,7 +62,18 @@ type
   TParagraphMode = (pmParagraph, pmNoParagraphs);
   TInterlinearMode = (imIntralinear, imInterlinear);
   TSuggestionMode = (smStatistical, smAI);
+  TDefaultVerseMode = (dvmAssociation, dvmEditing);
 
+  TDefaultVerseModeTransitionState = (
+    dvmtsIdle,
+    dvmtsRequested,
+    dvmtsSealed,
+    dvmtsRetargeted
+  );
+
+function DefaultVerseModeFromInteger(AValue: Integer): TDefaultVerseMode;
+
+type
   TRegexList = specialize TFPGList<IRegex>;
   TIntegerList = specialize TFPGList<integer>;
   TIntegerArray = array of Integer;
@@ -166,6 +177,8 @@ type
     FRadioGroupSituacao: TComboBox;
     FStatusImages: TImageList;
     FStatusAggregateImageCache: TStringList;
+    FStatusDefinitionsCache: TStatusDefinitions;
+    FStatusDefinitionsCacheValid: Boolean;
     FTemporizador: TTimer;
     FAtrasoExibicao: Cardinal;
     FInterlinearMode: TInterlinearMode; // It's not there, I should check valid fields.
@@ -177,6 +190,8 @@ type
     FLastLLMCallCompleted: Boolean;
     FOnNovoVersiculo: TOnNovoVersiculoEvents;
     FNewVerseNotificationQueued: Boolean;
+    FNewVerseNotificationReference: string;
+    FNewVerseNotificationGeneration: QWord;
     FOnSintagmaClick: TOnSintagmaClickEvent;
     FClosing: boolean;
     FAutoSave: boolean;
@@ -187,6 +202,19 @@ type
     FAssociationMemorySpeculativeEditPending: Boolean;
     FAssociationMemoryProgressBar: TProgressBar;
     FNavigationHistory: TNavigationHistory;
+    FDefaultVerseMode: TDefaultVerseMode;
+    FDefaultVerseModeRequestQueued: Boolean;
+    FDefaultVerseModeNavigationDepth: Integer;
+    FDefaultVerseModeReference: string;
+    FDefaultVerseModeTransitionState: TDefaultVerseModeTransitionState;
+    FDefaultVerseModeTransitionSourceReference: string;
+    FDefaultVerseModeTransitionTargetReference: string;
+    FSaveProjectObserverSuppressionDepth: Integer;
+    FLastLoadedReferenceID: string;
+    FVerseLoadGeneration: QWord;
+    FCurrentDestinationTextEmpty: Boolean;
+    FCurrentVerseDirtyGeneration: QWord;
+    FChapterSnapshot: TChapterSnapshot;
     function GetCanGoBack: Boolean;
     function GetCanGoForward: Boolean;
     function GetCaminho: string;
@@ -210,6 +238,7 @@ type
     procedure PreencherArvore;
     procedure SetAtrasoExibicao(const AValue: Cardinal);
     procedure SetAutoSave(AValue: boolean);
+    procedure SetDefaultVerseMode(AValue: TDefaultVerseMode);
     procedure SetChapterViewText(AValue: TTipoTextoBiblico);
     procedure SetChapterViewMode(AValue: TChapterViewMode);
     procedure SetComments(const AValue: string);
@@ -237,7 +266,7 @@ type
       NewVersion: Integer; ProgressBar: TProgressBar = nil);
     function EnsureAssociationMemoryFresh: Boolean;
     function TryGetTranslationMemoryOccurrencesCore(
-      const Matches: TTranslationPairMatchArray; Limit: Integer;
+      const Matches: TTranslationPairMatchArray; Offset, Limit: Integer;
       out Occurrences: TTranslationOccurrencePage;
       out ErrorMessage: string): Boolean;
     procedure RebuildAssociationMemory(ProgressBar: TProgressBar);
@@ -246,6 +275,23 @@ type
     procedure ReconcileEditedVerseAssociationMemory;
     function ReconcileChangedVerseAssociations: Boolean;
     procedure PendingEditorChanged(Sender: TObject);
+    procedure HandleVerseChanged;
+    procedure InvalidateChapterSnapshot;
+    procedure SyncChapterSnapshotCurrentVerse;
+    function BuildChapterSnapshotTextIndexes: TIntegerArray;
+    function SaveProjectCore(CaptureCurrentVerse,
+      NotifyObservers: Boolean): Boolean;
+    procedure ActivateDestinationVerseEditor;
+    procedure AbortDefaultVerseModeTransition;
+    procedure BeginDefaultVerseModeNavigation;
+    procedure CancelDefaultVerseModeRequest;
+    procedure DispatchDefaultVerseModeRequest(Data: PtrInt);
+    procedure EndDefaultVerseModeNavigation;
+    procedure PrepareDefaultVerseModeTransition;
+    procedure QueueDefaultVerseModeRequest;
+    procedure ResetDefaultVerseModeTransition;
+    procedure RetargetDefaultVerseModeTransition(
+      const AReferenceID: string);
     function ImportTheWordModuleWithLayout(arquivo: string;
       texto: TTipoTextoBiblico; pb: TProgressBar; replace: boolean;
       out AImportResult: TTheWordModuleImportResult;
@@ -320,10 +366,13 @@ type
     procedure CreateProject(nomedbvelho, nomedbnovo, descricao: string; tokenizerVersion: Integer); overload;
     procedure OpenProject(Nome: string);
     function CloseProject(_Commit: boolean): Boolean;
+    procedure RequestDefaultVerseModeForCurrentVerse;
     procedure Commit;
     procedure Rollback;
     procedure GoToReference(reference: string);
     procedure GoToReference(reference: TReference);
+    procedure NavigateToReference(reference: string);
+    procedure NavigateToReference(reference: TReference);
     procedure GoBack;
     procedure GoForward;
     procedure NextVerse;
@@ -401,11 +450,16 @@ type
       const Matches: TTranslationPairMatchArray; Limit: Integer;
       out Occurrences: TTranslationOccurrencePage;
       out ErrorMessage: string): Boolean;
+    function TryGetTranslationMemoryOccurrenceRange(
+      const Matches: TTranslationPairMatchArray; Offset, Limit: Integer;
+      out Occurrences: TTranslationOccurrencePage;
+      out ErrorMessage: string): Boolean;
     function TryGetReadyTranslationMemoryOccurrences(
       const Matches: TTranslationPairMatchArray; Limit: Integer;
       out Occurrences: TTranslationOccurrencePage;
       out ErrorMessage: string): Boolean;
     function GetChapterText: TStringList;
+    function GetChapterSnapshot: TChapterSnapshot;
     procedure CompileInterlinearVerseRules(var rulesRx: TRegexList; var replaceTo: TStringList; mode: TInterlinearMode; exporting: boolean);
     procedure Translate;
     procedure ToggleDisplayTags;
@@ -472,6 +526,8 @@ type
     property ParagraphMode: TParagraphMode read GetParagraphMode write SetParagraphMode;
     property TokenizerVersion: Integer read GetTokenizerVersion write SetTokenizerVersion;
     property AutoSave: boolean read FAutoSave write SetAutoSave;
+    property DefaultVerseMode: TDefaultVerseMode read FDefaultVerseMode
+      write SetDefaultVerseMode;
     property LastLLMUsage: TLLMUsage read FLastLLMUsage;
     property LastLLMCallCompleted: Boolean read FLastLLMCallCompleted;
     property Pairs: string read GetPairs;
@@ -543,6 +599,8 @@ resourcestring
     'This edit will remove 1 associated text member. Continue?';
   SRemoveEditAssociationsPrompt =
     'This edit will remove %d associated text members. Continue?';
+  SWysiwygVerseTransitionFailed =
+    'The WYSIWYG editor could not load the destination verse.';
 
   SStatusNotAssociated = 'Not associated';
   SStatusAssociating = 'Associating';
@@ -636,7 +694,7 @@ function TextTypeParticipatesInAssociations(
 implementation
 
 uses FormDictionaryPopup, FormVerseRules, formaiprocessing,
-  theword_module_encoding;
+  theword_module_encoding, performance_debug;
 
 type
   { Executes only the blocking network request outside the LCL thread. Verse
@@ -661,6 +719,14 @@ function TextTypeParticipatesInAssociations(
   ATextType: TTipoTextoBiblico): Boolean;
 begin
   Result := ATextType in [tbOrigem, tbDestino];
+end;
+
+function DefaultVerseModeFromInteger(AValue: Integer): TDefaultVerseMode;
+begin
+  if AValue = Ord(dvmEditing) then
+    Result := dvmEditing
+  else
+    Result := dvmAssociation;
 end;
 
 { TProject }
@@ -829,14 +895,22 @@ function TProject.GetStatusDefinitions: TStatusDefinitions;
 var
   Legacy: TStatusDefinitions;
 begin
+  if FStatusDefinitionsCacheValid then
+    Exit(Copy(FStatusDefinitionsCache, 0,
+      Length(FStatusDefinitionsCache)));
+
   Legacy := GetLegacyStatusDefinitions;
-  Result := LoadStatusDefinitions(GetInfo(STATUS_CATALOG_CONFIG_KEY),
+  FStatusDefinitionsCache := LoadStatusDefinitions(
+    GetInfo(STATUS_CATALOG_CONFIG_KEY),
     [
       Legacy[0].Caption,
       Legacy[1].Caption,
       Legacy[2].Caption,
       Legacy[3].Caption
     ]);
+  FStatusDefinitionsCacheValid := True;
+  Result := Copy(FStatusDefinitionsCache, 0,
+    Length(FStatusDefinitionsCache));
 end;
 
 procedure TProject.SetStatusDefinitions(const Definitions: TStatusDefinitions);
@@ -849,6 +923,7 @@ begin
   if not ValidateStatusDefinitions(Normalized, ErrorMessage) then
     raise Exception.Create(ErrorMessage);
 
+  FStatusDefinitionsCacheValid := False;
   FConfig.WriteString(STATUS_CATALOG_CONFIG_KEY,
     SaveStatusDefinitions(Normalized));
   RefreshStatusImages;
@@ -885,7 +960,10 @@ begin
     SetStatusDefinitions(Definitions);
   end
   else
+  begin
+    FStatusDefinitionsCacheValid := False;
     FConfig.WriteString('status.description.' + IntToStr(index), description);
+  end;
 end;
 
 function TProject.StatusAutomationEnabled: Boolean;
@@ -1062,6 +1140,14 @@ begin
   FAutoSave:=AValue;
 end;
 
+procedure TProject.SetDefaultVerseMode(AValue: TDefaultVerseMode);
+begin
+  { Changing the preference must not open or close the editor in the current
+    Verse. The caller explicitly requests application after a project is
+    ready, while regular navigation requests it from AfterVerseScroll. }
+  FDefaultVerseMode := DefaultVerseModeFromInteger(Ord(AValue));
+end;
+
 procedure TProject.SetChapterViewText(AValue: TTipoTextoBiblico);
 begin
   FConfig.WriteChapterViewText(Ord(AValue));
@@ -1182,15 +1268,9 @@ begin
 end;
 
 procedure TProject.SetOnAlterarVersiculo(const AValue: TOnProjectVerseChangedEvent);
-var
-  TextType: TTipoTextoBiblico;
 begin
   if FOnAlterarVersiculo = AValue then exit;
   FOnAlterarVersiculo := AValue;
-
-  for TextType := Low(FAVersiculo) to High(FAVersiculo) do
-    if assigned(FAVersiculo[TextType]) then
-      FAVersiculo[TextType].OnVerseChanged := FOnAlterarVersiculo;
 end;
 
 procedure TProject.OnNewVerseSubscribe(const AValue: TOnNovoVersiculoEvent);
@@ -1559,6 +1639,14 @@ end;
 
 procedure TProject.PendingEditorChanged(Sender: TObject);
 begin
+  Inc(FCurrentVerseDirtyGeneration);
+  if Assigned(FOnAlterarVersiculo) then
+    FOnAlterarVersiculo;
+end;
+
+procedure TProject.HandleVerseChanged;
+begin
+  Inc(FCurrentVerseDirtyGeneration);
   if Assigned(FOnAlterarVersiculo) then
     FOnAlterarVersiculo;
 end;
@@ -2153,27 +2241,124 @@ begin
   Result := TChapterViewMode(ModeIndex);
 end;
 
+procedure TProject.InvalidateChapterSnapshot;
+begin
+  FreeAndNil(FChapterSnapshot);
+end;
+
+procedure TProject.SyncChapterSnapshotCurrentVerse;
+var
+  ReferenceID: string;
+  TextIndexes: TIntegerArray;
+  TextValues: TChapterTextArray;
+  Index: Integer;
+begin
+  if not Assigned(FChapterSnapshot) then
+    Exit;
+  if not Assigned(FPersistence) then
+  begin
+    InvalidateChapterSnapshot;
+    Exit;
+  end;
+  if FChapterSnapshot.ContentRevision = FPersistence.VerseContentRevision then
+    Exit;
+
+  ReferenceID := FPersistence.CurrentPairId;
+  TextIndexes := BuildChapterSnapshotTextIndexes;
+  SetLength(TextValues, Length(TextIndexes));
+  for Index := 0 to High(TextIndexes) do
+    TextValues[Index] := FPersistence.CurrentText(TextIndexes[Index]);
+
+  { Keep the existing chapter object current immediately after a normal Verse
+    save. Batch imports and patches may target other chapters; in that case the
+    entry cannot be reconciled safely and the next reader performs one reload. }
+  if not FChapterSnapshot.UpdateEntry(ReferenceID, TextIndexes, TextValues,
+    FPersistence.CurrentPairs, FPersistence.VerseContentRevision) then
+    InvalidateChapterSnapshot;
+end;
+
+function TProject.BuildChapterSnapshotTextIndexes: TIntegerArray;
+var
+  TextType: TTipoTextoBiblico;
+  Index: Integer;
+  Found: Boolean;
+begin
+  Result := nil;
+  for TextType := Low(FAVersiculo) to High(FAVersiculo) do
+    if Assigned(FAVersiculo[TextType]) then
+    begin
+      Found := False;
+      for Index := 0 to High(Result) do
+        if Result[Index] = FACamposTexto[TextType] then
+        begin
+          Found := True;
+          Break;
+        end;
+      if not Found then
+      begin
+        SetLength(Result, Length(Result) + 1);
+        Result[High(Result)] := FACamposTexto[TextType];
+      end;
+    end;
+end;
+
+function TProject.GetChapterSnapshot: TChapterSnapshot;
+var
+  TextIndexes: TIntegerArray;
+begin
+  Result := nil;
+  if not Assigned(FPersistence) or not Assigned(FVerseRepository) then
+    Exit;
+  TextIndexes := BuildChapterSnapshotTextIndexes;
+  if Length(TextIndexes) = 0 then
+    Exit;
+  if not Assigned(FChapterSnapshot) or
+     not FChapterSnapshot.Matches(BookID, Chapter,
+       FPersistence.VerseContentRevision, TextIndexes) then
+  begin
+    FreeAndNil(FChapterSnapshot);
+    FChapterSnapshot := FVerseRepository.LoadChapterSnapshot(BookID,
+      Chapter, TextIndexes);
+  end;
+  Result := FChapterSnapshot;
+end;
+
 function TProject.GetChapterText: TStringList;
-  function GetText(rulesRx: TRegexList; replaceTo: TStringList): string;
+  function GetText(const Entry: TChapterSnapshotEntry; rulesRx: TRegexList;
+    replaceTo: TStringList): string;
   var
     i: integer;
     corruptionDetails: string;
+    SourceSlot: Integer;
+    DestinationSlot: Integer;
+    SelectedSlot: Integer;
   begin
     case ChapterViewText of
       tbOrigem, tbDestino, tbConsulta1, tbConsulta2:
-        result := FPersistence.CurrentText(FACamposTexto[ChapterViewText]).Replace(#239#187#191, '');
+      begin
+        SelectedSlot := FChapterSnapshot.TextSlotForField(
+          FACamposTexto[ChapterViewText]);
+        if SelectedSlot < 0 then
+          Exit('');
+        result := Entry.Texts[SelectedSlot].Replace(#239#187#191, '');
+      end;
       tbInterlinear:
       begin
-        if FPersistence.CurrentPairs.IsEmpty then
-          result := FPersistence.CurrentText(FACamposTexto[tbOrigem])
+        SourceSlot := FChapterSnapshot.TextSlotForField(
+          FACamposTexto[tbOrigem]);
+        DestinationSlot := FChapterSnapshot.TextSlotForField(
+          FACamposTexto[tbDestino]);
+        if (SourceSlot < 0) or (DestinationSlot < 0) then
+          Exit('');
+        if Entry.Associations.IsEmpty then
+          result := Entry.Texts[SourceSlot]
         else
         begin
           if InterlinearMode = imInterlinear then
           begin
             if not FVerseRenderBuffer.TryBuildInterlinearLine(
-                FPersistence.CurrentText(FACamposTexto[tbOrigem]),
-                FPersistence.CurrentText(FACamposTexto[tbDestino]),
-                FPersistence.CurrentPairs,
+                Entry.Texts[SourceSlot], Entry.Texts[DestinationSlot],
+                Entry.Associations,
                 rimMySword,
                 result,
                 corruptionDetails) then
@@ -2181,25 +2366,24 @@ function TProject.GetChapterText: TStringList;
               // Chapter rendering is a secondary view and must never block
               // saving or correcting the selected Verse Pair. The rebuild
               // follows the same policy and skips corrupt canonical rows.
-              result := FPersistence.CurrentText(FACamposTexto[tbOrigem]);
+              result := Entry.Texts[SourceSlot];
               DebugLn(Format('Ignoring invalid associations in chapter view ' +
-                '[%s]: %s', [FPersistence.CurrentPairId,
+                '[%s]: %s', [Entry.ReferenceID,
                 corruptionDetails]));
             end;
           end
           else if InterlinearMode = imIntralinear then
           begin
             if not FVerseRenderBuffer.TryBuildInterlinearLine(
-                FPersistence.CurrentText(FACamposTexto[tbOrigem]),
-                FPersistence.CurrentText(FACamposTexto[tbDestino]),
-                FPersistence.CurrentPairs,
+                Entry.Texts[SourceSlot], Entry.Texts[DestinationSlot],
+                Entry.Associations,
                 rimTheWord,
                 result,
                 corruptionDetails) then
             begin
-              result := FPersistence.CurrentText(FACamposTexto[tbOrigem]);
+              result := Entry.Texts[SourceSlot];
               DebugLn(Format('Ignoring invalid associations in chapter view ' +
-                '[%s]: %s', [FPersistence.CurrentPairId,
+                '[%s]: %s', [Entry.ReferenceID,
                 corruptionDetails]));
             end;
           end
@@ -2220,11 +2404,11 @@ function TProject.GetChapterText: TStringList;
   end;
 
 var
-  bkch: string;
+  EntryIndex: Integer;
   rulesRx: TRegexList;
   replaceTo: TStringList;
+  Snapshot: TChapterSnapshot;
 begin
-  bkch := Format('%d,%d,', [BookID, Chapter]);
   result := TStringList.Create;
 
   rulesRx := nil;
@@ -2234,17 +2418,11 @@ begin
       CompileInterlinearVerseRules(rulesRx, replaceTo, InterlinearMode, false);
 
     try
-      StartScrollingSession;
-      try
-        RewindChapter;
-        while not FPersistence.EOF and GetID().StartsWith(bkch) do
-        begin
-          result.Add(GetText(rulesRx, replaceTo));
-          NextVerse;
-        end;
-      finally
-        FinishScrollingSession;
-      end;
+      Snapshot := GetChapterSnapshot;
+      if Assigned(Snapshot) then
+        for EntryIndex := 0 to Snapshot.Count - 1 do
+          result.Add(GetText(Snapshot.Entry(EntryIndex), rulesRx,
+            replaceTo));
     except
       FreeAndNil(result);
       raise;
@@ -2559,6 +2737,9 @@ begin
     FACamposTexto, versiculo, Ord(texto), Ord(tbOrigem), Ord(tbDestino),
     replace, StatusAutomationEnabled, ErrorDetails);
 
+  if Result then
+    SyncChapterSnapshotCurrentVerse;
+
   MemoryInputChanged := (PreviousText <>
     FPersistence.CurrentText(FACamposTexto[texto])) or
     (PreviousPairs <> FPersistence.CurrentPairs);
@@ -2594,9 +2775,11 @@ var
 begin
   if not FScrollEventsEnabled or not Assigned(FAVersiculo[tbOrigem]) then
     exit;
+  IBibliaPerfIncrement(ipcSaveBeforeScrollCalls);
 
   //starttime := getTickCount;
 
+  PrepareDefaultVerseModeTransition;
   CacheWasCurrent := Assigned(FAssociationMemory) and
     not FAssociationMemory.NeedsRebuild;
   try
@@ -2620,6 +2803,7 @@ begin
     end;
     raise;
   end;
+  SyncChapterSnapshotCurrentVerse;
   if MemoryInputsChanged and Assigned(FAssociationMemory) then
   begin
     FAssociationMemory.MarkSourceDirty;
@@ -2636,69 +2820,80 @@ end;
 
 procedure TProject.RefreshAutomaticNoteStarts;
 var
-  Count, Index: Integer;
-  NoteStarts: TAutomaticRFNoteCountArray;
-  TextIndexes: TIntegerArray;
+  Snapshot: TChapterSnapshot;
   TextType: TTipoTextoBiblico;
-  TextTypes: array of TTipoTextoBiblico;
 begin
-  Count := 0;
-  SetLength(TextIndexes, Length(FAVersiculo));
-  SetLength(TextTypes, Length(FAVersiculo));
+  Snapshot := GetChapterSnapshot;
+  if not Assigned(Snapshot) then
+    Exit;
   for TextType := Low(FAVersiculo) to High(FAVersiculo) do
     if Assigned(FAVersiculo[TextType]) then
-    begin
-      TextIndexes[Count] := FACamposTexto[TextType];
-      TextTypes[Count] := TextType;
-      Inc(Count);
-    end;
-  SetLength(TextIndexes, Count);
-  SetLength(TextTypes, Count);
-  if Count = 0 then
-    Exit;
-
-  NoteStarts := FVerseRepository.CountAutomaticRFNotesBeforeMany(GetID(),
-    TextIndexes);
-  for Index := 0 to Count - 1 do
-    FAVersiculo[TextTypes[Index]].AutomaticNoteStart := NoteStarts[Index];
+      FAVersiculo[TextType].AutomaticNoteStart :=
+        Snapshot.AutomaticNoteStart(GetID(), FACamposTexto[TextType]);
 end;
 
 procedure TProject.AfterVerseScroll(DataSet: TDataSet);
 var
   e: TOnNovoVersiculoEvent;
   loadResult: TCurrentVerseLoadResult;
+  LoadedReferenceID: string;
+  LoadedDirtyGeneration: QWord;
+  LoadedPersistenceRevision: QWord;
+  ReferenceChanged: Boolean;
+  VerseLoadStarted: Boolean;
   //starttime: DWord;
 begin
   if not FScrollEventsEnabled then
     exit;
 
-  UpdateReference(GetID());
+  LoadedReferenceID := GetID();
+  ReferenceChanged := FLastLoadedReferenceID <> LoadedReferenceID;
+  if ReferenceChanged then
+    Inc(FVerseLoadGeneration);
+  UpdateReference(LoadedReferenceID);
 
   //starttime := getTickCount;
 
-  loadResult := FCurrentVerseWorkspace.LoadCurrentVerse(FPersistence,
-    FAVersiculo, FACamposTexto, FormattedReference, GetID(),
-    Ord(tbOrigem), Ord(tbDestino));
+  VerseLoadStarted := False;
+  try
+    loadResult := FCurrentVerseWorkspace.LoadCurrentVerse(FPersistence,
+      FAVersiculo, FACamposTexto, FormattedReference, GetID(),
+      Ord(tbOrigem), Ord(tbDestino));
+    VerseLoadStarted := True;
 
-  RefreshAutomaticNoteStarts;
+    RefreshAutomaticNoteStarts;
 
-  if assigned(FAVersiculo[tbOrigem]) and assigned(FAVersiculo[tbDestino]) then
-  begin
-    try
-      FCurrentVerseWorkspace.ApplyLoadedAssociations(FAVersiculo[tbOrigem],
-        loadResult.Associations, FVerseRenderBuffer);
-    except
-      on E: Exception do
-      MessageDlg(SError, SCorruptedData + #13#10#13#10 + FormattedReference + #13#10#13#10 +
-           format('%s'#13#10#13#10'pares: %s'#13#10'%s'#13#10'%s',
-                  [E.Message, loadResult.Associations,
-                  FAVersiculo[tbOrigem].DebugTokens, FAVersiculo[tbDestino].DebugTokens]),
-           mtError, [mbOK], 0);
+    if assigned(FAVersiculo[tbOrigem]) and assigned(FAVersiculo[tbDestino]) then
+    begin
+      try
+        FCurrentVerseWorkspace.ApplyLoadedAssociations(FAVersiculo[tbOrigem],
+          loadResult.Associations, FVerseRenderBuffer);
+      except
+        on E: Exception do
+        MessageDlg(SError, SCorruptedData + #13#10#13#10 + FormattedReference + #13#10#13#10 +
+             format('%s'#13#10#13#10'pares: %s'#13#10'%s'#13#10'%s',
+                    [E.Message, loadResult.Associations,
+                    FAVersiculo[tbOrigem].DebugTokens, FAVersiculo[tbDestino].DebugTokens]),
+             mtError, [mbOK], 0);
 
+      end;
     end;
+  except
+    try
+      if VerseLoadStarted then
+        { The text parse already succeeded. Keep the loaded Verse usable even
+          when a secondary snapshot/configuration step fails. }
+        FCurrentVerseWorkspace.FinalizeLoadedVerse(FAVersiculo, True);
+    except
+      { Preserve the original load error after releasing every suspended view. }
+    end;
+    raise;
   end;
 
-  FCurrentVerseWorkspace.FinalizeLoadedVerse(FAVersiculo);
+  FCurrentVerseWorkspace.FinalizeLoadedVerse(FAVersiculo, True);
+  RetargetDefaultVerseModeTransition(LoadedReferenceID);
+  FLastLoadedReferenceID := LoadedReferenceID;
+  FCurrentDestinationTextEmpty := loadResult.DestinationTextEmpty;
 
   FNavigationHistory.Visit(ID);
 
@@ -2721,15 +2916,29 @@ begin
       FRadioGroupSituacao.ItemIndex := 0;
   end;
 
-  if loadResult.DestinationTextEmpty and Assigned(FAVersiculo[tbDestino]) then
-    // Open an empty destination verse for editing only when a visual verse exists.
-    OnDblClickVersiculo(FAVersiculo[tbDestino].Panel);
-
+  LoadedDirtyGeneration := FCurrentVerseDirtyGeneration;
+  LoadedPersistenceRevision := FPersistence.VerseContentRevision;
   for e in FOnNovoVersiculo do
     e(self);
 
   if fautosave and not fexportando then
-    SaveProject;
+  begin
+    { BeforeScroll already captured the Verse that was left. Avoid serializing
+      the newly loaded Verse again unless an observer really changed it. }
+    SaveProjectCore(
+      (FCurrentVerseDirtyGeneration <> LoadedDirtyGeneration) or
+      (FPersistence.VerseContentRevision <> LoadedPersistenceRevision),
+      False);
+  end;
+
+  { Opening is deliberately requested only after the complete Verse load,
+    observers and autosave. A plain refresh of the same reference therefore
+    never reopens an editor that the user has just saved or cancelled. }
+  if ReferenceChanged and not FExportando and
+     (ID = LoadedReferenceID) and
+     (FLastLoadedReferenceID = LoadedReferenceID) and
+     (FDefaultVerseModeTransitionState <> dvmtsRetargeted) then
+    RequestDefaultVerseModeForCurrentVerse;
 
   //DebugLn('  TProject.PosRolagemVersiculo: %d milliseconds', [getTickCount-starttime]);
 end;
@@ -2737,6 +2946,7 @@ end;
 procedure TProject.SavePairs;
 begin
   FCurrentVerseWorkspace.SavePairs(FPersistence, FAVersiculo[tbOrigem]);
+  SyncChapterSnapshotCurrentVerse;
 end;
 
 procedure TProject.SaveVersePairs(Verse: TVerse);
@@ -2745,11 +2955,13 @@ begin
   // Assumes database cursor is already positioned at the correct record
   if Verse = nil then Exit;
   FPersistence.WriteCurrentPairs(Verse.Pairs);
+  SyncChapterSnapshotCurrentVerse;
 end;
 
 procedure TProject.SaveText;
 begin
   FCurrentVerseWorkspace.SaveTexts(FPersistence, FAVersiculo, FACamposTexto);
+  SyncChapterSnapshotCurrentVerse;
 end;
 
 procedure TProject.SaveAssociations;
@@ -3099,7 +3311,7 @@ procedure TProject.OnMudancaVersiculo(Sender: TObject; Node: TTreeNode);
 begin
   if not FScrollEventsEnabled or not assigned(FTblPares) or FClosing or not assigned(Node) then
     exit;
-  GoToReference(FBibleTreeCoordinator.NodeToReferenceID(FEscopo, Node));
+  NavigateToReference(FBibleTreeCoordinator.NodeToReferenceID(FEscopo, Node));
 end;
 
 function TProject.OnChangeTextVersiculo(Sender: TVerseMemo;
@@ -3165,6 +3377,12 @@ end;
 
 procedure TProject.NotifyNewVerseObserversAfterEdit;
 begin
+  { Use the reference already committed by AfterVerseScroll instead of asking
+    persistence for the current record here. Besides avoiding re-entry into the
+    dataset during an editor callback, this also keeps post-commit notification
+    usable by project instances that have not opened a persistence store yet. }
+  FNewVerseNotificationReference := FLastLoadedReferenceID;
+  FNewVerseNotificationGeneration := FVerseLoadGeneration;
   if FNewVerseNotificationQueued then
     Exit;
   FNewVerseNotificationQueued := True;
@@ -3174,8 +3392,20 @@ end;
 procedure TProject.DispatchNewVerseObserversAfterEdit(Data: PtrInt);
 var
   Observer: TOnNovoVersiculoEvent;
+  EditedReference: string;
+  EditedGeneration: QWord;
 begin
   FNewVerseNotificationQueued := False;
+  EditedReference := FNewVerseNotificationReference;
+  EditedGeneration := FNewVerseNotificationGeneration;
+  FNewVerseNotificationReference := '';
+  { A real navigation already notified observers synchronously for the newly
+    loaded Verse. Never replay the deferred notification from the edited Verse
+    against a different reference: chapter rendering performs an internal
+    scrolling session and would otherwise cancel the new editor request. }
+  if (EditedReference <> FLastLoadedReferenceID) or
+     (EditedGeneration <> FVerseLoadGeneration) then
+    Exit;
   { The editor has accepted and closed its session before this queued refresh
     runs. Observers may therefore save/navigate without re-entering the old
     edit baseline. }
@@ -3247,6 +3477,217 @@ begin
   end;
 end;
 
+procedure TProject.ActivateDestinationVerseEditor;
+var
+  DestinationVerse: TVerse;
+begin
+  if not FAtivo or FClosing or FExportando then
+    Exit;
+  DestinationVerse := FAVersiculo[tbDestino];
+  if not Assigned(DestinationVerse) or not Assigned(DestinationVerse.Panel) or
+     (DestinationVerse.ReferenceID <> ID) then
+    Exit;
+  FVerseMemo.Activate(DestinationVerse.Panel, DestinationVerse,
+    DestinationVerse.AutomaticNoteStart);
+end;
+
+procedure TProject.CancelDefaultVerseModeRequest;
+begin
+  { Keep at most one LCL callback queued. Clearing the target makes that
+    callback a harmless no-op; a later navigation may reuse it by publishing
+    a new target before it is dispatched. }
+  FDefaultVerseModeReference := '';
+end;
+
+procedure TProject.ResetDefaultVerseModeTransition;
+begin
+  FDefaultVerseModeTransitionState := dvmtsIdle;
+  FDefaultVerseModeTransitionSourceReference := '';
+  FDefaultVerseModeTransitionTargetReference := '';
+end;
+
+procedure TProject.AbortDefaultVerseModeTransition;
+begin
+  if Assigned(FVerseMemo) and FVerseMemo.IsTransitioning then
+    FVerseMemo.AbortVerseTransition;
+  ResetDefaultVerseModeTransition;
+end;
+
+procedure TProject.BeginDefaultVerseModeNavigation;
+begin
+  if FDefaultVerseModeNavigationDepth = 0 then
+  begin
+    IBibliaPerfNavigationBegin;
+    ResetDefaultVerseModeTransition;
+    if FAtivo and not FClosing and not FExportando and
+       (FDefaultVerseMode = dvmEditing) and Assigned(FVerseMemo) and
+       Assigned(FAVersiculo[tbDestino]) and
+       FVerseMemo.IsActiveFor(FAVersiculo[tbDestino]) then
+    begin
+      FDefaultVerseModeTransitionState := dvmtsRequested;
+      FDefaultVerseModeTransitionSourceReference := ID;
+    end;
+  end;
+  Inc(FDefaultVerseModeNavigationDepth);
+end;
+
+procedure TProject.PrepareDefaultVerseModeTransition;
+begin
+  if (FDefaultVerseModeNavigationDepth <= 0) or
+     (FDefaultVerseModeTransitionState <> dvmtsRequested) then
+    Exit;
+
+  { BeforeScroll is the first reliable proof that the dataset will actually
+    leave the record. Preparing earlier would validate and commit an edit when
+    First/Last/Next/Prior cannot move at BOF or EOF. }
+  if not FAtivo or FClosing or FExportando or
+     (FDefaultVerseMode <> dvmEditing) or
+     (FDefaultVerseModeTransitionSourceReference <> ID) or
+     not Assigned(FVerseMemo) or not Assigned(FAVersiculo[tbDestino]) or
+     not FVerseMemo.IsActiveFor(FAVersiculo[tbDestino]) then
+  begin
+    ResetDefaultVerseModeTransition;
+    Exit;
+  end;
+
+  if not FVerseMemo.BeginVerseTransition then
+  begin
+    AbortDefaultVerseModeTransition;
+    SysUtils.Abort;
+  end;
+  FDefaultVerseModeTransitionState := dvmtsSealed;
+end;
+
+procedure TProject.RetargetDefaultVerseModeTransition(
+  const AReferenceID: string);
+var
+  DestinationVerse: TVerse;
+begin
+  if FDefaultVerseModeTransitionState <> dvmtsSealed then
+    Exit;
+
+  DestinationVerse := FAVersiculo[tbDestino];
+  try
+    if AReferenceID.IsEmpty or
+       not Assigned(DestinationVerse) or
+       not Assigned(DestinationVerse.Panel) or
+       (DestinationVerse.ReferenceID <> AReferenceID) or
+       not Assigned(FVerseMemo) or
+       not FVerseMemo.RetargetVerseTransition(DestinationVerse.Panel,
+         DestinationVerse, DestinationVerse.AutomaticNoteStart) then
+      raise Exception.Create(SWysiwygVerseTransitionFailed);
+
+    FDefaultVerseModeTransitionTargetReference := AReferenceID;
+    FDefaultVerseModeTransitionState := dvmtsRetargeted;
+    CancelDefaultVerseModeRequest;
+  except
+    AbortDefaultVerseModeTransition;
+    raise;
+  end;
+end;
+
+procedure TProject.QueueDefaultVerseModeRequest;
+begin
+  if (FDefaultVerseModeNavigationDepth > 0) or
+     FDefaultVerseModeReference.IsEmpty or
+     FDefaultVerseModeRequestQueued then
+    Exit;
+  FDefaultVerseModeRequestQueued := True;
+  Application.QueueAsyncCall(@DispatchDefaultVerseModeRequest, 0);
+end;
+
+procedure TProject.EndDefaultVerseModeNavigation;
+var
+  Retargeted: Boolean;
+  ModeName: string;
+begin
+  if FDefaultVerseModeNavigationDepth > 0 then
+    Dec(FDefaultVerseModeNavigationDepth);
+  if FDefaultVerseModeNavigationDepth <> 0 then
+    Exit;
+
+  Retargeted := FDefaultVerseModeTransitionState = dvmtsRetargeted;
+  try
+    if Retargeted then
+    begin
+      if Assigned(FVerseMemo) and FVerseMemo.IsTransitioning and
+         Assigned(FAVersiculo[tbDestino]) and
+         FVerseMemo.IsActiveFor(FAVersiculo[tbDestino]) and
+         (FDefaultVerseModeTransitionTargetReference = ID) and
+         (FAVersiculo[tbDestino].ReferenceID =
+           FDefaultVerseModeTransitionTargetReference) then
+        FVerseMemo.CompleteVerseTransition;
+      if Assigned(FVerseMemo) and FVerseMemo.IsTransitioning then
+        AbortDefaultVerseModeTransition;
+      CancelDefaultVerseModeRequest;
+    end
+    else if (FDefaultVerseModeTransitionState = dvmtsSealed) or
+            (Assigned(FVerseMemo) and FVerseMemo.IsTransitioning) then
+      AbortDefaultVerseModeTransition;
+  finally
+    ResetDefaultVerseModeTransition;
+  end;
+
+  if not Retargeted then
+    QueueDefaultVerseModeRequest;
+  if IBibliaPerfDebugEnabled then
+  begin
+    if FDefaultVerseMode = dvmEditing then
+      ModeName := 'wysiwyg'
+    else
+      ModeName := 'association';
+    IBibliaPerfNavigationEnd(ID, ModeName);
+  end;
+end;
+
+procedure TProject.RequestDefaultVerseModeForCurrentVerse;
+begin
+  if not FAtivo or FClosing or FExportando or not Assigned(FPersistence) or
+     (Assigned(FVerseMemo) and FVerseMemo.IsTransitioning) or
+     not Assigned(FAVersiculo[tbDestino]) or
+     not Assigned(FAVersiculo[tbDestino].Panel) or ID.IsEmpty then
+  begin
+    CancelDefaultVerseModeRequest;
+    Exit;
+  end;
+
+  if (FDefaultVerseMode <> dvmEditing) and
+     not FCurrentDestinationTextEmpty then
+  begin
+    CancelDefaultVerseModeRequest;
+    Exit;
+  end;
+
+  FDefaultVerseModeReference := ID;
+  QueueDefaultVerseModeRequest;
+end;
+
+procedure TProject.DispatchDefaultVerseModeRequest(Data: PtrInt);
+var
+  RequestedReference: string;
+begin
+  FDefaultVerseModeRequestQueued := False;
+  { Next/Previous/First/Last still have post-navigation work after the dataset
+    fires AfterScroll. If that work pumps the message loop, preserve the
+    request until suggestions and any Association-memory rebuild have ended. }
+  if FDefaultVerseModeNavigationDepth > 0 then
+    Exit;
+  RequestedReference := FDefaultVerseModeReference;
+  FDefaultVerseModeReference := '';
+
+  if RequestedReference.IsEmpty or not FAtivo or FClosing or FExportando or
+     (Assigned(FVerseMemo) and FVerseMemo.IsTransitioning) or
+     not Assigned(FPersistence) or (ID <> RequestedReference) or
+     (FLastLoadedReferenceID <> RequestedReference) or
+     not Assigned(FAVersiculo[tbDestino]) or
+     (FAVersiculo[tbDestino].ReferenceID <> RequestedReference) or
+     ((FDefaultVerseMode <> dvmEditing) and
+      not FCurrentDestinationTextEmpty) then
+    Exit;
+
+  ActivateDestinationVerseEditor;
+end;
+
 procedure TProject.OnDblClickVersiculo(Sender: TObject);
 var
   Container: TScrollBox;
@@ -3268,7 +3709,11 @@ begin
   if not Assigned(VerseView) then
     Exit;
 
-  FVerseMemo.Activate(Container, VerseView, VerseView.AutomaticNoteStart);
+  CancelDefaultVerseModeRequest;
+  if TextType = tbDestino then
+    ActivateDestinationVerseEditor
+  else
+    FVerseMemo.Activate(Container, VerseView, VerseView.AutomaticNoteStart);
 end;
 
 procedure TProject.OnTranslatorNoteClick(Sender: TVerse; ANoteId,
@@ -3280,6 +3725,7 @@ begin
      not FindVerseType(Sender, TextType) or not Assigned(Sender.Panel) then
     Exit;
 
+  CancelDefaultVerseModeRequest;
   Sender.DismissTranslatorNotePreview;
   FVerseMemo.Activate(Sender.Panel, Sender, Sender.AutomaticNoteStart,
     ANoteId, ARevision);
@@ -3508,6 +3954,7 @@ var
   OldExporting: Boolean;
 begin
   if not assigned(FArvore) then exit;
+  IBibliaPerfIncrement(ipcTreeTraversals);
   OldScrollEventsEnabled := FScrollEventsEnabled;
   OldExporting := FExportando;
   StartScrollingSession;
@@ -3558,6 +4005,8 @@ begin
   FAIProcessingNodes  := TAINodeInfoList.Create(True); // owns objects
   FAIBatchCompletionShown := False;
   FStatusAggregateImageCache := TStringList.Create;
+  FStatusDefinitionsCache := nil;
+  FStatusDefinitionsCacheValid := False;
   FCurrentVerseWorkspace := TCurrentVerseWorkspace.Create;
   FCurrentVerseWorkspace.InitializeVerseRuntime(FAVersiculo, FACamposTexto);
   FPersistence        := nil;
@@ -3579,6 +4028,21 @@ begin
   FAssociationMemoryLiveEditPending := False;
   FAssociationMemorySpeculativeEditPending := False;
   FAssociationMemoryProgressBar := nil;
+  FDefaultVerseMode := dvmAssociation;
+  FNewVerseNotificationReference := '';
+  FNewVerseNotificationGeneration := 0;
+  FDefaultVerseModeRequestQueued := False;
+  FDefaultVerseModeNavigationDepth := 0;
+  FDefaultVerseModeReference := '';
+  FDefaultVerseModeTransitionState := dvmtsIdle;
+  FDefaultVerseModeTransitionSourceReference := '';
+  FDefaultVerseModeTransitionTargetReference := '';
+  FSaveProjectObserverSuppressionDepth := 0;
+  FLastLoadedReferenceID := '';
+  FVerseLoadGeneration := 0;
+  FCurrentDestinationTextEmpty := False;
+  FCurrentVerseDirtyGeneration := 0;
+  FChapterSnapshot := nil;
   FVerseStrongsCountMode := scNone;
   FLastLLMUsage.PromptTokens := 0;
   FLastLLMUsage.CompletionTokens := 0;
@@ -3616,8 +4080,13 @@ end;
 
 destructor TProject.Destroy;
 begin
+  CancelDefaultVerseModeRequest;
+  AbortDefaultVerseModeTransition;
   Application.RemoveAsyncCalls(Self);
+  FDefaultVerseModeRequestQueued := False;
   FNewVerseNotificationQueued := False;
+  FNewVerseNotificationReference := '';
+  FNewVerseNotificationGeneration := 0;
   FCurrentVerseWorkspace.DestroyVerseViews(FAVersiculo);
 
   if Assigned(FAIProcessingNodes) then
@@ -3628,6 +4097,7 @@ begin
   FreeAndNil(FPatchApplier);
   FreeAndNil(FProjectExporter);
   FreeAndNil(FDictionaryManager);
+  FreeAndNil(FChapterSnapshot);
   FreeAndNil(FStatusAggregateImageCache);
   FreeAndNil(FStatusImages);
   FreeAndNil(FNavigationHistory);
@@ -3667,12 +4137,19 @@ var
   i: Integer;
   OldExporting: Boolean;
 begin
+  InvalidateChapterSnapshot;
+  FStatusDefinitionsCacheValid := False;
   if not FileExists(Nome) then
   begin
       MessageDlg(SOpenProject, format(SProjectDoesntExist, [Nome]), mtError, [mbOK], 0);
     exit;
   end;
 
+  CancelDefaultVerseModeRequest;
+  AbortDefaultVerseModeTransition;
+  Inc(FVerseLoadGeneration);
+  FLastLoadedReferenceID := '';
+  FCurrentDestinationTextEmpty := False;
   FNavigationHistory.Clear;
 
   FAtivo := False;
@@ -3767,7 +4244,6 @@ begin
     RefreshStatusImages;
     PreencherArvore;
     UpdateTree;
-      UpdateTree;
     //FArvore.FullCollapse;
     FArvore.Enabled := true;
   end;
@@ -3827,6 +4303,9 @@ var
   SavedMarker: string;
 begin
   Result := False;
+  InvalidateChapterSnapshot;
+  CancelDefaultVerseModeRequest;
+  AbortDefaultVerseModeTransition;
   if not Assigned(FPersistence) then
     Exit(True);
   if _Commit and (FAssociationMemoryRebuildRunning or
@@ -3848,11 +4327,18 @@ begin
     FVerseMemo.DiscardEdit;
 
   if _Commit then
-    Commit
+  begin
+    FConfig.StageMarkerForCommit(SavedMarker);
+    Commit;
+  end
   else
+  begin
     Rollback;
+    { Closing without saving still remembers navigation, preserving the
+      previous behavior without making rolled-back project content durable. }
+    FConfig.WriteMarker(SavedMarker);
+  end;
 
-  FConfig.WriteMarker(SavedMarker);
   FConfig.WriteChapterViewMode(Ord(SavedChapterViewMode));
   FConfig.WriteChapterViewText(Ord(SavedChapterViewText));
 
@@ -3862,6 +4348,7 @@ begin
         IntToStr(FAVersiculo[t].Font.Size));
 
   FClosing := true;
+  Inc(FVerseLoadGeneration);
   if assigned(FArvore) then
   begin
     //FArvore.FullCollapse;
@@ -3909,6 +4396,8 @@ begin
 
   FClosing := false;
   FAtivo := false;
+  FLastLoadedReferenceID := '';
+  FCurrentDestinationTextEmpty := False;
   FNavigationHistory.Clear;
   Result := True;
 end;
@@ -3954,6 +4443,7 @@ begin
     FAssociationMemory.CommitSourceOutdated;
     if Assigned(FPersistence) then
       FPersistence.FlushImmediateInfo;
+    IBibliaPerfIncrement(ipcPersistenceCommits);
     Exit;
   end;
 
@@ -4027,7 +4517,13 @@ begin
     FAssociationMemory.CommitCompleted;
   end;
   if Assigned(FPersistence) then
+  begin
+    { Publish any metadata staged after the main content commit, including the
+      navigation marker, through the same canonical connection. }
+    FPersistence.CommitInfo;
     FPersistence.FlushImmediateInfo;
+  end;
+  IBibliaPerfIncrement(ipcPersistenceCommits);
   FAssociationMemoryLiveEditPending := False;
   FAssociationMemorySpeculativeEditPending := False;
 end;
@@ -4093,6 +4589,22 @@ begin
   GoToReference(format('%d,%d,%d', [reference.BookID, reference.Chapter, reference.Verse]));
 end;
 
+procedure TProject.NavigateToReference(reference: string);
+begin
+  BeginDefaultVerseModeNavigation;
+  try
+    GoToReference(reference);
+  finally
+    EndDefaultVerseModeNavigation;
+  end;
+end;
+
+procedure TProject.NavigateToReference(reference: TReference);
+begin
+  NavigateToReference(format('%d,%d,%d',
+    [reference.BookID, reference.Chapter, reference.Verse]));
+end;
+
 procedure TProject.GoBack;
 var
   TargetReference: string;
@@ -4101,11 +4613,16 @@ begin
   if not FNavigationHistory.TryGoBack(TargetReference) then
     Exit;
 
+  BeginDefaultVerseModeNavigation;
   try
-    GoToReference(TargetReference);
-  except
-    FNavigationHistory.TryGoForward(RestoredReference);
-    raise;
+    try
+      GoToReference(TargetReference);
+    except
+      FNavigationHistory.TryGoForward(RestoredReference);
+      raise;
+    end;
+  finally
+    EndDefaultVerseModeNavigation;
   end;
 end;
 
@@ -4117,48 +4634,73 @@ begin
   if not FNavigationHistory.TryGoForward(TargetReference) then
     Exit;
 
+  BeginDefaultVerseModeNavigation;
   try
-    GoToReference(TargetReference);
-  except
-    FNavigationHistory.TryGoBack(RestoredReference);
-    raise;
+    try
+      GoToReference(TargetReference);
+    except
+      FNavigationHistory.TryGoBack(RestoredReference);
+      raise;
+    end;
+  finally
+    EndDefaultVerseModeNavigation;
   end;
 end;
 
 procedure TProject.NextVerse;
 begin
-  if not FPersistence.EOF then
-    FPersistence.Next;
-  if not FExportando and SugerirAssociacaoAutomaticamente and
-    StatusAutomationEnabled and (Status = FirstStatusId(GetStatusDefinitions)) then
-    SuggestAssociation;
+  BeginDefaultVerseModeNavigation;
+  try
+    if not FPersistence.EOF then
+      FPersistence.Next;
+    if not FExportando and SugerirAssociacaoAutomaticamente and
+      StatusAutomationEnabled and (Status = FirstStatusId(GetStatusDefinitions)) then
+      SuggestAssociation;
+  finally
+    EndDefaultVerseModeNavigation;
+  end;
 end;
 
 procedure TProject.PreviousVerse;
 begin
-  if not FPersistence.BOF then
-    FPersistence.Prior;
-  if not FExportando and SugerirAssociacaoAutomaticamente and
-    StatusAutomationEnabled and (Status = FirstStatusId(GetStatusDefinitions)) then
-    SuggestAssociation;
+  BeginDefaultVerseModeNavigation;
+  try
+    if not FPersistence.BOF then
+      FPersistence.Prior;
+    if not FExportando and SugerirAssociacaoAutomaticamente and
+      StatusAutomationEnabled and (Status = FirstStatusId(GetStatusDefinitions)) then
+      SuggestAssociation;
+  finally
+    EndDefaultVerseModeNavigation;
+  end;
 end;
 
 procedure TProject.FirstVerse;
 begin
-  if not FPersistence.BOF then
-    FPersistence.First;
-  if not FExportando and SugerirAssociacaoAutomaticamente and
-    StatusAutomationEnabled and (Status = FirstStatusId(GetStatusDefinitions)) then
-    SuggestAssociation;
+  BeginDefaultVerseModeNavigation;
+  try
+    if not FPersistence.BOF then
+      FPersistence.First;
+    if not FExportando and SugerirAssociacaoAutomaticamente and
+      StatusAutomationEnabled and (Status = FirstStatusId(GetStatusDefinitions)) then
+      SuggestAssociation;
+  finally
+    EndDefaultVerseModeNavigation;
+  end;
 end;
 
 procedure TProject.LastVerse;
 begin
-  if not FPersistence.EOF then
-    FPersistence.Last;
-  if not FExportando and SugerirAssociacaoAutomaticamente and
-    StatusAutomationEnabled and (Status = FirstStatusId(GetStatusDefinitions)) then
-    SuggestAssociation;
+  BeginDefaultVerseModeNavigation;
+  try
+    if not FPersistence.EOF then
+      FPersistence.Last;
+    if not FExportando and SugerirAssociacaoAutomaticamente and
+      StatusAutomationEnabled and (Status = FirstStatusId(GetStatusDefinitions)) then
+      SuggestAssociation;
+  finally
+    EndDefaultVerseModeNavigation;
+  end;
 end;
 
 procedure TProject.RefreshUI;
@@ -4231,7 +4773,8 @@ begin
   end;
 end;
 
-function TProject.SaveProject: Boolean;
+function TProject.SaveProjectCore(CaptureCurrentVerse,
+  NotifyObservers: Boolean): Boolean;
 var
   e: TOnNovoVersiculoEvent;
 begin
@@ -4239,19 +4782,28 @@ begin
   if FAssociationMemoryRebuildRunning or
     (Assigned(FAssociationMemory) and FAssociationMemory.RebuildActive) then
     Exit;
-  try
-    BeforeVerseScroll(nil);
-  except
-    on EAbort do
-      Exit(False);
+  if CaptureCurrentVerse then
+  begin
+    try
+      BeforeVerseScroll(nil);
+    except
+      on EAbort do
+        Exit(False);
+    end;
   end;
+  FConfig.StageMarkerForCommit(ID);
   Commit;
-  FConfig.WriteMarker(ID);
 
   //UpdateTree;
-  for e in FOnNovoVersiculo do
-    e(Self);
+  if NotifyObservers and (FSaveProjectObserverSuppressionDepth = 0) then
+    for e in FOnNovoVersiculo do
+      e(Self);
   Result := True;
+end;
+
+function TProject.SaveProject: Boolean;
+begin
+  Result := SaveProjectCore(True, True);
 end;
 
 procedure TProject.SuggestAssociationStatistical;
@@ -4501,7 +5053,14 @@ begin
   if FAssociationMemoryRebuildRunning or
     (Assigned(FAssociationMemory) and FAssociationMemory.RebuildActive) then
     Exit;
-  SaveProject;
+  if FDefaultVerseModeNavigationDepth > 0 then
+    Inc(FSaveProjectObserverSuppressionDepth);
+  try
+    SaveProject;
+  finally
+    if FDefaultVerseModeNavigationDepth > 0 then
+      Dec(FSaveProjectObserverSuppressionDepth);
+  end;
 end;
 
 function TProject.GetVerseReferenceString(Verse: TVerse): string;
@@ -5021,6 +5580,7 @@ var
   end;
 
 begin
+  CancelDefaultVerseModeRequest;
   Result := False;
   AImportResult := Default(TTheWordModuleImportResult);
   AImportResult.Status := twmisNotStarted;
@@ -5397,7 +5957,7 @@ begin
     FAVersiculo[texto].TokenizerVersion := TokenizerVersion;
     FAVersiculo[texto].BaseDirection := GetTextDirection(texto);
     FAVersiculo[texto].OnTextDirectionChange := @OnTextDirectionChange;
-    FAVersiculo[texto].OnVerseChanged := FOnAlterarVersiculo;
+    FAVersiculo[texto].OnVerseChanged := @HandleVerseChanged;
     AttachProjectVersePopupMenu(texto);
   end;
 end;
@@ -5415,6 +5975,7 @@ begin
   if not assigned(FAVersiculo[tbOrigem]) or not assigned(FAVersiculo[tbDestino]) then
     exit;
 
+  CancelDefaultVerseModeRequest;
   try
     FExportando := true;
 
@@ -5455,6 +6016,7 @@ begin
   if (FAVersiculo[tbOrigem] = nil) or (FAVersiculo[tbDestino] = nil) then
     exit;
 
+  CancelDefaultVerseModeRequest;
   rulesRx := nil;
   replaceTo := nil;
   if arquivo.EndsWith('.mybible') then
@@ -5517,6 +6079,7 @@ begin
   if (FAVersiculo[tbOrigem] = nil) or (FAVersiculo[tbDestino] = nil) then
     exit;
 
+  CancelDefaultVerseModeRequest;
   try
     FExportando := true;
 
@@ -5838,6 +6401,15 @@ function TProject.TryGetTranslationMemoryOccurrences(
   out Occurrences: TTranslationOccurrencePage;
   out ErrorMessage: string): Boolean;
 begin
+  Result := TryGetTranslationMemoryOccurrenceRange(Matches, 0, Limit,
+    Occurrences, ErrorMessage);
+end;
+
+function TProject.TryGetTranslationMemoryOccurrenceRange(
+  const Matches: TTranslationPairMatchArray; Offset, Limit: Integer;
+  out Occurrences: TTranslationOccurrencePage;
+  out ErrorMessage: string): Boolean;
+begin
   Result := False;
   ErrorMessage := '';
   Occurrences.TotalAssociations := 0;
@@ -5860,7 +6432,7 @@ begin
       Exit;
     end;
 
-    Result := TryGetTranslationMemoryOccurrencesCore(Matches, Limit,
+    Result := TryGetTranslationMemoryOccurrencesCore(Matches, Offset, Limit,
       Occurrences, ErrorMessage);
   except
     on E: Exception do
@@ -5894,12 +6466,12 @@ begin
     Exit;
   end;
 
-  Result := TryGetTranslationMemoryOccurrencesCore(Matches, Limit,
+  Result := TryGetTranslationMemoryOccurrencesCore(Matches, 0, Limit,
     Occurrences, ErrorMessage);
 end;
 
 function TProject.TryGetTranslationMemoryOccurrencesCore(
-  const Matches: TTranslationPairMatchArray; Limit: Integer;
+  const Matches: TTranslationPairMatchArray; Offset, Limit: Integer;
   out Occurrences: TTranslationOccurrencePage;
   out ErrorMessage: string): Boolean;
 var
@@ -6030,8 +6602,8 @@ begin
   SetLength(Occurrences.Items, 0);
 
   try
-    Occurrences := FSuggestionManager.GetTranslationOccurrences(Matches,
-      Limit);
+    Occurrences := FSuggestionManager.GetTranslationOccurrenceRange(Matches,
+      Offset, Limit);
     ProjectionBuffer := TVerseRenderBuffer.Create;
     try
       ProjectionBuffer.SetTokenizerVersion(TokenizerVersion);
@@ -6112,6 +6684,7 @@ end;
 
 procedure TProject.Translate;
 begin
+  FStatusDefinitionsCacheValid := False;
   UpdateDefaultStatusDescription;
   if Assigned(FPersistence) and (ID <> '') then
     UpdateReference(ID);
@@ -6141,6 +6714,7 @@ end;
 
 procedure TProject.StartScrollingSession;
 begin
+  CancelDefaultVerseModeRequest;
   FMarker := ID;
   BeforeVerseScroll(nil);
   ScrollEventsEnabled := false;

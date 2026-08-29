@@ -19,6 +19,7 @@ type
     procedure Utf16OffsetsCountEmojiAsSurrogatePair;
     procedure ExplicitColorFadeUsesExactWhiteBlend;
     procedure AddedWordsIsDistinctFromHtmlItalic;
+    procedure CloneSurvivesSourceReleaseWithRunsAndNotes;
   end;
 
 implementation
@@ -212,6 +213,35 @@ begin
     AssertFalse(tweifv2AddedWords in Style.Flags);
   finally
     Projection.Free;
+  end;
+end;
+
+procedure TTheWordEffectiveInlineStyleV2Tests.
+  CloneSurvivesSourceReleaseWithRunsAndNotes;
+var
+  Projection, ProjectionClone: TTheWordEffectiveInlineProjectionV2;
+  Style: TTheWordEffectiveInlineStyleV2;
+begin
+  Projection := TTheWordEffectiveInlineProjectionV2.Resolve(
+    '<font color=red size=+1>x</font><RF q="7">body<Rf>');
+  ProjectionClone := Projection.Clone;
+  AssertTrue('clone is a distinct projection instance',
+    ProjectionClone <> Projection);
+  Projection.Free;
+  Projection := nil;
+  try
+    AssertEquals(UnicodeString('x'), ProjectionClone.VisibleText);
+    AssertEquals(1, ProjectionClone.RunCount);
+    Style := RequiredStyleAt(ProjectionClone, 0);
+    AssertEquals(LongInt($000000FF), Style.ExplicitColor);
+    AssertEquals(2, Style.FontSizeDeltaPoints);
+    AssertEquals(1, ProjectionClone.TranslatorNoteCount);
+    AssertEquals(UnicodeString('7'),
+      ProjectionClone.TranslatorNotes[0].Q);
+    AssertEquals(UnicodeString('body'),
+      ProjectionClone.TranslatorNotes[0].BodyRaw);
+  finally
+    ProjectionClone.Free;
   end;
 end;
 

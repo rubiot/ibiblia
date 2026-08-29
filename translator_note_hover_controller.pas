@@ -6,7 +6,7 @@ unit translator_note_hover_controller;
 interface
 
 uses
-  Classes, SysUtils, Types, ExtCtrls, Controls,
+  Classes, SysUtils, Types, ExtCtrls, Controls, Forms,
   theword_translator_note_editor;
 
 const
@@ -27,15 +27,18 @@ type
     FOnResolve: TResolveTranslatorNotePreviewEvent;
     FPendingNoteId: QWord;
     FPendingRevision: QWord;
-    FPreview: TTranslatorNotePreviewWindow;
+    FPreview: TCustomForm;
     FTimer: TTimer;
     function GetPreviewVisible: Boolean;
     function GetTimerEnabled: Boolean;
     function GetTimerInterval: Integer;
     procedure Schedule(AInterval: Integer);
   protected
-    function CreatePreviewWindow: TTranslatorNotePreviewWindow; virtual;
+    function CreatePreviewWindow: TCustomForm; virtual;
     function CurrentCursorScreenPoint: TPoint; virtual;
+    procedure ShowPreviewWindow(APreview: TCustomForm;
+      const ABodyRaw: UnicodeString;
+      const AAnchorScreenRect: TRect); virtual;
     procedure TimerElapsed(Sender: TObject); virtual;
   public
     constructor Create(AOwner: TComponent); override;
@@ -70,11 +73,11 @@ end;
 destructor TTranslatorNoteHoverController.Destroy;
 begin
   Dismiss;
+  FreeAndNil(FPreview);
   inherited Destroy;
 end;
 
-function TTranslatorNoteHoverController.CreatePreviewWindow:
-  TTranslatorNotePreviewWindow;
+function TTranslatorNoteHoverController.CreatePreviewWindow: TCustomForm;
 begin
   Result := TTranslatorNotePreviewWindow.Create(nil);
 end;
@@ -84,9 +87,17 @@ begin
   Result := Mouse.CursorPos;
 end;
 
+procedure TTranslatorNoteHoverController.ShowPreviewWindow(
+  APreview: TCustomForm; const ABodyRaw: UnicodeString;
+  const AAnchorScreenRect: TRect);
+begin
+  TTranslatorNotePreviewWindow(APreview).ShowNote(ABodyRaw,
+    AAnchorScreenRect);
+end;
+
 function TTranslatorNoteHoverController.GetPreviewVisible: Boolean;
 begin
-  Result := Assigned(FPreview);
+  Result := Assigned(FPreview) and FPreview.Visible;
 end;
 
 function TTranslatorNoteHoverController.GetTimerEnabled: Boolean;
@@ -111,7 +122,7 @@ end;
 
 function TTranslatorNoteHoverController.Active: Boolean;
 begin
-  Result := Assigned(FPreview) or GetTimerEnabled or
+  Result := GetPreviewVisible or GetTimerEnabled or
     (FPendingNoteId <> 0);
 end;
 
@@ -124,7 +135,8 @@ begin
   end;
   FPendingNoteId := 0;
   FPendingRevision := 0;
-  FreeAndNil(FPreview);
+  if Assigned(FPreview) then
+    FPreview.Hide;
 end;
 
 procedure TTranslatorNoteHoverController.Hover(ARevision, ANoteId: QWord);
@@ -136,7 +148,7 @@ begin
   end;
   if (FPendingNoteId = ANoteId) and
      (FPendingRevision = ARevision) and
-     (GetTimerEnabled or Assigned(FPreview)) then
+     (GetTimerEnabled or GetPreviewVisible) then
     Exit;
   Dismiss;
   FPendingNoteId := ANoteId;
@@ -146,7 +158,7 @@ end;
 
 procedure TTranslatorNoteHoverController.Leave;
 begin
-  if Assigned(FPreview) and (FPendingNoteId <> 0) then
+  if GetPreviewVisible and (FPendingNoteId <> 0) then
     Schedule(TRANSLATOR_NOTE_HOVER_RECHECK_MS)
   else
   begin
@@ -170,7 +182,7 @@ begin
     Dismiss;
     Exit;
   end;
-  if Assigned(FPreview) then
+  if GetPreviewVisible then
   begin
     HoverRect := Rect(Min(AnchorRect.Left, FPreview.Left),
       Min(AnchorRect.Top, FPreview.Top),
@@ -190,13 +202,14 @@ begin
       Dismiss;
     Exit;
   end;
-  FPreview := CreatePreviewWindow;
+  if not Assigned(FPreview) then
+    FPreview := CreatePreviewWindow;
   if not Assigned(FPreview) then
   begin
     Dismiss;
     Exit;
   end;
-  FPreview.ShowNote(BodyRaw, AnchorRect);
+  ShowPreviewWindow(FPreview, BodyRaw, AnchorRect);
   Schedule(TRANSLATOR_NOTE_HOVER_RECHECK_MS);
 end;
 

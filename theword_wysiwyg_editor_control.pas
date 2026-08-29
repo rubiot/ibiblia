@@ -25,6 +25,20 @@ type
   private
     FAutomaticNoteStart: Integer;
     FBaseDirection: TTextDirection;
+    FCommandStateCanApplySemantic: Boolean;
+    FCommandStateCanApplyTitle: Boolean;
+    FCommandStateCanInsertNote: Boolean;
+    FCommandStateCanInsertTitle: Boolean;
+    FCommandStateEditable: Boolean;
+    FCommandStateHasTitle: Boolean;
+    FCommandStateRawMode: Boolean;
+    FCommandStateRevision: QWord;
+    FCommandStateSelectionLength: Integer;
+    FCommandStateSelectionStart: Integer;
+    FCommandStateTitle: TTheWordTitleRange;
+    FCommandStateValid: Boolean;
+    FCommandStateVisualGeneration: QWord;
+    FDirectMutationPending: Boolean;
     FDirectEditor: TDirectWriteVerseEditor;
     FDirectZoomSize: Integer;
     FEditable: Boolean;
@@ -33,6 +47,7 @@ type
     FLoadedRaw: UnicodeString;
     FNoteHover: TTranslatorNoteHoverController;
     FOnChanged: TTheWordEditorChangedEvent;
+    FOnSelectionChanged: TTheWordEditorChangedEvent;
     FOnCommand: TTheWordEditorCommandEvent;
     FPendingFontSizeActive: Boolean;
     FPendingFontSizeLevel: Integer;
@@ -48,6 +63,7 @@ type
     FSession: TTheWordWysiwygSessionV2;
     FTokenizerVersion: Integer;
     FUpdating: Boolean;
+    FVisualGeneration: QWord;
     FVisualDocument: IVerseVisualDocument;
     function GetCanInsertTranslatorNote: Boolean;
     function ApplyTranslatorNoteFromDialog(Sender: TObject;
@@ -61,6 +77,7 @@ type
     function GetSelectionStart: Integer;
     function GetText: string;
     procedure ClearPendingFormatting;
+    procedure EnsureCommandState;
     procedure DirectClipboardCopy(Sender: TObject; StartUTF16,
       LengthUTF16: Integer; ACut: Boolean; var Handled: Boolean);
     procedure DirectClipboardPaste(Sender: TObject; StartUTF16,
@@ -85,7 +102,8 @@ type
       LengthUTF16: Integer);
     procedure DirectMouseWheel(Sender: TObject; Shift: TShiftState;
       WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
-    procedure DoChanged;
+    procedure DoContentChanged;
+    procedure DoSelectionChanged;
     function GetAnchorScreenRect(ARole: TVisualSpanRole;
       AObjectId: QWord; out ARect: TRect): Boolean;
     procedure HideNotePreview;
@@ -145,6 +163,9 @@ type
     procedure FocusEditor;
     procedure DismissTranslatorNotePreview;
     function TranslatorNotePreviewActive: Boolean;
+    procedure LoadVerseContext(const ARaw: string;
+      ADirection: TTextDirection; AFont: TFont;
+      ATokenizerVersion, AAutomaticNoteStart: Integer);
     procedure SetEditorFont(AFont: TFont);
     property AutomaticNoteStart: Integer read FAutomaticNoteStart
       write SetAutomaticNoteStart;
@@ -164,15 +185,24 @@ type
       write FTokenizerVersion;
     property OnChanged: TTheWordEditorChangedEvent read FOnChanged
       write FOnChanged;
+    property OnSelectionChanged: TTheWordEditorChangedEvent
+      read FOnSelectionChanged write FOnSelectionChanged;
     property OnCommand: TTheWordEditorCommandEvent read FOnCommand
       write FOnCommand;
   end;
+
+{$IFDEF FPCUNIT}
+procedure EnableTheWordClipboardFixture(const APlainText: UnicodeString;
+  const APayload: string = '');
+procedure DisableTheWordClipboardFixture;
+function TheWordClipboardPlainTextFixture: UnicodeString;
+{$ENDIF}
 
 implementation
 
 uses
   LCLType, Clipbrd, Math, theword_clipboard_v2, theword_verse_visual_adapter_v2,
-  theword_syntax_highlighter;
+  theword_syntax_highlighter, performance_debug;
 
 constructor TTheWordWysiwygEditorControl.Create(AOwner: TComponent);
 begin
@@ -187,6 +217,9 @@ begin
   FEditingNoteOffset := 0;
   FRawMode := False;
   FUpdating := False;
+  FVisualGeneration := 0;
+  FCommandStateValid := False;
+  FDirectMutationPending := False;
   FTokenizerVersion := 0;
   FDirectZoomSize := 0;
   FAutomaticNoteStart := 0;
@@ -249,16 +282,37 @@ end;
 
 procedure TTheWordWysiwygEditorControl.SetText(const AValue: string);
 begin
+  LoadVerseContext(AValue, FBaseDirection, FDirectEditor.Font,
+    FTokenizerVersion, FAutomaticNoteStart);
+end;
+
+procedure TTheWordWysiwygEditorControl.LoadVerseContext(
+  const ARaw: string; ADirection: TTextDirection; AFont: TFont;
+  ATokenizerVersion, AAutomaticNoteStart: Integer);
+begin
   DismissTranslatorNotePreview;
   ClearPendingFormatting;
   FUpdating := True;
   try
+    if AAutomaticNoteStart < 0 then
+      AAutomaticNoteStart := 0;
+    FBaseDirection := ADirection;
+    FTokenizerVersion := ATokenizerVersion;
+    FAutomaticNoteStart := AAutomaticNoteStart;
+    if Assigned(AFont) and (AFont <> FDirectEditor.Font) then
+    begin
+      FDirectEditor.Font.Assign(AFont);
+      if FDirectZoomSize > 0 then
+        FDirectEditor.Font.Size := FDirectZoomSize
+      else if FDirectEditor.Font.Size < 1 then
+        FDirectEditor.Font.Size := 1;
+    end;
     FVisualDocument := nil;
     FreeAndNil(FSession);
-    FLoadedRaw := UTF8Decode(AValue);
+    FLoadedRaw := UTF8Decode(ARaw);
     FSession := TTheWordWysiwygSessionV2.Create(FLoadedRaw,
       FTokenizerVersion);
-    FRawEditor.Text := AValue;
+    FRawEditor.Text := ARaw;
     FRawMode := False;
     FRawEditor.Visible := False;
     FDirectEditor.Visible := True;
@@ -342,14 +396,81 @@ begin
     Result := 0;
 end;
 
-function TTheWordWysiwygEditorControl.GetCanInsertTranslatorNote: Boolean;
+procedure TTheWordWysiwygEditorControl.EnsureCommandState;
 var
-  DocumentLength, DocumentStart: Integer;
+  DocumentLength, DocumentStart, RelativeStart: Integer;
+  HasDocumentSelection: Boolean;
+  Revision, TitleId: QWord;
+  LayoutSelectionLength, LayoutSelectionStart: Integer;
+  Title: TTheWordTitleRange;
 begin
-  Result := FEditable and (not FRawMode) and Assigned(FSession) and
-    TryGetDocumentSelection(DocumentStart, DocumentLength) and
-    (DocumentLength = 0) and
+  Revision := 0;
+  if Assigned(FSession) then
+    Revision := FSession.Revision;
+  LayoutSelectionStart := -1;
+  LayoutSelectionLength := -1;
+  if Assigned(FDirectEditor) and not FRawMode then
+  begin
+    LayoutSelectionStart := FDirectEditor.SelectionStart;
+    LayoutSelectionLength := FDirectEditor.SelectionLength;
+  end;
+  if FCommandStateValid and
+     (FCommandStateRevision = Revision) and
+     (FCommandStateVisualGeneration = FVisualGeneration) and
+     (FCommandStateSelectionStart = LayoutSelectionStart) and
+     (FCommandStateSelectionLength = LayoutSelectionLength) and
+     (FCommandStateRawMode = FRawMode) and
+     (FCommandStateEditable = FEditable) then
+    Exit;
+
+  IBibliaPerfIncrement(ipcCommandStateBuilds);
+  FCommandStateValid := True;
+  FCommandStateRevision := Revision;
+  FCommandStateVisualGeneration := FVisualGeneration;
+  FCommandStateSelectionStart := LayoutSelectionStart;
+  FCommandStateSelectionLength := LayoutSelectionLength;
+  FCommandStateRawMode := FRawMode;
+  FCommandStateEditable := FEditable;
+  FCommandStateCanApplySemantic := False;
+  FCommandStateCanApplyTitle := False;
+  FCommandStateCanInsertNote := False;
+  FCommandStateCanInsertTitle := False;
+  FCommandStateHasTitle := False;
+  FCommandStateTitle.OpenLexeme := '';
+  FCommandStateTitle.CloseLexeme := '';
+  FCommandStateTitle.StartOffset := 0;
+  FCommandStateTitle.EndOffset := 0;
+  FCommandStateTitle.Level := 0;
+  FCommandStateTitle.OpenOrdinal := 0;
+  FCommandStateTitle.CloseOrdinal := 0;
+  FCommandStateTitle.Editable := False;
+  if not FEditable or FRawMode or not Assigned(FSession) or
+     not Assigned(FDirectEditor) then
+    Exit;
+
+  FCommandStateHasTitle := TryGetTitleLayoutSelection(LayoutSelectionStart,
+    LayoutSelectionLength, TitleId, RelativeStart, DocumentLength, Title);
+  if FCommandStateHasTitle then
+    FCommandStateTitle := Title;
+  HasDocumentSelection := TryGetDocumentSelection(DocumentStart,
+    DocumentLength);
+  if not HasDocumentSelection then
+    Exit;
+  FCommandStateCanApplySemantic := FSession.CanApplySemantic(DocumentStart,
+    DocumentLength);
+  FCommandStateCanInsertNote := (DocumentLength = 0) and
     FSession.CanInsertTranslatorNote(DocumentStart);
+  FCommandStateCanInsertTitle := (DocumentLength = 0) and
+    FSession.CanInsertTitle(DocumentStart);
+  FCommandStateCanApplyTitle := FCommandStateHasTitle or
+    ((DocumentLength > 0) and
+     FSession.CanWrapTitle(DocumentStart, DocumentLength));
+end;
+
+function TTheWordWysiwygEditorControl.GetCanInsertTranslatorNote: Boolean;
+begin
+  EnsureCommandState;
+  Result := FCommandStateCanInsertNote;
 end;
 
 procedure TTheWordWysiwygEditorControl.HideNotePreview;
@@ -489,7 +610,7 @@ begin
   if EditorAction = tneaCancel then Exit;
   RefreshDirectDocument;
   TrySetDocumentSelection(NoteOffset, 0);
-  DoChanged;
+  DoContentChanged;
   FocusEditor;
 end;
 
@@ -525,7 +646,7 @@ begin
   if not Result then Exit;
   RefreshDirectDocument;
   TrySetDocumentSelection(DocumentStart, 0);
-  DoChanged;
+  DoContentChanged;
   FocusEditor;
 end;
 
@@ -717,15 +838,21 @@ begin
     FDirectEditor.SetSelection(LayoutStart, LayoutFinish - LayoutStart);
 end;
 
-procedure TTheWordWysiwygEditorControl.DoChanged;
+procedure TTheWordWysiwygEditorControl.DoContentChanged;
 begin
   if not FUpdating and Assigned(FOnChanged) then
     FOnChanged(Self);
 end;
 
+procedure TTheWordWysiwygEditorControl.DoSelectionChanged;
+begin
+  if not FUpdating and Assigned(FOnSelectionChanged) then
+    FOnSelectionChanged(Self);
+end;
+
 procedure TTheWordWysiwygEditorControl.RawChanged(Sender: TObject);
 begin
-  DoChanged;
+  DoContentChanged;
 end;
 
 procedure TTheWordWysiwygEditorControl.RawKeyDown(Sender: TObject;
@@ -809,7 +936,7 @@ begin
     FUpdating := False;
   end;
   FocusEditor;
-  DoChanged;
+  DoSelectionChanged;
 end;
 
 procedure TTheWordWysiwygEditorControl.SetEditable(AValue: Boolean);
@@ -822,7 +949,7 @@ begin
   if not FEditable then
     DismissTranslatorNotePreview;
   FRawEditor.ReadOnly := not FEditable;
-  DoChanged;
+  DoSelectionChanged;
 end;
 
 procedure TTheWordWysiwygEditorControl.SetAutomaticNoteStart(
@@ -850,9 +977,11 @@ var
   Title: TTheWordTitleRange;
   TitleId: QWord;
   Visual: IVerseVisualDocument;
+  WasUpdating: Boolean;
 begin
   if not Assigned(FSession) then
     Exit;
+  IBibliaPerfIncrement(ipcWysiwygVisualBuilds);
   HideNotePreview;
   HadTitleSelection := Assigned(FDirectEditor) and
     TryGetTitleLayoutSelection(FDirectEditor.SelectionStart,
@@ -863,13 +992,20 @@ begin
     HadSelection := TryGetDocumentSelection(DocumentStart, DocumentLength);
   Visual := BuildTheWordVerseVisualDocument(FSession.Document,
     FBaseDirection, FSession.Revision, FAutomaticNoteStart);
-  FVisualDocument := Visual;
-  FDirectEditor.SetEditorDocument(Visual);
-  if HadTitleSelection and (TitleId <= QWord(High(Integer))) then
-    TrySetTitleDocumentSelection(Integer(TitleId), RelativeStart,
-      DocumentLength)
-  else if HadSelection then
-    TrySetDocumentSelection(DocumentStart, DocumentLength);
+  Inc(FVisualGeneration);
+  WasUpdating := FUpdating;
+  FUpdating := True;
+  try
+    FVisualDocument := Visual;
+    FDirectEditor.SetEditorDocument(Visual);
+    if HadTitleSelection and (TitleId <= QWord(High(Integer))) then
+      TrySetTitleDocumentSelection(Integer(TitleId), RelativeStart,
+        DocumentLength)
+    else if HadSelection then
+      TrySetDocumentSelection(DocumentStart, DocumentLength);
+  finally
+    FUpdating := WasUpdating;
+  end;
 end;
 
 procedure TTheWordWysiwygEditorControl.RawMouseWheel(Sender: TObject;
@@ -1026,7 +1162,7 @@ begin
     if not TryTheWordDocumentToLayoutOffset(FVisualDocument,
       DocumentCaret, Affinity, NewCaretUTF16) then
       NewCaretUTF16 := StartUTF16 + Length(Replacement);
-    DoChanged;
+    FDirectMutationPending := True;
   end
   else
     Beep;
@@ -1115,7 +1251,7 @@ begin
     else if not TryTheWordDocumentToLayoutOffset(FVisualDocument,
       DocumentStart, Affinity, NewCaretUTF16) then
       NewCaretUTF16 := StartUTF16;
-    DoChanged;
+    FDirectMutationPending := True;
   end
   else
     Beep;
@@ -1179,7 +1315,7 @@ begin
     else if not TryTheWordDocumentToLayoutOffset(FVisualDocument,
       DocumentStart, Affinity, NewCaretUTF16) then
         NewCaretUTF16 := StartUTF16;
-    DoChanged;
+    FDirectMutationPending := True;
   end
   else
     Beep;
@@ -1190,11 +1326,46 @@ begin
   Result := RegisterClipboardFormat(THEWORD_CLIPBOARD_FORMAT_V2);
 end;
 
+{$IFDEF FPCUNIT}
+var
+  FClipboardFixtureActive: Boolean = False;
+  FClipboardFixturePlainText: UnicodeString = '';
+  FClipboardFixturePayload: string = '';
+
+procedure EnableTheWordClipboardFixture(const APlainText: UnicodeString;
+  const APayload: string);
+begin
+  FClipboardFixtureActive := True;
+  FClipboardFixturePlainText := APlainText;
+  FClipboardFixturePayload := APayload;
+end;
+
+procedure DisableTheWordClipboardFixture;
+begin
+  FClipboardFixtureActive := False;
+  FClipboardFixturePlainText := '';
+  FClipboardFixturePayload := '';
+end;
+
+function TheWordClipboardPlainTextFixture: UnicodeString;
+begin
+  Result := FClipboardFixturePlainText;
+end;
+{$ENDIF}
+
 procedure WriteTheWordClipboardV2(const APlainText: UnicodeString;
   const APayload: string);
 var
   Stream: TMemoryStream;
 begin
+{$IFDEF FPCUNIT}
+  if FClipboardFixtureActive then
+  begin
+    FClipboardFixturePlainText := APlainText;
+    FClipboardFixturePayload := APayload;
+    Exit;
+  end;
+{$ENDIF}
   Clipboard.AsText := UTF8Encode(APlainText);
   if APayload = '' then Exit;
   Stream := TMemoryStream.Create;
@@ -1214,6 +1385,10 @@ var
   FormatId: TClipboardFormat;
 begin
   Result := '';
+{$IFDEF FPCUNIT}
+  if FClipboardFixtureActive then
+    Exit(FClipboardFixturePayload);
+{$ENDIF}
   FormatId := PrivateClipboardFormatV2;
   if not Clipboard.HasFormat(FormatId) then Exit;
   Stream := TMemoryStream.Create;
@@ -1226,6 +1401,15 @@ begin
   finally
     Stream.Free;
   end;
+end;
+
+function ReadTheWordClipboardPlainText: UnicodeString;
+begin
+{$IFDEF FPCUNIT}
+  if FClipboardFixtureActive then
+    Exit(FClipboardFixturePlainText);
+{$ENDIF}
+  Result := UTF8Decode(Clipboard.AsText);
 end;
 
 procedure TTheWordWysiwygEditorControl.DirectClipboardCopy(Sender: TObject;
@@ -1284,7 +1468,7 @@ begin
         TrySetTitleDocumentSelection(Integer(TitleId), RelativeStart, 0)
       else
         TrySetDocumentSelection(DocumentStart, 0);
-      DoChanged;
+      DoContentChanged;
     end;
   except
     on E: Exception do Beep;
@@ -1318,7 +1502,7 @@ begin
   try
     IsTitle := TryGetTitleLayoutSelection(StartUTF16, LengthUTF16,
       TitleId, RelativeStart, DocumentLength, Title);
-    PlainText := UTF8Decode(Clipboard.AsText);
+    PlainText := ReadTheWordClipboardPlainText;
     if IsTitle and (TitleId <= QWord(High(Integer))) then
     begin
       DocumentStart := Title.StartOffset + RelativeStart;
@@ -1364,7 +1548,7 @@ begin
       FDirectEditor.SetSelection(NewLayoutCaret, 0)
     else
       TrySetDocumentSelection(DocumentStart + InsertedLength, 0);
-    DoChanged;
+    DoContentChanged;
   except
     on E: Exception do Beep;
   end;
@@ -1395,7 +1579,12 @@ begin
         ((DocumentOffset <> FPendingFontColorAnchor) or
          (TitleOrdinal <> FPendingFontColorTitleOrdinal)))) then
     ClearPendingFormatting;
-  DoChanged;
+  if FDirectMutationPending then
+  begin
+    FDirectMutationPending := False;
+    DoContentChanged;
+  end;
+  DoSelectionChanged;
 end;
 
 function TTheWordWysiwygEditorControl.DirectResolveInsertionStyle(
@@ -1512,46 +1701,22 @@ end;
 
 function TTheWordWysiwygEditorControl.TryGetCurrentTitle(
   out ATitle: TTheWordTitleRange): Boolean;
-var
-  DocumentLength, RelativeStart: Integer;
-  TitleId: QWord;
 begin
-  ATitle.StartOffset := 0;
-  ATitle.EndOffset := 0;
-  ATitle.Level := 0;
-  ATitle.OpenOrdinal := 0;
-  ATitle.CloseOrdinal := 0;
-  ATitle.OpenLexeme := '';
-  ATitle.CloseLexeme := '';
-  ATitle.Editable := False;
-  Result := (not FRawMode) and Assigned(FDirectEditor) and
-    TryGetTitleLayoutSelection(FDirectEditor.SelectionStart,
-      FDirectEditor.SelectionLength, TitleId, RelativeStart,
-      DocumentLength, ATitle);
+  EnsureCommandState;
+  ATitle := FCommandStateTitle;
+  Result := FCommandStateHasTitle;
 end;
 
 function TTheWordWysiwygEditorControl.CanInsertTitle: Boolean;
-var
-  DocumentLength, DocumentStart: Integer;
 begin
-  Result := FEditable and (not FRawMode) and Assigned(FSession) and
-    TryGetDocumentSelection(DocumentStart, DocumentLength) and
-    (DocumentLength = 0) and FSession.CanInsertTitle(DocumentStart);
+  EnsureCommandState;
+  Result := FCommandStateCanInsertTitle;
 end;
 
 function TTheWordWysiwygEditorControl.CanApplyTitle: Boolean;
-var
-  DocumentLength, DocumentStart: Integer;
-  Title: TTheWordTitleRange;
 begin
-  Result := FEditable and (not FRawMode) and Assigned(FSession);
-  if not Result then
-    Exit;
-  if TryGetCurrentTitle(Title) then
-    Exit(True);
-  Result := TryGetDocumentSelection(DocumentStart, DocumentLength) and
-    (DocumentLength > 0) and
-    FSession.CanWrapTitle(DocumentStart, DocumentLength);
+  EnsureCommandState;
+  Result := FCommandStateCanApplyTitle;
 end;
 
 function TTheWordWysiwygEditorControl.ApplyTitleLevel(
@@ -1575,7 +1740,7 @@ begin
     Exit;
   RefreshDirectDocument;
   TrySetTitleDocumentSelection(OpenOrdinal, 0, DocumentLength);
-  DoChanged;
+  DoContentChanged;
   FocusEditor;
 end;
 
@@ -1612,7 +1777,7 @@ begin
       Length(AText))
   else
     TrySetDocumentSelection(DocumentStart, Length(AText));
-  DoChanged;
+  DoContentChanged;
   FocusEditor;
 end;
 
@@ -1637,7 +1802,7 @@ begin
   RefreshDirectDocument;
   TrySetTitleDocumentSelection(Integer(TitleId), RelativeStart,
     DocumentLength);
-  DoChanged;
+  DoContentChanged;
   FocusEditor;
 end;
 
@@ -1660,14 +1825,14 @@ begin
   RefreshDirectDocument;
   TrySetDocumentSelection(Title.StartOffset + RelativeStart,
     DocumentLength);
-  DoChanged;
+  DoContentChanged;
   FocusEditor;
 end;
 
 function TTheWordWysiwygEditorControl.CanApplySemantic: Boolean;
 begin
-  Result := FEditable and (not FRawMode) and Assigned(FSession) and
-    FSession.CanApplySemantic(SelectionStart, SelectionLength);
+  EnsureCommandState;
+  Result := FCommandStateCanApplySemantic;
 end;
 
 function TTheWordWysiwygEditorControl.ApplySemantic(
@@ -1678,7 +1843,7 @@ begin
   if Result then
   begin
     RefreshDirectDocument;
-    DoChanged;
+    DoContentChanged;
     FocusEditor;
   end;
 end;
@@ -1712,7 +1877,7 @@ begin
           DocumentStart - Title.StartOffset, DocumentLength)
       else
         TrySetDocumentSelection(DocumentStart, DocumentLength);
-      DoChanged;
+      DoContentChanged;
       FocusEditor;
     end;
     Exit;
@@ -1776,7 +1941,7 @@ begin
           DocumentStart - Title.StartOffset, DocumentLength)
       else
         TrySetDocumentSelection(DocumentStart, DocumentLength);
-      DoChanged;
+      DoContentChanged;
       FocusEditor;
     end;
     Exit;
@@ -1820,7 +1985,7 @@ begin
   if Result then
   begin
     RefreshDirectDocument;
-    DoChanged;
+    DoContentChanged;
   end;
 end;
 
@@ -1836,7 +2001,7 @@ begin
   if Result then
   begin
     RefreshDirectDocument;
-    DoChanged;
+    DoContentChanged;
   end;
 end;
 
@@ -1847,7 +2012,7 @@ begin
   if Result then
   begin
     RefreshDirectDocument;
-    DoChanged;
+    DoContentChanged;
   end;
 end;
 
@@ -1863,7 +2028,7 @@ begin
   FRawEditor.Visible := False;
   FDirectEditor.Visible := True;
   RefreshDirectDocument;
-  DoChanged;
+  DoContentChanged;
 end;
 
 procedure TTheWordWysiwygEditorControl.FocusEditor;

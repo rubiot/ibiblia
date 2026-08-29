@@ -44,7 +44,10 @@ uses
   translator_note_hover_controller_test,
   translation_memory_focus_controller_test,
   translation_memory_preview_test,
-  project_creation_staging_test;
+  project_creation_staging_test,
+  default_verse_mode_test,
+  performance_debug_test,
+  wysiwyg_editor_performance_test;
 
 var
   Application: TTestRunner;

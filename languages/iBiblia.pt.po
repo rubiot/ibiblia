@@ -1116,6 +1116,31 @@ msgstr "Fechar projeto"
 msgid "Creating project..."
 msgstr ""
 
+#: formprincipal.sdefaultversemodeassociation
+msgctxt "formprincipal.sdefaultversemodeassociation"
+msgid "Association"
+msgstr "Associação"
+
+#: formprincipal.sdefaultversemodeassociationhint
+msgid "Open each verse in association mode"
+msgstr "Abrir cada versículo no modo de associação"
+
+#: formprincipal.sdefaultversemodeediting
+msgid "WYSIWYG editing"
+msgstr "Edição WYSIWYG"
+
+#: formprincipal.sdefaultversemodeeditinghint
+msgid "Open Destination in the WYSIWYG editor when navigating to a verse"
+msgstr "Abrir o texto Destino no editor WYSIWYG ao mudar de versículo"
+
+#: formprincipal.sdefaultversemodehint
+msgid "Choose how verses open by default"
+msgstr "Escolher como os versículos são abertos por padrão"
+
+#: formprincipal.sdefaultversemodemenu
+msgid "Default verse mode"
+msgstr "Modo padrão do versículo"
+
 #: formprincipal.sdestination
 msgctxt "formprincipal.sdestination"
 msgid "destination"

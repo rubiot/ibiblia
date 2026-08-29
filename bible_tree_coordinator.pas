@@ -606,7 +606,7 @@ var
   VerseNode: TTreeNode;
 begin
   VerseNode := FindVerseNode(Scope, ReferenceID);
-  if Assigned(VerseNode) then
+  if Assigned(VerseNode) and (FTree.Selected <> VerseNode) then
     VerseNode.Selected := True;
 end;
 

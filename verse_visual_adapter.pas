@@ -11,6 +11,8 @@ uses
 type
   TVerseInlineProjectionResolver = function(const ARaw: UnicodeString):
     TTheWordEffectiveInlineProjectionV2;
+  TVerseInlineProjectionMethodResolver = function(const ARaw: UnicodeString):
+    TTheWordEffectiveInlineProjectionV2 of object;
   TVerseRenderedTranslatorNote = record
     Id: QWord;
     LogicalIndex: Integer;
@@ -37,9 +39,25 @@ function BuildVerseVisualDocument(Syntagms: TSyntagmList;
   StrongCount: TSyntagm; BaseDirection: TTextDirection; Revision: QWord;
   AssociatedColor, UnassociatedColor: TColor;
   BoldWordsWithStrong: Boolean; const RawXML: string;
+  ProjectionResolver: TVerseInlineProjectionMethodResolver):
+  IVerseVisualDocument; overload;
+
+function BuildVerseVisualDocument(Syntagms: TSyntagmList;
+  StrongCount: TSyntagm; BaseDirection: TTextDirection; Revision: QWord;
+  AssociatedColor, UnassociatedColor: TColor;
+  BoldWordsWithStrong: Boolean; const RawXML: string;
   AutomaticNoteStart: Integer;
   out RenderedNotes: TVerseRenderedTranslatorNoteArray;
   ProjectionResolver: TVerseInlineProjectionResolver = nil):
+  IVerseVisualDocument; overload;
+
+function BuildVerseVisualDocument(Syntagms: TSyntagmList;
+  StrongCount: TSyntagm; BaseDirection: TTextDirection; Revision: QWord;
+  AssociatedColor, UnassociatedColor: TColor;
+  BoldWordsWithStrong: Boolean; const RawXML: string;
+  AutomaticNoteStart: Integer;
+  out RenderedNotes: TVerseRenderedTranslatorNoteArray;
+  ProjectionResolver: TVerseInlineProjectionMethodResolver):
   IVerseVisualDocument; overload;
 
 implementation
@@ -49,6 +67,10 @@ uses
 
 type
   TBooleanArray = array of Boolean;
+  TProjectionResolverAdapter = record
+    Plain: TVerseInlineProjectionResolver;
+    Method: TVerseInlineProjectionMethodResolver;
+  end;
   TProjectedNoteMarker = record
     Resolved: Boolean;
     Marker: UnicodeString;
@@ -56,13 +78,15 @@ type
   TProjectedNoteMarkerArray = array of TProjectedNoteMarker;
 
 function TryResolveProjection(const ARaw: UnicodeString;
-  ProjectionResolver: TVerseInlineProjectionResolver;
+  const ProjectionResolver: TProjectionResolverAdapter;
   out Projection: TTheWordEffectiveInlineProjectionV2): Boolean;
 begin
   Projection := nil;
   try
-    if Assigned(ProjectionResolver) then
-      Projection := ProjectionResolver(ARaw)
+    if Assigned(ProjectionResolver.Method) then
+      Projection := ProjectionResolver.Method(ARaw)
+    else if Assigned(ProjectionResolver.Plain) then
+      Projection := ProjectionResolver.Plain(ARaw)
     else
       Projection := TTheWordEffectiveInlineProjectionV2.Resolve(ARaw);
     Result := Assigned(Projection);
@@ -77,7 +101,7 @@ begin
 end;
 
 function TryVisibleLengthUTF16(const ARaw: UnicodeString;
-  ProjectionResolver: TVerseInlineProjectionResolver;
+  const ProjectionResolver: TProjectionResolverAdapter;
   out VisibleLengthUTF16: Integer): Boolean;
 var
   Projection: TTheWordEffectiveInlineProjectionV2;
@@ -298,7 +322,7 @@ procedure AddSyntagm(Builder: TVerseVisualDocumentBuilder; LogicalIndex: Integer
   Syntagm: TSyntagm; AssociatedColor, UnassociatedColor: TColor;
   BoldWordsWithStrong: Boolean;
   var Projection: TTheWordEffectiveInlineProjectionV2;
-  ProjectionResolver: TVerseInlineProjectionResolver;
+  const ProjectionResolver: TProjectionResolverAdapter;
   const NoteMarkers: TProjectedNoteMarkerArray;
   var UsedNotes: TBooleanArray;
   var RenderedNotes: TVerseRenderedTranslatorNoteArray;
@@ -396,27 +420,13 @@ begin
   Inc(VisibleOffsetUTF16, Length(DecodedDisplayText));
 end;
 
-function BuildVerseVisualDocument(Syntagms: TSyntagmList;
-  StrongCount: TSyntagm; BaseDirection: TTextDirection; Revision: QWord;
-  AssociatedColor, UnassociatedColor: TColor;
-  BoldWordsWithStrong: Boolean; const RawXML: string;
-  ProjectionResolver: TVerseInlineProjectionResolver):
-  IVerseVisualDocument;
-var
-  RenderedNotes: TVerseRenderedTranslatorNoteArray;
-begin
-  Result := BuildVerseVisualDocument(Syntagms, StrongCount,
-    BaseDirection, Revision, AssociatedColor, UnassociatedColor,
-    BoldWordsWithStrong, RawXML, 0, RenderedNotes, ProjectionResolver);
-end;
-
-function BuildVerseVisualDocument(Syntagms: TSyntagmList;
+function BuildVerseVisualDocumentCore(Syntagms: TSyntagmList;
   StrongCount: TSyntagm; BaseDirection: TTextDirection; Revision: QWord;
   AssociatedColor, UnassociatedColor: TColor;
   BoldWordsWithStrong: Boolean; const RawXML: string;
   AutomaticNoteStart: Integer;
   out RenderedNotes: TVerseRenderedTranslatorNoteArray;
-  ProjectionResolver: TVerseInlineProjectionResolver):
+  const ProjectionResolver: TProjectionResolverAdapter):
   IVerseVisualDocument;
 var
   Builder: TVerseVisualDocumentBuilder;
@@ -462,6 +472,70 @@ begin
     Projection.Free;
     Builder.Free;
   end;
+end;
+
+function BuildVerseVisualDocument(Syntagms: TSyntagmList;
+  StrongCount: TSyntagm; BaseDirection: TTextDirection; Revision: QWord;
+  AssociatedColor, UnassociatedColor: TColor;
+  BoldWordsWithStrong: Boolean; const RawXML: string;
+  ProjectionResolver: TVerseInlineProjectionResolver):
+  IVerseVisualDocument;
+var
+  RenderedNotes: TVerseRenderedTranslatorNoteArray;
+begin
+  Result := BuildVerseVisualDocument(Syntagms, StrongCount,
+    BaseDirection, Revision, AssociatedColor, UnassociatedColor,
+    BoldWordsWithStrong, RawXML, 0, RenderedNotes, ProjectionResolver);
+end;
+
+function BuildVerseVisualDocument(Syntagms: TSyntagmList;
+  StrongCount: TSyntagm; BaseDirection: TTextDirection; Revision: QWord;
+  AssociatedColor, UnassociatedColor: TColor;
+  BoldWordsWithStrong: Boolean; const RawXML: string;
+  ProjectionResolver: TVerseInlineProjectionMethodResolver):
+  IVerseVisualDocument;
+var
+  RenderedNotes: TVerseRenderedTranslatorNoteArray;
+begin
+  Result := BuildVerseVisualDocument(Syntagms, StrongCount,
+    BaseDirection, Revision, AssociatedColor, UnassociatedColor,
+    BoldWordsWithStrong, RawXML, 0, RenderedNotes, ProjectionResolver);
+end;
+
+function BuildVerseVisualDocument(Syntagms: TSyntagmList;
+  StrongCount: TSyntagm; BaseDirection: TTextDirection; Revision: QWord;
+  AssociatedColor, UnassociatedColor: TColor;
+  BoldWordsWithStrong: Boolean; const RawXML: string;
+  AutomaticNoteStart: Integer;
+  out RenderedNotes: TVerseRenderedTranslatorNoteArray;
+  ProjectionResolver: TVerseInlineProjectionResolver):
+  IVerseVisualDocument;
+var
+  Adapter: TProjectionResolverAdapter;
+begin
+  Adapter.Plain := ProjectionResolver;
+  Adapter.Method := nil;
+  Result := BuildVerseVisualDocumentCore(Syntagms, StrongCount,
+    BaseDirection, Revision, AssociatedColor, UnassociatedColor,
+    BoldWordsWithStrong, RawXML, AutomaticNoteStart, RenderedNotes, Adapter);
+end;
+
+function BuildVerseVisualDocument(Syntagms: TSyntagmList;
+  StrongCount: TSyntagm; BaseDirection: TTextDirection; Revision: QWord;
+  AssociatedColor, UnassociatedColor: TColor;
+  BoldWordsWithStrong: Boolean; const RawXML: string;
+  AutomaticNoteStart: Integer;
+  out RenderedNotes: TVerseRenderedTranslatorNoteArray;
+  ProjectionResolver: TVerseInlineProjectionMethodResolver):
+  IVerseVisualDocument;
+var
+  Adapter: TProjectionResolverAdapter;
+begin
+  Adapter.Plain := nil;
+  Adapter.Method := ProjectionResolver;
+  Result := BuildVerseVisualDocumentCore(Syntagms, StrongCount,
+    BaseDirection, Revision, AssociatedColor, UnassociatedColor,
+    BoldWordsWithStrong, RawXML, AutomaticNoteStart, RenderedNotes, Adapter);
 end;
 
 end.

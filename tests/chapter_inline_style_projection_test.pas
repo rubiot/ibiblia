@@ -45,6 +45,8 @@ type
       const AText: string): TKMemoTextBlock;
     function FirstHyperlink(ABlocks: TKMemoBlocks;
       out ABlock: TKMemoTextBlock): Boolean;
+    function HyperlinkAt(ABlocks: TKMemoBlocks;
+      AIndex: Integer): TKMemoHyperlink;
   protected
     procedure SetUp; override;
     procedure TearDown; override;
@@ -59,6 +61,10 @@ type
     procedure CodecFailureFallsBackButOtherExceptionsPropagate;
     procedure ChapterPreservesFIAndSemanticPrecedence;
     procedure ChapterPreservesTitleNoteAndInterlinearBases;
+    procedure ChapterInlineTranslatorNoteMarkersAreHoverOnly;
+    procedure ChapterTranslatorNoteHoverRequiresExactMarkerInstance;
+    procedure ChapterTranslatorNoteHoverInvalidatesPendingRender;
+    procedure ChapterOwnsTranslatorNoteMetadata;
     procedure TranslationMemoryOccurrenceHighlightsExactRanges;
     procedure TranslationMemorySnapshotControlsOccurrenceReset;
   end;
@@ -122,6 +128,43 @@ begin
       Exit(True);
   end;
   Result := False;
+end;
+
+function TChapterInlineStyleProjectionTest.HyperlinkAt(
+  ABlocks: TKMemoBlocks; AIndex: Integer): TKMemoHyperlink;
+var
+  Remaining: Integer;
+
+  function Scan(AScanBlocks: TKMemoBlocks; var ARemaining: Integer;
+    out ALink: TKMemoHyperlink): Boolean;
+  var
+    BlockIndex: Integer;
+  begin
+    ALink := nil;
+    for BlockIndex := 0 to AScanBlocks.Count - 1 do
+    begin
+      if AScanBlocks[BlockIndex] is TKMemoHyperlink then
+      begin
+        if ARemaining = 0 then
+        begin
+          ALink := TKMemoHyperlink(AScanBlocks[BlockIndex]);
+          Exit(True);
+        end;
+        Dec(ARemaining);
+      end;
+      if (AScanBlocks[BlockIndex] is TKMemoContainer) and
+        Scan(TKMemoContainer(AScanBlocks[BlockIndex]).Blocks,
+          ARemaining, ALink) then
+        Exit(True);
+    end;
+    Result := False;
+  end;
+
+begin
+  Result := nil;
+  Remaining := AIndex;
+  if (AIndex < 0) or not Scan(ABlocks, Remaining, Result) then
+    Fail(Format('Hyperlink %d not found', [AIndex]));
 end;
 
 procedure TChapterInlineStyleProjectionTest.SetUp;
@@ -408,6 +451,138 @@ begin
   finally
     Chapter.Free;
   end;
+end;
+
+procedure TChapterInlineStyleProjectionTest.
+  ChapterInlineTranslatorNoteMarkersAreHoverOnly;
+var
+  Chapter: TChapterView;
+  FirstFooterLink: TKMemoHyperlink;
+  FirstMarker: TKMemoHyperlink;
+  SecondFooterLink: TKMemoHyperlink;
+  SecondMarker: TKMemoHyperlink;
+begin
+  Chapter := TChapterView.Create(nil);
+  try
+    Chapter.RenderHTML('<RF>first note<Rf>middle<RF>second note<Rf>tail');
+    FirstMarker := HyperlinkAt(Chapter.Blocks, 0);
+    SecondMarker := HyperlinkAt(Chapter.Blocks, 1);
+
+    AssertFalse('first inline translator-note marker must not handle clicks',
+      Assigned(FirstMarker.OnClick));
+    AssertFalse('second inline translator-note marker must not handle clicks',
+      Assigned(SecondMarker.OnClick));
+
+    Chapter.RenderTranslatorNotesFixture;
+    FirstFooterLink := HyperlinkAt(Chapter.Blocks, 2);
+    SecondFooterLink := HyperlinkAt(Chapter.Blocks, 3);
+    AssertTrue('first footer translator-note link remains clickable',
+      Assigned(FirstFooterLink.OnClick));
+    AssertTrue('second footer translator-note link remains clickable',
+      Assigned(SecondFooterLink.OnClick));
+  finally
+    Chapter.Free;
+  end;
+end;
+
+procedure TChapterInlineStyleProjectionTest.
+  ChapterTranslatorNoteHoverRequiresExactMarkerInstance;
+var
+  Chapter: TChapterView;
+  FirstId: QWord;
+  FirstMarker: TKMemoHyperlink;
+  FirstRevision: QWord;
+  SecondId: QWord;
+  SecondMarker: TKMemoHyperlink;
+  SecondRevision: QWord;
+  SimilarLink: TKMemoHyperlink;
+begin
+  Chapter := TChapterView.Create(nil);
+  try
+    Chapter.RenderHTML('<RF>first note<Rf>middle<RF>second note<Rf>tail');
+    FirstMarker := HyperlinkAt(Chapter.Blocks, 0);
+    SecondMarker := HyperlinkAt(Chapter.Blocks, 1);
+    SimilarLink := Chapter.Blocks.AddHyperlink('unrelated', FirstMarker.URL);
+
+    AssertTrue('first registered marker must resolve',
+      Chapter.ResolveTranslatorNoteHoverTargetFixture(FirstMarker,
+        FirstRevision, FirstId));
+    AssertTrue('second registered marker must resolve',
+      Chapter.ResolveTranslatorNoteHoverTargetFixture(SecondMarker,
+        SecondRevision, SecondId));
+    AssertTrue('both markers belong to the same render revision',
+      FirstRevision = SecondRevision);
+    AssertTrue('different translator notes must keep different identities',
+      FirstId <> SecondId);
+    AssertEquals('the unrelated hyperlink must duplicate the marker URL',
+      FirstMarker.URL, SimilarLink.URL);
+    AssertFalse('an unrelated hyperlink with the same URL must not resolve',
+      Chapter.ResolveTranslatorNoteHoverTargetFixture(SimilarLink,
+        FirstRevision, FirstId));
+  finally
+    Chapter.Free;
+  end;
+end;
+
+procedure TChapterInlineStyleProjectionTest.
+  ChapterTranslatorNoteHoverInvalidatesPendingRender;
+var
+  Chapter: TChapterView;
+  InitialRevision: QWord;
+  Marker: TKMemoHyperlink;
+  NoteId: QWord;
+begin
+  Chapter := TChapterView.Create(nil);
+  try
+    Chapter.RenderHTML('<RF>pending note<Rf>tail');
+    Marker := HyperlinkAt(Chapter.Blocks, 0);
+    AssertTrue(Chapter.ResolveTranslatorNoteHoverTargetFixture(
+      Marker, InitialRevision, NoteId));
+
+    Chapter.ViewMode := Chapter.ViewMode;
+    AssertTrue('assigning the current mode must keep rendered markers valid',
+      Chapter.ResolveTranslatorNoteHoverTargetFixture(
+        Marker, InitialRevision, NoteId));
+
+    Chapter.BeginTranslatorNoteHoverFixture(NoteId);
+    AssertTrue('hover must remain pending during the initial delay',
+      Chapter.TranslatorNotePreviewActiveFixture);
+    Chapter.InvalidateTranslatorNotePreviewFixture;
+
+    AssertFalse('a new render revision must cancel pending hover',
+      Chapter.TranslatorNotePreviewActiveFixture);
+    AssertTrue('invalidation must advance the render revision',
+      Chapter.TranslatorNoteRevisionFixture <> InitialRevision);
+  finally
+    Chapter.Free;
+  end;
+end;
+
+procedure TChapterInlineStyleProjectionTest.
+  ChapterOwnsTranslatorNoteMetadata;
+var
+  Baseline: Integer;
+  Chapter: TChapterView;
+begin
+  Baseline := TChapterView.TranslatorNoteLiveCountFixture;
+  Chapter := TChapterView.Create(nil);
+  try
+    Chapter.RenderHTML('<RF>first<Rf>text<RF>second<Rf>');
+    AssertEquals('both rendered note records are alive', Baseline + 2,
+      TChapterView.TranslatorNoteLiveCountFixture);
+
+    Chapter.ClearTranslatorNotesFixture;
+    AssertEquals('discarding a rendered document releases note metadata',
+      Baseline, TChapterView.TranslatorNoteLiveCountFixture);
+
+    Chapter.RenderHTML('<RF>replacement<Rf>');
+    AssertEquals('a replacement document owns only its own metadata',
+      Baseline + 1, TChapterView.TranslatorNoteLiveCountFixture);
+  finally
+    Chapter.Free;
+  end;
+  AssertEquals('destroying the chapter view releases owned note records',
+    Baseline, TChapterView.TranslatorNoteLiveCountFixture);
 end;
 
 procedure TChapterInlineStyleProjectionTest.

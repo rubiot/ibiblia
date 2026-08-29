@@ -22,6 +22,7 @@ type
     procedure NonCodecResolverFailurePropagates;
     procedure SoftLineBreakIsVisibleButNeverAssociable;
     procedure EmptyZeroRunAndStrongCountPastLastRunAreSafe;
+    procedure VerseCachesProjectionAcrossVisualOnlyRebuilds;
   end;
 
 implementation
@@ -33,6 +34,19 @@ uses
 
 var
   ResolverCallCount: Integer;
+
+type
+  TVerseProjectionCacheProbe = class(TVerse)
+  public
+    function ResolveProjectionForTest(const ARaw: UnicodeString):
+      TTheWordEffectiveInlineProjectionV2;
+  end;
+
+function TVerseProjectionCacheProbe.ResolveProjectionForTest(
+  const ARaw: UnicodeString): TTheWordEffectiveInlineProjectionV2;
+begin
+  Result := ResolveInlineProjection(ARaw);
+end;
 
 function RaiseCodecError(const ARaw: UnicodeString):
   TTheWordEffectiveInlineProjectionV2;
@@ -568,6 +582,56 @@ begin
       Document.TryGetInteractiveLogicalIndexAt(BreakSpan.StartUTF16,
         HitIndex));
   finally
+    VerseModel.Free;
+  end;
+end;
+
+procedure TVerseInlineStyleProjectionTests.
+  VerseCachesProjectionAcrossVisualOnlyRebuilds;
+const
+  FIRST_RAW = '<font color=red>first</font> tail';
+  SECOND_RAW = '<font color=blue>second</font> tail';
+var
+  VerseModel: TVerseProjectionCacheProbe;
+  Document: IVerseVisualDocument;
+  FirstIndex: Integer;
+begin
+  VerseModel := TVerseProjectionCacheProbe.Create;
+  try
+    VerseModel.Text := FIRST_RAW;
+    AssertEquals(0, VerseModel.InlineProjectionBuildCount);
+
+    Document := BuildVerseVisualDocument(VerseModel.Syntagms, nil,
+      tdLeftToRight, 1001, clGreen, clGray, False, FIRST_RAW,
+      @VerseModel.ResolveProjectionForTest);
+    AssertEquals('first visual build decodes once', 1,
+      VerseModel.InlineProjectionBuildCount);
+
+    FirstIndex := FindSyntagmIndex(VerseModel.Syntagms, 'first');
+    AssertTrue(FirstIndex >= 0);
+    VerseModel.Syntagms[FirstIndex].AddToSelection;
+    Document := BuildVerseVisualDocument(VerseModel.Syntagms, nil,
+      tdLeftToRight, 1002, clGreen, clGray, False, FIRST_RAW,
+      @VerseModel.ResolveProjectionForTest);
+    AssertEquals('selection-only rebuild reuses projection', 1,
+      VerseModel.InlineProjectionBuildCount);
+
+    VerseModel.Syntagms[FirstIndex].HandleMouseEnter(nil);
+    Document := BuildVerseVisualDocument(VerseModel.Syntagms, nil,
+      tdLeftToRight, 1003, clGreen, clGray, False, FIRST_RAW,
+      @VerseModel.ResolveProjectionForTest);
+    VerseModel.Syntagms[FirstIndex].HandleMouseLeave(nil);
+    AssertEquals('hover-only rebuild reuses projection', 1,
+      VerseModel.InlineProjectionBuildCount);
+
+    VerseModel.Text := SECOND_RAW;
+    Document := BuildVerseVisualDocument(VerseModel.Syntagms, nil,
+      tdLeftToRight, 1004, clGreen, clGray, False, SECOND_RAW,
+      @VerseModel.ResolveProjectionForTest);
+    AssertEquals('changed raw invalidates projection exactly once', 2,
+      VerseModel.InlineProjectionBuildCount);
+  finally
+    Document := nil;
     VerseModel.Free;
   end;
 end;

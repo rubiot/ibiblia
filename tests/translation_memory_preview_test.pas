@@ -17,11 +17,14 @@ type
     TTranslationMemoryPreviewWindow)
   private
     FShowCount: Integer;
+    FReuseCount: Integer;
     FShownAnchor: TRect;
     FShownPayload: TTranslationMemoryPreviewPayload;
   public
     destructor Destroy; override;
     procedure ShowPayload(const APayload: TTranslationMemoryPreviewPayload;
+      const AAnchorScreenRect: TRect); override;
+    procedure ShowCachedPayload(
       const AAnchorScreenRect: TRect); override;
   end;
 
@@ -74,6 +77,24 @@ type
       out AAnchorScreenRect: TRect): Boolean;
   end;
 
+  TChapterViewOccurrenceRangeProbe = class(TChapterView)
+  private
+    FCallCount: Integer;
+    FLastLimit: Integer;
+    FLastOffset: Integer;
+    FNextPage: TTranslationOccurrencePage;
+  protected
+    function TryLoadTranslationMemoryOccurrenceRange(
+      const Matches: TTranslationPairMatchArray; Offset, Limit: Integer;
+      out Occurrences: TTranslationOccurrencePage;
+      out ErrorMessage: string): Boolean; override;
+  public
+    procedure QueuePage(const APage: TTranslationOccurrencePage);
+    property CallCount: Integer read FCallCount;
+    property LastLimit: Integer read FLastLimit;
+    property LastOffset: Integer read FLastOffset;
+  end;
+
   TTranslationMemoryPreviewTests = class(TTestCase)
   protected
     procedure SetUp; override;
@@ -97,9 +118,13 @@ type
     {$ENDIF}
     procedure ChapterHoverOnlyAcceptsRegisteredOccurrenceCounter;
     procedure ChapterOccurrenceCounterClickCancelsHoverAndKeepsSelection;
+    procedure ChapterOccurrencePagesAppendWithoutRebuildingPreviousBlocks;
   end;
 
 implementation
+
+uses
+  performance_debug;
 
 var
   PreviewDestroyCount: Integer = 0;
@@ -159,6 +184,40 @@ begin
       Exit(True);
 end;
 
+function FindHyperlinkByURL(ABlocks: TKMemoBlocks;
+  const AURL: string): TKMemoHyperlink;
+var
+  BlockIndex: Integer;
+begin
+  Result := nil;
+  for BlockIndex := 0 to ABlocks.Count - 1 do
+    if (ABlocks[BlockIndex] is TKMemoHyperlink) and
+       (TKMemoHyperlink(ABlocks[BlockIndex]).URL = AURL) then
+      Exit(TKMemoHyperlink(ABlocks[BlockIndex]));
+end;
+
+{ TChapterViewOccurrenceRangeProbe }
+
+procedure TChapterViewOccurrenceRangeProbe.QueuePage(
+  const APage: TTranslationOccurrencePage);
+begin
+  FNextPage := APage;
+end;
+
+function TChapterViewOccurrenceRangeProbe.
+  TryLoadTranslationMemoryOccurrenceRange(
+  const Matches: TTranslationPairMatchArray; Offset, Limit: Integer;
+  out Occurrences: TTranslationOccurrencePage;
+  out ErrorMessage: string): Boolean;
+begin
+  Inc(FCallCount);
+  FLastOffset := Offset;
+  FLastLimit := Limit;
+  Occurrences := FNextPage;
+  ErrorMessage := '';
+  Result := True;
+end;
+
 { TTranslationMemoryPreviewWindowProbe }
 
 destructor TTranslationMemoryPreviewWindowProbe.Destroy;
@@ -175,6 +234,14 @@ begin
   FShownPayload := APayload;
   FShownAnchor := AAnchorScreenRect;
   SetBounds(130, 124, 220, 100);
+  Visible := True;
+end;
+
+procedure TTranslationMemoryPreviewWindowProbe.ShowCachedPayload(
+  const AAnchorScreenRect: TRect);
+begin
+  Inc(FReuseCount);
+  FShownAnchor := AAnchorScreenRect;
   Visible := True;
 end;
 
@@ -451,7 +518,11 @@ begin
     Controller.ProcessNow;
     AssertEquals('the same target must be served from cache',
       1, Resolver.FLoadCount);
-    AssertEquals(2, Controller.PreviewCreateCount);
+    AssertEquals('the popup window is reused across ordinary dismissal',
+      1, Controller.PreviewCreateCount);
+    AssertEquals('cached reopening does not render the payload again',
+      1, Controller.LastPreview.FShowCount);
+    AssertEquals(1, Controller.LastPreview.FReuseCount);
     AssertTrue(Controller.PreviewVisible);
   finally
     Controller.Free;
@@ -801,6 +872,7 @@ begin
     AssertTrue('controller subscribes to preview font changes',
       Assigned(Controller.LastPreview.OnFontSizeChanged));
 
+    Controller.LastPreview.FShownPayload.FontSize := 16;
     Controller.LastPreview.OnFontSizeChanged(Controller.LastPreview, 16);
     Controller.Dismiss;
     Controller.Hover(Target);
@@ -810,8 +882,11 @@ begin
       Resolver.FLoadCount);
     AssertEquals('cache reopening keeps the changed font size', 16,
       Controller.LastPreview.FShownPayload.FontSize);
-    AssertEquals('reopening creates a new popup from the cached payload', 2,
+    AssertEquals('reopening reuses the existing popup', 1,
       Controller.PreviewCreateCount);
+    AssertEquals('cached reopen keeps the already rendered blocks', 1,
+      Controller.LastPreview.FShowCount);
+    AssertEquals(1, Controller.LastPreview.FReuseCount);
   finally
     Controller.Free;
     Resolver.Free;
@@ -1230,6 +1305,99 @@ begin
       0, Chapter.TopPos);
   finally
     Host.Free;
+  end;
+end;
+
+procedure TTranslationMemoryPreviewTests.
+  ChapterOccurrencePagesAppendWithoutRebuildingPreviousBlocks;
+var
+  Chapter: TChapterViewOccurrenceRangeProbe;
+  Counters: TIBibliaPerfCounterValues;
+  FirstBlockCount: Integer;
+  FirstLink: TKMemoHyperlink;
+  Host: TForm;
+  MoreLink: TKMemoHyperlink;
+  Page: TTranslationOccurrencePage;
+begin
+  IBibliaPerfSetEnabledForTests(True);
+  Host := TForm.Create(nil);
+  try
+    Chapter := TChapterViewOccurrenceRangeProbe.Create(Host);
+    Page := Default(TTranslationOccurrencePage);
+    Page.TotalAssociations := 3;
+    Page.TotalVerses := 3;
+    Page.HasMore := True;
+    SetLength(Page.Items, 1);
+    Page.Items[0].ReferenceID := '1,1,1';
+    Page.Items[0].DisplayReference := 'Genesis 1:1';
+    Page.Items[0].DestinationText := 'first verse';
+    Page.Items[0].Occurrences := 1;
+    Chapter.ConfigureTranslationMemoryOccurrencePageFixture(Page);
+
+    FirstLink := FindHyperlinkByURL(Chapter.Blocks, '1,1,1');
+    AssertTrue(Assigned(FirstLink));
+    AssertTrue(Assigned(FindHyperlinkByURL(Chapter.Blocks, 'more')));
+    FirstBlockCount := Chapter.Blocks.Count;
+    AssertEquals(1,
+      Chapter.TranslationMemoryCachedOccurrenceCountFixture);
+
+    Page.Items[0].ReferenceID := '1,1,2';
+    Page.Items[0].DisplayReference := 'Genesis 1:2';
+    Page.Items[0].DestinationText := 'second verse';
+    Page.HasMore := True;
+    Chapter.QueuePage(Page);
+    MoreLink := FindHyperlinkByURL(Chapter.Blocks, 'more');
+    AssertTrue(Assigned(MoreLink) and Assigned(MoreLink.OnClick));
+    IBibliaPerfReset;
+    MoreLink.OnClick(MoreLink);
+    AssertEquals('the real route requests only the next offset', 1,
+      Chapter.LastOffset);
+    AssertEquals('the real route keeps the fixed page size', 100,
+      Chapter.LastLimit);
+    AssertEquals(1, Chapter.CallCount);
+    Counters := IBibliaPerfSnapshot;
+    AssertEquals('only the new occurrence is projected', 1,
+      Int64(Counters[ipcTranslationMemoryOccurrenceItemsProjected]));
+    AssertEquals('show more does not rebuild the occurrence document', 0,
+      Int64(Counters[ipcTranslationMemoryViewRenders]));
+    AssertTrue('Previously rendered blocks must be preserved',
+      FirstLink = FindHyperlinkByURL(Chapter.Blocks, '1,1,1'));
+    AssertTrue(Chapter.Blocks.Count > FirstBlockCount);
+    AssertEquals(2,
+      Chapter.TranslationMemoryCachedOccurrenceCountFixture);
+    AssertTrue(Assigned(FindHyperlinkByURL(Chapter.Blocks, '1,1,2')));
+    AssertTrue(Assigned(FindHyperlinkByURL(Chapter.Blocks, 'more')));
+
+    Page.Items[0].ReferenceID := '1,1,3';
+    Page.Items[0].DisplayReference := 'Genesis 1:3';
+    Page.Items[0].DestinationText := 'third verse';
+    Page.HasMore := False;
+    Chapter.QueuePage(Page);
+    MoreLink := FindHyperlinkByURL(Chapter.Blocks, 'more');
+    AssertTrue(Assigned(MoreLink) and Assigned(MoreLink.OnClick));
+    IBibliaPerfReset;
+    MoreLink.OnClick(MoreLink);
+    AssertEquals(2, Chapter.LastOffset);
+    AssertEquals(2, Chapter.CallCount);
+    Counters := IBibliaPerfSnapshot;
+    AssertEquals(1,
+      Int64(Counters[ipcTranslationMemoryOccurrenceItemsProjected]));
+    AssertEquals(0, Int64(Counters[ipcTranslationMemoryViewRenders]));
+    AssertTrue(FirstLink = FindHyperlinkByURL(Chapter.Blocks, '1,1,1'));
+    AssertEquals(3,
+      Chapter.TranslationMemoryCachedOccurrenceCountFixture);
+    AssertFalse(Assigned(FindHyperlinkByURL(Chapter.Blocks, 'more')));
+    AssertEquals(-1,
+      Chapter.TranslationMemoryShowMoreBlockIndexFixture);
+
+    Chapter.ClearTranslationMemoryOccurrenceCacheFixture;
+    AssertEquals(0,
+      Chapter.TranslationMemoryCachedOccurrenceCountFixture);
+    AssertEquals(-1,
+      Chapter.TranslationMemoryShowMoreBlockIndexFixture);
+  finally
+    Host.Free;
+    IBibliaPerfSetEnabledForTests(False);
   end;
 end;
 

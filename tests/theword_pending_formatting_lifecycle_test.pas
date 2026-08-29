@@ -38,9 +38,6 @@ type
 
 implementation
 
-uses
-  Clipbrd;
-
 procedure TTheWordPendingFormattingLifecycleTests.AssertFormattingAt(
   const AMessage, ARaw: string; AOffsetUTF16, ASizeLevel: Integer;
   AHasColor: Boolean; AColor: LongInt);
@@ -331,14 +328,13 @@ begin
     DirectEditor.SetSelection(1, 0);
     AssertTrue(Editor.AdjustRelativeFontSize(1));
     AssertTrue(Editor.ApplyFontColor(True, clRed));
-    Clipboard.Clear;
-    Clipboard.AsText := 'a';
+    EnableTheWordClipboardFixture('a');
     AssertEquals('Ctrl+V is consumed', 0,
       PressKey(Broker, VK_V, [ssCtrl]));
     AssertFormattingAt('paste clears pending formatting', Editor.Text,
       1, 0, False, 0);
   finally
-    Clipboard.Clear;
+    DisableTheWordClipboardFixture;
     Editor.Free;
   end;
 end;

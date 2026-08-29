@@ -68,6 +68,7 @@ type
     FActiveOffset: Integer;
     FAnchorOffset: Integer;
     FCaretStops: TVerseTextOffsetArray;
+    FCaretStopsGeneration: QWord;
     FDragging: Boolean;
     FInputBroker: TEdit;
     FBrokerChanging: Boolean;
@@ -154,6 +155,9 @@ type
     procedure SetEditorDocument(const ADocument: IVerseVisualDocument);
     procedure SetSelection(StartUTF16, LengthUTF16: Integer);
     procedure SelectAll;
+    {$IFDEF FPCUNIT}
+    procedure SimulateTextInputFixture(const AText: UnicodeString);
+    {$ENDIF}
     property CaretOffset: Integer read GetCaretOffset;
     property InteractionMode: TVerseInteractionMode read FMode
       write SetInteractionMode;
@@ -184,7 +188,7 @@ type
 implementation
 
 uses
-  Math, theword_verse_visual_adapter_v2;
+  Math, theword_verse_visual_adapter_v2, performance_debug;
 
 function NormalizeInsertedText(const Value: UnicodeString): UnicodeString;
 var
@@ -215,6 +219,7 @@ begin
   FMode := vimAssociation;
   FAnchorOffset := 0;
   FActiveOffset := 0;
+  FCaretStopsGeneration := High(QWord);
   FDragging := False;
   FBrokerChanging := False;
   FLastVisualObjectId := 0;
@@ -262,6 +267,10 @@ var
   Index: Integer;
   StopCount: Integer;
 begin
+  if (Length(FCaretStops) > 0) and
+     (FCaretStopsGeneration = LayoutGeneration) then
+    Exit;
+  IBibliaPerfIncrement(ipcCaretStopBuilds);
   DocText := '';
   if Assigned(Document) then
     DocText := Document.Text;
@@ -306,6 +315,7 @@ begin
     SetLength(FCaretStops, 1);
     FCaretStops[0] := 0;
   end;
+  FCaretStopsGeneration := LayoutGeneration;
 end;
 
 procedure TDirectWriteVerseEditor.FocusEditor;
@@ -842,6 +852,14 @@ procedure TDirectWriteVerseEditor.ReplaceSelection(
 begin
   RequestReplace(SelectionStart, SelectionLength, Replacement);
 end;
+
+{$IFDEF FPCUNIT}
+procedure TDirectWriteVerseEditor.SimulateTextInputFixture(
+  const AText: UnicodeString);
+begin
+  ReplaceSelection(AText);
+end;
+{$ENDIF}
 
 procedure TDirectWriteVerseEditor.DeleteBackward;
 var

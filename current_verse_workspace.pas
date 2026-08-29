@@ -100,7 +100,8 @@ type
       out CorruptionDetails: string): Boolean;
     procedure ApplyLoadedAssociations(SourceVerse: TVerse;
       const Associations: string; RenderBuffer: TVerseRenderBuffer = nil);
-    procedure FinalizeLoadedVerse(const VerseViews: array of TVerse);
+    procedure FinalizeLoadedVerse(const VerseViews: array of TVerse;
+      ActivateAndRender: Boolean = True);
     property LoadedAssociationsInvalid: Boolean
       read FLoadedAssociationsInvalid;
   end;
@@ -704,6 +705,7 @@ function TCurrentVerseWorkspace.LoadCurrentVerse(Persistence: TProjectPersistenc
   DestinationVerseIndex: Integer): TCurrentVerseLoadResult;
 var
   Index: Integer;
+  LoadStarted: array of Boolean;
   VerseView: TVerse;
 begin
   Result.Associations := '';
@@ -714,26 +716,45 @@ begin
   if not Assigned(Persistence) then
     Exit;
 
-  for Index := Low(VerseViews) to High(VerseViews) do
-  begin
-    VerseView := VerseViews[Index];
-    if Assigned(VerseView) then
+  SetLength(LoadStarted, Length(VerseViews));
+  try
+    for Index := Low(VerseViews) to High(VerseViews) do
+      if Assigned(VerseViews[Index]) then
+      begin
+        VerseViews[Index].BeginLoad;
+        LoadStarted[Index - Low(VerseViews)] := True;
+      end;
+
+    for Index := Low(VerseViews) to High(VerseViews) do
     begin
-      VerseView.Active := False;
-      VerseView.Text := Persistence.CurrentText(GetTextFieldIndex(TextFieldIndexes, Index));
-      VerseView.Reference := FormattedReference;
-      VerseView.ReferenceID := ReferenceID;
+      VerseView := VerseViews[Index];
+      if Assigned(VerseView) then
+      begin
+        VerseView.Text := Persistence.CurrentText(
+          GetTextFieldIndex(TextFieldIndexes, Index));
+        VerseView.Reference := FormattedReference;
+        VerseView.ReferenceID := ReferenceID;
+      end;
     end;
+
+    Result.Associations := Persistence.CurrentPairs;
+    Result.Comments := Persistence.CurrentComments;
+    Result.Status := Persistence.CurrentStatus;
+    Result.DestinationTextEmpty := Persistence.CurrentText(
+      GetTextFieldIndex(TextFieldIndexes, DestinationVerseIndex)).IsEmpty;
+
+    if not Assigned(GetVerseView(VerseViews, SourceVerseIndex)) then
+      Clear;
+  except
+    { A parser failure must not leave every Verse permanently suspended. The
+      caller will surface the original exception and can decide whether to
+      reload or close the visual workspace. }
+    for Index := Low(VerseViews) to High(VerseViews) do
+      if Assigned(VerseViews[Index]) and
+         LoadStarted[Index - Low(VerseViews)] then
+        VerseViews[Index].EndLoad(False);
+    raise;
   end;
-
-  Result.Associations := Persistence.CurrentPairs;
-  Result.Comments := Persistence.CurrentComments;
-  Result.Status := Persistence.CurrentStatus;
-  Result.DestinationTextEmpty := Persistence.CurrentText(
-    GetTextFieldIndex(TextFieldIndexes, DestinationVerseIndex)).IsEmpty;
-
-  if not Assigned(GetVerseView(VerseViews, SourceVerseIndex)) then
-    Clear;
 end;
 
 function TCurrentVerseWorkspace.SetCurrentVerseText(
@@ -815,22 +836,27 @@ begin
 end;
 
 procedure TCurrentVerseWorkspace.FinalizeLoadedVerse(
-  const VerseViews: array of TVerse);
+  const VerseViews: array of TVerse; ActivateAndRender: Boolean);
 var
   Index: Integer;
   VerseView: TVerse;
+  FirstError: string;
 begin
+  FirstError := '';
   for Index := Low(VerseViews) to High(VerseViews) do
   begin
     VerseView := VerseViews[Index];
     if Assigned(VerseView) then
-    begin
-      VerseView.Modified := False;
-      VerseView.XMLModified := False;
-      VerseView.Active := True;
-      VerseView.Render;
-    end;
+      try
+        VerseView.EndLoad(ActivateAndRender);
+      except
+        on E: Exception do
+          if FirstError = '' then
+            FirstError := E.Message;
+      end;
   end;
+  if FirstError <> '' then
+    raise Exception.Create(FirstError);
 end;
 
 end.

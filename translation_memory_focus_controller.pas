@@ -55,6 +55,7 @@ type
     function FocusSyntagmIndex(ASyntagmIndex: Integer): Boolean;
     function FocusEntry(AEntryIndex: Integer): Boolean;
     procedure Clear;
+    procedure Discard;
     procedure Unbind;
   end;
 
@@ -329,6 +330,11 @@ end;
 procedure TTranslationMemoryFocusController.Unbind;
 begin
   RestoreParagraphStates;
+  Discard;
+end;
+
+procedure TTranslationMemoryFocusController.Discard;
+begin
   ClearParagraphStates;
   SetLength(FEntries, 0);
   FFocusedEntryIndex := -1;

@@ -13,7 +13,8 @@ uses
   ONTTokenizer, Syntagm, Forms, LCLType, Math, LCLProc, Dialogs, LazUTF8,
   ONTParser, dbugintf, Menus, Clipbrd, PCRE, ai_debug, text_direction,
   verse_view_intf, text_edit_provenance, verse_visual_adapter,
-  translator_note_hover_controller, SyntagmSelection;
+  translator_note_hover_controller, SyntagmSelection,
+  theword_effective_inline_style_v2;
 
 type
 
@@ -84,10 +85,14 @@ type
     FVisualRevision: QWord;
     FVisualUpdatesSuspended: Integer;
     FVisualRefreshQueued: Boolean;
+    FLoadDepth: Integer;
     FLastHoverLogicalIndex: Integer;
     FAutomaticNoteStart: Integer;
     FNoteHover: TTranslatorNoteHoverController;
     FRenderedTranslatorNotes: TVerseRenderedTranslatorNoteArray;
+    FInlineProjection: TTheWordEffectiveInlineProjectionV2;
+    FInlineProjectionRaw: UnicodeString;
+    FInlineProjectionBuildCount: Integer;
     FDisplayTags: Boolean;
     FOnTextDirectionChange: TOnTextDirectionChangeEvent;
     { Private declarations }
@@ -188,14 +193,19 @@ type
     procedure OnCopySyntagmsAsJSON(Sender: TObject);
     function CreateTokenizer(const XML: string): TONTTokenizer;
     procedure ReplaceTextPreservingAssociations(const _XML: string; ForceRetokenize: Boolean);
+    procedure InvalidateInlineProjection;
   protected
     { Protected declarations }
+    function ResolveInlineProjection(const ARaw: UnicodeString):
+      TTheWordEffectiveInlineProjectionV2;
   public
     { Public declarations }
     constructor Create(const AReference: string = ''); overload;
     constructor Create(TheOwner: TScrollBox; const AReference: string = ''); overload;
     destructor Destroy; override;
     procedure MarkDestroying;
+    procedure BeginLoad;
+    procedure EndLoad(ActivateAndRender: Boolean = True);
     procedure ClearSyntagms;
     procedure DismissTranslatorNotePreview;
     function TranslatorNotePreviewActive: Boolean;
@@ -288,6 +298,8 @@ type
     property AutomaticNoteStart: Integer read FAutomaticNoteStart
       write SetAutomaticNoteStart;
     property VisualRevision: QWord read FVisualRevision;
+    property InlineProjectionBuildCount: Integer
+      read FInlineProjectionBuildCount;
     property Destroying: boolean read FDestroying;
  published{ Published declarations }
   end;
@@ -309,7 +321,7 @@ implementation
 
 uses
   TypInfo, LazLoggerBase, verse_visual_document,
-  directwrite_syntagm_view, theword_ont_codec_v2;
+  directwrite_syntagm_view, theword_ont_codec_v2, performance_debug;
 
 const
   MarginWidth = 10; // text's distance from the margin
@@ -374,9 +386,13 @@ begin
   FVisualRevision := 1;
   FVisualUpdatesSuspended := 0;
   FVisualRefreshQueued := False;
+  FLoadDepth := 0;
   FLastHoverLogicalIndex := -1;
   FAutomaticNoteStart := 0;
   FRenderedTranslatorNotes := nil;
+  FInlineProjection := nil;
+  FInlineProjectionRaw := '';
+  FInlineProjectionBuildCount := 0;
   FOnTranslatorNoteClick := nil;
   FNoteHover := TTranslatorNoteHoverController.Create(nil);
   FNoteHover.OnResolve := @ResolveTranslatorNoteHover;
@@ -456,6 +472,7 @@ begin
      FReference]);
   FDestroying := true;
   DismissTranslatorNotePreview;
+  FreeAndNil(FInlineProjection);
   ClearSyntagms;
   FSyntagms.Free;
   FSelection.Destroy;
@@ -479,6 +496,67 @@ procedure TVerse.MarkDestroying;
 begin
   FDestroying := true;
   DismissTranslatorNotePreview;
+end;
+
+procedure TVerse.InvalidateInlineProjection;
+begin
+  FreeAndNil(FInlineProjection);
+  FInlineProjectionRaw := '';
+end;
+
+function TVerse.ResolveInlineProjection(const ARaw: UnicodeString):
+  TTheWordEffectiveInlineProjectionV2;
+var
+  NewProjection: TTheWordEffectiveInlineProjectionV2;
+begin
+  { Only the complete Verse projection is stable across visual-only rebuilds.
+    Structural metadata fragments are resolved independently and remain owned
+    by the adapter. }
+  if ARaw <> UTF8Decode(FXML) then
+    Exit(TTheWordEffectiveInlineProjectionV2.Resolve(ARaw));
+
+  if not Assigned(FInlineProjection) or (FInlineProjectionRaw <> ARaw) then
+  begin
+    Inc(FInlineProjectionBuildCount);
+    IBibliaPerfIncrement(ipcAssociationProjectionBuilds);
+    NewProjection := TTheWordEffectiveInlineProjectionV2.Resolve(ARaw);
+    FreeAndNil(FInlineProjection);
+    FInlineProjection := NewProjection;
+    FInlineProjectionRaw := ARaw;
+  end;
+  Result := FInlineProjection.Clone;
+end;
+
+procedure TVerse.BeginLoad;
+begin
+  if FLoadDepth = 0 then
+  begin
+    IBibliaPerfIncrement(ipcVerseLoads);
+    DismissTranslatorNotePreview;
+    Application.RemoveAsyncCalls(Self);
+    FVisualRefreshQueued := False;
+    Inc(FVisualUpdatesSuspended);
+    Inc(FChangeNotificationsSuspended);
+    FActive := False;
+  end;
+  Inc(FLoadDepth);
+end;
+
+procedure TVerse.EndLoad(ActivateAndRender: Boolean);
+begin
+  if FLoadDepth <= 0 then
+    raise Exception.Create('Verse load transaction is not active');
+  Dec(FLoadDepth);
+  if FLoadDepth > 0 then
+    Exit;
+
+  FModified := False;
+  FXMLModified := False;
+  Dec(FChangeNotificationsSuspended);
+  Dec(FVisualUpdatesSuspended);
+  FActive := ActivateAndRender;
+  if ActivateAndRender then
+    Render;
 end;
 
 procedure TVerse.RefreshAfterEditorClose;
@@ -545,7 +623,7 @@ end;
 
 procedure TVerse.InvalidateSyntagmVisual(Syntagm: TSyntagm);
 begin
-  if FDestroying or (FVisualUpdatesSuspended > 0) then
+  if FDestroying or not FActive or (FVisualUpdatesSuspended > 0) then
     Exit;
   if Assigned(FVerseView) then
   begin
@@ -607,6 +685,7 @@ procedure TVerse.RefreshVisualDocument(ContentChanged: Boolean);
 begin
   if not Assigned(FVerseView) or not Assigned(FSyntagms) then
     Exit;
+  IBibliaPerfIncrement(ipcVerseVisualBuilds);
   if ContentChanged then
   begin
     DismissTranslatorNotePreview;
@@ -615,7 +694,7 @@ begin
   FVerseView.SetDocument(BuildVerseVisualDocument(FSyntagms, FStrongCount,
     FBaseDirection, FVisualRevision, FAssociatedColor, FUnassociatedColor,
     FBoldWordsWithStrong, FXML, FAutomaticNoteStart,
-    FRenderedTranslatorNotes));
+    FRenderedTranslatorNotes, @ResolveInlineProjection));
   FVerseView.DisplayTags := FDisplayTags;
 end;
 
@@ -1022,6 +1101,8 @@ end;
 
 procedure TVerse.SetText(_XML: string);
 begin
+  if FXML <> _XML then
+    InvalidateInlineProjection;
   FXML := _XML;
   ClearSyntagms;
   FreeAndNil(FSyntagms);
@@ -1159,6 +1240,8 @@ begin
     FSyntagms := result;
   end;
 
+  if FXML <> _XML then
+    InvalidateInlineProjection;
   FXML := _XML;
   FXMLModified := true;
   Modified := true;
@@ -1808,7 +1891,10 @@ procedure TVerse.NotifyVerseChanged;
 begin
   if (FChangeNotificationsSuspended = 0) and
     assigned(FOnVerseChanged) then
+  begin
+    IBibliaPerfIncrement(ipcVerseChangeNotifications);
     FOnVerseChanged;
+  end;
 end;
 
 function TVerse.GetRightToLeft: Boolean;
@@ -2059,10 +2145,15 @@ end;
 procedure TVerse.UpdateInternalXML;
 var
   s: TSyntagm;
+  PreviousXML: string;
 begin
+  PreviousXML := FXML;
   FXML := '';
   for s in FSyntagms do
     FXML := FXML + s.RawText;
+
+  if FXML <> PreviousXML then
+    InvalidateInlineProjection;
 
   FXMLModified := true;
   Modified := true;
@@ -2075,6 +2166,12 @@ var
 begin
   if not FActive or not assigned(FSyntagms) or FRendering then
     exit;
+
+  if FVisualRefreshQueued then
+  begin
+    Application.RemoveAsyncCalls(Self);
+    FVisualRefreshQueued := False;
+  end;
 
   //starttime := getTickCount;
   if Assigned(FVerseView) then
@@ -3304,6 +3401,8 @@ begin
       OldSyntagms.Free;
       ClearStrongCount;
 
+      if FXML <> APlan.FNewXML then
+        InvalidateInlineProjection;
       FXML := APlan.FNewXML;
       FXMLModified := True;
       FModified := True;

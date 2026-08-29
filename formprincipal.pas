@@ -239,6 +239,10 @@ type
     FTranslationMemoryOrderMenu: TMenuItem;
     FTranslationMemoryVerseOrderItem: TMenuItem;
     FTranslationMemoryRareFirstItem: TMenuItem;
+    FDefaultVerseMode: TDefaultVerseMode;
+    FDefaultVerseModeMenu: TMenuItem;
+    FDefaultVerseModeAssociationItem: TMenuItem;
+    FDefaultVerseModeEditingItem: TMenuItem;
     FStateHeaderPanel: TPanel;
     FHeaderReferenceLabel: TLabel;
     FHeaderStatusLabel: TLabel;
@@ -309,6 +313,7 @@ type
       Shift: TShiftState);
     procedure TreeViewShowHint(Sender: TObject; HintInfo: PHintInfo);
     procedure TranslationMemoryOrderClick(Sender: TObject);
+    procedure DefaultVerseModeClick(Sender: TObject);
     procedure HandleTranslationMemoryPreviewFontSizeChanged(Sender: TObject);
     procedure Translate;
     procedure NormalizeActionHint(AAction: TCustomAction);
@@ -317,6 +322,8 @@ type
     procedure UpdateStateHeader;
     procedure UpdateStatusReviewPanel;
     procedure UpdateTranslationMemoryOrderMenu;
+    procedure UpdateDefaultVerseModeMenu;
+    procedure SetDefaultVerseMode(AMode: TDefaultVerseMode);
     procedure ApplyStatusReviewFilter;
     procedure DoOpenProject(filename: string);
     procedure CheckFileAssociation;
@@ -361,6 +368,12 @@ resourcestring
   STranslationMemoryOrderMenu = 'Translation memory order';
   STranslationMemoryVerseOrder = 'Verse order';
   STranslationMemoryRareFirst = 'Least frequent first';
+  SDefaultVerseModeMenu = 'Default verse mode';
+  SDefaultVerseModeHint = 'Choose how verses open by default';
+  SDefaultVerseModeAssociation = 'Association';
+  SDefaultVerseModeAssociationHint = 'Open each verse in association mode';
+  SDefaultVerseModeEditing = 'WYSIWYG editing';
+  SDefaultVerseModeEditingHint = 'Open Destination in the WYSIWYG editor when navigating to a verse';
   SRegisterFileAssociationSuccess = 'Successfully registered file association for .bib files';
   SRegisterFileAssociationFailure = 'Failed to register file association for .bib files';
   SUnregisterFileAssociationSuccess = 'Successfully removed file association for .bib files';
@@ -2596,6 +2609,9 @@ begin
   MenuItemBoldStrongs.Checked := opts.ReadBool('opcoes', 'boldstrongs', false);
   MenuItemAutoSave.Checked := opts.ReadBool('opcoes', 'auto.save', false);
   FGuideModeEnabled := opts.ReadBool('opcoes', 'guide.mode', true);
+  FDefaultVerseMode := DefaultVerseModeFromInteger(
+    opts.ReadInteger('opcoes', 'verse.default.mode',
+      Ord(dvmAssociation)));
   modeInt := opts.ReadInteger('opcoes', 'translation.memory.order',
     Ord(tmoVerseOccurrence));
   FTranslationMemoryOrder := TranslationMemoryOrderFromInteger(modeInt);
@@ -2689,6 +2705,18 @@ begin
   MenuItemGuideMode.Action := ActionGuideMode;
   MenuItemGuideMode.Checked := FGuideModeEnabled;
   MenuItem20.Add(MenuItemGuideMode);
+
+  FDefaultVerseModeMenu := TMenuItem.Create(MainMenu1);
+  FDefaultVerseModeAssociationItem := TMenuItem.Create(MainMenu1);
+  FDefaultVerseModeAssociationItem.RadioItem := True;
+  FDefaultVerseModeAssociationItem.OnClick := @DefaultVerseModeClick;
+  FDefaultVerseModeMenu.Add(FDefaultVerseModeAssociationItem);
+  FDefaultVerseModeEditingItem := TMenuItem.Create(MainMenu1);
+  FDefaultVerseModeEditingItem.RadioItem := True;
+  FDefaultVerseModeEditingItem.OnClick := @DefaultVerseModeClick;
+  FDefaultVerseModeMenu.Add(FDefaultVerseModeEditingItem);
+  MenuItem20.Add(FDefaultVerseModeMenu);
+  UpdateDefaultVerseModeMenu;
 
   ActionTheWordHighlighterColors := TAction.Create(ActionList1);
   ActionTheWordHighlighterColors.Caption := STheWordHighlightColorsMenu;
@@ -2794,6 +2822,8 @@ begin
   opts.WriteInteger('opcoes', 'popuptrigger', LongInt(FPopupTrigger));
   opts.WriteBool('opcoes', 'auto.save', MenuItemAutoSave.Checked);
   opts.WriteBool('opcoes', 'guide.mode', FGuideModeEnabled);
+  opts.WriteInteger('opcoes', 'verse.default.mode',
+    Ord(FDefaultVerseMode));
   opts.WriteInteger('opcoes', 'translation.memory.order',
     Ord(FTranslationMemoryOrder));
   opts.Free;
@@ -2921,6 +2951,26 @@ begin
       Ord(FTranslationMemoryOrder));
 end;
 
+procedure TMainForm.DefaultVerseModeClick(Sender: TObject);
+begin
+  if Sender = FDefaultVerseModeAssociationItem then
+    SetDefaultVerseMode(dvmAssociation)
+  else if Sender = FDefaultVerseModeEditingItem then
+    SetDefaultVerseMode(dvmEditing);
+end;
+
+procedure TMainForm.SetDefaultVerseMode(AMode: TDefaultVerseMode);
+begin
+  FDefaultVerseMode := AMode;
+  UpdateDefaultVerseModeMenu;
+
+  if Assigned(CurrentProject) then
+    CurrentProject.DefaultVerseMode := FDefaultVerseMode;
+  if Assigned(opts) then
+    opts.WriteInteger('opcoes', 'verse.default.mode',
+      Ord(FDefaultVerseMode));
+end;
+
 procedure TMainForm.HandleTranslationMemoryPreviewFontSizeChanged(
   Sender: TObject);
 begin
@@ -2937,6 +2987,16 @@ begin
   if Assigned(FTranslationMemoryRareFirstItem) then
     FTranslationMemoryRareFirstItem.Checked :=
       FTranslationMemoryOrder = tmoMemoryFrequencyAscending;
+end;
+
+procedure TMainForm.UpdateDefaultVerseModeMenu;
+begin
+  if Assigned(FDefaultVerseModeAssociationItem) then
+    FDefaultVerseModeAssociationItem.Checked :=
+      FDefaultVerseMode = dvmAssociation;
+  if Assigned(FDefaultVerseModeEditingItem) then
+    FDefaultVerseModeEditingItem.Checked :=
+      FDefaultVerseMode = dvmEditing;
 end;
 
 procedure TMainForm.MenuItemLangEnClick(Sender: TObject);
@@ -3089,7 +3149,6 @@ begin
   else
     StatusBar1.SimpleText := '';
   UpdateStateHeader;
-  UpdateStatusReviewPanel;
 end;
 
 procedure TMainForm.UpdateRecentProjects(m: TMenuItem);
@@ -3330,7 +3389,7 @@ end;
 procedure TMainForm.SyncToTwRef(Ref: string);
 begin
   if (CurrentProject <> nil) then
-    CurrentProject.GoToReference(Ref);
+    CurrentProject.NavigateToReference(Ref);
 end;
 
 procedure TMainForm.SetUpSyncThread;
@@ -3389,6 +3448,26 @@ begin
     FTranslationMemoryRareFirstItem.Caption :=
       STranslationMemoryRareFirst;
   UpdateTranslationMemoryOrderMenu;
+  if Assigned(FDefaultVerseModeMenu) then
+  begin
+    FDefaultVerseModeMenu.Caption := SDefaultVerseModeMenu;
+    FDefaultVerseModeMenu.Hint := SDefaultVerseModeHint;
+  end;
+  if Assigned(FDefaultVerseModeAssociationItem) then
+  begin
+    FDefaultVerseModeAssociationItem.Caption :=
+      SDefaultVerseModeAssociation;
+    FDefaultVerseModeAssociationItem.Hint :=
+      SDefaultVerseModeAssociationHint;
+  end;
+  if Assigned(FDefaultVerseModeEditingItem) then
+  begin
+    FDefaultVerseModeEditingItem.Caption :=
+      SDefaultVerseModeEditing;
+    FDefaultVerseModeEditingItem.Hint :=
+      SDefaultVerseModeEditingHint;
+  end;
+  UpdateDefaultVerseModeMenu;
   if Assigned(ActionRegisterFileAssociation) then
     ActionRegisterFileAssociation.Caption := SRegisterFileAssociation;
   if Assigned(ActionUnregisterFileAssociation) then
@@ -3454,6 +3533,7 @@ begin
   CurrentProject.MostrarQtdStrongs := FStrongsCountMode;
   CurrentProject.AutoSave := MenuItemAutoSave.Checked;
   CurrentProject.SuggestionMode := FSuggestionMode;
+  CurrentProject.DefaultVerseMode := FDefaultVerseMode;
 
   CurrentProject.OpenProject(filename);
   CurrentProject.ExibirDefinicoesSoComCtrl := MenuItemDictPopup.Checked;
@@ -3500,6 +3580,7 @@ begin
   {$IFDEF WINDOWS}
   SetUpSyncThread;
   {$ENDIF}
+  CurrentProject.RequestDefaultVerseModeForCurrentVerse;
 end;
 
 procedure TMainForm.ActionRegisterFileAssociationExecute(Sender: TObject);

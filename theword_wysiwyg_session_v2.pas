@@ -30,6 +30,7 @@ type
   private
     FCodec: ITheWordOntCodecV2;
     FDocument: TTheWordVerseDocument;
+    FRaw: UnicodeString;
     FOriginalRaw: UnicodeString;
     FUndo: TFPObjectList;
     FRedo: TFPObjectList;
@@ -44,6 +45,8 @@ type
     function GetChangesAreSemanticOnly: Boolean;
     function GetVisibleText: UnicodeString;
     procedure PushUndo(ASnapshot: TTheWordWysiwygSessionSnapshot);
+    procedure AdoptDocument(const ARaw: UnicodeString;
+      var ADocument: TTheWordVerseDocument);
     procedure ReplaceDocument(const ARaw: UnicodeString);
     procedure RestoreFromStack(ASource, ADestination: TFPObjectList);
     function TryResolveEditableTitleScope(AStartUTF16,
@@ -191,7 +194,53 @@ implementation
 
 uses
   theword_verse_visual_adapter_v2, theword_clipboard_v2,
-  theword_font_size_mutation_v2, theword_font_color_mutation_v2;
+  theword_font_size_mutation_v2, theword_font_color_mutation_v2,
+  performance_debug;
+
+type
+  TSessionOntCodec = class(TInterfacedObject, ITheWordOntCodecV2)
+  private
+    FInner: ITheWordOntCodecV2;
+  public
+    constructor Create;
+    function DecodeVerse(const ARaw: UnicodeString): TTheWordVerseDocument;
+    function EncodeVerse(ADocument: TTheWordVerseDocument): UnicodeString;
+    function DecodeModule(const ABytes: RawByteString;
+      AVerseCount: Integer): TTheWordOntModule;
+    function EncodeModule(AModule: TTheWordOntModule): RawByteString;
+  end;
+
+constructor TSessionOntCodec.Create;
+begin
+  inherited Create;
+  FInner := TTheWordOntCodecV2.Create;
+end;
+
+function TSessionOntCodec.DecodeVerse(
+  const ARaw: UnicodeString): TTheWordVerseDocument;
+begin
+  IBibliaPerfIncrement(ipcWysiwygDecodes);
+  Result := FInner.DecodeVerse(ARaw);
+end;
+
+function TSessionOntCodec.EncodeVerse(
+  ADocument: TTheWordVerseDocument): UnicodeString;
+begin
+  IBibliaPerfIncrement(ipcWysiwygEncodes);
+  Result := FInner.EncodeVerse(ADocument);
+end;
+
+function TSessionOntCodec.DecodeModule(const ABytes: RawByteString;
+  AVerseCount: Integer): TTheWordOntModule;
+begin
+  Result := FInner.DecodeModule(ABytes, AVerseCount);
+end;
+
+function TSessionOntCodec.EncodeModule(
+  AModule: TTheWordOntModule): RawByteString;
+begin
+  Result := FInner.EncodeModule(AModule);
+end;
 
 function TouchesTheWordTitle(ADocument: TTheWordVerseDocument;
   AStartUTF16, ALengthUTF16: Integer): Boolean;
@@ -230,9 +279,10 @@ constructor TTheWordWysiwygSessionV2.Create(const ARaw: UnicodeString;
   ATokenizerVersion: Integer);
 begin
   inherited Create;
-  FCodec := TTheWordOntCodecV2.Create;
+  FCodec := TSessionOntCodec.Create;
   FUndo := TFPObjectList.Create(True);
   FRedo := TFPObjectList.Create(True);
+  FRaw := ARaw;
   FOriginalRaw := ARaw;
   FDocument := FCodec.DecodeVerse(ARaw);
   FTrace := TVerseEditTrace.CreateIdentity(FDocument.VisibleText,
@@ -253,7 +303,7 @@ end;
 function TTheWordWysiwygSessionV2.CaptureSnapshot:
   TTheWordWysiwygSessionSnapshot;
 begin
-  Result := TTheWordWysiwygSessionSnapshot.Create(GetRawText,
+  Result := TTheWordWysiwygSessionSnapshot.Create(FRaw,
     FTrace.Clone);
 end;
 
@@ -264,7 +314,7 @@ end;
 
 function TTheWordWysiwygSessionV2.GetRawText: UnicodeString;
 begin
-  Result := FCodec.EncodeVerse(FDocument);
+  Result := FRaw;
 end;
 
 function TTheWordWysiwygSessionV2.GetVisibleText: UnicodeString;
@@ -279,7 +329,7 @@ end;
 
 function TTheWordWysiwygSessionV2.GetDirty: Boolean;
 begin
-  Result := (GetRawText <> FOriginalRaw) or
+  Result := (FRaw <> FOriginalRaw) or
     not FTrace.IsBaselineIdentity;
 end;
 
@@ -801,14 +851,30 @@ begin
   FRedo.Clear;
 end;
 
+procedure TTheWordWysiwygSessionV2.AdoptDocument(
+  const ARaw: UnicodeString; var ADocument: TTheWordVerseDocument);
+begin
+  if not Assigned(ADocument) then
+    raise EArgumentNilException.Create('ADocument');
+  FDocument.Free;
+  FDocument := ADocument;
+  ADocument := nil;
+  FRaw := ARaw;
+  Inc(FRevision);
+end;
+
 procedure TTheWordWysiwygSessionV2.ReplaceDocument(
   const ARaw: UnicodeString);
 var
   Replacement: TTheWordVerseDocument;
 begin
+  { Decode first. The raw cache and document are swapped only after the codec
+    has accepted the complete candidate, so they can never describe different
+    revisions of the verse. }
   Replacement := FCodec.DecodeVerse(ARaw);
   FDocument.Free;
   FDocument := Replacement;
+  FRaw := ARaw;
   Inc(FRevision);
 end;
 
@@ -1077,7 +1143,7 @@ begin
     if (UpdatedRaw = Snapshot.Raw) or
        (WorkingDocument.VisibleText <> FDocument.VisibleText) then
       Exit;
-    ReplaceDocument(UpdatedRaw);
+    AdoptDocument(UpdatedRaw, WorkingDocument);
     PushUndo(Snapshot);
     Snapshot := nil;
     Result := True;
@@ -1274,6 +1340,7 @@ begin
     FDocument.Free;
     FDocument := Replacement;
     Replacement := nil;
+    FRaw := UpdatedRaw;
     Inc(FRevision);
     PushUndo(Snapshot);
     Snapshot := nil;
@@ -1318,6 +1385,7 @@ begin
     FDocument.Free;
     FDocument := Replacement;
     Replacement := nil;
+    FRaw := UpdatedRaw;
     Inc(FRevision);
     PushUndo(Snapshot);
     Snapshot := nil;
@@ -1355,6 +1423,7 @@ begin
     FDocument.Free;
     FDocument := Replacement;
     Replacement := nil;
+    FRaw := UpdatedRaw;
     Inc(FRevision);
     PushUndo(Snapshot);
     Snapshot := nil;
@@ -1396,7 +1465,7 @@ begin
     { ReplaceDocument decodes before swapping FDocument, so a codec failure
       cannot leave the live session partially mutated. }
     Snapshot := CaptureSnapshot;
-    ReplaceDocument(UpdatedRaw);
+    AdoptDocument(UpdatedRaw, WorkingDocument);
     PushUndo(Snapshot);
     Snapshot := nil;
     Result := True;
@@ -1488,7 +1557,8 @@ begin
     WorkingDocument.ReplaceVisibleTextWithAffinity(AStartUTF16,
       ALengthUTF16, AReplacement, AAfterAnchors);
     Candidate := FCodec.EncodeVerse(WorkingDocument);
-    FreeAndNil(WorkingDocument);
+    if AApplyFontSize or AApplyFontColor then
+      FreeAndNil(WorkingDocument);
     NewTrace.ApplyReplacement(AStartUTF16, ALengthUTF16,
       AReplacement);
 
@@ -1538,7 +1608,10 @@ begin
 
     if Candidate = Snapshot.Raw then
       Exit(True);
-    ReplaceDocument(Candidate);
+    if Assigned(WorkingDocument) then
+      AdoptDocument(Candidate, WorkingDocument)
+    else
+      ReplaceDocument(Candidate);
     FTrace.Free;
     FTrace := NewTrace;
     NewTrace := nil;
@@ -1755,7 +1828,7 @@ begin
       AReplacement);
     UpdatedRaw := FCodec.EncodeVerse(WorkingDocument);
     NewTrace.ApplyReplacement(AStartUTF16, ALengthUTF16, AReplacement);
-    ReplaceDocument(UpdatedRaw);
+    AdoptDocument(UpdatedRaw, WorkingDocument);
     FTrace.Free;
     FTrace := NewTrace;
     NewTrace := nil;
@@ -1814,7 +1887,7 @@ begin
     if UpdatedRaw = Snapshot.Raw then
       Exit;
 
-    ReplaceDocument(UpdatedRaw);
+    AdoptDocument(UpdatedRaw, WorkingDocument);
     FTrace.Free;
     FTrace := NewTrace;
     NewTrace := nil;
@@ -1905,7 +1978,7 @@ begin
     if UpdatedRaw = Snapshot.Raw then
       Exit;
 
-    ReplaceDocument(UpdatedRaw);
+    AdoptDocument(UpdatedRaw, WorkingDocument);
     FTrace.Free;
     FTrace := NewTrace;
     NewTrace := nil;
@@ -1938,7 +2011,7 @@ begin
     if UpdatedRaw = Snapshot.Raw then
       Exit;
 
-    ReplaceDocument(UpdatedRaw);
+    AdoptDocument(UpdatedRaw, WorkingDocument);
     PushUndo(Snapshot);
     Snapshot := nil;
     Result := True;
@@ -1983,7 +2056,7 @@ begin
     if UpdatedRaw = Snapshot.Raw then
       Exit;
 
-    ReplaceDocument(UpdatedRaw);
+    AdoptDocument(UpdatedRaw, WorkingDocument);
     FTrace.Free;
     FTrace := NewTrace;
     NewTrace := nil;
@@ -2042,7 +2115,7 @@ begin
     if UpdatedRaw = Snapshot.Raw then
       Exit;
 
-    ReplaceDocument(UpdatedRaw);
+    AdoptDocument(UpdatedRaw, WorkingDocument);
     FTrace.Free;
     FTrace := NewTrace;
     NewTrace := nil;
@@ -2076,7 +2149,7 @@ begin
     if UpdatedRaw = Snapshot.Raw then
       Exit;
 
-    ReplaceDocument(UpdatedRaw);
+    AdoptDocument(UpdatedRaw, WorkingDocument);
     PushUndo(Snapshot);
     Snapshot := nil;
     Result := True;
@@ -2108,6 +2181,7 @@ begin
     FDocument.Free;
     FDocument := NewDocument;
     NewDocument := nil;
+    FRaw := ARaw;
     FTrace.Free;
     FTrace := NewTrace;
     NewTrace := nil;

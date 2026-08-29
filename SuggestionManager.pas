@@ -163,6 +163,9 @@ type
     function GetTranslationOccurrences(
       const Matches: TTranslationPairMatchArray;
       Limit: Integer): TTranslationOccurrencePage;
+    function GetTranslationOccurrenceRange(
+      const Matches: TTranslationPairMatchArray;
+      Offset, Limit: Integer): TTranslationOccurrencePage;
     function IndexedConcordanceOccurrenceCount: Integer;
     function IndexedConcordanceHasTaggedTargets: Boolean;
     procedure EnumerateIndexedConcordanceOccurrences(
@@ -1875,6 +1878,13 @@ end;
 function TSuggestionManager.GetTranslationOccurrences(
   const Matches: TTranslationPairMatchArray;
   Limit: Integer): TTranslationOccurrencePage;
+begin
+  Result := GetTranslationOccurrenceRange(Matches, 0, Limit);
+end;
+
+function TSuggestionManager.GetTranslationOccurrenceRange(
+  const Matches: TTranslationPairMatchArray;
+  Offset, Limit: Integer): TTranslationOccurrencePage;
 var
   InsertQuery: TSQLQuery;
   Match: TTranslationPairMatch;
@@ -1884,6 +1894,8 @@ begin
   Result := Default(TTranslationOccurrencePage);
   if (Length(Matches) = 0) or (Limit <= 0) then
     Exit;
+  if Offset < 0 then
+    Offset := 0;
 
   FConnection.ExecuteDirect('delete from association_memory_match_filter');
   InsertQuery := TSQLQuery.Create(nil);
@@ -1924,8 +1936,9 @@ begin
       'join pares p on p.pare_id = o.amo_reference ' +
       'group by p.rowid, o.amo_reference, p.pare_texto_destino, ' +
       'p.pare_texto_origem, p.pare_pares ' +
-      'order by p.rowid limit :limit';
+      'order by p.rowid limit :limit offset :offset';
     Query.Params.ParamByName('limit').AsInteger := Limit;
+    Query.Params.ParamByName('offset').AsInteger := Offset;
     Query.Open;
     while not Query.EOF do
     begin
@@ -1938,7 +1951,7 @@ begin
       Result.Items[ItemIndex].Associations := Query.Fields[4].AsString;
       Query.Next;
     end;
-    Result.HasMore := Length(Result.Items) < Result.TotalVerses;
+    Result.HasMore := Offset + Length(Result.Items) < Result.TotalVerses;
   finally
     Query.Free;
     InsertQuery.Free;
