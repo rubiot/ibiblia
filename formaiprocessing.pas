@@ -57,6 +57,7 @@ type
     procedure BtnDeselectAllClick(Sender: TObject);
     procedure BtnSelectAllClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
+    procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
     procedure FormDestroy(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure TabControlPreviewChange(Sender: TObject);
@@ -138,6 +139,8 @@ type
                              const PreviewOptions: TAIProcessingPreviewOptions;
                              ApplyAcceptedBatch: TAIProcessingApplyBatchFunc): boolean;
     procedure Apply;
+    procedure RequestCancellation(Manager: TAIProcessingManager = nil);
+    procedure DetachManager(Manager: TAIProcessingManager);
     property Batch: TAIProcessingBatch read FBatch;
   end;
 
@@ -462,21 +465,55 @@ begin
   AControl.ShowHint := True;
 end;
 
+procedure TFrmAIProcessing.RequestCancellation(Manager: TAIProcessingManager);
+begin
+  if not Assigned(FManager) then Exit;
+  if Assigned(Manager) and (Manager <> FManager) then Exit;
+  FStatus := apsCancelling;
+  FManager.CancelAll;
+  BtnCancel.Enabled := False;
+  BtnApply.Enabled := False;
+  BtnClose.Enabled := False;
+  TimerUpdate.Enabled := True;
+  UpdateProgress;
+  UpdateReviewPanel;
+end;
+
 procedure TFrmAIProcessing.BtnCancelClick(Sender: TObject);
 begin
-  if FStatus = apsRunning then
+  if (FStatus = apsRunning) and
+     (MessageDlg(SConfirmation, SCancelConfirmation, mtConfirmation,
+       [mbYes, mbNo], 0) = mrYes) then
+    RequestCancellation;
+end;
+
+procedure TFrmAIProcessing.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
+begin
+  CanClose := not Assigned(FManager) or FManager.IsStopped;
+  if not CanClose then
   begin
-    if MessageDlg(SConfirmation, SCancelConfirmation, mtConfirmation, [mbYes, mbNo], 0) = mrYes then
-    begin
-      FStatus := apsCancelling;
-      LabelProgress.Caption := SAIProcessingCancelling;
-      // Disable timer to avoid PumpApply running during shutdown
-      TimerUpdate.Enabled := False;
-      if Assigned(FManager) then
-        FManager.CancelAll;
-      BtnCancel.Enabled := False;
-    end;
+    ModalResult := mrNone;
+    if FStatus = apsRunning then
+      BtnCancelClick(Sender);
+    Exit;
   end;
+  if (ModalResult <> mrOK) and (FStatus in [apsCompleted, apsCancelled]) then
+    CanClose := MessageDlg(SConfirmation, SDiscardConfirmation,
+      mtConfirmation, [mbYes, mbNo], 0) = mrYes;
+end;
+
+procedure TFrmAIProcessing.DetachManager(Manager: TAIProcessingManager);
+begin
+  if FManager <> Manager then Exit;
+  TimerUpdate.Enabled := False;
+  if Assigned(FManager) then
+  begin
+    FManager.OnJobStateChange := nil;
+    FManager.OnJobCompleted := nil;
+  end;
+  FManager := nil;
+  FFlow := nil;
+  FApplyAcceptedBatch := nil;
 end;
 
 procedure TFrmAIProcessing.BtnApplyClick(Sender: TObject);
@@ -484,6 +521,11 @@ var
   selectedVerseCount, acceptedVerseCount, acceptedChangeCount, failedCount: Integer;
   msg: string;
 begin
+  if not Assigned(FManager) or not FManager.IsStopped then
+  begin
+    ModalResult := mrNone;
+    Exit;
+  end;
   msg := BuildApplySummary(selectedVerseCount, acceptedVerseCount,
     acceptedChangeCount, failedCount);
   if acceptedVerseCount = 0 then
@@ -510,25 +552,21 @@ end;
 
 procedure TFrmAIProcessing.BtnCloseClick(Sender: TObject);
 begin
-  if FStatus in [apsCompleted, apsCancelled] then
-  begin
-    if MessageDlg(SConfirmation, SDiscardConfirmation, mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
-      Exit;
-  end;
   ModalResult := mrCancel;
 end;
 
-
 procedure TFrmAIProcessing.FormDestroy(Sender: TObject);
 begin
-  // Ensure timer is disabled so PumpProcessing won't run during shutdown
-  TimerUpdate.Enabled := False;
+  if Assigned(FManager) then
+    FManager.CancelAll;
+  DetachManager(FManager);
   if Assigned(FSrcVerse) then FSrcVerse.Free;
   if Assigned(FDstVerse) then FDstVerse.Free;
   if Assigned(FBibleTreeView) then FBibleTreeView.Free;
   if Assigned(FActualCommentsMemo) then FActualCommentsMemo.Free;
   if Assigned(FBatch) then FBatch.Free;
   if Assigned(FOriginalData) then FOriginalData.Free;
+  if FrmAIProcessing = Self then FrmAIProcessing := nil;
 end;
 
 procedure TFrmAIProcessing.FormShow(Sender: TObject);
@@ -584,7 +622,7 @@ end;
 
 procedure TFrmAIProcessing.OnTreeSelectionChanged(Sender: TObject);
 begin
-  if FStatus <> apsRunning then
+  if not (FStatus in [apsRunning, apsCancelling]) then
     SyncBatchAcceptanceFromTree;
   UpdateReviewPanel;
 end;
@@ -616,6 +654,7 @@ begin
   if not Assigned(FManager) then
     Exit;
 
+  if not FManager.IsStopped then Exit;
   Retried := FManager.RetryFailedJobs;
   if Retried = 0 then
   begin
@@ -925,7 +964,7 @@ begin
   total := FManager.TotalJobs;
   completed := FManager.CompletedJobs;
   failed := FManager.FailedJobs;
-  processed := completed + failed;
+  processed := completed + failed + FManager.CancelledJobs;
   
   if total > 0 then
     percent := (processed * 100) div total
@@ -940,6 +979,8 @@ begin
       LabelProgress.Caption := Format(SAIProcessingInProgress, [processed, total, percent]);
     apsCompleted:
       LabelProgress.Caption := Format(SAIProcessingCompleted, [completed, failed]);
+    apsCancelling:
+      LabelProgress.Caption := SAIProcessingCancelling;
     apsCancelled:
       LabelProgress.Caption := SAIProcessingCancelled;
   end;
@@ -959,7 +1000,6 @@ begin
 
   UpdateTokenUsageLabel;
     
-  Application.ProcessMessages;
 end;
 
 procedure TFrmAIProcessing.UpdateTokenUsageLabel;
@@ -1011,13 +1051,15 @@ var
   CanReview: Boolean;
   HasProposal: Boolean;
 begin
-  CanReview := (FStatus <> apsRunning) and (FIndex >= 0) and (FIndex < FBatch.Count);
+  CanReview := (not (FStatus in [apsRunning, apsCancelling])) and (FIndex >= 0) and (FIndex < FBatch.Count);
   HasProposal := CanReview and FBatch.HasProposalChanges(FOriginalData, FIndex) and
     (FBatch.Errors[FIndex] = '');
 
   FBtnAcceptVerse.Enabled := HasProposal;
   FBtnRejectVerse.Enabled := HasProposal;
-  FBtnRetryErrors.Enabled := (FStatus <> apsRunning) and (CountFailedVerses > 0);
+  FBtnRetryErrors.Enabled := (not (FStatus in [apsRunning, apsCancelling])) and (CountFailedVerses > 0);
+  BtnApply.Enabled := Assigned(FManager) and FManager.IsStopped and
+    (FBatch.CountAcceptedVerses(FOriginalData, nil) > 0);
 end;
 
 procedure TFrmAIProcessing.UpdateApplySummary;
@@ -1060,7 +1102,7 @@ begin
   FRadioCommentsDecision.OnClick := nil;
   try
     FRadioCommentsDecision.ItemIndex := CommentsDecisionToItemIndex(Decision);
-    FRadioCommentsDecision.Enabled := FStatus <> apsRunning;
+    FRadioCommentsDecision.Enabled := not (FStatus in [apsRunning, apsCancelling]);
   finally
     FRadioCommentsDecision.OnClick := @RadioCommentsDecisionClick;
   end;
@@ -1182,19 +1224,15 @@ begin
     on E: Exception do
     begin
       AIDebugLogFmt('[PumpProcessing] Exception from FManager.PumpApply: %s - %s', [E.ClassName, E.Message]);
-      // Disable timer to avoid repeated crashes and surface state to user
-      TimerUpdate.Enabled := False;
+      RequestCancellation;
       LabelProgress.Caption := SAIProcessingErrorSeeLogs;
-      BtnCancel.Enabled := False;
-      BtnApply.Enabled := True;
-      BtnClose.Enabled := True;
       Exit;
     end;
   end;
 
   UpdateProgress;
 
-  if FManager.IsIdle then
+  if FManager.IsStopped then
   begin
     if FStatus = apsCancelling then
       FStatus := apsCancelled
@@ -1203,7 +1241,7 @@ begin
 
     TimerUpdate.Enabled := False;
     BtnCancel.Enabled := False;
-    BtnApply.Enabled := True;
+    BtnApply.Enabled := FBatch.CountAcceptedVerses(FOriginalData, nil) > 0;
     BtnClose.Enabled := True;
     
     // Convert AI state icons back to checkboxes for user review
@@ -1214,7 +1252,6 @@ begin
     UpdateReviewPanel;
   end;
 
-  Application.ProcessMessages; // IMPORTANT for UI responsiveness
 end;
 
 procedure TFrmAIProcessing.OnJobStateChanged(Sender: TObject; JobIndex: Integer; 
@@ -1247,6 +1284,11 @@ begin
         iconIndex := ImgIndexAIError;
         stateName := 'error';
       end;
+    ajsCancelled:
+      begin
+        iconIndex := ImgIndexUnchecked;
+        stateName := 'cancelled';
+      end;
   else
     Exit;
   end;
@@ -1264,7 +1306,7 @@ begin
   // Store error message if failed
   if NewState = ajsFailed then
     FBatch.SetError(JobIndex, ErrorMsg);
-  if NewState in [ajsPending, ajsFetching] then
+  if NewState in [ajsPending, ajsFetching, ajsCancelled] then
   begin
     FBatch.SetError(JobIndex, '');
     FBatch.RejectVerseProposal(JobIndex);
@@ -1311,6 +1353,8 @@ var
 begin
   Result := False;
   
+  if Assigned(FManager) and not FManager.IsStopped then Exit;
+  DetachManager(FManager);
   FManager := Manager;
   FFlow := Flow;
   FPreviewOptions := PreviewOptions;

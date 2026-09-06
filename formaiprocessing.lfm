@@ -9,6 +9,7 @@ object FrmAIProcessing: TFrmAIProcessing
   DesignTimePPI = 101
   Position = poMainFormCenter
   OnCreate = FormCreate
+  OnCloseQuery = FormCloseQuery
   OnDestroy = FormDestroy
   OnShow = FormShow
   object GroupBoxVerses: TGroupBox

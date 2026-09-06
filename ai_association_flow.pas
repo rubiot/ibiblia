@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, ai_flows, Verse, Syntagm, ONTParser, ONTTokenizer,
-  fpjson, jsonparser, llmclient, ai_debug;
+  fpjson, jsonparser, llmclient, ai_debug, ai_credential_store;
 
 const
   // Prompt components to keep it DRY
@@ -436,63 +436,62 @@ end;
 function ParseAssociationJson(const RawJson: string): TAssociationResult;
 var
   Parser: TJSONParser;
-  Data: TJSONData;
+  Data, CommentsNode, PairsNode: TJSONData;
   Obj: TJSONObject;
-  Arr: TJSONArray;
+  Arr, PArr: TJSONArray;
   I: Integer;
-  PArr: TJSONArray;
   Pair: TAssociationPair;
-  CommentsNode: TJSONData;
   CleanJson: string;
 begin
   Result := TAssociationResult.Create;
   Data := nil;
   try
     try
-    // Extract JSON from markdown code blocks if present
-    CleanJson := ExtractJsonFromMarkdown(RawJson);
-    
-    // Log if extraction occurred
-    if CleanJson <> RawJson then
-      AIDebugLog('[Association] Extracted JSON from markdown code block');
-    
-    Parser := TJSONParser.Create(CleanJson, []);
-    try
-      Data := Parser.Parse;
-    finally
-      Parser.Free;
-    end;
-    if (Data <> nil) and (Data.JSONType = jtObject) then
-    begin
-      Obj := TJSONObject(Data);
-      CommentsNode := Obj.Find('comments');
-      if Assigned(CommentsNode) and (CommentsNode.JSONType = jtString) then
-        Result.Comments := CommentsNode.AsString;
-      if (Obj.Find('data') <> nil) and (Obj.Elements['data'] is TJSONArray) then
-      begin
-        Arr := TJSONArray(Obj.Elements['data']);
-        for I := 0 to Arr.Count - 1 do
-        begin
-          if Arr.Items[I] is TJSONArray then
-          begin
-            PArr := TJSONArray(Arr.Items[I]);
-            if (PArr.Count = 2) and (PArr.Items[0] is TJSONString) and (PArr.Items[1] is TJSONString) then
-            begin
-              Pair.OriginalPhrase := TJSONString(PArr.Items[0]).Value;
-              Pair.TranslatedPhrase := TJSONString(PArr.Items[1]).Value;
-              SetLength(Result.Pairs, Length(Result.Pairs)+1);
-              Result.Pairs[High(Result.Pairs)] := Pair;
-            end;
-          end;
-        end;
+      CleanJson := ExtractJsonFromMarkdown(RawJson);
+      if CleanJson <> RawJson then
+        AIDebugLog('[Association] Extracted JSON from markdown code block');
+
+      Parser := TJSONParser.Create(CleanJson, []);
+      try
+        Data := Parser.Parse;
+      finally
+        Parser.Free;
       end;
+      if not (Data is TJSONObject) then
+        raise Exception.Create('Expected a JSON object');
+      Obj := TJSONObject(Data);
+      PairsNode := Obj.Find('data');
+      if not (PairsNode is TJSONArray) then
+        raise Exception.Create('Required field "data" must be an array');
+      CommentsNode := Obj.Find('comments');
+      if Assigned(CommentsNode) then
+      begin
+        if not (CommentsNode is TJSONString) then
+          raise Exception.Create('Optional field "comments" must be a string');
+        Result.Comments := CommentsNode.AsString;
+      end;
+
+      Arr := TJSONArray(PairsNode);
+      for I := 0 to Arr.Count - 1 do
+      begin
+        if not (Arr.Items[I] is TJSONArray) then
+          Continue;
+        PArr := TJSONArray(Arr.Items[I]);
+        if (PArr.Count <> 2) or not (PArr.Items[0] is TJSONString) or
+           not (PArr.Items[1] is TJSONString) then
+          Continue;
+        Pair.OriginalPhrase := TJSONString(PArr.Items[0]).Value;
+        Pair.TranslatedPhrase := TJSONString(PArr.Items[1]).Value;
+        if (Trim(Pair.OriginalPhrase) = '') or
+           (Trim(Pair.TranslatedPhrase) = '') then
+          Continue;
+        SetLength(Result.Pairs, Length(Result.Pairs) + 1);
+        Result.Pairs[High(Result.Pairs)] := Pair;
+      end;
+    except
+      on E: Exception do
+        Result.ParseError := E.Message;
     end;
-  except
-    on E: Exception do
-    begin
-      Result.ParseError := E.Message;
-    end;
-  end;
   finally
     Data.Free;
   end;
@@ -643,13 +642,15 @@ begin
   includeComments := LowerCase(Context.GetProjectInfo(AI_ASSOCIATION_CONFIG_KEY_INCLUDE_COMMENTS)) = 'true';
   providerOverride := Context.GetProjectInfo(AI_ASSOCIATION_CONFIG_KEY_PROVIDER);
   modelOverride := Context.GetProjectInfo(AI_ASSOCIATION_CONFIG_KEY_MODEL);
-  apiKeyOverride := Context.GetProjectInfo(AI_ASSOCIATION_CONFIG_KEY_API_KEY);
+  apiKeyOverride := '';
   overrideEnabledValue := Trim(Context.GetProjectInfo(GetFlowOverrideEnabledConfigKey('association')));
   if overrideEnabledValue = '' then
-    overrideEnabled := (Trim(providerOverride) <> '') or (Trim(modelOverride) <> '') or (Trim(apiKeyOverride) <> '')
+    overrideEnabled := (Trim(providerOverride) <> '') or (Trim(modelOverride) <> '') or Context.HasCredential(acsAssociation)
   else
     overrideEnabled := LowerCase(overrideEnabledValue) = 'true';
-  if not overrideEnabled then
+  if overrideEnabled then
+    apiKeyOverride := Context.ResolveCredential(acsAssociation)
+  else
   begin
     providerOverride := '';
     modelOverride := '';
@@ -746,6 +747,15 @@ begin
   if Result is TAssociationResult then
   begin
     AssocResult := TAssociationResult(Result);
+    if (AssocResult.ParseError = '') and (Length(AssocResult.Pairs) = 0) and
+       Assigned(Verse) then
+    begin
+      if (Trim(Verse.Text) <> '') or
+         (Assigned(Verse.PairedVerse) and
+          (Trim(Verse.PairedVerse.Text) <> '')) then
+        AssocResult.ParseError :=
+          'A non-empty verse pair requires at least one valid association pair';
+    end;
     
     // Explicitly clear comments if not enabled in configuration, 
     // even if the AI included them anyway
@@ -923,34 +933,55 @@ end;
 procedure TAIAssociationFlow.ApplyResult(ResultObj: TAIFlowResult; Verse: TVerse);
 var
   Assoc: TAssociationResult;
+  OldPairs: string;
+  AppliedPairCount: Integer;
 begin
   if not (ResultObj is TAssociationResult) then
-    Exit;
+    raise Exception.Create('Association result is missing or has an unexpected type');
   if not Assigned(Verse) then
     raise Exception.Create('ApplyResult called with nil Verse');
   Assoc := TAssociationResult(ResultObj);
+  if Assoc.ParseError <> '' then
+    raise Exception.Create('Cannot apply an invalid association response: ' +
+      Assoc.ParseError);
   if Verse.PairedVerse = nil then
     raise Exception.CreateFmt('ApplyResult: Verse has no paired verse. VerseRef=%s',
       [Verse.Reference]);
 
   AIDebugLogFmt('[Association] ApplyResult for verse: %s', [Verse.Reference]);
   AIDebugLogFmt('[Association] Processing %d pairs', [Length(Assoc.Pairs)]);
-
+  OldPairs := Verse.Pairs;
   try
-    ApplyAssociationPairs(Assoc, Verse);
+    AppliedPairCount := ApplyAssociationPairs(Assoc, Verse);
+    if AppliedPairCount = 0 then
+    begin
+      if (Trim(Verse.Text) <> '') or
+         (Trim(Verse.PairedVerse.Text) <> '') or
+         (Length(Assoc.Pairs) > 0) then
+        raise Exception.Create('No association pair could be applied to the verse pair');
+      Exit;
+    end;
+
     Assoc.SetAcceptedPairs(Assoc.PairsXML);
     if FIncludeComments then
       Assoc.SetAcceptedComments(Assoc.Comments);
     AIDebugLogFmt('[Association] Associations complete. PairsXML length: %d chars',
       [Length(Assoc.PairsXML)]);
-    AIDebugLogFmt(
-      '[Association] Pairs updated in memory for verse: %s (NOT saved to DB yet)',
-      [Verse.Reference]);
   except
     on E: Exception do
     begin
-      AIDebugLogFmt('[Association] Exception in ApplyResult for verse %s: %s', [Verse.Reference, E.Message]);
-      raise; // re-raise so manager can mark job as failed and preserve job for inspection
+      Assoc.PairsXML := '';
+      try
+        if Verse.Pairs <> OldPairs then
+          Verse.Pairs := OldPairs;
+      except
+        on RestoreError: Exception do
+          AIDebugLogFmt('[Association] Failed to restore verse after error: %s',
+            [RestoreError.Message]);
+      end;
+      AIDebugLogFmt('[Association] Exception in ApplyResult for verse %s: %s',
+        [Verse.Reference, E.Message]);
+      raise;
     end;
   end;
 end;

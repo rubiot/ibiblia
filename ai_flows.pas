@@ -7,7 +7,7 @@ unit ai_flows;
 interface
 
 uses
-  Classes, SysUtils, llmclient, Verse, project_config;
+  Classes, SysUtils, llmclient, Verse, project_config, ai_credential_store;
 
 type
   // Generic job state (future use in manager)
@@ -64,6 +64,8 @@ type
   IAIFlowContext = interface
     ['{8D2EA80B-78F5-44A4-B6F9-EA4C5E8456A3}']
     function GetProjectInfo(Key: string): string;
+    function ResolveCredential(Scope: TAICredentialScope): string;
+    function HasCredential(Scope: TAICredentialScope): Boolean;
   end;
 
   TAIFlowContext = class(TInterfacedObject, IAIFlowContext)
@@ -72,6 +74,8 @@ type
   public
     constructor Create(AConfig: TProjectConfig);
     function GetProjectInfo(Key: string): string;
+    function ResolveCredential(Scope: TAICredentialScope): string;
+    function HasCredential(Scope: TAICredentialScope): Boolean;
   end;
   
   // Configuration field descriptor
@@ -159,6 +163,17 @@ end;
 function CreateAIFlowContext(AConfig: TProjectConfig): IAIFlowContext;
 begin
   Result := TAIFlowContext.Create(AConfig);
+end;
+
+function TAIFlowContext.ResolveCredential(Scope: TAICredentialScope): string;
+begin
+  Result := '';
+  if Assigned(FConfig) then Result := FConfig.AICredentials.Resolve(Scope);
+end;
+
+function TAIFlowContext.HasCredential(Scope: TAICredentialScope): Boolean;
+begin
+  Result := Assigned(FConfig) and FConfig.AICredentials.HasConfiguredCredential(Scope);
 end;
 
 procedure TAIFlowResult.CaptureAcceptedVerseState(Verse: TVerse);

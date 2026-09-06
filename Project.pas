@@ -27,7 +27,7 @@ uses
   UnitPleaseWait, bible_book_names, translation_memory_model, ConcordanceExport,
   navigation_history, text_direction, text_edit_provenance,
   rf_note_scanner, association_highlight_projection,
-  theword_module_import_layout;
+  theword_module_import_layout, ai_credential_store;
 const
   // AI processing icon indices for ImageListTreeView in formprincipal
   // ImageListTreeView has indices 0-7 for normal states (0-3) and selected states (4-7)
@@ -188,6 +188,7 @@ type
     FSuggestionMode: TSuggestionMode;
     FLastLLMUsage: TLLMUsage;
     FLastLLMCallCompleted: Boolean;
+    FLastCredentialWarning: string;
     FOnNovoVersiculo: TOnNovoVersiculoEvents;
     FNewVerseNotificationQueued: Boolean;
     FNewVerseNotificationReference: string;
@@ -275,6 +276,7 @@ type
     procedure ReconcileEditedVerseAssociationMemory;
     function ReconcileChangedVerseAssociations: Boolean;
     procedure PendingEditorChanged(Sender: TObject);
+    function PersistAICredentialsAfterSave: Boolean;
     procedure HandleVerseChanged;
     procedure InvalidateChapterSnapshot;
     procedure SyncChapterSnapshotCurrentVerse;
@@ -292,6 +294,8 @@ type
     procedure ResetDefaultVerseModeTransition;
     procedure RetargetDefaultVerseModeTransition(
       const AReferenceID: string);
+    function TryResolveAssociationAIConfiguration(out AFlow: IAIVerseFlow;
+      out AProvider, AModel, AApiKey: string): Boolean;
     function ImportTheWordModuleWithLayout(arquivo: string;
       texto: TTipoTextoBiblico; pb: TProgressBar; replace: boolean;
       out AImportResult: TTheWordModuleImportResult;
@@ -407,21 +411,21 @@ type
       AEnableStagedBatching: Boolean; AVerseCount: Integer): boolean;
     {$ENDIF}
     procedure CreateVerseObject(owner: TScrollBox; texto: TTipoTextoBiblico);
-    procedure ExportDestinationTextWithStrongs(arquivo: string; opcoes: TOpcoesExportacao);
-    procedure ExportDestinationTextWithStrongs(arquivo: string; pb: TProgressBar; opcoes: TOpcoesExportacao);
-    procedure ExportInterlinearText(arquivo: string; opcoes: TOpcoesExportacao);
-    procedure ExportInterlinearText(arquivo: string; pb: TProgressBar; opcoes: TOpcoesExportacao);
-    procedure ExportConcordance(arquivo: string; opcoes: TOpcoesExportacao; abbreviation: string);
-    procedure ExportConcordance(arquivo: string; pb: TProgressBar;
+    function ExportDestinationTextWithStrongs(arquivo: string; opcoes: TOpcoesExportacao): TExportResult;
+    function ExportDestinationTextWithStrongs(arquivo: string; pb: TProgressBar; opcoes: TOpcoesExportacao): TExportResult;
+    function ExportInterlinearText(arquivo: string; opcoes: TOpcoesExportacao): TExportResult;
+    function ExportInterlinearText(arquivo: string; pb: TProgressBar; opcoes: TOpcoesExportacao): TExportResult;
+    function ExportConcordance(arquivo: string; opcoes: TOpcoesExportacao; abbreviation: string): TExportResult;
+    function ExportConcordance(arquivo: string; pb: TProgressBar;
       opcoes: TOpcoesExportacao; abbreviation: string;
       IncludeVerseContext: Boolean = False;
       UseIndexedOccurrences: Boolean = False;
-      ProgressEvent: TConcordanceExportProgressEvent = nil);
-    procedure ExportConcordance(arquivo: string; pb: TProgressBar;
+      ProgressEvent: TConcordanceExportProgressEvent = nil): TExportResult;
+    function ExportConcordance(arquivo: string; pb: TProgressBar;
       opcoes: TOpcoesExportacao; abbreviation: string;
       ContextMode: TConcordanceContextMode; ContextMaxCharacters: Integer;
       UseIndexedOccurrences: Boolean;
-      ProgressEvent: TConcordanceExportProgressEvent);
+      ProgressEvent: TConcordanceExportProgressEvent): TExportResult;
     function PrepareConcordanceExport(UseIndexedOccurrences: Boolean): Boolean;
     procedure AssignTextFont(fonte: TFont; textos: STextosBiblicos);
     procedure ClearText(texto: TTipoTextoBiblico);
@@ -430,6 +434,11 @@ type
     function AssignMorphologyDictionary(dic: string; textos: STextosBiblicos): boolean;
     procedure SetInfo(info, valor: string);
     function GetInfo(info: string): string;
+    function GetAIKey(Scope: TAICredentialScope): string;
+    function HasAIKey(Scope: TAICredentialScope): Boolean;
+    function TryGetAIKey(Scope: TAICredentialScope; out Secret,
+      ErrorMessage: string): Boolean;
+    procedure SetAIKey(Scope: TAICredentialScope; const Secret: string);
     function GetFlowExamples(const FlowId: string): TAIFlowExampleArray;
     procedure SetFlowExamples(const FlowId: string; const Examples: TAIFlowExampleArray);
     function TryCreateCurrentVerseFlowExample(const FlowId: string;
@@ -468,7 +477,7 @@ type
     procedure RewindChapter;
     procedure OnNewVerseSubscribe(const AValue: TOnNovoVersiculoEvent);
     procedure OnNewVerseUnsubscribe(const AValue: TOnNovoVersiculoEvent);
-    procedure ApplyProjectPatch(patch: TPatchFile; indexes: TIntegerList = nil);
+    function ApplyProjectPatch(patch: TPatchFile; indexes: TIntegerList = nil): Integer;
     function ApplyAcceptedBatch(Batch, OriginalData: TAIProcessingBatch;
       SelectedIndexes: TAIBatchIndexList = nil): Integer;
     function GetPairs(ref: string): string;
@@ -705,11 +714,12 @@ type
     FErrorMessage: string;
     FMessages: TLLMMessageArray;
     FModel: string;
+    FProvider: string;
     FResponse: TLLMResponse;
   protected
     procedure Execute; override;
   public
-    constructor Create(const AModel, AApiKey: string;
+    constructor Create(const AProvider, AModel, AApiKey: string;
       const AMessages: TLLMMessageArray);
     property ErrorMessage: string read FErrorMessage;
     property Response: TLLMResponse read FResponse;
@@ -739,11 +749,12 @@ const
     'Associated'
   );
 
-constructor TSingleLLMRequestThread.Create(const AModel, AApiKey: string;
-  const AMessages: TLLMMessageArray);
+constructor TSingleLLMRequestThread.Create(const AProvider, AModel,
+  AApiKey: string; const AMessages: TLLMMessageArray);
 begin
   inherited Create(True);
   FreeOnTerminate := False;
+  FProvider := AProvider;
   FModel := AModel;
   FApiKey := AApiKey;
   FMessages := AMessages;
@@ -758,7 +769,7 @@ begin
     try
       // HTTP clients are created and used in the worker thread, matching the
       // batch-processing lifecycle.
-      Client := llmclient.CreateBackend(FModel, FApiKey);
+      Client := llmclient.CreateBackend(FProvider, FModel, FApiKey);
       FResponse := Client.AskChatCompletions(FMessages);
     except
       on E: Exception do
@@ -769,12 +780,13 @@ begin
   end;
 end;
 
-function AskChatCompletionsResponsive(const Model, ApiKey: string;
+function AskChatCompletionsResponsive(const Provider, Model, ApiKey: string;
   const Messages: TLLMMessageArray): TLLMResponse;
 var
   RequestThread: TSingleLLMRequestThread;
 begin
-  RequestThread := TSingleLLMRequestThread.Create(Model, ApiKey, Messages);
+  RequestThread := TSingleLLMRequestThread.Create(Provider, Model, ApiKey,
+    Messages);
   try
     RequestThread.Start;
     while not RequestThread.Finished do
@@ -970,6 +982,42 @@ function TProject.StatusAutomationEnabled: Boolean;
 begin
   Result := GetInfo(STATUS_CATALOG_CONFIG_KEY).IsEmpty and
     (not HasLegacyStatusDescriptions);
+end;
+
+function TProject.TryResolveAssociationAIConfiguration(out AFlow: IAIVerseFlow;
+  out AProvider, AModel, AApiKey: string): Boolean;
+var
+  FlowConfig: IAIFlowConfig;
+begin
+  AFlow := nil;
+  AProvider := '';
+  AModel := '';
+  AApiKey := '';
+  Result := False;
+  if not Assigned(FPersistence) then
+    Exit;
+
+  try
+    FlowConfig := GetFlowConfigById('association');
+    AFlow := FlowConfig.CreateFlowInstance(CreateAIFlowContext(FConfig));
+    if not Assigned(AFlow) then
+      Exit;
+
+    AProvider := Trim(AFlow.ProviderOverride);
+    AModel := Trim(AFlow.ModelOverride);
+    if AModel.IsEmpty then
+      AModel := Trim(GetInfo(AI_COMMON_CONFIG.Model));
+    AApiKey := Trim(AFlow.ApiKeyOverride);
+    if AApiKey.IsEmpty then
+      AApiKey := Trim(GetAIKey(acsCommon));
+    Result := not AModel.IsEmpty and not AApiKey.IsEmpty;
+  except
+    AFlow := nil;
+    AProvider := '';
+    AModel := '';
+    AApiKey := '';
+    Result := False;
+  end;
 end;
 
 function TProject.HasCustomStatus: boolean;
@@ -1303,16 +1351,17 @@ begin
   end;
 end;
 
-procedure TProject.ApplyProjectPatch(patch: TPatchFile; indexes: TIntegerList = nil);
+function TProject.ApplyProjectPatch(patch: TPatchFile; indexes: TIntegerList = nil): Integer;
 var
   oldAutoSaveValue: boolean;
   selectedIndexes: TPatchIndexArray;
+  SelectionMode: TPatchSelectionMode;
 
   function PatchIndexIsSelected(PatchIndex: Integer): Boolean;
   var
     SelectedIndex: Integer;
   begin
-    if Length(selectedIndexes) = 0 then
+    if SelectionMode = psmAll then
       Exit(True);
 
     for SelectedIndex in selectedIndexes do
@@ -1583,6 +1632,18 @@ var
         CurrentDefinitions);
   end;
 begin
+  Result := 0;
+  if not Assigned(patch) then
+    Exit;
+  if patch.Reference.Count = 0 then
+    Exit;
+  SelectionMode := psmAll;
+  if Assigned(indexes) then
+  begin
+    if indexes.Count = 0 then
+      Exit;
+    SelectionMode := psmSelected;
+  end;
   selectedIndexes := BuildSelectedPatchIndexes;
   FIgnoreMissingPatchWarnings := False;
   if not PreparePatchStatuses then
@@ -1592,7 +1653,8 @@ begin
   FAssociationMemory.InvalidateReplay;
   try
     StartScrollingSession;
-    FPatchApplier.ApplyPatch(patch, selectedIndexes, @ConfirmMissingPatchReference);
+    Result := FPatchApplier.ApplyPatch(patch, SelectionMode, selectedIndexes,
+      @ConfirmMissingPatchReference);
   finally
     FinishScrollingSession;
   end;
@@ -1618,7 +1680,7 @@ begin
   Patch.StatusCatalog := SaveStatusDefinitions(GetStatusDefinitions);
   try
     if Result > 0 then
-      ApplyProjectPatch(Patch, nil);
+      Result := ApplyProjectPatch(Patch, nil);
   finally
     Patch.Free;
   end;
@@ -2014,18 +2076,24 @@ begin
   if Assigned(FAIManager) then
   begin
     FAIManager.CancelAll;
-    ClearAllAINodeStates; // Restore node icons
+    if Assigned(FrmAIProcessing) then
+      FrmAIProcessing.RequestCancellation(FAIManager);
   end;
 end;
 
 procedure TProject.ResetAIBatchManager;
 begin
-  if Assigned(FAIManager) then
-  begin
-    FAIManager.CancelAll;
-    ClearAllAINodeStates;
-    FreeAndNil(FAIManager);
-  end;
+  if not Assigned(FAIManager) then Exit;
+  FAIManager.CancelAll;
+  if Assigned(FrmAIProcessing) then
+    FrmAIProcessing.RequestCancellation(FAIManager);
+  FAIManager.PumpApply;
+  if not FAIManager.IsStopped then
+    raise Exception.Create(SAIProcessingStillStopping);
+  if Assigned(FrmAIProcessing) then
+    FrmAIProcessing.DetachManager(FAIManager);
+  ClearAllAINodeStates;
+  FreeAndNil(FAIManager);
 end;
 
 procedure TProject.OnAIBatchClick(Sender: TObject);
@@ -2113,18 +2181,7 @@ begin
 
     maxPar := StrToIntDef(GetInfo(AI_COMMON_CONFIG.MaxParallel), 2);
 
-    if GetInfo(AI_COMMON_CONFIG.Model).IsEmpty or GetInfo(AI_COMMON_CONFIG.ApiKey).IsEmpty then
-    begin
-      ShowMessage(SAIConfigurationMissing);
-      Exit;
-    end;
-
-    if Assigned(FAIManager) then
-    begin
-      FAIManager.CancelAll;
-      ClearAllAINodeStates;
-      FreeAndNil(FAIManager);
-    end;
+    ResetAIBatchManager;
 
     FAIBatchCompletionShown := False;
 
@@ -2210,6 +2267,7 @@ begin
   Result := Assigned(FCurrentVerseWorkspace) and
     FCurrentVerseWorkspace.HasPendingChanges(FPersistence, FVerseMemo,
       FMemoComentarios, FAVersiculo, FACamposTexto, Ord(tbOrigem));
+  Result := Result or (Assigned(FConfig) and FConfig.AICredentials.HasPendingChanges);
 end;
 
 function TProject.GetCaminho: string;
@@ -4080,6 +4138,12 @@ end;
 
 destructor TProject.Destroy;
 begin
+  if Assigned(FAIManager) then
+  begin
+    if Assigned(FrmAIProcessing) then
+      FrmAIProcessing.DetachManager(FAIManager);
+    ReleaseAIProcessingBatch(FAIManager);
+  end;
   CancelDefaultVerseModeRequest;
   AbortDefaultVerseModeTransition;
   Application.RemoveAsyncCalls(Self);
@@ -4303,6 +4367,17 @@ var
   SavedMarker: string;
 begin
   Result := False;
+  if Assigned(FAIManager) then
+  begin
+    FAIManager.CancelAll;
+    if Assigned(FrmAIProcessing) then
+      FrmAIProcessing.RequestCancellation(FAIManager);
+    FAIManager.PumpApply;
+    if not FAIManager.IsStopped then Exit;
+    if Assigned(FrmAIProcessing) then
+      FrmAIProcessing.DetachManager(FAIManager);
+    ReleaseAIProcessingBatch(FAIManager);
+  end;
   InvalidateChapterSnapshot;
   CancelDefaultVerseModeRequest;
   AbortDefaultVerseModeTransition;
@@ -4330,6 +4405,9 @@ begin
   begin
     FConfig.StageMarkerForCommit(SavedMarker);
     Commit;
+    if not PersistAICredentialsAfterSave and
+       FConfig.AICredentials.HasPendingChanges then
+      Exit(False);
   end
   else
   begin
@@ -4793,6 +4871,7 @@ begin
   end;
   FConfig.StageMarkerForCommit(ID);
   Commit;
+  PersistAICredentialsAfterSave;
 
   //UpdateTree;
   if NotifyObservers and (FSaveProjectObserverSuppressionDepth = 0) then
@@ -4852,11 +4931,13 @@ end;
 procedure TProject.SuggestAssociationAI;
 var
   flow: IAIVerseFlow;
-  flowConfig: IAIFlowConfig;
   msgs: TLLMMessageArray;
   resp: TLLMResponse;
   parsed: TAIFlowResult;
   v: TVerse;
+  Provider: string;
+  Model: string;
+  ApiKey: string;
   ErrorMessage: string;
   WaitFormStarted: Boolean;
   AssociationChanged: Boolean;
@@ -4867,8 +4948,8 @@ begin
   FLastLLMUsage.TotalTokens := 0;
   FLastLLMCallCompleted := False;
 
-  if (GetInfo(AI_COMMON_CONFIG.Model).IsEmpty) or
-    (GetInfo(AI_COMMON_CONFIG.ApiKey).IsEmpty) then
+  if not TryResolveAssociationAIConfiguration(flow, Provider, Model,
+    ApiKey) then
   begin
     ShowMessage(SAIConfigurationMissing);
     Exit;
@@ -4892,12 +4973,8 @@ begin
 
   try
     try
-      flowConfig := GetFlowConfigById('association');
-      flow := flowConfig.CreateFlowInstance(CreateAIFlowContext(FConfig));
-
       msgs := flow.BuildMessages(v);
-      resp := AskChatCompletionsResponsive(GetInfo(AI_COMMON_CONFIG.Model),
-        GetInfo(AI_COMMON_CONFIG.ApiKey), msgs);
+      resp := AskChatCompletionsResponsive(Provider, Model, ApiKey, msgs);
       FLastLLMUsage := resp.Usage;
       FLastLLMCallCompleted := True;
 
@@ -4973,12 +5050,6 @@ var
   orchestrator: TAIBatchOrchestrator;
 begin
   if (NodesVerses = nil) or (NodesVerses.Count = 0) then Exit;
-  if (GetInfo(AI_COMMON_CONFIG.Model).IsEmpty) or (GetInfo(AI_COMMON_CONFIG.ApiKey).IsEmpty) then
-  begin
-    ShowMessage(SAIConfigurationMissing);
-    Exit;
-  end;
-
   // Reset completion flag
   FAIBatchCompletionShown := False;
 
@@ -5962,19 +6033,23 @@ begin
   end;
 end;
 
-procedure TProject.ExportDestinationTextWithStrongs(arquivo: string; opcoes: TOpcoesExportacao);
+function TProject.ExportDestinationTextWithStrongs(arquivo: string; opcoes: TOpcoesExportacao): TExportResult;
 begin
-  ExportDestinationTextWithStrongs(arquivo, nil, opcoes);
+  Result := ExportDestinationTextWithStrongs(arquivo, nil, opcoes);
 end;
 
-procedure TProject.ExportDestinationTextWithStrongs(arquivo: string;
-  pb: TProgressBar; opcoes: TOpcoesExportacao);
+function TProject.ExportDestinationTextWithStrongs(arquivo: string;
+  pb: TProgressBar; opcoes: TOpcoesExportacao): TExportResult;
 var
   Options: TDestinationTextExportOptions;
 begin
+  Result := Default(TExportResult);
+  Result.ErrorMessage := 'The project verse views are not available for export';
   if not assigned(FAVersiculo[tbOrigem]) or not assigned(FAVersiculo[tbDestino]) then
     exit;
 
+  Result.ErrorMessage := '';
+  try
   CancelDefaultVerseModeRequest;
   try
     FExportando := true;
@@ -5992,39 +6067,54 @@ begin
     Options.ErrorReportFileName := ChangeFileExt(arquivo, '.errors.txt');
     Options.ErrorReportCreatedMessage := SExportErrorReportCreated;
 
-    FProjectExporter.ExportDestinationTextWithStrongs(arquivo, pb, Options,
+    Result := FProjectExporter.ExportDestinationTextWithStrongs(arquivo, pb, Options,
       @StartScrollingSession, @FinishScrollingSession, @GetID);
   finally
     FExportando := false;
     AfterVerseScroll(nil);
   end;
+  except
+    on E: Exception do
+    begin
+      if Result.OutputFileName <> '' then
+      begin
+        Result.Status := esWarnings;
+        Inc(Result.WarningCount);
+      end;
+      Result.ErrorMessage := E.Message;
+    end;
+  end;
 end;
 
-procedure TProject.ExportInterlinearText(arquivo: string; opcoes: TOpcoesExportacao);
+function TProject.ExportInterlinearText(arquivo: string; opcoes: TOpcoesExportacao): TExportResult;
 begin
-  ExportInterlinearText(arquivo, nil, opcoes);
+  Result := ExportInterlinearText(arquivo, nil, opcoes);
 end;
 
 { TODO: Unify this code with ExportDestinationTextWithStrongs() }
-procedure TProject.ExportInterlinearText(arquivo: string;
-  pb: TProgressBar; opcoes: TOpcoesExportacao);
+function TProject.ExportInterlinearText(arquivo: string;
+  pb: TProgressBar; opcoes: TOpcoesExportacao): TExportResult;
 var
   Options: TInterlinearTextExportOptions;
   rulesRx: TRegexList;
   replaceTo: TStringList;
 begin
+  Result := Default(TExportResult);
+  Result.ErrorMessage := 'The project verse views are not available for export';
   if (FAVersiculo[tbOrigem] = nil) or (FAVersiculo[tbDestino] = nil) then
     exit;
 
-  CancelDefaultVerseModeRequest;
+  Result.ErrorMessage := '';
   rulesRx := nil;
   replaceTo := nil;
-  if arquivo.EndsWith('.mybible') then
+  try
+  try
+  CancelDefaultVerseModeRequest;
+  if SameText(ExtractFileExt(arquivo), '.mybible') then
     CompileInterlinearVerseRules(rulesRx, replaceTo, imInterlinear, true)
   else // theWord mode
     CompileInterlinearVerseRules(rulesRx, replaceTo, imIntralinear, true);
 
-  try
     FExportando := true;
 
     Options.Properties := ReadInfo('propriedades.origem');
@@ -6036,7 +6126,7 @@ begin
     Options.ErrorReportFileName := ChangeFileExt(arquivo, '.errors.txt');
     Options.ErrorReportCreatedMessage := SExportErrorReportCreated;
 
-    FProjectExporter.ExportInterlinearText(arquivo, pb, rulesRx, replaceTo,
+    Result := FProjectExporter.ExportInterlinearText(arquivo, pb, rulesRx, replaceTo,
       Options, @StartScrollingSession, @FinishScrollingSession, @GetID);
   finally
     rulesRx.Free;
@@ -6044,18 +6134,29 @@ begin
     FExportando := false;
     AfterVerseScroll(nil);
   end;
+  except
+    on E: Exception do
+    begin
+      if Result.OutputFileName <> '' then
+      begin
+        Result.Status := esWarnings;
+        Inc(Result.WarningCount);
+      end;
+      Result.ErrorMessage := E.Message;
+    end;
+  end;
 end;
 
-procedure TProject.ExportConcordance(arquivo: string;
-  opcoes: TOpcoesExportacao; abbreviation: string);
+function TProject.ExportConcordance(arquivo: string;
+  opcoes: TOpcoesExportacao; abbreviation: string): TExportResult;
 begin
-  ExportConcordance(arquivo, nil, opcoes, abbreviation);
+  Result := ExportConcordance(arquivo, nil, opcoes, abbreviation);
 end;
 
-procedure TProject.ExportConcordance(arquivo: string;
+function TProject.ExportConcordance(arquivo: string;
   pb: TProgressBar; opcoes: TOpcoesExportacao; abbreviation: string;
   IncludeVerseContext: Boolean; UseIndexedOccurrences: Boolean;
-  ProgressEvent: TConcordanceExportProgressEvent);
+  ProgressEvent: TConcordanceExportProgressEvent): TExportResult;
 var
   ContextMode: TConcordanceContextMode;
 begin
@@ -6063,22 +6164,26 @@ begin
     ContextMode := ccmFullVerse
   else
     ContextMode := ccmReferencesOnly;
-  ExportConcordance(arquivo, pb, opcoes, abbreviation, ContextMode,
+  Result := ExportConcordance(arquivo, pb, opcoes, abbreviation, ContextMode,
     CONCORDANCE_CONTEXT_DEFAULT_CHARACTERS, UseIndexedOccurrences,
     ProgressEvent);
 end;
 
-procedure TProject.ExportConcordance(arquivo: string;
+function TProject.ExportConcordance(arquivo: string;
   pb: TProgressBar; opcoes: TOpcoesExportacao; abbreviation: string;
   ContextMode: TConcordanceContextMode; ContextMaxCharacters: Integer;
   UseIndexedOccurrences: Boolean;
-  ProgressEvent: TConcordanceExportProgressEvent);
+  ProgressEvent: TConcordanceExportProgressEvent): TExportResult;
 var
   Options: TConcordanceExportOptions;
 begin
+  Result := Default(TExportResult);
+  Result.ErrorMessage := 'The project verse views are not available for export';
   if (FAVersiculo[tbOrigem] = nil) or (FAVersiculo[tbDestino] = nil) then
     exit;
 
+  Result.ErrorMessage := '';
+  try
   CancelDefaultVerseModeRequest;
   try
     FExportando := true;
@@ -6100,12 +6205,23 @@ begin
     Options.ErrorReportFileName := ChangeFileExt(arquivo, '.errors.txt');
     Options.ErrorReportCreatedMessage := SExportErrorReportCreated;
 
-    FProjectExporter.ExportConcordance(arquivo, pb, Options,
+    Result := FProjectExporter.ExportConcordance(arquivo, pb, Options,
       @StartScrollingSession, @FinishScrollingSession, @GetID,
       FSuggestionManager, ProgressEvent);
   finally
     FExportando := false;
     AfterVerseScroll(nil);
+  end;
+  except
+    on E: Exception do
+    begin
+      if Result.OutputFileName <> '' then
+      begin
+        Result.Status := esWarnings;
+        Inc(Result.WarningCount);
+      end;
+      Result.ErrorMessage := E.Message;
+    end;
   end;
 end;
 
@@ -6214,6 +6330,50 @@ end;
 function TProject.GetInfo(info: string): string;
 begin
   Result := FConfig.ReadString(info);
+end;
+
+function TProject.GetAIKey(Scope: TAICredentialScope): string;
+begin
+  Result := FConfig.AICredentials.Resolve(Scope);
+end;
+
+function TProject.HasAIKey(Scope: TAICredentialScope): Boolean;
+begin
+  Result := FConfig.AICredentials.HasConfiguredCredential(Scope);
+end;
+
+function TProject.TryGetAIKey(Scope: TAICredentialScope; out Secret,
+  ErrorMessage: string): Boolean;
+begin
+  Result := FConfig.AICredentials.TryResolve(Scope, Secret, ErrorMessage);
+end;
+
+procedure TProject.SetAIKey(Scope: TAICredentialScope; const Secret: string);
+begin
+  FConfig.AICredentials.Stage(Scope, Secret);
+  FLastCredentialWarning := '';
+  PendingEditorChanged(Self);
+end;
+
+function TProject.PersistAICredentialsAfterSave: Boolean;
+var ErrorMessage: string;
+begin
+  Result := True;
+  if not Assigned(FConfig) or not FConfig.AICredentials.MigrationPending then
+  begin
+    FLastCredentialWarning := '';
+    Exit;
+  end;
+  { Release cache readers before metadata migration and SQLite maintenance. }
+  if Assigned(FSuggestionManager) then FSuggestionManager.Rollback;
+  Result := FConfig.AICredentials.PersistAfterSave(ErrorMessage);
+  if Result then
+    FLastCredentialWarning := ''
+  else if (ErrorMessage <> '') and (ErrorMessage <> FLastCredentialWarning) then
+  begin
+    FLastCredentialWarning := ErrorMessage;
+    MessageDlg(SError, ErrorMessage, mtWarning, [mbOK], 0);
+  end;
 end;
 
 function TProject.GetFlowExamples(const FlowId: string): TAIFlowExampleArray;

@@ -6,7 +6,8 @@ interface
 
 uses
   Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs,
-  StdCtrls, ExtCtrls, ComCtrls, Project, llmclient, ai_flows, ai_flow_config
+  StdCtrls, ExtCtrls, ComCtrls, Project, llmclient, ai_flows, ai_flow_config,
+  ai_credential_store
   {$IFDEF WINDOWS}, Windows{$ENDIF};
 
 type
@@ -58,6 +59,9 @@ type
   private
     FProject: TProject;
     FFlowTabs: array of TFlowTabControls;
+    FLoadedApiKeys: array[TAICredentialScope] of string;
+    function LoadCredential(Scope: TAICredentialScope; Edit: TLabeledEdit): string;
+    procedure SaveCredential(Scope: TAICredentialScope; Edit: TLabeledEdit);
     procedure UpdateTestEnabled;
     procedure OnFieldsChanged(Sender: TObject);
     procedure LoadFromProject;
@@ -106,6 +110,9 @@ resourcestring
   rsLlmOptionsCaption = 'LLM Options';
   rsLabelModel = 'Model';
   rsLabelApiKey = 'API key';
+  rsLocalApiKey = 'API key (local to this user/computer)';
+  rsMissingApiKey = 'API key unavailable here - configure again';
+  rsLocalApiKeyHint = 'Saved in local credential storage when the project is saved. Copies opened on another computer require the key again.';
   rsBtnOK = 'OK';
   rsBtnCancel = 'Cancel';
   rsBtnClose = 'Close';
@@ -222,6 +229,32 @@ begin
   UpdateTestEnabled;
 end;
 
+function TFrmLLMOptions.LoadCredential(Scope: TAICredentialScope;
+  Edit: TLabeledEdit): string;
+var ErrorMessage: string;
+begin
+  if FProject.TryGetAIKey(Scope, Result, ErrorMessage) then
+  begin
+    Edit.EditLabel.Caption := rsLocalApiKey;
+    Edit.Hint := rsLocalApiKeyHint;
+  end
+  else
+  begin
+    Edit.EditLabel.Caption := rsMissingApiKey;
+    Edit.Hint := ErrorMessage;
+  end;
+  Edit.ShowHint := True;
+  FLoadedApiKeys[Scope] := Result;
+end;
+
+procedure TFrmLLMOptions.SaveCredential(Scope: TAICredentialScope;
+  Edit: TLabeledEdit);
+begin
+  { Opening options on another computer must not clear an unavailable reference. }
+  if Trim(Edit.Text) <> FLoadedApiKeys[Scope] then
+    FProject.SetAIKey(Scope, Edit.Text);
+end;
+
 procedure TFrmLLMOptions.LoadFromProject;
 begin
   if not Assigned(FProject) then Exit;
@@ -231,7 +264,7 @@ begin
 
   // Load common settings
   cbModel.Text := FProject.GetInfo(AI_COMMON_CONFIG.Model);
-  leApiKey.Text := FProject.GetInfo(AI_COMMON_CONFIG.ApiKey);
+  leApiKey.Text := LoadCredential(acsCommon, leApiKey);
 
   leMaxParallel.Text := FProject.GetInfo(AI_COMMON_CONFIG.MaxParallel);
   if Trim(leMaxParallel.Text) = '' then leMaxParallel.Text := '2';
@@ -252,7 +285,7 @@ begin
 
   // Save common settings
   FProject.SetInfo(AI_COMMON_CONFIG.Model, cbModel.Text);
-  FProject.SetInfo(AI_COMMON_CONFIG.ApiKey, leApiKey.Text);
+  SaveCredential(acsCommon, leApiKey);
 
   if StrToIntDef(leMaxParallel.Text, 0) <= 0 then
     leMaxParallel.Text := '2';
@@ -281,7 +314,6 @@ begin
   begin
     // Migrate common settings
     FProject.SetInfo(AI_COMMON_CONFIG.Model, FProject.GetInfo(LEGACY_MODEL_KEY));
-    FProject.SetInfo(AI_COMMON_CONFIG.ApiKey, FProject.GetInfo(LEGACY_API_KEY));
     FProject.SetInfo(AI_COMMON_CONFIG.MaxParallel, FProject.GetInfo(LEGACY_MAX_PARALLEL_KEY));
     FProject.SetInfo(AI_COMMON_CONFIG.MaxRetries, FProject.GetInfo(LEGACY_MAX_RETRIES_KEY));
     FProject.SetInfo(AI_COMMON_CONFIG.RetryDelay, FProject.GetInfo(LEGACY_RETRY_DELAY_KEY));
@@ -303,8 +335,8 @@ begin
         FProject.SetInfo(AI_ASSOCIATION_CONFIG_KEY_CUSTOM_INSTRUCTIONS, flowConfig.GetDefaultCustomInstructions);
     end;
 
-    // Note: We don't delete legacy keys to maintain compatibility with older versions
-    // They will simply be ignored by new code
+    // Non-secret legacy settings remain for compatibility. Credentials migrate
+    // separately, after a successful project save and vault verification.
   end;
 end;
 
@@ -847,7 +879,7 @@ begin
 
     providerValue := FProject.GetInfo(AI_ASSOCIATION_CONFIG_KEY_PROVIDER);
     modelValue := FProject.GetInfo(AI_ASSOCIATION_CONFIG_KEY_MODEL);
-    apiKeyValue := FProject.GetInfo(AI_ASSOCIATION_CONFIG_KEY_API_KEY);
+    apiKeyValue := LoadCredential(acsAssociation, FFlowTabs[tabIdx].EditApiKey);
   end
   else if SameText(AFlowId, 'translation') then
   begin
@@ -874,7 +906,7 @@ begin
 
     providerValue := FProject.GetInfo(AI_TRANSLATION_CONFIG_KEY_PROVIDER);
     modelValue := FProject.GetInfo(AI_TRANSLATION_CONFIG_KEY_MODEL);
-    apiKeyValue := FProject.GetInfo(AI_TRANSLATION_CONFIG_KEY_API_KEY);
+    apiKeyValue := LoadCredential(acsTranslation, FFlowTabs[tabIdx].EditApiKey);
   end
   else
     Exit;
@@ -883,6 +915,10 @@ begin
 
   hasStoredOverride := (Trim(providerValue) <> '') or
     (Trim(modelValue) <> '') or (Trim(apiKeyValue) <> '');
+  if SameText(AFlowId, 'association') then
+    hasStoredOverride := hasStoredOverride or FProject.HasAIKey(acsAssociation)
+  else
+    hasStoredOverride := hasStoredOverride or FProject.HasAIKey(acsTranslation);
   overrideEnabledValue := Trim(FProject.GetInfo(GetFlowOverrideEnabledConfigKey(AFlowId)));
   if Assigned(FFlowTabs[tabIdx].chkUseOverride) then
   begin
@@ -926,7 +962,7 @@ begin
     if Assigned(tabControls.CbModel) then
       FProject.SetInfo(AI_ASSOCIATION_CONFIG_KEY_MODEL, tabControls.CbModel.Text);
     if Assigned(tabControls.EditApiKey) then
-      FProject.SetInfo(AI_ASSOCIATION_CONFIG_KEY_API_KEY, tabControls.EditApiKey.Text);
+      SaveCredential(acsAssociation, tabControls.EditApiKey);
   end
   else if SameText(AFlowId, 'translation') then
   begin
@@ -950,7 +986,7 @@ begin
     if Assigned(tabControls.CbModel) then
       FProject.SetInfo(AI_TRANSLATION_CONFIG_KEY_MODEL, tabControls.CbModel.Text);
     if Assigned(tabControls.EditApiKey) then
-      FProject.SetInfo(AI_TRANSLATION_CONFIG_KEY_API_KEY, tabControls.EditApiKey.Text);
+      SaveCredential(acsTranslation, tabControls.EditApiKey);
   end
   else
     Exit;

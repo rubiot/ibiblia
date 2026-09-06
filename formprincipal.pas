@@ -2016,14 +2016,16 @@ end;
 procedure TMainForm.ActionExportDestinationWithStrongsExecute(Sender: TObject);
 begin
   if (CurrentProject <> nil) and SaveDialog2.Execute then
-    CurrentProject.ExportDestinationTextWithStrongs(SaveDialog2.FileName, []{, ProgressBar1});
+    ProjectExportForm.ShowExportResult(
+      CurrentProject.ExportDestinationTextWithStrongs(SaveDialog2.FileName, []));
   //ProgressBar1.Visible := false;
 end;
 
 procedure TMainForm.ActionExportInterlinearTextExecute(Sender: TObject);
 begin
   if (CurrentProject <> nil) and SaveDialog2.Execute then
-    CurrentProject.ExportInterlinearText(SaveDialog2.FileName, []{, ProgressBar1});
+    ProjectExportForm.ShowExportResult(
+      CurrentProject.ExportInterlinearText(SaveDialog2.FileName, []));
   //ProgressBar1.Visible := false;
 end;
 

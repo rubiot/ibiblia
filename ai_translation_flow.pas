@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, ai_flows, ai_association_flow, ai_added_words_markup,
-  llmclient, Verse, ai_debug;
+  llmclient, Verse, ai_debug, ai_credential_store;
 
 const
   TRANSLATION_PROMPT_HEADER =
@@ -568,13 +568,15 @@ begin
     Context.GetProjectInfo(AI_TRANSLATION_CONFIG_KEY_MARK_ADDED_WORDS)) = 'true';
   providerOverride := Context.GetProjectInfo(AI_TRANSLATION_CONFIG_KEY_PROVIDER);
   modelOverride := Context.GetProjectInfo(AI_TRANSLATION_CONFIG_KEY_MODEL);
-  apiKeyOverride := Context.GetProjectInfo(AI_TRANSLATION_CONFIG_KEY_API_KEY);
+  apiKeyOverride := '';
   overrideEnabledValue := Trim(Context.GetProjectInfo(GetFlowOverrideEnabledConfigKey('translation')));
   if overrideEnabledValue = '' then
-    overrideEnabled := (Trim(providerOverride) <> '') or (Trim(modelOverride) <> '') or (Trim(apiKeyOverride) <> '')
+    overrideEnabled := (Trim(providerOverride) <> '') or (Trim(modelOverride) <> '') or Context.HasCredential(acsTranslation)
   else
     overrideEnabled := LowerCase(overrideEnabledValue) = 'true';
-  if not overrideEnabled then
+  if overrideEnabled then
+    apiKeyOverride := Context.ResolveCredential(acsTranslation)
+  else
   begin
     providerOverride := '';
     modelOverride := '';
@@ -699,6 +701,17 @@ begin
   PrepareRequest(Verse, Result);
 end;
 
+function EmptyTranslationWouldDiscardText(const TranslatedText: string;
+  Verse: TVerse): Boolean;
+begin
+  Result := False;
+  if (Trim(TranslatedText) <> '') or not Assigned(Verse) then
+    Exit;
+  Result := Trim(Verse.Text) <> '';
+  if Assigned(Verse.PairedVerse) then
+    Result := Result or (Trim(Verse.PairedVerse.Text) <> '');
+end;
+
 function TAITranslationFlow.ParseResponse(const RawContent: string; Verse: TVerse): TAIFlowResult;
 var
   R: TAITranslationResult;
@@ -710,9 +723,9 @@ begin
       [Length(RawContent)]);
     Result := ParseTranslationWithAssociationsJson(RawContent);
     R := TAITranslationResult(Result);
-    if (R.ParseError = '') and Assigned(Verse) and
-       (Trim(Verse.PlainText) <> '') and (Trim(R.TranslatedText) = '') then
-      R.ParseError := 'A non-empty original requires a non-empty translation';
+    if (R.ParseError = '') and
+       EmptyTranslationWouldDiscardText(R.TranslatedText, Verse) then
+      R.ParseError := 'A non-empty source or destination requires a non-empty translation';
 
     if (R.ParseError = '') and FMarkAddedWords then
       ApplyAddedWordMarkupToResult(R, True);
@@ -743,18 +756,12 @@ begin
   try
     AIDebugLogFmt('[Translation] ParseResponse - Raw content length: %d', [Length(RawContent)]);
     AIDebugLog('[Translation] Translated text: ' + RawContent);
-    
-    // Primeira versão: resposta já é a tradução em texto puro
     R.TranslatedText := Trim(RawContent);
     if FMarkAddedWords then
-    begin
       ApplyAddedWordMarkupToResult(R, False);
-      if R.ParseError <> '' then
-      begin
-        Result := R;
-        Exit;
-      end;
-    end;
+    if (R.ParseError = '') and
+       EmptyTranslationWouldDiscardText(R.TranslatedText, Verse) then
+      R.ParseError := 'A non-empty source or destination requires a non-empty translation';
     Result := R;
   except
     R.Free;
@@ -768,20 +775,17 @@ var
   OldDestinationText, OldPairs: string;
   AppliedPairCount: Integer;
 begin
-  if not (ResultObj is TAITranslationResult) then Exit;
+  if not (ResultObj is TAITranslationResult) then
+    raise Exception.Create('Translation result is missing or has an unexpected type');
   R := TAITranslationResult(ResultObj);
+  if R.ParseError <> '' then
+    raise Exception.Create('Cannot apply an invalid translation response: ' +
+      R.ParseError);
   
   if not Assigned(Verse) then
-  begin
-    AIDebugLog('[Translation] ApplyResult for verse: <nil> - Skipped');
-    Exit;
-  end;
-  
-  if (Verse.PairedVerse = nil) then
-  begin
-    AIDebugLogFmt('[Translation] ApplyResult for verse: %s - No paired verse', [Verse.Reference]);
-    Exit; // necessita par destino
-  end;
+    raise Exception.Create('Translation application requires a source verse');
+  if not Assigned(Verse.PairedVerse) then
+    raise Exception.Create('Translation application requires a paired destination verse');
   
   AIDebugLogFmt('[Translation] ApplyResult for verse: %s', [Verse.Reference]);
   AIDebugLogFmt('[Translation] Target verse current text: "%s"', [Verse.PairedVerse.PlainText]);
@@ -792,6 +796,9 @@ begin
     [BoolToStr(FMarkAddedWords, True)]);
   AIDebugLogFmt('[Translation] Translated text: "%s"', [R.TranslatedText]);
   
+  if EmptyTranslationWouldDiscardText(R.TranslatedText, Verse) then
+    raise Exception.Create('A non-empty source or destination requires a non-empty translation');
+
   if not IsTranslationDestinationEligible(Verse.PairedVerse.PlainText,
     FForceOverwrite) then
     raise Exception.CreateFmt(

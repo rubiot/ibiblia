@@ -46,6 +46,7 @@ type
     procedure OnVerseChange(index: integer);
     procedure LoadControlsFromPatch;
     procedure LoadControlsFromProject;
+    procedure UpdateApplySelection(Sender: TObject);
   public
     function LoadPatch(filename: string): boolean;
     procedure Apply;
@@ -69,11 +70,25 @@ uses formPrincipal;
 procedure TFrmApplyPatch.BtnSelectAllClick(Sender: TObject);
 begin
   FBibleTreeView.SelectAll;
+  UpdateApplySelection(Sender);
 end;
 
 procedure TFrmApplyPatch.BtnDeselectAllClick(Sender: TObject);
 begin
   FBibleTreeView.SelectNone;
+  UpdateApplySelection(Sender);
+end;
+
+procedure TFrmApplyPatch.UpdateApplySelection(Sender: TObject);
+var
+  Indexes: TIntegerList;
+begin
+  Indexes := FBibleTreeView.IndexesList;
+  try
+    Button1.Enabled := Indexes.Count > 0;
+  finally
+    Indexes.Free;
+  end;
 end;
 
 procedure TFrmApplyPatch.FormCreate(Sender: TObject);
@@ -83,6 +98,7 @@ begin
   FBibleTreeView := TBibleTreeView.Create(GroupBox1);
   FBibleTreeView.Align := alClient;
   FBibleTreeView.OnVerseChange := @OnVerseChange;
+  FBibleTreeView.OnSelectionChanged := @UpdateApplySelection;
   FPatch := nil;
 
   FSrcVerse := TVerse.Create(ScrollBoxSrcText);
@@ -196,6 +212,7 @@ begin
     MessageDlg(SInfo, Format(SIgnoredVersesOnPatch, [FPatch.IgnoredVerses]), mtInformation, [mbOK], 0);
 
   FBibleTreeView.VerseList := FPatch.Reference;
+  UpdateApplySelection(nil);
   FIndex := 0;
   TabControlPreviewChange(TabControlPreview);
   result := true;
@@ -204,15 +221,20 @@ end;
 procedure TFrmApplyPatch.Apply;
 var
   indexes: TIntegerList;
+  AppliedCount: Integer;
 begin
+  AppliedCount := 0;
   indexes := FBibleTreeView.IndexesList;
   try
-    CurrentProject.ApplyProjectPatch(FPatch, indexes);
+    if indexes.Count = 0 then
+      Exit;
+    AppliedCount := CurrentProject.ApplyProjectPatch(FPatch, indexes);
   finally
     indexes.Free;
     FreeAndNil(FPatch);
   end;
-  ShowMessage(SPatchSuccessfullyApplied);
+  if AppliedCount > 0 then
+    ShowMessage(SPatchSuccessfullyApplied);
 end;
 
 initialization

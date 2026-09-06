@@ -83,6 +83,9 @@ type
     procedure WriteCurrentStatus(status: Integer);
     procedure CommitPairs;
     procedure CommitInfo;
+    procedure CommitCredentialReferences(const References: TStrings;
+      RemoveLegacy: Boolean); virtual;
+    procedure FinishCredentialCleanup; virtual;
     procedure Commit;
     procedure Rollback;
     property PairsTable: TSqlite3Dataset read FPairsTable;
@@ -96,7 +99,14 @@ type
 implementation
 
 uses
-  performance_debug;
+  performance_debug, ai_credential_store, sqlite3dyn;
+
+procedure RequireNonSecretInfo(const Key: string);
+begin
+  if IsLegacyAICredentialKey(Key) then
+    raise EAICredentialError.Create(
+      'API keys must be stored through the local credential service.');
+end;
 
 constructor TProjectPersistence.Create;
 begin
@@ -191,6 +201,7 @@ end;
 class function TProjectPersistence.UpdateConfigTable(table: TSqlite3Dataset;
   const name, value: string): Boolean;
 begin
+  RequireNonSecretInfo(name);
   Result := table.Locate('name', name, []);
 
   if Result then
@@ -370,6 +381,7 @@ var
   Index: Integer;
   CommittedValue: string;
 begin
+  RequireNonSecretInfo(info);
   if not Assigned(FInfoTable) then
     raise Exception.Create('Project info table is not open');
 
@@ -397,6 +409,8 @@ var
   Query: TSQLQuery;
   Index: Integer;
 begin
+  for Index := 0 to Values.Count - 1 do
+    RequireNonSecretInfo(Values.Names[Index]);
   if Values.Count = 0 then
     Exit;
   if FFileName.IsEmpty then
@@ -442,6 +456,7 @@ var
   Values: TStringList;
   StagedIndex: Integer;
 begin
+  RequireNonSecretInfo(info);
   StagedIndex := FStagedInfo.IndexOfName(info);
   if StagedIndex >= 0 then
   begin
@@ -885,6 +900,7 @@ var
   Index: Integer;
   CommittedValue: string;
 begin
+  RequireNonSecretInfo(info);
   if not Assigned(FInfoTable) then
     raise Exception.Create('Project info table is not open');
 
@@ -967,6 +983,120 @@ begin
   FSilentStagedInfo.Clear;
   if HadContentUpdates then
     NotifyContentPendingChanged;
+end;
+
+procedure TProjectPersistence.CommitCredentialReferences(
+  const References: TStrings; RemoveLegacy: Boolean);
+var
+  Connection: TSQLite3Connection;
+  Transaction: TSQLTransaction;
+  Query: TSQLQuery;
+  Index: Integer;
+  Scope: TAICredentialScope;
+  AllowedKey: Boolean;
+begin
+  if ContentUpdatesPending then
+    raise EAICredentialError.Create(
+      'Save project changes before migrating AI credentials.');
+  if FFileName = '' then
+    raise EAICredentialError.Create('The project is not open.');
+  for Index := 0 to References.Count - 1 do
+  begin
+    AllowedKey := False;
+    for Scope in TAICredentialScope do
+      AllowedKey := AllowedKey or
+        (References.Names[Index] = AICredentialReferenceKey(Scope));
+    if not AllowedKey then
+      raise EAICredentialError.Create('Only AI credential references may be saved here.');
+  end;
+  Connection := TSQLite3Connection.Create(nil);
+  Transaction := TSQLTransaction.Create(Connection);
+  Query := TSQLQuery.Create(Connection);
+  try
+    Connection.DatabaseName := FFileName;
+    Connection.Transaction := Transaction;
+    Query.DataBase := Connection;
+    Query.Transaction := Transaction;
+    Connection.Open;
+    Connection.ExecuteDirect('pragma busy_timeout = 250');
+    Connection.ExecuteDirect('pragma secure_delete = on');
+    Query.SQL.Text := 'insert or replace into info (id, valor) values (:id, :value)';
+    for Index := 0 to References.Count - 1 do
+    begin
+      Query.ParamByName('id').AsString := References.Names[Index];
+      Query.ParamByName('value').AsString := References.ValueFromIndex[Index];
+      Query.ExecSQL;
+    end;
+    if RemoveLegacy then
+    begin
+      Query.SQL.Text := 'delete from info where id = :id';
+      for Scope in TAICredentialScope do
+      begin
+        Query.ParamByName('id').AsString := AICredentialKey(Scope);
+        Query.ExecSQL;
+      end;
+      Query.ParamByName('id').AsString := AI_LEGACY_COMMON_CREDENTIAL_KEY;
+      Query.ExecSQL;
+      Connection.ExecuteDirect(
+        'insert or replace into info (id, valor) values (' +
+        '''ai.credentials.cleanup_pending'', ''1'')');
+    end;
+    Transaction.Commit;
+    { Refresh only metadata; the live Verse and the pairs cursor are unchanged. }
+    FCommittedInfo.Clear;
+    FInfoTableNeedsRefresh := True;
+    FInfoTable.Close;
+    FInfoTable.Open;
+    FInfoTableNeedsRefresh := False;
+  finally
+    if Transaction.Active then Transaction.Rollback;
+    Connection.Free;
+  end;
+end;
+
+procedure TProjectPersistence.FinishCredentialCleanup;
+var
+  Connection: TSQLite3Connection;
+  Transaction: TSQLTransaction;
+  Code: Integer;
+  procedure ExecOutsideTransaction(const SQL: string);
+  begin
+    Code := sqlite3_exec(psqlite3(Connection.Handle), PChar(SQL), nil, nil, nil);
+    if Code <> SQLITE_OK then
+      raise EAICredentialError.CreateFmt(
+        'Credential cleanup is pending (SQLite error %d).', [Code]);
+  end;
+begin
+  if ReadInfo(AI_CREDENTIAL_CLEANUP_PENDING_KEY) <> '1' then Exit;
+  if ContentUpdatesPending then
+    raise EAICredentialError.Create('Credential cleanup requires saved project changes.');
+  Connection := TSQLite3Connection.Create(nil);
+  Transaction := TSQLTransaction.Create(Connection);
+  try
+    Connection.DatabaseName := FFileName;
+    Connection.Transaction := Transaction;
+    Connection.Open;
+    sqlite3_busy_timeout(psqlite3(Connection.Handle), 250);
+    { SQLDB ExecuteDirect starts a transaction; VACUUM must run outside one. }
+    ExecOutsideTransaction('pragma secure_delete = on');
+    ExecOutsideTransaction('vacuum');
+    if not Assigned(sqlite3_wal_checkpoint_v2) then
+      raise EAICredentialError.Create('SQLite does not support credential WAL cleanup.');
+    Code := sqlite3_wal_checkpoint_v2(psqlite3(Connection.Handle), nil,
+      SQLITE_CHECKPOINT_TRUNCATE, nil, nil);
+    if Code <> SQLITE_OK then
+      raise EAICredentialError.CreateFmt(
+        'Credential WAL cleanup is pending (SQLite error %d).', [Code]);
+    ExecOutsideTransaction(
+      'delete from info where id = ''ai.credentials.cleanup_pending''');
+    FCommittedInfo.Clear;
+    FInfoTableNeedsRefresh := True;
+    FInfoTable.Close;
+    FInfoTable.Open;
+    FInfoTableNeedsRefresh := False;
+  finally
+    Connection.Free;
+  end;
 end;
 
 procedure TProjectPersistence.Commit;

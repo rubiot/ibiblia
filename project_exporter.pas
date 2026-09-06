@@ -5,14 +5,24 @@ unit project_exporter;
 interface
 
 uses
-  Classes, SysUtils, StrUtils, Math, Forms, Dialogs, ComCtrls, LCLIntf, fgl, PCRE,
+  Classes, SysUtils, StrUtils, Math, Forms, ComCtrls, LCLIntf, fgl, PCRE,
   BibleScope, MySwordModule, TheWordDictionary, ConcordanceExport,
   ai_batch_work_item, syntagm, Verse, project_verse_repository, verse_render_buffer,
   SuggestionManager, ONTTokenizer, text_direction, rf_note_scanner,
-  association_highlight_projection;
+  association_highlight_projection, export_file_staging;
 
 type
   TRegexList = specialize TFPGList<IRegex>;
+
+  TExportStatus = (esFailed, esSuccess, esWarnings);
+  TExportResult = record
+    Status: TExportStatus;
+    OutputFileName: string;
+    ProcessedVerseCount: Integer;
+    WarningCount: Integer;
+    ErrorReportFileName: string;
+    ErrorMessage: string;
+  end;
 
   TExportSessionProc = procedure of object;
   TExportReferenceFunc = function: string of object;
@@ -77,6 +87,7 @@ type
     FActiveConcordance: TConcordance;
     FIndexedIncludeVerseContext: Boolean;
     FIndexedProcessed: Integer;
+    FIndexedVerseCount: Integer;
     FIndexedTotal: Integer;
     FIndexedProgressEvent: TConcordanceExportProgressEvent;
     FLastIndexedReference: string;
@@ -91,8 +102,8 @@ type
       Details: string): string; static;
     class function StrongBelongsToScope(const Strong: string;
       Scope: TEscopoTexto): Boolean; static;
-    class procedure SaveErrorReport(Errors: TStringList; const FileName,
-      DialogTitle, DialogMessage: string); static;
+    class procedure CompleteExport(var ExportResult: TExportResult;
+      Errors: TStringList; const FileName: string); static;
 
     class procedure WriteTheWordBible(Verses: TStringList; const FileName,
       Properties: string; Direction: TTextDirection); static;
@@ -106,21 +117,21 @@ type
       AVerseRenderBuffer: TVerseRenderBuffer);
     procedure Attach(AScope: TEscopoTexto; AVerseRepository: TProjectVerseRepository;
       AVerseRenderBuffer: TVerseRenderBuffer);
-    procedure ExportDestinationTextWithStrongs(const FileName: string;
+    function ExportDestinationTextWithStrongs(const FileName: string;
       ProgressBar: TProgressBar; const Options: TDestinationTextExportOptions;
       StartSession, FinishSession: TExportSessionProc;
-      GetReference: TExportReferenceFunc);
-    procedure ExportInterlinearText(const FileName: string;
+      GetReference: TExportReferenceFunc): TExportResult;
+    function ExportInterlinearText(const FileName: string;
       ProgressBar: TProgressBar; RulesRx: TRegexList; ReplaceTo: TStringList;
       const Options: TInterlinearTextExportOptions;
       StartSession, FinishSession: TExportSessionProc;
-      GetReference: TExportReferenceFunc);
-    procedure ExportConcordance(const FileName: string;
+      GetReference: TExportReferenceFunc): TExportResult;
+    function ExportConcordance(const FileName: string;
       ProgressBar: TProgressBar; const Options: TConcordanceExportOptions;
       StartSession, FinishSession: TExportSessionProc;
       GetReference: TExportReferenceFunc;
       SuggestionManager: TSuggestionManager = nil;
-      ProgressEvent: TConcordanceExportProgressEvent = nil);
+      ProgressEvent: TConcordanceExportProgressEvent = nil): TExportResult;
   end;
 
 {$INCLUDE include/bookdefs.inc}
@@ -129,6 +140,9 @@ const
   QStrongs: array[etOT..etONT] of SmallInt = (8674, 5624, 14298);
 
 implementation
+
+resourcestring
+  SExportWarningReportFailed = 'Could not save the export warnings report: %s';
 
 constructor TProjectExporter.Create(AScope: TEscopoTexto;
   AVerseRepository: TProjectVerseRepository; AVerseRenderBuffer: TVerseRenderBuffer);
@@ -215,23 +229,37 @@ begin
   end;
 end;
 
-class procedure TProjectExporter.SaveErrorReport(Errors: TStringList;
-  const FileName, DialogTitle, DialogMessage: string);
+class procedure TProjectExporter.CompleteExport(var ExportResult: TExportResult;
+  Errors: TStringList; const FileName: string);
 var
-  MessageText: string;
+  Staging: TExportFileStaging;
 begin
-  if (not Assigned(Errors)) or (Errors.Count = 0) or (FileName = '') then
+  ExportResult.Status := esSuccess;
+  if not Assigned(Errors) then
     Exit;
-
-  Errors.SaveToFile(FileName);
-  if DialogMessage = '' then
-    MessageText := FileName
-  else if Pos('%s', DialogMessage) > 0 then
-    MessageText := Format(DialogMessage, [FileName])
-  else
-    MessageText := DialogMessage + #13#10 + FileName;
-
-  MessageDlg(DialogTitle, MessageText, mtWarning, [mbOK], 0);
+  ExportResult.WarningCount := Errors.Count;
+  if Errors.Count = 0 then
+    Exit;
+  ExportResult.Status := esWarnings;
+  if FileName = '' then
+    Exit;
+  Staging := nil;
+  try
+    try
+      Staging := TExportFileStaging.Create(FileName);
+      Errors.SaveToFile(Staging.StagingFileName);
+      Staging.Publish;
+      ExportResult.ErrorReportFileName := Staging.FinalFileName;
+    except
+      on E: Exception do
+      begin
+        Inc(ExportResult.WarningCount);
+        ExportResult.ErrorMessage := Format(SExportWarningReportFailed, [E.Message]);
+      end;
+    end;
+  finally
+    Staging.Free;
+  end;
 end;
 
 class procedure TProjectExporter.WriteTheWordBible(Verses: TStringList;
@@ -278,10 +306,10 @@ begin
   end;
 end;
 
-procedure TProjectExporter.ExportDestinationTextWithStrongs(
+function TProjectExporter.ExportDestinationTextWithStrongs(
   const FileName: string; ProgressBar: TProgressBar;
   const Options: TDestinationTextExportOptions; StartSession,
-  FinishSession: TExportSessionProc; GetReference: TExportReferenceFunc);
+  FinishSession: TExportSessionProc; GetReference: TExportReferenceFunc): TExportResult;
 var
   VerseData: TVerseData;
   Lines: TStringList;
@@ -291,12 +319,15 @@ var
   CorruptionDetails: string;
   ProjectionBaseMessage: string;
   Reference: string;
+  Staging: TExportFileStaging;
 begin
-  RequireDependencies;
-
+  Result := Default(TExportResult);
   Lines := nil;
   Errors := nil;
+  Staging := nil;
   try
+    try
+    RequireDependencies;
     ConfigureProgressBar(ProgressBar, QLinhas[FScope]);
     Lines := TStringList.Create;
     Errors := TStringList.Create;
@@ -356,9 +387,10 @@ begin
         FinishSession;
     end;
 
-    try
-      if FileName.EndsWith('.mybible') then
-        WriteMySwordBible(Lines, FileName, Options.Properties)
+    Result.ProcessedVerseCount := Lines.Count;
+    Staging := TExportFileStaging.Create(FileName);
+      if SameText(ExtractFileExt(FileName), '.mybible') then
+        WriteMySwordBible(Lines, Staging.StagingFileName, Options.Properties)
       else
       begin
         HasTags := (Lines.Count > 0) and
@@ -366,19 +398,21 @@ begin
         if (Lines.Count > 0) and not HasTags then
           Lines[0] := Lines[0] + '<_MORPH_>';
 
-        WriteTheWordBible(Lines, FileName, Options.Properties,
+        WriteTheWordBible(Lines, Staging.StagingFileName, Options.Properties,
           Options.Direction);
       end;
+    Staging.Publish;
+    Result.OutputFileName := Staging.FinalFileName;
+    CompleteExport(Result, Errors, Options.ErrorReportFileName);
     except
       on E: Exception do
-        MessageDlg(Options.ErrorDialogTitle,
-          Options.ExportToFileErrorMessage + #13#10 + E.Message, mtError, [mbOK], 0);
+      begin
+        Result.Status := esFailed;
+        Result.ErrorMessage := E.Message;
+      end;
     end;
-
-    if Errors.Count > 0 then
-      SaveErrorReport(Errors, Options.ErrorReportFileName,
-        Options.ErrorDialogTitle, Options.ErrorReportCreatedMessage);
   finally
+    Staging.Free;
     FreeAndNil(Lines);
     FreeAndNil(Errors);
     if Assigned(ProgressBar) then
@@ -386,10 +420,10 @@ begin
   end;
 end;
 
-procedure TProjectExporter.ExportInterlinearText(const FileName: string;
+function TProjectExporter.ExportInterlinearText(const FileName: string;
   ProgressBar: TProgressBar; RulesRx: TRegexList; ReplaceTo: TStringList;
   const Options: TInterlinearTextExportOptions; StartSession,
-  FinishSession: TExportSessionProc; GetReference: TExportReferenceFunc);
+  FinishSession: TExportSessionProc; GetReference: TExportReferenceFunc): TExportResult;
 var
   RuleIndex: Integer;
   VerseData: TVerseData;
@@ -398,16 +432,19 @@ var
   RenderedLine: string;
   CorruptionDetails: string;
   RenderMode: TRenderInterlinearMode;
+  Staging: TExportFileStaging;
 begin
-  RequireDependencies;
-
+  Result := Default(TExportResult);
   Lines := nil;
   Errors := nil;
+  Staging := nil;
   try
+    try
+    RequireDependencies;
     ConfigureProgressBar(ProgressBar, QLinhas[FScope]);
     Lines := TStringList.Create;
     Errors := TStringList.Create;
-    if FileName.EndsWith('.mybible') then
+    if SameText(ExtractFileExt(FileName), '.mybible') then
       RenderMode := rimMySword
     else
       RenderMode := rimTheWord;
@@ -457,23 +494,25 @@ begin
         FinishSession;
     end;
 
-    try
-      if FileName.EndsWith('.mybible') then
-        WriteMySwordBible(Lines, FileName, Options.Properties)
+    Result.ProcessedVerseCount := Lines.Count;
+    Staging := TExportFileStaging.Create(FileName);
+      if SameText(ExtractFileExt(FileName), '.mybible') then
+        WriteMySwordBible(Lines, Staging.StagingFileName, Options.Properties)
       else
-        WriteTheWordBible(Lines, FileName, Options.Properties,
+        WriteTheWordBible(Lines, Staging.StagingFileName, Options.Properties,
           Options.Direction);
+    Staging.Publish;
+    Result.OutputFileName := Staging.FinalFileName;
+    CompleteExport(Result, Errors, Options.ErrorReportFileName);
     except
       on E: Exception do
-        MessageDlg(Options.ErrorDialogTitle,
-          Options.ExportToFileErrorMessage + #13#10 + E.Message,
-          mtError, [mbOK], 0);
+      begin
+        Result.Status := esFailed;
+        Result.ErrorMessage := E.Message;
+      end;
     end;
-
-    if Errors.Count > 0 then
-      SaveErrorReport(Errors, Options.ErrorReportFileName,
-        Options.ErrorDialogTitle, Options.ErrorReportCreatedMessage);
   finally
+    Staging.Free;
     FreeAndNil(Lines);
     FreeAndNil(Errors);
     if Assigned(ProgressBar) then
@@ -525,15 +564,15 @@ begin
     Exit;
 
   Context := '';
-  if FIndexedIncludeVerseContext then
+  if Data.ReferenceID <> FLastIndexedReference then
   begin
-    if Data.ReferenceID <> FLastIndexedReference then
-    begin
-      FLastIndexedReference := Data.ReferenceID;
+    Inc(FIndexedVerseCount);
+    FLastIndexedReference := Data.ReferenceID;
+    if FIndexedIncludeVerseContext then
       FLastIndexedContext := PlainVerseText(Data.DestinationText);
-    end;
-    Context := FLastIndexedContext;
   end;
+  if FIndexedIncludeVerseContext then
+    Context := FLastIndexedContext;
 
   FActiveConcordance.AddOccurrence(Data.SourcePhrase, Data.TargetPhrase,
     Data.ReferenceID, Context, Data.Occurrences, Data.ReferenceOrder);
@@ -547,11 +586,11 @@ begin
   end;
 end;
 
-procedure TProjectExporter.ExportConcordance(const FileName: string;
+function TProjectExporter.ExportConcordance(const FileName: string;
   ProgressBar: TProgressBar; const Options: TConcordanceExportOptions;
   StartSession, FinishSession: TExportSessionProc;
   GetReference: TExportReferenceFunc; SuggestionManager: TSuggestionManager;
-  ProgressEvent: TConcordanceExportProgressEvent);
+  ProgressEvent: TConcordanceExportProgressEvent): TExportResult;
 var
   VerseData: TVerseData;
   Concordance: TConcordance;
@@ -572,6 +611,7 @@ var
   ReadingTotal: Integer;
   UseIndexedOccurrences: Boolean;
   UnindexedReferences: TStringList;
+  Staging: TExportFileStaging;
 
   procedure ReportProgress(Phase: TConcordanceExportPhase;
     Current, Total: Integer; ForceMessages: Boolean = False);
@@ -662,6 +702,7 @@ var
     FIndexedIncludeVerseContext :=
       Options.ContextMode <> ccmReferencesOnly;
     FIndexedProcessed := 0;
+    FIndexedVerseCount := 0;
     FIndexedTotal := ReadingTotal;
     FIndexedProgressEvent := ProgressEvent;
     FLastIndexedReference := '';
@@ -721,13 +762,15 @@ var
     end;
   end;
 begin
-  RequireDependencies;
-
+  Result := Default(TExportResult);
   Concordance := nil;
   Entries := nil;
   Errors := nil;
   Dictionary := nil;
+  Staging := nil;
   try
+    try
+    RequireDependencies;
     Concordance := TConcordance.Create;
     Concordance.Mode := Options.Mode;
     Concordance.ContextMode := Options.ContextMode;
@@ -739,7 +782,8 @@ begin
     else
       TitleText := Format('%s %s', [Options.Abbreviation, Options.SyntheticCaption]);
 
-    Dictionary := TTheWordDictionary.Create(FileName, True);
+    Staging := TExportFileStaging.Create(FileName);
+    Dictionary := TTheWordDictionary.Create(Staging.StagingFileName, True);
     with Dictionary do
     begin
       Title := TitleText;
@@ -773,9 +817,15 @@ begin
       end;
 
       if UseIndexedOccurrences then
-        ReadIndexedAssociations
+      begin
+        ReadIndexedAssociations;
+        Result.ProcessedVerseCount := FIndexedVerseCount;
+      end
       else
+      begin
         ReadCanonicalAssociations;
+        Result.ProcessedVerseCount := ReferenceOrder;
+      end;
 
       Entries := TStringList.Create;
       Entries.LoadFromFile('lemmas.dat');
@@ -810,15 +860,24 @@ begin
         FinishSession;
     end;
 
-    if Errors.Count > 0 then
-      SaveErrorReport(Errors, Options.ErrorReportFileName,
-        Options.ErrorDialogTitle, Options.ErrorReportCreatedMessage);
+    FreeAndNil(Dictionary);
+    Staging.Publish;
+    Result.OutputFileName := Staging.FinalFileName;
+    CompleteExport(Result, Errors, Options.ErrorReportFileName);
+    except
+      on E: Exception do
+      begin
+        Result.Status := esFailed;
+        Result.ErrorMessage := E.Message;
+      end;
+    end;
   finally
     Application.ProcessMessages;
     FreeAndNil(Entries);
     FreeAndNil(Errors);
     FreeAndNil(Concordance);
     FreeAndNil(Dictionary);
+    Staging.Free;
     if Assigned(ProgressBar) then
       ProgressBar.Visible := False;
   end;

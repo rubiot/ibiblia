@@ -5,7 +5,7 @@ unit project_config;
 interface
 
 uses
-  SysUtils, project_persistence, text_direction;
+  SysUtils, project_persistence, text_direction, ai_credentials;
 
 const
   PROJECT_CONFIG_KEY_MARKER = 'marcador';
@@ -21,9 +21,12 @@ type
   TProjectConfig = class
   private
     FPersistence: TProjectPersistence;
+    FAICredentials: TAIProjectCredentials;
     procedure RequirePersistence;
   public
     constructor Create(APersistence: TProjectPersistence);
+    destructor Destroy; override;
+    property AICredentials: TAIProjectCredentials read FAICredentials;
     procedure Attach(APersistence: TProjectPersistence);
     class function TextDescriptionKey(textIndex: Integer): string; static;
     class function TextDirectionKey(textIndex: Integer): string; static;
@@ -71,11 +74,19 @@ constructor TProjectConfig.Create(APersistence: TProjectPersistence);
 begin
   inherited Create;
   FPersistence := APersistence;
+  FAICredentials := TAIProjectCredentials.Create(APersistence);
+end;
+
+destructor TProjectConfig.Destroy;
+begin
+  FAICredentials.Free;
+  inherited Destroy;
 end;
 
 procedure TProjectConfig.Attach(APersistence: TProjectPersistence);
 begin
   FPersistence := APersistence;
+  FAICredentials.Attach(APersistence);
 end;
 
 class function TProjectConfig.TextDescriptionKey(textIndex: Integer): string;

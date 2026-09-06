@@ -64,7 +64,10 @@ type
     FTotalJobs: Integer;
     FCompleted: Integer;
     FFailed: Integer;
+    FCancelled: Integer;
     FInFlight: Integer;
+    FPumping: Boolean;
+    FBorrowedVerses: Boolean;
     FErrors: TStringList;
     FFlowName: string;
     FMaxRetries: Integer;
@@ -91,11 +94,15 @@ type
     procedure SafeLeaveLock;
     procedure EnqueuePending(Job: TAIJob);
     function DequeuePending: TAIJob;
-    procedure EnqueueApplying(Job: TAIJob);
+    procedure ReturnWorkerJob(Job: TAIJob; Retry: Boolean);
+    function CancellationRequested: Boolean;
+    function HasPendingWork: Boolean;
+    procedure ReapFinishedWorkers;
     function DequeueApplying: TAIJob;
     procedure NotifyStateChange(Job: TAIJob);
     procedure NotifyJobCompleted(Job: TAIJob);
-
+  protected
+    function CreateLLMClient(const Provider, Model, ApiKey: string): TBaseLLMClient; virtual;
   public
     constructor Create(const AModel, AApiKey: string; AMaxParallel: Integer = 2);
     destructor Destroy; override;
@@ -108,9 +115,11 @@ type
   function TotalJobs: Integer;
   function CompletedJobs: Integer;
   function FailedJobs: Integer;
+  function CancelledJobs: Integer;
   function PendingJobs: Integer;
   function InFlightJobs: Integer;
   function IsIdle: Boolean;
+  function IsStopped: Boolean;
   function Errors: TStrings; // returns reference (do not free)
   function FlowName: string;
     // Config
@@ -132,10 +141,62 @@ type
     property OnJobCompleted: TOnJobCompleted read FOnJobCompleted write FOnJobCompleted;
   end;
 
+resourcestring
+  SAIProcessingStillStopping = 'The previous AI batch is still stopping. Wait for cancellation to finish.';
+
+// Transfers an owned batch manager to background cleanup during forced teardown.
+// An active StartSingle manager still borrows its caller's verse and is refused.
+procedure ReleaseAIProcessingBatch(var Manager: TAIProcessingManager);
+
 implementation
 
 uses
   ai_debug;
+
+type
+  TAIManagerCleanupThread = class(TThread)
+  private
+    FManager: TAIProcessingManager;
+  protected
+    procedure Execute; override;
+  public
+    constructor Create(Manager: TAIProcessingManager);
+  end;
+
+constructor TAIManagerCleanupThread.Create(Manager: TAIProcessingManager);
+begin
+  inherited Create(True);
+  FreeOnTerminate := True;
+  FManager := Manager;
+  Start;
+end;
+
+procedure TAIManagerCleanupThread.Execute;
+begin
+  FManager.Free;
+end;
+
+procedure ReleaseAIProcessingBatch(var Manager: TAIProcessingManager);
+var
+  OwnedManager: TAIProcessingManager;
+begin
+  if not Assigned(Manager) then Exit;
+  if Manager.FPumping then
+    raise Exception.Create(SAIProcessingStillStopping);
+  if Manager.FBorrowedVerses and not Manager.IsStopped then
+    raise Exception.Create(SAIProcessingStillStopping);
+  Manager.OnJobStateChange := nil;
+  Manager.OnJobCompleted := nil;
+  Manager.OnAutoSaveNeeded := nil;
+  Manager.GetVerseReference := nil;
+  Manager.CancelAll;
+  OwnedManager := Manager;
+  Manager := nil;
+  if OwnedManager.IsStopped then
+    OwnedManager.Free
+  else
+    TAIManagerCleanupThread.Create(OwnedManager);
+end;
 
 { TAIJob }
 
@@ -196,155 +257,90 @@ var
   job: TAIJob;
   msgs: TLLMMessageArray;
   resp: TLLMResponse;
-  retryDelay: Integer;
+  retryDelay: Int64;
+  retry: Boolean;
   effectiveProvider, effectiveModel, effectiveApiKey: string;
 begin
-  AIDebugLog('[Worker] Thread started');
-  // Client will be created/switched on demand inside the loop
-  FClient := nil;
-  
-  while not Terminated do
-  begin
-    if FManager.FCancel then Exit;
-    job := FManager.DequeuePending;
-    if job = nil then
+  try
+    while not Terminated do
     begin
-      Sleep(100);
-      Continue;
-    end;
-    
-    AIDebugLog('[Worker] Got job from queue');
-    
-    // Check if this is a retry job that's not ready yet
-    if (job.AttemptCount > 0) and (Now < job.NextRetryTime) then
-    begin
-      // Decrement InFlight (was incremented by DequeuePending) before re-queuing,
-      // otherwise FInFlight grows by 1 each 100ms sleep cycle.
-      FManager.SafeEnterLock;
+      job := FManager.DequeuePending;
+      if job = nil then
+      begin
+        if FManager.CancellationRequested or not FManager.HasPendingWork then
+          Break;
+        Sleep(50); // A retry can remain queued until its backoff expires.
+        Continue;
+      end;
+
+      retry := False;
       try
-        Dec(FManager.FInFlight);
-      finally
-        FManager.SafeLeaveLock;
-      end;
-      FManager.EnqueuePending(job);
-      Sleep(100);
-      Continue;
-    end;
-    
-    if FManager.FCancel then Exit;
-    try
-      // Determine effective provider, model and key for this flow (handling overrides)
-      effectiveProvider := job.Flow.ProviderOverride;
-      if effectiveProvider = '' then
-      begin
-        // If no provider override, use the global default which comes from the model info
-        // or just pass empty and let CreateBackend infer it.
-        // Actually, TAIProcessingManager should probably store the global provider too.
-        // For now, let's just use empty string which triggers inference in CreateBackend.
-        effectiveProvider := ''; 
-      end;
+        try
+          if FManager.CancellationRequested then
+            Continue;
+          Inc(job.AttemptCount);
+          job.State := ajsFetching;
+          job.RequestStartTime := Now;
+          job.Usage := Default(TLLMUsage);
 
-      effectiveModel := job.Flow.ModelOverride;
-      if effectiveModel = '' then effectiveModel := FModel; // fallback to global default
-      
-      effectiveApiKey := job.Flow.ApiKeyOverride;
-      if effectiveApiKey = '' then effectiveApiKey := FApiKey; // fallback to global default
+          effectiveProvider := job.Flow.ProviderOverride;
+          effectiveModel := job.Flow.ModelOverride;
+          if effectiveModel = '' then effectiveModel := FModel;
+          effectiveApiKey := job.Flow.ApiKeyOverride;
+          if effectiveApiKey = '' then effectiveApiKey := FApiKey;
 
-      AIDebugLogFmt('[Worker] Processing job index %d, provider=%s, model=%s', 
-        [job.Index, effectiveProvider, effectiveModel]);
-
-      // Switch client if needed
-      if (FClient = nil) or 
-         ((effectiveProvider <> '') and (FClient.Provider <> effectiveProvider)) or
-         (FClient.Model <> effectiveModel) or 
-         (FClient.ApiKey <> effectiveApiKey) then
-      begin
-        if Assigned(FClient) then FClient.Free;
-        AIDebugLogFmt('[Worker] Creating/Switching LLM client for provider: %s, model: %s', [effectiveProvider, effectiveModel]);
-        FClient := llmclient.CreateBackend(effectiveProvider, effectiveModel, effectiveApiKey);
-      end;
-
-      job.State := ajsFetching;
-      Inc(job.AttemptCount);
-      job.RequestStartTime := Now;
-      job.Usage.PromptTokens := 0;
-      job.Usage.CompletionTokens := 0;
-      job.Usage.TotalTokens := 0;
-      
-      // Batch work items own the lazy verse-creation seam.
-      // NOTE: Each verse creates its own TONTParser instance, so there should be no shared state.
-      // However, if deadlocks persist, consider adding a global mutex around ParseLine calls.
-      if Assigned(job.WorkItem) then
-      begin
-        AIDebugLogFmt('[Worker] Materializing batch work item for job index %d (%s)',
-          [job.Index, job.WorkItem.VerseData.ReferenceID]);
-        job.WorkItem.CreateTempVersePair(job.Verse, job.VersePair);
-        AIDebugLogFmt('[Worker] Verses created for job index %d', [job.Index]);
-      end;
-      
-      AIDebugLogFmt('[Worker] Building messages for job index %d', [job.Index]);
-      msgs := job.Flow.BuildMessages(job.Verse);
-      AIDebugLogFmt('[Worker] Calling API for job index %d', [job.Index]);
-      resp := FClient.AskChatCompletions(msgs);  // Use worker's own client
-      AIDebugLogFmt('[Worker] API response received for job index %d, length=%d', [job.Index, Length(resp.Content)]);
-      job.RawContent := resp.Content;
-      job.Usage := resp.Usage;
-      job.Parsed := job.Flow.ParseResponse(resp.Content, job.Verse);
-      if Assigned(job.Parsed) and (job.Parsed.ParseError <> '') then
-        raise Exception.Create('Parse error: ' + job.Parsed.ParseError);
-      job.State := ajsCompleted;
-      AIDebugLog('[Worker] Job completed, enqueuing for apply');
-      // Track metrics
-        FManager.SafeEnterLock;
-      try
-        FManager.FTotalRequestTime := FManager.FTotalRequestTime + (Now - job.RequestStartTime) * 24 * 60 * 60; // Convert to seconds
-        Inc(FManager.FRequestCount);
-      finally
-        FManager.SafeLeaveLock;
-      end;
-    except
-      on E: Exception do
-      begin
-        AIDebugLogFmt('[Worker] Exception in job processing: %s', [E.Message]);
-        job.ErrorMsg := E.Message;
-        // Decide whether to retry
-        if job.AttemptCount < FManager.FMaxRetries then
-        begin
-          // Results and temporary verses belong to the failed attempt. Release
-          // them before re-queueing so a parsing retry cannot leak stale state.
-          FreeAndNil(job.Parsed);
-          job.ReleaseTempVerses;
-
-          // Calculate exponential backoff: base_delay * 2^(attempt-1)
-          retryDelay := FManager.FRetryBaseDelay * (1 shl (job.AttemptCount - 1));
-          job.NextRetryTime := Now + (retryDelay / (24 * 60 * 60 * 1000)); // Convert ms to days
-          job.State := ajsPending;
-          // Decrement FInFlight before re-queueing (will be incremented again when dequeued)
-          FManager.SafeEnterLock;
-          try
-            Dec(FManager.FInFlight);
-            AIDebugLogFmt('[Worker] Decremented FInFlight for retry. Now: %d', [FManager.FInFlight]);
-          finally
-            FManager.SafeLeaveLock;
+          if (FClient = nil) or
+             ((effectiveProvider <> '') and (FClient.Provider <> effectiveProvider)) or
+             (FClient.Model <> effectiveModel) or
+             (FClient.ApiKey <> effectiveApiKey) then
+          begin
+            FreeAndNil(FClient);
+            FClient := FManager.CreateLLMClient(effectiveProvider,
+              effectiveModel, effectiveApiKey);
           end;
-          FManager.EnqueuePending(job); // Re-queue for retry
-          Continue; // Don't send to apply queue yet
-        end
-        else
-        begin
-          job.State := ajsFailed;
-          // Store in failed jobs list for potential manual retry
-          if FManager.SafeEnterLock then
-          try
-            FManager.FFailedJobs.Add(job);
-          finally
-            FManager.SafeLeaveLock;
+          if FManager.CancellationRequested then
+            Continue;
+          if Assigned(job.WorkItem) then
+            job.WorkItem.CreateTempVersePair(job.Verse, job.VersePair);
+          msgs := job.Flow.BuildMessages(job.Verse);
+          if FManager.CancellationRequested then
+            Continue;
+          resp := FClient.AskChatCompletions(msgs);
+          job.RawContent := resp.Content;
+          job.Usage := resp.Usage;
+          if FManager.CancellationRequested then
+            Continue;
+          job.Parsed := job.Flow.ParseResponse(resp.Content, job.Verse);
+          if not Assigned(job.Parsed) then
+            raise Exception.Create('Missing parsed AI result');
+          if job.Parsed.ParseError <> '' then
+            raise Exception.Create('Parse error: ' + job.Parsed.ParseError);
+          job.State := ajsCompleted;
+        except
+          on E: Exception do
+          begin
+            job.ErrorMsg := E.Message;
+            job.State := ajsFailed;
+            retry := not FManager.CancellationRequested and
+              (job.AttemptCount < FManager.FMaxRetries);
+            if retry then
+            begin
+              FreeAndNil(job.Parsed);
+              job.ReleaseTempVerses;
+              retryDelay := Int64(FManager.FRetryBaseDelay) *
+                (Int64(1) shl (job.AttemptCount - 1));
+              job.NextRetryTime := Now + (retryDelay / 86400000);
+              job.State := ajsPending;
+            end;
           end;
         end;
+      finally
+        // Every dequeue has exactly one return, even when cancellation wins.
+        FManager.ReturnWorkerJob(job, retry);
       end;
     end;
-    FManager.EnqueueApplying(job);
-      AIDebugLogFmt('[Worker] Job enqueued to applying queue. JobPtr=%s, Index=%d', [IntToHex(PtrUInt(Pointer(job)), SizeOf(Pointer)*2), job.Index]);
+  finally
+    FreeAndNil(FClient);
   end;
 end;
 
@@ -368,10 +364,14 @@ begin
   FLockInitialized := True;
   FCancel := False;
   FMaxParallel := AMaxParallel;
+  if FMaxParallel < 1 then FMaxParallel := 1;
   FTotalJobs := 0;
   FCompleted := 0;
   FFailed := 0;
+  FCancelled := 0;
   FInFlight := 0;
+  FPumping := False;
+  FBorrowedVerses := False;
   FErrors := TStringList.Create;
   FMaxRetries := 3;
   FRetryBaseDelay := 1000; // 1 second base delay
@@ -458,53 +458,117 @@ begin
   end;
 end;
 
+function TAIProcessingManager.CreateLLMClient(const Provider, Model,
+  ApiKey: string): TBaseLLMClient;
+begin
+  Result := llmclient.CreateBackend(Provider, Model, ApiKey);
+end;
+
+function TAIProcessingManager.CancellationRequested: Boolean;
+begin
+  Result := True;
+  if not SafeEnterLock then Exit;
+  try
+    Result := FCancel;
+  finally
+    SafeLeaveLock;
+  end;
+end;
+
+function TAIProcessingManager.HasPendingWork: Boolean;
+begin
+  Result := False;
+  if not SafeEnterLock then Exit;
+  try
+    Result := FPending.Count > 0;
+  finally
+    SafeLeaveLock;
+  end;
+end;
+
+procedure TAIProcessingManager.ReapFinishedWorkers;
+var
+  I: Integer;
+  Worker: TThread;
+begin
+  for I := FWorkers.Count - 1 downto 0 do
+  begin
+    Worker := TThread(FWorkers[I]);
+    if Worker.Finished then
+    begin
+      FWorkers.Delete(I);
+      Worker.Free;
+    end;
+  end;
+end;
+
 procedure TAIProcessingManager.EnqueuePending(Job: TAIJob);
 begin
-  AIDebugLogFmt('[Manager] EnqueuePending called. LockAddr=%s, InFlight=%d, PendingCount(before)=%d', [IntToHex(PtrUInt(@FLock), SizeOf(Pointer)*2), FInFlight, FPending.Count]);
-  if not SafeEnterLock then
-  begin
-    AIDebugLog('[Manager] EnqueuePending: Failed to acquire lock, aborting');
-    Exit;
-  end;
+  SafeEnterLock;
   try
-    FPending.Push(Job);
-    AIDebugLogFmt('[Manager] EnqueuePending pushed. PendingCount(after)=%d', [FPending.Count]);
+    if FCancel then
+    begin
+      Job.State := ajsCancelled;
+      FApplying.Push(Job);
+    end
+    else
+      FPending.Push(Job);
   finally
     SafeLeaveLock;
   end;
 end;
 
 function TAIProcessingManager.DequeuePending: TAIJob;
+var
+  I, Count: Integer;
+  Candidate: TAIJob;
 begin
   Result := nil;
-  if not SafeEnterLock then
-  begin
-    AIDebugLog('[Manager] DequeuePending: Failed to acquire lock');
-    Exit;
-  end;
+  if not SafeEnterLock then Exit;
   try
-    if FPending.Count > 0 then
+    if FCancel then Exit;
+    Count := FPending.Count;
+    for I := 1 to Count do
     begin
-      Result := TAIJob(FPending.Pop);
-      Inc(FInFlight); // Increment when job actually starts processing
-      AIDebugLogFmt('[Manager] DequeuePending: Job popped from pending queue. Remaining: %d, InFlight: %d', [FPending.Count, FInFlight]);
+      Candidate := TAIJob(FPending.Pop);
+      if (Candidate.AttemptCount = 0) or
+         (Now >= Candidate.NextRetryTime) then
+      begin
+        Result := Candidate;
+        Inc(FInFlight);
+        Exit;
+      end;
+      FPending.Push(Candidate);
     end;
   finally
     SafeLeaveLock;
   end;
 end;
 
-procedure TAIProcessingManager.EnqueueApplying(Job: TAIJob);
+procedure TAIProcessingManager.ReturnWorkerJob(Job: TAIJob; Retry: Boolean);
 begin
-  AIDebugLogFmt('[Manager] EnqueueApplying called. LockAddr=%s, ApplyingCount(before)=%d', [IntToHex(PtrUInt(@FLock), SizeOf(Pointer)*2), FApplying.Count]);
-  if not SafeEnterLock then
-  begin
-    AIDebugLog('[Manager] EnqueueApplying: Failed to acquire lock, aborting');
-    Exit;
-  end;
+  SafeEnterLock;
   try
-    FApplying.Push(Job);
-    AIDebugLogFmt('[Manager] Job pushed to applying queue. Queue size: %d, JobState: %d', [FApplying.Count, Ord(Job.State)]);
+    Dec(FInFlight);
+    // Publishing completion and cancellation share the same ordering point.
+    if FCancel then
+    begin
+      Job.State := ajsCancelled;
+      Job.ErrorMsg := '';
+      FApplying.Push(Job);
+    end
+    else if Retry then
+      FPending.Push(Job)
+    else
+    begin
+      if Job.State = ajsCompleted then
+      begin
+        FTotalRequestTime := FTotalRequestTime +
+          (Now - Job.RequestStartTime) * 86400;
+        Inc(FRequestCount);
+      end;
+      FApplying.Push(Job);
+    end;
   finally
     SafeLeaveLock;
   end;
@@ -533,9 +597,13 @@ procedure TAIProcessingManager.StartSingle(Flow: IAIVerseFlow; Verse: TVerse);
 var
   job: TAIJob;
 begin
-  AIDebugLog('[Manager] StartSingle called');
+  if not IsStopped then
+    raise Exception.Create(SAIProcessingStillStopping);
+  SafeEnterLock;
+  try FCancel := False; finally SafeLeaveLock; end;
   job := TAIJob.Create;
   FFlowName := Flow.Name;
+  FBorrowedVerses := True;
   job.Flow := Flow;
   job.Verse := Verse;
   // Single jobs use visual verses (WorkItem = nil) so destructor won't free them
@@ -563,6 +631,10 @@ var
   jobCount: Integer;
 begin
   if (Flow = nil) or not Assigned(WorkItems) or (WorkItems.Count = 0) then Exit;
+  if not IsStopped then
+    raise Exception.Create(SAIProcessingStillStopping);
+  SafeEnterLock;
+  try FCancel := False; finally SafeLeaveLock; end;
   jobCount := WorkItems.Count;
   AIDebugLogFmt('[Manager] StartBatch called. Jobs count: %d, MaxParallel configuration: %d', [jobCount, FMaxParallel]);
   FFlowName := Flow.Name;
@@ -605,33 +677,16 @@ end;
 procedure TAIProcessingManager.PumpApply;
 var
   job: TAIJob;
-  shouldFree: Boolean;
-  jobsProcessed: Integer;
-  queueSize: Integer;
-  triggerAutoSave: Boolean;
+  keepForRetry, triggerAutoSave: Boolean;
+  reference: string;
 begin
-  if not SafeEnterLock then
-  begin
-    AIDebugLog('[Manager] PumpApply: could not acquire lock to read queue size; aborting PumpApply');
-    Exit;
-  end;
+  if FPumping then Exit;
+  FPumping := True;
   try
-    queueSize := FApplying.Count;
-  finally
-    SafeLeaveLock;
-  end;
-  
-  if queueSize > 0 then
-    AIDebugLogFmt('[Manager] PumpApply starting. Applying queue size: %d', [queueSize]);
-    
-  jobsProcessed := 0;
-  repeat
-    job := DequeueApplying;
-    if job <> nil then
-    begin
-      Inc(jobsProcessed);
-      AIDebugLogFmt('[Manager] PumpApply processing job (ptr=%s), State=%d', [IntToHex(PtrUInt(Pointer(job)), SizeOf(Pointer)*2), Ord(job.State)]);
-      shouldFree := True;
+    repeat
+      job := DequeueApplying;
+      if job = nil then Break;
+      keepForRetry := False;
       triggerAutoSave := False;
       try
         SafeEnterLock;
@@ -648,139 +703,92 @@ begin
 
         if job.State = ajsCompleted then
         begin
-          AIDebugLog('[Manager] Job completed, calling ApplyResult');
           try
-            // Defensive checks: ensure flow and parsed result are present
             if not Assigned(job.Flow) then
               raise Exception.Create('Missing Flow in job when applying result');
             if not Assigned(job.Parsed) then
               raise Exception.Create('Missing Parsed result in job when applying result');
-
-            // Diagnostic logging: job metadata right before ApplyResult
-            AIDebugLogFmt('[Manager] About to call ApplyResult. JobPtr=%s, JobIndex=%d, BatchJob=%s, VerseAssigned=%s, RawContentLen=%d, FlowPtr=%s, ParsedPtr=%s',
-              [IntToHex(PtrUInt(Pointer(job)), SizeOf(Pointer)*2), job.Index, BoolToStr(Assigned(job.WorkItem), True), BoolToStr(Assigned(job.Verse), True), Length(job.RawContent),
-               IntToHex(PtrUInt(Pointer(job.Flow)), SizeOf(Pointer)*2), IntToHex(PtrUInt(Pointer(job.Parsed)), SizeOf(Pointer)*2)]);
-            if Assigned(job.Verse) then
-              AIDebugLogFmt('[Manager]   VersePtr=%s, Verse ref: %s (ID=%s)', [IntToHex(PtrUInt(Pointer(job.Verse)), SizeOf(Pointer)*2), job.Verse.Reference, job.Verse.ReferenceID]);
-
-            // Call ApplyResult on main thread; protect against exceptions coming from UI code
+            if job.Parsed.ParseError <> '' then
+              raise Exception.Create('Parse error: ' + job.Parsed.ParseError);
             job.Flow.ApplyResult(job.Parsed, job.Verse);
-            AIDebugLog('[Manager] ApplyResult returned');
-            SafeEnterLock;
-            try
-              Inc(FCompleted);
-              Dec(FInFlight); // Decrementa FInFlight quando job é completamente processado
-              // Check if autosave is needed
-              if (FAutoSaveInterval > 0) and Assigned(FOnAutoSaveNeeded) then
+          except
+            on E: Exception do
+            begin
+              job.ErrorMsg := E.Message;
+              job.State := ajsFailed;
+            end;
+          end;
+        end;
+
+        SafeEnterLock;
+        try
+          case job.State of
+            ajsCompleted:
               begin
-                if (FCompleted - FLastAutoSaveCount) >= FAutoSaveInterval then
+                Inc(FCompleted);
+                if (FAutoSaveInterval > 0) and Assigned(FOnAutoSaveNeeded) and
+                   (FCompleted - FLastAutoSaveCount >= FAutoSaveInterval) then
                 begin
                   FLastAutoSaveCount := FCompleted;
                   triggerAutoSave := True;
                 end;
               end;
-            finally
-              SafeLeaveLock;
-            end;
-
-            NotifyStateChange(job); // Update UI icon to success
-            NotifyJobCompleted(job); // Notify completion
-
-            if triggerAutoSave then
-              FOnAutoSaveNeeded(Self);
-          except
-            on E: Exception do
-            begin
-              // If ApplyResult raises, record the job as failed instead of crashing the app
-              AIDebugLogFmt('[Manager] Exception during ApplyResult: %s', [E.Message]);
-              job.ErrorMsg := E.Message;
-              job.State := ajsFailed;
-              shouldFree := False; // keep job object in failed list for inspection/retry
-              SafeEnterLock;
-              try
+            ajsFailed:
+              begin
                 Inc(FFailed);
-                Dec(FInFlight);
                 FFailedJobs.Add(job);
-                if Assigned(FGetVerseReference) and Assigned(job.Verse) then
-                  FErrors.Add(Format('[%s] Apply exception: %s', [FGetVerseReference(job.Verse), job.ErrorMsg]))
-                else
-                  FErrors.Add(Format('[Unknown verse] Apply exception: %s', [job.ErrorMsg]));
-              finally
-                SafeLeaveLock;
+                keepForRetry := True;
+                reference := 'Unknown verse';
+                if Assigned(job.Verse) then
+                  reference := job.Verse.Reference
+                else if Assigned(job.WorkItem) then
+                  reference := job.WorkItem.VerseData.ReferenceName;
+                FErrors.Add(Format('[%s] Attempt %d/%d: %s',
+                  [reference, job.AttemptCount, FMaxRetries, job.ErrorMsg]));
               end;
-            end;
+            ajsCancelled: Inc(FCancelled);
           end;
-        end
-        else if job.State = ajsFailed then
-        begin
-          AIDebugLog('[Manager] Job failed, recording error');
-          NotifyStateChange(job); // Update UI icon to error
-          shouldFree := False; // Don't free, it's in FFailedJobs list
-          SafeEnterLock;
-          try
-            Inc(FFailed);
-            Dec(FInFlight); // Decrementa FInFlight quando job falha definitivamente
-            if Assigned(FGetVerseReference) and Assigned(job.Verse) then
-              FErrors.Add(Format('[%s] Attempt %d/%d: %s', [
-                FGetVerseReference(job.Verse),
-                job.AttemptCount,
-                FMaxRetries,
-                job.ErrorMsg
-              ]))
-            else
-              FErrors.Add(Format('[Unknown verse] Attempt %d/%d: %s', [
-                job.AttemptCount,
-                FMaxRetries,
-                job.ErrorMsg
-              ]));
-          finally
-            SafeLeaveLock;
-          end;
+        finally
+          SafeLeaveLock;
         end;
+
+        NotifyStateChange(job);
+        if job.State = ajsCompleted then
+          NotifyJobCompleted(job);
+        if triggerAutoSave then
+          FOnAutoSaveNeeded(Self);
       finally
-        if Assigned(job.Parsed) then
-        begin
-          job.Parsed.Free;
-          job.Parsed := nil; // Prevent double-free in destructor
-        end;
-        if shouldFree then
-        begin
-          AIDebugLogFmt('[Manager] Freeing job object at %s (Index=%d)', [IntToHex(PtrUInt(Pointer(job)), SizeOf(Pointer)*2), job.Index]);
-          job.Free;
-        end;
+        FreeAndNil(job.Parsed);
+        if not keepForRetry then job.Free;
       end;
-    end;
-  until job = nil;
-  if jobsProcessed > 0 then
-    AIDebugLogFmt('[Manager] PumpApply processed %d jobs', [jobsProcessed]);
+    until False;
+  finally
+    ReapFinishedWorkers;
+    FPumping := False;
+  end;
 end;
 
 procedure TAIProcessingManager.CancelAll;
 var
-  i: Integer;
+  I: Integer;
+  Job: TAIJob;
 begin
-    // Signal cancellation and politely stop all worker threads, then wait for them.
-    if FCancel then Exit; // already cancelling
+  if not SafeEnterLock then Exit;
+  try
+    if FCancel then Exit;
     FCancel := True;
-    // Terminate worker threads
-    for i := 0 to FWorkers.Count - 1 do
+    while FPending.Count > 0 do
     begin
-      if Assigned(FWorkers[i]) then
-        TThread(FWorkers[i]).Terminate;
+      Job := TAIJob(FPending.Pop);
+      Job.State := ajsCancelled;
+      Job.ErrorMsg := '';
+      FApplying.Push(Job);
     end;
-    // Wait for them to finish
-    for i := 0 to FWorkers.Count - 1 do
-    begin
-      if Assigned(FWorkers[i]) then
-        TThread(FWorkers[i]).WaitFor;
-    end;
-    // Free worker thread objects
-    for i := 0 to FWorkers.Count - 1 do
-    begin
-      if Assigned(FWorkers[i]) then
-        TObject(FWorkers[i]).Free;
-    end;
-    FWorkers.Clear;
+  finally
+    SafeLeaveLock;
+  end;
+  for I := 0 to FWorkers.Count - 1 do
+    TThread(FWorkers[I]).Terminate;
 end;
 
 function TAIProcessingManager.RetryFailedJobs(SelectedIndexes: TStrings): Integer;
@@ -797,6 +805,7 @@ var
   end;
 begin
   Result := 0;
+  if not IsStopped then Exit;
   JobsToRetry := TList.Create;
   try
     if SafeEnterLock then
@@ -898,6 +907,17 @@ begin
   end;
 end;
 
+function TAIProcessingManager.CancelledJobs: Integer;
+begin
+  Result := 0;
+  if not SafeEnterLock then Exit;
+  try
+    Result := FCancelled;
+  finally
+    SafeLeaveLock;
+  end;
+end;
+
 function TAIProcessingManager.PendingJobs: Integer;
 begin
   if not FLockInitialized then
@@ -967,6 +987,12 @@ begin
   end;
 end;
 
+function TAIProcessingManager.IsStopped: Boolean;
+begin
+  ReapFinishedWorkers;
+  Result := IsIdle and (FWorkers.Count = 0) and not FPumping;
+end;
+
 function TAIProcessingManager.Errors: TStrings;
 begin
   Result := FErrors;
@@ -999,7 +1025,7 @@ var
 begin
   SafeEnterLock;
   try
-    remaining := FTotalJobs - FCompleted - FFailed;
+    remaining := FTotalJobs - FCompleted - FFailed - FCancelled;
     if remaining <= 0 then
     begin
       Result := 0;

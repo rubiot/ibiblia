@@ -8,7 +8,8 @@ interface
 uses
   Classes, SysUtils, DB, fpcunit, testregistry, sqlite3conn, sqldb,
   BibleScope, project_persistence, project_verse_repository,
-  verse_render_buffer, project_exporter, text_direction, rf_note_scanner;
+  verse_render_buffer, project_exporter, text_direction, rf_note_scanner,
+  ConcordanceExport;
 
 type
   TProjectExporterIntegrationTests = class(TTestCase)
@@ -25,6 +26,8 @@ type
     procedure OpenExporter;
     procedure CloseExporter;
     function ReadBinaryFile(const AFileName: string): RawByteString;
+    procedure WriteBinaryFile(const FileName, Contents: string);
+    procedure CorruptAssociations;
     function ReadFirstExportedVerse(const AFileName: string): string;
     procedure AssertPersistedVerseUnchanged;
     procedure AssertInvalidEditorialCommentRejected(const AComments: string);
@@ -36,6 +39,12 @@ type
   published
     procedure RealExportKeepsNativeRFAndTemporarilyProjectsEditorialComment;
     procedure StructuralRFInEditorialCommentAbortsExportAtomically;
+    procedure WarningExportReturnsReportAndKeepsFallbackText;
+    procedure ReportFailureDoesNotUndoPublishedModule;
+    procedure LockedTheWordTargetReturnsFailureAndPreservesBytes;
+    procedure MySwordWriteFailurePreservesPreviousOrAbsentOutput;
+    procedure ConcordancePublishesReadableDatabase;
+    procedure ConcordanceReadFailurePreservesPreviousOutput;
   end;
 
 implementation
@@ -199,6 +208,7 @@ var
   ErrorMessage: string;
   Options: TDestinationTextExportOptions;
   OutputFileName: string;
+  ExportResult: TExportResult;
 begin
   CloseExporter;
   if FileExists(FDatabaseFileName) then
@@ -217,14 +227,10 @@ begin
       FileExists(OutputFileName));
     ErrorMessage := '';
     Options := NewOptions(True);
-    try
-      FExporter.ExportDestinationTextWithStrongs(
-        OutputFileName, nil, Options, nil, nil, nil);
-      Fail('invalid editorial RF delimiter must abort export');
-    except
-      on E: ERFEditorialCommentProjectionError do
-        ErrorMessage := E.Message;
-    end;
+    ExportResult := FExporter.ExportDestinationTextWithStrongs(
+      OutputFileName, nil, Options, nil, nil, nil);
+    AssertEquals(Ord(esFailed), Ord(ExportResult.Status));
+    ErrorMessage := ExportResult.ErrorMessage;
 
     AssertTrue('export error must contain the Verse Pair reference',
       Pos('1,1,1', ErrorMessage) > 0);
@@ -232,6 +238,11 @@ begin
       Pos('RF', ErrorMessage) > 0);
     AssertFalse('failed export must not create a partial output',
       FileExists(OutputFileName));
+    WriteBinaryFile(OutputFileName, 'previous export');
+    ExportResult := FExporter.ExportDestinationTextWithStrongs(
+      OutputFileName, nil, Options, nil, nil, nil);
+    AssertEquals(Ord(esFailed), Ord(ExportResult.Status));
+    AssertEquals('previous export', string(ReadBinaryFile(OutputFileName)));
     AssertEquals('failed export must not stage project changes', False,
       FPersistence.ContentUpdatesPending);
 
@@ -332,6 +343,184 @@ begin
     'before<  RF q="custom" >note body');
   AssertInvalidEditorialCommentRejected(
     'before<  Rf >LEAKED BIBLE TEXT');
+end;
+
+procedure TProjectExporterIntegrationTests.WriteBinaryFile(
+  const FileName, Contents: string);
+var
+  Stream: TFileStream;
+begin
+  Stream := TFileStream.Create(FileName, fmCreate);
+  try
+    if Contents <> '' then
+      Stream.WriteBuffer(Contents[1], Length(Contents));
+  finally
+    Stream.Free;
+  end;
+end;
+
+procedure TProjectExporterIntegrationTests.CorruptAssociations;
+begin
+  FPersistence.LocateReference('1,1,1');
+  FPersistence.BeginCurrentEdit;
+  FPersistence.SetCurrentFieldAsString('pare_pares', '<par a="999999" b="0">');
+  FPersistence.PostCurrentEdit;
+end;
+
+procedure TProjectExporterIntegrationTests.WarningExportReturnsReportAndKeepsFallbackText;
+var
+  Options: TDestinationTextExportOptions;
+  ExportResult: TExportResult;
+  ReportName: string;
+begin
+  CorruptAssociations;
+  Options := NewOptions(False);
+  ReportName := FExportWithoutCommentsFileName + '.errors.txt';
+  Options.ErrorReportFileName := ReportName;
+  try
+    ExportResult := FExporter.ExportDestinationTextWithStrongs(
+      FExportWithoutCommentsFileName, nil, Options, nil, nil, nil);
+    AssertEquals(ExportResult.ErrorMessage, Ord(esWarnings), Ord(ExportResult.Status));
+    AssertEquals(1, ExportResult.WarningCount);
+    AssertEquals(1, ExportResult.ProcessedVerseCount);
+    AssertEquals(ReportName, ExportResult.ErrorReportFileName);
+    AssertTrue(FileExists(ReportName));
+    AssertTrue(Pos(DESTINATION_TEXT, ReadFirstExportedVerse(
+      FExportWithoutCommentsFileName)) > 0);
+  finally
+    DeleteFile(ReportName);
+  end;
+end;
+
+procedure TProjectExporterIntegrationTests.ReportFailureDoesNotUndoPublishedModule;
+var
+  Options: TDestinationTextExportOptions;
+  ExportResult: TExportResult;
+begin
+  CorruptAssociations;
+  Options := NewOptions(False);
+  Options.ErrorReportFileName := FExportWithoutCommentsFileName +
+    '.missing-folder' + PathDelim + 'errors.txt';
+  ExportResult := FExporter.ExportDestinationTextWithStrongs(
+    FExportWithoutCommentsFileName, nil, Options, nil, nil, nil);
+  AssertEquals(Ord(esWarnings), Ord(ExportResult.Status));
+  AssertTrue(FileExists(ExportResult.OutputFileName));
+  AssertEquals('', ExportResult.ErrorReportFileName);
+  AssertTrue(ExportResult.ErrorMessage <> '');
+  AssertTrue(Pos(DESTINATION_TEXT, ReadFirstExportedVerse(
+    FExportWithoutCommentsFileName)) > 0);
+end;
+
+procedure TProjectExporterIntegrationTests.LockedTheWordTargetReturnsFailureAndPreservesBytes;
+{$IFDEF WINDOWS}
+var
+  Lock: TFileStream;
+  ExportResult: TExportResult;
+begin
+  WriteBinaryFile(FExportWithoutCommentsFileName, 'previous export');
+  Lock := TFileStream.Create(FExportWithoutCommentsFileName,
+    fmOpenRead or fmShareExclusive);
+  try
+    ExportResult := FExporter.ExportDestinationTextWithStrongs(
+      FExportWithoutCommentsFileName, nil, NewOptions(False), nil, nil, nil);
+    AssertEquals(Ord(esFailed), Ord(ExportResult.Status));
+    AssertEquals('', ExportResult.OutputFileName);
+    AssertTrue(ExportResult.ErrorMessage <> '');
+  finally
+    Lock.Free;
+  end;
+  AssertEquals('previous export', string(ReadBinaryFile(FExportWithoutCommentsFileName)));
+end;
+{$ELSE}
+begin
+end;
+{$ENDIF}
+
+procedure TProjectExporterIntegrationTests.MySwordWriteFailurePreservesPreviousOrAbsentOutput;
+var
+  FileName: string;
+  ExportResult: TExportResult;
+  InterlinearOptions: TInterlinearTextExportOptions;
+begin
+  FileName := FExportWithoutCommentsFileName + '.mybible';
+  try
+    // The one-verse fixture fails after the SQLite module has been created.
+    WriteBinaryFile(FileName, 'previous export');
+    ExportResult := FExporter.ExportDestinationTextWithStrongs(
+      FileName, nil, NewOptions(False), nil, nil, nil);
+    AssertEquals(Ord(esFailed), Ord(ExportResult.Status));
+    AssertEquals('previous export', string(ReadBinaryFile(FileName)));
+    DeleteFile(FileName);
+    InterlinearOptions := Default(TInterlinearTextExportOptions);
+    ExportResult := FExporter.ExportInterlinearText(
+      FileName, nil, nil, nil, InterlinearOptions, nil, nil, nil);
+    AssertEquals(Ord(esFailed), Ord(ExportResult.Status));
+    AssertFalse(FileExists(FileName));
+  finally
+    DeleteFile(FileName);
+  end;
+end;
+
+procedure TProjectExporterIntegrationTests.ConcordancePublishesReadableDatabase;
+var
+  FileName: string;
+  ExportResult: TExportResult;
+  Options: TConcordanceExportOptions;
+  Connection: TSQLite3Connection;
+  Query: TSQLQuery;
+begin
+  FileName := FExportWithoutCommentsFileName + '.dct.twm';
+  Connection := nil;
+  try
+    WriteBinaryFile(FileName, 'previous export');
+    Options := Default(TConcordanceExportOptions);
+    Options.Mode := cemSynthetic;
+    Options.ContextMode := ccmReferencesOnly;
+    Options.Abbreviation := 'test';
+    FExporter.Attach(etNT, FRepository, FRenderBuffer);
+    ExportResult := FExporter.ExportConcordance(FileName, nil, Options, nil, nil, nil);
+    AssertEquals(ExportResult.ErrorMessage, Ord(esSuccess), Ord(ExportResult.Status));
+    Connection := TSQLite3Connection.Create(nil);
+    Connection.Transaction := TSQLTransaction.Create(Connection);
+    Connection.DatabaseName := FileName;
+    Query := TSQLQuery.Create(Connection);
+    Query.Database := Connection;
+    Query.Transaction := Connection.Transaction;
+    Query.SQL.Text := 'select count(*) from topics where subject = ''G3056''';
+    Query.Open;
+    AssertEquals(1, Query.Fields[0].AsInteger);
+    Query.Close;
+    Connection.Transaction.Rollback;
+    Connection.Close;
+  finally
+    Connection.Free;
+    DeleteFile(FileName);
+  end;
+end;
+
+procedure TProjectExporterIntegrationTests.ConcordanceReadFailurePreservesPreviousOutput;
+var
+  FileName, OriginalDirectory, EmptyDirectory: string;
+  ExportResult: TExportResult;
+  Options: TConcordanceExportOptions;
+begin
+  FileName := FExportWithoutCommentsFileName + '.dct.twm';
+  EmptyDirectory := FExportWithCommentsFileName + '.directory';
+  OriginalDirectory := GetCurrentDir;
+  ForceDirectories(EmptyDirectory);
+  try
+    WriteBinaryFile(FileName, 'previous export');
+    Options := Default(TConcordanceExportOptions);
+    SetCurrentDir(EmptyDirectory);
+    ExportResult := FExporter.ExportConcordance(FileName, nil, Options, nil, nil, nil);
+    AssertEquals(Ord(esFailed), Ord(ExportResult.Status));
+    AssertEquals('previous export', string(ReadBinaryFile(FileName)));
+    AssertEquals('', ExportResult.OutputFileName);
+  finally
+    SetCurrentDir(OriginalDirectory);
+    RemoveDir(EmptyDirectory);
+    DeleteFile(FileName);
+  end;
 end;
 
 initialization

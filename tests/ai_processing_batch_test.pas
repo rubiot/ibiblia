@@ -6,7 +6,8 @@ interface
 
 uses
   Classes, SysUtils, fpcunit, testregistry, ai_flows, ai_processing_batch,
-  PatchFile, ai_batch_orchestrator, ai_batch_work_item, project_config;
+  PatchFile, ai_batch_orchestrator, ai_batch_work_item, project_config,
+  project_persistence, ai_credential_store, sqlite3conn, sqldb;
 
 type
   TAIProcessingBatchTests = class(TTestCase)
@@ -464,13 +465,44 @@ procedure TAIProcessingBatchTests.TranslationPreparationFiltersFilledDestination
 
 var
   Config: TProjectConfig;
+  Persistence: TProjectPersistence;
+  Connection: TSQLite3Connection;
+  Transaction: TSQLTransaction;
+  FileName: string;
   Orchestrator: TAIBatchOrchestrator;
   Items: TAIBatchWorkItemList;
   Preparation: TAIBatchPreparation;
 begin
-  Config := TProjectConfig.Create(nil);
-  Orchestrator := TAIBatchOrchestrator.Create(Config, nil);
+  FileName := GetTempFileName(GetTempDir(False), 'aib');
+  Persistence := nil;
+  Config := nil;
+  Orchestrator := nil;
+  Preparation := Default(TAIBatchPreparation);
   try
+    Connection := TSQLite3Connection.Create(nil);
+    Transaction := TSQLTransaction.Create(Connection);
+    try
+      Connection.DatabaseName := FileName;
+      Connection.Transaction := Transaction;
+      Connection.Open;
+      Transaction.StartTransaction;
+      Connection.ExecuteDirect('create table info (id text primary key, valor text)');
+      Connection.ExecuteDirect('create table pares (' +
+        'pare_id text primary key, pare_ref text, pare_texto_origem text, ' +
+        'pare_texto_destino text, pare_texto_consulta1 text, ' +
+        'pare_texto_consulta2 text, pare_pares text, pare_situacao integer, ' +
+        'pare_comentarios text)');
+      Connection.ExecuteDirect('insert into info values (' +
+        '''ai.common.model'', ''test-only-model'')');
+      Transaction.Commit;
+    finally
+      Connection.Free;
+    end;
+    Persistence := TProjectPersistence.Create;
+    Persistence.Open(FileName);
+    Config := TProjectConfig.Create(Persistence);
+    Config.AICredentials.Stage(acsCommon, 'fake-key');
+    Orchestrator := TAIBatchOrchestrator.Create(Config, nil);
     Items := TAIBatchWorkItemList.Create;
     try
       Items.AddItem(NewWorkItem('filled-1', 'translation one'));
@@ -499,6 +531,8 @@ begin
       AssertEquals('empty', Items[0].VerseData.ReferenceID);
       AssertTrue(Assigned(Preparation.Flow));
       AssertTrue(Assigned(Preparation.Manager));
+      AssertEquals('Preparation must not queue or start worker jobs', 0,
+        Preparation.Manager.TotalJobs);
     finally
       ReleasePreparation(Preparation);
       Items.Free;
@@ -515,6 +549,8 @@ begin
       AssertEquals(2, Items.Count);
       AssertTrue(Assigned(Preparation.Flow));
       AssertTrue(Assigned(Preparation.Manager));
+      AssertEquals('Preparation must not queue or start worker jobs', 0,
+        Preparation.Manager.TotalJobs);
     finally
       ReleasePreparation(Preparation);
       Items.Free;
@@ -522,6 +558,8 @@ begin
   finally
     Orchestrator.Free;
     Config.Free;
+    Persistence.Free;
+    DeleteFile(FileName);
   end;
 end;
 

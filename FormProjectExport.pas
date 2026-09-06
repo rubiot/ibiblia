@@ -57,7 +57,6 @@ type
     procedure ExportTaggedDestinationText;
     procedure ExportInterlinearSourceText;
     procedure ExportConcordance;
-    procedure ConfirmOpenExportedFile(const FileName: string);
     procedure PersistTaggedDestinationOptions;
     procedure PersistInterlinearOptions;
     procedure PersistConcordanceOptions(const Abbreviation: string);
@@ -70,6 +69,7 @@ type
       Current, Total: Integer);
   public
     procedure SetProject(Project: TProject);
+    procedure ShowExportResult(const ExportResult: TExportResult);
   end;
 
 var
@@ -111,6 +111,11 @@ resourcestring
     'Maximum excerpt length (characters)';
   SExportCompletedTitle = 'Export completed';
   SExportCompletedPrompt = 'Export completed successfully.'#13#10#13#10'%s'#13#10#13#10'Open the exported file location?';
+  SExportFailedTitle = 'Export failed';
+  SExportWarningsTitle = 'Export completed with warnings';
+  SExportWarningsMessage = 'The exported module contains %d warning(s).';
+  SExportReportLocation = 'Warnings report: %s';
+  SExportOpenLocation = 'Open the exported file location?';
 
 implementation
 
@@ -434,46 +439,52 @@ end;
 procedure TProjectExportForm.ExportTaggedDestinationText;
 var
   Options: TOpcoesExportacao;
+  ExportResult: TExportResult;
 begin
   Options := BuildTaggedDestinationOptions;
   ConfigureBibleSaveDialog('tagged-destination', SLastTaggedDestinationFileKey);
 
   if SaveBibleModuleDialog.Execute then
   begin
-    SaveStoredExportFileName(SLastTaggedDestinationFileKey, SaveBibleModuleDialog.FileName);
     PersistTaggedDestinationOptions;
     FormPleaseWait.BeginOperation(Self, SExportTaggedDestinationTitle,
       SExportTaggedDestinationProgress, 1, SaveBibleModuleDialog.FileName);
     try
-      FProject.ExportDestinationTextWithStrongs(SaveBibleModuleDialog.FileName,
+      ExportResult := FProject.ExportDestinationTextWithStrongs(SaveBibleModuleDialog.FileName,
         FormPleaseWait.ProgressBar1, Options);
     finally
       FormPleaseWait.FinishOperation;
     end;
-    ConfirmOpenExportedFile(SaveBibleModuleDialog.FileName);
+    if ExportResult.Status <> esFailed then
+      SaveStoredExportFileName(SLastTaggedDestinationFileKey,
+        ExportResult.OutputFileName);
+    ShowExportResult(ExportResult);
   end;
 end;
 
 procedure TProjectExportForm.ExportInterlinearSourceText;
 var
   Options: TOpcoesExportacao;
+  ExportResult: TExportResult;
 begin
   Options := [];
   ConfigureBibleSaveDialog('interlinear-source', SLastInterlinearSourceFileKey);
 
   if SaveBibleModuleDialog.Execute then
   begin
-    SaveStoredExportFileName(SLastInterlinearSourceFileKey, SaveBibleModuleDialog.FileName);
     PersistInterlinearOptions;
     FormPleaseWait.BeginOperation(Self, SExportInterlinearTitle,
       SExportInterlinearProgress, 1, SaveBibleModuleDialog.FileName);
     try
-      FProject.ExportInterlinearText(SaveBibleModuleDialog.FileName,
+      ExportResult := FProject.ExportInterlinearText(SaveBibleModuleDialog.FileName,
         FormPleaseWait.ProgressBar1, Options);
     finally
       FormPleaseWait.FinishOperation;
     end;
-    ConfirmOpenExportedFile(SaveBibleModuleDialog.FileName);
+    if ExportResult.Status <> esFailed then
+      SaveStoredExportFileName(SLastInterlinearSourceFileKey,
+        ExportResult.OutputFileName);
+    ShowExportResult(ExportResult);
   end;
 end;
 
@@ -483,6 +494,7 @@ var
   Abbreviation: string;
   ContextMode: TConcordanceContextMode;
   UseIndexedOccurrences: Boolean;
+  ExportResult: TExportResult;
 begin
   Options := BuildConcordanceOptions;
   ContextMode := SelectedConcordanceContextMode;
@@ -503,7 +515,7 @@ begin
     FormPleaseWait.BeginOperation(Self, SExportConcordanceTitle,
       SExportConcordanceProgress, 1, SaveConcordanceDialog.FileName);
     try
-      FProject.ExportConcordance(SaveConcordanceDialog.FileName,
+      ExportResult := FProject.ExportConcordance(SaveConcordanceDialog.FileName,
         FormPleaseWait.ProgressBar1, Options, Abbreviation,
         ContextMode, seConcordanceMaxCharacters.Value,
         UseIndexedOccurrences,
@@ -511,26 +523,52 @@ begin
     finally
       FormPleaseWait.FinishOperation;
     end;
-    SaveStoredExportFileName(ConcordanceLastFileKey,
-      SaveConcordanceDialog.FileName);
-    PersistConcordanceOptions(Abbreviation);
-    ConfirmOpenExportedFile(SaveConcordanceDialog.FileName);
+    if ExportResult.Status <> esFailed then
+    begin
+      SaveStoredExportFileName(ConcordanceLastFileKey,
+        ExportResult.OutputFileName);
+      PersistConcordanceOptions(Abbreviation);
+    end;
+    ShowExportResult(ExportResult);
   end;
 end;
 
-procedure TProjectExportForm.ConfirmOpenExportedFile(const FileName: string);
+procedure TProjectExportForm.ShowExportResult(const ExportResult: TExportResult);
+var
+  MessageText, DialogTitle: string;
+  DialogType: TMsgDlgType;
 begin
-  if not FileExists(FileName) then
+  if ExportResult.Status = esFailed then
+  begin
+    MessageDlg(SExportFailedTitle, ExportResult.ErrorMessage, mtError, [mbOK], 0);
     Exit;
+  end;
 
-  if MessageDlg(SExportCompletedTitle, Format(SExportCompletedPrompt, [FileName]),
-    mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
+  DialogTitle := SExportCompletedTitle;
+  DialogType := mtConfirmation;
+  MessageText := Format(SExportCompletedPrompt, [ExportResult.OutputFileName]);
+  if ExportResult.Status = esWarnings then
+  begin
+    DialogTitle := SExportWarningsTitle;
+    DialogType := mtWarning;
+    MessageText := Format(SExportWarningsMessage, [ExportResult.WarningCount]) +
+      LineEnding + LineEnding + ExportResult.OutputFileName;
+    if ExportResult.ErrorReportFileName <> '' then
+      MessageText := MessageText + LineEnding + LineEnding +
+        Format(SExportReportLocation, [ExportResult.ErrorReportFileName]);
+    if ExportResult.ErrorMessage <> '' then
+      MessageText := MessageText + LineEnding + LineEnding +
+        ExportResult.ErrorMessage;
+    MessageText := MessageText + LineEnding + LineEnding + SExportOpenLocation;
+  end;
+  if MessageDlg(DialogTitle, MessageText, DialogType, [mbYes, mbNo], 0) <> mrYes then
     Exit;
 
   {$IFDEF WINDOWS}
-  SysUtils.ExecuteProcess(UTF8ToSys('explorer.exe'), '/select,' + FileName, []);
+  SysUtils.ExecuteProcess(UTF8ToSys('explorer.exe'),
+    '/select,"' + ExportResult.OutputFileName + '"', []);
   {$ELSE}
-  OpenDocument(ExtractFilePath(FileName));
+  OpenDocument(ExtractFilePath(ExportResult.OutputFileName));
   {$ENDIF}
 end;
 

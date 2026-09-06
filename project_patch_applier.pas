@@ -9,20 +9,23 @@ uses
 
 type
   TPatchIndexArray = array of Integer;
+  TPatchSelectionMode = (psmAll, psmSelected);
   TOnMissingPatchReference = function(const Reference: string): Boolean of object;
 
   TProjectPatchApplier = class
   private
     FPersistence: TProjectPersistence;
     procedure EnsurePersistenceAttached;
-    function ShouldApplyIndex(const Indexes: TPatchIndexArray; Index: Integer): Boolean;
+    function ShouldApplyIndex(SelectionMode: TPatchSelectionMode;
+      const Indexes: TPatchIndexArray; Index: Integer): Boolean;
     function LocatePatchReference(const Reference: string): Boolean;
   public
     constructor Create(APersistence: TProjectPersistence = nil);
     procedure Attach(APersistence: TProjectPersistence);
     procedure ApplyPatchEntry(Patch: TPatchFile; Index: Integer);
-    procedure ApplyPatch(Patch: TPatchFile; const Indexes: TPatchIndexArray;
-      OnMissingReference: TOnMissingPatchReference = nil);
+    function ApplyPatch(Patch: TPatchFile; SelectionMode: TPatchSelectionMode;
+      const Indexes: TPatchIndexArray;
+      OnMissingReference: TOnMissingPatchReference = nil): Integer;
     procedure ClearTextFieldForAll(TextFieldIndex, SourceTextFieldIndex,
       DestinationTextFieldIndex: Integer; ResetStatus: Boolean);
   end;
@@ -46,12 +49,12 @@ begin
     raise Exception.Create('Project patch applier persistence is not attached');
 end;
 
-function TProjectPatchApplier.ShouldApplyIndex(const Indexes: TPatchIndexArray;
-  Index: Integer): Boolean;
+function TProjectPatchApplier.ShouldApplyIndex(SelectionMode: TPatchSelectionMode;
+  const Indexes: TPatchIndexArray; Index: Integer): Boolean;
 var
   SelectedIndex: Integer;
 begin
-  if Length(Indexes) = 0 then
+  if SelectionMode = psmAll then
     Exit(True);
 
   for SelectedIndex in Indexes do
@@ -89,19 +92,21 @@ begin
   ]);
 end;
 
-procedure TProjectPatchApplier.ApplyPatch(Patch: TPatchFile;
-  const Indexes: TPatchIndexArray; OnMissingReference: TOnMissingPatchReference);
+function TProjectPatchApplier.ApplyPatch(Patch: TPatchFile;
+  SelectionMode: TPatchSelectionMode; const Indexes: TPatchIndexArray;
+  OnMissingReference: TOnMissingPatchReference): Integer;
 var
   PatchIndex: Integer;
   IgnoreMissingWarnings: Boolean;
 begin
+  Result := 0;
   IgnoreMissingWarnings := False;
   if not Assigned(Patch) then
     Exit;
 
   for PatchIndex := 0 to Patch.Reference.Count - 1 do
   begin
-    if not ShouldApplyIndex(Indexes, PatchIndex) then
+    if not ShouldApplyIndex(SelectionMode, Indexes, PatchIndex) then
       Continue;
 
     if not LocatePatchReference(Patch.Reference[PatchIndex]) then
@@ -115,6 +120,7 @@ begin
     end;
 
     ApplyPatchEntry(Patch, PatchIndex);
+    Inc(Result);
   end;
 end;
 

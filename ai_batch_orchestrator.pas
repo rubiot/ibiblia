@@ -64,7 +64,10 @@ type
 
 implementation
 
-uses ai_translation_flow;
+uses ai_translation_flow, ai_credential_store;
+
+resourcestring
+  SAIConfigurationMissing = 'Configure the AI model and API key in LLM Options before processing.';
 
 { TAIBatchContextAdapter }
 
@@ -171,6 +174,7 @@ function TAIBatchOrchestrator.PrepareBatch(const FlowId: string;
 var
   FlowConfig: IAIFlowConfig;
   ForceOverwrite: Boolean;
+  ApiKey, Model: string;
 begin
   Result.Flow := nil;
   Result.Manager := nil;
@@ -207,9 +211,18 @@ begin
   if not Assigned(Result.Flow) then
     Exit;
 
+  ApiKey := Trim(Result.Flow.ApiKeyOverride);
+  if ApiKey = '' then
+    ApiKey := FConfig.AICredentials.Resolve(acsCommon);
+  Model := Trim(Result.Flow.ModelOverride);
+  if Model = '' then
+    Model := FConfig.ReadString(AI_COMMON_CONFIG.Model);
+  if (Trim(Model) = '') or (Trim(ApiKey) = '') then
+    raise EAICredentialError.Create(SAIConfigurationMissing);
+
   Result.Manager := TAIProcessingManager.Create(
-    FConfig.ReadString(AI_COMMON_CONFIG.Model),
-    FConfig.ReadString(AI_COMMON_CONFIG.ApiKey),
+    Model,
+    ApiKey,
     MaxParallel
   );
   Result.Manager.MaxRetries := StrToIntDef(FConfig.ReadString(AI_COMMON_CONFIG.MaxRetries), 3);
