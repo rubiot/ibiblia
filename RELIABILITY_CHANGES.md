@@ -59,6 +59,23 @@ Falhas recuperáveis por versículo continuam permitindo exportar com avisos.
 Se o relatório não puder ser salvo, a janela informa essa falha separadamente
 do sucesso da exportação.
 
+### Destinos locais por projeto
+
+O diálogo "Salvar como" lembra separadamente os destinos theWord de texto com
+Strong, interlinear, concordância analítica e sintética. O histórico fica no
+iBiblia.ini local, por caminho absoluto do projeto, sem gravar caminhos no
+banco do projeto. Arquivos de projeto em caminhos diferentes têm históricos
+independentes, inclusive quando seus nomes são iguais.
+
+Confirmar "Salvar" registra o destino antes de exportar, permitindo repetir
+uma tentativa que falhou. Cancelar não altera o registro. MySword continua
+disponível no diálogo e não substitui o histórico theWord. Destinos globais
+antigos não são herdados, pois não identificam seu projeto de origem.
+
+Uma pasta indisponível faz o diálogo usar a sugestão baseada no projeto, mas
+não apaga o histórico. Falha ao salvar a preferência produz um aviso junto
+ao resultado da exportação, sem impedir a geração nem alterar seu resultado.
+
 ## Cancelamento de IA
 
 Cancelar sinaliza o lote sem aguardar HTTP na interface. Itens concluídos antes
@@ -97,6 +114,18 @@ Em outras plataformas, novas chaves permanecem apenas na sessão. Credenciais
 antigas não são removidas sem um armazenamento local persistente disponível.
 
 ## Verificação
+
+Validação do histórico local em 10/09/2026: build Release concluído e
+795 testes executados, sem erros nem falhas. As 31 novas regressões cobrem
+preferências reabertas do disco, os quatro destinos, separação de projetos,
+comparação ordinal de nomes Unicode no Windows, cancelamento, confirmação
+antes da exportação, MySword e avisos de preferências. Os testes do formulário
+substituem o diálogo nativo e a geração do módulo, usando projeto e INI
+temporários. Logs em outputs/export-history-2026-09-10/.
+
+A correção de módulos em uso foi commitada como 3700ab1 após a cópia isolada
+do conteúdo exato do commit compilar em Release e passar em 756 testes.
+As outras alterações locais não foram incluídas nesse commit.
 
 Validação da atualização de módulos em uso em 10/09/2026: build Release
 concluído e 764 testes executados, sem erros nem falhas. Foram adicionadas 24

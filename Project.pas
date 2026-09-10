@@ -4201,6 +4201,7 @@ var
   i: Integer;
   OldExporting: Boolean;
 begin
+  Nome := ExpandFileName(Nome);
   InvalidateChapterSnapshot;
   FStatusDefinitionsCacheValid := False;
   if not FileExists(Nome) then

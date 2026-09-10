@@ -21,6 +21,8 @@ uses
   export_file_staging_test,
   export_in_use_test,
   export_sqlite_publisher_test,
+  export_destination_history_test,
+  project_export_form_test,
   suggestionmanagertest,
   associationmemoryservicetest,
   concordanceexporttest,

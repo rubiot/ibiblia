@@ -30,6 +30,7 @@ type
   published
     procedure IntegerValuesUseAssociationAsSafeFallback;
     procedure NewProjectDefaultsToAssociationMode;
+    procedure RelativeProjectPathRemainsAbsoluteAfterDirectoryChange;
     procedure AssociationModeLeavesPopulatedVerseReadyForAssociations;
     procedure EditingModeOpensDestinationOnInitialVerseAndNavigation;
     procedure AssociationModePreservesAutomaticEditingOfEmptyDestination;
@@ -335,6 +336,47 @@ procedure TDefaultVerseModeTests.NewProjectDefaultsToAssociationMode;
 begin
   FProject := TProject.Create;
   AssertEquals(Ord(dvmAssociation), Ord(FProject.DefaultVerseMode));
+end;
+
+procedure TDefaultVerseModeTests.
+  RelativeProjectPathRemainsAbsoluteAfterDirectoryChange;
+var
+  DatabaseFile, OriginalDirectory: string;
+begin
+  DatabaseFile := ExpandFileName(TempPath('relative-path.bib'));
+  TProjectDatabaseBootstrap.CreateProjectDatabaseFixture(DatabaseFile, etNT, 3);
+  SeedVerseTexts(DatabaseFile, 'Destination 1', 'Destination 2',
+    'Destination 3');
+  FProject := TProject.Create([FSourcePanel, FDestinationPanel], nil,
+    FStatusCombo, nil);
+  FProject.Escopo := etNT;
+
+  OriginalDirectory := GetCurrentDir;
+  try
+    AssertTrue('the fixture directory must become the current directory',
+      SetCurrentDir(FTempDir));
+    FProject.OpenProject('.' + PathDelim + ExtractFileName(DatabaseFile));
+    AssertEquals('the project stores the absolute path when opening',
+      DatabaseFile, FProject.FileName);
+    AssertEquals('persistence receives the same absolute path',
+      DatabaseFile, FProject.Caminho);
+
+    AssertTrue('changing the current directory must succeed',
+      SetCurrentDir(OriginalDirectory));
+    AssertEquals('changing directories must not retarget the project',
+      DatabaseFile, FProject.FileName);
+    AssertEquals('changing directories must not retarget persistence',
+      DatabaseFile, FProject.Caminho);
+    FProject.NextVerse;
+    Application.ProcessMessages;
+    AssertEquals('navigation still uses the original project',
+      '40,1,2', FProject.ID);
+    AssertEquals('Destination 2', FProject.GetVerseText(tbDestino));
+    AssertEquals('reading another Verse still uses the original project',
+      'Destination 3', FProject.GetVerseText('40,1,3', tbDestino));
+  finally
+    SetCurrentDir(OriginalDirectory);
+  end;
 end;
 
 procedure TDefaultVerseModeTests.

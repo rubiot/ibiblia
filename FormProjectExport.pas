@@ -7,7 +7,8 @@ interface
 uses
   Classes, SysUtils, Math, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
   ComCtrls, StdCtrls, ExtCtrls, Spin, BibleScope, Project, LCLTranslator,
-  LCLIntf, LazUTF8, UnitPleaseWait, project_exporter, ConcordanceExport;
+  LCLIntf, LazUTF8, UnitPleaseWait, project_exporter, ConcordanceExport,
+  export_destination_history;
 
 type
 
@@ -48,12 +49,9 @@ type
     function BuildConcordanceOptions: TOpcoesExportacao;
     function DefaultConcordanceAbbreviation: string;
     function ConcordanceFileSuffix: string;
-    function ConcordanceLastFileKey: string;
+    function ConcordanceDestinationKind: TExportDestinationKind;
     function SelectedConcordanceContextMode: TConcordanceContextMode;
     function SuggestedBaseFileName(const Suffix: string): string;
-    function StoredExportFileName(const Key, DefaultFileName: string): string;
-    procedure ConfigureBibleSaveDialog(const Suffix, LastFileKey: string);
-    procedure ConfigureConcordanceSaveDialog;
     procedure ExportTaggedDestinationText;
     procedure ExportInterlinearSourceText;
     procedure ExportConcordance;
@@ -67,9 +65,27 @@ type
     procedure UpdateConcordanceDescription;
     procedure ConcordanceExportProgress(Phase: TConcordanceExportPhase;
       Current, Total: Integer);
+    procedure ConfigureBibleSaveDialog(const Suffix: string;
+      Kind: TExportDestinationKind);
+    procedure ConfigureConcordanceSaveDialog;
+    function ConfirmExportDestination(Dialog: TSaveDialog;
+      Kind: TExportDestinationKind; out PreferenceWarning: string): Boolean;
+  protected
+    function PerformTaggedDestinationExport(const FileName: string;
+      Options: TOpcoesExportacao): TExportResult; virtual;
+    function PerformInterlinearSourceExport(const FileName: string;
+      Options: TOpcoesExportacao): TExportResult; virtual;
+    function PerformConcordanceExport(const FileName: string;
+      Options: TOpcoesExportacao; const Abbreviation: string;
+      ContextMode: TConcordanceContextMode;
+      ContextMaxCharacters: Integer): TExportResult; virtual;
+    function BuildExportResultMessage(const ExportResult: TExportResult;
+      const PreferenceWarning: string; out DialogTitle: string;
+      out DialogType: TMsgDlgType): string;
   public
     procedure SetProject(Project: TProject);
-    procedure ShowExportResult(const ExportResult: TExportResult);
+    procedure ShowExportResult(const ExportResult: TExportResult;
+      const PreferenceWarning: string = ''); virtual;
   end;
 
 var
@@ -111,22 +127,19 @@ resourcestring
     'Maximum excerpt length (characters)';
   SExportCompletedTitle = 'Export completed';
   SExportCompletedPrompt = 'Export completed successfully.'#13#10#13#10'%s'#13#10#13#10'Open the exported file location?';
+  SExportCompletedMessage = 'Export completed successfully.';
   SExportFailedTitle = 'Export failed';
   SExportWarningsTitle = 'Export completed with warnings';
   SExportWarningsMessage = 'The exported module contains %d warning(s).';
   SExportReportLocation = 'Warnings report: %s';
   SExportOpenLocation = 'Open the exported file location?';
+  SExportDestinationPreferenceWarning = 'Could not remember the export destination locally: %s';
 
 implementation
 
 uses formPrincipal;
 
 const
-  SExportIniSection = 'export';
-  SLastTaggedDestinationFileKey = 'last.tagged.destination.file';
-  SLastInterlinearSourceFileKey = 'last.interlinear.source.file';
-  SLastAnalyticalConcordanceFileKey = 'last.strongs.analytical.concordance.file';
-  SLastSyntheticConcordanceFileKey = 'last.strongs.synthetic.concordance.file';
   SConcordanceContextModeKey =
     'opcoes.exportar.concordancia.contexto.modo';
   SConcordanceContextMaxCharactersKey =
@@ -252,12 +265,12 @@ begin
     Result := 'analytical-concordance';
 end;
 
-function TProjectExportForm.ConcordanceLastFileKey: string;
+function TProjectExportForm.ConcordanceDestinationKind: TExportDestinationKind;
 begin
   if rgConcordanceType.ItemIndex = 1 then
-    Result := SLastSyntheticConcordanceFileKey
+    Result := edSyntheticConcordance
   else
-    Result := SLastAnalyticalConcordanceFileKey;
+    Result := edAnalyticalConcordance;
 end;
 
 function TProjectExportForm.SelectedConcordanceContextMode:
@@ -292,33 +305,22 @@ begin
     Result := Result + '-' + Suffix;
 end;
 
-function TProjectExportForm.StoredExportFileName(const Key,
-  DefaultFileName: string): string;
+function TProjectExportForm.ConfirmExportDestination(Dialog: TSaveDialog;
+  Kind: TExportDestinationKind; out PreferenceWarning: string): Boolean;
 var
-  StoredFileName: string;
-  StoredPath: string;
+  ErrorMessage: string;
 begin
-  Result := DefaultFileName;
-  if not Assigned(opts) then
-    Exit;
-
-  StoredFileName := Trim(opts.ReadString(SExportIniSection, Key, ''));
-  if StoredFileName = '' then
-    Exit;
-
-  StoredPath := ExtractFilePath(StoredFileName);
-  if (StoredPath = '') or DirectoryExists(StoredPath) then
-    Result := StoredFileName;
+  PreferenceWarning := '';
+  Result := Dialog.Execute;
+  if not Result then Exit;
+  Dialog.FileName := ExpandFileName(Dialog.FileName);
+  if not TryRememberExportDestination(opts, FProject.FileName, Kind,
+    Dialog.FileName, ErrorMessage) then
+    PreferenceWarning := Format(SExportDestinationPreferenceWarning, [ErrorMessage]);
 end;
 
-procedure SaveStoredExportFileName(const Key, FileName: string);
-begin
-  if Assigned(opts) then
-    opts.WriteString(SExportIniSection, Key, FileName);
-end;
-
-procedure TProjectExportForm.ConfigureBibleSaveDialog(const Suffix,
-  LastFileKey: string);
+procedure TProjectExportForm.ConfigureBibleSaveDialog(const Suffix: string;
+  Kind: TExportDestinationKind);
 var
   SuggestedFileName: string;
 begin
@@ -342,9 +344,9 @@ begin
   SaveBibleModuleDialog.Title := SSaveModuleAs;
   SaveBibleModuleDialog.FilterIndex := 1;
   SuggestedFileName := SuggestedBaseFileName(Suffix) + SaveBibleModuleDialog.DefaultExt;
-  SaveBibleModuleDialog.FileName := StoredExportFileName(LastFileKey, SuggestedFileName);
-  if LowerCase(SaveBibleModuleDialog.FileName).EndsWith('.mybible') then
-    SaveBibleModuleDialog.FilterIndex := 2;
+  SaveBibleModuleDialog.FileName := ReadExportDestination(opts,
+    FProject.FileName, Kind, SuggestedFileName);
+  SaveBibleModuleDialog.InitialDir := ExtractFilePath(SaveBibleModuleDialog.FileName);
   SaveBibleModuleDialog.Options := SaveBibleModuleDialog.Options + [ofOverwritePrompt, ofPathMustExist];
 end;
 
@@ -357,8 +359,9 @@ begin
   SaveConcordanceDialog.Filter := STheWordDictionaryModule + '|*.dct.twm';
   SaveConcordanceDialog.FilterIndex := 1;
   SuggestedFileName := SuggestedBaseFileName(ConcordanceFileSuffix) + '.dct.twm';
-  SaveConcordanceDialog.FileName := StoredExportFileName(
-    ConcordanceLastFileKey, SuggestedFileName);
+  SaveConcordanceDialog.FileName := ReadExportDestination(opts,
+    FProject.FileName, ConcordanceDestinationKind, SuggestedFileName);
+  SaveConcordanceDialog.InitialDir := ExtractFilePath(SaveConcordanceDialog.FileName);
   SaveConcordanceDialog.Options := SaveConcordanceDialog.Options + [ofOverwritePrompt, ofPathMustExist];
 end;
 
@@ -440,51 +443,35 @@ procedure TProjectExportForm.ExportTaggedDestinationText;
 var
   Options: TOpcoesExportacao;
   ExportResult: TExportResult;
+  PreferenceWarning: string;
 begin
   Options := BuildTaggedDestinationOptions;
-  ConfigureBibleSaveDialog('tagged-destination', SLastTaggedDestinationFileKey);
+  ConfigureBibleSaveDialog('tagged-destination', edTaggedTheWord);
 
-  if SaveBibleModuleDialog.Execute then
+  if ConfirmExportDestination(SaveBibleModuleDialog, edTaggedTheWord,
+    PreferenceWarning) then
   begin
     PersistTaggedDestinationOptions;
-    FormPleaseWait.BeginOperation(Self, SExportTaggedDestinationTitle,
-      SExportTaggedDestinationProgress, 1, SaveBibleModuleDialog.FileName);
-    try
-      ExportResult := FProject.ExportDestinationTextWithStrongs(SaveBibleModuleDialog.FileName,
-        FormPleaseWait.ProgressBar1, Options);
-    finally
-      FormPleaseWait.FinishOperation;
-    end;
-    if ExportResult.Status <> esFailed then
-      SaveStoredExportFileName(SLastTaggedDestinationFileKey,
-        ExportResult.OutputFileName);
-    ShowExportResult(ExportResult);
+    ExportResult := PerformTaggedDestinationExport(
+      SaveBibleModuleDialog.FileName, Options);
+    ShowExportResult(ExportResult, PreferenceWarning);
   end;
 end;
 
 procedure TProjectExportForm.ExportInterlinearSourceText;
 var
-  Options: TOpcoesExportacao;
   ExportResult: TExportResult;
+  PreferenceWarning: string;
 begin
-  Options := [];
-  ConfigureBibleSaveDialog('interlinear-source', SLastInterlinearSourceFileKey);
+  ConfigureBibleSaveDialog('interlinear-source', edInterlinearTheWord);
 
-  if SaveBibleModuleDialog.Execute then
+  if ConfirmExportDestination(SaveBibleModuleDialog, edInterlinearTheWord,
+    PreferenceWarning) then
   begin
     PersistInterlinearOptions;
-    FormPleaseWait.BeginOperation(Self, SExportInterlinearTitle,
-      SExportInterlinearProgress, 1, SaveBibleModuleDialog.FileName);
-    try
-      ExportResult := FProject.ExportInterlinearText(SaveBibleModuleDialog.FileName,
-        FormPleaseWait.ProgressBar1, Options);
-    finally
-      FormPleaseWait.FinishOperation;
-    end;
-    if ExportResult.Status <> esFailed then
-      SaveStoredExportFileName(SLastInterlinearSourceFileKey,
-        ExportResult.OutputFileName);
-    ShowExportResult(ExportResult);
+    ExportResult := PerformInterlinearSourceExport(
+      SaveBibleModuleDialog.FileName, []);
+    ShowExportResult(ExportResult, PreferenceWarning);
   end;
 end;
 
@@ -493,8 +480,8 @@ var
   Options: TOpcoesExportacao;
   Abbreviation: string;
   ContextMode: TConcordanceContextMode;
-  UseIndexedOccurrences: Boolean;
   ExportResult: TExportResult;
+  PreferenceWarning: string;
 begin
   Options := BuildConcordanceOptions;
   ContextMode := SelectedConcordanceContextMode;
@@ -505,61 +492,129 @@ begin
     Abbreviation := DefaultConcordanceAbbreviation;
 
   ConfigureConcordanceSaveDialog;
-  if SaveConcordanceDialog.Execute then
+  if ConfirmExportDestination(SaveConcordanceDialog, ConcordanceDestinationKind,
+    PreferenceWarning) then
   begin
     EditAbbreviation.Text := Abbreviation;
-    UseIndexedOccurrences := (rgConcordanceType.ItemIndex = 1) and
-      (ContextMode = ccmReferencesOnly);
-    if UseIndexedOccurrences then
-      UseIndexedOccurrences := FProject.PrepareConcordanceExport(True);
-    FormPleaseWait.BeginOperation(Self, SExportConcordanceTitle,
-      SExportConcordanceProgress, 1, SaveConcordanceDialog.FileName);
-    try
-      ExportResult := FProject.ExportConcordance(SaveConcordanceDialog.FileName,
-        FormPleaseWait.ProgressBar1, Options, Abbreviation,
-        ContextMode, seConcordanceMaxCharacters.Value,
-        UseIndexedOccurrences,
-        @ConcordanceExportProgress);
-    finally
-      FormPleaseWait.FinishOperation;
-    end;
+    ExportResult := PerformConcordanceExport(SaveConcordanceDialog.FileName,
+      Options, Abbreviation, ContextMode, seConcordanceMaxCharacters.Value);
     if ExportResult.Status <> esFailed then
-    begin
-      SaveStoredExportFileName(ConcordanceLastFileKey,
-        ExportResult.OutputFileName);
       PersistConcordanceOptions(Abbreviation);
-    end;
-    ShowExportResult(ExportResult);
+    ShowExportResult(ExportResult, PreferenceWarning);
   end;
 end;
 
-procedure TProjectExportForm.ShowExportResult(const ExportResult: TExportResult);
+function TProjectExportForm.PerformTaggedDestinationExport(
+  const FileName: string; Options: TOpcoesExportacao): TExportResult;
+begin
+  FormPleaseWait.BeginOperation(Self, SExportTaggedDestinationTitle,
+    SExportTaggedDestinationProgress, 1, FileName);
+  try
+    Result := FProject.ExportDestinationTextWithStrongs(FileName,
+      FormPleaseWait.ProgressBar1, Options);
+  finally
+    FormPleaseWait.FinishOperation;
+  end;
+end;
+
+function TProjectExportForm.PerformInterlinearSourceExport(
+  const FileName: string; Options: TOpcoesExportacao): TExportResult;
+begin
+  FormPleaseWait.BeginOperation(Self, SExportInterlinearTitle,
+    SExportInterlinearProgress, 1, FileName);
+  try
+    Result := FProject.ExportInterlinearText(FileName,
+      FormPleaseWait.ProgressBar1, Options);
+  finally
+    FormPleaseWait.FinishOperation;
+  end;
+end;
+
+function TProjectExportForm.PerformConcordanceExport(const FileName: string;
+  Options: TOpcoesExportacao; const Abbreviation: string;
+  ContextMode: TConcordanceContextMode;
+  ContextMaxCharacters: Integer): TExportResult;
+var
+  UseIndexedOccurrences: Boolean;
+begin
+  UseIndexedOccurrences := not (oeConcordDetalhada in Options) and
+    (ContextMode = ccmReferencesOnly);
+  if UseIndexedOccurrences then
+    UseIndexedOccurrences := FProject.PrepareConcordanceExport(True);
+  FormPleaseWait.BeginOperation(Self, SExportConcordanceTitle,
+    SExportConcordanceProgress, 1, FileName);
+  try
+    Result := FProject.ExportConcordance(FileName,
+      FormPleaseWait.ProgressBar1, Options, Abbreviation,
+      ContextMode, ContextMaxCharacters, UseIndexedOccurrences,
+      @ConcordanceExportProgress);
+  finally
+    FormPleaseWait.FinishOperation;
+  end;
+end;
+
+function TProjectExportForm.BuildExportResultMessage(
+  const ExportResult: TExportResult; const PreferenceWarning: string;
+  out DialogTitle: string; out DialogType: TMsgDlgType): string;
+begin
+  if (ExportResult.Status = esSuccess) and (PreferenceWarning = '') then
+  begin
+    DialogTitle := SExportCompletedTitle;
+    DialogType := mtConfirmation;
+    Exit(Format(SExportCompletedPrompt, [ExportResult.OutputFileName]));
+  end;
+
+  if ExportResult.Status = esFailed then
+  begin
+    DialogTitle := SExportFailedTitle;
+    DialogType := mtError;
+    Result := ExportResult.ErrorMessage;
+  end
+  else
+  begin
+    DialogTitle := SExportCompletedTitle;
+    DialogType := mtConfirmation;
+    Result := SExportCompletedMessage + LineEnding + LineEnding +
+      ExportResult.OutputFileName;
+    if ExportResult.Status = esWarnings then
+    begin
+      DialogTitle := SExportWarningsTitle;
+      DialogType := mtWarning;
+      Result := Format(SExportWarningsMessage, [ExportResult.WarningCount]) +
+        LineEnding + LineEnding + ExportResult.OutputFileName;
+      if ExportResult.ErrorReportFileName <> '' then
+        Result := Result + LineEnding + LineEnding +
+          Format(SExportReportLocation, [ExportResult.ErrorReportFileName]);
+      if ExportResult.ErrorMessage <> '' then
+        Result := Result + LineEnding + LineEnding + ExportResult.ErrorMessage;
+    end;
+  end;
+
+  if PreferenceWarning <> '' then
+  begin
+    Result := Result + LineEnding + LineEnding + PreferenceWarning;
+    if ExportResult.Status <> esFailed then
+    begin
+      DialogTitle := SExportWarningsTitle;
+      DialogType := mtWarning;
+    end;
+  end;
+  if ExportResult.Status <> esFailed then
+    Result := Result + LineEnding + LineEnding + SExportOpenLocation;
+end;
+
+procedure TProjectExportForm.ShowExportResult(const ExportResult: TExportResult;
+  const PreferenceWarning: string);
 var
   MessageText, DialogTitle: string;
   DialogType: TMsgDlgType;
 begin
+  MessageText := BuildExportResultMessage(ExportResult, PreferenceWarning,
+    DialogTitle, DialogType);
   if ExportResult.Status = esFailed then
   begin
-    MessageDlg(SExportFailedTitle, ExportResult.ErrorMessage, mtError, [mbOK], 0);
+    MessageDlg(DialogTitle, MessageText, DialogType, [mbOK], 0);
     Exit;
-  end;
-
-  DialogTitle := SExportCompletedTitle;
-  DialogType := mtConfirmation;
-  MessageText := Format(SExportCompletedPrompt, [ExportResult.OutputFileName]);
-  if ExportResult.Status = esWarnings then
-  begin
-    DialogTitle := SExportWarningsTitle;
-    DialogType := mtWarning;
-    MessageText := Format(SExportWarningsMessage, [ExportResult.WarningCount]) +
-      LineEnding + LineEnding + ExportResult.OutputFileName;
-    if ExportResult.ErrorReportFileName <> '' then
-      MessageText := MessageText + LineEnding + LineEnding +
-        Format(SExportReportLocation, [ExportResult.ErrorReportFileName]);
-    if ExportResult.ErrorMessage <> '' then
-      MessageText := MessageText + LineEnding + LineEnding +
-        ExportResult.ErrorMessage;
-    MessageText := MessageText + LineEnding + LineEnding + SExportOpenLocation;
   end;
   if MessageDlg(DialogTitle, MessageText, DialogType, [mbYes, mbNo], 0) <> mrYes then
     Exit;
