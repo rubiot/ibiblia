@@ -401,7 +401,10 @@ begin
         WriteTheWordBible(Lines, Staging.StagingFileName, Options.Properties,
           Options.Direction);
       end;
-    Staging.Publish;
+    if SameText(ExtractFileExt(FileName), '.mybible') then
+      Staging.Publish(epSQLiteModule)
+    else
+      Staging.Publish(epTextModule);
     Result.OutputFileName := Staging.FinalFileName;
     CompleteExport(Result, Errors, Options.ErrorReportFileName);
     except
@@ -501,7 +504,10 @@ begin
       else
         WriteTheWordBible(Lines, Staging.StagingFileName, Options.Properties,
           Options.Direction);
-    Staging.Publish;
+    if SameText(ExtractFileExt(FileName), '.mybible') then
+      Staging.Publish(epSQLiteModule)
+    else
+      Staging.Publish(epTextModule);
     Result.OutputFileName := Staging.FinalFileName;
     CompleteExport(Result, Errors, Options.ErrorReportFileName);
     except
@@ -861,7 +867,7 @@ begin
     end;
 
     FreeAndNil(Dictionary);
-    Staging.Publish;
+    Staging.Publish(epSQLiteModule);
     Result.OutputFileName := Staging.FinalFileName;
     CompleteExport(Result, Errors, Options.ErrorReportFileName);
     except

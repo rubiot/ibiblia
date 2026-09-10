@@ -26,6 +26,7 @@ type
     procedure PublishReplacesExistingUnicodeDestination;
     procedure LockedDestinationPreservesOldFile;
     procedure ClosedMySwordAndDictionaryModulesCanBePublished;
+    procedure InvalidStagedDatabasePreservesExistingTarget;
   end;
 
 implementation
@@ -213,7 +214,7 @@ begin
     finally
       Bible.Free;
     end;
-    Staging.Publish;
+    Staging.Publish(epSQLiteModule);
     AssertEquals(1, DatabaseCount(Staging.FinalFileName, 'Bible'));
   finally
     Staging.Free;
@@ -229,11 +230,36 @@ begin
     finally
       Dictionary.Free;
     end;
-    Staging.Publish;
+    Staging.Publish(epSQLiteModule);
     AssertEquals(1, DatabaseCount(Staging.FinalFileName, 'content'));
   finally
     Staging.Free;
   end;
+end;
+
+procedure TExportFileStagingTests.InvalidStagedDatabasePreservesExistingTarget;
+var
+  Staging: TExportFileStaging;
+  ErrorMessage, StagingName: string;
+begin
+  WriteBytes(TempPath('invalid.dct.twm'), 'previous export');
+  Staging := TExportFileStaging.Create(TempPath('invalid.dct.twm'));
+  StagingName := Staging.StagingFileName;
+  try
+    WriteBytes(StagingName, 'invalid staged database');
+    ErrorMessage := '';
+    try
+      Staging.Publish(epSQLiteModule);
+    except
+      on E: Exception do ErrorMessage := E.Message;
+    end;
+    AssertTrue('An invalid source must not fall back to replacing the destination',
+      ErrorMessage <> '');
+    AssertEquals('previous export', ReadBytes(Staging.FinalFileName));
+  finally
+    Staging.Free;
+  end;
+  AssertFalse(FileExists(StagingName));
 end;
 
 initialization

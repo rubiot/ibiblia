@@ -6,7 +6,8 @@ unit project_exporter_integration_test;
 interface
 
 uses
-  Classes, SysUtils, DB, fpcunit, testregistry, sqlite3conn, sqldb,
+  {$IFDEF WINDOWS}Windows,{$ENDIF}
+  Classes, SysUtils, DB, fpcunit, testregistry, sqlite3conn, sqldb, sqlite3dyn,
   BibleScope, project_persistence, project_verse_repository,
   verse_render_buffer, project_exporter, text_direction, rf_note_scanner,
   ConcordanceExport;
@@ -42,12 +43,16 @@ type
     procedure WarningExportReturnsReportAndKeepsFallbackText;
     procedure ReportFailureDoesNotUndoPublishedModule;
     procedure LockedTheWordTargetReturnsFailureAndPreservesBytes;
+    procedure TaggedTheWordExportUpdatesSameOpenReadHandle;
+    procedure InterlinearTheWordExportUpdatesSameOpenReadHandle;
+    procedure ConcordanceExportUpdatesSameOpenSQLiteConnection;
     procedure MySwordWriteFailurePreservesPreviousOrAbsentOutput;
     procedure ConcordancePublishesReadableDatabase;
     procedure ConcordanceReadFailurePreservesPreviousOutput;
   end;
 
 implementation
+
 
 const
   SOURCE_TEXT = 'Logos<WG3056>';
@@ -435,6 +440,213 @@ end;
 begin
 end;
 {$ENDIF}
+
+procedure TProjectExporterIntegrationTests.TaggedTheWordExportUpdatesSameOpenReadHandle;
+{$IFDEF WINDOWS}
+var
+  FileName: string;
+  Handle: THandle;
+  Reader: THandleStream;
+  BeforeBytes, AfterBytes: RawByteString;
+  ExportResult: TExportResult;
+begin
+  FileName := FExportWithoutCommentsFileName + '.ont';
+  Handle := INVALID_HANDLE_VALUE;
+  Reader := nil;
+  try
+    ExportResult := FExporter.ExportDestinationTextWithStrongs(
+      FileName, nil, NewOptions(False), nil, nil, nil);
+    AssertEquals(ExportResult.ErrorMessage, Ord(esSuccess), Ord(ExportResult.Status));
+    Handle := CreateFileW(PWideChar(UTF8Decode(FileName)), GENERIC_READ,
+      FILE_SHARE_READ or FILE_SHARE_WRITE, nil, OPEN_EXISTING,
+      FILE_ATTRIBUTE_NORMAL, 0);
+    AssertTrue('theWord-style reader must open without delete sharing',
+      Handle <> INVALID_HANDLE_VALUE);
+    Reader := THandleStream.Create(Handle);
+    SetLength(BeforeBytes, Reader.Size);
+    if BeforeBytes <> '' then Reader.ReadBuffer(BeforeBytes[1], Length(BeforeBytes));
+    AssertTrue(Pos('<WG3056>', string(BeforeBytes)) > 0);
+    AssertEquals(0, Pos(EXPORTED_EDITORIAL_RF, string(BeforeBytes)));
+
+    ExportResult := FExporter.ExportDestinationTextWithStrongs(
+      FileName, nil, NewOptions(True), nil, nil, nil);
+    AssertEquals('A reader allowing writes must not prevent tagged ONT publication: ' +
+      ExportResult.ErrorMessage, Ord(esSuccess), Ord(ExportResult.Status));
+    AssertEquals(FileName, ExportResult.OutputFileName);
+    Reader.Position := 0;
+    SetLength(AfterBytes, Reader.Size);
+    if AfterBytes <> '' then Reader.ReadBuffer(AfterBytes[1], Length(AfterBytes));
+    AssertTrue('The already-open handle must observe the new module contents',
+      BeforeBytes <> AfterBytes);
+    AssertTrue(Pos('<WG3056>', string(AfterBytes)) > 0);
+    AssertTrue(Pos(NATIVE_RF, string(AfterBytes)) > 0);
+    AssertTrue(Pos(EXPORTED_EDITORIAL_RF, string(AfterBytes)) > 0);
+    AssertEquals('Path and existing handle must identify the updated module',
+      string(AfterBytes), string(ReadBinaryFile(FileName)));
+  finally
+    Reader.Free;
+    if Handle <> INVALID_HANDLE_VALUE then CloseHandle(Handle);
+    DeleteFile(FileName);
+  end;
+end;
+{$ELSE}
+begin
+end;
+{$ENDIF}
+
+procedure TProjectExporterIntegrationTests.InterlinearTheWordExportUpdatesSameOpenReadHandle;
+{$IFDEF WINDOWS}
+var
+  FileName: string;
+  Handle: THandle;
+  Reader: THandleStream;
+  BeforeBytes, AfterBytes: RawByteString;
+  Options: TInterlinearTextExportOptions;
+  ExportResult: TExportResult;
+begin
+  FileName := FExportWithCommentsFileName + '.ont';
+  Handle := INVALID_HANDLE_VALUE;
+  Reader := nil;
+  try
+    Options := Default(TInterlinearTextExportOptions);
+    Options.Direction := tdLeftToRight;
+    Options.Properties := 'short.title=Open interlinear module test';
+    ExportResult := FExporter.ExportInterlinearText(
+      FileName, nil, nil, nil, Options, nil, nil, nil);
+    AssertEquals(ExportResult.ErrorMessage, Ord(esSuccess), Ord(ExportResult.Status));
+    Handle := CreateFileW(PWideChar(UTF8Decode(FileName)), GENERIC_READ,
+      FILE_SHARE_READ or FILE_SHARE_WRITE, nil, OPEN_EXISTING,
+      FILE_ATTRIBUTE_NORMAL, 0);
+    AssertTrue('theWord-style reader must open without delete sharing',
+      Handle <> INVALID_HANDLE_VALUE);
+    Reader := THandleStream.Create(Handle);
+    SetLength(BeforeBytes, Reader.Size);
+    if BeforeBytes <> '' then Reader.ReadBuffer(BeforeBytes[1], Length(BeforeBytes));
+    AssertTrue(Pos('<sup>Word</sup>', string(BeforeBytes)) > 0);
+
+    FPersistence.LocateReference('1,1,1');
+    FPersistence.BeginCurrentEdit;
+    FPersistence.SetCurrentFieldAsString('pare_texto_destino',
+      'ChangedInterlinear' + NATIVE_RF + ' tail');
+    FPersistence.PostCurrentEdit;
+    ExportResult := FExporter.ExportInterlinearText(
+      FileName, nil, nil, nil, Options, nil, nil, nil);
+    AssertEquals('A reader allowing writes must not prevent interlinear ONT publication: ' +
+      ExportResult.ErrorMessage, Ord(esSuccess), Ord(ExportResult.Status));
+    AssertEquals(FileName, ExportResult.OutputFileName);
+    Reader.Position := 0;
+    SetLength(AfterBytes, Reader.Size);
+    if AfterBytes <> '' then Reader.ReadBuffer(AfterBytes[1], Length(AfterBytes));
+    AssertTrue('The existing handle must read the changed interlinear verse',
+      BeforeBytes <> AfterBytes);
+    AssertTrue(Pos('<sup>ChangedInterlinear</sup>', string(AfterBytes)) > 0);
+    AssertTrue(Pos('<WG3056>', string(AfterBytes)) > 0);
+    AssertEquals('Path and existing handle must identify the updated module',
+      string(AfterBytes), string(ReadBinaryFile(FileName)));
+  finally
+    Reader.Free;
+    if Handle <> INVALID_HANDLE_VALUE then CloseHandle(Handle);
+    DeleteFile(FileName);
+  end;
+end;
+{$ELSE}
+begin
+end;
+{$ENDIF}
+
+procedure TProjectExporterIntegrationTests.ConcordanceExportUpdatesSameOpenSQLiteConnection;
+var
+  FileName, BeforeContent, AfterContent: string;
+  ExportResult: TExportResult;
+  Options: TConcordanceExportOptions;
+  Connection: TSQLite3Connection;
+  OriginalHandle: PtrUInt;
+
+  function ReadScalar(const SQL: string): string;
+  var
+    Database: psqlite3;
+    Statement: psqlite3_stmt;
+    Code: Integer;
+  begin
+    Database := psqlite3(Connection.Handle);
+    Statement := nil;
+    try
+      // prepare_v2 refreshes the schema cache after an external SQLite backup.
+      // FPC's SQLDB sqlite3_prepare path does not retry SQLITE_SCHEMA.
+      Code := sqlite3_prepare_v2(Database, PAnsiChar(SQL), -1, @Statement, nil);
+      AssertEquals('Preparing the scalar query must succeed: ' + SQL + ' / ' +
+        string(sqlite3_errmsg(Database)), SQLITE_OK, Code);
+      Code := sqlite3_step(Statement);
+      AssertEquals('The concordance must contain the requested scalar: ' + SQL + ' / ' +
+        string(sqlite3_errmsg(Database)), SQLITE_ROW, Code);
+      Result := string(sqlite3_column_text(Statement, 0));
+      Code := sqlite3_step(Statement);
+      AssertEquals('The scalar query must finish without additional rows: ' + SQL + ' / ' +
+        string(sqlite3_errmsg(Database)), SQLITE_DONE, Code);
+    finally
+      if Assigned(Statement) then sqlite3_finalize(Statement);
+    end;
+  end;
+
+begin
+  FileName := FExportWithoutCommentsFileName + '.dct.twm';
+  Connection := nil;
+  try
+    Options := Default(TConcordanceExportOptions);
+    Options.Mode := cemSynthetic;
+    Options.ContextMode := ccmReferencesOnly;
+    Options.Abbreviation := 'before';
+    FExporter.Attach(etNT, FRepository, FRenderBuffer);
+    ExportResult := FExporter.ExportConcordance(FileName, nil, Options, nil, nil, nil);
+    AssertEquals('Initial concordance export must succeed: ' + ExportResult.ErrorMessage,
+      Ord(esSuccess), Ord(ExportResult.Status));
+
+    Connection := TSQLite3Connection.Create(nil);
+    Connection.Transaction := TSQLTransaction.Create(Connection);
+    Connection.DatabaseName := FileName;
+    Connection.Open;
+    OriginalHandle := PtrUInt(Connection.Handle);
+    AssertEquals('The initial connection must read the original abbreviation',
+      'before', ReadScalar('select value from config where name = ''abbrev'''));
+    BeforeContent := ReadScalar('select c.data from content c ' +
+      'join topics t on t.id = c.topic_id where t.subject = ''G3056''');
+    // Association suggestion keys normalize exported phrases to lowercase.
+    AssertTrue('The original G3056 entry must contain the normalized translation: ' +
+      Copy(BeforeContent, 1, 180), Pos('word', BeforeContent) > 0);
+    AssertTrue('Reader connection stays open after finalizing statements', Connection.Connected);
+    AssertFalse('Publication must run without a pending reader transaction',
+      Connection.Transaction.Active);
+    AssertEquals('The finalized native reader must be in SQLite autocommit mode', 1,
+      sqlite3_get_autocommit(psqlite3(Connection.Handle)));
+
+    FPersistence.LocateReference('1,1,1');
+    FPersistence.BeginCurrentEdit;
+    FPersistence.SetCurrentFieldAsString('pare_texto_destino',
+      'ChangedConcordance' + NATIVE_RF + ' tail');
+    FPersistence.PostCurrentEdit;
+    Options.Abbreviation := 'after';
+    ExportResult := FExporter.ExportConcordance(FileName, nil, Options, nil, nil, nil);
+    AssertEquals('An open idle SQLite connection must permit concordance publication: ' +
+      ExportResult.ErrorMessage, Ord(esSuccess), Ord(ExportResult.Status));
+    AssertEquals('Updated concordance must report the requested destination',
+      FileName, ExportResult.OutputFileName);
+    AssertTrue('The reader must retain its original SQLite connection handle',
+      Connection.Connected and (PtrUInt(Connection.Handle) = OriginalHandle));
+    AssertEquals('The existing connection must read the new abbreviation',
+      'after', ReadScalar('select value from config where name = ''abbrev'''));
+    AfterContent := ReadScalar('select c.data from content c ' +
+      'join topics t on t.id = c.topic_id where t.subject = ''G3056''');
+    AssertTrue('The same SQLite connection must observe the new entry contents',
+      BeforeContent <> AfterContent);
+    AssertTrue('The updated G3056 entry must contain the new normalized translation: ' +
+      Copy(AfterContent, 1, 180), Pos('changedconcordance', AfterContent) > 0);
+    AssertEquals('The updated module must retain exactly one G3056 topic',
+      '1', ReadScalar('select count(*) from topics where subject = ''G3056'''));
+  finally
+    Connection.Free;
+    DeleteFile(FileName);
+  end;
+end;
 
 procedure TProjectExporterIntegrationTests.MySwordWriteFailurePreservesPreviousOrAbsentOutput;
 var

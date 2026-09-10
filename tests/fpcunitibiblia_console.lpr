@@ -19,6 +19,8 @@ uses
   ai_credential_flow_test,
   project_patch_applier_test,
   export_file_staging_test,
+  export_in_use_test,
+  export_sqlite_publisher_test,
   suggestionmanagertest,
   associationmemoryservicetest,
   concordanceexporttest,

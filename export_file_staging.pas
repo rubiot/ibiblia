@@ -8,6 +8,8 @@ uses
   SysUtils;
 
 type
+  TExportPublishMode = (epReplaceFile, epTextModule, epSQLiteModule);
+
   TExportFileStaging = class
   private
     FFinalFileName: string;
@@ -16,16 +18,20 @@ type
   public
     constructor Create(const AFinalFileName: string);
     destructor Destroy; override;
-    procedure Publish;
+    procedure Publish(Mode: TExportPublishMode = epReplaceFile);
     property StagingFileName: string read FStagingFileName;
     property FinalFileName: string read FFinalFileName;
   end;
 
 implementation
 
+uses export_text_publisher, export_sqlite_publisher
 {$IFDEF WINDOWS}
-uses Windows;
+  , Windows
+{$ENDIF}
+  ;
 
+{$IFDEF WINDOWS}
 const
   ExportMoveFileWriteThrough = $00000008;
 {$ENDIF}
@@ -61,17 +67,17 @@ var
 begin
   if FStagingFileName <> '' then
     for Suffix in Suffixes do
-      if (Suffix <> '') or not FPublished then
-        SysUtils.DeleteFile(FStagingFileName + Suffix);
+      SysUtils.DeleteFile(FStagingFileName + Suffix);
   inherited Destroy;
 end;
 
-procedure TExportFileStaging.Publish;
+procedure TExportFileStaging.Publish(Mode: TExportPublishMode);
 {$IFDEF WINDOWS}
 var
   StagedName, FinalName: UnicodeString;
   Handle: THandle;
   ErrorCode: Integer;
+  TextPublisher: TExportTextPublisher;
 {$ENDIF}
 begin
   if FPublished then
@@ -79,6 +85,20 @@ begin
   if not FileExists(FStagingFileName) then
     raise Exception.CreateFmt('The staged export is missing: %s',
       [FStagingFileName]);
+  if (Mode = epSQLiteModule) and FileExists(FFinalFileName) then
+  begin
+    try
+      // SQLite coordinates with open connections and journals. Replacing the
+      // file identity would bypass that coordination, especially with WAL.
+      PublishExistingSQLiteExport(FStagingFileName, FFinalFileName);
+      FPublished := True;
+      Exit;
+    except
+      on E: ESQLiteExportPublishError do
+        if not E.DestinationInvalid then raise;
+    end;
+    // An existing non-database can still be replaced by the completed module.
+  end;
   {$IFDEF WINDOWS}
   StagedName := UTF8Decode(FStagingFileName);
   FinalName := UTF8Decode(FFinalFileName);
@@ -97,6 +117,19 @@ begin
     MOVEFILE_REPLACE_EXISTING or ExportMoveFileWriteThrough) then
   begin
     ErrorCode := GetLastOSError;
+    if (Mode = epTextModule) and FileExists(FFinalFileName) and
+       (ErrorCode in [ERROR_ACCESS_DENIED, ERROR_SHARING_VIOLATION,
+         ERROR_LOCK_VIOLATION]) then
+    begin
+      TextPublisher := TExportTextPublisher.Create;
+      try
+        TextPublisher.Publish(FStagingFileName, FFinalFileName);
+        FPublished := True;
+        Exit;
+      finally
+        TextPublisher.Free;
+      end;
+    end;
     raise Exception.CreateFmt('Could not publish the export to %s: %s',
       [FFinalFileName, SysErrorMessage(ErrorCode)]);
   end;

@@ -21,8 +21,37 @@ quando os dois versículos estão realmente vazios.
 ## Exportação
 
 theWord, MySword e concordância são escritos em arquivo temporário na mesma
-pasta do destino. O destino só é substituído depois de concluir e fechar a
-gravação. Uma falha mantém o arquivo anterior e remove os temporários.
+pasta do destino. A geração e o fechamento desse arquivo terminam antes de
+alterar o destino.
+
+Atualizar módulos abertos no theWord não depende de renomear o arquivo:
+
+- Texto theWord: a substituição por renomeação continua sendo a primeira
+  opção. Quando o Windows bloqueia essa operação, mas permite escrever, o
+  exportador abre o arquivo existente sem truncá-lo, impede outros escritores
+  e salva um backup completo antes de copiar o novo conteúdo. Uma falha
+  detectada restaura os bytes e o tamanho anteriores no mesmo arquivo.
+- Concordância e MySword: um banco existente é atualizado pela API de backup
+  do SQLite, numa transação que respeita conexões abertas e o journal/WAL.
+  Uma transação conflitante continua produzindo erro, preservando a saída.
+  Bancos SQLite nunca passam pela cópia direta usada para texto.
+
+A atualização SQLite invalida consultas preparadas anteriormente. Clientes
+com a API legada precisam prepará-las novamente ao receber SQLITE_SCHEMA;
+o exportador não mascara essa mudança de esquema. Os testes usam a mesma
+conexão aberta com sqlite3_prepare_v2, que faz essa recuperação. A atualização
+visual e os caches internos do theWord ainda dependem de recarregar o módulo
+quando necessário; a validação automatizada não controla a interface dele.
+
+A atualização de texto no arquivo aberto não é uma troca instantânea para
+leitores. Se houver encerramento abrupto ou falha na restauração, o backup
+permanece ao lado do destino, com sufixo ".export-backup-UUID". Uma falha de
+restauração informa esse caminho. Backups são removidos somente após confirmar
+a gravação ou a restauração. Arquivos que também bloqueiam escrita continuam
+protegidos; o exportador não encerra o theWord nem força a liberação de locks.
+
+Referências técnicas: [compartilhamento de arquivos no Windows](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilew)
+e [transação da API de backup do SQLite](https://sqlite.org/c3ref/backup_finish.html).
 
 Os chamadores recebem TExportResult: sucesso, sucesso com avisos ou falha,
 quantidade de versículos processados, caminho publicado, relatório e erro.
@@ -68,6 +97,15 @@ Em outras plataformas, novas chaves permanecem apenas na sessão. Credenciais
 antigas não são removidas sem um armazenamento local persistente disponível.
 
 ## Verificação
+
+Validação da atualização de módulos em uso em 10/09/2026: build Release
+concluído e 764 testes executados, sem erros nem falhas. Foram adicionadas 24
+regressões para leitores mantendo o arquivo aberto, publicação SQLite,
+bloqueios reais do Windows, falhas de gravação/restauração e retenção de backup.
+Os testes de integração exportam texto com Strong, interlinear e concordância,
+verificando os dados pelo mesmo handle/conexão aberto antes da atualização.
+Todos usam arquivos temporários; nenhum módulo de trabalho foi sobrescrito
+durante essa validação. Logs em outputs/export-in-use-2026-09-10/.
 
 Validação em 06/09/2026: build Release concluído e 740 testes executados,
 sem erros nem falhas (69 regressões adicionadas à base de 671 testes).
