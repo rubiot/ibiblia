@@ -431,6 +431,9 @@ object MainForm: TMainForm
       object MenuItem9: TMenuItem
         Action = ActionSaveProject
       end
+      object MenuItemSaveProjectAs: TMenuItem
+        Action = ActionSaveProjectAs
+      end
       object MenuItem8: TMenuItem
         Action = ActionCloseProject
       end
@@ -620,7 +623,9 @@ object MainForm: TMainForm
       Caption = 'Save as...'
       Enabled = False
       Hint = 'Save as a new project'
+      ShortCut = 24659
       OnExecute = ActionSaveProjectAsExecute
+      OnUpdate = ActionSaveProjectAsUpdate
     end
     object ActionOpenProject: TAction
       Caption = 'Open...'

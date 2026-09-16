@@ -5,7 +5,7 @@ unit ai_credentials_test;
 interface
 
 uses Classes, SysUtils, fpcunit, testregistry, ai_credential_store,
-  ai_credentials, project_persistence;
+  ai_credentials, project_persistence, project_config;
 
 type
   TAICredentialsTests = class(TTestCase)
@@ -21,6 +21,7 @@ type
     procedure SeedInfo(const Key, Value: string);
     function ReadDatabaseInfo(const Key: string): string;
     procedure ReopenCredentials;
+    function CreateDatabaseCopy: string;
     procedure AssertLegacyPreserved;
     procedure AssertSecretAbsent(const Secret: string);
     procedure Migrate;
@@ -43,6 +44,9 @@ type
     procedure MigrationRefusesUnsavedContentWithoutDiscardingIt;
     procedure GenericInfoWritesRejectEverySecretKey;
     procedure AttachingDiscardsUnpersistedSessionChanges;
+    procedure RebindingPreservesStagedValuesAndPreparedReferences;
+    procedure RebindingPreservesSessionOnlyCredentials;
+    procedure ConfigRebindingPreservesCredentialSession;
     procedure WALReaderKeepsCleanupPendingUntilItsSnapshotCloses;
     procedure ConcurrentWriterKeepsLegacyAndStagedCredentialUntilRetry;
     {$IFDEF MSWINDOWS}
@@ -245,6 +249,29 @@ begin
   FPersistence.Close;
   FPersistence.Open(FFileName);
   FCredentials := TAIProjectCredentials.Create(FPersistence, FStore);
+end;
+
+function TAICredentialsTests.CreateDatabaseCopy: string;
+var
+  SourceStream, TargetStream: TFileStream;
+begin
+  Result := GetTempFileName(GetTempDir, 'aic');
+  FPersistence.Close;
+  try
+    SourceStream := TFileStream.Create(FFileName, fmOpenRead or fmShareDenyNone);
+    try
+      TargetStream := TFileStream.Create(Result, fmCreate);
+      try
+        TargetStream.CopyFrom(SourceStream, 0);
+      finally
+        TargetStream.Free;
+      end;
+    finally
+      SourceStream.Free;
+    end;
+  finally
+    FPersistence.Open(FFileName);
+  end;
 end;
 
 procedure TAICredentialsTests.AssertLegacyPreserved;
@@ -560,6 +587,129 @@ begin
   AssertEquals(FSecrets[acsTranslation], FCredentials.Resolve(acsTranslation));
   AssertEquals(0, TFaultStore(FStoreObject).WriteCalls);
   AssertLegacyPreserved;
+end;
+
+procedure TAICredentialsTests.RebindingPreservesStagedValuesAndPreparedReferences;
+var
+  CopyFileName, OldReference, PreparedReference, NewSecret, ErrorMessage: string;
+  CopyPersistence: TProjectPersistence;
+  OriginalBytes: RawByteString;
+  WrittenReferenceCount: Integer;
+begin
+  Migrate;
+  OldReference := ReadDatabaseInfo(AICredentialReferenceKey(acsCommon));
+  CopyFileName := CreateDatabaseCopy;
+  OriginalBytes := FileBytes(FFileName);
+  CopyPersistence := TProjectPersistence.Create;
+  try
+    CopyPersistence.Open(CopyFileName);
+    NewSecret := 'synthetic-rebound-' + NewAICredentialReference;
+    FCredentials.Stage(acsCommon, NewSecret);
+    FCredentials.Stage(acsTranslation, '');
+    TFaultPersistence(FPersistence).FailCommit := True;
+    AssertFalse(FCredentials.PersistAfterSave(ErrorMessage));
+    AssertTrue(FCredentials.HasPendingChanges);
+    WrittenReferenceCount := TFaultStore(FStoreObject).WrittenReferences.Count;
+    PreparedReference := TFaultStore(FStoreObject).WrittenReferences[
+      WrittenReferenceCount - 1];
+
+    FCredentials.RebindPersistence(CopyPersistence);
+    AssertTrue('The credential store must survive the database switch',
+      FCredentials.Store = FStore);
+    AssertTrue(FCredentials.HasPendingChanges);
+    AssertEquals(NewSecret, FCredentials.Resolve(acsCommon));
+    AssertEquals('', FCredentials.Resolve(acsTranslation));
+    TFaultStore(FStoreObject).FailWrite := True;
+    AssertFalse('An unavailable store must keep the rebound values pending',
+      FCredentials.PersistAfterSave(ErrorMessage));
+    AssertEquals(NewSecret, FCredentials.Resolve(acsCommon));
+    AssertTrue(FCredentials.HasPendingChanges);
+    TFaultStore(FStoreObject).FailWrite := False;
+    AssertTrue(ErrorMessage, FCredentials.PersistAfterSave(ErrorMessage));
+    AssertFalse(FCredentials.HasPendingChanges);
+    AssertEquals('A retry after Save As must reuse its prepared reference',
+      PreparedReference, CopyPersistence.ReadInfo(
+        AICredentialReferenceKey(acsCommon)));
+    AssertEquals(WrittenReferenceCount,
+      TFaultStore(FStoreObject).WrittenReferences.Count);
+    AssertEquals('', CopyPersistence.ReadInfo(
+      AICredentialReferenceKey(acsTranslation)));
+    AssertEquals(OldReference, ReadDatabaseInfo(AICredentialReferenceKey(acsCommon)));
+    AssertEquals(OriginalBytes, FileBytes(FFileName));
+    AssertEquals(0, Pos(NewSecret, FileBytes(CopyFileName)));
+  finally
+    FCredentials.RebindPersistence(FPersistence);
+    CopyPersistence.Free;
+    DeleteFixture(CopyFileName);
+  end;
+end;
+
+procedure TAICredentialsTests.RebindingPreservesSessionOnlyCredentials;
+var
+  CopyFileName, NewSecret, ErrorMessage: string;
+  CopyPersistence: TProjectPersistence;
+  SessionCredentials: TAIProjectCredentials;
+  SessionStore: IAICredentialStore;
+  OriginalBytes: RawByteString;
+begin
+  CopyFileName := CreateDatabaseCopy;
+  OriginalBytes := FileBytes(FFileName);
+  CopyPersistence := TProjectPersistence.Create;
+  SessionCredentials := nil;
+  SessionStore := TMemoryAICredentialStore.Create(False);
+  try
+    CopyPersistence.Open(CopyFileName);
+    SessionCredentials := TAIProjectCredentials.Create(FPersistence, SessionStore);
+    NewSecret := 'synthetic-rebound-session-' + NewAICredentialReference;
+    SessionCredentials.Stage(acsCommon, NewSecret);
+    SessionCredentials.RebindPersistence(CopyPersistence);
+    AssertFalse(SessionCredentials.PersistAfterSave(ErrorMessage));
+    AssertTrue(ErrorMessage <> '');
+    AssertTrue(SessionCredentials.HasPendingChanges);
+    AssertEquals(NewSecret, SessionCredentials.Resolve(acsCommon));
+    AssertEquals(OriginalBytes, FileBytes(FFileName));
+    AssertLegacyPreserved;
+    AssertEquals(0, Pos(NewSecret, FileBytes(CopyFileName)));
+  finally
+    SessionCredentials.Free;
+    CopyPersistence.Free;
+    DeleteFixture(CopyFileName);
+  end;
+end;
+
+procedure TAICredentialsTests.ConfigRebindingPreservesCredentialSession;
+var
+  CopyFileName, NewSecret: string;
+  CopyPersistence: TProjectPersistence;
+  Config: TProjectConfig;
+  OriginalBytes: RawByteString;
+begin
+  CopyFileName := CreateDatabaseCopy;
+  OriginalBytes := FileBytes(FFileName);
+  CopyPersistence := TProjectPersistence.Create;
+  Config := nil;
+  try
+    CopyPersistence.Open(CopyFileName);
+    CopyPersistence.StageInfo('title', 'destination title');
+    CopyPersistence.CommitInfo;
+    Config := TProjectConfig.Create(FPersistence);
+    NewSecret := 'synthetic-config-rebind-' + NewAICredentialReference;
+    Config.AICredentials.Stage(acsCommon, NewSecret);
+    Config.RebindPersistence(CopyPersistence);
+    AssertEquals('destination title', Config.ReadString('title'));
+    AssertTrue(Config.AICredentials.HasPendingChanges);
+    AssertEquals(NewSecret, Config.AICredentials.Resolve(acsCommon));
+    Config.WriteString('title', 'edited destination title');
+    CopyPersistence.CommitInfo;
+    AssertEquals('edited destination title', CopyPersistence.ReadInfo('title'));
+    AssertEquals('', ReadDatabaseInfo('title'));
+    AssertEquals(OriginalBytes, FileBytes(FFileName));
+    AssertLegacyPreserved;
+  finally
+    Config.Free;
+    CopyPersistence.Free;
+    DeleteFixture(CopyFileName);
+  end;
 end;
 
 procedure TAICredentialsTests.WALReaderKeepsCleanupPendingUntilItsSnapshotCloses;

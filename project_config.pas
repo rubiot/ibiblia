@@ -31,6 +31,7 @@ type
     destructor Destroy; override;
     property AICredentials: TAIProjectCredentials read FAICredentials;
     procedure Attach(APersistence: TProjectPersistence);
+    procedure RebindPersistence(APersistence: TProjectPersistence);
     class function TextDescriptionKey(textIndex: Integer): string; static;
     class function TextDirectionKey(textIndex: Integer): string; static;
     function HasKey(const key: string): Boolean;
@@ -100,6 +101,12 @@ procedure TProjectConfig.Attach(APersistence: TProjectPersistence);
 begin
   FPersistence := APersistence;
   FAICredentials.Attach(APersistence);
+end;
+
+procedure TProjectConfig.RebindPersistence(APersistence: TProjectPersistence);
+begin
+  FPersistence := APersistence;
+  FAICredentials.RebindPersistence(APersistence);
 end;
 
 class function TProjectConfig.TextDescriptionKey(textIndex: Integer): string;

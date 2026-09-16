@@ -20,6 +20,7 @@ type
     constructor Create(APersistence: TProjectPersistence;
       const AStore: IAICredentialStore = nil);
     procedure Attach(APersistence: TProjectPersistence);
+    procedure RebindPersistence(APersistence: TProjectPersistence);
     function Resolve(Scope: TAICredentialScope): string;
     function TryResolve(Scope: TAICredentialScope; out Secret,
       ErrorMessage: string): Boolean;
@@ -58,6 +59,13 @@ begin
     FValues[Scope] := '';
     FPreparedReferences[Scope] := '';
   end;
+end;
+
+procedure TAIProjectCredentials.RebindPersistence(
+  APersistence: TProjectPersistence);
+begin
+  { Save As changes the backing database without ending the credential session. }
+  FPersistence := APersistence;
 end;
 
 function TAIProjectCredentials.ReadLegacy(Scope: TAICredentialScope): string;

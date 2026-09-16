@@ -194,6 +194,11 @@ type
     FOnSintagmaClick: TOnSintagmaClickEvent;
     FClosing: boolean;
     FAutoSave: boolean;
+    FSaveAsInProgress: Boolean;
+    FSaveAsExecuting: Boolean;
+    FSaveAsPreviousExporting: Boolean;
+    FSaveAsPreviousTimerEnabled: Boolean;
+    FSaveAsPendingChangeNotification: Boolean;
     FIgnoreMissingPatchWarnings: Boolean;
     FAssociationMemoryRebuildRunning: Boolean;
     FAssociationMemoryRebuildFailed: Boolean;
@@ -292,6 +297,8 @@ type
     function BuildChapterSnapshotTextIndexes: TIntegerArray;
     function SaveProjectCore(CaptureCurrentVerse,
       NotifyObservers: Boolean): Boolean;
+    procedure SaveAsSnapshotProgress(Current, Total: Integer;
+      const ReferenceName: string);
     procedure ActivateDestinationVerseEditor;
     procedure AbortDefaultVerseModeTransition;
     procedure BeginDefaultVerseModeNavigation;
@@ -317,6 +324,7 @@ type
       const Layout: TTheWordModuleImportLayout;
       AEnableStagedBatching: Boolean): boolean;
   protected
+    procedure ActivateSavedProject(const NewFileName: string); virtual;
     procedure DispatchNewVerseObserversAfterEdit(Data: PtrInt);
     procedure NotifyNewVerseObserversAfterEdit;
     function CreateTableDataset(db, tableName, keyField: string): TSqlite3Dataset;
@@ -410,6 +418,11 @@ type
     procedure ChangeTokenizerVersion(AValue: Integer;
       ProgressBar: TProgressBar = nil; MigrateAssociations: Boolean = True);
     function SaveProject: Boolean;
+    function CanSaveAs: Boolean;
+    function BeginSaveAs: Boolean;
+    procedure EndSaveAs;
+    function SaveProjectAs(const NewFileName: string;
+      OverwriteExisting: Boolean): Boolean;
     procedure SaveVersePairs(Verse: TVerse); // Save pairs from any verse object (public for AI flows)
     procedure ApplyVerseText(const newText: string; texto: TTipoTextoBiblico; replace: Boolean);
     procedure SuggestAssociationStatistical;
@@ -524,6 +537,7 @@ type
     procedure RemapStatus(OldStatusId, NewStatusId: Integer);
 
     property FileName: string read FFileName;
+    property SaveAsInProgress: Boolean read FSaveAsInProgress;
     property FormattedReference: string read GetFormattedReference;
     property Reference: TReference read FReference;
     property ID: string read GetID;
@@ -598,6 +612,11 @@ type
 {$INCLUDE include/bookdefs.inc}
 
 resourcestring
+  SSaveAsProgressTitle = 'Save project as';
+  SSaveAsProgressMessage = 'Preparing the project copy...';
+  SSaveAsDestinationRequired = 'Choose a file name for the project copy.';
+  SSaveAsOverwriteRequired = 'The destination already exists. Confirm replacement before saving: %s';
+  SSaveAsActivationFailed = 'The project copy was saved to %s, but could not be activated. The original project remains open with your changes. %s';
   SSetStatusChildren = 'Set status of all children to...';
   SMarkAsFmt = 'Mark %s as...';
   SApplyAITo = 'Apply AI flow to...';
@@ -740,7 +759,8 @@ function TextTypeParticipatesInAssociations(
 implementation
 
 uses FormDictionaryPopup, FormVerseRules, formaiprocessing,
-  theword_module_encoding, performance_debug, status_visuals, ui_style;
+  theword_module_encoding, performance_debug, status_visuals, ui_style,
+  project_save_staging, project_save_snapshot, sqlite_database_copy;
 
 type
   { Executes only the blocking network request outside the LCL thread. Verse
@@ -1869,6 +1889,7 @@ function TProject.ApplyAcceptedBatch(Batch, OriginalData: TAIProcessingBatch;
 var
   Patch: TPatchFile;
 begin
+  if FSaveAsInProgress then Exit(0);
   Result := 0;
   if not Assigned(Batch) then
     Exit;
@@ -1899,6 +1920,11 @@ end;
 procedure TProject.PendingEditorChanged(Sender: TObject);
 begin
   Inc(FCurrentVerseDirtyGeneration);
+  if FSaveAsInProgress then
+  begin
+    FSaveAsPendingChangeNotification := True;
+    Exit;
+  end;
   if Assigned(FOnAlterarVersiculo) then
     FOnAlterarVersiculo;
 end;
@@ -1906,6 +1932,11 @@ end;
 procedure TProject.HandleVerseChanged;
 begin
   Inc(FCurrentVerseDirtyGeneration);
+  if FSaveAsInProgress then
+  begin
+    FSaveAsPendingChangeNotification := True;
+    Exit;
+  end;
   if Assigned(FOnAlterarVersiculo) then
     FOnAlterarVersiculo;
 end;
@@ -3059,6 +3090,7 @@ end;
 
 procedure TProject.QueueAutomaticSuggestionRequest;
 begin
+  if FSaveAsInProgress then Exit;
   if (FDefaultVerseModeNavigationDepth > 0) or
      FAutomaticSuggestionReference.IsEmpty or
      FAutomaticSuggestionRequestQueued then
@@ -3073,6 +3105,7 @@ var
   RequestedGeneration: QWord;
 begin
   FAutomaticSuggestionRequestQueued := False;
+  if FSaveAsInProgress then Exit;
   if FDefaultVerseModeNavigationDepth > 0 then
     Exit;
 
@@ -3109,6 +3142,7 @@ var
   VerseLoadStarted: Boolean;
   //starttime: DWord;
 begin
+  if FSaveAsInProgress then Exit;
   if not FScrollEventsEnabled then
     exit;
 
@@ -3655,7 +3689,7 @@ begin
     usable by project instances that have not opened a persistence store yet. }
   FNewVerseNotificationReference := FLastLoadedReferenceID;
   FNewVerseNotificationGeneration := FVerseLoadGeneration;
-  if FNewVerseNotificationQueued then
+  if FSaveAsInProgress or FNewVerseNotificationQueued then
     Exit;
   FNewVerseNotificationQueued := True;
   Application.QueueAsyncCall(@DispatchNewVerseObserversAfterEdit, 0);
@@ -3668,6 +3702,7 @@ var
   EditedGeneration: QWord;
 begin
   FNewVerseNotificationQueued := False;
+  if FSaveAsInProgress then Exit;
   EditedReference := FNewVerseNotificationReference;
   EditedGeneration := FNewVerseNotificationGeneration;
   FNewVerseNotificationReference := '';
@@ -3702,6 +3737,7 @@ var
   s: TSyntagm;
   rtf: string;
 begin
+  if FSaveAsInProgress then Exit;
   if not (Sender is TTimer) then
     Exit;
   Timer := TTimer(Sender);
@@ -3860,6 +3896,7 @@ end;
 
 procedure TProject.QueueDefaultVerseModeRequest;
 begin
+  if FSaveAsInProgress then Exit;
   if (FDefaultVerseModeNavigationDepth > 0) or
      FDefaultVerseModeReference.IsEmpty or
      FDefaultVerseModeRequestQueued then
@@ -3915,6 +3952,7 @@ end;
 
 procedure TProject.RequestDefaultVerseModeForCurrentVerse;
 begin
+  if FSaveAsInProgress then Exit;
   if not FAtivo or FClosing or FExportando or not Assigned(FPersistence) or
      (Assigned(FVerseMemo) and FVerseMemo.IsTransitioning) or
      not Assigned(FAVersiculo[tbDestino]) or
@@ -3940,6 +3978,7 @@ var
   RequestedReference: string;
 begin
   FDefaultVerseModeRequestQueued := False;
+  if FSaveAsInProgress then Exit;
   { Next/Previous/First/Last still have post-navigation work after the dataset
     fires AfterScroll. If that work pumps the message loop, preserve the
     request until suggestions and any Association-memory rebuild have ended. }
@@ -4296,6 +4335,9 @@ begin
   FTblInfo            := nil;
   FEscopo             := etNone;
   FClosing            := false;
+  FSaveAsInProgress := False;
+  FSaveAsExecuting := False;
+  FSaveAsPendingChangeNotification := False;
   FAssociationMemoryRebuildRunning := False;
   FAssociationMemoryRebuildFailed := False;
   FAssociationMemoryLiveEditPending := False;
@@ -4600,6 +4642,7 @@ var
   SavedChapterViewText: TTipoTextoBiblico;
   SavedMarker: string;
 begin
+  if FSaveAsInProgress then Exit(False);
   Result := False;
   if Assigned(FAIManager) then
   begin
@@ -4717,6 +4760,7 @@ end;
 
 function TProject.EnsureAssociationMemoryFresh: Boolean;
 begin
+  if FSaveAsInProgress then Exit(True);
   Result := False;
   if not Assigned(FAssociationMemory) then
     Exit;
@@ -4741,6 +4785,7 @@ var
   BuiltRevisionStaged: Boolean;
   MemoryWasDirty: Boolean;
 begin
+  if FSaveAsInProgress then Exit;
   if FAssociationMemoryRebuildRunning or
     (Assigned(FAssociationMemory) and FAssociationMemory.RebuildActive) then
     Exit;
@@ -4846,6 +4891,7 @@ var
   OldScrollEventsEnabled: Boolean;
   TextType: TTipoTextoBiblico;
 begin
+  if FSaveAsInProgress then Exit;
   // The Association-memory database uses an independent SQLite connection.
   // Release any reader or writer it owns before restoring canonical project
   // rows, otherwise the persistence rollback can fail with SQLITE_BUSY.
@@ -4882,6 +4928,7 @@ end;
 
 procedure TProject.GoToReference(reference: string);
 begin
+  if FSaveAsInProgress then Exit;
   if reference.IsEmpty then
     reference := format('%d,1,1', [OffsetLivros[FEscopo] + 1]);
 
@@ -4904,6 +4951,7 @@ end;
 
 procedure TProject.NavigateToReference(reference: string);
 begin
+  if FSaveAsInProgress then Exit;
   BeginDefaultVerseModeNavigation;
   try
     GoToReference(reference);
@@ -4923,6 +4971,7 @@ var
   TargetReference: string;
   RestoredReference: string;
 begin
+  if FSaveAsInProgress then Exit;
   if not FNavigationHistory.TryGoBack(TargetReference) then
     Exit;
 
@@ -4944,6 +4993,7 @@ var
   TargetReference: string;
   RestoredReference: string;
 begin
+  if FSaveAsInProgress then Exit;
   if not FNavigationHistory.TryGoForward(TargetReference) then
     Exit;
 
@@ -4962,6 +5012,7 @@ end;
 
 procedure TProject.NextVerse;
 begin
+  if FSaveAsInProgress then Exit;
   BeginDefaultVerseModeNavigation;
   try
     if not FPersistence.EOF then
@@ -4973,6 +5024,7 @@ end;
 
 procedure TProject.PreviousVerse;
 begin
+  if FSaveAsInProgress then Exit;
   BeginDefaultVerseModeNavigation;
   try
     if not FPersistence.BOF then
@@ -4984,6 +5036,7 @@ end;
 
 procedure TProject.FirstVerse;
 begin
+  if FSaveAsInProgress then Exit;
   BeginDefaultVerseModeNavigation;
   try
     if not FPersistence.BOF then
@@ -4995,6 +5048,7 @@ end;
 
 procedure TProject.LastVerse;
 begin
+  if FSaveAsInProgress then Exit;
   BeginDefaultVerseModeNavigation;
   try
     if not FPersistence.EOF then
@@ -5006,6 +5060,7 @@ end;
 
 procedure TProject.RefreshUI;
 begin
+  if FSaveAsInProgress then Exit;
   if FAssociationMemorySpeculativeEditPending then
     BeforeVerseScroll(nil);
   AfterVerseScroll(FTblPares);
@@ -5016,6 +5071,7 @@ var
   DestinationVerse: TVerse;
   SourceVerse: TVerse;
 begin
+  if FSaveAsInProgress then Exit;
   if FAssociationMemorySpeculativeEditPending and
     Assigned(FPersistence) then
   begin
@@ -5056,6 +5112,7 @@ procedure TProject.ClearAssociations;
 var
   RecoveringInvalidAssociations: Boolean;
 begin
+  if FSaveAsInProgress then Exit;
   if assigned(FAVersiculo[tbOrigem]) then
   begin
     RecoveringInvalidAssociations :=
@@ -5079,6 +5136,7 @@ function TProject.SaveProjectCore(CaptureCurrentVerse,
 var
   e: TOnNovoVersiculoEvent;
 begin
+  if FSaveAsInProgress then Exit(False);
   Result := False;
   if FAssociationMemoryRebuildRunning or
     (Assigned(FAssociationMemory) and FAssociationMemory.RebuildActive) then
@@ -5108,12 +5166,222 @@ begin
   Result := SaveProjectCore(True, True);
 end;
 
+function TProject.CanSaveAs: Boolean;
+begin
+  Result := FAtivo and Assigned(FPersistence) and not FSaveAsInProgress and
+    not FClosing and not FExportando and not FAssociationMemoryRebuildRunning and
+    not (Assigned(FAssociationMemory) and FAssociationMemory.RebuildActive) and
+    (FDefaultVerseModeNavigationDepth = 0) and
+    not (Assigned(FVerseMemo) and FVerseMemo.IsTransitioning) and
+    (not Assigned(FAIManager) or FAIManager.IsStopped) and
+    (not Assigned(FormPleaseWait) or not FormPleaseWait.OperationActive);
+end;
+
+function TProject.BeginSaveAs: Boolean;
+begin
+  Result := CanSaveAs;
+  if not Result then Exit;
+  FSaveAsPreviousExporting := FExportando;
+  FSaveAsPreviousTimerEnabled := FTemporizador.Enabled;
+  FSaveAsPendingChangeNotification := False;
+  FSaveAsInProgress := True;
+  FExportando := True;
+  FTemporizador.Enabled := False;
+end;
+
+procedure TProject.EndSaveAs;
+begin
+  if not FSaveAsInProgress or FSaveAsExecuting then Exit;
+  FExportando := FSaveAsPreviousExporting;
+  FSaveAsInProgress := False;
+  FTemporizador.Enabled := FSaveAsPreviousTimerEnabled;
+  QueueAutomaticSuggestionRequest;
+  QueueDefaultVerseModeRequest;
+  if (FNewVerseNotificationReference <> '') and
+     not FNewVerseNotificationQueued then
+  begin
+    FNewVerseNotificationQueued := True;
+    Application.QueueAsyncCall(@DispatchNewVerseObserversAfterEdit, 0);
+  end;
+  if FSaveAsPendingChangeNotification then
+  begin
+    FSaveAsPendingChangeNotification := False;
+    if Assigned(FOnAlterarVersiculo) then FOnAlterarVersiculo;
+  end;
+end;
+
+procedure TProject.SaveAsSnapshotProgress(Current, Total: Integer;
+  const ReferenceName: string);
+begin
+  if not Assigned(FormPleaseWait) or not FormPleaseWait.OperationActive then Exit;
+  FormPleaseWait.ProgressBar1.Max := Max(1, Total);
+  FormPleaseWait.ProgressBar1.Position := Current;
+  FormPleaseWait.SetDetail(ReferenceName);
+  TFormPleaseWait.PumpProgressPaintMessages(FormPleaseWait);
+end;
+
+procedure TProject.ActivateSavedProject(const NewFileName: string);
+var
+  NewPersistence, OldPersistence: TProjectPersistence;
+  NewSuggester, OldSuggester: TSuggestionManager;
+  NewMemory, OldMemory: TAssociationMemoryService;
+  NewConfig: TProjectConfig;
+  SavedReference: string;
+  TextType: TTipoTextoBiblico;
+  NewTextIndexes: ACamposTexto;
+begin
+  SavedReference := ID;
+  NewPersistence := nil;
+  NewSuggester := nil;
+  NewMemory := nil;
+  NewConfig := nil;
+  try
+    NewPersistence := TProjectPersistence.Create;
+    NewPersistence.Open(NewFileName);
+    if not NewPersistence.LocateReference(SavedReference) then
+      raise Exception.CreateFmt('Reference not found in project [%s]', [SavedReference]);
+    NewTextIndexes[tbOrigem] := NewPersistence.PairsTable.FieldByName('pare_texto_origem').Index;
+    NewTextIndexes[tbDestino] := NewPersistence.PairsTable.FieldByName('pare_texto_destino').Index;
+    NewTextIndexes[tbConsulta1] := NewPersistence.PairsTable.FieldByName('pare_texto_consulta1').Index;
+    NewTextIndexes[tbConsulta2] := NewPersistence.PairsTable.FieldByName('pare_texto_consulta2').Index;
+    NewConfig := TProjectConfig.Create(NewPersistence);
+    NewSuggester := TSuggestionManager.Create(NewFileName);
+    NewMemory := TAssociationMemoryService.Create;
+    NewMemory.Attach(NewConfig, NewSuggester, FVerseRenderBuffer);
+    NewMemory.ValidateCurrentCache;
+
+    { Prepare every fallible resource while the old session is still owned.
+      Rebinding keeps session-only credential changes and prepared references. }
+    FConfig.RebindPersistence(NewPersistence);
+    try
+      NewMemory.Attach(FConfig, NewSuggester, FVerseRenderBuffer);
+    except
+      FConfig.RebindPersistence(FPersistence);
+      raise;
+    end;
+
+    OldPersistence := FPersistence;
+    OldSuggester := FSuggestionManager;
+    OldMemory := FAssociationMemory;
+    OldPersistence.PairsTable.BeforeScroll := nil;
+    OldPersistence.PairsTable.AfterScroll := nil;
+    OldPersistence.OnContentPendingChanged := nil;
+    FPersistence := NewPersistence;
+    NewPersistence := nil;
+    FSuggestionManager := NewSuggester;
+    NewSuggester := nil;
+    FAssociationMemory := NewMemory;
+    NewMemory := nil;
+    FFileName := NewFileName;
+    FTblPares := FPersistence.PairsTable;
+    FTblInfo := FPersistence.InfoTable;
+    FACamposTexto := NewTextIndexes;
+    FVerseRepository.Attach(FPersistence, FACamposTexto[tbOrigem], FACamposTexto[tbDestino]);
+    FPatchApplier.Attach(FPersistence);
+    FProjectExporter.Attach(FEscopo, FVerseRepository, FVerseRenderBuffer);
+    FPersistence.OnContentPendingChanged := @PendingEditorChanged;
+    FTblPares.BeforeScroll := @BeforeVerseScroll;
+    FTblPares.AfterScroll := @AfterVerseScroll;
+    FAssociationMemoryRebuildFailed := False;
+    FAssociationMemoryLiveEditPending := False;
+    FAssociationMemorySpeculativeEditPending := False;
+    InvalidateChapterSnapshot;
+    for TextType := Low(FAVersiculo) to High(FAVersiculo) do
+      if Assigned(FAVersiculo[TextType]) then
+      begin
+        FAVersiculo[TextType].Modified := False;
+        FAVersiculo[TextType].XMLModified := False;
+      end;
+    CancelAutomaticSuggestionRequest;
+    CancelDefaultVerseModeRequest;
+    Inc(FVerseLoadGeneration);
+    FLastAutomaticSuggestionGeneration := FVerseLoadGeneration;
+    FNewVerseNotificationReference := SavedReference;
+    FNewVerseNotificationGeneration := FVerseLoadGeneration;
+    FSaveAsPendingChangeNotification := True;
+
+    { Closing the old datasets discards their pending buffers. Do not use
+      CloseProject/Rollback, which also persist settings in the old file. }
+    OldMemory.Free;
+    OldSuggester.Free;
+    OldPersistence.Free;
+  finally
+    NewMemory.Free;
+    NewSuggester.Free;
+    NewConfig.Free;
+    NewPersistence.Free;
+  end;
+end;
+
+function TProject.SaveProjectAs(const NewFileName: string;
+  OverwriteExisting: Boolean): Boolean;
+var
+  Destination: string;
+  OwnGuard, OwnProgress: Boolean;
+  Staging: TProjectSaveStaging;
+begin
+  Result := False;
+  if FSaveAsExecuting then Exit;
+  OwnGuard := not FSaveAsInProgress;
+  if OwnGuard and not BeginSaveAs then Exit;
+  OwnProgress := False;
+  Staging := nil;
+  try
+    if Trim(NewFileName) = '' then
+      raise Exception.Create(SSaveAsDestinationRequired);
+    Destination := ExpandFileName(NewFileName);
+    if SamePhysicalFile(FFileName, Destination) then
+    begin
+      if not OverwriteExisting then
+        raise Exception.CreateFmt(SSaveAsOverwriteRequired, [Destination]);
+      EndSaveAs;
+      Exit(SaveProject);
+    end;
+    FSaveAsExecuting := True;
+    Staging := TProjectSaveStaging.Create(Destination, OverwriteExisting);
+    try
+      BeforeVerseScroll(nil);
+    except
+      on EAbort do Exit(False);
+    end;
+    FConfig.StageMarkerForCommit(ID);
+    if Assigned(FormPleaseWait) then
+    begin
+      FormPleaseWait.BeginOperation(Application.MainForm, SSaveAsProgressTitle,
+        SSaveAsProgressMessage, 0, Destination);
+      OwnProgress := True;
+    end;
+    FPersistence.WriteSnapshotTo(Staging.StagingFileName);
+    PrepareProjectSaveSnapshot(Staging.StagingFileName, @SaveAsSnapshotProgress);
+    ValidateSQLiteDatabase(Staging.StagingFileName);
+    Staging.Publish;
+    try
+      ActivateSavedProject(Destination);
+    except
+      on E: Exception do
+        raise Exception.CreateFmt(SSaveAsActivationFailed, [Destination, E.Message]);
+    end;
+    PersistAICredentialsAfterSave;
+    Result := True;
+  finally
+    try
+      Staging.Free;
+      if OwnProgress then FormPleaseWait.FinishOperation;
+    finally
+      FSaveAsExecuting := False;
+      if OwnGuard then EndSaveAs;
+    end;
+  end;
+end;
+
+
 procedure TProject.SuggestAssociationStatistical;
 var
   RequestedReference: string;
   RequestedGeneration: QWord;
   SourceVerse: TVerse;
 begin
+  if FSaveAsInProgress then Exit;
   SourceVerse := FAVersiculo[tbOrigem];
   if not Assigned(FAssociationMemory) or not Assigned(SourceVerse) then
     Exit;
@@ -5147,6 +5415,7 @@ end;
 
 procedure TProject.SuggestAssociation;
 begin
+  if FSaveAsInProgress then Exit;
   case FSuggestionMode of
     smStatistical: SuggestAssociationStatistical;
     smAI:
@@ -5193,6 +5462,7 @@ var
       (v.PairedVerse.ReferenceID = RequestedReference);
   end;
 begin
+  if FSaveAsInProgress then Exit;
   AssociationChanged := False;
   FLastLLMUsage.PromptTokens := 0;
   FLastLLMUsage.CompletionTokens := 0;
@@ -5384,6 +5654,7 @@ end;
 
 procedure TProject.HandleAutoSave(Sender: TObject);
 begin
+  if FSaveAsInProgress then Exit;
   // Called from main thread when autosave interval is reached
   if FAssociationMemoryRebuildRunning or
     (Assigned(FAssociationMemory) and FAssociationMemory.RebuildActive) then
@@ -5503,6 +5774,7 @@ var
   LastProgressPulse: QWord;
   ProgressPulse: QWord;
 begin
+  if FSaveAsInProgress then Exit;
   if not Assigned(FAssociationMemory) or not Assigned(FVerseRepository) then
     exit;
   if FAssociationMemoryRebuildRunning or FAssociationMemory.RebuildActive then
@@ -7138,6 +7410,7 @@ end;
 
 procedure TProject.StartScrollingSession;
 begin
+  if FSaveAsInProgress then Exit;
   CancelDefaultVerseModeRequest;
   FMarker := ID;
   BeforeVerseScroll(nil);
@@ -7147,6 +7420,7 @@ end;
 
 procedure TProject.FinishScrollingSession;
 begin
+  if FSaveAsInProgress then Exit;
   GoToReference(FMarker);
   ScrollEventsEnabled := true;
   FExportando := False;

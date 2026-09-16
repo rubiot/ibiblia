@@ -47,6 +47,7 @@ type
     class function UpdateConfigTable(table: TSqlite3Dataset; const name, value: string): Boolean; static;
     procedure Open(const AFileName: string);
     procedure Close;
+    procedure WriteSnapshotTo(const NewFileName: string);
     function UpdatesPending: Boolean;
     function ContentUpdatesPending: Boolean;
     function LocateReference(const reference: string): Boolean;
@@ -99,7 +100,7 @@ type
 implementation
 
 uses
-  performance_debug, ai_credential_store, sqlite3dyn;
+  performance_debug, ai_credential_store, sqlite3dyn, sqlite_database_copy;
 
 procedure RequireNonSecretInfo(const Key: string);
 begin
@@ -721,6 +722,89 @@ begin
   Result := Copy(ChangeKey, SeparatorIndex + 1, MaxInt);
 end;
 
+procedure TProjectPersistence.WriteSnapshotTo(const NewFileName: string);
+var
+  Connection: TSQLite3Connection;
+  Transaction: TSQLTransaction;
+  Query: TSQLQuery;
+  Index: Integer;
+  Reference, FieldName, SnapshotName: string;
+
+  procedure OverlayInfo(const Values: TStrings);
+  var ValueIndex: Integer;
+  begin
+    Query.SQL.Text :=
+      'insert or replace into info (id, valor) values (:id, :value)';
+    Query.Prepare;
+    for ValueIndex := 0 to Values.Count - 1 do
+    begin
+      RequireNonSecretInfo(Values.Names[ValueIndex]);
+      Query.ParamByName('id').AsString := Values.Names[ValueIndex];
+      Query.ParamByName('value').AsString := Values.ValueFromIndex[ValueIndex];
+      Query.ExecSQL;
+    end;
+    Query.UnPrepare;
+  end;
+
+begin
+  if FFileName.IsEmpty or not Assigned(FPairsTable) or
+    not Assigned(FInfoTable) then
+    raise Exception.Create('Project persistence is not open');
+  if Trim(NewFileName) = '' then
+    raise Exception.Create('A snapshot file name is required');
+  SnapshotName := ExpandFileName(NewFileName);
+  // CopySQLiteDatabase exclusively creates the destination and owns cleanup
+  // until it succeeds. Never delete a rejected existing path.
+  CopySQLiteDatabase(FFileName, SnapshotName, False);
+  try
+    Connection := TSQLite3Connection.Create(nil);
+    try
+      Transaction := TSQLTransaction.Create(Connection);
+      Query := TSQLQuery.Create(Connection);
+      Connection.DatabaseName := SnapshotName;
+      Connection.Transaction := Transaction;
+      Query.DataBase := Connection;
+      Query.Transaction := Transaction;
+      Connection.Open;
+      Transaction.StartTransaction;
+      try
+        for Index := 0 to FPairCurrentValues.Count - 1 do
+        begin
+          Reference := PairReferenceFromChangeKey(FPairCurrentValues.Names[Index]);
+          FieldName := PairFieldFromChangeKey(FPairCurrentValues.Names[Index]);
+          if Reference.IsEmpty or FieldName.IsEmpty or
+            not Assigned(FPairsTable.FindField(FieldName)) or
+            SameText(FieldName, 'pare_id') then
+            raise EProjectPersistenceRecoveryRequired.Create(
+              'A tracked Verse Pair change cannot be copied.');
+          Query.SQL.Text := 'update pares set "' +
+            StringReplace(FieldName, '"', '""', [rfReplaceAll]) +
+            '" = :value where pare_id = :reference';
+          Query.ParamByName('value').AsString := FPairCurrentValues.ValueFromIndex[Index];
+          Query.ParamByName('reference').AsString := Reference;
+          Query.ExecSQL;
+          if Query.RowsAffected <> 1 then
+            raise EProjectPersistenceRecoveryRequired.CreateFmt(
+              'Verse Pair %s could not be copied.', [Reference]);
+        end;
+        // Match ReadInfo, including immediate values deferred by a busy writer.
+        OverlayInfo(FImmediateInfoPending);
+        OverlayInfo(FStagedInfo);
+        OverlayInfo(FSilentStagedInfo);
+        Transaction.Commit;
+      except
+        if Transaction.Active then Transaction.Rollback;
+        raise;
+      end;
+    finally
+      Connection.Free;
+    end;
+    ValidateSQLiteDatabase(SnapshotName);
+  except
+    DeleteSQLiteFiles(SnapshotName);
+    raise;
+  end;
+end;
 procedure TProjectPersistence.RebuildPendingPairUpdates;
 var
   References: TStringList;

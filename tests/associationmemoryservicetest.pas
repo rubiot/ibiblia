@@ -9,7 +9,7 @@ uses
   SuggestionManager, project_persistence, project_config,
   Syntagm, Verse, verse_render_buffer, association_memory_service,
   current_verse_workspace, text_edit_provenance, BibleScope, Project,
-  project_database_bootstrap;
+  project_database_bootstrap, project_save_snapshot;
 
 type
   TProjectReadyOccurrenceRebuildProbe = class(TProgressBar)
@@ -55,6 +55,8 @@ type
     procedure NonCanonicalAssociationOrderIsAccepted;
     procedure ExtractedPairDataPreservesExactDestinationIndexes;
     procedure RebuildSkipsInvalidAssociations;
+    procedure SaveSnapshotRebuildsOnlyDestination;
+    procedure SaveSnapshotPreservesInvalidCanonicalAssociations;
     procedure RenderBufferReuseReleasesParsedSyntagmLists;
     procedure ProjectReadyOccurrencesHonorLimitAndGlobalTotals;
     procedure ProjectReadyOccurrencesNeverRebuildUnavailableMemory;
@@ -1018,6 +1020,84 @@ begin
     if FileExists(ProjectFile) then
       DeleteFile(ProjectFile);
   end;
+end;
+
+procedure TAssociationMemoryServiceTest.SaveSnapshotRebuildsOnlyDestination;
+var
+  SourceFileName, SnapshotFileName: string;
+  SourceBefore, SourceAfter: TMemoryStream;
+  Expected: TStringList;
+  ErrorMessage: string;
+  CacheValid: Boolean;
+begin
+  FManager.AddPair('<wg999>', 'stale');
+  FManager.Commit;
+  CloseServices;
+  SourceFileName := FFileName;
+  SnapshotFileName := GetTempFileName(GetTempDir, 'ibs');
+  SourceBefore := TMemoryStream.Create;
+  SourceAfter := TMemoryStream.Create;
+  Expected := ExpectedPair;
+  Expected.Add('source');
+  Expected.Add('target');
+  try
+    SourceBefore.LoadFromFile(SourceFileName);
+    SourceBefore.SaveToFile(SnapshotFileName);
+    PrepareProjectSaveSnapshot(SnapshotFileName);
+    SourceAfter.LoadFromFile(SourceFileName);
+    AssertEquals('Rebuilding a saved copy must preserve the source file size',
+      SourceBefore.Size, SourceAfter.Size);
+    AssertTrue('Rebuilding a saved copy must preserve every source byte',
+      CompareMem(SourceBefore.Memory, SourceAfter.Memory, SourceBefore.Size));
+
+    FFileName := SnapshotFileName;
+    OpenServices;
+    AssertFalse('A prepared saved copy must have current association memory',
+      FService.NeedsRebuild);
+    AssertTrue(FService.CacheValidated);
+    AssertTrue(FService.RevisionsMatch);
+    AssertEquals(ASSOCIATION_MEMORY_CACHE_VERSION,
+      FConfig.ReadString(ASSOCIATION_MEMORY_CACHE_VERSION_KEY));
+    CacheValid := FManager.ValidatePairs(Expected, ErrorMessage);
+    AssertTrue('The snapshot must rebuild associations from every verse: ' +
+      ErrorMessage, CacheValid);
+    AssertEquals(0, FManager.GetPairOccurrenceCount('<wg999>', 'stale'));
+    AssertEquals(1, FManager.GetPairOccurrenceCount('<wg1>', 'target'));
+    AssertEquals(1, FManager.GetPairOccurrenceCount('source', 'target'));
+    AssertTrue(FPersistence.LocateReference('1,1,1'));
+    AssertEquals('<par a="0" b="0">', FPersistence.CurrentPairs);
+  finally
+    CloseServices;
+    FFileName := SourceFileName;
+    DeleteFile(SnapshotFileName);
+    Expected.Free;
+    SourceAfter.Free;
+    SourceBefore.Free;
+  end;
+end;
+
+procedure TAssociationMemoryServiceTest.
+  SaveSnapshotPreservesInvalidCanonicalAssociations;
+const
+  InvalidAssociations = '<par a="999" b="0">';
+begin
+  AssertTrue(FPersistence.LocateReference('1,1,1'));
+  FPersistence.WriteCurrentPairs(InvalidAssociations);
+  FPersistence.WriteCurrentComments('preserved invalid association comment');
+  FPersistence.WriteCurrentStatus(2);
+  FPersistence.Commit;
+  CloseServices;
+  PrepareProjectSaveSnapshot(FFileName);
+  OpenServices;
+  AssertFalse(FService.NeedsRebuild);
+  AssertTrue(FService.RevisionsMatch);
+  AssertTrue(FPersistence.LocateReference('1,1,1'));
+  AssertEquals(InvalidAssociations, FPersistence.CurrentPairs);
+  AssertEquals('preserved invalid association comment',
+    FPersistence.CurrentComments);
+  AssertEquals(2, FPersistence.CurrentStatus);
+  AssertEquals('Invalid associations must be omitted only from memory',
+    0, FManager.GetPairOccurrenceCount('<wg1>', 'target'));
 end;
 
 initialization

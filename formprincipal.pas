@@ -109,6 +109,7 @@ type
     MenuItemStrongsCount: TMenuItem;
     MenuItemBoldStrongs: TMenuItem;
     MenuItemRecent: TMenuItem;
+    MenuItemSaveProjectAs: TMenuItem;
   MenuItemLlmOptions: TMenuItem;
     MenuItemSynciBiblia: TMenuItem;
     MenuItemSyncTheWord: TMenuItem;
@@ -188,6 +189,7 @@ type
     procedure ActionRollbackCurrentVerseExecute(Sender: TObject);
     procedure ActionExitExecute(Sender: TObject);
     procedure ActionSaveProjectAsExecute(Sender: TObject);
+    procedure ActionSaveProjectAsUpdate(Sender: TObject);
     procedure ActionSaveProjectExecute(Sender: TObject);
     procedure ActionSuggestAssociationExecute(Sender: TObject);
     procedure ActionSyncTheWordVerseExecute(Sender: TObject);
@@ -218,7 +220,8 @@ type
     procedure ProjectNewVerse(Sender: TProject);
     procedure SyntagmClick(Sender: TSyntagm);
     procedure VerseChanged;
-    procedure UpdateRecentProjects(m: TMenuItem);
+    procedure UpdateRecentProjects(m: TMenuItem;
+      const PreviousFileName: string = '');
     procedure LoadRecentProjects(m: TMenuItem);
     procedure SaveRecentProjects(m: TMenuItem);
     procedure RadioGroupStatusDrawItem(Control: TWinControl; Index: Integer;
@@ -477,6 +480,7 @@ resourcestring
   SShortcutNewProject = 'New project';
   SShortcutOpenProject = 'Open project';
   SShortcutSaveProject = 'Save project';
+  SShortcutSaveProjectAs = 'Save the current project to another file';
   SShortcutCloseProject = 'Close project';
   SShortcutProjectSettings = 'Project settings';
   SShortcutExportProject = 'Export project';
@@ -766,6 +770,7 @@ begin
   NormalizeActionHint(ActionCloseProject);
   NormalizeActionHint(ActionProjectProperties);
   NormalizeActionHint(ActionSaveProject);
+  NormalizeActionHint(ActionSaveProjectAs);
   NormalizeActionHint(ActionExportProject);
   NormalizeActionHint(ActionHistoryBack);
   NormalizeActionHint(ActionHistoryForward);
@@ -1331,6 +1336,7 @@ procedure TMainForm.UpdateCommandUI;
 var
   SuggestionMode: TSuggestionMode;
 begin
+  ActionSaveProjectAsUpdate(ActionSaveProjectAs);
   MenuItemAutoSave.Checked := FAutoSaveEnabled;
   MenuItemBoldStrongs.Checked := FBoldStrongsEnabled;
   MenuItemAlwaysOnTop.Checked := FAlwaysOnTopEnabled;
@@ -1410,6 +1416,7 @@ begin
     AddActionShortcut(ActionNewProject, SShortcutNewProject);
     AddActionShortcut(ActionOpenProject, SShortcutOpenProject);
     AddActionShortcut(ActionSaveProject, SShortcutSaveProject);
+    AddActionShortcut(ActionSaveProjectAs, SShortcutSaveProjectAs);
     AddActionShortcut(ActionCloseProject, SShortcutCloseProject);
     AddActionShortcut(ActionProjectProperties, SShortcutProjectSettings);
     AddActionShortcut(ActionExportProject, SShortcutExportProject);
@@ -3221,15 +3228,51 @@ begin
 end;
 
 procedure TMainForm.ActionSaveProjectAsExecute(Sender: TObject);
+var
+  SavingProject: TProject;
+  PreviousFileName: string;
 begin
-  {if CurrentProject <> nil then
-  begin
-    old := CurrentProject.Caminho;
-    CurrentProject.CloseProject(true);
-    CurrentProject.CreateProject(old, );
+  SavingProject := CurrentProject;
+  if not Assigned(SavingProject) then
+    Exit;
+  if not SavingProject.BeginSaveAs then
+    Exit;
+  try
+    ActionSaveProjectAsUpdate(ActionSaveProjectAs);
+    PreviousFileName := SavingProject.Caminho;
+    SaveDialog1.InitialDir := ExtractFileDir(PreviousFileName);
+    SaveDialog1.FileName := ExtractFileName(PreviousFileName);
+    SaveDialog1.DefaultExt := '.bib';
+    SaveDialog1.Filter := OpenDialog1.Filter;
+    SaveDialog1.FilterIndex := 1;
+    SaveDialog1.Options := SaveDialog1.Options +
+      [ofOverwritePrompt, ofPathMustExist, ofNoChangeDir];
+    if not SaveDialog1.Execute then
+      Exit;
 
+    try
+      if SavingProject.SaveProjectAs(SaveDialog1.FileName,
+          FileExists(SaveDialog1.FileName)) then
+      begin
+        UpdateRecentProjects(MenuItemRecent, PreviousFileName);
+        UpdateMainCaption;
+        VerseChanged;
+      end;
+    except
+      on E: Exception do
+        MessageDlg(SaveDialog1.Title, E.Message, mtError, [mbOK], 0);
+    end;
+  finally
+    SavingProject.EndSaveAs;
+    UpdateCommandUI;
+    UpdateStateHeader;
   end;
-  }
+end;
+
+procedure TMainForm.ActionSaveProjectAsUpdate(Sender: TObject);
+begin
+  ActionSaveProjectAs.Enabled := Assigned(CurrentProject) and
+    CurrentProject.CanSaveAs;
 end;
 
 procedure TMainForm.ActionSaveProjectExecute(Sender: TObject);
@@ -3881,7 +3924,8 @@ begin
   UpdateStateHeader;
 end;
 
-procedure TMainForm.UpdateRecentProjects(m: TMenuItem);
+procedure TMainForm.UpdateRecentProjects(m: TMenuItem;
+  const PreviousFileName: string);
 var
   f: TStringList;
   j, k: Integer;
@@ -3891,6 +3935,9 @@ begin
 
   try
     f.Add(CurrentProject.Caminho);
+    if (PreviousFileName <> '') and
+       (PreviousFileName <> CurrentProject.Caminho) then
+      f.Add(PreviousFileName);
 
     for j:=0 to m.Count-1 do
     begin
@@ -4172,7 +4219,7 @@ end;
 {$IFDEF WINDOWS}
 procedure TMainForm.SyncToTwRef(Ref: string);
 begin
-  if (CurrentProject <> nil) then
+  if (CurrentProject <> nil) and not CurrentProject.SaveAsInProgress then
     CurrentProject.NavigateToReference(Ref);
 end;
 
@@ -4218,6 +4265,7 @@ begin
   ActionSaveProject.Caption := SSaveProjectMenu;
   ActionSaveProject.Hint := SShortcutSaveProject;
   ActionSaveProjectAs.Caption := SSaveProjectAsMenu;
+  ActionSaveProjectAs.Hint := SShortcutSaveProjectAs;
   ActionCloseProject.Caption := SCloseProjectMenu;
   ActionCloseProject.Hint := SShortcutCloseProject;
   ActionProjectProperties.Caption := SProjectSettingsMenu;
@@ -4402,7 +4450,7 @@ begin
   ChapterViewTabCtrlChange(ChapterViewTabCtrl);
 
   ActionSaveProject.Enabled := true;
-  ActionSaveProjectAs.Enabled := true;
+  ActionSaveProjectAsUpdate(ActionSaveProjectAs);
   ActionCloseProject.Enabled := true;
   ActionProjectProperties.Enabled := true;
   ActionFirstVerse.Enabled := true;
