@@ -16,6 +16,9 @@ const
   PROJECT_CONFIG_KEY_TOKENIZER_VERSION = 'tokenizer_version';
   PROJECT_CONFIG_KEY_INTERLINEAR_VERSE_RULES = 'propriedades.interlinearview.verserules';
   PROJECT_CONFIG_KEY_INTRALINEAR_VERSE_RULES = 'propriedades.intralinearview.verserules';
+  PROJECT_CONFIG_KEY_SUGGESTION_MODE = 'workflow.suggestion_mode';
+  PROJECT_CONFIG_KEY_AUTOMATIC_SUGGESTION = 'workflow.automatic_suggestion';
+  PROJECT_CONFIG_KEY_DEFAULT_VERSE_MODE = 'workflow.default_verse_mode';
 
 type
   TProjectConfig = class
@@ -30,6 +33,7 @@ type
     procedure Attach(APersistence: TProjectPersistence);
     class function TextDescriptionKey(textIndex: Integer): string; static;
     class function TextDirectionKey(textIndex: Integer): string; static;
+    function HasKey(const key: string): Boolean;
     function ReadString(const key: string; const defaultValue: string = ''): string;
     procedure WriteString(const key, value: string);
     procedure WriteImmediateString(const key, value: string);
@@ -60,6 +64,15 @@ type
       defaultValue: TTextDirection = tdLeftToRight): TTextDirection;
     procedure WriteTextDirection(textIndex: Integer; value: TTextDirection);
     function ReadVerseRules(interlinear: Boolean): string;
+    function HasSuggestionMode: Boolean;
+    function ReadSuggestionMode(defaultValue: Integer): Integer;
+    procedure WriteSuggestionMode(value: Integer);
+    function HasAutomaticSuggestion: Boolean;
+    function ReadAutomaticSuggestion(defaultValue: Boolean): Boolean;
+    procedure WriteAutomaticSuggestion(value: Boolean);
+    function HasDefaultVerseMode: Boolean;
+    function ReadDefaultVerseMode(defaultValue: Integer): Integer;
+    procedure WriteDefaultVerseMode(value: Integer);
   end;
 
 implementation
@@ -97,6 +110,12 @@ end;
 class function TProjectConfig.TextDirectionKey(textIndex: Integer): string;
 begin
   Result := Format('direction.text%d', [textIndex]);
+end;
+
+function TProjectConfig.HasKey(const key: string): Boolean;
+begin
+  Result := Assigned(FPersistence) and
+    not FPersistence.ReadInfo(key).IsEmpty;
 end;
 
 function TProjectConfig.ReadString(const key: string; const defaultValue: string): string;
@@ -271,6 +290,52 @@ begin
     Result := ReadString(PROJECT_CONFIG_KEY_INTERLINEAR_VERSE_RULES)
   else
     Result := ReadString(PROJECT_CONFIG_KEY_INTRALINEAR_VERSE_RULES);
+end;
+
+function TProjectConfig.HasSuggestionMode: Boolean;
+begin
+  Result := HasKey(PROJECT_CONFIG_KEY_SUGGESTION_MODE);
+end;
+
+function TProjectConfig.ReadSuggestionMode(defaultValue: Integer): Integer;
+begin
+  Result := ReadInteger(PROJECT_CONFIG_KEY_SUGGESTION_MODE, defaultValue);
+end;
+
+procedure TProjectConfig.WriteSuggestionMode(value: Integer);
+begin
+  WriteImmediateInteger(PROJECT_CONFIG_KEY_SUGGESTION_MODE, value);
+end;
+
+function TProjectConfig.HasAutomaticSuggestion: Boolean;
+begin
+  Result := HasKey(PROJECT_CONFIG_KEY_AUTOMATIC_SUGGESTION);
+end;
+
+function TProjectConfig.ReadAutomaticSuggestion(defaultValue: Boolean): Boolean;
+begin
+  Result := ReadBoolean(PROJECT_CONFIG_KEY_AUTOMATIC_SUGGESTION,
+    defaultValue);
+end;
+
+procedure TProjectConfig.WriteAutomaticSuggestion(value: Boolean);
+begin
+  WriteImmediateBoolean(PROJECT_CONFIG_KEY_AUTOMATIC_SUGGESTION, value);
+end;
+
+function TProjectConfig.HasDefaultVerseMode: Boolean;
+begin
+  Result := HasKey(PROJECT_CONFIG_KEY_DEFAULT_VERSE_MODE);
+end;
+
+function TProjectConfig.ReadDefaultVerseMode(defaultValue: Integer): Integer;
+begin
+  Result := ReadInteger(PROJECT_CONFIG_KEY_DEFAULT_VERSE_MODE, defaultValue);
+end;
+
+procedure TProjectConfig.WriteDefaultVerseMode(value: Integer);
+begin
+  WriteImmediateInteger(PROJECT_CONFIG_KEY_DEFAULT_VERSE_MODE, value);
 end;
 
 end.

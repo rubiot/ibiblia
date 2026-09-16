@@ -5,7 +5,7 @@ unit FormMergeProjects;
 interface
 
 uses
-  Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
+  ui_style, Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
   StdCtrls, CheckLst;
 
 type
@@ -19,6 +19,8 @@ type
     procedure TargetCheckListClickCheck(Sender: TObject);
   public
     procedure InitializeForm;
+  public
+    procedure AfterConstruction; override;
   end;
 
 var
@@ -49,9 +51,16 @@ begin
   end;
 end;
 
+procedure TFrmMergeProjects.AfterConstruction;
+begin
+  inherited AfterConstruction;
+  ApplyDialogStyle(Self);
+end;
+
+
 initialization
 {$IFNDEF FPCUNIT}
-  {$I FormMergeProjects.lrs}
+  {$R FormMergeProjects.lfm}
 {$ENDIF}
 
 end.

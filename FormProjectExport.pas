@@ -5,7 +5,7 @@ unit FormProjectExport;
 interface
 
 uses
-  Classes, SysUtils, Math, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
+  ui_style, Classes, SysUtils, Math, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
   ComCtrls, StdCtrls, ExtCtrls, Spin, BibleScope, Project, LCLTranslator,
   LCLIntf, LazUTF8, UnitPleaseWait, project_exporter, ConcordanceExport,
   export_destination_history;
@@ -86,6 +86,8 @@ type
     procedure SetProject(Project: TProject);
     procedure ShowExportResult(const ExportResult: TExportResult;
       const PreferenceWarning: string = ''); virtual;
+  public
+    procedure AfterConstruction; override;
   end;
 
 var
@@ -635,6 +637,9 @@ var
   LegacyAbbreviation: string;
 begin
   FProject := Project;
+  Caption := SExportTaggedDestinationTitle;
+  if Assigned(BtnCancel) then
+    BtnCancel.Caption := SUICancel;
   rgConcordanceType.Caption := SConcordanceTypeCaption;
   rgConcordanceType.Items.BeginUpdate;
   try
@@ -709,9 +714,16 @@ begin
   CbMarkUntranslatedStrongs.Checked := FProject.GetInfo('opcoes.exportar.strongs.nao.traduzidos') = '1';
 end;
 
+procedure TProjectExportForm.AfterConstruction;
+begin
+  inherited AfterConstruction;
+  ApplyDialogStyle(Self);
+end;
+
+
 initialization
 {$IFNDEF FPCUNIT}
-  {$I FormProjectExport.lrs}
+  {$R FormProjectExport.lfm}
 {$ENDIF}
 
 end.

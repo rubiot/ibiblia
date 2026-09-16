@@ -1,19 +1,24 @@
 object InterlinearVerseRulesForm: TInterlinearVerseRulesForm
   Left = 498
-  Height = 237
+  Height = 360
   Top = 314
   Width = 901
   Caption = 'Interlinear view verse rules'
-  ClientHeight = 237
+  ClientHeight = 360
   ClientWidth = 901
-  DesignTimePPI = 101
+  DesignTimePPI = 96
   Position = poOwnerFormCenter
   LCLVersion = '4.0.0.4'
+  Font.Name = 'Segoe UI'
+  Font.Height = -13
+  Color = 16316147
+  Constraints.MinWidth = 720
+  Constraints.MinHeight = 320
   object OkButton: TButton
-    Left = 762
-    Height = 26
-    Top = 182
-    Width = 79
+    Left = 781
+    Height = 32
+    Top = 312
+    Width = 104
     Anchors = [akRight, akBottom]
     Caption = 'OK'
     Default = True
@@ -22,10 +27,10 @@ object InterlinearVerseRulesForm: TInterlinearVerseRulesForm
     OnClick = OkButtonClick
   end
   object CancelButton: TButton
-    Left = 654
-    Height = 26
-    Top = 182
-    Width = 79
+    Left = 669
+    Height = 32
+    Top = 312
+    Width = 104
     Anchors = [akRight, akBottom]
     Cancel = True
     Caption = 'Cancel'
@@ -33,18 +38,18 @@ object InterlinearVerseRulesForm: TInterlinearVerseRulesForm
     TabOrder = 1
   end
   object VerseRulesPageControl: TPageControl
-    Left = 8
-    Height = 164
-    Top = 8
-    Width = 840
+    Left = 16
+    Height = 280
+    Top = 16
+    Width = 869
     ActivePage = InterlinearTab
     Anchors = [akTop, akLeft, akRight, akBottom]
     TabIndex = 0
     TabOrder = 2
     object InterlinearTab: TTabSheet
       Caption = 'Interlinear'
-      ClientHeight = 139
-      ClientWidth = 832
+      ClientHeight = 248
+      ClientWidth = 861
       object StringGridInterlinear: TStringGrid
         Left = 0
         Height = 139
@@ -75,8 +80,8 @@ object InterlinearVerseRulesForm: TInterlinearVerseRulesForm
     end
     object IntralinearTab: TTabSheet
       Caption = 'Intralinear'
-      ClientHeight = 139
-      ClientWidth = 832
+      ClientHeight = 248
+      ClientWidth = 861
       object StringGridIntralinear: TStringGrid
         Left = 0
         Height = 139

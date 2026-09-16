@@ -5,7 +5,7 @@ unit FormNewProject;
 interface
 
 uses
-  Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
+  ui_style, ui_icons, Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
   StdCtrls, ExtCtrls, Buttons, ComCtrls, LCLTranslator, ONTTokenizer,
   BibleScope, Project, status_catalog, FormStatusCatalog, dictionary_manager,
   project_setup_model, project_setup_validation, RichMemo, RichMemoUtils,
@@ -122,6 +122,8 @@ type
     function HasCustomStatusCatalog: Boolean;
     procedure ResetDraft(const DefaultProjectName: string);
     procedure Translate;
+  public
+    procedure AfterConstruction; override;
   end;
 
 var
@@ -211,6 +213,7 @@ implementation
 
 procedure TFrmNewProject.FormCreate(Sender: TObject);
 begin
+  ApplyFormStyle(Self);
   FSuppressEvents := False;
   FStatusCatalogCustomized := False;
   FStatusDefinitions := DefaultStatusDefinitions(psAssociationProject);
@@ -222,8 +225,10 @@ end;
 procedure TFrmNewProject.CreateWizard;
 begin
   Caption := SNewProject;
-  Width := 760;
-  Height := 620;
+  ClientWidth := 840;
+  ClientHeight := 680;
+  Constraints.MinWidth := 840;
+  Constraints.MinHeight := 680;
   Position := poMainFormCenter;
 
   GroupBoxProperties.Visible := False;
@@ -238,6 +243,7 @@ begin
   FWizard := TPageControl.Create(Self);
   FWizard.Parent := Self;
   FWizard.Align := alClient;
+  FWizard.BorderSpacing.Around := 16;
 
   FTabScenario := TTabSheet.Create(FWizard);
   FTabScenario.PageControl := FWizard;
@@ -278,31 +284,36 @@ begin
   FNavPanel := TPanel.Create(Self);
   FNavPanel.Parent := Self;
   FNavPanel.Align := alBottom;
-  FNavPanel.Height := 46;
+  FNavPanel.Width := ClientWidth;
+  FNavPanel.Height := 64;
   FNavPanel.BevelOuter := bvNone;
 
   FCancelButton := TButton.Create(Self);
   FCancelButton.Parent := FNavPanel;
   FCancelButton.Caption := SCancel;
   FCancelButton.ModalResult := mrCancel;
-  FCancelButton.SetBounds(10, 10, 90, 27);
+  FCancelButton.SetBounds(16, 16, 112, 32);
+  FCancelButton.Cancel := True;
 
   FBackButton := TButton.Create(Self);
   FBackButton.Parent := FNavPanel;
   FBackButton.Caption := SBack;
-  FBackButton.SetBounds(455, 10, 90, 27);
+  FBackButton.SetBounds(ClientWidth - 368, 16, 112, 32);
+  FBackButton.Anchors := [akTop, akRight];
   FBackButton.OnClick := @BackButtonClick;
 
   FNextButton := TButton.Create(Self);
   FNextButton.Parent := FNavPanel;
   FNextButton.Caption := SNext;
-  FNextButton.SetBounds(550, 10, 90, 27);
+  FNextButton.SetBounds(ClientWidth - 248, 16, 112, 32);
+  FNextButton.Anchors := [akTop, akRight];
   FNextButton.OnClick := @NextButtonClick;
 
   FFinishButton := TButton.Create(Self);
   FFinishButton.Parent := FNavPanel;
   FFinishButton.Caption := SFinish;
-  FFinishButton.SetBounds(645, 10, 90, 27);
+  FFinishButton.SetBounds(ClientWidth - 128, 16, 112, 32);
+  FFinishButton.Anchors := [akTop, akRight];
   FFinishButton.OnClick := @FinishButtonClick;
 
   UpdateNavigation;
@@ -312,13 +323,15 @@ procedure TFrmNewProject.CreateScenarioPage;
 begin
   FScenarioRadio := TRadioGroup.Create(Self);
   FScenarioRadio.Parent := FTabScenario;
-  FScenarioRadio.SetBounds(20, 20, 690, 100);
+  FScenarioRadio.SetBounds(16, 16, 768, 112);
+  FScenarioRadio.Anchors := [akTop, akLeft, akRight];
   FScenarioRadio.Columns := 1;
   FScenarioRadio.OnClick := @ScenarioChanged;
 
   FScenarioDescription := TMemo.Create(Self);
   FScenarioDescription.Parent := FTabScenario;
-  FScenarioDescription.SetBounds(20, 140, 690, 260);
+  FScenarioDescription.SetBounds(16, 144, 768, 312);
+  FScenarioDescription.Anchors := [akTop, akLeft, akRight, akBottom];
   FScenarioDescription.ReadOnly := True;
   FScenarioDescription.ScrollBars := ssVertical;
   FScenarioDescription.WordWrap := True;
@@ -365,22 +378,22 @@ procedure TFrmNewProject.CreateTextPage;
 
     FTextValidationLabels[TextType] := TLabel.Create(Self);
     FTextValidationLabels[TextType].Parent := FTabTexts;
-    FTextValidationLabels[TextType].SetBounds(24, TopPos + 28, 680, 18);
+    FTextValidationLabels[TextType].SetBounds(24, TopPos + 36, 680, 20);
 
     FTextPreviews[TextType] := TMemo.Create(Self);
     FTextPreviews[TextType].Parent := FTabTexts;
-    FTextPreviews[TextType].SetBounds(24, TopPos + 48, 682, 42);
+    FTextPreviews[TextType].SetBounds(24, TopPos + 60, 682, 40);
     FTextPreviews[TextType].ReadOnly := True;
     FTextPreviews[TextType].ScrollBars := ssVertical;
   end;
 
 begin
   ConfigureText(tbOrigem, EditSourceText, BtnSelectSourceText, 28, SSourceTextLabel);
-  ConfigureText(tbDestino, EditDestinationText, BtnSelectDestinationText, 138,
+  ConfigureText(tbDestino, EditDestinationText, BtnSelectDestinationText, 152,
     SDestinationTextLabelRequired);
-  ConfigureText(tbConsulta1, EditReferenceText1, BtnSelectReferenceText1, 248,
+  ConfigureText(tbConsulta1, EditReferenceText1, BtnSelectReferenceText1, 276,
     SReference1TextLabel);
-  ConfigureText(tbConsulta2, EditReferenceText2, BtnSelectReferenceText2, 358,
+  ConfigureText(tbConsulta2, EditReferenceText2, BtnSelectReferenceText2, 400,
     SReference2TextLabel);
 end;
 
@@ -411,7 +424,7 @@ begin
 
     FStrongDictionaryLabels[TextType] := TLabel.Create(Self);
     FStrongDictionaryLabels[TextType].Parent := FTabDictionaries;
-    FStrongDictionaryLabels[TextType].SetBounds(24, TopPos + 28, 320, 18);
+    FStrongDictionaryLabels[TextType].SetBounds(24, TopPos + 36, 320, 20);
 
     FMorphologyDictionaryEdits[TextType] := TLabeledEdit.Create(Self);
     FMorphologyDictionaryEdits[TextType].Parent := FTabDictionaries;
@@ -428,7 +441,7 @@ begin
 
     FMorphologyDictionaryLabels[TextType] := TLabel.Create(Self);
     FMorphologyDictionaryLabels[TextType].Parent := FTabDictionaries;
-    FMorphologyDictionaryLabels[TextType].SetBounds(394, TopPos + 28, 310, 18);
+    FMorphologyDictionaryLabels[TextType].SetBounds(394, TopPos + 36, 310, 20);
 
     Inc(TopPos, 100);
   end;
@@ -437,6 +450,9 @@ begin
   InfoLabel.Parent := FTabDictionaries;
   InfoLabel.SetBounds(24, TopPos, 650, 40);
   InfoLabel.Caption := SOptionalDictionaryHint;
+  InfoLabel.AutoSize := False;
+  InfoLabel.WordWrap := True;
+  StyleControl(InfoLabel, uirHint);
 end;
 
 procedure TFrmNewProject.CreateTokenizerPage;
@@ -737,11 +753,11 @@ begin
   LabelControl.Caption := MessageText;
   case Severity of
     psvsOk:
-      LabelControl.Font.Color := clGreen;
+      LabelControl.Font.Color := UISuccessColor;
     psvsWarning:
-      LabelControl.Font.Color := clOlive;
+      LabelControl.Font.Color := UIWarningColor;
     psvsError:
-      LabelControl.Font.Color := clRed;
+      LabelControl.Font.Color := UIErrorColor;
   end;
 end;
 
@@ -1231,9 +1247,22 @@ begin
   UpdateScenarioUI;
 end;
 
+procedure TFrmNewProject.AfterConstruction;
+begin
+  inherited AfterConstruction;
+  ApplyDialogStyle(Self);
+  StyleControl(FScenarioDescription, uirSurface);
+  StyleControl(FStatusDescriptionLabel, uirHint);
+  SetButtonIcon(BtnSelectSourceText, aiBrowse);
+  SetButtonIcon(BtnSelectDestinationText, aiBrowse);
+  SetButtonIcon(BtnSelectReferenceText1, aiBrowse);
+  SetButtonIcon(BtnSelectReferenceText2, aiBrowse);
+end;
+
+
 initialization
 {$IFNDEF FPCUNIT}
-  {$I FormNewProject.lrs}
+  {$R FormNewProject.lfm}
 {$ENDIF}
 
 end.

@@ -12,6 +12,11 @@ object VerseRulesForm: TVerseRulesForm
   OnShow = FormShow
   Position = poOwnerFormCenter
   LCLVersion = '2.0.10.0'
+  Font.Name = 'Segoe UI'
+  Font.Height = -13
+  Color = 16316147
+  Constraints.MinWidth = 760
+  Constraints.MinHeight = 380
   object CancelButton: TButton
     Left = 808
     Height = 25
@@ -60,10 +65,11 @@ object VerseRulesForm: TVerseRulesForm
     Top = 7
     Width = 966
     Anchors = [akTop, akLeft, akRight, akBottom]
-    Caption = 'Panel1'
+    Caption = ''
     ClientHeight = 177
     ClientWidth = 966
     TabOrder = 4
+    BevelOuter = bvNone
     object StringGridVerseRules: TStringGrid
       Left = 1
       Height = 175

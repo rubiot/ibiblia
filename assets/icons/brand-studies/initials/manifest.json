@@ -1,0 +1,70 @@
+[
+  {
+    "id": "11-vav-beta",
+    "title": "Vav e beta",
+    "description": "A haste do vav sugere o i; o beta minúsculo conserva suas duas curvas e o prolongamento abaixo da linha. Uma assinatura simples em duas cores.",
+    "source": "source/svg/11-vav-beta.svg",
+    "sizes": [
+      16,
+      20,
+      24,
+      32,
+      40,
+      48,
+      64,
+      128,
+      256
+    ]
+  },
+  {
+    "id": "12-vav-beta-ponto",
+    "title": "Inicial pontuada",
+    "description": "Um ponto sobre a haste inspirada no vav aproxima a leitura de iB. O ponto é uma adaptação gráfica da marca, acrescentada à forma hebraica.",
+    "source": "source/svg/12-vav-beta-ponto.svg",
+    "sizes": [
+      16,
+      20,
+      24,
+      32,
+      40,
+      48,
+      64,
+      128,
+      256
+    ]
+  },
+  {
+    "id": "13-vav-beta-trama",
+    "title": "Vav e beta · trama",
+    "description": "Um vav inclinado atravessa o beta: a haste azul passa à frente no centro e a dourada retorna à frente na curva inferior. Uma interpretação gráfica das iniciais iB.",
+    "source": "source/svg/13-vav-beta-trama.svg",
+    "sizes": [
+      16,
+      20,
+      24,
+      32,
+      40,
+      48,
+      64,
+      128,
+      256
+    ]
+  },
+  {
+    "id": "14-yod-beta",
+    "title": "Yod e beta · ponto",
+    "description": "O yod compacto evoca o ponto do i junto à haste longa do beta. As letras compartilham a composição numa interpretação gráfica de iB, sem pretensão de transliteração.",
+    "source": "source/svg/14-yod-beta.svg",
+    "sizes": [
+      16,
+      20,
+      24,
+      32,
+      40,
+      48,
+      64,
+      128,
+      256
+    ]
+  }
+]

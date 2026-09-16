@@ -9,6 +9,9 @@ object FrmNewProject: TFrmNewProject
   OnCreate = FormCreate
   Position = poMainFormCenter
   LCLVersion = '2.0.10.0'
+  Font.Name = 'Segoe UI'
+  Font.Height = -13
+  Color = 16316147
   object GroupBoxTexts: TGroupBox
     Left = 6
     Height = 231

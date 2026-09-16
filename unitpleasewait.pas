@@ -5,7 +5,7 @@ unit UnitPleaseWait;
 interface
 
 uses
-  Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, ComCtrls,
+  ui_style, Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, ComCtrls,
   StdCtrls;
 
 type
@@ -34,6 +34,8 @@ type
     procedure Step(AIncrement: Integer = 1);
     procedure FinishOperation;
     property OperationActive: Boolean read FInOperation;
+  public
+    procedure AfterConstruction; override;
   end;
 
 var
@@ -104,6 +106,7 @@ end;
 constructor TFormPleaseWait.Create(TheOwner: TComponent);
 begin
   inherited Create(TheOwner);
+  ApplyFormStyle(Self);
   EnsureDetailLabel;
   LayoutControls;
 end;
@@ -126,26 +129,22 @@ end;
 
 procedure TFormPleaseWait.LayoutControls;
 begin
-  ClientWidth := 448;
-  ClientHeight := 132;
-
-  Label1.Left := 24;
-  Label1.Top := 16;
-  Label1.Width := ClientWidth - 48;
-  Label1.Height := 24;
+  ClientWidth := UIScale(Self, 520);
+  ClientHeight := UIScale(Self, 168);
+  Label1.SetBounds(UIScale(Self, 16), UIScale(Self, 16),
+    ClientWidth - UIScale(Self, 32), UIScale(Self, 48));
   Label1.AutoSize := False;
+  Label1.WordWrap := True;
   Label1.Alignment := taCenter;
+  Label1.Layout := tlCenter;
 
   EnsureDetailLabel;
-  FDetailLabel.Left := 24;
-  FDetailLabel.Top := 46;
-  FDetailLabel.Width := ClientWidth - 48;
-  FDetailLabel.Height := 18;
-
-  ProgressBar1.Left := 32;
-  ProgressBar1.Top := 78;
-  ProgressBar1.Width := ClientWidth - 64;
-  ProgressBar1.Height := 28;
+  FDetailLabel.SetBounds(UIScale(Self, 16), UIScale(Self, 72),
+    ClientWidth - UIScale(Self, 32), UIScale(Self, 40));
+  FDetailLabel.WordWrap := True;
+  StyleControl(FDetailLabel, uirHint);
+  ProgressBar1.SetBounds(UIScale(Self, 16), UIScale(Self, 128),
+    ClientWidth - UIScale(Self, 32), UIScale(Self, 24));
 end;
 
 procedure TFormPleaseWait.BeginOperation(AOwnerForm: TCustomForm;
@@ -262,9 +261,16 @@ begin
     PumpProgressPaintMessages(OwnerForm);
 end;
 
+procedure TFormPleaseWait.AfterConstruction;
+begin
+  inherited AfterConstruction;
+  ApplyDialogStyle(Self);
+end;
+
+
 initialization
 {$IFNDEF FPCUNIT}
-  {$I unitpleasewait.lrs}
+  {$R unitpleasewait.lfm}
 {$ENDIF}
 
 end.

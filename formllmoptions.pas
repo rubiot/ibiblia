@@ -5,7 +5,7 @@ unit FormLlmOptions;
 interface
 
 uses
-  Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs,
+  ui_style, Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs,
   StdCtrls, ExtCtrls, ComCtrls, Project, llmclient, ai_flows, ai_flow_config,
   ai_credential_store
   {$IFDEF WINDOWS}, Windows{$ENDIF};
@@ -101,6 +101,8 @@ type
     function GetFlowTabIndexByFlowId(const AFlowId: string): Integer;
   public
     procedure SetProject(AProject: TProject);
+  public
+    procedure AfterConstruction; override;
   end;
 
 var
@@ -146,6 +148,7 @@ uses
 
 procedure TFrmLLMOptions.FormCreate(Sender: TObject);
 begin
+  ApplyFormStyle(Self);
   // Set password character for global API key
   leApiKey.PasswordChar := '*';
 
@@ -383,13 +386,9 @@ begin
   tabControls := FFlowTabs[TabIdx];
   if not Assigned(tabControls.ScrollBox) then Exit;
 
-  contentWidth := tabControls.ScrollBox.ClientWidth - 24;
+  contentWidth := tabControls.ScrollBox.ClientWidth - UIScale(Self, 32);
   if contentWidth < 240 then
     contentWidth := 240;
-  innerWidth := contentWidth - 16;
-  if innerWidth < 200 then
-    innerWidth := 200;
-
   SetWidthIfAssigned(tabControls.LblDescription, contentWidth);
   SetWidthIfAssigned(tabControls.EditTargetLanguage, contentWidth);
   SetWidthIfAssigned(tabControls.LblInstructions, contentWidth);
@@ -403,6 +402,13 @@ begin
   SetWidthIfAssigned(tabControls.LblExamplesSummary, contentWidth);
   SetWidthIfAssigned(tabControls.LblFormatInfo, contentWidth);
 
+  if Assigned(tabControls.gbOverride) then
+    innerWidth := tabControls.gbOverride.ClientWidth - UIScale(Self, 32)
+  else
+    innerWidth := contentWidth - UIScale(Self, 40);
+  if innerWidth < UIScale(Self, 200) then
+    innerWidth := UIScale(Self, 200);
+
   SetWidthIfAssigned(tabControls.CbProvider, innerWidth);
   SetWidthIfAssigned(tabControls.CbModel, innerWidth);
   SetWidthIfAssigned(tabControls.EditApiKey, innerWidth);
@@ -415,7 +421,7 @@ begin
   with LblDescription do
   begin
     Parent := AParent;
-    Left := 8;
+    Left := 16;
     Top := YPos;
     Width := 600;
     Anchors := [akTop, akLeft];
@@ -436,18 +442,18 @@ begin
   with LblInstructions do
   begin
     Parent := AParent;
-    Left := 8;
+    Left := 16;
     Top := YPos;
     Caption := ACaption + ':';
     AutoSize := True;
   end;
-  Inc(YPos, 20);
+  Inc(YPos, 24);
 
   MemoInstructions := TMemo.Create(AParent);
   with MemoInstructions do
   begin
     Parent := AParent;
-    Left := 8;
+    Left := 16;
     Top := YPos;
     Width := 600;
     Height := 120;
@@ -471,23 +477,23 @@ begin
   with TabControls.chkUseOverride do
   begin
     Parent := AParent;
-    Left := 8;
+    Left := 16;
     Top := YPos;
     Width := 360;
     Caption := rsUseFlowOverride;
     Tag := TabIdx;
     OnChange := @OnFlowOverrideToggle;
   end;
-  Inc(YPos, 26);
+  Inc(YPos, 32);
 
   TabControls.gbOverride := TGroupBox.Create(AParent);
   with TabControls.gbOverride do
   begin
     Parent := AParent;
-    Left := 8;
+    Left := 16;
     Top := YPos;
     Width := 600;
-    Height := 210;
+    Height := 224;
     Anchors := [akTop, akLeft];
     Caption := rsProviderOverride;
   end;
@@ -496,7 +502,7 @@ begin
   with lbl do
   begin
     Parent := TabControls.gbOverride;
-    Left := 8;
+    Left := 16;
     Top := 20;
     Caption := ai_association_flow.SConfigProviderOverrideDisplayName;
     AutoSize := True;
@@ -506,8 +512,8 @@ begin
   with TabControls.CbProvider do
   begin
     Parent := TabControls.gbOverride;
-    Left := 8;
-    Top := 38;
+    Left := 16;
+    Top := 44;
     Width := 584;
     Anchors := [akTop, akLeft];
     Style := csDropDownList;
@@ -522,8 +528,8 @@ begin
   with lbl do
   begin
     Parent := TabControls.gbOverride;
-    Left := 8;
-    Top := 70;
+    Left := 16;
+    Top := 80;
     Caption := ai_association_flow.SConfigModelOverrideDisplayName;
     AutoSize := True;
   end;
@@ -532,8 +538,8 @@ begin
   with TabControls.CbModel do
   begin
     Parent := TabControls.gbOverride;
-    Left := 8;
-    Top := 88;
+    Left := 16;
+    Top := 104;
     Width := 584;
     Anchors := [akTop, akLeft];
     Style := csDropDown;
@@ -546,10 +552,10 @@ begin
   with TabControls.EditApiKey do
   begin
     Parent := TabControls.gbOverride;
-    Left := 8;
-    Top := 140;
+    Left := 16;
+    Top := 160;
     Width := 584;
-    Height := 25;
+    Height := 32;
     Anchors := [akTop, akLeft];
     EditLabel.Caption := ai_association_flow.SConfigApiKeyOverrideDisplayName;
     LabelPosition := lpAbove;
@@ -569,40 +575,41 @@ begin
   with TabControls.LblExamples do
   begin
     Parent := AParent;
-    Left := 8;
+    Left := 16;
     Top := YPos;
     Caption := rsSavedExamples;
     AutoSize := True;
   end;
-  Inc(YPos, 20);
+  Inc(YPos, 24);
 
   TabControls.LblExamplesSummary := TLabel.Create(AParent);
   with TabControls.LblExamplesSummary do
   begin
     Parent := AParent;
-    Left := 8;
+    Left := 16;
     Top := YPos;
     Width := 600;
     Anchors := [akTop, akLeft];
     Caption := rsNoExamples;
     AutoSize := False;
   end;
-  Inc(YPos, 24);
+  TabControls.LblExamplesSummary.Height := 24;
+  Inc(YPos, 32);
 
   TabControls.BtnManageExamples := TButton.Create(AParent);
   with TabControls.BtnManageExamples do
   begin
     Parent := AParent;
-    Left := 8;
+    Left := 16;
     Top := YPos;
-    Width := 150;
-    Height := 25;
+    Width := 192;
+    Height := 32;
     Caption := rsBtnManageExamples;
     Tag := TabIdx;
     OnClick := @OnManageExamplesClick;
   end;
 
-  Inc(YPos, 33);
+  Inc(YPos, 40);
 end;
 
 procedure TFrmLLMOptions.AddPromptButtonsAndFormatInfo(AParent: TWinControl;
@@ -613,10 +620,10 @@ begin
   with TabControls.BtnViewDefault do
   begin
     Parent := AParent;
-    Left := 8;
+    Left := 16;
     Top := YPos;
-    Width := 140;
-    Height := 25;
+    Width := 224;
+    Height := 32;
     Caption := rsBtnViewDefault;
     Tag := TabIdx;
     OnClick := @OnViewDefaultClick;
@@ -626,21 +633,21 @@ begin
   with TabControls.BtnReset do
   begin
     Parent := AParent;
-    Left := 156;
+    Left := 248;
     Top := YPos;
-    Width := 120;
-    Height := 25;
+    Width := 176;
+    Height := 32;
     Caption := rsBtnReset;
     Tag := TabIdx;
     OnClick := @OnResetClick;
   end;
-  Inc(YPos, 33);
+  Inc(YPos, 40);
 
   TabControls.LblFormatInfo := TLabel.Create(AParent);
   with TabControls.LblFormatInfo do
   begin
     Parent := AParent;
-    Left := 8;
+    Left := 16;
     Top := YPos;
     Width := 600;
     Anchors := [akTop, akLeft];
@@ -665,7 +672,7 @@ begin
   tabControls.TabSheet := ATabSheet;
   tabControls.FlowId := 'association';
   tabControls.ScrollBox := CreateFlowScrollBox(ATabSheet, TabIdx);
-  yPos := 12;
+  yPos := 16;
 
   AddFlowDescription(tabControls.ScrollBox, yPos, tabControls.LblDescription,
     flowConfig.GetDescription);
@@ -678,7 +685,7 @@ begin
   with tabControls.ChkIncludeComments do
   begin
     Parent := tabControls.ScrollBox;
-    Left := 8;
+    Left := 16;
     Top := yPos;
     Width := 600;
     Anchors := [akTop, akLeft];
@@ -712,7 +719,7 @@ begin
   tabControls.TabSheet := ATabSheet;
   tabControls.FlowId := 'translation';
   tabControls.ScrollBox := CreateFlowScrollBox(ATabSheet, TabIdx);
-  yPos := 12;
+  yPos := 16;
 
   AddFlowDescription(tabControls.ScrollBox, yPos, tabControls.LblDescription,
     flowConfig.GetDescription);
@@ -721,10 +728,10 @@ begin
   with tabControls.EditTargetLanguage do
   begin
     Parent := tabControls.ScrollBox;
-    Left := 8;
+    Left := 16;
     Top := yPos + 20;
     Width := 600;
-    Height := 25;
+    Height := 32;
     Anchors := [akTop, akLeft];
     EditLabel.Caption := ai_translation_flow.SConfigTargetLanguageDisplayName;
     LabelPosition := lpAbove;
@@ -743,7 +750,7 @@ begin
   with tabControls.ChkForceOverwrite do
   begin
     Parent := tabControls.ScrollBox;
-    Left := 8;
+    Left := 16;
     Top := yPos;
     Width := 600;
     Anchors := [akTop, akLeft];
@@ -757,7 +764,7 @@ begin
   with tabControls.ChkIncludeAssociations do
   begin
     Parent := tabControls.ScrollBox;
-    Left := 8;
+    Left := 16;
     Top := yPos;
     Width := 600;
     Anchors := [akTop, akLeft];
@@ -771,7 +778,7 @@ begin
   with tabControls.ChkMarkAddedWords do
   begin
     Parent := tabControls.ScrollBox;
-    Left := 8;
+    Left := 16;
     Top := yPos;
     Width := 600;
     Anchors := [akTop, akLeft];
@@ -1070,6 +1077,7 @@ begin
   // Create dialog
   frm := TForm.Create(nil);
   try
+    ApplyFormStyle(frm);
     frm.Caption := Format(rsDefaultPromptTitle, [flowConfig.GetDisplayName]);
     frm.Width := 700;
     frm.Height := 500;
@@ -1077,10 +1085,10 @@ begin
 
     memo := TMemo.Create(frm);
     memo.Parent := frm;
-    memo.Left := 8;
-    memo.Top := 8;
-    memo.Width := frm.ClientWidth - 16;
-    memo.Height := frm.ClientHeight - 48;
+    memo.Left := 16;
+    memo.Top := 16;
+    memo.Width := frm.ClientWidth - 32;
+    memo.Height := frm.ClientHeight - 80;
     memo.Anchors := [akTop, akLeft, akRight, akBottom];
     memo.ReadOnly := True;
     memo.ScrollBars := ssAutoBoth;
@@ -1090,13 +1098,15 @@ begin
     btnClose := TButton.Create(frm);
     btnClose.Parent := frm;
     btnClose.Caption := rsBtnClose;
-    btnClose.Width := 75;
-    btnClose.Height := 25;
-    btnClose.Left := frm.ClientWidth - btnClose.Width - 8;
-    btnClose.Top := frm.ClientHeight - btnClose.Height - 8;
+    btnClose.Width := 112;
+    btnClose.Height := 32;
+    btnClose.Left := frm.ClientWidth - btnClose.Width - 16;
+    btnClose.Top := frm.ClientHeight - btnClose.Height - 16;
     btnClose.Anchors := [akRight, akBottom];
     btnClose.ModalResult := mrOK;
 
+    btnClose.Cancel := True;
+    ApplyDialogStyle(frm);
     frm.ShowModal;
   finally
     frm.Free;
@@ -1238,9 +1248,16 @@ begin
   LoadFromProject;
 end;
 
+procedure TFrmLLMOptions.AfterConstruction;
+begin
+  inherited AfterConstruction;
+  ApplyDialogStyle(Self);
+end;
+
+
 initialization
   {$IFNDEF FPCUNIT}
-    {$I formllmoptions.lrs}
+    {$R formllmoptions.lfm}
   {$ENDIF}
 
 end.

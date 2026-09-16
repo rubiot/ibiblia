@@ -1,146 +1,164 @@
-# iBiblia Icon Styleguide
+# iBiblia visual identity
 
-This guide defines the target visual identity for the next icon set. It is
-documentation only; no Pascal code consumes this folder yet.
+The default command icon family is original SVG artwork built around **connected Bible
+texts**. Filled silhouettes, gently rounded corners, pale page surfaces and
+subtle two-stop shading give toolbar, menu and workflow icons one visual voice.
+The Fluent Color collection is a visual reference, not an imported dependency;
+no third-party icon files are bundled in this family.
 
-## Goals
+The application offers four command icon families: **Textos conectados**
+(default), **Clareza**, **Mosaico** and **Fólio**. The family choice changes
+command artwork; the interface palette, typography and project status colors
+remain consistent. Each alternative has the same 67 command symbols and seven
+PNG resolutions as the default family.
 
-- Make toolbar actions readable at 32x32 and menu/tree states readable at 16x16.
-- Use domain-specific metaphors: Bible text, verse pairs, syntagms, association,
-  review, export, patches, and AI-assisted processing.
-- Replace generic folder/document metaphors where the action is more specific.
-- Keep legacy ImageIndex information available during migration, but treat
-  symbolic names as the future source of truth.
+The **application mark is unique**: the adopted `app-ibiblia` drawing from
+**Clareza** is an open book with blue outlines, white pages and a gold link.
+Its canonical source is `brand/app-ibiblia.svg`. This same mark is used in
+every family, including the title bar, About window and Windows application
+icon; changing the command family never changes the mark. The other
+`app-ibiblia` drawings in the design galleries remain historical studies and
+are excluded from selectable resources.
 
-## Master Format
+The command family choice is applied immediately through Preferences and persisted in the
+application INI under `[opcoes] ui.icon.family`, using the stable IDs
+`connected`, `clareza`, `mosaico` and `folio`. Missing or unknown IDs select
+the default family. Only image slots registered through `AddAppIcon` are
+refreshed; custom project status markers are not registered.
 
-- Keep source artwork as SVG.
-- Use a square SVG viewBox, preferably 24x24 for stroke icons or 32x32 for
-  richer app/toolbar icons.
-- Export PNG with alpha transparency for Lazarus consumption.
-- Export ICO only for application icons.
-- Do not put readable text inside icons. Avoid tiny labels such as "W", "AI",
-  or ".bib" unless they remain recognizable at 16px.
+## Shape and meaning
 
-## Export Sizes
+- The application mark uses Clareza's rounded blue book outlines and a gold
+  link joining the white pages. Keep these contours consistent across sizes.
+- Project commands use familiar folders, documents and save disks. A compact
+  action badge distinguishes new, close, settings and export.
+- Association commands show source and destination syntagms as two sets of
+  text blocks. Connecting strokes, a broken connection and a return arrow
+  distinguish suggestion, removal and rollback.
+- History uses slate curved arrows; previous/next Bible verses use blue pages
+  and straight arrows. These are distinct operations with distinct artwork.
+- The theWord integration uses a book and two gold synchronization arrows.
+  This is an iBiblia integration symbol, not a replacement theWord logo.
+- AI job states use a clock, progress ring, check and cross. These meanings
+  belong to the processing workflow; they are not assigned to project status IDs.
+- Standard confirmation, cancellation, editing and browsing controls reuse the
+  same palette and geometry throughout the native dialogs.
 
-| Context | Required sizes |
-| --- | --- |
-| App icon | 16, 32, 48, 64, 128, 256; packed as `.ico` |
-| Toolbar | 32, plus 16 and 24 for menu/reuse |
-| Main menu | 16 and 24 |
-| Tree/status | 16 |
-| Tab/panel | 16 and 24 |
-| Documentation/preview | 64 |
-
-## Visual Language
-
-- Stroke: 2px at 24x24, scaled proportionally.
-- Corners: small radius for documents, panels, and chips.
-- Shapes: prefer simple silhouettes and one strong gesture per icon.
-- Fill: mostly transparent/outline, with small filled accents for status.
-- Contrast: icons must survive light and dark Windows themes.
-- Disabled state: generate from runtime theme if possible; if pre-rendered, use
-  neutral gray and lowered contrast.
-
-## Palette
+## Palette and interface
 
 | Role | Color |
 | --- | --- |
-| Primary/action blue | `#2563EB` |
-| Text/manuscript graphite | `#1F2937` |
-| Association/success green | `#16A34A` |
-| Warning/review amber | `#F59E0B` |
-| Error red | `#DC2626` |
-| Neutral gray | `#9CA3AF` |
-| Surface/light fill | `#F8FAFC` |
+| Primary action blue | `#2563EB` |
+| Application mark link | `#B8811E` |
+| Supporting gold (default command family) | `#D49A28` |
+| Interface text graphite | `#272F37` |
+| Neutral slate | `#64748B` |
+| Reading surface | `#FFFFFF` |
+| Interface surface | `#F3F6F8` |
+| Success / destination teal | `#138878` |
+| Destructive / processing error red | `#D94343` |
+| AI configuration / patch purple | `#8056C7` |
 
-Status icons should preserve the project status catalog color as the main cue,
-but add shape cues so color is not the only signal.
+Interface typography is Segoe UI, 10 points, scaled by Windows DPI. Bible text,
+notes and specialized editors retain the user's configured content fonts.
+Use 8-pixel spacing units and 16-pixel dialog margins at 96 DPI. Colored command
+icons sit on quiet light surfaces; white reading areas remain visually primary.
+Native focus, keyboard behavior and disabled-state rendering remain available.
 
-## Naming
+`ui_style.pas` centralizes the interface palette, spacing and native control
+roles. Use `ApplyFormStyle` for a window shell and `StyleControl` for explicit
+surface, content, title, hint, footer and button roles. Dialogs call
+`ApplyDialogStyle` after construction; it only visits native interface chrome,
+leaving verse controls, RichMemo/KMemo, SynEdit and other content views intact.
+`SetButtonIcon` assigns a small multi-resolution image list owned by each button,
+so DPI changes select native source pixels. Form layouts load `.lfm` directly;
+do not edit the old generated `.lrs` copies.
 
-Use stable symbolic names in kebab case:
+## Source and runtime resources
 
-- `project-open`
-- `association-auto`
-- `association-rollback`
-- `status-needs-review`
-- `ai-processing`
-- `tab-source`
+Each icon has a 32 by 32 SVG viewBox, alpha transparency, approximately two-pixel
+strokes where needed and at least one pixel of breathing room. Avoid fine text,
+hairlines, filters and detail that disappears at 16 pixels. The SVG sources and
+reproducible generator are checked in alongside the rendered assets.
 
-Future generated files should use this layout:
+| Output | Sizes |
+| --- | --- |
+| All PNG symbols | 16, 20, 24, 32, 40, 48, 64 |
+| Application PNG / ICO | All above, plus 128 and 256 |
+| Toolbar logical size | 32 |
+| Menu / tree logical size | 16 |
 
-```text
-assets/icons/
-  manifest/icons.json
-  source/svg/<symbol>.svg
-  png/16/<symbol>.png
-  png/24/<symbol>.png
-  png/32/<symbol>.png
-  png/48/<symbol>.png
-  png/64/<symbol>.png
-  app/ico/iBiblia.ico
-  legacy-map/legacy-image-index.md
+`ui_icons.pas` exposes `TAppIcon`, `AppIconIndex`, `AppIconSymbol`,
+`LoadAppIcon`, `LoadApplicationIcon`, `AddAppIcon` and `PopulateAppImageList`.
+Full image lists use `Ord(TAppIcon)`; subset lists use the index returned by
+`AddAppIcon`. `PopulateAppImageList` registers all resolutions and enables LCL
+scaling. `AddAppIcon` registers all resolutions but leaves the caller's logical
+size and `Scaled` setting intact. `LoadAppIcon` chooses the smallest available
+source at least as large as requested, or the largest available source.
+
+The application mark is maintained in `brand/app-ibiblia.svg`; the generated
+`source/svg/app-ibiblia.svg`, PNGs and ICO all derive from that canonical SVG.
+Do not edit a generated copy or choose a family-specific mark at runtime.
+
+The default PNG and ICO resources are embedded in `generated/ui_icons.res`;
+the three additional command families are embedded in
+`generated/ui_icon_families.res`, both through `ui_icons.pas`. Alternative
+resource names use `IBIBLIA_<FAMILY>_<SYMBOL>_<SIZE>` with uppercase names and
+underscores, for example `IBIBLIA_CLAREZA_PROJECT_OPEN_16`. Application mark
+resources always come from `ui_icons.res` and have no family prefix.
+The application runs without loose PNG or SVG files. The Windows
+`MAINICON` resource also uses the new root `iBiblia.ico`. Existing `.lrs` files
+are not regenerated or edited. ICO frames use uncompressed 32-bit BGRA DIBs
+with AND masks at every size; PNG payloads in small ICO entries are not
+compatible with Lazarus TIcon. Validate both LoadFromFile and the embedded
+LoadApplicationIcon path after regeneration.
+
+## Project status compatibility
+
+Do not add a fixed `status-not-associated`, `status-reviewed` or similar symbol
+based on a numeric status ID. Project catalogs own their names, colors and
+number of entries. Runtime status images remain generated from those catalogs;
+book and chapter indicators retain proportional colored segments. Selection
+checkboxes and AI processing states use the separate `TBibleTreeView.StateImages`
+channel, with stable indices 0 through 6.
+
+## Regeneration
+
+Requires Node.js, the `sharp` package and the Lazarus/FPC Windows resource
+compiler. No network calls or image-generation service are used.
+
+```powershell
+node assets/icons/scripts/generate-icons.cjs --windres C:/Apps/lazarus/fpc/3.2.2/bin/x86_64-win64/windres.exe
 ```
 
-## Category Guidance
+If `sharp` is installed outside normal Node package resolution, append
+`--sharp-module C:/path/to/node_modules/sharp`. The script explicitly uses
+`cpp.exe` next to `windres.exe`, so it does not depend on a global compiler PATH.
+It reads the application mark from `brand/app-ibiblia.svg` and regenerates the
+source SVG copies, PNGs, application ICO, manifest, Pascal enum/name includes,
+RC/RES and contact sheet. Normal application builds consume the
+checked-in RES and do not require Node or sharp.
 
-### Project Actions
+The selectable alternatives have their own SVG/PNG generator and resource
+packaging step. Their resource builder requires Node.js and `windres`, but
+does not require `sharp` when the rendered PNG files already exist:
 
-Use a Bible/document base with action overlays:
+```powershell
+node assets/icons/alternatives/generate.cjs --sharp-module C:/path/to/node_modules/sharp
+node assets/icons/scripts/build-icon-families.cjs --windres C:/Apps/lazarus/fpc/3.2.2/bin/x86_64-win64/windres.exe
+```
 
-- Open: document or Bible with inward arrow.
-- Close: document with x mark.
-- Save: document/disk with check mark.
-- Save as: duplicated document with pencil.
-- Settings: document with small gear.
-- Export: document with outward arrow.
-- Patch create/apply: document plus puzzle-piece/patch shape.
+`build-icon-families.cjs` validates the unique symbolic catalog and every
+required PNG's signature, dimensions and alpha-channel format before writing
+the RC file. It packages 1,407 resources (3 families × 67 commands × 7 sizes),
+and replaces the compiled RES only after a successful resource compilation.
+It does not rewrite the default icon family, the manifest or either application
+ICO. Omitting `--windres` validates the PNGs and generates only the RC file.
+Review `preview/contact-sheet.png` at its actual size and the live application
+at 100%, 150% and 200% before accepting icon changes. The sheet shows every
+symbol at 16, 24 and 48 pixels. Validate transparency, disabled rendering,
+small-size recognizability and distinct adjacent commands.
 
-### Association Actions
-
-Represent source and destination text as two short columns or two word blocks.
-
-- Auto-associate: two text columns connected with a spark or wand accent.
-- Clear: broken link plus eraser.
-- Rollback: connected text with circular back arrow.
-- Rebuild memory: database/cylinder plus circular arrow.
-
-### Navigation
-
-Use simple arrows:
-
-- Previous/next: left/right arrow.
-- First/last: arrow plus vertical bar.
-
-### Status And Tree Icons
-
-At 16x16, keep status icons highly geometric:
-
-- Not associated: empty circle or red outlined stop.
-- Associating/translating: partial circle or spinner.
-- Needs review/ready for review: warning diamond or eye/check.
-- Associated/reviewed: check or double check.
-- Mixed/aggregate: segmented square with a thin border.
-
-### AI Processing
-
-Use one consistent motif, preferably a small chip/spark plus state overlay:
-
-- Pending: clock.
-- Processing: spinner.
-- Success: check.
-- Error: x.
-
-## Migration Notes
-
-- The current toolbar uses `ImageList1` in `formprincipal.lfm`; symbolic names
-  should eventually replace positional ImageIndex usage.
-- The current main menu has no image list, so Action ImageIndex values do not
-  reliably produce visible menu icons.
-- The main project tree currently generates status bitmaps in code. A future
-  migration can either keep runtime generation with better shapes or load
-  symbolic 16px assets and recolor accents from the status catalog.
-- `TBibleTreeView` uses StateImages, not node ImageIndex, for checkboxes and AI
-  states. Keep this separate from the main project tree status ImageIndex map.
+The authoritative symbol/action inventory is `manifest/icons.json`; migration
+history and the separate runtime image channels are described in
+`legacy-map/legacy-image-index.md`.

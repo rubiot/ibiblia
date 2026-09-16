@@ -1,0 +1,60 @@
+{
+  "catalogSize": 68,
+  "familyCount": 3,
+  "svgCount": 204,
+  "pngCount": 1428,
+  "activeAssetsUnchanged": true,
+  "families": [
+    {
+      "id": "clareza",
+      "icons": 68,
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "pngCount": 476,
+      "empty": [],
+      "clipped": [],
+      "distinctSVGs": 68
+    },
+    {
+      "id": "mosaico",
+      "icons": 68,
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "pngCount": 476,
+      "empty": [],
+      "clipped": [],
+      "distinctSVGs": 68
+    },
+    {
+      "id": "folio",
+      "icons": 68,
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "pngCount": 476,
+      "empty": [],
+      "clipped": [],
+      "distinctSVGs": 68
+    }
+  ]
+}

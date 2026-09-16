@@ -5,7 +5,7 @@ unit FormExportPatch;
 interface
 
 uses
-  Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, StdCtrls,
+  ui_style, Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ComCtrls, BibleScope, Project, LazLogger, BibleTreeView, PatchFile, LCLIntf,
   status_catalog;
 
@@ -37,6 +37,8 @@ type
     procedure SavePatch(filename: string);
     property VerseList: TStringList read GetVerseList;
     property Scope: TEscopoTexto write SetScope;
+  public
+    procedure AfterConstruction; override;
   end;
 
 {$INCLUDE include/bookdefs.inc}
@@ -114,6 +116,7 @@ end;
 
 procedure TFrmExportPatch.FormCreate(Sender: TObject);
 begin
+  ApplyFormStyle(Self);
   FBibleTreeView := TBibleTreeView.Create(GroupBox1);
   FBibleTreeView.Parent := GroupBox1;
   FBibleTreeView.Align := alClient;
@@ -161,13 +164,13 @@ end;
 
 procedure TFrmExportPatch.LayoutControls;
 const
-  Margin = 12;
+  Margin = 16;
   Gap = 8;
-  GroupGap = 18;
-  SelectWidth = 118;
-  DeselectWidth = 140;
-  DialogButtonWidth = 88;
-  ButtonHeight = 26;
+  GroupGap = 16;
+  SelectWidth = 128;
+  DeselectWidth = 152;
+  DialogButtonWidth = 104;
+  ButtonHeight = 32;
 var
   ButtonTop: Integer;
   RequiredClientWidth: Integer;
@@ -177,34 +180,43 @@ begin
 
   FLayouting := True;
   try
-    RequiredClientWidth := Margin + SelectWidth + Gap + DeselectWidth +
-      GroupGap + DialogButtonWidth + Gap + DialogButtonWidth + Margin;
+    RequiredClientWidth := UIScale(Self, Margin) + UIScale(Self, SelectWidth) + UIScale(Self, Gap) + UIScale(Self, DeselectWidth) +
+      UIScale(Self, GroupGap) + UIScale(Self, DialogButtonWidth) + UIScale(Self, Gap) + UIScale(Self, DialogButtonWidth) + UIScale(Self, Margin);
     if ClientWidth < RequiredClientWidth then
       ClientWidth := RequiredClientWidth;
 
-    ButtonTop := ClientHeight - ButtonHeight - Margin;
+    ButtonTop := ClientHeight - UIScale(Self, ButtonHeight) - UIScale(Self, Margin);
     if ButtonTop < 0 then
       ButtonTop := 0;
 
     GroupBox1.Align := alNone;
-    GroupBox1.SetBounds(0, 0, ClientWidth, ButtonTop - Gap);
+    GroupBox1.SetBounds(UIScale(Self, Margin), UIScale(Self, Margin),
+      ClientWidth - UIScale(Self, Margin * 2),
+      ButtonTop - UIScale(Self, Gap + Margin));
 
-    BtnSelectAll.SetBounds(Margin, ButtonTop, SelectWidth, ButtonHeight);
-    BtnDeselectAll.SetBounds(BtnSelectAll.Left + BtnSelectAll.Width + Gap,
-      ButtonTop, DeselectWidth, ButtonHeight);
+    BtnSelectAll.SetBounds(UIScale(Self, Margin), ButtonTop, UIScale(Self, SelectWidth), UIScale(Self, ButtonHeight));
+    BtnDeselectAll.SetBounds(BtnSelectAll.Left + BtnSelectAll.Width + UIScale(Self, Gap),
+      ButtonTop, UIScale(Self, DeselectWidth), UIScale(Self, ButtonHeight));
 
-    Button1.SetBounds(ClientWidth - Margin - DialogButtonWidth, ButtonTop,
-      DialogButtonWidth, ButtonHeight);
-    Button2.SetBounds(Button1.Left - Gap - DialogButtonWidth, ButtonTop,
-      DialogButtonWidth, ButtonHeight);
+    Button1.SetBounds(ClientWidth - UIScale(Self, Margin) - UIScale(Self, DialogButtonWidth), ButtonTop,
+      UIScale(Self, DialogButtonWidth), UIScale(Self, ButtonHeight));
+    Button2.SetBounds(Button1.Left - UIScale(Self, Gap) - UIScale(Self, DialogButtonWidth), ButtonTop,
+      UIScale(Self, DialogButtonWidth), UIScale(Self, ButtonHeight));
   finally
     FLayouting := False;
   end;
 end;
 
+procedure TFrmExportPatch.AfterConstruction;
+begin
+  inherited AfterConstruction;
+  ApplyDialogStyle(Self);
+end;
+
+
 initialization
 {$IFNDEF FPCUNIT}
-  {$I FormExportPatch.lrs}
+  {$R FormExportPatch.lfm}
 {$ENDIF}
 
 end.

@@ -5,7 +5,7 @@ unit FormInterlinearVerseRules;
 interface
 
 uses
-  Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, Grids,
+  ui_style, Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, Grids,
   StdCtrls, ComCtrls, Clipbrd, StrUtils, Math, Project;
 
 type
@@ -28,6 +28,8 @@ type
     function GetVerseRules(grid: TStringGrid): string;
   public
     property Project: TProject read FProject write SetProject;
+  public
+    procedure AfterConstruction; override;
   end;
 
 var
@@ -46,6 +48,8 @@ end;
 procedure TInterlinearVerseRulesForm.SetProject(AValue: TProject);
 begin
   FProject := AValue;
+  if Assigned(CancelButton) then
+    CancelButton.Caption := SUICancel;
   LoadGrid(StringGridInterlinear, FProject.GetInfo('propriedades.interlinearview.verserules'));
   LoadGrid(StringGridIntralinear, FProject.GetInfo('propriedades.intralinearview.verserules'));
   VerseRulesPageControl.PageIndex := IfThen(FProject.InterlinearMode = imInterlinear, 0, 1);
@@ -93,9 +97,16 @@ begin
   end;
 end;
 
+procedure TInterlinearVerseRulesForm.AfterConstruction;
+begin
+  inherited AfterConstruction;
+  ApplyDialogStyle(Self);
+end;
+
+
 initialization
 {$IFNDEF FPCUNIT}
-  {$I FormInterlinearVerseRules.lrs}
+  {$R FormInterlinearVerseRules.lfm}
 {$ENDIF}
 
 end.

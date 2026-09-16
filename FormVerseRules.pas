@@ -5,7 +5,7 @@ unit FormVerseRules;
 interface
 
 uses
-  Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
+  ui_style, Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
   ExtCtrls, StdCtrls, PCRE, LCLTranslator, Grids, fgl;
 
 type
@@ -37,6 +37,8 @@ type
     procedure Reset(const ModuleFileName: string = '');
     procedure CompileVerseRules(var rxFrom: TRegexList; var rxTo: TStringList);
     property HasRules: boolean read GetHasRules;
+  public
+    procedure AfterConstruction; override;
   end;
 
 var
@@ -55,6 +57,8 @@ resourcestring
 
 procedure TVerseRulesForm.FormShow(Sender: TObject);
 begin
+  if Assigned(CancelButton) then
+    CancelButton.Caption := '&' + SUICancel;
   EnsureInfoControls;
   LayoutControls;
   UpdateInfoControls;
@@ -86,14 +90,14 @@ end;
 
 procedure TVerseRulesForm.LayoutControls;
 const
-  Margin = 12;
-  ButtonTopMargin = 12;
-  ButtonBottomMargin = 14;
-  ButtonHeight = 25;
+  Margin = 16;
+  ButtonTopMargin = 16;
+  ButtonBottomMargin = 16;
+  ButtonHeight = 32;
   GridTopGap = 8;
-  SelectButtonWidth = 110;
-  DialogButtonWidth = 75;
-  ButtonGap = 18;
+  SelectButtonWidth = 136;
+  DialogButtonWidth = 104;
+  ButtonGap = 8;
 var
   ButtonTop: Integer;
   GridTop: Integer;
@@ -101,8 +105,8 @@ var
   LineHeight: Integer;
 begin
   AutoScroll := False;
-  Constraints.MinWidth := 760;
-  Constraints.MinHeight := 430;
+  Constraints.MinWidth := UIScale(Self, 760);
+  Constraints.MinHeight := UIScale(Self, 480);
   if ClientHeight < Constraints.MinHeight then
     ClientHeight := Constraints.MinHeight;
   if ClientWidth < Constraints.MinWidth then
@@ -112,24 +116,24 @@ begin
   LineHeight := Canvas.TextHeight('Tg') + 6;
   InfoHeight := LineHeight * 9 + 16;
 
-  FInfoPanel.SetBounds(Margin, Margin, ClientWidth - (Margin * 2),
+  FInfoPanel.SetBounds(UIScale(Self, Margin), UIScale(Self, Margin), ClientWidth - (UIScale(Self, Margin) * 2),
     InfoHeight);
   FInfoMemo.SetBounds(0, 0, FInfoPanel.Width, FInfoPanel.Height);
 
-  ButtonTop := ClientHeight - ButtonBottomMargin - ButtonHeight;
-  GridTop := FInfoPanel.Top + FInfoPanel.Height + GridTopGap;
-  RulesPanel.SetBounds(Margin, GridTop, ClientWidth - (Margin * 2),
-    ButtonTop - GridTop - ButtonTopMargin);
+  ButtonTop := ClientHeight - UIScale(Self, ButtonBottomMargin) - UIScale(Self, ButtonHeight);
+  GridTop := FInfoPanel.Top + FInfoPanel.Height + UIScale(Self, GridTopGap);
+  RulesPanel.SetBounds(UIScale(Self, Margin), GridTop, ClientWidth - (UIScale(Self, Margin) * 2),
+    ButtonTop - GridTop - UIScale(Self, ButtonTopMargin));
   RulesPanel.Caption := '';
 
-  OkButton.SetBounds(ClientWidth - Margin - DialogButtonWidth, ButtonTop,
-    DialogButtonWidth, ButtonHeight);
-  CancelButton.SetBounds(OkButton.Left - ButtonGap - DialogButtonWidth, ButtonTop,
-    DialogButtonWidth, ButtonHeight);
-  BtnSelectNone.SetBounds(CancelButton.Left - ButtonGap - SelectButtonWidth,
-    ButtonTop, SelectButtonWidth, ButtonHeight);
-  BtnSelectAll.SetBounds(BtnSelectNone.Left - ButtonGap - SelectButtonWidth,
-    ButtonTop, SelectButtonWidth, ButtonHeight);
+  OkButton.SetBounds(ClientWidth - UIScale(Self, Margin) - UIScale(Self, DialogButtonWidth), ButtonTop,
+    UIScale(Self, DialogButtonWidth), UIScale(Self, ButtonHeight));
+  CancelButton.SetBounds(OkButton.Left - UIScale(Self, ButtonGap) - UIScale(Self, DialogButtonWidth), ButtonTop,
+    UIScale(Self, DialogButtonWidth), UIScale(Self, ButtonHeight));
+  BtnSelectNone.SetBounds(CancelButton.Left - UIScale(Self, ButtonGap) - UIScale(Self, SelectButtonWidth),
+    ButtonTop, UIScale(Self, SelectButtonWidth), UIScale(Self, ButtonHeight));
+  BtnSelectAll.SetBounds(BtnSelectNone.Left - UIScale(Self, ButtonGap) - UIScale(Self, SelectButtonWidth),
+    ButtonTop, UIScale(Self, SelectButtonWidth), UIScale(Self, ButtonHeight));
 end;
 
 procedure TVerseRulesForm.UpdateInfoControls;
@@ -212,9 +216,16 @@ begin
     end;
 end;
 
+procedure TVerseRulesForm.AfterConstruction;
+begin
+  inherited AfterConstruction;
+  ApplyDialogStyle(Self);
+end;
+
+
 initialization
 {$IFNDEF FPCUNIT}
-  {$I FormVerseRules.lrs}
+  {$R FormVerseRules.lfm}
 {$ENDIF}
 
 end.

@@ -1,52 +1,59 @@
 object FrmLLMOptions: TFrmLLMOptions
   Left = 392
-  Height = 756
+  Height = 760
   Top = 200
-  Width = 680
-  ClientHeight = 756
-  ClientWidth = 680
-  DesignTimePPI = 101
+  Width = 760
+  ClientHeight = 760
+  ClientWidth = 760
+  DesignTimePPI = 96
   Position = poMainFormCenter
   OnCreate = FormCreate
+  Font.Name = 'Segoe UI'
+  Font.Height = -13
+  Color = 16316147
+  Constraints.MinWidth = 760
+  Constraints.MinHeight = 600
   object gbCommonSettings: TGroupBox
-    Left = 8
-    Height = 145
-    Top = 8
-    Width = 664
+    Left = 16
+    Height = 160
+    Top = 16
+    Width = 728
     Anchors = [akTop, akLeft, akRight]
     Caption = 'Common Settings (All Flows)'
-    ClientHeight = 123
-    ClientWidth = 660
+    ClientHeight = 136
+    ClientWidth = 724
     TabOrder = 0
     object LabelModel: TLabel
-      Left = 8
-      Height = 17
+      Left = 16
+      Height = 20
       Top = 8
-      Width = 38
+      Width = 120
       Caption = 'Model'
     end
     object cbModel: TComboBox
-      Left = 8
-      Height = 25
-      Top = 26
-      Width = 400
+      Left = 16
+      Height = 28
+      Top = 32
+      Width = 560
       ItemHeight = 17
       TabOrder = 0
+      Anchors = [akTop, akLeft, akRight]
     end
     object btnTest: TButton
-      Left = 416
-      Height = 25
-      Top = 26
-      Width = 75
+      Left = 584
+      Height = 32
+      Top = 30
+      Width = 120
       Caption = 'Test'
       TabOrder = 1
       OnClick = btnTestClick
+      Anchors = [akTop, akRight]
     end
     object leApiKey: TLabeledEdit
-      Left = 8
-      Height = 25
-      Top = 78
-      Width = 400
+      Left = 16
+      Height = 28
+      Top = 96
+      Width = 352
       EchoMode = emPassword
       EditLabel.Height = 17
       EditLabel.Width = 400
@@ -55,10 +62,10 @@ object FrmLLMOptions: TFrmLLMOptions
       TabOrder = 2
     end
     object leMaxParallel: TLabeledEdit
-      Left = 500
-      Height = 25
-      Top = 78
-      Width = 70
+      Left = 384
+      Height = 28
+      Top = 96
+      Width = 152
       EditLabel.Height = 17
       EditLabel.Width = 70
       EditLabel.Caption = 'Max Parallel'
@@ -66,10 +73,10 @@ object FrmLLMOptions: TFrmLLMOptions
       Text = '2'
     end
     object leMaxRetries: TLabeledEdit
-      Left = 580
-      Height = 25
-      Top = 78
-      Width = 70
+      Left = 552
+      Height = 28
+      Top = 96
+      Width = 152
       EditLabel.Height = 17
       EditLabel.Width = 70
       EditLabel.Caption = 'Max Retries'
@@ -78,10 +85,10 @@ object FrmLLMOptions: TFrmLLMOptions
     end
   end
   object pcFlows: TPageControl
-    Left = 8
-    Height = 540
-    Top = 160
-    Width = 664
+    Left = 16
+    Height = 504
+    Top = 192
+    Width = 728
     ActivePage = tsAssociation
     Anchors = [akTop, akLeft, akRight, akBottom]
     TabIndex = 0
@@ -94,10 +101,10 @@ object FrmLLMOptions: TFrmLLMOptions
     end
   end
   object btnOK: TButton
-    Left = 488
-    Height = 25
-    Top = 716
-    Width = 88
+    Left = 536
+    Height = 32
+    Top = 712
+    Width = 96
     Anchors = [akRight, akBottom]
     Caption = 'OK'
     Default = True
@@ -105,13 +112,14 @@ object FrmLLMOptions: TFrmLLMOptions
     OnClick = btnOKClick
   end
   object btnCancel: TButton
-    Left = 584
-    Height = 25
-    Top = 716
-    Width = 88
+    Left = 640
+    Height = 32
+    Top = 712
+    Width = 104
     Anchors = [akRight, akBottom]
     Caption = 'Cancel'
     ModalResult = 2
     TabOrder = 3
+    Cancel = True
   end
 end

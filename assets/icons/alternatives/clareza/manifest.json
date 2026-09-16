@@ -1,0 +1,972 @@
+{
+  "name": "Clareza",
+  "description": "Traços arredondados de espessura constante, espaços abertos e pequenos acentos de cor. O desenho enfatiza leitura rápida e discrição nas barras de ferramentas.",
+  "palette": {
+    "blue": "#2563EB",
+    "ink": "#3D5268",
+    "gold": "#B8811E",
+    "teal": "#128575",
+    "red": "#C94650",
+    "purple": "#7653B5",
+    "paleBlue": "#EAF1FF",
+    "paleGold": "#FFF2D3",
+    "paleTeal": "#E5F4EF",
+    "paleRed": "#FCEAEC",
+    "white": "#FFFFFF"
+  },
+  "provenance": "Original alternative vector artwork for iBiblia. Evaluation only.",
+  "icons": [
+    {
+      "symbol": "app-ibiblia",
+      "meaning": "Application mark: two Bible pages joined by a gold link.",
+      "source": "source/svg/app-ibiblia.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "project-new",
+      "meaning": "Create an association or translation project.",
+      "source": "source/svg/project-new.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "project-open",
+      "meaning": "Open an existing project.",
+      "source": "source/svg/project-open.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "project-close",
+      "meaning": "Close the current project.",
+      "source": "source/svg/project-close.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "project-save",
+      "meaning": "Save changes.",
+      "source": "source/svg/project-save.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "project-save-as",
+      "meaning": "Save the project under a new name.",
+      "source": "source/svg/project-save-as.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "project-settings",
+      "meaning": "Edit current project settings.",
+      "source": "source/svg/project-settings.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "project-export",
+      "meaning": "Open the export workflow.",
+      "source": "source/svg/project-export.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "association-auto",
+      "meaning": "Suggest associations between source and destination syntagms.",
+      "source": "source/svg/association-auto.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "association-clear",
+      "meaning": "Remove associations: disconnected text blocks.",
+      "source": "source/svg/association-clear.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "association-rollback",
+      "meaning": "Restore the saved associations of this verse.",
+      "source": "source/svg/association-rollback.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "history-back",
+      "meaning": "Go back through visited verses.",
+      "source": "source/svg/history-back.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "history-forward",
+      "meaning": "Go forward through visited verses.",
+      "source": "source/svg/history-forward.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "verse-previous",
+      "meaning": "Go to the previous Bible verse.",
+      "source": "source/svg/verse-previous.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "verse-next",
+      "meaning": "Go to the next Bible verse.",
+      "source": "source/svg/verse-next.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "verse-first",
+      "meaning": "Go to the first verse.",
+      "source": "source/svg/verse-first.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "verse-last",
+      "meaning": "Go to the last verse.",
+      "source": "source/svg/verse-last.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "app-exit",
+      "meaning": "Exit iBiblia.",
+      "source": "source/svg/app-exit.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "projects-merge",
+      "meaning": "Merge two projects.",
+      "source": "source/svg/projects-merge.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "association-memory-rebuild",
+      "meaning": "Rebuild statistical association memory.",
+      "source": "source/svg/association-memory-rebuild.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "sync-theword-verse",
+      "meaning": "Synchronize the displayed Bible verse with theWord.",
+      "source": "source/svg/sync-theword-verse.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "tags-show",
+      "meaning": "Show Strong and morphology tags.",
+      "source": "source/svg/tags-show.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "patch-create",
+      "meaning": "Create a patch from selected verses.",
+      "source": "source/svg/patch-create.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "patch-apply",
+      "meaning": "Apply accepted patch changes.",
+      "source": "source/svg/patch-apply.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "database-vacuum",
+      "meaning": "Compact the project database.",
+      "source": "source/svg/database-vacuum.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "keyboard-shortcuts",
+      "meaning": "View keyboard shortcuts.",
+      "source": "source/svg/keyboard-shortcuts.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "layout-reset",
+      "meaning": "Restore the default window layout.",
+      "source": "source/svg/layout-reset.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "guide-mode",
+      "meaning": "Show contextual guidance.",
+      "source": "source/svg/guide-mode.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "theword-highlighter-colors",
+      "meaning": "Configure theWord highlighter colors.",
+      "source": "source/svg/theword-highlighter-colors.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "llm-options",
+      "meaning": "Configure AI providers and verse flows.",
+      "source": "source/svg/llm-options.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "preferences",
+      "meaning": "Open application preferences.",
+      "source": "source/svg/preferences.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "file-association-register",
+      "meaning": "Register iBiblia as handler for project files.",
+      "source": "source/svg/file-association-register.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "file-association-unregister",
+      "meaning": "Remove the project file registration.",
+      "source": "source/svg/file-association-unregister.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "text-load",
+      "meaning": "Load or replace Bible text.",
+      "source": "source/svg/text-load.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "text-clear",
+      "meaning": "Clear the selected Bible text.",
+      "source": "source/svg/text-clear.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "dictionary-strong-select",
+      "meaning": "Choose a Strong dictionary.",
+      "source": "source/svg/dictionary-strong-select.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "dictionary-morphology-select",
+      "meaning": "Choose a morphology dictionary.",
+      "source": "source/svg/dictionary-morphology-select.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "font-select",
+      "meaning": "Choose a text font.",
+      "source": "source/svg/font-select.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "checkbox-unchecked",
+      "meaning": "Unchecked selectable Bible item.",
+      "source": "source/svg/checkbox-unchecked.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "checkbox-checked",
+      "meaning": "Checked selectable Bible item.",
+      "source": "source/svg/checkbox-checked.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "checkbox-partial",
+      "meaning": "Partially selected Bible parent.",
+      "source": "source/svg/checkbox-partial.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "ai-pending",
+      "meaning": "Queued AI job: clock.",
+      "source": "source/svg/ai-pending.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "ai-processing",
+      "meaning": "Running AI job: progress ring and spark.",
+      "source": "source/svg/ai-processing.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "ai-success",
+      "meaning": "Completed AI job: check.",
+      "source": "source/svg/ai-success.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "ai-error",
+      "meaning": "Failed AI job: cross.",
+      "source": "source/svg/ai-error.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "tab-source",
+      "meaning": "Source Bible text.",
+      "source": "source/svg/tab-source.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "tab-destination",
+      "meaning": "Destination Bible text.",
+      "source": "source/svg/tab-destination.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "tab-reference",
+      "meaning": "Reference Bible text.",
+      "source": "source/svg/tab-reference.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "comments",
+      "meaning": "Verse comments and notes.",
+      "source": "source/svg/comments.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "status-review",
+      "meaning": "Review verses or filter the status catalog.",
+      "source": "source/svg/status-review.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "help",
+      "meaning": "Open help.",
+      "source": "source/svg/help.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "about",
+      "meaning": "About iBiblia.",
+      "source": "source/svg/about.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "confirm",
+      "meaning": "Accept or apply the current changes.",
+      "source": "source/svg/confirm.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "cancel",
+      "meaning": "Cancel or close without applying.",
+      "source": "source/svg/cancel.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "add",
+      "meaning": "Add an item.",
+      "source": "source/svg/add.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "remove",
+      "meaning": "Remove an item.",
+      "source": "source/svg/remove.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "edit",
+      "meaning": "Edit text or configuration.",
+      "source": "source/svg/edit.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "browse",
+      "meaning": "Browse for a file or location.",
+      "source": "source/svg/browse.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "refresh",
+      "meaning": "Reload or refresh.",
+      "source": "source/svg/refresh.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "search",
+      "meaning": "Find text or an item.",
+      "source": "source/svg/search.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "print",
+      "meaning": "Print the current content.",
+      "source": "source/svg/print.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "copy",
+      "meaning": "Copy selected content.",
+      "source": "source/svg/copy.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "paste",
+      "meaning": "Paste content.",
+      "source": "source/svg/paste.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "stop",
+      "meaning": "Stop or cancel running processing.",
+      "source": "source/svg/stop.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "translate",
+      "meaning": "Translate a verse or configure translation.",
+      "source": "source/svg/translate.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "link",
+      "meaning": "Connect source and destination Bible text.",
+      "source": "source/svg/link.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "export-destination-strongs",
+      "meaning": "Export destination text with Strong tags.",
+      "source": "source/svg/export-destination-strongs.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    },
+    {
+      "symbol": "export-interlinear",
+      "meaning": "Export interlinear text.",
+      "source": "source/svg/export-interlinear.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ]
+    }
+  ]
+}

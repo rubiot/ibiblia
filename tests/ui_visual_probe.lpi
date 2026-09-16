@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <ProjectOptions>
+    <Version Value="12"/>
+    <General>
+      <Flags><MainUnitHasCreateFormStatements Value="False"/><MainUnitHasTitleStatement Value="False"/></Flags>
+      <Title Value="iBiblia visual verification"/>
+      <UseAppBundle Value="False"/>
+      <ResourceType Value="res"/>
+      <UseXPManifest Value="True"/>
+      <XPManifest><DpiAware Value="True"/></XPManifest>
+    </General>
+    <VersionInfo><UseVersionInfo Value="True"/><StringTable ProductName="iBiblia visual verification"/></VersionInfo>
+    <BuildModes Count="1"><Item1 Name="Default" Default="True"/></BuildModes>
+    <RequiredPackages Count="6">
+      <Item1><PackageName Value="KControlsLaz"/></Item1>
+      <Item2><PackageName Value="lazrichview"/></Item2>
+      <Item3><PackageName Value="richmemopackage"/></Item3>
+      <Item4><PackageName Value="LCLBase"/></Item4>
+      <Item5><PackageName Value="LCL"/></Item5>
+      <Item6><PackageName Value="SynEdit"/></Item6>
+    </RequiredPackages>
+    <Units Count="1"><Unit0><Filename Value="ui_visual_probe.lpr"/><IsPartOfProject Value="True"/></Unit0></Units>
+  </ProjectOptions>
+  <CompilerOptions>
+    <Version Value="11"/>
+    <Target><Filename Value="../.codex-visual-work/probe-bin/ui_visual_probe"/></Target>
+    <SearchPaths><IncludeFiles Value="$(ProjOutDir)"/><OtherUnitFiles Value=".."/><UnitOutputDirectory Value="../.codex-visual-work/probe-lib/$(TargetCPU)-$(TargetOS)"/></SearchPaths>
+    <CodeGeneration><Optimizations><OptimizationLevel Value="3"/></Optimizations></CodeGeneration>
+    <Linking><Debugging><DebugInfoType Value="dsDwarf3"/></Debugging><Options><Win32><GraphicApplication Value="False"/></Win32></Options></Linking>
+  </CompilerOptions>
+</CONFIG>

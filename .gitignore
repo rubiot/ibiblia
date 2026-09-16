@@ -55,3 +55,6 @@ pcre-6.7-lazarus/dftables
 /outputs/
 /tmp/
 /zz_*_probe.txt
+
+# Visual integration probe resource (screenshots/runtime live in ignored outputs)
+/tests/ui_visual_probe.res

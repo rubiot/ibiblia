@@ -5,7 +5,7 @@ unit FormTheWordHighlighterColors;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls,
+  ui_style, Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls,
   IniFiles, SynEdit, theword_syntax_highlighter;
 
 type
@@ -68,6 +68,8 @@ type
     constructor Create(AOwner: TComponent); override;
     class function Execute(AOwner: TComponent; Ini: TCustomIniFile;
       ApplyRoot: TWinControl): Boolean;
+  public
+    procedure AfterConstruction; override;
   end;
 
 implementation
@@ -113,13 +115,14 @@ var
   RightButtonsPanel: TPanel;
 begin
   inherited CreateNew(AOwner);
+  ApplyFormStyle(Self);
 
   Caption := STheWordHighlightColorsTitle;
   Position := poMainFormCenter;
   BorderStyle := bsSizeable;
-  Width := 820;
-  Height := 560;
-  Constraints.MinWidth := 820;
+  ClientWidth := 920;
+  ClientHeight := 600;
+  Constraints.MinWidth := 920;
   Constraints.MinHeight := 440;
   OnCloseQuery := @CloseQueryHandler;
 
@@ -132,41 +135,41 @@ begin
   ButtonsPanel := TPanel.Create(Self);
   ButtonsPanel.Parent := Self;
   ButtonsPanel.Align := alBottom;
-  ButtonsPanel.Height := 46;
+  ButtonsPanel.Height := 48;
   ButtonsPanel.BevelOuter := bvNone;
-  ButtonsPanel.BorderSpacing.Around := 8;
+  ButtonsPanel.BorderSpacing.Around := 16;
 
   RightButtonsPanel := TPanel.Create(Self);
   RightButtonsPanel.Parent := ButtonsPanel;
   RightButtonsPanel.Align := alRight;
-  RightButtonsPanel.Width := 270;
+  RightButtonsPanel.Width := 344;
   RightButtonsPanel.BevelOuter := bvNone;
 
   FBtnOK := TButton.Create(Self);
   FBtnOK.Parent := RightButtonsPanel;
   FBtnOK.Caption := SButtonOK;
-  FBtnOK.SetBounds(0, 9, 82, 28);
+  FBtnOK.SetBounds(0, 8, 104, 32);
   FBtnOK.Default := True;
   FBtnOK.OnClick := @OKButtonClick;
 
   FBtnCancel := TButton.Create(Self);
   FBtnCancel.Parent := RightButtonsPanel;
   FBtnCancel.Caption := SButtonCancel;
-  FBtnCancel.SetBounds(90, 9, 82, 28);
+  FBtnCancel.SetBounds(112, 8, 104, 32);
   FBtnCancel.Cancel := True;
   FBtnCancel.OnClick := @CancelButtonClick;
 
   FBtnApply := TButton.Create(Self);
   FBtnApply.Parent := RightButtonsPanel;
   FBtnApply.Caption := SButtonApply;
-  FBtnApply.SetBounds(180, 9, 82, 28);
+  FBtnApply.SetBounds(224, 8, 104, 32);
   FBtnApply.OnClick := @ApplyButtonClick;
 
   ClientPanel := TPanel.Create(Self);
   ClientPanel.Parent := Self;
   ClientPanel.Align := alClient;
   ClientPanel.BevelOuter := bvNone;
-  ClientPanel.BorderSpacing.Around := 8;
+  ClientPanel.BorderSpacing.Around := 16;
 
   FElementsList := TListBox.Create(Self);
   FElementsList.Parent := ClientPanel;
@@ -186,7 +189,7 @@ begin
   OptionsPanel := TPanel.Create(Self);
   OptionsPanel.Parent := MainPanel;
   OptionsPanel.Align := alTop;
-  OptionsPanel.Height := 150;
+  OptionsPanel.Height := 192;
   OptionsPanel.BevelOuter := bvNone;
 
   FBtnForeground := TButton.Create(Self);
@@ -220,55 +223,56 @@ begin
   FChkBold := TCheckBox.Create(Self);
   FChkBold.Parent := OptionsPanel;
   FChkBold.Caption := SBoldStyle;
-  FChkBold.SetBounds(0, 80, 70, 22);
+  FChkBold.SetBounds(0, 88, 80, 24);
   FChkBold.OnChange := @ControlsChanged;
 
   FChkItalic := TCheckBox.Create(Self);
   FChkItalic.Parent := OptionsPanel;
   FChkItalic.Caption := SItalicStyle;
-  FChkItalic.SetBounds(78, 80, 70, 22);
+  FChkItalic.SetBounds(88, 88, 80, 24);
   FChkItalic.OnChange := @ControlsChanged;
 
   FChkUnderline := TCheckBox.Create(Self);
   FChkUnderline.Parent := OptionsPanel;
   FChkUnderline.Caption := SUnderlineStyle;
-  FChkUnderline.SetBounds(156, 80, 92, 22);
+  FChkUnderline.SetBounds(176, 88, 96, 24);
   FChkUnderline.OnChange := @ControlsChanged;
 
   FBtnResetSelected := TButton.Create(Self);
   FBtnResetSelected.Parent := OptionsPanel;
   FBtnResetSelected.Caption := SResetSelected;
-  FBtnResetSelected.SetBounds(262, 78, 150, 28);
+  FBtnResetSelected.SetBounds(280, 88, 192, 32);
   FBtnResetSelected.OnClick := @ResetSelectedButtonClick;
 
   FBtnResetAll := TButton.Create(Self);
   FBtnResetAll.Parent := OptionsPanel;
   FBtnResetAll.Caption := SResetAll;
-  FBtnResetAll.SetBounds(422, 78, 112, 28);
+  FBtnResetAll.SetBounds(480, 88, 168, 32);
   FBtnResetAll.OnClick := @ResetAllButtonClick;
 
   FBtnFont := TButton.Create(Self);
   FBtnFont.Parent := OptionsPanel;
   FBtnFont.Caption := SFontButton;
-  FBtnFont.SetBounds(0, 116, 112, 28);
+  FBtnFont.SetBounds(0, 144, 112, 32);
   FBtnFont.OnClick := @FontButtonClick;
 
   FFontLabel := TLabel.Create(Self);
   FFontLabel.Parent := OptionsPanel;
   FFontLabel.AutoSize := False;
-  FFontLabel.SetBounds(122, 121, 250, 22);
+  FFontLabel.SetBounds(128, 148, 320, 24);
 
   FBtnResetFont := TButton.Create(Self);
   FBtnResetFont.Parent := OptionsPanel;
   FBtnResetFont.Caption := SResetFont;
-  FBtnResetFont.SetBounds(422, 116, 112, 28);
+  FBtnResetFont.SetBounds(480, 144, 168, 32);
   FBtnResetFont.OnClick := @ResetFontButtonClick;
 
   PreviewLabel := TLabel.Create(Self);
   PreviewLabel.Parent := MainPanel;
   PreviewLabel.Align := alTop;
   PreviewLabel.Caption := SPreview;
-  PreviewLabel.Height := 20;
+  PreviewLabel.Height := 32;
+  StyleControl(PreviewLabel, uirSectionTitle);
 
   FPreview := TSynEdit.Create(Self);
   FPreview.Parent := MainPanel;
@@ -520,5 +524,12 @@ begin
   if (not FAccepted) and (not FApplied) then
     RestoreOriginalScheme;
 end;
+
+procedure TFrmTheWordHighlighterColors.AfterConstruction;
+begin
+  inherited AfterConstruction;
+  ApplyDialogStyle(Self);
+end;
+
 
 end.

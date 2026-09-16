@@ -88,6 +88,22 @@ msgstr ""
 msgid "Force Overwrite"
 msgstr ""
 
+#: ai_translation_flow.sconfigincludeassociationsdescription
+msgid "If checked, returns and applies associations between the original text and the new translation."
+msgstr ""
+
+#: ai_translation_flow.sconfigincludeassociationsdisplayname
+msgid "Include association of translated text"
+msgstr ""
+
+#: ai_translation_flow.sconfigmarkaddedwordsdescription
+msgid "If checked, asks the translator to identify words supplied without a direct textual counterpart in the original."
+msgstr ""
+
+#: ai_translation_flow.sconfigmarkaddedwordsdisplayname
+msgid "Mark added words"
+msgstr ""
+
 #: ai_translation_flow.sconfigmodeloverridedescription
 msgctxt "ai_translation_flow.sconfigmodeloverridedescription"
 msgid "Specify a different model for this flow. Leave empty to use global setting."
@@ -126,7 +142,1366 @@ msgid "Translation"
 msgstr ""
 
 #: ai_translation_flow.soutputformatinfotranslation
-msgid "This flow expects plain text output without quotes or explanations"
+msgid "This flow expects plain text output, or a JSON object with translation and data when translated-text associations are enabled."
+msgstr ""
+
+#: association_memory_service.sassociationmemorydeltamissingpairfmt
+#, object-pascal-format
+msgid "Association memory delta removes a missing pair \"%s\" -> \"%s\""
+msgstr ""
+
+#: association_memory_service.sassociationmemoryoutdatedfmt
+#, object-pascal-format
+msgid "Association memory is outdated (source revision %s, built revision %s)"
+msgstr ""
+
+#: association_memory_service.sassociationmemoryrebuildalreadyactive
+msgctxt "association_memory_service.sassociationmemoryrebuildalreadyactive"
+msgid "Association memory rebuild is already active"
+msgstr ""
+
+#: association_memory_service.sassociationmemoryrebuildnotactive
+msgid "Association memory rebuild is not active"
+msgstr ""
+
+#: association_memory_service.sassociationmemoryservicenotattached
+msgid "Association memory service is not attached"
+msgstr ""
+
+#: association_memory_service.scannotpublishoutdatedassociationmemory
+msgid "Cannot publish an outdated association memory"
+msgstr ""
+
+#: association_memory_service.snopendingsourcerevision
+msgid "There is no pending source revision to persist"
+msgstr ""
+
+#: association_memory_service.spendingassociationmemorycannotreplay
+msgid "Pending association memory cannot be replayed"
+msgstr ""
+
+#: bibletreeview.s1chronicles
+msgctxt "bibletreeview.s1chronicles"
+msgid "1 Chronicles"
+msgstr ""
+
+#: bibletreeview.s1corinthians
+msgctxt "bibletreeview.s1corinthians"
+msgid "1 Corinthians"
+msgstr ""
+
+#: bibletreeview.s1john
+msgctxt "bibletreeview.s1john"
+msgid "1 John"
+msgstr ""
+
+#: bibletreeview.s1kings
+msgctxt "bibletreeview.s1kings"
+msgid "1 Kings"
+msgstr ""
+
+#: bibletreeview.s1peter
+msgctxt "bibletreeview.s1peter"
+msgid "1 Peter"
+msgstr ""
+
+#: bibletreeview.s1samuel
+msgctxt "bibletreeview.s1samuel"
+msgid "1 Samuel"
+msgstr ""
+
+#: bibletreeview.s1thessalonians
+msgctxt "bibletreeview.s1thessalonians"
+msgid "1 Thessalonians"
+msgstr ""
+
+#: bibletreeview.s1timothy
+msgctxt "bibletreeview.s1timothy"
+msgid "1 Timothy"
+msgstr ""
+
+#: bibletreeview.s2chronicles
+msgctxt "bibletreeview.s2chronicles"
+msgid "2 Chronicles"
+msgstr ""
+
+#: bibletreeview.s2corinthians
+msgctxt "bibletreeview.s2corinthians"
+msgid "2 Corinthians"
+msgstr ""
+
+#: bibletreeview.s2john
+msgctxt "bibletreeview.s2john"
+msgid "2 John"
+msgstr ""
+
+#: bibletreeview.s2kings
+msgctxt "bibletreeview.s2kings"
+msgid "2 Kings"
+msgstr ""
+
+#: bibletreeview.s2peter
+msgctxt "bibletreeview.s2peter"
+msgid "2 Peter"
+msgstr ""
+
+#: bibletreeview.s2samuel
+msgctxt "bibletreeview.s2samuel"
+msgid "2 Samuel"
+msgstr ""
+
+#: bibletreeview.s2thessalonians
+msgctxt "bibletreeview.s2thessalonians"
+msgid "2 Thessalonians"
+msgstr ""
+
+#: bibletreeview.s2timothy
+msgctxt "bibletreeview.s2timothy"
+msgid "2 Timothy"
+msgstr ""
+
+#: bibletreeview.s3john
+msgctxt "bibletreeview.s3john"
+msgid "3 John"
+msgstr ""
+
+#: bibletreeview.sacts
+msgctxt "bibletreeview.sacts"
+msgid "Acts"
+msgstr ""
+
+#: bibletreeview.samos
+msgctxt "bibletreeview.samos"
+msgid "Amos"
+msgstr ""
+
+#: bibletreeview.schapterfmt
+#, object-pascal-format
+msgid "Chapter %d"
+msgstr ""
+
+#: bibletreeview.scolossians
+msgctxt "bibletreeview.scolossians"
+msgid "Colossians"
+msgstr ""
+
+#: bibletreeview.sdaniel
+msgctxt "bibletreeview.sdaniel"
+msgid "Daniel"
+msgstr ""
+
+#: bibletreeview.sdeuteronomy
+msgctxt "bibletreeview.sdeuteronomy"
+msgid "Deuteronomy"
+msgstr ""
+
+#: bibletreeview.secclesiastes
+msgctxt "bibletreeview.secclesiastes"
+msgid "Ecclesiastes"
+msgstr ""
+
+#: bibletreeview.sephesians
+msgctxt "bibletreeview.sephesians"
+msgid "Ephesians"
+msgstr ""
+
+#: bibletreeview.sesther
+msgctxt "bibletreeview.sesther"
+msgid "Esther"
+msgstr ""
+
+#: bibletreeview.sexodus
+msgctxt "bibletreeview.sexodus"
+msgid "Exodus"
+msgstr ""
+
+#: bibletreeview.sezekiel
+msgctxt "bibletreeview.sezekiel"
+msgid "Ezekiel"
+msgstr ""
+
+#: bibletreeview.sezra
+msgctxt "bibletreeview.sezra"
+msgid "Ezra"
+msgstr ""
+
+#: bibletreeview.sgalatians
+msgctxt "bibletreeview.sgalatians"
+msgid "Galatians"
+msgstr ""
+
+#: bibletreeview.sgenesis
+msgctxt "bibletreeview.sgenesis"
+msgid "Genesis"
+msgstr ""
+
+#: bibletreeview.shabakkuk
+msgctxt "bibletreeview.shabakkuk"
+msgid "Habakkuk"
+msgstr ""
+
+#: bibletreeview.shaggai
+msgctxt "bibletreeview.shaggai"
+msgid "Haggai"
+msgstr ""
+
+#: bibletreeview.shebrew
+msgctxt "bibletreeview.shebrew"
+msgid "Hebrews"
+msgstr ""
+
+#: bibletreeview.shosea
+msgctxt "bibletreeview.shosea"
+msgid "Hosea"
+msgstr ""
+
+#: bibletreeview.sisaiah
+msgctxt "bibletreeview.sisaiah"
+msgid "Isaiah"
+msgstr ""
+
+#: bibletreeview.sjames
+msgctxt "bibletreeview.sjames"
+msgid "James"
+msgstr ""
+
+#: bibletreeview.sjeremiah
+msgctxt "bibletreeview.sjeremiah"
+msgid "Jeremiah"
+msgstr ""
+
+#: bibletreeview.sjob
+msgctxt "bibletreeview.sjob"
+msgid "Job"
+msgstr ""
+
+#: bibletreeview.sjoel
+msgctxt "bibletreeview.sjoel"
+msgid "Joel"
+msgstr ""
+
+#: bibletreeview.sjohah
+msgctxt "bibletreeview.sjohah"
+msgid "Jonah"
+msgstr ""
+
+#: bibletreeview.sjohn
+msgctxt "bibletreeview.sjohn"
+msgid "John"
+msgstr ""
+
+#: bibletreeview.sjoshua
+msgctxt "bibletreeview.sjoshua"
+msgid "Joshua"
+msgstr ""
+
+#: bibletreeview.sjude
+msgctxt "bibletreeview.sjude"
+msgid "Jude"
+msgstr ""
+
+#: bibletreeview.sjudges
+msgctxt "bibletreeview.sjudges"
+msgid "Judges"
+msgstr ""
+
+#: bibletreeview.slamentations
+msgctxt "bibletreeview.slamentations"
+msgid "Lamentations"
+msgstr ""
+
+#: bibletreeview.sleviticus
+msgctxt "bibletreeview.sleviticus"
+msgid "Leviticus"
+msgstr ""
+
+#: bibletreeview.sluke
+msgctxt "bibletreeview.sluke"
+msgid "Luke"
+msgstr ""
+
+#: bibletreeview.smalachi
+msgctxt "bibletreeview.smalachi"
+msgid "Malachi"
+msgstr ""
+
+#: bibletreeview.smark
+msgctxt "bibletreeview.smark"
+msgid "Mark"
+msgstr ""
+
+#: bibletreeview.smatthew
+msgctxt "bibletreeview.smatthew"
+msgid "Matthew"
+msgstr ""
+
+#: bibletreeview.smicah
+msgctxt "bibletreeview.smicah"
+msgid "Micah"
+msgstr ""
+
+#: bibletreeview.snahum
+msgctxt "bibletreeview.snahum"
+msgid "Nahum"
+msgstr ""
+
+#: bibletreeview.snehemiah
+msgctxt "bibletreeview.snehemiah"
+msgid "Nehemiah"
+msgstr ""
+
+#: bibletreeview.snumbers
+msgctxt "bibletreeview.snumbers"
+msgid "Numbers"
+msgstr ""
+
+#: bibletreeview.sobadiah
+msgctxt "bibletreeview.sobadiah"
+msgid "Obadiah"
+msgstr ""
+
+#: bibletreeview.sphilemon
+msgctxt "bibletreeview.sphilemon"
+msgid "Philemon"
+msgstr ""
+
+#: bibletreeview.sphilippians
+msgctxt "bibletreeview.sphilippians"
+msgid "Philippians"
+msgstr ""
+
+#: bibletreeview.sproverbs
+msgctxt "bibletreeview.sproverbs"
+msgid "Proverbs"
+msgstr ""
+
+#: bibletreeview.spsalms
+msgctxt "bibletreeview.spsalms"
+msgid "Psalms"
+msgstr ""
+
+#: bibletreeview.srevelation
+msgctxt "bibletreeview.srevelation"
+msgid "Revelation"
+msgstr ""
+
+#: bibletreeview.sromans
+msgctxt "bibletreeview.sromans"
+msgid "Romans"
+msgstr ""
+
+#: bibletreeview.sruth
+msgctxt "bibletreeview.sruth"
+msgid "Ruth"
+msgstr ""
+
+#: bibletreeview.ssongofsolomon
+msgctxt "bibletreeview.ssongofsolomon"
+msgid "Song of Solomon"
+msgstr ""
+
+#: bibletreeview.stitus
+msgctxt "bibletreeview.stitus"
+msgid "Titus"
+msgstr ""
+
+#: bibletreeview.szechariah
+msgctxt "bibletreeview.szechariah"
+msgid "Zecariah"
+msgstr ""
+
+#: bibletreeview.szephaniah
+msgctxt "bibletreeview.szephaniah"
+msgid "Zephaniah"
+msgstr ""
+
+#: bible_book_names.s1chronicles
+msgctxt "bible_book_names.s1chronicles"
+msgid "1 Chronicles"
+msgstr ""
+
+#: bible_book_names.s1corinthians
+msgctxt "bible_book_names.s1corinthians"
+msgid "1 Corinthians"
+msgstr ""
+
+#: bible_book_names.s1john
+msgctxt "bible_book_names.s1john"
+msgid "1 John"
+msgstr ""
+
+#: bible_book_names.s1kings
+msgctxt "bible_book_names.s1kings"
+msgid "1 Kings"
+msgstr ""
+
+#: bible_book_names.s1peter
+msgctxt "bible_book_names.s1peter"
+msgid "1 Peter"
+msgstr ""
+
+#: bible_book_names.s1samuel
+msgctxt "bible_book_names.s1samuel"
+msgid "1 Samuel"
+msgstr ""
+
+#: bible_book_names.s1thessalonians
+msgctxt "bible_book_names.s1thessalonians"
+msgid "1 Thessalonians"
+msgstr ""
+
+#: bible_book_names.s1timothy
+msgctxt "bible_book_names.s1timothy"
+msgid "1 Timothy"
+msgstr ""
+
+#: bible_book_names.s2chronicles
+msgctxt "bible_book_names.s2chronicles"
+msgid "2 Chronicles"
+msgstr ""
+
+#: bible_book_names.s2corinthians
+msgctxt "bible_book_names.s2corinthians"
+msgid "2 Corinthians"
+msgstr ""
+
+#: bible_book_names.s2john
+msgctxt "bible_book_names.s2john"
+msgid "2 John"
+msgstr ""
+
+#: bible_book_names.s2kings
+msgctxt "bible_book_names.s2kings"
+msgid "2 Kings"
+msgstr ""
+
+#: bible_book_names.s2peter
+msgctxt "bible_book_names.s2peter"
+msgid "2 Peter"
+msgstr ""
+
+#: bible_book_names.s2samuel
+msgctxt "bible_book_names.s2samuel"
+msgid "2 Samuel"
+msgstr ""
+
+#: bible_book_names.s2thessalonians
+msgctxt "bible_book_names.s2thessalonians"
+msgid "2 Thessalonians"
+msgstr ""
+
+#: bible_book_names.s2timothy
+msgctxt "bible_book_names.s2timothy"
+msgid "2 Timothy"
+msgstr ""
+
+#: bible_book_names.s3john
+msgctxt "bible_book_names.s3john"
+msgid "3 John"
+msgstr ""
+
+#: bible_book_names.sacts
+msgctxt "bible_book_names.sacts"
+msgid "Acts"
+msgstr ""
+
+#: bible_book_names.samos
+msgctxt "bible_book_names.samos"
+msgid "Amos"
+msgstr ""
+
+#: bible_book_names.scolossians
+msgctxt "bible_book_names.scolossians"
+msgid "Colossians"
+msgstr ""
+
+#: bible_book_names.sdaniel
+msgctxt "bible_book_names.sdaniel"
+msgid "Daniel"
+msgstr ""
+
+#: bible_book_names.sdeuteronomy
+msgctxt "bible_book_names.sdeuteronomy"
+msgid "Deuteronomy"
+msgstr ""
+
+#: bible_book_names.secclesiastes
+msgctxt "bible_book_names.secclesiastes"
+msgid "Ecclesiastes"
+msgstr ""
+
+#: bible_book_names.sephesians
+msgctxt "bible_book_names.sephesians"
+msgid "Ephesians"
+msgstr ""
+
+#: bible_book_names.sesther
+msgctxt "bible_book_names.sesther"
+msgid "Esther"
+msgstr ""
+
+#: bible_book_names.sexodus
+msgctxt "bible_book_names.sexodus"
+msgid "Exodus"
+msgstr ""
+
+#: bible_book_names.sezekiel
+msgctxt "bible_book_names.sezekiel"
+msgid "Ezekiel"
+msgstr ""
+
+#: bible_book_names.sezra
+msgctxt "bible_book_names.sezra"
+msgid "Ezra"
+msgstr ""
+
+#: bible_book_names.sgalatians
+msgctxt "bible_book_names.sgalatians"
+msgid "Galatians"
+msgstr ""
+
+#: bible_book_names.sgenesis
+msgctxt "bible_book_names.sgenesis"
+msgid "Genesis"
+msgstr ""
+
+#: bible_book_names.shabakkuk
+msgctxt "bible_book_names.shabakkuk"
+msgid "Habakkuk"
+msgstr ""
+
+#: bible_book_names.shaggai
+msgctxt "bible_book_names.shaggai"
+msgid "Haggai"
+msgstr ""
+
+#: bible_book_names.shebrews
+msgctxt "bible_book_names.shebrews"
+msgid "Hebrews"
+msgstr ""
+
+#: bible_book_names.shosea
+msgctxt "bible_book_names.shosea"
+msgid "Hosea"
+msgstr ""
+
+#: bible_book_names.sisaiah
+msgctxt "bible_book_names.sisaiah"
+msgid "Isaiah"
+msgstr ""
+
+#: bible_book_names.sjames
+msgctxt "bible_book_names.sjames"
+msgid "James"
+msgstr ""
+
+#: bible_book_names.sjeremiah
+msgctxt "bible_book_names.sjeremiah"
+msgid "Jeremiah"
+msgstr ""
+
+#: bible_book_names.sjob
+msgctxt "bible_book_names.sjob"
+msgid "Job"
+msgstr ""
+
+#: bible_book_names.sjoel
+msgctxt "bible_book_names.sjoel"
+msgid "Joel"
+msgstr ""
+
+#: bible_book_names.sjohn
+msgctxt "bible_book_names.sjohn"
+msgid "John"
+msgstr ""
+
+#: bible_book_names.sjonah
+msgctxt "bible_book_names.sjonah"
+msgid "Jonah"
+msgstr ""
+
+#: bible_book_names.sjoshua
+msgctxt "bible_book_names.sjoshua"
+msgid "Joshua"
+msgstr ""
+
+#: bible_book_names.sjude
+msgctxt "bible_book_names.sjude"
+msgid "Jude"
+msgstr ""
+
+#: bible_book_names.sjudges
+msgctxt "bible_book_names.sjudges"
+msgid "Judges"
+msgstr ""
+
+#: bible_book_names.slamentations
+msgctxt "bible_book_names.slamentations"
+msgid "Lamentations"
+msgstr ""
+
+#: bible_book_names.sleviticus
+msgctxt "bible_book_names.sleviticus"
+msgid "Leviticus"
+msgstr ""
+
+#: bible_book_names.sluke
+msgctxt "bible_book_names.sluke"
+msgid "Luke"
+msgstr ""
+
+#: bible_book_names.smalachi
+msgctxt "bible_book_names.smalachi"
+msgid "Malachi"
+msgstr ""
+
+#: bible_book_names.smark
+msgctxt "bible_book_names.smark"
+msgid "Mark"
+msgstr ""
+
+#: bible_book_names.smatthew
+msgctxt "bible_book_names.smatthew"
+msgid "Matthew"
+msgstr ""
+
+#: bible_book_names.smicah
+msgctxt "bible_book_names.smicah"
+msgid "Micah"
+msgstr ""
+
+#: bible_book_names.snahum
+msgctxt "bible_book_names.snahum"
+msgid "Nahum"
+msgstr ""
+
+#: bible_book_names.snehemiah
+msgctxt "bible_book_names.snehemiah"
+msgid "Nehemiah"
+msgstr ""
+
+#: bible_book_names.snumbers
+msgctxt "bible_book_names.snumbers"
+msgid "Numbers"
+msgstr ""
+
+#: bible_book_names.sobadiah
+msgctxt "bible_book_names.sobadiah"
+msgid "Obadiah"
+msgstr ""
+
+#: bible_book_names.sphilemon
+msgctxt "bible_book_names.sphilemon"
+msgid "Philemon"
+msgstr ""
+
+#: bible_book_names.sphilippians
+msgctxt "bible_book_names.sphilippians"
+msgid "Philippians"
+msgstr ""
+
+#: bible_book_names.sproverbs
+msgctxt "bible_book_names.sproverbs"
+msgid "Proverbs"
+msgstr ""
+
+#: bible_book_names.spsalms
+msgctxt "bible_book_names.spsalms"
+msgid "Psalms"
+msgstr ""
+
+#: bible_book_names.srevelation
+msgctxt "bible_book_names.srevelation"
+msgid "Revelation"
+msgstr ""
+
+#: bible_book_names.sromans
+msgctxt "bible_book_names.sromans"
+msgid "Romans"
+msgstr ""
+
+#: bible_book_names.sruth
+msgctxt "bible_book_names.sruth"
+msgid "Ruth"
+msgstr ""
+
+#: bible_book_names.ssongofsolomon
+msgctxt "bible_book_names.ssongofsolomon"
+msgid "Song of Solomon"
+msgstr ""
+
+#: bible_book_names.stitus
+msgctxt "bible_book_names.stitus"
+msgid "Titus"
+msgstr ""
+
+#: bible_book_names.szechariah
+msgid "Zechariah"
+msgstr ""
+
+#: bible_book_names.szephaniah
+msgctxt "bible_book_names.szephaniah"
+msgid "Zephaniah"
+msgstr ""
+
+#: bible_tree_coordinator.s1chronicles
+msgctxt "bible_tree_coordinator.s1chronicles"
+msgid "1 Chronicles"
+msgstr ""
+
+#: bible_tree_coordinator.s1corinthians
+msgctxt "bible_tree_coordinator.s1corinthians"
+msgid "1 Corinthians"
+msgstr ""
+
+#: bible_tree_coordinator.s1john
+msgctxt "bible_tree_coordinator.s1john"
+msgid "1 John"
+msgstr ""
+
+#: bible_tree_coordinator.s1kings
+msgctxt "bible_tree_coordinator.s1kings"
+msgid "1 Kings"
+msgstr ""
+
+#: bible_tree_coordinator.s1peter
+msgctxt "bible_tree_coordinator.s1peter"
+msgid "1 Peter"
+msgstr ""
+
+#: bible_tree_coordinator.s1samuel
+msgctxt "bible_tree_coordinator.s1samuel"
+msgid "1 Samuel"
+msgstr ""
+
+#: bible_tree_coordinator.s1thessalonians
+msgctxt "bible_tree_coordinator.s1thessalonians"
+msgid "1 Thessalonians"
+msgstr ""
+
+#: bible_tree_coordinator.s1timothy
+msgctxt "bible_tree_coordinator.s1timothy"
+msgid "1 Timothy"
+msgstr ""
+
+#: bible_tree_coordinator.s2chronicles
+msgctxt "bible_tree_coordinator.s2chronicles"
+msgid "2 Chronicles"
+msgstr ""
+
+#: bible_tree_coordinator.s2corinthians
+msgctxt "bible_tree_coordinator.s2corinthians"
+msgid "2 Corinthians"
+msgstr ""
+
+#: bible_tree_coordinator.s2john
+msgctxt "bible_tree_coordinator.s2john"
+msgid "2 John"
+msgstr ""
+
+#: bible_tree_coordinator.s2kings
+msgctxt "bible_tree_coordinator.s2kings"
+msgid "2 Kings"
+msgstr ""
+
+#: bible_tree_coordinator.s2peter
+msgctxt "bible_tree_coordinator.s2peter"
+msgid "2 Peter"
+msgstr ""
+
+#: bible_tree_coordinator.s2samuel
+msgctxt "bible_tree_coordinator.s2samuel"
+msgid "2 Samuel"
+msgstr ""
+
+#: bible_tree_coordinator.s2thessalonians
+msgctxt "bible_tree_coordinator.s2thessalonians"
+msgid "2 Thessalonians"
+msgstr ""
+
+#: bible_tree_coordinator.s2timothy
+msgctxt "bible_tree_coordinator.s2timothy"
+msgid "2 Timothy"
+msgstr ""
+
+#: bible_tree_coordinator.s3john
+msgctxt "bible_tree_coordinator.s3john"
+msgid "3 John"
+msgstr ""
+
+#: bible_tree_coordinator.sacts
+msgctxt "bible_tree_coordinator.sacts"
+msgid "Acts"
+msgstr ""
+
+#: bible_tree_coordinator.samos
+msgctxt "bible_tree_coordinator.samos"
+msgid "Amos"
+msgstr ""
+
+#: bible_tree_coordinator.scolossians
+msgctxt "bible_tree_coordinator.scolossians"
+msgid "Colossians"
+msgstr ""
+
+#: bible_tree_coordinator.sdaniel
+msgctxt "bible_tree_coordinator.sdaniel"
+msgid "Daniel"
+msgstr ""
+
+#: bible_tree_coordinator.sdeuteronomy
+msgctxt "bible_tree_coordinator.sdeuteronomy"
+msgid "Deuteronomy"
+msgstr ""
+
+#: bible_tree_coordinator.secclesiastes
+msgctxt "bible_tree_coordinator.secclesiastes"
+msgid "Ecclesiastes"
+msgstr ""
+
+#: bible_tree_coordinator.sephesians
+msgctxt "bible_tree_coordinator.sephesians"
+msgid "Ephesians"
+msgstr ""
+
+#: bible_tree_coordinator.sesther
+msgctxt "bible_tree_coordinator.sesther"
+msgid "Esther"
+msgstr ""
+
+#: bible_tree_coordinator.sexodus
+msgctxt "bible_tree_coordinator.sexodus"
+msgid "Exodus"
+msgstr ""
+
+#: bible_tree_coordinator.sezekiel
+msgctxt "bible_tree_coordinator.sezekiel"
+msgid "Ezekiel"
+msgstr ""
+
+#: bible_tree_coordinator.sezra
+msgctxt "bible_tree_coordinator.sezra"
+msgid "Ezra"
+msgstr ""
+
+#: bible_tree_coordinator.sgalatians
+msgctxt "bible_tree_coordinator.sgalatians"
+msgid "Galatians"
+msgstr ""
+
+#: bible_tree_coordinator.sgenesis
+msgctxt "bible_tree_coordinator.sgenesis"
+msgid "Genesis"
+msgstr ""
+
+#: bible_tree_coordinator.shabakkuk
+msgctxt "bible_tree_coordinator.shabakkuk"
+msgid "Habakkuk"
+msgstr ""
+
+#: bible_tree_coordinator.shaggai
+msgctxt "bible_tree_coordinator.shaggai"
+msgid "Haggai"
+msgstr ""
+
+#: bible_tree_coordinator.shebrew
+msgctxt "bible_tree_coordinator.shebrew"
+msgid "Hebrews"
+msgstr ""
+
+#: bible_tree_coordinator.shosea
+msgctxt "bible_tree_coordinator.shosea"
+msgid "Hosea"
+msgstr ""
+
+#: bible_tree_coordinator.sisaiah
+msgctxt "bible_tree_coordinator.sisaiah"
+msgid "Isaiah"
+msgstr ""
+
+#: bible_tree_coordinator.sjames
+msgctxt "bible_tree_coordinator.sjames"
+msgid "James"
+msgstr ""
+
+#: bible_tree_coordinator.sjeremiah
+msgctxt "bible_tree_coordinator.sjeremiah"
+msgid "Jeremiah"
+msgstr ""
+
+#: bible_tree_coordinator.sjob
+msgctxt "bible_tree_coordinator.sjob"
+msgid "Job"
+msgstr ""
+
+#: bible_tree_coordinator.sjoel
+msgctxt "bible_tree_coordinator.sjoel"
+msgid "Joel"
+msgstr ""
+
+#: bible_tree_coordinator.sjohah
+msgctxt "bible_tree_coordinator.sjohah"
+msgid "Jonah"
+msgstr ""
+
+#: bible_tree_coordinator.sjohn
+msgctxt "bible_tree_coordinator.sjohn"
+msgid "John"
+msgstr ""
+
+#: bible_tree_coordinator.sjoshua
+msgctxt "bible_tree_coordinator.sjoshua"
+msgid "Joshua"
+msgstr ""
+
+#: bible_tree_coordinator.sjude
+msgctxt "bible_tree_coordinator.sjude"
+msgid "Jude"
+msgstr ""
+
+#: bible_tree_coordinator.sjudges
+msgctxt "bible_tree_coordinator.sjudges"
+msgid "Judges"
+msgstr ""
+
+#: bible_tree_coordinator.slamentations
+msgctxt "bible_tree_coordinator.slamentations"
+msgid "Lamentations"
+msgstr ""
+
+#: bible_tree_coordinator.sleviticus
+msgctxt "bible_tree_coordinator.sleviticus"
+msgid "Leviticus"
+msgstr ""
+
+#: bible_tree_coordinator.sluke
+msgctxt "bible_tree_coordinator.sluke"
+msgid "Luke"
+msgstr ""
+
+#: bible_tree_coordinator.smalachi
+msgctxt "bible_tree_coordinator.smalachi"
+msgid "Malachi"
+msgstr ""
+
+#: bible_tree_coordinator.smark
+msgctxt "bible_tree_coordinator.smark"
+msgid "Mark"
+msgstr ""
+
+#: bible_tree_coordinator.smatthew
+msgctxt "bible_tree_coordinator.smatthew"
+msgid "Matthew"
+msgstr ""
+
+#: bible_tree_coordinator.smicah
+msgctxt "bible_tree_coordinator.smicah"
+msgid "Micah"
+msgstr ""
+
+#: bible_tree_coordinator.snahum
+msgctxt "bible_tree_coordinator.snahum"
+msgid "Nahum"
+msgstr ""
+
+#: bible_tree_coordinator.snehemiah
+msgctxt "bible_tree_coordinator.snehemiah"
+msgid "Nehemiah"
+msgstr ""
+
+#: bible_tree_coordinator.snumbers
+msgctxt "bible_tree_coordinator.snumbers"
+msgid "Numbers"
+msgstr ""
+
+#: bible_tree_coordinator.sobadiah
+msgctxt "bible_tree_coordinator.sobadiah"
+msgid "Obadiah"
+msgstr ""
+
+#: bible_tree_coordinator.sphilemon
+msgctxt "bible_tree_coordinator.sphilemon"
+msgid "Philemon"
+msgstr ""
+
+#: bible_tree_coordinator.sphilippians
+msgctxt "bible_tree_coordinator.sphilippians"
+msgid "Philippians"
+msgstr ""
+
+#: bible_tree_coordinator.sproverbs
+msgctxt "bible_tree_coordinator.sproverbs"
+msgid "Proverbs"
+msgstr ""
+
+#: bible_tree_coordinator.spsalms
+msgctxt "bible_tree_coordinator.spsalms"
+msgid "Psalms"
+msgstr ""
+
+#: bible_tree_coordinator.srevelation
+msgctxt "bible_tree_coordinator.srevelation"
+msgid "Revelation"
+msgstr ""
+
+#: bible_tree_coordinator.sromans
+msgctxt "bible_tree_coordinator.sromans"
+msgid "Romans"
+msgstr ""
+
+#: bible_tree_coordinator.sruth
+msgctxt "bible_tree_coordinator.sruth"
+msgid "Ruth"
+msgstr ""
+
+#: bible_tree_coordinator.ssongofsolomon
+msgctxt "bible_tree_coordinator.ssongofsolomon"
+msgid "Song of Solomon"
+msgstr ""
+
+#: bible_tree_coordinator.stitus
+msgctxt "bible_tree_coordinator.stitus"
+msgid "Titus"
+msgstr ""
+
+#: bible_tree_coordinator.szechariah
+msgctxt "bible_tree_coordinator.szechariah"
+msgid "Zecariah"
+msgstr ""
+
+#: bible_tree_coordinator.szephaniah
+msgctxt "bible_tree_coordinator.szephaniah"
+msgid "Zephaniah"
+msgstr ""
+
+#: bible_versification.s1chronicles
+msgctxt "bible_versification.s1chronicles"
+msgid "1 Chronicles"
+msgstr ""
+
+#: bible_versification.s1corinthians
+msgctxt "bible_versification.s1corinthians"
+msgid "1 Corinthians"
+msgstr ""
+
+#: bible_versification.s1john
+msgctxt "bible_versification.s1john"
+msgid "1 John"
+msgstr ""
+
+#: bible_versification.s1kings
+msgctxt "bible_versification.s1kings"
+msgid "1 Kings"
+msgstr ""
+
+#: bible_versification.s1peter
+msgctxt "bible_versification.s1peter"
+msgid "1 Peter"
+msgstr ""
+
+#: bible_versification.s1samuel
+msgctxt "bible_versification.s1samuel"
+msgid "1 Samuel"
+msgstr ""
+
+#: bible_versification.s1thessalonians
+msgctxt "bible_versification.s1thessalonians"
+msgid "1 Thessalonians"
+msgstr ""
+
+#: bible_versification.s1timothy
+msgctxt "bible_versification.s1timothy"
+msgid "1 Timothy"
+msgstr ""
+
+#: bible_versification.s2chronicles
+msgctxt "bible_versification.s2chronicles"
+msgid "2 Chronicles"
+msgstr ""
+
+#: bible_versification.s2corinthians
+msgctxt "bible_versification.s2corinthians"
+msgid "2 Corinthians"
+msgstr ""
+
+#: bible_versification.s2john
+msgctxt "bible_versification.s2john"
+msgid "2 John"
+msgstr ""
+
+#: bible_versification.s2kings
+msgctxt "bible_versification.s2kings"
+msgid "2 Kings"
+msgstr ""
+
+#: bible_versification.s2peter
+msgctxt "bible_versification.s2peter"
+msgid "2 Peter"
+msgstr ""
+
+#: bible_versification.s2samuel
+msgctxt "bible_versification.s2samuel"
+msgid "2 Samuel"
+msgstr ""
+
+#: bible_versification.s2thessalonians
+msgctxt "bible_versification.s2thessalonians"
+msgid "2 Thessalonians"
+msgstr ""
+
+#: bible_versification.s2timothy
+msgctxt "bible_versification.s2timothy"
+msgid "2 Timothy"
+msgstr ""
+
+#: bible_versification.s3john
+msgctxt "bible_versification.s3john"
+msgid "3 John"
+msgstr ""
+
+#: bible_versification.sacts
+msgctxt "bible_versification.sacts"
+msgid "Acts"
+msgstr ""
+
+#: bible_versification.samos
+msgctxt "bible_versification.samos"
+msgid "Amos"
+msgstr ""
+
+#: bible_versification.scolossians
+msgctxt "bible_versification.scolossians"
+msgid "Colossians"
+msgstr ""
+
+#: bible_versification.sdaniel
+msgctxt "bible_versification.sdaniel"
+msgid "Daniel"
+msgstr ""
+
+#: bible_versification.sdeuteronomy
+msgctxt "bible_versification.sdeuteronomy"
+msgid "Deuteronomy"
+msgstr ""
+
+#: bible_versification.secclesiastes
+msgctxt "bible_versification.secclesiastes"
+msgid "Ecclesiastes"
+msgstr ""
+
+#: bible_versification.sephesians
+msgctxt "bible_versification.sephesians"
+msgid "Ephesians"
+msgstr ""
+
+#: bible_versification.sesther
+msgctxt "bible_versification.sesther"
+msgid "Esther"
+msgstr ""
+
+#: bible_versification.sexodus
+msgctxt "bible_versification.sexodus"
+msgid "Exodus"
+msgstr ""
+
+#: bible_versification.sezekiel
+msgctxt "bible_versification.sezekiel"
+msgid "Ezekiel"
+msgstr ""
+
+#: bible_versification.sezra
+msgctxt "bible_versification.sezra"
+msgid "Ezra"
+msgstr ""
+
+#: bible_versification.sgalatians
+msgctxt "bible_versification.sgalatians"
+msgid "Galatians"
+msgstr ""
+
+#: bible_versification.sgenesis
+msgctxt "bible_versification.sgenesis"
+msgid "Genesis"
+msgstr ""
+
+#: bible_versification.shabakkuk
+msgctxt "bible_versification.shabakkuk"
+msgid "Habakkuk"
+msgstr ""
+
+#: bible_versification.shaggai
+msgctxt "bible_versification.shaggai"
+msgid "Haggai"
+msgstr ""
+
+#: bible_versification.shebrew
+msgctxt "bible_versification.shebrew"
+msgid "Hebrews"
+msgstr ""
+
+#: bible_versification.shosea
+msgctxt "bible_versification.shosea"
+msgid "Hosea"
+msgstr ""
+
+#: bible_versification.sisaiah
+msgctxt "bible_versification.sisaiah"
+msgid "Isaiah"
+msgstr ""
+
+#: bible_versification.sjames
+msgctxt "bible_versification.sjames"
+msgid "James"
+msgstr ""
+
+#: bible_versification.sjeremiah
+msgctxt "bible_versification.sjeremiah"
+msgid "Jeremiah"
+msgstr ""
+
+#: bible_versification.sjob
+msgctxt "bible_versification.sjob"
+msgid "Job"
+msgstr ""
+
+#: bible_versification.sjoel
+msgctxt "bible_versification.sjoel"
+msgid "Joel"
+msgstr ""
+
+#: bible_versification.sjohah
+msgctxt "bible_versification.sjohah"
+msgid "Jonah"
+msgstr ""
+
+#: bible_versification.sjohn
+msgctxt "bible_versification.sjohn"
+msgid "John"
+msgstr ""
+
+#: bible_versification.sjoshua
+msgctxt "bible_versification.sjoshua"
+msgid "Joshua"
+msgstr ""
+
+#: bible_versification.sjude
+msgctxt "bible_versification.sjude"
+msgid "Jude"
+msgstr ""
+
+#: bible_versification.sjudges
+msgctxt "bible_versification.sjudges"
+msgid "Judges"
+msgstr ""
+
+#: bible_versification.slamentations
+msgctxt "bible_versification.slamentations"
+msgid "Lamentations"
+msgstr ""
+
+#: bible_versification.sleviticus
+msgctxt "bible_versification.sleviticus"
+msgid "Leviticus"
+msgstr ""
+
+#: bible_versification.sluke
+msgctxt "bible_versification.sluke"
+msgid "Luke"
+msgstr ""
+
+#: bible_versification.smalachi
+msgctxt "bible_versification.smalachi"
+msgid "Malachi"
+msgstr ""
+
+#: bible_versification.smark
+msgctxt "bible_versification.smark"
+msgid "Mark"
+msgstr ""
+
+#: bible_versification.smatthew
+msgctxt "bible_versification.smatthew"
+msgid "Matthew"
+msgstr ""
+
+#: bible_versification.smicah
+msgctxt "bible_versification.smicah"
+msgid "Micah"
+msgstr ""
+
+#: bible_versification.snahum
+msgctxt "bible_versification.snahum"
+msgid "Nahum"
+msgstr ""
+
+#: bible_versification.snehemiah
+msgctxt "bible_versification.snehemiah"
+msgid "Nehemiah"
+msgstr ""
+
+#: bible_versification.snumbers
+msgctxt "bible_versification.snumbers"
+msgid "Numbers"
+msgstr ""
+
+#: bible_versification.sobadiah
+msgctxt "bible_versification.sobadiah"
+msgid "Obadiah"
+msgstr ""
+
+#: bible_versification.sphilemon
+msgctxt "bible_versification.sphilemon"
+msgid "Philemon"
+msgstr ""
+
+#: bible_versification.sphilippians
+msgctxt "bible_versification.sphilippians"
+msgid "Philippians"
+msgstr ""
+
+#: bible_versification.sproverbs
+msgctxt "bible_versification.sproverbs"
+msgid "Proverbs"
+msgstr ""
+
+#: bible_versification.spsalms
+msgctxt "bible_versification.spsalms"
+msgid "Psalms"
+msgstr ""
+
+#: bible_versification.srevelation
+msgctxt "bible_versification.srevelation"
+msgid "Revelation"
+msgstr ""
+
+#: bible_versification.sromans
+msgctxt "bible_versification.sromans"
+msgid "Romans"
+msgstr ""
+
+#: bible_versification.sruth
+msgctxt "bible_versification.sruth"
+msgid "Ruth"
+msgstr ""
+
+#: bible_versification.ssongofsolomon
+msgctxt "bible_versification.ssongofsolomon"
+msgid "Song of Solomon"
+msgstr ""
+
+#: bible_versification.stitus
+msgctxt "bible_versification.stitus"
+msgid "Titus"
+msgstr ""
+
+#: bible_versification.szechariah
+msgctxt "bible_versification.szechariah"
+msgid "Zecariah"
+msgstr ""
+
+#: bible_versification.szephaniah
+msgctxt "bible_versification.szephaniah"
+msgid "Zephaniah"
 msgstr ""
 
 #: chapterview.schapterbeginning
@@ -143,7 +1518,6 @@ msgid "Interlinear"
 msgstr ""
 
 #: chapterview.sinterlinearmodeintra
-msgctxt "chapterview.sinterlinearmodeintra"
 msgid "Intralinear"
 msgstr ""
 
@@ -172,7 +1546,6 @@ msgid "Back to translation memory"
 msgstr ""
 
 #: chapterview.stranslationmemorycurrentlegend
-msgctxt "chapterview.stranslationmemorycurrentlegend"
 msgid "Blue translations are used in the current verse."
 msgstr ""
 
@@ -203,15 +1576,6 @@ msgstr ""
 msgid "No translation recorded"
 msgstr ""
 
-#: chapterview.stranslationmemoryoneassociationmanyversesfmt
-#, object-pascal-format
-msgid "1 association in %d verses"
-msgstr ""
-
-#: chapterview.stranslationmemoryoneassociationoneverse
-msgid "1 association in 1 verse"
-msgstr ""
-
 #: chapterview.stranslationmemoryoccurrencecountfmt
 #, object-pascal-format
 msgctxt "chapterview.stranslationmemoryoccurrencecountfmt"
@@ -226,6 +1590,24 @@ msgstr ""
 #: chapterview.stranslationmemoryoccurrencetotalsfmt
 #, object-pascal-format
 msgid "%d associations in %d verses"
+msgstr ""
+
+#: chapterview.stranslationmemoryoneassociationmanyversesfmt
+#, object-pascal-format
+msgid "1 association in %d verses"
+msgstr ""
+
+#: chapterview.stranslationmemoryoneassociationoneverse
+msgid "1 association in 1 verse"
+msgstr ""
+
+#: chapterview.stranslationmemorypreviewremainingfmt
+#, object-pascal-format
+msgid "%d more verses — click the count to see all."
+msgstr ""
+
+#: chapterview.stranslationmemorypreviewunavailable
+msgid "Preview unavailable — click to open the occurrences."
 msgstr ""
 
 #: chapterview.stranslationmemoryshowmorefmt
@@ -245,6 +1627,11 @@ msgstr ""
 
 #: chapterview.sverserules
 msgid "Verse &rules..."
+msgstr ""
+
+#: commentsview.seditorialcommentstitle
+msgctxt "commentsview.seditorialcommentstitle"
+msgid "Editorial comments"
 msgstr ""
 
 #: concordanceexport.sconcordancecountsummary
@@ -271,6 +1658,19 @@ msgstr ""
 msgid "1 verse"
 msgstr ""
 
+#: current_verse_workspace.sassociationdatanotcompletelyapplied
+msgctxt "current_verse_workspace.sassociationdatanotcompletelyapplied"
+msgid "Association data could not be applied completely to the verse pair"
+msgstr ""
+
+#: current_verse_workspace.sassociationpairlistunmatchedphrase
+msgid "Association pair list contains an unmatched phrase"
+msgstr ""
+
+#: current_verse_workspace.sverserenderbufferunavailable
+msgid "Verse render buffer is not available"
+msgstr ""
+
 #: formaiprocessing.saiflowassociation
 msgctxt "formaiprocessing.saiflowassociation"
 msgid "Association"
@@ -295,7 +1695,6 @@ msgid "Processing completed: %d successful, %d failed"
 msgstr ""
 
 #: formaiprocessing.saiprocessingerrorseelogs
-msgctxt "formaiprocessing.saiprocessingerrorseelogsbible_book_names.sgenesisbible_book_names.sexodusbible_book_names.sleviticusbible_book_names.snumbersbible_book_names.sdeuteronomybible_book_names.sjoshuabible_book_names.sjudgesbible_book_names.sruthbible_book_names.s1samuelbible_book_names.s2samuelbible_book_names.s1kingsbible_book_names.s2kingsbible_book_names.s1chroniclesbible_book_names.s2chroniclesbible_book_names.sezrabible_book_names.snehemiahbible_book_names.sestherbible_book_names.sjobbible_book_names.spsalmsbible_book_names.sproverbsbible_book_names.secclesiastesbible_book_names.ssongofsolomonbible_book_names.sisaiahbible_book_names.sjeremiahbible_book_names.slamentationsbible_book_names.sezekielbible_book_names.sdanielbible_book_names.shoseabible_book_names.sjoelbible_book_names.samosbible_book_names.sobadiahbible_book_names.sjonahbible_book_names.smicahbible_book_names.snahumbible_book_names.shabakkukbible_book_names.szephaniahbible_book_names.shaggaibible_book_names.szechariahbible_book_names.smalachibible_book_names.smatthewbible_book_names.smarkbible_book_names.slukebible_book_names.sjohnbible_book_names.sactsbible_book_names.sromansbible_book_names.s1corinthiansbible_book_names.s2corinthiansbible_book_names.sgalatiansbible_book_names.sephesiansbible_book_names.sphilippiansbible_book_names.scolossiansbible_book_names.s1thessaloniansbible_book_names.s2thessaloniansbible_book_names.s1timothybible_book_names.s2timothybible_book_names.stitusbible_book_names.sphilemonbible_book_names.shebrewsbible_book_names.sjamesbible_book_names.s1peterbible_book_names.s2peterbible_book_names.s1johnbible_book_names.s2johnbible_book_names.s3johnbible_book_names.sjudebible_book_names.srevelation"
 msgid "Error during AI processing (see logs)"
 msgstr ""
 
@@ -382,7 +1781,6 @@ msgid "Current project"
 msgstr ""
 
 #: formaiprocessing.saireviewdeselectall
-msgctxt "formaiprocessing.saireviewdeselectall"
 msgid "Reject all"
 msgstr ""
 
@@ -391,7 +1789,6 @@ msgid "Unmark all verses. Nothing will be applied until verses are accepted agai
 msgstr ""
 
 #: formaiprocessing.saireviewdiscard
-msgctxt "formaiprocessing.saireviewdiscard"
 msgid "Discard"
 msgstr ""
 
@@ -410,7 +1807,6 @@ msgid "%d verses failed. They will not be applied unless you retry them successf
 msgstr ""
 
 #: formaiprocessing.saireviewgroupcaption
-msgctxt "formaiprocessing.saireviewgroupcaption"
 msgid "Verses to apply"
 msgstr ""
 
@@ -465,7 +1861,6 @@ msgid "Retrying %d failed verses."
 msgstr ""
 
 #: formaiprocessing.saireviewselectall
-msgctxt "formaiprocessing.saireviewselectall"
 msgid "Accept all"
 msgstr ""
 
@@ -555,6 +1950,56 @@ msgstr ""
 msgid "Tokens consumed: unavailable"
 msgstr ""
 
+#: formapplicationpreferences.sclosebutton
+msgctxt "formapplicationpreferences.sclosebutton"
+msgid "&Close"
+msgstr ""
+
+#: formapplicationpreferences.sinterfacelanguage
+msgid "&Interface language"
+msgstr ""
+
+#: formapplicationpreferences.slanguageenglish
+msgid "English"
+msgstr ""
+
+#: formapplicationpreferences.slanguageportuguese
+msgid "Português"
+msgstr ""
+
+#: formapplicationpreferences.spopuptriggeraltmousehover
+msgid "Alt+Mouse hover"
+msgstr ""
+
+#: formapplicationpreferences.spopuptriggerctrlmousehover
+msgid "Ctrl+Mouse hover"
+msgstr ""
+
+#: formapplicationpreferences.spopuptriggerdisabled
+msgctxt "formapplicationpreferences.spopuptriggerdisabled"
+msgid "Disabled"
+msgstr ""
+
+#: formapplicationpreferences.spopuptriggermousehover
+msgid "Mouse hover"
+msgstr ""
+
+#: formapplicationpreferences.spreferencesscope
+msgid "These preferences apply to all projects on this computer."
+msgstr ""
+
+#: formapplicationpreferences.spreferencestitle
+msgid "iBiblia preferences"
+msgstr ""
+
+#: formapplicationpreferences.ssaveautomatically
+msgid "Save &automatically when changing verse"
+msgstr ""
+
+#: formapplicationpreferences.sshowworddefinition
+msgid "Show &word definition"
+msgstr ""
+
 #: formapplypatch.signoredversesonpatch
 #, object-pascal-format
 msgid "%d verses are identical to what you have in your project and were ignored."
@@ -573,6 +2018,512 @@ msgstr ""
 msgid "Patch successfully applied"
 msgstr ""
 
+#: formexportar.sanalyticalconcordance
+msgctxt "formexportar.sanalyticalconcordance"
+msgid "AnalyticalConcordance"
+msgstr ""
+
+#: formexportar.smyswordmodule
+msgctxt "formexportar.smyswordmodule"
+msgid "MySword Bible module (*.bbl.mybible)"
+msgstr ""
+
+#: formexportar.ssyntheticconcordance
+msgctxt "formexportar.ssyntheticconcordance"
+msgid "SyntheticConcordance"
+msgstr ""
+
+#: formexportar.sthewordntmodule
+msgctxt "formexportar.sthewordntmodule"
+msgid "theWord Bible module (*.nt)"
+msgstr ""
+
+#: formexportar.sthewordontmodule
+msgctxt "formexportar.sthewordontmodule"
+msgid "theWord Bible module (*.ont)"
+msgstr ""
+
+#: formexportar.sthewordotmodule
+msgctxt "formexportar.sthewordotmodule"
+msgid "theWord Bible module (*.ot)"
+msgstr ""
+
+#: formexportpatch.s1chronicles
+msgctxt "formexportpatch.s1chronicles"
+msgid "1 Chronicles"
+msgstr ""
+
+#: formexportpatch.s1corinthians
+msgctxt "formexportpatch.s1corinthians"
+msgid "1 Corinthians"
+msgstr ""
+
+#: formexportpatch.s1john
+msgctxt "formexportpatch.s1john"
+msgid "1 John"
+msgstr ""
+
+#: formexportpatch.s1kings
+msgctxt "formexportpatch.s1kings"
+msgid "1 Kings"
+msgstr ""
+
+#: formexportpatch.s1peter
+msgctxt "formexportpatch.s1peter"
+msgid "1 Peter"
+msgstr ""
+
+#: formexportpatch.s1samuel
+msgctxt "formexportpatch.s1samuel"
+msgid "1 Samuel"
+msgstr ""
+
+#: formexportpatch.s1thessalonians
+msgctxt "formexportpatch.s1thessalonians"
+msgid "1 Thessalonians"
+msgstr ""
+
+#: formexportpatch.s1timothy
+msgctxt "formexportpatch.s1timothy"
+msgid "1 Timothy"
+msgstr ""
+
+#: formexportpatch.s2chronicles
+msgctxt "formexportpatch.s2chronicles"
+msgid "2 Chronicles"
+msgstr ""
+
+#: formexportpatch.s2corinthians
+msgctxt "formexportpatch.s2corinthians"
+msgid "2 Corinthians"
+msgstr ""
+
+#: formexportpatch.s2john
+msgctxt "formexportpatch.s2john"
+msgid "2 John"
+msgstr ""
+
+#: formexportpatch.s2kings
+msgctxt "formexportpatch.s2kings"
+msgid "2 Kings"
+msgstr ""
+
+#: formexportpatch.s2peter
+msgctxt "formexportpatch.s2peter"
+msgid "2 Peter"
+msgstr ""
+
+#: formexportpatch.s2samuel
+msgctxt "formexportpatch.s2samuel"
+msgid "2 Samuel"
+msgstr ""
+
+#: formexportpatch.s2thessalonians
+msgctxt "formexportpatch.s2thessalonians"
+msgid "2 Thessalonians"
+msgstr ""
+
+#: formexportpatch.s2timothy
+msgctxt "formexportpatch.s2timothy"
+msgid "2 Timothy"
+msgstr ""
+
+#: formexportpatch.s3john
+msgctxt "formexportpatch.s3john"
+msgid "3 John"
+msgstr ""
+
+#: formexportpatch.sacts
+msgctxt "formexportpatch.sacts"
+msgid "Acts"
+msgstr ""
+
+#: formexportpatch.samos
+msgctxt "formexportpatch.samos"
+msgid "Amos"
+msgstr ""
+
+#: formexportpatch.scancel
+msgctxt "formexportpatch.scancel"
+msgid "Cancel"
+msgstr ""
+
+#: formexportpatch.scolossians
+msgctxt "formexportpatch.scolossians"
+msgid "Colossians"
+msgstr ""
+
+#: formexportpatch.sdaniel
+msgctxt "formexportpatch.sdaniel"
+msgid "Daniel"
+msgstr ""
+
+#: formexportpatch.sdeselectall
+msgid "Deselect all"
+msgstr ""
+
+#: formexportpatch.sdeuteronomy
+msgctxt "formexportpatch.sdeuteronomy"
+msgid "Deuteronomy"
+msgstr ""
+
+#: formexportpatch.secclesiastes
+msgctxt "formexportpatch.secclesiastes"
+msgid "Ecclesiastes"
+msgstr ""
+
+#: formexportpatch.sephesians
+msgctxt "formexportpatch.sephesians"
+msgid "Ephesians"
+msgstr ""
+
+#: formexportpatch.sesther
+msgctxt "formexportpatch.sesther"
+msgid "Esther"
+msgstr ""
+
+#: formexportpatch.sexodus
+msgctxt "formexportpatch.sexodus"
+msgid "Exodus"
+msgstr ""
+
+#: formexportpatch.sexportpatchtitle
+msgid "Export patch..."
+msgstr ""
+
+#: formexportpatch.sezekiel
+msgctxt "formexportpatch.sezekiel"
+msgid "Ezekiel"
+msgstr ""
+
+#: formexportpatch.sezra
+msgctxt "formexportpatch.sezra"
+msgid "Ezra"
+msgstr ""
+
+#: formexportpatch.sgalatians
+msgctxt "formexportpatch.sgalatians"
+msgid "Galatians"
+msgstr ""
+
+#: formexportpatch.sgenesis
+msgctxt "formexportpatch.sgenesis"
+msgid "Genesis"
+msgstr ""
+
+#: formexportpatch.shabakkuk
+msgctxt "formexportpatch.shabakkuk"
+msgid "Habakkuk"
+msgstr ""
+
+#: formexportpatch.shaggai
+msgctxt "formexportpatch.shaggai"
+msgid "Haggai"
+msgstr ""
+
+#: formexportpatch.shebrew
+msgctxt "formexportpatch.shebrew"
+msgid "Hebrews"
+msgstr ""
+
+#: formexportpatch.shosea
+msgctxt "formexportpatch.shosea"
+msgid "Hosea"
+msgstr ""
+
+#: formexportpatch.sisaiah
+msgctxt "formexportpatch.sisaiah"
+msgid "Isaiah"
+msgstr ""
+
+#: formexportpatch.sjames
+msgctxt "formexportpatch.sjames"
+msgid "James"
+msgstr ""
+
+#: formexportpatch.sjeremiah
+msgctxt "formexportpatch.sjeremiah"
+msgid "Jeremiah"
+msgstr ""
+
+#: formexportpatch.sjob
+msgctxt "formexportpatch.sjob"
+msgid "Job"
+msgstr ""
+
+#: formexportpatch.sjoel
+msgctxt "formexportpatch.sjoel"
+msgid "Joel"
+msgstr ""
+
+#: formexportpatch.sjohah
+msgctxt "formexportpatch.sjohah"
+msgid "Jonah"
+msgstr ""
+
+#: formexportpatch.sjohn
+msgctxt "formexportpatch.sjohn"
+msgid "John"
+msgstr ""
+
+#: formexportpatch.sjoshua
+msgctxt "formexportpatch.sjoshua"
+msgid "Joshua"
+msgstr ""
+
+#: formexportpatch.sjude
+msgctxt "formexportpatch.sjude"
+msgid "Jude"
+msgstr ""
+
+#: formexportpatch.sjudges
+msgctxt "formexportpatch.sjudges"
+msgid "Judges"
+msgstr ""
+
+#: formexportpatch.slamentations
+msgctxt "formexportpatch.slamentations"
+msgid "Lamentations"
+msgstr ""
+
+#: formexportpatch.sleviticus
+msgctxt "formexportpatch.sleviticus"
+msgid "Leviticus"
+msgstr ""
+
+#: formexportpatch.sluke
+msgctxt "formexportpatch.sluke"
+msgid "Luke"
+msgstr ""
+
+#: formexportpatch.smalachi
+msgctxt "formexportpatch.smalachi"
+msgid "Malachi"
+msgstr ""
+
+#: formexportpatch.smark
+msgctxt "formexportpatch.smark"
+msgid "Mark"
+msgstr ""
+
+#: formexportpatch.smatthew
+msgctxt "formexportpatch.smatthew"
+msgid "Matthew"
+msgstr ""
+
+#: formexportpatch.smicah
+msgctxt "formexportpatch.smicah"
+msgid "Micah"
+msgstr ""
+
+#: formexportpatch.snahum
+msgctxt "formexportpatch.snahum"
+msgid "Nahum"
+msgstr ""
+
+#: formexportpatch.snehemiah
+msgctxt "formexportpatch.snehemiah"
+msgid "Nehemiah"
+msgstr ""
+
+#: formexportpatch.snumbers
+msgctxt "formexportpatch.snumbers"
+msgid "Numbers"
+msgstr ""
+
+#: formexportpatch.sobadiah
+msgctxt "formexportpatch.sobadiah"
+msgid "Obadiah"
+msgstr ""
+
+#: formexportpatch.sok
+msgctxt "formexportpatch.sok"
+msgid "OK"
+msgstr ""
+
+#: formexportpatch.sphilemon
+msgctxt "formexportpatch.sphilemon"
+msgid "Philemon"
+msgstr ""
+
+#: formexportpatch.sphilippians
+msgctxt "formexportpatch.sphilippians"
+msgid "Philippians"
+msgstr ""
+
+#: formexportpatch.sproverbs
+msgctxt "formexportpatch.sproverbs"
+msgid "Proverbs"
+msgstr ""
+
+#: formexportpatch.spsalms
+msgctxt "formexportpatch.spsalms"
+msgid "Psalms"
+msgstr ""
+
+#: formexportpatch.srevelation
+msgctxt "formexportpatch.srevelation"
+msgid "Revelation"
+msgstr ""
+
+#: formexportpatch.sromans
+msgctxt "formexportpatch.sromans"
+msgid "Romans"
+msgstr ""
+
+#: formexportpatch.sruth
+msgctxt "formexportpatch.sruth"
+msgid "Ruth"
+msgstr ""
+
+#: formexportpatch.sselectall
+msgid "Select all"
+msgstr ""
+
+#: formexportpatch.ssongofsolomon
+msgctxt "formexportpatch.ssongofsolomon"
+msgid "Song of Solomon"
+msgstr ""
+
+#: formexportpatch.stitus
+msgctxt "formexportpatch.stitus"
+msgid "Titus"
+msgstr ""
+
+#: formexportpatch.szechariah
+msgctxt "formexportpatch.szechariah"
+msgid "Zecariah"
+msgstr ""
+
+#: formexportpatch.szephaniah
+msgctxt "formexportpatch.szephaniah"
+msgid "Zephaniah"
+msgstr ""
+
+#: formflowexamples.rsaddcurrentverse
+msgid "Add current verse"
+msgstr ""
+
+#: formflowexamples.rsbtncancel
+msgctxt "formflowexamples.rsbtncancel"
+msgid "Cancel"
+msgstr ""
+
+#: formflowexamples.rsbtnok
+msgctxt "formflowexamples.rsbtnok"
+msgid "OK"
+msgstr ""
+
+#: formflowexamples.rsclearexamples
+msgid "Clear"
+msgstr ""
+
+#: formflowexamples.rsclearexamplesprompt
+#, object-pascal-format
+msgid "Remove all saved examples for the %s flow?"
+msgstr ""
+
+#: formflowexamples.rsclearexamplestitle
+msgid "Clear examples"
+msgstr ""
+
+#: formflowexamples.rsdestinationtext
+msgid "Destination / translation"
+msgstr ""
+
+#: formflowexamples.rsexampleslist
+msgid "Examples"
+msgstr ""
+
+#: formflowexamples.rsflowexamplestitle
+#, object-pascal-format
+msgid "%s examples"
+msgstr ""
+
+#: formflowexamples.rshintaddcurrentverse
+msgid "Add or replace an example using the current source and destination verses."
+msgstr ""
+
+#: formflowexamples.rshintcancel
+msgid "Close without saving example changes."
+msgstr ""
+
+#: formflowexamples.rshintclearexamples
+msgid "Remove all examples from this working list."
+msgstr ""
+
+#: formflowexamples.rshintmoveexampledown
+msgid "Move the selected example later in the prompt."
+msgstr ""
+
+#: formflowexamples.rshintmoveexampleup
+msgid "Move the selected example earlier in the prompt."
+msgstr ""
+
+#: formflowexamples.rshintok
+msgid "Save these example changes."
+msgstr ""
+
+#: formflowexamples.rshintremoveexample
+msgid "Remove the selected example from this working list."
+msgstr ""
+
+#: formflowexamples.rsmoveexampledown
+msgid "Move down"
+msgstr ""
+
+#: formflowexamples.rsmoveexampleup
+msgid "Move up"
+msgstr ""
+
+#: formflowexamples.rsnoexamples
+msgid "No saved examples."
+msgstr ""
+
+#: formflowexamples.rspreviewnovisualassociations
+msgid "This example has no visual associations to display."
+msgstr ""
+
+#: formflowexamples.rspreviewready
+msgid "Visual preview ready."
+msgstr ""
+
+#: formflowexamples.rspromptresponse
+msgid "Prompt response"
+msgstr ""
+
+#: formflowexamples.rsremoveexample
+msgctxt "formflowexamples.rsremoveexample"
+msgid "Remove"
+msgstr ""
+
+#: formflowexamples.rsreplaceexampleprompt
+#, object-pascal-format
+msgid ""
+"This verse is already saved as an example for the %s flow.\n"
+"\n"
+"Do you want to replace it with the current verse state?"
+msgstr ""
+
+#: formflowexamples.rsreplaceexampletitle
+msgctxt "formflowexamples.rsreplaceexampletitle"
+msgid "Example already exists"
+msgstr ""
+
+#: formflowexamples.rssourcetext
+msgctxt "formflowexamples.rssourcetext"
+msgid "Source text"
+msgstr ""
+
+#: formflowexamples.rsvisualpreview
+msgid "Visual preview"
+msgstr ""
+
+#: formflowexamples.rswarningtitle
+msgctxt "formflowexamples.rswarningtitle"
+msgid "Warning"
+msgstr ""
+
 #: formllmoptions.rsadditionalinstructions
 msgid "Additional Instructions (Optional):"
 msgstr ""
@@ -583,7 +2534,6 @@ msgid "Cancel"
 msgstr ""
 
 #: formllmoptions.rsbtnclose
-msgctxt "formllmoptions.rsbtnclose"
 msgid "Close"
 msgstr ""
 
@@ -601,7 +2551,6 @@ msgid "Reset to Default"
 msgstr ""
 
 #: formllmoptions.rsbtntest
-msgctxt "formllmoptions.rsbtntest"
 msgid "Test"
 msgstr ""
 
@@ -610,7 +2559,6 @@ msgid "View Current Prompt"
 msgstr ""
 
 #: formllmoptions.rscommonsettings
-msgctxt "formllmoptions.rscommonsettings"
 msgid "Common Settings (All Flows)"
 msgstr ""
 
@@ -634,22 +2582,18 @@ msgstr ""
 
 #: formllmoptions.rsformatinfofmt
 #, object-pascal-format
-msgctxt "formllmoptions.rsformatinfofmt"
 msgid "Info: %s"
 msgstr ""
 
 #: formllmoptions.rslabelapikey
-msgctxt "formllmoptions.rslabelapikey"
 msgid "API key"
 msgstr ""
 
 #: formllmoptions.rslabelmaxparallel
-msgctxt "formllmoptions.rslabelmaxparallel"
 msgid "Max Parallel"
 msgstr ""
 
 #: formllmoptions.rslabelmaxretries
-msgctxt "formllmoptions.rslabelmaxretries"
 msgid "Max Retries"
 msgstr ""
 
@@ -796,7 +2740,6 @@ msgid "Next >"
 msgstr ""
 
 #: formnewproject.snodictionariesselected
-msgctxt "formnewproject.snodictionariesselected"
 msgid "No dictionaries selected."
 msgstr ""
 
@@ -815,7 +2758,6 @@ msgid "theWord Bible modules (*.ont, *.ot)|*.ont;*.ot"
 msgstr ""
 
 #: formnewproject.soptionaldictionaryhint
-msgctxt "formnewproject.soptionaldictionaryhint"
 msgid "Optional; invalid filled dictionaries block Finish."
 msgstr ""
 
@@ -922,6 +2864,7 @@ msgid "Use this when you already have a source text and a translated destination
 msgstr ""
 
 #: formnewproject.sscenarioassociationtitle
+msgctxt "formnewproject.sscenarioassociationtitle"
 msgid "Translation association project"
 msgstr ""
 
@@ -934,11 +2877,11 @@ msgid "Use this when the destination text will be created inside iBiblia. Only t
 msgstr ""
 
 #: formnewproject.sscenariotranslationtitle
+msgctxt "formnewproject.sscenariotranslationtitle"
 msgid "Translation project"
 msgstr ""
 
 #: formnewproject.sscopelabel
-msgctxt "formnewproject.sscopelabel"
 msgid "Scope"
 msgstr ""
 
@@ -958,7 +2901,6 @@ msgid "Associating"
 msgstr ""
 
 #: formnewproject.sstatusawaitingtranslation
-msgctxt "formnewproject.sstatusawaitingtranslation"
 msgid "Awaiting translation"
 msgstr ""
 
@@ -969,18 +2911,15 @@ msgid "Current catalog: %d statuses"
 msgstr ""
 
 #: formnewproject.sstatuscatalogdescription
-msgctxt "formnewproject.sstatuscatalogdescription"
 msgid "The status catalog defines the labels, order, and colors used to track verse progress. iBiblia uses it in the project tree, filters, and review workflows. You can keep the default catalog for the selected scenario or customize it before creating the project."
 msgstr ""
 
 #: formnewproject.sstatuscatalogready
 #, object-pascal-format
-msgctxt "formnewproject.sstatuscatalogready"
 msgid "Status catalog: %d statuses"
 msgstr ""
 
 #: formnewproject.sstatushaspendingissues
-msgctxt "formnewproject.sstatushaspendingissues"
 msgid "Has pending issues"
 msgstr ""
 
@@ -995,12 +2934,10 @@ msgid "Not associated"
 msgstr ""
 
 #: formnewproject.sstatusreadyforreview
-msgctxt "formnewproject.sstatusreadyforreview"
 msgid "Ready for review"
 msgstr ""
 
 #: formnewproject.sstatusreviewed
-msgctxt "formnewproject.sstatusreviewed"
 msgid "Reviewed"
 msgstr ""
 
@@ -1010,7 +2947,6 @@ msgid "Status"
 msgstr ""
 
 #: formnewproject.sstatustranslating
-msgctxt "formnewproject.sstatustranslating"
 msgid "Translating"
 msgstr ""
 
@@ -1048,6 +2984,68 @@ msgctxt "formnewproject.swholebiblefilter"
 msgid "theWord Bible modules (*.ont, *.ot, *.nt)|*.ont;*.ot;*.nt"
 msgstr ""
 
+#: formnovoprojeto.schooseaname
+msgctxt "formnovoprojeto.schooseaname"
+msgid "Please choose a name for your project"
+msgstr ""
+
+#: formnovoprojeto.schooseatleastonetext
+msgctxt "formnovoprojeto.schooseatleastonetext"
+msgid "Please choose a source Bible text"
+msgstr ""
+
+#: formnovoprojeto.snewproject
+msgctxt "formnovoprojeto.snewproject"
+msgid "New project"
+msgstr ""
+
+#: formnovoprojeto.snewtestament
+msgctxt "formnovoprojeto.snewtestament"
+msgid "New Testament"
+msgstr ""
+
+#: formnovoprojeto.snewtestamentfilter
+msgctxt "formnovoprojeto.snewtestamentfilter"
+msgid "theWord Bible modules (*.ont, *.nt)|*.ont;*.nt"
+msgstr ""
+
+#: formnovoprojeto.soldtestament
+msgctxt "formnovoprojeto.soldtestament"
+msgid "Old Testament"
+msgstr ""
+
+#: formnovoprojeto.soldtestamentfilter
+msgctxt "formnovoprojeto.soldtestamentfilter"
+msgid "theWord Bible modules (*.ont, *.ot)|*.ont;*.ot"
+msgstr ""
+
+#: formnovoprojeto.stokenizerversion
+msgctxt "formnovoprojeto.stokenizerversion"
+msgid "Tokenizer version"
+msgstr ""
+
+#: formnovoprojeto.swholebible
+msgctxt "formnovoprojeto.swholebible"
+msgid "Whole Bible"
+msgstr ""
+
+#: formnovoprojeto.swholebiblefilter
+msgctxt "formnovoprojeto.swholebiblefilter"
+msgid "theWord Bible modules (*.ont, *.ot, *.nt)|*.ont;*.ot;*.nt"
+msgstr ""
+
+#: formprincipal.saboutmenu
+msgid "&About..."
+msgstr ""
+
+#: formprincipal.saiconfigurationpendingtext
+msgid "Configure AI for this project before using AI suggestions."
+msgstr ""
+
+#: formprincipal.saiconfigurationpendingtitle
+msgid "AI configuration pending"
+msgstr ""
+
 #: formprincipal.saisuggestion
 msgid "AI-assisted (experimental)"
 msgstr ""
@@ -1056,9 +3054,21 @@ msgstr ""
 msgid "Use the new AI-assisted suggestion engine (requires internet)"
 msgstr ""
 
+#: formprincipal.salwaysontopmenu
+msgid "&Keep window always on top"
+msgstr ""
+
 #: formprincipal.sanalyzingverse
 msgctxt "formprincipal.sanalyzingverse"
 msgid "Analyzing verse..."
+msgstr ""
+
+#: formprincipal.sapplypatchmenu
+msgid "&Apply patch..."
+msgstr ""
+
+#: formprincipal.sboldstrongsmenu
+msgid "Highlight words with Strong in bold"
 msgstr ""
 
 #: formprincipal.sbuttoncancel
@@ -1099,6 +3109,23 @@ msgctxt "formprincipal.scloseproject"
 msgid "Close project"
 msgstr ""
 
+#: formprincipal.scloseprojectmenu
+msgctxt "formprincipal.scloseprojectmenu"
+msgid "&Close"
+msgstr ""
+
+#: formprincipal.scompactprojectmenu
+msgid "&Compact project database"
+msgstr ""
+
+#: formprincipal.sconfigureaibutton
+msgid "Configure AI..."
+msgstr ""
+
+#: formprincipal.screatepatchmenu
+msgid "Create &patch..."
+msgstr ""
+
 #: formprincipal.screatingprojectprogress
 msgid "Creating project..."
 msgstr ""
@@ -1113,6 +3140,7 @@ msgid "Open each verse in association mode"
 msgstr ""
 
 #: formprincipal.sdefaultversemodeediting
+msgctxt "formprincipal.sdefaultversemodeediting"
 msgid "WYSIWYG editing"
 msgstr ""
 
@@ -1136,6 +3164,26 @@ msgstr ""
 #: formprincipal.sdestinationtext
 msgctxt "formprincipal.sdestinationtext"
 msgid "Destination"
+msgstr ""
+
+#: formprincipal.sdisablebothsyncdirections
+msgid "Disable both"
+msgstr ""
+
+#: formprincipal.seditmenu
+msgid "&Edit"
+msgstr ""
+
+#: formprincipal.sexitmenu
+msgid "E&xit"
+msgstr ""
+
+#: formprincipal.sexportprojectmenu
+msgid "&Export project..."
+msgstr ""
+
+#: formprincipal.sfirstversemenu
+msgid "&First verse"
 msgstr ""
 
 #: formprincipal.sguideassociationexistingaddtext
@@ -1183,7 +3231,7 @@ msgid "Show contextual guidance for the main workflow"
 msgstr ""
 
 #: formprincipal.sguidemodemenu
-msgid "Guide mode"
+msgid "&Contextual guide"
 msgstr ""
 
 #: formprincipal.sguidenoprojecttext
@@ -1212,15 +3260,25 @@ msgid "Associations: %d/%d (%d%%)"
 msgstr ""
 
 #: formprincipal.sheaderengineai
-msgid "AI-assisted"
+msgctxt "formprincipal.sheaderengineai"
+msgid "AI"
+msgstr ""
+
+#: formprincipal.sheaderengineaiconfigurationpending
+msgid "configuration pending"
+msgstr ""
+
+#: formprincipal.sheaderengineautomatic
+msgid "automatic"
 msgstr ""
 
 #: formprincipal.sheaderenginefmt
 #, object-pascal-format
-msgid "Engine: %s"
+msgid "Method: %s"
 msgstr ""
 
 #: formprincipal.sheaderenginestatistical
+msgctxt "formprincipal.sheaderenginestatistical"
 msgid "Statistical"
 msgstr ""
 
@@ -1258,6 +3316,10 @@ msgstr ""
 #: formprincipal.sheaderunsavedchanges
 msgctxt "formprincipal.sheaderunsavedchanges"
 msgid "Unsaved changes"
+msgstr ""
+
+#: formprincipal.shelpmenu
+msgid "&Help"
 msgstr ""
 
 #: formprincipal.shideguidebutton
@@ -1302,15 +3364,19 @@ msgid "Show keyboard shortcuts"
 msgstr ""
 
 #: formprincipal.skeyboardshortcutsmenu
-msgid "Keyboard shortcuts..."
+msgid "&Keyboard shortcuts..."
 msgstr ""
 
 #: formprincipal.skeyboardshortcutstitle
 msgid "Keyboard shortcuts"
 msgstr ""
 
+#: formprincipal.slastversemenu
+msgid "&Last verse"
+msgstr ""
+
 #: formprincipal.sllmoptionsmenu
-msgid "LLM options..."
+msgid "AI &configuration for this project..."
 msgstr ""
 
 #: formprincipal.sllmusagestatus
@@ -1354,8 +3420,16 @@ msgctxt "formprincipal.smaincaptionprojectfmt"
 msgid "iBiblia | %s | %s (%s)"
 msgstr ""
 
+#: formprincipal.smaintenancemenu
+msgid "&Maintenance"
+msgstr ""
+
 #: formprincipal.smemorytext
 msgid "Memory"
+msgstr ""
+
+#: formprincipal.snavigationmenu
+msgid "&Navigation"
 msgstr ""
 
 #: formprincipal.snewassociationproject
@@ -1363,8 +3437,65 @@ msgctxt "formprincipal.snewassociationproject"
 msgid "New association project"
 msgstr ""
 
+#: formprincipal.snewprojectcleanupclosefailed
+msgid "Could not close the incomplete project."
+msgstr ""
+
+#: formprincipal.snewprojectcleanupdeletefailed
+#, object-pascal-format
+msgid ""
+"Could not remove the incomplete project file:\n"
+"%s"
+msgstr ""
+
+#: formprincipal.snewprojectcleanupfailed
+#, object-pascal-format
+msgid ""
+"Cleanup also failed:\n"
+"%s"
+msgstr ""
+
+#: formprincipal.snewprojectclosefailed
+msgid "Could not safely close the newly created project before publishing it."
+msgstr ""
+
+#: formprincipal.snewprojectimportcancelled
+#, object-pascal-format
+msgid "Project creation was cancelled while importing %s."
+msgstr ""
+
+#: formprincipal.snewprojectimportfailed
+#, object-pascal-format
+msgid ""
+"Could not import %s from:\n"
+"%s"
+msgstr ""
+
+#: formprincipal.snewprojectmenu
+msgid "&New..."
+msgstr ""
+
+#: formprincipal.snewprojectnotcreatedtitle
+msgid "Project not created"
+msgstr ""
+
+#: formprincipal.snewprojectopenfailed
+#, object-pascal-format
+msgid ""
+"The project was created but could not be opened:\n"
+"%s"
+msgstr ""
+
+#: formprincipal.snewprojectopenfailedtitle
+msgid "Project created but not opened"
+msgstr ""
+
 #: formprincipal.snewprojectprogresstitle
 msgid "Creating project"
+msgstr ""
+
+#: formprincipal.snewprojectunknownfailure
+msgid "An unexpected error prevented the project from being created."
 msgstr ""
 
 #: formprincipal.snewtranslationproject
@@ -1372,9 +3503,21 @@ msgctxt "formprincipal.snewtranslationproject"
 msgid "New translation project"
 msgstr ""
 
+#: formprincipal.snextversemenu
+msgid "&Next verse"
+msgstr ""
+
 #: formprincipal.sopenproject
 msgctxt "formprincipal.sopenproject"
 msgid "Open project"
+msgstr ""
+
+#: formprincipal.sopenprojectmenu
+msgid "&Open..."
+msgstr ""
+
+#: formprincipal.sopenrecentmenu
+msgid "Open &recent"
 msgstr ""
 
 #: formprincipal.spanellabelcomments
@@ -1402,6 +3545,14 @@ msgctxt "formprincipal.spanellabelsource"
 msgid "Source"
 msgstr ""
 
+#: formprincipal.spreferencesmenu
+msgid "iBiblia &preferences..."
+msgstr ""
+
+#: formprincipal.spreviousversemenu
+msgid "&Previous verse"
+msgstr ""
+
 #: formprincipal.sprojectfiledoesnotexist
 #, object-pascal-format
 msgid ""
@@ -1412,6 +3563,18 @@ msgstr ""
 #: formprincipal.sprojectfiletypename
 msgctxt "formprincipal.sprojectfiletypename"
 msgid "iBiblia Project File"
+msgstr ""
+
+#: formprincipal.sprojectmenu
+msgid "&Project"
+msgstr ""
+
+#: formprincipal.sprojectsettingsmenu
+msgid "Project &settings..."
+msgstr ""
+
+#: formprincipal.srebuildassociationmemorymenu
+msgid "&Recreate association memory"
 msgstr ""
 
 #: formprincipal.srebuildassociationmemoryprogress
@@ -1474,7 +3637,7 @@ msgid "Restore the default panel layout"
 msgstr ""
 
 #: formprincipal.sresetlayoutmenu
-msgid "Reset layout"
+msgid "&Restore panel arrangement"
 msgstr ""
 
 #: formprincipal.srollbackcurrentverse
@@ -1498,6 +3661,14 @@ msgstr ""
 
 #: formprincipal.ssavechanges
 msgid "Would you like to save your changes?"
+msgstr ""
+
+#: formprincipal.ssaveprojectasmenu
+msgid "Save &as..."
+msgstr ""
+
+#: formprincipal.ssaveprojectmenu
+msgid "&Save"
 msgstr ""
 
 #: formprincipal.sshortcutautoassociate
@@ -1573,6 +3744,7 @@ msgid "Project"
 msgstr ""
 
 #: formprincipal.sshortcutprojectsettings
+msgctxt "formprincipal.sshortcutprojectsettings"
 msgid "Project settings"
 msgstr ""
 
@@ -1650,8 +3822,60 @@ msgstr ""
 msgid "Review by status"
 msgstr ""
 
+#: formprincipal.sstrongscountmenu
+msgid "Strong tag count"
+msgstr ""
+
+#: formprincipal.sstrongscountnone
+msgctxt "formprincipal.sstrongscountnone"
+msgid "Hide"
+msgstr ""
+
+#: formprincipal.sstrongscounttags
+msgid "Count tags"
+msgstr ""
+
+#: formprincipal.sstrongscountwords
+msgctxt "formprincipal.sstrongscountwords"
+msgid "Count words"
+msgstr ""
+
+#: formprincipal.ssuggestassociationcaption
+msgid "Suggest association"
+msgstr ""
+
+#: formprincipal.ssuggestassociationhint
+msgid "Suggest associations for the current verse"
+msgstr ""
+
 #: formprincipal.ssuggestionmode
-msgid "Suggestion mode"
+msgid "Suggestion method"
+msgstr ""
+
+#: formprincipal.ssuggestiontoolbarai
+msgctxt "formprincipal.ssuggestiontoolbarai"
+msgid "AI"
+msgstr ""
+
+#: formprincipal.ssuggestiontoolbarstatistical
+msgctxt "formprincipal.ssuggestiontoolbarstatistical"
+msgid "Statistical"
+msgstr ""
+
+#: formprincipal.ssuggestiontoolbarworkflow
+msgid "Configure &workflow..."
+msgstr ""
+
+#: formprincipal.ssyncibibliatotheword
+msgid "iBiblia → theWord"
+msgstr ""
+
+#: formprincipal.ssyncthewordtoibiblia
+msgid "theWord → iBiblia"
+msgstr ""
+
+#: formprincipal.sthewordeditorappearance
+msgid "theWord editor appearance..."
 msgstr ""
 
 #: formprincipal.sthewordhighlightcolorsmenu
@@ -1659,8 +3883,32 @@ msgctxt "formprincipal.sthewordhighlightcolorsmenu"
 msgid "theWord highlight colors..."
 msgstr ""
 
+#: formprincipal.sthewordstatebidirectional
+msgid "theWord synchronization: bidirectional"
+msgstr ""
+
+#: formprincipal.sthewordstateinbound
+msgid "theWord synchronization: theWord → iBiblia"
+msgstr ""
+
+#: formprincipal.sthewordstateoff
+msgid "theWord synchronization: off"
+msgstr ""
+
+#: formprincipal.sthewordstateoutbound
+msgid "theWord synchronization: iBiblia → theWord"
+msgstr ""
+
+#: formprincipal.sthewordsynchronizationmenu
+msgid "&Synchronization with theWord"
+msgstr ""
+
+#: formprincipal.stoolsmenu
+msgid "&Tools"
+msgstr ""
+
 #: formprincipal.stranslationmemoryordermenu
-msgid "Translation memory order"
+msgid "&Sort by:"
 msgstr ""
 
 #: formprincipal.stranslationmemoryrarefirst
@@ -1715,6 +3963,14 @@ msgstr ""
 msgid "Successfully removed file association for .bib files"
 msgstr ""
 
+#: formprincipal.sverseinformationmenu
+msgid "Verse &information"
+msgstr ""
+
+#: formprincipal.sviewmenu
+msgid "&View"
+msgstr ""
+
 #: formprojectexport.sanalyticalconcordance
 msgctxt "formprojectexport.sanalyticalconcordance"
 msgid "AnalyticalConcordance"
@@ -1740,10 +3996,6 @@ msgstr ""
 msgid "Full verse"
 msgstr ""
 
-#: formprojectexport.sconcordanceincludeversecontext
-msgid "Include destination verse text beside each reference"
-msgstr ""
-
 #: formprojectexport.sconcordancemaxexcerptcharacters
 msgid "Maximum excerpt length (characters)"
 msgstr ""
@@ -1756,12 +4008,12 @@ msgstr ""
 msgid "Reading associations..."
 msgstr ""
 
-#: formprojectexport.sconcordancereferencetextcaption
-msgid "Reference text"
-msgstr ""
-
 #: formprojectexport.sconcordancereferencesonly
 msgid "References only"
+msgstr ""
+
+#: formprojectexport.sconcordancereferencetextcaption
+msgid "Reference text"
 msgstr ""
 
 #: formprojectexport.sconcordancerelevantexcerpt
@@ -1831,7 +4083,6 @@ msgid "MySword Bible module (*.bbl.mybible)"
 msgstr ""
 
 #: formprojectexport.ssavemoduleas
-msgctxt "formprojectexport.ssavemoduleas"
 msgid "Save module as..."
 msgstr ""
 
@@ -1841,7 +4092,6 @@ msgid "SyntheticConcordance"
 msgstr ""
 
 #: formprojectexport.stheworddictionarymodule
-msgctxt "formprojectexport.stheworddictionarymodule"
 msgid "theWord dictionary module (*.dct.twm)"
 msgstr ""
 
@@ -1867,7 +4117,6 @@ msgstr ""
 
 #: formprojectproperties.schangetextconfirmation
 #, object-pascal-format
-msgctxt "formprojectproperties.schangetextconfirmation"
 msgid ""
 "This will replace the %s text in every verse of the project with the selected Bible module.\n"
 "\n"
@@ -1878,7 +4127,6 @@ msgstr ""
 
 #: formprojectproperties.schangetextconfirmationassociation
 #, object-pascal-format
-msgctxt "formprojectproperties.schangetextconfirmationassociation"
 msgid ""
 "This will replace the %s text in every verse of the project with the selected Bible module.\n"
 "\n"
@@ -1890,7 +4138,6 @@ msgid ""
 msgstr ""
 
 #: formprojectproperties.schangetokenizeranyway
-msgctxt "formprojectproperties.schangetokenizeranyway"
 msgid "Migrate associations"
 msgstr ""
 
@@ -1904,7 +4151,6 @@ msgid "Please choose a theWord Bible module file..."
 msgstr ""
 
 #: formprojectproperties.schooseanothertext
-msgctxt "formprojectproperties.schooseanothertext"
 msgid "Replace text in whole project"
 msgstr ""
 
@@ -1914,7 +4160,6 @@ msgid "Choose"
 msgstr ""
 
 #: formprojectproperties.sclearassociationsandchange
-msgctxt "formprojectproperties.sclearassociationsandchange"
 msgid "Clear all associations"
 msgstr ""
 
@@ -1923,13 +4168,11 @@ msgid "Clearing project associations..."
 msgstr ""
 
 #: formprojectproperties.scleartext
-msgctxt "formprojectproperties.scleartext"
 msgid "Clear text in whole project"
 msgstr ""
 
 #: formprojectproperties.scleartextconfirmation
 #, object-pascal-format
-msgctxt "formprojectproperties.scleartextconfirmation"
 msgid ""
 "This will clear the %s text in every verse of the project.\n"
 "\n"
@@ -1940,7 +4183,6 @@ msgstr ""
 
 #: formprojectproperties.scleartextconfirmationassociation
 #, object-pascal-format
-msgctxt "formprojectproperties.scleartextconfirmationassociation"
 msgid ""
 "This will clear the %s text in every verse of the project.\n"
 "\n"
@@ -1990,7 +4232,6 @@ msgid "Edit status catalog..."
 msgstr ""
 
 #: formprojectproperties.sfontlabel
-msgctxt "formprojectproperties.sfontlabel"
 msgid "Font"
 msgstr ""
 
@@ -2009,7 +4250,6 @@ msgid "Morphology"
 msgstr ""
 
 #: formprojectproperties.smorphologydictionarylabel
-msgctxt "formprojectproperties.smorphologydictionarylabel"
 msgid "Morphology dictionary"
 msgstr ""
 
@@ -2037,6 +4277,11 @@ msgctxt "formprojectproperties.sopendictionary"
 msgid "Please choose an unencrypted theWord dictionary module..."
 msgstr ""
 
+#: formprojectproperties.spendingautomaticsuggestion
+#, object-pascal-format
+msgid "Automatic suggestion: %s -> %s"
+msgstr ""
+
 #: formprojectproperties.spendingblocked
 #, object-pascal-format
 msgid "Cannot apply changes: %s"
@@ -2045,6 +4290,11 @@ msgstr ""
 #: formprojectproperties.spendingcleartext
 #, object-pascal-format
 msgid "Clear %s text."
+msgstr ""
+
+#: formprojectproperties.spendingdefaultversemode
+#, object-pascal-format
+msgid "Verse opening: %s -> %s"
 msgstr ""
 
 #: formprojectproperties.spendingdescription
@@ -2080,13 +4330,17 @@ msgstr ""
 msgid "Status catalog changed."
 msgstr ""
 
+#: formprojectproperties.spendingsuggestionmode
+#, object-pascal-format
+msgid "Suggestion method: %s -> %s"
+msgstr ""
+
 #: formprojectproperties.spendingtokenizer
 #, object-pascal-format
 msgid "Tokenizer: %s -> %s"
 msgstr ""
 
 #: formprojectproperties.sprojectnamelabel
-msgctxt "formprojectproperties.sprojectnamelabel"
 msgid "Name"
 msgstr ""
 
@@ -2096,7 +4350,8 @@ msgid "Please choose a name for the project."
 msgstr ""
 
 #: formprojectproperties.sprojectpropertiestitle
-msgid "Project properties"
+msgctxt "formprojectproperties.sprojectpropertiestitle"
+msgid "Project settings"
 msgstr ""
 
 #: formprojectproperties.sprojectscenariofmt
@@ -2111,7 +4366,6 @@ msgid "Project"
 msgstr ""
 
 #: formprojectproperties.spropertiesgroup
-msgctxt "formprojectproperties.spropertiesgroup"
 msgid "Properties"
 msgstr ""
 
@@ -2141,7 +4395,6 @@ msgid "Replace %s text in whole project"
 msgstr ""
 
 #: formprojectproperties.sreviewsectionpendingchanges
-msgctxt "formprojectproperties.sreviewsectionpendingchanges"
 msgid "Pending changes"
 msgstr ""
 
@@ -2177,7 +4430,6 @@ msgid "Current catalog: %d statuses"
 msgstr ""
 
 #: formprojectproperties.sstatuscatalogdescription
-msgctxt "formprojectproperties.sstatuscatalogdescription"
 msgid "The status catalog defines the labels, order, and colors used to track verse progress. iBiblia uses it in the project tree, filters, and review workflows. Changes remain pending until you confirm the project properties."
 msgstr ""
 
@@ -2192,49 +4444,40 @@ msgid "Strong"
 msgstr ""
 
 #: formprojectproperties.sstrongdictionarylabel
-msgctxt "formprojectproperties.sstrongdictionarylabel"
 msgid "Strong's dictionary"
 msgstr ""
 
 #: formprojectproperties.stextdescriptionlabel
-msgctxt "formprojectproperties.stextdescriptionlabel"
 msgid "Text description"
 msgstr ""
 
 #: formprojectproperties.stextimportcancelledfmt
 #, object-pascal-format
-msgctxt "formprojectproperties.stextimportcancelledfmt"
 msgid "The import of \"%s\" was cancelled."
 msgstr ""
 
 #: formprojectproperties.stextimportconflictingchanges
-msgctxt "formprojectproperties.stextimportconflictingchanges"
 msgid "Apply tokenizer, status catalog, or text removal changes separately before replacing a Bible text."
 msgstr ""
 
 #: formprojectproperties.stextimportfailedfmt
 #, object-pascal-format
-msgctxt "formprojectproperties.stextimportfailedfmt"
 msgid "The text could not be imported from \"%s\"."
 msgstr ""
 
 #: formprojectproperties.stextimportpartialchanges
-msgctxt "formprojectproperties.stextimportpartialchanges"
 msgid "Changes completed before this import failure were kept."
 msgstr ""
 
 #: formprojectproperties.stextimportprogress
-msgctxt "formprojectproperties.stextimportprogress"
 msgid "Importing Bible text..."
 msgstr ""
 
 #: formprojectproperties.stextimportrequiressavedproject
-msgctxt "formprojectproperties.stextimportrequiressavedproject"
 msgid "Save or discard the current project changes before replacing a Bible text."
 msgstr ""
 
 #: formprojectproperties.stextimporttitle
-msgctxt "formprojectproperties.stextimporttitle"
 msgid "Import Bible text"
 msgstr ""
 
@@ -2258,7 +4501,6 @@ msgid "Tokenizer version"
 msgstr ""
 
 #: formprojectproperties.stokenizerversionchangeconfirmation
-msgctxt "formprojectproperties.stokenizerversionchangeconfirmation"
 msgid ""
 "The tokenizer version is a project-wide setting.\n"
 "\n"
@@ -2285,8 +4527,323 @@ msgctxt "formprojectproperties.swholebiblefilter"
 msgid "theWord Bible modules (*.ont, *.ot, *.nt)|*.ont;*.ot;*.nt"
 msgstr ""
 
+#: formprojectproperties.sworkflowaiconfigurationpending
+msgid "AI configuration: pending. Configure AI before using AI suggestions."
+msgstr ""
+
+#: formprojectproperties.sworkflowaiconfigured
+msgid "AI configuration: ready."
+msgstr ""
+
+#: formprojectproperties.sworkflowautomaticsuggestion
+msgid "Suggest a&utomatically in the initial status"
+msgstr ""
+
+#: formprojectproperties.sworkflowautomaticsuggestiondescription
+msgid "Runs one association suggestion after navigation enters a different verse that is still in the standard initial status."
+msgstr ""
+
+#: formprojectproperties.sworkflowautomaticsuggestionunavailable
+msgid "Unavailable because this project uses a custom status catalog. Automatic suggestion depends on the standard initial status."
+msgstr ""
+
+#: formprojectproperties.sworkflowconfigureai
+msgid "Configure &AI..."
+msgstr ""
+
+#: formprojectproperties.sworkflowdefaultversemode
+msgid "&Open in"
+msgstr ""
+
+#: formprojectproperties.sworkflowdisabled
+msgctxt "formprojectproperties.sworkflowdisabled"
+msgid "Disabled"
+msgstr ""
+
+#: formprojectproperties.sworkflowenabled
+msgid "Enabled"
+msgstr ""
+
+#: formprojectproperties.sworkflowintro
+msgid "These settings belong to this project. Changes remain pending until you confirm the project properties."
+msgstr ""
+
+#: formprojectproperties.sworkflowsuggestionai
+msgctxt "formprojectproperties.sworkflowsuggestionai"
+msgid "AI"
+msgstr ""
+
+#: formprojectproperties.sworkflowsuggestionaidescription
+msgid "Uses the configured AI service. An internet connection is required."
+msgstr ""
+
+#: formprojectproperties.sworkflowsuggestiongroup
+msgid "Association suggestions"
+msgstr ""
+
+#: formprojectproperties.sworkflowsuggestionmethod
+msgid "&Suggestion method"
+msgstr ""
+
+#: formprojectproperties.sworkflowsuggestionstatistical
+msgctxt "formprojectproperties.sworkflowsuggestionstatistical"
+msgid "Statistical"
+msgstr ""
+
+#: formprojectproperties.sworkflowsuggestionstatisticaldescription
+msgid "Uses the local statistical association engine."
+msgstr ""
+
+#: formprojectproperties.sworkflowtab
+msgid "Workflow"
+msgstr ""
+
+#: formprojectproperties.sworkflowversemodeassociation
+msgctxt "formprojectproperties.sworkflowversemodeassociation"
+msgid "Association"
+msgstr ""
+
+#: formprojectproperties.sworkflowversemodeassociationdescription
+msgid "Shows the source and destination texts ready for syntagm association."
+msgstr ""
+
+#: formprojectproperties.sworkflowversemodeediting
+msgctxt "formprojectproperties.sworkflowversemodeediting"
+msgid "WYSIWYG editing"
+msgstr ""
+
+#: formprojectproperties.sworkflowversemodeeditingdescription
+msgid "Opens the destination text in the WYSIWYG editor after navigation."
+msgstr ""
+
+#: formprojectproperties.sworkflowverseopeninggroup
+msgid "When another verse opens"
+msgstr ""
+
+#: formpropprojeto.schangetextconfirmation
+msgid "Are you sure you want to replace this Bible text with a new one?"
+msgstr ""
+
+#: formpropprojeto.schangetextconfirmationassociation
+msgid ""
+"Loading a new Bible text will cause all your existing associations to be discarded. But, if you click 'Yes', iBiblia can try to keep existing associations for you.\n"
+"\n"
+"Would you like iBiblia to do that?"
+msgstr ""
+
+#: formpropprojeto.schangetokenizeranyway
+msgid "Change anyway"
+msgstr ""
+
+#: formpropprojeto.schooseabiblemodule
+msgctxt "formpropprojeto.schooseabiblemodule"
+msgid "Please choose a theWord Bible module file..."
+msgstr ""
+
+#: formpropprojeto.schooseanothertext
+msgid "Replace text"
+msgstr ""
+
+#: formpropprojeto.schoosedictionary
+msgctxt "formpropprojeto.schoosedictionary"
+msgid "Choose"
+msgstr ""
+
+#: formpropprojeto.sclearassociationsandchange
+msgid "Clear associations"
+msgstr ""
+
+#: formpropprojeto.scleartext
+msgid "Clear Bible text"
+msgstr ""
+
+#: formpropprojeto.scleartextconfirmation
+msgid "Are you sure you want to clear this Bible text?"
+msgstr ""
+
+#: formpropprojeto.scleartextconfirmationassociation
+msgid ""
+"Are you sure you want to clear this Bible text?\n"
+"All your associations will be lost!"
+msgstr ""
+
+#: formpropprojeto.sdestinationtab
+msgctxt "formpropprojeto.sdestinationtab"
+msgid "Destination"
+msgstr ""
+
+#: formpropprojeto.sdictionaryfilter
+msgctxt "formpropprojeto.sdictionaryfilter"
+msgid "theWord dictionary modules (*.dct.twm)|*.dct.twm|All files|*.*"
+msgstr ""
+
+#: formpropprojeto.skeepcurrenttokenizer
+msgctxt "formpropprojeto.skeepcurrenttokenizer"
+msgid "Keep current version"
+msgstr ""
+
+#: formpropprojeto.snewtestamentfilter
+msgctxt "formpropprojeto.snewtestamentfilter"
+msgid "theWord Bible modules (*.ont, *.nt)|*.ont;*.nt"
+msgstr ""
+
+#: formpropprojeto.snewtextimportedsuccessfully
+msgctxt "formpropprojeto.snewtextimportedsuccessfully"
+msgid "New text imported successfully"
+msgstr ""
+
+#: formpropprojeto.soldtestamentfilter
+msgctxt "formpropprojeto.soldtestamentfilter"
+msgid "theWord Bible modules (*.ont, *.ot)|*.ont;*.ot"
+msgstr ""
+
+#: formpropprojeto.sopendictionary
+msgctxt "formpropprojeto.sopendictionary"
+msgid "Please choose an unencrypted theWord dictionary module..."
+msgstr ""
+
+#: formpropprojeto.sreference1tab
+msgctxt "formpropprojeto.sreference1tab"
+msgid "Reference 1"
+msgstr ""
+
+#: formpropprojeto.sreference2tab
+msgctxt "formpropprojeto.sreference2tab"
+msgid "Reference 2"
+msgstr ""
+
+#: formpropprojeto.ssetdictionary
+msgctxt "formpropprojeto.ssetdictionary"
+msgid "Set"
+msgstr ""
+
+#: formpropprojeto.ssourcetab
+msgctxt "formpropprojeto.ssourcetab"
+msgid "Source"
+msgstr ""
+
+#: formpropprojeto.stokenizerversion
+msgctxt "formpropprojeto.stokenizerversion"
+msgid "Tokenizer version"
+msgstr ""
+
+#: formpropprojeto.stokenizerversionchangeconfirmation
+msgid ""
+"Changing the tokenizer version may invalidate your existing associations.\n"
+"\n"
+"Choose one of the options below:\n"
+"Yes: clear all associations before changing the tokenizer.\n"
+"No: keep the associations and change the tokenizer anyway.\n"
+"Cancel: keep the current tokenizer version."
+msgstr ""
+
+#: formpropprojeto.stokenizerversionchangetitle
+msgctxt "formpropprojeto.stokenizerversionchangetitle"
+msgid "Change tokenizer version"
+msgstr ""
+
+#: formpropprojeto.swholebiblefilter
+msgctxt "formpropprojeto.swholebiblefilter"
+msgid "theWord Bible modules (*.ont, *.ot, *.nt)|*.ont;*.ot;*.nt"
+msgstr ""
+
+#: formstatuscatalog.sstatuscatalogadd
+msgid "Add"
+msgstr ""
+
+#: formstatuscatalog.sstatuscatalogcannotremovelast
+msgid "At least one status is required."
+msgstr ""
+
+#: formstatuscatalog.sstatuscatalogchoosecolor
+msgid "Color..."
+msgstr ""
+
+#: formstatuscatalog.sstatuscatalogcolor
+msgid "Color"
+msgstr ""
+
+#: formstatuscatalog.sstatuscatalogcolorhint
+msgid "Status color, shown as #RRGGBB. Edit the value, double-click, or use the Color button."
+msgstr ""
+
+#: formstatuscatalog.sstatuscatalogdisplay
+msgid "Display"
+msgstr ""
+
+#: formstatuscatalog.sstatuscatalogdisplaydown
+msgid "Display down"
+msgstr ""
+
+#: formstatuscatalog.sstatuscatalogdisplayhint
+msgid "Visual order used in selectors, menus, legends and aggregate status bars. Change it with Display up/down."
+msgstr ""
+
+#: formstatuscatalog.sstatuscatalogdisplayup
+msgid "Display up"
+msgstr ""
+
+#: formstatuscatalog.sstatuscataloginfo
+msgid "Edit descriptions, colors and display order. Verse status IDs stay stable."
+msgstr ""
+
+#: formstatuscatalog.sstatuscatalogmaxreached
+#, object-pascal-format
+msgid "At most %d statuses are allowed."
+msgstr ""
+
+#: formstatuscatalog.sstatuscatalogname
+msgid "Description"
+msgstr ""
+
+#: formstatuscatalog.sstatuscatalognamehint
+msgid "Status description shown in selectors, menus, legends and tree hints. Editable."
+msgstr ""
+
+#: formstatuscatalog.sstatuscatalognewstatus
+#, object-pascal-format
+msgid "Status %d"
+msgstr ""
+
+#: formstatuscatalog.sstatuscatalogremapmessage
+#, object-pascal-format
+msgid "The status \"%s\" is used by %d verses. Choose another status for those verses before removing it."
+msgstr ""
+
+#: formstatuscatalog.sstatuscatalogremaptitle
+msgid "Remap status"
+msgstr ""
+
+#: formstatuscatalog.sstatuscatalogremove
+msgctxt "formstatuscatalog.sstatuscatalogremove"
+msgid "Remove"
+msgstr ""
+
+#: formstatuscatalog.sstatuscatalogrename
+msgid "Rename..."
+msgstr ""
+
+#: formstatuscatalog.sstatuscatalogrenameprompt
+msgid "Description:"
+msgstr ""
+
+#: formstatuscatalog.sstatuscatalogrenametitle
+msgid "Rename status"
+msgstr ""
+
+#: formstatuscatalog.sstatuscatalogused
+msgid "Used"
+msgstr ""
+
+#: formstatuscatalog.sstatuscatalogusedhint
+msgid "Number of verses currently using this status in this project. Read-only."
+msgstr ""
+
+#: formstatuscatalog.sstatuscatalogwindowtitle
+msgid "Status catalog editor"
+msgstr ""
+
 #: formthewordhighlightercolors.sbackgroundbutton
-msgctxt "formthewordhighlightercolors.sbackgroundbutton"
 msgid "Background..."
 msgstr ""
 
@@ -2311,23 +4868,19 @@ msgid "OK"
 msgstr ""
 
 #: formthewordhighlightercolors.sdefaultcolor
-msgctxt "formthewordhighlightercolors.sdefaultcolor"
 msgid "default"
 msgstr ""
 
 #: formthewordhighlightercolors.sfontbutton
-msgctxt "formthewordhighlightercolors.sfontbutton"
 msgid "Font..."
 msgstr ""
 
 #: formthewordhighlightercolors.sfontsummaryfmt
 #, object-pascal-format
-msgctxt "formthewordhighlightercolors.sfontsummaryfmt"
 msgid "%s, %d pt"
 msgstr ""
 
 #: formthewordhighlightercolors.sforegroundbutton
-msgctxt "formthewordhighlightercolors.sforegroundbutton"
 msgid "Foreground..."
 msgstr ""
 
@@ -2337,37 +4890,30 @@ msgid "Italic"
 msgstr ""
 
 #: formthewordhighlightercolors.snobackgroundbutton
-msgctxt "formthewordhighlightercolors.snobackgroundbutton"
 msgid "No background"
 msgstr ""
 
 #: formthewordhighlightercolors.snocolor
-msgctxt "formthewordhighlightercolors.snocolor"
 msgid "none"
 msgstr ""
 
 #: formthewordhighlightercolors.spreview
-msgctxt "formthewordhighlightercolors.spreview"
 msgid "Preview"
 msgstr ""
 
 #: formthewordhighlightercolors.sresetall
-msgctxt "formthewordhighlightercolors.sresetall"
 msgid "Reset all"
 msgstr ""
 
 #: formthewordhighlightercolors.sresetfont
-msgctxt "formthewordhighlightercolors.sresetfont"
 msgid "Reset font"
 msgstr ""
 
 #: formthewordhighlightercolors.sresetselected
-msgctxt "formthewordhighlightercolors.sresetselected"
 msgid "Reset selected"
 msgstr ""
 
 #: formthewordhighlightercolors.sthewordhighlightcolorstitle
-msgctxt "formthewordhighlightercolors.sthewordhighlightcolorstitle"
 msgid "theWord highlight colors"
 msgstr ""
 
@@ -2378,29 +4924,32 @@ msgstr ""
 
 #: formverserules.sverserulescount
 #, object-pascal-format
-msgctxt "formverserules.sverserulescount"
 msgid "%d rules found. Uncheck any rule that should not be applied to the imported text."
 msgstr ""
 
 #: formverserules.sverserulesdescription
-msgctxt "formverserules.sverserulesdescription"
 msgid "This module defines verse rules: regular-expression replacements that theWord applies while displaying verses. iBiblia imports fixed text, so selected rules are applied now. Keep them selected unless the module uses them only as optional display toggles."
 msgstr ""
 
 #: formverserules.sverserulesmodule
 #, object-pascal-format
-msgctxt "formverserules.sverserulesmodule"
 msgid "Module: %s"
 msgstr ""
 
 #: formverserules.sverserulestitle
-msgctxt "formverserules.sverserulestitle"
 msgid "theWord verse rules"
 msgstr ""
 
 #: formverserules.sverserulesunknownmodule
-msgctxt "formverserules.sverserulesunknownmodule"
 msgid "(module not available)"
+msgstr ""
+
+#: memoversiculo.schangeverse
+msgid "Change verse text?"
+msgstr ""
+
+#: memoversiculo.schangeverseconfirmation
+msgid "Are you sure you want to change the verse text? Some associations may be lost."
 msgstr ""
 
 #: myswordmodule.screatemyswordbibleerror
@@ -2412,6 +4961,7 @@ msgid "MySword Bible module exists and cannot be overwritten"
 msgstr ""
 
 #: myswordmodule.sprojectoverrideerror
+msgctxt "myswordmodule.sprojectoverrideerror"
 msgid "A project with this name already exists. Delete it first or choose another name"
 msgstr ""
 
@@ -2524,33 +5074,27 @@ msgstr ""
 
 #: project.saiassociationfailedfmt
 #, object-pascal-format
-msgctxt "project.saiassociationfailedfmt"
 msgid "AI association failed: %s"
 msgstr ""
 
 #: project.saiconfigurationmissing
-msgctxt "project.saiconfigurationmissing"
 msgid "AI is not configured. Open LLM options and set a model and API key."
 msgstr ""
 
 #: project.saisingleapplyingresult
-msgctxt "project.saisingleapplyingresult"
 msgid "[AI Single] Applying result..."
 msgstr ""
 
 #: project.saisingleerrorfmt
 #, object-pascal-format
-msgctxt "project.saisingleerrorfmt"
 msgid "[AI Single] Error: %s"
 msgstr ""
 
 #: project.saisingleresponsereceived
-msgctxt "project.saisingleresponsereceived"
 msgid "[AI Single] Response received, parsing..."
 msgstr ""
 
 #: project.saisingleresultapplied
-msgctxt "project.saisingleresultapplied"
 msgid "[AI Single] Result applied and saved."
 msgstr ""
 
@@ -2560,7 +5104,6 @@ msgid "Amos"
 msgstr ""
 
 #: project.sanalyticalconcordance
-msgctxt "project.sanalyticalconcordance"
 msgid "Analytical Concordance"
 msgstr ""
 
@@ -2615,7 +5158,6 @@ msgid "%s (%d of %d)"
 msgstr ""
 
 #: project.sassociationmemoryprogressmessage
-msgctxt "project.sassociationmemoryprogressmessage"
 msgid "Updating after an iBiblia or project change..."
 msgstr ""
 
@@ -2642,7 +5184,6 @@ msgid "Cancel"
 msgstr ""
 
 #: project.sbuttonno
-msgctxt "project.sbuttonno"
 msgid "No"
 msgstr ""
 
@@ -2742,7 +5283,6 @@ msgstr ""
 
 #: project.serrorclassmessagefmt
 #, object-pascal-format
-msgctxt "project.serrorclassmessagefmt"
 msgid ""
 "%s: %s\n"
 "%s"
@@ -2750,7 +5290,6 @@ msgstr ""
 
 #: project.serrorwithdetailsfmt
 #, object-pascal-format
-msgctxt "project.serrorwithdetailsfmt"
 msgid "%s: %s"
 msgstr ""
 
@@ -2893,6 +5432,10 @@ msgctxt "project.sinvalidlinecount"
 msgid "Invalid file, it must have at least %d lines"
 msgstr ""
 
+#: project.sinvalidmoduleimportlayout
+msgid "Invalid module import layout."
+msgstr ""
+
 #: project.sinvalidmoduletype
 msgctxt "project.sinvalidmoduletype"
 msgid "Unknown module extension. Please choose a valid theWord Bible module (.ot, .ont or .nt)"
@@ -2984,16 +5527,6 @@ msgctxt "project.sleviticus"
 msgid "Leviticus"
 msgstr ""
 
-#: project.slinebreaksintext
-msgctxt "project.slinebreaksintext"
-msgid "A verse cannot contain line breaks. Your changes will be discarded."
-msgstr ""
-
-#: project.slinebreaksintexttitle
-msgctxt "project.slinebreaksintexttitle"
-msgid "Edit error"
-msgstr ""
-
 #: project.sluke
 msgctxt "project.sluke"
 msgid "Luke"
@@ -3030,6 +5563,40 @@ msgctxt "project.smoduledoesnotincludescope"
 msgid "This module is incompatible with the scope of the project. Please choose a valid module."
 msgstr ""
 
+#: project.smoduleimportcancelled
+msgid "The module import was cancelled."
+msgstr ""
+
+#: project.smoduleimportcapacityerror
+#, object-pascal-format
+msgid "The project has %d verse rows available for this module, but %d are required. No text was imported."
+msgstr ""
+
+#: project.smoduleimportexceptionerror
+#, object-pascal-format
+msgid ""
+"The module could not be imported after %d of %d verses. Last imported reference: %s.\n"
+"%s"
+msgstr ""
+
+#: project.smoduleimportincompleteerror
+#, object-pascal-format
+msgid "The import stopped after %d of %d verses. Last imported reference: %s."
+msgstr ""
+
+#: project.smoduleimportprogresscountfmt
+#, object-pascal-format
+msgid "%d of %d verses"
+msgstr ""
+
+#: project.smoduleimportrestoring
+msgid "Restoring project text after import failure..."
+msgstr ""
+
+#: project.smoduleimportrulescancelled
+msgid "The module import was cancelled while choosing verse rules."
+msgstr ""
+
 #: project.smorphologydictionary
 msgctxt "project.smorphologydictionary"
 msgid "Morphology Dictionary"
@@ -3045,13 +5612,16 @@ msgctxt "project.snehemiah"
 msgid "Nehemiah"
 msgstr ""
 
+#: project.snoemptytranslationsinscope
+msgid "There are no empty translations in the selected scope."
+msgstr ""
+
 #: project.snonrtfdictionary
 msgctxt "project.snonrtfdictionary"
 msgid "Non-RTF module"
 msgstr ""
 
 #: project.snoversetoassociate
-msgctxt "project.snoversetoassociate"
 msgid "No verse to associate."
 msgstr ""
 
@@ -3111,8 +5681,8 @@ msgid "Philippians"
 msgstr ""
 
 #: project.spotentialnonutf8modulewarning
-msgctxt "project.spotentialnonutf8modulewarning"
-msgid "This module has a 'charset' property and this may be an indication that this is a non-UTF8 module. iBiblia was not designed to work with non-UTF8 modules. Please choose 'Ignore' to ignore this warning and continue at your own risk or 'Abort' to abort the operation and choose another module."
+#, object-pascal-format
+msgid "This module is not valid UTF-8 (invalid byte at offset %d). iBiblia was not designed to import legacy or malformed encodings. Choose 'Ignore' to continue at your own risk, or 'Abort' to choose another module."
 msgstr ""
 
 #: project.sprojectdoesntexist
@@ -3131,22 +5701,6 @@ msgctxt "project.spsalms"
 msgid "Psalms"
 msgstr ""
 
-#: project.sremoveeditassociationprompt
-msgctxt "project.sremoveeditassociationprompt"
-msgid "This edit will remove 1 associated text member. Continue?"
-msgstr ""
-
-#: project.sremoveeditassociationsprompt
-#, object-pascal-format
-msgctxt "project.sremoveeditassociationsprompt"
-msgid "This edit will remove %d associated text members. Continue?"
-msgstr ""
-
-#: project.sremoveeditassociationstitle
-msgctxt "project.sremoveeditassociationstitle"
-msgid "Remove associations?"
-msgstr ""
-
 #: project.sreferencenotfound
 msgctxt "project.sreferencenotfound"
 msgid "Reference not found"
@@ -3158,6 +5712,19 @@ msgctxt "project.sreferencenotfoundwarning"
 msgid ""
 "The reference %s is not a valid reference in this project and will be ignored.\n"
 "Press Ignore to ignore all subsequent warnings."
+msgstr ""
+
+#: project.sremoveeditassociationprompt
+msgid "This edit will remove 1 associated text member. Continue?"
+msgstr ""
+
+#: project.sremoveeditassociationsprompt
+#, object-pascal-format
+msgid "This edit will remove %d associated text members. Continue?"
+msgstr ""
+
+#: project.sremoveeditassociationstitle
+msgid "Remove associations?"
 msgstr ""
 
 #: project.srevelation
@@ -3183,6 +5750,10 @@ msgstr ""
 #: project.ssongofsolomon
 msgctxt "project.ssongofsolomon"
 msgid "Song of Solomon"
+msgstr ""
+
+#: project.sstagedimportrequirescleanpairbaseline
+msgid "Staged module import requires a clean pair baseline."
 msgstr ""
 
 #: project.sstatusassociated
@@ -3211,7 +5782,6 @@ msgid "Strong's Dictionary"
 msgstr ""
 
 #: project.sswitchdestinationandreference1texts
-msgctxt "project.sswitchdestinationandreference1texts"
 msgid "Switch destination with reference 1 in this verse"
 msgstr ""
 
@@ -3305,6 +5875,10 @@ msgctxt "project.swarning"
 msgid "Warning"
 msgstr ""
 
+#: project.swysiwygversetransitionfailed
+msgid "The WYSIWYG editor could not load the destination verse."
+msgstr ""
+
 #: project.szechariah
 msgctxt "project.szechariah"
 msgid "Zecariah"
@@ -3315,8 +5889,1245 @@ msgctxt "project.szephaniah"
 msgid "Zephaniah"
 msgstr ""
 
+#: project_creation_staging.sfinalprojectalreadyexists
+#, object-pascal-format
+msgid "A project already exists at the final path: %s"
+msgstr ""
+
+#: project_creation_staging.sfinalprojectfilenamerequired
+msgid "A final project file name is required"
+msgstr ""
+
+#: project_creation_staging.sprojectstagingalreadydiscarded
+msgid "The staged project has already been discarded"
+msgstr ""
+
+#: project_creation_staging.sprojectstagingalreadypublished
+msgid "The staged project has already been published"
+msgstr ""
+
+#: project_creation_staging.sprojectstagingdiscardfailed
+#, object-pascal-format
+msgid "Could not remove the staged project file %s: %s"
+msgstr ""
+
+#: project_creation_staging.sprojectstagingfilemissing
+#, object-pascal-format
+msgid "The staged project file does not exist: %s"
+msgstr ""
+
+#: project_creation_staging.sprojectstagingpublishfailed
+#, object-pascal-format
+msgid "Could not publish the staged project from %s to %s: %s"
+msgstr ""
+
+#: project_database_bootstrap.sprojectoverrideerror
+msgctxt "project_database_bootstrap.sprojectoverrideerror"
+msgid "A project with this name already exists. Delete it first or choose another name"
+msgstr ""
+
+#: project_database_bootstrap.sprojectscoperequired
+msgid "Project scope must be defined before creating a project database"
+msgstr ""
+
+#: project_exporter.s1chronicles
+msgctxt "project_exporter.s1chronicles"
+msgid "1 Chronicles"
+msgstr ""
+
+#: project_exporter.s1corinthians
+msgctxt "project_exporter.s1corinthians"
+msgid "1 Corinthians"
+msgstr ""
+
+#: project_exporter.s1john
+msgctxt "project_exporter.s1john"
+msgid "1 John"
+msgstr ""
+
+#: project_exporter.s1kings
+msgctxt "project_exporter.s1kings"
+msgid "1 Kings"
+msgstr ""
+
+#: project_exporter.s1peter
+msgctxt "project_exporter.s1peter"
+msgid "1 Peter"
+msgstr ""
+
+#: project_exporter.s1samuel
+msgctxt "project_exporter.s1samuel"
+msgid "1 Samuel"
+msgstr ""
+
+#: project_exporter.s1thessalonians
+msgctxt "project_exporter.s1thessalonians"
+msgid "1 Thessalonians"
+msgstr ""
+
+#: project_exporter.s1timothy
+msgctxt "project_exporter.s1timothy"
+msgid "1 Timothy"
+msgstr ""
+
+#: project_exporter.s2chronicles
+msgctxt "project_exporter.s2chronicles"
+msgid "2 Chronicles"
+msgstr ""
+
+#: project_exporter.s2corinthians
+msgctxt "project_exporter.s2corinthians"
+msgid "2 Corinthians"
+msgstr ""
+
+#: project_exporter.s2john
+msgctxt "project_exporter.s2john"
+msgid "2 John"
+msgstr ""
+
+#: project_exporter.s2kings
+msgctxt "project_exporter.s2kings"
+msgid "2 Kings"
+msgstr ""
+
+#: project_exporter.s2peter
+msgctxt "project_exporter.s2peter"
+msgid "2 Peter"
+msgstr ""
+
+#: project_exporter.s2samuel
+msgctxt "project_exporter.s2samuel"
+msgid "2 Samuel"
+msgstr ""
+
+#: project_exporter.s2thessalonians
+msgctxt "project_exporter.s2thessalonians"
+msgid "2 Thessalonians"
+msgstr ""
+
+#: project_exporter.s2timothy
+msgctxt "project_exporter.s2timothy"
+msgid "2 Timothy"
+msgstr ""
+
+#: project_exporter.s3john
+msgctxt "project_exporter.s3john"
+msgid "3 John"
+msgstr ""
+
+#: project_exporter.sacts
+msgctxt "project_exporter.sacts"
+msgid "Acts"
+msgstr ""
+
+#: project_exporter.samos
+msgctxt "project_exporter.samos"
+msgid "Amos"
+msgstr ""
+
+#: project_exporter.scolossians
+msgctxt "project_exporter.scolossians"
+msgid "Colossians"
+msgstr ""
+
+#: project_exporter.sdaniel
+msgctxt "project_exporter.sdaniel"
+msgid "Daniel"
+msgstr ""
+
+#: project_exporter.sdeuteronomy
+msgctxt "project_exporter.sdeuteronomy"
+msgid "Deuteronomy"
+msgstr ""
+
+#: project_exporter.secclesiastes
+msgctxt "project_exporter.secclesiastes"
+msgid "Ecclesiastes"
+msgstr ""
+
+#: project_exporter.sephesians
+msgctxt "project_exporter.sephesians"
+msgid "Ephesians"
+msgstr ""
+
+#: project_exporter.sesther
+msgctxt "project_exporter.sesther"
+msgid "Esther"
+msgstr ""
+
+#: project_exporter.sexodus
+msgctxt "project_exporter.sexodus"
+msgid "Exodus"
+msgstr ""
+
+#: project_exporter.sezekiel
+msgctxt "project_exporter.sezekiel"
+msgid "Ezekiel"
+msgstr ""
+
+#: project_exporter.sezra
+msgctxt "project_exporter.sezra"
+msgid "Ezra"
+msgstr ""
+
+#: project_exporter.sgalatians
+msgctxt "project_exporter.sgalatians"
+msgid "Galatians"
+msgstr ""
+
+#: project_exporter.sgenesis
+msgctxt "project_exporter.sgenesis"
+msgid "Genesis"
+msgstr ""
+
+#: project_exporter.shabakkuk
+msgctxt "project_exporter.shabakkuk"
+msgid "Habakkuk"
+msgstr ""
+
+#: project_exporter.shaggai
+msgctxt "project_exporter.shaggai"
+msgid "Haggai"
+msgstr ""
+
+#: project_exporter.shebrew
+msgctxt "project_exporter.shebrew"
+msgid "Hebrews"
+msgstr ""
+
+#: project_exporter.shosea
+msgctxt "project_exporter.shosea"
+msgid "Hosea"
+msgstr ""
+
+#: project_exporter.sisaiah
+msgctxt "project_exporter.sisaiah"
+msgid "Isaiah"
+msgstr ""
+
+#: project_exporter.sjames
+msgctxt "project_exporter.sjames"
+msgid "James"
+msgstr ""
+
+#: project_exporter.sjeremiah
+msgctxt "project_exporter.sjeremiah"
+msgid "Jeremiah"
+msgstr ""
+
+#: project_exporter.sjob
+msgctxt "project_exporter.sjob"
+msgid "Job"
+msgstr ""
+
+#: project_exporter.sjoel
+msgctxt "project_exporter.sjoel"
+msgid "Joel"
+msgstr ""
+
+#: project_exporter.sjohah
+msgctxt "project_exporter.sjohah"
+msgid "Jonah"
+msgstr ""
+
+#: project_exporter.sjohn
+msgctxt "project_exporter.sjohn"
+msgid "John"
+msgstr ""
+
+#: project_exporter.sjoshua
+msgctxt "project_exporter.sjoshua"
+msgid "Joshua"
+msgstr ""
+
+#: project_exporter.sjude
+msgctxt "project_exporter.sjude"
+msgid "Jude"
+msgstr ""
+
+#: project_exporter.sjudges
+msgctxt "project_exporter.sjudges"
+msgid "Judges"
+msgstr ""
+
+#: project_exporter.slamentations
+msgctxt "project_exporter.slamentations"
+msgid "Lamentations"
+msgstr ""
+
+#: project_exporter.sleviticus
+msgctxt "project_exporter.sleviticus"
+msgid "Leviticus"
+msgstr ""
+
+#: project_exporter.sluke
+msgctxt "project_exporter.sluke"
+msgid "Luke"
+msgstr ""
+
+#: project_exporter.smalachi
+msgctxt "project_exporter.smalachi"
+msgid "Malachi"
+msgstr ""
+
+#: project_exporter.smark
+msgctxt "project_exporter.smark"
+msgid "Mark"
+msgstr ""
+
+#: project_exporter.smatthew
+msgctxt "project_exporter.smatthew"
+msgid "Matthew"
+msgstr ""
+
+#: project_exporter.smicah
+msgctxt "project_exporter.smicah"
+msgid "Micah"
+msgstr ""
+
+#: project_exporter.snahum
+msgctxt "project_exporter.snahum"
+msgid "Nahum"
+msgstr ""
+
+#: project_exporter.snehemiah
+msgctxt "project_exporter.snehemiah"
+msgid "Nehemiah"
+msgstr ""
+
+#: project_exporter.snumbers
+msgctxt "project_exporter.snumbers"
+msgid "Numbers"
+msgstr ""
+
+#: project_exporter.sobadiah
+msgctxt "project_exporter.sobadiah"
+msgid "Obadiah"
+msgstr ""
+
+#: project_exporter.sphilemon
+msgctxt "project_exporter.sphilemon"
+msgid "Philemon"
+msgstr ""
+
+#: project_exporter.sphilippians
+msgctxt "project_exporter.sphilippians"
+msgid "Philippians"
+msgstr ""
+
+#: project_exporter.sproverbs
+msgctxt "project_exporter.sproverbs"
+msgid "Proverbs"
+msgstr ""
+
+#: project_exporter.spsalms
+msgctxt "project_exporter.spsalms"
+msgid "Psalms"
+msgstr ""
+
+#: project_exporter.srevelation
+msgctxt "project_exporter.srevelation"
+msgid "Revelation"
+msgstr ""
+
+#: project_exporter.sromans
+msgctxt "project_exporter.sromans"
+msgid "Romans"
+msgstr ""
+
+#: project_exporter.sruth
+msgctxt "project_exporter.sruth"
+msgid "Ruth"
+msgstr ""
+
+#: project_exporter.ssongofsolomon
+msgctxt "project_exporter.ssongofsolomon"
+msgid "Song of Solomon"
+msgstr ""
+
+#: project_exporter.stitus
+msgctxt "project_exporter.stitus"
+msgid "Titus"
+msgstr ""
+
+#: project_exporter.szechariah
+msgctxt "project_exporter.szechariah"
+msgid "Zecariah"
+msgstr ""
+
+#: project_exporter.szephaniah
+msgctxt "project_exporter.szephaniah"
+msgid "Zephaniah"
+msgstr ""
+
+#: project_setup_model.sscenarioassociation
+msgctxt "project_setup_model.sscenarioassociation"
+msgid "Translation association project"
+msgstr ""
+
+#: project_setup_model.sscenariotranslation
+msgctxt "project_setup_model.sscenariotranslation"
+msgid "Translation project"
+msgstr ""
+
+#: project_setup_model.sscenariounknown
+msgctxt "project_setup_model.sscenariounknown"
+msgid "Unknown"
+msgstr ""
+
+#: project_setup_validation.sdestinationrequired
+msgid "Please choose the destination Bible text for an association project."
+msgstr ""
+
+#: project_setup_validation.sdictionarycompressed
+msgid "Compressed dictionaries are not supported."
+msgstr ""
+
+#: project_setup_validation.sdictionaryencrypted
+msgid "Encrypted dictionaries are not supported."
+msgstr ""
+
+#: project_setup_validation.sdictionaryinvalid
+msgid "The selected dictionary could not be validated."
+msgstr ""
+
+#: project_setup_validation.sdictionarymissing
+msgid "The selected dictionary does not exist."
+msgstr ""
+
+#: project_setup_validation.sdictionarymorphmissing
+msgid "This dictionary does not advertise morphology support."
+msgstr ""
+
+#: project_setup_validation.sdictionarynonrtf
+msgid "Only RTF dictionary content is supported."
+msgstr ""
+
+#: project_setup_validation.sdictionaryoptional
+msgctxt "project_setup_validation.sdictionaryoptional"
+msgid "Optional."
+msgstr ""
+
+#: project_setup_validation.sdictionaryready
+msgctxt "project_setup_validation.sdictionaryready"
+msgid "Dictionary ready."
+msgstr ""
+
+#: project_setup_validation.sdictionarystrongmissing
+msgid "This dictionary does not advertise Strong support."
+msgstr ""
+
+#: project_setup_validation.smodulelinecountinvalid
+#, object-pascal-format
+msgid "The selected module has %d lines, but %d are required."
+msgstr ""
+
+#: project_setup_validation.smodulemissing
+msgid "The selected Bible module does not exist."
+msgstr ""
+
+#: project_setup_validation.smoduleoptional
+msgctxt "project_setup_validation.smoduleoptional"
+msgid "Optional."
+msgstr ""
+
+#: project_setup_validation.smodulepreviewempty
+msgid "Module looks valid, but the first verse preview is empty."
+msgstr ""
+
+#: project_setup_validation.smoduleready
+#, object-pascal-format
+msgid "Ready: %s, %d verses."
+msgstr ""
+
+#: project_setup_validation.smodulerequired
+msgid "Required module was not selected."
+msgstr ""
+
+#: project_setup_validation.smodulescopemismatch
+#, object-pascal-format
+msgid "The selected %s module cannot be used in a %s project."
+msgstr ""
+
+#: project_setup_validation.smoduletypeinvalid
+msgid "Only theWord Bible modules (.ont, .nt, .ot) are supported."
+msgstr ""
+
+#: project_setup_validation.sprojectfileexists
+msgid "A project file already exists at this location."
+msgstr ""
+
+#: project_setup_validation.sprojectfileextension
+msgid "The project file must use the .bib extension."
+msgstr ""
+
+#: project_setup_validation.sprojectfilerequired
+msgid "Please choose where the .bib project file will be saved."
+msgstr ""
+
+#: project_setup_validation.sprojectnamerequired
+msgctxt "project_setup_validation.sprojectnamerequired"
+msgid "Please choose a name for the project."
+msgstr ""
+
+#: project_setup_validation.sscopenewtestament
+msgctxt "project_setup_validation.sscopenewtestament"
+msgid "New Testament"
+msgstr ""
+
+#: project_setup_validation.sscopeoldtestament
+msgctxt "project_setup_validation.sscopeoldtestament"
+msgid "Old Testament"
+msgstr ""
+
+#: project_setup_validation.sscopeunknown
+msgid "Unknown scope"
+msgstr ""
+
+#: project_setup_validation.sscopewholebible
+msgctxt "project_setup_validation.sscopewholebible"
+msgid "Whole Bible"
+msgstr ""
+
+#: project_setup_validation.ssourcerequired
+msgid "Please choose the source Bible text."
+msgstr ""
+
+#: project_setup_validation.sstatuscataloginvalid
+#, object-pascal-format
+msgid "Status catalog is invalid: %s"
+msgstr ""
+
+#: project_setup_validation.stextdestination
+msgctxt "project_setup_validation.stextdestination"
+msgid "Destination"
+msgstr ""
+
+#: project_setup_validation.stextreference1
+msgctxt "project_setup_validation.stextreference1"
+msgid "Reference 1"
+msgstr ""
+
+#: project_setup_validation.stextreference2
+msgctxt "project_setup_validation.stextreference2"
+msgid "Reference 2"
+msgstr ""
+
+#: project_setup_validation.stextsource
+msgctxt "project_setup_validation.stextsource"
+msgid "Source"
+msgstr ""
+
+#: projeto.s1chronicles
+msgctxt "projeto.s1chronicles"
+msgid "1 Chronicles"
+msgstr ""
+
+#: projeto.s1corinthians
+msgctxt "projeto.s1corinthians"
+msgid "1 Corinthians"
+msgstr ""
+
+#: projeto.s1john
+msgctxt "projeto.s1john"
+msgid "1 John"
+msgstr ""
+
+#: projeto.s1kings
+msgctxt "projeto.s1kings"
+msgid "1 Kings"
+msgstr ""
+
+#: projeto.s1peter
+msgctxt "projeto.s1peter"
+msgid "1 Peter"
+msgstr ""
+
+#: projeto.s1samuel
+msgctxt "projeto.s1samuel"
+msgid "1 Samuel"
+msgstr ""
+
+#: projeto.s1thessalonians
+msgctxt "projeto.s1thessalonians"
+msgid "1 Thessalonians"
+msgstr ""
+
+#: projeto.s1timothy
+msgctxt "projeto.s1timothy"
+msgid "1 Timothy"
+msgstr ""
+
+#: projeto.s2chronicles
+msgctxt "projeto.s2chronicles"
+msgid "2 Chronicles"
+msgstr ""
+
+#: projeto.s2corinthians
+msgctxt "projeto.s2corinthians"
+msgid "2 Corinthians"
+msgstr ""
+
+#: projeto.s2john
+msgctxt "projeto.s2john"
+msgid "2 John"
+msgstr ""
+
+#: projeto.s2kings
+msgctxt "projeto.s2kings"
+msgid "2 Kings"
+msgstr ""
+
+#: projeto.s2peter
+msgctxt "projeto.s2peter"
+msgid "2 Peter"
+msgstr ""
+
+#: projeto.s2samuel
+msgctxt "projeto.s2samuel"
+msgid "2 Samuel"
+msgstr ""
+
+#: projeto.s2thessalonians
+msgctxt "projeto.s2thessalonians"
+msgid "2 Thessalonians"
+msgstr ""
+
+#: projeto.s2timothy
+msgctxt "projeto.s2timothy"
+msgid "2 Timothy"
+msgstr ""
+
+#: projeto.s3john
+msgctxt "projeto.s3john"
+msgid "3 John"
+msgstr ""
+
+#: projeto.sacts
+msgctxt "projeto.sacts"
+msgid "Acts"
+msgstr ""
+
+#: projeto.samos
+msgctxt "projeto.samos"
+msgid "Amos"
+msgstr ""
+
+#: projeto.sanalyticalconcordance
+msgid "Anaytical Concordance"
+msgstr ""
+
+#: projeto.sanalyzingverse
+msgctxt "projeto.sanalyzingverse"
+msgid "Analyzing verse..."
+msgstr ""
+
+#: projeto.sapplyaito
+msgctxt "projeto.sapplyaito"
+msgid "Apply AI flow to..."
+msgstr ""
+
+#: projeto.sapplyaitofmt
+#, object-pascal-format
+msgctxt "projeto.sapplyaitofmt"
+msgid "Apply AI flow to %s"
+msgstr ""
+
+#: projeto.sassociate
+msgctxt "projeto.sassociate"
+msgid "Associate"
+msgstr ""
+
+#: projeto.sassociation
+msgctxt "projeto.sassociation"
+msgid "Association"
+msgstr ""
+
+#: projeto.sassociationexamplerequiresassociations
+msgctxt "projeto.sassociationexamplerequiresassociations"
+msgid "Association examples require existing associations in the current verse."
+msgstr ""
+
+#: projeto.sassociationexamplerequirespair
+msgctxt "projeto.sassociationexamplerequirespair"
+msgid "Association examples require an active source verse paired with a destination verse."
+msgstr ""
+
+#: projeto.scancelaiprocessing
+msgctxt "projeto.scancelaiprocessing"
+msgid "Cancel AI processing"
+msgstr ""
+
+#: projeto.scolossians
+msgctxt "projeto.scolossians"
+msgid "Colossians"
+msgstr ""
+
+#: projeto.scompresseddictionary
+msgctxt "projeto.scompresseddictionary"
+msgid "Compressed dictionary"
+msgstr ""
+
+#: projeto.sconfirmapplyaitobook
+#, object-pascal-format
+msgctxt "projeto.sconfirmapplyaitobook"
+msgid "Are you sure you want to apply the AI flow to the entire book %s?"
+msgstr ""
+
+#: projeto.sconfirmapplyaitochapter
+#, object-pascal-format
+msgctxt "projeto.sconfirmapplyaitochapter"
+msgid "Are you sure you want to apply the AI flow to chapter %s?"
+msgstr ""
+
+#: projeto.sconfirmation
+msgctxt "projeto.sconfirmation"
+msgid "Confirmation"
+msgstr ""
+
+#: projeto.scopyassociationexample
+msgctxt "projeto.scopyassociationexample"
+msgid "Copy association example for AI instructions"
+msgstr ""
+
+#: projeto.scorrupteddata
+msgctxt "projeto.scorrupteddata"
+msgid ""
+"Corrupted data, some associations may be lost.This can happen for several reasons:\n"
+" 1. The project file was modified outside iBiblia\n"
+" 2. The project was created/edited on an incompatible iBiblia version\n"
+" 3. This can be a bug in iBiblia.\n"
+"    If this is the case, please file a bug in the Github project page\n"
+"    at https://github.com/rubiot/ibiblia."
+msgstr ""
+
+#: projeto.sdaniel
+msgctxt "projeto.sdaniel"
+msgid "Daniel"
+msgstr ""
+
+#: projeto.sdeuteronomy
+msgctxt "projeto.sdeuteronomy"
+msgid "Deuteronomy"
+msgstr ""
+
+#: projeto.sdictionarydoesntexist
+#, object-pascal-format
+msgctxt "projeto.sdictionarydoesntexist"
+msgid "The selected dictionary doesn't exist: %s"
+msgstr ""
+
+#: projeto.secclesiastes
+msgctxt "projeto.secclesiastes"
+msgid "Ecclesiastes"
+msgstr ""
+
+#: projeto.sencrypteddictionary
+msgctxt "projeto.sencrypteddictionary"
+msgid "Encrypted dictionary"
+msgstr ""
+
+#: projeto.sephesians
+msgctxt "projeto.sephesians"
+msgid "Ephesians"
+msgstr ""
+
+#: projeto.serror
+msgctxt "projeto.serror"
+msgid "Error"
+msgstr ""
+
+#: projeto.sesther
+msgctxt "projeto.sesther"
+msgid "Esther"
+msgstr ""
+
+#: projeto.sexamplealreadyexistsprompt
+#, object-pascal-format
+msgctxt "projeto.sexamplealreadyexistsprompt"
+msgid ""
+"This verse is already saved as an example for the %s flow.\n"
+"\n"
+"Existing entry: %s\n"
+"\n"
+"Do you want to replace it with the current verse state?"
+msgstr ""
+
+#: projeto.sexamplealreadyexiststitle
+msgctxt "projeto.sexamplealreadyexiststitle"
+msgid "Example already exists"
+msgstr ""
+
+#: projeto.sexamplesaved
+msgctxt "projeto.sexamplesaved"
+msgid "Example saved."
+msgstr ""
+
+#: projeto.sexodus
+msgctxt "projeto.sexodus"
+msgid "Exodus"
+msgstr ""
+
+#: projeto.sexporttextsavedlgtitle
+msgctxt "projeto.sexporttextsavedlgtitle"
+msgid "Please choose a destination file"
+msgstr ""
+
+#: projeto.sexporttofileerror
+msgctxt "projeto.sexporttofileerror"
+msgid "iBiblia found an error while exporting the Bible module file."
+msgstr ""
+
+#: projeto.sezekiel
+msgctxt "projeto.sezekiel"
+msgid "Ezekiel"
+msgstr ""
+
+#: projeto.sezra
+msgctxt "projeto.sezra"
+msgid "Ezra"
+msgstr ""
+
+#: projeto.sfailedtocreatefile
+#, object-pascal-format
+msgctxt "projeto.sfailedtocreatefile"
+msgid "Failed to create file: %s"
+msgstr ""
+
+#: projeto.sgalatians
+msgctxt "projeto.sgalatians"
+msgid "Galatians"
+msgstr ""
+
+#: projeto.sgenesis
+msgctxt "projeto.sgenesis"
+msgid "Genesis"
+msgstr ""
+
+#: projeto.shabakkuk
+msgctxt "projeto.shabakkuk"
+msgid "Habakkuk"
+msgstr ""
+
+#: projeto.shaggai
+msgctxt "projeto.shaggai"
+msgid "Haggai"
+msgstr ""
+
+#: projeto.shebrew
+msgctxt "projeto.shebrew"
+msgid "Hebrews"
+msgstr ""
+
+#: projeto.shosea
+msgctxt "projeto.shosea"
+msgid "Hosea"
+msgstr ""
+
+#: projeto.sibibliapatchfiles
+msgctxt "projeto.sibibliapatchfiles"
+msgid "iBiblia patch files"
+msgstr ""
+
+#: projeto.sinformation
+msgctxt "projeto.sinformation"
+msgid "Information"
+msgstr ""
+
+#: projeto.sinterlinearverserulereplaceerror
+msgctxt "projeto.sinterlinearverserulereplaceerror"
+msgid ""
+"There is something wrong with one of your interlinear verse rules.\n"
+"Please review them."
+msgstr ""
+
+#: projeto.sinvalidcompresseddictionary
+msgctxt "projeto.sinvalidcompresseddictionary"
+msgid ""
+"iBiblia does not suppport compressed dictionaries yet.\n"
+"Please choose an uncompressed module."
+msgstr ""
+
+#: projeto.sinvalidencrypteddictionary
+msgctxt "projeto.sinvalidencrypteddictionary"
+msgid ""
+"iBiblia does not and will not support encrypted modules.\n"
+"Please choose an unencrypted module."
+msgstr ""
+
+#: projeto.sinvalidinterlinearverserule
+#, object-pascal-format
+msgctxt "projeto.sinvalidinterlinearverserule"
+msgid ""
+"There is something wrong with your interlinear verse rule.\n"
+"[%s]"
+msgstr ""
+
+#: projeto.sinvalidlinecount
+#, object-pascal-format
+msgctxt "projeto.sinvalidlinecount"
+msgid "Invalid file, it must have at least %d lines"
+msgstr ""
+
+#: projeto.sinvalidmoduletype
+msgctxt "projeto.sinvalidmoduletype"
+msgid "Unknown module extension. Please choose a valid theWord Bible module (.ot, .ont or .nt)"
+msgstr ""
+
+#: projeto.sinvalidmorphologydictionary
+msgctxt "projeto.sinvalidmorphologydictionary"
+msgid ""
+"This is not a morphology dictionary.\n"
+"Please choose a valid morphology dictionary."
+msgstr ""
+
+#: projeto.sinvalidnonrtfdictionary
+msgctxt "projeto.sinvalidnonrtfdictionary"
+msgid ""
+"iBiblia only suppports RTF modules.\n"
+"Please choose another module or convert this module to RTF in theWord."
+msgstr ""
+
+#: projeto.sinvalidstrongsdictionary
+msgctxt "projeto.sinvalidstrongsdictionary"
+msgid ""
+"This is not a Strong's dictionary.\n"
+"Please choose a valid Strong's dictionary."
+msgstr ""
+
+#: projeto.sisaiah
+msgctxt "projeto.sisaiah"
+msgid "Isaiah"
+msgstr ""
+
+#: projeto.sjames
+msgctxt "projeto.sjames"
+msgid "James"
+msgstr ""
+
+#: projeto.sjeremiah
+msgctxt "projeto.sjeremiah"
+msgid "Jeremiah"
+msgstr ""
+
+#: projeto.sjob
+msgctxt "projeto.sjob"
+msgid "Job"
+msgstr ""
+
+#: projeto.sjoel
+msgctxt "projeto.sjoel"
+msgid "Joel"
+msgstr ""
+
+#: projeto.sjohah
+msgctxt "projeto.sjohah"
+msgid "Jonah"
+msgstr ""
+
+#: projeto.sjohn
+msgctxt "projeto.sjohn"
+msgid "John"
+msgstr ""
+
+#: projeto.sjoshua
+msgctxt "projeto.sjoshua"
+msgid "Joshua"
+msgstr ""
+
+#: projeto.sjude
+msgctxt "projeto.sjude"
+msgid "Jude"
+msgstr ""
+
+#: projeto.sjudges
+msgctxt "projeto.sjudges"
+msgid "Judges"
+msgstr ""
+
+#: projeto.slamentations
+msgctxt "projeto.slamentations"
+msgid "Lamentations"
+msgstr ""
+
+#: projeto.slanguageid
+msgctxt "projeto.slanguageid"
+msgid "en"
+msgstr ""
+
+#: projeto.sleviticus
+msgctxt "projeto.sleviticus"
+msgid "Leviticus"
+msgstr ""
+
+#: projeto.slinebreaksintext
+msgid "A verse cannot contain line breaks. Your changes will be discarded."
+msgstr ""
+
+#: projeto.slinebreaksintexttitle
+msgctxt "projeto.slinebreaksintexttitle"
+msgid "Edit error"
+msgstr ""
+
+#: projeto.sluke
+msgctxt "projeto.sluke"
+msgid "Luke"
+msgstr ""
+
+#: projeto.smalachi
+msgctxt "projeto.smalachi"
+msgid "Malachi"
+msgstr ""
+
+#: projeto.smark
+msgctxt "projeto.smark"
+msgid "Mark"
+msgstr ""
+
+#: projeto.smarkasfmt
+#, object-pascal-format
+msgctxt "projeto.smarkasfmt"
+msgid "Mark %s as..."
+msgstr ""
+
+#: projeto.smatthew
+msgctxt "projeto.smatthew"
+msgid "Matthew"
+msgstr ""
+
+#: projeto.smicah
+msgctxt "projeto.smicah"
+msgid "Micah"
+msgstr ""
+
+#: projeto.smoduledoesnotincludescope
+msgctxt "projeto.smoduledoesnotincludescope"
+msgid "This module is incompatible with the scope of the project. Please choose a valid module."
+msgstr ""
+
+#: projeto.smorphologydictionary
+msgctxt "projeto.smorphologydictionary"
+msgid "Morphology Dictionary"
+msgstr ""
+
+#: projeto.snahum
+msgctxt "projeto.snahum"
+msgid "Nahum"
+msgstr ""
+
+#: projeto.snehemiah
+msgctxt "projeto.snehemiah"
+msgid "Nehemiah"
+msgstr ""
+
+#: projeto.snonrtfdictionary
+msgctxt "projeto.snonrtfdictionary"
+msgid "Non-RTF module"
+msgstr ""
+
+#: projeto.snumbers
+msgctxt "projeto.snumbers"
+msgid "Numbers"
+msgstr ""
+
+#: projeto.sobadiah
+msgctxt "projeto.sobadiah"
+msgid "Obadiah"
+msgstr ""
+
+#: projeto.sopenproject
+msgctxt "projeto.sopenproject"
+msgid "Open project"
+msgstr ""
+
+#: projeto.sotconcordancenotimplementedyet
+msgctxt "projeto.sotconcordancenotimplementedyet"
+msgid "Old Testament concordance is not implemented yet"
+msgstr ""
+
+#: projeto.spatchsuccessfullyexported
+msgctxt "projeto.spatchsuccessfullyexported"
+msgid "Patch successfully exported"
+msgstr ""
+
+#: projeto.sphilemon
+msgctxt "projeto.sphilemon"
+msgid "Philemon"
+msgstr ""
+
+#: projeto.sphilippians
+msgctxt "projeto.sphilippians"
+msgid "Philippians"
+msgstr ""
+
+#: projeto.spotentialnonutf8modulewarning
+msgid "This module has a 'charset' property and this may be an indication that this is a non-UTF8 module. iBiblia was not designed to work with non-UTF8 modules. Please choose 'Ignore' to ignore this warning and continue at your own risk or 'Abort' to abort the operation and choose another module."
+msgstr ""
+
+#: projeto.sprojectdoesntexist
+#, object-pascal-format
+msgctxt "projeto.sprojectdoesntexist"
+msgid "The selected project doesn't exist: %s"
+msgstr ""
+
+#: projeto.sproverbs
+msgctxt "projeto.sproverbs"
+msgid "Proverbs"
+msgstr ""
+
+#: projeto.spsalms
+msgctxt "projeto.spsalms"
+msgid "Psalms"
+msgstr ""
+
+#: projeto.sreferencenotfound
+msgctxt "projeto.sreferencenotfound"
+msgid "Reference not found"
+msgstr ""
+
+#: projeto.sreferencenotfoundwarning
+#, object-pascal-format
+msgctxt "projeto.sreferencenotfoundwarning"
+msgid ""
+"The reference %s is not a valid reference in this project and will be ignored.\n"
+"Press Ignore to ignore all subsequent warnings."
+msgstr ""
+
+#: projeto.srevelation
+msgctxt "projeto.srevelation"
+msgid "Revelation"
+msgstr ""
+
+#: projeto.sromans
+msgctxt "projeto.sromans"
+msgid "Romans"
+msgstr ""
+
+#: projeto.sruth
+msgctxt "projeto.sruth"
+msgid "Ruth"
+msgstr ""
+
+#: projeto.ssetstatuschildren
+msgctxt "projeto.ssetstatuschildren"
+msgid "Set status of all children to..."
+msgstr ""
+
+#: projeto.ssongofsolomon
+msgctxt "projeto.ssongofsolomon"
+msgid "Song of Solomon"
+msgstr ""
+
+#: projeto.sstatusassociated
+msgctxt "projeto.sstatusassociated"
+msgid "Associated!"
+msgstr ""
+
+#: projeto.sstatusassociating
+msgctxt "projeto.sstatusassociating"
+msgid "Associating"
+msgstr ""
+
+#: projeto.sstatusneedsreview
+msgctxt "projeto.sstatusneedsreview"
+msgid "Needs review"
+msgstr ""
+
+#: projeto.sstatusnotassociated
+msgctxt "projeto.sstatusnotassociated"
+msgid "Not associated"
+msgstr ""
+
+#: projeto.sstrongdictionary
+msgctxt "projeto.sstrongdictionary"
+msgid "Strong's Dictionary"
+msgstr ""
+
+#: projeto.sswitchdestinationandreference1texts
+msgid "Switch destination text with reference 1"
+msgstr ""
+
+#: projeto.ssyntheticconcordance
+msgctxt "projeto.ssyntheticconcordance"
+msgid "Synthetic Concordance"
+msgstr ""
+
+#: projeto.stitus
+msgctxt "projeto.stitus"
+msgid "Titus"
+msgstr ""
+
+#: projeto.stranslate
+msgctxt "projeto.stranslate"
+msgid "Translate"
+msgstr ""
+
+#: projeto.stranslation
+msgctxt "projeto.stranslation"
+msgid "Translation"
+msgstr ""
+
+#: projeto.stranslationexamplerequirespair
+msgctxt "projeto.stranslationexamplerequirespair"
+msgid "Translation examples require an active source verse paired with a destination verse."
+msgstr ""
+
+#: projeto.stranslationexamplerequirestext
+msgctxt "projeto.stranslationexamplerequirestext"
+msgid "Translation examples require translated text in the destination verse."
+msgstr ""
+
+#: projeto.stranslationmemory
+msgctxt "projeto.stranslationmemory"
+msgid "Translation memory"
+msgstr ""
+
+#: projeto.suseverseasassociationexample
+msgctxt "projeto.suseverseasassociationexample"
+msgid "In association flow"
+msgstr ""
+
+#: projeto.suseverseasexample
+msgctxt "projeto.suseverseasexample"
+msgid "Use verse as example..."
+msgstr ""
+
+#: projeto.suseverseastranslationexample
+msgctxt "projeto.suseverseastranslationexample"
+msgid "In translation flow"
+msgstr ""
+
+#: projeto.svaccumprojectconfirmation
+msgctxt "projeto.svaccumprojectconfirmation"
+msgid "Vacuuming requires that your project be saved and reopened. Do you want to proceed?"
+msgstr ""
+
+#: projeto.svacuumdone
+msgctxt "projeto.svacuumdone"
+msgid "Vacuum done!"
+msgstr ""
+
+#: projeto.sverseabsentfromproject
+msgctxt "projeto.sverseabsentfromproject"
+msgid "[This project does not contain this verse]"
+msgstr ""
+
+#: projeto.swarning
+msgctxt "projeto.swarning"
+msgid "Warning"
+msgstr ""
+
+#: projeto.szechariah
+msgctxt "projeto.szechariah"
+msgid "Zecariah"
+msgstr ""
+
+#: projeto.szephaniah
+msgctxt "projeto.szephaniah"
+msgid "Zephaniah"
+msgstr ""
+
 #: suggestionmanager.sassociationmemorymissingexpectedpairs
-msgctxt "suggestionmanager.sassociationmemorymissingexpectedpairs"
 msgid "Association memory is missing expected translation pairs"
 msgstr ""
 
@@ -3326,18 +7137,15 @@ msgid "Association memory is missing reference occurrences (expected %d, stored 
 msgstr ""
 
 #: suggestionmanager.sassociationmemorymissingphrases
-msgctxt "suggestionmanager.sassociationmemorymissingphrases"
 msgid "Association memory contains translations with missing phrases"
 msgstr ""
 
 #: suggestionmanager.sassociationmemorymissingtranslationpairsfmt
 #, object-pascal-format
-msgctxt "suggestionmanager.sassociationmemorymissingtranslationpairsfmt"
 msgid "Association memory is missing translation pairs (expected %d, stored %d)"
 msgstr ""
 
 #: suggestionmanager.sassociationmemorynonpositivecounts
-msgctxt "suggestionmanager.sassociationmemorynonpositivecounts"
 msgid "Association memory contains non-positive occurrence counts"
 msgstr ""
 
@@ -3359,24 +7167,20 @@ msgid "Association memory contains occurrence references not found in the projec
 msgstr ""
 
 #: suggestionmanager.sassociationmemoryorphanphrases
-msgctxt "suggestionmanager.sassociationmemoryorphanphrases"
 msgid "Association memory contains orphan phrases"
 msgstr ""
 
 #: suggestionmanager.sassociationmemoryorphansyntagmmappings
-msgctxt "suggestionmanager.sassociationmemoryorphansyntagmmappings"
 msgid "Association memory contains orphan syntagm mappings"
 msgstr ""
 
 #: suggestionmanager.sassociationmemorypairmismatchfmt
 #, object-pascal-format
-msgctxt "suggestionmanager.sassociationmemorypairmismatchfmt"
 msgid "Association memory mismatch for \"%s\" -> \"%s\" (expected %d, stored %d)"
 msgstr ""
 
 #: suggestionmanager.sassociationmemoryphraseidmismatchfmt
 #, object-pascal-format
-msgctxt "suggestionmanager.sassociationmemoryphraseidmismatchfmt"
 msgid "Association memory mismatch for phrase IDs %d -> %d (expected %d, stored %d)"
 msgstr ""
 
@@ -3386,7 +7190,6 @@ msgid "Association memory rebuild is already active"
 msgstr ""
 
 #: suggestionmanager.sassociationmemoryrebuildnotprepared
-msgctxt "suggestionmanager.sassociationmemoryrebuildnotprepared"
 msgid "Association memory rebuild has not been prepared"
 msgstr ""
 
@@ -3397,940 +7200,377 @@ msgstr ""
 
 #: suggestionmanager.sassociationmemoryunexpectedpairfmt
 #, object-pascal-format
-msgctxt "suggestionmanager.sassociationmemoryunexpectedpairfmt"
 msgid "Association memory contains unexpected pair \"%s\" -> \"%s\""
 msgstr ""
 
 #: suggestionmanager.sassociationmemoryunexpectedphraseidsfmt
 #, object-pascal-format
-msgctxt "suggestionmanager.sassociationmemoryunexpectedphraseidsfmt"
 msgid "Association memory contains unexpected phrase IDs %d -> %d"
 msgstr ""
 
 #: suggestionmanager.scannotaddpairsafterrebuildvalidation
-msgctxt "suggestionmanager.scannotaddpairsafterrebuildvalidation"
 msgid "Cannot add pairs after rebuild validation"
 msgstr ""
 
 #: suggestionmanager.sexpectedassociationpairlistinvalid
-msgctxt "suggestionmanager.sexpectedassociationpairlistinvalid"
 msgid "Expected association pair list is invalid"
 msgstr ""
 
 #: suggestionmanager.sinvalidbufferedassociationmemorypair
-msgctxt "suggestionmanager.sinvalidbufferedassociationmemorypair"
 msgid "Invalid buffered association memory pair"
 msgstr ""
 
-#: tformabout.caption
-msgid "About iBiblia"
+#: theworddictionary.screatetheworddictionaryerror
+msgid "Unable to create new TheWord module file"
 msgstr ""
 
-#: tformabout.label1.caption
-msgctxt "tformabout.label1.caption"
-msgid "iBiblia"
+#: theword_module_import_layout.s1chronicles
+msgctxt "theword_module_import_layout.s1chronicles"
+msgid "1 Chronicles"
 msgstr ""
 
-#: tformabout.label2.caption
-msgid "Copyright Rúbio R. C. Terra <rubio.terra@gmail.com>"
+#: theword_module_import_layout.s1corinthians
+msgctxt "theword_module_import_layout.s1corinthians"
+msgid "1 Corinthians"
 msgstr ""
 
-#: tformabout.label3.caption
-msgid "https://github.com/rubiot/ibiblia"
+#: theword_module_import_layout.s1john
+msgctxt "theword_module_import_layout.s1john"
+msgid "1 John"
 msgstr ""
 
-#: tformabout.labelversion.caption
-msgid "iBiblia version"
+#: theword_module_import_layout.s1kings
+msgctxt "theword_module_import_layout.s1kings"
+msgid "1 Kings"
 msgstr ""
 
-#: tinterlinearverserulesform.cancelbutton.caption
-msgctxt "tinterlinearverserulesform.cancelbutton.caption"
-msgid "Cancel"
+#: theword_module_import_layout.s1peter
+msgctxt "theword_module_import_layout.s1peter"
+msgid "1 Peter"
 msgstr ""
 
-#: tinterlinearverserulesform.okbutton.caption
-msgctxt "tinterlinearverserulesform.okbutton.caption"
-msgid "OK"
+#: theword_module_import_layout.s1samuel
+msgctxt "theword_module_import_layout.s1samuel"
+msgid "1 Samuel"
 msgstr ""
 
-#: tinterlinearverserulesform.caption
-msgid "Interlinear view verse rules"
+#: theword_module_import_layout.s1thessalonians
+msgctxt "theword_module_import_layout.s1thessalonians"
+msgid "1 Thessalonians"
 msgstr ""
 
-#: tinterlinearverserulesform.stringgridinterlinear.columns[0].title.caption
-msgctxt "tinterlinearverserulesform.stringgridinterlinear.columns[0].title.caption"
-msgid "From"
+#: theword_module_import_layout.s1timothy
+msgctxt "theword_module_import_layout.s1timothy"
+msgid "1 Timothy"
 msgstr ""
 
-#: tinterlinearverserulesform.stringgridinterlinear.columns[1].title.caption
-msgctxt "tinterlinearverserulesform.stringgridinterlinear.columns[1].title.caption"
-msgid "To"
+#: theword_module_import_layout.s2chronicles
+msgctxt "theword_module_import_layout.s2chronicles"
+msgid "2 Chronicles"
 msgstr ""
 
-#: tinterlinearverserulesform.stringgridinterlinear.columns[2].title.caption
-msgctxt "tinterlinearverserulesform.stringgridinterlinear.columns[2].title.caption"
-msgid "Enable"
+#: theword_module_import_layout.s2corinthians
+msgctxt "theword_module_import_layout.s2corinthians"
+msgid "2 Corinthians"
 msgstr ""
 
-#: tinterlinearverserulesform.stringgridinterlinear.columns[3].title.caption
-msgctxt "tinterlinearverserulesform.stringgridinterlinear.columns[3].title.caption"
-msgid "Export"
+#: theword_module_import_layout.s2john
+msgctxt "theword_module_import_layout.s2john"
+msgid "2 John"
 msgstr ""
 
-#: tinterlinearverserulesform.stringgridintralinear.columns[0].title.caption
-msgctxt "tinterlinearverserulesform.stringgridintralinear.columns[0].title.caption"
-msgid "From"
+#: theword_module_import_layout.s2kings
+msgctxt "theword_module_import_layout.s2kings"
+msgid "2 Kings"
 msgstr ""
 
-#: tinterlinearverserulesform.stringgridintralinear.columns[1].title.caption
-msgctxt "tinterlinearverserulesform.stringgridintralinear.columns[1].title.caption"
-msgid "To"
+#: theword_module_import_layout.s2peter
+msgctxt "theword_module_import_layout.s2peter"
+msgid "2 Peter"
 msgstr ""
 
-#: tinterlinearverserulesform.stringgridintralinear.columns[2].title.caption
-msgctxt "tinterlinearverserulesform.stringgridintralinear.columns[2].title.caption"
-msgid "Enable"
+#: theword_module_import_layout.s2samuel
+msgctxt "theword_module_import_layout.s2samuel"
+msgid "2 Samuel"
 msgstr ""
 
-#: tinterlinearverserulesform.stringgridintralinear.columns[3].title.caption
-msgctxt "tinterlinearverserulesform.stringgridintralinear.columns[3].title.caption"
-msgid "Export"
+#: theword_module_import_layout.s2thessalonians
+msgctxt "theword_module_import_layout.s2thessalonians"
+msgid "2 Thessalonians"
 msgstr ""
 
-#: tinterlinearverserulesform.interlineartab.caption
-msgctxt "tinterlinearverserulesform.interlineartab.caption"
-msgid "Interlinear"
+#: theword_module_import_layout.s2timothy
+msgctxt "theword_module_import_layout.s2timothy"
+msgid "2 Timothy"
 msgstr ""
 
-#: tinterlinearverserulesform.intralineartab.caption
-msgctxt "tinterlinearverserulesform.intralineartab.caption"
-msgid "Intralinear"
+#: theword_module_import_layout.s3john
+msgctxt "theword_module_import_layout.s3john"
+msgid "3 John"
 msgstr ""
 
-#: tformpleasewait.caption
-msgctxt "tformpleasewait.caption"
-msgid "Operation in progress"
+#: theword_module_import_layout.sacts
+msgctxt "theword_module_import_layout.sacts"
+msgid "Acts"
 msgstr ""
 
-#: tformpleasewait.label1.caption
-msgid "Please wait..."
+#: theword_module_import_layout.samos
+msgctxt "theword_module_import_layout.samos"
+msgid "Amos"
 msgstr ""
 
-#: tfrmapplypatch.btndeselectall.caption
-msgctxt "tfrmapplypatch.btndeselectall.caption"
-msgid "Deselect all"
+#: theword_module_import_layout.scolossians
+msgctxt "theword_module_import_layout.scolossians"
+msgid "Colossians"
 msgstr ""
 
-#: tfrmapplypatch.btnselectall.caption
-msgctxt "tfrmapplypatch.btnselectall.caption"
-msgid "Select all"
+#: theword_module_import_layout.sdaniel
+msgctxt "theword_module_import_layout.sdaniel"
+msgid "Daniel"
 msgstr ""
 
-#: tfrmapplypatch.button1.caption
-msgctxt "tfrmapplypatch.button1.caption"
-msgid "OK"
+#: theword_module_import_layout.sdeuteronomy
+msgctxt "theword_module_import_layout.sdeuteronomy"
+msgid "Deuteronomy"
 msgstr ""
 
-#: tfrmapplypatch.button2.caption
-msgctxt "tfrmapplypatch.button2.caption"
-msgid "Cancel"
+#: theword_module_import_layout.secclesiastes
+msgctxt "theword_module_import_layout.secclesiastes"
+msgid "Ecclesiastes"
 msgstr ""
 
-#: tfrmapplypatch.caption
-msgctxt "tfrmapplypatch.caption"
-msgid "Apply patch..."
+#: theword_module_import_layout.sephesians
+msgctxt "theword_module_import_layout.sephesians"
+msgid "Ephesians"
 msgstr ""
 
-#: tfrmapplypatch.labelassociations.caption
-msgid "Associations"
+#: theword_module_import_layout.sesther
+msgctxt "theword_module_import_layout.sesther"
+msgid "Esther"
 msgstr ""
 
-#: tfrmapplypatch.labelcomments.caption
-msgctxt "tfrmapplypatch.labelcomments.caption"
-msgid "Comments"
+#: theword_module_import_layout.sexodus
+msgctxt "theword_module_import_layout.sexodus"
+msgid "Exodus"
 msgstr ""
 
-#: tfrmapplypatch.labeldsttext.caption
-msgid "Destination text"
+#: theword_module_import_layout.sezekiel
+msgctxt "theword_module_import_layout.sezekiel"
+msgid "Ezekiel"
 msgstr ""
 
-#: tfrmapplypatch.labelsrctext.caption
-msgctxt "tfrmapplypatch.labelsrctext.caption"
-msgid "Source text"
+#: theword_module_import_layout.sezra
+msgctxt "theword_module_import_layout.sezra"
+msgid "Ezra"
 msgstr ""
 
-#: tfrmapplypatch.labelstatus.caption
-msgctxt "tfrmapplypatch.labelstatus.caption"
-msgid "Status"
+#: theword_module_import_layout.sgalatians
+msgctxt "theword_module_import_layout.sgalatians"
+msgid "Galatians"
 msgstr ""
 
-#: tfrmdictionarypopup.caption
-msgid "Dictionary"
+#: theword_module_import_layout.sgenesis
+msgctxt "theword_module_import_layout.sgenesis"
+msgid "Genesis"
 msgstr ""
 
-#: tfrmllmoptions.btncancel.caption
-msgctxt "tfrmllmoptions.btncancel.caption"
-msgid "Cancel"
+#: theword_module_import_layout.shabakkuk
+msgctxt "theword_module_import_layout.shabakkuk"
+msgid "Habakkuk"
 msgstr ""
 
-#: tfrmllmoptions.btnok.caption
-msgctxt "tfrmllmoptions.btnok.caption"
-msgid "OK"
+#: theword_module_import_layout.shaggai
+msgctxt "theword_module_import_layout.shaggai"
+msgid "Haggai"
 msgstr ""
 
-#: tfrmllmoptions.btntest.caption
-msgctxt "tfrmllmoptions.btntest.caption"
-msgid "Test"
+#: theword_module_import_layout.shebrew
+msgctxt "theword_module_import_layout.shebrew"
+msgid "Hebrews"
 msgstr ""
 
-#: tfrmllmoptions.gbcommonsettings.caption
-msgctxt "tfrmllmoptions.gbcommonsettings.caption"
-msgid "Common Settings (All Flows)"
+#: theword_module_import_layout.shosea
+msgctxt "theword_module_import_layout.shosea"
+msgid "Hosea"
 msgstr ""
 
-#: tfrmllmoptions.labelmodel.caption
-msgctxt "tfrmllmoptions.labelmodel.caption"
-msgid "Model"
+#: theword_module_import_layout.sisaiah
+msgctxt "theword_module_import_layout.sisaiah"
+msgid "Isaiah"
 msgstr ""
 
-#: tfrmllmoptions.leapikey.editlabel.caption
-msgctxt "tfrmllmoptions.leapikey.editlabel.caption"
-msgid "API key"
+#: theword_module_import_layout.sjames
+msgctxt "theword_module_import_layout.sjames"
+msgid "James"
 msgstr ""
 
-#: tfrmllmoptions.lemaxparallel.editlabel.caption
-msgctxt "tfrmllmoptions.lemaxparallel.editlabel.caption"
-msgid "Max Parallel"
+#: theword_module_import_layout.sjeremiah
+msgctxt "theword_module_import_layout.sjeremiah"
+msgid "Jeremiah"
 msgstr ""
 
-#: tfrmllmoptions.lemaxparallel.text
-msgid "2"
+#: theword_module_import_layout.sjob
+msgctxt "theword_module_import_layout.sjob"
+msgid "Job"
 msgstr ""
 
-#: tfrmllmoptions.lemaxretries.editlabel.caption
-msgctxt "tfrmllmoptions.lemaxretries.editlabel.caption"
-msgid "Max Retries"
+#: theword_module_import_layout.sjoel
+msgctxt "theword_module_import_layout.sjoel"
+msgid "Joel"
 msgstr ""
 
-#: tfrmllmoptions.lemaxretries.text
-msgid "3"
+#: theword_module_import_layout.sjohah
+msgctxt "theword_module_import_layout.sjohah"
+msgid "Jonah"
 msgstr ""
 
-#: tfrmllmoptions.tsassociation.caption
-msgctxt "tfrmllmoptions.tsassociation.caption"
-msgid "Association"
+#: theword_module_import_layout.sjohn
+msgctxt "theword_module_import_layout.sjohn"
+msgid "John"
 msgstr ""
 
-#: tfrmllmoptions.tstranslation.caption
-msgctxt "tfrmllmoptions.tstranslation.caption"
-msgid "Translation"
+#: theword_module_import_layout.sjoshua
+msgctxt "theword_module_import_layout.sjoshua"
+msgid "Joshua"
 msgstr ""
 
-#: tfrmnewproject.btncancel.caption
-msgctxt "tfrmnewproject.btncancel.caption"
-msgid "Cancel"
+#: theword_module_import_layout.sjude
+msgctxt "theword_module_import_layout.sjude"
+msgid "Jude"
 msgstr ""
 
-#: tfrmnewproject.btnok.caption
-msgctxt "tfrmnewproject.btnok.caption"
-msgid "&OK"
+#: theword_module_import_layout.sjudges
+msgctxt "theword_module_import_layout.sjudges"
+msgid "Judges"
 msgstr ""
 
-#: tfrmnewproject.btnselectdestinationtext.caption
-msgctxt "tfrmnewproject.btnselectdestinationtext.caption"
-msgid "..."
+#: theword_module_import_layout.slamentations
+msgctxt "theword_module_import_layout.slamentations"
+msgid "Lamentations"
 msgstr ""
 
-#: tfrmnewproject.btnselectreferencetext1.caption
-msgctxt "tfrmnewproject.btnselectreferencetext1.caption"
-msgid "..."
+#: theword_module_import_layout.sleviticus
+msgctxt "theword_module_import_layout.sleviticus"
+msgid "Leviticus"
 msgstr ""
 
-#: tfrmnewproject.btnselectreferencetext2.caption
-msgctxt "tfrmnewproject.btnselectreferencetext2.caption"
-msgid "..."
+#: theword_module_import_layout.sluke
+msgctxt "theword_module_import_layout.sluke"
+msgid "Luke"
 msgstr ""
 
-#: tfrmnewproject.btnselectsourcetext.caption
-msgctxt "tfrmnewproject.btnselectsourcetext.caption"
-msgid "..."
+#: theword_module_import_layout.smalachi
+msgctxt "theword_module_import_layout.smalachi"
+msgid "Malachi"
 msgstr ""
 
-#: tfrmnewproject.caption
-msgctxt "tfrmnewproject.caption"
-msgid "New project..."
+#: theword_module_import_layout.smark
+msgctxt "theword_module_import_layout.smark"
+msgid "Mark"
 msgstr ""
 
-#: tfrmnewproject.editdestinationtext.editlabel.caption
-msgctxt "tfrmnewproject.editdestinationtext.editlabel.caption"
-msgid "Destination"
+#: theword_module_import_layout.smatthew
+msgctxt "theword_module_import_layout.smatthew"
+msgid "Matthew"
 msgstr ""
 
-#: tfrmnewproject.editprojectname.editlabel.caption
-msgctxt "tfrmnewproject.editprojectname.editlabel.caption"
-msgid "Name"
+#: theword_module_import_layout.smicah
+msgctxt "theword_module_import_layout.smicah"
+msgid "Micah"
 msgstr ""
 
-#: tfrmnewproject.editreferencetext1.editlabel.caption
-msgctxt "tfrmnewproject.editreferencetext1.editlabel.caption"
-msgid "Reference 1"
+#: theword_module_import_layout.snahum
+msgctxt "theword_module_import_layout.snahum"
+msgid "Nahum"
 msgstr ""
 
-#: tfrmnewproject.editreferencetext2.editlabel.caption
-msgctxt "tfrmnewproject.editreferencetext2.editlabel.caption"
-msgid "Reference 2"
+#: theword_module_import_layout.snehemiah
+msgctxt "theword_module_import_layout.snehemiah"
+msgid "Nehemiah"
 msgstr ""
 
-#: tfrmnewproject.editsourcetext.editlabel.caption
-msgctxt "tfrmnewproject.editsourcetext.editlabel.caption"
-msgid "Source"
+#: theword_module_import_layout.snumbers
+msgctxt "theword_module_import_layout.snumbers"
+msgid "Numbers"
 msgstr ""
 
-#: tfrmnewproject.groupboxproperties.caption
-msgctxt "tfrmnewproject.groupboxproperties.caption"
-msgid "Properties"
+#: theword_module_import_layout.sobadiah
+msgctxt "theword_module_import_layout.sobadiah"
+msgid "Obadiah"
 msgstr ""
 
-#: tfrmnewproject.groupboxtexts.caption
-msgctxt "tfrmnewproject.groupboxtexts.caption"
-msgid "Texts"
+#: theword_module_import_layout.sphilemon
+msgctxt "theword_module_import_layout.sphilemon"
+msgid "Philemon"
 msgstr ""
 
-#: tfrmnewproject.opendialogselecttext.title
-msgctxt "tfrmnewproject.opendialogselecttext.title"
-msgid "Choose a theWord bible module"
+#: theword_module_import_layout.sphilippians
+msgctxt "theword_module_import_layout.sphilippians"
+msgid "Philippians"
 msgstr ""
 
-#: tfrmnewproject.radiogroupscope.caption
-msgctxt "tfrmnewproject.radiogroupscope.caption"
-msgid "Scope"
+#: theword_module_import_layout.sproverbs
+msgctxt "theword_module_import_layout.sproverbs"
+msgid "Proverbs"
 msgstr ""
 
-#: tmainform.actionopenproject.caption
-msgid "Open..."
+#: theword_module_import_layout.spsalms
+msgctxt "theword_module_import_layout.spsalms"
+msgid "Psalms"
 msgstr ""
 
-#: tmainform.actionopenproject.hint
-msgid "Open an existent project"
+#: theword_module_import_layout.srevelation
+msgctxt "theword_module_import_layout.srevelation"
+msgid "Revelation"
 msgstr ""
 
-#: tmainform.actionapplypatch.caption
-msgctxt "tmainform.actionapplypatch.caption"
-msgid "Apply patch..."
+#: theword_module_import_layout.sromans
+msgctxt "theword_module_import_layout.sromans"
+msgid "Romans"
 msgstr ""
 
-#: tmainform.actionexportproject.caption
-msgid "Export..."
+#: theword_module_import_layout.sruth
+msgctxt "theword_module_import_layout.sruth"
+msgid "Ruth"
 msgstr ""
 
-#: tmainform.actionexportdestinationwithstrongs.caption
-msgid "Export destination text"
+#: theword_module_import_layout.ssongofsolomon
+msgctxt "theword_module_import_layout.ssongofsolomon"
+msgid "Song of Solomon"
 msgstr ""
 
-#: tmainform.actionexportinterlineartext.caption
-msgid "Export interlinear text"
+#: theword_module_import_layout.stitus
+msgctxt "theword_module_import_layout.stitus"
+msgid "Titus"
 msgstr ""
 
-#: tmainform.actionexportpatch.caption
-msgid "Create patch..."
+#: theword_module_import_layout.szechariah
+msgctxt "theword_module_import_layout.szechariah"
+msgid "Zecariah"
 msgstr ""
 
-#: tmainform.actioncloseproject.caption
-msgctxt "tmainform.actioncloseproject.caption"
-msgid "Close"
-msgstr ""
-
-#: tmainform.actioncloseproject.hint
-msgid "Close current project"
-msgstr ""
-
-#: tmainform.actionclearassociations.caption
-msgid "Clear"
-msgstr ""
-
-#: tmainform.actionclearassociations.hint
-msgid "Clear verse associations"
-msgstr ""
-
-#: tmainform.actionmergeprojects.caption
-msgid "Merge projects..."
-msgstr ""
-
-#: tmainform.actionshowtags.caption
-msgid "ActionMostrarTags"
-msgstr ""
-
-#: tmainform.actionnewproject.caption
-msgid "New..."
-msgstr ""
-
-#: tmainform.actionnewproject.hint
-msgid "Create new association project"
-msgstr ""
-
-#: tmainform.actionprojectproperties.caption
-msgid "Settings..."
-msgstr ""
-
-#: tmainform.actionprojectproperties.hint
-msgid "Current project settings..."
-msgstr ""
-
-#: tmainform.actionnewverse.caption
-msgid "ActionQuandoNovoVersiculo"
-msgstr ""
-
-#: tmainform.actionrebuildsuggestiondatabase.caption
-msgid "Recreate association memory"
-msgstr ""
-
-#: tmainform.actionrollbackcurrentverse.caption
-msgid "Rollback"
-msgstr ""
-
-#: tmainform.actionrollbackcurrentverse.hint
-msgctxt "tmainform.actionrollbackcurrentverse.hint"
-msgid "Rollback changes"
-msgstr ""
-
-#: tmainform.actionexit.caption
-msgctxt "tmainform.actionexit.caption"
-msgid "Exit"
-msgstr ""
-
-#: tmainform.actionexit.hint
-msgctxt "tmainform.actionexit.hint"
-msgid "Exit the program"
-msgstr ""
-
-#: tmainform.actionsaveproject.caption
-msgctxt "tmainform.actionsaveproject.caption"
-msgid "Save"
-msgstr ""
-
-#: tmainform.actionsaveproject.hint
-msgid "Save changes"
-msgstr ""
-
-#: tmainform.actionsaveprojectas.caption
-msgid "Save as..."
-msgstr ""
-
-#: tmainform.actionsaveprojectas.hint
-msgid "Save as a new project"
-msgstr ""
-
-#: tmainform.actionsuggestassociation.caption
-msgid "Auto-associate"
-msgstr ""
-
-#: tmainform.actionsuggestassociation.hint
-msgid "Auto associate verse"
-msgstr ""
-
-#: tmainform.actionsyncthewordverse.caption
-msgid "ActionSyncTheWordVerse"
-msgstr ""
-
-#: tmainform.actionvaccumproject.caption
-msgid "Vacuum project"
-msgstr ""
-
-#: tmainform.actionpreviousverse.caption
-msgid "Previous"
-msgstr ""
-
-#: tmainform.actionpreviousverse.hint
-msgctxt "tmainform.actionpreviousverse.hint"
-msgid "Previous verse"
-msgstr ""
-
-#: tmainform.actionfirstverse.caption
-msgid "First"
-msgstr ""
-
-#: tmainform.actionfirstverse.hint
-msgid "Go to first verse"
-msgstr ""
-
-#: tmainform.actionnextverse.caption
-msgid "Next"
-msgstr ""
-
-#: tmainform.actionnextverse.hint
-msgctxt "tmainform.actionnextverse.hint"
-msgid "Next verse"
-msgstr ""
-
-#: tmainform.actionlastverse.caption
-msgid "Last"
-msgstr ""
-
-#: tmainform.actionlastverse.hint
-msgid "Go to last verse"
-msgstr ""
-
-#: tmainform.bottompanel.caption
-msgid "BottomPanel"
-msgstr ""
-
-#: tmainform.caption
-msgctxt "tmainform.caption"
-msgid "iBiblia"
-msgstr ""
-
-#: tmainform.centerpanel.caption
-msgid "CenterPanel"
-msgstr ""
-
-#: tmainform.menuitem1.caption
-msgctxt "tmainform.menuitem1.caption"
-msgid "Project"
-msgstr ""
-
-#: tmainform.menuitem10.caption
-msgid "Edit"
-msgstr ""
-
-#: tmainform.menuitem16.caption
-msgid "Export project..."
-msgstr ""
-
-#: tmainform.menuitem17.caption
-msgctxt "tmainform.menuitem17.caption"
-msgid "Help"
-msgstr ""
-
-#: tmainform.menuitem20.caption
-msgid "Options"
-msgstr ""
-
-#: tmainform.menuitem22.caption
-msgid "Auto-associate unassociated verses"
-msgstr ""
-
-#: tmainform.menuitem22.hint
-msgid "Run the auto-association whenever you navigate to an unassociated verse"
-msgstr ""
-
-#: tmainform.menuitem23.caption
-msgid "Language"
-msgstr ""
-
-#: tmainform.menuitem24.caption
-msgid "Maintenance"
-msgstr ""
-
-#: tmainform.menuitem27.caption
-msgid "Association engine"
-msgstr ""
-
-#: tmainform.menuitem5.caption
-msgctxt "tmainform.menuitem5.caption"
-msgid "Navigation"
-msgstr ""
-
-#: tmainform.menuitemabout.caption
-msgid "About..."
-msgstr ""
-
-#: tmainform.menuitemaisuggestion.caption
-msgid "AI assisted"
-msgstr ""
-
-#: tmainform.menuitemaltmousehover.caption
-msgid "Alt + Mouse hover"
-msgstr ""
-
-#: tmainform.menuitemaltmousehover.hint
-msgid "Activate the popup dictionary whenever you hover the mouse pointer over a word while holding the Alt key"
-msgstr ""
-
-#: tmainform.menuitemalwaysontop.caption
-msgid "Always on top"
-msgstr ""
-
-#: tmainform.menuitemalwaysontop.hint
-msgid "Keep iBiblia window always on top of other windows"
-msgstr ""
-
-#: tmainform.menuitemautosave.caption
-msgid "Auto-save on verse change"
-msgstr ""
-
-#: tmainform.menuitemautosave.hint
-msgid "Save changes automatically at every verse change"
-msgstr ""
-
-#: tmainform.menuitemctrlmousehover.caption
-msgid "Ctrl + Mouse hover"
-msgstr ""
-
-#: tmainform.menuitemctrlmousehover.hint
-msgid "Activate the popup dictionary whenever you hover the mouse pointer over a word while holding the Ctrl key"
-msgstr ""
-
-#: tmainform.menuitemdictpopup.caption
-msgid "Dictionary popup trigger..."
-msgstr ""
-
-#: tmainform.menuitemlangen.caption
-msgid "English"
-msgstr ""
-
-#: tmainform.menuitemlangpt.caption
-msgid "Português"
-msgstr ""
-
-#: tmainform.menuitemmousehover.caption
-msgid "Mouse hover"
-msgstr ""
-
-#: tmainform.menuitemmousehover.hint
-msgid "Activate the popup dictionary whenever you hover the mouse pointer over a word"
-msgstr ""
-
-#: tmainform.menuitemrecent.caption
-msgid "Open recent"
-msgstr ""
-
-#: tmainform.menuitemregisterfileassoc.caption
-msgid "Register .bib files"
-msgstr ""
-
-#: tmainform.menuitemstatisticalsuggestion.caption
-msgid "Statistical engine"
-msgstr ""
-
-#: tmainform.menuitemboldstrongs.caption
-msgid "Words with strongs in bold"
-msgstr ""
-
-#: tmainform.menuitemboldstrongs.hint
-msgid "Words with associated strong's tags are displayed in bold font"
-msgstr ""
-
-#: tmainform.menuitemstrongscount.caption
-msgid "Strongs count"
-msgstr ""
-
-#: tmainform.menuitemstrongscountnone.caption
-msgid "Hide"
-msgstr ""
-
-#: tmainform.menuitemstrongscountnone.hint
-msgid "Don't show any count"
-msgstr ""
-
-#: tmainform.menuitemstrongscountstrongs.caption
-msgid "Count Strong's tags"
-msgstr ""
-
-#: tmainform.menuitemstrongscountstrongs.hint
-msgid "Show a count of all strong's tags in verse"
-msgstr ""
-
-#: tmainform.menuitemstrongscountwords.caption
-msgid "Count words"
-msgstr ""
-
-#: tmainform.menuitemstrongscountwords.hint
-msgid "Show a count of words having strong's tags"
-msgstr ""
-
-#: tmainform.menuitemsyncibiblia.caption
-msgid "Sync iBiblia to theWord verse"
-msgstr ""
-
-#: tmainform.menuitemsyncibiblia.hint
-msgid "Keeps iBiblia synchronized to theWord's current verse"
-msgstr ""
-
-#: tmainform.menuitemsynctheword.caption
-msgid "Sync theWord to iBiblia verse"
-msgstr ""
-
-#: tmainform.menuitemsynctheword.hint
-msgid "Keeps theWord synchronized to iBiblia's current verse, and current word's strong, morphology and lemma."
-msgstr ""
-
-#: tmainform.menuitemunregisterfileassoc.caption
-msgid "Unregister .bib files"
-msgstr ""
-
-#: tmainform.opendialog1.title
-msgid "Open existing association project"
-msgstr ""
-
-#: tmainform.panel1.caption
-msgctxt "tmainform.panel1.caption"
-msgid "Panel1"
-msgstr ""
-
-#: tmainform.radiogroupstatus.caption
-msgctxt "tmainform.radiogroupstatus.caption"
-msgid "Status"
-msgstr ""
-
-#: tmainform.savedialog1.title
-msgid "Save project as..."
-msgstr ""
-
-#: tmainform.savedialog2.title
-msgctxt "tmainform.savedialog2.title"
-msgid "Save module as..."
-msgstr ""
-
-#: tmainform.toolbar1.caption
-msgid "ToolBar1"
-msgstr ""
-
-#: tmainform.toolbuttonexit.caption
-msgctxt "tmainform.toolbuttonexit.caption"
-msgid "Exit"
-msgstr ""
-
-#: tmainform.toolbuttonexit.hint
-msgctxt "tmainform.toolbuttonexit.hint"
-msgid "Exit the program"
-msgstr ""
-
-#: tprojectexportform.btnexport.caption
-msgctxt "tprojectexportform.btnexport.caption"
-msgid "Export"
-msgstr ""
-
-#: tprojectexportform.btncancel.caption
-msgctxt "tprojectexportform.btncancel.caption"
-msgid "Cancel"
-msgstr ""
-
-#: tprojectexportform.caption
-msgctxt "tprojectexportform.caption"
-msgid "Export project"
-msgstr ""
-
-#: tprojectexportform.cbconcordanciadetalhada.caption
-msgctxt "tprojectexportform.cbconcordanciadetalhada.caption"
-msgid "Group by inflected forms"
-msgstr ""
-
-#: tprojectexportform.cbexportcomments.caption
-msgctxt "tprojectexportform.cbexportcomments.caption"
-msgid "Export editorial comments as translator notes"
-msgstr ""
-
-#: tprojectexportform.cbexportmorphology.caption
-msgctxt "tprojectexportform.cbexportmorphology.caption"
-msgid "Export morphology tags"
-msgstr ""
-
-#: tprojectexportform.cbexportunassociatedasitalics.caption
-msgctxt "tprojectexportform.cbexportunassociatedasitalics.caption"
-msgid "Export unassociated words as added words (italics)"
-msgstr ""
-
-#: tprojectexportform.cbmarkuntranslatedstrongs.caption
-msgctxt "tprojectexportform.cbmarkuntranslatedstrongs.caption"
-msgid "Mark unused strongs"
-msgstr ""
-
-#: tprojectexportform.cbmarkreusedstrongs.caption
-msgctxt "tprojectexportform.cbmarkreusedstrongs.caption"
-msgid "Mark reused strongs"
-msgstr ""
-
-#: tprojectexportform.lbltaggeddestinationproperties.caption
-msgctxt "tprojectexportform.lbltaggeddestinationproperties.caption"
-msgid "Module properties"
-msgstr ""
-
-#: tprojectexportform.lblinterlinearsourceproperties.caption
-msgctxt "tprojectexportform.lblinterlinearsourceproperties.caption"
-msgid "Module properties"
-msgstr ""
-
-#: tprojectexportform.editabbreviation.editlabel.caption
-msgctxt "tprojectexportform.editabbreviation.editlabel.caption"
-msgid "Abbreviation"
-msgstr ""
-
-#: tprojectexportform.savebiblemoduledialog.title
-msgctxt "tprojectexportform.savebiblemoduledialog.title"
-msgid "Save module as..."
-msgstr ""
-
-#: tprojectexportform.saveconcordancedialog.title
-msgctxt "tprojectexportform.saveconcordancedialog.title"
-msgid "Save module as..."
-msgstr ""
-
-#: tprojectexportform.taggeddestinationtab.caption
-msgctxt "tprojectexportform.taggeddestinationtab.caption"
-msgid "Tagged destination text"
-msgstr ""
-
-#: tprojectexportform.interlinearsourcetab.caption
-msgctxt "tprojectexportform.interlinearsourcetab.caption"
-msgid "Interlinear source text"
-msgstr ""
-
-#: tprojectexportform.concordancetab.caption
-msgctxt "tprojectexportform.concordancetab.caption"
-msgid "Strong's concordance"
-msgstr ""
-
-#: tfrmprojectproperties.actionchangetab.caption
-msgid "ActionChangeTab"
-msgstr ""
-
-#: tfrmprojectproperties.actioncleartext.caption
-msgctxt "tfrmprojectproperties.actioncleartext.caption"
-msgid "Clear text"
-msgstr ""
-
-#: tfrmprojectproperties.actionloadtext.caption
-msgctxt "tfrmprojectproperties.actionloadtext.caption"
-msgid "Load new text"
-msgstr ""
-
-#: tfrmprojectproperties.actionselectfont.caption
-msgctxt "tfrmprojectproperties.actionselectfont.caption"
-msgid "Choose"
-msgstr ""
-
-#: tfrmprojectproperties.actionselectmorphologydictionary.caption
-msgctxt "tfrmprojectproperties.actionselectmorphologydictionary.caption"
-msgid "Choose"
-msgstr ""
-
-#: tfrmprojectproperties.actionselectstrongdictionary.caption
-msgctxt "tfrmprojectproperties.actionselectstrongdictionary.caption"
-msgid "Choose"
-msgstr ""
-
-#: tfrmprojectproperties.btnapplytextdescription.caption
-msgctxt "tfrmprojectproperties.btnapplytextdescription.caption"
-msgid "Apply"
-msgstr ""
-
-#: tfrmprojectproperties.btncancel.caption
-msgctxt "tfrmprojectproperties.btncancel.caption"
-msgid "Cancel"
-msgstr ""
-
-#: tfrmprojectproperties.btnok.caption
-msgctxt "tfrmprojectproperties.btnok.caption"
-msgid "&OK"
-msgstr ""
-
-#: tfrmprojectproperties.caption
-msgctxt "tfrmprojectproperties.caption"
-msgid "Properties"
-msgstr ""
-
-#: tfrmprojectproperties.editmorphologydictionary.editlabel.caption
-msgctxt "tfrmprojectproperties.editmorphologydictionary.editlabel.caption"
-msgid "Morphology dictionary"
-msgstr ""
-
-#: tfrmprojectproperties.editprojectname.editlabel.caption
-msgctxt "tfrmprojectproperties.editprojectname.editlabel.caption"
-msgid "Name"
-msgstr ""
-
-#: tfrmprojectproperties.editstrongdictionary.editlabel.caption
-msgctxt "tfrmprojectproperties.editstrongdictionary.editlabel.caption"
-msgid "Strong's dictionary"
-msgstr ""
-
-#: tfrmprojectproperties.edittextdescription.editlabel.caption
-msgctxt "tfrmprojectproperties.edittextdescription.editlabel.caption"
-msgid "Text description"
-msgstr ""
-
-#: tfrmprojectproperties.groupboxproperties.caption
-msgctxt "tfrmprojectproperties.groupboxproperties.caption"
-msgid "Properties"
-msgstr ""
-
-#: tfrmprojectproperties.labelfont.caption
-msgctxt "tfrmprojectproperties.labelfont.caption"
-msgid "Font"
-msgstr ""
-
-#: tfrmprojectproperties.labeltokenizerversion.caption
-msgctxt "tfrmprojectproperties.labeltokenizerversion.caption"
-msgid "Tokenizer version"
-msgstr ""
-
-#: tverserulesform.btnselectall.caption
-msgctxt "tverserulesform.btnselectall.caption"
-msgid "Select all"
-msgstr ""
-
-#: tverserulesform.btnselectnone.caption
-msgctxt "tverserulesform.btnselectnone.caption"
-msgid "Select none"
-msgstr ""
-
-#: tverserulesform.cancelbutton.caption
-msgctxt "tverserulesform.cancelbutton.caption"
-msgid "&Cancel"
-msgstr ""
-
-#: tverserulesform.okbutton.caption
-msgctxt "tverserulesform.okbutton.caption"
-msgid "OK"
-msgstr ""
-
-#: tverserulesform.caption
-msgctxt "tverserulesform.caption"
-msgid "Choose verse rules"
-msgstr ""
-
-#: tverserulesform.rulespanel.caption
-msgctxt "tverserulesform.rulespanel.caption"
-msgid "Panel1"
-msgstr ""
-
-#: tverserulesform.stringgridverserules.columns[0].title.caption
-msgctxt "tverserulesform.stringgridverserules.columns[0].title.caption"
-msgid "Apply"
-msgstr ""
-
-#: tverserulesform.stringgridverserules.columns[1].title.caption
-msgctxt "tverserulesform.stringgridverserules.columns[1].title.caption"
-msgid "From"
-msgstr ""
-
-#: tverserulesform.stringgridverserules.columns[2].title.caption
-msgctxt "tverserulesform.stringgridverserules.columns[2].title.caption"
-msgid "To"
+#: theword_module_import_layout.szephaniah
+msgctxt "theword_module_import_layout.szephaniah"
+msgid "Zephaniah"
 msgstr ""
 
 #: theword_syntax_highlighter.selementattribute
-msgctxt "theword_syntax_highlighter.selementattribute"
 msgid "Attribute"
 msgstr ""
 
 #: theword_syntax_highlighter.selementattributevalue
-msgctxt "theword_syntax_highlighter.selementattributevalue"
 msgid "Attribute value"
 msgstr ""
 
 #: theword_syntax_highlighter.selementdefaulttext
-msgctxt "theword_syntax_highlighter.selementdefaulttext"
 msgid "Default text"
 msgstr ""
 
 #: theword_syntax_highlighter.selementhtml
-msgctxt "theword_syntax_highlighter.selementhtml"
 msgid "HTML"
 msgstr ""
 
 #: theword_syntax_highlighter.selementlink
-msgctxt "theword_syntax_highlighter.selementlink"
 msgid "Link"
 msgstr ""
 
@@ -4340,12 +7580,10 @@ msgid "Morphology"
 msgstr ""
 
 #: theword_syntax_highlighter.selementnotereference
-msgctxt "theword_syntax_highlighter.selementnotereference"
 msgid "Note/reference"
 msgstr ""
 
 #: theword_syntax_highlighter.selementrtf
-msgctxt "theword_syntax_highlighter.selementrtf"
 msgid "RTF"
 msgstr ""
 
@@ -4355,12 +7593,10 @@ msgid "Strong"
 msgstr ""
 
 #: theword_syntax_highlighter.selementsymbol
-msgctxt "theword_syntax_highlighter.selementsymbol"
 msgid "Symbol"
 msgstr ""
 
 #: theword_syntax_highlighter.selementthewordtag
-msgctxt "theword_syntax_highlighter.selementthewordtag"
 msgid "theWord tag"
 msgstr ""
 
@@ -4375,13 +7611,196 @@ msgid "Warning"
 msgstr ""
 
 #: theword_syntax_highlighter.selementwordtoken
-msgctxt "theword_syntax_highlighter.selementwordtoken"
 msgid "Word token <wt>"
+msgstr ""
+
+#: theword_translator_note_editor.sapplynotefailed
+msgid "The translator note could not be applied."
+msgstr ""
+
+#: theword_translator_note_editor.sautomaticmarker
+msgid "Automatic marker"
+msgstr ""
+
+#: theword_translator_note_editor.sbackgroundcolorhint
+msgid "Background color"
+msgstr ""
+
+#: theword_translator_note_editor.sboldhint
+msgctxt "theword_translator_note_editor.sboldhint"
+msgid "Bold"
+msgstr ""
+
+#: theword_translator_note_editor.sboldlabel
+msgid "B"
+msgstr ""
+
+#: theword_translator_note_editor.scancelnote
+msgctxt "theword_translator_note_editor.scancelnote"
+msgid "Cancel"
+msgstr ""
+
+#: theword_translator_note_editor.scustommarker
+msgid "Custom:"
+msgstr ""
+
+#: theword_translator_note_editor.sdeletenote
+msgid "Delete"
+msgstr ""
+
+#: theword_translator_note_editor.sdeletenoteconfirm
+msgid "Delete this translator note?"
+msgstr ""
+
+#: theword_translator_note_editor.sdeletenoteconfirmtitle
+msgctxt "theword_translator_note_editor.sdeletenoteconfirmtitle"
+msgid "Translator note"
+msgstr ""
+
+#: theword_translator_note_editor.semptynotebody
+msgid "The translator note cannot be empty."
+msgstr ""
+
+#: theword_translator_note_editor.sinlineltrhint
+msgid "Inline left-to-right"
+msgstr ""
+
+#: theword_translator_note_editor.sinlineltrlabel
+msgid "L→"
+msgstr ""
+
+#: theword_translator_note_editor.sinlinertlhint
+msgid "Inline right-to-left"
+msgstr ""
+
+#: theword_translator_note_editor.sinlinertllabel
+msgid "R←"
+msgstr ""
+
+#: theword_translator_note_editor.sinvalidcustommarker
+msgid "The custom marker cannot be empty or contain control characters, quotes or angle brackets."
+msgstr ""
+
+#: theword_translator_note_editor.sinvalidlink
+msgid "Links must use http://, https:// or tw:// and cannot contain spaces, quotes or angle brackets."
+msgstr ""
+
+#: theword_translator_note_editor.sitalichint
+msgctxt "theword_translator_note_editor.sitalichint"
+msgid "Italic"
+msgstr ""
+
+#: theword_translator_note_editor.sitaliclabel
+msgctxt "theword_translator_note_editor.sitaliclabel"
+msgid "I"
+msgstr ""
+
+#: theword_translator_note_editor.slinklabel
+msgid "🔗"
+msgstr ""
+
+#: theword_translator_note_editor.slinkprompt
+msgid "Link (http://, https:// or tw://):"
+msgstr ""
+
+#: theword_translator_note_editor.slinktitle
+msgid "Translator note link"
+msgstr ""
+
+#: theword_translator_note_editor.sliterallessthan
+msgid "A literal \"<\" cannot be saved safely in Visual mode. Use Raw mode."
+msgstr ""
+
+#: theword_translator_note_editor.sparagraphltrhint
+msgid "Paragraph left-to-right"
+msgstr ""
+
+#: theword_translator_note_editor.sparagraphltrlabel
+msgid "L¶"
+msgstr ""
+
+#: theword_translator_note_editor.sparagraphrtlhint
+msgid "Paragraph right-to-left"
+msgstr ""
+
+#: theword_translator_note_editor.sparagraphrtllabel
+msgid "R¶"
+msgstr ""
+
+#: theword_translator_note_editor.sphysicallinebreaks
+msgid "Use paragraph or soft-break markup; physical line breaks cannot be stored in a verse."
+msgstr ""
+
+#: theword_translator_note_editor.sprotectednotebody
+msgid "This note contains protected or unknown markup and can only be edited in Raw mode."
+msgstr ""
+
+#: theword_translator_note_editor.srawtab
+msgctxt "theword_translator_note_editor.srawtab"
+msgid "Raw"
+msgstr ""
+
+#: theword_translator_note_editor.srelativefontsizehint
+msgid "Relative font size"
+msgstr ""
+
+#: theword_translator_note_editor.ssavenote
+msgctxt "theword_translator_note_editor.ssavenote"
+msgid "Save"
+msgstr ""
+
+#: theword_translator_note_editor.sstrikehint
+msgid "Strikeout"
+msgstr ""
+
+#: theword_translator_note_editor.sstrikelabel
+msgctxt "theword_translator_note_editor.sstrikelabel"
+msgid "S"
+msgstr ""
+
+#: theword_translator_note_editor.ssubscripthint
+msgid "Subscript"
+msgstr ""
+
+#: theword_translator_note_editor.ssubscriptlabel
+msgctxt "theword_translator_note_editor.ssubscriptlabel"
+msgid "x₂"
+msgstr ""
+
+#: theword_translator_note_editor.ssuperscripthint
+msgid "Superscript"
+msgstr ""
+
+#: theword_translator_note_editor.ssuperscriptlabel
+msgctxt "theword_translator_note_editor.ssuperscriptlabel"
+msgid "x²"
+msgstr ""
+
+#: theword_translator_note_editor.stextcolorhint
+msgid "Text color"
+msgstr ""
+
+#: theword_translator_note_editor.stranslatornotetitle
+msgctxt "theword_translator_note_editor.stranslatornotetitle"
+msgid "Translator note"
+msgstr ""
+
+#: theword_translator_note_editor.sunderlinehint
+msgctxt "theword_translator_note_editor.sunderlinehint"
+msgid "Underline"
+msgstr ""
+
+#: theword_translator_note_editor.sunderlinelabel
+msgid "U"
+msgstr ""
+
+#: theword_translator_note_editor.svisualtab
+msgctxt "theword_translator_note_editor.svisualtab"
+msgid "Visual"
 msgstr ""
 
 #: twautomate.sregexerrorfmt
 #, object-pascal-format
-msgctxt "twautomate.sregexerrorfmt"
 msgid "Error in regex: %s"
 msgstr ""
 
@@ -4397,13 +7816,15 @@ msgstr ""
 
 #: twautomate.stwwindownotfounddebugsavedfmt
 #, object-pascal-format
-msgctxt "twautomate.stwwindownotfounddebugsavedfmt"
 msgid "theWord window not found. Debug information has been saved to: %s"
 msgstr ""
 
 #: unitpleasewait.sdefaultoperationtitle
-msgctxt "unitpleasewait.sdefaultoperationtitle"
 msgid "Operation in progress"
+msgstr ""
+
+#: unitpleasewait.soperationalreadyactive
+msgid "Cannot begin an operation while another operation is already active."
 msgstr ""
 
 #: verse.scopyassociationsjsontoclipboard
@@ -4416,8 +7837,7 @@ msgctxt "verse.scopyinterlinearversetoclipboard"
 msgid "Copy &interlinear verse to clipboard"
 msgstr ""
 
-#: verse.scopysyntagmasjsontoclipboard
-msgctxt "verse.scopysyntagmasjsontoclipboard"
+#: verse.scopysyntagmsjsontoclipboard
 msgid "Copy syntagms as &JSON to clipboard"
 msgstr ""
 
@@ -4461,9 +7881,13 @@ msgctxt "verse.ssavetofile"
 msgid "&Save text to file..."
 msgstr ""
 
-#: versememo.saddedwordstaghint
-msgctxt "versememo.saddedwordstaghint"
-msgid "Wrap the selection with <FI>...<Fi> for added words"
+#: versememo.saddedwordsbutton
+msgctxt "versememo.saddedwordsbutton"
+msgid "I"
+msgstr ""
+
+#: versememo.saddedwordshint
+msgid "Added words: apply or remove italic formatting (Ctrl+I)"
 msgstr ""
 
 #: versememo.scanceleditbutton
@@ -4472,18 +7896,11 @@ msgid "Cancel"
 msgstr ""
 
 #: versememo.scanceledithint
-msgctxt "versememo.scanceledithint"
 msgid "Discard changes and close the editor"
 msgstr ""
 
-#: versememo.schangeverse
-msgctxt "versememo.schangeverse"
-msgid "Change verse text?"
-msgstr ""
-
-#: versememo.schangeverseconfirmation
-msgctxt "versememo.schangeverseconfirmation"
-msgid "Are you sure you want to change the verse text? Some associations may be lost."
+#: versememo.seditapplyfailed
+msgid "The edit could not be applied"
 msgstr ""
 
 #: versememo.seditmodemodified
@@ -4492,22 +7909,62 @@ msgid "Unsaved changes"
 msgstr ""
 
 #: versememo.seditmodesaved
-msgctxt "versememo.seditmodesaved"
 msgid "No changes"
 msgstr ""
 
 #: versememo.seditmodetitle
-msgctxt "versememo.seditmodetitle"
 msgid "Editing verse"
 msgstr ""
 
-#: versememo.sjesuswordstaghint
-msgctxt "versememo.sjesuswordstaghint"
-msgid "Wrap the selection with <FR>...<Fr> for words of Jesus"
+#: versememo.sfontcolorhint
+msgid "Font color; choose Default to remove explicit color"
+msgstr ""
+
+#: versememo.sfontsizedecreasebutton
+msgid "A−"
+msgstr ""
+
+#: versememo.sfontsizedecreasehint
+msgid "Decrease relative font size (Ctrl+Shift+,)"
+msgstr ""
+
+#: versememo.sfontsizeincreasebutton
+msgid "A+"
+msgstr ""
+
+#: versememo.sfontsizeincreasehint
+msgid "Increase relative font size (Ctrl+Shift+.)"
+msgstr ""
+
+#: versememo.shtmlboldmenuitem
+msgid "Bold (<b>)"
+msgstr ""
+
+#: versememo.shtmlformatbutton
+msgid "B/I/U"
+msgstr ""
+
+#: versememo.shtmlformathint
+msgid "HTML bold, italic or underline"
+msgstr ""
+
+#: versememo.shtmlitalicmenuitem
+msgid "Italic (<i>)"
+msgstr ""
+
+#: versememo.shtmlunderlinemenuitem
+msgid "Underline (<u>)"
+msgstr ""
+
+#: versememo.sjesuswordsbutton
+msgid "J"
+msgstr ""
+
+#: versememo.sjesuswordshint
+msgid "Words of Jesus: apply or remove red formatting (Ctrl+J)"
 msgstr ""
 
 #: versememo.slinebreaksineditor
-msgctxt "versememo.slinebreaksineditor"
 msgid "A verse cannot contain line breaks. Remove line breaks before saving."
 msgstr ""
 
@@ -4516,9 +7973,33 @@ msgctxt "versememo.slinebreaksineditortitle"
 msgid "Edit error"
 msgstr ""
 
-#: versememo.soldtestamentquotetaghint
-msgctxt "versememo.soldtestamentquotetaghint"
-msgid "Wrap the selection with <FO>...<Fo> for Old Testament quotations"
+#: versememo.soldtestamentquotebutton
+msgid "O"
+msgstr ""
+
+#: versememo.soldtestamentquotehint
+msgid "Old Testament quotation: apply or remove bold formatting (Ctrl+O)"
+msgstr ""
+
+#: versememo.sprotectedlexicalobjectschanged
+msgid "Strong and morphology data are protected in this editing cycle"
+msgstr ""
+
+#: versememo.sprotectedregions
+msgid "Protected ONT objects"
+msgstr ""
+
+#: versememo.srawmodebutton
+msgctxt "versememo.srawmodebutton"
+msgid "Raw"
+msgstr ""
+
+#: versememo.srawmodehint
+msgid "Switch between semantic editing and the raw ONT fallback"
+msgstr ""
+
+#: versememo.sremovetitle
+msgid "Remove title formatting"
 msgstr ""
 
 #: versememo.ssaveeditbutton
@@ -4527,233 +8008,7 @@ msgid "Save"
 msgstr ""
 
 #: versememo.ssaveedithint
-msgctxt "versememo.ssaveedithint"
 msgid "Save verse text and close the editor"
-msgstr ""
-
-#: versememo.stranslatornotebutton
-msgctxt "versememo.stranslatornotebutton"
-msgid "N¹"
-msgstr ""
-
-#: versememo.stranslatornotehint
-msgid "Insert translator note at the caret (Ctrl+Shift+N)"
-msgstr ""
-
-#: theword_translator_note_editor.stranslatornotetitle
-msgctxt "theword_translator_note_editor.stranslatornotetitle"
-msgid "Translator note"
-msgstr ""
-
-#: theword_translator_note_editor.sautomaticmarker
-msgid "Automatic marker"
-msgstr ""
-
-#: theword_translator_note_editor.scustommarker
-msgid "Custom:"
-msgstr ""
-
-#: theword_translator_note_editor.svisualtab
-msgctxt "theword_translator_note_editor.svisualtab"
-msgid "Visual"
-msgstr ""
-
-#: theword_translator_note_editor.srawtab
-msgctxt "theword_translator_note_editor.srawtab"
-msgid "Raw"
-msgstr ""
-
-#: theword_translator_note_editor.ssavenote
-msgctxt "theword_translator_note_editor.ssavenote"
-msgid "Save"
-msgstr ""
-
-#: theword_translator_note_editor.scancelnote
-msgctxt "theword_translator_note_editor.scancelnote"
-msgid "Cancel"
-msgstr ""
-
-#: theword_translator_note_editor.sdeletenote
-msgctxt "theword_translator_note_editor.sdeletenote"
-msgid "Delete"
-msgstr ""
-
-#: theword_translator_note_editor.sdeletenoteconfirm
-msgid "Delete this translator note?"
-msgstr ""
-
-#: theword_translator_note_editor.sdeletenoteconfirmtitle
-msgctxt "theword_translator_note_editor.sdeletenoteconfirmtitle"
-msgid "Translator note"
-msgstr ""
-
-#: theword_translator_note_editor.sprotectednotebody
-msgid "This note contains protected or unknown markup and can only be edited in Raw mode."
-msgstr ""
-
-#: theword_translator_note_editor.sinvalidvisualnote
-msgid "The visual note could not be serialized safely. Use Raw mode for this content."
-msgstr ""
-
-#: theword_translator_note_editor.sliterallessthan
-msgid "A literal \"<\" cannot be saved safely in Visual mode. Use Raw mode."
-msgstr ""
-
-#: theword_translator_note_editor.slinkprompt
-msgid "Link (http://, https:// or tw://):"
-msgstr ""
-
-#: theword_translator_note_editor.slinktitle
-msgid "Translator note link"
-msgstr ""
-
-#: theword_translator_note_editor.sinvalidlink
-msgid "Links must use http://, https:// or tw:// and cannot contain spaces, quotes or angle brackets."
-msgstr ""
-
-#: theword_translator_note_editor.semptynotebody
-msgid "The translator note cannot be empty."
-msgstr ""
-
-#: theword_translator_note_editor.sinvalidcustommarker
-msgid "The custom marker cannot be empty or contain control characters, quotes or angle brackets."
-msgstr ""
-
-#: theword_translator_note_editor.sphysicallinebreaks
-msgid "Use paragraph or soft-break markup; physical line breaks cannot be stored in a verse."
-msgstr ""
-
-#: theword_translator_note_editor.sapplynotefailed
-msgid "The translator note could not be applied."
-msgstr ""
-
-#: theword_translator_note_editor.sboldlabel
-msgid "B"
-msgstr ""
-
-#: theword_translator_note_editor.sboldhint
-msgctxt "theword_translator_note_editor.sboldhint"
-msgid "Bold"
-msgstr ""
-
-#: theword_translator_note_editor.sitaliclabel
-msgctxt "theword_translator_note_editor.sitaliclabel"
-msgid "I"
-msgstr ""
-
-#: theword_translator_note_editor.sitalichint
-msgctxt "theword_translator_note_editor.sitalichint"
-msgid "Italic"
-msgstr ""
-
-#: theword_translator_note_editor.sunderlinelabel
-msgctxt "theword_translator_note_editor.sunderlinelabel"
-msgid "U"
-msgstr ""
-
-#: theword_translator_note_editor.sunderlinehint
-msgctxt "theword_translator_note_editor.sunderlinehint"
-msgid "Underline"
-msgstr ""
-
-#: theword_translator_note_editor.sstrikelabel
-msgctxt "theword_translator_note_editor.sstrikelabel"
-msgid "S"
-msgstr ""
-
-#: theword_translator_note_editor.sstrikehint
-msgid "Strikeout"
-msgstr ""
-
-#: theword_translator_note_editor.ssuperscriptlabel
-msgid "x²"
-msgstr ""
-
-#: theword_translator_note_editor.ssuperscripthint
-msgctxt "theword_translator_note_editor.ssuperscripthint"
-msgid "Superscript"
-msgstr ""
-
-#: theword_translator_note_editor.ssubscriptlabel
-msgid "x₂"
-msgstr ""
-
-#: theword_translator_note_editor.ssubscripthint
-msgctxt "theword_translator_note_editor.ssubscripthint"
-msgid "Subscript"
-msgstr ""
-
-#: theword_translator_note_editor.slinklabel
-msgid "🔗"
-msgstr ""
-
-#: theword_translator_note_editor.sinlineltrlabel
-msgid "L→"
-msgstr ""
-
-#: theword_translator_note_editor.sinlineltrhint
-msgid "Inline left-to-right"
-msgstr ""
-
-#: theword_translator_note_editor.sinlinertllabel
-msgid "R←"
-msgstr ""
-
-#: theword_translator_note_editor.sinlinertlhint
-msgid "Inline right-to-left"
-msgstr ""
-
-#: theword_translator_note_editor.sparagraphltrlabel
-msgid "L¶"
-msgstr ""
-
-#: theword_translator_note_editor.sparagraphltrhint
-msgid "Paragraph left-to-right"
-msgstr ""
-
-#: theword_translator_note_editor.sparagraphrtllabel
-msgid "R¶"
-msgstr ""
-
-#: theword_translator_note_editor.sparagraphrtlhint
-msgid "Paragraph right-to-left"
-msgstr ""
-
-#: theword_translator_note_editor.srelativefontsizehint
-msgid "Relative font size"
-msgstr ""
-
-#: theword_translator_note_editor.stextcolorhint
-msgid "Text color"
-msgstr ""
-
-#: theword_translator_note_editor.sbackgroundcolorhint
-msgid "Background color"
-msgstr ""
-
-#: versememo.sprotectedregions
-msgctxt "versememo.sprotectedregions"
-msgid "Protected ONT objects"
-msgstr ""
-
-#: versememo.saddedwordsbutton
-msgctxt "versememo.saddedwordsbutton"
-msgid "I"
-msgstr ""
-
-#: versememo.sjesuswordsbutton
-msgctxt "versememo.sjesuswordsbutton"
-msgid "J"
-msgstr ""
-
-#: versememo.soldtestamentquotebutton
-msgctxt "versememo.soldtestamentquotebutton"
-msgid "O"
-msgstr ""
-
-#: versememo.sunderlinebutton
-msgctxt "versememo.sunderlinebutton"
-msgid "S"
 msgstr ""
 
 #: versememo.sstrikethroughbutton
@@ -4761,9 +8016,8 @@ msgctxt "versememo.sstrikethroughbutton"
 msgid "S"
 msgstr ""
 
-#: versememo.ssuperscriptbutton
-msgctxt "versememo.ssuperscriptbutton"
-msgid "x²"
+#: versememo.sstrikethroughhint
+msgid "Strikethrough: apply or remove strikethrough (Ctrl+Shift+S)"
 msgstr ""
 
 #: versememo.ssubscriptbutton
@@ -4771,44 +8025,66 @@ msgctxt "versememo.ssubscriptbutton"
 msgid "x₂"
 msgstr ""
 
-#: versememo.shtmlformatbutton
-msgctxt "versememo.shtmlformatbutton"
-msgid "B/I/U"
+#: versememo.ssubscripthint
+msgid "Subscript: apply or remove subscript (Ctrl+=)"
 msgstr ""
 
-#: versememo.shtmlboldmenuitem
-msgctxt "versememo.shtmlboldmenuitem"
-msgid "Bold (<b>)"
+#: versememo.ssuperscriptbutton
+msgctxt "versememo.ssuperscriptbutton"
+msgid "x²"
 msgstr ""
 
-#: versememo.shtmlitalicmenuitem
-msgctxt "versememo.shtmlitalicmenuitem"
-msgid "Italic (<i>)"
-msgstr ""
-
-#: versememo.shtmlunderlinemenuitem
-msgctxt "versememo.shtmlunderlinemenuitem"
-msgid "Underline (<u>)"
-msgstr ""
-
-#: versememo.sfontsizedecreasebutton
-msgctxt "versememo.sfontsizedecreasebutton"
-msgid "A−"
-msgstr ""
-
-#: versememo.sfontsizeincreasebutton
-msgctxt "versememo.sfontsizeincreasebutton"
-msgid "A+"
+#: versememo.ssuperscripthint
+msgid "Superscript: apply or remove superscript (Ctrl+Shift+=)"
 msgstr ""
 
 #: versememo.stitlebutton
-msgctxt "versememo.stitlebutton"
 msgid "T▾"
 msgstr ""
 
-#: versememo.srawmodebutton
-msgctxt "versememo.srawmodebutton"
-msgid "Raw"
+#: versememo.stitleediterror
+msgid "The title could not be changed at this position."
+msgstr ""
+
+#: versememo.stitleediterrortitle
+msgid "Title edit error"
+msgstr ""
+
+#: versememo.stitlehint
+msgid "Apply, change or remove title formatting"
+msgstr ""
+
+#: versememo.stitlelevel1
+msgid "Title level 1"
+msgstr ""
+
+#: versememo.stitlelevel2
+msgid "Title level 2"
+msgstr ""
+
+#: versememo.stitlelevel3
+msgid "Title level 3"
+msgstr ""
+
+#: versememo.stranslatornotebutton
+msgid "N¹"
+msgstr ""
+
+#: versememo.stranslatornotehint
+msgid "Insert translator note at the caret (Ctrl+Shift+N)"
+msgstr ""
+
+#: versememo.stranslatornotenotfound
+msgid "The translator note could not be located in the current verse."
+msgstr ""
+
+#: versememo.sunderlinebutton
+msgctxt "versememo.sunderlinebutton"
+msgid "S"
+msgstr ""
+
+#: versememo.sunderlinehint
+msgid "Underline: apply or remove underlining"
 msgstr ""
 
 #: versememo.svisualmodebutton
@@ -4816,122 +8092,73 @@ msgctxt "versememo.svisualmodebutton"
 msgid "Visual"
 msgstr ""
 
-#: versememo.saddedwordshint
-msgctxt "versememo.saddedwordshint"
-msgid "Added words: apply or remove italic formatting (Ctrl+I)"
+#: verse_render_buffer.sassociationdatanotcompletelyapplied
+msgctxt "verse_render_buffer.sassociationdatanotcompletelyapplied"
+msgid "Association data could not be applied completely to the verse pair"
 msgstr ""
 
-#: versememo.sjesuswordshint
-msgctxt "versememo.sjesuswordshint"
-msgid "Words of Jesus: apply or remove red formatting (Ctrl+J)"
+#: versiculo.scopyassociationsjsontoclipboard
+msgctxt "versiculo.scopyassociationsjsontoclipboard"
+msgid "Copy association &JSON to clipboard"
 msgstr ""
 
-#: versememo.soldtestamentquotehint
-msgctxt "versememo.soldtestamentquotehint"
-msgid "Old Testament quotation: apply or remove bold formatting (Ctrl+O)"
+#: versiculo.scopyinterlinearversetoclipboard
+msgctxt "versiculo.scopyinterlinearversetoclipboard"
+msgid "Copy &interlinear verse to clipboard"
 msgstr ""
 
-#: versememo.sunderlinehint
-msgctxt "versememo.sunderlinehint"
-msgid "Underline: apply or remove underlining"
+#: versiculo.scopytags
+msgctxt "versiculo.scopytags"
+msgid "&Copy tags"
 msgstr ""
 
-#: versememo.sstrikethroughhint
-msgctxt "versememo.sstrikethroughhint"
-msgid "Strikethrough: apply or remove strikethrough (Ctrl+Shift+S)"
+#: versiculo.scopytokenstoclipboard
+msgctxt "versiculo.scopytokenstoclipboard"
+msgid "Copy &tokens to clipboard"
 msgstr ""
 
-#: versememo.ssuperscripthint
-msgctxt "versememo.ssuperscripthint"
-msgid "Superscript: apply or remove superscript (Ctrl+Shift+=)"
+#: versiculo.scopyxmltoclipboard
+msgctxt "versiculo.scopyxmltoclipboard"
+msgid "Copy association &XML to clipboard"
 msgstr ""
 
-#: versememo.ssubscripthint
-msgctxt "versememo.ssubscripthint"
-msgid "Subscript: apply or remove subscript (Ctrl+=)"
+#: versiculo.spastealltags
+msgctxt "versiculo.spastealltags"
+msgid "Paste &all tags"
 msgstr ""
 
-#: versememo.shtmlformathint
-msgctxt "versememo.shtmlformathint"
-msgid "HTML bold, italic or underline"
+#: versiculo.spastemorphotags
+msgctxt "versiculo.spastemorphotags"
+msgid "Paste &morphology tags"
 msgstr ""
 
-#: versememo.sfontsizedecreasehint
-msgctxt "versememo.sfontsizedecreasehint"
-msgid "Decrease relative font size (Ctrl+Shift+,)"
+#: versiculo.spastestrongtags
+msgctxt "versiculo.spastestrongtags"
+msgid "&Paste &Strong's tags"
 msgstr ""
 
-#: versememo.sfontsizeincreasehint
-msgctxt "versememo.sfontsizeincreasehint"
-msgid "Increase relative font size (Ctrl+Shift+.)"
+#: versiculo.srighttoleft
+msgctxt "versiculo.srighttoleft"
+msgid "Right to left text"
 msgstr ""
 
-#: versememo.sfontcolorhint
-msgctxt "versememo.sfontcolorhint"
-msgid "Font color; choose Default to remove explicit color"
+#: versiculo.ssavetofile
+msgctxt "versiculo.ssavetofile"
+msgid "&Save text to file..."
 msgstr ""
 
-#: versememo.stitlehint
-msgctxt "versememo.stitlehint"
-msgid "Apply, change or remove title formatting"
+
+#: formapplicationpreferences.siconfamily
+msgctxt "formapplicationpreferences.siconfamily"
+msgid "Icon &family"
 msgstr ""
 
-#: versememo.stitlelevel1
-msgctxt "versememo.stitlelevel1"
-msgid "Title level 1"
+#: formapplicationpreferences.siconfamilybrand
+msgctxt "formapplicationpreferences.siconfamilybrand"
+msgid "The iBiblia application icon is the same in every icon family."
 msgstr ""
 
-#: versememo.stitlelevel2
-msgctxt "versememo.stitlelevel2"
-msgid "Title level 2"
-msgstr ""
-
-#: versememo.stitlelevel3
-msgctxt "versememo.stitlelevel3"
-msgid "Title level 3"
-msgstr ""
-
-#: versememo.sremovetitle
-msgctxt "versememo.sremovetitle"
-msgid "Remove title formatting"
-msgstr ""
-
-#: versememo.stitleediterrortitle
-msgctxt "versememo.stitleediterrortitle"
-msgid "Title edit error"
-msgstr ""
-
-#: versememo.stitleediterror
-msgctxt "versememo.stitleediterror"
-msgid "The title could not be changed at this position."
-msgstr ""
-
-#: versememo.stranslatornotehint
-msgctxt "versememo.stranslatornotehint"
-msgid "Insert translator note at the caret (Ctrl+Shift+N)"
-msgstr ""
-
-#: versememo.srawmodehint
-msgctxt "versememo.srawmodehint"
-msgid "Switch between semantic editing and the raw ONT fallback"
-msgstr ""
-
-#: versememo.seditapplyfailed
-msgctxt "versememo.seditapplyfailed"
-msgid "The edit could not be applied"
-msgstr ""
-
-#: versememo.sprotectedlexicalobjectschanged
-msgctxt "versememo.sprotectedlexicalobjectschanged"
-msgid "Strong and morphology data are protected in this editing cycle"
-msgstr ""
-
-#: versememo.stranslatornotenotfound
-msgctxt "versememo.stranslatornotenotfound"
-msgid "The translator note could not be located in the current verse."
-msgstr ""
-
-#: commentsview.seditorialcommentstitle
-msgctxt "commentsview.seditorialcommentstitle"
-msgid "Editorial comments"
+#: ui_icons.sconnectediconfamily
+msgctxt "ui_icons.sconnectediconfamily"
+msgid "Connected texts"
 msgstr ""

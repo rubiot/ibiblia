@@ -5,7 +5,7 @@ unit FormApplyPatch;
 interface
 
 uses
-  Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, StdCtrls,
+  ui_style, Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ComCtrls, ExtCtrls, BibleTreeView, PatchFile, Verse, Project, CommentsView,
   ONTTokenizer;
 
@@ -50,6 +50,8 @@ type
   public
     function LoadPatch(filename: string): boolean;
     procedure Apply;
+  public
+    procedure AfterConstruction; override;
   end;
 
 var
@@ -95,6 +97,7 @@ procedure TFrmApplyPatch.FormCreate(Sender: TObject);
 var
   tokenizerVersion: Integer;
 begin
+  ApplyFormStyle(Self);
   FBibleTreeView := TBibleTreeView.Create(GroupBox1);
   FBibleTreeView.Align := alClient;
   FBibleTreeView.OnVerseChange := @OnVerseChange;
@@ -134,6 +137,8 @@ end;
 
 procedure TFrmApplyPatch.FormShow(Sender: TObject);
 begin
+  if Assigned(Button2) then
+    Button2.Caption := SUICancel;
   FSrcVerse.Font := CurrentProject.GetTextFont(tbOrigem);
   FDstVerse.Font := CurrentProject.GetTextFont(tbDestino);
   FSrcVerse.BoldWordsWithStrong := CurrentProject.PalavrasComStrongEmNegrito;
@@ -151,10 +156,20 @@ procedure TFrmApplyPatch.TabControlPreviewChange(Sender: TObject);
 
   procedure SetLabelColor(lbl: TLabel; isEqual: boolean);
   begin
+    if lbl.Hint = '' then
+      lbl.Hint := lbl.Caption;
     if isEqual then
-      lbl.Color := clGreen
+    begin
+      lbl.Color := $00E7FCDC;
+      lbl.Font.Color := UISuccessColor;
+      lbl.Caption := '=  ' + lbl.Hint;
+    end
     else
-      lbl.Color := clRed;
+    begin
+      lbl.Color := $00E2E2FE;
+      lbl.Font.Color := UIErrorColor;
+      lbl.Caption := UTF8Encode(UnicodeString(#$2260)) + '  ' + lbl.Hint;
+    end;
   end;
 
 begin
@@ -237,9 +252,16 @@ begin
     ShowMessage(SPatchSuccessfullyApplied);
 end;
 
+procedure TFrmApplyPatch.AfterConstruction;
+begin
+  inherited AfterConstruction;
+  ApplyDialogStyle(Self);
+end;
+
+
 initialization
 {$IFNDEF FPCUNIT}
-  {$I FormApplyPatch.lrs}
+  {$R FormApplyPatch.lfm}
 {$ENDIF}
 
 end.

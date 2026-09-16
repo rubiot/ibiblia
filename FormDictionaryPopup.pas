@@ -5,7 +5,7 @@ unit FormDictionaryPopup;
 interface
 
 uses
-  Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
+  ui_style, Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
   {$IFDEF WINDOWS}Windows,{$ENDIF}
   ExtCtrls, ComCtrls, LCLType, RichMemo, Types, Math;
 
@@ -40,6 +40,8 @@ type
     procedure HidePopup;
     property Strongs: TStringList read FStrongs;
     property Morphologies: TStringList read FMorphologies;
+  public
+    procedure AfterConstruction; override;
   end;
 
 var
@@ -53,6 +55,7 @@ uses formPrincipal;
 
 procedure TFrmDictionaryPopup.FormCreate(Sender: TObject);
 begin
+  ApplyFormStyle(Self);
   fCompStyle := csHintWindow;
   Canvas.Brush.Style := bsClear;
   //BorderStyle := bsNone; // bsNone, bsSingle, bsSizeable, bsDialog, bsToolWindow, bsSizeToolWin; // bsNone;
@@ -182,9 +185,16 @@ begin
   RichMemoMorphology.Rtf := '';
 end;
 
+procedure TFrmDictionaryPopup.AfterConstruction;
+begin
+  inherited AfterConstruction;
+  ApplyDialogStyle(Self);
+end;
+
+
 initialization
 {$IFNDEF FPCUNIT}
-  {$I FormDictionaryPopup.lrs}
+  {$R FormDictionaryPopup.lfm}
 {$ENDIF}
 
 end.

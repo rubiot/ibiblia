@@ -5,7 +5,7 @@ unit formaiprocessing;
 interface
 
 uses
-  Classes, SysUtils, StrUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
+  ui_style, Classes, SysUtils, StrUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ComCtrls, ExtCtrls, BibleTreeView, Verse, CommentsView,
   ai_processing_manager, ai_flows, ai_processing_batch, ai_batch_work_item;
 
@@ -142,6 +142,8 @@ type
     procedure RequestCancellation(Manager: TAIProcessingManager = nil);
     procedure DetachManager(Manager: TAIProcessingManager);
     property Batch: TAIProcessingBatch read FBatch;
+  public
+    procedure AfterConstruction; override;
   end;
 
 var
@@ -240,7 +242,17 @@ begin
 end;
 
 procedure TFrmAIProcessing.FormCreate(Sender: TObject);
+var
+  SelectionPanel: TPanel;
 begin
+  ApplyFormStyle(Self);
+  SelectionPanel := TPanel.Create(Self);
+  SelectionPanel.Parent := GroupBoxVerses;
+  SelectionPanel.Align := alTop;
+  SelectionPanel.Height := 48;
+  SelectionPanel.BevelOuter := bvNone;
+  BtnSelectAll.Parent := SelectionPanel;
+  BtnDeselectAll.Parent := SelectionPanel;
   // Create child controls now that .lfm components exist
   FBibleTreeView := TBibleTreeView.Create(Self);
   FBibleTreeView.Parent := GroupBoxVerses;
@@ -264,10 +276,10 @@ begin
   LabelAssociations.Visible := False;
   LabelComments.Visible := False;
   LabelStatus.Visible := False;
-  BtnApply.Width := 130;
-  BtnClose.Width := 115;
-  BtnClose.Left := PanelBottom.ClientWidth - BtnClose.Width - 8;
-  BtnApply.Left := BtnClose.Left - BtnApply.Width - 10;
+  BtnApply.Width := 176;
+  BtnClose.Width := 128;
+  BtnClose.Left := PanelBottom.ClientWidth - BtnClose.Width - 16;
+  BtnApply.Left := BtnClose.Left - BtnApply.Width - 8;
   BtnApply.ModalResult := mrNone;
 end;
 
@@ -298,22 +310,22 @@ begin
   FPanelReview := TPanel.Create(Self);
   FPanelReview.Parent := TabControlPreview;
   FPanelReview.Align := alBottom;
-  FPanelReview.Height := 145;
+  FPanelReview.Height := 176;
   FPanelReview.BevelOuter := bvNone;
 
   FPanelReviewButtons := TPanel.Create(Self);
   FPanelReviewButtons.Parent := FPanelReview;
   FPanelReviewButtons.Align := alTop;
-  FPanelReviewButtons.Height := 64;
+  FPanelReviewButtons.Height := 96;
   FPanelReviewButtons.BevelOuter := bvNone;
 
   FLabelReviewSummary := TLabel.Create(Self);
   FLabelReviewSummary.Parent := FPanelReviewButtons;
   FLabelReviewSummary.Align := alTop;
-  FLabelReviewSummary.Height := 28;
+  FLabelReviewSummary.Height := 48;
   FLabelReviewSummary.Layout := tlCenter;
   FLabelReviewSummary.AutoSize := False;
-  FLabelReviewSummary.WordWrap := False;
+  FLabelReviewSummary.WordWrap := True;
 
   VerseButtonsPanel := TPanel.Create(Self);
   VerseButtonsPanel.Parent := FPanelReviewButtons;
@@ -323,19 +335,24 @@ begin
   FBtnRetryErrors := TButton.Create(Self);
   FBtnRetryErrors.Parent := VerseButtonsPanel;
   FBtnRetryErrors.Align := alRight;
-  FBtnRetryErrors.Width := 165;
+  FBtnRetryErrors.Width := 200;
+  FBtnRetryErrors.BorderSpacing.Left := 8;
+  FBtnRetryErrors.BorderSpacing.Bottom := 8;
   FBtnRetryErrors.OnClick := @BtnRetryErrorsClick;
 
   FBtnRejectVerse := TButton.Create(Self);
   FBtnRejectVerse.Parent := VerseButtonsPanel;
   FBtnRejectVerse.Align := alRight;
-  FBtnRejectVerse.Width := 145;
+  FBtnRejectVerse.Width := 176;
+  FBtnRejectVerse.BorderSpacing.Left := 8;
+  FBtnRejectVerse.BorderSpacing.Bottom := 8;
   FBtnRejectVerse.OnClick := @BtnRejectVerseClick;
 
   FBtnAcceptVerse := TButton.Create(Self);
   FBtnAcceptVerse.Parent := VerseButtonsPanel;
   FBtnAcceptVerse.Align := alRight;
-  FBtnAcceptVerse.Width := 145;
+  FBtnAcceptVerse.Width := 176;
+  FBtnAcceptVerse.BorderSpacing.Bottom := 8;
   FBtnAcceptVerse.OnClick := @BtnAcceptVerseClick;
 
   CreateCommentsReviewControls;
@@ -357,20 +374,22 @@ begin
   FPanelCommentsReview := TPanel.Create(Self);
   FPanelCommentsReview.Parent := FPanelReview;
   FPanelCommentsReview.Align := alBottom;
-  FPanelCommentsReview.Height := 34;
+  FPanelCommentsReview.Height := 40;
   FPanelCommentsReview.BevelOuter := bvNone;
   FPanelCommentsReview.Visible := False;
 
   FPanelCommentsHeader := TPanel.Create(Self);
   FPanelCommentsHeader.Parent := FPanelCommentsReview;
   FPanelCommentsHeader.Align := alTop;
-  FPanelCommentsHeader.Height := 34;
+  FPanelCommentsHeader.Height := 40;
   FPanelCommentsHeader.BevelOuter := bvNone;
 
   FBtnToggleComments := TButton.Create(Self);
   FBtnToggleComments.Parent := FPanelCommentsHeader;
   FBtnToggleComments.Align := alLeft;
-  FBtnToggleComments.Width := 145;
+  FBtnToggleComments.Width := 176;
+  FBtnToggleComments.BorderSpacing.Right := 8;
+  FBtnToggleComments.BorderSpacing.Bottom := 8;
   FBtnToggleComments.OnClick := @BtnToggleCommentsClick;
 
   FLabelCommentsReviewSummary := TLabel.Create(Self);
@@ -378,7 +397,7 @@ begin
   FLabelCommentsReviewSummary.Align := alClient;
   FLabelCommentsReviewSummary.AutoSize := False;
   FLabelCommentsReviewSummary.Layout := tlCenter;
-  FLabelCommentsReviewSummary.WordWrap := False;
+  FLabelCommentsReviewSummary.WordWrap := True;
 
   FPanelCommentsDetails := TPanel.Create(Self);
   FPanelCommentsDetails.Parent := FPanelCommentsReview;
@@ -728,16 +747,16 @@ begin
   end;
 
   if not Assigned(FPanelCommentsReview) or not FPanelCommentsReview.Visible then
-    FPanelReview.Height := 145
+    FPanelReview.Height := UIScale(Self, 176)
   else if FCommentsExpanded then
   begin
-    FPanelCommentsReview.Height := 220;
-    FPanelReview.Height := 360;
+    FPanelCommentsReview.Height := UIScale(Self, 240);
+    FPanelReview.Height := UIScale(Self, 416);
   end
   else
   begin
-    FPanelCommentsReview.Height := 34;
-    FPanelReview.Height := 185;
+    FPanelCommentsReview.Height := UIScale(Self, 40);
+    FPanelReview.Height := UIScale(Self, 216);
   end;
 end;
 
@@ -1461,6 +1480,17 @@ begin
   AIDebugLogFmt('[Apply] Batch apply complete. Applied %d verses', [appliedCount]);
   ShowMessage(Format(SApplySuccessfulFmt, [appliedCount]));
 end;
+
+procedure TFrmAIProcessing.AfterConstruction;
+begin
+  inherited AfterConstruction;
+  ApplyDialogStyle(Self);
+  StyleControl(PanelBottom, uirFooter);
+  StyleControl(LabelETA, uirHint);
+  StyleControl(LabelTokens, uirHint);
+  StyleControl(FLabelReviewSummary, uirSectionTitle);
+end;
+
 
 initialization
 

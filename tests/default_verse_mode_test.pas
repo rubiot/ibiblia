@@ -31,12 +31,14 @@ type
     procedure IntegerValuesUseAssociationAsSafeFallback;
     procedure NewProjectDefaultsToAssociationMode;
     procedure RelativeProjectPathRemainsAbsoluteAfterDirectoryChange;
+    procedure LegacyWorkflowFallbacksRemainUnstoredUntilExplicitChange;
     procedure AssociationModeLeavesPopulatedVerseReadyForAssociations;
     procedure EditingModeOpensDestinationOnInitialVerseAndNavigation;
     procedure AssociationModePreservesAutomaticEditingOfEmptyDestination;
     procedure ChangingModeAffectsOnlyNextRealNavigation;
     procedure RefreshOfSameVerseDoesNotReopenClosedEditor;
     procedure RapidNavigationActivatesOnlyFinalVerse;
+    procedure AutomaticSuggestionRunsOncePerRealReferenceChange;
     procedure AutomaticSuggestionDoesNotConsumePendingEditorRequest;
     procedure FormattedVerseNavigationKeepsEditingDefault;
     procedure FormattedNavigationRetargetsSameEditorWithoutHidingIt;
@@ -56,7 +58,8 @@ implementation
 uses
   Classes, SysUtils, Controls, SynEdit, sqlite3conn, sqldb,
   BibleScope, project_database_bootstrap, directwrite_verse_editor, chapterview,
-  theword_ont_codec_v2, performance_debug, project_verse_repository;
+  theword_ont_codec_v2, performance_debug, project_verse_repository,
+  project_persistence, project_config;
 
 type
   TVisibleChangeProbe = class
@@ -227,6 +230,19 @@ begin
   end;
 end;
 
+function ReadStoredProjectInfo(const ADatabaseFile, AKey: string): string;
+var
+  Persistence: TProjectPersistence;
+begin
+  Persistence := TProjectPersistence.Create;
+  try
+    Persistence.Open(ADatabaseFile);
+    Result := Persistence.ReadInfo(AKey);
+  finally
+    Persistence.Free;
+  end;
+end;
+
 function TDefaultVerseModeTests.TempPath(const AFileName: string): string;
 begin
   Result := IncludeTrailingPathDelimiter(FTempDir) + AFileName;
@@ -380,6 +396,83 @@ begin
 end;
 
 procedure TDefaultVerseModeTests.
+  LegacyWorkflowFallbacksRemainUnstoredUntilExplicitChange;
+var
+  DatabaseFile: string;
+
+  procedure OpenWorkflowProject;
+  begin
+    FProject := TProject.Create([FSourcePanel, FDestinationPanel], nil,
+      FStatusCombo, nil);
+    FProject.Escopo := etNT;
+    FProject.OpenProject(DatabaseFile);
+  end;
+
+  procedure CloseWorkflowProject;
+  begin
+    AssertTrue(FProject.CloseProject(False));
+    FreeAndNil(FProject);
+  end;
+
+begin
+  DatabaseFile := TempPath('workflow-fallback.bib');
+  TProjectDatabaseBootstrap.CreateProjectDatabaseFixture(DatabaseFile, etNT,
+    3);
+  SeedVerseTexts(DatabaseFile, 'Destination 1', 'Destination 2',
+    'Destination 3');
+
+  OpenWorkflowProject;
+  FProject.ApplyWorkflowFallbacks(smAI, True, dvmEditing);
+  AssertEquals('legacy project receives the current method fallback',
+    Ord(smAI), Ord(FProject.SuggestionMode));
+  AssertTrue('legacy project receives the current automation fallback',
+    FProject.SugerirAssociacaoAutomaticamente);
+  AssertEquals('legacy project receives the current opening-mode fallback',
+    Ord(dvmEditing), Ord(FProject.DefaultVerseMode));
+  CloseWorkflowProject;
+
+  AssertEquals('applying a method fallback must not migrate the project', '',
+    ReadStoredProjectInfo(DatabaseFile,
+      PROJECT_CONFIG_KEY_SUGGESTION_MODE));
+  AssertEquals('applying an automation fallback must not migrate the project',
+    '', ReadStoredProjectInfo(DatabaseFile,
+      PROJECT_CONFIG_KEY_AUTOMATIC_SUGGESTION));
+  AssertEquals('applying an opening-mode fallback must not migrate the project',
+    '', ReadStoredProjectInfo(DatabaseFile,
+      PROJECT_CONFIG_KEY_DEFAULT_VERSE_MODE));
+
+  OpenWorkflowProject;
+  FProject.ApplyWorkflowFallbacks(smStatistical, False, dvmAssociation);
+  AssertEquals('a still-legacy project may receive a later method fallback',
+    Ord(smStatistical), Ord(FProject.SuggestionMode));
+  AssertFalse('a still-legacy project may receive a later automation fallback',
+    FProject.SugerirAssociacaoAutomaticamente);
+  AssertEquals('a still-legacy project may receive a later opening fallback',
+    Ord(dvmAssociation), Ord(FProject.DefaultVerseMode));
+
+  FProject.SuggestionMode := smAI;
+  FProject.SugerirAssociacaoAutomaticamente := True;
+  FProject.DefaultVerseMode := dvmEditing;
+  CloseWorkflowProject;
+
+  AssertEquals(IntToStr(Ord(smAI)), ReadStoredProjectInfo(DatabaseFile,
+    PROJECT_CONFIG_KEY_SUGGESTION_MODE));
+  AssertEquals('1', ReadStoredProjectInfo(DatabaseFile,
+    PROJECT_CONFIG_KEY_AUTOMATIC_SUGGESTION));
+  AssertEquals(IntToStr(Ord(dvmEditing)), ReadStoredProjectInfo(DatabaseFile,
+    PROJECT_CONFIG_KEY_DEFAULT_VERSE_MODE));
+
+  OpenWorkflowProject;
+  FProject.ApplyWorkflowFallbacks(smStatistical, False, dvmAssociation);
+  AssertEquals('explicit method wins over a later application fallback',
+    Ord(smAI), Ord(FProject.SuggestionMode));
+  AssertTrue('explicit automation wins over a later application fallback',
+    FProject.SugerirAssociacaoAutomaticamente);
+  AssertEquals('explicit opening mode wins over a later application fallback',
+    Ord(dvmEditing), Ord(FProject.DefaultVerseMode));
+end;
+
+procedure TDefaultVerseModeTests.
   AssociationModeLeavesPopulatedVerseReadyForAssociations;
 begin
   CreateAndOpenProject(dvmAssociation);
@@ -473,6 +566,52 @@ begin
   AssertEquals('Destination 3', UTF8Encode(ActiveEditor.Text));
   AssertEquals(FProject.ID,
     FProject.VerseObjects[tbDestino].ReferenceID);
+end;
+
+procedure TDefaultVerseModeTests.
+  AutomaticSuggestionRunsOncePerRealReferenceChange;
+begin
+  CreateAndOpenProject(dvmAssociation);
+  FProject.SuggestionMode := smStatistical;
+  FProject.SugerirAssociacaoAutomaticamente := True;
+  AssertEquals(QWord(0), FProject.AutomaticSuggestionInvocationCount);
+
+  FProject.NextVerse;
+  Application.ProcessMessages;
+  AssertEquals('Next invokes automatic suggestion once for the new Verse',
+    QWord(1), FProject.AutomaticSuggestionInvocationCount);
+
+  FProject.RefreshUI;
+  FProject.RefreshUI;
+  Application.ProcessMessages;
+  AssertEquals('same-reference refreshes never invoke automatic suggestion',
+    QWord(1), FProject.AutomaticSuggestionInvocationCount);
+
+  FProject.NavigateToReference('40,1,3');
+  Application.ProcessMessages;
+  AssertEquals('direct navigation invokes once for its new reference',
+    QWord(2), FProject.AutomaticSuggestionInvocationCount);
+
+  FProject.NavigateToReference('40,1,3');
+  FProject.RefreshUI;
+  Application.ProcessMessages;
+  AssertEquals('reselecting the current reference remains a no-op',
+    QWord(2), FProject.AutomaticSuggestionInvocationCount);
+
+  FProject.GoBack;
+  Application.ProcessMessages;
+  AssertEquals('history Back invokes once for the restored reference',
+    QWord(3), FProject.AutomaticSuggestionInvocationCount);
+
+  FProject.GoForward;
+  Application.ProcessMessages;
+  AssertEquals('history Forward invokes once for the restored reference',
+    QWord(4), FProject.AutomaticSuggestionInvocationCount);
+
+  FProject.PreviousVerse;
+  Application.ProcessMessages;
+  AssertEquals('Previous invokes once for the new reference',
+    QWord(5), FProject.AutomaticSuggestionInvocationCount);
 end;
 
 procedure TDefaultVerseModeTests.

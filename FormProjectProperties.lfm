@@ -1,21 +1,26 @@
 object FrmProjectProperties: TFrmProjectProperties
   Left = 320
-  Height = 643
+  Height = 700
   Top = 157
-  Width = 582
+  Width = 720
   Caption = 'Properties'
-  ClientHeight = 643
-  ClientWidth = 582
-  DesignTimePPI = 101
+  ClientHeight = 700
+  ClientWidth = 720
+  DesignTimePPI = 96
   Position = poMainFormCenter
   OnCreate = FormCreate
+  Font.Name = 'Segoe UI'
+  Font.Height = -13
+  Color = 16316147
+  Constraints.MinWidth = 720
+  Constraints.MinHeight = 700
   object GroupBoxProperties: TGroupBox
     Left = 0
     Height = 127
     Top = 6
     Width = 574
     Caption = 'Properties'
-    ClientHeight = 105
+    ClientHeight = 103
     ClientWidth = 570
     TabOrder = 0
     object EditProjectName: TLabeledEdit
@@ -48,26 +53,28 @@ object FrmProjectProperties: TFrmProjectProperties
     end
   end
   object BtnOk: TBitBtn
-    Left = 486
+    Left = 600
     Height = 32
-    Top = 603
-    Width = 87
+    Top = 652
+    Width = 104
     Caption = '&OK'
     Default = True
     Kind = bkOK
     ModalResult = 1
     TabOrder = 1
+    Anchors = [akRight, akBottom]
   end
   object BtnCancel: TBitBtn
-    Left = 371
+    Left = 488
     Height = 32
-    Top = 603
-    Width = 96
+    Top = 652
+    Width = 104
     Cancel = True
     Caption = 'Cancel'
     Kind = bkCancel
     ModalResult = 2
     TabOrder = 2
+    Anchors = [akRight, akBottom]
   end
   object TabControlTextType: TTabControl
     Left = 7
@@ -162,7 +169,7 @@ object FrmProjectProperties: TFrmProjectProperties
       Caption = 'Font'
       ParentColor = False
     end
-    object BtnSelectFont: TButton
+    object BtnSelectFont: TBitBtn
       Left = 463
       Height = 26
       Top = 259

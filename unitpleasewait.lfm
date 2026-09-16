@@ -10,6 +10,9 @@ object FormPleaseWait: TFormPleaseWait
   FormStyle = fsStayOnTop
   Position = poMainFormCenter
   LCLVersion = '2.0.10.0'
+  Font.Name = 'Segoe UI'
+  Font.Height = -13
+  Color = 16316147
   object ProgressBar1: TProgressBar
     Left = 32
     Height = 28

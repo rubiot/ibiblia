@@ -2,22 +2,27 @@ object FrmExportPatch: TFrmExportPatch
   Left = 347
   Height = 599
   Top = 169
-  Width = 435
+  Width = 560
   Caption = 'Export patch...'
   ClientHeight = 599
-  ClientWidth = 435
-  DesignTimePPI = 101
+  ClientWidth = 560
+  DesignTimePPI = 96
   Position = poMainFormCenter
   LCLVersion = '4.0.0.4'
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   OnShow = FormShow
+  Font.Name = 'Segoe UI'
+  Font.Height = -13
+  Color = 16316147
+  Constraints.MinWidth = 560
+  Constraints.MinHeight = 360
   object GroupBox1: TGroupBox
     Left = 0
     Height = 530
     Top = 0
     Width = 413
-    Align = alTop
+    Align = alNone
     Anchors = [akTop, akLeft, akRight, akBottom]
     TabOrder = 0
   end

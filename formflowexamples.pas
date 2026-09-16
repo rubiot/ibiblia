@@ -5,7 +5,7 @@ unit FormFlowExamples;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls,
+  ui_style, Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls,
   ComCtrls, Project, Verse, ai_flow_config;
 
 type
@@ -59,6 +59,8 @@ type
     destructor Destroy; override;
     class function Execute(AOwner: TComponent; AProject: TProject;
       const AFlowId: string; var Examples: TAIFlowExampleArray): Boolean;
+  public
+    procedure AfterConstruction; override;
   end;
 
 resourcestring
@@ -100,6 +102,7 @@ uses
 constructor TFrmFlowExamples.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
+  ApplyFormStyle(Self);
   BuildControls;
   CreateVersePreview;
 end;
@@ -134,26 +137,27 @@ var
   Lbl: TLabel;
   ButtonLeft, ButtonWidth: Integer;
 begin
-  Width := 920;
-  Height := 650;
+  ClientWidth := 1024;
+  ClientHeight := 720;
   Position := poMainFormCenter;
-  Constraints.MinWidth := 720;
-  Constraints.MinHeight := 520;
+  Constraints.MinWidth := 880;
+  Constraints.MinHeight := 640;
 
   PanelBottom := TPanel.Create(Self);
   PanelBottom.Parent := Self;
   PanelBottom.Align := alBottom;
-  PanelBottom.Height := 44;
+  PanelBottom.Height := 64;
   PanelBottom.BevelOuter := bvNone;
 
   FBtnCancel := TButton.Create(Self);
   FBtnCancel.Parent := PanelBottom;
   FBtnCancel.Caption := rsBtnCancel;
   FBtnCancel.ModalResult := mrCancel;
-  FBtnCancel.Width := 90;
-  FBtnCancel.Height := 26;
-  FBtnCancel.Left := PanelBottom.ClientWidth - FBtnCancel.Width - 10;
-  FBtnCancel.Top := 9;
+  FBtnCancel.Width := 112;
+  FBtnCancel.Height := 32;
+  FBtnCancel.Left := PanelBottom.ClientWidth - FBtnCancel.Width - 16;
+  FBtnCancel.Top := 16;
+  FBtnCancel.Cancel := True;
   FBtnCancel.Anchors := [akRight, akBottom];
   FBtnCancel.Hint := rsHintCancel;
   FBtnCancel.ShowHint := True;
@@ -163,10 +167,10 @@ begin
   FBtnOK.Caption := rsBtnOK;
   FBtnOK.ModalResult := mrOK;
   FBtnOK.Default := True;
-  FBtnOK.Width := 90;
-  FBtnOK.Height := 26;
-  FBtnOK.Left := FBtnCancel.Left - FBtnOK.Width - 10;
-  FBtnOK.Top := 9;
+  FBtnOK.Width := 112;
+  FBtnOK.Height := 32;
+  FBtnOK.Left := FBtnCancel.Left - FBtnOK.Width - 8;
+  FBtnOK.Top := 16;
   FBtnOK.Anchors := [akRight, akBottom];
   FBtnOK.Hint := rsHintOK;
   FBtnOK.ShowHint := True;
@@ -174,9 +178,9 @@ begin
   PanelLeft := TPanel.Create(Self);
   PanelLeft.Parent := Self;
   PanelLeft.Align := alLeft;
-  PanelLeft.Width := 260;
+  PanelLeft.Width := 296;
   PanelLeft.BevelOuter := bvNone;
-  PanelLeft.BorderSpacing.Around := 8;
+  PanelLeft.BorderSpacing.Around := 16;
 
   Lbl := TLabel.Create(Self);
   Lbl.Parent := PanelLeft;
@@ -188,15 +192,16 @@ begin
   PanelButtons := TPanel.Create(Self);
   PanelButtons.Parent := PanelLeft;
   PanelButtons.Align := alBottom;
-  PanelButtons.Height := 174;
+  PanelButtons.Height := 208;
+  PanelButtons.Width := PanelLeft.Width;
   PanelButtons.BevelOuter := bvNone;
-  ButtonLeft := 4;
-  ButtonWidth := PanelLeft.Width - 28;
+  ButtonLeft := 0;
+  ButtonWidth := PanelLeft.Width;
 
   FBtnAddCurrent := TButton.Create(Self);
   FBtnAddCurrent.Parent := PanelButtons;
   FBtnAddCurrent.Caption := rsAddCurrentVerse;
-  FBtnAddCurrent.SetBounds(ButtonLeft, 4, ButtonWidth, 26);
+  FBtnAddCurrent.SetBounds(ButtonLeft, 8, ButtonWidth, 32);
   FBtnAddCurrent.Anchors := [akTop, akLeft, akRight];
   FBtnAddCurrent.Hint := rsHintAddCurrentVerse;
   FBtnAddCurrent.ShowHint := True;
@@ -205,7 +210,7 @@ begin
   FBtnMoveUp := TButton.Create(Self);
   FBtnMoveUp.Parent := PanelButtons;
   FBtnMoveUp.Caption := rsMoveExampleUp;
-  FBtnMoveUp.SetBounds(ButtonLeft, 38, ButtonWidth, 26);
+  FBtnMoveUp.SetBounds(ButtonLeft, 48, ButtonWidth, 32);
   FBtnMoveUp.Anchors := [akTop, akLeft, akRight];
   FBtnMoveUp.Hint := rsHintMoveExampleUp;
   FBtnMoveUp.ShowHint := True;
@@ -214,7 +219,7 @@ begin
   FBtnMoveDown := TButton.Create(Self);
   FBtnMoveDown.Parent := PanelButtons;
   FBtnMoveDown.Caption := rsMoveExampleDown;
-  FBtnMoveDown.SetBounds(ButtonLeft, 72, ButtonWidth, 26);
+  FBtnMoveDown.SetBounds(ButtonLeft, 88, ButtonWidth, 32);
   FBtnMoveDown.Anchors := [akTop, akLeft, akRight];
   FBtnMoveDown.Hint := rsHintMoveExampleDown;
   FBtnMoveDown.ShowHint := True;
@@ -223,7 +228,7 @@ begin
   FBtnRemove := TButton.Create(Self);
   FBtnRemove.Parent := PanelButtons;
   FBtnRemove.Caption := rsRemoveExample;
-  FBtnRemove.SetBounds(ButtonLeft, 106, ButtonWidth, 26);
+  FBtnRemove.SetBounds(ButtonLeft, 128, ButtonWidth, 32);
   FBtnRemove.Anchors := [akTop, akLeft, akRight];
   FBtnRemove.Hint := rsHintRemoveExample;
   FBtnRemove.ShowHint := True;
@@ -232,7 +237,7 @@ begin
   FBtnClear := TButton.Create(Self);
   FBtnClear.Parent := PanelButtons;
   FBtnClear.Caption := rsClearExamples;
-  FBtnClear.SetBounds(ButtonLeft, 140, ButtonWidth, 26);
+  FBtnClear.SetBounds(ButtonLeft, 168, ButtonWidth, 32);
   FBtnClear.Anchors := [akTop, akLeft, akRight];
   FBtnClear.Hint := rsHintClearExamples;
   FBtnClear.ShowHint := True;
@@ -251,7 +256,8 @@ begin
   FPageControl := TPageControl.Create(Self);
   FPageControl.Parent := Self;
   FPageControl.Align := alClient;
-  FPageControl.BorderSpacing.Around := 8;
+  FPageControl.BorderSpacing.Around := 16;
+  FPageControl.BorderSpacing.Left := 0;
 
   FTabVisual := TTabSheet.Create(Self);
   FTabVisual.PageControl := FPageControl;
@@ -287,7 +293,8 @@ begin
   Lbl := TLabel.Create(Self);
   Lbl.Parent := PanelTarget;
   Lbl.Align := alTop;
-  Lbl.Height := 22;
+  Lbl.Height := 32;
+  StyleControl(Lbl, uirSectionTitle);
   Lbl.Caption := rsDestinationText;
   Lbl.Layout := tlCenter;
 
@@ -311,7 +318,8 @@ begin
   Lbl := TLabel.Create(Self);
   Lbl.Parent := PanelSource;
   Lbl.Align := alTop;
-  Lbl.Height := 22;
+  Lbl.Height := 32;
+  StyleControl(Lbl, uirSectionTitle);
   Lbl.Caption := rsSourceText;
   Lbl.Layout := tlCenter;
 
@@ -319,6 +327,9 @@ begin
   FMemoExpected.Parent := FTabExpected;
   FMemoExpected.Align := alClient;
   FMemoExpected.ReadOnly := True;
+  FMemoExpected.Font.Name := 'Consolas';
+  FMemoExpected.Font.Size := 10;
+  FMemoExpected.ParentFont := False;
   FMemoExpected.ScrollBars := ssAutoVertical;
   FMemoExpected.WordWrap := True;
 end;
@@ -595,5 +606,12 @@ begin
   FStatusLabel.Font.Color := AColor;
   FStatusLabel.Visible := Trim(AMessage) <> '';
 end;
+
+procedure TFrmFlowExamples.AfterConstruction;
+begin
+  inherited AfterConstruction;
+  ApplyDialogStyle(Self);
+end;
+
 
 end.

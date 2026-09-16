@@ -38,6 +38,8 @@ type
     procedure ImmediateInfoFlushesAfterACompetingWriterFinishes;
     procedure WorkspaceDetectsAllVisibleContentChanges;
     procedure TypedConfigSeparatesMarkerAndTokenizer;
+    procedure WorkflowConfigUsesStableKeysAndImmediatePersistence;
+    procedure PopupTriggerOrdinalsAppendDisabledWithoutRenumbering;
     procedure TextDirectionConfigUsesStablePerTextKeys;
     procedure TextDirectionSetterDoesNotIndexNonVerseTypes;
     procedure CommentBreaksMapToAndFromWysiwygSession;
@@ -588,6 +590,88 @@ begin
   finally
     Config.Free;
   end;
+end;
+
+procedure TProjectPersistenceTest.
+  WorkflowConfigUsesStableKeysAndImmediatePersistence;
+var
+  Config: TProjectConfig;
+begin
+  AssertEquals('suggestion-mode key must remain stable',
+    'workflow.suggestion_mode', PROJECT_CONFIG_KEY_SUGGESTION_MODE);
+  AssertEquals('automatic-suggestion key must remain stable',
+    'workflow.automatic_suggestion',
+    PROJECT_CONFIG_KEY_AUTOMATIC_SUGGESTION);
+  AssertEquals('default-verse-mode key must remain stable',
+    'workflow.default_verse_mode', PROJECT_CONFIG_KEY_DEFAULT_VERSE_MODE);
+
+  Config := TProjectConfig.Create(FPersistence);
+  try
+    AssertFalse('a legacy project has no explicit suggestion method',
+      Config.HasSuggestionMode);
+    AssertFalse('a legacy project has no explicit automatic-suggestion value',
+      Config.HasAutomaticSuggestion);
+    AssertFalse('a legacy project has no explicit default verse mode',
+      Config.HasDefaultVerseMode);
+
+    AssertEquals('missing suggestion method uses the caller fallback', 41,
+      Config.ReadSuggestionMode(41));
+    AssertTrue('missing automatic suggestion uses the caller fallback',
+      Config.ReadAutomaticSuggestion(True));
+    AssertEquals('missing verse mode uses the caller fallback', 23,
+      Config.ReadDefaultVerseMode(23));
+    AssertEquals('reading a fallback must not migrate the project', '',
+      ReadDatabaseInfo(PROJECT_CONFIG_KEY_SUGGESTION_MODE));
+    AssertEquals('reading a fallback must not migrate the project', '',
+      ReadDatabaseInfo(PROJECT_CONFIG_KEY_AUTOMATIC_SUGGESTION));
+    AssertEquals('reading a fallback must not migrate the project', '',
+      ReadDatabaseInfo(PROJECT_CONFIG_KEY_DEFAULT_VERSE_MODE));
+
+    Config.WriteSuggestionMode(Ord(smAI));
+    Config.WriteAutomaticSuggestion(False);
+    Config.WriteDefaultVerseMode(Ord(dvmEditing));
+
+    AssertTrue('the suggestion method becomes explicit after a write',
+      Config.HasSuggestionMode);
+    AssertTrue('a stored false value is still explicit',
+      Config.HasAutomaticSuggestion);
+    AssertTrue('the default verse mode becomes explicit after a write',
+      Config.HasDefaultVerseMode);
+    AssertEquals(Ord(smAI), Config.ReadSuggestionMode(Ord(smStatistical)));
+    AssertFalse(Config.ReadAutomaticSuggestion(True));
+    AssertEquals(Ord(dvmEditing),
+      Config.ReadDefaultVerseMode(Ord(dvmAssociation)));
+    AssertEquals(IntToStr(Ord(smAI)),
+      ReadDatabaseInfo(PROJECT_CONFIG_KEY_SUGGESTION_MODE));
+    AssertEquals('0',
+      ReadDatabaseInfo(PROJECT_CONFIG_KEY_AUTOMATIC_SUGGESTION));
+    AssertEquals(IntToStr(Ord(dvmEditing)),
+      ReadDatabaseInfo(PROJECT_CONFIG_KEY_DEFAULT_VERSE_MODE));
+    AssertFalse('workflow settings are immediate metadata, not content edits',
+      FPersistence.ContentUpdatesPending);
+
+    Config.WriteAutomaticSuggestion(True);
+    AssertTrue(Config.ReadAutomaticSuggestion(False));
+    AssertEquals('1',
+      ReadDatabaseInfo(PROJECT_CONFIG_KEY_AUTOMATIC_SUGGESTION));
+  finally
+    Config.Free;
+  end;
+end;
+
+procedure TProjectPersistenceTest.
+  PopupTriggerOrdinalsAppendDisabledWithoutRenumbering;
+begin
+  AssertEquals('plain mouse keeps its persisted ordinal', 0,
+    Ord(ptMouseHover));
+  AssertEquals('Alt+mouse keeps its persisted ordinal', 1,
+    Ord(ptAltMouseHover));
+  AssertEquals('Ctrl+mouse keeps its persisted ordinal', 2,
+    Ord(ptCtrlMouseHover));
+  AssertEquals('Disabled is appended so old INI values keep their meaning', 3,
+    Ord(ptDisabled));
+  AssertEquals('Disabled remains the last popup-trigger option',
+    Ord(ptDisabled), Ord(High(TPopupTrigger)));
 end;
 
 procedure TProjectPersistenceTest.TextDirectionConfigUsesStablePerTextKeys;

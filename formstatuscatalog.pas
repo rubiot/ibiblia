@@ -5,7 +5,7 @@ unit FormStatusCatalog;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls,
+  ui_style, Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls,
   Buttons, Grids, status_catalog;
 
 type
@@ -54,6 +54,8 @@ type
   public
     class function Execute(var Definitions: TStatusDefinitions;
       const Counts: TStatusCounts; out Remaps: TStatusRemaps): Boolean;
+  public
+    procedure AfterConstruction; override;
   end;
 
 resourcestring
@@ -95,10 +97,13 @@ var
   ButtonPanel: TPanel;
 begin
   inherited CreateNew(AOwner, 1);
+  ApplyFormStyle(Self);
   Caption := SStatusCatalogWindowTitle;
   Position := poMainFormCenter;
-  Width := 720;
-  Height := 430;
+  ClientWidth := 840;
+  ClientHeight := 528;
+  Constraints.MinWidth := 840;
+  Constraints.MinHeight := 528;
   BorderIcons := [biSystemMenu];
 
   FDefinitions := Copy(Definitions, 0, Length(Definitions));
@@ -108,19 +113,21 @@ begin
 
   FInfoLabel := TLabel.Create(Self);
   FInfoLabel.Parent := Self;
-  FInfoLabel.Left := 12;
-  FInfoLabel.Top := 10;
-  FInfoLabel.Width := 680;
-  FInfoLabel.Height := 38;
+  FInfoLabel.Left := 16;
+  FInfoLabel.Top := 16;
+  FInfoLabel.Width := 808;
+  FInfoLabel.Anchors := [akTop, akLeft, akRight];
+  FInfoLabel.Height := 48;
   FInfoLabel.AutoSize := False;
   FInfoLabel.WordWrap := True;
 
   FGrid := TStringGrid.Create(Self);
   FGrid.Parent := Self;
-  FGrid.Left := 12;
-  FGrid.Top := 54;
-  FGrid.Width := 540;
-  FGrid.Height := 310;
+  FGrid.Left := 16;
+  FGrid.Top := 80;
+  FGrid.Width := 624;
+  FGrid.Height := 384;
+  FGrid.Anchors := [akTop, akLeft, akRight, akBottom];
   FGrid.ColCount := 4;
   FGrid.FixedCols := 0;
   FGrid.FixedRows := 1;
@@ -132,63 +139,66 @@ begin
   FGrid.ShowHint := True;
   FGrid.CellHintPriority := chpAllNoDefault;
   FGrid.Options := FGrid.Options + [goEditing, goCellHints];
-  FGrid.ColWidths[0] := 220;
-  FGrid.ColWidths[1] := 110;
-  FGrid.ColWidths[2] := 80;
-  FGrid.ColWidths[3] := 80;
+  FGrid.ColWidths[0] := 264;
+  FGrid.ColWidths[1] := 144;
+  FGrid.ColWidths[2] := 96;
+  FGrid.ColWidths[3] := 96;
 
   ButtonPanel := TPanel.Create(Self);
   ButtonPanel.Parent := Self;
-  ButtonPanel.Left := 564;
-  ButtonPanel.Top := 54;
-  ButtonPanel.Width := 140;
-  ButtonPanel.Height := 330;
+  ButtonPanel.Left := 656;
+  ButtonPanel.Top := 80;
+  ButtonPanel.Width := 168;
+  ButtonPanel.Height := 384;
+  ButtonPanel.Anchors := [akTop, akRight, akBottom];
   ButtonPanel.BevelOuter := bvNone;
 
   FAddButton := TButton.Create(Self);
   FAddButton.Parent := ButtonPanel;
-  FAddButton.SetBounds(0, 0, 140, 26);
+  FAddButton.SetBounds(0, 0, 168, 32);
   FAddButton.OnClick := @AddButtonClick;
 
   FRenameButton := TButton.Create(Self);
   FRenameButton.Parent := ButtonPanel;
-  FRenameButton.SetBounds(0, 34, 140, 26);
+  FRenameButton.SetBounds(0, 40, 168, 32);
   FRenameButton.OnClick := @RenameButtonClick;
 
   FRemoveButton := TButton.Create(Self);
   FRemoveButton.Parent := ButtonPanel;
-  FRemoveButton.SetBounds(0, 68, 140, 26);
+  FRemoveButton.SetBounds(0, 80, 168, 32);
   FRemoveButton.OnClick := @RemoveButtonClick;
 
   FColorButton := TButton.Create(Self);
   FColorButton.Parent := ButtonPanel;
-  FColorButton.SetBounds(0, 102, 140, 26);
+  FColorButton.SetBounds(0, 120, 168, 32);
   FColorButton.OnClick := @ColorButtonClick;
 
   FDisplayUpButton := TButton.Create(Self);
   FDisplayUpButton.Parent := ButtonPanel;
-  FDisplayUpButton.SetBounds(0, 150, 140, 26);
+  FDisplayUpButton.SetBounds(0, 176, 168, 32);
   FDisplayUpButton.OnClick := @DisplayUpButtonClick;
 
   FDisplayDownButton := TButton.Create(Self);
   FDisplayDownButton.Parent := ButtonPanel;
-  FDisplayDownButton.SetBounds(0, 184, 140, 26);
+  FDisplayDownButton.SetBounds(0, 216, 168, 32);
   FDisplayDownButton.OnClick := @DisplayDownButtonClick;
 
   FOkButton := TBitBtn.Create(Self);
   FOkButton.Parent := Self;
   FOkButton.Kind := bkOK;
-  FOkButton.Left := 514;
-  FOkButton.Top := 372;
-  FOkButton.Width := 90;
+  FOkButton.Left := 608;
+  FOkButton.Top := 480;
+  FOkButton.Width := 104;
+  FOkButton.Anchors := [akRight, akBottom];
   FOkButton.OnClick := @OkButtonClick;
 
   FCancelButton := TBitBtn.Create(Self);
   FCancelButton.Parent := Self;
   FCancelButton.Kind := bkCancel;
-  FCancelButton.Left := 614;
-  FCancelButton.Top := 372;
-  FCancelButton.Width := 90;
+  FCancelButton.Left := 720;
+  FCancelButton.Top := 480;
+  FCancelButton.Width := 104;
+  FCancelButton.Anchors := [akRight, akBottom];
 
   FColorDialog := TColorDialog.Create(Self);
   Translate;
@@ -250,7 +260,7 @@ begin
 
   if gdFixed in aState then
   begin
-    FGrid.Canvas.Brush.Color := clBtnFace;
+    FGrid.Canvas.Brush.Color := UISurfaceColor;
     FGrid.Canvas.Font.Color := clWindowText;
   end
   else if gdSelected in aState then
@@ -426,23 +436,26 @@ begin
   try
     DialogForm.Caption := SStatusCatalogRemapTitle;
     DialogForm.Position := poMainFormCenter;
-    DialogForm.Width := 460;
-    DialogForm.Height := 170;
+    ApplyFormStyle(DialogForm);
+    DialogForm.ClientWidth := 560;
+    DialogForm.ClientHeight := 208;
 
     MessageLabel := TLabel.Create(DialogForm);
     MessageLabel.Parent := DialogForm;
-    MessageLabel.Left := 12;
-    MessageLabel.Top := 12;
-    MessageLabel.Width := 420;
+    MessageLabel.Left := 16;
+    MessageLabel.Top := 16;
+    MessageLabel.Width := 528;
+    MessageLabel.AutoSize := False;
+    MessageLabel.Height := 64;
     MessageLabel.WordWrap := True;
     MessageLabel.Caption := Format(SStatusCatalogRemapMessage,
       [RemovedStatus.Caption, CountForStatus(RemovedStatus.Id)]);
 
     Combo := TComboBox.Create(DialogForm);
     Combo.Parent := DialogForm;
-    Combo.Left := 12;
-    Combo.Top := 70;
-    Combo.Width := 420;
+    Combo.Left := 16;
+    Combo.Top := 96;
+    Combo.Width := 528;
     Combo.Style := csDropDownList;
     for DefIndex := 0 to High(FDefinitions) do
       if FDefinitions[DefIndex].Id <> RemovedStatus.Id then
@@ -454,17 +467,18 @@ begin
     OkButton := TBitBtn.Create(DialogForm);
     OkButton.Parent := DialogForm;
     OkButton.Kind := bkOK;
-    OkButton.Left := 244;
-    OkButton.Top := 108;
+    OkButton.Left := 328;
+    OkButton.Top := 160;
     OkButton.Width := 90;
 
     CancelButton := TBitBtn.Create(DialogForm);
     CancelButton.Parent := DialogForm;
     CancelButton.Kind := bkCancel;
-    CancelButton.Left := 342;
-    CancelButton.Top := 108;
+    CancelButton.Left := 440;
+    CancelButton.Top := 160;
     CancelButton.Width := 90;
 
+    ApplyDialogStyle(DialogForm);
     if (DialogForm.ShowModal = mrOK) and (Combo.ItemIndex >= 0) then
     begin
       DefIndex := DefinitionIndexById(PtrUInt(Combo.Items.Objects[Combo.ItemIndex]));
@@ -598,5 +612,13 @@ begin
     Form.Free;
   end;
 end;
+
+procedure TFrmStatusCatalog.AfterConstruction;
+begin
+  inherited AfterConstruction;
+  ApplyDialogStyle(Self);
+  StyleControl(FInfoLabel, uirHint);
+end;
+
 
 end.

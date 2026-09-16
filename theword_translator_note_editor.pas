@@ -6,7 +6,7 @@ unit theword_translator_note_editor;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, Types, KMemo,
+  ui_style, Classes, SysUtils, Forms, Controls, Graphics, Types, KMemo,
   theword_ont_codec_v2;
 
 type
@@ -43,6 +43,7 @@ type
     FMemo: TKMemo;
   public
     constructor Create(AOwner: TComponent); override;
+    procedure AfterConstruction; override;
     procedure ShowNote(const ABodyRaw: UnicodeString;
       const AAnchorScreenRect: TRect);
     procedure HidePreview;
@@ -293,6 +294,7 @@ type
     function SyncRawToVisual(AShowError: Boolean): Boolean;
   public
     constructor Create(AOwner: TComponent); override;
+    procedure AfterConstruction; override;
     procedure LoadNote(AExisting: Boolean;
       ACapability: TTheWordLayerCapability; const AQ,
       ABodyRaw: UnicodeString);
@@ -710,20 +712,35 @@ end;
 constructor TTranslatorNotePreviewWindow.Create(AOwner: TComponent);
 begin
   inherited CreateNew(AOwner, 0);
+  ApplyFormStyle(Self);
   BorderStyle := bsNone;
   FormStyle := fsStayOnTop;
   ShowInTaskBar := stNever;
-  Color := clInfoBk;
-  Width := 420;
-  Height := 140;
+  Color := UISurfaceColor;
+  ClientWidth := 440;
+  ClientHeight := 160;
   FMemo := theword_translator_note_preview.TTranslatorNoteBodyView.Create(
     Self);
+  FMemo.ParentFont := False;
   FMemo.Parent := Self;
+  FMemo.BorderSpacing.Around := 8;
   FMemo.Align := alClient;
   FMemo.ReadOnly := True;
   FMemo.BorderStyle := bsSingle;
-  FMemo.Background.Color := clInfoBk;
+  FMemo.Background.Color := UIContentColor;
   FMemo.ScrollBars := ssAutoVertical;
+end;
+
+procedure TTranslatorNotePreviewWindow.AfterConstruction;
+begin
+  inherited AfterConstruction;
+  ApplyDialogStyle(Self);
+end;
+
+procedure TTranslatorNoteEditorForm.AfterConstruction;
+begin
+  inherited AfterConstruction;
+  ApplyDialogStyle(Self);
 end;
 
 procedure TTranslatorNotePreviewWindow.ShowNote(
@@ -775,19 +792,20 @@ var
     Result.ShowHint := True;
     Result.Flat := True;
     Result.OnClick := AHandler;
-    Result.SetBounds(X, 38, 30, 28);
-    Inc(X, 32);
+    Result.SetBounds(X, 56, 32, 32);
+    Inc(X, 40);
   end;
 
 begin
   inherited CreateNew(AOwner, 0);
+  ApplyFormStyle(Self);
   Caption := STranslatorNoteTitle;
   BorderStyle := bsSizeable;
   Position := poDesigned;
-  Width := 780;
-  Height := 430;
-  Constraints.MinWidth := 680;
-  Constraints.MinHeight := 320;
+  ClientWidth := 920;
+  ClientHeight := 560;
+  Constraints.MinWidth := 920;
+  Constraints.MinHeight := 440;
   KeyPreview := True;
   OnKeyDown := @FormKeyDown;
   OnShow := @FormShow;
@@ -795,24 +813,24 @@ begin
   FToolbar := TPanel.Create(Self);
   FToolbar.Parent := Self;
   FToolbar.Align := alTop;
-  FToolbar.Height := 72;
+  FToolbar.Height := 104;
   FToolbar.BevelOuter := bvNone;
   FToolbar.ParentColor := True;
 
   FAutoMarker := TCheckBox.Create(Self);
   FAutoMarker.Parent := FToolbar;
   FAutoMarker.Caption := SAutomaticMarker;
-  FAutoMarker.SetBounds(8, 8, 145, 24);
+  FAutoMarker.SetBounds(16, 16, 200, 24);
   FAutoMarker.OnChange := @AutoMarkerChanged;
   MarkerLabel := TLabel.Create(Self);
   MarkerLabel.Parent := FToolbar;
   MarkerLabel.Caption := SCustomMarker;
-  MarkerLabel.SetBounds(164, 11, 62, 20);
+  MarkerLabel.SetBounds(232, 18, 128, 24);
   FCustomMarker := TEdit.Create(Self);
   FCustomMarker.Parent := FToolbar;
-  FCustomMarker.SetBounds(230, 7, 130, 26);
+  FCustomMarker.SetBounds(376, 16, 144, 28);
 
-  X := 8;
+  X := 16;
   FBoldButton := NewFormatButton(SBoldLabel, SBoldHint, @BoldClick);
   FBoldButton.Font.Style := [fsBold];
   FItalicButton := NewFormatButton(SItalicLabel, SItalicHint, @ItalicClick);
@@ -841,9 +859,9 @@ begin
   FFontName.Parent := FToolbar;
   FFontName.Items.Assign(Screen.Fonts);
   FFontName.Style := csDropDownList;
-  FFontName.SetBounds(X + 4, 39, 118, 26);
+  FFontName.SetBounds(X, 58, 144, 28);
   FFontName.OnChange := @FontButtonClick;
-  Inc(X, 126);
+  Inc(X, 152);
   FFontSize := TSpinEdit.Create(Self);
   FFontSize.Parent := FToolbar;
   FFontSize.MinValue := -4;
@@ -851,18 +869,18 @@ begin
   FFontSize.Value := 0;
   FFontSize.Hint := SRelativeFontSizeHint;
   FFontSize.ShowHint := True;
-  FFontSize.SetBounds(X, 39, 52, 26);
+  FFontSize.SetBounds(X, 58, 56, 28);
   FFontSize.OnChange := @ApplyFontSize;
-  Inc(X, 58);
+  Inc(X, 64);
   FFontColor := TColorBox.Create(Self);
   FFontColor.Parent := FToolbar;
   FFontColor.Style := [cbStandardColors, cbExtendedColors, cbCustomColor];
   FFontColor.Selected := clWindowText;
   FFontColor.Hint := STextColorHint;
   FFontColor.ShowHint := True;
-  FFontColor.SetBounds(X, 39, 76, 26);
+  FFontColor.SetBounds(X, 58, 96, 28);
   FFontColor.OnChange := @ApplyFontColor;
-  Inc(X, 82);
+  Inc(X, 104);
   FBackgroundColor := TColorBox.Create(Self);
   FBackgroundColor.Parent := FToolbar;
   FBackgroundColor.Style := [cbStandardColors, cbExtendedColors,
@@ -870,36 +888,39 @@ begin
   FBackgroundColor.Selected := clNone;
   FBackgroundColor.Hint := SBackgroundColorHint;
   FBackgroundColor.ShowHint := True;
-  FBackgroundColor.SetBounds(X, 39, 76, 26);
+  FBackgroundColor.SetBounds(X, 58, 96, 28);
   FBackgroundColor.OnChange := @ApplyBackground;
 
   BottomPanel := TPanel.Create(Self);
   BottomPanel.Parent := Self;
   BottomPanel.Align := alBottom;
-  BottomPanel.Height := 46;
+  BottomPanel.Height := 64;
   BottomPanel.BevelOuter := bvNone;
   FDeleteButton := TButton.Create(Self);
   FDeleteButton.Parent := BottomPanel;
   FDeleteButton.Caption := SDeleteNote;
-  FDeleteButton.SetBounds(8, 9, 90, 28);
+  FDeleteButton.SetBounds(16, 16, 104, 32);
   FDeleteButton.OnClick := @DeleteClick;
   FCancelButton := TButton.Create(Self);
   FCancelButton.Parent := BottomPanel;
   FCancelButton.Caption := SCancelNote;
   FCancelButton.Anchors := [akTop, akRight];
-  FCancelButton.SetBounds(BottomPanel.Width - 196, 9, 88, 28);
+  FCancelButton.SetBounds(BottomPanel.ClientWidth - 232, 16, 104, 32);
+  FCancelButton.Cancel := True;
   FCancelButton.OnClick := @CancelClick;
   FSaveButton := TButton.Create(Self);
   FSaveButton.Parent := BottomPanel;
   FSaveButton.Caption := SSaveNote;
   FSaveButton.Default := True;
   FSaveButton.Anchors := [akTop, akRight];
-  FSaveButton.SetBounds(BottomPanel.Width - 100, 9, 88, 28);
+  FSaveButton.SetBounds(BottomPanel.ClientWidth - 120, 16, 104, 32);
   FSaveButton.OnClick := @SaveClick;
 
   FPageControl := TPageControl.Create(Self);
   FPageControl.Parent := Self;
   FPageControl.Align := alClient;
+  FPageControl.BorderSpacing.Left := 16;
+  FPageControl.BorderSpacing.Right := 16;
   FPageControl.OnChange := @PageChanged;
   FVisualPage := TTabSheet.Create(Self);
   FVisualPage.PageControl := FPageControl;
@@ -911,6 +932,7 @@ begin
   FMemo := TTranslatorNoteEditorMemo.Create(Self);
   FMemo.TextStyle.AllowBrush := False;
   FMemo.TextStyle.Brush.Style := bsClear;
+  FMemo.ParentFont := False;
   FMemo.Parent := FVisualPage;
   FMemo.Align := alClient;
   FMemo.ScrollBars := ssAutoVertical;
@@ -977,9 +999,9 @@ begin
     if (FToolbar.Controls[Index] <> FAutoMarker) and
        (FToolbar.Controls[Index] <> FParagraphLabel) and
        (FToolbar.Controls[Index] <> FCustomMarker) and
-       (FToolbar.Controls[Index].Top >= 38) then
-      FToolbar.Controls[Index].Top := FToolbar.Controls[Index].Top - 31;
-  FToolbar.Height := 41;
+       (FToolbar.Controls[Index].Top >= UIScale(Self, 56)) then
+      FToolbar.Controls[Index].Top := FToolbar.Controls[Index].Top - UIScale(Self, 48);
+  FToolbar.Height := UIScale(Self, 56);
 end;
 
 procedure TTranslatorNoteEditorForm.FocusBodyEditor;

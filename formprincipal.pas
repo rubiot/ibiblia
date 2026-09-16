@@ -9,15 +9,14 @@ interface
 uses
   {$IFDEF WINDOWS}
   windows, twAutomate, TwSyncThread, fileassociation, ShellApi,
-  {$ELSE}
-  lclintf,
   {$ENDIF}
-  Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, Menus,
+  Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, Menus, LCLIntf,
   ActnList, ComCtrls, ExtCtrls, StdCtrls, BibleScope, Project, IniFiles, Math,
   Syntagm, LCLTranslator, unitabout, PCRE, Verse, LCLProc, LazLogger,
   LCLType, LazUTF8, ChapterView, UnitPleaseWait, CommentsView, ONTTokenizer,
   status_catalog, SynEdit, project_setup_model, translation_memory_model,
-  project_creation_staging;
+  project_creation_staging, FormApplicationPreferences, theword_sync_state,
+  ui_icons, ui_style;
 
 type
   { TMainForm }
@@ -59,7 +58,6 @@ type
     ActionNewProject: TAction;
     ActionList1: TActionList;
     ImageList1: TImageList;
-    ImageList64x64: TImageList;
     ImageListTreeView: TImageList;
     MainMenu1: TMainMenu;
     CommentsMemo: TMemo;
@@ -151,6 +149,9 @@ type
     ToolButtonHistoryBack: TToolButton;
     ToolButtonHistoryForward: TToolButton;
     ToolButtonHistorySeparator: TToolButton;
+    ToolButtonProjectSeparator: TToolButton;
+    ToolButtonAssociationSeparator: TToolButton;
+    ToolButtonSyncSeparator: TToolButton;
     ToolButton2: TToolButton;
     ToolButton3: TToolButton;
     ToolButton4: TToolButton;
@@ -233,8 +234,16 @@ type
     FActualCommentsMemo: TCommentsView; // The current comments view component
     FCommentsGroupBox: TGroupBox;
     FPopupTrigger: TPopupTrigger;
+    FAutoSaveEnabled: Boolean;
+    FBoldStrongsEnabled: Boolean;
+    FAlwaysOnTopEnabled: Boolean;
+    FLegacyAutomaticSuggestion: Boolean;
     FCurrentRef: string;
     FChapterView: TChapterView;
+    FChapterViewHostPanel: TPanel;
+    FMemoryOrderPanel: TPanel;
+    FMemoryOrderLabel: TLabel;
+    FMemoryOrderCombo: TComboBox;
     FTranslationMemoryOrder: TTranslationMemoryOrder;
     FTranslationMemoryOrderMenu: TMenuItem;
     FTranslationMemoryVerseOrderItem: TMenuItem;
@@ -243,6 +252,25 @@ type
     FDefaultVerseModeMenu: TMenuItem;
     FDefaultVerseModeAssociationItem: TMenuItem;
     FDefaultVerseModeEditingItem: TMenuItem;
+    FActionPreferences: TAction;
+    FToolsMenu: TMenuItem;
+    FVerseInformationMenu: TMenuItem;
+    FTheWordSyncMenu: TMenuItem;
+    FDisableTheWordSyncItem: TMenuItem;
+    FViewMenuSeparator: TMenuItem;
+    FToolsMenuSeparator: TMenuItem;
+    FToolsOuterSeparator: TMenuItem;
+    FHelpMenuSeparator: TMenuItem;
+    FPreferencesMenuItem: TMenuItem;
+    FSuggestionPopupMenu: TPopupMenu;
+    FSuggestionStatisticalItem: TMenuItem;
+    FSuggestionAIItem: TMenuItem;
+    FSuggestionWorkflowItem: TMenuItem;
+    FSuggestionAIConfigItem: TMenuItem;
+    FTheWordPopupMenu: TPopupMenu;
+    FTheWordToolButton: TToolButton;
+    FMenuImages: TImageList;
+    FLayoutStateHeaderBusy: Boolean;
     FStateHeaderPanel: TPanel;
     FHeaderReferenceLabel: TLabel;
     FHeaderStatusLabel: TLabel;
@@ -271,8 +299,37 @@ type
 
     procedure SyncToTwRef(Ref: string);
     procedure SetUpSyncThread;
+    procedure StopTheWordSyncThread;
     {$ENDIF}
     procedure NormalizeActionHints;
+    procedure ApplicationPreferencesChanged(
+      const Preferences: TApplicationPreferences);
+    procedure ActionPreferencesExecute(Sender: TObject);
+    procedure BuildCommandUI;
+    procedure InitializeVisualIdentity;
+    procedure BuildSuggestionToolbarMenu;
+    procedure BuildTheWordToolbarMenu;
+    procedure CreateMemoryOrderControls;
+    procedure DisableTheWordSyncClick(Sender: TObject);
+    procedure OpenWorkflowSettingsExecute(Sender: TObject);
+    procedure PersistGlobalPreference(const Key: string;
+      const Value: Boolean); overload;
+    procedure PersistGlobalPreference(const Key, Value: string); overload;
+    procedure PersistGlobalPreference(const Key: string;
+      Value: Integer); overload;
+    procedure SetAlwaysOnTopEnabled(AEnabled: Boolean);
+    procedure SetAutoSaveEnabled(AEnabled: Boolean);
+    procedure SetBoldStrongsEnabled(AEnabled: Boolean);
+    procedure SetPopupTrigger(APopupTrigger: TPopupTrigger);
+    procedure SetStrongsCountMode(AMode: TStrongsCountMode);
+    procedure SetSuggestionMode(AMode: TSuggestionMode);
+    procedure SetTheWordSyncDirections(AIBibliaToTheWord,
+      ATheWordToIBiblia: Boolean; PushCurrentReference: Boolean = False);
+    procedure TheWordToolbarButtonClick(Sender: TObject);
+    procedure TranslationMemoryOrderComboChange(Sender: TObject);
+    procedure UpdateCommandUI;
+    procedure UpdateMemoryOrderControls;
+    procedure UpdateTheWordSyncUI;
     procedure UpdateNavigationHistoryActions;
     procedure ActionGuideModeExecute(Sender: TObject);
     function BuildKeyboardShortcutsText: string;
@@ -327,6 +384,9 @@ type
     procedure ApplyStatusReviewFilter;
     procedure DoOpenProject(filename: string);
     procedure CheckFileAssociation;
+  protected
+    procedure DoAutoAdjustLayout(const AMode: TLayoutAdjustmentPolicy;
+      const AXProportion, AYProportion: Double); override;
   public
     { public declarations }
     language: string;
@@ -365,7 +425,7 @@ resourcestring
   SReference2Text = 'Reference2';
   SInterlinearText = 'Interlinear';
   SMemoryText = 'Memory';
-  STranslationMemoryOrderMenu = 'Translation memory order';
+  STranslationMemoryOrderMenu = '&Sort by:';
   STranslationMemoryVerseOrder = 'Verse order';
   STranslationMemoryRareFirst = 'Least frequent first';
   SDefaultVerseModeMenu = 'Default verse mode';
@@ -384,13 +444,13 @@ resourcestring
                                            'Do you want to take over the association for iBiblia?';
   SRegisterFileAssociationAdminRetry = 'Failed to register file association. This operation requires administrator rights.'#13#10 +
                                        'Do you want to retry as administrator?';
-  SSuggestionMode = 'Suggestion mode';
+  SSuggestionMode = 'Suggestion method';
   SStatisticalSuggestion = 'Statistical model';
   SAISuggestion = 'AI-assisted (experimental)';
   SStatisticalSuggestionHint = 'Use the traditional statistical suggestion engine';
   SAISuggestionHint = 'Use the new AI-assisted suggestion engine (requires internet)';
-  SLLMOptionsMenu = 'LLM options...';
-  SGuideModeMenu = 'Guide mode';
+  SLLMOptionsMenu = 'AI &configuration for this project...';
+  SGuideModeMenu = '&Contextual guide';
   SGuideModeHint = 'Show contextual guidance for the main workflow';
   SHideGuideButton = 'Hide guide';
   SGuideNoProjectTitle = 'Guide: start a project';
@@ -407,7 +467,7 @@ resourcestring
   SGuideAssociationExistingRemoveText = 'To remove words from the association, press Ctrl+Shift and click the word.';
   SGuideTranslationTitle = 'Guide: translate the verse';
   SGuideTranslationText = 'Double-click an empty area in Destination to write the translation. Use Save to apply or Cancel to discard; Esc also saves and closes. Once Destination has text, the guide will switch to association.';
-  SKeyboardShortcutsMenu = 'Keyboard shortcuts...';
+  SKeyboardShortcutsMenu = '&Keyboard shortcuts...';
   SKeyboardShortcutsHint = 'Show keyboard shortcuts';
   SKeyboardShortcutsTitle = 'Keyboard shortcuts';
   SShortcutProjectSection = 'Project';
@@ -451,13 +511,65 @@ resourcestring
   SHeaderAssociationsEmpty = 'Associations: -';
   SHeaderSelectionFmt = 'Selection: source %d, destination %d';
   SHeaderSelectionNone = 'Selection: none';
-  SHeaderEngineFmt = 'Engine: %s';
+  SHeaderEngineFmt = 'Method: %s';
   SHeaderEngineStatistical = 'Statistical';
-  SHeaderEngineAI = 'AI-assisted';
+  SHeaderEngineAI = 'AI';
+  SHeaderEngineAutomatic = 'automatic';
+  SHeaderEngineAIConfigurationPending = 'configuration pending';
   SHeaderSaved = 'Saved';
   SHeaderUnsavedChanges = 'Unsaved changes';
-  SResetLayoutMenu = 'Reset layout';
+  SResetLayoutMenu = '&Restore panel arrangement';
   SResetLayoutHint = 'Restore the default panel layout';
+  SProjectMenu = '&Project';
+  SEditMenu = '&Edit';
+  SNavigationMenu = '&Navigation';
+  SHelpMenu = '&Help';
+  SNewProjectMenu = '&New...';
+  SOpenProjectMenu = '&Open...';
+  SOpenRecentMenu = 'Open &recent';
+  SSaveProjectMenu = '&Save';
+  SSaveProjectAsMenu = 'Save &as...';
+  SCloseProjectMenu = '&Close';
+  SProjectSettingsMenu = 'Project &settings...';
+  SExportProjectMenu = '&Export project...';
+  SCreatePatchMenu = 'Create &patch...';
+  SApplyPatchMenu = '&Apply patch...';
+  SMaintenanceMenu = '&Maintenance';
+  SCompactProjectMenu = '&Compact project database';
+  SRebuildAssociationMemoryMenu = '&Recreate association memory';
+  SExitMenu = 'E&xit';
+  SPreviousVerseMenu = '&Previous verse';
+  SNextVerseMenu = '&Next verse';
+  SFirstVerseMenu = '&First verse';
+  SLastVerseMenu = '&Last verse';
+  SAboutMenu = '&About...';
+  SViewMenu = '&View';
+  SVerseInformationMenu = 'Verse &information';
+  SStrongsCountMenu = 'Strong tag count';
+  SStrongsCountNone = 'Hide';
+  SStrongsCountWords = 'Count words';
+  SStrongsCountTags = 'Count tags';
+  SBoldStrongsMenu = 'Highlight words with Strong in bold';
+  SAlwaysOnTopMenu = '&Keep window always on top';
+  SToolsMenu = '&Tools';
+  STheWordSynchronizationMenu = '&Synchronization with theWord';
+  SSyncIBibliaToTheWord = 'iBiblia → theWord';
+  SSyncTheWordToIBiblia = 'theWord → iBiblia';
+  SDisableBothSyncDirections = 'Disable both';
+  STheWordEditorAppearance = 'theWord editor appearance...';
+  SPreferencesMenu = 'iBiblia &preferences...';
+  STheWordStateOff = 'theWord synchronization: off';
+  STheWordStateOutbound = 'theWord synchronization: iBiblia → theWord';
+  STheWordStateInbound = 'theWord synchronization: theWord → iBiblia';
+  STheWordStateBidirectional = 'theWord synchronization: bidirectional';
+  SSuggestionToolbarStatistical = 'Statistical';
+  SSuggestionToolbarAI = 'AI';
+  SSuggestionToolbarWorkflow = 'Configure &workflow...';
+  SSuggestAssociationCaption = 'Suggest association';
+  SSuggestAssociationHint = 'Suggest associations for the current verse';
+  SAIConfigurationPendingTitle = 'AI configuration pending';
+  SAIConfigurationPendingText = 'Configure AI for this project before using AI suggestions.';
+  SConfigureAIButton = 'Configure AI...';
   SPanelLabelSource = 'Source';
   SPanelLabelDestination = 'Destination';
   SPanelLabelReference1 = 'Reference 1';
@@ -478,6 +590,34 @@ uses FormNewProject, FormProjectProperties, FormProjectExport, FormMergeProjects
   llmclient, theword_syntax_highlighter, translation_memory_preview;
 
 {$R *.lfm}
+
+type
+  TOverflowLabel = class(TLabel)
+  protected
+    procedure Paint; override;
+  end;
+
+procedure TOverflowLabel.Paint;
+var
+  TextStyle: TTextStyle;
+begin
+  Canvas.Font.Assign(Font);
+  if not Enabled then Canvas.Font.Color := clGrayText;
+  if not Transparent then
+  begin
+    Canvas.Brush.Color := Color;
+    Canvas.FillRect(ClientRect);
+  end;
+  Canvas.Brush.Style := bsClear;
+  TextStyle := Canvas.TextStyle;
+  TextStyle.Alignment := Alignment;
+  TextStyle.Layout := Layout;
+  TextStyle.SingleLine := True;
+  TextStyle.Clipping := True;
+  TextStyle.ShowPrefix := False;
+  TextStyle.EndEllipsis := True;
+  Canvas.TextRect(ClientRect, 0, 0, Caption, TextStyle);
+end;
 
 {$IFDEF WINDOWS}
 {------------------------------------------------------------------------------}
@@ -645,6 +785,575 @@ begin
   RadioGroupStatus.ShowHint := True;
 end;
 
+procedure TMainForm.PersistGlobalPreference(const Key: string;
+  const Value: Boolean);
+begin
+  if Assigned(opts) then
+  begin
+    opts.WriteBool('opcoes', Key, Value);
+    opts.UpdateFile;
+  end;
+end;
+
+procedure TMainForm.PersistGlobalPreference(const Key, Value: string);
+begin
+  if Assigned(opts) then
+  begin
+    opts.WriteString('opcoes', Key, Value);
+    opts.UpdateFile;
+  end;
+end;
+
+procedure TMainForm.PersistGlobalPreference(const Key: string;
+  Value: Integer);
+begin
+  if Assigned(opts) then
+  begin
+    opts.WriteInteger('opcoes', Key, Value);
+    opts.UpdateFile;
+  end;
+end;
+
+procedure TMainForm.SetAlwaysOnTopEnabled(AEnabled: Boolean);
+begin
+  FAlwaysOnTopEnabled := AEnabled;
+  MenuItemAlwaysOnTop.Checked := FAlwaysOnTopEnabled;
+  if FAlwaysOnTopEnabled then
+    FormStyle := fsSystemStayOnTop
+  else
+    FormStyle := fsNormal;
+  PersistGlobalPreference('alwaysontop', FAlwaysOnTopEnabled);
+end;
+
+procedure TMainForm.SetAutoSaveEnabled(AEnabled: Boolean);
+begin
+  FAutoSaveEnabled := AEnabled;
+  MenuItemAutoSave.Checked := FAutoSaveEnabled;
+  if Assigned(CurrentProject) then
+    CurrentProject.AutoSave := FAutoSaveEnabled;
+  PersistGlobalPreference('auto.save', FAutoSaveEnabled);
+end;
+
+procedure TMainForm.SetBoldStrongsEnabled(AEnabled: Boolean);
+begin
+  FBoldStrongsEnabled := AEnabled;
+  MenuItemBoldStrongs.Checked := FBoldStrongsEnabled;
+  if Assigned(CurrentProject) then
+    CurrentProject.PalavrasComStrongEmNegrito := FBoldStrongsEnabled;
+  PersistGlobalPreference('boldstrongs', FBoldStrongsEnabled);
+end;
+
+procedure TMainForm.SetPopupTrigger(APopupTrigger: TPopupTrigger);
+var
+  Index: Integer;
+begin
+  FPopupTrigger := APopupTrigger;
+  for Index := 0 to MenuItemDictPopup.Count - 1 do
+    MenuItemDictPopup.Items[Index].Checked :=
+      Index = Ord(FPopupTrigger);
+  if Assigned(CurrentProject) then
+    CurrentProject.PopupTrigger := FPopupTrigger;
+  PersistGlobalPreference('popuptrigger', Ord(FPopupTrigger));
+end;
+
+procedure TMainForm.SetStrongsCountMode(AMode: TStrongsCountMode);
+var
+  Index: Integer;
+begin
+  FStrongsCountMode := AMode;
+  for Index := 0 to MenuItemStrongsCount.Count - 1 do
+    MenuItemStrongsCount.Items[Index].Checked :=
+      MenuItemStrongsCount.Items[Index].Tag = Ord(FStrongsCountMode);
+  if Assigned(CurrentProject) then
+    CurrentProject.MostrarQtdStrongs := FStrongsCountMode;
+  PersistGlobalPreference('strongscountmode', Ord(FStrongsCountMode));
+end;
+
+procedure TMainForm.SetSuggestionMode(AMode: TSuggestionMode);
+begin
+  if Assigned(CurrentProject) then
+    CurrentProject.SuggestionMode := AMode;
+  UpdateCommandUI;
+  UpdateStateHeader;
+end;
+
+procedure TMainForm.SetTheWordSyncDirections(AIBibliaToTheWord,
+  ATheWordToIBiblia: Boolean; PushCurrentReference: Boolean);
+begin
+  {$IFDEF WINDOWS}
+  FSyncTheWordToIBiblia := AIBibliaToTheWord;
+  FSyncIBibliaToTheWord := ATheWordToIBiblia;
+  if Assigned(opts) then
+  begin
+    WriteTheWordSyncState(opts, ResolveTheWordSyncState(
+      FSyncTheWordToIBiblia, FSyncIBibliaToTheWord));
+    opts.UpdateFile;
+  end;
+  SetUpSyncThread;
+  if PushCurrentReference and FSyncTheWordToIBiblia and
+     Assigned(CurrentProject) then
+    ActionSyncTheWordVerseExecute(Self);
+  {$ENDIF}
+  UpdateTheWordSyncUI;
+end;
+
+procedure TMainForm.ApplicationPreferencesChanged(
+  const Preferences: TApplicationPreferences);
+begin
+  if not SameText(language, Preferences.Language) then
+  begin
+    language := Preferences.Language;
+    PersistGlobalPreference('language', language);
+    SetDefaultLang(language);
+    Translate;
+  end;
+  SetPopupTrigger(Preferences.PopupTrigger);
+  SetAutoSaveEnabled(Preferences.AutoSave);
+  if GetAppIconFamily <> Preferences.IconFamily then
+  begin
+    SetAppIconFamily(Preferences.IconFamily);
+    PersistGlobalPreference('ui.icon.family',
+      AppIconFamilyId(Preferences.IconFamily));
+  end;
+  UpdateCommandUI;
+end;
+
+procedure TMainForm.ActionPreferencesExecute(Sender: TObject);
+var
+  Preferences: TApplicationPreferences;
+begin
+  Preferences.Language := language;
+  Preferences.PopupTrigger := FPopupTrigger;
+  Preferences.AutoSave := FAutoSaveEnabled;
+  Preferences.IconFamily := GetAppIconFamily;
+  TFrmApplicationPreferences.Execute(Self, Preferences,
+    @ApplicationPreferencesChanged);
+end;
+
+procedure TMainForm.DisableTheWordSyncClick(Sender: TObject);
+begin
+  SetTheWordSyncDirections(False, False);
+end;
+
+procedure TMainForm.TheWordToolbarButtonClick(Sender: TObject);
+var
+  PopupPoint: TPoint;
+begin
+  if not Assigned(FTheWordPopupMenu) or
+     not Assigned(FTheWordToolButton) then
+    Exit;
+  PopupPoint := FTheWordToolButton.ClientToScreen(
+    Point(0, FTheWordToolButton.Height));
+  FTheWordPopupMenu.PopUp(PopupPoint.X, PopupPoint.Y);
+end;
+
+procedure TMainForm.OpenWorkflowSettingsExecute(Sender: TObject);
+begin
+  if not Assigned(CurrentProject) then
+    Exit;
+  FrmProjectProperties.SetProject(CurrentProject);
+  FrmProjectProperties.SelectWorkflowTab;
+  if FrmProjectProperties.ShowModal = mrOK then
+  begin
+    FrmProjectProperties.ApplyChanges(Self);
+    ActionNewVerse.Execute;
+    UpdateStatusReviewPanel;
+    LayoutVersePanelLabels;
+  end;
+  UpdateCommandUI;
+  UpdateStateHeader;
+end;
+
+procedure TMainForm.BuildSuggestionToolbarMenu;
+var
+  SeparatorItem: TMenuItem;
+begin
+  FSuggestionPopupMenu := TPopupMenu.Create(Self);
+
+  FSuggestionStatisticalItem := TMenuItem.Create(FSuggestionPopupMenu);
+  FSuggestionStatisticalItem.RadioItem := True;
+  FSuggestionStatisticalItem.GroupIndex := 1;
+  FSuggestionStatisticalItem.AutoCheck := False;
+  FSuggestionStatisticalItem.OnClick := @MenuItemStatisticalSuggestionClick;
+  FSuggestionPopupMenu.Items.Add(FSuggestionStatisticalItem);
+
+  FSuggestionAIItem := TMenuItem.Create(FSuggestionPopupMenu);
+  FSuggestionAIItem.RadioItem := True;
+  FSuggestionAIItem.GroupIndex := 1;
+  FSuggestionAIItem.AutoCheck := False;
+  FSuggestionAIItem.OnClick := @MenuItemAISuggestionClick;
+  FSuggestionPopupMenu.Items.Add(FSuggestionAIItem);
+
+  SeparatorItem := TMenuItem.Create(FSuggestionPopupMenu);
+  SeparatorItem.Caption := '-';
+  FSuggestionPopupMenu.Items.Add(SeparatorItem);
+
+  FSuggestionWorkflowItem := TMenuItem.Create(FSuggestionPopupMenu);
+  FSuggestionWorkflowItem.OnClick := @OpenWorkflowSettingsExecute;
+  FSuggestionPopupMenu.Items.Add(FSuggestionWorkflowItem);
+
+  FSuggestionAIConfigItem := TMenuItem.Create(FSuggestionPopupMenu);
+  FSuggestionAIConfigItem.Action := ActionLlmOptions;
+  FSuggestionPopupMenu.Items.Add(FSuggestionAIConfigItem);
+
+  ToolButton6.Style := tbsDropDown;
+  ToolButton6.DropdownMenu := FSuggestionPopupMenu;
+end;
+
+procedure TMainForm.BuildTheWordToolbarMenu;
+var
+  Item: TMenuItem;
+  ButtonIndex: Integer;
+begin
+  FTheWordPopupMenu := TPopupMenu.Create(Self);
+
+  Item := TMenuItem.Create(FTheWordPopupMenu);
+  Item.Tag := 1;
+  Item.OnClick := @MenuItemSyncTheWordClick;
+  FTheWordPopupMenu.Items.Add(Item);
+
+  Item := TMenuItem.Create(FTheWordPopupMenu);
+  Item.Tag := 2;
+  Item.OnClick := @MenuItemSynciBibliaClick;
+  FTheWordPopupMenu.Items.Add(Item);
+
+  Item := TMenuItem.Create(FTheWordPopupMenu);
+  Item.Caption := '-';
+  FTheWordPopupMenu.Items.Add(Item);
+
+  Item := TMenuItem.Create(FTheWordPopupMenu);
+  Item.Tag := 3;
+  Item.OnClick := @DisableTheWordSyncClick;
+  FTheWordPopupMenu.Items.Add(Item);
+
+  FTheWordToolButton := TToolButton.Create(ToolBar1);
+  FTheWordToolButton.Parent := ToolBar1;
+  FTheWordToolButton.Left := ToolButtonSyncSeparator.Left + ToolButtonSyncSeparator.Width;
+  FTheWordToolButton.Top := ToolButtonSyncSeparator.Top;
+  FTheWordToolButton.Style := tbsDropDown;
+  FTheWordToolButton.DropdownMenu := FTheWordPopupMenu;
+  FTheWordToolButton.ImageIndex := AppIconIndex(aiSyncThewordVerse);
+  FTheWordToolButton.ShowHint := True;
+  FTheWordToolButton.OnClick := @TheWordToolbarButtonClick;
+
+  { Keep the established icon-only toolbar compact while making this stateful
+    integration button readable without relying on color or a tooltip. }
+  ToolBar1.List := True;
+  ToolBar1.ShowCaptions := True;
+  for ButtonIndex := 0 to ToolBar1.ButtonCount - 1 do
+    ToolBar1.Buttons[ButtonIndex].ShowCaption := False;
+  FTheWordToolButton.ShowCaption := True;
+  FTheWordToolButton.AutoSize := True;
+end;
+
+procedure TMainForm.DoAutoAdjustLayout(const AMode: TLayoutAdjustmentPolicy;
+  const AXProportion, AYProportion: Double);
+begin
+  inherited DoAutoAdjustLayout(AMode, AXProportion, AYProportion);
+  if not Assigned(FMenuImages) then Exit;
+  ToolBar1.ButtonHeight := UIScale(Self, 40);
+  ToolBar1.ButtonWidth := UIScale(Self, 40);
+  TreeView1.DefaultItemHeight := UIScale(Self, 24);
+  FStatusReviewList.ItemHeight := UIScale(Self, 24);
+  RadioGroupStatus.ItemHeight := UIScale(Self, 24);
+  LayoutStateHeader;
+  LayoutGuidePanel;
+  LayoutVersePanelLabels;
+end;
+
+procedure TMainForm.InitializeVisualIdentity;
+var
+  TextType: TTipoTextoBiblico;
+
+  procedure AssignIcon(AAction: TCustomAction; AIcon: TAppIcon);
+  begin
+    if Assigned(AAction) then
+      AAction.ImageIndex := AppIconIndex(AIcon);
+  end;
+
+begin
+  LoadApplicationIcon(Icon);
+  Application.Icon.Assign(Icon);
+  PopulateAppImageList(ImageList1, 32);
+  FMenuImages := TImageList.Create(Self);
+  PopulateAppImageList(FMenuImages, 16);
+  ActionList1.Images := FMenuImages;
+  MainMenu1.Images := FMenuImages;
+  ToolBar1.Images := ImageList1;
+  ToolBar1.ImagesWidth := 32;
+  ToolBar1.ButtonHeight := UIScale(Self, 40);
+  ToolBar1.ButtonWidth := UIScale(Self, 40);
+  ToolBar1.Wrapable := True;
+  ToolBar1.EdgeBorders := [];
+  ToolBar1.BorderSpacing.Left := UIScale(Self, 8);
+  ToolBar1.BorderSpacing.Right := UIScale(Self, 8);
+  ToolBar1.BorderSpacing.Top := UIScale(Self, 4);
+  ToolBar1.BorderSpacing.Bottom := UIScale(Self, 4);
+  AssignIcon(ActionNewProject, aiProjectNew);
+  AssignIcon(ActionOpenProject, aiProjectOpen);
+  AssignIcon(ActionSaveProject, aiProjectSave);
+  AssignIcon(ActionSaveProjectAs, aiProjectSaveAs);
+  AssignIcon(ActionCloseProject, aiProjectClose);
+  AssignIcon(ActionExit, aiAppExit);
+  ToolButtonExit.ImageIndex := AppIconIndex(aiAppExit);
+  AssignIcon(ActionProjectProperties, aiProjectSettings);
+  AssignIcon(ActionExportProject, aiProjectExport);
+  AssignIcon(ActionExportDestinationWithStrongs, aiExportDestinationStrongs);
+  AssignIcon(ActionExportInterlinearText, aiExportInterlinear);
+  AssignIcon(ActionSuggestAssociation, aiAssociationAuto);
+  AssignIcon(ActionClearAssociations, aiAssociationClear);
+  AssignIcon(ActionRollbackCurrentVerse, aiAssociationRollback);
+  AssignIcon(ActionHistoryBack, aiHistoryBack);
+  AssignIcon(ActionHistoryForward, aiHistoryForward);
+  AssignIcon(ActionPreviousVerse, aiVersePrevious);
+  AssignIcon(ActionNextVerse, aiVerseNext);
+  AssignIcon(ActionFirstVerse, aiVerseFirst);
+  AssignIcon(ActionLastVerse, aiVerseLast);
+  AssignIcon(ActionMergeProjects, aiProjectsMerge);
+  AssignIcon(ActionRebuildSuggestionDatabase, aiAssociationMemoryRebuild);
+  AssignIcon(ActionSyncTheWordVerse, aiSyncThewordVerse);
+  AssignIcon(ActionShowTags, aiTagsShow);
+  AssignIcon(ActionNewVerse, aiTextLoad);
+  AssignIcon(ActionExportPatch, aiPatchCreate);
+  AssignIcon(ActionApplyPatch, aiPatchApply);
+  AssignIcon(ActionVaccumProject, aiDatabaseVacuum);
+  AssignIcon(ActionKeyboardShortcuts, aiKeyboardShortcuts);
+  AssignIcon(ActionResetLayout, aiLayoutReset);
+  AssignIcon(ActionGuideMode, aiGuideMode);
+  AssignIcon(ActionLlmOptions, aiLlmOptions);
+  AssignIcon(FActionPreferences, aiPreferences);
+  AssignIcon(ActionTheWordHighlighterColors, aiThewordHighlighterColors);
+  AssignIcon(ActionRegisterFileAssociation, aiFileAssociationRegister);
+  AssignIcon(ActionUnregisterFileAssociation, aiFileAssociationUnregister);
+  MenuItemAbout.ImageIndex := AppIconIndex(aiAbout);
+  FSuggestionPopupMenu.Images := FMenuImages;
+  FSuggestionStatisticalItem.ImageIndex := AppIconIndex(aiAssociationAuto);
+  FSuggestionAIItem.ImageIndex := AppIconIndex(aiLlmOptions);
+  FSuggestionWorkflowItem.ImageIndex := AppIconIndex(aiProjectSettings);
+  FTheWordPopupMenu.Images := FMenuImages;
+  FTheWordPopupMenu.Items[0].ImageIndex := AppIconIndex(aiSyncThewordVerse);
+  FTheWordPopupMenu.Items[1].ImageIndex := AppIconIndex(aiSyncThewordVerse);
+  FTheWordSyncMenu.ImageIndex := AppIconIndex(aiSyncThewordVerse);
+
+  StyleControl(Panel1, uirSurface);
+  StyleControl(NavigationPanel, uirSurface);
+  StyleControl(CenterPanel, uirSurface);
+  StyleControl(ContextPanel, uirSurface);
+  StyleControl(BottomPanel, uirSurface);
+  StyleControl(TreeLegendPanel, uirSurface);
+  StyleControl(FStateHeaderPanel, uirSurface);
+  StyleControl(FGuidePanel, uirSurface);
+  StyleControl(FMemoryOrderPanel, uirSurface);
+  StyleControl(FChapterViewHostPanel, uirContent);
+  StyleControl(FGuideTitleLabel, uirSectionTitle);
+  StyleControl(FGuideHideButton, uirButton);
+  StyleControl(FStatusReviewResetButton, uirButton);
+  StyleControl(TreeView1, uirContent);
+  TreeView1.BorderStyle := bsNone;
+  TreeView1.DefaultItemHeight := UIScale(Self, 24);
+  TreeView1.BorderSpacing.Around := UIScale(Self, 4);
+  TreeLegendPanel.BorderSpacing.Around := UIScale(Self, 8);
+  StyleControl(FStatusReviewList, uirContent);
+  FStatusReviewList.ParentColor := False;
+  FStatusReviewList.Font.Color := UITextColor;
+  FStatusReviewList.ItemHeight := UIScale(Self, 24);
+  FStatusReviewResetButton.Height := UIScale(Self, 32);
+  RadioGroupStatus.ItemHeight := UIScale(Self, 24);
+  for TextType := tbOrigem to tbConsulta2 do
+    StyleControl(FVersePanelLabels[TextType], uirSurface);
+  LayoutStateHeader;
+  LayoutGuidePanel;
+  LayoutVersePanelLabels;
+end;
+
+procedure TMainForm.BuildCommandUI;
+begin
+  ActionProjectProperties.Caption := SProjectSettingsMenu;
+  ActionSuggestAssociation.Caption := SSuggestAssociationCaption;
+  ActionSuggestAssociation.Hint := SSuggestAssociationHint;
+
+  while MenuItem20.Count > 0 do
+    MenuItem20.Remove(MenuItem20.Items[0]);
+  MenuItem20.Caption := SViewMenu;
+
+  FVerseInformationMenu := TMenuItem.Create(MainMenu1);
+  FVerseInformationMenu.Add(MenuItemStrongsCount);
+  FVerseInformationMenu.Add(MenuItemBoldStrongs);
+  MenuItem20.Add(FVerseInformationMenu);
+  MenuItem20.Add(MenuItemAlwaysOnTop);
+  FViewMenuSeparator := TMenuItem.Create(MainMenu1);
+  FViewMenuSeparator.Caption := '-';
+  MenuItem20.Add(FViewMenuSeparator);
+  MenuItem20.Add(MenuItemResetLayout);
+
+  if Assigned(MenuItemLlmOptions.Parent) then
+    MenuItemLlmOptions.Parent.Remove(MenuItemLlmOptions);
+  MenuItem1.Insert(MenuItem19.MenuIndex + 1, MenuItemLlmOptions);
+
+  FToolsMenu := TMenuItem.Create(MainMenu1);
+  MainMenu1.Items.Insert(MenuItem17.MenuIndex, FToolsMenu);
+  FTheWordSyncMenu := TMenuItem.Create(MainMenu1);
+  FTheWordSyncMenu.Add(MenuItemSyncTheWord);
+  FTheWordSyncMenu.Add(MenuItemSynciBiblia);
+  FDisableTheWordSyncItem := TMenuItem.Create(MainMenu1);
+  FDisableTheWordSyncItem.OnClick := @DisableTheWordSyncClick;
+  FTheWordSyncMenu.Add(FDisableTheWordSyncItem);
+  FToolsMenuSeparator := TMenuItem.Create(MainMenu1);
+  FToolsMenuSeparator.Caption := '-';
+  FTheWordSyncMenu.Add(FToolsMenuSeparator);
+  FTheWordSyncMenu.Add(MenuItemTheWordHighlighterColors);
+  FToolsMenu.Add(FTheWordSyncMenu);
+
+  FActionPreferences := TAction.Create(ActionList1);
+  FActionPreferences.OnExecute := @ActionPreferencesExecute;
+  FPreferencesMenuItem := TMenuItem.Create(MainMenu1);
+  FPreferencesMenuItem.Action := FActionPreferences;
+  FToolsOuterSeparator := TMenuItem.Create(MainMenu1);
+  FToolsOuterSeparator.Caption := '-';
+  FToolsMenu.Add(FToolsOuterSeparator);
+  FToolsMenu.Add(FPreferencesMenuItem);
+
+  while MenuItem17.Count > 0 do
+    MenuItem17.Remove(MenuItem17.Items[0]);
+  MenuItem17.Add(MenuItemGuideMode);
+  MenuItem17.Add(MenuItemKeyboardShortcuts);
+  FHelpMenuSeparator := TMenuItem.Create(MainMenu1);
+  FHelpMenuSeparator.Caption := '-';
+  MenuItem17.Add(FHelpMenuSeparator);
+  MenuItem17.Add(MenuItemAbout);
+
+  BuildSuggestionToolbarMenu;
+  BuildTheWordToolbarMenu;
+  UpdateCommandUI;
+end;
+
+procedure TMainForm.CreateMemoryOrderControls;
+begin
+  FMemoryOrderPanel := TPanel.Create(Self);
+  FMemoryOrderPanel.Parent := FChapterViewHostPanel;
+  FMemoryOrderPanel.Align := alTop;
+  FMemoryOrderPanel.Height := 38;
+  FMemoryOrderPanel.BevelOuter := bvNone;
+  FMemoryOrderPanel.BorderSpacing.Bottom := 4;
+  FMemoryOrderPanel.Visible := False;
+
+  FMemoryOrderLabel := TLabel.Create(Self);
+  FMemoryOrderLabel.Parent := FMemoryOrderPanel;
+  FMemoryOrderLabel.SetBounds(8, 8, 82, 24);
+  FMemoryOrderLabel.Layout := tlCenter;
+
+  FMemoryOrderCombo := TComboBox.Create(Self);
+  FMemoryOrderCombo.Parent := FMemoryOrderPanel;
+  FMemoryOrderCombo.SetBounds(94, 6, 205, 27);
+  FMemoryOrderCombo.Anchors := [akLeft, akTop, akRight];
+  FMemoryOrderCombo.Style := csDropDownList;
+  FMemoryOrderCombo.OnChange := @TranslationMemoryOrderComboChange;
+  FMemoryOrderLabel.FocusControl := FMemoryOrderCombo;
+  UpdateMemoryOrderControls;
+end;
+
+procedure TMainForm.TranslationMemoryOrderComboChange(Sender: TObject);
+begin
+  if not Assigned(FMemoryOrderCombo) then
+    Exit;
+  case FMemoryOrderCombo.ItemIndex of
+    0: FTranslationMemoryOrder := tmoVerseOccurrence;
+    1: FTranslationMemoryOrder := tmoMemoryFrequencyAscending;
+  else
+    Exit;
+  end;
+  if Assigned(FChapterView) then
+    FChapterView.TranslationMemoryOrder := FTranslationMemoryOrder;
+  PersistGlobalPreference('translation.memory.order',
+    Ord(FTranslationMemoryOrder));
+  UpdateMemoryOrderControls;
+end;
+
+procedure TMainForm.UpdateMemoryOrderControls;
+begin
+  if not Assigned(FMemoryOrderCombo) then
+    Exit;
+  FMemoryOrderLabel.Caption := STranslationMemoryOrderMenu;
+  FMemoryOrderCombo.OnChange := nil;
+  FMemoryOrderCombo.Items.BeginUpdate;
+  try
+    FMemoryOrderCombo.Items.Clear;
+    FMemoryOrderCombo.Items.Add(STranslationMemoryVerseOrder);
+    FMemoryOrderCombo.Items.Add(STranslationMemoryRareFirst);
+    FMemoryOrderCombo.ItemIndex := Ord(FTranslationMemoryOrder);
+  finally
+    FMemoryOrderCombo.Items.EndUpdate;
+    FMemoryOrderCombo.OnChange := @TranslationMemoryOrderComboChange;
+  end;
+  FMemoryOrderPanel.Visible :=
+    ChapterViewTabCtrl.TabIndex = CHAPTER_VIEW_MEMORY_TAB_INDEX;
+end;
+
+procedure TMainForm.UpdateTheWordSyncUI;
+var
+  HintText: string;
+begin
+  {$IFDEF WINDOWS}
+  MenuItemSyncTheWord.Checked := FSyncTheWordToIBiblia;
+  MenuItemSynciBiblia.Checked := FSyncIBibliaToTheWord;
+  if Assigned(FDisableTheWordSyncItem) then
+    FDisableTheWordSyncItem.Checked :=
+      not FSyncTheWordToIBiblia and not FSyncIBibliaToTheWord;
+  if Assigned(FTheWordPopupMenu) then
+  begin
+    FTheWordPopupMenu.Items[0].Checked := FSyncTheWordToIBiblia;
+    FTheWordPopupMenu.Items[1].Checked := FSyncIBibliaToTheWord;
+    FTheWordPopupMenu.Items[3].Checked :=
+      not FSyncTheWordToIBiblia and not FSyncIBibliaToTheWord;
+  end;
+  case ResolveTheWordSyncState(FSyncTheWordToIBiblia,
+      FSyncIBibliaToTheWord) of
+    twssIBibliaToTheWord:
+      HintText := STheWordStateOutbound;
+    twssTheWordToIBiblia:
+      HintText := STheWordStateInbound;
+    twssBidirectional:
+      HintText := STheWordStateBidirectional;
+    else
+      HintText := STheWordStateOff;
+  end;
+  {$ELSE}
+  HintText := STheWordStateOff;
+  {$ENDIF}
+  if Assigned(FTheWordToolButton) then
+  begin
+    FTheWordToolButton.Hint := HintText;
+    FTheWordToolButton.Caption := HintText;
+  end;
+end;
+
+procedure TMainForm.UpdateCommandUI;
+var
+  SuggestionMode: TSuggestionMode;
+begin
+  MenuItemAutoSave.Checked := FAutoSaveEnabled;
+  MenuItemBoldStrongs.Checked := FBoldStrongsEnabled;
+  MenuItemAlwaysOnTop.Checked := FAlwaysOnTopEnabled;
+
+  if Assigned(CurrentProject) then
+    SuggestionMode := CurrentProject.SuggestionMode
+  else
+    SuggestionMode := FSuggestionMode;
+  MenuItemStatisticalSuggestion.Checked :=
+    SuggestionMode = smStatistical;
+  MenuItemAISuggestion.Checked := SuggestionMode = smAI;
+  if Assigned(FSuggestionStatisticalItem) then
+  begin
+    FSuggestionStatisticalItem.Checked := SuggestionMode = smStatistical;
+    FSuggestionAIItem.Checked := SuggestionMode = smAI;
+    FSuggestionStatisticalItem.Enabled := Assigned(CurrentProject);
+    FSuggestionAIItem.Enabled := Assigned(CurrentProject);
+    FSuggestionWorkflowItem.Enabled := Assigned(CurrentProject);
+    FSuggestionAIConfigItem.Enabled := Assigned(CurrentProject);
+  end;
+  UpdateTheWordSyncUI;
+end;
+
 procedure TMainForm.ActionGuideModeExecute(Sender: TObject);
 begin
   SetGuideModeEnabled(not FGuideModeEnabled);
@@ -742,7 +1451,7 @@ begin
     Height := 88;
     BevelOuter := bvNone;
     ParentColor := False;
-    Color := clInfoBk;
+    Color := UISurfaceColor;
     ShowHint := True;
     Hint := SGuideModeHint;
     Visible := False;
@@ -842,7 +1551,8 @@ function TMainForm.CreateVersePanelLabel(AParent: TWinControl;
     ALabel.Transparent := True;
     ALabel.Layout := tlCenter;
     ALabel.ShowHint := True;
-    ALabel.Font.Size := Max(6, Font.Size - 1);
+    ALabel.Font.Assign(Font);
+    ALabel.Font.Color := UITextColor;
     if Bold then
       ALabel.Font.Style := ALabel.Font.Style + [fsBold]
     else
@@ -861,17 +1571,17 @@ begin
     ShowHint := True;
   end;
 
-  FVersePanelTypeLabels[TextType] := TLabel.Create(Result);
+  FVersePanelTypeLabels[TextType] := TOverflowLabel.Create(Result);
   SetupChildLabel(FVersePanelTypeLabels[TextType], True);
 
-  FVersePanelDescriptionLabels[TextType] := TLabel.Create(Result);
+  FVersePanelDescriptionLabels[TextType] := TOverflowLabel.Create(Result);
   SetupChildLabel(FVersePanelDescriptionLabels[TextType], False);
 end;
 
 function TMainForm.CreateStateHeaderLabel(AParent: TWinControl;
   Bold: Boolean): TLabel;
 begin
-  Result := TLabel.Create(AParent);
+  Result := TOverflowLabel.Create(AParent);
   with Result do
   begin
     Parent := AParent;
@@ -1001,12 +1711,26 @@ begin
 end;
 
 function TMainForm.CurrentEngineCaption: string;
+var
+  Mode: TSuggestionMode;
 begin
-  case FSuggestionMode of
+  if Assigned(CurrentProject) then
+    Mode := CurrentProject.SuggestionMode
+  else
+    Mode := FSuggestionMode;
+
+  case Mode of
     smAI: Result := SHeaderEngineAI;
   else
     Result := SHeaderEngineStatistical;
   end;
+
+  if Assigned(CurrentProject) and
+     CurrentProject.AutomaticAssociationSuggestion then
+    Result := Result + ' · ' + SHeaderEngineAutomatic;
+  if Assigned(CurrentProject) and (Mode = smAI) and
+     not CurrentProject.AIConfigurationAvailable then
+    Result := Result + ' · ' + SHeaderEngineAIConfigurationPending;
 end;
 
 function TMainForm.CurrentSelectionCaption: string;
@@ -1095,43 +1819,35 @@ begin
 end;
 
 procedure TMainForm.LayoutGuidePanel;
-const
-  Margin = 8;
-  Gap = 10;
 var
+  Margin, Gap: Integer;
   Compact: Boolean;
   ButtonWidth, ButtonHeight, ButtonTop, TextWidth, TitleHeight,
     TextTop, TextHeight, DesiredHeight, LineHeight, WrappedLines: Integer;
 
   function CountWrappedLines(const AText: string; AMaxWidth: Integer): Integer;
   var
-    Lines: TStringList;
-    I, LineWidth: Integer;
+    TextBounds: TRect;
   begin
-    Result := 0;
-    Lines := TStringList.Create;
-    try
-      Lines.Text := AText;
-      for I := 0 to Lines.Count - 1 do
-      begin
-        LineWidth := FGuidePanel.Canvas.TextWidth(Lines[I]);
-        Inc(Result, Max(1, Ceil(LineWidth / Max(1, AMaxWidth))));
-      end;
-    finally
-      Lines.Free;
-    end;
-    Result := Max(1, Result);
+    TextBounds := Rect(0, 0, Max(1, AMaxWidth), 0);
+    LCLIntf.DrawText(FGuidePanel.Canvas.Handle, PChar(AText), Length(AText),
+      TextBounds, DT_CALCRECT or DT_WORDBREAK or DT_NOPREFIX);
+    Result := Max(1, Ceil(TextBounds.Height /
+      Max(1, FGuidePanel.Canvas.TextHeight('Hg'))));
   end;
+
 begin
   if not Assigned(FGuidePanel) or (FGuidePanel.ClientWidth <= 0) then
     Exit;
 
-  Compact := FGuidePanel.ClientWidth < 520;
+  Margin := UIScale(Self, 8);
+  Gap := UIScale(Self, 16);
+  Compact := FGuidePanel.ClientWidth < UIScale(Self, 520);
 
   FGuidePanel.Canvas.Font.Assign(Font);
-  ButtonWidth := Max(100,
+  ButtonWidth := Max(UIScale(Self, 100),
     FGuidePanel.Canvas.TextWidth(FGuideHideButton.Caption) + 28);
-  ButtonHeight := Max(28, FGuidePanel.Canvas.TextHeight('Hg') + 12);
+  ButtonHeight := Max(UIScale(Self, 32), FGuidePanel.Canvas.TextHeight('Hg') + 12);
   TitleHeight := FGuidePanel.Canvas.TextHeight('Hg') + 4;
   LineHeight := FGuidePanel.Canvas.TextHeight('Hg') + 2;
 
@@ -1188,89 +1904,79 @@ begin
   if Assigned(MenuItemGuideMode) then
     MenuItemGuideMode.Checked := FGuideModeEnabled;
 
-  if Assigned(opts) then
-    opts.WriteBool('opcoes', 'guide.mode', FGuideModeEnabled);
+  PersistGlobalPreference('guide.mode', FGuideModeEnabled);
 
   UpdateGuidePanel;
 end;
 
 procedure TMainForm.LayoutStateHeader;
-const
-  Margin = 8;
-  Gap = 14;
-  MinReferenceWidth = 120;
-  StatusComboWidth = 178;
-  MinStatusComboWidth = 112;
 var
-  X, Y, LineHeight, ModifiedWidth, MaxRight: Integer;
+  X, Y, Margin, Gap, LineHeight, AvailableWidth, DesiredHeight: Integer;
 
-  function CaptionWidth(ALabel: TLabel): Integer;
+  procedure StartNextLine(AWidth: Integer);
   begin
-    FStateHeaderPanel.Canvas.Font.Assign(ALabel.Font);
-    Result := FStateHeaderPanel.Canvas.TextWidth(ALabel.Caption) + 16;
+    if (X > Margin) and (X + AWidth > FStateHeaderPanel.ClientWidth - Margin) then
+    begin
+      X := Margin;
+      Inc(Y, LineHeight + UIScale(Self, 4));
+    end;
   end;
 
-  procedure PlaceLabel(ALabel: TLabel; var ALeft: Integer; AMaxRight: Integer;
-    AAlwaysShow: Boolean; AMaxWidth: Integer = 0);
+  procedure PlaceLabel(ALabel: TLabel);
   var
     W: Integer;
   begin
-    W := CaptionWidth(ALabel);
-    if AMaxWidth > 0 then
-      W := Min(W, AMaxWidth);
-
-    ALabel.Visible := AAlwaysShow or (ALeft + W <= AMaxRight);
+    ALabel.Visible := ALabel.Caption <> '';
     if not ALabel.Visible then
       Exit;
-
-    if AAlwaysShow then
-      W := Max(MinReferenceWidth, Min(W, Max(0, AMaxRight - ALeft)));
-
-    ALabel.SetBounds(ALeft, Y, W, LineHeight);
-    Inc(ALeft, W + Gap);
+    FStateHeaderPanel.Canvas.Font.Assign(ALabel.Font);
+    W := Min(AvailableWidth,
+      FStateHeaderPanel.Canvas.TextWidth(ALabel.Caption) + UIScale(Self, 8));
+    StartNextLine(W);
+    ALabel.SetBounds(X, Y, W, LineHeight);
+    Inc(X, W + Gap);
   end;
 
-  procedure PlaceStatusCombo(var ALeft: Integer; AMaxRight: Integer);
+  procedure PlaceStatusCombo;
   var
-    Available, W, ComboTop: Integer;
+    W: Integer;
   begin
-    if not Assigned(RadioGroupStatus) then
-      Exit;
-
-    Available := Max(0, AMaxRight - ALeft);
-    W := Min(StatusComboWidth, Available);
     RadioGroupStatus.Visible := Assigned(CurrentProject) and
-      (RadioGroupStatus.Items.Count > 0) and (W >= MinStatusComboWidth);
+      (RadioGroupStatus.Items.Count > 0);
     if not RadioGroupStatus.Visible then
       Exit;
-
-    ComboTop := Max(0,
-      (FStateHeaderPanel.ClientHeight - RadioGroupStatus.Height) div 2);
-    RadioGroupStatus.SetBounds(ALeft, ComboTop, W, RadioGroupStatus.Height);
-    Inc(ALeft, W + Gap);
+    W := Min(AvailableWidth, UIScale(Self, 190));
+    StartNextLine(W);
+    RadioGroupStatus.SetBounds(X, Y + Max(0,
+      (LineHeight - RadioGroupStatus.Height) div 2), W, RadioGroupStatus.Height);
+    Inc(X, W + Gap);
   end;
 
 begin
-  if not Assigned(FStateHeaderPanel) then
+  if not Assigned(FHeaderModifiedLabel) or FLayoutStateHeaderBusy then
     Exit;
-
-  FStateHeaderPanel.Canvas.Font.Assign(Font);
-  LineHeight := FStateHeaderPanel.Canvas.TextHeight('Hg') + 8;
-  Y := Max(0, (FStateHeaderPanel.ClientHeight - LineHeight) div 2);
-
-  ModifiedWidth := CaptionWidth(FHeaderModifiedLabel);
-  FHeaderModifiedLabel.SetBounds(
-    Max(Margin, FStateHeaderPanel.ClientWidth - ModifiedWidth - Margin),
-    Y, ModifiedWidth, LineHeight);
-
-  MaxRight := FHeaderModifiedLabel.Left - Gap;
-  X := Margin;
-
-  PlaceLabel(FHeaderReferenceLabel, X, MaxRight, True, 260);
-  PlaceStatusCombo(X, MaxRight);
-  PlaceLabel(FHeaderAssociationsLabel, X, MaxRight, False, 190);
-  PlaceLabel(FHeaderSelectionLabel, X, MaxRight, False, 210);
-  PlaceLabel(FHeaderEngineLabel, X, MaxRight, False, 180);
+  FLayoutStateHeaderBusy := True;
+  try
+    Margin := UIScale(Self, 8);
+    Gap := UIScale(Self, 16);
+    AvailableWidth := Max(1, FStateHeaderPanel.ClientWidth - Margin * 2);
+    FStateHeaderPanel.Canvas.Font.Assign(Font);
+    LineHeight := Max(RadioGroupStatus.Height,
+      FStateHeaderPanel.Canvas.TextHeight('Hg') + UIScale(Self, 8));
+    X := Margin;
+    Y := UIScale(Self, 4);
+    PlaceLabel(FHeaderReferenceLabel);
+    PlaceStatusCombo;
+    PlaceLabel(FHeaderAssociationsLabel);
+    PlaceLabel(FHeaderSelectionLabel);
+    PlaceLabel(FHeaderEngineLabel);
+    PlaceLabel(FHeaderModifiedLabel);
+    DesiredHeight := Y + LineHeight + UIScale(Self, 4);
+    if FStateHeaderPanel.Height <> DesiredHeight then
+      FStateHeaderPanel.Height := DesiredHeight;
+  finally
+    FLayoutStateHeaderBusy := False;
+  end;
 end;
 
 procedure TMainForm.StateHeaderResize(Sender: TObject);
@@ -1316,12 +2022,12 @@ begin
     if CurrentProject.Modificado then
     begin
       FHeaderModifiedLabel.Caption := SHeaderUnsavedChanges;
-      FHeaderModifiedLabel.Font.Color := clRed;
+      FHeaderModifiedLabel.Font.Color := UIErrorColor;
     end
     else
     begin
       FHeaderModifiedLabel.Caption := SHeaderSaved;
-      FHeaderModifiedLabel.Font.Color := clGreen;
+      FHeaderModifiedLabel.Font.Color := UISuccessColor;
     end;
   end;
 
@@ -1467,6 +2173,8 @@ var
   ItemIndex: Integer;
   Total: Integer;
   VisibleTotal: Integer;
+  SelectedStatusId, PreviousTopIndex, RestoredItemIndex: Integer;
+  HadSelectedStatus: Boolean;
   Node: TTreeNode;
 
   procedure RememberCurrentFilter;
@@ -1474,9 +2182,17 @@ var
     StatusIndex: Integer;
   begin
     OldStates := nil;
+    HadSelectedStatus := False;
+    PreviousTopIndex := 0;
     if not Assigned(FStatusReviewList) then
       Exit;
 
+    PreviousTopIndex := FStatusReviewList.TopIndex;
+    StatusIndex := FStatusReviewList.ItemIndex;
+    HadSelectedStatus := (StatusIndex >= 0) and
+      (StatusIndex < FStatusReviewList.Items.Count);
+    if HadSelectedStatus then
+      SelectedStatusId := Integer(PtrUInt(FStatusReviewList.Items.Objects[StatusIndex]));
     SetLength(OldStates, FStatusReviewList.Items.Count);
     for StatusIndex := 0 to FStatusReviewList.Items.Count - 1 do
     begin
@@ -1573,6 +2289,7 @@ begin
 
   RememberCurrentFilter;
   FUpdatingStatusReview := True;
+  FStatusReviewList.Items.BeginUpdate;
   try
     FStatusReviewList.Items.Clear;
     FStatusReviewChecked := nil;
@@ -1624,7 +2341,24 @@ begin
     TreeLegendPanel.Hint := SStatusReviewFilterHint;
     FStatusReviewList.Hint := SStatusReviewFilterHint;
   finally
-    FUpdatingStatusReview := False;
+    try
+      FStatusReviewList.Items.EndUpdate;
+      RestoredItemIndex := -1;
+      if HadSelectedStatus then
+        for Index := 0 to FStatusReviewList.Items.Count - 1 do
+          if Integer(PtrUInt(FStatusReviewList.Items.Objects[Index])) = SelectedStatusId then
+          begin
+            RestoredItemIndex := Index;
+            Break;
+          end;
+      FStatusReviewList.ItemIndex := RestoredItemIndex;
+      if FStatusReviewList.Items.Count > 0 then
+        FStatusReviewList.TopIndex := EnsureRange(PreviousTopIndex, 0,
+          FStatusReviewList.Items.Count - 1);
+    finally
+      FUpdatingStatusReview := False;
+    end;
+    FStatusReviewList.Invalidate;
   end;
 
   ApplyStatusReviewFilter;
@@ -1833,10 +2567,8 @@ begin
 end;
 
 procedure TMainForm.LayoutVersePanelLabels;
-const
-  Margin = 5;
-  LabelHeight = 17;
 var
+  Margin, LabelHeight, Padding: Integer;
   TextType: TTipoTextoBiblico;
   LabelControl: TPanel;
   TypeLabel: TLabel;
@@ -1850,6 +2582,10 @@ var
   LabelWidth: Integer;
   AvailableWidth: Integer;
 begin
+  Margin := UIScale(Self, 4);
+  Padding := UIScale(Self, 8);
+  CenterPanel.Canvas.Font.Assign(Font);
+  LabelHeight := CenterPanel.Canvas.TextHeight('Hg') + UIScale(Self, 4);
   for TextType := tbOrigem to tbConsulta2 do
   begin
     LabelControl := FVersePanelLabels[TextType];
@@ -1891,34 +2627,35 @@ begin
     DescriptionWidth := CenterPanel.Canvas.TextWidth(DescriptionCaption);
 
     AvailableWidth := Max(1, PanelControl.Width - (Margin * 2));
-    LabelWidth := Min(TypeWidth + DescriptionWidth + 16, AvailableWidth);
+    LabelWidth := Min(TypeWidth + DescriptionWidth + Padding * 2, AvailableWidth);
     LabelControl.SetBounds(
       PanelControl.Left + Max(Margin, PanelControl.Width - LabelWidth - Margin),
       PanelControl.Top + Max(Margin, PanelControl.Height - LabelHeight - Margin),
       LabelWidth,
       LabelHeight);
 
-    TypeWidth := Min(TypeWidth, Max(0, LabelWidth - 8));
-    DescriptionWidth := Max(0, LabelWidth - TypeWidth - 8);
-    TypeLabel.SetBounds(6, 0, TypeWidth, LabelHeight);
-    DescriptionLabel.SetBounds(6 + TypeWidth, 0, DescriptionWidth, LabelHeight);
+    TypeWidth := Min(TypeWidth, Max(0, LabelWidth - Padding * 2));
+    DescriptionWidth := Max(0, LabelWidth - TypeWidth - Padding * 2);
+    TypeLabel.SetBounds(Padding, 0, TypeWidth, LabelHeight);
+    DescriptionLabel.SetBounds(Padding + TypeWidth, 0, DescriptionWidth, LabelHeight);
     LabelControl.BringToFront;
   end;
 end;
 
 procedure TMainForm.ResetMainLayout;
-const
-  DefaultTreeWidth = 145;
-  DefaultContextWidth = 321;
-  DefaultCommentsHeight = 120;
-  MinCommentsHeight = 80;
-  MinVerseHeight = 42;
 var
+  DefaultTreeWidth, DefaultContextWidth, DefaultCommentsHeight,
+    MinCommentsHeight, MinVerseHeight: Integer;
   TextTop, TextBottom, AvailableHeight, BaseHeight, ExtraHeight: Integer;
   TextWidth: Integer;
 begin
+  DefaultTreeWidth := UIScale(Self, 145);
+  DefaultContextWidth := UIScale(Self, 321);
+  DefaultCommentsHeight := UIScale(Self, 120);
+  MinCommentsHeight := UIScale(Self, 80);
+  MinVerseHeight := UIScale(Self, 42);
   NavigationPanel.Width := DefaultTreeWidth;
-  ContextPanel.Width := Min(DefaultContextWidth, Max(180, Panel1.ClientWidth div 2));
+  ContextPanel.Width := Min(DefaultContextWidth, Max(UIScale(Self, 180), Panel1.ClientWidth div 2));
   BottomPanel.Height := Min(DefaultCommentsHeight,
     Max(MinCommentsHeight, CenterPanel.ClientHeight div 3));
 
@@ -2087,10 +2824,17 @@ begin
       TTipoTextoBiblico(ChapterViewTabCtrl.TabIndex);
   if not CurrentProject.CloseProject(SaveChanges) then
     Exit;
+  if Assigned(FChapterView) then
+    FChapterView.Project := nil;
+  if Assigned(FrmProjectProperties) then
+    FrmProjectProperties.ClearProject;
+  if Assigned(FrmLLMOptions) then
+    FrmLLMOptions.SetProject(nil);
   CurrentProject.Destroy;
   CurrentProject := nil;
   UpdateMainCaption;
   UpdateNavigationHistoryActions;
+  UpdateCommandUI;
 
   FCurrentRef := '';
 
@@ -2246,8 +2990,9 @@ begin
           TreeView1, RadioGroupStatus, FActualCommentsMemo);
         CurrentProject.Escopo := Draft.Scope;
         CurrentProject.PalavrasComStrongEmNegrito :=
-          MenuItemBoldStrongs.Checked;
+          FBoldStrongsEnabled;
         CurrentProject.MostrarQtdStrongs := FStrongsCountMode;
+        CurrentProject.AutoSave := FAutoSaveEnabled;
         CurrentProject.OnNewVerseSubscribe(@ProjectNewVerse);
         CurrentProject.OnAlterarVersiculo := @VerseChanged;
         CurrentProject.OnSintagmaClick := @SyntagmClick;
@@ -2257,9 +3002,12 @@ begin
           ProjectScenarioToConfig(Draft.Scenario));
         if Draft.HasCustomStatusCatalog then
           CurrentProject.SetStatusDefinitions(Draft.StatusDefinitions);
-        CurrentProject.ExibirDefinicoesSoComCtrl := MenuItemDictPopup.Checked;
-        CurrentProject.SugerirAssociacaoAutomaticamente := MenuItem22.Checked;
-        CurrentProject.SuggestionMode := FSuggestionMode;
+        if Draft.Scenario = psTranslationProject then
+          CurrentProject.InitializeWorkflowSettings(smStatistical, False,
+            dvmEditing)
+        else
+          CurrentProject.InitializeWorkflowSettings(smStatistical, False,
+            dvmAssociation);
         CurrentProject.PopupTrigger := FPopupTrigger;
 
         for v := tbOrigem to tbConsulta2 do
@@ -2401,6 +3149,8 @@ begin
     UpdateStatusReviewPanel;
     LayoutVersePanelLabels;
   end;
+  UpdateCommandUI;
+  UpdateStateHeader;
 end;
 
 procedure TMainForm.ActionLlmOptionsExecute(Sender: TObject);
@@ -2410,6 +3160,8 @@ begin
     Application.CreateForm(TFrmLLMOptions, FrmLLMOptions);
   FrmLLMOptions.SetProject(CurrentProject);
   FrmLLMOptions.ShowModal;
+  UpdateCommandUI;
+  UpdateStateHeader;
 end;
 
 procedure TMainForm.ActionTheWordHighlighterColorsExecute(Sender: TObject);
@@ -2498,6 +3250,15 @@ begin
   begin
     if CurrentProject.SuggestionMode = smAI then
     begin
+      if not CurrentProject.AIConfigurationAvailable then
+      begin
+        if QuestionDlg(SAIConfigurationPendingTitle,
+            SAIConfigurationPendingText, mtInformation,
+            [mrYes, SConfigureAIButton, 'isdefault', mrCancel,
+             SButtonCancel, 'iscancel'], 0) = mrYes then
+          ActionLlmOptionsExecute(Self);
+        Exit;
+      end;
       StatusBar1.SimpleText := SAnalyzingVerse;
       try
         CurrentProject.SuggestAssociation;
@@ -2588,12 +3349,15 @@ var
   m, modeInt: integer;
   ConfigFilePath: string;
 begin
+  ApplyFormStyle(Self);
   DebugLn('=================================');
 
   CurrentProject := nil;
 
   ConfigFilePath := ExtractFilePath(ParamStr(0)) + 'iBiblia.ini';
   opts := TIniFile.Create(ConfigFilePath);
+  SetAppIconFamily(AppIconFamilyFromId(
+    opts.ReadString('opcoes', 'ui.icon.family', 'connected')));
   LoadTheWordSyntaxColorScheme(opts);
   LoadTheWordSyntaxEditorFont(opts);
 
@@ -2605,11 +3369,15 @@ begin
     Height := opts.ReadInteger('leiaute', 'principal.altura',   Height);
   end;
 
-  MenuItem22.Checked := opts.ReadBool('opcoes', 'sugestoes.automaticas', false);
-  MenuItemSyncTheWord.Checked := opts.ReadBool('opcoes', 'synctheword', false);
-  MenuItemSynciBiblia.Checked := opts.ReadBool('opcoes', 'syncibiblia', false);
-  MenuItemBoldStrongs.Checked := opts.ReadBool('opcoes', 'boldstrongs', false);
-  MenuItemAutoSave.Checked := opts.ReadBool('opcoes', 'auto.save', false);
+  FLegacyAutomaticSuggestion :=
+    opts.ReadBool('opcoes', 'sugestoes.automaticas', false);
+  MenuItem22.Checked := FLegacyAutomaticSuggestion;
+  {$IFDEF WINDOWS}
+  ExpandTheWordSyncState(ReadTheWordSyncState(opts),
+    FSyncTheWordToIBiblia, FSyncIBibliaToTheWord);
+  {$ENDIF}
+  FBoldStrongsEnabled := opts.ReadBool('opcoes', 'boldstrongs', false);
+  FAutoSaveEnabled := opts.ReadBool('opcoes', 'auto.save', false);
   FGuideModeEnabled := opts.ReadBool('opcoes', 'guide.mode', true);
   FDefaultVerseMode := DefaultVerseModeFromInteger(
     opts.ReadInteger('opcoes', 'verse.default.mode',
@@ -2635,17 +3403,26 @@ begin
     if MenuItemStrongsCount.Items[m].Tag = Integer(FStrongsCountMode) then
       MenuItemStrongsCount.Items[m].Checked := true;
 
-  FPopupTrigger := TPopupTrigger(opts.ReadInteger('opcoes', 'popuptrigger', LongInt(ptMouseHover)));
-  MenuItemPopupTriggerClick(MenuItemDictPopup.Items[integer(FPopupTrigger)]);
+  modeInt := opts.ReadInteger('opcoes', 'popuptrigger', Ord(ptMouseHover));
+  if (modeInt < Ord(Low(TPopupTrigger))) or
+     (modeInt > Ord(High(TPopupTrigger))) then
+    modeInt := Ord(ptMouseHover);
+  FPopupTrigger := TPopupTrigger(modeInt);
 
-  MenuItemAlwaysOnTop.Checked := opts.ReadBool('opcoes', 'alwaysontop', false);
-  if MenuItemAlwaysOnTop.Checked then
+  FAlwaysOnTopEnabled := opts.ReadBool('opcoes', 'alwaysontop', false);
+  if FAlwaysOnTopEnabled then
     FormStyle := fsSystemStayOnTop;
 
-  FChapterView := TChapterView.Create(ChapterViewTabCtrl);
+  FChapterViewHostPanel := TPanel.Create(Self);
+  FChapterViewHostPanel.Parent := ChapterViewTabCtrl;
+  FChapterViewHostPanel.Align := alClient;
+  FChapterViewHostPanel.BevelOuter := bvNone;
+  CreateMemoryOrderControls;
+
+  FChapterView := TChapterView.Create(FChapterViewHostPanel);
   with FChapterView do
   begin
-    ParentWindow := ChapterViewTabCtrl.Handle;
+    Parent := FChapterViewHostPanel;
     BorderStyle  := bsNone;
     Align        := alClient;
     FontName     := opts.ReadString('leiaute', 'principal.chapterview.font.name', DefFontData.Name);
@@ -2656,6 +3433,7 @@ begin
       @HandleTranslationMemoryPreviewFontSizeChanged;
     TranslationMemoryOrder := FTranslationMemoryOrder;
   end;
+  FMemoryOrderPanel.BringToFront;
 
   language := opts.ReadString('opcoes', 'language', GetDefaultLang);
   SetDefaultLang(language);
@@ -2686,7 +3464,6 @@ begin
 
   MenuItemKeyboardShortcuts := TMenuItem.Create(MainMenu1);
   MenuItemKeyboardShortcuts.Action := ActionKeyboardShortcuts;
-  MenuItem17.Insert(0, MenuItemKeyboardShortcuts);
 
   ActionResetLayout := TAction.Create(ActionList1);
   ActionResetLayout.Caption := SResetLayoutMenu;
@@ -2695,7 +3472,6 @@ begin
 
   MenuItemResetLayout := TMenuItem.Create(MainMenu1);
   MenuItemResetLayout.Action := ActionResetLayout;
-  MenuItem20.Add(MenuItemResetLayout);
 
   ActionGuideMode := TAction.Create(ActionList1);
   ActionGuideMode.Caption := SGuideModeMenu;
@@ -2706,19 +3482,6 @@ begin
   MenuItemGuideMode := TMenuItem.Create(MainMenu1);
   MenuItemGuideMode.Action := ActionGuideMode;
   MenuItemGuideMode.Checked := FGuideModeEnabled;
-  MenuItem20.Add(MenuItemGuideMode);
-
-  FDefaultVerseModeMenu := TMenuItem.Create(MainMenu1);
-  FDefaultVerseModeAssociationItem := TMenuItem.Create(MainMenu1);
-  FDefaultVerseModeAssociationItem.RadioItem := True;
-  FDefaultVerseModeAssociationItem.OnClick := @DefaultVerseModeClick;
-  FDefaultVerseModeMenu.Add(FDefaultVerseModeAssociationItem);
-  FDefaultVerseModeEditingItem := TMenuItem.Create(MainMenu1);
-  FDefaultVerseModeEditingItem.RadioItem := True;
-  FDefaultVerseModeEditingItem.OnClick := @DefaultVerseModeClick;
-  FDefaultVerseModeMenu.Add(FDefaultVerseModeEditingItem);
-  MenuItem20.Add(FDefaultVerseModeMenu);
-  UpdateDefaultVerseModeMenu;
 
   ActionTheWordHighlighterColors := TAction.Create(ActionList1);
   ActionTheWordHighlighterColors.Caption := STheWordHighlightColorsMenu;
@@ -2726,19 +3489,6 @@ begin
 
   MenuItemTheWordHighlighterColors := TMenuItem.Create(MainMenu1);
   MenuItemTheWordHighlighterColors.Action := ActionTheWordHighlighterColors;
-  MenuItem20.Add(MenuItemTheWordHighlighterColors);
-
-  FTranslationMemoryOrderMenu := TMenuItem.Create(MainMenu1);
-  FTranslationMemoryVerseOrderItem := TMenuItem.Create(MainMenu1);
-  FTranslationMemoryVerseOrderItem.RadioItem := True;
-  FTranslationMemoryVerseOrderItem.OnClick := @TranslationMemoryOrderClick;
-  FTranslationMemoryOrderMenu.Add(FTranslationMemoryVerseOrderItem);
-  FTranslationMemoryRareFirstItem := TMenuItem.Create(MainMenu1);
-  FTranslationMemoryRareFirstItem.RadioItem := True;
-  FTranslationMemoryRareFirstItem.OnClick := @TranslationMemoryOrderClick;
-  FTranslationMemoryOrderMenu.Add(FTranslationMemoryRareFirstItem);
-  MenuItem20.Add(FTranslationMemoryOrderMenu);
-  UpdateTranslationMemoryOrderMenu;
 
   ActionRegisterFileAssociation := TAction.Create(ActionList1);
   ActionRegisterFileAssociation.Caption := SRegisterFileAssociation;
@@ -2750,9 +3500,6 @@ begin
   ActionUnregisterFileAssociation.OnExecute := @ActionUnregisterFileAssociationExecute;
   MenuItemUnregisterFileAssoc.Action := ActionUnregisterFileAssociation;
 
-  Translate;
-
-  // Create runtime Action and MenuItem for LLM options
   ActionLlmOptions := TAction.Create(ActionList1);
   ActionLlmOptions.Caption := SLLMOptionsMenu;
   ActionLlmOptions.Enabled := False;
@@ -2760,8 +3507,10 @@ begin
 
   MenuItemLlmOptions := TMenuItem.Create(MainMenu1);
   MenuItemLlmOptions.Action := ActionLlmOptions;
-  // Add under Options menu
-  MenuItem20.Add(MenuItemLlmOptions);
+
+  BuildCommandUI;
+  InitializeVisualIdentity;
+  Translate;
 
   LoadRecentProjects(MenuItemRecent);
   NavigationPanel.Width := opts.ReadInteger('leiaute', 'principal.treeview.largura', NavigationPanel.Width);
@@ -2781,9 +3530,8 @@ begin
 
   {$IFDEF WINDOWS}
   FRxMorpho := RegexCreate('^(\S+)( l="(.*?)")?$', [rcoUTF8]);
-  FSyncTheWordToIBiblia := MenuItemSyncTheWord.Checked;
-  FSyncIBibliaToTheWord := MenuItemSynciBiblia.Checked;
   SetUpSyncThread;
+  UpdateTheWordSyncUI;
 
   // Check and update file association menu items
   CheckFileAssociation;
@@ -2792,6 +3540,9 @@ end;
 
 procedure TMainForm.FormDestroy(Sender: TObject);
 begin
+  {$IFDEF WINDOWS}
+  StopTheWordSyncThread;
+  {$ENDIF}
   SaveRecentProjects(MenuItemRecent);
   opts.WriteBool('leiaute', 'principal.maximized', WindowState = wsMaximized);
   if WindowState <> wsMaximized then
@@ -2813,16 +3564,19 @@ begin
     FChapterView.TranslationMemoryPreviewFontSize);
   opts.WriteInteger('leiaute', 'principal.commentsmemo.font.size', FActualCommentsMemo.FontSize);
   opts.WriteString('leiaute', 'principal.commentsmemo.font.name', FActualCommentsMemo.FontName);
-  opts.WriteBool('opcoes', 'sugestoes.automaticas', MenuItem22.Checked);
+  opts.WriteBool('opcoes', 'sugestoes.automaticas',
+    FLegacyAutomaticSuggestion);
   opts.WriteInteger('opcoes', 'suggestion.mode', Ord(FSuggestionMode));
-  opts.WriteBool('opcoes', 'synctheword', MenuItemSyncTheWord.Checked);
-  opts.WriteBool('opcoes', 'syncibiblia', MenuItemSynciBiblia.Checked);
-  opts.WriteBool('opcoes', 'boldstrongs', MenuItemBoldStrongs.Checked);
+  {$IFDEF WINDOWS}
+  WriteTheWordSyncState(opts, ResolveTheWordSyncState(
+    FSyncTheWordToIBiblia, FSyncIBibliaToTheWord));
+  {$ENDIF}
+  opts.WriteBool('opcoes', 'boldstrongs', FBoldStrongsEnabled);
   opts.WriteInteger('opcoes', 'strongscountmode', Integer(FStrongsCountMode));
   opts.WriteString('opcoes', 'language', language);
-  opts.WriteBool('opcoes', 'alwaysontop', MenuItemAlwaysOnTop.Checked);
+  opts.WriteBool('opcoes', 'alwaysontop', FAlwaysOnTopEnabled);
   opts.WriteInteger('opcoes', 'popuptrigger', LongInt(FPopupTrigger));
-  opts.WriteBool('opcoes', 'auto.save', MenuItemAutoSave.Checked);
+  opts.WriteBool('opcoes', 'auto.save', FAutoSaveEnabled);
   opts.WriteBool('opcoes', 'guide.mode', FGuideModeEnabled);
   opts.WriteInteger('opcoes', 'verse.default.mode',
     Ord(FDefaultVerseMode));
@@ -2891,9 +3645,13 @@ end;
 
 procedure TMainForm.MenuItem22Click(Sender: TObject);
 begin
-  TMenuItem(Sender).Checked := not TMenuItem(Sender).Checked;
-  if assigned(CurrentProject) then
-    CurrentProject.SugerirAssociacaoAutomaticamente := TMenuItem(Sender).Checked;
+  if not Assigned(CurrentProject) then
+    Exit;
+  CurrentProject.AutomaticAssociationSuggestion :=
+    not CurrentProject.AutomaticAssociationSuggestion;
+  MenuItem22.Checked := CurrentProject.AutomaticAssociationSuggestion;
+  UpdateCommandUI;
+  UpdateStateHeader;
 end;
 
 procedure TMainForm.RecentProjectClick(Sender: TObject);
@@ -2909,31 +3667,17 @@ end;
 
 procedure TMainForm.MenuItemAISuggestionClick(Sender: TObject);
 begin
-  FSuggestionMode := smAI;
-  if Assigned(CurrentProject) then
-    CurrentProject.SuggestionMode := smAI;
-  MenuItemStatisticalSuggestion.Checked := False;
-  MenuItemAISuggestion.Checked := True;
-  UpdateStateHeader;
+  SetSuggestionMode(smAI);
 end;
 
 procedure TMainForm.MenuItemAlwaysOnTopClick(Sender: TObject);
-var
-  m: TMenuItem;
 begin
-  m := TMenuItem(Sender);
-  m.Checked := not m.Checked;
-  if m.Checked then
-    FormStyle := fsSystemStayOnTop
-  else
-    FormStyle := fsNormal;
+  SetAlwaysOnTopEnabled(not FAlwaysOnTopEnabled);
 end;
 
 procedure TMainForm.MenuItemAutoSaveClick(Sender: TObject);
 begin
-  TMenuItem(Sender).Checked := not TMenuItem(Sender).Checked;
-  if assigned(CurrentProject) then
-    CurrentProject.AutoSave := TMenuItem(Sender).Checked;
+  SetAutoSaveEnabled(not FAutoSaveEnabled);
 end;
 
 procedure TMainForm.TranslationMemoryOrderClick(Sender: TObject);
@@ -3007,6 +3751,7 @@ begin
     exit;
 
   language := 'en';
+  PersistGlobalPreference('language', language);
   SetDefaultLang('en');
   TMenuItem(Sender).Checked:=true;
   MenuItemLangPt.Checked:=false;
@@ -3019,6 +3764,7 @@ begin
     exit;
 
   language := 'pt';
+  PersistGlobalPreference('language', language);
   SetDefaultLang('pt');
   TMenuItem(Sender).Checked:=true;
   MenuItemLangEn.Checked:=false;
@@ -3027,36 +3773,24 @@ end;
 
 procedure TMainForm.MenuItemPopupTriggerClick(Sender: TObject);
 var
-  m: TPopupTrigger;
+  Index: Integer;
 begin
-  for m:=low(TPopupTrigger) to high(TPopupTrigger) do
-  begin
-    if Sender = MenuItemDictPopup.Items[integer(m)] then
+  for Index := 0 to MenuItemDictPopup.Count - 1 do
+    if Sender = MenuItemDictPopup.Items[Index] then
     begin
-      FPopupTrigger := m;
-      TMenuItem(Sender).Checked := true;
-      if assigned(CurrentProject) then
-        CurrentProject.PopupTrigger := FPopupTrigger;
-    end else
-      MenuItemDictPopup.Items[integer(m)].Checked := false;
-  end;
+      SetPopupTrigger(TPopupTrigger(Index));
+      Exit;
+    end;
 end;
 
 procedure TMainForm.MenuItemStatisticalSuggestionClick(Sender: TObject);
 begin
-  FSuggestionMode := smStatistical;
-  if Assigned(CurrentProject) then
-    CurrentProject.SuggestionMode := smStatistical;
-  MenuItemStatisticalSuggestion.Checked := True;
-  MenuItemAISuggestion.Checked := False;
-  UpdateStateHeader;
+  SetSuggestionMode(smStatistical);
 end;
 
 procedure TMainForm.MenuItemBoldStrongsClick(Sender: TObject);
 begin
-  TMenuItem(Sender).Checked := not TMenuItem(Sender).Checked;
-  if assigned(CurrentProject) then
-    CurrentProject.PalavrasComStrongEmNegrito := TMenuItem(Sender).Checked;
+  SetBoldStrongsEnabled(not FBoldStrongsEnabled);
 end;
 
 procedure TMainForm.MenuItemStrongsCountClick(Sender: TObject);
@@ -3069,31 +3803,25 @@ begin
     m := MenuItemStrongsCount.Items[i];
     if m = Sender then
     begin
-      m.Checked := true;
-      FStrongsCountMode := TStrongsCountMode(m.Tag);
-      if assigned(CurrentProject) then
-        CurrentProject.MostrarQtdStrongs := TStrongsCountMode(m.Tag);
-    end else
-      m.Checked := false;
+      SetStrongsCountMode(TStrongsCountMode(m.Tag));
+      Break;
+    end;
   end;
 end;
 
 procedure TMainForm.MenuItemSynciBibliaClick(Sender: TObject);
 begin
   {$IFDEF WINDOWS}
-  TMenuItem(Sender).Checked := not TMenuItem(Sender).Checked;
-  FSyncIBibliaToTheWord := TMenuItem(Sender).Checked;
-  SetUpSyncThread;
+  SetTheWordSyncDirections(FSyncTheWordToIBiblia,
+    not FSyncIBibliaToTheWord);
   {$ENDIF}
 end;
 
 procedure TMainForm.MenuItemSyncTheWordClick(Sender: TObject);
 begin
   {$IFDEF WINDOWS}
-  TMenuItem(Sender).Checked := not TMenuItem(Sender).Checked;
-  FSyncTheWordToIBiblia := TMenuItem(Sender).Checked;
-  if FSyncTheWordToIBiblia then
-    ActionSyncTheWordVerseExecute(Sender);
+  SetTheWordSyncDirections(not FSyncTheWordToIBiblia,
+    FSyncIBibliaToTheWord, True);
   {$ENDIF}
 end;
 
@@ -3225,11 +3953,25 @@ var
   StatusId: Integer;
   SwatchRect: TRect;
   TextRect: TRect;
+  TextStyle: TTextStyle;
 begin
   if not (Control is TComboBox) then
     Exit;
 
   Combo := TComboBox(Control);
+  Combo.Canvas.Font.Assign(Combo.Font);
+  Combo.Canvas.Brush.Style := bsSolid;
+  Combo.Canvas.Pen.Width := 1;
+  if odSelected in State then
+  begin
+    Combo.Canvas.Brush.Color := clHighlight;
+    Combo.Canvas.Font.Color := clHighlightText;
+  end
+  else
+  begin
+    Combo.Canvas.Brush.Color := UIContentColor;
+    Combo.Canvas.Font.Color := UITextColor;
+  end;
   Combo.Canvas.FillRect(ARect);
   if (Index < 0) or (Index >= Combo.Items.Count) then
     Exit;
@@ -3245,17 +3987,29 @@ begin
     ]);
 
   StatusId := StatusIdAtDisplayIndex(Definitions, Index);
-  SwatchRect := Rect(ARect.Left + 4, ARect.Top + 4, ARect.Left + 18,
-    ARect.Bottom - 4);
+  SwatchRect := Rect(ARect.Left + UIScale(Combo, 4),
+    ARect.Top + (ARect.Height - UIScale(Combo, 14)) div 2,
+    ARect.Left + UIScale(Combo, 18),
+    ARect.Top + (ARect.Height + UIScale(Combo, 14)) div 2);
   Combo.Canvas.Brush.Color := GetStatusColor(Definitions, StatusId);
-  Combo.Canvas.Pen.Color := clBlack;
+  Combo.Canvas.Pen.Color := UIMutedTextColor;
   Combo.Canvas.Rectangle(SwatchRect);
 
   TextRect := ARect;
-  TextRect.Left := ARect.Left + 24;
+  TextRect.Left := ARect.Left + UIScale(Combo, 26);
+  TextRect.Right := TextRect.Right - UIScale(Combo, 4);
+  TextStyle := Combo.Canvas.TextStyle;
+  TextStyle.Alignment := taLeftJustify;
+  TextStyle.Layout := tlCenter;
+  TextStyle.SingleLine := True;
+  TextStyle.Wordbreak := False;
+  TextStyle.Clipping := True;
+  TextStyle.EndEllipsis := True;
+  TextStyle.ShowPrefix := False;
+  TextStyle.Opaque := False;
   Combo.Canvas.Brush.Style := bsClear;
-  Combo.Canvas.TextRect(TextRect, TextRect.Left, TextRect.Top + 3,
-    Combo.Items[Index]);
+  Combo.Canvas.TextRect(TextRect, TextRect.Left, TextRect.Top,
+    Combo.Items[Index], TextStyle);
   Combo.Canvas.Brush.Style := bsSolid;
 end;
 
@@ -3281,9 +4035,10 @@ var
   StatusId: Integer;
   SwatchRect: TRect;
   TextRect: TRect;
+  TextStyle: TTextStyle;
   SwatchColor: TColor;
-  SwatchSize: Integer;
-  CenterY: Integer;
+  SwatchSize, MinimumSize, AvailableSize: Integer;
+  CenterY, RowHeight, LeftInset, CheckInset: Integer;
 
   function CheckMarkColor(AColor: TColor): TColor;
   var
@@ -3305,6 +4060,10 @@ begin
     Exit;
 
   List := TListBox(Control);
+  List.Canvas.Font.Assign(List.Font);
+  List.Canvas.Brush.Style := bsSolid;
+  List.Canvas.Pen.Style := psSolid;
+  List.Canvas.Pen.Width := 1;
   if odSelected in State then
   begin
     List.Canvas.Brush.Color := clHighlight;
@@ -3312,7 +4071,7 @@ begin
   end
   else
   begin
-    List.Canvas.Brush.Color := List.Color;
+    List.Canvas.Brush.Color := UIContentColor;
     if List.Enabled then
       List.Canvas.Font.Color := List.Font.Color
     else
@@ -3334,35 +4093,57 @@ begin
     ]);
 
   StatusId := Integer(PtrUInt(List.Items.Objects[Index]));
-  CenterY := ARect.Top + (ARect.Bottom - ARect.Top) div 2;
-  SwatchSize := Max(11, Min(13, ARect.Bottom - ARect.Top - 5));
-  SwatchRect := Rect(ARect.Left + 4, CenterY - SwatchSize div 2,
-    ARect.Left + 4 + SwatchSize, CenterY + (SwatchSize + 1) div 2);
+  RowHeight := ARect.Bottom - ARect.Top;
+  CenterY := ARect.Top + RowHeight div 2;
+  MinimumSize := UIScale(List, 11);
+  AvailableSize := RowHeight - UIScale(List, 6);
+  SwatchSize := UIScale(List, 14);
+  if SwatchSize > AvailableSize then
+    SwatchSize := AvailableSize;
+  if SwatchSize < MinimumSize then
+    SwatchSize := MinimumSize;
+  LeftInset := UIScale(List, 4);
+  CheckInset := UIScale(List, 3);
+  SwatchRect.Left := ARect.Left + LeftInset;
+  SwatchRect.Top := CenterY - SwatchSize div 2;
+  SwatchRect.Right := SwatchRect.Left + SwatchSize;
+  SwatchRect.Bottom := SwatchRect.Top + SwatchSize;
 
   SwatchColor := GetStatusColor(Definitions, StatusId);
   List.Canvas.Brush.Color := SwatchColor;
-  List.Canvas.Pen.Color := clBlack;
+  List.Canvas.Pen.Color := UIMutedTextColor;
   List.Canvas.Rectangle(SwatchRect);
   if StatusReviewItemChecked(Index) then
   begin
     List.Canvas.Pen.Color := CheckMarkColor(SwatchColor);
-    List.Canvas.Pen.Width := 2;
-    List.Canvas.MoveTo(SwatchRect.Left + 3, CenterY);
+    List.Canvas.Pen.Width := UIScale(List, 2);
+    List.Canvas.MoveTo(SwatchRect.Left + CheckInset, CenterY);
     List.Canvas.LineTo(SwatchRect.Left + SwatchSize div 2 - 1,
-      SwatchRect.Bottom - 3);
-    List.Canvas.LineTo(SwatchRect.Right - 3, SwatchRect.Top + 3);
+      SwatchRect.Bottom - CheckInset);
+    List.Canvas.LineTo(SwatchRect.Right - CheckInset, SwatchRect.Top + CheckInset);
     List.Canvas.Pen.Width := 1;
   end;
 
   TextRect := ARect;
-  TextRect.Left := SwatchRect.Right + 6;
+  TextRect.Left := SwatchRect.Right + UIScale(List, 8);
+  TextRect.Right := TextRect.Right - LeftInset;
+  TextStyle := List.Canvas.TextStyle;
+  TextStyle.Alignment := taLeftJustify;
+  TextStyle.Layout := tlCenter;
+  TextStyle.SingleLine := True;
+  TextStyle.Wordbreak := False;
+  TextStyle.Clipping := True;
+  TextStyle.EndEllipsis := True;
+  TextStyle.ShowPrefix := False;
+  TextStyle.Opaque := False;
   if odSelected in State then
     List.Canvas.Brush.Color := clHighlight
   else
-    List.Canvas.Brush.Color := List.Color;
-  List.Canvas.TextRect(TextRect, TextRect.Left,
-    TextRect.Top + Max(0, (TextRect.Bottom - TextRect.Top -
-    List.Canvas.TextHeight(List.Items[Index])) div 2), List.Items[Index]);
+    List.Canvas.Brush.Color := UIContentColor;
+  List.Canvas.Brush.Style := bsClear;
+  List.Canvas.TextRect(TextRect, TextRect.Left, TextRect.Top,
+    List.Items[Index], TextStyle);
+  List.Canvas.Brush.Style := bsSolid;
 
   if odFocused in State then
     List.Canvas.DrawFocusRect(ARect);
@@ -3380,6 +4161,7 @@ begin
   else if (TabIndex >= Ord(tbOrigem)) and
           (TabIndex <= Ord(tbInterlinear)) then
     FChapterView.TextType := TTipoTextoBiblico(TabIndex);
+  UpdateMemoryOrderControls;
 end;
 
 procedure TMainForm.ToolButtonExitClick(Sender: TObject);
@@ -3405,15 +4187,17 @@ begin
       FTheWordSyncThread.Start;
     end;
   end else
-  begin
-    if FTheWordSyncThread <> nil then
-    begin
-      FTheWordSyncThread.Terminate;
-      FTheWordSyncThread.WaitFor;      // Wait for the thread to finish
-      FTheWordSyncThread.Free;         // Free it explicitly
-      FTheWordSyncThread := nil;
-    end;
-  end;
+    StopTheWordSyncThread;
+end;
+
+procedure TMainForm.StopTheWordSyncThread;
+begin
+  if FTheWordSyncThread = nil then
+    Exit;
+  FTheWordSyncThread.OnRefChange := nil;
+  FTheWordSyncThread.Stop;
+  FTheWordSyncThread.WaitFor;
+  FreeAndNil(FTheWordSyncThread);
 end;
 {$ENDIF}
 
@@ -3422,6 +4206,60 @@ var
   SelectedChapterViewTab: Integer;
 begin
   SelectedChapterViewTab := ChapterViewTabCtrl.TabIndex;
+  MenuItem1.Caption := SProjectMenu;
+  MenuItem10.Caption := SEditMenu;
+  MenuItem5.Caption := SNavigationMenu;
+  MenuItem17.Caption := SHelpMenu;
+  ActionNewProject.Caption := SNewProjectMenu;
+  ActionNewProject.Hint := SShortcutNewProject;
+  ActionOpenProject.Caption := SOpenProjectMenu;
+  ActionOpenProject.Hint := SShortcutOpenProject;
+  MenuItemRecent.Caption := SOpenRecentMenu;
+  ActionSaveProject.Caption := SSaveProjectMenu;
+  ActionSaveProject.Hint := SShortcutSaveProject;
+  ActionSaveProjectAs.Caption := SSaveProjectAsMenu;
+  ActionCloseProject.Caption := SCloseProjectMenu;
+  ActionCloseProject.Hint := SShortcutCloseProject;
+  ActionProjectProperties.Caption := SProjectSettingsMenu;
+  ActionProjectProperties.Hint := SShortcutProjectSettings;
+  ActionExportProject.Caption := SExportProjectMenu;
+  ActionExportProject.Hint := SShortcutExportProject;
+  MenuItem16.Caption := SExportProjectMenu;
+  ActionExportPatch.Caption := SCreatePatchMenu;
+  ActionApplyPatch.Caption := SApplyPatchMenu;
+  MenuItem24.Caption := SMaintenanceMenu;
+  ActionVaccumProject.Caption := SCompactProjectMenu;
+  ActionRebuildSuggestionDatabase.Caption :=
+    SRebuildAssociationMemoryMenu;
+  ActionExit.Caption := SExitMenu;
+  ToolButtonExit.Caption := SExitMenu;
+  ToolButtonExit.Hint := SExitMenu;
+  ActionPreviousVerse.Caption := SPreviousVerseMenu;
+  ActionPreviousVerse.Hint := SShortcutPreviousVerse;
+  ActionNextVerse.Caption := SNextVerseMenu;
+  ActionNextVerse.Hint := SShortcutNextVerse;
+  ActionFirstVerse.Caption := SFirstVerseMenu;
+  ActionLastVerse.Caption := SLastVerseMenu;
+  MenuItemAbout.Caption := SAboutMenu;
+  MenuItem20.Caption := SViewMenu;
+  if Assigned(FVerseInformationMenu) then
+    FVerseInformationMenu.Caption := SVerseInformationMenu;
+  MenuItemStrongsCount.Caption := SStrongsCountMenu;
+  MenuItemStrongsCountNone.Caption := SStrongsCountNone;
+  MenuItemStrongsCountWords.Caption := SStrongsCountWords;
+  MenuItemStrongsCountStrongs.Caption := SStrongsCountTags;
+  MenuItemBoldStrongs.Caption := SBoldStrongsMenu;
+  MenuItemAlwaysOnTop.Caption := SAlwaysOnTopMenu;
+  if Assigned(FToolsMenu) then
+    FToolsMenu.Caption := SToolsMenu;
+  if Assigned(FTheWordSyncMenu) then
+    FTheWordSyncMenu.Caption := STheWordSynchronizationMenu;
+  MenuItemSyncTheWord.Caption := SSyncIBibliaToTheWord;
+  MenuItemSynciBiblia.Caption := SSyncTheWordToIBiblia;
+  if Assigned(FDisableTheWordSyncItem) then
+    FDisableTheWordSyncItem.Caption := SDisableBothSyncDirections;
+  if Assigned(FActionPreferences) then
+    FActionPreferences.Caption := SPreferencesMenu;
   if Assigned(ActionKeyboardShortcuts) then
   begin
     ActionKeyboardShortcuts.Caption := SKeyboardShortcutsMenu;
@@ -3440,7 +4278,7 @@ begin
     ActionResetLayout.Hint := SResetLayoutHint;
   end;
   if Assigned(ActionTheWordHighlighterColors) then
-    ActionTheWordHighlighterColors.Caption := STheWordHighlightColorsMenu;
+    ActionTheWordHighlighterColors.Caption := STheWordEditorAppearance;
   if Assigned(FTranslationMemoryOrderMenu) then
     FTranslationMemoryOrderMenu.Caption := STranslationMemoryOrderMenu;
   if Assigned(FTranslationMemoryVerseOrderItem) then
@@ -3450,6 +4288,7 @@ begin
     FTranslationMemoryRareFirstItem.Caption :=
       STranslationMemoryRareFirst;
   UpdateTranslationMemoryOrderMenu;
+  UpdateMemoryOrderControls;
   if Assigned(FDefaultVerseModeMenu) then
   begin
     FDefaultVerseModeMenu.Caption := SDefaultVerseModeMenu;
@@ -3480,6 +4319,18 @@ begin
   ActionHistoryForward.Hint := SHistoryForwardHint;
   if Assigned(FGuideHideButton) then
     FGuideHideButton.Caption := SHideGuideButton;
+  if Assigned(FSuggestionStatisticalItem) then
+  begin
+    FSuggestionStatisticalItem.Caption := SSuggestionToolbarStatistical;
+    FSuggestionAIItem.Caption := SSuggestionToolbarAI;
+    FSuggestionWorkflowItem.Caption := SSuggestionToolbarWorkflow;
+  end;
+  if Assigned(FTheWordPopupMenu) then
+  begin
+    FTheWordPopupMenu.Items[0].Caption := SSyncIBibliaToTheWord;
+    FTheWordPopupMenu.Items[1].Caption := SSyncTheWordToIBiblia;
+    FTheWordPopupMenu.Items[3].Caption := SDisableBothSyncDirections;
+  end;
 
   ActionRollbackCurrentVerse.Caption := SRollbackCurrentVerse;
   ActionRollbackCurrentVerse.Hint := SRollbackCurrentVerseHint;
@@ -3523,6 +4374,7 @@ begin
   UpdateGuidePanel;
   UpdateStatusReviewPanel;
   LayoutVersePanelLabels;
+  UpdateCommandUI;
 end;
 
 procedure TMainForm.DoOpenProject(filename: string);
@@ -3531,16 +4383,15 @@ begin
   CurrentProject.OnNewVerseSubscribe(@ProjectNewVerse);
   CurrentProject.OnAlterarVersiculo := @VerseChanged;
   CurrentProject.OnSintagmaClick := @SyntagmClick;
-  CurrentProject.PalavrasComStrongEmNegrito := MenuItemBoldStrongs.Checked;
+  CurrentProject.PalavrasComStrongEmNegrito := FBoldStrongsEnabled;
   CurrentProject.MostrarQtdStrongs := FStrongsCountMode;
-  CurrentProject.AutoSave := MenuItemAutoSave.Checked;
-  CurrentProject.SuggestionMode := FSuggestionMode;
-  CurrentProject.DefaultVerseMode := FDefaultVerseMode;
+  CurrentProject.AutoSave := FAutoSaveEnabled;
 
   CurrentProject.OpenProject(filename);
-  CurrentProject.ExibirDefinicoesSoComCtrl := MenuItemDictPopup.Checked;
-  CurrentProject.SugerirAssociacaoAutomaticamente := MenuItem22.Checked;
+  CurrentProject.ApplyWorkflowFallbacks(FSuggestionMode,
+    FLegacyAutomaticSuggestion, FDefaultVerseMode);
   CurrentProject.PopupTrigger := FPopupTrigger;
+  MenuItem22.Checked := CurrentProject.AutomaticAssociationSuggestion;
 
   FChapterView.Project := CurrentProject;
   FChapterView.Enabled := true;
@@ -3570,6 +4421,7 @@ begin
   //ActionExportInterlinearText.Enabled := true;
   StatusBar1.SimpleText := '';
   UpdateNavigationHistoryActions;
+  UpdateCommandUI;
   UpdateStateHeader;
   UpdateStatusReviewPanel;
   LayoutVersePanelLabels;

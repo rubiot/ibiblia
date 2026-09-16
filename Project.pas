@@ -28,13 +28,6 @@ uses
   navigation_history, text_direction, text_edit_provenance,
   rf_note_scanner, association_highlight_projection,
   theword_module_import_layout, ai_credential_store;
-const
-  // AI processing icon indices for ImageListTreeView in formprincipal
-  // ImageListTreeView has indices 0-7 for normal states (0-3) and selected states (4-7)
-  // Indices 8-9 are reserved for AI processing states
-  ImgIndexPending = 8;     // AI processing: queued/pending (to be added to ImageListTreeView)
-  ImgIndexProcessing = 9;  // AI processing: in progress (to be added to ImageListTreeView)
-
 type
   TProject = class;
 
@@ -77,7 +70,9 @@ type
   TRegexList = specialize TFPGList<IRegex>;
   TIntegerList = specialize TFPGList<integer>;
   TIntegerArray = array of Integer;
-  TPopupTrigger = (ptMouseHover, ptAltMouseHover, ptCtrlMouseHover);
+  { Keep the established trigger ordinals stable for existing INI files. }
+  TPopupTrigger = (ptMouseHover, ptAltMouseHover, ptCtrlMouseHover,
+    ptDisabled);
 
   TTheWordModuleImportStatus = (
     twmisNotStarted,
@@ -186,6 +181,9 @@ type
     FPopupTrigger: TPopupTrigger;
     FVerseStrongsCountMode: TStrongsCountMode;
     FSuggestionMode: TSuggestionMode;
+    FHasSuggestionModeConfig: Boolean;
+    FHasAutomaticSuggestionConfig: Boolean;
+    FHasDefaultVerseModeConfig: Boolean;
     FLastLLMUsage: TLLMUsage;
     FLastLLMCallCompleted: Boolean;
     FLastCredentialWarning: string;
@@ -213,11 +211,19 @@ type
     FSaveProjectObserverSuppressionDepth: Integer;
     FLastLoadedReferenceID: string;
     FVerseLoadGeneration: QWord;
+    FLastAutomaticSuggestionGeneration: QWord;
+    FAutomaticSuggestionRequestQueued: Boolean;
+    FAutomaticSuggestionReference: string;
+    FAutomaticSuggestionGeneration: QWord;
+    {$IFDEF FPCUNIT}
+    FAutomaticSuggestionInvocationCount: QWord;
+    {$ENDIF}
     FCurrentDestinationTextEmpty: Boolean;
     FCurrentVerseDirtyGeneration: QWord;
     FChapterSnapshot: TChapterSnapshot;
     function GetCanGoBack: Boolean;
     function GetCanGoForward: Boolean;
+    function GetAutomaticAssociationSuggestion: Boolean;
     function GetCaminho: string;
     function GetChapterViewText: TTipoTextoBiblico;
     function GetChapterViewMode: TChapterViewMode;
@@ -239,7 +245,10 @@ type
     procedure PreencherArvore;
     procedure SetAtrasoExibicao(const AValue: Cardinal);
     procedure SetAutoSave(AValue: boolean);
+    procedure SetAutomaticAssociationSuggestion(AValue: Boolean);
     procedure SetDefaultVerseMode(AValue: TDefaultVerseMode);
+    procedure SetSuggestionMode(AValue: TSuggestionMode);
+    procedure SetPopupTrigger(AValue: TPopupTrigger);
     procedure SetChapterViewText(AValue: TTipoTextoBiblico);
     procedure SetChapterViewMode(AValue: TChapterViewMode);
     procedure SetComments(const AValue: string);
@@ -294,6 +303,12 @@ type
     procedure ResetDefaultVerseModeTransition;
     procedure RetargetDefaultVerseModeTransition(
       const AReferenceID: string);
+    procedure LoadWorkflowSettings;
+    procedure RunAutomaticSuggestionAfterReferenceChange(
+      const AReferenceID: string; AReferenceChanged: Boolean);
+    procedure CancelAutomaticSuggestionRequest;
+    procedure DispatchAutomaticSuggestionRequest(Data: PtrInt);
+    procedure QueueAutomaticSuggestionRequest;
     function TryResolveAssociationAIConfiguration(out AFlow: IAIVerseFlow;
       out AProvider, AModel, AApiKey: string): Boolean;
     function ImportTheWordModuleWithLayout(arquivo: string;
@@ -370,6 +385,12 @@ type
     procedure CreateProject(nomedbvelho, nomedbnovo, descricao: string; tokenizerVersion: Integer); overload;
     procedure OpenProject(Nome: string);
     function CloseProject(_Commit: boolean): Boolean;
+    procedure ApplyWorkflowFallbacks(ASuggestionMode: TSuggestionMode;
+      AAutomaticSuggestion: Boolean;
+      ADefaultVerseMode: TDefaultVerseMode);
+    procedure InitializeWorkflowSettings(ASuggestionMode: TSuggestionMode;
+      AAutomaticSuggestion: Boolean;
+      ADefaultVerseMode: TDefaultVerseMode);
     procedure RequestDefaultVerseModeForCurrentVerse;
     procedure Commit;
     procedure Rollback;
@@ -496,6 +517,8 @@ type
     procedure SetStatusDefinitions(const Definitions: TStatusDefinitions);
     procedure RefreshStatusControl;
     function StatusAutomationEnabled: Boolean;
+    function IsAutomaticSuggestionAvailable: Boolean;
+    function IsAIConfigurationAvailable: Boolean;
     procedure CountVersesByStatus(out Counts: TStatusCounts);
     function CountVersesWithStatus(StatusId: Integer): Integer;
     procedure RemapStatus(OldStatusId, NewStatusId: Integer);
@@ -518,11 +541,16 @@ type
     property MemoComentarios: TControl read FMemoComentarios write FMemoComentarios;
     property RadioGroupSituacao: TComboBox read FRadioGroupSituacao write FRadioGroupSituacao;
     property ExibirDefinicoesSoComCtrl: boolean read FExibirDefComCtrl write FExibirDefComCtrl;
-    property SugerirAssociacaoAutomaticamente: boolean read FSugerirAssociacaoAuto write FSugerirAssociacaoAuto;
+    property AutomaticAssociationSuggestion: Boolean
+      read GetAutomaticAssociationSuggestion
+      write SetAutomaticAssociationSuggestion;
+    property SugerirAssociacaoAutomaticamente: boolean
+      read GetAutomaticAssociationSuggestion
+      write SetAutomaticAssociationSuggestion;
     property PalavrasComStrongEmNegrito: boolean read FPalavrasComStrongEmNegrito write SetPalavrasComStrongEmNegrito;
     property Escopo: TEscopoTexto read FEscopo write FEscopo;
     property MostrarQtdStrongs: TStrongsCountMode read FVerseStrongsCountMode write SetVerseStrongsCountMode;
-    property PopupTrigger: TPopupTrigger read FPopupTrigger write FPopupTrigger;
+    property PopupTrigger: TPopupTrigger read FPopupTrigger write SetPopupTrigger;
     property DisplayTags: boolean read FDisplayTags write SetDisplayTags;
     property BookID: integer read FReference.BookID;
     property Book: string read FReference.Book;
@@ -541,7 +569,16 @@ type
     property LastLLMCallCompleted: Boolean read FLastLLMCallCompleted;
     property Pairs: string read GetPairs;
     property VerseObjects: AVersiculo read FAVersiculo;
-    property SuggestionMode: TSuggestionMode read FSuggestionMode write FSuggestionMode;
+    property SuggestionMode: TSuggestionMode read FSuggestionMode
+      write SetSuggestionMode;
+    property AutomaticSuggestionAvailable: Boolean
+      read IsAutomaticSuggestionAvailable;
+    property AIConfigurationAvailable: Boolean
+      read IsAIConfigurationAvailable;
+    {$IFDEF FPCUNIT}
+    property AutomaticSuggestionInvocationCount: QWord
+      read FAutomaticSuggestionInvocationCount;
+    {$ENDIF}
   end;
 
   { TProjectVerseStatusCursor — implements IVerseStatusCursor so that
@@ -703,7 +740,7 @@ function TextTypeParticipatesInAssociations(
 implementation
 
 uses FormDictionaryPopup, FormVerseRules, formaiprocessing,
-  theword_module_encoding, performance_debug;
+  theword_module_encoding, performance_debug, status_visuals, ui_style;
 
 type
   { Executes only the blocking network request outside the LCL thread. Verse
@@ -984,6 +1021,11 @@ begin
     (not HasLegacyStatusDescriptions);
 end;
 
+function TProject.IsAutomaticSuggestionAvailable: Boolean;
+begin
+  Result := Assigned(FPersistence) and StatusAutomationEnabled;
+end;
+
 function TProject.TryResolveAssociationAIConfiguration(out AFlow: IAIVerseFlow;
   out AProvider, AModel, AApiKey: string): Boolean;
 var
@@ -1018,6 +1060,17 @@ begin
     AApiKey := '';
     Result := False;
   end;
+end;
+
+function TProject.IsAIConfigurationAvailable: Boolean;
+var
+  Flow: IAIVerseFlow;
+  Provider: string;
+  Model: string;
+  ApiKey: string;
+begin
+  Result := TryResolveAssociationAIConfiguration(Flow, Provider, Model,
+    ApiKey);
 end;
 
 function TProject.HasCustomStatus: boolean;
@@ -1129,6 +1182,72 @@ begin
   CreateProject(nomedbnovo, descricao, tokenizerVersion);
 end;
 
+procedure TProject.LoadWorkflowSettings;
+var
+  StoredSuggestionMode: Integer;
+begin
+  FHasSuggestionModeConfig := FConfig.HasSuggestionMode;
+  FHasAutomaticSuggestionConfig := FConfig.HasAutomaticSuggestion;
+  FHasDefaultVerseModeConfig := FConfig.HasDefaultVerseMode;
+
+  if FHasSuggestionModeConfig then
+  begin
+    StoredSuggestionMode := FConfig.ReadSuggestionMode(Ord(smStatistical));
+    if StoredSuggestionMode = Ord(smAI) then
+      FSuggestionMode := smAI
+    else
+      FSuggestionMode := smStatistical;
+  end;
+  if FHasAutomaticSuggestionConfig then
+    FSugerirAssociacaoAuto := FConfig.ReadAutomaticSuggestion(False);
+  if FHasDefaultVerseModeConfig then
+    FDefaultVerseMode := DefaultVerseModeFromInteger(
+      FConfig.ReadDefaultVerseMode(Ord(dvmAssociation)));
+  if not IsAutomaticSuggestionAvailable then
+    FSugerirAssociacaoAuto := False;
+end;
+
+procedure TProject.ApplyWorkflowFallbacks(ASuggestionMode: TSuggestionMode;
+  AAutomaticSuggestion: Boolean; ADefaultVerseMode: TDefaultVerseMode);
+begin
+  { Missing keys deliberately remain missing. This lets an existing project
+    inherit the application preferences without silently migrating its file. }
+  if not FHasSuggestionModeConfig then
+  begin
+    if ASuggestionMode = smAI then
+      FSuggestionMode := smAI
+    else
+      FSuggestionMode := smStatistical;
+  end;
+  if not FHasAutomaticSuggestionConfig then
+    FSugerirAssociacaoAuto := AAutomaticSuggestion and
+      IsAutomaticSuggestionAvailable;
+  if not FHasDefaultVerseModeConfig then
+    FDefaultVerseMode := DefaultVerseModeFromInteger(
+      Ord(ADefaultVerseMode));
+end;
+
+procedure TProject.InitializeWorkflowSettings(
+  ASuggestionMode: TSuggestionMode; AAutomaticSuggestion: Boolean;
+  ADefaultVerseMode: TDefaultVerseMode);
+begin
+  if ASuggestionMode = smAI then
+    FSuggestionMode := smAI
+  else
+    FSuggestionMode := smStatistical;
+  FSugerirAssociacaoAuto := AAutomaticSuggestion and
+    IsAutomaticSuggestionAvailable;
+  FDefaultVerseMode := DefaultVerseModeFromInteger(
+    Ord(ADefaultVerseMode));
+
+  FConfig.WriteSuggestionMode(Ord(FSuggestionMode));
+  FConfig.WriteAutomaticSuggestion(FSugerirAssociacaoAuto);
+  FConfig.WriteDefaultVerseMode(Ord(FDefaultVerseMode));
+  FHasSuggestionModeConfig := True;
+  FHasAutomaticSuggestionConfig := True;
+  FHasDefaultVerseModeConfig := True;
+end;
+
 function TProject.GetFormattedReference: string;
 begin
   result := format('%s %d:%d', [Book, Chapter, Verse]);
@@ -1188,12 +1307,80 @@ begin
   FAutoSave:=AValue;
 end;
 
+procedure TProject.SetAutomaticAssociationSuggestion(AValue: Boolean);
+begin
+  { A custom status catalog has no safe mapping for the legacy automatic
+    status transitions. Do not let a caller enable a control that cannot be
+    honored, even if it bypasses the UI availability check. }
+  if AValue and not IsAutomaticSuggestionAvailable then
+    AValue := False;
+  if not AValue then
+    CancelAutomaticSuggestionRequest;
+  if FSugerirAssociacaoAuto = AValue then
+    Exit;
+
+  FSugerirAssociacaoAuto := AValue;
+  if Assigned(FPersistence) then
+  begin
+    FConfig.WriteAutomaticSuggestion(AValue);
+    FHasAutomaticSuggestionConfig := True;
+  end;
+end;
+
 procedure TProject.SetDefaultVerseMode(AValue: TDefaultVerseMode);
+var
+  NormalizedMode: TDefaultVerseMode;
 begin
   { Changing the preference must not open or close the editor in the current
     Verse. The caller explicitly requests application after a project is
     ready, while regular navigation requests it from AfterVerseScroll. }
-  FDefaultVerseMode := DefaultVerseModeFromInteger(Ord(AValue));
+  NormalizedMode := DefaultVerseModeFromInteger(Ord(AValue));
+  if FDefaultVerseMode = NormalizedMode then
+    Exit;
+
+  FDefaultVerseMode := NormalizedMode;
+  if Assigned(FPersistence) then
+  begin
+    FConfig.WriteDefaultVerseMode(Ord(NormalizedMode));
+    FHasDefaultVerseModeConfig := True;
+  end;
+end;
+
+procedure TProject.SetSuggestionMode(AValue: TSuggestionMode);
+var
+  NormalizedMode: TSuggestionMode;
+begin
+  if AValue = smAI then
+    NormalizedMode := smAI
+  else
+    NormalizedMode := smStatistical;
+  if FSuggestionMode = NormalizedMode then
+    Exit;
+
+  FSuggestionMode := NormalizedMode;
+  if Assigned(FPersistence) then
+  begin
+    FConfig.WriteSuggestionMode(Ord(NormalizedMode));
+    FHasSuggestionModeConfig := True;
+  end;
+end;
+
+procedure TProject.SetPopupTrigger(AValue: TPopupTrigger);
+begin
+  if not (AValue in [ptMouseHover, ptAltMouseHover, ptCtrlMouseHover,
+    ptDisabled]) then
+    AValue := ptMouseHover;
+  if FPopupTrigger = AValue then
+    Exit;
+
+  FPopupTrigger := AValue;
+  if FPopupTrigger = ptDisabled then
+  begin
+    FTemporizador.Enabled := False;
+    FTemporizador.Tag := 0;
+    if Assigned(FrmDictionaryPopup) then
+      FrmDictionaryPopup.HidePopup;
+  end;
 end;
 
 procedure TProject.SetChapterViewText(AValue: TTipoTextoBiblico);
@@ -1504,16 +1691,20 @@ var
     Result := False;
     DialogForm := TForm.CreateNew(nil, 1);
     try
+      ApplyFormStyle(DialogForm);
       DialogForm.Caption := SPatchStatusCatalogTitle;
       DialogForm.Position := poMainFormCenter;
-      DialogForm.Width := 560;
-      DialogForm.Height := 116 + (Length(UsedStatusIds) * 34);
+      DialogForm.ClientWidth := 640;
+      DialogForm.ClientHeight := 136 + (Length(UsedStatusIds) * 40);
 
       InfoLabel := TLabel.Create(DialogForm);
       InfoLabel.Parent := DialogForm;
-      InfoLabel.Left := 12;
-      InfoLabel.Top := 12;
-      InfoLabel.Width := 520;
+      InfoLabel.Left := 16;
+      InfoLabel.Top := 16;
+      InfoLabel.Width := 608;
+      InfoLabel.AutoSize := False;
+      InfoLabel.WordWrap := True;
+      InfoLabel.Height := 40;
       InfoLabel.Caption := SPatchStatusCatalogDiverged;
 
       SortedCurrent := SortStatusDefinitionsByDisplayOrder(CurrentDefinitions);
@@ -1522,9 +1713,12 @@ var
       begin
         LabelControl := TLabel.Create(DialogForm);
         LabelControl.Parent := DialogForm;
-        LabelControl.Left := 12;
-        LabelControl.Top := 44 + (StatusIndex * 34);
-        LabelControl.Width := 230;
+        LabelControl.Left := 16;
+        LabelControl.Top := 72 + (StatusIndex * 40);
+        LabelControl.Width := 272;
+        LabelControl.AutoSize := False;
+        LabelControl.WordWrap := True;
+        LabelControl.Height := 32;
         LabelControl.Caption := Format(SPatchStatusLabelFmt, [
           GetStatusCaption(PatchDefinitions, UsedStatusIds[StatusIndex]),
           UsedStatusIds[StatusIndex]
@@ -1532,9 +1726,9 @@ var
 
         Combo := TComboBox.Create(DialogForm);
         Combo.Parent := DialogForm;
-        Combo.Left := 254;
-        Combo.Top := 40 + (StatusIndex * 34);
-        Combo.Width := 280;
+        Combo.Left := 304;
+        Combo.Top := 68 + (StatusIndex * 40);
+        Combo.Width := 320;
         Combo.Style := csDropDownList;
         for CurrentIndex := 0 to High(SortedCurrent) do
           Combo.Items.AddObject(SortedCurrent[CurrentIndex].Caption,
@@ -1556,19 +1750,22 @@ var
 
       OkButton := TButton.Create(DialogForm);
       OkButton.Parent := DialogForm;
-      OkButton.Left := 350;
-      OkButton.Top := DialogForm.ClientHeight - 40;
-      OkButton.Width := 84;
+      OkButton.Left := 440;
+      OkButton.Top := DialogForm.ClientHeight - 48;
+      OkButton.Width := 88;
       OkButton.Caption := SButtonOK;
       OkButton.ModalResult := mrOK;
+      OkButton.Default := True;
 
       CancelButton := TButton.Create(DialogForm);
       CancelButton.Parent := DialogForm;
-      CancelButton.Left := 450;
-      CancelButton.Top := DialogForm.ClientHeight - 40;
-      CancelButton.Width := 84;
+      CancelButton.Left := 536;
+      CancelButton.Top := DialogForm.ClientHeight - 48;
+      CancelButton.Width := 88;
       CancelButton.Caption := SButtonCancel;
       CancelButton.ModalResult := mrCancel;
+      CancelButton.Cancel := True;
+      ApplyDialogStyle(DialogForm);
 
       if DialogForm.ShowModal <> mrOK then
         Exit;
@@ -1718,8 +1915,6 @@ var
   Definitions: TStatusDefinitions;
   StatusId: Integer;
   MaxId: Integer;
-  Bitmap: TBitmap;
-  StatusColor: TColor;
 begin
   if not Assigned(FArvore) then
     Exit;
@@ -1732,42 +1927,19 @@ begin
   FArvore.Images := nil;
   FreeAndNil(FStatusImages);
   FStatusImages := TImageList.Create(FArvore);
-  FStatusImages.Width := 16;
-  FStatusImages.Height := 16;
+  ConfigureStatusImageList(FStatusImages);
 
   for StatusId := 0 to MaxId do
-  begin
-    Bitmap := TBitmap.Create;
-    try
-      Bitmap.Width := 16;
-      Bitmap.Height := 16;
-      StatusColor := GetStatusColor(Definitions, StatusId);
-      Bitmap.Canvas.Brush.Color := StatusColor;
-      Bitmap.Canvas.Pen.Color := clBlack;
-      Bitmap.Canvas.Rectangle(0, 0, 16, 16);
-      FStatusImages.Add(Bitmap, nil);
-    finally
-      Bitmap.Free;
-    end;
-  end;
+    AddStatusSwatch(FStatusImages, GetStatusColor(Definitions, StatusId));
 
   FArvore.Images := FStatusImages;
 end;
 
 function TProject.GetAggregateStatusImageIndex(const Counts: TStatusCounts;
   Total: Integer; const StatusDefinitions: TStatusDefinitions): Integer;
-const
-  ImageSize = 16;
-  BorderSize = 1;
-  InnerSize = ImageSize - (BorderSize * 2);
 var
-  Segments: TStatusSegmentWidths;
   CacheKey: string;
   CacheIndex: Integer;
-  SegmentIndex: Integer;
-  Bitmap: TBitmap;
-  X: Integer;
-  SegmentRect: TRect;
 begin
   Result := -1;
   if not Assigned(FStatusImages) then
@@ -1776,59 +1948,18 @@ begin
   if not Assigned(FStatusAggregateImageCache) then
     FStatusAggregateImageCache := TStringList.Create;
 
-  Segments := BuildStatusSegmentWidths(Counts, StatusDefinitions, Total, InnerSize);
-  if Length(Segments) = 0 then
+  CacheKey := StatusAggregateImageKey(Counts, Total, StatusDefinitions);
+  if CacheKey = '' then
     Exit;
-
-  CacheKey := '';
-  for SegmentIndex := 0 to High(Segments) do
-    CacheKey := CacheKey + Format('%d:%d;', [
-      Segments[SegmentIndex].StatusId,
-      Segments[SegmentIndex].Width
-    ]);
 
   CacheIndex := FStatusAggregateImageCache.IndexOfName(CacheKey);
   if CacheIndex >= 0 then
     Exit(StrToIntDef(FStatusAggregateImageCache.ValueFromIndex[CacheIndex], -1));
 
-  Bitmap := TBitmap.Create;
-  try
-    Bitmap.Width := ImageSize;
-    Bitmap.Height := ImageSize;
-    Bitmap.Canvas.Brush.Color := clWhite;
-    SegmentRect.Left := 0;
-    SegmentRect.Top := 0;
-    SegmentRect.Right := ImageSize;
-    SegmentRect.Bottom := ImageSize;
-    Bitmap.Canvas.FillRect(SegmentRect);
-
-    X := BorderSize;
-    for SegmentIndex := 0 to High(Segments) do
-    begin
-      if Segments[SegmentIndex].Width <= 0 then
-        Continue;
-      Bitmap.Canvas.Brush.Color := GetStatusColor(StatusDefinitions,
-        Segments[SegmentIndex].StatusId);
-      SegmentRect.Left := X;
-      SegmentRect.Top := BorderSize;
-      SegmentRect.Right := X + Segments[SegmentIndex].Width;
-      SegmentRect.Bottom := BorderSize + InnerSize;
-      Bitmap.Canvas.FillRect(SegmentRect);
-      Inc(X, Segments[SegmentIndex].Width);
-    end;
-
-    Bitmap.Canvas.Brush.Style := bsClear;
-    Bitmap.Canvas.Pen.Color := clBlack;
-    Bitmap.Canvas.Rectangle(0, 0, ImageSize, ImageSize);
-    Bitmap.Canvas.Brush.Style := bsSolid;
-
-    Result := FStatusImages.Add(Bitmap, nil);
+  Result := AddStatusAggregateImage(FStatusImages, Counts, Total, StatusDefinitions);
+  if Result >= 0 then
     FStatusAggregateImageCache.Add(CacheKey + '=' + IntToStr(Result));
-  finally
-    Bitmap.Free;
-  end;
 end;
-
 procedure TProject.RefreshStatusControl;
 var
   Definitions: TStatusDefinitions;
@@ -2741,6 +2872,11 @@ begin
   Result := Assigned(FNavigationHistory) and FNavigationHistory.CanGoForward;
 end;
 
+function TProject.GetAutomaticAssociationSuggestion: Boolean;
+begin
+  Result := FSugerirAssociacaoAuto and IsAutomaticSuggestionAvailable;
+end;
+
 function TProject.GetInterlinearMode: TInterlinearMode;
 begin
   Result := TInterlinearMode(FConfig.ReadInterlinearMode(Ord(imInterlinear)));
@@ -2890,6 +3026,78 @@ begin
         Snapshot.AutomaticNoteStart(GetID(), FACamposTexto[TextType]);
 end;
 
+procedure TProject.RunAutomaticSuggestionAfterReferenceChange(
+  const AReferenceID: string; AReferenceChanged: Boolean);
+begin
+  if not AReferenceChanged or
+     (FLastAutomaticSuggestionGeneration = FVerseLoadGeneration) then
+    Exit;
+  if not FAtivo or FClosing or FExportando or
+     not FSugerirAssociacaoAuto or
+     not IsAutomaticSuggestionAvailable or
+     ((FSuggestionMode = smAI) and not IsAIConfigurationAvailable) or
+     AReferenceID.IsEmpty or (ID <> AReferenceID) or
+     (FLastLoadedReferenceID <> AReferenceID) then
+    Exit;
+
+  if Status <> FirstStatusId(GetStatusDefinitions) then
+    Exit;
+
+  { Publish only a stable identity here. Running an AI call from inside the
+    dataset's AfterScroll event would allow a synchronized theWord message to
+    reload these same TVerse objects while the request pumps messages. }
+  FAutomaticSuggestionReference := AReferenceID;
+  FAutomaticSuggestionGeneration := FVerseLoadGeneration;
+  QueueAutomaticSuggestionRequest;
+end;
+
+procedure TProject.CancelAutomaticSuggestionRequest;
+begin
+  FAutomaticSuggestionReference := '';
+  FAutomaticSuggestionGeneration := 0;
+end;
+
+procedure TProject.QueueAutomaticSuggestionRequest;
+begin
+  if (FDefaultVerseModeNavigationDepth > 0) or
+     FAutomaticSuggestionReference.IsEmpty or
+     FAutomaticSuggestionRequestQueued then
+    Exit;
+  FAutomaticSuggestionRequestQueued := True;
+  Application.QueueAsyncCall(@DispatchAutomaticSuggestionRequest, 0);
+end;
+
+procedure TProject.DispatchAutomaticSuggestionRequest(Data: PtrInt);
+var
+  RequestedReference: string;
+  RequestedGeneration: QWord;
+begin
+  FAutomaticSuggestionRequestQueued := False;
+  if FDefaultVerseModeNavigationDepth > 0 then
+    Exit;
+
+  RequestedReference := FAutomaticSuggestionReference;
+  RequestedGeneration := FAutomaticSuggestionGeneration;
+  CancelAutomaticSuggestionRequest;
+  if RequestedReference.IsEmpty or not FAtivo or FClosing or FExportando or
+     not FSugerirAssociacaoAuto or
+     not IsAutomaticSuggestionAvailable or
+     ((FSuggestionMode = smAI) and not IsAIConfigurationAvailable) or
+     (RequestedGeneration <> FVerseLoadGeneration) or
+     (FLastAutomaticSuggestionGeneration = RequestedGeneration) or
+     (ID <> RequestedReference) or
+     (FLastLoadedReferenceID <> RequestedReference) or
+     (Status <> FirstStatusId(GetStatusDefinitions)) then
+    Exit;
+
+  { Claim the load before invoking code that may pump the LCL queue. }
+  FLastAutomaticSuggestionGeneration := RequestedGeneration;
+  {$IFDEF FPCUNIT}
+  Inc(FAutomaticSuggestionInvocationCount);
+  {$ENDIF}
+  SuggestAssociation;
+end;
+
 procedure TProject.AfterVerseScroll(DataSet: TDataSet);
 var
   e: TOnNovoVersiculoEvent;
@@ -2988,6 +3196,9 @@ begin
       (FPersistence.VerseContentRevision <> LoadedPersistenceRevision),
       False);
   end;
+
+  RunAutomaticSuggestionAfterReferenceChange(LoadedReferenceID,
+    ReferenceChanged);
 
   { Opening is deliberately requested only after the complete Verse load,
     observers and autosave. A plain refresh of the same reference therefore
@@ -3111,6 +3322,7 @@ procedure TProject.SintagmaOnMouseEnter(Sender: TSyntagm);
 var
   show: boolean;
 begin
+  show := False;
   case FPopupTrigger of
     ptMouseHover:     show := (GetKeyState(VK_CONTROL) and $8000 = 0) and
                               (GetKeyState(VK_SHIFT  ) and $8000 = 0);
@@ -3119,6 +3331,7 @@ begin
 
     ptCtrlMouseHover: show := (GetKeyState(VK_CONTROL) and $8000 <> 0) and
                               (GetKeyState(VK_SHIFT  ) and $8000 = 0);
+    ptDisabled:       show := False;
   end;
 
   if show then
@@ -3145,6 +3358,7 @@ begin
     ptMouseHover:     hide := GetKeyState(VK_CONTROL) and $8000 = 0;
     ptAltMouseHover:  hide := GetKeyState(VK_MENU   ) and $8000 = 0;
     ptCtrlMouseHover: hide := GetKeyState(VK_CONTROL) and $8000 = 0;
+    ptDisabled:       hide := True;
   end;
 
   if hide then
@@ -3495,7 +3709,7 @@ begin
   Candidate := TSyntagm(Timer.Tag);
   Timer.Tag := 0;
 
-  if not Assigned(Candidate) then
+  if (FPopupTrigger = ptDisabled) or not Assigned(Candidate) then
     Exit;
   if frmDictionaryPopup.Visible then
     exit;
@@ -3686,6 +3900,7 @@ begin
     ResetDefaultVerseModeTransition;
   end;
 
+  QueueAutomaticSuggestionRequest;
   if not Retargeted then
     QueueDefaultVerseModeRequest;
   if IBibliaPerfDebugEnabled then
@@ -4086,7 +4301,12 @@ begin
   FAssociationMemoryLiveEditPending := False;
   FAssociationMemorySpeculativeEditPending := False;
   FAssociationMemoryProgressBar := nil;
+  FSuggestionMode := smStatistical;
+  FSugerirAssociacaoAuto := False;
   FDefaultVerseMode := dvmAssociation;
+  FHasSuggestionModeConfig := False;
+  FHasAutomaticSuggestionConfig := False;
+  FHasDefaultVerseModeConfig := False;
   FNewVerseNotificationReference := '';
   FNewVerseNotificationGeneration := 0;
   FDefaultVerseModeRequestQueued := False;
@@ -4098,10 +4318,18 @@ begin
   FSaveProjectObserverSuppressionDepth := 0;
   FLastLoadedReferenceID := '';
   FVerseLoadGeneration := 0;
+  FLastAutomaticSuggestionGeneration := 0;
+  FAutomaticSuggestionRequestQueued := False;
+  FAutomaticSuggestionReference := '';
+  FAutomaticSuggestionGeneration := 0;
+  {$IFDEF FPCUNIT}
+  FAutomaticSuggestionInvocationCount := 0;
+  {$ENDIF}
   FCurrentDestinationTextEmpty := False;
   FCurrentVerseDirtyGeneration := 0;
   FChapterSnapshot := nil;
   FVerseStrongsCountMode := scNone;
+  FPopupTrigger := ptMouseHover;
   FLastLLMUsage.PromptTokens := 0;
   FLastLLMUsage.CompletionTokens := 0;
   FLastLLMUsage.TotalTokens := 0;
@@ -4144,9 +4372,11 @@ begin
       FrmAIProcessing.DetachManager(FAIManager);
     ReleaseAIProcessingBatch(FAIManager);
   end;
+  CancelAutomaticSuggestionRequest;
   CancelDefaultVerseModeRequest;
   AbortDefaultVerseModeTransition;
   Application.RemoveAsyncCalls(Self);
+  FAutomaticSuggestionRequestQueued := False;
   FDefaultVerseModeRequestQueued := False;
   FNewVerseNotificationQueued := False;
   FNewVerseNotificationReference := '';
@@ -4211,9 +4441,11 @@ begin
   end;
 
   CancelDefaultVerseModeRequest;
+  CancelAutomaticSuggestionRequest;
   AbortDefaultVerseModeTransition;
   Inc(FVerseLoadGeneration);
   FLastLoadedReferenceID := '';
+  FLastAutomaticSuggestionGeneration := 0;
   FCurrentDestinationTextEmpty := False;
   FNavigationHistory.Clear;
 
@@ -4244,6 +4476,7 @@ begin
   else
     FConfig.Attach(FPersistence);
   FTblInfo := FPersistence.InfoTable;
+  LoadWorkflowSettings;
 
   FreeAndNil(FSuggestionManager);
   FSuggestionManager := TSuggestionManager.Create(Nome);
@@ -4380,6 +4613,7 @@ begin
     ReleaseAIProcessingBatch(FAIManager);
   end;
   InvalidateChapterSnapshot;
+  CancelAutomaticSuggestionRequest;
   CancelDefaultVerseModeRequest;
   AbortDefaultVerseModeTransition;
   if not Assigned(FPersistence) then
@@ -4732,9 +4966,6 @@ begin
   try
     if not FPersistence.EOF then
       FPersistence.Next;
-    if not FExportando and SugerirAssociacaoAutomaticamente and
-      StatusAutomationEnabled and (Status = FirstStatusId(GetStatusDefinitions)) then
-      SuggestAssociation;
   finally
     EndDefaultVerseModeNavigation;
   end;
@@ -4746,9 +4977,6 @@ begin
   try
     if not FPersistence.BOF then
       FPersistence.Prior;
-    if not FExportando and SugerirAssociacaoAutomaticamente and
-      StatusAutomationEnabled and (Status = FirstStatusId(GetStatusDefinitions)) then
-      SuggestAssociation;
   finally
     EndDefaultVerseModeNavigation;
   end;
@@ -4760,9 +4988,6 @@ begin
   try
     if not FPersistence.BOF then
       FPersistence.First;
-    if not FExportando and SugerirAssociacaoAutomaticamente and
-      StatusAutomationEnabled and (Status = FirstStatusId(GetStatusDefinitions)) then
-      SuggestAssociation;
   finally
     EndDefaultVerseModeNavigation;
   end;
@@ -4774,9 +4999,6 @@ begin
   try
     if not FPersistence.EOF then
       FPersistence.Last;
-    if not FExportando and SugerirAssociacaoAutomaticamente and
-      StatusAutomationEnabled and (Status = FirstStatusId(GetStatusDefinitions)) then
-      SuggestAssociation;
   finally
     EndDefaultVerseModeNavigation;
   end;
@@ -4887,26 +5109,39 @@ begin
 end;
 
 procedure TProject.SuggestAssociationStatistical;
+var
+  RequestedReference: string;
+  RequestedGeneration: QWord;
+  SourceVerse: TVerse;
 begin
-  if not Assigned(FAssociationMemory) then
+  SourceVerse := FAVersiculo[tbOrigem];
+  if not Assigned(FAssociationMemory) or not Assigned(SourceVerse) then
     Exit;
+  RequestedReference := ID;
+  RequestedGeneration := FVerseLoadGeneration;
   EnsureAssociationMemoryFresh;
   if FAssociationMemoryLiveEditPending or
      FAssociationMemoryRebuildRunning or
      FAssociationMemory.RebuildActive or
      FAssociationMemory.NeedsRebuild or
-     not FAssociationMemory.CacheValidated then
+     not FAssociationMemory.CacheValidated or
+     (RequestedGeneration <> FVerseLoadGeneration) or
+     (RequestedReference <> ID) or
+     (RequestedReference <> FLastLoadedReferenceID) or
+     (SourceVerse <> FAVersiculo[tbOrigem]) or
+     (SourceVerse.ReferenceID <> RequestedReference) then
     Exit;
 
-  FSuggestionManager.SuggestAssociations(FAVersiculo[tbOrigem]);
+  FSuggestionManager.SuggestAssociations(SourceVerse);
   if ReconcileChangedVerseAssociations then
     NotifyNewVerseObserversAfterEdit;
-  FAVersiculo[tbOrigem].Render;
+  SourceVerse.Render;
   FAVersiculo[tbDestino].Render;
 
   if not StatusAutomationEnabled then exit;
 
-  if (FRadioGroupSituacao.ItemIndex = 0) and (FAVersiculo[tbOrigem].AssociationProgress > 0) then
+  if (FRadioGroupSituacao.ItemIndex = 0) and
+    (SourceVerse.AssociationProgress > 0) then
     FRadioGroupSituacao.ItemIndex := 1; // associando
 end;
 
@@ -4939,9 +5174,24 @@ var
   Provider: string;
   Model: string;
   ApiKey: string;
+  RequestedReference: string;
+  RequestedGeneration: QWord;
   ErrorMessage: string;
   WaitFormStarted: Boolean;
   AssociationChanged: Boolean;
+
+  function RequestStillCurrent: Boolean;
+  begin
+    Result := FAtivo and not FClosing and Assigned(FPersistence) and
+      (RequestedGeneration = FVerseLoadGeneration) and
+      (RequestedReference = ID) and
+      (RequestedReference = FLastLoadedReferenceID) and
+      (v = FAVersiculo[tbOrigem]) and
+      Assigned(v) and (v.ReferenceID = RequestedReference) and
+      Assigned(v.PairedVerse) and
+      (v.PairedVerse = FAVersiculo[tbDestino]) and
+      (v.PairedVerse.ReferenceID = RequestedReference);
+  end;
 begin
   AssociationChanged := False;
   FLastLLMUsage.PromptTokens := 0;
@@ -4962,6 +5212,8 @@ begin
     ShowMessage(SNoVerseToAssociate);
     Exit;
   end;
+  RequestedReference := ID;
+  RequestedGeneration := FVerseLoadGeneration;
 
   ErrorMessage := '';
   WaitFormStarted := False;
@@ -4979,9 +5231,20 @@ begin
       FLastLLMUsage := resp.Usage;
       FLastLLMCallCompleted := True;
 
+      if not RequestStillCurrent then
+      begin
+        AIDebugLog('Discarding stale single-verse AI response after navigation');
+        Exit;
+      end;
+
       AIDebugLog(SAISingleResponseReceived);
       parsed := flow.ParseResponse(resp.Content, v);
       try
+        if not RequestStillCurrent then
+        begin
+          AIDebugLog('Discarding stale parsed AI response after navigation');
+          Exit;
+        end;
         AIDebugLog(SAISingleApplyingResult);
         flow.ApplyResult(parsed, v);
         AssociationChanged :=

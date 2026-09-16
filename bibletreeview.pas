@@ -5,14 +5,14 @@ unit BibleTreeView;
 interface
 
 uses
-  Classes, SysUtils, Controls, ComCtrls, Graphics, fgl, BibleScope, LResources,
+  Classes, SysUtils, Controls, ComCtrls, Graphics, fgl, BibleScope,
   bible_book_names;
 
 const
   ImgIndexUnchecked = 0;
   ImgIndexChecked = 1;
   ImgIndexPartial = 2;
-  ImgIndexAIPending = 3;     // AI processing pending (hourglass)
+  ImgIndexAIPending = 3;     // AI processing pending (clock)
   ImgIndexAIProcessing = 4;  // AI processing in progress (spinner)
   ImgIndexAISuccess = 5;     // AI processing succeeded (green check)
   ImgIndexAIError = 6;       // AI processing failed (red x)
@@ -68,7 +68,7 @@ resourcestring
 implementation
 
 uses
-  LCLIntf, ai_debug;
+  LCLIntf, ai_debug, ui_icons;
 
 { TBibleTreeView }
 
@@ -292,51 +292,20 @@ begin
 end;
 
 procedure TBibleTreeView.CreateImageList;
-  procedure AddPngFromRes(res: string);
-  var
-    SrcBmp: TBitmap;
-    Picture: TPicture;
-  begin
-    Picture := TPicture.Create;
-    SrcBmp := TBitmap.Create;
-    try
-      Picture.LoadFromLazarusResource(res);
-      SrcBmp.Assign(Picture.Graphic);
-      FImages.Add(SrcBmp, nil);
-    finally
-      Picture.Free;
-    end;
-  end;
-
-  procedure AddColoredSquare(color: TColor);
-  var
-    bmp: TBitmap;
-  begin
-    bmp := TBitmap.Create;
-    try
-      bmp.Width := 16;
-      bmp.Height := 16;
-      bmp.Canvas.Brush.Color := color;
-      bmp.Canvas.FillRect(0, 0, 16, 16);
-      FImages.Add(bmp, nil);
-    finally
-      bmp.Free;
-    end;
-  end;
-
 begin
-  FImages := TImageList.Create(self);
-  AddPngFromRes('checkbox-unchecked');
-  AddPngFromRes('checkbox-checked');
-  AddPngFromRes('checkbox-partial');
-  // AI state icons (using placeholder colors for now)
-  AddColoredSquare(clYellow);  // ImgIndexAIPending - pending
-  AddColoredSquare(clAqua);    // ImgIndexAIProcessing - processing
-  AddColoredSquare(clLime);    // ImgIndexAISuccess - success
-  AddColoredSquare(clRed);     // ImgIndexAIError - error
+  FImages := TImageList.Create(Self);
+  FImages.Width := 16;
+  FImages.Height := 16;
+  FImages.Scaled := True;
+  AddAppIcon(FImages, aiCheckboxUnchecked);
+  AddAppIcon(FImages, aiCheckboxChecked);
+  AddAppIcon(FImages, aiCheckboxPartial);
+  AddAppIcon(FImages, aiAiPending);
+  AddAppIcon(FImages, aiAiProcessing);
+  AddAppIcon(FImages, aiAiSuccess);
+  AddAppIcon(FImages, aiAiError);
   StateImages := FImages;
 end;
-
 constructor TBibleTreeView.Create(AnOwner: TComponent);
 begin
   inherited Create(AnOwner);
@@ -353,6 +322,7 @@ end;
 
 destructor TBibleTreeView.Destroy;
 begin
+  StateImages := nil;
   FImages.Free;
   inherited Destroy;
 end;
@@ -555,11 +525,6 @@ begin
   FAIStatesEnabled := False; // Disable AI state mode
   AIDebugLog('[ClearAllAIStates] AI states cleared, checkboxes restored');
 end;
-
-initialization
-{$IFNDEF FPCUNIT}
-  {$I bibletreeview.lrs}
-{$ENDIF}
 
 end.
 

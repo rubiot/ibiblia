@@ -29,6 +29,7 @@ uses
   association_highlight_projection_test,
   project_persistence_test,
   navigation_history_test,
+  theword_sync_state_test,
   verse_visual_adapter_test,
   verse_inline_style_projection_test,
   verse_visual_document_test,
@@ -56,6 +57,8 @@ uses
   translation_memory_preview_test,
   project_creation_staging_test,
   default_verse_mode_test,
+  localization_test,
+  ui_identity_test,
   performance_debug_test,
   wysiwyg_editor_performance_test;
 

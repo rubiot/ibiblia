@@ -16,6 +16,9 @@ object FrmDictionaryPopup: TFrmDictionaryPopup
   OnHide = FormHide
   OnKeyDown = FormKeyDown
   LCLVersion = '2.0.10.0'
+  Font.Name = 'Segoe UI'
+  Font.Height = -13
+  Color = 16316147
   object TabControlStrongs: TTabControl
     Left = 1
     Height = 263
@@ -35,6 +38,7 @@ object FrmDictionaryPopup: TFrmDictionaryPopup
       ClientHeight = 258
       ClientWidth = 419
       TabOrder = 1
+      BorderSpacing.Around = 8
       object RichMemoStrong: TRichMemo
         Left = 0
         Height = 258
@@ -42,13 +46,14 @@ object FrmDictionaryPopup: TFrmDictionaryPopup
         Width = 419
         Align = alClient
         BorderStyle = bsNone
-        Color = 13433851
+        Color = clWhite
         HideSelection = False
         OnMouseWheel = RichMemoMouseWheel
         ReadOnly = True
         ScrollBars = ssAutoVertical
         TabOrder = 0
         ZoomFactor = 1
+        ParentFont = False
       end
     end
   end
@@ -70,6 +75,7 @@ object FrmDictionaryPopup: TFrmDictionaryPopup
       ClientHeight = 145
       ClientWidth = 419
       TabOrder = 1
+      BorderSpacing.Around = 8
       object RichMemoMorphology: TRichMemo
         Left = 0
         Height = 145
@@ -77,24 +83,26 @@ object FrmDictionaryPopup: TFrmDictionaryPopup
         Width = 419
         Align = alClient
         BorderStyle = bsNone
-        Color = 13433851
+        Color = clWhite
         HideSelection = False
         OnMouseWheel = RichMemoMouseWheel
         ReadOnly = True
         ScrollBars = ssAutoVertical
         TabOrder = 0
         ZoomFactor = 1
+        ParentFont = False
       end
     end
   end
   object Splitter1: TSplitter
     Cursor = crVSplit
     Left = 1
-    Height = 3
+    Height = 8
     Top = 264
     Width = 423
     Align = alBottom
     ParentColor = False
     ResizeAnchor = akBottom
+    Color = 15064534
   end
 end

@@ -5,7 +5,7 @@ unit FormProjectProperties;
 interface
 
 uses
-  Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
+  ui_style, ui_icons, Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
   StdCtrls, ExtCtrls, Buttons, ComCtrls, ActnList, BibleScope, Project, LCLTranslator,
   StrUtils, ONTTokenizer, status_catalog, FormStatusCatalog, UnitPleaseWait,
   dictionary_manager, project_setup_model, project_setup_validation, RichMemo,
@@ -29,7 +29,7 @@ type
     BtnClearText: TBitBtn;
     BtnLoadText: TBitBtn;
     BtnOk: TBitBtn;
-    BtnSelectFont: TButton;
+    BtnSelectFont: TBitBtn;
     BtnSelectMorphologyDictionary: TBitBtn;
     BtnSelectStrongDictionary: TBitBtn;
     cbTokenizerVersion: TComboBox;
@@ -67,10 +67,24 @@ type
     BtnStatusCatalog: TButton;
     FPageControl: TPageControl;
     FTabProject: TTabSheet;
+    FTabWorkflow: TTabSheet;
     FTabTexts: TTabSheet;
     FTabDictionaries: TTabSheet;
     FTabStatus: TTabSheet;
     FTabReview: TTabSheet;
+    FWorkflowIntroLabel: TLabel;
+    FWorkflowSuggestionGroup: TGroupBox;
+    FWorkflowSuggestionMethodLabel: TLabel;
+    FWorkflowSuggestionModeCombo: TComboBox;
+    FWorkflowSuggestionExplanationLabel: TLabel;
+    FWorkflowAIStatusLabel: TLabel;
+    FWorkflowConfigureAIButton: TButton;
+    FWorkflowAutomaticSuggestionCheck: TCheckBox;
+    FWorkflowAutomaticSuggestionExplanationLabel: TLabel;
+    FWorkflowVerseOpeningGroup: TGroupBox;
+    FWorkflowDefaultVerseModeLabel: TLabel;
+    FWorkflowDefaultVerseModeCombo: TComboBox;
+    FWorkflowDefaultVerseModeExplanationLabel: TLabel;
     FDictionaryTextTabs: TTabControl;
     FScenarioLabel: TLabel;
     FStatusDescriptionLabel: TLabel;
@@ -89,7 +103,11 @@ type
     FPendingMorphologyDictionaryChanged: array[tbOrigem..tbConsulta2] of Boolean;
     FPendingFonts: array[tbOrigem..tbConsulta2] of TFont;
     FPendingFontChanged: array[tbOrigem..tbConsulta2] of Boolean;
+    FPendingSuggestionMode: TSuggestionMode;
+    FPendingAutomaticSuggestion: Boolean;
+    FPendingDefaultVerseMode: TDefaultVerseMode;
     procedure BtnStatusCatalogClick(Sender: TObject);
+    procedure BtnConfigureAIClick(Sender: TObject);
     procedure CreateTabbedLayout;
     procedure DictionaryTextTabsChange(Sender: TObject);
     function ConfirmTokenizerVersionChange: TTokenizerVersionChangeAction;
@@ -102,21 +120,33 @@ type
     procedure UpdateDictionaryValidationLabels;
     procedure UpdateReview;
     procedure UpdateStatusCatalogSummary;
+    procedure UpdateWorkflowControls;
+    procedure WorkflowAutomaticSuggestionClick(Sender: TObject);
+    function WorkflowAutomaticSuggestionAvailable: Boolean;
+    procedure WorkflowDefaultVerseModeChange(Sender: TObject);
+    procedure WorkflowSuggestionModeChange(Sender: TObject);
+    function SuggestionModeCaption(Mode: TSuggestionMode): string;
+    function DefaultVerseModeCaption(Mode: TDefaultVerseMode): string;
+    function EnabledStateCaption(Value: Boolean): string;
     function ValidatePendingChanges(out MessageText: string): Boolean;
     function SelectedTextScopeName: string;
     procedure LoadTokenizerVersions(SelectedVersion: Integer);
     function GetSelectedTokenizerVersion: Integer;
   public
     procedure SetProject(Project: TProject);
+    procedure ClearProject;
+    procedure SelectWorkflowTab;
     procedure ApplyChanges(AProgressOwner: TCustomForm = nil);
     procedure Translate;
+  public
+    procedure AfterConstruction; override;
   end;
 
 var
   FrmProjectProperties: TFrmProjectProperties;
 
 resourcestring
-  SProjectPropertiesTitle = 'Project properties';
+  SProjectPropertiesTitle = 'Project settings';
   SPropertiesGroup = 'Properties';
   SProjectNameLabel = 'Name';
   SStrongDictionaryLabel = 'Strong''s dictionary';
@@ -184,6 +214,7 @@ resourcestring
   STextImportRequiresSavedProject = 'Save or discard the current project changes before replacing a Bible text.';
   STextImportConflictingChanges = 'Apply tokenizer, status catalog, or text removal changes separately before replacing a Bible text.';
   SProjectTab = 'Project';
+  SWorkflowTab = 'Workflow';
   STextsTab = 'Texts';
   SDictionariesTab = 'Dictionaries';
   SStatusTab = 'Status';
@@ -211,8 +242,35 @@ resourcestring
   STextPendingClear = 'Pending clear on OK.';
   SDictionaryReady = 'Dictionary ready.';
   SDictionaryOptional = 'Optional.';
+  SWorkflowIntro = 'These settings belong to this project. Changes remain pending until you confirm the project properties.';
+  SWorkflowSuggestionGroup = 'Association suggestions';
+  SWorkflowSuggestionMethod = '&Suggestion method';
+  SWorkflowSuggestionStatistical = 'Statistical';
+  SWorkflowSuggestionAI = 'AI';
+  SWorkflowSuggestionStatisticalDescription = 'Uses the local statistical association engine.';
+  SWorkflowSuggestionAIDescription = 'Uses the configured AI service. An internet connection is required.';
+  SWorkflowAIConfigured = 'AI configuration: ready.';
+  SWorkflowAIConfigurationPending = 'AI configuration: pending. Configure AI before using AI suggestions.';
+  SWorkflowConfigureAI = 'Configure &AI...';
+  SWorkflowAutomaticSuggestion = 'Suggest a&utomatically in the initial status';
+  SWorkflowAutomaticSuggestionDescription = 'Runs one association suggestion after navigation enters a different verse that is still in the standard initial status.';
+  SWorkflowAutomaticSuggestionUnavailable = 'Unavailable because this project uses a custom status catalog. Automatic suggestion depends on the standard initial status.';
+  SWorkflowVerseOpeningGroup = 'When another verse opens';
+  SWorkflowDefaultVerseMode = '&Open in';
+  SWorkflowVerseModeAssociation = 'Association';
+  SWorkflowVerseModeEditing = 'WYSIWYG editing';
+  SWorkflowVerseModeAssociationDescription = 'Shows the source and destination texts ready for syntagm association.';
+  SWorkflowVerseModeEditingDescription = 'Opens the destination text in the WYSIWYG editor after navigation.';
+  SWorkflowEnabled = 'Enabled';
+  SWorkflowDisabled = 'Disabled';
+  SPendingSuggestionMode = 'Suggestion method: %s -> %s';
+  SPendingAutomaticSuggestion = 'Automatic suggestion: %s -> %s';
+  SPendingDefaultVerseMode = 'Verse opening: %s -> %s';
 
 implementation
+
+uses
+  FormLlmOptions;
 
 { TFrmProjectProperties }
 
@@ -220,6 +278,7 @@ procedure TFrmProjectProperties.FormCreate(Sender: TObject);
 var
   TextType: TTipoTextoBiblico;
 begin
+  ApplyFormStyle(Self);
   FProject := nil;
   FStatusCatalogChanged := False;
   FLoadingControls := False;
@@ -242,9 +301,9 @@ end;
 
 procedure TFrmProjectProperties.CreateTabbedLayout;
 const
-  PageMargin = 12;
+  PageMargin = 16;
   ControlGap = 8;
-  ProjectGroupHeight = 160;
+  ProjectGroupHeight = 176;
 var
   PageWidth: Integer;
   PageHeight: Integer;
@@ -254,12 +313,16 @@ begin
 
   FPageControl := TPageControl.Create(Self);
   FPageControl.Parent := Self;
-  FPageControl.SetBounds(8, 8, ClientWidth - 16, BtnOk.Top - 16);
+  FPageControl.SetBounds(16, 16, ClientWidth - 32, BtnOk.Top - 32);
   FPageControl.Anchors := [akLeft, akTop, akRight, akBottom];
 
   FTabProject := TTabSheet.Create(FPageControl);
   FTabProject.PageControl := FPageControl;
   FTabProject.Caption := SProjectTab;
+
+  FTabWorkflow := TTabSheet.Create(FPageControl);
+  FTabWorkflow.PageControl := FPageControl;
+  FTabWorkflow.Caption := SWorkflowTab;
 
   FTabTexts := TTabSheet.Create(FPageControl);
   FTabTexts.PageControl := FPageControl;
@@ -277,11 +340,11 @@ begin
   FTabReview.PageControl := FPageControl;
   FTabReview.Caption := SReviewTab;
 
-  PageWidth := FPageControl.Width - 30;
-  PageHeight := FPageControl.Height - 40;
+  PageWidth := FPageControl.Width - 32;
+  PageHeight := FPageControl.Height - 48;
 
   GroupBoxProperties.Parent := FTabProject;
-  GroupBoxProperties.SetBounds(10, 10, PageWidth, ProjectGroupHeight);
+  GroupBoxProperties.SetBounds(16, 16, PageWidth - 12, ProjectGroupHeight);
   GroupBoxProperties.Anchors := [akLeft, akTop, akRight];
   EditProjectName.SetBounds(16, 24, PageWidth - 32, 25);
   EditProjectName.Anchors := [akLeft, akTop, akRight];
@@ -294,6 +357,93 @@ begin
   FScenarioLabel.Parent := GroupBoxProperties;
   FScenarioLabel.SetBounds(16, 120, PageWidth - 32, 22);
   FScenarioLabel.Anchors := [akLeft, akTop, akRight];
+
+  FWorkflowIntroLabel := TLabel.Create(Self);
+  FWorkflowIntroLabel.Parent := FTabWorkflow;
+  FWorkflowIntroLabel.SetBounds(16, 16, PageWidth - 32, 48);
+  FWorkflowIntroLabel.Anchors := [akLeft, akTop, akRight];
+  FWorkflowIntroLabel.AutoSize := False;
+  FWorkflowIntroLabel.WordWrap := True;
+
+  FWorkflowSuggestionGroup := TGroupBox.Create(Self);
+  FWorkflowSuggestionGroup.Parent := FTabWorkflow;
+  FWorkflowSuggestionGroup.SetBounds(16, 80, PageWidth - 12, 280);
+  FWorkflowSuggestionGroup.Anchors := [akLeft, akTop, akRight];
+
+  FWorkflowSuggestionMethodLabel := TLabel.Create(Self);
+  FWorkflowSuggestionMethodLabel.Parent := FWorkflowSuggestionGroup;
+  FWorkflowSuggestionMethodLabel.SetBounds(16, 26, PageWidth - 32, 18);
+  FWorkflowSuggestionMethodLabel.Anchors := [akLeft, akTop, akRight];
+
+  FWorkflowSuggestionModeCombo := TComboBox.Create(Self);
+  FWorkflowSuggestionModeCombo.Parent := FWorkflowSuggestionGroup;
+  FWorkflowSuggestionModeCombo.SetBounds(16, 46, PageWidth - 32, 25);
+  FWorkflowSuggestionModeCombo.Anchors := [akLeft, akTop, akRight];
+  FWorkflowSuggestionModeCombo.Style := csDropDownList;
+  FWorkflowSuggestionModeCombo.OnChange := @WorkflowSuggestionModeChange;
+  FWorkflowSuggestionMethodLabel.FocusControl :=
+    FWorkflowSuggestionModeCombo;
+
+  FWorkflowSuggestionExplanationLabel := TLabel.Create(Self);
+  FWorkflowSuggestionExplanationLabel.Parent := FWorkflowSuggestionGroup;
+  FWorkflowSuggestionExplanationLabel.SetBounds(16, 78, PageWidth - 32, 36);
+  FWorkflowSuggestionExplanationLabel.Anchors := [akLeft, akTop, akRight];
+  FWorkflowSuggestionExplanationLabel.AutoSize := False;
+  FWorkflowSuggestionExplanationLabel.WordWrap := True;
+
+  FWorkflowAIStatusLabel := TLabel.Create(Self);
+  FWorkflowAIStatusLabel.Parent := FWorkflowSuggestionGroup;
+  FWorkflowAIStatusLabel.SetBounds(16, 124, PageWidth - 236, 44);
+  FWorkflowAIStatusLabel.Anchors := [akLeft, akTop, akRight];
+  FWorkflowAIStatusLabel.AutoSize := False;
+  FWorkflowAIStatusLabel.WordWrap := True;
+
+  FWorkflowConfigureAIButton := TButton.Create(Self);
+  FWorkflowConfigureAIButton.Parent := FWorkflowSuggestionGroup;
+  FWorkflowConfigureAIButton.SetBounds(PageWidth - 204, 122, 176, 32);
+  FWorkflowConfigureAIButton.Anchors := [akTop, akRight];
+  FWorkflowConfigureAIButton.OnClick := @BtnConfigureAIClick;
+
+  FWorkflowAutomaticSuggestionCheck := TCheckBox.Create(Self);
+  FWorkflowAutomaticSuggestionCheck.Parent := FWorkflowSuggestionGroup;
+  FWorkflowAutomaticSuggestionCheck.SetBounds(16, 174, PageWidth - 32, 26);
+  FWorkflowAutomaticSuggestionCheck.Anchors := [akLeft, akTop, akRight];
+  FWorkflowAutomaticSuggestionCheck.OnClick := @WorkflowAutomaticSuggestionClick;
+
+  FWorkflowAutomaticSuggestionExplanationLabel := TLabel.Create(Self);
+  FWorkflowAutomaticSuggestionExplanationLabel.Parent := FWorkflowSuggestionGroup;
+  FWorkflowAutomaticSuggestionExplanationLabel.SetBounds(36, 202,
+    PageWidth - 52, 52);
+  FWorkflowAutomaticSuggestionExplanationLabel.Anchors := [akLeft, akTop, akRight];
+  FWorkflowAutomaticSuggestionExplanationLabel.AutoSize := False;
+  FWorkflowAutomaticSuggestionExplanationLabel.WordWrap := True;
+
+  FWorkflowVerseOpeningGroup := TGroupBox.Create(Self);
+  FWorkflowVerseOpeningGroup.Parent := FTabWorkflow;
+  FWorkflowVerseOpeningGroup.SetBounds(16, 376, PageWidth - 12, 176);
+  FWorkflowVerseOpeningGroup.Anchors := [akLeft, akTop, akRight];
+
+  FWorkflowDefaultVerseModeLabel := TLabel.Create(Self);
+  FWorkflowDefaultVerseModeLabel.Parent := FWorkflowVerseOpeningGroup;
+  FWorkflowDefaultVerseModeLabel.SetBounds(16, 26, PageWidth - 32, 18);
+  FWorkflowDefaultVerseModeLabel.Anchors := [akLeft, akTop, akRight];
+
+  FWorkflowDefaultVerseModeCombo := TComboBox.Create(Self);
+  FWorkflowDefaultVerseModeCombo.Parent := FWorkflowVerseOpeningGroup;
+  FWorkflowDefaultVerseModeCombo.SetBounds(16, 46, PageWidth - 32, 25);
+  FWorkflowDefaultVerseModeCombo.Anchors := [akLeft, akTop, akRight];
+  FWorkflowDefaultVerseModeCombo.Style := csDropDownList;
+  FWorkflowDefaultVerseModeCombo.OnChange := @WorkflowDefaultVerseModeChange;
+  FWorkflowDefaultVerseModeLabel.FocusControl :=
+    FWorkflowDefaultVerseModeCombo;
+
+  FWorkflowDefaultVerseModeExplanationLabel := TLabel.Create(Self);
+  FWorkflowDefaultVerseModeExplanationLabel.Parent := FWorkflowVerseOpeningGroup;
+  FWorkflowDefaultVerseModeExplanationLabel.SetBounds(16, 80,
+    PageWidth - 32, 58);
+  FWorkflowDefaultVerseModeExplanationLabel.Anchors := [akLeft, akTop, akRight];
+  FWorkflowDefaultVerseModeExplanationLabel.AutoSize := False;
+  FWorkflowDefaultVerseModeExplanationLabel.WordWrap := True;
 
   TabControlTextType.Parent := FTabTexts;
   TabControlTextType.SetBounds(10, 10, PageWidth, 28);
@@ -407,6 +557,7 @@ begin
     FStatusRemaps := Copy(Remaps, 0, Length(Remaps));
     FStatusCatalogChanged := True;
     UpdateStatusCatalogSummary;
+    UpdateWorkflowControls;
     UpdateReview;
   end;
 end;
@@ -416,6 +567,162 @@ begin
   if Assigned(FStatusCatalogSummaryLabel) then
     FStatusCatalogSummaryLabel.Caption := Format(SStatusCatalogCurrent,
       [Length(FStatusDefinitions)]);
+end;
+
+function TFrmProjectProperties.WorkflowAutomaticSuggestionAvailable: Boolean;
+begin
+  Result := Assigned(FProject) and FProject.AutomaticSuggestionAvailable and
+    (not FStatusCatalogChanged);
+end;
+
+function TFrmProjectProperties.SuggestionModeCaption(
+  Mode: TSuggestionMode): string;
+begin
+  case Mode of
+    smAI: Result := SWorkflowSuggestionAI;
+  else
+    Result := SWorkflowSuggestionStatistical;
+  end;
+end;
+
+function TFrmProjectProperties.DefaultVerseModeCaption(
+  Mode: TDefaultVerseMode): string;
+begin
+  case Mode of
+    dvmEditing: Result := SWorkflowVerseModeEditing;
+  else
+    Result := SWorkflowVerseModeAssociation;
+  end;
+end;
+
+function TFrmProjectProperties.EnabledStateCaption(Value: Boolean): string;
+begin
+  if Value then
+    Result := SWorkflowEnabled
+  else
+    Result := SWorkflowDisabled;
+end;
+
+procedure TFrmProjectProperties.UpdateWorkflowControls;
+var
+  AutomaticSuggestionAvailable: Boolean;
+  WasLoadingControls: Boolean;
+begin
+  if not Assigned(FWorkflowSuggestionModeCombo) then
+    Exit;
+
+  WasLoadingControls := FLoadingControls;
+  FLoadingControls := True;
+  try
+    AutomaticSuggestionAvailable := WorkflowAutomaticSuggestionAvailable;
+    if not AutomaticSuggestionAvailable then
+      FPendingAutomaticSuggestion := False;
+
+    FWorkflowSuggestionModeCombo.ItemIndex := Ord(FPendingSuggestionMode);
+    FWorkflowAutomaticSuggestionCheck.Enabled :=
+      AutomaticSuggestionAvailable;
+    FWorkflowAutomaticSuggestionCheck.Checked :=
+      FPendingAutomaticSuggestion and AutomaticSuggestionAvailable;
+    FWorkflowDefaultVerseModeCombo.ItemIndex :=
+      Ord(FPendingDefaultVerseMode);
+
+    case FPendingSuggestionMode of
+      smAI:
+        FWorkflowSuggestionExplanationLabel.Caption :=
+          SWorkflowSuggestionAIDescription;
+    else
+      FWorkflowSuggestionExplanationLabel.Caption :=
+        SWorkflowSuggestionStatisticalDescription;
+    end;
+
+    if Assigned(FProject) and FProject.AIConfigurationAvailable then
+    begin
+      FWorkflowAIStatusLabel.Caption := SWorkflowAIConfigured;
+      FWorkflowAIStatusLabel.Font.Color := UISuccessColor;
+    end
+    else
+    begin
+      FWorkflowAIStatusLabel.Caption := SWorkflowAIConfigurationPending;
+      FWorkflowAIStatusLabel.Font.Color := UIWarningColor;
+    end;
+
+    if AutomaticSuggestionAvailable then
+    begin
+      FWorkflowAutomaticSuggestionExplanationLabel.Caption :=
+        SWorkflowAutomaticSuggestionDescription;
+      FWorkflowAutomaticSuggestionExplanationLabel.Font.Color := clWindowText;
+    end
+    else
+    begin
+      FWorkflowAutomaticSuggestionExplanationLabel.Caption :=
+        SWorkflowAutomaticSuggestionUnavailable;
+      FWorkflowAutomaticSuggestionExplanationLabel.Font.Color := clGrayText;
+    end;
+
+    case FPendingDefaultVerseMode of
+      dvmEditing:
+        FWorkflowDefaultVerseModeExplanationLabel.Caption :=
+          SWorkflowVerseModeEditingDescription;
+    else
+      FWorkflowDefaultVerseModeExplanationLabel.Caption :=
+        SWorkflowVerseModeAssociationDescription;
+    end;
+  finally
+    FLoadingControls := WasLoadingControls;
+  end;
+end;
+
+procedure TFrmProjectProperties.WorkflowSuggestionModeChange(Sender: TObject);
+begin
+  if FLoadingControls then
+    Exit;
+
+  if FWorkflowSuggestionModeCombo.ItemIndex = Ord(smAI) then
+    FPendingSuggestionMode := smAI
+  else
+    FPendingSuggestionMode := smStatistical;
+  UpdateWorkflowControls;
+  UpdateReview;
+end;
+
+procedure TFrmProjectProperties.WorkflowAutomaticSuggestionClick(
+  Sender: TObject);
+begin
+  if FLoadingControls then
+    Exit;
+
+  FPendingAutomaticSuggestion :=
+    FWorkflowAutomaticSuggestionCheck.Checked and
+    WorkflowAutomaticSuggestionAvailable;
+  UpdateWorkflowControls;
+  UpdateReview;
+end;
+
+procedure TFrmProjectProperties.WorkflowDefaultVerseModeChange(
+  Sender: TObject);
+begin
+  if FLoadingControls then
+    Exit;
+
+  if FWorkflowDefaultVerseModeCombo.ItemIndex = Ord(dvmEditing) then
+    FPendingDefaultVerseMode := dvmEditing
+  else
+    FPendingDefaultVerseMode := dvmAssociation;
+  UpdateWorkflowControls;
+  UpdateReview;
+end;
+
+procedure TFrmProjectProperties.BtnConfigureAIClick(Sender: TObject);
+begin
+  if not Assigned(FProject) then
+    Exit;
+
+  if not Assigned(FrmLLMOptions) then
+    Application.CreateForm(TFrmLLMOptions, FrmLLMOptions);
+  FrmLLMOptions.SetProject(FProject);
+  FrmLLMOptions.ShowModal;
+  UpdateWorkflowControls;
+  UpdateReview;
 end;
 
 function TFrmProjectProperties.CurrentTextType: TTipoTextoBiblico;
@@ -434,6 +741,12 @@ var
 begin
   if not Assigned(FProject) then
     Exit;
+
+  FPendingSuggestionMode := FProject.SuggestionMode;
+  FPendingAutomaticSuggestion := FProject.AutomaticAssociationSuggestion;
+  FPendingDefaultVerseMode := FProject.DefaultVerseMode;
+  if not WorkflowAutomaticSuggestionAvailable then
+    FPendingAutomaticSuggestion := False;
 
   for TextType := tbOrigem to tbConsulta2 do
   begin
@@ -543,17 +856,17 @@ begin
     dmtStrong, MessageText);
   FStrongDictionaryValidationLabel.Caption := MessageText;
   if Valid then
-    FStrongDictionaryValidationLabel.Font.Color := clGreen
+    FStrongDictionaryValidationLabel.Font.Color := UISuccessColor
   else
-    FStrongDictionaryValidationLabel.Font.Color := clRed;
+    FStrongDictionaryValidationLabel.Font.Color := UIErrorColor;
 
   Valid := ProjectSetupValidateDictionary(FPendingMorphologyDictionaries[TextType],
     dmtMorphology, MessageText);
   FMorphologyDictionaryValidationLabel.Caption := MessageText;
   if Valid then
-    FMorphologyDictionaryValidationLabel.Font.Color := clGreen
+    FMorphologyDictionaryValidationLabel.Font.Color := UISuccessColor
   else
-    FMorphologyDictionaryValidationLabel.Font.Color := clRed;
+    FMorphologyDictionaryValidationLabel.Font.Color := UIErrorColor;
 end;
 
 function TFrmProjectProperties.ValidatePendingChanges(out MessageText: string): Boolean;
@@ -673,6 +986,11 @@ var
 begin
   if not Assigned(FReviewMemo) then
     Exit;
+  if not Assigned(FProject) then
+  begin
+    FReviewMemo.Clear;
+    Exit;
+  end;
 
   FReviewMemo.Clear;
   FReviewMemo.Lines.BeginUpdate;
@@ -705,6 +1023,25 @@ begin
 
     if FStatusCatalogChanged then
       AddPending(SPendingStatusCatalog);
+
+    if Assigned(FProject) and
+      (FPendingSuggestionMode <> FProject.SuggestionMode) then
+      AddPending(Format(SPendingSuggestionMode, [
+        SuggestionModeCaption(FProject.SuggestionMode),
+        SuggestionModeCaption(FPendingSuggestionMode)]));
+
+    if Assigned(FProject) and
+      (FPendingAutomaticSuggestion <>
+       FProject.AutomaticAssociationSuggestion) then
+      AddPending(Format(SPendingAutomaticSuggestion, [
+        EnabledStateCaption(FProject.AutomaticAssociationSuggestion),
+        EnabledStateCaption(FPendingAutomaticSuggestion)]));
+
+    if Assigned(FProject) and
+      (FPendingDefaultVerseMode <> FProject.DefaultVerseMode) then
+      AddPending(Format(SPendingDefaultVerseMode, [
+        DefaultVerseModeCaption(FProject.DefaultVerseMode),
+        DefaultVerseModeCaption(FPendingDefaultVerseMode)]));
 
     for TextType := tbOrigem to tbConsulta2 do
     begin
@@ -783,9 +1120,12 @@ end;
 procedure TFrmProjectProperties.Translate;
 var
   SelectedVersion: Integer;
+  WasLoadingControls: Boolean;
 begin
   SelectedVersion := GetSelectedTokenizerVersion;
   Caption := SProjectPropertiesTitle;
+  if Assigned(BtnCancel) then
+    BtnCancel.Caption := SUICancel;
   GroupBoxProperties.Caption := SPropertiesGroup;
   EditProjectName.EditLabel.Caption := SProjectNameLabel;
   EditStrongDictionary.EditLabel.Caption := SStrongDictionaryLabel;
@@ -808,6 +1148,7 @@ begin
       FDictionaryTextTabs.TabIndex := TabControlTextType.TabIndex;
   end;
   if Assigned(FTabProject) then FTabProject.Caption := SProjectTab;
+  if Assigned(FTabWorkflow) then FTabWorkflow.Caption := SWorkflowTab;
   if Assigned(FTabTexts) then FTabTexts.Caption := STextsTab;
   if Assigned(FTabDictionaries) then FTabDictionaries.Caption := SDictionariesTab;
   if Assigned(FTabStatus) then FTabStatus.Caption := SStatusTab;
@@ -821,6 +1162,43 @@ begin
     FScenarioLabel.Caption := Format(SProjectScenarioFmt,
       [ProjectScenarioCaption(ProjectScenarioFromConfig(
         FProject.GetInfo(PROJECT_SCENARIO_CONFIG_KEY)))]);
+  if Assigned(FWorkflowIntroLabel) then
+    FWorkflowIntroLabel.Caption := SWorkflowIntro;
+  if Assigned(FWorkflowSuggestionGroup) then
+    FWorkflowSuggestionGroup.Caption := SWorkflowSuggestionGroup;
+  if Assigned(FWorkflowSuggestionMethodLabel) then
+    FWorkflowSuggestionMethodLabel.Caption := SWorkflowSuggestionMethod;
+  if Assigned(FWorkflowConfigureAIButton) then
+    FWorkflowConfigureAIButton.Caption := SWorkflowConfigureAI;
+  if Assigned(FWorkflowAutomaticSuggestionCheck) then
+    FWorkflowAutomaticSuggestionCheck.Caption :=
+      SWorkflowAutomaticSuggestion;
+  if Assigned(FWorkflowVerseOpeningGroup) then
+    FWorkflowVerseOpeningGroup.Caption := SWorkflowVerseOpeningGroup;
+  if Assigned(FWorkflowDefaultVerseModeLabel) then
+    FWorkflowDefaultVerseModeLabel.Caption := SWorkflowDefaultVerseMode;
+  WasLoadingControls := FLoadingControls;
+  FLoadingControls := True;
+  try
+    if Assigned(FWorkflowSuggestionModeCombo) then
+    begin
+      FWorkflowSuggestionModeCombo.Items.Clear;
+      FWorkflowSuggestionModeCombo.Items.Add(
+        SWorkflowSuggestionStatistical);
+      FWorkflowSuggestionModeCombo.Items.Add(SWorkflowSuggestionAI);
+    end;
+    if Assigned(FWorkflowDefaultVerseModeCombo) then
+    begin
+      FWorkflowDefaultVerseModeCombo.Items.Clear;
+      FWorkflowDefaultVerseModeCombo.Items.Add(
+        SWorkflowVerseModeAssociation);
+      FWorkflowDefaultVerseModeCombo.Items.Add(
+        SWorkflowVerseModeEditing);
+    end;
+  finally
+    FLoadingControls := WasLoadingControls;
+  end;
+  UpdateWorkflowControls;
   UpdateStatusCatalogSummary;
   LoadTokenizerVersions(SelectedVersion);
   ActionSelectFont.Caption := SChooseDictionary;
@@ -1101,6 +1479,7 @@ begin
   EditProjectName.Text := Project.GetInfo('descricao');
   LoadTokenizerVersions(Project.TokenizerVersion);
   InitializePendingState;
+  UpdateWorkflowControls;
   Scenario := ProjectScenarioFromConfig(Project.GetInfo(PROJECT_SCENARIO_CONFIG_KEY));
   if Assigned(FScenarioLabel) then
     FScenarioLabel.Caption := Format(SProjectScenarioFmt,
@@ -1111,6 +1490,25 @@ begin
     FDictionaryTextTabs.TabIndex := TabControlTextType.TabIndex;
   ActionChangeTab.Execute;
   UpdateReview;
+end;
+
+procedure TFrmProjectProperties.ClearProject;
+begin
+  FProject := nil;
+  FStatusDefinitions := nil;
+  FStatusRemaps := nil;
+  FStatusCatalogChanged := False;
+  FPendingSuggestionMode := smStatistical;
+  FPendingAutomaticSuggestion := False;
+  FPendingDefaultVerseMode := dvmAssociation;
+  UpdateWorkflowControls;
+  UpdateStatusCatalogSummary;
+end;
+
+procedure TFrmProjectProperties.SelectWorkflowTab;
+begin
+  if Assigned(FPageControl) and Assigned(FTabWorkflow) then
+    FPageControl.ActivePage := FTabWorkflow;
 end;
 
 procedure TFrmProjectProperties.ApplyChanges(
@@ -1233,6 +1631,11 @@ begin
       FProject.SetStatusDefinitions(FStatusDefinitions);
     end;
 
+    FProject.SuggestionMode := FPendingSuggestionMode;
+    FProject.AutomaticAssociationSuggestion :=
+      FPendingAutomaticSuggestion;
+    FProject.DefaultVerseMode := FPendingDefaultVerseMode;
+
     for TextType := tbOrigem to tbConsulta2 do
     begin
       case FPendingTextActions[TextType] of
@@ -1315,9 +1718,23 @@ begin
   end;
 end;
 
+procedure TFrmProjectProperties.AfterConstruction;
+begin
+  inherited AfterConstruction;
+  ApplyDialogStyle(Self);
+  StyleControl(FWorkflowIntroLabel, uirHint);
+  StyleControl(FStatusDescriptionLabel, uirHint);
+  SetButtonIcon(BtnLoadText, aiTextLoad);
+  SetButtonIcon(BtnClearText, aiTextClear);
+  SetButtonIcon(BtnSelectFont, aiFontSelect);
+  SetButtonIcon(BtnSelectStrongDictionary, aiDictionaryStrongSelect);
+  SetButtonIcon(BtnSelectMorphologyDictionary, aiDictionaryMorphologySelect);
+end;
+
+
 initialization
 {$IFNDEF FPCUNIT}
-  {$I FormProjectProperties.lrs}
+  {$R FormProjectProperties.lfm}
 {$ENDIF}
 
 end.

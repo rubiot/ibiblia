@@ -1,495 +1,1234 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "project": "iBiblia",
-  "purpose": "Initial icon manifest based on the current Lazarus UI inventory. legacyImageIndex refers to the current ImageList index when one exists; null means the UI currently has no icon for that symbol.",
+  "provenance": "Original artwork created for iBiblia; no third-party icon artwork imported.",
+  "purpose": "Active symbolic icon catalog. Project status IDs are deliberately absent: their labels and colors come from each project.",
   "icons": [
     {
       "symbol": "app-ibiblia",
+      "meaning": "Application mark: Clareza outlined Bible pages joined by a gold link, shared by every command icon family.",
       "pascalAction": null,
       "legacyImageIndex": null,
-      "contexts": ["app-icon", "windows-resource"],
-      "sizes": [16, 32, 48, 64, 128, 256],
-      "meaning": "Application identity: an open Bible or two-column text with a subtle association link."
-    },
-    {
-      "symbol": "project-open",
-      "pascalAction": "ActionAbrirProjeto",
-      "legacyImageIndex": 0,
-      "contexts": ["toolbar", "main-menu-project"],
-      "sizes": [16, 24, 32],
-      "meaning": "Open an existing association project."
-    },
-    {
-      "symbol": "project-close",
-      "pascalAction": "ActionFecharProjeto",
-      "legacyImageIndex": 1,
-      "contexts": ["toolbar", "main-menu-project"],
-      "sizes": [16, 24, 32],
-      "meaning": "Close the current project."
-    },
-    {
-      "symbol": "project-save",
-      "pascalAction": "ActionSalvarProjeto",
-      "legacyImageIndex": 2,
-      "contexts": ["toolbar", "main-menu-project"],
-      "sizes": [16, 24, 32],
-      "meaning": "Save current project changes."
-    },
-    {
-      "symbol": "project-save-as",
-      "pascalAction": "ActionSalvarProjetoComo",
-      "legacyImageIndex": 3,
-      "contexts": ["toolbar"],
-      "sizes": [16, 24, 32],
-      "meaning": "Save the current project under a new name."
-    },
-    {
-      "symbol": "association-auto",
-      "pascalAction": "ActionSugerirAssociacao",
-      "legacyImageIndex": 4,
-      "contexts": ["toolbar", "main-menu-edit"],
-      "sizes": [16, 24, 32],
-      "meaning": "Automatically suggest syntagm associations for the current verse pair."
-    },
-    {
-      "symbol": "association-clear",
-      "pascalAction": "ActionLimparAssociacoes",
-      "legacyImageIndex": 5,
-      "contexts": ["toolbar", "main-menu-edit"],
-      "sizes": [16, 24, 32],
-      "meaning": "Clear current verse associations."
+      "pascalIcon": "aiAppIBiblia",
+      "resourcePrefix": "IBIBLIA_APP_IBIBLIA",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64,
+        128,
+        256
+      ],
+      "source": "source/svg/app-ibiblia.svg"
     },
     {
       "symbol": "project-new",
-      "pascalAction": "ActionNovoProjeto",
+      "meaning": "Create an association or translation project.",
+      "pascalAction": "ActionNewProject",
       "legacyImageIndex": 6,
-      "contexts": ["toolbar", "main-menu-project"],
-      "sizes": [16, 24, 32],
-      "meaning": "Create a new association or translation project."
+      "pascalIcon": "aiProjectNew",
+      "resourcePrefix": "IBIBLIA_PROJECT_NEW",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/project-new.svg"
     },
     {
-      "symbol": "verse-previous",
-      "pascalAction": "ActionVersoAnterior",
-      "legacyImageIndex": 7,
-      "contexts": ["toolbar", "main-menu-navigation"],
-      "sizes": [16, 24, 32],
-      "meaning": "Navigate to the previous verse."
+      "symbol": "project-open",
+      "meaning": "Open an existing project.",
+      "pascalAction": "ActionOpenProject",
+      "legacyImageIndex": 0,
+      "pascalIcon": "aiProjectOpen",
+      "resourcePrefix": "IBIBLIA_PROJECT_OPEN",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/project-open.svg"
     },
     {
-      "symbol": "verse-next",
-      "pascalAction": "ActionVersoSeguinte",
-      "legacyImageIndex": 8,
-      "contexts": ["toolbar", "main-menu-navigation"],
-      "sizes": [16, 24, 32],
-      "meaning": "Navigate to the next verse."
+      "symbol": "project-close",
+      "meaning": "Close the current project.",
+      "pascalAction": "ActionCloseProject",
+      "legacyImageIndex": 1,
+      "pascalIcon": "aiProjectClose",
+      "resourcePrefix": "IBIBLIA_PROJECT_CLOSE",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/project-close.svg"
     },
     {
-      "symbol": "association-rollback",
-      "pascalAction": "ActionReverterAssociacoes",
-      "legacyImageIndex": 9,
-      "contexts": ["toolbar", "main-menu-edit"],
-      "sizes": [16, 24, 32],
-      "meaning": "Rollback/revert current verse association changes."
+      "symbol": "project-save",
+      "meaning": "Save changes.",
+      "pascalAction": "ActionSaveProject",
+      "legacyImageIndex": 2,
+      "pascalIcon": "aiProjectSave",
+      "resourcePrefix": "IBIBLIA_PROJECT_SAVE",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/project-save.svg"
     },
     {
-      "symbol": "app-exit",
-      "pascalAction": "ActionSair",
-      "legacyImageIndex": 10,
-      "contexts": ["toolbar", "main-menu-project"],
-      "sizes": [16, 24, 32],
-      "meaning": "Exit iBiblia."
+      "symbol": "project-save-as",
+      "meaning": "Save the project under a new name.",
+      "pascalAction": "ActionSaveProjectAs",
+      "legacyImageIndex": 3,
+      "pascalIcon": "aiProjectSaveAs",
+      "resourcePrefix": "IBIBLIA_PROJECT_SAVE_AS",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/project-save-as.svg"
     },
     {
       "symbol": "project-settings",
-      "pascalAction": "ActionPropProjeto",
+      "meaning": "Edit current project settings.",
+      "pascalAction": "ActionProjectProperties",
       "legacyImageIndex": null,
-      "contexts": ["main-menu-project", "toolbar-gap"],
-      "sizes": [16, 24, 32],
-      "meaning": "Open current project settings."
-    },
-    {
-      "symbol": "verse-first",
-      "pascalAction": "ActionVersoPrimeiro",
-      "legacyImageIndex": null,
-      "contexts": ["main-menu-navigation", "toolbar-gap"],
-      "sizes": [16, 24, 32],
-      "meaning": "Navigate to the first verse."
-    },
-    {
-      "symbol": "verse-last",
-      "pascalAction": "ActionVersoUltimo",
-      "legacyImageIndex": null,
-      "contexts": ["main-menu-navigation", "toolbar-gap"],
-      "sizes": [16, 24, 32],
-      "meaning": "Navigate to the last verse."
+      "pascalIcon": "aiProjectSettings",
+      "resourcePrefix": "IBIBLIA_PROJECT_SETTINGS",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/project-settings.svg"
     },
     {
       "symbol": "project-export",
-      "pascalAction": "ActionExportar",
+      "meaning": "Open the export workflow.",
+      "pascalAction": "ActionExportProject",
       "legacyImageIndex": null,
-      "contexts": ["main-menu-project", "toolbar-gap"],
-      "sizes": [16, 24, 32],
-      "meaning": "Open the project export workflow."
+      "pascalIcon": "aiProjectExport",
+      "resourcePrefix": "IBIBLIA_PROJECT_EXPORT",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/project-export.svg"
     },
     {
-      "symbol": "export-destination-strongs",
-      "pascalAction": "ActionExportarDestinoComStrongs",
-      "legacyImageIndex": null,
-      "contexts": ["export-action-gap"],
-      "sizes": [16, 24, 32],
-      "meaning": "Export destination text with Strong's tags."
+      "symbol": "association-auto",
+      "meaning": "Suggest associations between source and destination syntagms.",
+      "pascalAction": "ActionSuggestAssociation",
+      "legacyImageIndex": 4,
+      "pascalIcon": "aiAssociationAuto",
+      "resourcePrefix": "IBIBLIA_ASSOCIATION_AUTO",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/association-auto.svg"
     },
     {
-      "symbol": "export-interlinear",
-      "pascalAction": "ActionExportarTextoInterlinear",
+      "symbol": "association-clear",
+      "meaning": "Remove associations: disconnected text blocks.",
+      "pascalAction": "ActionClearAssociations",
+      "legacyImageIndex": 5,
+      "pascalIcon": "aiAssociationClear",
+      "resourcePrefix": "IBIBLIA_ASSOCIATION_CLEAR",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/association-clear.svg"
+    },
+    {
+      "symbol": "association-rollback",
+      "meaning": "Restore the saved associations of this verse.",
+      "pascalAction": "ActionRollbackCurrentVerse",
+      "legacyImageIndex": 9,
+      "pascalIcon": "aiAssociationRollback",
+      "resourcePrefix": "IBIBLIA_ASSOCIATION_ROLLBACK",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/association-rollback.svg"
+    },
+    {
+      "symbol": "history-back",
+      "meaning": "Go back through visited verses.",
+      "pascalAction": "ActionHistoryBack",
+      "legacyImageIndex": 7,
+      "pascalIcon": "aiHistoryBack",
+      "resourcePrefix": "IBIBLIA_HISTORY_BACK",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/history-back.svg"
+    },
+    {
+      "symbol": "history-forward",
+      "meaning": "Go forward through visited verses.",
+      "pascalAction": "ActionHistoryForward",
+      "legacyImageIndex": 8,
+      "pascalIcon": "aiHistoryForward",
+      "resourcePrefix": "IBIBLIA_HISTORY_FORWARD",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/history-forward.svg"
+    },
+    {
+      "symbol": "verse-previous",
+      "meaning": "Go to the previous Bible verse.",
+      "pascalAction": "ActionPreviousVerse",
+      "legacyImageIndex": 7,
+      "pascalIcon": "aiVersePrevious",
+      "resourcePrefix": "IBIBLIA_VERSE_PREVIOUS",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/verse-previous.svg"
+    },
+    {
+      "symbol": "verse-next",
+      "meaning": "Go to the next Bible verse.",
+      "pascalAction": "ActionNextVerse",
+      "legacyImageIndex": 8,
+      "pascalIcon": "aiVerseNext",
+      "resourcePrefix": "IBIBLIA_VERSE_NEXT",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/verse-next.svg"
+    },
+    {
+      "symbol": "verse-first",
+      "meaning": "Go to the first verse.",
+      "pascalAction": "ActionFirstVerse",
       "legacyImageIndex": null,
-      "contexts": ["export-action-gap"],
-      "sizes": [16, 24, 32],
-      "meaning": "Export interlinear text."
+      "pascalIcon": "aiVerseFirst",
+      "resourcePrefix": "IBIBLIA_VERSE_FIRST",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/verse-first.svg"
+    },
+    {
+      "symbol": "verse-last",
+      "meaning": "Go to the last verse.",
+      "pascalAction": "ActionLastVerse",
+      "legacyImageIndex": null,
+      "pascalIcon": "aiVerseLast",
+      "resourcePrefix": "IBIBLIA_VERSE_LAST",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/verse-last.svg"
+    },
+    {
+      "symbol": "app-exit",
+      "meaning": "Exit iBiblia.",
+      "pascalAction": "ActionExit",
+      "legacyImageIndex": 10,
+      "pascalIcon": "aiAppExit",
+      "resourcePrefix": "IBIBLIA_APP_EXIT",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/app-exit.svg"
     },
     {
       "symbol": "projects-merge",
-      "pascalAction": "ActionMesclarProjetos",
+      "meaning": "Merge two projects.",
+      "pascalAction": "ActionMergeProjects",
       "legacyImageIndex": null,
-      "contexts": ["main-menu-project-gap"],
-      "sizes": [16, 24, 32],
-      "meaning": "Merge two association projects."
+      "pascalIcon": "aiProjectsMerge",
+      "resourcePrefix": "IBIBLIA_PROJECTS_MERGE",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/projects-merge.svg"
     },
     {
       "symbol": "association-memory-rebuild",
-      "pascalAction": "ActionRecriarBaseSugestoes",
+      "meaning": "Rebuild statistical association memory.",
+      "pascalAction": "ActionRebuildSuggestionDatabase",
       "legacyImageIndex": null,
-      "contexts": ["main-menu-maintenance"],
-      "sizes": [16, 24, 32],
-      "meaning": "Recreate the association memory used by statistical suggestions."
+      "pascalIcon": "aiAssociationMemoryRebuild",
+      "resourcePrefix": "IBIBLIA_ASSOCIATION_MEMORY_REBUILD",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/association-memory-rebuild.svg"
     },
     {
       "symbol": "sync-theword-verse",
+      "meaning": "Synchronize the displayed Bible verse with theWord.",
       "pascalAction": "ActionSyncTheWordVerse",
       "legacyImageIndex": null,
-      "contexts": ["sync-action-gap"],
-      "sizes": [16, 24, 32],
-      "meaning": "Synchronize the current iBiblia verse with theWord."
+      "pascalIcon": "aiSyncThewordVerse",
+      "resourcePrefix": "IBIBLIA_SYNC_THEWORD_VERSE",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/sync-theword-verse.svg"
     },
     {
       "symbol": "tags-show",
-      "pascalAction": "ActionMostrarTags",
+      "meaning": "Show Strong and morphology tags.",
+      "pascalAction": "ActionShowTags",
       "legacyImageIndex": null,
-      "contexts": ["shortcut-action-gap"],
-      "sizes": [16, 24, 32],
-      "meaning": "Toggle display of Strong's and morphology tags."
+      "pascalIcon": "aiTagsShow",
+      "resourcePrefix": "IBIBLIA_TAGS_SHOW",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/tags-show.svg"
     },
     {
       "symbol": "patch-create",
+      "meaning": "Create a patch from selected verses.",
       "pascalAction": "ActionExportPatch",
       "legacyImageIndex": null,
-      "contexts": ["main-menu-project"],
-      "sizes": [16, 24, 32],
-      "meaning": "Create an iBiblia patch file."
+      "pascalIcon": "aiPatchCreate",
+      "resourcePrefix": "IBIBLIA_PATCH_CREATE",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/patch-create.svg"
     },
     {
       "symbol": "patch-apply",
+      "meaning": "Apply accepted patch changes.",
       "pascalAction": "ActionApplyPatch",
       "legacyImageIndex": null,
-      "contexts": ["main-menu-project"],
-      "sizes": [16, 24, 32],
-      "meaning": "Apply an iBiblia patch file."
+      "pascalIcon": "aiPatchApply",
+      "resourcePrefix": "IBIBLIA_PATCH_APPLY",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/patch-apply.svg"
     },
     {
       "symbol": "database-vacuum",
+      "meaning": "Compact the project database.",
       "pascalAction": "ActionVaccumProject",
       "legacyImageIndex": null,
-      "contexts": ["main-menu-maintenance"],
-      "sizes": [16, 24, 32],
-      "meaning": "Vacuum/compact the current project database."
+      "pascalIcon": "aiDatabaseVacuum",
+      "resourcePrefix": "IBIBLIA_DATABASE_VACUUM",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/database-vacuum.svg"
     },
     {
       "symbol": "keyboard-shortcuts",
+      "meaning": "View keyboard shortcuts.",
       "pascalAction": "ActionKeyboardShortcuts",
       "legacyImageIndex": null,
-      "contexts": ["main-menu-help"],
-      "sizes": [16, 24, 32],
-      "meaning": "Show keyboard shortcuts."
+      "pascalIcon": "aiKeyboardShortcuts",
+      "resourcePrefix": "IBIBLIA_KEYBOARD_SHORTCUTS",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/keyboard-shortcuts.svg"
     },
     {
       "symbol": "layout-reset",
+      "meaning": "Restore the default window layout.",
       "pascalAction": "ActionResetLayout",
       "legacyImageIndex": null,
-      "contexts": ["main-menu-options"],
-      "sizes": [16, 24, 32],
-      "meaning": "Reset the main window layout."
+      "pascalIcon": "aiLayoutReset",
+      "resourcePrefix": "IBIBLIA_LAYOUT_RESET",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/layout-reset.svg"
     },
     {
       "symbol": "guide-mode",
+      "meaning": "Show contextual guidance.",
       "pascalAction": "ActionGuideMode",
       "legacyImageIndex": null,
-      "contexts": ["main-menu-options"],
-      "sizes": [16, 24, 32],
-      "meaning": "Toggle guide mode."
+      "pascalIcon": "aiGuideMode",
+      "resourcePrefix": "IBIBLIA_GUIDE_MODE",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/guide-mode.svg"
     },
     {
       "symbol": "theword-highlighter-colors",
+      "meaning": "Configure theWord highlighter colors.",
       "pascalAction": "ActionTheWordHighlighterColors",
       "legacyImageIndex": null,
-      "contexts": ["main-menu-options"],
-      "sizes": [16, 24, 32],
-      "meaning": "Configure theWord highlighter colors."
+      "pascalIcon": "aiThewordHighlighterColors",
+      "resourcePrefix": "IBIBLIA_THEWORD_HIGHLIGHTER_COLORS",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/theword-highlighter-colors.svg"
     },
     {
       "symbol": "llm-options",
+      "meaning": "Configure AI providers and verse flows.",
       "pascalAction": "ActionLlmOptions",
       "legacyImageIndex": null,
-      "contexts": ["main-menu-options"],
-      "sizes": [16, 24, 32],
-      "meaning": "Configure LLM provider and flow options."
+      "pascalIcon": "aiLlmOptions",
+      "resourcePrefix": "IBIBLIA_LLM_OPTIONS",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/llm-options.svg"
     },
     {
-      "symbol": "internal-new-verse-hook",
-      "pascalAction": "ActionQuandoNovoVersiculo",
+      "symbol": "preferences",
+      "meaning": "Open application preferences.",
+      "pascalAction": "FActionPreferences",
       "legacyImageIndex": null,
-      "contexts": ["internal-no-icon"],
-      "sizes": [],
-      "meaning": "Internal hook fired when the current verse changes; no icon should be generated unless it becomes visible."
-    },
-    {
-      "symbol": "text-load",
-      "pascalAction": "ActionLoadText",
-      "legacyImageIndex": null,
-      "contexts": ["project-properties-button"],
-      "sizes": [16, 24],
-      "meaning": "Load or replace a Bible text in project properties."
-    },
-    {
-      "symbol": "text-clear",
-      "pascalAction": "ActionClearText",
-      "legacyImageIndex": null,
-      "contexts": ["project-properties-button"],
-      "sizes": [16, 24],
-      "meaning": "Clear a Bible text from project properties."
-    },
-    {
-      "symbol": "dictionary-strong-select",
-      "pascalAction": "ActionSelectStrongDictionary",
-      "legacyImageIndex": null,
-      "contexts": ["project-properties-button"],
-      "sizes": [16, 24],
-      "meaning": "Choose a Strong's dictionary."
-    },
-    {
-      "symbol": "dictionary-morphology-select",
-      "pascalAction": "ActionSelectMorphologyDictionary",
-      "legacyImageIndex": null,
-      "contexts": ["project-properties-button"],
-      "sizes": [16, 24],
-      "meaning": "Choose a morphology dictionary."
-    },
-    {
-      "symbol": "font-select",
-      "pascalAction": "ActionSelectFont",
-      "legacyImageIndex": null,
-      "contexts": ["project-properties-button"],
-      "sizes": [16, 24],
-      "meaning": "Choose a font for a Bible text."
-    },
-    {
-      "symbol": "internal-tab-change",
-      "pascalAction": "ActionChangeTab",
-      "legacyImageIndex": null,
-      "contexts": ["internal-no-icon"],
-      "sizes": [],
-      "meaning": "Internal action used to change project property tabs."
+      "pascalIcon": "aiPreferences",
+      "resourcePrefix": "IBIBLIA_PREFERENCES",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/preferences.svg"
     },
     {
       "symbol": "file-association-register",
-      "pascalAction": null,
+      "meaning": "Register iBiblia as handler for project files.",
+      "pascalAction": "ActionRegisterFileAssociation",
       "legacyImageIndex": null,
-      "contexts": ["main-menu-maintenance-gap"],
-      "sizes": [16, 24, 32],
-      "meaning": "Register .bib files for iBiblia; current menu item is not backed by a TAction."
+      "pascalIcon": "aiFileAssociationRegister",
+      "resourcePrefix": "IBIBLIA_FILE_ASSOCIATION_REGISTER",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/file-association-register.svg"
     },
     {
       "symbol": "file-association-unregister",
-      "pascalAction": null,
+      "meaning": "Remove the project file registration.",
+      "pascalAction": "ActionUnregisterFileAssociation",
       "legacyImageIndex": null,
-      "contexts": ["main-menu-maintenance-gap"],
-      "sizes": [16, 24, 32],
-      "meaning": "Unregister .bib files from iBiblia; current menu item is not backed by a TAction."
+      "pascalIcon": "aiFileAssociationUnregister",
+      "resourcePrefix": "IBIBLIA_FILE_ASSOCIATION_UNREGISTER",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/file-association-unregister.svg"
     },
     {
-      "symbol": "status-not-associated",
-      "pascalAction": null,
-      "legacyImageIndex": 0,
-      "contexts": ["tree-status", "tree-context-menu", "association-project-status"],
-      "sizes": [16],
-      "meaning": "Association project status: not associated."
-    },
-    {
-      "symbol": "status-associating",
-      "pascalAction": null,
-      "legacyImageIndex": 1,
-      "contexts": ["tree-status", "tree-context-menu", "association-project-status"],
-      "sizes": [16],
-      "meaning": "Association project status: associating/in progress."
-    },
-    {
-      "symbol": "status-needs-review",
-      "pascalAction": null,
-      "legacyImageIndex": 2,
-      "contexts": ["tree-status", "tree-context-menu", "association-project-status"],
-      "sizes": [16],
-      "meaning": "Association project status: needs review."
-    },
-    {
-      "symbol": "status-associated",
-      "pascalAction": null,
-      "legacyImageIndex": 3,
-      "contexts": ["tree-status", "tree-context-menu", "association-project-status"],
-      "sizes": [16],
-      "meaning": "Association project status: associated."
-    },
-    {
-      "symbol": "status-awaiting-translation",
-      "pascalAction": null,
-      "legacyImageIndex": 0,
-      "contexts": ["tree-status", "tree-context-menu", "translation-project-status"],
-      "sizes": [16],
-      "meaning": "Translation project status: awaiting translation."
-    },
-    {
-      "symbol": "status-translating",
-      "pascalAction": null,
-      "legacyImageIndex": 1,
-      "contexts": ["tree-status", "tree-context-menu", "translation-project-status"],
-      "sizes": [16],
-      "meaning": "Translation project status: translating."
-    },
-    {
-      "symbol": "status-ready-for-review",
-      "pascalAction": null,
-      "legacyImageIndex": 2,
-      "contexts": ["tree-status", "tree-context-menu", "translation-project-status"],
-      "sizes": [16],
-      "meaning": "Translation project status: ready for review."
-    },
-    {
-      "symbol": "status-pending-issues",
-      "pascalAction": null,
-      "legacyImageIndex": 3,
-      "contexts": ["tree-status", "tree-context-menu", "translation-project-status"],
-      "sizes": [16],
-      "meaning": "Translation project status: has pending issues."
-    },
-    {
-      "symbol": "status-reviewed",
-      "pascalAction": null,
-      "legacyImageIndex": 4,
-      "contexts": ["tree-status", "tree-context-menu", "translation-project-status"],
-      "sizes": [16],
-      "meaning": "Translation project status: reviewed."
-    },
-    {
-      "symbol": "status-mixed",
-      "pascalAction": null,
+      "symbol": "text-load",
+      "meaning": "Load or replace Bible text.",
+      "pascalAction": "ActionLoadText",
       "legacyImageIndex": null,
-      "contexts": ["tree-status-aggregate"],
-      "sizes": [16],
-      "meaning": "Aggregate book/chapter state with multiple child statuses; currently generated dynamically as color segments."
+      "pascalIcon": "aiTextLoad",
+      "resourcePrefix": "IBIBLIA_TEXT_LOAD",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/text-load.svg"
+    },
+    {
+      "symbol": "text-clear",
+      "meaning": "Clear the selected Bible text.",
+      "pascalAction": "ActionClearText",
+      "legacyImageIndex": null,
+      "pascalIcon": "aiTextClear",
+      "resourcePrefix": "IBIBLIA_TEXT_CLEAR",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/text-clear.svg"
+    },
+    {
+      "symbol": "dictionary-strong-select",
+      "meaning": "Choose a Strong dictionary.",
+      "pascalAction": "ActionSelectStrongDictionary",
+      "legacyImageIndex": null,
+      "pascalIcon": "aiDictionaryStrongSelect",
+      "resourcePrefix": "IBIBLIA_DICTIONARY_STRONG_SELECT",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/dictionary-strong-select.svg"
+    },
+    {
+      "symbol": "dictionary-morphology-select",
+      "meaning": "Choose a morphology dictionary.",
+      "pascalAction": "ActionSelectMorphologyDictionary",
+      "legacyImageIndex": null,
+      "pascalIcon": "aiDictionaryMorphologySelect",
+      "resourcePrefix": "IBIBLIA_DICTIONARY_MORPHOLOGY_SELECT",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/dictionary-morphology-select.svg"
+    },
+    {
+      "symbol": "font-select",
+      "meaning": "Choose a text font.",
+      "pascalAction": "ActionSelectFont",
+      "legacyImageIndex": null,
+      "pascalIcon": "aiFontSelect",
+      "resourcePrefix": "IBIBLIA_FONT_SELECT",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/font-select.svg"
     },
     {
       "symbol": "checkbox-unchecked",
+      "meaning": "Unchecked selectable Bible item.",
       "pascalAction": null,
-      "legacyImageIndex": 0,
-      "contexts": ["bible-tree-state-checkbox"],
-      "sizes": [16],
-      "meaning": "Unchecked selectable verse/book/chapter state in TBibleTreeView."
+      "legacyImageIndex": null,
+      "pascalIcon": "aiCheckboxUnchecked",
+      "resourcePrefix": "IBIBLIA_CHECKBOX_UNCHECKED",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/checkbox-unchecked.svg"
     },
     {
       "symbol": "checkbox-checked",
+      "meaning": "Checked selectable Bible item.",
       "pascalAction": null,
-      "legacyImageIndex": 1,
-      "contexts": ["bible-tree-state-checkbox"],
-      "sizes": [16],
-      "meaning": "Checked selectable verse/book/chapter state in TBibleTreeView."
+      "legacyImageIndex": null,
+      "pascalIcon": "aiCheckboxChecked",
+      "resourcePrefix": "IBIBLIA_CHECKBOX_CHECKED",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/checkbox-checked.svg"
     },
     {
       "symbol": "checkbox-partial",
+      "meaning": "Partially selected Bible parent.",
       "pascalAction": null,
-      "legacyImageIndex": 2,
-      "contexts": ["bible-tree-state-checkbox"],
-      "sizes": [16],
-      "meaning": "Partially checked parent state in TBibleTreeView."
+      "legacyImageIndex": null,
+      "pascalIcon": "aiCheckboxPartial",
+      "resourcePrefix": "IBIBLIA_CHECKBOX_PARTIAL",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/checkbox-partial.svg"
     },
     {
       "symbol": "ai-pending",
+      "meaning": "Queued AI job: clock.",
       "pascalAction": null,
-      "legacyImageIndex": 3,
-      "contexts": ["ai-processing-tree-state"],
-      "sizes": [16],
-      "meaning": "AI processing job is queued/pending."
+      "legacyImageIndex": null,
+      "pascalIcon": "aiAiPending",
+      "resourcePrefix": "IBIBLIA_AI_PENDING",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/ai-pending.svg"
     },
     {
       "symbol": "ai-processing",
+      "meaning": "Running AI job: progress ring and spark.",
       "pascalAction": null,
-      "legacyImageIndex": 4,
-      "contexts": ["ai-processing-tree-state"],
-      "sizes": [16],
-      "meaning": "AI processing job is currently running."
+      "legacyImageIndex": null,
+      "pascalIcon": "aiAiProcessing",
+      "resourcePrefix": "IBIBLIA_AI_PROCESSING",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/ai-processing.svg"
     },
     {
       "symbol": "ai-success",
+      "meaning": "Completed AI job: check.",
       "pascalAction": null,
-      "legacyImageIndex": 5,
-      "contexts": ["ai-processing-tree-state"],
-      "sizes": [16],
-      "meaning": "AI processing job completed successfully."
+      "legacyImageIndex": null,
+      "pascalIcon": "aiAiSuccess",
+      "resourcePrefix": "IBIBLIA_AI_SUCCESS",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/ai-success.svg"
     },
     {
       "symbol": "ai-error",
+      "meaning": "Failed AI job: cross.",
       "pascalAction": null,
-      "legacyImageIndex": 6,
-      "contexts": ["ai-processing-tree-state"],
-      "sizes": [16],
-      "meaning": "AI processing job failed."
+      "legacyImageIndex": null,
+      "pascalIcon": "aiAiError",
+      "resourcePrefix": "IBIBLIA_AI_ERROR",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/ai-error.svg"
     },
     {
       "symbol": "tab-source",
+      "meaning": "Source Bible text.",
       "pascalAction": null,
       "legacyImageIndex": null,
-      "contexts": ["chapter-view-tab", "tab-gap"],
-      "sizes": [16],
-      "meaning": "Source Bible text tab."
+      "pascalIcon": "aiTabSource",
+      "resourcePrefix": "IBIBLIA_TAB_SOURCE",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/tab-source.svg"
     },
     {
       "symbol": "tab-destination",
+      "meaning": "Destination Bible text.",
       "pascalAction": null,
       "legacyImageIndex": null,
-      "contexts": ["chapter-view-tab", "tab-gap"],
-      "sizes": [16],
-      "meaning": "Destination Bible text tab."
+      "pascalIcon": "aiTabDestination",
+      "resourcePrefix": "IBIBLIA_TAB_DESTINATION",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/tab-destination.svg"
     },
     {
       "symbol": "tab-reference",
+      "meaning": "Reference Bible text.",
       "pascalAction": null,
       "legacyImageIndex": null,
-      "contexts": ["chapter-view-tab", "tab-gap"],
-      "sizes": [16],
-      "meaning": "Reference Bible text tab."
+      "pascalIcon": "aiTabReference",
+      "resourcePrefix": "IBIBLIA_TAB_REFERENCE",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/tab-reference.svg"
     },
     {
       "symbol": "comments",
+      "meaning": "Verse comments and notes.",
       "pascalAction": null,
       "legacyImageIndex": null,
-      "contexts": ["panel-gap", "verse-popup-gap"],
-      "sizes": [16, 24],
-      "meaning": "Comments or notes attached to the current verse."
+      "pascalIcon": "aiComments",
+      "resourcePrefix": "IBIBLIA_COMMENTS",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/comments.svg"
     },
     {
       "symbol": "status-review",
+      "meaning": "Review verses or filter the status catalog.",
       "pascalAction": null,
       "legacyImageIndex": null,
-      "contexts": ["side-panel-gap", "review-filter"],
-      "sizes": [16, 24],
-      "meaning": "Review/filter verses by status."
+      "pascalIcon": "aiStatusReview",
+      "resourcePrefix": "IBIBLIA_STATUS_REVIEW",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/status-review.svg"
+    },
+    {
+      "symbol": "help",
+      "meaning": "Open help.",
+      "pascalAction": null,
+      "legacyImageIndex": null,
+      "pascalIcon": "aiHelp",
+      "resourcePrefix": "IBIBLIA_HELP",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/help.svg"
+    },
+    {
+      "symbol": "about",
+      "meaning": "About iBiblia.",
+      "pascalAction": null,
+      "legacyImageIndex": null,
+      "pascalIcon": "aiAbout",
+      "resourcePrefix": "IBIBLIA_ABOUT",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/about.svg"
+    },
+    {
+      "symbol": "confirm",
+      "meaning": "Accept or apply the current changes.",
+      "pascalAction": null,
+      "legacyImageIndex": null,
+      "pascalIcon": "aiConfirm",
+      "resourcePrefix": "IBIBLIA_CONFIRM",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/confirm.svg"
+    },
+    {
+      "symbol": "cancel",
+      "meaning": "Cancel or close without applying.",
+      "pascalAction": null,
+      "legacyImageIndex": null,
+      "pascalIcon": "aiCancel",
+      "resourcePrefix": "IBIBLIA_CANCEL",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/cancel.svg"
+    },
+    {
+      "symbol": "add",
+      "meaning": "Add an item.",
+      "pascalAction": null,
+      "legacyImageIndex": null,
+      "pascalIcon": "aiAdd",
+      "resourcePrefix": "IBIBLIA_ADD",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/add.svg"
+    },
+    {
+      "symbol": "remove",
+      "meaning": "Remove an item.",
+      "pascalAction": null,
+      "legacyImageIndex": null,
+      "pascalIcon": "aiRemove",
+      "resourcePrefix": "IBIBLIA_REMOVE",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/remove.svg"
+    },
+    {
+      "symbol": "edit",
+      "meaning": "Edit text or configuration.",
+      "pascalAction": null,
+      "legacyImageIndex": null,
+      "pascalIcon": "aiEdit",
+      "resourcePrefix": "IBIBLIA_EDIT",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/edit.svg"
+    },
+    {
+      "symbol": "browse",
+      "meaning": "Browse for a file or location.",
+      "pascalAction": null,
+      "legacyImageIndex": null,
+      "pascalIcon": "aiBrowse",
+      "resourcePrefix": "IBIBLIA_BROWSE",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/browse.svg"
+    },
+    {
+      "symbol": "refresh",
+      "meaning": "Reload or refresh.",
+      "pascalAction": null,
+      "legacyImageIndex": null,
+      "pascalIcon": "aiRefresh",
+      "resourcePrefix": "IBIBLIA_REFRESH",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/refresh.svg"
+    },
+    {
+      "symbol": "search",
+      "meaning": "Find text or an item.",
+      "pascalAction": null,
+      "legacyImageIndex": null,
+      "pascalIcon": "aiSearch",
+      "resourcePrefix": "IBIBLIA_SEARCH",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/search.svg"
+    },
+    {
+      "symbol": "print",
+      "meaning": "Print the current content.",
+      "pascalAction": null,
+      "legacyImageIndex": null,
+      "pascalIcon": "aiPrint",
+      "resourcePrefix": "IBIBLIA_PRINT",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/print.svg"
+    },
+    {
+      "symbol": "copy",
+      "meaning": "Copy selected content.",
+      "pascalAction": null,
+      "legacyImageIndex": null,
+      "pascalIcon": "aiCopy",
+      "resourcePrefix": "IBIBLIA_COPY",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/copy.svg"
+    },
+    {
+      "symbol": "paste",
+      "meaning": "Paste content.",
+      "pascalAction": null,
+      "legacyImageIndex": null,
+      "pascalIcon": "aiPaste",
+      "resourcePrefix": "IBIBLIA_PASTE",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/paste.svg"
+    },
+    {
+      "symbol": "stop",
+      "meaning": "Stop or cancel running processing.",
+      "pascalAction": null,
+      "legacyImageIndex": null,
+      "pascalIcon": "aiStop",
+      "resourcePrefix": "IBIBLIA_STOP",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/stop.svg"
+    },
+    {
+      "symbol": "translate",
+      "meaning": "Translate a verse or configure translation.",
+      "pascalAction": null,
+      "legacyImageIndex": null,
+      "pascalIcon": "aiTranslate",
+      "resourcePrefix": "IBIBLIA_TRANSLATE",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/translate.svg"
+    },
+    {
+      "symbol": "link",
+      "meaning": "Connect source and destination Bible text.",
+      "pascalAction": null,
+      "legacyImageIndex": null,
+      "pascalIcon": "aiLink",
+      "resourcePrefix": "IBIBLIA_LINK",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/link.svg"
+    },
+    {
+      "symbol": "export-destination-strongs",
+      "meaning": "Export destination text with Strong tags.",
+      "pascalAction": "ActionExportDestinationWithStrongs",
+      "legacyImageIndex": null,
+      "pascalIcon": "aiExportDestinationStrongs",
+      "resourcePrefix": "IBIBLIA_EXPORT_DESTINATION_STRONGS",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/export-destination-strongs.svg"
+    },
+    {
+      "symbol": "export-interlinear",
+      "meaning": "Export interlinear text.",
+      "pascalAction": "ActionExportInterlinearText",
+      "legacyImageIndex": null,
+      "pascalIcon": "aiExportInterlinear",
+      "resourcePrefix": "IBIBLIA_EXPORT_INTERLINEAR",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64
+      ],
+      "source": "source/svg/export-interlinear.svg"
     }
   ]
 }
