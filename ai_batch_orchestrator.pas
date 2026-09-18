@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, ComCtrls, ai_flows, ai_flow_config,
-  ai_processing_manager, ai_batch_work_item, project_config;
+  ai_processing_manager, ai_batch_work_item, project_config, ai_global_settings;
 
 type
   TCancelAIBatchProc = procedure of object;
@@ -53,18 +53,20 @@ type
   private
     FConfig: TProjectConfig;
     FContext: IAIBatchContext;
+    FGlobalSettings: TAIGlobalSettings;
     function FilterIneligibleTranslationItems(WorkItems: TAIBatchWorkItemList;
       ForceOverwrite: Boolean): Integer;
     procedure MarkPendingNodes(WorkItems: TAIBatchWorkItemList);
   public
-    constructor Create(AConfig: TProjectConfig; AContext: IAIBatchContext);
+    constructor Create(AConfig: TProjectConfig; AContext: IAIBatchContext;
+      AGlobalSettings: TAIGlobalSettings = nil);
     function PrepareBatch(const FlowId: string; WorkItems: TAIBatchWorkItemList;
       MaxParallel: Integer): TAIBatchPreparation;
   end;
 
 implementation
 
-uses ai_translation_flow, ai_credential_store;
+uses ai_translation_flow, ai_credential_store, ai_effective_settings;
 
 resourcestring
   SAIConfigurationMissing = 'Configure the AI model and API key in LLM Options before processing.';
@@ -116,11 +118,13 @@ end;
 
 { TAIBatchOrchestrator }
 
-constructor TAIBatchOrchestrator.Create(AConfig: TProjectConfig; AContext: IAIBatchContext);
+constructor TAIBatchOrchestrator.Create(AConfig: TProjectConfig; AContext: IAIBatchContext;
+  AGlobalSettings: TAIGlobalSettings);
 begin
   inherited Create;
   FConfig := AConfig;
   FContext := AContext;
+  FGlobalSettings := AGlobalSettings;
 end;
 
 function TAIBatchOrchestrator.FilterIneligibleTranslationItems(
@@ -174,7 +178,10 @@ function TAIBatchOrchestrator.PrepareBatch(const FlowId: string;
 var
   FlowConfig: IAIFlowConfig;
   ForceOverwrite: Boolean;
-  ApiKey, Model: string;
+  Settings: TAICommonSettings;
+  Connection: TAIResolvedConnection;
+  Global: TAIGlobalSettings;
+  Scope: TAICredentialScope;
 begin
   Result.Flow := nil;
   Result.Manager := nil;
@@ -195,14 +202,6 @@ begin
       Exit;
   end;
 
-  if MaxParallel <= 0 then
-    MaxParallel := 1;
-
-  if Assigned(FContext) then
-    FContext.CancelCurrentBatch;
-
-  MarkPendingNodes(WorkItems);
-
   FlowConfig := GetFlowConfigById(FlowId);
   if not Assigned(FlowConfig) then
     Exit;
@@ -211,23 +210,26 @@ begin
   if not Assigned(Result.Flow) then
     Exit;
 
-  ApiKey := Trim(Result.Flow.ApiKeyOverride);
-  if ApiKey = '' then
-    ApiKey := FConfig.AICredentials.Resolve(acsCommon);
-  Model := Trim(Result.Flow.ModelOverride);
-  if Model = '' then
-    Model := FConfig.ReadString(AI_COMMON_CONFIG.Model);
-  if (Trim(Model) = '') or (Trim(ApiKey) = '') then
-    raise EAICredentialError.Create(SAIConfigurationMissing);
-
-  Result.Manager := TAIProcessingManager.Create(
-    Model,
-    ApiKey,
-    MaxParallel
-  );
-  Result.Manager.MaxRetries := StrToIntDef(FConfig.ReadString(AI_COMMON_CONFIG.MaxRetries), 3);
-  Result.Manager.RetryBaseDelay := StrToIntDef(FConfig.ReadString(AI_COMMON_CONFIG.RetryDelay), 1000);
-  Result.Manager.AutoSaveInterval := StrToIntDef(FConfig.ReadString(AI_COMMON_CONFIG.AutoSaveInterval), 10);
+  Global := FGlobalSettings;
+  if not Assigned(Global) then Global := TAIGlobalSettings.Create;
+  try
+    Settings := ResolveCommonAISettings(FConfig, Global);
+    if SameText(FlowId, 'translation') then Scope := acsTranslation
+    else Scope := acsAssociation;
+    Connection := ResolveAIConnection(FConfig, Global, Result.Flow, Scope);
+  finally
+    if not Assigned(FGlobalSettings) then Global.Free;
+  end;
+  if MaxParallel <= 0 then MaxParallel := Settings.MaxParallel;
+  if Assigned(FContext) then FContext.CancelCurrentBatch;
+  MarkPendingNodes(WorkItems);
+  Result.Manager := TAIProcessingManager.Create(Connection.Model,
+    Connection.ApiKey, MaxParallel);
+  Result.Manager.ConfigureResolvedConnection(Connection.Provider,
+    Connection.Model, Connection.ApiKey);
+  Result.Manager.MaxRetries := Settings.MaxRetries;
+  Result.Manager.RetryBaseDelay := Settings.RetryDelay;
+  Result.Manager.AutoSaveInterval := Settings.AutoSaveInterval;
   if Assigned(FContext) then
   begin
     Result.Manager.OnAutoSaveNeeded := FContext.GetAutoSaveCallback;

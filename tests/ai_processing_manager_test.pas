@@ -39,6 +39,7 @@ type
     procedure ForcedBatchReleaseWaitsOutsideUIAndDetachesCallbacks;
     procedure ActiveBorrowedVerseCannotBeReleasedInBackground;
     procedure ReentrantReleaseIsRefusedUntilPumpReturns;
+    procedure ResolvedConnectionStaysFrozenAfterProcessingStarts;
   end;
 
 implementation
@@ -51,6 +52,7 @@ type
   public
     RequestEntered, ReleaseRequest, FactoryEntered, ReleaseFactory, Disposed: TEvent;
     Calls, Parses, Applies: LongInt;
+    CapturedProvider, CapturedModel, CapturedApiKey, FlowProvider: string;
     BlockRequest: Integer;
     BlockFactory, FailFirst: Boolean;
     constructor Create;
@@ -183,6 +185,9 @@ end;
 
 function TTestManager.CreateLLMClient(const Provider, Model, ApiKey: string): TBaseLLMClient;
 begin
+  FControl.CapturedProvider := Provider;
+  FControl.CapturedModel := Model;
+  FControl.CapturedApiKey := ApiKey;
   if FControl.BlockFactory then
   begin
     FControl.FactoryEntered.SetEvent;
@@ -231,7 +236,7 @@ begin Result := 'model'; end;
 function TFakeFlow.ApiKeyOverride: string;
 begin Result := 'test-key'; end;
 function TFakeFlow.ProviderOverride: string;
-begin Result := ''; end;
+begin Result := FControl.FlowProvider; end;
 
 procedure TAIProcessingManagerTests.SetUp;
 begin
@@ -600,6 +605,43 @@ begin
   AssertEquals(1, FManager.CompletedJobs);
   ReleaseAIProcessingBatch(FManager);
   AssertTrue(FManager = nil);
+end;
+
+procedure TAIProcessingManagerTests.ResolvedConnectionStaysFrozenAfterProcessingStarts;
+var
+  Control: TTestControl;
+  ReconfigurationRefused: Boolean;
+begin
+  Control := TTestControl(FControl);
+  Control.FlowProvider := 'OpenAI';
+  Control.BlockRequest := 1;
+  FManager.ConfigureResolvedConnection('Google', 'gemini-snapshot-test',
+    'synthetic-frozen-key');
+  StartJobs(2);
+  AssertEquals(Ord(wrSignaled), Ord(Control.RequestEntered.WaitFor(5000)));
+  AssertEquals('Flow provider must not replace the resolved provider',
+    'Google', Control.CapturedProvider);
+  AssertEquals('Flow model must not replace the resolved model',
+    'gemini-snapshot-test', Control.CapturedModel);
+  AssertEquals('Flow key must not replace the resolved billing credential',
+    'synthetic-frozen-key', Control.CapturedApiKey);
+  ReconfigurationRefused := False;
+  try
+    FManager.ConfigureResolvedConnection('DeepSeek', 'deepseek-new-settings',
+      'synthetic-replacement-key');
+  except
+    on E: Exception do ReconfigurationRefused := True;
+  end;
+  AssertTrue('A running batch cannot change its resolved connection',
+    ReconfigurationRefused);
+  Control.ReleaseRequest.SetEvent;
+  WaitStopped;
+  AssertEquals(2, FManager.CompletedJobs);
+  AssertEquals(2, AtomicValue(Control.Calls));
+  AssertEquals('Google', Control.CapturedProvider);
+  AssertEquals('gemini-snapshot-test', Control.CapturedModel);
+  AssertEquals('synthetic-frozen-key', Control.CapturedApiKey);
+  AssertFalse(FCallbackOnWorker);
 end;
 
 initialization

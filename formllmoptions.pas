@@ -7,7 +7,7 @@ interface
 uses
   ui_style, Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs,
   StdCtrls, ExtCtrls, ComCtrls, Project, llmclient, ai_flows, ai_flow_config,
-  ai_credential_store
+  ai_credential_store, ai_settings_types, ai_global_settings, ai_effective_settings
   {$IFDEF WINDOWS}, Windows{$ENDIF};
 
 type
@@ -51,6 +51,38 @@ type
     leMaxParallel: TLabeledEdit;
     leMaxRetries: TLabeledEdit;
     pcFlows: TPageControl;
+    tsGlobal: TTabSheet;
+    tsProject: TTabSheet;
+    sbGlobal: TScrollBox;
+    sbProject: TScrollBox;
+    lblGlobalDescription: TLabel;
+    lblGlobalModel: TLabel;
+    cbGlobalModel: TComboBox;
+    leGlobalOpenAI: TLabeledEdit;
+    leGlobalDeepSeek: TLabeledEdit;
+    leGlobalGoogle: TLabeledEdit;
+    leGlobalMaxParallel: TLabeledEdit;
+    leGlobalMaxRetries: TLabeledEdit;
+    gbGlobalAdvanced: TGroupBox;
+    leGlobalRetryDelay: TLabeledEdit;
+    leGlobalAutoSave: TLabeledEdit;
+    lblProjectDescription: TLabel;
+    leRetryDelay: TLabeledEdit;
+    leAutoSave: TLabeledEdit;
+    chkInheritModel: TCheckBox;
+    chkInheritKey: TCheckBox;
+    chkInheritParallel: TCheckBox;
+    chkInheritRetries: TCheckBox;
+    chkInheritRetryDelay: TCheckBox;
+    chkInheritAutoSave: TCheckBox;
+    lblModelSource: TLabel;
+    lblKeySource: TLabel;
+    lblParallelSource: TLabel;
+    lblRetriesSource: TLabel;
+    lblRetryDelaySource: TLabel;
+    lblAutoSaveSource: TLabel;
+    btnUseGlobal: TButton;
+    btnCopyGlobal: TButton;
     tsAssociation: TTabSheet;
     tsTranslation: TTabSheet;
     procedure FormCreate(Sender: TObject);
@@ -58,15 +90,35 @@ type
     procedure btnTestClick(Sender: TObject);
   private
     FProject: TProject;
+    FGlobalSettings: TAIGlobalSettings;
+    FProjectSettings: TAIProjectAISettings;
+    FLoadingSettings: Boolean;
+    FInheritControls: array[TAICommonSetting] of TCheckBox;
+    FSourceLabels: array[TAICommonSetting] of TLabel;
+    FGlobalKeyEdits: array[0..2] of TLabeledEdit;
+    FLoadedGlobalKeys: array[0..2] of string;
     FFlowTabs: array of TFlowTabControls;
     FLoadedApiKeys: array[TAICredentialScope] of string;
+    procedure LoadGlobalSettings;
+    procedure CaptureGlobalSettings;
+    procedure CaptureProjectSettings;
+    procedure RefreshProjectSettings;
+    procedure RefreshLocalizedCaptions;
+    procedure OnGlobalFieldsChanged(Sender: TObject);
+    procedure OnInheritChanged(Sender: TObject);
+    procedure OnUseGlobalClick(Sender: TObject);
+    procedure OnCopyGlobalClick(Sender: TObject);
+    procedure OnSettingsPageChanged(Sender: TObject);
+    function ReadSettingText(Setting: TAICommonSetting; Global: Boolean): string;
+    procedure WriteSettingText(Setting: TAICommonSetting; Global: Boolean;
+      const Value: string);
+    function SettingControl(Setting: TAICommonSetting; Global: Boolean): TWinControl;
     function LoadCredential(Scope: TAICredentialScope; Edit: TLabeledEdit): string;
     procedure SaveCredential(Scope: TAICredentialScope; Edit: TLabeledEdit);
     procedure UpdateTestEnabled;
     procedure OnFieldsChanged(Sender: TObject);
     procedure LoadFromProject;
     procedure SaveToProject;
-    procedure MigrateLegacyConfigIfNeeded;
     procedure InitializeFlowTabs;
     procedure CreateAssociationTab(ATabSheet: TTabSheet; TabIdx: Integer);
     procedure CreateTranslationTab(ATabSheet: TTabSheet; TabIdx: Integer);
@@ -100,9 +152,11 @@ type
     function GetFlowTabByFlowId(const AFlowId: string): TFlowTabControls;
     function GetFlowTabIndexByFlowId(const AFlowId: string): Integer;
   public
-    procedure SetProject(AProject: TProject);
+    procedure SetProject(AProject: TProject; const AGlobalFileName: string = '';
+      const AStore: IAICredentialStore = nil);
   public
     procedure AfterConstruction; override;
+    destructor Destroy; override;
   end;
 
 var
@@ -138,6 +192,32 @@ resourcestring
   rsCustomInstructionsHint = 'Add specific guidelines for your project (e.g., translation philosophy, examples). Leave empty to use only the default prompt.';
   rsProviderOverride = 'Provider Override (Optional)';
   rsUseFlowOverride = 'Use flow-specific provider/model/API key';
+  rsGlobalTab = 'Machine defaults';
+  rsProjectTab = 'This project';
+  rsGlobalDescription = 'Defaults for this Windows user on this computer. API keys are stored in the local credential store. Changes are saved when you click OK.';
+  rsProjectDescription = 'Each setting can follow the machine defaults or use its own value. Project changes take effect now and are stored when you save the project.';
+  rsUseGlobal = 'Use global';
+  rsUsingGlobal = 'Source: machine defaults';
+  rsUsingDefault = 'Source: application default';
+  rsChooseModelForKey = 'Select a model to choose the provider API key';
+  rsUsingProject = 'Source: this project';
+  rsGlobalKeySource = 'Source: machine defaults (%s)';
+  rsKeyNotConfigured = 'No API key configured for %s';
+  rsKeyConfigured = 'API key configured for %s';
+  rsGlobalKeyHint = 'Saved for this Windows user on this computer when you click OK.';
+  rsAdvanced = 'Advanced';
+  rsRetryDelay = 'Retry delay (milliseconds)';
+  rsAutoSave = 'Autosave every N completed jobs (0 = off)';
+  rsUseGlobalForProject = 'Use global settings for this project';
+  rsCopyProjectToGlobal = 'Copy current settings to machine defaults...';
+  rsCopyGlobalTitle = 'Update machine defaults';
+  rsCopyGlobalPreview = 'The following common settings will become the defaults for this user on this computer:';
+  rsCopyGlobalStaged = 'This will be saved only when you click OK. Existing project overrides are preserved.';
+  rsMaskedKey = 'API key: ******** (%s)';
+  rsNoKeyToCopy = 'API key: none';
+  rsSettingsError = 'Could not apply AI settings';
+  rsGlobalTest = 'Test defaults';
+  rsProjectTest = 'Test common settings';
 
 implementation
 
@@ -146,43 +226,387 @@ uses
 
 { TFrmLLMOptions }
 
-procedure TFrmLLMOptions.FormCreate(Sender: TObject);
+const
+  GlobalCredentialProviders: array[0..2] of string = ('OpenAI', 'DeepSeek', 'Google');
+
+function TFrmLLMOptions.SettingControl(Setting: TAICommonSetting;
+  Global: Boolean): TWinControl;
 begin
-  ApplyFormStyle(Self);
-  // Set password character for global API key
-  leApiKey.PasswordChar := '*';
+  Result := nil;
+  if Global then
+    case Setting of
+      aisModel: Result := cbGlobalModel;
+      aisMaxParallel: Result := leGlobalMaxParallel;
+      aisMaxRetries: Result := leGlobalMaxRetries;
+      aisRetryDelay: Result := leGlobalRetryDelay;
+      aisAutoSaveInterval: Result := leGlobalAutoSave;
+    end
+  else
+    case Setting of
+      aisModel: Result := cbModel;
+      aisMaxParallel: Result := leMaxParallel;
+      aisMaxRetries: Result := leMaxRetries;
+      aisRetryDelay: Result := leRetryDelay;
+      aisAutoSaveInterval: Result := leAutoSave;
+    end;
+end;
 
-  // Populate supported model names
-  ReloadModelRegistry;
-  FillSupportedModelNames(cbModel.Items);
+function TFrmLLMOptions.ReadSettingText(Setting: TAICommonSetting;
+  Global: Boolean): string;
+var Control: TWinControl;
+begin
+  Control := SettingControl(Setting, Global);
+  if Control is TComboBox then Result := TComboBox(Control).Text
+  else Result := TLabeledEdit(Control).Text;
+end;
 
-  // Localize captions
+procedure TFrmLLMOptions.WriteSettingText(Setting: TAICommonSetting;
+  Global: Boolean; const Value: string);
+var Control: TWinControl;
+begin
+  Control := SettingControl(Setting, Global);
+  if Control is TComboBox then
+  begin
+    if TComboBox(Control).Text <> Value then TComboBox(Control).Text := Value;
+  end
+  else if TLabeledEdit(Control).Text <> Value then TLabeledEdit(Control).Text := Value;
+end;
+
+procedure TFrmLLMOptions.LoadGlobalSettings;
+var
+  Setting: TAICommonSetting;
+  I: Integer;
+  Secret, ErrorMessage, Value: string;
+begin
+  for Setting in TAICommonSetting do
+  begin
+    Value := FGlobalSettings.ReadValue(Setting);
+    if Value = '' then Value := AISettingDefault(Setting);
+    WriteSettingText(Setting, True, Value);
+  end;
+  for I := 0 to High(FGlobalKeyEdits) do
+  begin
+    if FGlobalSettings.TryResolveCredential(GlobalCredentialProviders[I],
+      Secret, ErrorMessage) then
+    begin
+      FGlobalKeyEdits[I].EditLabel.Caption := GlobalCredentialProviders[I] + ' - ' + rsLabelApiKey;
+      FGlobalKeyEdits[I].Hint := rsGlobalKeyHint;
+    end
+    else
+    begin
+      FGlobalKeyEdits[I].EditLabel.Caption := GlobalCredentialProviders[I] + ' - ' + rsMissingApiKey;
+      FGlobalKeyEdits[I].Hint := ErrorMessage;
+    end;
+    FLoadedGlobalKeys[I] := Secret;
+    FGlobalKeyEdits[I].Text := Secret;
+  end;
+end;
+
+procedure TFrmLLMOptions.CaptureGlobalSettings;
+var Setting: TAICommonSetting; I: Integer;
+begin
+  if not Assigned(FGlobalSettings) then Exit;
+  for Setting in TAICommonSetting do
+    FGlobalSettings.SetValue(Setting, ReadSettingText(Setting, True));
+  for I := 0 to High(FGlobalKeyEdits) do
+    if Trim(FGlobalKeyEdits[I].Text) <> FLoadedGlobalKeys[I] then
+    begin
+      FGlobalSettings.StageCredential(GlobalCredentialProviders[I],
+        FGlobalKeyEdits[I].Text);
+      FLoadedGlobalKeys[I] := Trim(FGlobalKeyEdits[I].Text);
+      FGlobalKeyEdits[I].EditLabel.Caption := GlobalCredentialProviders[I] + ' - ' + rsLabelApiKey;
+      FGlobalKeyEdits[I].Hint := rsGlobalKeyHint;
+    end;
+end;
+
+procedure TFrmLLMOptions.CaptureProjectSettings;
+var Setting: TAICommonSetting; Model: string;
+begin
+  if not Assigned(FProject) then Exit;
+  for Setting in TAICommonSetting do
+    if not FProjectSettings.Inherit[Setting] then
+      FProjectSettings.Values[Setting] := ReadSettingText(Setting, False);
+  if not FProjectSettings.InheritApiKey and
+    (Trim(leApiKey.Text) <> FProjectSettings.ApiKey) then
+  begin
+    FProjectSettings.ApiKey := Trim(leApiKey.Text);
+    FProjectSettings.ApiKeyConfigured := FProjectSettings.ApiKey <> '';
+    FProjectSettings.ApiKeyError := '';
+    Model := FProjectSettings.Values[aisModel];
+    if FProjectSettings.Inherit[aisModel] then
+      Model := FGlobalSettings.ReadValue(aisModel);
+    FProjectSettings.ApiKeyProvider := AIProviderForModel(Model);
+  end;
+end;
+
+procedure TFrmLLMOptions.RefreshProjectSettings;
+var
+  Setting: TAICommonSetting;
+  Provider, Model, Value: string;
+  WasLoading: Boolean;
+begin
+  if not Assigned(FProject) or not Assigned(FGlobalSettings) then Exit;
+  WasLoading := FLoadingSettings;
+  FLoadingSettings := True;
+  try
+    for Setting in TAICommonSetting do
+    begin
+      FInheritControls[Setting].Checked := FProjectSettings.Inherit[Setting];
+      SettingControl(Setting, False).Enabled := not FProjectSettings.Inherit[Setting];
+      if FProjectSettings.Inherit[Setting] then
+      begin
+        Value := FGlobalSettings.ReadValue(Setting);
+        if Value = '' then
+        begin
+          Value := AISettingDefault(Setting);
+          FSourceLabels[Setting].Caption := rsUsingDefault;
+        end
+        else FSourceLabels[Setting].Caption := rsUsingGlobal;
+        WriteSettingText(Setting, False, Value);
+      end
+      else
+      begin
+        WriteSettingText(Setting, False, FProjectSettings.Values[Setting]);
+        FSourceLabels[Setting].Caption := rsUsingProject;
+      end;
+    end;
+    chkInheritKey.Checked := FProjectSettings.InheritApiKey;
+    leApiKey.Enabled := not FProjectSettings.InheritApiKey;
+    Model := ReadSettingText(aisModel, False);
+    Provider := AIProviderForModel(Model);
+    if FProjectSettings.InheritApiKey then
+    begin
+      leApiKey.Text := '';
+      leApiKey.EditLabel.Caption := rsLabelApiKey;
+      lblKeySource.Caption := Format(rsGlobalKeySource, [Provider]);
+      if Provider = '' then
+      begin
+        leApiKey.Hint := rsChooseModelForKey;
+        lblKeySource.Caption := rsChooseModelForKey;
+      end
+      else if FGlobalSettings.HasCredential(Provider) then
+        leApiKey.Hint := Format(rsKeyConfigured, [Provider])
+      else
+      begin
+        leApiKey.Hint := Format(rsKeyNotConfigured, [Provider]);
+        lblKeySource.Caption := leApiKey.Hint;
+      end;
+    end
+    else
+    begin
+      if leApiKey.Text <> FProjectSettings.ApiKey then
+        leApiKey.Text := FProjectSettings.ApiKey;
+      lblKeySource.Caption := rsUsingProject;
+      if FProjectSettings.ApiKeyError <> '' then
+      begin
+        leApiKey.EditLabel.Caption := rsMissingApiKey;
+        leApiKey.Hint := FProjectSettings.ApiKeyError;
+      end
+      else
+      begin
+        leApiKey.EditLabel.Caption := rsLocalApiKey;
+        leApiKey.Hint := rsLocalApiKeyHint;
+      end;
+    end;
+    leApiKey.ShowHint := True;
+  finally
+    FLoadingSettings := WasLoading;
+  end;
+end;
+
+procedure TFrmLLMOptions.OnGlobalFieldsChanged(Sender: TObject);
+begin
+  if FLoadingSettings then Exit;
+  CaptureGlobalSettings;
+  RefreshProjectSettings;
+  UpdateTestEnabled;
+end;
+
+procedure TFrmLLMOptions.OnInheritChanged(Sender: TObject);
+var Setting: TAICommonSetting;
+begin
+  if FLoadingSettings or not Assigned(FProject) then Exit;
+  CaptureProjectSettings;
+  for Setting in TAICommonSetting do
+  begin
+    if FProjectSettings.Inherit[Setting] and not FInheritControls[Setting].Checked then
+      FProjectSettings.Values[Setting] := ReadSettingText(Setting, False);
+    FProjectSettings.Inherit[Setting] := FInheritControls[Setting].Checked;
+  end;
+  FProjectSettings.InheritApiKey := chkInheritKey.Checked;
+  RefreshProjectSettings;
+  UpdateTestEnabled;
+end;
+
+procedure TFrmLLMOptions.OnUseGlobalClick(Sender: TObject);
+var Setting: TAICommonSetting;
+begin
+  if not Assigned(FProject) then Exit;
+  CaptureProjectSettings;
+  for Setting in TAICommonSetting do FProjectSettings.Inherit[Setting] := True;
+  FProjectSettings.InheritApiKey := True;
+  RefreshProjectSettings;
+  UpdateTestEnabled;
+end;
+
+procedure TFrmLLMOptions.OnCopyGlobalClick(Sender: TObject);
+var
+  Common: TAICommonSettings;
+  Connection: TAIResolvedConnection;
+  Preview, CredentialPreview: string;
+  WasLoading: Boolean;
+begin
+  if not Assigned(FProject) then Exit;
+  try
+    CaptureGlobalSettings;
+    CaptureProjectSettings;
+    Common := ResolveCommonAISettings(FProjectSettings, FGlobalSettings);
+    Connection := Default(TAIResolvedConnection);
+    Connection.Provider := Common.Provider;
+    if (not FProjectSettings.InheritApiKey and FProjectSettings.ApiKeyConfigured) or
+       (FProjectSettings.InheritApiKey and (Common.Provider <> '') and
+        FGlobalSettings.HasCredential(Common.Provider)) then
+      Connection := ResolveAIConnection(FProjectSettings, FGlobalSettings);
+    if Connection.ApiKey = '' then CredentialPreview := rsNoKeyToCopy
+    else CredentialPreview := Format(rsMaskedKey, [Connection.Provider]);
+    Preview := rsCopyGlobalPreview + LineEnding + LineEnding +
+      rsLabelModel + ': ' + Common.Model + LineEnding + CredentialPreview + LineEnding +
+      rsLabelMaxParallel + ': ' + IntToStr(Common.MaxParallel) + LineEnding +
+      rsLabelMaxRetries + ': ' + IntToStr(Common.MaxRetries) + LineEnding +
+      rsRetryDelay + ': ' + IntToStr(Common.RetryDelay) + LineEnding +
+      rsAutoSave + ': ' + IntToStr(Common.AutoSaveInterval) + LineEnding + LineEnding +
+      rsCopyGlobalStaged;
+    if MessageDlg(rsCopyGlobalTitle, Preview, mtConfirmation, [mbYes, mbNo], 0) <> mrYes then Exit;
+    FGlobalSettings.SetValue(aisModel, Common.Model);
+    FGlobalSettings.SetValue(aisMaxParallel, IntToStr(Common.MaxParallel));
+    FGlobalSettings.SetValue(aisMaxRetries, IntToStr(Common.MaxRetries));
+    FGlobalSettings.SetValue(aisRetryDelay, IntToStr(Common.RetryDelay));
+    FGlobalSettings.SetValue(aisAutoSaveInterval, IntToStr(Common.AutoSaveInterval));
+    if Connection.ApiKey <> '' then
+      FGlobalSettings.StageCredential(Connection.Provider, Connection.ApiKey);
+    WasLoading := FLoadingSettings;
+    FLoadingSettings := True;
+    try LoadGlobalSettings; finally FLoadingSettings := WasLoading; end;
+    RefreshProjectSettings;
+    pcFlows.ActivePage := tsGlobal;
+    UpdateTestEnabled;
+  except
+    on E: Exception do MessageDlg(rsSettingsError, E.Message, mtError, [mbOK], 0);
+  end;
+end;
+
+procedure TFrmLLMOptions.RefreshLocalizedCaptions;
+var Setting: TAICommonSetting; I: Integer; FlowConfig: IAIFlowConfig;
+begin
   Caption := rsLlmOptionsCaption;
+  tsGlobal.Caption := rsGlobalTab;
+  tsProject.Caption := rsProjectTab;
+  lblGlobalDescription.Caption := rsGlobalDescription;
+  lblProjectDescription.Caption := rsProjectDescription;
   LabelModel.Caption := rsLabelModel;
-  leApiKey.EditLabel.Caption := rsLabelApiKey;
+  lblGlobalModel.Caption := rsLabelModel;
+  leApiKey.EditLabel.Caption := rsLocalApiKey;
   gbCommonSettings.Caption := rsCommonSettings;
   leMaxParallel.EditLabel.Caption := rsLabelMaxParallel;
   leMaxRetries.EditLabel.Caption := rsLabelMaxRetries;
+  leGlobalMaxParallel.EditLabel.Caption := rsLabelMaxParallel;
+  leGlobalMaxRetries.EditLabel.Caption := rsLabelMaxRetries;
+  leRetryDelay.EditLabel.Caption := rsRetryDelay;
+  leAutoSave.EditLabel.Caption := rsAutoSave;
+  leGlobalRetryDelay.EditLabel.Caption := rsRetryDelay;
+  leGlobalAutoSave.EditLabel.Caption := rsAutoSave;
+  gbGlobalAdvanced.Caption := rsAdvanced;
+  btnUseGlobal.Caption := rsUseGlobalForProject;
+  btnCopyGlobal.Caption := rsCopyProjectToGlobal;
   btnOK.Caption := rsBtnOK;
   btnCancel.Caption := rsBtnCancel;
-  btnTest.Caption := rsBtnTest;
+  for Setting in TAICommonSetting do
+    FInheritControls[Setting].Caption := rsUseGlobal;
+  chkInheritKey.Caption := rsUseGlobal;
+  for I := 0 to High(FFlowTabs) do
+  begin
+    FlowConfig := GetFlowConfigById(FFlowTabs[I].FlowId);
+    FFlowTabs[I].TabSheet.Caption := FlowConfig.GetDisplayName;
+    FFlowTabs[I].chkUseOverride.Caption := rsUseFlowOverride;
+    FFlowTabs[I].gbOverride.Caption := rsProviderOverride;
+    FFlowTabs[I].CbProvider.Hint := ai_association_flow.SConfigProviderOverrideDescription;
+    FFlowTabs[I].CbModel.Hint := ai_association_flow.SConfigModelOverrideDescription;
+    FFlowTabs[I].EditApiKey.Hint := ai_association_flow.SConfigApiKeyOverrideDescription;
+  end;
+end;
 
-  // React to edits
+procedure TFrmLLMOptions.FormCreate(Sender: TObject);
+var
+  Setting: TAICommonSetting;
+  I: Integer;
+begin
+  ApplyFormStyle(Self);
+  FLoadingSettings := True;
+  FInheritControls[aisModel] := chkInheritModel;
+  FInheritControls[aisMaxParallel] := chkInheritParallel;
+  FInheritControls[aisMaxRetries] := chkInheritRetries;
+  FInheritControls[aisRetryDelay] := chkInheritRetryDelay;
+  FInheritControls[aisAutoSaveInterval] := chkInheritAutoSave;
+  FSourceLabels[aisModel] := lblModelSource;
+  FSourceLabels[aisMaxParallel] := lblParallelSource;
+  FSourceLabels[aisMaxRetries] := lblRetriesSource;
+  FSourceLabels[aisRetryDelay] := lblRetryDelaySource;
+  FSourceLabels[aisAutoSaveInterval] := lblAutoSaveSource;
+  FGlobalKeyEdits[0] := leGlobalOpenAI;
+  FGlobalKeyEdits[1] := leGlobalDeepSeek;
+  FGlobalKeyEdits[2] := leGlobalGoogle;
+  ReloadModelRegistry;
+  FillSupportedModelNames(cbModel.Items);
+  FillSupportedModelNames(cbGlobalModel.Items);
+  leApiKey.PasswordChar := '*';
+  btnUseGlobal.OnClick := @OnUseGlobalClick;
+  btnCopyGlobal.OnClick := @OnCopyGlobalClick;
+  for Setting in TAICommonSetting do
+  begin
+    FInheritControls[Setting].OnChange := @OnInheritChanged;
+  end;
+  chkInheritKey.OnChange := @OnInheritChanged;
   cbModel.OnChange := @OnFieldsChanged;
   leApiKey.OnChange := @OnFieldsChanged;
   leMaxParallel.OnChange := @OnFieldsChanged;
   leMaxRetries.OnChange := @OnFieldsChanged;
-
-  // Initialize flow tabs
+  leRetryDelay.OnChange := @OnFieldsChanged;
+  leAutoSave.OnChange := @OnFieldsChanged;
+  cbGlobalModel.OnChange := @OnGlobalFieldsChanged;
+  leGlobalMaxParallel.OnChange := @OnGlobalFieldsChanged;
+  leGlobalMaxRetries.OnChange := @OnGlobalFieldsChanged;
+  leGlobalRetryDelay.OnChange := @OnGlobalFieldsChanged;
+  leGlobalAutoSave.OnChange := @OnGlobalFieldsChanged;
+  for I := 0 to High(FGlobalKeyEdits) do
+  begin
+    FGlobalKeyEdits[I].PasswordChar := '*';
+    FGlobalKeyEdits[I].OnChange := @OnGlobalFieldsChanged;
+    FGlobalKeyEdits[I].Hint := rsGlobalKeyHint;
+    FGlobalKeyEdits[I].ShowHint := True;
+  end;
+  pcFlows.OnChange := @OnSettingsPageChanged;
   InitializeFlowTabs;
-
-  UpdateTestEnabled;
+  RefreshLocalizedCaptions;
+  FLoadingSettings := False;
 end;
 
 procedure TFrmLLMOptions.btnOKClick(Sender: TObject);
+var Values: TAISettingValues; Setting: TAICommonSetting;
 begin
-  SaveToProject;
-  ModalResult := mrOK;
+  try
+    CaptureGlobalSettings;
+    CaptureProjectSettings;
+    for Setting in TAICommonSetting do Values[Setting] := FGlobalSettings.ReadValue(Setting);
+    ValidateAISettingValues(Values);
+    if Assigned(FProject) then
+      ResolveCommonAISettings(FProjectSettings, FGlobalSettings);
+    FGlobalSettings.Save;
+    SaveToProject;
+    ModalResult := mrOK;
+  except
+    on E: Exception do
+      MessageDlg(rsSettingsError, E.Message, mtError, [mbOK], 0);
+  end;
 end;
 
 procedure TFrmLLMOptions.btnTestClick(Sender: TObject);
@@ -192,6 +616,9 @@ var
   testPrompt: string;
   msgs: array[0..1] of TLLMMessage;
   oldCursor: TCursor;
+  Draft: TAIProjectAISettings;
+  Connection: TAIResolvedConnection;
+  Setting: TAICommonSetting;
 begin
   testPrompt := rsFallbackTestPrompt;
   oldCursor := Screen.Cursor;
@@ -199,7 +626,17 @@ begin
   btnTest.Enabled := False;
   try
     Application.ProcessMessages;
-    client := CreateBackend(cbModel.Text, leApiKey.Text);
+    CaptureGlobalSettings;
+    CaptureProjectSettings;
+    Draft := FProjectSettings;
+    if not Assigned(FProject) or (pcFlows.ActivePage = tsGlobal) then
+    begin
+      Draft := Default(TAIProjectAISettings);
+      for Setting in TAICommonSetting do Draft.Inherit[Setting] := True;
+      Draft.InheritApiKey := True;
+    end;
+    Connection := ResolveAIConnection(Draft, FGlobalSettings);
+    client := CreateBackend(Connection.Provider, Connection.Model, Connection.ApiKey);
     try
       msgs[0].Role := 'system';
       msgs[0].Content := rsSystemPrompt;
@@ -218,16 +655,37 @@ begin
       MessageDlg(rsTestFailedTitle, E.Message, mtError, [mbOK], 0);
   end;
   Screen.Cursor := oldCursor;
-  btnTest.Enabled := True;
+  UpdateTestEnabled;
 end;
 
 procedure TFrmLLMOptions.UpdateTestEnabled;
 begin
-  // Prompt is optional for testing (we use a fallback when empty)
-  btnTest.Enabled := (Trim(cbModel.Text) <> '') and (Trim(leApiKey.Text) <> '');
+  if not Assigned(FGlobalSettings) then
+  begin
+    btnTest.Enabled := False;
+    Exit;
+  end;
+  if not Assigned(FProject) or (pcFlows.ActivePage = tsGlobal) then
+  begin
+    btnTest.Caption := rsGlobalTest;
+    btnTest.Enabled := Trim(cbGlobalModel.Text) <> '';
+  end
+  else
+  begin
+    btnTest.Caption := rsProjectTest;
+    btnTest.Enabled := Trim(cbModel.Text) <> '';
+  end;
 end;
 
 procedure TFrmLLMOptions.OnFieldsChanged(Sender: TObject);
+begin
+  if FLoadingSettings then Exit;
+  CaptureProjectSettings;
+  RefreshProjectSettings;
+  UpdateTestEnabled;
+end;
+
+procedure TFrmLLMOptions.OnSettingsPageChanged(Sender: TObject);
 begin
   UpdateTestEnabled;
 end;
@@ -261,86 +719,19 @@ end;
 procedure TFrmLLMOptions.LoadFromProject;
 begin
   if not Assigned(FProject) then Exit;
-
-  // Try to migrate legacy config if present
-  MigrateLegacyConfigIfNeeded;
-
-  // Load common settings
-  cbModel.Text := FProject.GetInfo(AI_COMMON_CONFIG.Model);
-  leApiKey.Text := LoadCredential(acsCommon, leApiKey);
-
-  leMaxParallel.Text := FProject.GetInfo(AI_COMMON_CONFIG.MaxParallel);
-  if Trim(leMaxParallel.Text) = '' then leMaxParallel.Text := '2';
-
-  leMaxRetries.Text := FProject.GetInfo(AI_COMMON_CONFIG.MaxRetries);
-  if Trim(leMaxRetries.Text) = '' then leMaxRetries.Text := '3';
-
-  // Load each flow configuration
+  FProjectSettings := ReadProjectAISettings(FProject.AIConfig);
+  RefreshProjectSettings;
   LoadFlowConfig('association');
   LoadFlowConfig('translation');
-
   UpdateTestEnabled;
 end;
 
 procedure TFrmLLMOptions.SaveToProject;
 begin
   if not Assigned(FProject) then Exit;
-
-  // Save common settings
-  FProject.SetInfo(AI_COMMON_CONFIG.Model, cbModel.Text);
-  SaveCredential(acsCommon, leApiKey);
-
-  if StrToIntDef(leMaxParallel.Text, 0) <= 0 then
-    leMaxParallel.Text := '2';
-  FProject.SetInfo(AI_COMMON_CONFIG.MaxParallel, leMaxParallel.Text);
-
-  if StrToIntDef(leMaxRetries.Text, 0) < 0 then
-    leMaxRetries.Text := '3';
-  FProject.SetInfo(AI_COMMON_CONFIG.MaxRetries, leMaxRetries.Text);
-
-  // Save each flow configuration
+  FProject.ApplyAISettings(FProjectSettings);
   SaveFlowConfig('association');
   SaveFlowConfig('translation');
-end;
-
-procedure TFrmLLMOptions.MigrateLegacyConfigIfNeeded;
-var
-  legacyPrompt, customInstructions: string;
-  flowConfig: IAIFlowConfig;
-  defaultPrompt: string;
-begin
-  if not Assigned(FProject) then Exit;
-
-  // Check if legacy configuration exists and new one doesn't
-  if (FProject.GetInfo(LEGACY_MODEL_KEY) <> '') and
-     (FProject.GetInfo(AI_COMMON_CONFIG.Model) = '') then
-  begin
-    // Migrate common settings
-    FProject.SetInfo(AI_COMMON_CONFIG.Model, FProject.GetInfo(LEGACY_MODEL_KEY));
-    FProject.SetInfo(AI_COMMON_CONFIG.MaxParallel, FProject.GetInfo(LEGACY_MAX_PARALLEL_KEY));
-    FProject.SetInfo(AI_COMMON_CONFIG.MaxRetries, FProject.GetInfo(LEGACY_MAX_RETRIES_KEY));
-    FProject.SetInfo(AI_COMMON_CONFIG.RetryDelay, FProject.GetInfo(LEGACY_RETRY_DELAY_KEY));
-    FProject.SetInfo(AI_COMMON_CONFIG.AutoSaveInterval, FProject.GetInfo(LEGACY_AUTOSAVE_INTERVAL_KEY));
-
-    // Migrate prompt - extract custom instructions from old full prompt
-    legacyPrompt := FProject.GetInfo(LEGACY_PROMPT_KEY);
-    if legacyPrompt <> '' then
-    begin
-      // Get default prompt from association flow to extract custom part
-      flowConfig := GetFlowConfigById('association');
-      // Build default prompt to compare
-      defaultPrompt := flowConfig.BuildPromptFromConfig([]);
-
-      customInstructions := ExtractCustomInstructions(legacyPrompt, defaultPrompt);
-      if customInstructions <> '' then
-        FProject.SetInfo(AI_ASSOCIATION_CONFIG_KEY_CUSTOM_INSTRUCTIONS, customInstructions)
-      else
-        FProject.SetInfo(AI_ASSOCIATION_CONFIG_KEY_CUSTOM_INSTRUCTIONS, flowConfig.GetDefaultCustomInstructions);
-    end;
-
-    // Non-secret legacy settings remain for compatibility. Credentials migrate
-    // separately, after a successful project save and vault verification.
-  end;
 end;
 
 procedure TFrmLLMOptions.InitializeFlowTabs;
@@ -855,6 +1246,8 @@ var
   tabIdx: Integer;
   providerValue, modelValue, apiKeyValue, overrideEnabledValue: string;
   hasStoredOverride: Boolean;
+  LegacyPrompt: string;
+  FlowConfig: IAIFlowConfig;
 
   function StoredOrDefault(const AKey, ADefault: string): string;
   begin
@@ -879,6 +1272,18 @@ begin
       FFlowTabs[tabIdx].MemoInstructions.Lines.Text := StoredOrDefault(
         AI_ASSOCIATION_CONFIG_KEY_CUSTOM_INSTRUCTIONS,
         DEFAULT_ASSOCIATION_CUSTOM_INSTRUCTIONS);
+    if FProject.GetInfo(AI_ASSOCIATION_CONFIG_KEY_CUSTOM_INSTRUCTIONS) = '' then
+    begin
+      LegacyPrompt := FProject.GetInfo(LEGACY_PROMPT_KEY);
+      if LegacyPrompt <> '' then
+      begin
+        FlowConfig := GetFlowConfigById('association');
+        LegacyPrompt := ExtractCustomInstructions(LegacyPrompt,
+          FlowConfig.BuildPromptFromConfig([]));
+        if LegacyPrompt <> '' then
+          FFlowTabs[tabIdx].MemoInstructions.Lines.Text := LegacyPrompt;
+      end;
+    end;
 
     if Assigned(FFlowTabs[tabIdx].ChkIncludeComments) then
       FFlowTabs[tabIdx].ChkIncludeComments.Checked :=
@@ -932,7 +1337,8 @@ begin
     if overrideEnabledValue = '' then
       FFlowTabs[tabIdx].chkUseOverride.Checked := hasStoredOverride
     else
-      FFlowTabs[tabIdx].chkUseOverride.Checked := LowerCase(overrideEnabledValue) = 'true';
+      FFlowTabs[tabIdx].chkUseOverride.Checked := SameText(overrideEnabledValue, 'true') or
+        (overrideEnabledValue = '1') or SameText(overrideEnabledValue, 'yes');
   end;
   UpdateFlowOverrideControls(tabIdx);
 
@@ -1240,12 +1646,56 @@ begin
   Result := -1;
 end;
 
-procedure TFrmLLMOptions.SetProject(AProject: TProject);
+procedure TFrmLLMOptions.SetProject(AProject: TProject;
+  const AGlobalFileName: string; const AStore: IAICredentialStore);
+var Setting: TAICommonSetting; I: Integer;
 begin
   FProject := AProject;
-  ReloadModelRegistry;
-  FillSupportedModelNames(cbModel.Items);
-  LoadFromProject;
+  FLoadingSettings := True;
+  try
+    FreeAndNil(FGlobalSettings);
+    FGlobalSettings := TAIGlobalSettings.Create(AGlobalFileName, AStore);
+    RefreshLocalizedCaptions;
+    FProjectSettings := Default(TAIProjectAISettings);
+    for Setting in TAICommonSetting do FProjectSettings.Inherit[Setting] := True;
+    FProjectSettings.InheritApiKey := True;
+    ReloadModelRegistry;
+    FillSupportedModelNames(cbModel.Items);
+    FillSupportedModelNames(cbGlobalModel.Items);
+    LoadGlobalSettings;
+    tsProject.TabVisible := Assigned(FProject);
+    tsAssociation.TabVisible := Assigned(FProject);
+    tsTranslation.TabVisible := Assigned(FProject);
+    if Assigned(FProject) then
+    begin
+      LoadFromProject;
+      pcFlows.ActivePage := tsProject;
+    end
+    else
+    begin
+      leApiKey.Clear;
+      FLoadedApiKeys[acsCommon] := '';
+      FLoadedApiKeys[acsAssociation] := '';
+      FLoadedApiKeys[acsTranslation] := '';
+      cbModel.Clear;
+      for I := 0 to High(FFlowTabs) do
+      begin
+        FFlowTabs[I].WorkingExamples := nil;
+        if Assigned(FFlowTabs[I].EditApiKey) then FFlowTabs[I].EditApiKey.Clear;
+        if Assigned(FFlowTabs[I].MemoInstructions) then FFlowTabs[I].MemoInstructions.Clear;
+      end;
+      pcFlows.ActivePage := tsGlobal;
+    end;
+  finally
+    FLoadingSettings := False;
+  end;
+  UpdateTestEnabled;
+end;
+
+destructor TFrmLLMOptions.Destroy;
+begin
+  FreeAndNil(FGlobalSettings);
+  inherited Destroy;
 end;
 
 procedure TFrmLLMOptions.AfterConstruction;

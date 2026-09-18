@@ -5,7 +5,7 @@ unit project_config;
 interface
 
 uses
-  SysUtils, project_persistence, text_direction, ai_credentials;
+  SysUtils, project_persistence, text_direction, ai_credentials, ai_credential_store;
 
 const
   PROJECT_CONFIG_KEY_MARKER = 'marcador';
@@ -27,7 +27,8 @@ type
     FAICredentials: TAIProjectCredentials;
     procedure RequirePersistence;
   public
-    constructor Create(APersistence: TProjectPersistence);
+    constructor Create(APersistence: TProjectPersistence;
+      const ACredentialStore: IAICredentialStore = nil);
     destructor Destroy; override;
     property AICredentials: TAIProjectCredentials read FAICredentials;
     procedure Attach(APersistence: TProjectPersistence);
@@ -84,11 +85,12 @@ begin
     raise Exception.Create('Project persistence is not attached');
 end;
 
-constructor TProjectConfig.Create(APersistence: TProjectPersistence);
+constructor TProjectConfig.Create(APersistence: TProjectPersistence;
+  const ACredentialStore: IAICredentialStore);
 begin
   inherited Create;
   FPersistence := APersistence;
-  FAICredentials := TAIProjectCredentials.Create(APersistence);
+  FAICredentials := TAIProjectCredentials.Create(APersistence, ACredentialStore);
 end;
 
 destructor TProjectConfig.Destroy;

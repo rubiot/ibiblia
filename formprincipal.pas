@@ -452,7 +452,7 @@ resourcestring
   SAISuggestion = 'AI-assisted (experimental)';
   SStatisticalSuggestionHint = 'Use the traditional statistical suggestion engine';
   SAISuggestionHint = 'Use the new AI-assisted suggestion engine (requires internet)';
-  SLLMOptionsMenu = 'AI &configuration for this project...';
+  SLLMOptionsMenu = 'AI &configuration...';
   SGuideModeMenu = '&Contextual guide';
   SGuideModeHint = 'Show contextual guidance for the main workflow';
   SHideGuideButton = 'Hide guide';
@@ -2860,7 +2860,7 @@ begin
   ActionRebuildSuggestionDatabase.Enabled := false;
   ActionExportPatch.Enabled := false;
   ActionApplyPatch.Enabled := false;
-  if Assigned(ActionLlmOptions) then ActionLlmOptions.Enabled := false;
+  if Assigned(ActionLlmOptions) then ActionLlmOptions.Enabled := true;
   FChapterView.Enabled := false;
   FChapterView.Clear;
   //ActionExportDestinationWithStrongs.Enabled := false;
@@ -3162,7 +3162,6 @@ end;
 
 procedure TMainForm.ActionLlmOptionsExecute(Sender: TObject);
 begin
-  if not assigned(CurrentProject) then Exit;
   if not assigned(FrmLLMOptions) then
     Application.CreateForm(TFrmLLMOptions, FrmLLMOptions);
   FrmLLMOptions.SetProject(CurrentProject);
@@ -3545,7 +3544,7 @@ begin
 
   ActionLlmOptions := TAction.Create(ActionList1);
   ActionLlmOptions.Caption := SLLMOptionsMenu;
-  ActionLlmOptions.Enabled := False;
+  ActionLlmOptions.Enabled := True;
   ActionLlmOptions.OnExecute := @ActionLlmOptionsExecute;
 
   MenuItemLlmOptions := TMenuItem.Create(MainMenu1);

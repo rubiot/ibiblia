@@ -28,11 +28,11 @@ msgstr "Instruções adicionais"
 #: ai_association_flow.sconfigapikeyoverridedescription
 msgctxt "ai_association_flow.sconfigapikeyoverridedescription"
 msgid ""
-"Specify a different API key for this flow. Leave empty to use global "
-"setting."
+"Specify a different API key for this flow. Leave empty to use common "
+"settings."
 msgstr ""
-"Especifique uma chave de API diferente para este fluxo. Deixe em branco para"
-" usar a configuração global."
+"Especifique uma chave da API diferente para este fluxo. Deixe em branco para"
+" usar as configurações comuns."
 
 #: ai_association_flow.sconfigapikeyoverridedisplayname
 msgctxt "ai_association_flow.sconfigapikeyoverridedisplayname"
@@ -51,10 +51,10 @@ msgstr "Incluir comentários da IA"
 #: ai_association_flow.sconfigmodeloverridedescription
 msgctxt "ai_association_flow.sconfigmodeloverridedescription"
 msgid ""
-"Specify a different model for this flow. Leave empty to use global setting."
+"Specify a different model for this flow. Leave empty to use common settings."
 msgstr ""
-"Especifique um modelo diferente para este fluxo. Deixe em branco para usar a"
-" configuração global."
+"Especifique um modelo diferente para este fluxo. Deixe em branco para usar "
+"as configurações comuns."
 
 #: ai_association_flow.sconfigmodeloverridedisplayname
 msgctxt "ai_association_flow.sconfigmodeloverridedisplayname"
@@ -64,11 +64,11 @@ msgstr "Modelo"
 #: ai_association_flow.sconfigprovideroverridedescription
 msgctxt "ai_association_flow.sconfigprovideroverridedescription"
 msgid ""
-"Specify a different provider for this flow. Leave empty to use global "
-"setting."
+"Specify a different provider for this flow. Leave empty to use common "
+"settings."
 msgstr ""
 "Especifique um provedor diferente para este fluxo. Deixe em branco para usar"
-" a configuração global."
+" as configurações comuns."
 
 #: ai_association_flow.sconfigprovideroverridedisplayname
 msgctxt "ai_association_flow.sconfigprovideroverridedisplayname"
@@ -108,11 +108,11 @@ msgstr "Instruções adicionais"
 #: ai_translation_flow.sconfigapikeyoverridedescription
 msgctxt "ai_translation_flow.sconfigapikeyoverridedescription"
 msgid ""
-"Specify a different API key for this flow. Leave empty to use global "
-"setting."
+"Specify a different API key for this flow. Leave empty to use common "
+"settings."
 msgstr ""
-"Especifique uma chave de API diferente para este fluxo. Deixe em branco para"
-" usar a configuração global."
+"Especifique uma chave da API diferente para este fluxo. Deixe em branco para"
+" usar as configurações comuns."
 
 #: ai_translation_flow.sconfigapikeyoverridedisplayname
 msgctxt "ai_translation_flow.sconfigapikeyoverridedisplayname"
@@ -154,10 +154,10 @@ msgstr ""
 #: ai_translation_flow.sconfigmodeloverridedescription
 msgctxt "ai_translation_flow.sconfigmodeloverridedescription"
 msgid ""
-"Specify a different model for this flow. Leave empty to use global setting."
+"Specify a different model for this flow. Leave empty to use common settings."
 msgstr ""
-"Especifique um modelo diferente para este fluxo. Deixe em branco para usar a"
-" configuração global."
+"Especifique um modelo diferente para este fluxo. Deixe em branco para usar "
+"as configurações comuns."
 
 #: ai_translation_flow.sconfigmodeloverridedisplayname
 msgctxt "ai_translation_flow.sconfigmodeloverridedisplayname"
@@ -167,11 +167,11 @@ msgstr "Modelo"
 #: ai_translation_flow.sconfigprovideroverridedescription
 msgctxt "ai_translation_flow.sconfigprovideroverridedescription"
 msgid ""
-"Specify a different provider for this flow. Leave empty to use global "
-"setting."
+"Specify a different provider for this flow. Leave empty to use common "
+"settings."
 msgstr ""
 "Especifique um provedor diferente para este fluxo. Deixe em branco para usar"
-" a configuração global."
+" as configurações comuns."
 
 #: ai_translation_flow.sconfigprovideroverridedisplayname
 msgctxt "ai_translation_flow.sconfigprovideroverridedisplayname"
@@ -9305,3 +9305,342 @@ msgstr "O ícone da aplicação iBiblia é o mesmo em todos os conjuntos."
 msgctxt "ui_icons.sconnectediconfamily"
 msgid "Connected texts"
 msgstr "Textos conectados"
+
+#: ai_credential_store.scredentialreferenceinvalid
+msgctxt "ai_credential_store.scredentialreferenceinvalid"
+msgid "The local AI credential reference is invalid."
+msgstr "A referência à credencial local de IA é inválida."
+
+#: ai_credential_store.scredentialstoreerror
+#, object-pascal-format
+msgctxt "ai_credential_store.scredentialstoreerror"
+msgid ""
+"The Windows credential store could not complete the operation (error %d)."
+msgstr ""
+"O cofre de credenciais do Windows não conseguiu concluir a operação (erro "
+"%d)."
+
+#: ai_credential_store.scredentialtoolong
+msgctxt "ai_credential_store.scredentialtoolong"
+msgid "The API key exceeds the credential store size limit."
+msgstr "A chave da API excede o limite de tamanho do cofre de credenciais."
+
+#: ai_credentials.scredentialmigrationfailed
+msgctxt "ai_credentials.scredentialmigrationfailed"
+msgid ""
+"Project content was saved, but AI credential migration is pending. Retry "
+"saving after local storage becomes available."
+msgstr ""
+"O conteúdo do projeto foi salvo, mas a migração das credenciais de IA está "
+"pendente. Tente salvar novamente quando o armazenamento local estiver "
+"disponível."
+
+#: ai_credentials.scredentialnotavailable
+msgctxt "ai_credentials.scredentialnotavailable"
+msgid ""
+"This project uses an AI key that is not available for this user on this "
+"computer. Configure the key in LLM Options."
+msgstr ""
+"Este projeto usa uma chave de IA indisponível para este usuário neste "
+"computador. Configure a chave em Opções de IA."
+
+#: ai_credentials.scredentialsessiononly
+msgctxt "ai_credentials.scredentialsessiononly"
+msgid ""
+"AI keys are available for this session only. Local credential storage is "
+"unavailable; existing project credentials have not been removed."
+msgstr ""
+"As chaves de IA estão disponíveis apenas nesta sessão. O cofre local de "
+"credenciais está indisponível; as credenciais existentes do projeto foram "
+"preservadas."
+
+#: ai_credentials.scredentialverificationfailed
+msgctxt "ai_credentials.scredentialverificationfailed"
+msgid ""
+"The local AI credential could not be verified. Existing project credentials "
+"have not been removed."
+msgstr ""
+"Não foi possível verificar a credencial local de IA. As credenciais "
+"existentes do projeto foram preservadas."
+
+#: ai_effective_settings.saiconfigurationmissing
+msgctxt "ai_effective_settings.saiconfigurationmissing"
+msgid "Configure the AI model and API key in LLM Options before processing."
+msgstr ""
+"Configure o modelo e a chave da API em Opções de IA antes de iniciar o "
+"processamento."
+
+#: ai_effective_settings.saicredentialprovidermismatch
+#, object-pascal-format
+msgctxt "ai_effective_settings.saicredentialprovidermismatch"
+msgid ""
+"The configured API key belongs to a different provider. Configure a key for "
+"%s or choose the global default."
+msgstr ""
+"A chave da API configurada pertence a outro provedor. Configure uma chave "
+"para %s ou escolha o padrão global."
+
+#: ai_effective_settings.saiinvalidparameter
+#, object-pascal-format
+msgctxt "ai_effective_settings.saiinvalidparameter"
+msgid "Invalid AI setting: %s."
+msgstr "Configuração de IA inválida: %s."
+
+#: ai_effective_settings.saiprojectkeymissing
+msgctxt "ai_effective_settings.saiprojectkeymissing"
+msgid ""
+"The project API key is unavailable. Configure it in LLM Options or "
+"explicitly choose the global default."
+msgstr ""
+"A chave da API do projeto está indisponível. Configure-a em Opções de IA ou "
+"escolha explicitamente o padrão global."
+
+#: ai_effective_settings.saiunboundcredential
+msgctxt "ai_effective_settings.saiunboundcredential"
+msgid ""
+"The provider of this project API key is unknown. Re-enter the key for the "
+"selected provider or choose the global default."
+msgstr ""
+"Não foi possível identificar o provedor da chave da API deste projeto. "
+"Informe novamente a chave para o provedor selecionado ou escolha o padrão "
+"global."
+
+#: ai_effective_settings.saiunsupportedprovider
+msgctxt "ai_effective_settings.saiunsupportedprovider"
+msgid "The selected AI provider is not supported."
+msgstr "O provedor de IA selecionado não é compatível."
+
+#: ai_global_settings.sglobalcredentialunavailable
+msgctxt "ai_global_settings.sglobalcredentialunavailable"
+msgid ""
+"The global AI key is unavailable for this user on this computer. Configure "
+"the key in LLM Options."
+msgstr ""
+"A chave global de IA está indisponível para este usuário neste computador. "
+"Configure a chave em Opções de IA."
+
+#: ai_global_settings.sglobalcredentialverificationfailed
+msgctxt "ai_global_settings.sglobalcredentialverificationfailed"
+msgid ""
+"The new global AI key could not be verified in local credential storage. The"
+" previous global LLM settings and credentials have been preserved."
+msgstr ""
+"Não foi possível verificar a nova chave global de IA no cofre local de "
+"credenciais. As configurações globais de IA e as credenciais anteriores "
+"foram preservadas."
+
+#: ai_global_settings.sgloballoadfailed
+msgctxt "ai_global_settings.sgloballoadfailed"
+msgid ""
+"The global LLM settings could not be read. Check access to the local "
+"configuration file."
+msgstr ""
+"Não foi possível ler as configurações globais de IA. Verifique o acesso ao "
+"arquivo de configuração local."
+
+#: ai_global_settings.sglobalproviderinvalid
+msgctxt "ai_global_settings.sglobalproviderinvalid"
+msgid "The AI credential provider is not supported."
+msgstr "O provedor da credencial de IA não é compatível."
+
+#: ai_global_settings.sglobalsavefailed
+msgctxt "ai_global_settings.sglobalsavefailed"
+msgid ""
+"The global LLM settings could not be saved. The previous settings and "
+"credentials have been preserved."
+msgstr ""
+"Não foi possível salvar as configurações globais de IA. As configurações e "
+"credenciais anteriores foram preservadas."
+
+#: ai_global_settings.sglobalstoreunavailable
+msgctxt "ai_global_settings.sglobalstoreunavailable"
+msgid ""
+"Persistent local credential storage is unavailable. The previous global LLM "
+"settings and credentials have been preserved."
+msgstr ""
+"O armazenamento permanente de credenciais locais está indisponível. As "
+"configurações globais de IA e as credenciais anteriores foram preservadas."
+
+#: ai_processing_manager.saiconnectionalreadystarted
+msgctxt "ai_processing_manager.saiconnectionalreadystarted"
+msgid "The AI connection cannot change after processing starts."
+msgstr "A conexão de IA não pode ser alterada após o início do processamento."
+
+#: ai_processing_manager.saiprocessingstillstopping
+msgctxt "ai_processing_manager.saiprocessingstillstopping"
+msgid ""
+"The previous AI batch is still stopping. Wait for cancellation to finish."
+msgstr ""
+"O lote anterior de IA ainda está parando. Aguarde a conclusão do "
+"cancelamento."
+
+#: formllmoptions.rsadvanced
+msgctxt "formllmoptions.rsadvanced"
+msgid "Advanced"
+msgstr "Avançado"
+
+#: formllmoptions.rsautosave
+msgctxt "formllmoptions.rsautosave"
+msgid "Autosave every N completed jobs (0 = off)"
+msgstr "Salvar a cada N itens concluídos (0 = desativado)"
+
+#: formllmoptions.rschoosemodelforkey
+msgctxt "formllmoptions.rschoosemodelforkey"
+msgid "Select a model to choose the provider API key"
+msgstr "Selecione um modelo para escolher a chave da API do provedor"
+
+#: formllmoptions.rscopyglobalpreview
+msgctxt "formllmoptions.rscopyglobalpreview"
+msgid ""
+"The following common settings will become the defaults for this user on this"
+" computer:"
+msgstr ""
+"As seguintes configurações comuns serão os padrões para este usuário neste "
+"computador:"
+
+#: formllmoptions.rscopyglobalstaged
+msgctxt "formllmoptions.rscopyglobalstaged"
+msgid ""
+"This will be saved only when you click OK. Existing project overrides are "
+"preserved."
+msgstr ""
+"As alterações só serão salvas ao clicar em OK. As configurações próprias dos"
+" projetos serão preservadas."
+
+#: formllmoptions.rscopyglobaltitle
+msgctxt "formllmoptions.rscopyglobaltitle"
+msgid "Update machine defaults"
+msgstr "Atualizar padrões deste computador"
+
+#: formllmoptions.rscopyprojecttoglobal
+msgctxt "formllmoptions.rscopyprojecttoglobal"
+msgid "Copy current settings to machine defaults..."
+msgstr "Copiar configurações atuais para os padrões deste computador..."
+
+#: formllmoptions.rsglobaldescription
+msgctxt "formllmoptions.rsglobaldescription"
+msgid ""
+"Defaults for this Windows user on this computer. API keys are stored in the "
+"local credential store. Changes are saved when you click OK."
+msgstr ""
+"Padrões para este usuário do Windows neste computador. As chaves da API são "
+"guardadas no cofre local de credenciais. As alterações são salvas ao clicar "
+"em OK."
+
+#: formllmoptions.rsglobalkeyhint
+msgctxt "formllmoptions.rsglobalkeyhint"
+msgid "Saved for this Windows user on this computer when you click OK."
+msgstr "Salva para este usuário do Windows neste computador ao clicar em OK."
+
+#: formllmoptions.rsglobalkeysource
+#, object-pascal-format
+msgctxt "formllmoptions.rsglobalkeysource"
+msgid "Source: machine defaults (%s)"
+msgstr "Origem: padrões deste computador (%s)"
+
+#: formllmoptions.rsglobaltab
+msgctxt "formllmoptions.rsglobaltab"
+msgid "Machine defaults"
+msgstr "Padrões deste computador"
+
+#: formllmoptions.rsglobaltest
+msgctxt "formllmoptions.rsglobaltest"
+msgid "Test defaults"
+msgstr "Testar padrões"
+
+#: formllmoptions.rskeyconfigured
+#, object-pascal-format
+msgctxt "formllmoptions.rskeyconfigured"
+msgid "API key configured for %s"
+msgstr "Chave da API configurada para %s"
+
+#: formllmoptions.rskeynotconfigured
+#, object-pascal-format
+msgctxt "formllmoptions.rskeynotconfigured"
+msgid "No API key configured for %s"
+msgstr "Nenhuma chave da API configurada para %s"
+
+#: formllmoptions.rslocalapikey
+msgctxt "formllmoptions.rslocalapikey"
+msgid "API key (local to this user/computer)"
+msgstr "Chave da API (local a este usuário/computador)"
+
+#: formllmoptions.rslocalapikeyhint
+msgctxt "formllmoptions.rslocalapikeyhint"
+msgid ""
+"Saved in local credential storage when the project is saved. Copies opened "
+"on another computer require the key again."
+msgstr ""
+"Salva no cofre local de credenciais quando o projeto é salvo. Ao abrir uma "
+"cópia em outro computador, será necessário configurar a chave novamente."
+
+#: formllmoptions.rsmaskedkey
+#, object-pascal-format
+msgctxt "formllmoptions.rsmaskedkey"
+msgid "API key: ******** (%s)"
+msgstr "Chave da API: ******** (%s)"
+
+#: formllmoptions.rsmissingapikey
+msgctxt "formllmoptions.rsmissingapikey"
+msgid "API key unavailable here - configure again"
+msgstr "Chave da API indisponível aqui - configure novamente"
+
+#: formllmoptions.rsnokeytocopy
+msgctxt "formllmoptions.rsnokeytocopy"
+msgid "API key: none"
+msgstr "Chave da API: nenhuma"
+
+#: formllmoptions.rsprojectdescription
+msgctxt "formllmoptions.rsprojectdescription"
+msgid ""
+"Each setting can follow the machine defaults or use its own value. Project "
+"changes take effect now and are stored when you save the project."
+msgstr ""
+"Cada opção pode usar o padrão deste computador ou um valor próprio. As "
+"alterações do projeto entram em vigor ao confirmar e são gravadas ao salvar "
+"o projeto."
+
+#: formllmoptions.rsprojecttab
+msgctxt "formllmoptions.rsprojecttab"
+msgid "This project"
+msgstr "Configuração deste projeto"
+
+#: formllmoptions.rsprojecttest
+msgctxt "formllmoptions.rsprojecttest"
+msgid "Test common settings"
+msgstr "Testar configurações comuns"
+
+#: formllmoptions.rsretrydelay
+msgctxt "formllmoptions.rsretrydelay"
+msgid "Retry delay (milliseconds)"
+msgstr "Intervalo entre tentativas (milissegundos)"
+
+#: formllmoptions.rssettingserror
+msgctxt "formllmoptions.rssettingserror"
+msgid "Could not apply AI settings"
+msgstr "Não foi possível aplicar as configurações de IA"
+
+#: formllmoptions.rsuseglobal
+msgctxt "formllmoptions.rsuseglobal"
+msgid "Use global"
+msgstr "Usar padrão global"
+
+#: formllmoptions.rsuseglobalforproject
+msgctxt "formllmoptions.rsuseglobalforproject"
+msgid "Use global settings for this project"
+msgstr "Usar os padrões globais neste projeto"
+
+#: formllmoptions.rsusingdefault
+msgctxt "formllmoptions.rsusingdefault"
+msgid "Source: application default"
+msgstr "Origem: padrão do aplicativo"
+
+#: formllmoptions.rsusingglobal
+msgctxt "formllmoptions.rsusingglobal"
+msgid "Source: machine defaults"
+msgstr "Origem: padrões deste computador"
+
+#: formllmoptions.rsusingproject
+msgctxt "formllmoptions.rsusingproject"
+msgid "Source: this project"
+msgstr "Origem: este projeto"

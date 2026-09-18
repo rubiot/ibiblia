@@ -130,11 +130,11 @@ resourcestring
   SConfigIncludeCommentsDisplayName = 'Include AI Comments';
   SConfigIncludeCommentsDescription = 'If enabled, the AI will provide critical comments about the associations.';
   SConfigModelOverrideDisplayName = 'Model';
-  SConfigModelOverrideDescription = 'Specify a different model for this flow. Leave empty to use global setting.';
+  SConfigModelOverrideDescription = 'Specify a different model for this flow. Leave empty to use common settings.';
   SConfigApiKeyOverrideDisplayName = 'API Key';
-  SConfigApiKeyOverrideDescription = 'Specify a different API key for this flow. Leave empty to use global setting.';
+  SConfigApiKeyOverrideDescription = 'Specify a different API key for this flow. Leave empty to use common settings.';
   SConfigProviderOverrideDisplayName = 'Provider';
-  SConfigProviderOverrideDescription = 'Specify a different provider for this flow. Leave empty to use global setting.';
+  SConfigProviderOverrideDescription = 'Specify a different provider for this flow. Leave empty to use common settings.';
 
 implementation
 
@@ -647,7 +647,8 @@ begin
   if overrideEnabledValue = '' then
     overrideEnabled := (Trim(providerOverride) <> '') or (Trim(modelOverride) <> '') or Context.HasCredential(acsAssociation)
   else
-    overrideEnabled := LowerCase(overrideEnabledValue) = 'true';
+    overrideEnabled := SameText(overrideEnabledValue, 'true') or
+      (overrideEnabledValue = '1') or SameText(overrideEnabledValue, 'yes');
   if overrideEnabled then
     apiKeyOverride := Context.ResolveCredential(acsAssociation)
   else

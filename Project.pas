@@ -27,7 +27,8 @@ uses
   UnitPleaseWait, bible_book_names, translation_memory_model, ConcordanceExport,
   navigation_history, text_direction, text_edit_provenance,
   rf_note_scanner, association_highlight_projection,
-  theword_module_import_layout, ai_credential_store;
+  theword_module_import_layout, ai_credential_store, ai_effective_settings,
+  ai_settings_types;
 type
   TProject = class;
 
@@ -186,6 +187,7 @@ type
     FHasDefaultVerseModeConfig: Boolean;
     FLastLLMUsage: TLLMUsage;
     FLastLLMCallCompleted: Boolean;
+    FLastAIConfigurationError: string;
     FLastCredentialWarning: string;
     FOnNovoVersiculo: TOnNovoVersiculoEvents;
     FNewVerseNotificationQueued: Boolean;
@@ -473,6 +475,8 @@ type
     function TryGetAIKey(Scope: TAICredentialScope; out Secret,
       ErrorMessage: string): Boolean;
     procedure SetAIKey(Scope: TAICredentialScope; const Secret: string);
+    procedure ApplyAISettings(const Settings: TAIProjectAISettings);
+    property AIConfig: TProjectConfig read FConfig;
     function GetFlowExamples(const FlowId: string): TAIFlowExampleArray;
     procedure SetFlowExamples(const FlowId: string; const Examples: TAIFlowExampleArray);
     function TryCreateCurrentVerseFlowExample(const FlowId: string;
@@ -1050,11 +1054,13 @@ function TProject.TryResolveAssociationAIConfiguration(out AFlow: IAIVerseFlow;
   out AProvider, AModel, AApiKey: string): Boolean;
 var
   FlowConfig: IAIFlowConfig;
+  Connection: TAIResolvedConnection;
 begin
   AFlow := nil;
   AProvider := '';
   AModel := '';
   AApiKey := '';
+  FLastAIConfigurationError := SAIConfigurationMissing;
   Result := False;
   if not Assigned(FPersistence) then
     Exit;
@@ -1065,20 +1071,21 @@ begin
     if not Assigned(AFlow) then
       Exit;
 
-    AProvider := Trim(AFlow.ProviderOverride);
-    AModel := Trim(AFlow.ModelOverride);
-    if AModel.IsEmpty then
-      AModel := Trim(GetInfo(AI_COMMON_CONFIG.Model));
-    AApiKey := Trim(AFlow.ApiKeyOverride);
-    if AApiKey.IsEmpty then
-      AApiKey := Trim(GetAIKey(acsCommon));
+    Connection := ResolveAIConnection(FConfig, nil, AFlow, acsAssociation);
+    AProvider := Connection.Provider;
+    AModel := Connection.Model;
+    AApiKey := Connection.ApiKey;
     Result := not AModel.IsEmpty and not AApiKey.IsEmpty;
   except
-    AFlow := nil;
-    AProvider := '';
-    AModel := '';
-    AApiKey := '';
-    Result := False;
+    on E: Exception do
+    begin
+      if E is EAICredentialError then FLastAIConfigurationError := E.Message;
+      AFlow := nil;
+      AProvider := '';
+      AModel := '';
+      AApiKey := '';
+      Result := False;
+    end;
   end;
 end;
 
@@ -2341,7 +2348,7 @@ begin
     end;
     if list.Count = 0 then Exit;
 
-    maxPar := StrToIntDef(GetInfo(AI_COMMON_CONFIG.MaxParallel), 2);
+    maxPar := 0; // Resolve common settings together when preparing the batch.
 
     ResetAIBatchManager;
 
@@ -5151,6 +5158,7 @@ begin
     end;
   end;
   FConfig.StageMarkerForCommit(ID);
+  MigrateLegacyAISettings(FConfig);
   Commit;
   PersistAICredentialsAfterSave;
 
@@ -5351,6 +5359,7 @@ begin
         SSaveAsProgressMessage, 0, Destination);
       OwnProgress := True;
     end;
+    MigrateLegacyAISettings(FConfig);
     FPersistence.WriteSnapshotTo(Staging.StagingFileName);
     PrepareProjectSaveSnapshot(Staging.StagingFileName, @SaveAsSnapshotProgress);
     ValidateSQLiteDatabase(Staging.StagingFileName);
@@ -5472,7 +5481,7 @@ begin
   if not TryResolveAssociationAIConfiguration(flow, Provider, Model,
     ApiKey) then
   begin
-    ShowMessage(SAIConfigurationMissing);
+    ShowMessage(FLastAIConfigurationError);
     Exit;
   end;
 
@@ -6885,8 +6894,31 @@ begin
 end;
 
 procedure TProject.SetAIKey(Scope: TAICredentialScope; const Secret: string);
+var Provider, Model, Prefix: string;
 begin
   FConfig.AICredentials.Stage(Scope, Secret);
+  if Trim(Secret) <> '' then
+  begin
+    Model := ResolveCommonAISettings(FConfig).Model;
+    Provider := '';
+    if Scope <> acsCommon then
+    begin
+      if Scope = acsAssociation then Prefix := 'ai.flow.association.'
+      else Prefix := 'ai.flow.translation.';
+      Provider := CanonicalAIProvider(FConfig.ReadString(Prefix + 'provider'));
+      if Trim(FConfig.ReadString(Prefix + 'model')) <> '' then
+        Model := FConfig.ReadString(Prefix + 'model');
+    end;
+    if Provider = '' then Provider := AIProviderForModel(Model);
+    FConfig.WriteString(AICredentialProviderKey(Scope), Provider);
+  end;
+  FLastCredentialWarning := '';
+  PendingEditorChanged(Self);
+end;
+
+procedure TProject.ApplyAISettings(const Settings: TAIProjectAISettings);
+begin
+  StageProjectAISettings(FConfig, Settings);
   FLastCredentialWarning := '';
   PendingEditorChanged(Self);
 end;

@@ -54,6 +54,8 @@ type
     // Fields
     FModel: string;
     FApiKey: string;
+    FResolvedProvider: string;
+    FConnectionResolved: Boolean;
     FPending: TObjectQueue; // queue of TAIJob
     FApplying: TObjectQueue; // completed awaiting apply
     FWorkers: TList;
@@ -105,6 +107,7 @@ type
     function CreateLLMClient(const Provider, Model, ApiKey: string): TBaseLLMClient; virtual;
   public
     constructor Create(const AModel, AApiKey: string; AMaxParallel: Integer = 2);
+    procedure ConfigureResolvedConnection(const Provider, Model, ApiKey: string);
     destructor Destroy; override;
     procedure StartSingle(Flow: IAIVerseFlow; Verse: TVerse); // processes one verse async (apply after PumpApply)
     procedure StartBatch(Flow: IAIVerseFlow; WorkItems: TAIBatchWorkItemList);
@@ -143,6 +146,7 @@ type
 
 resourcestring
   SAIProcessingStillStopping = 'The previous AI batch is still stopping. Wait for cancellation to finish.';
+  SAIConnectionAlreadyStarted = 'The AI connection cannot change after processing starts.';
 
 // Transfers an owned batch manager to background cleanup during forced teardown.
 // An active StartSingle manager still borrows its caller's verse and is refused.
@@ -283,11 +287,20 @@ begin
           job.RequestStartTime := Now;
           job.Usage := Default(TLLMUsage);
 
-          effectiveProvider := job.Flow.ProviderOverride;
-          effectiveModel := job.Flow.ModelOverride;
-          if effectiveModel = '' then effectiveModel := FModel;
-          effectiveApiKey := job.Flow.ApiKeyOverride;
-          if effectiveApiKey = '' then effectiveApiKey := FApiKey;
+          if FManager.FConnectionResolved then
+          begin
+            effectiveProvider := FManager.FResolvedProvider;
+            effectiveModel := FModel;
+            effectiveApiKey := FApiKey;
+          end
+          else
+          begin
+            effectiveProvider := job.Flow.ProviderOverride;
+            effectiveModel := job.Flow.ModelOverride;
+            if effectiveModel = '' then effectiveModel := FModel;
+            effectiveApiKey := job.Flow.ApiKeyOverride;
+            if effectiveApiKey = '' then effectiveApiKey := FApiKey;
+          end;
 
           if (FClient = nil) or
              ((effectiveProvider <> '') and (FClient.Provider <> effectiveProvider)) or
@@ -345,6 +358,16 @@ begin
 end;
 
 { TAIProcessingManager }
+
+procedure TAIProcessingManager.ConfigureResolvedConnection(const Provider, Model, ApiKey: string);
+begin
+  if (FTotalJobs <> 0) or (FWorkers.Count <> 0) then
+    raise Exception.Create(SAIConnectionAlreadyStarted);
+  FResolvedProvider := Provider;
+  FModel := Model;
+  FApiKey := ApiKey;
+  FConnectionResolved := True;
+end;
 
 constructor TAIProcessingManager.Create(const AModel, AApiKey: string; AMaxParallel: Integer);
 begin

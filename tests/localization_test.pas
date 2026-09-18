@@ -11,12 +11,14 @@ type
   TLocalizationTests = class(TTestCase)
   published
     procedure PortugueseCatalogLocalizesEveryBibleBook;
+    procedure FlowConnectionHintsFollowSelectedLanguage;
   end;
 
 implementation
 
 uses
-  SysUtils, LCLTranslator, bible_book_names;
+  SysUtils, LCLTranslator, bible_book_names,
+  ai_association_flow, ai_translation_flow;
 
 const
   PORTUGUESE_BOOK_NAMES: array[1..66] of string = (
@@ -49,6 +51,47 @@ begin
       High(PORTUGUESE_BOOK_NAMES) do
       AssertEquals('Unexpected localized name for book ' + IntToStr(BookID),
         PORTUGUESE_BOOK_NAMES[BookID], LocalizedBookNameByID(BookID));
+  finally
+    SetDefaultLang('en', LanguagesDir, 'iBiblia', False);
+  end;
+end;
+
+procedure TLocalizationTests.FlowConnectionHintsFollowSelectedLanguage;
+var
+  LanguagesDir: string;
+begin
+  LanguagesDir := ExpandFileName(ExtractFilePath(ParamStr(0)) + '..\languages');
+  SetDefaultLang('en', LanguagesDir, 'iBiblia', False);
+  try
+    SetDefaultLang('pt', LanguagesDir, 'iBiblia', False);
+    AssertTrue('Provider hint must refer to the common settings in Portuguese',
+      Pos('configurações comuns',
+        ai_association_flow.SConfigProviderOverrideDescription) > 0);
+    AssertTrue('Model hint must refer to the common settings in Portuguese',
+      Pos('configurações comuns',
+        ai_association_flow.SConfigModelOverrideDescription) > 0);
+    AssertTrue('API key hint must refer to the common settings in Portuguese',
+      Pos('configurações comuns',
+        ai_association_flow.SConfigApiKeyOverrideDescription) > 0);
+    AssertEquals(ai_association_flow.SConfigProviderOverrideDescription,
+      ai_translation_flow.SConfigProviderOverrideDescription);
+    AssertEquals(ai_association_flow.SConfigModelOverrideDescription,
+      ai_translation_flow.SConfigModelOverrideDescription);
+    AssertEquals(ai_association_flow.SConfigApiKeyOverrideDescription,
+      ai_translation_flow.SConfigApiKeyOverrideDescription);
+    SetDefaultLang('en', LanguagesDir, 'iBiblia', False);
+    AssertEquals('Specify a different provider for this flow. Leave empty to use common settings.',
+      ai_association_flow.SConfigProviderOverrideDescription);
+    AssertEquals('Specify a different model for this flow. Leave empty to use common settings.',
+      ai_association_flow.SConfigModelOverrideDescription);
+    AssertEquals('Specify a different API key for this flow. Leave empty to use common settings.',
+      ai_association_flow.SConfigApiKeyOverrideDescription);
+    AssertEquals(ai_association_flow.SConfigProviderOverrideDescription,
+      ai_translation_flow.SConfigProviderOverrideDescription);
+    AssertEquals(ai_association_flow.SConfigModelOverrideDescription,
+      ai_translation_flow.SConfigModelOverrideDescription);
+    AssertEquals(ai_association_flow.SConfigApiKeyOverrideDescription,
+      ai_translation_flow.SConfigApiKeyOverrideDescription);
   finally
     SetDefaultLang('en', LanguagesDir, 'iBiblia', False);
   end;

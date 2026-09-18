@@ -144,6 +144,8 @@ function CreateAIFlowContext(AConfig: TProjectConfig): IAIFlowContext;
 
 implementation
 
+uses ai_flow_config, ai_association_flow;
+
 { Currently only abstractions, concrete flows in ai_association_flow.pas }
 
 constructor TAIFlowContext.Create(AConfig: TProjectConfig);
@@ -153,11 +155,22 @@ begin
 end;
 
 function TAIFlowContext.GetProjectInfo(Key: string): string;
+var LegacyPrompt: string; FlowConfig: IAIFlowConfig;
 begin
   if not Assigned(FConfig) then
     Exit('');
 
   Result := FConfig.ReadString(Key);
+  if (Result = '') and (Key = AI_ASSOCIATION_CONFIG_KEY_CUSTOM_INSTRUCTIONS) then
+  begin
+    LegacyPrompt := FConfig.ReadString(LEGACY_PROMPT_KEY);
+    if LegacyPrompt <> '' then
+    begin
+      FlowConfig := GetFlowConfigById('association');
+      Result := ExtractCustomInstructions(LegacyPrompt, FlowConfig.BuildPromptFromConfig([]));
+      if Result = '' then Result := FlowConfig.GetDefaultCustomInstructions;
+    end;
+  end;
 end;
 
 function CreateAIFlowContext(AConfig: TProjectConfig): IAIFlowContext;
