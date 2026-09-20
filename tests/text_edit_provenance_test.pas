@@ -17,7 +17,7 @@ type
     procedure InteriorInsertionBreaksTheOriginalRange;
     procedure DeleteAndRetypeDoesNotRestoreProvenance;
     procedure RawChangePreservesOnlyCommonPrefixAndSuffix;
-    procedure RawUnchangedKeepsExactMode;
+    procedure RawTagOnlyChangeKeepsOriginMap;
     procedure CloneAndResetAreIndependent;
     procedure Utf16PairsAreNeverSplitByRawDiff;
   end;
@@ -143,7 +143,7 @@ begin
   end;
 end;
 
-procedure TTextEditProvenanceTest.RawUnchangedKeepsExactMode;
+procedure TTextEditProvenanceTest.RawTagOnlyChangeKeepsOriginMap;
 var
   CurrentStart: Integer;
   Trace: TVerseEditTrace;
@@ -151,9 +151,10 @@ begin
   Trace := TVerseEditTrace.CreateIdentity('same', 9);
   try
     Trace.ApplyRawVisibleChange('same');
-    AssertEquals(Ord(vetmExact), Ord(Trace.Mode));
+    AssertEquals(Ord(vetmRawConservative), Ord(Trace.Mode));
     AssertTrue(Trace.OriginMap.TryProjectOriginalRange(0, 4,
       CurrentStart));
+    AssertEquals(0, CurrentStart);
   finally
     Trace.Free;
   end;

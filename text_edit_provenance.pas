@@ -328,6 +328,9 @@ var
   CommonPrefix, CommonSuffix, MaximumCommon: Integer;
 begin
   RequireValidUTF16(ANewVisibleText, 'Raw visible text');
+  { A Raw edit can change lexical annotations without changing visible text. }
+  if FMode = vetmExact then
+    FMode := vetmRawConservative;
   if ANewVisibleText = FCurrentText then
     Exit;
 
@@ -359,8 +362,6 @@ begin
     Length(FCurrentText) - CommonPrefix - CommonSuffix,
     Length(ANewVisibleText) - CommonPrefix - CommonSuffix);
   FCurrentText := ANewVisibleText;
-  if FMode = vetmExact then
-    FMode := vetmRawConservative;
 end;
 
 procedure TVerseEditTrace.MarkLegacyFallback;

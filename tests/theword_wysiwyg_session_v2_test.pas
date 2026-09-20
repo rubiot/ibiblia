@@ -54,8 +54,9 @@ type
     procedure UndoRedoRestoresOriginTrace;
     procedure CutAndPasteTrackDeletedAndInsertedUnits;
     procedure RawVisibleChangeUsesConservativeTrace;
+    procedure RawTagOnlyChangeRestoresModeWithUndoRedoAndReset;
     procedure IdenticalRetypeRemainsDirtyUntilUndo;
-    procedure RawProtectsLexicalObjectsButAllowsExternalEdits;
+    procedure RawDetectsLexicalChangesSeparatelyFromExternalEdits;
     procedure TranslatorNoteCommandsAreAtomicAndPreserveProvenance;
     procedure TranslatorNoteMarkerResolvesSavedDraftWithStableId;
     procedure TranslatorNoteAnchorsProtectTextEditing;
@@ -2126,6 +2127,79 @@ begin
 end;
 
 procedure TTheWordWysiwygSessionV2Test.
+  RawTagOnlyChangeRestoresModeWithUndoRedoAndReset;
+const
+  ORIGINAL: UnicodeString = 'one<WG123><WTN-NSM> two';
+  CHANGED: UnicodeString = 'one<WH456><WTV-AAI> two';
+var
+  Session: TTheWordWysiwygSessionV2;
+
+  procedure AssertTrace(AMode: TVerseEditTraceMode);
+  var
+    CurrentStart: Integer;
+    Trace: TVerseEditTrace;
+  begin
+    Trace := Session.CloneEditTrace;
+    try
+      AssertEquals(Ord(AMode), Ord(Trace.Mode));
+      AssertEquals(UnicodeString('one two'), Trace.CurrentText);
+      AssertTrue('tag-only edits retain every visible text origin',
+        Trace.OriginMap.TryProjectOriginalRange(0, 7, CurrentStart));
+      AssertEquals(0, CurrentStart);
+    finally
+      Trace.Free;
+    end;
+  end;
+
+begin
+  Session := TTheWordWysiwygSessionV2.Create(ORIGINAL, 8);
+  try
+    AssertFalse(Session.ReplaceRawText(ORIGINAL));
+    AssertFalse(Session.Dirty);
+    AssertFalse(Session.CanUndo);
+    AssertTrace(vetmExact);
+
+    AssertTrue(Session.ReplaceRawText(CHANGED));
+    AssertTrue(Session.Dirty);
+    AssertTrace(vetmRawConservative);
+    AssertFalse('Raw editing does not unlock lexical words in Visual',
+      Session.CanReplaceText(1, 1));
+
+    AssertTrue(Session.ApplySemantic(twsmItalic, 0, 3));
+    AssertTrace(vetmRawConservative);
+    AssertTrue(Session.Undo);
+    AssertEquals(CHANGED, Session.RawText);
+    AssertTrace(vetmRawConservative);
+    AssertTrue(Session.Undo);
+    AssertEquals(ORIGINAL, Session.RawText);
+    AssertFalse(Session.Dirty);
+    AssertTrace(vetmExact);
+
+    AssertTrue(Session.Redo);
+    AssertEquals(CHANGED, Session.RawText);
+    AssertTrace(vetmRawConservative);
+    AssertTrue(Session.Redo);
+    AssertTrace(vetmRawConservative);
+
+    Session.Cancel;
+    AssertEquals(ORIGINAL, Session.RawText);
+    AssertFalse(Session.Dirty);
+    AssertFalse(Session.CanUndo);
+    AssertFalse(Session.CanRedo);
+    AssertTrace(vetmExact);
+
+    AssertTrue(Session.ReplaceRawText(CHANGED));
+    Session.AcceptChanges;
+    AssertEquals(CHANGED, Session.RawText);
+    AssertFalse(Session.Dirty);
+    AssertFalse(Session.CanUndo);
+    AssertTrace(vetmExact);
+  finally
+    Session.Free;
+  end;
+end;
+
+procedure TTheWordWysiwygSessionV2Test.
   IdenticalRetypeRemainsDirtyUntilUndo;
 var
   CurrentStart: Integer;
@@ -2153,7 +2227,7 @@ begin
 end;
 
 procedure TTheWordWysiwygSessionV2Test.
-  RawProtectsLexicalObjectsButAllowsExternalEdits;
+  RawDetectsLexicalChangesSeparatelyFromExternalEdits;
 const
   ORIGINAL: UnicodeString = 'one<WG123><WTN-NSM><wt> two';
 var
@@ -2185,7 +2259,7 @@ begin
   try
     AssertTrue(Session.ReplaceRawText(
       'ONE<WG123><WTN-NSM><wt> two'));
-    AssertFalse('the word carrying Strong/Morph remains protected',
+    AssertFalse('a changed lexical word is detected',
       Session.ProtectedLexicalObjectsUnchanged);
   finally
     Session.Free;
@@ -2195,7 +2269,7 @@ begin
   try
     AssertTrue(Session.ReplaceRawText(
       'one<WG124><WTN-NSM><wt> two'));
-    AssertFalse('lexical raw payload cannot be changed',
+    AssertFalse('a changed lexical payload is detected',
       Session.ProtectedLexicalObjectsUnchanged);
   finally
     Session.Free;
@@ -2205,7 +2279,7 @@ begin
   try
     AssertTrue(Session.ReplaceRawText(
       'one<WTN-NSM><WG123><wt> two'));
-    AssertFalse('lexical order cannot be changed',
+    AssertFalse('a changed lexical order is detected',
       Session.ProtectedLexicalObjectsUnchanged);
   finally
     Session.Free;

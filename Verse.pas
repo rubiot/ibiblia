@@ -3146,14 +3146,13 @@ begin
       end;
 
       CandidateSyntagms := FONTParser.ParseLine(ANewXML, Self);
-      for Index := 0 to FSyntagms.Count - 1 do
-        if FSyntagms[Index].HasStrongs or FSyntagms[Index].HasMorph then
-        begin
-          { Until spans prove every lexical word intact, an imprecise Raw
-            fallback would be able to edit protected annotations. }
-          RawFallbackAllowed := False;
-          Break;
-        end;
+      if ATrace.Mode <> vetmRawConservative then
+        for Index := 0 to FSyntagms.Count - 1 do
+          if FSyntagms[Index].HasStrongs or FSyntagms[Index].HasMorph then
+          begin
+            RawFallbackAllowed := False;
+            Break;
+          end;
       if not BuildContentSpans(FSyntagms, OldDocument.VisibleText,
         Codec, OldSpans) then
         raise Exception.Create(
@@ -3168,18 +3167,17 @@ begin
       if not ReserveExactMatches(OldSpans, NewSpans,
         ATrace.OriginMap, OldToNew, NewToOld) then
         raise Exception.Create('The exact Syntagm projection is ambiguous.');
-      for Index := 0 to High(OldSpans) do
-        if (OldSpans[Index].Syntagm.HasStrongs or
-            OldSpans[Index].Syntagm.HasMorph) and
-           (OldToNew[Index] < 0) then
-        begin
-          { Lexically annotated words remain protected in this milestone.
-            They must be proven byte-for-byte intact by provenance; the Raw
-            heuristic is deliberately not allowed to guess their identity. }
-          RawFallbackAllowed := False;
-          raise Exception.Create(
-            'A word with Strong or morphology data was edited.');
-        end;
+      if ATrace.Mode <> vetmRawConservative then
+        for Index := 0 to High(OldSpans) do
+          if (OldSpans[Index].Syntagm.HasStrongs or
+              OldSpans[Index].Syntagm.HasMorph) and
+             (OldToNew[Index] < 0) then
+          begin
+            { Visual edits still require lexical words to remain intact. }
+            RawFallbackAllowed := False;
+            raise Exception.Create(
+              'A word with Strong or morphology data was edited.');
+          end;
       RawFallbackAllowed := True;
       if (ATrace.Mode = vetmRawConservative) and
          not ReconcileRawGaps(OldSpans, NewSpans,

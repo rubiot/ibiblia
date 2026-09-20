@@ -19,7 +19,10 @@ type
     procedure NavigatingToAnotherVerseClearsVisualSelectionAndCaret;
     procedure TranslatorNoteHoverEndsOnSaveCancelHideAndReload;
     procedure PostCommitObserverFailureStillClosesAppliedEdit;
-    procedure RawSaveCannotChangeProtectedLexicalObjects;
+    procedure RawSaveChangesLexicalTagsAndPreservesAssociations;
+    procedure RawWordEditSavesAfterVisualFormattingAndReopens;
+    procedure OpeningRawAndVisualWithoutChangesDoesNotSave;
+    procedure VisualWordEditKeepsLexicalProtection;
     procedure SemanticToolbarButtonsAreCompactTypographicAndNonOverlapping;
     procedure PortugueseLocalizationRefreshesWysiwygToolbarAndMenus;
   end;
@@ -417,7 +420,7 @@ var
   Host: TForm;
   Probe: TTracedSaveProbe;
   RawEditor: TSynEdit;
-  VerseView: TVerse;
+  PairedVerse, VerseView: TVerse;
 begin
   Forms.Application.Initialize;
   Host := TForm.CreateNew(nil);
@@ -425,12 +428,21 @@ begin
   Container.Parent := Host;
   Container.Align := alClient;
   VerseView := TVerse.Create(Container);
+  PairedVerse := TVerse.Create;
   Editor := TVerseMemo.Create;
   Probe := TTracedSaveProbe.Create;
   try
     Host.Show;
     Application.ProcessMessages;
-    VerseView.Text := 'alpha beta';
+    VerseView.Text := 'alpha<WG123><WTN-NSM> beta';
+    PairedVerse.Text := 'one';
+    VerseView.PairedVerse := PairedVerse;
+    PairedVerse.PairedVerse := VerseView;
+    VerseView.Syntagms[0].AddToSelection;
+    PairedVerse.Syntagms[0].AddToSelection;
+    VerseView.AssociateSyntagms;
+    VerseView.ClearSelection;
+    PairedVerse.ClearSelection;
     Editor.OnVerseTextModified := @Probe.Save;
     Editor.Activate(Container, VerseView);
     Composite := FindWysiwygEditor(Host);
@@ -438,7 +450,7 @@ begin
     Composite.RawMode := True;
     RawEditor := FindRawEditor(Composite);
     AssertTrue('Raw editor must be available', Assigned(RawEditor));
-    RawEditor.Text := 'alpha changed';
+    RawEditor.Text := 'beta';
 
     Probe.Cancelled := True;
     AssertFalse('declining association removal must keep the editor open',
@@ -447,19 +459,27 @@ begin
       Editor.Verse);
     AssertTrue('the pending edit must remain intact', Editor.HasPendingChange);
     AssertEquals('declining the prompt must not mutate the verse',
-      'alpha beta', VerseView.XML);
+      'alpha<WG123><WTN-NSM> beta', VerseView.XML);
+    AssertEquals('declining the prompt must preserve the association',
+      '<par a="0" b="0">', VerseView.Pairs);
+    AssertEquals('the pending source text must remain available',
+      'beta', Editor.Text);
     AssertEquals(1, Probe.Calls);
+    AssertEquals(Ord(vetmRawConservative), Ord(Probe.Mode));
 
     Probe.Cancelled := False;
     Probe.Apply := True;
     AssertTrue('the same pending edit may be saved after confirmation',
       Editor.TryDeactivate);
     AssertEquals(2, Probe.Calls);
-    AssertEquals('alpha changed', VerseView.XML);
+    AssertEquals('beta', VerseView.XML);
+    AssertEquals('accepted removal clears the lost association',
+      '', VerseView.Pairs);
   finally
     Probe.Free;
     Editor.Free;
     VerseView.Free;
+    PairedVerse.Free;
     Host.Free;
   end;
 end;
@@ -1132,14 +1152,168 @@ begin
   end;
 end;
 
-procedure TVerseMemoTests.RawSaveCannotChangeProtectedLexicalObjects;
+procedure TVerseMemoTests.RawSaveChangesLexicalTagsAndPreservesAssociations;
+const
+  Edits: array[0..2] of string = (
+    'alpha<WG124><WTV-PAP> beta',
+    'alpha<WG124><WTV-PAP> beta<WG125><WTN-NSM>',
+    'alpha beta');
+var
+  Composite: TTheWordWysiwygEditorControl;
+  Container: TScrollBox;
+  EditIndex: Integer;
+  Editor: TVerseMemo;
+  Host: TForm;
+  Probe: TTracedSaveProbe;
+  RawEditor: TSynEdit;
+  PairedVerse, VerseView: TVerse;
+begin
+  Forms.Application.Initialize;
+  Host := TForm.CreateNew(nil);
+  Container := TScrollBox.Create(Host);
+  Container.Parent := Host;
+  Container.Align := alClient;
+  VerseView := TVerse.Create(Container);
+  PairedVerse := TVerse.Create;
+  Editor := TVerseMemo.Create;
+  Probe := TTracedSaveProbe.Create;
+  try
+    Host.Show;
+    Application.ProcessMessages;
+    VerseView.Text := 'alpha<WG123><WTN-NSM> beta';
+    PairedVerse.Text := 'one';
+    VerseView.PairedVerse := PairedVerse;
+    PairedVerse.PairedVerse := VerseView;
+    VerseView.Syntagms[0].AddToSelection;
+    PairedVerse.Syntagms[0].AddToSelection;
+    VerseView.AssociateSyntagms;
+    VerseView.ClearSelection;
+    PairedVerse.ClearSelection;
+    Editor.OnVerseTextModified := @Probe.Save;
+    Probe.Apply := True;
+
+    for EditIndex := Low(Edits) to High(Edits) do
+    begin
+      Editor.Activate(Container, VerseView);
+      Composite := FindWysiwygEditor(Host);
+      AssertTrue(Assigned(Composite));
+      Composite.RawMode := True;
+      RawEditor := FindRawEditor(Composite);
+      AssertTrue(Assigned(RawEditor));
+      RawEditor.Text := Edits[EditIndex];
+
+      AssertTrue('changed, added and removed lexical tags must save',
+        Editor.TryDeactivate);
+      AssertEquals(EditIndex + 1, Probe.Calls);
+      AssertEquals(Ord(vetmRawConservative), Ord(Probe.Mode));
+      AssertEquals('alpha beta', UTF8Encode(Probe.CurrentText));
+      AssertEquals(Edits[EditIndex], VerseView.XML);
+      AssertEquals('tag-only editing must preserve the existing association',
+        '<par a="0" b="0">', VerseView.Pairs);
+      AssertSame('the paired verse must still reference the source syntagm',
+        VerseView.Syntagms[0], PairedVerse.Syntagms[0].Pairs[0]);
+      if EditIndex < High(Edits) then
+      begin
+        AssertEquals('G124', VerseView.Syntagms[0].Strong[0]);
+        AssertEquals('V-PAP', VerseView.Syntagms[0].Morph[0]);
+      end
+      else
+      begin
+        AssertEquals(0, VerseView.Syntagms[0].Strong.Count);
+        AssertEquals(0, VerseView.Syntagms[0].Morph.Count);
+      end;
+      AssertNull('successful save closes the editor', Editor.Verse);
+    end;
+
+    Editor.Activate(Container, VerseView);
+    Composite := FindWysiwygEditor(Host);
+    AssertEquals('reopening must load the last saved lexical edit',
+      Edits[High(Edits)], Composite.Text);
+    Editor.DiscardEdit;
+  finally
+    Probe.Free;
+    Editor.Free;
+    VerseView.Free;
+    PairedVerse.Free;
+    Host.Free;
+  end;
+end;
+
+procedure TVerseMemoTests.RawWordEditSavesAfterVisualFormattingAndReopens;
+var
+  Composite: TTheWordWysiwygEditorControl;
+  Container: TScrollBox;
+  DirectEditor: TDirectWriteVerseEditor;
+  Editor: TVerseMemo;
+  ExpectedSavedText: string;
+  Host: TForm;
+  Probe: TTracedSaveProbe;
+  RawEditor: TSynEdit;
+  VerseView: TVerse;
+begin
+  Forms.Application.Initialize;
+  Host := TForm.CreateNew(nil);
+  Host.SetBounds(0, 0, 800, 300);
+  Container := TScrollBox.Create(Host);
+  Container.Parent := Host;
+  Container.Align := alClient;
+  VerseView := TVerse.Create(Container);
+  Editor := TVerseMemo.Create;
+  Probe := TTracedSaveProbe.Create;
+  try
+    Host.Show;
+    Application.ProcessMessages;
+    VerseView.Text := 'alpha<WG123><WTN-NSM> beta';
+    Editor.OnVerseTextModified := @Probe.Save;
+    Probe.Apply := True;
+    Editor.Activate(Container, VerseView);
+    Composite := FindWysiwygEditor(Host);
+    AssertTrue(Assigned(Composite));
+    Composite.RawMode := True;
+    RawEditor := FindRawEditor(Composite);
+    AssertTrue(Assigned(RawEditor));
+    RawEditor.Text := 'changed<WG124><WTV-PAP> beta';
+    Composite.RawMode := False;
+    DirectEditor := FindDirectEditor(Composite);
+    AssertTrue(Assigned(DirectEditor));
+    DirectEditor.SetSelection(0, Length('changed'));
+    AssertTrue('formatting must remain available after a raw edit',
+      Composite.ApplySemantic(twsmItalic));
+    ExpectedSavedText := Composite.Text;
+    AssertTrue(Pos('<FI>', ExpectedSavedText) > 0);
+    AssertTrue(Pos('<WG124>', ExpectedSavedText) > 0);
+
+    AssertTrue('raw editing must still save after returning to Visual',
+      Editor.TryDeactivate);
+    AssertEquals(1, Probe.Calls);
+    AssertEquals(Ord(vetmRawConservative), Ord(Probe.Mode));
+    AssertEquals('changed beta', UTF8Encode(Probe.CurrentText));
+    AssertEquals(ExpectedSavedText, VerseView.XML);
+    AssertNull(Editor.Verse);
+
+    Editor.Activate(Container, VerseView);
+    Composite := FindWysiwygEditor(Host);
+    AssertEquals('reopening must include text, tags and visual formatting',
+      ExpectedSavedText, Composite.Text);
+    AssertFalse('the reopened edit must start clean', Editor.HasPendingChange);
+    Editor.DiscardEdit;
+  finally
+    Probe.Free;
+    Editor.Free;
+    VerseView.Free;
+    Host.Free;
+  end;
+end;
+
+procedure TVerseMemoTests.OpeningRawAndVisualWithoutChangesDoesNotSave;
+const
+  OriginalText = 'alpha<WG123><WTN-NSM> beta';
 var
   Composite: TTheWordWysiwygEditorControl;
   Container: TScrollBox;
   Editor: TVerseMemo;
   Host: TForm;
   Probe: TTracedSaveProbe;
-  RawEditor: TSynEdit;
   VerseView: TVerse;
 begin
   Forms.Application.Initialize;
@@ -1153,24 +1327,75 @@ begin
   try
     Host.Show;
     Application.ProcessMessages;
-    VerseView.Text := 'alpha<WG123> beta';
+    VerseView.Text := OriginalText;
     Editor.OnVerseTextModified := @Probe.Save;
     Editor.Activate(Container, VerseView);
     Composite := FindWysiwygEditor(Host);
     AssertTrue(Assigned(Composite));
     Composite.RawMode := True;
-    RawEditor := FindRawEditor(Composite);
-    AssertTrue(Assigned(RawEditor));
-    RawEditor.Text := 'alpha<WG124> beta';
+    Composite.RawMode := False;
 
-    Probe.Apply := True;
-    AssertFalse('lexical payload changes must remain protected',
+    AssertFalse('switching editor modes must not create a change',
+      Editor.HasPendingChange);
+    AssertTrue('an unchanged editor may close without applying anything',
       Editor.TryDeactivate);
-    AssertEquals('the save callback must not see an unsafe edit', 0,
-      Probe.Calls);
-    AssertSame(VerseView, Editor.Verse);
-    AssertEquals('alpha<WG123> beta', VerseView.XML);
-    Editor.DiscardEdit;
+    AssertEquals(0, Probe.Calls);
+    AssertEquals(OriginalText, VerseView.XML);
+    AssertNull(Editor.Verse);
+  finally
+    Probe.Free;
+    Editor.Free;
+    VerseView.Free;
+    Host.Free;
+  end;
+end;
+
+procedure TVerseMemoTests.VisualWordEditKeepsLexicalProtection;
+const
+  OriginalText = 'alpha<WG123><WTN-NSM> beta';
+var
+  Accepted: Boolean;
+  Composite: TTheWordWysiwygEditorControl;
+  Container: TScrollBox;
+  DirectEditor: TDirectWriteVerseEditor;
+  Editor: TVerseMemo;
+  Host: TForm;
+  NewCaret: Integer;
+  Probe: TTracedSaveProbe;
+  VerseView: TVerse;
+begin
+  Forms.Application.Initialize;
+  Host := TForm.CreateNew(nil);
+  Container := TScrollBox.Create(Host);
+  Container.Parent := Host;
+  Container.Align := alClient;
+  VerseView := TVerse.Create(Container);
+  Editor := TVerseMemo.Create;
+  Probe := TTracedSaveProbe.Create;
+  try
+    Host.Show;
+    Application.ProcessMessages;
+    VerseView.Text := OriginalText;
+    Editor.OnVerseTextModified := @Probe.Save;
+    Editor.Activate(Container, VerseView);
+    Composite := FindWysiwygEditor(Host);
+    DirectEditor := FindDirectEditor(Composite);
+    AssertTrue(Assigned(Composite));
+    AssertTrue(Assigned(DirectEditor));
+    AssertTrue(Assigned(DirectEditor.OnReplaceText));
+    Accepted := True;
+    NewCaret := Length('changed');
+    DirectEditor.OnReplaceText(DirectEditor, 0, Length('alpha'), 'changed',
+      Accepted, NewCaret);
+
+    AssertFalse('Visual replacement of a tagged word remains protected',
+      Accepted);
+    AssertEquals(OriginalText, Composite.Text);
+    AssertFalse(Editor.HasPendingChange);
+    AssertTrue(Editor.TryDeactivate);
+    AssertEquals('a rejected Visual edit must not reach the save callback',
+      0, Probe.Calls);
+    AssertEquals(OriginalText, VerseView.XML);
   finally
     Probe.Free;
     Editor.Free;

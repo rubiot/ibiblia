@@ -1132,11 +1132,6 @@ begin
   FModified := FEditor.Modified;
   if not ValidateTextForSave then
     Exit(False);
-  if not FEditor.ProtectedLexicalObjectsUnchanged then
-  begin
-    ShowSaveError(SProtectedLexicalObjectsChanged);
-    Exit(False);
-  end;
   Trace := nil;
   try
     if FModified then
@@ -1145,6 +1140,12 @@ begin
       if not Assigned(Trace) or not Assigned(FOnVerseTextModified) then
       begin
         ShowSaveError(SEditApplyFailed);
+        Exit(False);
+      end;
+      if (Trace.Mode <> vetmRawConservative) and
+         not FEditor.ProtectedLexicalObjectsUnchanged then
+      begin
+        ShowSaveError(SProtectedLexicalObjectsChanged);
         Exit(False);
       end;
       try

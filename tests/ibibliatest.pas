@@ -110,6 +110,10 @@ type
     procedure TracedEditProjectsStructuralBoundaries;
     procedure TracedEditPairsRoundTripWithShiftedIndexes;
     procedure TracedRawEditDoesNotStealExactRepeatedWord;
+    procedure TracedRawLexicalEditsPreserveSourceAssociationAndRoundTrip;
+    procedure TracedRawAnnotatedWordReplacementRemovesOnlyAffectedAssociation;
+    procedure TracedRawAnnotatedWordDeletionPreviewCanBeDiscarded;
+    procedure TracedRawAnnotatedRepeatedWordKeepsExactIdentity;
     procedure TracedEditProjectionFailureIsAtomic;
     procedure TracedUnicodeReplacementPreservesUntouchedLexicalWord;
     procedure TracedEditRejectsTouchedStrongWordAtomically;
@@ -1226,6 +1230,247 @@ begin
   AssertTrue(verse2.Syntagms[2] = LastTarget);
   AssertPairsAndSiblings(LastSource, [LastTarget], []);
   AssertPairsAndSiblings(LastTarget, [LastSource], []);
+  AssertEquals(1, Impact.PreservedMembers);
+  AssertEquals(1, Impact.RemovedMembers);
+  AssertFalse(Impact.UsedLegacyFallback);
+end;
+
+procedure TVerseTests.TracedRawLexicalEditsPreserveSourceAssociationAndRoundTrip;
+var
+  SourceWord, TargetWord, KeepSource, KeepTarget: TSyntagm;
+  BaselinePairs: string;
+
+  procedure AssertLexicalState(AWord: TSyntagm; const AStrong, AMorph: string);
+  begin
+    if AStrong = '' then
+      AssertEquals('removed Strong must not remain on the reused syntagm',
+        0, AWord.Strong.Count)
+    else
+    begin
+      AssertEquals(1, AWord.Strong.Count);
+      AssertEquals(AStrong, AWord.Strong[0]);
+    end;
+    if AMorph = '' then
+      AssertEquals('removed morphology must not remain on the reused syntagm',
+        0, AWord.Morph.Count)
+    else
+    begin
+      AssertEquals(1, AWord.Morph.Count);
+      AssertEquals(AMorph, AWord.Morph[0]);
+    end;
+  end;
+
+  procedure ApplyAndReload(const ARaw, AStrong, AMorph: string);
+  var
+    Impact: TAssociationEditImpact;
+    ReloadedSource, ReloadedTarget: TVerse;
+    Session: TTheWordWysiwygSessionV2;
+    Trace: TVerseEditTrace;
+  begin
+    Session := TTheWordWysiwygSessionV2.Create(UTF8Decode(verse1.XML),
+      verse1.TokenizerVersion);
+    Trace := nil;
+    try
+      AssertTrue(Session.ReplaceRawText(UTF8Decode(ARaw)));
+      Trace := Session.CloneEditTrace;
+      AssertEquals('tag-only Code changes retain raw provenance',
+        Ord(vetmRawConservative), Ord(Trace.Mode));
+      AssertTrue('Code can update lexical data on an associated source word',
+        verse1.TryApplyTracedEdit(UTF8Encode(Session.RawText), Trace, Impact));
+    finally
+      Trace.Free;
+      Session.Free;
+    end;
+
+    AssertEquals(ARaw, verse1.XML);
+    AssertTrue(verse1.Syntagms[0] = SourceWord);
+    AssertTrue(verse1.Syntagms[2] = KeepSource);
+    AssertPairsAndSiblings(SourceWord, [TargetWord], []);
+    AssertPairsAndSiblings(TargetWord, [SourceWord], []);
+    AssertPairsAndSiblings(KeepSource, [KeepTarget], []);
+    AssertEquals(BaselinePairs, verse1.Pairs);
+    AssertEquals(2, Impact.PreservedMembers);
+    AssertEquals(0, Impact.RemovedMembers);
+    AssertFalse(Impact.UsedLegacyFallback);
+    AssertLexicalState(SourceWord, AStrong, AMorph);
+
+    ReloadedSource := TVerse.Create;
+    ReloadedTarget := TVerse.Create;
+    try
+      ReloadedSource.PairedVerse := ReloadedTarget;
+      ReloadedSource.Text := verse1.XML;
+      ReloadedTarget.Text := verse2.XML;
+      ReloadedSource.Pairs := verse1.Pairs;
+      AssertEquals(ARaw, ReloadedSource.XML);
+      AssertLexicalState(ReloadedSource.Syntagms[0], AStrong, AMorph);
+      AssertPairsAndSiblings(ReloadedSource.Syntagms[0],
+        [ReloadedTarget.Syntagms[0]], []);
+      AssertPairsAndSiblings(ReloadedSource.Syntagms[2],
+        [ReloadedTarget.Syntagms[2]], []);
+    finally
+      ReloadedSource.Free;
+      ReloadedTarget.Free;
+    end;
+  end;
+
+begin
+  verse1.Text := 'word keep';
+  verse2.Text := 'target stay';
+  Associate([0], [0]);
+  Associate([2], [2]);
+  SourceWord := verse1.Syntagms[0];
+  TargetWord := verse2.Syntagms[0];
+  KeepSource := verse1.Syntagms[2];
+  KeepTarget := verse2.Syntagms[2];
+  BaselinePairs := verse1.Pairs;
+
+  ApplyAndReload('word<WG1><WTN-NSM> keep', 'G1', 'N-NSM');
+  ApplyAndReload('word<WH123><WTV-AA3S l="word"> keep', 'H123',
+    'V-AA3S l="word"');
+  ApplyAndReload('word keep', '', '');
+end;
+
+procedure TVerseTests.TracedRawAnnotatedWordReplacementRemovesOnlyAffectedAssociation;
+var
+  KeepSource, KeepTarget, ChangedTarget: TSyntagm;
+  Impact: TAssociationEditImpact;
+  Session: TTheWordWysiwygSessionV2;
+  Trace: TVerseEditTrace;
+begin
+  verse1.Text := 'word<WG1><WTN-NSM> keep<WG2><WTN-NSF>';
+  verse2.Text := 'target stay';
+  Associate([0], [0]);
+  Associate([2], [2]);
+  ChangedTarget := verse2.Syntagms[0];
+  KeepSource := verse1.Syntagms[2];
+  KeepTarget := verse2.Syntagms[2];
+
+  Session := TTheWordWysiwygSessionV2.Create(UTF8Decode(verse1.XML),
+    verse1.TokenizerVersion);
+  Trace := nil;
+  try
+    AssertTrue(Session.ReplaceRawText(
+      'term<WG3><WTV-AA3S> keep<WG2><WTN-NSF>'));
+    Trace := Session.CloneEditTrace;
+    AssertTrue(verse1.TryApplyTracedEdit(UTF8Encode(Session.RawText),
+      Trace, Impact));
+  finally
+    Trace.Free;
+    Session.Free;
+  end;
+
+  AssertEquals('term<WG3><WTV-AA3S> keep<WG2><WTN-NSF>', verse1.XML);
+  AssertTrue(verse1.Syntagms[2] = KeepSource);
+  AssertPairsAndSiblings(ChangedTarget, [], []);
+  AssertPairsAndSiblings(verse1.Syntagms[0], [], []);
+  AssertPairsAndSiblings(KeepSource, [KeepTarget], []);
+  AssertPairsAndSiblings(KeepTarget, [KeepSource], []);
+  AssertEquals('G3', verse1.Syntagms[0].Strong[0]);
+  AssertEquals('V-AA3S', verse1.Syntagms[0].Morph[0]);
+  AssertEquals('G2', KeepSource.Strong[0]);
+  AssertEquals('N-NSF', KeepSource.Morph[0]);
+  AssertEquals(1, Impact.PreservedMembers);
+  AssertEquals(1, Impact.RemovedMembers);
+end;
+
+procedure TVerseTests.TracedRawAnnotatedWordDeletionPreviewCanBeDiscarded;
+const
+  ORIGINAL = 'word<WG1><WTN-NSM> keep<WG2><WTN-NSF>';
+var
+  DeletedSource, DeletedTarget, KeepSource, KeepTarget: TSyntagm;
+  BaselinePairs: string;
+  Impact: TAssociationEditImpact;
+  Plan: TVerseEditReconciliationPlan;
+  Session: TTheWordWysiwygSessionV2;
+  Trace: TVerseEditTrace;
+begin
+  verse1.Text := ORIGINAL;
+  verse2.Text := 'target stay';
+  Associate([0], [0]);
+  Associate([2], [2]);
+  DeletedSource := verse1.Syntagms[0];
+  DeletedTarget := verse2.Syntagms[0];
+  KeepSource := verse1.Syntagms[2];
+  KeepTarget := verse2.Syntagms[2];
+  BaselinePairs := verse1.Pairs;
+
+  Session := TTheWordWysiwygSessionV2.Create(ORIGINAL,
+    verse1.TokenizerVersion);
+  Trace := nil;
+  Plan := nil;
+  try
+    AssertTrue(Session.ReplaceRawText('keep<WG2><WTN-NSF>'));
+    Trace := Session.CloneEditTrace;
+    AssertTrue(verse1.PreviewTracedEdit(UTF8Encode(Session.RawText),
+      Trace, Plan, Impact));
+    AssertEquals(1, Impact.PreservedMembers);
+    AssertEquals(1, Impact.RemovedMembers);
+    FreeAndNil(Plan);
+
+    AssertEquals('discarding the confirmation preview preserves source text',
+      ORIGINAL, verse1.XML);
+    AssertEquals(BaselinePairs, verse1.Pairs);
+    AssertTrue(verse1.Syntagms[0] = DeletedSource);
+    AssertTrue(verse1.Syntagms[2] = KeepSource);
+    AssertPairsAndSiblings(DeletedSource, [DeletedTarget], []);
+    AssertPairsAndSiblings(KeepSource, [KeepTarget], []);
+    AssertEquals('G1', DeletedSource.Strong[0]);
+    AssertEquals('N-NSM', DeletedSource.Morph[0]);
+
+    AssertTrue(verse1.PreviewTracedEdit(UTF8Encode(Session.RawText),
+      Trace, Plan, Impact));
+    AssertTrue(verse1.ApplyTracedEditPlan(Plan, Impact));
+  finally
+    Plan.Free;
+    Trace.Free;
+    Session.Free;
+  end;
+
+  AssertEquals('keep<WG2><WTN-NSF>', verse1.XML);
+  AssertTrue(verse1.Syntagms[0] = KeepSource);
+  AssertPairsAndSiblings(DeletedTarget, [], []);
+  AssertPairsAndSiblings(KeepSource, [KeepTarget], []);
+  AssertPairsAndSiblings(KeepTarget, [KeepSource], []);
+  AssertEquals(1, Impact.PreservedMembers);
+  AssertEquals(1, Impact.RemovedMembers);
+end;
+
+procedure TVerseTests.TracedRawAnnotatedRepeatedWordKeepsExactIdentity;
+var
+  FirstTarget, LastSource, LastTarget: TSyntagm;
+  Impact: TAssociationEditImpact;
+  Session: TTheWordWysiwygSessionV2;
+  Trace: TVerseEditTrace;
+begin
+  verse1.Text := 'repeat<WG1> old<WG2> repeat<WG3><WTN-NSM>';
+  verse2.Text := 'first last';
+  Associate([0], [0]);
+  Associate([4], [2]);
+  FirstTarget := verse2.Syntagms[0];
+  LastSource := verse1.Syntagms[4];
+  LastTarget := verse2.Syntagms[2];
+
+  Session := TTheWordWysiwygSessionV2.Create(UTF8Decode(verse1.XML),
+    verse1.TokenizerVersion);
+  Trace := nil;
+  try
+    AssertTrue(Session.ReplaceRawText('gone<WG4> repeat<WG5><WTN-NSF>'));
+    Trace := Session.CloneEditTrace;
+    AssertTrue(verse1.TryApplyTracedEdit(UTF8Encode(Session.RawText),
+      Trace, Impact));
+  finally
+    Trace.Free;
+    Session.Free;
+  end;
+
+  AssertEquals('gone<WG4> repeat<WG5><WTN-NSF>', verse1.XML);
+  AssertTrue('the exact final occurrence keeps its identity',
+    verse1.Syntagms[2] = LastSource);
+  AssertPairsAndSiblings(FirstTarget, [], []);
+  AssertPairsAndSiblings(LastSource, [LastTarget], []);
+  AssertPairsAndSiblings(LastTarget, [LastSource], []);
+  AssertEquals('G5', LastSource.Strong[0]);
+  AssertEquals('N-NSF', LastSource.Morph[0]);
   AssertEquals(1, Impact.PreservedMembers);
   AssertEquals(1, Impact.RemovedMembers);
   AssertFalse(Impact.UsedLegacyFallback);
