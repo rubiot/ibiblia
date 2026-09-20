@@ -1861,7 +1861,7 @@ msgstr "1 associação em 1 versículo"
 #: chapterview.stranslationmemorypreviewremainingfmt
 #, object-pascal-format
 msgid "%d more verses — click the count to see all."
-msgstr ""
+msgstr "%d versículos restantes — clique no número para ver todos."
 
 #: chapterview.stranslationmemorypreviewunavailable
 msgid "Preview unavailable — click to open the occurrences."

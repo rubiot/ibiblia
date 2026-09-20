@@ -4279,8 +4279,9 @@ begin
   ActionRebuildSuggestionDatabase.Caption :=
     SRebuildAssociationMemoryMenu;
   ActionExit.Caption := SExitMenu;
+  ActionExit.Hint := StripHotkey(SExitMenu);
   ToolButtonExit.Caption := SExitMenu;
-  ToolButtonExit.Hint := SExitMenu;
+  ToolButtonExit.Hint := ActionExit.Hint;
   ActionPreviousVerse.Caption := SPreviousVerseMenu;
   ActionPreviousVerse.Hint := SShortcutPreviousVerse;
   ActionNextVerse.Caption := SNextVerseMenu;
