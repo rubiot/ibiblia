@@ -1,5 +1,0 @@
-{"version":1,"strings":[
-{"hash":92690117,"name":"myswordmodule.sprojectoverrideerror","sourcebytes":[65,32,112,114,111,106,101,99,116,32,119,105,116,104,32,116,104,105,115,32,110,97,109,101,32,97,108,114,101,97,100,121,32,101,120,105,115,116,115,46,32,68,101,108,101,116,101,32,105,116,32,102,105,114,115,116,32,111,114,32,99,104,111,111,115,101,32,97,110,111,116,104,101,114,32,110,97,109,101],"value":"A project with this name already exists. Delete it first or choose another name"},
-{"hash":61564942,"name":"myswordmodule.soverrideerror","sourcebytes":[77,121,83,119,111,114,100,32,66,105,98,108,101,32,109,111,100,117,108,101,32,101,120,105,115,116,115,32,97,110,100,32,99,97,110,110,111,116,32,98,101,32,111,118,101,114,119,114,105,116,116,101,110],"value":"MySword Bible module exists and cannot be overwritten"},
-{"hash":150912405,"name":"myswordmodule.screatemyswordbibleerror","sourcebytes":[85,110,97,98,108,101,32,116,111,32,99,114,101,97,116,101,32,110,101,119,32,77,121,83,119,111,114,100,32,109,111,100,117,108,101,32,102,105,108,101],"value":"Unable to create new MySword module file"}
-]}
