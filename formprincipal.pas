@@ -928,10 +928,10 @@ begin
     DoOpenProject(MenuItemRecent.Items[0].Caption);
 
   // First-time startup check for new version changelog popup
-  if opts.ReadString('geral', 'last_seen_changelog_version', '') <> '1.0.0.69' then
+  if opts.ReadString('geral', 'last_seen_changelog_version', '') <> '1.0.0.70' then
   begin
     ShowChangelog(Self);
-    opts.WriteString('geral', 'last_seen_changelog_version', '1.0.0.69');
+    opts.WriteString('geral', 'last_seen_changelog_version', '1.0.0.70');
   end;
 end;
 

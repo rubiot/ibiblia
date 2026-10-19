@@ -1,19 +1,18 @@
 object FormAbout: TFormAbout
   Left = 569
-  Height = 220
+  Height = 240
   Top = 239
   Width = 480
   BorderIcons = [biSystemMenu]
   BorderStyle = bsToolWindow
   Caption = 'About iBiblia'
-  ClientHeight = 220
+  ClientHeight = 240
   ClientWidth = 480
-  OnCreate = FormCreate
   Position = poMainFormCenter
   LCLVersion = '2.0.10.0'
   object Label1: TLabel
     Left = 0
-    Height = 32
+    Height = 30
     Top = 8
     Width = 480
     Align = alTop
@@ -21,26 +20,25 @@ object FormAbout: TFormAbout
     AutoSize = False
     Caption = 'iBiblia'
     Font.Height = -21
-    Font.Style = [fsBold]
     ParentColor = False
     ParentFont = False
   end
   object LabelVersion: TLabel
     Left = 0
-    Height = 22
+    Height = 20
     Top = 38
     Width = 480
     Alignment = taCenter
     AutoSize = False
-    Caption = 'Version 1.0.0.69 (64-bit)'
-    Font.Height = -15
+    Caption = 'Version 1.0.0.70 (64-bit)'
+    Font.Height = -14
     ParentColor = False
     ParentFont = False
   end
   object Label2: TLabel
     Left = 0
-    Height = 20
-    Top = 66
+    Height = 18
+    Top = 64
     Width = 480
     Alignment = taCenter
     AutoSize = False
@@ -49,29 +47,42 @@ object FormAbout: TFormAbout
     ParentColor = False
     ParentFont = False
   end
+  object LabelRubioURL: TLabel
+    Left = 0
+    Height = 18
+    Top = 84
+    Width = 480
+    Alignment = taCenter
+    AutoSize = False
+    Caption = 'https://github.com/rubiot/ibiblia'
+    Cursor = crHandPoint
+    Font.Height = -13
+    OnClick = LabelRubioURLClick
+    ParentColor = False
+    ParentFont = False
+  end
   object LabelContributor: TLabel
     Left = 0
-    Height = 20
-    Top = 90
+    Height = 18
+    Top = 110
     Width = 480
     Alignment = taCenter
     AutoSize = False
     Caption = 'Contributor: Edmund Valdez'
     Font.Height = -13
-    Font.Style = [fsBold]
     ParentColor = False
     ParentFont = False
   end
   object Label3: TLabel
     Left = 0
-    Height = 20
-    Top = 116
+    Height = 18
+    Top = 130
     Width = 480
     Alignment = taCenter
     AutoSize = False
     Caption = 'https://github.com/SalitaNgDiyos'
-    Font.Height = -13
     Cursor = crHandPoint
+    Font.Height = -13
     OnClick = Label3Click
     ParentColor = False
     ParentFont = False
@@ -79,7 +90,7 @@ object FormAbout: TFormAbout
   object ButtonChangelog: TButton
     Left = 110
     Height = 32
-    Top = 160
+    Top = 180
     Width = 140
     Caption = 'View Changelog'
     OnClick = ButtonChangelogClick
@@ -88,7 +99,7 @@ object FormAbout: TFormAbout
   object ButtonClose: TButton
     Left = 260
     Height = 32
-    Top = 160
+    Top = 180
     Width = 100
     Cancel = True
     Caption = 'Close'
