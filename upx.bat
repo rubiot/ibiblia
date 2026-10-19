@@ -1,1 +1,0 @@
-C:\tools\upx392w\upx.exe --best -v iBiblia.exe
