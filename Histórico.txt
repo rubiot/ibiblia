@@ -1,23 +1,37 @@
-0.0.0.1 07/03/2012
-	- Versão inicial
-0.0.0.2 15/03/2012
-	- [novo] adicionado diálogo de exportação, com opções específicas para cada formato de exportação
-	- [novo] adicionado menu "Abrir recente"
-	- [novo] exportação de módulo de concordância, indexado por números de Strong
-	- [erro] a janela principal agora sempre se inicia visível, mesmo quando sua última posição era fora da tela
-x.x.x.x 21/11/2012
-	- [erro] Suprimido erro na importação, quando as tags de Strong e morfologia estão separadas do termo a que se referem. As tags não serão importadas, mas não gerarão erro. Para que sejam importadas, coloque-as imediatamente após o termo a que se referem
-        - [erro] Sobrescrito era perdido na mudança de fonte
-	- [erro] UTF-8 BOM era considerado um sintagma
-	- [novo] Criado esqueleto de formulário de mesclagem de projetos (ainda não-funcional)
-	- [muda] Agora o hífen é interpretado como parte do sufixo (-lhe, -o, etc.). Isto gera incompatibilidade com projetos antigos.
-	- [novo] Edição de palavras individuais (duplo click na palavra) mantendo as associações existentes. Para quebrar uma palavra em sintagmas diferentes sem inserir espaço, insira barras verticais. Ex.: "n|ele" produzirá dois sintagmas, "n" e "ele".
-	- [novo] Opção de indicar Strongs reutilizados na exportação (são mostrados como [strong#])
-	- [novo] Opção de indicar Strongs não-utilizados na exportação (são mostrados como (strong#))
-	- [erro] Às vezes a desassociação (Ctrl+Shift+Click) não funcionava, sendo necessário fazê-la pelo outro versículo.
-	- [muda] Exportação - Itálicos originais ignorados quando opção 'Tratar palavras não associadas como itálicos' estiver ativa.
-x.x.x.x dd/mm/yyyy
-	- [novo] Sugeridor de associações agora reconhece formas verbais (se existir o db apropriado) e plurais simples
-	- [novo] Sugeridor compara chave primeiro com morfologia, depois sem morfologia
-	- [muda] Erro de dados inconsistentes era mostrado para todas as ocorrências de um versículo. Agora é mostrada apenas uma vez
-	- [muda] 
+===============================================================================
+iBiblia - Changelog & Release Notes
+===============================================================================
+
+Version 1.0.0.69 (64-bit Edition) - 2026-10-19
+-------------------------------------------------------------------------------
+* Native 64-Bit Architecture:
+  - Ported iBiblia to native 64-bit Windows (Win64 / x86_64).
+  - Fully compatible with 64-bit theWord 7 (theword.64.exe) and dual-architecture SQLite.
+  - Linked against 64-bit SQLite 3 (sqlite3.dll) and 64-bit PCRE (pcre64.dll).
+  - Cleaned all non-portable pointer and ordinal typecasts (PtrInt) across PCRE and TreeView.
+  - Resolved C-runtime entry points (setlocale, malloc, free) via msvcrt.dll.
+
+* Verse Status Filtering & Quick Navigation (Issue #104):
+  - Added Bible tree filtering by verse status (Not associated, Associating, Needs review, Associated).
+  - Integrated dynamic status descriptions from project metadata.
+  - Real-time verse counters showing total matches for each status.
+  - Added dedicated navigation buttons (< and >) on the navigation panel.
+  - Configured global keyboard shortcuts:
+    - F8: Jump to Next filtered verse
+    - Shift + F8: Jump to Previous filtered verse
+
+* Word Highlighting & Alignment Fixes:
+  - Restored solid yellow highlight on word selection and hover.
+  - Fixed auto-selection advance on word association so the yellow highlight automatically jumps to the next unassociated translation word.
+  - Resolved TLabel transparency rendering on Windows 10/11.
+
+* Stability & Error Resolution:
+  - Fixed Access Violation crash when returning from filtered views back to "All verses".
+  - Fixed Access Violation crash when switching UI language to English.
+  - Detached recursive event triggers during status list rebuilding to protect verse status integrity.
+  - Removed obsolete development breakpoints and hardcoded working directory paths from project files.
+
+* UI & Release Enhancements:
+  - Added "What's New in iBiblia" startup popup on first launch of new versions.
+  - Added "View Changelog" button to the About dialog.
+  - Added contributor credit for Edmund Valdez in the About dialog, changelog, and project metadata.

@@ -290,17 +290,103 @@ object frmPrincipal: TfrmPrincipal
       Top = 1
       Width = 5
     end
-    object TreeView1: TTreeView
+    object PanelTreeNav: TPanel
       Left = 1
       Height = 591
       Top = 1
       Width = 138
       Align = alLeft
-      Enabled = False
-      Images = ImageListTreeView
-      ReadOnly = True
+      BevelOuter = bvNone
+      Caption = ''
+      ClientHeight = 591
+      ClientWidth = 138
       TabOrder = 2
-      Options = [tvoAutoItemHeight, tvoHideSelection, tvoKeepCollapsedNodes, tvoReadOnly, tvoShowButtons, tvoShowLines, tvoShowRoot, tvoToolTips, tvoThemedDraw]
+      object PanelFilter: TPanel
+        Left = 0
+        Height = 56
+        Top = 0
+        Width = 138
+        Align = alTop
+        BevelOuter = bvNone
+        Caption = ''
+        ClientHeight = 56
+        ClientWidth = 138
+        TabOrder = 0
+        object ComboBoxStatusFilter: TComboBox
+          Left = 2
+          Height = 23
+          Top = 2
+          Width = 134
+          Align = alTop
+          ItemHeight = 15
+          ItemIndex = 0
+          Items.Strings = (
+            'All verses'
+            'Not associated'
+            'Associating'
+            'Needs review'
+            'Associated!'
+          )
+          OnChange = ComboBoxStatusFilterChange
+          ReadOnly = True
+          Style = csDropDownList
+          TabOrder = 0
+        end
+        object PanelFilterButtons: TPanel
+          Left = 0
+          Height = 27
+          Top = 27
+          Width = 138
+          Align = alClient
+          BevelOuter = bvNone
+          Caption = ''
+          ClientHeight = 27
+          ClientWidth = 138
+          TabOrder = 1
+          object SpeedButtonPrevFiltered: TSpeedButton
+            Left = 2
+            Height = 24
+            Hint = 'Previous verse with status'
+            Top = 1
+            Width = 26
+            Caption = '<'
+            Enabled = False
+            OnClick = SpeedButtonPrevFilteredClick
+          end
+          object SpeedButtonNextFiltered: TSpeedButton
+            Left = 30
+            Height = 24
+            Hint = 'Next verse with status'
+            Top = 1
+            Width = 26
+            Caption = '>'
+            Enabled = False
+            OnClick = SpeedButtonNextFilteredClick
+          end
+          object LabelFilterCount: TLabel
+            Left = 60
+            Height = 15
+            Top = 6
+            Width = 74
+            Alignment = taRightJustify
+            Anchors = [akTop, akLeft, akRight]
+            Caption = ''
+            ParentColor = False
+          end
+        end
+      end
+      object TreeView1: TTreeView
+        Left = 0
+        Height = 535
+        Top = 56
+        Width = 138
+        Align = alClient
+        Enabled = False
+        Images = ImageListTreeView
+        ReadOnly = True
+        TabOrder = 1
+        Options = [tvoAutoItemHeight, tvoHideSelection, tvoKeepCollapsedNodes, tvoReadOnly, tvoShowButtons, tvoShowLines, tvoShowRoot, tvoToolTips, tvoThemedDraw]
+      end
     end
     object Splitter6: TSplitter
       Left = 632
@@ -425,6 +511,15 @@ object frmPrincipal: TfrmPrincipal
       end
       object MenuItem15: TMenuItem
         Action = ActionVersoUltimo
+      end
+      object MenuItemNavSep: TMenuItem
+        Caption = '-'
+      end
+      object MenuItemNavNextFiltered: TMenuItem
+        Action = ActionVersoSeguinteFiltrado
+      end
+      object MenuItemNavPrevFiltered: TMenuItem
+        Action = ActionVersoAnteriorFiltrado
       end
     end
     object MenuItem20: TMenuItem
@@ -587,6 +682,20 @@ object frmPrincipal: TfrmPrincipal
       ImageIndex = 7
       OnExecute = ActionVersoAnteriorExecute
       ShortCut = 33
+    end
+    object ActionVersoSeguinteFiltrado: TAction
+      Caption = 'Next verse with status'
+      Enabled = False
+      Hint = 'Go to next verse with status'
+      OnExecute = ActionVersoSeguinteFiltradoExecute
+      ShortCut = 119
+    end
+    object ActionVersoAnteriorFiltrado: TAction
+      Caption = 'Previous verse with status'
+      Enabled = False
+      Hint = 'Go to previous verse with status'
+      OnExecute = ActionVersoAnteriorFiltradoExecute
+      ShortCut = 8311
     end
     object ActionSugerirAssociacao: TAction
       Caption = 'Auto-associate'

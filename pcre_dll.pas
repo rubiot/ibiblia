@@ -670,31 +670,77 @@ const
   ;
 
 
-function PCRE_MAJOR; external PCRE_DLL_NAME name 'pcre_major';
-function PCRE_MINOR; external PCRE_DLL_NAME name 'pcre_minor';
-function PCRE_DATE; external PCRE_DLL_NAME name 'pcre_date';
+const
+  CRUNTIME_DLL = 'msvcrt.dll';
 
-function pcre_setlocale; external PCRE_DLL_NAME name 'pcre_setlocale';
+function c_setlocale(category: Integer; locale: PChar): PChar; cdecl; external CRUNTIME_DLL name 'setlocale';
+procedure c_free(p: Pointer); cdecl; external CRUNTIME_DLL name 'free';
+function c_malloc(size: PtrUInt): Pointer; cdecl; external CRUNTIME_DLL name 'malloc';
 
-function isalnum(c: Integer): Integer; cdecl; external PCRE_DLL_NAME name 'pcre_isalnum';
-function isalpha(c: Integer): Integer; cdecl; external PCRE_DLL_NAME name 'pcre_isalpha';
-function iscntrl(c: Integer): Integer; cdecl; external PCRE_DLL_NAME name 'pcre_iscntrl';
-function isdigit(c: Integer): Integer; cdecl; external PCRE_DLL_NAME name 'pcre_isdigit';
-function isgraph(c: Integer): Integer; cdecl; external PCRE_DLL_NAME name 'pcre_isgraph';
-function islower(c: Integer): Integer; cdecl; external PCRE_DLL_NAME name 'pcre_islower';
-function isprint(c: Integer): Integer; cdecl; external PCRE_DLL_NAME name 'pcre_isprint';
-function ispunct(c: Integer): Integer; cdecl; external PCRE_DLL_NAME name 'pcre_ispunct';
-function isspace(c: Integer): Integer; cdecl; external PCRE_DLL_NAME name 'pcre_isspace';
-function isupper(c: Integer): Integer; cdecl; external PCRE_DLL_NAME name 'pcre_isupper';
-function isxdigit(c: Integer): Integer; cdecl; external PCRE_DLL_NAME name 'pcre_isxdigit';
+function isalnum(c: Integer): Integer; cdecl; external CRUNTIME_DLL name 'isalnum';
+function isalpha(c: Integer): Integer; cdecl; external CRUNTIME_DLL name 'isalpha';
+function iscntrl(c: Integer): Integer; cdecl; external CRUNTIME_DLL name 'iscntrl';
+function isdigit(c: Integer): Integer; cdecl; external CRUNTIME_DLL name 'isdigit';
+function isgraph(c: Integer): Integer; cdecl; external CRUNTIME_DLL name 'isgraph';
+function islower(c: Integer): Integer; cdecl; external CRUNTIME_DLL name 'islower';
+function isprint(c: Integer): Integer; cdecl; external CRUNTIME_DLL name 'isprint';
+function ispunct(c: Integer): Integer; cdecl; external CRUNTIME_DLL name 'ispunct';
+function isspace(c: Integer): Integer; cdecl; external CRUNTIME_DLL name 'isspace';
+function isupper(c: Integer): Integer; cdecl; external CRUNTIME_DLL name 'isupper';
+function isxdigit(c: Integer): Integer; cdecl; external CRUNTIME_DLL name 'isxdigit';
 
-function pcre_set_malloc; external PCRE_DLL_NAME name 'pcre_set_malloc';
-function pcre_set_free; external PCRE_DLL_NAME name 'pcre_set_free';
-function pcre_set_stack_malloc; external PCRE_DLL_NAME name 'pcre_set_stack_malloc';
-function pcre_set_stack_free; external PCRE_DLL_NAME name 'pcre_set_stack_free';
+function PCRE_MAJOR: Integer; cdecl; begin Result := 8; end;
+function PCRE_MINOR: Integer; cdecl; begin Result := 0; end;
+function PCRE_DATE: PChar; cdecl; begin Result := '2020-01-01'; end;
 
-function pcre_malloc; external PCRE_DLL_NAME name 'pcre_malloc_ex';
-procedure pcre_free; external PCRE_DLL_NAME name 'pcre_free_ex';
+function pcre_setlocale(category: Integer; locale: PChar): PChar; cdecl;
+begin
+  Result := c_setlocale(category, locale);
+end;
+
+var
+  GlobalPcreMalloc: TPcreMemAlloc = nil;
+  GlobalPcreFree: TPcreMemFree = nil;
+
+function pcre_set_malloc(Func: TPcreMemAlloc): TPcreMemAlloc; cdecl;
+begin
+  Result := GlobalPcreMalloc;
+  GlobalPcreMalloc := Func;
+end;
+
+function pcre_set_free(Proc: TPcreMemFree): TPcreMemFree; cdecl;
+begin
+  Result := GlobalPcreFree;
+  GlobalPcreFree := Proc;
+end;
+
+function pcre_set_stack_malloc(Func: TPcreMemAlloc): TPcreMemAlloc; cdecl;
+begin
+  Result := Func;
+end;
+
+function pcre_set_stack_free(Proc: TPcreMemFree): TPcreMemFree; cdecl;
+begin
+  Result := Proc;
+end;
+
+function pcre_malloc(size: LongWord): Pointer; cdecl;
+begin
+  if Assigned(GlobalPcreMalloc) then
+    Result := GlobalPcreMalloc(size)
+  else
+    Result := c_malloc(size);
+end;
+
+procedure pcre_free(P: Pointer); cdecl;
+begin
+  if P = nil then exit;
+  if Assigned(GlobalPcreFree) then
+    GlobalPcreFree(P)
+  else
+    c_free(P);
+end;
+
 
 function pcre_compile; external PCRE_DLL_NAME name 'pcre_compile';
 function pcre_compile2; external PCRE_DLL_NAME name 'pcre_compile2';
@@ -716,14 +762,31 @@ function regexec; external PCRE_DLL_NAME name 'regexec';
 function regerror; external PCRE_DLL_NAME name 'regerror';
 procedure regfree; external PCRE_DLL_NAME name 'regfree';
 
-function pcre_set_callout_handler; external PCRE_DLL_NAME name 'pcre_set_callout_handler';
 function pcre_config; external PCRE_DLL_NAME name 'pcre_config';
 function pcre_copy_named_substring; external PCRE_DLL_NAME name 'pcre_copy_named_substring';
 function pcre_get_named_substring; external PCRE_DLL_NAME name 'pcre_get_named_substring';
 function pcre_get_stringnumber; external PCRE_DLL_NAME name 'pcre_get_stringnumber';
 function pcre_get_stringtable_entries; external PCRE_DLL_NAME name 'pcre_get_stringtable_entries';
-function pcre_extra_set_match_limit; external PCRE_DLL_NAME name 'pcre_extra_set_match_limit';
-function pcre_extra_set_callout_data; external PCRE_DLL_NAME name 'pcre_extra_set_callout_data';
+
+var
+  GlobalPcreCallout: TPcreCalloutCallback = nil;
+
+function pcre_set_callout_handler(Func: TPcreCalloutCallback): TPcreCalloutCallback; cdecl;
+begin
+  Result := GlobalPcreCallout;
+  GlobalPcreCallout := Func;
+end;
+
+function pcre_extra_set_match_limit(var pcre_extra: TPcre_extraH; value: Longint): Integer; cdecl;
+begin
+  Result := 0;
+end;
+
+function pcre_extra_set_callout_data(var pcre_extra: TPcre_extraH; Data: Pointer): Integer; cdecl;
+begin
+  Result := 0;
+end;
+
 
 //===========================================================================
 //

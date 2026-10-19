@@ -113,6 +113,9 @@ type
     FOnSintagmaClick: TOnSintagmaClickEvent;
     FClosing: boolean;
     FAutoSave: boolean;
+    FFilterStatus: Integer;
+    FTotaisSituacao: array[0..3] of Integer;
+    procedure SetFilterStatus(AValue: Integer);
     function GetCaminho: string;
     function GetChapterViewText: TTipoTextoBiblico;
     function GetComentarios: string;
@@ -238,6 +241,14 @@ type
     function GetTextDescription(text: TTipoTextoBiblico): string;
     procedure Vacuum;
     function GetSituacaoDescricao(index: Integer): string;
+    procedure FiltrarArvore(AStatus: Integer);
+    function IrParaVersiculoSeguinteComSituacao(AStatus: Integer): boolean;
+    function IrParaVersiculoAnteriorComSituacao(AStatus: Integer): boolean;
+    function ContarVersiculosPorSituacao(AStatus: Integer): Integer;
+    function ObterTotalVersiculos: Integer;
+
+    property FilterStatus: Integer read FFilterStatus write SetFilterStatus;
+    property TotalVersiculos: Integer read ObterTotalVersiculos;
 
     property FileName: string read FFileName;
     property FormattedReference: string read GetFormattedReference;
@@ -697,12 +708,24 @@ begin
 end;
 
 procedure TProjeto.SetSituacao(const AValue: Integer);
+var
+  oldVal, newVal: Integer;
 begin
   if FClosing or (FTblPares.FieldByName('pare_situacao').AsInteger = AValue) then
     exit;
+
+  oldVal := FTblPares.FieldByName('pare_situacao').AsInteger;
+  newVal := IfThen((AValue < 0) or (AValue > 3), 1, AValue);
+
   FTblPares.Edit;
-  FTblPares.FieldByName('pare_situacao').AsInteger := IfThen((AValue < 0) or (AValue > 3), 1, AValue);
+  FTblPares.FieldByName('pare_situacao').AsInteger := newVal;
   FTblPares.Post;
+
+  if (oldVal >= 0) and (oldVal <= 3) then
+    dec(FTotaisSituacao[oldVal]);
+  if (newVal >= 0) and (newVal <= 3) then
+    inc(FTotaisSituacao[newVal]);
+
   AtualizarArvore(ID);
 end;
 
@@ -1789,14 +1812,18 @@ var
   sl, sc: array[0..3] of smallint;
   b: boolean;
 begin
-  if not assigned(FArvore) then exit;
-  // POSSIBLE BUG: TopItem returns the first VISIBLE node, not the top SELECTED node!!!
-  n := FArvore.TopItem.GetFirstChild.GetFirstChild; // nó versículo atual
+  if not assigned(FArvore) or (FArvore.Items.Count = 0) then exit;
+
+  ul := FArvore.Items[0];
+  if not assigned(ul) then exit;
+  uc := ul.GetFirstChild;
+  if not assigned(uc) then exit;
+  n := uc.GetFirstChild;
+  if not assigned(n) then exit;
+
   l := OffsetLivros[FEscopo] + 1; // livro atual
   c := 1;  // capítulo atual
   v := 1;  // versículo atual
-  ul := FArvore.TopItem; // nó do livro atual
-  uc := FArvore.TopItem.GetFirstChild; // nó do capítulo atual
   qv := 0; // índice no vetor QVersiculos
   qc := 0; // índice no vetor QCapitulos
 
@@ -1810,7 +1837,14 @@ begin
   sl[2] := 0;
   sl[3] := 0;
 
-  VersiculoInicial;
+  FTotaisSituacao[0] := 0;
+  FTotaisSituacao[1] := 0;
+  FTotaisSituacao[2] := 0;
+  FTotaisSituacao[3] := 0;
+
+  StartScrollingSession;
+  try
+    VersiculoInicial;
 
   while not FTblPares.EOF do
   begin
@@ -1881,6 +1915,7 @@ begin
       inc(qv);
     end;
     inc(sc[Situacao]);
+    inc(FTotaisSituacao[Situacao]);
     n.ImageIndex := Situacao;
     n.SelectedIndex := n.ImageIndex + 4;
 
@@ -1927,6 +1962,9 @@ begin
       ul.ImageIndex := 1;
     ul.SelectedIndex := ul.ImageIndex + 4;
   end;
+  finally
+    FinishScrollingSession;
+  end;
 end;
 
 procedure TProjeto.AtualizarArvore(id: string);
@@ -1935,9 +1973,36 @@ var
   al, ac: array[0..3] of smallint;
   nl, nc, nv, n: TTreeNode;
   b: boolean;
+  targetBook: string;
 begin
-  if not assigned(FArvore) or FClosing then
+  if not assigned(FArvore) or FClosing or (FArvore.Items.Count = 0) then
     exit;
+
+  if (FFilterStatus >= 0) and (FFilterStatus <= 3) then
+  begin
+    targetBook := NLivros[FEscopo][BookID-OffsetLivros[FEscopo]-1];
+    nl := FArvore.Items[0];
+    while assigned(nl) and (nl.Text <> targetBook) do
+      nl := nl.GetNextSibling;
+    if assigned(nl) then
+    begin
+      nc := nl.GetFirstChild;
+      while assigned(nc) and (nc.Text <> IntToStr(Chapter)) do
+        nc := nc.GetNextSibling;
+      if assigned(nc) then
+      begin
+        nv := nc.GetFirstChild;
+        while assigned(nv) and (nv.Text <> IntToStr(Verse)) do
+          nv := nv.GetNextSibling;
+        if assigned(nv) then
+        begin
+          nv.ImageIndex := Situacao;
+          nv.SelectedIndex := nv.ImageIndex + 4;
+        end;
+      end;
+    end;
+    exit;
+  end;
 
   al[0] := 0; al[1] := 0; al[2] := 0; al[3] := 0;
   ac[0] := 0; ac[1] := 0; ac[2] := 0; ac[3] := 0;
@@ -2018,27 +2083,170 @@ end;
 
 procedure TProjeto.SelectTreeNode(id: string);
 var
-  b, c, v, i: smallint;
-  node: TTreeNode;
+  b, c, v: smallint;
+  targetBook: string;
+  nl, nc, nv: TTreeNode;
 begin
-  if not assigned(FArvore) or FClosing then
+  if not assigned(FArvore) or FClosing or (FArvore.Items.Count = 0) then
     exit;
 
   SScanf(id, '%d,%d,%d', [@b, @c, @v]);
+  targetBook := NLivros[FEscopo][b-OffsetLivros[FEscopo]-1];
 
-  node := FArvore.Items[0];
-  for i:=b-OffsetLivros[FEscopo]-1 downto 1 do
-    node := node.GetNextSibling;
+  nl := FArvore.Items[0];
+  while assigned(nl) and (nl.Text <> targetBook) do
+    nl := nl.GetNextSibling;
 
-  node := node.GetFirstChild;
-  for i:=c-1 downto 1 do
-    node := node.GetNextSibling;
+  if not assigned(nl) then exit;
 
-  node := node.GetFirstChild;
-  for i:=v-1 downto 1 do
-    node := node.GetNextSibling;
+  nc := nl.GetFirstChild;
+  while assigned(nc) and (nc.Text <> IntToStr(c)) do
+    nc := nc.GetNextSibling;
 
-  node.Selected := true;
+  if not assigned(nc) then exit;
+
+  nv := nc.GetFirstChild;
+  while assigned(nv) and (nv.Text <> IntToStr(v)) do
+    nv := nv.GetNextSibling;
+
+  if assigned(nv) then
+    nv.Selected := true
+  else
+    nc.Selected := true;
+end;
+
+procedure TProjeto.SetFilterStatus(AValue: Integer);
+begin
+  if FFilterStatus = AValue then exit;
+  FiltrarArvore(AValue);
+end;
+
+procedure TProjeto.FiltrarArvore(AStatus: Integer);
+var
+  b, c, v: smallint;
+  curBookID, curChapter: smallint;
+  nl, nc, nv: TTreeNode;
+  bName: string;
+begin
+  if not assigned(FArvore) or FClosing then exit;
+
+  FFilterStatus := AStatus;
+  FArvore.OnChange := nil;
+  FArvore.BeginUpdate;
+  try
+    FArvore.Items.Clear;
+
+    if (AStatus < 0) or (AStatus > 3) then
+    begin
+      PreencherArvore;
+      AtualizarArvore;
+      exit;
+    end;
+
+    curBookID := -1;
+    curChapter := -1;
+    nl := nil;
+    nc := nil;
+
+    StartScrollingSession;
+    try
+      VersiculoInicial;
+      while not FTblPares.EOF do
+      begin
+        if Situacao = AStatus then
+        begin
+          SScanf(ID, '%d,%d,%d', [@b, @c, @v]);
+
+          if b <> curBookID then
+          begin
+            curBookID := b;
+            curChapter := -1;
+            bName := NLivros[FEscopo][b - OffsetLivros[FEscopo] - 1];
+            nl := FArvore.Items.Add(nil, bName);
+            nl.ImageIndex := AStatus;
+            nl.SelectedIndex := AStatus + 4;
+          end;
+
+          if c <> curChapter then
+          begin
+            curChapter := c;
+            nc := FArvore.Items.AddChild(nl, IntToStr(c));
+            nc.ImageIndex := AStatus;
+            nc.SelectedIndex := AStatus + 4;
+          end;
+
+          nv := FArvore.Items.AddChild(nc, IntToStr(v));
+          nv.ImageIndex := AStatus;
+          nv.SelectedIndex := AStatus + 4;
+        end;
+        VersiculoSeguinte;
+      end;
+    finally
+      FinishScrollingSession;
+    end;
+
+    FArvore.FullExpand;
+  finally
+    FArvore.EndUpdate;
+    FArvore.OnChange := @OnMudancaVersiculo;
+  end;
+
+  SelectTreeNode(ID);
+end;
+
+function TProjeto.IrParaVersiculoSeguinteComSituacao(AStatus: Integer): boolean;
+var
+  originalMarker: string;
+begin
+  result := false;
+  if not assigned(FTblPares) or FTblPares.EOF then exit;
+
+  originalMarker := ID;
+  while not FTblPares.EOF do
+  begin
+    VersiculoSeguinte;
+    if (not FTblPares.EOF) and (Situacao = AStatus) then
+    begin
+      result := true;
+      exit;
+    end;
+  end;
+
+  GoToReference(originalMarker);
+end;
+
+function TProjeto.IrParaVersiculoAnteriorComSituacao(AStatus: Integer): boolean;
+var
+  originalMarker: string;
+begin
+  result := false;
+  if not assigned(FTblPares) or FTblPares.BOF then exit;
+
+  originalMarker := ID;
+  while not FTblPares.BOF do
+  begin
+    VersiculoAnterior;
+    if (not FTblPares.BOF) and (Situacao = AStatus) then
+    begin
+      result := true;
+      exit;
+    end;
+  end;
+
+  GoToReference(originalMarker);
+end;
+
+function TProjeto.ContarVersiculosPorSituacao(AStatus: Integer): Integer;
+begin
+  if (AStatus >= 0) and (AStatus <= 3) then
+    result := FTotaisSituacao[AStatus]
+  else
+    result := 0;
+end;
+
+function TProjeto.ObterTotalVersiculos: Integer;
+begin
+  result := FTotaisSituacao[0] + FTotaisSituacao[1] + FTotaisSituacao[2] + FTotaisSituacao[3];
 end;
 
 constructor TProjeto.Criar;
@@ -2062,6 +2270,11 @@ begin
   FEscopo             := etNone;
   FClosing            := false;
   FVerseStrongsCountMode := scNone;
+  FFilterStatus := -1;
+  FTotaisSituacao[0] := 0;
+  FTotaisSituacao[1] := 0;
+  FTotaisSituacao[2] := 0;
+  FTotaisSituacao[3] := 0;
 
   FTemporizador          := TTimer.Create(nil);
   FTemporizador.Enabled  := false;
@@ -3157,25 +3370,39 @@ end;
 
 procedure TProjeto.Translate;
 var
-  bk: integer;
   node: TTreeNode;
+  bk: Integer;
+  mnu: TPopupMenu;
 begin
   UpdateDefaultSituacaoDescricao;
-  if not assigned(FArvore) then
+  if not assigned(FArvore) or (FArvore.Items.Count = 0) or (FEscopo = etNone) then
     exit;
 
+  // Safely translate whatever book nodes currently exist in the tree
   node := FArvore.Items[0];
-  for bk:=0 to QLivros[FEscopo]-1 do
+  while assigned(node) do
   begin
-    node.Text := NLivros[FEscopo][bk];
+    if node.Parent = nil then
+    begin
+      bk := PtrInt(node.Data);
+      if (bk > 0) and (bk <= 66) then
+      begin
+        if (bk - OffsetLivros[FEscopo] - 1 >= 0) and (bk - OffsetLivros[FEscopo] - 1 < QLivros[FEscopo]) then
+          node.Text := NLivros[FEscopo][bk - OffsetLivros[FEscopo] - 1];
+      end
+      else if (node.Index >= 0) and (node.Index < QLivros[FEscopo]) then
+        node.Text := NLivros[FEscopo][node.Index];
+    end;
     node := node.GetNextSibling;
   end;
 
   if assigned(FArvore.PopupMenu) then
   begin
-    FArvore.PopupMenu.Free;
-    FArvore.PopupMenu := CreateBibleTreeContextMenu;
+    mnu := FArvore.PopupMenu;
+    FArvore.PopupMenu := nil;
+    mnu.Free;
   end;
+  FArvore.PopupMenu := CreateBibleTreeContextMenu;
 end;
 
 procedure TProjeto.ToggleDisplayTags;

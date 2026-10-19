@@ -13,7 +13,7 @@ uses
   lclintf,
   {$ENDIF}
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, Menus,
-  ActnList, ComCtrls, ExtCtrls, StdCtrls, Projeto, IniFiles, Math,
+  ActnList, ComCtrls, ExtCtrls, StdCtrls, Buttons, Projeto, IniFiles, Math,
   Syntagm, LCLTranslator, unitabout, PCRE, Versiculo, LCLProc, LazLogger,
   LCLType, LazUTF8, ChapterView, UnitPleaseWait;
 
@@ -131,6 +131,18 @@ type
     ToolButton7: TToolButton;
     ToolButton8: TToolButton;
     ToolButton9: TToolButton;
+    PanelTreeNav: TPanel;
+    PanelFilter: TPanel;
+    PanelFilterButtons: TPanel;
+    ComboBoxStatusFilter: TComboBox;
+    SpeedButtonPrevFiltered: TSpeedButton;
+    SpeedButtonNextFiltered: TSpeedButton;
+    LabelFilterCount: TLabel;
+    ActionVersoSeguinteFiltrado: TAction;
+    ActionVersoAnteriorFiltrado: TAction;
+    MenuItemNavSep: TMenuItem;
+    MenuItemNavNextFiltered: TMenuItem;
+    MenuItemNavPrevFiltered: TMenuItem;
     TreeView1: TTreeView;
     procedure ActionApplyPatchExecute(Sender: TObject);
     procedure ActionExportarExecute(Sender: TObject);
@@ -183,6 +195,13 @@ type
     procedure RadioGroupStatusSelectionChanged(Sender: TObject);
     procedure ChapterViewTabCtrlChange(Sender: TObject);
     procedure ToolButtonExitClick(Sender: TObject);
+    procedure ComboBoxStatusFilterChange(Sender: TObject);
+    procedure SpeedButtonPrevFilteredClick(Sender: TObject);
+    procedure SpeedButtonNextFilteredClick(Sender: TObject);
+    procedure ActionVersoSeguinteFiltradoExecute(Sender: TObject);
+    procedure ActionVersoAnteriorFiltradoExecute(Sender: TObject);
+    procedure AtualizarContadorFiltro;
+    procedure AtualizarItensFiltro;
   private
     { private declarations }
     FPopupTrigger: TPopupTrigger;
@@ -219,6 +238,13 @@ const
   MAX_MRU = 10;
 
 resourcestring
+  SStatusNotAssociated = 'Not associated';
+  SStatusAssociating = 'Associating';
+  SStatusNeedsReview = 'Needs review';
+  SStatusAssociated = 'Associated!';
+  SStatusAllVerses = 'All verses';
+  SNoMoreVersesWithStatus = 'No more verses with status "%s"';
+  SNoPrecedingVersesWithStatus = 'No preceding verses with status "%s"';
   SRollbackChanges = 'Rollback changes';
   SRollbackChangesConfirmation = 'Are you sure you want to rollback all changes to this verse?';
   SSourceText = 'Source';
@@ -471,6 +497,13 @@ begin
   FChapterView.Clear;
   //ActionExportarDestinoComStrongs.Enabled := false;
   //ActionExportarTextoInterlinear.Enabled := false;
+  ComboBoxStatusFilter.Enabled := false;
+  ComboBoxStatusFilter.ItemIndex := 0;
+  ActionVersoSeguinteFiltrado.Enabled := false;
+  ActionVersoAnteriorFiltrado.Enabled := false;
+  SpeedButtonNextFiltered.Enabled := false;
+  SpeedButtonPrevFiltered.Enabled := false;
+  LabelFilterCount.Caption := '';
   StatusBar1.SimpleText := '';
 end;
 
@@ -603,6 +636,14 @@ begin
     FChapterView.Enabled := true;
     FChapterView.Project := ProjetoAtual;
 
+    ComboBoxStatusFilter.Enabled := true;
+    ComboBoxStatusFilter.ItemIndex := 0;
+    ActionVersoSeguinteFiltrado.Enabled := true;
+    ActionVersoAnteriorFiltrado.Enabled := true;
+    SpeedButtonNextFiltered.Enabled := true;
+    SpeedButtonPrevFiltered.Enabled := true;
+    AtualizarItensFiltro;
+
     StatusBar1.SimpleText := '';
   finally
     Enabled := true;
@@ -626,6 +667,7 @@ begin
     Caption := format('iBiblia | %s | %s (%s)', [ProjetoAtual.FormattedReference, ProjetoAtual.ObterInfo('descricao'), ProjetoAtual.FileName]);
     RadioGroupStatus.SetFocus;
     ActionSyncTheWordVerseExecute(Sender);
+    AtualizarContadorFiltro;
   end;
 end;
 
@@ -795,7 +837,7 @@ begin
   Translate;
 
   CarregarMRU(MenuItemRecent);
-  TreeView1.Width := opts.ReadInteger('leiaute', 'principal.treeview.largura', TreeView1.Width);
+  PanelTreeNav.Width := opts.ReadInteger('leiaute', 'principal.treeview.largura', PanelTreeNav.Width);
 
   {$IFDEF WINDOWS}
   FRxMorpho := RegexCreate('^(\S+)( l="(.*?)")?$', [rcoUTF8]);
@@ -816,7 +858,7 @@ begin
     opts.WriteInteger('leiaute', 'principal.topo', Top);
     opts.WriteInteger('leiaute', 'principal.esquerda', Left);
   end;
-  opts.WriteInteger('leiaute', 'principal.treeview.largura', TreeView1.Width);
+  opts.WriteInteger('leiaute', 'principal.treeview.largura', PanelTreeNav.Width);
   opts.WriteInteger('leiaute', 'principal.splitter2.topo', Splitter2.Top);
   opts.WriteInteger('leiaute', 'principal.splitter3.topo', Splitter3.Top);
   opts.WriteInteger('leiaute', 'principal.splitter4.topo', Splitter4.Top);
@@ -877,6 +919,13 @@ begin
     DoOpenProject(ParamStr(1))
   else if (MenuItemRecent.Count > 0) and FileExists(MenuItemRecent.Items[0].Caption) then
     DoOpenProject(MenuItemRecent.Items[0].Caption);
+
+  // First-time startup check for new version changelog popup
+  if opts.ReadString('geral', 'last_seen_changelog_version', '') <> '1.0.0.69' then
+  begin
+    ShowChangelog(Self);
+    opts.WriteString('geral', 'last_seen_changelog_version', '1.0.0.69');
+  end;
 end;
 
 procedure TFrmPrincipal.MenuItem22Click(Sender: TObject);
@@ -1113,7 +1162,10 @@ end;
 procedure TFrmPrincipal.RadioGroupStatusSelectionChanged(Sender: TObject);
 begin
   if ProjetoAtual <> nil then
+  begin
     ProjetoAtual.Situacao := RadioGroupStatus.ItemIndex;
+    AtualizarItensFiltro;
+  end;
 end;
 
 procedure TFrmPrincipal.ChapterViewTabCtrlChange(Sender: TObject);
@@ -1156,18 +1208,41 @@ end;
 {$ENDIF}
 
 procedure TFrmPrincipal.Translate;
-var i: Integer;
+var
+  i: Integer;
+  savedSituacao: Integer;
 begin
   UpdateDefaultSituacaoDescricao;
-  with RadioGroupStatus.Items do
-  begin
-    Clear;
+
+  RadioGroupStatus.OnSelectionChanged := nil;
+  try
+    savedSituacao := -1;
     if Assigned(ProjetoAtual) then
+      savedSituacao := ProjetoAtual.Situacao;
+
+    with RadioGroupStatus.Items do
     begin
-      for i := 0 to 3 do
-        Add(ProjetoAtual.GetSituacaoDescricao(i));
+      Clear;
+      if Assigned(ProjetoAtual) then
+      begin
+        for i := 0 to 3 do
+          Add(ProjetoAtual.GetSituacaoDescricao(i));
+      end
+      else
+      begin
+        Add(SStatusNotAssociated);
+        Add(SStatusAssociating);
+        Add(SStatusNeedsReview);
+        Add(SStatusAssociated);
+      end;
     end;
+
+    if (savedSituacao >= 0) and (savedSituacao <= 3) then
+      RadioGroupStatus.ItemIndex := savedSituacao;
+  finally
+    RadioGroupStatus.OnSelectionChanged := @RadioGroupStatusSelectionChanged;
   end;
+
   with ChapterViewTabCtrl do
   begin
     Tabs.Clear;
@@ -1177,6 +1252,7 @@ begin
     Tabs.Add(SReference2Text);
     Tabs.Add(SInterlinearText);
   end;
+
   if assigned(FormNovoProjeto1) then
     FormNovoProjeto1.Translate;
   if assigned(FormPropProjeto1) then
@@ -1185,6 +1261,8 @@ begin
     ProjetoAtual.Translate;
   if assigned(FChapterView) then
     FChapterView.Translate;
+
+  AtualizarItensFiltro;
 end;
 
 procedure TFrmPrincipal.DoOpenProject(filename: string);
@@ -1223,6 +1301,13 @@ begin
   ActionApplyPatch.Enabled := true;
   //ActionExportarDestinoComStrongs.Enabled := true;
   //ActionExportarTextoInterlinear.Enabled := true;
+  ComboBoxStatusFilter.Enabled := true;
+  ComboBoxStatusFilter.ItemIndex := 0;
+  ActionVersoSeguinteFiltrado.Enabled := true;
+  ActionVersoAnteriorFiltrado.Enabled := true;
+  SpeedButtonNextFiltered.Enabled := true;
+  SpeedButtonPrevFiltered.Enabled := true;
+  AtualizarItensFiltro;
   StatusBar1.SimpleText := '';
 
   {ScrollBoxRef1Verse.Visible := false;
@@ -1235,5 +1320,129 @@ begin
   {$ENDIF}
 end;
 
-end.
 
+procedure TFrmPrincipal.ComboBoxStatusFilterChange(Sender: TObject);
+begin
+  if ProjetoAtual = nil then exit;
+  case ComboBoxStatusFilter.ItemIndex of
+    0: ProjetoAtual.FiltrarArvore(-1);
+    1: ProjetoAtual.FiltrarArvore(0);
+    2: ProjetoAtual.FiltrarArvore(1);
+    3: ProjetoAtual.FiltrarArvore(2);
+    4: ProjetoAtual.FiltrarArvore(3);
+  else
+    ProjetoAtual.FiltrarArvore(-1);
+  end;
+  AtualizarContadorFiltro;
+end;
+
+procedure TFrmPrincipal.SpeedButtonNextFilteredClick(Sender: TObject);
+begin
+  ActionVersoSeguinteFiltrado.Execute;
+end;
+
+procedure TFrmPrincipal.SpeedButtonPrevFilteredClick(Sender: TObject);
+begin
+  ActionVersoAnteriorFiltrado.Execute;
+end;
+
+procedure TFrmPrincipal.ActionVersoSeguinteFiltradoExecute(Sender: TObject);
+var
+  status: Integer;
+begin
+  if ProjetoAtual = nil then exit;
+  case ComboBoxStatusFilter.ItemIndex of
+    1: status := 0;
+    2: status := 1;
+    3: status := 2;
+    4: status := 3;
+  else
+    status := -1;
+  end;
+
+  if status = -1 then
+    ProjetoAtual.VersiculoSeguinte
+  else
+  begin
+    if not ProjetoAtual.IrParaVersiculoSeguinteComSituacao(status) then
+      ShowMessage(Format(SNoMoreVersesWithStatus, [RadioGroupStatus.Items[status]]));
+  end;
+end;
+
+procedure TFrmPrincipal.ActionVersoAnteriorFiltradoExecute(Sender: TObject);
+var
+  status: Integer;
+begin
+  if ProjetoAtual = nil then exit;
+  case ComboBoxStatusFilter.ItemIndex of
+    1: status := 0;
+    2: status := 1;
+    3: status := 2;
+    4: status := 3;
+  else
+    status := -1;
+  end;
+
+  if status = -1 then
+    ProjetoAtual.VersiculoAnterior
+  else
+  begin
+    if not ProjetoAtual.IrParaVersiculoAnteriorComSituacao(status) then
+      ShowMessage(Format(SNoPrecedingVersesWithStatus, [RadioGroupStatus.Items[status]]));
+  end;
+end;
+
+procedure TFrmPrincipal.AtualizarContadorFiltro;
+var
+  status: Integer;
+  cnt: Integer;
+begin
+  if ProjetoAtual = nil then
+  begin
+    LabelFilterCount.Caption := '';
+    exit;
+  end;
+
+  case ComboBoxStatusFilter.ItemIndex of
+    1: status := 0;
+    2: status := 1;
+    3: status := 2;
+    4: status := 3;
+  else
+    status := -1;
+  end;
+
+  if status = -1 then
+    LabelFilterCount.Caption := Format('%d verses', [ProjetoAtual.TotalVersiculos])
+  else
+  begin
+    cnt := ProjetoAtual.ContarVersiculosPorSituacao(status);
+    LabelFilterCount.Caption := Format('%d found', [cnt]);
+  end;
+end;
+
+procedure TFrmPrincipal.AtualizarItensFiltro;
+var
+  savedIndex: Integer;
+begin
+  if ProjetoAtual = nil then exit;
+  savedIndex := ComboBoxStatusFilter.ItemIndex;
+  ComboBoxStatusFilter.Items.BeginUpdate;
+  try
+    ComboBoxStatusFilter.Items.Clear;
+    ComboBoxStatusFilter.Items.Add(Format('%s (%d)', [SStatusAllVerses, ProjetoAtual.TotalVersiculos]));
+    ComboBoxStatusFilter.Items.Add(Format('%s (%d)', [ProjetoAtual.GetSituacaoDescricao(0), ProjetoAtual.ContarVersiculosPorSituacao(0)]));
+    ComboBoxStatusFilter.Items.Add(Format('%s (%d)', [ProjetoAtual.GetSituacaoDescricao(1), ProjetoAtual.ContarVersiculosPorSituacao(1)]));
+    ComboBoxStatusFilter.Items.Add(Format('%s (%d)', [ProjetoAtual.GetSituacaoDescricao(2), ProjetoAtual.ContarVersiculosPorSituacao(2)]));
+    ComboBoxStatusFilter.Items.Add(Format('%s (%d)', [ProjetoAtual.GetSituacaoDescricao(3), ProjetoAtual.ContarVersiculosPorSituacao(3)]));
+  finally
+    ComboBoxStatusFilter.Items.EndUpdate;
+    if (savedIndex >= 0) and (savedIndex < ComboBoxStatusFilter.Items.Count) then
+      ComboBoxStatusFilter.ItemIndex := savedIndex
+    else
+      ComboBoxStatusFilter.ItemIndex := 0;
+  end;
+  AtualizarContadorFiltro;
+end;
+
+end.

@@ -90,7 +90,7 @@ begin
           begin
             if nv.StateIndex = ImgIndexChecked then
             begin
-              result.Add(Format('%d,%d,%d', [Integer(nb.Data), Integer(nc.Data), Integer(nv.Data)]));
+              result.Add(Format('%d,%d,%d', [PtrInt(nb.Data), PtrInt(nc.Data), PtrInt(nv.Data)]));
               //DebugLn('Adding verse %s', [result[result.Count-1]]);
             end;
             nv := nv.GetNextSibling;
@@ -125,7 +125,7 @@ begin
           begin
             if nv.StateIndex = ImgIndexChecked then
             begin
-              result.Add(Integer(nv.Data));
+              result.Add(PtrInt(nv.Data));
               //DebugLn('Adding verse %s', [result[result.Count-1]]);
             end;
             nv := nv.GetNextSibling;
@@ -153,17 +153,17 @@ begin
   begin
     nb := Items.Add(nil, NLivros[FScope][b]);
     nb.StateIndex := 0;
-    nb.Data := Pointer(b + OffsetLivros[FScope] + 1);
+    nb.Data := Pointer(PtrInt(b + OffsetLivros[FScope] + 1));
     for c:=0 to QCapitulos[FScope][b]-1 do
     begin
       nc := Items.AddChild(nb, Format(SChapterFmt, [c+1]));
       nc.StateIndex := 0;
-      nc.Data := Pointer(c+1);
+      nc.Data := Pointer(PtrInt(c+1));
       for v:=0 to QVersiculos[FScope][QCapLivros[FScope][b] + c - 1]-1 do
       begin
         nv := Items.AddChild(nc, IntToStr(v+1));
         nv.StateIndex := 0;
-        nv.Data := Pointer(v+1);
+        nv.Data := Pointer(PtrInt(v+1));
       end;
     end;
   end;
@@ -185,20 +185,20 @@ begin
   begin
     Sscanf(ref, '%d,%d,%d', [@b, @c, @v]);
 
-    if (nb = nil) or (nb.Data <> Pointer(b)) then
+    if (nb = nil) or (PtrInt(nb.Data) <> b) then
     begin
       nb := Items.Add(nil, NLivros[etONT][b-1]);
-      nb.Data := Pointer(b);
+      nb.Data := Pointer(PtrInt(b));
       nc := nil;
     end;
 
-    if (nc = nil) or (nc.Data <> Pointer(c)) then
+    if (nc = nil) or (PtrInt(nc.Data) <> c) then
     begin
       nc := Items.AddChild(nb, Format(SChapterFmt, [c]));
-      nc.Data := Pointer(c);
+      nc.Data := Pointer(PtrInt(c));
     end;
 
-    Items.AddChild(nc, v.ToString).Data := Pointer(i);
+    Items.AddChild(nc, v.ToString).Data := Pointer(PtrInt(i));
     Inc(i);
   end;
   SelectAll;
@@ -252,7 +252,7 @@ begin
   end else if (htOnLabel in ht) and assigned(FOnVerseChange) then begin // node
     node := GetNodeAt(P.X, P.Y);
     if assigned(node.Parent) and assigned(node.Parent.Parent) then
-      FOnVerseChange(Integer(node.Data));
+      FOnVerseChange(PtrInt(node.Data));
   end;
 end;
 

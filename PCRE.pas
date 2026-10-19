@@ -2026,7 +2026,7 @@ end;
 procedure TNameIndexLookup.AddMapping(const theName: string; theIndex: Integer);
 
 begin
-  FMappings.AddObject(theName, Pointer(theIndex));
+  FMappings.AddObject(theName, Pointer(PtrInt(theIndex)));
 end;
 
 //===========================================================================
@@ -2040,7 +2040,7 @@ begin
   if not FMappings.Find(theName, theIndex) then
     raise ERegexBadGroupName.CreateFmt('Invalid group name ''%s''', [theName]);
 
-  Result := Integer(FMappings.Objects[theIndex]);
+  Result := PtrInt(FMappings.Objects[theIndex]);
 end;
 
 //===========================================================================
@@ -2049,7 +2049,7 @@ function TNameIndexLookup.GetMappingAt(theIndex: Integer): TNamedGroupInfo;
 
 begin
   Result.Name   := FMappings[theIndex];
-  Result.Index  := Integer(FMappings.Objects[theIndex]);
+  Result.Index  := PtrInt(FMappings.Objects[theIndex]);
 end;
 
 //===========================================================================

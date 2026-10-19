@@ -234,7 +234,7 @@ begin
   FXMLModificado        := false;
   FSelecao              := TSyntagmList.Create;
   FMostrarDicas         := false;
-  FNextAutoSelectWordMustHaveStrongMorpho := true;
+  FNextAutoSelectWordMustHaveStrongMorpho := false;
   //FFontePadrao          := TFont.Create;
   //FFontePadrao.Assign(TheOwner.Font);
   FCorAssociado         := clWindowText;

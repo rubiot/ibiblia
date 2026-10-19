@@ -386,12 +386,15 @@ begin
       if Assigned(NextUnassociated) then
       begin
         NextUnassociated.AddToSelection;
-        verse.OnClick(NextUnassociated); // triggers left-click on newly selected syntagm
+        if assigned(TVersiculo(NextUnassociated.VerseRef).OnClick) then
+          TVersiculo(NextUnassociated.VerseRef).OnClick(NextUnassociated);
       end;
     end;
   end;
 
   verse.Renderizar;
+  if assigned(verse.VersiculoPar) then
+    verse.VersiculoPar.Renderizar;
 end;
 
 procedure TSyntagm.DoOnMiddleClick(Sender: TObject; Shift: TShiftState);
@@ -524,16 +527,26 @@ begin
   begin // IsPointed
     FLabel.Font.Underline := true;
     if not IsSelected then
-      FLabel.Color:= clHighlight;
+    begin
+      FLabel.Transparent := false;
+      FLabel.Color := clHighlight;
+    end;
   end
   else
   begin // não IsPointed
     FLabel.Font.Underline := false;
     if IsSelected then
-      FLabel.Color:= clYellow
+    begin
+      FLabel.Transparent := false;
+      FLabel.Color := clYellow;
+    end
     else
-      FLabel.Color:= clDefault;
+    begin
+      FLabel.Color := clDefault;
+      FLabel.Transparent := true;
+    end;
   end;
+  FLabel.Repaint;
 end;
 
 procedure TSyntagm.SetAssociated(const AValue: boolean);
@@ -695,6 +708,16 @@ begin
       FLabel.Font.Size := round(FLabel.Font.Size * 0.7);
     FLabel.Font.Bold := FLabel.Font.Bold or (TVersiculo(FVerse).PalavrasComStrongEmNegrito and HasStrongs);
     IsAssociated     := FPairs.Count > 0;
+    if IsSelected then
+    begin
+      FLabel.Transparent := false;
+      FLabel.Color := clYellow;
+    end
+    else
+    begin
+      FLabel.Color := clDefault;
+      FLabel.Transparent := true;
+    end;
   end else
     FLabel := nil;
 
@@ -747,7 +770,11 @@ procedure TSyntagm.AddToSelection;
 begin
   FSelected := true;
   if TVersiculo(FVerse).Ativo and assigned(FLabel) then
-    FLabel.Color:= clYellow;
+  begin
+    FLabel.Transparent := false;
+    FLabel.Color := clYellow;
+    FLabel.Repaint;
+  end;
   TVersiculo(FVerse).Selecao.Add(Self);
 end;
 
@@ -755,7 +782,11 @@ procedure TSyntagm.RemoveFromSelection;
 begin
   FSelected := false;
   if TVersiculo(FVerse).Ativo and assigned(FLabel) then
-    FLabel.Color:= clWindow;
+  begin
+    FLabel.Color := clDefault;
+    FLabel.Transparent := true;
+    FLabel.Repaint;
+  end;
   TVersiculo(FVerse).Selecao.Remove(Self);
 end;
 
