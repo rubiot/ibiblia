@@ -1,0 +1,11 @@
+LazarusResources.Add('TFormPleaseWait','FORMDATA',[
+  'TPF0'#15'TFormPleaseWait'#14'FormPleaseWait'#4'Left'#3#178#2#6'Height'#2'\'#3
+  +'Top'#3#150#1#5'Width'#3#192#1#11'BorderIcons'#11#0#7'Caption'#6#21'Operatio'
+  +'n in progress'#12'ClientHeight'#2'\'#11'ClientWidth'#3#192#1#9'FormStyle'#7
+  +#11'fsStayOnTop'#8'Position'#7#16'poMainFormCenter'#10'LCLVersion'#6#8'2.0.1'
+  +'0.0'#0#12'TProgressBar'#12'ProgressBar1'#4'Left'#2' '#6'Height'#2#28#3'Top'
+  +#2'0'#5'Width'#3#136#1#5'Style'#7#11'pbstMarquee'#8'TabOrder'#2#0#0#0#6'TLab'
+  +'el'#6'Label1'#4'Left'#3#184#0#6'Height'#2#21#3'Top'#2#16#5'Width'#2'V'#7'Ca'
+  +'ption'#6#14'Please wait...'#11'Font.Height'#2#240#11'ParentColor'#8#10'Pare'
+  +'ntFont'#8#0#0#0
+]);

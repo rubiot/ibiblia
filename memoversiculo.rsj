@@ -1,0 +1,4 @@
+{"version":1,"strings":[
+{"hash":77103679,"name":"memoversiculo.schangeverse","sourcebytes":[67,104,97,110,103,101,32,118,101,114,115,101,32,116,101,120,116,63],"value":"Change verse text?"},
+{"hash":258802206,"name":"memoversiculo.schangeverseconfirmation","sourcebytes":[65,114,101,32,121,111,117,32,115,117,114,101,32,121,111,117,32,119,97,110,116,32,116,111,32,99,104,97,110,103,101,32,116,104,101,32,118,101,114,115,101,32,116,101,120,116,63,32,83,111,109,101,32,97,115,115,111,99,105,97,116,105,111,110,115,32,109,97,121,32,98,101,32,108,111,115,116,46],"value":"Are you sure you want to change the verse text? Some associations may be lost."}
+]}

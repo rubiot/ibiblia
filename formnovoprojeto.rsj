@@ -1,0 +1,11 @@
+{"version":1,"strings":[
+{"hash":132301524,"name":"formnovoprojeto.snewproject","sourcebytes":[78,101,119,32,112,114,111,106,101,99,116],"value":"New project"},
+{"hash":99721796,"name":"formnovoprojeto.schooseaname","sourcebytes":[80,108,101,97,115,101,32,99,104,111,111,115,101,32,97,32,110,97,109,101,32,102,111,114,32,121,111,117,114,32,112,114,111,106,101,99,116],"value":"Please choose a name for your project"},
+{"hash":244644116,"name":"formnovoprojeto.schooseatleastonetext","sourcebytes":[80,108,101,97,115,101,32,99,104,111,111,115,101,32,97,32,115,111,117,114,99,101,32,66,105,98,108,101,32,116,101,120,116],"value":"Please choose a source Bible text"},
+{"hash":209871556,"name":"formnovoprojeto.soldtestament","sourcebytes":[79,108,100,32,84,101,115,116,97,109,101,110,116],"value":"Old Testament"},
+{"hash":242180804,"name":"formnovoprojeto.snewtestament","sourcebytes":[78,101,119,32,84,101,115,116,97,109,101,110,116],"value":"New Testament"},
+{"hash":118820613,"name":"formnovoprojeto.swholebible","sourcebytes":[87,104,111,108,101,32,66,105,98,108,101],"value":"Whole Bible"},
+{"hash":41735268,"name":"formnovoprojeto.snewtestamentfilter","sourcebytes":[116,104,101,87,111,114,100,32,66,105,98,108,101,32,109,111,100,117,108,101,115,32,40,42,46,111,110,116,44,32,42,46,110,116,41,124,42,46,111,110,116,59,42,46,110,116],"value":"theWord Bible modules (*.ont, *.nt)|*.ont;*.nt"},
+{"hash":41735236,"name":"formnovoprojeto.soldtestamentfilter","sourcebytes":[116,104,101,87,111,114,100,32,66,105,98,108,101,32,109,111,100,117,108,101,115,32,40,42,46,111,110,116,44,32,42,46,111,116,41,124,42,46,111,110,116,59,42,46,111,116],"value":"theWord Bible modules (*.ont, *.ot)|*.ont;*.ot"},
+{"hash":53753668,"name":"formnovoprojeto.swholebiblefilter","sourcebytes":[116,104,101,87,111,114,100,32,66,105,98,108,101,32,109,111,100,117,108,101,115,32,40,42,46,111,110,116,44,32,42,46,111,116,44,32,42,46,110,116,41,124,42,46,111,110,116,59,42,46,111,116,59,42,46,110,116],"value":"theWord Bible modules (*.ont, *.ot, *.nt)|*.ont;*.ot;*.nt"}
+]}

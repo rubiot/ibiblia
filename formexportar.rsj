@@ -1,0 +1,8 @@
+{"version":1,"strings":[
+{"hash":15290313,"name":"formexportar.sthewordotmodule","sourcebytes":[116,104,101,87,111,114,100,32,66,105,98,108,101,32,109,111,100,117,108,101,32,40,42,46,111,116,41],"value":"theWord Bible module (*.ot)"},
+{"hash":15289545,"name":"formexportar.sthewordntmodule","sourcebytes":[116,104,101,87,111,114,100,32,66,105,98,108,101,32,109,111,100,117,108,101,32,40,42,46,110,116,41],"value":"theWord Bible module (*.nt)"},
+{"hash":244637545,"name":"formexportar.sthewordontmodule","sourcebytes":[116,104,101,87,111,114,100,32,66,105,98,108,101,32,109,111,100,117,108,101,32,40,42,46,111,110,116,41],"value":"theWord Bible module (*.ont)"},
+{"hash":243108265,"name":"formexportar.smyswordmodule","sourcebytes":[77,121,83,119,111,114,100,32,66,105,98,108,101,32,109,111,100,117,108,101,32,40,42,46,98,98,108,46,109,121,98,105,98,108,101,41],"value":"MySword Bible module (*.bbl.mybible)"},
+{"hash":113297173,"name":"formexportar.sanalyticalconcordance","sourcebytes":[65,110,97,108,121,116,105,99,97,108,67,111,110,99,111,114,100,97,110,99,101],"value":"AnalyticalConcordance"},
+{"hash":162449669,"name":"formexportar.ssyntheticconcordance","sourcebytes":[83,121,110,116,104,101,116,105,99,67,111,110,99,111,114,100,97,110,99,101],"value":"SyntheticConcordance"}
+]}

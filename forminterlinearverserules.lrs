@@ -1,0 +1,35 @@
+LazarusResources.Add('TFormInterlinearVerseRules','FORMDATA',[
+  'TPF0'#26'TFormInterlinearVerseRules'#25'FormInterlinearVerseRules'#4'Left'#3
+  +#242#1#6'Height'#3#225#0#3'Top'#3':'#1#5'Width'#3'X'#3#7'Caption'#6#28'Inter'
+  +'linear view verse rules'#12'ClientHeight'#3#225#0#11'ClientWidth'#3'X'#3#8
+  +'Position'#7#17'poOwnerFormCenter'#10'LCLVersion'#6#8'2.0.10.0'#0#7'TButton'
+  +#8'ButtonOK'#4'Left'#3#255#2#6'Height'#2#25#3'Top'#3#184#0#5'Width'#2'K'#7'A'
+  +'nchors'#11#7'akRight'#8'akBottom'#0#7'Caption'#6#2'OK'#7'Default'#9#11'Moda'
+  +'lResult'#2#1#7'OnClick'#7#13'ButtonOKClick'#8'TabOrder'#2#0#0#0#7'TButton'#7
+  +'Button2'#4'Left'#3#152#2#6'Height'#2#25#3'Top'#3#184#0#5'Width'#2'K'#7'Anch'
+  +'ors'#11#7'akRight'#8'akBottom'#0#6'Cancel'#9#7'Caption'#6#6'Cancel'#11'Moda'
+  +'lResult'#2#2#8'TabOrder'#2#1#0#0#12'TPageControl'#21'PageControlVerseRules'
+  +#4'Left'#2#8#6'Height'#3#167#0#3'Top'#2#8#5'Width'#3'H'#3#10'ActivePage'#7#9
+  +'TabSheet1'#7'Anchors'#11#5'akTop'#6'akLeft'#7'akRight'#8'akBottom'#0#8'TabI'
+  +'ndex'#2#0#8'TabOrder'#2#2#0#9'TTabSheet'#9'TabSheet1'#7'Caption'#6#11'Inter'
+  +'linear'#12'ClientHeight'#3#139#0#11'ClientWidth'#3'@'#3#0#11'TStringGrid'#21
+  +'StringGridInterlinear'#4'Left'#2#0#6'Height'#3#139#0#3'Top'#2#0#5'Width'#3
+  +'@'#3#5'Align'#7#8'alClient'#8'ColCount'#2#4#7'Columns'#14#1#13'Title.Captio'
+  +'n'#6#4'From'#0#1#13'Title.Caption'#6#2'To'#0#1#11'ButtonStyle'#7#17'cbsChec'
+  +'kboxColumn'#13'Title.Caption'#6#6'Enable'#0#1#11'ButtonStyle'#7#17'cbsCheck'
+  +'boxColumn'#13'Title.Caption'#6#6'Export'#0#0#9'FixedCols'#2#0#7'Options'#11
+  +#15'goFixedVertLine'#15'goFixedHorzLine'#10'goVertLine'#10'goHorzLine'#13'go'
+  +'RangeSelect'#11'goColSizing'#9'goEditing'#13'goAutoAddRows'#18'goAlwaysShow'
+  +'Editor'#18'goDblClickAutoSize'#14'goSmoothScroll'#0#8'RowCount'#2#1#8'TabOr'
+  +'der'#2#0#0#0#0#9'TTabSheet'#9'TabSheet2'#7'Caption'#6#11'Intralinear'#12'Cl'
+  +'ientHeight'#3#139#0#11'ClientWidth'#3'@'#3#0#11'TStringGrid'#21'StringGridI'
+  +'ntralinear'#4'Left'#2#0#6'Height'#3#139#0#3'Top'#2#0#5'Width'#3'@'#3#5'Alig'
+  +'n'#7#8'alClient'#8'ColCount'#2#4#7'Columns'#14#1#13'Title.Caption'#6#4'From'
+  +#0#1#13'Title.Caption'#6#2'To'#0#1#11'ButtonStyle'#7#17'cbsCheckboxColumn'#13
+  +'Title.Caption'#6#6'Enable'#0#1#11'ButtonStyle'#7#17'cbsCheckboxColumn'#13'T'
+  +'itle.Caption'#6#6'Export'#0#0#9'FixedCols'#2#0#7'Options'#11#15'goFixedVert'
+  +'Line'#15'goFixedHorzLine'#10'goVertLine'#10'goHorzLine'#13'goRangeSelect'#11
+  +'goColSizing'#9'goEditing'#13'goAutoAddRows'#18'goAlwaysShowEditor'#18'goDbl'
+  +'ClickAutoSize'#14'goSmoothScroll'#0#8'RowCount'#2#1#8'TabOrder'#2#0#0#0#0#0
+  +#0
+]);

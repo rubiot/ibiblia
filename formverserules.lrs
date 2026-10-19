@@ -1,0 +1,28 @@
+LazarusResources.Add('TFrmEscolherVerseRules','FORMDATA',[
+  'TPF0'#22'TFrmEscolherVerseRules'#21'FrmEscolherVerseRules'#4'Left'#3#128#1#6
+  +'Height'#3#237#0#3'Top'#3#215#0#5'Width'#3#221#3#18'HorzScrollBar.Page'#2'n'
+  +#18'VertScrollBar.Page'#2'4'#10'AutoScroll'#9#7'Caption'#6#18'Choose verse r'
+  +'ules'#12'ClientHeight'#3#237#0#11'ClientWidth'#3#221#3#6'OnShow'#7#8'FormSh'
+  +'ow'#8'Position'#7#17'poOwnerFormCenter'#10'LCLVersion'#6#8'2.0.10.0'#0#7'TB'
+  +'utton'#7'Button1'#4'Left'#3'('#3#6'Height'#2#25#3'Top'#3#195#0#5'Width'#2'K'
+  +#7'Anchors'#11#7'akRight'#8'akBottom'#0#6'Cancel'#9#7'Caption'#6#7'&Cancel'
+  +#11'ModalResult'#2#2#8'TabOrder'#2#0#0#0#7'TButton'#7'Button2'#4'Left'#3#135
+  +#3#6'Height'#2#25#3'Top'#3#195#0#5'Width'#2'K'#7'Anchors'#11#7'akRight'#8'ak'
+  +'Bottom'#0#7'Caption'#6#2'OK'#7'Default'#9#11'ModalResult'#2#1#8'TabOrder'#2
+  +#1#0#0#7'TButton'#13'BtnSelectNone'#4'Left'#3#168#2#6'Height'#2#25#3'Top'#3
+  +#195#0#5'Width'#2'n'#7'Anchors'#11#7'akRight'#8'akBottom'#0#7'Caption'#6#11
+  +'Select none'#7'OnClick'#7#18'BtnSelectNoneClick'#8'TabOrder'#2#2#0#0#7'TBut'
+  +'ton'#12'BtnSelectAll'#4'Left'#3'('#2#6'Height'#2#25#3'Top'#3#195#0#5'Width'
+  +#2'n'#7'Anchors'#11#7'akRight'#8'akBottom'#0#7'Caption'#6#10'Select all'#7'O'
+  +'nClick'#7#17'BtnSelectAllClick'#8'TabOrder'#2#3#0#0#6'TPanel'#6'Panel1'#4'L'
+  +'eft'#2#10#6'Height'#3#177#0#3'Top'#2#7#5'Width'#3#198#3#7'Anchors'#11#5'akT'
+  +'op'#6'akLeft'#7'akRight'#8'akBottom'#0#7'Caption'#6#6'Panel1'#12'ClientHeig'
+  +'ht'#3#177#0#11'ClientWidth'#3#198#3#8'TabOrder'#2#4#0#11'TStringGrid'#20'St'
+  +'ringGridVerseRules'#4'Left'#2#1#6'Height'#3#175#0#3'Top'#2#1#5'Width'#3#196
+  +#3#5'Align'#7#8'alClient'#8'AutoEdit'#8#8'ColCount'#2#3#7'Columns'#14#1#11'B'
+  +'uttonStyle'#7#17'cbsCheckboxColumn'#13'Title.Caption'#6#5'Apply'#0#1#13'Tit'
+  +'le.Caption'#6#4'From'#0#1#13'Title.Caption'#6#2'To'#0#0#9'FixedCols'#2#0#7
+  +'Options'#11#15'goFixedVertLine'#15'goFixedHorzLine'#10'goVertLine'#10'goHor'
+  +'zLine'#13'goRangeSelect'#11'goColSizing'#9'goEditing'#14'goSmoothScroll'#0#8
+  +'TabOrder'#2#0#0#0#0#0
+]);

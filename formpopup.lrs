@@ -1,0 +1,30 @@
+LazarusResources.Add('TfrmDictionaryPopup','FORMDATA',[
+  'TPF0'#19'TfrmDictionaryPopup'#18'frmDictionaryPopup'#4'Left'#3'@'#2#6'Height'
+  +#3#162#1#3'Top'#3'0'#1#5'Width'#3#169#1#11'BorderIcons'#11#0#11'BorderStyle'
+  +#7#13'bsSizeToolWin'#11'BorderWidth'#2#1#7'Caption'#6#10'Dictionary'#12'Clie'
+  +'ntHeight'#3#162#1#11'ClientWidth'#3#169#1#9'FormStyle'#7#11'fsStayOnTop'#10
+  +'KeyPreview'#9#8'OnCreate'#7#10'FormCreate'#9'OnDestroy'#7#11'FormDestroy'#6
+  +'OnHide'#7#8'FormHide'#9'OnKeyDown'#7#11'FormKeyDown'#10'LCLVersion'#6#8'2.0'
+  +'.10.0'#0#11'TTabControl'#17'TabControlStrongs'#4'Left'#2#1#6'Height'#3#7#1#3
+  +'Top'#2#1#5'Width'#3#167#1#8'OnChange'#7#23'TabControlStrongsChange'#5'Align'
+  +#7#8'alClient'#8'TabOrder'#2#0#0#6'TPanel'#6'Panel1'#4'Left'#2#2#6'Height'#3
+  +#2#1#3'Top'#2#3#5'Width'#3#163#1#5'Align'#7#8'alClient'#7'Anchors'#11#5'akTo'
+  +'p'#6'akLeft'#7'akRight'#0#10'BevelOuter'#7#6'bvNone'#12'ClientHeight'#3#2#1
+  +#11'ClientWidth'#3#163#1#8'TabOrder'#2#1#0#9'TRichMemo'#14'RichMemoStrong'#4
+  +'Left'#2#0#6'Height'#3#2#1#3'Top'#2#0#5'Width'#3#163#1#5'Align'#7#8'alClient'
+  +#11'BorderStyle'#7#6'bsNone'#5'Color'#4#251#251#204#0#13'HideSelection'#8#12
+  +'OnMouseWheel'#7#18'RichMemoMouseWheel'#8'ReadOnly'#9#10'ScrollBars'#7#14'ss'
+  +'AutoVertical'#8'TabOrder'#2#0#10'ZoomFactor'#2#1#0#0#0#0#11'TTabControl'#16
+  +'TabControlMorfos'#4'Left'#2#1#6'Height'#3#150#0#3'Top'#3#11#1#5'Width'#3#167
+  +#1#8'OnChange'#7#22'TabControlMorfosChange'#5'Align'#7#8'alBottom'#8'TabOrde'
+  +'r'#2#1#0#6'TPanel'#6'Panel2'#4'Left'#2#2#6'Height'#3#145#0#3'Top'#2#3#5'Wid'
+  +'th'#3#163#1#5'Align'#7#8'alClient'#10'BevelOuter'#7#6'bvNone'#12'ClientHeig'
+  +'ht'#3#145#0#11'ClientWidth'#3#163#1#8'TabOrder'#2#1#0#9'TRichMemo'#14'RichM'
+  +'emoMorpho'#4'Left'#2#0#6'Height'#3#145#0#3'Top'#2#0#5'Width'#3#163#1#5'Alig'
+  +'n'#7#8'alClient'#11'BorderStyle'#7#6'bsNone'#5'Color'#4#251#251#204#0#13'Hi'
+  +'deSelection'#8#12'OnMouseWheel'#7#18'RichMemoMouseWheel'#8'ReadOnly'#9#10'S'
+  +'crollBars'#7#14'ssAutoVertical'#8'TabOrder'#2#0#10'ZoomFactor'#2#1#0#0#0#0#9
+  +'TSplitter'#9'Splitter1'#6'Cursor'#7#8'crVSplit'#4'Left'#2#1#6'Height'#2#3#3
+  +'Top'#3#8#1#5'Width'#3#167#1#5'Align'#7#8'alBottom'#11'ParentColor'#8#12'Res'
+  +'izeAnchor'#7#8'akBottom'#0#0#0
+]);
