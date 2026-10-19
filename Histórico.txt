@@ -11,6 +11,19 @@ Version 1.0.0.69 (64-bit Edition) - 2026-10-19
   - Cleaned all non-portable pointer and ordinal typecasts (PtrInt) across PCRE and TreeView.
   - Resolved C-runtime entry points (setlocale, malloc, free) via msvcrt.dll.
 
+* Find / Search in Project (Ctrl + F):
+  - Added new "Find in Project" search dialog accessible via Edit menu and Ctrl+F.
+  - Supports scoped search across:
+    * Destination translation text
+    * Original Hebrew / Greek source text
+    * Reference text 1 and Reference text 2
+    * Strong's tags & word association pairs
+    * Translator notes & comments
+    * All project text fields
+  - Live results list with real-time match counters.
+  - One-click and double-click verse navigation from search results.
+  - Fast match cycling via "Next Match" and "Previous Match" buttons.
+
 * Verse Status Filtering & Quick Navigation (Issue #104):
   - Added Bible tree filtering by verse status (Not associated, Associating, Needs review, Associated).
   - Integrated dynamic status descriptions from project metadata.
@@ -34,4 +47,4 @@ Version 1.0.0.69 (64-bit Edition) - 2026-10-19
 * UI & Release Enhancements:
   - Added "What's New in iBiblia" startup popup on first launch of new versions.
   - Added "View Changelog" button to the About dialog.
-  - Added contributor credit for Edmund Valdez in the About dialog, changelog, and project metadata.
+  - Added contributor credit for Edmund Valdez (https://github.com/SalitaNgDiyos) in the About dialog, changelog, and project metadata.

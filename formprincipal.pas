@@ -14,7 +14,7 @@ uses
   {$ENDIF}
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, Menus,
   ActnList, ComCtrls, ExtCtrls, StdCtrls, Buttons, Projeto, IniFiles, Math,
-  Syntagm, LCLTranslator, unitabout, PCRE, Versiculo, LCLProc, LazLogger,
+  Syntagm, LCLTranslator, unitabout, unitsearch, PCRE, Versiculo, LCLProc, LazLogger,
   LCLType, LazUTF8, ChapterView, UnitPleaseWait;
 
 type
@@ -143,6 +143,9 @@ type
     MenuItemNavSep: TMenuItem;
     MenuItemNavNextFiltered: TMenuItem;
     MenuItemNavPrevFiltered: TMenuItem;
+    ActionFindInProject: TAction;
+    MenuItemFindSep: TMenuItem;
+    MenuItemFindInProject: TMenuItem;
     TreeView1: TTreeView;
     procedure ActionApplyPatchExecute(Sender: TObject);
     procedure ActionExportarExecute(Sender: TObject);
@@ -200,6 +203,7 @@ type
     procedure SpeedButtonNextFilteredClick(Sender: TObject);
     procedure ActionVersoSeguinteFiltradoExecute(Sender: TObject);
     procedure ActionVersoAnteriorFiltradoExecute(Sender: TObject);
+    procedure ActionFindInProjectExecute(Sender: TObject);
     procedure AtualizarContadorFiltro;
     procedure AtualizarItensFiltro;
   private
@@ -220,6 +224,7 @@ type
   public
     { public declarations }
     language: string;
+    procedure NavegarParaVersiculo(const ARef: string);
   end;
 
 type
@@ -500,6 +505,7 @@ begin
   ComboBoxStatusFilter.Enabled := false;
   ComboBoxStatusFilter.ItemIndex := 0;
   ActionVersoSeguinteFiltrado.Enabled := false;
+  ActionFindInProject.Enabled := true;
   ActionVersoAnteriorFiltrado.Enabled := false;
   SpeedButtonNextFiltered.Enabled := false;
   SpeedButtonPrevFiltered.Enabled := false;
@@ -639,6 +645,7 @@ begin
     ComboBoxStatusFilter.Enabled := true;
     ComboBoxStatusFilter.ItemIndex := 0;
     ActionVersoSeguinteFiltrado.Enabled := true;
+  ActionFindInProject.Enabled := true;
     ActionVersoAnteriorFiltrado.Enabled := true;
     SpeedButtonNextFiltered.Enabled := true;
     SpeedButtonPrevFiltered.Enabled := true;
@@ -1299,6 +1306,7 @@ begin
   ActionRecriarBaseSugestoes.Enabled := true;
   ActionExportPatch.Enabled := true;
   ActionApplyPatch.Enabled := true;
+  ActionFindInProject.Enabled := true;
   //ActionExportarDestinoComStrongs.Enabled := true;
   //ActionExportarTextoInterlinear.Enabled := true;
   ComboBoxStatusFilter.Enabled := true;
@@ -1443,6 +1451,25 @@ begin
       ComboBoxStatusFilter.ItemIndex := 0;
   end;
   AtualizarContadorFiltro;
+end;
+
+
+procedure TFrmPrincipal.NavegarParaVersiculo(const ARef: string);
+begin
+  if (ProjetoAtual = nil) or (ARef = '') then exit;
+  ProjetoAtual.GoToReference(ARef);
+  ProjetoAtual.SelectTreeNode(ARef);
+  ActionQuandoNovoVersiculoExecute(nil);
+end;
+
+procedure TFrmPrincipal.ActionFindInProjectExecute(Sender: TObject);
+begin
+  if ProjetoAtual = nil then
+  begin
+    ShowMessage('Please open a project first to use Find in Project.');
+    exit;
+  end;
+  ShowSearchDialog(Self, ProjetoAtual);
 end;
 
 end.

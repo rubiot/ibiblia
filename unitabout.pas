@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
-  StdCtrls, fileinfo;
+  StdCtrls, fileinfo, LCLIntf;
 
 type
 
@@ -23,6 +23,7 @@ type
     procedure ButtonChangelogClick(Sender: TObject);
     procedure ButtonCloseClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
+    procedure Label3Click(Sender: TObject);
   private
 
   public
@@ -55,7 +56,7 @@ const
     '  * Fixed Access Violation crash when switching back to "All verses".' + sLineBreak +
     '  * Removed hardcoded execution directory and debugging breakpoints.' + sLineBreak + sLineBreak +
     'CONTRIBUTORS:' + sLineBreak +
-    '  * Edmund Valdez: 64-bit Windows port, verse status filtering, and navigation.' + sLineBreak +
+    '  * Edmund Valdez: https://github.com/SalitaNgDiyos' + sLineBreak +
     '  * Rúbio R. C. Terra: Original concept, design, and architecture.' + sLineBreak + sLineBreak +
     '------------------------------------------' + sLineBreak +
     'For full project history and source code, visit:' + sLineBreak +
@@ -156,7 +157,15 @@ begin
   if ver = '' then
     ver := '1.0.0.69';
   LabelVersion.Caption := 'Version ' + ver + ' (64-bit)';
+  LabelContributor.Caption := 'Contributor: Edmund Valdez';
+  Label3.Caption := 'https://github.com/SalitaNgDiyos';
 end;
+
+procedure TFormAbout.Label3Click(Sender: TObject);
+begin
+  OpenURL('https://github.com/SalitaNgDiyos');
+end;
+
 
 initialization
   {$I unitabout.lrs}

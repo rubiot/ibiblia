@@ -56,7 +56,7 @@ object FormAbout: TFormAbout
     Width = 480
     Alignment = taCenter
     AutoSize = False
-    Caption = 'Contributor: Edmund Valdez (64-bit Windows port & Status Filter)'
+    Caption = 'Contributor: Edmund Valdez'
     Font.Height = -13
     Font.Style = [fsBold]
     ParentColor = False
@@ -69,8 +69,10 @@ object FormAbout: TFormAbout
     Width = 480
     Alignment = taCenter
     AutoSize = False
-    Caption = 'https://github.com/rubiot/ibiblia'
+    Caption = 'https://github.com/SalitaNgDiyos'
     Font.Height = -13
+    Cursor = crHandPoint
+    OnClick = Label3Click
     ParentColor = False
     ParentFont = False
   end

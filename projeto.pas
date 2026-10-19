@@ -21,6 +21,17 @@ uses
 
 type
 
+  TSearchScope = (ssDestination, ssSource, ssRef1, ssRef2, ssStrongs, ssComments, ssAll);
+
+  TVerseSearchResult = record
+    RefID: string;
+    FormattedRef: string;
+    PreviewText: string;
+    Status: Integer;
+  end;
+
+  TVerseSearchResults = array of TVerseSearchResult;
+
   TProjeto = class;
 
   TEscopoTexto = (etOT, etNT, etONT, etNone);
@@ -180,7 +191,6 @@ type
     function AtribuirDicMorfo(dic: string; t: TTipoTextoBiblico): boolean;
     procedure AtualizarArvore;
     procedure AtualizarArvore(id: string);
-    procedure SelectTreeNode(id: string);
   public
     constructor Criar;
     constructor Criar(paineis: array of TScrollbox; navegador: TTreeView; rsituacao: TRadioGroup; rcomentarios: TMemo);
@@ -242,10 +252,12 @@ type
     procedure Vacuum;
     function GetSituacaoDescricao(index: Integer): string;
     procedure FiltrarArvore(AStatus: Integer);
+    procedure SelectTreeNode(id: string);
     function IrParaVersiculoSeguinteComSituacao(AStatus: Integer): boolean;
     function IrParaVersiculoAnteriorComSituacao(AStatus: Integer): boolean;
     function ContarVersiculosPorSituacao(AStatus: Integer): Integer;
     function ObterTotalVersiculos: Integer;
+    function Pesquisar(const Termo: string; EscopoBusca: TSearchScope = ssDestination): TVerseSearchResults;
 
     property FilterStatus: Integer read FFilterStatus write SetFilterStatus;
     property TotalVersiculos: Integer read ObterTotalVersiculos;
@@ -3429,4 +3441,106 @@ begin
     GoToReference(Format('%d,%d,%d', [BookID, Chapter, 1]));
 end;
 
+
+function TProjeto.Pesquisar(const Termo: string; EscopoBusca: TSearchScope = ssDestination): TVerseSearchResults;
+var
+  qry: TSQLQuery;
+  sqlWhere, termPattern, preview, bName: string;
+  count, b, c, v: Integer;
+begin
+  SetLength(Result, 0);
+  if (Trim(Termo) = '') or (FFileName = '') or not FileExists(FFileName) then
+    exit;
+
+  if Assigned(FTblPares) and (FTblPares.State in [dsEdit, dsInsert]) then
+    FTblPares.Post;
+
+  qry := CriarObjetoQuery(FFileName);
+  try
+    termPattern := '%' + Trim(Termo) + '%';
+
+    case EscopoBusca of
+      ssDestination:
+        sqlWhere := 'pare_texto_destino LIKE :term';
+      ssSource:
+        sqlWhere := 'pare_texto_origem LIKE :term';
+      ssRef1:
+        sqlWhere := 'pare_texto_consulta1 LIKE :term';
+      ssRef2:
+        sqlWhere := 'pare_texto_consulta2 LIKE :term';
+      ssStrongs:
+        sqlWhere := '(pare_pares LIKE :term) OR (pare_texto_origem LIKE :term)';
+      ssComments:
+        sqlWhere := 'pare_comentarios LIKE :term';
+    else
+      sqlWhere := '(pare_texto_destino LIKE :term) OR (pare_texto_origem LIKE :term) OR ' +
+                  '(pare_texto_consulta1 LIKE :term) OR (pare_texto_consulta2 LIKE :term) OR ' +
+                  '(pare_pares LIKE :term) OR (pare_comentarios LIKE :term)';
+    end;
+
+    qry.SQL.Text := 'SELECT pare_id, pare_situacao, pare_texto_destino, pare_texto_origem, ' +
+                    'pare_texto_consulta1, pare_texto_consulta2, pare_pares, pare_comentarios ' +
+                    'FROM pares WHERE ' + sqlWhere + ' ORDER BY rowid';
+
+    qry.Params.ParamByName('term').AsString := termPattern;
+    try
+      qry.Open;
+    except
+      on E: Exception do
+      begin
+        ShowMessage('Search error: ' + E.Message);
+        exit;
+      end;
+    end;
+
+    count := 0;
+    while not qry.EOF do
+    begin
+      b := 0; c := 0; v := 0;
+      SScanf(qry.FieldByName('pare_id').AsString, '%d,%d,%d', [@b, @c, @v]);
+
+      bName := '';
+      if (b > 0) and (b <= 66) then
+      begin
+        if (FEscopo <> etNone) and (b - OffsetLivros[FEscopo] - 1 >= 0) and (b - OffsetLivros[FEscopo] - 1 < QLivros[FEscopo]) then
+          bName := NLivros[FEscopo][b - OffsetLivros[FEscopo] - 1]
+        else
+          bName := NLivrosONT[b];
+      end;
+
+      if bName = '' then
+        bName := 'Book ' + IntToStr(b);
+
+      case EscopoBusca of
+        ssSource:      preview := qry.FieldByName('pare_texto_origem').AsString;
+        ssRef1:        preview := qry.FieldByName('pare_texto_consulta1').AsString;
+        ssRef2:        preview := qry.FieldByName('pare_texto_consulta2').AsString;
+        ssComments:    preview := qry.FieldByName('pare_comentarios').AsString;
+        ssStrongs:     preview := qry.FieldByName('pare_pares').AsString;
+      else
+        preview := qry.FieldByName('pare_texto_destino').AsString;
+      end;
+
+      if Trim(preview) = '' then
+        preview := qry.FieldByName('pare_texto_origem').AsString;
+
+      Inc(count);
+      SetLength(Result, count);
+      Result[count - 1].RefID := qry.FieldByName('pare_id').AsString;
+      Result[count - 1].FormattedRef := Format('%s %d:%d', [bName, c, v]);
+      Result[count - 1].PreviewText := Trim(preview);
+      Result[count - 1].Status := qry.FieldByName('pare_situacao').AsInteger;
+
+      qry.Next;
+    end;
+
+    qry.Close;
+  finally
+    if Assigned(qry.Transaction) then
+      qry.Transaction.Free;
+    if Assigned(qry.DataBase) then
+      qry.DataBase.Free;
+    qry.Free;
+  end;
+end;
 end.

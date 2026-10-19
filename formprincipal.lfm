@@ -497,6 +497,12 @@ object frmPrincipal: TfrmPrincipal
       object MenuItem13: TMenuItem
         Action = ActionLimparAssociacoes
       end
+      object MenuItemFindSep: TMenuItem
+        Caption = '-'
+      end
+      object MenuItemFindInProject: TMenuItem
+        Action = ActionFindInProject
+      end
     end
     object MenuItem5: TMenuItem
       Caption = 'Navigation'
@@ -613,6 +619,14 @@ object frmPrincipal: TfrmPrincipal
   object ActionList1: TActionList
     Left = 40
     Top = 192
+    object ActionFindInProject: TAction
+      Caption = 'Find in Project...'
+      Category = 'Edit'
+      Enabled = True
+      Hint = 'Find word, phrase, or Strong code in project (Ctrl+F)'
+      OnExecute = ActionFindInProjectExecute
+      ShortCut = 16454
+    end
     object ActionNovoProjeto: TAction
       Caption = 'New...'
       Hint = 'Create new association project'
