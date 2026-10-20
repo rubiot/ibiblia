@@ -125,7 +125,6 @@ begin
   end;
 
   // Neither window class was found
-  FindTheWordWindows('theWordWindows.txt');
   Result := 0;
 end;
 
@@ -348,7 +347,7 @@ begin
     CloseFile(f);
   end;
 
-  ShowMessage('theWord window not found. Debug information has been saved to: ' + outputFile);
+// ShowMessage suppressed for non-intrusive operation
 end;
 
 end.

@@ -1,0 +1,190 @@
+object FrmApplyPatch: TFrmApplyPatch
+  Left = 317
+  Height = 663
+  Top = 121
+  Width = 788
+  Caption = 'Apply patch...'
+  ClientHeight = 663
+  ClientWidth = 788
+  OnCreate = FormCreate
+  OnDestroy = FormDestroy
+  OnShow = FormShow
+  Position = poMainFormCenter
+  LCLVersion = '2.0.10.0'
+  object GroupBox1: TGroupBox
+    Left = 0
+    Height = 528
+    Top = 0
+    Width = 224
+    Align = alCustom
+    Anchors = [akTop, akLeft, akBottom]
+    TabOrder = 0
+  end
+  object Button1: TButton
+    Left = 707
+    Height = 25
+    Top = 626
+    Width = 75
+    Anchors = [akRight, akBottom]
+    Caption = 'OK'
+    ModalResult = 1
+    TabOrder = 1
+  end
+  object Button2: TButton
+    Left = 619
+    Height = 25
+    Top = 626
+    Width = 75
+    Anchors = [akRight, akBottom]
+    Cancel = True
+    Caption = 'Cancel'
+    ModalResult = 2
+    TabOrder = 2
+  end
+  object BtnSelectAll: TButton
+    Left = 8
+    Height = 25
+    Top = 626
+    Width = 92
+    Anchors = [akLeft, akBottom]
+    Caption = 'Select all'
+    OnClick = BtnSelectAllClick
+    TabOrder = 3
+  end
+  object BtnDeselectAll: TButton
+    Left = 112
+    Height = 25
+    Top = 626
+    Width = 92
+    Anchors = [akLeft, akBottom]
+    Caption = 'Deselect all'
+    OnClick = BtnDeselectAllClick
+    TabOrder = 4
+  end
+  object TabControlPreview: TTabControl
+    Left = 232
+    Height = 615
+    Top = 0
+    Width = 548
+    OnChange = TabControlPreviewChange
+    TabIndex = 0
+    Tabs.Strings = (
+      'Patch'
+      'Current'
+    )
+    Anchors = [akTop, akLeft, akRight, akBottom]
+    TabOrder = 5
+    object ScrollBoxSrcText: TScrollBox
+      Left = 2
+      Height = 193
+      Top = 23
+      Width = 544
+      HorzScrollBar.Page = 1
+      VertScrollBar.Page = 1
+      Align = alTop
+      TabOrder = 1
+    end
+    object ScrollBoxDstText: TScrollBox
+      Left = 2
+      Height = 248
+      Top = 221
+      Width = 544
+      HorzScrollBar.Page = 1
+      VertScrollBar.Page = 1
+      Align = alTop
+      TabOrder = 2
+    end
+    object MemoComments: TMemo
+      Left = 2
+      Height = 139
+      Top = 474
+      Width = 544
+      Align = alClient
+      ReadOnly = True
+      TabOrder = 3
+    end
+    object Splitter1: TSplitter
+      Cursor = crVSplit
+      Left = 2
+      Height = 5
+      Top = 216
+      Width = 544
+      Align = alTop
+      ResizeAnchor = akTop
+    end
+    object Splitter2: TSplitter
+      Cursor = crVSplit
+      Left = 2
+      Height = 5
+      Top = 469
+      Width = 544
+      Align = alTop
+      ResizeAnchor = akTop
+    end
+  end
+  object LabelSrcText: TLabel
+    Left = 8
+    Height = 15
+    Top = 536
+    Width = 216
+    AutoSize = False
+    Caption = 'Source text'
+    Color = clGreen
+    Font.Color = clWhite
+    ParentColor = False
+    ParentFont = False
+    Transparent = False
+  end
+  object LabelDstText: TLabel
+    Left = 8
+    Height = 15
+    Top = 552
+    Width = 216
+    AutoSize = False
+    Caption = 'Destination text'
+    Color = clGreen
+    Font.Color = clWhite
+    ParentColor = False
+    ParentFont = False
+    Transparent = False
+  end
+  object LabelAssociations: TLabel
+    Left = 8
+    Height = 15
+    Top = 568
+    Width = 216
+    AutoSize = False
+    Caption = 'Associations'
+    Color = clGreen
+    Font.Color = clWhite
+    ParentColor = False
+    ParentFont = False
+    Transparent = False
+  end
+  object LabelComments: TLabel
+    Left = 8
+    Height = 15
+    Top = 584
+    Width = 216
+    AutoSize = False
+    Caption = 'Comments'
+    Color = clGreen
+    Font.Color = clWhite
+    ParentColor = False
+    ParentFont = False
+    Transparent = False
+  end
+  object LabelStatus: TLabel
+    Left = 8
+    Height = 15
+    Top = 600
+    Width = 216
+    AutoSize = False
+    Caption = 'Status'
+    Color = clGreen
+    Font.Color = clWhite
+    ParentColor = False
+    ParentFont = False
+    Transparent = False
+  end
+end

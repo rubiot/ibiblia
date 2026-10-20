@@ -573,6 +573,7 @@ procedure TFrmPrincipal.ActionNovoProjetoExecute(Sender: TObject);
 var
   v: TTipoTextoBiblico;
   ParThread: TParametroThread;
+  savedFilter: Integer;
 begin
   ActionFecharProjetoExecute(nil);
 
@@ -643,13 +644,24 @@ begin
     FChapterView.Project := ProjetoAtual;
 
     ComboBoxStatusFilter.Enabled := true;
-    ComboBoxStatusFilter.ItemIndex := 0;
     ActionVersoSeguinteFiltrado.Enabled := true;
-  ActionFindInProject.Enabled := true;
+    ActionFindInProject.Enabled := true;
     ActionVersoAnteriorFiltrado.Enabled := true;
     SpeedButtonNextFiltered.Enabled := true;
     SpeedButtonPrevFiltered.Enabled := true;
     AtualizarItensFiltro;
+
+    savedFilter := 0;
+    if Assigned(opts) then
+      savedFilter := opts.ReadInteger('opcoes', 'filterstatus', 0);
+
+    if (savedFilter >= 0) and (savedFilter < ComboBoxStatusFilter.Items.Count) then
+      ComboBoxStatusFilter.ItemIndex := savedFilter
+    else
+      ComboBoxStatusFilter.ItemIndex := 0;
+
+    if ComboBoxStatusFilter.ItemIndex > 0 then
+      ComboBoxStatusFilterChange(ComboBoxStatusFilter);
 
     StatusBar1.SimpleText := '';
   finally
@@ -882,6 +894,8 @@ begin
   opts.WriteBool('opcoes', 'alwaysontop', MenuItemAlwaysOnTop.Checked);
   opts.WriteInteger('opcoes', 'popuptrigger', LongInt(FPopupTrigger));
   opts.WriteBool('opcoes', 'auto.save', MenuItemAutoSave.Checked);
+  if Assigned(ComboBoxStatusFilter) then
+    opts.WriteInteger('opcoes', 'filterstatus', ComboBoxStatusFilter.ItemIndex);
   opts.Free;
 
   FChapterView.Free;
@@ -1273,6 +1287,9 @@ begin
 end;
 
 procedure TFrmPrincipal.DoOpenProject(filename: string);
+var
+  savedFilter: Integer;
+  pFilter: string;
 begin
   ProjetoAtual := TProjeto.Criar([ScrollBoxSrcVerse, ScrollBoxDstVerse, ScrollBoxRef1Verse, ScrollBoxRef2Verse], TreeView1, RadioGroupStatus, CommentsMemo);
   ProjetoAtual.OnNewVerseSubscribe(@QuandoNovoVersiculo);
@@ -1310,12 +1327,32 @@ begin
   //ActionExportarDestinoComStrongs.Enabled := true;
   //ActionExportarTextoInterlinear.Enabled := true;
   ComboBoxStatusFilter.Enabled := true;
-  ComboBoxStatusFilter.ItemIndex := 0;
   ActionVersoSeguinteFiltrado.Enabled := true;
   ActionVersoAnteriorFiltrado.Enabled := true;
   SpeedButtonNextFiltered.Enabled := true;
   SpeedButtonPrevFiltered.Enabled := true;
   AtualizarItensFiltro;
+
+  savedFilter := 0;
+  if Assigned(ProjetoAtual) then
+  begin
+    pFilter := ProjetoAtual.ObterInfo('filter_status');
+    if pFilter <> '' then
+      savedFilter := StrToIntDef(pFilter, 0)
+    else if Assigned(opts) then
+      savedFilter := opts.ReadInteger('opcoes', 'filterstatus', 0);
+  end
+  else if Assigned(opts) then
+    savedFilter := opts.ReadInteger('opcoes', 'filterstatus', 0);
+
+  if (savedFilter >= 0) and (savedFilter < ComboBoxStatusFilter.Items.Count) then
+    ComboBoxStatusFilter.ItemIndex := savedFilter
+  else
+    ComboBoxStatusFilter.ItemIndex := 0;
+
+  if ComboBoxStatusFilter.ItemIndex > 0 then
+    ComboBoxStatusFilterChange(ComboBoxStatusFilter);
+
   StatusBar1.SimpleText := '';
 
   {ScrollBoxRef1Verse.Visible := false;
@@ -1342,6 +1379,9 @@ begin
     ProjetoAtual.FiltrarArvore(-1);
   end;
   AtualizarContadorFiltro;
+  if Assigned(opts) then
+    opts.WriteInteger('opcoes', 'filterstatus', ComboBoxStatusFilter.ItemIndex);
+  ProjetoAtual.AtribuirInfo('filter_status', IntToStr(ComboBoxStatusFilter.ItemIndex));
 end;
 
 procedure TFrmPrincipal.SpeedButtonNextFilteredClick(Sender: TObject);

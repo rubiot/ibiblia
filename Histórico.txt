@@ -13,6 +13,7 @@ Version 1.0.0.70 (64-bit Edition) - 2026-10-20
   - Updated About dialog: restored original project repository link (https://github.com/rubiot/ibiblia) under Rúbio Terra.
   - Added direct link to contributor Edmund Valdez GitHub page (https://github.com/SalitaNgDiyos).
   - Standardized About dialog typography to clean, regular font styling.
+  - Persistent verse filter status: automatically saves and restores active status filter upon restart.
   - Bumped version to 1.0.0.70 with automated first-run changelog notification.
 
 Version 1.0.0.69 (64-bit Edition) - 2026-10-19
