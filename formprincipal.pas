@@ -305,7 +305,7 @@ begin
     CData.dwData := twAutomate.COPYDATA_OP_GOTOVERSE;
     CData.lpData := @bcv;
     CData.cbData := SizeOf(bcv);
-    SendMessage(twHWND, WM_COPYDATA, 0, DWORD(@CData));
+    SendMessage(twHWND, WM_COPYDATA, 0, LPARAM(@CData));
   end;
 end;
 
@@ -325,7 +325,7 @@ begin
     Move(ws[1], CD.phrase[1], 2*Math.max(Length(ws), Length(CD.phrase)));
     CData.lpData := @CD;
     CData.cbData := SizeOf(TCopyData_Op_DctWordLookup);
-    SendMessage(twHWND, WM_COPYDATA, 0, DWORD(@CData) );
+    SendMessage(twHWND, WM_COPYDATA, 0, LPARAM(@CData));
   end;
 end;
 {$ENDIF}
@@ -1203,8 +1203,12 @@ end;
 {$IFDEF WINDOWS}
 procedure TFrmPrincipal.SyncToTwRef(Ref: string);
 begin
-  if (ProjetoAtual <> nil) then
+  if (ProjetoAtual <> nil) and (Ref <> '') then
+  begin
     ProjetoAtual.GoToReference(Ref);
+    ProjetoAtual.SelectTreeNode(Ref);
+    ActionQuandoNovoVersiculoExecute(nil);
+  end;
 end;
 
 procedure TFrmPrincipal.SetUpSyncThread;

@@ -29,15 +29,17 @@ type
     class function IsTwRunning: THandle;
     class function GetTwCurrentRef: string;
     class procedure LoadLangFile(langFile: string);
+    class procedure InitDefaultBooksMap;
     class function GetConfigFile: string;
     class function GetCurrentLangFile(configFile: string): string;
     class procedure FindTheWordWindows(outputFile: string);
   end;
 
 const
-  //the classname of the main theWord window.
-  TW6_MAINFORM_CLASSNAME = 'theWord.0f2ba8a0-906d-11e1-b0c4-0800200c9a667.UnicodeClass';
-  TW7_MAINFORM_CLASSNAME = 'theWord.0f2ba8a0-906d-11e1-b0c4-0800200c9a66';
+  // The standard classname of the main theWord window (theWord 6 and 7).
+  TW_MAINFORM_CLASSNAME = 'theWord.0f2ba8a0-906d-11e1-b0c4-0800200c9a66.UnicodeClass';
+  TW_MAINFORM_CLASSNAME_NOUNICODE = 'theWord.0f2ba8a0-906d-11e1-b0c4-0800200c9a66';
+
   //the value of COPYDATASTRUCT.dwData
   COPYDATA_OP_FIRST = $ffff0000;
   //Operation go-to-verse
@@ -67,6 +69,36 @@ implementation
 class procedure TWAutomateUtils.Reset;
 begin
   IgnoreErrors := false;
+end;
+
+class procedure TWAutomateUtils.InitDefaultBooksMap;
+const
+  EngAliases: array[1..66] of string = (
+    'Gen','Exo','Lev','Num','Deu','Jos','Jdg','Rut','1Sa','2Sa','1Ki','2Ki','1Ch','2Ch','Ezr','Neh','Est','Job','Psa','Pro','Ecc','Sng','Isa','Jer','Lam','Ezk','Dan','Hos','Joe','Amo','Oba','Jon','Mic','Nah','Hab','Zep','Hag','Zec','Mal','Mat','Mar','Luk','Joh','Act','Rom','1Co','2Co','Gal','Eph','Php','Col','1Th','2Th','1Ti','2Ti','Tit','Phm','Heb','Jas','1Pe','2Pe','1Jo','2Jo','3Jo','Jud','Rev'
+  );
+  PtAliases: array[1..66] of string = (
+    'Gn','Ex','Lv','Nm','Dt','Js','Jz','Rt','1Sm','2Sm','1Rs','2Rs','1Cr','2Cr','Ed','Ne','Et','Jó','Sl','Pv','Ec','Ct','Is','Jr','Lm','Ez','Dn','Os','Jl','Am','Ob','Jn','Mq','Na','Hc','Sf','Ag','Zc','Ml','Mt','Mc','Lc','Jo','At','Rm','1Co','2Co','Gl','Ef','Fp','Cl','1Ts','2Ts','1Tm','2Tm','Tt','Fm','Hb','Tg','1Pe','2Pe','1Jo','2Jo','3Jo','Jd','Ap'
+  );
+var
+  k: Integer;
+begin
+  if BooksMap = nil then
+    BooksMap := TBooksMap.Create;
+
+  for k := 1 to 66 do
+  begin
+    BooksMap[EngAliases[k]] := IntToStr(k);
+    BooksMap[PtAliases[k]] := IntToStr(k);
+  end;
+  BooksMap['Ps'] := '19';
+  BooksMap['Psalm'] := '19';
+  BooksMap['Psalms'] := '19';
+  BooksMap['Song'] := '22';
+  BooksMap['Matt'] := '40';
+  BooksMap['Mark'] := '41';
+  BooksMap['Luke'] := '42';
+  BooksMap['John'] := '43';
+  BooksMap['Acts'] := '44';
 end;
 
 // Detects the encoding of a file by checking for BOM (Byte Order Mark)
@@ -102,22 +134,62 @@ begin
   end;
 end;
 
+function FindTheWordEnumProc(hwnd: HWND; lParam: LPARAM): BOOL; stdcall;
+var
+  className, windowTitle: array[0..255] of Char;
+  classStr, titleStr: string;
+begin
+  Result := True; // Continue enumeration
+
+  if not IsWindowVisible(hwnd) then
+    Exit;
+
+  GetClassName(hwnd, className, 256);
+  classStr := LowerCase(className);
+
+  // theWord registers its window class with 'theWord.' prefix or contains 'theword'
+  if (Pos('theword.', classStr) = 1) or (Pos('theword', classStr) > 0) then
+  begin
+    PHandle(Pointer(lParam))^ := hwnd;
+    Result := False; // Stop enumeration, found!
+    Exit;
+  end;
+
+  GetWindowText(hwnd, windowTitle, 256);
+  titleStr := LowerCase(windowTitle);
+  if (Pos(' - theword', titleStr) > 0) or (Pos('[theword]', titleStr) > 0) then
+  begin
+    PHandle(Pointer(lParam))^ := hwnd;
+    Result := False; // Stop enumeration, found!
+    Exit;
+  end;
+end;
+
 {------------------------------------------------------------------------------}
 { Return 0 if tw is not running, else the HWND of the running instance }
 class function TWAutomateUtils.IsTwRunning: THandle;
 var
   PrevWindow: THandle;
 begin
-  // Try TW7 window class first
-  PrevWindow := FindWindow(TW7_MAINFORM_CLASSNAME, nil);
-  if IsWindow(PrevWindow) then
+  // 1. Exact match on standard theWord Unicode class name
+  PrevWindow := FindWindow(TW_MAINFORM_CLASSNAME, nil);
+  if IsWindow(PrevWindow) and IsWindowVisible(PrevWindow) then
   begin
     Result := PrevWindow;
     Exit;
   end;
 
-  // Fallback to TW6 window class
-  PrevWindow := FindWindow(TW6_MAINFORM_CLASSNAME, nil);
+  // 2. Exact match without .UnicodeClass
+  PrevWindow := FindWindow(TW_MAINFORM_CLASSNAME_NOUNICODE, nil);
+  if IsWindow(PrevWindow) and IsWindowVisible(PrevWindow) then
+  begin
+    Result := PrevWindow;
+    Exit;
+  end;
+
+  // 3. Dynamic enumeration fallback across running top-level windows
+  PrevWindow := 0;
+  EnumWindows(@FindTheWordEnumProc, LPARAM(@PrevWindow));
   if IsWindow(PrevWindow) then
   begin
     Result := PrevWindow;
@@ -135,6 +207,7 @@ var
   hwnd, hProcess: THandle;
   module: array[0 .. 255] of char;
   pid, size: DWORD;
+  appDataPath: string;
 begin
   result := '';
   pid := 0;
@@ -146,7 +219,11 @@ begin
   size := sizeof(module);
   if GetWindowThreadProcessId(hwnd, pid) <> 0 then
   begin
-    hProcess := OpenProcess(PROCESS_QUERY_INFORMATION, false, pid);
+    // Try PROCESS_QUERY_LIMITED_INFORMATION ($1000) first, then PROCESS_QUERY_INFORMATION ($0400)
+    hProcess := OpenProcess($1000, false, pid);
+    if hProcess = 0 then
+      hProcess := OpenProcess(PROCESS_QUERY_INFORMATION, false, pid);
+
     if hProcess <> 0 then
     begin
       try
@@ -159,6 +236,14 @@ begin
         CloseHandle(hProcess);
       end;
     end;
+  end;
+
+  // Fallback to standard AppData theWord location if config.ini not in exe folder
+  if (result = '') or not FileExists(result) then
+  begin
+    appDataPath := GetEnvironmentVariable('APPDATA') + '\theWord\config.ini';
+    if FileExists(appDataPath) then
+      result := appDataPath;
   end;
 end;
 
@@ -177,7 +262,6 @@ class function TWAutomateUtils.GetTwCurrentRef: string;
 
     if not assigned(BooksMap) or (BooksMap.Find(mtRef.Groups[1].Value) = nil) then
     begin
-      FreeAndNil(BooksMap);
       LoadLangFile(GetCurrentLangFile(GetConfigFile));
     end;
 
@@ -213,26 +297,26 @@ var
   reBook: IRegex;
   mtBook: IMatch;
 begin
-  if langFile = '' then
+  if BooksMap = nil then
+    InitDefaultBooksMap;
+
+  if (langFile = '') or not FileExists(langFile) then
     exit;
 
   reBook := RegexCreate('^\s*rc_bk_alias3_(\d+)=''([^'']+)''', [rcoUTF8]);
 
   lines := TStringList.Create;
-  lines.LoadFromFile(langFile);
-
-  if BooksMap <> nil then
-    BooksMap.Free;
-
-  BooksMap := TBooksMap.Create;
-  for i:=0 to lines.Count - 1 do
-  begin
-    mtBook := reBook.Match(lines[i]);
-    if mtBook.Success then
-      BooksMap[mtBook.Groups[2].Value] := mtBook.Groups[1].Value;
+  try
+    lines.LoadFromFile(langFile);
+    for i:=0 to lines.Count - 1 do
+    begin
+      mtBook := reBook.Match(lines[i]);
+      if mtBook.Success then
+        BooksMap[mtBook.Groups[2].Value] := mtBook.Groups[1].Value;
+    end;
+  finally
+    lines.Free;
   end;
-
-  lines.Free;
 end;
 
 class function TWAutomateUtils.GetCurrentLangFile(configFile: string): string;
@@ -261,17 +345,14 @@ begin
       case encoding of
         FILE_ENCODING_UTF16LE, FILE_ENCODING_UTF16BE:
           begin
-            // Skip BOM if present (position is already set after LoadFromFile)
             lines.AddText(UTF16ToUTF8(PWideChar(stream.Memory), stream.Size div SizeOf(WideChar)));
           end;
         FILE_ENCODING_UTF8:
           begin
-            // Standard UTF-8 with BOM
             lines.LoadFromFile(configFile);
           end;
         else
           begin
-            // Unknown encoding or no BOM, try to load it directly
             lines.LoadFromFile(configFile);
           end;
       end;
@@ -285,6 +366,8 @@ begin
         if matches.Success then
         begin
           result := format('%s%s.lng', [ExtractFilePath(configFile), matches.Groups[1].Value]);
+          if not FileExists(result) then
+            result := format('%slanguages\%s.lng', [ExtractFilePath(configFile), matches.Groups[1].Value]);
           exit;
         end;
       end;
@@ -313,7 +396,7 @@ begin
   titleStr := windowTitle;
 
   // Check if either class name or title contains 'theWord'
-  if (Pos('theWord', LowerCase(classStr)) > 0) or
+  if (Pos('theword', LowerCase(classStr)) > 0) or
      (Pos('theword', LowerCase(titleStr)) > 0) then
   begin
     // Write to file
@@ -334,7 +417,7 @@ begin
     Rewrite(f);
     WriteLn(f, 'List of Windows with "theWord" in class name or title:');
     WriteLn(f, StringOfChar('=', 50));
-    WriteLn(f, 'Current MAINFORM_CLASSNAME constant: ', TW6_MAINFORM_CLASSNAME);
+    WriteLn(f, 'Current MAINFORM_CLASSNAME constant: ', TW_MAINFORM_CLASSNAME);
     WriteLn(f, StringOfChar('=', 50));
     WriteLn(f);
 
@@ -346,8 +429,6 @@ begin
   finally
     CloseFile(f);
   end;
-
-// ShowMessage suppressed for non-intrusive operation
 end;
 
 end.
