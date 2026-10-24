@@ -5,8 +5,12 @@ unit formexportar;
 interface
 
 uses
+  unitskins,
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
-  ComCtrls, StdCtrls, ExtCtrls, Projeto, LCLTranslator, LCLIntf, LazUTF8;
+  ComCtrls, StdCtrls, ExtCtrls, Projeto, LCLTranslator, LCLIntf, LazUTF8
+  {$IFDEF WINDOWS}
+  , Windows
+  {$ENDIF};
 
 type
 
@@ -34,6 +38,8 @@ type
     TabSheet2: TTabSheet;
     TabSheet3: TTabSheet;
     procedure btExportarClick(Sender: TObject);
+    procedure FormShow(Sender: TObject);
+    procedure FormDestroy(Sender: TObject);
   private
     { private declarations }
     FProjeto: TProjeto;
@@ -213,9 +219,113 @@ begin
   {$ENDIF}
 end;
 
+{$IFDEF WINDOWS}
+var
+  hbrExportBg: THandle = 0;
+  hbrExportBgColor: TColor = clNone;
+
+function GetExportBgBrush(AColor: TColor): THandle;
+begin
+  if (hbrExportBg <> 0) and (hbrExportBgColor = AColor) then
+    Result := hbrExportBg
+  else
+  begin
+    if hbrExportBg <> 0 then DeleteObject(hbrExportBg);
+    hbrExportBgColor := AColor;
+    hbrExportBg := CreateSolidBrush(ColorToRGB(AColor));
+    Result := hbrExportBg;
+  end;
+end;
+
+function ExportFormSubclassProc(hWnd: HWND; uMsg: UINT; wParam: WPARAM; lParam: LPARAM;
+  uIdSubclass: PtrUInt; dwRefData: PtrUInt): LRESULT; stdcall;
+var
+  rc: RECT;
+  hbr: THandle;
+begin
+  if (uMsg = WM_ERASEBKGND) and CurrentSkin.IsDark then
+  begin
+    FillChar(rc, SizeOf(rc), 0);
+    GetClientRect(hWnd, @rc);
+    hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.PanelBg));
+    FillRect(THandle(wParam), rc, hbr);
+    DeleteObject(hbr);
+    Result := 1;
+    Exit;
+  end;
+
+  if ((uMsg = WM_CTLCOLORSTATIC) or (uMsg = WM_CTLCOLORBTN)) and CurrentSkin.IsDark then
+  begin
+    SetBkMode(THandle(wParam), TRANSPARENT);
+    SetTextColor(THandle(wParam), ColorToRGB(CurrentSkin.PanelText));
+    Result := LRESULT(GetExportBgBrush(CurrentSkin.PanelBg));
+    Exit;
+  end;
+
+  Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+end;
+{$ENDIF}
+
+procedure TFrmExportarProjeto.FormShow(Sender: TObject);
+begin
+  Color := CurrentSkin.PanelBg;
+  ApplySkinToForm(Self, CurrentSkin);
+  {$IFDEF WINDOWS}
+  if Assigned(fnSetWindowSubclass) and (Handle <> 0) then
+    fnSetWindowSubclass(Handle, @ExportFormSubclassProc, 3001, PtrUInt(Self));
+  HookTabControl(PageControl1);
+  HookButtonControl(btExportar);
+  HookButtonControl(Button2);
+  HookCheckBoxControl(cbExportarNAComoItalicos);
+  HookCheckBoxControl(cbExportarMorfologia);
+  HookCheckBoxControl(cbExportarComentarios);
+  HookCheckBoxControl(cbStrongsReutilizados);
+  HookCheckBoxControl(cbStrongsNaoTraduzidos);
+  HookCheckBoxControl(cbConcordanciaDetalhada);
+  {$ENDIF}
+  if CurrentSkin.IsDark then
+  begin
+    Color := CurrentSkin.PanelBg;
+    PageControl1.Color := CurrentSkin.PanelBg;
+    TabSheet1.Color := CurrentSkin.PanelBg;
+    TabSheet2.Color := CurrentSkin.PanelBg;
+    TabSheet3.Color := CurrentSkin.PanelBg;
+    MemoRodapeDestino.Color := CurrentSkin.WindowBg;
+    MemoRodapeDestino.Font.Color := CurrentSkin.WindowText;
+    MemoRodapeOrigem.Color := CurrentSkin.WindowBg;
+    MemoRodapeOrigem.Font.Color := CurrentSkin.WindowText;
+    leAbreviacao.Color := CurrentSkin.WindowBg;
+    leAbreviacao.Font.Color := CurrentSkin.WindowText;
+    leAbreviacao.EditLabel.Font.Color := CurrentSkin.PanelText;
+    Label1.Font.Color := CurrentSkin.PanelText;
+    Label2.Font.Color := CurrentSkin.PanelText;
+    btExportar.Font.Color := CurrentSkin.PanelText;
+    Button2.Font.Color := CurrentSkin.PanelText;
+    cbExportarNAComoItalicos.Font.Color := CurrentSkin.PanelText;
+    cbExportarMorfologia.Font.Color := CurrentSkin.PanelText;
+    cbExportarComentarios.Font.Color := CurrentSkin.PanelText;
+    cbStrongsReutilizados.Font.Color := CurrentSkin.PanelText;
+    cbStrongsNaoTraduzidos.Font.Color := CurrentSkin.PanelText;
+    cbConcordanciaDetalhada.Font.Color := CurrentSkin.PanelText;
+  end;
+  Invalidate;
+  PageControl1.Invalidate;
+end;
+
+procedure TFrmExportarProjeto.FormDestroy(Sender: TObject);
+begin
+  {$IFDEF WINDOWS}
+  if Assigned(fnRemoveWindowSubclass) and (Handle <> 0) then
+    fnRemoveWindowSubclass(Handle, @ExportFormSubclassProc, 3001);
+  {$ENDIF}
+end;
+
 procedure TFrmExportarProjeto.SetProjeto(projeto: TProjeto);
 begin
   FProjeto := projeto;
+  OnShow := @FormShow;
+  Color := CurrentSkin.PanelBg;
+  ApplySkinToForm(Self, CurrentSkin);
   MemoRodapeOrigem.Text := FProjeto.ObterInfo('propriedades.origem');
   MemoRodapeDestino.Text := FProjeto.ObterInfo('propriedades.destino');
   leAbreviacao.Text := FProjeto.ObterInfo('propriedades.abbrev');

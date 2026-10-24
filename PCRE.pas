@@ -1460,8 +1460,8 @@ begin
       PCRE_ERROR_UNKNOWN_NODE   : raise ERegexException.Create('PCRE_ERROR_UNKNOWN_NODE');
       PCRE_ERROR_NOMEMORY       : raise ERegexException.Create('PCRE_ERROR_NOMEMORY');
       PCRE_ERROR_NOSUBSTRING    : raise ERegexException.Create('PCRE_ERROR_NOSUBSTRING');
-      PCRE_ERROR_BADUTF8        : raise ERegexException.Create('PCRE_ERROR_BADUTF8');
-      PCRE_ERROR_BADUTF8_OFFSET : raise ERegexException.Create('PCRE_ERROR_BADUTF8_OFFSET');
+      PCRE_ERROR_BADUTF8,
+      PCRE_ERROR_BADUTF8_OFFSET : ; // Suppress fatal crash on malformed UTF-8 characters
       PCRE_ERROR_PARTIAL        : raise ERegexException.Create('PCRE_ERROR_PARTIAL');
       PCRE_ERROR_BADPARTIAL     : raise ERegexException.Create('PCRE_ERROR_BADPARTIAL');
       PCRE_ERROR_BADCOUNT       : raise ERegexException.Create('PCRE_ERROR_BADCOUNT');
@@ -1684,7 +1684,19 @@ begin
                            @OVector[0],
                            Length(OVector));
 
-    if ErrorCode = PCRE_ERROR_NOMATCH then
+    if (ErrorCode = PCRE_ERROR_BADUTF8) or (ErrorCode = PCRE_ERROR_BADUTF8_OFFSET) then
+    begin
+      ErrorCode := pcre_exec(FRegex,
+                             FRegExtra,
+                             PChar(Input),
+                             Length(Input),
+                             Start,
+                             EncodeRegMatchOptions(Options + [rmoNoUTF8Check]),
+                             @OVector[0],
+                             Length(OVector));
+    end;
+
+    if (ErrorCode = PCRE_ERROR_NOMATCH) or (ErrorCode = PCRE_ERROR_BADUTF8) or (ErrorCode = PCRE_ERROR_BADUTF8_OFFSET) then
       OVector := nil
     else
       PcreCheck(ErrorCode);
@@ -1960,9 +1972,23 @@ begin
 
     ASSERT(ErrorCode <> 0);
 
+    if (ErrorCode = PCRE_ERROR_BADUTF8) or (ErrorCode = PCRE_ERROR_BADUTF8_OFFSET) then
+    begin
+      ErrorCode := pcre_dfa_exec(FRegex,
+                                 FRegExtra,
+                                 PChar(Input),
+                                 Length(Input),
+                                 Start,
+                                 EncodeRegMatchOptions(Options + [rmoNoUTF8Check]),
+                                 @OVector[0],
+                                 Length(OVector),
+                                 @WVector[0],
+                                 Length(WVector));
+    end;
+
     if ErrorCode > 0 then
       SetLength(OVector, 2 * ErrorCode)
-    else if ErrorCode = PCRE_ERROR_NOMATCH then
+    else if (ErrorCode = PCRE_ERROR_NOMATCH) or (ErrorCode = PCRE_ERROR_BADUTF8) or (ErrorCode = PCRE_ERROR_BADUTF8_OFFSET) then
       OVector := nil
     else
       PcreCheck(ErrorCode);

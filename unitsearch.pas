@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls,
-  Buttons, Projeto;
+  Buttons, Projeto, unitskins;
 
 type
 
@@ -205,6 +205,8 @@ begin
   ListBoxResults.Font.Size := 9;
   ListBoxResults.OnDblClick := @ListBoxResultsDblClick;
   ListBoxResults.OnSelectionChange := @ListBoxResultsSelectionChange;
+
+  ApplySkinToForm(Self, CurrentSkin);
 end;
 
 

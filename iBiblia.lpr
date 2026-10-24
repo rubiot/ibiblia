@@ -15,7 +15,7 @@ uses
   {$ENDIF}
   ONTParser, Syntagm, unitabout, MySwordModule, TheWordDictionary, lazrichview,
   HTMLColors, formexportpatch, formapplypatch, PatchFile,
-  formInterlinearVerseRules, ChapterView, UnitPleaseWait;
+  formInterlinearVerseRules, ChapterView, UnitPleaseWait, unitskins;
 
 {$R *.res}
 

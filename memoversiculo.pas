@@ -9,7 +9,7 @@ uses
   {$IFNDEF UNIX}
   Windows,
   {$ENDIF}
-  Dialogs, Versiculo, Math;
+  Dialogs, Versiculo, Math, unitskins;
 
 type
 
@@ -37,6 +37,7 @@ type
     destructor Destruir;
     procedure Ativar(conteiner: TScrollBox; versiculo: TVersiculo);
     procedure Desativar;
+    procedure ApplySkin(const ASkin: TSkinColors);
     property Texto: TCaption read GetTexto;
     property Versiculo: TVersiculo read FVersiculo;
     property QuandoModificarVersiculo: TEventoTextoModificado read FEventoTextoModificado write FEventoTextoModificado;
@@ -138,6 +139,8 @@ begin
   FMemo.OnMouseWheel := @OnMouseWheel;
   FMemo.ParentFont   := False;
   FMemo.Font.Name    := 'Courier New';
+  FMemo.Color        := CurrentSkin.WindowBg;
+  FMemo.Font.Color   := CurrentSkin.WindowText;
   FModificado        := False;
   FVersiculo         := nil;
   FEventoTextoModificado := nil;
@@ -150,6 +153,15 @@ end;
 
 procedure TMemoVersiculo.Ativar(conteiner: TScrollBox; versiculo: TVersiculo);
 begin
+  if FMemo.Visible and (FMemo.Parent = conteiner) and (FVersiculo = versiculo) then
+  begin
+    FMemo.BringToFront;
+    if assigned(versiculo) then
+      versiculo.RepositionTabPanel;
+    FMemo.SetFocus;
+    exit;
+  end;
+
   if FMemo.Visible and FModificado and (FMemo.Parent <> conteiner) then
   begin
     ConfirmarAlteracao;
@@ -157,6 +169,8 @@ begin
   end;
 
   FMemo.Font.Size := versiculo.Fonte.Size;
+  FMemo.Color     := CurrentSkin.WindowBg;
+  FMemo.Font.Color:= CurrentSkin.WindowText;
   FModificado := False;
   FVersiculo := versiculo;
   FMemo.Parent := nil;  // flag sinalizando que não se deve disparar evento OnChange
@@ -165,6 +179,13 @@ begin
   FMemo.BringToFront;
   FMemo.Visible := True;
   FMemo.SetFocus;
+
+  if assigned(versiculo) then
+  begin
+    versiculo.RepositionTabPanel;
+    if versiculo.ViewMode <> vvmEdit then
+      versiculo.ViewMode := vvmEdit;
+  end;
 end;
 
 procedure TMemoVersiculo.Desativar;
@@ -175,6 +196,18 @@ begin
   FMemo.Visible := False;
   if assigned(FEventoTextoModificado) and FModificado then
     FEventoTextoModificado(self);
+
+  if assigned(FVersiculo) and (FVersiculo.ViewMode = vvmEdit) then
+    FVersiculo.ViewMode := vvmAssoc;
+end;
+
+procedure TMemoVersiculo.ApplySkin(const ASkin: TSkinColors);
+begin
+  if assigned(FMemo) then
+  begin
+    FMemo.Color := ASkin.WindowBg;
+    FMemo.Font.Color := ASkin.WindowText;
+  end;
 end;
 
 end.

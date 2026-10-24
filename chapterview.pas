@@ -8,7 +8,7 @@ uses
   Classes, SysUtils, Forms, Graphics, ONTTokenizer, LCLType, HTMLColors,
   LazUTF8, Projeto, PCRE, Controls, Menus, fgl, Dialogs, Math, Contnrs, KMemo,
   KEditCommon, KGraphics, KDialogs, formInterlinearVerseRules,
-  LCLTranslator, LazLogger, StdCtrls;
+  LCLTranslator, LazLogger, StdCtrls, unitskins;
 
 type
 
@@ -78,6 +78,7 @@ type
 
   TChapterView = class(TKMemo)
   private
+    FLoadingChapter: boolean;
     FFontName: string;
     FFontSize: integer;
     FPrintMode: boolean;
@@ -150,6 +151,7 @@ type
     destructor Destroy; override;
     procedure Translate;
     procedure LoadChapter;
+    procedure ApplySkin(const ASkin: TSkinColors);
     property Project: TProjeto read FProject write SetProject;
     property TextType: TTipoTextoBiblico read GetTextType write SetTextType;
     property ParagraphMode: TParagraphMode read GetParagraphMode write SetParagraphMode;
@@ -269,7 +271,8 @@ begin
   FNoteView.TextStyle.Assign(AStyle);
   FNoteView.TextStyle.Font.Size := FNoteView.TextStyle.Font.Size - 1;
   FNoteView.RenderSpan(FNoteView.Blocks, AText);
-  FNoteView.Background.Color := $00CCFBFB;
+  FNoteView.Background.Color := CurrentSkin.NoteBg;
+  FNoteView.TextStyle.Font.Color := CurrentSkin.NoteText;
   FNoteView.Blocks.UnLockUpdate;
 end;
 
@@ -337,12 +340,20 @@ var
   heading: string;
 begin
   ResetStyleStack;
-  mtHeading := FRxVerseHeading.Match(txt, [rmoNoUTF8Check]);
-  if not mtHeading.Success then
-    raise Exception.Create(SysUtils.Format('There''s something wrong with this verse: "%s"'#13#10 +
-                                           'Please check for invalid tags or line breaks', [txt]));
-  heading := mtHeading.Groups[1].Value;
-  txt     := mtHeading.Groups[2].Value;
+  try
+    mtHeading := FRxVerseHeading.Match(txt, [rmoNoUTF8Check]);
+  except
+    on E: Exception do
+      mtHeading := nil;
+  end;
+
+  if assigned(mtHeading) and mtHeading.Success then
+  begin
+    heading := mtHeading.Groups[1].Value;
+    txt     := mtHeading.Groups[2].Value;
+  end
+  else
+    heading := '';
 
   { rendering titles before the verse number }
   if not heading.IsEmpty then
@@ -387,7 +398,7 @@ begin
     TextStyle.Font.Name  := 'default';
     TextStyle.Font.Size  := FFontSize-2;
     TextStyle.Font.Style := [fsBold];
-    TextStyle.Font.Color := NonBibleTextColor;
+    TextStyle.Font.Color := CurrentSkin.VerseNumColor;
   end;
 end;
 
@@ -454,23 +465,23 @@ begin
               begin
                 Font.Size := Font.Size + 2;
                 Font.Style := [fsBold];
-                Font.Color := $424242;
+                Font.Color := CurrentSkin.HeaderColor;
               end;
               '1':
               begin
                 Font.Size := Font.Size + 1;
                 Font.Style := [fsBold, fsItalic];
-                Font.Color := clDefault;
+                Font.Color := CurrentSkin.HeaderColor;
               end;
               '2':
               begin
                 Font.Style := [fsBold, fsItalic];
-                Font.Color := clDefault;
+                Font.Color := CurrentSkin.HeaderColor;
               end;
               '3':
               begin
                 Font.Style := [fsItalic];
-                Font.Color := clDefault;
+                Font.Color := CurrentSkin.WindowTextDim;
               end;
             end;
           end;
@@ -673,22 +684,30 @@ var
 begin
   note := FNotes[TKMemoHyperlink(Sender).URL.ToInteger];
 
-  HighlightRange(note.Range, clDefault); // un-highlight current note text
-  HighlightRange(FVerseRanges[note.Verse], clSilver); // un-highlight current note text
+  if CurrentSkin.IsDark then
+    HighlightRange(note.Range, CurrentSkin.NoteBg)
+  else
+    HighlightRange(note.Range, clDefault); // un-highlight current note text
+  HighlightRange(FVerseRanges[note.Verse], CurrentSkin.VerseHighlightBg); // un-highlight current note text
 end;
 
 procedure TChapterView.HandleVerseChange(Sender: TProjeto);
 var
   verses: TStringList;
 begin
-  if not assigned(FProject) or (Width < 2) then
+  if not assigned(FProject) or (Width < 2) or FLoadingChapter then
     exit;
 
-  verses := Sender.GetChapterText;
+  FLoadingChapter := true;
   try
-    RenderChapter(verses, Sender.Verse);
+    verses := Sender.GetChapterText;
+    try
+      RenderChapter(verses, Sender.Verse);
+    finally
+      FreeAndNil(verses);
+    end;
   finally
-    FreeAndNil(verses);
+    FLoadingChapter := false;
   end;
 end;
 
@@ -1042,12 +1061,33 @@ begin
   end;
 end;
 
+
+procedure TChapterView.ApplySkin(const ASkin: TSkinColors);
+begin
+  Color := ASkin.WindowBg;
+  ApplyDarkModeToControl(Self, ASkin.IsDark);
+  Background.Color := ASkin.WindowBg;
+  TextStyle.Font.Color := ASkin.WindowText;
+  TextStyle.Brush.Color := ASkin.WindowBg;
+  TextStyle.Brush.Style := bsClear;
+  if assigned(FHint) and assigned(FHint.FNoteView) then
+  begin
+    FHint.FNoteView.Color := ASkin.NoteBg;
+    FHint.FNoteView.Background.Color := ASkin.NoteBg;
+    FHint.FNoteView.TextStyle.Font.Color := ASkin.NoteText;
+    FHint.FNoteView.TextStyle.Brush.Color := ASkin.NoteBg;
+  end;
+  LoadChapter;
+end;
 procedure TChapterView.ResetStyleStack;
 begin
   while FStyleStack.Count > 0 do
     PopStyle;
   TextStyle.Font.Size := FFontSize;
   TextStyle.Font.Name := FFontName;
+  TextStyle.Font.Color := CurrentSkin.WindowText;
+  TextStyle.Brush.Color := CurrentSkin.WindowBg;
+  TextStyle.Brush.Style := bsClear;
   TextStyle.ScriptPosition := tpoNormal;
   ParaStyle.FirstIndent := 0;
   ParaStyle.LineSpacingFactor := 1.15;
@@ -1084,7 +1124,7 @@ begin
     Name := 'default';
     Size := Self.TextStyle.Font.Size+2;
     Bold := true;
-    Color := NonBibleTextColor;
+    Color := CurrentSkin.HeaderColor;
   end;
 
   if not FPrintMode then
@@ -1242,6 +1282,7 @@ end;
 constructor TChapterView.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
+  FLoadingChapter := false;
   Parent       := TWinControl(AOwner);
   ReadOnly     := true;
   OnKeyDown    := @HandleKeyDown;
@@ -1261,6 +1302,11 @@ begin
 
   FStyleStack := TObjectStack.Create;
   FRawMemo    := TRawChapterMemo.Create(Parent, Self);
+  Color       := CurrentSkin.WindowBg;
+  Background.Color := CurrentSkin.WindowBg;
+  TextStyle.Font.Color := CurrentSkin.WindowText;
+  TextStyle.Brush.Color := CurrentSkin.WindowBg;
+  TextStyle.Brush.Style := bsClear;
 end;
 
 destructor TChapterView.Destroy;
@@ -1322,7 +1368,7 @@ begin
       Blocks.AddParagraph().ParaStyle.FirstIndent := IfThen(GetParagraphMode = pmParagraph, DefaultFirstIndent);
 
     RenderChapterFooter;
-    HighlightRange(FVerseRanges[current], clSilver);
+    HighlightRange(FVerseRanges[current], CurrentSkin.VerseHighlightBg);
     //RenderNotes;
   finally
     Blocks.UnLockUpdate;

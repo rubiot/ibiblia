@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs,
-  StdCtrls, fileinfo, LCLIntf;
+  StdCtrls, fileinfo, LCLIntf, unitskins;
 
 type
 
@@ -23,10 +23,25 @@ type
     ButtonClose: TButton;
     procedure ButtonChangelogClick(Sender: TObject);
     procedure ButtonCloseClick(Sender: TObject);
+    procedure FormShow(Sender: TObject);
     procedure Label3Click(Sender: TObject);
     procedure LabelRubioURLClick(Sender: TObject);
   public
     constructor Create(AOwner: TComponent); override;
+    procedure ApplySkin(const ASkin: TSkinColors);
+  end;
+
+  { TFormChangelog }
+
+  TFormChangelog = class(TForm)
+    lblTitle: TLabel;
+    memoChangelog: TMemo;
+    btnOK: TButton;
+    procedure FormShow(Sender: TObject);
+    procedure BtnOKClick(Sender: TObject);
+  public
+    constructor Create(AOwner: TComponent); override;
+    procedure ApplySkin(const ASkin: TSkinColors);
   end;
 
 procedure ShowChangelog(AOwner: TComponent);
@@ -40,24 +55,90 @@ implementation
 
 const
   CHANGELOG_TEXT =
-    'iBiblia Version 1.0.0.70 (64-bit Edition)' + sLineBreak +
-    'Release Date: 2026-10-20' + sLineBreak +
+    'iBiblia Version 1.0.1.000 (64-bit Edition)' + sLineBreak +
+    'Release Date: 2026-10-22' + sLineBreak +
     '==========================================' + sLineBreak + sLineBreak +
-    'NEW FEATURES & UPDATES (v1.0.0.70):' + sLineBreak +
-    '  * Find in Project (Ctrl + F) search engine bug fixes and stability improvements.' + sLineBreak +
+    'NEW FEATURES & UPDATES (v1.0.1.000):' + sLineBreak +
+    '  * Dark Mode UI & theWord Skins Integration:' + sLineBreak +
+    '    - View menu with theWord skins and Dark Mode toggle (Ctrl+Shift+D).' + sLineBreak +
+    '    - Palettes: Classic, theWord Dark (Charcoal), Night, Sepia, Slate, Solarized Dark, High Contrast.' + sLineBreak +
+    '    - Complete control theming (Bible boxes, words, chapter view, treeview, statusbar, dialogs).' + sLineBreak +
+    '    - Persistent theme saved to iBiblia.ini.' + sLineBreak +
+    '--------------------------------------------------' + sLineBreak +
+    'FEATURES INTRODUCED IN v1.0.0.79:' + sLineBreak +
+    '  * Support for Compressed Dictionary Modules (compressed=1):' + sLineBreak +
+    '    - Enables full compatibility with compressed theWord dictionaries (.dct.twm).' + sLineBreak +
+    '    - Transparent streaming zlib/deflate decompression for Strong numbers and Morphology codes.' + sLineBreak +
+    '    - Removed restriction in module validation.' + sLineBreak +
+    '--------------------------------------------------' + sLineBreak +
+    'FEATURES INTRODUCED IN v1.0.0.78:' + sLineBreak +
+    '  * Checkboxes for Edit & Properties (Assoc. removed):' + sLineBreak +
+    '    - Removed Assoc. button; default unckecked state is normal viewing / association mode.' + sLineBreak +
+    '    - Checkmark boxes for Edit and Properties at bottom-right of each box.' + sLineBreak +
+    '    - Check to activate, uncheck to return to normal viewing.' + sLineBreak +
+    '  * Real-Time Translation Name Reflection:' + sLineBreak +
+    '    - Changes to module name in Properties tab reflect in the name tab right away as you type.' + sLineBreak +
+    '--------------------------------------------------' + sLineBreak +
+    'FEATURES INTRODUCED IN v1.0.0.77:' + sLineBreak +
+    '  * Translation Name Display per Box:' + sLineBreak +
+    '    - Shows the active Bible module Translation Name at the bottom-left corner of each window (Source, Destination, Ref 1, Ref 2).' + sLineBreak +
+    '    - Automatically extracts title, short title, or description from module properties.' + sLineBreak +
+    '    - Responsive width sharing the bottom status area with the section tab radio buttons.' + sLineBreak +
+    '--------------------------------------------------' + sLineBreak +
+    'NEW FEATURES INTRODUCED IN v1.0.0.76:' + sLineBreak +
+    '  * Section Tabs via Radio Buttons (Assoc., Edit, Properties):' + sLineBreak +
+    '    - 3 radio buttons anchored at the bottom-right corner of each Bible box (Source, Destination, Ref 1, Ref 2).' + sLineBreak +
+    '    - "Assoc.": Standard word-level association and alignment mode.' + sLineBreak +
+    '    - "Edit": Activates the in-place verse text editor directly (replacing double left-click).' + sLineBreak +
+    '    - "Properties": Displays complete module metadata, headers, verse rules, and description.' + sLineBreak +
+    '  * Complete Bible Module Export via Context Menu:' + sLineBreak +
+    '    - Right-clicking any Bible module window (Source, Destination, Ref 1, or Ref 2) now provides' + sLineBreak +
+    '      "Export as Bible module..." preserving 100% of the module metadata and properties.' + sLineBreak +
+    '    - Intelligently detects and defaults to the module extension (.ont, .ot, or .nt).' + sLineBreak +
+    '    - Enforces exact canonical line counts (31,102 for .ont, 23,145 for .ot, 7,957 for .nt) with UTF-8 BOM.' + sLineBreak +
+    '    - Embeds associated Strong''s and morphology tags when exporting Destination module.' + sLineBreak +
+    '  * Automatic Verse Status Transition on Text Reload/Replacement:' + sLineBreak +
+    '    - Status transition to "Needs review" is strictly triggered only when actual Greek/Bible words' + sLineBreak +
+    '      within a verse are modified, added, or deleted.' + sLineBreak +
+    '    - Tag-only updates (Strong numbers, morphology codes, lemmas, or formatting) preserve "Associated" status.' + sLineBreak +
+    '    - TreeView icons and filter statistics update immediately to highlight verses needing inspection.' + sLineBreak +
+    '--------------------------------------------------' + sLineBreak +
+    'FEATURES INTRODUCED IN v1.0.0.75:' + sLineBreak +
+    '  * Streamlined Default Dictionaries configuration with per-module override toggles.' + sLineBreak +
+    '  * Global Greek Strong''s, Hebrew Strong''s, and Morphology dictionary slots.' + sLineBreak +
+    '  * Intelligent routing: OT verses & H-codes route to Hebrew, NT verses & G-codes route to Greek.' + sLineBreak +
+    '  * Automatic key normalization for prefixed (G/H) and non-prefixed topic schemas.' + sLineBreak +
+    '  * Zero-padded fallback for Hebrew Strong''s numbering variations (e.g. 0123, H0123).' + sLineBreak +
+    '  * Dedicated Default Dictionaries dialog under Options (Options > Default Dictionaries...).' + sLineBreak +
+    '  * Per-module Default Dictionaries toggle in Project Properties (checked overrides module slots; unchecked preserves them).' + sLineBreak +    '  * Fixed Greek & Hebrew font rendering in dictionary popup when theWord is closed.' + sLineBreak +
+    '  * Added automatic loading of theWord fonts (*.ttf, *.otf) on startup.' + sLineBreak +
+    '  * Added dynamic font substitution (Segoe UI) in RTF font tables for missing specialized fonts.' + sLineBreak +    '  * Suppressed startup missing-file warnings for inactive per-module dictionaries when Default Dictionaries are enabled.' + sLineBreak +
+    '  * Persistent dictionary configuration saved to iBiblia.ini across restarts.' + sLineBreak +
+    '--------------------------------------------------' + sLineBreak +
+    'FEATURES INTRODUCED IN v1.0.0.74:' + sLineBreak +
+    '  * Real-time Text-to-Speech (TTS) voice reading on hover.' + sLineBreak +
+    '  * Multi-language support: Greek (Stefanos), Hebrew (Asaf), English.' + sLineBreak +
+    '  * Full Windows 10/11 OneCore speech pack auto-discovery.' + sLineBreak +
+    '  * Dedicated Voice & Audio Settings dialog (Options > Voice Settings).' + sLineBreak +
+    '  * Independent Source vs Translation voice selection & instant test.' + sLineBreak +
+    '  * Punctuation filtering for accurate Greek & English pronunciation.' + sLineBreak +
+    '  * Global shortcut (Ctrl + T) to quickly toggle TTS on/off.' + sLineBreak +
+    '--------------------------------------------------' + sLineBreak +
+    'FEATURES INTRODUCED IN v1.0.0.72:' + sLineBreak +
+    '  * Concurrent Bidirectional theWord 7 Sync: resolved concurrency conflict when both sync directions are enabled simultaneously.' + sLineBreak +
+    '  * Thread-safe navigation cooldown in TTwSyncThread (suppresses stale verse echo).' + sLineBreak +
+    '  * Re-entrancy guard (FSyncingFromTw) to prevent circular feedback loops.' + sLineBreak + sLineBreak +
+    'FEATURES INTRODUCED IN v1.0.0.71:' + sLineBreak +
+    '  * theWord 7 Bidirectional Sync: fixed window class GUID, dynamic window enumeration fallback, and 64-bit LPARAM pointer cast.' + sLineBreak +
+    '  * Real-time TreeView selection and verse re-rendering on incoming verse events from theWord.' + sLineBreak +
+    '  * Resilient built-in 66-book alias mapping table for instantaneous verse reference parsing.' + sLineBreak +
+    '  * Suppressed intrusive debug popup when theWord is not running.' + sLineBreak +
+    '  * Persistent verse filter status: remembers and restores active filter on restart.' + sLineBreak + sLineBreak +
+    'FEATURES INTRODUCED IN v1.0.0.70:' + sLineBreak +
+    '  * Find in Project (Ctrl + F) with multi-field search scope and fast match navigation.' + sLineBreak +
     '  * Restored repository link (https://github.com/rubiot/ibiblia) under Rubio Terra.' + sLineBreak +
     '  * Direct link to contributor Edmund Valdez (https://github.com/SalitaNgDiyos).' + sLineBreak +
     '  * Clean regular font styling in About dialog.' + sLineBreak + sLineBreak +
-    'FEATURES INTRODUCED IN v1.0.0.69:' + sLineBreak +
-    '  * Native 64-bit Windows support (Win64 / x86_64) compatible with theWord 7 64-bit.' + sLineBreak +
-    '  * Dynamic runtime linkage with 64-bit SQLite 3 (sqlite3.dll) and PCRE (pcre64.dll).' + sLineBreak +
-    '  * Verse Status Filtering (Issue #104): filter Bible tree by verse status.' + sLineBreak +
-    '  * Fast navigation controls (< and > buttons) with global shortcuts:' + sLineBreak +
-    '      - F8: Jump to Next filtered verse' + sLineBreak +
-    '      - Shift + F8: Jump to Previous filtered verse' + sLineBreak +
-    '  * Live dynamic verse match counters for each status code.' + sLineBreak +
-    '  * First-time startup changelog popup and About dialog link.' + sLineBreak +
-    '  * Restored word highlight on selection with auto-advance on word association.' + sLineBreak + sLineBreak +
     'CONTRIBUTORS:' + sLineBreak +
     '  * Edmund Valdez: https://github.com/SalitaNgDiyos' + sLineBreak +
     '  * Rúbio R. C. Terra: https://github.com/rubiot/ibiblia' + sLineBreak + sLineBreak +
@@ -76,6 +157,7 @@ begin
   Position := poMainFormCenter;
   ClientWidth := 480;
   ClientHeight := 240;
+  OnShow := @FormShow;
 
   // Title: iBiblia
   Label1 := TLabel.Create(Self);
@@ -88,7 +170,7 @@ begin
   Label1.AutoSize := False;
   Label1.Caption := 'iBiblia';
   Label1.Font.Height := -21;
-  Label1.Font.Style := [];
+  Label1.Font.Style := [fsBold];
 
   // Version
   ver := '';
@@ -101,7 +183,7 @@ begin
     ver := '';
   end;
   if ver = '' then
-    ver := '1.0.0.70';
+    ver := '1.0.1.000';
 
   LabelVersion := TLabel.Create(Self);
   LabelVersion.Parent := Self;
@@ -192,6 +274,78 @@ begin
   ButtonClose.Default := True;
   ButtonClose.ModalResult := mrOk;
   ButtonClose.OnClick := @ButtonCloseClick;
+
+  ApplySkin(CurrentSkin);
+end;
+
+procedure TFormAbout.ApplySkin(const ASkin: TSkinColors);
+begin
+  Color := ASkin.PanelBg;
+  ApplySkinToForm(Self, ASkin);
+  {$IFDEF WINDOWS}
+  if HandleAllocated then
+    ApplyDarkModeToWindow(Self, ASkin.IsDark);
+  if Assigned(ButtonChangelog) and ButtonChangelog.HandleAllocated then
+    HookButtonControl(ButtonChangelog);
+  if Assigned(ButtonClose) and ButtonClose.HandleAllocated then
+    HookButtonControl(ButtonClose);
+  {$ENDIF}
+  if ASkin.IsDark then
+  begin
+    Color := ASkin.PanelBg;
+    if Assigned(Label1) then
+      Label1.Font.Color := ASkin.HeaderColor;
+    if Assigned(LabelVersion) then
+      LabelVersion.Font.Color := ASkin.PanelText;
+    if Assigned(Label2) then
+      Label2.Font.Color := ASkin.PanelText;
+    if Assigned(LabelRubioURL) then
+      LabelRubioURL.Font.Color := ASkin.HeaderColor;
+    if Assigned(LabelContributor) then
+      LabelContributor.Font.Color := ASkin.PanelText;
+    if Assigned(Label3) then
+      Label3.Font.Color := ASkin.HeaderColor;
+    if Assigned(ButtonChangelog) then
+      ButtonChangelog.Font.Color := ASkin.PanelText;
+    if Assigned(ButtonClose) then
+      ButtonClose.Font.Color := ASkin.PanelText;
+  end
+  else
+  begin
+    Color := clBtnFace;
+    if Assigned(Label1) then
+      Label1.Font.Color := clWindowText;
+    if Assigned(LabelVersion) then
+      LabelVersion.Font.Color := clWindowText;
+    if Assigned(Label2) then
+      Label2.Font.Color := clWindowText;
+    if Assigned(LabelRubioURL) then
+      LabelRubioURL.Font.Color := clBlue;
+    if Assigned(LabelContributor) then
+      LabelContributor.Font.Color := clWindowText;
+    if Assigned(Label3) then
+      Label3.Font.Color := clBlue;
+    if Assigned(ButtonChangelog) then
+      ButtonChangelog.Font.Color := clWindowText;
+    if Assigned(ButtonClose) then
+      ButtonClose.Font.Color := clWindowText;
+  end;
+  if Assigned(ButtonChangelog) then ButtonChangelog.Invalidate;
+  if Assigned(ButtonClose) then ButtonClose.Invalidate;
+end;
+
+procedure TFormAbout.FormShow(Sender: TObject);
+begin
+  ApplySkin(CurrentSkin);
+  {$IFDEF WINDOWS}
+  ApplyDarkModeToWindow(Self, CurrentSkin.IsDark);
+  if Assigned(ButtonChangelog) then
+    HookButtonControl(ButtonChangelog);
+  if Assigned(ButtonClose) then
+    HookButtonControl(ButtonClose);
+  {$ENDIF}
+  if Assigned(ButtonChangelog) then ButtonChangelog.Invalidate;
+  if Assigned(ButtonClose) then ButtonClose.Invalidate;
 end;
 
 procedure TFormAbout.ButtonChangelogClick(Sender: TObject);
@@ -214,66 +368,158 @@ begin
   OpenURL('https://github.com/rubiot/ibiblia');
 end;
 
-procedure ShowChangelog(AOwner: TComponent);
+{ TFormChangelog }
+
+constructor TFormChangelog.Create(AOwner: TComponent);
 var
-  dlg: TForm;
-  memo: TMemo;
-  btn: TButton;
-  lbl: TLabel;
   histFile: string;
 begin
-  dlg := TForm.Create(AOwner);
-  try
-    dlg.Position := poScreenCenter;
-    dlg.Width := 560;
-    dlg.Height := 430;
-    dlg.Caption := 'What''s New in iBiblia';
-    dlg.BorderStyle := bsDialog;
+  inherited CreateNew(AOwner);
 
-    lbl := TLabel.Create(dlg);
-    lbl.Parent := dlg;
-    lbl.Left := 16;
-    lbl.Top := 12;
-    lbl.Font.Height := -16;
-    lbl.Font.Style := [];
-    lbl.Caption := 'iBiblia v1.0.0.70 - Changelog';
+  Caption := 'What''s New in iBiblia';
+  BorderStyle := bsDialog;
+  Position := poScreenCenter;
+  ClientWidth := 560;
+  ClientHeight := 430;
+  Color := CurrentSkin.PanelBg;
+  OnShow := @FormShow;
 
-    memo := TMemo.Create(dlg);
-    memo.Parent := dlg;
-    memo.Left := 16;
-    memo.Top := 38;
-    memo.Width := 528;
-    memo.Height := 335;
-    memo.ReadOnly := true;
-    memo.ScrollBars := ssAutoVertical;
-    memo.Font.Name := 'Segoe UI';
-    memo.Font.Size := 9;
+  lblTitle := TLabel.Create(Self);
+  lblTitle.Parent := Self;
+  lblTitle.Left := 16;
+  lblTitle.Top := 12;
+  lblTitle.Font.Height := -16;
+  lblTitle.Font.Style := [fsBold];
+  lblTitle.Caption := 'iBiblia v1.0.1.000 - Changelog';
+  if CurrentSkin.IsDark then
+    lblTitle.Font.Color := CurrentSkin.HeaderColor
+  else
+    lblTitle.Font.Color := clWindowText;
 
-    histFile := ExtractFilePath(Application.ExeName) + 'historico.txt';
-    if not FileExists(histFile) then
-      histFile := ExtractFilePath(Application.ExeName) + 'Histórico.txt';
+  memoChangelog := TMemo.Create(Self);
+  memoChangelog.Parent := Self;
+  memoChangelog.Left := 16;
+  memoChangelog.Top := 38;
+  memoChangelog.Width := 528;
+  memoChangelog.Height := 335;
+  memoChangelog.ReadOnly := True;
+  memoChangelog.ScrollBars := ssAutoVertical;
+  memoChangelog.Font.Name := 'Segoe UI';
+  memoChangelog.Font.Size := 9;
+  if CurrentSkin.IsDark then
+  begin
+    memoChangelog.Color := CurrentSkin.WindowBg;
+    memoChangelog.Font.Color := CurrentSkin.WindowText;
+  end
+  else
+  begin
+    memoChangelog.Color := clWindow;
+    memoChangelog.Font.Color := clWindowText;
+  end;
 
-    if FileExists(histFile) then
+  histFile := ExtractFilePath(Application.ExeName) + 'historico.txt';
+  if not FileExists(histFile) then
+    histFile := ExtractFilePath(Application.ExeName) + 'Histórico.txt';
+
+  if FileExists(histFile) then
+  begin
+    try
+      memoChangelog.Lines.LoadFromFile(histFile);
+    except
+      memoChangelog.Text := CHANGELOG_TEXT;
+    end;
+  end
+  else
+    memoChangelog.Text := CHANGELOG_TEXT;
+
+  btnOK := TButton.Create(Self);
+  btnOK.Parent := Self;
+  btnOK.Width := 100;
+  btnOK.Height := 30;
+  btnOK.Left := (ClientWidth - btnOK.Width) div 2;
+  btnOK.Top := 383;
+  btnOK.Caption := 'OK';
+  btnOK.ModalResult := mrOk;
+  btnOK.Default := True;
+  btnOK.OnClick := @BtnOKClick;
+  if CurrentSkin.IsDark then
+    btnOK.Font.Color := CurrentSkin.PanelText
+  else
+    btnOK.Font.Color := clWindowText;
+
+  ApplySkin(CurrentSkin);
+end;
+
+procedure TFormChangelog.BtnOKClick(Sender: TObject);
+begin
+  ModalResult := mrOk;
+  Close;
+end;
+
+procedure TFormChangelog.ApplySkin(const ASkin: TSkinColors);
+begin
+  Color := ASkin.PanelBg;
+  ApplySkinToForm(Self, ASkin);
+  {$IFDEF WINDOWS}
+  if HandleAllocated then
+    ApplyDarkModeToWindow(Self, ASkin.IsDark);
+  if Assigned(btnOK) and btnOK.HandleAllocated then
+    HookButtonControl(btnOK);
+  {$ENDIF}
+  if ASkin.IsDark then
+  begin
+    Color := ASkin.PanelBg;
+    if Assigned(lblTitle) then
+      lblTitle.Font.Color := ASkin.HeaderColor;
+    if Assigned(memoChangelog) then
     begin
-      try
-        memo.Lines.LoadFromFile(histFile);
-      except
-        memo.Text := CHANGELOG_TEXT;
-      end;
-    end
-    else
-      memo.Text := CHANGELOG_TEXT;
+      memoChangelog.Color := ASkin.WindowBg;
+      memoChangelog.Font.Color := ASkin.WindowText;
+    end;
+    if Assigned(btnOK) then
+      btnOK.Font.Color := ASkin.PanelText;
+  end
+  else
+  begin
+    Color := clBtnFace;
+    if Assigned(lblTitle) then
+      lblTitle.Font.Color := clWindowText;
+    if Assigned(memoChangelog) then
+    begin
+      memoChangelog.Color := clWindow;
+      memoChangelog.Font.Color := clWindowText;
+    end;
+    if Assigned(btnOK) then
+      btnOK.Font.Color := clWindowText;
+  end;
+  if Assigned(btnOK) then btnOK.Invalidate;
+end;
 
-    btn := TButton.Create(dlg);
-    btn.Parent := dlg;
-    btn.Width := 100;
-    btn.Height := 30;
-    btn.Left := (dlg.Width - btn.Width) div 2;
-    btn.Top := 383;
-    btn.Caption := 'OK';
-    btn.ModalResult := mrOk;
-    btn.Default := true;
+procedure TFormChangelog.FormShow(Sender: TObject);
+begin
+  ApplySkin(CurrentSkin);
+  {$IFDEF WINDOWS}
+  ApplyDarkModeToWindow(Self, CurrentSkin.IsDark);
+  if Assigned(btnOK) then
+    HookButtonControl(btnOK);
+  {$ENDIF}
+  if CurrentSkin.IsDark then
+  begin
+    Color := CurrentSkin.PanelBg;
+    if Assigned(lblTitle) then
+      lblTitle.Font.Color := CurrentSkin.HeaderColor;
+    if Assigned(btnOK) then
+      btnOK.Font.Color := CurrentSkin.PanelText;
+  end;
+  if Assigned(btnOK) then btnOK.Invalidate;
+end;
 
+procedure ShowChangelog(AOwner: TComponent);
+var
+  dlg: TFormChangelog;
+begin
+  dlg := TFormChangelog.Create(AOwner);
+  try
     dlg.ShowModal;
   finally
     dlg.Free;

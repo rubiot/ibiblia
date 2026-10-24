@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, ONTTokenizer, StdCtrls, Controls, Graphics, Forms, Math,
-  LazUTF8, LazLogger;
+  LazUTF8, LazLogger, unitskins;
 
 type
   TSyntagm = class;
@@ -95,7 +95,6 @@ type
     function GetHasStrongs: boolean;
     function GetHasMorph: boolean;
     procedure SetPointed(const AValue: boolean);
-    procedure SetAssociated(const AValue: boolean);
     function GetGist: string;
   public
     constructor Create(s: TTagSintagma; owner: TObject);
@@ -108,6 +107,7 @@ type
     procedure DisassociatePairs;
     procedure HighlightStrong(strong: string);
     procedure ToggleStrongHighlight(enable: boolean);
+    procedure SetAssociated(const AValue: boolean);
     function GetNext: TSyntagm;
     function GetNextSyntagm: TSyntagm;
     function GetNextVisible: TSyntagm;
@@ -529,7 +529,8 @@ begin
     if not IsSelected then
     begin
       FLabel.Transparent := false;
-      FLabel.Color := clHighlight;
+      FLabel.Color := CurrentSkin.PointedBg;
+      FLabel.Font.Color := CurrentSkin.PointedText;
     end;
   end
   else
@@ -538,12 +539,14 @@ begin
     if IsSelected then
     begin
       FLabel.Transparent := false;
-      FLabel.Color := clYellow;
+      FLabel.Color := CurrentSkin.HighlightBg;
+      FLabel.Font.Color := CurrentSkin.HighlightText;
     end
     else
     begin
-      FLabel.Color := clDefault;
-      FLabel.Transparent := true;
+      FLabel.Color := CurrentSkin.WindowBg;
+      FLabel.Transparent := not CurrentSkin.IsDark;
+      SetAssociated(IsAssociated);
     end;
   end;
   FLabel.Repaint;
@@ -700,7 +703,16 @@ begin
     else if FText = '<Fi>' then
       FLabel.Caption := ']';
     FLabel.ParentColor := false;
-    FLabel.Font.Color  := FColor;
+    if FKind = tsStrongCount then
+    begin
+      if CurrentSkin.IsDark then
+        FLabel.Font.Color := CurrentSkin.VerseNumColor
+      else
+        FLabel.Font.Color := clRed;
+    end
+    else
+      FLabel.Font.Color := FColor;
+
     FLabel.Parent      := TVersiculo(FVerse).Painel;
     FLabel.ParentFont  := FKind <> tsStrongCount;
     FLabel.AutoSize    := true;
@@ -711,12 +723,13 @@ begin
     if IsSelected then
     begin
       FLabel.Transparent := false;
-      FLabel.Color := clYellow;
+      FLabel.Color := CurrentSkin.HighlightBg;
+      FLabel.Font.Color := CurrentSkin.HighlightText;
     end
     else
     begin
-      FLabel.Color := clDefault;
-      FLabel.Transparent := true;
+      FLabel.Color := CurrentSkin.WindowBg;
+      FLabel.Transparent := not CurrentSkin.IsDark;
     end;
   end else
     FLabel := nil;
@@ -772,7 +785,8 @@ begin
   if TVersiculo(FVerse).Ativo and assigned(FLabel) then
   begin
     FLabel.Transparent := false;
-    FLabel.Color := clYellow;
+    FLabel.Color := CurrentSkin.HighlightBg;
+    FLabel.Font.Color := CurrentSkin.HighlightText;
     FLabel.Repaint;
   end;
   TVersiculo(FVerse).Selecao.Add(Self);
@@ -783,8 +797,9 @@ begin
   FSelected := false;
   if TVersiculo(FVerse).Ativo and assigned(FLabel) then
   begin
-    FLabel.Color := clDefault;
-    FLabel.Transparent := true;
+    FLabel.Color := CurrentSkin.WindowBg;
+    FLabel.Transparent := not CurrentSkin.IsDark;
+    SetAssociated(IsAssociated);
     FLabel.Repaint;
   end;
   TVersiculo(FVerse).Selecao.Remove(Self);

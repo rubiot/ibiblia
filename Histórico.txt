@@ -1,6 +1,599 @@
+Version 1.0.1.000 (64-bit Edition) - 2026-10-24
+-------------------------------------------------------------------------------
+* Version Reset to 1.0.1.000 (64-bit Edition):
+  - Transitioned project versioning to the 1.0.1.xxx series starting at 64-bit Version 1.0.1.000.
+  - All subsequent builds follow the increment of .001 from here (1.0.1.001, 1.0.1.002, etc.).
+* Native Themed Tab Strips for Dictionary Popup (Strong's & Morphology):
+  - Replaced Win32 SysTabControl32 native tabs in TFrmDictionaryPopup (formpopup.pas & formpopup.lfm) with native LCL owner-drawn tab panels (HeaderStrongs and HeaderMorfos).
+  - Eliminates dependency on ComCtl32 SysTabControl32, completely resolving Windows 10/11 DWM theme-engine caching that kept tab buttons white with dark font.
+  - Active tab paints with CurrentSkin.PointedBg, pure white text (CurrentSkin.PointedText), and top highlight accent (CurrentSkin.HighlightBg).
+  - Inactive tabs paint with CurrentSkin.PanelBg, readable light font (CurrentSkin.PanelText), and clean borders (CurrentSkin.PanelBorder).
+  - Retains 100% functional fidelity for tab selection (e.g. Strong's vs Translation Memory), mouse clicks, RTF skinning, zoom, and splitter resizing.
+
+Version 1.0.0.116 (64-bit Edition) - 2026-10-24
+-------------------------------------------------------------------------------
+* Overpaint Theming for Dictionary Popup & All Windows TabControls:
+  - Transitioned TabSubclassProc in formpopup.pas and UniversalTabSubclassProc in unitskins.pas to a post-paint GDI overpaint architecture.
+  - DefSubclassProc completes standard Win32 ComCtl32 message handling and viewport validation, then GetDC immediately double-buffers and overpaints the dark tab strip.
+  - Completely eliminates white COLOR_BTNFACE rectangles and dark text on dictionary popup tabs (Strong's and Morphology).
+  - Active tab renders with CurrentSkin.PointedBg and CurrentSkin.HighlightBg top accent line; inactive tabs render in CurrentSkin.PanelBg with CurrentSkin.PanelText and CurrentSkin.PanelBorder.
+
+Version 1.0.0.115 (64-bit Edition) - 2026-10-24
+-------------------------------------------------------------------------------
+* Dark Mode Theming for Dictionary Popup Tabs (Strong's & Morphology):
+  - Fixed Win32 subclassing lifecycle in TFrmDictionaryPopup (formpopup.pas).
+  - Calling HandleNeeded on TabControlStrongs and TabControlMorfos ensures Win32 handles are created before subclassing.
+  - Added OnShow event handler (FormShow) and hooked tabs upon becoming visible.
+  - Refined TabSubclassProc with fallback to TCustomTabControl.Tabs[i] to guarantee tab titles render crisply.
+  - Cleaned up tab background with CurrentSkin.PanelBg, active tab with CurrentSkin.PointedBg, and top accent line with CurrentSkin.HighlightBg.
+  - Enhanced UniversalTabSubclassProc in unitskins.pas with HandleNeeded and WM_NCDESTROY cleanup.
+
+Version 1.0.0.114 (64-bit Edition) - 2026-10-24
+-------------------------------------------------------------------------------
+* Dark Theming for "Close Project" and Modal Message Confirmation Dialogs:
+  - Added ThemedMessageDlg and ThemedShowMessage in unitskins.pas to fully theme standard LCL message dialogs.
+  - Automatically applies CurrentSkin.PanelBg to dialog window background and sets prompt font color to light (CurrentSkin.PanelText).
+  - Subclasses modal dialog buttons (Yes, No, Cancel, OK) via HookButtonControl, replacing white backgrounds with themed dark buttons.
+  - Applied OS immersive dark mode (DWMWA_USE_IMMERSIVE_DARK_MODE / DWMWA_CAPTION_COLOR) to the confirmation dialog window frame.
+  - Updated ActionFecharProjetoExecute and remaining message dialogs in formprincipal.pas to use ThemedMessageDlg.
+
+Version 1.0.0.113 (64-bit Edition) - 2026-10-24
+-------------------------------------------------------------------------------
+* Fixed Access Violation During Bidirectional theWord Verse Navigation:
+  - Eliminated dataset re-entrancy race condition by adding FNavigatingVerse state guard in TFrmPrincipal.
+  - Replaced synchronous SendMessage with SendMessageTimeout (1000ms) in SyncTheWordVerse to prevent modal hangs.
+  - Added comprehensive built-in 391 book aliases to TWAutomateUtils.InitDefaultBooksMap, covering all 66 full English and Portuguese names.
+  - Completely removed illegal GUI MessageDlg calls from the background worker thread (TwSyncThread / GetTwCurrentRef).
+  - Thread-safe BooksMap lookups guarded by BooksMapLock TCriticalSection.
+
+Version 1.0.0.112 (64-bit Edition) - 2026-10-24
+-------------------------------------------------------------------------------
+* Complete Dark Theming for "What's New in iBiblia" Changelog Window:
+  - Promoted dynamic changelog dialog to dedicated TFormChangelog class with OnShow lifecycle.
+  - Hooked OK action button (btnOK) via HookButtonControl, completely eliminating white button backgrounds.
+  - Set top header label (lblTitle: "iBiblia v1.0.0.112 - Changelog") to CurrentSkin.HeaderColor (fsBold).
+  - Applied OS immersive dark mode (DWMWA_USE_IMMERSIVE_DARK_MODE / DWMWA_CAPTION_COLOR) on FormShow,
+    transforming the white title bar into a themed dark caption bar with light text.
+
+Version 1.0.0.111 (64-bit Edition) - 2026-10-24
+-------------------------------------------------------------------------------
+* Dark Theming for About iBiblia & What's New Changelog Dialogs:
+  - Added TFormAbout.ApplySkin and FormShow handler to hook ButtonChangelog ("View Changelog")
+    and ButtonClose ("Close") via HookButtonControl, eliminating white button backgrounds.
+  - Set top title label ("iBiblia") and Changelog header label to CurrentSkin.HeaderColor (fsBold),
+    matching the accent colors and theme fonts.
+  - Applied OS immersive dark mode (DWMWA_USE_IMMERSIVE_DARK_MODE / DWMWA_CAPTION_COLOR) to both
+    About and What's New dialog window frames, eliminating light-colored title bars.
+  - Themed the "OK" button in the What's New dialog with CurrentSkin.PanelBg and PanelText.
+  - Dynamically updates FormAbout styling on theme changes in TFrmPrincipal.ApplyActiveSkin.
+
+Version 1.0.0.110 (64-bit Edition) - 2026-10-23
+-------------------------------------------------------------------------------
+* Fixed Identifier Not Found "HookFormControl" in formexportar.pas:
+  - Made formexportar.pas completely self-contained by embedding ExportFormSubclassProc locally.
+  - Eliminated external dependency on HookFormControl, allowing formexportar.pas to compile with any unitskins version.
+  - Implemented local GDI brush caching (GetExportBgBrush) for zero resource leaks.
+  - Successfully dark-fills the export dialog client area, fixing all white margins and button backgrounds.
+
+Version 1.0.0.109 (64-bit Edition) - 2026-10-23
+-------------------------------------------------------------------------------
+* Fixed Compilation Error in unitskins.pas:
+  - Removed stray duplicate procedure forward signatures in implementation section of unitskins.pas.
+  - Eliminated FPC nested function scope misinterpretation (Error 4030 / Error 4001 / Error 2003).
+  - Added non-Windows stubs for HookFormControl and UnhookFormControl.
+
+Version 1.0.0.108 (64-bit Edition) - 2026-10-23
+-------------------------------------------------------------------------------
+* Fixed White Margins and Background in Export Association Dialog (TFrmExportarProjeto):
+  - Added HookFormControl / FormSubclassProc in unitskins.pas to intercept WM_ERASEBKGND,
+    WM_CTLCOLORSTATIC, and WM_CTLCOLORBTN on dialog window handles, filling with CurrentSkin.PanelBg.
+  - Automatically hooks forms on show and during ApplySkinToForm.
+  - Set Color and PageControl1.Color to CurrentSkin.PanelBg on FormShow in formexportar.pas.
+  - Eliminated all white spaces around and below PageControl1 and behind the Cancel/Export buttons.
+
+Version 1.0.0.107 (64-bit Edition) - 2026-10-23
+-------------------------------------------------------------------------------
+* Fixed Dictionary Popup "Hebrew" Label Erroneously Replaced by "Segoe UI":
+  - Removed "Hebrew" from CustomHebrewFonts list in SanitizarFontesRTF (Hebrew is a language, not a font name).
+  - Scoped RTF font table substitution strictly within the "{\fonttbl ...}" header using brace-depth scanning.
+  - Suffix and body dictionary text are completely protected from font replacement, preserving all "Hebrew" labels.
+
+Version 1.0.0.106 (64-bit Edition) - 2026-10-23
+-------------------------------------------------------------------------------
+* Cleaned up Menu Bar Labels for Dark Mode:
+  - Removed "Dark mode" menu items from "View" and "Options" menus.
+  - Kept dark mode feature fully active and accessible via "View >> Skins (theWord Themes)" submenu.
+  - Retained "Ctrl+Shift+D" shortcut via ActionToggleDarkMode for one-key dark mode toggling.
+
 ===============================================================================
 iBiblia - Changelog & Release Notes
 ===============================================================================
+
+Version 1.0.0.99 (64-bit Edition) - 2026-10-22
+-------------------------------------------------------------------------------
+
+Version 1.0.0.105 (64-bit Edition) - 2026-10-22
+-------------------------------------------------------------------------------
+* Fixed Main Menu Bar Crash on Item Click & Darkened Unskinned Menu Area:
+  - Preserved TMenuItem Object References in Win32 Menu Item Data:
+    In SetupMenuOwnerDraw, replaced integer index dwItemData parameter with
+    `Pointer(MainMenu1.Items[i])`. This preserves Lazarus LCL's native TMenuItem
+    object mapping in Win32 message dispatching (WM_INITMENUPOPUP, WM_MENUSELECT,
+    WM_COMMAND), eliminating the Access Violation crash when clicking top-level menu items.
+  - Eliminated Unskinned White Horizontal Strip on Menu Bar:
+    Implemented PaintMenuBarNC in WM_NCPAINT and WM_NCACTIVATE. It calculates
+    the menu bar bounding rect using GetMenuBarInfo (with automatic geometric fallback)
+    and fills the empty unskinned region to the right of the menu items with
+    CurrentSkin.PanelBg, creating a seamless dark title and menu bar.
+  - Safe Subclass Item Validation:
+    Updated WM_MEASUREITEM and WM_DRAWITEM handlers to verify itemData against
+    MainMenu1 items before processing, preventing unexpected interference with
+    subordinate dropdowns or external controls.
+
+
+Version 1.0.0.104 (64-bit Edition) - 2026-10-22
+-------------------------------------------------------------------------------
+* Fixed Lazarus LCLType DRAWITEMSTRUCT identifier in formprincipal.pas:
+  - In Free Pascal's LCLType unit (which shadows windows.pp), the HDC member of
+    tagDrawItemStruct is defined as `_hDC: HDC` rather than `hDC` to prevent identifier collisions.
+  - Updated WM_DRAWITEM handler in MenuSubclassProc to assign `itemHdc := pDIS^._hDC`
+    and draw via `itemHdc`, completely resolving the 10 compiler errors.
+  - Verified 100% clean compilation against Free Pascal 3.2.2 / Lazarus LCL.
+
+
+Version 1.0.0.103 (64-bit Edition) - 2026-10-22
+-------------------------------------------------------------------------------
+* Implemented Official Win32 MF_OWNERDRAW Custom Drawing on Main Menu Bar:
+  - In formprincipal.pas, converted top-level menu items (Project, Edit, Navigation,
+    View, Options, Help) to MF_OWNERDRAW with preserved popup handles via SetupMenuOwnerDraw.
+  - Windows routes WM_MEASUREITEM and WM_DRAWITEM directly to the form WindowProc and
+    subclass procedure, bypassing any undocumented or version-dependent UAH behaviors.
+  - In WM_DRAWITEM, cleanly fills each item's rectangle with CurrentSkin.PanelBg (or
+    CurrentSkin.PointedBg on hover, CurrentSkin.HighlightBg when open) and renders the
+    caption text in bright, crisp CurrentSkin.PanelText (RGB(253, 246, 227)).
+  - In WM_NCPAINT, fills the entire menu bar strip in the non-client area with
+    CurrentSkin.PanelBg to eliminate any remaining white space.
+  - Preserved all skin switching performance improvements and zero-lag optimizations.
+
+
+Version 1.0.0.102 (64-bit Edition) - 2026-10-22
+-------------------------------------------------------------------------------
+* Fixed Main Window Menu Bar (Project, Edit, Navigation, View, Options, Help) Theme Theming:
+  - In formprincipal.pas, fixed TUAHMenu struct alignment for 64-bit Windows (_pad: DWORD),
+    resolving off-by-4 offset in reading menu item position from UAHDRAWMENUITEM.
+  - Implemented robust fallback menu bar background filling on WM_UAHDRAWMENU, ensuring
+    CurrentSkin.PanelBg fills the entire menu bar even if GetMenuBarInfo returns empty.
+  - Implemented fallback caption lookup directly from MainMenu1.Items[i].Caption on
+    WM_UAHDRAWMENUITEM to guarantee item captions (Project, Edit, Navigation, View, Options,
+    Help) always render.
+  - Selected form GUI font into menu drawing DC and rendered text with CurrentSkin.PanelText
+    (cream-white) on CurrentSkin.PanelBg (or PointedBg/HighlightBg when hovered/selected).
+  - Ensured InstallMenuSubclass is invoked on FormCreate, FormShow, and dynamically whenever
+    switching between dark and light skins in ApplyActiveSkin.
+
+
+Version 1.0.0.101 (64-bit Edition) - 2026-10-22
+-------------------------------------------------------------------------------
+* Fixed GroupBox Caption Font Color to Light across Dark Theme:
+  - In unitskins.pas, implemented GroupBoxSubclassProc (WM_PAINT) and HookGroupBoxControl
+    to overpaint the groupbox title caption in crisp, light CurrentSkin.PanelText
+    (RGB(253, 246, 227) / cream-white) with transparent background mode.
+  - Eliminated the default Windows UxTheme black/dark-gray text color on:
+    * "Default theWord Dictionaries" groupbox in Default Dictionaries Settings (formglobaldicts.pas).
+    * "Properties" groupbox at the top left of Project Settings (formpropprojeto.pas).
+  - Automatically hooks all TCustomGroupBox controls across the entire application in
+    ApplySkinToControlTree.
+  - Also hooked and styled the "Use default dictionaries for all Bible modules" checkbox
+    in Default Dictionaries Settings.
+
+
+Version 1.0.0.100 (64-bit Edition) - 2026-10-22
+-------------------------------------------------------------------------------
+* Fixed "Use Default Dictionaries" CheckBox Theme Background & Light Font:
+  - In unitskins.pas, implemented custom theme-conforming painting in CheckBoxSubclassProc
+    (WM_PAINT), completely eliminating the stark white background highlight (COLOR_BTNFACE
+    bug in Windows UxTheme DarkMode_Explorer).
+  - Background is cleanly filled with CurrentSkin.PanelBg, matching the Project Settings
+    tab and form dark surface.
+  - Caption text is rendered with crisp, light CurrentSkin.PanelText with transparent
+    background, fully honoring the bold font style.
+  - Checkbox glyph is rendered with a high-contrast cyan accent border and bright cyan
+    checkmark (Polyline) when checked, and crisp dark border when unchecked.
+  - In formpropprojeto.pas, ensured FChkUseDefaultDict is immediately hooked and updated
+    with CurrentSkin.PanelBg and CurrentSkin.PanelText on FormCreate and FormShow.
+
+* Restored Expand/Collapse Arrow Icons in Export Patch TreeView:
+  - In bibletreeview.pas, actively rendered the expand/collapse arrow icon (▼ for expanded,
+    ▶ for collapsed) in TreeViewCustomDrawItem immediately before each node checkbox.
+  - Arrows are drawn using high-contrast CurrentSkin.TreeText (bright cream/white),
+    restoring full visual hierarchy for Bible books and chapters alongside the light
+    checkboxes and text.
+
+Version 1.0.0.98 (64-bit Edition) - 2026-10-22
+-------------------------------------------------------------------------------
+* Fixed Lazarus Compilation Error in bibletreeview.pas:
+  - Removed duplicate implementation of CreateCheckboxBitmap, resolving Error (3028)
+    overloaded functions have the same parameter list.
+  - All 17 units verified with clean build audit.
+
+Version 1.0.0.97 (64-bit Edition) - 2026-10-22
+-------------------------------------------------------------------------------
+* Fixed Light Font Color and Light Themed Checkboxes in Export Patch Dialog:
+  - In bibletreeview.pas, dynamically generated high-contrast, theme-conforming
+    checkbox state images (CreateCheckboxBitmap / UpdateSkin) with light cream/white
+    borders (CurrentSkin.TreeText) and bright cyan/green checkmarks, replacing the
+    dark-bordered classic PNGs that were blending into the dark teal background.
+  - In TreeViewCustomDrawItem, actively rendered the light checkboxes (StateImages.Draw)
+    and the node text (Sender.Canvas.TextOut) in CurrentSkin.TreeText with DefaultDraw :=
+    False, ensuring all Bible books, chapters, and verse numbers show up light and crisp.
+
+Version 1.0.0.96 (64-bit Edition) - 2026-10-22
+-------------------------------------------------------------------------------
+* Restored Status Color Icons in Main Bible Tree:
+  - In formprincipal.pas and bibletreeview.pas, restored DefaultDraw := True in
+    TreeView1CustomDrawItem and TreeViewCustomDrawItem. Setting DefaultDraw := False
+    previously suppressed the LCL node image rendering pipeline, causing the green,
+    red, and orange status circle icons from ImageListTreeView (and checkboxes in
+    TBibleTreeView) to disappear.
+  - Setting DefaultDraw := True preserves complete rendering of status icons, checkboxes,
+    and expand arrows, while TreeView1AdvancedCustomDraw, HookTreeViewControl, and
+    Sender.Canvas.Brush.Color maintain the seamless dark background and bright text.
+
+Version 1.0.0.95 (64-bit Edition) - 2026-10-22
+-------------------------------------------------------------------------------
+* Fixed White Background on Bible Trees (Main & Export):
+  - In unitskins.pas, implemented HookTreeViewControl (TreeViewSubclassProc) handling
+    WM_ERASEBKGND with CurrentSkin.TreeBg and sending TVM_SETBKCOLOR ($111D).
+  - In bibletreeview.pas and formprincipal.pas, implemented OnAdvancedCustomDraw to fill
+    the entire treeview canvas (ARect) with CurrentSkin.TreeBg before any items paint.
+  - In TreeViewCustomDrawItem, filled the entire row (Node.DisplayRect(False)) with
+    CurrentSkin.TreeBg, completely eliminating white bands and gaps between checkboxes,
+    lines, and text.
+  - Re-enabled DarkMode_Explorer for TCustomTreeView in ApplyDarkModeToControl to theme
+    scrollbars and borders.
+
+Version 1.0.0.94 (64-bit Edition) - 2026-10-22
+-------------------------------------------------------------------------------
+* Fixed LCL Streaming Runtime Error: Class "TGroupBox" not found:
+  - Reverted GroupBox1 component class back to TGroupBox across formexportpatch.pas,
+    formexportpatch.lfm, formapplypatch.pas, and formapplypatch.lfm.
+  - In formexportpatch.lrs, GroupBox1 is stored as TGroupBox. Maintaining TGroupBox in
+    the form class interface ensures Lazarus LCL form resource streaming finds and
+    instantiates the registered class without runtime exception EClassNotFound.
+
+Version 1.0.0.93 (64-bit Edition) - 2026-10-22
+-------------------------------------------------------------------------------
+* Fixed Lazarus Compilation Error in formapplypatch.pas:
+  - Added LCLIntf to uses clause in formapplypatch.pas, resolving Error (5000)
+    Identifier not found "SendMessage".
+  - Cleaned build test verification across all 17 units.
+
+Version 1.0.0.92 (64-bit Edition) - 2026-10-22
+-------------------------------------------------------------------------------
+* Fixed Lazarus Compilation Error in formexportpatch.pas:
+  - Added ExtCtrls to uses clause in formexportpatch.pas, resolving Error (5000)
+    Identifier not found "TPanel".
+  - Verified active custom drawing in bibletreeview.pas with DefaultDraw := False
+    renders all Bible books, chapters, and verse numbers in bright CurrentSkin.TreeText.
+
+Version 1.0.0.91 (64-bit Edition) - 2026-10-22
+-------------------------------------------------------------------------------
+* Fixed TreeView Black Text on Windows for Bible Books, Chapters, and Verses:
+  - In bibletreeview.pas, implemented active TextOut rendering with DefaultDraw := False.
+    Previously, setting DefaultDraw := True instructed Windows SysTreeView32 to draw
+    default item text, which Windows painted in COLOR_WINDOWTEXT (black RGB 0,0,0)
+    regardless of canvas font properties.
+  - Custom drawing now takes over text rendering with Sender.Canvas.TextOut using
+    CurrentSkin.TreeText (bright cream/white RGB 253, 246, 227) for books, chapters,
+    and verses, completely bypassing Windows black text rendering.
+  - Replaced GroupBox1 (TGroupBox) with borderless TPanel in formexportpatch and
+    formapplypatch to guarantee Windows BUTTON controls do not drop WM_NOTIFY/NM_CUSTOMDRAW.
+  - In unitskins.pas, SetControlThemeMode for TCustomTreeView disables visual style
+    locking (via empty theme string) and sends TVM_SETTEXTCOLOR / TVM_SETBKCOLOR directly.
+
+Version 1.0.0.90 (64-bit Edition) - 2026-10-22
+-------------------------------------------------------------------------------
+* Fixed Dark Mode Bible Book Name Visibility in Patch Dialogs:
+  - In bibletreeview.pas, implemented TreeViewCustomDrawItem on TBibleTreeView and hooked
+    OnCustomDrawItem. Previously, without custom draw handling, Windows native SysTreeView32
+    rendered node labels using COLOR_WINDOWTEXT (black RGB 0, 0, 0), rendering book names
+    unreadable against the dark teal TreeBg.
+  - TreeViewCustomDrawItem now renders normal nodes with CurrentSkin.TreeText, hovered
+    nodes with CurrentSkin.PointedBg/PointedText, and selected nodes with HighlightBg.
+  - In unitskins.pas, boosted TreeText color in skSolarizedDark to bright cream/white
+    (MakeRGB($FD, $F6, $E3)) and skDarkBlue to MakeRGB($F0, $F4, $F8) for maximum
+    contrast and readability.
+  - Applied the same hover and bright styling to TreeView1 in formprincipal.pas.
+
+Version 1.0.0.89 (64-bit Edition) - 2026-10-22
+-------------------------------------------------------------------------------
+* Fixed White Background Hover Artifacts on Verse Texts & Toolbar Icons:
+  - Verse Words Background Retention Fix:
+    * In syntagm.pas, unhovering words previously set Transparent := true on TLabel.
+      On Windows, invalidating a transparent TLabel caused TScrollBox WM_ERASEBKGND to
+      erase with system COLOR_BTNFACE (white/light gray RGB 240, 240, 240), leaving
+      permanent white rectangles around touched words.
+    * Changed TLabel.Transparent to false in Dark Mode, ensuring TLabel.Color :=
+      CurrentSkin.WindowBg always paints the dark background directly.
+    * In unitskins.pas, implemented HookScrollBoxControl (ScrollBoxSubclassProc) handling
+      WM_ERASEBKGND with CurrentSkin.WindowBg for ScrollBoxSrcVerse, ScrollBoxDstVerse,
+      ScrollBoxRef1Verse, ScrollBoxRef2Verse, and TVersiculo.FPanel.
+  - Toolbar Buttons Hover State Fix:
+    * In formprincipal.pas, set ToolBar1.Transparent := False and implemented custom
+      NM_CUSTOMDRAW handling in TFrmPrincipal.WndProc via HandleToolBarCustomDraw.
+    * Toolbar buttons now draw with CurrentSkin.PanelBg when normal, CurrentSkin.PointedBg
+      with PanelBorder when hot/hovered, and CurrentSkin.HighlightBg when pressed,
+      eliminating the white hover square on the Help (?) and navigation icons.
+
+Version 1.0.0.88 (64-bit Edition) - 2026-10-22
+-------------------------------------------------------------------------------
+* Fixed Checkbox Doubled Text / Initial Letter Artifacts in Dark Mode:
+  - In unitskins.pas, removed the duplicate WM_PAINT text drawing in CheckBoxSubclassProc.
+    Windows native BUTTON control already draws the checkbox glyph and caption text
+    natively using the transparent background, theme brush, and panel text color
+    provided by WM_CTLCOLORSTATIC.
+  - The redundant DrawTextW call in CheckBoxSubclassProc was drawing on top at an offset,
+    leaving a 4-pixel remnant of the original first letter and causing doubled text
+    (e.g., "EE", "MM"). Removing it eliminates the doubled text completely.
+  - CheckBoxSubclassProc retains WM_ERASEBKGND to paint the checkbox background in
+    CurrentSkin.PanelBg, preventing background flicker.
+
+Version 1.0.0.87 (64-bit Edition) - 2026-10-22
+-------------------------------------------------------------------------------
+* Fixed Lazarus compilation error in unitskins.pas:
+  - Removed undeclared identifier "oldCol" assignments on lines 654 and 662 inside
+    UniversalTabSubclassProc. SetTextColor(memDC, ColorToRGB(...)) is invoked directly
+    without return value assignment, resolving Error (5000) Identifier not found "oldCol".
+
+Version 1.0.0.86 (64-bit Edition) - 2026-10-22
+-------------------------------------------------------------------------------
+* Dark Mode Theming for Export Association & Export/Apply Patch Dialogs:
+  - Export Association Dialog (TFrmExportarProjeto):
+    * Subclassed PageControl1 via HookTabControl, rendering dark tab strip, active blue
+      tab with bold white text, and dark tab background.
+    * Styled TabSheet1, TabSheet2, and TabSheet3 backgrounds in CurrentSkin.PanelBg.
+    * Hooked all checkboxes (italics, morphology, comments, reused strongs, unused strongs,
+      concordance) via HookCheckBoxControl with transparent backgrounds and crisp white text.
+    * Hooked bottom action buttons (btExportar, Button2) via HookButtonControl.
+    * Applied OS-level immersive dark title bar via OnShow := @FormShow.
+  - Export Patch Dialog (TFormExportPatch):
+    * Fully dark-themed FBibleTreeView with CurrentSkin.TreeBg, CurrentSkin.TreeText,
+      CurrentSkin.PanelBorder line color, tvestArrowFill expand signs, and OS dark mode.
+    * Hooked bottom action buttons (Button1, Button2, BtnSelectAll, BtnDeselectAll) with
+      HookButtonControl, rendering dark buttons with crisp white text.
+    * Enabled immersive dark title bar via FormShow.
+  - Apply Patch Dialog (TFrmApplyPatch) & Merge Projects Dialog (TFrmMesclarProjetos):
+    * Complete dark mode theming for FBibleTreeView, TabControlPreview, MemoComments,
+      CheckListBox1, CheckListBox2, and action buttons.
+
+Version 1.0.0.85 (64-bit Edition) - 2026-10-22
+-------------------------------------------------------------------------------
+* Fixed Button Text Visibility and Checkbox Backgrounds in Dark Mode:
+  - TBitBtn Caption Rendering Fix:
+    * Resolved invisible text on TBitBtn controls ("Load new text", "Clear text", "Choose",
+      "OK", "Cancel") by falling back to TControl(dwRefData).Caption when Win32
+      GetWindowTextW returns empty for owner-drawn button handles.
+    * Button text is rendered in crisp, high-contrast CurrentSkin.PanelText (off-white)
+      for enabled buttons, and pure white (CurrentSkin.PointedText) when hovered.
+    * Disabled buttons render readable dimmed text (CurrentSkin.WindowTextDim) rather
+      than appearing as an empty blank box.
+  - Transparent Checkbox Backgrounds on Subclassed TabControls:
+    * Handled WM_CTLCOLORSTATIC and WM_CTLCOLORBTN inside UniversalTabSubclassProc with
+      SetBkMode(TRANSPARENT) and CurrentSkin.PanelText, completely eliminating the white
+      highlight box behind "Use Default Dictionaries (overrides above)".
+  - Explicit OnShow Button Subclass Hooks:
+    * Added direct button subclass hooks on TFormPropProjeto and TFormGlobalDicts in OnShow,
+      ensuring every action button receives dark theming and crisp light font rendering.
+
+Version 1.0.0.84 (64-bit Edition) - 2026-10-22
+-------------------------------------------------------------------------------
+* Fixed Remaining Dialog White Areas (Default Dictionaries & Project Properties):
+  - Recursive Control Tree Theming (ApplySkinToControlTree):
+    * Replaced shallow component scanning with recursive ControlCount/Controls hierarchy
+      traversal, styling controls whose Owner is a GroupBox or Panel (resolving white
+      Greek/Hebrew/Morphology edit boxes in Default Dictionaries Settings).
+  - Native Push Button Subclass Theming (HookButtonControl / ButtonSubclassProc):
+    * Implemented ComCtl32 window subclassing for TButton and TBitBtn controls.
+    * Buttons now draw with dark panel background (CurrentSkin.PanelBg), 1px border
+      (CurrentSkin.PanelBorder), and theme text (CurrentSkin.PanelText).
+    * Hovered buttons illuminate in CurrentSkin.PointedBg with white text; clicked buttons
+      highlight in CurrentSkin.HighlightBg.
+  - OnShow Handle Allocation Guarantees:
+    * Hooked OnShow on TFormGlobalDicts and TFormPropProjeto so that ApplyDarkModeToWindow
+      and HookTabControl execute when window handles are 100% allocated.
+    * Fixed white title bar on Default Dictionaries Settings dialog.
+    * Fixed white tab strip and white background on Project Properties TabControl1.
+
+Version 1.0.0.83 (64-bit Edition) - 2026-10-22
+-------------------------------------------------------------------------------
+* Comprehensive Dark Mode Theming for Dialog Windows & Controls:
+  - Default Dictionaries Settings Dialog (TFormGlobalDicts):
+    * Enabled dark mode styling for window title bar, background (CurrentSkin.PanelBg),
+      groupbox, labels, edit boxes, and action buttons.
+  - Project Properties Dialog (TFormPropProjeto):
+    * Styled TabControl1 with native ComCtl32 subclassing, rendering dark tab strip,
+      active blue tab with bold white text, and dark page background.
+    * Fixed Font Preview Memo (MemoFonte): font color now dynamically forced to bright
+      readable text (CurrentSkin.WindowText) on dark background, resolving unreadable black-on-black text.
+    * Added dark-themed styling for disabled dictionary edit boxes (leDicStrong, leDicMorfo)
+      when "Use Default Dictionaries" is active.
+  - Universal Control Theming in unitskins.pas (ApplySkinToForm):
+    * Added comprehensive auto-styling for TLabeledEdit, TCheckBox, TRadioButton,
+      TGroupBox, TButton, TBitBtn, and TSpeedButton.
+    * Automatically hooks and dark-themes any TCustomTabControl across all dialogs via
+      UniversalTabSubclassProc.
+  - Dark Mode applied to all remaining dialogs:
+    * Voice & TTS Settings (TFormVoiceSettings)
+    * Export Dialog (TFrmExportarProjeto)
+    * Merge Projects Dialog (TFrmMesclarProjetos)
+    * Export Patch Dialog (TFormExportPatch)
+    * Apply Patch Dialog (TFrmApplyPatch)
+
+Version 1.0.0.82 (64-bit Edition) - 2026-10-22
+-------------------------------------------------------------------------------
+* Fixed Dictionary & Morphology Popup Tab Theming in Dark Mode:
+  - Subclassed Win32 SysTabControl32 controls (TabControlStrongs & TabControlMorfos)
+    using comctl32.dll window subclassing.
+  - Custom double-buffered WM_PAINT and WM_ERASEBKGND rendering for tab strip headers:
+    * Replaced the white tab strip background with CurrentSkin.PanelBg.
+    * Active tab styled in CurrentSkin.PointedBg with top highlight accent and bright
+      CurrentSkin.PointedText (bold white), merging seamlessly with the definition pane.
+    * Inactive tabs styled in CurrentSkin.PanelBg with CurrentSkin.PanelText and subtle
+      CurrentSkin.PanelBorder framing.
+    * Eliminated all white tab buttons and light backgrounds from the dictionary popup.
+  - Applied OS-level immersive dark mode to the popup tool window (ApplyDarkModeToWindow).
+  - Flattened popup Splitter1 (Beveled := False) to eliminate the 1-pixel 3D line.
+
+Version 1.0.0.81 (64-bit Edition) - 2026-10-22
+-------------------------------------------------------------------------------
+* Fixed residual light menu bar and status radio button fonts in Dark Mode:
+  - Main Menu Bar Dark Theming:
+    * Implemented Win32 ComCtl32 window subclassing hook on TFrmPrincipal.Handle.
+    * Added handlers for WM_UAHDRAWMENU ($0091) and WM_UAHDRAWMENUITEM ($0092) to draw
+      the horizontal top menu bar background, item states, and text using CurrentSkin colors.
+    * Eliminated the residual white horizontal menu bar row and its right-side background.
+    * Added non-client bottom border line override on WM_NCPAINT/WM_NCACTIVATE to erase the
+      1-pixel white line below the menu bar.
+  - Status Radio Buttons Dark Mode Styling:
+    * Intercepted and custom-drawn radio button text and GroupBox "Status" caption via
+      ComCtl32 window subclassing on RadioGroupStatus and its child TRadioButton controls.
+    * Overrode black system button text with crisp, high-contrast CurrentSkin.PanelText
+      (and CurrentSkin.WindowTextDim when disabled).
+    * Added automatic re-hooking on project open (Abrir / Novo) and status selection changes.
+
+Version 1.0.0.80 (64-bit Edition) - 2026-10-22
+-------------------------------------------------------------------------------
+* Dark Mode UI & theWord Skins Integration:
+  - Added dedicated View menu with one-click Dark Mode toggle (Ctrl+Shift+D).
+  - Added Skins (theWord Color Schemes) submenu adopting theWord software color themes:
+    * Classic (Light): Default clean light theme.
+    * theWord Dark (Charcoal): theWord 7 Dark Charcoal palette (#1E1E1E reading panes, #252526 shell, #D4D4D4 text).
+    * Night (Pitch Black): High-contrast OLED deep black theme (#121212) with crisp off-white text.
+    * Sepia (Parchment): theWord eye-strain relief warm parchment theme (#F4EEDB background, #2D241E sepia text).
+    * Slate (Steel Blue): theWord cool navy dark theme (#1C232B slate background, #D8E1E8 pale ice text).
+    * Solarized Dark: Classic low-contrast cyan-dark theme (#002B36, #839496 text).
+    * High Contrast Dark: Stark black & white accessibility theme.
+  - Full dynamic control theming: Bible word labels (associated/unassociated), in-place editors, chapter view, notes popup, treeview, toolbar, statusbar, and dialog windows.
+  - Persistent theme configuration saved to iBiblia.ini ([UI] Theme=...).
+  - Duplicate Dark Mode toggle under Options menu for quick access.
+
+Version 1.0.0.79 (64-bit Edition) - 2026-10-21
+-------------------------------------------------------------------------------
+* Support for Compressed Dictionary Modules (.twm / .dct.twm):
+  - Added full support for compressed theWord dictionary modules (compressed=1) for Strong's numbers (Greek & Hebrew) and Morphology codes.
+  - Implemented automatic, streaming zlib / deflate decompression (DescompactarDados & ObterTextoDoCampo) on topic content BLOBs with raw-deflate fallback.
+  - Transparently handles both uncompressed and compressed RTF definitions without user intervention.
+  - Removed compressed dictionary rejection in module validation (IsValidDicionaryModule), allowing compressed dictionaries to be freely assigned.
+
+Version 1.0.0.78 (64-bit Edition) - 2026-10-21
+-------------------------------------------------------------------------------
+* Section Tabs Replaced with Checkboxes (Edit & Properties):
+  - Removed 'Assoc.' button completely; normal viewing (association) mode is the default state when neither checkbox is checked.
+  - Replaced radio buttons with checkmark boxes for 'Edit' and 'Properties' at the bottom-right corner of each box.
+  - Clicking to enable 'Edit' activates the in-place verse editor; unchecking returns immediately to normal viewing.
+  - Clicking to enable 'Properties' displays module properties; unchecking saves changes and returns immediately to normal viewing.
+  - Mutual exclusivity ensured: checking one automatically unchecks the other.
+* Real-Time Translation Name Reflection:
+  - Editing title=, short.title=, or description= in the Properties tab reflects in the bottom-left name tab of the module right away in real-time as the user types.
+
+Version 1.0.0.77 (64-bit Edition) - 2026-10-21
+-------------------------------------------------------------------------------
+* Translation Name Display per Bible Window:
+  - Displays the active Bible module's Translation Name at the bottom-left of each box (Source, Destination, Ref 1, Ref 2).
+  - Automatically resolves title, short title, or description from loaded theWord module properties or project text description.
+  - Dynamically adapts its width to share the bottom bar seamlessly with the section tab radio buttons, providing full-title tooltip hints.
+
+Version 1.0.0.76 (64-bit Edition) - 2026-10-21
+-------------------------------------------------------------------------------
+* Section Tabs via Radio Buttons (Assoc., Edit, Properties):
+  - Added dedicated 3-radio-button tab control (Assoc., Edit, Properties) anchored to the bottom-right corner of each Bible window (Source, Destination, Ref 1, Ref 2).
+  - "Assoc.": Default word alignment and association mode.
+  - "Edit": Directly activates the in-place verse text editor (replacing/enhancing double left-click) with auto-save on tab exit.
+  - "Properties": Displays the complete theWord module properties, headers, verse rules, and description, allowing direct inspection and editing.
+* Complete Bible Module Export via Context Menu:
+  - Right-clicking any Bible module window (Source, Destination, Ref 1, or Ref 2) now provides "Export as Bible module..." in addition to raw text saving.
+  - Preserves 100% of module metadata, headers, footers, verse rules, and properties from when it was loaded into iBiblia (zero data loss).
+  - Intelligently detects and defaults to the correct theWord module extension (.ont, .ot, or .nt) and pre-selects the appropriate save filter.
+  - Canonical verse padding ensures exact required line counts (31,102 for .ont, 23,145 for .ot, 7,957 for .nt) with UTF-8 BOM.
+  - Automatically includes associated Strong's and morphology taggings when exporting Destination text.
+
+* Automatic Verse Status Transition on Text Replacement / Reload:
+  - When loading or replacing a Bible text (Source or Destination), status transition to "Needs review" (status 2)
+    is strictly triggered only if the actual Greek/Bible words within the verse were updated, added, or removed.
+  - Updating internal taggings, Strong's numbers, morphology codes, lemmas, or markup preserves "Associated!" status.
+  - Automatically refreshes the entire TreeView icons, chapter/book summary counts, and status filter navigation so users can immediately locate and review affected verses.
+
+Version 1.0.0.75 (64-bit Edition) - 2026-10-21
+-------------------------------------------------------------------------------
+* Greek & Hebrew Font Rendering Fix:
+  - Fixed an issue where Greek or Hebrew words in the dictionary popup displayed as corrupted/Arabic glyphs when theWord was closed.
+  - Added automatic scanning and registration of theWord fonts from theWord installation/AppData directories on iBiblia startup.
+  - Implemented dynamic RTF font table substitution (fallback to Segoe UI) when specialized classical fonts (Gentium, Cardo, etc.) are absent.
+
+* Streamlined Default Dictionaries Configuration & Per-Module Toggle:
+  - Added unified Default Dictionaries configuration with per-module toggle in Project Properties.
+  - Three dedicated default dictionary slots for all theWord .dct.twm modules:
+    * Greek / Default Strong's Dictionary: for New Testament and Septuagint Greek Strong's lookups.
+    * Hebrew Strong's Dictionary: for Old Testament Hebrew Strong's lookups.
+    * Morphology Dictionary: for grammar and morphological parsing codes.
+  - Intelligent language routing:
+    * Automatically routes OT verses (Book 1..39) and H-prefixed codes to the Hebrew Strong's dictionary.
+    * Automatically routes NT verses (Book 40..66) and G-prefixed codes to the Greek Strong's dictionary.
+    * Fallback between Greek and Hebrew dictionaries if a term is not found or only a combined Strong dictionary is configured.
+    * Key normalization seamlessly matches raw numbers (e.g. 3056), prefixed keys (G3056, H7225), and zero-padded variations (0123, H0123).
+  - Dedicated configuration dialog accessible via menu: Options > Default Dictionaries...
+  - Suppressed startup missing-file error reminders for inactive/disabled per-module dictionaries when Default Dictionaries are active.
+  - Added per-module "Use Default Dictionaries (overrides above)" checkbox in Project Properties. When checked, it overrides module-specific slots; when unchecked, whatever dictionaries are above are active.
+  - Full persistence of global dictionary choices and toggle status in iBiblia.ini across application restarts.
+
+Version 1.0.0.74 (64-bit Edition) - 2026-10-21
+-------------------------------------------------------------------------------
+* Dictionary & Strong's / Morphology Popup Persistence:
+  - Fixed persistence of dictionary popup window size (width and height) across restarts.
+  - Fixed persistence of the splitter divider position between Strong's and Morphology tabs.
+  - Fixed persistence of font zoom levels for both Strong's and Morphology panes.
+  - Automatically re-applies user font zoom when switching tabs or loading new RTF content.
+  - Added real-time settings flushing on window resize, divider movement, and font zoom.
+  - Guaranteed popup settings are safely written to iBiblia.ini prior to configuration object cleanup on application exit.
+
+Version 1.0.0.73 (64-bit Edition) - 2026-10-20
+-------------------------------------------------------------------------------
+* Text-to-Speech (TTS) Voice Reading on Hover:
+  - Added real-time Text-to-Speech reading of words under the mouse pointer.
+  - Multi-language voice engine supporting Greek (Koine / Septuagint), Hebrew, English, and vernacular translations.
+  - Full Windows 10/11 Modern Speech Pack (OneCore) integration:
+    * Automatically discovers installed language packs (Greek "Microsoft Stefanos", Hebrew "Microsoft Asaf", English, etc.) alongside classic SAPI Desktop voices.
+    * No registry hacks or administrator privileges required.
+  - Dedicated Voice & Speech Settings dialog (Options > Voice / Speech Settings...):
+    * Independent voice selection for Source (Greek / Hebrew) vs Destination (Translation).
+    * Speech speed / rate adjustment (-10 to +10).
+    * Speech volume adjustment (0 to 100%).
+    * Trigger activation options: Always on hover, Ctrl + Hover, or Alt + Hover.
+    * Instant voice test buttons for Source and Destination with immediate voice switching and audio stream purging.
+  - Clean Unicode punctuation-filtering tokenizer for accurate pronunciation of Greek and English words without symbol noise.
+  - Quick toggle menu item under Options and global shortcut (Ctrl + T).
+  - Voice preferences persisted across restarts in iBiblia.ini.
+
+Version 1.0.0.72 (64-bit Edition) - 2026-10-20
+-------------------------------------------------------------------------------
+* Concurrent Bidirectional theWord 7 Synchronization:
+  - Resolved concurrency conflict when both sync directions are enabled simultaneously.
+  - Implemented thread-safe navigation cooldown in TTwSyncThread (suppresses stale verse echo from theWord during iBiblia navigation).
+  - Added re-entrancy guard (FSyncingFromTw) to prevent circular feedback loops when receiving verse updates from theWord.
+  - Bound iBiblia verse dispatch directly with background sync thread notification for instantaneous state tracking.
+
+Version 1.0.0.71 (64-bit Edition) - 2026-10-20
+-------------------------------------------------------------------------------
+* theWord 7 Bidirectional Synchronization:
+  - Fixed theWord window class detection GUID and added dynamic top-level window enumeration fallback.
+  - Fixed 64-bit IPC pointer truncation on WM_COPYDATA messages (LPARAM cast) for reliable verse navigation from iBiblia to theWord.
+  - Enhanced theWord -> iBiblia sync with instant visual TreeView selection and verse re-rendering.
+  - Added resilient built-in 66-book English and Portuguese alias mapping table so verse references resolve without requiring external language files.
+  - Suppressed intrusive debug popup when theWord is not running.
+  - Resolved compiler conflict for SysUtils.GetEnvironmentVariable across Windows units.
+
+* Verse Filter Persistence:
+  - Active verse filter status is now automatically remembered and restored across application restarts and project reloads (persisted in both iBiblia.ini and .bib project metadata).
 
 Version 1.0.0.70 (64-bit Edition) - 2026-10-20
 -------------------------------------------------------------------------------
@@ -13,8 +606,6 @@ Version 1.0.0.70 (64-bit Edition) - 2026-10-20
   - Updated About dialog: restored original project repository link (https://github.com/rubiot/ibiblia) under Rúbio Terra.
   - Added direct link to contributor Edmund Valdez GitHub page (https://github.com/SalitaNgDiyos).
   - Standardized About dialog typography to clean, regular font styling.
-  - Persistent verse filter status: automatically saves and restores active status filter upon restart.
-  - Bumped version to 1.0.0.70 with automated first-run changelog notification.
 
 Version 1.0.0.69 (64-bit Edition) - 2026-10-19
 -------------------------------------------------------------------------------
@@ -24,41 +615,3 @@ Version 1.0.0.69 (64-bit Edition) - 2026-10-19
   - Linked against 64-bit SQLite 3 (sqlite3.dll) and 64-bit PCRE (pcre64.dll).
   - Cleaned all non-portable pointer and ordinal typecasts (PtrInt) across PCRE and TreeView.
   - Resolved C-runtime entry points (setlocale, malloc, free) via msvcrt.dll.
-
-* Find / Search in Project (Ctrl + F):
-  - Added new "Find in Project" search dialog accessible via Edit menu and Ctrl+F.
-  - Supports scoped search across:
-    * Destination translation text
-    * Original Hebrew / Greek source text
-    * Reference text 1 and Reference text 2
-    * Strong's tags & word association pairs
-    * Translator notes & comments
-    * All project text fields
-  - Live results list with real-time match counters.
-  - One-click and double-click verse navigation from search results.
-  - Fast match cycling via "Next Match" and "Previous Match" buttons.
-
-* Verse Status Filtering & Quick Navigation (Issue #104):
-  - Added Bible tree filtering by verse status (Not associated, Associating, Needs review, Associated).
-  - Integrated dynamic status descriptions from project metadata.
-  - Real-time verse counters showing total matches for each status.
-  - Added dedicated navigation buttons (< and >) on the navigation panel.
-  - Configured global keyboard shortcuts:
-    - F8: Jump to Next filtered verse
-    - Shift + F8: Jump to Previous filtered verse
-
-* Word Highlighting & Alignment Fixes:
-  - Restored solid yellow highlight on word selection and hover.
-  - Fixed auto-selection advance on word association so the yellow highlight automatically jumps to the next unassociated translation word.
-  - Resolved TLabel transparency rendering on Windows 10/11.
-
-* Stability & Error Resolution:
-  - Fixed Access Violation crash when returning from filtered views back to "All verses".
-  - Fixed Access Violation crash when switching UI language to English.
-  - Detached recursive event triggers during status list rebuilding to protect verse status integrity.
-  - Removed obsolete development breakpoints and hardcoded working directory paths from project files.
-
-* UI & Release Enhancements:
-  - Added "What's New in iBiblia" startup popup on first launch of new versions.
-  - Added "View Changelog" button to the About dialog.
-  - Added contributor credit for Edmund Valdez (https://github.com/SalitaNgDiyos) in the About dialog, changelog, and project metadata.

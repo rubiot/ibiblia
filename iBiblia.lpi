@@ -21,9 +21,9 @@
       <AutoIncrementBuild Value="False"/>
       <MajorVersionNr Value="1"/>
       <MinorVersionNr Value="0"/>
-      <RevisionNr Value="0"/>
-      <BuildNr Value="70"/>
-      <StringTable CompanyName="Rúbio R. C. Terra &amp; Edmund Valdez" FileDescription="iBiblia 64-bit - Ferramenta para associação de textos bíblicos" FileVersion="1.0.0.70" InternalName="iBiblia" LegalCopyright="Copyright Rúbio Terra, Edmund Valdez" OriginalFilename="iBiblia.exe" ProductName="iBiblia" ProductVersion="1.0.0.70"/>
+      <RevisionNr Value="1"/>
+      <BuildNr Value="0"/>
+      <StringTable CompanyName="Rúbio R. C. Terra &amp; Edmund Valdez" FileDescription="iBiblia 64-bit - Ferramenta para associação de textos bíblicos" FileVersion="1.0.1.000" InternalName="iBiblia" LegalCopyright="Copyright Rúbio Terra, Edmund Valdez" OriginalFilename="iBiblia.exe" ProductName="iBiblia" ProductVersion="1.0.1.000"/>
     </VersionInfo>
     <BuildModes Count="6" Active="Release64">
       <Item1 Name="Debug" Default="True"/>
@@ -210,7 +210,7 @@
         <PackageName Value="LCL"/>
       </Item5>
     </RequiredPackages>
-    <Units Count="50">
+    <Units Count="53">
       <Unit0>
         <Filename Value="iBiblia.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -706,6 +706,26 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="unitsearch"/>
       </Unit49>
+      <Unit50>
+        <Filename Value="unittexttospeech.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="unittexttospeech"/>
+      </Unit50>
+      <Unit51>
+        <Filename Value="formvoicesettings.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="formvoicesettings"/>
+      </Unit51>
+      <Unit52>
+        <Filename Value="formglobaldicts.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="formglobaldicts"/>
+      </Unit52>
+      <Unit53>
+        <Filename Value="unitskins.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="unitskins"/>
+      </Unit53>
     </Units>
     <JumpHistory Count="30" HistoryIndex="29">
       <Position1>

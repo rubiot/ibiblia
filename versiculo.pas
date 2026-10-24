@@ -11,7 +11,7 @@ interface
 uses
   Classes, SysUtils, StrUtils, ExtCtrls, StdCtrls, Controls, Graphics,
   ONTTokenizer, Syntagm, Forms, LCLType, Math, LCLProc, Dialogs, LazUTF8,
-  ONTParser, dbugintf, Menus, Clipbrd, PCRE;
+  ONTParser, dbugintf, Menus, Clipbrd, PCRE, unitskins;
 
 type
 
@@ -22,6 +22,8 @@ type
   TOnExportTextEvent = procedure (Sender: TVersiculo) of object;
 
   TStrongsCountMode = (scNone, scCountWords, scCountStrongs);
+  TVerseViewMode = (vvmAssoc, vvmEdit, vvmProps);
+  TOnVerseViewModeChangeEvent = procedure (Sender: TVersiculo; NewMode: TVerseViewMode) of object;
 
   { TVersiculo }
 
@@ -52,6 +54,18 @@ type
     FOnSintagmaMouseEnter: TOnSintagmaEvent;
     FOnSintagmaMouseLeave: TOnSintagmaEvent;
     FOnExportText: TOnExportTextEvent;
+    FOnExportBibleModule: TOnExportTextEvent;
+    FViewMode: TVerseViewMode;
+    FTabPanel: TPanel;
+    FCbEdit: TCheckBox;
+    FCbProps: TCheckBox;
+    FDefaultTranslationName: string;
+    FMemoProps: TMemo;
+    FMemoPropsModified: Boolean;
+    FOnViewModeChange: TOnVerseViewModeChangeEvent;
+    FTranslationName: string;
+    FTranslationPanel: TPanel;
+    FTranslationLabel: TLabel;
     FXML: string;
     FONTParser: TONTParser;
     FSyntagmPopupMenu: TPopupMenu;
@@ -88,6 +102,7 @@ type
     procedure OnCopySyntagmTags(Sender: TObject);
     procedure OnPasteSyntagmTags(Sender: TObject);
     procedure OnSaveTextToFile(Sender: TObject);
+    procedure OnExportBibleModuleClick(Sender: TObject);
     procedure OnCopyTokensToClipboard(Sender: TObject);
     procedure OnCopyInterlinearVerseToClipboard(Sender: TObject);
     procedure OnCopyXMLToClipboard(Sender: TObject);
@@ -98,6 +113,12 @@ type
              WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
     procedure InitSyntagmPopupMenu;
     procedure InitVersePopupMenu;
+    procedure InitTabControls;
+    procedure OnTabCheckBoxClick(Sender: TObject);
+    procedure UpdateTranslationNameFromProps;
+    procedure OnMemoPropsChange(Sender: TObject);
+    procedure SetViewMode(NewMode: TVerseViewMode);
+    procedure SetTranslationName(const AValue: string);
     procedure OnCopyAssociationsJSONToClipboard(Sender: TObject);
     procedure OnCopySintagmasAsJSON(Sender: TObject);
     function GetAssociationsJSON: string;
@@ -117,12 +138,14 @@ type
     procedure RenderizarStrongCount;
     procedure ClearStrongCount;
     procedure OrganizarSintagmas;
+    procedure RepositionTabPanel;
     procedure SelecionarSintagmas(list: TSyntagmList);
     procedure AlterarTexto(_XML: string);
     function GetListaPares(tipo: TPairsListType): TStringList;
     procedure OnSintagmaPopupMenu(s: TSyntagm);
     procedure MostrarTags;
     procedure OcultarTags;
+    procedure ApplySkin(const ASkin: TSkinColors);
     procedure EnableStrongHighlight(strong: string);
     procedure DisableStrongHighlight;
 
@@ -145,6 +168,17 @@ type
     property OnMouseEnter: TOnSintagmaEvent read FOnSintagmaMouseEnter write FOnSintagmaMouseEnter;
     property OnMouseLeave: TOnSintagmaEvent read FOnSintagmaMouseLeave write FOnSintagmaMouseLeave;
     property OnExportText: TOnExportTextEvent read FOnExportText write FOnExportText;
+    property OnExportBibleModule: TOnExportTextEvent read FOnExportBibleModule write FOnExportBibleModule;
+    property ViewMode: TVerseViewMode read FViewMode write SetViewMode;
+    property TabPanel: TPanel read FTabPanel;
+    property CbEdit: TCheckBox read FCbEdit;
+    property CbProps: TCheckBox read FCbProps;
+    property MemoProps: TMemo read FMemoProps;
+    property MemoPropsModified: Boolean read FMemoPropsModified write FMemoPropsModified;
+    property OnViewModeChange: TOnVerseViewModeChangeEvent read FOnViewModeChange write FOnViewModeChange;
+    property TranslationName: string read FTranslationName write SetTranslationName;
+    property TranslationPanel: TPanel read FTranslationPanel;
+    property TranslationLabel: TLabel read FTranslationLabel;
     property OnAlterarVersiculo: TOnAlterarVersiculoEvent read FOnAlterarVersiculo write FOnAlterarVersiculo;
     //property OnNovaAssociacao: TOnAssociacaoEvent read FOnNovaAssociacao write FOnNovaAssociacao;
     //property OnRemoverAssociacao: TOnAssociacaoEvent read FOnRemoverAssociacao write FOnRemoverAssociacao;
@@ -174,6 +208,7 @@ resourcestring
   SPasteAllTags = 'Paste &all tags';
   SPasteStrongTags = '&Paste &Strong''s tags';
   SPasteMorphoTags = 'Paste &morphology tags';
+  SExportAsBibleModule = '&Export as Bible module...';
   SSaveToFile = '&Save text to file...';
   SRightToLeft = 'Right to left text';
   SCopyTokensToClipboard = 'Copy &tokens to clipboard';
@@ -207,11 +242,12 @@ begin
 
   if (FAtivo) then
   begin
-    FPanel.Color   := clWindow;
+    FPanel.Color   := CurrentSkin.WindowBg;
     FPanel.Caption := '';
 
     InitSyntagmPopupMenu;
     InitVersePopupMenu;
+    InitTabControls;
 
     FEdit            := TEdit.Create(FPanel);
     FEdit.Visible    := false;
@@ -237,8 +273,8 @@ begin
   FNextAutoSelectWordMustHaveStrongMorpho := false;
   //FFontePadrao          := TFont.Create;
   //FFontePadrao.Assign(TheOwner.Font);
-  FCorAssociado         := clWindowText;
-  FCorDesassociado      := $A3A3A3;//clGrayText;
+  FCorAssociado         := CurrentSkin.WindowText;
+  FCorDesassociado      := CurrentSkin.WindowTextDim;
   //FStrongMorfoComoChave := false;
   FDestruindo           := false;
   FONTParser := TONTParser.Create;
@@ -258,6 +294,9 @@ begin
     FEdit.Free;
     FSyntagmPopupMenu.Free;
     FVersePopupMenu.Free;
+    if assigned(FTabPanel) then FreeAndNil(FTabPanel);
+    if assigned(FTranslationPanel) then FreeAndNil(FTranslationPanel);
+    if assigned(FMemoProps) then FreeAndNil(FMemoProps);
     FPanel.OnMouseDown  := nil;
     FPanel.OnResize     := nil;
     FPanel.OnMouseWheel := nil;
@@ -434,10 +473,10 @@ begin
     with FPanel.Canvas do
     begin
       // Link para solução overriding Paint: http://forum.lazarus.freepascal.org/index.php?topic=23894.0
-      Brush.Color := clYellow;
+      Brush.Color := CurrentSkin.HighlightBg;
       Font.Name   := DefFontData.Name;
       Font.Height := round(s.LabelRef.Font.Height * 0.6);
-      Font.Color  := clBlack;
+      Font.Color  := CurrentSkin.HighlightText;
       Rectangle(p.x, p.y, p.x + TextWidth(tags) + 4, p.y + TextHeight(tags));
       Brush.Style := bsClear;
       TextOut(p.x+2, p.y, tags);
@@ -450,6 +489,85 @@ begin
   if FAtivo then
     FPanel.Refresh;
 end;
+procedure TVersiculo.ApplySkin(const ASkin: TSkinColors);
+var
+  i: integer;
+begin
+  if assigned(FPanel) then
+  begin
+    FPanel.Color := ASkin.WindowBg;
+    {$IFDEF WINDOWS}
+    HookScrollBoxControl(FPanel);
+    {$ENDIF}
+    ApplyDarkModeToControl(FPanel, ASkin.IsDark);
+  end;
+
+  if assigned(FTranslationPanel) then
+  begin
+    FTranslationPanel.Color := ASkin.PanelBg;
+    FTranslationPanel.BevelOuter := bvNone;
+  end;
+
+  if assigned(FTranslationLabel) then
+    FTranslationLabel.Font.Color := ASkin.PanelText;
+
+  if assigned(FTabPanel) then
+  begin
+    FTabPanel.Color := ASkin.PanelBg;
+    FTabPanel.BevelOuter := bvNone;
+    ApplyDarkModeToControl(FTabPanel, ASkin.IsDark);
+  end;
+
+  if assigned(FCbEdit) then
+  begin
+    FCbEdit.Color := ASkin.PanelBg;
+    FCbEdit.Font.Color := ASkin.PanelText;
+    ApplyDarkModeToControl(FCbEdit, ASkin.IsDark);
+  end;
+
+  if assigned(FCbProps) then
+  begin
+    FCbProps.Color := ASkin.PanelBg;
+    FCbProps.Font.Color := ASkin.PanelText;
+    ApplyDarkModeToControl(FCbProps, ASkin.IsDark);
+  end;
+
+  if assigned(FMemoProps) then
+  begin
+    FMemoProps.Color := ASkin.WindowBg;
+    FMemoProps.Font.Color := ASkin.WindowText;
+    ApplyDarkModeToControl(FMemoProps, ASkin.IsDark);
+  end;
+
+  if assigned(FStrongCount) and assigned(FStrongCount.LabelRef) then
+  begin
+    if ASkin.IsDark then
+      FStrongCount.LabelRef.Font.Color := ASkin.VerseNumColor
+    else
+      FStrongCount.LabelRef.Font.Color := clRed;
+  end;
+
+  FCorAssociado := ASkin.WindowText;
+  FCorDesassociado := ASkin.WindowTextDim;
+
+  if assigned(FSintagmas) then
+  begin
+    for i := 0 to FSintagmas.Count - 1 do
+      if assigned(FSintagmas[i]) then
+      begin
+        if assigned(FSintagmas[i].LabelRef) then
+        begin
+          FSintagmas[i].LabelRef.Color := ASkin.WindowBg;
+          FSintagmas[i].LabelRef.Transparent := not ASkin.IsDark;
+        end;
+        FSintagmas[i].SetAssociated(FSintagmas[i].IsAssociated);
+      end;
+  end;
+
+  if assigned(FPanel) then
+    FPanel.Invalidate;
+end;
+
 
 procedure TVersiculo.EnableStrongHighlight(strong: string);
 var
@@ -1256,6 +1374,7 @@ begin
 
   if (FStrongsCountMode <> scNone) and assigned(FStrongCount) then
     PositionSyntagm(FStrongCount, x, y, h);
+  RepositionTabPanel;
 end;
 
 procedure TVersiculo.SetVersiculoPar(Par: TVersiculo);
@@ -1450,7 +1569,10 @@ begin
   begin
     tipo       := tsStrongCount;
     valor      := format(' (%d strongs)', [count]);
-    cor        := clRed;
+    if CurrentSkin.IsDark then
+      cor      := CurrentSkin.VerseNumColor
+    else
+      cor      := clRed;
     sobrescrito:= true;
     italico    := false;
   end;
@@ -1522,6 +1644,12 @@ begin
      FOnExportText(Self);
 end;
 
+procedure TVersiculo.OnExportBibleModuleClick(Sender: TObject);
+begin
+  if assigned(FOnExportBibleModule) then
+     FOnExportBibleModule(Self);
+end;
+
 procedure TVersiculo.OnCopyTokensToClipboard(Sender: TObject);
 begin
   clipboard.AsText := GetTokens();
@@ -1551,6 +1679,7 @@ end;
 
 procedure TVersiculo.OnResize(Sender: TObject);
 begin
+  RepositionTabPanel;
   Renderizar;
 end;
 
@@ -1562,6 +1691,290 @@ begin
     FPanel.Font.Size := FPanel.Font.Size + Sign(WheelDelta) * 1;
     Renderizar;
   end;
+end;
+
+procedure TVersiculo.RepositionTabPanel;
+var
+  availWidth: Integer;
+begin
+  if assigned(FPanel) then
+  begin
+    if assigned(FTabPanel) then
+    begin
+      FTabPanel.Left := Max(0, FPanel.ClientWidth - FTabPanel.Width - 2);
+      FTabPanel.Top := Max(0, FPanel.ClientHeight - FTabPanel.Height - 2);
+      FTabPanel.BringToFront;
+    end;
+
+    if assigned(FTranslationPanel) then
+    begin
+      FTranslationPanel.Left := 2;
+      FTranslationPanel.Top := Max(0, FPanel.ClientHeight - FTranslationPanel.Height - 2);
+      if assigned(FTabPanel) then
+        availWidth := Max(20, FTabPanel.Left - 6)
+      else
+        availWidth := Max(20, FPanel.ClientWidth - 4);
+      FTranslationPanel.Width := availWidth;
+      FTranslationPanel.BringToFront;
+    end;
+  end;
+end;
+
+procedure TVersiculo.SetTranslationName(const AValue: string);
+begin
+  if FDefaultTranslationName = '' then
+    FDefaultTranslationName := AValue;
+  FTranslationName := AValue;
+  if assigned(FTranslationLabel) then
+  begin
+    FTranslationLabel.Caption := FTranslationName;
+    FTranslationLabel.Hint := FTranslationName;
+  end;
+  RepositionTabPanel;
+end;
+
+procedure TVersiculo.InitTabControls;
+begin
+  if not assigned(FPanel) then
+    exit;
+
+  FMemoProps := TMemo.Create(FPanel);
+  FMemoProps.Parent := FPanel;
+  FMemoProps.Visible := False;
+  FMemoProps.Align := alClient;
+  FMemoProps.ScrollBars := ssAutoVertical;
+  FMemoProps.Font.Name := 'Courier New';
+  FMemoProps.Font.Size := 9;
+  FMemoProps.Color := CurrentSkin.WindowBg;
+  FMemoProps.Font.Color := CurrentSkin.WindowText;
+  FMemoProps.WordWrap := True;
+  FMemoProps.OnChange := @OnMemoPropsChange;
+  FMemoPropsModified := False;
+
+  FTranslationPanel := TPanel.Create(FPanel);
+  FTranslationPanel.Parent := FPanel;
+  FTranslationPanel.Height := 24;
+  FTranslationPanel.Width := 150;
+  FTranslationPanel.BevelOuter := bvRaised;
+  FTranslationPanel.BorderStyle := bsNone;
+  FTranslationPanel.Color := CurrentSkin.PanelBg;
+  FTranslationPanel.Anchors := [akTop, akLeft];
+
+  FTranslationLabel := TLabel.Create(FTranslationPanel);
+  FTranslationLabel.Parent := FTranslationPanel;
+  FTranslationLabel.Align := alClient;
+  FTranslationLabel.Layout := tlCenter;
+  FTranslationLabel.Alignment := taLeftJustify;
+  FTranslationLabel.Font.Size := 8;
+  FTranslationLabel.Font.Style := [fsBold];
+  FTranslationLabel.BorderSpacing.Left := 6;
+  FTranslationLabel.BorderSpacing.Right := 4;
+  FTranslationLabel.Font.Color := CurrentSkin.PanelText;
+  FTranslationLabel.ShowHint := True;
+  FTranslationLabel.Caption := FTranslationName;
+
+  FTabPanel := TPanel.Create(FPanel);
+  FTabPanel.Parent := FPanel;
+  FTabPanel.Height := 24;
+  FTabPanel.Width := 154;
+  FTabPanel.BevelOuter := bvRaised;
+  FTabPanel.BorderStyle := bsNone;
+  FTabPanel.Color := CurrentSkin.PanelBg;
+  FTabPanel.Anchors := [akTop, akLeft];
+  FTabPanel.Left := Max(0, FPanel.ClientWidth - FTabPanel.Width - 2);
+  FTabPanel.Top := Max(0, FPanel.ClientHeight - FTabPanel.Height - 2);
+
+  FCbEdit := TCheckBox.Create(FTabPanel);
+  FCbEdit.Parent := FTabPanel;
+  FCbEdit.Caption := 'Edit';
+  FCbEdit.Font.Color := CurrentSkin.PanelText;
+  FCbEdit.Left := 6;
+  FCbEdit.Top := 3;
+  FCbEdit.Width := 52;
+  FCbEdit.Height := 18;
+  FCbEdit.Font.Size := 8;
+  FCbEdit.Checked := False;
+  FCbEdit.OnClick := @OnTabCheckBoxClick;
+
+  FCbProps := TCheckBox.Create(FTabPanel);
+  FCbProps.Parent := FTabPanel;
+  FCbProps.Caption := 'Properties';
+  FCbProps.Font.Color := CurrentSkin.PanelText;
+  FCbProps.Left := 62;
+  FCbProps.Top := 3;
+  FCbProps.Width := 86;
+  FCbProps.Height := 18;
+  FCbProps.Font.Size := 8;
+  FCbProps.Checked := False;
+  FCbProps.OnClick := @OnTabCheckBoxClick;
+
+  FViewMode := vvmAssoc;
+  RepositionTabPanel;
+end;
+
+procedure TVersiculo.OnTabCheckBoxClick(Sender: TObject);
+begin
+  if Sender = FCbEdit then
+  begin
+    if FCbEdit.Checked then
+    begin
+      if assigned(FCbProps) and FCbProps.Checked then
+        FCbProps.Checked := False;
+      SetViewMode(vvmEdit);
+    end
+    else
+      SetViewMode(vvmAssoc);
+  end
+  else if Sender = FCbProps then
+  begin
+    if FCbProps.Checked then
+    begin
+      if assigned(FCbEdit) and FCbEdit.Checked then
+        FCbEdit.Checked := False;
+      SetViewMode(vvmProps);
+    end
+    else
+      SetViewMode(vvmAssoc);
+  end;
+end;
+
+procedure TVersiculo.UpdateTranslationNameFromProps;
+var
+  i, eqPos: Integer;
+  line, key, val, titleStr: string;
+begin
+  if not assigned(FMemoProps) then
+    exit;
+
+  titleStr := '';
+
+  // 1. Look for title=
+  for i := 0 to FMemoProps.Lines.Count - 1 do
+  begin
+    line := Trim(FMemoProps.Lines[i]);
+    eqPos := Pos('=', line);
+    if eqPos > 0 then
+    begin
+      key := LowerCase(Trim(Copy(line, 1, eqPos - 1)));
+      val := Trim(Copy(line, eqPos + 1, MaxInt));
+      if (key = 'title') and (val <> '') then
+      begin
+        titleStr := val;
+        break;
+      end;
+    end;
+  end;
+
+  // 2. Look for short.title=
+  if titleStr = '' then
+  begin
+    for i := 0 to FMemoProps.Lines.Count - 1 do
+    begin
+      line := Trim(FMemoProps.Lines[i]);
+      eqPos := Pos('=', line);
+      if eqPos > 0 then
+      begin
+        key := LowerCase(Trim(Copy(line, 1, eqPos - 1)));
+        val := Trim(Copy(line, eqPos + 1, MaxInt));
+        if (key = 'short.title') and (val <> '') then
+        begin
+          titleStr := val;
+          break;
+        end;
+      end;
+    end;
+  end;
+
+  // 3. Look for description=
+  if titleStr = '' then
+  begin
+    for i := 0 to FMemoProps.Lines.Count - 1 do
+    begin
+      line := Trim(FMemoProps.Lines[i]);
+      eqPos := Pos('=', line);
+      if eqPos > 0 then
+      begin
+        key := LowerCase(Trim(Copy(line, 1, eqPos - 1)));
+        val := Trim(Copy(line, eqPos + 1, MaxInt));
+        if (key = 'description') and (val <> '') then
+        begin
+          titleStr := val;
+          break;
+        end;
+      end;
+    end;
+  end;
+
+  if titleStr <> '' then
+    TranslationName := titleStr
+  else if FDefaultTranslationName <> '' then
+    TranslationName := FDefaultTranslationName;
+end;
+
+procedure TVersiculo.OnMemoPropsChange(Sender: TObject);
+begin
+  if assigned(FMemoProps) and FMemoProps.Visible then
+  begin
+    FMemoPropsModified := True;
+    UpdateTranslationNameFromProps;
+  end;
+end;
+
+procedure TVersiculo.SetViewMode(NewMode: TVerseViewMode);
+begin
+  if FViewMode = NewMode then
+  begin
+    case FViewMode of
+      vvmAssoc:
+      begin
+        if assigned(FCbEdit) and FCbEdit.Checked then FCbEdit.Checked := False;
+        if assigned(FCbProps) and FCbProps.Checked then FCbProps.Checked := False;
+      end;
+      vvmEdit:
+      begin
+        if assigned(FCbEdit) and not FCbEdit.Checked then FCbEdit.Checked := True;
+        if assigned(FCbProps) and FCbProps.Checked then FCbProps.Checked := False;
+      end;
+      vvmProps:
+      begin
+        if assigned(FCbEdit) and FCbEdit.Checked then FCbEdit.Checked := False;
+        if assigned(FCbProps) and not FCbProps.Checked then FCbProps.Checked := True;
+      end;
+    end;
+    exit;
+  end;
+
+  FViewMode := NewMode;
+
+  case FViewMode of
+    vvmAssoc:
+    begin
+      if assigned(FCbEdit) then FCbEdit.Checked := False;
+      if assigned(FCbProps) then FCbProps.Checked := False;
+      if assigned(FMemoProps) then FMemoProps.Visible := False;
+    end;
+    vvmEdit:
+    begin
+      if assigned(FCbEdit) then FCbEdit.Checked := True;
+      if assigned(FCbProps) then FCbProps.Checked := False;
+      if assigned(FMemoProps) then FMemoProps.Visible := False;
+    end;
+    vvmProps:
+    begin
+      if assigned(FCbEdit) then FCbEdit.Checked := False;
+      if assigned(FCbProps) then FCbProps.Checked := True;
+      if assigned(FMemoProps) then
+      begin
+        FMemoProps.BringToFront;
+        FMemoProps.Visible := True;
+      end;
+    end;
+  end;
+
+  RepositionTabPanel;
+
+  if assigned(FOnViewModeChange) then
+    FOnViewModeChange(Self, FViewMode);
 end;
 
 procedure TVersiculo.InitSyntagmPopupMenu;
@@ -1604,6 +2017,11 @@ begin
   FRTLMenuItem.Caption := SRightToLeft;
   FRTLMenuItem.OnClick := @OnRightToLeft;
   FVersePopupMenu.Items.Add(FRTLMenuItem);
+
+  Item := TMenuItem.Create(FVersePopupMenu);
+  Item.Caption := SExportAsBibleModule;
+  Item.OnClick := @OnExportBibleModuleClick;
+  FVersePopupMenu.Items.Add(Item);
 
   Item := TMenuItem.Create(FVersePopupMenu);
   Item.Caption := SSaveToFile;

@@ -5,6 +5,7 @@ unit formmesclarprojetos;
 interface
 
 uses
+  unitskins,
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
   StdCtrls, CheckLst;
 
@@ -47,6 +48,18 @@ procedure TFrmMesclarProjetos.InicializarForm;
 var
   i: integer;
 begin
+  ApplySkinToForm(Self, CurrentSkin);
+  {$IFDEF WINDOWS}
+  HookButtonControl(Button1);
+  {$ENDIF}
+  if CurrentSkin.IsDark then
+  begin
+    Button1.Font.Color := CurrentSkin.PanelText;
+    CheckListBox1.Color := CurrentSkin.WindowBg;
+    CheckListBox1.Font.Color := CurrentSkin.WindowText;
+    CheckListBox2.Color := CurrentSkin.WindowBg;
+    CheckListBox2.Font.Color := CurrentSkin.WindowText;
+  end;
   for i:=0 to CheckListBox1.Count-1 do
   begin
     CheckListBox1.Checked[i] := true;

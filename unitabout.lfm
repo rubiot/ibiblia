@@ -8,6 +8,7 @@ object FormAbout: TFormAbout
   Caption = 'About iBiblia'
   ClientHeight = 240
   ClientWidth = 480
+  OnShow = FormShow
   Position = poMainFormCenter
   LCLVersion = '2.0.10.0'
   object Label1: TLabel
@@ -30,7 +31,7 @@ object FormAbout: TFormAbout
     Width = 480
     Alignment = taCenter
     AutoSize = False
-    Caption = 'Version 1.0.0.70 (64-bit)'
+    Caption = 'Version 1.0.0.116 (64-bit)'
     Font.Height = -14
     ParentColor = False
     ParentFont = False

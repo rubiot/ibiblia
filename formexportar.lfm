@@ -6,6 +6,8 @@ object frmExportarProjeto: TfrmExportarProjeto
   Caption = 'Export association'
   ClientHeight = 490
   ClientWidth = 787
+  OnShow = FormShow
+  OnDestroy = FormDestroy
   Position = poMainFormCenter
   LCLVersion = '2.0.10.0'
   object PageControl1: TPageControl

@@ -16,8 +16,8 @@ uses
   {$ENDIF}
   SysUtils, Sqlite3DS, sqlite3conn, sqldb, db, StrUtils, math,
   ExtCtrls, Controls, ComCtrls, StdCtrls, Graphics, Forms, Versiculo, Sugestao,
-  MemoVersiculo, ONTTokenizer, Dialogs, dos, PCRE, ExportarProjeto, LazLogger,
-  Syntagm, MySwordModule, TheWordDictionary, fgl, PatchFile, LCLIntf, menus;
+  MemoVersiculo, ONTTokenizer, unitskins, Dialogs, dos, PCRE, ExportarProjeto, LazLogger,
+  Syntagm, MySwordModule, TheWordDictionary, fgl, PatchFile, LCLIntf, menus, zstream;
 
 type
 
@@ -109,6 +109,14 @@ type
     FACamposTexto: ACamposTexto;
     FADicStrong: ADicStrong;
     FADicMorfo: ADicMorfo;
+    FUseGlobalDicts: Boolean;
+    FGlobalDicStrongGreekPath: string;
+    FGlobalDicStrongHebrewPath: string;
+    FGlobalDicMorfoPath: string;
+    FGlobalDicStrongGreek: TSQLQuery;
+    FGlobalDicStrongHebrew: TSQLQuery;
+    FGlobalDicMorfo: TSQLQuery;
+    FUseDefaultDict: array[tbOrigem..tbConsulta2] of Boolean;
     FSugeridor: TGerSugestoes;
     FParesAntigos: TStringList;
     FArvore: TTreeView;
@@ -122,6 +130,7 @@ type
     FVerseStrongsCountMode: TStrongsCountMode;
     FOnNovoVersiculo: TOnNovoVersiculoEvents;
     FOnSintagmaClick: TOnSintagmaClickEvent;
+    FOnSintagmaMouseEnter: TOnSintagmaClickEvent;
     FClosing: boolean;
     FAutoSave: boolean;
     FFilterStatus: Integer;
@@ -181,16 +190,27 @@ type
     procedure SintagmaOnMouseLeave(Sender: TSyntagm);
     procedure SintagmaOnClick(Sender: TSyntagm);
     procedure OnExportText(Sender: TVersiculo);
+    procedure OnExportBibleModule(Sender: TVersiculo);
     procedure OnMudancaVersiculo(Sender: TObject; Node: TTreeNode);
     procedure OnAlterarTextoVersiculo(Sender: TMemoVersiculo);
     procedure OnExibirDefinicao(Sender: TObject);
     procedure OnDblClickVersiculo(Sender: TObject);
+    procedure OnVerseViewModeChange(Sender: TVersiculo; NewMode: TVerseViewMode);
     procedure OnBibleTreePopupItemClick(Sender: TObject);
     procedure OnBibleTreeContextPopup(Sender: TObject; MousePos: TPoint; var Handled: Boolean);
-    function AtribuirDicStrong(dic: string; t: TTipoTextoBiblico): boolean;
-    function AtribuirDicMorfo(dic: string; t: TTipoTextoBiblico): boolean;
+    function AtribuirDicStrong(dic: string; t: TTipoTextoBiblico; alertaSeNaoExistir: Boolean = True): boolean;
+    function AtribuirDicMorfo(dic: string; t: TTipoTextoBiblico; alertaSeNaoExistir: Boolean = True): boolean;
     procedure AtualizarArvore;
     procedure AtualizarArvore(id: string);
+    procedure LiberarObjetoQuery(var qry: TSQLQuery);
+    function DescompactarDados(AStream: TStream): string;
+    function ObterTextoDoCampo(AField: TField): string;
+    function BuscarDefinicaoStrongNaQuery(qry: TSQLQuery; const strongCode: string; isHebrew: Boolean): string;
+    function BuscarDefinicaoMorfoNaQuery(qry: TSQLQuery; const morphCode: string): string;
+    function SanitizarFontesRTF(const rtf: string): string;
+    function ObterPalavrasBiblia(v: TVersiculo): string;
+    function GetUseDefaultDict(texto: TTipoTextoBiblico): Boolean;
+    procedure SetUseDefaultDict(texto: TTipoTextoBiblico; AValue: Boolean);
   public
     constructor Criar;
     constructor Criar(paineis: array of TScrollbox; navegador: TTreeView; rsituacao: TRadioGroup; rcomentarios: TMemo);
@@ -208,6 +228,7 @@ type
     procedure VersiculoInicial;
     procedure VersiculoFinal;
     procedure Atualizar;
+    procedure ApplySkin(const ASkin: TSkinColors);
     procedure Limpar;
     procedure Salvar;
     procedure SugerirAssociacao;
@@ -227,6 +248,7 @@ type
     function ObterFonteTexto(texto: TTipoTextoBiblico): TFont;
     function AtribuirDicStrong(dic: string; textos: STextosBiblicos): boolean;
     function AtribuirDicMorfo(dic: string; textos: STextosBiblicos): boolean;
+    procedure ConfigurarDicionariosGlobais(useGlobal: Boolean; const greekPath, hebrewPath, morphPath: string);
     procedure AtribuirInfo(info, valor: string);
     function ObterInfo(info: string): string;
     function ObterTextoVersiculo(texto: TTipoTextoBiblico): string;
@@ -249,6 +271,9 @@ type
     function GetStatus(ref: string): Integer;
     procedure SetTextDescription(text: TTipoTextoBiblico; description: string);
     function GetTextDescription(text: TTipoTextoBiblico): string;
+    function GetTranslationName(texto: TTipoTextoBiblico): string;
+    procedure AtualizarNomesTraducao;
+    function GetPropriedadesKey(t: TTipoTextoBiblico): string;
     procedure Vacuum;
     function GetSituacaoDescricao(index: Integer): string;
     procedure FiltrarArvore(AStatus: Integer);
@@ -258,6 +283,7 @@ type
     function ContarVersiculosPorSituacao(AStatus: Integer): Integer;
     function ObterTotalVersiculos: Integer;
     function Pesquisar(const Termo: string; EscopoBusca: TSearchScope = ssDestination): TVerseSearchResults;
+    function IsSourceSyntagm(Sender: TSyntagm): boolean;
 
     property FilterStatus: Integer read FFilterStatus write SetFilterStatus;
     property TotalVersiculos: Integer read ObterTotalVersiculos;
@@ -270,6 +296,7 @@ type
     property Arvore: TTreeView read FArvore write FArvore;
     property OnAlterarVersiculo: TOnAlterarVersiculoEvent read FOnAlterarVersiculo write SetOnAlterarVersiculo;
     property OnSintagmaClick: TOnSintagmaClickEvent read FOnSintagmaClick write SetOnSintagmaClick;
+    property OnSintagmaMouseEnter: TOnSintagmaClickEvent read FOnSintagmaMouseEnter write FOnSintagmaMouseEnter;
     property AtrasoExibicaoDefinicao: Cardinal read FAtrasoExibicao write SetAtrasoExibicao;
     property Ativo: boolean read FAtivo;
     property Caminho: string read GetCaminho;
@@ -294,6 +321,11 @@ type
     property ParagraphMode: TParagraphMode read GetParagraphMode write SetParagraphMode;
     property AutoSave: boolean read FAutoSave write SetAutoSave;
     property Pairs: string read GetPairs;
+    property UseGlobalDicts: Boolean read FUseGlobalDicts write FUseGlobalDicts;
+    property GlobalDicStrongGreekPath: string read FGlobalDicStrongGreekPath;
+    property GlobalDicStrongHebrewPath: string read FGlobalDicStrongHebrewPath;
+    property GlobalDicMorfoPath: string read FGlobalDicMorfoPath;
+    property UseDefaultDict[texto: TTipoTextoBiblico]: Boolean read GetUseDefaultDict write SetUseDefaultDict;
   end;
 
 {$INCLUDE include/bookdefs.inc}
@@ -340,6 +372,7 @@ resourcestring
   SExportToFileError = 'iBiblia found an error while exporting the Bible module file.';
   STranslationMemory = 'Translation memory';
   SExportTextSaveDlgTitle = 'Please choose a destination file';
+  SExportBibleModuleSaveDlgTitle = 'Export as Bible module';
   SIBibliaPatchFiles = 'iBiblia patch files';
   SPatchSuccessfullyExported = 'Patch successfully exported';
   SReferenceNotFound = 'Reference not found';
@@ -474,18 +507,17 @@ end;
 
 function TProjeto.IsValidDicionaryModule(const path: string; const dicType: string): boolean;
 var
-  strong, morpho, encrypted, compressed, nonrtf: boolean;
+  strong, morpho, encrypted, nonrtf: boolean;
 begin
   result := false;
   strong := false;
   morpho := false;
   nonrtf := false;
   encrypted := false;
-  compressed := false;
 
   with CriarObjetoQuery(path) do
   begin
-    SQL.Text := 'select distinct * from config where name in (''strong'',''morph'',''compressed'',''secure'',''do.encrypt'',''content.type'')';
+    SQL.Text := 'select distinct * from config where name in (''strong'',''morph'',''secure'',''do.encrypt'',''content.type'')';
     Prepare;
     Open;
     try
@@ -496,8 +528,6 @@ begin
             strong := FieldByName('value').AsString = '1';
           'morph':
             morpho := FieldByName('value').AsString = '1';
-          'compressed':
-            compressed := FieldByName('value').AsString = '1';
           'secure','do.encrypt':
             encrypted := FieldByName('value').AsString = '1';
           'content.type':
@@ -524,12 +554,6 @@ begin
   if encrypted then
   begin
     MessageDlg(SEncryptedDictionary, format(SInvalidEncryptedDictionary, [FExpand(path)]), mtError, [mbOK], 0);
-    exit;
-  end;
-
-  if compressed then
-  begin
-    MessageDlg(SCompressedDictionary, format(SInvalidCompressedDictionary, [FExpand(path)]), mtError, [mbOK], 0);
     exit;
   end;
 
@@ -693,7 +717,29 @@ begin
       FTblPares.FieldByName('pare_situacao'     ).AsString := patch.Status[i];
       FTblPares.Post;
 
+      if (i mod 100) = 0 then
+      begin
+        if FTblPares.UpdatesPending then
+        begin
+          try
+            FTblPares.ApplyUpdates;
+          except
+            on E: Exception do
+              DebugLn('ApplyUpdates batch warning at ' + IntToStr(i) + ': ' + E.Message);
+          end;
+        end;
+      end;
+
       DebugLn('%s comments: "%s" situacao: %s', [ID, FTblPares.FieldByName('pare_comentarios').AsString, FTblPares.FieldByName('pare_situacao').AsString]);
+    end;
+    if FTblPares.UpdatesPending then
+    begin
+      try
+        FTblPares.ApplyUpdates;
+      except
+        on E: Exception do
+          DebugLn('AplicarPatch final warning: ' + E.Message);
+      end;
     end;
   finally
     FinishScrollingSession;
@@ -745,10 +791,24 @@ procedure TProjeto.ExportTheWordBible(verses: TStringList; filename: string;
   props: string);
 var
   stream: TFileStream;
+  propLines: TStringList;
+  i: Integer;
 begin
-  verses.Add('');
-  verses.Add(props);
-  verses[0] := #239#187#191 + verses.Strings[0]; // adicionando BOM
+  if (verses.Count > 0) and not verses[0].StartsWith(#239#187#191) then
+    verses[0] := #239#187#191 + verses[0]; // adicionando BOM
+
+  if props <> '' then
+  begin
+    propLines := TStringList.Create;
+    try
+      propLines.Text := props;
+      for i := 0 to propLines.Count - 1 do
+        verses.Add(propLines[i]);
+    finally
+      propLines.Free;
+    end;
+  end;
+
   stream := TFileStream.Create(filename, fmCreate or fmOpenWrite or fmShareDenyNone);
   try
     stream.Size := 0;
@@ -874,19 +934,32 @@ end;
 
 function TProjeto.GetModificado: boolean;
 var
-  pairsPending, infoPending, srcPending: boolean;
+  pairsPending, infoPending, srcPending, propsPending: boolean;
+  t: TTipoTextoBiblico;
 begin
-  pairsPending := FTblPares.UpdatesPending;
-  infoPending  := FTblInfo.UpdatesPending;
+  if not Ativo then
+  begin
+    result := false;
+    exit;
+  end;
+  pairsPending := assigned(FTblPares) and FTblPares.Active and FTblPares.UpdatesPending;
+  infoPending  := assigned(FTblInfo) and FTblInfo.Active and FTblInfo.UpdatesPending;
   srcPending   := (assigned(FAVersiculo[tbOrigem]) and FAVersiculo[tbOrigem].Modificado);
+  propsPending := false;
+  for t := low(FAVersiculo) to high(FAVersiculo) do
+    if assigned(FAVersiculo[t]) and FAVersiculo[t].MemoPropsModified then
+    begin
+      propsPending := true;
+      break;
+    end;
 
-  result := pairsPending or infoPending or srcPending;
+  result := pairsPending or infoPending or srcPending or propsPending;
 end;
 
 function TProjeto.GetCaminho: string;
 begin
   result := '';
-  if FTblInfo.Active then
+  if assigned(FTblInfo) and FTblInfo.Active then
     result := FTblInfo.FileName;
 end;
 
@@ -1056,11 +1129,161 @@ procedure TProjeto.SetTextDescription(text: TTipoTextoBiblico;
   description: string);
 begin
   AtribuirInfo(Format('description.text%d', [Integer(text)]), description);
+  AtualizarNomesTraducao;
 end;
 
 function TProjeto.GetTextDescription(text: TTipoTextoBiblico): string;
 begin
   result := ObterInfo(Format('description.text%d', [text]));
+end;
+
+function TProjeto.GetPropriedadesKey(t: TTipoTextoBiblico): string;
+begin
+  case t of
+    tbOrigem:    Result := 'propriedades.origem';
+    tbDestino:   Result := 'propriedades.destino';
+    tbConsulta1: Result := 'propriedades.consulta1';
+    tbConsulta2: Result := 'propriedades.consulta2';
+  else
+    Result := Format('propriedades.%d', [Ord(t)]);
+  end;
+end;
+
+function TProjeto.GetTranslationName(texto: TTipoTextoBiblico): string;
+var
+  s, props, line: string;
+  lines: TStringList;
+  i, eqPos: Integer;
+  k, v: string;
+begin
+  Result := '';
+
+  if (not Ativo) or (not assigned(FTblInfo)) or (not FTblInfo.Active) then
+  begin
+    case texto of
+      tbOrigem:    Result := 'Source Bible';
+      tbDestino:   Result := 'Destination Bible';
+      tbConsulta1: Result := 'Reference 1';
+      tbConsulta2: Result := 'Reference 2';
+    else
+      Result := '';
+    end;
+    exit;
+  end;
+
+  // 1. Check properties block for title= or short.title= or description=
+  props := ObterInfo(GetPropriedadesKey(texto));
+  if props = '' then
+  begin
+    case texto of
+      tbOrigem:    props := ObterInfo('propriedades.origem');
+      tbDestino:   props := ObterInfo('propriedades.destino');
+      tbConsulta1: props := ObterInfo('propriedades.consulta1');
+      tbConsulta2: props := ObterInfo('propriedades.consulta2');
+    end;
+  end;
+
+  if props <> '' then
+  begin
+    lines := TStringList.Create;
+    try
+      lines.Text := props;
+      // Look for title= first
+      for i := 0 to lines.Count - 1 do
+      begin
+        line := Trim(lines[i]);
+        eqPos := Pos('=', line);
+        if eqPos > 0 then
+        begin
+          k := LowerCase(Trim(Copy(line, 1, eqPos - 1)));
+          v := Trim(Copy(line, eqPos + 1, MaxInt));
+          if (k = 'title') and (v <> '') then
+          begin
+            Result := v;
+            exit;
+          end;
+        end;
+      end;
+      // Look for short.title=
+      for i := 0 to lines.Count - 1 do
+      begin
+        line := Trim(lines[i]);
+        eqPos := Pos('=', line);
+        if eqPos > 0 then
+        begin
+          k := LowerCase(Trim(Copy(line, 1, eqPos - 1)));
+          v := Trim(Copy(line, eqPos + 1, MaxInt));
+          if (k = 'short.title') and (v <> '') then
+          begin
+            Result := v;
+            exit;
+          end;
+        end;
+      end;
+      // Look for description=
+      for i := 0 to lines.Count - 1 do
+      begin
+        line := Trim(lines[i]);
+        eqPos := Pos('=', line);
+        if eqPos > 0 then
+        begin
+          k := LowerCase(Trim(Copy(line, 1, eqPos - 1)));
+          v := Trim(Copy(line, eqPos + 1, MaxInt));
+          if (k = 'description') and (v <> '') then
+          begin
+            Result := v;
+            exit;
+          end;
+        end;
+      end;
+    finally
+      lines.Free;
+    end;
+  end;
+
+  // 2. Check description.text%d
+  s := Trim(GetTextDescription(texto));
+  if s <> '' then
+  begin
+    Result := s;
+    exit;
+  end;
+
+  // 3. Check module file name
+  s := ObterInfo(Format('modulepath.%d', [Ord(texto)]));
+  if s = '' then
+  begin
+    case texto of
+      tbOrigem:    s := ObterInfo('modulepath.origem');
+      tbDestino:   s := ObterInfo('modulepath.destino');
+      tbConsulta1: s := ObterInfo('modulepath.consulta1');
+      tbConsulta2: s := ObterInfo('modulepath.consulta2');
+    end;
+  end;
+  if s <> '' then
+  begin
+    Result := ChangeFileExt(ExtractFileName(s), '');
+    exit;
+  end;
+
+  // 4. Default section fallback
+  case texto of
+    tbOrigem:    Result := 'Source Bible';
+    tbDestino:   Result := 'Destination Bible';
+    tbConsulta1: Result := 'Reference 1';
+    tbConsulta2: Result := 'Reference 2';
+  else
+    Result := '';
+  end;
+end;
+
+procedure TProjeto.AtualizarNomesTraducao;
+var
+  t: TTipoTextoBiblico;
+begin
+  for t := low(FAVersiculo) to high(FAVersiculo) do
+    if assigned(FAVersiculo[t]) then
+      FAVersiculo[t].TranslationName := GetTranslationName(t);
 end;
 
 procedure TProjeto.Vacuum;
@@ -1128,14 +1351,14 @@ end;
 
 function TProjeto.InserirInfo(info, valor: string): boolean;
 begin
+  result := false;
+  if not assigned(FTblInfo) or not FTblInfo.Active then
+    exit;
+
   if FTblInfo.Locate('id', info, []) then
-  begin
-     result := false;
-     exit;
-  end;
+    exit;
 
   FTblInfo.InsertRecord([info, valor]);
-
   result := true;
   {result := true;
   try
@@ -1147,8 +1370,11 @@ end;
 
 function TProjeto.AtualizarInfo(info, valor: string): boolean;
 begin
-  result := FTblInfo.Locate('id', info, []);
+  result := false;
+  if not assigned(FTblInfo) or not FTblInfo.Active then
+    exit;
 
+  result := FTblInfo.Locate('id', info, []);
   if result then
   begin
     FTblInfo.Edit;
@@ -1175,26 +1401,502 @@ end;
 function TProjeto.ResgatarInfo(info: string): string;
 begin
   result := '';
-  if FTblInfo.Locate('id', info, []) then
-    result := FTblInfo.Fields[1].AsString
+  if assigned(FTblInfo) and FTblInfo.Active and FTblInfo.Locate('id', info, []) then
+    result := FTblInfo.Fields[1].AsString;
   {result := FTblInfo.QuickQuery(format('select valor from info where id = ''%s''', [AnsiReplaceStr(info, '''', '''''')]));}
+end;
+
+procedure TProjeto.LiberarObjetoQuery(var qry: TSQLQuery);
+var
+  conn: TSQLite3Connection;
+  trans: TSQLTransaction;
+begin
+  if Assigned(qry) then
+  begin
+    try
+      qry.Close;
+    except
+    end;
+    if Assigned(qry.DataBase) then
+    begin
+      conn := TSQLite3Connection(qry.DataBase);
+      try
+        conn.Close;
+      except
+      end;
+      if Assigned(conn.Transaction) then
+      begin
+        trans := TSQLTransaction(conn.Transaction);
+        conn.Transaction := nil;
+        qry.Transaction := nil;
+        trans.Free;
+      end;
+      qry.DataBase := nil;
+      conn.Free;
+    end;
+    qry.Free;
+    qry := nil;
+  end;
+end;
+
+function TProjeto.DescompactarDados(AStream: TStream): string;
+var
+  decomp: TDecompressionStream;
+  outStream: TStringStream;
+  buf: array[0..8191] of Byte;
+  count: Integer;
+begin
+  Result := '';
+  if (AStream = nil) or (AStream.Size = 0) then
+    Exit;
+
+  AStream.Position := 0;
+  outStream := TStringStream.Create('');
+  try
+    try
+      // 1. Standard zlib stream decompression (with header)
+      decomp := TDecompressionStream.Create(AStream, False);
+      try
+        repeat
+          count := decomp.Read(buf, SizeOf(buf));
+          if count > 0 then
+            outStream.WriteBuffer(buf, count);
+        until count = 0;
+        Result := outStream.DataString;
+      finally
+        decomp.Free;
+      end;
+    except
+      // 2. If standard zlib fails, try raw deflate stream (skipHeader = True)
+      outStream.Size := 0;
+      AStream.Position := 0;
+      try
+        decomp := TDecompressionStream.Create(AStream, True);
+        try
+          repeat
+            count := decomp.Read(buf, SizeOf(buf));
+            if count > 0 then
+              outStream.WriteBuffer(buf, count);
+          until count = 0;
+          Result := outStream.DataString;
+        finally
+          decomp.Free;
+        end;
+      except
+        Result := '';
+      end;
+    end;
+  finally
+    outStream.Free;
+  end;
+end;
+
+function TProjeto.ObterTextoDoCampo(AField: TField): string;
+var
+  memStream: TMemoryStream;
+  rawStr: string;
+  b: Byte;
+begin
+  Result := '';
+  if (AField = nil) or AField.IsNull then
+    Exit;
+
+  memStream := TMemoryStream.Create;
+  try
+    if AField is TBlobField then
+      TBlobField(AField).SaveToStream(memStream)
+    else
+    begin
+      rawStr := AField.AsString;
+      if rawStr <> '' then
+        memStream.WriteBuffer(rawStr[1], Length(rawStr));
+    end;
+
+    if memStream.Size = 0 then
+      Exit;
+
+    memStream.Position := 0;
+    memStream.ReadBuffer(b, 1);
+    memStream.Position := 0;
+
+    // Check if it already begins with '{' (standard uncompressed RTF)
+    if b = Ord('{') then
+    begin
+      SetLength(Result, memStream.Size);
+      memStream.ReadBuffer(Result[1], memStream.Size);
+      Exit;
+    end;
+
+    // Attempt decompression
+    Result := DescompactarDados(memStream);
+
+    // Fallback if decompression returned empty: treat as raw text
+    if Result = '' then
+    begin
+      memStream.Position := 0;
+      SetLength(Result, memStream.Size);
+      memStream.ReadBuffer(Result[1], memStream.Size);
+    end;
+  finally
+    memStream.Free;
+  end;
+end;
+
+function TProjeto.BuscarDefinicaoStrongNaQuery(qry: TSQLQuery; const strongCode: string; isHebrew: Boolean): string;
+var
+  candidates: array of string;
+  c, s, digitsOnly, prefix: string;
+  i, numVal: Integer;
+
+  function Executar(const term: string): string;
+  begin
+    Result := '';
+    try
+      qry.Close;
+      qry.Params.ParamByName('strong').AsString := term;
+      qry.Open;
+      try
+        if (not qry.EOF) and (not qry.Fields[0].IsNull) then
+        begin
+          Result := ObterTextoDoCampo(qry.Fields[0]);
+          if Result <> '' then
+            Result := FormatRTF(Result);
+        end;
+      finally
+        qry.Close;
+      end;
+    except
+      Result := '';
+    end;
+  end;
+
+begin
+  Result := '';
+  if (qry = nil) or (strongCode = '') then Exit;
+
+  s := Trim(strongCode);
+  SetLength(candidates, 0);
+
+  // 1. Raw code
+  SetLength(candidates, Length(candidates) + 1);
+  candidates[High(candidates)] := s;
+
+  // Extract digits and prefix
+  digitsOnly := '';
+  prefix := '';
+  for i := 1 to Length(s) do
+  begin
+    if s[i] in ['0'..'9'] then
+      digitsOnly := digitsOnly + s[i]
+    else if digitsOnly = '' then
+      prefix := prefix + s[i];
+  end;
+
+  if isHebrew then
+  begin
+    if digitsOnly <> '' then
+    begin
+      numVal := StrToIntDef(digitsOnly, -1);
+      // 'H' + digits (e.g. H7225, H123)
+      SetLength(candidates, Length(candidates) + 1);
+      candidates[High(candidates)] := 'H' + digitsOnly;
+
+      // Plain digits (e.g. 7225, 123)
+      SetLength(candidates, Length(candidates) + 1);
+      candidates[High(candidates)] := digitsOnly;
+
+      // 4-digit zero-padded and 'H' + 4-digit zero-padded
+      if numVal >= 0 then
+      begin
+        SetLength(candidates, Length(candidates) + 1);
+        candidates[High(candidates)] := Format('%.4d', [numVal]);
+        SetLength(candidates, Length(candidates) + 1);
+        candidates[High(candidates)] := 'H' + Format('%.4d', [numVal]);
+        // 5-digit zero-padded and 'H' + 5-digit zero-padded
+        SetLength(candidates, Length(candidates) + 1);
+        candidates[High(candidates)] := Format('%.5d', [numVal]);
+        SetLength(candidates, Length(candidates) + 1);
+        candidates[High(candidates)] := 'H' + Format('%.5d', [numVal]);
+      end;
+    end;
+  end
+  else
+  begin
+    if digitsOnly <> '' then
+    begin
+      numVal := StrToIntDef(digitsOnly, -1);
+      // 'G' + digits (e.g. G3056)
+      SetLength(candidates, Length(candidates) + 1);
+      candidates[High(candidates)] := 'G' + digitsOnly;
+
+      // Plain digits (e.g. 3056)
+      SetLength(candidates, Length(candidates) + 1);
+      candidates[High(candidates)] := digitsOnly;
+
+      // 4-digit zero-padded
+      if numVal >= 0 then
+      begin
+        SetLength(candidates, Length(candidates) + 1);
+        candidates[High(candidates)] := 'G' + Format('%.4d', [numVal]);
+        SetLength(candidates, Length(candidates) + 1);
+        candidates[High(candidates)] := Format('%.4d', [numVal]);
+      end;
+    end;
+  end;
+
+  for c in candidates do
+  begin
+    if c <> '' then
+    begin
+      Result := Executar(c);
+      if Result <> '' then Exit;
+    end;
+  end;
+end;
+
+function TProjeto.BuscarDefinicaoMorfoNaQuery(qry: TSQLQuery; const morphCode: string): string;
+var
+  candidates: array of string;
+  c, m: string;
+
+  function Executar(const term: string): string;
+  begin
+    Result := '';
+    try
+      qry.Close;
+      qry.Params.ParamByName('morf').AsString := term;
+      qry.Open;
+      try
+        if (not qry.EOF) and (not qry.Fields[0].IsNull) then
+        begin
+          Result := ObterTextoDoCampo(qry.Fields[0]);
+          if Result <> '' then
+            Result := FormatRTF(Result);
+        end;
+      finally
+        qry.Close;
+      end;
+    except
+      Result := '';
+    end;
+  end;
+
+begin
+  Result := '';
+  if (qry = nil) or (morphCode = '') then Exit;
+
+  m := Trim(morphCode);
+  if Pos(' ', m) > 1 then
+    m := Copy(m, 1, Pos(' ', m) - 1);
+
+  SetLength(candidates, 0);
+
+  // 1. Raw code (e.g. V-AAI-3S or WTV-AAI-3S)
+  SetLength(candidates, Length(candidates) + 1);
+  candidates[High(candidates)] := m;
+
+  // 2. If starts with 'WT', try without 'WT'
+  if (Length(m) > 2) and (UpperCase(Copy(m, 1, 2)) = 'WT') then
+  begin
+    SetLength(candidates, Length(candidates) + 1);
+    candidates[High(candidates)] := Copy(m, 3, Length(m) - 2);
+  end
+  // 3. If starts with 'T', try without 'T'
+  else if (Length(m) > 1) and (UpperCase(Copy(m, 1, 1)) = 'T') and (m[2] in ['V','N','A','R','D','P','C','I','X','Q']) then
+  begin
+    SetLength(candidates, Length(candidates) + 1);
+    candidates[High(candidates)] := Copy(m, 2, Length(m) - 1);
+  end
+  else
+  begin
+    // 4. If doesn't start with 'WT', try with 'WT'
+    SetLength(candidates, Length(candidates) + 1);
+    candidates[High(candidates)] := 'WT' + m;
+  end;
+
+  for c in candidates do
+  begin
+    if c <> '' then
+    begin
+      Result := Executar(c);
+      if Result <> '' then Exit;
+    end;
+  end;
+end;
+
+function TProjeto.GetUseDefaultDict(texto: TTipoTextoBiblico): Boolean;
+begin
+  if texto in [tbOrigem..tbConsulta2] then
+    Result := FUseDefaultDict[texto]
+  else
+    Result := False;
+end;
+
+procedure TProjeto.SetUseDefaultDict(texto: TTipoTextoBiblico; AValue: Boolean);
+begin
+  if texto in [tbOrigem..tbConsulta2] then
+  begin
+    FUseDefaultDict[texto] := AValue;
+    if AValue then
+      AtribuirInfo(format('usedefaultdict%d', [Ord(texto)]), '1')
+    else
+      AtribuirInfo(format('usedefaultdict%d', [Ord(texto)]), '0');
+  end;
+end;
+
+procedure TProjeto.ConfigurarDicionariosGlobais(useGlobal: Boolean; const greekPath, hebrewPath, morphPath: string);
+var
+  v: TTipoTextoBiblico;
+  pGreek, pHebrew, pMorph: string;
+begin
+  FUseGlobalDicts := useGlobal;
+
+  pGreek := Trim(greekPath);
+  pHebrew := Trim(hebrewPath);
+  pMorph := Trim(morphPath);
+
+  if (pGreek <> '') and (not FileExists(pGreek)) then
+    pGreek := ExpandFileName(pGreek);
+  if (pHebrew <> '') and (not FileExists(pHebrew)) then
+    pHebrew := ExpandFileName(pHebrew);
+  if (pMorph <> '') and (not FileExists(pMorph)) then
+    pMorph := ExpandFileName(pMorph);
+
+  // Greek / Default Strong
+  if FGlobalDicStrongGreekPath <> pGreek then
+  begin
+    LiberarObjetoQuery(FGlobalDicStrongGreek);
+    FGlobalDicStrongGreekPath := pGreek;
+    if (pGreek <> '') and FileExists(pGreek) then
+    begin
+      try
+        FGlobalDicStrongGreek := CriarObjetoQuery(pGreek);
+        FGlobalDicStrongGreek.SQL.Text := 'select data from topics, content where subject = :strong and id = topic_id';
+        FGlobalDicStrongGreek.Prepare;
+      except
+        LiberarObjetoQuery(FGlobalDicStrongGreek);
+      end;
+    end;
+  end;
+
+  // Hebrew Strong
+  if FGlobalDicStrongHebrewPath <> pHebrew then
+  begin
+    LiberarObjetoQuery(FGlobalDicStrongHebrew);
+    FGlobalDicStrongHebrewPath := pHebrew;
+    if (pHebrew <> '') and FileExists(pHebrew) then
+    begin
+      try
+        FGlobalDicStrongHebrew := CriarObjetoQuery(pHebrew);
+        FGlobalDicStrongHebrew.SQL.Text := 'select data from topics, content where subject = :strong and id = topic_id';
+        FGlobalDicStrongHebrew.Prepare;
+      except
+        LiberarObjetoQuery(FGlobalDicStrongHebrew);
+      end;
+    end;
+  end;
+
+  // Morphology
+  if FGlobalDicMorfoPath <> pMorph then
+  begin
+    LiberarObjetoQuery(FGlobalDicMorfo);
+    FGlobalDicMorfoPath := pMorph;
+    if (pMorph <> '') and FileExists(pMorph) then
+    begin
+      try
+        FGlobalDicMorfo := CriarObjetoQuery(pMorph);
+        FGlobalDicMorfo.SQL.Text := 'select data from topics, content where subject = :morf and id = topic_id';
+        FGlobalDicMorfo.Prepare;
+      except
+        LiberarObjetoQuery(FGlobalDicMorfo);
+      end;
+    end;
+  end;
+
+  // Wire hover handlers to all existing verse containers if global is active
+  if FUseGlobalDicts then
+  begin
+    for v := low(FAVersiculo) to high(FAVersiculo) do
+      if Assigned(FAVersiculo[v]) then
+      begin
+        FAVersiculo[v].OnMouseEnter := @SintagmaOnMouseEnter;
+        FAVersiculo[v].OnMouseLeave := @SintagmaOnMouseLeave;
+      end;
+  end;
 end;
 
 function TProjeto.ObterDefinicaoStrong(strong: string; texto: TTipoTextoBiblico
   ): string;
+var
+  isHebrew: Boolean;
+  primaryQry, secondaryQry: TSQLQuery;
+  s: string;
 begin
-  if (FADicStrong[texto] = nil) or (strong = '') then
+  Result := '';
+  s := Trim(strong);
+  if s = '' then Exit;
+
+  while (s <> '') and (s[1] in ['<', ' ', '"', '''']) do
+    Delete(s, 1, 1);
+  while (s <> '') and (s[Length(s)] in ['>', ' ', '"', '''']) do
+    Delete(s, Length(s), 1);
+  if (Length(s) >= 2) and (UpperCase(Copy(s, 1, 2)) = 'WH') then
+    Delete(s, 1, 1)
+  else if (Length(s) >= 2) and (UpperCase(Copy(s, 1, 2)) = 'WG') then
+    Delete(s, 1, 1);
+
+  if s = '' then Exit;
+
+  // 1. If default dictionaries are enabled for this module and queries assigned
+  if FUseGlobalDicts and FUseDefaultDict[texto] and (assigned(FGlobalDicStrongGreek) or assigned(FGlobalDicStrongHebrew)) then
   begin
-    result := ''; //'{\rtf1\ansi\ansicpg1252\deff0\deflang1046{\fonttbl{\f0\fswiss\fcharset0 Arial;}}\viewkind4\uc1\pard\f0\fs20\par}';
-    exit;
+    // Determine language
+    if (s[1] = 'H') or (s[1] = 'h') then
+      isHebrew := True
+    else if (s[1] = 'G') or (s[1] = 'g') then
+      isHebrew := False
+    else
+    begin
+      if (FReference.BookID >= 1) and (FReference.BookID <= 39) then
+        isHebrew := True
+      else if FReference.BookID >= 40 then
+        isHebrew := False
+      else if FEscopo = etOT then
+        isHebrew := True
+      else
+        isHebrew := False;
+    end;
+
+    if isHebrew then
+    begin
+      primaryQry := FGlobalDicStrongHebrew;
+      secondaryQry := FGlobalDicStrongGreek;
+    end
+    else
+    begin
+      primaryQry := FGlobalDicStrongGreek;
+      secondaryQry := FGlobalDicStrongHebrew;
+    end;
+
+    if assigned(primaryQry) then
+      Result := BuscarDefinicaoStrongNaQuery(primaryQry, s, isHebrew);
+
+    if (Result = '') and assigned(secondaryQry) and (secondaryQry <> primaryQry) then
+    begin
+      Result := BuscarDefinicaoStrongNaQuery(secondaryQry, s, isHebrew);
+      if Result = '' then
+        Result := BuscarDefinicaoStrongNaQuery(secondaryQry, s, not isHebrew);
+    end;
+
+    if Result <> '' then
+      Exit;
   end;
 
-  with FADicStrong[texto] do
+  // 2. Fallback to per-module dictionary if assigned
+  if assigned(FADicStrong[texto]) then
   begin
-    Close;
-    Params.ParamByName('strong').AsString := strong;
-    Open;
-    result := FormatRTF(Fields[0].AsString);
+    isHebrew := (s[1] = 'H') or (s[1] = 'h') or ((FReference.BookID >= 1) and (FReference.BookID <= 39));
+    Result := BuscarDefinicaoStrongNaQuery(FADicStrong[texto], s, isHebrew);
   end;
 end;
 
@@ -1202,30 +1904,95 @@ function TProjeto.ObterDefinicaoMorfo(morfo: string; texto: TTipoTextoBiblico
   ): string;
 var
   m: string;
-  //p, l: sizeint;
 begin
-  result := '';
-  if (not assigned(FADicMorfo[texto])) or (morfo = '') then
-    exit;
+  Result := '';
+  m := Trim(morfo);
+  if m = '' then Exit;
 
-  // tratar morfologia com lema <WTXXXXX l="yyyyyy">
-  m := morfo;
-  //p := pos(' ', m);
-  //l := length(m);
+  while (m <> '') and (m[1] in ['<', ' ', '"', '''']) do
+    Delete(m, 1, 1);
+  while (m <> '') and (m[Length(m)] in ['>', ' ', '"', '''']) do
+    Delete(m, Length(m), 1);
+
   if pos(' ', m) > 1 then
     m := copy(m, 1, pos(' ', m)-1);
 
-  with FADicMorfo[texto] do
+  // 1. If default morphology dictionary enabled for this module and assigned
+  if FUseGlobalDicts and FUseDefaultDict[texto] and assigned(FGlobalDicMorfo) then
   begin
-    Close;
-    Params.ParamByName('morf').AsString := m;
-    Open;
-
-    if Fields[0].AsString = '' then
-      exit;
-
-    result := FormatRTF(Fields[0].AsString);
+    Result := BuscarDefinicaoMorfoNaQuery(FGlobalDicMorfo, m);
+    if Result <> '' then Exit;
   end;
+
+  // 2. Fallback to per-module morphology dictionary
+  if assigned(FADicMorfo[texto]) then
+    Result := BuscarDefinicaoMorfoNaQuery(FADicMorfo[texto], m);
+end;
+
+function TProjeto.SanitizarFontesRTF(const rtf: string): string;
+const
+  CustomGreekFonts: array[0..7] of string = (
+    'Gentium', 'GentiumAlt', 'Galatia SIL', 'TITUS Cyberbit Basic',
+    'SBL Greek', 'SPIonic', 'LaserGreek', 'Graeca'
+  );
+  CustomHebrewFonts: array[0..3] of string = (
+    'Cardo', 'Ezra SIL', 'SBL Hebrew', 'SPTiberian'
+  );
+var
+  pStart, pEnd, i, depth, len: Integer;
+  fontTbl, prefix, suffix, fName: string;
+begin
+  Result := rtf;
+  if Result = '' then Exit;
+
+  pStart := Pos('{\fonttbl', Result);
+  if pStart = 0 then Exit;
+
+  len := Length(Result);
+  depth := 0;
+  pEnd := pStart;
+  while pEnd <= len do
+  begin
+    if Result[pEnd] = '{' then
+      Inc(depth)
+    else if Result[pEnd] = '}' then
+    begin
+      Dec(depth);
+      if depth = 0 then
+        Break;
+    end;
+    Inc(pEnd);
+  end;
+
+  if (pEnd > len) or (depth <> 0) then Exit;
+
+  prefix := Copy(Result, 1, pStart - 1);
+  fontTbl := Copy(Result, pStart, pEnd - pStart + 1);
+  suffix := Copy(Result, pEnd + 1, len - pEnd);
+
+  // If a specialized font is not present in Screen.Fonts, substitute Segoe UI
+  // strictly inside the {\fonttbl ...} header to avoid corrupting text in the body!
+  for i := Low(CustomGreekFonts) to High(CustomGreekFonts) do
+  begin
+    fName := CustomGreekFonts[i];
+    if (Screen.Fonts.IndexOf(fName) = -1) and (Pos(fName, fontTbl) > 0) then
+    begin
+      fontTbl := StringReplace(fontTbl, fName + ';', 'Segoe UI;', [rfReplaceAll, rfIgnoreCase]);
+      fontTbl := StringReplace(fontTbl, fName + ' ;', 'Segoe UI;', [rfReplaceAll, rfIgnoreCase]);
+    end;
+  end;
+
+  for i := Low(CustomHebrewFonts) to High(CustomHebrewFonts) do
+  begin
+    fName := CustomHebrewFonts[i];
+    if (Screen.Fonts.IndexOf(fName) = -1) and (Pos(fName, fontTbl) > 0) then
+    begin
+      fontTbl := StringReplace(fontTbl, fName + ';', 'Segoe UI;', [rfReplaceAll, rfIgnoreCase]);
+      fontTbl := StringReplace(fontTbl, fName + ' ;', 'Segoe UI;', [rfReplaceAll, rfIgnoreCase]);
+    end;
+  end;
+
+  Result := prefix + fontTbl + suffix;
 end;
 
 function TProjeto.FormatRTF(rtf: string): string;
@@ -1235,9 +2002,9 @@ begin
     exit;
 
   if AnsiStartsStr('{\rtf1', rtf) then
-    result := rtf
+    result := SanitizarFontesRTF(rtf)
   else
-    result := '{\rtf1\ansi\ansicpg1252\deff0\deflang1033{\fonttbl{\f0\fnil\fcharset0 Tahoma;}' +
+    result := SanitizarFontesRTF('{\rtf1\ansi\ansicpg1252\deff0\deflang1033{\fonttbl{\f0\fnil\fcharset0 Tahoma;}' +
       '{\f1\fswiss\fprq2\fcharset0 Tahoma;}{\f2\fswiss\fcharset0 Arial;}}' +
       '{\colortbl ;' +
         '\red0\green0\blue0;' +
@@ -1256,31 +2023,147 @@ begin
         '\red128\green128\blue0;' +
         '\red128\green128\blue128;' +
         '\red192\green192\blue192;}' +
-      '\viewkind4\uc1\pard\lang1046\f0\fs20 ' + rtf + '}';
+      '\viewkind4\uc1\pard\lang1046\f0\fs20 ' + rtf + '}');
+end;
+
+function TProjeto.ObterPalavrasBiblia(v: TVersiculo): string;
+var
+  s: TSyntagm;
+  str: TStringStream;
+begin
+  Result := '';
+  if v = nil then Exit;
+  str := TStringStream.Create('');
+  try
+    for s in v.Sintagmas do
+      if s.Kind = tsSintagma then
+      begin
+        str.WriteString(s.Text);
+        str.WriteString(' ');
+      end;
+    Result := str.DataString;
+  finally
+    str.Free;
+  end;
+end;
+
+function SanitizeUTF8String(const s: string): string;
+var
+  i, len: Integer;
+  c: Byte;
+  valid: Boolean;
+begin
+  if s = '' then Exit('');
+  valid := True;
+  i := 1;
+  len := Length(s);
+  while i <= len do
+  begin
+    c := Byte(s[i]);
+    if c <= 127 then
+      Inc(i)
+    else if (c in [194..223]) and (i + 1 <= len) and (Byte(s[i+1]) in [128..191]) then
+      Inc(i, 2)
+    else if (c in [224..239]) and (i + 2 <= len) and (Byte(s[i+1]) in [128..191]) and (Byte(s[i+2]) in [128..191]) then
+      Inc(i, 3)
+    else if (c in [240..244]) and (i + 3 <= len) and (Byte(s[i+1]) in [128..191]) and (Byte(s[i+2]) in [128..191]) and (Byte(s[i+3]) in [128..191]) then
+      Inc(i, 4)
+    else
+    begin
+      valid := False;
+      Break;
+    end;
+  end;
+
+  if valid then
+    Result := s
+  else
+  begin
+    Result := '';
+    for i := 1 to len do
+    begin
+      c := Byte(s[i]);
+      case c of
+        145: Result := Result + #226#128#152; // left single quote
+        146: Result := Result + #226#128#153; // right single quote / apostrophe
+        147: Result := Result + #226#128#156; // left double quote
+        148: Result := Result + #226#128#157; // right double quote
+        149: Result := Result + #226#128#162; // bullet
+        150: Result := Result + #226#128#147; // en dash
+        151: Result := Result + #226#128#148; // em dash
+        153: Result := Result + #226#132#162; // trademark
+        169: Result := Result + #194#169;     // copyright
+        174: Result := Result + #194#174;     // registered
+        176: Result := Result + #194#176;     // degree
+      else
+        if c >= 128 then
+          Result := Result + Chr(192 or (c shr 6)) + Chr(128 or (c and 63))
+        else
+          Result := Result + s[i];
+      end;
+    end;
+  end;
 end;
 
 procedure TProjeto.SetVerseText(versiculo: string;
   texto: TTipoTextoBiblico; replace: boolean);
+var
+  oldPairs, newPairs, oldWords, newWords: string;
+  oldStatus: Integer;
+  wordsUpdated: Boolean;
 begin
+  versiculo := SanitizeUTF8String(versiculo);
+  oldStatus := FTblPares.FieldByName('pare_situacao').AsInteger;
+  oldPairs := FTblPares.FieldByName('pare_pares').AsString;
+
   FTblPares.Edit;
 
   // try to keep associations and update pairs
-  if replace and (texto in [tbOrigem, tbDestino]) and not FTblPares.FieldByName('pare_pares').AsString.IsEmpty then
+  if replace and (texto in [tbOrigem, tbDestino]) and not oldPairs.IsEmpty then
   begin
     FATmpVerse[tbOrigem ].Texto := FTblPares.Fields[FACamposTexto[tbOrigem ]].AsString;
     FATmpVerse[tbDestino].Texto := FTblPares.Fields[FACamposTexto[tbDestino]].AsString;
 
+    // Capture the plain Bible words before the update
+    oldWords := ObterPalavrasBiblia(FATmpVerse[texto]);
+
     try
-      FATmpVerse[tbOrigem ].Pares := FTblPares.FieldByName('pare_pares').AsString;
+      FATmpVerse[tbOrigem ].Pares := oldPairs;
       FATmpVerse[texto].AlterarTexto(versiculo);
-      FTblPares.FieldByName('pare_pares').AsString := FATmpVerse[tbOrigem].Pares;
+      newPairs := FATmpVerse[tbOrigem].Pares;
+      FTblPares.FieldByName('pare_pares').AsString := newPairs;
+
+      // Capture the plain Bible words after the update
+      newWords := ObterPalavrasBiblia(FATmpVerse[texto]);
+
+      // Status change to "Needs review" must ONLY be triggered if Bible words were updated within the verse.
+      // This rule does NOT apply to updated internal taggings, codes, Strong's, or morphology that don't change the Bible words.
+      wordsUpdated := (oldWords <> newWords);
+
+      if (oldStatus = 3) and wordsUpdated then
+      begin
+        FTblPares.FieldByName('pare_situacao').AsInteger := 2; // Needs review
+        if (oldStatus >= 0) and (oldStatus <= 3) then
+          dec(FTotaisSituacao[oldStatus]);
+        inc(FTotaisSituacao[2]);
+      end;
     except
       on E: Exception do
+      begin
+        newWords := ObterPalavrasBiblia(FATmpVerse[texto]);
+        if (oldStatus = 3) and (oldWords <> newWords) then
+        begin
+          FTblPares.FieldByName('pare_situacao').AsInteger := 2; // Needs review
+          if (oldStatus >= 0) and (oldStatus <= 3) then
+            dec(FTotaisSituacao[oldStatus]);
+          inc(FTotaisSituacao[2]);
+        end;
         MessageDlg(SError, SCorruptedData + #13#10#13#10 + FormattedReference + #13#10 +
              format('%s'#13#10'pares: %s'#13#10'%s'#13#10'%s',
                     [E.Message, FTblPares.FieldByName('pare_pares').AsString,
                     FATmpVerse[tbOrigem].DebugTokens, FATmpVerse[tbDestino].DebugTokens]),
              mtError, [mbOK], 0);
+      end;
     end;
   end;
 
@@ -1289,7 +2172,18 @@ begin
   begin
     FTblPares.FieldByName('pare_pares').AsString := '';
     if not HasSituacaoCustomizada then
-      FTblPares.FieldByName('pare_situacao').AsInteger := 0; // not associated
+    begin
+      if (oldStatus = 3) or (oldStatus = 1) then
+      begin
+        // If it was associated or in progress, change to Needs review so user knows where to fix it
+        FTblPares.FieldByName('pare_situacao').AsInteger := 2; // Needs review
+        if (oldStatus >= 0) and (oldStatus <= 3) then
+          dec(FTotaisSituacao[oldStatus]);
+        inc(FTotaisSituacao[2]);
+      end
+      else
+        FTblPares.FieldByName('pare_situacao').AsInteger := 0; // not associated
+    end;
   end;
 
   FTblPares.Post;
@@ -1359,6 +2253,8 @@ begin
   for v:=low(FAVersiculo) to high(FAVersiculo) do
     if assigned(FAVersiculo[v]) then
     begin
+      if FAVersiculo[v].ViewMode = vvmEdit then
+        FAVersiculo[v].ViewMode := vvmAssoc;
       FAVersiculo[v].Modificado := false;
       FAVersiculo[v].XMLModificado := false;
       FAVersiculo[v].Ativo := true;
@@ -1439,10 +2335,17 @@ begin
       FSugeridor.RemoverPar(FParesAntigos.Strings[p], FParesAntigos.Strings[p+1]);
 end;
 
+function TProjeto.IsSourceSyntagm(Sender: TSyntagm): boolean;
+begin
+  Result := Assigned(Sender) and Assigned(FAVersiculo[tbOrigem]) and (Sender.VerseRef = FAVersiculo[tbOrigem]);
+end;
+
 procedure TProjeto.SintagmaOnMouseEnter(Sender: TSyntagm);
 var
   show: boolean;
 begin
+  if Assigned(FOnSintagmaMouseEnter) then
+    FOnSintagmaMouseEnter(Sender);
   case FPopupTrigger of
     ptMouseHover:     show := (GetKeyState(VK_CONTROL) and $8000 = 0) and
                               (GetKeyState(VK_SHIFT  ) and $8000 = 0);
@@ -1554,6 +2457,271 @@ begin
   OpenDocument(ExtractFilePath(destination));
 end;
 
+procedure TProjeto.OnExportBibleModule(Sender: TVersiculo);
+var
+  lines, projectVerses: TStringList;
+  v, text: TTipoTextoBiblico;
+  SaveDlg: TSaveDialog;
+  destination, modExt, origPath, props, verseLine, ext, currentId, baseName, desc: string;
+  exportScope: TEscopoTexto;
+  totalExpectedLines, i: Integer;
+begin
+  text := tbNone;
+  for v:=low(FAVersiculo) to high(FAVersiculo) do
+    if Sender = FAVersiculo[v] then
+    begin
+      text := v;
+      break;
+    end;
+
+  if text = tbNone then
+     raise Exception.Create('Invalid text type in OnVersePopup');
+
+  modExt := ObterInfo(Format('moduletype.%d', [Ord(text)]));
+  if modExt = '' then
+  begin
+    case text of
+      tbOrigem:    modExt := ObterInfo('moduletype.origem');
+      tbDestino:   modExt := ObterInfo('moduletype.destino');
+      tbConsulta1: modExt := ObterInfo('moduletype.consulta1');
+      tbConsulta2: modExt := ObterInfo('moduletype.consulta2');
+    end;
+  end;
+
+  origPath := ObterInfo(Format('modulepath.%d', [Ord(text)]));
+  if origPath = '' then
+  begin
+    case text of
+      tbOrigem:    origPath := ObterInfo('modulepath.origem');
+      tbDestino:   origPath := ObterInfo('modulepath.destino');
+      tbConsulta1: origPath := ObterInfo('modulepath.consulta1');
+      tbConsulta2: origPath := ObterInfo('modulepath.consulta2');
+    end;
+  end;
+
+  if (modExt = '') and (origPath <> '') then
+    modExt := LowerCase(ExtractFileExt(origPath));
+
+  if modExt = '' then
+  begin
+    case FEscopo of
+      etOT:  modExt := '.ot';
+      etNT:  modExt := '.nt';
+      etONT: modExt := '.ont';
+    else
+      modExt := '.ont';
+    end;
+  end;
+
+  if not modExt.StartsWith('.') then
+    modExt := '.' + modExt;
+
+  SaveDlg := TSaveDialog.Create(nil);
+  try
+    SaveDlg.Title := SExportBibleModuleSaveDlgTitle;
+    SaveDlg.DefaultExt := modExt;
+
+    if origPath <> '' then
+      SaveDlg.FileName := ExtractFileName(origPath)
+    else
+    begin
+      baseName := ChangeFileExt(ExtractFileName(FFileName), '');
+      if baseName = '' then
+        baseName := 'bible';
+
+      case text of
+        tbOrigem:    SaveDlg.FileName := baseName + '_source' + modExt;
+        tbDestino:   SaveDlg.FileName := baseName + '_destination' + modExt;
+        tbConsulta1: SaveDlg.FileName := baseName + '_ref1' + modExt;
+        tbConsulta2: SaveDlg.FileName := baseName + '_ref2' + modExt;
+      else
+        SaveDlg.FileName := baseName + modExt;
+      end;
+    end;
+
+    if modExt = '.nt' then
+    begin
+      SaveDlg.Filter := 'theWord New Testament Bible module (*.nt)|*.nt|theWord Complete Bible module (*.ont)|*.ont|theWord Old Testament Bible module (*.ot)|*.ot|All files (*.*)|*.*';
+      SaveDlg.FilterIndex := 1;
+    end
+    else if modExt = '.ot' then
+    begin
+      SaveDlg.Filter := 'theWord Old Testament Bible module (*.ot)|*.ot|theWord Complete Bible module (*.ont)|*.ont|theWord New Testament Bible module (*.nt)|*.nt|All files (*.*)|*.*';
+      SaveDlg.FilterIndex := 1;
+    end
+    else
+    begin
+      SaveDlg.Filter := 'theWord Complete Bible module (*.ont)|*.ont|theWord New Testament Bible module (*.nt)|*.nt|theWord Old Testament Bible module (*.ot)|*.ot|All files (*.*)|*.*';
+      SaveDlg.FilterIndex := 1;
+    end;
+
+    destination := '';
+    if SaveDlg.Execute then
+      destination := SaveDlg.FileName;
+  finally
+    SaveDlg.Free;
+  end;
+
+  if destination.IsEmpty then
+    exit;
+
+  ext := LowerCase(ExtractFileExt(destination));
+  if ext = '' then
+  begin
+    ext := modExt;
+    destination := destination + ext;
+  end;
+
+  if ext = '.nt' then
+    exportScope := etNT
+  else if ext = '.ot' then
+    exportScope := etOT
+  else
+    exportScope := etONT;
+
+  totalExpectedLines := QLinhas[exportScope];
+
+  props := '';
+  case text of
+    tbOrigem:    props := ResgatarInfo('propriedades.origem');
+    tbDestino:   props := ResgatarInfo('propriedades.destino');
+    tbConsulta1: props := ResgatarInfo('propriedades.consulta1');
+    tbConsulta2: props := ResgatarInfo('propriedades.consulta2');
+  end;
+
+  if props = '' then
+    props := ResgatarInfo(Format('propriedades.%d', [Ord(text)]));
+
+  if Trim(props) = '' then
+  begin
+    desc := GetTextDescription(text);
+    if desc = '' then
+    begin
+      case text of
+        tbOrigem:    desc := 'Source Bible';
+        tbDestino:   desc := 'Destination Bible';
+        tbConsulta1: desc := 'Reference 1';
+        tbConsulta2: desc := 'Reference 2';
+      else
+        desc := 'Bible';
+      end;
+    end;
+
+    props := 'title=' + desc + #13#10 +
+             'short.title=' + desc + #13#10 +
+             'description=Exported Bible module from iBiblia' + #13#10 +
+             'version=1.0' + #13#10;
+    if exportScope = etNT then
+      props := props + 'ot=0' + #13#10
+    else if exportScope = etOT then
+      props := props + 'nt=0' + #13#10;
+  end;
+
+  if (FATmpVerse[tbOrigem] = nil) or (FATmpVerse[tbDestino] = nil) then
+  begin
+    FATmpVerse[tbOrigem] := TVersiculo.Criar;
+    FATmpVerse[tbDestino] := TVersiculo.Criar;
+    FATmpVerse[tbOrigem].VersiculoPar := FATmpVerse[tbDestino];
+  end;
+
+  currentId := '';
+  projectVerses := TStringList.Create;
+  lines := TStringList.Create;
+  try
+    StartScrollingSession;
+    with FTblPares do
+    begin
+      currentId := FieldByName('pare_id').AsString;
+      VersiculoInicial;
+      while not EOF do
+      begin
+        if (text = tbDestino) and (Length(FieldByName('pare_pares').AsString) > 0) then
+        begin
+          FATmpVerse[tbOrigem ].Texto := Fields[FACamposTexto[tbOrigem ]].AsString;
+          FATmpVerse[tbDestino].Texto := Fields[FACamposTexto[tbDestino]].AsString;
+          try
+            FATmpVerse[tbOrigem].Pares := FieldByName('pare_pares').AsString;
+            verseLine := FATmpVerse[tbDestino].GetLinhaONT(True, False, False, False);
+          except
+            verseLine := Fields[FACamposTexto[tbDestino]].AsString;
+          end;
+        end
+        else
+          verseLine := Fields[FACamposTexto[text]].AsString;
+
+        projectVerses.Add(verseLine);
+        VersiculoSeguinte;
+      end;
+
+      if (currentId <> '') and Locate('pare_id', currentId, []) then
+        PosRolagemVersiculo(nil);
+    end;
+    FinishScrollingSession;
+
+    if exportScope = etONT then
+    begin
+      if FEscopo = etONT then
+        lines.Assign(projectVerses)
+      else if FEscopo = etNT then
+      begin
+        for i := 0 to QLinhas[etOT] - 1 do
+          lines.Add('');
+        for i := 0 to projectVerses.Count - 1 do
+          lines.Add(projectVerses[i]);
+      end
+      else if FEscopo = etOT then
+      begin
+        for i := 0 to projectVerses.Count - 1 do
+          lines.Add(projectVerses[i]);
+        for i := 0 to QLinhas[etNT] - 1 do
+          lines.Add('');
+      end;
+    end
+    else if exportScope = etNT then
+    begin
+      if FEscopo = etNT then
+        lines.Assign(projectVerses)
+      else if FEscopo = etONT then
+      begin
+        for i := QLinhas[etOT] to projectVerses.Count - 1 do
+          lines.Add(projectVerses[i]);
+      end
+      else if FEscopo = etOT then
+      begin
+        for i := 0 to QLinhas[etNT] - 1 do
+          lines.Add('');
+      end;
+    end
+    else if exportScope = etOT then
+    begin
+      if FEscopo = etOT then
+        lines.Assign(projectVerses)
+      else if FEscopo = etONT then
+      begin
+        for i := 0 to Min(QLinhas[etOT] - 1, projectVerses.Count - 1) do
+          lines.Add(projectVerses[i]);
+      end
+      else if FEscopo = etNT then
+      begin
+        for i := 0 to QLinhas[etOT] - 1 do
+          lines.Add('');
+      end;
+    end;
+
+    while lines.Count < totalExpectedLines do
+      lines.Add('');
+    while lines.Count > totalExpectedLines do
+      lines.Delete(lines.Count - 1);
+
+    ExportTheWordBible(lines, destination, props);
+  finally
+    projectVerses.Free;
+    lines.Free;
+  end;
+
+  OpenDocument(ExtractFilePath(destination));
+end;
+
 procedure TProjeto.OnMudancaVersiculo(Sender: TObject; Node: TTreeNode);
 begin
   if not FScrollEventsEnabled or not assigned(FTblPares) or FClosing or not assigned(Node) then
@@ -1594,7 +2762,8 @@ var
   v: TTipoTextoBiblico;
   point: TPoint;
   s, p: TSyntagm;
-  m, rtf: string;
+  m, rtf, def: string;
+  hasMorfo, hasStrong: Boolean;
 begin
   if frmDictionaryPopup.Visible then
     exit;
@@ -1604,29 +2773,47 @@ begin
   begin
     if (FAVersiculo[v] = s.VerseRef) then
     begin
-      if assigned(FADicMorfo[v]) then
+      hasMorfo := (FUseGlobalDicts and FUseDefaultDict[v] and assigned(FGlobalDicMorfo)) or assigned(FADicMorfo[v]);
+      if hasMorfo then
       begin
         if s.Morph.Count > 0 then
           for m in s.Morph do
-            FrmDictionaryPopup.AdicionarMorfo(m, ObterDefinicaoMorfo(m, v))
+          begin
+            def := ObterDefinicaoMorfo(m, v);
+            if (def <> '') or (not FUseGlobalDicts) then
+              FrmDictionaryPopup.AdicionarMorfo(m, def);
+          end
         else
         begin // não tem morfo, vejamos se os pares têm
           for p in s.Pairs do
             for m in p.Morph do
-              FrmDictionaryPopup.AdicionarMorfo(m, ObterDefinicaoMorfo(m, v));
+            begin
+              def := ObterDefinicaoMorfo(m, v);
+              if (def <> '') or (not FUseGlobalDicts) then
+                FrmDictionaryPopup.AdicionarMorfo(m, def);
+            end;
         end;
       end;
 
-      if assigned(FADicStrong[v]) then
+      hasStrong := (FUseGlobalDicts and FUseDefaultDict[v] and (assigned(FGlobalDicStrongGreek) or assigned(FGlobalDicStrongHebrew))) or assigned(FADicStrong[v]);
+      if hasStrong then
       begin
         if s.Strong.Count > 0 then
           for m in s.Strong do
-            frmDictionaryPopup.AdicionarStrong(m, ObterDefinicaoStrong(m, v))
+          begin
+            def := ObterDefinicaoStrong(m, v);
+            if (def <> '') or (not FUseGlobalDicts) then
+              frmDictionaryPopup.AdicionarStrong(m, def);
+          end
         else
         begin // não tem strongs, vejamos se os pares têm
           for p in s.Pairs do
             for m in p.Strong do
-              FrmDictionaryPopup.AdicionarStrong(m, ObterDefinicaoStrong(m, v));
+            begin
+              def := ObterDefinicaoStrong(m, v);
+              if (def <> '') or (not FUseGlobalDicts) then
+                FrmDictionaryPopup.AdicionarStrong(m, def);
+            end;
         end;
       end;
 
@@ -1648,11 +2835,138 @@ begin
 end;
 
 procedure TProjeto.OnDblClickVersiculo(Sender: TObject);
+var
+  v: TVersiculo;
 begin
-  if not Ativo then
+  if not Ativo or not assigned(Sender) then
     exit;
 
-  FMemoVersiculo.Ativar(TScrollBox(Sender), TVersiculo(TScrollBox(Sender).Tag));
+  v := TVersiculo(TScrollBox(Sender).Tag);
+  if assigned(v) then
+    v.ViewMode := vvmEdit
+  else
+    FMemoVersiculo.Ativar(TScrollBox(Sender), TVersiculo(TScrollBox(Sender).Tag));
+end;
+
+procedure TProjeto.OnVerseViewModeChange(Sender: TVersiculo; NewMode: TVerseViewMode);
+var
+  v, text: TTipoTextoBiblico;
+  props, desc: string;
+begin
+  text := tbNone;
+  for v := low(FAVersiculo) to high(FAVersiculo) do
+    if Sender = FAVersiculo[v] then
+    begin
+      text := v;
+      break;
+    end;
+
+  if text = tbNone then
+    exit;
+
+  case NewMode of
+    vvmAssoc:
+    begin
+      if Sender.MemoPropsModified then
+      begin
+        AtribuirInfo(GetPropriedadesKey(text), Sender.MemoProps.Text);
+        case text of
+          tbOrigem:    AtribuirInfo('propriedades.origem', Sender.MemoProps.Text);
+          tbDestino:   AtribuirInfo('propriedades.destino', Sender.MemoProps.Text);
+          tbConsulta1: AtribuirInfo('propriedades.consulta1', Sender.MemoProps.Text);
+          tbConsulta2: AtribuirInfo('propriedades.consulta2', Sender.MemoProps.Text);
+        end;
+        if Sender.TranslationName <> '' then
+          AtribuirInfo(Format('description.text%d', [Integer(text)]), Sender.TranslationName);
+        Sender.MemoPropsModified := False;
+      end;
+
+      if assigned(FMemoVersiculo) and (FMemoVersiculo.Versiculo = Sender) then
+        FMemoVersiculo.Desativar;
+
+      if assigned(Sender.MemoProps) then
+        Sender.MemoProps.Visible := False;
+
+      Sender.Renderizar;
+      Sender.RepositionTabPanel;
+    end;
+
+    vvmEdit:
+    begin
+      if Sender.MemoPropsModified then
+      begin
+        AtribuirInfo(GetPropriedadesKey(text), Sender.MemoProps.Text);
+        case text of
+          tbOrigem:    AtribuirInfo('propriedades.origem', Sender.MemoProps.Text);
+          tbDestino:   AtribuirInfo('propriedades.destino', Sender.MemoProps.Text);
+          tbConsulta1: AtribuirInfo('propriedades.consulta1', Sender.MemoProps.Text);
+          tbConsulta2: AtribuirInfo('propriedades.consulta2', Sender.MemoProps.Text);
+        end;
+        if Sender.TranslationName <> '' then
+          AtribuirInfo(Format('description.text%d', [Integer(text)]), Sender.TranslationName);
+        Sender.MemoPropsModified := False;
+      end;
+
+      if assigned(Sender.MemoProps) then
+        Sender.MemoProps.Visible := False;
+
+      if assigned(FMemoVersiculo) and assigned(Sender.Painel) then
+      begin
+        FMemoVersiculo.Ativar(Sender.Painel, Sender);
+        Sender.RepositionTabPanel;
+      end;
+    end;
+
+    vvmProps:
+    begin
+      if assigned(FMemoVersiculo) and (FMemoVersiculo.Versiculo = Sender) then
+        FMemoVersiculo.Desativar;
+
+      props := ObterInfo(GetPropriedadesKey(text));
+      if props = '' then
+      begin
+        case text of
+          tbOrigem:    props := ObterInfo('propriedades.origem');
+          tbDestino:   props := ObterInfo('propriedades.destino');
+          tbConsulta1: props := ObterInfo('propriedades.consulta1');
+          tbConsulta2: props := ObterInfo('propriedades.consulta2');
+        end;
+      end;
+
+      if Trim(props) = '' then
+      begin
+        desc := GetTextDescription(text);
+        if desc = '' then
+        begin
+          case text of
+            tbOrigem:    desc := 'Source Bible';
+            tbDestino:   desc := 'Destination Bible';
+            tbConsulta1: desc := 'Reference 1';
+            tbConsulta2: desc := 'Reference 2';
+          else
+            desc := 'Bible';
+          end;
+        end;
+        props := 'title=' + desc + LineEnding +
+                 'short.title=' + desc + LineEnding +
+                 'description=' + desc + LineEnding +
+                 'version=1.0' + LineEnding;
+        if FEscopo = etNT then
+          props := props + 'ot=0' + LineEnding
+        else if FEscopo = etOT then
+          props := props + 'nt=0' + LineEnding;
+      end;
+
+      if assigned(Sender.MemoProps) then
+      begin
+        Sender.MemoProps.Text := props;
+        Sender.MemoPropsModified := False;
+        Sender.MemoProps.BringToFront;
+        Sender.MemoProps.Visible := True;
+        Sender.RepositionTabPanel;
+      end;
+    end;
+  end;
 end;
 
 procedure TProjeto.OnBibleTreePopupItemClick(Sender: TObject);
@@ -1710,7 +3024,7 @@ begin
     Handled := True;
 end;
 
-function TProjeto.AtribuirDicStrong(dic: string; t: TTipoTextoBiblico): boolean;
+function TProjeto.AtribuirDicStrong(dic: string; t: TTipoTextoBiblico; alertaSeNaoExistir: Boolean = True): boolean;
 //var
 //  t1: TTipoTextoBiblico;
 begin
@@ -1724,7 +3038,8 @@ begin
 
   if not FileExists(dic) then
   begin
-    MessageDlg(SStrongDictionary, format(SDictionaryDoesntExist, [FExpand(dic)]), mtError, [mbOK], 0);
+    if alertaSeNaoExistir then
+      MessageDlg(SStrongDictionary, format(SDictionaryDoesntExist, [FExpand(dic)]), mtError, [mbOK], 0);
     exit;
   end;
 
@@ -1764,7 +3079,7 @@ begin
   result := true;
 end;
 
-function TProjeto.AtribuirDicMorfo(dic: string; t: TTipoTextoBiblico): boolean;
+function TProjeto.AtribuirDicMorfo(dic: string; t: TTipoTextoBiblico; alertaSeNaoExistir: Boolean = True): boolean;
 //var
 //  t1: TTipoTextoBiblico;
 begin
@@ -1775,7 +3090,8 @@ begin
 
   if not FileExists(dic) then
   begin
-    MessageDlg(SMorphologyDictionary, format(SDictionaryDoesntExist, [FExpand(dic)]), mtError, [mbOK], 0);
+    if alertaSeNaoExistir then
+      MessageDlg(SMorphologyDictionary, format(SDictionaryDoesntExist, [FExpand(dic)]), mtError, [mbOK], 0);
     exit;
   end;
 
@@ -2152,6 +3468,7 @@ begin
     begin
       PreencherArvore;
       AtualizarArvore;
+  AtualizarNomesTraducao;
       exit;
     end;
 
@@ -2271,7 +3588,17 @@ begin
     FADicStrong[v]   := nil;
     FADicMorfo[v]    := nil;
     FACamposTexto[v] := 0;
+    if v in [tbOrigem..tbConsulta2] then
+      FUseDefaultDict[v] := True;
   end;
+
+  FUseGlobalDicts := True;
+  FGlobalDicStrongGreekPath := '';
+  FGlobalDicStrongHebrewPath := '';
+  FGlobalDicMorfoPath := '';
+  FGlobalDicStrongGreek := nil;
+  FGlobalDicStrongHebrew := nil;
+  FGlobalDicMorfo := nil;
 
   FParesAntigos       := nil;
   FOnNovoVersiculo    := TOnNovoVersiculoEvents.Create;
@@ -2317,6 +3644,10 @@ destructor TProjeto.Destruir;
 var
   v: TTipoTextoBiblico;
 begin
+  LiberarObjetoQuery(FGlobalDicStrongGreek);
+  LiberarObjetoQuery(FGlobalDicStrongHebrew);
+  LiberarObjetoQuery(FGlobalDicMorfo);
+
   for v:=low(FAVersiculo) to high(FAVersiculo) do
   begin
     if assigned(FAVersiculo[v]) then
@@ -2413,8 +3744,18 @@ begin
     FAVersiculo[t].StrongsCountMode := FVerseStrongsCountMode;
 
     { definindo dicionários }
-    AtribuirDicStrong(ObterInfo(format('dicstrong%d', [t])), t);
-    AtribuirDicMorfo(ObterInfo(format('dicmorfo%d', [t])), t);
+    s := ObterInfo(format('usedefaultdict%d', [t]));
+    if s = '' then
+      FUseDefaultDict[t] := True
+    else
+      FUseDefaultDict[t] := (s = '1') or (s = 'true') or (s = 'True');
+
+    { se o módulo usa dicionários padrão, o dicionário por módulo está inativo; não carregar nem alertar }
+    if not FUseDefaultDict[t] then
+    begin
+      AtribuirDicStrong(ObterInfo(format('dicstrong%d', [t])), t, false);
+      AtribuirDicMorfo(ObterInfo(format('dicmorfo%d', [t])), t, false);
+    end;
   end;
   f.free;
 
@@ -2450,6 +3791,8 @@ begin
         Add(GetSituacaoDescricao(i));
     end;
     FRadioGroupSituacao.Enabled := true;
+    FRadioGroupSituacao.Color := CurrentSkin.PanelBg;
+    FRadioGroupSituacao.Font.Color := CurrentSkin.PanelText;
   end;
 
   FTblPares.BeforeScroll := @PreRolagemVersiculo;
@@ -2466,6 +3809,7 @@ begin
 
   FAtivo := true;
   FDisplayTags := false;
+  AtualizarNomesTraducao;
 end;
 
 procedure TProjeto.Fechar(_Commit: boolean);
@@ -2491,10 +3835,25 @@ begin
   else
     Rollback;
 
-  // always saving font sizes
+  // saving modified properties and font sizes
   for t:=low(FAVersiculo) to high(FAVersiculo) do
     if assigned(FAVersiculo[t]) then
+    begin
+      if FAVersiculo[t].MemoPropsModified then
+      begin
+        AtribuirInfo(GetPropriedadesKey(t), FAVersiculo[t].MemoProps.Text);
+        case t of
+          tbOrigem:    AtribuirInfo('propriedades.origem', FAVersiculo[t].MemoProps.Text);
+          tbDestino:   AtribuirInfo('propriedades.destino', FAVersiculo[t].MemoProps.Text);
+          tbConsulta1: AtribuirInfo('propriedades.consulta1', FAVersiculo[t].MemoProps.Text);
+          tbConsulta2: AtribuirInfo('propriedades.consulta2', FAVersiculo[t].MemoProps.Text);
+        end;
+        if FAVersiculo[t].TranslationName <> '' then
+          AtribuirInfo(Format('description.text%d', [Integer(t)]), FAVersiculo[t].TranslationName);
+        FAVersiculo[t].MemoPropsModified := False;
+      end;
       AtribuirInfo(format('fonte%d.tamanho', [t]), IntToStr(FAVersiculo[t].Fonte.Size));
+    end;
   Commit;
 
   FTblPares.Close;
@@ -2526,18 +3885,42 @@ end;
 procedure TProjeto.Commit;
 begin
   if assigned(FSugeridor) then
-    FSugeridor.Commit;
-  if assigned(FTblPares) then
-    FTblPares.ApplyUpdates;
-  if assigned(FTblInfo) then
-    FTblInfo.ApplyUpdates;
+  begin
+    try
+      FSugeridor.Commit;
+    except
+      on E: Exception do ;
+    end;
+  end;
+
+  if assigned(FTblPares) and FTblPares.Active and FTblPares.UpdatesPending then
+  begin
+    try
+      FTblPares.ApplyUpdates;
+    except
+      on E: Exception do
+        DebugLn('FTblPares.ApplyUpdates warning: ' + E.Message);
+    end;
+  end;
+
+  if assigned(FTblInfo) and FTblInfo.Active and FTblInfo.UpdatesPending then
+  begin
+    try
+      FTblInfo.ApplyUpdates;
+    except
+      on E: Exception do ;
+    end;
+  end;
 end;
 
 procedure TProjeto.Rollback;
 begin
-  FTblPares.ClearUpdates;
-  FTblInfo.ClearUpdates;
-  FSugeridor.Rollback;
+  if assigned(FTblPares) then
+    FTblPares.ClearUpdates;
+  if assigned(FTblInfo) then
+    FTblInfo.ClearUpdates;
+  if assigned(FSugeridor) then
+    FSugeridor.Rollback;
 end;
 
 procedure TProjeto.GoToReference(reference: string);
@@ -2597,6 +3980,26 @@ end;
 procedure TProjeto.Atualizar;
 begin
   PosRolagemVersiculo(FTblPares);
+end;
+
+procedure TProjeto.ApplySkin(const ASkin: TSkinColors);
+var
+  t: TTipoTextoBiblico;
+begin
+  for t := low(FAVersiculo) to high(FAVersiculo) do
+    if assigned(FAVersiculo[t]) then
+    begin
+      FAVersiculo[t].ApplySkin(ASkin);
+      if t in [tbConsulta1, tbConsulta2] then
+        FAVersiculo[t].CorDesassociado := ASkin.WindowText;
+    end;
+  if assigned(FMemoVersiculo) then
+    FMemoVersiculo.ApplySkin(ASkin);
+  if assigned(FRadioGroupSituacao) then
+  begin
+    FRadioGroupSituacao.Color := ASkin.PanelBg;
+    FRadioGroupSituacao.Font.Color := ASkin.PanelText;
+  end;
 end;
 
 procedure TProjeto.Limpar;
@@ -2722,13 +4125,13 @@ function TProjeto.ImportarModuloTheWord(arquivo: string;
   texto: TTipoTextoBiblico; pb: TProgressBar; replace: boolean): boolean;
 var
   modulo: TStringList;
-  i, linesOffset, projectOffset: smallint;
+  i, linesOffset, projectOffset: Integer;
   reVazio, reComments, reDescription, reCharset, reVerseRules, verseRule: IRegex;
   mtVerseRules, mtDescription: IMatch;
   rxVerseRulesFrom: TRegexList;
   rxVerseRulesTo: TStringList;
   propriedades: TStringStream;
-  m: smallint;
+  m: Integer;
   line: string;
   moduleScope: TEscopoTexto;
 begin
@@ -2787,9 +4190,36 @@ begin
     FrmEscolherVerseRules.Reset;
     propriedades := TStringStream.Create('');
 
+    AtribuirInfo(Format('moduletype.%d', [Ord(texto)]), LowerCase(ExtractFileExt(arquivo)));
+    AtribuirInfo(Format('modulepath.%d', [Ord(texto)]), arquivo);
+    case texto of
+      tbOrigem:
+      begin
+        AtribuirInfo('moduletype.origem', LowerCase(ExtractFileExt(arquivo)));
+        AtribuirInfo('modulepath.origem', arquivo);
+      end;
+      tbDestino:
+      begin
+        AtribuirInfo('moduletype.destino', LowerCase(ExtractFileExt(arquivo)));
+        AtribuirInfo('modulepath.destino', arquivo);
+      end;
+      tbConsulta1:
+      begin
+        AtribuirInfo('moduletype.consulta1', LowerCase(ExtractFileExt(arquivo)));
+        AtribuirInfo('modulepath.consulta1', arquivo);
+      end;
+      tbConsulta2:
+      begin
+        AtribuirInfo('moduletype.consulta2', LowerCase(ExtractFileExt(arquivo)));
+        AtribuirInfo('modulepath.consulta2', arquivo);
+      end;
+    end;
+
     for i:=QLinhas[moduleScope] to modulo.Count-1 do
     begin
-      line := modulo[i];
+      propriedades.WriteString(modulo[i] + #13#10);
+
+      line := SanitizeUTF8String(modulo[i]);
       { eliminando comentários }
       line := reComments.Replace(line, '');
 
@@ -2801,8 +4231,6 @@ begin
         if MessageDlg(arquivo, SPotentialNonUTF8ModuleWarning, mtWarning, [mbIgnore, mbAbort], 0) = mrAbort then
           exit;
       end;
-
-      propriedades.WriteString(modulo[i] + #13#10);
 
       mtDescription := reDescription.Match(line);
       if mtDescription.Success then
@@ -2816,13 +4244,12 @@ begin
          FrmEscolherVerseRules.AddVerseRule(mtVerseRules.Groups[1].Value, mtVerseRules.Groups[2].Value);
     end;
 
-    if ((texto = tbOrigem)  and (ObterInfo('propriedades.origem')  = '')) or // não importar propriedades quando já existem
-       ((texto = tbDestino) and (ObterInfo('propriedades.destino') = '')) then
-    begin
-      case texto of
-        tbOrigem:  AtribuirInfo('propriedades.origem', propriedades.DataString);
-        tbDestino: AtribuirInfo('propriedades.destino', propriedades.DataString);
-      end;
+    AtribuirInfo(Format('propriedades.%d', [Ord(texto)]), propriedades.DataString);
+    case texto of
+      tbOrigem:  AtribuirInfo('propriedades.origem', propriedades.DataString);
+      tbDestino: AtribuirInfo('propriedades.destino', propriedades.DataString);
+      tbConsulta1: AtribuirInfo('propriedades.consulta1', propriedades.DataString);
+      tbConsulta2: AtribuirInfo('propriedades.consulta2', propriedades.DataString);
     end;
     propriedades.Free;
 
@@ -2860,6 +4287,19 @@ begin
 
       VersiculoSeguinte;
 
+      if (i mod 100) = 0 then
+      begin
+        if FTblPares.UpdatesPending then
+        begin
+          try
+            FTblPares.ApplyUpdates;
+          except
+            on E: Exception do
+              DebugLn('AplicarPatch batch warning at ' + IntToStr(i) + ': ' + E.Message);
+          end;
+        end;
+      end;
+
       if assigned(pb) then
       begin
         pb.StepIt;
@@ -2867,9 +4307,18 @@ begin
            Application.ProcessMessages;
       end;
     end;
+    if FTblPares.UpdatesPending then
+    begin
+      try
+        FTblPares.ApplyUpdates;
+      except
+        on E: Exception do
+          DebugLn('ApplyUpdates final warning: ' + E.Message);
+      end;
+    end;
     FinishScrollingSession;
     FExportando := false;
-    AtualizarArvore(FMarker);
+    AtualizarArvore;
   finally
     modulo.Free;
     if assigned(pb) then
@@ -2889,10 +4338,15 @@ begin
   owner.OnDblClick := @OnDblClickVersiculo;
   FAVersiculo[texto].OnClick := @SintagmaOnClick;
   FAVersiculo[texto].OnExportText := @OnExportText;
+  FAVersiculo[texto].OnExportBibleModule := @OnExportBibleModule;
+  FAVersiculo[texto].OnViewModeChange := @OnVerseViewModeChange;
+  FAVersiculo[texto].TranslationName := GetTranslationName(texto);
+  FAVersiculo[texto].OnMouseEnter := @SintagmaOnMouseEnter;
+  FAVersiculo[texto].OnMouseLeave := @SintagmaOnMouseLeave;
 
   //FAVersiculo[texto].MostrarDicas := true;
   if texto in [tbConsulta1, tbConsulta2] then
-    FAVersiculo[texto].CorDesassociado := clWindowText;
+    FAVersiculo[texto].CorDesassociado := CurrentSkin.WindowText;
 
   //if texto = tbOrigem then
   //  FAVersiculo[texto].StrongMorfoComoChave := true;
@@ -3250,19 +4704,75 @@ begin
 end;
 
 procedure TProjeto.LimparTexto(texto: TTipoTextoBiblico);
+var
+  clearCount: Integer;
 begin
   with FTblPares do
   begin
     ScrollEventsEnabled := false;
     VersiculoInicial;
+    clearCount := 0;
     while not FTblPares.EOF do
     begin
       SetVerseText('', texto, false);
       VersiculoSeguinte;
+      inc(clearCount);
+      if (clearCount mod 100) = 0 then
+      begin
+        if FTblPares.UpdatesPending then
+        begin
+          try
+            FTblPares.ApplyUpdates;
+          except
+            on E: Exception do
+              DebugLn('LimparTexto batch warning at ' + IntToStr(clearCount) + ': ' + E.Message);
+          end;
+        end;
+      end;
+    end;
+    if FTblPares.UpdatesPending then
+    begin
+      try
+        FTblPares.ApplyUpdates;
+      except
+        on E: Exception do
+          DebugLn('LimparTexto final warning: ' + E.Message);
+      end;
     end;
     ScrollEventsEnabled := true;
   end;
   SetTextDescription(texto, '');
+  AtribuirInfo(Format('moduletype.%d', [Ord(texto)]), '');
+  AtribuirInfo(Format('modulepath.%d', [Ord(texto)]), '');
+  AtribuirInfo(Format('propriedades.%d', [Ord(texto)]), '');
+  case texto of
+    tbOrigem:
+    begin
+      AtribuirInfo('moduletype.origem', '');
+      AtribuirInfo('modulepath.origem', '');
+      AtribuirInfo('propriedades.origem', '');
+    end;
+    tbDestino:
+    begin
+      AtribuirInfo('moduletype.destino', '');
+      AtribuirInfo('modulepath.destino', '');
+      AtribuirInfo('propriedades.destino', '');
+    end;
+    tbConsulta1:
+    begin
+      AtribuirInfo('moduletype.consulta1', '');
+      AtribuirInfo('modulepath.consulta1', '');
+      AtribuirInfo('propriedades.consulta1', '');
+    end;
+    tbConsulta2:
+    begin
+      AtribuirInfo('moduletype.consulta2', '');
+      AtribuirInfo('modulepath.consulta2', '');
+      AtribuirInfo('propriedades.consulta2', '');
+    end;
+  end;
+  AtualizarArvore;
+  AtualizarNomesTraducao;
 end;
 
 function TProjeto.ObterFonteTexto(texto: TTipoTextoBiblico): TFont;

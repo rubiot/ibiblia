@@ -23,6 +23,7 @@ object frmPrincipal: TfrmPrincipal
     Width = 943
     AutoHint = True
     Panels = <>
+    Visible = False
   end
   object ToolBar1: TToolBar
     Left = 0
@@ -33,6 +34,9 @@ object frmPrincipal: TfrmPrincipal
     ButtonHeight = 32
     ButtonWidth = 32
     Caption = 'ToolBar1'
+    EdgeBorders = []
+    Flat = True
+    Transparent = True
     Images = ImageList1
     ParentShowHint = False
     ShowHint = True
@@ -190,6 +194,7 @@ object frmPrincipal: TfrmPrincipal
         TabOrder = 3
       end
       object Splitter2: TSplitter
+      Beveled = False
         AnchorSideBottom.Control = ScrollBoxDstVerse
         Cursor = crVSplit
         Left = 1
@@ -201,6 +206,7 @@ object frmPrincipal: TfrmPrincipal
         ResizeAnchor = akTop
       end
       object Splitter3: TSplitter
+      Beveled = False
         Cursor = crVSplit
         Left = 1
         Height = 5
@@ -211,6 +217,7 @@ object frmPrincipal: TfrmPrincipal
         ResizeAnchor = akBottom
       end
       object Splitter4: TSplitter
+      Beveled = False
         Cursor = crVSplit
         Left = 0
         Height = 5
@@ -274,6 +281,7 @@ object frmPrincipal: TfrmPrincipal
         end
       end
       object Splitter5: TSplitter
+      Beveled = False
         Cursor = crVSplit
         Left = 1
         Height = 5
@@ -285,6 +293,7 @@ object frmPrincipal: TfrmPrincipal
       end
     end
     object Splitter1: TSplitter
+      Beveled = False
       Left = 139
       Height = 591
       Top = 1
@@ -328,8 +337,9 @@ object frmPrincipal: TfrmPrincipal
             'Associated!'
           )
           OnChange = ComboBoxStatusFilterChange
+          OnDrawItem = ComboBoxStatusFilterDrawItem
           ReadOnly = True
-          Style = csDropDownList
+          Style = csOwnerDrawFixed
           TabOrder = 0
         end
         object PanelFilterButtons: TPanel
@@ -351,6 +361,7 @@ object frmPrincipal: TfrmPrincipal
             Width = 26
             Caption = '<'
             Enabled = False
+            Flat = True
             OnClick = SpeedButtonPrevFilteredClick
           end
           object SpeedButtonNextFiltered: TSpeedButton
@@ -361,6 +372,7 @@ object frmPrincipal: TfrmPrincipal
             Width = 26
             Caption = '>'
             Enabled = False
+            Flat = True
             OnClick = SpeedButtonNextFilteredClick
           end
           object LabelFilterCount: TLabel
@@ -385,10 +397,15 @@ object frmPrincipal: TfrmPrincipal
         Images = ImageListTreeView
         ReadOnly = True
         TabOrder = 1
-        Options = [tvoAutoItemHeight, tvoHideSelection, tvoKeepCollapsedNodes, tvoReadOnly, tvoShowButtons, tvoShowLines, tvoShowRoot, tvoToolTips, tvoThemedDraw]
+        ExpandSignColor = clSilver
+        ExpandSignType = tvestArrowFill
+        TreeLineColor = clGray
+        OnCustomDrawItem = TreeView1CustomDrawItem
+        Options = [tvoAutoItemHeight, tvoHideSelection, tvoKeepCollapsedNodes, tvoReadOnly, tvoShowButtons, tvoShowLines, tvoShowRoot, tvoToolTips]
       end
     end
     object Splitter6: TSplitter
+      Beveled = False
       Left = 632
       Height = 591
       Top = 1
@@ -402,26 +419,75 @@ object frmPrincipal: TfrmPrincipal
       Top = 1
       Width = 305
       Align = alRight
+      BevelOuter = bvNone
       ClientHeight = 591
       ClientWidth = 305
       ParentColor = False
       TabOrder = 4
-      object ChapterViewTabCtrl: TTabControl
-        Left = 1
-        Height = 589
-        Top = 1
-        Width = 303
-        OnChange = ChapterViewTabCtrlChange
-        TabIndex = 0
-        Tabs.Strings = (
-          'Source'
-          'Destination'
-          'Reference1'
-          'Reference2'
-        )
-        Align = alClient
-        ParentShowHint = False
+      object PanelContextTabs: TPanel
+        Left = 0
+        Height = 28
+        Top = 0
+        Width = 305
+        Align = alTop
+        BevelOuter = bvNone
+        ClientHeight = 28
+        ClientWidth = 305
         TabOrder = 0
+        object BtnTabSource: TSpeedButton
+          Tag = 0
+          Left = 2
+          Height = 24
+          Top = 2
+          Width = 70
+          Caption = 'Source'
+          Down = True
+          Flat = True
+          GroupIndex = 1
+          OnClick = OnContextTabButtonClick
+        end
+        object BtnTabDest: TSpeedButton
+          Tag = 1
+          Left = 74
+          Height = 24
+          Top = 2
+          Width = 84
+          Caption = 'Destination'
+          Flat = True
+          GroupIndex = 1
+          OnClick = OnContextTabButtonClick
+        end
+        object BtnTabRef1: TSpeedButton
+          Tag = 2
+          Left = 160
+          Height = 24
+          Top = 2
+          Width = 68
+          Caption = 'Ref 1'
+          Flat = True
+          GroupIndex = 1
+          OnClick = OnContextTabButtonClick
+        end
+        object BtnTabRef2: TSpeedButton
+          Tag = 3
+          Left = 230
+          Height = 24
+          Top = 2
+          Width = 68
+          Caption = 'Ref 2'
+          Flat = True
+          GroupIndex = 1
+          OnClick = OnContextTabButtonClick
+        end
+      end
+      object ChapterViewTabCtrl: TTabControl
+        Left = 0
+        Height = 1
+        Top = 28
+        Width = 305
+        Align = alTop
+        Visible = False
+        TabOrder = 1
       end
     end
   end
@@ -528,6 +594,54 @@ object frmPrincipal: TfrmPrincipal
         Action = ActionVersoAnteriorFiltrado
       end
     end
+    object MenuItemView: TMenuItem
+      Caption = 'View'
+      object MenuItemSkinsMenu: TMenuItem
+        Caption = 'Skins (theWord Themes)'
+        object MenuItemSkinClassic: TMenuItem
+          Caption = 'Classic (Light)'
+          GroupIndex = 1
+          RadioItem = True
+          OnClick = MenuItemSkinSelectClick
+        end
+        object MenuItemSkinTheWordDark: TMenuItem
+          Caption = 'theWord Dark (Charcoal)'
+          GroupIndex = 1
+          RadioItem = True
+          OnClick = MenuItemSkinSelectClick
+        end
+        object MenuItemSkinNight: TMenuItem
+          Caption = 'Night (Pitch Black)'
+          GroupIndex = 1
+          RadioItem = True
+          OnClick = MenuItemSkinSelectClick
+        end
+        object MenuItemSkinSepia: TMenuItem
+          Caption = 'Sepia (Parchment)'
+          GroupIndex = 1
+          RadioItem = True
+          OnClick = MenuItemSkinSelectClick
+        end
+        object MenuItemSkinSlate: TMenuItem
+          Caption = 'Slate (Steel Blue)'
+          GroupIndex = 1
+          RadioItem = True
+          OnClick = MenuItemSkinSelectClick
+        end
+        object MenuItemSkinSolarizedDark: TMenuItem
+          Caption = 'Solarized Dark'
+          GroupIndex = 1
+          RadioItem = True
+          OnClick = MenuItemSkinSelectClick
+        end
+        object MenuItemSkinHighContrast: TMenuItem
+          Caption = 'High Contrast Dark'
+          GroupIndex = 1
+          RadioItem = True
+          OnClick = MenuItemSkinSelectClick
+        end
+      end
+    end
     object MenuItem20: TMenuItem
       Caption = 'Options'
       object MenuItem23: TMenuItem
@@ -558,6 +672,11 @@ object frmPrincipal: TfrmPrincipal
           Hint = 'Activate the popup dictionary whenever you hover the mouse pointer over a word while holding the Ctrl key'
           OnClick = MenuItemPopupTriggerClick
         end
+      end
+      object MenuItemGlobalDicts: TMenuItem
+        Caption = 'Default Dictionaries...'
+        Hint = 'Configure default Strong''s (Greek & Hebrew) and Morphology dictionaries for all Bible modules'
+        OnClick = MenuItemGlobalDictsClick
       end
       object MenuItemStrongsCount: TMenuItem
         Caption = 'Strongs count'
@@ -597,6 +716,20 @@ object frmPrincipal: TfrmPrincipal
         Hint = 'Keeps iBiblia synchronized to theWord''s current verse'
         OnClick = MenuItemSynciBibliaClick
       end
+      object MenuItemTTSSep: TMenuItem
+        Caption = '-'
+      end
+      object MenuItemTTS: TMenuItem
+        Caption = 'Read word on hover (Text-to-Speech)'
+        Hint = 'Read the word under mouse pointer using speech voice (Ctrl+T)'
+        ShortCut = 16468
+        OnClick = MenuItemTTSClick
+      end
+      object MenuItemTTSSettings: TMenuItem
+        Caption = 'Voice / Speech Settings...'
+        Hint = 'Configure speech voices, speed, volume, and trigger conditions'
+        OnClick = MenuItemTTSSettingsClick
+      end
       object MenuItemStrongNegrito: TMenuItem
         Caption = 'Words with strongs in bold'
         Hint = 'Words with associated strong''s tags are displayed in bold font'
@@ -619,6 +752,12 @@ object frmPrincipal: TfrmPrincipal
   object ActionList1: TActionList
     Left = 40
     Top = 192
+    object ActionToggleDarkMode: TAction
+      Caption = 'Toggle Dark Mode'
+      Hint = 'Toggle dark mode on or off (Ctrl+Shift+D)'
+      OnExecute = ActionToggleDarkModeExecute
+      ShortCut = 24644
+    end
     object ActionFindInProject: TAction
       Caption = 'Find in Project...'
       Category = 'Edit'

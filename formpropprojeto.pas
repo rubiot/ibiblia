@@ -5,6 +5,7 @@ unit formpropprojeto;
 interface
 
 uses
+  unitskins,
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
   StdCtrls, ExtCtrls, Buttons, ComCtrls, ActnList, Projeto, LCLTranslator,
   StrUtils;
@@ -50,12 +51,18 @@ type
     procedure ActionSelecionarStrongExecute(Sender: TObject);
     procedure BitBtnTextDescriptionClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
+    procedure FormShow(Sender: TObject);
     procedure leDicMorfoChange(Sender: TObject);
     procedure leDicStrongChange(Sender: TObject);
     procedure leTextDescriptionChange(Sender: TObject);
   private
     { private declarations }
     FProjeto: TProjeto;
+    FBtnDefaultDicts: TButton;
+    FChkUseDefaultDict: TCheckBox;
+    procedure AtualizarEstadoControlesDicionario;
+    procedure ChkUseDefaultDictChange(Sender: TObject);
+    procedure BtnDefaultDictsClick(Sender: TObject);
   public
     { public declarations }
     procedure SetProjeto(p: TProjeto);
@@ -79,7 +86,7 @@ resourcestring
   SClearTextConfirmationAssociation = 'Are you sure you want to clear this Bible text?'#13#10 +
                                       'All your associations will be lost!';
   SChooseDictionary = 'Choose';
-  SOpenDictionary = 'Please choose an unencrypted theWord dictionary module...';
+  SOpenDictionary = 'Please choose a theWord dictionary module...';
   SSourceTab = 'Source';
   SDestinationTab = 'Destination';
   SReference1Tab = 'Reference 1';
@@ -92,12 +99,150 @@ resourcestring
 
 implementation
 
+uses formglobaldicts, formPrincipal;
+
 { TFormPropProjeto }
 
 procedure TFormPropProjeto.FormCreate(Sender: TObject);
 begin
+  OnShow := @FormShow;
+  ApplySkinToForm(Self, CurrentSkin);
+  {$IFDEF WINDOWS}
+  HookTabControl(TabControl1);
+  {$ENDIF}
   FProjeto := nil;
+
+  Label2.Top := 248;
+  Button2.Top := 266;
+  MemoFonte.Top := 266;
+  MemoFonte.Height := 190;
+
+  FChkUseDefaultDict := TCheckBox.Create(Self);
+  FChkUseDefaultDict.Parent := TabControl1;
+  FChkUseDefaultDict.SetBounds(11, 224, 420, 22);
+  FChkUseDefaultDict.Caption := 'Use Default Dictionaries (overrides above)';
+  FChkUseDefaultDict.Font.Style := [fsBold];
+  FChkUseDefaultDict.Color := CurrentSkin.PanelBg;
+  FChkUseDefaultDict.Font.Color := CurrentSkin.PanelText;
+  FChkUseDefaultDict.OnChange := @ChkUseDefaultDictChange;
+
+  FBtnDefaultDicts := TButton.Create(Self);
+  FBtnDefaultDicts.Parent := Self;
+  FBtnDefaultDicts.Caption := 'Default Dictionaries...';
+  FBtnDefaultDicts.Left := TabControl1.Left;
+  FBtnDefaultDicts.Top := BitBtn1.Top;
+  FBtnDefaultDicts.Width := 160;
+  FBtnDefaultDicts.Height := BitBtn1.Height;
+  FBtnDefaultDicts.OnClick := @BtnDefaultDictsClick;
+
+  {$IFDEF WINDOWS}
+  HookCheckBoxControl(FChkUseDefaultDict);
+  HookButtonControl(FBtnDefaultDicts);
+  {$ENDIF}
+
   Translate;
+end;
+
+procedure TFormPropProjeto.FormShow(Sender: TObject);
+begin
+  ApplySkinToForm(Self, CurrentSkin);
+  {$IFDEF WINDOWS}
+  HookTabControl(TabControl1);
+  if Assigned(FChkUseDefaultDict) then
+    HookCheckBoxControl(FChkUseDefaultDict);
+  HookGroupBoxControl(GroupBox2);
+  HookButtonControl(BitBtn1);
+  HookButtonControl(BitBtn2);
+  HookButtonControl(BitBtn3);
+  HookButtonControl(BitBtn4);
+  HookButtonControl(BitBtn8);
+  HookButtonControl(BitBtn9);
+  HookButtonControl(Button2);
+  if Assigned(FBtnDefaultDicts) then
+    HookButtonControl(FBtnDefaultDicts);
+  {$ENDIF}
+  if CurrentSkin.IsDark then
+  begin
+    GroupBox2.Color := CurrentSkin.PanelBg;
+    GroupBox2.Font.Color := CurrentSkin.PanelText;
+    GroupBox2.Invalidate;
+    MemoFonte.Font.Color := CurrentSkin.WindowText;
+    EditNomeProjeto.Color := CurrentSkin.WindowBg;
+    EditNomeProjeto.Font.Color := CurrentSkin.WindowText;
+    EditNomeProjeto.EditLabel.Font.Color := CurrentSkin.PanelText;
+    leTextDescription.Color := CurrentSkin.WindowBg;
+    leTextDescription.Font.Color := CurrentSkin.WindowText;
+    leTextDescription.EditLabel.Font.Color := CurrentSkin.PanelText;
+    Label2.Font.Color := CurrentSkin.PanelText;
+    if Assigned(FChkUseDefaultDict) then
+    begin
+      FChkUseDefaultDict.Color := CurrentSkin.PanelBg;
+      FChkUseDefaultDict.Font.Color := CurrentSkin.PanelText;
+      FChkUseDefaultDict.Invalidate;
+    end;
+    BitBtn1.Font.Color := CurrentSkin.PanelText;
+    BitBtn2.Font.Color := CurrentSkin.PanelText;
+    BitBtn3.Font.Color := CurrentSkin.PanelText;
+    BitBtn4.Font.Color := CurrentSkin.PanelText;
+    BitBtn8.Font.Color := CurrentSkin.PanelText;
+    BitBtn9.Font.Color := CurrentSkin.PanelText;
+    Button2.Font.Color := CurrentSkin.PanelText;
+  end;
+  AtualizarEstadoControlesDicionario;
+  TabControl1.Invalidate;
+end;
+
+procedure TFormPropProjeto.AtualizarEstadoControlesDicionario;
+var
+  isDef: Boolean;
+begin
+  isDef := FChkUseDefaultDict.Checked;
+  leDicStrong.Enabled := not isDef;
+  BitBtn4.Enabled     := not isDef;
+  leDicMorfo.Enabled  := not isDef;
+  BitBtn8.Enabled     := not isDef;
+
+  if isDef then
+  begin
+    leDicStrong.EditLabel.Caption := 'Strong''s dictionary (Default active)';
+    leDicMorfo.EditLabel.Caption := 'Morphology dictionary (Default active)';
+  end
+  else
+  begin
+    leDicStrong.EditLabel.Caption := 'Strong''s dictionary';
+    leDicMorfo.EditLabel.Caption := 'Morphology dictionary';
+  end;
+
+  if CurrentSkin.IsDark then
+  begin
+    if isDef then
+    begin
+      leDicStrong.Color := CurrentSkin.PanelBg;
+      leDicStrong.Font.Color := CurrentSkin.WindowTextDim;
+      leDicMorfo.Color := CurrentSkin.PanelBg;
+      leDicMorfo.Font.Color := CurrentSkin.WindowTextDim;
+    end
+    else
+    begin
+      leDicStrong.Color := CurrentSkin.WindowBg;
+      leDicStrong.Font.Color := CurrentSkin.WindowText;
+      leDicMorfo.Color := CurrentSkin.WindowBg;
+      leDicMorfo.Font.Color := CurrentSkin.WindowText;
+    end;
+    BitBtn4.Invalidate;
+    BitBtn8.Invalidate;
+  end;
+end;
+
+procedure TFormPropProjeto.ChkUseDefaultDictChange(Sender: TObject);
+begin
+  if Assigned(FProjeto) then
+  begin
+    FProjeto.UseDefaultDict[TTipoTextoBiblico(TabControl1.TabIndex)] := FChkUseDefaultDict.Checked;
+    AtualizarEstadoControlesDicionario;
+  end;
+  if Assigned(FChkUseDefaultDict) then
+    FChkUseDefaultDict.Invalidate;
 end;
 
 procedure TFormPropProjeto.leDicMorfoChange(Sender: TObject);
@@ -121,6 +266,10 @@ begin
   TabControl1.Tabs[1] := SDestinationTab;
   TabControl1.Tabs[2] := SReference1Tab;
   TabControl1.Tabs[3] := SReference2Tab;
+  if Assigned(FBtnDefaultDicts) then
+    FBtnDefaultDicts.Caption := 'Default Dictionaries...';
+  if Assigned(FChkUseDefaultDict) then
+    FChkUseDefaultDict.Caption := 'Use Default Dictionaries (overrides above)';
 end;
 
 procedure TFormPropProjeto.ActionCarregarTextoExecute(Sender: TObject);
@@ -155,6 +304,8 @@ begin
     Enabled := True;
     ActionMudancaAbaExecute(nil);
     FProjeto.Atualizar;
+    if Assigned(FrmPrincipal) then
+      FrmPrincipal.AtualizarItensFiltro;
     if importOK then
       ShowMessage(SNewTextImportedSuccessfully);
   end;
@@ -171,6 +322,8 @@ begin
     FProjeto.LimparTexto(TTipoTextoBiblico(TabControl1.TabIndex));
     ActionMudancaAbaExecute(nil);
     FProjeto.Atualizar;
+    if Assigned(FrmPrincipal) then
+      FrmPrincipal.AtualizarItensFiltro;
   end;
 end;
 
@@ -184,6 +337,20 @@ begin
   BitBtn8.Caption  := SChooseDictionary; // seleção Morfo
   MemoFonte.Text   := FProjeto.ObterTextoSimplesVersiculo(TTipoTextoBiblico(TabControl1.TabIndex));
   MemoFonte.Font   := FProjeto.ObterFonteTexto(TTipoTextoBiblico(TabControl1.TabIndex));
+  if CurrentSkin.IsDark then
+    MemoFonte.Font.Color := CurrentSkin.WindowText;
+  TabControl1.Invalidate;
+
+  FChkUseDefaultDict.OnChange := nil;
+  try
+    if Assigned(FProjeto) then
+      FChkUseDefaultDict.Checked := FProjeto.UseDefaultDict[TTipoTextoBiblico(TabControl1.TabIndex)]
+    else
+      FChkUseDefaultDict.Checked := True;
+  finally
+    FChkUseDefaultDict.OnChange := @ChkUseDefaultDictChange;
+  end;
+  AtualizarEstadoControlesDicionario;
 end;
 
 procedure TFormPropProjeto.ActionSelecionarFonteExecute(Sender: TObject);
@@ -192,6 +359,8 @@ begin
   if FontDialog1.Execute then
   begin
     MemoFonte.Font := FontDialog1.Font;
+    if CurrentSkin.IsDark then
+      MemoFonte.Font.Color := CurrentSkin.WindowText;
     FProjeto.AtribuirFonteTexto(MemoFonte.Font, [TTipoTextoBiblico(TabControl1.TabIndex)]);
   end;
 end;
@@ -240,6 +409,25 @@ begin
   BitBtn4.Caption := SChooseDictionary;
 end;
 
+procedure TFormPropProjeto.BtnDefaultDictsClick(Sender: TObject);
+begin
+  if Assigned(FrmPrincipal) then
+  begin
+    if ShowGlobalDictsDialog(Self, FrmPrincipal.IniOpts) then
+    begin
+      FrmPrincipal.UseGlobalDicts := FrmPrincipal.IniOpts.ReadBool('dicionarios', 'use_default', FrmPrincipal.IniOpts.ReadBool('dicionarios', 'use_global', True));
+      FrmPrincipal.GlobalStrongGreek := FrmPrincipal.IniOpts.ReadString('dicionarios', 'default_strong_greek', FrmPrincipal.IniOpts.ReadString('dicionarios', 'global_strong_greek', ''));
+      FrmPrincipal.GlobalStrongHebrew := FrmPrincipal.IniOpts.ReadString('dicionarios', 'default_strong_hebrew', FrmPrincipal.IniOpts.ReadString('dicionarios', 'global_strong_hebrew', ''));
+      FrmPrincipal.GlobalMorphology := FrmPrincipal.IniOpts.ReadString('dicionarios', 'default_morphology', FrmPrincipal.IniOpts.ReadString('dicionarios', 'global_morphology', ''));
+      if Assigned(FProjeto) then
+        FrmPrincipal.AplicarDicionariosGlobais(FProjeto);
+      ActionMudancaAbaExecute(nil);
+    end;
+  end
+  else
+    ShowGlobalDictsDialog(Self);
+end;
+
 procedure TFormPropProjeto.BitBtnTextDescriptionClick(Sender: TObject);
 begin
   FProjeto.SetTextDescription(TTipoTextoBiblico(TabControl1.TabIndex), leTextDescription.Text);
@@ -250,6 +438,10 @@ procedure TFormPropProjeto.SetProjeto(p: TProjeto);
 begin
   FProjeto := p;
   EditNomeProjeto.Caption := p.ObterInfo('descricao');
+  ApplySkinToForm(Self, CurrentSkin);
+  {$IFDEF WINDOWS}
+  HookTabControl(TabControl1);
+  {$ENDIF}
   ActionMudancaAba.Execute;
 end;
 

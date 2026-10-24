@@ -5,6 +5,7 @@ unit formnovoprojeto;
 interface
 
 uses
+  unitskins,
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
   StdCtrls, ExtCtrls, Buttons, LCLTranslator;
 
@@ -85,6 +86,7 @@ end;
 
 procedure TFormNovoProjeto.FormCreate(Sender: TObject);
 begin
+  ApplySkinToForm(Self, CurrentSkin);
   Translate;
 end;
 
@@ -115,6 +117,7 @@ begin
     1: OpenDialog1.Filter := SNewTestamentFilter;
     2: OpenDialog1.Filter := SWholeBibleFilter;
   end;
+
   if OpenDialog1.Execute then
     edit.Text := OpenDialog1.FileName;
 end;
