@@ -145,18 +145,35 @@ end;
 
 procedure TFormPropProjeto.FormShow(Sender: TObject);
 begin
+  Self.HandleNeeded;
+  TabControl1.HandleNeeded;
+  GroupBox2.HandleNeeded;
+  EditNomeProjeto.HandleNeeded;
+  leTextDescription.HandleNeeded;
+  leDicStrong.HandleNeeded;
+  leDicMorfo.HandleNeeded;
+  MemoFonte.HandleNeeded;
+  if Assigned(FChkUseDefaultDict) then
+    FChkUseDefaultDict.HandleNeeded;
+
   ApplySkinToForm(Self, CurrentSkin);
   {$IFDEF WINDOWS}
   HookTabControl(TabControl1);
   if Assigned(FChkUseDefaultDict) then
     HookCheckBoxControl(FChkUseDefaultDict);
   HookGroupBoxControl(GroupBox2);
+  HookEditControl(EditNomeProjeto);
+  HookEditControl(leTextDescription);
+  HookEditControl(leDicStrong);
+  HookEditControl(leDicMorfo);
+  HookEditControl(MemoFonte);
   HookButtonControl(BitBtn1);
   HookButtonControl(BitBtn2);
   HookButtonControl(BitBtn3);
   HookButtonControl(BitBtn4);
   HookButtonControl(BitBtn8);
   HookButtonControl(BitBtn9);
+  HookButtonControl(BitBtnTextDescription);
   HookButtonControl(Button2);
   if Assigned(FBtnDefaultDicts) then
     HookButtonControl(FBtnDefaultDicts);
@@ -166,6 +183,7 @@ begin
     GroupBox2.Color := CurrentSkin.PanelBg;
     GroupBox2.Font.Color := CurrentSkin.PanelText;
     GroupBox2.Invalidate;
+    MemoFonte.Color := CurrentSkin.WindowBg;
     MemoFonte.Font.Color := CurrentSkin.WindowText;
     EditNomeProjeto.Color := CurrentSkin.WindowBg;
     EditNomeProjeto.Font.Color := CurrentSkin.WindowText;
@@ -173,6 +191,8 @@ begin
     leTextDescription.Color := CurrentSkin.WindowBg;
     leTextDescription.Font.Color := CurrentSkin.WindowText;
     leTextDescription.EditLabel.Font.Color := CurrentSkin.PanelText;
+    leDicStrong.EditLabel.Font.Color := CurrentSkin.PanelText;
+    leDicMorfo.EditLabel.Font.Color := CurrentSkin.PanelText;
     Label2.Font.Color := CurrentSkin.PanelText;
     if Assigned(FChkUseDefaultDict) then
     begin
@@ -186,6 +206,7 @@ begin
     BitBtn4.Font.Color := CurrentSkin.PanelText;
     BitBtn8.Font.Color := CurrentSkin.PanelText;
     BitBtn9.Font.Color := CurrentSkin.PanelText;
+    BitBtnTextDescription.Font.Color := CurrentSkin.PanelText;
     Button2.Font.Color := CurrentSkin.PanelText;
   end;
   AtualizarEstadoControlesDicionario;
@@ -215,6 +236,8 @@ begin
 
   if CurrentSkin.IsDark then
   begin
+    leDicStrong.EditLabel.Font.Color := CurrentSkin.PanelText;
+    leDicMorfo.EditLabel.Font.Color := CurrentSkin.PanelText;
     if isDef then
     begin
       leDicStrong.Color := CurrentSkin.PanelBg;
@@ -232,6 +255,7 @@ begin
     BitBtn4.Invalidate;
     BitBtn8.Invalidate;
   end;
+  TabControl1.Invalidate;
 end;
 
 procedure TFormPropProjeto.ChkUseDefaultDictChange(Sender: TObject);
@@ -278,14 +302,14 @@ var
 begin
   if TTipoTextoBiblico(TabControl1.TabIndex) in [tbOrigem, tbDestino] then
   begin
-    case MessageDlg(SChooseAnotherText, SChangeTextConfirmationAssociation, mtConfirmation, [mbYes, mbNo, mbCancel], 0) of
+    case ThemedMessageDlg(SChooseAnotherText, SChangeTextConfirmationAssociation, mtConfirmation, [mbYes, mbNo, mbCancel], 0) of
       mrYes: replace := true;
       mrNo: replace := false;
       mrCancel: exit;
     end;
   end else
   begin
-    if MessageDlg(SChooseAnotherText, SChangeTextConfirmation, mtConfirmation, [mbYes, mbCancel], 0) = mrCancel then
+    if ThemedMessageDlg(SChooseAnotherText, SChangeTextConfirmation, mtConfirmation, [mbYes, mbCancel], 0) = mrCancel then
       exit;
     replace := false;
   end;
@@ -307,7 +331,7 @@ begin
     if Assigned(FrmPrincipal) then
       FrmPrincipal.AtualizarItensFiltro;
     if importOK then
-      ShowMessage(SNewTextImportedSuccessfully);
+      ThemedShowMessage(SNewTextImportedSuccessfully);
   end;
 end;
 
@@ -317,7 +341,7 @@ var
 begin
   msg := IfThen(TTipoTextoBiblico(TabControl1.TabIndex) in [tbOrigem, tbDestino],
                 SClearTextConfirmationAssociation, SClearTextConfirmation);
-  if MessageDlg(SClearText, msg, mtConfirmation, [mbYes, mbCancel], 0) = mrYes then
+  if ThemedMessageDlg(SClearText, msg, mtConfirmation, [mbYes, mbCancel], 0) = mrYes then
   begin
     FProjeto.LimparTexto(TTipoTextoBiblico(TabControl1.TabIndex));
     ActionMudancaAbaExecute(nil);
@@ -338,7 +362,14 @@ begin
   MemoFonte.Text   := FProjeto.ObterTextoSimplesVersiculo(TTipoTextoBiblico(TabControl1.TabIndex));
   MemoFonte.Font   := FProjeto.ObterFonteTexto(TTipoTextoBiblico(TabControl1.TabIndex));
   if CurrentSkin.IsDark then
+  begin
+    MemoFonte.Color := CurrentSkin.WindowBg;
     MemoFonte.Font.Color := CurrentSkin.WindowText;
+  end;
+  ApplyDarkModeToControl(MemoFonte, CurrentSkin.IsDark);
+  {$IFDEF WINDOWS}
+  HookEditControl(MemoFonte);
+  {$ENDIF}
   TabControl1.Invalidate;
 
   FChkUseDefaultDict.OnChange := nil;
@@ -360,7 +391,14 @@ begin
   begin
     MemoFonte.Font := FontDialog1.Font;
     if CurrentSkin.IsDark then
+    begin
+      MemoFonte.Color := CurrentSkin.WindowBg;
       MemoFonte.Font.Color := CurrentSkin.WindowText;
+    end;
+    ApplyDarkModeToControl(MemoFonte, CurrentSkin.IsDark);
+    {$IFDEF WINDOWS}
+    HookEditControl(MemoFonte);
+    {$ENDIF}
     FProjeto.AtribuirFonteTexto(MemoFonte.Font, [TTipoTextoBiblico(TabControl1.TabIndex)]);
   end;
 end;
@@ -419,6 +457,7 @@ begin
       FrmPrincipal.GlobalStrongGreek := FrmPrincipal.IniOpts.ReadString('dicionarios', 'default_strong_greek', FrmPrincipal.IniOpts.ReadString('dicionarios', 'global_strong_greek', ''));
       FrmPrincipal.GlobalStrongHebrew := FrmPrincipal.IniOpts.ReadString('dicionarios', 'default_strong_hebrew', FrmPrincipal.IniOpts.ReadString('dicionarios', 'global_strong_hebrew', ''));
       FrmPrincipal.GlobalMorphology := FrmPrincipal.IniOpts.ReadString('dicionarios', 'default_morphology', FrmPrincipal.IniOpts.ReadString('dicionarios', 'global_morphology', ''));
+      FrmPrincipal.GlobalEnglishDict := FrmPrincipal.IniOpts.ReadString('dicionarios', 'default_english_dict', FrmPrincipal.IniOpts.ReadString('dicionarios', 'global_english_dict', ''));
       if Assigned(FProjeto) then
         FrmPrincipal.AplicarDicionariosGlobais(FProjeto);
       ActionMudancaAbaExecute(nil);

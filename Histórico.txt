@@ -1,3 +1,45 @@
+1.0.1.018
+- Fixed Pascal character set literal in BuscarDefinicaoPalavraInglesNaQuery (projeto.pas lines 2217 and 2219) where backslash character literal was emitted as empty string '' instead of '\'.
+
+1.0.1.017
+- Added "English Word / Bible Dictionary (*.dct.twm)" option under Default Dictionaries Settings (saved as default_english_dict / global_english_dict in iBiblia.ini).
+- Added automatic mouse-hover English dictionary lookup (ObterDefinicaoPalavraIngles / BuscarDefinicaoPalavraInglesNaQuery) across all 4 Bible panels (Source, Destination, Reference 1, Reference 2) for any English word or proper name without a Strong's number tag, including case-insensitive headword matching, possessive/inflectional stem fallbacks, and compressed/redirect topic support.
+
+Versão 1.0.1.016 (2026-10-26)
+- Fix (unitskins.pas, formpropprojeto.pas): Fixed TTabControl dark mode rendering in Project -> Settings (Properties, TFormPropProjeto) where the internal LCL FNoteBook (TCustomTabControl) and outer TTabControl container previously overlapped double-drawn tab headers and left the entire body area below y=30 painted stark white (#F9F9F9) with unreadable light-grey labels.
+- Fix (unitskins.pas): Added EditMemoSubclassProc (HookEditControl) to paint a 2px dark border (CurrentSkin.PanelBorder / WindowBg) over the white 3D WS_EX_CLIENTEDGE frame on TEdit, TLabeledEdit, and TMemo controls, and routed TCustomMemo through 'DarkMode_Explorer' so vertical/horizontal scrollbars render in dark mode.
+
+Version 1.0.1.015 (64-bit Edition) - 2026-10-26
+- Restored dictionary popup RTF font colors to match active skin settings (ASkin.NoteText) in AdaptRtfForSkin (formpopup.pas), fixing reddish text caused by mapping \plain / \pard / \par to \cf1 (maroon/red in dictionary color tables) instead of \cf0.
+- Restored full hover dictionary popup behavior in the Source text box (projeto.pas) so hovering any word in the Source text (highlighted, unassociated, or associated) displays its dictionary popup as usual while keeping the automatic southeast popup inside the Destination panel.
+
+Version 1.0.1.014 (64-bit Edition) - 2026-10-26
+- Fixed Hebrew Strong's dictionary lookup in TProjeto.ObterDefinicaoStrong and TProjeto.BuscarDefinicaoStrongNaQuery so Hebrew Strong's numbers (H-codes) strictly query the selected Hebrew Lexicon dictionary under Default Dictionaries and never fall back to converting H-codes into Greek G-codes on the Greek EPV dictionary.
+- Added unpadded (H123), lowercase (h123), zero-padded (H0123, H00123), compound/prefixed (Hc/H1234), sub-entry (H1234a), topics_wordindex, subject headword prefix, and meta=_twmgc_ redirect link resolution for Hebrew and Greek Strong's dictionary lookups.
+- Fixed hover popup handling so hovering words in Reference 1 / Reference 2 or associated words displays their dictionary entry normally without interference from the Destination-panel selected-Source popup timer.
+
+Version 1.0.1.013 (64-bit Edition) - 2026-10-26 13:21
+- Added rule for hovering associated words inside the Destination text: when the mouse pointer hovers over an already-associated word in the Destination text, the southeast selected-Source popup is temporarily disabled and the normal dictionary popup for that hovered Destination word appears under it as usual; moving off the associated word back into the Destination panel automatically resumes the southeast popup for the selected unassociated Source word.
+
+Version 1.0.1.012 (64-bit Edition) - 2026-10-26 13:08
+- Replaced mouse-hover dictionary popup on unassociated Source words with automatic Destination-panel cursor tracking: selecting (left-clicking) an unassociated tagged Source word automatically displays its Strong's and Morphology dictionary popup at the southeast of the mouse pointer whenever the pointer is inside the Destination text panel, and hides it when the pointer leaves the Destination panel.
+- Automatic next-word popup progression: right-clicking a translated word in the Destination panel associates the current Source word, auto-selects the next unassociated Source word, and immediately updates the southeast dictionary popup in place with the newly highlighted word's definitions and morphology codes.
+- Fixed per-module Strong's dictionary fallback for Greek Strong's tags (G-prefix) in Old Testament books (BookID 1..39).
+
+Version 1.0.1.008 (64-bit Edition) - 2026-10-25
+  * Fixed bitmask constant in UpdateMiniBarPosition (memoversiculo.pas lines 363-364) where $FFFF was stripped by shell expansion.
+  * Includes Layout 3 Shared Master Formatting Ribbon, Floating Selection Mini-Toolbar, Return (<CI>) / Double Return (<CM>) / Shift+Return (<CL>) line-wrapping and single-line flattening, PI/PF step buttons, and live theWord Context Panel preview.
+
+Version 1.0.1.003 (64-bit Edition) - 2026-10-25
+  * Fixed Windows.POINT typecast shadowing of Classes.Point(x, y) and PtInRect in memoversiculo.pas on Win64 FPC 3.2.2.
+  * Includes Layout 3 Shared Master Formatting Ribbon, Floating Selection Mini-Toolbar, Return (<CI>) / Double Return (<CM>) / Shift+Return (<CL>) line-wrapping and single-line flattening, PI/PF step buttons, and live theWord Context Panel preview.
+
+Version 1.0.1.002 (64-bit Edition) - 2026-10-25
+  * Added Layout 3 Shared Master Formatting Ribbon & Floating Selection Mini-Toolbar across all 4 verse sections in Edit Mode.
+  * Added custom vector icons for all theWord paragraph and inline tags (<CI>, <CM>, <CL>, <PI0..7>, <PF0..7>, <center>, <TS1..3>, <_CM>, <FI>, <FR>, <FO>, <FU>, <b>, <i>, <u>, <sup>, <sub>, <RF>, Clear Tags).
+  * Added Return (<CI> tight paragraph), Double Return (<CM> spaced paragraph), and Shift+Return (<CL> line break) keyboard shortcuts with visual line-wrapping in Edit mode and automatic single-line flattening on save.
+  * Upgraded right-side Context Panel (TChapterView) to render all theWord paragraph, indentation, heading, and inline formatting tags in real time.
+
 Version 1.0.1.000 (64-bit Edition) - 2026-10-24
 -------------------------------------------------------------------------------
 * Version Reset to 1.0.1.000 (64-bit Edition):

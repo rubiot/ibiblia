@@ -249,6 +249,7 @@ type
     FGlobalStrongGreek: string;
     FGlobalStrongHebrew: string;
     FGlobalMorphology: string;
+    FGlobalEnglishDict: string;
     FCurrentRef: string;
     FChapterView: TChapterView;
     FSyncingFromTw: Boolean;
@@ -267,6 +268,7 @@ type
     {$ENDIF}
     procedure Translate;
     procedure DoOpenProject(filename: string);
+    procedure OnPostShowApplySkin(Data: PtrInt);
   public
     { public declarations }
     language: string;
@@ -280,6 +282,7 @@ type
     property GlobalStrongGreek: string read FGlobalStrongGreek write FGlobalStrongGreek;
     property GlobalStrongHebrew: string read FGlobalStrongHebrew write FGlobalStrongHebrew;
     property GlobalMorphology: string read FGlobalMorphology write FGlobalMorphology;
+    property GlobalEnglishDict: string read FGlobalEnglishDict write FGlobalEnglishDict;
   end;
 
 type
@@ -301,7 +304,7 @@ resourcestring
   SStatusNotAssociated = 'Not associated';
   SStatusAssociating = 'Associating';
   SStatusNeedsReview = 'Needs review';
-  SStatusAssociated = 'Associated!';
+  SStatusAssociated = 'Associated';
   SStatusAllVerses = 'All verses';
   SNoMoreVersesWithStatus = 'No more verses with status "%s"';
   SNoPrecedingVersesWithStatus = 'No preceding verses with status "%s"';
@@ -1350,6 +1353,7 @@ begin
     {$IFDEF WINDOWS}
     HookRadioGroupStatus;
     {$ENDIF}
+    AplicarDicionariosGlobais(ProjetoAtual);
     ProjetoAtual.ExibirDefinicoesSoComCtrl := MenuItemDictPopup.Checked;
     ProjetoAtual.SugerirAssociacaoAutomaticamente := MenuItem22.Checked;
     ProjetoAtual.PopupTrigger := FPopupTrigger;
@@ -1409,6 +1413,7 @@ begin
   finally
     Enabled := true;
   end;
+  ApplyActiveSkin;
 end;
 
 procedure TFrmPrincipal.ActionPropProjetoExecute(Sender: TObject);
@@ -1426,7 +1431,7 @@ begin
   if ProjetoAtual <> nil then
   begin
     Caption := format('iBiblia | %s | %s (%s)', [ProjetoAtual.FormattedReference, ProjetoAtual.ObterInfo('descricao'), ProjetoAtual.FileName]);
-    RadioGroupStatus.SetFocus;
+    ProjetoAtual.SyncDestinoStatusBar;
     ActionSyncTheWordVerseExecute(Sender);
     AtualizarContadorFiltro;
   end;
@@ -1569,6 +1574,7 @@ begin
   FGlobalStrongGreek := opts.ReadString('dicionarios', 'default_strong_greek', opts.ReadString('dicionarios', 'global_strong_greek', ''));
   FGlobalStrongHebrew := opts.ReadString('dicionarios', 'default_strong_hebrew', opts.ReadString('dicionarios', 'global_strong_hebrew', ''));
   FGlobalMorphology := opts.ReadString('dicionarios', 'default_morphology', opts.ReadString('dicionarios', 'global_morphology', ''));
+  FGlobalEnglishDict := opts.ReadString('dicionarios', 'default_english_dict', opts.ReadString('dicionarios', 'global_english_dict', ''));
   InitTTS;
   if Assigned(TTSManager) then
   begin
@@ -1673,6 +1679,7 @@ begin
   opts.WriteBool('opcoes', 'alwaysontop', MenuItemAlwaysOnTop.Checked);
   opts.WriteInteger('opcoes', 'popuptrigger', LongInt(FPopupTrigger));
   opts.WriteBool('opcoes', 'auto.save', MenuItemAutoSave.Checked);
+  opts.WriteString('UI', 'Theme', CurrentSkin.Name);
   if Assigned(ComboBoxStatusFilter) then
     opts.WriteInteger('opcoes', 'filterstatus', ComboBoxStatusFilter.ItemIndex);
   if Assigned(FrmDictionaryPopup) then
@@ -1689,6 +1696,8 @@ begin
   opts.WriteString('dicionarios', 'global_strong_hebrew', FGlobalStrongHebrew);
   opts.WriteString('dicionarios', 'default_morphology', FGlobalMorphology);
   opts.WriteString('dicionarios', 'global_morphology', FGlobalMorphology);
+  opts.WriteString('dicionarios', 'default_english_dict', FGlobalEnglishDict);
+  opts.WriteString('dicionarios', 'global_english_dict', FGlobalEnglishDict);
 
   FreeTTS;
   opts.UpdateFile;
@@ -1700,10 +1709,17 @@ end;
 
 procedure TFrmPrincipal.FormKeyPress(Sender: TObject; var Key: char);
 begin
+  if ActiveControl is TCustomEdit then
+    Exit;
   case Key of
     '1', '2', '3', '4':
       if assigned(ProjetoAtual) then
+      begin
         RadioGroupStatus.ItemIndex := Ord(Key) - Ord('0') - 1;
+        ProjetoAtual.Situacao := RadioGroupStatus.ItemIndex;
+        ProjetoAtual.SyncDestinoStatusBar;
+        AtualizarItensFiltro;
+      end;
   end;
 end;
 
@@ -1738,10 +1754,12 @@ begin
   else if (MenuItemRecent.Count > 0) and FileExists(MenuItemRecent.Items[0].Caption) then
     DoOpenProject(MenuItemRecent.Items[0].Caption);
 
+  ApplyActiveSkin;
   {$IFDEF WINDOWS}
   InstallMenuSubclass;
   SetupMenuOwnerDraw(CurrentSkin.IsDark);
   {$ENDIF}
+  Application.QueueAsyncCall(@OnPostShowApplySkin, 0);
 
   // First-time startup check for new version changelog popup
   if opts.ReadString('geral', 'last_seen_changelog_version', '') <> '1.0.0.74' then
@@ -1749,6 +1767,12 @@ begin
     ShowChangelog(Self);
     opts.WriteString('geral', 'last_seen_changelog_version', '1.0.0.74');
   end;
+end;
+
+procedure TFrmPrincipal.OnPostShowApplySkin(Data: PtrInt);
+begin
+  if csDestroying in ComponentState then Exit;
+  ApplyActiveSkin;
 end;
 
 procedure TFrmPrincipal.MenuItem22Click(Sender: TObject);
@@ -1784,6 +1808,7 @@ begin
     FormStyle := fsSystemStayOnTop
   else
     FormStyle := fsNormal;
+  ApplyActiveSkin;
 end;
 
 procedure TFrmPrincipal.MenuItemAutoSaveClick(Sender: TObject);
@@ -1857,6 +1882,10 @@ begin
 
     ComboBoxStatusFilter.Color := CurrentSkin.WindowBg;
     ComboBoxStatusFilter.Font.Color := CurrentSkin.WindowText;
+    {$IFDEF WINDOWS}
+    HookComboBoxControl(ComboBoxStatusFilter);
+    {$ENDIF}
+    ApplyDarkModeToControl(ComboBoxStatusFilter, CurrentSkin.IsDark);
     ComboBoxStatusFilter.Invalidate;
 
     ScrollBoxSrcVerse.Color := CurrentSkin.WindowBg;
@@ -1878,6 +1907,9 @@ begin
     CommentsMemo.Font.Color := CurrentSkin.WindowText;
     ApplyDarkModeToControl(CommentsMemo, CurrentSkin.IsDark);
 
+    RadioGroupStatus.Visible := False;
+    RadioGroupStatus.Align := alNone;
+    RadioGroupStatus.Width := 0;
     RadioGroupStatus.Color := CurrentSkin.PanelBg;
     RadioGroupStatus.Font.Color := CurrentSkin.PanelText;
     ApplyDarkModeToControl(RadioGroupStatus, CurrentSkin.IsDark);
@@ -2146,6 +2178,7 @@ begin
 
   try
     GetIniOpts.WriteString('UI', 'Theme', CurrentSkin.Name);
+    GetIniOpts.UpdateFile;
   except
   end;
 end;
@@ -2174,6 +2207,7 @@ begin
 
   try
     GetIniOpts.WriteString('UI', 'Theme', CurrentSkin.Name);
+    GetIniOpts.UpdateFile;
   except
   end;
 end;
@@ -2242,6 +2276,19 @@ end;
 
 procedure TFrmPrincipal.QuandoNovoVersiculo(Sender: TProjeto);
 begin
+  if Assigned(Sender) and Assigned(ChapterViewTabCtrl) and
+     (ChapterViewTabCtrl.TabIndex <> Ord(Sender.ChapterViewText)) then
+  begin
+    ChapterViewTabCtrl.TabIndex := Ord(Sender.ChapterViewText);
+    if Assigned(BtnTabSource) then
+    begin
+      BtnTabSource.Down := (ChapterViewTabCtrl.TabIndex = 0);
+      BtnTabDest.Down   := (ChapterViewTabCtrl.TabIndex = 1);
+      BtnTabRef1.Down   := (ChapterViewTabCtrl.TabIndex = 2);
+      BtnTabRef2.Down   := (ChapterViewTabCtrl.TabIndex = 3);
+      UpdateContextTabButtons;
+    end;
+  end;
   ActionQuandoNovoVersiculoExecute(nil);
 end;
 
@@ -2353,6 +2400,7 @@ begin
   if ProjetoAtual <> nil then
   begin
     ProjetoAtual.Situacao := RadioGroupStatus.ItemIndex;
+    ProjetoAtual.SyncDestinoStatusBar;
     AtualizarItensFiltro;
   end;
   {$IFDEF WINDOWS}
@@ -2565,6 +2613,8 @@ begin
   ScrollBoxRef2Verse.Visible := false;
   Splitter4.Visible := false;}
 
+  ApplyActiveSkin;
+
   {$IFDEF WINDOWS}
   SetUpSyncThread;
   {$ENDIF}
@@ -2761,6 +2811,7 @@ begin
     FGlobalStrongGreek := opts.ReadString('dicionarios', 'default_strong_greek', opts.ReadString('dicionarios', 'global_strong_greek', ''));
     FGlobalStrongHebrew := opts.ReadString('dicionarios', 'default_strong_hebrew', opts.ReadString('dicionarios', 'global_strong_hebrew', ''));
     FGlobalMorphology := opts.ReadString('dicionarios', 'default_morphology', opts.ReadString('dicionarios', 'global_morphology', ''));
+    FGlobalEnglishDict := opts.ReadString('dicionarios', 'default_english_dict', opts.ReadString('dicionarios', 'global_english_dict', ''));
     if Assigned(ProjetoAtual) then
     begin
       AplicarDicionariosGlobais(ProjetoAtual);
@@ -2772,7 +2823,7 @@ end;
 procedure TFrmPrincipal.AplicarDicionariosGlobais(p: TProjeto);
 begin
   if (p = nil) or (opts = nil) then Exit;
-  p.ConfigurarDicionariosGlobais(FUseGlobalDicts, FGlobalStrongGreek, FGlobalStrongHebrew, FGlobalMorphology);
+  p.ConfigurarDicionariosGlobais(FUseGlobalDicts, FGlobalStrongGreek, FGlobalStrongHebrew, FGlobalMorphology, FGlobalEnglishDict);
 end;
 
 procedure TFrmPrincipal.QuandoPalavraHovered(Sender: TSyntagm);

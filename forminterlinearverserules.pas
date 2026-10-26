@@ -5,6 +5,7 @@ unit formInterlinearVerseRules;
 interface
 
 uses
+  unitskins,
   Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, Grids,
   StdCtrls, ComCtrls, Clipbrd, StrUtils, Math, Projeto;
 
@@ -21,6 +22,7 @@ type
     TabSheet1: TTabSheet;
     TabSheet2: TTabSheet;
     procedure ButtonOKClick(Sender: TObject);
+    procedure FormShow(Sender: TObject);
   private
     FProject: TProjeto;
     procedure SetProject(AValue: TProjeto);
@@ -37,6 +39,32 @@ implementation
 
 { TFormInterlinearVerseRules }
 
+procedure TFormInterlinearVerseRules.FormShow(Sender: TObject);
+begin
+  HandleNeeded;
+  PageControlVerseRules.HandleNeeded;
+  ButtonOK.HandleNeeded;
+  Button2.HandleNeeded;
+
+  ApplySkinToForm(Self, CurrentSkin);
+  {$IFDEF WINDOWS}
+  HookTabControl(PageControlVerseRules);
+  HookButtonControl(ButtonOK);
+  HookButtonControl(Button2);
+  {$ENDIF}
+  if CurrentSkin.IsDark then
+  begin
+    ButtonOK.Font.Color := CurrentSkin.PanelText;
+    Button2.Font.Color := CurrentSkin.PanelText;
+    StringGridInterlinear.Color := CurrentSkin.WindowBg;
+    StringGridInterlinear.Font.Color := CurrentSkin.WindowText;
+    StringGridInterlinear.FixedColor := CurrentSkin.PanelBg;
+    StringGridIntralinear.Color := CurrentSkin.WindowBg;
+    StringGridIntralinear.Font.Color := CurrentSkin.WindowText;
+    StringGridIntralinear.FixedColor := CurrentSkin.PanelBg;
+  end;
+end;
+
 procedure TFormInterlinearVerseRules.ButtonOKClick(Sender: TObject);
 begin
   FProject.AtribuirInfo('propriedades.interlinearview.verserules', GetVerseRules(StringGridInterlinear));
@@ -45,6 +73,7 @@ end;
 
 procedure TFormInterlinearVerseRules.SetProject(AValue: TProjeto);
 begin
+  OnShow := @FormShow;
   FProject := AValue;
   LoadGrid(StringGridInterlinear, FProject.ObterInfo('propriedades.interlinearview.verserules'));
   LoadGrid(StringGridIntralinear, FProject.ObterInfo('propriedades.intralinearview.verserules'));
@@ -97,4 +126,3 @@ initialization
   {$I formInterlinearVerseRules.lrs}
 
 end.
-

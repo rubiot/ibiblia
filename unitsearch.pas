@@ -35,6 +35,7 @@ type
     ButtonPrevMatch: TButton;
     ButtonClose: TButton;
 
+    procedure FormShow(Sender: TObject);
     procedure DoSearch;
     procedure NavigateToCurrentResult;
     procedure ButtonSearchClick(Sender: TObject);
@@ -54,7 +55,7 @@ type
 procedure ShowSearchDialog(AOwner: TComponent; AProject: TProjeto);
 
 var
-  FormSearchInstance: TFormSearch = nil;
+  FormSearchInstance: TFormSearch;
 
 implementation
 
@@ -91,6 +92,7 @@ begin
   Height := 480;
   Position := poMainFormCenter;
   BorderStyle := bsSizeable;
+  OnShow := @FormShow;
 
   // Top Panel
   PanelTop := TPanel.Create(Self);
@@ -206,9 +208,53 @@ begin
   ListBoxResults.OnDblClick := @ListBoxResultsDblClick;
   ListBoxResults.OnSelectionChange := @ListBoxResultsSelectionChange;
 
-  ApplySkinToForm(Self, CurrentSkin);
+  Color := CurrentSkin.PanelBg;
+  Font.Color := CurrentSkin.PanelText;
 end;
 
+procedure TFormSearch.FormShow(Sender: TObject);
+begin
+  HandleNeeded;
+  PanelTop.HandleNeeded;
+  PanelBottom.HandleNeeded;
+  EditTermo.HandleNeeded;
+  ComboScope.HandleNeeded;
+  ButtonSearch.HandleNeeded;
+  ButtonGoTo.HandleNeeded;
+  ButtonPrevMatch.HandleNeeded;
+  ButtonNextMatch.HandleNeeded;
+  ButtonClose.HandleNeeded;
+  ListBoxResults.HandleNeeded;
+
+  ApplySkinToForm(Self, CurrentSkin);
+  {$IFDEF WINDOWS}
+  HookComboBoxControl(ComboScope);
+  HookButtonControl(ButtonSearch);
+  HookButtonControl(ButtonGoTo);
+  HookButtonControl(ButtonPrevMatch);
+  HookButtonControl(ButtonNextMatch);
+  HookButtonControl(ButtonClose);
+  {$ENDIF}
+
+  Color := CurrentSkin.PanelBg;
+  Font.Color := CurrentSkin.PanelText;
+  PanelTop.Color := CurrentSkin.PanelBg;
+  PanelBottom.Color := CurrentSkin.PanelBg;
+  LabelTermo.Font.Color := CurrentSkin.PanelText;
+  LabelScope.Font.Color := CurrentSkin.PanelText;
+  LabelMatchCount.Font.Color := CurrentSkin.PanelText;
+  EditTermo.Color := CurrentSkin.WindowBg;
+  EditTermo.Font.Color := CurrentSkin.WindowText;
+  ComboScope.Color := CurrentSkin.WindowBg;
+  ComboScope.Font.Color := CurrentSkin.WindowText;
+  ListBoxResults.Color := CurrentSkin.WindowBg;
+  ListBoxResults.Font.Color := CurrentSkin.WindowText;
+  ButtonSearch.Font.Color := CurrentSkin.PanelText;
+  ButtonGoTo.Font.Color := CurrentSkin.PanelText;
+  ButtonPrevMatch.Font.Color := CurrentSkin.PanelText;
+  ButtonNextMatch.Font.Color := CurrentSkin.PanelText;
+  ButtonClose.Font.Color := CurrentSkin.PanelText;
+end;
 
 destructor TFormSearch.Destroy;
 begin
@@ -239,7 +285,7 @@ begin
   searchTerm := Trim(EditTermo.Text);
   if searchTerm = '' then
   begin
-    ShowMessage('Please enter a search term.');
+    ThemedShowMessage('Please enter a search term.');
     EditTermo.SetFocus;
     exit;
   end;

@@ -56,8 +56,10 @@ type
       ATabs: TStrings; AActiveIndex: Integer);
   public
     { public declarations }
+    procedure LimparConteudo;
     procedure AdicionarStrong(const strong: string; const definition: string);
     procedure AdicionarMorfo(const morfo: string; const definition: string);
+    procedure AtualizarPosicao(x: Integer; y: Integer);
     procedure MostrarEm(x: Integer; y: Integer);
     procedure Ocultar;
     procedure LoadSettings;
@@ -82,35 +84,36 @@ uses formPrincipal;
 function AdaptRtfForSkin(const ARtf: string; const ASkin: TSkinColors): string;
 var
   lightColorStr: string;
+  rgbCol: LongInt;
   sb: TStringBuilder;
   i, len: Integer;
 begin
   Result := ARtf;
   if (Result = '') or not ASkin.IsDark then exit;
 
-  lightColorStr := '\red240\green240\blue240;';
+  rgbCol := ColorToRGB(ASkin.NoteText);
+  lightColorStr := Format('\red%d\green%d\blue%d;', [Red(rgbCol), Green(rgbCol), Blue(rgbCol)]);
 
-  // 1. Color table transformations
+  // 1. Set color table index 0 (\cf0, the default/auto entry before the first semicolon)
+  //    to ASkin.NoteText without shifting the indices of \cf1, \cf2, \cf3, etc.
   if Pos('{\colortbl ;', Result) > 0 then
     Result := StringReplace(Result, '{\colortbl ;', '{\colortbl ' + lightColorStr, [rfReplaceAll])
   else if Pos('{\colortbl;', Result) > 0 then
-    Result := StringReplace(Result, '{\colortbl;', '{\colortbl ' + lightColorStr, [rfReplaceAll])
-  else if Pos('{\colortbl', Result) > 0 then
-    Result := StringReplace(Result, '{\colortbl', '{\colortbl ' + lightColorStr, [rfReplaceAll]);
+    Result := StringReplace(Result, '{\colortbl;', '{\colortbl ' + lightColorStr, [rfReplaceAll]);
 
   Result := StringReplace(Result, '\red0\green0\blue0;', lightColorStr, [rfReplaceAll]);
+  Result := StringReplace(Result, '\red128\green0\blue0;', lightColorStr, [rfReplaceAll]);
   Result := StringReplace(Result, '\red0\green0\blue255;', '\red115\green175\blue255;', [rfReplaceAll]);
   Result := StringReplace(Result, '\red0\green0\blue128;', '\red135\green195\blue255;', [rfReplaceAll]);
-  Result := StringReplace(Result, '\red128\green0\blue0;', '\red255\green135\blue135;', [rfReplaceAll]);
-  Result := StringReplace(Result, '\red150\green60\blue100;', '\red245\green145\blue195;', [rfReplaceAll]);
+  Result := StringReplace(Result, '\red150\green60\blue100;', lightColorStr, [rfReplaceAll]);
   Result := StringReplace(Result, '\red0\green128\blue0;', '\red125\green225\blue145;', [rfReplaceAll]);
+  Result := StringReplace(Result, '\red0\green128\blue128;', '\red115\green215\blue215;', [rfReplaceAll]);
   Result := StringReplace(Result, '\red128\green128\blue0;', '\red235\green235\blue135;', [rfReplaceAll]);
+  Result := StringReplace(Result, '\red96\green96\blue96;', '\red170\green175\blue185;', [rfReplaceAll]);
   Result := StringReplace(Result, '\red128\green128\blue128;', '\red185\green195\blue205;', [rfReplaceAll]);
 
-  // 2. Invert any resets to color 0 (\cf0) to light text color 1 (\cf1)
-  Result := StringReplace(Result, '\cf0', '\cf1', [rfReplaceAll]);
-
-  // 3. Word-boundary scanner to ensure every \pard, \plain, \par has \cf1
+  // 2. Word-boundary scanner to ensure every \pard, \plain, \par defaults to \cf0 (ASkin.NoteText),
+  //    not \cf1 (which in many dictionaries is maroon/red for headwords!).
   sb := TStringBuilder.Create;
   try
     len := Length(Result);
@@ -120,19 +123,19 @@ begin
       if (i <= len - 4) and (Copy(Result, i, 5) = '\pard') and
          ((i + 5 > len) or not (Result[i + 5] in ['a'..'z', 'A'..'Z'])) then
       begin
-        sb.Append('\pard\cf1 ');
+        sb.Append('\pard\cf0 ');
         Inc(i, 5);
       end
       else if (i <= len - 5) and (Copy(Result, i, 6) = '\plain') and
          ((i + 6 > len) or not (Result[i + 6] in ['a'..'z', 'A'..'Z'])) then
       begin
-        sb.Append('\plain\cf1 ');
+        sb.Append('\plain\cf0 ');
         Inc(i, 6);
       end
       else if (i <= len - 3) and (Copy(Result, i, 4) = '\par') and
          ((i + 4 > len) or not (Result[i + 4] in ['a'..'z', 'A'..'Z'])) then
       begin
-        sb.Append('\par\cf1 ');
+        sb.Append('\par\cf0 ');
         Inc(i, 4);
       end
       else
@@ -146,7 +149,7 @@ begin
     sb.Free;
   end;
 
-  Result := StringReplace(Result, '\cf1 \cf1 ', '\cf1 ', [rfReplaceAll]);
+  Result := StringReplace(Result, '\cf0 \cf0 ', '\cf0 ', [rfReplaceAll]);
 end;
 
 procedure TFrmDictionaryPopup.DrawTabs(ACanvas: TCanvas; AWidth, AHeight: Integer;
@@ -554,11 +557,23 @@ begin
   end;
 end;
 
+procedure TFrmDictionaryPopup.LimparConteudo;
+begin
+  FStrongs.Clear;
+  FMorfos.Clear;
+  FTabsStrongs.Clear;
+  FTabsMorfos.Clear;
+  FTabIndexStrongs := 0;
+  FTabIndexMorfos := 0;
+  RichMemoStrong.Rtf := '';
+  RichMemoMorpho.Rtf := '';
+end;
+
 procedure TFrmDictionaryPopup.TabControlMorfosChange(Sender: TObject);
 begin
   if (FTabIndexMorfos >= 0) and (FTabIndexMorfos < FMorfos.Count) then
   begin
-    RichMemoMorpho.Rtf := AdaptRtfForSkin(FMorfos[FTabIndexMorfos], CurrentSkin);
+    RichMemoMorpho.Rtf := FMorfos[FTabIndexMorfos];
     RichMemoMorpho.ZoomFactor := FZoomMorpho;
   end;
 end;
@@ -567,7 +582,7 @@ procedure TFrmDictionaryPopup.TabControlStrongsChange(Sender: TObject);
 begin
   if (FTabIndexStrongs >= 0) and (FTabIndexStrongs < FStrongs.Count) then
   begin
-    RichMemoStrong.Rtf := AdaptRtfForSkin(FStrongs[FTabIndexStrongs], CurrentSkin);
+    RichMemoStrong.Rtf := FStrongs[FTabIndexStrongs];
     RichMemoStrong.ZoomFactor := FZoomStrong;
   end;
 end;
@@ -588,15 +603,57 @@ begin
     HeaderMorfos.Invalidate;
 end;
 
+procedure TFrmDictionaryPopup.AtualizarPosicao(x: Integer; y: Integer);
+var
+  newLeft, newTop: Integer;
+  curPt: TPoint;
+begin
+  newLeft := x;
+  newTop  := y;
+
+  if newLeft + Width > Screen.Width then
+  begin
+    newLeft := Screen.Width - Width;
+    if newLeft < 0 then newLeft := 0;
+  end;
+
+  if newTop + Height > Screen.Height then
+  begin
+    newTop := Screen.Height - Height;
+    if newTop < 0 then newTop := 0;
+  end;
+
+  curPt := Mouse.CursorPos;
+  if (curPt.X >= newLeft) and (curPt.X <= newLeft + Width) and
+     (curPt.Y >= newTop) and (curPt.Y <= newTop + Height) then
+  begin
+    if curPt.Y + 18 + Height <= Screen.Height then
+      newTop := curPt.Y + 18
+    else if curPt.X + 18 + Width <= Screen.Width then
+      newLeft := curPt.X + 18
+    else
+    begin
+      newLeft := Max(0, curPt.X - Width - 16);
+      newTop  := Max(0, curPt.Y - Height - 16);
+    end;
+  end;
+
+  if (Left <> newLeft) or (Top <> newTop) then
+    SetBounds(newLeft, newTop, Width, Height);
+end;
+
 procedure TFrmDictionaryPopup.MostrarEm(x: Integer; y: Integer);
 begin
   ApplySkin(CurrentSkin);
   if FStrongs.Count > 0 then
   begin
     FTabIndexStrongs := 0;
-    RichMemoStrong.Rtf         := AdaptRtfForSkin(FStrongs[0], CurrentSkin);
+    RichMemoStrong.Rtf         := FStrongs[0];
     RichMemoStrong.ZoomFactor  := FZoomStrong;
-  end;
+  end
+  else
+    RichMemoStrong.Rtf         := '';
+
   if FMorfos.Count > 0 then
   begin
     if FMorfoHeight >= 30 then
@@ -604,31 +661,19 @@ begin
     TabControlMorfos.Visible   := true;
     Splitter1.Visible          := true;
     FTabIndexMorfos := 0;
-    RichMemoMorpho.Rtf         := AdaptRtfForSkin(FMorfos[0], CurrentSkin);
+    RichMemoMorpho.Rtf         := FMorfos[0];
     RichMemoMorpho.ZoomFactor  := FZoomMorpho;
   end else
   begin
     Splitter1.Visible          := false;
     TabControlMorfos.Visible   := false;
+    RichMemoMorpho.Rtf         := '';
   end;
 
-  if x + Width > Screen.Width then
-  begin
-    Left := x - Width;
-    if Left < 0 then Left := 0;
-  end
-  else
-    Left := x;
+  AtualizarPosicao(x, y);
 
-  if y + Height > Screen.Height then
-  begin
-    Top := y - Height;
-    if Top < 0 then Top := 0;
-  end
-  else
-    Top := y;
-
-  Visible := True;
+  if not Visible then
+    Visible := True;
   if Assigned(HeaderStrongs) then
     HeaderStrongs.Invalidate;
   if Assigned(HeaderMorfos) then

@@ -35,6 +35,11 @@ type
     ButtonBrowseMorph: TButton;
     ButtonClearMorph: TButton;
 
+    LabelEnglishDict: TLabel;
+    EditEnglishDict: TEdit;
+    ButtonBrowseEnglish: TButton;
+    ButtonClearEnglish: TButton;
+
     LabelHelpInfo: TLabel;
 
     PanelButtons: TPanel;
@@ -50,6 +55,8 @@ type
     procedure ButtonClearHebrewClick(Sender: TObject);
     procedure ButtonBrowseMorphClick(Sender: TObject);
     procedure ButtonClearMorphClick(Sender: TObject);
+    procedure ButtonBrowseEnglishClick(Sender: TObject);
+    procedure ButtonClearEnglishClick(Sender: TObject);
     procedure ButtonOKClick(Sender: TObject);
     procedure ButtonCancelClick(Sender: TObject);
     procedure FormShow(Sender: TObject);
@@ -69,12 +76,14 @@ resourcestring
   SStrongGreekLabel = 'Greek Strong''s / Default Dictionary (*.dct.twm):';
   SStrongHebrewLabel = 'Hebrew Strong''s Dictionary (*.dct.twm):';
   SMorphologyLabel = 'Morphology Dictionary (*.dct.twm):';
+  SEnglishDictLabel = 'English Word / Bible Dictionary (*.dct.twm):';
   SBrowseCaption = 'Browse...';
   SClearCaption = 'Clear';
   SDictDialogFilter = 'theWord dictionary modules (*.dct.twm)|*.dct.twm|All files (*.*)|*.*';
   SDictHelpInfo = 'When enabled, all Bible modules (Source, Destination, Ref 1, Ref 2) ' +
                   'use these unified dictionaries for hover definitions. ' +
-                  'OT verses and H-codes route to Hebrew, NT verses and G-codes route to Greek.';
+                  'OT/H-codes route to Hebrew, NT/G-codes route to Greek, and English words ' +
+                  'without Strong''s tags route to the English Word / Bible Dictionary.';
 
 implementation
 
@@ -85,7 +94,6 @@ begin
   dlg := TFormGlobalDicts.Create(AOwner, AIni);
   try
     dlg.LoadSettings;
-    ApplySkinToForm(dlg, CurrentSkin);
     Result := (dlg.ShowModal = mrOk);
   finally
     dlg.Free;
@@ -110,7 +118,7 @@ begin
 
   Caption := SGlobalDictsTitle;
   Width := 600;
-  Height := 380;
+  Height := 440;
   Position := poMainFormCenter;
   BorderIcons := [biSystemMenu];
   BorderStyle := bsDialog;
@@ -128,7 +136,7 @@ begin
 
   GroupDicts := TGroupBox.Create(Self);
   GroupDicts.Parent := Self;
-  GroupDicts.SetBounds(15, 45, 570, 275);
+  GroupDicts.SetBounds(15, 45, 570, 335);
   GroupDicts.Caption := SGlobalDictsGroup;
 
   // Greek / Default Strong
@@ -197,10 +205,32 @@ begin
   ButtonClearMorph.Caption := SClearCaption;
   ButtonClearMorph.OnClick := @ButtonClearMorphClick;
 
+  // English Word / Bible Dictionary
+  LabelEnglishDict := TLabel.Create(GroupDicts);
+  LabelEnglishDict.Parent := GroupDicts;
+  LabelEnglishDict.SetBounds(15, 180, 540, 18);
+  LabelEnglishDict.Caption := SEnglishDictLabel;
+
+  EditEnglishDict := TEdit.Create(GroupDicts);
+  EditEnglishDict.Parent := GroupDicts;
+  EditEnglishDict.SetBounds(15, 200, 410, 24);
+
+  ButtonBrowseEnglish := TButton.Create(GroupDicts);
+  ButtonBrowseEnglish.Parent := GroupDicts;
+  ButtonBrowseEnglish.SetBounds(432, 199, 72, 26);
+  ButtonBrowseEnglish.Caption := SBrowseCaption;
+  ButtonBrowseEnglish.OnClick := @ButtonBrowseEnglishClick;
+
+  ButtonClearEnglish := TButton.Create(GroupDicts);
+  ButtonClearEnglish.Parent := GroupDicts;
+  ButtonClearEnglish.SetBounds(508, 199, 48, 26);
+  ButtonClearEnglish.Caption := SClearCaption;
+  ButtonClearEnglish.OnClick := @ButtonClearEnglishClick;
+
   // Help info text
   LabelHelpInfo := TLabel.Create(GroupDicts);
   LabelHelpInfo.Parent := GroupDicts;
-  LabelHelpInfo.SetBounds(15, 182, 540, 65);
+  LabelHelpInfo.SetBounds(15, 238, 540, 68);
   LabelHelpInfo.AutoSize := False;
   LabelHelpInfo.WordWrap := True;
   LabelHelpInfo.Font.Color := clGray;
@@ -228,18 +258,8 @@ begin
   ButtonCancel.OnClick := @ButtonCancelClick;
 
   OnShow := @FormShow;
-  ApplySkinToForm(Self, CurrentSkin);
-  if CurrentSkin.IsDark then
-  begin
-    GroupDicts.Color := CurrentSkin.PanelBg;
-    GroupDicts.Font.Color := CurrentSkin.PanelText;
-    CheckUseGlobal.Color := CurrentSkin.PanelBg;
-    LabelHelpInfo.Font.Color := CurrentSkin.WindowTextDim;
-    CheckUseGlobal.Font.Color := CurrentSkin.PanelText;
-    LabelStrongGreek.Font.Color := CurrentSkin.PanelText;
-    LabelStrongHebrew.Font.Color := CurrentSkin.PanelText;
-    LabelMorph.Font.Color := CurrentSkin.PanelText;
-  end;
+  Color := CurrentSkin.PanelBg;
+  Font.Color := CurrentSkin.PanelText;
 end;
 
 destructor TFormGlobalDicts.Destroy;
@@ -303,6 +323,19 @@ begin
   EditMorph.Text := '';
 end;
 
+procedure TFormGlobalDicts.ButtonBrowseEnglishClick(Sender: TObject);
+begin
+  OpenDialogDict.Title := 'Select English Word / Bible Dictionary (*.dct.twm)';
+  OpenDialogDict.FileName := EditEnglishDict.Text;
+  if OpenDialogDict.Execute then
+    EditEnglishDict.Text := OpenDialogDict.FileName;
+end;
+
+procedure TFormGlobalDicts.ButtonClearEnglishClick(Sender: TObject);
+begin
+  EditEnglishDict.Text := '';
+end;
+
 procedure TFormGlobalDicts.LoadSettings;
 begin
   if FIni = nil then Exit;
@@ -310,6 +343,7 @@ begin
   EditStrongGreek.Text := FIni.ReadString('dicionarios', 'default_strong_greek', FIni.ReadString('dicionarios', 'global_strong_greek', ''));
   EditStrongHebrew.Text := FIni.ReadString('dicionarios', 'default_strong_hebrew', FIni.ReadString('dicionarios', 'global_strong_hebrew', ''));
   EditMorph.Text := FIni.ReadString('dicionarios', 'default_morphology', FIni.ReadString('dicionarios', 'global_morphology', ''));
+  EditEnglishDict.Text := FIni.ReadString('dicionarios', 'default_english_dict', FIni.ReadString('dicionarios', 'global_english_dict', ''));
   CheckUseGlobalChange(nil);
 end;
 
@@ -324,6 +358,8 @@ begin
   FIni.WriteString('dicionarios', 'global_strong_hebrew', Trim(EditStrongHebrew.Text));
   FIni.WriteString('dicionarios', 'default_morphology', Trim(EditMorph.Text));
   FIni.WriteString('dicionarios', 'global_morphology', Trim(EditMorph.Text));
+  FIni.WriteString('dicionarios', 'default_english_dict', Trim(EditEnglishDict.Text));
+  FIni.WriteString('dicionarios', 'global_english_dict', Trim(EditEnglishDict.Text));
   FIni.UpdateFile;
 end;
 
@@ -340,16 +376,40 @@ end;
 
 procedure TFormGlobalDicts.FormShow(Sender: TObject);
 begin
+  HandleNeeded;
+  GroupDicts.HandleNeeded;
+  CheckUseGlobal.HandleNeeded;
+  EditStrongGreek.HandleNeeded;
+  EditStrongHebrew.HandleNeeded;
+  EditMorph.HandleNeeded;
+  EditEnglishDict.HandleNeeded;
+  ButtonBrowseGreek.HandleNeeded;
+  ButtonClearGreek.HandleNeeded;
+  ButtonBrowseHebrew.HandleNeeded;
+  ButtonClearHebrew.HandleNeeded;
+  ButtonBrowseMorph.HandleNeeded;
+  ButtonClearMorph.HandleNeeded;
+  ButtonBrowseEnglish.HandleNeeded;
+  ButtonClearEnglish.HandleNeeded;
+  ButtonOK.HandleNeeded;
+  ButtonCancel.HandleNeeded;
+
   ApplySkinToForm(Self, CurrentSkin);
   {$IFDEF WINDOWS}
   HookGroupBoxControl(GroupDicts);
   HookCheckBoxControl(CheckUseGlobal);
+  HookEditControl(EditStrongGreek);
+  HookEditControl(EditStrongHebrew);
+  HookEditControl(EditMorph);
+  HookEditControl(EditEnglishDict);
   HookButtonControl(ButtonBrowseGreek);
   HookButtonControl(ButtonClearGreek);
   HookButtonControl(ButtonBrowseHebrew);
   HookButtonControl(ButtonClearHebrew);
   HookButtonControl(ButtonBrowseMorph);
   HookButtonControl(ButtonClearMorph);
+  HookButtonControl(ButtonBrowseEnglish);
+  HookButtonControl(ButtonClearEnglish);
   HookButtonControl(ButtonOK);
   HookButtonControl(ButtonCancel);
   {$ENDIF}
@@ -367,11 +427,14 @@ begin
     EditStrongHebrew.Font.Color := CurrentSkin.WindowText;
     EditMorph.Color := CurrentSkin.WindowBg;
     EditMorph.Font.Color := CurrentSkin.WindowText;
+    EditEnglishDict.Color := CurrentSkin.WindowBg;
+    EditEnglishDict.Font.Color := CurrentSkin.WindowText;
 
     CheckUseGlobal.Font.Color := CurrentSkin.PanelText;
     LabelStrongGreek.Font.Color := CurrentSkin.PanelText;
     LabelStrongHebrew.Font.Color := CurrentSkin.PanelText;
     LabelMorph.Font.Color := CurrentSkin.PanelText;
+    LabelEnglishDict.Font.Color := CurrentSkin.PanelText;
     LabelHelpInfo.Font.Color := CurrentSkin.WindowTextDim;
 
     ButtonBrowseGreek.Font.Color := CurrentSkin.PanelText;
@@ -380,6 +443,8 @@ begin
     ButtonClearHebrew.Font.Color := CurrentSkin.PanelText;
     ButtonBrowseMorph.Font.Color := CurrentSkin.PanelText;
     ButtonClearMorph.Font.Color := CurrentSkin.PanelText;
+    ButtonBrowseEnglish.Font.Color := CurrentSkin.PanelText;
+    ButtonClearEnglish.Font.Color := CurrentSkin.PanelText;
     ButtonOK.Font.Color := CurrentSkin.PanelText;
     ButtonCancel.Font.Color := CurrentSkin.PanelText;
   end;

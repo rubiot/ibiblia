@@ -31,7 +31,7 @@ object FormAbout: TFormAbout
     Width = 480
     Alignment = taCenter
     AutoSize = False
-    Caption = 'Version 1.0.0.116 (64-bit)'
+    Caption = 'Version 1.0.1.008 (64-bit)'
     Font.Height = -14
     ParentColor = False
     ParentFont = False

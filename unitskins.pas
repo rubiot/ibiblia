@@ -67,12 +67,18 @@ procedure HookCheckBoxControl(AControl: TWinControl);
 procedure UnhookCheckBoxControl(AControl: TWinControl);
 procedure HookGroupBoxControl(AControl: TWinControl);
 procedure UnhookGroupBoxControl(AControl: TWinControl);
+procedure HookComboBoxControl(AControl: TWinControl);
+procedure UnhookComboBoxControl(AControl: TWinControl);
+procedure HookTrackBarControl(AControl: TWinControl);
+procedure UnhookTrackBarControl(AControl: TWinControl);
 procedure HookScrollBoxControl(AControl: TWinControl);
 procedure UnhookScrollBoxControl(AControl: TWinControl);
 procedure HookToolBarControl(AControl: TWinControl);
 procedure UnhookToolBarControl(AControl: TWinControl);
 procedure HookTreeViewControl(AControl: TWinControl);
 procedure UnhookTreeViewControl(AControl: TWinControl);
+procedure HookEditControl(AControl: TWinControl);
+procedure UnhookEditControl(AControl: TWinControl);
 function HandleToolBarCustomDraw(lParam: LPARAM; const ASkin: TSkinColors; var AHandled: Boolean): LRESULT;
 
 // Themed Dialogs
@@ -414,11 +420,13 @@ begin
       else if DarkTheme = 'DarkMode_CFD' then
       begin
         wTheme := 'DarkMode_CFD';
+        fnSetWindowTheme(AControl.Handle, nil, nil);
         fnSetWindowTheme(AControl.Handle, PWideChar(wTheme), nil);
       end
       else
       begin
         wTheme := 'DarkMode_Explorer';
+        fnSetWindowTheme(AControl.Handle, nil, nil);
         fnSetWindowTheme(AControl.Handle, PWideChar(wTheme), nil);
       end;
     end
@@ -427,6 +435,11 @@ begin
       fnSetWindowTheme(AControl.Handle, nil, nil);
     end;
   end;
+  SendMessage(AControl.Handle, $031A {WM_THEMECHANGED}, 0, 0);
+  SetWindowPos(AControl.Handle, 0, 0, 0, 0, 0,
+    SWP_NOMOVE or SWP_NOSIZE or SWP_NOZORDER or SWP_NOACTIVATE or SWP_FRAMECHANGED);
+  RedrawWindow(AControl.Handle, nil, 0,
+    RDW_FRAME or RDW_INVALIDATE or RDW_UPDATENOW);
   AControl.Invalidate;
   {$ENDIF}
 end;
@@ -434,9 +447,11 @@ end;
 procedure ApplyDarkModeToControl(AControl: TWinControl; AIsDark: Boolean);
 begin
   if not assigned(AControl) then exit;
-  if (AControl is TComboBox) or (AControl is TEdit) or (AControl is TMemo) then
+  if AControl is TCustomMemo then
+    SetControlThemeMode(AControl, AIsDark, 'DarkMode_Explorer')
+  else if (AControl is TCustomComboBox) or (AControl is TCustomEdit) then
     SetControlThemeMode(AControl, AIsDark, 'DarkMode_CFD')
-  else if (AControl is TCustomTabControl) then
+  else if (AControl is TCustomTabControl) or (AControl is TTabControl) or (AControl is TCustomTrackBar) then
     SetControlThemeMode(AControl, AIsDark, '')
   else
     SetControlThemeMode(AControl, AIsDark, 'DarkMode_Explorer');
@@ -506,13 +521,18 @@ begin
     fnDwmSetWindowAttribute(AForm.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, @dwVal, SizeOf(dwVal));
     fnDwmSetWindowAttribute(AForm.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1, @dwVal, SizeOf(dwVal));
 
-    if AIsDark then
+    if AIsDark or (CurrentSkin.Id = skSepia) then
     begin
       clrCap := ColorToRGB(CurrentSkin.PanelBg);
       clrTxt := ColorToRGB(CurrentSkin.PanelText);
-      fnDwmSetWindowAttribute(AForm.Handle, DWMWA_CAPTION_COLOR, @clrCap, SizeOf(clrCap));
-      fnDwmSetWindowAttribute(AForm.Handle, DWMWA_TEXT_COLOR, @clrTxt, SizeOf(clrTxt));
+    end
+    else
+    begin
+      clrCap := $FFFFFFFF; { DWMWA_COLOR_DEFAULT }
+      clrTxt := $FFFFFFFF;
     end;
+    fnDwmSetWindowAttribute(AForm.Handle, DWMWA_CAPTION_COLOR, @clrCap, SizeOf(clrCap));
+    fnDwmSetWindowAttribute(AForm.Handle, DWMWA_TEXT_COLOR, @clrTxt, SizeOf(clrTxt));
   end;
 
   if Assigned(fnSetWindowTheme) and AForm.HandleAllocated then
@@ -525,6 +545,19 @@ begin
 
   if (AForm is TForm) and Assigned(TForm(AForm).Menu) and AForm.HandleAllocated then
     ApplyDarkModeToMenu(TForm(AForm).Menu, AForm.Handle, AIsDark, CurrentSkin.PanelBg);
+
+  if AForm.HandleAllocated then
+  begin
+    SetWindowPos(AForm.Handle, 0, 0, 0, 0, 0,
+      SWP_NOMOVE or SWP_NOSIZE or SWP_NOZORDER or SWP_NOACTIVATE or SWP_FRAMECHANGED);
+    if AForm.Visible then
+    begin
+      SendMessage(AForm.Handle, WM_NCACTIVATE, WPARAM(False), 0);
+      SendMessage(AForm.Handle, WM_NCACTIVATE, WPARAM(True), 0);
+    end;
+    RedrawWindow(AForm.Handle, nil, 0,
+      RDW_FRAME or RDW_INVALIDATE or RDW_UPDATENOW);
+  end;
   {$ENDIF}
 end;
 
@@ -585,24 +618,138 @@ type
 function UniversalTabSubclassProc(hWnd: HWND; uMsg: UINT; wParam: WPARAM; lParam: LPARAM;
   uIdSubclass: PtrUInt; dwRefData: PtrUInt): LRESULT; stdcall;
 var
+  ps: PAINTSTRUCT;
   hdc, memDC: THandle;
   memBmp, oldBmp: THandle;
-  rcClient, rcTab, rcText, rcLine, rcTopAccent, rcBottom: RECT;
-  i, count, curSel, tabHeaderBottom: Integer;
+  rcClient, rcTab, rcText, rcLine, rcTopAccent, rcBottom, rcPane: RECT;
+  i, count, curSel, tabHeaderBottom, bmpH: Integer;
   tabItem: TTCItemW;
   txtBuf: array[0..255] of WideChar;
   hbr, hbrActive, hbrBorder, hbrHighlight: THandle;
-  hFont, oldFont: THandle;
+  hFont, oldFont, lblFont: THandle;
   oldBk: Integer;
   wTab: WideString;
   txtLen: Integer;
+  childCtrl: TControl;
+  lblCtrl: TCustomLabel;
+  parentTabCtrl: TTabControl;
 begin
   if (uMsg = WM_PAINT) and CurrentSkin.IsDark then
   begin
-    // 1. Let default window procedure paint
+    SetWindowLong(hWnd, GWL_STYLE, GetWindowLong(hWnd, GWL_STYLE) or WS_CLIPCHILDREN);
+
+    count := SendMessage(hWnd, TCM_GETITEMCOUNT, 0, 0);
+
+    // Case A: Outer LCL TTabControl container (whose actual tabs live in its internal
+    //         TCustomTabControl child FNoteBook, so TCM_GETITEMCOUNT on hWnd is 0).
+    //         Do NOT call fnDefSubclassProc (which paints a stark white #F9F9F9 ttPane
+    //         over the entire body) and do NOT draw fake 80px fallback tabs.
+    //         Instead, paint the dark pane background, 1px border, and child labels!
+    if (count <= 0) and (dwRefData <> 0) and (TObject(dwRefData) is TTabControl) then
+    begin
+      hdc := BeginPaint(hWnd, @ps);
+      if hdc <> 0 then
+      begin
+        FillChar(rcClient, SizeOf(rcClient), 0);
+        GetClientRect(hWnd, @rcClient);
+
+        if (rcClient.Right > rcClient.Left) and (rcClient.Bottom > rcClient.Top) then
+        begin
+          memDC := CreateCompatibleDC(hdc);
+          memBmp := CreateCompatibleBitmap(hdc, rcClient.Right - rcClient.Left, rcClient.Bottom - rcClient.Top);
+          oldBmp := SelectObject(memDC, memBmp);
+
+          // 1. Fill entire TTabControl client area with PanelBg
+          hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.PanelBg));
+          FillRect(memDC, rcClient, hbr);
+          DeleteObject(hbr);
+
+          // 2. Find bottom of internal FNoteBook (TCustomTabControl) strip
+          tabHeaderBottom := 21;
+          for i := 0 to TWinControl(dwRefData).ControlCount - 1 do
+          begin
+            childCtrl := TWinControl(dwRefData).Controls[i];
+            if childCtrl is TCustomTabControl then
+            begin
+              if childCtrl.Top + childCtrl.Height > 0 then
+                tabHeaderBottom := childCtrl.Top + childCtrl.Height - 1;
+              Break;
+            end;
+          end;
+
+          // 3. Draw 1px border frame around the tab pane body
+          rcPane.Left := rcClient.Left;
+          rcPane.Top := tabHeaderBottom;
+          rcPane.Right := rcClient.Right;
+          rcPane.Bottom := rcClient.Bottom;
+          hbrBorder := CreateSolidBrush(ColorToRGB(CurrentSkin.PanelBorder));
+          FrameRect(memDC, rcPane, hbrBorder);
+          DeleteObject(hbrBorder);
+
+          // 4. Render all visible TCustomLabel (TLabel and TBoundLabel) children onto memDC
+          hFont := THandle(SendMessage(hWnd, WM_GETFONT, 0, 0));
+          if (hFont = 0) and (TObject(dwRefData) is TControl) then
+            hFont := THandle(TControl(dwRefData).Font.Handle);
+          if hFont = 0 then
+            hFont := GetStockObject(DEFAULT_GUI_FONT);
+
+          oldFont := SelectObject(memDC, hFont);
+          oldBk := SetBkMode(memDC, TRANSPARENT);
+          SetTextColor(memDC, ColorToRGB(CurrentSkin.PanelText));
+
+          for i := 0 to TWinControl(dwRefData).ControlCount - 1 do
+          begin
+            childCtrl := TWinControl(dwRefData).Controls[i];
+            if (childCtrl is TCustomLabel) and childCtrl.Visible then
+            begin
+              lblCtrl := TCustomLabel(childCtrl);
+              wTab := WideString(lblCtrl.Caption);
+              txtLen := Min(255, Length(wTab));
+              if txtLen > 0 then
+              begin
+                Move(wTab[1], txtBuf[0], txtLen * SizeOf(WideChar));
+                txtBuf[txtLen] := #0;
+
+                lblFont := THandle(lblCtrl.Font.Handle);
+                if lblFont <> 0 then
+                  SelectObject(memDC, lblFont)
+                else
+                  SelectObject(memDC, hFont);
+
+                SetTextColor(memDC, ColorToRGB(CurrentSkin.PanelText));
+
+                rcText.Left := lblCtrl.Left;
+                rcText.Top := lblCtrl.Top;
+                rcText.Right := lblCtrl.Left + lblCtrl.Width + 16;
+                rcText.Bottom := lblCtrl.Top + lblCtrl.Height + 4;
+                DrawTextW(memDC, @txtBuf[0], txtLen, rcText,
+                  DT_LEFT or DT_TOP or DT_SINGLELINE or DT_NOPREFIX);
+              end;
+            end;
+          end;
+
+          SetBkMode(memDC, oldBk);
+          if oldFont <> 0 then
+            SelectObject(memDC, oldFont);
+
+          BitBlt(hdc, rcClient.Left, rcClient.Top,
+                 rcClient.Right - rcClient.Left, rcClient.Bottom - rcClient.Top,
+                 memDC, 0, 0, SRCCOPY);
+
+          SelectObject(memDC, oldBmp);
+          DeleteObject(memBmp);
+          DeleteDC(memDC);
+        end;
+
+        EndPaint(hWnd, @ps);
+      end;
+      Result := 0;
+      Exit;
+    end;
+
+    // Case B: Actual Win32 SysTabControl32 (TPageControl or internal FNoteBook inside TTabControl)
     Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
 
-    // 2. Overpaint with double-buffered dark theme graphics
     hdc := GetDC(hWnd);
     if hdc <> 0 then
     begin
@@ -612,12 +759,19 @@ begin
       count := SendMessage(hWnd, TCM_GETITEMCOUNT, 0, 0);
       curSel := SendMessage(hWnd, TCM_GETCURSEL, 0, 0);
 
+      parentTabCtrl := nil;
       if (dwRefData <> 0) and (TObject(dwRefData) is TTabControl) then
+        parentTabCtrl := TTabControl(dwRefData)
+      else if (dwRefData <> 0) and (TObject(dwRefData) is TControl) and
+              Assigned(TControl(dwRefData).Parent) and (TControl(dwRefData).Parent is TTabControl) then
+        parentTabCtrl := TTabControl(TControl(dwRefData).Parent);
+
+      if Assigned(parentTabCtrl) then
       begin
         if count <= 0 then
-          count := TTabControl(dwRefData).Tabs.Count;
+          count := parentTabCtrl.Tabs.Count;
         if curSel < 0 then
-          curSel := TTabControl(dwRefData).TabIndex;
+          curSel := parentTabCtrl.TabIndex;
       end
       else if (dwRefData <> 0) and (TObject(dwRefData) is TPageControl) then
       begin
@@ -627,7 +781,7 @@ begin
           curSel := TPageControl(dwRefData).ActivePageIndex;
       end;
 
-      tabHeaderBottom := 26;
+      tabHeaderBottom := 0;
       for i := 0 to count - 1 do
       begin
         FillChar(rcTab, SizeOf(rcTab), 0);
@@ -637,23 +791,39 @@ begin
             tabHeaderBottom := rcTab.Bottom;
         end;
       end;
+      if tabHeaderBottom <= 0 then
+        tabHeaderBottom := Min(24, Max(20, rcClient.Bottom));
 
+      bmpH := Max(rcClient.Bottom - rcClient.Top, tabHeaderBottom + 4);
       memDC := CreateCompatibleDC(hdc);
-      memBmp := CreateCompatibleBitmap(hdc, rcClient.Right - rcClient.Left, tabHeaderBottom + 4);
+      memBmp := CreateCompatibleBitmap(hdc, rcClient.Right - rcClient.Left, bmpH);
       oldBmp := SelectObject(memDC, memBmp);
 
-      // Fill entire tab header background with PanelBg
+      // Fill entire control background with PanelBg
+      rcPane := rcClient;
+      rcPane.Bottom := bmpH;
       hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.PanelBg));
-      FillRect(memDC, rcClient, hbr);
+      FillRect(memDC, rcPane, hbr);
       DeleteObject(hbr);
 
-      // Draw subtle border line below tab strip
-      rcLine.Left := rcClient.Left;
-      rcLine.Right := rcClient.Right;
-      rcLine.Top := tabHeaderBottom + 1;
-      rcLine.Bottom := tabHeaderBottom + 2;
+      // Draw subtle border line / frame below tab strip
       hbrBorder := CreateSolidBrush(ColorToRGB(CurrentSkin.PanelBorder));
-      FillRect(memDC, rcLine, hbrBorder);
+      if rcClient.Bottom > tabHeaderBottom + 4 then
+      begin
+        rcLine.Left := rcClient.Left;
+        rcLine.Top := tabHeaderBottom;
+        rcLine.Right := rcClient.Right;
+        rcLine.Bottom := rcClient.Bottom;
+        FrameRect(memDC, rcLine, hbrBorder);
+      end
+      else
+      begin
+        rcLine.Left := rcClient.Left;
+        rcLine.Right := rcClient.Right;
+        rcLine.Top := Min(tabHeaderBottom, rcClient.Bottom - 1);
+        rcLine.Bottom := rcLine.Top + 1;
+        FillRect(memDC, rcLine, hbrBorder);
+      end;
 
       hFont := THandle(SendMessage(hWnd, WM_GETFONT, 0, 0));
       if (hFont = 0) and (dwRefData <> 0) and (TObject(dwRefData) is TControl) then
@@ -685,11 +855,11 @@ begin
         FillChar(txtBuf, SizeOf(txtBuf), 0);
         txtLen := 0;
 
-        if (dwRefData <> 0) and (TObject(dwRefData) is TTabControl) then
+        if Assigned(parentTabCtrl) then
         begin
-          if (i >= 0) and (i < TTabControl(dwRefData).Tabs.Count) then
+          if (i >= 0) and (i < parentTabCtrl.Tabs.Count) then
           begin
-            wTab := WideString(TTabControl(dwRefData).Tabs[i]);
+            wTab := WideString(parentTabCtrl.Tabs[i]);
             txtLen := Min(255, Length(wTab));
             if txtLen > 0 then
             begin
@@ -724,8 +894,8 @@ begin
 
         if i = curSel then
         begin
-          // Active tab: PointedBg with bright white text
           FillRect(memDC, rcTab, hbrActive);
+          FrameRect(memDC, rcTab, hbrBorder);
 
           // Top accent line
           rcTopAccent := rcTab;
@@ -733,24 +903,23 @@ begin
           FillRect(memDC, rcTopAccent, hbrHighlight);
 
           // Merge active tab bottom into client area
-          rcBottom := rcTab;
+          rcBottom.Left := rcTab.Left + 1;
+          rcBottom.Right := rcTab.Right - 1;
           rcBottom.Top := rcTab.Bottom - 1;
-          rcBottom.Bottom := rcTab.Bottom + 2;
+          rcBottom.Bottom := Max(rcTab.Bottom + 1, rcClient.Bottom);
           FillRect(memDC, rcBottom, hbrActive);
 
           SetTextColor(memDC, ColorToRGB(CurrentSkin.PointedText));
         end
         else
         begin
-          // Inactive tab: PanelBg with PanelText
           hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.PanelBg));
           FillRect(memDC, rcTab, hbr);
           DeleteObject(hbr);
+          FrameRect(memDC, rcTab, hbrBorder);
 
           SetTextColor(memDC, ColorToRGB(CurrentSkin.PanelText));
         end;
-
-        FrameRect(memDC, rcTab, hbrBorder);
 
         rcText := rcTab;
         DrawTextW(memDC, @txtBuf[0], txtLen, rcText,
@@ -766,7 +935,7 @@ begin
         SelectObject(memDC, oldFont);
 
       BitBlt(hdc, rcClient.Left, rcClient.Top,
-             rcClient.Right - rcClient.Left, tabHeaderBottom + 4,
+             rcClient.Right - rcClient.Left, rcClient.Bottom - rcClient.Top,
              memDC, 0, 0, SRCCOPY);
 
       SelectObject(memDC, oldBmp);
@@ -805,12 +974,13 @@ begin
     Exit;
   end;
 
-
-
   if ((uMsg = WM_LBUTTONDOWN) or (uMsg = WM_LBUTTONUP) or (uMsg = WM_MOUSEMOVE)) and CurrentSkin.IsDark then
   begin
     Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
     InvalidateRect(hWnd, nil, FALSE);
+    if (uMsg <> WM_MOUSEMOVE) and (dwRefData <> 0) and (TObject(dwRefData) is TControl) and
+       Assigned(TControl(dwRefData).Parent) then
+      TControl(dwRefData).Parent.Invalidate;
     Exit;
   end;
 
@@ -818,24 +988,57 @@ begin
 end;
 
 procedure HookTabControl(AControl: TWinControl);
+var
+  i: Integer;
+  childWin: TWinControl;
 begin
+  InitUxTheme;
   if not Assigned(fnSetWindowSubclass) then exit;
   if Assigned(AControl) then
   begin
     AControl.HandleNeeded;
     if AControl.Handle <> 0 then
     begin
+      SetWindowLong(AControl.Handle, GWL_STYLE,
+        GetWindowLong(AControl.Handle, GWL_STYLE) or WS_CLIPCHILDREN);
       fnSetWindowSubclass(AControl.Handle, @UniversalTabSubclassProc, 4001, PtrUInt(AControl));
       AControl.Invalidate;
+    end;
+    for i := 0 to AControl.ControlCount - 1 do
+    begin
+      if AControl.Controls[i] is TCustomTabControl then
+      begin
+        childWin := TWinControl(AControl.Controls[i]);
+        childWin.HandleNeeded;
+        ApplyDarkModeToControl(childWin, CurrentSkin.IsDark);
+        if childWin.Handle <> 0 then
+        begin
+          SetWindowLong(childWin.Handle, GWL_STYLE,
+            GetWindowLong(childWin.Handle, GWL_STYLE) or WS_CLIPCHILDREN);
+          fnSetWindowSubclass(childWin.Handle, @UniversalTabSubclassProc, 4001, PtrUInt(childWin));
+          childWin.Invalidate;
+        end;
+      end;
     end;
   end;
 end;
 
 procedure UnhookTabControl(AControl: TWinControl);
+var
+  i: Integer;
 begin
   if not Assigned(fnRemoveWindowSubclass) then exit;
-  if Assigned(AControl) and (AControl.Handle <> 0) then
-    fnRemoveWindowSubclass(AControl.Handle, @UniversalTabSubclassProc, 4001);
+  if Assigned(AControl) then
+  begin
+    if AControl.Handle <> 0 then
+      fnRemoveWindowSubclass(AControl.Handle, @UniversalTabSubclassProc, 4001);
+    for i := 0 to AControl.ControlCount - 1 do
+    begin
+      if (AControl.Controls[i] is TCustomTabControl) and
+         (TWinControl(AControl.Controls[i]).Handle <> 0) then
+        fnRemoveWindowSubclass(TWinControl(AControl.Controls[i]).Handle, @UniversalTabSubclassProc, 4001);
+    end;
+  end;
 end;
 
 function FormSubclassProc(hWnd: HWND; uMsg: UINT; wParam: WPARAM; lParam: LPARAM;
@@ -863,7 +1066,7 @@ begin
     Exit;
   end;
 
-  if (uMsg = WM_CTLCOLOREDIT) and CurrentSkin.IsDark then
+  if ((uMsg = WM_CTLCOLOREDIT) or (uMsg = WM_CTLCOLORLISTBOX)) and CurrentSkin.IsDark then
   begin
     SetBkColor(THandle(wParam), ColorToRGB(CurrentSkin.WindowBg));
     SetTextColor(THandle(wParam), ColorToRGB(CurrentSkin.WindowText));
@@ -877,8 +1080,9 @@ end;
 procedure HookFormControl(AControl: TWinControl);
 begin
   {$IFDEF WINDOWS}
+  InitUxTheme;
   if not Assigned(fnSetWindowSubclass) then exit;
-  if Assigned(AControl) and (AControl.Handle <> 0) then
+  if Assigned(AControl) and AControl.HandleAllocated and (AControl.Handle <> 0) then
   begin
     fnSetWindowSubclass(AControl.Handle, @FormSubclassProc, 3001, PtrUInt(AControl));
     AControl.Invalidate;
@@ -1006,7 +1210,8 @@ begin
     Exit;
   end;
 
-  if ((uMsg = WM_MOUSEMOVE) or (uMsg = WM_LBUTTONDOWN) or (uMsg = WM_LBUTTONUP)) and CurrentSkin.IsDark then
+  if ((uMsg = WM_MOUSEMOVE) or (uMsg = WM_LBUTTONDOWN) or (uMsg = WM_LBUTTONUP) or
+      (uMsg = WM_MOUSELEAVE) or (uMsg = WM_SETFOCUS) or (uMsg = WM_KILLFOCUS)) and CurrentSkin.IsDark then
   begin
     Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
     InvalidateRect(hWnd, nil, FALSE);
@@ -1018,8 +1223,9 @@ end;
 
 procedure HookButtonControl(AControl: TWinControl);
 begin
+  InitUxTheme;
   if not Assigned(fnSetWindowSubclass) then exit;
-  if Assigned(AControl) and (AControl.Handle <> 0) then
+  if Assigned(AControl) and AControl.HandleAllocated and (AControl.Handle <> 0) then
   begin
     fnSetWindowSubclass(AControl.Handle, @ButtonSubclassProc, 5001, PtrUInt(AControl));
     AControl.Invalidate;
@@ -1228,8 +1434,9 @@ end;
 
 procedure HookCheckBoxControl(AControl: TWinControl);
 begin
+  InitUxTheme;
   if not Assigned(fnSetWindowSubclass) then exit;
-  if Assigned(AControl) and (AControl.Handle <> 0) then
+  if Assigned(AControl) and AControl.HandleAllocated and (AControl.Handle <> 0) then
   begin
     fnSetWindowSubclass(AControl.Handle, @CheckBoxSubclassProc, 6001, PtrUInt(AControl));
     AControl.Invalidate;
@@ -1246,24 +1453,24 @@ end;
 function GroupBoxSubclassProc(hWnd: HWND; uMsg: UINT; wParam: WPARAM; lParam: LPARAM;
   uIdSubclass: PtrUInt; dwRefData: PtrUInt): LRESULT; stdcall;
 var
-  rc, rcText, rcCalc, rcFill: RECT;
+  rc, rcText, rcCalc, rcFill, rcFrame: RECT;
   grpText: array[0..255] of WideChar;
   grpStr: WideString;
   txtLen: Integer;
   hdc: THandle;
-  hbr: THandle;
+  hbr, hbrBorder: THandle;
   hFont, oldFont: THandle;
   oldBk: Integer;
   oldCol: COLORREF;
   isDis: Boolean;
-  textW, textH: Integer;
+  textW, textH, frameTop: Integer;
 begin
   if (uMsg = WM_PAINT) and CurrentSkin.IsDark then
   begin
-    // 1. Let default window procedure paint the groupbox border line and gap
+    // 1. Let default window procedure paint child TGraphicControls (such as TLabel)
     Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
 
-    // 2. Overpaint the caption text in light CurrentSkin.PanelText
+    // 2. Overpaint the groupbox border frame and caption text in CurrentSkin colors
     hdc := GetDC(hWnd);
     if hdc <> 0 then
     begin
@@ -1286,20 +1493,21 @@ begin
         end;
       end;
 
+      hFont := 0;
+      if (dwRefData <> 0) and (TObject(dwRefData) is TControl) then
+        hFont := THandle(TControl(dwRefData).Font.Handle);
+      if hFont = 0 then
+        hFont := THandle(SendMessage(hWnd, WM_GETFONT, 0, 0));
+
+      if hFont <> 0 then
+        oldFont := SelectObject(hdc, hFont)
+      else
+        oldFont := 0;
+
+      textW := 0;
+      textH := 16;
       if txtLen > 0 then
       begin
-        hFont := 0;
-        if (dwRefData <> 0) and (TObject(dwRefData) is TControl) then
-          hFont := THandle(TControl(dwRefData).Font.Handle);
-        if hFont = 0 then
-          hFont := THandle(SendMessage(hWnd, WM_GETFONT, 0, 0));
-
-        if hFont <> 0 then
-          oldFont := SelectObject(hdc, hFont)
-        else
-          oldFont := 0;
-
-        // Calculate text extent
         rcCalc.Left := 9;
         rcCalc.Top := 0;
         rcCalc.Right := rc.Right;
@@ -1308,12 +1516,25 @@ begin
           DT_LEFT or DT_TOP or DT_SINGLELINE or DT_CALCRECT);
         textW := rcCalc.Right - rcCalc.Left;
         textH := rcCalc.Bottom - rcCalc.Top;
+      end;
 
-        // Erase any dark text drawn by Windows with CurrentSkin.PanelBg
-        rcFill.Left := 8;
+      // Overpaint the 1px border frame using CurrentSkin.PanelBorder
+      frameTop := textH div 2;
+      rcFrame.Left := rc.Left;
+      rcFrame.Top := frameTop;
+      rcFrame.Right := rc.Right;
+      rcFrame.Bottom := rc.Bottom;
+      hbrBorder := CreateSolidBrush(ColorToRGB(CurrentSkin.PanelBorder));
+      FrameRect(hdc, rcFrame, hbrBorder);
+      DeleteObject(hbrBorder);
+
+      if txtLen > 0 then
+      begin
+        // Erase any dark text or border line under the caption with CurrentSkin.PanelBg
+        rcFill.Left := 7;
         rcFill.Top := 0;
-        rcFill.Right := 9 + textW + 2;
-        rcFill.Bottom := textH;
+        rcFill.Right := 9 + textW + 4;
+        rcFill.Bottom := textH + 1;
         hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.PanelBg));
         FillRect(hdc, rcFill, hbr);
         DeleteObject(hbr);
@@ -1334,9 +1555,10 @@ begin
 
         SetTextColor(hdc, oldCol);
         SetBkMode(hdc, oldBk);
-        if oldFont <> 0 then
-          SelectObject(hdc, oldFont);
       end;
+
+      if oldFont <> 0 then
+        SelectObject(hdc, oldFont);
 
       ReleaseDC(hWnd, hdc);
     end;
@@ -1354,6 +1576,22 @@ begin
     Exit;
   end;
 
+  if ((uMsg = WM_CTLCOLORSTATIC) or (uMsg = WM_CTLCOLORBTN)) and CurrentSkin.IsDark then
+  begin
+    SetBkMode(THandle(wParam), TRANSPARENT);
+    SetTextColor(THandle(wParam), ColorToRGB(CurrentSkin.PanelText));
+    Result := LRESULT(GetCachedPanelBrush(CurrentSkin.PanelBg));
+    Exit;
+  end;
+
+  if ((uMsg = WM_CTLCOLOREDIT) or (uMsg = WM_CTLCOLORLISTBOX)) and CurrentSkin.IsDark then
+  begin
+    SetBkColor(THandle(wParam), ColorToRGB(CurrentSkin.WindowBg));
+    SetTextColor(THandle(wParam), ColorToRGB(CurrentSkin.WindowText));
+    Result := LRESULT(GetCachedWindowBrush(CurrentSkin.WindowBg));
+    Exit;
+  end;
+
   if (uMsg = WM_ENABLE) and CurrentSkin.IsDark then
   begin
     Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
@@ -1366,8 +1604,9 @@ end;
 
 procedure HookGroupBoxControl(AControl: TWinControl);
 begin
+  InitUxTheme;
   if not Assigned(fnSetWindowSubclass) then exit;
-  if Assigned(AControl) and (AControl.Handle <> 0) then
+  if Assigned(AControl) and AControl.HandleAllocated and (AControl.Handle <> 0) then
   begin
     fnSetWindowSubclass(AControl.Handle, @GroupBoxSubclassProc, 7001, PtrUInt(AControl));
     AControl.Invalidate;
@@ -1381,6 +1620,378 @@ begin
     fnRemoveWindowSubclass(AControl.Handle, @GroupBoxSubclassProc, 7001);
 end;
 
+function ComboBoxSubclassProc(hWnd: HWND; uMsg: UINT; wParam: WPARAM; lParam: LPARAM;
+  uIdSubclass: PtrUInt; dwRefData: PtrUInt): LRESULT; stdcall;
+var
+  ps: PAINTSTRUCT;
+  hdc, memDC: THandle;
+  memBmp, oldBmp: THandle;
+  rc, rcText, rcBtn: RECT;
+  cbText: array[0..255] of WideChar;
+  cbStr: WideString;
+  txtLen, curIdx, cx, cy: Integer;
+  hbr, hPen, oldPen: THandle;
+  hFont, oldFont: THandle;
+  oldBk: Integer;
+  oldCol: COLORREF;
+  isHot, isDis, isDropped: Boolean;
+  pt: TPoint;
+begin
+  if (uMsg = WM_PAINT) and CurrentSkin.IsDark then
+  begin
+    hdc := BeginPaint(hWnd, @ps);
+    if hdc <> 0 then
+    begin
+      FillChar(rc, SizeOf(rc), 0);
+      GetClientRect(hWnd, @rc);
+
+      isDis := not IsWindowEnabled(hWnd);
+      isDropped := SendMessage(hWnd, $0157 {CB_GETDROPPEDSTATE}, 0, 0) <> 0;
+
+      GetCursorPos(@pt);
+      ScreenToClient(hWnd, @pt);
+      isHot := (pt.x >= rc.Left) and (pt.x <= rc.Right) and (pt.y >= rc.Top) and (pt.y <= rc.Bottom) and not isDis;
+
+      memDC := CreateCompatibleDC(hdc);
+      memBmp := CreateCompatibleBitmap(hdc, rc.Right - rc.Left, rc.Bottom - rc.Top);
+      oldBmp := SelectObject(memDC, memBmp);
+
+      // 1. Background fill
+      if isDis then
+        hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.PanelBg))
+      else
+        hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.WindowBg));
+      FillRect(memDC, rc, hbr);
+      DeleteObject(hbr);
+
+      // 2. Right drop-down button area
+      rcBtn := rc;
+      rcBtn.Left := Max(rc.Left, rc.Right - 22);
+      if (isHot or isDropped) and not isDis then
+      begin
+        hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.PointedBg));
+        FillRect(memDC, rcBtn, hbr);
+        DeleteObject(hbr);
+      end;
+
+      // 3. Outer border frame
+      if (isHot or isDropped or (GetFocus() = hWnd)) and not isDis then
+        hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.PointedBg))
+      else
+        hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.PanelBorder));
+      FrameRect(memDC, rc, hbr);
+      DeleteObject(hbr);
+
+      // 4. Draw chevron arrow in right button area
+      cx := (rcBtn.Left + rcBtn.Right) div 2;
+      cy := (rcBtn.Top + rcBtn.Bottom) div 2;
+      if isDis then
+        hPen := CreatePen(PS_SOLID, 1, ColorToRGB(CurrentSkin.WindowTextDim))
+      else if isHot or isDropped then
+        hPen := CreatePen(PS_SOLID, 1, ColorToRGB(CurrentSkin.PointedText))
+      else
+        hPen := CreatePen(PS_SOLID, 1, ColorToRGB(CurrentSkin.WindowText));
+      oldPen := SelectObject(memDC, hPen);
+      MoveToEx(memDC, cx - 4, cy - 2, nil);
+      LineTo(memDC, cx, cy + 2);
+      LineTo(memDC, cx + 5, cy - 3);
+      MoveToEx(memDC, cx - 4, cy - 1, nil);
+      LineTo(memDC, cx, cy + 3);
+      LineTo(memDC, cx + 5, cy - 2);
+      SelectObject(memDC, oldPen);
+      DeleteObject(hPen);
+
+      // 5. Retrieve current selected text
+      FillChar(cbText, SizeOf(cbText), 0);
+      txtLen := GetWindowTextW(hWnd, @cbText[0], 255);
+      if (txtLen = 0) and (dwRefData <> 0) and (TObject(dwRefData) is TCustomComboBox) then
+      begin
+        cbStr := WideString(TCustomComboBox(dwRefData).Text);
+        if cbStr = '' then
+        begin
+          curIdx := TCustomComboBox(dwRefData).ItemIndex;
+          if (curIdx >= 0) and (curIdx < TCustomComboBox(dwRefData).Items.Count) then
+            cbStr := WideString(TCustomComboBox(dwRefData).Items[curIdx]);
+        end;
+        txtLen := Min(255, Length(cbStr));
+        if txtLen > 0 then
+        begin
+          Move(cbStr[1], cbText[0], txtLen * SizeOf(WideChar));
+          cbText[txtLen] := #0;
+        end;
+      end;
+
+      if txtLen > 0 then
+      begin
+        hFont := THandle(SendMessage(hWnd, WM_GETFONT, 0, 0));
+        if (hFont = 0) and (dwRefData <> 0) and (TObject(dwRefData) is TControl) then
+          hFont := THandle(TControl(dwRefData).Font.Handle);
+        if hFont = 0 then
+          hFont := GetStockObject(DEFAULT_GUI_FONT);
+
+        if hFont <> 0 then
+          oldFont := SelectObject(memDC, hFont)
+        else
+          oldFont := 0;
+
+        oldBk := SetBkMode(memDC, TRANSPARENT);
+        if isDis then
+          oldCol := SetTextColor(memDC, ColorToRGB(CurrentSkin.WindowTextDim))
+        else
+          oldCol := SetTextColor(memDC, ColorToRGB(CurrentSkin.WindowText));
+
+        rcText.Left := rc.Left + 6;
+        rcText.Top := rc.Top + 1;
+        rcText.Right := rcBtn.Left - 2;
+        rcText.Bottom := rc.Bottom - 1;
+        DrawTextW(memDC, @cbText[0], txtLen, rcText,
+          DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX or DT_END_ELLIPSIS);
+
+        SetTextColor(memDC, oldCol);
+        SetBkMode(memDC, oldBk);
+        if oldFont <> 0 then
+          SelectObject(memDC, oldFont);
+      end;
+
+      BitBlt(hdc, rc.Left, rc.Top, rc.Right - rc.Left, rc.Bottom - rc.Top,
+             memDC, 0, 0, SRCCOPY);
+
+      SelectObject(memDC, oldBmp);
+      DeleteObject(memBmp);
+      DeleteDC(memDC);
+
+      EndPaint(hWnd, @ps);
+    end;
+    Result := 0;
+    Exit;
+  end;
+
+  if (uMsg = WM_ERASEBKGND) and CurrentSkin.IsDark then
+  begin
+    FillChar(rc, SizeOf(rc), 0);
+    GetClientRect(hWnd, @rc);
+    hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.WindowBg));
+    FillRect(THandle(wParam), rc, hbr);
+    DeleteObject(hbr);
+    Result := 1;
+    Exit;
+  end;
+
+  if ((uMsg = WM_CTLCOLORLISTBOX) or (uMsg = WM_CTLCOLOREDIT)) and CurrentSkin.IsDark then
+  begin
+    SetBkColor(THandle(wParam), ColorToRGB(CurrentSkin.WindowBg));
+    SetTextColor(THandle(wParam), ColorToRGB(CurrentSkin.WindowText));
+    Result := LRESULT(GetCachedWindowBrush(CurrentSkin.WindowBg));
+    Exit;
+  end;
+
+  if ((uMsg = WM_MOUSEMOVE) or (uMsg = WM_MOUSELEAVE) or (uMsg = WM_LBUTTONDOWN) or
+      (uMsg = WM_LBUTTONUP) or (uMsg = WM_SETFOCUS) or (uMsg = WM_KILLFOCUS) or
+      (uMsg = $014E {CB_SETCURSEL})) and CurrentSkin.IsDark then
+  begin
+    Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+    InvalidateRect(hWnd, nil, FALSE);
+    Exit;
+  end;
+
+  Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+end;
+
+procedure HookComboBoxControl(AControl: TWinControl);
+begin
+  InitUxTheme;
+  if not Assigned(fnSetWindowSubclass) then exit;
+  if Assigned(AControl) and AControl.HandleAllocated and (AControl.Handle <> 0) then
+  begin
+    fnSetWindowSubclass(AControl.Handle, @ComboBoxSubclassProc, 6501, PtrUInt(AControl));
+    AControl.Invalidate;
+  end;
+end;
+
+procedure UnhookComboBoxControl(AControl: TWinControl);
+begin
+  if not Assigned(fnRemoveWindowSubclass) then exit;
+  if Assigned(AControl) and (AControl.Handle <> 0) then
+    fnRemoveWindowSubclass(AControl.Handle, @ComboBoxSubclassProc, 6501);
+end;
+
+const
+  TBM_GETPOS         = $0400;
+  TBM_GETRANGEMIN    = $0401;
+  TBM_GETRANGEMAX    = $0402;
+  TBM_GETTIC         = $0403;
+  TBM_GETPTICS       = $040E;
+  TBM_GETTICPOS      = $040F;
+  TBM_GETNUMTICS     = $0410;
+  TBM_GETTHUMBRECT   = $0419;
+  TBM_GETCHANNELRECT = $041A;
+
+function TrackBarSubclassProc(hWnd: HWND; uMsg: UINT; wParam: WPARAM; lParam: LPARAM;
+  uIdSubclass: PtrUInt; dwRefData: PtrUInt): LRESULT; stdcall;
+var
+  ps: PAINTSTRUCT;
+  hdc, memDC: THandle;
+  memBmp, oldBmp: THandle;
+  rc, rcChannel, rcFill, rcThumb: RECT;
+  hbr, hPen, oldPen: THandle;
+  numTics, i, ticX, cy: Integer;
+  pt: TPoint;
+  isHot, isDis: Boolean;
+begin
+  if (uMsg = WM_PAINT) and CurrentSkin.IsDark then
+  begin
+    hdc := BeginPaint(hWnd, @ps);
+    if hdc <> 0 then
+    begin
+      FillChar(rc, SizeOf(rc), 0);
+      GetClientRect(hWnd, @rc);
+
+      isDis := not IsWindowEnabled(hWnd);
+
+      memDC := CreateCompatibleDC(hdc);
+      memBmp := CreateCompatibleBitmap(hdc, rc.Right - rc.Left, rc.Bottom - rc.Top);
+      oldBmp := SelectObject(memDC, memBmp);
+
+      // 1. Fill trackbar background with CurrentSkin.PanelBg
+      hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.PanelBg));
+      FillRect(memDC, rc, hbr);
+      DeleteObject(hbr);
+
+      // 2. Get channel and thumb rects from trackbar control
+      FillChar(rcChannel, SizeOf(rcChannel), 0);
+      FillChar(rcThumb, SizeOf(rcThumb), 0);
+      SendMessage(hWnd, TBM_GETCHANNELRECT, 0, PtrInt(@rcChannel));
+      SendMessage(hWnd, TBM_GETTHUMBRECT, 0, PtrInt(@rcThumb));
+
+      cy := (rc.Top + rc.Bottom) div 2 - 3;
+      if rcChannel.Right <= rcChannel.Left then
+      begin
+        rcChannel.Left := rc.Left + 8;
+        rcChannel.Right := rc.Right - 8;
+      end;
+      rcChannel.Top := cy - 2;
+      rcChannel.Bottom := cy + 3;
+
+      // Draw unfilled channel track
+      hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.WindowBg));
+      FillRect(memDC, rcChannel, hbr);
+      DeleteObject(hbr);
+
+      hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.PanelBorder));
+      FrameRect(memDC, rcChannel, hbr);
+      DeleteObject(hbr);
+
+      // Draw active filled portion of channel (left of thumb)
+      if rcThumb.Right > rcThumb.Left then
+      begin
+        rcFill := rcChannel;
+        rcFill.Right := (rcThumb.Left + rcThumb.Right) div 2;
+        if rcFill.Right > rcFill.Left then
+        begin
+          hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.PointedBg));
+          FillRect(memDC, rcFill, hbr);
+          DeleteObject(hbr);
+        end;
+      end;
+
+      // 3. Draw tick marks in CurrentSkin.WindowTextDim
+      numTics := SendMessage(hWnd, TBM_GETNUMTICS, 0, 0);
+      hPen := CreatePen(PS_SOLID, 1, ColorToRGB(CurrentSkin.WindowTextDim));
+      oldPen := SelectObject(memDC, hPen);
+      if numTics > 2 then
+      begin
+        for i := 0 to numTics - 3 do
+        begin
+          ticX := SendMessage(hWnd, TBM_GETTICPOS, i, 0);
+          if ticX > 0 then
+          begin
+            MoveToEx(memDC, ticX, rcChannel.Bottom + 5, nil);
+            LineTo(memDC, ticX, rcChannel.Bottom + 9);
+          end;
+        end;
+      end;
+      // Draw first and last tick marks
+      MoveToEx(memDC, rcChannel.Left + 4, rcChannel.Bottom + 5, nil);
+      LineTo(memDC, rcChannel.Left + 4, rcChannel.Bottom + 9);
+      MoveToEx(memDC, rcChannel.Right - 5, rcChannel.Bottom + 5, nil);
+      LineTo(memDC, rcChannel.Right - 5, rcChannel.Bottom + 9);
+      SelectObject(memDC, oldPen);
+      DeleteObject(hPen);
+
+      // 4. Draw thumb slider
+      if rcThumb.Right > rcThumb.Left then
+      begin
+        GetCursorPos(@pt);
+        ScreenToClient(hWnd, @pt);
+        isHot := (pt.x >= rcThumb.Left) and (pt.x <= rcThumb.Right) and
+                 (pt.y >= rcThumb.Top) and (pt.y <= rcThumb.Bottom) and not isDis;
+
+        if isDis then
+          hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.WindowTextDim))
+        else if isHot then
+          hbr := CreateSolidBrush(RGB(96, 205, 255))
+        else
+          hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.PointedBg));
+        FillRect(memDC, rcThumb, hbr);
+        DeleteObject(hbr);
+
+        hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.PointedText));
+        FrameRect(memDC, rcThumb, hbr);
+        DeleteObject(hbr);
+      end;
+
+      BitBlt(hdc, rc.Left, rc.Top, rc.Right - rc.Left, rc.Bottom - rc.Top,
+             memDC, 0, 0, SRCCOPY);
+
+      SelectObject(memDC, oldBmp);
+      DeleteObject(memBmp);
+      DeleteDC(memDC);
+
+      EndPaint(hWnd, @ps);
+    end;
+    Result := 0;
+    Exit;
+  end;
+
+  if (uMsg = WM_ERASEBKGND) and CurrentSkin.IsDark then
+  begin
+    FillChar(rc, SizeOf(rc), 0);
+    GetClientRect(hWnd, @rc);
+    hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.PanelBg));
+    FillRect(THandle(wParam), rc, hbr);
+    DeleteObject(hbr);
+    Result := 1;
+    Exit;
+  end;
+
+  if ((uMsg = WM_MOUSEMOVE) or (uMsg = WM_LBUTTONDOWN) or (uMsg = WM_LBUTTONUP) or
+      (uMsg = WM_KEYDOWN) or (uMsg = WM_KEYUP) or (uMsg = WM_MOUSEWHEEL)) and CurrentSkin.IsDark then
+  begin
+    Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+    InvalidateRect(hWnd, nil, FALSE);
+    Exit;
+  end;
+
+  Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+end;
+
+procedure HookTrackBarControl(AControl: TWinControl);
+begin
+  InitUxTheme;
+  if not Assigned(fnSetWindowSubclass) then exit;
+  if Assigned(AControl) and AControl.HandleAllocated and (AControl.Handle <> 0) then
+  begin
+    fnSetWindowSubclass(AControl.Handle, @TrackBarSubclassProc, 6601, PtrUInt(AControl));
+    AControl.Invalidate;
+  end;
+end;
+
+procedure UnhookTrackBarControl(AControl: TWinControl);
+begin
+  if not Assigned(fnRemoveWindowSubclass) then exit;
+  if Assigned(AControl) and (AControl.Handle <> 0) then
+    fnRemoveWindowSubclass(AControl.Handle, @TrackBarSubclassProc, 6601);
+end;
 
 function ScrollBoxSubclassProc(hWnd: HWND; uMsg: UINT; wParam: WPARAM; lParam: LPARAM;
   uIdSubclass: PtrUInt; dwRefData: PtrUInt): LRESULT; stdcall;
@@ -1404,8 +2015,9 @@ end;
 
 procedure HookScrollBoxControl(AControl: TWinControl);
 begin
+  InitUxTheme;
   if not Assigned(fnSetWindowSubclass) then exit;
-  if Assigned(AControl) and (AControl.Handle <> 0) then
+  if Assigned(AControl) and AControl.HandleAllocated and (AControl.Handle <> 0) then
   begin
     fnSetWindowSubclass(AControl.Handle, @ScrollBoxSubclassProc, 7001, PtrUInt(AControl));
     AControl.Invalidate;
@@ -1441,8 +2053,9 @@ end;
 
 procedure HookToolBarControl(AControl: TWinControl);
 begin
+  InitUxTheme;
   if not Assigned(fnSetWindowSubclass) then exit;
-  if Assigned(AControl) and (AControl.Handle <> 0) then
+  if Assigned(AControl) and AControl.HandleAllocated and (AControl.Handle <> 0) then
   begin
     fnSetWindowSubclass(AControl.Handle, @ToolBarSubclassProc, 8001, PtrUInt(AControl));
     AControl.Invalidate;
@@ -1461,6 +2074,7 @@ function TreeViewSubclassProc(hWnd: HWND; uMsg: UINT; wParam: WPARAM; lParam: LP
 var
   rc: RECT;
   hbr: THandle;
+  wTheme: WideString;
 begin
   if (uMsg = WM_ERASEBKGND) and CurrentSkin.IsDark then
   begin
@@ -1473,13 +2087,32 @@ begin
     Exit;
   end;
 
+  if (uMsg = WM_ENABLE) or (uMsg = WM_STYLECHANGED) then
+  begin
+    Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+    if Assigned(fnAllowDarkModeForWindow) then
+      fnAllowDarkModeForWindow(hWnd, CurrentSkin.IsDark);
+    if Assigned(fnSetWindowTheme) then
+    begin
+      if CurrentSkin.IsDark then
+      begin
+        wTheme := 'DarkMode_Explorer';
+        fnSetWindowTheme(hWnd, PWideChar(wTheme), nil);
+      end
+      else
+        fnSetWindowTheme(hWnd, nil, nil);
+    end;
+    Exit;
+  end;
+
   Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
 end;
 
 procedure HookTreeViewControl(AControl: TWinControl);
 begin
+  InitUxTheme;
   if not Assigned(fnSetWindowSubclass) then exit;
-  if Assigned(AControl) and (AControl.Handle <> 0) then
+  if Assigned(AControl) and AControl.HandleAllocated and (AControl.Handle <> 0) then
   begin
     fnSetWindowSubclass(AControl.Handle, @TreeViewSubclassProc, 9001, PtrUInt(AControl));
     SendMessage(AControl.Handle, $111D, 0, ColorToRGB(CurrentSkin.TreeBg));
@@ -1494,6 +2127,121 @@ begin
   if not Assigned(fnRemoveWindowSubclass) then exit;
   if Assigned(AControl) and (AControl.Handle <> 0) then
     fnRemoveWindowSubclass(AControl.Handle, @TreeViewSubclassProc, 9001);
+end;
+
+function EditMemoSubclassProc(hWnd: HWND; uMsg: UINT; wParam: WPARAM; lParam: LPARAM;
+  uIdSubclass: PtrUInt; dwRefData: PtrUInt): LRESULT; stdcall;
+var
+  hdc: THandle;
+  rcWin, rcOuter, rcInner: RECT;
+  hbrOuter, hbrInner: THandle;
+  wTheme: WideString;
+  exStyle, style: LONG;
+  isDis, isFocused: Boolean;
+begin
+  if (uMsg = WM_NCPAINT) and CurrentSkin.IsDark then
+  begin
+    // Let default procedure paint first so TMemo vertical/horizontal scrollbars render via DarkMode_Explorer
+    Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+
+    exStyle := GetWindowLong(hWnd, GWL_EXSTYLE);
+    style := GetWindowLong(hWnd, GWL_STYLE);
+    if ((exStyle and WS_EX_CLIENTEDGE) <> 0) or ((style and WS_BORDER) <> 0) then
+    begin
+      hdc := GetWindowDC(hWnd);
+      if hdc <> 0 then
+      begin
+        FillChar(rcWin, SizeOf(rcWin), 0);
+        GetWindowRect(hWnd, @rcWin);
+        rcOuter.Left := 0;
+        rcOuter.Top := 0;
+        rcOuter.Right := rcWin.Right - rcWin.Left;
+        rcOuter.Bottom := rcWin.Bottom - rcWin.Top;
+
+        isDis := not IsWindowEnabled(hWnd);
+        isFocused := (GetFocus() = hWnd) and not isDis;
+
+        if isFocused then
+          hbrOuter := CreateSolidBrush(ColorToRGB(CurrentSkin.HighlightBg))
+        else
+          hbrOuter := CreateSolidBrush(ColorToRGB(CurrentSkin.PanelBorder));
+        FrameRect(hdc, rcOuter, hbrOuter);
+        DeleteObject(hbrOuter);
+
+        if (exStyle and WS_EX_CLIENTEDGE) <> 0 then
+        begin
+          rcInner.Left := 1;
+          rcInner.Top := 1;
+          rcInner.Right := rcOuter.Right - 1;
+          rcInner.Bottom := rcOuter.Bottom - 1;
+          if isDis then
+            hbrInner := CreateSolidBrush(ColorToRGB(CurrentSkin.PanelBg))
+          else
+            hbrInner := CreateSolidBrush(ColorToRGB(CurrentSkin.WindowBg));
+          FrameRect(hdc, rcInner, hbrInner);
+          DeleteObject(hbrInner);
+        end;
+
+        ReleaseDC(hWnd, hdc);
+      end;
+    end;
+    Exit;
+  end;
+
+  if (uMsg = WM_SETFOCUS) or (uMsg = WM_KILLFOCUS) then
+  begin
+    Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+    if CurrentSkin.IsDark then
+      RedrawWindow(hWnd, nil, 0, RDW_FRAME or RDW_INVALIDATE);
+    Exit;
+  end;
+
+  if (uMsg = WM_ENABLE) or (uMsg = WM_STYLECHANGED) then
+  begin
+    Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+    if Assigned(fnAllowDarkModeForWindow) then
+      fnAllowDarkModeForWindow(hWnd, CurrentSkin.IsDark);
+    if Assigned(fnSetWindowTheme) then
+    begin
+      if CurrentSkin.IsDark then
+      begin
+        if (dwRefData <> 0) and (TObject(dwRefData) is TCustomMemo) then
+          wTheme := 'DarkMode_Explorer'
+        else
+          wTheme := 'DarkMode_CFD';
+        fnSetWindowTheme(hWnd, PWideChar(wTheme), nil);
+      end
+      else
+        fnSetWindowTheme(hWnd, nil, nil);
+    end;
+    if CurrentSkin.IsDark then
+      RedrawWindow(hWnd, nil, 0, RDW_FRAME or RDW_INVALIDATE);
+    Exit;
+  end;
+
+  Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+end;
+
+procedure HookEditControl(AControl: TWinControl);
+begin
+  InitUxTheme;
+  if not Assigned(fnSetWindowSubclass) then exit;
+  if Assigned(AControl) then
+  begin
+    AControl.HandleNeeded;
+    if AControl.Handle <> 0 then
+    begin
+      fnSetWindowSubclass(AControl.Handle, @EditMemoSubclassProc, 9501, PtrUInt(AControl));
+      RedrawWindow(AControl.Handle, nil, 0, RDW_FRAME or RDW_INVALIDATE);
+    end;
+  end;
+end;
+
+procedure UnhookEditControl(AControl: TWinControl);
+begin
+  if not Assigned(fnRemoveWindowSubclass) then exit;
+  if Assigned(AControl) and (AControl.Handle <> 0) then
+    fnRemoveWindowSubclass(AControl.Handle, @EditMemoSubclassProc, 9501);
 end;
 
 const
@@ -1569,12 +2317,20 @@ procedure HookButtonControl(AControl: TWinControl); begin end;
 procedure UnhookButtonControl(AControl: TWinControl); begin end;
 procedure HookCheckBoxControl(AControl: TWinControl); begin end;
 procedure UnhookCheckBoxControl(AControl: TWinControl); begin end;
+procedure HookGroupBoxControl(AControl: TWinControl); begin end;
+procedure UnhookGroupBoxControl(AControl: TWinControl); begin end;
+procedure HookComboBoxControl(AControl: TWinControl); begin end;
+procedure UnhookComboBoxControl(AControl: TWinControl); begin end;
+procedure HookTrackBarControl(AControl: TWinControl); begin end;
+procedure UnhookTrackBarControl(AControl: TWinControl); begin end;
 procedure HookScrollBoxControl(AControl: TWinControl); begin end;
 procedure UnhookScrollBoxControl(AControl: TWinControl); begin end;
 procedure HookToolBarControl(AControl: TWinControl); begin end;
 procedure UnhookToolBarControl(AControl: TWinControl); begin end;
 procedure HookTreeViewControl(AControl: TWinControl); begin end;
 procedure UnhookTreeViewControl(AControl: TWinControl); begin end;
+procedure HookEditControl(AControl: TWinControl); begin end;
+procedure UnhookEditControl(AControl: TWinControl); begin end;
 function HandleToolBarCustomDraw(lParam: LPARAM; const ASkin: TSkinColors; var AHandled: Boolean): LRESULT; begin Result := 0; AHandled := False; end;
 function GetCachedPanelBrush(AColor: TColor): THandle; begin Result := 0; end;
 function GetCachedWindowBrush(AColor: TColor): THandle; begin Result := 0; end;
@@ -1599,7 +2355,12 @@ begin
       TCustomMemo(ctrl).Color := ASkin.WindowBg;
       TCustomMemo(ctrl).Font.Color := ASkin.WindowText;
       if ctrl is TWinControl then
+      begin
         ApplyDarkModeToControl(TWinControl(ctrl), ASkin.IsDark);
+        {$IFDEF WINDOWS}
+        HookEditControl(TWinControl(ctrl));
+        {$ENDIF}
+      end;
     end
     else if ctrl is TCustomEdit then
     begin
@@ -1608,7 +2369,36 @@ begin
       if ctrl is TLabeledEdit then
         TLabeledEdit(ctrl).EditLabel.Font.Color := ASkin.PanelText;
       if ctrl is TWinControl then
+      begin
         ApplyDarkModeToControl(TWinControl(ctrl), ASkin.IsDark);
+        {$IFDEF WINDOWS}
+        HookEditControl(TWinControl(ctrl));
+        {$ENDIF}
+      end;
+    end
+    else if ctrl is TCustomComboBox then
+    begin
+      TCustomComboBox(ctrl).Color := ASkin.WindowBg;
+      TCustomComboBox(ctrl).Font.Color := ASkin.WindowText;
+      if ctrl is TWinControl then
+      begin
+        ApplyDarkModeToControl(TWinControl(ctrl), ASkin.IsDark);
+        {$IFDEF WINDOWS}
+        HookComboBoxControl(TWinControl(ctrl));
+        {$ENDIF}
+      end;
+    end
+    else if ctrl is TCustomTrackBar then
+    begin
+      if ctrl is TWinControl then
+      begin
+        TWinControl(ctrl).Color := ASkin.PanelBg;
+        TWinControl(ctrl).Font.Color := ASkin.PanelText;
+        ApplyDarkModeToControl(TWinControl(ctrl), ASkin.IsDark);
+        {$IFDEF WINDOWS}
+        HookTrackBarControl(TWinControl(ctrl));
+        {$ENDIF}
+      end;
     end
     else if ctrl is TCustomListBox then
     begin
@@ -1677,6 +2467,7 @@ begin
     end
     else if (ctrl is TCustomButton) or (ctrl is TBitBtn) or (ctrl is TSpeedButton) then
     begin
+      ctrl.Font.Color := ASkin.PanelText;
       if ctrl is TWinControl then
       begin
         ApplyDarkModeToControl(TWinControl(ctrl), ASkin.IsDark);
@@ -1685,10 +2476,10 @@ begin
         {$ENDIF}
       end;
     end
-    else if ctrl is TCustomTabControl then
+    else if (ctrl is TCustomTabControl) or (ctrl is TTabControl) then
     begin
-      TCustomTabControl(ctrl).Color := ASkin.PanelBg;
-      TCustomTabControl(ctrl).Font.Color := ASkin.PanelText;
+      TWinControl(ctrl).Color := ASkin.PanelBg;
+      TWinControl(ctrl).Font.Color := ASkin.PanelText;
       ApplyDarkModeToControl(TWinControl(ctrl), ASkin.IsDark);
       {$IFDEF WINDOWS}
       HookTabControl(TWinControl(ctrl));
@@ -1726,6 +2517,7 @@ begin
       ctrl := TControl(AForm.Components[i]);
       if (ctrl is TCustomButton) or (ctrl is TBitBtn) or (ctrl is TSpeedButton) then
       begin
+        ctrl.Font.Color := ASkin.PanelText;
         if ctrl is TWinControl then
         begin
           ApplyDarkModeToControl(TWinControl(ctrl), ASkin.IsDark);
@@ -1734,10 +2526,84 @@ begin
           {$ENDIF}
         end;
       end
-      else if ctrl is TCustomTabControl then
+      else if ctrl is TCustomCheckBox then
       begin
-        TCustomTabControl(ctrl).Color := ASkin.PanelBg;
-        TCustomTabControl(ctrl).Font.Color := ASkin.PanelText;
+        TCustomCheckBox(ctrl).Color := ASkin.PanelBg;
+        TCustomCheckBox(ctrl).Font.Color := ASkin.PanelText;
+        if ctrl is TWinControl then
+        begin
+          ApplyDarkModeToControl(TWinControl(ctrl), ASkin.IsDark);
+          {$IFDEF WINDOWS}
+          HookCheckBoxControl(TWinControl(ctrl));
+          {$ENDIF}
+        end;
+      end
+      else if ctrl is TCustomGroupBox then
+      begin
+        TCustomGroupBox(ctrl).Color := ASkin.PanelBg;
+        TCustomGroupBox(ctrl).Font.Color := ASkin.PanelText;
+        if ctrl is TWinControl then
+        begin
+          ApplyDarkModeToControl(TWinControl(ctrl), ASkin.IsDark);
+          {$IFDEF WINDOWS}
+          HookGroupBoxControl(TWinControl(ctrl));
+          {$ENDIF}
+        end;
+      end
+      else if ctrl is TCustomComboBox then
+      begin
+        TCustomComboBox(ctrl).Color := ASkin.WindowBg;
+        TCustomComboBox(ctrl).Font.Color := ASkin.WindowText;
+        if ctrl is TWinControl then
+        begin
+          ApplyDarkModeToControl(TWinControl(ctrl), ASkin.IsDark);
+          {$IFDEF WINDOWS}
+          HookComboBoxControl(TWinControl(ctrl));
+          {$ENDIF}
+        end;
+      end
+      else if ctrl is TCustomTrackBar then
+      begin
+        if ctrl is TWinControl then
+        begin
+          TWinControl(ctrl).Color := ASkin.PanelBg;
+          TWinControl(ctrl).Font.Color := ASkin.PanelText;
+          ApplyDarkModeToControl(TWinControl(ctrl), ASkin.IsDark);
+          {$IFDEF WINDOWS}
+          HookTrackBarControl(TWinControl(ctrl));
+          {$ENDIF}
+        end;
+      end
+      else if ctrl is TCustomMemo then
+      begin
+        TCustomMemo(ctrl).Color := ASkin.WindowBg;
+        TCustomMemo(ctrl).Font.Color := ASkin.WindowText;
+        if ctrl is TWinControl then
+        begin
+          ApplyDarkModeToControl(TWinControl(ctrl), ASkin.IsDark);
+          {$IFDEF WINDOWS}
+          HookEditControl(TWinControl(ctrl));
+          {$ENDIF}
+        end;
+      end
+      else if ctrl is TCustomEdit then
+      begin
+        TCustomEdit(ctrl).Color := ASkin.WindowBg;
+        TCustomEdit(ctrl).Font.Color := ASkin.WindowText;
+        if ctrl is TLabeledEdit then
+          TLabeledEdit(ctrl).EditLabel.Font.Color := ASkin.PanelText;
+        if ctrl is TWinControl then
+        begin
+          ApplyDarkModeToControl(TWinControl(ctrl), ASkin.IsDark);
+          {$IFDEF WINDOWS}
+          HookEditControl(TWinControl(ctrl));
+          {$ENDIF}
+        end;
+      end
+      else if (ctrl is TCustomTabControl) or (ctrl is TTabControl) then
+      begin
+        TWinControl(ctrl).Color := ASkin.PanelBg;
+        TWinControl(ctrl).Font.Color := ASkin.PanelText;
         ApplyDarkModeToControl(TWinControl(ctrl), ASkin.IsDark);
         {$IFDEF WINDOWS}
         HookTabControl(TWinControl(ctrl));
@@ -1749,10 +2615,45 @@ begin
   ApplyDarkModeToWindow(AForm, ASkin.IsDark);
 end;
 
+type
+  TMessageDlgShowHook = class(TComponent)
+  public
+    procedure OnDialogShow(Sender: TObject);
+  end;
+
+procedure TMessageDlgShowHook.OnDialogShow(Sender: TObject);
+var
+  dlg: TCustomForm;
+  i: Integer;
+begin
+  if not (Sender is TCustomForm) then exit;
+  dlg := TCustomForm(Sender);
+  dlg.HandleNeeded;
+  for i := 0 to dlg.ControlCount - 1 do
+  begin
+    if dlg.Controls[i] is TWinControl then
+      TWinControl(dlg.Controls[i]).HandleNeeded;
+  end;
+  ApplySkinToForm(dlg, CurrentSkin);
+  {$IFDEF WINDOWS}
+  ApplyDarkModeToWindow(dlg, CurrentSkin.IsDark);
+  for i := 0 to dlg.ControlCount - 1 do
+  begin
+    if dlg.Controls[i] is TButton then
+    begin
+      HookButtonControl(TWinControl(dlg.Controls[i]));
+      dlg.Controls[i].Invalidate;
+    end;
+  end;
+  {$ENDIF}
+  dlg.Invalidate;
+end;
+
 function ThemedMessageDlg(const aCaption, Msg: string; DlgType: TMsgDlgType;
   Buttons: TMsgDlgButtons; HelpCtx: Longint = 0): Integer;
 var
   dlg: TForm;
+  hook: TMessageDlgShowHook;
   i: Integer;
   ctrl: TControl;
 begin
@@ -1762,6 +2663,9 @@ begin
     dlg.HelpContext := HelpCtx;
     dlg.Position := poScreenCenter;
 
+    hook := TMessageDlgShowHook.Create(dlg);
+    dlg.OnShow := @hook.OnDialogShow;
+
     if CurrentSkin.IsDark then
     begin
       dlg.Color := CurrentSkin.PanelBg;
@@ -1769,36 +2673,11 @@ begin
       begin
         ctrl := dlg.Controls[i];
         if ctrl is TLabel then
-        begin
-          TLabel(ctrl).Font.Color := CurrentSkin.PanelText;
-        end
+          TLabel(ctrl).Font.Color := CurrentSkin.PanelText
         else if ctrl is TButton then
-        begin
           TButton(ctrl).Font.Color := CurrentSkin.PanelText;
-        end;
       end;
     end;
-
-    dlg.HandleNeeded;
-    for i := 0 to dlg.ControlCount - 1 do
-    begin
-      if dlg.Controls[i] is TWinControl then
-        TWinControl(dlg.Controls[i]).HandleNeeded;
-    end;
-
-    ApplySkinToForm(dlg, CurrentSkin);
-
-    {$IFDEF WINDOWS}
-    ApplyDarkModeToWindow(dlg, CurrentSkin.IsDark);
-    for i := 0 to dlg.ControlCount - 1 do
-    begin
-      if dlg.Controls[i] is TButton then
-      begin
-        HookButtonControl(TWinControl(dlg.Controls[i]));
-        dlg.Controls[i].Invalidate;
-      end;
-    end;
-    {$ENDIF}
 
     Result := dlg.ShowModal;
   finally

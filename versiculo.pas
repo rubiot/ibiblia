@@ -24,6 +24,8 @@ type
   TStrongsCountMode = (scNone, scCountWords, scCountStrongs);
   TVerseViewMode = (vvmAssoc, vvmEdit, vvmProps);
   TOnVerseViewModeChangeEvent = procedure (Sender: TVersiculo; NewMode: TVerseViewMode) of object;
+  TOnVerseStatusChangeEvent = procedure (Sender: TVersiculo; NewStatus: Integer) of object;
+  TOnVerseNavigateEvent = procedure (Sender: TVersiculo; Delta: Integer) of object;
 
   { TVersiculo }
 
@@ -66,6 +68,18 @@ type
     FTranslationName: string;
     FTranslationPanel: TPanel;
     FTranslationLabel: TLabel;
+    FShowStatusBar: Boolean;
+    FStatusBarPanel: TPanel;
+    FStatusIndex: Integer;
+    FHotStatusIdx: Integer;
+    FUseTwoLineStatus: Boolean;
+    FStatusLabels: array[0..3] of string;
+    FStatusRects: array[0..3] of TRect;
+    FOnStatusChange: TOnVerseStatusChangeEvent;
+    FNavPanel: TPanel;
+    FNavRects: array[0..1] of TRect;
+    FHotNavIdx: Integer;
+    FOnNavigateVerse: TOnVerseNavigateEvent;
     FXML: string;
     FONTParser: TONTParser;
     FSyntagmPopupMenu: TPopupMenu;
@@ -119,6 +133,17 @@ type
     procedure OnMemoPropsChange(Sender: TObject);
     procedure SetViewMode(NewMode: TVerseViewMode);
     procedure SetTranslationName(const AValue: string);
+    procedure SetShowStatusBar(AValue: Boolean);
+    procedure SetStatusIndex(AValue: Integer);
+    procedure MeasureStatusBarLayout(AvailWidth: Integer; out TotalWidth: Integer);
+    procedure OnStatusBarPaint(Sender: TObject);
+    procedure OnStatusBarMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
+    procedure OnStatusBarMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+    procedure OnStatusBarMouseLeave(Sender: TObject);
+    procedure OnNavPanelPaint(Sender: TObject);
+    procedure OnNavPanelMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
+    procedure OnNavPanelMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+    procedure OnNavPanelMouseLeave(Sender: TObject);
     procedure OnCopyAssociationsJSONToClipboard(Sender: TObject);
     procedure OnCopySintagmasAsJSON(Sender: TObject);
     function GetAssociationsJSON: string;
@@ -176,6 +201,11 @@ type
     property MemoProps: TMemo read FMemoProps;
     property MemoPropsModified: Boolean read FMemoPropsModified write FMemoPropsModified;
     property OnViewModeChange: TOnVerseViewModeChangeEvent read FOnViewModeChange write FOnViewModeChange;
+    procedure SetStatusLabels(const L0, L1, L2, L3: string);
+    property ShowStatusBar: Boolean read FShowStatusBar write SetShowStatusBar;
+    property StatusIndex: Integer read FStatusIndex write SetStatusIndex;
+    property OnStatusChange: TOnVerseStatusChangeEvent read FOnStatusChange write FOnStatusChange;
+    property OnNavigateVerse: TOnVerseNavigateEvent read FOnNavigateVerse write FOnNavigateVerse;
     property TranslationName: string read FTranslationName write SetTranslationName;
     property TranslationPanel: TPanel read FTranslationPanel;
     property TranslationLabel: TLabel read FTranslationLabel;
@@ -237,6 +267,19 @@ end;
 constructor TVersiculo.Criar(TheOwner : TScrollBox);
 begin
   FPanel := TheOwner;
+  FShowStatusBar        := False;
+  FStatusBarPanel       := nil;
+  FStatusIndex          := 0;
+  FHotStatusIdx         := -1;
+  FUseTwoLineStatus     := False;
+  FStatusLabels[0]      := 'Not associated';
+  FStatusLabels[1]      := 'Associating';
+  FStatusLabels[2]      := 'Needs review';
+  FStatusLabels[3]      := 'Associated';
+  FOnStatusChange       := nil;
+  FNavPanel             := nil;
+  FHotNavIdx            := -1;
+  FOnNavigateVerse      := nil;
 
   FAtivo := assigned(FPanel);
 
@@ -294,7 +337,9 @@ begin
     FEdit.Free;
     FSyntagmPopupMenu.Free;
     FVersePopupMenu.Free;
+    if assigned(FNavPanel) then FreeAndNil(FNavPanel);
     if assigned(FTabPanel) then FreeAndNil(FTabPanel);
+    if assigned(FStatusBarPanel) then FreeAndNil(FStatusBarPanel);
     if assigned(FTranslationPanel) then FreeAndNil(FTranslationPanel);
     if assigned(FMemoProps) then FreeAndNil(FMemoProps);
     FPanel.OnMouseDown  := nil;
@@ -510,6 +555,18 @@ begin
 
   if assigned(FTranslationLabel) then
     FTranslationLabel.Font.Color := ASkin.PanelText;
+
+  if assigned(FStatusBarPanel) then
+  begin
+    FStatusBarPanel.Color := ASkin.PanelBg;
+    FStatusBarPanel.Invalidate;
+  end;
+
+  if assigned(FNavPanel) then
+  begin
+    FNavPanel.Color := ASkin.WindowBg;
+    FNavPanel.Invalidate;
+  end;
 
   if assigned(FTabPanel) then
   begin
@@ -1361,6 +1418,8 @@ procedure TVersiculo.OrganizarSintagmas;
 var
   syntagm: TSyntagm;
   x, y, h: smallint;
+  hasVisibleWords: Boolean;
+  navW, navH, navX, navY: Integer;
 begin
   if not Ativo or FDestruindo or not assigned(FSintagmas) then
     exit;
@@ -1368,12 +1427,68 @@ begin
   x := StartingXPos; // starting x position
   y := 0;            // starting y position
   h := 0;            // line height
+  hasVisibleWords := False;
   for syntagm in FSintagmas do
     if assigned(syntagm.LabelRef) then
+    begin
       PositionSyntagm(syntagm, x, y, h);
+      if (syntagm.Kind in [tsSintagma, tsPontuacao]) and syntagm.LabelRef.Visible and (Trim(syntagm.Text) <> '') then
+        hasVisibleWords := True;
+    end;
 
   if (FStrongsCountMode <> scNone) and assigned(FStrongCount) then
     PositionSyntagm(FStrongCount, x, y, h);
+
+  if Assigned(FNavPanel) then
+  begin
+    if (FViewMode = vvmAssoc) and hasVisibleWords and Assigned(Painel) then
+    begin
+      navW := FNavPanel.Width;
+      navH := FNavPanel.Height;
+      if FRightToLeft then
+      begin
+        navX := x - navW - 6;
+        if navX < 6 then
+        begin
+          inc(y, Max(navH, h));
+          h := navH;
+          navX := Max(6, StartingXPos - navW);
+        end;
+      end
+      else
+      begin
+        navX := x + 6;
+        if (navX + navW) > (Painel.ClientWidth - 6) then
+        begin
+          inc(y, Max(navH, h));
+          h := navH;
+          navX := StartingXPos;
+        end;
+      end;
+      navY := y + Max(0, (Max(navH, h) - navH) div 2);
+      FNavPanel.Color := CurrentSkin.WindowBg;
+      FNavPanel.SetBounds(navX, navY, navW, navH);
+      FNavPanel.Visible := True;
+      if FNavPanel.HandleAllocated then
+      begin
+        with FNavPanel.ScreenToClient(Mouse.CursorPos) do
+        begin
+          if (X >= FNavRects[0].Left) and (X < FNavRects[0].Right) and (Y >= 0) and (Y < navH) then
+            FHotNavIdx := 0
+          else if (X >= FNavRects[1].Left) and (X < FNavRects[1].Right) and (Y >= 0) and (Y < navH) then
+            FHotNavIdx := 1
+          else
+            FHotNavIdx := -1;
+        end;
+      end
+      else
+        FHotNavIdx := -1;
+      FNavPanel.Invalidate;
+    end
+    else
+      FNavPanel.Visible := False;
+  end;
+
   RepositionTabPanel;
 end;
 
@@ -1693,30 +1808,510 @@ begin
   end;
 end;
 
+procedure TVersiculo.MeasureStatusBarLayout(AvailWidth: Integer; out TotalWidth: Integer);
+var
+  i, curX, btnW, gap, groupW, targetCenter: Integer;
+begin
+  FUseTwoLineStatus := False;
+  btnW := 16;
+  // Half the previous spacing, continuously stretchable across the full range as the middle divider is adjusted
+  gap := EnsureRange((AvailWidth - (4 * btnW)) div 18, 2, 140);
+  groupW := (4 * btnW) + (3 * gap);
+  TotalWidth := groupW + 8;
+
+  if Assigned(FPanel) and Assigned(FStatusBarPanel) then
+    targetCenter := (FPanel.ClientWidth div 2) - FStatusBarPanel.Left
+  else
+    targetCenter := AvailWidth div 2;
+
+  curX := EnsureRange(targetCenter - (groupW div 2), 4, Max(4, AvailWidth - groupW - 4));
+
+  for i := 0 to 3 do
+  begin
+    FStatusRects[i] := Classes.Rect(curX, 0, curX + btnW, 24);
+    curX := curX + btnW + gap;
+  end;
+end;
+
+procedure TVersiculo.OnStatusBarPaint(Sender: TObject);
+  function BlendColor(C1, C2: TColor; T: Double): TColor;
+  var
+    rgb1, rgb2: LongInt;
+    r1, g1, b1, r2, g2, b2, rOut, gOut, bOut: Integer;
+  begin
+    if T <= 0.0 then Exit(C1);
+    if T >= 1.0 then Exit(C2);
+    rgb1 := ColorToRGB(C1);
+    rgb2 := ColorToRGB(C2);
+    r1 := rgb1 and 255;
+    g1 := (rgb1 shr 8) and 255;
+    b1 := (rgb1 shr 16) and 255;
+    r2 := rgb2 and 255;
+    g2 := (rgb2 shr 8) and 255;
+    b2 := (rgb2 shr 16) and 255;
+    rOut := Round(r1 + (r2 - r1) * T);
+    gOut := Round(g1 + (g2 - g1) * T);
+    bOut := Round(b1 + (b2 - b1) * T);
+    Result := MakeRGB(EnsureRange(rOut, 0, 255), EnsureRange(gOut, 0, 255), EnsureRange(bOut, 0, 255));
+  end;
+
+var
+  bmp: Graphics.TBitmap;
+  i, cx, cy, px, py, boxR, dummyW: Integer;
+  rc: TRect;
+  bgCol, fillCol, dotCol, ringCol, pixCol: TColor;
+  d, rOuter, rMid, hRing, rDot, tFill, tRing, tDot: Double;
+begin
+  if not Assigned(FStatusBarPanel) then Exit;
+  MeasureStatusBarLayout(FStatusBarPanel.ClientWidth, dummyW);
+
+  bmp := Graphics.TBitmap.Create;
+  try
+    bmp.SetSize(Max(1, FStatusBarPanel.ClientWidth), Max(1, FStatusBarPanel.ClientHeight));
+    bgCol := CurrentSkin.PanelBg;
+    fillCol := CurrentSkin.WindowBg;
+    bmp.Canvas.Brush.Style := bsSolid;
+    bmp.Canvas.Brush.Color := bgCol;
+    bmp.Canvas.FillRect(0, 0, bmp.Width, bmp.Height);
+
+    cy := bmp.Height div 2;
+    // Scale circle radius smoothly with Destination box width
+    if FStatusBarPanel.ClientWidth < 110 then
+    begin
+      rOuter := 5.8;
+      rMid := 5.1;
+      hRing := 0.70;
+      rDot := 3.0;
+    end
+    else
+    begin
+      rOuter := 6.8;
+      rMid := 6.05;
+      hRing := 0.75;
+      rDot := 3.6;
+    end;
+    boxR := Ceil(rOuter) + 2;
+
+    for i := 0 to 3 do
+    begin
+      rc := FStatusRects[i];
+      cx := (rc.Left + rc.Right) div 2;
+
+      case i of
+        0: dotCol := MakeRGB(205, 205, 205); // Not associated (#CDCDCD Silver/Gray)
+        1: dotCol := MakeRGB(255, 207, 57);  // Associating (#FFCF39 Golden Yellow)
+        2: dotCol := MakeRGB(243, 64, 93);   // Needs review (#F3405D Crimson Red)
+        3: dotCol := MakeRGB(75, 200, 66);   // Associated (#4BC842 Emerald Green)
+      else
+        dotCol := CurrentSkin.PanelText;
+      end;
+
+      if i = FStatusIndex then
+        ringCol := dotCol
+      else if i = FHotStatusIdx then
+        ringCol := CurrentSkin.PanelText
+      else
+        ringCol := CurrentSkin.WindowTextDim;
+
+      // Sub-pixel SDF anti-aliased circle rendering (smooth, non-corrugated circle & inner dot)
+      for py := Max(0, cy - boxR) to Min(bmp.Height - 1, cy + boxR) do
+        for px := Max(0, cx - boxR) to Min(bmp.Width - 1, cx + boxR) do
+        begin
+          d := Sqrt(Sqr(px - cx) + Sqr(py - cy));
+          if d > rOuter + 1.0 then
+            Continue;
+
+          pixCol := bgCol;
+
+          // 1. Smooth interior disk fill
+          tFill := EnsureRange((rOuter + 0.5) - d, 0.0, 1.0);
+          if tFill > 0.0 then
+            pixCol := BlendColor(pixCol, fillCol, tFill);
+
+          // 2. Smooth outer circular ring stroke
+          tRing := EnsureRange((hRing + 0.55) - Abs(d - rMid), 0.0, 1.0);
+          if tRing > 0.0 then
+            pixCol := BlendColor(pixCol, ringCol, tRing);
+
+          // 3. Smooth inner status-colored dot when selected
+          if i = FStatusIndex then
+          begin
+            tDot := EnsureRange((rDot + 0.55) - d, 0.0, 1.0);
+            if tDot > 0.0 then
+              pixCol := BlendColor(pixCol, dotCol, tDot);
+          end;
+
+          bmp.Canvas.Pixels[px, py] := pixCol;
+        end;
+    end;
+
+    FStatusBarPanel.Canvas.Draw(0, 0, bmp);
+  finally
+    bmp.Free;
+  end;
+end;
+
+procedure TVersiculo.OnStatusBarMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
+var
+  i, newHot: Integer;
+begin
+  newHot := -1;
+  for i := 0 to 3 do
+    if (X >= FStatusRects[i].Left) and (X < FStatusRects[i].Right) and
+       (Y >= FStatusRects[i].Top) and (Y < FStatusRects[i].Bottom) then
+    begin
+      newHot := i;
+      break;
+    end;
+
+  if newHot <> FHotStatusIdx then
+  begin
+    FHotStatusIdx := newHot;
+    if Assigned(FStatusBarPanel) then
+    begin
+      if newHot >= 0 then
+      begin
+        FStatusBarPanel.Cursor := crHandPoint;
+        FStatusBarPanel.Hint := Format('%s (%d)', [FStatusLabels[newHot], newHot + 1]);
+        FStatusBarPanel.ShowHint := True;
+      end
+      else
+      begin
+        FStatusBarPanel.Cursor := crDefault;
+        FStatusBarPanel.Hint := '';
+      end;
+      FStatusBarPanel.Invalidate;
+    end;
+  end;
+end;
+
+procedure TVersiculo.OnStatusBarMouseDown(Sender: TObject; Button: TMouseButton;
+  Shift: TShiftState; X, Y: Integer);
+var
+  i: Integer;
+begin
+  if Button <> mbLeft then Exit;
+  for i := 0 to 3 do
+    if (X >= FStatusRects[i].Left) and (X < FStatusRects[i].Right) and
+       (Y >= FStatusRects[i].Top) and (Y < FStatusRects[i].Bottom) then
+    begin
+      if FStatusIndex <> i then
+      begin
+        FStatusIndex := i;
+        if Assigned(FStatusBarPanel) then
+          FStatusBarPanel.Invalidate;
+        if Assigned(FOnStatusChange) then
+          FOnStatusChange(Self, i);
+      end
+      else if Assigned(FOnStatusChange) then
+        FOnStatusChange(Self, i);
+      break;
+    end;
+end;
+
+procedure TVersiculo.OnStatusBarMouseLeave(Sender: TObject);
+begin
+  if FHotStatusIdx <> -1 then
+  begin
+    FHotStatusIdx := -1;
+    if Assigned(FStatusBarPanel) then
+      FStatusBarPanel.Invalidate;
+  end;
+end;
+
+procedure TVersiculo.OnNavPanelPaint(Sender: TObject);
+  function BlendCol(C1, C2: TColor; T: Double): TColor;
+  var
+    rgb1, rgb2: LongInt;
+    r1, g1, b1, r2, g2, b2: Integer;
+  begin
+    if T <= 0.0 then Exit(C1);
+    if T >= 1.0 then Exit(C2);
+    rgb1 := ColorToRGB(C1);
+    rgb2 := ColorToRGB(C2);
+    r1 := rgb1 and 255; g1 := (rgb1 shr 8) and 255; b1 := (rgb1 shr 16) and 255;
+    r2 := rgb2 and 255; g2 := (rgb2 shr 8) and 255; b2 := (rgb2 shr 16) and 255;
+    Result := MakeRGB(
+      EnsureRange(Round(r1 + (r2 - r1) * T), 0, 255),
+      EnsureRange(Round(g1 + (g2 - g1) * T), 0, 255),
+      EnsureRange(Round(b1 + (b2 - b1) * T), 0, 255)
+    );
+  end;
+
+  function DistToSegment(px, py, x1, y1, x2, y2: Double): Double;
+  var
+    dx, dy, lenSq, t, projX, projY: Double;
+  begin
+    dx := x2 - x1;
+    dy := y2 - y1;
+    lenSq := dx * dx + dy * dy;
+    if lenSq <= 0.0001 then
+      Exit(Sqrt(Sqr(px - x1) + Sqr(py - y1)));
+    t := EnsureRange(((px - x1) * dx + (py - y1) * dy) / lenSq, 0.0, 1.0);
+    projX := x1 + t * dx;
+    projY := y1 + t * dy;
+    Result := Sqrt(Sqr(px - projX) + Sqr(py - projY));
+  end;
+
+var
+  bmp: Graphics.TBitmap;
+  idx, px, py: Integer;
+  rc: TRect;
+  cx, cy, tipX, armX, armTopY, armBotY, dGlow, dSeg1, dSeg2, dMin, tGlow, tStroke, halfThick: Double;
+  bgCol, glowCol, idleCol, hotCol, strokeCol, pixCol: TColor;
+begin
+  if not Assigned(FNavPanel) then Exit;
+  FNavRects[0] := Classes.Rect(0, 0, 18, FNavPanel.ClientHeight);
+  FNavRects[1] := Classes.Rect(20, 0, 38, FNavPanel.ClientHeight);
+
+  bmp := Graphics.TBitmap.Create;
+  try
+    bmp.SetSize(Max(1, FNavPanel.ClientWidth), Max(1, FNavPanel.ClientHeight));
+    bgCol := CurrentSkin.WindowBg;
+    idleCol := CurrentSkin.WindowTextDim;
+    if CurrentSkin.IsDark then
+    begin
+      glowCol := MakeRGB(30, 130, 220);
+      hotCol := MakeRGB(130, 215, 255);
+    end
+    else
+    begin
+      glowCol := CurrentSkin.PointedBg;
+      hotCol := CurrentSkin.PointedBg;
+    end;
+
+    bmp.Canvas.Brush.Style := bsSolid;
+    bmp.Canvas.Brush.Color := bgCol;
+    bmp.Canvas.FillRect(0, 0, bmp.Width, bmp.Height);
+
+    for idx := 0 to 1 do
+    begin
+      rc := FNavRects[idx];
+      cx := (rc.Left + rc.Right) * 0.5;
+      cy := (rc.Top + rc.Bottom) * 0.5;
+
+      if idx = 0 then
+      begin
+        // Left chevron '‹'
+        tipX := cx - 2.3;
+        armX := cx + 2.3;
+      end
+      else
+      begin
+        // Right chevron '›'
+        tipX := cx + 2.3;
+        armX := cx - 2.3;
+      end;
+      armTopY := cy - 4.5;
+      armBotY := cy + 4.5;
+
+      if idx = FHotNavIdx then
+      begin
+        strokeCol := hotCol;
+        halfThick := 0.85;
+      end
+      else
+      begin
+        strokeCol := idleCol;
+        halfThick := 0.72;
+      end;
+
+      for py := Max(0, rc.Top) to Min(bmp.Height - 1, rc.Bottom - 1) do
+        for px := Max(0, rc.Left) to Min(bmp.Width - 1, rc.Right - 1) do
+        begin
+          pixCol := bgCol;
+
+          // Subtle soft radial glow when hovered (Option 1 style)
+          if idx = FHotNavIdx then
+          begin
+            dGlow := Sqrt(Sqr(px - cx) + Sqr(py - cy));
+            if dGlow < 9.0 then
+            begin
+              tGlow := Sqr(1.0 - (dGlow / 9.0)) * 0.42;
+              pixCol := BlendCol(pixCol, glowCol, tGlow);
+            end;
+          end;
+
+          // Sub-pixel SDF anti-aliased chevron arms
+          dSeg1 := DistToSegment(px, py, tipX, cy, armX, armTopY);
+          dSeg2 := DistToSegment(px, py, tipX, cy, armX, armBotY);
+          dMin := Min(dSeg1, dSeg2);
+
+          tStroke := EnsureRange((halfThick + 0.55) - dMin, 0.0, 1.0);
+          if tStroke > 0.0 then
+            pixCol := BlendCol(pixCol, strokeCol, tStroke);
+
+          bmp.Canvas.Pixels[px, py] := pixCol;
+        end;
+    end;
+
+    FNavPanel.Canvas.Draw(0, 0, bmp);
+  finally
+    bmp.Free;
+  end;
+end;
+
+procedure TVersiculo.OnNavPanelMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
+var
+  i, newHot: Integer;
+begin
+  newHot := -1;
+  for i := 0 to 1 do
+    if (X >= FNavRects[i].Left) and (X < FNavRects[i].Right) and
+       (Y >= FNavRects[i].Top) and (Y < FNavRects[i].Bottom) then
+    begin
+      newHot := i;
+      break;
+    end;
+
+  if newHot <> FHotNavIdx then
+  begin
+    FHotNavIdx := newHot;
+    if Assigned(FNavPanel) then
+    begin
+      if newHot = 0 then
+      begin
+        FNavPanel.Cursor := crHandPoint;
+        FNavPanel.Hint := 'Previous verse';
+        FNavPanel.ShowHint := True;
+      end
+      else if newHot = 1 then
+      begin
+        FNavPanel.Cursor := crHandPoint;
+        FNavPanel.Hint := 'Next verse';
+        FNavPanel.ShowHint := True;
+      end
+      else
+      begin
+        FNavPanel.Cursor := crDefault;
+        FNavPanel.Hint := '';
+      end;
+      FNavPanel.Invalidate;
+    end;
+  end;
+end;
+
+procedure TVersiculo.OnNavPanelMouseDown(Sender: TObject; Button: TMouseButton;
+  Shift: TShiftState; X, Y: Integer);
+var
+  i: Integer;
+begin
+  if Button <> mbLeft then Exit;
+  for i := 0 to 1 do
+    if (X >= FNavRects[i].Left) and (X < FNavRects[i].Right) and
+       (Y >= FNavRects[i].Top) and (Y < FNavRects[i].Bottom) then
+    begin
+      if Assigned(FOnNavigateVerse) then
+      begin
+        if i = 0 then
+          FOnNavigateVerse(Self, -1)
+        else
+          FOnNavigateVerse(Self, 1);
+      end;
+      break;
+    end;
+end;
+
+procedure TVersiculo.OnNavPanelMouseLeave(Sender: TObject);
+begin
+  if FHotNavIdx <> -1 then
+  begin
+    FHotNavIdx := -1;
+    if Assigned(FNavPanel) then
+      FNavPanel.Invalidate;
+  end;
+end;
+
+procedure TVersiculo.SetShowStatusBar(AValue: Boolean);
+begin
+  if FShowStatusBar = AValue then Exit;
+  FShowStatusBar := AValue;
+  RepositionTabPanel;
+end;
+
+procedure TVersiculo.SetStatusIndex(AValue: Integer);
+var
+  clamped: Integer;
+begin
+  clamped := EnsureRange(AValue, 0, 3);
+  if FStatusIndex = clamped then Exit;
+  FStatusIndex := clamped;
+  if Assigned(FStatusBarPanel) and FStatusBarPanel.Visible then
+    FStatusBarPanel.Invalidate;
+end;
+
+procedure TVersiculo.SetStatusLabels(const L0, L1, L2, L3: string);
+begin
+  FStatusLabels[0] := L0;
+  FStatusLabels[1] := L1;
+  FStatusLabels[2] := L2;
+  FStatusLabels[3] := L3;
+  RepositionTabPanel;
+  if Assigned(FStatusBarPanel) and FStatusBarPanel.Visible then
+    FStatusBarPanel.Invalidate;
+end;
+
 procedure TVersiculo.RepositionTabPanel;
 var
-  availWidth: Integer;
+  availWidth, availCenterW, sbWidth, nameW, barTop: Integer;
 begin
   if assigned(FPanel) then
   begin
+    barTop := Max(0, FPanel.ClientHeight - 24);
+
     if assigned(FTabPanel) then
     begin
+      FTabPanel.Height := 24;
       FTabPanel.Left := Max(0, FPanel.ClientWidth - FTabPanel.Width - 2);
-      FTabPanel.Top := Max(0, FPanel.ClientHeight - FTabPanel.Height - 2);
+      FTabPanel.Top := barTop;
       FTabPanel.BringToFront;
     end;
 
     if assigned(FTranslationPanel) then
     begin
+      FTranslationPanel.Height := 24;
       FTranslationPanel.Left := 2;
-      FTranslationPanel.Top := Max(0, FPanel.ClientHeight - FTranslationPanel.Height - 2);
+      FTranslationPanel.Top := barTop;
       if assigned(FTabPanel) then
-        availWidth := Max(20, FTabPanel.Left - 6)
+        availWidth := Max(20, FTabPanel.Left - 2)
       else
         availWidth := Max(20, FPanel.ClientWidth - 4);
-      FTranslationPanel.Width := availWidth;
-      FTranslationPanel.BringToFront;
+
+      if FShowStatusBar and assigned(FStatusBarPanel) then
+      begin
+        if FTranslationPanel.HandleAllocated then
+        begin
+          FTranslationPanel.Canvas.Font.Assign(FTranslationLabel.Font);
+          nameW := Min(Max(60, (availWidth * 2) div 5), 10 + FTranslationPanel.Canvas.TextWidth(FTranslationName) + 8);
+        end
+        else
+          nameW := Min(130, 10 + Length(FTranslationName) * 6 + 8);
+
+        FTranslationPanel.Width := Max(30, nameW);
+        FStatusBarPanel.Top := barTop;
+        FStatusBarPanel.Height := 24;
+        FStatusBarPanel.Left := 2 + FTranslationPanel.Width;
+        FStatusBarPanel.Width := Max(68, FTabPanel.Left - FStatusBarPanel.Left);
+        availCenterW := FStatusBarPanel.Width;
+        MeasureStatusBarLayout(availCenterW, sbWidth);
+        FStatusBarPanel.Visible := True;
+        FTranslationPanel.BringToFront;
+        FStatusBarPanel.BringToFront;
+        FStatusBarPanel.Invalidate;
+        if FStatusBarPanel.HandleAllocated then
+          FStatusBarPanel.Repaint;
+      end
+      else
+      begin
+        if assigned(FStatusBarPanel) then
+          FStatusBarPanel.Visible := False;
+        FTranslationPanel.Width := availWidth;
+        FTranslationPanel.BringToFront;
+      end;
     end;
+
+    if assigned(FTabPanel) then
+      FTabPanel.BringToFront;
   end;
 end;
 
@@ -1755,7 +2350,7 @@ begin
   FTranslationPanel.Parent := FPanel;
   FTranslationPanel.Height := 24;
   FTranslationPanel.Width := 150;
-  FTranslationPanel.BevelOuter := bvRaised;
+  FTranslationPanel.BevelOuter := bvNone;
   FTranslationPanel.BorderStyle := bsNone;
   FTranslationPanel.Color := CurrentSkin.PanelBg;
   FTranslationPanel.Anchors := [akTop, akLeft];
@@ -1773,11 +2368,28 @@ begin
   FTranslationLabel.ShowHint := True;
   FTranslationLabel.Caption := FTranslationName;
 
+  FStatusBarPanel := TPanel.Create(FPanel);
+  FStatusBarPanel.Parent := FPanel;
+  FStatusBarPanel.Height := 26;
+  FStatusBarPanel.Width := 220;
+  FStatusBarPanel.Top := Max(0, FPanel.ClientHeight - 26);
+  FStatusBarPanel.Left := 120;
+  FStatusBarPanel.BevelOuter := bvNone;
+  FStatusBarPanel.BorderStyle := bsNone;
+  FStatusBarPanel.Caption := '';
+  FStatusBarPanel.Color := CurrentSkin.PanelBg;
+  FStatusBarPanel.Anchors := [akTop, akLeft];
+  FStatusBarPanel.Visible := FShowStatusBar;
+  FStatusBarPanel.OnPaint := @OnStatusBarPaint;
+  FStatusBarPanel.OnMouseMove := @OnStatusBarMouseMove;
+  FStatusBarPanel.OnMouseDown := @OnStatusBarMouseDown;
+  FStatusBarPanel.OnMouseLeave := @OnStatusBarMouseLeave;
+
   FTabPanel := TPanel.Create(FPanel);
   FTabPanel.Parent := FPanel;
-  FTabPanel.Height := 24;
-  FTabPanel.Width := 154;
-  FTabPanel.BevelOuter := bvRaised;
+  FTabPanel.Height := 26;
+  FTabPanel.Width := 118;
+  FTabPanel.BevelOuter := bvNone;
   FTabPanel.BorderStyle := bsNone;
   FTabPanel.Color := CurrentSkin.PanelBg;
   FTabPanel.Anchors := [akTop, akLeft];
@@ -1788,9 +2400,9 @@ begin
   FCbEdit.Parent := FTabPanel;
   FCbEdit.Caption := 'Edit';
   FCbEdit.Font.Color := CurrentSkin.PanelText;
-  FCbEdit.Left := 6;
-  FCbEdit.Top := 3;
-  FCbEdit.Width := 52;
+  FCbEdit.Left := 2;
+  FCbEdit.Top := 4;
+  FCbEdit.Width := 42;
   FCbEdit.Height := 18;
   FCbEdit.Font.Size := 8;
   FCbEdit.Checked := False;
@@ -1800,13 +2412,30 @@ begin
   FCbProps.Parent := FTabPanel;
   FCbProps.Caption := 'Properties';
   FCbProps.Font.Color := CurrentSkin.PanelText;
-  FCbProps.Left := 62;
-  FCbProps.Top := 3;
-  FCbProps.Width := 86;
+  FCbProps.Left := 46;
+  FCbProps.Top := 4;
+  FCbProps.Width := 70;
   FCbProps.Height := 18;
   FCbProps.Font.Size := 8;
   FCbProps.Checked := False;
   FCbProps.OnClick := @OnTabCheckBoxClick;
+
+  FNavPanel := TPanel.Create(FPanel);
+  FNavPanel.Parent := FPanel;
+  FNavPanel.Width := 38;
+  FNavPanel.Height := 22;
+  FNavPanel.BevelOuter := bvNone;
+  FNavPanel.BorderStyle := bsNone;
+  FNavPanel.Caption := '';
+  FNavPanel.Color := CurrentSkin.WindowBg;
+  FNavPanel.Anchors := [akTop, akLeft];
+  FNavPanel.Visible := False;
+  FNavPanel.OnPaint := @OnNavPanelPaint;
+  FNavPanel.OnMouseMove := @OnNavPanelMouseMove;
+  FNavPanel.OnMouseDown := @OnNavPanelMouseDown;
+  FNavPanel.OnMouseLeave := @OnNavPanelMouseLeave;
+  FNavRects[0] := Classes.Rect(0, 0, 18, 22);
+  FNavRects[1] := Classes.Rect(20, 0, 38, 22);
 
   FViewMode := vvmAssoc;
   RepositionTabPanel;
@@ -1958,11 +2587,13 @@ begin
       if assigned(FCbEdit) then FCbEdit.Checked := True;
       if assigned(FCbProps) then FCbProps.Checked := False;
       if assigned(FMemoProps) then FMemoProps.Visible := False;
+      if assigned(FNavPanel) then FNavPanel.Visible := False;
     end;
     vvmProps:
     begin
       if assigned(FCbEdit) then FCbEdit.Checked := False;
       if assigned(FCbProps) then FCbProps.Checked := True;
+      if assigned(FNavPanel) then FNavPanel.Visible := False;
       if assigned(FMemoProps) then
       begin
         FMemoProps.BringToFront;

@@ -20,6 +20,7 @@ type
     OpenDialog1: TOpenDialog;
     procedure CheckListBox1ClickCheck(Sender: TObject);
     procedure CheckListBox2ClickCheck(Sender: TObject);
+    procedure FormShow(Sender: TObject);
   private
     { private declarations }
   public
@@ -44,10 +45,32 @@ begin
   CheckListBox1.Checked[CheckListBox2.ItemIndex] := not CheckListBox2.ItemEnabled[CheckListBox2.ItemIndex];
 end;
 
+procedure TFrmMesclarProjetos.FormShow(Sender: TObject);
+begin
+  HandleNeeded;
+  Button1.HandleNeeded;
+  CheckListBox1.HandleNeeded;
+  CheckListBox2.HandleNeeded;
+
+  ApplySkinToForm(Self, CurrentSkin);
+  {$IFDEF WINDOWS}
+  HookButtonControl(Button1);
+  {$ENDIF}
+  if CurrentSkin.IsDark then
+  begin
+    Button1.Font.Color := CurrentSkin.PanelText;
+    CheckListBox1.Color := CurrentSkin.WindowBg;
+    CheckListBox1.Font.Color := CurrentSkin.WindowText;
+    CheckListBox2.Color := CurrentSkin.WindowBg;
+    CheckListBox2.Font.Color := CurrentSkin.WindowText;
+  end;
+end;
+
 procedure TFrmMesclarProjetos.InicializarForm;
 var
   i: integer;
 begin
+  OnShow := @FormShow;
   ApplySkinToForm(Self, CurrentSkin);
   {$IFDEF WINDOWS}
   HookButtonControl(Button1);
@@ -71,4 +94,3 @@ initialization
   {$I formmesclarprojetos.lrs}
 
 end.
-

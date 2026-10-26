@@ -113,9 +113,11 @@ type
     FGlobalDicStrongGreekPath: string;
     FGlobalDicStrongHebrewPath: string;
     FGlobalDicMorfoPath: string;
+    FGlobalDicEnglishPath: string;
     FGlobalDicStrongGreek: TSQLQuery;
     FGlobalDicStrongHebrew: TSQLQuery;
     FGlobalDicMorfo: TSQLQuery;
+    FGlobalDicEnglish: TSQLQuery;
     FUseDefaultDict: array[tbOrigem..tbConsulta2] of Boolean;
     FSugeridor: TGerSugestoes;
     FParesAntigos: TStringList;
@@ -124,6 +126,10 @@ type
     FMemoComentarios: TMemo;
     FRadioGroupSituacao: TRadioGroup;
     FTemporizador: TTimer;
+    FDestPopupTimer: TTimer;
+    FDestPopupSyntagm: TSyntagm;
+    FHoveredAssocDestSyntagm: TSyntagm;
+    FDestPopupActive: Boolean;
     FAtrasoExibicao: Cardinal;
     FEscopo: TEscopoTexto;
     FPopupTrigger: TPopupTrigger;
@@ -178,6 +184,7 @@ type
     function ResgatarInfo(info: string): string;
     function ObterDefinicaoStrong(strong: string; texto: TTipoTextoBiblico): string;
     function ObterDefinicaoMorfo(morfo: string; texto: TTipoTextoBiblico): string;
+    function ObterDefinicaoPalavraIngles(const wordText: string; texto: TTipoTextoBiblico; out matchedSubject: string): string;
     function FormatRTF(rtf: string): string;
     procedure SetVerseText(versiculo: string; texto: TTipoTextoBiblico; replace: boolean);
     procedure PreRolagemVersiculo(DataSet: TDataSet);
@@ -193,6 +200,15 @@ type
     procedure OnExportBibleModule(Sender: TVersiculo);
     procedure OnMudancaVersiculo(Sender: TObject; Node: TTreeNode);
     procedure OnAlterarTextoVersiculo(Sender: TMemoVersiculo);
+    procedure OnLivePreviewVersiculo(Sender: TMemoVersiculo);
+    procedure OnTrocarSecaoEdit(SectionIndex: Integer);
+    procedure OnDestinoStatusChange(Sender: TVersiculo; NewStatus: Integer);
+    procedure OnVerseNavigate(Sender: TVersiculo; Delta: Integer);
+    function GetSelectedUnassociatedSourceSyntagm: TSyntagm;
+    function IsMouseInDestinationPanel(out CursorPos: TPoint): Boolean;
+    procedure PopulatePopupForSyntagm(s: TSyntagm; v: TTipoTextoBiblico);
+    procedure UpdateDestinationPopup;
+    procedure OnDestPopupTimer(Sender: TObject);
     procedure OnExibirDefinicao(Sender: TObject);
     procedure OnDblClickVersiculo(Sender: TObject);
     procedure OnVerseViewModeChange(Sender: TVersiculo; NewMode: TVerseViewMode);
@@ -207,6 +223,7 @@ type
     function ObterTextoDoCampo(AField: TField): string;
     function BuscarDefinicaoStrongNaQuery(qry: TSQLQuery; const strongCode: string; isHebrew: Boolean): string;
     function BuscarDefinicaoMorfoNaQuery(qry: TSQLQuery; const morphCode: string): string;
+    function BuscarDefinicaoPalavraInglesNaQuery(qry: TSQLQuery; const wordText: string; out matchedSubject: string): string;
     function SanitizarFontesRTF(const rtf: string): string;
     function ObterPalavrasBiblia(v: TVersiculo): string;
     function GetUseDefaultDict(texto: TTipoTextoBiblico): Boolean;
@@ -248,7 +265,7 @@ type
     function ObterFonteTexto(texto: TTipoTextoBiblico): TFont;
     function AtribuirDicStrong(dic: string; textos: STextosBiblicos): boolean;
     function AtribuirDicMorfo(dic: string; textos: STextosBiblicos): boolean;
-    procedure ConfigurarDicionariosGlobais(useGlobal: Boolean; const greekPath, hebrewPath, morphPath: string);
+    procedure ConfigurarDicionariosGlobais(useGlobal: Boolean; const greekPath, hebrewPath, morphPath: string; const englishPath: string = '');
     procedure AtribuirInfo(info, valor: string);
     function ObterInfo(info: string): string;
     function ObterTextoVersiculo(texto: TTipoTextoBiblico): string;
@@ -276,6 +293,7 @@ type
     function GetPropriedadesKey(t: TTipoTextoBiblico): string;
     procedure Vacuum;
     function GetSituacaoDescricao(index: Integer): string;
+    procedure SyncDestinoStatusBar;
     procedure FiltrarArvore(AStatus: Integer);
     procedure SelectTreeNode(id: string);
     function IrParaVersiculoSeguinteComSituacao(AStatus: Integer): boolean;
@@ -325,6 +343,7 @@ type
     property GlobalDicStrongGreekPath: string read FGlobalDicStrongGreekPath;
     property GlobalDicStrongHebrewPath: string read FGlobalDicStrongHebrewPath;
     property GlobalDicMorfoPath: string read FGlobalDicMorfoPath;
+    property GlobalDicEnglishPath: string read FGlobalDicEnglishPath;
     property UseDefaultDict[texto: TTipoTextoBiblico]: Boolean read GetUseDefaultDict write SetUseDefaultDict;
   end;
 
@@ -335,7 +354,7 @@ resourcestring
   SStatusNotAssociated = 'Not associated';
   SStatusAssociating = 'Associating';
   SStatusNeedsReview = 'Needs review';
-  SStatusAssociated = 'Associated!';
+  SStatusAssociated = 'Associated';
   SAnalyticalConcordance = 'Anaytical Concordance';
   SSyntheticConcordance = 'Synthetic Concordance';
   SOTConcordanceNotImplementedYet = 'Old Testament concordance is not implemented yet';
@@ -432,6 +451,36 @@ end;
 procedure TProjeto.SetSituacaoDescricao(index: Integer; descricao: string);
 begin
   AtribuirInfo('status.description.' + IntToStr(index), descricao);
+  SyncDestinoStatusBar;
+end;
+
+procedure TProjeto.SyncDestinoStatusBar;
+var
+  s0, s1, s2, s3: string;
+  curSit: Integer;
+begin
+  if not Assigned(FAVersiculo[tbDestino]) then Exit;
+  if FAtivo and Assigned(FTblPares) and FTblPares.Active then
+  begin
+    s0 := GetSituacaoDescricao(0);
+    s1 := GetSituacaoDescricao(1);
+    s2 := GetSituacaoDescricao(2);
+    s3 := GetSituacaoDescricao(3);
+    curSit := Situacao;
+  end
+  else
+  begin
+    s0 := DefaultSituacaoDescricao[0];
+    s1 := DefaultSituacaoDescricao[1];
+    s2 := DefaultSituacaoDescricao[2];
+    s3 := DefaultSituacaoDescricao[3];
+    if Assigned(FRadioGroupSituacao) and (FRadioGroupSituacao.ItemIndex >= 0) then
+      curSit := FRadioGroupSituacao.ItemIndex
+    else
+      curSit := 0;
+  end;
+  FAVersiculo[tbDestino].SetStatusLabels(s0, s1, s2, s3);
+  FAVersiculo[tbDestino].StatusIndex := curSit;
 end;
 
 function TProjeto.HasSituacaoCustomizada: boolean;
@@ -784,6 +833,11 @@ begin
   if (newVal >= 0) and (newVal <= 3) then
     inc(FTotaisSituacao[newVal]);
 
+  if Assigned(FAVersiculo[tbDestino]) then
+    FAVersiculo[tbDestino].StatusIndex := newVal;
+  if Assigned(FRadioGroupSituacao) and (FRadioGroupSituacao.ItemIndex <> newVal) then
+    FRadioGroupSituacao.ItemIndex := newVal;
+
   AtualizarArvore(ID);
 end;
 
@@ -974,21 +1028,41 @@ begin
 end;
 
 function TProjeto.GetChapterText: TStringList;
+var
+  savedMarker: string;
+
   function GetText(rulesRx: TRegexList; replaceTo: TStringList): string;
   var
     i: integer;
+    srcTxt, dstTxt: string;
   begin
     case ChapterViewText of
       tbOrigem, tbDestino, tbConsulta1, tbConsulta2:
-        result := FTblPares.Fields[FACamposTexto[ChapterViewText]].AsString.Replace(#239#187#191, '');
+      begin
+        if (GetID() = savedMarker) and Assigned(FMemoVersiculo) and FMemoVersiculo.Ativo and
+           (FAVersiculo[ChapterViewText] = FMemoVersiculo.Versiculo) then
+          result := string(FMemoVersiculo.Texto).Replace(#239#187#191, '')
+        else
+          result := FTblPares.Fields[FACamposTexto[ChapterViewText]].AsString.Replace(#239#187#191, '');
+      end;
       tbInterlinear:
       begin
+        srcTxt := FTblPares.Fields[FACamposTexto[tbOrigem]].AsString;
+        dstTxt := FTblPares.Fields[FACamposTexto[tbDestino]].AsString;
+        if (GetID() = savedMarker) and Assigned(FMemoVersiculo) and FMemoVersiculo.Ativo then
+        begin
+          if FMemoVersiculo.Versiculo = FAVersiculo[tbOrigem] then
+            srcTxt := string(FMemoVersiculo.Texto)
+          else if FMemoVersiculo.Versiculo = FAVersiculo[tbDestino] then
+            dstTxt := string(FMemoVersiculo.Texto);
+        end;
+
         if length(FTblPares.FieldByName('pare_pares').AsString) = 0 then
-          result := FTblPares.Fields[FACamposTexto[tbOrigem]].AsString
+          result := srcTxt
         else
         begin
-          FATmpVerse[tbOrigem ].Texto := FTblPares.Fields[FACamposTexto[tbOrigem] ].AsString;
-          FATmpVerse[tbDestino].Texto := FTblPares.Fields[FACamposTexto[tbDestino]].AsString;
+          FATmpVerse[tbOrigem ].Texto := srcTxt;
+          FATmpVerse[tbDestino].Texto := dstTxt;
           try
             FATmpVerse[tbOrigem ].Pares := FTblPares.FieldByName('pare_pares').AsString;
           except
@@ -1026,19 +1100,26 @@ var
   bkch, comments: string;
   rulesRx: TRegexList;
   replaceTo: TStringList;
-  //starttime: DWord;
+  wasEditing: Boolean;
 begin
-  //starttime := getTickCount;
-
   bkch := Format('%d,%d,', [BookID, Chapter]);
   result := TStringList.Create;
+  savedMarker := ID;
 
   rulesRx := nil;
   replaceTo := nil;
   if ChapterViewText = tbInterlinear then
     CompileInterlinearVerseRules(rulesRx, replaceTo, InterlinearMode);
 
-  StartScrollingSession;
+  wasEditing := Assigned(FMemoVersiculo) and FMemoVersiculo.Ativo;
+  if wasEditing then
+  begin
+    FMarker := ID;
+    ScrollEventsEnabled := false;
+  end
+  else
+    StartScrollingSession;
+
   RewindChapter;
   with FTblPares do
     while not FTblPares.EOF and GetID().StartsWith(bkch) do
@@ -1054,7 +1135,14 @@ begin
       result.Add(Format('%s%s', [GetText(rulesRx, replaceTo), IfThen(comments.IsEmpty, '', Format('<RF>%s<Rf>', [comments]))]));
       VersiculoSeguinte;
     end;
-  FinishScrollingSession;
+
+  if wasEditing then
+  begin
+    FTblPares.Locate('pare_id', savedMarker, []);
+    ScrollEventsEnabled := true;
+  end
+  else
+    FinishScrollingSession;
 
   if ChapterViewText = tbInterlinear then
   begin
@@ -1444,7 +1532,8 @@ var
   decomp: TDecompressionStream;
   outStream: TStringStream;
   buf: array[0..8191] of Byte;
-  count: Integer;
+  hdr: array[0..31] of Byte;
+  count, hdrLen, ofs: Integer;
 begin
   Result := '';
   if (AStream = nil) or (AStream.Size = 0) then
@@ -1486,6 +1575,38 @@ begin
         Result := '';
       end;
     end;
+
+    // 3. If both failed, check if a small header precedes the zlib magic bytes ($78 $9C / $78 $DA / $78 $01 / $78 $5E)
+    if (Result = '') and (AStream.Size > 6) then
+    begin
+      AStream.Position := 0;
+      hdrLen := AStream.Read(hdr, SizeOf(hdr));
+      for ofs := 1 to hdrLen - 2 do
+      begin
+        if (hdr[ofs] = $78) and (hdr[ofs + 1] in [$01, $5E, $9C, $DA]) then
+        begin
+          outStream.Size := 0;
+          AStream.Position := ofs;
+          try
+            decomp := TDecompressionStream.Create(AStream, False);
+            try
+              repeat
+                count := decomp.Read(buf, SizeOf(buf));
+                if count > 0 then
+                  outStream.WriteBuffer(buf, count);
+              until count = 0;
+              Result := outStream.DataString;
+            finally
+              decomp.Free;
+            end;
+          except
+            Result := '';
+          end;
+          if Result <> '' then
+            Break;
+        end;
+      end;
+    end;
   finally
     outStream.Free;
   end;
@@ -1519,8 +1640,8 @@ begin
     memStream.ReadBuffer(b, 1);
     memStream.Position := 0;
 
-    // Check if it already begins with '{' (standard uncompressed RTF)
-    if b = Ord('{') then
+    // Check if it already begins with '{' or '\' (standard uncompressed RTF)
+    if (b = Ord('{')) or (b = Ord('\')) then
     begin
       SetLength(Result, memStream.Size);
       memStream.ReadBuffer(Result[1], memStream.Size);
@@ -1530,8 +1651,8 @@ begin
     // Attempt decompression
     Result := DescompactarDados(memStream);
 
-    // Fallback if decompression returned empty: treat as raw text
-    if Result = '' then
+    // Fallback if decompression returned empty and data is not a failed zlib stream
+    if (Result = '') and (b <> $78) then
     begin
       memStream.Position := 0;
       SetLength(Result, memStream.Size);
@@ -1545,8 +1666,117 @@ end;
 function TProjeto.BuscarDefinicaoStrongNaQuery(qry: TSQLQuery; const strongCode: string; isHebrew: Boolean): string;
 var
   candidates: array of string;
-  c, s, digitsOnly, prefix: string;
-  i, numVal: Integer;
+  c, s, digitsOnly, suffix, langPrefix, u1, u2: string;
+  i, numVal, slashPos, spacePos: Integer;
+  auxQry: TSQLQuery;
+
+  procedure AddCandidate(const cand: string);
+  var
+    k: Integer;
+  begin
+    if cand = '' then Exit;
+    for k := 0 to High(candidates) do
+      if candidates[k] = cand then Exit;
+    SetLength(candidates, Length(candidates) + 1);
+    candidates[High(candidates)] := cand;
+  end;
+
+  function LerCamposDeQry(q: TSQLQuery): string;
+  var
+    pId, endIdx, targetId: Integer;
+    idStr, linkSubj: string;
+    linkQry: TSQLQuery;
+  begin
+    Result := '';
+    if (q = nil) or q.EOF then Exit;
+    if (q.FieldCount > 0) and (not q.Fields[0].IsNull) then
+      Result := ObterTextoDoCampo(q.Fields[0]);
+    if (Result = '') and (q.FieldCount > 1) and (not q.Fields[1].IsNull) then
+      Result := ObterTextoDoCampo(q.Fields[1]);
+
+    // Follow theWord meta=_twmgc_ redirect/link topics (e.g. Strong number redirecting to lemma/BDB entry)
+    if (Result <> '') and ((Pos('meta=_twmgc_', Result) > 0) or (Pos('type=link', Result) > 0)) and
+       Assigned(q.DataBase) then
+    begin
+      pId := Pos('id=', Result);
+      if pId > 0 then
+      begin
+        Inc(pId, 3);
+        endIdx := pId;
+        while (endIdx <= Length(Result)) and (Result[endIdx] in ['0'..'9']) do
+          Inc(endIdx);
+        idStr := Copy(Result, pId, endIdx - pId);
+        targetId := StrToIntDef(idStr, -1);
+        if targetId >= 0 then
+        begin
+          Result := '';
+          linkQry := TSQLQuery.Create(nil);
+          try
+            linkQry.DataBase := q.DataBase;
+            linkQry.Transaction := q.Transaction;
+            linkQry.SQL.Text := 'SELECT data, data2 FROM content WHERE topic_id = :tid';
+            linkQry.Params.ParamByName('tid').AsInteger := targetId;
+            linkQry.Open;
+            try
+              if not linkQry.EOF then
+              begin
+                if not linkQry.Fields[0].IsNull then
+                  Result := ObterTextoDoCampo(linkQry.Fields[0]);
+                if (Result = '') and (linkQry.FieldCount > 1) and (not linkQry.Fields[1].IsNull) then
+                  Result := ObterTextoDoCampo(linkQry.Fields[1]);
+              end;
+            finally
+              linkQry.Close;
+            end;
+          except
+            Result := '';
+          end;
+          linkQry.Free;
+        end;
+      end
+      else
+      begin
+        pId := Pos('subject=', Result);
+        if pId > 0 then
+        begin
+          Inc(pId, 8);
+          endIdx := pId;
+          while (endIdx <= Length(Result)) and not (Result[endIdx] in [#13, #10]) do
+            Inc(endIdx);
+          linkSubj := Trim(Copy(Result, pId, endIdx - pId));
+          if linkSubj <> '' then
+          begin
+            Result := '';
+            linkQry := TSQLQuery.Create(nil);
+            try
+              linkQry.DataBase := q.DataBase;
+              linkQry.Transaction := q.Transaction;
+              linkQry.SQL.Text := 'SELECT c.data, c.data2 FROM topics t JOIN content c ON t.id = c.topic_id WHERE t.subject = :subj';
+              linkQry.Params.ParamByName('subj').AsString := linkSubj;
+              linkQry.Open;
+              try
+                if not linkQry.EOF then
+                begin
+                  if not linkQry.Fields[0].IsNull then
+                    Result := ObterTextoDoCampo(linkQry.Fields[0]);
+                  if (Result = '') and (linkQry.FieldCount > 1) and (not linkQry.Fields[1].IsNull) then
+                    Result := ObterTextoDoCampo(linkQry.Fields[1]);
+                end;
+              finally
+                linkQry.Close;
+              end;
+            except
+              Result := '';
+            end;
+            linkQry.Free;
+          end;
+        end;
+      end;
+    end;
+
+    if Result <> '' then
+      Result := FormatRTF(Result);
+  end;
 
   function Executar(const term: string): string;
   begin
@@ -1556,12 +1786,8 @@ var
       qry.Params.ParamByName('strong').AsString := term;
       qry.Open;
       try
-        if (not qry.EOF) and (not qry.Fields[0].IsNull) then
-        begin
-          Result := ObterTextoDoCampo(qry.Fields[0]);
-          if Result <> '' then
-            Result := FormatRTF(Result);
-        end;
+        if not qry.EOF then
+          Result := LerCamposDeQry(qry);
       finally
         qry.Close;
       end;
@@ -1575,74 +1801,80 @@ begin
   if (qry = nil) or (strongCode = '') then Exit;
 
   s := Trim(strongCode);
+  while (s <> '') and (s[1] in ['<', ' ', '"', '''']) do
+    Delete(s, 1, 1);
+  while (s <> '') and (s[Length(s)] in ['>', ' ', '"', '''']) do
+    Delete(s, Length(s), 1);
+
+  spacePos := Pos(' ', s);
+  if spacePos > 1 then
+    s := Copy(s, 1, spacePos - 1);
+
+  slashPos := LastDelimiter('/', s);
+  if slashPos > 0 then
+    s := Copy(s, slashPos + 1, MaxInt);
+
+  if (Length(s) >= 2) and ((UpperCase(Copy(s, 1, 2)) = 'WH') or (UpperCase(Copy(s, 1, 2)) = 'WG')) then
+    Delete(s, 1, 1);
+
+  if s = '' then Exit;
+
   SetLength(candidates, 0);
 
-  // 1. Raw code
-  SetLength(candidates, Length(candidates) + 1);
-  candidates[High(candidates)] := s;
-
-  // Extract digits and prefix
+  // Extract contiguous digits and optional sub-entry letter suffix
   digitsOnly := '';
-  prefix := '';
+  suffix := '';
   for i := 1 to Length(s) do
   begin
     if s[i] in ['0'..'9'] then
       digitsOnly := digitsOnly + s[i]
-    else if digitsOnly = '' then
-      prefix := prefix + s[i];
+    else if (digitsOnly <> '') and (s[i] in ['a'..'z', 'A'..'Z']) then
+      suffix := suffix + s[i];
   end;
 
   if isHebrew then
+    langPrefix := 'H'
+  else
+    langPrefix := 'G';
+
+  numVal := StrToIntDef(digitsOnly, -1);
+
+  if numVal >= 0 then
   begin
-    if digitsOnly <> '' then
+    // 1. If there is a sub-entry letter suffix (e.g. H7225a), try with suffix first
+    if suffix <> '' then
     begin
-      numVal := StrToIntDef(digitsOnly, -1);
-      // 'H' + digits (e.g. H7225, H123)
-      SetLength(candidates, Length(candidates) + 1);
-      candidates[High(candidates)] := 'H' + digitsOnly;
-
-      // Plain digits (e.g. 7225, 123)
-      SetLength(candidates, Length(candidates) + 1);
-      candidates[High(candidates)] := digitsOnly;
-
-      // 4-digit zero-padded and 'H' + 4-digit zero-padded
-      if numVal >= 0 then
-      begin
-        SetLength(candidates, Length(candidates) + 1);
-        candidates[High(candidates)] := Format('%.4d', [numVal]);
-        SetLength(candidates, Length(candidates) + 1);
-        candidates[High(candidates)] := 'H' + Format('%.4d', [numVal]);
-        // 5-digit zero-padded and 'H' + 5-digit zero-padded
-        SetLength(candidates, Length(candidates) + 1);
-        candidates[High(candidates)] := Format('%.5d', [numVal]);
-        SetLength(candidates, Length(candidates) + 1);
-        candidates[High(candidates)] := 'H' + Format('%.5d', [numVal]);
-      end;
+      AddCandidate(langPrefix + IntToStr(numVal) + suffix);
+      AddCandidate(LowerCase(langPrefix) + IntToStr(numVal) + suffix);
+      AddCandidate(langPrefix + Format('%.4d', [numVal]) + suffix);
+      AddCandidate(LowerCase(langPrefix) + Format('%.4d', [numVal]) + suffix);
     end;
+
+    // 2. Unpadded uppercase and lowercase (e.g. H430, h430, H7225, h7225)
+    AddCandidate(langPrefix + IntToStr(numVal));
+    AddCandidate(LowerCase(langPrefix) + IntToStr(numVal));
+
+    // 3. As-is digits from tag and raw token
+    AddCandidate(langPrefix + digitsOnly);
+    AddCandidate(LowerCase(langPrefix) + digitsOnly);
+    AddCandidate(s);
+
+    // 4. 4-digit zero-padded (e.g. H0430, h0430)
+    AddCandidate(langPrefix + Format('%.4d', [numVal]));
+    AddCandidate(LowerCase(langPrefix) + Format('%.4d', [numVal]));
+
+    // 5. 5-digit zero-padded (e.g. H00430, H07225)
+    AddCandidate(langPrefix + Format('%.5d', [numVal]));
+    AddCandidate(LowerCase(langPrefix) + Format('%.5d', [numVal]));
+
+    // 6. Plain numeric (unpadded, raw digits, 4-digit, 5-digit)
+    AddCandidate(IntToStr(numVal));
+    AddCandidate(digitsOnly);
+    AddCandidate(Format('%.4d', [numVal]));
+    AddCandidate(Format('%.5d', [numVal]));
   end
   else
-  begin
-    if digitsOnly <> '' then
-    begin
-      numVal := StrToIntDef(digitsOnly, -1);
-      // 'G' + digits (e.g. G3056)
-      SetLength(candidates, Length(candidates) + 1);
-      candidates[High(candidates)] := 'G' + digitsOnly;
-
-      // Plain digits (e.g. 3056)
-      SetLength(candidates, Length(candidates) + 1);
-      candidates[High(candidates)] := digitsOnly;
-
-      // 4-digit zero-padded
-      if numVal >= 0 then
-      begin
-        SetLength(candidates, Length(candidates) + 1);
-        candidates[High(candidates)] := 'G' + Format('%.4d', [numVal]);
-        SetLength(candidates, Length(candidates) + 1);
-        candidates[High(candidates)] := Format('%.4d', [numVal]);
-      end;
-    end;
-  end;
+    AddCandidate(s);
 
   for c in candidates do
   begin
@@ -1650,6 +1882,71 @@ begin
     begin
       Result := Executar(c);
       if Result <> '' then Exit;
+    end;
+  end;
+
+  // Fallback for theWord Lexicon dictionaries (e.g. uBDB, BDB, TWOT, Mickelson)
+  // that index Strong numbers in topics_wordindex or prefix them in topics.subject
+  if (Result = '') and Assigned(qry.DataBase) and (numVal >= 0) then
+  begin
+    u1 := langPrefix + IntToStr(numVal);
+    u2 := langPrefix + Format('%.4d', [numVal]);
+
+    auxQry := TSQLQuery.Create(nil);
+    try
+      auxQry.DataBase := qry.DataBase;
+      auxQry.Transaction := qry.Transaction;
+
+      // A. Check topics_wordindex
+      try
+        auxQry.SQL.Text :=
+          'SELECT c.data, c.data2 FROM topics_wordindex wi ' +
+          'JOIN content c ON c.topic_id = wi.id ' +
+          'WHERE LOWER(wi.word) IN (:w1, :w2, :w3) ' +
+          'ORDER BY wi.priority ASC, wi.id ASC LIMIT 1';
+        auxQry.Params.ParamByName('w1').AsString := LowerCase(u1);
+        auxQry.Params.ParamByName('w2').AsString := LowerCase(u2);
+        auxQry.Params.ParamByName('w3').AsString := LowerCase(langPrefix + Format('%.5d', [numVal]));
+        auxQry.Open;
+        try
+          if not auxQry.EOF then
+            Result := LerCamposDeQry(auxQry);
+        finally
+          auxQry.Close;
+        end;
+      except
+        Result := '';
+      end;
+
+      if Result <> '' then Exit;
+
+      // B. Check topics.subject case-insensitively or with headword suffix (e.g. "H7225 ...", "H7225-...", "%(H7225)%")
+      try
+        auxQry.SQL.Text :=
+          'SELECT c.data, c.data2 FROM topics t ' +
+          'JOIN content c ON c.topic_id = t.id ' +
+          'WHERE UPPER(t.subject) = :u1 OR UPPER(t.subject) = :u2 ' +
+          '   OR UPPER(t.subject) LIKE :p1 OR UPPER(t.subject) LIKE :p2 ' +
+          '   OR UPPER(t.subject) LIKE :p3 OR UPPER(t.subject) LIKE :p4 ' +
+          'ORDER BY t.id ASC LIMIT 1';
+        auxQry.Params.ParamByName('u1').AsString := u1;
+        auxQry.Params.ParamByName('u2').AsString := u2;
+        auxQry.Params.ParamByName('p1').AsString := u1 + ' %';
+        auxQry.Params.ParamByName('p2').AsString := u1 + '-%';
+        auxQry.Params.ParamByName('p3').AsString := u1 + ':%';
+        auxQry.Params.ParamByName('p4').AsString := '%(' + u1 + ')%';
+        auxQry.Open;
+        try
+          if not auxQry.EOF then
+            Result := LerCamposDeQry(auxQry);
+        finally
+          auxQry.Close;
+        end;
+      except
+        Result := '';
+      end;
+    finally
+      auxQry.Free;
     end;
   end;
 end;
@@ -1667,9 +1964,12 @@ var
       qry.Params.ParamByName('morf').AsString := term;
       qry.Open;
       try
-        if (not qry.EOF) and (not qry.Fields[0].IsNull) then
+        if not qry.EOF then
         begin
-          Result := ObterTextoDoCampo(qry.Fields[0]);
+          if not qry.Fields[0].IsNull then
+            Result := ObterTextoDoCampo(qry.Fields[0]);
+          if (Result = '') and (qry.FieldCount > 1) and (not qry.Fields[1].IsNull) then
+            Result := ObterTextoDoCampo(qry.Fields[1]);
           if Result <> '' then
             Result := FormatRTF(Result);
         end;
@@ -1744,26 +2044,339 @@ begin
   end;
 end;
 
-procedure TProjeto.ConfigurarDicionariosGlobais(useGlobal: Boolean; const greekPath, hebrewPath, morphPath: string);
+function TProjeto.BuscarDefinicaoPalavraInglesNaQuery(qry: TSQLQuery; const wordText: string; out matchedSubject: string): string;
+var
+  candidates: array of string;
+  w, baseW, lw, c: string;
+  i: Integer;
+  hasLatinLetter, hasNonAscii: Boolean;
+  auxQry: TSQLQuery;
+
+  procedure AddCandidate(const cand: string);
+  var
+    k: Integer;
+  begin
+    if Length(cand) < 2 then Exit;
+    for k := 0 to High(candidates) do
+      if SameText(candidates[k], cand) and (candidates[k] = cand) then Exit;
+    SetLength(candidates, Length(candidates) + 1);
+    candidates[High(candidates)] := cand;
+  end;
+
+  function LerCamposDeQryIngles(q: TSQLQuery; const fallbackSubj: string; out outSubj: string): string;
+  var
+    pId, endIdx, targetId: Integer;
+    idStr, linkSubj: string;
+    linkQry: TSQLQuery;
+  begin
+    Result := '';
+    outSubj := fallbackSubj;
+    if (q = nil) or q.EOF then Exit;
+
+    if (q.FieldCount >= 3) then
+    begin
+      if not q.Fields[0].IsNull then
+        outSubj := Trim(q.Fields[0].AsString);
+      if outSubj = '' then
+        outSubj := fallbackSubj;
+      if not q.Fields[1].IsNull then
+        Result := ObterTextoDoCampo(q.Fields[1]);
+      if (Result = '') and (not q.Fields[2].IsNull) then
+        Result := ObterTextoDoCampo(q.Fields[2]);
+    end
+    else
+    begin
+      if (q.FieldCount > 0) and (not q.Fields[0].IsNull) then
+        Result := ObterTextoDoCampo(q.Fields[0]);
+      if (Result = '') and (q.FieldCount > 1) and (not q.Fields[1].IsNull) then
+        Result := ObterTextoDoCampo(q.Fields[1]);
+    end;
+
+    // Follow theWord meta=_twmgc_ redirect/link topics
+    if (Result <> '') and ((Pos('meta=_twmgc_', Result) > 0) or (Pos('type=link', Result) > 0)) and
+       Assigned(q.DataBase) then
+    begin
+      pId := Pos('id=', Result);
+      if pId > 0 then
+      begin
+        Inc(pId, 3);
+        endIdx := pId;
+        while (endIdx <= Length(Result)) and (Result[endIdx] in ['0'..'9']) do
+          Inc(endIdx);
+        idStr := Copy(Result, pId, endIdx - pId);
+        targetId := StrToIntDef(idStr, -1);
+        if targetId >= 0 then
+        begin
+          Result := '';
+          linkQry := TSQLQuery.Create(nil);
+          try
+            linkQry.DataBase := q.DataBase;
+            linkQry.Transaction := q.Transaction;
+            linkQry.SQL.Text := 'SELECT t.subject, c.data, c.data2 FROM topics t JOIN content c ON t.id = c.topic_id WHERE c.topic_id = :tid';
+            linkQry.Params.ParamByName('tid').AsInteger := targetId;
+            linkQry.Open;
+            try
+              if not linkQry.EOF then
+              begin
+                if not linkQry.Fields[0].IsNull then
+                  outSubj := Trim(linkQry.Fields[0].AsString);
+                if not linkQry.Fields[1].IsNull then
+                  Result := ObterTextoDoCampo(linkQry.Fields[1]);
+                if (Result = '') and (linkQry.FieldCount > 2) and (not linkQry.Fields[2].IsNull) then
+                  Result := ObterTextoDoCampo(linkQry.Fields[2]);
+              end;
+            finally
+              linkQry.Close;
+            end;
+          except
+            Result := '';
+          end;
+          linkQry.Free;
+        end;
+      end
+      else
+      begin
+        pId := Pos('subject=', Result);
+        if pId > 0 then
+        begin
+          Inc(pId, 8);
+          endIdx := pId;
+          while (endIdx <= Length(Result)) and not (Result[endIdx] in [#13, #10]) do
+            Inc(endIdx);
+          linkSubj := Trim(Copy(Result, pId, endIdx - pId));
+          if linkSubj <> '' then
+          begin
+            Result := '';
+            linkQry := TSQLQuery.Create(nil);
+            try
+              linkQry.DataBase := q.DataBase;
+              linkQry.Transaction := q.Transaction;
+              linkQry.SQL.Text := 'SELECT t.subject, c.data, c.data2 FROM topics t JOIN content c ON t.id = c.topic_id WHERE LOWER(t.subject) = LOWER(:subj) LIMIT 1';
+              linkQry.Params.ParamByName('subj').AsString := linkSubj;
+              linkQry.Open;
+              try
+                if not linkQry.EOF then
+                begin
+                  if not linkQry.Fields[0].IsNull then
+                    outSubj := Trim(linkQry.Fields[0].AsString);
+                  if not linkQry.Fields[1].IsNull then
+                    Result := ObterTextoDoCampo(linkQry.Fields[1]);
+                  if (Result = '') and (linkQry.FieldCount > 2) and (not linkQry.Fields[2].IsNull) then
+                    Result := ObterTextoDoCampo(linkQry.Fields[2]);
+                end;
+              finally
+                linkQry.Close;
+              end;
+            except
+              Result := '';
+            end;
+            linkQry.Free;
+          end;
+        end;
+      end;
+    end;
+
+    if Result <> '' then
+      Result := FormatRTF(Result);
+  end;
+
+  function Executar(const term: string; out outSubj: string): string;
+  begin
+    Result := '';
+    outSubj := term;
+    try
+      qry.Close;
+      qry.Params.ParamByName('word').AsString := term;
+      qry.Open;
+      try
+        if not qry.EOF then
+          Result := LerCamposDeQryIngles(qry, term, outSubj);
+      finally
+        qry.Close;
+      end;
+    except
+      Result := '';
+    end;
+  end;
+
+begin
+  Result := '';
+  matchedSubject := '';
+  if (qry = nil) or (wordText = '') then Exit;
+
+  // Normalize curly apostrophes/quotes and dashes
+  w := wordText;
+  w := StringReplace(w, #$E2#$80#$99, '''', [rfReplaceAll]);
+  w := StringReplace(w, #$E2#$80#$98, '''', [rfReplaceAll]);
+  w := StringReplace(w, #$E2#$80#$9C, '"', [rfReplaceAll]);
+  w := StringReplace(w, #$E2#$80#$9D, '"', [rfReplaceAll]);
+  w := StringReplace(w, #$E2#$80#$94, ' ', [rfReplaceAll]);
+  w := StringReplace(w, #$E2#$80#$93, ' ', [rfReplaceAll]);
+  w := Trim(w);
+
+  while (w <> '') and (w[1] in [' ', #9, #10, #13, '.', ',', ';', ':', '!', '?', '(', ')', '[', ']', '{', '}', '"', '''', '-', '/', '\', '|', '<', '>']) do
+    Delete(w, 1, 1);
+  while (w <> '') and (w[Length(w)] in [' ', #9, #10, #13, '.', ',', ';', ':', '!', '?', '(', ')', '[', ']', '{', '}', '"', '-', '/', '\', '|', '<', '>']) do
+    Delete(w, Length(w), 1);
+
+  if (w <> '') and (w[Length(w)] = '''') and
+     ((Length(w) < 2) or not (w[Length(w) - 1] in ['s', 'S'])) then
+  begin
+    while (w <> '') and (w[Length(w)] = '''') do
+      Delete(w, Length(w), 1);
+  end;
+
+  if Length(w) < 2 then Exit;
+
+  hasLatinLetter := False;
+  hasNonAscii := False;
+  for i := 1 to Length(w) do
+  begin
+    if w[i] in ['A'..'Z', 'a'..'z'] then
+      hasLatinLetter := True
+    else if Ord(w[i]) >= 128 then
+      hasNonAscii := True;
+  end;
+
+  if (not hasLatinLetter) or hasNonAscii then Exit;
+
+  SetLength(candidates, 0);
+  AddCandidate(w);
+
+  baseW := w;
+  if (Length(baseW) > 3) and ((Copy(baseW, Length(baseW) - 1, 2) = '''s') or (Copy(baseW, Length(baseW) - 1, 2) = '''S')) then
+  begin
+    baseW := Copy(baseW, 1, Length(baseW) - 2);
+    AddCandidate(baseW);
+  end
+  else if (Length(baseW) > 3) and ((Copy(baseW, Length(baseW) - 1, 2) = 's''') or (Copy(baseW, Length(baseW) - 1, 2) = 'S''')) then
+  begin
+    baseW := Copy(baseW, 1, Length(baseW) - 1);
+    AddCandidate(baseW);
+  end;
+
+  lw := LowerCase(baseW);
+  if (Length(lw) > 4) and (Copy(lw, Length(lw) - 2, 3) = 'ies') then
+    AddCandidate(Copy(baseW, 1, Length(baseW) - 3) + 'y');
+  if (Length(lw) > 4) and (Copy(lw, Length(lw) - 2, 3) = 'ves') then
+  begin
+    AddCandidate(Copy(baseW, 1, Length(baseW) - 3) + 'f');
+    AddCandidate(Copy(baseW, 1, Length(baseW) - 3) + 'fe');
+  end;
+  if (Length(lw) > 4) and (Copy(lw, Length(lw) - 1, 2) = 'es') then
+  begin
+    AddCandidate(Copy(baseW, 1, Length(baseW) - 2));
+    AddCandidate(Copy(baseW, 1, Length(baseW) - 1));
+  end;
+  if (Length(lw) > 3) and (lw[Length(lw)] = 's') and (lw[Length(lw) - 1] <> 's') then
+    AddCandidate(Copy(baseW, 1, Length(baseW) - 1));
+  if (Length(lw) > 4) and (Copy(lw, Length(lw) - 2, 3) = 'ied') then
+    AddCandidate(Copy(baseW, 1, Length(baseW) - 3) + 'y');
+  if (Length(lw) > 4) and (Copy(lw, Length(lw) - 1, 2) = 'ed') then
+  begin
+    AddCandidate(Copy(baseW, 1, Length(baseW) - 2));
+    AddCandidate(Copy(baseW, 1, Length(baseW) - 1));
+  end;
+  if (Length(lw) > 5) and (Copy(lw, Length(lw) - 2, 3) = 'ing') then
+  begin
+    AddCandidate(Copy(baseW, 1, Length(baseW) - 3));
+    AddCandidate(Copy(baseW, 1, Length(baseW) - 3) + 'e');
+  end;
+  if (Length(lw) > 5) and ((Copy(lw, Length(lw) - 2, 3) = 'eth') or (Copy(lw, Length(lw) - 2, 3) = 'est')) then
+  begin
+    AddCandidate(Copy(baseW, 1, Length(baseW) - 3));
+    AddCandidate(Copy(baseW, 1, Length(baseW) - 3) + 'e');
+  end;
+
+  for c in candidates do
+  begin
+    if c <> '' then
+    begin
+      Result := Executar(c, matchedSubject);
+      if Result <> '' then Exit;
+    end;
+  end;
+
+  // Fallback for dictionaries with disambiguated headwords (e.g. "Aaron (1)", "Aaron - 1")
+  // or topics_wordindex entries whose subject begins with the word
+  if (Result = '') and Assigned(qry.DataBase) then
+  begin
+    auxQry := TSQLQuery.Create(nil);
+    try
+      auxQry.DataBase := qry.DataBase;
+      auxQry.Transaction := qry.Transaction;
+      for c in candidates do
+      begin
+        if c = '' then Continue;
+        try
+          auxQry.SQL.Text :=
+            'SELECT t.subject, c.data, c.data2 FROM topics t ' +
+            'JOIN content c ON c.topic_id = t.id ' +
+            'WHERE UPPER(t.subject) LIKE :p1 OR UPPER(t.subject) LIKE :p2 ' +
+            'ORDER BY t.id ASC LIMIT 1';
+          auxQry.Params.ParamByName('p1').AsString := UpperCase(c) + ' (%';
+          auxQry.Params.ParamByName('p2').AsString := UpperCase(c) + ' -%';
+          auxQry.Open;
+          try
+            if not auxQry.EOF then
+              Result := LerCamposDeQryIngles(auxQry, c, matchedSubject);
+          finally
+            auxQry.Close;
+          end;
+        except
+          Result := '';
+        end;
+        if Result <> '' then Exit;
+      end;
+    finally
+      auxQry.Free;
+    end;
+  end;
+end;
+
+procedure TProjeto.ConfigurarDicionariosGlobais(useGlobal: Boolean; const greekPath, hebrewPath, morphPath: string; const englishPath: string = '');
 var
   v: TTipoTextoBiblico;
-  pGreek, pHebrew, pMorph: string;
+  pGreek, pHebrew, pMorph, pEnglish: string;
 begin
   FUseGlobalDicts := useGlobal;
 
   pGreek := Trim(greekPath);
   pHebrew := Trim(hebrewPath);
   pMorph := Trim(morphPath);
+  pEnglish := Trim(englishPath);
 
   if (pGreek <> '') and (not FileExists(pGreek)) then
-    pGreek := ExpandFileName(pGreek);
+  begin
+    if FileExists(ExtractFilePath(ParamStr(0)) + pGreek) then
+      pGreek := ExtractFilePath(ParamStr(0)) + pGreek
+    else
+      pGreek := ExpandFileName(pGreek);
+  end;
   if (pHebrew <> '') and (not FileExists(pHebrew)) then
-    pHebrew := ExpandFileName(pHebrew);
+  begin
+    if FileExists(ExtractFilePath(ParamStr(0)) + pHebrew) then
+      pHebrew := ExtractFilePath(ParamStr(0)) + pHebrew
+    else
+      pHebrew := ExpandFileName(pHebrew);
+  end;
   if (pMorph <> '') and (not FileExists(pMorph)) then
-    pMorph := ExpandFileName(pMorph);
+  begin
+    if FileExists(ExtractFilePath(ParamStr(0)) + pMorph) then
+      pMorph := ExtractFilePath(ParamStr(0)) + pMorph
+    else
+      pMorph := ExpandFileName(pMorph);
+  end;
+  if (pEnglish <> '') and (not FileExists(pEnglish)) then
+  begin
+    if FileExists(ExtractFilePath(ParamStr(0)) + pEnglish) then
+      pEnglish := ExtractFilePath(ParamStr(0)) + pEnglish
+    else
+      pEnglish := ExpandFileName(pEnglish);
+  end;
 
   // Greek / Default Strong
-  if FGlobalDicStrongGreekPath <> pGreek then
+  if (FGlobalDicStrongGreekPath <> pGreek) or ((pGreek <> '') and (FGlobalDicStrongGreek = nil)) then
   begin
     LiberarObjetoQuery(FGlobalDicStrongGreek);
     FGlobalDicStrongGreekPath := pGreek;
@@ -1771,7 +2384,7 @@ begin
     begin
       try
         FGlobalDicStrongGreek := CriarObjetoQuery(pGreek);
-        FGlobalDicStrongGreek.SQL.Text := 'select data from topics, content where subject = :strong and id = topic_id';
+        FGlobalDicStrongGreek.SQL.Text := 'select data, data2 from topics, content where subject = :strong and id = topic_id';
         FGlobalDicStrongGreek.Prepare;
       except
         LiberarObjetoQuery(FGlobalDicStrongGreek);
@@ -1780,7 +2393,7 @@ begin
   end;
 
   // Hebrew Strong
-  if FGlobalDicStrongHebrewPath <> pHebrew then
+  if (FGlobalDicStrongHebrewPath <> pHebrew) or ((pHebrew <> '') and (FGlobalDicStrongHebrew = nil)) then
   begin
     LiberarObjetoQuery(FGlobalDicStrongHebrew);
     FGlobalDicStrongHebrewPath := pHebrew;
@@ -1788,7 +2401,7 @@ begin
     begin
       try
         FGlobalDicStrongHebrew := CriarObjetoQuery(pHebrew);
-        FGlobalDicStrongHebrew.SQL.Text := 'select data from topics, content where subject = :strong and id = topic_id';
+        FGlobalDicStrongHebrew.SQL.Text := 'select data, data2 from topics, content where subject = :strong and id = topic_id';
         FGlobalDicStrongHebrew.Prepare;
       except
         LiberarObjetoQuery(FGlobalDicStrongHebrew);
@@ -1797,7 +2410,7 @@ begin
   end;
 
   // Morphology
-  if FGlobalDicMorfoPath <> pMorph then
+  if (FGlobalDicMorfoPath <> pMorph) or ((pMorph <> '') and (FGlobalDicMorfo = nil)) then
   begin
     LiberarObjetoQuery(FGlobalDicMorfo);
     FGlobalDicMorfoPath := pMorph;
@@ -1805,10 +2418,30 @@ begin
     begin
       try
         FGlobalDicMorfo := CriarObjetoQuery(pMorph);
-        FGlobalDicMorfo.SQL.Text := 'select data from topics, content where subject = :morf and id = topic_id';
+        FGlobalDicMorfo.SQL.Text := 'select data, data2 from topics, content where subject = :morf and id = topic_id';
         FGlobalDicMorfo.Prepare;
       except
         LiberarObjetoQuery(FGlobalDicMorfo);
+      end;
+    end;
+  end;
+
+  // English Word / Bible Dictionary
+  if (FGlobalDicEnglishPath <> pEnglish) or ((pEnglish <> '') and (FGlobalDicEnglish = nil)) then
+  begin
+    LiberarObjetoQuery(FGlobalDicEnglish);
+    FGlobalDicEnglishPath := pEnglish;
+    if (pEnglish <> '') and FileExists(pEnglish) then
+    begin
+      try
+        FGlobalDicEnglish := CriarObjetoQuery(pEnglish);
+        FGlobalDicEnglish.SQL.Text :=
+          'select t.subject, c.data, c.data2 from topics t, content c ' +
+          'where lower(t.subject) = lower(:word) and t.id = c.topic_id ' +
+          'order by case when t.subject = :word then 0 else 1 end, t.id asc limit 1';
+        FGlobalDicEnglish.Prepare;
+      except
+        LiberarObjetoQuery(FGlobalDicEnglish);
       end;
     end;
   end;
@@ -1829,8 +2462,8 @@ function TProjeto.ObterDefinicaoStrong(strong: string; texto: TTipoTextoBiblico
   ): string;
 var
   isHebrew: Boolean;
-  primaryQry, secondaryQry: TSQLQuery;
-  s: string;
+  s, cleanPart: string;
+  slashPos, spacePos: Integer;
 begin
   Result := '';
   s := Trim(strong);
@@ -1840,52 +2473,63 @@ begin
     Delete(s, 1, 1);
   while (s <> '') and (s[Length(s)] in ['>', ' ', '"', '''']) do
     Delete(s, Length(s), 1);
+
+  spacePos := Pos(' ', s);
+  if spacePos > 1 then
+    s := Copy(s, 1, spacePos - 1);
+
   if (Length(s) >= 2) and (UpperCase(Copy(s, 1, 2)) = 'WH') then
     Delete(s, 1, 1)
   else if (Length(s) >= 2) and (UpperCase(Copy(s, 1, 2)) = 'WG') then
     Delete(s, 1, 1);
 
-  if s = '' then Exit;
+  cleanPart := s;
+  slashPos := LastDelimiter('/', cleanPart);
+  if slashPos > 0 then
+    cleanPart := Copy(cleanPart, slashPos + 1, MaxInt);
+  if (Length(cleanPart) >= 2) and (UpperCase(Copy(cleanPart, 1, 2)) = 'WH') then
+    Delete(cleanPart, 1, 1)
+  else if (Length(cleanPart) >= 2) and (UpperCase(Copy(cleanPart, 1, 2)) = 'WG') then
+    Delete(cleanPart, 1, 1);
 
-  // 1. If default dictionaries are enabled for this module and queries assigned
-  if FUseGlobalDicts and FUseDefaultDict[texto] and (assigned(FGlobalDicStrongGreek) or assigned(FGlobalDicStrongHebrew)) then
+  if cleanPart = '' then Exit;
+
+  // Determine language strictly from Strong's prefix first, then verse/project scope
+  if (cleanPart[1] = 'H') or (cleanPart[1] = 'h') or (s[1] = 'H') or (s[1] = 'h') then
+    isHebrew := True
+  else if (cleanPart[1] = 'G') or (cleanPart[1] = 'g') or (s[1] = 'G') or (s[1] = 'g') then
+    isHebrew := False
+  else
   begin
-    // Determine language
-    if (s[1] = 'H') or (s[1] = 'h') then
+    if (FReference.BookID >= 1) and (FReference.BookID <= 39) then
       isHebrew := True
-    else if (s[1] = 'G') or (s[1] = 'g') then
+    else if FReference.BookID >= 40 then
       isHebrew := False
+    else if FEscopo = etOT then
+      isHebrew := True
     else
-    begin
-      if (FReference.BookID >= 1) and (FReference.BookID <= 39) then
-        isHebrew := True
-      else if FReference.BookID >= 40 then
-        isHebrew := False
-      else if FEscopo = etOT then
-        isHebrew := True
-      else
-        isHebrew := False;
-    end;
+      isHebrew := False;
+  end;
 
+  // 1. Default Dictionaries routing:
+  //    Hebrew Strong's numbers route strictly to FGlobalDicStrongHebrew;
+  //    Greek Strong's numbers route strictly to FGlobalDicStrongGreek.
+  //    Never convert a Hebrew H-code into a Greek G-code on the Greek dictionary.
+  if FUseGlobalDicts and FUseDefaultDict[texto] then
+  begin
     if isHebrew then
     begin
-      primaryQry := FGlobalDicStrongHebrew;
-      secondaryQry := FGlobalDicStrongGreek;
+      if Assigned(FGlobalDicStrongHebrew) then
+        Result := BuscarDefinicaoStrongNaQuery(FGlobalDicStrongHebrew, cleanPart, True);
+      if (Result = '') and (not Assigned(FGlobalDicStrongHebrew)) and Assigned(FGlobalDicStrongGreek) then
+        Result := BuscarDefinicaoStrongNaQuery(FGlobalDicStrongGreek, cleanPart, True);
     end
     else
     begin
-      primaryQry := FGlobalDicStrongGreek;
-      secondaryQry := FGlobalDicStrongHebrew;
-    end;
-
-    if assigned(primaryQry) then
-      Result := BuscarDefinicaoStrongNaQuery(primaryQry, s, isHebrew);
-
-    if (Result = '') and assigned(secondaryQry) and (secondaryQry <> primaryQry) then
-    begin
-      Result := BuscarDefinicaoStrongNaQuery(secondaryQry, s, isHebrew);
-      if Result = '' then
-        Result := BuscarDefinicaoStrongNaQuery(secondaryQry, s, not isHebrew);
+      if Assigned(FGlobalDicStrongGreek) then
+        Result := BuscarDefinicaoStrongNaQuery(FGlobalDicStrongGreek, cleanPart, False);
+      if (Result = '') and (not Assigned(FGlobalDicStrongGreek)) and Assigned(FGlobalDicStrongHebrew) then
+        Result := BuscarDefinicaoStrongNaQuery(FGlobalDicStrongHebrew, cleanPart, False);
     end;
 
     if Result <> '' then
@@ -1894,9 +2538,16 @@ begin
 
   // 2. Fallback to per-module dictionary if assigned
   if assigned(FADicStrong[texto]) then
+    Result := BuscarDefinicaoStrongNaQuery(FADicStrong[texto], cleanPart, isHebrew);
+
+  // 3. If per-module dictionary was used (e.g. FUseDefaultDict[texto] was false) and had no match,
+  //    fall back to the matching Default Dictionary for that language
+  if (Result = '') and FUseGlobalDicts then
   begin
-    isHebrew := (s[1] = 'H') or (s[1] = 'h') or ((FReference.BookID >= 1) and (FReference.BookID <= 39));
-    Result := BuscarDefinicaoStrongNaQuery(FADicStrong[texto], s, isHebrew);
+    if isHebrew and Assigned(FGlobalDicStrongHebrew) then
+      Result := BuscarDefinicaoStrongNaQuery(FGlobalDicStrongHebrew, cleanPart, True)
+    else if (not isHebrew) and Assigned(FGlobalDicStrongGreek) then
+      Result := BuscarDefinicaoStrongNaQuery(FGlobalDicStrongGreek, cleanPart, False);
   end;
 end;
 
@@ -1927,6 +2578,16 @@ begin
   // 2. Fallback to per-module morphology dictionary
   if assigned(FADicMorfo[texto]) then
     Result := BuscarDefinicaoMorfoNaQuery(FADicMorfo[texto], m);
+end;
+
+function TProjeto.ObterDefinicaoPalavraIngles(const wordText: string; texto: TTipoTextoBiblico; out matchedSubject: string): string;
+begin
+  Result := '';
+  matchedSubject := '';
+  if Trim(wordText) = '' then Exit;
+
+  if FUseGlobalDicts and Assigned(FGlobalDicEnglish) then
+    Result := BuscarDefinicaoPalavraInglesNaQuery(FGlobalDicEnglish, wordText, matchedSubject);
 end;
 
 function TProjeto.SanitizarFontesRTF(const rtf: string): string;
@@ -2268,9 +2929,14 @@ begin
 
   if assigned(FRadioGroupSituacao) then
     FRadioGroupSituacao.ItemIndex := Situacao;
+  if assigned(FAVersiculo[tbDestino]) then
+    FAVersiculo[tbDestino].StatusIndex := Situacao;
 
   if FTblPares.Fields[FACamposTexto[tbDestino]].AsString.IsEmpty then // open verse to edition if is empty
     OnDblClickVersiculo(FAVersiculo[tbDestino].Painel);
+
+  FHoveredAssocDestSyntagm := nil;
+  UpdateDestinationPopup;
 
   for e in FOnNovoVersiculo do
     e(self);
@@ -2343,9 +3009,57 @@ end;
 procedure TProjeto.SintagmaOnMouseEnter(Sender: TSyntagm);
 var
   show: boolean;
+  isAssocDestWord: boolean;
 begin
   if Assigned(FOnSintagmaMouseEnter) then
     FOnSintagmaMouseEnter(Sender);
+
+  HighlightStrongs(Sender);
+  SetDisplayTags(false);
+
+  isAssocDestWord := Assigned(Sender) and Assigned(FAVersiculo[tbDestino]) and
+                     (Sender.VerseRef = FAVersiculo[tbDestino]) and Sender.IsAssociated;
+
+  if isAssocDestWord then
+  begin
+    // Rule: hovering an associated word within the Destination text disables the southeast
+    // selected-Source popup and pops up the dictionary entry for the hovered word as usual.
+    FHoveredAssocDestSyntagm := Sender;
+    if FDestPopupActive then
+    begin
+      FDestPopupSyntagm := nil;
+      FDestPopupActive := False;
+      if Assigned(FrmDictionaryPopup) and FrmDictionaryPopup.Visible then
+        FrmDictionaryPopup.Ocultar;
+    end;
+  end
+  else
+  begin
+    FHoveredAssocDestSyntagm := nil;
+
+    // Inside Destination panel on an unassociated word while a Source word is selected:
+    // keep showing the southeast popup for the selected unassociated Source word.
+    if Assigned(Sender) and Assigned(FAVersiculo[tbDestino]) and
+       (Sender.VerseRef = FAVersiculo[tbDestino]) and (not Sender.IsAssociated) and
+       Assigned(GetSelectedUnassociatedSourceSyntagm) then
+    begin
+      FTemporizador.Enabled := false;
+      UpdateDestinationPopup;
+      Exit;
+    end;
+
+    // Hovering any word in Source (highlighted, unassociated, or associated),
+    // Reference 1 (tbConsulta1), Reference 2 (tbConsulta2), or Destination when no Source word is selected:
+    // hide any active Destination-panel southeast popup and allow the normal hover popup for this word.
+    if FDestPopupActive then
+    begin
+      FDestPopupSyntagm := nil;
+      FDestPopupActive := False;
+      if Assigned(FrmDictionaryPopup) and FrmDictionaryPopup.Visible then
+        FrmDictionaryPopup.Ocultar;
+    end;
+  end;
+
   case FPopupTrigger of
     ptMouseHover:     show := (GetKeyState(VK_CONTROL) and $8000 = 0) and
                               (GetKeyState(VK_SHIFT  ) and $8000 = 0);
@@ -2362,27 +3076,45 @@ begin
     FTemporizador.Tag := PtrInt(Sender);
     FTemporizador.Enabled := true;
   end;
-
-  HighlightStrongs(Sender);
-  SetDisplayTags(false);
 end;
 
 procedure TProjeto.SintagmaOnMouseLeave(Sender: TSyntagm);
 var
   hide: boolean;
   v: TTipoTextoBiblico;
+  wasHoveredAssocDest: boolean;
 begin
   FTemporizador.Enabled := false;
-  hide := true;
 
+  wasHoveredAssocDest := Assigned(FHoveredAssocDestSyntagm) and
+                         ((Sender = FHoveredAssocDestSyntagm) or (not FHoveredAssocDestSyntagm.IsAssociated));
+  if wasHoveredAssocDest then
+    FHoveredAssocDestSyntagm := nil;
+
+  hide := true;
   case FPopupTrigger of
     ptMouseHover:     hide := GetKeyState(VK_CONTROL) and $8000 = 0;
     ptAltMouseHover:  hide := GetKeyState(VK_MENU   ) and $8000 = 0;
     ptCtrlMouseHover: hide := GetKeyState(VK_CONTROL) and $8000 = 0;
   end;
 
-  if hide then
-    frmDictionaryPopup.Ocultar;
+  if wasHoveredAssocDest then
+  begin
+    if hide and Assigned(FrmDictionaryPopup) then
+      FrmDictionaryPopup.Ocultar;
+    UpdateDestinationPopup;
+  end
+  else if FDestPopupActive then
+  begin
+    UpdateDestinationPopup;
+  end
+  else
+  begin
+    if hide then
+      frmDictionaryPopup.Ocultar;
+    if Assigned(GetSelectedUnassociatedSourceSyntagm) then
+      UpdateDestinationPopup;
+  end;
 
   { hide strong hightlights }
   for v:=low(FAVersiculo) to high(FAVersiculo) do
@@ -2394,10 +3126,14 @@ procedure TProjeto.SintagmaOnClick(Sender: TSyntagm);
 begin
   FMemoVersiculo.Desativar; // saving eventual changes on verse edit
 
-  if assigned(FOnSintagmaClick) then
+  // Clear hovered-associated override when clicking/associating so next auto-selected Source word shows immediately
+  FHoveredAssocDestSyntagm := nil;
+
+  if assigned(FOnSintagmaClick) and Assigned(Sender) and
+     (IsSourceSyntagm(Sender) or Sender.HasStrongs or Sender.HasMorph) then
     FOnSintagmaClick(Sender);
 
-  if assigned(FAVersiculo[tbOrigem]) and
+  if assigned(FAVersiculo[tbOrigem]) and Assigned(Sender) and
      ((Sender.VerseRef = FAVersiculo[tbOrigem]) or (Sender.VerseRef = FAVersiculo[tbDestino])) then
   begin
     if (FRadioGroupSituacao.ItemIndex = 0) and (FAVersiculo[tbOrigem].AndamentoAssociacao > 0) then
@@ -2407,6 +3143,8 @@ begin
     else if (FRadioGroupSituacao.ItemIndex = 1) and ((FAVersiculo[tbOrigem].AndamentoAssociacao = 1) or (FAVersiculo[tbDestino].AndamentoAssociacao = 1)) then
       FRadioGroupSituacao.ItemIndex := 3; // associado
   end;
+
+  UpdateDestinationPopup;
 end;
 
 procedure TProjeto.OnExportText(Sender: TVersiculo);
@@ -2748,84 +3486,323 @@ begin
       else // reference text
         Sender.Versiculo.Texto := Sender.Texto;
 
-      if v = tbDestino then
-        for e in FOnNovoVersiculo do
-          e(self);
+      SalvarTexto;
+      if Assigned(FAVersiculo[tbOrigem]) and FAVersiculo[tbOrigem].Modificado then
+      begin
+        SalvarAssociacoes;
+        SalvarPares;
+      end;
+
+      for e in FOnNovoVersiculo do
+        e(self);
 
       break;
     end;
-  //MessageDlg('Versículo modificado', format('Versiculo modificado: %s', [Sender.Texto]), mtError, [mbOK], 0);
+end;
+
+procedure TProjeto.OnLivePreviewVersiculo(Sender: TMemoVersiculo);
+var
+  e: TOnNovoVersiculoEvent;
+begin
+  for e in FOnNovoVersiculo do
+    e(self);
+end;
+
+procedure TProjeto.OnTrocarSecaoEdit(SectionIndex: Integer);
+var
+  t: TTipoTextoBiblico;
+begin
+  if (SectionIndex < Ord(tbOrigem)) or (SectionIndex > Ord(tbConsulta2)) then
+    Exit;
+  t := TTipoTextoBiblico(SectionIndex);
+  if Assigned(FAVersiculo[t]) then
+    FAVersiculo[t].ViewMode := vvmEdit;
+end;
+
+procedure TProjeto.OnDestinoStatusChange(Sender: TVersiculo; NewStatus: Integer);
+begin
+  if not FAtivo or FClosing then Exit;
+  if Assigned(FRadioGroupSituacao) and (FRadioGroupSituacao.ItemIndex <> NewStatus) then
+    FRadioGroupSituacao.ItemIndex := NewStatus
+  else
+    SetSituacao(NewStatus);
+  SyncDestinoStatusBar;
+end;
+
+procedure TProjeto.OnVerseNavigate(Sender: TVersiculo; Delta: Integer);
+begin
+  if not FAtivo or FClosing or not Assigned(FTblPares) then Exit;
+  if Delta < 0 then
+    VersiculoAnterior
+  else if Delta > 0 then
+    VersiculoSeguinte;
+end;
+
+function TProjeto.GetSelectedUnassociatedSourceSyntagm: TSyntagm;
+var
+  i: Integer;
+  s: TSyntagm;
+begin
+  Result := nil;
+  if (not FAtivo) or FClosing then Exit;
+  if (not Assigned(FAVersiculo[tbOrigem])) or (not Assigned(FAVersiculo[tbDestino])) then Exit;
+  if (FAVersiculo[tbOrigem].ViewMode <> vvmAssoc) or (FAVersiculo[tbDestino].ViewMode <> vvmAssoc) then Exit;
+  if not Assigned(FAVersiculo[tbOrigem].Selecao) then Exit;
+
+  for i := 0 to FAVersiculo[tbOrigem].Selecao.Count - 1 do
+  begin
+    s := FAVersiculo[tbOrigem].Selecao[i];
+    if Assigned(s) and (s.Kind = tsSintagma) and (not s.IsAssociated) and (s.HasStrongs or s.HasMorph) then
+    begin
+      Result := s;
+      Exit;
+    end;
+  end;
+end;
+
+function TProjeto.IsMouseInDestinationPanel(out CursorPos: TPoint): Boolean;
+var
+  dstPanel: TScrollBox;
+  ptParent, ptClient: TPoint;
+begin
+  Result := False;
+  CursorPos := Mouse.CursorPos;
+  if (not FAtivo) or FClosing then Exit;
+  if (not Assigned(FAVersiculo[tbDestino])) or (not Assigned(FAVersiculo[tbDestino].Painel)) then Exit;
+  if Application.Terminated or (not Application.Active) then Exit;
+  if Assigned(Screen.ActiveCustomForm) and (Screen.ActiveCustomForm <> Application.MainForm) and
+     (Screen.ActiveCustomForm <> FrmDictionaryPopup) then Exit;
+
+  dstPanel := FAVersiculo[tbDestino].Painel;
+  if (not dstPanel.Showing) or (not dstPanel.Visible) or (not dstPanel.HandleAllocated) then Exit;
+
+  if Assigned(dstPanel.Parent) and dstPanel.Parent.HandleAllocated then
+  begin
+    ptParent := dstPanel.Parent.ScreenToClient(CursorPos);
+    Result := (ptParent.X >= dstPanel.Left) and (ptParent.X < dstPanel.Left + dstPanel.Width) and
+              (ptParent.Y >= dstPanel.Top) and (ptParent.Y < dstPanel.Top + dstPanel.Height);
+  end
+  else
+  begin
+    ptClient := dstPanel.ScreenToClient(CursorPos);
+    Result := (ptClient.X >= 0) and (ptClient.X < dstPanel.Width) and
+              (ptClient.Y >= 0) and (ptClient.Y < dstPanel.Height);
+  end;
+end;
+
+procedure TProjeto.PopulatePopupForSyntagm(s: TSyntagm; v: TTipoTextoBiblico);
+var
+  p: TSyntagm;
+  m, tabLbl, rtf, def, engSubject: string;
+  hasMorfo, hasStrong: Boolean;
+
+  function CleanTagLabel(const rawTag: string): string;
+  var
+    spPos: Integer;
+  begin
+    Result := Trim(rawTag);
+    spPos := Pos(' ', Result);
+    if spPos > 1 then
+      Result := Copy(Result, 1, spPos - 1);
+  end;
+
+begin
+  if (s = nil) or (FrmDictionaryPopup = nil) then Exit;
+
+  FrmDictionaryPopup.LimparConteudo;
+
+  hasMorfo := (FUseGlobalDicts and assigned(FGlobalDicMorfo)) or assigned(FADicMorfo[v]);
+  if hasMorfo then
+  begin
+    if Assigned(s.Morph) and (s.Morph.Count > 0) then
+      for m in s.Morph do
+      begin
+        def := ObterDefinicaoMorfo(m, v);
+        tabLbl := CleanTagLabel(m);
+        if (def <> '') or (not FUseGlobalDicts) then
+          FrmDictionaryPopup.AdicionarMorfo(tabLbl, def);
+      end
+    else if Assigned(s.Pairs) then
+    begin // não tem morfo, vejamos se os pares têm
+      for p in s.Pairs do
+        if Assigned(p.Morph) then
+          for m in p.Morph do
+          begin
+            def := ObterDefinicaoMorfo(m, v);
+            tabLbl := CleanTagLabel(m);
+            if (def <> '') or (not FUseGlobalDicts) then
+              FrmDictionaryPopup.AdicionarMorfo(tabLbl, def);
+          end;
+    end;
+  end;
+
+  hasStrong := (FUseGlobalDicts and (assigned(FGlobalDicStrongGreek) or assigned(FGlobalDicStrongHebrew))) or assigned(FADicStrong[v]);
+  if hasStrong then
+  begin
+    if Assigned(s.Strong) and (s.Strong.Count > 0) then
+      for m in s.Strong do
+      begin
+        def := ObterDefinicaoStrong(m, v);
+        tabLbl := CleanTagLabel(m);
+        if (def <> '') or (not FUseGlobalDicts) then
+          FrmDictionaryPopup.AdicionarStrong(tabLbl, def);
+      end
+    else if Assigned(s.Pairs) then
+    begin // não tem strongs, vejamos se os pares têm
+      for p in s.Pairs do
+        if Assigned(p.Strong) then
+          for m in p.Strong do
+          begin
+            def := ObterDefinicaoStrong(m, v);
+            tabLbl := CleanTagLabel(m);
+            if (def <> '') or (not FUseGlobalDicts) then
+              FrmDictionaryPopup.AdicionarStrong(tabLbl, def);
+          end;
+    end;
+  end;
+
+  // English Word / Bible Dictionary lookup for any English word or name on any of the 4 Bible panels
+  // that has no Strong's number tag (and no Strong's definition populated from an associated pair).
+  if (not s.HasStrongs) and (FrmDictionaryPopup.Strongs.Count = 0) and
+     FUseGlobalDicts and Assigned(FGlobalDicEnglish) then
+  begin
+    def := ObterDefinicaoPalavraIngles(s.Text, v, engSubject);
+    if def <> '' then
+    begin
+      if engSubject = '' then
+        engSubject := Trim(s.Text);
+      FrmDictionaryPopup.AdicionarStrong(engSubject, def);
+    end;
+  end;
+
+  if v = tbOrigem then
+  begin
+    rtf := FormatRTF(FSugeridor.GetTranslationAlternatives(s));
+    if not rtf.IsEmpty then
+      FrmDictionaryPopup.AdicionarStrong(STranslationMemory, rtf);
+  end;
+end;
+
+procedure TProjeto.UpdateDestinationPopup;
+var
+  selSrc: TSyntagm;
+  cursorPos: TPoint;
+  inDest: Boolean;
+begin
+  if not Assigned(FrmDictionaryPopup) then Exit;
+
+  selSrc := GetSelectedUnassociatedSourceSyntagm;
+  inDest := IsMouseInDestinationPanel(cursorPos);
+
+  if not inDest then
+    FHoveredAssocDestSyntagm := nil;
+
+  // When hovering an associated word inside the Destination text, disable the southeast popup
+  // so the normal dictionary popup for that hovered Destination word works as usual.
+  if inDest and Assigned(FHoveredAssocDestSyntagm) and FHoveredAssocDestSyntagm.IsAssociated then
+  begin
+    if FDestPopupActive then
+    begin
+      FDestPopupSyntagm := nil;
+      FDestPopupActive := False;
+      if FrmDictionaryPopup.Visible then
+        FrmDictionaryPopup.Ocultar;
+    end;
+    Exit;
+  end;
+
+  if Assigned(selSrc) and inDest then
+  begin
+    FTemporizador.Enabled := False;
+
+    if FDestPopupActive and FrmDictionaryPopup.Visible and (FDestPopupSyntagm = selSrc) then
+    begin
+      if (GetKeyState(VK_CONTROL) and $8000) = 0 then
+        FrmDictionaryPopup.AtualizarPosicao(cursorPos.X + 18, cursorPos.Y + 18);
+      Exit;
+    end;
+
+    PopulatePopupForSyntagm(selSrc, tbOrigem);
+    if (FrmDictionaryPopup.Strongs.Count > 0) or (FrmDictionaryPopup.Morfos.Count > 0) then
+    begin
+      FDestPopupSyntagm := selSrc;
+      FDestPopupActive := True;
+      FrmDictionaryPopup.MostrarEm(cursorPos.X + 18, cursorPos.Y + 18);
+    end
+    else
+    begin
+      FDestPopupSyntagm := nil;
+      FDestPopupActive := False;
+      FrmDictionaryPopup.Ocultar;
+    end;
+  end
+  else
+  begin
+    if FDestPopupActive then
+    begin
+      if FrmDictionaryPopup.Visible and
+         ((GetKeyState(VK_CONTROL) and $8000) <> 0) and
+         (cursorPos.X >= FrmDictionaryPopup.Left) and (cursorPos.X < FrmDictionaryPopup.Left + FrmDictionaryPopup.Width) and
+         (cursorPos.Y >= FrmDictionaryPopup.Top) and (cursorPos.Y < FrmDictionaryPopup.Top + FrmDictionaryPopup.Height) then
+        Exit;
+
+      FDestPopupSyntagm := nil;
+      FDestPopupActive := False;
+      if FrmDictionaryPopup.Visible then
+        FrmDictionaryPopup.Ocultar;
+    end;
+  end;
+end;
+
+procedure TProjeto.OnDestPopupTimer(Sender: TObject);
+begin
+  if (not FAtivo) or FClosing then
+  begin
+    if FDestPopupActive and Assigned(FrmDictionaryPopup) and FrmDictionaryPopup.Visible then
+    begin
+      FDestPopupSyntagm := nil;
+      FDestPopupActive := False;
+      FrmDictionaryPopup.Ocultar;
+    end;
+    Exit;
+  end;
+  UpdateDestinationPopup;
 end;
 
 procedure TProjeto.OnExibirDefinicao(Sender: TObject);
 var
   v: TTipoTextoBiblico;
   point: TPoint;
-  s, p: TSyntagm;
-  m, rtf, def: string;
-  hasMorfo, hasStrong: Boolean;
+  s: TSyntagm;
+  isUnassocDestWord: Boolean;
 begin
-  if frmDictionaryPopup.Visible then
+  if frmDictionaryPopup.Visible and (not FDestPopupActive) then
     exit;
 
   s := TSyntagm(TTimer(Sender).Tag);
+  if s = nil then
+    exit;
+
+  isUnassocDestWord := Assigned(FAVersiculo[tbDestino]) and
+                       (s.VerseRef = FAVersiculo[tbDestino]) and
+                       (not s.IsAssociated);
+
+  if isUnassocDestWord and Assigned(GetSelectedUnassociatedSourceSyntagm) then
+  begin
+    UpdateDestinationPopup;
+    exit;
+  end;
+
   for v:=low(FAVersiculo) to high(FAVersiculo) do
   begin
     if (FAVersiculo[v] = s.VerseRef) then
     begin
-      hasMorfo := (FUseGlobalDicts and FUseDefaultDict[v] and assigned(FGlobalDicMorfo)) or assigned(FADicMorfo[v]);
-      if hasMorfo then
-      begin
-        if s.Morph.Count > 0 then
-          for m in s.Morph do
-          begin
-            def := ObterDefinicaoMorfo(m, v);
-            if (def <> '') or (not FUseGlobalDicts) then
-              FrmDictionaryPopup.AdicionarMorfo(m, def);
-          end
-        else
-        begin // não tem morfo, vejamos se os pares têm
-          for p in s.Pairs do
-            for m in p.Morph do
-            begin
-              def := ObterDefinicaoMorfo(m, v);
-              if (def <> '') or (not FUseGlobalDicts) then
-                FrmDictionaryPopup.AdicionarMorfo(m, def);
-            end;
-        end;
-      end;
-
-      hasStrong := (FUseGlobalDicts and FUseDefaultDict[v] and (assigned(FGlobalDicStrongGreek) or assigned(FGlobalDicStrongHebrew))) or assigned(FADicStrong[v]);
-      if hasStrong then
-      begin
-        if s.Strong.Count > 0 then
-          for m in s.Strong do
-          begin
-            def := ObterDefinicaoStrong(m, v);
-            if (def <> '') or (not FUseGlobalDicts) then
-              frmDictionaryPopup.AdicionarStrong(m, def);
-          end
-        else
-        begin // não tem strongs, vejamos se os pares têm
-          for p in s.Pairs do
-            for m in p.Strong do
-            begin
-              def := ObterDefinicaoStrong(m, v);
-              if (def <> '') or (not FUseGlobalDicts) then
-                FrmDictionaryPopup.AdicionarStrong(m, def);
-            end;
-        end;
-      end;
-
-      if v = tbOrigem then
-      begin
-        rtf := FormatRTF(FSugeridor.GetTranslationAlternatives(s));
-        if not rtf.IsEmpty then
-          frmDictionaryPopup.AdicionarStrong(STranslationMemory, rtf);
-      end;
+      PopulatePopupForSyntagm(s, v);
 
       if (FrmDictionaryPopup.Strongs.Count > 0) or (FrmDictionaryPopup.Morfos.Count > 0) then
       begin
+        FDestPopupSyntagm := nil;
+        FDestPopupActive := False;
         point := s.LabelRef.ClientToScreen(s.LabelRef.ClientRect.BottomRight);
         frmDictionaryPopup.MostrarEm(point.x, point.y);
       end;
@@ -2912,8 +3889,20 @@ begin
 
       if assigned(FMemoVersiculo) and assigned(Sender.Painel) then
       begin
+        case text of
+          tbOrigem:    desc := 'Source';
+          tbDestino:   desc := 'Destination';
+          tbConsulta1: desc := 'Reference 1';
+          tbConsulta2: desc := 'Reference 2';
+        else
+          desc := 'Verse';
+        end;
+        FMemoVersiculo.SetActiveSectionInfo(Ord(text), desc);
         FMemoVersiculo.Ativar(Sender.Painel, Sender);
         Sender.RepositionTabPanel;
+        if ChapterViewText <> text then
+          ChapterViewText := text;
+        OnLivePreviewVersiculo(FMemoVersiculo);
       end;
     end;
 
@@ -3071,7 +4060,7 @@ begin
   if not assigned(FADicStrong[t]) then
   begin // primeira ocorrência deste db
     FADicStrong[t] := CriarObjetoQuery(dic);
-    FADicStrong[t].SQL.Text := 'select data from topics, content where subject = :strong and id = topic_id';
+    FADicStrong[t].SQL.Text := 'select data, data2 from topics, content where subject = :strong and id = topic_id';
     FADicStrong[t].Prepare;
     FADicStrong[t].Tag := 1;
   end;
@@ -3123,7 +4112,7 @@ begin
   if not assigned(FADicMorfo[t]) then
   begin // primeira ocorrência deste db
     FADicMorfo[t] := CriarObjetoQuery(dic);
-    FADicMorfo[t].SQL.Text := 'select data from topics, content where subject = :morf and id = topic_id';
+    FADicMorfo[t].SQL.Text := 'select data, data2 from topics, content where subject = :morf and id = topic_id';
     FADicMorfo[t].Prepare;
     FADicMorfo[t].Tag := 1;
  end;
@@ -3521,6 +4510,10 @@ begin
   end;
 
   SelectTreeNode(ID);
+  {$IFDEF WINDOWS}
+  HookTreeViewControl(FArvore);
+  {$ENDIF}
+  ApplyDarkModeToControl(FArvore, CurrentSkin.IsDark);
 end;
 
 function TProjeto.IrParaVersiculoSeguinteComSituacao(AStatus: Integer): boolean;
@@ -3596,9 +4589,11 @@ begin
   FGlobalDicStrongGreekPath := '';
   FGlobalDicStrongHebrewPath := '';
   FGlobalDicMorfoPath := '';
+  FGlobalDicEnglishPath := '';
   FGlobalDicStrongGreek := nil;
   FGlobalDicStrongHebrew := nil;
   FGlobalDicMorfo := nil;
+  FGlobalDicEnglish := nil;
 
   FParesAntigos       := nil;
   FOnNovoVersiculo    := TOnNovoVersiculoEvents.Create;
@@ -3620,8 +4615,18 @@ begin
   FTemporizador.Interval := 300;
   FTemporizador.OnTimer  := @OnExibirDefinicao;
 
+  FDestPopupSyntagm      := nil;
+  FHoveredAssocDestSyntagm := nil;
+  FDestPopupActive       := False;
+  FDestPopupTimer        := TTimer.Create(nil);
+  FDestPopupTimer.Enabled  := false;
+  FDestPopupTimer.Interval := 40;
+  FDestPopupTimer.OnTimer  := @OnDestPopupTimer;
+
   FMemoVersiculo := TMemoVersiculo.Criar;
   FMemoVersiculo.QuandoModificarVersiculo := @OnAlterarTextoVersiculo;
+  FMemoVersiculo.QuandoLivePreview := @OnLivePreviewVersiculo;
+  FMemoVersiculo.QuandoTrocarSecaoEdit := @OnTrocarSecaoEdit;
 end;
 
 constructor TProjeto.Criar(paineis: array of TScrollbox; navegador: TTreeView;
@@ -3630,6 +4635,14 @@ var
   v: integer;
 begin
   Criar;
+
+  if (Length(paineis) > 0) and Assigned(paineis[0]) and Assigned(paineis[0].Parent) then
+  begin
+    if Assigned(paineis[0].Parent.Parent) then
+      FMemoVersiculo.AttachRibbonHost(paineis[0].Parent.Parent)
+    else
+      FMemoVersiculo.AttachRibbonHost(paineis[0].Parent);
+  end;
 
   for v:=low(paineis) to high(paineis) do
     if (v <= Ord(tbConsulta2)) and assigned(paineis[v]) then
@@ -3647,6 +4660,7 @@ begin
   LiberarObjetoQuery(FGlobalDicStrongGreek);
   LiberarObjetoQuery(FGlobalDicStrongHebrew);
   LiberarObjetoQuery(FGlobalDicMorfo);
+  LiberarObjetoQuery(FGlobalDicEnglish);
 
   for v:=low(FAVersiculo) to high(FAVersiculo) do
   begin
@@ -3678,6 +4692,8 @@ begin
 
   FOnNovoVersiculo.Free;
   FSugeridor.Free;
+  FDestPopupTimer.Enabled := False;
+  FDestPopupTimer.Free;
   FTemporizador.Free;
   FMemoVersiculo.Destruir;
 end;
@@ -3794,6 +4810,7 @@ begin
     FRadioGroupSituacao.Color := CurrentSkin.PanelBg;
     FRadioGroupSituacao.Font.Color := CurrentSkin.PanelText;
   end;
+  SyncDestinoStatusBar;
 
   FTblPares.BeforeScroll := @PreRolagemVersiculo;
   FTblPares.AfterScroll  := @PosRolagemVersiculo;
@@ -3809,7 +4826,12 @@ begin
 
   FAtivo := true;
   FDisplayTags := false;
+  FDestPopupSyntagm := nil;
+  FHoveredAssocDestSyntagm := nil;
+  FDestPopupActive := False;
+  FDestPopupTimer.Enabled := True;
   AtualizarNomesTraducao;
+  ApplySkin(CurrentSkin);
 end;
 
 procedure TProjeto.Fechar(_Commit: boolean);
@@ -3817,6 +4839,13 @@ var
   t: TTipoTextoBiblico;
 begin
   FClosing := true;
+  if Assigned(FDestPopupTimer) then
+    FDestPopupTimer.Enabled := False;
+  FDestPopupSyntagm := nil;
+  FHoveredAssocDestSyntagm := nil;
+  FDestPopupActive := False;
+  if Assigned(FrmDictionaryPopup) and FrmDictionaryPopup.Visible then
+    FrmDictionaryPopup.Ocultar;
 
   if assigned(FArvore) then
   begin
@@ -3995,6 +5024,25 @@ begin
     end;
   if assigned(FMemoVersiculo) then
     FMemoVersiculo.ApplySkin(ASkin);
+  if assigned(FArvore) then
+  begin
+    FArvore.ParentColor := False;
+    FArvore.Color := ASkin.TreeBg;
+    FArvore.Font.Color := ASkin.TreeText;
+    FArvore.ExpandSignColor := ASkin.TreeText;
+    FArvore.TreeLineColor := ASkin.PanelBorder;
+    {$IFDEF WINDOWS}
+    HookTreeViewControl(FArvore);
+    {$ENDIF}
+    ApplyDarkModeToControl(FArvore, ASkin.IsDark);
+    FArvore.Invalidate;
+  end;
+  if assigned(FMemoComentarios) then
+  begin
+    FMemoComentarios.Color := ASkin.WindowBg;
+    FMemoComentarios.Font.Color := ASkin.WindowText;
+    ApplyDarkModeToControl(FMemoComentarios, ASkin.IsDark);
+  end;
   if assigned(FRadioGroupSituacao) then
   begin
     FRadioGroupSituacao.Color := ASkin.PanelBg;
@@ -4340,6 +5388,7 @@ begin
   FAVersiculo[texto].OnExportText := @OnExportText;
   FAVersiculo[texto].OnExportBibleModule := @OnExportBibleModule;
   FAVersiculo[texto].OnViewModeChange := @OnVerseViewModeChange;
+  FAVersiculo[texto].OnNavigateVerse := @OnVerseNavigate;
   FAVersiculo[texto].TranslationName := GetTranslationName(texto);
   FAVersiculo[texto].OnMouseEnter := @SintagmaOnMouseEnter;
   FAVersiculo[texto].OnMouseLeave := @SintagmaOnMouseLeave;
@@ -4347,6 +5396,13 @@ begin
   //FAVersiculo[texto].MostrarDicas := true;
   if texto in [tbConsulta1, tbConsulta2] then
     FAVersiculo[texto].CorDesassociado := CurrentSkin.WindowText;
+
+  if texto = tbDestino then
+  begin
+    FAVersiculo[tbDestino].ShowStatusBar := True;
+    FAVersiculo[tbDestino].OnStatusChange := @OnDestinoStatusChange;
+    SyncDestinoStatusBar;
+  end;
 
   //if texto = tbOrigem then
   //  FAVersiculo[texto].StrongMorfoComoChave := true;
@@ -4897,6 +5953,7 @@ var
   mnu: TPopupMenu;
 begin
   UpdateDefaultSituacaoDescricao;
+  SyncDestinoStatusBar;
   if not assigned(FArvore) or (FArvore.Items.Count = 0) or (FEscopo = etNone) then
     exit;
 

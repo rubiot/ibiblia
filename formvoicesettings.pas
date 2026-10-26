@@ -41,6 +41,7 @@ type
     ButtonOK: TButton;
     ButtonCancel: TButton;
 
+    procedure FormShow(Sender: TObject);
     procedure TrackSpeedChange(Sender: TObject);
     procedure TrackVolumeChange(Sender: TObject);
     procedure ButtonTestSourceClick(Sender: TObject);
@@ -64,7 +65,6 @@ begin
   dlg := TFormVoiceSettings.Create(AOwner);
   try
     dlg.LoadSettings;
-    ApplySkinToForm(dlg, CurrentSkin);
     Result := (dlg.ShowModal = mrOk);
     if Result then
       dlg.SaveSettings;
@@ -87,6 +87,7 @@ begin
   Position := poMainFormCenter;
   BorderStyle := bsDialog;
   BorderIcons := [biSystemMenu];
+  OnShow := @FormShow;
 
   // 1. Activation & Trigger Settings
   CheckEnable := TCheckBox.Create(Self);
@@ -268,18 +269,90 @@ begin
   ButtonOK.ModalResult := mrOk;
   ButtonOK.OnClick := @ButtonOKClick;
 
+  Color := CurrentSkin.PanelBg;
+  Font.Color := CurrentSkin.PanelText;
+end;
+
+procedure TFormVoiceSettings.FormShow(Sender: TObject);
+begin
+  HandleNeeded;
+  CheckEnable.HandleNeeded;
+  ComboTrigger.HandleNeeded;
+  GroupVoices.HandleNeeded;
+  ComboSourceVoice.HandleNeeded;
+  ButtonTestSource.HandleNeeded;
+  ComboDestVoice.HandleNeeded;
+  ButtonTestDest.HandleNeeded;
+  GroupAudio.HandleNeeded;
+  TrackSpeed.HandleNeeded;
+  TrackVolume.HandleNeeded;
+  PanelButtons.HandleNeeded;
+  ButtonOK.HandleNeeded;
+  ButtonCancel.HandleNeeded;
+
   ApplySkinToForm(Self, CurrentSkin);
-  if CurrentSkin.IsDark then
-  begin
-    CheckEnable.Font.Color := CurrentSkin.PanelText;
-    LabelTrigger.Font.Color := CurrentSkin.PanelText;
-    LabelSource.Font.Color := CurrentSkin.PanelText;
-    LabelDest.Font.Color := CurrentSkin.PanelText;
-    LabelSpeed.Font.Color := CurrentSkin.PanelText;
-    LabelSpeedVal.Font.Color := CurrentSkin.PanelText;
-    LabelVolume.Font.Color := CurrentSkin.PanelText;
-    LabelVolumeVal.Font.Color := CurrentSkin.PanelText;
-  end;
+
+  {$IFDEF WINDOWS}
+  HookCheckBoxControl(CheckEnable);
+  HookComboBoxControl(ComboTrigger);
+  HookGroupBoxControl(GroupVoices);
+  HookComboBoxControl(ComboSourceVoice);
+  HookButtonControl(ButtonTestSource);
+  HookComboBoxControl(ComboDestVoice);
+  HookButtonControl(ButtonTestDest);
+  HookGroupBoxControl(GroupAudio);
+  HookTrackBarControl(TrackSpeed);
+  HookTrackBarControl(TrackVolume);
+  HookButtonControl(ButtonOK);
+  HookButtonControl(ButtonCancel);
+  {$ENDIF}
+
+  Color := CurrentSkin.PanelBg;
+  Font.Color := CurrentSkin.PanelText;
+  PanelButtons.Color := CurrentSkin.PanelBg;
+  PanelButtons.Font.Color := CurrentSkin.PanelText;
+
+  CheckEnable.Color := CurrentSkin.PanelBg;
+  CheckEnable.Font.Color := CurrentSkin.PanelText;
+  LabelTrigger.Font.Color := CurrentSkin.PanelText;
+  ComboTrigger.Color := CurrentSkin.WindowBg;
+  ComboTrigger.Font.Color := CurrentSkin.WindowText;
+
+  GroupVoices.Color := CurrentSkin.PanelBg;
+  GroupVoices.Font.Color := CurrentSkin.PanelText;
+  LabelSource.Font.Color := CurrentSkin.PanelText;
+  ComboSourceVoice.Color := CurrentSkin.WindowBg;
+  ComboSourceVoice.Font.Color := CurrentSkin.WindowText;
+  ButtonTestSource.Font.Color := CurrentSkin.PanelText;
+
+  LabelDest.Font.Color := CurrentSkin.PanelText;
+  ComboDestVoice.Color := CurrentSkin.WindowBg;
+  ComboDestVoice.Font.Color := CurrentSkin.WindowText;
+  ButtonTestDest.Font.Color := CurrentSkin.PanelText;
+
+  GroupAudio.Color := CurrentSkin.PanelBg;
+  GroupAudio.Font.Color := CurrentSkin.PanelText;
+  LabelSpeed.Font.Color := CurrentSkin.PanelText;
+  LabelSpeedVal.Font.Color := CurrentSkin.PanelText;
+  LabelVolume.Font.Color := CurrentSkin.PanelText;
+  LabelVolumeVal.Font.Color := CurrentSkin.PanelText;
+
+  ButtonOK.Font.Color := CurrentSkin.PanelText;
+  ButtonCancel.Font.Color := CurrentSkin.PanelText;
+
+  CheckEnable.Invalidate;
+  ComboTrigger.Invalidate;
+  GroupVoices.Invalidate;
+  ComboSourceVoice.Invalidate;
+  ButtonTestSource.Invalidate;
+  ComboDestVoice.Invalidate;
+  ButtonTestDest.Invalidate;
+  GroupAudio.Invalidate;
+  TrackSpeed.Invalidate;
+  TrackVolume.Invalidate;
+  ButtonOK.Invalidate;
+  ButtonCancel.Invalidate;
+  Invalidate;
 end;
 
 procedure TFormVoiceSettings.LoadSettings;

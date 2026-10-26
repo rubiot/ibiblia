@@ -67,7 +67,7 @@ type
   end;
 
 var
-  TTSManager: TTTSManager = nil;
+  TTSManager: TTTSManager;
 
 procedure InitTTS;
 procedure FreeTTS;
