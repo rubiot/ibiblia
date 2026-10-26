@@ -955,7 +955,6 @@ begin
   begin
     fnSetWindowSubclass(Handle, @MenuSubclassProc, 1001, PtrUInt(Self));
     FMenuSubclassed := True;
-    DrawMenuBar(Handle);
   end;
 end;
 
@@ -1634,11 +1633,11 @@ begin
   PanelTreeNav.Width := opts.ReadInteger('leiaute', 'principal.treeview.largura', PanelTreeNav.Width);
 
   SetCurrentSkinByName(opts.ReadString('UI', 'Theme', 'Default'));
-  ApplyActiveSkin;
+  Self.Color := CurrentSkin.PanelBg;
+  Self.Font.Color := CurrentSkin.PanelText;
+  UpdateSkinMenuChecks;
 
   {$IFDEF WINDOWS}
-  InstallMenuSubclass;
-  HookRadioGroupStatus;
   FRxMorpho := RegexCreate('^(\S+)( l="(.*?)")?$', [rcoUTF8]);
   syncTw2iBiblia := MenuItemSyncTheWord.Checked;
   synciBiblia2Tw := MenuItemSynciBiblia.Checked;
@@ -1752,13 +1751,10 @@ begin
   if (ParamCount > 0) and ParamStr(1).EndsWith('.bib') and FileExists(ParamStr(1)) then
     DoOpenProject(ParamStr(1))
   else if (MenuItemRecent.Count > 0) and FileExists(MenuItemRecent.Items[0].Caption) then
-    DoOpenProject(MenuItemRecent.Items[0].Caption);
+    DoOpenProject(MenuItemRecent.Items[0].Caption)
+  else
+    ApplyActiveSkin;
 
-  ApplyActiveSkin;
-  {$IFDEF WINDOWS}
-  InstallMenuSubclass;
-  SetupMenuOwnerDraw(CurrentSkin.IsDark);
-  {$ENDIF}
   Application.QueueAsyncCall(@OnPostShowApplySkin, 0);
 
   // First-time startup check for new version changelog popup
@@ -1772,7 +1768,13 @@ end;
 procedure TFrmPrincipal.OnPostShowApplySkin(Data: PtrInt);
 begin
   if csDestroying in ComponentState then Exit;
-  ApplyActiveSkin;
+  {$IFDEF WINDOWS}
+  if Self.HandleAllocated and CurrentSkin.IsDark then
+  begin
+    DrawMenuBar(Self.Handle);
+    PaintMenuBarNC(Self.Handle, PtrUInt(Self));
+  end;
+  {$ENDIF}
 end;
 
 procedure TFrmPrincipal.MenuItem22Click(Sender: TObject);
@@ -1843,8 +1845,6 @@ begin
 end;
 
 procedure TFrmPrincipal.ApplyActiveSkin;
-var
-  iSkin: Integer;
 begin
   Self.DisableAlign;
   try
@@ -1910,18 +1910,6 @@ begin
     RadioGroupStatus.Visible := False;
     RadioGroupStatus.Align := alNone;
     RadioGroupStatus.Width := 0;
-    RadioGroupStatus.Color := CurrentSkin.PanelBg;
-    RadioGroupStatus.Font.Color := CurrentSkin.PanelText;
-    ApplyDarkModeToControl(RadioGroupStatus, CurrentSkin.IsDark);
-    for iSkin := 0 to RadioGroupStatus.ControlCount - 1 do
-    begin
-      if RadioGroupStatus.Controls[iSkin] is TControl then
-      begin
-        TControl(RadioGroupStatus.Controls[iSkin]).Font.Color := CurrentSkin.PanelText;
-        if RadioGroupStatus.Controls[iSkin] is TWinControl then
-          ApplyDarkModeToControl(TWinControl(RadioGroupStatus.Controls[iSkin]), CurrentSkin.IsDark);
-      end;
-    end;
 
     StatusBar1.Color := CurrentSkin.PanelBg;
     StatusBar1.Font.Color := CurrentSkin.PanelText;
@@ -1962,7 +1950,6 @@ begin
     StatusBar1.Visible := False;
 
     ApplyDarkModeToWindow(Self, CurrentSkin.IsDark);
-    ApplyDarkModeToMenu(MainMenu1, Self.Handle, CurrentSkin.IsDark, CurrentSkin.PanelBg);
     {$IFDEF WINDOWS}
     if CurrentSkin.IsDark then
     begin
@@ -1974,13 +1961,6 @@ begin
       SetupMenuOwnerDraw(False);
       UninstallMenuSubclass;
     end;
-    HookRadioGroupStatus;
-    if Self.HandleAllocated then
-    begin
-      DrawMenuBar(Self.Handle);
-      if CurrentSkin.IsDark then
-        PaintMenuBarNC(Self.Handle, PtrUInt(Self));
-    end;
     {$ENDIF}
 
     if assigned(ProjetoAtual) then
@@ -1989,10 +1969,10 @@ begin
     if assigned(FChapterView) then
       FChapterView.ApplySkin(CurrentSkin);
 
-    if assigned(frmDictionaryPopup) then
+    if assigned(frmDictionaryPopup) and frmDictionaryPopup.Visible then
       frmDictionaryPopup.ApplySkin(CurrentSkin);
 
-    if assigned(FormAbout) then
+    if assigned(FormAbout) and FormAbout.Visible then
       FormAbout.ApplySkin(CurrentSkin);
 
     UpdateSkinMenuChecks;

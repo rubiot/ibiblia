@@ -55,10 +55,10 @@ implementation
 
 const
   CHANGELOG_TEXT =
-    'iBiblia Version 1.0.1.018 (64-bit Edition)' + sLineBreak +
+    'iBiblia Version 1.0.1.019 (64-bit Edition)' + sLineBreak +
     'Release Date: 2026-10-24' + sLineBreak +
     '==========================================' + sLineBreak + sLineBreak +
-    'NEW FEATURES & UPDATES (v1.0.1.018):' + sLineBreak +
+    'NEW FEATURES & UPDATES (v1.0.1.019):' + sLineBreak +
     '  * Voice & Text-to-Speech Dialog & Modal Control Skinning Fix:' + sLineBreak +
     '    - Fixed modal handle recreation (ShowModal -> RecreateWnd) wiping Win32 subclasses on dialogs.' + sLineBreak +
     '    - Added custom dark-mode Win32 subclassing for TComboBox (ComboBoxSubclassProc) and TTrackBar (TrackBarSubclassProc).' + sLineBreak +
@@ -190,7 +190,7 @@ begin
     ver := '';
   end;
   if ver = '' then
-    ver := '1.0.1.018';
+    ver := '1.0.1.019';
 
   LabelVersion := TLabel.Create(Self);
   LabelVersion.Parent := Self;
@@ -397,7 +397,7 @@ begin
   lblTitle.Top := 12;
   lblTitle.Font.Height := -16;
   lblTitle.Font.Style := [fsBold];
-  lblTitle.Caption := 'iBiblia v1.0.1.018 - Changelog';
+  lblTitle.Caption := 'iBiblia v1.0.1.019 - Changelog';
   if CurrentSkin.IsDark then
     lblTitle.Font.Color := CurrentSkin.HeaderColor
   else

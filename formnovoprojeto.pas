@@ -84,7 +84,6 @@ end;
 procedure TFormNovoProjeto.FormCreate(Sender: TObject);
 begin
   OnShow := @FormShow;
-  ApplySkinToForm(Self, CurrentSkin);
   Translate;
 end;
 

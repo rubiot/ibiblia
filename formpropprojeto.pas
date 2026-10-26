@@ -106,10 +106,6 @@ uses formglobaldicts, formPrincipal;
 procedure TFormPropProjeto.FormCreate(Sender: TObject);
 begin
   OnShow := @FormShow;
-  ApplySkinToForm(Self, CurrentSkin);
-  {$IFDEF WINDOWS}
-  HookTabControl(TabControl1);
-  {$ENDIF}
   FProjeto := nil;
 
   Label2.Top := 248;
@@ -134,11 +130,6 @@ begin
   FBtnDefaultDicts.Width := 160;
   FBtnDefaultDicts.Height := BitBtn1.Height;
   FBtnDefaultDicts.OnClick := @BtnDefaultDictsClick;
-
-  {$IFDEF WINDOWS}
-  HookCheckBoxControl(FChkUseDefaultDict);
-  HookButtonControl(FBtnDefaultDicts);
-  {$ENDIF}
 
   Translate;
 end;

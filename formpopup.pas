@@ -393,7 +393,7 @@ begin
   OnResize := @FormResize;
   OnShow := @FormShow;
 
-  ApplySkin(CurrentSkin);
+  Self.Color := CurrentSkin.PanelBg;
 
   LoadSettings;
 end;
@@ -530,7 +530,6 @@ begin
 
     opts.WriteInteger('leiaute', 'popup.zoom.strong', Round(FZoomStrong * 100));
     opts.WriteInteger('leiaute', 'popup.zoom.morfo',  Round(FZoomMorpho * 100));
-    opts.UpdateFile;
   except
   end;
 end;

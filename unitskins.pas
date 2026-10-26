@@ -399,12 +399,30 @@ procedure SetControlThemeMode(AControl: TWinControl; AIsDark: Boolean; const Dar
 var
   wTheme: WideString;
   wSpace: WideString;
+  desiredMode, currentMode: PtrUInt;
 {$ENDIF}
 begin
   if not assigned(AControl) or not AControl.HandleAllocated then exit;
 
   {$IFDEF WINDOWS}
   InitUxTheme;
+  if not AIsDark then
+    desiredMode := 1
+  else if DarkTheme = '' then
+    desiredMode := 2
+  else if DarkTheme = 'DarkMode_CFD' then
+    desiredMode := 3
+  else
+    desiredMode := 4;
+
+  currentMode := GetPropW(AControl.Handle, 'iBibliaThemeMode');
+  if currentMode = desiredMode then
+  begin
+    AControl.Invalidate;
+    Exit;
+  end;
+  SetPropW(AControl.Handle, 'iBibliaThemeMode', desiredMode);
+
   if Assigned(fnAllowDarkModeForWindow) then
     fnAllowDarkModeForWindow(AControl.Handle, AIsDark);
 
@@ -420,13 +438,11 @@ begin
       else if DarkTheme = 'DarkMode_CFD' then
       begin
         wTheme := 'DarkMode_CFD';
-        fnSetWindowTheme(AControl.Handle, nil, nil);
         fnSetWindowTheme(AControl.Handle, PWideChar(wTheme), nil);
       end
       else
       begin
         wTheme := 'DarkMode_Explorer';
-        fnSetWindowTheme(AControl.Handle, nil, nil);
         fnSetWindowTheme(AControl.Handle, PWideChar(wTheme), nil);
       end;
     end
@@ -435,11 +451,7 @@ begin
       fnSetWindowTheme(AControl.Handle, nil, nil);
     end;
   end;
-  SendMessage(AControl.Handle, $031A {WM_THEMECHANGED}, 0, 0);
-  SetWindowPos(AControl.Handle, 0, 0, 0, 0, 0,
-    SWP_NOMOVE or SWP_NOSIZE or SWP_NOZORDER or SWP_NOACTIVATE or SWP_FRAMECHANGED);
-  RedrawWindow(AControl.Handle, nil, 0,
-    RDW_FRAME or RDW_INVALIDATE or RDW_UPDATENOW);
+  RedrawWindow(AControl.Handle, nil, 0, RDW_FRAME or RDW_INVALIDATE);
   AControl.Invalidate;
   {$ENDIF}
 end;
@@ -471,13 +483,11 @@ begin
   MenuInfo.fMask := MIM_BACKGROUND or MIM_APPLYTOSUBMENUS or $00000010 {MIM_STYLE};
   MenuInfo.dwStyle := $00000400 {MNS_CHECKORBMP};
   if AIsDark then
-    MenuInfo.hbrBack := CreateSolidBrush(ColorToRGB(ABackCol))
+    MenuInfo.hbrBack := GetCachedPanelBrush(ABackCol)
   else
     MenuInfo.hbrBack := 0;
 
   SetMenuInfo(AMenu.Handle, @MenuInfo);
-  if FormHandle <> 0 then
-    DrawMenuBar(FormHandle);
   {$ENDIF}
 end;
 
@@ -491,6 +501,7 @@ const
 var
   dwVal: DWORD;
   clrCap, clrTxt: COLORREF;
+  desiredWinMode, prevWinMode: PtrUInt;
 {$ENDIF}
 begin
   if not assigned(AForm) then exit;
@@ -510,17 +521,41 @@ begin
       fnSetPreferredAppMode(pamDefault);
   end;
 
-  if Assigned(fnFlushMenuThemes) then
-    fnFlushMenuThemes();
+  if not AForm.HandleAllocated then exit;
 
-  if Assigned(fnAllowDarkModeForWindow) and AForm.HandleAllocated then
-    fnAllowDarkModeForWindow(AForm.Handle, AIsDark);
+  if AIsDark then
+    desiredWinMode := 2
+  else
+    desiredWinMode := 1;
+  prevWinMode := GetPropW(AForm.Handle, 'iBibliaWinDark');
 
-  if Assigned(fnDwmSetWindowAttribute) and AForm.HandleAllocated then
+  if prevWinMode <> desiredWinMode then
   begin
-    fnDwmSetWindowAttribute(AForm.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, @dwVal, SizeOf(dwVal));
-    fnDwmSetWindowAttribute(AForm.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1, @dwVal, SizeOf(dwVal));
+    SetPropW(AForm.Handle, 'iBibliaWinDark', desiredWinMode);
 
+    if Assigned(fnFlushMenuThemes) then
+      fnFlushMenuThemes();
+
+    if Assigned(fnAllowDarkModeForWindow) then
+      fnAllowDarkModeForWindow(AForm.Handle, AIsDark);
+
+    if Assigned(fnDwmSetWindowAttribute) then
+    begin
+      fnDwmSetWindowAttribute(AForm.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, @dwVal, SizeOf(dwVal));
+      fnDwmSetWindowAttribute(AForm.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1, @dwVal, SizeOf(dwVal));
+    end;
+
+    if Assigned(fnSetWindowTheme) then
+    begin
+      if AIsDark then
+        fnSetWindowTheme(AForm.Handle, PWideChar(WideString('DarkMode_Explorer')), nil)
+      else
+        fnSetWindowTheme(AForm.Handle, nil, nil);
+    end;
+  end;
+
+  if Assigned(fnDwmSetWindowAttribute) then
+  begin
     if AIsDark or (CurrentSkin.Id = skSepia) then
     begin
       clrCap := ColorToRGB(CurrentSkin.PanelBg);
@@ -535,28 +570,14 @@ begin
     fnDwmSetWindowAttribute(AForm.Handle, DWMWA_TEXT_COLOR, @clrTxt, SizeOf(clrTxt));
   end;
 
-  if Assigned(fnSetWindowTheme) and AForm.HandleAllocated then
-  begin
-    if AIsDark then
-      fnSetWindowTheme(AForm.Handle, PWideChar(WideString('DarkMode_Explorer')), nil)
-    else
-      fnSetWindowTheme(AForm.Handle, nil, nil);
-  end;
-
-  if (AForm is TForm) and Assigned(TForm(AForm).Menu) and AForm.HandleAllocated then
+  if (AForm is TForm) and Assigned(TForm(AForm).Menu) then
     ApplyDarkModeToMenu(TForm(AForm).Menu, AForm.Handle, AIsDark, CurrentSkin.PanelBg);
 
-  if AForm.HandleAllocated then
+  if prevWinMode <> desiredWinMode then
   begin
     SetWindowPos(AForm.Handle, 0, 0, 0, 0, 0,
       SWP_NOMOVE or SWP_NOSIZE or SWP_NOZORDER or SWP_NOACTIVATE or SWP_FRAMECHANGED);
-    if AForm.Visible then
-    begin
-      SendMessage(AForm.Handle, WM_NCACTIVATE, WPARAM(False), 0);
-      SendMessage(AForm.Handle, WM_NCACTIVATE, WPARAM(True), 0);
-    end;
-    RedrawWindow(AForm.Handle, nil, 0,
-      RDW_FRAME or RDW_INVALIDATE or RDW_UPDATENOW);
+    RedrawWindow(AForm.Handle, nil, 0, RDW_FRAME or RDW_INVALIDATE);
   end;
   {$ENDIF}
 end;
@@ -2109,15 +2130,32 @@ begin
 end;
 
 procedure HookTreeViewControl(AControl: TWinControl);
+var
+  rgbBg, rgbTxt, rgbLine: COLORREF;
 begin
   InitUxTheme;
   if not Assigned(fnSetWindowSubclass) then exit;
   if Assigned(AControl) and AControl.HandleAllocated and (AControl.Handle <> 0) then
   begin
     fnSetWindowSubclass(AControl.Handle, @TreeViewSubclassProc, 9001, PtrUInt(AControl));
-    SendMessage(AControl.Handle, $111D, 0, ColorToRGB(CurrentSkin.TreeBg));
-    SendMessage(AControl.Handle, $111E, 0, ColorToRGB(CurrentSkin.TreeText));
-    SendMessage(AControl.Handle, $1128, 0, ColorToRGB(CurrentSkin.PanelBorder));
+    rgbBg := ColorToRGB(CurrentSkin.TreeBg);
+    rgbTxt := ColorToRGB(CurrentSkin.TreeText);
+    rgbLine := ColorToRGB(CurrentSkin.PanelBorder);
+    if GetPropW(AControl.Handle, 'iBibliaTvBg') <> PtrUInt(rgbBg + 1) then
+    begin
+      SetPropW(AControl.Handle, 'iBibliaTvBg', PtrUInt(rgbBg + 1));
+      SendMessage(AControl.Handle, $111D, 0, rgbBg);
+    end;
+    if GetPropW(AControl.Handle, 'iBibliaTvTxt') <> PtrUInt(rgbTxt + 1) then
+    begin
+      SetPropW(AControl.Handle, 'iBibliaTvTxt', PtrUInt(rgbTxt + 1));
+      SendMessage(AControl.Handle, $111E, 0, rgbTxt);
+    end;
+    if GetPropW(AControl.Handle, 'iBibliaTvLine') <> PtrUInt(rgbLine + 1) then
+    begin
+      SetPropW(AControl.Handle, 'iBibliaTvLine', PtrUInt(rgbLine + 1));
+      SendMessage(AControl.Handle, $1128, 0, rgbLine);
+    end;
     AControl.Invalidate;
   end;
 end;
@@ -2228,8 +2266,9 @@ begin
   if not Assigned(fnSetWindowSubclass) then exit;
   if Assigned(AControl) then
   begin
-    AControl.HandleNeeded;
-    if AControl.Handle <> 0 then
+    if (not AControl.HandleAllocated) and Assigned(AControl.Parent) and AControl.Parent.HandleAllocated then
+      AControl.HandleNeeded;
+    if AControl.HandleAllocated and (AControl.Handle <> 0) then
     begin
       fnSetWindowSubclass(AControl.Handle, @EditMemoSubclassProc, 9501, PtrUInt(AControl));
       RedrawWindow(AControl.Handle, nil, 0, RDW_FRAME or RDW_INVALIDATE);

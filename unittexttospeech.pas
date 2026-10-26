@@ -36,8 +36,11 @@ type
     FCurrentVoiceIndex: Integer;
     FInitialized: Boolean;
     {$ENDIF}
+    procedure SetEnabled(AValue: Boolean);
     procedure SetSourceVoiceIndex(AValue: Integer);
     procedure SetDestVoiceIndex(AValue: Integer);
+    function GetVoiceList: TStringList;
+    procedure ReconcileVoiceNames;
     {$IFDEF WINDOWS}
     procedure InitSAPI;
     procedure PopulateVoiceList;
@@ -55,7 +58,7 @@ type
     procedure LoadFromIni(AIni: TIniFile);
     procedure SaveToIni(AIni: TIniFile);
 
-    property Enabled: Boolean read FEnabled write FEnabled;
+    property Enabled: Boolean read FEnabled write SetEnabled;
     property SourceVoiceIndex: Integer read FSourceVoiceIndex write SetSourceVoiceIndex;
     property DestVoiceIndex: Integer read FDestVoiceIndex write SetDestVoiceIndex;
     property SourceVoiceName: string read FSourceVoiceName write FSourceVoiceName;
@@ -63,7 +66,7 @@ type
     property Rate: Integer read FRate write FRate;
     property Volume: Integer read FVolume write FVolume;
     property TriggerMode: TTTSTriggerMode read FTriggerMode write FTriggerMode;
-    property VoiceList: TStringList read FVoiceList;
+    property VoiceList: TStringList read GetVoiceList;
   end;
 
 var
@@ -90,6 +93,49 @@ begin
 end;
 
 { TTTSManager }
+
+procedure TTTSManager.SetEnabled(AValue: Boolean);
+begin
+  FEnabled := AValue;
+  {$IFDEF WINDOWS}
+  if FEnabled and (not FInitialized) then
+    InitSAPI;
+  {$ENDIF}
+end;
+
+function TTTSManager.GetVoiceList: TStringList;
+begin
+  {$IFDEF WINDOWS}
+  if not FInitialized then
+    InitSAPI;
+  {$ENDIF}
+  Result := FVoiceList;
+end;
+
+procedure TTTSManager.ReconcileVoiceNames;
+var
+  i: Integer;
+begin
+  if FSourceVoiceName <> '' then
+  begin
+    for i := 0 to FVoiceList.Count - 1 do
+      if FVoiceList[i] = FSourceVoiceName then
+      begin
+        FSourceVoiceIndex := i;
+        break;
+      end;
+  end;
+
+  if FDestVoiceName <> '' then
+  begin
+    for i := 0 to FVoiceList.Count - 1 do
+      if FVoiceList[i] = FDestVoiceName then
+      begin
+        FDestVoiceIndex := i;
+        break;
+      end;
+  end;
+end;
 
 procedure TTTSManager.SetSourceVoiceIndex(AValue: Integer);
 begin
@@ -121,7 +167,7 @@ begin
 
   {$IFDEF WINDOWS}
   FInitialized := False;
-  InitSAPI;
+  // Lazy SAPI initialization: InitSAPI is called only when TTS is enabled or VoiceList is requested
   {$ENDIF}
 end;
 
@@ -171,17 +217,22 @@ begin
     end;
 
     // Auto-detect English voice for destination translation text
-    for i := 0 to FVoiceList.Count - 1 do
+    if FDestVoiceName = '' then
     begin
-      vName := LowerCase(FVoiceList[i]);
-      if (Pos('david', vName) > 0) or (Pos('zira', vName) > 0) or
-         (Pos('english', vName) > 0) or (Pos('en-us', vName) > 0) then
+      for i := 0 to FVoiceList.Count - 1 do
       begin
-        FDestVoiceIndex := i;
-        FDestVoiceName := FVoiceList[i];
-        break;
+        vName := LowerCase(FVoiceList[i]);
+        if (Pos('david', vName) > 0) or (Pos('zira', vName) > 0) or
+           (Pos('english', vName) > 0) or (Pos('en-us', vName) > 0) then
+        begin
+          FDestVoiceIndex := i;
+          FDestVoiceName := FVoiceList[i];
+          break;
+        end;
       end;
     end;
+
+    ReconcileVoiceNames;
   except
     FInitialized := False;
   end;
@@ -418,8 +469,6 @@ begin
 end;
 
 procedure TTTSManager.LoadFromIni(AIni: TIniFile);
-var
-  i: Integer;
 begin
   if AIni = nil then exit;
   FEnabled := AIni.ReadBool('tts', 'enabled', false);
@@ -431,27 +480,14 @@ begin
   FRate := AIni.ReadInteger('tts', 'rate', 0);
   FVolume := AIni.ReadInteger('tts', 'volume', 100);
 
-  // Reconcile Source Voice Name with current voice list
-  if FSourceVoiceName <> '' then
-  begin
-    for i := 0 to FVoiceList.Count - 1 do
-      if FVoiceList[i] = FSourceVoiceName then
-      begin
-        FSourceVoiceIndex := i;
-        break;
-      end;
-  end;
-
-  // Reconcile Dest Voice Name with current voice list
-  if FDestVoiceName <> '' then
-  begin
-    for i := 0 to FVoiceList.Count - 1 do
-      if FVoiceList[i] = FDestVoiceName then
-      begin
-        FDestVoiceIndex := i;
-        break;
-      end;
-  end;
+  {$IFDEF WINDOWS}
+  if FEnabled and (not FInitialized) then
+    InitSAPI
+  else if FInitialized then
+    ReconcileVoiceNames;
+  {$ELSE}
+  ReconcileVoiceNames;
+  {$ENDIF}
 end;
 
 procedure TTTSManager.SaveToIni(AIni: TIniFile);

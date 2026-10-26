@@ -605,20 +605,31 @@ begin
   end;
 
   FCorAssociado := ASkin.WindowText;
-  FCorDesassociado := ASkin.WindowTextDim;
+  if assigned(FVersiculoRef) then
+    FCorDesassociado := ASkin.WindowTextDim
+  else
+    FCorDesassociado := ASkin.WindowText;
 
   if assigned(FSintagmas) then
   begin
-    for i := 0 to FSintagmas.Count - 1 do
-      if assigned(FSintagmas[i]) then
-      begin
-        if assigned(FSintagmas[i].LabelRef) then
+    if assigned(FPanel) then
+      FPanel.DisableAutoSizing;
+    try
+      for i := 0 to FSintagmas.Count - 1 do
+        if assigned(FSintagmas[i]) then
         begin
-          FSintagmas[i].LabelRef.Color := ASkin.WindowBg;
-          FSintagmas[i].LabelRef.Transparent := not ASkin.IsDark;
+          if assigned(FSintagmas[i].LabelRef) then
+          begin
+            FSintagmas[i].LabelRef.Color := ASkin.WindowBg;
+            if FSintagmas[i].LabelRef.Transparent <> (not ASkin.IsDark) then
+              FSintagmas[i].LabelRef.Transparent := not ASkin.IsDark;
+          end;
+          FSintagmas[i].SetAssociated(FSintagmas[i].IsAssociated);
         end;
-        FSintagmas[i].SetAssociated(FSintagmas[i].IsAssociated);
-      end;
+    finally
+      if assigned(FPanel) then
+        FPanel.EnableAutoSizing;
+    end;
   end;
 
   if assigned(FPanel) then

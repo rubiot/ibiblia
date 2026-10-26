@@ -104,6 +104,8 @@ type
     FParaBottomPadding: LongInt;
     FParaHAlign: TKHAlign;
     FJustClosedHeading: Boolean;
+    FAppliedSkin: TSkinColors;
+    procedure UpdateBlocksSkin(ABlocks: TKMemoBlocks; const AOldSkin, ANewSkin: TSkinColors);
 
     function GetCurrentStyle: TKMemoTextStyle;
     function GetInterlinearMode: TInterlinearMode;
@@ -1185,22 +1187,83 @@ begin
   end;
 end;
 
+procedure TChapterView.UpdateBlocksSkin(ABlocks: TKMemoBlocks; const AOldSkin, ANewSkin: TSkinColors);
+var
+  i: Integer;
+  blk: TKMemoBlock;
+  tb: TKMemoTextBlock;
+  cont: TKMemoContainer;
+  fc, darkRed: TColor;
+begin
+  if not Assigned(ABlocks) then Exit;
+  darkRed := MakeRGB(244, 92, 92);
+  for i := 0 to ABlocks.Count - 1 do
+  begin
+    blk := ABlocks[i];
+    if blk is TKMemoTextBlock then
+    begin
+      tb := TKMemoTextBlock(blk);
+      fc := tb.TextStyle.Font.Color;
+      if fc = AOldSkin.WindowText then
+        tb.TextStyle.Font.Color := ANewSkin.WindowText
+      else if fc = AOldSkin.WindowTextDim then
+        tb.TextStyle.Font.Color := ANewSkin.WindowTextDim
+      else if fc = AOldSkin.HeaderColor then
+        tb.TextStyle.Font.Color := ANewSkin.HeaderColor
+      else if fc = AOldSkin.VerseNumColor then
+        tb.TextStyle.Font.Color := ANewSkin.VerseNumColor
+      else if (fc = clRed) or (fc = darkRed) then
+      begin
+        if ANewSkin.IsDark then
+          tb.TextStyle.Font.Color := darkRed
+        else
+          tb.TextStyle.Font.Color := clRed;
+      end;
+
+      if tb.TextStyle.Brush.Style = bsSolid then
+        tb.TextStyle.Brush.Color := ANewSkin.VerseHighlightBg
+      else
+        tb.TextStyle.Brush.Color := ANewSkin.WindowBg;
+    end
+    else if blk is TKMemoContainer then
+    begin
+      cont := TKMemoContainer(blk);
+      if cont.BlockStyle.Brush.Color = AOldSkin.VerseHighlightBg then
+        cont.BlockStyle.Brush.Color := ANewSkin.VerseHighlightBg;
+      UpdateBlocksSkin(cont.Blocks, AOldSkin, ANewSkin);
+    end;
+  end;
+end;
+
 procedure TChapterView.ApplySkin(const ASkin: TSkinColors);
 begin
   Color := ASkin.WindowBg;
   ApplyDarkModeToControl(Self, ASkin.IsDark);
-  Background.Color := ASkin.WindowBg;
-  TextStyle.Font.Color := ASkin.WindowText;
-  TextStyle.Brush.Color := ASkin.WindowBg;
-  TextStyle.Brush.Style := bsClear;
+  Blocks.LockUpdate;
+  try
+    Background.Color := ASkin.WindowBg;
+    TextStyle.Font.Color := ASkin.WindowText;
+    TextStyle.Brush.Color := ASkin.WindowBg;
+    TextStyle.Brush.Style := bsClear;
+    if Blocks.Count > 0 then
+      UpdateBlocksSkin(Blocks, FAppliedSkin, ASkin);
+    FAppliedSkin := ASkin;
+  finally
+    Blocks.UnLockUpdate;
+  end;
   if assigned(FHint) and assigned(FHint.FNoteView) then
   begin
-    FHint.FNoteView.Color := ASkin.NoteBg;
-    FHint.FNoteView.Background.Color := ASkin.NoteBg;
-    FHint.FNoteView.TextStyle.Font.Color := ASkin.NoteText;
-    FHint.FNoteView.TextStyle.Brush.Color := ASkin.NoteBg;
+    FHint.FNoteView.Blocks.LockUpdate;
+    try
+      FHint.FNoteView.Color := ASkin.NoteBg;
+      FHint.FNoteView.Background.Color := ASkin.NoteBg;
+      FHint.FNoteView.TextStyle.Font.Color := ASkin.NoteText;
+      FHint.FNoteView.TextStyle.Brush.Color := ASkin.NoteBg;
+    finally
+      FHint.FNoteView.Blocks.UnLockUpdate;
+    end;
   end;
-  LoadChapter;
+  Invalidate;
 end;
 
 procedure TChapterView.ResetStyleStack;
@@ -1429,6 +1492,7 @@ begin
 
   FStyleStack := TObjectStack.Create;
   FRawMemo    := TRawChapterMemo.Create(Parent, Self);
+  FAppliedSkin := CurrentSkin;
   Color       := CurrentSkin.WindowBg;
   Background.Color := CurrentSkin.WindowBg;
   TextStyle.Font.Color := CurrentSkin.WindowText;
@@ -1474,6 +1538,7 @@ begin
   SetLength(FVerseRanges, verses.Count + 1);
   FRawMemo.Hide;
 
+  FAppliedSkin := CurrentSkin;
   Blocks.LockUpdate;
   try
     Blocks.Clear;

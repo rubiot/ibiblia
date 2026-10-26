@@ -102,7 +102,6 @@ end;
 
 procedure TFormExportPatch.FormCreate(Sender: TObject);
 begin
-  ApplySkinToForm(Self, CurrentSkin);
   FBibleTreeView := TBibleTreeView.Create(GroupBox1);
   FBibleTreeView.Align := alClient;
 end;

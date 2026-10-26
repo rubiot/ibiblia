@@ -77,7 +77,6 @@ end;
 
 procedure TFrmApplyPatch.FormCreate(Sender: TObject);
 begin
-  ApplySkinToForm(Self, CurrentSkin);
   FBibleTreeView := TBibleTreeView.Create(GroupBox1);
   FBibleTreeView.Align := alClient;
   FBibleTreeView.OnVerseChange := @OnVerseChange;

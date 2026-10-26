@@ -2437,7 +2437,7 @@ begin
         FGlobalDicEnglish := CriarObjetoQuery(pEnglish);
         FGlobalDicEnglish.SQL.Text :=
           'select t.subject, c.data, c.data2 from topics t, content c ' +
-          'where lower(t.subject) = lower(:word) and t.id = c.topic_id ' +
+          'where t.subject = :word collate nocase and t.id = c.topic_id ' +
           'order by case when t.subject = :word then 0 else 1 end, t.id asc limit 1';
         FGlobalDicEnglish.Prepare;
       except
@@ -2881,10 +2881,10 @@ var
   e: TOnNovoVersiculoEvent;
   //starttime: DWord;
 begin
-  UpdateReference(GetID());
-
   if not FScrollEventsEnabled then
     exit;
+
+  UpdateReference(GetID());
 
   //starttime := getTickCount;
 
@@ -4125,9 +4125,10 @@ end;
 procedure TProjeto.AtualizarArvore;
 var
   n, ul, uc: TTreeNode;
-  qv, qc, l, c, v, s: smallint;
+  qv, qc, l, c, v, s, curSit: smallint;
   sl, sc: array[0..3] of smallint;
   b: boolean;
+  sitField: TField;
 begin
   if not assigned(FArvore) or (FArvore.Items.Count = 0) then exit;
 
@@ -4159,17 +4160,94 @@ begin
   FTotaisSituacao[2] := 0;
   FTotaisSituacao[3] := 0;
 
-  StartScrollingSession;
-  try
-    VersiculoInicial;
+  sitField := FTblPares.FieldByName('pare_situacao');
+  curSit := 0;
 
-  while not FTblPares.EOF do
-  begin
-    if v > QVersiculos[FEscopo][qv] then // novo capítulo
-    begin
-      { atualizando nó do capítulo }
-      //if qv = 69 then
-      //  MessageDlg('sc', format('[%d][%d][%d][%d] - QVersiculos[%d]=%d', [sc[0],sc[1],sc[2],sc[3], qv, QVersiculos[qv]]), mtInformation, [mbOK], 0);
+  FArvore.BeginUpdate;
+  try
+    StartScrollingSession;
+    try
+      FTblPares.First;
+
+      while not FTblPares.EOF do
+      begin
+        if v > QVersiculos[FEscopo][qv] then // novo capítulo
+        begin
+          { atualizando nó do capítulo }
+          b := false;
+          for s:=0 to 3 do // todos os versículos estão na mesma situação?
+            if sc[s] = QVersiculos[FEscopo][qv] then
+            begin
+              uc.ImageIndex := s; uc.SelectedIndex := uc.ImageIndex + 4;
+              b := true;
+              break;
+            end;
+          if not b then // várias situacoes diferentes
+          begin
+            if sc[2] > 0 then
+              uc.ImageIndex := 2
+            else
+              uc.ImageIndex := 1;
+            uc.SelectedIndex := uc.ImageIndex + 4;
+          end;
+          sc[0] := 0;
+          sc[1] := 0;
+          sc[2] := 0;
+          sc[3] := 0;
+          inc(sl[uc.ImageIndex]);
+
+          v := 1;
+          inc(c);
+          if c > QCapitulos[FEscopo][qc] then // novo livro
+          begin
+            { atualizando nó do livro }
+            b := false;
+            for s:=0 to 3 do // todos os capítulos estão na mesma situação?
+              if sl[s] = QCapitulos[FEscopo][qc] then
+              begin
+                ul.ImageIndex := s; ul.SelectedIndex := ul.ImageIndex + 4;
+                b := true;
+                break;
+              end;
+            if not b then // várias situações diferentes
+            begin
+              if sl[2] > 0 then
+                ul.ImageIndex := 2
+              else
+                ul.ImageIndex := 1;
+              ul.SelectedIndex := ul.ImageIndex + 4;
+            end;
+            sl[0] := 0;
+            sl[1] := 0;
+            sl[2] := 0;
+            sl[3] := 0;
+
+            c := 1;
+            inc(l);
+            inc(qc);
+            ul := ul.GetNextSibling;
+            uc := ul.GetFirstChild;
+          end else
+            uc := uc.GetNextSibling;
+
+          n := uc.GetFirstChild;
+          inc(qv);
+        end;
+
+        curSit := sitField.AsInteger;
+        if (curSit < 0) or (curSit > 3) then
+          curSit := 0;
+        inc(sc[curSit]);
+        inc(FTotaisSituacao[curSit]);
+        n.ImageIndex := curSit;
+        n.SelectedIndex := curSit + 4;
+
+        FTblPares.Next;
+        inc(v);
+        n := n.GetNextSibling;
+      end;
+
+      { atualizando o último capítulo - Apocalipse 22 }
       b := false;
       for s:=0 to 3 do // todos os versículos estão na mesma situação?
         if sc[s] = QVersiculos[FEscopo][qv] then
@@ -4180,107 +4258,37 @@ begin
         end;
       if not b then // várias situacoes diferentes
       begin
-        if sc[2] > 0 then //(sc[0] = 0) and (sc[1] = 0) then
+        if sc[2] > 0 then
           uc.ImageIndex := 2
         else
           uc.ImageIndex := 1;
+
         uc.SelectedIndex := uc.ImageIndex + 4;
       end;
-      sc[0] := 0;
-      sc[1] := 0;
-      sc[2] := 0;
-      sc[3] := 0;
-      inc(sl[uc.ImageIndex]);
 
-      v := 1;
-      inc(c);
-      if c > QCapitulos[FEscopo][qc] then // novo livro
-      begin
-        { atualizando nó do livro }
-        //if qc = 27 then
-        //  MessageDlg('sl', format('[%d][%d][%d][%d] - [%d]', [sl[0],sl[1],sl[2],sl[3], QCapitulos[qc]]), mtInformation, [mbOK], 0);
-        b := false;
-        for s:=0 to 3 do // todos os capítulos estão na mesma situação?
-          if sl[s] = QCapitulos[FEscopo][qc] then
-          begin
-            ul.ImageIndex := s; ul.SelectedIndex := ul.ImageIndex + 4;
-            b := true;
-            break;
-          end;
-        if not b then // várias situações diferentes
+      { atualizando último livro - Apocalipse }
+      b := false;
+      inc(sl[curSit]);
+      for s:=0 to 3 do // todos os capítulos estão na mesma situação?
+        if sl[s] = QCapitulos[FEscopo][qc] then
         begin
-          if sl[2] > 0 then //(sl[0] = 0) and (sl[1] = 0) then
-            ul.ImageIndex := 2
-          else
-            ul.ImageIndex := 1;
-          ul.SelectedIndex := ul.ImageIndex + 4;
+          ul.ImageIndex := s; ul.SelectedIndex := ul.ImageIndex + 4;
+          b := true;
+          break;
         end;
-        sl[0] := 0;
-        sl[1] := 0;
-        sl[2] := 0;
-        sl[3] := 0;
-
-        c := 1;
-        inc(l);
-        inc(qc);
-        ul := ul.GetNextSibling;
-        uc := ul.GetFirstChild;
-      end else
-        uc := uc.GetNextSibling;
-
-      n := uc.GetFirstChild;
-      inc(qv);
+      if not b then // várias situações diferentes
+      begin
+        if sl[2] > 0 then
+          ul.ImageIndex := 2
+        else
+          ul.ImageIndex := 1;
+        ul.SelectedIndex := ul.ImageIndex + 4;
+      end;
+    finally
+      FinishScrollingSession;
     end;
-    inc(sc[Situacao]);
-    inc(FTotaisSituacao[Situacao]);
-    n.ImageIndex := Situacao;
-    n.SelectedIndex := n.ImageIndex + 4;
-
-    VersiculoSeguinte;
-    inc(v);
-    n := n.GetNextSibling;
-  end;
-
-  { atualizando o último capítulo - Apocalipse 22 }
-  b := false;
-  for s:=0 to 3 do // todos os versículos estão na mesma situação?
-    if sc[s] = QVersiculos[FEscopo][qv] then
-    begin
-      uc.ImageIndex := s; uc.SelectedIndex := uc.ImageIndex + 4;
-      b := true;
-      break;
-    end;
-  if not b then // várias situacoes diferentes
-  begin
-    if sc[2] > 0 then //(sc[0] = 0) and (sc[1] = 0) then
-      uc.ImageIndex := 2
-    else
-      uc.ImageIndex := 1;
-
-    uc.SelectedIndex := uc.ImageIndex + 4;
-  end;
-
-  { atualizando último livro - Apocalipse }
-  b := false;
-  inc(sl[Situacao]);
-  //MessageDlg('sl', format('[%d][%d][%d][%d] - [%d]', [sl[0],sl[1],sl[2],sl[3], QCapitulos[qc]]), mtInformation, [mbOK], 0);
-  for s:=0 to 3 do // todos os capítulos estão na mesma situação?
-    if sl[s] = QCapitulos[FEscopo][qc] then
-    begin
-      ul.ImageIndex := s; ul.SelectedIndex := ul.ImageIndex + 4;
-      b := true;
-      break;
-    end;
-  if not b then // várias situações diferentes
-  begin
-    if sl[2] > 0 then //(sl[0] = 0) and (sl[1] = 0) then
-      ul.ImageIndex := 2
-    else
-      ul.ImageIndex := 1;
-    ul.SelectedIndex := ul.ImageIndex + 4;
-  end;
   finally
-    FinishScrollingSession;
+    FArvore.EndUpdate;
   end;
 end;
 
@@ -4468,12 +4476,12 @@ begin
 
     StartScrollingSession;
     try
-      VersiculoInicial;
+      FTblPares.First;
       while not FTblPares.EOF do
       begin
-        if Situacao = AStatus then
+        if FTblPares.FieldByName('pare_situacao').AsInteger = AStatus then
         begin
-          SScanf(ID, '%d,%d,%d', [@b, @c, @v]);
+          SScanf(FTblPares.FieldByName('pare_id').AsString, '%d,%d,%d', [@b, @c, @v]);
 
           if b <> curBookID then
           begin
@@ -4497,7 +4505,7 @@ begin
           nv.ImageIndex := AStatus;
           nv.SelectedIndex := AStatus + 4;
         end;
-        VersiculoSeguinte;
+        FTblPares.Next;
       end;
     finally
       FinishScrollingSession;
@@ -4966,6 +4974,8 @@ begin
     FTblPares.Locate('pare_id', reference, []);
     if ID <> reference then
       raise Exception.Create(Format('Reference not found in project [%s]', [reference]));
+    if not FScrollEventsEnabled then
+      UpdateReference(reference);
   end;
 end;
 
@@ -5997,15 +6007,53 @@ begin
 end;
 
 procedure TProjeto.FinishScrollingSession;
+var
+  steps: Integer;
+  idField: TField;
 begin
-  GoToReference(FMarker);
+  if (FMarker <> '') and Assigned(FTblPares) and FTblPares.Active then
+  begin
+    idField := FTblPares.FieldByName('pare_id');
+    steps := 200;
+    while (not FTblPares.BOF) and (idField.AsString <> FMarker) and (steps > 0) do
+    begin
+      FTblPares.Prior;
+      Dec(steps);
+    end;
+    if idField.AsString <> FMarker then
+      GoToReference(FMarker)
+    else
+      UpdateReference(FMarker);
+  end;
   ScrollEventsEnabled := true;
 end;
 
 procedure TProjeto.RewindChapter;
+var
+  targetRef: string;
+  steps: Integer;
+  idField: TField;
 begin
   if Verse <> 1 then
-    GoToReference(Format('%d,%d,%d', [BookID, Chapter, 1]));
+  begin
+    targetRef := Format('%d,%d,1', [BookID, Chapter]);
+    if Assigned(FTblPares) and FTblPares.Active then
+    begin
+      idField := FTblPares.FieldByName('pare_id');
+      steps := Verse + 5;
+      while (not FTblPares.BOF) and (idField.AsString <> targetRef) and (steps > 0) do
+      begin
+        FTblPares.Prior;
+        Dec(steps);
+      end;
+      if idField.AsString <> targetRef then
+        GoToReference(targetRef)
+      else
+        UpdateReference(targetRef);
+    end
+    else
+      GoToReference(targetRef);
+  end;
 end;
 
 
