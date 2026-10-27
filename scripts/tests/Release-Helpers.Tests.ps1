@@ -1,4 +1,4 @@
-# Offline regression checks for release trust boundaries. No Pester dependency.
+﻿# Offline regression checks for release trust boundaries. No Pester dependency.
 [CmdletBinding()]
 param()
 Set-StrictMode -Version Latest
@@ -89,6 +89,30 @@ try {
     Assert-Throws { Get-ReleaseTestSummary $summaryLog } 'A successful process without tests must not qualify.'
     [IO.File]::WriteAllText($summaryLog, "Number of run tests: 42" + [Environment]::NewLine + "Number of errors: 0" + [Environment]::NewLine + "Number of failures: 1")
     Assert-Throws { Get-ReleaseTestSummary $summaryLog } 'FPCUnit assertion failures must block packaging.'
+    $sourceRoot = Join-Path $temporaryRoot 'vendor-source'
+    $vendorRoot = Join-Path $sourceRoot 'vendor\fpc-openssl'
+    New-Item -ItemType Directory -Path $vendorRoot -Force | Out-Null
+    [IO.File]::WriteAllText((Join-Path $vendorRoot 'original.pas'), 'upstream binding')
+    [IO.File]::WriteAllText((Join-Path $vendorRoot 'patched.pp'), 'compatible binding')
+    [IO.File]::WriteAllText((Join-Path $vendorRoot 'COPYING.txt'), 'license fixture')
+    $provenance = [ordered]@{
+        repository='https://example.invalid/source';revision=('1' * 40)
+        files=@(
+            [ordered]@{name='original.pas';sha256=(Get-ReleaseSha256 (Join-Path $vendorRoot 'original.pas'))}
+            [ordered]@{name='patched.pp';sha256=('0' * 64)}
+        )
+        compatibility_patch=[ordered]@{file='patched.pp';sha256=(Get-ReleaseSha256 (Join-Path $vendorRoot 'patched.pp'))}
+        license_files=@([ordered]@{name='COPYING.txt';sha256=(Get-ReleaseSha256 (Join-Path $vendorRoot 'COPYING.txt'))})
+    }
+    Write-ReleaseJson $provenance (Join-Path $vendorRoot 'provenance.json')
+    $vendorResult = Assert-ReleaseVendorProvenance $sourceRoot
+    Assert-Check ($vendorResult.files.Count -eq 3) 'Vendor source, compatibility patch and license pins must all be checked.'
+    Assert-Check ($vendorResult.provenanceSha256 -ceq (Get-ReleaseSha256 (Join-Path $vendorRoot 'provenance.json'))) 'The manifest must identify the exact provenance metadata.'
+    [IO.File]::WriteAllText((Join-Path $vendorRoot 'patched.pp'), 'modified compatible binding')
+    Assert-Throws { Assert-ReleaseVendorProvenance $sourceRoot } 'A modified vendored binding must block packaging.'
+    [IO.File]::WriteAllText((Join-Path $vendorRoot 'patched.pp'), 'compatible binding')
+    [IO.File]::WriteAllText((Join-Path $vendorRoot 'COPYING.txt'), 'modified license')
+    Assert-Throws { Assert-ReleaseVendorProvenance $sourceRoot } 'A modified dependency license must block packaging.'
     $completedZip = Join-Path $temporaryRoot 'completed.zip'
     $hostExecutable = (Get-Process -Id $PID).Path
     Assert-Throws {

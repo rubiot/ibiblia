@@ -22,7 +22,8 @@
   "compatibility_patch": {
     "file": "opensslsockets.pp",
     "changes": "Remove override on two GetLastSSLError* getters and retain file-only CA loading because FPC 3.2.2 lacks those base methods and TrustedCertsDir. Explicit CA file and hostname verification remain enabled.",
-    "sha256": "0d4f318922412845b65280f83d8fe371eff1f8368a80e0a1a19cb0f5ddfeddc3"
+    "sha256": "9680a65a43ddfb074742a2598eff3ead27fbbd3eca27155951dc7f281040b2a7",
+    "hashEncoding": "SHA-256 of exact archived Git blob bytes with LF line endings; validation does not normalize content."
   },
   "license_files": [
     {

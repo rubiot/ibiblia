@@ -1,4 +1,4 @@
-# Shared by Build-Release.ps1 and its offline regression checks. PowerShell 5.1+.
+﻿# Shared by Build-Release.ps1 and its offline regression checks. PowerShell 5.1+.
 Set-StrictMode -Version Latest
 
 function Get-ReleaseSha256 {
@@ -187,5 +187,34 @@ function Get-ReleaseTestSummary {
         tests = [int]$run.Groups[1].Value
         errors = [int]$errors.Groups[1].Value
         failures = [int]$failures.Groups[1].Value
+    }
+}
+
+function Assert-ReleaseVendorProvenance {
+    param([string]$SourceRoot)
+    $vendorRoot = Join-ReleasePath $SourceRoot 'vendor/fpc-openssl'
+    $provenancePath = Join-ReleasePath $vendorRoot 'provenance.json'
+    $provenance = Get-Content -LiteralPath $provenancePath -Raw | ConvertFrom-Json
+    if ($provenance.revision -notmatch '^[0-9a-f]{40}$') {
+        throw 'The vendored FPC bindings require an exact upstream revision.'
+    }
+    $verifiedFiles = @()
+    foreach ($record in $provenance.files) {
+        $expected = $record.sha256
+        if ($record.name -ceq $provenance.compatibility_patch.file) {
+            $expected = $provenance.compatibility_patch.sha256
+        }
+        Assert-ReleaseHash (Join-ReleasePath $vendorRoot $record.name) $expected
+        $verifiedFiles += [ordered]@{path=$record.name;sha256=$expected}
+    }
+    foreach ($record in $provenance.license_files) {
+        Assert-ReleaseHash (Join-ReleasePath $vendorRoot $record.name) $record.sha256
+        $verifiedFiles += [ordered]@{path=$record.name;sha256=$record.sha256}
+    }
+    return [ordered]@{
+        repository = $provenance.repository
+        revision = $provenance.revision
+        provenanceSha256 = Get-ReleaseSha256 $provenancePath
+        files = $verifiedFiles
     }
 }

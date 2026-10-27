@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
 Build and validate a Windows x64 portable release from clean, committed source.
 .EXAMPLE
@@ -77,6 +77,7 @@ try {
 
     $lock = Get-Content -LiteralPath (Join-Path $source 'release\dependencies.lock.json') -Raw | ConvertFrom-Json
     if ($lock.schemaVersion -ne 1) { throw 'Unsupported release dependency-lock schema.' }
+    $vendoredFpcBindings = Assert-ReleaseVendorProvenance $source
     $cache = Join-Path $repository 'outputs\release-cache'
     $dependencyRecords = @()
     foreach ($dependency in $lock.dependencies) {
@@ -168,6 +169,7 @@ try {
         platform = 'windows-x64'; sourceCommit = $commit
         builtAtUtc = [DateTime]::UtcNow.ToString('o')
         toolchain = $toolchain; dependencies = $dependencyRecords
+        vendoredFpcBindings = $vendoredFpcBindings
         dependencyLockSha256 = Get-ReleaseSha256 (Join-Path $source 'release\dependencies.lock.json')
         validation = [ordered]@{
             applicationBuild = 'passed'; fullFpcUnitSuite = $testSummary
