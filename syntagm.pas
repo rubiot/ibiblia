@@ -210,9 +210,13 @@ begin
      (verse.Selecao.Count > 0) then // Shift pressionado
   begin
     verse.AssociarSintagmas;
+    verse.PendingAutoSelectNext := True;
+    verse.VersiculoPar.PendingAutoSelectNext := True;
   end
-  else if Assigned(verse.VersiculoPar) then // Shift não pressionado
+  else if (not (ssShift in Shift)) and Assigned(verse.VersiculoPar) then // Shift não pressionado
   begin
+    verse.PendingAutoSelectNext := False;
+    verse.VersiculoPar.PendingAutoSelectNext := False;
     verse.VersiculoPar.LimparSelecao;
     if Pairs.Count > 0 then
     begin
@@ -285,6 +289,7 @@ begin
     Siblings[i].SetPointed(true);
 
   verse := TVersiculo(VerseRef);
+  verse.UpdateNavHoverState;
   if assigned(verse.OnMouseEnter) then
     verse.OnMouseEnter(self);
 
@@ -336,6 +341,7 @@ begin
     Hint := nil;
   end;
 
+  TVersiculo(VerseRef).UpdateNavHoverState;
   if assigned(TVersiculo(VerseRef).OnMouseLeave) then
     TVersiculo(VerseRef).OnMouseLeave(self);
 end;
@@ -373,6 +379,11 @@ begin
      (verse.Selecao.Count > 0) then
   begin
     verse.AssociarSintagmas;
+    if ssCtrl in Shift then
+    begin
+      verse.PendingAutoSelectNext := True;
+      verse.VersiculoPar.PendingAutoSelectNext := True;
+    end;
   end;
 
   NotifyTarget := Self;

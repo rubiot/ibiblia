@@ -275,7 +275,7 @@ end;
 procedure TFormGlobalDicts.CheckUseGlobalChange(Sender: TObject);
 begin
   GroupDicts.Enabled := CheckUseGlobal.Checked;
-  if CurrentSkin.IsDark then
+  if IsThemedSkin then
   begin
     if CheckUseGlobal.Checked then
       LabelHelpInfo.Font.Color := CurrentSkin.WindowTextDim
@@ -413,7 +413,7 @@ begin
   HookButtonControl(ButtonOK);
   HookButtonControl(ButtonCancel);
   {$ENDIF}
-  if CurrentSkin.IsDark then
+  if IsThemedSkin then
   begin
     GroupDicts.Color := CurrentSkin.PanelBg;
     GroupDicts.Font.Color := CurrentSkin.PanelText;

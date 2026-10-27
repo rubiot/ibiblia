@@ -79,6 +79,8 @@ type
     FNavPanel: TPanel;
     FNavRects: array[0..1] of TRect;
     FHotNavIdx: Integer;
+    FMouseInPanel: Boolean;
+    FNavHoverTimer: TTimer;
     FOnNavigateVerse: TOnVerseNavigateEvent;
     FXML: string;
     FONTParser: TONTParser;
@@ -89,6 +91,8 @@ type
     FReadOnly: Boolean;
     { determines the auto select behaviour on right-click association }
     FNextAutoSelectWordMustHaveStrongMorpho: Boolean;
+    FIsSourceVerse: Boolean;
+    FPendingAutoSelectNext: Boolean;
     //FOnNovaAssociacao: TOnAssociacaoEvent;
     //FOnRemoverAssociacao: TOnAssociacaoEvent;
     function GetAndamentoAssociacao: Single;
@@ -140,6 +144,10 @@ type
     procedure OnStatusBarMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
     procedure OnStatusBarMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure OnStatusBarMouseLeave(Sender: TObject);
+    procedure OnVerseMouseEnter(Sender: TObject);
+    procedure OnVerseMouseLeave(Sender: TObject);
+    procedure OnVerseMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
+    procedure OnNavHoverTimer(Sender: TObject);
     procedure OnNavPanelPaint(Sender: TObject);
     procedure OnNavPanelMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
     procedure OnNavPanelMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -156,6 +164,7 @@ type
     destructor Destruir;
     procedure LimparSintagmas;
     procedure AssociarSintagmas;
+    procedure CompletePendingAutoSelectNext;
     procedure LimparSelecao;
     procedure DesassociarPares;
     procedure LimparAssociacoes;
@@ -164,6 +173,7 @@ type
     procedure ClearStrongCount;
     procedure OrganizarSintagmas;
     procedure RepositionTabPanel;
+    procedure UpdateNavHoverState;
     procedure SelecionarSintagmas(list: TSyntagmList);
     procedure AlterarTexto(_XML: string);
     function GetListaPares(tipo: TPairsListType): TStringList;
@@ -229,6 +239,8 @@ type
     property ReadOnly: Boolean read FReadOnly write FReadOnly default False;
     property RightToLeft: Boolean read FRightToLeft write SetRightToLeft default False;
     property NextAutoSelectWordMustHaveStrongMorpho: boolean read FNextAutoSelectWordMustHaveStrongMorpho write FNextAutoSelectWordMustHaveStrongMorpho;
+    property IsSourceVerse: Boolean read FIsSourceVerse write FIsSourceVerse default False;
+    property PendingAutoSelectNext: Boolean read FPendingAutoSelectNext write FPendingAutoSelectNext default False;
  published
     { Published declarations }
   end;
@@ -279,6 +291,8 @@ begin
   FOnStatusChange       := nil;
   FNavPanel             := nil;
   FHotNavIdx            := -1;
+  FMouseInPanel         := False;
+  FNavHoverTimer        := nil;
   FOnNavigateVerse      := nil;
 
   FAtivo := assigned(FPanel);
@@ -299,6 +313,9 @@ begin
     FEdit.OnExit     := @EditExit;
     FPanel.InsertControl(FEdit);
     FPanel.OnMouseDown  := @OnVerseMouseDown;
+    FPanel.OnMouseEnter := @OnVerseMouseEnter;
+    FPanel.OnMouseLeave := @OnVerseMouseLeave;
+    FPanel.OnMouseMove  := @OnVerseMouseMove;
     FPanel.OnResize     := @OnResize;
     FPanel.OnMouseWheel := @OnMouseWheel;
   end;
@@ -314,6 +331,8 @@ begin
   FSelecao              := TSyntagmList.Create;
   FMostrarDicas         := false;
   FNextAutoSelectWordMustHaveStrongMorpho := false;
+  FIsSourceVerse := false;
+  FPendingAutoSelectNext := false;
   //FFontePadrao          := TFont.Create;
   //FFontePadrao.Assign(TheOwner.Font);
   FCorAssociado         := CurrentSkin.WindowText;
@@ -337,12 +356,16 @@ begin
     FEdit.Free;
     FSyntagmPopupMenu.Free;
     FVersePopupMenu.Free;
+    if assigned(FNavHoverTimer) then FreeAndNil(FNavHoverTimer);
     if assigned(FNavPanel) then FreeAndNil(FNavPanel);
     if assigned(FTabPanel) then FreeAndNil(FTabPanel);
     if assigned(FStatusBarPanel) then FreeAndNil(FStatusBarPanel);
     if assigned(FTranslationPanel) then FreeAndNil(FTranslationPanel);
     if assigned(FMemoProps) then FreeAndNil(FMemoProps);
     FPanel.OnMouseDown  := nil;
+    FPanel.OnMouseEnter := nil;
+    FPanel.OnMouseLeave := nil;
+    FPanel.OnMouseMove  := nil;
     FPanel.OnResize     := nil;
     FPanel.OnMouseWheel := nil;
   end;
@@ -370,6 +393,67 @@ begin
       FPanel.EnableAutoSizing;
   end;
   FSelecao.Clear;
+  FPendingAutoSelectNext := false;
+end;
+
+procedure TVersiculo.CompletePendingAutoSelectNext;
+var
+  srcVerse, dstVerse: TVersiculo;
+  LastSelected, NextUnassociated: TSyntagm;
+begin
+  if (not FPendingAutoSelectNext) and
+     (not (Assigned(FVersiculoRef) and FVersiculoRef.PendingAutoSelectNext)) then
+    Exit;
+
+  FPendingAutoSelectNext := False;
+  if Assigned(FVersiculoRef) then
+    FVersiculoRef.PendingAutoSelectNext := False;
+
+  if FIsSourceVerse or (not Assigned(FVersiculoRef)) then
+  begin
+    srcVerse := Self;
+    dstVerse := FVersiculoRef;
+  end
+  else if FVersiculoRef.IsSourceVerse then
+  begin
+    srcVerse := FVersiculoRef;
+    dstVerse := Self;
+  end
+  else
+  begin
+    srcVerse := FVersiculoRef;
+    dstVerse := Self;
+  end;
+
+  if not Assigned(srcVerse) then Exit;
+
+  // Only advance if at least one Source word is currently selected and associated
+  if (srcVerse.Selecao.Count = 0) or (not srcVerse.Selecao[0].IsAssociated) then
+    Exit;
+
+  LastSelected := srcVerse.Selecao[srcVerse.Selecao.Count - 1];
+
+  if Assigned(dstVerse) then
+    dstVerse.LimparSelecao;
+  srcVerse.LimparSelecao;
+
+  NextUnassociated := nil;
+  if Assigned(LastSelected) then
+    NextUnassociated := LastSelected.GetNextUnassociated;
+
+  if Assigned(NextUnassociated) then
+  begin
+    NextUnassociated.AddToSelection;
+    if Assigned(srcVerse.Painel) and Assigned(NextUnassociated.LabelRef) then
+      srcVerse.Painel.ScrollInView(NextUnassociated.LabelRef);
+  end;
+
+  srcVerse.Renderizar;
+  if Assigned(dstVerse) then
+    dstVerse.Renderizar;
+
+  if Assigned(NextUnassociated) and Assigned(srcVerse.OnClick) then
+    srcVerse.OnClick(NextUnassociated);
 end;
 
 procedure TVersiculo.AssociarSintagmas;
@@ -541,10 +625,10 @@ begin
   if assigned(FPanel) then
   begin
     FPanel.Color := ASkin.WindowBg;
+    ApplyDarkModeToControl(FPanel, ASkin.IsDark);
     {$IFDEF WINDOWS}
     HookScrollBoxControl(FPanel);
     {$ENDIF}
-    ApplyDarkModeToControl(FPanel, ASkin.IsDark);
   end;
 
   if assigned(FTranslationPanel) then
@@ -580,6 +664,9 @@ begin
     FCbEdit.Color := ASkin.PanelBg;
     FCbEdit.Font.Color := ASkin.PanelText;
     ApplyDarkModeToControl(FCbEdit, ASkin.IsDark);
+    {$IFDEF WINDOWS}
+    HookCheckBoxControl(FCbEdit);
+    {$ENDIF}
   end;
 
   if assigned(FCbProps) then
@@ -587,6 +674,9 @@ begin
     FCbProps.Color := ASkin.PanelBg;
     FCbProps.Font.Color := ASkin.PanelText;
     ApplyDarkModeToControl(FCbProps, ASkin.IsDark);
+    {$IFDEF WINDOWS}
+    HookCheckBoxControl(FCbProps);
+    {$ENDIF}
   end;
 
   if assigned(FMemoProps) then
@@ -594,6 +684,9 @@ begin
     FMemoProps.Color := ASkin.WindowBg;
     FMemoProps.Font.Color := ASkin.WindowText;
     ApplyDarkModeToControl(FMemoProps, ASkin.IsDark);
+    {$IFDEF WINDOWS}
+    HookEditControl(FMemoProps);
+    {$ENDIF}
   end;
 
   if assigned(FStrongCount) and assigned(FStrongCount.LabelRef) then
@@ -1480,7 +1573,10 @@ begin
       FNavPanel.Color := CurrentSkin.WindowBg;
       FNavPanel.SetBounds(navX, navY, navW, navH);
       FNavPanel.Visible := True;
-      if FNavPanel.HandleAllocated then
+      FMouseInPanel := IsMouseCursorInControl(FPanel);
+      if Assigned(FNavHoverTimer) then
+        FNavHoverTimer.Enabled := FMouseInPanel;
+      if FMouseInPanel and FNavPanel.HandleAllocated then
       begin
         with FNavPanel.ScreenToClient(Mouse.CursorPos) do
         begin
@@ -1497,7 +1593,13 @@ begin
       FNavPanel.Invalidate;
     end
     else
+    begin
+      FMouseInPanel := False;
+      FHotNavIdx := -1;
+      if Assigned(FNavHoverTimer) then
+        FNavHoverTimer.Enabled := False;
       FNavPanel.Visible := False;
+    end;
   end;
 
   RepositionTabPanel;
@@ -2022,12 +2124,14 @@ end;
 
 procedure TVersiculo.OnStatusBarMouseLeave(Sender: TObject);
 begin
+  if Sender = nil then ;
   if FHotStatusIdx <> -1 then
   begin
     FHotStatusIdx := -1;
     if Assigned(FStatusBarPanel) then
       FStatusBarPanel.Invalidate;
   end;
+  UpdateNavHoverState;
 end;
 
 procedure TVersiculo.OnNavPanelPaint(Sender: TObject);
@@ -2094,6 +2198,12 @@ begin
     bmp.Canvas.Brush.Style := bsSolid;
     bmp.Canvas.Brush.Color := bgCol;
     bmp.Canvas.FillRect(0, 0, bmp.Width, bmp.Height);
+
+    if not FMouseInPanel then
+    begin
+      FNavPanel.Canvas.Draw(0, 0, bmp);
+      Exit;
+    end;
 
     for idx := 0 to 1 do
     begin
@@ -2162,10 +2272,104 @@ begin
   end;
 end;
 
+procedure TVersiculo.OnVerseMouseEnter(Sender: TObject);
+begin
+  if Sender = nil then ;
+  UpdateNavHoverState;
+end;
+
+procedure TVersiculo.OnVerseMouseLeave(Sender: TObject);
+begin
+  if Sender = nil then ;
+  UpdateNavHoverState;
+end;
+
+procedure TVersiculo.OnVerseMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
+begin
+  if Sender = nil then ;
+  if Shift = [] then ;
+  if (X = 0) and (Y = 0) then ;
+  UpdateNavHoverState;
+end;
+
+procedure TVersiculo.OnNavHoverTimer(Sender: TObject);
+begin
+  if Sender = nil then ;
+  UpdateNavHoverState;
+end;
+
+procedure TVersiculo.UpdateNavHoverState;
+var
+  newMouseIn: Boolean;
+  ptNav: TPoint;
+  newHot: Integer;
+begin
+  if FDestruindo or (not FAtivo) or (not Assigned(FPanel)) or (not Assigned(FNavPanel)) then
+    Exit;
+
+  newMouseIn := (FViewMode = vvmAssoc) and FNavPanel.Visible and IsMouseCursorInControl(FPanel);
+
+  if Assigned(FNavHoverTimer) then
+    FNavHoverTimer.Enabled := newMouseIn;
+
+  if newMouseIn <> FMouseInPanel then
+  begin
+    FMouseInPanel := newMouseIn;
+    if not FMouseInPanel then
+    begin
+      FHotNavIdx := -1;
+      FNavPanel.Cursor := crDefault;
+      FNavPanel.Hint := '';
+    end
+    else if FNavPanel.HandleAllocated then
+    begin
+      ptNav := FNavPanel.ScreenToClient(Mouse.CursorPos);
+      if (ptNav.X >= FNavRects[0].Left) and (ptNav.X < FNavRects[0].Right) and
+         (ptNav.Y >= 0) and (ptNav.Y < FNavPanel.Height) then
+        FHotNavIdx := 0
+      else if (ptNav.X >= FNavRects[1].Left) and (ptNav.X < FNavRects[1].Right) and
+              (ptNav.Y >= 0) and (ptNav.Y < FNavPanel.Height) then
+        FHotNavIdx := 1
+      else
+        FHotNavIdx := -1;
+    end;
+    FNavPanel.Invalidate;
+    if FNavPanel.HandleAllocated then
+      FNavPanel.Repaint;
+  end
+  else if FMouseInPanel and (FHotNavIdx <> -1) and FNavPanel.HandleAllocated then
+  begin
+    ptNav := FNavPanel.ScreenToClient(Mouse.CursorPos);
+    newHot := -1;
+    if (ptNav.X >= FNavRects[0].Left) and (ptNav.X < FNavRects[0].Right) and
+       (ptNav.Y >= 0) and (ptNav.Y < FNavPanel.Height) then
+      newHot := 0
+    else if (ptNav.X >= FNavRects[1].Left) and (ptNav.X < FNavRects[1].Right) and
+            (ptNav.Y >= 0) and (ptNav.Y < FNavPanel.Height) then
+      newHot := 1;
+    if newHot <> FHotNavIdx then
+    begin
+      FHotNavIdx := newHot;
+      if FHotNavIdx = -1 then
+      begin
+        FNavPanel.Cursor := crDefault;
+        FNavPanel.Hint := '';
+      end;
+      FNavPanel.Invalidate;
+      FNavPanel.Repaint;
+    end;
+  end;
+end;
+
 procedure TVersiculo.OnNavPanelMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
 var
   i, newHot: Integer;
 begin
+  if Sender = nil then ;
+  if Shift = [] then ;
+  UpdateNavHoverState;
+  if not FMouseInPanel then Exit;
+
   newHot := -1;
   for i := 0 to 1 do
     if (X >= FNavRects[i].Left) and (X < FNavRects[i].Right) and
@@ -2207,7 +2411,18 @@ procedure TVersiculo.OnNavPanelMouseDown(Sender: TObject; Button: TMouseButton;
 var
   i: Integer;
 begin
+  if Sender = nil then ;
+  if Shift = [] then ;
+  if Button = mbRight then
+  begin
+    if Assigned(FVersePopupMenu) then
+      FVersePopupMenu.PopUp;
+    Exit;
+  end;
   if Button <> mbLeft then Exit;
+  UpdateNavHoverState;
+  if not FMouseInPanel then Exit;
+
   for i := 0 to 1 do
     if (X >= FNavRects[i].Left) and (X < FNavRects[i].Right) and
        (Y >= FNavRects[i].Top) and (Y < FNavRects[i].Bottom) then
@@ -2225,12 +2440,14 @@ end;
 
 procedure TVersiculo.OnNavPanelMouseLeave(Sender: TObject);
 begin
+  if Sender = nil then ;
   if FHotNavIdx <> -1 then
   begin
     FHotNavIdx := -1;
     if Assigned(FNavPanel) then
       FNavPanel.Invalidate;
   end;
+  UpdateNavHoverState;
 end;
 
 procedure TVersiculo.SetShowStatusBar(AValue: Boolean);
@@ -2431,6 +2648,16 @@ begin
   FCbProps.Checked := False;
   FCbProps.OnClick := @OnTabCheckBoxClick;
 
+  FTranslationPanel.OnMouseEnter := @OnVerseMouseEnter;
+  FTranslationPanel.OnMouseLeave := @OnVerseMouseLeave;
+  FTranslationPanel.OnMouseMove  := @OnVerseMouseMove;
+  FTranslationLabel.OnMouseEnter := @OnVerseMouseEnter;
+  FTranslationLabel.OnMouseLeave := @OnVerseMouseLeave;
+  FTranslationLabel.OnMouseMove  := @OnVerseMouseMove;
+  FTabPanel.OnMouseEnter := @OnVerseMouseEnter;
+  FTabPanel.OnMouseLeave := @OnVerseMouseLeave;
+  FTabPanel.OnMouseMove  := @OnVerseMouseMove;
+
   FNavPanel := TPanel.Create(FPanel);
   FNavPanel.Parent := FPanel;
   FNavPanel.Width := 38;
@@ -2442,11 +2669,17 @@ begin
   FNavPanel.Anchors := [akTop, akLeft];
   FNavPanel.Visible := False;
   FNavPanel.OnPaint := @OnNavPanelPaint;
+  FNavPanel.OnMouseEnter := @OnVerseMouseEnter;
   FNavPanel.OnMouseMove := @OnNavPanelMouseMove;
   FNavPanel.OnMouseDown := @OnNavPanelMouseDown;
   FNavPanel.OnMouseLeave := @OnNavPanelMouseLeave;
   FNavRects[0] := Classes.Rect(0, 0, 18, 22);
   FNavRects[1] := Classes.Rect(20, 0, 38, 22);
+
+  FNavHoverTimer := TTimer.Create(FPanel);
+  FNavHoverTimer.Enabled := False;
+  FNavHoverTimer.Interval := 40;
+  FNavHoverTimer.OnTimer := @OnNavHoverTimer;
 
   FViewMode := vvmAssoc;
   RepositionTabPanel;
@@ -2598,12 +2831,18 @@ begin
       if assigned(FCbEdit) then FCbEdit.Checked := True;
       if assigned(FCbProps) then FCbProps.Checked := False;
       if assigned(FMemoProps) then FMemoProps.Visible := False;
+      FMouseInPanel := False;
+      FHotNavIdx := -1;
+      if assigned(FNavHoverTimer) then FNavHoverTimer.Enabled := False;
       if assigned(FNavPanel) then FNavPanel.Visible := False;
     end;
     vvmProps:
     begin
       if assigned(FCbEdit) then FCbEdit.Checked := False;
       if assigned(FCbProps) then FCbProps.Checked := True;
+      FMouseInPanel := False;
+      FHotNavIdx := -1;
+      if assigned(FNavHoverTimer) then FNavHoverTimer.Enabled := False;
       if assigned(FNavPanel) then FNavPanel.Visible := False;
       if assigned(FMemoProps) then
       begin

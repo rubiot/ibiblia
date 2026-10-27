@@ -107,26 +107,28 @@ object frmPrincipal: TfrmPrincipal
     Width = 943
     Align = alBottom
     Anchors = [akTop, akLeft, akRight, akBottom]
-    Caption = 'Panel1'
+    BevelOuter = bvNone
+    Caption = ''
     ClientHeight = 593
     ClientWidth = 943
     TabOrder = 2
     object CenterPanel: TPanel
       Left = 144
       Height = 591
-      Top = 1
+      Top = 0
       Width = 488
       Align = alClient
-      Caption = 'CenterPanel'
+      BevelOuter = bvNone
+      Caption = ''
       ClientHeight = 591
       ClientWidth = 488
       TabOrder = 0
       object ScrollBoxSrcVerse: TScrollBox
         AnchorSideBottom.Control = Splitter2
-        Left = 1
-        Height = 117
-        Top = 1
-        Width = 486
+        Left = 0
+        Height = 118
+        Top = 0
+        Width = 488
         HorzScrollBar.Page = 1
         VertScrollBar.Page = 1
         Align = alTop
@@ -146,7 +148,7 @@ object frmPrincipal: TfrmPrincipal
         Left = 0
         Height = 114
         Top = 123
-        Width = 485
+        Width = 488
         HorzScrollBar.Page = 1
         VertScrollBar.Page = 1
         Anchors = [akTop, akLeft, akRight, akBottom]
@@ -161,10 +163,10 @@ object frmPrincipal: TfrmPrincipal
         AnchorSideTop.Control = Splitter3
         AnchorSideTop.Side = asrBottom
         AnchorSideBottom.Control = Splitter4
-        Left = 1
+        Left = 0
         Height = 110
         Top = 242
-        Width = 485
+        Width = 488
         HorzScrollBar.Page = 1
         VertScrollBar.Page = 1
         Anchors = [akTop, akLeft, akRight, akBottom]
@@ -178,10 +180,10 @@ object frmPrincipal: TfrmPrincipal
       object ScrollBoxRef2Verse: TScrollBox
         AnchorSideTop.Control = Splitter4
         AnchorSideTop.Side = asrBottom
-        Left = 1
+        Left = 0
         Height = 114
         Top = 357
-        Width = 486
+        Width = 488
         HorzScrollBar.Page = 1
         VertScrollBar.Page = 1
         Align = alBottom
@@ -197,10 +199,10 @@ object frmPrincipal: TfrmPrincipal
       Beveled = False
         AnchorSideBottom.Control = ScrollBoxDstVerse
         Cursor = crVSplit
-        Left = 1
+        Left = 0
         Height = 5
         Top = 118
-        Width = 485
+        Width = 488
         Align = alNone
         Anchors = [akTop, akLeft, akRight]
         ResizeAnchor = akTop
@@ -208,10 +210,10 @@ object frmPrincipal: TfrmPrincipal
       object Splitter3: TSplitter
       Beveled = False
         Cursor = crVSplit
-        Left = 1
+        Left = 0
         Height = 5
         Top = 237
-        Width = 485
+        Width = 488
         Align = alNone
         Anchors = [akTop, akLeft, akRight]
         ResizeAnchor = akBottom
@@ -222,20 +224,21 @@ object frmPrincipal: TfrmPrincipal
         Left = 0
         Height = 5
         Top = 352
-        Width = 485
+        Width = 488
         Align = alNone
         Anchors = [akTop, akLeft, akRight]
         ResizeAnchor = akTop
       end
       object BottomPanel: TPanel
-        Left = 1
+        Left = 0
         Height = 114
         Top = 476
-        Width = 486
+        Width = 488
         Align = alBottom
-        Caption = 'BottomPanel'
+        BevelOuter = bvNone
+        Caption = ''
         ClientHeight = 114
-        ClientWidth = 486
+        ClientWidth = 488
         TabOrder = 7
         object CommentsMemo: TMemo
           Left = 1

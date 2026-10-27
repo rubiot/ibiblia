@@ -169,7 +169,7 @@ begin
   if Assigned(FBtnDefaultDicts) then
     HookButtonControl(FBtnDefaultDicts);
   {$ENDIF}
-  if CurrentSkin.IsDark then
+  if IsThemedSkin then
   begin
     GroupBox2.Color := CurrentSkin.PanelBg;
     GroupBox2.Font.Color := CurrentSkin.PanelText;
@@ -225,7 +225,7 @@ begin
     leDicMorfo.EditLabel.Caption := 'Morphology dictionary';
   end;
 
-  if CurrentSkin.IsDark then
+  if IsThemedSkin then
   begin
     leDicStrong.EditLabel.Font.Color := CurrentSkin.PanelText;
     leDicMorfo.EditLabel.Font.Color := CurrentSkin.PanelText;
@@ -352,7 +352,7 @@ begin
   BitBtn8.Caption  := SChooseDictionary; // seleção Morfo
   MemoFonte.Text   := FProjeto.ObterTextoSimplesVersiculo(TTipoTextoBiblico(TabControl1.TabIndex));
   MemoFonte.Font   := FProjeto.ObterFonteTexto(TTipoTextoBiblico(TabControl1.TabIndex));
-  if CurrentSkin.IsDark then
+  if IsThemedSkin then
   begin
     MemoFonte.Color := CurrentSkin.WindowBg;
     MemoFonte.Font.Color := CurrentSkin.WindowText;
@@ -381,7 +381,7 @@ begin
   if FontDialog1.Execute then
   begin
     MemoFonte.Font := FontDialog1.Font;
-    if CurrentSkin.IsDark then
+    if IsThemedSkin then
     begin
       MemoFonte.Color := CurrentSkin.WindowBg;
       MemoFonte.Font.Color := CurrentSkin.WindowText;

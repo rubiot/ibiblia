@@ -1,3 +1,37 @@
+Version 1.0.1.026 (64-bit Edition) - 2026-10-27 12:23
+* Made verse navigation chevron arrows (‹ ›) appear only while the mouse cursor is hovering inside the Bible panel where they belong (unitskins.pas, versiculo.pas, syntagm.pas, projeto.pas, formprincipal.pas):
+  - Added IsMouseCursorInControl in unitskins.pas using GetWindowRect, WindowFromPoint, IsChild, and THintWindow tooltip awareness to determine which of the 4 Bible panels (Source, Destination, Reference 1, Reference 2) currently contains the mouse cursor.
+  - Added FMouseInPanel, UpdateNavHoverState, and an on-demand 40ms FNavHoverTimer in TVersiculo (versiculo.pas), hooked across FPanel, word labels (TSyntagm), FNavPanel, FTranslationPanel, FStatusBarPanel, FTabPanel, and Application.OnIdle (OnAppIdleCheckAutoSelect) so hovering inside any Bible panel immediately shows its chevron arrows while hiding chevron arrows in all other Bible panels.
+
+Version 1.0.1.025 (64-bit Edition) - 2026-10-27 11:57
+* Fixed OnKeyUp registration in TFrmPrincipal (formprincipal.pas: replaced Application.AddOnKeyUpHandler/RemoveOnKeyUpHandler with Self.OnKeyUp := @OnAppKeyUp alongside KeyPreview = True, Application.AddOnIdleHandler, and FAutoSelectTimer).
+
+Version 1.0.1.024 (64-bit Edition) - 2026-10-27 11:46
+* Added automatic selection of the next unassociated Source word when Ctrl+Shift keys are released after associating target words (syntagm.pas, versiculo.pas, projeto.pas, formprincipal.pas):
+  - When holding Ctrl+Shift (or Shift / Ctrl+Right-Click) and clicking/highlighting one or more target words in the Destination text to associate them with the selected Source word(s), PendingAutoSelectNext is armed on the paired verses.
+  - As soon as the Ctrl+Shift modifier keys are released (detected via OnAppKeyUp, OnAppIdleCheckAutoSelect, and a 30ms on-demand FAutoSelectTimer when the mouse is stationary), CompletePendingAutoSelectNext automatically clears the previous selection, highlights/selects the next unassociated word in the Source text, scrolls it into view if needed, and triggers OnClick for theWord synchronization.
+
+Version 1.0.1.023 (64-bit Edition) - 2026-10-27 11:30
+* Unified Sepia (Parchment) skin consistency across the entire application (unitskins.pas, formprincipal.pas, formpopup.pas, bibletreeview.pas, and all secondary dialogs):
+  - Added IsThemedSkin (CurrentSkin.IsDark or CurrentSkin.Id = skSepia) so the Main Menu Bar, dropdown/popup menus, toolbar, comboboxes, checkboxes, buttons, groupboxes, tab controls, non-client borders, and secondary dialogs all render using Sepia's warm parchment palette (#F4EEDB / #E2D7C3 / #C9BC9C / #2D241E).
+  - Added DrawThemedPopupMenuItem in unitskins.pas to custom-draw dropdown and context popup menu items in Sepia (warm #F4EEDB background, #E2D7C3 left gutter, #C9BC9C border & separators, #D9C289 hover bar, and #8A4E2C checkmarks/radio bullets), and updated ApplyDarkModeToWindow to call fnSetPreferredAppMode(pamForceLight) + fnFlushMenuThemes when switching out of dark skins.
+  - Added OnContextTabButtonPaint in formprincipal.pas so the Source | Destination | Ref 1 | Ref 2 context tab buttons and filter navigation buttons render with Sepia HighlightBg (#D9C289), VerseNumColor (#8A4E2C) top accent bar, and dark sepia text (#2D241E) instead of dark-mode charcoal.
+
+Version 1.0.1.022 (64-bit Edition) - 2026-10-27 11:15
+* Fixed white border lines around the 4 Bible panels (ScrollBoxSrcVerse, ScrollBoxDstVerse, ScrollBoxRef1Verse, ScrollBoxRef2Verse), TreeView1, container panels, and splitters across all themed skins (unitskins.pas, formprincipal.pas, formprincipal.lfm, versiculo.pas):
+  - Added PaintControlNCBorder in unitskins.pas and hooked WM_NCPAINT, WM_PAINT, WM_SIZE, WM_WINDOWPOSCHANGED, and scroll messages in ScrollBoxSubclassProc and TreeViewSubclassProc to overpaint the 2px WS_EX_CLIENTEDGE non-client border (1px outer CurrentSkin.PanelBorder + 1px inner CurrentSkin.WindowBg / CurrentSkin.TreeBg) and the 17x17 scrollbar dead-space corner square.
+  - Removed bvRaised 3D white bevels (BevelOuter := bvNone) from Panel1, CenterPanel, and BottomPanel in formprincipal.lfm and formprincipal.pas, and aligned all 4 Bible panels flush inside CenterPanel.
+  - Added OnSplitterPaint in formprincipal.pas so Splitter1..Splitter6 render with CurrentSkin.PanelBorder and subtle CurrentSkin.WindowTextDim grip dots instead of white UxTheme gripper dots.
+  - Updated SetControlThemeMode to always invalidate RDW_FRAME when switching between dark skins so non-client borders immediately adopt the new skin's PanelBorder and WindowBg colors.
+
+Version 1.0.1.021 (64-bit Edition) - 2026-10-27 08:06
+* Fixed HPEN type identifier error in DrawDarkMenuSeparator (unitskins.pas line 905: replaced undeclared HPEN with THandle) and added explicit PtrUInt pointer casts for lParam struct pointers.
+
+Version 1.0.1.020 (64-bit Edition) - 2026-10-27 07:58
+* Fixed white outer 3px borders and white separator rows in dropdown and context popup menus in dark mode (unitskins.pas, formprincipal.pas):
+  - Added thread-scoped WH_CALLWNDPROC / WH_CALLWNDPROCRET menu hooks and #32768 popup menu window subclassing (PopupMenuSubclassProc, PaintPopupMenuBorder) to overpaint the classic MNDrawFullNC 3px non-client border (1px COLOR_3DSHADOW + 2px COLOR_MENU) on WM_PRINT (with SaveDC/RestoreDC around offscreen animation bitmaps), WM_NCPAINT, WM_ERASEBKGND, and WM_PAINT using dark popup background RGB(43, 43, 43) and 1px CurrentSkin.PanelBorder.
+  - Added DrawDarkMenuSeparator and PreFillDarkMenuItem to fill separator item rows (Caption = '-') and submenu item backgrounds with RGB(43, 43, 43) and draw a 1px horizontal divider in CurrentSkin.PanelBorder, eliminating the white/light-grey COLOR_MENU background left un-erased by LCL's VistaMenuDraw.
+
 1.0.1.018
 - Fixed Pascal character set literal in BuscarDefinicaoPalavraInglesNaQuery (projeto.pas lines 2217 and 2219) where backslash character literal was emitted as empty string '' instead of '\'.
 

@@ -171,6 +171,15 @@ begin
     inactFg   := CurrentSkin.PanelText;     // Silver
     borderCol := CurrentSkin.PanelBorder;   // Slate
   end
+  else if CurrentSkin.Id = skSepia then
+  begin
+    actBg     := CurrentSkin.HighlightBg;
+    actFg     := CurrentSkin.HighlightText;
+    accentCol := CurrentSkin.VerseNumColor;
+    inactBg   := CurrentSkin.PanelBg;
+    inactFg   := CurrentSkin.PanelText;
+    borderCol := CurrentSkin.PanelBorder;
+  end
   else
   begin
     actBg     := clWhite;
@@ -348,6 +357,8 @@ begin
 
   Panel1.ParentColor := False;
   Panel2.ParentColor := False;
+  Panel1.BevelOuter := bvNone;
+  Panel2.BevelOuter := bvNone;
   Panel1.Color := ASkin.NoteBg;
   Panel2.Color := ASkin.NoteBg;
 

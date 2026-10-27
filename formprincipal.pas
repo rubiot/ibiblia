@@ -219,6 +219,12 @@ type
     procedure TreeView1CustomDrawItem(Sender: TCustomTreeView; Node: TTreeNode; State: TCustomDrawState; var DefaultDraw: Boolean);
     procedure OnContextTabButtonClick(Sender: TObject);
     procedure UpdateContextTabButtons;
+    procedure OnSplitterPaint(Sender: TObject);
+    procedure OnContextTabButtonPaint(Sender: TObject);
+    procedure CheckPendingAutoSelectKeyRelease;
+    procedure OnAutoSelectTimer(Sender: TObject);
+    procedure OnAppKeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure OnAppIdleCheckAutoSelect(Sender: TObject; var Done: Boolean);
     procedure WndProc(var Message: TLMessage); override;
     procedure MenuItemPopupTriggerClick(Sender: TObject);
     procedure MenuItemStrongNegritoClick(Sender: TObject);
@@ -254,6 +260,7 @@ type
     FChapterView: TChapterView;
     FSyncingFromTw: Boolean;
     FNavigatingVerse: Boolean;
+    FAutoSelectTimer: TTimer;
     {$IFDEF WINDOWS}
     FMenuSubclassed: Boolean;
     FRxMorpho: IRegex;
@@ -393,7 +400,7 @@ var
   clientTopInWindow, menuHeight, rightOfLastItem, totalWidth: Integer;
   cap: string;
 begin
-  if not CurrentSkin.IsDark then Exit;
+  if not IsThemedSkin then Exit;
 
   rcWindow := Default(RECT);
   GetWindowRect(hWnd, @rcWindow);
@@ -496,7 +503,7 @@ var
   hFont, oldFont: THandle;
   glyphWidth: Integer;
 begin
-  if (uMsg = WM_PAINT) and CurrentSkin.IsDark then
+  if (uMsg = WM_PAINT) and IsThemedSkin then
   begin
     Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
 
@@ -545,7 +552,7 @@ begin
     Exit;
   end;
 
-  if (uMsg = WM_ERASEBKGND) and CurrentSkin.IsDark then
+  if (uMsg = WM_ERASEBKGND) and IsThemedSkin then
   begin
     FillChar(rc, SizeOf(rc), 0);
     GetClientRect(hWnd, @rc);
@@ -572,7 +579,7 @@ var
   hFont, oldFont: THandle;
   sz: TSize;
 begin
-  if (uMsg = WM_PAINT) and CurrentSkin.IsDark then
+  if (uMsg = WM_PAINT) and IsThemedSkin then
   begin
     Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
 
@@ -619,7 +626,7 @@ begin
     Exit;
   end;
 
-  if (uMsg = WM_ERASEBKGND) and CurrentSkin.IsDark then
+  if (uMsg = WM_ERASEBKGND) and IsThemedSkin then
   begin
     FillChar(rc, SizeOf(rc), 0);
     GetClientRect(hWnd, @rc);
@@ -662,7 +669,7 @@ var
   itemBg, itemCol: TColor;
   sz: TSize;
 begin
-  if CurrentSkin.IsDark then
+  if IsThemedSkin then
   begin
     case uMsg of
       WM_MEASUREITEM:
@@ -794,8 +801,22 @@ begin
 
             Result := 1;
             Exit;
+          end
+          else
+          begin
+            if DrawThemedPopupMenuItem(hWnd, lParam) then
+            begin
+              Result := 1;
+              Exit;
+            end;
+            PreFillDarkMenuItem(hWnd, lParam);
           end;
         end;
+      end;
+
+      WM_INITMENUPOPUP:
+      begin
+        SubclassAllPopupMenuWindows;
       end;
 
       WM_UAHDRAWMENU:
@@ -803,32 +824,48 @@ begin
         pUDM := PUAHMenu(lParam);
         if (pUDM <> nil) and (pUDM^.hdc <> 0) then
         begin
-          FillChar(mbi, SizeOf(mbi), 0);
-          mbi.cbSize := SizeOf(mbi);
-          if WinGetMenuBarInfo(hWnd, UAH_OBJID_MENU, 0, @mbi) then
+          if (pUDM^.hmenu = 0) or (pUDM^.hmenu = GetMenu(hWnd)) then
           begin
-            rcWindow := Default(RECT);
-            GetWindowRect(hWnd, @rcWindow);
-            rc.Left := mbi.rcBar.Left - rcWindow.Left;
-            rc.Top := mbi.rcBar.Top - rcWindow.Top;
-            rc.Right := mbi.rcBar.Right - rcWindow.Left;
-            rc.Bottom := mbi.rcBar.Bottom - rcWindow.Top;
+            FillChar(mbi, SizeOf(mbi), 0);
+            mbi.cbSize := SizeOf(mbi);
+            if WinGetMenuBarInfo(hWnd, UAH_OBJID_MENU, 0, @mbi) then
+            begin
+              rcWindow := Default(RECT);
+              GetWindowRect(hWnd, @rcWindow);
+              rc.Left := mbi.rcBar.Left - rcWindow.Left;
+              rc.Top := mbi.rcBar.Top - rcWindow.Top;
+              rc.Right := mbi.rcBar.Right - rcWindow.Left;
+              rc.Bottom := mbi.rcBar.Bottom - rcWindow.Top;
+            end
+            else
+            begin
+              rcWindow := Default(RECT);
+              GetWindowRect(hWnd, @rcWindow);
+              rc.Left := 0;
+              rc.Top := 0;
+              rc.Right := rcWindow.Right - rcWindow.Left;
+              rc.Bottom := 60;
+            end;
+
+            br := CreateSolidBrush(ColorToRGB(CurrentSkin.PanelBg));
+            FillRect(pUDM^.hdc, rc, br);
+            DeleteObject(br);
+            Result := 0;
+            Exit;
           end
           else
           begin
-            rcWindow := Default(RECT);
-            GetWindowRect(hWnd, @rcWindow);
-            rc.Left := 0;
-            rc.Top := 0;
-            rc.Right := rcWindow.Right - rcWindow.Left;
-            rc.Bottom := 60;
+            FillChar(rc, SizeOf(rc), 0);
+            if GetClipBox(pUDM^.hdc, @rc) <> ERROR then
+            begin
+              FillRect(pUDM^.hdc, rc, GetCachedPopupMenuBrush);
+              br := CreateSolidBrush(ColorToRGB(CurrentSkin.PanelBorder));
+              FrameRect(pUDM^.hdc, rc, br);
+              DeleteObject(br);
+              Result := 0;
+              Exit;
+            end;
           end;
-
-          br := CreateSolidBrush(ColorToRGB(CurrentSkin.PanelBg));
-          FillRect(pUDM^.hdc, rc, br);
-          DeleteObject(br);
-          Result := 0;
-          Exit;
         end;
       end;
 
@@ -1636,6 +1673,12 @@ begin
   Self.Color := CurrentSkin.PanelBg;
   Self.Font.Color := CurrentSkin.PanelText;
   UpdateSkinMenuChecks;
+  FAutoSelectTimer := TTimer.Create(Self);
+  FAutoSelectTimer.Interval := 30;
+  FAutoSelectTimer.Enabled := False;
+  FAutoSelectTimer.OnTimer := @OnAutoSelectTimer;
+  Self.OnKeyUp := @OnAppKeyUp;
+  Application.AddOnIdleHandler(@OnAppIdleCheckAutoSelect);
 
   {$IFDEF WINDOWS}
   FRxMorpho := RegexCreate('^(\S+)( l="(.*?)")?$', [rcoUTF8]);
@@ -1647,6 +1690,7 @@ end;
 
 procedure TFrmPrincipal.FormDestroy(Sender: TObject);
 begin
+  Application.RemoveOnIdleHandler(@OnAppIdleCheckAutoSelect);
   {$IFDEF WINDOWS}
   UninstallMenuSubclass;
   if Assigned(fnRemoveWindowSubclass) and Assigned(RadioGroupStatus) and (RadioGroupStatus.Handle <> 0) then
@@ -1704,6 +1748,47 @@ begin
   opts := nil;
 
   FChapterView.Free;
+end;
+
+procedure TFrmPrincipal.CheckPendingAutoSelectKeyRelease;
+begin
+  if Assigned(ProjetoAtual) and ProjetoAtual.HasPendingAutoSelectNext then
+  begin
+    if ((GetKeyState(VK_CONTROL) and $8000) = 0) and
+       ((GetKeyState(VK_SHIFT) and $8000) = 0) then
+    begin
+      if Assigned(FAutoSelectTimer) then
+        FAutoSelectTimer.Enabled := False;
+      ProjetoAtual.CompletePendingAutoSelectNext;
+    end
+    else if Assigned(FAutoSelectTimer) and (not FAutoSelectTimer.Enabled) then
+      FAutoSelectTimer.Enabled := True;
+  end
+  else if Assigned(FAutoSelectTimer) and FAutoSelectTimer.Enabled then
+    FAutoSelectTimer.Enabled := False;
+end;
+
+procedure TFrmPrincipal.OnAutoSelectTimer(Sender: TObject);
+begin
+  if Sender = nil then ;
+  CheckPendingAutoSelectKeyRelease;
+end;
+
+procedure TFrmPrincipal.OnAppKeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
+begin
+  if Sender = nil then ;
+  if Key = 0 then ;
+  if Shift = [] then ;
+  CheckPendingAutoSelectKeyRelease;
+end;
+
+procedure TFrmPrincipal.OnAppIdleCheckAutoSelect(Sender: TObject; var Done: Boolean);
+begin
+  if Sender = nil then ;
+  if Done then ;
+  CheckPendingAutoSelectKeyRelease;
+  if Assigned(ProjetoAtual) then
+    ProjetoAtual.UpdateVerseNavHoverStates;
 end;
 
 procedure TFrmPrincipal.FormKeyPress(Sender: TObject; var Key: char);
@@ -1865,7 +1950,12 @@ begin
     ContextPanel.ParentColor := False;
     ContextPanel.Color := CurrentSkin.PanelBg;
     ContextPanel.Font.Color := CurrentSkin.PanelText;
+    Panel1.BevelOuter := bvNone;
+    CenterPanel.BevelOuter := bvNone;
+    BottomPanel.BevelOuter := bvNone;
     Panel1.Color := CurrentSkin.PanelBg;
+    CenterPanel.Color := CurrentSkin.PanelBg;
+    BottomPanel.Color := CurrentSkin.PanelBg;
 
     TreeView1.ParentColor := False;
     TreeView1.Color := CurrentSkin.TreeBg;
@@ -1874,38 +1964,41 @@ begin
     TreeView1.TreeLineColor := CurrentSkin.PanelBorder;
     TreeView1.ExpandSignType := tvestArrowFill;
     TreeView1.OnAdvancedCustomDraw := @TreeView1AdvancedCustomDraw;
+    ApplyDarkModeToControl(TreeView1, CurrentSkin.IsDark);
     {$IFDEF WINDOWS}
     HookTreeViewControl(TreeView1);
     {$ENDIF}
-    ApplyDarkModeToControl(TreeView1, CurrentSkin.IsDark);
     TreeView1.Invalidate;
 
     ComboBoxStatusFilter.Color := CurrentSkin.WindowBg;
     ComboBoxStatusFilter.Font.Color := CurrentSkin.WindowText;
+    ApplyDarkModeToControl(ComboBoxStatusFilter, CurrentSkin.IsDark);
     {$IFDEF WINDOWS}
     HookComboBoxControl(ComboBoxStatusFilter);
     {$ENDIF}
-    ApplyDarkModeToControl(ComboBoxStatusFilter, CurrentSkin.IsDark);
     ComboBoxStatusFilter.Invalidate;
 
     ScrollBoxSrcVerse.Color := CurrentSkin.WindowBg;
     ScrollBoxDstVerse.Color := CurrentSkin.WindowBg;
     ScrollBoxRef1Verse.Color := CurrentSkin.WindowBg;
     ScrollBoxRef2Verse.Color := CurrentSkin.WindowBg;
+    ApplyDarkModeToControl(ScrollBoxSrcVerse, CurrentSkin.IsDark);
+    ApplyDarkModeToControl(ScrollBoxDstVerse, CurrentSkin.IsDark);
+    ApplyDarkModeToControl(ScrollBoxRef1Verse, CurrentSkin.IsDark);
+    ApplyDarkModeToControl(ScrollBoxRef2Verse, CurrentSkin.IsDark);
     {$IFDEF WINDOWS}
     HookScrollBoxControl(ScrollBoxSrcVerse);
     HookScrollBoxControl(ScrollBoxDstVerse);
     HookScrollBoxControl(ScrollBoxRef1Verse);
     HookScrollBoxControl(ScrollBoxRef2Verse);
     {$ENDIF}
-    ApplyDarkModeToControl(ScrollBoxSrcVerse, CurrentSkin.IsDark);
-    ApplyDarkModeToControl(ScrollBoxDstVerse, CurrentSkin.IsDark);
-    ApplyDarkModeToControl(ScrollBoxRef1Verse, CurrentSkin.IsDark);
-    ApplyDarkModeToControl(ScrollBoxRef2Verse, CurrentSkin.IsDark);
 
     CommentsMemo.Color := CurrentSkin.WindowBg;
     CommentsMemo.Font.Color := CurrentSkin.WindowText;
     ApplyDarkModeToControl(CommentsMemo, CurrentSkin.IsDark);
+    {$IFDEF WINDOWS}
+    HookEditControl(CommentsMemo);
+    {$ENDIF}
 
     RadioGroupStatus.Visible := False;
     RadioGroupStatus.Align := alNone;
@@ -1931,6 +2024,10 @@ begin
     SpeedButtonNextFiltered.Color := CurrentSkin.PanelBg;
     SpeedButtonPrevFiltered.Font.Color := CurrentSkin.PanelText;
     SpeedButtonNextFiltered.Font.Color := CurrentSkin.PanelText;
+    SpeedButtonPrevFiltered.OnPaint := @OnContextTabButtonPaint;
+    SpeedButtonNextFiltered.OnPaint := @OnContextTabButtonPaint;
+    SpeedButtonPrevFiltered.Invalidate;
+    SpeedButtonNextFiltered.Invalidate;
 
     UpdateContextTabButtons;
 
@@ -1946,12 +2043,24 @@ begin
     Splitter4.Color := CurrentSkin.PanelBorder;
     Splitter5.Color := CurrentSkin.PanelBorder;
     Splitter6.Color := CurrentSkin.PanelBorder;
+    Splitter1.OnPaint := @OnSplitterPaint;
+    Splitter2.OnPaint := @OnSplitterPaint;
+    Splitter3.OnPaint := @OnSplitterPaint;
+    Splitter4.OnPaint := @OnSplitterPaint;
+    Splitter5.OnPaint := @OnSplitterPaint;
+    Splitter6.OnPaint := @OnSplitterPaint;
+    Splitter1.Invalidate;
+    Splitter2.Invalidate;
+    Splitter3.Invalidate;
+    Splitter4.Invalidate;
+    Splitter5.Invalidate;
+    Splitter6.Invalidate;
 
     StatusBar1.Visible := False;
 
     ApplyDarkModeToWindow(Self, CurrentSkin.IsDark);
     {$IFDEF WINDOWS}
-    if CurrentSkin.IsDark then
+    if IsThemedSkin then
     begin
       InstallMenuSubclass;
       SetupMenuOwnerDraw(True);
@@ -1982,6 +2091,34 @@ begin
   end;
 end;
 
+procedure TFrmPrincipal.OnSplitterPaint(Sender: TObject);
+var
+  sp: TSplitter;
+  rc: TRect;
+  i, cx, cy: Integer;
+begin
+  if not (Sender is TSplitter) then Exit;
+  sp := TSplitter(Sender);
+  rc := sp.ClientRect;
+  sp.Canvas.Brush.Style := bsSolid;
+  sp.Canvas.Brush.Color := CurrentSkin.PanelBorder;
+  sp.Canvas.FillRect(rc);
+  // Draw subtle grip dots in WindowTextDim instead of bright white UxTheme dots
+  cx := (rc.Left + rc.Right) div 2;
+  cy := (rc.Top + rc.Bottom) div 2;
+  sp.Canvas.Pixels[cx, cy] := CurrentSkin.WindowTextDim;
+  if (rc.Right - rc.Left) > (rc.Bottom - rc.Top) then
+  begin
+    for i := -3 to 3 do
+      sp.Canvas.Pixels[cx + i * 4, cy] := CurrentSkin.WindowTextDim;
+  end
+  else
+  begin
+    for i := -3 to 3 do
+      sp.Canvas.Pixels[cx, cy + i * 4] := CurrentSkin.WindowTextDim;
+  end;
+end;
+
 procedure TFrmPrincipal.OnContextTabButtonClick(Sender: TObject);
 begin
   if not (Sender is TSpeedButton) then exit;
@@ -1989,6 +2126,105 @@ begin
   if assigned(FChapterView) then
     FChapterView.TextType := TTipoTextoBiblico(TSpeedButton(Sender).Tag);
   UpdateContextTabButtons;
+end;
+
+procedure TFrmPrincipal.OnContextTabButtonPaint(Sender: TObject);
+var
+  btn: TSpeedButton;
+  rc, rcAccent: TRect;
+  pt: TPoint;
+  isHot, isDown, isDis: Boolean;
+  bgCol, fgCol, borderCol, accentCol: TColor;
+  tw, th, tx, ty: Integer;
+begin
+  if not (Sender is TSpeedButton) then Exit;
+  btn := TSpeedButton(Sender);
+  rc := btn.ClientRect;
+  isDis := not btn.Enabled;
+  isDown := btn.Down;
+
+  pt := btn.ScreenToClient(Mouse.CursorPos);
+  isHot := (not isDis) and (pt.x >= rc.Left) and (pt.x < rc.Right) and
+           (pt.y >= rc.Top) and (pt.y < rc.Bottom);
+
+  borderCol := CurrentSkin.PanelBorder;
+  if CurrentSkin.IsDark then
+    accentCol := CurrentSkin.HighlightBg
+  else
+    accentCol := CurrentSkin.VerseNumColor;
+
+  if isDis then
+  begin
+    bgCol := CurrentSkin.PanelBg;
+    fgCol := CurrentSkin.WindowTextDim;
+  end
+  else if isDown then
+  begin
+    if CurrentSkin.IsDark then
+    begin
+      bgCol := CurrentSkin.PointedBg;
+      fgCol := CurrentSkin.PointedText;
+    end
+    else if CurrentSkin.Id = skSepia then
+    begin
+      bgCol := CurrentSkin.HighlightBg;
+      fgCol := CurrentSkin.HighlightText;
+    end
+    else
+    begin
+      bgCol := clHighlight;
+      fgCol := clHighlightText;
+    end;
+  end
+  else if isHot then
+  begin
+    if CurrentSkin.IsDark then
+    begin
+      bgCol := CurrentSkin.PointedBg;
+      fgCol := CurrentSkin.PointedText;
+    end
+    else
+    begin
+      bgCol := CurrentSkin.VerseHighlightBg;
+      fgCol := CurrentSkin.PanelText;
+    end;
+  end
+  else
+  begin
+    bgCol := CurrentSkin.PanelBg;
+    fgCol := CurrentSkin.PanelText;
+  end;
+
+  btn.Canvas.Brush.Style := bsSolid;
+  btn.Canvas.Brush.Color := bgCol;
+  btn.Canvas.FillRect(rc);
+
+  if isDown or isHot then
+  begin
+    btn.Canvas.Pen.Style := psSolid;
+    btn.Canvas.Pen.Color := borderCol;
+    btn.Canvas.Brush.Style := bsClear;
+    btn.Canvas.Rectangle(rc);
+  end;
+
+  if isDown then
+  begin
+    rcAccent := rc;
+    rcAccent.Bottom := Min(rc.Bottom, rc.Top + 2);
+    btn.Canvas.Brush.Style := bsSolid;
+    btn.Canvas.Brush.Color := accentCol;
+    btn.Canvas.FillRect(rcAccent);
+  end;
+
+  btn.Canvas.Font.Assign(btn.Font);
+  btn.Canvas.Font.Color := fgCol;
+  btn.Canvas.Font.Bold := isDown;
+  btn.Canvas.Brush.Style := bsClear;
+  tw := btn.Canvas.TextWidth(btn.Caption);
+  th := btn.Canvas.TextHeight(btn.Caption);
+  tx := rc.Left + (rc.Right - rc.Left - tw) div 2;
+  ty := rc.Top + (rc.Bottom - rc.Top - th) div 2;
+  btn.Canvas.TextOut(tx, ty, btn.Caption);
 end;
 
 procedure TFrmPrincipal.UpdateContextTabButtons;
@@ -2005,6 +2241,13 @@ begin
     inactBg := CurrentSkin.PanelBg;
     inactFg := CurrentSkin.PanelText;
   end
+  else if CurrentSkin.Id = skSepia then
+  begin
+    actBg   := CurrentSkin.HighlightBg;
+    actFg   := CurrentSkin.HighlightText;
+    inactBg := CurrentSkin.PanelBg;
+    inactFg := CurrentSkin.PanelText;
+  end
   else
   begin
     actBg   := clHighlight;
@@ -2018,6 +2261,8 @@ begin
     BtnTabSource.Color := IfThen(BtnTabSource.Down, actBg, inactBg);
     BtnTabSource.Font.Color := IfThen(BtnTabSource.Down, actFg, inactFg);
     BtnTabSource.Font.Bold := BtnTabSource.Down;
+    BtnTabSource.OnPaint := @OnContextTabButtonPaint;
+    BtnTabSource.Invalidate;
   end;
 
   if assigned(BtnTabDest) then
@@ -2025,6 +2270,8 @@ begin
     BtnTabDest.Color := IfThen(BtnTabDest.Down, actBg, inactBg);
     BtnTabDest.Font.Color := IfThen(BtnTabDest.Down, actFg, inactFg);
     BtnTabDest.Font.Bold := BtnTabDest.Down;
+    BtnTabDest.OnPaint := @OnContextTabButtonPaint;
+    BtnTabDest.Invalidate;
   end;
 
   if assigned(BtnTabRef1) then
@@ -2032,6 +2279,8 @@ begin
     BtnTabRef1.Color := IfThen(BtnTabRef1.Down, actBg, inactBg);
     BtnTabRef1.Font.Color := IfThen(BtnTabRef1.Down, actFg, inactFg);
     BtnTabRef1.Font.Bold := BtnTabRef1.Down;
+    BtnTabRef1.OnPaint := @OnContextTabButtonPaint;
+    BtnTabRef1.Invalidate;
   end;
 
   if assigned(BtnTabRef2) then
@@ -2039,6 +2288,8 @@ begin
     BtnTabRef2.Color := IfThen(BtnTabRef2.Down, actBg, inactBg);
     BtnTabRef2.Font.Color := IfThen(BtnTabRef2.Down, actFg, inactFg);
     BtnTabRef2.Font.Bold := BtnTabRef2.Down;
+    BtnTabRef2.OnPaint := @OnContextTabButtonPaint;
+    BtnTabRef2.Invalidate;
   end;
 end;
 
@@ -2050,7 +2301,7 @@ var
 {$ENDIF}
 begin
   {$IFDEF WINDOWS}
-  if (Message.Msg = WM_NOTIFY) and CurrentSkin.IsDark and Assigned(ToolBar1) and (ToolBar1.Handle <> 0) then
+  if (Message.Msg = WM_NOTIFY) and IsThemedSkin and Assigned(ToolBar1) and (ToolBar1.Handle <> 0) then
   begin
     pHdr := PNMHDR(Message.LParam);
     if (pHdr <> nil) and (pHdr^.hwndFrom = ToolBar1.Handle) and (pHdr^.code = -12 {NM_CUSTOMDRAW}) then
@@ -2068,7 +2319,7 @@ end;
 procedure TFrmPrincipal.TreeView1AdvancedCustomDraw(Sender: TCustomTreeView;
   const ARect: TRect; Stage: TCustomDrawStage; var DefaultDraw: Boolean);
 begin
-  if (Stage = cdPrePaint) and CurrentSkin.IsDark then
+  if (Stage = cdPrePaint) and IsThemedSkin then
   begin
     Sender.Canvas.Brush.Color := CurrentSkin.TreeBg;
     Sender.Canvas.FillRect(ARect);
@@ -2092,10 +2343,7 @@ begin
   else
   begin
     Sender.Canvas.Brush.Color := CurrentSkin.TreeBg;
-    if CurrentSkin.IsDark then
-      Sender.Canvas.Font.Color := CurrentSkin.TreeText
-    else
-      Sender.Canvas.Font.Color := clWindowText;
+    Sender.Canvas.Font.Color := CurrentSkin.TreeText;
   end;
   DefaultDraw := True;
 end;

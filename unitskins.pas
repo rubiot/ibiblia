@@ -5,7 +5,7 @@ unit unitskins;
 interface
 
 uses
-  Classes, SysUtils, Math, Graphics, Controls, Forms, StdCtrls, ExtCtrls, ComCtrls, Menus, Buttons, Dialogs
+  Classes, SysUtils, Math, Graphics, Controls, Forms, StdCtrls, ExtCtrls, ComCtrls, Menus, Buttons, Dialogs, LCLProc
   {$IFDEF WINDOWS}
   , Windows
   {$ENDIF}
@@ -95,6 +95,14 @@ procedure SetControlThemeMode(AControl: TWinControl; AIsDark: Boolean; const Dar
 procedure ApplyDarkModeToMenu(AMenu: TMenu; FormHandle: THandle; AIsDark: Boolean; ABackCol: TColor);
 function GetCachedPanelBrush(AColor: TColor): THandle;
 function GetCachedWindowBrush(AColor: TColor): THandle;
+function GetCachedPopupMenuBrush: THandle;
+function IsThemedSkin: Boolean; inline;
+function GetPopupMenuBgColor: COLORREF; inline;
+function DrawDarkMenuSeparator(lParam: LPARAM): Boolean;
+function DrawThemedPopupMenuItem(hWndOwner: THandle; lParam: LPARAM): Boolean;
+procedure PreFillDarkMenuItem(hWndOwner: THandle; lParam: LPARAM);
+procedure SubclassAllPopupMenuWindows;
+function IsMouseCursorInControl(AControl: TWinControl): Boolean;
 
 {$IFDEF WINDOWS}
 type
@@ -418,6 +426,7 @@ begin
   currentMode := GetPropW(AControl.Handle, 'iBibliaThemeMode');
   if currentMode = desiredMode then
   begin
+    RedrawWindow(AControl.Handle, nil, 0, RDW_FRAME or RDW_INVALIDATE);
     AControl.Invalidate;
     Exit;
   end;
@@ -482,8 +491,9 @@ begin
   MenuInfo.cbSize := SizeOf(TMenuInfo);
   MenuInfo.fMask := MIM_BACKGROUND or MIM_APPLYTOSUBMENUS or $00000010 {MIM_STYLE};
   MenuInfo.dwStyle := $00000400 {MNS_CHECKORBMP};
-  if AIsDark then
-    MenuInfo.hbrBack := GetCachedPanelBrush(ABackCol)
+  if ABackCol = clNone then ;
+  if AIsDark or (CurrentSkin.Id = skSepia) then
+    MenuInfo.hbrBack := GetCachedPopupMenuBrush
   else
     MenuInfo.hbrBack := 0;
 
@@ -518,8 +528,10 @@ begin
     if AIsDark then
       fnSetPreferredAppMode(pamForceDark)
     else
-      fnSetPreferredAppMode(pamDefault);
+      fnSetPreferredAppMode(pamForceLight);
   end;
+  if Assigned(fnFlushMenuThemes) then
+    fnFlushMenuThemes();
 
   if not AForm.HandleAllocated then exit;
 
@@ -587,6 +599,39 @@ var
   cachedPanelBgColor: TColor = clNone;
   hbrCachedWindowBg: THandle = 0;
   cachedWindowBgColor: TColor = clNone;
+  hbrCachedPopupMenuBg: THandle = 0;
+  cachedPopupMenuBgColor: COLORREF = $FFFFFFFF;
+
+function IsThemedSkin: Boolean; inline;
+begin
+  Result := CurrentSkin.IsDark or (CurrentSkin.Id = skSepia);
+end;
+
+function GetPopupMenuBgColor: COLORREF; inline;
+begin
+  if CurrentSkin.Id = skSepia then
+    Result := ColorToRGB(CurrentSkin.WindowBg)
+  else
+    // Matches Windows 10/11 ImmersiveContextMenu MENU_POPUPBACKGROUND (RGB(43, 43, 43))
+    Result := RGB(43, 43, 43);
+end;
+
+function GetCachedPopupMenuBrush: THandle;
+var
+  col: COLORREF;
+begin
+  col := GetPopupMenuBgColor;
+  if (hbrCachedPopupMenuBg <> 0) and (cachedPopupMenuBgColor = col) then
+    Result := hbrCachedPopupMenuBg
+  else
+  begin
+    if hbrCachedPopupMenuBg <> 0 then
+      DeleteObject(hbrCachedPopupMenuBg);
+    cachedPopupMenuBgColor := col;
+    hbrCachedPopupMenuBg := CreateSolidBrush(col);
+    Result := hbrCachedPopupMenuBg;
+  end;
+end;
 
 function GetCachedPanelBrush(AColor: TColor): THandle;
 begin
@@ -615,6 +660,626 @@ begin
     Result := hbrCachedWindowBg;
   end;
 end;
+
+{$IFDEF WINDOWS}
+type
+  PMenuDrawItemStruct = ^TMenuDrawItemStruct;
+  TMenuDrawItemStruct = record
+    CtlType: UINT;
+    CtlID: UINT;
+    itemID: UINT;
+    itemAction: UINT;
+    itemState: UINT;
+    {$IFDEF CPU64}
+    _pad1: DWORD;
+    {$ENDIF}
+    hwndItem: HWND;
+    hDC: HDC;
+    rcItem: RECT;
+    itemData: PtrUInt;
+  end;
+
+  PMenuCWPStruct = ^TMenuCWPStruct;
+  TMenuCWPStruct = record
+    lParam: LPARAM;
+    wParam: WPARAM;
+    message: UINT;
+    {$IFDEF CPU64}
+    _pad: DWORD;
+    {$ENDIF}
+    hwnd: HWND;
+  end;
+
+  PMenuCWPRetStruct = ^TMenuCWPRetStruct;
+  TMenuCWPRetStruct = record
+    lResult: LRESULT;
+    lParam: LPARAM;
+    wParam: WPARAM;
+    message: UINT;
+    {$IFDEF CPU64}
+    _pad: DWORD;
+    {$ENDIF}
+    hwnd: HWND;
+  end;
+
+var
+  hMenuWndHook: HHOOK = 0;
+  hMenuWndRetHook: HHOOK = 0;
+
+procedure PaintPopupMenuBorder(hWnd: HWND; targetDC: HDC);
+var
+  rcWin, rcCli, rc: RECT;
+  ptCliTopLeft, ptCliBotRight: TPoint;
+  w, h, bLeft, bTop, bRight, bBottom: Integer;
+  hbrBorder, hbrInner: THandle;
+begin
+  if (hWnd = 0) or (targetDC = 0) or (not IsThemedSkin) then Exit;
+  FillChar(rcWin, SizeOf(rcWin), 0);
+  if not GetWindowRect(hWnd, @rcWin) then Exit;
+  w := rcWin.Right - rcWin.Left;
+  h := rcWin.Bottom - rcWin.Top;
+  if (w <= 2) or (h <= 2) then Exit;
+
+  FillChar(rcCli, SizeOf(rcCli), 0);
+  if GetClientRect(hWnd, @rcCli) and (rcCli.Right > 0) and (rcCli.Bottom > 0) then
+  begin
+    ptCliTopLeft.x := rcCli.Left;
+    ptCliTopLeft.y := rcCli.Top;
+    ptCliBotRight.x := rcCli.Right;
+    ptCliBotRight.y := rcCli.Bottom;
+    ClientToScreen(hWnd, @ptCliTopLeft);
+    ClientToScreen(hWnd, @ptCliBotRight);
+    bLeft := ptCliTopLeft.x - rcWin.Left;
+    bTop := ptCliTopLeft.y - rcWin.Top;
+    bRight := rcWin.Right - ptCliBotRight.x;
+    bBottom := rcWin.Bottom - ptCliBotRight.y;
+  end
+  else
+  begin
+    bLeft := 3;
+    bTop := 3;
+    bRight := 3;
+    bBottom := 3;
+  end;
+
+  if (bLeft < 1) or (bLeft > 12) then bLeft := 3;
+  if (bTop < 1) or (bTop > 12) then bTop := 3;
+  if (bRight < 1) or (bRight > 12) then bRight := 3;
+  if (bBottom < 1) or (bBottom > 12) then bBottom := 3;
+
+  hbrInner := GetCachedPopupMenuBrush;
+  hbrBorder := CreateSolidBrush(ColorToRGB(CurrentSkin.PanelBorder));
+  try
+    // Overpaint the 4 non-client border strips (replaces the white/grey MNDrawFullNC border)
+    rc.Left := 0; rc.Top := 0; rc.Right := w; rc.Bottom := bTop;
+    FillRect(targetDC, rc, hbrInner);
+    rc.Left := 0; rc.Top := h - bBottom; rc.Right := w; rc.Bottom := h;
+    FillRect(targetDC, rc, hbrInner);
+    rc.Left := 0; rc.Top := 0; rc.Right := bLeft; rc.Bottom := h;
+    FillRect(targetDC, rc, hbrInner);
+    rc.Left := w - bRight; rc.Top := 0; rc.Right := w; rc.Bottom := h;
+    FillRect(targetDC, rc, hbrInner);
+
+    // Draw crisp 1px outer frame in CurrentSkin.PanelBorder
+    rc.Left := 0; rc.Top := 0; rc.Right := w; rc.Bottom := h;
+    FrameRect(targetDC, rc, hbrBorder);
+  finally
+    DeleteObject(hbrBorder);
+  end;
+end;
+
+function PopupMenuSubclassProc(hWnd: HWND; uMsg: UINT; wParam: WPARAM; lParam: LPARAM;
+  uIdSubclass: PtrUInt; dwRefData: PtrUInt): LRESULT; stdcall;
+const
+  PRF_NONCLIENT = $00000002;
+  MN_SELECTITEM = $01E5;
+var
+  hdcWin: HDC;
+  rcCli: RECT;
+  savedDC: Integer;
+begin
+  if uIdSubclass = 0 then ;
+  if dwRefData = 0 then ;
+
+  if not IsThemedSkin then
+  begin
+    Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+    Exit;
+  end;
+
+  case uMsg of
+    WM_ERASEBKGND:
+    begin
+      if wParam <> 0 then
+      begin
+        FillChar(rcCli, SizeOf(rcCli), 0);
+        GetClientRect(hWnd, @rcCli);
+        FillRect(THandle(wParam), rcCli, GetCachedPopupMenuBrush);
+      end;
+      hdcWin := GetWindowDC(hWnd);
+      if hdcWin <> 0 then
+      begin
+        PaintPopupMenuBorder(hWnd, hdcWin);
+        ReleaseDC(hWnd, hdcWin);
+      end;
+      Result := 1;
+      Exit;
+    end;
+
+    WM_PRINT:
+    begin
+      if wParam <> 0 then
+        savedDC := SaveDC(THandle(wParam))
+      else
+        savedDC := 0;
+
+      Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+
+      if wParam <> 0 then
+      begin
+        if savedDC <> 0 then
+          RestoreDC(THandle(wParam), savedDC)
+        else
+          SelectClipRgn(THandle(wParam), 0);
+        if (lParam and PRF_NONCLIENT) <> 0 then
+          PaintPopupMenuBorder(hWnd, THandle(wParam));
+      end;
+
+      if IsWindowVisible(hWnd) then
+      begin
+        hdcWin := GetWindowDC(hWnd);
+        if hdcWin <> 0 then
+        begin
+          PaintPopupMenuBorder(hWnd, hdcWin);
+          ReleaseDC(hWnd, hdcWin);
+        end;
+      end;
+      Exit;
+    end;
+
+    WM_NCPAINT, WM_PAINT, WM_PRINTCLIENT, WM_SHOWWINDOW,
+    WM_WINDOWPOSCHANGED, MN_SELECTITEM, WM_MOUSEMOVE, WM_KEYDOWN:
+    begin
+      Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+      hdcWin := GetWindowDC(hWnd);
+      if hdcWin <> 0 then
+      begin
+        PaintPopupMenuBorder(hWnd, hdcWin);
+        ReleaseDC(hWnd, hdcWin);
+      end;
+      Exit;
+    end;
+  end;
+
+  Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+end;
+
+function IsPopupMenuWindow(hWnd: HWND): Boolean;
+var
+  clsBuf: array[0..15] of WideChar;
+  propVal: PtrUInt;
+begin
+  Result := False;
+  if (hWnd = 0) or (not IsWindow(hWnd)) then Exit;
+  propVal := GetPropW(hWnd, 'iBibliaMenuSub');
+  if propVal = 1 then
+  begin
+    Result := True;
+    Exit;
+  end;
+  FillChar(clsBuf, SizeOf(clsBuf), 0);
+  if GetClassNameW(hWnd, @clsBuf[0], 15) > 0 then
+    Result := (WideString(clsBuf) = '#32768');
+end;
+
+procedure EnsurePopupMenuSubclassed(hWnd: HWND);
+var
+  hdcWin: HDC;
+begin
+  if (hWnd = 0) or (not Assigned(fnSetWindowSubclass)) then Exit;
+  if Assigned(fnAllowDarkModeForWindow) then
+    fnAllowDarkModeForWindow(hWnd, CurrentSkin.IsDark);
+  if Assigned(fnSetWindowTheme) then
+  begin
+    if CurrentSkin.IsDark then
+      fnSetWindowTheme(hWnd, PWideChar(WideString('DarkMode_Explorer')), nil)
+    else
+      fnSetWindowTheme(hWnd, nil, nil);
+  end;
+  if GetPropW(hWnd, 'iBibliaMenuSub') <> 1 then
+  begin
+    SetPropW(hWnd, 'iBibliaMenuSub', 1);
+    fnSetWindowSubclass(hWnd, @PopupMenuSubclassProc, 6001, 0);
+  end;
+  if IsThemedSkin and IsWindowVisible(hWnd) then
+  begin
+    hdcWin := GetWindowDC(hWnd);
+    if hdcWin <> 0 then
+    begin
+      PaintPopupMenuBorder(hWnd, hdcWin);
+      ReleaseDC(hWnd, hdcWin);
+    end;
+  end;
+end;
+
+procedure SubclassAllPopupMenuWindows;
+var
+  hCur: HWND;
+begin
+  if not IsThemedSkin then Exit;
+  hCur := FindWindowExW(0, 0, '#32768', nil);
+  while hCur <> 0 do
+  begin
+    EnsurePopupMenuSubclassed(hCur);
+    hCur := FindWindowExW(0, hCur, '#32768', nil);
+  end;
+end;
+
+procedure PreFillDarkMenuItem(hWndOwner: THandle; lParam: LPARAM);
+var
+  pDIS: PMenuDrawItemStruct;
+begin
+  if (not IsThemedSkin) or (lParam = 0) then Exit;
+  pDIS := PMenuDrawItemStruct(PtrUInt(lParam));
+  if (pDIS^.CtlType = 1 {ODT_MENU}) and (pDIS^.hDC <> 0) then
+  begin
+    if (hWndOwner = 0) or (pDIS^.hwndItem <> GetMenu(hWndOwner)) then
+      FillRect(pDIS^.hDC, pDIS^.rcItem, GetCachedPopupMenuBrush);
+  end;
+end;
+
+function DrawThemedPopupMenuItem(hWndOwner: THandle; lParam: LPARAM): Boolean;
+const
+  ODS_SELECTED = $0001;
+  ODS_GRAYED   = $0002;
+  ODS_DISABLED = $0004;
+  ODS_HOTLIGHT = $0040;
+  ODS_NOACCEL  = $0100;
+  DT_HIDEPREFIX = $00100000;
+var
+  pDIS: PMenuDrawItemStruct;
+  mi: TMenuItem;
+  rc, rcGutter, rcSel, rcChk, rcText, rcShort: RECT;
+  hbr, hPen, oldPen, hFont, oldFont: THandle;
+  midY, lineLeft, lineRight, gutterW, cx, cy: Integer;
+  isSelected, isDis: Boolean;
+  capStr, shortStr: WideString;
+  tabPos: Integer;
+  rawCap: string;
+  oldBk: Integer;
+  txtCol, oldCol: COLORREF;
+begin
+  Result := False;
+  if (not IsThemedSkin) or (lParam = 0) then Exit;
+  pDIS := PMenuDrawItemStruct(PtrUInt(lParam));
+  if (pDIS^.CtlType <> 1 {ODT_MENU}) or (pDIS^.hDC = 0) then Exit;
+  if (hWndOwner <> 0) and (pDIS^.hwndItem = GetMenu(hWndOwner)) then Exit;
+  if (pDIS^.itemData = 0) or not (TObject(pDIS^.itemData) is TMenuItem) then Exit;
+
+  mi := TMenuItem(pDIS^.itemData);
+
+  // In Dark skins, only override separators (normal items are drawn by LCL VistaMenuDraw in dark mode)
+  if CurrentSkin.IsDark and (not mi.IsLine) and (mi.Caption <> '-') then
+    Exit;
+
+  rc := pDIS^.rcItem;
+  gutterW := 26;
+
+  // 1. Fill full item background
+  FillRect(pDIS^.hDC, rc, GetCachedPopupMenuBrush);
+
+  // In Sepia, draw warm PanelBg left gutter and 1px vertical divider
+  if CurrentSkin.Id = skSepia then
+  begin
+    rcGutter := rc;
+    rcGutter.Right := Min(rc.Right, rc.Left + gutterW);
+    FillRect(pDIS^.hDC, rcGutter, GetCachedPanelBrush(CurrentSkin.PanelBg));
+
+    if rcGutter.Right < rc.Right then
+    begin
+      hPen := CreatePen(PS_SOLID, 1, ColorToRGB(CurrentSkin.PanelBorder));
+      oldPen := SelectObject(pDIS^.hDC, hPen);
+      MoveToEx(pDIS^.hDC, rcGutter.Right, rc.Top, nil);
+      LineTo(pDIS^.hDC, rcGutter.Right, rc.Bottom);
+      SelectObject(pDIS^.hDC, oldPen);
+      DeleteObject(hPen);
+    end;
+  end;
+
+  // 2. Separator item
+  if mi.IsLine or (mi.Caption = '-') then
+  begin
+    midY := (rc.Top + rc.Bottom) div 2;
+    lineLeft := rc.Left + gutterW + 4;
+    if lineLeft > rc.Right - 8 then
+      lineLeft := rc.Left + 4;
+    lineRight := rc.Right - 4;
+
+    hPen := CreatePen(PS_SOLID, 1, ColorToRGB(CurrentSkin.PanelBorder));
+    oldPen := SelectObject(pDIS^.hDC, hPen);
+    MoveToEx(pDIS^.hDC, lineLeft, midY, nil);
+    LineTo(pDIS^.hDC, lineRight, midY);
+    SelectObject(pDIS^.hDC, oldPen);
+    DeleteObject(hPen);
+
+    Result := True;
+    Exit;
+  end;
+
+  // 3. Normal submenu item (Sepia custom drawing)
+  isSelected := (pDIS^.itemState and (ODS_SELECTED or ODS_HOTLIGHT)) <> 0;
+  isDis := ((pDIS^.itemState and (ODS_GRAYED or ODS_DISABLED)) <> 0) or (not mi.Enabled);
+
+  if isSelected and (not isDis) then
+  begin
+    rcSel := rc;
+    InflateRect(rcSel, -2, -1);
+    hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.HighlightBg));
+    FillRect(pDIS^.hDC, rcSel, hbr);
+    DeleteObject(hbr);
+
+    hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.PanelBorder));
+    FrameRect(pDIS^.hDC, rcSel, hbr);
+    DeleteObject(hbr);
+  end;
+
+  // 4. Checkmark / Radio bullet in left gutter
+  if mi.Checked then
+  begin
+    rcChk.Left := rc.Left + 3;
+    rcChk.Top := rc.Top + (rc.Bottom - rc.Top - 20) div 2;
+    rcChk.Right := rcChk.Left + 20;
+    rcChk.Bottom := rcChk.Top + 20;
+
+    hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.HighlightBg));
+    FillRect(pDIS^.hDC, rcChk, hbr);
+    DeleteObject(hbr);
+
+    hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.PanelBorder));
+    FrameRect(pDIS^.hDC, rcChk, hbr);
+    DeleteObject(hbr);
+
+    cx := (rcChk.Left + rcChk.Right) div 2;
+    cy := (rcChk.Top + rcChk.Bottom) div 2;
+    if isDis then
+      txtCol := ColorToRGB(CurrentSkin.WindowTextDim)
+    else
+      txtCol := ColorToRGB(CurrentSkin.VerseNumColor);
+
+    if mi.RadioItem then
+    begin
+      hbr := CreateSolidBrush(txtCol);
+      hPen := CreatePen(PS_SOLID, 1, txtCol);
+      oldPen := SelectObject(pDIS^.hDC, hPen);
+      oldFont := SelectObject(pDIS^.hDC, hbr);
+      Ellipse(pDIS^.hDC, cx - 3, cy - 3, cx + 4, cy + 4);
+      SelectObject(pDIS^.hDC, oldFont);
+      SelectObject(pDIS^.hDC, oldPen);
+      DeleteObject(hPen);
+      DeleteObject(hbr);
+    end
+    else
+    begin
+      hPen := CreatePen(PS_SOLID, 2, txtCol);
+      oldPen := SelectObject(pDIS^.hDC, hPen);
+      MoveToEx(pDIS^.hDC, cx - 4, cy, nil);
+      LineTo(pDIS^.hDC, cx - 1, cy + 3);
+      LineTo(pDIS^.hDC, cx + 5, cy - 3);
+      SelectObject(pDIS^.hDC, oldPen);
+      DeleteObject(hPen);
+    end;
+  end;
+
+  // 5. Caption and Shortcut text
+  rawCap := mi.Caption;
+  tabPos := Pos(#9, rawCap);
+  if tabPos > 0 then
+  begin
+    capStr := WideString(Copy(rawCap, 1, tabPos - 1));
+    shortStr := WideString(Copy(rawCap, tabPos + 1, Length(rawCap)));
+  end
+  else
+  begin
+    capStr := WideString(rawCap);
+    if mi.ShortCut <> 0 then
+      shortStr := WideString(ShortCutToText(mi.ShortCut))
+    else
+      shortStr := '';
+  end;
+
+  hFont := 0;
+  if hWndOwner <> 0 then
+    hFont := THandle(SendMessage(hWndOwner, WM_GETFONT, 0, 0));
+  if hFont = 0 then
+    hFont := GetStockObject(DEFAULT_GUI_FONT);
+
+  if hFont <> 0 then
+    oldFont := SelectObject(pDIS^.hDC, hFont)
+  else
+    oldFont := 0;
+
+  oldBk := SetBkMode(pDIS^.hDC, TRANSPARENT);
+  if isDis then
+    txtCol := ColorToRGB(CurrentSkin.WindowTextDim)
+  else if isSelected then
+    txtCol := ColorToRGB(CurrentSkin.HighlightText)
+  else
+    txtCol := ColorToRGB(CurrentSkin.WindowText);
+  oldCol := SetTextColor(pDIS^.hDC, txtCol);
+
+  if Length(capStr) > 0 then
+  begin
+    rcText := rc;
+    rcText.Left := rc.Left + gutterW + 6;
+    rcText.Right := rc.Right - 20;
+    if (pDIS^.itemState and ODS_NOACCEL) <> 0 then
+      DrawTextW(pDIS^.hDC, @capStr[1], Length(capStr), rcText, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_HIDEPREFIX)
+    else
+      DrawTextW(pDIS^.hDC, @capStr[1], Length(capStr), rcText, DT_LEFT or DT_VCENTER or DT_SINGLELINE);
+  end;
+
+  if Length(shortStr) > 0 then
+  begin
+    rcShort := rc;
+    rcShort.Left := rc.Left + gutterW + 6;
+    rcShort.Right := rc.Right - 22;
+    DrawTextW(pDIS^.hDC, @shortStr[1], Length(shortStr), rcShort, DT_RIGHT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
+  end;
+
+  // 6. Submenu chevron '>' if mi.Count > 0
+  if mi.Count > 0 then
+  begin
+    cx := rc.Right - 11;
+    cy := (rc.Top + rc.Bottom) div 2;
+    hPen := CreatePen(PS_SOLID, 1, txtCol);
+    oldPen := SelectObject(pDIS^.hDC, hPen);
+    MoveToEx(pDIS^.hDC, cx - 2, cy - 4, nil);
+    LineTo(pDIS^.hDC, cx + 2, cy);
+    LineTo(pDIS^.hDC, cx - 3, cy + 5);
+    MoveToEx(pDIS^.hDC, cx - 1, cy - 4, nil);
+    LineTo(pDIS^.hDC, cx + 3, cy);
+    LineTo(pDIS^.hDC, cx - 2, cy + 5);
+    SelectObject(pDIS^.hDC, oldPen);
+    DeleteObject(hPen);
+  end;
+
+  SetTextColor(pDIS^.hDC, oldCol);
+  SetBkMode(pDIS^.hDC, oldBk);
+  if oldFont <> 0 then
+    SelectObject(pDIS^.hDC, oldFont);
+
+  // Prevent user32.dll from blitting its unthemed monochrome submenu arrow over our item
+  ExcludeClipRect(pDIS^.hDC, rc.Left, rc.Top, rc.Right, rc.Bottom);
+
+  Result := True;
+end;
+
+function DrawDarkMenuSeparator(lParam: LPARAM): Boolean;
+begin
+  Result := DrawThemedPopupMenuItem(0, lParam);
+end;
+
+function MenuCallWndProc(nCode: LongInt; wParam: WPARAM; lParam: LPARAM): LRESULT; stdcall;
+const
+  MN_SIZEWINDOW = $01E2;
+var
+  pCWP: PMenuCWPStruct;
+begin
+  if (nCode = HC_ACTION) and IsThemedSkin and (lParam <> 0) then
+  begin
+    pCWP := PMenuCWPStruct(PtrUInt(lParam));
+    case pCWP^.message of
+      WM_DRAWITEM:
+        PreFillDarkMenuItem(pCWP^.hwnd, pCWP^.lParam);
+      WM_INITMENUPOPUP:
+        SubclassAllPopupMenuWindows;
+      WM_NCCREATE, WM_CREATE, WM_WINDOWPOSCHANGING, WM_SHOWWINDOW,
+      WM_NCPAINT, WM_PRINT, WM_ERASEBKGND, MN_SIZEWINDOW:
+      begin
+        if IsPopupMenuWindow(pCWP^.hwnd) then
+          EnsurePopupMenuSubclassed(pCWP^.hwnd);
+      end;
+    end;
+  end;
+  Result := CallNextHookEx(hMenuWndHook, nCode, wParam, lParam);
+end;
+
+function MenuCallWndRetProc(nCode: LongInt; wParam: WPARAM; lParam: LPARAM): LRESULT; stdcall;
+const
+  PRF_NONCLIENT = $00000002;
+  MN_SELECTITEM = $01E5;
+var
+  pRet: PMenuCWPRetStruct;
+  hdcWin: HDC;
+begin
+  if (nCode = HC_ACTION) and IsThemedSkin and (lParam <> 0) then
+  begin
+    pRet := PMenuCWPRetStruct(PtrUInt(lParam));
+    case pRet^.message of
+      WM_DRAWITEM:
+        DrawThemedPopupMenuItem(pRet^.hwnd, pRet^.lParam);
+      WM_INITMENUPOPUP:
+        SubclassAllPopupMenuWindows;
+      WM_NCPAINT, WM_PAINT, WM_ERASEBKGND, WM_PRINTCLIENT,
+      WM_SHOWWINDOW, WM_WINDOWPOSCHANGED, MN_SELECTITEM:
+      begin
+        if IsPopupMenuWindow(pRet^.hwnd) then
+        begin
+          EnsurePopupMenuSubclassed(pRet^.hwnd);
+          hdcWin := GetWindowDC(pRet^.hwnd);
+          if hdcWin <> 0 then
+          begin
+            PaintPopupMenuBorder(pRet^.hwnd, hdcWin);
+            ReleaseDC(pRet^.hwnd, hdcWin);
+          end;
+        end;
+      end;
+      WM_PRINT:
+      begin
+        if IsPopupMenuWindow(pRet^.hwnd) then
+        begin
+          EnsurePopupMenuSubclassed(pRet^.hwnd);
+          if (pRet^.wParam <> 0) and ((pRet^.lParam and PRF_NONCLIENT) <> 0) then
+          begin
+            SelectClipRgn(THandle(pRet^.wParam), 0);
+            PaintPopupMenuBorder(pRet^.hwnd, THandle(pRet^.wParam));
+          end;
+          if IsWindowVisible(pRet^.hwnd) then
+          begin
+            hdcWin := GetWindowDC(pRet^.hwnd);
+            if hdcWin <> 0 then
+            begin
+              PaintPopupMenuBorder(pRet^.hwnd, hdcWin);
+              ReleaseDC(pRet^.hwnd, hdcWin);
+            end;
+          end;
+        end;
+      end;
+    end;
+  end;
+  Result := CallNextHookEx(hMenuWndRetHook, nCode, wParam, lParam);
+end;
+
+procedure InstallMenuDarkHooks;
+begin
+  if hMenuWndHook = 0 then
+    hMenuWndHook := SetWindowsHookExW(WH_CALLWNDPROC, @MenuCallWndProc, 0, GetCurrentThreadId());
+  if hMenuWndRetHook = 0 then
+    hMenuWndRetHook := SetWindowsHookExW(WH_CALLWNDPROCRET, @MenuCallWndRetProc, 0, GetCurrentThreadId());
+end;
+
+procedure RemoveMenuDarkHooks;
+begin
+  if hMenuWndHook <> 0 then
+  begin
+    UnhookWindowsHookEx(hMenuWndHook);
+    hMenuWndHook := 0;
+  end;
+  if hMenuWndRetHook <> 0 then
+  begin
+    UnhookWindowsHookEx(hMenuWndRetHook);
+    hMenuWndRetHook := 0;
+  end;
+end;
+{$ELSE}
+function DrawThemedPopupMenuItem(hWndOwner: THandle; lParam: LPARAM): Boolean;
+begin
+  Result := False;
+end;
+
+function DrawDarkMenuSeparator(lParam: LPARAM): Boolean;
+begin
+  Result := False;
+end;
+
+procedure PreFillDarkMenuItem(hWndOwner: THandle; lParam: LPARAM);
+begin
+end;
+
+procedure SubclassAllPopupMenuWindows;
+begin
+end;
+{$ENDIF}
 
 {$IFDEF WINDOWS}
 const
@@ -655,7 +1320,7 @@ var
   lblCtrl: TCustomLabel;
   parentTabCtrl: TTabControl;
 begin
-  if (uMsg = WM_PAINT) and CurrentSkin.IsDark then
+  if (uMsg = WM_PAINT) and IsThemedSkin then
   begin
     SetWindowLong(hWnd, GWL_STYLE, GetWindowLong(hWnd, GWL_STYLE) or WS_CLIPCHILDREN);
 
@@ -968,7 +1633,7 @@ begin
     Exit;
   end;
 
-  if (uMsg = WM_ERASEBKGND) and CurrentSkin.IsDark then
+  if (uMsg = WM_ERASEBKGND) and IsThemedSkin then
   begin
     FillChar(rcClient, SizeOf(rcClient), 0);
     GetClientRect(hWnd, @rcClient);
@@ -979,7 +1644,7 @@ begin
     Exit;
   end;
 
-  if ((uMsg = WM_CTLCOLORSTATIC) or (uMsg = WM_CTLCOLORBTN)) and CurrentSkin.IsDark then
+  if ((uMsg = WM_CTLCOLORSTATIC) or (uMsg = WM_CTLCOLORBTN)) and IsThemedSkin then
   begin
     SetBkMode(THandle(wParam), TRANSPARENT);
     SetTextColor(THandle(wParam), ColorToRGB(CurrentSkin.PanelText));
@@ -987,7 +1652,7 @@ begin
     Exit;
   end;
 
-  if (uMsg = WM_CTLCOLOREDIT) and CurrentSkin.IsDark then
+  if (uMsg = WM_CTLCOLOREDIT) and IsThemedSkin then
   begin
     SetBkColor(THandle(wParam), ColorToRGB(CurrentSkin.WindowBg));
     SetTextColor(THandle(wParam), ColorToRGB(CurrentSkin.WindowText));
@@ -995,7 +1660,7 @@ begin
     Exit;
   end;
 
-  if ((uMsg = WM_LBUTTONDOWN) or (uMsg = WM_LBUTTONUP) or (uMsg = WM_MOUSEMOVE)) and CurrentSkin.IsDark then
+  if ((uMsg = WM_LBUTTONDOWN) or (uMsg = WM_LBUTTONUP) or (uMsg = WM_MOUSEMOVE)) and IsThemedSkin then
   begin
     Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
     InvalidateRect(hWnd, nil, FALSE);
@@ -1068,7 +1733,24 @@ var
   rc: RECT;
   hbr: THandle;
 begin
-  if (uMsg = WM_ERASEBKGND) and CurrentSkin.IsDark then
+  if uIdSubclass = 0 then ;
+  if dwRefData = 0 then ;
+  if IsThemedSkin then
+  begin
+    if uMsg = WM_INITMENUPOPUP then
+      SubclassAllPopupMenuWindows
+    else if uMsg = WM_DRAWITEM then
+    begin
+      if DrawThemedPopupMenuItem(hWnd, lParam) then
+      begin
+        Result := 1;
+        Exit;
+      end;
+      PreFillDarkMenuItem(hWnd, lParam);
+    end;
+  end;
+
+  if (uMsg = WM_ERASEBKGND) and IsThemedSkin then
   begin
     FillChar(rc, SizeOf(rc), 0);
     GetClientRect(hWnd, @rc);
@@ -1079,7 +1761,7 @@ begin
     Exit;
   end;
 
-  if ((uMsg = WM_CTLCOLORSTATIC) or (uMsg = WM_CTLCOLORBTN)) and CurrentSkin.IsDark then
+  if ((uMsg = WM_CTLCOLORSTATIC) or (uMsg = WM_CTLCOLORBTN)) and IsThemedSkin then
   begin
     SetBkMode(THandle(wParam), TRANSPARENT);
     SetTextColor(THandle(wParam), ColorToRGB(CurrentSkin.PanelText));
@@ -1087,7 +1769,7 @@ begin
     Exit;
   end;
 
-  if ((uMsg = WM_CTLCOLOREDIT) or (uMsg = WM_CTLCOLORLISTBOX)) and CurrentSkin.IsDark then
+  if ((uMsg = WM_CTLCOLOREDIT) or (uMsg = WM_CTLCOLORLISTBOX)) and IsThemedSkin then
   begin
     SetBkColor(THandle(wParam), ColorToRGB(CurrentSkin.WindowBg));
     SetTextColor(THandle(wParam), ColorToRGB(CurrentSkin.WindowText));
@@ -1137,7 +1819,7 @@ var
   btnState: LRESULT;
   pt: TPoint;
 begin
-  if (uMsg = WM_PAINT) and CurrentSkin.IsDark then
+  if (uMsg = WM_PAINT) and IsThemedSkin then
   begin
     hdc := BeginPaint(hWnd, @ps);
     if hdc <> 0 then
@@ -1220,7 +1902,7 @@ begin
     Exit;
   end;
 
-  if (uMsg = WM_ERASEBKGND) and CurrentSkin.IsDark then
+  if (uMsg = WM_ERASEBKGND) and IsThemedSkin then
   begin
     FillChar(rc, SizeOf(rc), 0);
     GetClientRect(hWnd, @rc);
@@ -1232,7 +1914,7 @@ begin
   end;
 
   if ((uMsg = WM_MOUSEMOVE) or (uMsg = WM_LBUTTONDOWN) or (uMsg = WM_LBUTTONUP) or
-      (uMsg = WM_MOUSELEAVE) or (uMsg = WM_SETFOCUS) or (uMsg = WM_KILLFOCUS)) and CurrentSkin.IsDark then
+      (uMsg = WM_MOUSELEAVE) or (uMsg = WM_SETFOCUS) or (uMsg = WM_KILLFOCUS)) and IsThemedSkin then
   begin
     Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
     InvalidateRect(hWnd, nil, FALSE);
@@ -1249,7 +1931,7 @@ begin
   if Assigned(AControl) and AControl.HandleAllocated and (AControl.Handle <> 0) then
   begin
     fnSetWindowSubclass(AControl.Handle, @ButtonSubclassProc, 5001, PtrUInt(AControl));
-    AControl.Invalidate;
+    RedrawWindow(AControl.Handle, nil, 0, RDW_FRAME or RDW_INVALIDATE);
   end;
 end;
 
@@ -1278,7 +1960,7 @@ var
   pt: TPoint;
   boxSize, boxTop, boxLeft: Integer;
 begin
-  if (uMsg = WM_PAINT) and CurrentSkin.IsDark then
+  if (uMsg = WM_PAINT) and IsThemedSkin then
   begin
     hdc := BeginPaint(hWnd, @ps);
     if hdc <> 0 then
@@ -1319,12 +2001,12 @@ begin
         hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.PanelBg))
       else if isPushed then
         hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.HighlightBg))
-      else if isChecked then
-        hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.PanelBg))
       else if isHot then
         hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.PointedBg))
+      else if CurrentSkin.IsDark then
+        hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.PanelBg))
       else
-        hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.PanelBg));
+        hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.WindowBg));
       FillRect(hdc, boxRc, hbr);
       DeleteObject(hbr);
 
@@ -1332,7 +2014,12 @@ begin
       if isDis then
         hPen := CreatePen(PS_SOLID, 1, ColorToRGB(CurrentSkin.WindowTextDim))
       else if isChecked then
-        hPen := CreatePen(PS_SOLID, 1, RGB(96, 205, 255))
+      begin
+        if CurrentSkin.IsDark then
+          hPen := CreatePen(PS_SOLID, 1, RGB(96, 205, 255))
+        else
+          hPen := CreatePen(PS_SOLID, 1, ColorToRGB(CurrentSkin.VerseNumColor));
+      end
       else if isHot then
         hPen := CreatePen(PS_SOLID, 1, ColorToRGB(CurrentSkin.PanelText))
       else
@@ -1350,8 +2037,10 @@ begin
       begin
         if isDis then
           hPen := CreatePen(PS_SOLID, 2, ColorToRGB(CurrentSkin.WindowTextDim))
+        else if CurrentSkin.IsDark then
+          hPen := CreatePen(PS_SOLID, 2, RGB(96, 205, 255))
         else
-          hPen := CreatePen(PS_SOLID, 2, RGB(96, 205, 255)); // Bright cyan checkmark
+          hPen := CreatePen(PS_SOLID, 2, ColorToRGB(CurrentSkin.VerseNumColor));
         oldPen := SelectObject(hdc, hPen);
         MoveToEx(hdc, boxLeft + 2, boxTop + 6, nil);
         LineTo(hdc, boxLeft + 5, boxTop + 9);
@@ -1430,7 +2119,7 @@ begin
     Exit;
   end;
 
-  if (uMsg = WM_ERASEBKGND) and CurrentSkin.IsDark then
+  if (uMsg = WM_ERASEBKGND) and IsThemedSkin then
   begin
     FillChar(rc, SizeOf(rc), 0);
     GetClientRect(hWnd, @rc);
@@ -1443,7 +2132,7 @@ begin
 
   if ((uMsg = WM_MOUSEMOVE) or (uMsg = WM_LBUTTONDOWN) or (uMsg = WM_LBUTTONUP) or
       (uMsg = WM_SETFOCUS) or (uMsg = WM_KILLFOCUS) or (uMsg = BM_SETCHECK) or
-      (uMsg = WM_ENABLE) or (uMsg = WM_KEYUP)) and CurrentSkin.IsDark then
+      (uMsg = WM_ENABLE) or (uMsg = WM_KEYUP)) and IsThemedSkin then
   begin
     Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
     InvalidateRect(hWnd, nil, FALSE);
@@ -1486,7 +2175,7 @@ var
   isDis: Boolean;
   textW, textH, frameTop: Integer;
 begin
-  if (uMsg = WM_PAINT) and CurrentSkin.IsDark then
+  if (uMsg = WM_PAINT) and IsThemedSkin then
   begin
     // 1. Let default window procedure paint child TGraphicControls (such as TLabel)
     Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
@@ -1586,7 +2275,7 @@ begin
     Exit;
   end;
 
-  if (uMsg = WM_ERASEBKGND) and CurrentSkin.IsDark then
+  if (uMsg = WM_ERASEBKGND) and IsThemedSkin then
   begin
     FillChar(rc, SizeOf(rc), 0);
     GetClientRect(hWnd, @rc);
@@ -1597,7 +2286,7 @@ begin
     Exit;
   end;
 
-  if ((uMsg = WM_CTLCOLORSTATIC) or (uMsg = WM_CTLCOLORBTN)) and CurrentSkin.IsDark then
+  if ((uMsg = WM_CTLCOLORSTATIC) or (uMsg = WM_CTLCOLORBTN)) and IsThemedSkin then
   begin
     SetBkMode(THandle(wParam), TRANSPARENT);
     SetTextColor(THandle(wParam), ColorToRGB(CurrentSkin.PanelText));
@@ -1605,7 +2294,7 @@ begin
     Exit;
   end;
 
-  if ((uMsg = WM_CTLCOLOREDIT) or (uMsg = WM_CTLCOLORLISTBOX)) and CurrentSkin.IsDark then
+  if ((uMsg = WM_CTLCOLOREDIT) or (uMsg = WM_CTLCOLORLISTBOX)) and IsThemedSkin then
   begin
     SetBkColor(THandle(wParam), ColorToRGB(CurrentSkin.WindowBg));
     SetTextColor(THandle(wParam), ColorToRGB(CurrentSkin.WindowText));
@@ -1613,7 +2302,7 @@ begin
     Exit;
   end;
 
-  if (uMsg = WM_ENABLE) and CurrentSkin.IsDark then
+  if (uMsg = WM_ENABLE) and IsThemedSkin then
   begin
     Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
     InvalidateRect(hWnd, nil, FALSE);
@@ -1658,7 +2347,7 @@ var
   isHot, isDis, isDropped: Boolean;
   pt: TPoint;
 begin
-  if (uMsg = WM_PAINT) and CurrentSkin.IsDark then
+  if (uMsg = WM_PAINT) and IsThemedSkin then
   begin
     hdc := BeginPaint(hWnd, @ps);
     if hdc <> 0 then
@@ -1787,7 +2476,7 @@ begin
     Exit;
   end;
 
-  if (uMsg = WM_ERASEBKGND) and CurrentSkin.IsDark then
+  if (uMsg = WM_ERASEBKGND) and IsThemedSkin then
   begin
     FillChar(rc, SizeOf(rc), 0);
     GetClientRect(hWnd, @rc);
@@ -1798,7 +2487,7 @@ begin
     Exit;
   end;
 
-  if ((uMsg = WM_CTLCOLORLISTBOX) or (uMsg = WM_CTLCOLOREDIT)) and CurrentSkin.IsDark then
+  if ((uMsg = WM_CTLCOLORLISTBOX) or (uMsg = WM_CTLCOLOREDIT)) and IsThemedSkin then
   begin
     SetBkColor(THandle(wParam), ColorToRGB(CurrentSkin.WindowBg));
     SetTextColor(THandle(wParam), ColorToRGB(CurrentSkin.WindowText));
@@ -1808,7 +2497,7 @@ begin
 
   if ((uMsg = WM_MOUSEMOVE) or (uMsg = WM_MOUSELEAVE) or (uMsg = WM_LBUTTONDOWN) or
       (uMsg = WM_LBUTTONUP) or (uMsg = WM_SETFOCUS) or (uMsg = WM_KILLFOCUS) or
-      (uMsg = $014E {CB_SETCURSEL})) and CurrentSkin.IsDark then
+      (uMsg = $014E {CB_SETCURSEL})) and IsThemedSkin then
   begin
     Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
     InvalidateRect(hWnd, nil, FALSE);
@@ -1859,7 +2548,7 @@ var
   pt: TPoint;
   isHot, isDis: Boolean;
 begin
-  if (uMsg = WM_PAINT) and CurrentSkin.IsDark then
+  if (uMsg = WM_PAINT) and IsThemedSkin then
   begin
     hdc := BeginPaint(hWnd, @ps);
     if hdc <> 0 then
@@ -1974,7 +2663,7 @@ begin
     Exit;
   end;
 
-  if (uMsg = WM_ERASEBKGND) and CurrentSkin.IsDark then
+  if (uMsg = WM_ERASEBKGND) and IsThemedSkin then
   begin
     FillChar(rc, SizeOf(rc), 0);
     GetClientRect(hWnd, @rc);
@@ -1986,7 +2675,7 @@ begin
   end;
 
   if ((uMsg = WM_MOUSEMOVE) or (uMsg = WM_LBUTTONDOWN) or (uMsg = WM_LBUTTONUP) or
-      (uMsg = WM_KEYDOWN) or (uMsg = WM_KEYUP) or (uMsg = WM_MOUSEWHEEL)) and CurrentSkin.IsDark then
+      (uMsg = WM_KEYDOWN) or (uMsg = WM_KEYUP) or (uMsg = WM_MOUSEWHEEL)) and IsThemedSkin then
   begin
     Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
     InvalidateRect(hWnd, nil, FALSE);
@@ -2014,20 +2703,105 @@ begin
     fnRemoveWindowSubclass(AControl.Handle, @TrackBarSubclassProc, 6601);
 end;
 
+procedure PaintControlNCBorder(hWnd: HWND; AInnerColor: TColor);
+var
+  hdcWin: HDC;
+  rcWin, rcOuter, rcInner, rcCorner: RECT;
+  hbrOuter, hbrInner: THandle;
+  exStyle, style: LONG;
+  w, h, bSize, cxVScroll, cyHScroll: Integer;
+begin
+  if (hWnd = 0) or (CurrentSkin.Id = skClassic) or (not IsWindowVisible(hWnd)) then Exit;
+  exStyle := GetWindowLong(hWnd, GWL_EXSTYLE);
+  style := GetWindowLong(hWnd, GWL_STYLE);
+  if ((exStyle and WS_EX_CLIENTEDGE) = 0) and ((style and WS_BORDER) = 0) then Exit;
+
+  FillChar(rcWin, SizeOf(rcWin), 0);
+  if not GetWindowRect(hWnd, @rcWin) then Exit;
+  w := rcWin.Right - rcWin.Left;
+  h := rcWin.Bottom - rcWin.Top;
+  if (w <= 2) or (h <= 2) then Exit;
+
+  hdcWin := GetWindowDC(hWnd);
+  if hdcWin <> 0 then
+  begin
+    rcOuter.Left := 0;
+    rcOuter.Top := 0;
+    rcOuter.Right := w;
+    rcOuter.Bottom := h;
+
+    hbrOuter := CreateSolidBrush(ColorToRGB(CurrentSkin.PanelBorder));
+    FrameRect(hdcWin, rcOuter, hbrOuter);
+    DeleteObject(hbrOuter);
+
+    bSize := 1;
+    if (exStyle and WS_EX_CLIENTEDGE) <> 0 then
+    begin
+      bSize := 2;
+      rcInner.Left := 1;
+      rcInner.Top := 1;
+      rcInner.Right := w - 1;
+      rcInner.Bottom := h - 1;
+      hbrInner := CreateSolidBrush(ColorToRGB(AInnerColor));
+      FrameRect(hdcWin, rcInner, hbrInner);
+      DeleteObject(hbrInner);
+    end;
+
+    // Paint dead-space corner square when both vertical and horizontal scrollbars are present
+    if ((style and WS_VSCROLL) <> 0) and ((style and WS_HSCROLL) <> 0) then
+    begin
+      cxVScroll := GetSystemMetrics(SM_CXVSCROLL);
+      cyHScroll := GetSystemMetrics(SM_CYHSCROLL);
+      rcCorner.Left := w - bSize - cxVScroll;
+      rcCorner.Top := h - bSize - cyHScroll;
+      rcCorner.Right := w - bSize;
+      rcCorner.Bottom := h - bSize;
+      if (rcCorner.Right > rcCorner.Left) and (rcCorner.Bottom > rcCorner.Top) then
+      begin
+        hbrInner := CreateSolidBrush(ColorToRGB(CurrentSkin.PanelBg));
+        FillRect(hdcWin, rcCorner, hbrInner);
+        DeleteObject(hbrInner);
+      end;
+    end;
+
+    ReleaseDC(hWnd, hdcWin);
+  end;
+end;
+
 function ScrollBoxSubclassProc(hWnd: HWND; uMsg: UINT; wParam: WPARAM; lParam: LPARAM;
   uIdSubclass: PtrUInt; dwRefData: PtrUInt): LRESULT; stdcall;
 var
   rc: RECT;
   hbr: THandle;
 begin
-  if (uMsg = WM_ERASEBKGND) and CurrentSkin.IsDark then
+  if uIdSubclass = 0 then ;
+  if dwRefData = 0 then ;
+
+  if (uMsg = WM_NCPAINT) and (CurrentSkin.Id <> skClassic) then
+  begin
+    Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+    PaintControlNCBorder(hWnd, CurrentSkin.WindowBg);
+    Exit;
+  end;
+
+  if (uMsg = WM_ERASEBKGND) and IsThemedSkin then
   begin
     FillChar(rc, SizeOf(rc), 0);
     GetClientRect(hWnd, @rc);
     hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.WindowBg));
     FillRect(THandle(wParam), rc, hbr);
     DeleteObject(hbr);
+    PaintControlNCBorder(hWnd, CurrentSkin.WindowBg);
     Result := 1;
+    Exit;
+  end;
+
+  if ((uMsg = WM_PAINT) or (uMsg = WM_SIZE) or (uMsg = WM_WINDOWPOSCHANGED) or
+      (uMsg = WM_HSCROLL) or (uMsg = WM_VSCROLL) or (uMsg = WM_MOUSEWHEEL)) and
+     (CurrentSkin.Id <> skClassic) then
+  begin
+    Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+    PaintControlNCBorder(hWnd, CurrentSkin.WindowBg);
     Exit;
   end;
 
@@ -2041,7 +2815,7 @@ begin
   if Assigned(AControl) and AControl.HandleAllocated and (AControl.Handle <> 0) then
   begin
     fnSetWindowSubclass(AControl.Handle, @ScrollBoxSubclassProc, 7001, PtrUInt(AControl));
-    AControl.Invalidate;
+    RedrawWindow(AControl.Handle, nil, 0, RDW_FRAME or RDW_INVALIDATE);
   end;
 end;
 
@@ -2058,7 +2832,7 @@ var
   rc: RECT;
   hbr: THandle;
 begin
-  if (uMsg = WM_ERASEBKGND) and CurrentSkin.IsDark then
+  if (uMsg = WM_ERASEBKGND) and IsThemedSkin then
   begin
     FillChar(rc, SizeOf(rc), 0);
     GetClientRect(hWnd, @rc);
@@ -2097,14 +2871,34 @@ var
   hbr: THandle;
   wTheme: WideString;
 begin
-  if (uMsg = WM_ERASEBKGND) and CurrentSkin.IsDark then
+  if uIdSubclass = 0 then ;
+  if dwRefData = 0 then ;
+
+  if (uMsg = WM_NCPAINT) and (CurrentSkin.Id <> skClassic) then
+  begin
+    Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+    PaintControlNCBorder(hWnd, CurrentSkin.TreeBg);
+    Exit;
+  end;
+
+  if (uMsg = WM_ERASEBKGND) and IsThemedSkin then
   begin
     FillChar(rc, SizeOf(rc), 0);
     GetClientRect(hWnd, @rc);
     hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.TreeBg));
     FillRect(THandle(wParam), rc, hbr);
     DeleteObject(hbr);
+    PaintControlNCBorder(hWnd, CurrentSkin.TreeBg);
     Result := 1;
+    Exit;
+  end;
+
+  if ((uMsg = WM_PAINT) or (uMsg = WM_SIZE) or (uMsg = WM_WINDOWPOSCHANGED) or
+      (uMsg = WM_HSCROLL) or (uMsg = WM_VSCROLL) or (uMsg = WM_MOUSEWHEEL)) and
+     (CurrentSkin.Id <> skClassic) then
+  begin
+    Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+    PaintControlNCBorder(hWnd, CurrentSkin.TreeBg);
     Exit;
   end;
 
@@ -2123,6 +2917,7 @@ begin
       else
         fnSetWindowTheme(hWnd, nil, nil);
     end;
+    PaintControlNCBorder(hWnd, CurrentSkin.TreeBg);
     Exit;
   end;
 
@@ -2177,7 +2972,7 @@ var
   exStyle, style: LONG;
   isDis, isFocused: Boolean;
 begin
-  if (uMsg = WM_NCPAINT) and CurrentSkin.IsDark then
+  if (uMsg = WM_NCPAINT) and IsThemedSkin then
   begin
     // Let default procedure paint first so TMemo vertical/horizontal scrollbars render via DarkMode_Explorer
     Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
@@ -2229,7 +3024,7 @@ begin
   if (uMsg = WM_SETFOCUS) or (uMsg = WM_KILLFOCUS) then
   begin
     Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
-    if CurrentSkin.IsDark then
+    if IsThemedSkin then
       RedrawWindow(hWnd, nil, 0, RDW_FRAME or RDW_INVALIDATE);
     Exit;
   end;
@@ -2252,7 +3047,7 @@ begin
       else
         fnSetWindowTheme(hWnd, nil, nil);
     end;
-    if CurrentSkin.IsDark then
+    if IsThemedSkin then
       RedrawWindow(hWnd, nil, 0, RDW_FRAME or RDW_INVALIDATE);
     Exit;
   end;
@@ -2313,7 +3108,7 @@ var
 begin
   Result := CDRF_DODEFAULT_CODE;
   AHandled := False;
-  if not ASkin.IsDark then exit;
+  if ASkin.Id = skClassic then exit;
 
   pnm := PNMCustomDrawToolbar(lParam);
   if pnm = nil then exit;
@@ -2388,6 +3183,8 @@ begin
     begin
       TPanel(ctrl).Color := ASkin.PanelBg;
       TPanel(ctrl).Font.Color := ASkin.PanelText;
+      if ASkin.Id <> skClassic then
+        TPanel(ctrl).BevelOuter := bvNone;
     end
     else if ctrl is TCustomMemo then
     begin
@@ -2488,7 +3285,12 @@ begin
       TTreeView(ctrl).TreeLineColor := ASkin.PanelBorder;
       TTreeView(ctrl).ExpandSignType := tvestArrowFill;
       if ctrl is TWinControl then
+      begin
         ApplyDarkModeToControl(TWinControl(ctrl), ASkin.IsDark);
+        {$IFDEF WINDOWS}
+        HookTreeViewControl(TWinControl(ctrl));
+        {$ENDIF}
+      end;
       TTreeView(ctrl).Invalidate;
     end
     else if (ctrl is TCustomPage) or (ctrl.ClassName = 'TTabSheet') then
@@ -2502,7 +3304,12 @@ begin
     begin
       TScrollBox(ctrl).Color := ASkin.WindowBg;
       if ctrl is TWinControl then
+      begin
         ApplyDarkModeToControl(TWinControl(ctrl), ASkin.IsDark);
+        {$IFDEF WINDOWS}
+        HookScrollBoxControl(TWinControl(ctrl));
+        {$ENDIF}
+      end;
     end
     else if (ctrl is TCustomButton) or (ctrl is TBitBtn) or (ctrl is TSpeedButton) then
     begin
@@ -2551,7 +3358,12 @@ begin
   // 2. Also cover non-child components
   for i := 0 to AForm.ComponentCount - 1 do
   begin
-    if AForm.Components[i] is TControl then
+    if AForm.Components[i] is TMenu then
+    begin
+      if AForm.HandleAllocated then
+        ApplyDarkModeToMenu(TMenu(AForm.Components[i]), AForm.Handle, ASkin.IsDark, ASkin.PanelBg);
+    end
+    else if AForm.Components[i] is TControl then
     begin
       ctrl := TControl(AForm.Components[i]);
       if (ctrl is TCustomButton) or (ctrl is TBitBtn) or (ctrl is TSpeedButton) then
@@ -2705,7 +3517,7 @@ begin
     hook := TMessageDlgShowHook.Create(dlg);
     dlg.OnShow := @hook.OnDialogShow;
 
-    if CurrentSkin.IsDark then
+    if IsThemedSkin then
     begin
       dlg.Color := CurrentSkin.PanelBg;
       for i := 0 to dlg.ControlCount - 1 do
@@ -2735,16 +3547,59 @@ begin
   ThemedMessageDlg('iBiblia', Msg, mtInformation, [mbOK], 0);
 end;
 
+function IsMouseCursorInControl(AControl: TWinControl): Boolean;
+var
+  ptScreen, ptClient: TPoint;
+  {$IFDEF WINDOWS}
+  rcWin: RECT;
+  hWndUnder: HWND;
+  ctrlUnder: TWinControl;
+  {$ENDIF}
+begin
+  Result := False;
+  if (not Assigned(AControl)) or (not AControl.Showing) or (not AControl.HandleAllocated) then
+    Exit;
+
+  ptScreen := Mouse.CursorPos;
+  {$IFDEF WINDOWS}
+  if not IsWindowVisible(AControl.Handle) then
+    Exit;
+  FillChar(rcWin, SizeOf(rcWin), 0);
+  if not GetWindowRect(AControl.Handle, @rcWin) then
+    Exit;
+  if (ptScreen.X < rcWin.Left) or (ptScreen.X >= rcWin.Right) or
+     (ptScreen.Y < rcWin.Top) or (ptScreen.Y >= rcWin.Bottom) then
+    Exit;
+  hWndUnder := WindowFromPoint(ptScreen);
+  if (hWndUnder <> 0) and (hWndUnder <> AControl.Handle) and (not IsChild(AControl.Handle, hWndUnder)) then
+  begin
+    ctrlUnder := FindControl(hWndUnder);
+    if not (Assigned(ctrlUnder) and (ctrlUnder is THintWindow)) then
+      Exit;
+  end;
+  Result := True;
+  {$ELSE}
+  ptClient := AControl.ScreenToClient(ptScreen);
+  if (ptClient.X < 0) or (ptClient.X >= AControl.Width) or
+     (ptClient.Y < 0) or (ptClient.Y >= AControl.Height) then
+    Exit;
+  Result := True;
+  {$ENDIF}
+end;
+
 initialization
   SetCurrentSkin(skClassic);
   {$IFDEF WINDOWS}
   InitUxTheme;
   if Assigned(fnSetPreferredAppMode) then
     fnSetPreferredAppMode(pamAllowDark);
+  InstallMenuDarkHooks;
   {$ENDIF}
 
 finalization
   {$IFDEF WINDOWS}
+  RemoveMenuDarkHooks;
+  if hbrCachedPopupMenuBg <> 0 then DeleteObject(hbrCachedPopupMenuBg);
   if hbrCachedPanelBg <> 0 then DeleteObject(hbrCachedPanelBg);
   if hbrCachedWindowBg <> 0 then DeleteObject(hbrCachedWindowBg);
   if hUxTheme <> 0 then FreeLibrary(hUxTheme);

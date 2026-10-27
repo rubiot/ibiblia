@@ -294,6 +294,9 @@ type
     procedure Vacuum;
     function GetSituacaoDescricao(index: Integer): string;
     procedure SyncDestinoStatusBar;
+    function HasPendingAutoSelectNext: Boolean;
+    procedure CompletePendingAutoSelectNext;
+    procedure UpdateVerseNavHoverStates;
     procedure FiltrarArvore(AStatus: Integer);
     procedure SelectTreeNode(id: string);
     function IrParaVersiculoSeguinteComSituacao(AStatus: Integer): boolean;
@@ -3011,6 +3014,7 @@ var
   show: boolean;
   isAssocDestWord: boolean;
 begin
+  UpdateVerseNavHoverStates;
   if Assigned(FOnSintagmaMouseEnter) then
     FOnSintagmaMouseEnter(Sender);
 
@@ -3084,6 +3088,7 @@ var
   v: TTipoTextoBiblico;
   wasHoveredAssocDest: boolean;
 begin
+  UpdateVerseNavHoverStates;
   FTemporizador.Enabled := false;
 
   wasHoveredAssocDest := Assigned(FHoveredAssocDestSyntagm) and
@@ -5417,10 +5422,37 @@ begin
   //if texto = tbOrigem then
   //  FAVersiculo[texto].StrongMorfoComoChave := true;
 
+  FAVersiculo[texto].IsSourceVerse := (texto = tbOrigem);
+
   if (texto = tbDestino) and assigned(FAVersiculo[tbOrigem]) then
     FAVersiculo[tbDestino].VersiculoPar := FAVersiculo[tbOrigem]
   else if (texto = tbOrigem) and assigned(FAVersiculo[tbDestino]) then
     FAVersiculo[tbOrigem].VersiculoPar := FAVersiculo[tbDestino];
+end;
+
+function TProjeto.HasPendingAutoSelectNext: Boolean;
+begin
+  Result := (Assigned(FAVersiculo[tbOrigem]) and FAVersiculo[tbOrigem].PendingAutoSelectNext) or
+            (Assigned(FAVersiculo[tbDestino]) and FAVersiculo[tbDestino].PendingAutoSelectNext);
+end;
+
+procedure TProjeto.CompletePendingAutoSelectNext;
+begin
+  if Assigned(FAVersiculo[tbOrigem]) and
+     (FAVersiculo[tbOrigem].PendingAutoSelectNext or
+      (Assigned(FAVersiculo[tbDestino]) and FAVersiculo[tbDestino].PendingAutoSelectNext)) then
+    FAVersiculo[tbOrigem].CompletePendingAutoSelectNext
+  else if Assigned(FAVersiculo[tbDestino]) and FAVersiculo[tbDestino].PendingAutoSelectNext then
+    FAVersiculo[tbDestino].CompletePendingAutoSelectNext;
+end;
+
+procedure TProjeto.UpdateVerseNavHoverStates;
+var
+  t: TTipoTextoBiblico;
+begin
+  for t := low(FAVersiculo) to high(FAVersiculo) do
+    if Assigned(FAVersiculo[t]) then
+      FAVersiculo[t].UpdateNavHoverState;
 end;
 
 procedure TProjeto.ExportarTextoDestinoComStrongs(arquivo: string; opcoes: TOpcoesExportacao);

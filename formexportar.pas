@@ -243,7 +243,7 @@ var
   rc: RECT;
   hbr: THandle;
 begin
-  if (uMsg = WM_ERASEBKGND) and CurrentSkin.IsDark then
+  if (uMsg = WM_ERASEBKGND) and IsThemedSkin then
   begin
     FillChar(rc, SizeOf(rc), 0);
     GetClientRect(hWnd, @rc);
@@ -254,7 +254,7 @@ begin
     Exit;
   end;
 
-  if ((uMsg = WM_CTLCOLORSTATIC) or (uMsg = WM_CTLCOLORBTN)) and CurrentSkin.IsDark then
+  if ((uMsg = WM_CTLCOLORSTATIC) or (uMsg = WM_CTLCOLORBTN)) and IsThemedSkin then
   begin
     SetBkMode(THandle(wParam), TRANSPARENT);
     SetTextColor(THandle(wParam), ColorToRGB(CurrentSkin.PanelText));
@@ -283,7 +283,7 @@ begin
   HookCheckBoxControl(cbStrongsNaoTraduzidos);
   HookCheckBoxControl(cbConcordanciaDetalhada);
   {$ENDIF}
-  if CurrentSkin.IsDark then
+  if IsThemedSkin then
   begin
     Color := CurrentSkin.PanelBg;
     PageControl1.Color := CurrentSkin.PanelBg;

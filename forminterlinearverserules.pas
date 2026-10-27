@@ -52,7 +52,7 @@ begin
   HookButtonControl(ButtonOK);
   HookButtonControl(Button2);
   {$ENDIF}
-  if CurrentSkin.IsDark then
+  if IsThemedSkin then
   begin
     ButtonOK.Font.Color := CurrentSkin.PanelText;
     Button2.Font.Color := CurrentSkin.PanelText;

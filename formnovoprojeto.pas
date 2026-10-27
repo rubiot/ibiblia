@@ -112,7 +112,7 @@ begin
   HookButtonControl(BitBtn5);
   HookButtonControl(BitBtn6);
   {$ENDIF}
-  if CurrentSkin.IsDark then
+  if IsThemedSkin then
   begin
     GroupBox1.Color := CurrentSkin.PanelBg;
     GroupBox1.Font.Color := CurrentSkin.PanelText;

@@ -70,7 +70,7 @@ begin
 
   rBox := Rect(1, 1, 14, 14);
 
-  if ASkin.IsDark then
+  if ASkin.Id <> skClassic then
   begin
     Result.Canvas.Brush.Style := bsSolid;
     Result.Canvas.Brush.Color := ASkin.PanelBg;
@@ -369,7 +369,7 @@ end;
 procedure TBibleTreeView.TreeViewAdvancedCustomDraw(Sender: TCustomTreeView;
   const ARect: TRect; Stage: TCustomDrawStage; var DefaultDraw: Boolean);
 begin
-  if (Stage = cdPrePaint) and CurrentSkin.IsDark then
+  if (Stage = cdPrePaint) and IsThemedSkin then
   begin
     Sender.Canvas.Brush.Color := CurrentSkin.TreeBg;
     Sender.Canvas.FillRect(ARect);
@@ -452,7 +452,7 @@ begin
       Sender.Canvas.Font.Color := CurrentSkin.PointedText
     else
     begin
-      if CurrentSkin.IsDark then
+      if IsThemedSkin then
         Sender.Canvas.Font.Color := CurrentSkin.TreeText
       else
         Sender.Canvas.Font.Color := clWindowText;

@@ -125,7 +125,7 @@ begin
   HookButtonControl(BtnSelectAll);
   HookButtonControl(BtnDeselectAll);
   {$ENDIF}
-  if CurrentSkin.IsDark then
+  if IsThemedSkin then
   begin
     Button1.Font.Color := CurrentSkin.PanelText;
     Button2.Font.Color := CurrentSkin.PanelText;

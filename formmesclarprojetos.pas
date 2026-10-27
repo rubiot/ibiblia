@@ -56,7 +56,7 @@ begin
   {$IFDEF WINDOWS}
   HookButtonControl(Button1);
   {$ENDIF}
-  if CurrentSkin.IsDark then
+  if IsThemedSkin then
   begin
     Button1.Font.Color := CurrentSkin.PanelText;
     CheckListBox1.Color := CurrentSkin.WindowBg;
@@ -75,7 +75,7 @@ begin
   {$IFDEF WINDOWS}
   HookButtonControl(Button1);
   {$ENDIF}
-  if CurrentSkin.IsDark then
+  if IsThemedSkin then
   begin
     Button1.Font.Color := CurrentSkin.PanelText;
     CheckListBox1.Color := CurrentSkin.WindowBg;

@@ -55,10 +55,14 @@ implementation
 
 const
   CHANGELOG_TEXT =
-    'iBiblia Version 1.0.1.019 (64-bit Edition)' + sLineBreak +
+    'iBiblia Version 1.0.1.026 (64-bit Edition)' + sLineBreak +
     'Release Date: 2026-10-24' + sLineBreak +
     '==========================================' + sLineBreak + sLineBreak +
-    'NEW FEATURES & UPDATES (v1.0.1.019):' + sLineBreak +
+    'NEW FEATURES & UPDATES (v1.0.1.026):' + sLineBreak +
+    '  * Hover-Only Verse Navigation Chevron Arrows Across All 4 Bibles:' + sLineBreak +
+    '    - Verse navigation chevron arrows (< >) now appear exclusively inside the Bible panel currently hovered by the mouse cursor and disappear in all other Bible panels.' + sLineBreak +
+    '  * Automatic Next Unassociated Source Word Selection on Ctrl+Shift Release:' + sLineBreak +
+    '    - Releasing Ctrl+Shift after associating Destination words automatically highlights the next unassociated word in the Source text.' + sLineBreak +
     '  * Voice & Text-to-Speech Dialog & Modal Control Skinning Fix:' + sLineBreak +
     '    - Fixed modal handle recreation (ShowModal -> RecreateWnd) wiping Win32 subclasses on dialogs.' + sLineBreak +
     '    - Added custom dark-mode Win32 subclassing for TComboBox (ComboBoxSubclassProc) and TTrackBar (TrackBarSubclassProc).' + sLineBreak +
@@ -190,7 +194,7 @@ begin
     ver := '';
   end;
   if ver = '' then
-    ver := '1.0.1.019';
+    ver := '1.0.1.026';
 
   LabelVersion := TLabel.Create(Self);
   LabelVersion.Parent := Self;
@@ -297,7 +301,7 @@ begin
   if Assigned(ButtonClose) and ButtonClose.HandleAllocated then
     HookButtonControl(ButtonClose);
   {$ENDIF}
-  if ASkin.IsDark then
+  if ASkin.Id <> skClassic then
   begin
     Color := ASkin.PanelBg;
     if Assigned(Label1) then
@@ -397,8 +401,8 @@ begin
   lblTitle.Top := 12;
   lblTitle.Font.Height := -16;
   lblTitle.Font.Style := [fsBold];
-  lblTitle.Caption := 'iBiblia v1.0.1.019 - Changelog';
-  if CurrentSkin.IsDark then
+  lblTitle.Caption := 'iBiblia v1.0.1.026 - Changelog';
+  if IsThemedSkin then
     lblTitle.Font.Color := CurrentSkin.HeaderColor
   else
     lblTitle.Font.Color := clWindowText;
@@ -413,7 +417,7 @@ begin
   memoChangelog.ScrollBars := ssAutoVertical;
   memoChangelog.Font.Name := 'Segoe UI';
   memoChangelog.Font.Size := 9;
-  if CurrentSkin.IsDark then
+  if IsThemedSkin then
   begin
     memoChangelog.Color := CurrentSkin.WindowBg;
     memoChangelog.Font.Color := CurrentSkin.WindowText;
@@ -449,7 +453,7 @@ begin
   btnOK.ModalResult := mrOk;
   btnOK.Default := True;
   btnOK.OnClick := @BtnOKClick;
-  if CurrentSkin.IsDark then
+  if IsThemedSkin then
     btnOK.Font.Color := CurrentSkin.PanelText
   else
     btnOK.Font.Color := clWindowText;
@@ -473,7 +477,7 @@ begin
   if Assigned(btnOK) and btnOK.HandleAllocated then
     HookButtonControl(btnOK);
   {$ENDIF}
-  if ASkin.IsDark then
+  if ASkin.Id <> skClassic then
   begin
     Color := ASkin.PanelBg;
     if Assigned(lblTitle) then
@@ -510,7 +514,7 @@ begin
   if Assigned(btnOK) then
     HookButtonControl(btnOK);
   {$ENDIF}
-  if CurrentSkin.IsDark then
+  if IsThemedSkin then
   begin
     Color := CurrentSkin.PanelBg;
     if Assigned(lblTitle) then
