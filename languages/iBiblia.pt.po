@@ -4566,7 +4566,6 @@ msgid "MySword Bible module (*.bbl.mybible)"
 msgstr "Módulo bíblico do MySword (*.bbl.mybible)"
 
 #: formprojectexport.ssavemoduleas
-#, fuzzy
 msgctxt "formprojectexport.ssavemoduleas"
 msgid "Save module as..."
 msgstr "Salvar módulo como..."
@@ -4577,7 +4576,6 @@ msgid "SyntheticConcordance"
 msgstr "ConcordanciaSintetica"
 
 #: formprojectexport.stheworddictionarymodule
-#, fuzzy
 msgctxt "formprojectexport.stheworddictionarymodule"
 msgid "theWord dictionary module (*.dct.twm)"
 msgstr "Módulo de dicionário do theWord (*.dct.twm)"
@@ -9648,3 +9646,101 @@ msgstr "Origem: padrões deste computador"
 msgctxt "formllmoptions.rsusingproject"
 msgid "Source: this project"
 msgstr "Origem: este projeto"
+
+#: formprojectexport.sexporttaggeddestinationtab
+msgctxt "formprojectexport.sexporttaggeddestinationtab"
+msgid "Tagged destination text"
+msgstr "Texto destino com tags"
+
+#: formprojectexport.sexportinterlinearsourcetab
+msgctxt "formprojectexport.sexportinterlinearsourcetab"
+msgid "Interlinear source text"
+msgstr "Texto origem interlinear"
+
+#: formprojectexport.sexportconcordancetab
+msgctxt "formprojectexport.sexportconcordancetab"
+msgid "Strong's concordance"
+msgstr "Concordância de Strong"
+
+#: formprojectexport.sexportmoduleproperties
+msgctxt "formprojectexport.sexportmoduleproperties"
+msgid "Module properties"
+msgstr "Propriedades do módulo"
+
+#: formprojectexport.sexportunassociatedaddedwords
+msgctxt "formprojectexport.sexportunassociatedaddedwords"
+msgid "Export unassociated words as added words (italics)"
+msgstr "Exportar palavras não associadas como adicionadas (itálico)"
+
+#: formprojectexport.sexportmorphologycaption
+msgctxt "formprojectexport.sexportmorphologycaption"
+msgid "Export morphology tags"
+msgstr "Exportar tags de morfologia"
+
+#: formprojectexport.sexportcommentscaption
+msgctxt "formprojectexport.sexportcommentscaption"
+msgid "Export editorial comments as translator notes"
+msgstr "Exportar comentários editoriais como notas do tradutor"
+
+#: formprojectexport.sexportmarkreusedstrongs
+msgctxt "formprojectexport.sexportmarkreusedstrongs"
+msgid "Mark reused Strong's numbers"
+msgstr "Marcar números de Strong reutilizados"
+
+#: formprojectexport.sexportmarkuntranslatedstrongs
+msgctxt "formprojectexport.sexportmarkuntranslatedstrongs"
+msgid "Mark untranslated Strong's numbers"
+msgstr "Marcar números de Strong não traduzidos"
+
+#: formprojectexport.sexportbuttoncaption
+msgctxt "formprojectexport.sexportbuttoncaption"
+msgid "Export"
+msgstr "Exportar"
+
+#: formprojectexport.sconcordanceabbreviationcaption
+msgctxt "formprojectexport.sconcordanceabbreviationcaption"
+msgid "Abbreviation"
+msgstr "Abreviação"
+
+#: formprojectexport.sexportcompletedmessage
+msgctxt "formprojectexport.sexportcompletedmessage"
+msgid "Export completed successfully."
+msgstr "Exportação concluída com sucesso."
+
+#: formprojectexport.sexportfailedtitle
+msgctxt "formprojectexport.sexportfailedtitle"
+msgid "Export failed"
+msgstr "Falha na exportação"
+
+#: formprojectexport.sexportwarningstitle
+msgctxt "formprojectexport.sexportwarningstitle"
+msgid "Export completed with warnings"
+msgstr "Exportação concluída com avisos"
+
+#: formprojectexport.sexportwarningsmessage
+#, object-pascal-format
+msgctxt "formprojectexport.sexportwarningsmessage"
+msgid "The exported module contains %d warning(s)."
+msgstr "O módulo exportado contém %d aviso(s)."
+
+#: formprojectexport.sexportreportlocation
+#, object-pascal-format
+msgctxt "formprojectexport.sexportreportlocation"
+msgid "Warnings report: %s"
+msgstr "Relatório de avisos: %s"
+
+#: formprojectexport.sexportopenlocation
+msgctxt "formprojectexport.sexportopenlocation"
+msgid "Open the exported file location?"
+msgstr "Abrir o local do arquivo exportado?"
+
+#: formprojectexport.sexportdestinationpreferencewarning
+#, object-pascal-format
+msgctxt "formprojectexport.sexportdestinationpreferencewarning"
+msgid "Could not remember the export destination locally: %s"
+msgstr "Não foi possível memorizar o destino da exportação localmente: %s"
+
+#: tformabout.caption
+msgctxt "tformabout.caption"
+msgid "About iBiblia"
+msgstr "Sobre o iBiblia"

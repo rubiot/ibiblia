@@ -8469,3 +8469,101 @@ msgstr ""
 msgctxt "formllmoptions.rsusingproject"
 msgid "Source: this project"
 msgstr ""
+
+#: formprojectexport.sexporttaggeddestinationtab
+msgctxt "formprojectexport.sexporttaggeddestinationtab"
+msgid "Tagged destination text"
+msgstr ""
+
+#: formprojectexport.sexportinterlinearsourcetab
+msgctxt "formprojectexport.sexportinterlinearsourcetab"
+msgid "Interlinear source text"
+msgstr ""
+
+#: formprojectexport.sexportconcordancetab
+msgctxt "formprojectexport.sexportconcordancetab"
+msgid "Strong's concordance"
+msgstr ""
+
+#: formprojectexport.sexportmoduleproperties
+msgctxt "formprojectexport.sexportmoduleproperties"
+msgid "Module properties"
+msgstr ""
+
+#: formprojectexport.sexportunassociatedaddedwords
+msgctxt "formprojectexport.sexportunassociatedaddedwords"
+msgid "Export unassociated words as added words (italics)"
+msgstr ""
+
+#: formprojectexport.sexportmorphologycaption
+msgctxt "formprojectexport.sexportmorphologycaption"
+msgid "Export morphology tags"
+msgstr ""
+
+#: formprojectexport.sexportcommentscaption
+msgctxt "formprojectexport.sexportcommentscaption"
+msgid "Export editorial comments as translator notes"
+msgstr ""
+
+#: formprojectexport.sexportmarkreusedstrongs
+msgctxt "formprojectexport.sexportmarkreusedstrongs"
+msgid "Mark reused Strong's numbers"
+msgstr ""
+
+#: formprojectexport.sexportmarkuntranslatedstrongs
+msgctxt "formprojectexport.sexportmarkuntranslatedstrongs"
+msgid "Mark untranslated Strong's numbers"
+msgstr ""
+
+#: formprojectexport.sexportbuttoncaption
+msgctxt "formprojectexport.sexportbuttoncaption"
+msgid "Export"
+msgstr ""
+
+#: formprojectexport.sconcordanceabbreviationcaption
+msgctxt "formprojectexport.sconcordanceabbreviationcaption"
+msgid "Abbreviation"
+msgstr ""
+
+#: formprojectexport.sexportcompletedmessage
+msgctxt "formprojectexport.sexportcompletedmessage"
+msgid "Export completed successfully."
+msgstr ""
+
+#: formprojectexport.sexportfailedtitle
+msgctxt "formprojectexport.sexportfailedtitle"
+msgid "Export failed"
+msgstr ""
+
+#: formprojectexport.sexportwarningstitle
+msgctxt "formprojectexport.sexportwarningstitle"
+msgid "Export completed with warnings"
+msgstr ""
+
+#: formprojectexport.sexportwarningsmessage
+#, object-pascal-format
+msgctxt "formprojectexport.sexportwarningsmessage"
+msgid "The exported module contains %d warning(s)."
+msgstr ""
+
+#: formprojectexport.sexportreportlocation
+#, object-pascal-format
+msgctxt "formprojectexport.sexportreportlocation"
+msgid "Warnings report: %s"
+msgstr ""
+
+#: formprojectexport.sexportopenlocation
+msgctxt "formprojectexport.sexportopenlocation"
+msgid "Open the exported file location?"
+msgstr ""
+
+#: formprojectexport.sexportdestinationpreferencewarning
+#, object-pascal-format
+msgctxt "formprojectexport.sexportdestinationpreferencewarning"
+msgid "Could not remember the export destination locally: %s"
+msgstr ""
+
+#: tformabout.caption
+msgctxt "tformabout.caption"
+msgid "About iBiblia"
+msgstr ""

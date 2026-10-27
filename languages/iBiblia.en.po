@@ -4536,10 +4536,15 @@ msgid ""
 "\n"
 "Open the exported file location?"
 msgstr ""
+"Export completed successfully.\n"
+"\n"
+"%s\n"
+"\n"
+"Open the exported file location?"
 
 #: formprojectexport.sexportcompletedtitle
 msgid "Export completed"
-msgstr ""
+msgstr "Export completed"
 
 #: formprojectexport.sexportconcordanceprogress
 msgid "Exporting concordance..."
@@ -4574,7 +4579,6 @@ msgid "MySword Bible module (*.bbl.mybible)"
 msgstr "MySword Bible module (*.bbl.mybible)"
 
 #: formprojectexport.ssavemoduleas
-#, fuzzy
 msgctxt "formprojectexport.ssavemoduleas"
 msgid "Save module as..."
 msgstr "Save module as..."
@@ -4585,7 +4589,6 @@ msgid "SyntheticConcordance"
 msgstr "SyntheticConcordance"
 
 #: formprojectexport.stheworddictionarymodule
-#, fuzzy
 msgctxt "formprojectexport.stheworddictionarymodule"
 msgid "theWord dictionary module (*.dct.twm)"
 msgstr "theWord dictionary module (*.dct.twm)"
@@ -9592,3 +9595,101 @@ msgstr "Source: machine defaults"
 msgctxt "formllmoptions.rsusingproject"
 msgid "Source: this project"
 msgstr "Source: this project"
+
+#: formprojectexport.sexporttaggeddestinationtab
+msgctxt "formprojectexport.sexporttaggeddestinationtab"
+msgid "Tagged destination text"
+msgstr "Tagged destination text"
+
+#: formprojectexport.sexportinterlinearsourcetab
+msgctxt "formprojectexport.sexportinterlinearsourcetab"
+msgid "Interlinear source text"
+msgstr "Interlinear source text"
+
+#: formprojectexport.sexportconcordancetab
+msgctxt "formprojectexport.sexportconcordancetab"
+msgid "Strong's concordance"
+msgstr "Strong's concordance"
+
+#: formprojectexport.sexportmoduleproperties
+msgctxt "formprojectexport.sexportmoduleproperties"
+msgid "Module properties"
+msgstr "Module properties"
+
+#: formprojectexport.sexportunassociatedaddedwords
+msgctxt "formprojectexport.sexportunassociatedaddedwords"
+msgid "Export unassociated words as added words (italics)"
+msgstr "Export unassociated words as added words (italics)"
+
+#: formprojectexport.sexportmorphologycaption
+msgctxt "formprojectexport.sexportmorphologycaption"
+msgid "Export morphology tags"
+msgstr "Export morphology tags"
+
+#: formprojectexport.sexportcommentscaption
+msgctxt "formprojectexport.sexportcommentscaption"
+msgid "Export editorial comments as translator notes"
+msgstr "Export editorial comments as translator notes"
+
+#: formprojectexport.sexportmarkreusedstrongs
+msgctxt "formprojectexport.sexportmarkreusedstrongs"
+msgid "Mark reused Strong's numbers"
+msgstr "Mark reused Strong's numbers"
+
+#: formprojectexport.sexportmarkuntranslatedstrongs
+msgctxt "formprojectexport.sexportmarkuntranslatedstrongs"
+msgid "Mark untranslated Strong's numbers"
+msgstr "Mark untranslated Strong's numbers"
+
+#: formprojectexport.sexportbuttoncaption
+msgctxt "formprojectexport.sexportbuttoncaption"
+msgid "Export"
+msgstr "Export"
+
+#: formprojectexport.sconcordanceabbreviationcaption
+msgctxt "formprojectexport.sconcordanceabbreviationcaption"
+msgid "Abbreviation"
+msgstr "Abbreviation"
+
+#: formprojectexport.sexportcompletedmessage
+msgctxt "formprojectexport.sexportcompletedmessage"
+msgid "Export completed successfully."
+msgstr "Export completed successfully."
+
+#: formprojectexport.sexportfailedtitle
+msgctxt "formprojectexport.sexportfailedtitle"
+msgid "Export failed"
+msgstr "Export failed"
+
+#: formprojectexport.sexportwarningstitle
+msgctxt "formprojectexport.sexportwarningstitle"
+msgid "Export completed with warnings"
+msgstr "Export completed with warnings"
+
+#: formprojectexport.sexportwarningsmessage
+#, object-pascal-format
+msgctxt "formprojectexport.sexportwarningsmessage"
+msgid "The exported module contains %d warning(s)."
+msgstr "The exported module contains %d warning(s)."
+
+#: formprojectexport.sexportreportlocation
+#, object-pascal-format
+msgctxt "formprojectexport.sexportreportlocation"
+msgid "Warnings report: %s"
+msgstr "Warnings report: %s"
+
+#: formprojectexport.sexportopenlocation
+msgctxt "formprojectexport.sexportopenlocation"
+msgid "Open the exported file location?"
+msgstr "Open the exported file location?"
+
+#: formprojectexport.sexportdestinationpreferencewarning
+#, object-pascal-format
+msgctxt "formprojectexport.sexportdestinationpreferencewarning"
+msgid "Could not remember the export destination locally: %s"
+msgstr "Could not remember the export destination locally: %s"
+
+#: tformabout.caption
+msgctxt "tformabout.caption"
+msgid "About iBiblia"
+msgstr "About iBiblia"

@@ -1,6 +1,7 @@
 unit project_export_form_test;
 
 {$mode objfpc}{$H+}
+{$codepage utf8}
 
 interface
 
@@ -83,6 +84,7 @@ type
     procedure SetUp; override;
     procedure TearDown; override;
   published
+    procedure CaptionsFollowSelectedLanguageWhenFormIsReused;
     procedure DialogUsesCurrentProjectAndExportKindHistory;
     procedure CancelDoesNotRememberExportOrPersistOptions;
     procedure ConfirmationRemembersBeforeEveryFailedExport;
@@ -97,7 +99,7 @@ type
 implementation
 
 uses
-  formPrincipal, project_database_bootstrap, sqlite3conn, sqldb;
+  formPrincipal, project_database_bootstrap, sqlite3conn, sqldb, LCLTranslator;
 
 function TScriptedExportSaveDialog.Execute: Boolean;
 begin
@@ -215,6 +217,14 @@ begin
   FForm := TExportFormHarness.CreateNew(nil);
   FForm.Events := FEvents;
   FForm.Settings := FSettings;
+  FForm.BtnExport := TButton.Create(FForm);
+  FForm.BtnExport.Parent := FForm;
+  FForm.BtnCancel := TButton.Create(FForm);
+  FForm.BtnCancel.Parent := FForm;
+  FForm.LblTaggedDestinationProperties := TLabel.Create(FForm);
+  FForm.LblTaggedDestinationProperties.Parent := FForm;
+  FForm.LblInterlinearSourceProperties := TLabel.Create(FForm);
+  FForm.LblInterlinearSourceProperties.Parent := FForm;
   FForm.ExportPageControl := TPageControl.Create(FForm);
   FForm.ExportPageControl.Parent := FForm;
   FForm.TaggedDestinationTab := TTabSheet.Create(FForm);
@@ -668,6 +678,53 @@ begin
   FForm.ExportButtonClick(nil);
   AssertEquals('Successful concordance persists current options', 'new abbreviation',
     FProject.GetInfo('propriedades.abbrev'));
+end;
+
+procedure TProjectExportFormTests.CaptionsFollowSelectedLanguageWhenFormIsReused;
+const
+  Portuguese: array[0..11] of string = (
+    'Texto destino com tags', 'Texto origem interlinear', 'Concordância de Strong',
+    'Propriedades do módulo',
+    'Exportar palavras não associadas como adicionadas (itálico)',
+    'Exportar tags de morfologia',
+    'Exportar comentários editoriais como notas do tradutor',
+    'Marcar números de Strong reutilizados',
+    'Marcar números de Strong não traduzidos', 'Exportar', 'Abreviação', 'Cancelar');
+  English: array[0..11] of string = (
+    'Tagged destination text', 'Interlinear source text', 'Strong''s concordance',
+    'Module properties', 'Export unassociated words as added words (italics)',
+    'Export morphology tags', 'Export editorial comments as translator notes',
+    'Mark reused Strong''s numbers', 'Mark untranslated Strong''s numbers',
+    'Export', 'Abbreviation', 'Cancel');
+var
+  LanguagesDir: string;
+  procedure CheckLanguage(const Language: string; const Captions: array of string);
+  begin
+    SetDefaultLang(Language, LanguagesDir, 'iBiblia', False);
+    FForm.SetProject(FProject);
+    AssertEquals(Captions[0], FForm.TaggedDestinationTab.Caption);
+    AssertEquals(Captions[1], FForm.InterlinearSourceTab.Caption);
+    AssertEquals(Captions[2], FForm.ConcordanceTab.Caption);
+    AssertEquals(Captions[3], FForm.LblTaggedDestinationProperties.Caption);
+    AssertEquals(Captions[3], FForm.LblInterlinearSourceProperties.Caption);
+    AssertEquals(Captions[4], FForm.CbExportUnassociatedAsItalics.Caption);
+    AssertEquals(Captions[5], FForm.CbExportMorphology.Caption);
+    AssertEquals(Captions[6], FForm.CbExportComments.Caption);
+    AssertEquals(Captions[7], FForm.CbMarkReusedStrongs.Caption);
+    AssertEquals(Captions[8], FForm.CbMarkUntranslatedStrongs.Caption);
+    AssertEquals(Captions[9], FForm.BtnExport.Caption);
+    AssertEquals(Captions[10], FForm.EditAbbreviation.EditLabel.Caption);
+    AssertEquals(Captions[11], FForm.BtnCancel.Caption);
+  end;
+begin
+  LanguagesDir := ExpandFileName(ExtractFilePath(ParamStr(0)) + '..\languages');
+  try
+    CheckLanguage('pt', Portuguese);
+    CheckLanguage('en', English);
+    CheckLanguage('pt', Portuguese);
+  finally
+    SetDefaultLang('en', LanguagesDir, 'iBiblia', False);
+  end;
 end;
 
 initialization

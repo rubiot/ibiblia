@@ -94,6 +94,17 @@ var
   ProjectExportForm: TProjectExportForm;
 
 resourcestring
+  SExportTaggedDestinationTab = 'Tagged destination text';
+  SExportInterlinearSourceTab = 'Interlinear source text';
+  SExportConcordanceTab = 'Strong''s concordance';
+  SExportModuleProperties = 'Module properties';
+  SExportUnassociatedAddedWords = 'Export unassociated words as added words (italics)';
+  SExportMorphologyCaption = 'Export morphology tags';
+  SExportCommentsCaption = 'Export editorial comments as translator notes';
+  SExportMarkReusedStrongs = 'Mark reused Strong''s numbers';
+  SExportMarkUntranslatedStrongs = 'Mark untranslated Strong''s numbers';
+  SExportButtonCaption = 'Export';
+  SConcordanceAbbreviationCaption = 'Abbreviation';
   STheWordOTModule = 'theWord Bible module (*.ot)';
   STheWordNTModule = 'theWord Bible module (*.nt)';
   STheWordONTModule = 'theWord Bible module (*.ont)';
@@ -640,6 +651,30 @@ begin
   Caption := SExportTaggedDestinationTitle;
   if Assigned(BtnCancel) then
     BtnCancel.Caption := SUICancel;
+  if Assigned(TaggedDestinationTab) then
+    TaggedDestinationTab.Caption := SExportTaggedDestinationTab;
+  if Assigned(InterlinearSourceTab) then
+    InterlinearSourceTab.Caption := SExportInterlinearSourceTab;
+  if Assigned(ConcordanceTab) then
+    ConcordanceTab.Caption := SExportConcordanceTab;
+  if Assigned(LblTaggedDestinationProperties) then
+    LblTaggedDestinationProperties.Caption := SExportModuleProperties;
+  if Assigned(LblInterlinearSourceProperties) then
+    LblInterlinearSourceProperties.Caption := SExportModuleProperties;
+  if Assigned(CbExportUnassociatedAsItalics) then
+    CbExportUnassociatedAsItalics.Caption := SExportUnassociatedAddedWords;
+  if Assigned(CbExportMorphology) then
+    CbExportMorphology.Caption := SExportMorphologyCaption;
+  if Assigned(CbExportComments) then
+    CbExportComments.Caption := SExportCommentsCaption;
+  if Assigned(CbMarkReusedStrongs) then
+    CbMarkReusedStrongs.Caption := SExportMarkReusedStrongs;
+  if Assigned(CbMarkUntranslatedStrongs) then
+    CbMarkUntranslatedStrongs.Caption := SExportMarkUntranslatedStrongs;
+  if Assigned(BtnExport) then
+    BtnExport.Caption := SExportButtonCaption;
+  if Assigned(EditAbbreviation) then
+    EditAbbreviation.EditLabel.Caption := SConcordanceAbbreviationCaption;
   rgConcordanceType.Caption := SConcordanceTypeCaption;
   rgConcordanceType.Items.BeginUpdate;
   try
