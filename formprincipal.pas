@@ -13,9 +13,9 @@ uses
   lclintf,
   {$ENDIF}
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, Menus,
-  ActnList, ComCtrls, ExtCtrls, StdCtrls, Projeto, IniFiles, Math,
-  Syntagm, LCLTranslator, unitabout, PCRE, Versiculo, LCLProc, LazLogger,
-  LCLType, LazUTF8, ChapterView, UnitPleaseWait;
+  ActnList, ComCtrls, ExtCtrls, StdCtrls, Buttons, Projeto, IniFiles, Math,
+  Syntagm, LCLTranslator, unitabout, unitsearch, unittexttospeech, formvoicesettings, formglobaldicts, PCRE, Versiculo, LCLProc, LazLogger,
+  LCLType, LMessages, LazUTF8, ChapterView, UnitPleaseWait, unitskins;
 
 type
 
@@ -73,6 +73,8 @@ type
     MenuItemStrongsCountNone: TMenuItem;
     MenuItemStrongsCountWords: TMenuItem;
     MenuItemStrongsCountStrongs: TMenuItem;
+    MenuItemUserGuide: TMenuItem;
+    MenuItemHelpSep1: TMenuItem;
     MenuItemAbout: TMenuItem;
     MenuItemMouseHover: TMenuItem;
     MenuItem19: TMenuItem;
@@ -84,8 +86,19 @@ type
     MenuItemAltMouseHover: TMenuItem;
     MenuItemCtrlMouseHover: TMenuItem;
     MenuItemAlwaysOnTop: TMenuItem;
+    ActionToggleDarkMode: TAction;
     MenuItemLangEn: TMenuItem;
     MenuItemLangPt: TMenuItem;
+    MenuItemView: TMenuItem;
+    MenuItemSkinsMenu: TMenuItem;
+    MenuItemSkinClassic: TMenuItem;
+    MenuItemSkinTheWordDark: TMenuItem;
+    MenuItemSkinNight: TMenuItem;
+    MenuItemSkinSepia: TMenuItem;
+    MenuItemSkinSlate: TMenuItem;
+    MenuItemSkinSolarizedDark: TMenuItem;
+    MenuItemSkinHighContrast: TMenuItem;
+
     MenuItemStrongsCount: TMenuItem;
     MenuItemStrongNegrito: TMenuItem;
     MenuItemRecent: TMenuItem;
@@ -118,6 +131,11 @@ type
     Splitter5: TSplitter;
     Splitter6: TSplitter;
     StatusBar1: TStatusBar;
+    BtnTabSource: TSpeedButton;
+    BtnTabDest: TSpeedButton;
+    BtnTabRef1: TSpeedButton;
+    BtnTabRef2: TSpeedButton;
+    PanelContextTabs: TPanel;
     ChapterViewTabCtrl: TTabControl;
     ToolBar1: TToolBar;
     ToolButton1: TToolButton;
@@ -131,7 +149,31 @@ type
     ToolButton7: TToolButton;
     ToolButton8: TToolButton;
     ToolButton9: TToolButton;
+    PanelTreeNav: TPanel;
+    PanelFilter: TPanel;
+    PanelFilterButtons: TPanel;
+    ComboBoxStatusFilter: TComboBox;
+    SpeedButtonPrevFiltered: TSpeedButton;
+    SpeedButtonNextFiltered: TSpeedButton;
+    LabelFilterCount: TLabel;
+    ActionVersoSeguinteFiltrado: TAction;
+    ActionVersoAnteriorFiltrado: TAction;
+    MenuItemNavSep: TMenuItem;
+    MenuItemNavNextFiltered: TMenuItem;
+    MenuItemNavPrevFiltered: TMenuItem;
+    ActionFindInProject: TAction;
+    MenuItemFindSep: TMenuItem;
+    MenuItemFindInProject: TMenuItem;
+    MenuItemTTSSep: TMenuItem;
+    MenuItemTTS: TMenuItem;
+    MenuItemTTSSettings: TMenuItem;
+    MenuItemGlobalDicts: TMenuItem;
     TreeView1: TTreeView;
+    procedure MenuItemTTSClick(Sender: TObject);
+    procedure MenuItemTTSSettingsClick(Sender: TObject);
+    procedure MenuItemGlobalDictsClick(Sender: TObject);
+    procedure AplicarDicionariosGlobais(p: TProjeto);
+    procedure QuandoPalavraHovered(Sender: TSyntagm);
     procedure ActionApplyPatchExecute(Sender: TObject);
     procedure ActionExportarExecute(Sender: TObject);
     procedure ActionAbrirProjetoExecute(Sender: TObject);
@@ -164,11 +206,30 @@ type
     procedure FormShow(Sender: TObject);
     procedure MenuItem22Click(Sender: TObject);
     procedure AbrirRecenteClick(Sender: TObject);
+    procedure MenuItemUserGuideClick(Sender: TObject);
     procedure MenuItemAboutClick(Sender: TObject);
     procedure MenuItemAlwaysOnTopClick(Sender: TObject);
     procedure MenuItemAutoSaveClick(Sender: TObject);
     procedure MenuItemLangEnClick(Sender: TObject);
     procedure MenuItemLangPtClick(Sender: TObject);
+    procedure ActionToggleDarkModeExecute(Sender: TObject);
+    procedure MenuItemDarkModeClick(Sender: TObject);
+    procedure MenuItemSkinSelectClick(Sender: TObject);
+    procedure ApplyActiveSkin;
+    procedure UpdateSkinMenuChecks;
+    procedure ComboBoxStatusFilterDrawItem(Control: TWinControl; Index: Integer; ARect: TRect; State: TOwnerDrawState);
+    procedure TreeView1AdvancedCustomDraw(Sender: TCustomTreeView; const ARect: TRect; Stage: TCustomDrawStage; var DefaultDraw: Boolean);
+    procedure TreeView1CustomDrawItem(Sender: TCustomTreeView; Node: TTreeNode; State: TCustomDrawState; var DefaultDraw: Boolean);
+    procedure OnContextTabButtonClick(Sender: TObject);
+    procedure UpdateContextTabButtons;
+    procedure OnSplitterPaint(Sender: TObject);
+    procedure OnContextTabButtonPaint(Sender: TObject);
+    procedure CheckPendingAutoSelectKeyRelease;
+    procedure OnAutoSelectTimer(Sender: TObject);
+    procedure OnAppKeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure OnAppMouseWheel(Sender: TObject; Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
+    procedure OnAppIdleCheckAutoSelect(Sender: TObject; var Done: Boolean);
+    procedure WndProc(var Message: TLMessage); override;
     procedure MenuItemPopupTriggerClick(Sender: TObject);
     procedure MenuItemStrongNegritoClick(Sender: TObject);
     procedure MenuItemStrongsCountClick(Sender: TObject);
@@ -183,24 +244,56 @@ type
     procedure RadioGroupStatusSelectionChanged(Sender: TObject);
     procedure ChapterViewTabCtrlChange(Sender: TObject);
     procedure ToolButtonExitClick(Sender: TObject);
+    procedure ComboBoxStatusFilterChange(Sender: TObject);
+    procedure SpeedButtonPrevFilteredClick(Sender: TObject);
+    procedure SpeedButtonNextFilteredClick(Sender: TObject);
+    procedure ActionVersoSeguinteFiltradoExecute(Sender: TObject);
+    procedure ActionVersoAnteriorFiltradoExecute(Sender: TObject);
+    procedure ActionFindInProjectExecute(Sender: TObject);
+    procedure AtualizarContadorFiltro;
+    procedure AtualizarItensFiltro;
   private
     { private declarations }
     FPopupTrigger: TPopupTrigger;
+    FUseGlobalDicts: Boolean;
+    FGlobalStrongGreek: string;
+    FGlobalStrongHebrew: string;
+    FGlobalMorphology: string;
+    FGlobalEnglishDict: string;
     FCurrentRef: string;
     FChapterView: TChapterView;
+    FSyncingFromTw: Boolean;
+    FNavigatingVerse: Boolean;
+    FAutoSelectTimer: TTimer;
     {$IFDEF WINDOWS}
+    FMenuSubclassed: Boolean;
     FRxMorpho: IRegex;
     syncTw2iBiblia: boolean;
     synciBiblia2Tw: boolean;
     TwSyncThread: TTwSyncThread;
+    procedure InstallMenuSubclass;
+    procedure UninstallMenuSubclass;
+    procedure SetupMenuOwnerDraw(AIsDark: Boolean);
     procedure SyncToTwRef(Ref: string);
     procedure SetUpSyncThread;
     {$ENDIF}
     procedure Translate;
     procedure DoOpenProject(filename: string);
+    procedure OnPostShowApplySkin(Data: PtrInt);
   public
     { public declarations }
     language: string;
+    {$IFDEF WINDOWS}
+    procedure HookRadioGroupStatus;
+    {$ENDIF}
+    function GetIniOpts: TIniFile;
+    procedure NavegarParaVersiculo(const ARef: string);
+    property IniOpts: TIniFile read GetIniOpts;
+    property UseGlobalDicts: Boolean read FUseGlobalDicts write FUseGlobalDicts;
+    property GlobalStrongGreek: string read FGlobalStrongGreek write FGlobalStrongGreek;
+    property GlobalStrongHebrew: string read FGlobalStrongHebrew write FGlobalStrongHebrew;
+    property GlobalMorphology: string read FGlobalMorphology write FGlobalMorphology;
+    property GlobalEnglishDict: string read FGlobalEnglishDict write FGlobalEnglishDict;
   end;
 
 type
@@ -219,6 +312,13 @@ const
   MAX_MRU = 10;
 
 resourcestring
+  SStatusNotAssociated = 'Not associated';
+  SStatusAssociating = 'Associating';
+  SStatusNeedsReview = 'Needs review';
+  SStatusAssociated = 'Associated';
+  SStatusAllVerses = 'All verses';
+  SNoMoreVersesWithStatus = 'No more verses with status "%s"';
+  SNoPrecedingVersesWithStatus = 'No preceding verses with status "%s"';
   SRollbackChanges = 'Rollback changes';
   SRollbackChangesConfirmation = 'Are you sure you want to rollback all changes to this verse?';
   SSourceText = 'Source';
@@ -235,9 +335,705 @@ resourcestring
 
 implementation
 
-uses formnovoprojeto, formpropprojeto, formexportar, formmesclarprojetos, formexportpatch, formapplypatch;
+uses formnovoprojeto, formpropprojeto, formexportar, formmesclarprojetos, formexportpatch, formapplypatch, formpopup;
 
 {$R *.lfm}
+
+{$IFDEF WINDOWS}
+const
+  WM_UAHDRAWMENU = $0091;
+  WM_UAHDRAWMENUITEM = $0092;
+  UAH_OBJID_MENU = LongInt($FFFFFFFD);
+  MF_BYPOSITION = $00000400;
+  MF_OWNERDRAW  = $00000100;
+  MF_POPUP      = $00000010;
+  MF_STRING     = $00000000;
+  ODT_MENU      = 1;
+  ODS_SELECTED  = $0001;
+  ODS_GRAYED    = $0002;
+  ODS_DISABLED  = $0004;
+  ODS_HOTLIGHT  = $0040;
+  ODS_NOACCEL   = $0100;
+
+function WinModifyMenuW(hMnu: HMENU; uPosition: UINT; uFlags: UINT; uIDNewItem: UINT_PTR; lpNewItem: Pointer): WINBOOL; stdcall; external 'user32' name 'ModifyMenuW';
+
+type
+  TUAHMenuBarInfo = record
+    cbSize: DWORD;
+    rcBar: RECT;
+    hMenu: HMENU;
+    hwndMenu: HWND;
+    fBarFocused: BOOL;
+    fFocused: BOOL;
+  end;
+
+  PUAHMenu = ^TUAHMenu;
+  TUAHMenu = record
+    hmenu: HMENU;
+    hdc: HDC;
+    dwFlags: DWORD;
+    _pad: DWORD;
+  end;
+
+  PUAHMenuItem = ^TUAHMenuItem;
+  TUAHMenuItem = record
+    iPosition: Integer;
+    rgsizeBar: array[0..1] of record cx, cy: DWORD; end;
+    rgsizePopup: array[0..3] of record cx, cy: DWORD; end;
+  end;
+
+  PUAHDrawMenuItem = ^TUAHDrawMenuItem;
+  TUAHDrawMenuItem = record
+    dis: DRAWITEMSTRUCT;
+    um: TUAHMenu;
+    umi: TUAHMenuItem;
+  end;
+
+function WinGetMenuBarInfo(hwnd: HWND; idObject: LongInt; idItem: LongInt; pmbi: Pointer): WINBOOL; stdcall; external 'user32' name 'GetMenuBarInfo';
+function WinClientToScreen(hwnd: HWND; lpPoint: Pointer): WINBOOL; stdcall; external 'user32' name 'ClientToScreen';
+
+procedure PaintMenuBarNC(hWnd: HWND; dwRefData: PtrUInt);
+var
+  rcWindow, rcBarInWin, rcEmpty, rcLine: RECT;
+  mbiBar, mbiLast: TUAHMenuBarInfo;
+  hdcWin: THandle;
+  br: THandle;
+  ptClient: TPoint;
+  cnt, k: Integer;
+  hM: HMENU;
+  clientTopInWindow, menuHeight, rightOfLastItem, totalWidth: Integer;
+  cap: string;
+begin
+  if not IsThemedSkin then Exit;
+
+  rcWindow := Default(RECT);
+  GetWindowRect(hWnd, @rcWindow);
+
+  ptClient.x := 0;
+  ptClient.y := 0;
+  WinClientToScreen(hWnd, @ptClient);
+  clientTopInWindow := ptClient.y - rcWindow.Top;
+  menuHeight := GetSystemMetrics(SM_CYMENU);
+
+  // 1. Determine the menu bar rectangle in Window DC coordinates
+  FillChar(mbiBar, SizeOf(mbiBar), 0);
+  mbiBar.cbSize := SizeOf(mbiBar);
+  if WinGetMenuBarInfo(hWnd, UAH_OBJID_MENU, 0, @mbiBar) and (mbiBar.rcBar.Bottom > mbiBar.rcBar.Top) then
+  begin
+    rcBarInWin.Left := mbiBar.rcBar.Left - rcWindow.Left;
+    rcBarInWin.Top := mbiBar.rcBar.Top - rcWindow.Top;
+    rcBarInWin.Right := mbiBar.rcBar.Right - rcWindow.Left;
+    rcBarInWin.Bottom := mbiBar.rcBar.Bottom - rcWindow.Top;
+  end
+  else
+  begin
+    rcBarInWin.Left := ptClient.x - rcWindow.Left;
+    rcBarInWin.Top := clientTopInWindow - menuHeight;
+    rcBarInWin.Right := rcWindow.Right - rcWindow.Left;
+    rcBarInWin.Bottom := clientTopInWindow;
+  end;
+
+  // 2. Find where the last menu item ends
+  hM := GetMenu(hWnd);
+  if hM <> 0 then
+    cnt := GetMenuItemCount(hM)
+  else
+    cnt := 0;
+
+  rightOfLastItem := 0;
+  if cnt > 0 then
+  begin
+    FillChar(mbiLast, SizeOf(mbiLast), 0);
+    mbiLast.cbSize := SizeOf(mbiLast);
+    if WinGetMenuBarInfo(hWnd, UAH_OBJID_MENU, cnt, @mbiLast) and (mbiLast.rcBar.Right > mbiLast.rcBar.Left) then
+      rightOfLastItem := mbiLast.rcBar.Right - rcWindow.Left;
+  end;
+
+  // Fallback approximation if GetMenuBarInfo for item cnt failed
+  if (rightOfLastItem <= rcBarInWin.Left) and (dwRefData <> 0) and (TObject(dwRefData) is TFrmPrincipal) then
+  begin
+    totalWidth := 0;
+    for k := 0 to TFrmPrincipal(dwRefData).MainMenu1.Items.Count - 1 do
+    begin
+      cap := TFrmPrincipal(dwRefData).MainMenu1.Items[k].Caption;
+      totalWidth := totalWidth + Length(cap) * 8 + 18;
+    end;
+    rightOfLastItem := rcBarInWin.Left + totalWidth;
+  end;
+
+  hdcWin := GetWindowDC(hWnd);
+  if hdcWin <> 0 then
+  begin
+    br := CreateSolidBrush(ColorToRGB(CurrentSkin.PanelBg));
+
+    // Fill the empty unskinned area to the right of the menu items
+    if (rightOfLastItem > rcBarInWin.Left) and (rightOfLastItem < rcBarInWin.Right) then
+    begin
+      rcEmpty.Left := rightOfLastItem;
+      rcEmpty.Top := rcBarInWin.Top;
+      rcEmpty.Right := rcBarInWin.Right;
+      rcEmpty.Bottom := rcBarInWin.Bottom;
+      FillRect(hdcWin, rcEmpty, br);
+    end
+    else if rightOfLastItem <= rcBarInWin.Left then
+    begin
+      // Fallback: fill the entire bar
+      FillRect(hdcWin, rcBarInWin, br);
+    end;
+
+    // Erase the 1-pixel separator line right above the client area
+    rcLine.Left := 0;
+    rcLine.Right := rcWindow.Right - rcWindow.Left;
+    rcLine.Top := clientTopInWindow - 1;
+    rcLine.Bottom := clientTopInWindow;
+    FillRect(hdcWin, rcLine, br);
+
+    DeleteObject(br);
+    ReleaseDC(hWnd, hdcWin);
+  end;
+end;
+
+
+function RadioSubclassProc(hWnd: HWND; uMsg: UINT; wParam: WPARAM; lParam: LPARAM;
+  uIdSubclass: PtrUInt; dwRefData: PtrUInt): LRESULT; stdcall;
+var
+  rc, rcText: RECT;
+  hdc: THandle;
+  hbr: THandle;
+  btnText: array[0..255] of WideChar;
+  txtLen: Integer;
+  oldBk: Integer;
+  oldCol: COLORREF;
+  hFont, oldFont: THandle;
+  glyphWidth: Integer;
+begin
+  if (uMsg = WM_PAINT) and IsThemedSkin then
+  begin
+    Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+
+    hdc := GetDC(hWnd);
+    if hdc <> 0 then
+    begin
+      FillChar(rc, SizeOf(rc), 0);
+      GetClientRect(hWnd, @rc);
+
+      glyphWidth := GetSystemMetrics(SM_CXMENUCHECK);
+      if glyphWidth < 16 then glyphWidth := 16;
+
+      rcText := rc;
+      rcText.Left := rc.Left + glyphWidth + 4;
+
+      hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.PanelBg));
+      FillRect(hdc, rcText, hbr);
+      DeleteObject(hbr);
+
+      FillChar(btnText, SizeOf(btnText), 0);
+      txtLen := GetWindowTextW(hWnd, @btnText[0], 255);
+      if txtLen > 0 then
+      begin
+        hFont := THandle(SendMessage(hWnd, WM_GETFONT, 0, 0));
+        if hFont <> 0 then
+          oldFont := SelectObject(hdc, hFont)
+        else
+          oldFont := 0;
+
+        oldBk := SetBkMode(hdc, TRANSPARENT);
+        if IsWindowEnabled(hWnd) then
+          oldCol := SetTextColor(hdc, ColorToRGB(CurrentSkin.PanelText))
+        else
+          oldCol := SetTextColor(hdc, ColorToRGB(CurrentSkin.WindowTextDim));
+
+        DrawTextW(hdc, @btnText[0], txtLen, rcText,
+          DT_LEFT or DT_VCENTER or DT_SINGLELINE);
+
+        SetTextColor(hdc, oldCol);
+        SetBkMode(hdc, oldBk);
+        if oldFont <> 0 then
+          SelectObject(hdc, oldFont);
+      end;
+      ReleaseDC(hWnd, hdc);
+    end;
+    Exit;
+  end;
+
+  if (uMsg = WM_ERASEBKGND) and IsThemedSkin then
+  begin
+    FillChar(rc, SizeOf(rc), 0);
+    GetClientRect(hWnd, @rc);
+    hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.PanelBg));
+    FillRect(THandle(wParam), rc, hbr);
+    DeleteObject(hbr);
+    Result := 1;
+    Exit;
+  end;
+
+  Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+end;
+
+function RadioGroupSubclassProc(hWnd: HWND; uMsg: UINT; wParam: WPARAM; lParam: LPARAM;
+  uIdSubclass: PtrUInt; dwRefData: PtrUInt): LRESULT; stdcall;
+var
+  rc, rcText: RECT;
+  hdc: THandle;
+  hbr: THandle;
+  grpText: array[0..255] of WideChar;
+  txtLen: Integer;
+  oldBk: Integer;
+  oldCol: COLORREF;
+  hFont, oldFont: THandle;
+  sz: TSize;
+begin
+  if (uMsg = WM_PAINT) and IsThemedSkin then
+  begin
+    Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+
+    hdc := GetDC(hWnd);
+    if hdc <> 0 then
+    begin
+      FillChar(grpText, SizeOf(grpText), 0);
+      txtLen := GetWindowTextW(hWnd, @grpText[0], 255);
+      if txtLen > 0 then
+      begin
+        hFont := THandle(SendMessage(hWnd, WM_GETFONT, 0, 0));
+        if hFont <> 0 then
+          oldFont := SelectObject(hdc, hFont)
+        else
+          oldFont := 0;
+
+        FillChar(sz, SizeOf(sz), 0);
+        GetTextExtentPoint32W(hdc, @grpText[0], txtLen, @sz);
+
+        rcText.Left := 9;
+        rcText.Top := 0;
+        rcText.Right := rcText.Left + sz.cx + 6;
+        rcText.Bottom := sz.cy + 2;
+
+        hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.PanelBg));
+        FillRect(hdc, rcText, hbr);
+        DeleteObject(hbr);
+
+        oldBk := SetBkMode(hdc, TRANSPARENT);
+        if IsWindowEnabled(hWnd) then
+          oldCol := SetTextColor(hdc, ColorToRGB(CurrentSkin.PanelText))
+        else
+          oldCol := SetTextColor(hdc, ColorToRGB(CurrentSkin.WindowTextDim));
+
+        DrawTextW(hdc, @grpText[0], txtLen, rcText, DT_LEFT or DT_VCENTER or DT_SINGLELINE);
+
+        SetTextColor(hdc, oldCol);
+        SetBkMode(hdc, oldBk);
+        if oldFont <> 0 then
+          SelectObject(hdc, oldFont);
+      end;
+      ReleaseDC(hWnd, hdc);
+    end;
+    Exit;
+  end;
+
+  if (uMsg = WM_ERASEBKGND) and IsThemedSkin then
+  begin
+    FillChar(rc, SizeOf(rc), 0);
+    GetClientRect(hWnd, @rc);
+    hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.PanelBg));
+    FillRect(THandle(wParam), rc, hbr);
+    DeleteObject(hbr);
+    Result := 1;
+    Exit;
+  end;
+
+  if (uMsg = WM_PARENTNOTIFY) and (Word(wParam and $FFFF) = WM_CREATE) and (lParam <> 0) then
+  begin
+    if Assigned(fnSetWindowSubclass) then
+      fnSetWindowSubclass(THandle(lParam), @RadioSubclassProc, 2099, dwRefData);
+  end;
+
+  Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+end;
+
+function MenuSubclassProc(hWnd: HWND; uMsg: UINT; wParam: WPARAM; lParam: LPARAM;
+  uIdSubclass: PtrUInt; dwRefData: PtrUInt): LRESULT; stdcall;
+var
+  pUDM: PUAHMenu;
+  pUDMI: PUAHDrawMenuItem;
+  pMIS: PMEASUREITEMSTRUCT;
+  pDIS: PDRAWITEMSTRUCT;
+  mbi: TUAHMenuBarInfo;
+  rc, rcWindow, rcItemRect: RECT;
+  br: THandle;
+  menuString: array[0..255] of WideChar;
+  capStr: WideString;
+  txtLen, idx: Integer;
+  oldBkMode: Integer;
+  oldTextColor: COLORREF;
+  dwFlags: DWORD;
+  hFont, oldFont: THandle;
+  hdcMem, itemHdc: HDC;
+  isHot, isSelected, isDis, matched: Boolean;
+  k: Integer;
+  itemBg, itemCol: TColor;
+  sz: TSize;
+begin
+  if IsThemedSkin then
+  begin
+    case uMsg of
+      WM_MEASUREITEM:
+      begin
+        pMIS := PMEASUREITEMSTRUCT(lParam);
+        if (pMIS <> nil) and (pMIS^.CtlType = ODT_MENU) then
+        begin
+          matched := False;
+          capStr := '';
+          if (dwRefData <> 0) and (TObject(dwRefData) is TFrmPrincipal) then
+          begin
+            for k := 0 to TFrmPrincipal(dwRefData).MainMenu1.Items.Count - 1 do
+            begin
+              if (PtrUInt(TFrmPrincipal(dwRefData).MainMenu1.Items[k]) = pMIS^.itemData) or
+                 (pMIS^.itemData = PtrUInt(k)) then
+              begin
+                capStr := WideString(TFrmPrincipal(dwRefData).MainMenu1.Items[k].Caption);
+                matched := True;
+                Break;
+              end;
+            end;
+          end;
+
+          if matched then
+          begin
+            hdcMem := GetDC(hWnd);
+            if hdcMem <> 0 then
+            begin
+              hFont := THandle(SendMessage(hWnd, WM_GETFONT, 0, 0));
+              if (hFont = 0) and (dwRefData <> 0) and (TObject(dwRefData) is TControl) then
+                hFont := THandle(TControl(dwRefData).Font.Handle);
+
+              if hFont <> 0 then
+                oldFont := SelectObject(hdcMem, hFont)
+              else
+                oldFont := 0;
+
+              FillChar(sz, SizeOf(sz), 0);
+              if Length(capStr) > 0 then
+                GetTextExtentPoint32W(hdcMem, @capStr[1], Length(capStr), @sz)
+              else
+                sz.cx := 45;
+
+              if oldFont <> 0 then
+                SelectObject(hdcMem, oldFont);
+              ReleaseDC(hWnd, hdcMem);
+            end
+            else
+              sz.cx := 50;
+
+            pMIS^.itemWidth := sz.cx + 18;
+            pMIS^.itemHeight := GetSystemMetrics(SM_CYMENU);
+            Result := 1;
+            Exit;
+          end;
+        end;
+      end;
+
+      WM_DRAWITEM:
+      begin
+        pDIS := PDRAWITEMSTRUCT(lParam);
+        if (pDIS <> nil) and (pDIS^.CtlType = ODT_MENU) then
+        begin
+          matched := False;
+          capStr := '';
+          if (dwRefData <> 0) and (TObject(dwRefData) is TFrmPrincipal) then
+          begin
+            for k := 0 to TFrmPrincipal(dwRefData).MainMenu1.Items.Count - 1 do
+            begin
+              if (PtrUInt(TFrmPrincipal(dwRefData).MainMenu1.Items[k]) = pDIS^.itemData) or
+                 (pDIS^.itemData = PtrUInt(k)) then
+              begin
+                capStr := WideString(TFrmPrincipal(dwRefData).MainMenu1.Items[k].Caption);
+                matched := True;
+                Break;
+              end;
+            end;
+          end;
+
+          if matched then
+          begin
+            itemHdc := pDIS^._hDC;
+            isHot := (pDIS^.itemState and ODS_HOTLIGHT) <> 0;
+            isSelected := (pDIS^.itemState and ODS_SELECTED) <> 0;
+            isDis := (pDIS^.itemState and (ODS_GRAYED or ODS_DISABLED)) <> 0;
+
+            if isSelected then
+              itemBg := CurrentSkin.HighlightBg
+            else if isHot then
+              itemBg := CurrentSkin.PointedBg
+            else
+              itemBg := CurrentSkin.PanelBg;
+
+            br := CreateSolidBrush(ColorToRGB(itemBg));
+            FillRect(itemHdc, pDIS^.rcItem, br);
+            DeleteObject(br);
+
+            if Length(capStr) > 0 then
+            begin
+              hFont := THandle(SendMessage(hWnd, WM_GETFONT, 0, 0));
+              if (hFont = 0) and (dwRefData <> 0) and (TObject(dwRefData) is TControl) then
+                hFont := THandle(TControl(dwRefData).Font.Handle);
+
+              if hFont <> 0 then
+                oldFont := SelectObject(itemHdc, hFont)
+              else
+                oldFont := 0;
+
+              oldBkMode := SetBkMode(itemHdc, TRANSPARENT);
+              if isDis then
+                oldTextColor := SetTextColor(itemHdc, ColorToRGB(CurrentSkin.WindowTextDim))
+              else if isHot or isSelected then
+                oldTextColor := SetTextColor(itemHdc, ColorToRGB(CurrentSkin.PointedText))
+              else
+                oldTextColor := SetTextColor(itemHdc, ColorToRGB(CurrentSkin.PanelText));
+
+              dwFlags := DT_CENTER or DT_VCENTER or DT_SINGLELINE;
+              if (pDIS^.itemState and ODS_NOACCEL) <> 0 then
+                dwFlags := dwFlags or $00100000;
+
+              rcItemRect := pDIS^.rcItem;
+              DrawTextW(itemHdc, @capStr[1], Length(capStr), rcItemRect, dwFlags);
+
+              SetTextColor(itemHdc, oldTextColor);
+              SetBkMode(itemHdc, oldBkMode);
+              if oldFont <> 0 then
+                SelectObject(itemHdc, oldFont);
+            end;
+
+            Result := 1;
+            Exit;
+          end
+          else
+          begin
+            if DrawThemedPopupMenuItem(hWnd, lParam) then
+            begin
+              Result := 1;
+              Exit;
+            end;
+            PreFillDarkMenuItem(hWnd, lParam);
+          end;
+        end;
+      end;
+
+      WM_INITMENUPOPUP:
+      begin
+        SubclassAllPopupMenuWindows;
+      end;
+
+      WM_UAHDRAWMENU:
+      begin
+        pUDM := PUAHMenu(lParam);
+        if (pUDM <> nil) and (pUDM^.hdc <> 0) then
+        begin
+          if (pUDM^.hmenu = 0) or (pUDM^.hmenu = GetMenu(hWnd)) then
+          begin
+            FillChar(mbi, SizeOf(mbi), 0);
+            mbi.cbSize := SizeOf(mbi);
+            if WinGetMenuBarInfo(hWnd, UAH_OBJID_MENU, 0, @mbi) then
+            begin
+              rcWindow := Default(RECT);
+              GetWindowRect(hWnd, @rcWindow);
+              rc.Left := mbi.rcBar.Left - rcWindow.Left;
+              rc.Top := mbi.rcBar.Top - rcWindow.Top;
+              rc.Right := mbi.rcBar.Right - rcWindow.Left;
+              rc.Bottom := mbi.rcBar.Bottom - rcWindow.Top;
+            end
+            else
+            begin
+              rcWindow := Default(RECT);
+              GetWindowRect(hWnd, @rcWindow);
+              rc.Left := 0;
+              rc.Top := 0;
+              rc.Right := rcWindow.Right - rcWindow.Left;
+              rc.Bottom := 60;
+            end;
+
+            br := CreateSolidBrush(ColorToRGB(CurrentSkin.PanelBg));
+            FillRect(pUDM^.hdc, rc, br);
+            DeleteObject(br);
+            Result := 0;
+            Exit;
+          end
+          else
+          begin
+            FillChar(rc, SizeOf(rc), 0);
+            if GetClipBox(pUDM^.hdc, @rc) <> ERROR then
+            begin
+              FillRect(pUDM^.hdc, rc, GetCachedPopupMenuBrush);
+              br := CreateSolidBrush(ColorToRGB(CurrentSkin.PanelBorder));
+              FrameRect(pUDM^.hdc, rc, br);
+              DeleteObject(br);
+              Result := 0;
+              Exit;
+            end;
+          end;
+        end;
+      end;
+
+      WM_UAHDRAWMENUITEM:
+      begin
+        pUDMI := PUAHDrawMenuItem(lParam);
+        if (pUDMI <> nil) and (pUDMI^.um.hdc <> 0) then
+        begin
+          if (pUDMI^.dis.itemState and (ODS_HOTLIGHT or ODS_SELECTED)) <> 0 then
+            br := CreateSolidBrush(ColorToRGB(CurrentSkin.PointedBg))
+          else
+            br := CreateSolidBrush(ColorToRGB(CurrentSkin.PanelBg));
+
+          FillRect(pUDMI^.um.hdc, pUDMI^.dis.rcItem, br);
+          DeleteObject(br);
+
+          FillChar(menuString, SizeOf(menuString), 0);
+          txtLen := GetMenuStringW(pUDMI^.um.hmenu, pUDMI^.umi.iPosition, @menuString[0], 255, MF_BYPOSITION);
+
+          if (txtLen <= 0) and (dwRefData <> 0) and (TObject(dwRefData) is TFrmPrincipal) then
+          begin
+            if (pUDMI^.umi.iPosition >= 0) and (pUDMI^.umi.iPosition < TFrmPrincipal(dwRefData).MainMenu1.Items.Count) then
+            begin
+              capStr := WideString(TFrmPrincipal(dwRefData).MainMenu1.Items[pUDMI^.umi.iPosition].Caption);
+              txtLen := Min(255, Length(capStr));
+              if txtLen > 0 then
+              begin
+                Move(capStr[1], menuString[0], txtLen * SizeOf(WideChar));
+                menuString[txtLen] := #0;
+              end;
+            end;
+          end;
+
+          if txtLen > 0 then
+          begin
+            hFont := THandle(SendMessage(hWnd, WM_GETFONT, 0, 0));
+            if (hFont = 0) and (dwRefData <> 0) and (TObject(dwRefData) is TControl) then
+              hFont := THandle(TControl(dwRefData).Font.Handle);
+
+            if hFont <> 0 then
+              oldFont := SelectObject(pUDMI^.um.hdc, hFont)
+            else
+              oldFont := 0;
+
+            dwFlags := DT_CENTER or DT_SINGLELINE or DT_VCENTER;
+            if (pUDMI^.dis.itemState and ODS_NOACCEL) <> 0 then
+              dwFlags := dwFlags or $00100000;
+
+            oldBkMode := SetBkMode(pUDMI^.um.hdc, TRANSPARENT);
+            if (pUDMI^.dis.itemState and (ODS_HOTLIGHT or ODS_SELECTED)) <> 0 then
+              oldTextColor := SetTextColor(pUDMI^.um.hdc, ColorToRGB(CurrentSkin.PointedText))
+            else if (pUDMI^.dis.itemState and (ODS_GRAYED or ODS_DISABLED)) <> 0 then
+              oldTextColor := SetTextColor(pUDMI^.um.hdc, ColorToRGB(CurrentSkin.WindowTextDim))
+            else
+              oldTextColor := SetTextColor(pUDMI^.um.hdc, ColorToRGB(CurrentSkin.PanelText));
+
+            rcItemRect := pUDMI^.dis.rcItem;
+            DrawTextW(pUDMI^.um.hdc, @menuString[0], txtLen, rcItemRect, dwFlags);
+
+            SetTextColor(pUDMI^.um.hdc, oldTextColor);
+            SetBkMode(pUDMI^.um.hdc, oldBkMode);
+            if oldFont <> 0 then
+              SelectObject(pUDMI^.um.hdc, oldFont);
+          end;
+
+          Result := 0;
+          Exit;
+        end;
+      end;
+
+      WM_NCPAINT, WM_NCACTIVATE:
+      begin
+        Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+        PaintMenuBarNC(hWnd, dwRefData);
+        Exit;
+      end;
+    end;
+  end;
+
+  Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+end;
+
+procedure TFrmPrincipal.SetupMenuOwnerDraw(AIsDark: Boolean);
+var
+  hM, hSub: HMENU;
+  i, cnt: Integer;
+  cap: string;
+begin
+  if not HandleAllocated or (Handle = 0) or not Assigned(MainMenu1) then exit;
+  hM := GetMenu(Handle);
+  if hM = 0 then exit;
+
+  cnt := GetMenuItemCount(hM);
+  for i := 0 to cnt - 1 do
+  begin
+    hSub := GetSubMenu(hM, i);
+    if hSub <> 0 then
+    begin
+      if AIsDark then
+      begin
+        if i < MainMenu1.Items.Count then
+          WinModifyMenuW(hM, i, MF_BYPOSITION or MF_OWNERDRAW or MF_POPUP, hSub, Pointer(MainMenu1.Items[i]))
+        else
+          WinModifyMenuW(hM, i, MF_BYPOSITION or MF_OWNERDRAW or MF_POPUP, hSub, Pointer(PtrUInt(i)));
+      end
+      else
+      begin
+        if i < MainMenu1.Items.Count then
+        begin
+          cap := MainMenu1.Items[i].Caption;
+          WinModifyMenuW(hM, i, MF_BYPOSITION or MF_STRING or MF_POPUP, hSub, Pointer(PWideChar(WideString(cap))));
+        end;
+      end;
+    end;
+  end;
+  DrawMenuBar(Handle);
+  if AIsDark then
+    PaintMenuBarNC(Handle, PtrUInt(Self));
+end;
+
+procedure TFrmPrincipal.InstallMenuSubclass;
+begin
+  if Assigned(fnSetWindowSubclass) and HandleAllocated and (Handle <> 0) then
+  begin
+    fnSetWindowSubclass(Handle, @MenuSubclassProc, 1001, PtrUInt(Self));
+    FMenuSubclassed := True;
+  end;
+end;
+
+procedure TFrmPrincipal.UninstallMenuSubclass;
+begin
+  if Assigned(fnRemoveWindowSubclass) and HandleAllocated and (Handle <> 0) and FMenuSubclassed then
+  begin
+    fnRemoveWindowSubclass(Handle, @MenuSubclassProc, 1001);
+    FMenuSubclassed := False;
+    DrawMenuBar(Handle);
+  end;
+end;
+
+procedure TFrmPrincipal.HookRadioGroupStatus;
+var
+  i: Integer;
+  wc: TWinControl;
+begin
+  if not Assigned(fnSetWindowSubclass) then exit;
+  if not Assigned(RadioGroupStatus) or (RadioGroupStatus.Handle = 0) then exit;
+
+  fnSetWindowSubclass(RadioGroupStatus.Handle, @RadioGroupSubclassProc, 2001, PtrUInt(Self));
+
+  for i := 0 to RadioGroupStatus.ControlCount - 1 do
+  begin
+    if RadioGroupStatus.Controls[i] is TWinControl then
+    begin
+      wc := TWinControl(RadioGroupStatus.Controls[i]);
+      if wc.Handle <> 0 then
+      begin
+        fnSetWindowSubclass(wc.Handle, @RadioSubclassProc, PtrUInt(2002 + i), PtrUInt(Self));
+      end;
+    end;
+  end;
+  RadioGroupStatus.Invalidate;
+end;
+{$ENDIF}
+
 
 {$IFDEF WINDOWS}
 {------------------------------------------------------------------------------}
@@ -262,19 +1058,28 @@ var
   CData : TCopyDataStruct;
   bcv: TBCV_A;
   b, c, v: integer;
+  dwRes: DWORD_PTR;
 begin
+  if ref = '' then exit;
+  if Assigned(FrmPrincipal) and (FrmPrincipal.TwSyncThread <> nil) then
+    FrmPrincipal.TwSyncThread.NotifyVerseSent(ref);
   twHWND := RestoreTheWord(False);
   if twHWND <> 0 then begin
+    b := 0; c := 0; v := 0;
     SScanf(ref,'%d,%d,%d',[@b, @c, @v]);
-    bcv.bi := b;
-    bcv.ci := c;
-    bcv.vi := v;
-    bcv.span := 0;
+    if (b > 0) and (c > 0) and (v > 0) then
+    begin
+      bcv.bi := b;
+      bcv.ci := c;
+      bcv.vi := v;
+      bcv.span := 0;
 
-    CData.dwData := twAutomate.COPYDATA_OP_GOTOVERSE;
-    CData.lpData := @bcv;
-    CData.cbData := SizeOf(bcv);
-    SendMessage(twHWND, WM_COPYDATA, 0, DWORD(@CData));
+      CData.dwData := twAutomate.COPYDATA_OP_GOTOVERSE;
+      CData.lpData := @bcv;
+      CData.cbData := SizeOf(bcv);
+      dwRes := 0;
+      SendMessageTimeout(twHWND, WM_COPYDATA, 0, PtrInt(@CData), SMTO_ABORTIFHUNG or SMTO_NORMAL, 1000, @dwRes);
+    end;
   end;
 end;
 
@@ -290,11 +1095,11 @@ begin
     ws := ref;
 
     CData.dwData := twAutomate.COPYDATA_OP_DCTWORDLOOKUP;
-    FillChar(CD.phrase[1], 0, Length(CD.phrase)*2); //zero fill the array first, VERY IMPORTANT
+    CD := Default(TCopyData_Op_DctWordLookup);
     Move(ws[1], CD.phrase[1], 2*Math.max(Length(ws), Length(CD.phrase)));
     CData.lpData := @CD;
     CData.cbData := SizeOf(TCopyData_Op_DctWordLookup);
-    SendMessage(twHWND, WM_COPYDATA, 0, DWORD(@CData) );
+    SendMessage(twHWND, WM_COPYDATA, 0, PtrInt(@CData));
   end;
 end;
 {$ENDIF}
@@ -331,7 +1136,7 @@ begin
 
   if not FileExists(OpenDialog1.FileName) then
   begin
-    MessageDlg(SOpenProject, format(SProjectFileDoesNotExist, [OpenDialog1.FileName]), mtError, [mbOK], 0);
+    ThemedMessageDlg(SOpenProject, format(SProjectFileDoesNotExist, [OpenDialog1.FileName]), mtError, [mbOK], 0);
     exit;
   end;
 
@@ -422,7 +1227,7 @@ begin
   FrmExportPatch.SavePatch(destination);
   Screen.Cursor := crDefault;
 
-  ShowMessage(SPatchSuccessfullyExported);
+  ThemedShowMessage(SPatchSuccessfullyExported);
 end;
 
 procedure TFrmPrincipal.ActionFecharProjetoExecute(Sender: TObject);
@@ -435,7 +1240,7 @@ begin
   salvar := false;
   if ProjetoAtual.Modificado then
   begin
-    case MessageDlg(SCloseProject, SSaveChanges, mtConfirmation, [mbYes, mbNo, mbCancel], 0) of
+    case ThemedMessageDlg(SCloseProject, SSaveChanges, mtConfirmation, [mbYes, mbNo, mbCancel], 0) of
       mrYes: salvar := true;
       mrNo: salvar := false;
       mrCancel: exit;
@@ -448,6 +1253,13 @@ begin
   ProjetoAtual.Fechar(salvar);
   ProjetoAtual.Destruir;
   ProjetoAtual := nil;
+  InitTTS;
+  if Assigned(TTSManager) then
+  begin
+    TTSManager.LoadFromIni(opts);
+    MenuItemTTS.Checked := TTSManager.Enabled;
+  end;
+  FSyncingFromTw := False;
   Caption := 'iBiblia';
 
   FCurrentRef := '';
@@ -471,6 +1283,14 @@ begin
   FChapterView.Clear;
   //ActionExportarDestinoComStrongs.Enabled := false;
   //ActionExportarTextoInterlinear.Enabled := false;
+  ComboBoxStatusFilter.Enabled := false;
+  ComboBoxStatusFilter.ItemIndex := 0;
+  ActionVersoSeguinteFiltrado.Enabled := false;
+  ActionFindInProject.Enabled := true;
+  ActionVersoAnteriorFiltrado.Enabled := false;
+  SpeedButtonNextFiltered.Enabled := false;
+  SpeedButtonPrevFiltered.Enabled := false;
+  LabelFilterCount.Caption := '';
   StatusBar1.SimpleText := '';
 end;
 
@@ -534,6 +1354,7 @@ procedure TFrmPrincipal.ActionNovoProjetoExecute(Sender: TObject);
 var
   v: TTipoTextoBiblico;
   ParThread: TParametroThread;
+  savedFilter: Integer;
 begin
   ActionFecharProjetoExecute(nil);
 
@@ -551,7 +1372,7 @@ begin
 
     if FileExists(SaveDialog1.FileName) then
     begin
-      case MessageDlg(SInvalidProjectNameTitle, SInvalidProjectNameQuery, mtConfirmation, [mbYes, mbNo], 0) of
+      case ThemedMessageDlg(SInvalidProjectNameTitle, SInvalidProjectNameQuery, mtConfirmation, [mbYes, mbNo], 0) of
         mrNo: exit;
         mrYes: continue;
       end;
@@ -562,12 +1383,17 @@ begin
   try
     Enabled := false;
     ProjetoAtual := TProjeto.Criar([ScrollBoxSrcVerse, ScrollBoxDstVerse, ScrollBoxRef1Verse, ScrollBoxRef2Verse], TreeView1, RadioGroupStatus, CommentsMemo);
+    ProjetoAtual.ApplySkin(CurrentSkin);
     ProjetoAtual.Escopo := QualEscopo;
     ProjetoAtual.PalavrasComStrongEmNegrito := MenuItemStrongNegrito.Checked;
     ProjetoAtual.MostrarQtdStrongs := FStrongsCountMode;
     ProjetoAtual.OnNewVerseSubscribe(@QuandoNovoVersiculo);
     ProjetoAtual.OnAlterarVersiculo := @QuandoAlterarVersiculo;
     ProjetoAtual.Novo(SaveDialog1.FileName, FormNovoProjeto1.EditNomeProjeto.Text);
+    {$IFDEF WINDOWS}
+    HookRadioGroupStatus;
+    {$ENDIF}
+    AplicarDicionariosGlobais(ProjetoAtual);
     ProjetoAtual.ExibirDefinicoesSoComCtrl := MenuItemDictPopup.Checked;
     ProjetoAtual.SugerirAssociacaoAutomaticamente := MenuItem22.Checked;
     ProjetoAtual.PopupTrigger := FPopupTrigger;
@@ -603,10 +1429,31 @@ begin
     FChapterView.Enabled := true;
     FChapterView.Project := ProjetoAtual;
 
+    ComboBoxStatusFilter.Enabled := true;
+    ActionVersoSeguinteFiltrado.Enabled := true;
+    ActionFindInProject.Enabled := true;
+    ActionVersoAnteriorFiltrado.Enabled := true;
+    SpeedButtonNextFiltered.Enabled := true;
+    SpeedButtonPrevFiltered.Enabled := true;
+    AtualizarItensFiltro;
+
+    savedFilter := 0;
+    if Assigned(opts) then
+      savedFilter := opts.ReadInteger('opcoes', 'filterstatus', 0);
+
+    if (savedFilter >= 0) and (savedFilter < ComboBoxStatusFilter.Items.Count) then
+      ComboBoxStatusFilter.ItemIndex := savedFilter
+    else
+      ComboBoxStatusFilter.ItemIndex := 0;
+
+    if ComboBoxStatusFilter.ItemIndex > 0 then
+      ComboBoxStatusFilterChange(ComboBoxStatusFilter);
+
     StatusBar1.SimpleText := '';
   finally
     Enabled := true;
   end;
+  ApplyActiveSkin;
 end;
 
 procedure TFrmPrincipal.ActionPropProjetoExecute(Sender: TObject);
@@ -624,8 +1471,9 @@ begin
   if ProjetoAtual <> nil then
   begin
     Caption := format('iBiblia | %s | %s (%s)', [ProjetoAtual.FormattedReference, ProjetoAtual.ObterInfo('descricao'), ProjetoAtual.FileName]);
-    RadioGroupStatus.SetFocus;
+    ProjetoAtual.SyncDestinoStatusBar;
     ActionSyncTheWordVerseExecute(Sender);
+    AtualizarContadorFiltro;
   end;
 end;
 
@@ -639,7 +1487,7 @@ procedure TFrmPrincipal.ActionReverterAssociacoesExecute(Sender: TObject);
 begin
   if ProjetoAtual = nil then
     exit;
-  if MessageDlg(SRollbackChanges, SRollbackChangesConfirmation, mtConfirmation, [mbYes, mbCancel], 0) = mrYes then
+  if ThemedMessageDlg(SRollbackChanges, SRollbackChangesConfirmation, mtConfirmation, [mbYes, mbCancel], 0) = mrYes then
     ProjetoAtual.Atualizar;
 end;
 
@@ -679,7 +1527,7 @@ end;
 procedure TFrmPrincipal.ActionSyncTheWordVerseExecute(Sender: TObject);
 begin
   {$IFDEF WINDOWS}
-  if syncTw2iBiblia and (ProjetoAtual <> nil) then
+  if syncTw2iBiblia and (ProjetoAtual <> nil) and not FSyncingFromTw then
     SyncTheWordVerse(ProjetoAtual.ID);
   {$ENDIF}
 end;
@@ -696,8 +1544,12 @@ end;
 procedure TFrmPrincipal.ActionVersoAnteriorExecute(Sender: TObject);
 begin
   if ProjetoAtual = nil then exit;
-
-  ProjetoAtual.VersiculoAnterior;
+  FNavigatingVerse := True;
+  try
+    ProjetoAtual.VersiculoAnterior;
+  finally
+    FNavigatingVerse := False;
+  end;
 end;
 
 procedure TFrmPrincipal.ActionVersoPrimeiroExecute(Sender: TObject);
@@ -710,15 +1562,23 @@ end;
 procedure TFrmPrincipal.ActionVersoSeguinteExecute(Sender: TObject);
 begin
   if ProjetoAtual = nil then exit;
-
-  ProjetoAtual.VersiculoSeguinte;
+  FNavigatingVerse := True;
+  try
+    ProjetoAtual.VersiculoSeguinte;
+  finally
+    FNavigatingVerse := False;
+  end;
 end;
 
 procedure TFrmPrincipal.ActionVersoUltimoExecute(Sender: TObject);
 begin
   if ProjetoAtual = nil then exit;
-
-  ProjetoAtual.VersiculoFinal;
+  FNavigatingVerse := True;
+  try
+    ProjetoAtual.VersiculoFinal;
+  finally
+    FNavigatingVerse := False;
+  end;
 end;
 
 procedure TFrmPrincipal.FormClose(Sender: TObject; var CloseAction: TCloseAction);
@@ -744,8 +1604,23 @@ var
 begin
   DebugLn('=================================');
 
+  opts := TIniFile.Create(ExtractFilePath(Application.ExeName) + 'iBiblia.ini');
   ProjetoAtual := nil;
-  opts := TIniFile.Create('iBiblia.ini');
+  FSyncingFromTw := False;
+  {$IFDEF WINDOWS}
+  TWAutomateUtils.LoadTheWordFonts;
+  {$ENDIF}
+  FUseGlobalDicts := opts.ReadBool('dicionarios', 'use_default', opts.ReadBool('dicionarios', 'use_global', True));
+  FGlobalStrongGreek := opts.ReadString('dicionarios', 'default_strong_greek', opts.ReadString('dicionarios', 'global_strong_greek', ''));
+  FGlobalStrongHebrew := opts.ReadString('dicionarios', 'default_strong_hebrew', opts.ReadString('dicionarios', 'global_strong_hebrew', ''));
+  FGlobalMorphology := opts.ReadString('dicionarios', 'default_morphology', opts.ReadString('dicionarios', 'global_morphology', ''));
+  FGlobalEnglishDict := opts.ReadString('dicionarios', 'default_english_dict', opts.ReadString('dicionarios', 'global_english_dict', ''));
+  InitTTS;
+  if Assigned(TTSManager) then
+  begin
+    TTSManager.LoadFromIni(opts);
+    MenuItemTTS.Checked := TTSManager.Enabled;
+  end;
 
   if opts.ReadBool('leiaute', 'principal.maximized', false) then
     WindowState := wsMaximized
@@ -776,14 +1651,15 @@ begin
   if MenuItemAlwaysOnTop.Checked then
     FormStyle := fsSystemStayOnTop;
 
-  FChapterView := TChapterView.Create(ChapterViewTabCtrl);
+  FChapterView := TChapterView.Create(ContextPanel);
   with FChapterView do
   begin
-    ParentWindow := ChapterViewTabCtrl.Handle;
+    Parent       := ContextPanel;
     BorderStyle  := bsNone;
     Align        := alClient;
     FontName     := opts.ReadString('leiaute', 'principal.chapterview.font.name', DefFontData.Name);
     FontSize     := opts.ReadInteger('leiaute', 'principal.chapterview.font.size', 0);
+    BringToFront;
   end;
 
   language := opts.ReadString('opcoes', 'language', GetDefaultLang);
@@ -795,7 +1671,27 @@ begin
   Translate;
 
   CarregarMRU(MenuItemRecent);
-  TreeView1.Width := opts.ReadInteger('leiaute', 'principal.treeview.largura', TreeView1.Width);
+  PanelTreeNav.Width := opts.ReadInteger('leiaute', 'principal.treeview.largura', PanelTreeNav.Width);
+
+  SetCurrentSkinByName(opts.ReadString('UI', 'Theme', 'Default'));
+  Self.Color := CurrentSkin.PanelBg;
+  Self.Font.Color := CurrentSkin.PanelText;
+  UpdateSkinMenuChecks;
+  FAutoSelectTimer := TTimer.Create(Self);
+  FAutoSelectTimer.Interval := 30;
+  FAutoSelectTimer.Enabled := False;
+  FAutoSelectTimer.OnTimer := @OnAutoSelectTimer;
+  Self.OnKeyUp := @OnAppKeyUp;
+  Self.OnMouseWheel := @OnAppMouseWheel;
+  if Assigned(TreeView1) then
+    TreeView1.OnMouseWheel := @OnAppMouseWheel;
+  if Assigned(RadioGroupStatus) then
+    RadioGroupStatus.OnMouseWheel := @OnAppMouseWheel;
+  if Assigned(ComboBoxStatusFilter) then
+    ComboBoxStatusFilter.OnMouseWheel := @OnAppMouseWheel;
+  if Assigned(CommentsMemo) then
+    CommentsMemo.OnMouseWheel := @OnAppMouseWheel;
+  Application.AddOnIdleHandler(@OnAppIdleCheckAutoSelect);
 
   {$IFDEF WINDOWS}
   FRxMorpho := RegexCreate('^(\S+)( l="(.*?)")?$', [rcoUTF8]);
@@ -807,6 +1703,12 @@ end;
 
 procedure TFrmPrincipal.FormDestroy(Sender: TObject);
 begin
+  Application.RemoveOnIdleHandler(@OnAppIdleCheckAutoSelect);
+  {$IFDEF WINDOWS}
+  UninstallMenuSubclass;
+  if Assigned(fnRemoveWindowSubclass) and Assigned(RadioGroupStatus) and (RadioGroupStatus.Handle <> 0) then
+    fnRemoveWindowSubclass(RadioGroupStatus.Handle, @RadioGroupSubclassProc, 2001);
+  {$ENDIF}
   DescarregarMRU(MenuItemRecent);
   opts.WriteBool('leiaute', 'principal.maximized', WindowState = wsMaximized);
   if WindowState <> wsMaximized then
@@ -816,7 +1718,7 @@ begin
     opts.WriteInteger('leiaute', 'principal.topo', Top);
     opts.WriteInteger('leiaute', 'principal.esquerda', Left);
   end;
-  opts.WriteInteger('leiaute', 'principal.treeview.largura', TreeView1.Width);
+  opts.WriteInteger('leiaute', 'principal.treeview.largura', PanelTreeNav.Width);
   opts.WriteInteger('leiaute', 'principal.splitter2.topo', Splitter2.Top);
   opts.WriteInteger('leiaute', 'principal.splitter3.topo', Splitter3.Top);
   opts.WriteInteger('leiaute', 'principal.splitter4.topo', Splitter4.Top);
@@ -833,17 +1735,98 @@ begin
   opts.WriteBool('opcoes', 'alwaysontop', MenuItemAlwaysOnTop.Checked);
   opts.WriteInteger('opcoes', 'popuptrigger', LongInt(FPopupTrigger));
   opts.WriteBool('opcoes', 'auto.save', MenuItemAutoSave.Checked);
+  opts.WriteString('UI', 'Theme', CurrentSkin.Name);
+  if Assigned(ComboBoxStatusFilter) then
+    opts.WriteInteger('opcoes', 'filterstatus', ComboBoxStatusFilter.ItemIndex);
+  if Assigned(FrmDictionaryPopup) then
+    FrmDictionaryPopup.SaveSettings;
+
+  if Assigned(TTSManager) then
+    TTSManager.SaveToIni(opts);
+
+  opts.WriteBool('dicionarios', 'use_default', FUseGlobalDicts);
+  opts.WriteBool('dicionarios', 'use_global', FUseGlobalDicts);
+  opts.WriteString('dicionarios', 'default_strong_greek', FGlobalStrongGreek);
+  opts.WriteString('dicionarios', 'global_strong_greek', FGlobalStrongGreek);
+  opts.WriteString('dicionarios', 'default_strong_hebrew', FGlobalStrongHebrew);
+  opts.WriteString('dicionarios', 'global_strong_hebrew', FGlobalStrongHebrew);
+  opts.WriteString('dicionarios', 'default_morphology', FGlobalMorphology);
+  opts.WriteString('dicionarios', 'global_morphology', FGlobalMorphology);
+  opts.WriteString('dicionarios', 'default_english_dict', FGlobalEnglishDict);
+  opts.WriteString('dicionarios', 'global_english_dict', FGlobalEnglishDict);
+
+  FreeTTS;
+  opts.UpdateFile;
   opts.Free;
+  opts := nil;
 
   FChapterView.Free;
 end;
 
+procedure TFrmPrincipal.CheckPendingAutoSelectKeyRelease;
+begin
+  if Assigned(ProjetoAtual) and ProjetoAtual.HasPendingAutoSelectNext then
+  begin
+    if ((GetKeyState(VK_CONTROL) and $8000) = 0) and
+       ((GetKeyState(VK_SHIFT) and $8000) = 0) then
+    begin
+      if Assigned(FAutoSelectTimer) then
+        FAutoSelectTimer.Enabled := False;
+      ProjetoAtual.CompletePendingAutoSelectNext;
+    end
+    else if Assigned(FAutoSelectTimer) and (not FAutoSelectTimer.Enabled) then
+      FAutoSelectTimer.Enabled := True;
+  end
+  else if Assigned(FAutoSelectTimer) and FAutoSelectTimer.Enabled then
+    FAutoSelectTimer.Enabled := False;
+end;
+
+procedure TFrmPrincipal.OnAutoSelectTimer(Sender: TObject);
+begin
+  if Sender = nil then ;
+  CheckPendingAutoSelectKeyRelease;
+end;
+
+procedure TFrmPrincipal.OnAppKeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
+begin
+  if Sender = nil then ;
+  if Key = 0 then ;
+  if Shift = [] then ;
+  CheckPendingAutoSelectKeyRelease;
+end;
+
+procedure TFrmPrincipal.OnAppMouseWheel(Sender: TObject; Shift: TShiftState;
+  WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
+begin
+  if Sender = nil then ;
+  if MousePos.X = 0 then ;
+  if (not Handled) and Assigned(ProjetoAtual) and
+     ProjetoAtual.HandleMouseWheelForSourceWords(Shift, WheelDelta) then
+    Handled := True;
+end;
+
+procedure TFrmPrincipal.OnAppIdleCheckAutoSelect(Sender: TObject; var Done: Boolean);
+begin
+  if Sender = nil then ;
+  if Done then ;
+  CheckPendingAutoSelectKeyRelease;
+  if Assigned(ProjetoAtual) then
+    ProjetoAtual.UpdateVerseNavHoverStates;
+end;
+
 procedure TFrmPrincipal.FormKeyPress(Sender: TObject; var Key: char);
 begin
+  if ActiveControl is TCustomEdit then
+    Exit;
   case Key of
     '1', '2', '3', '4':
       if assigned(ProjetoAtual) then
+      begin
         RadioGroupStatus.ItemIndex := Ord(Key) - Ord('0') - 1;
+        ProjetoAtual.Situacao := RadioGroupStatus.ItemIndex;
+        ProjetoAtual.SyncDestinoStatusBar;
+        AtualizarItensFiltro;
+      end;
   end;
 end;
 
@@ -876,7 +1859,30 @@ begin
   if (ParamCount > 0) and ParamStr(1).EndsWith('.bib') and FileExists(ParamStr(1)) then
     DoOpenProject(ParamStr(1))
   else if (MenuItemRecent.Count > 0) and FileExists(MenuItemRecent.Items[0].Caption) then
-    DoOpenProject(MenuItemRecent.Items[0].Caption);
+    DoOpenProject(MenuItemRecent.Items[0].Caption)
+  else
+    ApplyActiveSkin;
+
+  Application.QueueAsyncCall(@OnPostShowApplySkin, 0);
+
+  // First-time startup check for new version changelog popup
+  if opts.ReadString('geral', 'last_seen_changelog_version', '') <> '1.0.0.74' then
+  begin
+    ShowChangelog(Self);
+    opts.WriteString('geral', 'last_seen_changelog_version', '1.0.0.74');
+  end;
+end;
+
+procedure TFrmPrincipal.OnPostShowApplySkin(Data: PtrInt);
+begin
+  if csDestroying in ComponentState then Exit;
+  {$IFDEF WINDOWS}
+  if Self.HandleAllocated and CurrentSkin.IsDark then
+  begin
+    DrawMenuBar(Self.Handle);
+    PaintMenuBarNC(Self.Handle, PtrUInt(Self));
+  end;
+  {$ENDIF}
 end;
 
 procedure TFrmPrincipal.MenuItem22Click(Sender: TObject);
@@ -892,8 +1898,21 @@ begin
      ActionAbrirProjetoExecute(Sender);
 end;
 
+procedure TFrmPrincipal.MenuItemUserGuideClick(Sender: TObject);
+begin
+  if Sender = nil then ;
+  ShowUserGuide(Self);
+  if Assigned(FormUserGuide) then
+    FormUserGuide.UpdateLanguage(language);
+end;
+
 procedure TFrmPrincipal.MenuItemAboutClick(Sender: TObject);
 begin
+  if Assigned(FormAbout) then
+  begin
+    FormAbout.HandleNeeded;
+    FormAbout.ApplySkin(CurrentSkin);
+  end;
   FormAbout.ShowModal;
 end;
 
@@ -907,6 +1926,7 @@ begin
     FormStyle := fsSystemStayOnTop
   else
     FormStyle := fsNormal;
+  ApplyActiveSkin;
 end;
 
 procedure TFrmPrincipal.MenuItemAutoSaveClick(Sender: TObject);
@@ -938,6 +1958,520 @@ begin
   TMenuItem(Sender).Checked:=true;
   MenuItemLangEn.Checked:=false;
   Translate;
+end;
+
+procedure TFrmPrincipal.ApplyActiveSkin;
+begin
+  Self.DisableAlign;
+  try
+    Self.Color := CurrentSkin.PanelBg;
+    Self.Font.Color := CurrentSkin.PanelText;
+
+    PanelTreeNav.Color := CurrentSkin.PanelBg;
+    PanelFilter.Color := CurrentSkin.PanelBg;
+    PanelFilterButtons.Color := CurrentSkin.PanelBg;
+    SpeedButtonPrevFiltered.Color := CurrentSkin.PanelBg;
+    SpeedButtonNextFiltered.Color := CurrentSkin.PanelBg;
+    SpeedButtonPrevFiltered.Font.Color := CurrentSkin.PanelText;
+    SpeedButtonNextFiltered.Font.Color := CurrentSkin.PanelText;
+    LabelFilterCount.Font.Color := CurrentSkin.PanelText;
+
+    CenterPanel.Color := CurrentSkin.PanelBg;
+    BottomPanel.Color := CurrentSkin.PanelBg;
+    ContextPanel.ParentColor := False;
+    ContextPanel.Color := CurrentSkin.PanelBg;
+    ContextPanel.Font.Color := CurrentSkin.PanelText;
+    Panel1.BevelOuter := bvNone;
+    CenterPanel.BevelOuter := bvNone;
+    BottomPanel.BevelOuter := bvNone;
+    Panel1.Color := CurrentSkin.PanelBg;
+    CenterPanel.Color := CurrentSkin.PanelBg;
+    BottomPanel.Color := CurrentSkin.PanelBg;
+
+    TreeView1.ParentColor := False;
+    TreeView1.Color := CurrentSkin.TreeBg;
+    TreeView1.Font.Color := CurrentSkin.TreeText;
+    TreeView1.ExpandSignColor := CurrentSkin.TreeText;
+    TreeView1.TreeLineColor := CurrentSkin.PanelBorder;
+    TreeView1.ExpandSignType := tvestArrowFill;
+    TreeView1.OnAdvancedCustomDraw := @TreeView1AdvancedCustomDraw;
+    ApplyDarkModeToControl(TreeView1, CurrentSkin.IsDark);
+    {$IFDEF WINDOWS}
+    HookTreeViewControl(TreeView1);
+    {$ENDIF}
+    TreeView1.Invalidate;
+
+    ComboBoxStatusFilter.Color := CurrentSkin.WindowBg;
+    ComboBoxStatusFilter.Font.Color := CurrentSkin.WindowText;
+    ApplyDarkModeToControl(ComboBoxStatusFilter, CurrentSkin.IsDark);
+    {$IFDEF WINDOWS}
+    HookComboBoxControl(ComboBoxStatusFilter);
+    {$ENDIF}
+    ComboBoxStatusFilter.Invalidate;
+
+    ScrollBoxSrcVerse.Color := CurrentSkin.WindowBg;
+    ScrollBoxDstVerse.Color := CurrentSkin.WindowBg;
+    ScrollBoxRef1Verse.Color := CurrentSkin.WindowBg;
+    ScrollBoxRef2Verse.Color := CurrentSkin.WindowBg;
+    ApplyDarkModeToControl(ScrollBoxSrcVerse, CurrentSkin.IsDark);
+    ApplyDarkModeToControl(ScrollBoxDstVerse, CurrentSkin.IsDark);
+    ApplyDarkModeToControl(ScrollBoxRef1Verse, CurrentSkin.IsDark);
+    ApplyDarkModeToControl(ScrollBoxRef2Verse, CurrentSkin.IsDark);
+    {$IFDEF WINDOWS}
+    HookScrollBoxControl(ScrollBoxSrcVerse);
+    HookScrollBoxControl(ScrollBoxDstVerse);
+    HookScrollBoxControl(ScrollBoxRef1Verse);
+    HookScrollBoxControl(ScrollBoxRef2Verse);
+    {$ENDIF}
+
+    CommentsMemo.Color := CurrentSkin.WindowBg;
+    CommentsMemo.Font.Color := CurrentSkin.WindowText;
+    ApplyDarkModeToControl(CommentsMemo, CurrentSkin.IsDark);
+    {$IFDEF WINDOWS}
+    HookEditControl(CommentsMemo);
+    {$ENDIF}
+
+    RadioGroupStatus.Visible := False;
+    RadioGroupStatus.Align := alNone;
+    RadioGroupStatus.Width := 0;
+
+    StatusBar1.Color := CurrentSkin.PanelBg;
+    StatusBar1.Font.Color := CurrentSkin.PanelText;
+
+    ToolBar1.ParentColor := False;
+    ToolBar1.Color := CurrentSkin.PanelBg;
+    ToolBar1.Font.Color := CurrentSkin.PanelText;
+    ToolBar1.Flat := True;
+    ToolBar1.Transparent := False;
+    {$IFDEF WINDOWS}
+    HookToolBarControl(ToolBar1);
+    {$ENDIF}
+    ApplyDarkModeToControl(ToolBar1, CurrentSkin.IsDark);
+    ToolBar1.Invalidate;
+
+    SpeedButtonPrevFiltered.Flat := True;
+    SpeedButtonNextFiltered.Flat := True;
+    SpeedButtonPrevFiltered.Color := CurrentSkin.PanelBg;
+    SpeedButtonNextFiltered.Color := CurrentSkin.PanelBg;
+    SpeedButtonPrevFiltered.Font.Color := CurrentSkin.PanelText;
+    SpeedButtonNextFiltered.Font.Color := CurrentSkin.PanelText;
+    SpeedButtonPrevFiltered.OnPaint := @OnContextTabButtonPaint;
+    SpeedButtonNextFiltered.OnPaint := @OnContextTabButtonPaint;
+    SpeedButtonPrevFiltered.Invalidate;
+    SpeedButtonNextFiltered.Invalidate;
+
+    UpdateContextTabButtons;
+
+    Splitter1.Beveled := False;
+    Splitter2.Beveled := False;
+    Splitter3.Beveled := False;
+    Splitter4.Beveled := False;
+    Splitter5.Beveled := False;
+    Splitter6.Beveled := False;
+    Splitter1.Color := CurrentSkin.PanelBorder;
+    Splitter2.Color := CurrentSkin.PanelBorder;
+    Splitter3.Color := CurrentSkin.PanelBorder;
+    Splitter4.Color := CurrentSkin.PanelBorder;
+    Splitter5.Color := CurrentSkin.PanelBorder;
+    Splitter6.Color := CurrentSkin.PanelBorder;
+    Splitter1.OnPaint := @OnSplitterPaint;
+    Splitter2.OnPaint := @OnSplitterPaint;
+    Splitter3.OnPaint := @OnSplitterPaint;
+    Splitter4.OnPaint := @OnSplitterPaint;
+    Splitter5.OnPaint := @OnSplitterPaint;
+    Splitter6.OnPaint := @OnSplitterPaint;
+    Splitter1.Invalidate;
+    Splitter2.Invalidate;
+    Splitter3.Invalidate;
+    Splitter4.Invalidate;
+    Splitter5.Invalidate;
+    Splitter6.Invalidate;
+
+    StatusBar1.Visible := False;
+
+    ApplyDarkModeToWindow(Self, CurrentSkin.IsDark);
+    {$IFDEF WINDOWS}
+    if IsThemedSkin then
+    begin
+      InstallMenuSubclass;
+      SetupMenuOwnerDraw(True);
+    end
+    else
+    begin
+      SetupMenuOwnerDraw(False);
+      UninstallMenuSubclass;
+    end;
+    {$ENDIF}
+
+    if assigned(ProjetoAtual) then
+      ProjetoAtual.ApplySkin(CurrentSkin);
+
+    if assigned(FChapterView) then
+      FChapterView.ApplySkin(CurrentSkin);
+
+    if assigned(frmDictionaryPopup) and frmDictionaryPopup.Visible then
+      frmDictionaryPopup.ApplySkin(CurrentSkin);
+
+    if assigned(FormAbout) and FormAbout.Visible then
+      FormAbout.ApplySkin(CurrentSkin);
+
+    if assigned(FormUserGuide) and FormUserGuide.Visible then
+      FormUserGuide.ApplySkin(CurrentSkin);
+
+    UpdateSkinMenuChecks;
+  finally
+    Self.EnableAlign;
+    Self.Invalidate;
+  end;
+end;
+
+procedure TFrmPrincipal.OnSplitterPaint(Sender: TObject);
+var
+  sp: TSplitter;
+  rc: TRect;
+  i, cx, cy: Integer;
+begin
+  if not (Sender is TSplitter) then Exit;
+  sp := TSplitter(Sender);
+  rc := sp.ClientRect;
+  sp.Canvas.Brush.Style := bsSolid;
+  sp.Canvas.Brush.Color := CurrentSkin.PanelBorder;
+  sp.Canvas.FillRect(rc);
+  // Draw subtle grip dots in WindowTextDim instead of bright white UxTheme dots
+  cx := (rc.Left + rc.Right) div 2;
+  cy := (rc.Top + rc.Bottom) div 2;
+  sp.Canvas.Pixels[cx, cy] := CurrentSkin.WindowTextDim;
+  if (rc.Right - rc.Left) > (rc.Bottom - rc.Top) then
+  begin
+    for i := -3 to 3 do
+      sp.Canvas.Pixels[cx + i * 4, cy] := CurrentSkin.WindowTextDim;
+  end
+  else
+  begin
+    for i := -3 to 3 do
+      sp.Canvas.Pixels[cx, cy + i * 4] := CurrentSkin.WindowTextDim;
+  end;
+end;
+
+procedure TFrmPrincipal.OnContextTabButtonClick(Sender: TObject);
+begin
+  if not (Sender is TSpeedButton) then exit;
+  ChapterViewTabCtrl.TabIndex := TSpeedButton(Sender).Tag;
+  if assigned(FChapterView) then
+    FChapterView.TextType := TTipoTextoBiblico(TSpeedButton(Sender).Tag);
+  UpdateContextTabButtons;
+end;
+
+procedure TFrmPrincipal.OnContextTabButtonPaint(Sender: TObject);
+var
+  btn: TSpeedButton;
+  rc, rcAccent: TRect;
+  pt: TPoint;
+  isHot, isDown, isDis: Boolean;
+  bgCol, fgCol, borderCol, accentCol: TColor;
+  tw, th, tx, ty: Integer;
+begin
+  if not (Sender is TSpeedButton) then Exit;
+  btn := TSpeedButton(Sender);
+  rc := btn.ClientRect;
+  isDis := not btn.Enabled;
+  isDown := btn.Down;
+
+  pt := btn.ScreenToClient(Mouse.CursorPos);
+  isHot := (not isDis) and (pt.x >= rc.Left) and (pt.x < rc.Right) and
+           (pt.y >= rc.Top) and (pt.y < rc.Bottom);
+
+  borderCol := CurrentSkin.PanelBorder;
+  if CurrentSkin.IsDark then
+    accentCol := CurrentSkin.HighlightBg
+  else
+    accentCol := CurrentSkin.VerseNumColor;
+
+  if isDis then
+  begin
+    bgCol := CurrentSkin.PanelBg;
+    fgCol := CurrentSkin.WindowTextDim;
+  end
+  else if isDown then
+  begin
+    if CurrentSkin.IsDark then
+    begin
+      bgCol := CurrentSkin.PointedBg;
+      fgCol := CurrentSkin.PointedText;
+    end
+    else if CurrentSkin.Id = skSepia then
+    begin
+      bgCol := CurrentSkin.HighlightBg;
+      fgCol := CurrentSkin.HighlightText;
+    end
+    else
+    begin
+      bgCol := clHighlight;
+      fgCol := clHighlightText;
+    end;
+  end
+  else if isHot then
+  begin
+    if CurrentSkin.IsDark then
+    begin
+      bgCol := CurrentSkin.PointedBg;
+      fgCol := CurrentSkin.PointedText;
+    end
+    else
+    begin
+      bgCol := CurrentSkin.VerseHighlightBg;
+      fgCol := CurrentSkin.PanelText;
+    end;
+  end
+  else
+  begin
+    bgCol := CurrentSkin.PanelBg;
+    fgCol := CurrentSkin.PanelText;
+  end;
+
+  btn.Canvas.Brush.Style := bsSolid;
+  btn.Canvas.Brush.Color := bgCol;
+  btn.Canvas.FillRect(rc);
+
+  if isDown or isHot then
+  begin
+    btn.Canvas.Pen.Style := psSolid;
+    btn.Canvas.Pen.Color := borderCol;
+    btn.Canvas.Brush.Style := bsClear;
+    btn.Canvas.Rectangle(rc);
+  end;
+
+  if isDown then
+  begin
+    rcAccent := rc;
+    rcAccent.Bottom := Min(rc.Bottom, rc.Top + 2);
+    btn.Canvas.Brush.Style := bsSolid;
+    btn.Canvas.Brush.Color := accentCol;
+    btn.Canvas.FillRect(rcAccent);
+  end;
+
+  btn.Canvas.Font.Assign(btn.Font);
+  btn.Canvas.Font.Color := fgCol;
+  btn.Canvas.Font.Bold := isDown;
+  btn.Canvas.Brush.Style := bsClear;
+  tw := btn.Canvas.TextWidth(btn.Caption);
+  th := btn.Canvas.TextHeight(btn.Caption);
+  tx := rc.Left + (rc.Right - rc.Left - tw) div 2;
+  ty := rc.Top + (rc.Bottom - rc.Top - th) div 2;
+  btn.Canvas.TextOut(tx, ty, btn.Caption);
+end;
+
+procedure TFrmPrincipal.UpdateContextTabButtons;
+var
+  actBg, actFg, inactBg, inactFg: TColor;
+begin
+  if not assigned(PanelContextTabs) then exit;
+  PanelContextTabs.Color := CurrentSkin.PanelBg;
+
+  if CurrentSkin.IsDark then
+  begin
+    actBg   := CurrentSkin.PointedBg;
+    actFg   := clWhite;
+    inactBg := CurrentSkin.PanelBg;
+    inactFg := CurrentSkin.PanelText;
+  end
+  else if CurrentSkin.Id = skSepia then
+  begin
+    actBg   := CurrentSkin.HighlightBg;
+    actFg   := CurrentSkin.HighlightText;
+    inactBg := CurrentSkin.PanelBg;
+    inactFg := CurrentSkin.PanelText;
+  end
+  else
+  begin
+    actBg   := clHighlight;
+    actFg   := clHighlightText;
+    inactBg := CurrentSkin.PanelBg;
+    inactFg := CurrentSkin.PanelText;
+  end;
+
+  if assigned(BtnTabSource) then
+  begin
+    BtnTabSource.Color := IfThen(BtnTabSource.Down, actBg, inactBg);
+    BtnTabSource.Font.Color := IfThen(BtnTabSource.Down, actFg, inactFg);
+    BtnTabSource.Font.Bold := BtnTabSource.Down;
+    BtnTabSource.OnPaint := @OnContextTabButtonPaint;
+    BtnTabSource.Invalidate;
+  end;
+
+  if assigned(BtnTabDest) then
+  begin
+    BtnTabDest.Color := IfThen(BtnTabDest.Down, actBg, inactBg);
+    BtnTabDest.Font.Color := IfThen(BtnTabDest.Down, actFg, inactFg);
+    BtnTabDest.Font.Bold := BtnTabDest.Down;
+    BtnTabDest.OnPaint := @OnContextTabButtonPaint;
+    BtnTabDest.Invalidate;
+  end;
+
+  if assigned(BtnTabRef1) then
+  begin
+    BtnTabRef1.Color := IfThen(BtnTabRef1.Down, actBg, inactBg);
+    BtnTabRef1.Font.Color := IfThen(BtnTabRef1.Down, actFg, inactFg);
+    BtnTabRef1.Font.Bold := BtnTabRef1.Down;
+    BtnTabRef1.OnPaint := @OnContextTabButtonPaint;
+    BtnTabRef1.Invalidate;
+  end;
+
+  if assigned(BtnTabRef2) then
+  begin
+    BtnTabRef2.Color := IfThen(BtnTabRef2.Down, actBg, inactBg);
+    BtnTabRef2.Font.Color := IfThen(BtnTabRef2.Down, actFg, inactFg);
+    BtnTabRef2.Font.Bold := BtnTabRef2.Down;
+    BtnTabRef2.OnPaint := @OnContextTabButtonPaint;
+    BtnTabRef2.Invalidate;
+  end;
+end;
+
+procedure TFrmPrincipal.WndProc(var Message: TLMessage);
+{$IFDEF WINDOWS}
+var
+  pHdr: PNMHDR;
+  handled: Boolean;
+{$ENDIF}
+begin
+  {$IFDEF WINDOWS}
+  if (Message.Msg = WM_NOTIFY) and IsThemedSkin and Assigned(ToolBar1) and (ToolBar1.Handle <> 0) then
+  begin
+    pHdr := PNMHDR(Message.LParam);
+    if (pHdr <> nil) and (pHdr^.hwndFrom = ToolBar1.Handle) and (pHdr^.code = -12 {NM_CUSTOMDRAW}) then
+    begin
+      handled := False;
+      Message.Result := HandleToolBarCustomDraw(Message.LParam, CurrentSkin, handled);
+      if handled then
+        Exit;
+    end;
+  end;
+  {$ENDIF}
+  inherited WndProc(Message);
+end;
+
+procedure TFrmPrincipal.TreeView1AdvancedCustomDraw(Sender: TCustomTreeView;
+  const ARect: TRect; Stage: TCustomDrawStage; var DefaultDraw: Boolean);
+begin
+  if (Stage = cdPrePaint) and IsThemedSkin then
+  begin
+    Sender.Canvas.Brush.Color := CurrentSkin.TreeBg;
+    Sender.Canvas.FillRect(ARect);
+  end;
+  DefaultDraw := True;
+end;
+
+procedure TFrmPrincipal.TreeView1CustomDrawItem(Sender: TCustomTreeView;
+  Node: TTreeNode; State: TCustomDrawState; var DefaultDraw: Boolean);
+begin
+  if (cdsSelected in State) then
+  begin
+    Sender.Canvas.Brush.Color := CurrentSkin.HighlightBg;
+    Sender.Canvas.Font.Color  := CurrentSkin.HighlightText;
+  end
+  else if (cdsHot in State) then
+  begin
+    Sender.Canvas.Brush.Color := CurrentSkin.PointedBg;
+    Sender.Canvas.Font.Color  := CurrentSkin.PointedText;
+  end
+  else
+  begin
+    Sender.Canvas.Brush.Color := CurrentSkin.TreeBg;
+    Sender.Canvas.Font.Color := CurrentSkin.TreeText;
+  end;
+  DefaultDraw := True;
+end;
+
+procedure TFrmPrincipal.ComboBoxStatusFilterDrawItem(Control: TWinControl;
+  Index: Integer; ARect: TRect; State: TOwnerDrawState);
+var
+  cb: TComboBox;
+  txt: string;
+  yPos: Integer;
+begin
+  cb := TComboBox(Control);
+  if (odSelected in State) then
+  begin
+    cb.Canvas.Brush.Color := CurrentSkin.HighlightBg;
+    cb.Canvas.Font.Color  := CurrentSkin.HighlightText;
+  end
+  else
+  begin
+    cb.Canvas.Brush.Color := CurrentSkin.WindowBg;
+    cb.Canvas.Font.Color  := CurrentSkin.WindowText;
+  end;
+  cb.Canvas.FillRect(ARect);
+
+  if (Index >= 0) and (Index < cb.Items.Count) then
+  begin
+    txt := cb.Items[Index];
+    yPos := ARect.Top + (ARect.Height - cb.Canvas.TextHeight(txt)) div 2;
+    cb.Canvas.TextOut(ARect.Left + 4, yPos, txt);
+  end;
+end;
+
+
+procedure TFrmPrincipal.UpdateSkinMenuChecks;
+begin
+  if assigned(MenuItemSkinClassic) then
+    MenuItemSkinClassic.Checked := (CurrentSkin.Id = skClassic);
+  if assigned(MenuItemSkinTheWordDark) then
+    MenuItemSkinTheWordDark.Checked := (CurrentSkin.Id = skTheWordDark);
+  if assigned(MenuItemSkinNight) then
+    MenuItemSkinNight.Checked := (CurrentSkin.Id = skNight);
+  if assigned(MenuItemSkinSepia) then
+    MenuItemSkinSepia.Checked := (CurrentSkin.Id = skSepia);
+  if assigned(MenuItemSkinSlate) then
+    MenuItemSkinSlate.Checked := (CurrentSkin.Id = skSlate);
+  if assigned(MenuItemSkinSolarizedDark) then
+    MenuItemSkinSolarizedDark.Checked := (CurrentSkin.Id = skSolarizedDark);
+  if assigned(MenuItemSkinHighContrast) then
+    MenuItemSkinHighContrast.Checked := (CurrentSkin.Id = skHighContrastDark);
+end;
+
+procedure TFrmPrincipal.ActionToggleDarkModeExecute(Sender: TObject);
+begin
+  if CurrentSkin.IsDark then
+    SetCurrentSkin(skClassic)
+  else
+    SetCurrentSkin(skTheWordDark);
+
+  ApplyActiveSkin;
+
+  try
+    GetIniOpts.WriteString('UI', 'Theme', CurrentSkin.Name);
+    GetIniOpts.UpdateFile;
+  except
+  end;
+end;
+
+procedure TFrmPrincipal.MenuItemDarkModeClick(Sender: TObject);
+begin
+  ActionToggleDarkModeExecute(Sender);
+end;
+
+procedure TFrmPrincipal.MenuItemSkinSelectClick(Sender: TObject);
+var
+  item: TMenuItem;
+begin
+  if not (Sender is TMenuItem) then exit;
+  item := TMenuItem(Sender);
+
+  if item = MenuItemSkinClassic then SetCurrentSkin(skClassic)
+  else if item = MenuItemSkinTheWordDark then SetCurrentSkin(skTheWordDark)
+  else if item = MenuItemSkinNight then SetCurrentSkin(skNight)
+  else if item = MenuItemSkinSepia then SetCurrentSkin(skSepia)
+  else if item = MenuItemSkinSlate then SetCurrentSkin(skSlate)
+  else if item = MenuItemSkinSolarizedDark then SetCurrentSkin(skSolarizedDark)
+  else if item = MenuItemSkinHighContrast then SetCurrentSkin(skHighContrastDark);
+
+  ApplyActiveSkin;
+
+  try
+    GetIniOpts.WriteString('UI', 'Theme', CurrentSkin.Name);
+    GetIniOpts.UpdateFile;
+  except
+  end;
 end;
 
 procedure TFrmPrincipal.MenuItemPopupTriggerClick(Sender: TObject);
@@ -1004,6 +2538,19 @@ end;
 
 procedure TFrmPrincipal.QuandoNovoVersiculo(Sender: TProjeto);
 begin
+  if Assigned(Sender) and Assigned(ChapterViewTabCtrl) and
+     (ChapterViewTabCtrl.TabIndex <> Ord(Sender.ChapterViewText)) then
+  begin
+    ChapterViewTabCtrl.TabIndex := Ord(Sender.ChapterViewText);
+    if Assigned(BtnTabSource) then
+    begin
+      BtnTabSource.Down := (ChapterViewTabCtrl.TabIndex = 0);
+      BtnTabDest.Down   := (ChapterViewTabCtrl.TabIndex = 1);
+      BtnTabRef1.Down   := (ChapterViewTabCtrl.TabIndex = 2);
+      BtnTabRef2.Down   := (ChapterViewTabCtrl.TabIndex = 3);
+      UpdateContextTabButtons;
+    end;
+  end;
   ActionQuandoNovoVersiculoExecute(nil);
 end;
 
@@ -1113,7 +2660,14 @@ end;
 procedure TFrmPrincipal.RadioGroupStatusSelectionChanged(Sender: TObject);
 begin
   if ProjetoAtual <> nil then
+  begin
     ProjetoAtual.Situacao := RadioGroupStatus.ItemIndex;
+    ProjetoAtual.SyncDestinoStatusBar;
+    AtualizarItensFiltro;
+  end;
+  {$IFDEF WINDOWS}
+  HookRadioGroupStatus;
+  {$ENDIF}
 end;
 
 procedure TFrmPrincipal.ChapterViewTabCtrlChange(Sender: TObject);
@@ -1130,8 +2684,21 @@ end;
 {$IFDEF WINDOWS}
 procedure TFrmPrincipal.SyncToTwRef(Ref: string);
 begin
-  if (ProjetoAtual <> nil) then
-    ProjetoAtual.GoToReference(Ref);
+  if FNavigatingVerse or FSyncingFromTw then
+    Exit;
+  if (ProjetoAtual = nil) or (not ProjetoAtual.ScrollEventsEnabled) then
+    Exit;
+
+  if (ProjetoAtual <> nil) and (Ref <> '') and (ProjetoAtual.ID <> Ref) then
+  begin
+    FSyncingFromTw := True;
+    try
+      ProjetoAtual.GoToReference(Ref);
+      ProjetoAtual.SelectTreeNode(Ref);
+    except
+    end;
+    FSyncingFromTw := False;
+  end;
 end;
 
 procedure TFrmPrincipal.SetUpSyncThread;
@@ -1156,18 +2723,41 @@ end;
 {$ENDIF}
 
 procedure TFrmPrincipal.Translate;
-var i: Integer;
+var
+  i: Integer;
+  savedSituacao: Integer;
 begin
   UpdateDefaultSituacaoDescricao;
-  with RadioGroupStatus.Items do
-  begin
-    Clear;
+
+  RadioGroupStatus.OnSelectionChanged := nil;
+  try
+    savedSituacao := -1;
     if Assigned(ProjetoAtual) then
+      savedSituacao := ProjetoAtual.Situacao;
+
+    with RadioGroupStatus.Items do
     begin
-      for i := 0 to 3 do
-        Add(ProjetoAtual.GetSituacaoDescricao(i));
+      Clear;
+      if Assigned(ProjetoAtual) then
+      begin
+        for i := 0 to 3 do
+          Add(ProjetoAtual.GetSituacaoDescricao(i));
+      end
+      else
+      begin
+        Add(SStatusNotAssociated);
+        Add(SStatusAssociating);
+        Add(SStatusNeedsReview);
+        Add(SStatusAssociated);
+      end;
     end;
+
+    if (savedSituacao >= 0) and (savedSituacao <= 3) then
+      RadioGroupStatus.ItemIndex := savedSituacao;
+  finally
+    RadioGroupStatus.OnSelectionChanged := @RadioGroupStatusSelectionChanged;
   end;
+
   with ChapterViewTabCtrl do
   begin
     Tabs.Clear;
@@ -1177,6 +2767,26 @@ begin
     Tabs.Add(SReference2Text);
     Tabs.Add(SInterlinearText);
   end;
+
+  if Assigned(MenuItemGlobalDicts) then
+  begin
+    if language = 'pt' then
+      MenuItemGlobalDicts.Caption := 'Dicionários Padrão...'
+    else
+      MenuItemGlobalDicts.Caption := 'Default Dictionaries...';
+  end;
+
+  if Assigned(MenuItemUserGuide) then
+  begin
+    if language = 'pt' then
+      MenuItemUserGuide.Caption := 'Guia de Novos Recursos...'
+    else
+      MenuItemUserGuide.Caption := 'New Features User Guide...';
+  end;
+
+  if Assigned(FormUserGuide) then
+    FormUserGuide.UpdateLanguage(language);
+
   if assigned(FormNovoProjeto1) then
     FormNovoProjeto1.Translate;
   if assigned(FormPropProjeto1) then
@@ -1185,24 +2795,44 @@ begin
     ProjetoAtual.Translate;
   if assigned(FChapterView) then
     FChapterView.Translate;
+
+  AtualizarItensFiltro;
 end;
 
 procedure TFrmPrincipal.DoOpenProject(filename: string);
+var
+  savedFilter: Integer;
+  pFilter: string;
 begin
   ProjetoAtual := TProjeto.Criar([ScrollBoxSrcVerse, ScrollBoxDstVerse, ScrollBoxRef1Verse, ScrollBoxRef2Verse], TreeView1, RadioGroupStatus, CommentsMemo);
+  ProjetoAtual.ApplySkin(CurrentSkin);
   ProjetoAtual.OnNewVerseSubscribe(@QuandoNovoVersiculo);
   ProjetoAtual.OnAlterarVersiculo := @QuandoAlterarVersiculo;
   ProjetoAtual.OnSintagmaClick := @QuandoPalavraClicada;
+  ProjetoAtual.OnSintagmaMouseEnter := @QuandoPalavraHovered;
+    ProjetoAtual.OnSintagmaMouseEnter := @QuandoPalavraHovered;
   ProjetoAtual.PalavrasComStrongEmNegrito := MenuItemStrongNegrito.Checked;
   ProjetoAtual.MostrarQtdStrongs := FStrongsCountMode;
   ProjetoAtual.AutoSave := MenuItemAutoSave.Checked;
 
   ProjetoAtual.Abrir(filename);
+  {$IFDEF WINDOWS}
+  HookRadioGroupStatus;
+  {$ENDIF}
+  AplicarDicionariosGlobais(ProjetoAtual);
   ProjetoAtual.ExibirDefinicoesSoComCtrl := MenuItemDictPopup.Checked;
   ProjetoAtual.SugerirAssociacaoAutomaticamente := MenuItem22.Checked;
   ProjetoAtual.PopupTrigger := FPopupTrigger;
 
   ChapterViewTabCtrl.TabIndex := Ord(ProjetoAtual.ChapterViewText);
+  if assigned(BtnTabSource) then
+  begin
+    BtnTabSource.Down := (ChapterViewTabCtrl.TabIndex = 0);
+    BtnTabDest.Down   := (ChapterViewTabCtrl.TabIndex = 1);
+    BtnTabRef1.Down   := (ChapterViewTabCtrl.TabIndex = 2);
+    BtnTabRef2.Down   := (ChapterViewTabCtrl.TabIndex = 3);
+    UpdateContextTabButtons;
+  end;
   FChapterView.Project := ProjetoAtual;
   FChapterView.Enabled := true;
 
@@ -1221,8 +2851,36 @@ begin
   ActionRecriarBaseSugestoes.Enabled := true;
   ActionExportPatch.Enabled := true;
   ActionApplyPatch.Enabled := true;
+  ActionFindInProject.Enabled := true;
   //ActionExportarDestinoComStrongs.Enabled := true;
   //ActionExportarTextoInterlinear.Enabled := true;
+  ComboBoxStatusFilter.Enabled := true;
+  ActionVersoSeguinteFiltrado.Enabled := true;
+  ActionVersoAnteriorFiltrado.Enabled := true;
+  SpeedButtonNextFiltered.Enabled := true;
+  SpeedButtonPrevFiltered.Enabled := true;
+  AtualizarItensFiltro;
+
+  savedFilter := 0;
+  if Assigned(ProjetoAtual) then
+  begin
+    pFilter := ProjetoAtual.ObterInfo('filter_status');
+    if pFilter <> '' then
+      savedFilter := StrToIntDef(pFilter, 0)
+    else if Assigned(opts) then
+      savedFilter := opts.ReadInteger('opcoes', 'filterstatus', 0);
+  end
+  else if Assigned(opts) then
+    savedFilter := opts.ReadInteger('opcoes', 'filterstatus', 0);
+
+  if (savedFilter >= 0) and (savedFilter < ComboBoxStatusFilter.Items.Count) then
+    ComboBoxStatusFilter.ItemIndex := savedFilter
+  else
+    ComboBoxStatusFilter.ItemIndex := 0;
+
+  if ComboBoxStatusFilter.ItemIndex > 0 then
+    ComboBoxStatusFilterChange(ComboBoxStatusFilter);
+
   StatusBar1.SimpleText := '';
 
   {ScrollBoxRef1Verse.Visible := false;
@@ -1230,10 +2888,245 @@ begin
   ScrollBoxRef2Verse.Visible := false;
   Splitter4.Visible := false;}
 
+  ApplyActiveSkin;
+
   {$IFDEF WINDOWS}
   SetUpSyncThread;
   {$ENDIF}
 end;
 
-end.
 
+procedure TFrmPrincipal.ComboBoxStatusFilterChange(Sender: TObject);
+begin
+  if ProjetoAtual = nil then exit;
+  case ComboBoxStatusFilter.ItemIndex of
+    0: ProjetoAtual.FiltrarArvore(-1);
+    1: ProjetoAtual.FiltrarArvore(0);
+    2: ProjetoAtual.FiltrarArvore(1);
+    3: ProjetoAtual.FiltrarArvore(2);
+    4: ProjetoAtual.FiltrarArvore(3);
+  else
+    ProjetoAtual.FiltrarArvore(-1);
+  end;
+  AtualizarContadorFiltro;
+  if Assigned(opts) then
+    opts.WriteInteger('opcoes', 'filterstatus', ComboBoxStatusFilter.ItemIndex);
+  ProjetoAtual.AtribuirInfo('filter_status', IntToStr(ComboBoxStatusFilter.ItemIndex));
+end;
+
+procedure TFrmPrincipal.SpeedButtonNextFilteredClick(Sender: TObject);
+begin
+  ActionVersoSeguinteFiltrado.Execute;
+end;
+
+procedure TFrmPrincipal.SpeedButtonPrevFilteredClick(Sender: TObject);
+begin
+  ActionVersoAnteriorFiltrado.Execute;
+end;
+
+procedure TFrmPrincipal.ActionVersoSeguinteFiltradoExecute(Sender: TObject);
+var
+  status: Integer;
+begin
+  if ProjetoAtual = nil then exit;
+  case ComboBoxStatusFilter.ItemIndex of
+    1: status := 0;
+    2: status := 1;
+    3: status := 2;
+    4: status := 3;
+  else
+    status := -1;
+  end;
+
+  FNavigatingVerse := True;
+  try
+    if status = -1 then
+      ProjetoAtual.VersiculoSeguinte
+    else
+    begin
+      if not ProjetoAtual.IrParaVersiculoSeguinteComSituacao(status) then
+        ThemedShowMessage(Format(SNoMoreVersesWithStatus, [RadioGroupStatus.Items[status]]));
+    end;
+  finally
+    FNavigatingVerse := False;
+  end;
+end;
+
+procedure TFrmPrincipal.ActionVersoAnteriorFiltradoExecute(Sender: TObject);
+var
+  status: Integer;
+begin
+  if ProjetoAtual = nil then exit;
+  case ComboBoxStatusFilter.ItemIndex of
+    1: status := 0;
+    2: status := 1;
+    3: status := 2;
+    4: status := 3;
+  else
+    status := -1;
+  end;
+
+  if status = -1 then
+    ProjetoAtual.VersiculoAnterior
+  else
+  begin
+    if not ProjetoAtual.IrParaVersiculoAnteriorComSituacao(status) then
+      ShowMessage(Format(SNoPrecedingVersesWithStatus, [RadioGroupStatus.Items[status]]));
+  end;
+end;
+
+procedure TFrmPrincipal.AtualizarContadorFiltro;
+var
+  status: Integer;
+  cnt: Integer;
+begin
+  if ProjetoAtual = nil then
+  begin
+    LabelFilterCount.Caption := '';
+    exit;
+  end;
+
+  case ComboBoxStatusFilter.ItemIndex of
+    1: status := 0;
+    2: status := 1;
+    3: status := 2;
+    4: status := 3;
+  else
+    status := -1;
+  end;
+
+  if status = -1 then
+    LabelFilterCount.Caption := Format('%d verses', [ProjetoAtual.TotalVersiculos])
+  else
+  begin
+    cnt := ProjetoAtual.ContarVersiculosPorSituacao(status);
+    LabelFilterCount.Caption := Format('%d found', [cnt]);
+  end;
+end;
+
+procedure TFrmPrincipal.AtualizarItensFiltro;
+var
+  savedIndex: Integer;
+begin
+  if ProjetoAtual = nil then exit;
+  savedIndex := ComboBoxStatusFilter.ItemIndex;
+  ComboBoxStatusFilter.Items.BeginUpdate;
+  try
+    ComboBoxStatusFilter.Items.Clear;
+    ComboBoxStatusFilter.Items.Add(Format('%s (%d)', [SStatusAllVerses, ProjetoAtual.TotalVersiculos]));
+    ComboBoxStatusFilter.Items.Add(Format('%s (%d)', [ProjetoAtual.GetSituacaoDescricao(0), ProjetoAtual.ContarVersiculosPorSituacao(0)]));
+    ComboBoxStatusFilter.Items.Add(Format('%s (%d)', [ProjetoAtual.GetSituacaoDescricao(1), ProjetoAtual.ContarVersiculosPorSituacao(1)]));
+    ComboBoxStatusFilter.Items.Add(Format('%s (%d)', [ProjetoAtual.GetSituacaoDescricao(2), ProjetoAtual.ContarVersiculosPorSituacao(2)]));
+    ComboBoxStatusFilter.Items.Add(Format('%s (%d)', [ProjetoAtual.GetSituacaoDescricao(3), ProjetoAtual.ContarVersiculosPorSituacao(3)]));
+  finally
+    ComboBoxStatusFilter.Items.EndUpdate;
+    if (savedIndex >= 0) and (savedIndex < ComboBoxStatusFilter.Items.Count) then
+      ComboBoxStatusFilter.ItemIndex := savedIndex
+    else
+      ComboBoxStatusFilter.ItemIndex := 0;
+  end;
+  AtualizarContadorFiltro;
+end;
+
+
+procedure TFrmPrincipal.NavegarParaVersiculo(const ARef: string);
+begin
+  if (ProjetoAtual = nil) or (ARef = '') then exit;
+  ProjetoAtual.GoToReference(ARef);
+  ProjetoAtual.SelectTreeNode(ARef);
+  ActionQuandoNovoVersiculoExecute(nil);
+end;
+
+procedure TFrmPrincipal.ActionFindInProjectExecute(Sender: TObject);
+begin
+  if ProjetoAtual = nil then
+  begin
+    ShowMessage('Please open a project first to use Find in Project.');
+    exit;
+  end;
+  ShowSearchDialog(Self, ProjetoAtual);
+end;
+
+
+
+procedure TFrmPrincipal.MenuItemTTSClick(Sender: TObject);
+begin
+  if TTSManager <> nil then
+  begin
+    TTSManager.Enabled := not TTSManager.Enabled;
+    MenuItemTTS.Checked := TTSManager.Enabled;
+    if Assigned(opts) then
+      TTSManager.SaveToIni(opts);
+  end;
+end;
+
+procedure TFrmPrincipal.MenuItemTTSSettingsClick(Sender: TObject);
+begin
+  if ShowVoiceSettingsDialog(Self) then
+  begin
+    if TTSManager <> nil then
+    begin
+      MenuItemTTS.Checked := TTSManager.Enabled;
+      if Assigned(opts) then
+        TTSManager.SaveToIni(opts);
+    end;
+  end;
+end;
+
+function TFrmPrincipal.GetIniOpts: TIniFile;
+begin
+  Result := opts;
+end;
+
+procedure TFrmPrincipal.MenuItemGlobalDictsClick(Sender: TObject);
+begin
+  if ShowGlobalDictsDialog(Self, opts) then
+  begin
+    FUseGlobalDicts := opts.ReadBool('dicionarios', 'use_default', opts.ReadBool('dicionarios', 'use_global', True));
+    FGlobalStrongGreek := opts.ReadString('dicionarios', 'default_strong_greek', opts.ReadString('dicionarios', 'global_strong_greek', ''));
+    FGlobalStrongHebrew := opts.ReadString('dicionarios', 'default_strong_hebrew', opts.ReadString('dicionarios', 'global_strong_hebrew', ''));
+    FGlobalMorphology := opts.ReadString('dicionarios', 'default_morphology', opts.ReadString('dicionarios', 'global_morphology', ''));
+    FGlobalEnglishDict := opts.ReadString('dicionarios', 'default_english_dict', opts.ReadString('dicionarios', 'global_english_dict', ''));
+    if Assigned(ProjetoAtual) then
+    begin
+      AplicarDicionariosGlobais(ProjetoAtual);
+      ProjetoAtual.Atualizar;
+    end;
+  end;
+end;
+
+procedure TFrmPrincipal.AplicarDicionariosGlobais(p: TProjeto);
+begin
+  if (p = nil) or (opts = nil) then Exit;
+  p.ConfigurarDicionariosGlobais(FUseGlobalDicts, FGlobalStrongGreek, FGlobalStrongHebrew, FGlobalMorphology, FGlobalEnglishDict);
+end;
+
+procedure TFrmPrincipal.QuandoPalavraHovered(Sender: TSyntagm);
+var
+  isSource: Boolean;
+  triggerOk: Boolean;
+begin
+  if (TTSManager = nil) or not TTSManager.Enabled or (Sender = nil) then
+    exit;
+
+  case TTSManager.TriggerMode of
+    ttsmHover:
+      triggerOk := (GetKeyState(VK_CONTROL) >= 0) and (GetKeyState(VK_MENU) >= 0);
+    ttsmCtrlHover:
+      triggerOk := (GetKeyState(VK_CONTROL) < 0);
+    ttsmAltHover:
+      triggerOk := (GetKeyState(VK_MENU) < 0);
+  else
+    triggerOk := True;
+  end;
+
+  if not triggerOk then exit;
+
+  isSource := False;
+  if Assigned(ProjetoAtual) then
+    isSource := ProjetoAtual.IsSourceSyntagm(Sender);
+
+  TTSManager.SpeakSyntagm(Sender.Text, isSource);
+end;
+
+end.

@@ -1710,3 +1710,55 @@ msgstr "Texto da direita para a esquerda"
 #: versiculo.ssavetofile
 msgid "&Save text to file..."
 msgstr "&Exportar texto para arquivo..."
+
+#: versiculo.sexportasbiblemodule
+msgid "&Export as Bible module..."
+msgstr "&Exportar como módulo da Bíblia..."
+
+#: projeto.sexportbiblemodulesavedlgtitle
+msgid "Export as Bible module"
+msgstr "Exportar como módulo da Bíblia"
+
+#: tfrmprincipal.menuitemview.caption
+msgid "View"
+msgstr "Exibir"
+
+#: tfrmprincipal.menuitemdarkmode.caption
+msgid "Dark mode"
+msgstr "Modo escuro"
+
+#: tfrmprincipal.menuitemdarkmode.hint
+msgid "Toggle dark mode on or off (Ctrl+Shift+D)"
+msgstr "Alternar modo escuro ativado ou desativado (Ctrl+Shift+D)"
+
+#: tfrmprincipal.menuitemskinsmenu.caption
+msgid "Skins (theWord Themes)"
+msgstr "Temas (Temas do theWord)"
+
+#: tfrmprincipal.menuitemskinclassic.caption
+msgid "Classic (Light)"
+msgstr "Clássico (Claro)"
+
+#: tfrmprincipal.menuitemskintheworddark.caption
+msgid "theWord Dark (Charcoal)"
+msgstr "theWord Escuro (Carvão)"
+
+#: tfrmprincipal.menuitemskinnight.caption
+msgid "Night (Pitch Black)"
+msgstr "Noite (Preto Profundo)"
+
+#: tfrmprincipal.menuitemskinsepia.caption
+msgid "Sepia (Parchment)"
+msgstr "Sépia (Pergaminho)"
+
+#: tfrmprincipal.menuitemskinslate.caption
+msgid "Slate (Steel Blue)"
+msgstr "Ardósia (Azul Petróleo)"
+
+#: tfrmprincipal.menuitemskinsolarizeddark.caption
+msgid "Solarized Dark"
+msgstr "Solarized Escuro"
+
+#: tfrmprincipal.menuitemskinhighcontrast.caption
+msgid "High Contrast Dark"
+msgstr "Alto Contraste Escuro"

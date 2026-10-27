@@ -5,8 +5,9 @@ unit formexportpatch;
 interface
 
 uses
+  unitskins,
   Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  ComCtrls, Projeto, LazLogger, BibleTreeView, PatchFile, LCLIntf;
+  ComCtrls, ExtCtrls, Projeto, LazLogger, BibleTreeView, PatchFile, LCLIntf;
 
 type
 
@@ -116,6 +117,38 @@ begin
   Position := poScreenCenter; // necessary to force alignment after setting height
   Height := Trunc(FrmPrincipal.Height * 0.9);
   Position := poMainFormCenter;
+
+  ApplySkinToForm(Self, CurrentSkin);
+  {$IFDEF WINDOWS}
+  HookButtonControl(Button1);
+  HookButtonControl(Button2);
+  HookButtonControl(BtnSelectAll);
+  HookButtonControl(BtnDeselectAll);
+  {$ENDIF}
+  if IsThemedSkin then
+  begin
+    Button1.Font.Color := CurrentSkin.PanelText;
+    Button2.Font.Color := CurrentSkin.PanelText;
+    BtnSelectAll.Font.Color := CurrentSkin.PanelText;
+    BtnDeselectAll.Font.Color := CurrentSkin.PanelText;
+    GroupBox1.Color := CurrentSkin.PanelBg;
+    GroupBox1.Font.Color := CurrentSkin.PanelText;
+  end;
+  if Assigned(FBibleTreeView) then
+  begin
+    FBibleTreeView.UpdateSkin(CurrentSkin);
+    {$IFDEF WINDOWS}
+    HookTreeViewControl(FBibleTreeView);
+    if FBibleTreeView.HandleAllocated then
+    begin
+      SendMessage(FBibleTreeView.Handle, $111E, 0, ColorToRGB(CurrentSkin.TreeText));
+      SendMessage(FBibleTreeView.Handle, $111D, 0, ColorToRGB(CurrentSkin.TreeBg));
+      SendMessage(FBibleTreeView.Handle, $1128, 0, ColorToRGB(CurrentSkin.PanelBorder));
+    end;
+    {$ENDIF}
+    ApplyDarkModeToControl(FBibleTreeView, CurrentSkin.IsDark);
+    FBibleTreeView.Invalidate;
+  end;
 end;
 
 procedure TFormExportPatch.BtnSelectAllClick(Sender: TObject);

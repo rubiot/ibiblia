@@ -23,6 +23,7 @@ object frmPrincipal: TfrmPrincipal
     Width = 943
     AutoHint = True
     Panels = <>
+    Visible = False
   end
   object ToolBar1: TToolBar
     Left = 0
@@ -33,6 +34,9 @@ object frmPrincipal: TfrmPrincipal
     ButtonHeight = 32
     ButtonWidth = 32
     Caption = 'ToolBar1'
+    EdgeBorders = []
+    Flat = True
+    Transparent = True
     Images = ImageList1
     ParentShowHint = False
     ShowHint = True
@@ -103,26 +107,28 @@ object frmPrincipal: TfrmPrincipal
     Width = 943
     Align = alBottom
     Anchors = [akTop, akLeft, akRight, akBottom]
-    Caption = 'Panel1'
+    BevelOuter = bvNone
+    Caption = ''
     ClientHeight = 593
     ClientWidth = 943
     TabOrder = 2
     object CenterPanel: TPanel
       Left = 144
       Height = 591
-      Top = 1
+      Top = 0
       Width = 488
       Align = alClient
-      Caption = 'CenterPanel'
+      BevelOuter = bvNone
+      Caption = ''
       ClientHeight = 591
       ClientWidth = 488
       TabOrder = 0
       object ScrollBoxSrcVerse: TScrollBox
         AnchorSideBottom.Control = Splitter2
-        Left = 1
-        Height = 117
-        Top = 1
-        Width = 486
+        Left = 0
+        Height = 118
+        Top = 0
+        Width = 488
         HorzScrollBar.Page = 1
         VertScrollBar.Page = 1
         Align = alTop
@@ -142,7 +148,7 @@ object frmPrincipal: TfrmPrincipal
         Left = 0
         Height = 114
         Top = 123
-        Width = 485
+        Width = 488
         HorzScrollBar.Page = 1
         VertScrollBar.Page = 1
         Anchors = [akTop, akLeft, akRight, akBottom]
@@ -157,10 +163,10 @@ object frmPrincipal: TfrmPrincipal
         AnchorSideTop.Control = Splitter3
         AnchorSideTop.Side = asrBottom
         AnchorSideBottom.Control = Splitter4
-        Left = 1
+        Left = 0
         Height = 110
         Top = 242
-        Width = 485
+        Width = 488
         HorzScrollBar.Page = 1
         VertScrollBar.Page = 1
         Anchors = [akTop, akLeft, akRight, akBottom]
@@ -174,10 +180,10 @@ object frmPrincipal: TfrmPrincipal
       object ScrollBoxRef2Verse: TScrollBox
         AnchorSideTop.Control = Splitter4
         AnchorSideTop.Side = asrBottom
-        Left = 1
+        Left = 0
         Height = 114
         Top = 357
-        Width = 486
+        Width = 488
         HorzScrollBar.Page = 1
         VertScrollBar.Page = 1
         Align = alBottom
@@ -190,90 +196,81 @@ object frmPrincipal: TfrmPrincipal
         TabOrder = 3
       end
       object Splitter2: TSplitter
+      Beveled = False
         AnchorSideBottom.Control = ScrollBoxDstVerse
         Cursor = crVSplit
-        Left = 1
+        Left = 0
         Height = 5
         Top = 118
-        Width = 485
+        Width = 488
         Align = alNone
         Anchors = [akTop, akLeft, akRight]
         ResizeAnchor = akTop
       end
       object Splitter3: TSplitter
+      Beveled = False
         Cursor = crVSplit
-        Left = 1
+        Left = 0
         Height = 5
         Top = 237
-        Width = 485
+        Width = 488
         Align = alNone
         Anchors = [akTop, akLeft, akRight]
         ResizeAnchor = akBottom
       end
       object Splitter4: TSplitter
+      Beveled = False
         Cursor = crVSplit
         Left = 0
         Height = 5
         Top = 352
-        Width = 485
+        Width = 488
         Align = alNone
         Anchors = [akTop, akLeft, akRight]
         ResizeAnchor = akTop
       end
       object BottomPanel: TPanel
-        Left = 1
+        Left = 0
         Height = 114
         Top = 476
-        Width = 486
+        Width = 488
         Align = alBottom
-        Caption = 'BottomPanel'
+        BevelOuter = bvNone
+        Caption = ''
         ClientHeight = 114
-        ClientWidth = 486
+        ClientWidth = 488
         TabOrder = 7
         object CommentsMemo: TMemo
           Left = 1
           Height = 112
           Top = 1
-          Width = 370
+          Width = 484
           Align = alClient
           Enabled = False
           TabOrder = 0
         end
         object RadioGroupStatus: TRadioGroup
-          Left = 371
-          Height = 112
-          Top = 1
-          Width = 114
-          Align = alRight
-          Anchors = [akRight, akBottom]
-          AutoFill = True
-          AutoSize = True
+          Left = 0
+          Height = 0
+          Top = 0
+          Width = 0
+          Align = alNone
+          Visible = False
           Caption = 'Status'
-          ChildSizing.LeftRightSpacing = 6
-          ChildSizing.TopBottomSpacing = 6
-          ChildSizing.VerticalSpacing = 1
-          ChildSizing.EnlargeHorizontal = crsHomogenousChildResize
-          ChildSizing.EnlargeVertical = crsHomogenousChildResize
-          ChildSizing.ShrinkHorizontal = crsScaleChilds
-          ChildSizing.ShrinkVertical = crsScaleChilds
-          ChildSizing.Layout = cclTopToBottomThenLeftToRight
-          ChildSizing.ControlsPerLine = 4
-          ClientHeight = 92
-          ClientWidth = 110
-          ColumnLayout = clVerticalThenHorizontal
           Enabled = False
           ItemIndex = 0
           Items.Strings = (
             'Not associated'
             'Associating'
             'Needs review'
-            'Associated!'
+            'Associated'
           )
           OnSelectionChanged = RadioGroupStatusSelectionChanged
           TabOrder = 1
         end
       end
       object Splitter5: TSplitter
+      Beveled = False
         Cursor = crVSplit
         Left = 1
         Height = 5
@@ -285,24 +282,119 @@ object frmPrincipal: TfrmPrincipal
       end
     end
     object Splitter1: TSplitter
+      Beveled = False
       Left = 139
       Height = 591
       Top = 1
       Width = 5
     end
-    object TreeView1: TTreeView
+    object PanelTreeNav: TPanel
       Left = 1
       Height = 591
       Top = 1
       Width = 138
       Align = alLeft
-      Enabled = False
-      Images = ImageListTreeView
-      ReadOnly = True
+      BevelOuter = bvNone
+      Caption = ''
+      ClientHeight = 591
+      ClientWidth = 138
       TabOrder = 2
-      Options = [tvoAutoItemHeight, tvoHideSelection, tvoKeepCollapsedNodes, tvoReadOnly, tvoShowButtons, tvoShowLines, tvoShowRoot, tvoToolTips, tvoThemedDraw]
+      object PanelFilter: TPanel
+        Left = 0
+        Height = 56
+        Top = 0
+        Width = 138
+        Align = alTop
+        BevelOuter = bvNone
+        Caption = ''
+        ClientHeight = 56
+        ClientWidth = 138
+        TabOrder = 0
+        object ComboBoxStatusFilter: TComboBox
+          Left = 2
+          Height = 23
+          Top = 2
+          Width = 134
+          Align = alTop
+          ItemHeight = 15
+          ItemIndex = 0
+          Items.Strings = (
+            'All verses'
+            'Not associated'
+            'Associating'
+            'Needs review'
+            'Associated!'
+          )
+          OnChange = ComboBoxStatusFilterChange
+          OnDrawItem = ComboBoxStatusFilterDrawItem
+          ReadOnly = True
+          Style = csOwnerDrawFixed
+          TabOrder = 0
+        end
+        object PanelFilterButtons: TPanel
+          Left = 0
+          Height = 27
+          Top = 27
+          Width = 138
+          Align = alClient
+          BevelOuter = bvNone
+          Caption = ''
+          ClientHeight = 27
+          ClientWidth = 138
+          TabOrder = 1
+          object SpeedButtonPrevFiltered: TSpeedButton
+            Left = 2
+            Height = 24
+            Hint = 'Previous verse with status'
+            Top = 1
+            Width = 26
+            Caption = '<'
+            Enabled = False
+            Flat = True
+            OnClick = SpeedButtonPrevFilteredClick
+          end
+          object SpeedButtonNextFiltered: TSpeedButton
+            Left = 30
+            Height = 24
+            Hint = 'Next verse with status'
+            Top = 1
+            Width = 26
+            Caption = '>'
+            Enabled = False
+            Flat = True
+            OnClick = SpeedButtonNextFilteredClick
+          end
+          object LabelFilterCount: TLabel
+            Left = 60
+            Height = 15
+            Top = 6
+            Width = 74
+            Alignment = taRightJustify
+            Anchors = [akTop, akLeft, akRight]
+            Caption = ''
+            ParentColor = False
+          end
+        end
+      end
+      object TreeView1: TTreeView
+        Left = 0
+        Height = 535
+        Top = 56
+        Width = 138
+        Align = alClient
+        Enabled = False
+        Images = ImageListTreeView
+        ReadOnly = True
+        TabOrder = 1
+        ExpandSignColor = clSilver
+        ExpandSignType = tvestArrowFill
+        TreeLineColor = clGray
+        OnCustomDrawItem = TreeView1CustomDrawItem
+        Options = [tvoAutoItemHeight, tvoHideSelection, tvoKeepCollapsedNodes, tvoReadOnly, tvoShowButtons, tvoShowLines, tvoShowRoot, tvoToolTips]
+      end
     end
     object Splitter6: TSplitter
+      Beveled = False
       Left = 632
       Height = 591
       Top = 1
@@ -316,26 +408,75 @@ object frmPrincipal: TfrmPrincipal
       Top = 1
       Width = 305
       Align = alRight
+      BevelOuter = bvNone
       ClientHeight = 591
       ClientWidth = 305
       ParentColor = False
       TabOrder = 4
-      object ChapterViewTabCtrl: TTabControl
-        Left = 1
-        Height = 589
-        Top = 1
-        Width = 303
-        OnChange = ChapterViewTabCtrlChange
-        TabIndex = 0
-        Tabs.Strings = (
-          'Source'
-          'Destination'
-          'Reference1'
-          'Reference2'
-        )
-        Align = alClient
-        ParentShowHint = False
+      object PanelContextTabs: TPanel
+        Left = 0
+        Height = 28
+        Top = 0
+        Width = 305
+        Align = alTop
+        BevelOuter = bvNone
+        ClientHeight = 28
+        ClientWidth = 305
         TabOrder = 0
+        object BtnTabSource: TSpeedButton
+          Tag = 0
+          Left = 2
+          Height = 24
+          Top = 2
+          Width = 70
+          Caption = 'Source'
+          Down = True
+          Flat = True
+          GroupIndex = 1
+          OnClick = OnContextTabButtonClick
+        end
+        object BtnTabDest: TSpeedButton
+          Tag = 1
+          Left = 74
+          Height = 24
+          Top = 2
+          Width = 84
+          Caption = 'Destination'
+          Flat = True
+          GroupIndex = 1
+          OnClick = OnContextTabButtonClick
+        end
+        object BtnTabRef1: TSpeedButton
+          Tag = 2
+          Left = 160
+          Height = 24
+          Top = 2
+          Width = 68
+          Caption = 'Ref 1'
+          Flat = True
+          GroupIndex = 1
+          OnClick = OnContextTabButtonClick
+        end
+        object BtnTabRef2: TSpeedButton
+          Tag = 3
+          Left = 230
+          Height = 24
+          Top = 2
+          Width = 68
+          Caption = 'Ref 2'
+          Flat = True
+          GroupIndex = 1
+          OnClick = OnContextTabButtonClick
+        end
+      end
+      object ChapterViewTabCtrl: TTabControl
+        Left = 0
+        Height = 1
+        Top = 28
+        Width = 305
+        Align = alTop
+        Visible = False
+        TabOrder = 1
       end
     end
   end
@@ -411,6 +552,12 @@ object frmPrincipal: TfrmPrincipal
       object MenuItem13: TMenuItem
         Action = ActionLimparAssociacoes
       end
+      object MenuItemFindSep: TMenuItem
+        Caption = '-'
+      end
+      object MenuItemFindInProject: TMenuItem
+        Action = ActionFindInProject
+      end
     end
     object MenuItem5: TMenuItem
       Caption = 'Navigation'
@@ -425,6 +572,63 @@ object frmPrincipal: TfrmPrincipal
       end
       object MenuItem15: TMenuItem
         Action = ActionVersoUltimo
+      end
+      object MenuItemNavSep: TMenuItem
+        Caption = '-'
+      end
+      object MenuItemNavNextFiltered: TMenuItem
+        Action = ActionVersoSeguinteFiltrado
+      end
+      object MenuItemNavPrevFiltered: TMenuItem
+        Action = ActionVersoAnteriorFiltrado
+      end
+    end
+    object MenuItemView: TMenuItem
+      Caption = 'View'
+      object MenuItemSkinsMenu: TMenuItem
+        Caption = 'Skins (theWord Themes)'
+        object MenuItemSkinClassic: TMenuItem
+          Caption = 'Classic (Light)'
+          GroupIndex = 1
+          RadioItem = True
+          OnClick = MenuItemSkinSelectClick
+        end
+        object MenuItemSkinTheWordDark: TMenuItem
+          Caption = 'theWord Dark (Charcoal)'
+          GroupIndex = 1
+          RadioItem = True
+          OnClick = MenuItemSkinSelectClick
+        end
+        object MenuItemSkinNight: TMenuItem
+          Caption = 'Night (Pitch Black)'
+          GroupIndex = 1
+          RadioItem = True
+          OnClick = MenuItemSkinSelectClick
+        end
+        object MenuItemSkinSepia: TMenuItem
+          Caption = 'Sepia (Parchment)'
+          GroupIndex = 1
+          RadioItem = True
+          OnClick = MenuItemSkinSelectClick
+        end
+        object MenuItemSkinSlate: TMenuItem
+          Caption = 'Slate (Steel Blue)'
+          GroupIndex = 1
+          RadioItem = True
+          OnClick = MenuItemSkinSelectClick
+        end
+        object MenuItemSkinSolarizedDark: TMenuItem
+          Caption = 'Solarized Dark'
+          GroupIndex = 1
+          RadioItem = True
+          OnClick = MenuItemSkinSelectClick
+        end
+        object MenuItemSkinHighContrast: TMenuItem
+          Caption = 'High Contrast Dark'
+          GroupIndex = 1
+          RadioItem = True
+          OnClick = MenuItemSkinSelectClick
+        end
       end
     end
     object MenuItem20: TMenuItem
@@ -457,6 +661,11 @@ object frmPrincipal: TfrmPrincipal
           Hint = 'Activate the popup dictionary whenever you hover the mouse pointer over a word while holding the Ctrl key'
           OnClick = MenuItemPopupTriggerClick
         end
+      end
+      object MenuItemGlobalDicts: TMenuItem
+        Caption = 'Default Dictionaries...'
+        Hint = 'Configure default Strong''s (Greek & Hebrew) and Morphology dictionaries for all Bible modules'
+        OnClick = MenuItemGlobalDictsClick
       end
       object MenuItemStrongsCount: TMenuItem
         Caption = 'Strongs count'
@@ -496,6 +705,20 @@ object frmPrincipal: TfrmPrincipal
         Hint = 'Keeps iBiblia synchronized to theWord''s current verse'
         OnClick = MenuItemSynciBibliaClick
       end
+      object MenuItemTTSSep: TMenuItem
+        Caption = '-'
+      end
+      object MenuItemTTS: TMenuItem
+        Caption = 'Read word on hover (Text-to-Speech)'
+        Hint = 'Read the word under mouse pointer using speech voice (Ctrl+T)'
+        ShortCut = 16468
+        OnClick = MenuItemTTSClick
+      end
+      object MenuItemTTSSettings: TMenuItem
+        Caption = 'Voice / Speech Settings...'
+        Hint = 'Configure speech voices, speed, volume, and trigger conditions'
+        OnClick = MenuItemTTSSettingsClick
+      end
       object MenuItemStrongNegrito: TMenuItem
         Caption = 'Words with strongs in bold'
         Hint = 'Words with associated strong''s tags are displayed in bold font'
@@ -509,6 +732,15 @@ object frmPrincipal: TfrmPrincipal
     end
     object MenuItem17: TMenuItem
       Caption = 'Help'
+      object MenuItemUserGuide: TMenuItem
+        Caption = 'New Features User Guide...'
+        Hint = 'Open the floating user guide with visual illustrations for all new features since v1.0.0.71 (F1)'
+        ShortCut = 112
+        OnClick = MenuItemUserGuideClick
+      end
+      object MenuItemHelpSep1: TMenuItem
+        Caption = '-'
+      end
       object MenuItemAbout: TMenuItem
         Caption = 'About...'
         OnClick = MenuItemAboutClick
@@ -518,6 +750,20 @@ object frmPrincipal: TfrmPrincipal
   object ActionList1: TActionList
     Left = 40
     Top = 192
+    object ActionToggleDarkMode: TAction
+      Caption = 'Toggle Dark Mode'
+      Hint = 'Toggle dark mode on or off (Ctrl+Shift+D)'
+      OnExecute = ActionToggleDarkModeExecute
+      ShortCut = 24644
+    end
+    object ActionFindInProject: TAction
+      Caption = 'Find in Project...'
+      Category = 'Edit'
+      Enabled = True
+      Hint = 'Find word, phrase, or Strong code in project (Ctrl+F)'
+      OnExecute = ActionFindInProjectExecute
+      ShortCut = 16454
+    end
     object ActionNovoProjeto: TAction
       Caption = 'New...'
       Hint = 'Create new association project'
@@ -587,6 +833,20 @@ object frmPrincipal: TfrmPrincipal
       ImageIndex = 7
       OnExecute = ActionVersoAnteriorExecute
       ShortCut = 33
+    end
+    object ActionVersoSeguinteFiltrado: TAction
+      Caption = 'Next verse with status'
+      Enabled = False
+      Hint = 'Go to next verse with status'
+      OnExecute = ActionVersoSeguinteFiltradoExecute
+      ShortCut = 119
+    end
+    object ActionVersoAnteriorFiltrado: TAction
+      Caption = 'Previous verse with status'
+      Enabled = False
+      Hint = 'Go to previous verse with status'
+      OnExecute = ActionVersoAnteriorFiltradoExecute
+      ShortCut = 8311
     end
     object ActionSugerirAssociacao: TAction
       Caption = 'Auto-associate'

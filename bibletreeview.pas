@@ -5,7 +5,7 @@ unit BibleTreeView;
 interface
 
 uses
-  Classes, SysUtils, Controls, ComCtrls, Graphics, fgl, Projeto, LResources;
+  Classes, SysUtils, Controls, ComCtrls, Graphics, fgl, Projeto, LResources, unitskins;
 
 const
   ImgIndexUnchecked = 0;
@@ -31,12 +31,17 @@ type
     procedure ToggleTreeViewCheckBoxes(node: TTreeNode);
     procedure TreeViewClick(Sender: TObject);
     procedure CreateImageList;
+    procedure TreeViewAdvancedCustomDraw(Sender: TCustomTreeView;
+      const ARect: TRect; Stage: TCustomDrawStage; var DefaultDraw: Boolean);
+    procedure TreeViewCustomDrawItem(Sender: TCustomTreeView; Node: TTreeNode;
+      State: TCustomDrawState; var DefaultDraw: Boolean);
   public
     constructor Create(AnOwner: TComponent); override;
     destructor Destroy; override;
     procedure SelectAll;
     procedure SelectNone;
     procedure SetVerseList(refs: TStringList);
+    procedure UpdateSkin(const ASkin: TSkinColors);
 
     property Scope: TEscopoTexto read FScope write SetScope;
     property VerseList: TStringList read GetVerseList write SetVerseList;
@@ -53,6 +58,63 @@ implementation
 
 uses
   LCLIntf;
+
+function CreateCheckboxBitmap(State: Integer; const ASkin: TSkinColors): TBitmap;
+var
+  rBox: TRect;
+begin
+  Result := TBitmap.Create;
+  Result.SetSize(16, 16);
+  Result.Canvas.Brush.Color := clFuchsia;
+  Result.Canvas.FillRect(0, 0, 16, 16);
+
+  rBox := Rect(1, 1, 14, 14);
+
+  if ASkin.Id <> skClassic then
+  begin
+    Result.Canvas.Brush.Style := bsSolid;
+    Result.Canvas.Brush.Color := ASkin.PanelBg;
+    Result.Canvas.FillRect(rBox);
+
+    Result.Canvas.Pen.Color := ASkin.TreeText; // Light/bright border conforming to theme
+    Result.Canvas.Pen.Width := 1;
+    Result.Canvas.Rectangle(rBox);
+
+    if State = 1 then // Checked
+    begin
+      Result.Canvas.Pen.Color := MakeRGB($2A, $A1, $98); // Bright teal/cyan checkmark
+      Result.Canvas.Pen.Width := 2;
+      Result.Canvas.Polyline([Point(3, 7), Point(6, 11), Point(12, 4)]);
+    end
+    else if State = 2 then // Partial
+    begin
+      Result.Canvas.Brush.Color := ASkin.TreeText;
+      Result.Canvas.FillRect(Rect(4, 4, 11, 11));
+    end;
+  end
+  else
+  begin
+    Result.Canvas.Brush.Style := bsSolid;
+    Result.Canvas.Brush.Color := clWhite;
+    Result.Canvas.FillRect(rBox);
+
+    Result.Canvas.Pen.Color := clGray;
+    Result.Canvas.Rectangle(rBox);
+
+    if State = 1 then
+    begin
+      Result.Canvas.Pen.Color := clGreen;
+      Result.Canvas.Pen.Width := 2;
+      Result.Canvas.Polyline([Point(3, 7), Point(6, 11), Point(12, 4)]);
+    end
+    else if State = 2 then
+    begin
+      Result.Canvas.Brush.Color := clGray;
+      Result.Canvas.FillRect(Rect(4, 4, 11, 11));
+    end;
+  end;
+end;
+
 
 { TBibleTreeView }
 
@@ -90,7 +152,7 @@ begin
           begin
             if nv.StateIndex = ImgIndexChecked then
             begin
-              result.Add(Format('%d,%d,%d', [Integer(nb.Data), Integer(nc.Data), Integer(nv.Data)]));
+              result.Add(Format('%d,%d,%d', [PtrInt(nb.Data), PtrInt(nc.Data), PtrInt(nv.Data)]));
               //DebugLn('Adding verse %s', [result[result.Count-1]]);
             end;
             nv := nv.GetNextSibling;
@@ -125,7 +187,7 @@ begin
           begin
             if nv.StateIndex = ImgIndexChecked then
             begin
-              result.Add(Integer(nv.Data));
+              result.Add(PtrInt(nv.Data));
               //DebugLn('Adding verse %s', [result[result.Count-1]]);
             end;
             nv := nv.GetNextSibling;
@@ -153,17 +215,17 @@ begin
   begin
     nb := Items.Add(nil, NLivros[FScope][b]);
     nb.StateIndex := 0;
-    nb.Data := Pointer(b + OffsetLivros[FScope] + 1);
+    nb.Data := Pointer(PtrInt(b + OffsetLivros[FScope] + 1));
     for c:=0 to QCapitulos[FScope][b]-1 do
     begin
       nc := Items.AddChild(nb, Format(SChapterFmt, [c+1]));
       nc.StateIndex := 0;
-      nc.Data := Pointer(c+1);
+      nc.Data := Pointer(PtrInt(c+1));
       for v:=0 to QVersiculos[FScope][QCapLivros[FScope][b] + c - 1]-1 do
       begin
         nv := Items.AddChild(nc, IntToStr(v+1));
         nv.StateIndex := 0;
-        nv.Data := Pointer(v+1);
+        nv.Data := Pointer(PtrInt(v+1));
       end;
     end;
   end;
@@ -185,20 +247,20 @@ begin
   begin
     Sscanf(ref, '%d,%d,%d', [@b, @c, @v]);
 
-    if (nb = nil) or (nb.Data <> Pointer(b)) then
+    if (nb = nil) or (PtrInt(nb.Data) <> b) then
     begin
       nb := Items.Add(nil, NLivros[etONT][b-1]);
-      nb.Data := Pointer(b);
+      nb.Data := Pointer(PtrInt(b));
       nc := nil;
     end;
 
-    if (nc = nil) or (nc.Data <> Pointer(c)) then
+    if (nc = nil) or (PtrInt(nc.Data) <> c) then
     begin
       nc := Items.AddChild(nb, Format(SChapterFmt, [c]));
-      nc.Data := Pointer(c);
+      nc.Data := Pointer(PtrInt(c));
     end;
 
-    Items.AddChild(nc, v.ToString).Data := Pointer(i);
+    Items.AddChild(nc, v.ToString).Data := Pointer(PtrInt(i));
     Inc(i);
   end;
   SelectAll;
@@ -252,33 +314,155 @@ begin
   end else if (htOnLabel in ht) and assigned(FOnVerseChange) then begin // node
     node := GetNodeAt(P.X, P.Y);
     if assigned(node.Parent) and assigned(node.Parent.Parent) then
-      FOnVerseChange(Integer(node.Data));
+      FOnVerseChange(PtrInt(node.Data));
   end;
 end;
 
 procedure TBibleTreeView.CreateImageList;
-  procedure AddPngFromRes(res: string);
-  var
-    SrcBmp: TBitmap;
-    Picture: TPicture;
+var
+  bmp: TBitmap;
+  iState: Integer;
+begin
+  if not Assigned(FImages) then
+    FImages := TImageList.Create(Self);
+  FImages.Clear;
+  for iState := 0 to 2 do
   begin
-    Picture := TPicture.Create;
-    SrcBmp := TBitmap.Create;
+    bmp := CreateCheckboxBitmap(iState, CurrentSkin);
     try
-      Picture.LoadFromLazarusResource(res);
-      SrcBmp.Assign(Picture.Graphic);
-      FImages.Add(SrcBmp, nil);
+      FImages.AddMasked(bmp, clFuchsia);
     finally
-      Picture.Free;
+      bmp.Free;
+    end;
+  end;
+  StateImages := FImages;
+end;
+
+procedure TBibleTreeView.UpdateSkin(const ASkin: TSkinColors);
+var
+  bmp: TBitmap;
+  iState: Integer;
+begin
+  ParentColor := False;
+  Color := ASkin.TreeBg;
+  Font.Color := ASkin.TreeText;
+  ExpandSignColor := ASkin.TreeText;
+  TreeLineColor := ASkin.PanelBorder;
+  ExpandSignType := tvestArrowFill;
+
+  if not Assigned(FImages) then
+    FImages := TImageList.Create(Self);
+  FImages.Clear;
+  for iState := 0 to 2 do
+  begin
+    bmp := CreateCheckboxBitmap(iState, ASkin);
+    try
+      FImages.AddMasked(bmp, clFuchsia);
+    finally
+      bmp.Free;
+    end;
+  end;
+  StateImages := FImages;
+  Invalidate;
+end;
+
+procedure TBibleTreeView.TreeViewAdvancedCustomDraw(Sender: TCustomTreeView;
+  const ARect: TRect; Stage: TCustomDrawStage; var DefaultDraw: Boolean);
+begin
+  if (Stage = cdPrePaint) and IsThemedSkin then
+  begin
+    Sender.Canvas.Brush.Color := CurrentSkin.TreeBg;
+    Sender.Canvas.FillRect(ARect);
+  end;
+  DefaultDraw := True;
+end;
+
+procedure TBibleTreeView.TreeViewCustomDrawItem(Sender: TCustomTreeView;
+  Node: TTreeNode; State: TCustomDrawState; var DefaultDraw: Boolean);
+var
+  rRow, rText: TRect;
+  imgX, imgY, yPos, arrowLeft, arrowTop: Integer;
+begin
+  rRow := Node.DisplayRect(False);
+  rText := Node.DisplayRect(True);
+
+  // 1. Fill row background with dark TreeBg (or Highlight/Pointed)
+  if (rRow.Right > rRow.Left) and (rRow.Bottom > rRow.Top) then
+  begin
+    Sender.Canvas.Brush.Style := bsSolid;
+    if (cdsSelected in State) then
+      Sender.Canvas.Brush.Color := CurrentSkin.HighlightBg
+    else if (cdsHot in State) then
+      Sender.Canvas.Brush.Color := CurrentSkin.PointedBg
+    else
+      Sender.Canvas.Brush.Color := CurrentSkin.TreeBg;
+    Sender.Canvas.FillRect(rRow);
+  end;
+
+  // 2. Draw expand/collapse arrow icon before checkbox if node has children
+  if Node.HasChildren then
+  begin
+    if Assigned(StateImages) then
+      imgX := rText.Left - StateImages.Width - 2
+    else
+      imgX := rText.Left - 18;
+    arrowLeft := imgX - 13;
+    arrowTop := rRow.Top + (rRow.Height - 5) div 2;
+
+    Sender.Canvas.Brush.Style := bsSolid;
+    Sender.Canvas.Brush.Color := CurrentSkin.TreeText;
+    Sender.Canvas.Pen.Color := CurrentSkin.TreeText;
+    Sender.Canvas.Pen.Width := 1;
+
+    if Node.Expanded then
+    begin
+      // Down arrow ▼
+      Sender.Canvas.Polygon([
+        Point(arrowLeft, arrowTop),
+        Point(arrowLeft + 8, arrowTop),
+        Point(arrowLeft + 4, arrowTop + 4)
+      ]);
+    end
+    else
+    begin
+      // Right arrow ▶
+      Sender.Canvas.Polygon([
+        Point(arrowLeft + 1, arrowTop - 1),
+        Point(arrowLeft + 6, arrowTop + 3),
+        Point(arrowLeft + 1, arrowTop + 7)
+      ]);
     end;
   end;
 
-begin
-  FImages := TImageList.Create(self);
-  AddPngFromRes('checkbox-unchecked');
-  AddPngFromRes('checkbox-checked');
-  AddPngFromRes('checkbox-partial');
-  StateImages := FImages;
+  // 3. Draw the light/themed checkbox at its proper location
+  if Assigned(StateImages) and (Node.StateIndex >= 0) and (Node.StateIndex < StateImages.Count) then
+  begin
+    imgX := rText.Left - StateImages.Width - 2;
+    imgY := rRow.Top + (rRow.Height - StateImages.Height) div 2;
+    StateImages.Draw(Sender.Canvas, imgX, imgY, Node.StateIndex);
+  end;
+
+  // 3. Draw the node text in bright CurrentSkin.TreeText
+  if (rText.Right > rText.Left) and (rText.Bottom > rText.Top) then
+  begin
+    Sender.Canvas.Brush.Style := bsClear;
+    if (cdsSelected in State) then
+      Sender.Canvas.Font.Color := CurrentSkin.HighlightText
+    else if (cdsHot in State) then
+      Sender.Canvas.Font.Color := CurrentSkin.PointedText
+    else
+    begin
+      if IsThemedSkin then
+        Sender.Canvas.Font.Color := CurrentSkin.TreeText
+      else
+        Sender.Canvas.Font.Color := clWindowText;
+    end;
+
+    yPos := rText.Top + (rText.Height - Sender.Canvas.TextHeight(Node.Text)) div 2;
+    Sender.Canvas.TextOut(rText.Left + 2, yPos, Node.Text);
+  end;
+
+  DefaultDraw := False;
 end;
 
 constructor TBibleTreeView.Create(AnOwner: TComponent);
@@ -291,6 +475,14 @@ begin
   FScope := etNone;
   OnClick := @TreeViewClick;
   FOnVerseChange := nil;
+  OnCustomDrawItem := @TreeViewCustomDrawItem;
+  OnAdvancedCustomDraw := @TreeViewAdvancedCustomDraw;
+  ParentColor := False;
+  Color := CurrentSkin.TreeBg;
+  Font.Color := CurrentSkin.TreeText;
+  ExpandSignColor := CurrentSkin.TreeText;
+  TreeLineColor := CurrentSkin.PanelBorder;
+  ExpandSignType := tvestArrowFill;
 end;
 
 destructor TBibleTreeView.Destroy;

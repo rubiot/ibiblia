@@ -5,6 +5,7 @@ unit formverserules;
 interface
 
 uses
+  unitskins,
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
   ExtCtrls, StdCtrls, PCRE, LCLTranslator, Grids, fgl;
 
@@ -44,6 +45,30 @@ implementation
 
 procedure TFrmEscolherVerseRules.FormShow(Sender: TObject);
 begin
+  HandleNeeded;
+  Panel1.HandleNeeded;
+  Button1.HandleNeeded;
+  Button2.HandleNeeded;
+  BtnSelectAll.HandleNeeded;
+  BtnSelectNone.HandleNeeded;
+
+  ApplySkinToForm(Self, CurrentSkin);
+  {$IFDEF WINDOWS}
+  HookButtonControl(Button1);
+  HookButtonControl(Button2);
+  HookButtonControl(BtnSelectAll);
+  HookButtonControl(BtnSelectNone);
+  {$ENDIF}
+  if IsThemedSkin then
+  begin
+    Button1.Font.Color := CurrentSkin.PanelText;
+    Button2.Font.Color := CurrentSkin.PanelText;
+    BtnSelectAll.Font.Color := CurrentSkin.PanelText;
+    BtnSelectNone.Font.Color := CurrentSkin.PanelText;
+    StringGridVerseRules.Color := CurrentSkin.WindowBg;
+    StringGridVerseRules.Font.Color := CurrentSkin.WindowText;
+    StringGridVerseRules.FixedColor := CurrentSkin.PanelBg;
+  end;
   StringGridVerseRules.AutoAdjustColumns;
 end;
 
@@ -100,4 +125,3 @@ initialization
   {$I formverserules.lrs}
 
 end.
-

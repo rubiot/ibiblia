@@ -5,6 +5,7 @@ unit formnovoprojeto;
 interface
 
 uses
+  unitskins,
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
   StdCtrls, ExtCtrls, Buttons, LCLTranslator;
 
@@ -34,6 +35,7 @@ type
     procedure BitBtn4Click(Sender: TObject);
     procedure BitBtn5Click(Sender: TObject);
     procedure FormCreate(Sender: TObject);
+    procedure FormShow(Sender: TObject);
   private
     { private declarations }
     procedure SelecionarTexto(edit: TLabeledEdit);
@@ -62,30 +64,84 @@ implementation
 
 procedure TFormNovoProjeto.BitBtn5Click(Sender: TObject);
 begin
-  //TBitBtn(Sender).ModalResult := mrNone;
-
   if EditNomeProjeto.Text = '' then
   begin
     ModalResult:=mrNone;
-    MessageDlg(SNewProject, SChooseAName, mtWarning, [mbOK], 0);
+    ThemedMessageDlg(SNewProject, SChooseAName, mtWarning, [mbOK], 0);
     exit;
   end;
 
   if EditTextoOrigem.Text = '' then
   begin
     ModalResult:=mrNone;
-    MessageDlg(SNewProject, SChooseAtLeastOneText, mtWarning, [mbOK], 0);
+    ThemedMessageDlg(SNewProject, SChooseAtLeastOneText, mtWarning, [mbOK], 0);
     exit;
   end;
 
-  //TBitBtn(Sender).ModalResult := mrOK;
   ModalResult:=mrOK;
-  //Close;
 end;
 
 procedure TFormNovoProjeto.FormCreate(Sender: TObject);
 begin
+  OnShow := @FormShow;
   Translate;
+end;
+
+procedure TFormNovoProjeto.FormShow(Sender: TObject);
+begin
+  HandleNeeded;
+  GroupBox1.HandleNeeded;
+  GroupBox2.HandleNeeded;
+  RadioGroupScope.HandleNeeded;
+  BitBtn1.HandleNeeded;
+  BitBtn2.HandleNeeded;
+  BitBtn3.HandleNeeded;
+  BitBtn4.HandleNeeded;
+  BitBtn5.HandleNeeded;
+  BitBtn6.HandleNeeded;
+
+  ApplySkinToForm(Self, CurrentSkin);
+  {$IFDEF WINDOWS}
+  HookGroupBoxControl(GroupBox1);
+  HookGroupBoxControl(GroupBox2);
+  HookGroupBoxControl(RadioGroupScope);
+  HookButtonControl(BitBtn1);
+  HookButtonControl(BitBtn2);
+  HookButtonControl(BitBtn3);
+  HookButtonControl(BitBtn4);
+  HookButtonControl(BitBtn5);
+  HookButtonControl(BitBtn6);
+  {$ENDIF}
+  if IsThemedSkin then
+  begin
+    GroupBox1.Color := CurrentSkin.PanelBg;
+    GroupBox1.Font.Color := CurrentSkin.PanelText;
+    GroupBox2.Color := CurrentSkin.PanelBg;
+    GroupBox2.Font.Color := CurrentSkin.PanelText;
+    RadioGroupScope.Color := CurrentSkin.PanelBg;
+    RadioGroupScope.Font.Color := CurrentSkin.PanelText;
+    EditNomeProjeto.Color := CurrentSkin.WindowBg;
+    EditNomeProjeto.Font.Color := CurrentSkin.WindowText;
+    EditNomeProjeto.EditLabel.Font.Color := CurrentSkin.PanelText;
+    EditTextoOrigem.Color := CurrentSkin.WindowBg;
+    EditTextoOrigem.Font.Color := CurrentSkin.WindowText;
+    EditTextoOrigem.EditLabel.Font.Color := CurrentSkin.PanelText;
+    EditTextoDestino.Color := CurrentSkin.WindowBg;
+    EditTextoDestino.Font.Color := CurrentSkin.WindowText;
+    EditTextoDestino.EditLabel.Font.Color := CurrentSkin.PanelText;
+    EditTextoRef1.Color := CurrentSkin.WindowBg;
+    EditTextoRef1.Font.Color := CurrentSkin.WindowText;
+    EditTextoRef1.EditLabel.Font.Color := CurrentSkin.PanelText;
+    EditTextoRef2.Color := CurrentSkin.WindowBg;
+    EditTextoRef2.Font.Color := CurrentSkin.WindowText;
+    EditTextoRef2.EditLabel.Font.Color := CurrentSkin.PanelText;
+    BitBtn1.Font.Color := CurrentSkin.PanelText;
+    BitBtn2.Font.Color := CurrentSkin.PanelText;
+    BitBtn3.Font.Color := CurrentSkin.PanelText;
+    BitBtn4.Font.Color := CurrentSkin.PanelText;
+    BitBtn5.Font.Color := CurrentSkin.PanelText;
+    BitBtn6.Font.Color := CurrentSkin.PanelText;
+  end;
 end;
 
 procedure TFormNovoProjeto.BitBtn1Click(Sender: TObject);
@@ -115,6 +171,7 @@ begin
     1: OpenDialog1.Filter := SNewTestamentFilter;
     2: OpenDialog1.Filter := SWholeBibleFilter;
   end;
+
   if OpenDialog1.Execute then
     edit.Text := OpenDialog1.FileName;
 end;
@@ -135,4 +192,3 @@ initialization
   {$I formnovoprojeto.lrs}
 
 end.
-

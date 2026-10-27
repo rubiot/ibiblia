@@ -1759,3 +1759,55 @@ msgstr "Right to left text"
 #: versiculo.ssavetofile
 msgid "&Save text to file..."
 msgstr "&Save text to file..."
+
+#: versiculo.sexportasbiblemodule
+msgid "&Export as Bible module..."
+msgstr "&Export as Bible module..."
+
+#: projeto.sexportbiblemodulesavedlgtitle
+msgid "Export as Bible module"
+msgstr "Export as Bible module"
+
+#: tfrmprincipal.menuitemview.caption
+msgid "View"
+msgstr "View"
+
+#: tfrmprincipal.menuitemdarkmode.caption
+msgid "Dark mode"
+msgstr "Dark mode"
+
+#: tfrmprincipal.menuitemdarkmode.hint
+msgid "Toggle dark mode on or off (Ctrl+Shift+D)"
+msgstr "Toggle dark mode on or off (Ctrl+Shift+D)"
+
+#: tfrmprincipal.menuitemskinsmenu.caption
+msgid "Skins (theWord Themes)"
+msgstr "Skins (theWord Themes)"
+
+#: tfrmprincipal.menuitemskinclassic.caption
+msgid "Classic (Light)"
+msgstr "Classic (Light)"
+
+#: tfrmprincipal.menuitemskintheworddark.caption
+msgid "theWord Dark (Charcoal)"
+msgstr "theWord Dark (Charcoal)"
+
+#: tfrmprincipal.menuitemskinnight.caption
+msgid "Night (Pitch Black)"
+msgstr "Night (Pitch Black)"
+
+#: tfrmprincipal.menuitemskinsepia.caption
+msgid "Sepia (Parchment)"
+msgstr "Sepia (Parchment)"
+
+#: tfrmprincipal.menuitemskinslate.caption
+msgid "Slate (Steel Blue)"
+msgstr "Slate (Steel Blue)"
+
+#: tfrmprincipal.menuitemskinsolarizeddark.caption
+msgid "Solarized Dark"
+msgstr "Solarized Dark"
+
+#: tfrmprincipal.menuitemskinhighcontrast.caption
+msgid "High Contrast Dark"
+msgstr "High Contrast Dark"

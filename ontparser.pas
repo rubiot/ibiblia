@@ -26,7 +26,7 @@ function TONTParser.ParseLine(line: string; owner: TObject): TSyntagmList;
 var
   tokenizer: TONTTokenizer;
   token: TTagSintagma; // token
-  sintagma: TSyntagm;
+  sintagma, lastWordSyntagm: TSyntagm;
   sintagmas: TSyntagmList;
   FTmpCor: TColor;
   FTmpItalico: Boolean;
@@ -36,6 +36,7 @@ begin
   FTmpItalico     := false;
   FTmpSobrescrito := false;
   sintagma := nil;
+  lastWordSyntagm := nil;
   sintagmas := TSyntagmList.Create;
   tokenizer := TTokenizerFactory.CreatePreferredTokenizer(line);
   while tokenizer.LerSintagma(token) <> tsNulo do
@@ -50,19 +51,17 @@ begin
       begin
         tokenizer.LerAteTag(token, '<Ts>');
         token.tipo := tsMetaDado;
-      end else if (AnsiStartsStr('<WG', token.valor) or AnsiStartsStr('<WH', token.valor)) and
-                   assigned(sintagma) and assigned(sintagma.Strong) and
-                   (sintagma.Kind = tsSintagma) then // atualizar sintagma anterior
+      end else if (AnsiStartsText('<WG', token.valor) or AnsiStartsText('<WH', token.valor)) and
+                   assigned(lastWordSyntagm) and assigned(lastWordSyntagm.Strong) and
+                   (lastWordSyntagm.Kind = tsSintagma) then // atualizar sintagma anterior
       begin
-        //if (sintagma.Type <> tsSintagma) then
-        //  raise Exception.Create(sintagma.Gist);
-        sintagma.Strong.Add(copy(token.valor, 3, length(token.valor)-3));
-        sintagma.RawText := sintagma.RawText + token.valor;
+        lastWordSyntagm.Strong.Add(copy(token.valor, 3, length(token.valor)-3));
+        lastWordSyntagm.RawText := lastWordSyntagm.RawText + token.valor;
         continue;
-      end else if AnsiStartsStr('<WT', token.valor) and assigned(sintagma) and assigned(sintagma.Morph) then // atualizar sintagma anterior
+      end else if AnsiStartsText('<WT', token.valor) and assigned(lastWordSyntagm) and assigned(lastWordSyntagm.Morph) then // atualizar sintagma anterior
       begin
-        sintagma.Morph.Add(copy(token.valor, 4, length(token.valor)-4));
-        sintagma.RawText := sintagma.RawText + token.valor;
+        lastWordSyntagm.Morph.Add(copy(token.valor, 4, length(token.valor)-4));
+        lastWordSyntagm.RawText := lastWordSyntagm.RawText + token.valor;
         continue;
       end else if AnsiStartsStr('<font color', token.valor) then
       begin
@@ -92,6 +91,10 @@ begin
     token.italico     := FTmpItalico;
     token.sobrescrito := FTmpSobrescrito;
     sintagma := TSyntagm.Create(token, owner);
+    if sintagma.Kind = tsSintagma then
+      lastWordSyntagm := sintagma
+    else if sintagma.Kind = tsEspaco then
+      lastWordSyntagm := nil;
     sintagmas.Add(sintagma);
   end;
   tokenizer.Destroy;

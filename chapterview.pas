@@ -5,10 +5,10 @@ unit ChapterView;
 interface
 
 uses
-  Classes, SysUtils, Forms, Graphics, ONTTokenizer, LCLType, HTMLColors,
+  Classes, SysUtils, StrUtils, Forms, Graphics, ONTTokenizer, LCLType, HTMLColors,
   LazUTF8, Projeto, PCRE, Controls, Menus, fgl, Dialogs, Math, Contnrs, KMemo,
   KEditCommon, KGraphics, KDialogs, formInterlinearVerseRules,
-  LCLTranslator, LazLogger, StdCtrls;
+  LCLTranslator, LazLogger, StdCtrls, unitskins;
 
 type
 
@@ -45,7 +45,6 @@ type
     FRange: TBlockRange;
   public
     constructor Create(id: integer; verse: integer; text: string; linktext: string);
-    //destructor Destroy; override;
     property Id: integer read FId write FId;
     property LinkText: string read FLinkText write FLinkText;
     property Verse: integer read FVerse write FVerse;
@@ -78,6 +77,7 @@ type
 
   TChapterView = class(TKMemo)
   private
+    FLoadingChapter: boolean;
     FFontName: string;
     FFontSize: integer;
     FPrintMode: boolean;
@@ -98,11 +98,21 @@ type
     FNotes: TNoteList;
     FHideVerseNumber: boolean;
     FRawMemo: TRawChapterMemo;
+    FParaLeftIndent: LongInt;
+    FParaFirstIndent: LongInt;
+    FParaTopPadding: LongInt;
+    FParaBottomPadding: LongInt;
+    FParaHAlign: TKHAlign;
+    FJustClosedHeading: Boolean;
+    FAppliedSkin: TSkinColors;
+    procedure UpdateBlocksSkin(ABlocks: TKMemoBlocks; const AOldSkin, ANewSkin: TSkinColors);
 
     function GetCurrentStyle: TKMemoTextStyle;
     function GetInterlinearMode: TInterlinearMode;
     function GetParagraphMode: TParagraphMode;
     function GetTextType: TTipoTextoBiblico;
+    procedure CloseParagraphBlock(cont: TKMemoBlocks);
+    procedure ExtractLeadingParagraphPrefix(const AText: string; out ALeadingPrefix, ARemaining: string);
     procedure RenderChapter(verses: TStringList; current: integer);
     procedure RenderChapterHeader;
     procedure RenderChapterFooter;
@@ -150,6 +160,7 @@ type
     destructor Destroy; override;
     procedure Translate;
     procedure LoadChapter;
+    procedure ApplySkin(const ASkin: TSkinColors);
     property Project: TProjeto read FProject write SetProject;
     property TextType: TTipoTextoBiblico read GetTextType write SetTextType;
     property ParagraphMode: TParagraphMode read GetParagraphMode write SetParagraphMode;
@@ -198,8 +209,7 @@ begin
     Font.Size := Font.Size + Sign(WheelDelta) * 1;
 end;
 
-constructor TRawChapterMemo.Create(AOwner: TComponent; ChapterView: TChapterView
-  );
+constructor TRawChapterMemo.Create(AOwner: TComponent; ChapterView: TChapterView);
 begin
   inherited Create(nil);
 
@@ -223,6 +233,8 @@ end;
 procedure TRawChapterMemo.Show(aText: string);
 begin
   Font.Size := FChapterView.FontSize;
+  Color := CurrentSkin.WindowBg;
+  Font.Color := CurrentSkin.WindowText;
   Text := aText;
   BringToFront;
   Visible := True;
@@ -232,7 +244,6 @@ end;
 procedure TRawChapterMemo.Hide;
 begin
   Visible := false;
-  //FChapterView.FontSize := Font.Size;
 end;
 
 { TNoteWindow }
@@ -269,7 +280,8 @@ begin
   FNoteView.TextStyle.Assign(AStyle);
   FNoteView.TextStyle.Font.Size := FNoteView.TextStyle.Font.Size - 1;
   FNoteView.RenderSpan(FNoteView.Blocks, AText);
-  FNoteView.Background.Color := $00CCFBFB;
+  FNoteView.Background.Color := CurrentSkin.NoteBg;
+  FNoteView.TextStyle.Font.Color := CurrentSkin.NoteText;
   FNoteView.Blocks.UnLockUpdate;
 end;
 
@@ -331,50 +343,136 @@ end;
 
 { TChapterView }
 
+procedure TChapterView.CloseParagraphBlock(cont: TKMemoBlocks);
+var
+  par: TKMemoParagraph;
+begin
+  par := cont.AddParagraph();
+  par.ParaStyle.LeftPadding := FParaLeftIndent;
+  par.ParaStyle.FirstIndent := FParaFirstIndent;
+  par.ParaStyle.TopPadding := FParaTopPadding;
+  par.ParaStyle.BottomPadding := FParaBottomPadding;
+  par.ParaStyle.HAlign := FParaHAlign;
+end;
+
+procedure TChapterView.ExtractLeadingParagraphPrefix(const AText: string;
+  out ALeadingPrefix, ARemaining: string);
+var
+  rest: string;
+  pEnd: Integer;
+begin
+  ALeadingPrefix := '';
+  rest := AText;
+
+  while Length(rest) > 0 do
+  begin
+    if AnsiStartsText('<TS', rest) then
+    begin
+      pEnd := Pos('<Ts>', rest);
+      if pEnd = 0 then pEnd := Pos('<TS>', UpperCase(rest));
+      if pEnd > 0 then
+      begin
+        ALeadingPrefix := ALeadingPrefix + Copy(rest, 1, pEnd + 3);
+        Delete(rest, 1, pEnd + 3);
+        if AnsiStartsText('<_CM>', rest) then
+        begin
+          ALeadingPrefix := ALeadingPrefix + Copy(rest, 1, 5);
+          Delete(rest, 1, 5);
+        end;
+        continue;
+      end;
+    end;
+
+    if AnsiStartsText('<CM>', rest) or AnsiStartsText('<CI>', rest) or AnsiStartsText('<CL>', rest) then
+    begin
+      ALeadingPrefix := ALeadingPrefix + Copy(rest, 1, 4);
+      Delete(rest, 1, 4);
+      continue;
+    end;
+
+    if AnsiStartsText('<_CM>', rest) then
+    begin
+      ALeadingPrefix := ALeadingPrefix + Copy(rest, 1, 5);
+      Delete(rest, 1, 5);
+      continue;
+    end;
+
+    if (Length(rest) >= 5) and (AnsiStartsText('<PI', rest) or AnsiStartsText('<PF', rest)) and
+       (rest[4] in ['0'..'7']) and (rest[5] = '>') then
+    begin
+      ALeadingPrefix := ALeadingPrefix + Copy(rest, 1, 5);
+      Delete(rest, 1, 5);
+      continue;
+    end;
+
+    if AnsiStartsText('<PI>', rest) then
+    begin
+      ALeadingPrefix := ALeadingPrefix + Copy(rest, 1, 4);
+      Delete(rest, 1, 4);
+      continue;
+    end;
+
+    if AnsiStartsText('<center>', rest) then
+    begin
+      ALeadingPrefix := ALeadingPrefix + Copy(rest, 1, 8);
+      Delete(rest, 1, 8);
+      continue;
+    end;
+
+    break;
+  end;
+
+  ARemaining := rest;
+end;
+
 procedure TChapterView.RenderVerse(txt: string);
 var
-  mtHeading: IMatch;
-  heading: string;
+  leadingPrefix, remainingTxt: string;
 begin
   ResetStyleStack;
-  mtHeading := FRxVerseHeading.Match(txt, [rmoNoUTF8Check]);
-  if not mtHeading.Success then
-    raise Exception.Create(SysUtils.Format('There''s something wrong with this verse: "%s"'#13#10 +
-                                           'Please check for invalid tags or line breaks', [txt]));
-  heading := mtHeading.Groups[1].Value;
-  txt     := mtHeading.Groups[2].Value;
 
-  { rendering titles before the verse number }
-  if not heading.IsEmpty then
-    RenderSpan(Blocks, heading);
+  ExtractLeadingParagraphPrefix(txt, leadingPrefix, remainingTxt);
 
-  if Blocks.LastBlock.ClassName <> 'TKMemoParagraph' then
-    Blocks.AddTextBlock(' '); // space between verses
+  { Render leading headings, paragraph breaks (<CM>/<CI>/<CL>), and indents (<PI>/<PF>/<center>) before verse number }
+  if not leadingPrefix.IsEmpty then
+    RenderSpan(Blocks, leadingPrefix);
+
+  if Assigned(Blocks.LastBlock) and (Blocks.LastBlock.ClassName <> 'TKMemoParagraph') then
+    Blocks.AddTextBlock(' '); // space between verses in same paragraph
+
+  FVerseRanges[FCurrentVerse].first := Blocks.Count;
 
   { rendering verse number }
   RenderVerseNumber(FCurrentVerse);
 
   { rendering the verse text }
-  FVerseRanges[FCurrentVerse].first := Blocks.Count;
-  RenderSpan(Blocks, txt);
-  FVerseRanges[FCurrentVerse].last := Blocks.Count-1;
+  RenderSpan(Blocks, remainingTxt);
 
-  if FProject.ParagraphMode = pmNoParagraphs then
-    Blocks.AddParagraph().ParaStyle.FirstIndent := 0;
+  FVerseRanges[FCurrentVerse].last := Max(FVerseRanges[FCurrentVerse].first, Blocks.Count - 1);
+
+  if Assigned(FProject) and (FProject.ParagraphMode = pmNoParagraphs) then
+  begin
+    if Assigned(Blocks.LastBlock) and (Blocks.LastBlock.ClassName <> 'TKMemoParagraph') then
+      CloseParagraphBlock(Blocks);
+    FParaTopPadding := 0;
+    FParaBottomPadding := 0;
+    FParaLeftIndent := 0;
+    FParaFirstIndent := 0;
+    FParaHAlign := halLeft;
+  end;
 end;
 
 procedure TChapterView.RenderVerseNumber(number: integer);
 var
   b: TKMemoBlocks;
 begin
-  if FHideVerseNumber then exit;
+  if FHideVerseNumber or not Assigned(FProject) then exit;
 
   if (FProject.ChapterViewText = tbInterlinear) and (FProject.InterlinearMode = imInterlinear) then
     with Blocks.AddContainer do
     begin
       Position := mbpText;
       FixedWidth := true;
-      //BlockStyle.BottomPadding := 5;
       BlockStyle.RightPadding := 5;
       b := Blocks;
     end
@@ -385,9 +483,9 @@ begin
   begin
     OnClick := @HandleReferenceClick;
     TextStyle.Font.Name  := 'default';
-    TextStyle.Font.Size  := FFontSize-2;
+    TextStyle.Font.Size  := Max(6, FFontSize - 2);
     TextStyle.Font.Style := [fsBold];
-    TextStyle.Font.Color := NonBibleTextColor;
+    TextStyle.Font.Color := CurrentSkin.VerseNumColor;
   end;
 end;
 
@@ -403,7 +501,10 @@ end;
 
 function TChapterView.GetParagraphMode: TParagraphMode;
 begin
-  result := FProject.ParagraphMode;
+  if Assigned(FProject) then
+    result := FProject.ParagraphMode
+  else
+    result := pmParagraph;
 end;
 
 function TChapterView.GetTextType: TTipoTextoBiblico;
@@ -415,162 +516,261 @@ procedure TChapterView.RenderSpan(cont: TKMemoBlocks; txt: string);
 var
   FTokenizer: TONTTokenizer;
   token: TTagSintagma;
-  prop: string;
+  prop, rawTag, lowerTag, rxRef: string;
   chunk: string;
-  size: integer;
-  padding: longint;
-  lastpar: TKMemoParagraph;
+  size, lvl: integer;
 begin
   chunk := '';
   FTokenizer := TTokenizerFactory.CreatePreferredTokenizer(txt);
 
   cont.LockUpdate;
-  while FTokenizer.LerSintagma(token) <> tsNulo do
-  begin
-    case token.tipo of
-      tsMetaDado:
-        ;
-      tsEspaco:
-        if token.valor <> '|' then
-          chunk := chunk + token.valor;
-      tsPontuacao, tsSintagma:
-        chunk := chunk + token.valor;
-      tsTag:
-      begin
-        if chunk.Length > 0 then
-        begin
-          cont.AddTextBlock(chunk).TextStyle.Assign(CurrentStyle);
-          chunk := '';
-        end;
-        if token.valor.StartsWith('<TS') then { title beginning }
-        begin
-          if assigned(cont.LastBlock) and (cont.LastBlock.ClassName <> 'TKMemoParagraph') then
-            cont.AddParagraph().ParaStyle.FirstIndent := IfThen(GetParagraphMode = pmParagraph, DefaultFirstIndent);
-
-          with PushNewStyle do
+  try
+    while FTokenizer.LerSintagma(token) <> tsNulo do
+    begin
+      case token.tipo of
+        tsMetaDado:
+          ;
+        tsEspaco:
+          if token.valor <> '|' then
           begin
-            case token.valor[4] of
-              '>','0':
-              begin
-                Font.Size := Font.Size + 2;
-                Font.Style := [fsBold];
-                Font.Color := $424242;
-              end;
-              '1':
-              begin
-                Font.Size := Font.Size + 1;
-                Font.Style := [fsBold, fsItalic];
-                Font.Color := clDefault;
-              end;
-              '2':
-              begin
-                Font.Style := [fsBold, fsItalic];
-                Font.Color := clDefault;
-              end;
-              '3':
-              begin
-                Font.Style := [fsItalic];
-                Font.Color := clDefault;
-              end;
-            end;
+            chunk := chunk + token.valor;
+            FJustClosedHeading := False;
           end;
-        end
-        else if token.valor = '<Ts>' then { title end }
+        tsPontuacao, tsSintagma:
         begin
-          ResetStyleStack;
-          lastpar := GetPreviousParagraphBlock;
-          padding := IfThen(assigned(lastpar) and (lastpar.ParaStyle.BottomPadding = 0), 5);
-          cont.AddParagraph().ParaStyle.TopPadding := padding;
-        end
-        else if token.valor.StartsWith('<RF') then { translator note }
-          RenderNote(FTokenizer.LerPropriedadeTag('q', token), FTokenizer.ReadUntilExclusive('<Rf>'))
-        else if token.valor = '<Q>' then { interlinear block }
-          RenderInterlinearBlock(cont, FTokenizer.ReadUntilExclusive('<q>'))
-        else if token.valor = '<E>' then { interlinear English block }
-          RenderInterlinearUnit(cont, FTokenizer.ReadUntilExclusive('<e>'))
-        else if token.valor = '<T>' then { interlinear translation block }
-          RenderInterlinearUnit(cont, FTokenizer.ReadUntilExclusive('<t>'))
-        else if token.valor = '<X>' then { interlinear transliteration block }
-          RenderInterlinearUnit(cont, FTokenizer.ReadUntilExclusive('<x>'))
-        else if token.valor = '<H>' then { interlinear Hebrew block }
-          RenderInterlinearUnit(cont, FTokenizer.ReadUntilExclusive('<h>'))
-        else if token.valor = '<G>' then { interlinear Greek block }
-          RenderInterlinearUnit(cont, FTokenizer.ReadUntilExclusive('<g>'))
-        else if token.valor = '<FI>' then { added word(s) }
-          with PushInheritedStyle do
+          chunk := chunk + token.valor;
+          FJustClosedHeading := False;
+        end;
+        tsTag:
+        begin
+          if chunk.Length > 0 then
           begin
-            Font.Style := Font.Style + [fsItalic];
-            Font.Color := clGray;
-          end
-        else if token.valor = '<FR>' then { Jesus word(s) }
-          PushInheritedStyle.Font.Color := clRed
-        else if token.valor = '<FO>' then { Old Testament quotation }
-          PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsBold]
-        else if token.valor = '<CM>' then { new paragraph }
-        begin
-          if GetParagraphMode = pmParagraph then
-            cont.AddParagraph().ParaStyle.FirstIndent := DefaultFirstIndent;
-        end else if token.valor = '<CL>' then { new line }
-        begin
-          if GetParagraphMode = pmParagraph then
-            cont.AddParagraph().ParaStyle.FirstIndent := 0;
-            //cont.InsertNewLine(Text.Length);
-        end else
-        begin
-          token.valor := token.valor.ToLower;
-          if token.valor.StartsWith('<font ') then { font change }
+            cont.AddTextBlock(chunk).TextStyle.Assign(CurrentStyle);
+            chunk := '';
+          end;
+
+          rawTag := token.valor;
+          lowerTag := LowerCase(rawTag);
+
+          if AnsiStartsText('<TS', rawTag) and (lowerTag <> '<ts>') and (rawTag <> '<Ts>') then { section heading beginning }
           begin
-            PushInheritedStyle;
-            if token.valor.Contains(' color=') then
-              CurrentStyle.Font.Color := HTML2Color(FTokenizer.LerPropriedadeTag('color', token));
-            if token.valor.Contains(' size=') then
+            if assigned(cont.LastBlock) and (cont.LastBlock.ClassName <> 'TKMemoParagraph') then
+              CloseParagraphBlock(cont);
+
+            FParaTopPadding := 8;
+            FParaBottomPadding := 4;
+            FParaFirstIndent := 0;
+            FParaLeftIndent := 0;
+            FParaHAlign := halLeft;
+            FJustClosedHeading := False;
+
+            with PushNewStyle do
             begin
-              prop := FTokenizer.LerPropriedadeTag('size', token);
-              if prop.Chars[0] in ['-', '+'] then
-                size := CurrentStyle.Font.Size + prop.ToInteger
-              else
-                size := prop.ToInteger;
-              CurrentStyle.Font.Size := size;
+              case rawTag[4] of
+                '>','0','1':
+                begin
+                  Font.Size := Font.Size + 2;
+                  Font.Style := [fsBold];
+                  Font.Color := CurrentSkin.HeaderColor;
+                end;
+                '2':
+                begin
+                  Font.Size := Font.Size + 1;
+                  Font.Style := [fsBold, fsItalic];
+                  Font.Color := CurrentSkin.HeaderColor;
+                end;
+                '3':
+                begin
+                  Font.Style := [fsBold, fsItalic];
+                  Font.Color := CurrentSkin.WindowTextDim;
+                end;
+              end;
             end;
-          end else if token.valor = '<b>' then { bold }
+          end
+          else if (rawTag = '<Ts>') or (lowerTag = '<ts>') then { section heading end }
+          begin
+            ResetStyleStack;
+            CloseParagraphBlock(cont);
+            FParaTopPadding := 0;
+            FParaBottomPadding := 0;
+            FParaFirstIndent := IfThen(GetParagraphMode = pmParagraph, DefaultFirstIndent, 0);
+            FParaLeftIndent := 0;
+            FParaHAlign := halLeft;
+            FJustClosedHeading := True;
+          end
+          else if SameText(rawTag, '<_CM>') then { heading paragraph fallback }
+          begin
+            if FJustClosedHeading then
+              FJustClosedHeading := False
+            else
+            begin
+              if assigned(cont.LastBlock) and (cont.LastBlock.ClassName <> 'TKMemoParagraph') then
+                CloseParagraphBlock(cont);
+              FParaTopPadding := 8;
+              FParaBottomPadding := 0;
+              FParaLeftIndent := 0;
+              FParaFirstIndent := 0;
+              FParaHAlign := halLeft;
+            end;
+          end
+          else if SameText(rawTag, '<CM>') then { spaced paragraph break (Double Return) }
+          begin
+            FJustClosedHeading := False;
+            if assigned(cont.LastBlock) and (cont.LastBlock.ClassName <> 'TKMemoParagraph') then
+              CloseParagraphBlock(cont);
+            FParaTopPadding := 8;
+            FParaBottomPadding := 0;
+            FParaLeftIndent := 0;
+            FParaFirstIndent := 0;
+            FParaHAlign := halLeft;
+          end
+          else if SameText(rawTag, '<CI>') then { tight paragraph break (Single Return) }
+          begin
+            FJustClosedHeading := False;
+            if assigned(cont.LastBlock) and (cont.LastBlock.ClassName <> 'TKMemoParagraph') then
+              CloseParagraphBlock(cont);
+            FParaTopPadding := 0;
+            FParaBottomPadding := 0;
+            FParaLeftIndent := 0;
+            FParaFirstIndent := 0;
+            FParaHAlign := halLeft;
+          end
+          else if SameText(rawTag, '<CL>') or SameText(rawTag, '<br>') or SameText(rawTag, '<br/>') then { line break inside paragraph }
+          begin
+            FJustClosedHeading := False;
+            if assigned(cont.LastBlock) and (cont.LastBlock.ClassName <> 'TKMemoParagraph') then
+              CloseParagraphBlock(cont);
+            FParaTopPadding := 0;
+            FParaBottomPadding := 0;
+            FParaFirstIndent := 0;
+            // Preserves FParaLeftIndent and FParaHAlign inside the same paragraph!
+          end
+          else if (rawTag = '<Pi>') or SameText(rawTag, '<PI0>') then { reset whole-paragraph indent }
+          begin
+            FParaLeftIndent := 0;
+          end
+          else if SameText(rawTag, '<PI>') or SameText(rawTag, '<PI1>') then
+          begin
+            FParaLeftIndent := 24;
+            if FParaFirstIndent = DefaultFirstIndent then
+              FParaFirstIndent := 0;
+          end
+          else if (Length(rawTag) = 5) and AnsiStartsText('<PI', rawTag) and (rawTag[4] in ['2'..'7']) and (rawTag[5] = '>') then
+          begin
+            lvl := Ord(rawTag[4]) - Ord('0');
+            FParaLeftIndent := lvl * 22;
+            if FParaFirstIndent = DefaultFirstIndent then
+              FParaFirstIndent := 0;
+          end
+          else if (Length(rawTag) = 5) and AnsiStartsText('<PF', rawTag) and (rawTag[4] in ['0'..'7']) and (rawTag[5] = '>') then
+          begin
+            lvl := Ord(rawTag[4]) - Ord('0');
+            FParaFirstIndent := lvl * 20;
+          end
+          else if SameText(rawTag, '<center>') then
+          begin
+            FParaHAlign := halCenter;
+            if FParaFirstIndent = DefaultFirstIndent then
+              FParaFirstIndent := 0;
+          end
+          else if rawTag.StartsWith('<RF') then { translator note }
+            RenderNote(FTokenizer.LerPropriedadeTag('q', token), FTokenizer.ReadUntilExclusive('<Rf>'))
+          else if AnsiStartsText('<RX ', rawTag) then { cross-reference }
+          begin
+            rxRef := Trim(Copy(rawTag, 5, Length(rawTag) - 5));
+            if Pos(' ', rxRef) > 0 then
+              rxRef := Copy(rxRef, 1, Pos(' ', rxRef) - 1);
+            with cont.AddTextBlock(' [xref: ' + rxRef + '] ') do
+            begin
+              TextStyle.Assign(CurrentStyle);
+              TextStyle.Font.Color := NoteLinkColor;
+              TextStyle.Font.Size := Max(6, FFontSize - 2);
+              TextStyle.ScriptPosition := tpoSuperscript;
+            end;
+          end
+          else if rawTag = '<Q>' then { interlinear block }
+            RenderInterlinearBlock(cont, FTokenizer.ReadUntilExclusive('<q>'))
+          else if rawTag = '<E>' then { interlinear English block }
+            RenderInterlinearUnit(cont, FTokenizer.ReadUntilExclusive('<e>'))
+          else if rawTag = '<T>' then { interlinear translation block }
+            RenderInterlinearUnit(cont, FTokenizer.ReadUntilExclusive('<t>'))
+          else if rawTag = '<X>' then { interlinear transliteration block }
+            RenderInterlinearUnit(cont, FTokenizer.ReadUntilExclusive('<x>'))
+          else if rawTag = '<H>' then { interlinear Hebrew block }
+            RenderInterlinearUnit(cont, FTokenizer.ReadUntilExclusive('<h>'))
+          else if rawTag = '<G>' then { interlinear Greek block }
+            RenderInterlinearUnit(cont, FTokenizer.ReadUntilExclusive('<g>'))
+          else if rawTag = '<FI>' then { added word(s) }
+            with PushInheritedStyle do
+            begin
+              Font.Style := Font.Style + [fsItalic];
+              Font.Color := CurrentSkin.WindowTextDim;
+            end
+          else if rawTag = '<FR>' then { Jesus word(s) }
+          begin
+            if CurrentSkin.IsDark then
+              PushInheritedStyle.Font.Color := MakeRGB(244, 92, 92)
+            else
+              PushInheritedStyle.Font.Color := clRed;
+          end
+          else if rawTag = '<FO>' then { Old Testament quotation }
             PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsBold]
-          else if token.valor = '<i>' then { italic }
-            PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsItalic]
-          else if token.valor = '<u>' then { underline }
+          else if rawTag = '<FU>' then { theWord Underline }
             PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsUnderline]
-          else if token.valor = '<s>' then { strikeout }
-            PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsStrikeOut]
-          else if token.valor = '<sup>' then { superscript }
-            PushInheritedStyle.ScriptPosition := tpoSuperscript
-          else if token.valor = '<sub>' then { subscript }
-            PushInheritedStyle.ScriptPosition := tpoSubscript
-          else if token.valor = '<br/>' then { line break }
-            cont.AddParagraph().ParaStyle.FirstIndent := 0
-          else if (token.valor = '</sub>')
-               or (token.valor = '</sup>')
-               or (token.valor = '</s>')
-               or (token.valor = '</u>')
-               or (token.valor = '</i>')
-               or (token.valor = '</b>')
-               or (token.valor = '<fo>')
-               or (token.valor = '<fr>')
-               or (token.valor = '<fi>')
-               or (token.valor = '</font>') then
-            PopStyle;
+          else if (rawTag = '<Fi>') or (rawTag = '<Fr>') or (rawTag = '<Fo>') or (rawTag = '<Fu>') then
+            PopStyle
+          else
+          begin
+            if lowerTag.StartsWith('<font ') then { font change }
+            begin
+              PushInheritedStyle;
+              if lowerTag.Contains(' color=') then
+                CurrentStyle.Font.Color := HTML2Color(FTokenizer.LerPropriedadeTag('color', token));
+              if lowerTag.Contains(' size=') then
+              begin
+                prop := FTokenizer.LerPropriedadeTag('size', token);
+                if (Length(prop) > 0) and (prop.Chars[0] in ['-', '+']) then
+                  size := CurrentStyle.Font.Size + StrToIntDef(prop, 0)
+                else
+                  size := StrToIntDef(prop, CurrentStyle.Font.Size);
+                CurrentStyle.Font.Size := Max(6, size);
+              end;
+            end
+            else if lowerTag = '<b>' then { bold }
+              PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsBold]
+            else if lowerTag = '<i>' then { italic }
+              PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsItalic]
+            else if lowerTag = '<u>' then { underline }
+              PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsUnderline]
+            else if lowerTag = '<s>' then { strikeout }
+              PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsStrikeOut]
+            else if lowerTag = '<sup>' then { superscript }
+              PushInheritedStyle.ScriptPosition := tpoSuperscript
+            else if lowerTag = '<sub>' then { subscript }
+              PushInheritedStyle.ScriptPosition := tpoSubscript
+            else if (lowerTag = '</sub>')
+                 or (lowerTag = '</sup>')
+                 or (lowerTag = '</s>')
+                 or (lowerTag = '</u>')
+                 or (lowerTag = '</i>')
+                 or (lowerTag = '</b>')
+                 or (lowerTag = '<fo>')
+                 or (lowerTag = '<fr>')
+                 or (lowerTag = '<fi>')
+                 or (lowerTag = '<fu>')
+                 or (lowerTag = '</font>') then
+              PopStyle;
+          end;
         end;
       end;
     end;
-  end;
 
-  if chunk.Length > 0 then
-  begin
-    if assigned(cont.LastBlock) and (cont.LastBlock.ClassName = 'TKMemoParagraph') then
-      cont.LastBlock.ParaStyle.FirstIndent := DefaultFirstIndent;
-    cont.AddTextBlock(chunk).TextStyle.Assign(CurrentStyle);
+    if chunk.Length > 0 then
+      cont.AddTextBlock(chunk).TextStyle.Assign(CurrentStyle);
+  finally
+    FreeAndNil(FTokenizer);
+    cont.UnLockUpdate;
   end;
-
-  FreeAndNil(FTokenizer);
-  cont.UnLockUpdate;
 end;
 
 procedure TChapterView.RenderNote(link: string; note: string);
@@ -602,7 +802,7 @@ begin
     exit;
 
   ResetStyleStack;
-  CurrentStyle.Font.Size := max(FFontSize-2, 2); // using smaller font
+  CurrentStyle.Font.Size := max(FFontSize-2, 2);
 
   Blocks.AddParagraph();
   Blocks.AddParagraph();
@@ -631,10 +831,8 @@ begin
   b := cont.AddContainer();
   b.Position := mbpText;
   b.FixedWidth := true;
-  //b.BlockStyle.BottomPadding := 5;
   b.BlockStyle.RightPadding := 5;
 
-  // using non-breakable spaces inside interlinear blocks
   RenderSpan(b.Blocks, stringReplace(blockText, ' ', #8239, [rfReplaceAll]));
 end;
 
@@ -642,12 +840,8 @@ procedure TChapterView.RenderInterlinearUnit(cont: TKMemoBlocks;
   translation: string);
 begin
   if cont.Count > 0 then
-  begin
-    //cont.LastBlock.ParaStyle.HAlign := halCenter;
     cont.AddParagraph();
-  end;
   RenderSpan(cont, '<font color="#417cbe">' + translation + '</font>');
-  //cont.AddTextBlock(translation).TextStyle.Font.Color := $be7c41;
 end;
 
 procedure TChapterView.HandleReferenceClick(sender: TObject);
@@ -661,7 +855,7 @@ var
   c: integer = 0;
 begin
   note := FNotes[TKMemoHyperlink(Sender).URL.ToInteger];
-  repeat { working around TKMemo.ClientRect, which always gives wrong results the first time }
+  repeat
     inc(c);
     FHint.ActivateHint(note.Text, TextStyle);
   until not FHint.ScrollBarsVisible or (c = 2);
@@ -673,22 +867,30 @@ var
 begin
   note := FNotes[TKMemoHyperlink(Sender).URL.ToInteger];
 
-  HighlightRange(note.Range, clDefault); // un-highlight current note text
-  HighlightRange(FVerseRanges[note.Verse], clSilver); // un-highlight current note text
+  if CurrentSkin.IsDark then
+    HighlightRange(note.Range, CurrentSkin.NoteBg)
+  else
+    HighlightRange(note.Range, clDefault);
+  HighlightRange(FVerseRanges[note.Verse], CurrentSkin.VerseHighlightBg);
 end;
 
 procedure TChapterView.HandleVerseChange(Sender: TProjeto);
 var
   verses: TStringList;
 begin
-  if not assigned(FProject) or (Width < 2) then
+  if not assigned(FProject) or (Width < 2) or FLoadingChapter then
     exit;
 
-  verses := Sender.GetChapterText;
+  FLoadingChapter := true;
   try
-    RenderChapter(verses, Sender.Verse);
+    verses := Sender.GetChapterText;
+    try
+      RenderChapter(verses, Sender.Verse);
+    finally
+      FreeAndNil(verses);
+    end;
   finally
-    FreeAndNil(verses);
+    FLoadingChapter := false;
   end;
 end;
 
@@ -717,73 +919,17 @@ end;
 procedure TChapterView.HandleMouseMove(Sender: TObject; Shift: TShiftState; X,
   Y: Integer);
 begin
-{
-var
-  p: TPoint;
-  rect: TRect;
-  note: string;
-begin
-  p.x := X;
-  p.y := Y;
-  note := Blocks.PointToRelativeBlock(PointToBlockPoint(p)).Text;
-
-  Rect := FHint.CalcHintRect(500, note, nil);
-  Rect.Left := p.X+10;
-  Rect.Top := p.Y+5;
-  Rect.Right := Rect.Left + Rect.Right;
-  Rect.Bottom := Rect.Top + Rect.Bottom;
-  FHint.ActivateHint(Rect, note);}
-
-  {var
-  iCharIndex, iCharOffset, i, j: Integer;
-  s, note: string;
-  attr: TFontParams;
-  rect: TRect;
-  pos: TPoint;
-begin
-  iCharIndex := CharAtPos(X, Y);
-  if iCharIndex < 0
-    then Exit;
-
-  if not GetTextAttributes(iCharIndex, attr) or
-     (attr.VScriptPos <> vpSuperScript) then
-  begin
-    FHint.Hide;
-    exit;
-  end;
-
-  { GetText causes the whole memo to scroll to the cursor position }
-  s := GetText(Max(iCharIndex - 3, 0), 6);
-
-  iCharOffset := iCharIndex - Max(iCharIndex - 3, 0);
-  i := iCharOffset + 1;
-  while (i > 0) and IsDigit(s[i]) do Dec(i);
-  j := iCharOffset + 1;
-  while (j <= Length(s)) and IsDigit(s[j]) do Inc(j);
-  note := Copy(s, i, j - i);
-
-  if note.IsEmpty then
-  begin
-    FHint.Hide;
-    exit;
-  end;
-
-  if FHint.Visible then
-    exit;
-
-  note := FChapterNotes[note.ToInteger - 1];
-  Rect := FHint.CalcHintRect(500, note, nil);
-  Pos := Mouse.CursorPos;
-  Rect.Left := Pos.X+10;
-  Rect.Top := Pos.Y+5;
-  Rect.Right := Rect.Left + Rect.Right;
-  Rect.Bottom := Rect.Top + Rect.Bottom;
-  FHint.ActivateHint(Rect, note);}
 end;
 
 procedure TChapterView.HandleMouseWheel(Sender: TObject; Shift: TShiftState;
   WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
 begin
+  if (not (ssCtrl in Shift)) and Assigned(FProject) and
+     FProject.HandleMouseWheelForSourceWords(Shift, WheelDelta) then
+  begin
+    Handled := True;
+    Exit;
+  end;
   if ssCtrl in Shift then
   begin
     Blocks.LockUpdate;
@@ -1026,28 +1172,115 @@ end;
 
 procedure TChapterView.PopStyle;
 begin
-  FStyleStack.Pop.Free;
+  if FStyleStack.Count > 1 then
+    FStyleStack.Pop.Free;
 end;
 
 procedure TChapterView.HighlightRange(range: TBlockRange; bgcolor: TColor);
 var
   i: integer;
 begin
-  for i:=range.first to range.last do
+  if (range.first < 0) or (range.last < range.first) then Exit;
+  for i := Max(0, range.first) to Min(Blocks.Count - 1, range.last) do
   begin
     if Blocks[i].ClassName = 'TKMemoTextBlock' then
-      TKMemoTextBlock(Blocks[i]).TextStyle.Brush.Color := bgcolor
+    begin
+      TKMemoTextBlock(Blocks[i]).TextStyle.Brush.Style := bsSolid;
+      TKMemoTextBlock(Blocks[i]).TextStyle.Brush.Color := bgcolor;
+    end
     else if Blocks[i].ClassName = 'TKMemoContainer' then
-      TKMemoContainer(Blocks[i]).BlockStyle.Brush.Color:= bgcolor;;
+      TKMemoContainer(Blocks[i]).BlockStyle.Brush.Color := bgcolor;
   end;
+end;
+
+procedure TChapterView.UpdateBlocksSkin(ABlocks: TKMemoBlocks; const AOldSkin, ANewSkin: TSkinColors);
+var
+  i: Integer;
+  blk: TKMemoBlock;
+  tb: TKMemoTextBlock;
+  cont: TKMemoContainer;
+  fc, darkRed: TColor;
+begin
+  if not Assigned(ABlocks) then Exit;
+  darkRed := MakeRGB(244, 92, 92);
+  for i := 0 to ABlocks.Count - 1 do
+  begin
+    blk := ABlocks[i];
+    if blk is TKMemoTextBlock then
+    begin
+      tb := TKMemoTextBlock(blk);
+      fc := tb.TextStyle.Font.Color;
+      if fc = AOldSkin.WindowText then
+        tb.TextStyle.Font.Color := ANewSkin.WindowText
+      else if fc = AOldSkin.WindowTextDim then
+        tb.TextStyle.Font.Color := ANewSkin.WindowTextDim
+      else if fc = AOldSkin.HeaderColor then
+        tb.TextStyle.Font.Color := ANewSkin.HeaderColor
+      else if fc = AOldSkin.VerseNumColor then
+        tb.TextStyle.Font.Color := ANewSkin.VerseNumColor
+      else if (fc = clRed) or (fc = darkRed) then
+      begin
+        if ANewSkin.IsDark then
+          tb.TextStyle.Font.Color := darkRed
+        else
+          tb.TextStyle.Font.Color := clRed;
+      end;
+
+      if tb.TextStyle.Brush.Style = bsSolid then
+        tb.TextStyle.Brush.Color := ANewSkin.VerseHighlightBg
+      else
+        tb.TextStyle.Brush.Color := ANewSkin.WindowBg;
+    end
+    else if blk is TKMemoContainer then
+    begin
+      cont := TKMemoContainer(blk);
+      if cont.BlockStyle.Brush.Color = AOldSkin.VerseHighlightBg then
+        cont.BlockStyle.Brush.Color := ANewSkin.VerseHighlightBg;
+      UpdateBlocksSkin(cont.Blocks, AOldSkin, ANewSkin);
+    end;
+  end;
+end;
+
+procedure TChapterView.ApplySkin(const ASkin: TSkinColors);
+begin
+  Color := ASkin.WindowBg;
+  ApplyDarkModeToControl(Self, ASkin.IsDark);
+  Blocks.LockUpdate;
+  try
+    Background.Color := ASkin.WindowBg;
+    TextStyle.Font.Color := ASkin.WindowText;
+    TextStyle.Brush.Color := ASkin.WindowBg;
+    TextStyle.Brush.Style := bsClear;
+    if Blocks.Count > 0 then
+      UpdateBlocksSkin(Blocks, FAppliedSkin, ASkin);
+    FAppliedSkin := ASkin;
+  finally
+    Blocks.UnLockUpdate;
+  end;
+  if assigned(FHint) and assigned(FHint.FNoteView) then
+  begin
+    FHint.FNoteView.Blocks.LockUpdate;
+    try
+      FHint.FNoteView.Color := ASkin.NoteBg;
+      FHint.FNoteView.Background.Color := ASkin.NoteBg;
+      FHint.FNoteView.TextStyle.Font.Color := ASkin.NoteText;
+      FHint.FNoteView.TextStyle.Brush.Color := ASkin.NoteBg;
+    finally
+      FHint.FNoteView.Blocks.UnLockUpdate;
+    end;
+  end;
+  Invalidate;
 end;
 
 procedure TChapterView.ResetStyleStack;
 begin
   while FStyleStack.Count > 0 do
-    PopStyle;
+    FStyleStack.Pop.Free;
   TextStyle.Font.Size := FFontSize;
   TextStyle.Font.Name := FFontName;
+  TextStyle.Font.Color := CurrentSkin.WindowText;
+  TextStyle.Brush.Color := CurrentSkin.WindowBg;
+  TextStyle.Brush.Style := bsClear;
   TextStyle.ScriptPosition := tpoNormal;
   ParaStyle.FirstIndent := 0;
   ParaStyle.LineSpacingFactor := 1.15;
@@ -1078,20 +1311,18 @@ procedure TChapterView.RenderChapterHeader;
 var
   c: integer;
 begin
-  { current chapter }
   with Blocks.AddTextBlock(SysUtils.Format('%s %d', [FProject.Book, FProject.Chapter])).TextStyle.Font do
   begin
     Name := 'default';
     Size := Self.TextStyle.Font.Size+2;
     Bold := true;
-    Color := NonBibleTextColor;
+    Color := CurrentSkin.HeaderColor;
   end;
 
   if not FPrintMode then
   begin
-    Blocks.AddParagraph(); //.ParaStyle.HAlign := halLeft;
+    Blocks.AddParagraph();
 
-    { chapter list }
     for c:=1 to QCapitulosONT[FProject.BookID] do
     begin
       if c > 1 then
@@ -1242,12 +1473,12 @@ end;
 constructor TChapterView.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
+  FLoadingChapter := false;
   Parent       := TWinControl(AOwner);
   ReadOnly     := true;
   OnKeyDown    := @HandleKeyDown;
   OnMouseWheel := @HandleMouseWheel;
   OnDblClick   := @HandleDoubleClick;
-  //OnMouseMove  := @HandleMouseMove;
   OnContextPopup := @HandleContextPopup;
   FFontName       := 'default';
   FFontSize       := 10;
@@ -1257,10 +1488,22 @@ begin
   FHint           := TNoteWindow.Create(Self);
   FHideVerseNumber:= false;
   FPrintMode      := false;
+  FParaLeftIndent := 0;
+  FParaFirstIndent := 0;
+  FParaTopPadding := 0;
+  FParaBottomPadding := 0;
+  FParaHAlign := halLeft;
+  FJustClosedHeading := False;
   InitPopupMenu;
 
   FStyleStack := TObjectStack.Create;
   FRawMemo    := TRawChapterMemo.Create(Parent, Self);
+  FAppliedSkin := CurrentSkin;
+  Color       := CurrentSkin.WindowBg;
+  Background.Color := CurrentSkin.WindowBg;
+  TextStyle.Font.Color := CurrentSkin.WindowText;
+  TextStyle.Brush.Color := CurrentSkin.WindowBg;
+  TextStyle.Brush.Style := bsClear;
 end;
 
 destructor TChapterView.Destroy;
@@ -1268,6 +1511,8 @@ begin
   FRawMemo.Free;
   FNotes.Free;
   FHint.Free;
+  while FStyleStack.Count > 0 do
+    FStyleStack.Pop.Free;
   FStyleStack.Free;
   if assigned(FProject) then
     FProject.OnNewVerseUnsubscribe(@HandleVerseChange);
@@ -1295,12 +1540,11 @@ end;
 procedure TChapterView.RenderChapter(verses: TStringList; current: integer);
 var
   verse: string;
-  //starttime: DWord;
 begin
-  //starttime := getTickCount;
   SetLength(FVerseRanges, verses.Count + 1);
   FRawMemo.Hide;
 
+  FAppliedSkin := CurrentSkin;
   Blocks.LockUpdate;
   try
     Blocks.Clear;
@@ -1311,6 +1555,13 @@ begin
 
     RenderChapterHeader;
 
+    FParaLeftIndent := 0;
+    FParaFirstIndent := IfThen(GetParagraphMode = pmParagraph, DefaultFirstIndent, 0);
+    FParaTopPadding := 0;
+    FParaBottomPadding := 0;
+    FParaHAlign := halLeft;
+    FJustClosedHeading := False;
+
     FCurrentVerse := 0;
     for verse in verses do
     begin
@@ -1318,23 +1569,24 @@ begin
       RenderVerse(verse);
     end;
 
-    if Blocks.LastBlock.ClassName <> 'TKMemoParagraph' then
-      Blocks.AddParagraph().ParaStyle.FirstIndent := IfThen(GetParagraphMode = pmParagraph, DefaultFirstIndent);
+    if Assigned(Blocks.LastBlock) and (Blocks.LastBlock.ClassName <> 'TKMemoParagraph') then
+      CloseParagraphBlock(Blocks);
 
     RenderChapterFooter;
-    HighlightRange(FVerseRanges[current], clSilver);
-    //RenderNotes;
+    if (current >= Low(FVerseRanges)) and (current <= High(FVerseRanges)) then
+      HighlightRange(FVerseRanges[current], CurrentSkin.VerseHighlightBg);
   finally
     Blocks.UnLockUpdate;
   end;
 
   { scroll current verse to center }
-  self.SelectBlock(Blocks[FVerseRanges[current].first], sgpTopLeft);
-  self.SelLength:=0;
-  ExecuteCommand(ecScrollCenter);
-
-  //DebugLn('  TChapterView.RenderChapter: %d milliseconds', [getTickCount-starttime]);
+  if (current >= Low(FVerseRanges)) and (current <= High(FVerseRanges)) and
+     (FVerseRanges[current].first >= 0) and (FVerseRanges[current].first < Blocks.Count) then
+  begin
+    self.SelectBlock(Blocks[FVerseRanges[current].first], sgpTopLeft);
+    self.SelLength := 0;
+    ExecuteCommand(ecScrollCenter);
+  end;
 end;
 
 end.
-

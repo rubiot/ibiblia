@@ -1661,3 +1661,55 @@ msgstr ""
 msgid "&Save text to file..."
 msgstr ""
 
+
+#: versiculo.sexportasbiblemodule
+msgid "&Export as Bible module..."
+msgstr ""
+
+#: projeto.sexportbiblemodulesavedlgtitle
+msgid "Export as Bible module"
+msgstr ""
+
+#: tfrmprincipal.menuitemview.caption
+msgid "View"
+msgstr ""
+
+#: tfrmprincipal.menuitemdarkmode.caption
+msgid "Dark mode"
+msgstr ""
+
+#: tfrmprincipal.menuitemdarkmode.hint
+msgid "Toggle dark mode on or off (Ctrl+Shift+D)"
+msgstr ""
+
+#: tfrmprincipal.menuitemskinsmenu.caption
+msgid "Skins (theWord Themes)"
+msgstr ""
+
+#: tfrmprincipal.menuitemskinclassic.caption
+msgid "Classic (Light)"
+msgstr ""
+
+#: tfrmprincipal.menuitemskintheworddark.caption
+msgid "theWord Dark (Charcoal)"
+msgstr ""
+
+#: tfrmprincipal.menuitemskinnight.caption
+msgid "Night (Pitch Black)"
+msgstr ""
+
+#: tfrmprincipal.menuitemskinsepia.caption
+msgid "Sepia (Parchment)"
+msgstr ""
+
+#: tfrmprincipal.menuitemskinslate.caption
+msgid "Slate (Steel Blue)"
+msgstr ""
+
+#: tfrmprincipal.menuitemskinsolarizeddark.caption
+msgid "Solarized Dark"
+msgstr ""
+
+#: tfrmprincipal.menuitemskinhighcontrast.caption
+msgid "High Contrast Dark"
+msgstr ""

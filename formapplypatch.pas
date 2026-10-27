@@ -5,8 +5,9 @@ unit formapplypatch;
 interface
 
 uses
+  unitskins,
   Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  ComCtrls, ExtCtrls, BibleTreeView, PatchFile, Versiculo, Projeto;
+  ComCtrls, ExtCtrls, BibleTreeView, PatchFile, Versiculo, Projeto, LCLIntf;
 
 type
 
@@ -99,12 +100,53 @@ end;
 
 procedure TFrmApplyPatch.FormShow(Sender: TObject);
 begin
+  ApplySkinToForm(Self, CurrentSkin);
+  {$IFDEF WINDOWS}
+  HookTabControl(TabControlPreview);
+  HookButtonControl(Button1);
+  HookButtonControl(Button2);
+  HookButtonControl(BtnSelectAll);
+  HookButtonControl(BtnDeselectAll);
+  {$ENDIF}
+  if IsThemedSkin then
+  begin
+    Button1.Font.Color := CurrentSkin.PanelText;
+    Button2.Font.Color := CurrentSkin.PanelText;
+    BtnSelectAll.Font.Color := CurrentSkin.PanelText;
+    BtnDeselectAll.Font.Color := CurrentSkin.PanelText;
+    GroupBox1.Color := CurrentSkin.PanelBg;
+    GroupBox1.Font.Color := CurrentSkin.PanelText;
+    LabelSrcText.Font.Color := CurrentSkin.PanelText;
+    LabelDstText.Font.Color := CurrentSkin.PanelText;
+    LabelAssociations.Font.Color := CurrentSkin.PanelText;
+    LabelComments.Font.Color := CurrentSkin.PanelText;
+    LabelStatus.Font.Color := CurrentSkin.PanelText;
+    MemoComments.Color := CurrentSkin.WindowBg;
+    MemoComments.Font.Color := CurrentSkin.WindowText;
+  end;
+  if Assigned(FBibleTreeView) then
+  begin
+    FBibleTreeView.UpdateSkin(CurrentSkin);
+    {$IFDEF WINDOWS}
+    HookTreeViewControl(FBibleTreeView);
+    if FBibleTreeView.HandleAllocated then
+    begin
+      SendMessage(FBibleTreeView.Handle, $111E, 0, ColorToRGB(CurrentSkin.TreeText));
+      SendMessage(FBibleTreeView.Handle, $111D, 0, ColorToRGB(CurrentSkin.TreeBg));
+      SendMessage(FBibleTreeView.Handle, $1128, 0, ColorToRGB(CurrentSkin.PanelBorder));
+    end;
+    {$ENDIF}
+    ApplyDarkModeToControl(FBibleTreeView, CurrentSkin.IsDark);
+    FBibleTreeView.Invalidate;
+  end;
   FSrcVerse.Fonte := ProjetoAtual.ObterFonteTexto(tbOrigem);
   FDstVerse.Fonte := ProjetoAtual.ObterFonteTexto(tbDestino);
   FSrcVerse.PalavrasComStrongEmNegrito := ProjetoAtual.PalavrasComStrongEmNegrito;
   FSrcVerse.StrongsCountMode := ProjetoAtual.MostrarQtdStrongs;
   FDstVerse.StrongsCountMode := ProjetoAtual.MostrarQtdStrongs;
   MemoComments.Font := FrmPrincipal.CommentsMemo.Font;
+  if IsThemedSkin then
+    MemoComments.Font.Color := CurrentSkin.WindowText;
 end;
 
 procedure TFrmApplyPatch.TabControlPreviewChange(Sender: TObject);

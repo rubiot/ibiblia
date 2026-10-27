@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, ONTTokenizer, StdCtrls, Controls, Graphics, Forms, Math,
-  LazUTF8, LazLogger;
+  LazUTF8, LazLogger, unitskins;
 
 type
   TSyntagm = class;
@@ -95,7 +95,6 @@ type
     function GetHasStrongs: boolean;
     function GetHasMorph: boolean;
     procedure SetPointed(const AValue: boolean);
-    procedure SetAssociated(const AValue: boolean);
     function GetGist: string;
   public
     constructor Create(s: TTagSintagma; owner: TObject);
@@ -108,6 +107,7 @@ type
     procedure DisassociatePairs;
     procedure HighlightStrong(strong: string);
     procedure ToggleStrongHighlight(enable: boolean);
+    procedure SetAssociated(const AValue: boolean);
     function GetNext: TSyntagm;
     function GetNextSyntagm: TSyntagm;
     function GetNextVisible: TSyntagm;
@@ -203,6 +203,8 @@ begin
 
   //d := format('selecao: %d, ' + 'sel par: %d, ' + 'irmaos : %d, ' + 'pares  : %d', [VerseRef.Selecao.Count, VerseRef.VersiculoPar.Selecao.Count, Siblings.Count, Pairs.Count]);
   InvertSelection;
+  if IsSelected then
+    verse.LastFocusedSyntagm := Self;
   //d := format('selecao: %d, ' + 'sel par: %d, ' + 'irmaos : %d, ' + 'pares  : %d', [VerseRef.Selecao.Count, VerseRef.VersiculoPar.Selecao.Count, Siblings.Count, Pairs.Count]);
 
   if (ssShift in Shift) and (Assigned(verse.VersiculoPar)) and
@@ -210,9 +212,13 @@ begin
      (verse.Selecao.Count > 0) then // Shift pressionado
   begin
     verse.AssociarSintagmas;
+    verse.PendingAutoSelectNext := True;
+    verse.VersiculoPar.PendingAutoSelectNext := True;
   end
-  else if Assigned(verse.VersiculoPar) then // Shift não pressionado
+  else if (not (ssShift in Shift)) and Assigned(verse.VersiculoPar) then // Shift não pressionado
   begin
+    verse.PendingAutoSelectNext := False;
+    verse.VersiculoPar.PendingAutoSelectNext := False;
     verse.VersiculoPar.LimparSelecao;
     if Pairs.Count > 0 then
     begin
@@ -285,6 +291,7 @@ begin
     Siblings[i].SetPointed(true);
 
   verse := TVersiculo(VerseRef);
+  verse.UpdateNavHoverState;
   if assigned(verse.OnMouseEnter) then
     verse.OnMouseEnter(self);
 
@@ -336,13 +343,14 @@ begin
     Hint := nil;
   end;
 
+  TVersiculo(VerseRef).UpdateNavHoverState;
   if assigned(TVersiculo(VerseRef).OnMouseLeave) then
     TVersiculo(VerseRef).OnMouseLeave(self);
 end;
 
 procedure TSyntagm.DoOnRightClick(Sender: TObject; Shift: TShiftState);
 var
-  LastSelected, NextUnassociated: TSyntagm;
+  LastSelected, NextUnassociated, NotifyTarget: TSyntagm;
   verse: TVersiculo;
 begin
   {if ssShift in Shift then
@@ -367,13 +375,22 @@ begin
     verse.LimparSelecao;
 
   InvertSelection;
+  if IsSelected then
+    verse.LastFocusedSyntagm := Self;
 
   if Assigned(verse.VersiculoPar) and
      (verse.VersiculoPar.Selecao.Count > 0) and
      (verse.Selecao.Count > 0) then
   begin
     verse.AssociarSintagmas;
+    if ssCtrl in Shift then
+    begin
+      verse.PendingAutoSelectNext := True;
+      verse.VersiculoPar.PendingAutoSelectNext := True;
+    end;
   end;
+
+  NotifyTarget := Self;
 
   if not (ssCtrl in Shift) and (verse.VersiculoPar.Selecao.Count > 0) then
   begin // right-click with no modifiers triggers auto-select next syntagm
@@ -386,12 +403,18 @@ begin
       if Assigned(NextUnassociated) then
       begin
         NextUnassociated.AddToSelection;
-        verse.OnClick(NextUnassociated); // triggers left-click on newly selected syntagm
+        TVersiculo(NextUnassociated.VerseRef).LastFocusedSyntagm := NextUnassociated;
+        NotifyTarget := NextUnassociated;
       end;
     end;
   end;
 
   verse.Renderizar;
+  if assigned(verse.VersiculoPar) then
+    verse.VersiculoPar.Renderizar;
+
+  if Assigned(NotifyTarget) and Assigned(TVersiculo(NotifyTarget.VerseRef).OnClick) then
+    TVersiculo(NotifyTarget.VerseRef).OnClick(NotifyTarget);
 end;
 
 procedure TSyntagm.DoOnMiddleClick(Sender: TObject; Shift: TShiftState);
@@ -524,16 +547,29 @@ begin
   begin // IsPointed
     FLabel.Font.Underline := true;
     if not IsSelected then
-      FLabel.Color:= clHighlight;
+    begin
+      FLabel.Transparent := false;
+      FLabel.Color := CurrentSkin.PointedBg;
+      FLabel.Font.Color := CurrentSkin.PointedText;
+    end;
   end
   else
   begin // não IsPointed
     FLabel.Font.Underline := false;
     if IsSelected then
-      FLabel.Color:= clYellow
+    begin
+      FLabel.Transparent := false;
+      FLabel.Color := CurrentSkin.HighlightBg;
+      FLabel.Font.Color := CurrentSkin.HighlightText;
+    end
     else
-      FLabel.Color:= clDefault;
+    begin
+      FLabel.Color := CurrentSkin.WindowBg;
+      FLabel.Transparent := not CurrentSkin.IsDark;
+      SetAssociated(IsAssociated);
+    end;
   end;
+  FLabel.Repaint;
 end;
 
 procedure TSyntagm.SetAssociated(const AValue: boolean);
@@ -687,7 +723,16 @@ begin
     else if FText = '<Fi>' then
       FLabel.Caption := ']';
     FLabel.ParentColor := false;
-    FLabel.Font.Color  := FColor;
+    if FKind = tsStrongCount then
+    begin
+      if CurrentSkin.IsDark then
+        FLabel.Font.Color := CurrentSkin.VerseNumColor
+      else
+        FLabel.Font.Color := clRed;
+    end
+    else
+      FLabel.Font.Color := FColor;
+
     FLabel.Parent      := TVersiculo(FVerse).Painel;
     FLabel.ParentFont  := FKind <> tsStrongCount;
     FLabel.AutoSize    := true;
@@ -695,6 +740,17 @@ begin
       FLabel.Font.Size := round(FLabel.Font.Size * 0.7);
     FLabel.Font.Bold := FLabel.Font.Bold or (TVersiculo(FVerse).PalavrasComStrongEmNegrito and HasStrongs);
     IsAssociated     := FPairs.Count > 0;
+    if IsSelected then
+    begin
+      FLabel.Transparent := false;
+      FLabel.Color := CurrentSkin.HighlightBg;
+      FLabel.Font.Color := CurrentSkin.HighlightText;
+    end
+    else
+    begin
+      FLabel.Color := CurrentSkin.WindowBg;
+      FLabel.Transparent := not CurrentSkin.IsDark;
+    end;
   end else
     FLabel := nil;
 
@@ -747,7 +803,12 @@ procedure TSyntagm.AddToSelection;
 begin
   FSelected := true;
   if TVersiculo(FVerse).Ativo and assigned(FLabel) then
-    FLabel.Color:= clYellow;
+  begin
+    FLabel.Transparent := false;
+    FLabel.Color := CurrentSkin.HighlightBg;
+    FLabel.Font.Color := CurrentSkin.HighlightText;
+    FLabel.Repaint;
+  end;
   TVersiculo(FVerse).Selecao.Add(Self);
 end;
 
@@ -755,7 +816,12 @@ procedure TSyntagm.RemoveFromSelection;
 begin
   FSelected := false;
   if TVersiculo(FVerse).Ativo and assigned(FLabel) then
-    FLabel.Color:= clWindow;
+  begin
+    FLabel.Color := CurrentSkin.WindowBg;
+    FLabel.Transparent := not CurrentSkin.IsDark;
+    SetAssociated(IsAssociated);
+    FLabel.Repaint;
+  end;
   TVersiculo(FVerse).Selecao.Remove(Self);
 end;
 

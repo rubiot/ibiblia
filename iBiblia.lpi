@@ -18,12 +18,14 @@
     </i18n>
     <VersionInfo>
       <UseVersionInfo Value="True"/>
-      <AutoIncrementBuild Value="True"/>
+      <AutoIncrementBuild Value="False"/>
       <MajorVersionNr Value="1"/>
-      <BuildNr Value="67"/>
-      <StringTable CompanyName="Rúbio R. C. Terra (rubio.terra@gmail.com)" FileDescription="Ferramenta para associação de textos bíblicos" ProductName="iBiblia" ProductVersion="0.0.0.0"/>
+      <MinorVersionNr Value="0"/>
+      <RevisionNr Value="1"/>
+      <BuildNr Value="32"/>
+      <StringTable CompanyName="Rúbio R. C. Terra &amp; Edmund Valdez" FileDescription="iBiblia 64-bit - Ferramenta para associação de textos bíblicos" FileVersion="1.0.1.032" InternalName="iBiblia" LegalCopyright="Copyright Rúbio Terra, Edmund Valdez" OriginalFilename="iBiblia.exe" ProductName="iBiblia" ProductVersion="1.0.1.032"/>
     </VersionInfo>
-    <BuildModes Count="4" Active="Debug32">
+    <BuildModes Count="6" Active="Release64">
       <Item1 Name="Debug" Default="True"/>
       <Item2 Name="Release">
         <CompilerOptions>
@@ -116,6 +118,64 @@
           </Linking>
         </CompilerOptions>
       </Item4>
+      <Item5 Name="Debug64">
+        <CompilerOptions>
+          <Version Value="11"/>
+          <PathDelim Value="\"/>
+          <Target>
+            <Filename Value="iBiblia"/>
+          </Target>
+          <SearchPaths>
+            <IncludeFiles Value="$(ProjOutDir)"/>
+            <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
+          </SearchPaths>
+          <CodeGeneration>
+            <TargetCPU Value="x86_64"/>
+            <TargetOS Value="win64"/>
+          </CodeGeneration>
+          <Linking>
+            <Debugging>
+              <DebugInfoType Value="dsDwarf2Set"/>
+            </Debugging>
+            <Options>
+              <Win32>
+                <GraphicApplication Value="True"/>
+              </Win32>
+            </Options>
+          </Linking>
+        </CompilerOptions>
+      </Item5>
+      <Item6 Name="Release64">
+        <CompilerOptions>
+          <Version Value="11"/>
+          <PathDelim Value="\"/>
+          <Target>
+            <Filename Value="iBiblia"/>
+          </Target>
+          <SearchPaths>
+            <IncludeFiles Value="$(ProjOutDir)"/>
+            <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
+          </SearchPaths>
+          <CodeGeneration>
+            <TargetCPU Value="x86_64"/>
+            <TargetOS Value="win64"/>
+            <Optimizations>
+              <OptimizationLevel Value="3"/>
+            </Optimizations>
+          </CodeGeneration>
+          <Linking>
+            <Debugging>
+              <GenerateDebugInfo Value="False"/>
+              <DebugInfoType Value="dsDwarf2Set"/>
+            </Debugging>
+            <Options>
+              <Win32>
+                <GraphicApplication Value="True"/>
+              </Win32>
+            </Options>
+          </Linking>
+        </CompilerOptions>
+      </Item6>
     </BuildModes>
     <PublishOptions>
       <Version Value="2"/>
@@ -127,7 +187,7 @@
           <local>
             <CommandLineParams Value="--debug-log=log.txt"/>
             <LaunchingApplication PathPlusParams="\usr\X11R6\bin\xterm -T 'Lazarus Run Output' -e $(LazarusDir)\tools\runwait.sh $(TargetCmdLine)"/>
-            <WorkingDirectory Value="C:\github\ibiblia"/>
+            <WorkingDirectory Value=""/>
           </local>
         </Mode0>
       </Modes>
@@ -150,7 +210,7 @@
         <PackageName Value="LCL"/>
       </Item5>
     </RequiredPackages>
-    <Units Count="49">
+    <Units Count="53">
       <Unit0>
         <Filename Value="iBiblia.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -508,16 +568,6 @@
         <UsageCount Value="241"/>
         <Loaded Value="True"/>
       </Unit32>
-      <Unit33>
-        <Filename Value="projectfile.pas"/>
-        <IsPartOfProject Value="True"/>
-        <UnitName Value="ProjectFile"/>
-        <EditorIndex Value="23"/>
-        <TopLine Value="20"/>
-        <CursorPos X="32" Y="40"/>
-        <UsageCount Value="238"/>
-        <Loaded Value="True"/>
-      </Unit33>
       <Unit34>
         <Filename Value="pcre_dll.pas"/>
         <EditorIndex Value="2"/>
@@ -651,6 +701,31 @@
         <UsageCount Value="77"/>
         <Loaded Value="True"/>
       </Unit48>
+      <Unit49>
+        <Filename Value="unitsearch.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="unitsearch"/>
+      </Unit49>
+      <Unit50>
+        <Filename Value="unittexttospeech.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="unittexttospeech"/>
+      </Unit50>
+      <Unit51>
+        <Filename Value="formvoicesettings.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="formvoicesettings"/>
+      </Unit51>
+      <Unit52>
+        <Filename Value="formglobaldicts.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="formglobaldicts"/>
+      </Unit52>
+      <Unit53>
+        <Filename Value="unitskins.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="unitskins"/>
+      </Unit53>
     </Units>
     <JumpHistory Count="30" HistoryIndex="29">
       <Position1>
@@ -800,50 +875,6 @@
     </Linking>
   </CompilerOptions>
   <Debugging>
-    <BreakPoints Count="6">
-      <Item1>
-        <Kind Value="bpkSource"/>
-        <WatchScope Value="wpsLocal"/>
-        <WatchKind Value="wpkWrite"/>
-        <Source Value="PCRE.pas"/>
-        <Line Value="1731"/>
-      </Item1>
-      <Item2>
-        <Kind Value="bpkData"/>
-        <WatchData Value="marcador"/>
-        <WatchScope Value="wpsGlobal"/>
-        <WatchKind Value="wpkWrite"/>
-        <InitialEnabled Value="False"/>
-      </Item2>
-      <Item3>
-        <Kind Value="bpkSource"/>
-        <WatchScope Value="wpsLocal"/>
-        <WatchKind Value="wpkWrite"/>
-        <Source Value="versiculo.pas"/>
-        <Line Value="1383"/>
-      </Item3>
-      <Item4>
-        <Kind Value="bpkSource"/>
-        <WatchScope Value="wpsLocal"/>
-        <WatchKind Value="wpkWrite"/>
-        <Source Value="projeto.pas"/>
-        <Line Value="343"/>
-      </Item4>
-      <Item5>
-        <Kind Value="bpkSource"/>
-        <WatchScope Value="wpsLocal"/>
-        <WatchKind Value="wpkWrite"/>
-        <Source Value="formprincipal.pas"/>
-        <Line Value="561"/>
-      </Item5>
-      <Item6>
-        <Kind Value="bpkSource"/>
-        <WatchScope Value="wpsLocal"/>
-        <WatchKind Value="wpkWrite"/>
-        <Source Value="projeto.pas"/>
-        <Line Value="1556"/>
-      </Item6>
-    </BreakPoints>
     <Watches Count="1">
       <Item1>
         <Expression Value="stg.FText"/>
