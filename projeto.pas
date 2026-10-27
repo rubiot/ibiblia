@@ -95,6 +95,8 @@ type
     FMemoVersiculo: TMemoVersiculo;
     FAtivo: boolean;
     FMarker: string;
+    FLoadedVerseID: string;
+    FScrollingSessionDepth: Integer;
     FScrollEventsEnabled: boolean;
     FExportando: boolean;
     FOnAlterarVersiculo: TOnAlterarVersiculoEvent;
@@ -192,6 +194,7 @@ type
     procedure SalvarPares;
     procedure SalvarTexto;
     procedure SalvarAssociacoes;
+    procedure HealMisplacedPairsInDatabase;
     procedure RemoverAssociacoes;
     procedure SintagmaOnMouseEnter(Sender: TSyntagm);
     procedure SintagmaOnMouseLeave(Sender: TSyntagm);
@@ -297,6 +300,7 @@ type
     function HasPendingAutoSelectNext: Boolean;
     procedure CompletePendingAutoSelectNext;
     procedure UpdateVerseNavHoverStates;
+    function HandleMouseWheelForSourceWords(Shift: TShiftState; WheelDelta: Integer): Boolean;
     procedure FiltrarArvore(AStatus: Integer);
     procedure SelectTreeNode(id: string);
     function IrParaVersiculoSeguinteComSituacao(AStatus: Integer): boolean;
@@ -520,7 +524,23 @@ begin
 end;
 
 function TProjeto.GetFormattedReference: string;
+var
+  curId: string;
+  b, c, v, bIdx: smallint;
 begin
+  if Assigned(FTblPares) and FTblPares.Active and (not FScrollEventsEnabled) then
+  begin
+    curId := FTblPares.FieldByName('pare_id').AsString;
+    if (curId <> '') and (SScanf(curId, '%d,%d,%d', [@b, @c, @v]) = 3) then
+    begin
+      bIdx := b - OffsetLivros[FEscopo] - 1;
+      if (bIdx >= 0) and (bIdx < QLivros[FEscopo]) then
+      begin
+        Result := Format('%s %d:%d', [NLivros[FEscopo][bIdx], c, v]);
+        Exit;
+      end;
+    end;
+  end;
   result := format('%s %d:%d', [Book, Chapter, Verse]);
 end;
 
@@ -2854,14 +2874,31 @@ begin
 end;
 
 procedure TProjeto.PreRolagemVersiculo(DataSet: TDataSet);
-//var starttime: DWord;
+var
+  wasScrollEnabled: Boolean;
 begin
   if not FScrollEventsEnabled or not Assigned(FAVersiculo[tbOrigem]) then
     exit;
 
-  //starttime := getTickCount;
+  if FLoadedVerseID = '' then
+    exit;
 
   FMemoVersiculo.Desativar; // hide and save verse edit if necessary
+
+  // Ensure FTblPares is positioned on the exact verse currently loaded in FAVersiculo before saving
+  if Assigned(FTblPares) and FTblPares.Active and (GetID() <> FLoadedVerseID) then
+  begin
+    wasScrollEnabled := FScrollEventsEnabled;
+    FScrollEventsEnabled := False;
+    try
+      FTblPares.Locate('pare_id', FLoadedVerseID, []);
+    finally
+      FScrollEventsEnabled := wasScrollEnabled;
+    end;
+  end;
+
+  if (not Assigned(FTblPares)) or (not FTblPares.Active) or (GetID() <> FLoadedVerseID) then
+    exit;
 
   if FAVersiculo[tbOrigem].Modificado then
   begin
@@ -2874,22 +2911,19 @@ begin
 
   if assigned(FMemoComentarios) then
     Comentarios := FMemoComentarios.Text;
-
-  //DebugLn('  TProjeto.PreRolagemVersiculo: %d milliseconds', [getTickCount-starttime]);
 end;
 
 procedure TProjeto.PosRolagemVersiculo(DataSet: TDataSet);
 var
   v: TTipoTextoBiblico;
   e: TOnNovoVersiculoEvent;
-  //starttime: DWord;
+  rawPairs: string;
 begin
   if not FScrollEventsEnabled then
     exit;
 
-  UpdateReference(GetID());
-
-  //starttime := getTickCount;
+  FLoadedVerseID := GetID();
+  UpdateReference(FLoadedVerseID);
 
   for v:=low(FAVersiculo) to high(FAVersiculo) do
     if assigned(FAVersiculo[v]) then
@@ -2898,10 +2932,21 @@ begin
       FAVersiculo[v].Texto := FTblPares.Fields[FACamposTexto[v]].AsString;
     end;
 
-  if assigned(FAVersiculo[tbOrigem]) and assigned(FAVersiculo[tbOrigem]) then
+  if assigned(FAVersiculo[tbOrigem]) and assigned(FAVersiculo[tbDestino]) then
   begin
+    rawPairs := FTblPares.FieldByName('pare_pares').AsString;
+    if (rawPairs <> '') and (not FAVersiculo[tbOrigem].AreParesValidForVerse(rawPairs)) then
+    begin
+      // Self-heal misplaced/corrupted pairs so this verse is not scrambled
+      FTblPares.Edit;
+      FTblPares.FieldByName('pare_pares').AsString := '';
+      if FTblPares.FieldByName('pare_situacao').AsInteger > 0 then
+        FTblPares.FieldByName('pare_situacao').AsInteger := 0;
+      FTblPares.Post;
+      rawPairs := '';
+    end;
     try
-      FAVersiculo[tbOrigem].Pares := FTblPares.FieldByName('pare_pares').AsString;
+      FAVersiculo[tbOrigem].Pares := rawPairs;
     except
       on E: Exception do
       MessageDlg(SError, SCorruptedData + #13#10#13#10 + FormattedReference + #13#10#13#10 +
@@ -2946,14 +2991,21 @@ begin
 
   if FAutoSave and not FExportando then
     Salvar;
-
-  //DebugLn('  TProjeto.PosRolagemVersiculo: %d milliseconds', [getTickCount-starttime]);
 end;
 
 procedure TProjeto.SalvarPares;
+var
+  newPairs: string;
 begin
+  if (not Assigned(FTblPares)) or (not FTblPares.Active) or (not Assigned(FAVersiculo[tbOrigem])) then
+    Exit;
+  if (FLoadedVerseID <> '') and (GetID() <> FLoadedVerseID) then
+    Exit;
+  newPairs := FAVersiculo[tbOrigem].Pares;
+  if (newPairs <> '') and (not FAVersiculo[tbOrigem].AreParesValidForVerse(newPairs)) then
+    Exit;
   FTblPares.Edit;
-  FTblPares.FieldByName('pare_pares').AsString := FAVersiculo[tbOrigem].Pares;
+  FTblPares.FieldByName('pare_pares').AsString := newPairs;
   FTblPares.Post;
 end;
 
@@ -2961,6 +3013,10 @@ procedure TProjeto.SalvarTexto;
 var
   v: TTipoTextoBiblico;
 begin
+  if (not Assigned(FTblPares)) or (not FTblPares.Active) then
+    Exit;
+  if (FLoadedVerseID <> '') and (GetID() <> FLoadedVerseID) then
+    Exit;
   for v:=low(FAVersiculo) to high(FAVersiculo) do
     if assigned(FAVersiculo[v]) and FAVersiculo[v].XMLModificado then
     begin
@@ -2970,6 +3026,93 @@ begin
       FAVersiculo[v].Modificado := false;
       FAVersiculo[v].XMLModificado := false;
     end;
+end;
+
+procedure TProjeto.HealMisplacedPairsInDatabase;
+var
+  wasScrollEnabled: Boolean;
+  savedId, curPairs: string;
+  badIds, badPairs, badStatuses: TStringList;
+  i, restoredStatus: Integer;
+  anyChanged: Boolean;
+begin
+  if (not Assigned(FTblPares)) or (not FTblPares.Active) or
+     (not Assigned(FATmpVerse[tbOrigem])) or (not Assigned(FATmpVerse[tbDestino])) then
+    Exit;
+
+  wasScrollEnabled := FScrollEventsEnabled;
+  savedId := GetID();
+  FScrollEventsEnabled := False;
+  badIds := TStringList.Create;
+  badPairs := TStringList.Create;
+  badStatuses := TStringList.Create;
+  anyChanged := False;
+  try
+    FTblPares.First;
+    while not FTblPares.EOF do
+    begin
+      curPairs := FTblPares.FieldByName('pare_pares').AsString;
+      if curPairs <> '' then
+      begin
+        FATmpVerse[tbOrigem].Texto := FTblPares.Fields[FACamposTexto[tbOrigem]].AsString;
+        FATmpVerse[tbDestino].Texto := FTblPares.Fields[FACamposTexto[tbDestino]].AsString;
+        if not FATmpVerse[tbOrigem].AreParesValidForVerse(curPairs) then
+        begin
+          badIds.Add(FTblPares.FieldByName('pare_id').AsString);
+          badPairs.Add(curPairs);
+          badStatuses.Add(IntToStr(FTblPares.FieldByName('pare_situacao').AsInteger));
+
+          FTblPares.Edit;
+          FTblPares.FieldByName('pare_pares').AsString := '';
+          if FTblPares.FieldByName('pare_situacao').AsInteger > 0 then
+            FTblPares.FieldByName('pare_situacao').AsInteger := 0;
+          FTblPares.Post;
+          anyChanged := True;
+        end;
+      end;
+      FTblPares.Next;
+    end;
+
+    // Attempt to restore misplaced pairs to Genesis 41:32 ('1,41,32') or active marker if unassociated
+    for i := 0 to badPairs.Count - 1 do
+    begin
+      if FTblPares.Locate('pare_id', '1,41,32', []) and
+         (FTblPares.FieldByName('pare_pares').AsString = '') then
+      begin
+        FATmpVerse[tbOrigem].Texto := FTblPares.Fields[FACamposTexto[tbOrigem]].AsString;
+        FATmpVerse[tbDestino].Texto := FTblPares.Fields[FACamposTexto[tbDestino]].AsString;
+        if FATmpVerse[tbOrigem].AreParesValidForVerse(badPairs[i]) then
+        begin
+          restoredStatus := StrToIntDef(badStatuses[i], 3);
+          if (restoredStatus <= 0) or (restoredStatus > 3) then
+            restoredStatus := 3;
+          FTblPares.Edit;
+          FTblPares.FieldByName('pare_pares').AsString := badPairs[i];
+          FTblPares.FieldByName('pare_situacao').AsInteger := restoredStatus;
+          FTblPares.Post;
+          anyChanged := True;
+        end;
+      end;
+    end;
+
+    if anyChanged and FTblPares.UpdatesPending then
+    begin
+      try
+        FTblPares.ApplyUpdates;
+      except
+        on E: Exception do
+          DebugLn('HealMisplacedPairsInDatabase ApplyUpdates warning: ' + E.Message);
+      end;
+    end;
+
+    if savedId <> '' then
+      FTblPares.Locate('pare_id', savedId, []);
+  finally
+    badIds.Free;
+    badPairs.Free;
+    badStatuses.Free;
+    FScrollEventsEnabled := wasScrollEnabled;
+  end;
 end;
 
 procedure TProjeto.SalvarAssociacoes;
@@ -3128,11 +3271,21 @@ begin
 end;
 
 procedure TProjeto.SintagmaOnClick(Sender: TSyntagm);
+var
+  v: TTipoTextoBiblico;
+  dummyPt: TPoint;
+  showPopup: Boolean;
 begin
   FMemoVersiculo.Desativar; // saving eventual changes on verse edit
 
   // Clear hovered-associated override when clicking/associating so next auto-selected Source word shows immediately
   FHoveredAssocDestSyntagm := nil;
+
+  for v := low(FAVersiculo) to high(FAVersiculo) do
+    if assigned(FAVersiculo[v]) then
+      FAVersiculo[v].DisableStrongHighlight;
+  if Assigned(Sender) then
+    HighlightStrongs(Sender);
 
   if assigned(FOnSintagmaClick) and Assigned(Sender) and
      (IsSourceSyntagm(Sender) or Sender.HasStrongs or Sender.HasMorph) then
@@ -3150,6 +3303,29 @@ begin
   end;
 
   UpdateDestinationPopup;
+
+  if Assigned(Sender) and IsSourceSyntagm(Sender) and
+     (not IsMouseInDestinationPanel(dummyPt)) and
+     Assigned(FAVersiculo[tbOrigem]) and Assigned(FAVersiculo[tbOrigem].Painel) and
+     IsMouseCursorInControl(FAVersiculo[tbOrigem].Painel) then
+  begin
+    showPopup := False;
+    case FPopupTrigger of
+      ptMouseHover:     showPopup := (GetKeyState(VK_CONTROL) and $8000 = 0) and
+                                     (GetKeyState(VK_SHIFT  ) and $8000 = 0);
+      ptAltMouseHover:  showPopup := (GetKeyState(VK_MENU   ) and $8000 <> 0);
+      ptCtrlMouseHover: showPopup := (GetKeyState(VK_CONTROL) and $8000 <> 0) and
+                                     (GetKeyState(VK_SHIFT  ) and $8000 = 0);
+    end;
+    if showPopup then
+    begin
+      if Assigned(FrmDictionaryPopup) and FrmDictionaryPopup.Visible and (not FDestPopupActive) then
+        FrmDictionaryPopup.Ocultar;
+      FTemporizador.Enabled := False;
+      FTemporizador.Tag := PtrInt(Sender);
+      FTemporizador.Enabled := True;
+    end;
+  end;
 end;
 
 procedure TProjeto.OnExportText(Sender: TVersiculo);
@@ -3372,6 +3548,7 @@ begin
   lines := TStringList.Create;
   try
     StartScrollingSession;
+    HealMisplacedPairsInDatabase;
     with FTblPares do
     begin
       currentId := FieldByName('pare_id').AsString;
@@ -4416,11 +4593,15 @@ var
   b, c, v: smallint;
   targetBook: string;
   nl, nc, nv: TTreeNode;
+  oldOnChange: TTVChangedEvent;
 begin
   if not assigned(FArvore) or FClosing or (FArvore.Items.Count = 0) then
     exit;
 
-  SScanf(id, '%d,%d,%d', [@b, @c, @v]);
+  if SScanf(id, '%d,%d,%d', [@b, @c, @v]) <> 3 then
+    exit;
+  if (b - OffsetLivros[FEscopo] - 1 < 0) or (b - OffsetLivros[FEscopo] - 1 >= QLivros[FEscopo]) then
+    exit;
   targetBook := NLivros[FEscopo][b-OffsetLivros[FEscopo]-1];
 
   nl := FArvore.Items[0];
@@ -4439,10 +4620,14 @@ begin
   while assigned(nv) and (nv.Text <> IntToStr(v)) do
     nv := nv.GetNextSibling;
 
-  if assigned(nv) then
-    nv.Selected := true
-  else
-    nc.Selected := true;
+  oldOnChange := FArvore.OnChange;
+  FArvore.OnChange := nil;
+  try
+    if assigned(nv) then
+      nv.Selected := true;
+  finally
+    FArvore.OnChange := oldOnChange;
+  end;
 end;
 
 procedure TProjeto.SetFilterStatus(AValue: Integer);
@@ -4469,8 +4654,9 @@ begin
     if (AStatus < 0) or (AStatus > 3) then
     begin
       PreencherArvore;
+      FArvore.OnChange := nil;
       AtualizarArvore;
-  AtualizarNomesTraducao;
+      AtualizarNomesTraducao;
       exit;
     end;
 
@@ -4519,10 +4705,10 @@ begin
     FArvore.FullExpand;
   finally
     FArvore.EndUpdate;
-    FArvore.OnChange := @OnMudancaVersiculo;
   end;
 
   SelectTreeNode(ID);
+  FArvore.OnChange := @OnMudancaVersiculo;
   {$IFDEF WINDOWS}
   HookTreeViewControl(FArvore);
   {$ENDIF}
@@ -4608,6 +4794,8 @@ begin
   FGlobalDicMorfo := nil;
   FGlobalDicEnglish := nil;
 
+  FLoadedVerseID      := '';
+  FScrollingSessionDepth := 0;
   FParesAntigos       := nil;
   FOnNovoVersiculo    := TOnNovoVersiculoEvents.Create;
   FOnAlterarVersiculo := nil;
@@ -4800,6 +4988,8 @@ begin
   if FEscopo = etNone then
     FEscopo := IdentificarEscopo;
 
+  HealMisplacedPairsInDatabase;
+
   if assigned(FArvore) then
   begin
     PreencherArvore;
@@ -4834,8 +5024,12 @@ begin
   // set tokenizer version
   TTokenizerFactory.PreferredVersion := StrToIntDef(ObterInfo('tokenizer_version'), 1);
 
+  FLoadedVerseID := '';
+  FScrollingSessionDepth := 0;
   ScrollEventsEnabled := true;
   GoToReference(ObterInfo('marcador'));
+  if FLoadedVerseID = '' then
+    PosRolagemVersiculo(FTblPares);
 
   FAtivo := true;
   FDisplayTags := false;
@@ -5136,6 +5330,7 @@ begin
       FExportando := true;
 
       StartScrollingSession;
+      HealMisplacedPairsInDatabase;
       VersiculoInicial;
       while not FTblPares.EOF do
       begin
@@ -5455,6 +5650,32 @@ begin
       FAVersiculo[t].UpdateNavHoverState;
 end;
 
+function TProjeto.HandleMouseWheelForSourceWords(Shift: TShiftState; WheelDelta: Integer): Boolean;
+var
+  inSrc, inDst: Boolean;
+begin
+  Result := False;
+  if (not FAtivo) or FClosing or (WheelDelta = 0) then Exit;
+  if (Shift * [ssCtrl, ssShift, ssAlt] <> []) or
+     ((GetKeyState(VK_CONTROL) and $8000) <> 0) or
+     ((GetKeyState(VK_SHIFT) and $8000) <> 0) then Exit;
+  if (not Assigned(FAVersiculo[tbOrigem])) or (not Assigned(FAVersiculo[tbOrigem].Painel)) then Exit;
+
+  inSrc := IsMouseCursorInControl(FAVersiculo[tbOrigem].Painel);
+  inDst := Assigned(FAVersiculo[tbDestino]) and Assigned(FAVersiculo[tbDestino].Painel) and
+           IsMouseCursorInControl(FAVersiculo[tbDestino].Painel);
+
+  if (not inSrc) and (not inDst) then Exit;
+
+  if inSrc and (FAVersiculo[tbOrigem].ViewMode <> vvmAssoc) then Exit;
+  if inDst and (FAVersiculo[tbDestino].ViewMode <> vvmAssoc) then Exit;
+
+  if WheelDelta > 0 then
+    Result := FAVersiculo[tbOrigem].SelectSourceWordByDelta(-1)
+  else
+    Result := FAVersiculo[tbOrigem].SelectSourceWordByDelta(1);
+end;
+
 procedure TProjeto.ExportarTextoDestinoComStrongs(arquivo: string; opcoes: TOpcoesExportacao);
 begin
   ExportarTextoDestinoComStrongs(arquivo, nil, opcoes);
@@ -5482,6 +5703,7 @@ begin
     errors := TStringList.Create;
 
     StartScrollingSession;
+    HealMisplacedPairsInDatabase;
     with FTblPares do
     begin
       VersiculoInicial;
@@ -5599,6 +5821,7 @@ begin
     lines := TStringList.Create;
 
     StartScrollingSession;
+    HealMisplacedPairsInDatabase;
     with FTblPares do
     begin
       VersiculoInicial;
@@ -5719,6 +5942,7 @@ begin
     FExportando := true;
 
     StartScrollingSession;
+    HealMisplacedPairsInDatabase;
     VersiculoInicial;
 
     while not FTblPares.EOF do
@@ -5805,10 +6029,11 @@ procedure TProjeto.LimparTexto(texto: TTipoTextoBiblico);
 var
   clearCount: Integer;
 begin
-  with FTblPares do
-  begin
-    ScrollEventsEnabled := false;
-    VersiculoInicial;
+  StartScrollingSession;
+  try
+    with FTblPares do
+    begin
+      VersiculoInicial;
     clearCount := 0;
     while not FTblPares.EOF do
     begin
@@ -5837,7 +6062,9 @@ begin
           DebugLn('LimparTexto final warning: ' + E.Message);
       end;
     end;
-    ScrollEventsEnabled := true;
+    end;
+  finally
+    FinishScrollingSession;
   end;
   SetTextDescription(texto, '');
   AtribuirInfo(Format('moduletype.%d', [Ord(texto)]), '');
@@ -6033,9 +6260,18 @@ end;
 
 procedure TProjeto.StartScrollingSession;
 begin
-  FMarker := ID;
-  PreRolagemVersiculo(nil);
-  ScrollEventsEnabled := false;
+  if FScrollingSessionDepth = 0 then
+  begin
+    if FLoadedVerseID <> '' then
+      FMarker := FLoadedVerseID
+    else if Assigned(FTblPares) and FTblPares.Active then
+      FMarker := ID
+    else
+      FMarker := '';
+    PreRolagemVersiculo(nil);
+    ScrollEventsEnabled := false;
+  end;
+  Inc(FScrollingSessionDepth);
 end;
 
 procedure TProjeto.FinishScrollingSession;
@@ -6043,6 +6279,11 @@ var
   steps: Integer;
   idField: TField;
 begin
+  if FScrollingSessionDepth > 0 then
+    Dec(FScrollingSessionDepth);
+  if FScrollingSessionDepth > 0 then
+    Exit;
+
   if (FMarker <> '') and Assigned(FTblPares) and FTblPares.Active then
   begin
     idField := FTblPares.FieldByName('pare_id');

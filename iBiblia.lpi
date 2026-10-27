@@ -22,8 +22,8 @@
       <MajorVersionNr Value="1"/>
       <MinorVersionNr Value="0"/>
       <RevisionNr Value="1"/>
-      <BuildNr Value="26"/>
-      <StringTable CompanyName="Rúbio R. C. Terra &amp; Edmund Valdez" FileDescription="iBiblia 64-bit - Ferramenta para associação de textos bíblicos" FileVersion="1.0.1.026" InternalName="iBiblia" LegalCopyright="Copyright Rúbio Terra, Edmund Valdez" OriginalFilename="iBiblia.exe" ProductName="iBiblia" ProductVersion="1.0.1.026"/>
+      <BuildNr Value="32"/>
+      <StringTable CompanyName="Rúbio R. C. Terra &amp; Edmund Valdez" FileDescription="iBiblia 64-bit - Ferramenta para associação de textos bíblicos" FileVersion="1.0.1.032" InternalName="iBiblia" LegalCopyright="Copyright Rúbio Terra, Edmund Valdez" OriginalFilename="iBiblia.exe" ProductName="iBiblia" ProductVersion="1.0.1.032"/>
     </VersionInfo>
     <BuildModes Count="6" Active="Release64">
       <Item1 Name="Debug" Default="True"/>

@@ -10,7 +10,7 @@ interface
 
 uses
   Classes, SysUtils, StrUtils, ExtCtrls, StdCtrls, Controls, Graphics,
-  ONTTokenizer, Syntagm, Forms, LCLType, Math, LCLProc, Dialogs, LazUTF8,
+  ONTTokenizer, Syntagm, Forms, LCLType, LCLIntf, Math, LCLProc, Dialogs, LazUTF8,
   ONTParser, dbugintf, Menus, Clipbrd, PCRE, unitskins;
 
 type
@@ -93,6 +93,7 @@ type
     FNextAutoSelectWordMustHaveStrongMorpho: Boolean;
     FIsSourceVerse: Boolean;
     FPendingAutoSelectNext: Boolean;
+    FLastFocusedSyntagm: TSyntagm;
     //FOnNovaAssociacao: TOnAssociacaoEvent;
     //FOnRemoverAssociacao: TOnAssociacaoEvent;
     function GetAndamentoAssociacao: Single;
@@ -165,6 +166,7 @@ type
     procedure LimparSintagmas;
     procedure AssociarSintagmas;
     procedure CompletePendingAutoSelectNext;
+    function SelectSourceWordByDelta(Step: Integer): Boolean;
     procedure LimparSelecao;
     procedure DesassociarPares;
     procedure LimparAssociacoes;
@@ -175,6 +177,7 @@ type
     procedure RepositionTabPanel;
     procedure UpdateNavHoverState;
     procedure SelecionarSintagmas(list: TSyntagmList);
+    function AreParesValidForVerse(const AValue: string): Boolean;
     procedure AlterarTexto(_XML: string);
     function GetListaPares(tipo: TPairsListType): TStringList;
     procedure OnSintagmaPopupMenu(s: TSyntagm);
@@ -241,6 +244,7 @@ type
     property NextAutoSelectWordMustHaveStrongMorpho: boolean read FNextAutoSelectWordMustHaveStrongMorpho write FNextAutoSelectWordMustHaveStrongMorpho;
     property IsSourceVerse: Boolean read FIsSourceVerse write FIsSourceVerse default False;
     property PendingAutoSelectNext: Boolean read FPendingAutoSelectNext write FPendingAutoSelectNext default False;
+    property LastFocusedSyntagm: TSyntagm read FLastFocusedSyntagm write FLastFocusedSyntagm;
  published
     { Published declarations }
   end;
@@ -333,6 +337,7 @@ begin
   FNextAutoSelectWordMustHaveStrongMorpho := false;
   FIsSourceVerse := false;
   FPendingAutoSelectNext := false;
+  FLastFocusedSyntagm := nil;
   //FFontePadrao          := TFont.Create;
   //FFontePadrao.Assign(TheOwner.Font);
   FCorAssociado         := CurrentSkin.WindowText;
@@ -394,6 +399,7 @@ begin
   end;
   FSelecao.Clear;
   FPendingAutoSelectNext := false;
+  FLastFocusedSyntagm := nil;
 end;
 
 procedure TVersiculo.CompletePendingAutoSelectNext;
@@ -444,6 +450,7 @@ begin
   if Assigned(NextUnassociated) then
   begin
     NextUnassociated.AddToSelection;
+    srcVerse.LastFocusedSyntagm := NextUnassociated;
     if Assigned(srcVerse.Painel) and Assigned(NextUnassociated.LabelRef) then
       srcVerse.Painel.ScrollInView(NextUnassociated.LabelRef);
   end;
@@ -454,6 +461,165 @@ begin
 
   if Assigned(NextUnassociated) and Assigned(srcVerse.OnClick) then
     srcVerse.OnClick(NextUnassociated);
+end;
+
+function TVersiculo.SelectSourceWordByDelta(Step: Integer): Boolean;
+var
+  srcVerse, dstVerse: TVersiculo;
+  curWord, target: TSyntagm;
+  i, curIdx: Integer;
+
+  function IsSelectableWord(s: TSyntagm): Boolean;
+  begin
+    Result := Assigned(s) and (s.Kind = tsSintagma) and
+              Assigned(s.LabelRef) and s.LabelRef.Visible and
+              (Trim(s.Text) <> '');
+  end;
+
+begin
+  Result := False;
+  if Step = 0 then Exit;
+
+  if FIsSourceVerse then
+  begin
+    srcVerse := Self;
+    dstVerse := FVersiculoRef;
+  end
+  else if Assigned(FVersiculoRef) and FVersiculoRef.IsSourceVerse then
+  begin
+    srcVerse := FVersiculoRef;
+    dstVerse := Self;
+  end
+  else
+    Exit;
+
+  if (not Assigned(srcVerse)) or (not srcVerse.Ativo) or srcVerse.FDestruindo then
+    Exit;
+  if (srcVerse.ViewMode <> vvmAssoc) or (not Assigned(srcVerse.Sintagmas)) or (srcVerse.Sintagmas.Count = 0) then
+    Exit;
+  if (Self = dstVerse) and (dstVerse.ViewMode <> vvmAssoc) then
+    Exit;
+
+  curWord := nil;
+  if srcVerse.Selecao.Count > 0 then
+  begin
+    if Assigned(srcVerse.LastFocusedSyntagm) and
+       (srcVerse.Selecao.IndexOf(srcVerse.LastFocusedSyntagm) >= 0) and
+       (srcVerse.Sintagmas.IndexOf(srcVerse.LastFocusedSyntagm) >= 0) then
+      curWord := srcVerse.LastFocusedSyntagm
+    else if Step > 0 then
+      curWord := srcVerse.Selecao[srcVerse.Selecao.Count - 1]
+    else
+      curWord := srcVerse.Selecao[0];
+  end;
+
+  target := nil;
+  if Assigned(curWord) then
+  begin
+    curIdx := srcVerse.Sintagmas.IndexOf(curWord);
+    if curIdx >= 0 then
+    begin
+      if Step > 0 then
+      begin
+        for i := curIdx + 1 to srcVerse.Sintagmas.Count - 1 do
+          if IsSelectableWord(srcVerse.Sintagmas[i]) then
+          begin
+            target := srcVerse.Sintagmas[i];
+            Break;
+          end;
+      end
+      else
+      begin
+        for i := curIdx - 1 downto 0 do
+          if IsSelectableWord(srcVerse.Sintagmas[i]) then
+          begin
+            target := srcVerse.Sintagmas[i];
+            Break;
+          end;
+      end;
+    end;
+    if not Assigned(target) then
+      target := curWord;
+  end
+  else
+  begin
+    // No word currently selected in Source text
+    if Assigned(srcVerse.LastFocusedSyntagm) and
+       (srcVerse.Sintagmas.IndexOf(srcVerse.LastFocusedSyntagm) >= 0) then
+    begin
+      curIdx := srcVerse.Sintagmas.IndexOf(srcVerse.LastFocusedSyntagm);
+      if Step > 0 then
+      begin
+        for i := curIdx + 1 to srcVerse.Sintagmas.Count - 1 do
+          if IsSelectableWord(srcVerse.Sintagmas[i]) then
+          begin
+            target := srcVerse.Sintagmas[i];
+            Break;
+          end;
+      end
+      else
+      begin
+        for i := curIdx - 1 downto 0 do
+          if IsSelectableWord(srcVerse.Sintagmas[i]) then
+          begin
+            target := srcVerse.Sintagmas[i];
+            Break;
+          end;
+      end;
+      if not Assigned(target) and IsSelectableWord(srcVerse.LastFocusedSyntagm) then
+        target := srcVerse.LastFocusedSyntagm;
+    end;
+
+    if not Assigned(target) then
+    begin
+      if Step > 0 then
+      begin
+        for i := 0 to srcVerse.Sintagmas.Count - 1 do
+          if IsSelectableWord(srcVerse.Sintagmas[i]) then
+          begin
+            target := srcVerse.Sintagmas[i];
+            Break;
+          end;
+      end
+      else
+      begin
+        for i := srcVerse.Sintagmas.Count - 1 downto 0 do
+          if IsSelectableWord(srcVerse.Sintagmas[i]) then
+          begin
+            target := srcVerse.Sintagmas[i];
+            Break;
+          end;
+      end;
+    end;
+  end;
+
+  if not Assigned(target) then
+    Exit;
+
+  srcVerse.LastFocusedSyntagm := target;
+  srcVerse.PendingAutoSelectNext := False;
+  if Assigned(dstVerse) then
+    dstVerse.PendingAutoSelectNext := False;
+
+  srcVerse.LimparSelecao;
+  if Assigned(dstVerse) then
+    dstVerse.LimparSelecao;
+
+  target.AddToSelection;
+  if Assigned(dstVerse) and (target.Pairs.Count > 0) then
+    dstVerse.SelecionarSintagmas(target.Pairs);
+
+  if Assigned(srcVerse.Painel) and Assigned(target.LabelRef) then
+    srcVerse.Painel.ScrollInView(target.LabelRef);
+
+  srcVerse.Renderizar;
+  if Assigned(dstVerse) then
+    dstVerse.Renderizar;
+
+  if Assigned(srcVerse.OnClick) then
+    srcVerse.OnClick(target);
+
+  Result := True;
 end;
 
 procedure TVersiculo.AssociarSintagmas;
@@ -897,6 +1063,58 @@ begin
   end;
 end;
 
+function TVersiculo.AreParesValidForVerse(const AValue: string): Boolean;
+  function IsValidIndexList(AVerse: TVersiculo; const lst: string): Boolean;
+  var
+    tokens: TStringList;
+    i, idx: Integer;
+  begin
+    Result := False;
+    if (not Assigned(AVerse)) or (not Assigned(AVerse.Sintagmas)) or (Trim(lst) = '') then
+      Exit;
+    tokens := TStringList.Create;
+    try
+      tokens.DelimitedText := lst;
+      if tokens.Count = 0 then
+        Exit;
+      for i := 0 to tokens.Count - 1 do
+      begin
+        idx := StrToIntDef(tokens[i], -1);
+        if (idx < 0) or (idx >= AVerse.Sintagmas.Count) or
+           not (AVerse.Sintagmas[idx].Kind in [tsSintagma, tsPontuacao]) then
+          Exit(False);
+      end;
+      Result := True;
+    finally
+      tokens.Free;
+    end;
+  end;
+var
+  varredorXML: TONTTokenizer;
+  s: TTagSintagma;
+begin
+  Result := True;
+  if AValue.IsEmpty then
+    Exit;
+  if (not Assigned(VersiculoPar)) or (not Assigned(FSintagmas)) or (not Assigned(VersiculoPar.Sintagmas)) then
+    Exit(False);
+
+  varredorXML := TTokenizerFactory.CreatePreferredTokenizer(AValue);
+  try
+    while varredorXML.LerSintagma(s) <> tsNulo do
+    begin
+      if AnsiStartsStr('<par ', s.valor) then
+      begin
+        if (not IsValidIndexList(Self, varredorXML.LerPropriedadeTag('a', s))) or
+           (not IsValidIndexList(VersiculoPar, varredorXML.LerPropriedadeTag('b', s))) then
+          Exit(False);
+      end;
+    end;
+  finally
+    varredorXML.Destroy;
+  end;
+end;
+
 procedure TVersiculo.SetPares(const AValue: string);
 var
   varredorXML: TONTTokenizer;
@@ -909,20 +1127,24 @@ begin
   VersiculoPar.FExibirErro := true;
 
   varredorXML := TTokenizerFactory.CreatePreferredTokenizer(AValue);
-  while varredorXML.LerSintagma(s) <> tsNulo do
-  begin
-    if AnsiStartsStr('<par ', s.valor) then
+  try
+    while varredorXML.LerSintagma(s) <> tsNulo do
     begin
-      //DebugLn('selecionando par: %s', [s.valor]);
-      SelecionarListaSintagmas(varredorXML.LerPropriedadeTag('a', s));
-      VersiculoPar.SelecionarListaSintagmas(varredorXML.LerPropriedadeTag('b', s));
-      AssociarSintagmas;
-
-      LimparSelecao;
-      VersiculoPar.LimparSelecao;
+      if AnsiStartsStr('<par ', s.valor) then
+      begin
+        try
+          SelecionarListaSintagmas(varredorXML.LerPropriedadeTag('a', s));
+          VersiculoPar.SelecionarListaSintagmas(varredorXML.LerPropriedadeTag('b', s));
+          AssociarSintagmas;
+        finally
+          LimparSelecao;
+          VersiculoPar.LimparSelecao;
+        end;
+      end;
     end;
+  finally
+    varredorXML.Destroy;
   end;
-  varredorXML.Destroy;
 
   Renderizar;
   VersiculoPar.Renderizar;
@@ -1618,17 +1840,20 @@ var
   i, s: smallint;
 begin
   tokens := TStringList.Create;
-  tokens.DelimitedText := lst;
-  tokens.CustomSort(@CompareIndexes);
-  for i:=0 to tokens.Count-1 do
-  begin
-    s := StrToInt(tokens[i]);
-    if (s < 0) or (s >= Sintagmas.Count) or not (Sintagmas[s].Kind in [tsSintagma, tsPontuacao]) then
-      raise Exception.Create(format('Invalid syntagm index: %d', [s]))
-    else
-      Sintagmas[s].AddToSelection;
+  try
+    tokens.DelimitedText := lst;
+    tokens.CustomSort(@CompareIndexes);
+    for i:=0 to tokens.Count-1 do
+    begin
+      s := StrToInt(tokens[i]);
+      if (s < 0) or (s >= Sintagmas.Count) or not (Sintagmas[s].Kind in [tsSintagma, tsPontuacao]) then
+        raise Exception.Create(format('Invalid syntagm index: %d', [s]))
+      else
+        Sintagmas[s].AddToSelection;
+    end;
+  finally
+    tokens.Destroy;
   end;
-  tokens.Destroy;
 end;
 
 procedure TVersiculo.EditKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
@@ -1914,10 +2139,28 @@ end;
 procedure TVersiculo.OnMouseWheel(Sender: TObject; Shift: TShiftState;
   WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
 begin
-  if ssCtrl in Shift then
+  if Sender = nil then ;
+  if MousePos.X = 0 then ;
+  if (ssCtrl in Shift) and not (ssShift in Shift) then
   begin
     FPanel.Font.Size := FPanel.Font.Size + Sign(WheelDelta) * 1;
     Renderizar;
+    Handled := True;
+    Exit;
+  end;
+
+  if Shift * [ssCtrl, ssShift, ssAlt] <> [] then
+    Exit;
+
+  if (WheelDelta <> 0) and
+     (FIsSourceVerse or (Assigned(FVersiculoRef) and FVersiculoRef.IsSourceVerse)) then
+  begin
+    // Scroll up (WheelDelta > 0) selects words to the left (-1);
+    // Scroll down (WheelDelta < 0) selects words to the right (+1).
+    if WheelDelta > 0 then
+      Handled := SelectSourceWordByDelta(-1)
+    else
+      Handled := SelectSourceWordByDelta(1);
   end;
 end;
 
@@ -2651,12 +2894,16 @@ begin
   FTranslationPanel.OnMouseEnter := @OnVerseMouseEnter;
   FTranslationPanel.OnMouseLeave := @OnVerseMouseLeave;
   FTranslationPanel.OnMouseMove  := @OnVerseMouseMove;
+  FTranslationPanel.OnMouseWheel := @OnMouseWheel;
   FTranslationLabel.OnMouseEnter := @OnVerseMouseEnter;
   FTranslationLabel.OnMouseLeave := @OnVerseMouseLeave;
   FTranslationLabel.OnMouseMove  := @OnVerseMouseMove;
+  FTranslationLabel.OnMouseWheel := @OnMouseWheel;
+  FStatusBarPanel.OnMouseWheel   := @OnMouseWheel;
   FTabPanel.OnMouseEnter := @OnVerseMouseEnter;
   FTabPanel.OnMouseLeave := @OnVerseMouseLeave;
   FTabPanel.OnMouseMove  := @OnVerseMouseMove;
+  FTabPanel.OnMouseWheel := @OnMouseWheel;
 
   FNavPanel := TPanel.Create(FPanel);
   FNavPanel.Parent := FPanel;
@@ -2673,6 +2920,7 @@ begin
   FNavPanel.OnMouseMove := @OnNavPanelMouseMove;
   FNavPanel.OnMouseDown := @OnNavPanelMouseDown;
   FNavPanel.OnMouseLeave := @OnNavPanelMouseLeave;
+  FNavPanel.OnMouseWheel := @OnMouseWheel;
   FNavRects[0] := Classes.Rect(0, 0, 18, 22);
   FNavRects[1] := Classes.Rect(20, 0, 38, 22);
 

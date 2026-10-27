@@ -924,6 +924,12 @@ end;
 procedure TChapterView.HandleMouseWheel(Sender: TObject; Shift: TShiftState;
   WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
 begin
+  if (not (ssCtrl in Shift)) and Assigned(FProject) and
+     FProject.HandleMouseWheelForSourceWords(Shift, WheelDelta) then
+  begin
+    Handled := True;
+    Exit;
+  end;
   if ssCtrl in Shift then
   begin
     Blocks.LockUpdate;

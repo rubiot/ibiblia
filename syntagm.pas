@@ -203,6 +203,8 @@ begin
 
   //d := format('selecao: %d, ' + 'sel par: %d, ' + 'irmaos : %d, ' + 'pares  : %d', [VerseRef.Selecao.Count, VerseRef.VersiculoPar.Selecao.Count, Siblings.Count, Pairs.Count]);
   InvertSelection;
+  if IsSelected then
+    verse.LastFocusedSyntagm := Self;
   //d := format('selecao: %d, ' + 'sel par: %d, ' + 'irmaos : %d, ' + 'pares  : %d', [VerseRef.Selecao.Count, VerseRef.VersiculoPar.Selecao.Count, Siblings.Count, Pairs.Count]);
 
   if (ssShift in Shift) and (Assigned(verse.VersiculoPar)) and
@@ -373,6 +375,8 @@ begin
     verse.LimparSelecao;
 
   InvertSelection;
+  if IsSelected then
+    verse.LastFocusedSyntagm := Self;
 
   if Assigned(verse.VersiculoPar) and
      (verse.VersiculoPar.Selecao.Count > 0) and
@@ -399,6 +403,7 @@ begin
       if Assigned(NextUnassociated) then
       begin
         NextUnassociated.AddToSelection;
+        TVersiculo(NextUnassociated.VerseRef).LastFocusedSyntagm := NextUnassociated;
         NotifyTarget := NextUnassociated;
       end;
     end;

@@ -73,6 +73,8 @@ type
     MenuItemStrongsCountNone: TMenuItem;
     MenuItemStrongsCountWords: TMenuItem;
     MenuItemStrongsCountStrongs: TMenuItem;
+    MenuItemUserGuide: TMenuItem;
+    MenuItemHelpSep1: TMenuItem;
     MenuItemAbout: TMenuItem;
     MenuItemMouseHover: TMenuItem;
     MenuItem19: TMenuItem;
@@ -204,6 +206,7 @@ type
     procedure FormShow(Sender: TObject);
     procedure MenuItem22Click(Sender: TObject);
     procedure AbrirRecenteClick(Sender: TObject);
+    procedure MenuItemUserGuideClick(Sender: TObject);
     procedure MenuItemAboutClick(Sender: TObject);
     procedure MenuItemAlwaysOnTopClick(Sender: TObject);
     procedure MenuItemAutoSaveClick(Sender: TObject);
@@ -224,6 +227,7 @@ type
     procedure CheckPendingAutoSelectKeyRelease;
     procedure OnAutoSelectTimer(Sender: TObject);
     procedure OnAppKeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure OnAppMouseWheel(Sender: TObject; Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
     procedure OnAppIdleCheckAutoSelect(Sender: TObject; var Done: Boolean);
     procedure WndProc(var Message: TLMessage); override;
     procedure MenuItemPopupTriggerClick(Sender: TObject);
@@ -1678,6 +1682,15 @@ begin
   FAutoSelectTimer.Enabled := False;
   FAutoSelectTimer.OnTimer := @OnAutoSelectTimer;
   Self.OnKeyUp := @OnAppKeyUp;
+  Self.OnMouseWheel := @OnAppMouseWheel;
+  if Assigned(TreeView1) then
+    TreeView1.OnMouseWheel := @OnAppMouseWheel;
+  if Assigned(RadioGroupStatus) then
+    RadioGroupStatus.OnMouseWheel := @OnAppMouseWheel;
+  if Assigned(ComboBoxStatusFilter) then
+    ComboBoxStatusFilter.OnMouseWheel := @OnAppMouseWheel;
+  if Assigned(CommentsMemo) then
+    CommentsMemo.OnMouseWheel := @OnAppMouseWheel;
   Application.AddOnIdleHandler(@OnAppIdleCheckAutoSelect);
 
   {$IFDEF WINDOWS}
@@ -1782,6 +1795,16 @@ begin
   CheckPendingAutoSelectKeyRelease;
 end;
 
+procedure TFrmPrincipal.OnAppMouseWheel(Sender: TObject; Shift: TShiftState;
+  WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
+begin
+  if Sender = nil then ;
+  if MousePos.X = 0 then ;
+  if (not Handled) and Assigned(ProjetoAtual) and
+     ProjetoAtual.HandleMouseWheelForSourceWords(Shift, WheelDelta) then
+    Handled := True;
+end;
+
 procedure TFrmPrincipal.OnAppIdleCheckAutoSelect(Sender: TObject; var Done: Boolean);
 begin
   if Sender = nil then ;
@@ -1873,6 +1896,14 @@ procedure TFrmPrincipal.AbrirRecenteClick(Sender: TObject);
 begin
   if TMenuItem(Sender).Caption <> '(-)' then
      ActionAbrirProjetoExecute(Sender);
+end;
+
+procedure TFrmPrincipal.MenuItemUserGuideClick(Sender: TObject);
+begin
+  if Sender = nil then ;
+  ShowUserGuide(Self);
+  if Assigned(FormUserGuide) then
+    FormUserGuide.UpdateLanguage(language);
 end;
 
 procedure TFrmPrincipal.MenuItemAboutClick(Sender: TObject);
@@ -2083,6 +2114,9 @@ begin
 
     if assigned(FormAbout) and FormAbout.Visible then
       FormAbout.ApplySkin(CurrentSkin);
+
+    if assigned(FormUserGuide) and FormUserGuide.Visible then
+      FormUserGuide.ApplySkin(CurrentSkin);
 
     UpdateSkinMenuChecks;
   finally
@@ -2652,6 +2686,8 @@ procedure TFrmPrincipal.SyncToTwRef(Ref: string);
 begin
   if FNavigatingVerse or FSyncingFromTw then
     Exit;
+  if (ProjetoAtual = nil) or (not ProjetoAtual.ScrollEventsEnabled) then
+    Exit;
 
   if (ProjetoAtual <> nil) and (Ref <> '') and (ProjetoAtual.ID <> Ref) then
   begin
@@ -2739,6 +2775,17 @@ begin
     else
       MenuItemGlobalDicts.Caption := 'Default Dictionaries...';
   end;
+
+  if Assigned(MenuItemUserGuide) then
+  begin
+    if language = 'pt' then
+      MenuItemUserGuide.Caption := 'Guia de Novos Recursos...'
+    else
+      MenuItemUserGuide.Caption := 'New Features User Guide...';
+  end;
+
+  if Assigned(FormUserGuide) then
+    FormUserGuide.UpdateLanguage(language);
 
   if assigned(FormNovoProjeto1) then
     FormNovoProjeto1.Translate;

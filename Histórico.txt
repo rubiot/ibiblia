@@ -1,3 +1,40 @@
+Version 1.0.1.032 (64-bit Edition) - 2026-10-27 20:47
+* Fixed TFontStyles set assignment in DrawBadge (unitabout.pas line 1130: replaced IfThen(BoldFont, [fsBold], []) with if BoldFont then C.Font.Style := [fsBold] else C.Font.Style := []).
+
+Version 1.0.1.031 (64-bit Edition) - 2026-10-27 20:26
+* Added dedicated floating "New Features User Guide" window with interactive visual illustrations under Help > New Features User Guide... (F1) above About... (unitabout.pas, formprincipal.pas, formprincipal.lfm):
+  - Collates all new features (excluding bug fixes) introduced since v1.0.0.71 into 7 structured feature topics plus a complete combined reference:
+    1. Mouse Wheel Source Word Selection & Ctrl+Shift Multi-Word Association
+    2. Southeast Cursor Dictionary Popup & 4-Slot Default Dictionaries (including English Word .dct.twm & compressed=1 support)
+    3. In-Verse Controls: Hover-Only Navigation Chevrons (< >), 4-Color Status Circles & Edit/Properties Checkboxes
+    4. Shared Master Formatting Ribbon, Floating Selection Mini-Toolbar & Live Context Panel Preview
+    5. Real-Time Text-to-Speech (TTS) Hover Reader (Greek, Hebrew & English OneCore/SAPI5 voices)
+    6. Dark Mode UI & 7 theWord Color Themes (Classic, theWord Dark, Night, Sepia, Slate, Solarized Dark, High Contrast)
+    7. Complete Bible Module Export (.ont/.ot/.nt), Smart Reload "Needs Review" Diff & Concurrent Bidirectional theWord 7 Sync
+    8. Complete Quick-Reference Summary of All New Features & Keyboard/Mouse Shortcuts
+  - Features a custom-drawn visual diagram canvas (TPaintBox) at the top of each topic illustrating how to use the feature, full theme synchronization across all 7 skins, Copy Guide button, and modeless floating behavior so users can keep the guide open while working in iBiblia.
+
+Version 1.0.1.030 (64-bit Edition) - 2026-10-27 20:06
+* Fixed compilation error in versiculo.pas ("Identifier not found GetKeyState" at lines 2153-2154) by adding LCLIntf to the uses clause and using Shift * [ssCtrl, ssShift, ssAlt] in TVersiculo.OnMouseWheel.
+
+Version 1.0.1.029 (64-bit Edition) - 2026-10-27 19:55
+* Restored Ctrl+Shift multi-word selection for association tasks alongside mouse wheel word selection (syntagm.pas, versiculo.pas, projeto.pas):
+  - Removed the selection-clearing check in TSyntagm.DoOnLeftClick that prevented selecting multiple words simultaneously while holding Ctrl+Shift.
+  - Added modifier key guards (Ctrl, Shift, Alt) in TVersiculo.OnMouseWheel and TProjeto.HandleMouseWheelForSourceWords so accidental scroll wheel movement while holding Ctrl+Shift never clears active multi-word selections.
+
+Version 1.0.1.028 (64-bit Edition) - 2026-10-27 19:36
+* Added mouse wheel / scroll word selection in the Source text panel (versiculo.pas, syntagm.pas, projeto.pas, chapterview.pas, formprincipal.pas):
+  - Scrolling up (WheelDelta > 0) selects words in the Source text to the left one by one, and scrolling down (WheelDelta < 0) selects words in the Source text to the right one by one.
+  - Works seamlessly whenever the mouse cursor is hovering inside either the Source text panel (ScrollBoxSrcVerse) or the Destination text panel (ScrollBoxDstVerse), regardless of which control currently holds keyboard focus.
+  - Automatically scrolls the selected Source word into view, highlights any associated Destination word pairs, updates Strong's highlights across all panels, and updates the active dictionary popup.
+
+Version 1.0.1.027 (64-bit Edition) - 2026-10-27 16:38
+* Fixed export errors ("Invalid syntagm index: 18" on Genesis 1:1 reported under the last viewed reference "1 Kings 1:2") and added automatic database self-healing (versiculo.pas, projeto.pas, formprincipal.pas):
+  - Root Cause Identified: In export-errors.txt, row '1,1,1' (Genesis 1:1, 21 tokens) contained the pare_pares string of Genesis 41:32 ('1,41,32', 50 tokens up to <par a="49" b="60">), which was written into '1,1,1' when FTblPares moved to the first row without updating FAVersiculo, and FormattedReference printed '1 Kings 1:2' because FReference was not updated while FScrollEventsEnabled = False during export.
+  - Added TVersiculo.AreParesValidForVerse (versiculo.pas) and TProjeto.HealMisplacedPairsInDatabase (projeto.pas), executed automatically on TProjeto.Abrir and before all Export operations, to detect any misplaced pare_pares on '1,1,1' (or any row), restore Genesis 41:32's pairs to '1,41,32' if unassociated, and clean the invalid pare_pares from '1,1,1' so exports complete with zero errors.
+  - Added FLoadedVerseID verification in PreRolagemVersiculo, SalvarPares, and SalvarTexto, reference-counted FScrollingSessionDepth in StartScrollingSession/FinishScrollingSession, FArvore.OnChange suppression in SelectTreeNode/FiltrarArvore, and ScrollEventsEnabled guard in TFrmPrincipal.SyncToTwRef so associations can never be saved to a mismatched dataset row.
+  - Updated TProjeto.GetFormattedReference to read FTblPares.FieldByName('pare_id') when FScrollEventsEnabled is False so export diagnostics always report the true verse being processed.
+
 Version 1.0.1.026 (64-bit Edition) - 2026-10-27 12:23
 * Made verse navigation chevron arrows (‹ ›) appear only while the mouse cursor is hovering inside the Bible panel where they belong (unitskins.pas, versiculo.pas, syntagm.pas, projeto.pas, formprincipal.pas):
   - Added IsMouseCursorInControl in unitskins.pas using GetWindowRect, WindowFromPoint, IsChild, and THintWindow tooltip awareness to determine which of the 4 Bible panels (Source, Destination, Reference 1, Reference 2) currently contains the mouse cursor.
