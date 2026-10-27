@@ -1,0 +1,189 @@
+{
+  "schemaVersion": 1,
+  "dependencies": [
+    {
+      "id": "pcre-x64",
+      "version": "6.7-iBiblia-custom",
+      "kind": "repository",
+      "source": "pcre-6.7-lazarus sources and pcre64.dll from the archived Git commit",
+      "sourcePath": "pcre64.dll",
+      "sha256": "61f2460deccabeaca1b09431ce11620285fb7c84fad4250552b7adab2d86426c",
+      "files": [
+        {
+          "source": "pcre64.dll",
+          "destination": "pcre64.dll",
+          "sha256": "61f2460deccabeaca1b09431ce11620285fb7c84fad4250552b7adab2d86426c"
+        }
+      ]
+    },
+    {
+      "id": "sqlite-x64",
+      "version": "3.54.1",
+      "kind": "zip",
+      "source": "https://www.sqlite.org/download.html",
+      "url": "https://www.sqlite.org/2026/sqlite-dll-win-x64-3540100.zip",
+      "archiveName": "sqlite-dll-win-x64-3540100.zip",
+      "sha256": "f436f53ad8f965af43f3817b42c99c0689e6787f6b7ace208fe38dab7ffc4971",
+      "publisherSha3_256": "c2d09c8babb9399277055c057c97a53f1ffd7c5f11d0c1f2118ffdfa39f2daa4",
+      "files": [
+        {
+          "source": "sqlite3.dll",
+          "destination": "sqlite3.dll",
+          "sha256": "4b59d3cded9dc1608544160f3b4b10ac974c6ac0d6ffc23064e5f4c8dbd05aea"
+        }
+      ]
+    },
+    {
+      "id": "openssl-x64",
+      "version": "3.5.9",
+      "kind": "zip",
+      "source": "https://www.firedaemon.com/download-firedaemon-openssl",
+      "url": "https://download.firedaemon.com/FireDaemon-OpenSSL/openssl-3.5.9.zip",
+      "archiveName": "openssl-3.5.9.zip",
+      "sha256": "76da391395be029b44794857b9ff380255e02a0960a98314cd3f6a6816d82696",
+      "files": [
+        {
+          "source": "x64/bin/libssl-3-x64.dll",
+          "destination": "libssl-3-x64.dll",
+          "sha256": "00520a8ca63ec624969742aa04e7db2af94ba0d3f5fe204cbd114b4ec1f24752"
+        },
+        {
+          "source": "x64/bin/libcrypto-3-x64.dll",
+          "destination": "libcrypto-3-x64.dll",
+          "sha256": "5268a29c9a5e353770b894f3dbd148ee8c60971aa1620713c54d8e56563d0aca"
+        },
+        {
+          "source": "x64/bin/openssl.exe",
+          "destination": ".release-tools/openssl.exe",
+          "sha256": "724e6f4efc22c99ede54f830f9eacbf095122aeb92aa14682cfa6fafc8a135f9"
+        },
+        {
+          "source": "LICENSE.txt",
+          "destination": ".release-tools/OPENSSL-LICENSE.txt",
+          "sha256": "ed72ce2b51ee58f117e5a021e2e04af158857f40269fbc03491f0b2a99dbcc96"
+        },
+        {
+          "source": "x64/bin/libssl-3-x64.dll",
+          "destination": ".release-tools/libssl-3-x64.dll",
+          "sha256": "00520a8ca63ec624969742aa04e7db2af94ba0d3f5fe204cbd114b4ec1f24752"
+        },
+        {
+          "source": "x64/bin/libcrypto-3-x64.dll",
+          "destination": ".release-tools/libcrypto-3-x64.dll",
+          "sha256": "5268a29c9a5e353770b894f3dbd148ee8c60971aa1620713c54d8e56563d0aca"
+        }
+      ]
+    },
+    {
+      "id": "mozilla-ca",
+      "version": "2026-10-20",
+      "kind": "file",
+      "source": "https://curl.se/docs/caextract.html",
+      "url": "https://curl.se/ca/cacert-2026-10-20.pem",
+      "archiveName": "cacert-2026-10-20.pem",
+      "sha256": "796f1389bfea13c0ed78f663b765baaff54a508e5483786bd6ece73c5e3e3cbe",
+      "files": [
+        {
+          "source": "cacert-2026-10-20.pem",
+          "destination": "cacert.pem",
+          "sha256": "796f1389bfea13c0ed78f663b765baaff54a508e5483786bd6ece73c5e3e3cbe"
+        }
+      ]
+    }
+  ],
+  "testRuntimeFiles": [
+    "pcre64.dll",
+    "sqlite3.dll",
+    "libssl-3-x64.dll",
+    "libcrypto-3-x64.dll",
+    "cacert.pem",
+    "lemmas.dat",
+    "iBiblia.models.json"
+  ],
+  "payload": [
+    {
+      "source": "iBiblia.exe",
+      "destination": "iBiblia.exe"
+    },
+    {
+      "source": "pcre64.dll",
+      "destination": "pcre64.dll"
+    },
+    {
+      "source": "sqlite3.dll",
+      "destination": "sqlite3.dll"
+    },
+    {
+      "source": "libssl-3-x64.dll",
+      "destination": "libssl-3-x64.dll"
+    },
+    {
+      "source": "libcrypto-3-x64.dll",
+      "destination": "libcrypto-3-x64.dll"
+    },
+    {
+      "source": "cacert.pem",
+      "destination": "cacert.pem"
+    },
+    {
+      "source": "lemmas.dat",
+      "destination": "lemmas.dat"
+    },
+    {
+      "source": "iBiblia.models.json",
+      "destination": "iBiblia.models.json"
+    },
+    {
+      "source": "languages/iBiblia.en.po",
+      "destination": "languages/iBiblia.en.po"
+    },
+    {
+      "source": "languages/iBiblia.pt.po",
+      "destination": "languages/iBiblia.pt.po"
+    },
+    {
+      "source": "languages/lclstrconsts.en.po",
+      "destination": "languages/lclstrconsts.en.po"
+    },
+    {
+      "source": "languages/lclstrconsts.pt.po",
+      "destination": "languages/lclstrconsts.pt.po"
+    },
+    {
+      "source": "docs/README-portable.md",
+      "destination": "README-portable.md"
+    },
+    {
+      "source": "release/THIRD-PARTY-NOTICES.txt",
+      "destination": "THIRD-PARTY-NOTICES.txt"
+    },
+    {
+      "source": "release/licenses/PCRE-LICENSE.txt",
+      "destination": "licenses/PCRE-LICENSE.txt"
+    },
+    {
+      "source": "release/licenses/OPENSSL-LICENSE.txt",
+      "destination": "licenses/OPENSSL-LICENSE.txt"
+    },
+    {
+      "source": "release/licenses/MOZILLA-CA-LICENSE.txt",
+      "destination": "licenses/MOZILLA-CA-LICENSE.txt"
+    },
+    {
+      "source": "release/licenses/SQLITE-PUBLIC-DOMAIN.txt",
+      "destination": "licenses/SQLITE-PUBLIC-DOMAIN.txt"
+    },
+    {
+      "source": "vendor/fpc-openssl/BSD-NOTICE.txt",
+      "destination": "licenses/FPC-OPENSSL-BSD-NOTICE.txt"
+    },
+    {
+      "source": "vendor/fpc-openssl/COPYING.FPC",
+      "destination": "licenses/FPC-COPYING-EXCEPTION.txt"
+    },
+    {
+      "source": "vendor/fpc-openssl/COPYING.txt",
+      "destination": "licenses/FPC-COPYING.txt"
+    }
+  ]
+}

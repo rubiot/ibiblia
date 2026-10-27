@@ -50,7 +50,8 @@ type
     procedure OneTypedCharacterUsesSingleMutationPipeline;
     procedure AssociationModeManualEditorStillClosesOnNavigation;
     procedure StaleFormattedRefreshCannotCancelEditorAfterRoundTripNavigation;
-    procedure InvalidPendingEditBlocksNavigationAndKeepsCurrentEditor;
+    procedure MismatchedPendingEditBlocksNavigationAndKeepsCurrentEditor;
+    procedure RawLexicalEditIsSavedBeforeNavigation;
   end;
 
 implementation
@@ -999,18 +1000,28 @@ begin
 end;
 
 procedure TDefaultVerseModeTests.
-  InvalidPendingEditBlocksNavigationAndKeepsCurrentEditor;
+  MismatchedPendingEditBlocksNavigationAndKeepsCurrentEditor;
 var
   Editor: TTheWordWysiwygEditorControl;
   EditorPanel: TControl;
   RawEditor: TSynEdit;
   Visibility: TVisibleChangeProbe;
+  MismatchedTokenizer: Integer;
 begin
   CreateAndOpenProject(dvmEditing, 'Destination 1<WG1>',
     'Destination 2', 'Destination 3');
   Editor := ActiveEditor;
   AssertTrue(Assigned(Editor));
   EditorPanel := Editor.Parent;
+  // Raw lexical changes are valid; a stale tokenizer context must still block navigation.
+  if FProject.VerseObjects[tbDestino].TokenizerVersion = 1 then
+    MismatchedTokenizer := 2
+  else
+    MismatchedTokenizer := 1;
+  Editor.LoadVerseContext(FProject.VerseObjects[tbDestino].XML,
+    FProject.VerseObjects[tbDestino].BaseDirection,
+    FProject.VerseObjects[tbDestino].Font, MismatchedTokenizer,
+    FProject.VerseObjects[tbDestino].AutomaticNoteStart);
   Editor.RawMode := True;
   RawEditor := FindRawEditor(Editor);
   AssertTrue('the Raw editor must be available', Assigned(RawEditor));
@@ -1045,6 +1056,32 @@ begin
   end;
 end;
 
+procedure TDefaultVerseModeTests.RawLexicalEditIsSavedBeforeNavigation;
+var
+  Editor: TTheWordWysiwygEditorControl;
+  RawEditor: TSynEdit;
+begin
+  CreateAndOpenProject(dvmEditing, 'Destination 1<WG1>',
+    'Destination 2', 'Destination 3');
+  FProject.AutoSave := True;
+  Editor := ActiveEditor;
+  AssertTrue(Assigned(Editor));
+  Editor.RawMode := True;
+  RawEditor := FindRawEditor(Editor);
+  AssertTrue(Assigned(RawEditor));
+  RawEditor.Text := 'Destination 1<WG2>';
+
+  FProject.NextVerse;
+  Application.ProcessMessages;
+
+  AssertEquals('a valid Raw lexical edit must allow navigation',
+    '40,1,2', FProject.ID);
+  AssertSame('navigation must reuse the visible editor', Editor, ActiveEditor);
+  AssertEquals('Destination 2', UTF8Encode(ActiveEditor.Text));
+  AssertEquals('the previous Verse must retain its accepted lexical edit',
+    'Destination 1<WG2>', FProject.GetVerseText('40,1,1', tbDestino));
+  AssertFalse('autosave must persist the accepted edit', FProject.Modificado);
+end;
 initialization
   RegisterTest(TDefaultVerseModeTests);
 

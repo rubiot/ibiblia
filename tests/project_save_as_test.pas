@@ -35,7 +35,8 @@ type
     procedure FailedActivationKeepsOriginalAndPublishedCopy;
     procedure ConfirmedSameFileUsesNormalSave;
     procedure SaveAsCapturesOpenVisualEditor;
-    procedure InvalidEditorBlocksPublication;
+    procedure MismatchedEditorTokenizerBlocksPublication;
+    procedure SaveAsCapturesRawLexicalEditor;
     procedure GuardDefersAutomaticSuggestionAndEditor;
   end;
 implementation
@@ -288,7 +289,39 @@ begin
   AssertEquals('destination', ReadField(FOriginal, '40,1,1', 'pare_texto_destino'));
   AssertFalse(FProject.Modificado);
 end;
-procedure TProjectSaveAsTests.InvalidEditorBlocksPublication;
+procedure TProjectSaveAsTests.MismatchedEditorTokenizerBlocksPublication;
+var Editor: TTheWordWysiwygEditorControl; RawEditor: TSynEdit;
+  MismatchedTokenizer: Integer;
+begin
+  FProject.VerseObjects[tbDestino].Text := 'destination<WG1>';
+  AssertTrue(FProject.SaveProject);
+  FProject.DefaultVerseMode := dvmEditing;
+  FProject.RequestDefaultVerseModeForCurrentVerse;
+  Application.ProcessMessages;
+  Editor := TTheWordWysiwygEditorControl(FindControl(FHost, TTheWordWysiwygEditorControl));
+  AssertNotNull(Editor);
+  // Raw lexical changes are valid; a stale tokenizer context must still block publication.
+  if FProject.VerseObjects[tbDestino].TokenizerVersion = 1 then
+    MismatchedTokenizer := 2
+  else
+    MismatchedTokenizer := 1;
+  Editor.LoadVerseContext(FProject.VerseObjects[tbDestino].XML,
+    FProject.VerseObjects[tbDestino].BaseDirection,
+    FProject.VerseObjects[tbDestino].Font, MismatchedTokenizer,
+    FProject.VerseObjects[tbDestino].AutomaticNoteStart);
+  Editor.RawMode := True;
+  RawEditor := TSynEdit(FindControl(Editor, TSynEdit));
+  AssertNotNull(RawEditor);
+  RawEditor.Text := 'destination<WG2>';
+  AssertFalse(FProject.SaveProjectAs(Path('invalid.bib'), False));
+  AssertFalse(FileExists(Path('invalid.bib')));
+  AssertEquals(FOriginal, FProject.FileName);
+  AssertTrue(Editor.Visible);
+  AssertEquals('destination<WG2>', RawEditor.Lines[0]);
+  AssertEquals('destination<WG1>', ReadField(FOriginal, '40,1,1', 'pare_texto_destino'));
+end;
+
+procedure TProjectSaveAsTests.SaveAsCapturesRawLexicalEditor;
 var Editor: TTheWordWysiwygEditorControl; RawEditor: TSynEdit;
 begin
   FProject.VerseObjects[tbDestino].Text := 'destination<WG1>';
@@ -302,14 +335,15 @@ begin
   RawEditor := TSynEdit(FindControl(Editor, TSynEdit));
   AssertNotNull(RawEditor);
   RawEditor.Text := 'destination<WG2>';
-  AssertFalse(FProject.SaveProjectAs(Path('invalid.bib'), False));
-  AssertFalse(FileExists(Path('invalid.bib')));
-  AssertEquals(FOriginal, FProject.FileName);
-  AssertTrue(Editor.Visible);
-  AssertEquals('destination<WG2>', RawEditor.Lines[0]);
-  AssertEquals('destination<WG1>', ReadField(FOriginal, '40,1,1', 'pare_texto_destino'));
-end;
 
+  AssertTrue('valid Raw lexical edits must be included in Save As',
+    FProject.SaveProjectAs(Path('raw-editor.bib'), False));
+  AssertEquals('destination<WG2>',
+    ReadField(Path('raw-editor.bib'), '40,1,1', 'pare_texto_destino'));
+  AssertEquals('Save As must preserve the original file', 'destination<WG1>',
+    ReadField(FOriginal, '40,1,1', 'pare_texto_destino'));
+  AssertFalse(FProject.Modificado);
+end;
 procedure TProjectSaveAsTests.GuardDefersAutomaticSuggestionAndEditor;
 var Editor: TTheWordWysiwygEditorControl; Calls: QWord;
 begin

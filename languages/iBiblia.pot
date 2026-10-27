@@ -3253,7 +3253,7 @@ msgid "Guide: start a project"
 msgstr ""
 
 #: formprincipal.sguidetranslationtext
-msgid "Double-click an empty area in Destination to write the translation. Use Save to apply or Cancel to discard; Esc also saves and closes. Once Destination has text, the guide will switch to association."
+msgid "Double-click an empty area in Destination to write the translation. Use Save to apply or Cancel to discard; Esc also discards and closes. Once Destination has text, the guide will switch to association."
 msgstr ""
 
 #: formprincipal.sguidetranslationtitle
@@ -8171,6 +8171,10 @@ msgstr ""
 #: ui_icons.sconnectediconfamily
 msgctxt "ui_icons.sconnectediconfamily"
 msgid "Connected texts"
+msgstr ""
+
+#: formprincipal.sshortcutsaveprojectas
+msgid "Save the current project to another file"
 msgstr ""
 
 #: ai_credential_store.scredentialreferenceinvalid

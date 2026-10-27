@@ -117,12 +117,7 @@ procedure EnsureSSLInitialized;
 implementation
 
 uses
-  jsonparser, fphttpclient, opensslsockets, openssl, syncobjs, ai_debug;
-
-var
-  SSLInitialized: Boolean = False;
-  SSLInitLock: TCriticalSection;
-  GlobalDummyClient: TFPHTTPClient = nil; // Keep alive to prevent SSL unload
+  jsonparser, fphttpclient, tls_runtime, ai_debug;
 
 type
   TLLMModelEntry = record
@@ -466,69 +461,8 @@ begin
 end;
 
 procedure EnsureSSLInitialized;
-{$IFDEF MSWINDOWS}
-const
-  WINDOWS_SSL_NAME = 'libssl-1_1-x64.dll';
-  WINDOWS_CRYPTO_NAME = 'libcrypto-1_1-x64.dll';
-{$ENDIF}
-var
-  errCode: Integer;
-  errMsg: string;
-  exeDir: string;
 begin
-  if SSLInitialized then
-  begin
-    AIDebugLog('EnsureSSLInitialized - already initialized, skipping');
-    Exit; // Fast path without lock
-  end;
-
-  AIDebugLog('EnsureSSLInitialized - entering critical section');
-  SSLInitLock.Enter;
-  try
-    if not SSLInitialized then
-    begin
-      {$IFDEF MSWINDOWS}
-      exeDir := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)));
-      // Prefer bundled DLLs if they exist alongside the executable.
-      if FileExists(exeDir + WINDOWS_SSL_NAME) then
-      begin
-        DLLSSLName := exeDir + WINDOWS_SSL_NAME;
-        DLLSSLName3 := DLLSSLName;
-        AIDebugLogFmt('EnsureSSLInitialized - using bundled SSL library at %s', [DLLSSLName]);
-      end
-      else
-        AIDebugLogFmt('EnsureSSLInitialized - bundled SSL library not found, relying on system copy (%s)', [WINDOWS_SSL_NAME]);
-
-      if FileExists(exeDir + WINDOWS_CRYPTO_NAME) then
-      begin
-        DLLUtilName := exeDir + WINDOWS_CRYPTO_NAME;
-        DLLUtilName2 := DLLUtilName;
-        AIDebugLogFmt('EnsureSSLInitialized - using bundled crypto library at %s', [DLLUtilName]);
-      end
-      else
-        AIDebugLogFmt('EnsureSSLInitialized - bundled crypto library not found, relying on system copy (%s)', [WINDOWS_CRYPTO_NAME]);
-      {$ENDIF}
-
-      if not InitSSLInterface then
-      begin
-        errCode := GetLastOSError;
-        errMsg := SysErrorMessage(errCode);
-        AIDebugLogFmt('EnsureSSLInitialized - InitSSLInterface failed (error %d: %s)', [errCode, errMsg]);
-        raise EInOutError.Create('Could not initialize OpenSSL library');
-      end;
-
-  AIDebugLogFmt('EnsureSSLInitialized - OpenSSL version: %s', [OpenSSLGetVersion(0)]);
-      AIDebugLog('EnsureSSLInitialized - creating GlobalDummyClient...');
-      // Create a persistent dummy HTTP client that stays alive
-      // This forces OpenSSL to initialize once and stay loaded
-      // Keeping it alive prevents any cleanup/reload issues
-      GlobalDummyClient := TFPHTTPClient.Create(nil);
-      SSLInitialized := True;
-      AIDebugLog('EnsureSSLInitialized - GlobalDummyClient created successfully');
-    end;
-  finally
-    SSLInitLock.Leave;
-  end;
+  EnsureBundledTLSInitialized;
 end;
 
 { TOpenAICompatibleBackend }
@@ -542,7 +476,7 @@ var
 begin
   // Ensure SSL is initialized (thread-safe)
   EnsureSSLInitialized;
-  client := TFPHTTPClient.Create(nil);
+  client := TIBibliaHTTPSClient.Create(nil);
   client.IOTimeout := FTimeout;
   client.ConnectTimeout := FTimeout;
   stream := TStringStream.Create(JsonBody);
@@ -722,7 +656,7 @@ var
 begin
   // Ensure SSL is initialized (thread-safe)
   EnsureSSLInitialized;
-  client := TFPHTTPClient.Create(nil);
+  client := TIBibliaHTTPSClient.Create(nil);
   client.IOTimeout := FTimeout;
   client.ConnectTimeout := FTimeout;
   stream := TStringStream.Create(JsonBody);
@@ -827,22 +761,5 @@ begin
       raise;
   end;
 end;
-
-initialization
-  SSLInitLock := TCriticalSection.Create;
-  // Force SSL initialization immediately in main thread
-  AIDebugLog('llmclient initialization - about to create GlobalDummyClient');
-  try
-    EnsureSSLInitialized;
-    AIDebugLog('llmclient initialization - GlobalDummyClient created successfully');
-  except
-    on E: Exception do
-      AIDebugLogFmt('llmclient initialization FAILED: %s', [E.Message]);
-  end;
-
-finalization
-  if Assigned(GlobalDummyClient) then
-    GlobalDummyClient.Free;
-  SSLInitLock.Free;
 
 end.

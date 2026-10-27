@@ -20,6 +20,7 @@ uses
   ai_global_settings_test,
   ai_effective_settings_test,
   llm_options_form_test,
+  flow_examples_form_test,
   project_patch_applier_test,
   export_file_staging_test,
   export_in_use_test,

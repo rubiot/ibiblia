@@ -469,7 +469,7 @@ resourcestring
   SGuideAssociationExistingAddText = 'To add words to the association, hold Ctrl+Shift and select new words.';
   SGuideAssociationExistingRemoveText = 'To remove words from the association, press Ctrl+Shift and click the word.';
   SGuideTranslationTitle = 'Guide: translate the verse';
-  SGuideTranslationText = 'Double-click an empty area in Destination to write the translation. Use Save to apply or Cancel to discard; Esc also saves and closes. Once Destination has text, the guide will switch to association.';
+  SGuideTranslationText = 'Double-click an empty area in Destination to write the translation. Use Save to apply or Cancel to discard; Esc also discards and closes. Once Destination has text, the guide will switch to association.';
   SKeyboardShortcutsMenu = '&Keyboard shortcuts...';
   SKeyboardShortcutsHint = 'Show keyboard shortcuts';
   SKeyboardShortcutsTitle = 'Keyboard shortcuts';

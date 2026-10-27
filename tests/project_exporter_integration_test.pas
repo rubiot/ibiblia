@@ -48,6 +48,7 @@ type
     procedure ConcordanceExportUpdatesSameOpenSQLiteConnection;
     procedure MySwordWriteFailurePreservesPreviousOrAbsentOutput;
     procedure ConcordancePublishesReadableDatabase;
+    procedure ConcordanceUsesBundledLemmasFromAnotherDirectory;
     procedure ConcordanceReadFailurePreservesPreviousOutput;
   end;
 
@@ -710,29 +711,53 @@ begin
   end;
 end;
 
-procedure TProjectExporterIntegrationTests.ConcordanceReadFailurePreservesPreviousOutput;
+procedure TProjectExporterIntegrationTests.ConcordanceUsesBundledLemmasFromAnotherDirectory;
 var
-  FileName, OriginalDirectory, EmptyDirectory: string;
+  OriginalDirectory, OtherDirectory, DecoyFile: string;
+begin
+  OtherDirectory := FExportWithCommentsFileName + '.directory';
+  OriginalDirectory := GetCurrentDir;
+  DecoyFile := IncludeTrailingPathDelimiter(OtherDirectory) + 'lemmas.dat';
+  ForceDirectories(OtherDirectory);
+  try
+    WriteBinaryFile(DecoyFile, 'G0000,wrong working-directory data');
+    AssertTrue(SetCurrentDir(OtherDirectory));
+    ConcordancePublishesReadableDatabase;
+  finally
+    SetCurrentDir(OriginalDirectory);
+    DeleteFile(DecoyFile);
+    RemoveDir(OtherDirectory);
+  end;
+end;
+
+procedure TProjectExporterIntegrationTests.ConcordanceReadFailurePreservesPreviousOutput;
+{$IFDEF WINDOWS}
+var
+  FileName, LemmasFile: string;
   ExportResult: TExportResult;
   Options: TConcordanceExportOptions;
+  LockedFile: THandle;
+{$ENDIF}
 begin
+  {$IFDEF WINDOWS}
   FileName := FExportWithoutCommentsFileName + '.dct.twm';
-  EmptyDirectory := FExportWithCommentsFileName + '.directory';
-  OriginalDirectory := GetCurrentDir;
-  ForceDirectories(EmptyDirectory);
+  LemmasFile := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + 'lemmas.dat';
+  LockedFile := CreateFileW(PWideChar(UTF8Decode(LemmasFile)), GENERIC_READ,
+    0, nil, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+  AssertTrue('Bundled lemmas must exist and allow an exclusive test lock',
+    LockedFile <> INVALID_HANDLE_VALUE);
   try
     WriteBinaryFile(FileName, 'previous export');
     Options := Default(TConcordanceExportOptions);
-    SetCurrentDir(EmptyDirectory);
     ExportResult := FExporter.ExportConcordance(FileName, nil, Options, nil, nil, nil);
     AssertEquals(Ord(esFailed), Ord(ExportResult.Status));
     AssertEquals('previous export', string(ReadBinaryFile(FileName)));
     AssertEquals('', ExportResult.OutputFileName);
   finally
-    SetCurrentDir(OriginalDirectory);
-    RemoveDir(EmptyDirectory);
+    CloseHandle(LockedFile);
     DeleteFile(FileName);
   end;
+  {$ENDIF}
 end;
 
 initialization

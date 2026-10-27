@@ -1,0 +1,39 @@
+{
+  "repository": "https://gitlab.com/freepascal.org/fpc/source",
+  "branch": "fixes_3_2",
+  "revision": "12e49a77d1c5b801fe8e4a2f77df27aa3dce848b",
+  "files": [
+    {
+      "name": "openssl.pas",
+      "sha256": "9252b57c84714ee135b200c1ac4d96d2172e2a1d72c59ba0b786f8a4992030ae",
+      "url": "https://gitlab.com/api/v4/projects/freepascal.org%2Ffpc%2Fsource/repository/files/packages%2Fopenssl%2Fsrc%2Fopenssl.pas?ref=12e49a77d1c5b801fe8e4a2f77df27aa3dce848b"
+    },
+    {
+      "name": "fpopenssl.pp",
+      "sha256": "0d7bc953721cf8b4abe4f3a06ddac7bed67e85f5296dcaff565c4c7f8b3fc4af",
+      "url": "https://gitlab.com/api/v4/projects/freepascal.org%2Ffpc%2Fsource/repository/files/packages%2Fopenssl%2Fsrc%2Ffpopenssl.pp?ref=12e49a77d1c5b801fe8e4a2f77df27aa3dce848b"
+    },
+    {
+      "name": "opensslsockets.pp",
+      "sha256": "5ab9e91bb401b3c5ed601ace8c8ad73933a28886e70271b3a89727cf75be896e",
+      "url": "https://gitlab.com/api/v4/projects/freepascal.org%2Ffpc%2Fsource/repository/files/packages%2Fopenssl%2Fsrc%2Fopensslsockets.pp?ref=12e49a77d1c5b801fe8e4a2f77df27aa3dce848b"
+    }
+  ],
+  "compatibility_patch": {
+    "file": "opensslsockets.pp",
+    "changes": "Remove override on two GetLastSSLError* getters and retain file-only CA loading because FPC 3.2.2 lacks those base methods and TrustedCertsDir. Explicit CA file and hostname verification remain enabled.",
+    "sha256": "0d4f318922412845b65280f83d8fe371eff1f8368a80e0a1a19cb0f5ddfeddc3"
+  },
+  "license_files": [
+    {
+      "name": "COPYING.FPC",
+      "source_path": "rtl/COPYING.FPC",
+      "sha256": "f65c27c43c289a842185f7948820a01b8eda29021cb0ec0dcdd3d646def9cf69"
+    },
+    {
+      "name": "COPYING.txt",
+      "source_path": "rtl/COPYING.txt",
+      "sha256": "3cf7652df6cd6736097af4eca6a8c35ef2fb2d103c647d817c152baa5c8dd9da"
+    }
+  ]
+}

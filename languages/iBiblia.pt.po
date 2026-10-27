@@ -2760,22 +2760,19 @@ msgstr "Sofonias"
 
 #: formflowexamples.rsaddcurrentverse
 msgid "Add current verse"
-msgstr ""
+msgstr "Adicionar versículo atual"
 
 #: formflowexamples.rsbtncancel
-#, fuzzy
 msgctxt "formflowexamples.rsbtncancel"
 msgid "Cancel"
 msgstr "Cancelar"
 
 #: formflowexamples.rsbtnok
-#, fuzzy
 msgctxt "formflowexamples.rsbtnok"
 msgid "OK"
 msgstr "OK"
 
 #: formflowexamples.rsclearexamples
-#, fuzzy
 msgctxt "formflowexamples.rsclearexamples"
 msgid "Clear"
 msgstr "Limpar"
@@ -2783,82 +2780,84 @@ msgstr "Limpar"
 #: formflowexamples.rsclearexamplesprompt
 #, object-pascal-format
 msgid "Remove all saved examples for the %s flow?"
-msgstr ""
+msgstr "Remover todos os exemplos salvos para o fluxo de %s?"
 
 #: formflowexamples.rsclearexamplestitle
 msgid "Clear examples"
-msgstr ""
+msgstr "Limpar exemplos"
 
 #: formflowexamples.rsdestinationtext
 msgid "Destination / translation"
-msgstr ""
+msgstr "Destino / tradução"
 
 #: formflowexamples.rsexampleslist
 msgid "Examples"
-msgstr ""
+msgstr "Exemplos"
 
 #: formflowexamples.rsflowexamplestitle
 #, object-pascal-format
 msgid "%s examples"
-msgstr ""
+msgstr "Exemplos de %s"
 
 #: formflowexamples.rshintaddcurrentverse
 msgid ""
 "Add or replace an example using the current source and destination verses."
 msgstr ""
+"Adicionar ou substituir um exemplo usando os versículos atuais de origem e "
+"destino."
 
 #: formflowexamples.rshintcancel
 msgid "Close without saving example changes."
-msgstr ""
+msgstr "Fechar sem salvar as alterações dos exemplos."
 
 #: formflowexamples.rshintclearexamples
 msgid "Remove all examples from this working list."
-msgstr ""
+msgstr "Remover todos os exemplos desta lista de trabalho."
 
 #: formflowexamples.rshintmoveexampledown
 msgid "Move the selected example later in the prompt."
-msgstr ""
+msgstr "Mover o exemplo selecionado para uma posição posterior no prompt."
 
 #: formflowexamples.rshintmoveexampleup
 msgid "Move the selected example earlier in the prompt."
-msgstr ""
+msgstr "Mover o exemplo selecionado para uma posição anterior no prompt."
 
 #: formflowexamples.rshintok
 msgid "Save these example changes."
-msgstr ""
+msgstr "Salvar as alterações dos exemplos."
 
 #: formflowexamples.rshintremoveexample
 msgid "Remove the selected example from this working list."
-msgstr ""
+msgstr "Remover o exemplo selecionado desta lista de trabalho."
 
 #: formflowexamples.rsmoveexampledown
 msgid "Move down"
-msgstr ""
+msgstr "Mover para baixo"
 
 #: formflowexamples.rsmoveexampleup
 msgid "Move up"
-msgstr ""
+msgstr "Mover para cima"
 
 #: formflowexamples.rsnoexamples
 msgid "No saved examples."
-msgstr ""
+msgstr "Nenhum exemplo salvo."
 
 #: formflowexamples.rspreviewnovisualassociations
 msgid "This example has no visual associations to display."
-msgstr ""
+msgstr "Este exemplo não possui associações visuais para exibir."
 
 #: formflowexamples.rspreviewready
 msgid "Visual preview ready."
-msgstr ""
+msgstr "Visualização pronta."
 
 #: formflowexamples.rspromptresponse
 msgid "Prompt response"
-msgstr ""
+msgstr "Resposta do prompt"
 
 #: formflowexamples.rsremoveexample
 msgctxt "formflowexamples.rsremoveexample"
 msgid "Remove"
-msgstr ""
+msgstr "Remover"
 
 #: formflowexamples.rsreplaceexampleprompt
 #, object-pascal-format
@@ -2867,24 +2866,25 @@ msgid ""
 "\n"
 "Do you want to replace it with the current verse state?"
 msgstr ""
+"Este versículo já está salvo como exemplo para o fluxo de %s.\n"
+"\n"
+"Deseja substituí-lo pelo estado atual do versículo?"
 
 #: formflowexamples.rsreplaceexampletitle
 msgctxt "formflowexamples.rsreplaceexampletitle"
 msgid "Example already exists"
-msgstr ""
+msgstr "Exemplo já existe"
 
 #: formflowexamples.rssourcetext
-#, fuzzy
 msgctxt "formflowexamples.rssourcetext"
 msgid "Source text"
-msgstr "Texto origem"
+msgstr "Texto de origem"
 
 #: formflowexamples.rsvisualpreview
 msgid "Visual preview"
-msgstr ""
+msgstr "Visualização"
 
 #: formflowexamples.rswarningtitle
-#, fuzzy
 msgctxt "formflowexamples.rswarningtitle"
 msgid "Warning"
 msgstr "Aviso"
@@ -3523,7 +3523,7 @@ msgstr ""
 
 #: formprincipal.sclearcurrentverseassociationshint
 msgid "Remove all associations from the current verse only"
-msgstr ""
+msgstr "Remover todas as associações apenas do versículo atual"
 
 #: formprincipal.scloseproject
 msgctxt "formprincipal.scloseproject"
@@ -3694,11 +3694,11 @@ msgstr "Guia: iniciar um projeto"
 #: formprincipal.sguidetranslationtext
 msgid ""
 "Double-click an empty area in Destination to write the translation. Use Save"
-" to apply or Cancel to discard; Esc also saves and closes. Once Destination "
+" to apply or Cancel to discard; Esc also discards and closes. Once Destination "
 "has text, the guide will switch to association."
 msgstr ""
 "Dê duplo clique numa área vazia do destino para escrever a tradução. Use "
-"Salvar para aplicar ou Cancelar para descartar; Esc também salva e fecha. "
+"Salvar para aplicar ou Cancelar para descartar; Esc também descarta e fecha. "
 "Quando houver texto no destino, o guia passará para associação."
 
 #: formprincipal.sguidetranslationtitle
@@ -9305,6 +9305,10 @@ msgstr "O ícone da aplicação iBiblia é o mesmo em todos os conjuntos."
 msgctxt "ui_icons.sconnectediconfamily"
 msgid "Connected texts"
 msgstr "Textos conectados"
+
+#: formprincipal.sshortcutsaveprojectas
+msgid "Save the current project to another file"
+msgstr "Salvar o projeto atual em outro arquivo"
 
 #: ai_credential_store.scredentialreferenceinvalid
 msgctxt "ai_credential_store.scredentialreferenceinvalid"

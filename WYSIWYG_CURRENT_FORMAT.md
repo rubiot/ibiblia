@@ -1,31 +1,22 @@
-# WYSIWYG on the current project format
+# Visual editing with the current .bib project format
 
-This branch deliberately keeps the existing `.bib` project schema and the
-normal iBiblia workspace. Its scope is limited to validating DirectWrite-based
-semantic WYSIWYG editing of verse text.
+The normal iBiblia workspace includes a DirectWrite visual verse editor on Windows. It uses the existing `.bib` project persistence and theWord import/export workflow. The public user guides are maintained in the [English](https://github.com/rubiot/ibiblia/wiki/User-manual-(English)) and [Portuguese](https://github.com/rubiot/ibiblia/wiki/Manual-de-utiliza%C3%A7%C3%A3o-(Portugu%C3%AAs)) wiki manuals.
 
-## Included
+## Implemented behavior
 
-- The normal project tree, chapter navigation, interlinear tools, translation
-  memory, comments, statuses, and Association workflow.
-- DirectWrite rendering and character selection in the existing verse editor.
-- Visual application/removal of theWord `FI/Fi`, `FR/Fr`, `FO/Fo`, and `FU/Fu`
-  semantics.
-- A raw ONT fallback backed by the same lossless codec.
-- Unicode clipboard, undo/redo, and protected opaque/lexical regions.
-- Existing `.bib` persistence and ONT import/export.
+- Visual verse text editing, Unicode selection/copy/paste, undo/redo and bidirectional rendering.
+- theWord semantic marks, HTML inline formatting, relative font sizes and colors.
+- Title insertion and selection-based title formatting, level changes and removal.
+- Rich translator-note editing, automatic/custom markers and note previews in editing and Association mode.
+- Paragraph and soft-line structures represented by theWord markup.
+- Raw ONT editing with tag highlighting/completion and a lossless codec for recognized and opaque objects.
+- Edit provenance and reconciliation that preserve identifiable unaffected Syntagms and Associations. Changes removing associated members require review/confirmation.
+- Deliberate lexical corrections in Raw mode; protected visual objects remain guarded during a visual editing cycle.
 
-## Deliberately excluded
+Use Save/Ctrl+S to apply an active edit. Cancel/Esc discards it. Literal record newlines are invalid; visual paragraphs and soft-line breaks serialize as markup.
 
-- The `.ibiblia` schema and repository.
-- Legacy project conversion.
-- UUID-based Syntagms, normalized Associations, and persistent revisions.
-- The experimental multi-layer v2 form.
+## Compatibility boundary
 
-Textual or structural edits to a verse that already has Associations remain
-blocked in this validation branch. Semantic-only edits are allowed and retain
-the existing Association objects. This prevents silent Association loss while
-the current-format WYSIWYG interaction is evaluated.
+The release keeps `.bib` projects and the established Verse/Syntagm/Association workflow. New project formats or experimental alternative workspaces are outside this release. Association preservation does not make arbitrary text replacement lossless: review affected Verse Pairs after lexical/structural edits, tokenizer changes or imports. Save a project copy before a large replacement operation.
 
-The preserved project-v2 work continues independently in
-`C:\Code\ibiblia-project-v2` on branch `codex/project-v2`.
+This document describes implemented source behavior; it is not a substitute for the exact release build, regression suite and packaged-application checks recorded by the release process.

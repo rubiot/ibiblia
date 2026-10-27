@@ -58,3 +58,14 @@ pcre-6.7-lazarus/dftables
 
 # Visual integration probe resource (screenshots/runtime live in ignored outputs)
 /tests/ui_visual_probe.res
+
+/dist/
+
+/tests/lemmas.dat
+/tests/cacert.pem
+/tests/libcrypto-3-x64.dll
+/tests/libssl-3-x64.dll
+/tests/sqlite3.dll
+/tests/iBiblia.models.json
+/tests/tls_runtime_probe.exe
+/tests/tls_runtime_probe.res

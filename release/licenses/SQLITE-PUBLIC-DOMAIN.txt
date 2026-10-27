@@ -1,0 +1,9 @@
+SQLite is in the public domain.
+
+This release contains the unmodified SQLite 3.54.1 Windows x64 DLL from:
+https://www.sqlite.org/2026/sqlite-dll-win-x64-3540100.zip
+
+The SQLite authors dedicate their deliverable code to the public domain.
+See the official explanation at https://www.sqlite.org/copyright.html.
+SQLite is provided without warranty; see that page and the official source
+distribution for full information.

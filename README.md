@@ -1,23 +1,51 @@
-# iBiblia (Português)
-iBiblia é uma ferramenta que visa simplificar o trabalho de se adicionar marcações de números de Strong e morfologia a um módulo de Bíblia do [theWord](http://theword.net/). Esta ferramenta vai poupá-lo do que seria um tedioso trabalho de digitação de caracteres especiais e números sem sentido imediato, permitindo-lhe focar-se em conceitos mais inteligíveis. O conceito é simples: tudo o que você precisa fazer é sinalizar ao iBiblia que palavras de uma tradução bíblica traduzem quais palavras do texto original. De posse desta informação, o iBiblia será capaz de gerar um módulo de Bíblia do texto traduzido com todas as marcações de números de Strong e morfologia do texto original, além de outros recursos. Para mais detalhes, visite a nossa [Wiki](https://github.com/rubiot/ibiblia/wiki/Manual-de-utiliza%C3%A7%C3%A3o-(Portugu%C3%AAs)).
+# iBiblia
 
-# iBiblia (English)
-iBiblia helps you simplify the work of adding Strong's and morphology tags to a [theWord](http://theword.net/) bible module. Its goal is to save you a great amount of time from having to manually type the special characters and/or number tags; thus, letting you focus on your more important tasks. The concept is simple. All you have to do is tell iBiblia which words from one bible text (the source) translate to which words on the other (the destination). With this information iBiblia will be able to generate a bible module with all the Strong's and morphology tags coming from the original source module.
-For more detail check the [Wiki](https://github.com/rubiot/ibiblia/wiki/User-manual-(English)).
+[Português](#português) · [English](#english)
 
-## LLM Model Catalog
-The supported LLM model list is now loaded from `iBiblia.models.json`, located alongside the executable. Users can edit this file to add new models for the currently supported providers (`OpenAI`, `DeepSeek`, `Google`) without waiting for an application update.
+## Português
 
-Each entry uses this shape:
+O iBiblia prepara módulos bíblicos anotados para o [theWord](https://www.theword.net/). Associe sintagmas do texto origem aos do texto destino para transferir números de Strong e morfologia, produzir interlineares e gerar concordâncias. Projetos de tradução permitem começar com o destino vazio e escrevê-lo no próprio aplicativo.
+
+A versão **1.1.0 para Windows 10/11 x64** inclui editor visual de versículos e notas, memória de tradução com ocorrências, revisão por estados, Salvar como, integração com theWord 7 e fluxos opcionais de tradução/associação por IA. A IA é **experimental**; exige internet e uma chave de API própria de um provedor suportado.
+
+- [Baixar a versão publicada](https://github.com/rubiot/ibiblia/releases)
+- [Instalação e atualização](https://github.com/rubiot/ibiblia/wiki/Instala%C3%A7%C3%A3o-e-atualiza%C3%A7%C3%A3o-(Portugu%C3%AAs))
+- [Manual de utilização](https://github.com/rubiot/ibiblia/wiki/Manual-de-utiliza%C3%A7%C3%A3o-(Portugu%C3%AAs))
+- [Novidades da versão 1.1.0 (English)](docs/releases/1.1.0.md)
+
+Extraia o ZIP inteiro para uma pasta em que seu usuário possa gravar e execute `iBiblia.exe`. Mantenha todos os arquivos fornecidos juntos. Antes de atualizar, salve e feche o projeto, preserve um backup do `.bib` e instale a nova versão em outra pasta. O pacote contém [instruções portáteis](docs/README-portable.md). Projetos e preferências pessoais não fazem parte do pacote.
+
+## English
+
+iBiblia prepares annotated Bible modules for [theWord](https://www.theword.net/). Associate source and destination Syntagms to transfer Strong's numbers and morphology, produce interlinears and generate concordances. Translation projects let you start with an empty destination and write it inside the application.
+
+**Version 1.1.0 for Windows 10/11 x64** adds visual verse/note editing, translation-memory occurrences, status review, Save As, theWord 7 integration and optional AI translation/Association workflows. AI is **experimental** and requires internet access and your own supported-provider API key.
+
+- [Download the published release](https://github.com/rubiot/ibiblia/releases)
+- [Installation and updating](https://github.com/rubiot/ibiblia/wiki/Installation-and-updating-(English))
+- [User manual](https://github.com/rubiot/ibiblia/wiki/User-manual-(English))
+- [What's new in 1.1.0](docs/releases/1.1.0.md) · [Changelog](CHANGELOG.md)
+
+Extract the complete ZIP into a folder your user can write to and run `iBiblia.exe`. Keep all supplied files together. Before updating, save and close your project, preserve a `.bib` backup and extract the new version into another folder. The package includes [portable instructions](docs/README-portable.md). Personal projects and settings are not included.
+
+## Formats and model catalog
+
+Bible imports use unlocked theWord `.ont`, `.nt` and `.ot` files, preferably UTF-8. Encrypted modules are unsupported. Dictionary imports require unencrypted, uncompressed `.dct.twm` modules with RTF content. Projects remain `.bib` files. See the manuals for scope, import rules and export options.
+
+`iBiblia.models.json`, beside the executable, is the editable model catalog for the implemented OpenAI, DeepSeek and Google providers. For example:
 
 ```json
 {
-	"name": "gpt-4.1-mini",
-	"provider": "OpenAI",
-	"supports_struct_output": true
+  "name": "gpt-4.1-mini",
+  "provider": "OpenAI",
+  "supports_struct_output": true
 }
 ```
 
-`supports_struct_output` controls whether iBiblia requests JSON-structured responses from providers that support it. If the file is missing or invalid, the application falls back to its built-in default catalog.
+`supports_struct_output` controls requests for structured JSON responses when supported. A missing or invalid catalog falls back to built-in defaults. Adding a model does not implement a new provider. API keys are configured in the application and stored for the current Windows user; do not put keys in this catalog.
 
-This file does not add support for new providers by itself. New providers still require code changes.
+## Development and support
+
+This is a Lazarus/Free Pascal desktop application. [Release preparation](docs/releasing.md) describes the clean-source build, dependency lock, tests, portable packaging and publication checks. Repository agent guidance is in [AGENTS.md](AGENTS.md); domain terminology is in [CONTEXT.md](CONTEXT.md).
+
+Report reproducible problems through [GitHub Issues](https://github.com/rubiot/ibiblia/issues), including version, steps and a small non-private example. Omit API keys. The portable package includes third-party notices and licenses for its bundled components.

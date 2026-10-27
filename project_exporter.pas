@@ -834,7 +834,8 @@ begin
       end;
 
       Entries := TStringList.Create;
-      Entries.LoadFromFile('lemmas.dat');
+      Entries.LoadFromFile(IncludeTrailingPathDelimiter(
+        ExtractFilePath(ParamStr(0))) + 'lemmas.dat');
       LemmaRegex := RegexCreate('^(.*?),(.*?)$', [rcoUTF8]);
       FormattedEntries := 0;
       ReportProgress(cepFormattingEntries, 0, QStrongs[FScope], True);

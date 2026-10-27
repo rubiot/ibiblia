@@ -11,13 +11,14 @@ type
   TLocalizationTests = class(TTestCase)
   published
     procedure PortugueseCatalogLocalizesEveryBibleBook;
+    procedure ProjectActionHintsFollowSelectedLanguage;
     procedure FlowConnectionHintsFollowSelectedLanguage;
   end;
 
 implementation
 
 uses
-  SysUtils, LCLTranslator, bible_book_names,
+  SysUtils, LCLTranslator, bible_book_names, formprincipal,
   ai_association_flow, ai_translation_flow;
 
 const
@@ -51,6 +52,26 @@ begin
       High(PORTUGUESE_BOOK_NAMES) do
       AssertEquals('Unexpected localized name for book ' + IntToStr(BookID),
         PORTUGUESE_BOOK_NAMES[BookID], LocalizedBookNameByID(BookID));
+  finally
+    SetDefaultLang('en', LanguagesDir, 'iBiblia', False);
+  end;
+end;
+
+procedure TLocalizationTests.ProjectActionHintsFollowSelectedLanguage;
+var
+  LanguagesDir: string;
+begin
+  LanguagesDir := ExpandFileName(ExtractFilePath(ParamStr(0)) + '..\languages');
+  SetDefaultLang('en', LanguagesDir, 'iBiblia', False);
+  try
+    SetDefaultLang('pt', LanguagesDir, 'iBiblia', False);
+    AssertEquals('Salvar o projeto atual em outro arquivo', SShortcutSaveProjectAs);
+    AssertEquals('Remover todas as associações apenas do versículo atual',
+      SClearCurrentVerseAssociationsHint);
+    SetDefaultLang('en', LanguagesDir, 'iBiblia', False);
+    AssertEquals('Save the current project to another file', SShortcutSaveProjectAs);
+    AssertEquals('Remove all associations from the current verse only',
+      SClearCurrentVerseAssociationsHint);
   finally
     SetDefaultLang('en', LanguagesDir, 'iBiblia', False);
   end;

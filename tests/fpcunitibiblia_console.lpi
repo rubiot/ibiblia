@@ -24,7 +24,7 @@
     <RunParams>
       <FormatVersion Value="2"/>
     </RunParams>
-    <RequiredPackages Count="5">
+    <RequiredPackages Count="7">
       <Item1>
         <PackageName Value="KControlsLaz"/>
       </Item1>
@@ -40,6 +40,12 @@
       <Item5>
         <PackageName Value="SynEdit"/>
       </Item5>
+      <Item6>
+        <PackageName Value="richmemopackage"/>
+      </Item6>
+      <Item7>
+        <PackageName Value="lazrichview"/>
+      </Item7>
     </RequiredPackages>
     <Units Count="4">
       <Unit0>
@@ -68,7 +74,7 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
-      <OtherUnitFiles Value="..;C:/Users/rubio/AppData/Local/lazarus/onlinepackagemanager/packages/richmemo/lib/x86_64-win64/"/>
+      <OtherUnitFiles Value="..\vendor\fpc-openssl;.."/>
       <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <Linking>
