@@ -1,3 +1,10 @@
+v1.0.1.034 (2026-10-28)
+  * Context Panel: Unassociated Destination text words automatically render in italics (<FI>...<Fi>) upon file save (Ctrl+S / File > Save).
+  * User Guide & README: Added visual illustration and documentation for Context Panel unassociated Destination words in italics on save.
+
+1.0.1.033 (2026-10-28):
+ * Fixed "Sync theWord to iBiblia verse": restored FArvore.OnChange in TProjeto.FiltrarArvore(-1), suppressed re-entrant filter/status events during verse loading, restored all 4 official theWord 6/7 window classes in TWAutomateUtils.IsTwRunning with strict EnumWindows filtering, and fixed 64-bit buffer bounds in SyncTheWordDict.
+
 Version 1.0.1.032 (64-bit Edition) - 2026-10-27 20:47
 * Fixed TFontStyles set assignment in DrawBadge (unitabout.pas line 1130: replaced IfThen(BoldFont, [fsBold], []) with if BoldFont then C.Font.Style := [fsBold] else C.Font.Style := []).
 

@@ -58,9 +58,21 @@ end;
 
 procedure TTwSyncThread.RefChange;
 // this method is executed by the mainthread and can therefore access all GUI elements.
+var
+  refToSync: string;
+  ignoreUntil: QWord;
 begin
+  FLock.Enter;
+  try
+    refToSync := fCurrentRef;
+    ignoreUntil := fIgnoreUntilTick;
+  finally
+    FLock.Leave;
+  end;
+  if (refToSync = '') or (GetTickCount64 < ignoreUntil) then
+    Exit;
   if Assigned(FOnRefChange) then
-    FOnRefChange(fCurrentRef);
+    FOnRefChange(refToSync);
 end;
 
 procedure TTwSyncThread.Execute;

@@ -38,9 +38,11 @@ type
   end;
 
 const
-  // The standard classname of the main theWord window (theWord 6 and 7).
+  // The standard classnames of the main theWord window (theWord 6 and 7, 32-bit and 64-bit).
   TW_MAINFORM_CLASSNAME = 'theWord.0f2ba8a0-906d-11e1-b0c4-0800200c9a66.UnicodeClass';
   TW_MAINFORM_CLASSNAME_NOUNICODE = 'theWord.0f2ba8a0-906d-11e1-b0c4-0800200c9a66';
+  TW6_MAINFORM_CLASSNAME = 'theWord.0f2ba8a0-906d-11e1-b0c4-0800200c9a667.UnicodeClass';
+  TW6_MAINFORM_CLASSNAME_NOUNICODE = 'theWord.0f2ba8a0-906d-11e1-b0c4-0800200c9a667';
 
   //the value of COPYDATASTRUCT.dwData
   COPYDATA_OP_FIRST = $ffff0000;
@@ -225,14 +227,47 @@ begin
   end;
 end;
 
-function FindTheWordEnumProc(hwnd: HWND; lParam: LPARAM): BOOL; stdcall;
+function FindTheWordByClassEnumProc(hwnd: HWND; lParam: LPARAM): BOOL; stdcall;
+var
+  className: array[0..255] of Char;
+  classStr: string;
+  pid: DWORD;
+begin
+  Result := True; // Continue enumeration
+
+  pid := 0;
+  GetWindowThreadProcessId(hwnd, pid);
+  if pid = GetCurrentProcessId then
+    Exit;
+
+  FillChar(className, SizeOf(className), 0);
+  GetClassName(hwnd, className, 256);
+  classStr := LowerCase(className);
+
+  // Match official theWord main form class prefix 'theword.0f2ba8a0' or 'theword.'
+  if (Pos('theword.0f2ba8a0', classStr) = 1) or (Pos('theword.', classStr) = 1) then
+  begin
+    PHandle(Pointer(PtrUInt(lParam)))^ := hwnd;
+    if IsWindowVisible(hwnd) then
+      Result := False; // Stop enumeration immediately if visible main form found
+    Exit;
+  end;
+end;
+
+function FindTheWordByTitleEnumProc(hwnd: HWND; lParam: LPARAM): BOOL; stdcall;
 var
   className, windowTitle: array[0..255] of Char;
   classStr, titleStr: string;
+  pid: DWORD;
 begin
   Result := True; // Continue enumeration
 
   if not IsWindowVisible(hwnd) then
+    Exit;
+
+  pid := 0;
+  GetWindowThreadProcessId(hwnd, pid);
+  if pid = GetCurrentProcessId then
     Exit;
 
   FillChar(className, SizeOf(className), 0);
@@ -241,17 +276,20 @@ begin
   GetClassName(hwnd, className, 256);
   classStr := LowerCase(className);
 
-  // theWord registers its window class with 'theWord.' prefix or contains 'theword'
-  if (Pos('theword.', classStr) = 1) or (Pos('theword', classStr) > 0) then
-  begin
-    PHandle(Pointer(PtrUInt(lParam)))^ := hwnd;
-    Result := False; // Stop enumeration, found!
+  // Exclude browsers, Explorer, LCL windows, and standard non-Delphi windows
+  if (Pos('chrome', classStr) > 0) or
+     (Pos('mozilla', classStr) > 0) or
+     (Pos('applicationframe', classStr) > 0) or
+     (Pos('cabinetwclass', classStr) > 0) or
+     (Pos('notepad', classStr) > 0) or
+     (classStr = 'window') or
+     (classStr = 'tapplication') then
     Exit;
-  end;
 
   GetWindowText(hwnd, windowTitle, 256);
   titleStr := LowerCase(windowTitle);
-  if (Pos(' - theword', titleStr) > 0) or (Pos('[theword]', titleStr) > 0) then
+  if ((Pos('theword', classStr) > 0) or (Pos('tfrm', classStr) = 1) or (Pos('tmain', classStr) = 1)) and
+     ((Pos(' - theword', titleStr) > 0) or (Pos('[theword]', titleStr) > 0)) then
   begin
     PHandle(Pointer(PtrUInt(lParam)))^ := hwnd;
     Result := False; // Stop enumeration, found!
@@ -262,28 +300,53 @@ end;
 {------------------------------------------------------------------------------}
 { Return 0 if tw is not running, else the HWND of the running instance }
 class function TWAutomateUtils.IsTwRunning: THandle;
+const
+  KNOWN_CLASSES: array[0..3] of PChar = (
+    TW_MAINFORM_CLASSNAME_NOUNICODE,
+    TW_MAINFORM_CLASSNAME,
+    TW6_MAINFORM_CLASSNAME,
+    TW6_MAINFORM_CLASSNAME_NOUNICODE
+  );
 var
-  PrevWindow: THandle;
+  PrevWindow, HiddenMatch: THandle;
+  i: Integer;
 begin
-  // 1. Exact match on standard theWord Unicode class name
-  PrevWindow := FindWindow(TW_MAINFORM_CLASSNAME, nil);
-  if IsWindow(PrevWindow) and IsWindowVisible(PrevWindow) then
+  HiddenMatch := 0;
+
+  // 1. Check all 4 known theWord 6 / theWord 7 main window class names
+  for i := Low(KNOWN_CLASSES) to High(KNOWN_CLASSES) do
   begin
-    Result := PrevWindow;
-    Exit;
+    PrevWindow := FindWindow(KNOWN_CLASSES[i], nil);
+    if IsWindow(PrevWindow) then
+    begin
+      if IsWindowVisible(PrevWindow) or IsIconic(PrevWindow) then
+      begin
+        Result := PrevWindow;
+        Exit;
+      end;
+      if HiddenMatch = 0 then
+        HiddenMatch := PrevWindow;
+    end;
   end;
 
-  // 2. Exact match without .UnicodeClass
-  PrevWindow := FindWindow(TW_MAINFORM_CLASSNAME_NOUNICODE, nil);
-  if IsWindow(PrevWindow) and IsWindowVisible(PrevWindow) then
-  begin
-    Result := PrevWindow;
-    Exit;
-  end;
-
-  // 3. Dynamic enumeration fallback across running top-level windows
+  // 2. Pass 1 dynamic enumeration: look strictly for 'theWord.' window class prefix
   PrevWindow := 0;
-  EnumWindows(@FindTheWordEnumProc, LPARAM(PtrUInt(@PrevWindow)));
+  EnumWindows(@FindTheWordByClassEnumProc, LPARAM(PtrUInt(@PrevWindow)));
+  if IsWindow(PrevWindow) then
+  begin
+    Result := PrevWindow;
+    Exit;
+  end;
+
+  if IsWindow(HiddenMatch) then
+  begin
+    Result := HiddenMatch;
+    Exit;
+  end;
+
+  // 3. Pass 2 dynamic enumeration: fallback to Delphi form with theWord title
+  PrevWindow := 0;
+  EnumWindows(@FindTheWordByTitleEnumProc, LPARAM(PtrUInt(@PrevWindow)));
   if IsWindow(PrevWindow) then
   begin
     Result := PrevWindow;

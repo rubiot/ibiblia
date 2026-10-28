@@ -1054,7 +1054,7 @@ end;
 {------------------------------------------------------------------------------}
 procedure SyncTheWordVerse(ref: string);
 var
-  twHWND: THandle;
+  twHWND, senderHwnd: THandle;
   CData : TCopyDataStruct;
   bcv: TBCV_A;
   b, c, v: integer;
@@ -1066,40 +1066,60 @@ begin
   twHWND := RestoreTheWord(False);
   if twHWND <> 0 then begin
     b := 0; c := 0; v := 0;
-    SScanf(ref,'%d,%d,%d',[@b, @c, @v]);
-    if (b > 0) and (c > 0) and (v > 0) then
+    if SScanf(ref, '%d,%d,%d', [@b, @c, @v]) = 3 then
     begin
-      bcv.bi := b;
-      bcv.ci := c;
-      bcv.vi := v;
-      bcv.span := 0;
+      if (b > 0) and (c > 0) and (v > 0) then
+      begin
+        bcv.bi := b;
+        bcv.ci := c;
+        bcv.vi := v;
+        bcv.span := 0;
 
-      CData.dwData := twAutomate.COPYDATA_OP_GOTOVERSE;
-      CData.lpData := @bcv;
-      CData.cbData := SizeOf(bcv);
-      dwRes := 0;
-      SendMessageTimeout(twHWND, WM_COPYDATA, 0, PtrInt(@CData), SMTO_ABORTIFHUNG or SMTO_NORMAL, 1000, @dwRes);
+        CData.dwData := twAutomate.COPYDATA_OP_GOTOVERSE;
+        CData.lpData := @bcv;
+        CData.cbData := SizeOf(bcv);
+        if Assigned(FrmPrincipal) and FrmPrincipal.HandleAllocated then
+          senderHwnd := FrmPrincipal.Handle
+        else
+          senderHwnd := 0;
+        dwRes := 0;
+        SendMessageTimeout(twHWND, WM_COPYDATA, WPARAM(senderHwnd), PtrInt(@CData), SMTO_ABORTIFHUNG or SMTO_NORMAL, 1000, @dwRes);
+      end;
     end;
   end;
 end;
 
 procedure SyncTheWordDict(ref: string);
 var
-  twHWND: THandle;
+  twHWND, senderHwnd: THandle;
   CData : TCopyDataStruct;
   CD: TCopyData_Op_DctWordLookup;
   ws: WideString;
+  copyLen: Integer;
+  dwRes: DWORD_PTR;
 begin
+  ref := Trim(ref);
+  if ref = '' then exit;
   twHWND := RestoreTheWord(False);
   if twHWND <> 0 then begin
-    ws := ref;
+    ws := UTF8Decode(ref);
+    if ws = '' then
+      ws := WideString(ref);
+    if ws = '' then exit;
 
     CData.dwData := twAutomate.COPYDATA_OP_DCTWORDLOOKUP;
-    CD := Default(TCopyData_Op_DctWordLookup);
-    Move(ws[1], CD.phrase[1], 2*Math.max(Length(ws), Length(CD.phrase)));
+    FillChar(CD, SizeOf(CD), 0);
+    copyLen := Math.Min(Length(ws), High(CD.phrase) - 1);
+    if copyLen > 0 then
+      Move(ws[1], CD.phrase[1], copyLen * SizeOf(WideChar));
     CData.lpData := @CD;
     CData.cbData := SizeOf(TCopyData_Op_DctWordLookup);
-    SendMessage(twHWND, WM_COPYDATA, 0, PtrInt(@CData));
+    if Assigned(FrmPrincipal) and FrmPrincipal.HandleAllocated then
+      senderHwnd := FrmPrincipal.Handle
+    else
+      senderHwnd := 0;
+    dwRes := 0;
+    SendMessageTimeout(twHWND, WM_COPYDATA, WPARAM(senderHwnd), PtrInt(@CData), SMTO_ABORTIFHUNG or SMTO_NORMAL, 1000, @dwRes);
   end;
 end;
 {$ENDIF}
@@ -1389,6 +1409,8 @@ begin
     ProjetoAtual.MostrarQtdStrongs := FStrongsCountMode;
     ProjetoAtual.OnNewVerseSubscribe(@QuandoNovoVersiculo);
     ProjetoAtual.OnAlterarVersiculo := @QuandoAlterarVersiculo;
+    ProjetoAtual.OnSintagmaClick := @QuandoPalavraClicada;
+    ProjetoAtual.OnSintagmaMouseEnter := @QuandoPalavraHovered;
     ProjetoAtual.Novo(SaveDialog1.FileName, FormNovoProjeto1.EditNomeProjeto.Text);
     {$IFDEF WINDOWS}
     HookRadioGroupStatus;
@@ -1441,10 +1463,15 @@ begin
     if Assigned(opts) then
       savedFilter := opts.ReadInteger('opcoes', 'filterstatus', 0);
 
-    if (savedFilter >= 0) and (savedFilter < ComboBoxStatusFilter.Items.Count) then
-      ComboBoxStatusFilter.ItemIndex := savedFilter
-    else
-      ComboBoxStatusFilter.ItemIndex := 0;
+    ComboBoxStatusFilter.OnChange := nil;
+    try
+      if (savedFilter >= 0) and (savedFilter < ComboBoxStatusFilter.Items.Count) then
+        ComboBoxStatusFilter.ItemIndex := savedFilter
+      else
+        ComboBoxStatusFilter.ItemIndex := 0;
+    finally
+      ComboBoxStatusFilter.OnChange := @ComboBoxStatusFilterChange;
+    end;
 
     if ComboBoxStatusFilter.ItemIndex > 0 then
       ComboBoxStatusFilterChange(ComboBoxStatusFilter);
@@ -1454,6 +1481,7 @@ begin
     Enabled := true;
   end;
   ApplyActiveSkin;
+  ActionQuandoNovoVersiculoExecute(nil);
 end;
 
 procedure TFrmPrincipal.ActionPropProjetoExecute(Sender: TObject);
@@ -2693,11 +2721,14 @@ begin
   begin
     FSyncingFromTw := True;
     try
-      ProjetoAtual.GoToReference(Ref);
-      ProjetoAtual.SelectTreeNode(Ref);
-    except
+      try
+        ProjetoAtual.GoToReference(Ref);
+        ProjetoAtual.SelectTreeNode(Ref);
+      except
+      end;
+    finally
+      FSyncingFromTw := False;
     end;
-    FSyncingFromTw := False;
   end;
 end;
 
@@ -2873,10 +2904,15 @@ begin
   else if Assigned(opts) then
     savedFilter := opts.ReadInteger('opcoes', 'filterstatus', 0);
 
-  if (savedFilter >= 0) and (savedFilter < ComboBoxStatusFilter.Items.Count) then
-    ComboBoxStatusFilter.ItemIndex := savedFilter
-  else
-    ComboBoxStatusFilter.ItemIndex := 0;
+  ComboBoxStatusFilter.OnChange := nil;
+  try
+    if (savedFilter >= 0) and (savedFilter < ComboBoxStatusFilter.Items.Count) then
+      ComboBoxStatusFilter.ItemIndex := savedFilter
+    else
+      ComboBoxStatusFilter.ItemIndex := 0;
+  finally
+    ComboBoxStatusFilter.OnChange := @ComboBoxStatusFilterChange;
+  end;
 
   if ComboBoxStatusFilter.ItemIndex > 0 then
     ComboBoxStatusFilterChange(ComboBoxStatusFilter);
@@ -2893,6 +2929,7 @@ begin
   {$IFDEF WINDOWS}
   SetUpSyncThread;
   {$ENDIF}
+  ActionQuandoNovoVersiculoExecute(nil);
 end;
 
 
@@ -3007,23 +3044,30 @@ end;
 procedure TFrmPrincipal.AtualizarItensFiltro;
 var
   savedIndex: Integer;
+  oldChange: TNotifyEvent;
 begin
   if ProjetoAtual = nil then exit;
   savedIndex := ComboBoxStatusFilter.ItemIndex;
-  ComboBoxStatusFilter.Items.BeginUpdate;
+  oldChange := ComboBoxStatusFilter.OnChange;
+  ComboBoxStatusFilter.OnChange := nil;
   try
-    ComboBoxStatusFilter.Items.Clear;
-    ComboBoxStatusFilter.Items.Add(Format('%s (%d)', [SStatusAllVerses, ProjetoAtual.TotalVersiculos]));
-    ComboBoxStatusFilter.Items.Add(Format('%s (%d)', [ProjetoAtual.GetSituacaoDescricao(0), ProjetoAtual.ContarVersiculosPorSituacao(0)]));
-    ComboBoxStatusFilter.Items.Add(Format('%s (%d)', [ProjetoAtual.GetSituacaoDescricao(1), ProjetoAtual.ContarVersiculosPorSituacao(1)]));
-    ComboBoxStatusFilter.Items.Add(Format('%s (%d)', [ProjetoAtual.GetSituacaoDescricao(2), ProjetoAtual.ContarVersiculosPorSituacao(2)]));
-    ComboBoxStatusFilter.Items.Add(Format('%s (%d)', [ProjetoAtual.GetSituacaoDescricao(3), ProjetoAtual.ContarVersiculosPorSituacao(3)]));
-  finally
-    ComboBoxStatusFilter.Items.EndUpdate;
+    ComboBoxStatusFilter.Items.BeginUpdate;
+    try
+      ComboBoxStatusFilter.Items.Clear;
+      ComboBoxStatusFilter.Items.Add(Format('%s (%d)', [SStatusAllVerses, ProjetoAtual.TotalVersiculos]));
+      ComboBoxStatusFilter.Items.Add(Format('%s (%d)', [ProjetoAtual.GetSituacaoDescricao(0), ProjetoAtual.ContarVersiculosPorSituacao(0)]));
+      ComboBoxStatusFilter.Items.Add(Format('%s (%d)', [ProjetoAtual.GetSituacaoDescricao(1), ProjetoAtual.ContarVersiculosPorSituacao(1)]));
+      ComboBoxStatusFilter.Items.Add(Format('%s (%d)', [ProjetoAtual.GetSituacaoDescricao(2), ProjetoAtual.ContarVersiculosPorSituacao(2)]));
+      ComboBoxStatusFilter.Items.Add(Format('%s (%d)', [ProjetoAtual.GetSituacaoDescricao(3), ProjetoAtual.ContarVersiculosPorSituacao(3)]));
+    finally
+      ComboBoxStatusFilter.Items.EndUpdate;
+    end;
     if (savedIndex >= 0) and (savedIndex < ComboBoxStatusFilter.Items.Count) then
       ComboBoxStatusFilter.ItemIndex := savedIndex
     else
       ComboBoxStatusFilter.ItemIndex := 0;
+  finally
+    ComboBoxStatusFilter.OnChange := oldChange;
   end;
   AtualizarContadorFiltro;
 end;

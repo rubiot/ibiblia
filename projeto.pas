@@ -96,6 +96,7 @@ type
     FAtivo: boolean;
     FMarker: string;
     FLoadedVerseID: string;
+    FLastSavedVerseID: string;
     FScrollingSessionDepth: Integer;
     FScrollEventsEnabled: boolean;
     FExportando: boolean;
@@ -1057,16 +1058,45 @@ var
   function GetText(rulesRx: TRegexList; replaceTo: TStringList): string;
   var
     i: integer;
-    srcTxt, dstTxt: string;
+    srcTxt, dstTxt, rawPairs: string;
   begin
     case ChapterViewText of
-      tbOrigem, tbDestino, tbConsulta1, tbConsulta2:
+      tbOrigem, tbConsulta1, tbConsulta2:
       begin
         if (GetID() = savedMarker) and Assigned(FMemoVersiculo) and FMemoVersiculo.Ativo and
            (FAVersiculo[ChapterViewText] = FMemoVersiculo.Versiculo) then
           result := string(FMemoVersiculo.Texto).Replace(#239#187#191, '')
         else
           result := FTblPares.Fields[FACamposTexto[ChapterViewText]].AsString.Replace(#239#187#191, '');
+      end;
+      tbDestino:
+      begin
+        if (GetID() = savedMarker) and Assigned(FMemoVersiculo) and FMemoVersiculo.Ativo and
+           (FAVersiculo[tbDestino] = FMemoVersiculo.Versiculo) then
+          result := string(FMemoVersiculo.Texto).Replace(#239#187#191, '')
+        else
+        begin
+          srcTxt := FTblPares.Fields[FACamposTexto[tbOrigem]].AsString.Replace(#239#187#191, '');
+          dstTxt := FTblPares.Fields[FACamposTexto[tbDestino]].AsString.Replace(#239#187#191, '');
+          rawPairs := FTblPares.FieldByName('pare_pares').AsString;
+          if (Length(rawPairs) = 0) and (FTblPares.FieldByName('pare_situacao').AsInteger = 0) and
+             ((FLastSavedVerseID = '') or (GetID() <> FLastSavedVerseID)) then
+            result := dstTxt
+          else
+          begin
+            FATmpVerse[tbOrigem ].Texto := srcTxt;
+            FATmpVerse[tbDestino].Texto := dstTxt;
+            if Length(rawPairs) > 0 then
+            begin
+              try
+                if FATmpVerse[tbOrigem].AreParesValidForVerse(rawPairs) then
+                  FATmpVerse[tbOrigem].Pares := rawPairs;
+              except
+              end;
+            end;
+            result := FATmpVerse[tbDestino].GetLinhaONT(true, true, false, false);
+          end;
+        end;
       end;
       tbInterlinear:
       begin
@@ -2904,6 +2934,8 @@ begin
   begin
     SalvarAssociacoes;
     SalvarPares;
+    if Assigned(FTblPares) and FTblPares.Active then
+      FLastSavedVerseID := FTblPares.FieldByName('pare_id').AsString;
   end;
   SalvarTexto; // salvar alterações nos textos dos versículos
 
@@ -2918,6 +2950,7 @@ var
   v: TTipoTextoBiblico;
   e: TOnNovoVersiculoEvent;
   rawPairs: string;
+  oldRadioChange: TNotifyEvent;
 begin
   if not FScrollEventsEnabled then
     exit;
@@ -2976,7 +3009,15 @@ begin
     FMemoComentarios.Text := Comentarios;
 
   if assigned(FRadioGroupSituacao) then
-    FRadioGroupSituacao.ItemIndex := Situacao;
+  begin
+    oldRadioChange := FRadioGroupSituacao.OnSelectionChanged;
+    FRadioGroupSituacao.OnSelectionChanged := nil;
+    try
+      FRadioGroupSituacao.ItemIndex := Situacao;
+    finally
+      FRadioGroupSituacao.OnSelectionChanged := oldRadioChange;
+    end;
+  end;
   if assigned(FAVersiculo[tbDestino]) then
     FAVersiculo[tbDestino].StatusIndex := Situacao;
 
@@ -3674,6 +3715,8 @@ begin
         SalvarAssociacoes;
         SalvarPares;
       end;
+      if Assigned(FTblPares) and FTblPares.Active then
+        FLastSavedVerseID := FTblPares.FieldByName('pare_id').AsString;
 
       for e in FOnNovoVersiculo do
         e(self);
@@ -4657,58 +4700,59 @@ begin
       FArvore.OnChange := nil;
       AtualizarArvore;
       AtualizarNomesTraducao;
-      exit;
-    end;
+    end
+    else
+    begin
+      curBookID := -1;
+      curChapter := -1;
+      nl := nil;
+      nc := nil;
 
-    curBookID := -1;
-    curChapter := -1;
-    nl := nil;
-    nc := nil;
-
-    StartScrollingSession;
-    try
-      FTblPares.First;
-      while not FTblPares.EOF do
-      begin
-        if FTblPares.FieldByName('pare_situacao').AsInteger = AStatus then
+      StartScrollingSession;
+      try
+        FTblPares.First;
+        while not FTblPares.EOF do
         begin
-          SScanf(FTblPares.FieldByName('pare_id').AsString, '%d,%d,%d', [@b, @c, @v]);
-
-          if b <> curBookID then
+          if FTblPares.FieldByName('pare_situacao').AsInteger = AStatus then
           begin
-            curBookID := b;
-            curChapter := -1;
-            bName := NLivros[FEscopo][b - OffsetLivros[FEscopo] - 1];
-            nl := FArvore.Items.Add(nil, bName);
-            nl.ImageIndex := AStatus;
-            nl.SelectedIndex := AStatus + 4;
-          end;
+            SScanf(FTblPares.FieldByName('pare_id').AsString, '%d,%d,%d', [@b, @c, @v]);
 
-          if c <> curChapter then
-          begin
-            curChapter := c;
-            nc := FArvore.Items.AddChild(nl, IntToStr(c));
-            nc.ImageIndex := AStatus;
-            nc.SelectedIndex := AStatus + 4;
-          end;
+            if b <> curBookID then
+            begin
+              curBookID := b;
+              curChapter := -1;
+              bName := NLivros[FEscopo][b - OffsetLivros[FEscopo] - 1];
+              nl := FArvore.Items.Add(nil, bName);
+              nl.ImageIndex := AStatus;
+              nl.SelectedIndex := AStatus + 4;
+            end;
 
-          nv := FArvore.Items.AddChild(nc, IntToStr(v));
-          nv.ImageIndex := AStatus;
-          nv.SelectedIndex := AStatus + 4;
+            if c <> curChapter then
+            begin
+              curChapter := c;
+              nc := FArvore.Items.AddChild(nl, IntToStr(c));
+              nc.ImageIndex := AStatus;
+              nc.SelectedIndex := AStatus + 4;
+            end;
+
+            nv := FArvore.Items.AddChild(nc, IntToStr(v));
+            nv.ImageIndex := AStatus;
+            nv.SelectedIndex := AStatus + 4;
+          end;
+          FTblPares.Next;
         end;
-        FTblPares.Next;
+      finally
+        FinishScrollingSession;
       end;
-    finally
-      FinishScrollingSession;
-    end;
 
-    FArvore.FullExpand;
+      FArvore.FullExpand;
+    end;
   finally
     FArvore.EndUpdate;
+    SelectTreeNode(ID);
+    FArvore.OnChange := @OnMudancaVersiculo;
   end;
 
-  SelectTreeNode(ID);
-  FArvore.OnChange := @OnMudancaVersiculo;
   {$IFDEF WINDOWS}
   HookTreeViewControl(FArvore);
   {$ENDIF}
@@ -4795,6 +4839,7 @@ begin
   FGlobalDicEnglish := nil;
 
   FLoadedVerseID      := '';
+  FLastSavedVerseID   := '';
   FScrollingSessionDepth := 0;
   FParesAntigos       := nil;
   FOnNovoVersiculo    := TOnNovoVersiculoEvents.Create;
@@ -5025,6 +5070,7 @@ begin
   TTokenizerFactory.PreferredVersion := StrToIntDef(ObterInfo('tokenizer_version'), 1);
 
   FLoadedVerseID := '';
+  FLastSavedVerseID := '';
   FScrollingSessionDepth := 0;
   ScrollEventsEnabled := true;
   GoToReference(ObterInfo('marcador'));
@@ -5166,7 +5212,9 @@ begin
 
   if ID = reference then
   begin // if FTblPares.Locate is not called, PosRolagemVersiculo won't either
-     UpdateReference(reference);
+    UpdateReference(reference);
+    if FScrollEventsEnabled and (FLoadedVerseID <> reference) then
+      PosRolagemVersiculo(FTblPares);
   end
   else
   begin
@@ -5174,7 +5222,9 @@ begin
     if ID <> reference then
       raise Exception.Create(Format('Reference not found in project [%s]', [reference]));
     if not FScrollEventsEnabled then
-      UpdateReference(reference);
+      UpdateReference(reference)
+    else if FLoadedVerseID <> reference then
+      PosRolagemVersiculo(FTblPares);
   end;
 end;
 
@@ -5276,6 +5326,8 @@ var
   e: TOnNovoVersiculoEvent;
 begin
   PreRolagemVersiculo(nil);
+  if Assigned(FTblPares) and FTblPares.Active then
+    FLastSavedVerseID := FTblPares.FieldByName('pare_id').AsString;
   AtribuirInfo('marcador', FTblPares.FieldByName('pare_id').AsString);
   Commit;
 

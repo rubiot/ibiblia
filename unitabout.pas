@@ -104,13 +104,17 @@ implementation
 {$R *.lfm}
 
 const
-  GUIDE_TOPIC_COUNT = 8;
+  GUIDE_TOPIC_COUNT = 9;
 
   CHANGELOG_TEXT =
-    'iBiblia Version 1.0.1.032 (64-bit Edition)' + sLineBreak +
+    'iBiblia Version 1.0.1.034 (64-bit Edition)' + sLineBreak +
     'Release Date: 2026-10-27' + sLineBreak +
     '==========================================' + sLineBreak + sLineBreak +
-    'NEW FEATURES & UPDATES (v1.0.1.032):' + sLineBreak +
+    'NEW FEATURES & UPDATES (v1.0.1.034):' + sLineBreak +
+    '  * Context Panel Shows Unassociated Destination Words as Italics on File Save:' + sLineBreak +
+    '    - Saving the project (Ctrl+S / File > Save) automatically renders unassociated words in the Destination tab of the Context Panel in italics (<FI>...<Fi>).' + sLineBreak +
+    '  * Restored "Sync theWord to iBiblia verse" (v1.0.1.033):' + sLineBreak +
+    '    - Fixed WM_COPYDATA verse broadcast and bidirectional loop guard so navigating in iBiblia immediately syncs theWord 7.' + sLineBreak +
     '  * Interactive Floating "New Features User Guide" Window (Help > New Features User Guide... / F1):' + sLineBreak +
     '    - Dedicated modeless floating window collating all new features introduced since v1.0.0.71.' + sLineBreak +
     '    - Includes 8 custom-drawn visual diagrams/illustrations and step-by-step instructions.' + sLineBreak +
@@ -184,7 +188,7 @@ begin
     ver := '';
   end;
   if ver = '' then
-    ver := '1.0.1.032';
+    ver := '1.0.1.034';
 
   LabelVersion := TLabel.Create(Self);
   LabelVersion.Parent := Self;
@@ -417,7 +421,7 @@ begin
   lblTitle.Top := 12;
   lblTitle.Font.Height := -16;
   lblTitle.Font.Style := [fsBold];
-  lblTitle.Caption := 'iBiblia v1.0.1.032 - Changelog';
+  lblTitle.Caption := 'iBiblia v1.0.1.034 - Changelog';
   if IsThemedSkin then
     lblTitle.Font.Color := CurrentSkin.HeaderColor
   else
@@ -752,7 +756,8 @@ begin
     4: Result := '5. Text-to-Speech (TTS)';
     5: Result := '6. Dark Mode & 7 Skins';
     6: Result := '7. Module Export & Sync';
-    7: Result := '8. Full Feature Summary';
+    7: Result := '8. Status Filter & Find (Ctrl+F)';
+    8: Result := '9. Full Feature Summary';
   else
     Result := '';
   end;
@@ -764,11 +769,12 @@ begin
     0: Result := 'v1.0.1.024 – v1.0.1.030';
     1: Result := 'v1.0.0.74 – v1.0.1.017';
     2: Result := 'v1.0.0.76 – v1.0.1.026';
-    3: Result := 'v1.0.1.002 – v1.0.1.008';
+    3: Result := 'v1.0.1.002 – v1.0.1.034';
     4: Result := 'v1.0.0.73 – v1.0.0.74';
     5: Result := 'v1.0.0.80 – v1.0.1.023';
     6: Result := 'v1.0.0.71 – v1.0.0.76';
-    7: Result := 'All Features Since v1.0.0.71';
+    7: Result := 'v1.0.0.70 – v1.0.0.76';
+    8: Result := 'All Features Since v1.0.0.70';
   else
     Result := '';
   end;
@@ -784,7 +790,8 @@ begin
     4: Result := '5. Real-Time Text-to-Speech (TTS) Hover Reader (Greek, Hebrew & English)';
     5: Result := '6. Dark Mode UI & 7 theWord Color Themes (Classic, Dark, Night, Sepia, Slate...)';
     6: Result := '7. Complete Bible Module Export, Smart Reload Review & theWord 7 Sync';
-    7: Result := '8. Complete Quick-Reference Summary of All New Features Since v1.0.0.71';
+    7: Result := '8. Verse Status Filtering (F8 / Shift+F8) & Find in Project (Ctrl+F)';
+    8: Result := '9. Complete Quick-Reference Summary of All New Features Since v1.0.0.70';
   else
     Result := '';
   end;
@@ -861,7 +868,7 @@ begin
 
     3:
       Result :=
-        'FEATURE OVERVIEW (v1.0.1.002 – v1.0.1.008)' + sLineBreak +
+        'FEATURE OVERVIEW (v1.0.1.002 – v1.0.1.034)' + sLineBreak +
         'When "Edit" is checked on any Bible panel, iBiblia provides a Shared Master Formatting Ribbon, a Floating Selection Mini-Toolbar, intuitive keyboard shortcuts for paragraph breaks, and real-time rendering in the right-hand Context Panel.' + sLineBreak + sLineBreak +
         'HOW TO USE:' + sLineBreak +
         '  1. Activating Edit Mode:' + sLineBreak +
@@ -874,8 +881,9 @@ begin
         '  3. Floating Selection Mini-Toolbar & Inline Tags:' + sLineBreak +
         '     • Highlight any word or phrase in the editor: a Floating Mini-Toolbar appears directly above your selection.' + sLineBreak +
         '     • Apply <FI>..<Fi> (Added/Italic words), <FR>..<Fr> (Words of Jesus in Red), <FO>..<Fo> (OT Quote), <b>, <i>, <u>, <sup>, <sub>, <RF>..<Rf> (Footnote), or click "Clear Tags" to strip markup from the selection.' + sLineBreak + sLineBreak +
-        '  4. Live Context Panel Preview:' + sLineBreak +
-        '     • Every tag and edit renders immediately in the right-hand Context Panel (Source | Destination | Ref 1 | Ref 2 | Interlinear).';
+        '  4. Live Context Panel Preview & Unassociated Words in Italics on File Save:' + sLineBreak +
+        '     • Every tag and edit renders immediately in the right-hand Context Panel (Source | Destination | Ref 1 | Ref 2 | Interlinear).' + sLineBreak +
+        '     • Upon saving the file (Ctrl+S / File > Save), the Context Panel''s Destination view automatically renders any unassociated Destination words in italics (<FI>...<Fi>) so you can immediately spot words added for English readability or not yet linked to a Greek/Hebrew source word.';
 
     4:
       Result :=
@@ -924,9 +932,36 @@ begin
         '     • Active verse status filters in the left TreeView are also persisted across restarts.';
 
     7:
+      Result :=
+        'FEATURE OVERVIEW (v1.0.0.70 – v1.0.0.76)' + sLineBreak +
+        'Filter the left Bible TreeView by association status with live per-status verse counts, step directly through matching verses across chapters and books (F8 / Shift+F8), and search across the entire project using the modeless Find in Project dialog (Ctrl+F).' + sLineBreak + sLineBreak +
+        'HOW TO USE:' + sLineBreak +
+        '  1. Verse Status Filtering & Filtered Stepping (Above Left Bible TreeView):' + sLineBreak +
+        '     • Open the Status Filter dropdown at the top of the left navigation panel to filter the Bible tree by status with live verse counts:' + sLineBreak +
+        '       - All verses (Total count)' + sLineBreak +
+        '       - Not associated (Count)' + sLineBreak +
+        '       - Associating (Count)' + sLineBreak +
+        '       - Needs review (Count)' + sLineBreak +
+        '       - Associated! (Count)' + sLineBreak +
+        '     • Click "<" (or press SHIFT + F8) to jump to the previous verse matching the selected status.' + sLineBreak +
+        '     • Click ">" (or press F8) to jump to the next verse matching the selected status.' + sLineBreak +
+        '     • The live counter beside the buttons displays "N found", and your active filter is persisted both per-project (.ibb) and in iBiblia.ini.' + sLineBreak + sLineBreak +
+        '  2. Project-Wide Search — Find in Project (Edit > Find in Project... / Ctrl+F):' + sLineBreak +
+        '     • Press CTRL + F at any time to open the floating Find in Project window.' + sLineBreak +
+        '     • Type a word, phrase, or Strong''s code and choose one of the 7 "Look in:" scopes:' + sLineBreak +
+        '       1) Destination translation (Target text)' + sLineBreak +
+        '       2) Original source (Hebrew / Greek)' + sLineBreak +
+        '       3) Reference text 1' + sLineBreak +
+        '       4) Reference text 2' + sLineBreak +
+        '       5) Strong tags / Pairs (e.g. G3056, H7225, or morphology tags)' + sLineBreak +
+        '       6) Translator notes / Comments' + sLineBreak +
+        '       7) All text fields' + sLineBreak +
+        '     • Click or double-click any matching verse in the results list (or click "< Previous Match" / "Next Match >") to jump directly to that verse in the main workspace.';
+
+    8:
       begin
         Result := '';
-        for i := 0 to 6 do
+        for i := 0 to 7 do
         begin
           if Result <> '' then
             Result := Result + sLineBreak + sLineBreak +
@@ -972,7 +1007,7 @@ begin
   if Sender = nil then ;
   if Shift = [] then ;
   if X = 0 then ;
-  itemH := Max(42, (pbSidebar.Height - 12) div GUIDE_TOPIC_COUNT);
+  itemH := Max(36, (pbSidebar.Height - 12) div GUIDE_TOPIC_COUNT);
   idx := (Y - 6) div itemH;
   if (Y < 6) or (idx < 0) or (idx >= GUIDE_TOPIC_COUNT) then
     idx := -1;
@@ -1001,7 +1036,7 @@ begin
   if Shift = [] then ;
   if X = 0 then ;
   if Button <> mbLeft then Exit;
-  itemH := Max(42, (pbSidebar.Height - 12) div GUIDE_TOPIC_COUNT);
+  itemH := Max(36, (pbSidebar.Height - 12) div GUIDE_TOPIC_COUNT);
   idx := (Y - 6) div itemH;
   if (Y >= 6) and (idx >= 0) and (idx < GUIDE_TOPIC_COUNT) then
     SelectTopic(idx);
@@ -1031,7 +1066,7 @@ begin
     bmp.Canvas.Pen.Color := borderCol;
     bmp.Canvas.Line(bmp.Width - 1, 0, bmp.Width - 1, bmp.Height);
 
-    itemH := Max(42, (bmp.Height - 12) div GUIDE_TOPIC_COUNT);
+    itemH := Max(36, (bmp.Height - 12) div GUIDE_TOPIC_COUNT);
     bmp.Canvas.Font.Name := 'Segoe UI';
 
     for i := 0 to GUIDE_TOPIC_COUNT - 1 do
@@ -1385,9 +1420,9 @@ var
     C.TextOut(W div 2 + 40, 136, 'Heading <TS1> & Indented <PI1> Preview');
     C.Font.Style := [fsItalic];
     C.Font.Color := dimCol;
-    C.TextOut(W div 2 + 52, 154, '[Added words <FI>] and Red Letter <FR>');
+    C.TextOut(W div 2 + 52, 154, 'Unassociated Dest words -> Italics on Save (Ctrl+S)');
     C.Font.Style := [];
-    C.TextOut(W div 2 + 40, 174, 'Updates in real time as you type in Edit mode!');
+    C.TextOut(W div 2 + 40, 174, 'Updates in real time in Edit mode & upon File Save!');
   end;
 
   procedure DrawTopic4(C: TCanvas);
@@ -1518,12 +1553,54 @@ var
 
   procedure DrawTopic7(C: TCanvas);
   begin
+    // Left: Status Filter Dropdown & Prev/Next Filtered Buttons
+    DrawBox(C, 16, 36, W div 2 - 8, 198, pnlBg, borderCol, 6);
+    C.Brush.Style := bsClear;
+    C.Font.Size := 8;
+    C.Font.Style := [fsBold];
+    C.Font.Color := hdrCol;
+    C.TextOut(26, 42, 'VERSE STATUS FILTER (Top-Left Above TreeView)');
+
+    DrawBadge(C, 26, 62, '[ Needs review (14)          ▼ ]', hiBg, hiTxt, hdrCol, True);
+    DrawBadge(C, 26, 92, '[ < Prev (Shift+F8) ]', winBg, txtCol, borderCol, False);
+    DrawBadge(C, 152, 92, '[ Next (F8) > ]', ptBg, ptTxt, borderCol, True);
+    C.Brush.Style := bsClear;
+    C.Font.Style := [fsBold];
+    C.Font.Color := txtCol;
+    C.TextOut(252, 96, '14 found');
+
+    C.Font.Style := [];
+    C.Font.Color := txtCol;
+    C.TextOut(26, 124, '• Filters TreeView by: All / Not assoc. / Associating /');
+    C.TextOut(26, 140, '  Needs review / Associated! with live counts.');
+    C.Font.Color := dimCol;
+    C.TextOut(26, 160, '• Automatically saved per-project (.ibb) & in iBiblia.ini.');
+
+    // Right: Find in Project (Ctrl+F)
+    DrawBox(C, W div 2 + 4, 36, W - 16, 198, pnlBg, borderCol, 6);
+    C.Brush.Style := bsClear;
+    C.Font.Size := 8;
+    C.Font.Style := [fsBold];
+    C.Font.Color := hdrCol;
+    C.TextOut(W div 2 + 14, 42, 'FIND IN PROJECT (Ctrl + F  |  Edit > Find in Project...)');
+
+    DrawBadge(C, W div 2 + 14, 62, 'Find what: [ G3056 / beginning      ]  [ Search ]', winBg, txtCol, borderCol, False);
+    DrawBadge(C, W div 2 + 14, 90, 'Look in:   [ All text fields / Strong tags ▼ ]', ptBg, ptTxt, borderCol, True);
+    DrawBadge(C, W div 2 + 14, 120, 'Gen 1:1   | In the beginning God created...', hiBg, hiTxt, hdrCol, True);
+    DrawBadge(C, W div 2 + 14, 148, '[ Go to Verse ]  [ < Prev Match ]  [ Next Match > ]', winBg, txtCol, borderCol, False);
+    C.Brush.Style := bsClear;
+    C.Font.Color := dimCol;
+    C.TextOut(W div 2 + 14, 176, 'Searches Dest, Source, Ref 1/2, Strong''s & Notes');
+  end;
+
+  procedure DrawTopic8(C: TCanvas);
+  begin
     DrawBox(C, 16, 36, W - 16, 198, pnlBg, borderCol, 6);
     C.Brush.Style := bsClear;
     C.Font.Size := 8;
     C.Font.Style := [fsBold];
     C.Font.Color := hdrCol;
-    C.TextOut(26, 42, 'COMPLETE NEW FEATURES MAP (v1.0.0.71 – v1.0.1.031) — QUICK SHORTCUT REFERENCE');
+    C.TextOut(26, 42, 'COMPLETE NEW FEATURES MAP (v1.0.0.70 – v1.0.1.033) — QUICK SHORTCUT REFERENCE');
 
     DrawBadge(C, 26,  64, 'Mouse Wheel Up / Down : Select Source Word Left / Right', hiBg, hiTxt, hdrCol, True);
     DrawBadge(C, 26,  94, 'Hold Ctrl+Shift + Click : Associate Multiple Words Together', ptBg, ptTxt, borderCol, True);
@@ -1577,8 +1654,9 @@ begin
       4: DrawTopic4(bmp.Canvas);
       5: DrawTopic5(bmp.Canvas);
       6: DrawTopic6(bmp.Canvas);
+      7: DrawTopic7(bmp.Canvas);
     else
-      DrawTopic7(bmp.Canvas);
+      DrawTopic8(bmp.Canvas);
     end;
 
     pbIllust.Canvas.Draw(0, 0, bmp);
