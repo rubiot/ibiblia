@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "applicationVersion": "1.0.1.035",
+  "architecture": "windows-x64",
+  "dependencies": [
+    {
+      "id": "pcre-x64",
+      "version": "6.7-iBiblia-custom",
+      "sourcePath": "pcre64.dll",
+      "sha256": "adfe6ba22e66b14af30d368cd1458547f86ba81825bcfae1d3a1b4cb6068b2bb",
+      "size": 526336
+    },
+    {
+      "id": "sqlite-x64",
+      "version": "3.x-win64",
+      "sourcePath": "sqlite3.dll",
+      "sha256": "a7613cc58c6032e54301c921fe5680bed22503ac67db7d22aa1fa3253b58485f",
+      "size": 3210752
+    },
+    {
+      "id": "lemmas-data",
+      "version": "1.0.1.035",
+      "sourcePath": "lemmas.dat",
+      "sha256": "704a5933ac4bfdf2a0410a36e1939c306c685ce48a58dd7399153e7ae964f179",
+      "size": 305128
+    }
+  ]
+}

@@ -5,7 +5,7 @@ unit MySwordModule;
 interface
 
 uses
-  Classes, SysUtils, sqlite3conn, sqldb, PCRE, gmap, gutil;
+  Classes, SysUtils, sqlite3conn, sqldb, PCRE, gmap, gutil, TheWordDictionary;
 
 type
 
@@ -135,6 +135,7 @@ begin
   FInsert.Free;
 
   propMap.Free;
+  strings.Free;
 end;
 
 constructor TMySwordModule.Create(filename: string; ot: boolean; nt: boolean;

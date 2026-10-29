@@ -107,10 +107,19 @@ const
   GUIDE_TOPIC_COUNT = 9;
 
   CHANGELOG_TEXT =
-    'iBiblia Version 1.0.1.034 (64-bit Edition)' + sLineBreak +
-    'Release Date: 2026-10-27' + sLineBreak +
+    'iBiblia Version 1.0.1.040 (64-bit Edition)' + sLineBreak +
+    'Release Date: 2026-10-28' + sLineBreak +
     '==========================================' + sLineBreak + sLineBreak +
-    'NEW FEATURES & UPDATES (v1.0.1.034):' + sLineBreak +
+    'NEW FEATURES & UPDATES (v1.0.1.040):' + sLineBreak +
+    '  * Upstream v1.1.0 Reliability & Workflow Improvements (Non-Destructive Integration):' + sLineBreak +
+    '    - Export Modules While Open in theWord: Staged file publishing with automatic shared-stream overwrite fallback and byte-backup rollback allows exporting .ont/.ot/.nt and .dct.twm modules while open in theWord.' + sLineBreak +
+    '    - Safe Project "Save As..." (File > Save as... / Ctrl+Shift+S): Commits active work, stages a transactionally clean .bib copy, updates Recent Projects (MRU), and switches to the new project.' + sLineBreak +
+    '    - Per-Project Remembered Export Destinations: Automatically remembers and pre-populates separate export paths per project for Tagged Destination, Interlinear, Analytical/Synthetic Concordance (.dct.twm), and all 4 Bible panels.' + sLineBreak +
+    '    - Smart Apostrophe Variant Matching: Normalizes curly/typographic apostrophes (U+2019, U+2018, U+02BC, etc.) to straight single quotes across word associations, suggestions, and smart reload diffs.' + sLineBreak +
+    '    - Active Translation Highlight in Translation Memory: Highlights the current verse''s associated translation ([current]) inside the Translation Memory popup list.' + sLineBreak +
+    '    - Automatic Pruning of Empty Formatting Tags: Strips empty wrapper tags (<FI><Fi>, <FR><Fr>, <FO><Fo>, <b></b>, <TS1><Ts>, etc.) left behind after deleting text in Edit Mode.' + sLineBreak +
+    '    - 2026 Book Module Guide Uncompressed BLOB Concordance Export: Stores uncompressed RTF BLOB data and complete config metadata in exported .dct.twm concordances.' + sLineBreak +
+    '    - Fixed reversed Pos() check in ExportarTextoDestinoComStrongs so <_MORPH_> is only appended when verse 1 has no existing tags.' + sLineBreak +
     '  * Context Panel Shows Unassociated Destination Words as Italics on File Save:' + sLineBreak +
     '    - Saving the project (Ctrl+S / File > Save) automatically renders unassociated words in the Destination tab of the Context Panel in italics (<FI>...<Fi>).' + sLineBreak +
     '  * Restored "Sync theWord to iBiblia verse" (v1.0.1.033):' + sLineBreak +
@@ -188,7 +197,7 @@ begin
     ver := '';
   end;
   if ver = '' then
-    ver := '1.0.1.034';
+    ver := '1.0.1.040';
 
   LabelVersion := TLabel.Create(Self);
   LabelVersion.Parent := Self;
@@ -421,7 +430,7 @@ begin
   lblTitle.Top := 12;
   lblTitle.Font.Height := -16;
   lblTitle.Font.Style := [fsBold];
-  lblTitle.Caption := 'iBiblia v1.0.1.034 - Changelog';
+  lblTitle.Caption := 'iBiblia v1.0.1.040 - Changelog';
   if IsThemedSkin then
     lblTitle.Font.Color := CurrentSkin.HeaderColor
   else
@@ -772,7 +781,7 @@ begin
     3: Result := 'v1.0.1.002 – v1.0.1.034';
     4: Result := 'v1.0.0.73 – v1.0.0.74';
     5: Result := 'v1.0.0.80 – v1.0.1.023';
-    6: Result := 'v1.0.0.71 – v1.0.0.76';
+    6: Result := 'v1.0.0.71 – v1.0.1.035';
     7: Result := 'v1.0.0.70 – v1.0.0.76';
     8: Result := 'All Features Since v1.0.0.70';
   else
@@ -918,7 +927,8 @@ begin
 
     6:
       Result :=
-        'FEATURE OVERVIEW (v1.0.0.71 – v1.0.1.027)' + sLineBreak +
+        'FEATURE OVERVIEW (v1.0.0.71 – v1.0.1.035)' + sLineBreak +
+        'Includes safe Project Save As (Ctrl+Shift+S), exporting Bible and Concordance modules even while open in theWord, per-project remembered export destinations for every format, smart apostrophe variant matching, and uncompressed BLOB .dct.twm concordance generation.' + sLineBreak +
         'Export complete, ready-to-use theWord Bible modules (.ont, .ot, .nt) directly from any Bible panel''s right-click menu, rely on smart word-diff detection when reloading texts, and synchronize bidirectionally with 64-bit theWord 7.' + sLineBreak + sLineBreak +
         'HOW TO USE:' + sLineBreak +
         '  1. Complete Bible Module Export (Right-Click > Export as Bible module...):' + sLineBreak +
@@ -1600,7 +1610,7 @@ var
     C.Font.Size := 8;
     C.Font.Style := [fsBold];
     C.Font.Color := hdrCol;
-    C.TextOut(26, 42, 'COMPLETE NEW FEATURES MAP (v1.0.0.70 – v1.0.1.033) — QUICK SHORTCUT REFERENCE');
+    C.TextOut(26, 42, 'COMPLETE NEW FEATURES MAP (v1.0.0.70 – v1.0.1.035) — QUICK SHORTCUT REFERENCE');
 
     DrawBadge(C, 26,  64, 'Mouse Wheel Up / Down : Select Source Word Left / Right', hiBg, hiTxt, hdrCol, True);
     DrawBadge(C, 26,  94, 'Hold Ctrl+Shift + Click : Associate Multiple Words Together', ptBg, ptTxt, borderCol, True);

@@ -1,10 +1,10 @@
-# iBiblia — 64-Bit Edition (v1.0.1.033)
+# iBiblia — 64-Bit Edition (v1.0.1.040)
 
 **iBiblia** is a specialized visual alignment and interlinear tagging workstation for [theWord](https://www.theword.net/) Bible modules. Rather than manually typing raw `<WG...>`, `<WH...>`, and `<WT...>` tags into a text file, you simply associate words between a tagged **Source** Bible (Greek LXX/NT or Hebrew OT) and your **Destination** translation. iBiblia automatically transfers all Strong's numbers and morphological parsing tags, formats verse markup, and exports ready-to-use `.ont`, `.ot`, and `.nt` modules.
 
 For foundational workflow documentation, see the [User Manual (English)](https://www.google.com/search?q=https://github.com/rubiot/ibiblia/wiki/User-manual-%28English%29) and [Manual de Utilização (Português)](https://www.google.com/search?q=https://github.com/rubiot/ibiblia/wiki/Manual-de-utiliza%25C3%25A7%25C3%25A3o-%28Portugu%25C3%25AAs%29).
 
-## New Features & Benefits (v1.0.0.70 – v1.0.1.033)
+## New Features & Benefits (v1.0.0.70 – v1.0.1.040)
 
 The 64-bit `v1.0.1.xxx` series introduces a major modernization of iBiblia's word-alignment workflow, dictionary engine, status filtering, project-wide search, in-place verse editor, audio pronunciation, visual theming, and module export pipeline.
 
@@ -124,7 +124,11 @@ The 64-bit `v1.0.1.xxx` series introduces a major modernization of iBiblia's wor
 
 * **Benefit**: Dramatically reduces eye strain during long translation and tagging sessions with zero white flashes or unstyled OS dialogs.
 
-### 9. Complete Bible Module Export, Smart Reload Review & theWord 7 Sync (`v1.0.0.71` – `v1.0.1.027`)
+### 9. Safe Save As, Open-in-theWord Module Export, Smart Reload & theWord 7 Sync (`v1.0.0.71` – `v1.0.1.040`)
+
+* **Export While Open in theWord (`PublishStagedFile`)**: Staging-first export pipeline writes `.ont`, `.ot`, `.nt`, and `.dct.twm` concordance modules to a verified staging file first and automatically falls back to shared-stream overwrite with byte-backup rollback if the module is currently open in **theWord**.
+* **Safe Project "Save As..." (`File > Save as...` / `Ctrl+Shift+S`)**: Flushes pending verse edits, writes an independent transactionally clean `.bib` copy via staging, updates your Recent Projects (`MRU`) list, and switches the active workspace to the new copy.
+* **Per-Project Remembered Export Paths**: Automatically remembers and pre-populates separate export destinations per project for Tagged Destination, Interlinear, Analytical/Synthetic Concordance (`*.dct.twm`), and all 4 Bible panels.
 
 * **One-Click Complete Module Export (`Right-Click > Export as Bible module...`)**: Exports any of the 4 Bible panels directly to a complete `.ont` (31,102 lines), `.ot` (23,145 lines), or `.nt` (7,957 lines) file with UTF-8 BOM, preserving 100% of module header properties and embedding all associated Strong's and morphology tags.
 
@@ -136,7 +140,7 @@ The 64-bit `v1.0.1.xxx` series introduces a major modernization of iBiblia's wor
 
 * **Benefit**: Guarantees clean, spec-compliant theWord module exports and protects hundreds of hours of alignment work when revising source or translation texts.
 
-### 10. Interactive Floating "New Features User Guide" (`v1.0.1.031` – `v1.0.1.033`)
+### 10. Interactive Floating "New Features User Guide" (`v1.0.1.031` – `v1.0.1.040`)
 
 * **Modeless Visual Help Window (`Help > New Features User Guide...` / `F1`)**: A dedicated floating guide window with topic navigation, custom-drawn visual diagrams illustrating each feature's keyboard/mouse workflow, step-by-step instructions, and a one-click **Copy Guide** button.
 

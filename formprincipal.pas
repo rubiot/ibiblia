@@ -15,7 +15,7 @@ uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, Menus,
   ActnList, ComCtrls, ExtCtrls, StdCtrls, Buttons, Projeto, IniFiles, Math,
   Syntagm, LCLTranslator, unitabout, unitsearch, unittexttospeech, formvoicesettings, formglobaldicts, PCRE, Versiculo, LCLProc, LazLogger,
-  LCLType, LMessages, LazUTF8, ChapterView, UnitPleaseWait, unitskins;
+  LCLType, LMessages, LazUTF8, ChapterView, UnitPleaseWait, unitskins, TheWordDictionary;
 
 type
 
@@ -1054,73 +1054,74 @@ end;
 {------------------------------------------------------------------------------}
 procedure SyncTheWordVerse(ref: string);
 var
-  twHWND, senderHwnd: THandle;
-  CData : TCopyDataStruct;
+  senderHwnd: THandle;
+  CData: TTWCopyDataStruct;
   bcv: TBCV_A;
   b, c, v: integer;
-  dwRes: DWORD_PTR;
 begin
+  ref := Trim(ref);
   if ref = '' then exit;
   if Assigned(FrmPrincipal) and (FrmPrincipal.TwSyncThread <> nil) then
     FrmPrincipal.TwSyncThread.NotifyVerseSent(ref);
-  twHWND := RestoreTheWord(False);
-  if twHWND <> 0 then begin
-    b := 0; c := 0; v := 0;
-    if SScanf(ref, '%d,%d,%d', [@b, @c, @v]) = 3 then
-    begin
-      if (b > 0) and (c > 0) and (v > 0) then
-      begin
-        bcv.bi := b;
-        bcv.ci := c;
-        bcv.vi := v;
-        bcv.span := 0;
 
-        CData.dwData := twAutomate.COPYDATA_OP_GOTOVERSE;
-        CData.lpData := @bcv;
-        CData.cbData := SizeOf(bcv);
-        if Assigned(FrmPrincipal) and FrmPrincipal.HandleAllocated then
-          senderHwnd := FrmPrincipal.Handle
-        else
-          senderHwnd := 0;
-        dwRes := 0;
-        SendMessageTimeout(twHWND, WM_COPYDATA, WPARAM(senderHwnd), PtrInt(@CData), SMTO_ABORTIFHUNG or SMTO_NORMAL, 1000, @dwRes);
-      end;
+  b := 0; c := 0; v := 0;
+  if SScanf(ref, '%d,%d,%d', [@b, @c, @v]) = 3 then
+  begin
+    if (b > 0) and (c > 0) and (v > 0) then
+    begin
+      FillChar(bcv, SizeOf(bcv), 0);
+      bcv.bi := b;
+      bcv.ci := c;
+      bcv.vi := v;
+      bcv.span := 0;
+
+      FillChar(CData, SizeOf(CData), 0);
+      CData.dwData := twAutomate.COPYDATA_OP_GOTOVERSE;
+      CData.cbData := SizeOf(bcv);
+      CData.lpData := @bcv;
+
+      if Assigned(FrmPrincipal) and FrmPrincipal.HandleAllocated then
+        senderHwnd := FrmPrincipal.Handle
+      else
+        senderHwnd := 0;
+
+      twAutomate.TWAutomateUtils.BroadcastCopyDataToTheWord(senderHwnd, CData);
     end;
   end;
 end;
 
 procedure SyncTheWordDict(ref: string);
 var
-  twHWND, senderHwnd: THandle;
-  CData : TCopyDataStruct;
+  senderHwnd: THandle;
+  CData: TTWCopyDataStruct;
   CD: TCopyData_Op_DctWordLookup;
   ws: WideString;
   copyLen: Integer;
-  dwRes: DWORD_PTR;
 begin
   ref := Trim(ref);
   if ref = '' then exit;
-  twHWND := RestoreTheWord(False);
-  if twHWND <> 0 then begin
-    ws := UTF8Decode(ref);
-    if ws = '' then
-      ws := WideString(ref);
-    if ws = '' then exit;
 
-    CData.dwData := twAutomate.COPYDATA_OP_DCTWORDLOOKUP;
-    FillChar(CD, SizeOf(CD), 0);
-    copyLen := Math.Min(Length(ws), High(CD.phrase) - 1);
-    if copyLen > 0 then
-      Move(ws[1], CD.phrase[1], copyLen * SizeOf(WideChar));
-    CData.lpData := @CD;
-    CData.cbData := SizeOf(TCopyData_Op_DctWordLookup);
-    if Assigned(FrmPrincipal) and FrmPrincipal.HandleAllocated then
-      senderHwnd := FrmPrincipal.Handle
-    else
-      senderHwnd := 0;
-    dwRes := 0;
-    SendMessageTimeout(twHWND, WM_COPYDATA, WPARAM(senderHwnd), PtrInt(@CData), SMTO_ABORTIFHUNG or SMTO_NORMAL, 1000, @dwRes);
-  end;
+  ws := UTF8Decode(ref);
+  if ws = '' then
+    ws := WideString(ref);
+  if ws = '' then exit;
+
+  FillChar(CD, SizeOf(CD), 0);
+  copyLen := Math.Min(Length(ws), High(CD.phrase) - 1);
+  if copyLen > 0 then
+    Move(ws[1], CD.phrase[1], copyLen * SizeOf(WideChar));
+
+  FillChar(CData, SizeOf(CData), 0);
+  CData.dwData := twAutomate.COPYDATA_OP_DCTWORDLOOKUP;
+  CData.cbData := SizeOf(TCopyData_Op_DctWordLookup);
+  CData.lpData := @CD;
+
+  if Assigned(FrmPrincipal) and FrmPrincipal.HandleAllocated then
+    senderHwnd := FrmPrincipal.Handle
+  else
+    senderHwnd := 0;
+
+  twAutomate.TWAutomateUtils.BroadcastCopyDataToTheWord(senderHwnd, CData);
 end;
 {$ENDIF}
 
@@ -1526,15 +1527,75 @@ begin
 end;
 
 procedure TFrmPrincipal.ActionSalvarProjetoComoExecute(Sender: TObject);
+var
+  oldFile, targetFile, stagedCopy: string;
+  srcStream: TMemoryStream;
 begin
-  {if ProjetoAtual <> nil then
-  begin
-    old := ProjetoAtual.Caminho;
-    ProjetoAtual.Fechar(true);
-    ProjetoAtual.Novo(old, );
+  if ProjetoAtual = nil then
+    exit;
 
+  oldFile := ExpandFileName(ProjetoAtual.FileName);
+  if DirectoryExists(ExtractFileDir(oldFile)) then
+    SaveDialog1.InitialDir := ExtractFileDir(oldFile);
+  SaveDialog1.FileName := ChangeFileExt(ExtractFileName(oldFile), '') + '_copy.bib';
+
+  repeat
+    if not SaveDialog1.Execute then
+      exit;
+
+    targetFile := ExpandFileName(SaveDialog1.FileName);
+    if ExtractFileExt(targetFile) = '' then
+      targetFile := targetFile + '.bib';
+
+    if SameText(oldFile, targetFile) then
+    begin
+      ActionSalvarProjetoExecute(Sender);
+      exit;
+    end;
+
+    if FileExists(targetFile) then
+    begin
+      case ThemedMessageDlg(SInvalidProjectNameTitle, SInvalidProjectNameQuery, mtConfirmation, [mbYes, mbNo], 0) of
+        mrNo: exit;
+        mrYes: continue;
+      end;
+    end
+    else
+      break;
+  until false;
+
+  Enabled := false;
+  try
+    // 1. Flush and commit all pending changes in the active project
+    ProjetoAtual.Salvar;
+    ProjetoAtual.Fechar(true);
+    FreeAndNil(ProjetoAtual);
+
+    // 2. Stage and publish a transactionally clean copy of the .bib database
+    stagedCopy := targetFile + '.tmp_saveas';
+    if FileExists(stagedCopy) then
+      SysUtils.DeleteFile(stagedCopy);
+
+    srcStream := TMemoryStream.Create;
+    try
+      srcStream.LoadFromFile(oldFile);
+      srcStream.SaveToFile(stagedCopy);
+    finally
+      srcStream.Free;
+    end;
+
+    if not PublishStagedFile(stagedCopy, targetFile) then
+      raise Exception.CreateFmt('Unable to save project copy to "%s".', [targetFile]);
+
+    // 3. Re-open the newly created .bib copy as the active project and update MRU
+    DoOpenProject(targetFile);
+    AtualizarMRU(MenuItemRecent);
+    StatusBar1.SimpleText := '';
+  finally
+    Enabled := true;
   end;
-  }
+  ApplyActiveSkin;
+  ActionQuandoNovoVersiculoExecute(nil);
 end;
 
 procedure TFrmPrincipal.ActionSalvarProjetoExecute(Sender: TObject);
@@ -1583,8 +1644,12 @@ end;
 procedure TFrmPrincipal.ActionVersoPrimeiroExecute(Sender: TObject);
 begin
   if ProjetoAtual = nil then exit;
-
-  ProjetoAtual.VersiculoInicial;
+  FNavigatingVerse := True;
+  try
+    ProjetoAtual.VersiculoInicial;
+  finally
+    FNavigatingVerse := False;
+  end;
 end;
 
 procedure TFrmPrincipal.ActionVersoSeguinteExecute(Sender: TObject);
@@ -3003,12 +3068,17 @@ begin
     status := -1;
   end;
 
-  if status = -1 then
-    ProjetoAtual.VersiculoAnterior
-  else
-  begin
-    if not ProjetoAtual.IrParaVersiculoAnteriorComSituacao(status) then
-      ShowMessage(Format(SNoPrecedingVersesWithStatus, [RadioGroupStatus.Items[status]]));
+  FNavigatingVerse := True;
+  try
+    if status = -1 then
+      ProjetoAtual.VersiculoAnterior
+    else
+    begin
+      if not ProjetoAtual.IrParaVersiculoAnteriorComSituacao(status) then
+        ThemedShowMessage(Format(SNoPrecedingVersesWithStatus, [RadioGroupStatus.Items[status]]));
+    end;
+  finally
+    FNavigatingVerse := False;
   end;
 end;
 

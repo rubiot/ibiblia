@@ -22,11 +22,25 @@ type
     phrase: array[1..255] of WideChar;
   end;
 
+  // Explicit Win32/Win64 C-ABI COPYDATASTRUCT layout.
+  // LCLType.TCopyDataStruct is a 'packed record' (20 bytes on Win64 with lpData at offset 12),
+  // whereas the 64-bit Windows OS kernel (WM_COPYDATA) requires C natural alignment
+  // (24 bytes on Win64 with 4 bytes of padding after cbData and lpData at offset 16).
+  TTWCopyDataStruct = packed record
+    dwData: PtrUInt;
+    cbData: DWORD;
+    {$IFDEF CPU64}
+    ReservedPadding: DWORD;
+    {$ENDIF}
+    lpData: Pointer;
+  end;
+
   { TWAutomateUtils }
 
   TWAutomateUtils = class
     class procedure Reset;
     class function IsTwRunning: THandle;
+    class procedure BroadcastCopyDataToTheWord(senderHwnd: THandle; var CData: TTWCopyDataStruct);
     class function GetTwCurrentRef: string;
     class function BookNameToNumber(const ABookName: string): string;
     class procedure LoadLangFile(langFile: string);
@@ -302,8 +316,8 @@ end;
 class function TWAutomateUtils.IsTwRunning: THandle;
 const
   KNOWN_CLASSES: array[0..3] of PChar = (
-    TW_MAINFORM_CLASSNAME_NOUNICODE,
     TW_MAINFORM_CLASSNAME,
+    TW_MAINFORM_CLASSNAME_NOUNICODE,
     TW6_MAINFORM_CLASSNAME,
     TW6_MAINFORM_CLASSNAME_NOUNICODE
   );
@@ -331,7 +345,7 @@ begin
 
   // 2. Pass 1 dynamic enumeration: look strictly for 'theWord.' window class prefix
   PrevWindow := 0;
-  EnumWindows(@FindTheWordByClassEnumProc, LPARAM(PtrUInt(@PrevWindow)));
+  EnumWindows(@FindTheWordByClassEnumProc, PtrInt(@PrevWindow));
   if IsWindow(PrevWindow) then
   begin
     Result := PrevWindow;
@@ -346,7 +360,7 @@ begin
 
   // 3. Pass 2 dynamic enumeration: fallback to Delphi form with theWord title
   PrevWindow := 0;
-  EnumWindows(@FindTheWordByTitleEnumProc, LPARAM(PtrUInt(@PrevWindow)));
+  EnumWindows(@FindTheWordByTitleEnumProc, PtrInt(@PrevWindow));
   if IsWindow(PrevWindow) then
   begin
     Result := PrevWindow;
@@ -355,6 +369,74 @@ begin
 
   // Neither window class was found
   Result := 0;
+end;
+
+type
+  TTWBroadcastCtx = record
+    TargetPid: DWORD;
+    PrimaryHwnd: THandle;
+    SenderHwnd: THandle;
+    CopyDataAddr: PtrInt;
+  end;
+  PTWBroadcastCtx = ^TTWBroadcastCtx;
+
+function BroadcastTheWordEnumProc(hwnd: HWND; ALParam: LPARAM): BOOL; stdcall;
+var
+  ctx: PTWBroadcastCtx;
+  pid: DWORD;
+  className: array[0..255] of Char;
+  classStr: string;
+  dwRes: DWORD_PTR;
+begin
+  Result := True;
+  ctx := PTWBroadcastCtx(ALParam);
+  if (ctx = nil) or (hwnd = 0) or (hwnd = ctx^.PrimaryHwnd) then
+    Exit;
+
+  pid := 0;
+  GetWindowThreadProcessId(hwnd, pid);
+  if (pid = 0) or (pid <> ctx^.TargetPid) then
+    Exit;
+
+  className[0] := #0;
+  GetClassName(hwnd, className, 256);
+  classStr := LowerCase(className);
+
+  if (Pos('theword.0f2ba8a0', classStr) = 1) then
+  begin
+    dwRes := 0;
+    if SendMessageTimeout(hwnd, WM_COPYDATA, WPARAM(ctx^.SenderHwnd), ctx^.CopyDataAddr,
+       SMTO_ABORTIFHUNG or SMTO_NORMAL, 1000, @dwRes) = 0 then
+      SendMessage(hwnd, WM_COPYDATA, WPARAM(ctx^.SenderHwnd), ctx^.CopyDataAddr);
+  end;
+end;
+
+class procedure TWAutomateUtils.BroadcastCopyDataToTheWord(senderHwnd: THandle; var CData: TTWCopyDataStruct);
+var
+  twHWND: THandle;
+  dwRes: DWORD_PTR;
+  pid: DWORD;
+  ctx: TTWBroadcastCtx;
+begin
+  twHWND := IsTwRunning;
+  if twHWND = 0 then
+    Exit;
+
+  dwRes := 0;
+  if SendMessageTimeout(twHWND, WM_COPYDATA, WPARAM(senderHwnd), PtrInt(@CData),
+     SMTO_ABORTIFHUNG or SMTO_NORMAL, 1000, @dwRes) = 0 then
+    SendMessage(twHWND, WM_COPYDATA, WPARAM(senderHwnd), PtrInt(@CData));
+
+  pid := 0;
+  GetWindowThreadProcessId(twHWND, pid);
+  if (pid <> 0) and (pid <> GetCurrentProcessId) then
+  begin
+    ctx.TargetPid := pid;
+    ctx.PrimaryHwnd := twHWND;
+    ctx.SenderHwnd := senderHwnd;
+    ctx.CopyDataAddr := PtrInt(@CData);
+    EnumWindows(@BroadcastTheWordEnumProc, PtrInt(@ctx));
+  end;
 end;
 
 function QueryFullProcessImageName(hProcess: HANDLE; dwFlags: DWORD; lpExeName: LPTSTR; var lpdwSize: DWORD): BOOL; stdcall; external 'KERNEL32' name 'QueryFullProcessImageNameA';
@@ -671,7 +753,7 @@ begin
     WriteLn(f);
 
     // Enumerate all windows
-    EnumWindows(@EnumWindowsProc, LPARAM(PtrUInt(@f)));
+    EnumWindows(@EnumWindowsProc, PtrInt(@f));
 
     WriteLn(f);
     WriteLn(f, 'End of Window List');

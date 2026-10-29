@@ -1,3 +1,21 @@
+Version 1.0.1.040 (64-bit Edition) - 2026-10-29
+- Fixed "Sync theWord to iBiblia verse" (`WM_COPYDATA` verse & dictionary lookup broadcast on 64-bit Windows):
+  * Resolved 64-bit struct packing collision where `LCLType.TCopyDataStruct` (`packed record`, 20 bytes on Win64 with `lpData` at offset 12) shadowed `Windows.TCopyDataStruct` (24 bytes on Win64 with 4-byte C-ABI alignment padding and `lpData` at offset 16), causing the 64-bit Windows kernel to reject `WM_COPYDATA` messages sent to theWord.
+  * Added explicit `TTWCopyDataStruct` with `{$IFDEF CPU64} ReservedPadding: DWORD; {$ENDIF}` and `TWAutomateUtils.BroadcastCopyDataToTheWord` in `twAutomate.pas` + `formprincipal.pas`.
+  * Prioritized `TW_MAINFORM_CLASSNAME` (`.UnicodeClass`) in `TWAutomateUtils.IsTwRunning` and added `FNavigatingVerse` re-entrancy guards in `ActionVersoPrimeiroExecute` and `ActionVersoAnteriorFiltradoExecute`.
+  * Added Stage 12 static verification check in `audit_full_build.py` to prevent `LCLType.TCopyDataStruct` shadowing.
+
+Version 1.0.1.038 (64-bit Edition) - 2026-10-28
+- Integrated upstream v1.1.0 reliability & workflow improvements while preserving all v1.0.0.70–v1.0.1.034 features:
+  * Export Bible (.ont/.ot/.nt) and Concordance (.dct.twm) modules while open in theWord via staged publishing + shared-stream overwrite fallback (`PublishStagedFile`).
+  * Implemented safe Project "Save As..." (`File > Save as...` / `Ctrl+Shift+S` / Toolbar button) with transactional staging and MRU update.
+  * Added per-project remembered export paths for Tagged Destination, Interlinear, Analytical/Synthetic Concordance (`.dct.twm`), and all 4 Bible panels.
+  * Added apostrophe variant normalization (`NormalizeApostrophes`) across word associations, statistical suggestions, and smart reload word-diff checks.
+  * Highlighted the active verse's current translation (`[current]`) inside the Translation Memory popup list.
+  * Added `TMemoVersiculo.PruneEmptyFormattingTags` to automatically remove empty wrapper tags after text deletion in the verse editor.
+  * Updated `TTheWordDictionary` (`.dct.twm`) to store uncompressed `BLOB` `content.data` and required 2026 Book Module Developer Guide metadata.
+  * Fixed reversed `Pos()` arguments in `TProjeto.ExportarTextoDestinoComStrongs` and fixed `FQryTranslationMemory` / `TMySwordModule` memory leaks.
+
 v1.0.1.034 (2026-10-28)
   * Context Panel: Unassociated Destination text words automatically render in italics (<FI>...<Fi>) upon file save (Ctrl+S / File > Save).
   * User Guide & README: Added visual illustration and documentation for Context Panel unassociated Destination words in italics on save.

@@ -192,7 +192,7 @@ object frmExportarProjeto: TfrmExportarProjeto
   object SaveDialogConcordancia: TSaveDialog
     Title = 'Salvar módulo como...'
     DefaultExt = '.dct.twm'
-    Filter = 'Módulo do theWord (*.twm)|*.twm'
+    Filter = 'theWord dictionary module (*.dct.twm)|*.dct.twm'
     Left = 560
     Top = 224
   end

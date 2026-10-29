@@ -116,6 +116,18 @@ for p in pas_files:
         if re.search(r'(?<!Graphics\.)\bTBitmap\b', impl):
             unit_errors.append("Unqualified TBitmap with Windows in uses (Windows.TBitmap struct collision)")
 
+
+    # Stage 12: LCLType.TCopyDataStruct 64-bit packing collision check
+    # When LCLType appears after Windows in uses, unqualified TCopyDataStruct resolves to LCLType.TCopyDataStruct
+    # (20-byte packed record on Win64 with lpData at offset 12 instead of 24-byte C-ABI with lpData at offset 16).
+    if re.search(r'\bTCopyDataStruct\b', clean):
+        unit_errors.append("Forbidden LCLType.TCopyDataStruct usage (use TTWCopyDataStruct with 64-bit padding)")
+
+
+    # Stage 13: Prevent LPARAM(...) typecast collision with lParam parameter or Pointer-to-LPARAM in objfpc
+    if re.search(r'\bLPARAM\s*\(', clean):
+        unit_errors.append("Forbidden LPARAM(...) cast (shadows lParam parameter or fails on Pointer in objfpc; use PtrInt(...))")
+
     total_units += 1
     if unit_errors:
         all_passed = False

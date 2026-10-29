@@ -140,11 +140,25 @@ type
 
   end;
 
+function NormalizeApostrophes(const S: string): string;
+
 implementation
 
 uses Versiculo;
 
 var Hint: THintWindow;
+
+function NormalizeApostrophes(const S: string): string;
+begin
+  Result := S;
+  if Result = '' then Exit;
+  Result := StringReplace(Result, #$E2#$80#$99, '''', [rfReplaceAll]); // U+2019 ’
+  Result := StringReplace(Result, #$E2#$80#$98, '''', [rfReplaceAll]); // U+2018 ‘
+  Result := StringReplace(Result, #$CA#$BC, '''', [rfReplaceAll]);     // U+02BC ʼ
+  Result := StringReplace(Result, #$E2#$80#$B2, '''', [rfReplaceAll]); // U+2032 ′
+  Result := StringReplace(Result, #$C2#$B4, '''', [rfReplaceAll]);     // U+00B4 ´
+  Result := StringReplace(Result, '`', '''', [rfReplaceAll]);
+end;
 
 { TSyntagmListReverseEnumerator }
 
@@ -457,7 +471,7 @@ begin
     end;
   end;
 
-  result := UTF8LowerCase(result);
+  result := UTF8LowerCase(NormalizeApostrophes(result));
 end;
 
 function TSyntagm.GetIsAssociated: boolean;
@@ -685,7 +699,7 @@ function TSyntagm.IsEqualTo(other: TSyntagm): boolean;
 begin
   result := (FKind = other.FKind) and
             //(FText.ToLower = other.FText.ToLower) and
-            (FText = other.FText) and
+            (NormalizeApostrophes(FText) = NormalizeApostrophes(other.FText)) and
             (FColor = other.FColor) and
             (FSuperscript = other.FSuperscript) and
             (FItalic = other.FItalic);

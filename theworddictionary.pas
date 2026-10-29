@@ -7,6 +7,8 @@ interface
 uses
   Classes, SysUtils, StrUtils, sqlite3conn, sqldb, PCRE, gmap, gutil;
 
+function PublishStagedFile(const StagedFile, TargetFile: string): Boolean;
+
 type
 
 { TTheWordDictionary }
@@ -16,6 +18,8 @@ TTheWordDictionary = class
     FAbbrev: string;
     FAbout: string;
     FAuthor: string;
+    FTargetFileName: string;
+    FStagingFileName: string;
     FConnection: TSQLite3Connection;
     FDescription: string;
     FEnglishDescription: string;
@@ -79,6 +83,95 @@ resourcestring
   SCreateTheWordDictionaryError = 'Unable to create new TheWord module file';
 
 implementation
+
+function PublishStagedFile(const StagedFile, TargetFile: string): Boolean;
+var
+  srcStream, dstStream, backupStream: TMemoryStream;
+  fsOut: TFileStream;
+begin
+  Result := False;
+  if not FileExists(StagedFile) then
+    Exit;
+
+  // 1. Fast path: if TargetFile does not exist or can be removed and renamed atomically
+  if not FileExists(TargetFile) then
+  begin
+    if RenameFile(StagedFile, TargetFile) then
+    begin
+      Result := True;
+      Exit;
+    end;
+  end
+  else if SysUtils.DeleteFile(TargetFile) then
+  begin
+    if RenameFile(StagedFile, TargetFile) then
+    begin
+      Result := True;
+      Exit;
+    end;
+  end;
+
+  // 2. Fallback for modules currently open with a shared read handle in theWord (v1.1.0 commit 3700ab1):
+  //    Back up existing target bytes in memory, overwrite in-place via shared TFileStream, and clean up staging file.
+  srcStream := TMemoryStream.Create;
+  backupStream := TMemoryStream.Create;
+  try
+    srcStream.LoadFromFile(StagedFile);
+    if FileExists(TargetFile) then
+    begin
+      dstStream := TMemoryStream.Create;
+      try
+        try
+          dstStream.LoadFromFile(TargetFile);
+          backupStream.CopyFrom(dstStream, 0);
+        except
+          // Target could not be pre-read; continue with stream overwrite attempt
+        end;
+      finally
+        dstStream.Free;
+      end;
+    end;
+
+    if FileExists(TargetFile) then
+      fsOut := TFileStream.Create(TargetFile, fmOpenReadWrite or fmShareDenyNone)
+    else
+      fsOut := TFileStream.Create(TargetFile, fmCreate or fmOpenWrite or fmShareDenyNone);
+    try
+      try
+        fsOut.Size := 0;
+        fsOut.Position := 0;
+        if srcStream.Size > 0 then
+        begin
+          srcStream.Position := 0;
+          fsOut.CopyFrom(srcStream, srcStream.Size);
+        end;
+        Result := True;
+      except
+        on E: Exception do
+        begin
+          if backupStream.Size > 0 then
+          begin
+            try
+              fsOut.Size := 0;
+              fsOut.Position := 0;
+              backupStream.Position := 0;
+              fsOut.CopyFrom(backupStream, backupStream.Size);
+            except
+            end;
+          end;
+          raise;
+        end;
+      end;
+    finally
+      fsOut.Free;
+    end;
+  finally
+    srcStream.Free;
+    backupStream.Free;
+    if FileExists(StagedFile) then
+      SysUtils.DeleteFile(StagedFile);
+  end;
+end;
 
 { TTheWordDictionary }
 
@@ -155,6 +248,7 @@ end;
 
 procedure TTheWordDictionary.SetProperty(name: string; value: string);
 begin
+  FConnection.ExecuteDirect(Format('DELETE FROM config WHERE name = %s', [QuotedStr(name)]));
   FInsertConfig.Params.ParamByName('name').AsString := name;
   FInsertConfig.Params.ParamByName('value').AsString := value;
   FInsertConfig.ExecSQL;
@@ -225,12 +319,14 @@ begin
 end;
 
 constructor TTheWordDictionary.Create(filename: string; strongs: boolean);
-var
-  existed: boolean;
 begin
-  existed := FileExists(filename);
+  FTargetFileName := filename;
+  FStagingFileName := filename + '.tmp_staging';
+  if FileExists(FStagingFileName) then
+    SysUtils.DeleteFile(FStagingFileName);
+
   FConnection := TSQLite3Connection.Create(nil);
-  FConnection.DatabaseName := filename;
+  FConnection.DatabaseName := FStagingFileName;
   FConnection.Transaction := TSQLTransaction.Create(nil);
   FConnection.StartTransaction;
 
@@ -238,30 +334,26 @@ begin
     FConnection.Open;
     FConnection.Transaction.Active := true;
 
-    if existed then
-    begin
-      FConnection.ExecuteDirect('DELETE FROM config');
-      FConnection.ExecuteDirect('DELETE FROM content');
-      FConnection.ExecuteDirect('DELETE FROM topics');
-      FConnection.ExecuteDirect('DROP TABLE IF EXISTS topics_wordindex');
-    end
-    else
-    begin
-      FConnection.ExecuteDirect('CREATE TABLE config(name text, value text)');
-      FConnection.ExecuteDirect('CREATE TABLE content(topic_id integer primary key, data text, data2 blob)');
-      FConnection.ExecuteDirect('CREATE TABLE topics(id integer primary key, pid integer default 0, subject text, rel_order, content_type text, strong_orig_word text)');
-      FConnection.ExecuteDirect('CREATE INDEX idx_topics_subject on topics(subject)');
-    end;
+    // Schema conforming to the 2026 theWord Book Module Developer Guide (#quick-build, #topics, #content, #config)
+    FConnection.ExecuteDirect('CREATE TABLE config(name text, value text)');
+    FConnection.ExecuteDirect('CREATE TABLE content(topic_id integer primary key, data blob, data2 blob)');
+    FConnection.ExecuteDirect('CREATE TABLE topics(id integer primary key, pid integer default 0, subject text, rel_order integer, content_type text, strong_orig_word text)');
+    FConnection.ExecuteDirect('CREATE INDEX idx_topics_subject on topics(subject)');
+    FConnection.ExecuteDirect('CREATE INDEX idx_topics_strong_orig_word on topics(strong_orig_word)');
 
-    FInsertConfig  := CreateQuery('INSERT INTO config  VALUES (:name, :value)');
-    FInsertContent := CreateQuery('INSERT INTO content VALUES (:topic_id, :data, NULL)');
-    FInsertTopic   := CreateQuery('INSERT INTO topics  VALUES (:id, 0, :subject, :order, NULL, :lemma)');
+    FInsertConfig  := CreateQuery('INSERT INTO config VALUES (:name, :value)');
+    FInsertContent := CreateQuery('INSERT INTO content VALUES (:topic_id, CAST(:data AS BLOB), NULL)');
+    FInsertTopic   := CreateQuery('INSERT INTO topics VALUES (:id, 0, :subject, :order, ''rtf'', :lemma)');
 
-    SetProperty('keywords', 'Strongs');
     SetProperty('type', '1');
-    SetProperty('content.type', 'rtf');
     SetProperty('schema.version', '1');
-    SetProperty('strong', '1');
+    SetProperty('content.type', 'rtf');
+    SetProperty('requires', '4.0.0.0');
+    SetProperty('version.major', '1');
+    SetProperty('version.minor', '0');
+    SetProperty('isbn', 'No ISBN');
+    SetProperty('keywords', 'Strongs');
+    SetProperty('strong', IfThen(strongs, '1', '0'));
   except
     raise Exception.Create(SCreateTheWordDictionaryError);
   end;
@@ -270,15 +362,26 @@ begin
 end;
 
 destructor TTheWordDictionary.Destroy;
+var
+  hasTarget: Boolean;
 begin
-  inherited Destroy;
+  hasTarget := FTargetFileName <> '';
+  if Assigned(FInsertConfig) then FInsertConfig.Free;
+  if Assigned(FInsertContent) then FInsertContent.Free;
+  if Assigned(FInsertTopic) then FInsertTopic.Free;
+  if Assigned(FConnection) then
+  begin
+    if Assigned(FConnection.Transaction) then
+      FConnection.Transaction.Free;
+    if FConnection.Connected then
+      FConnection.Close;
+    FConnection.Free;
+  end;
 
-  FInsertConfig.Free;
-  FInsertContent.Free;
-  FInsertTopic.Free;
-  FConnection.Transaction.Free;
-  FConnection.Close;
-  FConnection.Free;
+  if hasTarget and FileExists(FStagingFileName) then
+    PublishStagedFile(FStagingFileName, FTargetFileName);
+
+  inherited Destroy;
 end;
 
 procedure TTheWordDictionary.AddEntry(topic: string; lemma: string;
@@ -296,4 +399,3 @@ begin
 end;
 
 end.
-

@@ -868,6 +868,7 @@ end;
 procedure TProjeto.ExportTheWordBible(verses: TStringList; filename: string;
   props: string);
 var
+  stagedFile: string;
   stream: TFileStream;
   propLines: TStringList;
   i: Integer;
@@ -887,13 +888,20 @@ begin
     end;
   end;
 
-  stream := TFileStream.Create(filename, fmCreate or fmOpenWrite or fmShareDenyNone);
+  stagedFile := filename + '.tmp_export';
+  if FileExists(stagedFile) then
+    SysUtils.DeleteFile(stagedFile);
+
+  stream := TFileStream.Create(stagedFile, fmCreate or fmOpenWrite or fmShareDenyNone);
   try
     stream.Size := 0;
     verses.SaveToStream(stream);
   finally
     stream.Free;
   end;
+
+  if not PublishStagedFile(stagedFile, filename) then
+    raise Exception.CreateFmt('Unable to publish exported Bible module to "%s".', [filename]);
 end;
 
 procedure TProjeto.ExportMySwordBible(verses: TStringList; filename: string; props: string);
@@ -3481,8 +3489,17 @@ begin
     SaveDlg.Title := SExportBibleModuleSaveDlgTitle;
     SaveDlg.DefaultExt := modExt;
 
-    if origPath <> '' then
-      SaveDlg.FileName := ExtractFileName(origPath)
+    if ObterInfo(Format('export.dest.panel.%d', [Ord(text)])) <> '' then
+    begin
+      SaveDlg.InitialDir := ExtractFileDir(ObterInfo(Format('export.dest.panel.%d', [Ord(text)])));
+      SaveDlg.FileName := ExtractFileName(ObterInfo(Format('export.dest.panel.%d', [Ord(text)])));
+    end
+    else if origPath <> '' then
+    begin
+      if DirectoryExists(ExtractFileDir(origPath)) then
+        SaveDlg.InitialDir := ExtractFileDir(origPath);
+      SaveDlg.FileName := ExtractFileName(origPath);
+    end
     else
     begin
       baseName := ChangeFileExt(ExtractFileName(FFileName), '');
@@ -3675,6 +3692,8 @@ begin
       lines.Delete(lines.Count - 1);
 
     ExportTheWordBible(lines, destination, props);
+    AtribuirInfo(Format('export.dest.panel.%d', [Ord(text)]), ExpandFileName(destination));
+    Commit;
   finally
     projectVerses.Free;
     lines.Free;
@@ -5810,8 +5829,9 @@ begin
         ExportMySwordBible(lines, arquivo, ResgatarInfo('propriedades.destino'))
       else
       begin
-        if (pos(lines[0], '<WG') = 0) and     { no Greek tags in the first verse? }
-           (pos(lines[0], '<WH') = 0) then    { nor Hebrew tags? }
+        if (Pos('<WG', lines[0]) = 0) and     { no Greek tags in the first verse? }
+           (Pos('<WH', lines[0]) = 0) and     { nor Hebrew tags? }
+           (Pos('<WT', lines[0]) = 0) then    { nor Morphology tags? }
           lines[0] := lines[0] + '<_MORPH_>'; { making sure theWord will know the module has tags }
 
         ExportTheWordBible(lines, arquivo, ResgatarInfo('propriedades.destino'));

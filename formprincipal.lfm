@@ -777,6 +777,7 @@ object frmPrincipal: TfrmPrincipal
       Hint = 'Save as a new project'
       ImageIndex = 3
       OnExecute = ActionSalvarProjetoComoExecute
+      ShortCut = 24659
     end
     object ActionAbrirProjeto: TAction
       Caption = 'Open...'

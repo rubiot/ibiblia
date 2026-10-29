@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, StrUtils, sqldb, sqlite3conn, Versiculo,
-  Dialogs, LazLogger, PCRE, Syntagm, ONTTokenizer, ExportarProjeto;
+  Dialogs, LazLogger, LazUTF8, PCRE, Syntagm, ONTTokenizer, ExportarProjeto;
 
 type
 
@@ -217,6 +217,7 @@ begin
   FQryAtualizarTrad.Free;
   FQrySugestoes.Free;
   FQrySugestoesSemMorfo.Free;
+  FQryTranslationMemory.Free;
 
   if FQryFormaVerbo <> nil then
   begin
@@ -235,8 +236,8 @@ procedure TGerSugestoes.InserirPar(origem, destino: string);
 var
   lori_id, ldes_id : integer;
 begin
-  lori_id := ObterLocucaoOrigem(origem.ToLower);
-  ldes_id := ObterLocucaoDestino(destino.ToLower);
+  lori_id := ObterLocucaoOrigem(NormalizeApostrophes(origem.ToLower));
+  ldes_id := ObterLocucaoDestino(NormalizeApostrophes(destino.ToLower));
 
   if not AtualizarTraducao(lori_id, ldes_id) then
     InserirTraducao(lori_id, ldes_id);
@@ -246,8 +247,8 @@ procedure TGerSugestoes.RemoverPar(origem, destino: string);
 var
   lori_id, ldes_id : integer;
 begin
-  lori_id := ObterLocucaoOrigem(origem.ToLower);
-  ldes_id := ObterLocucaoDestino(destino.ToLower);
+  lori_id := ObterLocucaoOrigem(NormalizeApostrophes(origem.ToLower));
+  ldes_id := ObterLocucaoDestino(NormalizeApostrophes(destino.ToLower));
 
   if (lori_id > 0) and (ldes_id > 0) then
   begin
@@ -446,6 +447,8 @@ procedure TGerSugestoes.SugerirAssociacoes(v1: TVersiculo);
   function compararDestino(a, b: string): boolean;
   var a1, b1: string;
   begin
+    a := NormalizeApostrophes(a);
+    b := NormalizeApostrophes(b);
     DebugLn('  comparando destino [%s] x [%s]', [a, b]);
     if a = b then
       exit(true);
@@ -676,19 +679,41 @@ end;
 function TGerSugestoes.GetTranslationAlternatives(syntagm: TSyntagm): string;
 var
   QSugestoes: TSQLQuery;
-  locucao, key: string;
+  rawAlt, cleanAlt, currentPaired, locucao, key: string;
+  p: TSyntagm;
+  isCurrentMatch: Boolean;
 begin
   result := '';
+  if not Assigned(syntagm) then
+    exit;
   key := syntagm.GetSuggestionKey(plMetaData);
   if key.IsEmpty then
     exit;
 
+  currentPaired := '';
+  if Assigned(syntagm.Pairs) and (syntagm.Pairs.Count > 0) then
+  begin
+    for p in syntagm.Pairs do
+      if p.Kind = tsSintagma then
+      begin
+        if currentPaired <> '' then
+          currentPaired := currentPaired + ' ';
+        currentPaired := currentPaired + UTF8LowerCase(NormalizeApostrophes(p.Text));
+      end;
+  end;
+
   QSugestoes := GetTranslationMemory(syntagm.GetSuggestionKey(plStrong));
   while not QSugestoes.EOF do
   begin
-    locucao := AnsiReplaceStr(QSugestoes.Fields[0].AsString, ';', ' ') +
+    rawAlt := QSugestoes.Fields[0].AsString;
+    cleanAlt := UTF8LowerCase(NormalizeApostrophes(AnsiReplaceStr(rawAlt, ';', ' ')));
+    isCurrentMatch := (currentPaired <> '') and (cleanAlt = currentPaired);
+    locucao := AnsiReplaceStr(rawAlt, ';', ' ') +
                format(' (%d)', [QSugestoes.Fields[1].AsInteger]);
-    result := format('%s\par\li0 {\b\''95  } %s', [result, UnicodeToRTF(locucao)]);
+    if isCurrentMatch then
+      result := format('%s\par\li0 {\b\cf2 \u10003? %s [current]}', [result, UnicodeToRTF(locucao)])
+    else
+      result := format('%s\par\li0 {\b\''95  } %s', [result, UnicodeToRTF(locucao)]);
     QSugestoes.Next;
   end;
   QSugestoes.Close;

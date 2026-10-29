@@ -125,8 +125,18 @@ begin
     end;
   end;
 
+  if FProjeto.ObterInfo('export.dest.tagged') <> '' then
+  begin
+    SaveDialog1.InitialDir := ExtractFileDir(FProjeto.ObterInfo('export.dest.tagged'));
+    SaveDialog1.FileName := ExtractFileName(FProjeto.ObterInfo('export.dest.tagged'));
+  end
+  else if FProjeto.FileName <> '' then
+    SaveDialog1.InitialDir := ExtractFileDir(ExpandFileName(FProjeto.FileName));
+
   if SaveDialog1.Execute then
   begin
+    FProjeto.AtribuirInfo('export.dest.tagged', ExpandFileName(SaveDialog1.FileName));
+    FProjeto.Commit;
     try
        self.Enabled := false;
        FProjeto.ExportarTextoDestinoComStrongs(SaveDialog1.FileName, ProgressBar1, opcoes);
@@ -162,8 +172,18 @@ begin
     end;
   end;
 
+  if FProjeto.ObterInfo('export.dest.interlinear') <> '' then
+  begin
+    SaveDialog1.InitialDir := ExtractFileDir(FProjeto.ObterInfo('export.dest.interlinear'));
+    SaveDialog1.FileName := ExtractFileName(FProjeto.ObterInfo('export.dest.interlinear'));
+  end
+  else if FProjeto.FileName <> '' then
+    SaveDialog1.InitialDir := ExtractFileDir(ExpandFileName(FProjeto.FileName));
+
   if SaveDialog1.Execute then
   begin
+    FProjeto.AtribuirInfo('export.dest.interlinear', ExpandFileName(SaveDialog1.FileName));
+    FProjeto.Commit;
     try
        self.Enabled:=false;
        FProjeto.ExportarTextoInterlinear(SaveDialog1.FileName, ProgressBar1, opcoes);
@@ -196,8 +216,28 @@ begin
   else
      FProjeto.AtribuirInfo('opcoes.exportar.abrevconc.sintetica', abrev);}
 
+  SaveDialogConcordancia.DefaultExt := '.dct.twm';
+  SaveDialogConcordancia.Filter := 'theWord dictionary module (*.dct.twm)|*.dct.twm';
+  if (oeConcordDetalhada in opcoes) and (FProjeto.ObterInfo('export.dest.concordance.analytical') <> '') then
+  begin
+    SaveDialogConcordancia.InitialDir := ExtractFileDir(FProjeto.ObterInfo('export.dest.concordance.analytical'));
+    SaveDialogConcordancia.FileName := ExtractFileName(FProjeto.ObterInfo('export.dest.concordance.analytical'));
+  end
+  else if (not (oeConcordDetalhada in opcoes)) and (FProjeto.ObterInfo('export.dest.concordance.synthetic') <> '') then
+  begin
+    SaveDialogConcordancia.InitialDir := ExtractFileDir(FProjeto.ObterInfo('export.dest.concordance.synthetic'));
+    SaveDialogConcordancia.FileName := ExtractFileName(FProjeto.ObterInfo('export.dest.concordance.synthetic'));
+  end
+  else if FProjeto.FileName <> '' then
+    SaveDialogConcordancia.InitialDir := ExtractFileDir(ExpandFileName(FProjeto.FileName));
+
   if SaveDialogConcordancia.Execute then
   begin
+    if oeConcordDetalhada in opcoes then
+      FProjeto.AtribuirInfo('export.dest.concordance.analytical', ExpandFileName(SaveDialogConcordancia.FileName))
+    else
+      FProjeto.AtribuirInfo('export.dest.concordance.synthetic', ExpandFileName(SaveDialogConcordancia.FileName));
+    FProjeto.Commit;
     try
        self.Enabled:=false;
        FProjeto.ExportarConcordancia(SaveDialogConcordancia.FileName, ProgressBar1, opcoes, leAbreviacao.Text);

@@ -120,6 +120,7 @@ type
     destructor Destruir;
     class function ExpandForVisualEdit(const RawXML: string): string;
     class function FlattenFromVisualEdit(const VisualText: string): string;
+    class function PruneEmptyFormattingTags(const S: string): string;
     procedure AttachRibbonHost(AHost: TWinControl);
     procedure SetActiveSectionInfo(ASectionIndex: Integer; const ASectionName: string);
     procedure ExecuteFormatCommand(Cmd: TVerseFormatCmd);
@@ -187,6 +188,28 @@ begin
     end;
   end;
   Result := sb;
+end;
+
+class function TMemoVersiculo.PruneEmptyFormattingTags(const S: string): string;
+const
+  EmptyPairs: array[0..16] of string = (
+    '<FI><Fi>', '<FR><Fr>', '<FO><Fo>', '<FU><Fu>', '<RF><Rf>',
+    '<b></b>', '<i></i>', '<u></u>', '<s></s>', '<sup></sup>', '<sub></sub>',
+    '<TS1><Ts><_CM>', '<TS2><Ts><_CM>', '<TS3><Ts><_CM>',
+    '<TS1><Ts>', '<TS2><Ts>', '<TS3><Ts>'
+  );
+var
+  prev: string;
+  i: Integer;
+begin
+  Result := S;
+  repeat
+    prev := Result;
+    for i := Low(EmptyPairs) to High(EmptyPairs) do
+      Result := StringReplace(Result, EmptyPairs[i], '', [rfReplaceAll, rfIgnoreCase]);
+    Result := StringReplace(Result, '<TS><Ts><_CM>', '', [rfReplaceAll, rfIgnoreCase]);
+    Result := StringReplace(Result, '<TS><Ts>', '', [rfReplaceAll, rfIgnoreCase]);
+  until Result = prev;
 end;
 
 class function TMemoVersiculo.FlattenFromVisualEdit(const VisualText: string): string;
@@ -260,7 +283,7 @@ begin
     while Pos('<CL> ', acc) > 0 do
       acc := StringReplace(acc, '<CL> ', '<CL>', [rfReplaceAll]);
 
-    Result := acc;
+    Result := PruneEmptyFormattingTags(acc);
   finally
     lines.Free;
   end;
