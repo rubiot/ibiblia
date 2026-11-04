@@ -1,19 +1,19 @@
-unit formexportpatch;
+unit FormExportPatch;
 
 {$mode objfpc}{$H+}
 
 interface
 
 uses
-  unitskins,
-  Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  ComCtrls, ExtCtrls, Projeto, LazLogger, BibleTreeView, PatchFile, LCLIntf;
+  ui_style, Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, StdCtrls,
+  ComCtrls, BibleScope, Project, LazLogger, BibleTreeView, PatchFile, LCLIntf,
+  status_catalog, unitskins;
 
 type
 
-  { TFormExportPatch }
+  { TFrmExportPatch }
 
-  TFormExportPatch = class(TForm)
+  TFrmExportPatch = class(TForm)
     Button1: TButton;
     Button2: TButton;
     BtnSelectAll: TButton;
@@ -23,35 +23,48 @@ type
     procedure BtnSelectAllClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
+    procedure FormResize(Sender: TObject);
     procedure FormShow(Sender: TObject);
   private
     FBibleTreeView: TBibleTreeView;
+    FLayouting: Boolean;
     function CreatePatch: TPatchFile;
     function GetVerseList: TStringList;
+    procedure ApplyLocalizedCaptions;
+    procedure LayoutControls;
     procedure SetScope(AValue: TEscopoTexto);
   public
     procedure SavePatch(filename: string);
     property VerseList: TStringList read GetVerseList;
     property Scope: TEscopoTexto write SetScope;
+  public
+    procedure AfterConstruction; override;
   end;
 
 {$INCLUDE include/bookdefs.inc}
 
 var
-  FrmExportPatch: TFormExportPatch;
+  FrmExportPatch: TFrmExportPatch;
 
 implementation
 
 uses formPrincipal;
 
-{ TFormExportPatch }
+resourcestring
+  SExportPatchTitle = 'Export patch...';
+  SSelectAll = 'Select all';
+  SDeselectAll = 'Deselect all';
+  SCancel = 'Cancel';
+  SOK = 'OK';
 
-procedure TFormExportPatch.SetScope(AValue: TEscopoTexto);
+{ TFrmExportPatch }
+
+procedure TFrmExportPatch.SetScope(AValue: TEscopoTexto);
 begin
   FBibleTreeView.Scope := AValue;
 end;
 
-procedure TFormExportPatch.SavePatch(filename: string);
+procedure TFrmExportPatch.SavePatch(filename: string);
 var
   patch: TPatchFile;
 begin
@@ -68,101 +81,151 @@ begin
   OpenDocument(ExtractFilePath(filename));
 end;
 
-function TFormExportPatch.GetVerseList: TStringList;
+function TFrmExportPatch.GetVerseList: TStringList;
 begin
   result := FBibleTreeView.VerseList;
 end;
 
-function TFormExportPatch.CreatePatch: TPatchFile;
+function TFrmExportPatch.CreatePatch: TPatchFile;
 var
   refs: TStringList;
   ref: string;
 begin
   result := TPatchFile.Create;
+  result.StatusCatalog := SaveStatusDefinitions(CurrentProject.GetStatusDefinitions);
   refs := FBibleTreeView.VerseList;
   try
-    ProjetoAtual.StartScrollingSession;
+    CurrentProject.StartScrollingSession;
     for ref in refs do
     begin
-      ProjetoAtual.GoToReference(ref);
-      DebugLn('exporting %s (%s)', [ref, ProjetoAtual.FormattedReference]);
+      CurrentProject.GoToReference(ref);
+      DebugLn('exporting %s (%s)', [ref, CurrentProject.FormattedReference]);
       result.Add(ref,
-                 ProjetoAtual.ObterTextoVersiculo(tbOrigem),
-                 ProjetoAtual.ObterTextoVersiculo(tbDestino),
-                 ProjetoAtual.Pairs,
-                 ProjetoAtual.Comentarios,
-                 ProjetoAtual.Situacao
+                 CurrentProject.GetVerseText(tbOrigem),
+                 CurrentProject.GetVerseText(tbDestino),
+                 CurrentProject.Pairs,
+                 CurrentProject.Comments,
+                 CurrentProject.Status
                 );
     end;
   finally
-    ProjetoAtual.FinishScrollingSession;
+    CurrentProject.FinishScrollingSession;
     refs.Free;
   end;
 end;
 
-procedure TFormExportPatch.FormCreate(Sender: TObject);
+procedure TFrmExportPatch.FormCreate(Sender: TObject);
 begin
+  ApplyFormStyle(Self);
   FBibleTreeView := TBibleTreeView.Create(GroupBox1);
+  FBibleTreeView.Parent := GroupBox1;
   FBibleTreeView.Align := alClient;
+  OnResize := @FormResize;
 end;
 
-procedure TFormExportPatch.FormDestroy(Sender: TObject);
+procedure TFrmExportPatch.FormDestroy(Sender: TObject);
 begin
-  FBibleTreeView.Free;
-end;
-
-procedure TFormExportPatch.FormShow(Sender: TObject);
-begin
-  Scope := ProjetoAtual.Escopo;
-  Position := poScreenCenter; // necessary to force alignment after setting height
-  Height := Trunc(FrmPrincipal.Height * 0.9);
-  Position := poMainFormCenter;
-
-  ApplySkinToForm(Self, CurrentSkin);
-  {$IFDEF WINDOWS}
-  HookButtonControl(Button1);
-  HookButtonControl(Button2);
-  HookButtonControl(BtnSelectAll);
-  HookButtonControl(BtnDeselectAll);
-  {$ENDIF}
-  if IsThemedSkin then
-  begin
-    Button1.Font.Color := CurrentSkin.PanelText;
-    Button2.Font.Color := CurrentSkin.PanelText;
-    BtnSelectAll.Font.Color := CurrentSkin.PanelText;
-    BtnDeselectAll.Font.Color := CurrentSkin.PanelText;
-    GroupBox1.Color := CurrentSkin.PanelBg;
-    GroupBox1.Font.Color := CurrentSkin.PanelText;
-  end;
   if Assigned(FBibleTreeView) then
   begin
-    FBibleTreeView.UpdateSkin(CurrentSkin);
-    {$IFDEF WINDOWS}
-    HookTreeViewControl(FBibleTreeView);
-    if FBibleTreeView.HandleAllocated then
-    begin
-      SendMessage(FBibleTreeView.Handle, $111E, 0, ColorToRGB(CurrentSkin.TreeText));
-      SendMessage(FBibleTreeView.Handle, $111D, 0, ColorToRGB(CurrentSkin.TreeBg));
-      SendMessage(FBibleTreeView.Handle, $1128, 0, ColorToRGB(CurrentSkin.PanelBorder));
-    end;
-    {$ENDIF}
-    ApplyDarkModeToControl(FBibleTreeView, CurrentSkin.IsDark);
-    FBibleTreeView.Invalidate;
+    FBibleTreeView.Parent := nil;
+    FreeAndNil(FBibleTreeView);
   end;
 end;
 
-procedure TFormExportPatch.BtnSelectAllClick(Sender: TObject);
+procedure TFrmExportPatch.FormShow(Sender: TObject);
+begin
+  ApplyLocalizedCaptions;
+  Scope := CurrentProject.Escopo;
+  Position := poScreenCenter; // necessary to force alignment after setting height
+  Height := Trunc(MainForm.Height * 0.9);
+  LayoutControls;
+  Position := poMainFormCenter;
+  // the dialog is built before the skin can reach it: skin it, and its tree
+  if CurrentSkin.Id <> skClassic then
+    ApplySkinToForm(Self, CurrentSkin);
+  FBibleTreeView.ApplySkinColors;
+end;
+
+procedure TFrmExportPatch.FormResize(Sender: TObject);
+begin
+  LayoutControls;
+end;
+
+procedure TFrmExportPatch.BtnSelectAllClick(Sender: TObject);
 begin
   FBibleTreeView.SelectAll;
 end;
 
-procedure TFormExportPatch.BtnDeselectAllClick(Sender: TObject);
+procedure TFrmExportPatch.BtnDeselectAllClick(Sender: TObject);
 begin
   FBibleTreeView.SelectNone;
 end;
 
+procedure TFrmExportPatch.ApplyLocalizedCaptions;
+begin
+  Caption := SExportPatchTitle;
+  BtnSelectAll.Caption := SSelectAll;
+  BtnDeselectAll.Caption := SDeselectAll;
+  Button2.Caption := SCancel;
+  Button1.Caption := SOK;
+end;
+
+procedure TFrmExportPatch.LayoutControls;
+const
+  Margin = 16;
+  Gap = 8;
+  GroupGap = 16;
+  SelectWidth = 128;
+  DeselectWidth = 152;
+  DialogButtonWidth = 104;
+  ButtonHeight = 32;
+var
+  ButtonTop: Integer;
+  RequiredClientWidth: Integer;
+begin
+  if FLayouting then
+    Exit;
+
+  FLayouting := True;
+  try
+    RequiredClientWidth := UIScale(Self, Margin) + UIScale(Self, SelectWidth) + UIScale(Self, Gap) + UIScale(Self, DeselectWidth) +
+      UIScale(Self, GroupGap) + UIScale(Self, DialogButtonWidth) + UIScale(Self, Gap) + UIScale(Self, DialogButtonWidth) + UIScale(Self, Margin);
+    if ClientWidth < RequiredClientWidth then
+      ClientWidth := RequiredClientWidth;
+
+    ButtonTop := ClientHeight - UIScale(Self, ButtonHeight) - UIScale(Self, Margin);
+    if ButtonTop < 0 then
+      ButtonTop := 0;
+
+    GroupBox1.Align := alNone;
+    GroupBox1.SetBounds(UIScale(Self, Margin), UIScale(Self, Margin),
+      ClientWidth - UIScale(Self, Margin * 2),
+      ButtonTop - UIScale(Self, Gap + Margin));
+
+    BtnSelectAll.SetBounds(UIScale(Self, Margin), ButtonTop, UIScale(Self, SelectWidth), UIScale(Self, ButtonHeight));
+    BtnDeselectAll.SetBounds(BtnSelectAll.Left + BtnSelectAll.Width + UIScale(Self, Gap),
+      ButtonTop, UIScale(Self, DeselectWidth), UIScale(Self, ButtonHeight));
+
+    Button1.SetBounds(ClientWidth - UIScale(Self, Margin) - UIScale(Self, DialogButtonWidth), ButtonTop,
+      UIScale(Self, DialogButtonWidth), UIScale(Self, ButtonHeight));
+    Button2.SetBounds(Button1.Left - UIScale(Self, Gap) - UIScale(Self, DialogButtonWidth), ButtonTop,
+      UIScale(Self, DialogButtonWidth), UIScale(Self, ButtonHeight));
+  finally
+    FLayouting := False;
+  end;
+end;
+
+procedure TFrmExportPatch.AfterConstruction;
+begin
+  inherited AfterConstruction;
+  ApplyDialogStyle(Self);
+end;
+
+
 initialization
-  {$I formexportpatch.lrs}
+{$IFNDEF FPCUNIT}
+  {$R FormExportPatch.lfm}
+{$ENDIF}
 
 end.
 

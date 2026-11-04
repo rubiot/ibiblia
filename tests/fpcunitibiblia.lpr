@@ -3,7 +3,14 @@ program fpcunitibiblia;
 {$mode objfpc}{$H+}
 
 uses
-  Interfaces, Forms, GuiTestRunner, ibibliatest, Syntagm;
+  Interfaces, Forms, GuiTestRunner, ibibliatest, versiculotest,
+  syntagmselectiontest, statuscatalogtest, project_setup_validation_test,
+  ai_processing_batch_test, ai_flow_config_test, suggestionmanagertest,
+  associationmemoryservicetest, concordanceexporttest,
+  association_highlight_projection_test, project_persistence_test,
+  navigation_history_test, verse_visual_adapter_test, verse_visual_document_test,
+  text_direction_test, translation_memory_focus_controller_test,
+  translation_memory_preview_test;
 
 {$R *.res}
 

@@ -1,0 +1,250 @@
+object FrmProjectProperties: TFrmProjectProperties
+  Left = 320
+  Height = 700
+  Top = 157
+  Width = 720
+  Caption = 'Properties'
+  ClientHeight = 700
+  ClientWidth = 720
+  DesignTimePPI = 96
+  Position = poMainFormCenter
+  OnCreate = FormCreate
+  Font.Name = 'Segoe UI'
+  Font.Height = -13
+  Color = 16316147
+  Constraints.MinWidth = 720
+  Constraints.MinHeight = 700
+  object GroupBoxProperties: TGroupBox
+    Left = 0
+    Height = 127
+    Top = 6
+    Width = 574
+    Caption = 'Properties'
+    ClientHeight = 103
+    ClientWidth = 570
+    TabOrder = 0
+    object EditProjectName: TLabeledEdit
+      Left = 16
+      Height = 25
+      Top = 23
+      Width = 546
+      EditLabel.Height = 17
+      EditLabel.Width = 546
+      EditLabel.Caption = 'Name'
+      EditLabel.ParentColor = False
+      TabOrder = 0
+    end
+    object LabelTokenizerVersion: TLabel
+      Left = 16
+      Height = 17
+      Top = 57
+      Width = 101
+      Caption = 'Tokenizer version'
+      ParentColor = False
+    end
+    object cbTokenizerVersion: TComboBox
+      Left = 16
+      Height = 25
+      Top = 75
+      Width = 546
+      ItemHeight = 17
+      Style = csDropDownList
+      TabOrder = 1
+    end
+  end
+  object BtnOk: TBitBtn
+    Left = 600
+    Height = 32
+    Top = 652
+    Width = 104
+    Caption = '&OK'
+    Default = True
+    Kind = bkOK
+    ModalResult = 1
+    TabOrder = 1
+    Anchors = [akRight, akBottom]
+  end
+  object BtnCancel: TBitBtn
+    Left = 488
+    Height = 32
+    Top = 652
+    Width = 104
+    Cancel = True
+    Caption = 'Cancel'
+    Kind = bkCancel
+    ModalResult = 2
+    TabOrder = 2
+    Anchors = [akRight, akBottom]
+  end
+  object TabControlTextType: TTabControl
+    Left = 7
+    Height = 456
+    Top = 142
+    Width = 567
+    TabStop = False
+    OnChange = ActionChangeTabExecute
+    TabIndex = 0
+    Tabs.Strings = (
+      'Source'
+      'Destination'
+      'Reference 1'
+      'Reference 2'
+    )
+    ParentShowHint = False
+    ShowHint = True
+    TabOrder = 3
+    object EditStrongDictionary: TLabeledEdit
+      Left = 12
+      Height = 25
+      Top = 156
+      Width = 442
+      EditLabel.Height = 17
+      EditLabel.Width = 442
+      EditLabel.Caption = 'Strong''s dictionary'
+      EditLabel.ParentColor = False
+      TabOrder = 1
+      OnChange = EditStrongDictionaryChange
+    end
+    object EditMorphologyDictionary: TLabeledEdit
+      Left = 12
+      Height = 25
+      Top = 206
+      Width = 442
+      EditLabel.Height = 17
+      EditLabel.Width = 442
+      EditLabel.Caption = 'Morphology dictionary'
+      EditLabel.ParentColor = False
+      TabOrder = 2
+      OnChange = EditMorphologyDictionaryChange
+    end
+    object BtnLoadText: TBitBtn
+      Left = 12
+      Height = 28
+      Top = 50
+      Width = 254
+      Action = ActionLoadText
+      TabOrder = 3
+    end
+    object BtnSelectStrongDictionary: TBitBtn
+      Left = 463
+      Height = 24
+      Top = 156
+      Width = 87
+      Action = ActionSelectStrongDictionary
+      TabOrder = 4
+    end
+    object BtnSelectMorphologyDictionary: TBitBtn
+      Left = 463
+      Height = 24
+      Top = 206
+      Width = 87
+      Action = ActionSelectMorphologyDictionary
+      TabOrder = 5
+    end
+    object BtnClearText: TBitBtn
+      Left = 296
+      Height = 28
+      Top = 48
+      Width = 254
+      Action = ActionClearText
+      TabOrder = 6
+    end
+    object MemoTextPreview: TMemo
+      Left = 12
+      Height = 221
+      Top = 259
+      Width = 442
+      Lines.Strings = (
+        'MemoTextPreview'
+      )
+      ReadOnly = True
+      ScrollBars = ssAutoVertical
+      TabOrder = 7
+    end
+    object LabelFont: TLabel
+      Left = 12
+      Height = 17
+      Top = 240
+      Width = 25
+      Caption = 'Font'
+      ParentColor = False
+    end
+    object BtnSelectFont: TBitBtn
+      Left = 463
+      Height = 26
+      Top = 259
+      Width = 87
+      Action = ActionSelectFont
+      TabOrder = 8
+    end
+    object EditTextDescription: TLabeledEdit
+      Left = 11
+      Height = 25
+      Top = 106
+      Width = 442
+      EditLabel.Height = 17
+      EditLabel.Width = 442
+      EditLabel.Caption = 'Text description'
+      EditLabel.ParentColor = False
+      TabOrder = 9
+      OnChange = EditTextDescriptionChange
+    end
+    object BtnApplyTextDescription: TBitBtn
+      Left = 463
+      Height = 24
+      Top = 106
+      Width = 87
+      Caption = 'Apply'
+      TabOrder = 10
+      Visible = False
+      OnClick = BtnApplyTextDescriptionClick
+    end
+  end
+  object ProgressBarOperation: TProgressBar
+    Left = 6
+    Height = 21
+    Top = 607
+    Width = 358
+    TabOrder = 4
+    Visible = False
+  end
+  object OpenDialogSelectFile: TOpenDialog
+    InitialDir = './data'
+    Left = 116
+    Top = 444
+  end
+  object ActionList1: TActionList
+    Left = 24
+    Top = 446
+    object ActionLoadText: TAction
+      Caption = 'Load new text'
+      OnExecute = ActionLoadTextExecute
+    end
+    object ActionClearText: TAction
+      Caption = 'Clear text'
+      OnExecute = ActionClearTextExecute
+    end
+    object ActionSelectStrongDictionary: TAction
+      Caption = 'Choose'
+      OnExecute = ActionSelectStrongDictionaryExecute
+    end
+    object ActionSelectMorphologyDictionary: TAction
+      Caption = 'Choose'
+      OnExecute = ActionSelectMorphologyDictionaryExecute
+    end
+    object ActionSelectFont: TAction
+      Caption = 'Choose'
+      OnExecute = ActionSelectFontExecute
+    end
+    object ActionChangeTab: TAction
+      Caption = 'ActionChangeTab'
+      OnExecute = ActionChangeTabExecute
+    end
+  end
+  object FontDialogSelect: TFontDialog
+    MinFontSize = 0
+    MaxFontSize = 0
+    Left = 196
+    Top = 446
+  end
+end

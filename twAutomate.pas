@@ -23,9 +23,9 @@ type
   end;
 
   // Explicit Win32/Win64 C-ABI COPYDATASTRUCT layout.
-  // LCLType.TCopyDataStruct is a 'packed record' (20 bytes on Win64 with lpData at offset 12),
-  // whereas the 64-bit Windows OS kernel (WM_COPYDATA) requires C natural alignment
-  // (24 bytes on Win64 with 4 bytes of padding after cbData and lpData at offset 16).
+  // LCLType.TCopyDataStruct is a 'packed record' (20 bytes on Win64, lpData at
+  // offset 12), but WM_COPYDATA on 64-bit Windows expects natural C alignment
+  // (24 bytes, 4 bytes of padding after cbData, lpData at offset 16).
   TTWCopyDataStruct = packed record
     dwData: PtrUInt;
     cbData: DWORD;
@@ -43,8 +43,8 @@ type
     class procedure BroadcastCopyDataToTheWord(senderHwnd: THandle; var CData: TTWCopyDataStruct);
     class function GetTwCurrentRef: string;
     class function BookNameToNumber(const ABookName: string): string;
-    class procedure LoadLangFile(langFile: string);
     class procedure InitDefaultBooksMap;
+    class procedure LoadLangFile(langFile: string);
     class function GetConfigFile: string;
     class function GetCurrentLangFile(configFile: string): string;
     class procedure FindTheWordWindows(outputFile: string);
@@ -52,12 +52,14 @@ type
   end;
 
 const
-  // The standard classnames of the main theWord window (theWord 6 and 7, 32-bit and 64-bit).
-  TW_MAINFORM_CLASSNAME = 'theWord.0f2ba8a0-906d-11e1-b0c4-0800200c9a66.UnicodeClass';
-  TW_MAINFORM_CLASSNAME_NOUNICODE = 'theWord.0f2ba8a0-906d-11e1-b0c4-0800200c9a66';
+  //the classname of the main theWord window.
   TW6_MAINFORM_CLASSNAME = 'theWord.0f2ba8a0-906d-11e1-b0c4-0800200c9a667.UnicodeClass';
+  TW7_MAINFORM_CLASSNAME = 'theWord.0f2ba8a0-906d-11e1-b0c4-0800200c9a66';
+  //Unicode variants registered by some theWord 6/7 builds (32- and 64-bit)
   TW6_MAINFORM_CLASSNAME_NOUNICODE = 'theWord.0f2ba8a0-906d-11e1-b0c4-0800200c9a667';
-
+  TW7_MAINFORM_CLASSNAME_UNICODE = 'theWord.0f2ba8a0-906d-11e1-b0c4-0800200c9a66.UnicodeClass';
+  //common prefix of every theWord main window class
+  TW_MAINFORM_CLASS_PREFIX = 'theword.0f2ba8a0';
   //the value of COPYDATASTRUCT.dwData
   COPYDATA_OP_FIRST = $ffff0000;
   //Operation go-to-verse
@@ -76,16 +78,16 @@ type
 
 var
   BooksMap: TBooksMap;
-  BooksMapLock: syncobjs.TCriticalSection;
+  BooksMapLock: TCriticalSection;
   IgnoreErrors: boolean;
 
 resourcestring
   STWSynchronizationErrorTitle = 'Synchronization error';
   STWSynchronizationError = 'Failed to detect theWord''s current verse.'#13#10'Please restart theWord if you have switched its current language.';
+  SRegexErrorFmt = 'Error in regex: %s';
+  STWWindowNotFoundDebugSavedFmt = 'theWord window not found. Debug information has been saved to: %s';
 
 implementation
-
-function AddFontResourceExW(name: LPCWSTR; fl: DWORD; res: PVOID): Integer; stdcall; external 'gdi32' name 'AddFontResourceExW';
 
 class procedure TWAutomateUtils.Reset;
 begin
@@ -103,7 +105,7 @@ begin
     BooksMap := TBooksMap.Create;
 
   // Law (1..5)
-  AddB('Genesis','1'); AddB('Gen','1'); AddB('Ge','1'); AddB('Gn','1'); AddB('Gênesis','1'); AddB('Genesis','1');
+  AddB('Genesis','1'); AddB('Gen','1'); AddB('Ge','1'); AddB('Gn','1'); AddB('Gênesis','1');
   AddB('Exodus','2'); AddB('Exo','2'); AddB('Ex','2'); AddB('Êxodo','2'); AddB('Exodo','2');
   AddB('Leviticus','3'); AddB('Lev','3'); AddB('Le','3'); AddB('Lv','3'); AddB('Levítico','3'); AddB('Levitico','3');
   AddB('Numbers','4'); AddB('Num','4'); AddB('Nu','4'); AddB('Nm','4'); AddB('Números','4'); AddB('Numeros','4');
@@ -124,7 +126,7 @@ begin
   AddB('Esther','17'); AddB('Est','17'); AddB('Es','17'); AddB('Et','17'); AddB('Ester','17');
 
   // Poetry (18..22)
-  AddB('Job','18'); AddB('Jb','18'); AddB('Jó','18'); AddB('Jo','18');
+  AddB('Job','18'); AddB('Jb','18'); AddB('Jó','18');
   AddB('Psalms','19'); AddB('Psalm','19'); AddB('Psa','19'); AddB('Ps','19'); AddB('Sl','19'); AddB('Salmos','19'); AddB('Salmo','19');
   AddB('Proverbs','20'); AddB('Pro','20'); AddB('Pr','20'); AddB('Pv','20'); AddB('Provérbios','20'); AddB('Proverbios','20');
   AddB('Ecclesiastes','21'); AddB('Ecc','21'); AddB('Ec','21'); AddB('Qoh','21'); AddB('Eclesiastes','21');
@@ -143,9 +145,9 @@ begin
   AddB('Amos','30'); AddB('Amo','30'); AddB('Am','30'); AddB('Amós','30');
   AddB('Obadiah','31'); AddB('Oba','31'); AddB('Ob','31'); AddB('Obadias','31');
   AddB('Jonah','32'); AddB('Jon','32'); AddB('Jnh','32'); AddB('Jn','32'); AddB('Jonas','32');
-  AddB('Micah','33'); AddB('Mic','33'); AddB('Mc','33'); AddB('Mq','33'); AddB('Miquéias','33'); AddB('Miqueias','33');
+  AddB('Micah','33'); AddB('Mic','33'); AddB('Mq','33'); AddB('Miquéias','33'); AddB('Miqueias','33');
   AddB('Nahum','34'); AddB('Nah','34'); AddB('Na','34'); AddB('Naum','34');
-  AddB('Habakkuk','35'); AddB('Hab','35'); AddB('Hb','35'); AddB('Hc','35'); AddB('Habacuque','35');
+  AddB('Habakkuk','35'); AddB('Hab','35'); AddB('Hc','35'); AddB('Habacuque','35');
   AddB('Zephaniah','36'); AddB('Zep','36'); AddB('Zp','36'); AddB('Sf','36'); AddB('Sofonias','36');
   AddB('Haggai','37'); AddB('Hag','37'); AddB('Hg','37'); AddB('Ag','37'); AddB('Ageu','37');
   AddB('Zechariah','38'); AddB('Zec','38'); AddB('Zc','38'); AddB('Zacarias','38');
@@ -155,7 +157,7 @@ begin
   AddB('Matthew','40'); AddB('Mat','40'); AddB('Matt','40'); AddB('Mt','40'); AddB('Mateus','40');
   AddB('Mark','41'); AddB('Mar','41'); AddB('Mk','41'); AddB('Mrk','41'); AddB('Mc','41'); AddB('Marcos','41');
   AddB('Luke','42'); AddB('Luk','42'); AddB('Lk','42'); AddB('Lc','42'); AddB('Lucas','42');
-  AddB('John','43'); AddB('Joh','43'); AddB('Jn','43'); AddB('Jhn','43'); AddB('Jo','43'); AddB('João','43'); AddB('Joao','43');
+  AddB('John','43'); AddB('Joh','43'); AddB('Jhn','43'); AddB('Jo','43'); AddB('João','43'); AddB('Joao','43');
   AddB('Acts','44'); AddB('Act','44'); AddB('Ac','44'); AddB('At','44'); AddB('Atos','44');
 
   // Paul (45..58)
@@ -194,7 +196,7 @@ begin
   if cleanName = '' then Exit;
 
   if BooksMapLock = nil then
-    BooksMapLock := syncobjs.TCriticalSection.Create;
+    BooksMapLock := TCriticalSection.Create;
 
   BooksMapLock.Enter;
   try
@@ -244,70 +246,20 @@ end;
 function FindTheWordByClassEnumProc(hwnd: HWND; lParam: LPARAM): BOOL; stdcall;
 var
   className: array[0..255] of Char;
-  classStr: string;
   pid: DWORD;
 begin
-  Result := True; // Continue enumeration
-
+  Result := True; // continue enumeration
   pid := 0;
   GetWindowThreadProcessId(hwnd, pid);
   if pid = GetCurrentProcessId then
     Exit;
-
   FillChar(className, SizeOf(className), 0);
-  GetClassName(hwnd, className, 256);
-  classStr := LowerCase(className);
-
-  // Match official theWord main form class prefix 'theword.0f2ba8a0' or 'theword.'
-  if (Pos('theword.0f2ba8a0', classStr) = 1) or (Pos('theword.', classStr) = 1) then
+  GetClassName(hwnd, className, Length(className));
+  if Pos(TW_MAINFORM_CLASS_PREFIX, LowerCase(StrPas(className))) = 1 then
   begin
     PHandle(Pointer(PtrUInt(lParam)))^ := hwnd;
     if IsWindowVisible(hwnd) then
-      Result := False; // Stop enumeration immediately if visible main form found
-    Exit;
-  end;
-end;
-
-function FindTheWordByTitleEnumProc(hwnd: HWND; lParam: LPARAM): BOOL; stdcall;
-var
-  className, windowTitle: array[0..255] of Char;
-  classStr, titleStr: string;
-  pid: DWORD;
-begin
-  Result := True; // Continue enumeration
-
-  if not IsWindowVisible(hwnd) then
-    Exit;
-
-  pid := 0;
-  GetWindowThreadProcessId(hwnd, pid);
-  if pid = GetCurrentProcessId then
-    Exit;
-
-  FillChar(className, SizeOf(className), 0);
-  FillChar(windowTitle, SizeOf(windowTitle), 0);
-
-  GetClassName(hwnd, className, 256);
-  classStr := LowerCase(className);
-
-  // Exclude browsers, Explorer, LCL windows, and standard non-Delphi windows
-  if (Pos('chrome', classStr) > 0) or
-     (Pos('mozilla', classStr) > 0) or
-     (Pos('applicationframe', classStr) > 0) or
-     (Pos('cabinetwclass', classStr) > 0) or
-     (Pos('notepad', classStr) > 0) or
-     (classStr = 'window') or
-     (classStr = 'tapplication') then
-    Exit;
-
-  GetWindowText(hwnd, windowTitle, 256);
-  titleStr := LowerCase(windowTitle);
-  if ((Pos('theword', classStr) > 0) or (Pos('tfrm', classStr) = 1) or (Pos('tmain', classStr) = 1)) and
-     ((Pos(' - theword', titleStr) > 0) or (Pos('[theword]', titleStr) > 0)) then
-  begin
-    PHandle(Pointer(PtrUInt(lParam)))^ := hwnd;
-    Result := False; // Stop enumeration, found!
-    Exit;
+      Result := False; // stop at the first visible main form
   end;
 end;
 
@@ -316,8 +268,8 @@ end;
 class function TWAutomateUtils.IsTwRunning: THandle;
 const
   KNOWN_CLASSES: array[0..3] of PChar = (
-    TW_MAINFORM_CLASSNAME,
-    TW_MAINFORM_CLASSNAME_NOUNICODE,
+    TW7_MAINFORM_CLASSNAME,
+    TW7_MAINFORM_CLASSNAME_UNICODE,
     TW6_MAINFORM_CLASSNAME,
     TW6_MAINFORM_CLASSNAME_NOUNICODE
   );
@@ -326,8 +278,7 @@ var
   i: Integer;
 begin
   HiddenMatch := 0;
-
-  // 1. Check all 4 known theWord 6 / theWord 7 main window class names
+  // 1. known class names; prefer a visible (or minimized) main window
   for i := Low(KNOWN_CLASSES) to High(KNOWN_CLASSES) do
   begin
     PrevWindow := FindWindow(KNOWN_CLASSES[i], nil);
@@ -343,7 +294,7 @@ begin
     end;
   end;
 
-  // 2. Pass 1 dynamic enumeration: look strictly for 'theWord.' window class prefix
+  // 2. any window whose class starts with the theWord prefix
   PrevWindow := 0;
   EnumWindows(@FindTheWordByClassEnumProc, PtrInt(@PrevWindow));
   if IsWindow(PrevWindow) then
@@ -358,16 +309,8 @@ begin
     Exit;
   end;
 
-  // 3. Pass 2 dynamic enumeration: fallback to Delphi form with theWord title
-  PrevWindow := 0;
-  EnumWindows(@FindTheWordByTitleEnumProc, PtrInt(@PrevWindow));
-  if IsWindow(PrevWindow) then
-  begin
-    Result := PrevWindow;
-    Exit;
-  end;
-
   // Neither window class was found
+  //FindTheWordWindows('theWordWindows.txt');
   Result := 0;
 end;
 
@@ -380,41 +323,41 @@ type
   end;
   PTWBroadcastCtx = ^TTWBroadcastCtx;
 
+procedure SendCopyData(hwnd, senderHwnd: THandle; copyDataAddr: PtrInt);
+var
+  dwRes: DWORD_PTR;
+begin
+  dwRes := 0;
+  if SendMessageTimeout(hwnd, WM_COPYDATA, WPARAM(senderHwnd), copyDataAddr,
+     SMTO_ABORTIFHUNG or SMTO_NORMAL, 1000, @dwRes) = 0 then
+    SendMessage(hwnd, WM_COPYDATA, WPARAM(senderHwnd), copyDataAddr);
+end;
+
 function BroadcastTheWordEnumProc(hwnd: HWND; ALParam: LPARAM): BOOL; stdcall;
 var
   ctx: PTWBroadcastCtx;
   pid: DWORD;
   className: array[0..255] of Char;
-  classStr: string;
-  dwRes: DWORD_PTR;
 begin
   Result := True;
   ctx := PTWBroadcastCtx(ALParam);
   if (ctx = nil) or (hwnd = 0) or (hwnd = ctx^.PrimaryHwnd) then
     Exit;
-
   pid := 0;
   GetWindowThreadProcessId(hwnd, pid);
   if (pid = 0) or (pid <> ctx^.TargetPid) then
     Exit;
-
-  className[0] := #0;
-  GetClassName(hwnd, className, 256);
-  classStr := LowerCase(className);
-
-  if (Pos('theword.0f2ba8a0', classStr) = 1) then
-  begin
-    dwRes := 0;
-    if SendMessageTimeout(hwnd, WM_COPYDATA, WPARAM(ctx^.SenderHwnd), ctx^.CopyDataAddr,
-       SMTO_ABORTIFHUNG or SMTO_NORMAL, 1000, @dwRes) = 0 then
-      SendMessage(hwnd, WM_COPYDATA, WPARAM(ctx^.SenderHwnd), ctx^.CopyDataAddr);
-  end;
+  FillChar(className, SizeOf(className), 0);
+  GetClassName(hwnd, className, Length(className));
+  if Pos(TW_MAINFORM_CLASS_PREFIX, LowerCase(StrPas(className))) = 1 then
+    SendCopyData(hwnd, ctx^.SenderHwnd, ctx^.CopyDataAddr);
 end;
 
+{ Sends CData to theWord's main window and to every other theWord main window
+  of the same process (theWord may keep a hidden twin of its main form). }
 class procedure TWAutomateUtils.BroadcastCopyDataToTheWord(senderHwnd: THandle; var CData: TTWCopyDataStruct);
 var
   twHWND: THandle;
-  dwRes: DWORD_PTR;
   pid: DWORD;
   ctx: TTWBroadcastCtx;
 begin
@@ -422,10 +365,7 @@ begin
   if twHWND = 0 then
     Exit;
 
-  dwRes := 0;
-  if SendMessageTimeout(twHWND, WM_COPYDATA, WPARAM(senderHwnd), PtrInt(@CData),
-     SMTO_ABORTIFHUNG or SMTO_NORMAL, 1000, @dwRes) = 0 then
-    SendMessage(twHWND, WM_COPYDATA, WPARAM(senderHwnd), PtrInt(@CData));
+  SendCopyData(twHWND, senderHwnd, PtrInt(@CData));
 
   pid := 0;
   GetWindowThreadProcessId(twHWND, pid);
@@ -438,6 +378,11 @@ begin
     EnumWindows(@BroadcastTheWordEnumProc, PtrInt(@ctx));
   end;
 end;
+
+function AddFontResourceExW(name: LPCWSTR; fl: DWORD; res: PVOID): Integer; stdcall; external 'gdi32' name 'AddFontResourceExW';
+
+const
+  FR_PRIVATE = $10;
 
 function QueryFullProcessImageName(hProcess: HANDLE; dwFlags: DWORD; lpExeName: LPTSTR; var lpdwSize: DWORD): BOOL; stdcall; external 'KERNEL32' name 'QueryFullProcessImageNameA';
 
@@ -458,11 +403,9 @@ begin
   size := sizeof(module);
   if GetWindowThreadProcessId(hwnd, pid) <> 0 then
   begin
-    // Try PROCESS_QUERY_LIMITED_INFORMATION ($1000) first, then PROCESS_QUERY_INFORMATION ($0400)
     hProcess := OpenProcess($1000, false, pid);
     if hProcess = 0 then
       hProcess := OpenProcess(PROCESS_QUERY_INFORMATION, false, pid);
-
     if hProcess <> 0 then
     begin
       try
@@ -477,7 +420,6 @@ begin
     end;
   end;
 
-  // Fallback to standard AppData theWord location if config.ini not in exe folder
   if (result = '') or not FileExists(result) then
   begin
     appDataPath := SysUtils.GetEnvironmentVariable('APPDATA') + '\theWord\config.ini';
@@ -488,7 +430,7 @@ end;
 
 class function TWAutomateUtils.GetTwCurrentRef: string;
 
-  function ExtractRefStr(const caption: string): string;
+  function ExtractRefStr(caption: string): string;
   var
     reRef: IRegex;
     mtRef: IMatch;
@@ -498,24 +440,38 @@ class function TWAutomateUtils.GetTwCurrentRef: string;
     try
       reRef := RegexCreate('^(.*?) (\d+):(\d+)', [rcoUTF8]);
       mtRef := reRef.Match(caption);
-
-      if not mtRef.Success then exit;
-
-      bName := Trim(mtRef.Groups[1].Value);
-      bNum := BookNameToNumber(bName);
-
-      if bNum = '' then
-      begin
-        // If not recognized, attempt quiet lang file load without throwing or showing dialogs
-        LoadLangFile(GetCurrentLangFile(GetConfigFile));
-        bNum := BookNameToNumber(bName);
-      end;
-
-      if bNum <> '' then
-        result := format('%s,%s,%s', [bNum, mtRef.Groups[2].Value, mtRef.Groups[3].Value]);
     except
-      result := '';
+      on E: Exception do
+      begin
+        if E.Message = 'PCRE_ERROR_BADUTF8' then
+        begin // fallback for bad UTF-8 sequences
+          reRef := RegexCreate('^(.*?) (\d+):(\d+)', []);
+          mtRef := reRef.Match(caption);
+        end
+        else
+          exit;
+      end;
     end;
+
+    if not mtRef.Success then exit;
+
+    bName := Trim(mtRef.Groups[1].Value);
+    bNum := BookNameToNumber(bName);
+
+    if bNum = '' then
+    begin
+      LoadLangFile(GetCurrentLangFile(GetConfigFile));
+      bNum := BookNameToNumber(bName);
+    end;
+
+    if bNum = '' then
+    begin
+      if not IgnoreErrors and (MessageDlg(STWSynchronizationErrorTitle, STWSynchronizationError, mtError, [mbOK, mbIgnore], 0) = mrIgnore) then
+        IgnoreErrors := true;
+      exit;
+    end;
+
+    result := format('%s,%s,%s', [bNum, mtRef.Groups[2].Value, mtRef.Groups[3].Value]);
   end;
 
 var
@@ -524,17 +480,13 @@ var
   refStr: string;
 begin
   result := '';
-  try
-    hwnd := IsTwRunning;
-    if hwnd <> 0 then
-    begin
-      FillChar(caption, SizeOf(caption), 0);
-      GetWindowText(hwnd, caption, SizeOf(caption));
-      refStr := caption;
-      result := ExtractRefStr(refStr);
-    end;
-  except
-    result := '';
+  hwnd := IsTwRunning;
+  if hwnd <> 0 then
+  begin
+    FillChar(caption, SizeOf(caption), 0);
+    GetWindowText(hwnd, caption, SizeOf(caption));
+    refStr := caption;
+    result := ExtractRefStr(refStr);
   end;
 end;
 
@@ -545,19 +497,26 @@ var
   reBook: IRegex;
   mtBook: IMatch;
 begin
-  if BooksMap = nil then
-    InitDefaultBooksMap;
+  if BooksMapLock = nil then
+    BooksMapLock := TCriticalSection.Create;
+
+  BooksMapLock.Enter;
+  try
+    if BooksMap = nil then
+      InitDefaultBooksMap;
+  finally
+    BooksMapLock.Leave;
+  end;
 
   if (langFile = '') or not FileExists(langFile) then
     exit;
 
-  // Match book name, short name, and all aliases from theWord .lng file
   reBook := RegexCreate('^\s*rc_bk_(?:name|sname|alias\d*)_(\d+)=''([^'']+)''', [rcoUTF8]);
 
   lines := TStringList.Create;
   try
     lines.LoadFromFile(langFile);
-    if BooksMapLock <> nil then BooksMapLock.Enter;
+    BooksMapLock.Enter;
     try
       for i:=0 to lines.Count - 1 do
       begin
@@ -566,7 +525,7 @@ begin
           BooksMap[mtBook.Groups[2].Value] := mtBook.Groups[1].Value;
       end;
     finally
-      if BooksMapLock <> nil then BooksMapLock.Leave;
+      BooksMapLock.Leave;
     end;
   finally
     lines.Free;
@@ -599,14 +558,17 @@ begin
       case encoding of
         FILE_ENCODING_UTF16LE, FILE_ENCODING_UTF16BE:
           begin
+            // Skip BOM if present (position is already set after LoadFromFile)
             lines.AddText(UTF16ToUTF8(PWideChar(stream.Memory), stream.Size div SizeOf(WideChar)));
           end;
         FILE_ENCODING_UTF8:
           begin
+            // Standard UTF-8 with BOM
             lines.LoadFromFile(configFile);
           end;
         else
           begin
+            // Unknown encoding or no BOM, try to load it directly
             lines.LoadFromFile(configFile);
           end;
       end;
@@ -641,9 +603,6 @@ var
 begin
   Result := True; // Continue enumeration
 
-  FillChar(className, SizeOf(className), 0);
-  FillChar(windowTitle, SizeOf(windowTitle), 0);
-
   // Get window class name
   GetClassName(hwnd, className, 256);
   classStr := className;
@@ -653,89 +612,15 @@ begin
   titleStr := windowTitle;
 
   // Check if either class name or title contains 'theWord'
-  if (Pos('theword', LowerCase(classStr)) > 0) or
+  if (Pos('theWord', LowerCase(classStr)) > 0) or
      (Pos('theword', LowerCase(titleStr)) > 0) then
   begin
     // Write to file
-    fPtr := Pointer(PtrUInt(lParam));
+    fPtr := Pointer(lParam);
     WriteLn(fPtr^, 'Window Handle: ', hwnd);
     WriteLn(fPtr^, 'Class Name: ', classStr);
     WriteLn(fPtr^, 'Window Title: ', titleStr);
     WriteLn(fPtr^, StringOfChar('-', 50));
-  end;
-end;
-
-class procedure TWAutomateUtils.LoadTheWordFonts;
-var
-  dirs: TStringList;
-  d, ext, fName, appData, localAppData, progData, progFiles, progFilesX86: string;
-  info: TSearchRec;
-begin
-  dirs := TStringList.Create;
-  try
-    try
-      d := ExtractFilePath(GetConfigFile);
-      if d <> '' then
-      begin
-        dirs.Add(d + 'fonts\');
-        dirs.Add(d);
-      end;
-    except
-    end;
-
-    appData := SysUtils.GetEnvironmentVariable('APPDATA');
-    if appData <> '' then
-    begin
-      dirs.Add(appData + '\theWord\fonts\');
-      dirs.Add(appData + '\theWord\');
-    end;
-
-    localAppData := SysUtils.GetEnvironmentVariable('LOCALAPPDATA');
-    if localAppData <> '' then
-      dirs.Add(localAppData + '\theWord\fonts\');
-
-    progData := SysUtils.GetEnvironmentVariable('PROGRAMDATA');
-    if progData <> '' then
-      dirs.Add(progData + '\theWord\fonts\');
-
-    progFilesX86 := SysUtils.GetEnvironmentVariable('ProgramFiles(x86)');
-    if progFilesX86 <> '' then
-      dirs.Add(progFilesX86 + '\The Word\fonts\');
-
-    progFiles := SysUtils.GetEnvironmentVariable('ProgramFiles');
-    if progFiles <> '' then
-      dirs.Add(progFiles + '\The Word\fonts\');
-
-    dirs.Add('C:\theWord\fonts\');
-    dirs.Add('C:\theWord\');
-    dirs.Add(ExtractFilePath(ParamStr(0)) + 'fonts\');
-
-    for d in dirs do
-    begin
-      if DirectoryExists(d) then
-      begin
-        if FindFirst(d + '*.*', faAnyFile, info) = 0 then
-        begin
-          repeat
-            if (info.Attr and faDirectory) = 0 then
-            begin
-              ext := LowerCase(ExtractFileExt(info.Name));
-              if (ext = '.ttf') or (ext = '.otf') or (ext = '.ttc') then
-              begin
-                fName := d + info.Name;
-                try
-                  AddFontResourceExW(PWideChar(UTF8Decode(fName)), $10, nil);
-                except
-                end;
-              end;
-            end;
-          until FindNext(info) <> 0;
-          SysUtils.FindClose(info);
-        end;
-      end;
-    end;
-  finally
-    dirs.Free;
   end;
 end;
 
@@ -748,33 +633,100 @@ begin
     Rewrite(f);
     WriteLn(f, 'List of Windows with "theWord" in class name or title:');
     WriteLn(f, StringOfChar('=', 50));
-    WriteLn(f, 'Current MAINFORM_CLASSNAME constant: ', TW_MAINFORM_CLASSNAME);
+    WriteLn(f, 'Current MAINFORM_CLASSNAME constant: ', TW6_MAINFORM_CLASSNAME);
     WriteLn(f, StringOfChar('=', 50));
     WriteLn(f);
 
     // Enumerate all windows
-    EnumWindows(@EnumWindowsProc, PtrInt(@f));
+    EnumWindows(@EnumWindowsProc, LPARAM(@f));
 
     WriteLn(f);
     WriteLn(f, 'End of Window List');
   finally
     CloseFile(f);
   end;
+
+  ShowMessage(Format(STWWindowNotFoundDebugSavedFmt, [outputFile]));
+end;
+
+{ Makes the fonts that ship with theWord (e.g. Greek/Hebrew fonts used by
+  modules and dictionaries) available to iBiblia for this session only.
+  Nothing is installed system-wide. }
+class procedure TWAutomateUtils.LoadTheWordFonts;
+var
+  Dirs: TStringList;
+  Dir, Ext, EnvValue: string;
+  Info: TSearchRec;
+
+  procedure AddDir(const APath: string);
+  begin
+    if (APath <> '') and (Dirs.IndexOf(IncludeTrailingPathDelimiter(APath)) < 0) then
+      Dirs.Add(IncludeTrailingPathDelimiter(APath));
+  end;
+
+begin
+  Dirs := TStringList.Create;
+  try
+    try
+      Dir := ExtractFilePath(GetConfigFile); // folder of the running theWord
+      if Dir <> '' then
+      begin
+        AddDir(Dir + 'fonts');
+        AddDir(Dir);
+      end;
+    except
+    end;
+
+    EnvValue := SysUtils.GetEnvironmentVariable('APPDATA');
+    if EnvValue <> '' then
+    begin
+      AddDir(EnvValue + '\theWord\fonts');
+      AddDir(EnvValue + '\theWord');
+    end;
+    EnvValue := SysUtils.GetEnvironmentVariable('LOCALAPPDATA');
+    if EnvValue <> '' then
+      AddDir(EnvValue + '\theWord\fonts');
+    EnvValue := SysUtils.GetEnvironmentVariable('PROGRAMDATA');
+    if EnvValue <> '' then
+      AddDir(EnvValue + '\theWord\fonts');
+    EnvValue := SysUtils.GetEnvironmentVariable('ProgramFiles(x86)');
+    if EnvValue <> '' then
+      AddDir(EnvValue + '\The Word\fonts');
+    EnvValue := SysUtils.GetEnvironmentVariable('ProgramFiles');
+    if EnvValue <> '' then
+      AddDir(EnvValue + '\The Word\fonts');
+    AddDir('C:\theWord\fonts');
+    AddDir('C:\theWord');
+    AddDir(ExtractFilePath(ParamStr(0)) + 'fonts');
+
+    for Dir in Dirs do
+    begin
+      if not DirectoryExists(Dir) then
+        Continue;
+      if FindFirst(Dir + '*.*', faAnyFile, Info) = 0 then
+      try
+        repeat
+          if (Info.Attr and faDirectory) = 0 then
+          begin
+            Ext := LowerCase(ExtractFileExt(Info.Name));
+            if (Ext = '.ttf') or (Ext = '.otf') or (Ext = '.ttc') then
+              AddFontResourceExW(PWideChar(UTF8Decode(Dir + Info.Name)), FR_PRIVATE, nil);
+          end;
+        until FindNext(Info) <> 0;
+      finally
+        SysUtils.FindClose(Info);
+      end;
+    end;
+  finally
+    Dirs.Free;
+  end;
 end;
 
 initialization
-  BooksMapLock := syncobjs.TCriticalSection.Create;
+  BooksMapLock := TCriticalSection.Create;
 
 finalization
-  if BooksMapLock <> nil then
-  begin
-    BooksMapLock.Free;
-    BooksMapLock := nil;
-  end;
-  if BooksMap <> nil then
-  begin
-    BooksMap.Free;
-    BooksMap := nil;
-  end;
+  FreeAndNil(BooksMapLock);
+  FreeAndNil(BooksMap);
 
 end.

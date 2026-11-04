@@ -1,0 +1,41 @@
+iBiblia portable release - third-party runtime notices
+
+The release-manifest.json file identifies the exact source commit, toolchain,
+runtime dependency versions, and hashes shipped in this archive.
+
+PCRE 6.7 with the iBiblia/Lazarus exports
+Source is preserved in the iBiblia repository under pcre-6.7-lazarus/.
+Copyright University of Cambridge and Google Inc.; redistribution conditions
+and warranty disclaimer are in licenses/PCRE-LICENSE.txt.
+The x64 DLL is the hash-pinned custom build from the release source commit.
+
+SQLite 3.54.1, Windows x64
+Official binary: https://www.sqlite.org/2026/sqlite-dll-win-x64-3540100.zip
+SQLite is dedicated to the public domain. See licenses/SQLITE-PUBLIC-DOMAIN.txt
+and https://www.sqlite.org/copyright.html.
+
+OpenSSL 3.5.9, Windows x64
+Built and distributed by FireDaemon:
+https://www.firedaemon.com/download-firedaemon-openssl
+https://download.firedaemon.com/FireDaemon-OpenSSL/openssl-3.5.9.zip
+OpenSSL source: https://github.com/openssl/openssl/tree/openssl-3.5.9
+Licensed under Apache License 2.0; see licenses/OPENSSL-LICENSE.txt.
+Only libssl-3-x64.dll and libcrypto-3-x64.dll are included in the app.
+The OpenSSL command-line tool is used only in developer release validation.
+
+Mozilla CA certificate bundle, extracted by curl on 2026-10-20
+Original, unmodified PEM snapshot:
+https://curl.se/ca/cacert-2026-10-20.pem
+Extraction and source information: https://curl.se/docs/caextract.html
+Licensed under Mozilla Public License 2.0. See licenses/MOZILLA-CA-LICENSE.txt.
+The corresponding certificate source is the Mozilla certdata.txt linked from
+the curl extraction page. This distribution does not alter those certificates.
+
+Free Pascal OpenSSL bindings used to compile iBiblia
+The vendored binding source and provenance are included in the source release
+under vendor/fpc-openssl/ (FPC fixes_3_2 commit
+12e49a77d1c5b801fe8e4a2f77df27aa3dce848b).
+Redistribution notices and the modified LGPL runtime linking exception are in
+licenses/FPC-OPENSSL-BSD-NOTICE.txt, licenses/FPC-COPYING-EXCEPTION.txt and
+licenses/FPC-COPYING.txt. Corresponding source is in vendor/fpc-openssl/.
+No API keys, credentials, user projects or developer settings are included.

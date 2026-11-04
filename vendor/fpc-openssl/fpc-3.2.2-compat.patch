@@ -1,0 +1,24 @@
+--- upstream/opensslsockets.pp
++++ fpc-3.2.2/opensslsockets.pp
+@@ -26,8 +26,8 @@
+     function InitContext(NeedCertificate: Boolean): Boolean; virtual;
+     function DoneContext: Boolean; virtual;
+     function InitSslKeys: boolean;virtual;
+-    Function GetLastSSLErrorString : String; override;
+-    Function GetLastSSLErrorCode : Integer; override;
++    Function GetLastSSLErrorString : String;
++    Function GetLastSSLErrorCode : Integer;
+   Public
+     Constructor create; override;
+     destructor destroy; override;
+@@ -183,8 +183,8 @@
+     Result:=CheckSSL(FCTX.UseCertificate(CertificateData.Certificate));
+   if Result and not CertificateData.PrivateKey.Empty then
+     Result:=CheckSSL(FCTX.UsePrivateKey(CertificateData.PrivateKey));
+-  if Result and ((CertificateData.CertCA.FileName<>'') or (CertificateData.TrustedCertsDir<>'')) then
+-    Result:=CheckSSL(FCTX.LoadVerifyLocations(CertificateData.CertCA.FileName,CertificateData.TrustedCertsDir));
++  if Result and (CertificateData.CertCA.FileName<>'') then
++    Result:=CheckSSL(FCTX.LoadVerifyLocations(CertificateData.CertCA.FileName,''));
+   if Result and not CertificateData.PFX.Empty then
+     Result:=CheckSSL(FCTX.LoadPFX(CertificateData.PFX,CertificateData.KeyPassword));
+ end;

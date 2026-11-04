@@ -1,49 +1,55 @@
-object FormInterlinearVerseRules: TFormInterlinearVerseRules
+object InterlinearVerseRulesForm: TInterlinearVerseRulesForm
   Left = 498
-  Height = 225
+  Height = 360
   Top = 314
-  Width = 856
+  Width = 901
   Caption = 'Interlinear view verse rules'
-  ClientHeight = 225
-  ClientWidth = 856
+  ClientHeight = 360
+  ClientWidth = 901
+  DesignTimePPI = 96
   Position = poOwnerFormCenter
-  LCLVersion = '2.0.10.0'
-  object ButtonOK: TButton
-    Left = 767
-    Height = 25
-    Top = 184
-    Width = 75
+  LCLVersion = '4.0.0.4'
+  Font.Name = 'Segoe UI'
+  Font.Height = -13
+  Color = 16316147
+  Constraints.MinWidth = 720
+  Constraints.MinHeight = 320
+  object OkButton: TButton
+    Left = 781
+    Height = 32
+    Top = 312
+    Width = 104
     Anchors = [akRight, akBottom]
     Caption = 'OK'
     Default = True
     ModalResult = 1
-    OnClick = ButtonOKClick
     TabOrder = 0
+    OnClick = OkButtonClick
   end
-  object Button2: TButton
-    Left = 664
-    Height = 25
-    Top = 184
-    Width = 75
+  object CancelButton: TButton
+    Left = 669
+    Height = 32
+    Top = 312
+    Width = 104
     Anchors = [akRight, akBottom]
     Cancel = True
     Caption = 'Cancel'
     ModalResult = 2
     TabOrder = 1
   end
-  object PageControlVerseRules: TPageControl
-    Left = 8
-    Height = 167
-    Top = 8
-    Width = 840
-    ActivePage = TabSheet1
+  object VerseRulesPageControl: TPageControl
+    Left = 16
+    Height = 280
+    Top = 16
+    Width = 869
+    ActivePage = InterlinearTab
     Anchors = [akTop, akLeft, akRight, akBottom]
     TabIndex = 0
     TabOrder = 2
-    object TabSheet1: TTabSheet
+    object InterlinearTab: TTabSheet
       Caption = 'Interlinear'
-      ClientHeight = 139
-      ClientWidth = 832
+      ClientHeight = 248
+      ClientWidth = 861
       object StringGridInterlinear: TStringGrid
         Left = 0
         Height = 139
@@ -72,10 +78,10 @@ object FormInterlinearVerseRules: TFormInterlinearVerseRules
         TabOrder = 0
       end
     end
-    object TabSheet2: TTabSheet
+    object IntralinearTab: TTabSheet
       Caption = 'Intralinear'
-      ClientHeight = 139
-      ClientWidth = 832
+      ClientHeight = 248
+      ClientWidth = 861
       object StringGridIntralinear: TStringGrid
         Left = 0
         Height = 139

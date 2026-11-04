@@ -19,6 +19,7 @@ type
     FPairs: TStringList;
     FComments: TStringList;
     FStatus: TStringList;
+    FStatusCatalog: string;
     FProject: TObject;
     FIgnoredVerses: integer;
     procedure LoadFromFile(patchfile: string);
@@ -36,12 +37,13 @@ type
     property Pairs: TStringList read FPairs;
     property Comments: TStringList read FComments;
     property Status: TStringList read FStatus;
+    property StatusCatalog: string read FStatusCatalog write FStatusCatalog;
     property IgnoredVerses: integer read FIgnoredVerses;
   end;
 
 implementation
 
-uses Projeto;
+uses Project;
 
 { TPatchFile }
 
@@ -53,6 +55,7 @@ begin
   FPairs     := TStringList.Create();
   FComments  := TStringList.Create();
   FStatus    := TStringList.Create();
+  FStatusCatalog := '';
 end;
 
 constructor TPatchFile.Create(patchFile: string; project: TObject);
@@ -86,7 +89,7 @@ end;
 
 procedure TPatchFile.LoadFromFile(patchfile: string);
 
-  function VersesAreEqual(patch: TStringArray; project: TProjeto): boolean;
+  function VersesAreEqual(patch: TStringArray; project: TProject): boolean;
   begin
     result := false;
     try
@@ -94,11 +97,11 @@ procedure TPatchFile.LoadFromFile(patchfile: string);
     except
       exit;
     end;
-    if patch[1] <> project.ObterTextoVersiculo(tbOrigem) then exit;
-    if patch[2] <> project.ObterTextoVersiculo(tbDestino) then exit;
+    if patch[1] <> project.GetVerseText(tbOrigem) then exit;
+    if patch[2] <> project.GetVerseText(tbDestino) then exit;
     if patch[3] <> project.Pairs then exit;
-    if patch[4] <> FormatComments(project.Comentarios) then exit;
-    if patch[5].ToInteger <> project.Situacao then exit;
+    if patch[4] <> FormatComments(project.Comments) then exit;
+    if patch[5].ToInteger <> project.Status then exit;
     result := true;
   end;
 var
@@ -107,7 +110,7 @@ var
   lines: TStringList;
   line: string;
   fields: TStringArray;
-  project: TProjeto;
+  project: TProject;
 begin
   FReference.Clear;
   FSrcText.Clear;
@@ -115,8 +118,9 @@ begin
   FPairs.Clear;
   FComments.Clear;
   FStatus.Clear;
+  FStatusCatalog := '';
 
-  project := TProjeto(FProject);
+  project := TProject(FProject);
   project.StartScrollingSession;
 
   lines := TStringList.Create;
@@ -129,6 +133,14 @@ begin
     for line in lines do
     begin
       fields := line.Split(#9);
+      if (Length(fields) >= 2) and (fields[0] = '@status.catalog') then
+      begin
+        FStatusCatalog := fields[1];
+        Continue;
+      end;
+
+      if Length(fields) < 6 then
+        Continue;
 
       if assigned(project) and VersesAreEqual(fields, project) then
       begin
@@ -169,6 +181,9 @@ begin
   compressor := TCompressionStream.create(clMax, zpatch);
 
   try
+    if not FStatusCatalog.IsEmpty then
+      patch.Add('@status.catalog' + #9 + FStatusCatalog);
+
     for i:=0 to FReference.Count-1 do
       patch.Add(Format('%s'#9'%s'#9'%s'#9'%s'#9'%s'#9'%s', [FReference[i], FSrcText[i], FDstText[i], FPairs[i], FComments[i], FStatus[i]]));
 

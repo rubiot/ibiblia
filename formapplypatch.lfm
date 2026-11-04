@@ -1,40 +1,45 @@
 object FrmApplyPatch: TFrmApplyPatch
   Left = 317
-  Height = 663
+  Height = 768
   Top = 121
-  Width = 788
+  Width = 920
   Caption = 'Apply patch...'
-  ClientHeight = 663
-  ClientWidth = 788
+  ClientHeight = 768
+  ClientWidth = 920
+  DesignTimePPI = 96
+  Position = poMainFormCenter
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   OnShow = FormShow
-  Position = poMainFormCenter
-  LCLVersion = '2.0.10.0'
+  Font.Name = 'Segoe UI'
+  Font.Height = -13
+  Color = 16316147
+  Constraints.MinWidth = 920
+  Constraints.MinHeight = 768
   object GroupBox1: TGroupBox
-    Left = 0
-    Height = 528
-    Top = 0
-    Width = 224
-    Align = alCustom
+    Left = 16
+    Height = 504
+    Top = 16
+    Width = 272
+    Align = alNone
     Anchors = [akTop, akLeft, akBottom]
     TabOrder = 0
   end
   object Button1: TButton
-    Left = 707
-    Height = 25
-    Top = 626
-    Width = 75
+    Left = 800
+    Height = 32
+    Top = 720
+    Width = 104
     Anchors = [akRight, akBottom]
-    Caption = 'OK'
+    Caption = 'Apply'
     ModalResult = 1
     TabOrder = 1
   end
   object Button2: TButton
-    Left = 619
-    Height = 25
-    Top = 626
-    Width = 75
+    Left = 688
+    Height = 32
+    Top = 720
+    Width = 104
     Anchors = [akRight, akBottom]
     Cancel = True
     Caption = 'Cancel'
@@ -42,30 +47,30 @@ object FrmApplyPatch: TFrmApplyPatch
     TabOrder = 2
   end
   object BtnSelectAll: TButton
-    Left = 8
-    Height = 25
-    Top = 626
-    Width = 92
+    Left = 16
+    Height = 32
+    Top = 720
+    Width = 120
     Anchors = [akLeft, akBottom]
     Caption = 'Select all'
-    OnClick = BtnSelectAllClick
     TabOrder = 3
+    OnClick = BtnSelectAllClick
   end
   object BtnDeselectAll: TButton
-    Left = 112
-    Height = 25
-    Top = 626
-    Width = 92
+    Left = 144
+    Height = 32
+    Top = 720
+    Width = 144
     Anchors = [akLeft, akBottom]
     Caption = 'Deselect all'
-    OnClick = BtnDeselectAllClick
     TabOrder = 4
+    OnClick = BtnDeselectAllClick
   end
   object TabControlPreview: TTabControl
-    Left = 232
-    Height = 615
-    Top = 0
-    Width = 548
+    Left = 304
+    Height = 688
+    Top = 16
+    Width = 600
     OnChange = TabControlPreviewChange
     TabIndex = 0
     Tabs.Strings = (
@@ -76,9 +81,9 @@ object FrmApplyPatch: TFrmApplyPatch
     TabOrder = 5
     object ScrollBoxSrcText: TScrollBox
       Left = 2
-      Height = 193
-      Top = 23
-      Width = 544
+      Height = 203
+      Top = 25
+      Width = 532
       HorzScrollBar.Page = 1
       VertScrollBar.Page = 1
       Align = alTop
@@ -86,9 +91,9 @@ object FrmApplyPatch: TFrmApplyPatch
     end
     object ScrollBoxDstText: TScrollBox
       Left = 2
-      Height = 248
-      Top = 221
-      Width = 544
+      Height = 261
+      Top = 233
+      Width = 532
       HorzScrollBar.Page = 1
       VertScrollBar.Page = 1
       Align = alTop
@@ -96,9 +101,9 @@ object FrmApplyPatch: TFrmApplyPatch
     end
     object MemoComments: TMemo
       Left = 2
-      Height = 139
-      Top = 474
-      Width = 544
+      Height = 159
+      Top = 499
+      Width = 532
       Align = alClient
       ReadOnly = True
       TabOrder = 3
@@ -107,8 +112,8 @@ object FrmApplyPatch: TFrmApplyPatch
       Cursor = crVSplit
       Left = 2
       Height = 5
-      Top = 216
-      Width = 544
+      Top = 228
+      Width = 532
       Align = alTop
       ResizeAnchor = akTop
     end
@@ -116,75 +121,80 @@ object FrmApplyPatch: TFrmApplyPatch
       Cursor = crVSplit
       Left = 2
       Height = 5
-      Top = 469
-      Width = 544
+      Top = 494
+      Width = 532
       Align = alTop
       ResizeAnchor = akTop
     end
   end
   object LabelSrcText: TLabel
-    Left = 8
-    Height = 15
+    Left = 16
+    Height = 24
     Top = 536
-    Width = 216
+    Width = 272
     AutoSize = False
     Caption = 'Source text'
-    Color = clGreen
-    Font.Color = clWhite
+    Color = 16316147
+    Font.Color = 3616551
     ParentColor = False
     ParentFont = False
     Transparent = False
+    Layout = tlCenter
   end
   object LabelDstText: TLabel
-    Left = 8
-    Height = 15
-    Top = 552
-    Width = 216
+    Left = 16
+    Height = 24
+    Top = 568
+    Width = 272
     AutoSize = False
     Caption = 'Destination text'
-    Color = clGreen
-    Font.Color = clWhite
+    Color = 16316147
+    Font.Color = 3616551
     ParentColor = False
     ParentFont = False
     Transparent = False
+    Layout = tlCenter
   end
   object LabelAssociations: TLabel
-    Left = 8
-    Height = 15
-    Top = 568
-    Width = 216
+    Left = 16
+    Height = 24
+    Top = 600
+    Width = 272
     AutoSize = False
     Caption = 'Associations'
-    Color = clGreen
-    Font.Color = clWhite
+    Color = 16316147
+    Font.Color = 3616551
     ParentColor = False
     ParentFont = False
     Transparent = False
+    Layout = tlCenter
   end
   object LabelComments: TLabel
-    Left = 8
-    Height = 15
-    Top = 584
-    Width = 216
+    Left = 16
+    Height = 24
+    Top = 632
+    Width = 272
     AutoSize = False
     Caption = 'Comments'
-    Color = clGreen
-    Font.Color = clWhite
+    Color = 16316147
+    Font.Color = 3616551
     ParentColor = False
     ParentFont = False
     Transparent = False
+    Layout = tlCenter
   end
   object LabelStatus: TLabel
-    Left = 8
-    Height = 15
-    Top = 600
-    Width = 216
+    Left = 16
+    Height = 24
+    Top = 664
+    Width = 272
     AutoSize = False
     Caption = 'Status'
-    Color = clGreen
-    Font.Color = clWhite
+    Color = 16316147
+    Font.Color = 3616551
     ParentColor = False
     ParentFont = False
     Transparent = False
+    Layout = tlCenter
   end
 end

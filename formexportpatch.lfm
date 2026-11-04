@@ -1,40 +1,46 @@
-object FormExportPatch: TFormExportPatch
+object FrmExportPatch: TFrmExportPatch
   Left = 347
-  Height = 569
+  Height = 599
   Top = 169
-  Width = 413
+  Width = 560
   Caption = 'Export patch...'
-  ClientHeight = 569
-  ClientWidth = 413
+  ClientHeight = 599
+  ClientWidth = 560
+  DesignTimePPI = 96
+  Position = poMainFormCenter
+  LCLVersion = '4.0.0.4'
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   OnShow = FormShow
-  Position = poMainFormCenter
-  LCLVersion = '2.0.10.0'
+  Font.Name = 'Segoe UI'
+  Font.Height = -13
+  Color = 16316147
+  Constraints.MinWidth = 560
+  Constraints.MinHeight = 360
   object GroupBox1: TGroupBox
     Left = 0
     Height = 530
     Top = 0
     Width = 413
-    Align = alTop
+    Align = alNone
     Anchors = [akTop, akLeft, akRight, akBottom]
     TabOrder = 0
   end
   object Button1: TButton
-    Left = 325
-    Height = 25
-    Top = 538
-    Width = 75
+    Left = 320
+    Height = 26
+    Top = 537
+    Width = 79
     Anchors = [akRight, akBottom]
     Caption = 'OK'
     ModalResult = 1
     TabOrder = 1
   end
   object Button2: TButton
-    Left = 237
-    Height = 25
-    Top = 538
-    Width = 75
+    Left = 228
+    Height = 26
+    Top = 537
+    Width = 79
     Anchors = [akRight, akBottom]
     Cancel = True
     Caption = 'Cancel'
@@ -43,22 +49,22 @@ object FormExportPatch: TFormExportPatch
   end
   object BtnSelectAll: TButton
     Left = 8
-    Height = 25
-    Top = 538
-    Width = 92
-    Anchors = [akRight, akBottom]
+    Height = 26
+    Top = 537
+    Width = 110
+    Anchors = [akLeft, akBottom]
     Caption = 'Select all'
-    OnClick = BtnSelectAllClick
     TabOrder = 3
+    OnClick = BtnSelectAllClick
   end
   object BtnDeselectAll: TButton
-    Left = 112
-    Height = 25
-    Top = 538
-    Width = 92
-    Anchors = [akRight, akBottom]
+    Left = 126
+    Height = 26
+    Top = 537
+    Width = 130
+    Anchors = [akLeft, akBottom]
     Caption = 'Deselect all'
-    OnClick = BtnDeselectAllClick
     TabOrder = 4
+    OnClick = BtnDeselectAllClick
   end
 end

@@ -1,0 +1,24 @@
+{
+  "proposals": 4,
+  "svgCount": 8,
+  "pngCount": 36,
+  "activeBrandUnchanged": true,
+  "results": [
+    {
+      "id": "07-alfa-trama",
+      "edgeWarnings": []
+    },
+    {
+      "id": "08-alfa-diagonal",
+      "edgeWarnings": []
+    },
+    {
+      "id": "09-mem-trama",
+      "edgeWarnings": []
+    },
+    {
+      "id": "10-mem-diagonal",
+      "edgeWarnings": []
+    }
+  ]
+}

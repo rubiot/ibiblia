@@ -1,0 +1,272 @@
+object FrmAIProcessing: TFrmAIProcessing
+  Left = 384
+  Height = 800
+  Top = 162
+  Width = 1024
+  Caption = 'AI Processing'
+  ClientHeight = 800
+  ClientWidth = 1024
+  DesignTimePPI = 96
+  Position = poMainFormCenter
+  OnCreate = FormCreate
+  OnCloseQuery = FormCloseQuery
+  OnDestroy = FormDestroy
+  OnShow = FormShow
+  Font.Name = 'Segoe UI'
+  Font.Height = -13
+  Color = 16316147
+  Constraints.MinWidth = 1024
+  Constraints.MinHeight = 720
+  object GroupBoxVerses: TGroupBox
+    Left = 0
+    Height = 667
+    Top = 0
+    Width = 280
+    Align = alLeft
+    Caption = 'Verses'
+    ClientHeight = 643
+    ClientWidth = 276
+    TabOrder = 0
+    BorderSpacing.Left = 16
+    BorderSpacing.Top = 16
+    BorderSpacing.Bottom = 8
+    object BtnSelectAll: TButton
+      Left = 8
+      Height = 32
+      Top = 8
+      Width = 120
+      Caption = 'Select all'
+      TabOrder = 0
+      OnClick = BtnSelectAllClick
+    end
+    object BtnDeselectAll: TButton
+      Left = 136
+      Height = 32
+      Top = 8
+      Width = 128
+      Caption = 'Deselect all'
+      TabOrder = 1
+      OnClick = BtnDeselectAllClick
+    end
+  end
+  object PanelBottom: TPanel
+    Left = 0
+    Height = 168
+    Top = 667
+    Width = 1024
+    Align = alBottom
+    ClientHeight = 168
+    ClientWidth = 1024
+    TabOrder = 1
+    BevelOuter = bvNone
+    object LabelProgress: TLabel
+      Left = 16
+      Height = 20
+      Top = 8
+      Width = 500
+      Caption = 'Preparing to process...'
+      ParentColor = False
+    end
+    object LabelETA: TLabel
+      Left = 16
+      Height = 20
+      Top = 32
+      Width = 800
+      Caption = 'Estimated time remaining: calculating...'
+      ParentColor = False
+      Visible = False
+    end
+    object LabelTokens: TLabel
+      Left = 16
+      Height = 20
+      Top = 56
+      Width = 992
+      Anchors = [akTop, akLeft, akRight]
+      Caption = 'Tokens consumed: 0'
+      ParentColor = False
+    end
+    object ProgressBar1: TProgressBar
+      Left = 16
+      Height = 24
+      Top = 88
+      Width = 992
+      Anchors = [akTop, akLeft, akRight]
+      TabOrder = 0
+    end
+    object BtnCancel: TButton
+      Left = 16
+      Height = 32
+      Top = 120
+      Width = 120
+      Caption = 'Cancel'
+      TabOrder = 1
+      OnClick = BtnCancelClick
+    end
+    object BtnApply: TButton
+      Left = 744
+      Height = 32
+      Top = 120
+      Width = 128
+      Anchors = [akTop, akRight]
+      Caption = 'Apply'
+      Enabled = False
+      ModalResult = 1
+      TabOrder = 2
+      OnClick = BtnApplyClick
+    end
+    object BtnClose: TButton
+      Left = 880
+      Height = 32
+      Top = 120
+      Width = 128
+      Anchors = [akTop, akRight]
+      Caption = 'Discard'
+      Enabled = False
+      ModalResult = 2
+      TabOrder = 3
+      OnClick = BtnCloseClick
+    end
+    object LabelSrcText: TLabel
+      Left = 476
+      Height = 16
+      Top = 9
+      Width = 170
+      AutoSize = False
+      Caption = 'Source text'
+      Color = 16316147
+      Font.Color = 3616551
+      ParentColor = False
+      ParentFont = False
+      Transparent = False
+    end
+    object LabelDstText: TLabel
+      Left = 655
+      Height = 16
+      Top = 8
+      Width = 170
+      AutoSize = False
+      Caption = 'Destination text'
+      Color = 16316147
+      Font.Color = 3616551
+      ParentColor = False
+      ParentFont = False
+      Transparent = False
+    end
+    object LabelAssociations: TLabel
+      Left = 296
+      Height = 16
+      Top = 24
+      Width = 170
+      AutoSize = False
+      Caption = 'Associations'
+      Color = 16316147
+      Font.Color = 3616551
+      ParentColor = False
+      ParentFont = False
+      Transparent = False
+    end
+    object LabelComments: TLabel
+      Left = 476
+      Height = 16
+      Top = 24
+      Width = 170
+      AutoSize = False
+      Caption = 'Comments'
+      Color = 16316147
+      Font.Color = 3616551
+      ParentColor = False
+      ParentFont = False
+      Transparent = False
+    end
+    object LabelStatus: TLabel
+      Left = 655
+      Height = 16
+      Top = 24
+      Width = 170
+      AutoSize = False
+      Caption = 'Status'
+      Color = 16316147
+      Font.Color = 3616551
+      ParentColor = False
+      ParentFont = False
+      Transparent = False
+    end
+  end
+  object TabControlPreview: TTabControl
+    Left = 240
+    Height = 667
+    Top = 0
+    Width = 589
+    OnChange = TabControlPreviewChange
+    TabIndex = 1
+    Tabs.Strings = (
+      'AI Results'
+      'Current Project'
+    )
+    Align = alClient
+    TabOrder = 2
+    BorderSpacing.Around = 16
+    BorderSpacing.Left = 8
+    object ScrollBoxSrcText: TScrollBox
+      Left = 2
+      Height = 203
+      Top = 25
+      Width = 585
+      HorzScrollBar.Page = 1
+      VertScrollBar.Page = 1
+      Align = alTop
+      TabOrder = 0
+    end
+    object Splitter1: TSplitter
+      Cursor = crVSplit
+      Left = 0
+      Height = 5
+      Top = 224
+      Width = 587
+      Align = alTop
+      ResizeAnchor = akTop
+    end
+    object ScrollBoxDstText: TScrollBox
+      Left = 2
+      Height = 261
+      Top = 228
+      Width = 585
+      HorzScrollBar.Page = 1
+      VertScrollBar.Page = 1
+      Align = alTop
+      TabOrder = 1
+    end
+    object Splitter2: TSplitter
+      Cursor = crVSplit
+      Left = 2
+      Height = 5
+      Top = 489
+      Width = 585
+      Align = alTop
+      ResizeAnchor = akTop
+    end
+    object MemoComments: TMemo
+      Left = 2
+      Height = 171
+      Top = 494
+      Width = 585
+      Align = alClient
+      ReadOnly = True
+      ScrollBars = ssAutoBoth
+      TabOrder = 2
+    end
+  end
+  object Splitter3: TSplitter
+    Left = 235
+    Height = 667
+    Top = 0
+    Width = 5
+  end
+  object TimerUpdate: TTimer
+    Enabled = False
+    Interval = 500
+    OnTimer = TimerUpdateTimer
+    Left = 758
+    Top = 8
+  end
+end

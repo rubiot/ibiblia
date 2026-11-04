@@ -1,9 +1,33 @@
+# Lazarus/FPC specific build outputs and files
+*.ppu
+*.o
+*.lps
+*.~*
+*.bak
+*.compiled
+*.dbg
+link*.res
+__history/
+*.local
+
+# Existing specific project outputs
 backup/
 dic/
 lib/
+doc/
 iBiblia.exe
 iBiblia.ini
 iBiblia
+/log.txt
+
+# Units test outputs
+tests/results.xml
+tests/fpcunitibiblia.lps
+tests/fpcunitibiblia.exe
+tests/fpcunitibiblia_console.exe
+tests/debug_*.pas
+
+# PCRE library build artifacts
 pcre-6.7-lazarus/.libs
 pcre-6.7-lazarus/*.o
 pcre-6.7-lazarus/*.l[ao]
@@ -16,4 +40,32 @@ pcre-6.7-lazarus/config.log
 pcre-6.7-lazarus/config.status
 pcre-6.7-lazarus/dftables
 
+# Editor swap files
 *.sw[nop]
+
+# Local Codex and development scratch artifacts
+/.codex-*.patch
+/.codex-*.ps1
+/.codex_*.patch
+/.codex-*-work/
+/.tmp_*
+/_root_*
+/association_chapter_stage/
+/note*_probe*.lpr
+/outputs/
+/tmp/
+/zz_*_probe.txt
+
+# Visual integration probe resource (screenshots/runtime live in ignored outputs)
+/tests/ui_visual_probe.res
+
+/dist/
+
+/tests/lemmas.dat
+/tests/cacert.pem
+/tests/libcrypto-3-x64.dll
+/tests/libssl-3-x64.dll
+/tests/sqlite3.dll
+/tests/iBiblia.models.json
+/tests/tls_runtime_probe.exe
+/tests/tls_runtime_probe.res

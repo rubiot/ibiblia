@@ -1,0 +1,240 @@
+unit ai_batch_orchestrator;
+
+{$mode objfpc}{$H+}
+
+interface
+
+uses
+  Classes, SysUtils, ComCtrls, ai_flows, ai_flow_config,
+  ai_processing_manager, ai_batch_work_item, project_config, ai_global_settings;
+
+type
+  TCancelAIBatchProc = procedure of object;
+  TFindTreeNodeByReferenceFunc = function(const Ref: string): TTreeNode of object;
+  TMarkNodePendingProc = procedure(Node: TTreeNode; const Ref: string) of object;
+
+  IAIBatchContext = interface
+    ['{A3F9D21C-6B7E-4C1A-89D4-F2E51B730A8F}']
+    procedure CancelCurrentBatch;
+    function FindTreeNodeByReference(const Ref: string): TTreeNode;
+    procedure MarkNodePending(Node: TTreeNode; const Ref: string);
+    function GetAutoSaveCallback: TOnAutoSaveNeeded;
+    function GetVerseReferenceCallback: TGetVerseReferenceFunc;
+  end;
+
+  TAIBatchContextAdapter = class(TInterfacedObject, IAIBatchContext)
+  private
+    FCancelProc: TCancelAIBatchProc;
+    FFindNodeFunc: TFindTreeNodeByReferenceFunc;
+    FMarkPendingProc: TMarkNodePendingProc;
+    FAutoSaveProc: TOnAutoSaveNeeded;
+    FGetRefFunc: TGetVerseReferenceFunc;
+  public
+    constructor Create(
+      ACancelProc: TCancelAIBatchProc;
+      AFindNodeFunc: TFindTreeNodeByReferenceFunc;
+      AMarkPendingProc: TMarkNodePendingProc;
+      AAutoSaveProc: TOnAutoSaveNeeded;
+      AGetRefFunc: TGetVerseReferenceFunc);
+    procedure CancelCurrentBatch;
+    function FindTreeNodeByReference(const Ref: string): TTreeNode;
+    procedure MarkNodePending(Node: TTreeNode; const Ref: string);
+    function GetAutoSaveCallback: TOnAutoSaveNeeded;
+    function GetVerseReferenceCallback: TGetVerseReferenceFunc;
+  end;
+
+  TAIBatchPreparation = record
+    Flow: IAIVerseFlow;
+    Manager: TAIProcessingManager;
+    SkippedCount: Integer;
+  end;
+
+  TAIBatchOrchestrator = class
+  private
+    FConfig: TProjectConfig;
+    FContext: IAIBatchContext;
+    FGlobalSettings: TAIGlobalSettings;
+    function FilterIneligibleTranslationItems(WorkItems: TAIBatchWorkItemList;
+      ForceOverwrite: Boolean): Integer;
+    procedure MarkPendingNodes(WorkItems: TAIBatchWorkItemList);
+  public
+    constructor Create(AConfig: TProjectConfig; AContext: IAIBatchContext;
+      AGlobalSettings: TAIGlobalSettings = nil);
+    function PrepareBatch(const FlowId: string; WorkItems: TAIBatchWorkItemList;
+      MaxParallel: Integer): TAIBatchPreparation;
+  end;
+
+implementation
+
+uses ai_translation_flow, ai_credential_store, ai_effective_settings;
+
+resourcestring
+  SAIConfigurationMissing = 'Configure the AI model and API key in LLM Options before processing.';
+
+{ TAIBatchContextAdapter }
+
+constructor TAIBatchContextAdapter.Create(
+  ACancelProc: TCancelAIBatchProc;
+  AFindNodeFunc: TFindTreeNodeByReferenceFunc;
+  AMarkPendingProc: TMarkNodePendingProc;
+  AAutoSaveProc: TOnAutoSaveNeeded;
+  AGetRefFunc: TGetVerseReferenceFunc);
+begin
+  inherited Create;
+  FCancelProc := ACancelProc;
+  FFindNodeFunc := AFindNodeFunc;
+  FMarkPendingProc := AMarkPendingProc;
+  FAutoSaveProc := AAutoSaveProc;
+  FGetRefFunc := AGetRefFunc;
+end;
+
+procedure TAIBatchContextAdapter.CancelCurrentBatch;
+begin
+  if Assigned(FCancelProc) then FCancelProc;
+end;
+
+function TAIBatchContextAdapter.FindTreeNodeByReference(const Ref: string): TTreeNode;
+begin
+  if Assigned(FFindNodeFunc) then
+    Result := FFindNodeFunc(Ref)
+  else
+    Result := nil;
+end;
+
+procedure TAIBatchContextAdapter.MarkNodePending(Node: TTreeNode; const Ref: string);
+begin
+  if Assigned(FMarkPendingProc) then FMarkPendingProc(Node, Ref);
+end;
+
+function TAIBatchContextAdapter.GetAutoSaveCallback: TOnAutoSaveNeeded;
+begin
+  Result := FAutoSaveProc;
+end;
+
+function TAIBatchContextAdapter.GetVerseReferenceCallback: TGetVerseReferenceFunc;
+begin
+  Result := FGetRefFunc;
+end;
+
+{ TAIBatchOrchestrator }
+
+constructor TAIBatchOrchestrator.Create(AConfig: TProjectConfig; AContext: IAIBatchContext;
+  AGlobalSettings: TAIGlobalSettings);
+begin
+  inherited Create;
+  FConfig := AConfig;
+  FContext := AContext;
+  FGlobalSettings := AGlobalSettings;
+end;
+
+function TAIBatchOrchestrator.FilterIneligibleTranslationItems(
+  WorkItems: TAIBatchWorkItemList; ForceOverwrite: Boolean): Integer;
+var
+  I: Integer;
+  SkippedItem: TAIBatchWorkItem;
+begin
+  Result := 0;
+  if not Assigned(WorkItems) then
+    Exit;
+
+  for I := WorkItems.Count - 1 downto 0 do
+  begin
+    if IsTranslationDestinationEligible(
+        WorkItems[I].VerseData.TranslatedText, ForceOverwrite) then
+      Continue;
+
+    SkippedItem := WorkItems.ExtractItem(I);
+    SkippedItem.Free;
+    Inc(Result);
+  end;
+end;
+
+procedure TAIBatchOrchestrator.MarkPendingNodes(WorkItems: TAIBatchWorkItemList);
+var
+  I: Integer;
+  Node: TTreeNode;
+  VerseData: TVerseData;
+begin
+  if not Assigned(WorkItems) then
+    Exit;
+
+  for I := 0 to WorkItems.Count - 1 do
+  begin
+    VerseData := WorkItems[I].VerseData;
+    if VerseData.ReferenceID.IsEmpty then
+      Continue;
+
+    if not Assigned(FContext) then
+      Continue;
+
+    Node := FContext.FindTreeNodeByReference(VerseData.ReferenceID);
+    if Assigned(Node) then
+      FContext.MarkNodePending(Node, VerseData.ReferenceID);
+  end;
+end;
+
+function TAIBatchOrchestrator.PrepareBatch(const FlowId: string;
+  WorkItems: TAIBatchWorkItemList; MaxParallel: Integer): TAIBatchPreparation;
+var
+  FlowConfig: IAIFlowConfig;
+  ForceOverwrite: Boolean;
+  Settings: TAICommonSettings;
+  Connection: TAIResolvedConnection;
+  Global: TAIGlobalSettings;
+  Scope: TAICredentialScope;
+begin
+  Result.Flow := nil;
+  Result.Manager := nil;
+  Result.SkippedCount := 0;
+
+  if not Assigned(WorkItems) or (WorkItems.Count = 0) then
+    Exit;
+
+  if SameText(FlowId, 'translation') then
+  begin
+    ForceOverwrite := False;
+    if Assigned(FConfig) then
+      ForceOverwrite := LowerCase(Trim(FConfig.ReadString(
+        AI_TRANSLATION_CONFIG_KEY_FORCE_OVERWRITE))) = 'true';
+    Result.SkippedCount := FilterIneligibleTranslationItems(
+      WorkItems, ForceOverwrite);
+    if WorkItems.Count = 0 then
+      Exit;
+  end;
+
+  FlowConfig := GetFlowConfigById(FlowId);
+  if not Assigned(FlowConfig) then
+    Exit;
+
+  Result.Flow := FlowConfig.CreateFlowInstance(CreateAIFlowContext(FConfig));
+  if not Assigned(Result.Flow) then
+    Exit;
+
+  Global := FGlobalSettings;
+  if not Assigned(Global) then Global := TAIGlobalSettings.Create;
+  try
+    Settings := ResolveCommonAISettings(FConfig, Global);
+    if SameText(FlowId, 'translation') then Scope := acsTranslation
+    else Scope := acsAssociation;
+    Connection := ResolveAIConnection(FConfig, Global, Result.Flow, Scope);
+  finally
+    if not Assigned(FGlobalSettings) then Global.Free;
+  end;
+  if MaxParallel <= 0 then MaxParallel := Settings.MaxParallel;
+  if Assigned(FContext) then FContext.CancelCurrentBatch;
+  MarkPendingNodes(WorkItems);
+  Result.Manager := TAIProcessingManager.Create(Connection.Model,
+    Connection.ApiKey, MaxParallel);
+  Result.Manager.ConfigureResolvedConnection(Connection.Provider,
+    Connection.Model, Connection.ApiKey);
+  Result.Manager.MaxRetries := Settings.MaxRetries;
+  Result.Manager.RetryBaseDelay := Settings.RetryDelay;
+  Result.Manager.AutoSaveInterval := Settings.AutoSaveInterval;
+  if Assigned(FContext) then
+  begin
+    Result.Manager.OnAutoSaveNeeded := FContext.GetAutoSaveCallback;
+    Result.Manager.GetVerseReference := FContext.GetVerseReferenceCallback;
+  end;
+end;
+
+end.

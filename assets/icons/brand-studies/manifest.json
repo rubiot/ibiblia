@@ -1,0 +1,113 @@
+{
+  "purpose": "Original brand proposals for evaluation; not installed.",
+  "designs": [
+    {
+      "id": "01-pergaminho-elo",
+      "title": "Pergaminho e elo",
+      "subtitle": "Um texto antigo, uma ligação viva",
+      "description": "Um pergaminho vertical recebe o elo azul e dourado no centro. As duas bordas enroladas tornam o suporte antigo reconhecível, enquanto o elo mantém a associação de textos como gesto principal.",
+      "source": "source/svg/01-pergaminho-elo.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64,
+        128,
+        256
+      ]
+    },
+    {
+      "id": "02-pergaminhos-paralelos",
+      "title": "Pergaminhos paralelos",
+      "subtitle": "Origem e tradução, lado a lado",
+      "description": "Dois pergaminhos estreitos se encontram por uma ponte contínua. O azul identifica uma leitura e o dourado a outra; os rolos em extremos opostos sugerem duas tradições textuais que passam a ser consultadas juntas.",
+      "source": "source/svg/02-pergaminhos-paralelos.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64,
+        128,
+        256
+      ]
+    },
+    {
+      "id": "03-faixa-leitura",
+      "title": "Faixa de leitura",
+      "subtitle": "O iBiblia gravado no pergaminho",
+      "description": "Um pergaminho horizontal vira uma faixa azul, com a inicial i desenhada por formas simples. As pontas douradas enroladas e a dobra clara dão personalidade ao contorno; a composição reduzida funciona como marca compacta.",
+      "source": "source/svg/03-faixa-leitura.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64,
+        128,
+        256
+      ]
+    },
+    {
+      "id": "04-alfa-a",
+      "title": "Alfa e A",
+      "subtitle": "Alfabetos conectados",
+      "description": "O alfa grego e o A latino formam uma assinatura direta, unidos por um elo azul e dourado. A composição sem moldura dá protagonismo às letras.",
+      "source": "source/svg/04-alfa-a.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64,
+        128,
+        256
+      ]
+    },
+    {
+      "id": "05-mem-m",
+      "title": "Mem e M",
+      "subtitle": "Uma ponte entre escritas",
+      "description": "O M latino e a letra hebraica mem ocupam duas placas ligadas. A forma compacta enfatiza a convivência de alfabetos e a conexão entre textos.",
+      "source": "source/svg/05-mem-m.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64,
+        128,
+        256
+      ]
+    },
+    {
+      "id": "06-pergaminho-alfabetos",
+      "title": "Pergaminho dos alfabetos",
+      "subtitle": "Texto antigo, conexão presente",
+      "description": "Um pergaminho claro abriga o alfa grego; uma pequena página azul traz o A latino. O elo dourado une as duas superfícies em uma só marca.",
+      "source": "source/svg/06-pergaminho-alfabetos.svg",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64,
+        128,
+        256
+      ]
+    }
+  ]
+}

@@ -1,0 +1,70 @@
+[
+  {
+    "id": "07-alfa-trama",
+    "title": "Alfa em trama",
+    "description": "O alfa azul envolve o A dourado; a travessa do A passa por cima do alfa enquanto sua haste mergulha por baixo. As próprias letras formam a trama.",
+    "source": "source/svg/07-alfa-trama.svg",
+    "sizes": [
+      16,
+      20,
+      24,
+      32,
+      40,
+      48,
+      64,
+      128,
+      256
+    ]
+  },
+  {
+    "id": "08-alfa-diagonal",
+    "title": "Alfa diagonal",
+    "description": "Um alfa inclinado atravessa um A firme. Recortes transparentes alternam qual letra fica à frente e tornam a sobreposição uma trama legível.",
+    "source": "source/svg/08-alfa-diagonal.svg",
+    "sizes": [
+      16,
+      20,
+      24,
+      32,
+      40,
+      48,
+      64,
+      128,
+      256
+    ]
+  },
+  {
+    "id": "09-mem-trama",
+    "title": "Mem e M · trama",
+    "description": "As duas letras ocupam o mesmo espaço. A diagonal azul passa à frente de um traço dourado e retorna por trás do outro.",
+    "source": "source/svg/09-mem-trama.svg",
+    "sizes": [
+      16,
+      20,
+      24,
+      32,
+      40,
+      48,
+      64,
+      128,
+      256
+    ]
+  },
+  {
+    "id": "10-mem-diagonal",
+    "title": "Mem e M · diagonal",
+    "description": "A mem azul envolve parte do M dourado. O deslocamento preserva as duas letras e evidencia a alternância dos traços.",
+    "source": "source/svg/10-mem-diagonal.svg",
+    "sizes": [
+      16,
+      20,
+      24,
+      32,
+      40,
+      48,
+      64,
+      128,
+      256
+    ]
+  }
+]

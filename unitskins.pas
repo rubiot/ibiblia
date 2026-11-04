@@ -1,11 +1,14 @@
 unit unitskins;
 
 {$mode objfpc}{$H+}
+{$WARN 4055 OFF}
+{$WARN 4056 OFF}
+{$WARN 4082 OFF}
 
 interface
 
 uses
-  Classes, SysUtils, Math, Graphics, Controls, Forms, StdCtrls, ExtCtrls, ComCtrls, Menus, Buttons, Dialogs, LCLProc
+  Classes, SysUtils, Math, Graphics, Controls, Forms, StdCtrls, ExtCtrls, ComCtrls, Menus, Buttons, Dialogs, ImgList, LCLProc
   {$IFDEF WINDOWS}
   , Windows
   {$ENDIF}
@@ -38,6 +41,8 @@ type
     // Words hover & selection
     PointedBg: TColor;
     PointedText: TColor;
+    SelectedBg: TColor;
+    SelectedText: TColor;
     HighlightBg: TColor;
     HighlightText: TColor;
     // TreeView / Navigation
@@ -79,6 +84,11 @@ procedure HookTreeViewControl(AControl: TWinControl);
 procedure UnhookTreeViewControl(AControl: TWinControl);
 procedure HookEditControl(AControl: TWinControl);
 procedure UnhookEditControl(AControl: TWinControl);
+procedure HookStatusBarControl(AControl: TWinControl);
+procedure UnhookStatusBarControl(AControl: TWinControl);
+procedure HookNCScrollBarControl(AControl: TWinControl);
+procedure UnhookNCScrollBarControl(AControl: TWinControl);
+procedure PaintThemedNCScrollBars(hWnd: THandle);
 function HandleToolBarCustomDraw(lParam: LPARAM; const ASkin: TSkinColors; var AHandled: Boolean): LRESULT;
 
 // Themed Dialogs
@@ -124,8 +134,24 @@ var
 
 var
   CurrentSkin: TSkinColors;
+  ApplicationShuttingDown: Boolean = False;
+
+function IsValidSubclassedControl(dwRefData: PtrUInt): Boolean; inline;
 
 implementation
+
+type
+  TControlAccess = class(TControl);
+  TCustomLabelAccess = class(TCustomLabel);
+  TCustomSplitterAccess = class(TCustomSplitter);
+
+function IsValidSubclassedControl(dwRefData: PtrUInt): Boolean; inline;
+begin
+  Result := (not ApplicationShuttingDown) and
+            (dwRefData <> 0) and
+            (TObject(dwRefData) is TComponent) and
+            (not (csDestroying in TComponent(dwRefData).ComponentState));
+end;
 
 {$IFDEF WINDOWS}
 type
@@ -206,6 +232,8 @@ begin
       Result.PanelBorder := MakeRGB(200, 200, 200);
       Result.PointedBg := clHighlight;
       Result.PointedText := clHighlightText;
+      Result.SelectedBg := MakeRGB($FF, $EB, $75);
+      Result.SelectedText := clBlack;
       Result.HighlightBg := clYellow;
       Result.HighlightText := clBlack;
       Result.TreeBg := clWindow;
@@ -231,6 +259,8 @@ begin
       Result.PanelBorder := MakeRGB($3E, $3E, $42);
       Result.PointedBg := MakeRGB($0E, $63, $9C);
       Result.PointedText := MakeRGB($FF, $FF, $FF);
+      Result.SelectedBg := MakeRGB($3D, $5A, $80);
+      Result.SelectedText := MakeRGB($FF, $FF, $FF);
       Result.HighlightBg := MakeRGB($65, $5C, $0F);
       Result.HighlightText := MakeRGB($FF, $FF, $FF);
       Result.TreeBg := MakeRGB($1E, $1E, $1E);
@@ -256,6 +286,8 @@ begin
       Result.PanelBorder := MakeRGB($2C, $2C, $2C);
       Result.PointedBg := MakeRGB($1A, $73, $E8);
       Result.PointedText := MakeRGB($FF, $FF, $FF);
+      Result.SelectedBg := MakeRGB($28, $50, $88);
+      Result.SelectedText := MakeRGB($FF, $FF, $FF);
       Result.HighlightBg := MakeRGB($D4, $A0, $17);
       Result.HighlightText := MakeRGB($00, $00, $00);
       Result.TreeBg := MakeRGB($12, $12, $12);
@@ -281,6 +313,8 @@ begin
       Result.PanelBorder := MakeRGB($C9, $BC, $9C);
       Result.PointedBg := MakeRGB($B8, $D2, $E6);
       Result.PointedText := MakeRGB($00, $00, $00);
+      Result.SelectedBg := MakeRGB($E2, $C5, $78);
+      Result.SelectedText := MakeRGB($1F, $18, $12);
       Result.HighlightBg := MakeRGB($D9, $C2, $89);
       Result.HighlightText := MakeRGB($00, $00, $00);
       Result.TreeBg := MakeRGB($F4, $EE, $DB);
@@ -306,6 +340,8 @@ begin
       Result.PanelBorder := MakeRGB($2F, $3D, $4D);
       Result.PointedBg := MakeRGB($2A, $60, $99);
       Result.PointedText := MakeRGB($FF, $FF, $FF);
+      Result.SelectedBg := MakeRGB($3B, $69, $98);
+      Result.SelectedText := MakeRGB($FF, $FF, $FF);
       Result.HighlightBg := MakeRGB($35, $52, $70);
       Result.HighlightText := MakeRGB($FF, $FF, $FF);
       Result.TreeBg := MakeRGB($1C, $23, $2B);
@@ -331,6 +367,8 @@ begin
       Result.PanelBorder := MakeRGB($09, $4B, $5C);
       Result.PointedBg := MakeRGB($26, $8B, $D2);
       Result.PointedText := MakeRGB($FD, $F6, $E3);
+      Result.SelectedBg := MakeRGB($1B, $65, $8A);
+      Result.SelectedText := MakeRGB($FD, $F6, $E3);
       Result.HighlightBg := MakeRGB($B5, $89, $00);
       Result.HighlightText := MakeRGB($00, $2B, $36);
       Result.TreeBg := MakeRGB($00, $2B, $36);
@@ -356,6 +394,8 @@ begin
       Result.PanelBorder := MakeRGB(80, 80, 80);
       Result.PointedBg := MakeRGB(0, 120, 215);
       Result.PointedText := MakeRGB(255, 255, 255);
+      Result.SelectedBg := MakeRGB(0, 120, 215);
+      Result.SelectedText := MakeRGB(255, 255, 255);
       Result.HighlightBg := MakeRGB(255, 255, 0);
       Result.HighlightText := MakeRGB(0, 0, 0);
       Result.TreeBg := MakeRGB(0, 0, 0);
@@ -407,10 +447,12 @@ procedure SetControlThemeMode(AControl: TWinControl; AIsDark: Boolean; const Dar
 var
   wTheme: WideString;
   wSpace: WideString;
-  desiredMode, currentMode: PtrUInt;
+  desiredMode: PtrUInt;
+  hChild: HWND;
 {$ENDIF}
 begin
-  if not assigned(AControl) or not AControl.HandleAllocated then exit;
+  if not assigned(AControl) or (csDestroying in AControl.ComponentState) or
+     not AControl.HandleAllocated or (AControl.Handle = 0) then exit;
 
   {$IFDEF WINDOWS}
   InitUxTheme;
@@ -423,13 +465,6 @@ begin
   else
     desiredMode := 4;
 
-  currentMode := GetPropW(AControl.Handle, 'iBibliaThemeMode');
-  if currentMode = desiredMode then
-  begin
-    RedrawWindow(AControl.Handle, nil, 0, RDW_FRAME or RDW_INVALIDATE);
-    AControl.Invalidate;
-    Exit;
-  end;
   SetPropW(AControl.Handle, 'iBibliaThemeMode', desiredMode);
 
   if Assigned(fnAllowDarkModeForWindow) then
@@ -458,6 +493,23 @@ begin
     else
     begin
       fnSetWindowTheme(AControl.Handle, nil, nil);
+    end;
+
+    // Also theme any native child ScrollBar windows owned by this control
+    hChild := FindWindowExW(AControl.Handle, 0, 'ScrollBar', nil);
+    while hChild <> 0 do
+    begin
+      if Assigned(fnAllowDarkModeForWindow) then
+        fnAllowDarkModeForWindow(hChild, AIsDark);
+      if AIsDark then
+      begin
+        wTheme := 'DarkMode_Explorer';
+        fnSetWindowTheme(hChild, PWideChar(wTheme), nil);
+      end
+      else
+        fnSetWindowTheme(hChild, nil, nil);
+      RedrawWindow(hChild, nil, 0, RDW_FRAME or RDW_INVALIDATE);
+      hChild := FindWindowExW(AControl.Handle, hChild, 'ScrollBar', nil);
     end;
   end;
   RedrawWindow(AControl.Handle, nil, 0, RDW_FRAME or RDW_INVALIDATE);
@@ -612,8 +664,7 @@ begin
   if CurrentSkin.Id = skSepia then
     Result := ColorToRGB(CurrentSkin.WindowBg)
   else
-    // Matches Windows 10/11 ImmersiveContextMenu MENU_POPUPBACKGROUND (RGB(43, 43, 43))
-    Result := RGB(43, 43, 43);
+    Result := ColorToRGB(CurrentSkin.PanelBg);
 end;
 
 function GetCachedPopupMenuBrush: THandle;
@@ -781,7 +832,7 @@ begin
   if uIdSubclass = 0 then ;
   if dwRefData = 0 then ;
 
-  if not IsThemedSkin then
+  if ApplicationShuttingDown or (uMsg = WM_NCDESTROY) or (uMsg = WM_DESTROY) or (not IsThemedSkin) then
   begin
     Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
     Exit;
@@ -939,9 +990,12 @@ const
 var
   pDIS: PMenuDrawItemStruct;
   mi: TMenuItem;
+  parentMenu: TMenu;
+  imgList: TCustomImageList;
+  cnv: TCanvas;
   rc, rcGutter, rcSel, rcChk, rcText, rcShort: RECT;
   hbr, hPen, oldPen, hFont, oldFont: THandle;
-  midY, lineLeft, lineRight, gutterW, cx, cy: Integer;
+  midY, lineLeft, lineRight, gutterW, cx, cy, iconX, iconY, imgIdx: Integer;
   isSelected, isDis: Boolean;
   capStr, shortStr: WideString;
   tabPos: Integer;
@@ -958,32 +1012,25 @@ begin
 
   mi := TMenuItem(pDIS^.itemData);
 
-  // In Dark skins, only override separators (normal items are drawn by LCL VistaMenuDraw in dark mode)
-  if CurrentSkin.IsDark and (not mi.IsLine) and (mi.Caption <> '-') then
-    Exit;
-
   rc := pDIS^.rcItem;
   gutterW := 26;
 
-  // 1. Fill full item background
+  // 1. Fill full item background in CurrentSkin color
   FillRect(pDIS^.hDC, rc, GetCachedPopupMenuBrush);
 
-  // In Sepia, draw warm PanelBg left gutter and 1px vertical divider
-  if CurrentSkin.Id = skSepia then
-  begin
-    rcGutter := rc;
-    rcGutter.Right := Min(rc.Right, rc.Left + gutterW);
-    FillRect(pDIS^.hDC, rcGutter, GetCachedPanelBrush(CurrentSkin.PanelBg));
+  // Draw left gutter and 1px vertical divider in CurrentSkin.PanelBorder
+  rcGutter := rc;
+  rcGutter.Right := Min(rc.Right, rc.Left + gutterW);
+  FillRect(pDIS^.hDC, rcGutter, GetCachedPanelBrush(CurrentSkin.PanelBg));
 
-    if rcGutter.Right < rc.Right then
-    begin
-      hPen := CreatePen(PS_SOLID, 1, ColorToRGB(CurrentSkin.PanelBorder));
-      oldPen := SelectObject(pDIS^.hDC, hPen);
-      MoveToEx(pDIS^.hDC, rcGutter.Right, rc.Top, nil);
-      LineTo(pDIS^.hDC, rcGutter.Right, rc.Bottom);
-      SelectObject(pDIS^.hDC, oldPen);
-      DeleteObject(hPen);
-    end;
+  if rcGutter.Right < rc.Right then
+  begin
+    hPen := CreatePen(PS_SOLID, 1, ColorToRGB(CurrentSkin.PanelBorder));
+    oldPen := SelectObject(pDIS^.hDC, hPen);
+    MoveToEx(pDIS^.hDC, rcGutter.Right, rc.Top, nil);
+    LineTo(pDIS^.hDC, rcGutter.Right, rc.Bottom);
+    SelectObject(pDIS^.hDC, oldPen);
+    DeleteObject(hPen);
   end;
 
   // 2. Separator item
@@ -1002,11 +1049,12 @@ begin
     SelectObject(pDIS^.hDC, oldPen);
     DeleteObject(hPen);
 
+    ExcludeClipRect(pDIS^.hDC, rc.Left, rc.Top, rc.Right, rc.Bottom);
     Result := True;
     Exit;
   end;
 
-  // 3. Normal submenu item (Sepia custom drawing)
+  // 3. Normal submenu item (all themed skins)
   isSelected := (pDIS^.itemState and (ODS_SELECTED or ODS_HOTLIGHT)) <> 0;
   isDis := ((pDIS^.itemState and (ODS_GRAYED or ODS_DISABLED)) <> 0) or (not mi.Enabled);
 
@@ -1014,7 +1062,7 @@ begin
   begin
     rcSel := rc;
     InflateRect(rcSel, -2, -1);
-    hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.HighlightBg));
+    hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.PointedBg));
     FillRect(pDIS^.hDC, rcSel, hbr);
     DeleteObject(hbr);
 
@@ -1023,7 +1071,7 @@ begin
     DeleteObject(hbr);
   end;
 
-  // 4. Checkmark / Radio bullet in left gutter
+  // 4. Checkmark / Radio bullet or Menu Icon in left gutter
   if mi.Checked then
   begin
     rcChk.Left := rc.Left + 3;
@@ -1068,6 +1116,29 @@ begin
       SelectObject(pDIS^.hDC, oldPen);
       DeleteObject(hPen);
     end;
+  end
+  else
+  begin
+    imgIdx := mi.ImageIndex;
+    parentMenu := mi.GetParentMenu;
+    imgList := nil;
+    if Assigned(mi.SubMenuImages) then
+      imgList := mi.SubMenuImages
+    else if Assigned(parentMenu) then
+      imgList := parentMenu.Images;
+    if Assigned(imgList) and (imgIdx >= 0) and (imgIdx < imgList.Count) then
+    begin
+      cnv := TCanvas.Create;
+      try
+        cnv.Handle := pDIS^.hDC;
+        iconX := rc.Left + (gutterW - imgList.Width) div 2;
+        iconY := rc.Top + (rc.Bottom - rc.Top - imgList.Height) div 2;
+        imgList.Draw(cnv, iconX, iconY, imgIdx, not isDis);
+      finally
+        cnv.Handle := 0;
+        cnv.Free;
+      end;
+    end;
   end;
 
   // 5. Caption and Shortcut text
@@ -1102,9 +1173,11 @@ begin
   if isDis then
     txtCol := ColorToRGB(CurrentSkin.WindowTextDim)
   else if isSelected then
-    txtCol := ColorToRGB(CurrentSkin.HighlightText)
+    txtCol := ColorToRGB(CurrentSkin.PointedText)
+  else if CurrentSkin.Id = skSepia then
+    txtCol := ColorToRGB(CurrentSkin.WindowText)
   else
-    txtCol := ColorToRGB(CurrentSkin.WindowText);
+    txtCol := ColorToRGB(CurrentSkin.PanelText);
   oldCol := SetTextColor(pDIS^.hDC, txtCol);
 
   if Length(capStr) > 0 then
@@ -1165,7 +1238,7 @@ const
 var
   pCWP: PMenuCWPStruct;
 begin
-  if (nCode = HC_ACTION) and IsThemedSkin and (lParam <> 0) then
+  if (not ApplicationShuttingDown) and (nCode = HC_ACTION) and IsThemedSkin and (lParam <> 0) then
   begin
     pCWP := PMenuCWPStruct(PtrUInt(lParam));
     case pCWP^.message of
@@ -1192,7 +1265,7 @@ var
   pRet: PMenuCWPRetStruct;
   hdcWin: HDC;
 begin
-  if (nCode = HC_ACTION) and IsThemedSkin and (lParam <> 0) then
+  if (not ApplicationShuttingDown) and (nCode = HC_ACTION) and IsThemedSkin and (lParam <> 0) then
   begin
     pRet := PMenuCWPRetStruct(PtrUInt(lParam));
     case pRet^.message of
@@ -1212,6 +1285,21 @@ begin
             PaintPopupMenuBorder(pRet^.hwnd, hdcWin);
             ReleaseDC(pRet^.hwnd, hdcWin);
           end;
+        end
+        else if (GetPropW(pRet^.hwnd, 'iBibliaThemeMode') <> 0) and
+                ((GetWindowLong(pRet^.hwnd, GWL_STYLE) and (WS_VSCROLL or WS_HSCROLL)) <> 0) then
+        begin
+          PaintThemedNCScrollBars(pRet^.hwnd);
+        end;
+      end;
+      WM_VSCROLL, WM_HSCROLL, WM_MOUSEWHEEL, WM_NCMOUSEMOVE,
+      WM_NCLBUTTONDOWN, WM_NCLBUTTONUP, WM_SETCURSOR, WM_TIMER,
+      WM_SIZE, $0449 {EM_STREAMIN}, $04E1 {EM_SETZOOM}:
+      begin
+        if (GetPropW(pRet^.hwnd, 'iBibliaThemeMode') <> 0) and
+           ((GetWindowLong(pRet^.hwnd, GWL_STYLE) and (WS_VSCROLL or WS_HSCROLL)) <> 0) then
+        begin
+          PaintThemedNCScrollBars(pRet^.hwnd);
         end;
       end;
       WM_PRINT:
@@ -1301,6 +1389,150 @@ type
     lParam: LPARAM;
   end;
 
+function UpDownSubclassProc(hWnd: HWND; uMsg: UINT; wParam: WPARAM; lParam: LPARAM;
+  uIdSubclass: PtrUInt; dwRefData: PtrUInt): LRESULT; stdcall;
+var
+  ps: PAINTSTRUCT;
+  hdc: THandle;
+  rc, rcLeft, rcRight: RECT;
+  hbr, hbrBorder, hPen, oldPen: THandle;
+  pt: TPoint;
+  midX, cy, cxL, cxR, arrowSize: Integer;
+  isHotLeft, isHotRight, isDownLeft, isDownRight, isDis: Boolean;
+  arrowColor: COLORREF;
+begin
+  if uIdSubclass = 0 then ;
+  if dwRefData = 0 then ;
+  if ApplicationShuttingDown or (uMsg = WM_NCDESTROY) or (uMsg = WM_DESTROY) then
+  begin
+    Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+    Exit;
+  end;
+
+  if (uMsg = WM_PAINT) and IsThemedSkin then
+  begin
+    hdc := BeginPaint(hWnd, @ps);
+    if hdc <> 0 then
+    begin
+      FillChar(rc, SizeOf(rc), 0);
+      GetClientRect(hWnd, @rc);
+      isDis := not IsWindowEnabled(hWnd);
+      midX := (rc.Left + rc.Right) div 2;
+      rcLeft := Classes.Rect(rc.Left, rc.Top, midX, rc.Bottom);
+      rcRight := Classes.Rect(midX, rc.Top, rc.Right, rc.Bottom);
+
+      GetCursorPos(@pt);
+      ScreenToClient(hWnd, @pt);
+      isHotLeft := not isDis and PtInRect(rcLeft, pt);
+      isHotRight := not isDis and PtInRect(rcRight, pt);
+      isDownLeft := isHotLeft and ((GetKeyState(VK_LBUTTON) and $8000) <> 0);
+      isDownRight := isHotRight and ((GetKeyState(VK_LBUTTON) and $8000) <> 0);
+
+      // Paint left button [<]
+      if isDownLeft then
+        hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.HighlightBg))
+      else if isHotLeft then
+        hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.PointedBg))
+      else
+        hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.PanelBg));
+      FillRect(hdc, rcLeft, hbr);
+      DeleteObject(hbr);
+
+      // Paint right button [>]
+      if isDownRight then
+        hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.HighlightBg))
+      else if isHotRight then
+        hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.PointedBg))
+      else
+        hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.PanelBg));
+      FillRect(hdc, rcRight, hbr);
+      DeleteObject(hbr);
+
+      // Borders
+      hbrBorder := CreateSolidBrush(ColorToRGB(CurrentSkin.PanelBorder));
+      FrameRect(hdc, rcLeft, hbrBorder);
+      FrameRect(hdc, rcRight, hbrBorder);
+      DeleteObject(hbrBorder);
+
+      cy := (rc.Top + rc.Bottom) div 2;
+      arrowSize := Max(3, Min(5, (rc.Bottom - rc.Top) div 4));
+
+      // Draw left chevron '<'
+      if isDis then
+        arrowColor := ColorToRGB(CurrentSkin.WindowTextDim)
+      else if isHotLeft or isDownLeft then
+        arrowColor := ColorToRGB(CurrentSkin.PointedText)
+      else
+        arrowColor := ColorToRGB(CurrentSkin.PanelText);
+      hPen := CreatePen(PS_SOLID, 2, arrowColor);
+      oldPen := SelectObject(hdc, hPen);
+      cxL := (rcLeft.Left + rcLeft.Right) div 2;
+      MoveToEx(hdc, cxL + (arrowSize div 2), cy - arrowSize, nil);
+      LineTo(hdc, cxL - (arrowSize div 2) - 1, cy);
+      LineTo(hdc, cxL + (arrowSize div 2) + 1, cy + arrowSize + 1);
+      SelectObject(hdc, oldPen);
+      DeleteObject(hPen);
+
+      // Draw right chevron '>'
+      if isDis then
+        arrowColor := ColorToRGB(CurrentSkin.WindowTextDim)
+      else if isHotRight or isDownRight then
+        arrowColor := ColorToRGB(CurrentSkin.PointedText)
+      else
+        arrowColor := ColorToRGB(CurrentSkin.PanelText);
+      hPen := CreatePen(PS_SOLID, 2, arrowColor);
+      oldPen := SelectObject(hdc, hPen);
+      cxR := (rcRight.Left + rcRight.Right) div 2;
+      MoveToEx(hdc, cxR - (arrowSize div 2), cy - arrowSize, nil);
+      LineTo(hdc, cxR + (arrowSize div 2) + 1, cy);
+      LineTo(hdc, cxR - (arrowSize div 2) - 1, cy + arrowSize + 1);
+      SelectObject(hdc, oldPen);
+      DeleteObject(hPen);
+
+      EndPaint(hWnd, @ps);
+    end;
+    Result := 0;
+    Exit;
+  end;
+
+  if (uMsg = WM_ERASEBKGND) and IsThemedSkin then
+  begin
+    FillChar(rc, SizeOf(rc), 0);
+    GetClientRect(hWnd, @rc);
+    hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.PanelBg));
+    FillRect(THandle(wParam), rc, hbr);
+    DeleteObject(hbr);
+    Result := 1;
+    Exit;
+  end;
+
+  if ((uMsg = WM_MOUSEMOVE) or (uMsg = WM_LBUTTONDOWN) or (uMsg = WM_LBUTTONUP) or
+      (uMsg = WM_MOUSELEAVE)) and IsThemedSkin then
+  begin
+    Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+    InvalidateRect(hWnd, nil, FALSE);
+    Exit;
+  end;
+
+  Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+end;
+
+procedure HookUpDownChildren(hTabWnd: HWND);
+var
+  hUpDown: HWND;
+begin
+  if (hTabWnd = 0) or not Assigned(fnSetWindowSubclass) then Exit;
+  hUpDown := FindWindowExW(hTabWnd, 0, 'msctls_updown32', nil);
+  while hUpDown <> 0 do
+  begin
+    if Assigned(fnAllowDarkModeForWindow) then
+      fnAllowDarkModeForWindow(hUpDown, CurrentSkin.IsDark);
+    fnSetWindowSubclass(hUpDown, @UpDownSubclassProc, 4002, 0);
+    InvalidateRect(hUpDown, nil, FALSE);
+    hUpDown := FindWindowExW(hTabWnd, hUpDown, 'msctls_updown32', nil);
+  end;
+end;
+
 function UniversalTabSubclassProc(hWnd: HWND; uMsg: UINT; wParam: WPARAM; lParam: LPARAM;
   uIdSubclass: PtrUInt; dwRefData: PtrUInt): LRESULT; stdcall;
 var
@@ -1320,6 +1552,11 @@ var
   lblCtrl: TCustomLabel;
   parentTabCtrl: TTabControl;
 begin
+  if ApplicationShuttingDown or (uMsg = WM_NCDESTROY) or (uMsg = WM_DESTROY) then
+  begin
+    Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+    Exit;
+  end;
   if (uMsg = WM_PAINT) and IsThemedSkin then
   begin
     SetWindowLong(hWnd, GWL_STYLE, GetWindowLong(hWnd, GWL_STYLE) or WS_CLIPCHILDREN);
@@ -1331,7 +1568,7 @@ begin
     //         Do NOT call fnDefSubclassProc (which paints a stark white #F9F9F9 ttPane
     //         over the entire body) and do NOT draw fake 80px fallback tabs.
     //         Instead, paint the dark pane background, 1px border, and child labels!
-    if (count <= 0) and (dwRefData <> 0) and (TObject(dwRefData) is TTabControl) then
+    if (count <= 0) and IsValidSubclassedControl(dwRefData) and (TObject(dwRefData) is TTabControl) then
     begin
       hdc := BeginPaint(hWnd, @ps);
       if hdc <> 0 then
@@ -1446,9 +1683,9 @@ begin
       curSel := SendMessage(hWnd, TCM_GETCURSEL, 0, 0);
 
       parentTabCtrl := nil;
-      if (dwRefData <> 0) and (TObject(dwRefData) is TTabControl) then
+      if IsValidSubclassedControl(dwRefData) and (TObject(dwRefData) is TTabControl) then
         parentTabCtrl := TTabControl(dwRefData)
-      else if (dwRefData <> 0) and (TObject(dwRefData) is TControl) and
+      else if IsValidSubclassedControl(dwRefData) and (TObject(dwRefData) is TControl) and
               Assigned(TControl(dwRefData).Parent) and (TControl(dwRefData).Parent is TTabControl) then
         parentTabCtrl := TTabControl(TControl(dwRefData).Parent);
 
@@ -1459,7 +1696,7 @@ begin
         if curSel < 0 then
           curSel := parentTabCtrl.TabIndex;
       end
-      else if (dwRefData <> 0) and (TObject(dwRefData) is TPageControl) then
+      else if IsValidSubclassedControl(dwRefData) and (TObject(dwRefData) is TPageControl) then
       begin
         if count <= 0 then
           count := TPageControl(dwRefData).PageCount;
@@ -1512,7 +1749,7 @@ begin
       end;
 
       hFont := THandle(SendMessage(hWnd, WM_GETFONT, 0, 0));
-      if (hFont = 0) and (dwRefData <> 0) and (TObject(dwRefData) is TControl) then
+      if (hFont = 0) and IsValidSubclassedControl(dwRefData) and (TObject(dwRefData) is TControl) then
         hFont := THandle(TControl(dwRefData).Font.Handle);
       if hFont = 0 then
         hFont := GetStockObject(DEFAULT_GUI_FONT);
@@ -1554,7 +1791,7 @@ begin
             end;
           end;
         end
-        else if (dwRefData <> 0) and (TObject(dwRefData) is TPageControl) then
+        else if IsValidSubclassedControl(dwRefData) and (TObject(dwRefData) is TPageControl) then
         begin
           if (i >= 0) and (i < TPageControl(dwRefData).PageCount) then
           begin
@@ -1620,6 +1857,8 @@ begin
       if oldFont <> 0 then
         SelectObject(memDC, oldFont);
 
+      HookUpDownChildren(hWnd);
+
       BitBlt(hdc, rcClient.Left, rcClient.Top,
              rcClient.Right - rcClient.Left, rcClient.Bottom - rcClient.Top,
              memDC, 0, 0, SRCCOPY);
@@ -1629,6 +1868,10 @@ begin
       DeleteDC(memDC);
 
       ReleaseDC(hWnd, hdc);
+
+      if FindWindowExW(hWnd, 0, 'msctls_updown32', nil) <> 0 then
+        RedrawWindow(FindWindowExW(hWnd, 0, 'msctls_updown32', nil), nil, 0,
+          RDW_INVALIDATE or RDW_UPDATENOW);
     end;
     Exit;
   end;
@@ -1664,7 +1907,7 @@ begin
   begin
     Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
     InvalidateRect(hWnd, nil, FALSE);
-    if (uMsg <> WM_MOUSEMOVE) and (dwRefData <> 0) and (TObject(dwRefData) is TControl) and
+    if (uMsg <> WM_MOUSEMOVE) and IsValidSubclassedControl(dwRefData) and (TObject(dwRefData) is TControl) and
        Assigned(TControl(dwRefData).Parent) then
       TControl(dwRefData).Parent.Invalidate;
     Exit;
@@ -1677,33 +1920,42 @@ procedure HookTabControl(AControl: TWinControl);
 var
   i: Integer;
   childWin: TWinControl;
+  parentForm: TCustomForm;
 begin
   InitUxTheme;
-  if not Assigned(fnSetWindowSubclass) then exit;
-  if Assigned(AControl) then
+  if not Assigned(fnSetWindowSubclass) or not Assigned(AControl) or
+     (csDestroying in AControl.ComponentState) then exit;
+  parentForm := GetParentForm(AControl);
+  if not AControl.HandleAllocated then
   begin
-    AControl.HandleNeeded;
-    if AControl.Handle <> 0 then
+    if Assigned(parentForm) and parentForm.HandleAllocated and AControl.IsVisible then
+      AControl.HandleNeeded
+    else
+      Exit;
+  end;
+  if AControl.HandleAllocated and (AControl.Handle <> 0) then
+  begin
+    SetWindowLong(AControl.Handle, GWL_STYLE,
+      GetWindowLong(AControl.Handle, GWL_STYLE) or WS_CLIPCHILDREN);
+    fnSetWindowSubclass(AControl.Handle, @UniversalTabSubclassProc, 4001, PtrUInt(AControl));
+    HookUpDownChildren(AControl.Handle);
+    AControl.Invalidate;
+  end;
+  for i := 0 to AControl.ControlCount - 1 do
+  begin
+    if AControl.Controls[i] is TCustomTabControl then
     begin
-      SetWindowLong(AControl.Handle, GWL_STYLE,
-        GetWindowLong(AControl.Handle, GWL_STYLE) or WS_CLIPCHILDREN);
-      fnSetWindowSubclass(AControl.Handle, @UniversalTabSubclassProc, 4001, PtrUInt(AControl));
-      AControl.Invalidate;
-    end;
-    for i := 0 to AControl.ControlCount - 1 do
-    begin
-      if AControl.Controls[i] is TCustomTabControl then
-      begin
-        childWin := TWinControl(AControl.Controls[i]);
+      childWin := TWinControl(AControl.Controls[i]);
+      if not childWin.HandleAllocated and AControl.HandleAllocated then
         childWin.HandleNeeded;
+      if childWin.HandleAllocated and (childWin.Handle <> 0) then
+      begin
         ApplyDarkModeToControl(childWin, CurrentSkin.IsDark);
-        if childWin.Handle <> 0 then
-        begin
-          SetWindowLong(childWin.Handle, GWL_STYLE,
-            GetWindowLong(childWin.Handle, GWL_STYLE) or WS_CLIPCHILDREN);
-          fnSetWindowSubclass(childWin.Handle, @UniversalTabSubclassProc, 4001, PtrUInt(childWin));
-          childWin.Invalidate;
-        end;
+        SetWindowLong(childWin.Handle, GWL_STYLE,
+          GetWindowLong(childWin.Handle, GWL_STYLE) or WS_CLIPCHILDREN);
+        fnSetWindowSubclass(childWin.Handle, @UniversalTabSubclassProc, 4001, PtrUInt(childWin));
+        HookUpDownChildren(childWin.Handle);
+        childWin.Invalidate;
       end;
     end;
   end;
@@ -1716,12 +1968,12 @@ begin
   if not Assigned(fnRemoveWindowSubclass) then exit;
   if Assigned(AControl) then
   begin
-    if AControl.Handle <> 0 then
+    if AControl.HandleAllocated and (AControl.Handle <> 0) then
       fnRemoveWindowSubclass(AControl.Handle, @UniversalTabSubclassProc, 4001);
     for i := 0 to AControl.ControlCount - 1 do
     begin
       if (AControl.Controls[i] is TCustomTabControl) and
-         (TWinControl(AControl.Controls[i]).Handle <> 0) then
+         TWinControl(AControl.Controls[i]).HandleAllocated and (TWinControl(AControl.Controls[i]).Handle <> 0) then
         fnRemoveWindowSubclass(TWinControl(AControl.Controls[i]).Handle, @UniversalTabSubclassProc, 4001);
     end;
   end;
@@ -1735,6 +1987,11 @@ var
 begin
   if uIdSubclass = 0 then ;
   if dwRefData = 0 then ;
+  if ApplicationShuttingDown or (uMsg = WM_NCDESTROY) or (uMsg = WM_DESTROY) then
+  begin
+    Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+    Exit;
+  end;
   if IsThemedSkin then
   begin
     if uMsg = WM_INITMENUPOPUP then
@@ -1784,8 +2041,9 @@ procedure HookFormControl(AControl: TWinControl);
 begin
   {$IFDEF WINDOWS}
   InitUxTheme;
-  if not Assigned(fnSetWindowSubclass) then exit;
-  if Assigned(AControl) and AControl.HandleAllocated and (AControl.Handle <> 0) then
+  if not Assigned(fnSetWindowSubclass) or not Assigned(AControl) or
+     (csDestroying in AControl.ComponentState) then exit;
+  if AControl.HandleAllocated and (AControl.Handle <> 0) then
   begin
     fnSetWindowSubclass(AControl.Handle, @FormSubclassProc, 3001, PtrUInt(AControl));
     AControl.Invalidate;
@@ -1797,7 +2055,7 @@ procedure UnhookFormControl(AControl: TWinControl);
 begin
   {$IFDEF WINDOWS}
   if not Assigned(fnRemoveWindowSubclass) then exit;
-  if Assigned(AControl) and (AControl.Handle <> 0) then
+  if Assigned(AControl) and AControl.HandleAllocated and (AControl.Handle <> 0) then
     fnRemoveWindowSubclass(AControl.Handle, @FormSubclassProc, 3001);
   {$ENDIF}
 end;
@@ -1819,6 +2077,11 @@ var
   btnState: LRESULT;
   pt: TPoint;
 begin
+  if ApplicationShuttingDown or (uMsg = WM_NCDESTROY) or (uMsg = WM_DESTROY) then
+  begin
+    Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+    Exit;
+  end;
   if (uMsg = WM_PAINT) and IsThemedSkin then
   begin
     hdc := BeginPaint(hWnd, @ps);
@@ -1855,7 +2118,7 @@ begin
 
       FillChar(btnText, SizeOf(btnText), 0);
       txtLen := GetWindowTextW(hWnd, @btnText[0], 255);
-      if (txtLen = 0) and (dwRefData <> 0) and (TObject(dwRefData) is TControl) then
+      if (txtLen = 0) and IsValidSubclassedControl(dwRefData) and (TObject(dwRefData) is TControl) then
       begin
         txtLen := Min(255, Length(TControl(dwRefData).Caption));
         if txtLen > 0 then
@@ -1870,7 +2133,7 @@ begin
       if txtLen > 0 then
       begin
         hFont := THandle(SendMessage(hWnd, WM_GETFONT, 0, 0));
-        if (hFont = 0) and (dwRefData <> 0) and (TObject(dwRefData) is TControl) then
+        if (hFont = 0) and IsValidSubclassedControl(dwRefData) and (TObject(dwRefData) is TControl) then
           hFont := THandle(TControl(dwRefData).Font.Handle);
 
         if hFont <> 0 then
@@ -1927,8 +2190,9 @@ end;
 procedure HookButtonControl(AControl: TWinControl);
 begin
   InitUxTheme;
-  if not Assigned(fnSetWindowSubclass) then exit;
-  if Assigned(AControl) and AControl.HandleAllocated and (AControl.Handle <> 0) then
+  if not Assigned(fnSetWindowSubclass) or not Assigned(AControl) or
+     (csDestroying in AControl.ComponentState) then exit;
+  if AControl.HandleAllocated and (AControl.Handle <> 0) then
   begin
     fnSetWindowSubclass(AControl.Handle, @ButtonSubclassProc, 5001, PtrUInt(AControl));
     RedrawWindow(AControl.Handle, nil, 0, RDW_FRAME or RDW_INVALIDATE);
@@ -1938,7 +2202,7 @@ end;
 procedure UnhookButtonControl(AControl: TWinControl);
 begin
   if not Assigned(fnRemoveWindowSubclass) then exit;
-  if Assigned(AControl) and (AControl.Handle <> 0) then
+  if Assigned(AControl) and AControl.HandleAllocated and (AControl.Handle <> 0) then
     fnRemoveWindowSubclass(AControl.Handle, @ButtonSubclassProc, 5001);
 end;
 
@@ -1960,6 +2224,11 @@ var
   pt: TPoint;
   boxSize, boxTop, boxLeft: Integer;
 begin
+  if ApplicationShuttingDown or (uMsg = WM_NCDESTROY) or (uMsg = WM_DESTROY) then
+  begin
+    Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+    Exit;
+  end;
   if (uMsg = WM_PAINT) and IsThemedSkin then
   begin
     hdc := BeginPaint(hWnd, @ps);
@@ -2062,7 +2331,7 @@ begin
       // 3. Caption Text
       FillChar(chkText, SizeOf(chkText), 0);
       txtLen := GetWindowTextW(hWnd, @chkText[0], 255);
-      if (txtLen = 0) and (dwRefData <> 0) and (TObject(dwRefData) is TControl) then
+      if (txtLen = 0) and IsValidSubclassedControl(dwRefData) and (TObject(dwRefData) is TControl) then
       begin
         txtLen := Min(255, Length(TControl(dwRefData).Caption));
         if txtLen > 0 then
@@ -2077,7 +2346,7 @@ begin
       if txtLen > 0 then
       begin
         hFont := 0;
-        if (dwRefData <> 0) and (TObject(dwRefData) is TControl) then
+        if IsValidSubclassedControl(dwRefData) and (TObject(dwRefData) is TControl) then
           hFont := THandle(TControl(dwRefData).Font.Handle);
         if hFont = 0 then
           hFont := THandle(SendMessage(hWnd, WM_GETFONT, 0, 0));
@@ -2145,8 +2414,9 @@ end;
 procedure HookCheckBoxControl(AControl: TWinControl);
 begin
   InitUxTheme;
-  if not Assigned(fnSetWindowSubclass) then exit;
-  if Assigned(AControl) and AControl.HandleAllocated and (AControl.Handle <> 0) then
+  if not Assigned(fnSetWindowSubclass) or not Assigned(AControl) or
+     (csDestroying in AControl.ComponentState) then exit;
+  if AControl.HandleAllocated and (AControl.Handle <> 0) then
   begin
     fnSetWindowSubclass(AControl.Handle, @CheckBoxSubclassProc, 6001, PtrUInt(AControl));
     AControl.Invalidate;
@@ -2156,7 +2426,7 @@ end;
 procedure UnhookCheckBoxControl(AControl: TWinControl);
 begin
   if not Assigned(fnRemoveWindowSubclass) then exit;
-  if Assigned(AControl) and (AControl.Handle <> 0) then
+  if Assigned(AControl) and AControl.HandleAllocated and (AControl.Handle <> 0) then
     fnRemoveWindowSubclass(AControl.Handle, @CheckBoxSubclassProc, 6001);
 end;
 
@@ -2175,6 +2445,11 @@ var
   isDis: Boolean;
   textW, textH, frameTop: Integer;
 begin
+  if ApplicationShuttingDown or (uMsg = WM_NCDESTROY) or (uMsg = WM_DESTROY) then
+  begin
+    Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+    Exit;
+  end;
   if (uMsg = WM_PAINT) and IsThemedSkin then
   begin
     // 1. Let default window procedure paint child TGraphicControls (such as TLabel)
@@ -2191,7 +2466,7 @@ begin
 
       FillChar(grpText, SizeOf(grpText), 0);
       txtLen := GetWindowTextW(hWnd, @grpText[0], 255);
-      if (txtLen = 0) and (dwRefData <> 0) and (TObject(dwRefData) is TControl) then
+      if (txtLen = 0) and IsValidSubclassedControl(dwRefData) and (TObject(dwRefData) is TControl) then
       begin
         txtLen := Min(255, Length(TControl(dwRefData).Caption));
         if txtLen > 0 then
@@ -2204,7 +2479,7 @@ begin
       end;
 
       hFont := 0;
-      if (dwRefData <> 0) and (TObject(dwRefData) is TControl) then
+      if IsValidSubclassedControl(dwRefData) and (TObject(dwRefData) is TControl) then
         hFont := THandle(TControl(dwRefData).Font.Handle);
       if hFont = 0 then
         hFont := THandle(SendMessage(hWnd, WM_GETFONT, 0, 0));
@@ -2315,8 +2590,9 @@ end;
 procedure HookGroupBoxControl(AControl: TWinControl);
 begin
   InitUxTheme;
-  if not Assigned(fnSetWindowSubclass) then exit;
-  if Assigned(AControl) and AControl.HandleAllocated and (AControl.Handle <> 0) then
+  if not Assigned(fnSetWindowSubclass) or not Assigned(AControl) or
+     (csDestroying in AControl.ComponentState) then exit;
+  if AControl.HandleAllocated and (AControl.Handle <> 0) then
   begin
     fnSetWindowSubclass(AControl.Handle, @GroupBoxSubclassProc, 7001, PtrUInt(AControl));
     AControl.Invalidate;
@@ -2326,7 +2602,7 @@ end;
 procedure UnhookGroupBoxControl(AControl: TWinControl);
 begin
   if not Assigned(fnRemoveWindowSubclass) then exit;
-  if Assigned(AControl) and (AControl.Handle <> 0) then
+  if Assigned(AControl) and AControl.HandleAllocated and (AControl.Handle <> 0) then
     fnRemoveWindowSubclass(AControl.Handle, @GroupBoxSubclassProc, 7001);
 end;
 
@@ -2347,6 +2623,11 @@ var
   isHot, isDis, isDropped: Boolean;
   pt: TPoint;
 begin
+  if ApplicationShuttingDown or (uMsg = WM_NCDESTROY) or (uMsg = WM_DESTROY) then
+  begin
+    Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+    Exit;
+  end;
   if (uMsg = WM_PAINT) and IsThemedSkin then
   begin
     hdc := BeginPaint(hWnd, @ps);
@@ -2414,7 +2695,7 @@ begin
       // 5. Retrieve current selected text
       FillChar(cbText, SizeOf(cbText), 0);
       txtLen := GetWindowTextW(hWnd, @cbText[0], 255);
-      if (txtLen = 0) and (dwRefData <> 0) and (TObject(dwRefData) is TCustomComboBox) then
+      if (txtLen = 0) and IsValidSubclassedControl(dwRefData) and (TObject(dwRefData) is TCustomComboBox) then
       begin
         cbStr := WideString(TCustomComboBox(dwRefData).Text);
         if cbStr = '' then
@@ -2434,7 +2715,7 @@ begin
       if txtLen > 0 then
       begin
         hFont := THandle(SendMessage(hWnd, WM_GETFONT, 0, 0));
-        if (hFont = 0) and (dwRefData <> 0) and (TObject(dwRefData) is TControl) then
+        if (hFont = 0) and IsValidSubclassedControl(dwRefData) and (TObject(dwRefData) is TControl) then
           hFont := THandle(TControl(dwRefData).Font.Handle);
         if hFont = 0 then
           hFont := GetStockObject(DEFAULT_GUI_FONT);
@@ -2521,7 +2802,7 @@ end;
 procedure UnhookComboBoxControl(AControl: TWinControl);
 begin
   if not Assigned(fnRemoveWindowSubclass) then exit;
-  if Assigned(AControl) and (AControl.Handle <> 0) then
+  if Assigned(AControl) and AControl.HandleAllocated and (AControl.Handle <> 0) then
     fnRemoveWindowSubclass(AControl.Handle, @ComboBoxSubclassProc, 6501);
 end;
 
@@ -2548,6 +2829,11 @@ var
   pt: TPoint;
   isHot, isDis: Boolean;
 begin
+  if ApplicationShuttingDown or (uMsg = WM_NCDESTROY) or (uMsg = WM_DESTROY) then
+  begin
+    Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+    Exit;
+  end;
   if (uMsg = WM_PAINT) and IsThemedSkin then
   begin
     hdc := BeginPaint(hWnd, @ps);
@@ -2699,8 +2985,308 @@ end;
 procedure UnhookTrackBarControl(AControl: TWinControl);
 begin
   if not Assigned(fnRemoveWindowSubclass) then exit;
-  if Assigned(AControl) and (AControl.Handle <> 0) then
+  if Assigned(AControl) and AControl.HandleAllocated and (AControl.Handle <> 0) then
     fnRemoveWindowSubclass(AControl.Handle, @TrackBarSubclassProc, 6601);
+end;
+
+const
+  OBJID_HSCROLL_CODE = LongInt($FFFFFFFA);
+  OBJID_VSCROLL_CODE = LongInt($FFFFFFFB);
+  STATE_SYSTEM_UNAVAILABLE_CODE = $00000001;
+  STATE_SYSTEM_PRESSED_CODE     = $00000008;
+  STATE_SYSTEM_HOTTRACKED_CODE  = $00000080;
+  STATE_SYSTEM_INVISIBLE_CODE   = $00008000;
+  STATE_SYSTEM_OFFSCREEN_CODE   = $00010000;
+
+type
+  TWinScrollBarInfo = record
+    cbSize: DWORD;
+    rcScrollBar: RECT;
+    dxyLineButton: Integer;
+    xyThumbTop: Integer;
+    xyThumbBottom: Integer;
+    reserved: Integer;
+    rgstate: array[0..5] of DWORD;
+  end;
+
+function WinGetScrollBarInfo(hwnd: HWND; idObject: LongInt; var psbi: TWinScrollBarInfo): WINBOOL; stdcall; external 'user32' name 'GetScrollBarInfo';
+
+function BlendScrollColor(ColA, ColB: COLORREF; WeightA: Integer): COLORREF; inline;
+var
+  rA, gA, bA, rB, gB, bB, wB: Integer;
+begin
+  wB := 100 - WeightA;
+  rA := ColA and $FF;
+  gA := (ColA shr 8) and $FF;
+  bA := (ColA shr 16) and $FF;
+  rB := ColB and $FF;
+  gB := (ColB shr 8) and $FF;
+  bB := (ColB shr 16) and $FF;
+  Result := RGB((rA * WeightA + rB * wB) div 100,
+                (gA * WeightA + gB * wB) div 100,
+                (bA * WeightA + bB * wB) div 100);
+end;
+
+procedure PaintThemedNCScrollBars(hWnd: THandle);
+var
+  hdcWin: HDC;
+  rcWin, rcVBar, rcHBar, rcBtn1, rcBtn2, rcThumb, rcCorner: RECT;
+  sbiV, sbiH: TWinScrollBarInfo;
+  style: LONG;
+  hasV, hasH: Boolean;
+  ptScreen, ptWin: TPoint;
+  trackCol, borderCol, thumbCol, thumbHotCol, arrowCol: COLORREF;
+  hbrTrack, hbrThumb, hbrHot, hPenBorder, hPenArrow, oldPen: THandle;
+  btnSize, cx, cy: Integer;
+  isThumbHot, isBtn1Hot, isBtn2Hot: Boolean;
+begin
+  if (hWnd = 0) or (not IsThemedSkin) or (not IsWindowVisible(hWnd)) then Exit;
+  style := GetWindowLong(hWnd, GWL_STYLE);
+  if ((style and WS_VSCROLL) = 0) and ((style and WS_HSCROLL) = 0) then Exit;
+
+  FillChar(rcWin, SizeOf(rcWin), 0);
+  if not GetWindowRect(hWnd, @rcWin) then Exit;
+  if (rcWin.Right <= rcWin.Left + 2) or (rcWin.Bottom <= rcWin.Top + 2) then Exit;
+
+  ptScreen.x := -10000;
+  ptScreen.y := -10000;
+  GetCursorPos(@ptScreen);
+  ptWin.x := ptScreen.x - rcWin.Left;
+  ptWin.y := ptScreen.y - rcWin.Top;
+
+  hasV := False;
+  hasH := False;
+  FillChar(rcVBar, SizeOf(rcVBar), 0);
+  FillChar(rcHBar, SizeOf(rcHBar), 0);
+
+  if (style and WS_VSCROLL) <> 0 then
+  begin
+    FillChar(sbiV, SizeOf(sbiV), 0);
+    sbiV.cbSize := SizeOf(sbiV);
+    if WinGetScrollBarInfo(hWnd, OBJID_VSCROLL_CODE, sbiV) and
+       ((sbiV.rgstate[0] and (STATE_SYSTEM_INVISIBLE_CODE or STATE_SYSTEM_OFFSCREEN_CODE)) = 0) and
+       (sbiV.rcScrollBar.Right > sbiV.rcScrollBar.Left) and
+       (sbiV.rcScrollBar.Bottom > sbiV.rcScrollBar.Top) then
+    begin
+      hasV := True;
+      rcVBar.Left := sbiV.rcScrollBar.Left - rcWin.Left;
+      rcVBar.Top := sbiV.rcScrollBar.Top - rcWin.Top;
+      rcVBar.Right := sbiV.rcScrollBar.Right - rcWin.Left;
+      rcVBar.Bottom := sbiV.rcScrollBar.Bottom - rcWin.Top;
+    end;
+  end;
+
+  if (style and WS_HSCROLL) <> 0 then
+  begin
+    FillChar(sbiH, SizeOf(sbiH), 0);
+    sbiH.cbSize := SizeOf(sbiH);
+    if WinGetScrollBarInfo(hWnd, OBJID_HSCROLL_CODE, sbiH) and
+       ((sbiH.rgstate[0] and (STATE_SYSTEM_INVISIBLE_CODE or STATE_SYSTEM_OFFSCREEN_CODE)) = 0) and
+       (sbiH.rcScrollBar.Right > sbiH.rcScrollBar.Left) and
+       (sbiH.rcScrollBar.Bottom > sbiH.rcScrollBar.Top) then
+    begin
+      hasH := True;
+      rcHBar.Left := sbiH.rcScrollBar.Left - rcWin.Left;
+      rcHBar.Top := sbiH.rcScrollBar.Top - rcWin.Top;
+      rcHBar.Right := sbiH.rcScrollBar.Right - rcWin.Left;
+      rcHBar.Bottom := sbiH.rcScrollBar.Bottom - rcWin.Top;
+    end;
+  end;
+
+  if (not hasV) and (not hasH) then Exit;
+
+  hdcWin := GetWindowDC(hWnd);
+  if hdcWin = 0 then Exit;
+
+  trackCol := ColorToRGB(CurrentSkin.PanelBg);
+  borderCol := ColorToRGB(CurrentSkin.PanelBorder);
+  thumbCol := BlendScrollColor(ColorToRGB(CurrentSkin.PanelBorder), ColorToRGB(CurrentSkin.WindowTextDim), 45);
+  thumbHotCol := ColorToRGB(CurrentSkin.PointedBg);
+  arrowCol := ColorToRGB(CurrentSkin.PanelText);
+
+  hbrTrack := CreateSolidBrush(trackCol);
+  hbrThumb := CreateSolidBrush(thumbCol);
+  hbrHot := CreateSolidBrush(thumbHotCol);
+  hPenBorder := CreatePen(PS_SOLID, 1, borderCol);
+  hPenArrow := CreatePen(PS_SOLID, 1, arrowCol);
+  try
+    // 1. Vertical Scrollbar
+    if hasV then
+    begin
+      FillRect(hdcWin, rcVBar, hbrTrack);
+
+      oldPen := SelectObject(hdcWin, hPenBorder);
+      MoveToEx(hdcWin, rcVBar.Left, rcVBar.Top, nil);
+      LineTo(hdcWin, rcVBar.Left, rcVBar.Bottom);
+      SelectObject(hdcWin, oldPen);
+
+      btnSize := sbiV.dxyLineButton;
+      if (btnSize <= 0) or (btnSize * 2 > (rcVBar.Bottom - rcVBar.Top)) then
+        btnSize := Min(GetSystemMetrics(SM_CYVSCROLL), (rcVBar.Bottom - rcVBar.Top) div 2);
+
+      if btnSize > 4 then
+      begin
+        rcBtn1.Left := rcVBar.Left + 1;
+        rcBtn1.Top := rcVBar.Top;
+        rcBtn1.Right := rcVBar.Right;
+        rcBtn1.Bottom := rcVBar.Top + btnSize;
+
+        rcBtn2.Left := rcVBar.Left + 1;
+        rcBtn2.Top := rcVBar.Bottom - btnSize;
+        rcBtn2.Right := rcVBar.Right;
+        rcBtn2.Bottom := rcVBar.Bottom;
+
+        isBtn1Hot := ((sbiV.rgstate[1] and (STATE_SYSTEM_HOTTRACKED_CODE or STATE_SYSTEM_PRESSED_CODE)) <> 0) or
+                     PtInRect(rcBtn1, ptWin);
+        isBtn2Hot := ((sbiV.rgstate[5] and (STATE_SYSTEM_HOTTRACKED_CODE or STATE_SYSTEM_PRESSED_CODE)) <> 0) or
+                     PtInRect(rcBtn2, ptWin);
+
+        if isBtn1Hot then
+          FillRect(hdcWin, rcBtn1, hbrHot);
+        if isBtn2Hot then
+          FillRect(hdcWin, rcBtn2, hbrHot);
+
+        oldPen := SelectObject(hdcWin, hPenArrow);
+        // Up chevron '^'
+        cx := (rcBtn1.Left + rcBtn1.Right) div 2;
+        cy := (rcBtn1.Top + rcBtn1.Bottom) div 2;
+        MoveToEx(hdcWin, cx - 3, cy + 1, nil);
+        LineTo(hdcWin, cx, cy - 2);
+        LineTo(hdcWin, cx + 4, cy + 2);
+        MoveToEx(hdcWin, cx - 3, cy + 2, nil);
+        LineTo(hdcWin, cx, cy - 1);
+        LineTo(hdcWin, cx + 4, cy + 3);
+
+        // Down chevron 'v'
+        cx := (rcBtn2.Left + rcBtn2.Right) div 2;
+        cy := (rcBtn2.Top + rcBtn2.Bottom) div 2;
+        MoveToEx(hdcWin, cx - 3, cy - 1, nil);
+        LineTo(hdcWin, cx, cy + 2);
+        LineTo(hdcWin, cx + 4, cy - 2);
+        MoveToEx(hdcWin, cx - 3, cy - 2, nil);
+        LineTo(hdcWin, cx, cy + 1);
+        LineTo(hdcWin, cx + 4, cy - 3);
+        SelectObject(hdcWin, oldPen);
+      end;
+
+      // Vertical Thumb
+      if ((sbiV.rgstate[0] and STATE_SYSTEM_UNAVAILABLE_CODE) = 0) and
+         ((sbiV.rgstate[3] and STATE_SYSTEM_INVISIBLE_CODE) = 0) and
+         (sbiV.xyThumbBottom > sbiV.xyThumbTop) then
+      begin
+        rcThumb.Left := rcVBar.Left + 2;
+        rcThumb.Right := rcVBar.Right - 2;
+        rcThumb.Top := Max(rcVBar.Top + btnSize, rcVBar.Top + sbiV.xyThumbTop);
+        rcThumb.Bottom := Min(rcVBar.Bottom - btnSize, Max(rcThumb.Top + 6, rcVBar.Top + sbiV.xyThumbBottom));
+        if (rcThumb.Right > rcThumb.Left) and (rcThumb.Bottom > rcThumb.Top) then
+        begin
+          isThumbHot := ((sbiV.rgstate[3] and (STATE_SYSTEM_HOTTRACKED_CODE or STATE_SYSTEM_PRESSED_CODE)) <> 0) or
+                        PtInRect(rcThumb, ptWin);
+          if isThumbHot then
+            FillRect(hdcWin, rcThumb, hbrHot)
+          else
+            FillRect(hdcWin, rcThumb, hbrThumb);
+        end;
+      end;
+    end;
+
+    // 2. Horizontal Scrollbar
+    if hasH then
+    begin
+      FillRect(hdcWin, rcHBar, hbrTrack);
+
+      oldPen := SelectObject(hdcWin, hPenBorder);
+      MoveToEx(hdcWin, rcHBar.Left, rcHBar.Top, nil);
+      LineTo(hdcWin, rcHBar.Right, rcHBar.Top);
+      SelectObject(hdcWin, oldPen);
+
+      btnSize := sbiH.dxyLineButton;
+      if (btnSize <= 0) or (btnSize * 2 > (rcHBar.Right - rcHBar.Left)) then
+        btnSize := Min(GetSystemMetrics(SM_CXHSCROLL), (rcHBar.Right - rcHBar.Left) div 2);
+
+      if btnSize > 4 then
+      begin
+        rcBtn1.Left := rcHBar.Left;
+        rcBtn1.Top := rcHBar.Top + 1;
+        rcBtn1.Right := rcHBar.Left + btnSize;
+        rcBtn1.Bottom := rcHBar.Bottom;
+
+        rcBtn2.Left := rcHBar.Right - btnSize;
+        rcBtn2.Top := rcHBar.Top + 1;
+        rcBtn2.Right := rcHBar.Right;
+        rcBtn2.Bottom := rcHBar.Bottom;
+
+        isBtn1Hot := ((sbiH.rgstate[1] and (STATE_SYSTEM_HOTTRACKED_CODE or STATE_SYSTEM_PRESSED_CODE)) <> 0) or
+                     PtInRect(rcBtn1, ptWin);
+        isBtn2Hot := ((sbiH.rgstate[5] and (STATE_SYSTEM_HOTTRACKED_CODE or STATE_SYSTEM_PRESSED_CODE)) <> 0) or
+                     PtInRect(rcBtn2, ptWin);
+
+        if isBtn1Hot then
+          FillRect(hdcWin, rcBtn1, hbrHot);
+        if isBtn2Hot then
+          FillRect(hdcWin, rcBtn2, hbrHot);
+
+        oldPen := SelectObject(hdcWin, hPenArrow);
+        // Left chevron '<'
+        cx := (rcBtn1.Left + rcBtn1.Right) div 2;
+        cy := (rcBtn1.Top + rcBtn1.Bottom) div 2;
+        MoveToEx(hdcWin, cx + 1, cy - 3, nil);
+        LineTo(hdcWin, cx - 2, cy);
+        LineTo(hdcWin, cx + 2, cy + 4);
+        MoveToEx(hdcWin, cx + 2, cy - 3, nil);
+        LineTo(hdcWin, cx - 1, cy);
+        LineTo(hdcWin, cx + 3, cy + 4);
+
+        // Right chevron '>'
+        cx := (rcBtn2.Left + rcBtn2.Right) div 2;
+        cy := (rcBtn2.Top + rcBtn2.Bottom) div 2;
+        MoveToEx(hdcWin, cx - 1, cy - 3, nil);
+        LineTo(hdcWin, cx + 2, cy);
+        LineTo(hdcWin, cx - 2, cy + 4);
+        MoveToEx(hdcWin, cx - 2, cy - 3, nil);
+        LineTo(hdcWin, cx + 1, cy);
+        LineTo(hdcWin, cx - 3, cy + 4);
+        SelectObject(hdcWin, oldPen);
+      end;
+
+      // Horizontal Thumb
+      if ((sbiH.rgstate[0] and STATE_SYSTEM_UNAVAILABLE_CODE) = 0) and
+         ((sbiH.rgstate[3] and STATE_SYSTEM_INVISIBLE_CODE) = 0) and
+         (sbiH.xyThumbBottom > sbiH.xyThumbTop) then
+      begin
+        rcThumb.Top := rcHBar.Top + 2;
+        rcThumb.Bottom := rcHBar.Bottom - 2;
+        rcThumb.Left := Max(rcHBar.Left + btnSize, rcHBar.Left + sbiH.xyThumbTop);
+        rcThumb.Right := Min(rcHBar.Right - btnSize, Max(rcThumb.Left + 6, rcHBar.Left + sbiH.xyThumbBottom));
+        if (rcThumb.Bottom > rcThumb.Top) and (rcThumb.Right > rcThumb.Left) then
+        begin
+          isThumbHot := ((sbiH.rgstate[3] and (STATE_SYSTEM_HOTTRACKED_CODE or STATE_SYSTEM_PRESSED_CODE)) <> 0) or
+                        PtInRect(rcThumb, ptWin);
+          if isThumbHot then
+            FillRect(hdcWin, rcThumb, hbrHot)
+          else
+            FillRect(hdcWin, rcThumb, hbrThumb);
+        end;
+      end;
+    end;
+
+    // 3. Corner intersection when both scrollbars are present
+    if hasV and hasH then
+    begin
+      rcCorner.Left := rcVBar.Left;
+      rcCorner.Top := rcHBar.Top;
+      rcCorner.Right := rcVBar.Right;
+      rcCorner.Bottom := rcHBar.Bottom;
+      FillRect(hdcWin, rcCorner, hbrTrack);
+    end;
+  finally
+    DeleteObject(hPenArrow);
+    DeleteObject(hPenBorder);
+    DeleteObject(hbrHot);
+    DeleteObject(hbrThumb);
+    DeleteObject(hbrTrack);
+    ReleaseDC(hWnd, hdcWin);
+  end;
 end;
 
 procedure PaintControlNCBorder(hWnd: HWND; AInnerColor: TColor);
@@ -2712,6 +3298,7 @@ var
   w, h, bSize, cxVScroll, cyHScroll: Integer;
 begin
   if (hWnd = 0) or (CurrentSkin.Id = skClassic) or (not IsWindowVisible(hWnd)) then Exit;
+  PaintThemedNCScrollBars(hWnd);
   exStyle := GetWindowLong(hWnd, GWL_EXSTYLE);
   style := GetWindowLong(hWnd, GWL_STYLE);
   if ((exStyle and WS_EX_CLIENTEDGE) = 0) and ((style and WS_BORDER) = 0) then Exit;
@@ -2777,6 +3364,11 @@ begin
   if uIdSubclass = 0 then ;
   if dwRefData = 0 then ;
 
+  if ApplicationShuttingDown or (uMsg = WM_NCDESTROY) or (uMsg = WM_DESTROY) then
+  begin
+    Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+    Exit;
+  end;
   if (uMsg = WM_NCPAINT) and (CurrentSkin.Id <> skClassic) then
   begin
     Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
@@ -2797,7 +3389,9 @@ begin
   end;
 
   if ((uMsg = WM_PAINT) or (uMsg = WM_SIZE) or (uMsg = WM_WINDOWPOSCHANGED) or
-      (uMsg = WM_HSCROLL) or (uMsg = WM_VSCROLL) or (uMsg = WM_MOUSEWHEEL)) and
+      (uMsg = WM_HSCROLL) or (uMsg = WM_VSCROLL) or (uMsg = WM_MOUSEWHEEL) or
+      (uMsg = WM_NCMOUSEMOVE) or (uMsg = WM_NCMOUSELEAVE) or
+      (uMsg = WM_NCLBUTTONDOWN) or (uMsg = WM_NCLBUTTONUP)) and
      (CurrentSkin.Id <> skClassic) then
   begin
     Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
@@ -2822,16 +3416,29 @@ end;
 procedure UnhookScrollBoxControl(AControl: TWinControl);
 begin
   if not Assigned(fnRemoveWindowSubclass) then exit;
-  if Assigned(AControl) and (AControl.Handle <> 0) then
+  if Assigned(AControl) and AControl.HandleAllocated and (AControl.Handle <> 0) then
     fnRemoveWindowSubclass(AControl.Handle, @ScrollBoxSubclassProc, 7001);
 end;
 
 function ToolBarSubclassProc(hWnd: HWND; uMsg: UINT; wParam: WPARAM; lParam: LPARAM;
   uIdSubclass: PtrUInt; dwRefData: PtrUInt): LRESULT; stdcall;
 var
-  rc: RECT;
-  hbr: THandle;
+  rc, rcBtn, rcGap: RECT;
+  hdc: THandle;
+  hbr, hbrHot, hPen, hArrowPen, oldPen: THandle;
+  tb: TToolBar;
+  btn: TToolButton;
+  i, cx, cy, dropW: Integer;
+  pt: POINT;
+  isHot: Boolean;
+  arrowCol: COLORREF;
 begin
+  if uIdSubclass = 0 then ;
+  if ApplicationShuttingDown or (uMsg = WM_NCDESTROY) or (uMsg = WM_DESTROY) then
+  begin
+    Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+    Exit;
+  end;
   if (uMsg = WM_ERASEBKGND) and IsThemedSkin then
   begin
     FillChar(rc, SizeOf(rc), 0);
@@ -2843,7 +3450,100 @@ begin
     Exit;
   end;
 
+  if (uMsg = WM_PAINT) and IsThemedSkin then
+  begin
+    Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+    if IsValidSubclassedControl(dwRefData) and (TObject(dwRefData) is TToolBar) then
+    begin
+      tb := TToolBar(dwRefData);
+      hdc := GetDC(hWnd);
+      if hdc <> 0 then
+      begin
+        pt.x := -10000;
+        pt.y := -10000;
+        GetCursorPos(@pt);
+        ScreenToClient(hWnd, @pt);
+        hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.PanelBg));
+        hbrHot := CreateSolidBrush(ColorToRGB(CurrentSkin.VerseHighlightBg));
+        hPen := CreatePen(PS_SOLID, 1, ColorToRGB(CurrentSkin.PanelBorder));
+        try
+          for i := 0 to tb.ButtonCount - 1 do
+          begin
+            btn := tb.Buttons[i];
+            if not btn.Visible then Continue;
+            if btn.Style in [tbsSeparator, tbsDivider] then
+            begin
+              rcBtn := btn.BoundsRect;
+              rcGap.Left := rcBtn.Left;
+              rcGap.Top := rcBtn.Top;
+              rcGap.Right := rcBtn.Right;
+              rcGap.Bottom := rcBtn.Bottom;
+              FillRect(hdc, rcGap, hbr);
+              cx := (rcBtn.Left + rcBtn.Right) div 2;
+              oldPen := SelectObject(hdc, hPen);
+              MoveToEx(hdc, cx, rcBtn.Top + 4, nil);
+              LineTo(hdc, cx, Max(rcBtn.Top + 5, rcBtn.Bottom - 4));
+              SelectObject(hdc, oldPen);
+            end
+            else if btn.Style = tbsDropDown then
+            begin
+              rcBtn := btn.BoundsRect;
+              dropW := (rcBtn.Right - rcBtn.Left) - tb.ButtonWidth;
+              if dropW <= 4 then
+                dropW := 15;
+              rcGap.Left := Max(rcBtn.Left, rcBtn.Right - dropW);
+              rcGap.Top := rcBtn.Top;
+              rcGap.Right := rcBtn.Right;
+              rcGap.Bottom := rcBtn.Bottom;
+              isHot := btn.Enabled and PtInRect(rcBtn, pt);
+              if isHot then
+              begin
+                FillRect(hdc, rcGap, hbrHot);
+                FrameRect(hdc, rcGap, hbr);
+                oldPen := SelectObject(hdc, hPen);
+                MoveToEx(hdc, rcGap.Left, rcGap.Top + 2, nil);
+                LineTo(hdc, rcGap.Left, Max(rcGap.Top + 3, rcGap.Bottom - 2));
+                SelectObject(hdc, oldPen);
+              end
+              else
+                FillRect(hdc, rcGap, hbr);
+
+              if btn.Enabled then
+                arrowCol := ColorToRGB(CurrentSkin.PanelText)
+              else
+                arrowCol := ColorToRGB(CurrentSkin.WindowTextDim);
+              hArrowPen := CreatePen(PS_SOLID, 1, arrowCol);
+              oldPen := SelectObject(hdc, hArrowPen);
+              try
+                cx := (rcGap.Left + rcGap.Right) div 2;
+                cy := (rcGap.Top + rcGap.Bottom) div 2 - 1;
+                MoveToEx(hdc, cx - 2, cy, nil);
+                LineTo(hdc, cx + 3, cy);
+                MoveToEx(hdc, cx - 1, cy + 1, nil);
+                LineTo(hdc, cx + 2, cy + 1);
+                MoveToEx(hdc, cx, cy + 2, nil);
+                LineTo(hdc, cx + 1, cy + 2);
+              finally
+                SelectObject(hdc, oldPen);
+                DeleteObject(hArrowPen);
+              end;
+            end;
+          end;
+        finally
+          DeleteObject(hPen);
+          DeleteObject(hbrHot);
+          DeleteObject(hbr);
+          ReleaseDC(hWnd, hdc);
+        end;
+      end;
+    end;
+    Exit;
+  end;
+
   Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+  if IsThemedSkin and ((uMsg = WM_MOUSEMOVE) or (uMsg = WM_MOUSELEAVE) or
+     (uMsg = WM_LBUTTONDOWN) or (uMsg = WM_LBUTTONUP)) then
+    InvalidateRect(hWnd, nil, FALSE);
 end;
 
 procedure HookToolBarControl(AControl: TWinControl);
@@ -2860,7 +3560,7 @@ end;
 procedure UnhookToolBarControl(AControl: TWinControl);
 begin
   if not Assigned(fnRemoveWindowSubclass) then exit;
-  if Assigned(AControl) and (AControl.Handle <> 0) then
+  if Assigned(AControl) and AControl.HandleAllocated and (AControl.Handle <> 0) then
     fnRemoveWindowSubclass(AControl.Handle, @ToolBarSubclassProc, 8001);
 end;
 
@@ -2874,6 +3574,11 @@ begin
   if uIdSubclass = 0 then ;
   if dwRefData = 0 then ;
 
+  if ApplicationShuttingDown or (uMsg = WM_NCDESTROY) or (uMsg = WM_DESTROY) then
+  begin
+    Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+    Exit;
+  end;
   if (uMsg = WM_NCPAINT) and (CurrentSkin.Id <> skClassic) then
   begin
     Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
@@ -2894,7 +3599,9 @@ begin
   end;
 
   if ((uMsg = WM_PAINT) or (uMsg = WM_SIZE) or (uMsg = WM_WINDOWPOSCHANGED) or
-      (uMsg = WM_HSCROLL) or (uMsg = WM_VSCROLL) or (uMsg = WM_MOUSEWHEEL)) and
+      (uMsg = WM_HSCROLL) or (uMsg = WM_VSCROLL) or (uMsg = WM_MOUSEWHEEL) or
+      (uMsg = WM_NCMOUSEMOVE) or (uMsg = WM_NCMOUSELEAVE) or
+      (uMsg = WM_NCLBUTTONDOWN) or (uMsg = WM_NCLBUTTONUP)) and
      (CurrentSkin.Id <> skClassic) then
   begin
     Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
@@ -2936,21 +3643,10 @@ begin
     rgbBg := ColorToRGB(CurrentSkin.TreeBg);
     rgbTxt := ColorToRGB(CurrentSkin.TreeText);
     rgbLine := ColorToRGB(CurrentSkin.PanelBorder);
-    if GetPropW(AControl.Handle, 'iBibliaTvBg') <> PtrUInt(rgbBg + 1) then
-    begin
-      SetPropW(AControl.Handle, 'iBibliaTvBg', PtrUInt(rgbBg + 1));
-      SendMessage(AControl.Handle, $111D, 0, rgbBg);
-    end;
-    if GetPropW(AControl.Handle, 'iBibliaTvTxt') <> PtrUInt(rgbTxt + 1) then
-    begin
-      SetPropW(AControl.Handle, 'iBibliaTvTxt', PtrUInt(rgbTxt + 1));
-      SendMessage(AControl.Handle, $111E, 0, rgbTxt);
-    end;
-    if GetPropW(AControl.Handle, 'iBibliaTvLine') <> PtrUInt(rgbLine + 1) then
-    begin
-      SetPropW(AControl.Handle, 'iBibliaTvLine', PtrUInt(rgbLine + 1));
-      SendMessage(AControl.Handle, $1128, 0, rgbLine);
-    end;
+    // always re-send: LCL or the form may have changed the colours since
+    SendMessage(AControl.Handle, $111D, 0, rgbBg);
+    SendMessage(AControl.Handle, $111E, 0, rgbTxt);
+    SendMessage(AControl.Handle, $1128, 0, rgbLine);
     AControl.Invalidate;
   end;
 end;
@@ -2958,7 +3654,7 @@ end;
 procedure UnhookTreeViewControl(AControl: TWinControl);
 begin
   if not Assigned(fnRemoveWindowSubclass) then exit;
-  if Assigned(AControl) and (AControl.Handle <> 0) then
+  if Assigned(AControl) and AControl.HandleAllocated and (AControl.Handle <> 0) then
     fnRemoveWindowSubclass(AControl.Handle, @TreeViewSubclassProc, 9001);
 end;
 
@@ -2972,10 +3668,15 @@ var
   exStyle, style: LONG;
   isDis, isFocused: Boolean;
 begin
+  if ApplicationShuttingDown or (uMsg = WM_NCDESTROY) or (uMsg = WM_DESTROY) then
+  begin
+    Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+    Exit;
+  end;
   if (uMsg = WM_NCPAINT) and IsThemedSkin then
   begin
-    // Let default procedure paint first so TMemo vertical/horizontal scrollbars render via DarkMode_Explorer
     Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+    PaintThemedNCScrollBars(hWnd);
 
     exStyle := GetWindowLong(hWnd, GWL_EXSTYLE);
     style := GetWindowLong(hWnd, GWL_STYLE);
@@ -3021,6 +3722,15 @@ begin
     Exit;
   end;
 
+  if ((uMsg = WM_PAINT) or (uMsg = WM_VSCROLL) or (uMsg = WM_HSCROLL) or
+      (uMsg = WM_MOUSEWHEEL) or (uMsg = WM_NCMOUSEMOVE) or (uMsg = WM_NCMOUSELEAVE) or
+      (uMsg = WM_NCLBUTTONDOWN) or (uMsg = WM_NCLBUTTONUP) or (uMsg = WM_SIZE)) and IsThemedSkin then
+  begin
+    Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+    PaintThemedNCScrollBars(hWnd);
+    Exit;
+  end;
+
   if (uMsg = WM_SETFOCUS) or (uMsg = WM_KILLFOCUS) then
   begin
     Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
@@ -3038,7 +3748,7 @@ begin
     begin
       if CurrentSkin.IsDark then
       begin
-        if (dwRefData <> 0) and (TObject(dwRefData) is TCustomMemo) then
+        if IsValidSubclassedControl(dwRefData) and (TObject(dwRefData) is TCustomMemo) then
           wTheme := 'DarkMode_Explorer'
         else
           wTheme := 'DarkMode_CFD';
@@ -3048,11 +3758,21 @@ begin
         fnSetWindowTheme(hWnd, nil, nil);
     end;
     if IsThemedSkin then
+    begin
       RedrawWindow(hWnd, nil, 0, RDW_FRAME or RDW_INVALIDATE);
+      PaintThemedNCScrollBars(hWnd);
+    end;
     Exit;
   end;
 
   Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+  if IsThemedSkin and (uMsg <> WM_NCHITTEST) and (uMsg <> WM_GETDLGCODE) and
+     (uMsg <> WM_GETFONT) and (uMsg <> WM_GETTEXT) and (uMsg <> WM_GETTEXTLENGTH) and
+     (uMsg <> WM_SETFONT) and
+     ((GetWindowLong(hWnd, GWL_STYLE) and (WS_VSCROLL or WS_HSCROLL)) <> 0) then
+  begin
+    PaintThemedNCScrollBars(hWnd);
+  end;
 end;
 
 procedure HookEditControl(AControl: TWinControl);
@@ -3074,8 +3794,217 @@ end;
 procedure UnhookEditControl(AControl: TWinControl);
 begin
   if not Assigned(fnRemoveWindowSubclass) then exit;
-  if Assigned(AControl) and (AControl.Handle <> 0) then
+  if Assigned(AControl) and AControl.HandleAllocated and (AControl.Handle <> 0) then
     fnRemoveWindowSubclass(AControl.Handle, @EditMemoSubclassProc, 9501);
+end;
+
+function StatusBarSubclassProc(hWnd: HWND; uMsg: UINT; wParam: WPARAM; lParam: LPARAM;
+  uIdSubclass: PtrUInt; dwRefData: PtrUInt): LRESULT; stdcall;
+var
+  ps: PAINTSTRUCT;
+  hdc: THandle;
+  rc, rcText: RECT;
+  hbr, hPen, oldPen, hFont, oldFont: THandle;
+  oldBk: Integer;
+  oldCol: COLORREF;
+  sb: TStatusBar;
+  txt: string;
+  wTxt: WideString;
+  i, curLeft, pWidth: Integer;
+begin
+  if uIdSubclass = 0 then ;
+  if ApplicationShuttingDown or (uMsg = WM_NCDESTROY) or (uMsg = WM_DESTROY) then
+  begin
+    Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+    Exit;
+  end;
+
+  if (uMsg = WM_ERASEBKGND) and IsThemedSkin then
+  begin
+    FillChar(rc, SizeOf(rc), 0);
+    GetClientRect(hWnd, @rc);
+    hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.PanelBg));
+    FillRect(THandle(wParam), rc, hbr);
+    DeleteObject(hbr);
+    Result := 1;
+    Exit;
+  end;
+
+  if (uMsg = WM_PAINT) and IsThemedSkin then
+  begin
+    hdc := BeginPaint(hWnd, @ps);
+    if hdc <> 0 then
+    begin
+      FillChar(rc, SizeOf(rc), 0);
+      GetClientRect(hWnd, @rc);
+
+      hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.PanelBg));
+      FillRect(hdc, rc, hbr);
+      DeleteObject(hbr);
+
+      hPen := CreatePen(PS_SOLID, 1, ColorToRGB(CurrentSkin.PanelBorder));
+      oldPen := SelectObject(hdc, hPen);
+      MoveToEx(hdc, rc.Left, rc.Top, nil);
+      LineTo(hdc, rc.Right, rc.Top);
+      SelectObject(hdc, oldPen);
+
+      if IsValidSubclassedControl(dwRefData) and (TObject(dwRefData) is TStatusBar) then
+      begin
+        sb := TStatusBar(dwRefData);
+        hFont := THandle(SendMessage(hWnd, WM_GETFONT, 0, 0));
+        if hFont = 0 then
+          hFont := GetStockObject(DEFAULT_GUI_FONT);
+        if hFont <> 0 then
+          oldFont := SelectObject(hdc, hFont)
+        else
+          oldFont := 0;
+
+        oldBk := SetBkMode(hdc, TRANSPARENT);
+        oldCol := SetTextColor(hdc, ColorToRGB(CurrentSkin.PanelText));
+
+        if sb.SimplePanel or (sb.Panels.Count = 0) then
+        begin
+          txt := sb.SimpleText;
+          if txt = '' then
+            txt := sb.Caption;
+          if txt <> '' then
+          begin
+            wTxt := WideString(txt);
+            rcText := rc;
+            rcText.Left := rc.Left + 8;
+            for i := 0 to sb.ControlCount - 1 do
+              if sb.Controls[i].Visible then
+                rcText.Left := Max(rcText.Left, sb.Controls[i].BoundsRect.Right + 12);
+            rcText.Top := rc.Top + 1;
+            rcText.Right := Max(rcText.Left, rc.Right - 16);
+            DrawTextW(hdc, @wTxt[1], Length(wTxt), rcText,
+              DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX or DT_END_ELLIPSIS);
+          end;
+        end
+        else
+        begin
+          curLeft := rc.Left;
+          for i := 0 to sb.Panels.Count - 1 do
+          begin
+            pWidth := sb.Panels[i].Width;
+            if i = sb.Panels.Count - 1 then
+              rcText.Right := rc.Right - 16
+            else
+              rcText.Right := Min(rc.Right, curLeft + pWidth);
+            rcText.Left := curLeft + 6;
+            rcText.Top := rc.Top + 1;
+            rcText.Bottom := rc.Bottom;
+            txt := sb.Panels[i].Text;
+            if (txt <> '') and (rcText.Right > rcText.Left) then
+            begin
+              wTxt := WideString(txt);
+              DrawTextW(hdc, @wTxt[1], Length(wTxt), rcText,
+                DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX or DT_END_ELLIPSIS);
+            end;
+            curLeft := curLeft + pWidth;
+            if (i < sb.Panels.Count - 1) and (curLeft < rc.Right) then
+            begin
+              oldPen := SelectObject(hdc, hPen);
+              MoveToEx(hdc, curLeft, rc.Top + 3, nil);
+              LineTo(hdc, curLeft, rc.Bottom - 3);
+              SelectObject(hdc, oldPen);
+            end;
+          end;
+        end;
+
+        SetTextColor(hdc, oldCol);
+        SetBkMode(hdc, oldBk);
+        if oldFont <> 0 then
+          SelectObject(hdc, oldFont);
+      end;
+
+      DeleteObject(hPen);
+      EndPaint(hWnd, @ps);
+      if IsValidSubclassedControl(dwRefData) and (TObject(dwRefData) is TStatusBar) then
+      begin
+        sb := TStatusBar(dwRefData);
+        for i := 0 to sb.ControlCount - 1 do
+          if (sb.Controls[i] is TWinControl) and sb.Controls[i].Visible and
+             TWinControl(sb.Controls[i]).HandleAllocated then
+            RedrawWindow(TWinControl(sb.Controls[i]).Handle, nil, 0,
+              RDW_INVALIDATE or RDW_UPDATENOW or RDW_ALLCHILDREN);
+      end;
+    end;
+    Result := 0;
+    Exit;
+  end;
+
+  if ((uMsg = WM_SETTEXT) or (uMsg = $0401 {SB_SETTEXTA}) or (uMsg = $040B {SB_SETTEXTW}) or
+      (uMsg = $0409 {SB_SIMPLE})) and IsThemedSkin then
+  begin
+    Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+    InvalidateRect(hWnd, nil, FALSE);
+    Exit;
+  end;
+
+  Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+end;
+
+procedure HookStatusBarControl(AControl: TWinControl);
+begin
+  InitUxTheme;
+  if not Assigned(fnSetWindowSubclass) or not Assigned(AControl) or
+     (csDestroying in AControl.ComponentState) then exit;
+  if AControl.HandleAllocated and (AControl.Handle <> 0) then
+  begin
+    fnSetWindowSubclass(AControl.Handle, @StatusBarSubclassProc, 8501, PtrUInt(AControl));
+    AControl.Invalidate;
+  end;
+end;
+
+procedure UnhookStatusBarControl(AControl: TWinControl);
+begin
+  if not Assigned(fnRemoveWindowSubclass) then exit;
+  if Assigned(AControl) and AControl.HandleAllocated and (AControl.Handle <> 0) then
+    fnRemoveWindowSubclass(AControl.Handle, @StatusBarSubclassProc, 8501);
+end;
+
+function NCScrollBarSubclassProc(hWnd: HWND; uMsg: UINT; wParam: WPARAM; lParam: LPARAM;
+  uIdSubclass: PtrUInt; dwRefData: PtrUInt): LRESULT; stdcall;
+begin
+  if uIdSubclass = 0 then ;
+  if dwRefData = 0 then ;
+
+  if ApplicationShuttingDown or (uMsg = WM_NCDESTROY) or (uMsg = WM_DESTROY) then
+  begin
+    Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+    Exit;
+  end;
+
+  Result := fnDefSubclassProc(hWnd, uMsg, wParam, lParam);
+  if (CurrentSkin.Id <> skClassic) and (uMsg <> WM_NCHITTEST) and (uMsg <> WM_GETDLGCODE) and
+     (uMsg <> WM_GETFONT) and (uMsg <> WM_GETTEXT) and (uMsg <> WM_GETTEXTLENGTH) and
+     (uMsg <> WM_SETFONT) then
+  begin
+    if (uMsg = WM_NCPAINT) or (uMsg = WM_PAINT) or (uMsg = WM_SIZE) or
+       (uMsg = WM_WINDOWPOSCHANGED) or
+       ((GetWindowLong(hWnd, GWL_STYLE) and (WS_VSCROLL or WS_HSCROLL)) <> 0) then
+      PaintControlNCBorder(hWnd, CurrentSkin.WindowBg);
+  end;
+end;
+
+procedure HookNCScrollBarControl(AControl: TWinControl);
+begin
+  InitUxTheme;
+  if not Assigned(fnSetWindowSubclass) or not Assigned(AControl) or
+     (csDestroying in AControl.ComponentState) then exit;
+  if AControl.HandleAllocated and (AControl.Handle <> 0) then
+  begin
+    fnSetWindowSubclass(AControl.Handle, @NCScrollBarSubclassProc, 9601, PtrUInt(AControl));
+    RedrawWindow(AControl.Handle, nil, 0, RDW_FRAME or RDW_INVALIDATE);
+  end;
+end;
+
+procedure UnhookNCScrollBarControl(AControl: TWinControl);
+begin
+  if not Assigned(fnRemoveWindowSubclass) then exit;
+  if Assigned(AControl) and AControl.HandleAllocated and (AControl.Handle <> 0) then
+    fnRemoveWindowSubclass(AControl.Handle, @NCScrollBarSubclassProc, 9601);
 end;
 
 const
@@ -3165,10 +4094,87 @@ procedure HookTreeViewControl(AControl: TWinControl); begin end;
 procedure UnhookTreeViewControl(AControl: TWinControl); begin end;
 procedure HookEditControl(AControl: TWinControl); begin end;
 procedure UnhookEditControl(AControl: TWinControl); begin end;
+procedure HookStatusBarControl(AControl: TWinControl); begin end;
+procedure UnhookStatusBarControl(AControl: TWinControl); begin end;
+procedure HookNCScrollBarControl(AControl: TWinControl); begin end;
+procedure UnhookNCScrollBarControl(AControl: TWinControl); begin end;
+procedure PaintThemedNCScrollBars(hWnd: THandle); begin end;
 function HandleToolBarCustomDraw(lParam: LPARAM; const ASkin: TSkinColors; var AHandled: Boolean): LRESULT; begin Result := 0; AHandled := False; end;
 function GetCachedPanelBrush(AColor: TColor): THandle; begin Result := 0; end;
 function GetCachedWindowBrush(AColor: TColor): THandle; begin Result := 0; end;
 {$ENDIF}
+
+type
+  TThemedSplitterHook = class
+  public
+    class procedure PaintSplitter(Sender: TObject);
+  end;
+
+class procedure TThemedSplitterHook.PaintSplitter(Sender: TObject);
+var
+  sp: TCustomSplitterAccess;
+  rc: TRect;
+  bgCol, borderCol, dotCol: TColor;
+  cx, cy, k: Integer;
+begin
+  if not (Sender is TCustomSplitter) then Exit;
+  sp := TCustomSplitterAccess(Sender);
+  rc := sp.ClientRect;
+  if (rc.Right <= rc.Left) or (rc.Bottom <= rc.Top) then Exit;
+
+  if CurrentSkin.Id = skClassic then
+  begin
+    bgCol := TColor($00E5DDD6);
+    borderCol := TColor($00D0C5BC);
+    dotCol := TColor($007C6D60);
+  end
+  else
+  begin
+    bgCol := CurrentSkin.PanelBg;
+    borderCol := CurrentSkin.PanelBorder;
+    dotCol := CurrentSkin.WindowTextDim;
+  end;
+
+  sp.Canvas.Brush.Style := bsSolid;
+  sp.Canvas.Brush.Color := bgCol;
+  sp.Canvas.FillRect(rc);
+
+  sp.Canvas.Pen.Style := psSolid;
+  sp.Canvas.Pen.Width := 1;
+  sp.Canvas.Pen.Color := borderCol;
+
+  cx := (rc.Left + rc.Right) div 2;
+  cy := (rc.Top + rc.Bottom) div 2;
+
+  if (rc.Right - rc.Left) >= (rc.Bottom - rc.Top) then
+  begin
+    // Horizontal divider bar (top/bottom split)
+    sp.Canvas.MoveTo(rc.Left, rc.Top);
+    sp.Canvas.LineTo(rc.Right, rc.Top);
+    if rc.Bottom - rc.Top > 2 then
+    begin
+      sp.Canvas.MoveTo(rc.Left, rc.Bottom - 1);
+      sp.Canvas.LineTo(rc.Right, rc.Bottom - 1);
+    end;
+    sp.Canvas.Brush.Color := dotCol;
+    for k := -2 to 2 do
+      sp.Canvas.FillRect(cx + k * 5 - 1, cy - 1, cx + k * 5 + 1, cy + 1);
+  end
+  else
+  begin
+    // Vertical divider bar (left/right split)
+    sp.Canvas.MoveTo(rc.Left, rc.Top);
+    sp.Canvas.LineTo(rc.Left, rc.Bottom);
+    if rc.Right - rc.Left > 2 then
+    begin
+      sp.Canvas.MoveTo(rc.Right - 1, rc.Top);
+      sp.Canvas.LineTo(rc.Right - 1, rc.Bottom);
+    end;
+    sp.Canvas.Brush.Color := dotCol;
+    for k := -2 to 2 do
+      sp.Canvas.FillRect(cx - 1, cy + k * 5 - 1, cx + 1, cy + k * 5 + 1);
+  end;
+end;
 
 procedure ApplySkinToControlTree(AParent: TWinControl; const ASkin: TSkinColors);
 var
@@ -3185,6 +4191,13 @@ begin
       TPanel(ctrl).Font.Color := ASkin.PanelText;
       if ASkin.Id <> skClassic then
         TPanel(ctrl).BevelOuter := bvNone;
+    end
+    else if ctrl is TCustomSplitter then
+    begin
+      TControlAccess(ctrl).ParentColor := False;
+      TCustomSplitterAccess(ctrl).Color := ASkin.PanelBg;
+      TCustomSplitterAccess(ctrl).OnPaint := @TThemedSplitterHook.PaintSplitter;
+      TCustomSplitter(ctrl).Invalidate;
     end
     else if ctrl is TCustomMemo then
     begin
@@ -3241,11 +4254,19 @@ begin
       TCustomListBox(ctrl).Color := ASkin.WindowBg;
       TCustomListBox(ctrl).Font.Color := ASkin.WindowText;
       if ctrl is TWinControl then
+      begin
         ApplyDarkModeToControl(TWinControl(ctrl), ASkin.IsDark);
+        {$IFDEF WINDOWS}
+        HookNCScrollBarControl(TWinControl(ctrl));
+        {$ENDIF}
+      end;
+      TCustomListBox(ctrl).Invalidate;
     end
     else if ctrl is TCustomLabel then
     begin
+      TCustomLabel(ctrl).Color := ASkin.PanelBg;
       TCustomLabel(ctrl).Font.Color := ASkin.PanelText;
+      TCustomLabelAccess(ctrl).Transparent := True;
     end
     else if ctrl is TCustomCheckBox then
     begin
@@ -3295,10 +4316,16 @@ begin
     end
     else if (ctrl is TCustomPage) or (ctrl.ClassName = 'TTabSheet') then
     begin
+      TControlAccess(ctrl).ParentColor := False;
       TWinControl(ctrl).Color := ASkin.PanelBg;
       TWinControl(ctrl).Font.Color := ASkin.PanelText;
       if ctrl is TWinControl then
+      begin
         ApplyDarkModeToControl(TWinControl(ctrl), ASkin.IsDark);
+        {$IFDEF WINDOWS}
+        HookFormControl(TWinControl(ctrl));
+        {$ENDIF}
+      end;
     end
     else if ctrl is TScrollBox then
     begin
@@ -3310,6 +4337,10 @@ begin
         HookScrollBoxControl(TWinControl(ctrl));
         {$ENDIF}
       end;
+    end
+    else if ctrl is TScrollBar then
+    begin
+      ApplyDarkModeToControl(TWinControl(ctrl), ASkin.IsDark);
     end
     else if (ctrl is TCustomButton) or (ctrl is TBitBtn) or (ctrl is TSpeedButton) then
     begin
@@ -3330,6 +4361,38 @@ begin
       {$IFDEF WINDOWS}
       HookTabControl(TWinControl(ctrl));
       {$ENDIF}
+    end
+    else if ctrl is TToolBar then
+    begin
+      TControlAccess(ctrl).ParentColor := False;
+      TToolBar(ctrl).Color := ASkin.PanelBg;
+      TToolBar(ctrl).Font.Color := ASkin.PanelText;
+      ApplyDarkModeToControl(TWinControl(ctrl), ASkin.IsDark);
+      {$IFDEF WINDOWS}
+      HookToolBarControl(TWinControl(ctrl));
+      {$ENDIF}
+      TToolBar(ctrl).Invalidate;
+    end
+    else if ctrl is TStatusBar then
+    begin
+      TControlAccess(ctrl).ParentColor := False;
+      TStatusBar(ctrl).Color := ASkin.PanelBg;
+      TStatusBar(ctrl).Font.Color := ASkin.PanelText;
+      ApplyDarkModeToControl(TWinControl(ctrl), ASkin.IsDark);
+      {$IFDEF WINDOWS}
+      HookStatusBarControl(TWinControl(ctrl));
+      {$ENDIF}
+      TStatusBar(ctrl).Invalidate;
+    end
+    else if ctrl is TCustomControl then
+    begin
+      if TWinControl(ctrl).HandleAllocated then
+      begin
+        ApplyDarkModeToControl(TWinControl(ctrl), ASkin.IsDark);
+        {$IFDEF WINDOWS}
+        HookNCScrollBarControl(TWinControl(ctrl));
+        {$ENDIF}
+      end;
     end;
 
     if ctrl is TWinControl then
@@ -3459,6 +4522,35 @@ begin
         {$IFDEF WINDOWS}
         HookTabControl(TWinControl(ctrl));
         {$ENDIF}
+      end
+      else if ctrl is TToolBar then
+      begin
+        TControlAccess(ctrl).ParentColor := False;
+        TToolBar(ctrl).Color := ASkin.PanelBg;
+        TToolBar(ctrl).Font.Color := ASkin.PanelText;
+        ApplyDarkModeToControl(TWinControl(ctrl), ASkin.IsDark);
+        {$IFDEF WINDOWS}
+        HookToolBarControl(TWinControl(ctrl));
+        {$ENDIF}
+        TToolBar(ctrl).Invalidate;
+      end
+      else if ctrl is TStatusBar then
+      begin
+        TControlAccess(ctrl).ParentColor := False;
+        TStatusBar(ctrl).Color := ASkin.PanelBg;
+        TStatusBar(ctrl).Font.Color := ASkin.PanelText;
+        ApplyDarkModeToControl(TWinControl(ctrl), ASkin.IsDark);
+        {$IFDEF WINDOWS}
+        HookStatusBarControl(TWinControl(ctrl));
+        {$ENDIF}
+        TStatusBar(ctrl).Invalidate;
+      end
+      else if ctrl is TCustomSplitter then
+      begin
+        TControlAccess(ctrl).ParentColor := False;
+        TCustomSplitterAccess(ctrl).Color := ASkin.PanelBg;
+        TCustomSplitterAccess(ctrl).OnPaint := @TThemedSplitterHook.PaintSplitter;
+        TCustomSplitter(ctrl).Invalidate;
       end;
     end;
   end;
@@ -3597,6 +4689,7 @@ initialization
   {$ENDIF}
 
 finalization
+  ApplicationShuttingDown := True;
   {$IFDEF WINDOWS}
   RemoveMenuDarkHooks;
   if hbrCachedPopupMenuBg <> 0 then DeleteObject(hbrCachedPopupMenuBg);

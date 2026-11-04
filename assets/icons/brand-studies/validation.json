@@ -1,0 +1,97 @@
+{
+  "proposals": 6,
+  "pngCount": 54,
+  "activeBrandUnchanged": true,
+  "results": [
+    {
+      "id": "01-pergaminho-elo",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64,
+        128,
+        256
+      ],
+      "edgeWarnings": []
+    },
+    {
+      "id": "02-pergaminhos-paralelos",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64,
+        128,
+        256
+      ],
+      "edgeWarnings": []
+    },
+    {
+      "id": "03-faixa-leitura",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64,
+        128,
+        256
+      ],
+      "edgeWarnings": []
+    },
+    {
+      "id": "04-alfa-a",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64,
+        128,
+        256
+      ],
+      "edgeWarnings": []
+    },
+    {
+      "id": "05-mem-m",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64,
+        128,
+        256
+      ],
+      "edgeWarnings": []
+    },
+    {
+      "id": "06-pergaminho-alfabetos",
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64,
+        128,
+        256
+      ],
+      "edgeWarnings": []
+    }
+  ]
+}

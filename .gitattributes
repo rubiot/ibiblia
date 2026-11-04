@@ -1,0 +1,2 @@
+# Preserve hash-pinned vendored bytes in checkouts and git archive.
+vendor/fpc-openssl/* -text

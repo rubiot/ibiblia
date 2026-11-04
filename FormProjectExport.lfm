@@ -1,0 +1,264 @@
+object ProjectExportForm: TProjectExportForm
+  Left = 506
+  Height = 576
+  Top = 265
+  Width = 920
+  Caption = 'Export project'
+  ClientHeight = 576
+  ClientWidth = 920
+  DesignTimePPI = 96
+  Position = poMainFormCenter
+  LCLVersion = '4.0.0.4'
+  Font.Name = 'Segoe UI'
+  Font.Height = -13
+  Color = 16316147
+  Constraints.MinWidth = 920
+  Constraints.MinHeight = 540
+  object ExportPageControl: TPageControl
+    Left = 16
+    Height = 496
+    Top = 16
+    Width = 888
+    ActivePage = TaggedDestinationTab
+    Anchors = [akTop, akLeft, akRight, akBottom]
+    TabIndex = 0
+    TabOrder = 0
+    object TaggedDestinationTab: TTabSheet
+      Caption = 'Tagged destination text'
+      ClientHeight = 464
+      ClientWidth = 880
+      object MemoDestinationFooter: TMemo
+        Left = 16
+        Height = 304
+        Top = 144
+        Width = 848
+        Anchors = [akTop, akLeft, akRight, akBottom]
+        Font.CharSet = ANSI_CHARSET
+        Font.Color = clBlack
+        Font.Height = -14
+        Font.Name = 'Courier New'
+        Font.Pitch = fpFixed
+        Font.Quality = fqDraft
+        Lines.Strings = (
+          'MemoDestinationFooter'
+        )
+        ParentFont = False
+        ScrollBars = ssAutoBoth
+        TabOrder = 0
+      end
+      object LblTaggedDestinationProperties: TLabel
+        Left = 16
+        Height = 20
+        Top = 116
+        Width = 500
+        Caption = 'Module properties'
+        ParentColor = False
+      end
+      object CbExportUnassociatedAsItalics: TCheckBox
+        Left = 16
+        Height = 24
+        Top = 16
+        Width = 490
+        Caption = 'Export unassociated words as added words (italics)'
+        TabOrder = 1
+      end
+      object CbExportMorphology: TCheckBox
+        Left = 16
+        Height = 24
+        Top = 48
+        Width = 490
+        Caption = 'Export morphology tags'
+        TabOrder = 2
+      end
+      object CbExportComments: TCheckBox
+        Left = 16
+        Height = 24
+        Top = 80
+        Width = 800
+        Caption = 'Export editorial comments as translator notes'
+        TabOrder = 3
+        Visible = False
+      end
+      object CbMarkReusedStrongs: TCheckBox
+        Left = 512
+        Height = 24
+        Top = 16
+        Width = 350
+        Caption = 'Mark reused Strong''s numbers'
+        TabOrder = 4
+      end
+      object CbMarkUntranslatedStrongs: TCheckBox
+        Left = 512
+        Height = 24
+        Top = 48
+        Width = 350
+        Caption = 'Mark untranslated Strong''s numbers'
+        TabOrder = 5
+      end
+    end
+    object InterlinearSourceTab: TTabSheet
+      Caption = 'Interlinear source text'
+      ClientHeight = 464
+      ClientWidth = 880
+      object MemoSourceFooter: TMemo
+        Left = 16
+        Height = 392
+        Top = 56
+        Width = 848
+        Anchors = [akTop, akLeft, akRight, akBottom]
+        Font.CharSet = ANSI_CHARSET
+        Font.Height = -14
+        Font.Name = 'Courier New'
+        Font.Pitch = fpFixed
+        Font.Quality = fqDraft
+        Lines.Strings = (
+          'MemoSourceFooter'
+        )
+        ParentFont = False
+        ScrollBars = ssAutoBoth
+        TabOrder = 0
+      end
+      object LblInterlinearSourceProperties: TLabel
+        Left = 16
+        Height = 20
+        Top = 24
+        Width = 800
+        Caption = 'Module properties'
+        ParentColor = False
+      end
+    end
+    object ConcordanceTab: TTabSheet
+      Caption = 'Strong''s concordance'
+      ClientHeight = 464
+      ClientWidth = 880
+      object rgConcordanceType: TRadioGroup
+        Left = 16
+        Height = 64
+        Top = 16
+        Width = 848
+        Anchors = [akTop, akLeft, akRight]
+        Caption = 'Concordance type'
+        ChildSizing.TopBottomSpacing = 2
+        ChildSizing.VerticalSpacing = 2
+        ItemIndex = 0
+        Items.Strings = (
+          'Analytical concordance'
+          'Synthetic concordance'
+        )
+        TabOrder = 0
+        OnClick = ConcordanceTypeClick
+      end
+      object EditAbbreviation: TLabeledEdit
+        Left = 16
+        Height = 28
+        Top = 392
+        Width = 420
+        EditLabel.Height = 15
+        EditLabel.Width = 264
+        EditLabel.Caption = 'Abbreviation'
+        EditLabel.ParentColor = False
+        TabOrder = 3
+      end
+      object lblConcordanceDescription: TLabel
+        Left = 24
+        Height = 48
+        Top = 120
+        Width = 824
+        Anchors = [akTop, akLeft, akRight]
+        AutoSize = False
+        Caption = 'Shows each source form separately, with its translations and verse references.'
+        ParentColor = False
+        WordWrap = True
+      end
+      object lblConcordanceOutput: TLabel
+        Left = 24
+        Height = 48
+        Top = 176
+        Width = 824
+        Anchors = [akTop, akLeft, akRight]
+        AutoSize = False
+        Caption = 'The exported dictionary is organized by Strong''s number, with compact frequency totals and clickable verse references.'
+        ParentColor = False
+        WordWrap = True
+      end
+      object rgConcordanceContext: TRadioGroup
+        Left = 16
+        Height = 54
+        Top = 232
+        Width = 848
+        Anchors = [akTop, akLeft, akRight]
+        Caption = 'Reference text'
+        ChildSizing.LeftRightSpacing = 4
+        ChildSizing.HorizontalSpacing = 4
+        ChildSizing.TopBottomSpacing = 2
+        ChildSizing.VerticalSpacing = 2
+        Columns = 3
+        ItemIndex = 0
+        Items.Strings = (
+          'References only'
+          'Relevant excerpt'
+          'Full verse'
+        )
+        TabOrder = 1
+        OnClick = ConcordanceContextClick
+      end
+      object lblConcordanceMaxCharacters: TLabel
+        Left = 24
+        Height = 24
+        Top = 328
+        Width = 460
+        Caption = 'Maximum excerpt length (characters)'
+        Enabled = False
+        ParentColor = False
+      end
+      object seConcordanceMaxCharacters: TSpinEdit
+        Left = 504
+        Height = 28
+        Top = 324
+        Width = 104
+        Enabled = False
+        Increment = 10
+        MaxValue = 500
+        MinValue = 40
+        TabOrder = 2
+        Value = 120
+      end
+    end
+  end
+  object BtnExport: TButton
+    Left = 800
+    Height = 32
+    Top = 528
+    Width = 104
+    Anchors = [akRight, akBottom]
+    Caption = 'Export'
+    Default = True
+    TabOrder = 1
+    OnClick = ExportButtonClick
+  end
+  object BtnCancel: TButton
+    Left = 688
+    Height = 32
+    Top = 528
+    Width = 104
+    Anchors = [akRight, akBottom]
+    Cancel = True
+    Caption = 'Cancel'
+    ModalResult = 2
+    TabOrder = 2
+  end
+  object SaveBibleModuleDialog: TSaveDialog
+    Title = 'Save module as...'
+    DefaultExt = '.nt'
+    Filter = 'theWord Bible module (*.nt)|*.nt'
+    Left = 728
+    Top = 231
+  end
+  object SaveConcordanceDialog: TSaveDialog
+    Title = 'Save module as...'
+    DefaultExt = '.dct.twm'
+    Filter = 'theWord dictionary module (*.dct.twm)|*.dct.twm'
+    Left = 589
+    Top = 236
+  end
+end

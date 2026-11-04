@@ -1,0 +1,18 @@
+{"version":1,"strings":[
+{"hash":204287790,"name":"tfrmnewproject.caption","sourcebytes":[78,101,119,32,112,114,111,106,101,99,116,46,46,46],"value":"New project..."},
+{"hash":5951411,"name":"tfrmnewproject.groupboxtexts.caption","sourcebytes":[84,101,120,116,115],"value":"Texts"},
+{"hash":94816405,"name":"tfrmnewproject.editsourcetext.editlabel.caption","sourcebytes":[83,111,117,114,99,101],"value":"Source"},
+{"hash":157422,"name":"tfrmnewproject.editdestinationtext.editlabel.caption","sourcebytes":[68,101,115,116,105,110,97,116,105,111,110],"value":"Destination"},
+{"hash":150744049,"name":"tfrmnewproject.editreferencetext1.editlabel.caption","sourcebytes":[82,101,102,101,114,101,110,99,101,32,49],"value":"Reference 1"},
+{"hash":150744050,"name":"tfrmnewproject.editreferencetext2.editlabel.caption","sourcebytes":[82,101,102,101,114,101,110,99,101,32,50],"value":"Reference 2"},
+{"hash":12558,"name":"tfrmnewproject.btnselectsourcetext.caption","sourcebytes":[46,46,46],"value":"..."},
+{"hash":12558,"name":"tfrmnewproject.btnselectdestinationtext.caption","sourcebytes":[46,46,46],"value":"..."},
+{"hash":12558,"name":"tfrmnewproject.btnselectreferencetext1.caption","sourcebytes":[46,46,46],"value":"..."},
+{"hash":12558,"name":"tfrmnewproject.btnselectreferencetext2.caption","sourcebytes":[46,46,46],"value":"..."},
+{"hash":11067,"name":"tfrmnewproject.btnok.caption","sourcebytes":[38,79,75],"value":"&OK"},
+{"hash":77089212,"name":"tfrmnewproject.btncancel.caption","sourcebytes":[67,97,110,99,101,108],"value":"Cancel"},
+{"hash":114087587,"name":"tfrmnewproject.groupboxproperties.caption","sourcebytes":[80,114,111,112,101,114,116,105,101,115],"value":"Properties"},
+{"hash":346165,"name":"tfrmnewproject.editprojectname.editlabel.caption","sourcebytes":[78,97,109,101],"value":"Name"},
+{"hash":5875301,"name":"tfrmnewproject.radiogroupscope.caption","sourcebytes":[83,99,111,112,101],"value":"Scope"},
+{"hash":137986549,"name":"tfrmnewproject.opendialogselecttext.title","sourcebytes":[67,104,111,111,115,101,32,97,32,116,104,101,87,111,114,100,32,98,105,98,108,101,32,109,111,100,117,108,101],"value":"Choose a theWord bible module"}
+]}

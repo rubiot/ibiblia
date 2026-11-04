@@ -5,9 +5,8 @@ unit formvoicesettings;
 interface
 
 uses
-  unitskins,
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls,
-  ComCtrls, unittexttospeech;
+  ComCtrls, unittexttospeech, ui_style;
 
 type
 
@@ -58,6 +57,30 @@ function ShowVoiceSettingsDialog(AOwner: TComponent): Boolean;
 
 implementation
 
+resourcestring
+  SVoiceTitle = 'Voice & Text-to-Speech Settings';
+  SVoiceCheckEnable = 'Enable voice reading when hovering mouse over words';
+  SVoiceLabelTrigger = 'Trigger condition:';
+  SVoiceGroupVoices = 'Voice Selection (Installed Windows Voices)';
+  SVoiceLabelSource = 'Source Voice (Hebrew / Greek original text):';
+  SVoiceButtonTestSource = 'Test Source';
+  SVoiceLabelDest = 'Translation Voice (English / Destination text):';
+  SVoiceButtonTestDest = 'Test Translation';
+  SVoiceGroupAudio = 'Speech Tuning';
+  SVoiceLabelSpeed = 'Speech Rate (Speed):';
+  SVoiceLabelSpeedVal = 'Normal (0)';
+  SVoiceLabelVolume = 'Volume:';
+  SVoiceLabelVolumeVal = '100%';
+  SVoiceButtonCancel = 'Cancel';
+  SVoiceButtonOK = 'OK';
+  SVoiceTriggerHover = 'Always on mouse hover';
+  SVoiceTriggerCtrl = 'Hover while holding Ctrl key';
+  SVoiceTriggerAlt = 'Hover while holding Alt key';
+  SVoiceDefaultVoice = 'Default Windows Voice';
+  SVoiceSpeedFastFmt = '+%d Fast';
+  SVoiceSpeedSlowFmt = '%d Slow';
+
+
 function ShowVoiceSettingsDialog(AOwner: TComponent): Boolean;
 var
   dlg: TFormVoiceSettings;
@@ -80,8 +103,9 @@ var
   i: Integer;
 begin
   inherited CreateNew(AOwner);
+  ApplyFormStyle(Self);
 
-  Caption := 'Voice & Text-to-Speech Settings';
+  Caption := SVoiceTitle;
   Width := 520;
   Height := 430;
   Position := poMainFormCenter;
@@ -95,14 +119,14 @@ begin
   CheckEnable.Left := 16;
   CheckEnable.Top := 12;
   CheckEnable.Width := 480;
-  CheckEnable.Caption := 'Enable voice reading when hovering mouse over words';
+  CheckEnable.Caption := SVoiceCheckEnable;
   CheckEnable.Font.Style := [fsBold];
 
   LabelTrigger := TLabel.Create(Self);
   LabelTrigger.Parent := Self;
   LabelTrigger.Left := 36;
   LabelTrigger.Top := 40;
-  LabelTrigger.Caption := 'Trigger condition:';
+  LabelTrigger.Caption := SVoiceLabelTrigger;
 
   ComboTrigger := TComboBox.Create(Self);
   ComboTrigger.Parent := Self;
@@ -110,9 +134,9 @@ begin
   ComboTrigger.Top := 36;
   ComboTrigger.Width := 250;
   ComboTrigger.Style := csDropDownList;
-  ComboTrigger.Items.Add('Always on mouse hover');
-  ComboTrigger.Items.Add('Hover while holding Ctrl key');
-  ComboTrigger.Items.Add('Hover while holding Alt key');
+  ComboTrigger.Items.Add(SVoiceTriggerHover);
+  ComboTrigger.Items.Add(SVoiceTriggerCtrl);
+  ComboTrigger.Items.Add(SVoiceTriggerAlt);
 
   // 2. GroupBox: Voice Selection
   GroupVoices := TGroupBox.Create(Self);
@@ -121,14 +145,14 @@ begin
   GroupVoices.Top := 70;
   GroupVoices.Width := 488;
   GroupVoices.Height := 160;
-  GroupVoices.Caption := 'Voice Selection (Installed Windows Voices)';
+  GroupVoices.Caption := SVoiceGroupVoices;
 
   // Source text voice (Greek / Hebrew)
   LabelSource := TLabel.Create(GroupVoices);
   LabelSource.Parent := GroupVoices;
   LabelSource.Left := 12;
   LabelSource.Top := 16;
-  LabelSource.Caption := 'Source Voice (Hebrew / Greek original text):';
+  LabelSource.Caption := SVoiceLabelSource;
 
   ComboSourceVoice := TComboBox.Create(GroupVoices);
   ComboSourceVoice.Parent := GroupVoices;
@@ -143,7 +167,7 @@ begin
   ButtonTestSource.Top := 34;
   ButtonTestSource.Width := 110;
   ButtonTestSource.Height := 28;
-  ButtonTestSource.Caption := 'Test Source';
+  ButtonTestSource.Caption := SVoiceButtonTestSource;
   ButtonTestSource.OnClick := @ButtonTestSourceClick;
 
   // Destination translation voice (English, etc.)
@@ -151,7 +175,7 @@ begin
   LabelDest.Parent := GroupVoices;
   LabelDest.Left := 12;
   LabelDest.Top := 76;
-  LabelDest.Caption := 'Translation Voice (English / Destination text):';
+  LabelDest.Caption := SVoiceLabelDest;
 
   ComboDestVoice := TComboBox.Create(GroupVoices);
   ComboDestVoice.Parent := GroupVoices;
@@ -166,7 +190,7 @@ begin
   ButtonTestDest.Top := 94;
   ButtonTestDest.Width := 110;
   ButtonTestDest.Height := 28;
-  ButtonTestDest.Caption := 'Test Translation';
+  ButtonTestDest.Caption := SVoiceButtonTestDest;
   ButtonTestDest.OnClick := @ButtonTestDestClick;
 
   // Populate voice lists
@@ -181,8 +205,8 @@ begin
 
   if ComboSourceVoice.Items.Count = 0 then
   begin
-    ComboSourceVoice.Items.Add('Default Windows Voice');
-    ComboDestVoice.Items.Add('Default Windows Voice');
+    ComboSourceVoice.Items.Add(SVoiceDefaultVoice);
+    ComboDestVoice.Items.Add(SVoiceDefaultVoice);
   end;
 
   // 3. GroupBox: Audio Tuning
@@ -192,14 +216,14 @@ begin
   GroupAudio.Top := 240;
   GroupAudio.Width := 488;
   GroupAudio.Height := 125;
-  GroupAudio.Caption := 'Speech Tuning';
+  GroupAudio.Caption := SVoiceGroupAudio;
 
   // Speed / Rate
   LabelSpeed := TLabel.Create(GroupAudio);
   LabelSpeed.Parent := GroupAudio;
   LabelSpeed.Left := 12;
   LabelSpeed.Top := 16;
-  LabelSpeed.Caption := 'Speech Rate (Speed):';
+  LabelSpeed.Caption := SVoiceLabelSpeed;
 
   TrackSpeed := TTrackBar.Create(GroupAudio);
   TrackSpeed.Parent := GroupAudio;
@@ -215,14 +239,14 @@ begin
   LabelSpeedVal.Parent := GroupAudio;
   LabelSpeedVal.Left := 415;
   LabelSpeedVal.Top := 16;
-  LabelSpeedVal.Caption := 'Normal (0)';
+  LabelSpeedVal.Caption := SVoiceLabelSpeedVal;
 
   // Volume
   LabelVolume := TLabel.Create(GroupAudio);
   LabelVolume.Parent := GroupAudio;
   LabelVolume.Left := 12;
   LabelVolume.Top := 56;
-  LabelVolume.Caption := 'Volume:';
+  LabelVolume.Caption := SVoiceLabelVolume;
 
   TrackVolume := TTrackBar.Create(GroupAudio);
   TrackVolume.Parent := GroupAudio;
@@ -238,7 +262,7 @@ begin
   LabelVolumeVal.Parent := GroupAudio;
   LabelVolumeVal.Left := 415;
   LabelVolumeVal.Top := 56;
-  LabelVolumeVal.Caption := '100%';
+  LabelVolumeVal.Caption := SVoiceLabelVolumeVal;
 
   // 4. Buttons Panel
   PanelButtons := TPanel.Create(Self);
@@ -253,7 +277,7 @@ begin
   ButtonCancel.Top := 10;
   ButtonCancel.Width := 100;
   ButtonCancel.Height := 30;
-  ButtonCancel.Caption := 'Cancel';
+  ButtonCancel.Caption := SVoiceButtonCancel;
   ButtonCancel.Cancel := True;
   ButtonCancel.ModalResult := mrCancel;
   ButtonCancel.OnClick := @ButtonCancelClick;
@@ -264,13 +288,11 @@ begin
   ButtonOK.Top := 10;
   ButtonOK.Width := 100;
   ButtonOK.Height := 30;
-  ButtonOK.Caption := 'OK';
+  ButtonOK.Caption := SVoiceButtonOK;
   ButtonOK.Default := True;
   ButtonOK.ModalResult := mrOk;
   ButtonOK.OnClick := @ButtonOKClick;
 
-  Color := CurrentSkin.PanelBg;
-  Font.Color := CurrentSkin.PanelText;
 end;
 
 procedure TFormVoiceSettings.FormShow(Sender: TObject);
@@ -290,55 +312,15 @@ begin
   ButtonOK.HandleNeeded;
   ButtonCancel.HandleNeeded;
 
-  ApplySkinToForm(Self, CurrentSkin);
 
   {$IFDEF WINDOWS}
-  HookCheckBoxControl(CheckEnable);
-  HookComboBoxControl(ComboTrigger);
-  HookGroupBoxControl(GroupVoices);
-  HookComboBoxControl(ComboSourceVoice);
-  HookButtonControl(ButtonTestSource);
-  HookComboBoxControl(ComboDestVoice);
-  HookButtonControl(ButtonTestDest);
-  HookGroupBoxControl(GroupAudio);
-  HookTrackBarControl(TrackSpeed);
-  HookTrackBarControl(TrackVolume);
-  HookButtonControl(ButtonOK);
-  HookButtonControl(ButtonCancel);
   {$ENDIF}
 
-  Color := CurrentSkin.PanelBg;
-  Font.Color := CurrentSkin.PanelText;
-  PanelButtons.Color := CurrentSkin.PanelBg;
-  PanelButtons.Font.Color := CurrentSkin.PanelText;
 
-  CheckEnable.Color := CurrentSkin.PanelBg;
-  CheckEnable.Font.Color := CurrentSkin.PanelText;
-  LabelTrigger.Font.Color := CurrentSkin.PanelText;
-  ComboTrigger.Color := CurrentSkin.WindowBg;
-  ComboTrigger.Font.Color := CurrentSkin.WindowText;
 
-  GroupVoices.Color := CurrentSkin.PanelBg;
-  GroupVoices.Font.Color := CurrentSkin.PanelText;
-  LabelSource.Font.Color := CurrentSkin.PanelText;
-  ComboSourceVoice.Color := CurrentSkin.WindowBg;
-  ComboSourceVoice.Font.Color := CurrentSkin.WindowText;
-  ButtonTestSource.Font.Color := CurrentSkin.PanelText;
 
-  LabelDest.Font.Color := CurrentSkin.PanelText;
-  ComboDestVoice.Color := CurrentSkin.WindowBg;
-  ComboDestVoice.Font.Color := CurrentSkin.WindowText;
-  ButtonTestDest.Font.Color := CurrentSkin.PanelText;
 
-  GroupAudio.Color := CurrentSkin.PanelBg;
-  GroupAudio.Font.Color := CurrentSkin.PanelText;
-  LabelSpeed.Font.Color := CurrentSkin.PanelText;
-  LabelSpeedVal.Font.Color := CurrentSkin.PanelText;
-  LabelVolume.Font.Color := CurrentSkin.PanelText;
-  LabelVolumeVal.Font.Color := CurrentSkin.PanelText;
 
-  ButtonOK.Font.Color := CurrentSkin.PanelText;
-  ButtonCancel.Font.Color := CurrentSkin.PanelText;
 
   CheckEnable.Invalidate;
   ComboTrigger.Invalidate;
@@ -401,11 +383,11 @@ end;
 procedure TFormVoiceSettings.TrackSpeedChange(Sender: TObject);
 begin
   if TrackSpeed.Position = 0 then
-    LabelSpeedVal.Caption := 'Normal (0)'
+    LabelSpeedVal.Caption := SVoiceLabelSpeedVal
   else if TrackSpeed.Position > 0 then
-    LabelSpeedVal.Caption := Format('+%d Fast', [TrackSpeed.Position])
+    LabelSpeedVal.Caption := Format(SVoiceSpeedFastFmt, [TrackSpeed.Position])
   else
-    LabelSpeedVal.Caption := Format('%d Slow', [TrackSpeed.Position]);
+    LabelSpeedVal.Caption := Format(SVoiceSpeedSlowFmt, [TrackSpeed.Position]);
 end;
 
 procedure TFormVoiceSettings.TrackVolumeChange(Sender: TObject);

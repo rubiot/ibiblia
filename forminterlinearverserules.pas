@@ -1,86 +1,61 @@
-unit formInterlinearVerseRules;
+unit FormInterlinearVerseRules;
 
 {$mode objfpc}{$H+}
 
 interface
 
 uses
-  unitskins,
-  Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, Grids,
-  StdCtrls, ComCtrls, Clipbrd, StrUtils, Math, Projeto;
+  ui_style, Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, Grids,
+  StdCtrls, ComCtrls, Clipbrd, StrUtils, Math, Project;
 
 type
 
-  { TFormInterlinearVerseRules }
+  { TInterlinearVerseRulesForm }
 
-  TFormInterlinearVerseRules = class(TForm)
-    ButtonOK: TButton;
-    Button2: TButton;
-    PageControlVerseRules: TPageControl;
+  TInterlinearVerseRulesForm = class(TForm)
+    OkButton: TButton;
+    CancelButton: TButton;
+    VerseRulesPageControl: TPageControl;
     StringGridIntralinear: TStringGrid;
     StringGridInterlinear: TStringGrid;
-    TabSheet1: TTabSheet;
-    TabSheet2: TTabSheet;
-    procedure ButtonOKClick(Sender: TObject);
-    procedure FormShow(Sender: TObject);
+    InterlinearTab: TTabSheet;
+    IntralinearTab: TTabSheet;
+    procedure OkButtonClick(Sender: TObject);
   private
-    FProject: TProjeto;
-    procedure SetProject(AValue: TProjeto);
+    FProject: TProject;
+    procedure SetProject(AValue: TProject);
     procedure LoadGrid(grid: TStringGrid; values: string);
     function GetVerseRules(grid: TStringGrid): string;
   public
-    property Project: TProjeto read FProject write SetProject;
+    property Project: TProject read FProject write SetProject;
+  public
+    procedure AfterConstruction; override;
   end;
 
 var
-  frmInterlinearVerseRules: TFormInterlinearVerseRules;
+  InterlinearVerseRulesForm: TInterlinearVerseRulesForm;
 
 implementation
 
-{ TFormInterlinearVerseRules }
+{ TInterlinearVerseRulesForm }
 
-procedure TFormInterlinearVerseRules.FormShow(Sender: TObject);
+procedure TInterlinearVerseRulesForm.OkButtonClick(Sender: TObject);
 begin
-  HandleNeeded;
-  PageControlVerseRules.HandleNeeded;
-  ButtonOK.HandleNeeded;
-  Button2.HandleNeeded;
-
-  ApplySkinToForm(Self, CurrentSkin);
-  {$IFDEF WINDOWS}
-  HookTabControl(PageControlVerseRules);
-  HookButtonControl(ButtonOK);
-  HookButtonControl(Button2);
-  {$ENDIF}
-  if IsThemedSkin then
-  begin
-    ButtonOK.Font.Color := CurrentSkin.PanelText;
-    Button2.Font.Color := CurrentSkin.PanelText;
-    StringGridInterlinear.Color := CurrentSkin.WindowBg;
-    StringGridInterlinear.Font.Color := CurrentSkin.WindowText;
-    StringGridInterlinear.FixedColor := CurrentSkin.PanelBg;
-    StringGridIntralinear.Color := CurrentSkin.WindowBg;
-    StringGridIntralinear.Font.Color := CurrentSkin.WindowText;
-    StringGridIntralinear.FixedColor := CurrentSkin.PanelBg;
-  end;
+  FProject.SetInfo('propriedades.interlinearview.verserules', GetVerseRules(StringGridInterlinear));
+  FProject.SetInfo('propriedades.intralinearview.verserules', GetVerseRules(StringGridIntralinear));
 end;
 
-procedure TFormInterlinearVerseRules.ButtonOKClick(Sender: TObject);
+procedure TInterlinearVerseRulesForm.SetProject(AValue: TProject);
 begin
-  FProject.AtribuirInfo('propriedades.interlinearview.verserules', GetVerseRules(StringGridInterlinear));
-  FProject.AtribuirInfo('propriedades.intralinearview.verserules', GetVerseRules(StringGridIntralinear));
-end;
-
-procedure TFormInterlinearVerseRules.SetProject(AValue: TProjeto);
-begin
-  OnShow := @FormShow;
   FProject := AValue;
-  LoadGrid(StringGridInterlinear, FProject.ObterInfo('propriedades.interlinearview.verserules'));
-  LoadGrid(StringGridIntralinear, FProject.ObterInfo('propriedades.intralinearview.verserules'));
-  PageControlVerseRules.PageIndex := IfThen(FProject.InterlinearMode = imInterlinear, 0, 1);
+  if Assigned(CancelButton) then
+    CancelButton.Caption := SUICancel;
+  LoadGrid(StringGridInterlinear, FProject.GetInfo('propriedades.interlinearview.verserules'));
+  LoadGrid(StringGridIntralinear, FProject.GetInfo('propriedades.intralinearview.verserules'));
+  VerseRulesPageControl.PageIndex := IfThen(FProject.InterlinearMode = imInterlinear, 0, 1);
 end;
 
-procedure TFormInterlinearVerseRules.LoadGrid(grid: TStringGrid; values: string
+procedure TInterlinearVerseRulesForm.LoadGrid(grid: TStringGrid; values: string
   );
 var
   rule: string;
@@ -106,7 +81,7 @@ begin
   grid.AutoSizeColumns;
 end;
 
-function TFormInterlinearVerseRules.GetVerseRules(grid: TStringGrid): string;
+function TInterlinearVerseRulesForm.GetVerseRules(grid: TStringGrid): string;
 var
   i: integer;
 begin
@@ -122,7 +97,17 @@ begin
   end;
 end;
 
+procedure TInterlinearVerseRulesForm.AfterConstruction;
+begin
+  inherited AfterConstruction;
+  ApplyDialogStyle(Self);
+end;
+
+
 initialization
-  {$I formInterlinearVerseRules.lrs}
+{$IFNDEF FPCUNIT}
+  {$R FormInterlinearVerseRules.lfm}
+{$ENDIF}
 
 end.
+

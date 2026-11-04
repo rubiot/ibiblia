@@ -1,24 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CONFIG>
   <ProjectSession>
-    <Version Value="11"/>
-    <BuildModes Active="Debug"/>
-    <Units Count="5">
+    <Version Value="12"/>
+    <BuildModes Active="Default"/>
+    <Units Count="20">
       <Unit0>
         <Filename Value="fpcunitibiblia.lpr"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="1"/>
-        <CursorPos Y="11"/>
-        <UsageCount Value="29"/>
+        <EditorIndex Value="13"/>
+        <CursorPos X="69" Y="6"/>
+        <UsageCount Value="116"/>
         <Loaded Value="True"/>
       </Unit0>
       <Unit1>
         <Filename Value="ibibliatest.pas"/>
         <IsPartOfProject Value="True"/>
-        <IsVisibleTab Value="True"/>
-        <TopLine Value="628"/>
-        <CursorPos Y="198"/>
-        <UsageCount Value="29"/>
+        <TopLine Value="1150"/>
+        <CursorPos X="24" Y="1204"/>
+        <UsageCount Value="116"/>
         <Loaded Value="True"/>
       </Unit1>
       <Unit2>
@@ -28,149 +27,193 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="60"/>
         <CursorPos X="20" Y="68"/>
-        <UsageCount Value="29"/>
+        <UsageCount Value="116"/>
       </Unit2>
       <Unit3>
-        <Filename Value="../versiculo.pas"/>
-        <UnitName Value="Versiculo"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="418"/>
-        <CursorPos X="3" Y="447"/>
-        <UsageCount Value="14"/>
+        <Filename Value="../Verse.pas"/>
+        <EditorIndex Value="9"/>
+        <TopLine Value="79"/>
+        <CursorPos X="17" Y="112"/>
+        <UsageCount Value="54"/>
+        <Loaded Value="True"/>
       </Unit3>
       <Unit4>
         <Filename Value="/usr/share/fpcsrc/3.0.4/packages/fcl-fpcunit/src/fpcunit.pp"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="45"/>
         <CursorPos Y="90"/>
-        <UsageCount Value="13"/>
+        <UsageCount Value="6"/>
       </Unit4>
+      <Unit5>
+        <Filename Value="../syntagm.pas"/>
+        <UnitName Value="Syntagm"/>
+        <EditorIndex Value="12"/>
+        <TopLine Value="85"/>
+        <CursorPos X="14" Y="125"/>
+        <UsageCount Value="50"/>
+        <Loaded Value="True"/>
+      </Unit5>
+      <Unit6>
+        <Filename Value="../onttokenizer.pas"/>
+        <UnitName Value="ONTTokenizer"/>
+        <EditorIndex Value="11"/>
+        <UsageCount Value="50"/>
+        <Loaded Value="True"/>
+      </Unit6>
+      <Unit7>
+        <Filename Value="../../../Apps/lazarus4/fpc/3.2.2/source/rtl/objpas/classes/classesh.inc"/>
+        <EditorIndex Value="10"/>
+        <TopLine Value="309"/>
+        <CursorPos X="15" Y="343"/>
+        <UsageCount Value="50"/>
+        <Loaded Value="True"/>
+      </Unit7>
+      <Unit8>
+        <Filename Value="../../../Apps/lazarus4/fpc/3.2.2/source/packages/fcl-fpcunit/src/fpcunit.pp"/>
+        <EditorIndex Value="8"/>
+        <TopLine Value="101"/>
+        <CursorPos X="21" Y="144"/>
+        <UsageCount Value="50"/>
+        <Loaded Value="True"/>
+      </Unit8>
+      <Unit9>
+        <Filename Value="../aiassociator.pas"/>
+        <UnitName Value="AIAssociator"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="146"/>
+        <CursorPos X="94" Y="188"/>
+        <UsageCount Value="43"/>
+      </Unit9>
+      <Unit10>
+        <Filename Value="aiassociatortest.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="169"/>
+        <CursorPos Y="244"/>
+        <UsageCount Value="43"/>
+      </Unit10>
+      <Unit11>
+        <Filename Value="versiculotest.pas"/>
+        <EditorIndex Value="14"/>
+        <CursorPos X="19" Y="28"/>
+        <UsageCount Value="37"/>
+        <Loaded Value="True"/>
+      </Unit11>
+      <Unit12>
+        <Filename Value="../formpopup.pas"/>
+        <ComponentName Value="frmDictionaryPopup"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <EditorIndex Value="5"/>
+        <TopLine Value="104"/>
+        <CursorPos X="37" Y="10"/>
+        <UsageCount Value="13"/>
+        <Loaded Value="True"/>
+        <LoadedDesigner Value="True"/>
+      </Unit12>
+      <Unit13>
+        <Filename Value="../../../Apps/lazarus4/lcl/lcltype.pp"/>
+        <UnitName Value="LCLType"/>
+        <EditorIndex Value="7"/>
+        <UsageCount Value="13"/>
+        <Loaded Value="True"/>
+      </Unit13>
+      <Unit14>
+        <Filename Value="../unitabout.pas"/>
+        <ComponentName Value="FormAbout"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="4" Y="45"/>
+        <UsageCount Value="10"/>
+      </Unit14>
+      <Unit15>
+        <Filename Value="../htmlrenderer.pas"/>
+        <UnitName Value="HTMLRenderer"/>
+        <EditorIndex Value="6"/>
+        <TopLine Value="124"/>
+        <CursorPos X="5" Y="188"/>
+        <UsageCount Value="13"/>
+        <Loaded Value="True"/>
+      </Unit15>
+      <Unit16>
+        <Filename Value="../commentsview.pas"/>
+        <UnitName Value="CommentsView"/>
+        <EditorIndex Value="3"/>
+        <TopLine Value="167"/>
+        <CursorPos Y="233"/>
+        <UsageCount Value="13"/>
+        <Loaded Value="True"/>
+      </Unit16>
+      <Unit17>
+        <Filename Value="../forminterlinearverserules.pas"/>
+        <ComponentName Value="FormInterlinearVerseRules"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="formInterlinearVerseRules"/>
+        <EditorIndex Value="1"/>
+        <TopLine Value="34"/>
+        <CursorPos Y="97"/>
+        <UsageCount Value="13"/>
+        <Loaded Value="True"/>
+        <LoadedDesigner Value="True"/>
+      </Unit17>
+      <Unit18>
+        <Filename Value="../formllmoptions.pas"/>
+        <ComponentName Value="FrmLLMOptions"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="FormLlmOptions"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="2"/>
+        <TopLine Value="125"/>
+        <CursorPos X="3" Y="188"/>
+        <UsageCount Value="13"/>
+        <Loaded Value="True"/>
+        <LoadedDesigner Value="True"/>
+      </Unit18>
+      <Unit19>
+        <Filename Value="../llmclient.pas"/>
+        <EditorIndex Value="4"/>
+        <TopLine Value="5"/>
+        <CursorPos X="14" Y="39"/>
+        <UsageCount Value="13"/>
+        <Loaded Value="True"/>
+      </Unit19>
     </Units>
-    <JumpHistory Count="30" HistoryIndex="29">
-      <Position1>
-        <Filename Value="ibibliatest.pas"/>
-        <Caret Line="32" Column="15" TopLine="9"/>
-      </Position1>
-      <Position2>
-        <Filename Value="ibibliatest.pas"/>
-        <Caret Line="320" Column="33" TopLine="319"/>
-      </Position2>
-      <Position3>
-        <Filename Value="ibibliatest.pas"/>
-        <Caret Line="267" Column="4" TopLine="245"/>
-      </Position3>
-      <Position4>
-        <Filename Value="ibibliatest.pas"/>
-        <Caret Line="8" Column="74"/>
-      </Position4>
-      <Position5>
-        <Filename Value="ibibliatest.pas"/>
-        <Caret Line="21" Column="55" TopLine="3"/>
-      </Position5>
-      <Position6>
-        <Filename Value="ibibliatest.pas"/>
-        <Caret Line="81" Column="39" TopLine="54"/>
-      </Position6>
-      <Position7>
-        <Filename Value="ibibliatest.pas"/>
-        <Caret Line="86" Column="14" TopLine="69"/>
-      </Position7>
-      <Position8>
-        <Filename Value="ibibliatest.pas"/>
-        <Caret Line="94" Column="19" TopLine="73"/>
-      </Position8>
-      <Position9>
-        <Filename Value="ibibliatest.pas"/>
-        <Caret Line="107" Column="14" TopLine="90"/>
-      </Position9>
-      <Position10>
-        <Filename Value="ibibliatest.pas"/>
-        <Caret Line="126" Column="26" TopLine="94"/>
-      </Position10>
-      <Position11>
-        <Filename Value="ibibliatest.pas"/>
-        <Caret Line="127" Column="31" TopLine="99"/>
-      </Position11>
-      <Position12>
-        <Filename Value="ibibliatest.pas"/>
-        <Caret Line="147" Column="49" TopLine="115"/>
-      </Position12>
-      <Position13>
-        <Filename Value="ibibliatest.pas"/>
-        <Caret Line="181" Column="61" TopLine="147"/>
-      </Position13>
-      <Position14>
-        <Filename Value="ibibliatest.pas"/>
-        <Caret Line="200" Column="61" TopLine="183"/>
-      </Position14>
-      <Position15>
-        <Filename Value="ibibliatest.pas"/>
-        <Caret Line="222" Column="61" TopLine="205"/>
-      </Position15>
-      <Position16>
-        <Filename Value="ibibliatest.pas"/>
-        <Caret Line="245" Column="48" TopLine="227"/>
-      </Position16>
-      <Position17>
-        <Filename Value="ibibliatest.pas"/>
-        <Caret Line="276" Column="53" TopLine="258"/>
-      </Position17>
-      <Position18>
-        <Filename Value="ibibliatest.pas"/>
-        <Caret Line="307" Column="48" TopLine="289"/>
-      </Position18>
-      <Position19>
-        <Filename Value="ibibliatest.pas"/>
-        <Caret Line="338" Column="53" TopLine="320"/>
-      </Position19>
-      <Position20>
-        <Filename Value="ibibliatest.pas"/>
-        <Caret Line="368" Column="62" TopLine="351"/>
-      </Position20>
-      <Position21>
-        <Filename Value="ibibliatest.pas"/>
-        <Caret Line="650" Column="71" TopLine="631"/>
-      </Position21>
-      <Position22>
-        <Filename Value="ibibliatest.pas"/>
-        <Caret Line="644" Column="54" TopLine="624"/>
-      </Position22>
-      <Position23>
-        <Filename Value="ibibliatest.pas"/>
-        <Caret Line="655" Column="90" TopLine="638"/>
-      </Position23>
-      <Position24>
-        <Filename Value="ibibliatest.pas"/>
-        <Caret Line="662" Column="43" TopLine="644"/>
-      </Position24>
-      <Position25>
-        <Filename Value="ibibliatest.pas"/>
-        <Caret Line="23" Column="15" TopLine="6"/>
-      </Position25>
-      <Position26>
-        <Filename Value="fpcunitibiblia.lpr"/>
-        <Caret Line="11"/>
-      </Position26>
-      <Position27>
-        <Filename Value="ibibliatest.pas"/>
-        <Caret Line="667" TopLine="648"/>
-      </Position27>
-      <Position28>
-        <Filename Value="ibibliatest.pas"/>
-        <Caret Line="19" Column="15" TopLine="4"/>
-      </Position28>
-      <Position29>
-        <Filename Value="ibibliatest.pas"/>
-        <Caret Line="637" TopLine="648"/>
-      </Position29>
-      <Position30>
-        <Filename Value="ibibliatest.pas"/>
-        <Caret Line="31" Column="15" TopLine="14"/>
-      </Position30>
-    </JumpHistory>
+    <JumpHistory HistoryIndex="-1"/>
     <RunParams>
       <FormatVersion Value="2"/>
-      <Modes Count="0" ActiveMode=""/>
+      <Modes ActiveMode=""/>
     </RunParams>
+    <HistoryLists Count="1">
+      <List0 Name="LaunchingApplication" Type="File" Count="1">
+        <Item1 Value="C:\WINDOWS\system32\cmd.exe /C ${TargetCmdLine}"/>
+      </List0>
+    </HistoryLists>
   </ProjectSession>
+  <Debugging>
+    <BreakPoints>
+      <Item>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="aiassociatortest.pas"/>
+        <Line Value="196"/>
+      </Item>
+      <Item>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="aiassociatortest.pas"/>
+        <Line Value="220"/>
+      </Item>
+      <Item>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="aiassociatortest.pas"/>
+        <Line Value="244"/>
+      </Item>
+    </BreakPoints>
+  </Debugging>
 </CONFIG>

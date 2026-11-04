@@ -69,8 +69,10 @@ object FormAbout: TFormAbout
     Width = 480
     Alignment = taCenter
     AutoSize = False
-    Caption = 'Contributor: Edmund Valdez'
+    Caption = 'Contributor: Edmund P. Valdez <malayangbiblia@gmail.com>'
+    Cursor = crHandPoint
     Font.Height = -13
+    OnClick = LabelContributorClick
     ParentColor = False
     ParentFont = False
   end

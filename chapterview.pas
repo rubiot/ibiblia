@@ -5,10 +5,17 @@ unit ChapterView;
 interface
 
 uses
-  Classes, SysUtils, StrUtils, Forms, Graphics, ONTTokenizer, LCLType, HTMLColors,
-  LazUTF8, Projeto, PCRE, Controls, Menus, fgl, Dialogs, Math, Contnrs, KMemo,
-  KEditCommon, KGraphics, KDialogs, formInterlinearVerseRules,
-  LCLTranslator, LazLogger, StdCtrls, unitskins;
+  Classes, SysUtils, Types, Forms, Graphics, ONTTokenizer, LCLType, LMessages,
+  HTMLColors,
+  LazUTF8, BibleScope, Project, Verse, Syntagm, PCRE, Controls, Menus, fgl, Dialogs, Math, Contnrs, KMemo,
+  KEditCommon, KGraphics, KDialogs, FormInterlinearVerseRules,
+  LCLTranslator, LazLogger, HTMLRenderer, SynEdit,
+  theword_syntax_highlighter, bible_book_names, translation_memory_model,
+  translation_memory_focus_controller, translation_memory_preview,
+  SuggestionManager, rf_note_scanner,
+  theword_translator_note_preview, theword_effective_inline_style_v2,
+  theword_translator_note_style, translator_note_hover_controller,
+  project_verse_repository;
 
 type
 
@@ -16,11 +23,19 @@ type
     first, last: integer;
   end;
 
+  TTranslationMemoryInputSnapshot = record
+    Initialized: Boolean;
+    ReferenceID: string;
+    SourceXML: string;
+    DestinationXML: string;
+    Associations: string;
+  end;
+
   TChapterView = class;
 
   { TRawChapterMemo }
 
-  TRawChapterMemo = class(TMemo)
+  TRawChapterMemo = class(TSynEdit)
   private
     FChapterView: TChapterView;
     procedure HandleOnKeyDown(Sender: TObject; var Key: word; Shift: TShiftState);
@@ -43,8 +58,11 @@ type
     FVerse: integer;
     FText: string;
     FRange: TBlockRange;
+    FMarkerLink: TKMemoHyperlink;
+    FRenderRevision: QWord;
   public
     constructor Create(id: integer; verse: integer; text: string; linktext: string);
+    destructor Destroy; override;
     property Id: integer read FId write FId;
     property LinkText: string read FLinkText write FLinkText;
     property Verse: integer read FVerse write FVerse;
@@ -52,18 +70,23 @@ type
     property Range: TBlockRange read FRange write FRange;
     property FirstBlock: integer read FRange.first write FRange.first;
     property LastBlock: integer read FRange.last write FRange.last;
+    property MarkerLink: TKMemoHyperlink read FMarkerLink write FMarkerLink;
+    property RenderRevision: QWord read FRenderRevision write FRenderRevision;
   end;
 
   { TNoteWindow }
 
   TNoteWindow = class(THintWindow)
   private
-    FNoteView: TChapterView;
+    FHasRenderedBody: Boolean;
+    FLastBody: string;
+    FLastFontName: string;
+    FLastFontSize: Integer;
+    FLastSkinId: Integer;
+    FNoteView: TTranslatorNoteBodyView;
     function GetScrollBarsVisible: boolean;
     procedure InitNoteView;
     procedure SetNoteText(const AText: string; const AStyle: TKMemoTextStyle);
-    procedure HandlePopupMouseEnter(Sender: TObject);
-    procedure HandlePopupMouseLeave(Sender: TObject);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -71,20 +94,39 @@ type
     property ScrollBarsVisible: boolean read GetScrollBarsVisible;
   end;
 
-  TNoteList = specialize TFPGList<TNoteInfo>;
+  { TChapterTranslatorNoteHoverController }
+
+  TChapterTranslatorNoteHoverController = class(TTranslatorNoteHoverController)
+  private
+    FChapterView: TChapterView;
+  protected
+    function CreatePreviewWindow: TCustomForm; override;
+    procedure ShowPreviewWindow(APreview: TCustomForm;
+      const ABodyRaw: UnicodeString;
+      const AAnchorScreenRect: TRect); override;
+  public
+    constructor Create(AOwner: TComponent;
+      AChapterView: TChapterView); reintroduce;
+  end;
+
+  TNoteList = specialize TFPGObjectList<TNoteInfo>;
+  TTranslationMemoryCounterLinkArray = array of TKMemoHyperlink;
+  TTranslationMemoryCounterLinkMatrix =
+    array of TTranslationMemoryCounterLinkArray;
 
   { TChapterView }
 
-  TChapterView = class(TKMemo)
+  TChapterView = class(THTMLRenderer)
   private
-    FLoadingChapter: boolean;
     FFontName: string;
     FFontSize: integer;
     FPrintMode: boolean;
-    FProject: TProjeto;
+    FProject: TProject;
     FRxVerseHeading: IRegex;
     FNoteID: integer;
-    FHint: TNoteWindow;
+    FNoteNumberer: TRFNoteNumberer;
+    FTranslatorNoteHoverController: TChapterTranslatorNoteHoverController;
+    FTranslatorNoteRevision: QWord;
     FSetFontItem: TMenuItem;
     FParagraphModeItem: TMenuItem;
     FVerseRulesItem: TMenuItem;
@@ -92,45 +134,92 @@ type
     FInterlinearModeInterItem: TMenuItem;
     FInterlinearModeIntraItem: TMenuItem;
     FPrintChapterItem: TMenuItem;
-    FStyleStack: TObjectStack;
     FVerseRanges: array of TBlockRange;
     FCurrentVerse: integer;
+    FRenderedChapterBookID: Integer;
+    FRenderedChapterChapter: Integer;
+    FRenderedChapterContentRevision: QWord;
+    FRenderedChapterCurrentVerse: Integer;
+    FRenderedChapterFontName: string;
+    FRenderedChapterFontSize: Integer;
+    FRenderedChapterFullRenderCount: QWord;
+    FRenderedChapterHideVerseNumber: Boolean;
+    FRenderedChapterInterlinearMode: TInterlinearMode;
+    FRenderedChapterParagraphMode: TParagraphMode;
+    FRenderedChapterPrintMode: Boolean;
+    FRenderedChapterProject: TProject;
+    FRenderedChapterTextType: TTipoTextoBiblico;
+    FRenderedChapterTokenizerVersion: Integer;
+    FRenderedChapterValid: Boolean;
+    FRenderedChapterVerses: TStringList;
     FNotes: TNoteList;
+    FNotesById: TStringList;
+    FNotesByLink: TStringList;
     FHideVerseNumber: boolean;
     FRawMemo: TRawChapterMemo;
-    FParaLeftIndent: LongInt;
-    FParaFirstIndent: LongInt;
-    FParaTopPadding: LongInt;
-    FParaBottomPadding: LongInt;
-    FParaHAlign: TKHAlign;
-    FJustClosedHeading: Boolean;
-    FAppliedSkin: TSkinColors;
-    procedure UpdateBlocksSkin(ABlocks: TKMemoBlocks; const AOldSkin, ANewSkin: TSkinColors);
+    FViewMode: TChapterViewMode;
+    FTranslationMemoryOrder: TTranslationMemoryOrder;
+    FTranslationMemoryEntries: TTranslationMemoryEntryArray;
+    FTranslationMemoryFocusEntries: TTranslationMemoryFocusEntryArray;
+    FTranslationMemoryFocus: TTranslationMemoryFocusController;
+    FTranslationMemoryInputSnapshot: TTranslationMemoryInputSnapshot;
+    FTranslationMemoryShowingOccurrences: Boolean;
+    FTranslationMemoryOccurrenceMatches: TTranslationPairMatchArray;
+    FTranslationMemoryOccurrenceSource: string;
+    FTranslationMemoryOccurrenceTranslation: string;
+    FTranslationMemoryOccurrenceLimit: Integer;
+    FTranslationMemoryOccurrenceCache: TTranslationOccurrencePage;
+    FTranslationMemoryOccurrenceCacheLoaded: Boolean;
+    FTranslationMemoryShowMoreBlockIndex: Integer;
+    FTranslationMemoryRefreshPending: Boolean;
+    FTranslationMemoryPreviewController: TTranslationMemoryHoverController;
+    FTranslationMemoryPreviewFontSize: Integer;
+    FOnTranslationMemoryPreviewFontSizeChanged: TNotifyEvent;
+    FTranslationMemoryPreviewGeneration: QWord;
+    FTranslationMemoryCounterLinks: TTranslationMemoryCounterLinkMatrix;
+    FViewSelectionActive: Boolean;
 
-    function GetCurrentStyle: TKMemoTextStyle;
     function GetInterlinearMode: TInterlinearMode;
     function GetParagraphMode: TParagraphMode;
     function GetTextType: TTipoTextoBiblico;
-    procedure CloseParagraphBlock(cont: TKMemoBlocks);
-    procedure ExtractLeadingParagraphPrefix(const AText: string; out ALeadingPrefix, ARemaining: string);
+    function IsTranslationMemoryVisible: Boolean;
+    function CurrentTranslationMemoryInputSnapshot:
+      TTranslationMemoryInputSnapshot;
+    procedure CaptureTranslationMemoryInputSnapshot;
     procedure RenderChapter(verses: TStringList; current: integer);
+    procedure CaptureChapterRenderIdentity(AVerses: TStrings);
+    function ChapterRenderKeyMatchesCurrentProject: Boolean;
+    function ChapterRenderIdentityMatches(AVerses: TStrings): Boolean;
+    procedure FocusRenderedChapterVerse(ACurrentVerse: Integer);
+    procedure InvalidateChapterRenderCache;
     procedure RenderChapterHeader;
     procedure RenderChapterFooter;
     procedure RenderVerse(txt: string);
     procedure RenderVerseNumber(number: integer);
-    procedure RenderSpan(cont: TKMemoBlocks; txt: string);
-    procedure RenderNote(link: string; note: string);
+    procedure RenderNote(const OpeningTag, Note: string);
     procedure RenderNotes;
+    procedure ClearTranslatorNotes;
+    function FindTranslatorNoteById(ANoteId: QWord): TNoteInfo;
+    function FindTranslatorNoteByLink(
+      ALinkBlock: TKMemoHyperlink): TNoteInfo;
+    procedure IndexTranslatorNote(ANoteInfo: TNoteInfo);
     procedure RenderInterlinearBlock(cont: TKMemoBlocks; blockText: string);
     procedure RenderInterlinearUnit(cont: TKMemoBlocks; translation: string);
     procedure HandleReferenceClick(sender: TObject);
-    procedure HandleNoteLinkClick(sender: TObject);
     procedure HandleNoteClick(sender: TObject);
-    procedure HandleVerseChange(Sender: TProjeto);
+    procedure HandleTranslationMemoryEntryClick(Sender: TObject);
+    procedure HandleTranslationMemoryAlternativeClick(Sender: TObject);
+    procedure HandleTranslationMemoryBackClick(Sender: TObject);
+    procedure HandleTranslationMemoryOccurrenceClick(Sender: TObject);
+    procedure HandleTranslationMemoryShowMoreClick(Sender: TObject);
+    procedure HandleVerseChange(Sender: TProject);
     procedure HandleKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure HandlePopupKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure HandleMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
+    procedure HandleMouseLeave(Sender: TObject);
     procedure HandleMouseWheel(Sender: TObject; Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
+    procedure HandleTranslationMemoryPreviewFontSizeChanged(Sender: TObject;
+      AFontSize: Integer);
     procedure HandleDoubleClick(Sender: TObject);
     procedure HandleContextPopup(Sender: TObject; MousePos: TPoint; var Handled: Boolean);
     procedure HandleSetFont(Sender: TObject);
@@ -141,41 +230,136 @@ type
     procedure HandleIntralinearMode(Sender: TObject);
     procedure SetInterlinearMode(AValue: TInterlinearMode);
     procedure SetPrintMode(AValue: boolean);
-    procedure SetProject(AValue: TProjeto);
+    procedure SetProject(AValue: TProject);
+    procedure SetViewMode(AValue: TChapterViewMode);
+    procedure SetTranslationMemoryOrder(AValue: TTranslationMemoryOrder);
     procedure InitPopupMenu;
     procedure SetParagraphMode(AValue: TParagraphMode);
     procedure SetFontSize(AValue: integer);
     procedure SetFontName(AValue: string);
-    function PushNewStyle: TKMemoTextStyle;
-    function PushInheritedStyle: TKMemoTextStyle;
-    procedure PopStyle;
+    procedure SetTranslationMemoryPreviewFontSize(AValue: Integer);
     procedure HighlightRange(range: TBlockRange; bgcolor: TColor);
-    procedure ResetStyleStack;
     function GetPreviousParagraphBlock: TKMemoParagraph;
     procedure SetTextType(AValue: TTipoTextoBiblico);
+    procedure RenderTranslationMemory;
+    procedure RenderTranslationMemoryOccurrences;
+    procedure ClearTranslationMemoryOccurrenceCache;
+    procedure AppendTranslationMemoryOccurrencePage(
+      const APage: TTranslationOccurrencePage);
+    procedure AppendTranslationMemoryOccurrenceItems(
+      const AItems: TTranslationOccurrenceDataArray;
+      var ACurrentBlockIndex: Integer);
+    procedure RemoveTranslationMemoryShowMoreBlock;
+    procedure AppendTranslationMemoryShowMoreBlock;
+    procedure ResetTranslationMemoryOccurrences(
+      AWillReplaceDocument: Boolean = False);
+    procedure ClearTranslationMemorySourceHighlight;
+    procedure ClearTranslationMemoryEntryFocus;
+    procedure DismissTranslatorNotePreview;
+    procedure InvalidateTranslatorNotePreview;
+    procedure DismissTranslationMemoryPreview;
+    procedure InvalidateTranslationMemoryPreview;
+    function TryResolveTranslatorNoteHoverTarget(
+      ALinkBlock: TKMemoHyperlink; out ARevision, ANoteId: QWord): Boolean;
+    function ResolveTranslatorNoteHover(Sender: TObject; ARevision,
+      ANoteId: QWord; out ABodyRaw: UnicodeString;
+      out AAnchorScreenRect: TRect): Boolean;
+    procedure ShowTranslatorNotePreview(APreview: TNoteWindow;
+      const ABodyRaw: UnicodeString);
+    function TryResolveTranslationMemoryHoverTarget(
+      ALinkBlock: TKMemoHyperlink;
+      out ATarget: TTranslationMemoryHoverTarget): Boolean;
+    function ValidateTranslationMemoryPreviewTarget(
+      const ATarget: TTranslationMemoryHoverTarget;
+      out AAnchorScreenRect: TRect): Boolean;
+    function LoadTranslationMemoryPreviewPayload(
+      const ATarget: TTranslationMemoryHoverTarget;
+      out APayload: TTranslationMemoryPreviewPayload): Boolean;
   protected
+    procedure Resize; override;
     procedure SetEnabled(Value: Boolean); override;
+    procedure SetupDefaultStyle; override;
+    procedure WndProc(var TheMessage: TLMessage); override;
+    procedure ApplyProjectedInlineStyle(ABlock: TKMemoTextBlock;
+      ABaseStyle: TKMemoTextStyle;
+      const AEffective: TTheWordEffectiveInlineStyleV2); override;
+    procedure AppendTranslationMemoryOccurrenceText(
+      const Occurrence: TTranslationOccurrenceData);
+    function TryLoadTranslationMemoryOccurrenceRange(
+      const Matches: TTranslationPairMatchArray; Offset, Limit: Integer;
+      out Occurrences: TTranslationOccurrencePage;
+      out ErrorMessage: string): Boolean; virtual;
   public
     constructor Create(AOwner: TComponent); override;
+    procedure RenderSpan(cont: TKMemoBlocks; txt: string); override;
     destructor Destroy; override;
     procedure Translate;
     procedure LoadChapter;
-    procedure ApplySkin(const ASkin: TSkinColors);
-    property Project: TProjeto read FProject write SetProject;
+    procedure RefreshTranslationMemory;
+    procedure FocusTranslationMemoryForSyntagm(ASyntagm: TSyntagm);
+    property Project: TProject read FProject write SetProject;
+    { Background from the current skin; reload the chapter afterwards. }
+    procedure ApplySkinColors;
     property TextType: TTipoTextoBiblico read GetTextType write SetTextType;
+    property ViewMode: TChapterViewMode read FViewMode write SetViewMode;
+    property TranslationMemoryOrder: TTranslationMemoryOrder
+      read FTranslationMemoryOrder write SetTranslationMemoryOrder;
     property ParagraphMode: TParagraphMode read GetParagraphMode write SetParagraphMode;
     property InterlinearMode: TInterlinearMode read GetInterlinearMode write SetInterlinearMode;
     property FontSize: integer read FFontSize write SetFontSize;
     property FontName: string read FFontName write SetFontName;
+    property TranslationMemoryPreviewFontSize: Integer
+      read FTranslationMemoryPreviewFontSize
+      write SetTranslationMemoryPreviewFontSize;
+    property OnTranslationMemoryPreviewFontSizeChanged: TNotifyEvent
+      read FOnTranslationMemoryPreviewFontSizeChanged
+      write FOnTranslationMemoryPreviewFontSizeChanged;
     property CurrentStyle: TKMemoTextStyle read GetCurrentStyle;
     property HideVerseNumber: boolean read FHideVerseNumber write FHideVerseNumber default false;
     property PrintMode: boolean read FPrintMode write SetPrintMode;
+    {$IFDEF FPCUNIT}
+    procedure ConfigureTranslationMemoryInteractionFixture(
+      const AEntries: TTranslationMemoryEntryArray;
+      const ACounterLinks: TTranslationMemoryCounterLinkMatrix);
+    function ResolveTranslationMemoryHoverTargetFixture(
+      ALinkBlock: TKMemoHyperlink;
+      out ATarget: TTranslationMemoryHoverTarget): Boolean;
+    procedure BeginTranslationMemoryHoverFixture(
+      const ATarget: TTranslationMemoryHoverTarget);
+    function TranslationMemoryPreviewActiveFixture: Boolean;
+    function ResolveTranslatorNoteHoverTargetFixture(
+      ALinkBlock: TKMemoHyperlink; out ARevision, ANoteId: QWord): Boolean;
+    procedure RenderTranslatorNotesFixture;
+    procedure BeginTranslatorNoteHoverFixture(ANoteId: QWord);
+    procedure InvalidateTranslatorNotePreviewFixture;
+    function TranslatorNotePreviewActiveFixture: Boolean;
+    function TranslatorNoteRevisionFixture: QWord;
+    procedure ClearTranslatorNotesFixture;
+    class function TranslatorNoteLiveCountFixture: Integer; static;
+    function ChapterFullRenderCountFixture: QWord;
+    procedure ReadTranslationMemoryOccurrenceStateFixture(
+      out AMatches: TTranslationPairMatchArray; out ALimit: Integer;
+      out AShowingOccurrences: Boolean);
+    procedure ConfigureTranslationMemoryOccurrencePageFixture(
+      const APage: TTranslationOccurrencePage);
+    procedure AppendTranslationMemoryOccurrencePageFixture(
+      const APage: TTranslationOccurrencePage);
+    procedure ClearTranslationMemoryOccurrenceCacheFixture;
+    function TranslationMemoryCachedOccurrenceCountFixture: Integer;
+    function TranslationMemoryShowMoreBlockIndexFixture: Integer;
+    {$ENDIF}
   end;
+
+function TranslationMemoryInputSnapshotsEqual(
+  const ALeft, ARight: TTranslationMemoryInputSnapshot): Boolean;
+function ShouldResetTranslationMemoryOccurrences(AShowingOccurrences: Boolean;
+  const APrevious, ACurrent: TTranslationMemoryInputSnapshot): Boolean;
 
 const
   NonBibleTextColor = $be7c41;
-  NoteLinkColor = $4080ff;
+  NoteLinkColor = TheWordTranslatorNoteMarkerColor;
   ChapterNumberColor = $2cba7d;
+  TranslationMemoryCurrentColor = clBlue;
   DefaultFirstIndent = 20;
 
 resourcestring
@@ -189,8 +373,115 @@ resourcestring
   SPreviousChapter = 'Previous chapter';
   SNextChapter = 'Next chapter';
   SChapterBeginning = 'Beginning of chapter';
+  STranslationMemoryTitle = 'Translation memory';
+  STranslationMemoryFormsFmt = 'Forms: %s';
+  STranslationMemoryStrongsFmt = 'Strong''s: %s';
+  STranslationMemoryCurrentLegend =
+    'Blue translations are used in the current verse.';
+  STranslationMemoryNoTranslations = 'No translation recorded';
+  STranslationMemoryNoSourceWords =
+    'No source words are available for this verse.';
+  STranslationMemoryErrorFmt = 'Translation memory is unavailable: %s';
+  STranslationMemoryBack = 'Back to translation memory';
+  STranslationMemoryOccurrencesTitleFmt = '%s → %s';
+  STranslationMemoryManyAssociationsOneVerseFmt =
+    '%d associations in 1 verse';
+  STranslationMemoryOneAssociationManyVersesFmt =
+    '1 association in %d verses';
+  STranslationMemoryOneAssociationOneVerse =
+    '1 association in 1 verse';
+  STranslationMemoryOccurrenceTotalsFmt =
+    '%d associations in %d verses';
+  STranslationMemoryOccurrenceCountFmt = '%d occurrences';
+  STranslationMemoryNoOccurrences =
+    'No verse currently uses this translation.';
+  STranslationMemoryShowMoreFmt = 'Show 100 more (%d remaining)';
+  STranslationMemoryPreviewRemainingFmt =
+    '%d more verses — click the count to see all.';
+  STranslationMemoryPreviewUnavailable =
+    'Preview unavailable — click to open the occurrences.';
 
 implementation
+
+uses
+  performance_debug, unitskins, apocrypha_books;
+
+var
+  TranslatorNoteInfoLiveCount: Integer = 0;
+
+function TranslationMemoryInputSnapshotsEqual(
+  const ALeft, ARight: TTranslationMemoryInputSnapshot): Boolean;
+begin
+  Result := (ALeft.Initialized = ARight.Initialized) and
+    (not ALeft.Initialized or
+      ((ALeft.ReferenceID = ARight.ReferenceID) and
+       (ALeft.SourceXML = ARight.SourceXML) and
+       (ALeft.DestinationXML = ARight.DestinationXML) and
+       (ALeft.Associations = ARight.Associations)));
+end;
+
+function ShouldResetTranslationMemoryOccurrences(AShowingOccurrences: Boolean;
+  const APrevious, ACurrent: TTranslationMemoryInputSnapshot): Boolean;
+begin
+  Result := AShowingOccurrences and
+    not TranslationMemoryInputSnapshotsEqual(APrevious, ACurrent);
+end;
+
+function TranslationMemoryOccurrenceTotalsText(AssociationCount,
+  VerseCount: Integer): string;
+begin
+  if AssociationCount = 1 then
+  begin
+    if VerseCount = 1 then
+      Result := STranslationMemoryOneAssociationOneVerse
+    else
+      Result := Format(STranslationMemoryOneAssociationManyVersesFmt,
+        [VerseCount]);
+  end
+  else if VerseCount = 1 then
+    Result := Format(STranslationMemoryManyAssociationsOneVerseFmt,
+      [AssociationCount])
+  else
+    Result := Format(STranslationMemoryOccurrenceTotalsFmt,
+      [AssociationCount, VerseCount]);
+end;
+
+function JoinMemoryValues(const Values: TTranslationMemoryStringArray;
+  const Separator: string): string;
+var
+  Value: string;
+begin
+  Result := '';
+  for Value in Values do
+  begin
+    if Result <> '' then
+      Result := Result + Separator;
+    Result := Result + Value;
+  end;
+end;
+
+procedure TChapterView.AppendTranslationMemoryOccurrenceText(
+  const Occurrence: TTranslationOccurrenceData);
+begin
+  translation_memory_preview.AppendTranslationMemoryOccurrenceText(
+    Blocks, Occurrence);
+end;
+
+function TChapterView.TryLoadTranslationMemoryOccurrenceRange(
+  const Matches: TTranslationPairMatchArray; Offset, Limit: Integer;
+  out Occurrences: TTranslationOccurrencePage;
+  out ErrorMessage: string): Boolean;
+begin
+  Occurrences := Default(TTranslationOccurrencePage);
+  ErrorMessage := '';
+  if not Assigned(FProject) then
+  begin
+    ErrorMessage := 'Translation-memory project is not available';
+    Exit(False);
+  end;
+  Result := FProject.TryGetTranslationMemoryOccurrenceRange(Matches,
+    Offset, Limit, Occurrences, ErrorMessage);
+end;
 
 { TRawChapterMemo }
 
@@ -209,7 +500,8 @@ begin
     Font.Size := Font.Size + Sign(WheelDelta) * 1;
 end;
 
-constructor TRawChapterMemo.Create(AOwner: TComponent; ChapterView: TChapterView);
+constructor TRawChapterMemo.Create(AOwner: TComponent; ChapterView: TChapterView
+  );
 begin
   inherited Create(nil);
 
@@ -217,10 +509,7 @@ begin
   Parent     := TWinControl(AOwner);
   FChapterView := ChapterView;
   Align      := alClient;
-  ScrollBars := ssAutoVertical;
-  ParentFont := False;
-  Font.Name  := 'Courier New';
-  ReadOnly   := true;
+  ConfigureTheWordSyntaxEditor(Self, True);
   OnKeyDown  := @HandleOnKeyDown;
   OnMouseWheel := @HandleOnMouseWheel;
 end;
@@ -232,9 +521,7 @@ end;
 
 procedure TRawChapterMemo.Show(aText: string);
 begin
-  Font.Size := FChapterView.FontSize;
-  Color := CurrentSkin.WindowBg;
-  Font.Color := CurrentSkin.WindowText;
+  ApplyTheWordSyntaxEditorFont(Self);
   Text := aText;
   BringToFront;
   Visible := True;
@@ -244,21 +531,17 @@ end;
 procedure TRawChapterMemo.Hide;
 begin
   Visible := false;
+  //FChapterView.FontSize := Font.Size;
 end;
 
 { TNoteWindow }
 
 procedure TNoteWindow.InitNoteView;
 begin
-  InsertControl(TChapterView.Create(nil));
-  FNoteView := Controls[0] as TChapterView;
+  InsertControl(TTranslatorNoteBodyView.Create(Self));
+  FNoteView := Controls[0] as TTranslatorNoteBodyView;
   with FNoteView do
   begin
-    PopupMenu.Free;
-    PopupMenu   := nil;
-    OnKeyDown   := @HandlePopupKeyDown;
-    OnMouseEnter:= @HandlePopupMouseEnter;
-    OnMouseLeave:= @HandlePopupMouseLeave;
     Align       := alClient;
     BorderStyle := bsNone;
   end;
@@ -274,32 +557,65 @@ end;
 procedure TNoteWindow.SetNoteText(const AText: string;
   const AStyle: TKMemoTextStyle);
 begin
+  if FHasRenderedBody and (FLastBody = AText) and
+     (FLastFontName = AStyle.Font.Name) and
+     (FLastFontSize = AStyle.Font.Size) and
+     (FLastSkinId = Ord(CurrentSkin.Id)) then
+    Exit;
   FNoteView.Blocks.LockUpdate;
-  Width := 500;
-  FNoteView.Clear(false);
-  FNoteView.TextStyle.Assign(AStyle);
-  FNoteView.TextStyle.Font.Size := FNoteView.TextStyle.Font.Size - 1;
-  FNoteView.RenderSpan(FNoteView.Blocks, AText);
-  FNoteView.Background.Color := CurrentSkin.NoteBg;
-  FNoteView.TextStyle.Font.Color := CurrentSkin.NoteText;
-  FNoteView.Blocks.UnLockUpdate;
-end;
-
-procedure TNoteWindow.HandlePopupMouseEnter(Sender: TObject);
-begin
-  AutoHide := false;
-end;
-
-procedure TNoteWindow.HandlePopupMouseLeave(Sender: TObject);
-begin
-  Hide;
+  try
+    IBibliaPerfIncrement(ipcNotePreviewRenders);
+    Width := 500;
+    FNoteView.TextStyle.Font.Name := AStyle.Font.Name;
+    FNoteView.TextStyle.Font.Size := AStyle.Font.Size - 1;
+    if CurrentSkin.Id = skClassic then
+    begin
+      Color := $00CCFBFB;
+      FNoteView.Background.Color := $00CCFBFB;
+      FNoteView.Colors.BkGnd := $00CCFBFB;
+      FNoteView.TextStyle.Font.Color := clWindowText;
+    end
+    else
+    begin
+      Color := CurrentSkin.NoteBg;
+      FNoteView.Background.Color := CurrentSkin.NoteBg;
+      FNoteView.Colors.BkGnd := CurrentSkin.NoteBg;
+      FNoteView.Colors.SelBkGnd := CurrentSkin.SelectedBg;
+      FNoteView.Colors.SelText := CurrentSkin.SelectedText;
+      FNoteView.Colors.SelBkGndFocused := CurrentSkin.SelectedBg;
+      FNoteView.Colors.SelTextFocused := CurrentSkin.SelectedText;
+      FNoteView.TextStyle.Font.Color := CurrentSkin.NoteText;
+    end;
+    FNoteView.SetNoteBody(UTF8Decode(AText));
+    if CurrentSkin.Id = skClassic then
+    begin
+      FNoteView.Background.Color := $00CCFBFB;
+      FNoteView.Colors.BkGnd := $00CCFBFB;
+    end
+    else
+    begin
+      FNoteView.Background.Color := CurrentSkin.NoteBg;
+      FNoteView.Colors.BkGnd := CurrentSkin.NoteBg;
+    end;
+    FLastBody := AText;
+    FLastFontName := AStyle.Font.Name;
+    FLastFontSize := AStyle.Font.Size;
+    FLastSkinId := Ord(CurrentSkin.Id);
+    FHasRenderedBody := True;
+  finally
+    FNoteView.Blocks.UnLockUpdate;
+  end;
 end;
 
 constructor TNoteWindow.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
 
-  Color := clWindow;
+  if CurrentSkin.Id = skClassic then
+    Color := clWindow
+  else
+    Color := CurrentSkin.NoteBg;
+  FLastSkinId := -1;
   FNoteView:= nil;
 end;
 
@@ -316,7 +632,7 @@ begin
   if not Assigned(FNoteView) then
     InitNoteView;
 
-  AutoHide := true;
+  AutoHide := false;
 
   SetNoteText(AHint, AStyle);
 
@@ -330,149 +646,95 @@ begin
   ActivateHint(Rect, '');
 end;
 
+{ TChapterTranslatorNoteHoverController }
+
+constructor TChapterTranslatorNoteHoverController.Create(
+  AOwner: TComponent; AChapterView: TChapterView);
+begin
+  inherited Create(AOwner);
+  FChapterView := AChapterView;
+end;
+
+function TChapterTranslatorNoteHoverController.CreatePreviewWindow:
+  TCustomForm;
+begin
+  Result := TNoteWindow.Create(nil);
+end;
+
+procedure TChapterTranslatorNoteHoverController.ShowPreviewWindow(
+  APreview: TCustomForm; const ABodyRaw: UnicodeString;
+  const AAnchorScreenRect: TRect);
+begin
+  if Assigned(FChapterView) and (APreview is TNoteWindow) then
+    FChapterView.ShowTranslatorNotePreview(TNoteWindow(APreview), ABodyRaw);
+end;
+
 { TNoteInfo }
 
 constructor TNoteInfo.Create(id: integer; verse: integer; text: string;
   linktext: string);
 begin
+  Inc(TranslatorNoteInfoLiveCount);
   FId    := id;
   FVerse := verse;
   FText  := text;
   FLinkText := linktext;
+  FMarkerLink := nil;
+  FRenderRevision := 0;
+end;
+
+destructor TNoteInfo.Destroy;
+begin
+  Dec(TranslatorNoteInfoLiveCount);
+  inherited Destroy;
 end;
 
 { TChapterView }
 
-procedure TChapterView.CloseParagraphBlock(cont: TKMemoBlocks);
-var
-  par: TKMemoParagraph;
-begin
-  par := cont.AddParagraph();
-  par.ParaStyle.LeftPadding := FParaLeftIndent;
-  par.ParaStyle.FirstIndent := FParaFirstIndent;
-  par.ParaStyle.TopPadding := FParaTopPadding;
-  par.ParaStyle.BottomPadding := FParaBottomPadding;
-  par.ParaStyle.HAlign := FParaHAlign;
-end;
-
-procedure TChapterView.ExtractLeadingParagraphPrefix(const AText: string;
-  out ALeadingPrefix, ARemaining: string);
-var
-  rest: string;
-  pEnd: Integer;
-begin
-  ALeadingPrefix := '';
-  rest := AText;
-
-  while Length(rest) > 0 do
-  begin
-    if AnsiStartsText('<TS', rest) then
-    begin
-      pEnd := Pos('<Ts>', rest);
-      if pEnd = 0 then pEnd := Pos('<TS>', UpperCase(rest));
-      if pEnd > 0 then
-      begin
-        ALeadingPrefix := ALeadingPrefix + Copy(rest, 1, pEnd + 3);
-        Delete(rest, 1, pEnd + 3);
-        if AnsiStartsText('<_CM>', rest) then
-        begin
-          ALeadingPrefix := ALeadingPrefix + Copy(rest, 1, 5);
-          Delete(rest, 1, 5);
-        end;
-        continue;
-      end;
-    end;
-
-    if AnsiStartsText('<CM>', rest) or AnsiStartsText('<CI>', rest) or AnsiStartsText('<CL>', rest) then
-    begin
-      ALeadingPrefix := ALeadingPrefix + Copy(rest, 1, 4);
-      Delete(rest, 1, 4);
-      continue;
-    end;
-
-    if AnsiStartsText('<_CM>', rest) then
-    begin
-      ALeadingPrefix := ALeadingPrefix + Copy(rest, 1, 5);
-      Delete(rest, 1, 5);
-      continue;
-    end;
-
-    if (Length(rest) >= 5) and (AnsiStartsText('<PI', rest) or AnsiStartsText('<PF', rest)) and
-       (rest[4] in ['0'..'7']) and (rest[5] = '>') then
-    begin
-      ALeadingPrefix := ALeadingPrefix + Copy(rest, 1, 5);
-      Delete(rest, 1, 5);
-      continue;
-    end;
-
-    if AnsiStartsText('<PI>', rest) then
-    begin
-      ALeadingPrefix := ALeadingPrefix + Copy(rest, 1, 4);
-      Delete(rest, 1, 4);
-      continue;
-    end;
-
-    if AnsiStartsText('<center>', rest) then
-    begin
-      ALeadingPrefix := ALeadingPrefix + Copy(rest, 1, 8);
-      Delete(rest, 1, 8);
-      continue;
-    end;
-
-    break;
-  end;
-
-  ARemaining := rest;
-end;
-
 procedure TChapterView.RenderVerse(txt: string);
 var
-  leadingPrefix, remainingTxt: string;
+  mtHeading: IMatch;
+  heading: string;
 begin
   ResetStyleStack;
+  mtHeading := FRxVerseHeading.Match(txt, [rmoNoUTF8Check]);
+  if not mtHeading.Success then
+    raise Exception.Create(SysUtils.Format('There''s something wrong with this verse: "%s"'#13#10 +
+                                           'Please check for invalid tags or line breaks', [txt]));
+  heading := mtHeading.Groups[1].Value;
+  txt     := mtHeading.Groups[2].Value;
 
-  ExtractLeadingParagraphPrefix(txt, leadingPrefix, remainingTxt);
+  { rendering titles before the verse number }
+  if not heading.IsEmpty then
+    RenderSpan(Blocks, heading);
 
-  { Render leading headings, paragraph breaks (<CM>/<CI>/<CL>), and indents (<PI>/<PF>/<center>) before verse number }
-  if not leadingPrefix.IsEmpty then
-    RenderSpan(Blocks, leadingPrefix);
-
-  if Assigned(Blocks.LastBlock) and (Blocks.LastBlock.ClassName <> 'TKMemoParagraph') then
-    Blocks.AddTextBlock(' '); // space between verses in same paragraph
-
-  FVerseRanges[FCurrentVerse].first := Blocks.Count;
+  if Blocks.LastBlock.ClassName <> 'TKMemoParagraph' then
+    Blocks.AddTextBlock(' '); // space between verses
 
   { rendering verse number }
   RenderVerseNumber(FCurrentVerse);
 
   { rendering the verse text }
-  RenderSpan(Blocks, remainingTxt);
+  FVerseRanges[FCurrentVerse].first := Blocks.Count;
+  RenderSpan(Blocks, txt);
+  FVerseRanges[FCurrentVerse].last := Blocks.Count-1;
 
-  FVerseRanges[FCurrentVerse].last := Max(FVerseRanges[FCurrentVerse].first, Blocks.Count - 1);
-
-  if Assigned(FProject) and (FProject.ParagraphMode = pmNoParagraphs) then
-  begin
-    if Assigned(Blocks.LastBlock) and (Blocks.LastBlock.ClassName <> 'TKMemoParagraph') then
-      CloseParagraphBlock(Blocks);
-    FParaTopPadding := 0;
-    FParaBottomPadding := 0;
-    FParaLeftIndent := 0;
-    FParaFirstIndent := 0;
-    FParaHAlign := halLeft;
-  end;
+  if FProject.ParagraphMode = pmNoParagraphs then
+    Blocks.AddParagraph().ParaStyle.FirstIndent := 0;
 end;
 
 procedure TChapterView.RenderVerseNumber(number: integer);
 var
   b: TKMemoBlocks;
 begin
-  if FHideVerseNumber or not Assigned(FProject) then exit;
+  if FHideVerseNumber then exit;
 
   if (FProject.ChapterViewText = tbInterlinear) and (FProject.InterlinearMode = imInterlinear) then
     with Blocks.AddContainer do
     begin
       Position := mbpText;
       FixedWidth := true;
+      //BlockStyle.BottomPadding := 5;
       BlockStyle.RightPadding := 5;
       b := Blocks;
     end
@@ -483,20 +745,18 @@ begin
   begin
     OnClick := @HandleReferenceClick;
     TextStyle.Font.Name  := 'default';
-    TextStyle.Font.Size  := Max(6, FFontSize - 2);
+    TextStyle.Font.Size  := FFontSize-2;
     TextStyle.Font.Style := [fsBold];
-    TextStyle.Font.Color := CurrentSkin.VerseNumColor;
+    TextStyle.Font.Color := NonBibleTextColor;
   end;
-end;
-
-function TChapterView.GetCurrentStyle: TKMemoTextStyle;
-begin
-  result := TKMemoTextStyle(FStyleStack.Peek);
 end;
 
 function TChapterView.GetInterlinearMode: TInterlinearMode;
 begin
-  result := FProject.InterlinearMode;
+  if Assigned(FProject) then
+    result := FProject.InterlinearMode
+  else
+    result := imIntralinear;
 end;
 
 function TChapterView.GetParagraphMode: TParagraphMode;
@@ -504,7 +764,7 @@ begin
   if Assigned(FProject) then
     result := FProject.ParagraphMode
   else
-    result := pmParagraph;
+    result := pmNoParagraphs;
 end;
 
 function TChapterView.GetTextType: TTipoTextoBiblico;
@@ -512,284 +772,717 @@ begin
   result := FProject.ChapterViewText;
 end;
 
+function TChapterView.IsTranslationMemoryVisible: Boolean;
+begin
+  Result := FViewSelectionActive and Enabled and Assigned(FProject) and
+    (FViewMode = cvmTranslationMemory);
+end;
+
+function TChapterView.CurrentTranslationMemoryInputSnapshot:
+  TTranslationMemoryInputSnapshot;
+var
+  DestinationVerse: TVerse;
+  SourceVerse: TVerse;
+begin
+  Result.Initialized := Assigned(FProject);
+  Result.ReferenceID := '';
+  Result.SourceXML := '';
+  Result.DestinationXML := '';
+  Result.Associations := '';
+  if not Result.Initialized then
+    Exit;
+
+  Result.ReferenceID := FProject.ID;
+  SourceVerse := FProject.VerseObjects[tbOrigem];
+  if Assigned(SourceVerse) then
+  begin
+    Result.SourceXML := SourceVerse.XML;
+    Result.Associations := SourceVerse.Pairs;
+  end;
+  DestinationVerse := FProject.VerseObjects[tbDestino];
+  if Assigned(DestinationVerse) then
+    Result.DestinationXML := DestinationVerse.XML;
+end;
+
+procedure TChapterView.CaptureTranslationMemoryInputSnapshot;
+begin
+  FTranslationMemoryInputSnapshot :=
+    CurrentTranslationMemoryInputSnapshot;
+end;
+
+procedure TChapterView.DismissTranslatorNotePreview;
+begin
+  if Assigned(FTranslatorNoteHoverController) then
+    FTranslatorNoteHoverController.Dismiss;
+end;
+
+procedure TChapterView.InvalidateTranslatorNotePreview;
+begin
+  Inc(FTranslatorNoteRevision);
+  DismissTranslatorNotePreview;
+end;
+
+function TranslatorNoteLinkKey(ALinkBlock: TKMemoHyperlink): string;
+begin
+  Result := IntToHex(PtrUInt(ALinkBlock), SizeOf(Pointer) * 2);
+end;
+
+procedure TChapterView.ClearTranslatorNotes;
+begin
+  FNotesByLink.Clear;
+  FNotesById.Clear;
+  FNotes.Clear;
+end;
+
+function TChapterView.FindTranslatorNoteById(ANoteId: QWord): TNoteInfo;
+var
+  NoteIndex: Integer;
+begin
+  Result := nil;
+  if ANoteId = 0 then
+    Exit;
+  NoteIndex := FNotesById.IndexOf(IntToStr(Int64(ANoteId)));
+  if NoteIndex >= 0 then
+    Result := TNoteInfo(FNotesById.Objects[NoteIndex]);
+end;
+
+function TChapterView.FindTranslatorNoteByLink(
+  ALinkBlock: TKMemoHyperlink): TNoteInfo;
+var
+  NoteIndex: Integer;
+begin
+  Result := nil;
+  if not Assigned(ALinkBlock) then
+    Exit;
+  NoteIndex := FNotesByLink.IndexOf(TranslatorNoteLinkKey(ALinkBlock));
+  if NoteIndex >= 0 then
+  begin
+    Result := TNoteInfo(FNotesByLink.Objects[NoteIndex]);
+    if not Assigned(Result) or (Result.MarkerLink <> ALinkBlock) then
+      Result := nil;
+  end;
+end;
+
+procedure TChapterView.IndexTranslatorNote(ANoteInfo: TNoteInfo);
+begin
+  if not Assigned(ANoteInfo) or not Assigned(ANoteInfo.MarkerLink) then
+    Exit;
+  FNotesById.AddObject(IntToStr(ANoteInfo.Id), ANoteInfo);
+  FNotesByLink.AddObject(TranslatorNoteLinkKey(ANoteInfo.MarkerLink),
+    ANoteInfo);
+end;
+
+function TChapterView.TryResolveTranslatorNoteHoverTarget(
+  ALinkBlock: TKMemoHyperlink; out ARevision, ANoteId: QWord): Boolean;
+var
+  NoteInfo: TNoteInfo;
+begin
+  Result := False;
+  ARevision := 0;
+  ANoteId := 0;
+  if not Assigned(ALinkBlock) or (FViewMode <> cvmChapterText) or
+     FPrintMode then
+    Exit;
+
+  NoteInfo := FindTranslatorNoteByLink(ALinkBlock);
+  if not Assigned(NoteInfo) or
+     (NoteInfo.RenderRevision <> FTranslatorNoteRevision) then
+    Exit;
+  ARevision := NoteInfo.RenderRevision;
+  ANoteId := QWord(NoteInfo.Id);
+  Result := ANoteId <> 0;
+end;
+
+function TChapterView.ResolveTranslatorNoteHover(Sender: TObject;
+  ARevision, ANoteId: QWord; out ABodyRaw: UnicodeString;
+  out AAnchorScreenRect: TRect): Boolean;
+var
+  AnchorClientRect: TRect;
+  AnchorScreenBottomRight: TPoint;
+  AnchorScreenTopLeft: TPoint;
+  MarkerRevision: QWord;
+  NoteId: QWord;
+  NoteInfo: TNoteInfo;
+  ViewRect: TRect;
+begin
+  Result := False;
+  ABodyRaw := '';
+  AAnchorScreenRect := Rect(0, 0, 0, 0);
+  if (ARevision <> FTranslatorNoteRevision) or
+     (ANoteId = 0) or not Enabled or not Assigned(FProject) or
+     (FViewMode <> cvmChapterText) or FPrintMode then
+    Exit;
+
+  NoteInfo := FindTranslatorNoteById(ANoteId);
+  if not Assigned(NoteInfo) or
+     (NoteInfo.RenderRevision <> ARevision) or
+     not TryResolveTranslatorNoteHoverTarget(NoteInfo.MarkerLink,
+       MarkerRevision, NoteId) or
+     (MarkerRevision <> ARevision) or
+     (NoteId <> ANoteId) then
+    Exit;
+
+  AnchorClientRect := BlockRect(NoteInfo.MarkerLink);
+  ViewRect := ClientRect;
+  AnchorClientRect.Left := Max(AnchorClientRect.Left, ViewRect.Left);
+  AnchorClientRect.Top := Max(AnchorClientRect.Top, ViewRect.Top);
+  AnchorClientRect.Right := Min(AnchorClientRect.Right, ViewRect.Right);
+  AnchorClientRect.Bottom := Min(AnchorClientRect.Bottom, ViewRect.Bottom);
+  if (AnchorClientRect.Right <= AnchorClientRect.Left) or
+     (AnchorClientRect.Bottom <= AnchorClientRect.Top) then
+    Exit;
+
+  AnchorScreenTopLeft := ClientToScreen(
+    Point(AnchorClientRect.Left, AnchorClientRect.Top));
+  AnchorScreenBottomRight := ClientToScreen(
+    Point(AnchorClientRect.Right, AnchorClientRect.Bottom));
+  AAnchorScreenRect := Rect(AnchorScreenTopLeft.X, AnchorScreenTopLeft.Y,
+    AnchorScreenBottomRight.X, AnchorScreenBottomRight.Y);
+  ABodyRaw := UTF8Decode(NoteInfo.Text);
+  Result := True;
+end;
+
+procedure TChapterView.ShowTranslatorNotePreview(APreview: TNoteWindow;
+  const ABodyRaw: UnicodeString);
+begin
+  if not Assigned(APreview) then
+    Exit;
+  APreview.ActivateHint(UTF8Encode(ABodyRaw), TextStyle);
+end;
+
+procedure TChapterView.DismissTranslationMemoryPreview;
+begin
+  if Assigned(FTranslationMemoryPreviewController) then
+    FTranslationMemoryPreviewController.Dismiss;
+end;
+
+procedure TChapterView.InvalidateTranslationMemoryPreview;
+begin
+  Inc(FTranslationMemoryPreviewGeneration);
+  SetLength(FTranslationMemoryCounterLinks, 0);
+  if Assigned(FTranslationMemoryPreviewController) then
+    FTranslationMemoryPreviewController.Invalidate;
+end;
+
+function TChapterView.TryResolveTranslationMemoryHoverTarget(
+  ALinkBlock: TKMemoHyperlink;
+  out ATarget: TTranslationMemoryHoverTarget): Boolean;
+var
+  AlternativeIndex: Integer;
+  EntryIndex: Integer;
+begin
+  Result := False;
+  ATarget := Default(TTranslationMemoryHoverTarget);
+  if not Assigned(ALinkBlock) or
+     not TryParseTranslationMemoryHoverURL(
+       ALinkBlock.URL, EntryIndex, AlternativeIndex) or
+     (EntryIndex < 0) or
+     (EntryIndex >= Length(FTranslationMemoryEntries)) or
+     (AlternativeIndex < 0) or
+     (AlternativeIndex >= Length(
+       FTranslationMemoryEntries[EntryIndex].Alternatives)) or
+     (EntryIndex >= Length(FTranslationMemoryCounterLinks)) or
+     (AlternativeIndex >= Length(
+       FTranslationMemoryCounterLinks[EntryIndex])) or
+     (FTranslationMemoryCounterLinks[EntryIndex][AlternativeIndex] <>
+       ALinkBlock) then
+    Exit;
+
+  with FTranslationMemoryEntries[EntryIndex].Alternatives[
+    AlternativeIndex] do
+    if (Occurrences <= 0) or (Length(Matches) = 0) then
+      Exit;
+
+  ATarget.Generation := FTranslationMemoryPreviewGeneration;
+  ATarget.EntryIndex := EntryIndex;
+  ATarget.AlternativeIndex := AlternativeIndex;
+  Result := True;
+end;
+
+function TChapterView.ValidateTranslationMemoryPreviewTarget(
+  const ATarget: TTranslationMemoryHoverTarget;
+  out AAnchorScreenRect: TRect): Boolean;
+var
+  AnchorClientRect: TRect;
+  AnchorScreenBottomRight: TPoint;
+  AnchorScreenTopLeft: TPoint;
+  AlternativeIndex: Integer;
+  CurrentSnapshot: TTranslationMemoryInputSnapshot;
+  EntryIndex: Integer;
+  LinkBlock: TKMemoHyperlink;
+  ViewRect: TRect;
+begin
+  Result := False;
+  AAnchorScreenRect := Rect(0, 0, 0, 0);
+  if not Assigned(FProject) or not IsTranslationMemoryVisible or
+     FTranslationMemoryShowingOccurrences or FTranslationMemoryRefreshPending or
+     (ATarget.Generation <> FTranslationMemoryPreviewGeneration) then
+    Exit;
+
+  CurrentSnapshot := CurrentTranslationMemoryInputSnapshot;
+  if not TranslationMemoryInputSnapshotsEqual(
+    FTranslationMemoryInputSnapshot, CurrentSnapshot) then
+    Exit;
+
+  EntryIndex := ATarget.EntryIndex;
+  AlternativeIndex := ATarget.AlternativeIndex;
+  if (EntryIndex < 0) or
+     (EntryIndex >= Length(FTranslationMemoryEntries)) or
+     (AlternativeIndex < 0) or
+     (AlternativeIndex >= Length(
+       FTranslationMemoryEntries[EntryIndex].Alternatives)) or
+     (EntryIndex >= Length(FTranslationMemoryCounterLinks)) or
+     (AlternativeIndex >= Length(
+       FTranslationMemoryCounterLinks[EntryIndex])) then
+    Exit;
+  with FTranslationMemoryEntries[EntryIndex].Alternatives[
+    AlternativeIndex] do
+    if (Occurrences <= 0) or (Length(Matches) = 0) then
+      Exit;
+
+  LinkBlock := FTranslationMemoryCounterLinks[EntryIndex][AlternativeIndex];
+  if not Assigned(LinkBlock) or
+     not TryParseTranslationMemoryHoverURL(LinkBlock.URL, EntryIndex,
+       AlternativeIndex) or
+     (EntryIndex <> ATarget.EntryIndex) or
+     (AlternativeIndex <> ATarget.AlternativeIndex) then
+    Exit;
+
+  AnchorClientRect := BlockRect(LinkBlock);
+  ViewRect := ClientRect;
+  AnchorClientRect.Left := Max(AnchorClientRect.Left, ViewRect.Left);
+  AnchorClientRect.Top := Max(AnchorClientRect.Top, ViewRect.Top);
+  AnchorClientRect.Right := Min(AnchorClientRect.Right, ViewRect.Right);
+  AnchorClientRect.Bottom := Min(AnchorClientRect.Bottom, ViewRect.Bottom);
+  if (AnchorClientRect.Right <= AnchorClientRect.Left) or
+     (AnchorClientRect.Bottom <= AnchorClientRect.Top) then
+    Exit;
+
+  AnchorScreenTopLeft := ClientToScreen(
+    Point(AnchorClientRect.Left, AnchorClientRect.Top));
+  AnchorScreenBottomRight := ClientToScreen(
+    Point(AnchorClientRect.Right, AnchorClientRect.Bottom));
+  AAnchorScreenRect := Rect(AnchorScreenTopLeft.X, AnchorScreenTopLeft.Y,
+    AnchorScreenBottomRight.X, AnchorScreenBottomRight.Y);
+  Result := True;
+end;
+
+{$IFDEF FPCUNIT}
+procedure TChapterView.ConfigureTranslationMemoryInteractionFixture(
+  const AEntries: TTranslationMemoryEntryArray;
+  const ACounterLinks: TTranslationMemoryCounterLinkMatrix);
+var
+  AlternativeIndex: Integer;
+  EntryIndex: Integer;
+begin
+  InvalidateTranslationMemoryPreview;
+  ResetTranslationMemoryOccurrences;
+  FTranslationMemoryEntries := Copy(AEntries, 0, Length(AEntries));
+  FTranslationMemoryCounterLinks := Copy(
+    ACounterLinks, 0, Length(ACounterLinks));
+  FTranslationMemoryInputSnapshot := CurrentTranslationMemoryInputSnapshot;
+  FTranslationMemoryRefreshPending := False;
+  for EntryIndex := 0 to High(FTranslationMemoryCounterLinks) do
+    for AlternativeIndex := 0 to
+      High(FTranslationMemoryCounterLinks[EntryIndex]) do
+      if Assigned(
+        FTranslationMemoryCounterLinks[EntryIndex][AlternativeIndex]) then
+        FTranslationMemoryCounterLinks[EntryIndex][AlternativeIndex].OnClick :=
+          @HandleTranslationMemoryAlternativeClick;
+end;
+
+function TChapterView.ResolveTranslationMemoryHoverTargetFixture(
+  ALinkBlock: TKMemoHyperlink;
+  out ATarget: TTranslationMemoryHoverTarget): Boolean;
+begin
+  Result := TryResolveTranslationMemoryHoverTarget(ALinkBlock, ATarget);
+end;
+
+procedure TChapterView.BeginTranslationMemoryHoverFixture(
+  const ATarget: TTranslationMemoryHoverTarget);
+begin
+  FTranslationMemoryPreviewController.Hover(ATarget);
+end;
+
+function TChapterView.TranslationMemoryPreviewActiveFixture: Boolean;
+begin
+  Result := Assigned(FTranslationMemoryPreviewController) and
+    FTranslationMemoryPreviewController.Active;
+end;
+
+function TChapterView.ResolveTranslatorNoteHoverTargetFixture(
+  ALinkBlock: TKMemoHyperlink; out ARevision, ANoteId: QWord): Boolean;
+begin
+  Result := TryResolveTranslatorNoteHoverTarget(ALinkBlock,
+    ARevision, ANoteId);
+  if not Result then
+  begin
+    ARevision := 0;
+    ANoteId := 0;
+  end;
+end;
+
+procedure TChapterView.RenderTranslatorNotesFixture;
+begin
+  RenderNotes;
+end;
+
+procedure TChapterView.BeginTranslatorNoteHoverFixture(ANoteId: QWord);
+begin
+  FTranslatorNoteHoverController.Hover(FTranslatorNoteRevision, ANoteId);
+end;
+
+procedure TChapterView.InvalidateTranslatorNotePreviewFixture;
+begin
+  InvalidateTranslatorNotePreview;
+end;
+
+function TChapterView.TranslatorNotePreviewActiveFixture: Boolean;
+begin
+  Result := Assigned(FTranslatorNoteHoverController) and
+    FTranslatorNoteHoverController.Active;
+end;
+
+function TChapterView.TranslatorNoteRevisionFixture: QWord;
+begin
+  Result := FTranslatorNoteRevision;
+end;
+
+procedure TChapterView.ClearTranslatorNotesFixture;
+begin
+  ClearTranslatorNotes;
+end;
+
+{$IFDEF FPCUNIT}
+class function TChapterView.TranslatorNoteLiveCountFixture: Integer;
+begin
+  Result := TranslatorNoteInfoLiveCount;
+end;
+{$ENDIF}
+
+function TChapterView.ChapterFullRenderCountFixture: QWord;
+begin
+  Result := FRenderedChapterFullRenderCount;
+end;
+
+procedure TChapterView.ReadTranslationMemoryOccurrenceStateFixture(
+  out AMatches: TTranslationPairMatchArray; out ALimit: Integer;
+  out AShowingOccurrences: Boolean);
+begin
+  AMatches := Copy(FTranslationMemoryOccurrenceMatches, 0,
+    Length(FTranslationMemoryOccurrenceMatches));
+  ALimit := FTranslationMemoryOccurrenceLimit;
+  AShowingOccurrences := FTranslationMemoryShowingOccurrences;
+end;
+
+procedure TChapterView.ConfigureTranslationMemoryOccurrencePageFixture(
+  const APage: TTranslationOccurrencePage);
+var
+  CurrentBlockIndex: Integer;
+begin
+  CurrentBlockIndex := -1;
+  FTranslationMemoryShowingOccurrences := True;
+  FTranslationMemoryOccurrenceLimit := 100;
+  FTranslationMemoryInputSnapshot := CurrentTranslationMemoryInputSnapshot;
+  Blocks.LockUpdate;
+  try
+    Blocks.Clear;
+    ClearTranslationMemoryOccurrenceCache;
+    AppendTranslationMemoryOccurrencePage(APage);
+    AppendTranslationMemoryOccurrenceItems(APage.Items, CurrentBlockIndex);
+    AppendTranslationMemoryShowMoreBlock;
+  finally
+    Blocks.UnLockUpdate;
+  end;
+end;
+
+procedure TChapterView.AppendTranslationMemoryOccurrencePageFixture(
+  const APage: TTranslationOccurrencePage);
+var
+  CurrentBlockIndex: Integer;
+begin
+  CurrentBlockIndex := -1;
+  Blocks.LockUpdate;
+  try
+    RemoveTranslationMemoryShowMoreBlock;
+    AppendTranslationMemoryOccurrenceItems(APage.Items, CurrentBlockIndex);
+    AppendTranslationMemoryOccurrencePage(APage);
+    AppendTranslationMemoryShowMoreBlock;
+  finally
+    Blocks.UnLockUpdate;
+  end;
+end;
+
+procedure TChapterView.ClearTranslationMemoryOccurrenceCacheFixture;
+begin
+  ClearTranslationMemoryOccurrenceCache;
+end;
+
+function TChapterView.TranslationMemoryCachedOccurrenceCountFixture: Integer;
+begin
+  Result := Length(FTranslationMemoryOccurrenceCache.Items);
+end;
+
+function TChapterView.TranslationMemoryShowMoreBlockIndexFixture: Integer;
+begin
+  Result := FTranslationMemoryShowMoreBlockIndex;
+end;
+{$ENDIF}
+
+function TChapterView.LoadTranslationMemoryPreviewPayload(
+  const ATarget: TTranslationMemoryHoverTarget;
+  out APayload: TTranslationMemoryPreviewPayload): Boolean;
+var
+  Alternative: TTranslationMemoryAlternative;
+  AnchorScreenRect: TRect;
+  ErrorMessage: string;
+  Remaining: Integer;
+begin
+  Result := False;
+  APayload := Default(TTranslationMemoryPreviewPayload);
+  if not ValidateTranslationMemoryPreviewTarget(ATarget, AnchorScreenRect) then
+    Exit;
+
+  Alternative := FTranslationMemoryEntries[ATarget.EntryIndex].Alternatives[
+    ATarget.AlternativeIndex];
+  APayload.SourceTerm :=
+    FTranslationMemoryEntries[ATarget.EntryIndex].DisplayTerm;
+  APayload.Translation := Alternative.Translation;
+  APayload.TitleText := Format(STranslationMemoryOccurrencesTitleFmt,
+    [APayload.SourceTerm, APayload.Translation]);
+  APayload.NoOccurrencesText := STranslationMemoryNoOccurrences;
+  APayload.OccurrenceCountFormat := STranslationMemoryOccurrenceCountFmt;
+  APayload.CurrentReferenceID := FProject.ID;
+  APayload.FontName := TextStyle.Font.Name;
+  APayload.FontSize := FTranslationMemoryPreviewFontSize;
+
+  if not FProject.TryGetReadyTranslationMemoryOccurrences(
+    Alternative.Matches, TRANSLATION_MEMORY_PREVIEW_LIMIT, APayload.Page,
+    ErrorMessage) then
+  begin
+    APayload.ErrorMessage := STranslationMemoryPreviewUnavailable;
+    Exit(True);
+  end;
+
+  APayload.TotalsText := TranslationMemoryOccurrenceTotalsText(
+    APayload.Page.TotalAssociations, APayload.Page.TotalVerses);
+  Remaining := APayload.Page.TotalVerses - Length(APayload.Page.Items);
+  if Remaining > 0 then
+    APayload.FooterText := Format(
+      STranslationMemoryPreviewRemainingFmt, [Remaining]);
+  Result := True;
+end;
+
+procedure TChapterView.ApplyProjectedInlineStyle(ABlock: TKMemoTextBlock;
+  ABaseStyle: TKMemoTextStyle;
+  const AEffective: TTheWordEffectiveInlineStyleV2);
+begin
+  inherited ApplyProjectedInlineStyle(ABlock, ABaseStyle, AEffective);
+  if (tweifv2AddedWords in AEffective.Flags) and
+    (not AEffective.HasExplicitColor) then
+  begin
+    if CurrentSkin.Id = skClassic then
+      ABlock.TextStyle.Font.Color := clGray
+    else
+      ABlock.TextStyle.Font.Color := CurrentSkin.WindowTextDim;
+  end;
+end;
+
 procedure TChapterView.RenderSpan(cont: TKMemoBlocks; txt: string);
 var
   FTokenizer: TONTTokenizer;
-  token: TTagSintagma;
-  prop, rawTag, lowerTag, rxRef: string;
+  token: TSyntagmToken;
   chunk: string;
-  size, lvl: integer;
+  OpeningTag, ConsumedBody, ConsumedClose: string;
+  NoteBody: string;
+  NoteClosingTag: string;
+  padding: longint;
+  lastpar: TKMemoParagraph;
+  Projection: TTheWordEffectiveInlineProjectionV2;
+  VisibleOffsetUTF16, RunIndex: Integer;
 begin
   chunk := '';
-  FTokenizer := TTokenizerFactory.CreatePreferredTokenizer(txt);
-
-  cont.LockUpdate;
+  FTokenizer := nil;
+  Projection := nil;
+  VisibleOffsetUTF16 := 0;
+  RunIndex := 0;
+  if Assigned(FProject) then
+    TokenizerVersion := FProject.TokenizerVersion;
   try
-    while FTokenizer.LerSintagma(token) <> tsNulo do
+    FTokenizer := TTokenizerFactory.CreateTokenizer(TokenizerVersion, txt);
+    TryResolveInlineProjection(UTF8Decode(txt), Projection);
+
+    cont.LockUpdate;
+    try
+      while FTokenizer.ReadSyntagm(token) <> skNull do
     begin
-      case token.tipo of
-        tsMetaDado:
+      case token.Kind of
+        skMetadata:
           ;
-        tsEspaco:
-          if token.valor <> '|' then
-          begin
-            chunk := chunk + token.valor;
-            FJustClosedHeading := False;
-          end;
-        tsPontuacao, tsSintagma:
-        begin
-          chunk := chunk + token.valor;
-          FJustClosedHeading := False;
-        end;
-        tsTag:
+        skWhitespace:
+          if token.Value <> '|' then
+            chunk := chunk + token.Value;
+        skPunctuation, skSyntagm:
+          chunk := chunk + token.Value;
+        skTag:
         begin
           if chunk.Length > 0 then
           begin
-            cont.AddTextBlock(chunk).TextStyle.Assign(CurrentStyle);
+            RenderProjectedChunk(cont, chunk, Projection,
+              VisibleOffsetUTF16, RunIndex);
             chunk := '';
           end;
 
-          rawTag := token.valor;
-          lowerTag := LowerCase(rawTag);
-
-          if AnsiStartsText('<TS', rawTag) and (lowerTag <> '<ts>') and (rawTag <> '<Ts>') then { section heading beginning }
+          OpeningTag := token.Value;
+          if OpeningTag.StartsWith('<TS') then { title beginning }
           begin
-            if assigned(cont.LastBlock) and (cont.LastBlock.ClassName <> 'TKMemoParagraph') then
-              CloseParagraphBlock(cont);
-
-            FParaTopPadding := 8;
-            FParaBottomPadding := 4;
-            FParaFirstIndent := 0;
-            FParaLeftIndent := 0;
-            FParaHAlign := halLeft;
-            FJustClosedHeading := False;
-
+            if assigned(cont.LastBlock) and
+              (cont.LastBlock.ClassName <> 'TKMemoParagraph') then
+              cont.AddParagraph().ParaStyle.FirstIndent :=
+                IfThen(GetParagraphMode = pmParagraph, DefaultFirstIndent);
             with PushNewStyle do
-            begin
-              case rawTag[4] of
+              case OpeningTag[4] of
                 '>','0','1':
                 begin
                   Font.Size := Font.Size + 2;
                   Font.Style := [fsBold];
-                  Font.Color := CurrentSkin.HeaderColor;
+                  if CurrentSkin.Id = skClassic then
+                    Font.Color := $424242
+                  else
+                    Font.Color := CurrentSkin.HeaderColor;
                 end;
                 '2':
                 begin
                   Font.Size := Font.Size + 1;
                   Font.Style := [fsBold, fsItalic];
-                  Font.Color := CurrentSkin.HeaderColor;
+                  Font.Color := clDefault;
                 end;
                 '3':
                 begin
-                  Font.Style := [fsBold, fsItalic];
-                  Font.Color := CurrentSkin.WindowTextDim;
+                  Font.Style := [fsItalic];
+                  Font.Color := clDefault;
                 end;
               end;
-            end;
           end
-          else if (rawTag = '<Ts>') or (lowerTag = '<ts>') then { section heading end }
+          else if OpeningTag = '<Ts>' then { title end }
           begin
-            ResetStyleStack;
-            CloseParagraphBlock(cont);
-            FParaTopPadding := 0;
-            FParaBottomPadding := 0;
-            FParaFirstIndent := IfThen(GetParagraphMode = pmParagraph, DefaultFirstIndent, 0);
-            FParaLeftIndent := 0;
-            FParaHAlign := halLeft;
-            FJustClosedHeading := True;
+            PopStyle;
+            lastpar := GetPreviousParagraphBlock;
+            padding := IfThen(assigned(lastpar) and
+              (lastpar.ParaStyle.BottomPadding = 0), 5);
+            cont.AddParagraph().ParaStyle.TopPadding := padding;
           end
-          else if SameText(rawTag, '<_CM>') then { heading paragraph fallback }
+          else if IsRFOpeningTag(OpeningTag) then { translator note }
           begin
-            if FJustClosedHeading then
-              FJustClosedHeading := False
-            else
-            begin
-              if assigned(cont.LastBlock) and (cont.LastBlock.ClassName <> 'TKMemoParagraph') then
-                CloseParagraphBlock(cont);
-              FParaTopPadding := 8;
-              FParaBottomPadding := 0;
-              FParaLeftIndent := 0;
-              FParaFirstIndent := 0;
-              FParaHAlign := halLeft;
-            end;
+            ReadRFNoteBody(FTokenizer, NoteBody, NoteClosingTag);
+            RenderNote(OpeningTag, NoteBody);
+            AdvanceProjectionForConsumedRaw(UTF8Decode(OpeningTag + NoteBody +
+              NoteClosingTag), Projection, VisibleOffsetUTF16, RunIndex);
           end
-          else if SameText(rawTag, '<CM>') then { spaced paragraph break (Double Return) }
+          else if OpeningTag = '<Q>' then
           begin
-            FJustClosedHeading := False;
-            if assigned(cont.LastBlock) and (cont.LastBlock.ClassName <> 'TKMemoParagraph') then
-              CloseParagraphBlock(cont);
-            FParaTopPadding := 8;
-            FParaBottomPadding := 0;
-            FParaLeftIndent := 0;
-            FParaFirstIndent := 0;
-            FParaHAlign := halLeft;
+            ConsumedBody := FTokenizer.ReadUntilExclusive('<q>');
+            RenderInterlinearBlock(cont, ConsumedBody);
+            AdvanceProjectionForConsumedRaw(UTF8Decode(OpeningTag +
+              ConsumedBody + '<q>'), Projection, VisibleOffsetUTF16, RunIndex);
           end
-          else if SameText(rawTag, '<CI>') then { tight paragraph break (Single Return) }
+          else if OpeningTag = '<E>' then
           begin
-            FJustClosedHeading := False;
-            if assigned(cont.LastBlock) and (cont.LastBlock.ClassName <> 'TKMemoParagraph') then
-              CloseParagraphBlock(cont);
-            FParaTopPadding := 0;
-            FParaBottomPadding := 0;
-            FParaLeftIndent := 0;
-            FParaFirstIndent := 0;
-            FParaHAlign := halLeft;
+            ConsumedBody := FTokenizer.ReadUntilExclusive('<e>');
+            RenderInterlinearUnit(cont, ConsumedBody);
+            AdvanceProjectionForConsumedRaw(UTF8Decode(OpeningTag +
+              ConsumedBody + '<e>'), Projection, VisibleOffsetUTF16, RunIndex);
           end
-          else if SameText(rawTag, '<CL>') or SameText(rawTag, '<br>') or SameText(rawTag, '<br/>') then { line break inside paragraph }
+          else if OpeningTag = '<T>' then
           begin
-            FJustClosedHeading := False;
-            if assigned(cont.LastBlock) and (cont.LastBlock.ClassName <> 'TKMemoParagraph') then
-              CloseParagraphBlock(cont);
-            FParaTopPadding := 0;
-            FParaBottomPadding := 0;
-            FParaFirstIndent := 0;
-            // Preserves FParaLeftIndent and FParaHAlign inside the same paragraph!
+            ConsumedBody := FTokenizer.ReadUntilExclusive('<t>');
+            RenderInterlinearUnit(cont, ConsumedBody);
+            AdvanceProjectionForConsumedRaw(UTF8Decode(OpeningTag +
+              ConsumedBody + '<t>'), Projection, VisibleOffsetUTF16, RunIndex);
           end
-          else if (rawTag = '<Pi>') or SameText(rawTag, '<PI0>') then { reset whole-paragraph indent }
+          else if OpeningTag = '<X>' then
           begin
-            FParaLeftIndent := 0;
+            ConsumedBody := FTokenizer.ReadUntilExclusive('<x>');
+            RenderInterlinearUnit(cont, ConsumedBody);
+            AdvanceProjectionForConsumedRaw(UTF8Decode(OpeningTag +
+              ConsumedBody + '<x>'), Projection, VisibleOffsetUTF16, RunIndex);
           end
-          else if SameText(rawTag, '<PI>') or SameText(rawTag, '<PI1>') then
+          else if OpeningTag = '<H>' then
           begin
-            FParaLeftIndent := 24;
-            if FParaFirstIndent = DefaultFirstIndent then
-              FParaFirstIndent := 0;
+            ConsumedBody := FTokenizer.ReadUntilExclusive('<h>');
+            RenderInterlinearUnit(cont, ConsumedBody);
+            AdvanceProjectionForConsumedRaw(UTF8Decode(OpeningTag +
+              ConsumedBody + '<h>'), Projection, VisibleOffsetUTF16, RunIndex);
           end
-          else if (Length(rawTag) = 5) and AnsiStartsText('<PI', rawTag) and (rawTag[4] in ['2'..'7']) and (rawTag[5] = '>') then
+          else if OpeningTag = '<G>' then
           begin
-            lvl := Ord(rawTag[4]) - Ord('0');
-            FParaLeftIndent := lvl * 22;
-            if FParaFirstIndent = DefaultFirstIndent then
-              FParaFirstIndent := 0;
+            ConsumedBody := FTokenizer.ReadUntilExclusive('<g>');
+            RenderInterlinearUnit(cont, ConsumedBody);
+            AdvanceProjectionForConsumedRaw(UTF8Decode(OpeningTag +
+              ConsumedBody + '<g>'), Projection, VisibleOffsetUTF16, RunIndex);
           end
-          else if (Length(rawTag) = 5) and AnsiStartsText('<PF', rawTag) and (rawTag[4] in ['0'..'7']) and (rawTag[5] = '>') then
+          else if (OpeningTag = '<CM>') or (OpeningTag = '<CI>') then
           begin
-            lvl := Ord(rawTag[4]) - Ord('0');
-            FParaFirstIndent := lvl * 20;
+            if GetParagraphMode = pmParagraph then
+              cont.AddParagraph().ParaStyle.FirstIndent := DefaultFirstIndent;
           end
-          else if SameText(rawTag, '<center>') then
+          else if OpeningTag = '<CL>' then
           begin
-            FParaHAlign := halCenter;
-            if FParaFirstIndent = DefaultFirstIndent then
-              FParaFirstIndent := 0;
+            if GetParagraphMode = pmParagraph then
+              cont.AddParagraph().ParaStyle.FirstIndent := 0;
           end
-          else if rawTag.StartsWith('<RF') then { translator note }
-            RenderNote(FTokenizer.LerPropriedadeTag('q', token), FTokenizer.ReadUntilExclusive('<Rf>'))
-          else if AnsiStartsText('<RX ', rawTag) then { cross-reference }
-          begin
-            rxRef := Trim(Copy(rawTag, 5, Length(rawTag) - 5));
-            if Pos(' ', rxRef) > 0 then
-              rxRef := Copy(rxRef, 1, Pos(' ', rxRef) - 1);
-            with cont.AddTextBlock(' [xref: ' + rxRef + '] ') do
-            begin
-              TextStyle.Assign(CurrentStyle);
-              TextStyle.Font.Color := NoteLinkColor;
-              TextStyle.Font.Size := Max(6, FFontSize - 2);
-              TextStyle.ScriptPosition := tpoSuperscript;
-            end;
-          end
-          else if rawTag = '<Q>' then { interlinear block }
-            RenderInterlinearBlock(cont, FTokenizer.ReadUntilExclusive('<q>'))
-          else if rawTag = '<E>' then { interlinear English block }
-            RenderInterlinearUnit(cont, FTokenizer.ReadUntilExclusive('<e>'))
-          else if rawTag = '<T>' then { interlinear translation block }
-            RenderInterlinearUnit(cont, FTokenizer.ReadUntilExclusive('<t>'))
-          else if rawTag = '<X>' then { interlinear transliteration block }
-            RenderInterlinearUnit(cont, FTokenizer.ReadUntilExclusive('<x>'))
-          else if rawTag = '<H>' then { interlinear Hebrew block }
-            RenderInterlinearUnit(cont, FTokenizer.ReadUntilExclusive('<h>'))
-          else if rawTag = '<G>' then { interlinear Greek block }
-            RenderInterlinearUnit(cont, FTokenizer.ReadUntilExclusive('<g>'))
-          else if rawTag = '<FI>' then { added word(s) }
-            with PushInheritedStyle do
-            begin
-              Font.Style := Font.Style + [fsItalic];
-              Font.Color := CurrentSkin.WindowTextDim;
-            end
-          else if rawTag = '<FR>' then { Jesus word(s) }
-          begin
-            if CurrentSkin.IsDark then
-              PushInheritedStyle.Font.Color := MakeRGB(244, 92, 92)
-            else
-              PushInheritedStyle.Font.Color := clRed;
-          end
-          else if rawTag = '<FO>' then { Old Testament quotation }
-            PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsBold]
-          else if rawTag = '<FU>' then { theWord Underline }
-            PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsUnderline]
-          else if (rawTag = '<Fi>') or (rawTag = '<Fr>') or (rawTag = '<Fo>') or (rawTag = '<Fu>') then
-            PopStyle
+          else if LowerCase(OpeningTag) = '<br/>' then
+            cont.AddParagraph().ParaStyle.FirstIndent := 0
           else
-          begin
-            if lowerTag.StartsWith('<font ') then { font change }
-            begin
-              PushInheritedStyle;
-              if lowerTag.Contains(' color=') then
-                CurrentStyle.Font.Color := HTML2Color(FTokenizer.LerPropriedadeTag('color', token));
-              if lowerTag.Contains(' size=') then
-              begin
-                prop := FTokenizer.LerPropriedadeTag('size', token);
-                if (Length(prop) > 0) and (prop.Chars[0] in ['-', '+']) then
-                  size := CurrentStyle.Font.Size + StrToIntDef(prop, 0)
-                else
-                  size := StrToIntDef(prop, CurrentStyle.Font.Size);
-                CurrentStyle.Font.Size := Max(6, size);
-              end;
-            end
-            else if lowerTag = '<b>' then { bold }
-              PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsBold]
-            else if lowerTag = '<i>' then { italic }
-              PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsItalic]
-            else if lowerTag = '<u>' then { underline }
-              PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsUnderline]
-            else if lowerTag = '<s>' then { strikeout }
-              PushInheritedStyle.Font.Style := CurrentStyle.Font.Style + [fsStrikeOut]
-            else if lowerTag = '<sup>' then { superscript }
-              PushInheritedStyle.ScriptPosition := tpoSuperscript
-            else if lowerTag = '<sub>' then { subscript }
-              PushInheritedStyle.ScriptPosition := tpoSubscript
-            else if (lowerTag = '</sub>')
-                 or (lowerTag = '</sup>')
-                 or (lowerTag = '</s>')
-                 or (lowerTag = '</u>')
-                 or (lowerTag = '</i>')
-                 or (lowerTag = '</b>')
-                 or (lowerTag = '<fo>')
-                 or (lowerTag = '<fr>')
-                 or (lowerTag = '<fi>')
-                 or (lowerTag = '<fu>')
-                 or (lowerTag = '</font>') then
-              PopStyle;
-          end;
+            ConsumedClose := ''; { inline/metadata tags are projected or hidden }
         end;
       end;
     end;
 
     if chunk.Length > 0 then
-      cont.AddTextBlock(chunk).TextStyle.Assign(CurrentStyle);
+    begin
+      if assigned(cont.LastBlock) and
+        (cont.LastBlock.ClassName = 'TKMemoParagraph') then
+        cont.LastBlock.ParaStyle.FirstIndent := DefaultFirstIndent;
+      RenderProjectedChunk(cont, chunk, Projection,
+        VisibleOffsetUTF16, RunIndex);
+    end;
+    finally
+      cont.UnLockUpdate;
+    end;
   finally
     FreeAndNil(FTokenizer);
-    cont.UnLockUpdate;
+    FreeAndNil(Projection);
   end;
 end;
 
-procedure TChapterView.RenderNote(link: string; note: string);
+procedure TChapterView.RenderNote(const OpeningTag, Note: string);
+var
+  Link: UnicodeString;
+  LinkBlock: TKMemoHyperlink;
+  NoteInfo: TNoteInfo;
 begin
-  if link.IsEmpty then
-    link := FNoteID.ToString;
+  if not FNoteNumberer.ResolveMarker(UnicodeString(OpeningTag), Link) then
+    Exit;
+  if Link = '' then
+    Exit;
 
-  FNotes.Add(TNoteInfo.Create(FNoteID, FCurrentVerse, note, link));
+  NoteInfo := TNoteInfo.Create(FNoteID, FCurrentVerse, Note, string(Link));
+  NoteInfo.RenderRevision := FTranslatorNoteRevision;
+  FNotes.Add(NoteInfo);
   if assigned(Blocks.LastBlock) and not Blocks.LastBlock.Text.EndsWith(' ') then
-    link := ' ' + link;
+    Link := ' ' + Link;
 
-  with Blocks.AddHyperlink(link, (FNoteID-1).ToString) do
+  LinkBlock := Blocks.AddHyperlink(string(Link), (FNoteID-1).ToString);
+  NoteInfo.MarkerLink := LinkBlock;
+  IndexTranslatorNote(NoteInfo);
+  with LinkBlock do
   begin
     TextStyle.Assign(TextStyle);
     TextStyle.Font.Color := NoteLinkColor;
     TextStyle.Font.Style := [fsItalic];
     TextStyle.Font.Size := TextStyle.Font.Size + 1;
     TextStyle.ScriptPosition := tpoSuperscript;
-    OnClick := @HandleNoteLinkClick;
   end;
   Inc(FNoteID);
 end;
@@ -802,7 +1495,11 @@ begin
     exit;
 
   ResetStyleStack;
-  CurrentStyle.Font.Size := max(FFontSize-2, 2);
+  CurrentStyle.Font.Size := max(FFontSize-2, 2); // using smaller font
+  if CurrentSkin.Id = skClassic then
+    CurrentStyle.Font.Color := clWindowText
+  else
+    CurrentStyle.Font.Color := CurrentSkin.WindowText;
 
   Blocks.AddParagraph();
   Blocks.AddParagraph();
@@ -831,8 +1528,10 @@ begin
   b := cont.AddContainer();
   b.Position := mbpText;
   b.FixedWidth := true;
+  //b.BlockStyle.BottomPadding := 5;
   b.BlockStyle.RightPadding := 5;
 
+  // using non-breakable spaces inside interlinear blocks
   RenderSpan(b.Blocks, stringReplace(blockText, ' ', #8239, [rfReplaceAll]));
 end;
 
@@ -840,63 +1539,255 @@ procedure TChapterView.RenderInterlinearUnit(cont: TKMemoBlocks;
   translation: string);
 begin
   if cont.Count > 0 then
+  begin
+    //cont.LastBlock.ParaStyle.HAlign := halCenter;
     cont.AddParagraph();
+  end;
   RenderSpan(cont, '<font color="#417cbe">' + translation + '</font>');
+  //cont.AddTextBlock(translation).TextStyle.Font.Color := $be7c41;
 end;
 
 procedure TChapterView.HandleReferenceClick(sender: TObject);
 begin
-  FProject.GoToReference(TKMemoHyperlink(Sender).URL);
-end;
-
-procedure TChapterView.HandleNoteLinkClick(sender: TObject);
-var
-  note: TNoteInfo;
-  c: integer = 0;
-begin
-  note := FNotes[TKMemoHyperlink(Sender).URL.ToInteger];
-  repeat
-    inc(c);
-    FHint.ActivateHint(note.Text, TextStyle);
-  until not FHint.ScrollBarsVisible or (c = 2);
+  DismissTranslatorNotePreview;
+  FProject.NavigateToReference(TKMemoHyperlink(Sender).URL);
 end;
 
 procedure TChapterView.HandleNoteClick(sender: TObject);
 var
   note: TNoteInfo;
+  noteIndex: integer;
 begin
-  note := FNotes[TKMemoHyperlink(Sender).URL.ToInteger];
+  if not (sender is TKMemoHyperlink) then
+    Exit;
+  noteIndex := StrToIntDef(string(TKMemoHyperlink(sender).URL), -1);
+  if (noteIndex < 0) or (noteIndex >= FNotes.Count) then
+    Exit;
+  note := FNotes[noteIndex];
 
-  if CurrentSkin.IsDark then
-    HighlightRange(note.Range, CurrentSkin.NoteBg)
+  HighlightRange(note.Range, clDefault);
+  if CurrentSkin.Id = skClassic then
+    HighlightRange(FVerseRanges[note.Verse], clSilver)
   else
-    HighlightRange(note.Range, clDefault);
-  HighlightRange(FVerseRanges[note.Verse], CurrentSkin.VerseHighlightBg);
+    HighlightRange(FVerseRanges[note.Verse], CurrentSkin.VerseHighlightBg);
 end;
 
-procedure TChapterView.HandleVerseChange(Sender: TProjeto);
+procedure TChapterView.HandleTranslationMemoryEntryClick(Sender: TObject);
+var
+  EntryIndex: Integer;
+  SyntagmIndex: Integer;
+  SourceVerse: TVerse;
+begin
+  DismissTranslationMemoryPreview;
+  if not Assigned(FProject) or
+     not (Sender is TKMemoHyperlink) then
+    Exit;
+  EntryIndex := StrToIntDef(TKMemoHyperlink(Sender).URL, -1);
+  if (EntryIndex < 0) or
+     (EntryIndex >= Length(FTranslationMemoryEntries)) then
+    Exit;
+
+  ClearTranslationMemorySourceHighlight;
+  FTranslationMemoryFocus.FocusEntry(EntryIndex);
+  SourceVerse := FProject.VerseObjects[tbOrigem];
+  if not Assigned(SourceVerse) or not Assigned(SourceVerse.Syntagms) then
+    Exit;
+  for SyntagmIndex in
+    FTranslationMemoryEntries[EntryIndex].SyntagmIndexes do
+    if (SyntagmIndex >= 0) and
+       (SyntagmIndex < SourceVerse.Syntagms.Count) then
+      SourceVerse.Syntagms[SyntagmIndex].ToggleStrongHighlight(True);
+end;
+
+procedure TChapterView.HandleTranslationMemoryAlternativeClick(
+  Sender: TObject);
+var
+  AlternativeIndex: Integer;
+  CurrentSnapshot: TTranslationMemoryInputSnapshot;
+  EntryIndex: Integer;
+begin
+  DismissTranslationMemoryPreview;
+  if not (Sender is TKMemoHyperlink) then
+    Exit;
+  CurrentSnapshot := CurrentTranslationMemoryInputSnapshot;
+  if not TranslationMemoryInputSnapshotsEqual(
+    FTranslationMemoryInputSnapshot, CurrentSnapshot) then
+  begin
+    FTranslationMemoryInputSnapshot := CurrentSnapshot;
+    ResetTranslationMemoryOccurrences(True);
+    RenderTranslationMemory;
+    TopPos := 0;
+    Exit;
+  end;
+  if not TryParseTranslationMemoryHoverURL(
+    TKMemoHyperlink(Sender).URL, EntryIndex, AlternativeIndex) then
+    Exit;
+  if (EntryIndex < 0) or
+     (EntryIndex >= Length(FTranslationMemoryEntries)) or
+     (AlternativeIndex < 0) or
+     (AlternativeIndex >= Length(
+       FTranslationMemoryEntries[EntryIndex].Alternatives)) then
+    Exit;
+  with FTranslationMemoryEntries[EntryIndex].Alternatives[AlternativeIndex] do
+  begin
+    if (Occurrences <= 0) or (Length(Matches) = 0) then
+      Exit;
+    FTranslationMemoryOccurrenceTranslation := Translation;
+    FTranslationMemoryOccurrenceMatches := Copy(Matches, 0, Length(Matches));
+  end;
+  FTranslationMemoryOccurrenceSource :=
+    FTranslationMemoryEntries[EntryIndex].DisplayTerm;
+  ClearTranslationMemoryOccurrenceCache;
+  FTranslationMemoryOccurrenceLimit := 100;
+  FTranslationMemoryShowingOccurrences := True;
+  ClearTranslationMemorySourceHighlight;
+  RenderTranslationMemoryOccurrences;
+  TopPos := 0;
+end;
+
+procedure TChapterView.HandleTranslationMemoryBackClick(Sender: TObject);
+begin
+  ResetTranslationMemoryOccurrences(True);
+  RenderTranslationMemory;
+  TopPos := 0;
+end;
+
+procedure TChapterView.HandleTranslationMemoryOccurrenceClick(
+  Sender: TObject);
+var
+  ReferenceID: string;
+begin
+  if not Assigned(FProject) or not (Sender is TKMemoHyperlink) then
+    Exit;
+  ReferenceID := TKMemoHyperlink(Sender).URL;
+  FProject.NavigateToReference(ReferenceID);
+end;
+
+procedure TChapterView.HandleTranslationMemoryShowMoreClick(Sender: TObject);
+var
+  CurrentBlockIndex: Integer;
+  CurrentSnapshot: TTranslationMemoryInputSnapshot;
+  ErrorMessage: string;
+  NextPage: TTranslationOccurrencePage;
+  Offset: Integer;
+  PreviousTop: Integer;
+begin
+  if not FTranslationMemoryShowingOccurrences or
+     not FTranslationMemoryOccurrenceCacheLoaded or
+     not FTranslationMemoryOccurrenceCache.HasMore then
+    Exit;
+  CurrentSnapshot := CurrentTranslationMemoryInputSnapshot;
+  if not TranslationMemoryInputSnapshotsEqual(
+    FTranslationMemoryInputSnapshot, CurrentSnapshot) then
+  begin
+    FTranslationMemoryInputSnapshot := CurrentSnapshot;
+    ResetTranslationMemoryOccurrences(True);
+    RenderTranslationMemory;
+    TopPos := 0;
+    Exit;
+  end;
+  PreviousTop := TopPos;
+  Offset := Length(FTranslationMemoryOccurrenceCache.Items);
+  if not TryLoadTranslationMemoryOccurrenceRange(
+    FTranslationMemoryOccurrenceMatches, Offset, 100, NextPage,
+    ErrorMessage) then
+    Exit;
+  if (NextPage.TotalAssociations <>
+      FTranslationMemoryOccurrenceCache.TotalAssociations) or
+     (NextPage.TotalVerses <>
+      FTranslationMemoryOccurrenceCache.TotalVerses) then
+  begin
+    ClearTranslationMemoryOccurrenceCache;
+    RenderTranslationMemoryOccurrences;
+    TopPos := PreviousTop;
+    Exit;
+  end;
+
+  CurrentBlockIndex := -1;
+  Blocks.LockUpdate;
+  try
+    RemoveTranslationMemoryShowMoreBlock;
+    AppendTranslationMemoryOccurrenceItems(NextPage.Items,
+      CurrentBlockIndex);
+    AppendTranslationMemoryOccurrencePage(NextPage);
+    AppendTranslationMemoryShowMoreBlock;
+  finally
+    Blocks.UnLockUpdate;
+  end;
+  Inc(FTranslationMemoryOccurrenceLimit, 100);
+  TopPos := PreviousTop;
+end;
+
+procedure TChapterView.ResetTranslationMemoryOccurrences(
+  AWillReplaceDocument: Boolean);
+begin
+  if Assigned(FTranslationMemoryFocus) then
+    if AWillReplaceDocument then
+      FTranslationMemoryFocus.Discard
+    else
+      FTranslationMemoryFocus.Unbind;
+  FTranslationMemoryShowingOccurrences := False;
+  SetLength(FTranslationMemoryOccurrenceMatches, 0);
+  FTranslationMemoryOccurrenceSource := '';
+  FTranslationMemoryOccurrenceTranslation := '';
+  FTranslationMemoryOccurrenceLimit := 100;
+  ClearTranslationMemoryOccurrenceCache;
+end;
+
+procedure TChapterView.HandleVerseChange(Sender: TProject);
 var
   verses: TStringList;
 begin
-  if not assigned(FProject) or (Width < 2) or FLoadingChapter then
+  if not assigned(FProject) or (Width < 2) then
+  begin
+    InvalidateTranslatorNotePreview;
+    InvalidateTranslationMemoryPreview;
+    if Assigned(FTranslationMemoryFocus) then
+      FTranslationMemoryFocus.Unbind;
     exit;
+  end;
 
-  FLoadingChapter := true;
+  ClearTranslationMemorySourceHighlight;
+  if FViewMode = cvmTranslationMemory then
+  begin
+    FTranslationMemoryRefreshPending := True;
+    if IsTranslationMemoryVisible then
+      if FTranslationMemoryShowingOccurrences then
+        RenderTranslationMemoryOccurrences
+      else
+      begin
+        RenderTranslationMemory;
+        TopPos := 0;
+      end;
+    Exit;
+  end;
+
+  FTranslationMemoryRefreshPending := True;
+  if ChapterRenderKeyMatchesCurrentProject then
+  begin
+    FRawMemo.Hide;
+    DismissTranslatorNotePreview;
+    DismissTranslationMemoryPreview;
+    FocusRenderedChapterVerse(Sender.Verse);
+    Exit;
+  end;
+  verses := FProject.GetChapterText;
   try
-    verses := Sender.GetChapterText;
-    try
-      RenderChapter(verses, Sender.Verse);
-    finally
-      FreeAndNil(verses);
-    end;
+    RenderChapter(verses, Sender.Verse);
   finally
-    FLoadingChapter := false;
+    FreeAndNil(verses);
   end;
 end;
 
 procedure TChapterView.HandleKeyDown(Sender: TObject; var Key: Word;
   Shift: TShiftState);
 begin
+  if Key in [VK_ESCAPE, VK_PRIOR, VK_NEXT, VK_HOME, VK_END, VK_UP, VK_DOWN,
+     VK_LEFT, VK_RIGHT] then
+  begin
+    DismissTranslatorNotePreview;
+    DismissTranslationMemoryPreview;
+  end;
   if (ssCtrl in Shift) and (Key in [VK_SUBTRACT, VK_OEM_MINUS]) and (FFontSize > 1) then
   begin
     FFontSize := FFontSize-1;
@@ -918,18 +1809,55 @@ end;
 
 procedure TChapterView.HandleMouseMove(Sender: TObject; Shift: TShiftState; X,
   Y: Integer);
+var
+  HitBlock: TKMemoBlock;
+  HitRect: TRect;
+  LinkBlock: TKMemoHyperlink;
+  NoteId: QWord;
+  NoteRevision: QWord;
+  Target: TTranslationMemoryHoverTarget;
 begin
+  LinkBlock := nil;
+  HitBlock := BlockAt(Point(X, Y));
+  if HitBlock is TKMemoHyperlink then
+  begin
+    HitRect := BlockRect(HitBlock);
+    if (X >= HitRect.Left) and (X < HitRect.Right) and
+       (Y >= HitRect.Top) and (Y < HitRect.Bottom) then
+      LinkBlock := TKMemoHyperlink(HitBlock);
+  end;
+
+  if Assigned(FTranslatorNoteHoverController) then
+    if TryResolveTranslatorNoteHoverTarget(LinkBlock,
+      NoteRevision, NoteId) then
+      FTranslatorNoteHoverController.Hover(
+        NoteRevision, NoteId)
+    else
+      FTranslatorNoteHoverController.Leave;
+
+  if not Assigned(FTranslationMemoryPreviewController) or
+     not IsTranslationMemoryVisible or FTranslationMemoryShowingOccurrences then
+    Exit;
+
+  if not TryResolveTranslationMemoryHoverTarget(LinkBlock, Target) then
+    FTranslationMemoryPreviewController.Leave
+  else
+    FTranslationMemoryPreviewController.Hover(Target);
+end;
+
+procedure TChapterView.HandleMouseLeave(Sender: TObject);
+begin
+  if Assigned(FTranslatorNoteHoverController) then
+    FTranslatorNoteHoverController.Leave;
+  if Assigned(FTranslationMemoryPreviewController) then
+    FTranslationMemoryPreviewController.Leave;
 end;
 
 procedure TChapterView.HandleMouseWheel(Sender: TObject; Shift: TShiftState;
   WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
 begin
-  if (not (ssCtrl in Shift)) and Assigned(FProject) and
-     FProject.HandleMouseWheelForSourceWords(Shift, WheelDelta) then
-  begin
-    Handled := True;
-    Exit;
-  end;
+  DismissTranslatorNotePreview;
+  DismissTranslationMemoryPreview;
   if ssCtrl in Shift then
   begin
     Blocks.LockUpdate;
@@ -940,11 +1868,20 @@ begin
   end;
 end;
 
+procedure TChapterView.HandleTranslationMemoryPreviewFontSizeChanged(
+  Sender: TObject; AFontSize: Integer);
+begin
+  TranslationMemoryPreviewFontSize := AFontSize;
+end;
+
 procedure TChapterView.HandleDoubleClick(Sender: TObject);
 var
   verses: TStringList;
 begin
-  if not assigned(FProject) then exit;
+  DismissTranslatorNotePreview;
+  if not assigned(FProject) or
+     (FViewMode = cvmTranslationMemory) then
+    Exit;
 
   verses := FProject.GetChapterText;
   try
@@ -957,20 +1894,27 @@ end;
 procedure TChapterView.HandleContextPopup(Sender: TObject; MousePos: TPoint;
   var Handled: Boolean);
 begin
+  DismissTranslatorNotePreview;
+  DismissTranslationMemoryPreview;
   if not assigned(FProject) then
   begin
     Handled := true;
     exit;
   end;
 
-  FVerseRulesItem.Visible      := GetTextType = tbInterlinear;
-  FInterlinearModeItem.Visible := GetTextType = tbInterlinear;
+  FParagraphModeItem.Visible := FViewMode = cvmChapterText;
+  FPrintChapterItem.Visible := FViewMode = cvmChapterText;
+  FVerseRulesItem.Visible := (FViewMode = cvmChapterText) and
+    (GetTextType = tbInterlinear);
+  FInterlinearModeItem.Visible := (FViewMode = cvmChapterText) and
+    (GetTextType = tbInterlinear);
 end;
 
 procedure TChapterView.HandleSetFont(Sender: TObject);
 var
   dialog: TFontDialog;
 begin
+  DismissTranslatorNotePreview;
   dialog := TFontDialog.Create(self);
   dialog.Options := [fdNoStyleSel];
   dialog.Font.Name := FFontName;
@@ -990,6 +1934,7 @@ procedure TChapterView.HandlePrintChapter(Sender: TObject);
 var
   setup: TKPrintSetupDialog;
 begin
+  DismissTranslatorNotePreview;
   setup := TKPrintSetupDialog.Create(nil);
   try
     PrintMode := true;
@@ -1011,9 +1956,13 @@ end;
 
 procedure TChapterView.HandleVerseRules(Sender: TObject);
 begin
-  frmInterlinearVerseRules.Project := FProject;
-  if frmInterlinearVerseRules.ShowModal = mrOK then
+  DismissTranslatorNotePreview;
+  InterlinearVerseRulesForm.Project := FProject;
+  if InterlinearVerseRulesForm.ShowModal = mrOK then
+  begin
+    InvalidateChapterRenderCache;
     LoadChapter;
+  end;
 end;
 
 procedure TChapterView.HandleInterlinearMode(Sender: TObject);
@@ -1044,17 +1993,82 @@ begin
   HandleVerseChange(FProject);
 end;
 
-procedure TChapterView.SetProject(AValue: TProjeto);
+procedure TChapterView.SetProject(AValue: TProject);
 begin
   if FProject = AValue then Exit;
+  InvalidateChapterRenderCache;
+  InvalidateTranslatorNotePreview;
+  InvalidateTranslationMemoryPreview;
+  ClearTranslationMemorySourceHighlight;
+  ResetTranslationMemoryOccurrences;
+  if Assigned(FProject) then
+    FProject.OnNewVerseUnsubscribe(@HandleVerseChange);
   FProject := AValue;
+  FTranslationMemoryRefreshPending := True;
+  FTranslationMemoryInputSnapshot :=
+    Default(TTranslationMemoryInputSnapshot);
+  FViewSelectionActive := False;
 
   if assigned(FProject) then
   begin
+    TokenizerVersion := FProject.TokenizerVersion;
+    FViewMode := FProject.ChapterViewMode;
     SetParagraphMode(FProject.ParagraphMode);
     SetInterlinearMode(FProject.InterlinearMode);
     FProject.OnNewVerseSubscribe(@HandleVerseChange);
+  end;
+end;
+
+procedure TChapterView.SetViewMode(AValue: TChapterViewMode);
+begin
+  FViewSelectionActive := True;
+  InvalidateTranslationMemoryPreview;
+  if FViewMode = AValue then
+  begin
+    DismissTranslatorNotePreview;
+    if (AValue = cvmTranslationMemory) and
+       FTranslationMemoryRefreshPending and
+       IsTranslationMemoryVisible then
+      LoadChapter;
+    Exit;
+  end;
+  InvalidateTranslatorNotePreview;
+  ClearTranslationMemorySourceHighlight;
+  if Assigned(FTranslationMemoryFocus) then
+    if Assigned(FProject) then
+      FTranslationMemoryFocus.Discard
+    else
+      FTranslationMemoryFocus.Unbind;
+  FViewMode := AValue;
+  if AValue = cvmTranslationMemory then
+    FTranslationMemoryRefreshPending := True;
+  if Assigned(FProject) then
+  begin
+    FProject.ChapterViewMode := AValue;
     LoadChapter;
+  end;
+end;
+
+procedure TChapterView.SetTranslationMemoryOrder(
+  AValue: TTranslationMemoryOrder);
+begin
+  if FTranslationMemoryOrder = AValue then
+    Exit;
+  InvalidateTranslationMemoryPreview;
+  if Assigned(FTranslationMemoryFocus) and
+     not IsTranslationMemoryVisible then
+    FTranslationMemoryFocus.Unbind;
+  FTranslationMemoryOrder := AValue;
+  FTranslationMemoryRefreshPending := True;
+  if IsTranslationMemoryVisible then
+  begin
+    if FTranslationMemoryShowingOccurrences then
+      RenderTranslationMemoryOccurrences
+    else
+    begin
+      RenderTranslationMemory;
+      TopPos := 0;
+    end;
   end;
 end;
 
@@ -1137,10 +2151,10 @@ procedure TChapterView.SetFontSize(AValue: integer);
 begin
   if (FFontSize = AValue) or (AValue < 1) then Exit;
 
+  DismissTranslatorNotePreview;
   Blocks.LockUpdate;
   FFontSize := AValue;
   TextStyle.Font.Size := FFontSize;
-  FHint.Font.Assign(TextStyle.Font);
   Blocks.UnlockUpdate;
 end;
 
@@ -1148,143 +2162,146 @@ procedure TChapterView.SetFontName(AValue: string);
 begin
   if (FFontName = AValue) then Exit;
 
+  DismissTranslatorNotePreview;
   Blocks.LockUpdate;
   FFontName := AValue;
   TextStyle.Font.Name := FFontName;
-  FHint.Font.Assign(TextStyle.Font);
   Blocks.UnlockUpdate;
 end;
 
-function TChapterView.PushNewStyle: TKMemoTextStyle;
-begin
-  result := TKMemoTextStyle(FStyleStack.Push(TKMemoTextStyle.Create));
-  result.Assign(TextStyle);
-end;
-
-function TChapterView.PushInheritedStyle: TKMemoTextStyle;
+procedure TChapterView.SetTranslationMemoryPreviewFontSize(AValue: Integer);
 var
-  current: TKMemoTextStyle;
+  NormalizedSize: Integer;
 begin
-  current := CurrentStyle;
-  result := PushNewStyle;
-  result.Assign(current);
+  NormalizedSize := NormalizeTranslationMemoryPreviewFontSize(AValue);
+  if FTranslationMemoryPreviewFontSize = NormalizedSize then
+    Exit;
+
+  FTranslationMemoryPreviewFontSize := NormalizedSize;
+  if Assigned(FOnTranslationMemoryPreviewFontSizeChanged) then
+    FOnTranslationMemoryPreviewFontSizeChanged(Self);
 end;
 
-procedure TChapterView.PopStyle;
+{ Chapters in a book: 1.1.0's table for books 1-66, the project's own count
+  for apocrypha books (67+). }
+function ChapterCountOf(BookID: Integer): Integer;
 begin
-  if FStyleStack.Count > 1 then
-    FStyleStack.Pop.Free;
+  if BookID >= FIRST_APOCRYPHA_BOOK then
+    Result := ApocryphaChapterCount(BookID)
+  else if (BookID >= 1) and (BookID <= 66) then
+    Result := QCapitulosONT[BookID]
+  else
+    Result := 0;
 end;
 
-procedure TChapterView.HighlightRange(range: TBlockRange; bgcolor: TColor);
-var
-  i: integer;
+procedure TChapterView.ApplySkinColors;
 begin
-  if (range.first < 0) or (range.last < range.first) then Exit;
-  for i := Max(0, range.first) to Min(Blocks.Count - 1, range.last) do
+  if CurrentSkin.Id = skClassic then
   begin
-    if Blocks[i].ClassName = 'TKMemoTextBlock' then
-    begin
-      TKMemoTextBlock(Blocks[i]).TextStyle.Brush.Style := bsSolid;
-      TKMemoTextBlock(Blocks[i]).TextStyle.Brush.Color := bgcolor;
-    end
-    else if Blocks[i].ClassName = 'TKMemoContainer' then
-      TKMemoContainer(Blocks[i]).BlockStyle.Brush.Color := bgcolor;
-  end;
-end;
-
-procedure TChapterView.UpdateBlocksSkin(ABlocks: TKMemoBlocks; const AOldSkin, ANewSkin: TSkinColors);
-var
-  i: Integer;
-  blk: TKMemoBlock;
-  tb: TKMemoTextBlock;
-  cont: TKMemoContainer;
-  fc, darkRed: TColor;
-begin
-  if not Assigned(ABlocks) then Exit;
-  darkRed := MakeRGB(244, 92, 92);
-  for i := 0 to ABlocks.Count - 1 do
+    Color := clWindow;
+    Background.Color := clWindow;
+    Colors.BkGnd := clWindow;
+    Colors.SelBkGnd := clHighlight;
+    Colors.SelText := clHighlightText;
+    Colors.SelBkGndFocused := clHighlight;
+    Colors.SelTextFocused := clHighlightText;
+  end
+  else
   begin
-    blk := ABlocks[i];
-    if blk is TKMemoTextBlock then
-    begin
-      tb := TKMemoTextBlock(blk);
-      fc := tb.TextStyle.Font.Color;
-      if fc = AOldSkin.WindowText then
-        tb.TextStyle.Font.Color := ANewSkin.WindowText
-      else if fc = AOldSkin.WindowTextDim then
-        tb.TextStyle.Font.Color := ANewSkin.WindowTextDim
-      else if fc = AOldSkin.HeaderColor then
-        tb.TextStyle.Font.Color := ANewSkin.HeaderColor
-      else if fc = AOldSkin.VerseNumColor then
-        tb.TextStyle.Font.Color := ANewSkin.VerseNumColor
-      else if (fc = clRed) or (fc = darkRed) then
-      begin
-        if ANewSkin.IsDark then
-          tb.TextStyle.Font.Color := darkRed
-        else
-          tb.TextStyle.Font.Color := clRed;
-      end;
-
-      if tb.TextStyle.Brush.Style = bsSolid then
-        tb.TextStyle.Brush.Color := ANewSkin.VerseHighlightBg
-      else
-        tb.TextStyle.Brush.Color := ANewSkin.WindowBg;
-    end
-    else if blk is TKMemoContainer then
-    begin
-      cont := TKMemoContainer(blk);
-      if cont.BlockStyle.Brush.Color = AOldSkin.VerseHighlightBg then
-        cont.BlockStyle.Brush.Color := ANewSkin.VerseHighlightBg;
-      UpdateBlocksSkin(cont.Blocks, AOldSkin, ANewSkin);
-    end;
+    Color := CurrentSkin.WindowBg;
+    Background.Color := CurrentSkin.WindowBg;
+    Colors.BkGnd := CurrentSkin.WindowBg;
+    Colors.SelBkGnd := CurrentSkin.SelectedBg;
+    Colors.SelText := CurrentSkin.SelectedText;
+    Colors.SelBkGndFocused := CurrentSkin.SelectedBg;
+    Colors.SelTextFocused := CurrentSkin.SelectedText;
   end;
-end;
-
-procedure TChapterView.ApplySkin(const ASkin: TSkinColors);
-begin
-  Color := ASkin.WindowBg;
-  ApplyDarkModeToControl(Self, ASkin.IsDark);
-  Blocks.LockUpdate;
-  try
-    Background.Color := ASkin.WindowBg;
-    TextStyle.Font.Color := ASkin.WindowText;
-    TextStyle.Brush.Color := ASkin.WindowBg;
-    TextStyle.Brush.Style := bsClear;
-    if Blocks.Count > 0 then
-      UpdateBlocksSkin(Blocks, FAppliedSkin, ASkin);
-    FAppliedSkin := ASkin;
-  finally
-    Blocks.UnLockUpdate;
-  end;
-  if assigned(FHint) and assigned(FHint.FNoteView) then
+  if HandleAllocated then
   begin
-    FHint.FNoteView.Blocks.LockUpdate;
-    try
-      FHint.FNoteView.Color := ASkin.NoteBg;
-      FHint.FNoteView.Background.Color := ASkin.NoteBg;
-      FHint.FNoteView.TextStyle.Font.Color := ASkin.NoteText;
-      FHint.FNoteView.TextStyle.Brush.Color := ASkin.NoteBg;
-    finally
-      FHint.FNoteView.Blocks.UnLockUpdate;
-    end;
+    ApplyDarkModeToControl(Self, CurrentSkin.IsDark);
+    {$IFDEF WINDOWS}
+    HookNCScrollBarControl(Self);
+    {$ENDIF}
   end;
-  Invalidate;
+  if Assigned(FRawMemo) then
+  begin
+    FRawMemo.Color := Colors.BkGnd;
+    if CurrentSkin.Id = skClassic then
+      FRawMemo.Font.Color := clWindowText
+    else
+      FRawMemo.Font.Color := CurrentSkin.WindowText;
+    ApplyDarkModeToControl(FRawMemo, CurrentSkin.IsDark);
+    {$IFDEF WINDOWS}
+    HookEditControl(FRawMemo);
+    {$ENDIF}
+  end;
+  InvalidateChapterRenderCache;
+  FTranslationMemoryRefreshPending := True;
 end;
 
-procedure TChapterView.ResetStyleStack;
+procedure TChapterView.SetupDefaultStyle;
 begin
-  while FStyleStack.Count > 0 do
-    FStyleStack.Pop.Free;
+  inherited SetupDefaultStyle;
   TextStyle.Font.Size := FFontSize;
   TextStyle.Font.Name := FFontName;
-  TextStyle.Font.Color := CurrentSkin.WindowText;
-  TextStyle.Brush.Color := CurrentSkin.WindowBg;
-  TextStyle.Brush.Style := bsClear;
+  if CurrentSkin.Id = skClassic then
+    TextStyle.Font.Color := clWindowText
+  else
+    TextStyle.Font.Color := CurrentSkin.WindowText;
   TextStyle.ScriptPosition := tpoNormal;
   ParaStyle.FirstIndent := 0;
   ParaStyle.LineSpacingFactor := 1.15;
-  PushNewStyle; // pushing default style onto stack
+end;
+
+procedure TChapterView.HighlightRange(range: TBlockRange; bgcolor: TColor);
+
+  procedure ApplyBlockHighlight(ABlock: TKMemoBlock);
+  var
+    ChildIdx: Integer;
+    Cont: TKMemoContainer;
+    TB: TKMemoTextBlock;
+  begin
+    if not Assigned(ABlock) then
+      Exit;
+    if ABlock is TKMemoTextBlock then
+    begin
+      TB := TKMemoTextBlock(ABlock);
+      if bgcolor = clDefault then
+      begin
+        TB.TextStyle.Brush.Style := bsClear;
+        TB.TextStyle.Brush.Color := Colors.BkGnd;
+      end
+      else
+      begin
+        TB.TextStyle.Brush.Style := bsSolid;
+        TB.TextStyle.Brush.Color := bgcolor;
+      end;
+    end
+    else if ABlock is TKMemoContainer then
+    begin
+      Cont := TKMemoContainer(ABlock);
+      if bgcolor = clDefault then
+      begin
+        Cont.BlockStyle.Brush.Style := bsClear;
+        Cont.BlockStyle.Brush.Color := Colors.BkGnd;
+      end
+      else
+      begin
+        Cont.BlockStyle.Brush.Style := bsSolid;
+        Cont.BlockStyle.Brush.Color := bgcolor;
+      end;
+      for ChildIdx := 0 to Cont.Blocks.Count - 1 do
+        ApplyBlockHighlight(Cont.Blocks[ChildIdx]);
+    end;
+  end;
+
+var
+  i: integer;
+begin
+  if (range.first < 0) or (range.last < range.first) then
+    Exit;
+  for i := Max(0, range.first) to Min(Blocks.Count - 1, range.last) do
+    ApplyBlockHighlight(Blocks[i]);
 end;
 
 function TChapterView.GetPreviousParagraphBlock: TKMemoParagraph;
@@ -1302,8 +2319,21 @@ end;
 
 procedure TChapterView.SetTextType(AValue: TTipoTextoBiblico);
 begin
-  if GetTextType = AValue then Exit;
-  FProject.ChapterViewText := AValue;
+  if not Assigned(FProject) then
+    Exit;
+  InvalidateTranslatorNotePreview;
+  InvalidateTranslationMemoryPreview;
+  if Assigned(FTranslationMemoryFocus) then
+    FTranslationMemoryFocus.Unbind;
+  FViewSelectionActive := True;
+  if FViewMode <> cvmChapterText then
+  begin
+    ClearTranslationMemorySourceHighlight;
+    FViewMode := cvmChapterText;
+    FProject.ChapterViewMode := cvmChapterText;
+  end;
+  if GetTextType <> AValue then
+    FProject.ChapterViewText := AValue;
   LoadChapter;
 end;
 
@@ -1311,19 +2341,21 @@ procedure TChapterView.RenderChapterHeader;
 var
   c: integer;
 begin
+  { current chapter }
   with Blocks.AddTextBlock(SysUtils.Format('%s %d', [FProject.Book, FProject.Chapter])).TextStyle.Font do
   begin
     Name := 'default';
     Size := Self.TextStyle.Font.Size+2;
     Bold := true;
-    Color := CurrentSkin.HeaderColor;
+    Color := NonBibleTextColor;
   end;
 
   if not FPrintMode then
   begin
-    Blocks.AddParagraph();
+    Blocks.AddParagraph(); //.ParaStyle.HAlign := halLeft;
 
-    for c:=1 to QCapitulosONT[FProject.BookID] do
+    { chapter list }
+    for c:=1 to ChapterCountOf(FProject.BookID) do
     begin
       if c > 1 then
         Blocks.AddTextBlock(' ');
@@ -1368,11 +2400,14 @@ procedure TChapterView.RenderChapterFooter;
   begin
     if (FProject.BookID = GetFirstBook) and (FProject.Chapter = 1) then
        exit;
+    // apocrypha books: move only within the book
+    if (FProject.BookID >= FIRST_APOCRYPHA_BOOK) and (FProject.Chapter = 1) then
+       exit;
 
     if FProject.Chapter = 1 then
     begin
       book := FProject.BookID - 1;
-      chapter := QCapitulosONT[book];
+      chapter := ChapterCountOf(book);
     end else
     begin
       book := FProject.BookID;
@@ -1390,10 +2425,13 @@ procedure TChapterView.RenderChapterFooter;
 
   procedure GetNextChapter(var book: integer; var chapter: integer);
   begin
-    if (FProject.BookID = GetLastBook) and (FProject.Chapter = QCapitulosONT[FProject.BookID]) then
+    if (FProject.BookID >= FIRST_APOCRYPHA_BOOK) and
+       (FProject.Chapter >= ChapterCountOf(FProject.BookID)) then
+       exit;
+    if (FProject.BookID = GetLastBook) and (FProject.Chapter = ChapterCountOf(FProject.BookID)) then
        exit;
 
-    if FProject.Chapter = QCapitulosONT[FProject.BookID] then
+    if FProject.Chapter = ChapterCountOf(FProject.BookID) then
     begin
       book := FProject.BookID + 1;
       chapter := 1;
@@ -1414,7 +2452,7 @@ begin
   GetPreviousChapter(pbook, pchapter);
 
   if pbook <> 0 then
-    with Blocks.AddHyperlink(Format('<< %s %d', [NLivrosONT[pbook], pchapter]), Format('%d,%d,1', [pbook, pchapter])) do
+    with Blocks.AddHyperlink(Format('<< %s %d', [LocalizedBookNameByID(pbook), pchapter]), Format('%d,%d,1', [pbook, pchapter])) do
     begin
       OnClick := @HandleReferenceClick;
       TextStyle.Font.Name  := 'default';
@@ -1442,7 +2480,7 @@ begin
   if nbook <> 0 then
   begin
     Blocks.AddTextBlock(' | ');
-    with Blocks.AddHyperlink(Format('%s %d >>', [NLivrosONT[nbook], nchapter]), Format('%d,%d,1', [nbook, nchapter])) do
+    with Blocks.AddHyperlink(Format('%s %d >>', [LocalizedBookNameByID(nbook), nchapter]), Format('%d,%d,1', [nbook, nchapter])) do
     begin
       OnClick := @HandleReferenceClick;
       TextStyle.Font.Name  := 'default';
@@ -1459,12 +2497,39 @@ begin
   end;
 end;
 
+procedure TChapterView.Resize;
+begin
+  DismissTranslatorNotePreview;
+  inherited Resize;
+end;
+
+procedure TChapterView.WndProc(var TheMessage: TLMessage);
+begin
+  if (TheMessage.msg = LM_HSCROLL) or
+     (TheMessage.msg = LM_VSCROLL) then
+    DismissTranslatorNotePreview;
+  inherited WndProc(TheMessage);
+end;
+
 procedure TChapterView.SetEnabled(Value: Boolean);
 begin
+  if not Value then
+  begin
+    InvalidateTranslatorNotePreview;
+    InvalidateTranslationMemoryPreview;
+  end;
+  if not Value and Enabled and Assigned(FTranslationMemoryFocus) then
+    FTranslationMemoryFocus.Unbind;
   if assigned(FProject) and not Value and Enabled then
   begin
+    ClearTranslationMemorySourceHighlight;
+    ResetTranslationMemoryOccurrences;
     FProject.OnNewVerseUnsubscribe(@HandleVerseChange);
     FProject := nil;
+    FViewSelectionActive := False;
+    FTranslationMemoryRefreshPending := True;
+    FTranslationMemoryInputSnapshot :=
+      Default(TTranslationMemoryInputSnapshot);
   end;
 
   inherited SetEnabled(Value);
@@ -1473,49 +2538,95 @@ end;
 constructor TChapterView.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  FLoadingChapter := false;
   Parent       := TWinControl(AOwner);
   ReadOnly     := true;
   OnKeyDown    := @HandleKeyDown;
   OnMouseWheel := @HandleMouseWheel;
   OnDblClick   := @HandleDoubleClick;
+  OnMouseMove  := @HandleMouseMove;
+  OnMouseLeave := @HandleMouseLeave;
   OnContextPopup := @HandleContextPopup;
   FFontName       := 'default';
   FFontSize       := 10;
+  FTranslationMemoryPreviewFontSize :=
+    NormalizeTranslationMemoryPreviewFontSize(FFontSize);
   FProject        := nil;
+  FRenderedChapterVerses := TStringList.Create;
+  FRenderedChapterCurrentVerse := 0;
+  FRenderedChapterValid := False;
   FRxVerseHeading := RegexCreate('^((?:<TS[0-3]?>.*?<Ts>)*)(.*?)$', [rcoUTF8]);
-  FNotes          := TNoteList.Create;
-  FHint           := TNoteWindow.Create(Self);
+  FNotes          := TNoteList.Create(True);
+  FNotesById      := TStringList.Create;
+  FNotesById.Sorted := True;
+  FNotesById.Duplicates := dupError;
+  FNotesByLink    := TStringList.Create;
+  FNotesByLink.Sorted := True;
+  FNotesByLink.Duplicates := dupError;
+  FNoteID         := 1;
+  FNoteNumberer   := TRFNoteNumberer.Create;
+  FTranslatorNoteRevision := 1;
+  FTranslatorNoteHoverController :=
+    TChapterTranslatorNoteHoverController.Create(Self, Self);
+  FTranslatorNoteHoverController.OnResolve :=
+    @ResolveTranslatorNoteHover;
   FHideVerseNumber:= false;
   FPrintMode      := false;
-  FParaLeftIndent := 0;
-  FParaFirstIndent := 0;
-  FParaTopPadding := 0;
-  FParaBottomPadding := 0;
-  FParaHAlign := halLeft;
-  FJustClosedHeading := False;
+  FViewMode       := cvmChapterText;
+  FTranslationMemoryOrder := tmoVerseOccurrence;
+  SetLength(FTranslationMemoryEntries, 0);
+  SetLength(FTranslationMemoryFocusEntries, 0);
+  FTranslationMemoryFocus := TTranslationMemoryFocusController.Create;
+  FTranslationMemoryInputSnapshot :=
+    Default(TTranslationMemoryInputSnapshot);
+  FTranslationMemoryShowingOccurrences := False;
+  SetLength(FTranslationMemoryOccurrenceMatches, 0);
+  FTranslationMemoryOccurrenceLimit := 100;
+  ClearTranslationMemoryOccurrenceCache;
+  FTranslationMemoryRefreshPending := True;
+  FTranslationMemoryPreviewGeneration := 0;
+  SetLength(FTranslationMemoryCounterLinks, 0);
+  FTranslationMemoryPreviewController :=
+    TTranslationMemoryHoverController.Create(Self);
+  FTranslationMemoryPreviewController.OnValidateTarget :=
+    @ValidateTranslationMemoryPreviewTarget;
+  FTranslationMemoryPreviewController.OnLoadPayload :=
+    @LoadTranslationMemoryPreviewPayload;
+  FTranslationMemoryPreviewController.OnFontSizeChanged :=
+    @HandleTranslationMemoryPreviewFontSizeChanged;
+  FViewSelectionActive := False;
   InitPopupMenu;
 
-  FStyleStack := TObjectStack.Create;
   FRawMemo    := TRawChapterMemo.Create(Parent, Self);
-  FAppliedSkin := CurrentSkin;
-  Color       := CurrentSkin.WindowBg;
-  Background.Color := CurrentSkin.WindowBg;
-  TextStyle.Font.Color := CurrentSkin.WindowText;
-  TextStyle.Brush.Color := CurrentSkin.WindowBg;
-  TextStyle.Brush.Style := bsClear;
 end;
 
 destructor TChapterView.Destroy;
 begin
-  FRawMemo.Free;
-  FNotes.Free;
-  FHint.Free;
-  while FStyleStack.Count > 0 do
-    FStyleStack.Pop.Free;
-  FStyleStack.Free;
-  if assigned(FProject) then
-    FProject.OnNewVerseUnsubscribe(@HandleVerseChange);
+  InvalidateTranslatorNotePreview;
+  FreeAndNil(FTranslatorNoteHoverController);
+  InvalidateTranslationMemoryPreview;
+  FreeAndNil(FTranslationMemoryPreviewController);
+  if Assigned(FTranslationMemoryFocus) then
+    FTranslationMemoryFocus.Unbind;
+  FreeAndNil(FTranslationMemoryFocus);
+  if Assigned(FProject) then
+  begin
+    try
+      FProject.OnNewVerseUnsubscribe(@HandleVerseChange);
+    except
+    end;
+    FProject := nil;
+  end;
+  if Assigned(FRawMemo) then
+  begin
+    FRawMemo.Visible := False;
+    FRawMemo.Parent := nil;
+    FreeAndNil(FRawMemo);
+  end;
+  FreeAndNil(FRenderedChapterVerses);
+  FreeAndNil(FNoteNumberer);
+  FreeAndNil(FNotesByLink);
+  FreeAndNil(FNotesById);
+  FreeAndNil(FNotes);
 
   inherited Destroy;
 end;
@@ -1529,38 +2640,679 @@ begin
   FInterlinearModeIntraItem.Caption := SInterlinearModeIntra;
   FVerseRulesItem.Caption           := SVerseRules;
   FPrintChapterItem.Caption         := SPrintChapter;
+  InvalidateChapterRenderCache;
   LoadChapter;
 end;
 
 procedure TChapterView.LoadChapter;
 begin
-  HandleVerseChange(FProject);
+  if Assigned(FProject) then
+    HandleVerseChange(FProject);
+end;
+
+procedure TChapterView.RefreshTranslationMemory;
+begin
+  FTranslationMemoryRefreshPending := True;
+  if FTranslationMemoryShowingOccurrences then
+    ClearTranslationMemoryOccurrenceCache;
+  if not IsTranslationMemoryVisible then
+  begin
+    InvalidateTranslationMemoryPreview;
+    if Assigned(FTranslationMemoryFocus) then
+      FTranslationMemoryFocus.Unbind;
+    Exit;
+  end;
+  if FTranslationMemoryShowingOccurrences then
+    RenderTranslationMemoryOccurrences
+  else
+    RenderTranslationMemory;
+end;
+
+procedure TChapterView.FocusTranslationMemoryForSyntagm(
+  ASyntagm: TSyntagm);
+var
+  CurrentSnapshot: TTranslationMemoryInputSnapshot;
+  SyntagmIndex: Integer;
+  SourceVerse: TVerse;
+begin
+  DismissTranslationMemoryPreview;
+  if not Enabled or not Assigned(FProject) or
+     (FViewMode <> cvmTranslationMemory) then
+  begin
+    ClearTranslationMemoryEntryFocus;
+    Exit;
+  end;
+
+  // A normal selection does not change the memory data. Avoid rebuilding the
+  // entire view unless this click actually changed one of its canonical inputs.
+  CurrentSnapshot := CurrentTranslationMemoryInputSnapshot;
+  if not TranslationMemoryInputSnapshotsEqual(
+    FTranslationMemoryInputSnapshot, CurrentSnapshot) then
+  begin
+    if FTranslationMemoryShowingOccurrences then
+    begin
+      ResetTranslationMemoryOccurrences(True);
+      RenderTranslationMemory;
+      TopPos := 0;
+    end
+    else
+      RenderTranslationMemory;
+  end;
+
+  if FTranslationMemoryShowingOccurrences then
+  begin
+    ClearTranslationMemoryEntryFocus;
+    Exit;
+  end;
+
+  SourceVerse := FProject.VerseObjects[tbOrigem];
+  if not Assigned(SourceVerse) or not Assigned(SourceVerse.Syntagms) then
+  begin
+    ClearTranslationMemoryEntryFocus;
+    Exit;
+  end;
+
+  if not Assigned(ASyntagm) or
+     (ASyntagm.VerseRef <> SourceVerse) then
+    Exit;
+
+  SyntagmIndex := SourceVerse.Syntagms.IndexOf(ASyntagm);
+  if SyntagmIndex < 0 then
+  begin
+    ClearTranslationMemoryEntryFocus;
+    Exit;
+  end;
+
+  if not FTranslationMemoryFocus.FocusSyntagmIndex(SyntagmIndex) then
+    ClearTranslationMemoryEntryFocus;
+end;
+
+procedure TChapterView.ClearTranslationMemorySourceHighlight;
+var
+  SourceVerse: TVerse;
+begin
+  if not Assigned(FProject) then
+    Exit;
+  SourceVerse := FProject.VerseObjects[tbOrigem];
+  if Assigned(SourceVerse) then
+    SourceVerse.DisableStrongHighlight;
+end;
+
+procedure TChapterView.ClearTranslationMemoryEntryFocus;
+begin
+  if Assigned(FTranslationMemoryFocus) then
+    FTranslationMemoryFocus.Clear;
+end;
+
+procedure TChapterView.ClearTranslationMemoryOccurrenceCache;
+begin
+  FTranslationMemoryOccurrenceCache := Default(TTranslationOccurrencePage);
+  FTranslationMemoryOccurrenceCacheLoaded := False;
+  FTranslationMemoryShowMoreBlockIndex := -1;
+end;
+
+procedure TChapterView.AppendTranslationMemoryOccurrencePage(
+  const APage: TTranslationOccurrencePage);
+var
+  ItemIndex: Integer;
+  OldCount: Integer;
+begin
+  OldCount := Length(FTranslationMemoryOccurrenceCache.Items);
+  SetLength(FTranslationMemoryOccurrenceCache.Items,
+    OldCount + Length(APage.Items));
+  for ItemIndex := 0 to High(APage.Items) do
+    FTranslationMemoryOccurrenceCache.Items[OldCount + ItemIndex] :=
+      APage.Items[ItemIndex];
+  FTranslationMemoryOccurrenceCache.TotalAssociations :=
+    APage.TotalAssociations;
+  FTranslationMemoryOccurrenceCache.TotalVerses := APage.TotalVerses;
+  FTranslationMemoryOccurrenceCache.HasMore := APage.HasMore;
+  FTranslationMemoryOccurrenceCacheLoaded := True;
+end;
+
+procedure TChapterView.AppendTranslationMemoryOccurrenceItems(
+  const AItems: TTranslationOccurrenceDataArray;
+  var ACurrentBlockIndex: Integer);
+var
+  ItemIndex: Integer;
+  LinkBlock: TKMemoHyperlink;
+  TextBlock: TKMemoTextBlock;
+begin
+  IBibliaPerfIncrement(ipcTranslationMemoryOccurrenceItemsProjected,
+    Length(AItems));
+  for ItemIndex := 0 to High(AItems) do
+    with AItems[ItemIndex] do
+    begin
+      if Assigned(FProject) and (ReferenceID = FProject.ID) then
+        ACurrentBlockIndex := Blocks.Count;
+      LinkBlock := Blocks.AddHyperlink(DisplayReference, ReferenceID);
+      LinkBlock.OnClick := @HandleTranslationMemoryOccurrenceClick;
+      LinkBlock.TextStyle.Font.Color := NoteLinkColor;
+      LinkBlock.TextStyle.Font.Style := [fsUnderline];
+      if Assigned(FProject) and (ReferenceID = FProject.ID) then
+      begin
+        LinkBlock.TextStyle.Font.Style := [fsBold, fsUnderline];
+        LinkBlock.TextStyle.Font.Color := ChapterNumberColor;
+      end;
+      if Occurrences > 1 then
+      begin
+        TextBlock := Blocks.AddTextBlock(' (' + Format(
+          STranslationMemoryOccurrenceCountFmt, [Occurrences]) + ')');
+        TextBlock.TextStyle.Font.Color := clGray;
+      end;
+      AppendTranslationMemoryOccurrenceText(AItems[ItemIndex]);
+      with Blocks.AddParagraph().ParaStyle do
+      begin
+        FirstIndent := 0;
+        BottomPadding := 5;
+      end;
+    end;
+end;
+
+procedure TChapterView.RemoveTranslationMemoryShowMoreBlock;
+begin
+  if (FTranslationMemoryShowMoreBlockIndex < 0) or
+     (FTranslationMemoryShowMoreBlockIndex >= Blocks.Count) then
+  begin
+    FTranslationMemoryShowMoreBlockIndex := -1;
+    Exit;
+  end;
+  while Blocks.Count > FTranslationMemoryShowMoreBlockIndex do
+    Blocks.Delete(Blocks.Count - 1);
+  FTranslationMemoryShowMoreBlockIndex := -1;
+end;
+
+procedure TChapterView.AppendTranslationMemoryShowMoreBlock;
+var
+  LinkBlock: TKMemoHyperlink;
+  Remaining: Integer;
+begin
+  FTranslationMemoryShowMoreBlockIndex := -1;
+  if not FTranslationMemoryOccurrenceCache.HasMore then
+    Exit;
+  Remaining := FTranslationMemoryOccurrenceCache.TotalVerses -
+    Length(FTranslationMemoryOccurrenceCache.Items);
+  if Remaining <= 0 then
+    Exit;
+  FTranslationMemoryShowMoreBlockIndex := Blocks.Count;
+  LinkBlock := Blocks.AddHyperlink(Format(
+    STranslationMemoryShowMoreFmt, [Remaining]), 'more');
+  LinkBlock.OnClick := @HandleTranslationMemoryShowMoreClick;
+  LinkBlock.TextStyle.Font.Color := NoteLinkColor;
+  LinkBlock.TextStyle.Font.Style := [fsUnderline];
+  with Blocks.AddParagraph().ParaStyle do
+  begin
+    FirstIndent := 0;
+    TopPadding := 8;
+  end;
+end;
+
+procedure TChapterView.RenderTranslationMemoryOccurrences;
+var
+  BlockBounds: TRect;
+  CurrentBlockIndex: Integer;
+  CurrentSnapshot: TTranslationMemoryInputSnapshot;
+  ErrorMessage: string;
+  LinkBlock: TKMemoHyperlink;
+  OccurrencePage: TTranslationOccurrencePage;
+  TextBlock: TKMemoTextBlock;
+begin
+  if not IsTranslationMemoryVisible then
+  begin
+    InvalidateTranslatorNotePreview;
+    InvalidateTranslationMemoryPreview;
+    if Assigned(FTranslationMemoryFocus) then
+      FTranslationMemoryFocus.Unbind;
+    FTranslationMemoryRefreshPending := True;
+    Exit;
+  end;
+  CurrentSnapshot := CurrentTranslationMemoryInputSnapshot;
+  if ShouldResetTranslationMemoryOccurrences(
+    FTranslationMemoryShowingOccurrences,
+    FTranslationMemoryInputSnapshot, CurrentSnapshot) then
+  begin
+    FTranslationMemoryInputSnapshot := CurrentSnapshot;
+    ResetTranslationMemoryOccurrences(True);
+    RenderTranslationMemory;
+    TopPos := 0;
+    Exit;
+  end;
+  IBibliaPerfIncrement(ipcTranslationMemoryViewRenders);
+  InvalidateTranslatorNotePreview;
+  InvalidateTranslationMemoryPreview;
+  InvalidateChapterRenderCache;
+  if Assigned(FTranslationMemoryFocus) then
+    FTranslationMemoryFocus.Discard;
+  FTranslationMemoryInputSnapshot := CurrentSnapshot;
+  FTranslationMemoryRefreshPending := False;
+  FRawMemo.Hide;
+  ErrorMessage := '';
+  if not FTranslationMemoryOccurrenceCacheLoaded and
+     TryLoadTranslationMemoryOccurrenceRange(
+       FTranslationMemoryOccurrenceMatches, 0,
+       FTranslationMemoryOccurrenceLimit, OccurrencePage,
+       ErrorMessage) then
+    AppendTranslationMemoryOccurrencePage(OccurrencePage)
+  else if not FTranslationMemoryOccurrenceCacheLoaded then
+  begin
+    FTranslationMemoryOccurrenceCache :=
+      Default(TTranslationOccurrencePage);
+  end;
+  OccurrencePage := FTranslationMemoryOccurrenceCache;
+
+  CurrentBlockIndex := -1;
+  Blocks.LockUpdate;
+  try
+    ClearTranslatorNotes;
+    Blocks.Clear;
+    ResetStyleStack;
+
+    LinkBlock := Blocks.AddHyperlink(STranslationMemoryBack, 'back');
+    LinkBlock.OnClick := @HandleTranslationMemoryBackClick;
+    LinkBlock.TextStyle.Font.Color := NoteLinkColor;
+    LinkBlock.TextStyle.Font.Style := [fsUnderline];
+    with Blocks.AddParagraph().ParaStyle do
+    begin
+      FirstIndent := 0;
+      BottomPadding := 8;
+    end;
+
+    TextBlock := Blocks.AddTextBlock(Format(
+      STranslationMemoryOccurrencesTitleFmt,
+      [FTranslationMemoryOccurrenceSource,
+       FTranslationMemoryOccurrenceTranslation]));
+    TextBlock.TextStyle.Font.Name := 'default';
+    TextBlock.TextStyle.Font.Size := TextStyle.Font.Size + 2;
+    TextBlock.TextStyle.Font.Bold := True;
+    TextBlock.TextStyle.Font.Color := NonBibleTextColor;
+    Blocks.AddParagraph().ParaStyle.FirstIndent := 0;
+
+    if ErrorMessage <> '' then
+    begin
+      TextBlock := Blocks.AddTextBlock(Format(
+        STranslationMemoryErrorFmt, [ErrorMessage]));
+      TextBlock.TextStyle.Font.Color := clRed;
+      Blocks.AddParagraph().ParaStyle.FirstIndent := 0;
+      Exit;
+    end;
+
+    TextBlock := Blocks.AddTextBlock(TranslationMemoryOccurrenceTotalsText(
+      OccurrencePage.TotalAssociations, OccurrencePage.TotalVerses));
+    TextBlock.TextStyle.Font.Color := clGray;
+    with Blocks.AddParagraph().ParaStyle do
+    begin
+      FirstIndent := 0;
+      BottomPadding := 10;
+    end;
+
+    if Length(OccurrencePage.Items) = 0 then
+    begin
+      TextBlock := Blocks.AddTextBlock(STranslationMemoryNoOccurrences);
+      TextBlock.TextStyle.Font.Italic := True;
+      TextBlock.TextStyle.Font.Color := clGray;
+      Blocks.AddParagraph().ParaStyle.FirstIndent := 0;
+      Exit;
+    end;
+
+    AppendTranslationMemoryOccurrenceItems(OccurrencePage.Items,
+      CurrentBlockIndex);
+    AppendTranslationMemoryShowMoreBlock;
+  finally
+    Blocks.UnLockUpdate;
+  end;
+
+  if (CurrentBlockIndex >= 0) and
+     (CurrentBlockIndex < Blocks.Count) then
+  begin
+    TopPos := 0;
+    BlockBounds := BlockRect(Blocks[CurrentBlockIndex]);
+    TopPos := BlockBounds.Top;
+  end;
+end;
+
+procedure TChapterView.RenderTranslationMemory;
+var
+  ErrorMessage: string;
+  EntryIndex: Integer;
+  AlternativeIndex: Integer;
+  MetadataText: string;
+  TextBlock: TKMemoTextBlock;
+  LinkBlock: TKMemoHyperlink;
+  HasCurrentAlternative: Boolean;
+  SyntagmIndex: Integer;
+begin
+  if not IsTranslationMemoryVisible then
+  begin
+    InvalidateTranslatorNotePreview;
+    InvalidateTranslationMemoryPreview;
+    if Assigned(FTranslationMemoryFocus) then
+      FTranslationMemoryFocus.Unbind;
+    FTranslationMemoryRefreshPending := True;
+    Exit;
+  end;
+  IBibliaPerfIncrement(ipcTranslationMemoryViewRenders);
+
+  InvalidateTranslatorNotePreview;
+  InvalidateTranslationMemoryPreview;
+  InvalidateChapterRenderCache;
+  if Assigned(FTranslationMemoryFocus) then
+    FTranslationMemoryFocus.Discard;
+  FTranslationMemoryRefreshPending := False;
+  FRawMemo.Hide;
+  if not FProject.TryGetCurrentVerseTranslationMemory(
+    FTranslationMemoryOrder,
+    FTranslationMemoryEntries, ErrorMessage) then
+    SetLength(FTranslationMemoryEntries, 0);
+  CaptureTranslationMemoryInputSnapshot;
+  SetLength(FTranslationMemoryFocusEntries,
+    Length(FTranslationMemoryEntries));
+  SetLength(FTranslationMemoryCounterLinks,
+    Length(FTranslationMemoryEntries));
+  for EntryIndex := 0 to High(FTranslationMemoryFocusEntries) do
+  begin
+    SetLength(FTranslationMemoryCounterLinks[EntryIndex],
+      Length(FTranslationMemoryEntries[EntryIndex].Alternatives));
+    FTranslationMemoryFocusEntries[EntryIndex].AnchorBlockIndex := -1;
+    FTranslationMemoryFocusEntries[EntryIndex].FirstParagraphBlockIndex := -1;
+    FTranslationMemoryFocusEntries[EntryIndex].LastParagraphBlockIndex := -1;
+    SetLength(FTranslationMemoryFocusEntries[EntryIndex].SyntagmIndexes,
+      Length(FTranslationMemoryEntries[EntryIndex].SyntagmIndexes));
+    for SyntagmIndex := 0 to
+      High(FTranslationMemoryEntries[EntryIndex].SyntagmIndexes) do
+      FTranslationMemoryFocusEntries[EntryIndex].SyntagmIndexes[
+        SyntagmIndex] := FTranslationMemoryEntries[EntryIndex].SyntagmIndexes[
+        SyntagmIndex];
+  end;
+
+  Blocks.LockUpdate;
+  try
+    ClearTranslatorNotes;
+    Blocks.Clear;
+    ResetStyleStack;
+
+    TextBlock := Blocks.AddTextBlock(STranslationMemoryTitle);
+    TextBlock.TextStyle.Font.Name := 'default';
+    TextBlock.TextStyle.Font.Size := TextStyle.Font.Size + 2;
+    TextBlock.TextStyle.Font.Bold := True;
+    TextBlock.TextStyle.Font.Color := NonBibleTextColor;
+    Blocks.AddTextBlock(Format(' — %s %d:%d',
+      [FProject.Book, FProject.Chapter, FProject.Verse]));
+    with Blocks.AddParagraph().ParaStyle do
+    begin
+      FirstIndent := 0;
+      BottomPadding := 10;
+    end;
+
+    if ErrorMessage <> '' then
+    begin
+      TextBlock := Blocks.AddTextBlock(Format(
+        STranslationMemoryErrorFmt, [ErrorMessage]));
+      TextBlock.TextStyle.Font.Color := clRed;
+      Blocks.AddParagraph().ParaStyle.FirstIndent := 0;
+      Exit;
+    end;
+
+    if Length(FTranslationMemoryEntries) = 0 then
+    begin
+      TextBlock := Blocks.AddTextBlock(STranslationMemoryNoSourceWords);
+      TextBlock.TextStyle.Font.Italic := True;
+      Blocks.AddParagraph().ParaStyle.FirstIndent := 0;
+      Exit;
+    end;
+
+    HasCurrentAlternative := False;
+    for EntryIndex := 0 to Length(FTranslationMemoryEntries) - 1 do
+    begin
+      FTranslationMemoryFocusEntries[EntryIndex].AnchorBlockIndex :=
+        Blocks.Count;
+      LinkBlock := Blocks.AddHyperlink(
+        FTranslationMemoryEntries[EntryIndex].DisplayTerm,
+        IntToStr(EntryIndex));
+      LinkBlock.OnClick := @HandleTranslationMemoryEntryClick;
+      LinkBlock.TextStyle.Font.Name := 'default';
+      LinkBlock.TextStyle.Font.Size := TextStyle.Font.Size;
+      LinkBlock.TextStyle.Font.Bold := True;
+      LinkBlock.TextStyle.Font.Color := ChapterNumberColor;
+      with Blocks.AddParagraph().ParaStyle do
+      begin
+        FirstIndent := 0;
+        TopPadding := IfThen(EntryIndex = 0, 0, 8);
+      end;
+      FTranslationMemoryFocusEntries[EntryIndex].FirstParagraphBlockIndex :=
+        Blocks.Count - 1;
+
+      MetadataText := JoinMemoryValues(
+        FTranslationMemoryEntries[EntryIndex].Forms, ', ');
+      if MetadataText <> '' then
+      begin
+        TextBlock := Blocks.AddTextBlock(Format(
+          STranslationMemoryFormsFmt, [MetadataText]));
+        TextBlock.TextStyle.Font.Size := Max(1, TextStyle.Font.Size - 1);
+        TextBlock.TextStyle.Font.Color := clGray;
+        Blocks.AddParagraph().ParaStyle.FirstIndent := 0;
+      end;
+
+      MetadataText := JoinMemoryValues(
+        FTranslationMemoryEntries[EntryIndex].Strongs, ', ');
+      if MetadataText <> '' then
+      begin
+        TextBlock := Blocks.AddTextBlock(Format(
+          STranslationMemoryStrongsFmt, [MetadataText]));
+        TextBlock.TextStyle.Font.Size := Max(1, TextStyle.Font.Size - 1);
+        TextBlock.TextStyle.Font.Color := clGray;
+        Blocks.AddParagraph().ParaStyle.FirstIndent := 0;
+      end;
+
+      if Length(FTranslationMemoryEntries[EntryIndex].Alternatives) = 0 then
+      begin
+        TextBlock := Blocks.AddTextBlock(
+          STranslationMemoryNoTranslations);
+        TextBlock.TextStyle.Font.Italic := True;
+        TextBlock.TextStyle.Font.Color := clGray;
+        Blocks.AddParagraph().ParaStyle.FirstIndent := 8;
+      end
+      else
+      begin
+        for AlternativeIndex := 0 to
+          Length(FTranslationMemoryEntries[EntryIndex].Alternatives) - 1 do
+        begin
+          if AlternativeIndex > 0 then
+            Blocks.AddTextBlock(', ');
+          with FTranslationMemoryEntries[EntryIndex].Alternatives[
+            AlternativeIndex] do
+          begin
+            TextBlock := Blocks.AddTextBlock(Translation);
+            if IsCurrent then
+            begin
+              HasCurrentAlternative := True;
+              TextBlock.TextStyle.Font.Bold := True;
+              TextBlock.TextStyle.Font.Color :=
+                TranslationMemoryCurrentColor;
+            end;
+            Blocks.AddTextBlock(' (');
+
+            if (Occurrences > 0) and (Length(Matches) > 0) then
+            begin
+              LinkBlock := Blocks.AddHyperlink(IntToStr(Occurrences),
+                IntToStr(EntryIndex) + ':' + IntToStr(AlternativeIndex));
+              LinkBlock.OnClick := @HandleTranslationMemoryAlternativeClick;
+              LinkBlock.TextStyle.Font.Color := NoteLinkColor;
+              LinkBlock.TextStyle.Font.Style := [fsUnderline];
+              FTranslationMemoryCounterLinks[EntryIndex][AlternativeIndex] :=
+                LinkBlock;
+            end
+            else
+              Blocks.AddTextBlock(IntToStr(Occurrences));
+            Blocks.AddTextBlock(')');
+          end;
+        end;
+        Blocks.AddParagraph().ParaStyle.FirstIndent := 8;
+      end;
+      FTranslationMemoryFocusEntries[EntryIndex].LastParagraphBlockIndex :=
+        Blocks.Count - 1;
+    end;
+
+    if HasCurrentAlternative then
+    begin
+      TextBlock := Blocks.AddTextBlock(
+        STranslationMemoryCurrentLegend);
+      TextBlock.TextStyle.Font.Size := Max(1, TextStyle.Font.Size - 1);
+      TextBlock.TextStyle.Font.Italic := True;
+      TextBlock.TextStyle.Font.Color := TranslationMemoryCurrentColor;
+      with Blocks.AddParagraph().ParaStyle do
+      begin
+        FirstIndent := 0;
+        TopPadding := 14;
+      end;
+    end;
+  finally
+    Blocks.UnLockUpdate;
+  end;
+  FTranslationMemoryFocus.Bind(Self, FTranslationMemoryFocusEntries);
+  if HandleAllocated then
+  begin
+    ApplyDarkModeToControl(Self, CurrentSkin.IsDark);
+    {$IFDEF WINDOWS}
+    HookNCScrollBarControl(Self);
+    {$ENDIF}
+  end;
+end;
+
+procedure TChapterView.InvalidateChapterRenderCache;
+begin
+  FRenderedChapterValid := False;
+  FRenderedChapterCurrentVerse := 0;
+  if Assigned(FRenderedChapterVerses) then
+    FRenderedChapterVerses.Clear;
+end;
+
+function TChapterView.ChapterRenderKeyMatchesCurrentProject: Boolean;
+var
+  Snapshot: TChapterSnapshot;
+begin
+  Result := FRenderedChapterValid and Assigned(FProject) and
+    (FRenderedChapterProject = FProject) and
+    (FRenderedChapterBookID = FProject.BookID) and
+    (FRenderedChapterChapter = FProject.Chapter) and
+    (FRenderedChapterTextType = GetTextType) and
+    (FRenderedChapterParagraphMode = GetParagraphMode) and
+    (FRenderedChapterInterlinearMode = GetInterlinearMode) and
+    (FRenderedChapterFontName = FFontName) and
+    (FRenderedChapterFontSize = FFontSize) and
+    (FRenderedChapterPrintMode = FPrintMode) and
+    (FRenderedChapterHideVerseNumber = FHideVerseNumber) and
+    (FRenderedChapterTokenizerVersion = FProject.TokenizerVersion);
+  if not Result then
+    Exit;
+
+  Snapshot := FProject.GetChapterSnapshot;
+  Result := Assigned(Snapshot) and
+    (FRenderedChapterContentRevision = Snapshot.ContentRevision);
+end;
+
+function TChapterView.ChapterRenderIdentityMatches(
+  AVerses: TStrings): Boolean;
+var
+  Index: Integer;
+begin
+  Result := ChapterRenderKeyMatchesCurrentProject and Assigned(AVerses) and
+    Assigned(FRenderedChapterVerses) and
+    (FRenderedChapterVerses.Count = AVerses.Count);
+  if not Result then
+    Exit;
+  for Index := 0 to AVerses.Count - 1 do
+    if FRenderedChapterVerses[Index] <> AVerses[Index] then
+      Exit(False);
+end;
+
+procedure TChapterView.CaptureChapterRenderIdentity(AVerses: TStrings);
+var
+  Snapshot: TChapterSnapshot;
+begin
+  FRenderedChapterValid := False;
+  if not Assigned(FProject) or not Assigned(AVerses) then
+    Exit;
+  Snapshot := FProject.GetChapterSnapshot;
+  if not Assigned(Snapshot) then
+    Exit;
+
+  FRenderedChapterProject := FProject;
+  FRenderedChapterBookID := FProject.BookID;
+  FRenderedChapterChapter := FProject.Chapter;
+  FRenderedChapterContentRevision := Snapshot.ContentRevision;
+  FRenderedChapterTextType := GetTextType;
+  FRenderedChapterParagraphMode := GetParagraphMode;
+  FRenderedChapterInterlinearMode := GetInterlinearMode;
+  FRenderedChapterFontName := FFontName;
+  FRenderedChapterFontSize := FFontSize;
+  FRenderedChapterPrintMode := FPrintMode;
+  FRenderedChapterHideVerseNumber := FHideVerseNumber;
+  FRenderedChapterTokenizerVersion := FProject.TokenizerVersion;
+  FRenderedChapterVerses.Assign(AVerses);
+  FRenderedChapterValid := True;
+end;
+
+procedure TChapterView.FocusRenderedChapterVerse(ACurrentVerse: Integer);
+begin
+  if FPrintMode or (ACurrentVerse <= 0) or
+     (ACurrentVerse >= Length(FVerseRanges)) or
+     (FVerseRanges[ACurrentVerse].first < 0) or
+     (FVerseRanges[ACurrentVerse].first >= Blocks.Count) then
+    Exit;
+
+  Blocks.LockUpdate;
+  try
+    if (FRenderedChapterCurrentVerse > 0) and
+       (FRenderedChapterCurrentVerse < Length(FVerseRanges)) then
+      HighlightRange(FVerseRanges[FRenderedChapterCurrentVerse], clDefault);
+    if CurrentSkin.Id = skClassic then
+      HighlightRange(FVerseRanges[ACurrentVerse], clSilver)
+    else
+      HighlightRange(FVerseRanges[ACurrentVerse], CurrentSkin.VerseHighlightBg);
+    FRenderedChapterCurrentVerse := ACurrentVerse;
+  finally
+    Blocks.UnLockUpdate;
+  end;
+
+  SelectBlock(Blocks[FVerseRanges[ACurrentVerse].first], sgpTopLeft);
+  SelLength := 0;
+  ExecuteCommand(ecScrollCenter);
 end;
 
 procedure TChapterView.RenderChapter(verses: TStringList; current: integer);
 var
   verse: string;
+  //starttime: DWord;
 begin
-  SetLength(FVerseRanges, verses.Count + 1);
   FRawMemo.Hide;
+  if ChapterRenderIdentityMatches(verses) then
+  begin
+    DismissTranslatorNotePreview;
+    DismissTranslationMemoryPreview;
+    FocusRenderedChapterVerse(current);
+    Exit;
+  end;
 
-  FAppliedSkin := CurrentSkin;
+  InvalidateTranslatorNotePreview;
+  InvalidateTranslationMemoryPreview;
+  InvalidateChapterRenderCache;
+  Inc(FRenderedChapterFullRenderCount);
+  IBibliaPerfIncrement(ipcChapterRenders);
+  //starttime := getTickCount;
+  SetLength(FVerseRanges, verses.Count + 1);
+
+  if Assigned(FTranslationMemoryFocus) then
+    FTranslationMemoryFocus.Discard;
+  ClearTranslatorNotes;
   Blocks.LockUpdate;
   try
     Blocks.Clear;
     ResetStyleStack;
 
     FNoteID := 1;
-    FNotes.Clear;
+    FNoteNumberer.Reset;
 
     RenderChapterHeader;
-
-    FParaLeftIndent := 0;
-    FParaFirstIndent := IfThen(GetParagraphMode = pmParagraph, DefaultFirstIndent, 0);
-    FParaTopPadding := 0;
-    FParaBottomPadding := 0;
-    FParaHAlign := halLeft;
-    FJustClosedHeading := False;
 
     FCurrentVerse := 0;
     for verse in verses do
@@ -1569,24 +3321,27 @@ begin
       RenderVerse(verse);
     end;
 
-    if Assigned(Blocks.LastBlock) and (Blocks.LastBlock.ClassName <> 'TKMemoParagraph') then
-      CloseParagraphBlock(Blocks);
+    if Blocks.LastBlock.ClassName <> 'TKMemoParagraph' then
+      Blocks.AddParagraph().ParaStyle.FirstIndent := IfThen(GetParagraphMode = pmParagraph, DefaultFirstIndent);
 
     RenderChapterFooter;
-    if (current >= Low(FVerseRanges)) and (current <= High(FVerseRanges)) then
-      HighlightRange(FVerseRanges[current], CurrentSkin.VerseHighlightBg);
+    //RenderNotes;
   finally
     Blocks.UnLockUpdate;
   end;
 
-  { scroll current verse to center }
-  if (current >= Low(FVerseRanges)) and (current <= High(FVerseRanges)) and
-     (FVerseRanges[current].first >= 0) and (FVerseRanges[current].first < Blocks.Count) then
+  CaptureChapterRenderIdentity(verses);
+  FocusRenderedChapterVerse(current);
+  if HandleAllocated then
   begin
-    self.SelectBlock(Blocks[FVerseRanges[current].first], sgpTopLeft);
-    self.SelLength := 0;
-    ExecuteCommand(ecScrollCenter);
+    ApplyDarkModeToControl(Self, CurrentSkin.IsDark);
+    {$IFDEF WINDOWS}
+    HookNCScrollBarControl(Self);
+    {$ENDIF}
   end;
+
+  //DebugLn('  TChapterView.RenderChapter: %d milliseconds', [getTickCount-starttime]);
 end;
 
 end.
+

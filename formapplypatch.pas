@@ -1,13 +1,13 @@
-unit formapplypatch;
+unit FormApplyPatch;
 
 {$mode objfpc}{$H+}
 
 interface
 
 uses
-  unitskins,
-  Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  ComCtrls, ExtCtrls, BibleTreeView, PatchFile, Versiculo, Projeto, LCLIntf;
+  ui_style, Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, StdCtrls,
+  ComCtrls, ExtCtrls, BibleTreeView, PatchFile, Verse, Project, CommentsView,
+  ONTTokenizer;
 
 type
 
@@ -40,14 +40,18 @@ type
     FBibleTreeView: TBibleTreeView;
     FPatch: TPatchFile;
     FIndex: integer; // index of current verse in patch
-    FSrcVerse: TVersiculo;
-    FDstVerse: TVersiculo;
+    FSrcVerse: TVerse;
+    FDstVerse: TVerse;
+    FActualCommentsMemo: TCommentsView; // Dynamic replacement for TMemo
     procedure OnVerseChange(index: integer);
     procedure LoadControlsFromPatch;
     procedure LoadControlsFromProject;
+    procedure UpdateApplySelection(Sender: TObject);
   public
     function LoadPatch(filename: string): boolean;
     procedure Apply;
+  public
+    procedure AfterConstruction; override;
   end;
 
 var
@@ -68,107 +72,132 @@ uses formPrincipal;
 procedure TFrmApplyPatch.BtnSelectAllClick(Sender: TObject);
 begin
   FBibleTreeView.SelectAll;
+  UpdateApplySelection(Sender);
 end;
 
 procedure TFrmApplyPatch.BtnDeselectAllClick(Sender: TObject);
 begin
   FBibleTreeView.SelectNone;
+  UpdateApplySelection(Sender);
+end;
+
+procedure TFrmApplyPatch.UpdateApplySelection(Sender: TObject);
+var
+  Indexes: TIntegerList;
+begin
+  Indexes := FBibleTreeView.IndexesList;
+  try
+    Button1.Enabled := Indexes.Count > 0;
+  finally
+    Indexes.Free;
+  end;
 end;
 
 procedure TFrmApplyPatch.FormCreate(Sender: TObject);
+var
+  tokenizerVersion: Integer;
 begin
+  ApplyFormStyle(Self);
   FBibleTreeView := TBibleTreeView.Create(GroupBox1);
   FBibleTreeView.Align := alClient;
   FBibleTreeView.OnVerseChange := @OnVerseChange;
+  FBibleTreeView.OnSelectionChanged := @UpdateApplySelection;
   FPatch := nil;
 
-  FSrcVerse := TVersiculo.Criar(ScrollBoxSrcText);
-  FDstVerse := TVersiculo.Criar(ScrollBoxDstText);
-  FSrcVerse.VersiculoPar := FDstVerse;
+  FSrcVerse := TVerse.Create(ScrollBoxSrcText);
+  FDstVerse := TVerse.Create(ScrollBoxDstText);
+  FSrcVerse.PairedVerse := FDstVerse;
   FSrcVerse.ReadOnly := true;
   FDstVerse.ReadOnly := true;
+  if Assigned(CurrentProject) then
+    tokenizerVersion := CurrentProject.TokenizerVersion
+  else
+    tokenizerVersion := TTokenizerFactory.PreferredVersion;
+  FSrcVerse.TokenizerVersion := tokenizerVersion;
+  FDstVerse.TokenizerVersion := tokenizerVersion;
+
+  // Hide Editorial Comments in patch preview
+  FActualCommentsMemo := TCommentsView.Create(Self);
+  FActualCommentsMemo.Parent := MemoComments.Parent;
+  FActualCommentsMemo.Align := MemoComments.Align;
+  FActualCommentsMemo.TabOrder := MemoComments.TabOrder;
+  FActualCommentsMemo.ReadOnly := True;
+  FActualCommentsMemo.Visible := False;
+  MemoComments.Visible := False;
+  if Assigned(Splitter2) then
+    Splitter2.Visible := False;
+  if Assigned(LabelComments) then
+    LabelComments.Visible := False;
 end;
 
 procedure TFrmApplyPatch.FormDestroy(Sender: TObject);
 begin
-  FSrcVerse.Free;
-  FDstVerse.Free;
-  FBibleTreeView.Free;
+  FreeAndNil(FSrcVerse);
+  FreeAndNil(FDstVerse);
+  if Assigned(FBibleTreeView) then
+  begin
+    FBibleTreeView.Parent := nil;
+    FreeAndNil(FBibleTreeView);
+  end;
+  if Assigned(FActualCommentsMemo) then
+  begin
+    FActualCommentsMemo.Parent := nil;
+    FreeAndNil(FActualCommentsMemo);
+  end;
   if assigned(FPatch) then
-    FPatch.Free;
+    FreeAndNil(FPatch);
 end;
 
 procedure TFrmApplyPatch.FormShow(Sender: TObject);
 begin
-  ApplySkinToForm(Self, CurrentSkin);
-  {$IFDEF WINDOWS}
-  HookTabControl(TabControlPreview);
-  HookButtonControl(Button1);
-  HookButtonControl(Button2);
-  HookButtonControl(BtnSelectAll);
-  HookButtonControl(BtnDeselectAll);
-  {$ENDIF}
-  if IsThemedSkin then
-  begin
-    Button1.Font.Color := CurrentSkin.PanelText;
-    Button2.Font.Color := CurrentSkin.PanelText;
-    BtnSelectAll.Font.Color := CurrentSkin.PanelText;
-    BtnDeselectAll.Font.Color := CurrentSkin.PanelText;
-    GroupBox1.Color := CurrentSkin.PanelBg;
-    GroupBox1.Font.Color := CurrentSkin.PanelText;
-    LabelSrcText.Font.Color := CurrentSkin.PanelText;
-    LabelDstText.Font.Color := CurrentSkin.PanelText;
-    LabelAssociations.Font.Color := CurrentSkin.PanelText;
-    LabelComments.Font.Color := CurrentSkin.PanelText;
-    LabelStatus.Font.Color := CurrentSkin.PanelText;
-    MemoComments.Color := CurrentSkin.WindowBg;
-    MemoComments.Font.Color := CurrentSkin.WindowText;
-  end;
-  if Assigned(FBibleTreeView) then
-  begin
-    FBibleTreeView.UpdateSkin(CurrentSkin);
-    {$IFDEF WINDOWS}
-    HookTreeViewControl(FBibleTreeView);
-    if FBibleTreeView.HandleAllocated then
-    begin
-      SendMessage(FBibleTreeView.Handle, $111E, 0, ColorToRGB(CurrentSkin.TreeText));
-      SendMessage(FBibleTreeView.Handle, $111D, 0, ColorToRGB(CurrentSkin.TreeBg));
-      SendMessage(FBibleTreeView.Handle, $1128, 0, ColorToRGB(CurrentSkin.PanelBorder));
-    end;
-    {$ENDIF}
-    ApplyDarkModeToControl(FBibleTreeView, CurrentSkin.IsDark);
-    FBibleTreeView.Invalidate;
-  end;
-  FSrcVerse.Fonte := ProjetoAtual.ObterFonteTexto(tbOrigem);
-  FDstVerse.Fonte := ProjetoAtual.ObterFonteTexto(tbDestino);
-  FSrcVerse.PalavrasComStrongEmNegrito := ProjetoAtual.PalavrasComStrongEmNegrito;
-  FSrcVerse.StrongsCountMode := ProjetoAtual.MostrarQtdStrongs;
-  FDstVerse.StrongsCountMode := ProjetoAtual.MostrarQtdStrongs;
-  MemoComments.Font := FrmPrincipal.CommentsMemo.Font;
-  if IsThemedSkin then
-    MemoComments.Font.Color := CurrentSkin.WindowText;
+  if Assigned(Button2) then
+    Button2.Caption := SUICancel;
+  FSrcVerse.Font := CurrentProject.GetTextFont(tbOrigem);
+  FDstVerse.Font := CurrentProject.GetTextFont(tbDestino);
+  FSrcVerse.BoldWordsWithStrong := CurrentProject.PalavrasComStrongEmNegrito;
+  FSrcVerse.StrongsCountMode := CurrentProject.MostrarQtdStrongs;
+  FDstVerse.StrongsCountMode := CurrentProject.MostrarQtdStrongs;
+  FSrcVerse.Active := true;
+  FDstVerse.Active := true;
+
+  // Configure FActualCommentsMemo with appropriate font settings
+  FActualCommentsMemo.FontName := 'default';
+  FActualCommentsMemo.FontSize := 10;
 end;
 
 procedure TFrmApplyPatch.TabControlPreviewChange(Sender: TObject);
 
   procedure SetLabelColor(lbl: TLabel; isEqual: boolean);
   begin
+    if lbl.Hint = '' then
+      lbl.Hint := lbl.Caption;
     if isEqual then
-      lbl.Color := clGreen
+    begin
+      lbl.Color := $00E7FCDC;
+      lbl.Font.Color := UISuccessColor;
+      lbl.Caption := '=  ' + lbl.Hint;
+    end
     else
-      lbl.Color := clRed;
+    begin
+      lbl.Color := $00E2E2FE;
+      lbl.Font.Color := UIErrorColor;
+      lbl.Caption := UTF8Encode(UnicodeString(#$2260)) + '  ' + lbl.Hint;
+    end;
   end;
 
 begin
+  if not Assigned(FPatch) or not Assigned(CurrentProject) or
+     (FIndex < 0) or (FIndex >= FPatch.Reference.Count) then
+    Exit;
   case TabControlPreview.TabIndex of
     0: LoadControlsFromPatch;
     1: LoadControlsFromProject;
   end;
-  SetLabelColor(LabelSrcText,      ProjetoAtual.ObterTextoVersiculo(FPatch.Reference[FIndex], tbOrigem ) = FPatch.SourceText[FIndex]);
-  SetLabelColor(LabelDstText,      ProjetoAtual.ObterTextoVersiculo(FPatch.Reference[FIndex], tbDestino) = FPatch.DestinationText[FIndex]);
-  SetLabelColor(LabelAssociations, ProjetoAtual.GetPairs           (FPatch.Reference[FIndex]           ) = FPatch.Pairs[FIndex]);
-  SetLabelColor(LabelComments,     ProjetoAtual.GetComments        (FPatch.Reference[FIndex]           ) = FPatch.Comments[FIndex]);
-  SetLabelColor(LabelStatus,       IntToStr(ProjetoAtual.GetStatus(FPatch.Reference[FIndex])           ) = FPatch.Status[FIndex]);
+  SetLabelColor(LabelSrcText,      CurrentProject.GetVerseText(FPatch.Reference[FIndex], tbOrigem ) = FPatch.SourceText[FIndex]);
+  SetLabelColor(LabelDstText,      CurrentProject.GetVerseText(FPatch.Reference[FIndex], tbDestino) = FPatch.DestinationText[FIndex]);
+  SetLabelColor(LabelAssociations, CurrentProject.GetPairs           (FPatch.Reference[FIndex]           ) = FPatch.Pairs[FIndex]);
+  SetLabelColor(LabelComments,     CurrentProject.GetComments        (FPatch.Reference[FIndex]           ) = FPatch.Comments[FIndex]);
+  SetLabelColor(LabelStatus,       IntToStr(CurrentProject.GetStatus(FPatch.Reference[FIndex])           ) = FPatch.Status[FIndex]);
 end;
 
 procedure TFrmApplyPatch.OnVerseChange(index: integer);
@@ -183,18 +212,18 @@ end;
 
 procedure TFrmApplyPatch.LoadControlsFromPatch;
 begin
-  FSrcVerse.Texto := FPatch.SourceText[FIndex];
-  FDstVerse.Texto := FPatch.DestinationText[FIndex];
-  FSrcVerse.Pares := FPatch.Pairs[FIndex];
-  MemoComments.Text := FPatch.Comments[FIndex];
+  FSrcVerse.Text := FPatch.SourceText[FIndex];
+  FDstVerse.Text := FPatch.DestinationText[FIndex];
+  FSrcVerse.Pairs := FPatch.Pairs[FIndex];
+  FActualCommentsMemo.SetCommentsText(FPatch.Comments[FIndex]);
 end;
 
 procedure TFrmApplyPatch.LoadControlsFromProject;
 begin
-  FSrcVerse.Texto := ProjetoAtual.ObterTextoVersiculo(FPatch.Reference[FIndex], tbOrigem);
-  FDstVerse.Texto := ProjetoAtual.ObterTextoVersiculo(FPatch.Reference[FIndex], tbDestino);
-  FSrcVerse.Pares := ProjetoAtual.GetPairs(FPatch.Reference[FIndex]);
-  MemoComments.Text := ProjetoAtual.GetComments(FPatch.Reference[FIndex]);
+  FSrcVerse.Text := CurrentProject.GetVerseText(FPatch.Reference[FIndex], tbOrigem);
+  FDstVerse.Text := CurrentProject.GetVerseText(FPatch.Reference[FIndex], tbDestino);
+  FSrcVerse.Pairs := CurrentProject.GetPairs(FPatch.Reference[FIndex]);
+  FActualCommentsMemo.SetCommentsText(CurrentProject.GetComments(FPatch.Reference[FIndex]));
 end;
 
 function TFrmApplyPatch.LoadPatch(filename: string): boolean;
@@ -202,7 +231,7 @@ begin
   if assigned(FPatch) then
     FPatch.Free;
 
-  FPatch := TPatchFile.Create(filename, ProjetoAtual);
+  FPatch := TPatchFile.Create(filename, CurrentProject);
   if FPatch.SourceText.Count = 0 then
   begin
     MessageDlg(SInfo, SNoUpdatedVersesOnPatch, mtInformation, [mbOK], 0);
@@ -214,6 +243,7 @@ begin
     MessageDlg(SInfo, Format(SIgnoredVersesOnPatch, [FPatch.IgnoredVerses]), mtInformation, [mbOK], 0);
 
   FBibleTreeView.VerseList := FPatch.Reference;
+  UpdateApplySelection(nil);
   FIndex := 0;
   TabControlPreviewChange(TabControlPreview);
   result := true;
@@ -222,19 +252,33 @@ end;
 procedure TFrmApplyPatch.Apply;
 var
   indexes: TIntegerList;
+  AppliedCount: Integer;
 begin
+  AppliedCount := 0;
   indexes := FBibleTreeView.IndexesList;
   try
-    ProjetoAtual.ApplyPatch(FPatch, indexes);
+    if indexes.Count = 0 then
+      Exit;
+    AppliedCount := CurrentProject.ApplyProjectPatch(FPatch, indexes);
   finally
     indexes.Free;
     FreeAndNil(FPatch);
   end;
-  ShowMessage(SPatchSuccessfullyApplied);
+  if AppliedCount > 0 then
+    ShowMessage(SPatchSuccessfullyApplied);
 end;
 
+procedure TFrmApplyPatch.AfterConstruction;
+begin
+  inherited AfterConstruction;
+  ApplyDialogStyle(Self);
+end;
+
+
 initialization
-  {$I formapplypatch.lrs}
+{$IFNDEF FPCUNIT}
+  {$R FormApplyPatch.lfm}
+{$ENDIF}
 
 end.
 

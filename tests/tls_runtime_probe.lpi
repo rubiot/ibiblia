@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <ProjectOptions>
+    <Version Value="12"/>
+    <General>
+      <Flags><MainUnitHasCreateFormStatements Value="False"/><MainUnitHasTitleStatement Value="False"/></Flags>
+      <Title Value="iBiblia TLS runtime probe"/>
+      <ResourceType Value="res"/>
+    </General>
+    <BuildModes Count="1"><Item1 Name="Default" Default="True"/></BuildModes>
+    <Units Count="1"><Unit0><Filename Value="tls_runtime_probe.lpr"/><IsPartOfProject Value="True"/></Unit0></Units>
+  </ProjectOptions>
+  <CompilerOptions>
+    <Version Value="11"/>
+    <Target><Filename Value="tls_runtime_probe"/></Target>
+    <SearchPaths>
+      <IncludeFiles Value="$(ProjOutDir)"/>
+      <OtherUnitFiles Value="../vendor/fpc-openssl;.."/>
+      <UnitOutputDirectory Value="lib/tls-probe/$(TargetCPU)-$(TargetOS)"/>
+    </SearchPaths>
+    <Linking><Options><Win32><GraphicApplication Value="False"/></Win32></Options></Linking>
+  </CompilerOptions>
+</CONFIG>

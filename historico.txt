@@ -1,3 +1,90 @@
+1.1.0.001 (2026-11-04)
+	* [C] Fixed Dictionary Popup size persistence across application restarts (FormDictionaryPopup.pas).
+	* [C] Restored Module Properties memo height (at least 5 lines high, overlaying the Bible panel instead of being compressed below DirectWriteView) when Properties is checked (formprincipal.pas).
+	* [C] Made individual Bible bottom toolbars (Name caption, status radio circles, Edit, and Properties) appear on mouse hover in sync with the per-panel chevron navigation arrows (formprincipal.pas).
+	* [N] Added 3 top bar menu icon size options (Small 16px, Medium 22px, Large 28px) in View > Toolbar icon size and Tools > Preferences (ui_icons.pas, FormApplicationPreferences.pas, formprincipal.pas).
+	* [C] Fixed skin theme rendering on the dropdown arrow sections of split toolbar buttons (ToolButton6 and FTheWordToolButton) across all themes (unitskins.pas).
+	* [C] Fixed Main Bible Tree status synchronization with the Destination panel 4 radio buttons status during word association, AI/statistical suggestions, and verse edits (Project.pas, formprincipal.pas).
+	* [C] Moved the realtime Saved / Unsaved changes status indicator to the bottom-left corner of the bottom status bar directly below the status summary box (formprincipal.pas, unitskins.pas).
+	* [N] Updated the New Features Guide (Shift+F1) with dedicated illustrated sections for all iBiblia 1.1.0.0 features (unitabout.pas, FormNewFeaturesGuide.pas).
+
+1.1.0.0 (2026-11-03)
+	* [N] Merged iBiblia 1.1.0 with the 1.0.1.055 64-bit edition features.
+	* [N] Visual WYSIWYG and Raw ONT verse editor with titles, added words, Words of Jesus, OT quotations, font colors, relative font sizes, and rich translator notes with hover previews.
+	* [N] Bidirectional rendering and Unicode selection for mixed Hebrew, Greek, and translated text.
+	* [N] Translation memory comparison with highlighted verse occurrences and hover previews.
+	* [N] Guided project creation wizard, customizable verse statuses, contextual guide, and Save As (.bib copy).
+	* [N] Experimental AI translation and association flows with batch review and Windows local secure credential storage.
+	* [C] Theme-aware verse editing interface, word selection/highlighting contrast, chapter scrollbar theming, multi-direction dictionary popup positioning, short.title panel captions, and Project Settings Default Dictionaries toggle.
+
+1.0.1.055 (2026-11-03)
+	* [C] Fixed Access Violation on application exit in TGerSugestoes.Destruir (sugestao.pas) by detaching FConnTmp.Transaction := nil and FConnVerbos.Transaction := nil before freeing the TSQLTransaction instances (preventing TDatabase.SetTransaction from dereferencing freed transaction objects) and safely closing/unpreparing/detaching all 15 TSQLQuery instances.
+	* [C] Fixed Access Violation on application exit in TFrmApplyPatch.FormDestroy (formapplypatch.pas) and TVersiculo.Destruir (versiculo.pas) by adding destructor Destroy; override; to TVersiculo, TMemoVersiculo, and TProjeto, and clearing FPanel.OnResize before freeing FSintagmas and child panels so destroying ScrollBoxSrcText/ScrollBoxDstText never triggers OnResize on freed TVersiculo instances.
+	* [C] Fixed use-after-free in TFrmPrincipal.ActionFecharProjetoExecute (formprincipal.pas) and TChapterView (chapterview.pas) by detaching FChapterView.Project := nil before destroying ProjetoAtual, removing premature project unsubscription from TChapterView.SetEnabled, and detaching FRawMemo.Parent := nil before freeing FRawMemo.
+	* [C] Hardened TProjeto.Fechar, TProjeto.Destruir, and TProjeto.LiberarObjetoQuery (projeto.pas), stopped TwSyncThread on exit, guarded HandleAllocated before reading .Handle in TFrmPrincipal.FormDestroy, TFrmExportarProjeto.FormDestroy, and Unhook*Control, and added WM_NCDESTROY/WM_DESTROY auto-unhooking and ApplicationShuttingDown guards across all Win32 SubclassProcs (unitskins.pas, formprincipal.pas, formexportar.pas).
+
+1.0.1.054 (2026-10-31)
+	* [C] Fixed empty even-numbered verses when loading theWord (.ont/.ot/.nt) or USFM (.usfm/.sfm) modules with CR-CR-LF (\r\r\n / $0D$0D$0A) line endings (such as LXX Brenton+, LXX Rahlfs+, and SweteLXX+) by normalizing #13#13 to #13 in LoadModuleLinesNormalized (projeto.pas) and LoadUSFMFile/ImportUSFMBible (myswordmodule.pas), and sanitizing CR/LF in ExportTheWordBible.
+	* [C] Updated TFrmEscolherVerseRules.AddVerseRule (formverserules.pas) to leave display/hyperlink verse.rule entries (_ORIGWORD_, _NOLINK_, <NB, <ST, <sup>, <font) unchecked by default on import, and updated TONTParser.ParseLine (ontparser.pas) to treat <NB...<Nb> and <ST...<St> blocks as metadata.
+	* [C] Updated EnsureTanglawSyncBridge (twAutomate.pas) to auto-patch src/lib/theword.js and src/lib/modprops.js inside installed Tanglaw app.asar archives so CR-CR-LF (.ot/.ont/.nt) modules load with zero empty even verses.
+
+1.0.1.053 (2026-10-31)
+	* [C] Added LazUTF8 to the interface uses clause of projeto.pas for UTF8LowerCase resolution and converted TGerSugestoes.Destruir to a procedure invoked by destructor Destroy; override; in sugestao.pas.
+
+1.0.1.052 (2026-10-31)
+	* [C] Fixed association persistence across application restarts for Tokenizer V1 projects (such as Gospels-Ed.bib) by loading TTokenizerFactory.PreferredVersion immediately after FTblInfo.Open before HealMisplacedPairsInDatabase runs.
+	* [C] Restricted HealMisplacedPairsInDatabase so it never clears valid associations on startup, added lossless V1/V2 tokenizer pair remapping in PosRolagemVersiculo, and added automatic recovery of wiped verses from association_memory_occurrences.
+	* [C] Fixed SQLite multi-connection lock contention between TGerSugestoes and TSqlite3Dataset by closing all SELECT cursors after reads, flushing TGerSugestoes transactions prior to ApplyUpdates, overriding TGerSugestoes.Destroy, and executing SalvarPares before SalvarAssociacoes.
+
+1.0.1.051 (2026-10-31):
+ * Removed word/dictionary lookup synchronization between iBiblia and Tanglaw Bible while preserving full bidirectional verse synchronization ("Sync Tanglaw to iBiblia verse" and "Sync iBiblia to Tanglaw verse") and all Tanglaw UI size, window bounds, dock splitter, and panel zoom persistence fixes.
+ * Reverted QuandoPalavraClicada in formprincipal.pas to sync word/dictionary lookups exclusively with theWord, and removed LookupExternalWordOrStrong / SyncTanglawWordLookup across projeto.pas, formprincipal.pas, twsyncthread.pas, and twAutomate.pas.
+ * Updated EnsureTanglawSyncBridge in twAutomate.pas and Tanglaw-Bible-0.5.5-Windows-Installer.zip so Tanglaw syncs verses only and persists all UI/window sizes across restarts.
+
+1.0.1.050 (2026-10-31):
+ * Fixed Tanglaw Bible UI size, window bounds, dock layout splitters, and per-panel zoom persistence across application restarts.
+ * Added windowBounds & guideWindowBounds persistence (width, height, x, y, maximized, fullScreen with multi-monitor workArea clamping), atomic saveSettings() writes, and deep-merged settings:set in Tanglaw src/main.js.
+ * Updated Tanglaw options.js, app.js, dock.js, modules.js, workbench.css, style.css, and index.html so Menus & Panels UI size (--ui-size up to 22 px, including Ctrl+MouseWheel over toolbars/captions), Bible view zoom, all 10 docked panel zooms, and dock splitter drags persist across restarts.
+ * Updated EnsureTanglawSyncBridge and SyncTanglawVerse in twAutomate.pas to auto-upgrade installed Tanglaw app.asar archives with UI size persistence and eliminate concurrent settings.json file-write races while Tanglaw is running.
+
+1.0.1.049 (2026-10-31):
+ * Added bidirectional Tanglaw Bible verse and word/dictionary lookup synchronization under Options ("Sync Tanglaw to iBiblia verse" and "Sync iBiblia to Tanglaw verse") across twAutomate.pas, twsyncthread.pas, projeto.pas, formprincipal.pas, formprincipal.lfm, and languages/*.po.
+ * Added SyncTanglawVerse, SyncTanglawWordLookup, GetTanglawCurrentRef, MapIBibliaBookToTanglaw, TanglawBookIDToName, and EnsureTanglawSyncBridge in twAutomate.pas, supporting all 66 canonical books and 21 Apocrypha/Deuterocanonical books (including Daniel 13-14 and Psalms 151 mapping).
+ * Added ResolveTanglawRefToProjectRef and LookupExternalWordOrStrong in projeto.pas so clicking/hovering words in iBiblia opens their Strong's, Morphology, Lemma, and Word Dictionary entries in Tanglaw's Lookup panel, and clicking words/tags in Tanglaw highlights the matching word in iBiblia and opens iBiblia's dictionary popup.
+
+1.0.1.048 (2026-10-30):
+ * Updated all changelogs (Histórico.txt, historico.txt, Help > About > Changelog, Help > New Features User Guide, and README.md) to document USFM (.usfm, .sfm) & USFX (.usfx, .xml) Bible import/export, e-Sword Apocrypha OT books & Deuterocanonical chapters in the Bible Books Tree, non-encrypted e-Sword (.bblx, .bbli, .bbl) import/export, auto-save on selecting "Associated", and Context Panel popup dictionary inheritance.
+
+1.0.1.047 (2026-10-30):
+ * Added full import and export support for USFM 2.x/3.0 (.usfm, .sfm) and USFX XML (.usfx, .xml) Bible files in myswordmodule.pas (LoadUSFMBibleWithApocrypha, LoadUSFXBibleWithApocrypha, ExportUSFMBible, ExportUSFXBible, ConvertONTToUSFM, ConvertONTToUSFX, USFMBookCodeToID, BookIDToUSFMCode), modeled on Simple Bible Reader (USFXBibleFormat / TheWordBibleFormat) and the eBible.org USFX specification.
+ * Added automatic multi-file USFM directory detection: selecting any single .usfm/.sfm book file in a folder automatically loads all sibling .usfm/.sfm book files into the project across all 66 canonical books (GEN-REV) and 21 Apocrypha / Deuterocanonical 3-letter book codes (1ES, 2ES, TOB, JDT, 1MA-4MA, MAN, WIS, SIR, BAR, LJE, S3Y, SUS, BEL, ESG, PS2, PSS, ODE, LAO, plus DAG Daniel 1-14).
+ * Preserves Strongs numbers, morphology tags, and lemmas (\w word|lemma="..." strong="..." x-morph="..."\w* and <w s="..." m="..." l="...">), Words of Jesus (\wj / <wj>), added/italic words (\add / <add>), bold (\bd / <bd>), section headings (\s1 / <s>), and footnotes (\f / <f>).
+ * Integrated USFM and USFX file filters and import/export handlers across formnovoprojeto.pas, formpropprojeto.pas, formexportar.pas, and projeto.pas.
+
+1.0.1.046 (2026-10-29):
+ * Fixed missing leading single quote on line 114 of CHANGELOG_TEXT in unitabout.pas and added Stage 17 Pascal string literal quote audit to audit_full_build.py.
+
+1.0.1.045 (2026-10-29):
+ * Added full support for Apocrypha / Deuterocanonical Old Testament books (Book >= 67: 1 Esdras, 2 Esdras, Tobit, Judith, 1-4 Maccabees, Prayer of Manasseh, Wisdom, Sirach, Baruch, Letter of Jeremiah, Prayer of Azariah, Susanna, Bel and the Dragon, Psalm 151, Psalms of Solomon, Odes, Laodiceans) and extra Deuterocanonical chapters in canonical OT books (Daniel 13-14, Psalms 151, Esther 11-16).
+ * Added LoadESwordBibleWithApocrypha and IdentifyApocryphaBookName in myswordmodule.pas to distinguish 12-book (67..78) and 16/19-book (67..86) e-Sword Apocrypha numbering schemes and backfill the 57 canonical KJV verses omitted by kjva.bbli.
+ * Added RebuildBookStructure, EnsureExtraVersesInDatabase, SyncESwordApocryphaIfNeeded, GetBookName, GetBookChapterCount, GetChapterVerseCount, and GetAdjacentChapter in projeto.pas so Apocrypha OT books appear right after Malachi at the end of the Old Testament in the Bible Books Tree (FArvore), Context Panel (chapterview.pas), and Project Search.
+
+1.0.1.044 (2026-10-29):
+ * Fixed TChapterView.GetWordInfoAt in chapterview.pas to use KControls 1.7.3 TKMemo.PointToIndex and Blocks.IndexToBlockIndex instead of PointToBlock/BlockToRect.
+
+1.0.1.043 (2026-10-29):
+ * Fixed FPC 3.2.2 SQLdb TSQLQuery preparation in TESwordModule.Create (myswordmodule.pas) by removing non-existent ParamsCheck property and initializing the RTF state stack.
+
+1.0.1.042 (2026-10-29):
+ * Added full import and export support for all non-encrypted e-Sword Bible files (.bblx RTF, .bbli HTML, and SQLite .bbl).
+ * Added TESwordModule in myswordmodule.pas with complete e-Sword RTF-to-ONT, HTML-to-ONT, ONT-to-RTF (.bblx Version 2), and ONT-to-HTML (.bbli Version 4) conversion covering Strong's tags, TVM/Robinson morphology, Words of Christ in red, italics, bold, underline, headings, footnotes, and Unicode escapes.
+ * Integrated e-Sword Bible import into New Project (formnovoprojeto.pas) and Project Properties (formpropprojeto.pas) with automatic OT/NT/Whole-Bible scope detection and encrypted-module detection.
+ * Integrated e-Sword .bblx and .bbli export into File > Export (formexportar.pas) for both Tagged Destination and Interlinear Bibles, as well as each panel's right-click "Export as Bible module..." menu (projeto.pas).
+
+1.0.1.041 (2026-10-29):
+ * Added automatic project save trigger when selecting the "Associated" radio button (via RadioGroupStatus, the Destination verse status bar circle, or keyboard shortcut '4').
+ * Enabled the Context Panel (TChapterView) to inherit and display the popup dictionary (Strong's, Morphology, Translation Memory, and English Dictionary fallback) for associated/linked words between the Source and Destination panels (including multi-word phrase associations and Interlinear/Intralinear views).
+
 Version 1.0.1.040 (64-bit Edition) - 2026-10-29
 - Fixed "Sync theWord to iBiblia verse" (`WM_COPYDATA` verse & dictionary lookup broadcast on 64-bit Windows):
   * Resolved 64-bit struct packing collision where `LCLType.TCopyDataStruct` (`packed record`, 20 bytes on Win64 with `lpData` at offset 12) shadowed `Windows.TCopyDataStruct` (24 bytes on Win64 with 4-byte C-ABI alignment padding and `lpData` at offset 16), causing the 64-bit Windows kernel to reject `WM_COPYDATA` messages sent to theWord.

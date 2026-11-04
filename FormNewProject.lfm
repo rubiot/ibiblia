@@ -1,0 +1,203 @@
+object FrmNewProject: TFrmNewProject
+  Left = 508
+  Height = 477
+  Top = 228
+  Width = 464
+  Caption = 'New project...'
+  ClientHeight = 477
+  ClientWidth = 464
+  OnCreate = FormCreate
+  Position = poMainFormCenter
+  LCLVersion = '2.0.10.0'
+  Font.Name = 'Segoe UI'
+  Font.Height = -13
+  Color = 16316147
+  object GroupBoxTexts: TGroupBox
+    Left = 6
+    Height = 231
+    Top = 202
+    Width = 450
+    Caption = 'Texts'
+    ClientHeight = 211
+    ClientWidth = 446
+    TabOrder = 0
+    object EditSourceText: TLabeledEdit
+      Left = 8
+      Height = 23
+      Top = 24
+      Width = 384
+      EditLabel.Height = 15
+      EditLabel.Width = 384
+      EditLabel.Caption = 'Source'
+      EditLabel.ParentColor = False
+      ReadOnly = True
+      TabOrder = 0
+    end
+    object EditDestinationText: TLabeledEdit
+      Left = 8
+      Height = 23
+      Top = 72
+      Width = 384
+      EditLabel.Height = 15
+      EditLabel.Width = 384
+      EditLabel.Caption = 'Destination'
+      EditLabel.ParentColor = False
+      ReadOnly = True
+      TabOrder = 1
+    end
+    object EditReferenceText1: TLabeledEdit
+      Left = 8
+      Height = 23
+      Top = 120
+      Width = 384
+      EditLabel.Height = 15
+      EditLabel.Width = 384
+      EditLabel.Caption = 'Reference 1'
+      EditLabel.ParentColor = False
+      ReadOnly = True
+      TabOrder = 2
+    end
+    object EditReferenceText2: TLabeledEdit
+      Left = 8
+      Height = 23
+      Top = 168
+      Width = 384
+      EditLabel.Height = 15
+      EditLabel.Width = 384
+      EditLabel.Caption = 'Reference 2'
+      EditLabel.ParentColor = False
+      ReadOnly = True
+      TabOrder = 3
+    end
+    object BtnSelectSourceText: TBitBtn
+      Left = 396
+      Height = 25
+      Top = 24
+      Width = 38
+      Caption = '...'
+      OnClick = BtnSelectSourceTextClick
+      TabOrder = 4
+    end
+    object BtnSelectDestinationText: TBitBtn
+      Left = 396
+      Height = 25
+      Top = 72
+      Width = 38
+      Caption = '...'
+      OnClick = BtnSelectDestinationTextClick
+      TabOrder = 5
+    end
+    object BtnSelectReferenceText1: TBitBtn
+      Left = 396
+      Height = 25
+      Top = 120
+      Width = 38
+      Caption = '...'
+      OnClick = BtnSelectReferenceText1Click
+      TabOrder = 6
+    end
+    object BtnSelectReferenceText2: TBitBtn
+      Left = 396
+      Height = 25
+      Top = 168
+      Width = 38
+      Caption = '...'
+      OnClick = BtnSelectReferenceText2Click
+      TabOrder = 7
+    end
+  end
+  object BtnOk: TBitBtn
+    Left = 8
+    Height = 30
+    Top = 438
+    Width = 119
+    Caption = '&OK'
+    Default = True
+    Kind = bkOK
+    ModalResult = 1
+    OnClick = BtnOkClick
+    TabOrder = 1
+  end
+  object BtnCancel: TBitBtn
+    Left = 144
+    Height = 30
+    Top = 438
+    Width = 119
+    Cancel = True
+    Caption = 'Cancel'
+    Kind = bkCancel
+    ModalResult = 2
+    TabOrder = 2
+  end
+  object GroupBoxProperties: TGroupBox
+    Left = 6
+    Height = 128
+    Top = 8
+    Width = 450
+    Caption = 'Properties'
+    ClientHeight = 108
+    ClientWidth = 446
+    TabOrder = 3
+    object EditProjectName: TLabeledEdit
+      Left = 8
+      Height = 23
+      Top = 22
+      Width = 384
+      EditLabel.Height = 15
+      EditLabel.Width = 384
+      EditLabel.Caption = 'Name'
+      EditLabel.ParentColor = False
+      TabOrder = 0
+    end
+    object LabelTokenizerVersion: TLabel
+      Left = 8
+      Height = 15
+      Top = 56
+      Width = 96
+      Caption = 'Tokenizer version'
+      ParentColor = False
+    end
+    object cbTokenizerVersion: TComboBox
+      Left = 8
+      Height = 23
+      Top = 74
+      Width = 384
+      ItemHeight = 15
+      Style = csDropDownList
+      TabOrder = 1
+    end
+  end
+  object RadioGroupScope: TRadioGroup
+    Left = 7
+    Height = 49
+    Top = 147
+    Width = 449
+    AutoFill = True
+    Caption = 'Scope'
+    ChildSizing.LeftRightSpacing = 6
+    ChildSizing.EnlargeHorizontal = crsHomogenousChildResize
+    ChildSizing.EnlargeVertical = crsHomogenousChildResize
+    ChildSizing.ShrinkHorizontal = crsScaleChilds
+    ChildSizing.ShrinkVertical = crsScaleChilds
+    ChildSizing.Layout = cclTopToBottomThenLeftToRight
+    ChildSizing.ControlsPerLine = 1
+    ClientHeight = 29
+    ClientWidth = 445
+    ColumnLayout = clVerticalThenHorizontal
+    Columns = 3
+    ItemIndex = 1
+    Items.Strings = (
+      'Old Testament'
+      'New Testament'
+      'Whole Bible'
+    )
+    TabOrder = 4
+  end
+  object OpenDialogSelectText: TOpenDialog
+    Title = 'Choose a theWord bible module'
+    Filter = 'theWord bible modules (*.ont, *.nt, *.ot)|*.ont;*.nt;*.ot'
+    InitialDir = 'C:\Utilities\The Word\Bibles'
+    Left = 192
+    Top = 208
+  end
+end

@@ -5,6 +5,39 @@ msgstr "Content-Type: text/plain; charset=UTF-8"
 msgid "Beginning of chapter"
 msgstr ""
 
+#: chapterview.stranslationmemorycurrentlegend
+msgctxt "chapterview.stranslationmemorycurrentlegend"
+msgid "Blue translations are used in the current verse."
+msgstr ""
+
+#: chapterview.stranslationmemoryerrorfmt
+#, object-pascal-format
+msgid "Translation memory is unavailable: %s"
+msgstr ""
+
+#: chapterview.stranslationmemoryformsfmt
+#, object-pascal-format
+msgid "Forms: %s"
+msgstr ""
+
+#: chapterview.stranslationmemorynosourcewords
+msgid "No source words are available for this verse."
+msgstr ""
+
+#: chapterview.stranslationmemorynotranslations
+msgid "No translation recorded"
+msgstr ""
+
+#: chapterview.stranslationmemorystrongsfmt
+#, object-pascal-format
+msgid "Strong's: %s"
+msgstr ""
+
+#: chapterview.stranslationmemorytitle
+msgctxt "chapterview.stranslationmemorytitle"
+msgid "Translation memory"
+msgstr ""
+
 #: chapterview.sinterlinearmode
 msgid "Interlinear layout..."
 msgstr ""
@@ -140,6 +173,22 @@ msgstr ""
 #: formprincipal.sinterlineartext
 msgctxt "formprincipal.sinterlineartext"
 msgid "Interlinear"
+msgstr ""
+
+#: formprincipal.smemorytext
+msgid "Memory"
+msgstr ""
+
+#: formprincipal.stranslationmemoryordermenu
+msgid "Translation memory order"
+msgstr ""
+
+#: formprincipal.stranslationmemoryrarefirst
+msgid "Least frequent first"
+msgstr ""
+
+#: formprincipal.stranslationmemoryverseorder
+msgid "Verse order"
 msgstr ""
 
 #: formprincipal.sinvalidprojectnamequery
@@ -333,119 +382,119 @@ msgstr ""
 msgid "A project with this name already exists. Delete it first or choose another name"
 msgstr ""
 
-#: projeto.s1chronicles
-msgctxt "projeto.s1chronicles"
+#: project.s1chronicles
+msgctxt "project.s1chronicles"
 msgid "1 Chronicles"
 msgstr ""
 
-#: projeto.s1corinthians
-msgctxt "projeto.s1corinthians"
+#: project.s1corinthians
+msgctxt "project.s1corinthians"
 msgid "1 Corinthians"
 msgstr ""
 
-#: projeto.s1john
-msgctxt "projeto.s1john"
+#: project.s1john
+msgctxt "project.s1john"
 msgid "1 John"
 msgstr ""
 
-#: projeto.s1kings
-msgctxt "projeto.s1kings"
+#: project.s1kings
+msgctxt "project.s1kings"
 msgid "1 Kings"
 msgstr ""
 
-#: projeto.s1peter
-msgctxt "projeto.s1peter"
+#: project.s1peter
+msgctxt "project.s1peter"
 msgid "1 Peter"
 msgstr ""
 
-#: projeto.s1samuel
-msgctxt "projeto.s1samuel"
+#: project.s1samuel
+msgctxt "project.s1samuel"
 msgid "1 Samuel"
 msgstr ""
 
-#: projeto.s1thessalonians
-msgctxt "projeto.s1thessalonians"
+#: project.s1thessalonians
+msgctxt "project.s1thessalonians"
 msgid "1 Thessalonians"
 msgstr ""
 
-#: projeto.s1timothy
-msgctxt "projeto.s1timothy"
+#: project.s1timothy
+msgctxt "project.s1timothy"
 msgid "1 Timothy"
 msgstr ""
 
-#: projeto.s2chronicles
-msgctxt "projeto.s2chronicles"
+#: project.s2chronicles
+msgctxt "project.s2chronicles"
 msgid "2 Chronicles"
 msgstr ""
 
-#: projeto.s2corinthians
-msgctxt "projeto.s2corinthians"
+#: project.s2corinthians
+msgctxt "project.s2corinthians"
 msgid "2 Corinthians"
 msgstr ""
 
-#: projeto.s2john
-msgctxt "projeto.s2john"
+#: project.s2john
+msgctxt "project.s2john"
 msgid "2 John"
 msgstr ""
 
-#: projeto.s2kings
-msgctxt "projeto.s2kings"
+#: project.s2kings
+msgctxt "project.s2kings"
 msgid "2 Kings"
 msgstr ""
 
-#: projeto.s2peter
-msgctxt "projeto.s2peter"
+#: project.s2peter
+msgctxt "project.s2peter"
 msgid "2 Peter"
 msgstr ""
 
-#: projeto.s2samuel
-msgctxt "projeto.s2samuel"
+#: project.s2samuel
+msgctxt "project.s2samuel"
 msgid "2 Samuel"
 msgstr ""
 
-#: projeto.s2thessalonians
-msgctxt "projeto.s2thessalonians"
+#: project.s2thessalonians
+msgctxt "project.s2thessalonians"
 msgid "2 Thessalonians"
 msgstr ""
 
-#: projeto.s2timothy
-msgctxt "projeto.s2timothy"
+#: project.s2timothy
+msgctxt "project.s2timothy"
 msgid "2 Timothy"
 msgstr ""
 
-#: projeto.s3john
-msgctxt "projeto.s3john"
+#: project.s3john
+msgctxt "project.s3john"
 msgid "3 John"
 msgstr ""
 
-#: projeto.sacts
-msgctxt "projeto.sacts"
+#: project.sacts
+msgctxt "project.sacts"
 msgid "Acts"
 msgstr ""
 
-#: projeto.samos
-msgctxt "projeto.samos"
+#: project.samos
+msgctxt "project.samos"
 msgid "Amos"
 msgstr ""
 
-#: projeto.sanalyticalconcordance
+#: project.sanalyticalconcordance
 msgid "Anaytical Concordance"
 msgstr ""
 
-#: projeto.scolossians
-msgctxt "projeto.scolossians"
+#: project.scolossians
+msgctxt "project.scolossians"
 msgid "Colossians"
 msgstr ""
 
-#: projeto.scompresseddictionary
+#: project.scompresseddictionary
 msgid "Compressed dictionary"
 msgstr ""
 
-#: projeto.sconfirmation
+#: project.sconfirmation
 msgid "Confirmation"
 msgstr ""
 
-#: projeto.scorrupteddata
+#: project.scorrupteddata
 msgid ""
 "Corrupted data, some associations may be lost.This can happen for several reasons:\n"
 " 1. The project file was modified outside iBiblia\n"
@@ -455,402 +504,406 @@ msgid ""
 "    at https://github.com/rubiot/ibiblia.\n"
 msgstr ""
 
-#: projeto.sdaniel
-msgctxt "projeto.sdaniel"
+#: project.sdaniel
+msgctxt "project.sdaniel"
 msgid "Daniel"
 msgstr ""
 
-#: projeto.sdeuteronomy
-msgctxt "projeto.sdeuteronomy"
+#: project.sdeuteronomy
+msgctxt "project.sdeuteronomy"
 msgid "Deuteronomy"
 msgstr ""
 
-#: projeto.sdictionarydoesntexist
+#: project.sdictionarydoesntexist
 msgid "The selected dictionary doesn't exist: %s"
 msgstr ""
 
-#: projeto.secclesiastes
-msgctxt "projeto.secclesiastes"
+#: project.secclesiastes
+msgctxt "project.secclesiastes"
 msgid "Ecclesiastes"
 msgstr ""
 
-#: projeto.sencrypteddictionary
+#: project.sencrypteddictionary
 msgid "Encrypted dictionary"
 msgstr ""
 
-#: projeto.sephesians
-msgctxt "projeto.sephesians"
+#: project.sephesians
+msgctxt "project.sephesians"
 msgid "Ephesians"
 msgstr ""
 
-#: projeto.serror
+#: project.serror
 msgid "Error"
 msgstr ""
 
-#: projeto.sesther
-msgctxt "projeto.sesther"
+#: project.sesther
+msgctxt "project.sesther"
 msgid "Esther"
 msgstr ""
 
-#: projeto.sexodus
-msgctxt "projeto.sexodus"
+#: project.sexodus
+msgctxt "project.sexodus"
 msgid "Exodus"
 msgstr ""
 
-#: projeto.sexporttextsavedlgtitle
+#: project.sexporttextsavedlgtitle
 msgid "Please choose a destination file"
 msgstr ""
 
-#: projeto.sexporttofileerror
+#: project.sexporttofileerror
 msgid ""
 "iBiblia found an error while exporting the Bible module file.\n"
 "Please check if theWord is using the file, then close it and try again.\n"
 msgstr ""
 
-#: projeto.sezekiel
-msgctxt "projeto.sezekiel"
+#: project.sezekiel
+msgctxt "project.sezekiel"
 msgid "Ezekiel"
 msgstr ""
 
-#: projeto.sezra
-msgctxt "projeto.sezra"
+#: project.sezra
+msgctxt "project.sezra"
 msgid "Ezra"
 msgstr ""
 
-#: projeto.sfailedtocreatefile
+#: project.sfailedtocreatefile
 msgid "Failed to create file: %s"
 msgstr ""
 
-#: projeto.sgalatians
-msgctxt "projeto.sgalatians"
+#: project.sgalatians
+msgctxt "project.sgalatians"
 msgid "Galatians"
 msgstr ""
 
-#: projeto.sgenesis
-msgctxt "projeto.sgenesis"
+#: project.sgenesis
+msgctxt "project.sgenesis"
 msgid "Genesis"
 msgstr ""
 
-#: projeto.shabakkuk
-msgctxt "projeto.shabakkuk"
+#: project.shabakkuk
+msgctxt "project.shabakkuk"
 msgid "Habakkuk"
 msgstr ""
 
-#: projeto.shaggai
-msgctxt "projeto.shaggai"
+#: project.shaggai
+msgctxt "project.shaggai"
 msgid "Haggai"
 msgstr ""
 
-#: projeto.shebrew
-msgctxt "projeto.shebrew"
+#: project.shebrew
+msgctxt "project.shebrew"
 msgid "Hebrews"
 msgstr ""
 
-#: projeto.shosea
-msgctxt "projeto.shosea"
+#: project.shosea
+msgctxt "project.shosea"
 msgid "Hosea"
 msgstr ""
 
-#: projeto.sibibliapatchfiles
+#: project.sibibliapatchfiles
 msgid "iBiblia patch files"
 msgstr ""
 
-#: projeto.sinformation
-msgctxt "projeto.sinformation"
+#: project.sinformation
+msgctxt "project.sinformation"
 msgid "Information"
 msgstr ""
 
-#: projeto.sinterlinearverserulereplaceerror
+#: project.sinterlinearverserulereplaceerror
 msgid ""
 "There is something wrong with one of your interlinear verse rules.\n"
 "Please review them.\n"
 msgstr ""
 
-#: projeto.sinvalidcompresseddictionary
+#: project.sinvalidcompresseddictionary
 msgid ""
 "iBiblia does not suppport compressed dictionaries yet.\n"
 "Please choose an uncompressed module.\n"
 msgstr ""
 
-#: projeto.sinvalidencrypteddictionary
+#: project.sinvalidencrypteddictionary
 msgid ""
 "iBiblia does not and will not support encrypted modules.\n"
 "Please choose an unencrypted module.\n"
 msgstr ""
 
-#: projeto.sinvalidinterlinearverserule
+#: project.sinvalidinterlinearverserule
 msgid ""
 "There is something wrong with your interlinear verse rule.\n"
 "[%s]\n"
 msgstr ""
 
-#: projeto.sinvalidlinecount
+#: project.sinvalidlinecount
 msgid "Invalid file, it must have at least %d lines"
 msgstr ""
 
-#: projeto.sinvalidmoduletype
+#: project.sinvalidmoduletype
 msgid "Unknown module extension. Please choose a valid theWord Bible module (.ot, .ont or .nt)"
 msgstr ""
 
-#: projeto.sinvalidmorphologydictionary
+#: project.sinvalidmorphologydictionary
 msgid ""
 "This is not a morphology dictionary.\n"
 "Please choose a valid morphology dictionary.\n"
 msgstr ""
 
-#: projeto.sinvalidnonrtfdictionary
+#: project.sinvalidnonrtfdictionary
 msgid ""
 "iBiblia only suppports RTF modules.\n"
 "Please choose another module or convert this module to RTF in theWord.\n"
 msgstr ""
 
-#: projeto.sinvalidstrongsdictionary
+#: project.sinvalidstrongsdictionary
 msgid ""
 "This is not a Strong's dictionary.\n"
 "Please choose a valid Strong's dictionary.\n"
 msgstr ""
 
-#: projeto.sisaiah
-msgctxt "projeto.sisaiah"
+#: project.sisaiah
+msgctxt "project.sisaiah"
 msgid "Isaiah"
 msgstr ""
 
-#: projeto.sjames
-msgctxt "projeto.sjames"
+#: project.sjames
+msgctxt "project.sjames"
 msgid "James"
 msgstr ""
 
-#: projeto.sjeremiah
-msgctxt "projeto.sjeremiah"
+#: project.sjeremiah
+msgctxt "project.sjeremiah"
 msgid "Jeremiah"
 msgstr ""
 
-#: projeto.sjob
-msgctxt "projeto.sjob"
+#: project.sjob
+msgctxt "project.sjob"
 msgid "Job"
 msgstr ""
 
-#: projeto.sjoel
-msgctxt "projeto.sjoel"
+#: project.sjoel
+msgctxt "project.sjoel"
 msgid "Joel"
 msgstr ""
 
-#: projeto.sjohah
-msgctxt "projeto.sjohah"
+#: project.sjohah
+msgctxt "project.sjohah"
 msgid "Jonah"
 msgstr ""
 
-#: projeto.sjohn
-msgctxt "projeto.sjohn"
+#: project.sjohn
+msgctxt "project.sjohn"
 msgid "John"
 msgstr ""
 
-#: projeto.sjoshua
-msgctxt "projeto.sjoshua"
+#: project.sjoshua
+msgctxt "project.sjoshua"
 msgid "Joshua"
 msgstr ""
 
-#: projeto.sjude
-msgctxt "projeto.sjude"
+#: project.sjude
+msgctxt "project.sjude"
 msgid "Jude"
 msgstr ""
 
-#: projeto.sjudges
-msgctxt "projeto.sjudges"
+#: project.sjudges
+msgctxt "project.sjudges"
 msgid "Judges"
 msgstr ""
 
-#: projeto.slamentations
-msgctxt "projeto.slamentations"
+#: project.slamentations
+msgctxt "project.slamentations"
 msgid "Lamentations"
 msgstr ""
 
-#: projeto.slanguageid
+#: project.slanguageid
 msgid "en"
 msgstr ""
 
-#: projeto.sleviticus
-msgctxt "projeto.sleviticus"
+#: project.sleviticus
+msgctxt "project.sleviticus"
 msgid "Leviticus"
 msgstr ""
 
-#: projeto.slinebreaksintext
+#: project.slinebreaksintext
 msgid "A verse cannot contain line breaks. Your changes will be discarded."
 msgstr ""
 
-#: projeto.slinebreaksintexttitle
+#: project.slinebreaksintexttitle
 msgid "Edit error"
 msgstr ""
 
-#: projeto.sluke
-msgctxt "projeto.sluke"
+#: project.sluke
+msgctxt "project.sluke"
 msgid "Luke"
 msgstr ""
 
-#: projeto.smalachi
-msgctxt "projeto.smalachi"
+#: project.smalachi
+msgctxt "project.smalachi"
 msgid "Malachi"
 msgstr ""
 
-#: projeto.smark
-msgctxt "projeto.smark"
+#: project.smark
+msgctxt "project.smark"
 msgid "Mark"
 msgstr ""
 
-#: projeto.smatthew
-msgctxt "projeto.smatthew"
+#: project.smatthew
+msgctxt "project.smatthew"
 msgid "Matthew"
 msgstr ""
 
-#: projeto.smicah
-msgctxt "projeto.smicah"
+#: project.smicah
+msgctxt "project.smicah"
 msgid "Micah"
 msgstr ""
 
-#: projeto.smoduledoesnotincludescope
+#: project.smoduledoesnotincludescope
 msgid "This module is incompatible with the scope of the project. Please choose a valid module."
 msgstr ""
 
-#: projeto.smorphologydictionary
+#: project.smorphologydictionary
 msgid "Morphology Dictionary"
 msgstr ""
 
-#: projeto.snahum
-msgctxt "projeto.snahum"
+#: project.snahum
+msgctxt "project.snahum"
 msgid "Nahum"
 msgstr ""
 
-#: projeto.snehemiah
-msgctxt "projeto.snehemiah"
+#: project.snehemiah
+msgctxt "project.snehemiah"
 msgid "Nehemiah"
 msgstr ""
 
-#: projeto.snonrtfdictionary
+#: project.snonrtfdictionary
 msgid "Non-RTF module"
 msgstr ""
 
-#: projeto.snumbers
-msgctxt "projeto.snumbers"
+#: project.snumbers
+msgctxt "project.snumbers"
 msgid "Numbers"
 msgstr ""
 
-#: projeto.sobadiah
-msgctxt "projeto.sobadiah"
+#: project.sobadiah
+msgctxt "project.sobadiah"
 msgid "Obadiah"
 msgstr ""
 
-#: projeto.sopenproject
-msgctxt "projeto.sopenproject"
+#: project.sopenproject
+msgctxt "project.sopenproject"
 msgid "Open project"
 msgstr ""
 
-#: projeto.sotconcordancenotimplementedyet
+#: project.sotconcordancenotimplementedyet
 msgid "Old Testament concordance is not implemented yet"
 msgstr ""
 
-#: projeto.spatchsuccessfullyexported
+#: project.spatchsuccessfullyexported
 msgid "Patch successfully exported"
 msgstr ""
 
-#: projeto.sphilemon
-msgctxt "projeto.sphilemon"
+#: project.sphilemon
+msgctxt "project.sphilemon"
 msgid "Philemon"
 msgstr ""
 
-#: projeto.sphilippians
-msgctxt "projeto.sphilippians"
+#: project.sphilippians
+msgctxt "project.sphilippians"
 msgid "Philippians"
 msgstr ""
 
-#: projeto.spotentialnonutf8modulewarning
+#: project.spotentialnonutf8modulewarning
 msgid "This module has a 'charset' property and this may be an indication that this is a non-UTF8 module. iBiblia was not designed to work with non-UTF8 modules. Please choose 'Ignore' to ignore this warning and continue at your own risk or 'Abort' to abort the operation and choose another module."
 msgstr ""
 
-#: projeto.sprojectdoesntexist
+#: project.sprojectdoesntexist
 msgid "The selected project doesn't exist: %s"
 msgstr ""
 
-#: projeto.sproverbs
-msgctxt "projeto.sproverbs"
+#: project.sproverbs
+msgctxt "project.sproverbs"
 msgid "Proverbs"
 msgstr ""
 
-#: projeto.spsalms
-msgctxt "projeto.spsalms"
+#: project.spsalms
+msgctxt "project.spsalms"
 msgid "Psalms"
 msgstr ""
 
-#: projeto.sreferencenotfound
+#: project.sreferencenotfound
 msgid "Reference not found"
 msgstr ""
 
-#: projeto.sreferencenotfoundwarning
+#: project.sreferencenotfoundwarning
 msgid ""
 "The reference %s is not a valid reference in this project and will be ignored.\n"
 "Press Ignore to ignore all subsequent warnings.\n"
 msgstr ""
 
-#: projeto.srevelation
-msgctxt "projeto.srevelation"
+#: project.srevelation
+msgctxt "project.srevelation"
 msgid "Revelation"
 msgstr ""
 
-#: projeto.sromans
-msgctxt "projeto.sromans"
+#: project.sromans
+msgctxt "project.sromans"
 msgid "Romans"
 msgstr ""
 
-#: projeto.sruth
-msgctxt "projeto.sruth"
+#: project.sruth
+msgctxt "project.sruth"
 msgid "Ruth"
 msgstr ""
 
-#: projeto.ssongofsolomon
-msgctxt "projeto.ssongofsolomon"
+#: project.ssongofsolomon
+msgctxt "project.ssongofsolomon"
 msgid "Song of Solomon"
 msgstr ""
 
-#: projeto.sstrongdictionary
+#: project.sstrongdictionary
 msgid "Strong's Dictionary"
 msgstr ""
 
-#: projeto.ssyntheticconcordance
+#: project.ssyntheticconcordance
 msgid "Synthetic Concordance"
 msgstr ""
 
-#: projeto.stitus
-msgctxt "projeto.stitus"
+#: project.stitus
+msgctxt "project.stitus"
 msgid "Titus"
 msgstr ""
 
-#: projeto.stranslationmemory
+#: project.stranslationmemory
 msgid "Translation memory"
 msgstr ""
 
-#: projeto.svaccumprojectconfirmation
+#: project.sassociationmemoryunavailable
+msgid "Translation memory is unavailable because it could not be synchronized."
+msgstr ""
+
+#: project.svaccumprojectconfirmation
 msgid "Vacuuming requires that your project be saved and reopened. Do you want to proceed?"
 msgstr ""
 
-#: projeto.svacuumdone
-msgctxt "projeto.svacuumdone"
+#: project.svacuumdone
+msgctxt "project.svacuumdone"
 msgid "Vacuum done!"
 msgstr ""
 
-#: projeto.sverseabsentfromproject
+#: project.sverseabsentfromproject
 msgid "[This project does not contain this verse]"
 msgstr ""
 
-#: projeto.swarning
+#: project.swarning
 msgid "Warning"
 msgstr ""
 
-#: projeto.szechariah
-msgctxt "projeto.szechariah"
+#: project.szechariah
+msgctxt "project.szechariah"
 msgid "Zecariah"
 msgstr ""
 
-#: projeto.szephaniah
-msgctxt "projeto.szephaniah"
+#: project.szephaniah
+msgctxt "project.szephaniah"
 msgid "Zephaniah"
 msgstr ""
 
@@ -1661,55 +1714,389 @@ msgstr ""
 msgid "&Save text to file..."
 msgstr ""
 
-
-#: versiculo.sexportasbiblemodule
-msgid "&Export as Bible module..."
+#: formprincipal.shistoryback
+msgctxt "formprincipal.shistoryback"
+msgid "Back"
 msgstr ""
 
-#: projeto.sexportbiblemodulesavedlgtitle
-msgid "Export as Bible module"
+#: formprincipal.shistorybackhint
+msgctxt "formprincipal.shistorybackhint"
+msgid "Go back in navigation history"
 msgstr ""
 
-#: tfrmprincipal.menuitemview.caption
-msgid "View"
+#: formprincipal.shistoryforward
+msgctxt "formprincipal.shistoryforward"
+msgid "Forward"
 msgstr ""
 
-#: tfrmprincipal.menuitemdarkmode.caption
-msgid "Dark mode"
+#: formprincipal.shistoryforwardhint
+msgctxt "formprincipal.shistoryforwardhint"
+msgid "Go forward in navigation history"
 msgstr ""
 
-#: tfrmprincipal.menuitemdarkmode.hint
-msgid "Toggle dark mode on or off (Ctrl+Shift+D)"
+#: formprincipal.sshortcuthistoryback
+msgctxt "formprincipal.sshortcuthistoryback"
+msgid "Back in navigation history"
 msgstr ""
 
-#: tfrmprincipal.menuitemskinsmenu.caption
-msgid "Skins (theWord Themes)"
+#: formprincipal.sshortcuthistoryforward
+msgctxt "formprincipal.sshortcuthistoryforward"
+msgid "Forward in navigation history"
 msgstr ""
 
-#: tfrmprincipal.menuitemskinclassic.caption
-msgid "Classic (Light)"
+
+#: chapterview.stranslationmemoryback
+msgid "Back to translation memory"
 msgstr ""
 
-#: tfrmprincipal.menuitemskintheworddark.caption
-msgid "theWord Dark (Charcoal)"
+#: chapterview.stranslationmemorynooccurrences
+msgid "No verse currently uses this translation."
 msgstr ""
 
-#: tfrmprincipal.menuitemskinnight.caption
-msgid "Night (Pitch Black)"
+#: chapterview.stranslationmemoryoccurrencecountfmt
+#, object-pascal-format
+msgid "%d occurrences"
 msgstr ""
 
-#: tfrmprincipal.menuitemskinsepia.caption
-msgid "Sepia (Parchment)"
+#: chapterview.stranslationmemoryoccurrencestitlefmt
+#, object-pascal-format
+msgid "%s → %s"
 msgstr ""
 
-#: tfrmprincipal.menuitemskinslate.caption
-msgid "Slate (Steel Blue)"
+#: chapterview.stranslationmemoryoccurrencetotalsfmt
+#, object-pascal-format
+msgid "%d associations in %d verses"
 msgstr ""
 
-#: tfrmprincipal.menuitemskinsolarizeddark.caption
-msgid "Solarized Dark"
+#: chapterview.stranslationmemoryshowmorefmt
+#, object-pascal-format
+msgid "Show 100 more (%d remaining)"
 msgstr ""
 
-#: tfrmprincipal.menuitemskinhighcontrast.caption
-msgid "High Contrast Dark"
+#: suggestionmanager.sassociationmemorymissingoccurrencesfmt
+#, object-pascal-format
+msgid "Association memory is missing reference occurrences (expected %d, stored %d)"
+msgstr ""
+
+#: suggestionmanager.sassociationmemorynonpositiveoccurrencereferences
+msgid "Association memory contains non-positive reference occurrence counts"
+msgstr ""
+
+#: suggestionmanager.sassociationmemoryoccurrencecountmismatchfmt
+#, object-pascal-format
+msgid "Association memory occurrence mismatch at %s for \"%s\" -> \"%s\" (expected %d, stored %d)"
+msgstr ""
+
+#: suggestionmanager.sassociationmemoryoccurrencemismatch
+msgid "Association memory reference occurrences do not match translation counts"
+msgstr ""
+
+#: suggestionmanager.sassociationmemoryorphanoccurrencereferences
+msgid "Association memory contains occurrence references not found in the project"
+msgstr ""
+
+#: suggestionmanager.sassociationmemoryunexpectedoccurrencefmt
+#, object-pascal-format
+msgid "Association memory contains an unexpected occurrence at %s: \"%s\" -> \"%s\""
+msgstr ""
+
+
+#: tfrmprincipal.actionhistoryback.caption
+msgctxt "tfrmprincipal.actionhistoryback.caption"
+msgid "Back"
+msgstr ""
+
+#: tfrmprincipal.actionhistoryback.hint
+msgctxt "tfrmprincipal.actionhistoryback.hint"
+msgid "Go back in navigation history"
+msgstr ""
+
+#: tfrmprincipal.actionhistoryforward.caption
+msgctxt "tfrmprincipal.actionhistoryforward.caption"
+msgid "Forward"
+msgstr ""
+
+#: tfrmprincipal.actionhistoryforward.hint
+msgctxt "tfrmprincipal.actionhistoryforward.hint"
+msgid "Go forward in navigation history"
+msgstr ""
+
+#: versememo.seditmodetitle
+msgctxt "versememo.seditmodetitle"
+msgid "Editing verse"
+msgstr ""
+
+#: versememo.seditmodesaved
+msgctxt "versememo.seditmodesaved"
+msgid "No changes"
+msgstr ""
+
+#: versememo.seditmodemodified
+msgctxt "versememo.seditmodemodified"
+msgid "Unsaved changes"
+msgstr ""
+
+#: versememo.sprotectedregions
+msgctxt "versememo.sprotectedregions"
+msgid "Protected ONT objects"
+msgstr ""
+
+#: versememo.ssaveeditbutton
+msgctxt "versememo.ssaveeditbutton"
+msgid "Save"
+msgstr ""
+
+#: versememo.ssaveedithint
+msgctxt "versememo.ssaveedithint"
+msgid "Save verse text and close the editor"
+msgstr ""
+
+#: versememo.scanceleditbutton
+msgctxt "versememo.scanceleditbutton"
+msgid "Cancel"
+msgstr ""
+
+#: versememo.scanceledithint
+msgctxt "versememo.scanceledithint"
+msgid "Discard changes and close the editor"
+msgstr ""
+
+#: versememo.saddedwordsbutton
+msgctxt "versememo.saddedwordsbutton"
+msgid "I"
+msgstr ""
+
+#: versememo.sjesuswordsbutton
+msgctxt "versememo.sjesuswordsbutton"
+msgid "J"
+msgstr ""
+
+#: versememo.soldtestamentquotebutton
+msgctxt "versememo.soldtestamentquotebutton"
+msgid "O"
+msgstr ""
+
+#: versememo.sunderlinebutton
+msgctxt "versememo.sunderlinebutton"
+msgid "S"
+msgstr ""
+
+#: versememo.sstrikethroughbutton
+msgctxt "versememo.sstrikethroughbutton"
+msgid "S"
+msgstr ""
+
+#: versememo.ssuperscriptbutton
+msgctxt "versememo.ssuperscriptbutton"
+msgid "x²"
+msgstr ""
+
+#: versememo.ssubscriptbutton
+msgctxt "versememo.ssubscriptbutton"
+msgid "x₂"
+msgstr ""
+
+#: versememo.shtmlformatbutton
+msgctxt "versememo.shtmlformatbutton"
+msgid "B/I/U"
+msgstr ""
+
+#: versememo.shtmlboldmenuitem
+msgctxt "versememo.shtmlboldmenuitem"
+msgid "Bold (<b>)"
+msgstr ""
+
+#: versememo.shtmlitalicmenuitem
+msgctxt "versememo.shtmlitalicmenuitem"
+msgid "Italic (<i>)"
+msgstr ""
+
+#: versememo.shtmlunderlinemenuitem
+msgctxt "versememo.shtmlunderlinemenuitem"
+msgid "Underline (<u>)"
+msgstr ""
+
+#: versememo.sfontsizedecreasebutton
+msgctxt "versememo.sfontsizedecreasebutton"
+msgid "A−"
+msgstr ""
+
+#: versememo.sfontsizeincreasebutton
+msgctxt "versememo.sfontsizeincreasebutton"
+msgid "A+"
+msgstr ""
+
+#: versememo.stitlebutton
+msgctxt "versememo.stitlebutton"
+msgid "T▾"
+msgstr ""
+
+#: versememo.stranslatornotebutton
+msgctxt "versememo.stranslatornotebutton"
+msgid "N¹"
+msgstr ""
+
+#: versememo.srawmodebutton
+msgctxt "versememo.srawmodebutton"
+msgid "Raw"
+msgstr ""
+
+#: versememo.svisualmodebutton
+msgctxt "versememo.svisualmodebutton"
+msgid "Visual"
+msgstr ""
+
+#: versememo.saddedwordshint
+msgctxt "versememo.saddedwordshint"
+msgid "Added words: apply or remove italic formatting (Ctrl+I)"
+msgstr ""
+
+#: versememo.sjesuswordshint
+msgctxt "versememo.sjesuswordshint"
+msgid "Words of Jesus: apply or remove red formatting (Ctrl+J)"
+msgstr ""
+
+#: versememo.soldtestamentquotehint
+msgctxt "versememo.soldtestamentquotehint"
+msgid "Old Testament quotation: apply or remove bold formatting (Ctrl+O)"
+msgstr ""
+
+#: versememo.sunderlinehint
+msgctxt "versememo.sunderlinehint"
+msgid "Underline: apply or remove underlining"
+msgstr ""
+
+#: versememo.sstrikethroughhint
+msgctxt "versememo.sstrikethroughhint"
+msgid "Strikethrough: apply or remove strikethrough (Ctrl+Shift+S)"
+msgstr ""
+
+#: versememo.ssuperscripthint
+msgctxt "versememo.ssuperscripthint"
+msgid "Superscript: apply or remove superscript (Ctrl+Shift+=)"
+msgstr ""
+
+#: versememo.ssubscripthint
+msgctxt "versememo.ssubscripthint"
+msgid "Subscript: apply or remove subscript (Ctrl+=)"
+msgstr ""
+
+#: versememo.shtmlformathint
+msgctxt "versememo.shtmlformathint"
+msgid "HTML bold, italic or underline"
+msgstr ""
+
+#: versememo.sfontsizedecreasehint
+msgctxt "versememo.sfontsizedecreasehint"
+msgid "Decrease relative font size (Ctrl+Shift+,)"
+msgstr ""
+
+#: versememo.sfontsizeincreasehint
+msgctxt "versememo.sfontsizeincreasehint"
+msgid "Increase relative font size (Ctrl+Shift+.)"
+msgstr ""
+
+#: versememo.sfontcolorhint
+msgctxt "versememo.sfontcolorhint"
+msgid "Font color; choose Default to remove explicit color"
+msgstr ""
+
+#: versememo.stitlehint
+msgctxt "versememo.stitlehint"
+msgid "Insert, change or remove a title"
+msgstr ""
+
+#: versememo.snewtitlelevel1
+msgctxt "versememo.snewtitlelevel1"
+msgid "New level 1 title..."
+msgstr ""
+
+#: versememo.snewtitlelevel2
+msgctxt "versememo.snewtitlelevel2"
+msgid "New level 2 title..."
+msgstr ""
+
+#: versememo.snewtitlelevel3
+msgctxt "versememo.snewtitlelevel3"
+msgid "New level 3 title..."
+msgstr ""
+
+#: versememo.schangetitlelevel1
+msgctxt "versememo.schangetitlelevel1"
+msgid "Change to level 1"
+msgstr ""
+
+#: versememo.schangetitlelevel2
+msgctxt "versememo.schangetitlelevel2"
+msgid "Change to level 2"
+msgstr ""
+
+#: versememo.schangetitlelevel3
+msgctxt "versememo.schangetitlelevel3"
+msgid "Change to level 3"
+msgstr ""
+
+#: versememo.sremovetitle
+msgctxt "versememo.sremovetitle"
+msgid "Remove title"
+msgstr ""
+
+#: versememo.sinserttitledialogtitle
+msgctxt "versememo.sinserttitledialogtitle"
+msgid "Insert title"
+msgstr ""
+
+#: versememo.sinserttitleprompt
+msgctxt "versememo.sinserttitleprompt"
+msgid "Title text:"
+msgstr ""
+
+#: versememo.stitleediterrortitle
+msgctxt "versememo.stitleediterrortitle"
+msgid "Title edit error"
+msgstr ""
+
+#: versememo.stitleediterror
+msgctxt "versememo.stitleediterror"
+msgid "The title could not be changed at this position."
+msgstr ""
+
+#: versememo.stranslatornotehint
+msgctxt "versememo.stranslatornotehint"
+msgid "Insert translator note at the caret (Ctrl+Shift+N)"
+msgstr ""
+
+#: versememo.srawmodehint
+msgctxt "versememo.srawmodehint"
+msgid "Switch between semantic editing and the raw ONT fallback"
+msgstr ""
+
+#: versememo.slinebreaksineditortitle
+msgctxt "versememo.slinebreaksineditortitle"
+msgid "Edit error"
+msgstr ""
+
+#: versememo.slinebreaksineditor
+msgctxt "versememo.slinebreaksineditor"
+msgid "A verse cannot contain line breaks. Remove line breaks before saving."
+msgstr ""
+
+#: versememo.seditapplyfailed
+msgctxt "versememo.seditapplyfailed"
+msgid "The edit could not be applied"
+msgstr ""
+
+#: versememo.sprotectedlexicalobjectschanged
+msgctxt "versememo.sprotectedlexicalobjectschanged"
+msgid "Strong and morphology data are protected in this editing cycle"
+msgstr ""
+
+#: versememo.stranslatornotenotfound
+msgctxt "versememo.stranslatornotenotfound"
+msgid "The translator note could not be located in the current verse."
+msgstr ""
+
+#: commentsview.seditorialcommentstitle
+msgctxt "commentsview.seditorialcommentstitle"
+msgid "Editorial comments"
 msgstr ""

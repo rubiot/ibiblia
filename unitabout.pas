@@ -27,6 +27,7 @@ type
     procedure ButtonCloseClick(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure Label3Click(Sender: TObject);
+    procedure LabelContributorClick(Sender: TObject);
     procedure LabelRubioURLClick(Sender: TObject);
   public
     constructor Create(AOwner: TComponent); override;
@@ -104,56 +105,254 @@ implementation
 {$R *.lfm}
 
 const
-  GUIDE_TOPIC_COUNT = 9;
+  GUIDE_TOPIC_COUNT = 12;
 
   CHANGELOG_TEXT =
-    'iBiblia Version 1.0.1.040 (64-bit Edition)' + sLineBreak +
-    'Release Date: 2026-10-28' + sLineBreak +
-    '==========================================' + sLineBreak + sLineBreak +
-    'NEW FEATURES & UPDATES (v1.0.1.040):' + sLineBreak +
-    '  * Upstream v1.1.0 Reliability & Workflow Improvements (Non-Destructive Integration):' + sLineBreak +
-    '    - Export Modules While Open in theWord: Staged file publishing with automatic shared-stream overwrite fallback and byte-backup rollback allows exporting .ont/.ot/.nt and .dct.twm modules while open in theWord.' + sLineBreak +
-    '    - Safe Project "Save As..." (File > Save as... / Ctrl+Shift+S): Commits active work, stages a transactionally clean .bib copy, updates Recent Projects (MRU), and switches to the new project.' + sLineBreak +
-    '    - Per-Project Remembered Export Destinations: Automatically remembers and pre-populates separate export paths per project for Tagged Destination, Interlinear, Analytical/Synthetic Concordance (.dct.twm), and all 4 Bible panels.' + sLineBreak +
-    '    - Smart Apostrophe Variant Matching: Normalizes curly/typographic apostrophes (U+2019, U+2018, U+02BC, etc.) to straight single quotes across word associations, suggestions, and smart reload diffs.' + sLineBreak +
-    '    - Active Translation Highlight in Translation Memory: Highlights the current verse''s associated translation ([current]) inside the Translation Memory popup list.' + sLineBreak +
-    '    - Automatic Pruning of Empty Formatting Tags: Strips empty wrapper tags (<FI><Fi>, <FR><Fr>, <FO><Fo>, <b></b>, <TS1><Ts>, etc.) left behind after deleting text in Edit Mode.' + sLineBreak +
-    '    - 2026 Book Module Guide Uncompressed BLOB Concordance Export: Stores uncompressed RTF BLOB data and complete config metadata in exported .dct.twm concordances.' + sLineBreak +
-    '    - Fixed reversed Pos() check in ExportarTextoDestinoComStrongs so <_MORPH_> is only appended when verse 1 has no existing tags.' + sLineBreak +
-    '  * Context Panel Shows Unassociated Destination Words as Italics on File Save:' + sLineBreak +
-    '    - Saving the project (Ctrl+S / File > Save) automatically renders unassociated words in the Destination tab of the Context Panel in italics (<FI>...<Fi>).' + sLineBreak +
-    '  * Restored "Sync theWord to iBiblia verse" (v1.0.1.033):' + sLineBreak +
-    '    - Fixed WM_COPYDATA verse broadcast and bidirectional loop guard so navigating in iBiblia immediately syncs theWord 7.' + sLineBreak +
-    '  * Interactive Floating "New Features User Guide" Window (Help > New Features User Guide... / F1):' + sLineBreak +
-    '    - Dedicated modeless floating window collating all new features introduced since v1.0.0.71.' + sLineBreak +
-    '    - Includes 8 custom-drawn visual diagrams/illustrations and step-by-step instructions.' + sLineBreak +
-    '  * Mouse Wheel Word Selection in Source Text & Multi-Word Ctrl+Shift Association:' + sLineBreak +
-    '    - Scroll Up selects words to the left and Scroll Down selects words to the right one by one in the Source text panel whenever the mouse cursor is inside either the Source text panel or the Destination text panel.' + sLineBreak +
-    '    - Full Ctrl+Shift multi-word selection across both Source and Destination panels for associating multiple words simultaneously.' + sLineBreak +
-    '  * Export Error Remediation & Self-Healing Association Integrity:' + sLineBreak +
-    '    - Automatically detects and repairs misplaced pare_pares records on project open and export.' + sLineBreak +
-    '    - Added FLoadedVerseID tracking, reference-counted StartScrollingSession/FinishScrollingSession, and tree selection guards.' + sLineBreak +
-    '  * Hover-Only Verse Navigation Chevron Arrows Across All 4 Bibles:' + sLineBreak +
-    '    - Verse navigation chevron arrows (< >) appear exclusively inside the Bible panel currently hovered by the mouse cursor.' + sLineBreak +
-    '  * Automatic Next Unassociated Source Word Selection on Ctrl+Shift Release:' + sLineBreak +
-    '    - Releasing Ctrl+Shift after associating Destination words automatically highlights the next unassociated word in the Source text.' + sLineBreak +
+    'iBiblia Version 1.1.0.001 (64-bit Edition)' + sLineBreak +
+    'Release Date: 2026-11-04' + sLineBreak +
+    '==========================================' + sLineBreak +
+    '' + sLineBreak +
+    '1.1.0.001 (2026-11-04)' + sLineBreak +
+    '	* [C] Fixed Dictionary Popup size persistence across application restarts (FormDictionaryPopup.pas).' + sLineBreak +
+    '	* [C] Restored Module Properties memo height (at least 5 lines high, overlaying the Bible panel instead of being compressed below DirectWriteView) when Properties is checked (formprincipal.pas).' + sLineBreak +
+    '	* [C] Made individual Bible bottom toolbars (Name caption, status radio circles, Edit, and Properties) appear on mouse hover in sync with the per-panel chevron navigation arrows (formprincipal.pas).' + sLineBreak +
+    '	* [N] Added 3 top bar menu icon size options (Small 16px, Medium 22px, Large 28px) in View > Toolbar icon size and Tools > Preferences (ui_icons.pas, FormApplicationPreferences.pas, formprincipal.pas).' + sLineBreak +
+    '	* [C] Fixed skin theme rendering on the dropdown arrow sections of split toolbar buttons (ToolButton6 and FTheWordToolButton) across all themes (unitskins.pas).' + sLineBreak +
+    '	* [C] Fixed Main Bible Tree status synchronization with the Destination panel 4 radio buttons status during word association, AI/statistical suggestions, and verse edits (Project.pas, formprincipal.pas).' + sLineBreak +
+    '	* [C] Moved the realtime Saved / Unsaved changes status indicator to the bottom-left corner of the bottom status bar directly below the status summary box (formprincipal.pas, unitskins.pas).' + sLineBreak +
+    '	* [N] Updated the New Features Guide (Shift+F1) with dedicated illustrated sections for all iBiblia 1.1.0.0 features (unitabout.pas, FormNewFeaturesGuide.pas).' + sLineBreak +
+    '' + sLineBreak +
+    '1.1.0.0 (2026-11-03)' + sLineBreak +
+    '	* [N] Merged iBiblia 1.1.0 with the 1.0.1.055 64-bit edition features.' + sLineBreak +
+    '	* [N] Visual WYSIWYG and Raw ONT verse editor with titles, added words, Words of Jesus, OT quotations, font colors, relative font sizes, and rich translator notes with hover previews.' + sLineBreak +
+    '	* [N] Bidirectional rendering and Unicode selection for mixed Hebrew, Greek, and translated text.' + sLineBreak +
+    '	* [N] Translation memory comparison with highlighted verse occurrences and hover previews.' + sLineBreak +
+    '	* [N] Guided project creation wizard, customizable verse statuses, contextual guide, and Save As (.bib copy).' + sLineBreak +
+    '	* [N] Experimental AI translation and association flows with batch review and Windows local secure credential storage.' + sLineBreak +
+    '	* [C] Theme-aware verse editing interface, word selection/highlighting contrast, chapter scrollbar theming, multi-direction dictionary popup positioning, short.title panel captions, and Project Settings Default Dictionaries toggle.' + sLineBreak +
+    '' + sLineBreak +
+    '1.0.1.055 (2026-11-03)' + sLineBreak +
+    '	* [C] Fixed Access Violation on application exit in TGerSugestoes.Destruir (sugestao.pas) by detaching FConnTmp.Transaction := nil and FConnVerbos.Transaction := nil before freeing the TSQLTransaction instances (preventing TDatabase.SetTransaction from dereferencing freed transaction objects) and safely closing/unpreparing/detaching all 15 TSQLQuery instances.' + sLineBreak +
+    '	* [C] Fixed Access Violation on application exit in TFrmApplyPatch.FormDestroy (formapplypatch.pas) and TVersiculo.Destruir (versiculo.pas) by adding destructor Destroy; override; to TVersiculo, TMemoVersiculo, and TProjeto, and clearing FPanel.OnResize before freeing FSintagmas and child panels so destroying ScrollBoxSrcText/ScrollBoxDstText never triggers OnResize on freed TVersiculo instances.' + sLineBreak +
+    '	* [C] Fixed use-after-free in TFrmPrincipal.ActionFecharProjetoExecute (formprincipal.pas) and TChapterView (chapterview.pas) by detaching FChapterView.Project := nil before destroying ProjetoAtual, removing premature project unsubscription from TChapterView.SetEnabled, and detaching FRawMemo.Parent := nil before freeing FRawMemo.' + sLineBreak +
+    '	* [C] Hardened TProjeto.Fechar, TProjeto.Destruir, and TProjeto.LiberarObjetoQuery (projeto.pas), stopped TwSyncThread on exit, guarded HandleAllocated before reading .Handle in TFrmPrincipal.FormDestroy, TFrmExportarProjeto.FormDestroy, and Unhook*Control, and added WM_NCDESTROY/WM_DESTROY auto-unhooking and ApplicationShuttingDown guards across all Win32 SubclassProcs (unitskins.pas, formprincipal.pas, formexportar.pas).' + sLineBreak +
+    '' + sLineBreak +
+    '1.0.1.054 (2026-10-31)' + sLineBreak +
+    '	* [C] Fixed empty even-numbered verses when loading theWord (.ont/.ot/.nt) or USFM (.usfm/.sfm) modules with CR-CR-LF (\r\r\n / $0D$0D$0A) line endings (such as LXX Brenton+, LXX Rahlfs+, and SweteLXX+) by normalizing #13#13 to #13 in LoadModuleLinesNormalized (projeto.pas) and LoadUSFMFile/ImportUSFMBible (myswordmodule.pas), and sanitizing CR/LF in ExportTheWordBible.' + sLineBreak +
+    '	* [C] Updated TFrmEscolherVerseRules.AddVerseRule (formverserules.pas) to leave display/hyperlink verse.rule entries (_ORIGWORD_, _NOLINK_, <NB, <ST, <sup>, <font) unchecked by default on import, and updated TONTParser.ParseLine (ontparser.pas) to treat <NB...<Nb> and <ST...<St> blocks as metadata.' + sLineBreak +
+    '	* [C] Updated EnsureTanglawSyncBridge (twAutomate.pas) to auto-patch src/lib/theword.js and src/lib/modprops.js inside installed Tanglaw app.asar archives so CR-CR-LF (.ot/.ont/.nt) modules load with zero empty even verses.' + sLineBreak +
+    '' + sLineBreak +
+    '1.0.1.053 (2026-10-31)' + sLineBreak +
+    '	* [C] Added LazUTF8 to the interface uses clause of projeto.pas for UTF8LowerCase resolution and converted TGerSugestoes.Destruir to a procedure invoked by destructor Destroy; override; in sugestao.pas.' + sLineBreak +
+    '' + sLineBreak +
+    '1.0.1.052 (2026-10-31)' + sLineBreak +
+    '	* [C] Fixed association persistence across application restarts for Tokenizer V1 projects (such as Gospels-Ed.bib) by loading TTokenizerFactory.PreferredVersion immediately after FTblInfo.Open before HealMisplacedPairsInDatabase runs.' + sLineBreak +
+    '	* [C] Restricted HealMisplacedPairsInDatabase so it never clears valid associations on startup, added lossless V1/V2 tokenizer pair remapping in PosRolagemVersiculo, and added automatic recovery of wiped verses from association_memory_occurrences.' + sLineBreak +
+    '	* [C] Fixed SQLite multi-connection lock contention between TGerSugestoes and TSqlite3Dataset by closing all SELECT cursors after reads, flushing TGerSugestoes transactions prior to ApplyUpdates, overriding TGerSugestoes.Destroy, and executing SalvarPares before SalvarAssociacoes.' + sLineBreak +
+    '' + sLineBreak +
+    '1.0.1.051 (2026-10-31):' + sLineBreak +
+    ' * Removed word/dictionary lookup synchronization between iBiblia and Tanglaw Bible while preserving full bidirectional verse synchronization ("Sync Tanglaw to iBiblia verse" and "Sync iBiblia to Tanglaw verse") and all Tanglaw UI size, window bounds, dock splitter, and panel zoom persistence fixes.' + sLineBreak +
+    ' * Reverted QuandoPalavraClicada in formprincipal.pas to sync word/dictionary lookups exclusively with theWord, and removed LookupExternalWordOrStrong / SyncTanglawWordLookup across projeto.pas, formprincipal.pas, twsyncthread.pas, and twAutomate.pas.' + sLineBreak +
+    ' * Updated EnsureTanglawSyncBridge in twAutomate.pas and Tanglaw-Bible-0.5.5-Windows-Installer.zip so Tanglaw syncs verses only and persists all UI/window sizes across restarts.' + sLineBreak +
+    '' + sLineBreak +
+    '1.0.1.050 (2026-10-31):' + sLineBreak +
+    ' * Fixed Tanglaw Bible UI size, window bounds, dock layout splitters, and per-panel zoom persistence across application restarts.' + sLineBreak +
+    ' * Added windowBounds & guideWindowBounds persistence (width, height, x, y, maximized, fullScreen with multi-monitor workArea clamping), atomic saveSettings() writes, and deep-merged settings:set in Tanglaw src/main.js.' + sLineBreak +
+    ' * Updated Tanglaw options.js, app.js, dock.js, modules.js, workbench.css, style.css, and index.html so Menus & Panels UI size (--ui-size up to 22 px, including Ctrl+MouseWheel over toolbars/captions), Bible view zoom, all 10 docked panel zooms, and dock splitter drags persist across restarts.' + sLineBreak +
+    ' * Updated EnsureTanglawSyncBridge and SyncTanglawVerse in twAutomate.pas to auto-upgrade installed Tanglaw app.asar archives with UI size persistence and eliminate concurrent settings.json file-write races while Tanglaw is running.' + sLineBreak +
+    '' + sLineBreak +
+    '1.0.1.049 (2026-10-31):' + sLineBreak +
+    ' * Added bidirectional Tanglaw Bible verse and word/dictionary lookup synchronization under Options ("Sync Tanglaw to iBiblia verse" and "Sync iBiblia to Tanglaw verse") across twAutomate.pas, twsyncthread.pas, projeto.pas, formprincipal.pas, formprincipal.lfm, and languages/*.po.' + sLineBreak +
+    ' * Added SyncTanglawVerse, SyncTanglawWordLookup, GetTanglawCurrentRef, MapIBibliaBookToTanglaw, TanglawBookIDToName, and EnsureTanglawSyncBridge in twAutomate.pas, supporting all 66 canonical books and 21 Apocrypha/Deuterocanonical books (including Daniel 13-14 and Psalms 151 mapping).' + sLineBreak +
+    ' * Added ResolveTanglawRefToProjectRef and LookupExternalWordOrStrong in projeto.pas so clicking/hovering words in iBiblia opens their Strong''s, Morphology, Lemma, and Word Dictionary entries in Tanglaw''s Lookup panel, and clicking words/tags in Tanglaw highlights the matching word in iBiblia and opens iBiblia''s dictionary popup.' + sLineBreak +
+    '' + sLineBreak +
+    '1.0.1.048 (2026-10-30):' + sLineBreak +
+    ' * Updated all changelogs (Histórico.txt, historico.txt, Help > About > Changelog, Help > New Features User Guide, and README.md) to document USFM (.usfm, .sfm) & USFX (.usfx, .xml) Bible import/export, e-Sword Apocrypha OT books & Deuterocanonical chapters in the Bible Books Tree, non-encrypted e-Sword (.bblx, .bbli, .bbl) import/export, auto-save on selecting "Associated", and Context Panel popup dictionary inheritance.' + sLineBreak +
+    '' + sLineBreak +
+    '1.0.1.047 (2026-10-30):' + sLineBreak +
+    ' * Added full import and export support for USFM 2.x/3.0 (.usfm, .sfm) and USFX XML (.usfx, .xml) Bible files in myswordmodule.pas (LoadUSFMBibleWithApocrypha, LoadUSFXBibleWithApocrypha, ExportUSFMBible, ExportUSFXBible, ConvertONTToUSFM, ConvertONTToUSFX, USFMBookCodeToID, BookIDToUSFMCode), modeled on Simple Bible Reader (USFXBibleFormat / TheWordBibleFormat) and the eBible.org USFX specification.' + sLineBreak +
+    ' * Added automatic multi-file USFM directory detection: selecting any single .usfm/.sfm book file in a folder automatically loads all sibling .usfm/.sfm book files into the project across all 66 canonical books (GEN-REV) and 21 Apocrypha / Deuterocanonical 3-letter book codes (1ES, 2ES, TOB, JDT, 1MA-4MA, MAN, WIS, SIR, BAR, LJE, S3Y, SUS, BEL, ESG, PS2, PSS, ODE, LAO, plus DAG Daniel 1-14).' + sLineBreak +
+    ' * Preserves Strongs numbers, morphology tags, and lemmas (\w word|lemma="..." strong="..." x-morph="..."\w* and <w s="..." m="..." l="...">), Words of Jesus (\wj / <wj>), added/italic words (\add / <add>), bold (\bd / <bd>), section headings (\s1 / <s>), and footnotes (\f / <f>).' + sLineBreak +
+    ' * Integrated USFM and USFX file filters and import/export handlers across formnovoprojeto.pas, formpropprojeto.pas, formexportar.pas, and projeto.pas.' + sLineBreak +
+    '' + sLineBreak +
+    '1.0.1.046 (2026-10-29):' + sLineBreak +
+    ' * Fixed missing leading single quote on line 114 of CHANGELOG_TEXT in unitabout.pas and added Stage 17 Pascal string literal quote audit to audit_full_build.py.' + sLineBreak +
+    '' + sLineBreak +
+    '1.0.1.045 (2026-10-29):' + sLineBreak +
+    ' * Added full support for Apocrypha / Deuterocanonical Old Testament books (Book >= 67: 1 Esdras, 2 Esdras, Tobit, Judith, 1-4 Maccabees, Prayer of Manasseh, Wisdom, Sirach, Baruch, Letter of Jeremiah, Prayer of Azariah, Susanna, Bel and the Dragon, Psalm 151, Psalms of Solomon, Odes, Laodiceans) and extra Deuterocanonical chapters in canonical OT books (Daniel 13-14, Psalms 151, Esther 11-16).' + sLineBreak +
+    ' * Added LoadESwordBibleWithApocrypha and IdentifyApocryphaBookName in myswordmodule.pas to distinguish 12-book (67..78) and 16/19-book (67..86) e-Sword Apocrypha numbering schemes and backfill the 57 canonical KJV verses omitted by kjva.bbli.' + sLineBreak +
+    ' * Added RebuildBookStructure, EnsureExtraVersesInDatabase, SyncESwordApocryphaIfNeeded, GetBookName, GetBookChapterCount, GetChapterVerseCount, and GetAdjacentChapter in projeto.pas so Apocrypha OT books appear right after Malachi at the end of the Old Testament in the Bible Books Tree (FArvore), Context Panel (chapterview.pas), and Project Search.' + sLineBreak +
+    '' + sLineBreak +
+    '1.0.1.044 (2026-10-29):' + sLineBreak +
+    ' * Fixed TChapterView.GetWordInfoAt in chapterview.pas to use KControls 1.7.3 TKMemo.PointToIndex and Blocks.IndexToBlockIndex instead of PointToBlock/BlockToRect.' + sLineBreak +
+    '' + sLineBreak +
+    '1.0.1.043 (2026-10-29):' + sLineBreak +
+    ' * Fixed FPC 3.2.2 SQLdb TSQLQuery preparation in TESwordModule.Create (myswordmodule.pas) by removing non-existent ParamsCheck property and initializing the RTF state stack.' + sLineBreak +
+    '' + sLineBreak +
+    '1.0.1.042 (2026-10-29):' + sLineBreak +
+    ' * Added full import and export support for all non-encrypted e-Sword Bible files (.bblx RTF, .bbli HTML, and SQLite .bbl).' + sLineBreak +
+    ' * Added TESwordModule in myswordmodule.pas with complete e-Sword RTF-to-ONT, HTML-to-ONT, ONT-to-RTF (.bblx Version 2), and ONT-to-HTML (.bbli Version 4) conversion covering Strong''s tags, TVM/Robinson morphology, Words of Christ in red, italics, bold, underline, headings, footnotes, and Unicode escapes.' + sLineBreak +
+    ' * Integrated e-Sword Bible import into New Project (formnovoprojeto.pas) and Project Properties (formpropprojeto.pas) with automatic OT/NT/Whole-Bible scope detection and encrypted-module detection.' + sLineBreak +
+    ' * Integrated e-Sword .bblx and .bbli export into File > Export (formexportar.pas) for both Tagged Destination and Interlinear Bibles, as well as each panel''s right-click "Export as Bible module..." menu (projeto.pas).' + sLineBreak +
+    '' + sLineBreak +
+    '1.0.1.041 (2026-10-29):' + sLineBreak +
+    ' * Added automatic project save trigger when selecting the "Associated" radio button (via RadioGroupStatus, the Destination verse status bar circle, or keyboard shortcut ''4'').' + sLineBreak +
+    ' * Enabled the Context Panel (TChapterView) to inherit and display the popup dictionary (Strong''s, Morphology, Translation Memory, and English Dictionary fallback) for associated/linked words between the Source and Destination panels (including multi-word phrase associations and Interlinear/Intralinear views).' + sLineBreak +
+    '' + sLineBreak +
+    'Version 1.0.1.040 (64-bit Edition) - 2026-10-29' + sLineBreak +
+    '- Fixed "Sync theWord to iBiblia verse" (`WM_COPYDATA` verse & dictionary lookup broadcast on 64-bit Windows):' + sLineBreak +
+    '  * Resolved 64-bit struct packing collision where `LCLType.TCopyDataStruct` (`packed record`, 20 bytes on Win64 with `lpData` at offset 12) shadowed `Windows.TCopyDataStruct` (24 bytes on Win64 with 4-byte C-ABI alignment padding and `lpData` at offset 16), causing the 64-bit Windows kernel to reject `WM_COPYDATA` messages sent to theWord.' + sLineBreak +
+    '  * Added explicit `TTWCopyDataStruct` with `{$IFDEF CPU64} ReservedPadding: DWORD; {$ENDIF}` and `TWAutomateUtils.BroadcastCopyDataToTheWord` in `twAutomate.pas` + `formprincipal.pas`.' + sLineBreak +
+    '  * Prioritized `TW_MAINFORM_CLASSNAME` (`.UnicodeClass`) in `TWAutomateUtils.IsTwRunning` and added `FNavigatingVerse` re-entrancy guards in `ActionVersoPrimeiroExecute` and `ActionVersoAnteriorFiltradoExecute`.' + sLineBreak +
+    '  * Added Stage 12 static verification check in `audit_full_build.py` to prevent `LCLType.TCopyDataStruct` shadowing.' + sLineBreak +
+    '' + sLineBreak +
+    'Version 1.0.1.038 (64-bit Edition) - 2026-10-28' + sLineBreak +
+    '- Integrated upstream v1.1.0 reliability & workflow improvements while preserving all v1.0.0.70–v1.0.1.034 features:' + sLineBreak +
+    '  * Export Bible (.ont/.ot/.nt) and Concordance (.dct.twm) modules while open in theWord via staged publishing + shared-stream overwrite fallback (`PublishStagedFile`).' + sLineBreak +
+    '  * Implemented safe Project "Save As..." (`File > Save as...` / `Ctrl+Shift+S` / Toolbar button) with transactional staging and MRU update.' + sLineBreak +
+    '  * Added per-project remembered export paths for Tagged Destination, Interlinear, Analytical/Synthetic Concordance (`.dct.twm`), and all 4 Bible panels.' + sLineBreak +
+    '  * Added apostrophe variant normalization (`NormalizeApostrophes`) across word associations, statistical suggestions, and smart reload word-diff checks.' + sLineBreak +
+    '  * Highlighted the active verse''s current translation (`[current]`) inside the Translation Memory popup list.' + sLineBreak +
+    '  * Added `TMemoVersiculo.PruneEmptyFormattingTags` to automatically remove empty wrapper tags after text deletion in the verse editor.' + sLineBreak +
+    '  * Updated `TTheWordDictionary` (`.dct.twm`) to store uncompressed `BLOB` `content.data` and required 2026 Book Module Developer Guide metadata.' + sLineBreak +
+    '  * Fixed reversed `Pos()` arguments in `TProjeto.ExportarTextoDestinoComStrongs` and fixed `FQryTranslationMemory` / `TMySwordModule` memory leaks.' + sLineBreak +
+    '' + sLineBreak +
+    'v1.0.1.034 (2026-10-28)' + sLineBreak +
+    '  * Context Panel: Unassociated Destination text words automatically render in italics (<FI>...<Fi>) upon file save (Ctrl+S / File > Save).' + sLineBreak +
+    '  * User Guide & README: Added visual illustration and documentation for Context Panel unassociated Destination words in italics on save.' + sLineBreak +
+    '' + sLineBreak +
+    '1.0.1.033 (2026-10-28):' + sLineBreak +
+    ' * Fixed "Sync theWord to iBiblia verse": restored FArvore.OnChange in TProjeto.FiltrarArvore(-1), suppressed re-entrant filter/status events during verse loading, restored all 4 official theWord 6/7 window classes in TWAutomateUtils.IsTwRunning with strict EnumWindows filtering, and fixed 64-bit buffer bounds in SyncTheWordDict.' + sLineBreak +
+    '' + sLineBreak +
+    'Version 1.0.1.032 (64-bit Edition) - 2026-10-27 20:47' + sLineBreak +
+    '* Fixed TFontStyles set assignment in DrawBadge (unitabout.pas line 1130: replaced IfThen(BoldFont, [fsBold], []) with if BoldFont then C.Font.Style := [fsBold] else C.Font.Style := []).' + sLineBreak +
+    '' + sLineBreak +
+    'Version 1.0.1.031 (64-bit Edition) - 2026-10-27 20:26' + sLineBreak +
+    '* Added dedicated floating "New Features User Guide" window with interactive visual illustrations under Help > New Features User Guide... (F1) above About... (unitabout.pas, formprincipal.pas, formprincipal.lfm):' + sLineBreak +
+    '  - Collates all new features (excluding bug fixes) introduced since v1.0.0.71 into 7 structured feature topics plus a complete combined reference:' + sLineBreak +
+    '    1. Mouse Wheel Source Word Selection & Ctrl+Shift Multi-Word Association' + sLineBreak +
+    '    2. Southeast Cursor Dictionary Popup & 4-Slot Default Dictionaries (including English Word .dct.twm & compressed=1 support)' + sLineBreak +
+    '    3. In-Verse Controls: Hover-Only Navigation Chevrons (< >), 4-Color Status Circles & Edit/Properties Checkboxes' + sLineBreak +
+    '    4. Shared Master Formatting Ribbon, Floating Selection Mini-Toolbar & Live Context Panel Preview' + sLineBreak +
+    '    5. Real-Time Text-to-Speech (TTS) Hover Reader (Greek, Hebrew & English OneCore/SAPI5 voices)' + sLineBreak +
+    '    6. Dark Mode UI & 7 theWord Color Themes (Classic, theWord Dark, Night, Sepia, Slate, Solarized Dark, High Contrast)' + sLineBreak +
+    '    7. Complete Bible Module Export (.ont/.ot/.nt), Smart Reload "Needs Review" Diff & Concurrent Bidirectional theWord 7 Sync' + sLineBreak +
+    '    8. Complete Quick-Reference Summary of All New Features & Keyboard/Mouse Shortcuts' + sLineBreak +
+    '  - Features a custom-drawn visual diagram canvas (TPaintBox) at the top of each topic illustrating how to use the feature, full theme synchronization across all 7 skins, Copy Guide button, and modeless floating behavior so users can keep the guide open while working in iBiblia.' + sLineBreak +
+    '' + sLineBreak +
+    'Version 1.0.1.030 (64-bit Edition) - 2026-10-27 20:06' + sLineBreak +
+    '* Fixed compilation error in versiculo.pas ("Identifier not found GetKeyState" at lines 2153-2154) by adding LCLIntf to the uses clause and using Shift * [ssCtrl, ssShift, ssAlt] in TVersiculo.OnMouseWheel.' + sLineBreak +
+    '' + sLineBreak +
+    'Version 1.0.1.029 (64-bit Edition) - 2026-10-27 19:55' + sLineBreak +
+    '* Restored Ctrl+Shift multi-word selection for association tasks alongside mouse wheel word selection (syntagm.pas, versiculo.pas, projeto.pas):' + sLineBreak +
+    '  - Removed the selection-clearing check in TSyntagm.DoOnLeftClick that prevented selecting multiple words simultaneously while holding Ctrl+Shift.' + sLineBreak +
+    '  - Added modifier key guards (Ctrl, Shift, Alt) in TVersiculo.OnMouseWheel and TProjeto.HandleMouseWheelForSourceWords so accidental scroll wheel movement while holding Ctrl+Shift never clears active multi-word selections.' + sLineBreak +
+    '' + sLineBreak +
+    'Version 1.0.1.028 (64-bit Edition) - 2026-10-27 19:36' + sLineBreak +
+    '* Added mouse wheel / scroll word selection in the Source text panel (versiculo.pas, syntagm.pas, projeto.pas, chapterview.pas, formprincipal.pas):' + sLineBreak +
+    '  - Scrolling up (WheelDelta > 0) selects words in the Source text to the left one by one, and scrolling down (WheelDelta < 0) selects words in the Source text to the right one by one.' + sLineBreak +
+    '  - Works seamlessly whenever the mouse cursor is hovering inside either the Source text panel (ScrollBoxSrcVerse) or the Destination text panel (ScrollBoxDstVerse), regardless of which control currently holds keyboard focus.' + sLineBreak +
+    '  - Automatically scrolls the selected Source word into view, highlights any associated Destination word pairs, updates Strong''s highlights across all panels, and updates the active dictionary popup.' + sLineBreak +
+    '' + sLineBreak +
+    'Version 1.0.1.027 (64-bit Edition) - 2026-10-27 16:38' + sLineBreak +
+    '* Fixed export errors ("Invalid syntagm index: 18" on Genesis 1:1 reported under the last viewed reference "1 Kings 1:2") and added automatic database self-healing (versiculo.pas, projeto.pas, formprincipal.pas):' + sLineBreak +
+    '  - Root Cause Identified: In export-errors.txt, row ''1,1,1'' (Genesis 1:1, 21 tokens) contained the pare_pares string of Genesis 41:32 (''1,41,32'', 50 tokens up to <par a="49" b="60">), which was written into ''1,1,1'' when FTblPares moved to the first row without updating FAVersiculo, and FormattedReference printed ''1 Kings 1:2'' because FReference was not updated while FScrollEventsEnabled = False during export.' + sLineBreak +
+    '  - Added TVersiculo.AreParesValidForVerse (versiculo.pas) and TProjeto.HealMisplacedPairsInDatabase (projeto.pas), executed automatically on TProjeto.Abrir and before all Export operations, to detect any misplaced pare_pares on ''1,1,1'' (or any row), restore Genesis 41:32''s pairs to ''1,41,32'' if unassociated, and clean the invalid pare_pares from ''1,1,1'' so exports complete with zero errors.' + sLineBreak +
+    '  - Added FLoadedVerseID verification in PreRolagemVersiculo, SalvarPares, and SalvarTexto, reference-counted FScrollingSessionDepth in StartScrollingSession/FinishScrollingSession, FArvore.OnChange suppression in SelectTreeNode/FiltrarArvore, and ScrollEventsEnabled guard in TFrmPrincipal.SyncToTwRef so associations can never be saved to a mismatched dataset row.' + sLineBreak +
+    '  - Updated TProjeto.GetFormattedReference to read FTblPares.FieldByName(''pare_id'') when FScrollEventsEnabled is False so export diagnostics always report the true verse being processed.' + sLineBreak +
+    '' + sLineBreak +
+    'Version 1.0.1.026 (64-bit Edition) - 2026-10-27 12:23' + sLineBreak +
+    '* Made verse navigation chevron arrows (‹ ›) appear only while the mouse cursor is hovering inside the Bible panel where they belong (unitskins.pas, versiculo.pas, syntagm.pas, projeto.pas, formprincipal.pas):' + sLineBreak +
+    '  - Added IsMouseCursorInControl in unitskins.pas using GetWindowRect, WindowFromPoint, IsChild, and THintWindow tooltip awareness to determine which of the 4 Bible panels (Source, Destination, Reference 1, Reference 2) currently contains the mouse cursor.' + sLineBreak +
+    '  - Added FMouseInPanel, UpdateNavHoverState, and an on-demand 40ms FNavHoverTimer in TVersiculo (versiculo.pas), hooked across FPanel, word labels (TSyntagm), FNavPanel, FTranslationPanel, FStatusBarPanel, FTabPanel, and Application.OnIdle (OnAppIdleCheckAutoSelect) so hovering inside any Bible panel immediately shows its chevron arrows while hiding chevron arrows in all other Bible panels.' + sLineBreak +
+    '' + sLineBreak +
+    'Version 1.0.1.025 (64-bit Edition) - 2026-10-27 11:57' + sLineBreak +
+    '* Fixed OnKeyUp registration in TFrmPrincipal (formprincipal.pas: replaced Application.AddOnKeyUpHandler/RemoveOnKeyUpHandler with Self.OnKeyUp := @OnAppKeyUp alongside KeyPreview = True, Application.AddOnIdleHandler, and FAutoSelectTimer).' + sLineBreak +
+    '' + sLineBreak +
+    'Version 1.0.1.024 (64-bit Edition) - 2026-10-27 11:46' + sLineBreak +
+    '* Added automatic selection of the next unassociated Source word when Ctrl+Shift keys are released after associating target words (syntagm.pas, versiculo.pas, projeto.pas, formprincipal.pas):' + sLineBreak +
+    '  - When holding Ctrl+Shift (or Shift / Ctrl+Right-Click) and clicking/highlighting one or more target words in the Destination text to associate them with the selected Source word(s), PendingAutoSelectNext is armed on the paired verses.' + sLineBreak +
+    '  - As soon as the Ctrl+Shift modifier keys are released (detected via OnAppKeyUp, OnAppIdleCheckAutoSelect, and a 30ms on-demand FAutoSelectTimer when the mouse is stationary), CompletePendingAutoSelectNext automatically clears the previous selection, highlights/selects the next unassociated word in the Source text, scrolls it into view if needed, and triggers OnClick for theWord synchronization.' + sLineBreak +
+    '' + sLineBreak +
+    'Version 1.0.1.023 (64-bit Edition) - 2026-10-27 11:30' + sLineBreak +
+    '* Unified Sepia (Parchment) skin consistency across the entire application (unitskins.pas, formprincipal.pas, formpopup.pas, bibletreeview.pas, and all secondary dialogs):' + sLineBreak +
+    '  - Added IsThemedSkin (CurrentSkin.IsDark or CurrentSkin.Id = skSepia) so the Main Menu Bar, dropdown/popup menus, toolbar, comboboxes, checkboxes, buttons, groupboxes, tab controls, non-client borders, and secondary dialogs all render using Sepia''s warm parchment palette (#F4EEDB / #E2D7C3 / #C9BC9C / #2D241E).' + sLineBreak +
+    '  - Added DrawThemedPopupMenuItem in unitskins.pas to custom-draw dropdown and context popup menu items in Sepia (warm #F4EEDB background, #E2D7C3 left gutter, #C9BC9C border & separators, #D9C289 hover bar, and #8A4E2C checkmarks/radio bullets), and updated ApplyDarkModeToWindow to call fnSetPreferredAppMode(pamForceLight) + fnFlushMenuThemes when switching out of dark skins.' + sLineBreak +
+    '  - Added OnContextTabButtonPaint in formprincipal.pas so the Source | Destination | Ref 1 | Ref 2 context tab buttons and filter navigation buttons render with Sepia HighlightBg (#D9C289), VerseNumColor (#8A4E2C) top accent bar, and dark sepia text (#2D241E) instead of dark-mode charcoal.' + sLineBreak +
+    '' + sLineBreak +
+    'Version 1.0.1.022 (64-bit Edition) - 2026-10-27 11:15' + sLineBreak +
+    '* Fixed white border lines around the 4 Bible panels (ScrollBoxSrcVerse, ScrollBoxDstVerse, ScrollBoxRef1Verse, ScrollBoxRef2Verse), TreeView1, container panels, and splitters across all themed skins (unitskins.pas, formprincipal.pas, formprincipal.lfm, versiculo.pas):' + sLineBreak +
+    '  - Added PaintControlNCBorder in unitskins.pas and hooked WM_NCPAINT, WM_PAINT, WM_SIZE, WM_WINDOWPOSCHANGED, and scroll messages in ScrollBoxSubclassProc and TreeViewSubclassProc to overpaint the 2px WS_EX_CLIENTEDGE non-client border (1px outer CurrentSkin.PanelBorder + 1px inner CurrentSkin.WindowBg / CurrentSkin.TreeBg) and the 17x17 scrollbar dead-space corner square.' + sLineBreak +
+    '  - Removed bvRaised 3D white bevels (BevelOuter := bvNone) from Panel1, CenterPanel, and BottomPanel in formprincipal.lfm and formprincipal.pas, and aligned all 4 Bible panels flush inside CenterPanel.' + sLineBreak +
+    '  - Added OnSplitterPaint in formprincipal.pas so Splitter1..Splitter6 render with CurrentSkin.PanelBorder and subtle CurrentSkin.WindowTextDim grip dots instead of white UxTheme gripper dots.' + sLineBreak +
+    '  - Updated SetControlThemeMode to always invalidate RDW_FRAME when switching between dark skins so non-client borders immediately adopt the new skin''s PanelBorder and WindowBg colors.' + sLineBreak +
+    '' + sLineBreak +
+    'Version 1.0.1.021 (64-bit Edition) - 2026-10-27 08:06' + sLineBreak +
+    '* Fixed HPEN type identifier error in DrawDarkMenuSeparator (unitskins.pas line 905: replaced undeclared HPEN with THandle) and added explicit PtrUInt pointer casts for lParam struct pointers.' + sLineBreak +
+    '' + sLineBreak +
+    'Version 1.0.1.020 (64-bit Edition) - 2026-10-27 07:58' + sLineBreak +
+    '* Fixed white outer 3px borders and white separator rows in dropdown and context popup menus in dark mode (unitskins.pas, formprincipal.pas):' + sLineBreak +
+    '  - Added thread-scoped WH_CALLWNDPROC / WH_CALLWNDPROCRET menu hooks and #32768 popup menu window subclassing (PopupMenuSubclassProc, PaintPopupMenuBorder) to overpaint the classic MNDrawFullNC 3px non-client border (1px COLOR_3DSHADOW + 2px COLOR_MENU) on WM_PRINT (with SaveDC/RestoreDC around offscreen animation bitmaps), WM_NCPAINT, WM_ERASEBKGND, and WM_PAINT using dark popup background RGB(43, 43, 43) and 1px CurrentSkin.PanelBorder.' + sLineBreak +
+    '  - Added DrawDarkMenuSeparator and PreFillDarkMenuItem to fill separator item rows (Caption = ''-'') and submenu item backgrounds with RGB(43, 43, 43) and draw a 1px horizontal divider in CurrentSkin.PanelBorder, eliminating the white/light-grey COLOR_MENU background left un-erased by LCL''s VistaMenuDraw.' + sLineBreak +
+    '' + sLineBreak +
+    '1.0.1.018' + sLineBreak +
+    '- Fixed Pascal character set literal in BuscarDefinicaoPalavraInglesNaQuery (projeto.pas lines 2217 and 2219) where backslash character literal was emitted as empty string '''' instead of ''\''.' + sLineBreak +
+    '' + sLineBreak +
+    '1.0.1.017' + sLineBreak +
+    '- Added "English Word / Bible Dictionary (*.dct.twm)" option under Default Dictionaries Settings (saved as default_english_dict / global_english_dict in iBiblia.ini).' + sLineBreak +
+    '- Added automatic mouse-hover English dictionary lookup (ObterDefinicaoPalavraIngles / BuscarDefinicaoPalavraInglesNaQuery) across all 4 Bible panels (Source, Destination, Reference 1, Reference 2) for any English word or proper name without a Strong''s number tag, including case-insensitive headword matching, possessive/inflectional stem fallbacks, and compressed/redirect topic support.' + sLineBreak +
+    '' + sLineBreak +
+    'Versão 1.0.1.016 (2026-10-26)' + sLineBreak +
+    '- Fix (unitskins.pas, formpropprojeto.pas): Fixed TTabControl dark mode rendering in Project -> Settings (Properties, TFormPropProjeto) where the internal LCL FNoteBook (TCustomTabControl) and outer TTabControl container previously overlapped double-drawn tab headers and left the entire body area below y=30 painted stark white (#F9F9F9) with unreadable light-grey labels.' + sLineBreak +
+    '- Fix (unitskins.pas): Added EditMemoSubclassProc (HookEditControl) to paint a 2px dark border (CurrentSkin.PanelBorder / WindowBg) over the white 3D WS_EX_CLIENTEDGE frame on TEdit, TLabeledEdit, and TMemo controls, and routed TCustomMemo through ''DarkMode_Explorer'' so vertical/horizontal scrollbars render in dark mode.' + sLineBreak +
+    '' + sLineBreak +
+    'Version 1.0.1.015 (64-bit Edition) - 2026-10-26' + sLineBreak +
+    '- Restored dictionary popup RTF font colors to match active skin settings (ASkin.NoteText) in AdaptRtfForSkin (formpopup.pas), fixing reddish text caused by mapping \plain / \pard / \par to \cf1 (maroon/red in dictionary color tables) instead of \cf0.' + sLineBreak +
+    '- Restored full hover dictionary popup behavior in the Source text box (projeto.pas) so hovering any word in the Source text (highlighted, unassociated, or associated) displays its dictionary popup as usual while keeping the automatic southeast popup inside the Destination panel.' + sLineBreak +
+    '' + sLineBreak +
+    'Version 1.0.1.014 (64-bit Edition) - 2026-10-26' + sLineBreak +
+    '- Fixed Hebrew Strong''s dictionary lookup in TProjeto.ObterDefinicaoStrong and TProjeto.BuscarDefinicaoStrongNaQuery so Hebrew Strong''s numbers (H-codes) strictly query the selected Hebrew Lexicon dictionary under Default Dictionaries and never fall back to converting H-codes into Greek G-codes on the Greek EPV dictionary.' + sLineBreak +
+    '- Added unpadded (H123), lowercase (h123), zero-padded (H0123, H00123), compound/prefixed (Hc/H1234), sub-entry (H1234a), topics_wordindex, subject headword prefix, and meta=_twmgc_ redirect link resolution for Hebrew and Greek Strong''s dictionary lookups.' + sLineBreak +
+    '- Fixed hover popup handling so hovering words in Reference 1 / Reference 2 or associated words displays their dictionary entry normally without interference from the Destination-panel selected-Source popup timer.' + sLineBreak +
+    '' + sLineBreak +
+    'Version 1.0.1.013 (64-bit Edition) - 2026-10-26 13:21' + sLineBreak +
+    '- Added rule for hovering associated words inside the Destination text: when the mouse pointer hovers over an already-associated word in the Destination text, the southeast selected-Source popup is temporarily disabled and the normal dictionary popup for that hovered Destination word appears under it as usual; moving off the associated word back into the Destination panel automatically resumes the southeast popup for the selected unassociated Source word.' + sLineBreak +
+    '' + sLineBreak +
+    'Version 1.0.1.012 (64-bit Edition) - 2026-10-26 13:08' + sLineBreak +
+    '- Replaced mouse-hover dictionary popup on unassociated Source words with automatic Destination-panel cursor tracking: selecting (left-clicking) an unassociated tagged Source word automatically displays its Strong''s and Morphology dictionary popup at the southeast of the mouse pointer whenever the pointer is inside the Destination text panel, and hides it when the pointer leaves the Destination panel.' + sLineBreak +
+    '- Automatic next-word popup progression: right-clicking a translated word in the Destination panel associates the current Source word, auto-selects the next unassociated Source word, and immediately updates the southeast dictionary popup in place with the newly highlighted word''s definitions and morphology codes.' + sLineBreak +
+    '- Fixed per-module Strong''s dictionary fallback for Greek Strong''s tags (G-prefix) in Old Testament books (BookID 1..39).' + sLineBreak +
+    '' + sLineBreak +
+    'Version 1.0.1.008 (64-bit Edition) - 2026-10-25' + sLineBreak +
+    '  * Fixed bitmask constant in UpdateMiniBarPosition (memoversiculo.pas lines 363-364) where $FFFF was stripped by shell expansion.' + sLineBreak +
+    '  * Includes Layout 3 Shared Master Formatting Ribbon, Floating Selection Mini-Toolbar, Return (<CI>) / Double Return (<CM>) / Shift+Return (<CL>) line-wrapping and single-line flattening, PI/PF step buttons, and live theWord Context Panel preview.' + sLineBreak +
+    '' + sLineBreak +
+    'Version 1.0.1.003 (64-bit Edition) - 2026-10-25' + sLineBreak +
+    '  * Fixed Windows.POINT typecast shadowing of Classes.Point(x, y) and PtInRect in memoversiculo.pas on Win64 FPC 3.2.2.' + sLineBreak +
+    '  * Includes Layout 3 Shared Master Formatting Ribbon, Floating Selection Mini-Toolbar, Return (<CI>) / Double Return (<CM>) / Shift+Return (<CL>) line-wrapping and single-line flattening, PI/PF step buttons, and live theWord Context Panel preview.' + sLineBreak +
+    '' + sLineBreak +
+    'Version 1.0.1.002 (64-bit Edition) - 2026-10-25' + sLineBreak +
+    '  * Added Layout 3 Shared Master Formatting Ribbon & Floating Selection Mini-Toolbar across all 4 verse sections in Edit Mode.' + sLineBreak +
+    '  * Added custom vector icons for all theWord paragraph and inline tags (<CI>, <CM>, <CL>, <PI0..7>, <PF0..7>, <center>, <TS1..3>, <_CM>, <FI>, <FR>, <FO>, <FU>, <b>, <i>, <u>, <sup>, <sub>, <RF>, Clear Tags).' + sLineBreak +
+    '  * Added Return (<CI> tight paragraph), Double Return (<CM> spaced paragraph), and Shift+Return (<CL> line break) keyboard shortcuts with visual line-wrapping in Edit mode and automatic single-line flattening on save.' + sLineBreak +
+    '  * Upgraded right-side Context Panel (TChapterView) to render all theWord paragraph, indentation, heading, and inline formatting tags in real time.' + sLineBreak +
+    '' + sLineBreak +
+    'Version 1.0.1.000 (64-bit Edition) - 2026-10-24' + sLineBreak +
+    '-------------------------------------------------------------------------------' + sLineBreak +
+    '* Version Reset to 1.0.1.000 (64-bit Edition):' + sLineBreak +
+    '  - Transitioned project versioning to the 1.0.1.xxx series starting at 64-bit Version 1.0.1.000.' + sLineBreak +
+    '  - All subsequent builds follow the increment of .001 from here (1.0.1.001, 1.0.1.002, etc.).' + sLineBreak +
+    '* Native Themed Tab Strips for Dictionary Popup (Strong''s & Morphology):' + sLineBreak +
+    '  - Replaced Win32 SysTabControl32 native tabs in TFrmDictionaryPopup (formpopup.pas & formpopup.lfm) with native LCL owner-drawn tab panels (HeaderStrongs and HeaderMorfos).' + sLineBreak +
+    '  - Eliminates dependency on ComCtl32 SysTabControl32, completely resolving Windows 10/11 DWM theme-engine caching that kept tab buttons white with dark font.' + sLineBreak +
+    '  - Active tab paints with CurrentSkin.PointedBg, pure white text (CurrentSkin.PointedText), and top highlight accent (CurrentSkin.HighlightBg).' + sLineBreak +
+    '  - Inactive tabs paint with CurrentSkin.PanelBg, readable light font (CurrentSkin.PanelText), and clean borders (CurrentSkin.PanelBorder).' + sLineBreak +
+    '  - Retains 100% functional fidelity for tab selection (e.g. Strong''s vs Translation Memory), mouse clicks, RTF skinning, zoom, and splitter resizing.' + sLineBreak +
+    '' + sLineBreak +
     '--------------------------------------------------' + sLineBreak +
-    'FEATURES INTRODUCED IN v1.0.1.000 - v1.0.1.023:' + sLineBreak +
-    '  * Dark Mode UI & 7 theWord Skins Integration (View > Skins / Ctrl+Shift+D).' + sLineBreak +
-    '  * Layout 3 Shared Master Formatting Ribbon, Floating Selection Mini-Toolbar & Live Context Preview.' + sLineBreak +
-    '  * Southeast Cursor Dictionary Popup in Destination Panel & English Word Dictionary (*.dct.twm) Slot.' + sLineBreak +
-    '--------------------------------------------------' + sLineBreak +
-    'FEATURES INTRODUCED IN v1.0.0.71 - v1.0.0.79:' + sLineBreak +
-    '  * Compressed Dictionary Modules (compressed=1) Support & Automatic theWord Font Loading.' + sLineBreak +
-    '  * Per-Box Translation Name Badge, 4-Circle Status Bar & Edit/Properties Mode Checkboxes.' + sLineBreak +
-    '  * Complete Bible Module Export (.ont, .ot, .nt) via Right-Click Context Menu.' + sLineBreak +
-    '  * Smart "Needs Review" Status Transition on Text Reload & Persistent Verse Filter.' + sLineBreak +
-    '  * Streamlined Default Dictionaries (Greek Strong''s, Hebrew Strong''s, Morphology, English).' + sLineBreak +
-    '  * Real-Time Text-to-Speech (TTS) Voice Reading on Hover (Options > Voice Settings / Ctrl+T).' + sLineBreak +
-    '  * Concurrent Bidirectional theWord 7 Synchronization.' + sLineBreak + sLineBreak +
     'CONTRIBUTORS:' + sLineBreak +
-    '  * Edmund Valdez: https://github.com/SalitaNgDiyos' + sLineBreak +
-    '  * Rúbio R. C. Terra: https://github.com/rubiot/ibiblia' + sLineBreak + sLineBreak +
+    '  * Edmund P. Valdez <malayangbiblia@gmail.com>: https://github.com/SalitaNgDiyos' + sLineBreak +
+    '  * Rúbio R. C. Terra <rubio.terra@gmail.com>: https://github.com/rubiot/ibiblia' + sLineBreak +
     '------------------------------------------';
 
 { TFormAbout }
@@ -196,8 +395,8 @@ begin
   except
     ver := '';
   end;
-  if ver = '' then
-    ver := '1.0.1.040';
+  if (ver = '') or (ver = '1.1.0.0') or (ver = '1.1.0.1') then
+    ver := '1.1.0.001';
 
   LabelVersion := TLabel.Create(Self);
   LabelVersion.Parent := Self;
@@ -239,7 +438,7 @@ begin
   LabelRubioURL.Font.Style := [];
   LabelRubioURL.OnClick := @LabelRubioURLClick;
 
-  // Contributor Edmund Valdez
+  // Contributor Edmund P. Valdez
   LabelContributor := TLabel.Create(Self);
   LabelContributor.Parent := Self;
   LabelContributor.Left := 0;
@@ -248,9 +447,13 @@ begin
   LabelContributor.Height := 18;
   LabelContributor.Alignment := taCenter;
   LabelContributor.AutoSize := False;
-  LabelContributor.Caption := 'Contributor: Edmund Valdez';
+  LabelContributor.Caption := 'Contributor: Edmund P. Valdez <malayangbiblia@gmail.com>';
+  LabelContributor.Cursor := crHandPoint;
+  LabelContributor.Hint := 'mailto:malayangbiblia@gmail.com';
+  LabelContributor.ShowHint := True;
   LabelContributor.Font.Height := -13;
   LabelContributor.Font.Style := [];
+  LabelContributor.OnClick := @LabelContributorClick;
 
   // Edmund GitHub
   Label3 := TLabel.Create(Self);
@@ -274,7 +477,7 @@ begin
   ButtonUserGuide.Top := 180;
   ButtonUserGuide.Width := 130;
   ButtonUserGuide.Height := 32;
-  ButtonUserGuide.Caption := 'User Guide (F1)';
+  ButtonUserGuide.Caption := 'User Guide (Shift+F1)';
   ButtonUserGuide.OnClick := @ButtonUserGuideClick;
 
   ButtonChangelog := TButton.Create(Self);
@@ -398,6 +601,12 @@ begin
   Close;
 end;
 
+procedure TFormAbout.LabelContributorClick(Sender: TObject);
+begin
+  if Sender = nil then ;
+  OpenURL('mailto:malayangbiblia@gmail.com');
+end;
+
 procedure TFormAbout.Label3Click(Sender: TObject);
 begin
   OpenURL('https://github.com/SalitaNgDiyos');
@@ -430,7 +639,7 @@ begin
   lblTitle.Top := 12;
   lblTitle.Font.Height := -16;
   lblTitle.Font.Style := [fsBold];
-  lblTitle.Caption := 'iBiblia v1.0.1.040 - Changelog';
+  lblTitle.Caption := 'iBiblia v1.1.0.001 - Changelog';
   if IsThemedSkin then
     lblTitle.Font.Color := CurrentSkin.HeaderColor
   else
@@ -605,7 +814,7 @@ begin
   lblHeaderTitle.Font.Name := 'Segoe UI';
   lblHeaderTitle.Font.Height := -17;
   lblHeaderTitle.Font.Style := [fsBold];
-  lblHeaderTitle.Caption := 'iBiblia New Features User Guide (v1.0.0.71 – v1.0.1.xxx)';
+  lblHeaderTitle.Caption := 'iBiblia New Features User Guide (v1.0.0.71 – v1.1.0.001)';
 
   lblHeaderSub := TLabel.Create(pnlHeader);
   lblHeaderSub.Parent := pnlHeader;
@@ -761,12 +970,15 @@ begin
     0: Result := '1. Wheel & Ctrl+Shift Assoc.';
     1: Result := '2. Southeast & English Dicts';
     2: Result := '3. Chevrons, Status & Tabs';
-    3: Result := '4. Formatting Ribbon & Edit';
+    3: Result := '4. Editor, Paragraphs & Italics';
     4: Result := '5. Text-to-Speech (TTS)';
     5: Result := '6. Dark Mode & 7 Skins';
-    6: Result := '7. Module Export & Sync';
+    6: Result := '7. Import/Export & Sync';
     7: Result := '8. Status Filter & Find (Ctrl+F)';
-    8: Result := '9. Full Feature Summary';
+    8: Result := '9. 1.1.0 Visual Editor & Notes';
+    9: Result := '10. 1.1.0 BiDi & Trans. Memory';
+    10: Result := '11. 1.1.0 Wizard, AI & Icons';
+    11: Result := '12. Full Feature Summary';
   else
     Result := '';
   end;
@@ -777,13 +989,16 @@ begin
   case Idx of
     0: Result := 'v1.0.1.024 – v1.0.1.030';
     1: Result := 'v1.0.0.74 – v1.0.1.017';
-    2: Result := 'v1.0.0.76 – v1.0.1.026';
-    3: Result := 'v1.0.1.002 – v1.0.1.034';
+    2: Result := 'v1.0.0.76 – v1.1.0.001';
+    3: Result := 'v1.0.1.002 – v1.1.0.0';
     4: Result := 'v1.0.0.73 – v1.0.0.74';
     5: Result := 'v1.0.0.80 – v1.0.1.023';
-    6: Result := 'v1.0.0.71 – v1.0.1.035';
-    7: Result := 'v1.0.0.70 – v1.0.0.76';
-    8: Result := 'All Features Since v1.0.0.70';
+    6: Result := 'v1.0.0.71 – v1.1.0.0';
+    7: Result := 'v1.0.0.70 – v1.1.0.0';
+    8: Result := 'v1.1.0.0 WYSIWYG & Notes';
+    9: Result := 'v1.1.0.0 BiDi & Memory';
+    10: Result := 'v1.1.0.0 – v1.1.0.001 AI & UI';
+    11: Result := 'All Features (v1.0.0.70–v1.1.0.001)';
   else
     Result := '';
   end;
@@ -795,12 +1010,15 @@ begin
     0: Result := '1. Mouse Wheel Source Word Selection & Ctrl+Shift Multi-Word Association';
     1: Result := '2. Southeast Cursor Dictionary Popup & 4-Slot Default Dictionaries';
     2: Result := '3. In-Verse Controls: Hover Navigation Chevrons, 4-Dot Status Bar & Mode Tabs';
-    3: Result := '4. Shared Master Formatting Ribbon, Floating Mini-Toolbar & Live Preview';
+    3: Result := '4. Visual Editor: Paragraph Keys, Italics on Save & Live Preview';
     4: Result := '5. Real-Time Text-to-Speech (TTS) Hover Reader (Greek, Hebrew & English)';
     5: Result := '6. Dark Mode UI & 7 theWord Color Themes (Classic, Dark, Night, Sepia, Slate...)';
-    6: Result := '7. Complete Bible Module Export, Smart Reload Review & theWord 7 Sync';
+    6: Result := '7. Multi-Format Import/Export (.ont, e-Sword, USFM, USFX), Apocrypha & Sync';
     7: Result := '8. Verse Status Filtering (F8 / Shift+F8) & Find in Project (Ctrl+F)';
-    8: Result := '9. Complete Quick-Reference Summary of All New Features Since v1.0.0.70';
+    8: Result := '9. iBiblia 1.1.0: Visual WYSIWYG & Raw ONT Editor, Semantic Markup & Translator Notes';
+    9: Result := '10. iBiblia 1.1.0: Bidirectional DirectWrite Rendering, Edit Safety & Translation Memory';
+    10: Result := '11. iBiblia 1.1.0: Guided Project Wizard, Custom Statuses, AI Workflows & Toolbar Sizes';
+    11: Result := '12. Complete Quick-Reference Summary of All New Features (v1.0.0.70 – v1.1.0.001)';
   else
     Result := '';
   end;
@@ -844,14 +1062,14 @@ begin
         '     • Move your mouse cursor into the Destination text panel: the Strong''s & Morphology dictionary popup automatically floats 18px southeast of your cursor so you can read the Greek/Hebrew definition while choosing target words.' + sLineBreak +
         '     • Hover over any ALREADY-ASSOCIATED word in the Destination panel to temporarily inspect that word''s own dictionary entry; move off it to resume the selected Source word''s popup.' + sLineBreak +
         '     • Hold CTRL while the popup is visible to freeze its position so you can move the cursor inside the popup to scroll or zoom.' + sLineBreak + sLineBreak +
-        '  2. Configure 4 Global Default Dictionaries (Options > Default Dictionaries...):' + sLineBreak +
+        '  2. Configure 4 Global Default Dictionaries (Tools > Default dictionaries...):' + sLineBreak +
         '     • Greek Strong''s Dictionary: Used for NT (Books 40–66) and LXX Greek G-codes.' + sLineBreak +
         '     • Hebrew Strong''s Dictionary: Used for OT (Books 1–39) and Hebrew H-codes (supports raw, zero-padded H0123, compound Hc/H7225, and redirect entries).' + sLineBreak +
         '     • Morphology Dictionary: Displays grammatical parsing for Robinson, Packard, and LXX morphology tags.' + sLineBreak +
         '     • English Word / Bible Dictionary: Hover over ANY untagged English word or proper name in any of the 4 Bible panels to view its English dictionary definition (with automatic plural/verb stem matching).' + sLineBreak + sLineBreak +
         '  3. Compressed Modules & Per-Module Override:' + sLineBreak +
         '     • Compressed theWord dictionaries (compressed=1) are decompressed on the fly.' + sLineBreak +
-        '     • In Project > Settings, check or uncheck "Use Default Dictionaries (overrides above)" per Bible module.';
+        '     • In Project settings, tick or untick "Use default dictionaries" per Bible module.';
 
     2:
       Result :=
@@ -867,32 +1085,29 @@ begin
         '       - Circle 1 (Gray):   Not associated (Key: 1)' + sLineBreak +
         '       - Circle 2 (Yellow): Associating    (Key: 2)' + sLineBreak +
         '       - Circle 3 (Red):    Needs review   (Key: 3)' + sLineBreak +
-        '       - Circle 4 (Green):  Associated!    (Key: 4)' + sLineBreak + sLineBreak +
+        '       - Circle 4 (Green):  Associated!    (Key: 4 — also triggers automatic project Save/Commit)' + sLineBreak + sLineBreak +
         '  3. Translation Name Badge & Edit / Properties Checkboxes:' + sLineBreak +
         '     • Bottom-Left Badge: Displays the active module''s title, short.title, or description (updates live as you edit module properties).' + sLineBreak +
         '     • Bottom-Right Checkboxes:' + sLineBreak +
         '       - Both Unchecked: Normal Word Association & Alignment mode.' + sLineBreak +
-        '       - [x] Edit:       Opens the in-place verse editor and Master Formatting Ribbon.' + sLineBreak +
-        '       - [x] Properties: Opens the full theWord module metadata/header editor.';
+        '       - [x] Edit:       Opens the in-place visual verse editor.' + sLineBreak +
+        '       - [x] Properties: Shows the module properties (title, description, version... one name=value per line) in place of the verse text. Edit them there; the badge at the bottom-left follows the title, and the properties are saved with the project and used when you export the module.';
 
     3:
       Result :=
-        'FEATURE OVERVIEW (v1.0.1.002 – v1.0.1.034)' + sLineBreak +
-        'When "Edit" is checked on any Bible panel, iBiblia provides a Shared Master Formatting Ribbon, a Floating Selection Mini-Toolbar, intuitive keyboard shortcuts for paragraph breaks, and real-time rendering in the right-hand Context Panel.' + sLineBreak + sLineBreak +
+        'FEATURE OVERVIEW (v1.0.1.002 – v1.0.1.034, built on the 1.1.0 visual editor)' + sLineBreak +
+        'When "Edit" is checked on a Bible panel (or you double-click the verse), the verse opens in the visual editor. The mod''s paragraph keys and its italics-on-save were kept; the separate Master Formatting Ribbon of the mod was replaced by the editor''s own formatting controls.' + sLineBreak + sLineBreak +
         'HOW TO USE:' + sLineBreak +
         '  1. Activating Edit Mode:' + sLineBreak +
-        '     • Check the "Edit" checkbox at the bottom-right of any Bible panel (or double-click empty space in the verse panel).' + sLineBreak +
-        '     • Uncheck "Edit" (or click another word/verse) to automatically flatten line breaks and save your changes.' + sLineBreak + sLineBreak +
-        '  2. Paragraph, Indentation & Heading Controls (Master Ribbon):' + sLineBreak +
-        '     • Paragraph Breaks: Press ENTER for <CI> (new line), DOUBLE ENTER for <CM> (new paragraph with blank line), or SHIFT+ENTER for <CL>.' + sLineBreak +
-        '     • Indentation Step Buttons: Click PI- / PI+ (<PI0>..<PI7> paragraph indent) and PF- / PF+ (<PF0>..<PF7> first-line indent), or Center (<center>).' + sLineBreak +
-        '     • Section Headings: Click TS1, TS2, or TS3 to wrap selected text in <TS1>..<Ts> section titles.' + sLineBreak + sLineBreak +
-        '  3. Floating Selection Mini-Toolbar & Inline Tags:' + sLineBreak +
-        '     • Highlight any word or phrase in the editor: a Floating Mini-Toolbar appears directly above your selection.' + sLineBreak +
-        '     • Apply <FI>..<Fi> (Added/Italic words), <FR>..<Fr> (Words of Jesus in Red), <FO>..<Fo> (OT Quote), <b>, <i>, <u>, <sup>, <sub>, <RF>..<Rf> (Footnote), or click "Clear Tags" to strip markup from the selection.' + sLineBreak + sLineBreak +
-        '  4. Live Context Panel Preview & Unassociated Words in Italics on File Save:' + sLineBreak +
-        '     • Every tag and edit renders immediately in the right-hand Context Panel (Source | Destination | Ref 1 | Ref 2 | Interlinear).' + sLineBreak +
-        '     • Upon saving the file (Ctrl+S / File > Save), the Context Panel''s Destination view automatically renders any unassociated Destination words in italics (<FI>...<Fi>) so you can immediately spot words added for English readability or not yet linked to a Greek/Hebrew source word.';
+        '     • Check the "Edit" checkbox at the bottom-right of any Bible panel (or double-click the verse text).' + sLineBreak +
+        '     • Uncheck "Edit" (or click another word/verse) to leave the editor; your changes are kept.' + sLineBreak + sLineBreak +
+        '  2. Paragraph Keys:' + sLineBreak +
+        '     • ENTER inserts <CI> (new line), DOUBLE ENTER inserts <CM> (new paragraph with blank line), SHIFT+ENTER inserts <CL> (line break inside a paragraph).' + sLineBreak + sLineBreak +
+        '  3. Formatting:' + sLineBreak +
+        '     • Use the visual editor''s own formatting controls for headings, indents, italics (added words), words of Jesus, quotations and footnotes.' + sLineBreak + sLineBreak +
+        '  4. Live Preview & Unassociated Words in Italics on File Save:' + sLineBreak +
+        '     • Edits show immediately in the right-hand Context Panel.' + sLineBreak +
+        '     • When you save the file (Ctrl+S / File > Save), the Destination words that are not linked to a Greek/Hebrew source word are shown in italics (<FI>...<Fi>), so you can spot words added for readability or not yet linked.';
 
     4:
       Result :=
@@ -900,8 +1115,8 @@ begin
         'Real-time Text-to-Speech (TTS) pronounces Greek, Hebrew, and English/vernacular words aloud when you hover over them, supporting both Windows 10/11 OneCore Speech Packs (e.g. Microsoft Stefanos for Greek, Microsoft Asaf for Hebrew) and classic SAPI5 voices.' + sLineBreak + sLineBreak +
         'HOW TO USE:' + sLineBreak +
         '  1. Toggle Text-to-Speech On / Off:' + sLineBreak +
-        '     • Press CTRL + T at any time, or click Options > Read word on hover (Text-to-Speech).' + sLineBreak + sLineBreak +
-        '  2. Configure Voices, Speed, Volume & Trigger (Options > Voice / Speech Settings...):' + sLineBreak +
+        '     • Press CTRL + T at any time, or click Tools > Read word on hover (text-to-speech).' + sLineBreak + sLineBreak +
+        '  2. Configure Voices, Speed, Volume & Trigger (Tools > Voice settings...):' + sLineBreak +
         '     • Source Text Voice: Choose a Greek voice (such as Microsoft Stefanos) or Hebrew voice (such as Microsoft Asaf) for the Source Bible panel.' + sLineBreak +
         '     • Translation / Destination Voice: Choose an English or local language voice for the Destination, Reference 1, and Reference 2 panels.' + sLineBreak +
         '     • Speech Rate & Volume: Adjust speed (-10 to +10) and volume (0% to 100%) using the themed sliders.' + sLineBreak +
@@ -927,19 +1142,18 @@ begin
 
     6:
       Result :=
-        'FEATURE OVERVIEW (v1.0.0.71 – v1.0.1.035)' + sLineBreak +
-        'Includes safe Project Save As (Ctrl+Shift+S), exporting Bible and Concordance modules even while open in theWord, per-project remembered export destinations for every format, smart apostrophe variant matching, and uncompressed BLOB .dct.twm concordance generation.' + sLineBreak +
-        'Export complete, ready-to-use theWord Bible modules (.ont, .ot, .nt) directly from any Bible panel''s right-click menu, rely on smart word-diff detection when reloading texts, and synchronize bidirectionally with 64-bit theWord 7.' + sLineBreak + sLineBreak +
+        'FEATURE OVERVIEW (v1.0.0.71 – v1.0.1.051)' + sLineBreak +
+        'Import and export Bibles across theWord (.ont, .ot, .nt), MySword (.bbl.mybible), non-encrypted e-Sword (.bblx RTF, .bbli HTML, .bbl SQLite), USFM 2.x/3.0 (.usfm, .sfm), and USFX XML (.usfx, .xml from eBible.org / Simple Bible Reader) with full Apocrypha / Deuterocanonical OT book & chapter support in the Bible Books Tree.' + sLineBreak +
+        'Also includes safe Project Save As (Ctrl+Shift+S), exporting modules even while open in theWord, per-project remembered export destinations, smart word-diff detection on text reload, and bidirectional 64-bit theWord 7 synchronization.' + sLineBreak + sLineBreak +
         'HOW TO USE:' + sLineBreak +
-        '  1. Complete Bible Module Export (Right-Click > Export as Bible module...):' + sLineBreak +
-        '     • Right-click inside any of the 4 Bible panels (Source, Destination, Reference 1, or Reference 2) and click "Export as Bible module...".' + sLineBreak +
-        '     • Automatically detects the module scope (.ont = 31,102 lines, .ot = 23,145 lines, .nt = 7,957 lines), writes the UTF-8 BOM, preserves 100% of module properties, and embeds all associated <WG...>/<WH...> and <WT...> tags when exporting the Destination Bible.' + sLineBreak + sLineBreak +
-        '  2. Smart "Needs Review" Status on Text Reload & Self-Healing Integrity:' + sLineBreak +
-        '     • When loading/replacing a Bible text in Project > Settings, iBiblia compares the actual words of each verse: verses where only Strong''s/morphology tags changed keep their "Associated!" (Green) status, while verses with modified words transition to "Needs review" (Red).' + sLineBreak +
-        '     • Built-in self-healing database verification automatically validates and repairs association indices on project open and before every export.' + sLineBreak + sLineBreak +
-        '  3. Concurrent Bidirectional theWord 7 Synchronization:' + sLineBreak +
-        '     • Enable Options > "Sync theWord to iBiblia verse" and/or "Sync iBiblia to theWord verse" simultaneously without feedback loops.' + sLineBreak +
-        '     • Active verse status filters in the left TreeView are also persisted across restarts.';
+        '  1. Multi-Format Bible Import & Export (.ont/.ot/.nt, e-Sword, USFM, USFX, MySword):' + sLineBreak +
+        '     • Import any supported format in File > New Project or Project > Settings across Source, Destination, Reference 1, or Reference 2 (selecting a single .usfm/.sfm book file automatically loads all sibling book files in that folder).' + sLineBreak +
+        '     • Export Tagged Destination or Interlinear Bibles via File > Export... or right-click any of the 4 Bible panels and select "Export as Bible module..." to export directly to .ont/.ot/.nt, e-Sword (.bblx/.bbli), USFM (.usfm/.sfm), USFX (.usfx/.xml), or MySword (.bbl.mybible).' + sLineBreak + sLineBreak +
+        '  2. Apocrypha / Deuterocanonical OT Books in the Bible Books Tree (v1.0.1.045–047):' + sLineBreak +
+        '     • Standalone Apocrypha OT books (Book >= 67: 1–2 Esdras, Tobit, Judith, 1–4 Maccabees, Prayer of Manasseh, Wisdom, Sirach, Baruch, Letter of Jeremiah, Prayer of Azariah, Susanna, Bel and the Dragon, Psalm 151, Psalms of Solomon, Odes, Laodiceans) appear right after Malachi at the end of the Old Testament, and extra chapters (Daniel 13–14, Psalms 151, Esther 11–16) appear under their canonical books.' + sLineBreak + sLineBreak +
+        '  3. Smart "Needs Review" Status on Text Reload & Concurrent theWord 7 + Tanglaw Bible Sync:' + sLineBreak +
+        '     • Reloading a Bible text in Project > Settings compares actual words: tag-only updates stay Green ("Associated!"), while word edits become Red ("Needs review").' + sLineBreak +
+        '     • Enable the theWord and Timotheos (Tanglaw) synchronization items in the Tools menu simultaneously for bidirectional verse synchronization.';
 
     7:
       Result :=
@@ -969,9 +1183,53 @@ begin
         '     • Click or double-click any matching verse in the results list (or click "< Previous Match" / "Next Match >") to jump directly to that verse in the main workspace.';
 
     8:
+      Result :=
+        'FEATURE OVERVIEW (iBiblia 1.1.0.0)' + sLineBreak +
+        'Write and format verses visually in WYSIWYG mode—including section titles, added words, Words of Jesus, Old Testament quotations, custom colors, relative font sizes, HTML/inline formatting, and rich translator notes with hover previews—or toggle Raw mode for direct theWord ONT markup editing.' + sLineBreak + sLineBreak +
+        'HOW TO USE:' + sLineBreak +
+        '  1. Visual WYSIWYG & Raw ONT Modes:' + sLineBreak +
+        '     • Click "Edit" on the hover bottom bar of any Bible panel (or double-click a verse) to open the in-place editor.' + sLineBreak +
+        '     • Format selected text with semantic toolbar buttons: Added Words (I / <FI>...<Fi>), Words of Jesus (J / <FR>...<Fr>), OT Quotations (Q / <FO>...<Fo>), Titles (<TS1>..<TS3>), Underline, Strikethrough, Superscript, Subscript, Font Size (-/+), and Font Color.' + sLineBreak +
+        '     • Click "Raw" / "Visual" on the editor toolbar to switch seamlessly between visual formatting and raw theWord ONT tags while protecting complex untouchable regions.' + sLineBreak + sLineBreak +
+        '  2. Rich Translator Notes (<RF>...<Rf>):' + sLineBreak +
+        '     • Click the Translator Note button (N) on the editor toolbar to insert or edit a footnote at the cursor with automatic sequential numbering (q=1, 2, 3...) or a custom marker.' + sLineBreak +
+        '     • Hover over any footnote marker in the Bible panels to preview the formatted translator note in a themed popup card, or click the marker to edit that note directly.' + sLineBreak + sLineBreak +
+        '  3. Association-Preserving Text Edits:' + sLineBreak +
+        '     • When you edit Source or Destination text, unaffected word associations are automatically preserved, and iBiblia shows an impact confirmation dialog before any linked words are disconnected.';
+
+    9:
+      Result :=
+        'FEATURE OVERVIEW (iBiblia 1.1.0.0)' + sLineBreak +
+        'High-DPI DirectWrite bidirectional rendering for mixed Hebrew (RTL), Greek (LTR), and translated text, combined with an interactive Translation Memory tab in the Context Panel that compares past translation choices and previews occurrences without leaving the current verse.' + sLineBreak + sLineBreak +
+        'HOW TO USE:' + sLineBreak +
+        '  1. Bidirectional (RTL / LTR) DirectWrite Rendering & Unicode Selection:' + sLineBreak +
+        '     • Right-click any Bible panel and toggle "Right-to-left text" (or let imported module direction configure it automatically).' + sLineBreak +
+        '     • Mixed Hebrew, Greek, punctuation, Strong''s counts, and translator note markers render with hardware-accelerated DirectWrite typography and accurate Unicode hit-testing.' + sLineBreak + sLineBreak +
+        '  2. Translation Memory Comparison & Hover Previews (Context Panel > Memory Tab):' + sLineBreak +
+        '     • Click the "Memory" tab in the right-hand Context Panel (or click any word in the current verse to focus its entry in Translation Memory).' + sLineBreak +
+        '     • Sort entries by "Verse order" or "Rarest first" using the Order dropdown.' + sLineBreak +
+        '     • Inspect how each Greek/Hebrew word or Strong''s number has been translated across your project, hover or expand occurrences to preview highlighted verses inline, or click an occurrence to navigate there (and use Alt+Left / Alt+Right to return).' + sLineBreak +
+        '     • Use Rebuild Association Memory in Project > Maintenance whenever you want a fresh full-project index.';
+
+    10:
+      Result :=
+        'FEATURE OVERVIEW (iBiblia 1.1.0.0 – 1.1.0.001)' + sLineBreak +
+        'Create projects with the Guided New Project Wizard, customize project status catalogs, run experimental AI translation and association flows with batch review, save independent .bib copies via Save As, and customize interface language, icon families, and 3 toolbar icon sizes.' + sLineBreak + sLineBreak +
+        'HOW TO USE:' + sLineBreak +
+        '  1. Guided Project Creation Wizard & Custom Statuses:' + sLineBreak +
+        '     • File > New Project launches a step-by-step wizard supporting both "Association project" (existing Source + Destination) and "Translation project" (Source + initially empty Destination).' + sLineBreak +
+        '     • Customize up to 12 verse statuses (names, colors, and display order) in New Project or Project > Settings; the Bible TreeView, Status Summary filter box, and Destination 4-dot status strip stay synchronized automatically.' + sLineBreak +
+        '     • Use File > Save As (Ctrl+Shift+S) to save an independent .bib copy, and check the bottom-left corner of the status bar (just below the status summary box) for real-time "Saved" / "Unsaved changes" status.' + sLineBreak + sLineBreak +
+        '  2. Experimental AI Translation & Association Flows:' + sLineBreak +
+        '     • Configure machine-default or project-specific AI providers, models, custom prompts, and verse examples in Project > AI Options (with API keys stored securely in Windows local storage).' + sLineBreak +
+        '     • Run single-verse AI suggestions from the toolbar split button or right-click a book/chapter in the Bible TreeView to run batch AI Association or Translation with side-by-side review before applying.' + sLineBreak + sLineBreak +
+        '  3. Icon Families & 3 Toolbar Icon Sizes (View > Toolbar icon size / Tools > Preferences):' + sLineBreak +
+        '     • Choose English or Portuguese UI, 4 icon families (Connected, Clareza, Mosaico, Folio), and 3 top-bar icon sizes: Small (16 px), Medium (22 px), or Large (28 px).';
+
+    11:
       begin
         Result := '';
-        for i := 0 to 7 do
+        for i := 0 to 10 do
         begin
           if Result <> '' then
             Result := Result + sLineBreak + sLineBreak +
@@ -1384,55 +1642,36 @@ var
 
   procedure DrawTopic3(C: TCanvas);
   begin
-    // Master Formatting Ribbon
-    DrawBox(C, 16, 36, W - 16, 74, pnlBg, hdrCol, 5);
+    DrawBox(C, 16, 36, W div 2 + 20, 198, winBg, borderCol, 6);
     C.Brush.Style := bsClear;
     C.Font.Size := 8;
     C.Font.Style := [fsBold];
     C.Font.Color := hdrCol;
-    C.TextOut(24, 40, 'SHARED MASTER FORMATTING RIBBON (Active whenever [x] Edit is checked):');
-    DrawBadge(C, 24,  53, 'CI (Enter)', winBg, txtCol, borderCol, False, 5, 1);
-    DrawBadge(C, 90,  53, 'CM (2xEnter)', winBg, txtCol, borderCol, False, 5, 1);
-    DrawBadge(C, 172, 53, 'CL (Shift+Enter)', winBg, txtCol, borderCol, False, 5, 1);
-    DrawBadge(C, 272, 53, 'PI- / PI+', winBg, txtCol, borderCol, False, 5, 1);
-    DrawBadge(C, 336, 53, 'TS1..3', winBg, txtCol, borderCol, False, 5, 1);
-    DrawBadge(C, 386, 53, 'FI  FR  FO  RF', hiBg, hiTxt, hdrCol, True, 5, 1);
-    DrawBadge(C, 482, 53, 'Clear Tags', winBg, txtCol, borderCol, False, 5, 1);
+    C.TextOut(26, 42, 'VISUAL EDITOR  ([x] Edit is checked)');
+    DrawBadge(C, 26, 66, 'Enter', winBg, txtCol, borderCol, False, 6, 2);
+    C.Brush.Style := bsClear; C.Font.Style := []; C.Font.Color := dimCol;
+    C.TextOut(92, 70, '-> <CI>  new line');
+    DrawBadge(C, 26, 94, '2 x Enter', winBg, txtCol, borderCol, False, 6, 2);
+    C.Brush.Style := bsClear; C.Font.Style := []; C.Font.Color := dimCol;
+    C.TextOut(112, 98, '-> <CM>  new paragraph');
+    DrawBadge(C, 26, 122, 'Shift+Enter', winBg, txtCol, borderCol, False, 6, 2);
+    C.Brush.Style := bsClear; C.Font.Style := []; C.Font.Color := dimCol;
+    C.TextOut(130, 126, '-> <CL>  line break');
+    DrawBadge(C, 26, 156, 'Selected Verse Text', hiBg, hiTxt, hdrCol, True);
 
-    // Left: In-place Editor + Floating Mini-Toolbar
-    DrawBox(C, 16, 82, W div 2 + 20, 198, winBg, borderCol, 6);
-    DrawBox(C, 68, 90, 298, 116, pnlBg, hdrCol, 5);
+    DrawBox(C, W div 2 + 30, 36, W - 16, 198, pnlBg, borderCol, 6);
     C.Brush.Style := bsClear;
     C.Font.Size := 8;
     C.Font.Style := [fsBold];
     C.Font.Color := hdrCol;
-    C.TextOut(76, 95, 'Floating Mini-Toolbar:  [FI] [FR] [B] [I] [RF] [X]');
-
-    DrawBadge(C, 68, 124, 'Selected Verse Text', hiBg, hiTxt, hdrCol, True);
+    C.TextOut(W div 2 + 40, 42, 'LIVE CONTEXT PANEL PREVIEW');
+    DrawBadge(C, W div 2 + 40, 66, 'Source | Dest | Ref 1 | Ref 2 | Interlinear', ptBg, ptTxt, borderCol, True, 6, 2);
     C.Brush.Style := bsClear;
-    C.Font.Size := 8;
-    C.Font.Style := [];
-    C.Font.Color := dimCol;
-    C.TextOut(28, 156, '• Visual line-wrapping in Edit mode; flattens to 1 line on save.');
-    C.TextOut(28, 173, '• Select any text to pop up the Floating Mini-Toolbar above it.');
-
-    // Right: Live Context Panel Preview
-    DrawBox(C, W div 2 + 30, 82, W - 16, 198, pnlBg, borderCol, 6);
-    C.Brush.Style := bsClear;
-    C.Font.Size := 8;
-    C.Font.Style := [fsBold];
-    C.Font.Color := hdrCol;
-    C.TextOut(W div 2 + 40, 88, 'LIVE CONTEXT PANEL PREVIEW');
-    DrawBadge(C, W div 2 + 40, 106, 'Source | Dest | Ref 1 | Ref 2 | Interlinear', ptBg, ptTxt, borderCol, True, 6, 2);
-    C.Brush.Style := bsClear;
-    C.Font.Style := [fsBold];
-    C.Font.Color := txtCol;
-    C.TextOut(W div 2 + 40, 136, 'Heading <TS1> & Indented <PI1> Preview');
     C.Font.Style := [fsItalic];
     C.Font.Color := dimCol;
-    C.TextOut(W div 2 + 52, 154, 'Unassociated Dest words -> Italics on Save (Ctrl+S)');
+    C.TextOut(W div 2 + 40, 110, 'Unlinked Dest words -> Italics on Save (Ctrl+S)');
     C.Font.Style := [];
-    C.TextOut(W div 2 + 40, 174, 'Updates in real time in Edit mode & upon File Save!');
+    C.TextOut(W div 2 + 40, 134, 'Updates in real time while you edit.');
   end;
 
   procedure DrawTopic4(C: TCanvas);
@@ -1530,13 +1769,13 @@ var
 
     DrawBadge(C, 26, 64, 'Right-Click Any Bible Panel (Source/Dest/Ref)', winBg, txtCol, borderCol, False);
     DrawArrow(C, 130, 88, 130, 104, hdrCol);
-    DrawBadge(C, 26, 106, '"Export as Bible module..." (.ont / .ot / .nt)', hiBg, hiTxt, hdrCol, True);
+    DrawBadge(C, 26, 106, '.ont/.ot/.nt | e-Sword (.bblx/.bbli) | USFM | USFX', hiBg, hiTxt, hdrCol, True);
     C.Brush.Style := bsClear;
     C.Font.Style := [];
     C.Font.Color := txtCol;
-    C.TextOut(26, 136, '• Exact line counts: 31,102 (.ont) / 23,145 (.ot) / 7,957 (.nt)');
-    C.TextOut(26, 153, '• Preserves 100% of module properties & UTF-8 BOM');
-    C.TextOut(26, 170, '• Embeds <WG...>/<WH...> & <WT...> tags on Destination');
+    C.TextOut(26, 136, '• Full Import & Export: theWord, e-Sword, USFM, USFX, MySword');
+    C.TextOut(26, 153, '• Apocrypha OT Books (Book >= 67) & Dan 13-14 / Ps 151 in Tree');
+    C.TextOut(26, 170, '• Preserves Strong''s, Morphology, Red Letters, Italics & Notes');
 
     // Right: Smart Reload + Bidirectional theWord 7 Sync
     DrawBox(C, W div 2 + 6, 36, W - 16, 114, pnlBg, borderCol, 6);
@@ -1553,8 +1792,8 @@ var
     C.Font.Size := 8;
     C.Font.Style := [fsBold];
     C.Font.Color := hdrCol;
-    C.TextOut(W div 2 + 16, 126, 'CONCURRENT BIDIRECTIONAL THEWORD 7 SYNC');
-    DrawBadge(C, W div 2 + 16, 146, 'iBiblia (64-bit)   <=== WM_COPYDATA ===>   theWord 7', ptBg, ptTxt, borderCol, True);
+    C.TextOut(W div 2 + 16, 126, 'BIDIRECTIONAL THEWORD 7 & TANGLAW BIBLE SYNC');
+    DrawBadge(C, W div 2 + 16, 146, 'iBiblia  <==>  theWord 7 & Tanglaw Bible', ptBg, ptTxt, borderCol, True);
     C.Brush.Style := bsClear;
     C.Font.Style := [];
     C.Font.Color := dimCol;
@@ -1605,22 +1844,115 @@ var
 
   procedure DrawTopic8(C: TCanvas);
   begin
+    DrawBox(C, 16, 36, W div 2 + 10, 198, winBg, borderCol, 6);
+    C.Brush.Style := bsClear;
+    C.Font.Size := 8;
+    C.Font.Style := [fsBold];
+    C.Font.Color := hdrCol;
+    C.TextOut(26, 42, '1.1.0 VISUAL WYSIWYG & RAW ONT VERSE EDITOR');
+    DrawBadge(C, 26, 62, '[I Added] [J Jesus] [Q Quote] [Title ▼] [N Note] [-A] [+A] [Color] [Raw]', pnlBg, txtCol, borderCol, True, 5, 2);
+    DrawBadge(C, 26, 92, 'In the beginning [1] God created the heaven and the earth.', hiBg, hiTxt, hdrCol, True);
+    C.Brush.Style := bsClear;
+    C.Font.Style := [];
+    C.Font.Color := dimCol;
+    C.TextOut(26, 124, '• Preserves unaffected word associations when editing text');
+    C.TextOut(26, 142, '• Switch instantly between WYSIWYG and Raw ONT markup');
+    C.TextOut(26, 160, '• Properties checkbox opens 5+ line module properties editor');
+
+    DrawBox(C, W div 2 + 20, 36, W - 16, 198, pnlBg, borderCol, 6);
+    C.Brush.Style := bsClear;
+    C.Font.Size := 8;
+    C.Font.Style := [fsBold];
+    C.Font.Color := hdrCol;
+    C.TextOut(W div 2 + 30, 42, 'RICH TRANSLATOR NOTES (<RF>...<Rf>)');
+    DrawBadge(C, W div 2 + 30, 66, 'Footnote Marker [1]  ->  Hover to Preview / Click to Edit', ptBg, ptTxt, borderCol, True);
+    DrawBox(C, W div 2 + 30, 98, W - 28, 186, CurrentSkin.NoteBg, hdrCol, 5);
+    C.Brush.Style := bsClear;
+    C.Font.Color := CurrentSkin.NoteText;
+    C.TextOut(W div 2 + 40, 108, 'Translator Note [1] (Gen 1:1):');
+    C.Font.Style := [];
+    C.TextOut(W div 2 + 40, 128, 'Heb. Bereshith — automatic or custom note markers');
+    C.TextOut(W div 2 + 40, 146, 'with rich inline formatting and instant hover cards.');
+  end;
+
+  procedure DrawTopic9(C: TCanvas);
+  begin
+    DrawBox(C, 16, 36, W div 2 - 6, 198, pnlBg, borderCol, 6);
+    C.Brush.Style := bsClear;
+    C.Font.Size := 8;
+    C.Font.Style := [fsBold];
+    C.Font.Color := hdrCol;
+    C.TextOut(26, 42, 'BIDIRECTIONAL (RTL / LTR) DIRECTWRITE RENDERING');
+    DrawBadge(C, 26, 66, 'בְּרֵאשִׁית בָּרָא אֱלֹהִים  (Right-to-Left Hebrew)', winBg, txtCol, hdrCol, True);
+    DrawBadge(C, 26, 98, 'Ἐν ἀρχῇ ἐποίησεν ὁ Θεός  (Left-to-Right Greek)', winBg, txtCol, borderCol, False);
+    C.Brush.Style := bsClear;
+    C.Font.Style := [];
+    C.Font.Color := dimCol;
+    C.TextOut(26, 132, '• Hardware-accelerated DirectWrite text layout');
+    C.TextOut(26, 150, '• Accurate Unicode grapheme & word selection');
+    C.TextOut(26, 168, '• Per-panel Right-to-Left toggle & auto-detection');
+
+    DrawBox(C, W div 2 + 6, 36, W - 16, 198, pnlBg, borderCol, 6);
+    C.Brush.Style := bsClear;
+    C.Font.Size := 8;
+    C.Font.Style := [fsBold];
+    C.Font.Color := hdrCol;
+    C.TextOut(W div 2 + 16, 42, 'TRANSLATION MEMORY (Context Panel > Memory Tab)');
+    DrawBadge(C, W div 2 + 16, 64, 'Order: [ Verse order / Rarest first ▼ ]', winBg, txtCol, borderCol, False);
+    DrawBadge(C, W div 2 + 16, 94, 'ἀρχῇ (G746) -> "beginning" (42x), "first" (8x)', hiBg, hiTxt, hdrCol, True);
+    DrawBadge(C, W div 2 + 16, 124, 'Hover occurrence -> Inline highlighted verse preview', ptBg, ptTxt, borderCol, True);
+    C.Brush.Style := bsClear;
+    C.Font.Style := [];
+    C.Font.Color := dimCol;
+    C.TextOut(W div 2 + 16, 158, 'Click any occurrence to jump there; Alt+Left returns.');
+  end;
+
+  procedure DrawTopic10(C: TCanvas);
+  begin
+    DrawBox(C, 16, 36, W div 2 - 6, 198, pnlBg, borderCol, 6);
+    C.Brush.Style := bsClear;
+    C.Font.Size := 8;
+    C.Font.Style := [fsBold];
+    C.Font.Color := hdrCol;
+    C.TextOut(26, 42, 'WIZARD, CUSTOM STATUSES & AI WORKFLOWS');
+    DrawBadge(C, 26, 64, 'New Project Wizard: Association or Empty Translation', winBg, txtCol, borderCol, False);
+    DrawBadge(C, 26, 94, 'AI Suggest & Batch AI Review (Association / Translation)', ptBg, ptTxt, hdrCol, True);
+    DrawBadge(C, 26, 124, 'Custom Statuses (Up to 12) + Tree & 4-Dot Strip Sync', hiBg, hiTxt, borderCol, True);
+    DrawBadge(C, 26, 154, 'Bottom-Left Status Bar: Realtime Saved / Unsaved Status', winBg, txtCol, borderCol, False);
+
+    DrawBox(C, W div 2 + 6, 36, W - 16, 198, pnlBg, borderCol, 6);
+    C.Brush.Style := bsClear;
+    C.Font.Size := 8;
+    C.Font.Style := [fsBold];
+    C.Font.Color := hdrCol;
+    C.TextOut(W div 2 + 16, 42, 'ICON FAMILIES & 3 TOOLBAR ICON SIZES');
+    DrawBadge(C, W div 2 + 16, 64, 'Icon Families: Connected | Clareza | Mosaico | Folio', winBg, txtCol, borderCol, False);
+    DrawBadge(C, W div 2 + 16, 94, 'Toolbar Icon Sizes: Small (16px) | Medium (22px) | Large (28px)', hiBg, hiTxt, hdrCol, True);
+    DrawBadge(C, W div 2 + 16, 124, 'File > Save As (Ctrl+Shift+S) : Independent .bib Copy', ptBg, ptTxt, borderCol, True);
+    C.Brush.Style := bsClear;
+    C.Font.Style := [];
+    C.Font.Color := dimCol;
+    C.TextOut(W div 2 + 16, 158, 'Configure in View > Toolbar icon size or Tools > Preferences.');
+  end;
+
+  procedure DrawTopic11(C: TCanvas);
+  begin
     DrawBox(C, 16, 36, W - 16, 198, pnlBg, borderCol, 6);
     C.Brush.Style := bsClear;
     C.Font.Size := 8;
     C.Font.Style := [fsBold];
     C.Font.Color := hdrCol;
-    C.TextOut(26, 42, 'COMPLETE NEW FEATURES MAP (v1.0.0.70 – v1.0.1.035) — QUICK SHORTCUT REFERENCE');
+    C.TextOut(26, 42, 'COMPLETE NEW FEATURES MAP (v1.0.0.70 – v1.1.0.001) — QUICK SHORTCUT REFERENCE');
 
     DrawBadge(C, 26,  64, 'Mouse Wheel Up / Down : Select Source Word Left / Right', hiBg, hiTxt, hdrCol, True);
     DrawBadge(C, 26,  94, 'Hold Ctrl+Shift + Click : Associate Multiple Words Together', ptBg, ptTxt, borderCol, True);
-    DrawBadge(C, 26, 124, 'Release Ctrl+Shift : Auto-Select Next Unassociated Word', winBg, txtCol, hdrCol, True);
-    DrawBadge(C, 26, 154, 'Hover in Panel : Show < > Verse Navigation Chevrons', winBg, txtCol, borderCol, False);
+    DrawBadge(C, 26, 124, 'Hover Bible Panel : Show Bottom Bar & < > Verse Chevrons', winBg, txtCol, hdrCol, True);
+    DrawBadge(C, 26, 154, 'WYSIWYG Editor, Translator Notes, BiDi & Translation Memory', winBg, txtCol, borderCol, False);
 
     DrawBadge(C, W div 2 + 10,  64, 'Ctrl + Shift + D : Toggle Dark Mode / 7 theWord Skins', ptBg, ptTxt, borderCol, True);
     DrawBadge(C, W div 2 + 10,  94, 'Ctrl + T : Toggle Real-Time Hover Text-to-Speech (TTS)', winBg, txtCol, hdrCol, True);
-    DrawBadge(C, W div 2 + 10, 124, 'Keys 1, 2, 3, 4 : Set Verse Association Status Directly', winBg, txtCol, borderCol, False);
-    DrawBadge(C, W div 2 + 10, 154, 'Ctrl + F : Find in Project   |   F1 : Open This User Guide', winBg, txtCol, borderCol, False);
+    DrawBadge(C, W div 2 + 10, 124, 'Keys 1..9 / 4 Dots : Set Verse Status (Synced with Bible Tree)', winBg, txtCol, borderCol, False);
+    DrawBadge(C, W div 2 + 10, 154, 'Ctrl + F : Find in Project   |   Shift+F1 : Open This User Guide', winBg, txtCol, borderCol, False);
   end;
 
 begin
@@ -1665,8 +1997,11 @@ begin
       5: DrawTopic5(bmp.Canvas);
       6: DrawTopic6(bmp.Canvas);
       7: DrawTopic7(bmp.Canvas);
+      8: DrawTopic8(bmp.Canvas);
+      9: DrawTopic9(bmp.Canvas);
+      10: DrawTopic10(bmp.Canvas);
     else
-      DrawTopic8(bmp.Canvas);
+      DrawTopic11(bmp.Canvas);
     end;
 
     pbIllust.Canvas.Draw(0, 0, bmp);
@@ -1711,7 +2046,7 @@ begin
   begin
     Caption := 'iBiblia — Guia de Novos Recursos (Desde v1.0.0.71)';
     if Assigned(lblHeaderTitle) then
-      lblHeaderTitle.Caption := 'Guia de Novos Recursos do iBiblia (v1.0.0.71 – v1.0.1.xxx)';
+      lblHeaderTitle.Caption := 'Guia de Novos Recursos do iBiblia (v1.0.0.71 – v1.1.0.001)';
     if Assigned(lblHeaderSub) then
       lblHeaderSub.Caption := 'Janela Flutuante Interativa — Mantenha aberta enquanto pratica os recursos no iBiblia.';
     if Assigned(btnPrev) then btnPrev.Caption := '< Anterior';
@@ -1723,7 +2058,7 @@ begin
   begin
     Caption := 'iBiblia — New Features User Guide (Since v1.0.0.71)';
     if Assigned(lblHeaderTitle) then
-      lblHeaderTitle.Caption := 'iBiblia New Features User Guide (v1.0.0.71 – v1.0.1.xxx)';
+      lblHeaderTitle.Caption := 'iBiblia New Features User Guide (v1.0.0.71 – v1.1.0.001)';
     if Assigned(lblHeaderSub) then
       lblHeaderSub.Caption := 'Floating Interactive Guide — Keep this window open while practicing features directly in iBiblia.';
     if Assigned(btnPrev) then btnPrev.Caption := '< Previous Topic';

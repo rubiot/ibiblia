@@ -1,4 +1,4 @@
-object FrmEscolherVerseRules: TFrmEscolherVerseRules
+object VerseRulesForm: TVerseRulesForm
   Left = 384
   Height = 237
   Top = 215
@@ -12,7 +12,12 @@ object FrmEscolherVerseRules: TFrmEscolherVerseRules
   OnShow = FormShow
   Position = poOwnerFormCenter
   LCLVersion = '2.0.10.0'
-  object Button1: TButton
+  Font.Name = 'Segoe UI'
+  Font.Height = -13
+  Color = 16316147
+  Constraints.MinWidth = 760
+  Constraints.MinHeight = 380
+  object CancelButton: TButton
     Left = 808
     Height = 25
     Top = 195
@@ -23,7 +28,7 @@ object FrmEscolherVerseRules: TFrmEscolherVerseRules
     ModalResult = 2
     TabOrder = 0
   end
-  object Button2: TButton
+  object OkButton: TButton
     Left = 903
     Height = 25
     Top = 195
@@ -54,16 +59,17 @@ object FrmEscolherVerseRules: TFrmEscolherVerseRules
     OnClick = BtnSelectAllClick
     TabOrder = 3
   end
-  object Panel1: TPanel
+  object RulesPanel: TPanel
     Left = 10
     Height = 177
     Top = 7
     Width = 966
     Anchors = [akTop, akLeft, akRight, akBottom]
-    Caption = 'Panel1'
+    Caption = ''
     ClientHeight = 177
     ClientWidth = 966
     TabOrder = 4
+    BevelOuter = bvNone
     object StringGridVerseRules: TStringGrid
       Left = 1
       Height = 175
@@ -72,14 +78,14 @@ object FrmEscolherVerseRules: TFrmEscolherVerseRules
       Align = alClient
       AutoEdit = False
       ColCount = 3
-      Columns = <      
+      Columns = <
         item
           ButtonStyle = cbsCheckboxColumn
           Title.Caption = 'Apply'
-        end      
+        end
         item
           Title.Caption = 'From'
-        end      
+        end
         item
           Title.Caption = 'To'
         end>

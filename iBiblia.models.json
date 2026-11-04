@@ -1,0 +1,23 @@
+{
+  "models": [
+    { "name": "deepseek-v4-flash", "provider": "DeepSeek", "supports_struct_output": true },
+    { "name": "deepseek-v4-pro", "provider": "DeepSeek", "supports_struct_output": true },
+    { "name": "gemini-3.1-flash-lite-preview", "provider": "Google", "supports_struct_output": true },
+    { "name": "gemini-3.1-flash-live-preview", "provider": "Google", "supports_struct_output": true },
+
+    { "name": "gpt-4o-mini", "provider": "OpenAI", "supports_struct_output": true },
+    { "name": "o1", "provider": "OpenAI", "supports_struct_output": true },
+    { "name": "o1-mini", "provider": "OpenAI", "supports_struct_output": false },
+    { "name": "o3-mini", "provider": "OpenAI", "supports_struct_output": true },
+
+    { "name": "deepseek-chat", "provider": "DeepSeek", "supports_struct_output": false },
+    { "name": "deepseek-coder", "provider": "DeepSeek", "supports_struct_output": false },
+    { "name": "deepseek", "provider": "DeepSeek", "supports_struct_output": true },
+    { "name": "deepseek-reasoner", "provider": "DeepSeek", "supports_struct_output": true },
+
+    { "name": "gemini-1.5-flash", "provider": "Google", "supports_struct_output": true },
+    { "name": "gemini", "provider": "Google", "supports_struct_output": true },
+    { "name": "gemini-1.5", "provider": "Google", "supports_struct_output": true },
+    { "name": "gemini-2", "provider": "Google", "supports_struct_output": true }
+  ]
+}

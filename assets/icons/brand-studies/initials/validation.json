@@ -1,0 +1,24 @@
+{
+  "proposals": 4,
+  "svgCount": 8,
+  "pngCount": 36,
+  "activeBrandUnchanged": true,
+  "results": [
+    {
+      "id": "11-vav-beta",
+      "edgeWarnings": []
+    },
+    {
+      "id": "12-vav-beta-ponto",
+      "edgeWarnings": []
+    },
+    {
+      "id": "13-vav-beta-trama",
+      "edgeWarnings": []
+    },
+    {
+      "id": "14-yod-beta",
+      "edgeWarnings": []
+    }
+  ]
+}
