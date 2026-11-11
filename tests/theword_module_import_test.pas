@@ -45,11 +45,21 @@ type
     property RaisedAfterCommit: Boolean read FRaisedAfterCommit;
   end;
 
+  TFailAtMemoryFinalizationSpy = class(TImportProgressSpy)
+  public
+    Failed: Boolean;
+    SawRestorationStart: Boolean;
+    SawRestorationEnd: Boolean;
+    procedure Update; override;
+  end;
+
   TTheWordModuleImportTests = class(TTestCase)
   private
     FTempDir: string;
     FAsyncProject: TProject;
     FAsyncCallbackRan: Boolean;
+    FFinalObserverRan: Boolean;
+    FFailDuringRefresh: Boolean;
     function TempPath(const AFileName: string): string;
     function CreateONTModule(const AFileName, ATextPrefix: string;
       AVerseCount: Integer; AIncludeCharsetZero, AWithUtf8Bom: Boolean;
@@ -64,6 +74,9 @@ type
     procedure SeedFirstAssociatedPair(const ADatabaseFile: string);
     procedure SeedAssociatedPairAtRow(const ADatabaseFile: string;
       ARowNumber: Integer);
+    procedure CheckAssociatedSourceImport(Staged, FailAtFinalization: Boolean;
+      FailDuringRefresh: Boolean = False);
+    procedure ObserveImportedVerseRefresh(Sender: TProject);
     procedure MoveProjectCursorAsync(Data: PtrInt);
   protected
     procedure SetUp; override;
@@ -83,12 +96,22 @@ type
     procedure StagedBatchFailureRestoresCommittedPrefix;
     procedure ExistingDestinationStagedFailureRestoresOriginalText;
     procedure SequentialStagedSourceAndDestinationSurviveReopen;
+    procedure StagedAssociatedSourceImportRefreshesVisibleVerse;
+    procedure UnstagedAssociatedSourceImportRefreshesVisibleVerse;
+    procedure FailedMemoryFinalizationRestoresSourceAndCanBeRetried;
+    procedure ObserverFailureAfterImportLeavesSourceAndMemoryCommitted;
   end;
 
 implementation
 
+uses
+  SuggestionManager;
+
 const
   UTF8_BOM: array[0..2] of Byte = ($EF, $BB, $BF);
+  ASSOCIATED_VERSE_COUNT = 500;
+  FINALIZATION_FAILURE = 'Injected failure while finalizing association memory';
+  TAGGED_SOURCE = 'alpha<WH1><WTN>';
 
 {$IFDEF MSWINDOWS}
 const
@@ -145,6 +168,24 @@ end;
 function TTheWordModuleImportTests.TempPath(const AFileName: string): string;
 begin
   Result := IncludeTrailingPathDelimiter(FTempDir) + AFileName;
+end;
+
+procedure TFailAtMemoryFinalizationSpy.Update;
+begin
+  if not Failed and (Style = pbstMarquee) then
+  begin
+    Failed := True;
+    raise Exception.Create(FINALIZATION_FAILURE);
+  end;
+  if Failed and (Style = pbstNormal) and (Min = 0) and
+    (Max = ASSOCIATED_VERSE_COUNT) then
+  begin
+    if Position = 0 then
+      SawRestorationStart := True;
+    if SawRestorationStart and (Position = Max) then
+      SawRestorationEnd := True;
+  end;
+  inherited Update;
 end;
 
 function TTheWordModuleImportTests.CreateONTModule(const AFileName,
@@ -403,6 +444,7 @@ end;
 procedure TTheWordModuleImportTests.SetUp;
 begin
   inherited SetUp;
+  Forms.Application.Initialize;
   FAsyncProject := nil;
   FAsyncCallbackRan := False;
   FTempDir := IncludeTrailingPathDelimiter(GetTempDir(False)) +
@@ -975,6 +1017,179 @@ begin
     ProjectInstance.CloseProject(False);
     ProjectInstance.Free;
   end;
+end;
+
+function AssociatedDestination(RowNumber: Integer): string;
+begin
+  Result := StringOfChar('x', 128) + Chr(Ord('a') + RowNumber mod 26) +
+    Chr(Ord('a') + (RowNumber div 26) mod 26);
+end;
+
+procedure TTheWordModuleImportTests.CheckAssociatedSourceImport(Staged,
+  FailAtFinalization, FailDuringRefresh: Boolean);
+const
+  FIRST_REFERENCE = '40,1,1';
+  LAST_REFERENCE = '40,15,11';
+  PAIRS = '<par a="0" b="0">';
+var
+  DatabaseFile, ModuleFile, ErrorMessage: string;
+  Host: TForm;
+  SourcePanel, DestinationPanel: TScrollBox;
+  ProjectInstance: TProject;
+  Progress: TFailAtMemoryFinalizationSpy;
+  ImportResult: TTheWordModuleImportResult;
+  Matches: TTranslationPairMatchArray;
+  Page: TTranslationOccurrencePage;
+  Succeeded: Boolean;
+
+  procedure PrepareFixture;
+  var
+    Connection: TSQLite3Connection;
+    Transaction: TSQLTransaction;
+    Query: TSQLQuery;
+    Index: Integer;
+  begin
+    TProjectDatabaseBootstrap.CreateProjectDatabaseFixture(DatabaseFile, etNT,
+      ASSOCIATED_VERSE_COUNT);
+    Connection := TSQLite3Connection.Create(nil);
+    Transaction := TSQLTransaction.Create(nil);
+    Query := TSQLQuery.Create(nil);
+    try
+      Connection.DatabaseName := DatabaseFile;
+      Connection.Transaction := Transaction;
+      Query.Database := Connection;
+      Query.Transaction := Transaction;
+      // Later connections to this fixture spill dirty pages during the rebuild.
+      Connection.ExecuteDirect('pragma default_cache_size=20');
+      Query.SQL.Text := 'update pares set pare_texto_origem=''alpha'', ' +
+        'pare_texto_destino=:destination, pare_pares=:pairs, pare_situacao=2 ' +
+        'where rowid=:row_number';
+      for Index := 1 to ASSOCIATED_VERSE_COUNT do
+      begin
+        Query.ParamByName('destination').AsString := AssociatedDestination(Index);
+        Query.ParamByName('pairs').AsString := PAIRS;
+        Query.ParamByName('row_number').AsInteger := Index;
+        Query.ExecSQL;
+      end;
+      Transaction.Commit;
+    finally
+      Query.Free;
+      Transaction.Free;
+      Connection.Free;
+    end;
+  end;
+
+begin
+  DatabaseFile := TempPath('associated.bib');
+  PrepareFixture;
+  ModuleFile := CreateONTModule('tagged.nt', TAGGED_SOURCE, ASSOCIATED_VERSE_COUNT,
+    False, False, TAGGED_SOURCE);
+  Host := TForm.CreateNew(nil);
+  ProjectInstance := TProject.Create;
+  Progress := nil;
+  try
+    SourcePanel := TScrollBox.Create(Host);
+    SourcePanel.Parent := Host;
+    DestinationPanel := TScrollBox.Create(Host);
+    DestinationPanel.Parent := Host;
+    ProjectInstance.Escopo := etNT;
+    ProjectInstance.CreateVerseObject(SourcePanel, tbOrigem);
+    ProjectInstance.CreateVerseObject(DestinationPanel, tbDestino);
+    ProjectInstance.OpenProject(DatabaseFile);
+    AssertTrue('visible verses must use the chapter snapshot',
+      Assigned(ProjectInstance.GetChapterSnapshot));
+    ProjectInstance.AutoSave := True;
+    if FailAtFinalization then
+    begin
+      Progress := TFailAtMemoryFinalizationSpy.Create(nil);
+      AssertFalse(ProjectInstance.ImportTheWordModuleFixture(ModuleFile, tbOrigem,
+        Progress, True, ImportResult, Staged, ASSOCIATED_VERSE_COUNT));
+      AssertTrue('the injected failure must occur during finalization', Progress.Failed);
+      AssertTrue(ImportResult.ErrorMessage, Pos(FINALIZATION_FAILURE, ImportResult.ErrorMessage) > 0);
+      AssertEquals(ASSOCIATED_VERSE_COUNT, ImportResult.ImportedVerseCount);
+      AssertTrue('restoration must reset the progress scale', Progress.SawRestorationStart);
+      AssertTrue('restoration must reach the captured verse count', Progress.SawRestorationEnd);
+      AssertEquals('alpha', ReadVerseText(DatabaseFile, 'pare_texto_origem', LAST_REFERENCE));
+      AssertEquals(0, CountVersesWithTextPrefix(DatabaseFile, 'pare_texto_origem', TAGGED_SOURCE));
+      AssertEquals(PAIRS, ReadVerseText(DatabaseFile, 'pare_pares', FIRST_REFERENCE));
+      AssertEquals('2', ReadVerseText(DatabaseFile, 'pare_situacao', FIRST_REFERENCE));
+    end;
+
+    FFinalObserverRan := False;
+    FFailDuringRefresh := FailDuringRefresh;
+    ProjectInstance.OnNewVerseSubscribe(@ObserveImportedVerseRefresh);
+    try
+      Succeeded := ProjectInstance.ImportTheWordModuleFixture(ModuleFile, tbOrigem,
+        nil, True, ImportResult, Staged, ASSOCIATED_VERSE_COUNT);
+    finally
+      ProjectInstance.OnNewVerseUnsubscribe(@ObserveImportedVerseRefresh);
+    end;
+    AssertTrue(ImportResult.ErrorMessage, Succeeded);
+    AssertTrue('the observer saw the imported visible verse', FFinalObserverRan);
+    AssertEquals(ASSOCIATED_VERSE_COUNT, ImportResult.ImportedVerseCount);
+    AssertEquals(LAST_REFERENCE, ImportResult.LastReference);
+    AssertEquals(FIRST_REFERENCE, ProjectInstance.ID);
+    AssertEquals(TAGGED_SOURCE, ProjectInstance.VerseObjects[tbOrigem].XML);
+    AssertEquals(PAIRS, ProjectInstance.VerseObjects[tbOrigem].Pairs);
+    if not Staged then
+    begin
+      AssertTrue('the view refresh must leave unstaged import metadata pending',
+        ProjectInstance.Modificado);
+      ProjectInstance.Commit;
+    end;
+    ProjectInstance.CloseProject(False);
+    ProjectInstance.OpenProject(DatabaseFile);
+    AssertEquals(ASSOCIATED_VERSE_COUNT, CountVersesWithTextPrefix(DatabaseFile,
+      'pare_texto_origem', TAGGED_SOURCE));
+    AssertEquals(TAGGED_SOURCE + ' 500', ReadVerseText(DatabaseFile,
+      'pare_texto_origem', LAST_REFERENCE));
+    AssertEquals(PAIRS, ReadVerseText(DatabaseFile, 'pare_pares', LAST_REFERENCE));
+    AssertEquals('2', ReadVerseText(DatabaseFile, 'pare_situacao', LAST_REFERENCE));
+    Matches := nil;
+    SetLength(Matches, 1);
+    Matches[0].SourcePhrase := '<wh1><wtn>';
+    Matches[0].TargetPhrase := AssociatedDestination(1);
+    Succeeded := ProjectInstance.TryGetReadyTranslationMemoryOccurrences(Matches,
+      1, Page, ErrorMessage);
+    AssertTrue(ErrorMessage, Succeeded);
+    AssertEquals(1, Page.TotalAssociations);
+    AssertEquals(1, Length(Page.Items));
+    AssertEquals(FIRST_REFERENCE, Page.Items[0].ReferenceID);
+  finally
+    Progress.Free;
+    ProjectInstance.Free;
+    Host.Free;
+  end;
+end;
+
+procedure TTheWordModuleImportTests.ObserveImportedVerseRefresh(Sender: TProject);
+begin
+  if Sender.VerseObjects[tbOrigem].XML = TAGGED_SOURCE then
+  begin
+    FFinalObserverRan := True;
+    if FFailDuringRefresh then
+      raise Exception.Create('Injected failure while displaying the imported verse');
+  end;
+end;
+
+procedure TTheWordModuleImportTests.ObserverFailureAfterImportLeavesSourceAndMemoryCommitted;
+begin
+  CheckAssociatedSourceImport(True, False, True);
+end;
+
+procedure TTheWordModuleImportTests.StagedAssociatedSourceImportRefreshesVisibleVerse;
+begin
+  CheckAssociatedSourceImport(True, False);
+end;
+
+procedure TTheWordModuleImportTests.UnstagedAssociatedSourceImportRefreshesVisibleVerse;
+begin
+  CheckAssociatedSourceImport(False, False);
+end;
+
+procedure TTheWordModuleImportTests.FailedMemoryFinalizationRestoresSourceAndCanBeRetried;
+begin
+  CheckAssociatedSourceImport(True, True);
 end;
 
 initialization
