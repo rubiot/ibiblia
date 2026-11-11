@@ -6031,6 +6031,8 @@ var
   Modulo: TStringList;
   MtDescription, MtVerseRules: IMatch;
   OldCursor: TCursor;
+  OriginalExporting: Boolean;
+  OriginalScrollEventsEnabled: Boolean;
   OwnVerseRulesForm: Boolean;
   Propriedades: TStringStream;
   ReComments, ReDescription, ReVazio, ReVerseRules: IRegex;
@@ -6154,6 +6156,13 @@ var
     try
       if UsesActiveProgressForm then
         FormPleaseWait.SetMessage(SModuleImportRestoring);
+      if Assigned(pb) then
+      begin
+        pb.Style := pbstNormal;
+        pb.Min := 0;
+        pb.Max := SnapshotCount;
+        pb.Position := 0;
+      end;
       LastProgressPulse := 0;
       PulseImportProgress(0, '', True);
       for Index := 0 to SnapshotCount - 1 do
@@ -6337,6 +6346,8 @@ begin
         end;
       end;
 
+      OriginalScrollEventsEnabled := FScrollEventsEnabled;
+      OriginalExporting := FExportando;
       StartScrollingSession;
       SessionStarted := True;
       if StagedBatchingEnabled and
@@ -6348,101 +6359,101 @@ begin
         // Release a reader left by a previous suggestion lookup before the
         // first canonical batch tries to acquire the SQLite writer.
         FSuggestionManager.Rollback;
-      try
-        if Assigned(pb) then
+      if Assigned(pb) then
+      begin
+        pb.Style := pbstNormal;
+        pb.Position := 0;
+        pb.Min := 0;
+        pb.Max := AImportResult.ExpectedVerseCount;
+        pb.Step := 1;
+        pb.Visible := True;
+      end;
+      LastProgressPulse := 0;
+      PulseImportProgress(0, '', True);
+
+      AvailableCount := CountAvailableProjectVerses;
+      AImportResult.AvailableVerseCount := AvailableCount;
+      if AvailableCount < AImportResult.ExpectedVerseCount then
+      begin
+        SetFailure(Format(SModuleImportCapacityError,
+          [AvailableCount, AImportResult.ExpectedVerseCount]));
+        Exit;
+      end;
+      LastProgressPulse := 0;
+      PulseImportProgress(0, '', True);
+
+      SetLength(Snapshots, AImportResult.ExpectedVerseCount);
+      PositionAtFirstProjectVerse;
+      for I := FirstImportedModuleLineIndex(Layout) to
+        LastImportedModuleLineIndex(Layout) do
+      begin
+        if FPersistence.EOF then
+          Break;
+
+        if Assigned(RxVerseRulesFrom) then
+          for M := 0 to RxVerseRulesFrom.Count - 1 do
+            Modulo[I] := RxVerseRulesFrom[M].Replace(Modulo[I],
+              RxVerseRulesTo[M]);
+
+        Snapshots[SnapshotCount].ReferenceID :=
+          FPersistence.CurrentPairId;
+        Snapshots[SnapshotCount].TextValue :=
+          FPersistence.CurrentText(FACamposTexto[texto]);
+        Snapshots[SnapshotCount].PairsValue :=
+          FPersistence.CurrentPairs;
+        Snapshots[SnapshotCount].StatusValue :=
+          FPersistence.CurrentStatus;
+        Inc(SnapshotCount);
+
+        if not TrySetVerseText(Modulo[I], texto, replace,
+          ImportError) then
         begin
-          pb.Style := pbstNormal;
-          pb.Position := 0;
-          pb.Min := 0;
-          pb.Max := AImportResult.ExpectedVerseCount;
-          pb.Step := 1;
-          pb.Visible := True;
+          if ImportError.IsEmpty then
+            ImportError := SCorruptedData;
+          raise Exception.Create(ImportError);
         end;
-        LastProgressPulse := 0;
-        PulseImportProgress(0, '', True);
-
-        AvailableCount := CountAvailableProjectVerses;
-        AImportResult.AvailableVerseCount := AvailableCount;
-        if AvailableCount < AImportResult.ExpectedVerseCount then
-        begin
-          SetFailure(Format(SModuleImportCapacityError,
-            [AvailableCount, AImportResult.ExpectedVerseCount]));
-          Exit;
-        end;
-        LastProgressPulse := 0;
-        PulseImportProgress(0, '', True);
-
-        SetLength(Snapshots, AImportResult.ExpectedVerseCount);
-        PositionAtFirstProjectVerse;
-        for I := FirstImportedModuleLineIndex(Layout) to
-          LastImportedModuleLineIndex(Layout) do
-        begin
-          if FPersistence.EOF then
-            Break;
-
-          if Assigned(RxVerseRulesFrom) then
-            for M := 0 to RxVerseRulesFrom.Count - 1 do
-              Modulo[I] := RxVerseRulesFrom[M].Replace(Modulo[I],
-                RxVerseRulesTo[M]);
-
-          Snapshots[SnapshotCount].ReferenceID :=
-            FPersistence.CurrentPairId;
-          Snapshots[SnapshotCount].TextValue :=
-            FPersistence.CurrentText(FACamposTexto[texto]);
-          Snapshots[SnapshotCount].PairsValue :=
-            FPersistence.CurrentPairs;
-          Snapshots[SnapshotCount].StatusValue :=
-            FPersistence.CurrentStatus;
-          Inc(SnapshotCount);
-
-          if not TrySetVerseText(Modulo[I], texto, replace,
-            ImportError) then
-          begin
-            if ImportError.IsEmpty then
-              ImportError := SCorruptedData;
-            raise Exception.Create(ImportError);
-          end;
-          Inc(AImportResult.ImportedVerseCount);
-          AImportResult.LastReference :=
-            Snapshots[SnapshotCount - 1].ReferenceID;
-          FPersistence.Next;
-
-          if StagedBatchingEnabled and
-            ((AImportResult.ImportedVerseCount mod
-              THEWORD_STAGED_IMPORT_BATCH_SIZE) = 0) then
-            CommitStagedPairChanges(AImportResult.ImportedVerseCount,
-              AImportResult.LastReference);
-          PulseImportProgress(AImportResult.ImportedVerseCount,
-            AImportResult.LastReference,
-            ((AImportResult.ImportedVerseCount mod 75) = 0) or
-            (AImportResult.ImportedVerseCount =
-             AImportResult.ExpectedVerseCount));
-        end;
-
-        if AImportResult.ImportedVerseCount <>
-          AImportResult.ExpectedVerseCount then
-        begin
-          RestoreSnapshots;
-          SetFailure(Format(SModuleImportIncompleteError,
-            [AImportResult.ImportedVerseCount,
-             AImportResult.ExpectedVerseCount,
-             AImportResult.LastReference]));
-          Exit;
-        end;
+        Inc(AImportResult.ImportedVerseCount);
+        AImportResult.LastReference :=
+          Snapshots[SnapshotCount - 1].ReferenceID;
+        FPersistence.Next;
 
         if StagedBatchingEnabled and
-          (AImportResult.ImportedVerseCount > 0) then
+          ((AImportResult.ImportedVerseCount mod
+            THEWORD_STAGED_IMPORT_BATCH_SIZE) = 0) then
           CommitStagedPairChanges(AImportResult.ImportedVerseCount,
             AImportResult.LastReference);
-      finally
-        if SessionStarted then
-        begin
-          try
-            FinishScrollingSession;
-          finally
-            SessionStarted := False;
-          end;
-        end;
+        PulseImportProgress(AImportResult.ImportedVerseCount,
+          AImportResult.LastReference,
+          ((AImportResult.ImportedVerseCount mod 75) = 0) or
+          (AImportResult.ImportedVerseCount =
+           AImportResult.ExpectedVerseCount));
+      end;
+
+      if AImportResult.ImportedVerseCount <>
+        AImportResult.ExpectedVerseCount then
+      begin
+        RestoreSnapshots;
+        SetFailure(Format(SModuleImportIncompleteError,
+          [AImportResult.ImportedVerseCount,
+           AImportResult.ExpectedVerseCount,
+           AImportResult.LastReference]));
+        Exit;
+      end;
+
+      if StagedBatchingEnabled and
+        (AImportResult.ImportedVerseCount > 0) then
+        CommitStagedPairChanges(AImportResult.ImportedVerseCount,
+          AImportResult.LastReference);
+
+      GoToReference(FMarker);
+      if not StagedBatchingEnabled and
+        TextTypeParticipatesInAssociations(texto) then
+      begin
+        // The caller owns the final commit. Cache the visible chapter before
+        // the independent association-memory writer can block its reader.
+        if Assigned(FSuggestionManager) then
+          FSuggestionManager.Rollback;
+        GetChapterSnapshot;
       end;
 
       if TextTypeParticipatesInAssociations(texto) then
@@ -6479,7 +6490,6 @@ begin
       if StagedBatchingEnabled then
         Self.Commit;
 
-      UpdateTree(FMarker);
       AImportResult.Status := twmisSucceeded;
       AImportResult.ErrorMessage := '';
       Result := True;
@@ -6539,26 +6549,52 @@ begin
       end;
     end;
   finally
-    if SessionStarted then
-    begin
-      try
-        FinishScrollingSession;
-      except
-        { Preserve the primary import result while restoring UI state. }
+    try
+      if SessionStarted then
+      begin
+        try
+          try
+            GoToReference(FMarker);
+            if Result then
+              UpdateTree(FMarker);
+          finally
+            FScrollEventsEnabled := OriginalScrollEventsEnabled;
+            FExportando := OriginalExporting;
+          end;
+          // Staged imports refresh after commit; caller-owned transactions
+          // use the chapter cached before the rebuild acquired its writer.
+          if OriginalScrollEventsEnabled and
+            (Result or SnapshotsRestored) then
+          begin
+            FExportando := True;
+            try
+              AfterVerseScroll(nil);
+            finally
+              FExportando := OriginalExporting;
+            end;
+          end;
+        except
+          on RefreshError: Exception do
+            // The import result describes the data operation. Display errors
+            // must neither undo a committed import nor hide its primary error.
+            DebugLn('Module import view refresh failed: ' +
+              RefreshError.Message);
+        end;
       end;
+    finally
+      if Assigned(pb) and not (Assigned(FormPleaseWait) and
+        FormPleaseWait.OperationActive and
+        (pb = FormPleaseWait.ProgressBar1)) then
+        pb.Visible := False;
+      Modulo.Free;
+      Propriedades.Free;
+      FreeAndNil(RxVerseRulesFrom);
+      FreeAndNil(RxVerseRulesTo);
+      VerseRuleSources.Free;
+      VerseRuleTargets.Free;
+      if OwnVerseRulesForm then
+        RulesForm.Free;
     end;
-    if Assigned(pb) and not (Assigned(FormPleaseWait) and
-      FormPleaseWait.OperationActive and
-      (pb = FormPleaseWait.ProgressBar1)) then
-      pb.Visible := False;
-    Modulo.Free;
-    Propriedades.Free;
-    FreeAndNil(RxVerseRulesFrom);
-    FreeAndNil(RxVerseRulesTo);
-    VerseRuleSources.Free;
-    VerseRuleTargets.Free;
-    if OwnVerseRulesForm then
-      RulesForm.Free;
   end;
 end;
 
