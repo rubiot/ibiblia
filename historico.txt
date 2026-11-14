@@ -1,4 +1,9 @@
-﻿Version 1.1.0 (64-bit Edition) - 2026-11-13
+﻿Version 1.1.0.020 (64-bit Edition) - 2026-11-15
+- Added Tools > Go to verse (Ctrl+G): type a reference such as jn 3 16, jn 3.16 or 1co 13:4 and press Enter. Book abbreviations and names (English and Tagalog) are recognised, and a space, period or comma can stand for the colon. "3 16" goes to chapter 3 verse 16 of the current book, ":16" to verse 16 of the current chapter. Typing a letter while the Bible tree has the focus opens the box.
+- Fixed the skin reverting to light colours (header strip, Bible tree, verse panels) after opening another project or closing one; previously only a restart restored it.
+- Fixed dialogs such as Export project opening unskinned the first time in a session.
+
+Version 1.1.0 (64-bit Edition) - 2026-11-13
 - Upgraded target architecture to native 64-bit Windows (x86_64-win64) with 64-bit SQLite3 and PCRE libraries.
 - Added instant Strong's and Morphology dictionary popup updates when hovering across tagged words in Source and Destination panels or when scrolling through Source words with the mouse wheel.
 - Enabled smooth mouse-wheel scrolling (and Ctrl+Wheel font zooming) directly inside the dictionary popup window when hovering over it.

@@ -263,6 +263,7 @@ type
     FDefaultVerseModeEditingItem: TMenuItem;
     FActionPreferences: TAction;
     FActionFindInProject: TAction;
+    FActionGoToVerse: TAction;
     FSkinMenu: TMenuItem;
     FSkinItems: array[TSkinId] of TMenuItem;
     FActionToggleDarkSkin: TAction;
@@ -277,6 +278,7 @@ type
     FActionPreviousFilteredVerse: TAction;
     FDefaultDictionariesMenuItem: TMenuItem;
     FFindInProjectMenuItem: TMenuItem;
+    FGoToVerseMenuItem: TMenuItem;
     FToolsMenu: TMenuItem;
     FVerseInformationMenu: TMenuItem;
     FTheWordSyncMenu: TMenuItem;
@@ -371,6 +373,7 @@ type
     procedure SetAlwaysOnTopEnabled(AEnabled: Boolean);
     procedure SetAutoSaveEnabled(AEnabled: Boolean);
     procedure ActionFindInProjectExecute(Sender: TObject);
+    procedure ActionGoToVerseExecute(Sender: TObject);
     procedure SkinItemClick(Sender: TObject);
     procedure ActionToggleDarkSkinExecute(Sender: TObject);
     procedure SelectSkin(AId: TSkinId);
@@ -381,6 +384,9 @@ type
     procedure TreeViewCustomDrawItem(Sender: TCustomTreeView; Node: TTreeNode;
       State: TCustomDrawState; var DefaultDraw: Boolean);
     procedure ScreenActiveFormChanged(Sender: TObject; Form: TCustomForm);
+    procedure ScreenRemoveForm(Sender: TObject; Form: TCustomForm);
+    procedure SkinFormOnce(AForm: TCustomForm);
+    procedure ReapplySkinAfterProjectChange;
     procedure ActionReadOnHoverExecute(Sender: TObject);
     procedure VoiceSettingsClick(Sender: TObject);
     procedure AppIdleAutoSelect(Sender: TObject; var Done: Boolean);
@@ -389,6 +395,7 @@ type
     procedure StepFilteredVerse(Forward: Boolean);
     procedure DefaultDictionariesClick(Sender: TObject);
     procedure FindInProjectNavigate(const ReferenceID: string);
+    procedure GoToVerseNavigate(const ReferenceID: string);
     procedure SetBoldStrongsEnabled(AEnabled: Boolean);
     procedure SetPopupTrigger(APopupTrigger: TPopupTrigger);
     procedure SetDockPopupRightEnabled(AEnabled: Boolean);
@@ -661,6 +668,7 @@ resourcestring
   STheWordEditorAppearance = 'theWord editor appearance...';
   SPreferencesMenu = 'iBiblia &preferences...';
   SFindInProjectMenu = '&Find in project...';
+  SGoToVerseMenu = '&Go to verse...';
   SDefaultDictionariesMenu = '&Default dictionaries...';
   SSkinsMenu = '&Skins';
   SToggleDarkSkinMenu = 'Switch between &dark and light';
@@ -676,6 +684,8 @@ resourcestring
   SShortcutNextFilteredVerse = 'Next verse with a shown status (or not finished)';
   SShortcutPreviousFilteredVerse = 'Previous verse with a shown status (or not finished)';
   SShortcutFindInProject = 'Find in project';
+  SShortcutGoToVerse = 'Go to verse: type a reference such as jn 3 16 (or just start typing a book name while the Bible tree has the focus)';
+  SGoToVerseNotFoundFmt = 'That verse was not found in this project (%s).';
   STheWordStateOff = 'theWord synchronization: off';
   STheWordStateOutbound = 'theWord synchronization: iBiblia → theWord';
   STheWordStateInbound = 'theWord synchronization: theWord → iBiblia';
@@ -706,7 +716,7 @@ implementation
 uses FormNewProject, FormProjectProperties, FormProjectExport, FormMergeProjects,
   FormExportPatch, FormApplyPatch, FormLlmOptions, FormTheWordHighlighterColors,
   llmclient, theword_syntax_highlighter, translation_memory_preview,
-  FormFindInProject, FormDefaultDictionaries, unittexttospeech, formvoicesettings,
+  FormFindInProject, FormGoToVerse, FormDefaultDictionaries, unittexttospeech, formvoicesettings,
   FormNewFeaturesGuide, FormDictionaryPopup;
 
 {$R *.lfm}
@@ -1510,6 +1520,12 @@ begin
   FFindInProjectMenuItem := TMenuItem.Create(MainMenu1);
   FFindInProjectMenuItem.Action := FActionFindInProject;
   FToolsMenu.Insert(0, FFindInProjectMenuItem);
+  FActionGoToVerse := TAction.Create(ActionList1);
+  FActionGoToVerse.ShortCut := ShortCut(VK_G, [ssCtrl]);
+  FActionGoToVerse.OnExecute := @ActionGoToVerseExecute;
+  FGoToVerseMenuItem := TMenuItem.Create(MainMenu1);
+  FGoToVerseMenuItem.Action := FActionGoToVerse;
+  FToolsMenu.Insert(1, FGoToVerseMenuItem);
   FActionNextFilteredVerse := TAction.Create(ActionList1);
   FActionNextFilteredVerse.ShortCut := ShortCut(VK_F8, []);
   FActionNextFilteredVerse.OnExecute := @ActionNextFilteredVerseExecute;
@@ -1739,6 +1755,7 @@ begin
     AddActionShortcut(ActionPreviousVerse, SShortcutPreviousVerse);
     AddActionShortcut(ActionNextVerse, SShortcutNextVerse);
     AddActionShortcut(FActionFindInProject, SShortcutFindInProject);
+    AddActionShortcut(FActionGoToVerse, SShortcutGoToVerse);
     AddActionShortcut(FActionToggleDarkSkin, SToggleDarkSkinMenu);
     AddActionShortcut(FActionReadOnHover, SReadOnHoverMenu);
     AddActionShortcut(FActionNextFilteredVerse, SShortcutNextFilteredVerse);
@@ -4055,6 +4072,7 @@ begin
   if Assigned(FrmLLMOptions) then
     FrmLLMOptions.SetProject(nil);
   FindInProjectProjectChanged(nil);
+  GoToVerseProjectChanged(nil);
   CurrentProject.Destroy;
   CurrentProject := nil;
   UpdateMainCaption;
@@ -4087,6 +4105,7 @@ begin
   UpdateStateHeader;
   UpdateStatusReviewPanel;
   LayoutVersePanelLabels;
+  ReapplySkinAfterProjectChange;
 end;
 
 procedure TMainForm.ActionHistoryBackExecute(Sender: TObject);
@@ -4646,6 +4665,7 @@ begin
   SetCurrentSkinByName(opts.ReadString('UI', 'Theme', 'Default'));
   FSkinnedForms := TList.Create;
   Screen.AddHandlerActiveFormChanged(@ScreenActiveFormChanged);
+  Screen.AddHandlerRemoveForm(@ScreenRemoveForm);
   SetAppIconFamily(AppIconFamilyFromId(
     opts.ReadString('opcoes', 'ui.icon.family', 'connected')));
   modeInt := opts.ReadInteger('opcoes', 'ui.toolbar.icon.size', Ord(tisSmall));
@@ -4859,6 +4879,7 @@ begin
   if Assigned(FStripTimer) then
     FStripTimer.Enabled := False;
   Screen.RemoveHandlerActiveFormChanged(@ScreenActiveFormChanged);
+  Screen.RemoveHandlerRemoveForm(@ScreenRemoveForm);
   FreeAndNil(FSkinnedForms);
   Application.RemoveOnIdleHandler(@AppIdleAutoSelect);
   if Assigned(TTSManager) then
@@ -4943,6 +4964,16 @@ begin
           RadioGroupStatusSelectionChanged(RadioGroupStatus);
           Key := #0;
         end;
+      end;
+    'a'..'z', 'A'..'Z':
+      { Like theWord: start typing a book name to open the verse lookup.
+        Only when no text box can be the target of the key: nothing has the
+        focus, or the Bible tree has it. }
+      if Assigned(CurrentProject) and
+         ((ActiveControl = nil) or (ActiveControl is TCustomTreeView)) then
+      begin
+        ShowGoToVerse(Self, CurrentProject, @GoToVerseNavigate, Key);
+        Key := #0;
       end;
   end;
 end;
@@ -5259,21 +5290,69 @@ begin
   end;
 end;
 
-{ Skins each other window the first time it is shown with the current skin. }
+{ Skins another window once with the current skin. }
+procedure TMainForm.SkinFormOnce(AForm: TCustomForm);
+begin
+  if not Assigned(AForm) or (AForm = Self) or not Assigned(FSkinnedForms) or
+     (FSkinnedForms.IndexOf(AForm) >= 0) then
+    Exit;
+  FSkinnedForms.Add(AForm);
+  ApplyDarkModeToWindow(AForm, CurrentSkin.IsDark);
+  ApplySkinToForm(AForm, CurrentSkin);
+end;
+
+{ The LCL passes the form that was active BEFORE the change, so on its own
+  this skinned a dialog only after it had been closed once (the first time a
+  dialog such as Export project opened, it was still light). Skin the form
+  that is active now as well. }
 procedure TMainForm.ScreenActiveFormChanged(Sender: TObject; Form: TCustomForm);
 begin
-  if not Assigned(Form) or (Form = Self) or not Assigned(FSkinnedForms) or
-     (FSkinnedForms.IndexOf(Form) >= 0) then
-    Exit;
-  FSkinnedForms.Add(Form);
-  ApplyDarkModeToWindow(Form, CurrentSkin.IsDark);
-  ApplySkinToForm(Form, CurrentSkin);
+  SkinFormOnce(Screen.ActiveCustomForm);
+  SkinFormOnce(Form);
+end;
+
+{ A freed dialog's address can be reused by the next dialog that is created;
+  forget freed forms so a new one is not taken for already skinned. }
+procedure TMainForm.ScreenRemoveForm(Sender: TObject; Form: TCustomForm);
+begin
+  if Assigned(FSkinnedForms) then
+    FSkinnedForms.Remove(Form);
+end;
+
+{ Opening or closing a project rebuilds the verse panels, the tree and the
+  header, which come back in system (light) colours; at start-up the skin is
+  applied after the project opens, which is why a restart cleared it. }
+procedure TMainForm.ReapplySkinAfterProjectChange;
+begin
+  if CurrentSkin.Id <> skClassic then
+    ApplyActiveSkin;
 end;
 
 procedure TMainForm.ActionFindInProjectExecute(Sender: TObject);
 begin
   if CurrentProject <> nil then
     ShowFindInProject(Self, CurrentProject, @FindInProjectNavigate);
+end;
+
+procedure TMainForm.ActionGoToVerseExecute(Sender: TObject);
+begin
+  if CurrentProject <> nil then
+    ShowGoToVerse(Self, CurrentProject, @GoToVerseNavigate, '');
+end;
+
+procedure TMainForm.GoToVerseNavigate(const ReferenceID: string);
+begin
+  if (CurrentProject = nil) or CurrentProject.SaveAsInProgress then
+    Exit;
+  if CurrentProject.ID = ReferenceID then
+    Exit;
+  try
+    CurrentProject.NavigateToReference(ReferenceID);
+  except
+    on E: Exception do
+      MessageDlg(Format(SGoToVerseNotFoundFmt, [ReferenceID]), mtInformation,
+        [mbOK], 0);
+  end;
 end;
 
 procedure TMainForm.ActionNextFilteredVerseExecute(Sender: TObject);
@@ -6140,6 +6219,11 @@ begin
     FActionFindInProject.Caption := SFindInProjectMenu;
     FActionFindInProject.Hint := SShortcutFindInProject;
   end;
+  if Assigned(FActionGoToVerse) then
+  begin
+    FActionGoToVerse.Caption := SGoToVerseMenu;
+    FActionGoToVerse.Hint := SGoToVerseMenu;
+  end;
   if Assigned(ActionKeyboardShortcuts) then
   begin
     ActionKeyboardShortcuts.Caption := SKeyboardShortcutsMenu;
@@ -6345,6 +6429,7 @@ begin
   SetUpSyncThread;
   ActionSyncTheWordVerseExecute(Self);
   CurrentProject.RequestDefaultVerseModeForCurrentVerse;
+  ReapplySkinAfterProjectChange;
 end;
 
 procedure TMainForm.ActionRegisterFileAssociationExecute(Sender: TObject);

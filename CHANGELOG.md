@@ -6,6 +6,17 @@
 
 ## What's New & Fixed in v1.1.0
 
+### 0. Version 1.1.0.020 (2026-11-15) — Go to Verse Lookup & Skin Fixes
+
+* **Go to Verse Lookup Box (`FormGoToVerse.pas`, `verse_lookup.pas`, `bible_versification.pas`, `formprincipal.pas`)**: Added **Tools > Go to verse...** (`Ctrl+G`), a theWord-style lookup box. Type `jn 3 16`, `jn 3.16`, `1co 13:4` or `ps 23` and press `Enter`.
+  * A space, period, colon or comma separates chapter and verse.
+  * Books are recognised by standard abbreviations, full names, or the first letters of the name (English, the interface language, Tagalog, and the project's extra books), preferring books that exist in the open project; Roman numerals (`ii tim 3 16`) work too.
+  * With no book typed, `3 16` goes to chapter 3 verse 16 of the current book, `3` to chapter 3, and `:16` / `.16` to verse 16 of the current chapter. One-chapter books take a single number as the verse (`jude 5`).
+  * The box previews the resolved reference while typing and says why a reference cannot be reached (unknown book, book not in the project, no such chapter or verse).
+  * Typing a letter while the Bible tree has the focus opens the box with that letter entered.
+* **Skin Kept After Opening or Closing a Project (`formprincipal.pas`)**: Opening another `.bib` or closing a project now re-applies the active skin (any skin except Classic), so the state header strip, Bible tree and verse panels no longer revert to light colours until a restart.
+* **Dialogs Skinned on First Open (`formprincipal.pas`)**: Dialogs such as **Export project** are now skinned the first time they open. The active-form handler skinned the form that was active *before* the change, so a dialog was only skinned after it had been closed once. Freed dialogs are also removed from the skinned-forms list so a new dialog at a reused address is not mistaken for one already skinned.
+
 ### 1. Dictionary Popup Enhancements & Layout Persistence
 
 * **Instant Word-to-Word Hover Refresh**: Moving the mouse pointer directly from one tagged word to another in the **Source** or **Destination** panel immediately updates the Strong's and Morphology popup entry without requiring the cursor to exit the word area first.

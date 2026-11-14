@@ -109,6 +109,12 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.020 (64-bit Edition) - 2026-11-15' + LineEnding +
+  '- Added Tools > Go to verse (Ctrl+G): type a reference such as jn 3 16, jn 3.16 or 1co 13:4 and press Enter.' + LineEnding +
+  '- Go to verse accepts book abbreviations and names (English and Tagalog), and a space, period or comma in place of the colon.' + LineEnding +
+  '- Fixed the skin reverting to light colours after opening or closing a project (no restart needed).' + LineEnding +
+  '- Fixed dialogs such as Export project opening unskinned the first time.' + LineEnding +
+  LineEnding +
   'Version 1.1.0 (64-bit Edition) - 2026-11-13' + LineEnding +
   '- Native 64-bit Windows (x86_64-win64) build with 64-bit SQLite3 and PCRE.' + LineEnding +
   '- Instant dictionary popup update on word hover move and mouse-wheel word scroll.' + LineEnding +

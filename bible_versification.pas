@@ -31,6 +31,11 @@ function DeclaredBibleVerseCount(Scope: TEscopoTexto): Integer;
 function CalculateBibleVerseCount(Scope: TEscopoTexto): Integer;
 function TryBibleReferenceAt(Scope: TEscopoTexto; ZeroBasedIndex: Integer;
   out ReferenceID: string): Boolean;
+{ Protestant canon helpers by absolute book number (1 = Genesis .. 66 =
+  Revelation). They return 0 / False for anything outside that range. }
+function BibleChapterCount(BookID: Integer): Integer;
+function BibleVerseCount(BookID, Chapter: Integer): Integer;
+function BibleBookInScope(Scope: TEscopoTexto; BookID: Integer): Boolean;
 
 implementation
 
@@ -148,6 +153,32 @@ begin
   finally
     Enumerator.Free;
   end;
+end;
+
+function BibleChapterCount(BookID: Integer): Integer;
+begin
+  if (BookID >= 1) and (BookID <= 66) then
+    Result := QCapitulosONT[BookID]
+  else
+    Result := 0;
+end;
+
+function BibleVerseCount(BookID, Chapter: Integer): Integer;
+begin
+  Result := 0;
+  if (BookID < 1) or (BookID > 66) then
+    Exit;
+  if (Chapter < 1) or (Chapter > QCapitulosONT[BookID]) then
+    Exit;
+  Result := QVersiculosONT[QCapLivrosONT[BookID] + Chapter - 1];
+end;
+
+function BibleBookInScope(Scope: TEscopoTexto; BookID: Integer): Boolean;
+begin
+  if Scope = etNone then
+    Exit(False);
+  Result := (BookID > OffsetLivros[Scope]) and
+    (BookID <= OffsetLivros[Scope] + QLivros[Scope]);
 end;
 
 end.
