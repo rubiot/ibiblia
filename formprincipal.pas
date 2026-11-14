@@ -244,6 +244,8 @@ type
     FAlwaysOnTopEnabled: Boolean;
     FDockPopupRightEnabled: Boolean;
     FDockPopupRightMenuItem: TMenuItem;
+    FDockPopupLeftEnabled: Boolean;
+    FDockPopupLeftMenuItem: TMenuItem;
     FLegacyAutomaticSuggestion: Boolean;
     FCurrentRef: string;
     FChapterView: TChapterView;
@@ -391,6 +393,8 @@ type
     procedure SetPopupTrigger(APopupTrigger: TPopupTrigger);
     procedure SetDockPopupRightEnabled(AEnabled: Boolean);
     procedure DockPopupRightMenuItemClick(Sender: TObject);
+    procedure SetDockPopupLeftEnabled(AEnabled: Boolean);
+    procedure DockPopupLeftMenuItemClick(Sender: TObject);
     procedure SetStrongsCountMode(AMode: TStrongsCountMode);
     procedure SetSuggestionMode(AMode: TSuggestionMode);
     procedure SetTheWordSyncDirections(AIBibliaToTheWord,
@@ -648,6 +652,7 @@ resourcestring
   SBoldStrongsMenu = 'Highlight words with Strong in bold';
   SAlwaysOnTopMenu = '&Keep window always on top';
   SDockPopupRightMenu = '&Dock Word Definition Popup to Right Edge';
+  SDockPopupLeftMenu = '&Dock Word Definition Popup to Left Edge';
   SToolsMenu = '&Tools';
   STheWordSynchronizationMenu = '&Synchronization with theWord';
   SSyncIBibliaToTheWord = 'iBiblia → theWord';
@@ -1001,12 +1006,21 @@ end;
 procedure TMainForm.SetDockPopupRightEnabled(AEnabled: Boolean);
 begin
   FDockPopupRightEnabled := AEnabled;
+  if FDockPopupRightEnabled and FDockPopupLeftEnabled then
+  begin
+    FDockPopupLeftEnabled := False;
+    if Assigned(FDockPopupLeftMenuItem) then
+      FDockPopupLeftMenuItem.Checked := False;
+    PersistGlobalPreference('popup.dock.left', False);
+  end;
   if Assigned(FDockPopupRightMenuItem) then
     FDockPopupRightMenuItem.Checked := FDockPopupRightEnabled;
   if Assigned(FrmDictionaryPopup) then
   begin
     FrmDictionaryPopup.LoadLayoutFromOpts;
     FrmDictionaryPopup.DockToMainRightEdge := FDockPopupRightEnabled;
+    if not FDockPopupRightEnabled then
+      FrmDictionaryPopup.DockToMainLeftEdge := FDockPopupLeftEnabled;
   end;
   PersistGlobalPreference('popup.dock.right', FDockPopupRightEnabled);
 end;
@@ -1014,6 +1028,33 @@ end;
 procedure TMainForm.DockPopupRightMenuItemClick(Sender: TObject);
 begin
   SetDockPopupRightEnabled(not FDockPopupRightEnabled);
+end;
+
+procedure TMainForm.SetDockPopupLeftEnabled(AEnabled: Boolean);
+begin
+  FDockPopupLeftEnabled := AEnabled;
+  if FDockPopupLeftEnabled and FDockPopupRightEnabled then
+  begin
+    FDockPopupRightEnabled := False;
+    if Assigned(FDockPopupRightMenuItem) then
+      FDockPopupRightMenuItem.Checked := False;
+    PersistGlobalPreference('popup.dock.right', False);
+  end;
+  if Assigned(FDockPopupLeftMenuItem) then
+    FDockPopupLeftMenuItem.Checked := FDockPopupLeftEnabled;
+  if Assigned(FrmDictionaryPopup) then
+  begin
+    FrmDictionaryPopup.LoadLayoutFromOpts;
+    FrmDictionaryPopup.DockToMainLeftEdge := FDockPopupLeftEnabled;
+    if not FDockPopupLeftEnabled then
+      FrmDictionaryPopup.DockToMainRightEdge := FDockPopupRightEnabled;
+  end;
+  PersistGlobalPreference('popup.dock.left', FDockPopupLeftEnabled);
+end;
+
+procedure TMainForm.DockPopupLeftMenuItemClick(Sender: TObject);
+begin
+  SetDockPopupLeftEnabled(not FDockPopupLeftEnabled);
 end;
 
 procedure TMainForm.SetStrongsCountMode(AMode: TStrongsCountMode);
@@ -1381,6 +1422,11 @@ begin
   FDockPopupRightMenuItem.Checked := FDockPopupRightEnabled;
   FDockPopupRightMenuItem.OnClick := @DockPopupRightMenuItemClick;
   MenuItem20.Add(FDockPopupRightMenuItem);
+  FDockPopupLeftMenuItem := TMenuItem.Create(MainMenu1);
+  FDockPopupLeftMenuItem.Caption := SDockPopupLeftMenu;
+  FDockPopupLeftMenuItem.Checked := FDockPopupLeftEnabled;
+  FDockPopupLeftMenuItem.OnClick := @DockPopupLeftMenuItemClick;
+  MenuItem20.Add(FDockPopupLeftMenuItem);
   FViewMenuSeparator := TMenuItem.Create(MainMenu1);
   FViewMenuSeparator.Caption := '-';
   MenuItem20.Add(FViewMenuSeparator);
@@ -3131,7 +3177,10 @@ begin
   if Assigned(FGuidePanel) and Assigned(FStateHeaderPanel) then
     FGuidePanel.Top := FStateHeaderPanel.Top + FStateHeaderPanel.Height;
   if Assigned(FrmDictionaryPopup) and FrmDictionaryPopup.Visible and FDockPopupRightEnabled then
-    FrmDictionaryPopup.UpdateRightEdgeDockPosition;
+    begin
+      FrmDictionaryPopup.UpdateRightEdgeDockPosition;
+      FrmDictionaryPopup.UpdateLeftEdgeDockPosition;
+    end;
 end;
 
 procedure TMainForm.UpdateStateHeader;
@@ -4664,6 +4713,9 @@ begin
   if FAlwaysOnTopEnabled then
     FormStyle := fsSystemStayOnTop;
   FDockPopupRightEnabled := opts.ReadBool('opcoes', 'popup.dock.right', false);
+  FDockPopupLeftEnabled := opts.ReadBool('opcoes', 'popup.dock.left', false);
+  if FDockPopupRightEnabled and FDockPopupLeftEnabled then
+    FDockPopupLeftEnabled := false;
 
   FChapterViewHostPanel := TPanel.Create(Self);
   FChapterViewHostPanel.Parent := ChapterViewTabCtrl;
@@ -4844,6 +4896,7 @@ begin
   opts.WriteString('opcoes', 'language', language);
   opts.WriteBool('opcoes', 'alwaysontop', FAlwaysOnTopEnabled);
   opts.WriteBool('opcoes', 'popup.dock.right', FDockPopupRightEnabled);
+  opts.WriteBool('opcoes', 'popup.dock.left', FDockPopupLeftEnabled);
   opts.WriteInteger('opcoes', 'popuptrigger', LongInt(FPopupTrigger));
   opts.WriteBool('opcoes', 'auto.save', FAutoSaveEnabled);
   opts.WriteBool('opcoes', 'auto.save.last.status', FSaveOnLastStatus);
@@ -4927,7 +4980,11 @@ begin
   else if (MenuItemRecent.Count > 0) and FileExists(MenuItemRecent.Items[0].Caption) then
     DoOpenProject(MenuItemRecent.Items[0].Caption);
   if Assigned(FrmDictionaryPopup) then
+  begin
     FrmDictionaryPopup.DockToMainRightEdge := FDockPopupRightEnabled;
+    if not FDockPopupRightEnabled then
+      FrmDictionaryPopup.DockToMainLeftEdge := FDockPopupLeftEnabled;
+  end;
   if CurrentSkin.Id <> skClassic then
     ApplyActiveSkin;
 end;
@@ -6024,8 +6081,17 @@ begin
     FDockPopupRightMenuItem.Caption := SDockPopupRightMenu;
     FDockPopupRightMenuItem.Checked := FDockPopupRightEnabled;
   end;
+  if Assigned(FDockPopupLeftMenuItem) then
+  begin
+    FDockPopupLeftMenuItem.Caption := SDockPopupLeftMenu;
+    FDockPopupLeftMenuItem.Checked := FDockPopupLeftEnabled;
+  end;
   if Assigned(FrmDictionaryPopup) then
+  begin
     FrmDictionaryPopup.DockToMainRightEdge := FDockPopupRightEnabled;
+    if not FDockPopupRightEnabled then
+      FrmDictionaryPopup.DockToMainLeftEdge := FDockPopupLeftEnabled;
+  end;
   if Assigned(FToolsMenu) then
     FToolsMenu.Caption := SToolsMenu;
   if Assigned(FTheWordSyncMenu) then

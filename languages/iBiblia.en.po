@@ -1677,6 +1677,10 @@ msgstr "Destination"
 msgid "Disable both"
 msgstr ""
 
+#: formprincipal.sdockpopupleftmenu
+msgid "&Dock Word Definition Popup to Left Edge"
+msgstr ""
+
 #: formprincipal.sdockpopuprightmenu
 msgid "&Dock Word Definition Popup to Right Edge"
 msgstr ""

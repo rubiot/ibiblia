@@ -40,6 +40,7 @@ type
     FPositioning: Boolean;
     FApplyingLayout: Boolean;
     FDockToMainRightEdge: Boolean;
+    FDockToMainLeftEdge: Boolean;
     FDockStateExplicitlySet: Boolean;
     FLastAnchorPoint: TPoint;
     FShowCursorPos: TPoint;
@@ -53,6 +54,8 @@ type
     FPopupHeight: Integer;
     FDockRightOffset: Integer;
     FDockTopOffset: Integer;
+    FDockLeftOffset: Integer;
+    FDockLeftTopOffset: Integer;
     FLayoutLoadedFromOpts: Boolean;
     function IsCtrlKeyHeld: Boolean;
     procedure AutoHideTimerTick(Sender: TObject);
@@ -60,6 +63,7 @@ type
     procedure ClampToMonitorWorkarea(const RefPoint: TPoint);
     procedure SyncDockStateFromMainForm;
     function ComputeMainRightEdgeBounds(out ABoundsRect: TRect): Boolean;
+    function ComputeMainLeftEdgeBounds(out ABoundsRect: TRect): Boolean;
     procedure ApplyMorphologyPaneHeight;
   protected
     procedure DoOnResize; override;
@@ -78,6 +82,8 @@ type
     procedure RequestDeferredHide;
     procedure SetDockToMainRightEdge(AValue: Boolean);
     procedure UpdateRightEdgeDockPosition;
+    procedure SetDockToMainLeftEdge(AValue: Boolean);
+    procedure UpdateLeftEdgeDockPosition;
     function IsSizingOrMoving: Boolean;
     function IsPointerInteracting: Boolean;
     function IsCursorInsidePopupWindow: Boolean;
@@ -85,6 +91,7 @@ type
     property Strongs: TStringList read FStrongs;
     property Morphologies: TStringList read FMorphologies;
     property DockToMainRightEdge: Boolean read FDockToMainRightEdge write SetDockToMainRightEdge;
+    property DockToMainLeftEdge: Boolean read FDockToMainLeftEdge write SetDockToMainLeftEdge;
   public
     procedure AfterConstruction; override;
   end;
@@ -1273,12 +1280,20 @@ begin
 
     FDockRightOffset := opts.ReadInteger('leiaute', 'popup.dock.offset.x', 0);
     FDockTopOffset := opts.ReadInteger('leiaute', 'popup.dock.offset.y', 0);
+    FDockLeftOffset := opts.ReadInteger('leiaute', 'popup.dock.left.offset.x', 0);
+    FDockLeftTopOffset := opts.ReadInteger('leiaute', 'popup.dock.left.offset.y', 0);
     if not FDockStateExplicitlySet then
     begin
       if opts.ValueExists('opcoes', 'popup.dock.right') then
         FDockToMainRightEdge := opts.ReadBool('opcoes', 'popup.dock.right', FDockToMainRightEdge)
       else if opts.ValueExists('leiaute', 'popup.dock.right') then
         FDockToMainRightEdge := opts.ReadBool('leiaute', 'popup.dock.right', FDockToMainRightEdge);
+      if opts.ValueExists('opcoes', 'popup.dock.left') then
+        FDockToMainLeftEdge := opts.ReadBool('opcoes', 'popup.dock.left', FDockToMainLeftEdge)
+      else if opts.ValueExists('leiaute', 'popup.dock.left') then
+        FDockToMainLeftEdge := opts.ReadBool('leiaute', 'popup.dock.left', FDockToMainLeftEdge);
+      if FDockToMainRightEdge and FDockToMainLeftEdge then
+        FDockToMainLeftEdge := False;
     end;
 
     SetBounds(Left, Top, FPopupWidth, FPopupHeight);
@@ -1322,6 +1337,8 @@ begin
       opts.WriteInteger('leiaute', 'popup.altura', Height);
     opts.WriteInteger('leiaute', 'popup.dock.offset.x', FDockRightOffset);
     opts.WriteInteger('leiaute', 'popup.dock.offset.y', FDockTopOffset);
+    opts.WriteInteger('leiaute', 'popup.dock.left.offset.x', FDockLeftOffset);
+    opts.WriteInteger('leiaute', 'popup.dock.left.offset.y', FDockLeftTopOffset);
     if FMorphologyPaneHeight >= 32 then
     begin
       opts.WriteInteger('leiaute', 'popup.morfo.altura', FMorphologyPaneHeight);
@@ -1364,6 +1381,7 @@ begin
   FInSizeMove := False;
   FApplyingLayout := False;
   FDockToMainRightEdge := False;
+  FDockToMainLeftEdge := False;
   FDockStateExplicitlySet := False;
   FLayoutLoadedFromOpts := False;
   FPositioning := True;
@@ -1388,6 +1406,8 @@ begin
     FMorphologyPaneHeight := 145;
     FDockRightOffset := 0;
     FDockTopOffset := 0;
+    FDockLeftOffset := 0;
+    FDockLeftTopOffset := 0;
 
     if Assigned(opts) then
       LoadLayoutFromOpts
@@ -1623,7 +1643,7 @@ begin
     if Panel1.Visible and Panel2.Visible and TabControlMorphologies.Visible and
        (TabControlMorphologies.Height >= 32) then
       FMorphologyPaneHeight := TabControlMorphologies.Height;
-    if FDockToMainRightEdge and IsPointerInteracting and IsCursorInsidePopupWindow then
+    if (FDockToMainRightEdge or FDockToMainLeftEdge) and IsPointerInteracting and IsCursorInsidePopupWindow then
     begin
       RefForm := nil;
       if Assigned(MainForm) then
@@ -1634,8 +1654,16 @@ begin
       begin
         TopTL := RefForm.ClientToScreen(Point(0, 0));
         BotBR := RefForm.ClientToScreen(Point(RefForm.ClientWidth, RefForm.ClientHeight));
-        FDockRightOffset := Left - BotBR.X;
-        FDockTopOffset := Top - TopTL.Y;
+        if FDockToMainRightEdge then
+        begin
+          FDockRightOffset := Left - BotBR.X;
+          FDockTopOffset := Top - TopTL.Y;
+        end
+        else if FDockToMainLeftEdge then
+        begin
+          FDockLeftOffset := Left - Max(0, TopTL.X - Width);
+          FDockLeftTopOffset := Top - TopTL.Y;
+        end;
       end;
     end;
     SaveLayoutToOpts;
@@ -1696,7 +1724,7 @@ begin
   end;
   if FHoveringSyntagm or IsSizingOrMoving or IsPointerInteracting then
     Exit;
-  if FDockToMainRightEdge and (FShowCursorPos.X >= 0) and (FShowCursorPos.Y >= 0) then
+  if (FDockToMainRightEdge or FDockToMainLeftEdge) and (FShowCursorPos.X >= 0) and (FShowCursorPos.Y >= 0) then
   begin
     CurPos := Point(0, 0);
     GetCursorPos(CurPos);
@@ -1735,15 +1763,17 @@ begin
   if Assigned(opts) then
   begin
     if opts.ValueExists('opcoes', 'popup.dock.right') then
-    begin
-      FDockToMainRightEdge := opts.ReadBool('opcoes', 'popup.dock.right', FDockToMainRightEdge);
-      Exit;
-    end;
-    if opts.ValueExists('leiaute', 'popup.dock.right') then
-    begin
+      FDockToMainRightEdge := opts.ReadBool('opcoes', 'popup.dock.right', FDockToMainRightEdge)
+    else if opts.ValueExists('leiaute', 'popup.dock.right') then
       FDockToMainRightEdge := opts.ReadBool('leiaute', 'popup.dock.right', FDockToMainRightEdge);
-      Exit;
-    end;
+
+    if opts.ValueExists('opcoes', 'popup.dock.left') then
+      FDockToMainLeftEdge := opts.ReadBool('opcoes', 'popup.dock.left', FDockToMainLeftEdge)
+    else if opts.ValueExists('leiaute', 'popup.dock.left') then
+      FDockToMainLeftEdge := opts.ReadBool('leiaute', 'popup.dock.left', FDockToMainLeftEdge);
+
+    if FDockToMainRightEdge and FDockToMainLeftEdge then
+      FDockToMainLeftEdge := False;
   end;
 end;
 
@@ -1753,12 +1783,40 @@ begin
     LoadLayoutFromOpts;
   FDockStateExplicitlySet := True;
   FDockToMainRightEdge := AValue;
+  if AValue then
+    FDockToMainLeftEdge := False;
   if FDockToMainRightEdge then
   begin
     if Visible then
       UpdateRightEdgeDockPosition;
   end
-  else if Visible then
+  else if (not FDockToMainLeftEdge) and Visible then
+  begin
+    FPositioning := True;
+    try
+      SetBounds(Left, Top, Max(120, FPopupWidth), Max(100, FPopupHeight));
+      ClampToMonitorWorkarea(Mouse.CursorPos);
+      ApplyMorphologyPaneHeight;
+    finally
+      FPositioning := False;
+    end;
+  end;
+end;
+
+procedure TFrmDictionaryPopup.SetDockToMainLeftEdge(AValue: Boolean);
+begin
+  if not FLayoutLoadedFromOpts then
+    LoadLayoutFromOpts;
+  FDockStateExplicitlySet := True;
+  FDockToMainLeftEdge := AValue;
+  if AValue then
+    FDockToMainRightEdge := False;
+  if FDockToMainLeftEdge then
+  begin
+    if Visible then
+      UpdateLeftEdgeDockPosition;
+  end
+  else if (not FDockToMainRightEdge) and Visible then
   begin
     FPositioning := True;
     try
@@ -1854,6 +1912,91 @@ begin
   Result := True;
 end;
 
+function TFrmDictionaryPopup.ComputeMainLeftEdgeBounds(out ABoundsRect: TRect): Boolean;
+var
+  RefForm: TForm;
+  Mon: TMonitor;
+  WorkRect, MainRect: TRect;
+  PopupW, PopupH, BaseLeft, TargetLeft, TargetTop: Integer;
+  TopTL: TPoint;
+begin
+  Result := False;
+  ABoundsRect := Rect(0, 0, 0, 0);
+  MainRect := Rect(0, 0, 0, 0);
+
+  if not FLayoutLoadedFromOpts then
+    LoadLayoutFromOpts;
+
+  RefForm := nil;
+  if Assigned(MainForm) then
+    RefForm := MainForm
+  else if Assigned(Application) then
+    RefForm := Application.MainForm;
+  if not Assigned(RefForm) then
+    Exit;
+
+  Mon := nil;
+  if RefForm.HandleAllocated then
+    Mon := Screen.MonitorFromWindow(RefForm.Handle, mdNearest);
+  if (Mon = nil) and ((FLastAnchorPoint.X > 0) or (FLastAnchorPoint.Y > 0)) then
+    Mon := Screen.MonitorFromPoint(FLastAnchorPoint, mdNearest);
+  if Mon = nil then
+    Mon := Screen.MonitorFromPoint(Mouse.CursorPos, mdNearest);
+  if Mon <> nil then
+    WorkRect := Mon.WorkareaRect
+  else
+    WorkRect := Rect(0, 0, Screen.Width, Screen.Height);
+
+  if FPopupWidth >= 120 then
+    PopupW := FPopupWidth
+  else
+    PopupW := Max(120, Width);
+  if PopupW > (WorkRect.Right - WorkRect.Left) - 100 then
+    PopupW := Max(120, (WorkRect.Right - WorkRect.Left) div 2);
+
+  if FPopupHeight >= 100 then
+    PopupH := FPopupHeight
+  else
+    PopupH := Max(100, Height);
+  if PopupH > (WorkRect.Bottom - WorkRect.Top) then
+    PopupH := Max(100, WorkRect.Bottom - WorkRect.Top);
+
+  if (RefForm.ClientWidth > 100) and (RefForm.ClientHeight > 100) then
+  begin
+    TopTL := RefForm.ClientToScreen(Point(0, 0));
+    BaseLeft := Max(WorkRect.Left, TopTL.X - PopupW);
+    TargetLeft := BaseLeft + FDockLeftOffset;
+    TargetTop := TopTL.Y + FDockLeftTopOffset;
+    TargetLeft := EnsureRange(TargetLeft, WorkRect.Left, Max(WorkRect.Left, WorkRect.Right - PopupW));
+    TargetTop := EnsureRange(TargetTop, WorkRect.Top, Max(WorkRect.Top, WorkRect.Bottom - PopupH));
+    ABoundsRect := Rect(TargetLeft, TargetTop, TargetLeft + PopupW, TargetTop + PopupH);
+    Result := True;
+    Exit;
+  end;
+
+  {$IFDEF WINDOWS}
+  if RefForm.HandleAllocated and Windows.GetWindowRect(RefForm.Handle, MainRect) then
+  begin
+    BaseLeft := Max(WorkRect.Left, MainRect.Left - PopupW);
+    TargetLeft := BaseLeft + FDockLeftOffset;
+    TargetTop := MainRect.Top + 48 + FDockLeftTopOffset;
+    TargetLeft := EnsureRange(TargetLeft, WorkRect.Left, Max(WorkRect.Left, WorkRect.Right - PopupW));
+    TargetTop := EnsureRange(TargetTop, WorkRect.Top, Max(WorkRect.Top, WorkRect.Bottom - PopupH));
+    ABoundsRect := Rect(TargetLeft, TargetTop, TargetLeft + PopupW, TargetTop + PopupH);
+    Result := True;
+    Exit;
+  end;
+  {$ENDIF}
+
+  BaseLeft := Max(WorkRect.Left, RefForm.Left - PopupW);
+  TargetLeft := BaseLeft + FDockLeftOffset;
+  TargetTop := RefForm.Top + 48 + FDockLeftTopOffset;
+  TargetLeft := EnsureRange(TargetLeft, WorkRect.Left, Max(WorkRect.Left, WorkRect.Right - PopupW));
+  TargetTop := EnsureRange(TargetTop, WorkRect.Top, Max(WorkRect.Top, WorkRect.Bottom - PopupH));
+  ABoundsRect := Rect(TargetLeft, TargetTop, TargetLeft + PopupW, TargetTop + PopupH);
+  Result := True;
+end;
+
 procedure TFrmDictionaryPopup.ApplyMorphologyPaneHeight;
 begin
   if not TabControlMorphologies.Visible then Exit;
@@ -1879,6 +2022,24 @@ var
 begin
   if not FDockToMainRightEdge then Exit;
   if not ComputeMainRightEdgeBounds(R) then Exit;
+  PrevPositioning := FPositioning;
+  FPositioning := True;
+  try
+    SetBounds(R.Left, R.Top, R.Right - R.Left, R.Bottom - R.Top);
+    ClampToMonitorWorkarea(Point(R.Left, R.Top));
+    ApplyMorphologyPaneHeight;
+  finally
+    FPositioning := PrevPositioning;
+  end;
+end;
+
+procedure TFrmDictionaryPopup.UpdateLeftEdgeDockPosition;
+var
+  R: TRect;
+  PrevPositioning: Boolean;
+begin
+  if not FDockToMainLeftEdge then Exit;
+  if not ComputeMainLeftEdgeBounds(R) then Exit;
   PrevPositioning := FPositioning;
   FPositioning := True;
   try
@@ -1917,6 +2078,7 @@ var
   px, py: Integer;
   Mon: TMonitor;
   WorkRect, DockRect: TRect;
+  OneInchPx: Integer;
   PointerGap: Integer;
   PointerSize: Integer;
   CandL, CandT: Integer;
@@ -2002,12 +2164,10 @@ begin
     py := y;
     FShowCursorPos := Point(0, 0);
     GetCursorPos(FShowCursorPos);
-    if Assigned(MainForm) and Assigned(MainForm.ScrollBoxDstVerse) and
-       MainForm.ScrollBoxDstVerse.Showing and
-       PtInRect(MainForm.ScrollBoxDstVerse.ClientRect, MainForm.ScrollBoxDstVerse.ScreenToClient(FShowCursorPos)) then
+    if (FShowCursorPos.X > 0) or (FShowCursorPos.Y > 0) then
     begin
       px := FShowCursorPos.X;
-      py := FShowCursorPos.Y + 18;
+      py := FShowCursorPos.Y;
     end;
     FLastAnchorPoint := Point(px, py);
 
@@ -2026,8 +2186,14 @@ begin
     else
       WorkRect := Classes.Rect(0, 0, Screen.Width, Screen.Height);
 
-    PointerGap := 10;
-    PointerSize := 16;
+    OneInchPx := Screen.PixelsPerInch;
+    if (Mon <> nil) and (Mon.PixelsPerInch >= 96) then
+      OneInchPx := Mon.PixelsPerInch;
+    if OneInchPx < 96 then
+      OneInchPx := 96;
+
+    PointerGap := OneInchPx;
+    PointerSize := OneInchPx - 2;
     PointerRect := Classes.Rect(px - PointerSize, py - PointerSize, px + PointerSize, py + PointerSize);
 
     NorthH := Max(0, py - PointerGap - WorkRect.Top);
@@ -2115,6 +2281,13 @@ begin
       BestT := DockRect.Top;
       PopupW := DockRect.Right - DockRect.Left;
       PopupH := DockRect.Bottom - DockRect.Top;
+    end
+    else if FDockToMainLeftEdge and ComputeMainLeftEdgeBounds(DockRect) then
+    begin
+      BestL := DockRect.Left;
+      BestT := DockRect.Top;
+      PopupW := DockRect.Right - DockRect.Left;
+      PopupH := DockRect.Bottom - DockRect.Top;
     end;
 
     SetBounds(BestL, BestT, PopupW, PopupH);
@@ -2125,7 +2298,9 @@ begin
     ApplySkin;
 
     if FDockToMainRightEdge then
-      UpdateRightEdgeDockPosition;
+      UpdateRightEdgeDockPosition
+    else if FDockToMainLeftEdge then
+      UpdateLeftEdgeDockPosition;
   finally
     FPositioning := False;
   end;
