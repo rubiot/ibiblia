@@ -2,7 +2,7 @@ unit project_save_as_test;
 {$mode objfpc}{$H+}
 interface
 uses Classes, SysUtils, fpcunit, testregistry, Forms, Controls, ExtCtrls,
-  StdCtrls, Project;
+  StdCtrls, Project, BibleScope;
 type
   TSaveAsTestProject = class(TProject)
   protected
@@ -24,10 +24,19 @@ type
     procedure Observe(Sender: TProject);
     function Path(const Name: string): string;
     function ReadField(const FileName, Reference, Field: string): string;
+    procedure CheckColdOpen(Scope: TEscopoTexto; const Marker: string; SwitchProject: Boolean);
   protected
     procedure SetUp; override;
     procedure TearDown; override;
   published
+    procedure ColdOpenNTAtFirst;
+    procedure ColdOpenNTAtLater;
+    procedure ColdOpenWholeBibleAtFirst;
+    procedure ColdOpenWholeBibleAtLater;
+    procedure SwitchingProjectDoesNotCopyOldViews;
+    procedure SwitchingProjectAtSameReferenceDoesNotCopyOldViews;
+    procedure MismatchedViewReferenceMustNotOverwriteCurrentRow;
+    procedure IntentionallyEmptyTextIsSaved;
     procedure CopiesPendingContentAndContinuesInNewFile;
     procedure CleanProjectKeepsReferenceAndNavigationHistory;
     procedure GuardDefersEventsAndPreventsSourceWrites;
@@ -41,7 +50,7 @@ type
   end;
 implementation
 uses sqlite3conn, sqldb, project_database_bootstrap, project_persistence,
-  project_config, BibleScope, Verse, theword_wysiwyg_editor_control,
+  project_config, Verse, theword_wysiwyg_editor_control,
   directwrite_verse_editor, SynEdit;
 procedure TSaveAsTestProject.ActivateSavedProject(const NewFileName: string);
 begin
@@ -135,6 +144,126 @@ begin
   end;
   RemoveDir(FTempDir);
   inherited TearDown;
+end;
+procedure TProjectSaveAsTests.CheckColdOpen(Scope: TEscopoTexto;
+  const Marker: string; SwitchProject: Boolean);
+var
+  FileName, FirstRef, SecondRef: string;
+  Connection: TSQLite3Connection;
+  Transaction: TSQLTransaction;
+begin
+  if Scope = etNT then FirstRef := '40,1,1' else FirstRef := '1,1,1';
+  if Scope = etNT then SecondRef := '40,1,2' else SecondRef := '1,1,2';
+  FileName := Path('cold.bib');
+  TProjectDatabaseBootstrap.CreateProjectDatabaseFixture(FileName, Scope, 3);
+  Connection := TSQLite3Connection.Create(nil);
+  try
+    Transaction := TSQLTransaction.Create(Connection);
+    Connection.Transaction := Transaction;
+    Connection.DatabaseName := FileName;
+    Connection.Open;
+    Connection.ExecuteDirect('update pares set pare_texto_origem = ''origin'', ' +
+      'pare_texto_destino = ''target'', pare_texto_consulta1 = ''reference1'', ' +
+      'pare_texto_consulta2 = ''reference2'', ' +
+      'pare_pares = ''<par a="0" b="0">'', pare_comentarios = ''comment''');
+    if Scope = etONT then
+      Connection.ExecuteDirect('insert into pares select ''40,1,1'', ''40,1,1'', ' +
+        'pare_texto_origem, pare_texto_destino, pare_texto_consulta1, ' +
+        'pare_texto_consulta2, pare_pares, pare_situacao, pare_comentarios ' +
+        'from pares where pare_id = ''1,1,1''');
+    Connection.ExecuteDirect('insert into info values (''marcador'', ''' + Marker + ''')');
+    Transaction.Commit;
+  finally
+    Connection.Free;
+  end;
+  if not SwitchProject then
+  begin
+    FreeAndNil(FProject);
+    FProject := TSaveAsTestProject.Create(FPanels, nil, FStatus, FComments);
+  end
+  else
+  begin
+    FProject.VerseObjects[tbOrigem].Text := 'old project source';
+    FProject.VerseObjects[tbDestino].Text := 'old project destination';
+    FComments.Text := 'old project comment';
+  end;
+  FProject.Escopo := Scope;
+  FProject.OpenProject(FileName);
+  AssertEquals('opened marker', Marker, FProject.ID);
+  AssertTrue('save synthetic project', FProject.SaveProject);
+  AssertEquals('first source', 'origin', ReadField(FileName, FirstRef, 'pare_texto_origem'));
+  AssertEquals('first destination', 'target', ReadField(FileName, FirstRef, 'pare_texto_destino'));
+  AssertEquals('first reference 1', 'reference1', ReadField(FileName, FirstRef, 'pare_texto_consulta1'));
+  AssertEquals('first reference 2', 'reference2', ReadField(FileName, FirstRef, 'pare_texto_consulta2'));
+  AssertEquals('first associations', '<par a="0" b="0">', ReadField(FileName, FirstRef, 'pare_pares'));
+  AssertEquals('first comment', 'comment', ReadField(FileName, FirstRef, 'pare_comentarios'));
+  AssertEquals('second source', 'origin', ReadField(FileName, SecondRef, 'pare_texto_origem'));
+  AssertEquals('second destination', 'target', ReadField(FileName, SecondRef, 'pare_texto_destino'));
+  AssertEquals('second associations', '<par a="0" b="0">', ReadField(FileName, SecondRef, 'pare_pares'));
+  AssertEquals('second comment', 'comment', ReadField(FileName, SecondRef, 'pare_comentarios'));
+  FProject.OpenProject(FileName);
+  AssertEquals('reopened marker', Marker, FProject.ID);
+  AssertEquals('reopened source', 'origin', FProject.VerseObjects[tbOrigem].Text);
+  AssertEquals('reopened destination', 'target', FProject.VerseObjects[tbDestino].Text);
+  AssertEquals('reopened comment', 'comment', FComments.Text);
+end;
+procedure TProjectSaveAsTests.ColdOpenNTAtFirst;
+begin
+  CheckColdOpen(etNT, '40,1,1', False);
+end;
+procedure TProjectSaveAsTests.ColdOpenNTAtLater;
+begin
+  CheckColdOpen(etNT, '40,1,2', False);
+end;
+procedure TProjectSaveAsTests.ColdOpenWholeBibleAtFirst;
+begin
+  CheckColdOpen(etONT, '1,1,1', False);
+end;
+procedure TProjectSaveAsTests.ColdOpenWholeBibleAtLater;
+begin
+  CheckColdOpen(etONT, '1,1,2', False);
+end;
+procedure TProjectSaveAsTests.SwitchingProjectDoesNotCopyOldViews;
+begin
+  CheckColdOpen(etNT, '40,1,2', True);
+end;
+procedure TProjectSaveAsTests.SwitchingProjectAtSameReferenceDoesNotCopyOldViews;
+begin
+  CheckColdOpen(etNT, '40,1,1', True);
+end;
+procedure TProjectSaveAsTests.MismatchedViewReferenceMustNotOverwriteCurrentRow;
+var Rejected: Boolean;
+begin
+  FProject.VerseObjects[tbOrigem].ReferenceID := '40,1,2';
+  FProject.VerseObjects[tbOrigem].Text := 'wrong source';
+  FProject.VerseObjects[tbDestino].Text := 'wrong destination';
+  FComments.Text := 'wrong comment';
+  Rejected := False;
+  try
+    try
+      FProject.SaveProject;
+    except
+      on E: Exception do
+      begin
+        if Pos('displayed views do not match', E.Message) = 0 then raise;
+        Rejected := True;
+      end;
+    end;
+  finally
+    FProject.VerseObjects[tbOrigem].ReferenceID := '40,1,1';
+  end;
+  AssertEquals('source', 'source<WG1>', ReadField(FOriginal, '40,1,1', 'pare_texto_origem'));
+  AssertEquals('destination', 'destination', ReadField(FOriginal, '40,1,1', 'pare_texto_destino'));
+  AssertEquals('comment', 'old comment', ReadField(FOriginal, '40,1,1', 'pare_comentarios'));
+  AssertTrue('mismatched views must reject save', Rejected);
+end;
+procedure TProjectSaveAsTests.IntentionallyEmptyTextIsSaved;
+begin
+  FProject.VerseObjects[tbDestino].Text := '';
+  AssertTrue(FProject.SaveProject);
+  AssertEquals('', ReadField(FOriginal, '40,1,1', 'pare_texto_destino'));
+  FProject.OpenProject(FOriginal);
+  AssertEquals('', FProject.VerseObjects[tbDestino].Text);
 end;
 procedure TProjectSaveAsTests.CopiesPendingContentAndContinuesInNewFile;
 var Destination: string; Persistence: TProjectPersistence;

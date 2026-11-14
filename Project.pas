@@ -167,6 +167,8 @@ type
     FExibirDefComCtrl: boolean;
     FCurrentVerseWorkspace: TCurrentVerseWorkspace;
     FPersistence: TProjectPersistence;
+    FLoadedViewPersistence: TProjectPersistence;
+    FLoadedViewReference: string;
     FConfig: TProjectConfig;
     FVerseRepository: TProjectVerseRepository;
     FVerseRenderBuffer: TVerseRenderBuffer;
@@ -359,6 +361,8 @@ type
     function TrySetVerseText(versiculo: string; texto: TTipoTextoBiblico;
       replace: boolean; out ErrorDetails: string): Boolean;
     procedure SetVerseText(versiculo: string; texto: TTipoTextoBiblico; replace: boolean);
+    function CurrentViewsMatchPersistence: Boolean;
+    procedure RequireCurrentViews;
     procedure BeforeVerseScroll(DataSet: TDataSet);
     procedure AfterVerseScroll(DataSet: TDataSet);
     procedure RefreshAutomaticNoteStarts;
@@ -3449,6 +3453,29 @@ begin
   SetVerseText(newText, texto, replace);
 end;
 
+function TProject.CurrentViewsMatchPersistence: Boolean;
+var
+  TextType: TTipoTextoBiblico;
+begin
+  Result := False;
+  if not Assigned(FPersistence) or (FLoadedViewPersistence <> FPersistence) or
+    (FLoadedViewReference = '') or
+    (FPersistence.CurrentPairId <> FLoadedViewReference) or
+    not Assigned(FAVersiculo[tbOrigem]) then
+    Exit;
+  for TextType := Low(FAVersiculo) to High(FAVersiculo) do
+    if Assigned(FAVersiculo[TextType]) and
+      (FAVersiculo[TextType].ReferenceID <> FLoadedViewReference) then
+      Exit;
+  Result := True;
+end;
+
+procedure TProject.RequireCurrentViews;
+begin
+  if not CurrentViewsMatchPersistence then
+    raise Exception.Create('Cannot save or leave the verse: the displayed views do not match the current project and reference.');
+end;
+
 procedure TProject.BeforeVerseScroll(DataSet: TDataSet);
 var
   CacheWasCurrent: Boolean;
@@ -3456,6 +3483,7 @@ var
 begin
   if not FScrollEventsEnabled or not Assigned(FAVersiculo[tbOrigem]) then
     exit;
+  RequireCurrentViews;
   IBibliaPerfIncrement(ipcSaveBeforeScrollCalls);
 
   //starttime := getTickCount;
@@ -3594,6 +3622,7 @@ var
   LoadedReferenceID: string;
   LoadedDirtyGeneration: QWord;
   LoadedPersistenceRevision: QWord;
+  LoadedPersistence: TProjectPersistence;
   ReferenceChanged: Boolean;
   VerseLoadStarted: Boolean;
   //starttime: DWord;
@@ -3602,7 +3631,10 @@ begin
   if not FScrollEventsEnabled then
     exit;
 
+  LoadedPersistence := FPersistence;
   LoadedReferenceID := GetID();
+  FLoadedViewPersistence := nil;
+  FLoadedViewReference := '';
   ReferenceChanged := FLastLoadedReferenceID <> LoadedReferenceID;
   if ReferenceChanged then
     Inc(FVerseLoadGeneration);
@@ -3672,6 +3704,19 @@ begin
       FRadioGroupSituacao.ItemIndex := 0;
   end;
 
+  { Only a complete load, including comments, can authorize later writes. }
+  if (FPersistence = LoadedPersistence) and
+    (FPersistence.CurrentPairId = LoadedReferenceID) then
+  begin
+    FLoadedViewPersistence := LoadedPersistence;
+    FLoadedViewReference := LoadedReferenceID;
+    if Assigned(FAVersiculo[tbOrigem]) and not CurrentViewsMatchPersistence then
+    begin
+      FLoadedViewPersistence := nil;
+      FLoadedViewReference := '';
+    end;
+  end;
+
   LoadedDirtyGeneration := FCurrentVerseDirtyGeneration;
   LoadedPersistenceRevision := FPersistence.VerseContentRevision;
   for e in FOnNovoVersiculo do
@@ -3704,21 +3749,30 @@ end;
 
 procedure TProject.SavePairs;
 begin
+  RequireCurrentViews;
   FCurrentVerseWorkspace.SavePairs(FPersistence, FAVersiculo[tbOrigem]);
   SyncChapterSnapshotCurrentVerse;
 end;
 
 procedure TProject.SaveVersePairs(Verse: TVerse);
+var
+  TextType: TTipoTextoBiblico;
 begin
-  // Save pairs from a specific verse object (works for temp or visual verses)
-  // Assumes database cursor is already positioned at the correct record
+  // A temporary verse is explicitly targeted by its caller's cursor.
   if Verse = nil then Exit;
+  for TextType := Low(FAVersiculo) to High(FAVersiculo) do
+    if Verse = FAVersiculo[TextType] then
+    begin
+      RequireCurrentViews;
+      Break;
+    end;
   FPersistence.WriteCurrentPairs(Verse.Pairs);
   SyncChapterSnapshotCurrentVerse;
 end;
 
 procedure TProject.SaveText;
 begin
+  RequireCurrentViews;
   FCurrentVerseWorkspace.SaveTexts(FPersistence, FAVersiculo, FACamposTexto);
   SyncChapterSnapshotCurrentVerse;
 end;
@@ -3727,6 +3781,7 @@ procedure TProject.SaveAssociations;
 var
   CacheWasCurrent: Boolean;
 begin
+  RequireCurrentViews;
   CacheWasCurrent := Assigned(FAssociationMemory) and
     not FAssociationMemory.NeedsRebuild;
   if FCurrentVerseWorkspace.SaveAssociations(FSuggestionManager,
@@ -5018,6 +5073,8 @@ begin
   FAssociationMemoryLiveEditPending := False;
   FAssociationMemorySpeculativeEditPending := False;
   FScrollEventsEnabled := False;
+  FLoadedViewPersistence := nil;
+  FLoadedViewReference := '';
   FCurrentVerseWorkspace.Clear;
   FVerseMemo.DiscardEdit;
   for t := Low(FAVersiculo) to High(FAVersiculo) do
@@ -5129,11 +5186,15 @@ begin
   // set tokenizer version
   TTokenizerFactory.PreferredVersion := TokenizerVersion;
 
+  // A partial project can outlive the verse saved as its navigation marker.
+  s := FConfig.ReadMarker;
+  if (s = '') or ((ID <> s) and not FPersistence.LocateReference(s)) then
+    FPersistence.First;
   ScrollEventsEnabled := true;
   OldExporting := FExportando;
   FExportando := True;
   try
-    GoToReference(FConfig.ReadMarker);
+    UpdateReference(ID);
     if Assigned(FAVersiculo[tbOrigem]) and
       ((not Assigned(FAVersiculo[tbOrigem].Syntagms)) or
        (FAVersiculo[tbOrigem].ReferenceID <> ID)) then
@@ -5243,6 +5304,8 @@ begin
     FVerseRepository.Attach(nil);
   if Assigned(FPatchApplier) then
     FPatchApplier.Attach(nil);
+  FLoadedViewPersistence := nil;
+  FLoadedViewReference := '';
   if Assigned(FCurrentVerseWorkspace) then
     FCurrentVerseWorkspace.Clear;
   if Assigned(FAssociationMemory) then
@@ -5413,6 +5476,8 @@ var
   TextType: TTipoTextoBiblico;
 begin
   if FSaveAsInProgress then Exit;
+  FLoadedViewPersistence := nil;
+  FLoadedViewReference := '';
   // The Association-memory database uses an independent SQLite connection.
   // Release any reader or writer it owns before restoring canonical project
   // rows, otherwise the persistence rollback can fail with SQLITE_BUSY.
@@ -5751,7 +5816,9 @@ var
   SavedReference: string;
   TextType: TTipoTextoBiblico;
   NewTextIndexes: ACamposTexto;
+  ViewsWereCurrent: Boolean;
 begin
+  ViewsWereCurrent := CurrentViewsMatchPersistence;
   SavedReference := ID;
   NewPersistence := nil;
   NewSuggester := nil;
@@ -5789,6 +5856,13 @@ begin
     OldPersistence.PairsTable.AfterScroll := nil;
     OldPersistence.OnContentPendingChanged := nil;
     FPersistence := NewPersistence;
+    if ViewsWereCurrent then
+      FLoadedViewPersistence := FPersistence
+    else
+    begin
+      FLoadedViewPersistence := nil;
+      FLoadedViewReference := '';
+    end;
     NewPersistence := nil;
     FSuggestionManager := NewSuggester;
     NewSuggester := nil;
