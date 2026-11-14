@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, BibleScope, Project, ONTTokenizer, status_catalog,
-  dictionary_manager, project_setup_model;
+  dictionary_manager, project_setup_model, theword_module_encoding;
 
 type
   TProjectSetupValidationSeverity = (psvsOk, psvsWarning, psvsError);
@@ -63,7 +63,6 @@ resourcestring
   SDictionaryStrongMissing = 'This dictionary does not advertise Strong support.';
   SDictionaryMorphMissing = 'This dictionary does not advertise morphology support.';
   SDictionaryEncrypted = 'Encrypted dictionaries are not supported.';
-  SDictionaryCompressed = 'Compressed dictionaries are not supported.';
   SDictionaryNonRTF = 'Only RTF dictionary content is supported.';
   SDictionaryInvalid = 'The selected dictionary could not be validated.';
   SDictionaryReady = 'Dictionary ready.';
@@ -205,7 +204,7 @@ begin
   ModuleLines := TStringList.Create;
   try
     try
-      ModuleLines.LoadFromFile(FileName);
+      LoadTheWordModuleLines(FileName, ModuleLines);
     except
       on E: Exception do
       begin
@@ -282,8 +281,6 @@ begin
       MessageText := SDictionaryMorphMissing;
     dvrEncrypted:
       MessageText := SDictionaryEncrypted;
-    dvrCompressed:
-      MessageText := SDictionaryCompressed;
     dvrNonRTF:
       MessageText := SDictionaryNonRTF;
   else

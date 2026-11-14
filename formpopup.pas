@@ -34,6 +34,7 @@ type
     FMorphologies: TStringList;
   public
     { public declarations }
+    procedure ShowRtf(Memo: TRichMemo; const Rtf: string);
     procedure AddStrong(const strong: string; const definition: string);
     procedure AddMorphology(const morfo: string; const definition: string);
     procedure ShowAt(x: Integer; y: Integer);
@@ -49,7 +50,103 @@ var
 
 implementation
 
-uses formPrincipal;
+uses formPrincipal, unitskins;
+
+{ Dictionary entries are RTF with their own colour table (black text, maroon
+  headwords, dark blue links) and an "auto" colour that RichEdit shows as
+  black. On a dark skin the auto entry becomes the skin's note text, the dark
+  colours are swapped for light ones, and each paragraph is reset to it.
+  Taken from the 1.0.1 mod (formpopup.pas). }
+function AdaptRtfForSkin(const ARtf: string; const ASkin: TSkinColors): string;
+var
+  lightColorStr: string;
+  rgbCol: LongInt;
+  sb: TStringBuilder;
+  i, len: Integer;
+begin
+  Result := ARtf;
+  if (Result = '') or not ASkin.IsDark then exit;
+
+  rgbCol := ColorToRGB(ASkin.NoteText);
+  lightColorStr := Format('\red%d\green%d\blue%d;', [Red(rgbCol), Green(rgbCol), Blue(rgbCol)]);
+
+  // 1. Set color table index 0 (\cf0, the default/auto entry before the first semicolon)
+  //    to ASkin.NoteText without shifting the indices of \cf1, \cf2, \cf3, etc.
+  if Pos('{\colortbl ;', Result) > 0 then
+    Result := StringReplace(Result, '{\colortbl ;', '{\colortbl ' + lightColorStr, [rfReplaceAll])
+  else if Pos('{\colortbl;', Result) > 0 then
+    Result := StringReplace(Result, '{\colortbl;', '{\colortbl ' + lightColorStr, [rfReplaceAll]);
+
+  Result := StringReplace(Result, '\red0\green0\blue0;', lightColorStr, [rfReplaceAll]);
+  Result := StringReplace(Result, '\red128\green0\blue0;', lightColorStr, [rfReplaceAll]);
+  Result := StringReplace(Result, '\red0\green0\blue255;', '\red115\green175\blue255;', [rfReplaceAll]);
+  Result := StringReplace(Result, '\red0\green0\blue128;', '\red135\green195\blue255;', [rfReplaceAll]);
+  Result := StringReplace(Result, '\red150\green60\blue100;', lightColorStr, [rfReplaceAll]);
+  Result := StringReplace(Result, '\red0\green128\blue0;', '\red125\green225\blue145;', [rfReplaceAll]);
+  Result := StringReplace(Result, '\red0\green128\blue128;', '\red115\green215\blue215;', [rfReplaceAll]);
+  Result := StringReplace(Result, '\red128\green128\blue0;', '\red235\green235\blue135;', [rfReplaceAll]);
+  Result := StringReplace(Result, '\red96\green96\blue96;', '\red170\green175\blue185;', [rfReplaceAll]);
+  Result := StringReplace(Result, '\red128\green128\blue128;', '\red185\green195\blue205;', [rfReplaceAll]);
+
+  // 2. Word-boundary scanner to ensure every \pard, \plain, \par defaults to \cf0 (ASkin.NoteText),
+  //    not \cf1 (which in many dictionaries is maroon/red for headwords!).
+  sb := TStringBuilder.Create;
+  try
+    len := Length(Result);
+    i := 1;
+    while i <= len do
+    begin
+      if (i <= len - 4) and (Copy(Result, i, 5) = '\pard') and
+         ((i + 5 > len) or not (Result[i + 5] in ['a'..'z', 'A'..'Z'])) then
+      begin
+        sb.Append('\pard\cf0 ');
+        Inc(i, 5);
+      end
+      else if (i <= len - 5) and (Copy(Result, i, 6) = '\plain') and
+         ((i + 6 > len) or not (Result[i + 6] in ['a'..'z', 'A'..'Z'])) then
+      begin
+        sb.Append('\plain\cf0 ');
+        Inc(i, 6);
+      end
+      else if (i <= len - 3) and (Copy(Result, i, 4) = '\par') and
+         ((i + 4 > len) or not (Result[i + 4] in ['a'..'z', 'A'..'Z'])) then
+      begin
+        sb.Append('\par\cf0 ');
+        Inc(i, 4);
+      end
+      else
+      begin
+        sb.Append(Result[i]);
+        Inc(i);
+      end;
+    end;
+    Result := sb.ToString;
+  finally
+    sb.Free;
+  end;
+
+  Result := StringReplace(Result, '\cf0 \cf0 ', '\cf0 ', [rfReplaceAll]);
+end;
+
+procedure TFrmDictionaryPopup.ShowRtf(Memo: TRichMemo; const Rtf: string);
+begin
+  Memo.ParentColor := False;
+  Memo.ParentFont := False;
+  if CurrentSkin.Id = skClassic then
+  begin
+    Memo.Color := clWhite;
+    Memo.Font.Color := clWindowText;
+  end
+  else
+  begin
+    Memo.Color := CurrentSkin.NoteBg;
+    Memo.Font.Color := CurrentSkin.NoteText;
+    Panel1.Color := CurrentSkin.NoteBg;
+    Panel2.Color := CurrentSkin.NoteBg;
+  end;
+  ApplyDarkModeToControl(Memo, CurrentSkin.IsDark);
+  Memo.Rtf := AdaptRtfForSkin(Rtf, CurrentSkin);
+end;
 
 { TFrmDictionaryPopup }
 
@@ -115,12 +212,12 @@ end;
 
 procedure TFrmDictionaryPopup.TabControlMorphologiesChange(Sender: TObject);
 begin
-  RichMemoMorphology.Rtf := FMorphologies[TabControlMorphologies.TabIndex];
+  ShowRtf(RichMemoMorphology, FMorphologies[TabControlMorphologies.TabIndex]);
 end;
 
 procedure TFrmDictionaryPopup.TabControlStrongsChange(Sender: TObject);
 begin
-  RichMemoStrong.Rtf := FStrongs[TabControlStrongs.TabIndex];
+  ShowRtf(RichMemoStrong, FStrongs[TabControlStrongs.TabIndex]);
 end;
 
 procedure TFrmDictionaryPopup.AddStrong(const strong: string; const definition: string);
@@ -140,13 +237,13 @@ begin
   if FStrongs.Count > 0 then
   begin
     TabControlStrongs.TabIndex := 0;
-    RichMemoStrong.Rtf         := FStrongs[0];
+    ShowRtf(RichMemoStrong, FStrongs[0]);
     RichMemoStrong.ZoomFactor  := RichMemoStrong.ZoomFactor; { circunventing bug... }
   end;
   if FMorphologies.Count > 0 then
   begin
     TabControlMorphologies.TabIndex := 0;
-    RichMemoMorphology.Rtf := FMorphologies[0];
+    ShowRtf(RichMemoMorphology, FMorphologies[0]);
     RichMemoMorphology.ZoomFactor := RichMemoMorphology.ZoomFactor; { circunventing bug... }
     TabControlMorphologies.Visible := true;
   end else

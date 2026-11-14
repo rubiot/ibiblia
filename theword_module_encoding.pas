@@ -28,6 +28,8 @@ function InspectTheWordModuleEncoding(
   const ABytes: RawByteString): TTheWordModuleEncodingInfo;
 function InspectTheWordModuleEncodingFile(
   const AFileName: string): TTheWordModuleEncodingInfo;
+function NormalizeTheWordModuleLineBreaks(const ABytes: RawByteString): RawByteString;
+procedure LoadTheWordModuleLines(const AFileName: string; ALines: TStrings);
 
 implementation
 
@@ -150,6 +152,39 @@ function InspectTheWordModuleEncodingFile(
   const AFileName: string): TTheWordModuleEncodingInfo;
 begin
   Result := InspectTheWordModuleEncoding(ReadAllBytes(AFileName));
+end;
+
+{ Some editors save modules with CR CR LF line endings. TStrings treats the
+  lone CR as a line break too, which inserts an empty line after every verse
+  and shifts all verses after the first. Collapse any run of CRs to one. }
+function NormalizeTheWordModuleLineBreaks(const ABytes: RawByteString): RawByteString;
+begin
+  Result := ABytes;
+  if Pos(#13#13, Result) = 0 then
+    Exit;
+  repeat
+    Result := StringReplace(Result, #13#13, #13, [rfReplaceAll]);
+  until Pos(#13#13, Result) = 0;
+end;
+
+{ Same as ALines.LoadFromFile, but with CR CR LF line endings normalized. }
+procedure LoadTheWordModuleLines(const AFileName: string; ALines: TStrings);
+var
+  Bytes: RawByteString;
+  Stream: TStringStream;
+begin
+  Bytes := ReadAllBytes(AFileName);
+  if Pos(#13#13, Bytes) = 0 then
+  begin
+    ALines.LoadFromFile(AFileName);
+    Exit;
+  end;
+  Stream := TStringStream.Create(NormalizeTheWordModuleLineBreaks(Bytes));
+  try
+    ALines.LoadFromStream(Stream);
+  finally
+    Stream.Free;
+  end;
 end;
 
 end.

@@ -40,6 +40,7 @@ type
   private
     FBodyRaw: UnicodeString;
     FBodyRendered: Boolean;
+    FLastSkinId: Integer;
     FMemo: TKMemo;
   public
     constructor Create(AOwner: TComponent); override;
@@ -109,7 +110,7 @@ uses
   Buttons, ComCtrls, Dialogs, ExtCtrls, LCLType, Math, Spin, StdCtrls,
   ColorBox, LazUTF8, SynEdit, KEditCommon, theword_syntax_highlighter,
   theword_translator_note_body_v2,
-  theword_translator_note_preview, performance_debug;
+  theword_translator_note_preview, performance_debug, unitskins;
 
 resourcestring
   STranslatorNoteTitle = 'Translator note';
@@ -716,6 +717,7 @@ begin
   BorderStyle := bsNone;
   FormStyle := fsStayOnTop;
   ShowInTaskBar := stNever;
+  FLastSkinId := -1;
   Color := UISurfaceColor;
   ClientWidth := 440;
   ClientHeight := 160;
@@ -727,7 +729,23 @@ begin
   FMemo.Align := alClient;
   FMemo.ReadOnly := True;
   FMemo.BorderStyle := bsSingle;
-  FMemo.Background.Color := UIContentColor;
+  if CurrentSkin.Id = skClassic then
+  begin
+    FMemo.Background.Color := clWindow;
+    FMemo.Colors.BkGnd := clWindow;
+    FMemo.TextStyle.Font.Color := clWindowText;
+  end
+  else
+  begin
+    Color := CurrentSkin.PanelBg;
+    FMemo.Background.Color := CurrentSkin.NoteBg;
+    FMemo.Colors.BkGnd := CurrentSkin.NoteBg;
+    FMemo.Colors.SelBkGnd := CurrentSkin.SelectedBg;
+    FMemo.Colors.SelText := CurrentSkin.SelectedText;
+    FMemo.Colors.SelBkGndFocused := CurrentSkin.SelectedBg;
+    FMemo.Colors.SelTextFocused := CurrentSkin.SelectedText;
+    FMemo.TextStyle.Font.Color := CurrentSkin.NoteText;
+  end;
   FMemo.ScrollBars := ssAutoVertical;
 end;
 
@@ -749,12 +767,31 @@ var
   TargetMonitor: TMonitor;
   Work: TRect;
 begin
-  if not FBodyRendered or (FBodyRaw <> ABodyRaw) then
+  if CurrentSkin.Id = skClassic then
+  begin
+    Color := UISurfaceColor;
+    FMemo.Background.Color := clWindow;
+    FMemo.Colors.BkGnd := clWindow;
+    FMemo.TextStyle.Font.Color := clWindowText;
+  end
+  else
+  begin
+    Color := CurrentSkin.PanelBg;
+    FMemo.Background.Color := CurrentSkin.NoteBg;
+    FMemo.Colors.BkGnd := CurrentSkin.NoteBg;
+    FMemo.Colors.SelBkGnd := CurrentSkin.SelectedBg;
+    FMemo.Colors.SelText := CurrentSkin.SelectedText;
+    FMemo.Colors.SelBkGndFocused := CurrentSkin.SelectedBg;
+    FMemo.Colors.SelTextFocused := CurrentSkin.SelectedText;
+    FMemo.TextStyle.Font.Color := CurrentSkin.NoteText;
+  end;
+  if not FBodyRendered or (FBodyRaw <> ABodyRaw) or (FLastSkinId <> Ord(CurrentSkin.Id)) then
   begin
     IBibliaPerfIncrement(ipcNotePreviewRenders);
     theword_translator_note_preview.TTranslatorNoteBodyView(FMemo).
       SetNoteBody(ABodyRaw);
     FBodyRaw := ABodyRaw;
+    FLastSkinId := Ord(CurrentSkin.Id);
     FBodyRendered := True;
   end;
   TargetMonitor := Screen.MonitorFromRect(AAnchorScreenRect);
@@ -768,6 +805,13 @@ begin
   if Top + Height > Work.Bottom then
     Top := Max(Work.Top, AAnchorScreenRect.Top - Height - 4);
   Show;
+  if FMemo.HandleAllocated then
+  begin
+    ApplyDarkModeToControl(FMemo, CurrentSkin.IsDark);
+    {$IFDEF WINDOWS}
+    HookNCScrollBarControl(FMemo);
+    {$ENDIF}
+  end;
   BringToFront;
 end;
 
@@ -932,6 +976,9 @@ begin
   FMemo := TTranslatorNoteEditorMemo.Create(Self);
   FMemo.TextStyle.AllowBrush := False;
   FMemo.TextStyle.Brush.Style := bsClear;
+  FMemo.Background.Color := UIContentColor;
+  FMemo.Colors.BkGnd := UIContentColor;
+  FMemo.TextStyle.Font.Color := UITextColor;
   FMemo.ParentFont := False;
   FMemo.Parent := FVisualPage;
   FMemo.Align := alClient;
@@ -965,6 +1012,18 @@ begin
   FHasVisualSource := False;
   FRawEditor.Text := UTF8Encode(ABodyRaw);
   FRawEditor.Modified := False;
+  FMemo.Background.Color := UIContentColor;
+  FMemo.Colors.BkGnd := UIContentColor;
+  if CurrentSkin.Id = skClassic then
+    FMemo.TextStyle.Font.Color := clWindowText
+  else
+  begin
+    FMemo.Colors.SelBkGnd := CurrentSkin.SelectedBg;
+    FMemo.Colors.SelText := CurrentSkin.SelectedText;
+    FMemo.Colors.SelBkGndFocused := CurrentSkin.SelectedBg;
+    FMemo.Colors.SelTextFocused := CurrentSkin.SelectedText;
+    FMemo.TextStyle.Font.Color := UITextColor;
+  end;
   TTranslatorNoteEditorMemo(FMemo).ResetRelativeFontInsertion;
   IBibliaPerfIncrement(ipcNoteEditorDecodes);
   LoadBodyIntoMemo(FMemo, ABodyRaw);

@@ -156,7 +156,7 @@ function TryParseTranslationMemoryHoverURL(const AURL: string;
 implementation
 
 uses
-  Math, performance_debug
+  Math, performance_debug, unitskins
   {$IFDEF WINDOWS}, Windows{$ENDIF};
 
 const
@@ -395,6 +395,20 @@ var
   TextBlock: TKMemoTextBlock;
 begin
   IBibliaPerfIncrement(ipcTranslationMemoryPreviewRenders);
+  if CurrentSkin.Id = skClassic then
+  begin
+    Color := clInfoBk;
+    FMemo.Background.Color := clInfoBk;
+    FMemo.Colors.BkGnd := clInfoBk;
+    FMemo.TextStyle.Font.Color := clWindowText;
+  end
+  else
+  begin
+    Color := CurrentSkin.NoteBg;
+    FMemo.Background.Color := CurrentSkin.NoteBg;
+    FMemo.Colors.BkGnd := CurrentSkin.NoteBg;
+    FMemo.TextStyle.Font.Color := CurrentSkin.NoteText;
+  end;
   FMemo.Blocks.LockUpdate;
   try
     FMemo.Blocks.Clear;

@@ -30,104 +30,106 @@ object MainForm: TMainForm
   end
   object ToolBar1: TToolBar
     Left = 0
-    Height = 36
+    Height = 26
     Top = 0
     Width = 992
     AutoSize = True
-    ButtonHeight = 34
-    ButtonWidth = 34
+    ButtonHeight = 24
+    ButtonWidth = 24
     Caption = 'ToolBar1'
     Images = ImageList1
+    ImagesWidth = 16
     ParentShowHint = False
     ShowHint = True
     TabOrder = 1
+    Wrapable = True
     object ToolButton3: TToolButton
       Left = 0
       Top = 0
       Action = ActionNewProject
     end
     object ToolButton1: TToolButton
-      Left = 40
+      Left = 24
       Top = 0
       Action = ActionOpenProject
     end
     object ToolButton4: TToolButton
-      Left = 80
+      Left = 48
       Top = 0
       Action = ActionSaveProject
     end
     object ToolButton5: TToolButton
-      Left = 120
+      Left = 72
       Top = 0
       Action = ActionSaveProjectAs
     end
     object ToolButton2: TToolButton
-      Left = 160
+      Left = 96
       Top = 0
       Action = ActionCloseProject
     end
     object ToolButtonProjectSeparator: TToolButton
-      Left = 200
+      Left = 120
       Top = 0
-      Width = 8
+      Width = 6
       Style = tbsSeparator
     end
     object ToolButton6: TToolButton
-      Left = 208
+      Left = 126
       Top = 0
       Action = ActionSuggestAssociation
     end
     object ToolButton7: TToolButton
-      Left = 248
+      Left = 162
       Top = 0
       Action = ActionClearAssociations
     end
     object ToolButton10: TToolButton
-      Left = 288
+      Left = 186
       Top = 0
       Action = ActionRollbackCurrentVerse
     end
     object ToolButtonAssociationSeparator: TToolButton
-      Left = 328
+      Left = 210
       Top = 0
-      Width = 8
+      Width = 6
       Style = tbsSeparator
     end
     object ToolButtonHistoryBack: TToolButton
-      Left = 336
+      Left = 216
       Top = 0
       Action = ActionHistoryBack
     end
     object ToolButtonHistoryForward: TToolButton
-      Left = 376
+      Left = 240
       Top = 0
       Action = ActionHistoryForward
     end
     object ToolButtonHistorySeparator: TToolButton
-      Left = 416
+      Left = 264
       Top = 0
-      Width = 8
+      Width = 6
       Style = tbsSeparator
     end
     object ToolButton8: TToolButton
-      Left = 424
+      Left = 270
       Top = 0
       Action = ActionPreviousVerse
     end
     object ToolButton9: TToolButton
-      Left = 464
+      Left = 294
       Top = 0
       Action = ActionNextVerse
     end
     object ToolButtonExit: TToolButton
-      Left = 504
+      Left = 318
       Top = 0
       Action = ActionExit
     end
     object ToolButtonSyncSeparator: TToolButton
-      Left = 544
+      Left = 342
       Top = 0
-      Width = 8
+      Width = 6
       Style = tbsSeparator
     end
   end
@@ -265,6 +267,7 @@ object MainForm: TMainForm
         ClientHeight = 120
         ClientWidth = 512
         TabOrder = 7
+        Visible = False
         object CommentsMemo: TMemo
           Left = 1
           Height = 118
@@ -314,6 +317,7 @@ object MainForm: TMainForm
         Align = alBottom
         Anchors = [akLeft, akBottom]
         ResizeAnchor = akBottom
+        Visible = False
       end
     end
     object Splitter1: TSplitter
@@ -799,8 +803,8 @@ object MainForm: TMainForm
     Top = 202
   end
   object ImageList1: TImageList
-    Height = 32
-    Width = 32
+    Height = 16
+    Width = 16
     Left = 295
     Top = 278
   end

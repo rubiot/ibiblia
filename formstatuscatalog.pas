@@ -25,8 +25,6 @@ type
     FDefinitions: TStatusDefinitions;
     FCounts: TStatusCounts;
     FRemaps: TStatusRemaps;
-    constructor CreateEditor(AOwner: TComponent;
-      const Definitions: TStatusDefinitions; const Counts: TStatusCounts);
     function CountForStatus(StatusId: Integer): Integer;
     function DefinitionIndexById(StatusId: Integer): Integer;
     function SelectedDefinitionIndex: Integer;
@@ -52,6 +50,8 @@ type
     procedure OkButtonClick(Sender: TObject);
     procedure Translate;
   public
+    constructor CreateEditor(AOwner: TComponent;
+      const Definitions: TStatusDefinitions; const Counts: TStatusCounts);
     class function Execute(var Definitions: TStatusDefinitions;
       const Counts: TStatusCounts; out Remaps: TStatusRemaps): Boolean;
   public

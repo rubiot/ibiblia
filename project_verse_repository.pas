@@ -475,13 +475,29 @@ begin
       raise;
     end;
   finally
-    Query.Close;
-    if Transaction.Active then
-      Transaction.Rollback;
-    Connection.Close;
+    try
+      if Query.Active then
+        Query.Close;
+      if Query.Prepared then
+        Query.UnPrepare;
+    except
+    end;
+    Query.Transaction := nil;
+    Query.DataBase := nil;
+    Query.Free;
+    try
+      if Transaction.Active then
+        Transaction.Rollback;
+    except
+    end;
+    try
+      if Connection.Connected then
+        Connection.Close;
+    except
+    end;
+    Connection.Transaction := nil;
     Transaction.Free;
     Connection.Free;
-    Query.Free;
   end;
 end;
 

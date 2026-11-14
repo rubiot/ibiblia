@@ -63,7 +63,7 @@ function BuildVerseVisualDocument(Syntagms: TSyntagmList;
 implementation
 
 uses
-  SysUtils, rf_note_scanner, theword_translator_note_style;
+  SysUtils, unitskins, rf_note_scanner, theword_translator_note_style;
 
 type
   TBooleanArray = array of Boolean;
@@ -188,7 +188,7 @@ begin
   begin
     Include(Result.Flags, vtsfSelected);
     Result.HasBackgroundColor := True;
-    Result.BackgroundColor := LongInt(clYellow);
+    Result.BackgroundColor := LongInt(CurrentSkin.SelectedBg);
   end;
   if Syntagm.IsAssociated then
     Include(Result.Flags, vtsfAssociated);
@@ -199,18 +199,43 @@ begin
     if not Syntagm.IsSelected then
     begin
       Result.HasBackgroundColor := True;
-      Result.BackgroundColor := LongInt(clHighlight);
+      Result.BackgroundColor := LongInt(CurrentSkin.PointedBg);
     end;
   end;
   if Syntagm.IsStrongHighlighted then
   begin
     Include(Result.Flags, vtsfStrongHighlight);
     Include(Result.Flags, vtsfUnderline);
+    if (not Syntagm.IsSelected) and (not Syntagm.IsPointed) then
+    begin
+      Result.HasBackgroundColor := True;
+      Result.BackgroundColor := LongInt(CurrentSkin.HighlightBg);
+    end;
   end;
 
-  if HasProjectedStyle and EffectiveStyle.HasExplicitColor then
+  if Syntagm.IsSelected then
+    Foreground := CurrentSkin.SelectedText
+  else if Syntagm.IsPointed then
+    Foreground := CurrentSkin.PointedText
+  else if Syntagm.IsStrongHighlighted then
+    Foreground := CurrentSkin.HighlightText
+  else if HasProjectedStyle and EffectiveStyle.HasExplicitColor then
   begin
-    if Syntagm.IsAssociated then
+    if (EffectiveStyle.ExplicitColor = $00000000) and (CurrentSkin.Id <> skClassic) then
+    begin
+      if Syntagm.IsAssociated then
+        Foreground := AssociatedColor
+      else
+        Foreground := UnassociatedColor;
+    end
+    else if (EffectiveStyle.ExplicitColor = $000000FF) and CurrentSkin.IsDark then
+    begin
+      if Syntagm.IsAssociated then
+        Foreground := MakeRGB(244, 92, 92)
+      else
+        Foreground := MakeRGB(185, 85, 85);
+    end
+    else if Syntagm.IsAssociated then
       Foreground := TColor(EffectiveStyle.ExplicitColor)
     else
       Foreground := TColor(FadeTheWordExplicitColorV2(

@@ -382,7 +382,7 @@ end;
 
 function IsPresentationBreak(const ARaw: UnicodeString): Boolean;
 begin
-  Result := (ARaw = '<CM>') or (ARaw = '<CL>');
+  Result := IsTheWordBreakLexeme(ARaw);
 end;
 
 function IsPresentationTitleOrdinal(AOrdinal: Integer;

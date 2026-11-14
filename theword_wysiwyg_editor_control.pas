@@ -167,6 +167,7 @@ type
       ADirection: TTextDirection; AFont: TFont;
       ATokenizerVersion, AAutomaticNoteStart: Integer);
     procedure SetEditorFont(AFont: TFont);
+    procedure ApplySkinColors;
     property AutomaticNoteStart: Integer read FAutomaticNoteStart
       write SetAutomaticNoteStart;
     property CanInsertTranslatorNote: Boolean read GetCanInsertTranslatorNote;
@@ -201,14 +202,15 @@ function TheWordClipboardPlainTextFixture: UnicodeString;
 implementation
 
 uses
-  LCLType, Clipbrd, Math, theword_clipboard_v2, theword_verse_visual_adapter_v2,
-  theword_syntax_highlighter, performance_debug;
+  LCLType, Clipbrd, Math, unitskins, ui_style, theword_clipboard_v2,
+  theword_verse_visual_adapter_v2, theword_syntax_highlighter,
+  performance_debug;
 
 constructor TTheWordWysiwygEditorControl.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   ControlStyle := ControlStyle + [csAcceptsControls];
-  Color := clWindow;
+  Color := UIContentColor;
   ParentColor := False;
   TabStop := True;
   FBaseDirection := tdLeftToRight;
@@ -233,7 +235,8 @@ begin
   FDirectEditor := TDirectWriteVerseEditor.Create(Self);
   FDirectEditor.Parent := Self;
   FDirectEditor.Align := alClient;
-  FDirectEditor.Color := clWindow;
+  FDirectEditor.Color := UIContentColor;
+  FDirectEditor.Font.Color := UITextColor;
   FDirectEditor.InteractionMode := vimEdit;
   FDirectEditor.OnClipboardCopy := @DirectClipboardCopy;
   FDirectEditor.OnClipboardPaste := @DirectClipboardPaste;
@@ -257,6 +260,7 @@ begin
 
   FNoteHover := TTranslatorNoteHoverController.Create(Self);
   FNoteHover.OnResolve := @ResolveNoteHover;
+  ApplySkinColors;
 end;
 
 destructor TTheWordWysiwygEditorControl.Destroy;
@@ -307,6 +311,7 @@ begin
       else if FDirectEditor.Font.Size < 1 then
         FDirectEditor.Font.Size := 1;
     end;
+    ApplySkinColors;
     FVisualDocument := nil;
     FreeAndNil(FSession);
     FLoadedRaw := UTF8Decode(ARaw);
@@ -875,8 +880,18 @@ begin
   begin
     if ssShift in Shift then
       FRawEditor.SelText := '<CL>'
-    else
+    else if not FRawEditor.SelAvail and
+            (FRawEditor.LogicalCaretXY.X > 4) and
+            (Copy(FRawEditor.LineText, FRawEditor.LogicalCaretXY.X - 4, 4) = '<CI>') then
+    begin
+      // second Enter right after <CI>: make it a spaced paragraph
+      FRawEditor.BlockBegin := Point(FRawEditor.LogicalCaretXY.X - 4,
+        FRawEditor.LogicalCaretXY.Y);
+      FRawEditor.BlockEnd := FRawEditor.LogicalCaretXY;
       FRawEditor.SelText := '<CM>';
+    end
+    else
+      FRawEditor.SelText := '<CI>';
     Key := 0;
   end;
 end;
@@ -1635,7 +1650,10 @@ begin
     else if HasActiveTitle and (Title.Level in [0, 1]) then
     begin
       Style.HasForegroundColor := True;
-      Style.ForegroundColor := THEWORD_TITLE_LEVEL1_COLOR;
+      if CurrentSkin.Id = skClassic then
+        Style.ForegroundColor := THEWORD_TITLE_LEVEL1_COLOR
+      else
+        Style.ForegroundColor := LongInt(CurrentSkin.HeaderColor);
     end
     else
       Style.HasForegroundColor := False;
@@ -1658,12 +1676,18 @@ begin
   if HasWordsOfJesus then
   begin
     Style.HasForegroundColor := True;
-    Style.ForegroundColor := LongInt(clRed);
+    if CurrentSkin.IsDark then
+      Style.ForegroundColor := LongInt(MakeRGB(244, 92, 92))
+    else
+      Style.ForegroundColor := LongInt(clRed);
   end
   else if HasOldTestamentQuote then
   begin
     Style.HasForegroundColor := True;
-    Style.ForegroundColor := LongInt(clBlack);
+    if CurrentSkin.Id = skClassic then
+      Style.ForegroundColor := LongInt(clBlack)
+    else
+      Style.ForegroundColor := LongInt(CurrentSkin.WindowText);
   end;
 end;
 
@@ -2054,7 +2078,39 @@ begin
     FDirectEditor.Font.Size := FDirectZoomSize
   else if FDirectEditor.Font.Size < 1 then
     FDirectEditor.Font.Size := 1;
+  ApplySkinColors;
   FDirectEditor.Invalidate;
+end;
+
+procedure TTheWordWysiwygEditorControl.ApplySkinColors;
+begin
+  Color := UIContentColor;
+  if Assigned(FDirectEditor) then
+  begin
+    FDirectEditor.Color := UIContentColor;
+    FDirectEditor.Font.Color := UITextColor;
+  end;
+  if Assigned(FRawEditor) then
+  begin
+    FRawEditor.Color := UIContentColor;
+    FRawEditor.Font.Color := UITextColor;
+    if Assigned(FRawEditor.SelectedColor) then
+    begin
+      FRawEditor.SelectedColor.Background := CurrentSkin.SelectedBg;
+      FRawEditor.SelectedColor.Foreground := CurrentSkin.SelectedText;
+    end;
+    if FRawEditor.Highlighter is TTheWordSyntaxHighlighter then
+      TTheWordSyntaxHighlighter(FRawEditor.Highlighter).ApplySkinColors;
+    if FRawEditor.HandleAllocated then
+      ApplyDarkModeToControl(FRawEditor, CurrentSkin.IsDark);
+    FRawEditor.Invalidate;
+  end;
+  if Assigned(FSession) and not FRawMode then
+  begin
+    RefreshDirectDocument;
+    FDirectEditor.Invalidate;
+  end;
+  Invalidate;
 end;
 
 procedure TTheWordWysiwygEditorControl.AcceptChanges;

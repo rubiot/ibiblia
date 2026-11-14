@@ -14,11 +14,6 @@ type
 const
   UIAccentColor = TColor($00EB6325);
   UIGoldColor = TColor($00289AD4);
-  UISurfaceColor = TColor($00F8F6F3);
-  UIContentColor = clWhite;
-  UITextColor = TColor($00372F27);
-  UIMutedTextColor = TColor($007C6D60);
-  UIBorderColor = TColor($00E5DDD6);
   UISuccessColor = TColor($003D8015);
   UIWarningColor = TColor($000E6DA1);
   UIErrorColor = TColor($002626DC);
@@ -29,6 +24,22 @@ const
 resourcestring
   SUICancel = 'Cancel';
 
+{ Surface, content, text and border colours follow the current skin
+  (View > Skins). With the Classic skin they are 1.1.0's own palette. }
+function UISurfaceColor: TColor;
+function UIContentColor: TColor;
+function UITextColor: TColor;
+function UIMutedTextColor: TColor;
+function UITextMutedColor: TColor;
+function UIBorderColor: TColor;
+function UISuccessTextColor: TColor;
+function UIWarningTextColor: TColor;
+function UIErrorTextColor: TColor;
+function UIAccentTextColor: TColor;
+
+function UIDefaultFontName: string;
+function UIMonoFontName: string;
+
 function UIScale(AControl: TControl; LogicalPixels: Integer): Integer;
 procedure ApplyFormStyle(AForm: TCustomForm);
 procedure ApplyDialogStyle(AForm: TCustomForm);
@@ -38,10 +49,105 @@ procedure SetButtonIcon(AButton: TBitBtn; AIcon: TAppIcon);
 implementation
 
 uses
-  Math, StdCtrls, ExtCtrls, ComCtrls, Grids, CheckLst, ImgList;
+  Math, StdCtrls, ExtCtrls, ComCtrls, Grids, CheckLst, ImgList, unitskins;
+
+function UISurfaceColor: TColor;
+begin
+  if CurrentSkin.Id = skClassic then
+    Result := TColor($00F8F6F3)
+  else
+    Result := CurrentSkin.PanelBg;
+end;
+
+function UIContentColor: TColor;
+begin
+  if CurrentSkin.Id = skClassic then
+    Result := clWhite
+  else
+    Result := CurrentSkin.WindowBg;
+end;
+
+function UITextColor: TColor;
+begin
+  if CurrentSkin.Id = skClassic then
+    Result := TColor($00372F27)
+  else
+    Result := CurrentSkin.PanelText;
+end;
+
+function UIMutedTextColor: TColor;
+begin
+  if CurrentSkin.Id = skClassic then
+    Result := TColor($007C6D60)
+  else
+    Result := CurrentSkin.WindowTextDim;
+end;
+
+function UITextMutedColor: TColor;
+begin
+  Result := UIMutedTextColor;
+end;
+
+function UIBorderColor: TColor;
+begin
+  if CurrentSkin.Id = skClassic then
+    Result := TColor($00E5DDD6)
+  else
+    Result := CurrentSkin.PanelBorder;
+end;
+
+function UISuccessTextColor: TColor;
+begin
+  if CurrentSkin.IsDark then
+    Result := MakeRGB(110, 220, 130)
+  else
+    Result := UISuccessColor;
+end;
+
+function UIWarningTextColor: TColor;
+begin
+  if CurrentSkin.IsDark then
+    Result := MakeRGB(245, 190, 90)
+  else
+    Result := UIWarningColor;
+end;
+
+function UIErrorTextColor: TColor;
+begin
+  if CurrentSkin.IsDark then
+    Result := MakeRGB(245, 105, 105)
+  else
+    Result := UIErrorColor;
+end;
+
+function UIAccentTextColor: TColor;
+begin
+  if CurrentSkin.Id = skClassic then
+    Result := UIAccentColor
+  else
+    Result := CurrentSkin.HeaderColor;
+end;
 
 type
   TControlAccess = class(TControl);
+
+function UIDefaultFontName: string;
+begin
+  {$IFDEF WINDOWS}
+  Result := 'Segoe UI';
+  {$ELSE}
+  Result := 'Sans';
+  {$ENDIF}
+end;
+
+function UIMonoFontName: string;
+begin
+  {$IFDEF WINDOWS}
+  Result := 'Consolas';
+  {$ELSE}
+  Result := 'Monospace';
+  {$ENDIF}
+end;
 
 function UIScale(AControl: TControl; LogicalPixels: Integer): Integer;
 begin
@@ -55,7 +161,7 @@ procedure ApplyFormStyle(AForm: TCustomForm);
 begin
   if not Assigned(AForm) then Exit;
   AForm.Color := UISurfaceColor;
-  AForm.Font.Name := 'Segoe UI';
+  AForm.Font.Name := UIDefaultFontName;
   AForm.Font.Size := 10;
   AForm.Font.Color := UITextColor;
 end;
@@ -101,7 +207,7 @@ begin
       Control.Color := UIContentColor;
     uirSectionTitle:
       begin
-        Control.Font.Name := 'Segoe UI';
+        Control.Font.Name := UIDefaultFontName;
         Control.Font.Size := 10;
         Control.Font.Style := [fsBold];
         Control.Font.Color := UIAccentColor;
@@ -110,7 +216,7 @@ begin
       Control.Font.Color := UIMutedTextColor;
     uirButton:
       begin
-        Control.Font.Name := 'Segoe UI';
+        Control.Font.Name := UIDefaultFontName;
         Control.Font.Size := 10;
         Control.Constraints.MinHeight := UIScale(AControl, UIButtonHeight);
         Control.Height := Max(Control.Height, Control.Constraints.MinHeight);
@@ -147,14 +253,26 @@ begin
     ((AControl is TCustomEdit) and not (AControl is TCustomMemo)) or
     NativeContainer then
   begin
-    TControlAccess(AControl).Font.Name := 'Segoe UI';
+    TControlAccess(AControl).Font.Name := UIDefaultFontName;
     TControlAccess(AControl).Font.Size := 10;
   end;
 
-  if (AControl is TPanel) and TPanel(AControl).ParentColor then
+  if (AControl is TPanel) or (AControl is TCustomGroupBox) or
+     (AControl is TPageControl) or (AControl is TTabSheet) or
+     (AControl is TTabControl) then
+  begin
+    TControlAccess(AControl).ParentColor := False;
     StyleControl(AControl, uirSurface);
-  if (AControl is TScrollBox) or (AControl is TCustomListBox) then
+    TControlAccess(AControl).Font.Color := UITextColor;
+  end;
+  if (AControl is TLabel) or (AControl is TCustomCheckBox) or (AControl is TRadioButton) then
+    TControlAccess(AControl).Font.Color := UITextColor;
+  if (AControl is TScrollBox) or (AControl is TCustomListBox) or (AControl is TCustomEdit) or
+     (AControl is TCustomComboBox) then
+  begin
     StyleControl(AControl, uirContent);
+    TControlAccess(AControl).Font.Color := UITextColor;
+  end;
   if AControl is TCustomGrid then
   begin
     TStringGrid(AControl).DefaultRowHeight := UIScale(AControl, 28);
@@ -173,6 +291,8 @@ begin
   begin
     LoadApplicationIcon(AForm.Icon);
     StyleDialogChrome(AForm);
+    if CurrentSkin.Id <> skClassic then
+      ApplySkinToForm(AForm, CurrentSkin);
   end;
 end;
 

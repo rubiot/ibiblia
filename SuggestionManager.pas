@@ -507,39 +507,97 @@ begin
 end;
 
 destructor TSuggestionManager.Destroy;
+  procedure SafeFreeQuery(var Q: TSQLQuery);
+  begin
+    if not Assigned(Q) then Exit;
+    try
+      if Q.Active then
+        Q.Close;
+    except
+    end;
+    try
+      if Q.Prepared then
+        Q.UnPrepare;
+    except
+    end;
+    try
+      Q.Transaction := nil;
+      Q.DataBase := nil;
+    except
+    end;
+    FreeAndNil(Q);
+  end;
+var
+  trans: TSQLTransaction;
 begin
+  SafeFreeQuery(FQuery);
+  SafeFreeQuery(FRemovePairQuery);
+  SafeFreeQuery(FGetSourcePhraseQuery);
+  SafeFreeQuery(FGetTargetPhraseQuery);
+  SafeFreeQuery(FGetTranslationCountQuery);
+  SafeFreeQuery(FGetNextSourcePhraseIdQuery);
+  SafeFreeQuery(FGetNextTargetPhraseIdQuery);
+  SafeFreeQuery(FInsertSourcePhraseQuery);
+  SafeFreeQuery(FInsertTargetPhraseQuery);
+  SafeFreeQuery(FInsertSourcePhraseSyntagmQuery);
+  SafeFreeQuery(FInsertTargetPhraseSyntagmQuery);
+  SafeFreeQuery(FInsertTranslationQuery);
+  SafeFreeQuery(FInsertTranslationCountQuery);
+  SafeFreeQuery(FUpdateTranslationQuery);
+  SafeFreeQuery(FSuggestionsQuery);
+  SafeFreeQuery(FSuggestionsWithoutMorphologyQuery);
+  SafeFreeQuery(FTranslationMemoryQuery);
+
   if Assigned(FTemporaryConnection) then
   begin
-    FTemporaryConnection.Transaction.Free;
-    FTemporaryConnection.Close;
-    FTemporaryConnection.Free;
+    try
+      if Assigned(FTemporaryConnection.Transaction) and FTemporaryConnection.Transaction.Active then
+        FTemporaryConnection.Transaction.Rollback;
+    except
+    end;
+    try
+      if FTemporaryConnection.Connected then
+        FTemporaryConnection.Close;
+    except
+    end;
+    try
+      if Assigned(FTemporaryConnection.Transaction) then
+      begin
+        trans := TSQLTransaction(FTemporaryConnection.Transaction);
+        FTemporaryConnection.Transaction := nil;
+        trans.Free;
+      end;
+    except
+    end;
+    FreeAndNil(FTemporaryConnection);
   end;
+  FConnection := nil;
 
-  FQuery.Free;
-  FRemovePairQuery.Free;
-  FGetSourcePhraseQuery.Free;
-  FGetTargetPhraseQuery.Free;
-  FGetTranslationCountQuery.Free;
-  FGetNextSourcePhraseIdQuery.Free;
-  FGetNextTargetPhraseIdQuery.Free;
-  FInsertSourcePhraseQuery.Free;
-  FInsertTargetPhraseQuery.Free;
-  FInsertSourcePhraseSyntagmQuery.Free;
-  FInsertTargetPhraseSyntagmQuery.Free;
-  FInsertTranslationQuery.Free;
-  FInsertTranslationCountQuery.Free;
-  FUpdateTranslationQuery.Free;
-  FSuggestionsQuery.Free;
-  FSuggestionsWithoutMorphologyQuery.Free;
-  FTranslationMemoryQuery.Free;
+  if Assigned(FVerbFormQuery) then
+    SafeFreeQuery(FVerbFormQuery);
 
-  if FVerbFormQuery <> nil then
+  if Assigned(FVerbConnection) then
   begin
-    FVerbFormQuery.Close;
-    FVerbFormQuery.Free;
-    FVerbConnection.Transaction.Free;
-    FVerbConnection.Close;
-    FVerbConnection.Free;
+    try
+      if Assigned(FVerbConnection.Transaction) and FVerbConnection.Transaction.Active then
+        FVerbConnection.Transaction.Rollback;
+    except
+    end;
+    try
+      if FVerbConnection.Connected then
+        FVerbConnection.Close;
+    except
+    end;
+    try
+      if Assigned(FVerbConnection.Transaction) then
+      begin
+        trans := TSQLTransaction(FVerbConnection.Transaction);
+        FVerbConnection.Transaction := nil;
+        trans.Free;
+      end;
+    except
+    end;
+    FreeAndNil(FVerbConnection);
   end;
 
   FDelimitedValues.Free;

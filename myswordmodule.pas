@@ -181,11 +181,40 @@ begin
 end;
 
 destructor TMySwordModule.Destroy;
+var
+  trans: TSQLTransaction;
 begin
-  FInsertVerse.Free;
-  FConnection.Transaction.Free;
-  FConnection.Close;
-  FConnection.Free;
+  if Assigned(FInsertVerse) then
+  begin
+    try
+      if FInsertVerse.Active then FInsertVerse.Close;
+      if FInsertVerse.Prepared then FInsertVerse.UnPrepare;
+    except
+    end;
+    FInsertVerse.Transaction := nil;
+    FInsertVerse.DataBase := nil;
+    FreeAndNil(FInsertVerse);
+  end;
+  if Assigned(FConnection) then
+  begin
+    try
+      if Assigned(FConnection.Transaction) and FConnection.Transaction.Active then
+        FConnection.Transaction.Rollback;
+    except
+    end;
+    try
+      if FConnection.Connected then FConnection.Close;
+    except
+    end;
+    if Assigned(FConnection.Transaction) then
+    begin
+      trans := TSQLTransaction(FConnection.Transaction);
+      FConnection.Transaction := nil;
+      trans.Free;
+    end;
+    FreeAndNil(FConnection);
+  end;
+  inherited Destroy;
 end;
 
 procedure TMySwordModule.AddVerse(text: string; book, chapter, verse: integer);

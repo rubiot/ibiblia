@@ -1082,9 +1082,10 @@ begin
     Anchors := [akTop, akLeft];
     Caption := ai_association_flow.SConfigIncludeCommentsDisplayName;
     Hint := ai_association_flow.SConfigIncludeCommentsDescription;
-    ShowHint := True;
+    ShowHint := False;
+    Visible := False;
+    Checked := False;
   end;
-  Inc(yPos, 32);
 
   AddProviderOverrideSection(tabControls.ScrollBox, yPos, TabIdx, tabControls);
   AddExamplesSection(tabControls.ScrollBox, yPos, TabIdx, tabControls);
@@ -1094,7 +1095,9 @@ begin
   FFlowTabs[TabIdx] := tabControls;
   UpdateFlowOverrideControls(TabIdx);
   ResizeFlowTabControls(TabIdx);
+  {$IFDEF WINDOWS}
   OutputDebugString(PChar('DEBUG: CreateAssociationTab complete'));
+  {$ENDIF}
 end;
 
 procedure TFrmLLMOptions.CreateTranslationTab(ATabSheet: TTabSheet; TabIdx: Integer);
@@ -1187,7 +1190,9 @@ begin
   FFlowTabs[TabIdx] := tabControls;
   UpdateFlowOverrideControls(TabIdx);
   ResizeFlowTabControls(TabIdx);
+  {$IFDEF WINDOWS}
   OutputDebugString(PChar('DEBUG: CreateTranslationTab complete'));
+  {$ENDIF}
 end;
 
 procedure TFrmLLMOptions.SetFlowProviderValues(TabIdx: Integer;

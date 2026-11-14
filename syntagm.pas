@@ -154,7 +154,7 @@ type
 
 implementation
 
-uses Verse;
+uses Verse, unitskins;
 
 var Hint: THintWindow;
 
@@ -280,9 +280,14 @@ begin
      (verse.Selection.Count > 0) then // Shift pressionado
   begin
     verse.AssociateSyntagms;
+    // when Ctrl/Shift are released, move on to the next unlinked word
+    verse.PendingAutoSelectNext := True;
+    verse.PairedVerse.PendingAutoSelectNext := True;
   end
   else if Assigned(verse.PairedVerse) then // Shift não pressionado
   begin
+    verse.PendingAutoSelectNext := False;
+    verse.PairedVerse.PendingAutoSelectNext := False;
     verse.PairedVerse.ClearSelection;
     if Pairs.Count > 0 then
     begin
@@ -615,15 +620,32 @@ begin
   begin // IsPointed
     FLabel.Font.Underline := true;
     if not IsSelected then
-      FLabel.Color:= clHighlight;
+    begin
+      FLabel.Color := CurrentSkin.PointedBg;
+      FLabel.Font.Color := CurrentSkin.PointedText;
+    end;
   end
   else if assigned(FLabel) then
   begin // não IsPointed
     FLabel.Font.Underline := false;
     if IsSelected then
-      FLabel.Color:= clYellow
+    begin
+      FLabel.Color := CurrentSkin.SelectedBg;
+      FLabel.Font.Color := CurrentSkin.SelectedText;
+    end
     else
-      FLabel.Color:= clDefault;
+    begin
+      FLabel.Color := CurrentSkin.WindowBg;
+      if FColor = clDefault then
+      begin
+        if IsAssociated then
+          FLabel.Font.Color := TVerse(FVerse).AssociatedColor
+        else
+          FLabel.Font.Color := TVerse(FVerse).UnassociatedColor;
+      end
+      else
+        FLabel.Font.Color := FColor;
+    end;
   end;
   NotifyVisualChange;
 end;
@@ -679,12 +701,11 @@ end;
 
 procedure TSyntagm.ToggleStrongHighlight(enable: boolean);
 begin
-  if FStrongHighlighted = enable then
-    Exit;
-  FStrongHighlighted := enable;
-  if assigned(FLabel) then
+  if not assigned(FLabel) then
+    exit;
+
   FLabel.Font.Underline := enable;
-  NotifyVisualChange;
+  FLabel.Repaint;
 end;
 
 function TSyntagm.GetNext: TSyntagm;
@@ -923,7 +944,10 @@ begin
     exit;
   FSelected := true;
   if TVerse(FVerse).Active and assigned(FLabel) then
-    FLabel.Color:= clYellow;
+  begin
+    FLabel.Color := CurrentSkin.SelectedBg;
+    FLabel.Font.Color := CurrentSkin.SelectedText;
+  end;
   TVerse(FVerse).Selection.Add(Self);
   NotifyVisualChange;
 end;
@@ -932,7 +956,18 @@ procedure TSyntagm.RemoveFromSelection;
 begin
   FSelected := false;
   if TVerse(FVerse).Active and assigned(FLabel) then
-    FLabel.Color:= clWindow;
+  begin
+    FLabel.Color := CurrentSkin.WindowBg;
+    if FColor = clDefault then
+    begin
+      if IsAssociated then
+        FLabel.Font.Color := TVerse(FVerse).AssociatedColor
+      else
+        FLabel.Font.Color := TVerse(FVerse).UnassociatedColor;
+    end
+    else
+      FLabel.Font.Color := FColor;
+  end;
   TVerse(FVerse).Selection.Remove(Self);
   NotifyVisualChange;
 end;

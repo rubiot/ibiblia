@@ -10,6 +10,7 @@ uses
 
 type
   TAppIconFamily = (aifConnected, aifClareza, aifMosaico, aifFolio);
+  TToolbarIconSize = (tisSmall, tisMedium, tisLarge);
 
   { Symbol order is shared by every full application image list. Subset lists,
     such as Bible tree StateImages, use the index returned by AddAppIcon. }

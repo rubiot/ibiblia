@@ -116,23 +116,36 @@ begin
   FSrcVerse.TokenizerVersion := tokenizerVersion;
   FDstVerse.TokenizerVersion := tokenizerVersion;
 
-  // Replace the TMemo with TCommentsView
+  // Hide Editorial Comments in patch preview
   FActualCommentsMemo := TCommentsView.Create(Self);
   FActualCommentsMemo.Parent := MemoComments.Parent;
   FActualCommentsMemo.Align := MemoComments.Align;
   FActualCommentsMemo.TabOrder := MemoComments.TabOrder;
-  FActualCommentsMemo.ReadOnly := True; // Disable editing in patch preview
+  FActualCommentsMemo.ReadOnly := True;
+  FActualCommentsMemo.Visible := False;
   MemoComments.Visible := False;
+  if Assigned(Splitter2) then
+    Splitter2.Visible := False;
+  if Assigned(LabelComments) then
+    LabelComments.Visible := False;
 end;
 
 procedure TFrmApplyPatch.FormDestroy(Sender: TObject);
 begin
-  FSrcVerse.Free;
-  FDstVerse.Free;
-  FBibleTreeView.Free;
-  FActualCommentsMemo.Free; // Free the dynamically created TCommentsView
+  FreeAndNil(FSrcVerse);
+  FreeAndNil(FDstVerse);
+  if Assigned(FBibleTreeView) then
+  begin
+    FBibleTreeView.Parent := nil;
+    FreeAndNil(FBibleTreeView);
+  end;
+  if Assigned(FActualCommentsMemo) then
+  begin
+    FActualCommentsMemo.Parent := nil;
+    FreeAndNil(FActualCommentsMemo);
+  end;
   if assigned(FPatch) then
-    FPatch.Free;
+    FreeAndNil(FPatch);
 end;
 
 procedure TFrmApplyPatch.FormShow(Sender: TObject);
@@ -173,6 +186,9 @@ procedure TFrmApplyPatch.TabControlPreviewChange(Sender: TObject);
   end;
 
 begin
+  if not Assigned(FPatch) or not Assigned(CurrentProject) or
+     (FIndex < 0) or (FIndex >= FPatch.Reference.Count) then
+    Exit;
   case TabControlPreview.TabIndex of
     0: LoadControlsFromPatch;
     1: LoadControlsFromProject;

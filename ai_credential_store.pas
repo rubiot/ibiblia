@@ -45,6 +45,11 @@ implementation
 
 {$IFDEF MSWINDOWS}
 uses Windows;
+{$ELSE}
+uses IniFiles, BaseUnix;
+{$ENDIF}
+
+{$IFDEF MSWINDOWS}
 
 {$packrecords c}
 type
@@ -240,6 +245,120 @@ begin
       raise EAICredentialError.CreateFmt(SCredentialStoreError, [ErrorCode]);
   end;
 end;
+{$ELSE}
+type
+  TUnixFileAICredentialStore = class(TInterfacedObject, IAICredentialStore)
+  private
+    function StoreFileName: string;
+  public
+    function IsPersistent: Boolean;
+    function TryRead(const Reference: string; out Secret: string): Boolean;
+    procedure Write(const Reference, Secret: string);
+    procedure Delete(const Reference: string);
+  end;
+
+function TUnixFileAICredentialStore.StoreFileName: string;
+var
+  Dir: string;
+begin
+  Dir := SysUtils.GetEnvironmentVariable('XDG_CONFIG_HOME');
+  if Dir = '' then
+    Dir := IncludeTrailingPathDelimiter(GetUserDir) + '.config';
+  if Dir = '' then
+    Dir := GetAppConfigDir(False);
+  Result := IncludeTrailingPathDelimiter(Dir) + 'iBiblia' + PathDelim + 'credentials.ini';
+end;
+
+function TUnixFileAICredentialStore.IsPersistent: Boolean;
+begin
+  Result := True;
+end;
+
+function TUnixFileAICredentialStore.TryRead(const Reference: string;
+  out Secret: string): Boolean;
+var
+  Ini: TMemIniFile;
+  FileName: string;
+begin
+  ValidateReference(Reference);
+  Secret := '';
+  FileName := StoreFileName;
+  if not FileExists(FileName) then
+    Exit(False);
+  Ini := TMemIniFile.Create(FileName);
+  try
+    Result := Ini.ValueExists('secrets', Reference);
+    if Result then
+      Secret := Ini.ReadString('secrets', Reference, '');
+  finally
+    Ini.Free;
+  end;
+end;
+
+procedure TUnixFileAICredentialStore.Write(const Reference, Secret: string);
+var
+  Ini: TMemIniFile;
+  Lines: TStringList;
+  FileName, DirName, TmpFile: string;
+begin
+  ValidateReference(Reference);
+  if Length(Secret) > 2560 then
+    raise EAICredentialError.Create(SCredentialTooLong);
+  FileName := StoreFileName;
+  DirName := ExtractFileDir(FileName);
+  if not ForceDirectories(DirName) then
+    raise EAICredentialError.CreateFmt(SCredentialStoreError, [fpGetErrno]);
+  FpChmod(PChar(DirName), &700);
+  TmpFile := FileName + '.tmp-' + NewAICredentialReference;
+  Ini := TMemIniFile.Create(FileName);
+  try
+    Ini.WriteString('secrets', Reference, Secret);
+    Lines := TStringList.Create;
+    try
+      Ini.GetStrings(Lines);
+      Lines.SaveToFile(TmpFile);
+    finally
+      Lines.Free;
+    end;
+  finally
+    Ini.Free;
+  end;
+  FpChmod(PChar(TmpFile), &600);
+  if not RenameFile(TmpFile, FileName) then
+  begin
+    SysUtils.DeleteFile(TmpFile);
+    raise EAICredentialError.CreateFmt(SCredentialStoreError, [fpGetErrno]);
+  end;
+  FpChmod(PChar(FileName), &600);
+end;
+
+procedure TUnixFileAICredentialStore.Delete(const Reference: string);
+var
+  Ini: TMemIniFile;
+  Lines: TStringList;
+  FileName: string;
+begin
+  ValidateReference(Reference);
+  FileName := StoreFileName;
+  if not FileExists(FileName) then
+    Exit;
+  Ini := TMemIniFile.Create(FileName);
+  try
+    if not Ini.ValueExists('secrets', Reference) then
+      Exit;
+    Ini.DeleteKey('secrets', Reference);
+    Lines := TStringList.Create;
+    try
+      Ini.GetStrings(Lines);
+      Lines.SaveToFile(FileName);
+    finally
+      Lines.Free;
+    end;
+    FpChmod(PChar(FileName), &600);
+  finally
+    Ini.Free;
+  end;
+end;
 {$ENDIF}
 
 function CreateAICredentialStore: IAICredentialStore;
@@ -247,7 +366,7 @@ begin
   {$IFDEF MSWINDOWS}
   Result := TWindowsAICredentialStore.Create;
   {$ELSE}
-  Result := TMemoryAICredentialStore.Create;
+  Result := TUnixFileAICredentialStore.Create;
   {$ENDIF}
 end;
 

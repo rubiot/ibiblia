@@ -8,15 +8,16 @@ interface
 
 uses
   {$IFDEF WINDOWS}
-  windows, twAutomate, TwSyncThread, fileassociation, ShellApi,
+  windows, fileassociation, ShellApi,
   {$ENDIF}
-  Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, Menus, LCLIntf,
+  twAutomate, twSyncThread, tanglaw_sync,
+  Classes, SysUtils, FileUtil, LazFileUtils, Forms, Controls, Graphics, Dialogs, Menus, LCLIntf,
   ActnList, ComCtrls, ExtCtrls, StdCtrls, BibleScope, Project, IniFiles, Math,
   Syntagm, LCLTranslator, unitabout, PCRE, Verse, LCLProc, LazLogger,
   LCLType, LazUTF8, ChapterView, UnitPleaseWait, CommentsView, ONTTokenizer,
   status_catalog, SynEdit, project_setup_model, translation_memory_model,
   project_creation_staging, FormApplicationPreferences, theword_sync_state,
-  ui_icons, ui_style;
+  ui_icons, ui_style, unitskins, menubar_skin, verse_panel_strip;
 
 type
   { TMainForm }
@@ -238,8 +239,11 @@ type
     FCommentsGroupBox: TGroupBox;
     FPopupTrigger: TPopupTrigger;
     FAutoSaveEnabled: Boolean;
+    FSaveOnLastStatus: Boolean;
     FBoldStrongsEnabled: Boolean;
     FAlwaysOnTopEnabled: Boolean;
+    FDockPopupRightEnabled: Boolean;
+    FDockPopupRightMenuItem: TMenuItem;
     FLegacyAutomaticSuggestion: Boolean;
     FCurrentRef: string;
     FChapterView: TChapterView;
@@ -256,6 +260,21 @@ type
     FDefaultVerseModeAssociationItem: TMenuItem;
     FDefaultVerseModeEditingItem: TMenuItem;
     FActionPreferences: TAction;
+    FActionFindInProject: TAction;
+    FSkinMenu: TMenuItem;
+    FSkinItems: array[TSkinId] of TMenuItem;
+    FActionToggleDarkSkin: TAction;
+    FToolbarIconSize: TToolbarIconSize;
+    FToolbarIconSizeMenu: TMenuItem;
+    FToolbarIconSizeItems: array[TToolbarIconSize] of TMenuItem;
+    FSaveStatusPanel: TPanel;
+    FSkinnedForms: TList;
+    FActionReadOnHover: TAction;
+    FVoiceSettingsMenuItem: TMenuItem;
+    FActionNextFilteredVerse: TAction;
+    FActionPreviousFilteredVerse: TAction;
+    FDefaultDictionariesMenuItem: TMenuItem;
+    FFindInProjectMenuItem: TMenuItem;
     FToolsMenu: TMenuItem;
     FVerseInformationMenu: TMenuItem;
     FTheWordSyncMenu: TMenuItem;
@@ -290,20 +309,47 @@ type
     FStatusReviewChecked: array of Boolean;
     FStatusReviewResetButton: TButton;
     FUpdatingStatusReview: Boolean;
+    FLastSyncedVerseID: string;
+    FLastSyncedStatusId: Integer;
+    FLastSyncedComboIndex: Integer;
+    FLastSyncedSrcAssociated: Integer;
+    FLastSyncedSrcTotal: Integer;
+    FLastSyncedDstAssociated: Integer;
+    FLastSyncedDstTotal: Integer;
+    FPendingFullAssociationStatus: Boolean;
+    FSyncingStatusState: Boolean;
     FVersePanelLabels: array[tbOrigem..tbConsulta2] of TPanel;
     FVersePanelTypeLabels: array[tbOrigem..tbConsulta2] of TLabel;
     FVersePanelDescriptionLabels: array[tbOrigem..tbConsulta2] of TLabel;
-    {$IFDEF WINDOWS}
+    FVersePanelStrips: array[tbOrigem..tbConsulta2] of TVersePanelStrip;
+    FPropsMemos: array[tbOrigem..tbConsulta2] of TMemo;
+    FPropsLoadedFor: array[tbOrigem..tbConsulta2] of TProject;
+    FPropsModified: array[tbOrigem..tbConsulta2] of Boolean;
+    FStripTimer: TTimer;
+    FActionNewFeaturesGuide: TAction;
+    FNewFeaturesGuideMenuItem: TMenuItem;
     FRxMorpho: IRegex;
     FSyncTheWordToIBiblia: boolean;
     FSyncIBibliaToTheWord: boolean;
+    FSyncTanglawToIBiblia: boolean; // Tanglaw follows iBiblia's verse
+    FSyncIBibliaToTanglaw: boolean; // iBiblia follows Tanglaw's verse
+    FInExternalSync: boolean;
+    FTanglawSyncMenu: TMenuItem;
+    FTanglawFollowsItem: TMenuItem;
+    FIBibliaFollowsTanglawItem: TMenuItem;
+    FTanglawToolbarFollowsItem: TMenuItem;
+    FIBibliaToolbarFollowsTanglawItem: TMenuItem;
     FTheWordSyncThread: TTwSyncThread;
     FSuggestionMode: TSuggestionMode;
 
     procedure SyncToTwRef(Ref: string);
     procedure SetUpSyncThread;
+    procedure SyncToTanglawRef(Ref: string);
+    procedure SendVerseToTanglaw;
+    procedure TanglawFollowsClick(Sender: TObject);
+    procedure IBibliaFollowsTanglawClick(Sender: TObject);
+    procedure UpdateTanglawSyncUI;
     procedure StopTheWordSyncThread;
-    {$ENDIF}
     procedure NormalizeActionHints;
     procedure ApplicationPreferencesChanged(
       const Preferences: TApplicationPreferences);
@@ -322,8 +368,29 @@ type
       Value: Integer); overload;
     procedure SetAlwaysOnTopEnabled(AEnabled: Boolean);
     procedure SetAutoSaveEnabled(AEnabled: Boolean);
+    procedure ActionFindInProjectExecute(Sender: TObject);
+    procedure SkinItemClick(Sender: TObject);
+    procedure ActionToggleDarkSkinExecute(Sender: TObject);
+    procedure SelectSkin(AId: TSkinId);
+    procedure ApplyActiveSkin;
+    procedure ToolbarIconSizeItemClick(Sender: TObject);
+    procedure SelectToolbarIconSize(ASize: TToolbarIconSize);
+    procedure ApplyToolbarIconSize;
+    procedure TreeViewCustomDrawItem(Sender: TCustomTreeView; Node: TTreeNode;
+      State: TCustomDrawState; var DefaultDraw: Boolean);
+    procedure ScreenActiveFormChanged(Sender: TObject; Form: TCustomForm);
+    procedure ActionReadOnHoverExecute(Sender: TObject);
+    procedure VoiceSettingsClick(Sender: TObject);
+    procedure AppIdleAutoSelect(Sender: TObject; var Done: Boolean);
+    procedure ActionNextFilteredVerseExecute(Sender: TObject);
+    procedure ActionPreviousFilteredVerseExecute(Sender: TObject);
+    procedure StepFilteredVerse(Forward: Boolean);
+    procedure DefaultDictionariesClick(Sender: TObject);
+    procedure FindInProjectNavigate(const ReferenceID: string);
     procedure SetBoldStrongsEnabled(AEnabled: Boolean);
     procedure SetPopupTrigger(APopupTrigger: TPopupTrigger);
+    procedure SetDockPopupRightEnabled(AEnabled: Boolean);
+    procedure DockPopupRightMenuItemClick(Sender: TObject);
     procedure SetStrongsCountMode(AMode: TStrongsCountMode);
     procedure SetSuggestionMode(AMode: TSuggestionMode);
     procedure SetTheWordSyncDirections(AIBibliaToTheWord,
@@ -345,7 +412,30 @@ type
     procedure CreateCommentsGroupBox;
     procedure CreateStateHeader;
     procedure CreateVersePanelLabels;
+    procedure CreateVersePanelStrips;
+    procedure UpdateVersePanelStrips;
+    function VerseScrollBox(TextType: TTipoTextoBiblico): TScrollBox;
+    procedure StripTimerTick(Sender: TObject);
+    procedure StripNavigate(Sender: TObject; Delta: Integer);
+    procedure StripStatusPick(Sender: TObject; DisplayIndex: Integer);
+    procedure PropsMemoChange(Sender: TObject);
+    procedure ProjectNavigate(Delta: Integer);
+    procedure ProjectTextPropertiesChanged(Sender: TObject);
+    procedure CloseAllProps;
+    procedure PropsMemoExit(Sender: TObject);
+    procedure CommitProps(TextType: TTipoTextoBiblico);
+    procedure CloseProps(TextType: TTipoTextoBiblico);
+    procedure CommitAllProps;
+    procedure RaiseStripControls(TextType: TTipoTextoBiblico);
+    procedure StripEditClick(Sender: TObject);
+    procedure StripPropertiesClick(Sender: TObject);
+    procedure ActionNewFeaturesGuideExecute(Sender: TObject);
     procedure CountCurrentAssociations(out Associated, Total: Integer);
+    procedure CountVerseAssociations(TextType: TTipoTextoBiblico; out Associated, Total: Integer);
+    function DisplayIndexForStatusId(const Definitions: TStatusDefinitions; AStatusId: Integer): Integer;
+    function FindCurrentVerseTreeNode: TTreeNode;
+    function RecalculateTreeParentStatuses: Boolean;
+    procedure SyncStatusAndTreeNodes;
     function CurrentGuideScenario: TProjectScenario;
     function CurrentEngineCaption: string;
     function CurrentSelectionCaption: string;
@@ -361,6 +451,7 @@ type
     procedure ResetMainLayout;
     procedure SetGuideModeEnabled(AEnabled: Boolean);
     procedure SplitterMoved(Sender: TObject);
+    procedure ToolBarResize(Sender: TObject);
     procedure StateHeaderResize(Sender: TObject);
     function StatusReviewItemChecked(Index: Integer): Boolean;
     procedure SetStatusReviewItemChecked(Index: Integer; AChecked: Boolean);
@@ -393,6 +484,7 @@ type
   public
     { public declarations }
     language: string;
+    procedure NotifyTheWordVerseSent(const Ref: string);
   end;
 
 var
@@ -555,6 +647,7 @@ resourcestring
   SStrongsCountTags = 'Count tags';
   SBoldStrongsMenu = 'Highlight words with Strong in bold';
   SAlwaysOnTopMenu = '&Keep window always on top';
+  SDockPopupRightMenu = '&Dock Word Definition Popup to Right Edge';
   SToolsMenu = '&Tools';
   STheWordSynchronizationMenu = '&Synchronization with theWord';
   SSyncIBibliaToTheWord = 'iBiblia → theWord';
@@ -562,6 +655,22 @@ resourcestring
   SDisableBothSyncDirections = 'Disable both';
   STheWordEditorAppearance = 'theWord editor appearance...';
   SPreferencesMenu = 'iBiblia &preferences...';
+  SFindInProjectMenu = '&Find in project...';
+  SDefaultDictionariesMenu = '&Default dictionaries...';
+  SSkinsMenu = '&Skins';
+  SToggleDarkSkinMenu = 'Switch between &dark and light';
+  SToolbarIconSizeMenu = '&Toolbar icon size';
+  SToolbarIconSizeSmall = '&Small (16 px)';
+  SToolbarIconSizeMedium = '&Medium (22 px)';
+  SToolbarIconSizeLarge = '&Large (28 px)';
+  SReadOnHoverMenu = '&Read word on hover (text-to-speech)';
+  SVoiceSettingsMenu = '&Voice settings...';
+  STanglawSynchronizationMenu = 'Synchronization with Ti&motheos (Tanglaw)';
+  SSyncIBibliaToTanglaw = 'iBiblia → Timotheos';
+  SSyncTanglawToIBiblia = 'Timotheos → iBiblia';
+  SShortcutNextFilteredVerse = 'Next verse with a shown status (or not finished)';
+  SShortcutPreviousFilteredVerse = 'Previous verse with a shown status (or not finished)';
+  SShortcutFindInProject = 'Find in project';
   STheWordStateOff = 'theWord synchronization: off';
   STheWordStateOutbound = 'theWord synchronization: iBiblia → theWord';
   STheWordStateInbound = 'theWord synchronization: theWord → iBiblia';
@@ -591,13 +700,15 @@ implementation
 
 uses FormNewProject, FormProjectProperties, FormProjectExport, FormMergeProjects,
   FormExportPatch, FormApplyPatch, FormLlmOptions, FormTheWordHighlighterColors,
-  llmclient, theword_syntax_highlighter, translation_memory_preview;
+  llmclient, theword_syntax_highlighter, translation_memory_preview,
+  FormFindInProject, FormDefaultDictionaries, unittexttospeech, formvoicesettings,
+  FormNewFeaturesGuide, FormDictionaryPopup;
 
 {$R *.lfm}
 
 type
   TOverflowLabel = class(TLabel)
-  protected
+  public
     procedure Paint; override;
   end;
 
@@ -648,44 +759,70 @@ end;
 {------------------------------------------------------------------------------}
 procedure SyncTheWordVerse(ref: string);
 var
-  twHWND: THandle;
-  CData : TCopyDataStruct;
+  CData: TTWCopyDataStruct;
   bcv: TBCV_A;
   b, c, v: integer;
+  senderHwnd: THandle;
 begin
-  twHWND := RestoreTheWord(False);
-  if twHWND <> 0 then begin
-    SScanf(ref,'%d,%d,%d',[@b, @c, @v]);
-    bcv.bi := b;
-    bcv.ci := c;
-    bcv.vi := v;
-    bcv.span := 0;
+  ref := Trim(ref);
+  if ref = '' then
+    Exit;
+  if RestoreTheWord(False) = 0 then
+    Exit;
+  b := 0; c := 0; v := 0;
+  if (SScanf(ref, '%d,%d,%d', [@b, @c, @v]) <> 3) or (b <= 0) or (c <= 0) or (v <= 0) then
+    Exit;
 
-    CData.dwData := twAutomate.COPYDATA_OP_GOTOVERSE;
-    CData.lpData := @bcv;
-    CData.cbData := SizeOf(bcv);
-    SendMessage(twHWND, WM_COPYDATA, 0, DWORD(@CData));
-  end;
+  // keep the sync thread from echoing theWord's navigation back to us
+  if Assigned(MainForm) then
+    MainForm.NotifyTheWordVerseSent(ref);
+
+  FillChar(bcv, SizeOf(bcv), 0);
+  bcv.bi := b;
+  bcv.ci := c;
+  bcv.vi := v;
+  bcv.span := 0;
+
+  FillChar(CData, SizeOf(CData), 0);
+  CData.dwData := twAutomate.COPYDATA_OP_GOTOVERSE;
+  CData.cbData := SizeOf(bcv);
+  CData.lpData := @bcv;
+
+  if Assigned(MainForm) and MainForm.HandleAllocated then
+    senderHwnd := MainForm.Handle
+  else
+    senderHwnd := 0;
+  twAutomate.TWAutomateUtils.BroadcastCopyDataToTheWord(senderHwnd, CData);
 end;
 
 procedure SyncTheWordDict(ref: string);
 var
-  twHWND: THandle;
-  CData : TCopyDataStruct;
+  CData: TTWCopyDataStruct;
   CD: TCopyData_Op_DctWordLookup;
-  ws: WideString;
+  ws: UnicodeString;
+  copyLen: Integer;
+  senderHwnd: THandle;
 begin
-  twHWND := RestoreTheWord(False);
-  if twHWND <> 0 then begin
-    ws := ref;
+  if RestoreTheWord(False) = 0 then
+    Exit;
+  ws := UTF8Decode(ref);
 
-    CData.dwData := twAutomate.COPYDATA_OP_DCTWORDLOOKUP;
-    FillChar(CD.phrase[1], 0, Length(CD.phrase)*2); //zero fill the array first, VERY IMPORTANT
-    Move(ws[1], CD.phrase[1], 2*Math.max(Length(ws), Length(CD.phrase)));
-    CData.lpData := @CD;
-    CData.cbData := SizeOf(TCopyData_Op_DctWordLookup);
-    SendMessage(twHWND, WM_COPYDATA, 0, DWORD(@CData) );
-  end;
+  //zero fill the array first, VERY IMPORTANT: theWord reads it as a PWideChar
+  FillChar(CD, SizeOf(CD), 0);
+  copyLen := Math.Min(Length(ws), High(CD.phrase) - 1); // keep a terminating #0
+  if copyLen > 0 then
+    Move(ws[1], CD.phrase[1], copyLen * SizeOf(WideChar));
+
+  FillChar(CData, SizeOf(CData), 0);
+  CData.dwData := twAutomate.COPYDATA_OP_DCTWORDLOOKUP;
+  CData.cbData := SizeOf(TCopyData_Op_DctWordLookup);
+  CData.lpData := @CD;
+
+  if Assigned(MainForm) and MainForm.HandleAllocated then
+    senderHwnd := MainForm.Handle
+  else
+    senderHwnd := 0;
+  twAutomate.TWAutomateUtils.BroadcastCopyDataToTheWord(senderHwnd, CData);
 end;
 {$ENDIF}
 
@@ -861,6 +998,24 @@ begin
   PersistGlobalPreference('popuptrigger', Ord(FPopupTrigger));
 end;
 
+procedure TMainForm.SetDockPopupRightEnabled(AEnabled: Boolean);
+begin
+  FDockPopupRightEnabled := AEnabled;
+  if Assigned(FDockPopupRightMenuItem) then
+    FDockPopupRightMenuItem.Checked := FDockPopupRightEnabled;
+  if Assigned(FrmDictionaryPopup) then
+  begin
+    FrmDictionaryPopup.LoadLayoutFromOpts;
+    FrmDictionaryPopup.DockToMainRightEdge := FDockPopupRightEnabled;
+  end;
+  PersistGlobalPreference('popup.dock.right', FDockPopupRightEnabled);
+end;
+
+procedure TMainForm.DockPopupRightMenuItemClick(Sender: TObject);
+begin
+  SetDockPopupRightEnabled(not FDockPopupRightEnabled);
+end;
+
 procedure TMainForm.SetStrongsCountMode(AMode: TStrongsCountMode);
 var
   Index: Integer;
@@ -885,7 +1040,6 @@ end;
 procedure TMainForm.SetTheWordSyncDirections(AIBibliaToTheWord,
   ATheWordToIBiblia: Boolean; PushCurrentReference: Boolean);
 begin
-  {$IFDEF WINDOWS}
   FSyncTheWordToIBiblia := AIBibliaToTheWord;
   FSyncIBibliaToTheWord := ATheWordToIBiblia;
   if Assigned(opts) then
@@ -898,7 +1052,6 @@ begin
   if PushCurrentReference and FSyncTheWordToIBiblia and
      Assigned(CurrentProject) then
     ActionSyncTheWordVerseExecute(Self);
-  {$ENDIF}
   UpdateTheWordSyncUI;
 end;
 
@@ -913,13 +1066,21 @@ begin
     Translate;
   end;
   SetPopupTrigger(Preferences.PopupTrigger);
+  SetDockPopupRightEnabled(Preferences.DockPopupRight);
   SetAutoSaveEnabled(Preferences.AutoSave);
+  if FSaveOnLastStatus <> Preferences.SaveOnLastStatus then
+  begin
+    FSaveOnLastStatus := Preferences.SaveOnLastStatus;
+    PersistGlobalPreference('auto.save.last.status', FSaveOnLastStatus);
+  end;
   if GetAppIconFamily <> Preferences.IconFamily then
   begin
     SetAppIconFamily(Preferences.IconFamily);
     PersistGlobalPreference('ui.icon.family',
       AppIconFamilyId(Preferences.IconFamily));
   end;
+  if FToolbarIconSize <> Preferences.ToolbarIconSize then
+    SelectToolbarIconSize(Preferences.ToolbarIconSize);
   UpdateCommandUI;
 end;
 
@@ -929,14 +1090,25 @@ var
 begin
   Preferences.Language := language;
   Preferences.PopupTrigger := FPopupTrigger;
+  Preferences.DockPopupRight := FDockPopupRightEnabled;
   Preferences.AutoSave := FAutoSaveEnabled;
+  Preferences.SaveOnLastStatus := FSaveOnLastStatus;
   Preferences.IconFamily := GetAppIconFamily;
+  Preferences.ToolbarIconSize := FToolbarIconSize;
   TFrmApplicationPreferences.Execute(Self, Preferences,
     @ApplicationPreferencesChanged);
 end;
 
 procedure TMainForm.DisableTheWordSyncClick(Sender: TObject);
 begin
+  if FSyncTanglawToIBiblia or FSyncIBibliaToTanglaw then
+  begin
+    FSyncTanglawToIBiblia := False;
+    FSyncIBibliaToTanglaw := False;
+    PersistGlobalPreference('synctanglaw', FSyncTanglawToIBiblia);
+    PersistGlobalPreference('syncibibliatanglaw', FSyncIBibliaToTanglaw);
+    UpdateTanglawSyncUI;
+  end;
   SetTheWordSyncDirections(False, False);
 end;
 
@@ -1026,6 +1198,18 @@ begin
   Item.Caption := '-';
   FTheWordPopupMenu.Items.Add(Item);
 
+  FTanglawToolbarFollowsItem := TMenuItem.Create(FTheWordPopupMenu);
+  FTanglawToolbarFollowsItem.OnClick := @TanglawFollowsClick;
+  FTheWordPopupMenu.Items.Add(FTanglawToolbarFollowsItem);
+
+  FIBibliaToolbarFollowsTanglawItem := TMenuItem.Create(FTheWordPopupMenu);
+  FIBibliaToolbarFollowsTanglawItem.OnClick := @IBibliaFollowsTanglawClick;
+  FTheWordPopupMenu.Items.Add(FIBibliaToolbarFollowsTanglawItem);
+
+  Item := TMenuItem.Create(FTheWordPopupMenu);
+  Item.Caption := '-';
+  FTheWordPopupMenu.Items.Add(Item);
+
   Item := TMenuItem.Create(FTheWordPopupMenu);
   Item.Tag := 3;
   Item.OnClick := @DisableTheWordSyncClick;
@@ -1041,14 +1225,15 @@ begin
   FTheWordToolButton.ShowHint := True;
   FTheWordToolButton.OnClick := @TheWordToolbarButtonClick;
 
-  { Keep the established icon-only toolbar compact while making this stateful
-    integration button readable without relying on color or a tooltip. }
-  ToolBar1.List := True;
-  ToolBar1.ShowCaptions := True;
+  ToolBar1.List := False;
+  ToolBar1.ShowCaptions := False;
   for ButtonIndex := 0 to ToolBar1.ButtonCount - 1 do
+  begin
     ToolBar1.Buttons[ButtonIndex].ShowCaption := False;
-  FTheWordToolButton.ShowCaption := True;
-  FTheWordToolButton.AutoSize := True;
+    ToolBar1.Buttons[ButtonIndex].AutoSize := False;
+  end;
+  FTheWordToolButton.ShowCaption := False;
+  FTheWordToolButton.AutoSize := False;
 end;
 
 procedure TMainForm.DoAutoAdjustLayout(const AMode: TLayoutAdjustmentPolicy;
@@ -1056,8 +1241,7 @@ procedure TMainForm.DoAutoAdjustLayout(const AMode: TLayoutAdjustmentPolicy;
 begin
   inherited DoAutoAdjustLayout(AMode, AXProportion, AYProportion);
   if not Assigned(FMenuImages) then Exit;
-  ToolBar1.ButtonHeight := UIScale(Self, 40);
-  ToolBar1.ButtonWidth := UIScale(Self, 40);
+  ApplyToolbarIconSize;
   TreeView1.DefaultItemHeight := UIScale(Self, 24);
   FStatusReviewList.ItemHeight := UIScale(Self, 24);
   RadioGroupStatus.ItemHeight := UIScale(Self, 24);
@@ -1079,21 +1263,19 @@ var
 begin
   LoadApplicationIcon(Icon);
   Application.Icon.Assign(Icon);
-  PopulateAppImageList(ImageList1, 32);
   FMenuImages := TImageList.Create(Self);
   PopulateAppImageList(FMenuImages, 16);
   ActionList1.Images := FMenuImages;
   MainMenu1.Images := FMenuImages;
-  ToolBar1.Images := ImageList1;
-  ToolBar1.ImagesWidth := 32;
-  ToolBar1.ButtonHeight := UIScale(Self, 40);
-  ToolBar1.ButtonWidth := UIScale(Self, 40);
+  ToolBar1.AutoSize := True;
   ToolBar1.Wrapable := True;
   ToolBar1.EdgeBorders := [];
-  ToolBar1.BorderSpacing.Left := UIScale(Self, 8);
-  ToolBar1.BorderSpacing.Right := UIScale(Self, 8);
-  ToolBar1.BorderSpacing.Top := UIScale(Self, 4);
-  ToolBar1.BorderSpacing.Bottom := UIScale(Self, 4);
+  ToolBar1.BorderSpacing.Left := UIScale(Self, 4);
+  ToolBar1.BorderSpacing.Right := UIScale(Self, 4);
+  ToolBar1.BorderSpacing.Top := UIScale(Self, 2);
+  ToolBar1.BorderSpacing.Bottom := UIScale(Self, 2);
+  ToolBar1.OnResize := @ToolBarResize;
+  ApplyToolbarIconSize;
   AssignIcon(ActionNewProject, aiProjectNew);
   AssignIcon(ActionOpenProject, aiProjectOpen);
   AssignIcon(ActionSaveProject, aiProjectSave);
@@ -1138,6 +1320,12 @@ begin
   FTheWordPopupMenu.Images := FMenuImages;
   FTheWordPopupMenu.Items[0].ImageIndex := AppIconIndex(aiSyncThewordVerse);
   FTheWordPopupMenu.Items[1].ImageIndex := AppIconIndex(aiSyncThewordVerse);
+  if Assigned(FTanglawToolbarFollowsItem) then
+    FTanglawToolbarFollowsItem.ImageIndex := AppIconIndex(aiSyncThewordVerse);
+  if Assigned(FIBibliaToolbarFollowsTanglawItem) then
+    FIBibliaToolbarFollowsTanglawItem.ImageIndex := AppIconIndex(aiSyncThewordVerse);
+  if Assigned(FTanglawSyncMenu) then
+    FTanglawSyncMenu.ImageIndex := AppIconIndex(aiSyncThewordVerse);
   FTheWordSyncMenu.ImageIndex := AppIconIndex(aiSyncThewordVerse);
 
   StyleControl(Panel1, uirSurface);
@@ -1172,6 +1360,8 @@ begin
 end;
 
 procedure TMainForm.BuildCommandUI;
+var
+  SkinId: TSkinId;
 begin
   ActionProjectProperties.Caption := SProjectSettingsMenu;
   ActionSuggestAssociation.Caption := SSuggestAssociationCaption;
@@ -1186,10 +1376,57 @@ begin
   FVerseInformationMenu.Add(MenuItemBoldStrongs);
   MenuItem20.Add(FVerseInformationMenu);
   MenuItem20.Add(MenuItemAlwaysOnTop);
+  FDockPopupRightMenuItem := TMenuItem.Create(MainMenu1);
+  FDockPopupRightMenuItem.Caption := SDockPopupRightMenu;
+  FDockPopupRightMenuItem.Checked := FDockPopupRightEnabled;
+  FDockPopupRightMenuItem.OnClick := @DockPopupRightMenuItemClick;
+  MenuItem20.Add(FDockPopupRightMenuItem);
   FViewMenuSeparator := TMenuItem.Create(MainMenu1);
   FViewMenuSeparator.Caption := '-';
   MenuItem20.Add(FViewMenuSeparator);
   MenuItem20.Add(MenuItemResetLayout);
+  FSkinMenu := TMenuItem.Create(MainMenu1);
+  for SkinId := Low(TSkinId) to High(TSkinId) do
+  begin
+    FSkinItems[SkinId] := TMenuItem.Create(MainMenu1);
+    FSkinItems[SkinId].Tag := Ord(SkinId);
+    FSkinItems[SkinId].RadioItem := True;
+    FSkinItems[SkinId].GroupIndex := 77;
+    FSkinItems[SkinId].Caption := GetSkin(SkinId).DisplayName;
+    FSkinItems[SkinId].OnClick := @SkinItemClick;
+    FSkinMenu.Add(FSkinItems[SkinId]);
+  end;
+  FActionToggleDarkSkin := TAction.Create(ActionList1);
+  FActionToggleDarkSkin.ShortCut := ShortCut(VK_D, [ssCtrl, ssShift]);
+  FActionToggleDarkSkin.OnExecute := @ActionToggleDarkSkinExecute;
+  FSkinMenu.Add(TMenuItem.Create(MainMenu1));
+  FSkinMenu.Items[FSkinMenu.Count - 1].Caption := '-';
+  FSkinMenu.Add(TMenuItem.Create(MainMenu1));
+  FSkinMenu.Items[FSkinMenu.Count - 1].Action := FActionToggleDarkSkin;
+  MenuItem20.Insert(MenuItem20.IndexOf(FViewMenuSeparator), FSkinMenu);
+
+  FToolbarIconSizeMenu := TMenuItem.Create(MainMenu1);
+  FToolbarIconSizeItems[tisSmall] := TMenuItem.Create(MainMenu1);
+  FToolbarIconSizeItems[tisSmall].Tag := Ord(tisSmall);
+  FToolbarIconSizeItems[tisSmall].RadioItem := True;
+  FToolbarIconSizeItems[tisSmall].GroupIndex := 78;
+  FToolbarIconSizeItems[tisSmall].OnClick := @ToolbarIconSizeItemClick;
+  FToolbarIconSizeMenu.Add(FToolbarIconSizeItems[tisSmall]);
+
+  FToolbarIconSizeItems[tisMedium] := TMenuItem.Create(MainMenu1);
+  FToolbarIconSizeItems[tisMedium].Tag := Ord(tisMedium);
+  FToolbarIconSizeItems[tisMedium].RadioItem := True;
+  FToolbarIconSizeItems[tisMedium].GroupIndex := 78;
+  FToolbarIconSizeItems[tisMedium].OnClick := @ToolbarIconSizeItemClick;
+  FToolbarIconSizeMenu.Add(FToolbarIconSizeItems[tisMedium]);
+
+  FToolbarIconSizeItems[tisLarge] := TMenuItem.Create(MainMenu1);
+  FToolbarIconSizeItems[tisLarge].Tag := Ord(tisLarge);
+  FToolbarIconSizeItems[tisLarge].RadioItem := True;
+  FToolbarIconSizeItems[tisLarge].GroupIndex := 78;
+  FToolbarIconSizeItems[tisLarge].OnClick := @ToolbarIconSizeItemClick;
+  FToolbarIconSizeMenu.Add(FToolbarIconSizeItems[tisLarge]);
+  MenuItem20.Insert(MenuItem20.IndexOf(FViewMenuSeparator), FToolbarIconSizeMenu);
 
   if Assigned(MenuItemLlmOptions.Parent) then
     MenuItemLlmOptions.Parent.Remove(MenuItemLlmOptions);
@@ -1208,20 +1445,52 @@ begin
   FTheWordSyncMenu.Add(FToolsMenuSeparator);
   FTheWordSyncMenu.Add(MenuItemTheWordHighlighterColors);
   FToolsMenu.Add(FTheWordSyncMenu);
+  FTanglawSyncMenu := TMenuItem.Create(MainMenu1);
+  FTanglawFollowsItem := TMenuItem.Create(MainMenu1);
+  FTanglawFollowsItem.OnClick := @TanglawFollowsClick;
+  FTanglawSyncMenu.Add(FTanglawFollowsItem);
+  FIBibliaFollowsTanglawItem := TMenuItem.Create(MainMenu1);
+  FIBibliaFollowsTanglawItem.OnClick := @IBibliaFollowsTanglawClick;
+  FTanglawSyncMenu.Add(FIBibliaFollowsTanglawItem);
+  FToolsMenu.Add(FTanglawSyncMenu);
 
   FActionPreferences := TAction.Create(ActionList1);
   FActionPreferences.OnExecute := @ActionPreferencesExecute;
   FPreferencesMenuItem := TMenuItem.Create(MainMenu1);
   FPreferencesMenuItem.Action := FActionPreferences;
+  FActionFindInProject := TAction.Create(ActionList1);
+  FActionFindInProject.ShortCut := ShortCut(VK_F, [ssCtrl]);
+  FActionFindInProject.OnExecute := @ActionFindInProjectExecute;
+  FFindInProjectMenuItem := TMenuItem.Create(MainMenu1);
+  FFindInProjectMenuItem.Action := FActionFindInProject;
+  FToolsMenu.Insert(0, FFindInProjectMenuItem);
+  FActionNextFilteredVerse := TAction.Create(ActionList1);
+  FActionNextFilteredVerse.ShortCut := ShortCut(VK_F8, []);
+  FActionNextFilteredVerse.OnExecute := @ActionNextFilteredVerseExecute;
+  FActionPreviousFilteredVerse := TAction.Create(ActionList1);
+  FActionPreviousFilteredVerse.ShortCut := ShortCut(VK_F8, [ssShift]);
+  FActionPreviousFilteredVerse.OnExecute := @ActionPreviousFilteredVerseExecute;
+  FActionReadOnHover := TAction.Create(ActionList1);
+  FActionReadOnHover.ShortCut := ShortCut(VK_T, [ssCtrl]);
+  FActionReadOnHover.OnExecute := @ActionReadOnHoverExecute;
+  FToolsMenu.Add(TMenuItem.Create(MainMenu1));
+  FToolsMenu.Items[FToolsMenu.Count - 1].Action := FActionReadOnHover;
+  FVoiceSettingsMenuItem := TMenuItem.Create(MainMenu1);
+  FVoiceSettingsMenuItem.OnClick := @VoiceSettingsClick;
+  FToolsMenu.Add(FVoiceSettingsMenuItem);
+  FDefaultDictionariesMenuItem := TMenuItem.Create(MainMenu1);
+  FDefaultDictionariesMenuItem.OnClick := @DefaultDictionariesClick;
   FToolsOuterSeparator := TMenuItem.Create(MainMenu1);
   FToolsOuterSeparator.Caption := '-';
   FToolsMenu.Add(FToolsOuterSeparator);
+  FToolsMenu.Add(FDefaultDictionariesMenuItem);
   FToolsMenu.Add(FPreferencesMenuItem);
 
   while MenuItem17.Count > 0 do
     MenuItem17.Remove(MenuItem17.Items[0]);
   MenuItem17.Add(MenuItemGuideMode);
   MenuItem17.Add(MenuItemKeyboardShortcuts);
+  MenuItem17.Add(FNewFeaturesGuideMenuItem);
   FHelpMenuSeparator := TMenuItem.Create(MainMenu1);
   FHelpMenuSeparator.Caption := '-';
   MenuItem17.Add(FHelpMenuSeparator);
@@ -1298,7 +1567,6 @@ procedure TMainForm.UpdateTheWordSyncUI;
 var
   HintText: string;
 begin
-  {$IFDEF WINDOWS}
   MenuItemSyncTheWord.Checked := FSyncTheWordToIBiblia;
   MenuItemSynciBiblia.Checked := FSyncIBibliaToTheWord;
   if Assigned(FDisableTheWordSyncItem) then
@@ -1308,8 +1576,9 @@ begin
   begin
     FTheWordPopupMenu.Items[0].Checked := FSyncTheWordToIBiblia;
     FTheWordPopupMenu.Items[1].Checked := FSyncIBibliaToTheWord;
-    FTheWordPopupMenu.Items[3].Checked :=
-      not FSyncTheWordToIBiblia and not FSyncIBibliaToTheWord;
+    FTheWordPopupMenu.Items[FTheWordPopupMenu.Items.Count - 1].Checked :=
+      not FSyncTheWordToIBiblia and not FSyncIBibliaToTheWord and
+      not FSyncTanglawToIBiblia and not FSyncIBibliaToTanglaw;
   end;
   case ResolveTheWordSyncState(FSyncTheWordToIBiblia,
       FSyncIBibliaToTheWord) of
@@ -1322,9 +1591,6 @@ begin
     else
       HintText := STheWordStateOff;
   end;
-  {$ELSE}
-  HintText := STheWordStateOff;
-  {$ENDIF}
   if Assigned(FTheWordToolButton) then
   begin
     FTheWordToolButton.Hint := HintText;
@@ -1426,6 +1692,11 @@ begin
     AddActionShortcut(ActionHistoryForward, SShortcutHistoryForward);
     AddActionShortcut(ActionPreviousVerse, SShortcutPreviousVerse);
     AddActionShortcut(ActionNextVerse, SShortcutNextVerse);
+    AddActionShortcut(FActionFindInProject, SShortcutFindInProject);
+    AddActionShortcut(FActionToggleDarkSkin, SToggleDarkSkinMenu);
+    AddActionShortcut(FActionReadOnHover, SReadOnHoverMenu);
+    AddActionShortcut(FActionNextFilteredVerse, SShortcutNextFilteredVerse);
+    AddActionShortcut(FActionPreviousFilteredVerse, SShortcutPreviousFilteredVerse);
 
     AddSection(SShortcutEditingSection);
     AddActionShortcut(ActionClearAssociations, SShortcutClearAssociations);
@@ -1622,17 +1893,26 @@ end;
 
 procedure TMainForm.CreateCommentsGroupBox;
 begin
+  if Assigned(BottomPanel) then
+  begin
+    BottomPanel.Caption := '';
+    BottomPanel.Visible := False;
+  end;
+  if Assigned(Splitter5) then
+    Splitter5.Visible := False;
+  if Assigned(CommentsMemo) then
+    CommentsMemo.Visible := False;
   if Assigned(FCommentsGroupBox) then
     Exit;
 
-  BottomPanel.Caption := '';
   FCommentsGroupBox := TGroupBox.Create(Self);
   with FCommentsGroupBox do
   begin
     Parent := BottomPanel;
     Align := alClient;
     Caption := SPanelLabelComments;
-    ShowHint := True;
+    ShowHint := False;
+    Visible := False;
     TabOrder := CommentsMemo.TabOrder;
   end;
 
@@ -1664,12 +1944,26 @@ begin
   end;
 
   FHeaderReferenceLabel := CreateStateHeaderLabel(FStateHeaderPanel, True);
+  FHeaderReferenceLabel.Visible := False;
   FHeaderStatusLabel := CreateStateHeaderLabel(FStateHeaderPanel);
   FHeaderStatusLabel.Visible := False;
   FHeaderAssociationsLabel := CreateStateHeaderLabel(FStateHeaderPanel);
   FHeaderSelectionLabel := CreateStateHeaderLabel(FStateHeaderPanel);
   FHeaderEngineLabel := CreateStateHeaderLabel(FStateHeaderPanel);
-  FHeaderModifiedLabel := CreateStateHeaderLabel(FStateHeaderPanel, True);
+
+  FSaveStatusPanel := TPanel.Create(Self);
+  with FSaveStatusPanel do
+  begin
+    Parent := StatusBar1;
+    BevelOuter := bvNone;
+    BorderStyle := bsNone;
+    ParentColor := False;
+    Color := UISurfaceColor;
+    SetBounds(2, 2, UIScale(Self, 130), Max(16, StatusBar1.Height - 3));
+  end;
+  FHeaderModifiedLabel := CreateStateHeaderLabel(FSaveStatusPanel, True);
+  FHeaderModifiedLabel.Align := alClient;
+  FHeaderModifiedLabel.BorderSpacing.Left := UIScale(Self, 6);
   AttachStatusComboToHeader;
 
   UpdateStateHeader;
@@ -1681,21 +1975,400 @@ var
 begin
   for TextType := tbOrigem to tbConsulta2 do
     if not Assigned(FVersePanelLabels[TextType]) then
+    begin
       FVersePanelLabels[TextType] := CreateVersePanelLabel(CenterPanel,
         TextType);
+      FVersePanelLabels[TextType].Visible := False;
+    end;
 
   CenterPanel.OnResize := @SplitterMoved;
+  ScrollBoxSrcVerse.OnResize := @SplitterMoved;
+  ScrollBoxDstVerse.OnResize := @SplitterMoved;
+  ScrollBoxRef1Verse.OnResize := @SplitterMoved;
+  ScrollBoxRef2Verse.OnResize := @SplitterMoved;
+  ScrollBoxSrcVerse.AddHandlerOnChangeBounds(@SplitterMoved);
+  ScrollBoxDstVerse.AddHandlerOnChangeBounds(@SplitterMoved);
+  ScrollBoxRef1Verse.AddHandlerOnChangeBounds(@SplitterMoved);
+  ScrollBoxRef2Verse.AddHandlerOnChangeBounds(@SplitterMoved);
+  Splitter2.AddHandlerOnChangeBounds(@SplitterMoved);
+  Splitter3.AddHandlerOnChangeBounds(@SplitterMoved);
+  Splitter4.AddHandlerOnChangeBounds(@SplitterMoved);
   Splitter2.OnMoved := @SplitterMoved;
   Splitter3.OnMoved := @SplitterMoved;
   Splitter4.OnMoved := @SplitterMoved;
   Splitter5.OnMoved := @SplitterMoved;
 
+  CreateVersePanelStrips;
   LayoutVersePanelLabels;
 end;
 
-procedure TMainForm.CountCurrentAssociations(out Associated, Total: Integer);
+function TMainForm.VerseScrollBox(TextType: TTipoTextoBiblico): TScrollBox;
+begin
+  case TextType of
+    tbOrigem: Result := ScrollBoxSrcVerse;
+    tbDestino: Result := ScrollBoxDstVerse;
+    tbConsulta1: Result := ScrollBoxRef1Verse;
+    tbConsulta2: Result := ScrollBoxRef2Verse;
+  else
+    Result := nil;
+  end;
+end;
+
+{ The control strip over the top edge of each verse panel: status circles
+  (Destination), hover arrows, Edit and Properties. }
+procedure TMainForm.CreateVersePanelStrips;
 var
-  SourceVerse: TVerse;
+  TextType: TTipoTextoBiblico;
+  Strip: TVersePanelStrip;
+begin
+  for TextType := tbOrigem to tbConsulta2 do
+    if not Assigned(FVersePanelStrips[TextType]) then
+    begin
+      Strip := TVersePanelStrip.Create(Self);
+      Strip.Parent := CenterPanel;
+      Strip.Tag := Ord(TextType);
+      Strip.Font.Assign(Font);
+      Strip.ShowStatus := TextType = tbDestino;
+      Strip.Visible := False;
+      Strip.OnStatusPick := @StripStatusPick;
+      Strip.OnEdit := @StripEditClick;
+      Strip.OnProperties := @StripPropertiesClick;
+      FVersePanelStrips[TextType] := Strip;
+
+      // the module properties, shown in place of the verse (Properties ticked)
+      FPropsMemos[TextType] := TMemo.Create(Self);
+      with FPropsMemos[TextType] do
+      begin
+        Parent := CenterPanel;
+        Align := alNone;
+        Tag := Ord(TextType);
+        Visible := False;
+        ReadOnly := False;
+        ScrollBars := ssAutoVertical;
+        WordWrap := True;
+        Font.Name := 'Courier New';
+        Font.Size := 9;
+        OnChange := @PropsMemoChange;
+        OnExit := @PropsMemoExit;
+      end;
+    end;
+
+  if not Assigned(FStripTimer) then
+  begin
+    FStripTimer := TTimer.Create(Self);
+    FStripTimer.Interval := 50;
+    FStripTimer.OnTimer := @StripTimerTick;
+  end;
+end;
+
+procedure TMainForm.StripTimerTick(Sender: TObject);
+begin
+  UpdateVersePanelStrips;
+end;
+
+procedure TMainForm.UpdateVersePanelStrips;
+var
+  TextType: TTipoTextoBiblico;
+  Strip: TVersePanelStrip;
+  Box: TScrollBox;
+  Verse: TVerse;
+  Memo: TMemo;
+  ProjectActive, ShowStrip, PropsOpen, Editing, PointerInside: Boolean;
+  Definitions: TStatusDefinitions;
+  Colors: array of TColor;
+  Captions: array of string;
+  Index, StripH, MinPropsH, PropsH, PropsTop: Integer;
+  Origin: TPoint;
+begin
+  ProjectActive := Assigned(CurrentProject) and CurrentProject.Ativo;
+  if ProjectActive and not Assigned(CurrentProject.OnNavigateVerse) then
+  begin
+    CurrentProject.OnNavigateVerse := @ProjectNavigate;
+    CurrentProject.OnTextPropertiesChanged := @ProjectTextPropertiesChanged;
+  end;
+  for TextType := tbOrigem to tbConsulta2 do
+  begin
+    Strip := FVersePanelStrips[TextType];
+    Box := VerseScrollBox(TextType);
+    Memo := FPropsMemos[TextType];
+    if (Strip = nil) or (Box = nil) then
+      Continue;
+
+    // properties shown for another project: drop them (saved when it closed)
+    if Assigned(Memo) and Memo.Visible and
+       (not ProjectActive or (FPropsLoadedFor[TextType] <> CurrentProject)) then
+    begin
+      Memo.Visible := False;
+      FPropsLoadedFor[TextType] := nil;
+      FPropsModified[TextType] := False;
+    end;
+
+    PropsOpen := Assigned(Memo) and Memo.Visible;
+    Editing := ProjectActive and CurrentProject.IsVerseEditorActive(TextType);
+    StripH := Strip.PreferredHeight;
+
+    if PropsOpen then
+    begin
+      Memo.Color := UIContentColor;
+      Memo.Font.Color := UITextColor;
+      MinPropsH := UIScale(Self, 96) + StripH;
+      PropsH := Max(MinPropsH, Box.Height);
+      PropsTop := Box.Top;
+      if (CenterPanel.ClientHeight > 0) and (PropsTop + PropsH > CenterPanel.ClientHeight) then
+        PropsTop := Max(0, CenterPanel.ClientHeight - PropsH);
+      Memo.SetBounds(Box.Left, PropsTop, Box.Width,
+        Max(UIScale(Self, 96), PropsH - StripH));
+      Memo.BringToFront;
+    end;
+
+    PointerInside := False;
+    if Assigned(Application) and Application.Active and Box.Visible then
+    begin
+      if Assigned(Box.Parent) then
+        Origin := Box.Parent.ClientToScreen(Classes.Point(Box.Left, Box.Top))
+      else
+        Origin := Box.ClientToScreen(Classes.Point(0, 0));
+      PointerInside := PtInRect(Classes.Rect(Origin.X, Origin.Y, Origin.X + Box.Width,
+        Origin.Y + Box.Height), Mouse.CursorPos);
+      if (not PointerInside) and PropsOpen and Assigned(Memo) then
+      begin
+        Origin := Memo.ClientToScreen(Point(0, 0));
+        PointerInside := PtInRect(Rect(Origin.X, Origin.Y, Origin.X + Memo.Width,
+          Origin.Y + Memo.Height + StripH), Mouse.CursorPos);
+      end;
+    end;
+
+    ShowStrip := Box.Visible and PointerInside;
+    Strip.ShowControls := ProjectActive;
+    Strip.EditActive := Editing;
+    Strip.PropertiesActive := PropsOpen;
+
+    if ProjectActive and (TextType = tbDestino) then
+    begin
+      SyncStatusAndTreeNodes;
+      Definitions := CurrentProject.GetStatusDefinitions;
+      SetLength(Colors, RadioGroupStatus.Items.Count);
+      SetLength(Captions, RadioGroupStatus.Items.Count);
+      for Index := 0 to RadioGroupStatus.Items.Count - 1 do
+      begin
+        Colors[Index] := GetStatusColor(Definitions,
+          StatusIdAtDisplayIndex(Definitions, Index));
+        Captions[Index] := RadioGroupStatus.Items[Index];
+      end;
+      Strip.SetStatuses(Colors, Captions, RadioGroupStatus.ItemIndex);
+    end;
+
+    if ShowStrip then
+    begin
+      if PropsOpen then
+        Strip.SetBounds(Box.Left, Memo.Top + Memo.Height, Box.Width, StripH)
+      else
+        Strip.PlaceOver(Box);
+    end;
+
+    if Strip.Visible <> ShowStrip then
+    begin
+      Strip.Visible := ShowStrip;
+      if ShowStrip then
+        Strip.BringToFront
+      else if ProjectActive and Assigned(CurrentProject.VerseObjects[TextType]) then
+        CurrentProject.VerseObjects[TextType].RefreshAfterEditorClose;
+    end
+    else if ShowStrip and PropsOpen then
+      Strip.BringToFront;
+
+    if not ProjectActive then
+      Continue;
+    Verse := CurrentProject.VerseObjects[TextType];
+    if Assigned(Verse) then
+    begin
+      if Box.Visible then
+        Verse.BottomInset := StripH
+      else
+        Verse.BottomInset := 0;
+      Verse.ShowChevrons(PointerInside and (not PropsOpen) and (not Editing));
+    end;
+  end;
+end;
+
+procedure TMainForm.StripStatusPick(Sender: TObject; DisplayIndex: Integer);
+begin
+  if (CurrentProject = nil) or not RadioGroupStatus.Enabled or
+     (DisplayIndex < 0) or (DisplayIndex >= RadioGroupStatus.Items.Count) then
+    Exit;
+  RadioGroupStatus.ItemIndex := DisplayIndex;
+  RadioGroupStatusSelectionChanged(RadioGroupStatus);
+end;
+
+procedure TMainForm.StripEditClick(Sender: TObject);
+var
+  TextType: TTipoTextoBiblico;
+begin
+  if (CurrentProject = nil) or not (Sender is TComponent) then
+    Exit;
+  TextType := TTipoTextoBiblico(TComponent(Sender).Tag);
+  CloseProps(TextType); // Edit and Properties exclude each other
+  if CurrentProject.IsVerseEditorActive(TextType) then
+    CurrentProject.StopEditVerse(TextType)
+  else
+    CurrentProject.EditVerse(TextType);
+  UpdateVersePanelStrips;
+end;
+
+{ Properties ticked: the properties of the text (title, description, ...)
+  are shown and edited in place of the verse; they are saved with the project. }
+procedure TMainForm.StripPropertiesClick(Sender: TObject);
+var
+  TextType: TTipoTextoBiblico;
+  Memo: TMemo;
+begin
+  if (CurrentProject = nil) or not (Sender is TComponent) then
+    Exit;
+  TextType := TTipoTextoBiblico(TComponent(Sender).Tag);
+  Memo := FPropsMemos[TextType];
+  if Memo = nil then
+    Exit;
+  if Memo.Visible then
+    CloseProps(TextType)
+  else
+  begin
+    CurrentProject.StopEditVerse(TextType);
+    Memo.OnChange := nil;
+    Memo.Text := CurrentProject.GetTextPropertiesText(TextType);
+    Memo.OnChange := @PropsMemoChange;
+    FPropsLoadedFor[TextType] := CurrentProject;
+    FPropsModified[TextType] := False;
+    Memo.Visible := True;
+    Memo.BringToFront;
+    RaiseStripControls(TextType);
+    if Memo.CanFocus then
+      Memo.SetFocus;
+  end;
+  UpdateVersePanelStrips;
+end;
+
+procedure TMainForm.PropsMemoChange(Sender: TObject);
+var
+  TextType: TTipoTextoBiblico;
+begin
+  if (CurrentProject = nil) or not (Sender is TComponent) then
+    Exit;
+  TextType := TTipoTextoBiblico(TComponent(Sender).Tag);
+  if FPropsLoadedFor[TextType] = CurrentProject then
+  begin
+    FPropsModified[TextType] := True; // saved when the properties are closed
+    LayoutVersePanelLabels;
+  end;
+end;
+
+{ saves the edited properties into the project (staged, written with it) }
+procedure TMainForm.PropsMemoExit(Sender: TObject);
+begin
+  if Sender is TComponent then
+    CommitProps(TTipoTextoBiblico(TComponent(Sender).Tag));
+end;
+
+procedure TMainForm.CommitProps(TextType: TTipoTextoBiblico);
+begin
+  if FPropsModified[TextType] and Assigned(CurrentProject) and
+     (FPropsLoadedFor[TextType] = CurrentProject) and
+     Assigned(FPropsMemos[TextType]) then
+    CurrentProject.SetTextPropertiesText(TextType, FPropsMemos[TextType].Text);
+  FPropsModified[TextType] := False;
+end;
+
+procedure TMainForm.CommitAllProps;
+var
+  TextType: TTipoTextoBiblico;
+begin
+  for TextType := tbOrigem to tbConsulta2 do
+    CommitProps(TextType);
+end;
+
+procedure TMainForm.CloseProps(TextType: TTipoTextoBiblico);
+begin
+  if Assigned(FPropsMemos[TextType]) and FPropsMemos[TextType].Visible then
+  begin
+    CommitProps(TextType);
+    FPropsMemos[TextType].Visible := False;
+    if Assigned(CurrentProject) and Assigned(CurrentProject.VerseObjects[TextType]) then
+      CurrentProject.VerseObjects[TextType].RefreshAfterEditorClose;
+  end;
+  FPropsLoadedFor[TextType] := nil;
+end;
+
+procedure TMainForm.StripNavigate(Sender: TObject; Delta: Integer);
+begin
+  if CurrentProject = nil then
+    Exit;
+  if Delta < 0 then
+    ActionPreviousVerse.Execute
+  else
+    ActionNextVerse.Execute;
+end;
+
+procedure TMainForm.ProjectNavigate(Delta: Integer);
+begin
+  StripNavigate(nil, Delta);
+end;
+
+procedure TMainForm.ProjectTextPropertiesChanged(Sender: TObject);
+var
+  TextType: TTipoTextoBiblico;
+  Memo: TMemo;
+begin
+  if Assigned(CurrentProject) then
+    for TextType := tbOrigem to tbConsulta2 do
+    begin
+      Memo := FPropsMemos[TextType];
+      if Assigned(Memo) and Memo.Visible and not Memo.Focused and
+         (FPropsLoadedFor[TextType] = CurrentProject) then
+      begin
+        Memo.OnChange := nil;
+        try
+          Memo.Text := CurrentProject.GetTextPropertiesText(TextType);
+          FPropsModified[TextType] := False;
+        finally
+          Memo.OnChange := @PropsMemoChange;
+        end;
+      end;
+    end;
+  LayoutVersePanelLabels;
+end;
+
+{ z-order over the verse panel: properties memo, then the bar }
+procedure TMainForm.RaiseStripControls(TextType: TTipoTextoBiblico);
+begin
+  if Assigned(FPropsMemos[TextType]) and FPropsMemos[TextType].Visible then
+    FPropsMemos[TextType].BringToFront;
+  if Assigned(FVersePanelStrips[TextType]) then
+    FVersePanelStrips[TextType].BringToFront;
+end;
+
+procedure TMainForm.CloseAllProps;
+var
+  TextType: TTipoTextoBiblico;
+begin
+  for TextType := tbOrigem to tbConsulta2 do
+    CloseProps(TextType);
+end;
+
+procedure TMainForm.ActionNewFeaturesGuideExecute(Sender: TObject);
+begin
+  ShowUserGuide(Self);
+  if Assigned(FormUserGuide) then
+    FormUserGuide.UpdateLanguage(language);
+end;
+
+procedure TMainForm.CountCurrentAssociations(out Associated, Total: Integer);
+begin
+  CountVerseAssociations(tbOrigem, Associated, Total);
+end;
+
+procedure TMainForm.CountVerseAssociations(TextType: TTipoTextoBiblico;
+  out Associated, Total: Integer);
+var
+  TargetVerse: TVerse;
   Syntagm: TSyntagm;
 begin
   Associated := 0;
@@ -1704,17 +2377,413 @@ begin
   if not Assigned(CurrentProject) then
     Exit;
 
-  SourceVerse := CurrentProject.VerseObjects[tbOrigem];
-  if not Assigned(SourceVerse) or not Assigned(SourceVerse.Syntagms) then
+  TargetVerse := CurrentProject.VerseObjects[TextType];
+  if not Assigned(TargetVerse) or not Assigned(TargetVerse.Syntagms) then
     Exit;
 
-  for Syntagm in SourceVerse.Syntagms do
+  for Syntagm in TargetVerse.Syntagms do
     if Syntagm.Kind = skSyntagm then
     begin
       Inc(Total);
       if Syntagm.IsAssociated then
         Inc(Associated);
     end;
+end;
+
+function TMainForm.DisplayIndexForStatusId(
+  const Definitions: TStatusDefinitions; AStatusId: Integer): Integer;
+var
+  Index: Integer;
+begin
+  Result := -1;
+  if not Assigned(RadioGroupStatus) then
+    Exit;
+  for Index := 0 to RadioGroupStatus.Items.Count - 1 do
+    if StatusIdAtDisplayIndex(Definitions, Index) = AStatusId then
+      Exit(Index);
+  if (AStatusId >= 0) and (AStatusId < RadioGroupStatus.Items.Count) then
+    Result := AStatusId;
+end;
+
+function TMainForm.FindCurrentVerseTreeNode: TTreeNode;
+var
+  b, c, v, BookIdx, i: Integer;
+  BookNode, ChapterNode, VerseNode: TTreeNode;
+begin
+  Result := nil;
+  if (CurrentProject = nil) or (not CurrentProject.Ativo) or
+     (not Assigned(TreeView1)) or (TreeView1.Items.Count = 0) then
+    Exit;
+
+  b := 0; c := 0; v := 0;
+  if (SScanf(CurrentProject.ID, '%d,%d,%d', [@b, @c, @v]) <> 3) or
+     (b <= 0) or (c <= 0) or (v <= 0) then
+  begin
+    if Assigned(TreeView1.Selected) and (not TreeView1.Selected.HasChildren) then
+      Result := TreeView1.Selected;
+    Exit;
+  end;
+
+  if Assigned(TreeView1.Selected) and (not TreeView1.Selected.HasChildren) and
+     Assigned(TreeView1.Selected.Parent) and
+     (TreeView1.Selected.Text = IntToStr(v)) and
+     (TreeView1.Selected.Parent.Text = IntToStr(c)) then
+  begin
+    Result := TreeView1.Selected;
+    Exit;
+  end;
+
+  if (b >= 40) and (TreeView1.Items.Count <= 27) then
+    BookIdx := b - 40
+  else
+    BookIdx := b - 1;
+
+  BookNode := TreeView1.Items[0];
+  for i := 1 to BookIdx do
+  begin
+    if not Assigned(BookNode) then Exit;
+    BookNode := BookNode.GetNextSibling;
+  end;
+  if not Assigned(BookNode) then Exit;
+
+  ChapterNode := BookNode.GetFirstChild;
+  for i := 1 to c - 1 do
+  begin
+    if not Assigned(ChapterNode) then Exit;
+    ChapterNode := ChapterNode.GetNextSibling;
+  end;
+  if not Assigned(ChapterNode) then Exit;
+
+  VerseNode := ChapterNode.GetFirstChild;
+  for i := 1 to v - 1 do
+  begin
+    if not Assigned(VerseNode) then Exit;
+    VerseNode := VerseNode.GetNextSibling;
+  end;
+  Result := VerseNode;
+end;
+
+function TMainForm.RecalculateTreeParentStatuses: Boolean;
+var
+  Definitions, Sorted: TStatusDefinitions;
+  AssociatingStatusId, NeedsReviewStatusId: Integer;
+  SelOffset, ImgCount: Integer;
+  BookNode, ChapterNode, VerseNode, CurVerseNode: TTreeNode;
+  FirstStatus, ChapterStatus, BookFirstStatus, BookStatus: Integer;
+  AllVersesSame, HasNeedsReviewVerse: Boolean;
+  AllChaptersSame, HasNeedsReviewChapter: Boolean;
+
+  function EffectiveSelectedIndex(AImageIndex: Integer): Integer;
+  begin
+    Result := AImageIndex + SelOffset;
+    if (ImgCount > 0) and (Result >= ImgCount) then
+      Result := AImageIndex;
+  end;
+
+begin
+  Result := False;
+  if (CurrentProject = nil) or (not CurrentProject.Ativo) or
+     (not Assigned(TreeView1)) or (TreeView1.Items.Count = 0) then
+    Exit;
+
+  Definitions := CurrentProject.GetStatusDefinitions;
+  Sorted := SortStatusDefinitionsByDisplayOrder(Definitions);
+  AssociatingStatusId := 1;
+  NeedsReviewStatusId := 2;
+  if Length(Sorted) > 1 then
+    AssociatingStatusId := Sorted[1].Id;
+  if Length(Sorted) > 2 then
+    NeedsReviewStatusId := Sorted[2].Id;
+
+  ImgCount := 0;
+  if Assigned(TreeView1.Images) then
+    ImgCount := TreeView1.Images.Count;
+
+  SelOffset := 0;
+  if (Length(Definitions) > 0) and (ImgCount >= Length(Definitions) * 2) then
+    SelOffset := Length(Definitions)
+  else if ImgCount >= 8 then
+    SelOffset := 4;
+
+  CurVerseNode := FindCurrentVerseTreeNode;
+  if Assigned(CurVerseNode) then
+  begin
+    if (CurVerseNode.ImageIndex <> CurrentProject.Status) or
+       (CurVerseNode.SelectedIndex <> EffectiveSelectedIndex(CurrentProject.Status)) then
+    begin
+      CurVerseNode.ImageIndex := CurrentProject.Status;
+      CurVerseNode.SelectedIndex := EffectiveSelectedIndex(CurrentProject.Status);
+      Result := True;
+    end;
+  end;
+
+  BookNode := TreeView1.Items[0];
+  while Assigned(BookNode) do
+  begin
+    if BookNode.HasChildren then
+    begin
+      BookFirstStatus := -1;
+      AllChaptersSame := True;
+      HasNeedsReviewChapter := False;
+
+      ChapterNode := BookNode.GetFirstChild;
+      while Assigned(ChapterNode) do
+      begin
+        if ChapterNode.HasChildren then
+        begin
+          VerseNode := ChapterNode.GetFirstChild;
+          if Assigned(VerseNode) then
+          begin
+            FirstStatus := VerseNode.ImageIndex;
+            AllVersesSame := True;
+            HasNeedsReviewVerse := False;
+            while Assigned(VerseNode) do
+            begin
+              if VerseNode.SelectedIndex <> EffectiveSelectedIndex(VerseNode.ImageIndex) then
+              begin
+                VerseNode.SelectedIndex := EffectiveSelectedIndex(VerseNode.ImageIndex);
+                Result := True;
+              end;
+              if VerseNode.ImageIndex <> FirstStatus then
+                AllVersesSame := False;
+              if VerseNode.ImageIndex = NeedsReviewStatusId then
+                HasNeedsReviewVerse := True;
+              VerseNode := VerseNode.GetNextSibling;
+            end;
+
+            if AllVersesSame then
+              ChapterStatus := FirstStatus
+            else if HasNeedsReviewVerse then
+              ChapterStatus := NeedsReviewStatusId
+            else
+              ChapterStatus := AssociatingStatusId;
+
+            if (ChapterNode.ImageIndex <> ChapterStatus) or
+               (ChapterNode.SelectedIndex <> EffectiveSelectedIndex(ChapterStatus)) then
+            begin
+              ChapterNode.ImageIndex := ChapterStatus;
+              ChapterNode.SelectedIndex := EffectiveSelectedIndex(ChapterStatus);
+              Result := True;
+            end;
+          end;
+        end;
+
+        if BookFirstStatus < 0 then
+          BookFirstStatus := ChapterNode.ImageIndex
+        else if ChapterNode.ImageIndex <> BookFirstStatus then
+          AllChaptersSame := False;
+
+        if ChapterNode.ImageIndex = NeedsReviewStatusId then
+          HasNeedsReviewChapter := True;
+
+        ChapterNode := ChapterNode.GetNextSibling;
+      end;
+
+      if BookFirstStatus >= 0 then
+      begin
+        if AllChaptersSame then
+          BookStatus := BookFirstStatus
+        else if HasNeedsReviewChapter then
+          BookStatus := NeedsReviewStatusId
+        else
+          BookStatus := AssociatingStatusId;
+
+        if (BookNode.ImageIndex <> BookStatus) or
+           (BookNode.SelectedIndex <> EffectiveSelectedIndex(BookStatus)) then
+        begin
+          BookNode.ImageIndex := BookStatus;
+          BookNode.SelectedIndex := EffectiveSelectedIndex(BookStatus);
+          Result := True;
+        end;
+      end;
+    end;
+    BookNode := BookNode.GetNextSibling;
+  end;
+
+  if Result then
+    TreeView1.Invalidate;
+end;
+
+procedure TMainForm.SyncStatusAndTreeNodes;
+var
+  Definitions, Sorted: TStatusDefinitions;
+  CurVerseID: string;
+  CurStatusId, ExpectedComboIdx, TargetStatusId: Integer;
+  FirstStatusId, AssociatingStatusId, LastStatusId: Integer;
+  SrcAssoc, SrcTot, DstAssoc, DstTot: Integer;
+  HoldingModifier, StatusOrTreeChanged, AutoAdvancedToLast: Boolean;
+begin
+  if FSyncingStatusState then
+    Exit;
+
+  if (CurrentProject = nil) or (not CurrentProject.Ativo) or
+     (not Assigned(RadioGroupStatus)) then
+  begin
+    FLastSyncedVerseID := '';
+    FLastSyncedStatusId := -1;
+    FLastSyncedComboIndex := -1;
+    FLastSyncedSrcAssociated := 0;
+    FLastSyncedSrcTotal := 0;
+    FLastSyncedDstAssociated := 0;
+    FLastSyncedDstTotal := 0;
+    FPendingFullAssociationStatus := False;
+    Exit;
+  end;
+
+  FSyncingStatusState := True;
+  try
+    Definitions := CurrentProject.GetStatusDefinitions;
+    Sorted := SortStatusDefinitionsByDisplayOrder(Definitions);
+    FirstStatusId := 0;
+    AssociatingStatusId := 1;
+    LastStatusId := 3;
+    if Length(Sorted) > 0 then
+      FirstStatusId := Sorted[0].Id;
+    if Length(Sorted) > 1 then
+      AssociatingStatusId := Sorted[1].Id;
+    if Length(Sorted) > 0 then
+      LastStatusId := Sorted[High(Sorted)].Id;
+
+    CurVerseID := CurrentProject.ID;
+    CurStatusId := CurrentProject.Status;
+    CountVerseAssociations(tbOrigem, SrcAssoc, SrcTot);
+    CountVerseAssociations(tbDestino, DstAssoc, DstTot);
+    HoldingModifier := ((GetKeyState(VK_CONTROL) and $8000) <> 0) or
+                       ((GetKeyState(VK_SHIFT) and $8000) <> 0);
+    StatusOrTreeChanged := False;
+    AutoAdvancedToLast := False;
+
+    if CurVerseID <> FLastSyncedVerseID then
+    begin
+      FPendingFullAssociationStatus := False;
+      ExpectedComboIdx := DisplayIndexForStatusId(Definitions, CurStatusId);
+      if (ExpectedComboIdx >= 0) and (RadioGroupStatus.ItemIndex <> ExpectedComboIdx) then
+        RadioGroupStatus.ItemIndex := ExpectedComboIdx;
+
+      FLastSyncedVerseID := CurVerseID;
+      FLastSyncedStatusId := CurStatusId;
+      FLastSyncedComboIndex := RadioGroupStatus.ItemIndex;
+      FLastSyncedSrcAssociated := SrcAssoc;
+      FLastSyncedSrcTotal := SrcTot;
+      FLastSyncedDstAssociated := DstAssoc;
+      FLastSyncedDstTotal := DstTot;
+
+      if RecalculateTreeParentStatuses then
+        StatusOrTreeChanged := True;
+    end
+    else
+    begin
+      if (SrcAssoc <> FLastSyncedSrcAssociated) or (DstAssoc <> FLastSyncedDstAssociated) then
+      begin
+        TargetStatusId := CurStatusId;
+        if (SrcAssoc = 0) and (DstAssoc = 0) then
+        begin
+          FPendingFullAssociationStatus := False;
+          if CurStatusId <> FirstStatusId then
+            TargetStatusId := FirstStatusId;
+        end
+        else if ((SrcTot > 0) and (SrcAssoc = SrcTot)) or
+                ((DstTot > 0) and (DstAssoc = DstTot)) then
+        begin
+          if HoldingModifier then
+          begin
+            FPendingFullAssociationStatus := True;
+            if CurStatusId = FirstStatusId then
+              TargetStatusId := AssociatingStatusId;
+          end
+          else
+          begin
+            FPendingFullAssociationStatus := False;
+            if (CurStatusId = FirstStatusId) or (CurStatusId = AssociatingStatusId) then
+            begin
+              TargetStatusId := LastStatusId;
+              AutoAdvancedToLast := True;
+            end;
+          end;
+        end
+        else
+        begin
+          FPendingFullAssociationStatus := False;
+          if (CurStatusId = FirstStatusId) or (CurStatusId = LastStatusId) then
+            TargetStatusId := AssociatingStatusId;
+        end;
+
+        if TargetStatusId <> CurStatusId then
+        begin
+          CurrentProject.Status := TargetStatusId;
+          CurStatusId := CurrentProject.Status;
+          StatusOrTreeChanged := True;
+        end;
+
+        ExpectedComboIdx := DisplayIndexForStatusId(Definitions, CurStatusId);
+        if (ExpectedComboIdx >= 0) and (RadioGroupStatus.ItemIndex <> ExpectedComboIdx) then
+          RadioGroupStatus.ItemIndex := ExpectedComboIdx;
+
+        FLastSyncedSrcAssociated := SrcAssoc;
+        FLastSyncedSrcTotal := SrcTot;
+        FLastSyncedDstAssociated := DstAssoc;
+        FLastSyncedDstTotal := DstTot;
+      end
+      else if FPendingFullAssociationStatus and (not HoldingModifier) then
+      begin
+        FPendingFullAssociationStatus := False;
+        if (((SrcTot > 0) and (SrcAssoc = SrcTot)) or
+            ((DstTot > 0) and (DstAssoc = DstTot))) and
+           ((CurStatusId = FirstStatusId) or (CurStatusId = AssociatingStatusId)) then
+        begin
+          CurrentProject.Status := LastStatusId;
+          CurStatusId := CurrentProject.Status;
+          ExpectedComboIdx := DisplayIndexForStatusId(Definitions, CurStatusId);
+          if (ExpectedComboIdx >= 0) and (RadioGroupStatus.ItemIndex <> ExpectedComboIdx) then
+            RadioGroupStatus.ItemIndex := ExpectedComboIdx;
+          StatusOrTreeChanged := True;
+          AutoAdvancedToLast := True;
+        end;
+      end
+      else if CurStatusId <> FLastSyncedStatusId then
+      begin
+        ExpectedComboIdx := DisplayIndexForStatusId(Definitions, CurStatusId);
+        if (ExpectedComboIdx >= 0) and (RadioGroupStatus.ItemIndex <> ExpectedComboIdx) then
+          RadioGroupStatus.ItemIndex := ExpectedComboIdx;
+        StatusOrTreeChanged := True;
+      end
+      else if (RadioGroupStatus.ItemIndex <> FLastSyncedComboIndex) and
+              (RadioGroupStatus.ItemIndex >= 0) and
+              (RadioGroupStatus.ItemIndex < RadioGroupStatus.Items.Count) then
+      begin
+        TargetStatusId := StatusIdAtDisplayIndex(Definitions, RadioGroupStatus.ItemIndex);
+        if TargetStatusId <> CurStatusId then
+        begin
+          CurrentProject.Status := TargetStatusId;
+          CurStatusId := CurrentProject.Status;
+          if TargetStatusId = LastStatusId then
+            AutoAdvancedToLast := True;
+          StatusOrTreeChanged := True;
+        end;
+      end
+      else
+      begin
+        ExpectedComboIdx := DisplayIndexForStatusId(Definitions, CurStatusId);
+        if (ExpectedComboIdx >= 0) and (RadioGroupStatus.ItemIndex <> ExpectedComboIdx) then
+          RadioGroupStatus.ItemIndex := ExpectedComboIdx;
+      end;
+
+      FLastSyncedStatusId := CurStatusId;
+      FLastSyncedComboIndex := RadioGroupStatus.ItemIndex;
+
+      if RecalculateTreeParentStatuses then
+        StatusOrTreeChanged := True;
+    end;
+
+    if StatusOrTreeChanged and (not FUpdatingStatusReview) then
+      UpdateStatusReviewPanel;
+
+    if AutoAdvancedToLast and FSaveOnLastStatus and
+       (CurStatusId = LastStatusId) then
+      ActionSaveProjectExecute(ActionSaveProject);
+  finally
+    FSyncingStatusState := False;
+  end;
 end;
 
 function TMainForm.CurrentEngineCaption: string;
@@ -1785,10 +2854,44 @@ end;
 
 function TMainForm.GetVersePanelDescription(
   TextType: TTipoTextoBiblico): string;
+var
+  Memo: TMemo;
+  Index, EqPos: Integer;
+  Line, Key, Value, ShortTitleVal, TitleVal, DescrVal: string;
 begin
   Result := '';
+  Memo := FPropsMemos[TextType];
+  if Assigned(Memo) and Memo.Visible and (FPropsLoadedFor[TextType] = CurrentProject) then
+  begin
+    ShortTitleVal := '';
+    TitleVal := '';
+    DescrVal := '';
+    for Index := 0 to Memo.Lines.Count - 1 do
+    begin
+      Line := Trim(Memo.Lines[Index]);
+      EqPos := Pos('=', Line);
+      if EqPos <= 1 then
+        Continue;
+      Key := LowerCase(Trim(Copy(Line, 1, EqPos - 1)));
+      Value := Trim(Copy(Line, EqPos + 1, MaxInt));
+      if Value = '' then
+        Continue;
+      if (Key = 'short.title') and (ShortTitleVal = '') then
+        ShortTitleVal := Value
+      else if (Key = 'title') and (TitleVal = '') then
+        TitleVal := Value
+      else if (Key = 'description') and (DescrVal = '') then
+        DescrVal := Value;
+    end;
+    if ShortTitleVal <> '' then
+      Exit(ShortTitleVal)
+    else if TitleVal <> '' then
+      Exit(TitleVal)
+    else if DescrVal <> '' then
+      Exit(DescrVal);
+  end;
   if Assigned(CurrentProject) then
-    Result := Trim(CurrentProject.GetTextDescription(TextType));
+    Result := Trim(CurrentProject.GetTextShortTitle(TextType));
 end;
 
 function TMainForm.LocalizedProjectDescription(
@@ -1948,10 +3051,10 @@ var
   var
     W: Integer;
   begin
-    RadioGroupStatus.Visible := Assigned(CurrentProject) and
-      (RadioGroupStatus.Items.Count > 0);
-    if not RadioGroupStatus.Visible then
-      Exit;
+    // the status is chosen with the circles under the Destination panel;
+    // the drop-down stays only as the hidden model
+    RadioGroupStatus.Visible := False;
+    Exit;
     W := Min(AvailableWidth, UIScale(Self, 190));
     StartNextLine(W);
     RadioGroupStatus.SetBounds(X, Y + Max(0,
@@ -1972,12 +3075,25 @@ begin
       FStateHeaderPanel.Canvas.TextHeight('Hg') + UIScale(Self, 8));
     X := Margin;
     Y := UIScale(Self, 4);
-    PlaceLabel(FHeaderReferenceLabel);
+    if Assigned(FHeaderReferenceLabel) then
+      FHeaderReferenceLabel.Visible := False;
     PlaceStatusCombo;
     PlaceLabel(FHeaderAssociationsLabel);
     PlaceLabel(FHeaderSelectionLabel);
     PlaceLabel(FHeaderEngineLabel);
-    PlaceLabel(FHeaderModifiedLabel);
+    if Assigned(FSaveStatusPanel) and Assigned(StatusBar1) then
+    begin
+      FSaveStatusPanel.Color := UISurfaceColor;
+      FHeaderModifiedLabel.Visible := FHeaderModifiedLabel.Caption <> '';
+      FSaveStatusPanel.Canvas.Font.Assign(FHeaderModifiedLabel.Font);
+      FSaveStatusPanel.SetBounds(2, 2,
+        Max(UIScale(Self, 110),
+          FSaveStatusPanel.Canvas.TextWidth(FHeaderModifiedLabel.Caption) + UIScale(Self, 16)),
+        Max(16, StatusBar1.ClientHeight - 3));
+      FSaveStatusPanel.Invalidate;
+      FHeaderModifiedLabel.Invalidate;
+      StatusBar1.Invalidate;
+    end;
     DesiredHeight := Y + LineHeight + UIScale(Self, 4);
     if FStateHeaderPanel.Height <> DesiredHeight then
       FStateHeaderPanel.Height := DesiredHeight;
@@ -1986,15 +3102,43 @@ begin
   end;
 end;
 
+procedure TMainForm.ToolBarResize(Sender: TObject);
+var
+  i, MaxBottom, DesiredH: Integer;
+begin
+  if not Assigned(ToolBar1) then
+    Exit;
+  MaxBottom := 0;
+  for i := 0 to ToolBar1.ButtonCount - 1 do
+    if ToolBar1.Buttons[i].Visible then
+      MaxBottom := Max(MaxBottom, ToolBar1.Buttons[i].Top + ToolBar1.Buttons[i].Height);
+  if MaxBottom > 0 then
+  begin
+    DesiredH := MaxBottom + UIScale(Self, 2);
+    if ToolBar1.Height <> DesiredH then
+      ToolBar1.Height := DesiredH;
+  end;
+  if Assigned(FStateHeaderPanel) then
+    FStateHeaderPanel.Top := ToolBar1.Top + ToolBar1.Height;
+  if Assigned(FGuidePanel) and Assigned(FStateHeaderPanel) then
+    FGuidePanel.Top := FStateHeaderPanel.Top + FStateHeaderPanel.Height;
+  ToolBar1.Invalidate;
+end;
+
 procedure TMainForm.StateHeaderResize(Sender: TObject);
 begin
   LayoutStateHeader;
+  if Assigned(FGuidePanel) and Assigned(FStateHeaderPanel) then
+    FGuidePanel.Top := FStateHeaderPanel.Top + FStateHeaderPanel.Height;
+  if Assigned(FrmDictionaryPopup) and FrmDictionaryPopup.Visible and FDockPopupRightEnabled then
+    FrmDictionaryPopup.UpdateRightEdgeDockPosition;
 end;
 
 procedure TMainForm.UpdateStateHeader;
 var
   Associated, Total, Percent: Integer;
 begin
+  SyncStatusAndTreeNodes;
   if not Assigned(FStateHeaderPanel) then
     Exit;
 
@@ -2006,7 +3150,7 @@ begin
     FHeaderSelectionLabel.Caption := SHeaderSelectionNone;
     FHeaderEngineLabel.Caption := Format(SHeaderEngineFmt, [CurrentEngineCaption]);
     FHeaderModifiedLabel.Caption := SHeaderSaved;
-    FHeaderModifiedLabel.Font.Color := clGrayText;
+    FHeaderModifiedLabel.Font.Color := UIMutedTextColor;
   end
   else
   begin
@@ -2182,6 +3326,7 @@ var
   VisibleTotal: Integer;
   SelectedStatusId, PreviousTopIndex, RestoredItemIndex: Integer;
   HadSelectedStatus: Boolean;
+  HiddenIds: string;
   Node: TTreeNode;
 
   procedure RememberCurrentFilter;
@@ -2212,11 +3357,14 @@ var
   function WasChecked(StatusId: Integer): Boolean;
   var
     StatusIndex: Integer;
+    Hidden: string;
   begin
-    Result := True;
     for StatusIndex := 0 to High(OldStates) do
       if OldStates[StatusIndex].StatusId = StatusId then
         Exit(OldStates[StatusIndex].Checked);
+    // first build: the filter remembered from the last session
+    Hidden := ',' + opts.ReadString('opcoes', 'status.filter.hidden', '') + ',';
+    Result := Pos(',' + IntToStr(StatusId) + ',', Hidden) = 0;
   end;
 
   procedure InitializeCounts;
@@ -2325,6 +3473,7 @@ begin
 
     if Assigned(TreeView1) and (TreeView1.Items.Count > 0) then
     begin
+      RecalculateTreeParentStatuses;
       Node := TreeView1.Items[0];
       while Assigned(Node) do
       begin
@@ -2366,6 +3515,22 @@ begin
       FUpdatingStatusReview := False;
     end;
     FStatusReviewList.Invalidate;
+  end;
+
+  // remember the filter (unticked statuses) for the next session
+  if Assigned(opts) and Assigned(CurrentProject) then
+  begin
+    HiddenIds := '';
+    for Index := 0 to FStatusReviewList.Items.Count - 1 do
+      if not StatusReviewItemChecked(Index) then
+      begin
+        if HiddenIds <> '' then
+          HiddenIds := HiddenIds + ',';
+        HiddenIds := HiddenIds +
+          IntToStr(Integer(PtrUInt(FStatusReviewList.Items.Objects[Index])));
+      end;
+    if opts.ReadString('opcoes', 'status.filter.hidden', '') <> HiddenIds then
+      PersistGlobalPreference('status.filter.hidden', HiddenIds);
   end;
 
   ApplyStatusReviewFilter;
@@ -2588,6 +3753,7 @@ var
   DescriptionWidth: Integer;
   LabelWidth: Integer;
   AvailableWidth: Integer;
+  BarHeight: Integer;
 begin
   Margin := UIScale(Self, 4);
   Padding := UIScale(Self, 8);
@@ -2619,10 +3785,12 @@ begin
     TypeLabel.Hint := CaptionText;
     DescriptionLabel.Hint := CaptionText;
 
-    TypeCaption := GetVersePanelTypeCaption(TextType);
-    DescriptionCaption := GetVersePanelDescription(TextType);
-    if DescriptionCaption <> '' then
-      DescriptionCaption := ': ' + DescriptionCaption;
+    // only the Bible name is shown (no "Source:", "Destination:", ...);
+    // a panel without a name falls back to its role
+    TypeCaption := Trim(GetVersePanelDescription(TextType));
+    if TypeCaption = '' then
+      TypeCaption := GetVersePanelTypeCaption(TextType);
+    DescriptionCaption := '';
 
     TypeLabel.Caption := TypeCaption;
     DescriptionLabel.Caption := DescriptionCaption;
@@ -2633,20 +3801,19 @@ begin
     CenterPanel.Canvas.Font.Assign(DescriptionLabel.Font);
     DescriptionWidth := CenterPanel.Canvas.TextWidth(DescriptionCaption);
 
-    AvailableWidth := Max(1, PanelControl.Width - (Margin * 2));
-    LabelWidth := Min(TypeWidth + DescriptionWidth + Padding * 2, AvailableWidth);
-    LabelControl.SetBounds(
-      PanelControl.Left + Max(Margin, PanelControl.Width - LabelWidth - Margin),
-      PanelControl.Top + Max(Margin, PanelControl.Height - LabelHeight - Margin),
-      LabelWidth,
-      LabelHeight);
-
-    TypeWidth := Min(TypeWidth, Max(0, LabelWidth - Padding * 2));
-    DescriptionWidth := Max(0, LabelWidth - TypeWidth - Padding * 2);
-    TypeLabel.SetBounds(Padding, 0, TypeWidth, LabelHeight);
-    DescriptionLabel.SetBounds(Padding + TypeWidth, 0, DescriptionWidth, LabelHeight);
-    LabelControl.BringToFront;
+    LabelControl.Visible := False;
+    if Assigned(FVersePanelStrips[TextType]) then
+    begin
+      FVersePanelStrips[TextType].TitleCaption := TypeCaption;
+      FVersePanelStrips[TextType].TitleHint := CaptionText;
+      FVersePanelStrips[TextType].ShowControls := Assigned(CurrentProject) and CurrentProject.Ativo;
+      FVersePanelStrips[TextType].PlaceOver(PanelControl);
+      FVersePanelStrips[TextType].Invalidate;
+      if FVersePanelStrips[TextType].HandleAllocated and FVersePanelStrips[TextType].Visible then
+        FVersePanelStrips[TextType].Update;
+    end;
   end;
+  UpdateVersePanelStrips;
 end;
 
 procedure TMainForm.ResetMainLayout;
@@ -2663,11 +3830,11 @@ begin
   MinVerseHeight := UIScale(Self, 42);
   NavigationPanel.Width := DefaultTreeWidth;
   ContextPanel.Width := Min(DefaultContextWidth, Max(UIScale(Self, 180), Panel1.ClientWidth div 2));
-  BottomPanel.Height := Min(DefaultCommentsHeight,
-    Max(MinCommentsHeight, CenterPanel.ClientHeight div 3));
+  BottomPanel.Visible := False;
+  Splitter5.Visible := False;
 
   TextTop := 1;
-  TextBottom := CenterPanel.ClientHeight - BottomPanel.Height - Splitter5.Height;
+  TextBottom := CenterPanel.ClientHeight - 1;
   AvailableHeight := TextBottom - TextTop - Splitter2.Height - Splitter3.Height - Splitter4.Height;
   BaseHeight := Max(MinVerseHeight, AvailableHeight div 4);
   ExtraHeight := Max(0, AvailableHeight - (BaseHeight * 4));
@@ -2810,6 +3977,7 @@ procedure TMainForm.ActionCloseProjectExecute(Sender: TObject);
 var
   SaveChanges: boolean;
 begin
+  CommitAllProps;
   if CurrentProject = nil then
     exit;
 
@@ -2837,6 +4005,7 @@ begin
     FrmProjectProperties.ClearProject;
   if Assigned(FrmLLMOptions) then
     FrmLLMOptions.SetProject(nil);
+  FindInProjectProjectChanged(nil);
   CurrentProject.Destroy;
   CurrentProject := nil;
   UpdateMainCaption;
@@ -2909,6 +4078,7 @@ begin
     FChapterView.RefreshTranslationMemory;
     UpdateStateHeader;
     UpdateStatusReviewPanel;
+    UpdateVersePanelStrips;
   end;
 end;
 
@@ -3231,6 +4401,7 @@ var
   SavingProject: TProject;
   PreviousFileName: string;
 begin
+  CommitAllProps;
   SavingProject := CurrentProject;
   if not Assigned(SavingProject) then
     Exit;
@@ -3276,6 +4447,7 @@ end;
 
 procedure TMainForm.ActionSaveProjectExecute(Sender: TObject);
 begin
+  CommitAllProps;
   if CurrentProject <> nil then
   begin
     if CurrentProject.SaveProject then
@@ -3324,10 +4496,13 @@ end;
 
 procedure TMainForm.ActionSyncTheWordVerseExecute(Sender: TObject);
 begin
+  if FInExternalSync then
+    Exit;
   {$IFDEF WINDOWS}
   if FSyncTheWordToIBiblia and (CurrentProject <> nil) then
     SyncTheWordVerse(CurrentProject.ID);
   {$ENDIF}
+  SendVerseToTanglaw;
 end;
 
 procedure TMainForm.ActionVaccumProjectExecute(Sender: TObject);
@@ -3373,7 +4548,14 @@ procedure TMainForm.FormClose(Sender: TObject; var CloseAction: TCloseAction);
 begin
   ActionCloseProjectExecute(Sender);
   if CurrentProject <> nil then
-    CloseAction := caNone;
+    CloseAction := caNone
+  else
+  begin
+    ApplicationShuttingDown := True;
+    if Assigned(FStripTimer) then
+      FStripTimer.Enabled := False;
+    StopTheWordSyncThread;
+  end;
 end;
 
 procedure TMainForm.FormCreate(Sender: TObject);
@@ -3397,11 +4579,37 @@ begin
   CurrentProject := nil;
 
   ConfigFilePath := ExtractFilePath(ParamStr(0)) + 'iBiblia.ini';
+  {$IFNDEF WINDOWS}
+  if not DirectoryIsWritable(ExtractFileDir(ParamStr(0))) then
+  begin
+    ConfigFilePath := SysUtils.GetEnvironmentVariable('XDG_CONFIG_HOME');
+    if ConfigFilePath = '' then
+      ConfigFilePath := IncludeTrailingPathDelimiter(GetUserDir) + '.config';
+    ConfigFilePath := IncludeTrailingPathDelimiter(ConfigFilePath) + 'iBiblia';
+    ForceDirectories(ConfigFilePath);
+    ConfigFilePath := IncludeTrailingPathDelimiter(ConfigFilePath) + 'iBiblia.ini';
+    if (not FileExists(ConfigFilePath)) and
+       FileExists(ExtractFilePath(ParamStr(0)) + 'iBiblia.ini') then
+      CopyFile(ExtractFilePath(ParamStr(0)) + 'iBiblia.ini', ConfigFilePath);
+  end;
+  {$ENDIF}
   opts := TIniFile.Create(ConfigFilePath);
+  SetCurrentSkinByName(opts.ReadString('UI', 'Theme', 'Default'));
+  FSkinnedForms := TList.Create;
+  Screen.AddHandlerActiveFormChanged(@ScreenActiveFormChanged);
   SetAppIconFamily(AppIconFamilyFromId(
     opts.ReadString('opcoes', 'ui.icon.family', 'connected')));
+  modeInt := opts.ReadInteger('opcoes', 'ui.toolbar.icon.size', Ord(tisSmall));
+  if (modeInt < Ord(Low(TToolbarIconSize))) or (modeInt > Ord(High(TToolbarIconSize))) then
+    modeInt := Ord(tisSmall);
+  FToolbarIconSize := TToolbarIconSize(modeInt);
   LoadTheWordSyntaxColorScheme(opts);
   LoadTheWordSyntaxEditorFont(opts);
+  ApplyDefaultDictionarySettings(ReadDefaultDictionarySettings(opts));
+  Application.AddOnIdleHandler(@AppIdleAutoSelect);
+  InitTTS;
+  TTSManager.LoadFromIni(opts);
+  TWAutomateUtils.LoadTheWordFonts;
 
   if opts.ReadBool('leiaute', 'principal.maximized', false) then
     WindowState := wsMaximized
@@ -3414,12 +4622,13 @@ begin
   FLegacyAutomaticSuggestion :=
     opts.ReadBool('opcoes', 'sugestoes.automaticas', false);
   MenuItem22.Checked := FLegacyAutomaticSuggestion;
-  {$IFDEF WINDOWS}
   ExpandTheWordSyncState(ReadTheWordSyncState(opts),
     FSyncTheWordToIBiblia, FSyncIBibliaToTheWord);
-  {$ENDIF}
+  FSyncTanglawToIBiblia := opts.ReadBool('opcoes', 'synctanglaw', false);
+  FSyncIBibliaToTanglaw := opts.ReadBool('opcoes', 'syncibibliatanglaw', false);
   FBoldStrongsEnabled := opts.ReadBool('opcoes', 'boldstrongs', false);
   FAutoSaveEnabled := opts.ReadBool('opcoes', 'auto.save', false);
+  FSaveOnLastStatus := opts.ReadBool('opcoes', 'auto.save.last.status', false);
   FGuideModeEnabled := opts.ReadBool('opcoes', 'guide.mode', true);
   FDefaultVerseMode := DefaultVerseModeFromInteger(
     opts.ReadInteger('opcoes', 'verse.default.mode',
@@ -3454,6 +4663,7 @@ begin
   FAlwaysOnTopEnabled := opts.ReadBool('opcoes', 'alwaysontop', false);
   if FAlwaysOnTopEnabled then
     FormStyle := fsSystemStayOnTop;
+  FDockPopupRightEnabled := opts.ReadBool('opcoes', 'popup.dock.right', false);
 
   FChapterViewHostPanel := TPanel.Create(Self);
   FChapterViewHostPanel.Parent := ChapterViewTabCtrl;
@@ -3492,6 +4702,7 @@ begin
   TreeView1.Hint := ' ';
   TreeView1.ShowHint := True;
   TreeView1.OnKeyDown := @TreeViewKeyDown;
+  TreeView1.OnCustomDrawItem := @TreeViewCustomDrawItem;
   TreeView1.OnShowHint := @TreeViewShowHint;
   TreeView1.Options := TreeView1.Options - [tvoToolTips];
 
@@ -3506,6 +4717,14 @@ begin
 
   MenuItemKeyboardShortcuts := TMenuItem.Create(MainMenu1);
   MenuItemKeyboardShortcuts.Action := ActionKeyboardShortcuts;
+
+  FActionNewFeaturesGuide := TAction.Create(ActionList1);
+  FActionNewFeaturesGuide.Caption := SNewFeaturesGuideMenu;
+  FActionNewFeaturesGuide.Hint := SNewFeaturesGuideHint;
+  FActionNewFeaturesGuide.ShortCut := ShortCut(VK_F1, [ssShift]);
+  FActionNewFeaturesGuide.OnExecute := @ActionNewFeaturesGuideExecute;
+  FNewFeaturesGuideMenuItem := TMenuItem.Create(MainMenu1);
+  FNewFeaturesGuideMenuItem.Action := FActionNewFeaturesGuide;
 
   ActionResetLayout := TAction.Create(ActionList1);
   ActionResetLayout.Caption := SResetLayoutMenu;
@@ -3558,33 +4777,42 @@ begin
   NavigationPanel.Width := opts.ReadInteger('leiaute', 'principal.treeview.largura', NavigationPanel.Width);
   UpdateStatusReviewPanel;
 
-  // Create the actual CommentsView and replace the TMemo
+  // Create the internal CommentsView hidden (Editorial Comments removed from user-facing UI)
   FActualCommentsMemo := TCommentsView.Create(Self);
   FActualCommentsMemo.Parent := CommentsMemo.Parent;
   FActualCommentsMemo.Align := CommentsMemo.Align;
   FActualCommentsMemo.BorderSpacing.Around := CommentsMemo.BorderSpacing.Around;
-  FActualCommentsMemo.Enabled := CommentsMemo.Enabled;
+  FActualCommentsMemo.Enabled := False;
+  FActualCommentsMemo.Visible := False;
   FActualCommentsMemo.TabOrder := CommentsMemo.TabOrder;
   FActualCommentsMemo.FontName := opts.ReadString('leiaute', 'principal.commentsmemo.font.name', DefFontData.Name);
   FActualCommentsMemo.FontSize := opts.ReadInteger('leiaute', 'principal.commentsmemo.font.size', 10);
   FActualCommentsMemo.ScrollBars := ssVertical;
-  CommentsMemo.Visible := False; // Hide the original TMemo
+  CommentsMemo.Visible := False;
+  BottomPanel.Visible := False;
+  Splitter5.Visible := False;
 
-  {$IFDEF WINDOWS}
   FRxMorpho := RegexCreate('^(\S+)( l="(.*?)")?$', [rcoUTF8]);
   SetUpSyncThread;
   UpdateTheWordSyncUI;
+  UpdateTanglawSyncUI;
 
   // Check and update file association menu items
   CheckFileAssociation;
-  {$ENDIF}
 end;
 
 procedure TMainForm.FormDestroy(Sender: TObject);
 begin
-  {$IFDEF WINDOWS}
+  ApplicationShuttingDown := True;
+  if Assigned(FStripTimer) then
+    FStripTimer.Enabled := False;
+  Screen.RemoveHandlerActiveFormChanged(@ScreenActiveFormChanged);
+  FreeAndNil(FSkinnedForms);
+  Application.RemoveOnIdleHandler(@AppIdleAutoSelect);
+  if Assigned(TTSManager) then
+    TTSManager.SaveToIni(opts);
+  FreeTTS;
   StopTheWordSyncThread;
-  {$ENDIF}
   SaveRecentProjects(MenuItemRecent);
   opts.WriteBool('leiaute', 'principal.maximized', WindowState = wsMaximized);
   if WindowState <> wsMaximized then
@@ -3609,25 +4837,39 @@ begin
   opts.WriteBool('opcoes', 'sugestoes.automaticas',
     FLegacyAutomaticSuggestion);
   opts.WriteInteger('opcoes', 'suggestion.mode', Ord(FSuggestionMode));
-  {$IFDEF WINDOWS}
   WriteTheWordSyncState(opts, ResolveTheWordSyncState(
     FSyncTheWordToIBiblia, FSyncIBibliaToTheWord));
-  {$ENDIF}
   opts.WriteBool('opcoes', 'boldstrongs', FBoldStrongsEnabled);
   opts.WriteInteger('opcoes', 'strongscountmode', Integer(FStrongsCountMode));
   opts.WriteString('opcoes', 'language', language);
   opts.WriteBool('opcoes', 'alwaysontop', FAlwaysOnTopEnabled);
+  opts.WriteBool('opcoes', 'popup.dock.right', FDockPopupRightEnabled);
   opts.WriteInteger('opcoes', 'popuptrigger', LongInt(FPopupTrigger));
   opts.WriteBool('opcoes', 'auto.save', FAutoSaveEnabled);
+  opts.WriteBool('opcoes', 'auto.save.last.status', FSaveOnLastStatus);
   opts.WriteBool('opcoes', 'guide.mode', FGuideModeEnabled);
   opts.WriteInteger('opcoes', 'verse.default.mode',
     Ord(FDefaultVerseMode));
   opts.WriteInteger('opcoes', 'translation.memory.order',
     Ord(FTranslationMemoryOrder));
-  opts.Free;
-
-  FChapterView.Free;
-  FActualCommentsMemo.Free; // Free the dynamically created CommentsView
+  if Assigned(FChapterView) then
+  begin
+    FChapterView.Project := nil;
+    FChapterView.Parent := nil;
+    FreeAndNil(FChapterView);
+  end;
+  if Assigned(FActualCommentsMemo) then
+  begin
+    FActualCommentsMemo.Parent := nil;
+    FreeAndNil(FActualCommentsMemo);
+  end;
+  if Assigned(FrmDictionaryPopup) then
+    FrmDictionaryPopup.SaveLayoutToOpts;
+  if Assigned(opts) then
+  begin
+    opts.UpdateFile;
+    FreeAndNil(opts);
+  end;
 end;
 // REMOVED: TimerAITimer - obsolete since AI processing moved to modal
 // AI processing progress is now tracked by TFrmAIProcessing.PumpProcessing
@@ -3675,7 +4917,8 @@ begin
   Splitter2.Top := opts.ReadInteger('leiaute', 'principal.splitter2.topo', Splitter2.Top);
   Splitter3.Top := opts.ReadInteger('leiaute', 'principal.splitter3.topo', Splitter3.Top);
   Splitter4.Top := opts.ReadInteger('leiaute', 'principal.splitter4.topo', Splitter4.Top);
-  BottomPanel.Height := opts.ReadInteger('leiaute', 'principal.panel3.height', BottomPanel.Height);
+  BottomPanel.Visible := False;
+  Splitter5.Visible := False;
   ContextPanel.Width := opts.ReadInteger('leiaute', 'principal.contextpanel.width', ContextPanel.Width);
   LayoutVersePanelLabels;
 
@@ -3683,6 +4926,10 @@ begin
     DoOpenProject(ParamStr(1))
   else if (MenuItemRecent.Count > 0) and FileExists(MenuItemRecent.Items[0].Caption) then
     DoOpenProject(MenuItemRecent.Items[0].Caption);
+  if Assigned(FrmDictionaryPopup) then
+    FrmDictionaryPopup.DockToMainRightEdge := FDockPopupRightEnabled;
+  if CurrentSkin.Id <> skClassic then
+    ApplyActiveSkin;
 end;
 
 procedure TMainForm.MenuItem22Click(Sender: TObject);
@@ -3715,6 +4962,367 @@ end;
 procedure TMainForm.MenuItemAlwaysOnTopClick(Sender: TObject);
 begin
   SetAlwaysOnTopEnabled(not FAlwaysOnTopEnabled);
+end;
+
+{ After Ctrl+Shift+click association: once both keys are up, select the next
+  unlinked source word (the 1.0.1 mod's auto-advance). }
+procedure TMainForm.AppIdleAutoSelect(Sender: TObject; var Done: Boolean);
+begin
+  if Assigned(CurrentProject) and CurrentProject.HasPendingAutoSelectNext and
+     ((GetKeyState(VK_CONTROL) and $8000) = 0) and
+     ((GetKeyState(VK_SHIFT) and $8000) = 0) then
+  begin
+    CurrentProject.CompletePendingAutoSelectNext;
+    UpdateStateHeader;
+    UpdateVersePanelStrips;
+  end
+  else if Assigned(CurrentProject) and FPendingFullAssociationStatus and
+          ((GetKeyState(VK_CONTROL) and $8000) = 0) and
+          ((GetKeyState(VK_SHIFT) and $8000) = 0) then
+  begin
+    UpdateStateHeader;
+    UpdateVersePanelStrips;
+  end;
+end;
+
+procedure TMainForm.ActionReadOnHoverExecute(Sender: TObject);
+begin
+  if TTSManager = nil then
+    Exit;
+  TTSManager.Enabled := not TTSManager.Enabled;
+  FActionReadOnHover.Checked := TTSManager.Enabled;
+  TTSManager.SaveToIni(opts);
+end;
+
+procedure TMainForm.VoiceSettingsClick(Sender: TObject);
+begin
+  if (TTSManager <> nil) and ShowVoiceSettingsDialog(Self) then
+  begin
+    TTSManager.SaveToIni(opts);
+    FActionReadOnHover.Checked := TTSManager.Enabled;
+  end;
+end;
+
+procedure TMainForm.ToolbarIconSizeItemClick(Sender: TObject);
+begin
+  if Sender is TMenuItem then
+    SelectToolbarIconSize(TToolbarIconSize(TMenuItem(Sender).Tag));
+end;
+
+procedure TMainForm.SelectToolbarIconSize(ASize: TToolbarIconSize);
+begin
+  FToolbarIconSize := ASize;
+  PersistGlobalPreference('ui.toolbar.icon.size', Ord(FToolbarIconSize));
+  ApplyToolbarIconSize;
+end;
+
+procedure TMainForm.ApplyToolbarIconSize;
+var
+  IconPx, BtnPx: Integer;
+  SizeOpt: TToolbarIconSize;
+begin
+  case FToolbarIconSize of
+    tisMedium:
+      begin
+        IconPx := 22;
+        BtnPx := 31;
+      end;
+    tisLarge:
+      begin
+        IconPx := 28;
+        BtnPx := 38;
+      end;
+  else
+    begin
+      IconPx := 16;
+      BtnPx := 24;
+    end;
+  end;
+  if Assigned(ImageList1) then
+  begin
+    ImageList1.Width := IconPx;
+    ImageList1.Height := IconPx;
+    PopulateAppImageList(ImageList1, IconPx);
+  end;
+  if Assigned(ToolBar1) then
+  begin
+    ToolBar1.Images := ImageList1;
+    ToolBar1.ImagesWidth := IconPx;
+    ToolBar1.ButtonHeight := UIScale(Self, BtnPx);
+    ToolBar1.ButtonWidth := UIScale(Self, BtnPx);
+    ToolBarResize(ToolBar1);
+  end;
+  for SizeOpt := Low(TToolbarIconSize) to High(TToolbarIconSize) do
+    if Assigned(FToolbarIconSizeItems[SizeOpt]) then
+      FToolbarIconSizeItems[SizeOpt].Checked := (SizeOpt = FToolbarIconSize);
+end;
+
+procedure TMainForm.SkinItemClick(Sender: TObject);
+begin
+  SelectSkin(TSkinId(TMenuItem(Sender).Tag));
+end;
+
+{ Ctrl+Shift+D: theWord Dark <-> Classic }
+procedure TMainForm.ActionToggleDarkSkinExecute(Sender: TObject);
+begin
+  if CurrentSkin.IsDark then
+    SelectSkin(skClassic)
+  else
+    SelectSkin(skTheWordDark);
+end;
+
+procedure TMainForm.SelectSkin(AId: TSkinId);
+begin
+  if AId = CurrentSkin.Id then
+    Exit;
+  SetCurrentSkin(AId);
+  opts.WriteString('UI', 'Theme', CurrentSkin.Name);
+  opts.UpdateFile;
+  if Assigned(FSkinItems[AId]) then
+    FSkinItems[AId].Checked := True;
+  FSkinnedForms.Clear;
+  ApplyActiveSkin;
+end;
+
+{ Recolours the main window, its menus, the verse panels and the context
+  panel with the current skin. Other windows are skinned when they open. }
+procedure TMainForm.ApplyActiveSkin;
+begin
+  ApplyFormStyle(Self);
+  ApplyDarkModeToWindow(Self, CurrentSkin.IsDark);
+  ApplySkinToForm(Self, CurrentSkin);
+  if CurrentSkin.Id = skClassic then
+    Color := UISurfaceColor;
+  // every skin that is not Classic (dark ones and Sepia) paints the menu bar
+  ApplyMenuBarSkin(Self, IsThemedSkin);
+  // LCL draws a tree with tvoThemedDraw in the Windows theme's text colour
+  // (dark), whatever Font.Color says; the 1.0.1 mod has it off for that reason
+  if CurrentSkin.Id = skClassic then
+  begin
+    TreeView1.Options := TreeView1.Options + [tvoThemedDraw];
+    TreeView1.Color := clWindow;
+    TreeView1.Font.Color := clWindowText;
+    TreeView1.ExpandSignColor := clWindowText;
+  end
+  else
+  begin
+    TreeView1.Options := TreeView1.Options - [tvoThemedDraw];
+    TreeView1.ParentColor := False;
+    TreeView1.SelectionColor := CurrentSkin.HighlightBg;
+    TreeView1.ExpandSignType := tvestArrowFill;
+    TreeView1.Color := CurrentSkin.TreeBg;
+    TreeView1.Font.Color := CurrentSkin.TreeText;
+    TreeView1.ExpandSignColor := CurrentSkin.TreeText;
+    TreeView1.TreeLineColor := CurrentSkin.PanelBorder;
+  end;
+  {$IFDEF WINDOWS}
+  if TreeView1.HandleAllocated then
+    HookTreeViewControl(TreeView1);
+  {$ENDIF}
+  TreeView1.Invalidate;
+  if Assigned(ToolBar1) then
+  begin
+    ToolBar1.ParentColor := False;
+    ToolBar1.Color := UISurfaceColor;
+    ToolBar1.Font.Color := UITextColor;
+    {$IFDEF WINDOWS}
+    if ToolBar1.HandleAllocated then
+      HookToolBarControl(ToolBar1);
+    {$ENDIF}
+    ToolBar1.Invalidate;
+  end;
+  if Assigned(FSaveStatusPanel) then
+  begin
+    FSaveStatusPanel.ParentColor := False;
+    FSaveStatusPanel.Color := UISurfaceColor;
+    FSaveStatusPanel.Invalidate;
+  end;
+  if Assigned(StatusBar1) then
+  begin
+    StatusBar1.ParentColor := False;
+    StatusBar1.Color := UISurfaceColor;
+    StatusBar1.Font.Color := UITextColor;
+    {$IFDEF WINDOWS}
+    if StatusBar1.HandleAllocated then
+      HookStatusBarControl(StatusBar1);
+    {$ENDIF}
+    StatusBar1.Invalidate;
+  end;
+  if Assigned(FStatusReviewList) then
+  begin
+    FStatusReviewList.Color := UIContentColor;
+    FStatusReviewList.Font.Color := UITextColor;
+    {$IFDEF WINDOWS}
+    if FStatusReviewList.HandleAllocated then
+      HookNCScrollBarControl(FStatusReviewList);
+    {$ENDIF}
+    FStatusReviewList.Invalidate;
+  end;
+  if Assigned(CurrentProject) then
+    CurrentProject.ApplySkinColors;
+  if Assigned(FChapterView) then
+  begin
+    FChapterView.ApplySkinColors;
+    if Assigned(CurrentProject) then
+      FChapterView.LoadChapter;
+  end;
+  if FSkinnedForms.IndexOf(Self) < 0 then
+    FSkinnedForms.Add(Self);
+  if Assigned(FormUserGuide) and FormUserGuide.Visible then
+    FormUserGuide.ApplySkin(CurrentSkin);
+  if Assigned(FrmDictionaryPopup) then
+    FrmDictionaryPopup.ApplySkin;
+  if Assigned(FrmProjectProperties) then
+    FrmProjectProperties.ApplyThemeColors;
+  Invalidate;
+end;
+
+{ Keeps the node text in the skin's tree colours (the themed tree control can
+  fall back to the system text colour). }
+procedure TMainForm.TreeViewCustomDrawItem(Sender: TCustomTreeView;
+  Node: TTreeNode; State: TCustomDrawState; var DefaultDraw: Boolean);
+begin
+  DefaultDraw := True;
+  if CurrentSkin.Id = skClassic then
+    Exit;
+  if cdsSelected in State then
+  begin
+    Sender.Canvas.Brush.Color := CurrentSkin.HighlightBg;
+    Sender.Canvas.Font.Color := CurrentSkin.HighlightText;
+  end
+  else if cdsHot in State then
+  begin
+    Sender.Canvas.Brush.Color := CurrentSkin.PointedBg;
+    Sender.Canvas.Font.Color := CurrentSkin.PointedText;
+  end
+  else
+  begin
+    Sender.Canvas.Brush.Color := CurrentSkin.TreeBg;
+    Sender.Canvas.Font.Color := CurrentSkin.TreeText;
+  end;
+end;
+
+{ Skins each other window the first time it is shown with the current skin. }
+procedure TMainForm.ScreenActiveFormChanged(Sender: TObject; Form: TCustomForm);
+begin
+  if not Assigned(Form) or (Form = Self) or not Assigned(FSkinnedForms) or
+     (FSkinnedForms.IndexOf(Form) >= 0) then
+    Exit;
+  FSkinnedForms.Add(Form);
+  ApplyDarkModeToWindow(Form, CurrentSkin.IsDark);
+  ApplySkinToForm(Form, CurrentSkin);
+end;
+
+procedure TMainForm.ActionFindInProjectExecute(Sender: TObject);
+begin
+  if CurrentProject <> nil then
+    ShowFindInProject(Self, CurrentProject, @FindInProjectNavigate);
+end;
+
+procedure TMainForm.ActionNextFilteredVerseExecute(Sender: TObject);
+begin
+  StepFilteredVerse(True);
+end;
+
+procedure TMainForm.ActionPreviousFilteredVerseExecute(Sender: TObject);
+begin
+  StepFilteredVerse(False);
+end;
+
+{ F8 / Shift+F8: go to the next / previous verse whose status is ticked in
+  the status filter. With no filter (all ticked), go to the next verse that
+  is not yet in the last status. }
+procedure TMainForm.StepFilteredVerse(Forward: Boolean);
+var
+  Node: TTreeNode;
+  FilterActive: Boolean;
+  LastStatusId, Index: Integer;
+  Sorted: TStatusDefinitions;
+
+  function NodeShown(ANode: TTreeNode): Boolean;
+  begin
+    Result := True;
+    while Assigned(ANode) do
+    begin
+      if not ANode.Visible then
+        Exit(False);
+      ANode := ANode.Parent;
+    end;
+  end;
+
+  function Matches(ANode: TTreeNode): Boolean;
+  begin
+    if ANode.HasChildren then
+      Exit(False);
+    if FilterActive then
+      Result := NodeShown(ANode)
+    else
+      Result := ANode.ImageIndex <> LastStatusId;
+  end;
+
+begin
+  if (CurrentProject = nil) or not Assigned(TreeView1) or
+     (TreeView1.Items.Count = 0) then
+    Exit;
+
+  FilterActive := False;
+  if Assigned(FStatusReviewList) then
+    for Index := 0 to FStatusReviewList.Items.Count - 1 do
+      if not StatusReviewItemChecked(Index) then
+        FilterActive := True;
+  Sorted := SortStatusDefinitionsByDisplayOrder(CurrentProject.GetStatusDefinitions);
+  if Length(Sorted) > 0 then
+    LastStatusId := Sorted[High(Sorted)].Id
+  else
+    LastStatusId := -1;
+
+  Node := TreeView1.Selected;
+  if not Assigned(Node) then
+    Node := TreeView1.Items[0]
+  else if Forward then
+    Node := Node.GetNext
+  else
+    Node := Node.GetPrev;
+  while Assigned(Node) and not Matches(Node) do
+    if Forward then
+      Node := Node.GetNext
+    else
+      Node := Node.GetPrev;
+
+  if Assigned(Node) then
+  begin
+    Node.MakeVisible;
+    TreeView1.Selected := Node; // OnChange navigates to the verse
+  end
+  else
+    SysUtils.Beep;
+end;
+
+procedure TMainForm.DefaultDictionariesClick(Sender: TObject);
+var
+  Settings: TDefaultDictionarySettings;
+begin
+  if Assigned(CurrentProject) and CurrentProject.Ativo and
+     Assigned(FrmProjectProperties) then
+  begin
+    FrmProjectProperties.SetProject(CurrentProject);
+    FrmProjectProperties.SelectDictionariesTab;
+    if FrmProjectProperties.ShowModal = mrOk then
+      FrmProjectProperties.ApplyChanges(Self);
+    Exit;
+  end;
+  Settings := ReadDefaultDictionarySettings(opts);
+  if EditDefaultDictionaries(Self, Settings) then
+  begin
+    WriteDefaultDictionarySettings(opts, Settings);
+    ApplyDefaultDictionarySettings(Settings);
+  end;
+end;
+
+procedure TMainForm.FindInProjectNavigate(const ReferenceID: string);
+begin
+  if (CurrentProject <> nil) and not CurrentProject.SaveAsInProgress then
+    CurrentProject.NavigateToReference(ReferenceID);
 end;
 
 procedure TMainForm.MenuItemAutoSaveClick(Sender: TObject);
@@ -3853,18 +5461,14 @@ end;
 
 procedure TMainForm.MenuItemSynciBibliaClick(Sender: TObject);
 begin
-  {$IFDEF WINDOWS}
   SetTheWordSyncDirections(FSyncTheWordToIBiblia,
     not FSyncIBibliaToTheWord);
-  {$ENDIF}
 end;
 
 procedure TMainForm.MenuItemSyncTheWordClick(Sender: TObject);
 begin
-  {$IFDEF WINDOWS}
   SetTheWordSyncDirections(not FSyncTheWordToIBiblia,
     FSyncIBibliaToTheWord, True);
-  {$ENDIF}
 end;
 
 procedure TMainForm.ProjectNewVerse(Sender: TProject);
@@ -3916,10 +5520,7 @@ end;
 
 procedure TMainForm.VerseChanged;
 begin
-  if Assigned(CurrentProject) and CurrentProject.Modificado then
-    StatusBar1.SimpleText := SChanged
-  else
-    StatusBar1.SimpleText := '';
+  StatusBar1.SimpleText := '';
   UpdateStateHeader;
 end;
 
@@ -4010,8 +5611,16 @@ begin
   Combo.Canvas.Pen.Width := 1;
   if odSelected in State then
   begin
-    Combo.Canvas.Brush.Color := clHighlight;
-    Combo.Canvas.Font.Color := clHighlightText;
+    if CurrentSkin.Id = skClassic then
+    begin
+      Combo.Canvas.Brush.Color := clHighlight;
+      Combo.Canvas.Font.Color := clHighlightText;
+    end
+    else
+    begin
+      Combo.Canvas.Brush.Color := CurrentSkin.PointedBg;
+      Combo.Canvas.Font.Color := CurrentSkin.PointedText;
+    end;
   end
   else
   begin
@@ -4061,15 +5670,27 @@ end;
 
 procedure TMainForm.RadioGroupStatusSelectionChanged(Sender: TObject);
 var
-  StatusId: Integer;
+  StatusId, OldStatusId: Integer;
 begin
   if CurrentProject <> nil then
   begin
     StatusId := StatusIdAtDisplayIndex(CurrentProject.GetStatusDefinitions,
       RadioGroupStatus.ItemIndex);
+    OldStatusId := CurrentProject.Status;
     CurrentProject.Status := StatusId;
+    FLastSyncedVerseID := CurrentProject.ID;
+    FLastSyncedStatusId := CurrentProject.Status;
+    FLastSyncedComboIndex := RadioGroupStatus.ItemIndex;
+    FPendingFullAssociationStatus := False;
+    RecalculateTreeParentStatuses;
     UpdateStateHeader;
     UpdateStatusReviewPanel;
+    UpdateVersePanelStrips;
+    // optional: choosing the last status (e.g. "Associated") saves the project
+    if FSaveOnLastStatus and (StatusId <> OldStatusId) and
+       (RadioGroupStatus.ItemIndex = RadioGroupStatus.Items.Count - 1) and
+       (CurrentProject.Status = StatusId) then
+      ActionSaveProjectExecute(ActionSaveProject);
   end;
 end;
 
@@ -4112,8 +5733,16 @@ begin
   List.Canvas.Pen.Width := 1;
   if odSelected in State then
   begin
-    List.Canvas.Brush.Color := clHighlight;
-    List.Canvas.Font.Color := clHighlightText;
+    if CurrentSkin.Id = skClassic then
+    begin
+      List.Canvas.Brush.Color := clHighlight;
+      List.Canvas.Font.Color := clHighlightText;
+    end
+    else
+    begin
+      List.Canvas.Brush.Color := CurrentSkin.PointedBg;
+      List.Canvas.Font.Color := CurrentSkin.PointedText;
+    end;
   end
   else
   begin
@@ -4215,25 +5844,111 @@ begin
   Close;
 end;
 
-{$IFDEF WINDOWS}
 procedure TMainForm.SyncToTwRef(Ref: string);
 begin
-  if (CurrentProject <> nil) and not CurrentProject.SaveAsInProgress then
-    CurrentProject.NavigateToReference(Ref);
+  if FInExternalSync or (Ref = '') then
+    Exit;
+  if (CurrentProject <> nil) and not CurrentProject.SaveAsInProgress and
+     (CurrentProject.ID <> Ref) then
+  begin
+    FInExternalSync := True;
+    try
+      try
+        CurrentProject.NavigateToReference(Ref);
+      except
+        // Ignore references not present in the open project's scope
+      end;
+    finally
+      FInExternalSync := False;
+    end;
+  end;
 end;
 
 procedure TMainForm.SetUpSyncThread;
 begin
-  if FSyncIBibliaToTheWord then
+  // restart when the set of programs to follow changes
+  if Assigned(FTheWordSyncThread) and
+     ((FTheWordSyncThread.PollTheWord <> FSyncIBibliaToTheWord) or
+      (FTheWordSyncThread.PollTanglaw <> FSyncIBibliaToTanglaw)) then
+    StopTheWordSyncThread;
+
+  if FSyncIBibliaToTheWord or FSyncIBibliaToTanglaw then
   begin
     if FTheWordSyncThread = nil then
     begin
       FTheWordSyncThread := TTwSyncThread.Create(true);
+      FTheWordSyncThread.PollTheWord := FSyncIBibliaToTheWord;
+      FTheWordSyncThread.PollTanglaw := FSyncIBibliaToTanglaw;
       FTheWordSyncThread.OnRefChange := @SyncToTwRef;
+      FTheWordSyncThread.OnTanglawRefChange := @SyncToTanglawRef;
       FTheWordSyncThread.Start;
     end;
   end else
     StopTheWordSyncThread;
+end;
+
+procedure TMainForm.SyncToTanglawRef(Ref: string);
+begin
+  if FInExternalSync or (Ref = '') then
+    Exit;
+  if (CurrentProject <> nil) and not CurrentProject.SaveAsInProgress and
+     (CurrentProject.ID <> Ref) then
+  begin
+    FInExternalSync := True;
+    try
+      try
+        CurrentProject.NavigateToReference(Ref);
+      except
+        // Ignore references not present in the open project's scope
+      end;
+    finally
+      FInExternalSync := False;
+    end;
+  end;
+end;
+
+procedure TMainForm.SendVerseToTanglaw;
+var
+  b, c, v: Integer;
+begin
+  if FInExternalSync or not FSyncTanglawToIBiblia or (CurrentProject = nil) then
+    Exit;
+  b := 0; c := 0; v := 0;
+  if SScanf(CurrentProject.ID, '%d,%d,%d', [@b, @c, @v]) <> 3 then
+    Exit;
+  if FTheWordSyncThread <> nil then
+    FTheWordSyncThread.NotifyTanglawVerseSent(CurrentProject.ID);
+  tanglaw_sync.SyncTanglawVerse(b, c, v);
+end;
+
+procedure TMainForm.TanglawFollowsClick(Sender: TObject);
+begin
+  FSyncTanglawToIBiblia := not FSyncTanglawToIBiblia;
+  PersistGlobalPreference('synctanglaw', FSyncTanglawToIBiblia);
+  UpdateTanglawSyncUI;
+  UpdateTheWordSyncUI;
+  SendVerseToTanglaw;
+end;
+
+procedure TMainForm.IBibliaFollowsTanglawClick(Sender: TObject);
+begin
+  FSyncIBibliaToTanglaw := not FSyncIBibliaToTanglaw;
+  PersistGlobalPreference('syncibibliatanglaw', FSyncIBibliaToTanglaw);
+  UpdateTanglawSyncUI;
+  UpdateTheWordSyncUI;
+  SetUpSyncThread;
+end;
+
+procedure TMainForm.UpdateTanglawSyncUI;
+begin
+  if Assigned(FTanglawFollowsItem) then
+    FTanglawFollowsItem.Checked := FSyncTanglawToIBiblia;
+  if Assigned(FIBibliaFollowsTanglawItem) then
+    FIBibliaFollowsTanglawItem.Checked := FSyncIBibliaToTanglaw;
+  if Assigned(FTanglawToolbarFollowsItem) then
+    FTanglawToolbarFollowsItem.Checked := FSyncTanglawToIBiblia;
+  if Assigned(FIBibliaToolbarFollowsTanglawItem) then
+    FIBibliaToolbarFollowsTanglawItem.Checked := FSyncIBibliaToTanglaw;
 end;
 
 procedure TMainForm.StopTheWordSyncThread;
@@ -4241,11 +5956,17 @@ begin
   if FTheWordSyncThread = nil then
     Exit;
   FTheWordSyncThread.OnRefChange := nil;
+  FTheWordSyncThread.OnTanglawRefChange := nil;
   FTheWordSyncThread.Stop;
   FTheWordSyncThread.WaitFor;
   FreeAndNil(FTheWordSyncThread);
 end;
-{$ENDIF}
+
+procedure TMainForm.NotifyTheWordVerseSent(const Ref: string);
+begin
+  if FTheWordSyncThread <> nil then
+    FTheWordSyncThread.NotifyVerseSent(Ref);
+end;
 
 procedure TMainForm.Translate;
 var
@@ -4298,6 +6019,13 @@ begin
   MenuItemStrongsCountStrongs.Caption := SStrongsCountTags;
   MenuItemBoldStrongs.Caption := SBoldStrongsMenu;
   MenuItemAlwaysOnTop.Caption := SAlwaysOnTopMenu;
+  if Assigned(FDockPopupRightMenuItem) then
+  begin
+    FDockPopupRightMenuItem.Caption := SDockPopupRightMenu;
+    FDockPopupRightMenuItem.Checked := FDockPopupRightEnabled;
+  end;
+  if Assigned(FrmDictionaryPopup) then
+    FrmDictionaryPopup.DockToMainRightEdge := FDockPopupRightEnabled;
   if Assigned(FToolsMenu) then
     FToolsMenu.Caption := SToolsMenu;
   if Assigned(FTheWordSyncMenu) then
@@ -4308,10 +6036,53 @@ begin
     FDisableTheWordSyncItem.Caption := SDisableBothSyncDirections;
   if Assigned(FActionPreferences) then
     FActionPreferences.Caption := SPreferencesMenu;
+  if Assigned(FDefaultDictionariesMenuItem) then
+    FDefaultDictionariesMenuItem.Caption := SDefaultDictionariesMenu;
+  if Assigned(FSkinMenu) then
+  begin
+    FSkinMenu.Caption := SSkinsMenu;
+    FActionToggleDarkSkin.Caption := SToggleDarkSkinMenu;
+    FSkinItems[CurrentSkin.Id].Checked := True;
+  end;
+  if Assigned(FToolbarIconSizeMenu) then
+  begin
+    FToolbarIconSizeMenu.Caption := SToolbarIconSizeMenu;
+    FToolbarIconSizeItems[tisSmall].Caption := SToolbarIconSizeSmall;
+    FToolbarIconSizeItems[tisMedium].Caption := SToolbarIconSizeMedium;
+    FToolbarIconSizeItems[tisLarge].Caption := SToolbarIconSizeLarge;
+    FToolbarIconSizeItems[FToolbarIconSize].Checked := True;
+  end;
+  if Assigned(FActionReadOnHover) then
+  begin
+    FActionReadOnHover.Caption := SReadOnHoverMenu;
+    FActionReadOnHover.Checked := Assigned(TTSManager) and TTSManager.Enabled;
+  end;
+  if Assigned(FVoiceSettingsMenuItem) then
+    FVoiceSettingsMenuItem.Caption := SVoiceSettingsMenu;
+  if Assigned(FTanglawSyncMenu) then
+  begin
+    FTanglawSyncMenu.Caption := STanglawSynchronizationMenu;
+    FTanglawFollowsItem.Caption := SSyncIBibliaToTanglaw;
+    FIBibliaFollowsTanglawItem.Caption := SSyncTanglawToIBiblia;
+  end;
+  if Assigned(FActionNextFilteredVerse) then
+    FActionNextFilteredVerse.Caption := SShortcutNextFilteredVerse;
+  if Assigned(FActionPreviousFilteredVerse) then
+    FActionPreviousFilteredVerse.Caption := SShortcutPreviousFilteredVerse;
+  if Assigned(FActionFindInProject) then
+  begin
+    FActionFindInProject.Caption := SFindInProjectMenu;
+    FActionFindInProject.Hint := SShortcutFindInProject;
+  end;
   if Assigned(ActionKeyboardShortcuts) then
   begin
     ActionKeyboardShortcuts.Caption := SKeyboardShortcutsMenu;
     ActionKeyboardShortcuts.Hint := SKeyboardShortcutsHint;
+  end;
+  if Assigned(FActionNewFeaturesGuide) then
+  begin
+    FActionNewFeaturesGuide.Caption := SNewFeaturesGuideMenu;
+    FActionNewFeaturesGuide.Hint := SNewFeaturesGuideHint;
   end;
   if Assigned(ActionLlmOptions) then
     ActionLlmOptions.Caption := SLLMOptionsMenu;
@@ -4377,7 +6148,11 @@ begin
   begin
     FTheWordPopupMenu.Items[0].Caption := SSyncIBibliaToTheWord;
     FTheWordPopupMenu.Items[1].Caption := SSyncTheWordToIBiblia;
-    FTheWordPopupMenu.Items[3].Caption := SDisableBothSyncDirections;
+    if Assigned(FTanglawToolbarFollowsItem) then
+      FTanglawToolbarFollowsItem.Caption := SSyncIBibliaToTanglaw;
+    if Assigned(FIBibliaToolbarFollowsTanglawItem) then
+      FIBibliaToolbarFollowsTanglawItem.Caption := SSyncTanglawToIBiblia;
+    FTheWordPopupMenu.Items[FTheWordPopupMenu.Items.Count - 1].Caption := SDisableBothSyncDirections;
   end;
 
   ActionRollbackCurrentVerse.Caption := SRollbackCurrentVerse;
@@ -4426,8 +6201,12 @@ begin
 end;
 
 procedure TMainForm.DoOpenProject(filename: string);
+var
+  DictSettings: TDefaultDictionarySettings;
 begin
   CurrentProject := TProject.Create([ScrollBoxSrcVerse, ScrollBoxDstVerse, ScrollBoxRef1Verse, ScrollBoxRef2Verse], TreeView1, RadioGroupStatus, FActualCommentsMemo);
+  CurrentProject.OnNavigateVerse := @ProjectNavigate;
+  CurrentProject.OnTextPropertiesChanged := @ProjectTextPropertiesChanged;
   CurrentProject.OnNewVerseSubscribe(@ProjectNewVerse);
   CurrentProject.OnAlterarVersiculo := @VerseChanged;
   CurrentProject.OnSintagmaClick := @SyntagmClick;
@@ -4436,6 +6215,24 @@ begin
   CurrentProject.AutoSave := FAutoSaveEnabled;
 
   CurrentProject.OpenProject(filename);
+  begin
+    DictSettings := ReadDefaultDictionarySettings(opts);
+    if CurrentProject.GetInfo('dicionarios.use_default') <> '' then
+      DictSettings.Enabled := CurrentProject.GetInfo('dicionarios.use_default') <> '0';
+    if CurrentProject.GetInfo('dicionarios.configured') = '1' then
+    begin
+      if CurrentProject.GetInfo('dicionarios.default_strong_greek') <> '' then
+        DictSettings.GreekStrong := CurrentProject.GetInfo('dicionarios.default_strong_greek');
+      if CurrentProject.GetInfo('dicionarios.default_strong_hebrew') <> '' then
+        DictSettings.HebrewStrong := CurrentProject.GetInfo('dicionarios.default_strong_hebrew');
+      if CurrentProject.GetInfo('dicionarios.default_morphology') <> '' then
+        DictSettings.Morphology := CurrentProject.GetInfo('dicionarios.default_morphology');
+      if CurrentProject.GetInfo('dicionarios.default_english_dict') <> '' then
+        DictSettings.Word := CurrentProject.GetInfo('dicionarios.default_english_dict');
+    end;
+    WriteDefaultDictionarySettings(opts, DictSettings);
+    ApplyDefaultDictionarySettings(DictSettings);
+  end;
   CurrentProject.ApplyWorkflowFallbacks(FSuggestionMode,
     FLegacyAutomaticSuggestion, FDefaultVerseMode);
   CurrentProject.PopupTrigger := FPopupTrigger;
@@ -4479,9 +6276,8 @@ begin
   ScrollBoxRef2Verse.Visible := false;
   Splitter4.Visible := false;}
 
-  {$IFDEF WINDOWS}
   SetUpSyncThread;
-  {$ENDIF}
+  ActionSyncTheWordVerseExecute(Self);
   CurrentProject.RequestDefaultVerseModeForCurrentVerse;
 end;
 
@@ -4554,22 +6350,17 @@ begin
 end;
 {$ELSE}
 begin
-  MenuItemRegisterFileAssoc.Visible := False;
-  MenuItemUnregisterFileAssoc.Visible := False;
-  MenuItemFileAssocSeparator.Visible := False;
+  if Assigned(MenuItemRegisterFileAssoc) then
+    MenuItemRegisterFileAssoc.Visible := False;
+  if Assigned(MenuItemUnregisterFileAssoc) then
+    MenuItemUnregisterFileAssoc.Visible := False;
 end;
 {$ENDIF}
 
 procedure TMainForm.CheckFileAssociation;
-{$IFDEF WINDOWS}
 begin
   UpdateFileAssociationMenuItems;
 end;
-{$ELSE}
-begin
-  // Nothing to do on non-Windows platforms
-end;
-{$ENDIF}
 
 end.
 

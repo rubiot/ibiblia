@@ -1528,7 +1528,7 @@ end;
 
 function IsClipboardBreakRaw(const ARaw: UnicodeString): Boolean;
 begin
-  Result := (ARaw = '<CM>') or (ARaw = '<CL>');
+  Result := IsTheWordBreakLexeme(ARaw);
 end;
 
 function TryFindClipboardBreak(ADocument: TTheWordVerseDocument;

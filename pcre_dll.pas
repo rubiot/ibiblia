@@ -656,19 +656,469 @@ procedure regfree(var preg: regex_t); cdecl;
 
 implementation
 
+{$IFDEF UNIX}
+uses
+  SysUtils, dynlibs;
+
+type
+  Tpcre_compile = function(pattern: PChar; options: LongWord; out errptr: PChar;
+    out erroffset: Integer; tableptr: TPcre_tableH): TPcreH; cdecl;
+  Tpcre_compile2 = function(pattern: PChar; options: LongWord; out errorcodeptr: Integer;
+    out errptr: PChar; out erroffset: Integer; tableptr: TPcre_tableH): TPcreH; cdecl;
+  Tpcre_exec = function(pcre: TPcreH; pcre_extra: TPcre_extraH; subject: PChar;
+    length: Integer; startoffset: Integer; options: LongWord; ovector: PIntArray;
+    ovecsize: Cardinal): Integer; cdecl;
+  Tpcre_dfa_exec = function(pcre: TPcreH; pcre_extra: TPcre_extraH; subject: PChar;
+    length: Integer; startoffset: Integer; options: LongWord; ovector: PIntArray;
+    ovecsize: Cardinal; workspace: PIntArray; wscount: Cardinal): Integer; cdecl;
+  Tpcre_study = function(pcre: TPcreH; options: LongWord; out errptr: PChar): TPcre_extraH; cdecl;
+  Tpcre_info = function(pcre: TPcreH; optptr: PLongWord; firstcharptr: PPChar): Integer; cdecl;
+  Tpcre_fullinfo = function(pattern: TPcreH; pcre_extra: TPcre_extraH; what: Integer;
+    out where): Integer; cdecl;
+  Tpcre_maketables = function: TPcre_tableH; cdecl;
+  Tpcre_version = function: PChar; cdecl;
+  Tpcre_get_substring = function(subject: PChar; ovector: PIntArray; stringcount: Integer;
+    stringnumber: Integer; out stringptr: PChar): Integer; cdecl;
+  Tpcre_get_substring_list = function(subject: PChar; ovector: PIntArray;
+    stringcount: Integer; out listptr: PPChar): Integer; cdecl;
+  Tpcre_copy_substring = function(subject: PChar; ovector: PIntArray;
+    stringcount: Integer; stringnumber: Integer; buffer: PChar; bufsize: Integer): Integer; cdecl;
+  Tpcre_free_substring = procedure(stringptr: PChar); cdecl;
+  Tpcre_free_substring_list = procedure(stringptr: PPChar); cdecl;
+  Tpcre_config = function(what: Integer; out where): Integer; cdecl;
+  Tpcre_copy_named_substring = function(code: TPcreH; subject: PChar; ovector: PIntArray;
+    stringcount: Integer; stringname: PChar; buffer: PChar; buffersize: Integer): Integer; cdecl;
+  Tpcre_get_named_substring = function(code: TPcreH; subject: PChar; ovector: PIntArray;
+    stringcount: Integer; stringname: PChar; stringptr: PPChar): Integer; cdecl;
+  Tpcre_get_stringnumber = function(code: TPcreH; name: PChar): Integer; cdecl;
+  Tpcre_get_stringtable_entries = function(code: TPcreH; name: PChar;
+    first: PPChar; last: PPChar): Integer; cdecl;
+  Tsetlocale = function(category: Integer; locale: PChar): PChar; cdecl;
+
+var
+  PcreLib: TLibHandle = NilHandle;
+  fn_pcre_compile: Tpcre_compile = nil;
+  fn_pcre_compile2: Tpcre_compile2 = nil;
+  fn_pcre_exec: Tpcre_exec = nil;
+  fn_pcre_dfa_exec: Tpcre_dfa_exec = nil;
+  fn_pcre_study: Tpcre_study = nil;
+  fn_pcre_info: Tpcre_info = nil;
+  fn_pcre_fullinfo: Tpcre_fullinfo = nil;
+  fn_pcre_maketables: Tpcre_maketables = nil;
+  fn_pcre_version: Tpcre_version = nil;
+  fn_pcre_get_substring: Tpcre_get_substring = nil;
+  fn_pcre_get_substring_list: Tpcre_get_substring_list = nil;
+  fn_pcre_copy_substring: Tpcre_copy_substring = nil;
+  fn_pcre_free_substring: Tpcre_free_substring = nil;
+  fn_pcre_free_substring_list: Tpcre_free_substring_list = nil;
+  fn_pcre_config: Tpcre_config = nil;
+  fn_pcre_copy_named_substring: Tpcre_copy_named_substring = nil;
+  fn_pcre_get_named_substring: Tpcre_get_named_substring = nil;
+  fn_pcre_get_stringnumber: Tpcre_get_stringnumber = nil;
+  fn_pcre_get_stringtable_entries: Tpcre_get_stringtable_entries = nil;
+  ptr_pcre_malloc: ^TPcreMemAlloc = nil;
+  ptr_pcre_free: ^TPcreMemFree = nil;
+  ptr_pcre_stack_malloc: ^TPcreMemAlloc = nil;
+  ptr_pcre_stack_free: ^TPcreMemFree = nil;
+  ptr_pcre_callout: ^TPcreCalloutCallback = nil;
+
+function libc_setlocale(category: Integer; locale: PChar): PChar; cdecl; external 'c' name 'setlocale';
+function libc_malloc(size: PtrUInt): Pointer; cdecl; external 'c' name 'malloc';
+procedure libc_free(P: Pointer); cdecl; external 'c' name 'free';
+
+procedure EnsurePcreLoaded;
+const
+  CandidateNames: array[0..3] of string = (
+    'libpcre.so.3',
+    'libpcre.so.1',
+    'libpcre.so.0',
+    'libpcre.so'
+  );
+var
+  I: Integer;
+  ExeDir, LocalPath: string;
+begin
+  if PcreLib <> NilHandle then
+    Exit;
+  ExeDir := ExtractFilePath(ParamStr(0));
+  for I := High(CandidateNames) downto Low(CandidateNames) do
+  begin
+    LocalPath := ExeDir + CandidateNames[I];
+    if FileExists(LocalPath) then
+    begin
+      PcreLib := LoadLibrary(LocalPath);
+      if PcreLib <> NilHandle then
+        Break;
+    end;
+  end;
+  if PcreLib = NilHandle then
+  begin
+    for I := Low(CandidateNames) to High(CandidateNames) do
+    begin
+      PcreLib := LoadLibrary(CandidateNames[I]);
+      if PcreLib <> NilHandle then
+        Break;
+    end;
+  end;
+  if PcreLib = NilHandle then
+    raise Exception.Create('Could not load libpcre (install libpcre3 or keep libpcre.so next to iBiblia).');
+
+  PPointer(@fn_pcre_compile)^ := GetProcedureAddress(PcreLib, 'pcre_compile');
+  PPointer(@fn_pcre_compile2)^ := GetProcedureAddress(PcreLib, 'pcre_compile2');
+  PPointer(@fn_pcre_exec)^ := GetProcedureAddress(PcreLib, 'pcre_exec');
+  PPointer(@fn_pcre_dfa_exec)^ := GetProcedureAddress(PcreLib, 'pcre_dfa_exec');
+  PPointer(@fn_pcre_study)^ := GetProcedureAddress(PcreLib, 'pcre_study');
+  PPointer(@fn_pcre_info)^ := GetProcedureAddress(PcreLib, 'pcre_info');
+  PPointer(@fn_pcre_fullinfo)^ := GetProcedureAddress(PcreLib, 'pcre_fullinfo');
+  PPointer(@fn_pcre_maketables)^ := GetProcedureAddress(PcreLib, 'pcre_maketables');
+  PPointer(@fn_pcre_version)^ := GetProcedureAddress(PcreLib, 'pcre_version');
+  PPointer(@fn_pcre_get_substring)^ := GetProcedureAddress(PcreLib, 'pcre_get_substring');
+  PPointer(@fn_pcre_get_substring_list)^ := GetProcedureAddress(PcreLib, 'pcre_get_substring_list');
+  PPointer(@fn_pcre_copy_substring)^ := GetProcedureAddress(PcreLib, 'pcre_copy_substring');
+  PPointer(@fn_pcre_free_substring)^ := GetProcedureAddress(PcreLib, 'pcre_free_substring');
+  PPointer(@fn_pcre_free_substring_list)^ := GetProcedureAddress(PcreLib, 'pcre_free_substring_list');
+  PPointer(@fn_pcre_config)^ := GetProcedureAddress(PcreLib, 'pcre_config');
+  PPointer(@fn_pcre_copy_named_substring)^ := GetProcedureAddress(PcreLib, 'pcre_copy_named_substring');
+  PPointer(@fn_pcre_get_named_substring)^ := GetProcedureAddress(PcreLib, 'pcre_get_named_substring');
+  PPointer(@fn_pcre_get_stringnumber)^ := GetProcedureAddress(PcreLib, 'pcre_get_stringnumber');
+  PPointer(@fn_pcre_get_stringtable_entries)^ := GetProcedureAddress(PcreLib, 'pcre_get_stringtable_entries');
+  ptr_pcre_malloc := GetProcedureAddress(PcreLib, 'pcre_malloc');
+  ptr_pcre_free := GetProcedureAddress(PcreLib, 'pcre_free');
+  ptr_pcre_stack_malloc := GetProcedureAddress(PcreLib, 'pcre_stack_malloc');
+  ptr_pcre_stack_free := GetProcedureAddress(PcreLib, 'pcre_stack_free');
+  ptr_pcre_callout := GetProcedureAddress(PcreLib, 'pcre_callout');
+end;
+
+function PCRE_MAJOR: Integer; cdecl;
+begin
+  Result := 8;
+end;
+
+function PCRE_MINOR: Integer; cdecl;
+begin
+  Result := 45;
+end;
+
+function PCRE_DATE: PChar; cdecl;
+begin
+  Result := '2021-06-15';
+end;
+
+function pcre_version: PChar; cdecl;
+begin
+  EnsurePcreLoaded;
+  if PPointer(@fn_pcre_version)^ <> nil then
+    Result := fn_pcre_version()
+  else
+    Result := '8.45';
+end;
+
+function pcre_set_malloc(Func: TPcreMemAlloc): TPcreMemAlloc; cdecl;
+begin
+  EnsurePcreLoaded;
+  if Assigned(ptr_pcre_malloc) then
+  begin
+    Result := ptr_pcre_malloc^;
+    ptr_pcre_malloc^ := Func;
+  end
+  else
+    Result := nil;
+end;
+
+function pcre_set_free(Proc: TPcreMemFree): TPcreMemFree; cdecl;
+begin
+  EnsurePcreLoaded;
+  if Assigned(ptr_pcre_free) then
+  begin
+    Result := ptr_pcre_free^;
+    ptr_pcre_free^ := Proc;
+  end
+  else
+    Result := nil;
+end;
+
+function pcre_set_stack_malloc(Func: TPcreMemAlloc): TPcreMemAlloc; cdecl;
+begin
+  EnsurePcreLoaded;
+  if Assigned(ptr_pcre_stack_malloc) then
+  begin
+    Result := ptr_pcre_stack_malloc^;
+    ptr_pcre_stack_malloc^ := Func;
+  end
+  else
+    Result := nil;
+end;
+
+function pcre_set_stack_free(Proc: TPcreMemFree): TPcreMemFree; cdecl;
+begin
+  EnsurePcreLoaded;
+  if Assigned(ptr_pcre_stack_free) then
+  begin
+    Result := ptr_pcre_stack_free^;
+    ptr_pcre_stack_free^ := Proc;
+  end
+  else
+    Result := nil;
+end;
+
+function pcre_malloc(size: LongWord): Pointer; cdecl;
+begin
+  EnsurePcreLoaded;
+  if (ptr_pcre_malloc <> nil) and (PPointer(ptr_pcre_malloc)^ <> nil) then
+    Result := ptr_pcre_malloc^(size)
+  else
+    Result := libc_malloc(size);
+end;
+
+procedure pcre_free(P: Pointer); cdecl;
+begin
+  if P = nil then
+    Exit;
+  EnsurePcreLoaded;
+  if (ptr_pcre_free <> nil) and (PPointer(ptr_pcre_free)^ <> nil) then
+    ptr_pcre_free^(P)
+  else
+    libc_free(P);
+end;
+
+function pcre_set_callout_handler(Func: TPcreCalloutCallback): TPcreCalloutCallback; cdecl;
+begin
+  EnsurePcreLoaded;
+  if Assigned(ptr_pcre_callout) then
+  begin
+    Result := ptr_pcre_callout^;
+    ptr_pcre_callout^ := Func;
+  end
+  else
+    Result := nil;
+end;
+
+function pcre_setlocale(category: Integer; locale: PChar): PChar; cdecl;
+begin
+  Result := libc_setlocale(category, locale);
+end;
+
+function pcre_maketables: TPcre_tableH; cdecl;
+begin
+  EnsurePcreLoaded;
+  Result := fn_pcre_maketables();
+end;
+
+function pcre_compile(pattern: PChar; options: LongWord; out errptr: PChar;
+  out erroffset: Integer; tableptr: TPcre_tableH = nil): TPcreH; cdecl;
+begin
+  EnsurePcreLoaded;
+  Result := fn_pcre_compile(pattern, options, errptr, erroffset, tableptr);
+end;
+
+function pcre_compile2(pattern: PChar; options: LongWord; out errorcodeptr: Integer;
+  out errptr: PChar; out erroffset: Integer; tableptr: TPcre_tableH = nil): TPcreH; cdecl;
+begin
+  EnsurePcreLoaded;
+  Result := fn_pcre_compile2(pattern, options, errorcodeptr, errptr, erroffset, tableptr);
+end;
+
+function pcre_study(pcre: TPcreH; options: LongWord; out errptr: PChar): TPcre_extraH; cdecl;
+begin
+  EnsurePcreLoaded;
+  Result := fn_pcre_study(pcre, options, errptr);
+end;
+
+function pcre_info(pcre: TPcreH; optptr: PLongWord = nil; firstcharptr: PPChar = nil): Integer; cdecl;
+begin
+  EnsurePcreLoaded;
+  Result := fn_pcre_info(pcre, optptr, firstcharptr);
+end;
+
+function pcre_fullinfo(pattern: TPcreH; pcre_extra: TPcre_extraH; what: Integer; out where): Integer; cdecl;
+begin
+  EnsurePcreLoaded;
+  Result := fn_pcre_fullinfo(pattern, pcre_extra, what, where);
+end;
+
+function pcre_exec(pcre: TPcreH; pcre_extra: TPcre_extraH; subject: PChar;
+  length: Integer; startoffset: Integer; options: LongWord; ovector: PIntArray;
+  ovecsize: Cardinal): Integer; cdecl;
+begin
+  EnsurePcreLoaded;
+  Result := fn_pcre_exec(pcre, pcre_extra, subject, length, startoffset, options, ovector, ovecsize);
+end;
+
+function pcre_dfa_exec(pcre: TPcreH; pcre_extra: TPcre_extraH; subject: PChar;
+  length: Integer; startoffset: Integer; options: LongWord; ovector: PIntArray;
+  ovecsize: Cardinal; workspace: PIntArray; wscount: Cardinal): Integer; cdecl;
+begin
+  EnsurePcreLoaded;
+  Result := fn_pcre_dfa_exec(pcre, pcre_extra, subject, length, startoffset, options, ovector, ovecsize, workspace, wscount);
+end;
+
+function pcre_copy_substring(subject: PChar; ovector: PIntArray; stringcount: Integer;
+  stringnumber: Integer; buffer: PChar; bufsize: Integer): Integer; cdecl;
+begin
+  EnsurePcreLoaded;
+  Result := fn_pcre_copy_substring(subject, ovector, stringcount, stringnumber, buffer, bufsize);
+end;
+
+function pcre_get_substring(subject: PChar; ovector: PIntArray; stringcount: Integer;
+  stringnumber: Integer; out stringptr: PChar): Integer; cdecl;
+begin
+  EnsurePcreLoaded;
+  Result := fn_pcre_get_substring(subject, ovector, stringcount, stringnumber, stringptr);
+end;
+
+function pcre_get_substring_list(subject: PChar; ovector: PIntArray;
+  stringcount: Integer; out listptr: PPChar): Integer; cdecl;
+begin
+  EnsurePcreLoaded;
+  Result := fn_pcre_get_substring_list(subject, ovector, stringcount, listptr);
+end;
+
+procedure pcre_free_substring(stringptr: PChar); cdecl;
+begin
+  EnsurePcreLoaded;
+  if PPointer(@fn_pcre_free_substring)^ <> nil then
+    fn_pcre_free_substring(stringptr);
+end;
+
+procedure pcre_free_substring_list(stringptr: PPChar); cdecl;
+begin
+  EnsurePcreLoaded;
+  if PPointer(@fn_pcre_free_substring_list)^ <> nil then
+    fn_pcre_free_substring_list(stringptr);
+end;
+
+function pcre_config(what: Integer; out where): Integer; cdecl;
+begin
+  EnsurePcreLoaded;
+  Result := fn_pcre_config(what, where);
+end;
+
+function pcre_copy_named_substring(code: TPcreH; subject: PChar; ovector: PIntArray;
+  stringcount: Integer; stringname: PChar; buffer: PChar; buffersize: Integer): Integer; cdecl;
+begin
+  EnsurePcreLoaded;
+  Result := fn_pcre_copy_named_substring(code, subject, ovector, stringcount, stringname, buffer, buffersize);
+end;
+
+function pcre_get_named_substring(code: TPcreH; subject: PChar; ovector: PIntArray;
+  stringcount: Integer; stringname: PChar; stringptr: PPChar): Integer; cdecl;
+begin
+  EnsurePcreLoaded;
+  Result := fn_pcre_get_named_substring(code, subject, ovector, stringcount, stringname, stringptr);
+end;
+
+function pcre_get_stringnumber(code: TPcreH; name: PChar): Integer; cdecl;
+begin
+  EnsurePcreLoaded;
+  Result := fn_pcre_get_stringnumber(code, name);
+end;
+
+function pcre_get_stringtable_entries(code: TPcreH; name: PChar;
+  first: PPChar; last: PPChar): Integer; cdecl;
+begin
+  EnsurePcreLoaded;
+  Result := fn_pcre_get_stringtable_entries(code, name, first, last);
+end;
+
+function pcre_extra_set_match_limit(var pcre_extra: TPcre_extraH; value: Longint): Integer; cdecl;
+begin
+  Result := 0;
+end;
+
+function pcre_extra_set_callout_data(var pcre_extra: TPcre_extraH; Data: Pointer): Integer; cdecl;
+begin
+  Result := 0;
+end;
+
+function regcomp(out preg: regex_t; pattern: PChar; cflags: Cardinal): Integer; cdecl;
+begin
+  FillChar(preg, SizeOf(preg), 0);
+  Result := REG_INVARG;
+end;
+
+function regexec(var preg: regex_t; str: PChar; nmatch: Cardinal;
+  pmatch: regmatch_ptr; eflags: Cardinal): Integer; cdecl;
+begin
+  Result := REG_NOMATCH;
+end;
+
+function regerror(errcode: Integer; var preg: regex_t; errbuf: PChar;
+  errbuf_size: Cardinal): Integer; cdecl;
+begin
+  Result := 0;
+end;
+
+procedure regfree(var preg: regex_t); cdecl;
+begin
+end;
+
+function pcre_isalnum(c: Char): Boolean;
+begin
+  Result := c in ['0'..'9', 'A'..'Z', 'a'..'z'];
+end;
+
+function pcre_isalpha(c: Char): Boolean;
+begin
+  Result := c in ['A'..'Z', 'a'..'z'];
+end;
+
+function pcre_iscntrl(c: Char): Boolean;
+begin
+  Result := (Ord(c) < 32) or (Ord(c) = 127);
+end;
+
+function pcre_isdigit(c: Char): Boolean;
+begin
+  Result := c in ['0'..'9'];
+end;
+
+function pcre_isgraph(c: Char): Boolean;
+begin
+  Result := (Ord(c) >= 33) and (Ord(c) <= 126);
+end;
+
+function pcre_islower(c: Char): Boolean;
+begin
+  Result := c in ['a'..'z'];
+end;
+
+function pcre_isprint(c: Char): Boolean;
+begin
+  Result := (Ord(c) >= 32) and (Ord(c) <= 126);
+end;
+
+function pcre_ispunct(c: Char): Boolean;
+begin
+  Result := pcre_isgraph(c) and (not pcre_isalnum(c));
+end;
+
+function pcre_isspace(c: Char): Boolean;
+begin
+  Result := c in [' ', #9, #10, #11, #12, #13];
+end;
+
+function pcre_isupper(c: Char): Boolean;
+begin
+  Result := c in ['A'..'Z'];
+end;
+
+function pcre_isxdigit(c: Char): Boolean;
+begin
+  Result := c in ['0'..'9', 'A'..'F', 'a'..'f'];
+end;
+
+{$ELSE}
 const
   PCRE_DLL_NAME =
-{$ifdef UNIX}
-    'libpcre.so'
-{$endif}
-{$ifdef Win32}
+  {$IFDEF Win32}
     'pcre32.dll'
-{$endif}
-{$ifdef Win64}
-    'pcre64.dll'
-{$else}
-  {$error 'Unsupported platform for PCRE library'}
-{$endif}
+  {$ELSE}
+    {$IFDEF Win64}
+      'pcre64.dll'
+    {$ELSE}
+      {$ERROR 'Unsupported platform for PCRE library'}
+    {$ENDIF}
+  {$ENDIF}
   ;
 
 function PCRE_MAJOR; external PCRE_DLL_NAME name 'pcre_major';
@@ -726,99 +1176,60 @@ function pcre_get_stringtable_entries; external PCRE_DLL_NAME name 'pcre_get_str
 function pcre_extra_set_match_limit; external PCRE_DLL_NAME name 'pcre_extra_set_match_limit';
 function pcre_extra_set_callout_data; external PCRE_DLL_NAME name 'pcre_extra_set_callout_data';
 
-//===========================================================================
-//
-// These are strongly typed versions of the same named functions 
-// exported by the pcre.dll
-//
-//===========================================================================
-
 function pcre_isalnum(c: Char): Boolean;
-
 begin
   Result := isalnum(Ord(c)) <> 0;
 end;
-
-//===========================================================================
 
 function pcre_isalpha(c: Char): Boolean;
-
 begin
   Result := isalnum(Ord(c)) <> 0;
 end;
 
-//===========================================================================
-
 function pcre_iscntrl(c: Char): Boolean;
-
 begin
   Result := iscntrl(Ord(c)) <> 0;
 end;
 
-//===========================================================================
-
 function pcre_isdigit(c: Char): Boolean;
-
 begin
   Result := isdigit(Ord(c)) <> 0;
 end;
 
-//===========================================================================
-
 function pcre_isgraph(c: Char): Boolean;
-
 begin
   Result := isgraph(Ord(c)) <> 0;
 end;
 
-//===========================================================================
-
 function pcre_islower(c: Char): Boolean;
-
 begin
   Result := islower(Ord(c)) <> 0;
 end;
 
-//===========================================================================
-
 function pcre_isprint(c: Char): Boolean;
-
 begin
   Result := isprint(Ord(c)) <> 0;
 end;
 
-//===========================================================================
-
 function pcre_ispunct(c: Char): Boolean;
-
 begin
   Result := ispunct(Ord(c)) <> 0;
 end;
 
-//===========================================================================
-
 function pcre_isspace(c: Char): Boolean;
-
 begin
   Result := isspace(Ord(c)) <> 0;
 end;
 
-//===========================================================================
-
 function pcre_isupper(c: Char): Boolean;
-
 begin
   Result := isupper(Ord(c)) <> 0;
 end;
 
-//===========================================================================
-
 function pcre_isxdigit(c: Char): Boolean;
-
 begin
   Result := isxdigit(Ord(c)) <> 0;
 end;
-
-//===========================================================================
+{$ENDIF}
 
 end.

@@ -25,6 +25,8 @@ type
     procedure SetTokenizerVersion(Value: Integer);
     procedure LoadTexts(const OriginalText, TranslatedText: string);
     procedure LoadPair(const OriginalText, TranslatedText, Associations: string);
+    { The verse's words only (no tags, notes or headings), space separated. }
+    function VerseWords(const Text: string): string;
     function AssociationsEquivalent(const Left, Right: string): Boolean;
     function FormatCorruptionDetails(const ErrorMessage, Associations: string): string;
     function ReplaceTextKeepingAssociations(const OriginalText, TranslatedText,
@@ -230,6 +232,27 @@ begin
   FSourceVerse.Pairs := Associations;
   if not AssociationsEquivalent(FSourceVerse.Pairs, Associations) then
     raise Exception.Create(SAssociationDataNotCompletelyApplied);
+end;
+
+function TVerseRenderBuffer.VerseWords(const Text: string): string;
+var
+  Item: TSyntagm;
+  Words: TStringBuilder;
+begin
+  EnsureReady;
+  FDestinationVerse.Text := Text;
+  Words := TStringBuilder.Create;
+  try
+    for Item in FDestinationVerse.Syntagms do
+      if Item.Kind = skSyntagm then
+      begin
+        Words.Append(Item.Text);
+        Words.Append(' ');
+      end;
+    Result := Words.ToString;
+  finally
+    Words.Free;
+  end;
 end;
 
 function TVerseRenderBuffer.FormatCorruptionDetails(const ErrorMessage,

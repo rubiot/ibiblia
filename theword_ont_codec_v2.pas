@@ -873,11 +873,8 @@ begin
   for Index := 0 to ADocument.OpaqueItemCount - 1 do
   begin
     Item := ADocument.OpaqueItems[Index];
-    if Item.RawLexeme = '<CM>' then
-      BreakIdentity.Kind := twbkParagraph
-    else if Item.RawLexeme = '<CL>' then
-      BreakIdentity.Kind := twbkSoftLine
-    else
+    if not TryTheWordBreakKindFromLexeme(Item.RawLexeme,
+      BreakIdentity.Kind) then
       Continue;
     BreakIdentity.OffsetUTF16 := Item.Offset;
     BreakIdentity.Ordinal := Item.Ordinal;
@@ -2229,8 +2226,7 @@ begin
       Continue;
     { Consecutive typed breaks are valid. Other opaque objects remain
       protected and cannot acquire new structure at their exact anchor. }
-    if (OpaqueItem.FRawLexeme <> '<CM>') and
-       (OpaqueItem.FRawLexeme <> '<CL>') then
+    if not IsTheWordBreakLexeme(OpaqueItem.FRawLexeme) then
       Exit(False);
   end;
 
@@ -2315,10 +2311,9 @@ begin
     Anchor := OpaqueItem.FOffset;
     if (ALengthUTF16 = 0) and (Anchor = AStartUTF16) then
     begin
-      { CM/CL are typed caret boundaries. Affinity decides which side of
+      { CM/CI/CL are typed caret boundaries. Affinity decides which side of
         their zero-width anchor receives inserted text. }
-      if not ((OpaqueItem.FRawLexeme = '<CM>') or
-              (OpaqueItem.FRawLexeme = '<CL>')) then
+      if not IsTheWordBreakLexeme(OpaqueItem.FRawLexeme) then
         Exit(False);
     end
     else if (ALengthUTF16 > 0) and (Anchor > AStartUTF16) and
@@ -2695,7 +2690,7 @@ begin
   begin
     Item := TTheWordOpaqueItem(FOpaqueItems[Index]);
     if (Item.FOffset <> AOffsetUTF16) or
-       (Item.FRawLexeme <> '<CM>') then
+       ((Item.FRawLexeme <> '<CM>') and (Item.FRawLexeme <> '<CI>')) then
       Continue;
     if (CandidateIndex < 0) or
        (AFromEnd and (Item.FOrdinal > CandidateOrdinal)) or
@@ -3250,7 +3245,7 @@ begin
   begin
     Item := TTheWordOpaqueItem(FOpaqueItems[Index]);
     if (Item.FOffset = NewAnchor) and (Item.FOrdinal < TargetOrdinal) and
-       ((Item.FRawLexeme = '<CM>') or (Item.FRawLexeme = '<CL>')) then
+       IsTheWordBreakLexeme(Item.FRawLexeme) then
       Item.FOffset := AStartUTF16;
   end;
   for Index := 0 to FEvents.Count - 1 do
@@ -3258,7 +3253,7 @@ begin
     Event := TTheWordInlineEvent(FEvents[Index]);
     if (Event.Kind = twiekOpaque) and (Event.Offset = NewAnchor) and
        (Event.Ordinal < TargetOrdinal) and
-       ((Event.RawLexeme = '<CM>') or (Event.RawLexeme = '<CL>')) then
+       IsTheWordBreakLexeme(Event.RawLexeme) then
       Event.Offset := AStartUTF16;
   end;
   Result := True;

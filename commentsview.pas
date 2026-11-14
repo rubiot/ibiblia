@@ -139,6 +139,8 @@ end;
 procedure TCommentsView.RenderComments;
 begin
   Inc(FRenderGeneration);
+  if not Visible or not Assigned(Parent) then
+    Exit;
   RenderHTML(FPreviewText);
 end;
 
