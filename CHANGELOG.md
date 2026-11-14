@@ -6,7 +6,11 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.020 (2026-11-15) — Go to Verse Lookup & Skin Fixes
+### 0. Version 1.1.0.021 (2026-11-15) — Dialog Skin Completed on First Open
+
+* **Dialog Controls Skinned on First Open (`formprincipal.pas`)**: In 1.1.0.020 a dialog such as **Export project** got its dark background on first open, but its tab pages, check boxes and buttons stayed light. The dialog becomes the active form before its window handles exist, and the dark-mode subclass hooks (`HookButtonControl`, `HookCheckBoxControl`, `HookTabControl`, `HookFormControl`) need those handles. `SkinFormOnce` now sets the colours at once, queues `DeferredSkinForm` (`Application.QueueAsyncCall`) to apply the full skin once the dialog is visible, creates the handles of controls on tab pages not yet shown (`EnsureChildHandles`), and only then records the form as skinned.
+
+### 0a. Version 1.1.0.020 (2026-11-15) — Go to Verse Lookup & Skin Fixes
 
 * **Go to Verse Lookup Box (`FormGoToVerse.pas`, `verse_lookup.pas`, `bible_versification.pas`, `formprincipal.pas`)**: Added **Tools > Go to verse...** (`Ctrl+G`), a theWord-style lookup box. Type `jn 3 16`, `jn 3.16`, `1co 13:4` or `ps 23` and press `Enter`.
   * A space, period, colon or comma separates chapter and verse.

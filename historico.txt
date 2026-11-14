@@ -1,4 +1,7 @@
-﻿Version 1.1.0.020 (64-bit Edition) - 2026-11-15
+﻿Version 1.1.0.021 (64-bit Edition) - 2026-11-15
+- Fixed dialogs such as Export project keeping light tab pages, check boxes and buttons the first time they open: the skin was applied before the dialog's controls existed, so only the dialog background turned dark. The skin is now applied again once the dialog is on screen, including tab pages not yet shown.
+
+Version 1.1.0.020 (64-bit Edition) - 2026-11-15
 - Added Tools > Go to verse (Ctrl+G): type a reference such as jn 3 16, jn 3.16 or 1co 13:4 and press Enter. Book abbreviations and names (English and Tagalog) are recognised, and a space, period or comma can stand for the colon. "3 16" goes to chapter 3 verse 16 of the current book, ":16" to verse 16 of the current chapter. Typing a letter while the Bible tree has the focus opens the box.
 - Fixed the skin reverting to light colours (header strip, Bible tree, verse panels) after opening another project or closing one; previously only a restart restored it.
 - Fixed dialogs such as Export project opening unskinned the first time in a session.

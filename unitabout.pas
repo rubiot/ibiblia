@@ -109,6 +109,9 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.021 (64-bit Edition) - 2026-11-15' + LineEnding +
+  '- Fixed dialogs such as Export project keeping light tab pages, check boxes and buttons on first open.' + LineEnding +
+  LineEnding +
   'Version 1.1.0.020 (64-bit Edition) - 2026-11-15' + LineEnding +
   '- Added Tools > Go to verse (Ctrl+G): type a reference such as jn 3 16, jn 3.16 or 1co 13:4 and press Enter.' + LineEnding +
   '- Go to verse accepts book abbreviations and names (English and Tagalog), and a space, period or comma in place of the colon.' + LineEnding +

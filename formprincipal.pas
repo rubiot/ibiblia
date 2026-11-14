@@ -386,6 +386,7 @@ type
     procedure ScreenActiveFormChanged(Sender: TObject; Form: TCustomForm);
     procedure ScreenRemoveForm(Sender: TObject; Form: TCustomForm);
     procedure SkinFormOnce(AForm: TCustomForm);
+    procedure DeferredSkinForm(Data: PtrInt);
     procedure ReapplySkinAfterProjectChange;
     procedure ActionReadOnHoverExecute(Sender: TObject);
     procedure VoiceSettingsClick(Sender: TObject);
@@ -4880,6 +4881,7 @@ begin
     FStripTimer.Enabled := False;
   Screen.RemoveHandlerActiveFormChanged(@ScreenActiveFormChanged);
   Screen.RemoveHandlerRemoveForm(@ScreenRemoveForm);
+  Application.RemoveAsyncCalls(Self);
   FreeAndNil(FSkinnedForms);
   Application.RemoveOnIdleHandler(@AppIdleAutoSelect);
   if Assigned(TTSManager) then
@@ -5290,15 +5292,72 @@ begin
   end;
 end;
 
-{ Skins another window once with the current skin. }
+{ Creates the window handles of every control on a form, including those on
+  tab pages that have not been shown yet. The skin's dark buttons, check
+  boxes and tab pages are painted by hooks that can only be attached to a
+  control that already has its handle. }
+procedure EnsureChildHandles(AParent: TWinControl);
+var
+  I: Integer;
+  Child: TWinControl;
+begin
+  if not Assigned(AParent) or not AParent.HandleAllocated then
+    Exit;
+  for I := 0 to AParent.ControlCount - 1 do
+    if AParent.Controls[I] is TWinControl then
+    begin
+      Child := TWinControl(AParent.Controls[I]);
+      if csDestroying in Child.ComponentState then
+        Continue;
+      try
+        if not Child.HandleAllocated then
+          Child.HandleNeeded;
+      except
+        // a control that cannot create its handle yet simply stays unhooked
+      end;
+      EnsureChildHandles(Child);
+    end;
+end;
+
+{ Skins another window once with the current skin.
+  A dialog becomes the active form before its window and controls exist. At
+  that moment only the colours can be set; the hooks that paint dark buttons,
+  check boxes and tab pages need the window handles. So the colours are set
+  at once and the full skin is applied again as soon as the dialog is on
+  screen; only then is the form remembered as skinned. }
 procedure TMainForm.SkinFormOnce(AForm: TCustomForm);
+var
+  Ready: Boolean;
 begin
   if not Assigned(AForm) or (AForm = Self) or not Assigned(FSkinnedForms) or
-     (FSkinnedForms.IndexOf(AForm) >= 0) then
+     (FSkinnedForms.IndexOf(AForm) >= 0) or
+     (csDestroying in AForm.ComponentState) then
     Exit;
-  FSkinnedForms.Add(AForm);
+  Ready := AForm.HandleAllocated and AForm.Visible;
+  if Ready then
+    EnsureChildHandles(AForm);
   ApplyDarkModeToWindow(AForm, CurrentSkin.IsDark);
   ApplySkinToForm(AForm, CurrentSkin);
+  if Ready then
+  begin
+    FSkinnedForms.Add(AForm);
+    AForm.Invalidate;
+  end
+  else
+    Application.QueueAsyncCall(@DeferredSkinForm, PtrInt(AForm));
+end;
+
+{ Second pass of SkinFormOnce, run once the dialog is on screen. }
+procedure TMainForm.DeferredSkinForm(Data: PtrInt);
+var
+  F: TCustomForm;
+begin
+  F := TCustomForm(Data);
+  if ApplicationShuttingDown or not Assigned(FSkinnedForms) or
+     (Screen.CustomFormIndex(F) < 0) then
+    Exit; // the dialog was closed and freed in the meantime
+  if F.HandleAllocated and F.Visible then
+    SkinFormOnce(F);
 end;
 
 { The LCL passes the form that was active BEFORE the change, so on its own
