@@ -24,6 +24,8 @@ implementation
 
 {$IFDEF WINDOWS}
 uses Windows;
+{$ELSE}
+uses BaseUnix, Unix;
 {$ENDIF}
 
 resourcestring
@@ -127,8 +129,57 @@ begin
   end;
 end;
 {$ELSE}
+var
+  Source, Destination, Backup: TFileStream;
+  Guid: TGUID;
+  RemoveBackup: Boolean;
+  WriteError: string;
 begin
-  raise Exception.Create('Updating a shared text export is only supported on Windows');
+  FBackupFileName := '';
+  Source := nil;
+  Destination := nil;
+  Backup := nil;
+  RemoveBackup := False;
+  try
+    Source := TFileStream.Create(StagingFileName, fmOpenRead or fmShareDenyNone);
+    Destination := TFileStream.Create(FinalFileName, fmOpenReadWrite or fmShareDenyWrite);
+    if CreateGUID(Guid) <> 0 then
+      raise Exception.Create('Could not create an export backup name');
+    FBackupFileName := FinalFileName + '.export-backup-' +
+      Copy(GUIDToString(Guid), 2, 36);
+    Backup := TFileStream.Create(FBackupFileName, fmCreate or fmShareExclusive);
+    RemoveBackup := True;
+    CopyContents(Destination, Backup, ecpBackup);
+    fpfsync(Backup.Handle);
+
+    RemoveBackup := False;
+    try
+      CopyContents(Source, Destination, ecpReplacement);
+      fpfsync(Destination.Handle);
+      RemoveBackup := True;
+    except
+      on E: Exception do
+      begin
+        WriteError := E.Message;
+        try
+          CopyContents(Backup, Destination, ecpRestore);
+          fpfsync(Destination.Handle);
+          RemoveBackup := True;
+        except
+          on RestoreError: Exception do
+            raise Exception.CreateFmt(STextExportRestoreFailed,
+              [FinalFileName, FBackupFileName, WriteError, RestoreError.Message]);
+        end;
+        raise;
+      end;
+    end;
+  finally
+    Backup.Free;
+    Destination.Free;
+    Source.Free;
+    if RemoveBackup and (FBackupFileName <> '') and SysUtils.DeleteFile(FBackupFileName) then
+      FBackupFileName := '';
+  end;
 end;
 {$ENDIF}
 

@@ -109,6 +109,8 @@ resourcestring
   STheWordNTModule = 'theWord Bible module (*.nt)';
   STheWordONTModule = 'theWord Bible module (*.ont)';
   SMySwordModule   = 'MySword Bible module (*.bbl.mybible)';
+  SOtherBibleFormats = '|e-Sword Bible, RTF (*.bblx)|*.bblx|e-Sword Bible, HTML (*.bbli)|*.bbli' +
+    '|USFM Bible (*.usfm)|*.usfm|USFX Bible (*.usfx)|*.usfx';
   STheWordDictionaryModule = 'theWord dictionary module (*.dct.twm)';
   SSaveModuleAs = 'Save module as...';
   SAnalyticalConcordance = 'AnalyticalConcordance';
@@ -341,17 +343,17 @@ begin
     etOT:
     begin
       SaveBibleModuleDialog.DefaultExt := '.ot';
-      SaveBibleModuleDialog.Filter := STheWordOTModule + '|*.ot' + '|' + SMySwordModule + '|*.bbl.mybible';
+      SaveBibleModuleDialog.Filter := STheWordOTModule + '|*.ot' + '|' + SMySwordModule + '|*.bbl.mybible' + SOtherBibleFormats;
     end;
     etNT:
     begin
       SaveBibleModuleDialog.DefaultExt := '.nt';
-      SaveBibleModuleDialog.Filter := STheWordNTModule + '|*.nt' + '|' + SMySwordModule + '|*.bbl.mybible';
+      SaveBibleModuleDialog.Filter := STheWordNTModule + '|*.nt' + '|' + SMySwordModule + '|*.bbl.mybible' + SOtherBibleFormats;
     end;
     etONT:
     begin
       SaveBibleModuleDialog.DefaultExt := '.ont';
-      SaveBibleModuleDialog.Filter := STheWordONTModule + '|*.ont' + '|' + SMySwordModule + '|*.bbl.mybible';
+      SaveBibleModuleDialog.Filter := STheWordONTModule + '|*.ont' + '|' + SMySwordModule + '|*.bbl.mybible' + SOtherBibleFormats;
     end;
   end;
   SaveBibleModuleDialog.Title := SSaveModuleAs;
@@ -666,7 +668,11 @@ begin
   if Assigned(CbExportMorphology) then
     CbExportMorphology.Caption := SExportMorphologyCaption;
   if Assigned(CbExportComments) then
+  begin
     CbExportComments.Caption := SExportCommentsCaption;
+    CbExportComments.Visible := False;
+    CbExportComments.Checked := False;
+  end;
   if Assigned(CbMarkReusedStrongs) then
     CbMarkReusedStrongs.Caption := SExportMarkReusedStrongs;
   if Assigned(CbMarkUntranslatedStrongs) then
@@ -742,7 +748,8 @@ begin
   else if ContextMaxCharacters > CONCORDANCE_CONTEXT_MAX_CHARACTERS then
     ContextMaxCharacters := CONCORDANCE_CONTEXT_MAX_CHARACTERS;
   seConcordanceMaxCharacters.Value := ContextMaxCharacters;
-  CbExportComments.Checked := FProject.GetInfo('opcoes.exportar.comentarios') = '1';
+  CbExportComments.Checked := False;
+  CbExportComments.Visible := False;
   CbExportMorphology.Checked := FProject.GetInfo('opcoes.exportar.morfologia') = '1';
   CbExportUnassociatedAsItalics.Checked := FProject.GetInfo('opcoes.exportar.na.como.italicos') = '1';
   CbMarkReusedStrongs.Checked := FProject.GetInfo('opcoes.exportar.strongs.reutilizados') = '1';

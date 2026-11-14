@@ -209,6 +209,9 @@ resourcestring
 
 implementation
 
+uses
+  module_conversion;
+
 { TFrmNewProject }
 
 procedure TFrmNewProject.FormCreate(Sender: TObject);
@@ -323,9 +326,11 @@ procedure TFrmNewProject.CreateScenarioPage;
 begin
   FScenarioRadio := TRadioGroup.Create(Self);
   FScenarioRadio.Parent := FTabScenario;
-  FScenarioRadio.SetBounds(16, 16, 768, 112);
+  FScenarioRadio.SetBounds(16, 16, 768, 72);
   FScenarioRadio.Anchors := [akTop, akLeft, akRight];
   FScenarioRadio.Columns := 1;
+  FScenarioRadio.ChildSizing.VerticalSpacing := 2;
+  FScenarioRadio.ChildSizing.TopBottomSpacing := 2;
   FScenarioRadio.OnClick := @ScenarioChanged;
 
   FScenarioDescription := TMemo.Create(Self);
@@ -356,7 +361,9 @@ begin
   FProjectFileButton.OnClick := @ProjectFileButtonClick;
 
   RadioGroupScope.Parent := FTabProject;
-  RadioGroupScope.SetBounds(24, 152, 570, 96);
+  RadioGroupScope.SetBounds(24, 152, 570, 76);
+  RadioGroupScope.ChildSizing.VerticalSpacing := 2;
+  RadioGroupScope.ChildSizing.TopBottomSpacing := 2;
   RadioGroupScope.Caption := SScopeLabel;
 end;
 
@@ -616,23 +623,31 @@ end;
 procedure TFrmNewProject.SetTextModuleFilter;
 begin
   case RadioGroupScope.ItemIndex of
-    0: OpenDialogSelectText.Filter := SOldTestamentFilter;
-    1: OpenDialogSelectText.Filter := SNewTestamentFilter;
-    2: OpenDialogSelectText.Filter := SWholeBibleFilter;
+    0: OpenDialogSelectText.Filter := SOldTestamentFilter + SBibleModuleFilterSuffix;
+    1: OpenDialogSelectText.Filter := SNewTestamentFilter + SBibleModuleFilterSuffix;
+    2: OpenDialogSelectText.Filter := SWholeBibleFilter + SBibleModuleFilterSuffix;
   else
-    OpenDialogSelectText.Filter := SWholeBibleFilter;
+    OpenDialogSelectText.Filter := SWholeBibleFilter + SBibleModuleFilterSuffix;
   end;
 end;
 
 procedure TFrmNewProject.SelectText(Edit: TLabeledEdit);
 var
   TextType: TTipoTextoBiblico;
+  ModuleFileName, ConversionError: string;
 begin
   SetTextModuleFilter;
   OpenDialogSelectText.Title := SChooseBibleModuleTitle;
   OpenDialogSelectText.FileName := Edit.Text;
   if OpenDialogSelectText.Execute then
-    Edit.Text := OpenDialogSelectText.FileName;
+  begin
+    // e-Sword / USFM / USFX: convert to a theWord module first
+    if PrepareBibleModuleFile(OpenDialogSelectText.FileName, ModuleFileName,
+       ConversionError) then
+      Edit.Text := ModuleFileName
+    else
+      MessageDlg(SChooseBibleModuleTitle, ConversionError, mtError, [mbOK], 0);
+  end;
 
   TextType := tbOrigem;
   if Edit = EditDestinationText then

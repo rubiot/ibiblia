@@ -115,6 +115,7 @@ type
     function GetDefaultAttribute(Index: integer): TSynHighlighterAttributes; override;
   public
     constructor Create(AOwner: TComponent); override;
+    procedure ApplySkinColors;
     class function GetLanguageName: string; override;
     function GetEol: Boolean; override;
     function GetToken: string; override;
@@ -206,6 +207,9 @@ function FindTheWordMatchingTagPairAt(Lines: TStrings; const Caret: TPoint;
   out CurrentTag, MatchingTag: TTheWordTagPairPosition): Boolean;
 
 implementation
+
+uses
+  unitskins, ui_style;
 
 resourcestring
   SElementDefaultText = 'Default text';
@@ -2105,8 +2109,36 @@ begin
 
   SetAttributesOnChange(@DefHighlightChange);
   ApplyTheWordSyntaxColorScheme(Self);
+  ApplySkinColors;
   FDefaultFilter := STheWordSyntax + ' (*.*)|*.*';
   FDefaultFilterInitialValue := FDefaultFilter;
+end;
+
+procedure TTheWordSyntaxHighlighter.ApplySkinColors;
+begin
+  ApplyTheWordSyntaxColorScheme(Self);
+  if CurrentSkin.Id <> skClassic then
+  begin
+    FTextAttri.Foreground := CurrentSkin.WindowText;
+    FSpaceAttri.Foreground := CurrentSkin.WindowText;
+  end;
+  if CurrentSkin.IsDark then
+  begin
+    FSemanticTagAttri.Foreground := $0060B0FF;
+    FStrongMorphTagAttri.Foreground := $00FFB870;
+    FStrongTagAttri.Foreground := $00FFB870;
+    FMorphTagAttri.Foreground := $00E098E0;
+    FWordTokenTagAttri.Foreground := $0090C0FF;
+    FNoteRefTagAttri.Foreground := $0070D8D8;
+    FLinkTagAttri.Foreground := $0080D0FF;
+    FHtmlTagAttri.Foreground := $0088D888;
+    FRtfTagAttri.Foreground := $00B8B880;
+    FAttributeAttri.Foreground := $0098D8B8;
+    FAttributeValueAttri.Foreground := $00A0C8FF;
+    FSymbolAttri.Foreground := CurrentSkin.WindowTextDim;
+    FWarningAttri.Foreground := $008080FF;
+  end;
+  DefHighlightChange(Self);
 end;
 
 class function TTheWordSyntaxHighlighter.GetLanguageName: string;
@@ -2306,10 +2338,20 @@ begin
   EnsureLineWrapPlugin(Editor);
   EnsureTagPairMarkup(Editor);
 
+  Editor.Color := UIContentColor;
+  Editor.Font.Color := UITextColor;
+  if Assigned(Editor.SelectedColor) then
+  begin
+    Editor.SelectedColor.Background := CurrentSkin.SelectedBg;
+    Editor.SelectedColor.Foreground := CurrentSkin.SelectedText;
+  end;
   if not (Editor.Highlighter is TTheWordSyntaxHighlighter) then
     Editor.Highlighter := TTheWordSyntaxHighlighter.Create(Editor);
   if Editor.Highlighter is TTheWordSyntaxHighlighter then
+  begin
     ApplyTheWordSyntaxColorScheme(TTheWordSyntaxHighlighter(Editor.Highlighter));
+    TTheWordSyntaxHighlighter(Editor.Highlighter).ApplySkinColors;
+  end;
 
   EnsureTheWordTagCompletion(Editor, not ReadOnly);
 end;

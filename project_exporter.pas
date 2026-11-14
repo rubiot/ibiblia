@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, StrUtils, Math, Forms, ComCtrls, LCLIntf, fgl, PCRE,
-  BibleScope, MySwordModule, TheWordDictionary, ConcordanceExport,
+  BibleScope, MySwordModule, esword_usfm, TheWordDictionary, ConcordanceExport,
   ai_batch_work_item, syntagm, Verse, project_verse_repository, verse_render_buffer,
   SuggestionManager, ONTTokenizer, text_direction, rf_note_scanner,
   association_highlight_projection, export_file_staging;
@@ -105,14 +105,21 @@ type
     class procedure CompleteExport(var ExportResult: TExportResult;
       Errors: TStringList; const FileName: string); static;
 
-    class procedure WriteTheWordBible(Verses: TStringList; const FileName,
-      Properties: string; Direction: TTextDirection); static;
-    procedure WriteMySwordBible(Verses: TStringList; const FileName,
-      Properties: string);
+    class function IsApocryphaReference(const ReferenceID: string): Boolean; static;
     procedure AddIndexedConcordanceOccurrence(
       const Data: TConcordanceOccurrenceData);
     function PlainVerseText(const XML: string): string;
   public
+    class procedure WriteTheWordBible(Verses: TStringList; const FileName,
+      Properties: string; Direction: TTextDirection); static;
+    { e-Sword (.bblx/.bbli), USFM (.usfm/.sfm) or USFX (.usfx) by extension }
+    { ExtraVerses / ExtraRefIDs: apocrypha lines ("b,c,v", book 67+), written
+      after the canonical books. }
+    procedure WriteESwordOrUSFMBible(Verses: TStringList; const FileName,
+      Properties: string; ExtraVerses: TStringList = nil;
+      ExtraRefIDs: TStringList = nil);
+    procedure WriteMySwordBible(Verses: TStringList; const FileName,
+      Properties: string);
     constructor Create(AScope: TEscopoTexto; AVerseRepository: TProjectVerseRepository;
       AVerseRenderBuffer: TVerseRenderBuffer);
     procedure Attach(AScope: TEscopoTexto; AVerseRepository: TProjectVerseRepository;
@@ -262,11 +269,47 @@ begin
   end;
 end;
 
+{ Removes formatting pairs that enclose nothing (<FI><Fi>, <FR><Fr>, ...),
+  which an edit can leave behind. Repeats so that nested empties go too. }
+function PruneEmptyFormattingTags(const Line: string): string;
+const
+  EmptyPairs: array[0..11] of string = (
+    '<FI><Fi>', '<FR><Fr>', '<FO><Fo>', '<FU><Fu>', '<TS><Ts>', '<RF><Rf>',
+    '<b></b>', '<i></i>', '<u></u>', '<s></s>', '<sup></sup>', '<sub></sub>');
+var
+  Pair: Integer;
+  Changed: Boolean;
+begin
+  Result := Line;
+  if Pos('><', Result) = 0 then
+    Exit;
+  repeat
+    Changed := False;
+    for Pair := 0 to High(EmptyPairs) do
+      if Pos(EmptyPairs[Pair], Result) > 0 then
+      begin
+        Result := StringReplace(Result, EmptyPairs[Pair], '', [rfReplaceAll]);
+        Changed := True;
+      end;
+  until not Changed;
+end;
+
 class procedure TProjectExporter.WriteTheWordBible(Verses: TStringList;
   const FileName, Properties: string; Direction: TTextDirection);
 var
   Stream: TFileStream;
+  Index: Integer;
 begin
+  // one verse per line: stray CR/LF inside a verse would shift every
+  // following verse in theWord (as the 1.0.1 mod's export guarded against)
+  for Index := 0 to Verses.Count - 1 do
+  begin
+    if (Pos(#13, Verses[Index]) > 0) or (Pos(#10, Verses[Index]) > 0) then
+      Verses[Index] := StringReplace(StringReplace(Verses[Index], #13#10, ' ',
+        [rfReplaceAll]), #10, ' ', [rfReplaceAll]).Replace(#13, ' ');
+    Verses[Index] := PruneEmptyFormattingTags(Verses[Index]);
+  end;
+  Verses.LineBreak := #13#10;
   Verses.Add('');
   Verses.Add(NormalizeTheWordR2LProperties(Properties, Direction));
   Verses[0] := #239#187#191 + Verses.Strings[0];
@@ -276,6 +319,84 @@ begin
     Verses.SaveToStream(Stream);
   finally
     Stream.Free;
+  end;
+end;
+
+function IsESwordOrUSFMExport(const FileName: string): Boolean;
+begin
+  Result := TESwordModule.IsESwordFileName(FileName) or
+    TESwordModule.IsUSFMOrUSFXFileName(FileName);
+end;
+
+class function TProjectExporter.IsApocryphaReference(const ReferenceID: string): Boolean;
+var
+  CommaPos: Integer;
+begin
+  CommaPos := Pos(',', ReferenceID);
+  Result := (CommaPos > 1) and (StrToIntDef(Copy(ReferenceID, 1, CommaPos - 1), 0) >= 67);
+end;
+
+procedure TProjectExporter.WriteESwordOrUSFMBible(Verses: TStringList;
+  const FileName, Properties: string; ExtraVerses: TStringList;
+  ExtraRefIDs: TStringList);
+var
+  RefIDs, AllVerses: TStringList;
+  Module: TESwordModule;
+  BookIndex, ChapterIndex, VerseIndex, Line, ExtraIndex: Integer;
+  HasOT, HasNT, HasApocrypha: Boolean;
+begin
+  HasOT := FScope in [etOT, etONT];
+  HasNT := FScope in [etNT, etONT];
+  HasApocrypha := False;
+  RefIDs := TStringList.Create;
+  AllVerses := TStringList.Create;
+  try
+    for BookIndex := 0 to QLivros[FScope] - 1 do
+      for ChapterIndex := 0 to QCapitulos[FScope][BookIndex] - 1 do
+        for VerseIndex := 0 to QVersiculos[FScope][QCapLivros[FScope][BookIndex] + ChapterIndex - 1] - 1 do
+          RefIDs.Add(Format('%d,%d,%d', [BookIndex + OffsetLivros[FScope] + 1,
+            ChapterIndex + 1, VerseIndex + 1]));
+
+    // canonical lines, in scope order
+    for Line := 0 to Min(Verses.Count, RefIDs.Count) - 1 do
+      AllVerses.Add(Verses[Line]);
+    while RefIDs.Count > AllVerses.Count do
+      RefIDs.Delete(RefIDs.Count - 1);
+
+    // apocrypha lines follow the canonical books
+    if Assigned(ExtraVerses) and Assigned(ExtraRefIDs) then
+      for ExtraIndex := 0 to Min(ExtraVerses.Count, ExtraRefIDs.Count) - 1 do
+        if Trim(ExtraVerses[ExtraIndex]) <> '' then
+        begin
+          AllVerses.Add(ExtraVerses[ExtraIndex]);
+          RefIDs.Add(ExtraRefIDs[ExtraIndex]);
+          HasApocrypha := True;
+        end;
+    if HasApocrypha then
+      HasOT := True;
+
+    if TESwordModule.IsUSFXFileName(FileName) then
+      TESwordModule.ExportUSFXBible(AllVerses, RefIDs, FileName, Properties, HasOT, HasNT)
+    else if TESwordModule.IsUSFMFileName(FileName) then
+      TESwordModule.ExportUSFMBible(AllVerses, RefIDs, FileName, Properties, HasOT, HasNT)
+    else
+    begin
+      Module := TESwordModule.Create(FileName, HasOT, HasNT, True, Properties,
+        SameText(ExtractFileExt(FileName), '.bbli'), HasApocrypha);
+      try
+        for Line := 0 to Min(AllVerses.Count, RefIDs.Count) - 1 do
+        begin
+          SScanf(RefIDs[Line], '%d,%d,%d', [@BookIndex, @ChapterIndex, @VerseIndex]);
+          Module.AddVerse(AllVerses[Line], BookIndex, ChapterIndex, VerseIndex);
+        end;
+        Module.Commit;
+      finally
+        Module.Free;
+      end;
+    end;
+  finally
+    AllVerses.Free;
+    RefIDs.Free;
   end;
 end;
 
@@ -312,7 +433,7 @@ function TProjectExporter.ExportDestinationTextWithStrongs(
   FinishSession: TExportSessionProc; GetReference: TExportReferenceFunc): TExportResult;
 var
   VerseData: TVerseData;
-  Lines: TStringList;
+  Lines, ApocLines, ApocRefs: TStringList;
   Errors: TStringList;
   HasTags: Boolean;
   RenderedLine: string;
@@ -323,6 +444,8 @@ var
 begin
   Result := Default(TExportResult);
   Lines := nil;
+  ApocLines := nil;
+  ApocRefs := nil;
   Errors := nil;
   Staging := nil;
   try
@@ -330,6 +453,8 @@ begin
     RequireDependencies;
     ConfigureProgressBar(ProgressBar, QLinhas[FScope]);
     Lines := TStringList.Create;
+    ApocLines := TStringList.Create;
+    ApocRefs := TStringList.Create;
     Errors := TStringList.Create;
 
     if Assigned(StartSession) then
@@ -377,7 +502,13 @@ begin
           end;
         end;
 
-        Lines.Add(RenderedLine);
+        if IsApocryphaReference(FVerseRepository.CurrentReferenceID) then
+        begin
+          ApocLines.Add(RenderedLine);
+          ApocRefs.Add(FVerseRepository.CurrentReferenceID);
+        end
+        else
+          Lines.Add(RenderedLine);
 
         AdvanceProgressBar(ProgressBar, 50);
         FVerseRepository.Next;
@@ -389,7 +520,10 @@ begin
 
     Result.ProcessedVerseCount := Lines.Count;
     Staging := TExportFileStaging.Create(FileName);
-      if SameText(ExtractFileExt(FileName), '.mybible') then
+      if IsESwordOrUSFMExport(FileName) then
+        WriteESwordOrUSFMBible(Lines, Staging.StagingFileName, Options.Properties,
+          ApocLines, ApocRefs)
+      else if SameText(ExtractFileExt(FileName), '.mybible') then
         WriteMySwordBible(Lines, Staging.StagingFileName, Options.Properties)
       else
       begin
@@ -401,7 +535,8 @@ begin
         WriteTheWordBible(Lines, Staging.StagingFileName, Options.Properties,
           Options.Direction);
       end;
-    if SameText(ExtractFileExt(FileName), '.mybible') then
+    if SameText(ExtractFileExt(FileName), '.mybible') or
+       TESwordModule.IsESwordFileName(FileName) then
       Staging.Publish(epSQLiteModule)
     else
       Staging.Publish(epTextModule);
@@ -417,6 +552,8 @@ begin
   finally
     Staging.Free;
     FreeAndNil(Lines);
+    FreeAndNil(ApocLines);
+    FreeAndNil(ApocRefs);
     FreeAndNil(Errors);
     if Assigned(ProgressBar) then
       ProgressBar.Visible := False;
@@ -430,7 +567,7 @@ function TProjectExporter.ExportInterlinearText(const FileName: string;
 var
   RuleIndex: Integer;
   VerseData: TVerseData;
-  Lines: TStringList;
+  Lines, ApocLines, ApocRefs: TStringList;
   Errors: TStringList;
   RenderedLine: string;
   CorruptionDetails: string;
@@ -439,6 +576,8 @@ var
 begin
   Result := Default(TExportResult);
   Lines := nil;
+  ApocLines := nil;
+  ApocRefs := nil;
   Errors := nil;
   Staging := nil;
   try
@@ -446,6 +585,8 @@ begin
     RequireDependencies;
     ConfigureProgressBar(ProgressBar, QLinhas[FScope]);
     Lines := TStringList.Create;
+    ApocLines := TStringList.Create;
+    ApocRefs := TStringList.Create;
     Errors := TStringList.Create;
     if SameText(ExtractFileExt(FileName), '.mybible') then
       RenderMode := rimMySword
@@ -487,7 +628,13 @@ begin
             end;
           end;
 
-        Lines.Add(RenderedLine);
+        if IsApocryphaReference(FVerseRepository.CurrentReferenceID) then
+        begin
+          ApocLines.Add(RenderedLine);
+          ApocRefs.Add(FVerseRepository.CurrentReferenceID);
+        end
+        else
+          Lines.Add(RenderedLine);
 
         AdvanceProgressBar(ProgressBar, 50);
         FVerseRepository.Next;
@@ -499,12 +646,16 @@ begin
 
     Result.ProcessedVerseCount := Lines.Count;
     Staging := TExportFileStaging.Create(FileName);
-      if SameText(ExtractFileExt(FileName), '.mybible') then
+      if IsESwordOrUSFMExport(FileName) then
+        WriteESwordOrUSFMBible(Lines, Staging.StagingFileName, Options.Properties,
+          ApocLines, ApocRefs)
+      else if SameText(ExtractFileExt(FileName), '.mybible') then
         WriteMySwordBible(Lines, Staging.StagingFileName, Options.Properties)
       else
         WriteTheWordBible(Lines, Staging.StagingFileName, Options.Properties,
           Options.Direction);
-    if SameText(ExtractFileExt(FileName), '.mybible') then
+    if SameText(ExtractFileExt(FileName), '.mybible') or
+       TESwordModule.IsESwordFileName(FileName) then
       Staging.Publish(epSQLiteModule)
     else
       Staging.Publish(epTextModule);
@@ -520,6 +671,8 @@ begin
   finally
     Staging.Free;
     FreeAndNil(Lines);
+    FreeAndNil(ApocLines);
+    FreeAndNil(ApocRefs);
     FreeAndNil(Errors);
     if Assigned(ProgressBar) then
       ProgressBar.Visible := False;

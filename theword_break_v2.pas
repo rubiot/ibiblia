@@ -6,8 +6,9 @@ interface
 
 type
   TTheWordBreakKind = (
-    twbkParagraph,
-    twbkSoftLine
+    twbkParagraph,      // <CM> spaced paragraph
+    twbkSoftLine,       // <CL> new line in the same paragraph
+    twbkTightParagraph  // <CI> paragraph without the extra space
   );
 
   { A break is a zero-width ONT object. Offset alone is not an identity:
@@ -27,6 +28,10 @@ function TryTheWordBreakKindFromLexeme(const ALexeme: UnicodeString;
   out AKind: TTheWordBreakKind): Boolean;
 function SameTheWordBreak(const ALeft,
   ARight: TTheWordBreakIdentity): Boolean;
+{ True for the zero-width break lexemes <CM>, <CI> and <CL>. }
+function IsTheWordBreakLexeme(const ALexeme: UnicodeString): Boolean;
+{ True for the paragraph kinds (<CM> and <CI>). }
+function IsTheWordParagraphBreak(AKind: TTheWordBreakKind): Boolean;
 
 implementation
 
@@ -35,6 +40,7 @@ begin
   case AKind of
     twbkParagraph: Result := '<CM>';
     twbkSoftLine: Result := '<CL>';
+    twbkTightParagraph: Result := '<CI>';
   else
     Result := '';
   end;
@@ -45,6 +51,7 @@ begin
   case AKind of
     twbkParagraph: Result := UnicodeString(WideChar($00B6));
     twbkSoftLine: Result := UnicodeString(WideChar($21B5)) + #10;
+    twbkTightParagraph: Result := UnicodeString(WideChar($204B)); // reversed pilcrow
   else
     Result := '';
   end;
@@ -63,6 +70,11 @@ begin
     AKind := twbkSoftLine;
     Exit(True);
   end;
+  if ALexeme = '<CI>' then
+  begin
+    AKind := twbkTightParagraph;
+    Exit(True);
+  end;
   AKind := twbkParagraph;
   Result := False;
 end;
@@ -73,6 +85,16 @@ begin
   Result := (ALeft.Kind = ARight.Kind) and
     (ALeft.OffsetUTF16 = ARight.OffsetUTF16) and
     (ALeft.Ordinal = ARight.Ordinal);
+end;
+
+function IsTheWordBreakLexeme(const ALexeme: UnicodeString): Boolean;
+begin
+  Result := (ALexeme = '<CM>') or (ALexeme = '<CI>') or (ALexeme = '<CL>');
+end;
+
+function IsTheWordParagraphBreak(AKind: TTheWordBreakKind): Boolean;
+begin
+  Result := AKind in [twbkParagraph, twbkTightParagraph];
 end;
 
 end.

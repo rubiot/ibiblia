@@ -30,6 +30,14 @@ type
   {$IFDEF MSWINDOWS}
   TDWriteHitTestMetricsArray = array of TDWriteHitTestMetrics;
   TDWriteLineMetricsArray = array of TDWriteLineMetrics;
+  {$ELSE}
+  TFallbackLineMetric = record
+    StartUTF16: Integer;
+    LengthUTF16: Integer;
+    Top: Integer;
+    Height: Integer;
+    Baseline: Integer;
+  end;
   {$ENDIF}
   TVerseTextOffsetArray = array of Integer;
 
@@ -86,6 +94,22 @@ type
     function LayoutOriginDIP(ADpi: Integer): TD2DPoint2F;
     procedure PaintDirectWrite(DC: HDC; ADpi: Integer);
     procedure PaintSpanBackgrounds(ADpi: Integer);
+    {$ELSE}
+    FFallbackValid: Boolean;
+    FFallbackWidth: Integer;
+    FFallbackRevision: QWord;
+    FFallbackFontName: string;
+    FFallbackFontSize: Integer;
+    FFallbackFontStyle: TFontStyles;
+    FFallbackFontColor: TColor;
+    FFallbackContentHeight: Integer;
+    FFallbackCharRects: array of TRect;
+    FFallbackCharLine: array of Integer;
+    FFallbackLines: array of TFallbackLineMetric;
+    FFallbackSpanIndexForChar: array of Integer;
+    function EnsureFallbackLayout: Boolean;
+    procedure ApplySpanFontToCanvas(ACanvas: TCanvas;
+      const Style: TVisualTextStyle; out BaselineOffset: Integer);
     {$ENDIF}
     function GetBackendAvailable: Boolean;
     function GetBackendError: UnicodeString;
@@ -547,6 +571,14 @@ begin
   FLayoutWidth := -1;
   FLayoutDpi := 0;
   FLayoutRevision := 0;
+  {$ELSE}
+  FFallbackValid := False;
+  FFallbackWidth := -1;
+  FFallbackRevision := 0;
+  SetLength(FFallbackCharRects, 0);
+  SetLength(FFallbackCharLine, 0);
+  SetLength(FFallbackLines, 0);
+  SetLength(FFallbackSpanIndexForChar, 0);
   {$ENDIF}
 end;
 
@@ -555,10 +587,9 @@ begin
   {$IFDEF MSWINDOWS}
   Result := EnsureFactories;
   {$ELSE}
-  FBackendState := dwbsUnavailable;
-  if FBackendError = '' then
-    FBackendError := 'DirectWrite is available only on Windows';
-  Result := False;
+  FBackendState := dwbsAvailable;
+  FBackendError := '';
+  Result := True;
   {$ENDIF}
 end;
 
@@ -583,6 +614,8 @@ var
   Dpi: Integer;
 {$ENDIF}
 begin
+  if not Assigned(FDocument) then
+    Exit(Max(1, 2 * FLayoutPadding));
   {$IFDEF MSWINDOWS}
   if EnsureLayout then
   begin
@@ -592,8 +625,14 @@ begin
     Result := Ceil(FTextMetrics.Height * Dpi / 96) + 2 * FLayoutPadding;
     Exit;
   end;
+  {$ELSE}
+  if EnsureFallbackLayout then
+    Exit(FFallbackContentHeight);
   {$ENDIF}
-  Result := Height;
+  if FLastContentHeight > 0 then
+    Result := FLastContentHeight
+  else
+    Result := Max(1, 2 * FLayoutPadding);
 end;
 
 procedure TDirectWriteSyntagmView.NotifyContentHeightChanged;
@@ -618,7 +657,8 @@ begin
   if Assigned(FTextLayout) and (FLayoutWidth <> ClientWidth) then
     InvalidateLayout;
   {$ELSE}
-  InvalidateLayout;
+  if FFallbackValid and (FFallbackWidth <> ClientWidth) then
+    InvalidateLayout;
   {$ENDIF}
   NotifyContentHeightChanged;
   { Auto-height changes can happen from the tail of Paint. On Win32 that
@@ -669,10 +709,265 @@ begin
     FRecoveringInputGeometry := False;
   end;
   Result := EnsureLayout and FGeometryMatchesPaint;
+  {$ELSE}
+  Result := EnsureFallbackLayout;
+  if Result then
+    FGeometryMatchesPaint := True;
   {$ENDIF}
 end;
 
+{$IFNDEF MSWINDOWS}
+procedure TDirectWriteSyntagmView.ApplySpanFontToCanvas(ACanvas: TCanvas;
+  const Style: TVisualTextStyle; out BaselineOffset: Integer);
+var
+  BaseSize, TargetSize: Integer;
+  FontStyles: TFontStyles;
+begin
+  BaselineOffset := 0;
+  ACanvas.Font.Assign(Font);
+  if (ACanvas.Font.Name = '') or SameText(ACanvas.Font.Name, 'default') then
+    ACanvas.Font.Name := Screen.SystemFont.Name;
+  BaseSize := Font.Size;
+  if BaseSize <= 0 then
+    BaseSize := 11;
+  TargetSize := Max(6, BaseSize + Style.FontSizeDelta);
+  FontStyles := Font.Style;
+  if vtsfBold in Style.Flags then
+    Include(FontStyles, fsBold);
+  if vtsfItalic in Style.Flags then
+    Include(FontStyles, fsItalic);
+  if vtsfUnderline in Style.Flags then
+    Include(FontStyles, fsUnderline);
+  if vtsfStrikethrough in Style.Flags then
+    Include(FontStyles, fsStrikeOut);
+  if vtsfSuperscript in Style.Flags then
+  begin
+    BaselineOffset := -Max(2, Round(TargetSize * 0.30));
+    TargetSize := Max(6, Round(TargetSize * 0.75));
+  end
+  else if vtsfSubscript in Style.Flags then
+  begin
+    BaselineOffset := Max(2, Round(TargetSize * 0.22));
+    TargetSize := Max(6, Round(TargetSize * 0.75));
+  end;
+  ACanvas.Font.Size := TargetSize;
+  ACanvas.Font.Style := FontStyles;
+  if Style.HasForegroundColor then
+    ACanvas.Font.Color := TColor(Style.ForegroundColor)
+  else
+    ACanvas.Font.Color := Font.Color;
+end;
+
+function TDirectWriteSyntagmView.EnsureFallbackLayout: Boolean;
+var
+  MeasureBmp: TBitmap;
+  MCanvas: TCanvas;
+  DocText: UnicodeString;
+  TextLen, MaxW, CurX, CurY, LineH, BaseLineH: Integer;
+  SpanIdx, CharIdx, TokenStart, TokenEnd, TokenW, CharW: Integer;
+  Span: TVisualSpan;
+  Style: TVisualTextStyle;
+  BaseOff, LineIdx, StepLen: Integer;
+  Ch: WideChar;
+  SubStr: string;
+
+  procedure StartNewLine(AStartUTF16: Integer);
+  begin
+    LineIdx := Length(FFallbackLines);
+    SetLength(FFallbackLines, LineIdx + 1);
+    FFallbackLines[LineIdx].StartUTF16 := AStartUTF16;
+    FFallbackLines[LineIdx].LengthUTF16 := 0;
+    FFallbackLines[LineIdx].Top := CurY;
+    FFallbackLines[LineIdx].Height := LineH;
+    FFallbackLines[LineIdx].Baseline := Round(LineH * 0.8);
+    CurX := FLayoutPadding;
+  end;
+
+begin
+  if not Assigned(FDocument) then
+    Exit(False);
+  if FFallbackValid and (FFallbackWidth = ClientWidth) and
+     (FFallbackRevision = FDocument.Revision) and
+     (FFallbackFontName = Font.Name) and
+     (FFallbackFontSize = Font.Size) and
+     (FFallbackFontStyle = Font.Style) and
+     (FFallbackFontColor = Font.Color) then
+    Exit(True);
+
+  DocText := FDocument.Text;
+  TextLen := Length(DocText);
+  SetLength(FFallbackCharRects, TextLen);
+  SetLength(FFallbackCharLine, TextLen);
+  SetLength(FFallbackSpanIndexForChar, TextLen);
+  SetLength(FFallbackLines, 0);
+
+  for CharIdx := 0 to TextLen - 1 do
+    FFallbackSpanIndexForChar[CharIdx] := -1;
+  for SpanIdx := 0 to FDocument.SpanCount - 1 do
+  begin
+    Span := FDocument.Spans[SpanIdx];
+    for CharIdx := Max(0, Span.StartUTF16) to
+        Min(TextLen - 1, Span.StartUTF16 + Span.LengthUTF16 - 1) do
+      FFallbackSpanIndexForChar[CharIdx] := SpanIdx;
+  end;
+
+  MeasureBmp := TBitmap.Create;
+  try
+    MeasureBmp.SetSize(16, 16);
+    MCanvas := MeasureBmp.Canvas;
+    Style := DefaultVisualTextStyle;
+    ApplySpanFontToCanvas(MCanvas, Style, BaseOff);
+    BaseLineH := Max(16, MCanvas.TextHeight('Mg') + 4);
+    LineH := BaseLineH;
+    MaxW := Max(32, ClientWidth - 2 * FLayoutPadding);
+    CurY := FLayoutPadding;
+    LineIdx := -1;
+    StartNewLine(0);
+
+    TokenStart := 0;
+    while TokenStart < TextLen do
+    begin
+      Ch := DocText[TokenStart + 1];
+      if Ch = #13 then
+      begin
+        FFallbackCharRects[TokenStart] := Rect(CurX, CurY, CurX, CurY + LineH);
+        FFallbackCharLine[TokenStart] := LineIdx;
+        Inc(FFallbackLines[LineIdx].LengthUTF16);
+        Inc(TokenStart);
+        Continue;
+      end;
+      if Ch = #10 then
+      begin
+        FFallbackCharRects[TokenStart] := Rect(CurX, CurY, CurX + 4, CurY + LineH);
+        FFallbackCharLine[TokenStart] := LineIdx;
+        Inc(FFallbackLines[LineIdx].LengthUTF16);
+        Inc(TokenStart);
+        Inc(CurY, LineH);
+        StartNewLine(TokenStart);
+        Continue;
+      end;
+
+      // Group contiguous non-space characters across spans as one wrap unit so
+      // attached superscripts/notes never wrap away from their host word.
+      TokenEnd := TokenStart + 1;
+      if (Ch >= #$D800) and (Ch <= #$DBFF) and (TokenEnd < TextLen) then
+        Inc(TokenEnd);
+      if Ch <> ' ' then
+      begin
+        while (TokenEnd < TextLen) and
+              (DocText[TokenEnd + 1] <> ' ') and
+              (DocText[TokenEnd + 1] <> #10) and
+              (DocText[TokenEnd + 1] <> #13) do
+        begin
+          if (DocText[TokenEnd + 1] >= #$D800) and
+             (DocText[TokenEnd + 1] <= #$DBFF) and
+             (TokenEnd + 1 < TextLen) then
+            Inc(TokenEnd, 2)
+          else
+            Inc(TokenEnd);
+        end;
+      end;
+
+      TokenW := 0;
+      CharIdx := TokenStart;
+      while CharIdx < TokenEnd do
+      begin
+        StepLen := 1;
+        if (DocText[CharIdx + 1] >= #$D800) and
+           (DocText[CharIdx + 1] <= #$DBFF) and
+           (CharIdx + 1 < TokenEnd) then
+          StepLen := 2;
+        SpanIdx := FFallbackSpanIndexForChar[CharIdx];
+        if SpanIdx >= 0 then
+          Style := FDocument.Spans[SpanIdx].Style
+        else
+          Style := DefaultVisualTextStyle;
+        ApplySpanFontToCanvas(MCanvas, Style, BaseOff);
+        SubStr := UTF8Encode(Copy(DocText, CharIdx + 1, StepLen));
+        Inc(TokenW, Max(1, MCanvas.TextWidth(SubStr)));
+        Inc(CharIdx, StepLen);
+      end;
+
+      if (Ch <> ' ') and (CurX > FLayoutPadding) and
+         (CurX + TokenW > FLayoutPadding + MaxW) then
+      begin
+        Inc(CurY, LineH);
+        StartNewLine(TokenStart);
+      end;
+
+      CharIdx := TokenStart;
+      while CharIdx < TokenEnd do
+      begin
+        StepLen := 1;
+        if (DocText[CharIdx + 1] >= #$D800) and
+           (DocText[CharIdx + 1] <= #$DBFF) and
+           (CharIdx + 1 < TokenEnd) then
+          StepLen := 2;
+        SpanIdx := FFallbackSpanIndexForChar[CharIdx];
+        if SpanIdx >= 0 then
+          Style := FDocument.Spans[SpanIdx].Style
+        else
+          Style := DefaultVisualTextStyle;
+        ApplySpanFontToCanvas(MCanvas, Style, BaseOff);
+        SubStr := UTF8Encode(Copy(DocText, CharIdx + 1, StepLen));
+        CharW := Max(1, MCanvas.TextWidth(SubStr));
+        if (CurX > FLayoutPadding) and (CurX + CharW > FLayoutPadding + MaxW) then
+        begin
+          Inc(CurY, LineH);
+          StartNewLine(CharIdx);
+        end;
+        FFallbackCharRects[CharIdx] := Rect(CurX, CurY, CurX + CharW, CurY + LineH);
+        FFallbackCharLine[CharIdx] := LineIdx;
+        if StepLen = 2 then
+        begin
+          FFallbackCharRects[CharIdx + 1] := FFallbackCharRects[CharIdx];
+          FFallbackCharLine[CharIdx + 1] := LineIdx;
+        end;
+        Inc(CurX, CharW);
+        Inc(FFallbackLines[LineIdx].LengthUTF16, StepLen);
+        Inc(CharIdx, StepLen);
+      end;
+      TokenStart := TokenEnd;
+    end;
+
+    // Right-align lines when BaseDirection is RightToLeft (Hebrew OT)
+    if FDocument.BaseDirection = text_direction.tdRightToLeft then
+    begin
+      for SpanIdx := 0 to High(FFallbackLines) do
+      begin
+        if FFallbackLines[SpanIdx].LengthUTF16 <= 0 then
+          Continue;
+        TokenStart := FFallbackLines[SpanIdx].StartUTF16;
+        TokenEnd := TokenStart + FFallbackLines[SpanIdx].LengthUTF16 - 1;
+        if TokenEnd >= TextLen then
+          TokenEnd := TextLen - 1;
+        TokenW := FFallbackCharRects[TokenEnd].Right - FFallbackCharRects[TokenStart].Left;
+        BaseOff := Max(0, (ClientWidth - FLayoutPadding) - FFallbackCharRects[TokenEnd].Right);
+        if BaseOff > 0 then
+          for CharIdx := TokenStart to TokenEnd do
+            OffsetRect(FFallbackCharRects[CharIdx], BaseOff, 0);
+      end;
+    end;
+
+    FFallbackContentHeight := CurY + LineH + FLayoutPadding;
+  finally
+    MeasureBmp.Free;
+  end;
+
+  FFallbackWidth := ClientWidth;
+  FFallbackRevision := FDocument.Revision;
+  FFallbackFontName := Font.Name;
+  FFallbackFontSize := Font.Size;
+  FFallbackFontStyle := Font.Style;
+  FFallbackFontColor := Font.Color;
+  FFallbackValid := True;
+  FGeometryMatchesPaint := True;
+  Result := True;
+end;
+{$ENDIF}
+
 procedure TDirectWriteSyntagmView.PaintFallback;
+{$IFDEF MSWINDOWS}
 var
   DrawRect: TRect;
   RenderText: string;
@@ -694,6 +989,68 @@ begin
   RenderText := UTF8Encode(FDocument.Text);
   Canvas.TextRect(DrawRect, DrawRect.Left, DrawRect.Top, RenderText);
 end;
+{$ELSE}
+var
+  DocText: UnicodeString;
+  TextLen, RunStart, RunEnd, SpanIdx, BaseOff: Integer;
+  Style: TVisualTextStyle;
+  BgRect: TRect;
+  RunText: string;
+begin
+  Canvas.Brush.Color := Color;
+  Canvas.Brush.Style := bsSolid;
+  Canvas.FillRect(ClientRect);
+  if not Assigned(FDocument) or not EnsureFallbackLayout then
+    Exit;
+  DocText := FDocument.Text;
+  TextLen := Length(DocText);
+  if TextLen = 0 then
+  begin
+    FGeometryMatchesPaint := True;
+    Exit;
+  end;
+
+  RunStart := 0;
+  while RunStart < TextLen do
+  begin
+    if (DocText[RunStart + 1] = #10) or (DocText[RunStart + 1] = #13) then
+    begin
+      Inc(RunStart);
+      Continue;
+    end;
+    SpanIdx := FFallbackSpanIndexForChar[RunStart];
+    RunEnd := RunStart + 1;
+    while (RunEnd < TextLen) and
+          (DocText[RunEnd + 1] <> #10) and
+          (DocText[RunEnd + 1] <> #13) and
+          (FFallbackCharLine[RunEnd] = FFallbackCharLine[RunStart]) and
+          (FFallbackSpanIndexForChar[RunEnd] = SpanIdx) do
+      Inc(RunEnd);
+
+    if SpanIdx >= 0 then
+      Style := FDocument.Spans[SpanIdx].Style
+    else
+      Style := DefaultVisualTextStyle;
+
+    BgRect := FFallbackCharRects[RunStart];
+    BgRect.Right := FFallbackCharRects[RunEnd - 1].Right;
+    if Style.HasBackgroundColor then
+    begin
+      Canvas.Brush.Style := bsSolid;
+      Canvas.Brush.Color := TColor(Style.BackgroundColor);
+      Canvas.FillRect(BgRect);
+    end;
+
+    ApplySpanFontToCanvas(Canvas, Style, BaseOff);
+    Canvas.Brush.Style := bsClear;
+    RunText := UTF8Encode(Copy(DocText, RunStart + 1, RunEnd - RunStart));
+    Canvas.TextOut(BgRect.Left, BgRect.Top + 2 + BaseOff, RunText);
+
+    RunStart := RunEnd;
+  end;
+  FGeometryMatchesPaint := True;
+end;
+{$ENDIF}
 
 procedure TDirectWriteSyntagmView.PaintLogicalTags;
 var
@@ -830,13 +1187,13 @@ end;
 
 function TDirectWriteSyntagmView.HitTest(const ClientPoint: TPoint;
   out Hit: TVerseHit): Boolean;
-{$IFDEF MSWINDOWS}
 var
   Dpi: Integer;
+  Span: TVisualSpan;
+{$IFDEF MSWINDOWS}
   HR: HRESULT;
   IsInside: TDWriteBool;
   IsTrailing: TDWriteBool;
-  Span: TVisualSpan;
   Metrics: TDWriteHitTestMetrics;
   Origin: TD2DPoint2F;
   PointX: Single;
@@ -875,19 +1232,38 @@ begin
   Result := True;
   {$ELSE}
   Result := False;
+  if not EnsureFallbackLayout then
+    Exit(False);
+  for Dpi := 0 to High(FFallbackCharRects) do
+  begin
+    if PtInRect(FFallbackCharRects[Dpi], ClientPoint) then
+    begin
+      if not FDocument.TryGetSpanAt(Dpi, Span) or
+         not (((Span.Role = vsrContent) and Span.Interactive) or
+              ((Span.Role = vsrTranslatorNote) and (Span.ObjectId <> 0))) then
+        Exit(False);
+      Hit.LogicalIndex := Span.LogicalIndex;
+      Hit.UTF16Offset := Dpi;
+      Hit.Trailing := ClientPoint.X >=
+        ((FFallbackCharRects[Dpi].Left + FFallbackCharRects[Dpi].Right) div 2);
+      Hit.Role := Span.Role;
+      Hit.ObjectId := Span.ObjectId;
+      Exit(True);
+    end;
+  end;
   {$ENDIF}
 end;
 
 function TDirectWriteSyntagmView.GetLogicalRects(LogicalIndex: Integer;
   out Rects: TRectArray): Boolean;
-{$IFDEF MSWINDOWS}
 var
+  LengthUTF16: Integer;
+  StartUTF16: Integer;
+{$IFDEF MSWINDOWS}
   Dpi: Integer;
   HitMetrics: TDWriteHitTestMetricsArray;
   Index: Integer;
-  LengthUTF16: Integer;
   Origin: TD2DPoint2F;
-  StartUTF16: Integer;
 {$ENDIF}
 begin
   SetLength(Rects, 0);
@@ -917,7 +1293,10 @@ begin
   end;
   Result := Length(Rects) > 0;
   {$ELSE}
-  Result := False;
+  if not FDocument.TryGetUTF16Range(LogicalIndex, StartUTF16, LengthUTF16) or
+     (LengthUTF16 <= 0) then
+    Exit(False);
+  Result := GetTextRangeClientRects(StartUTF16, LengthUTF16, Rects);
   {$ENDIF}
 end;
 
@@ -1604,6 +1983,10 @@ end;
 function TDirectWriteSyntagmView.HitTestTextOffset(
   const ClientPoint: TPoint; out UTF16Offset: Integer;
   out IsTrailing, IsInside: Boolean): Boolean;
+{$IFNDEF MSWINDOWS}
+var
+  LineIdx, BestLine, LineStart, LineEnd, CharIdx, BestChar, CurDist, BestDist: Integer;
+{$ENDIF}
 {$IFDEF MSWINDOWS}
 var
   Dpi: Integer;
@@ -1649,7 +2032,90 @@ begin
   IsInside := NativeInside;
   Result := True;
   {$ELSE}
-  Result := False;
+  if not EnsureFallbackLayout then
+    Exit(False);
+  if Length(FFallbackCharRects) = 0 then
+  begin
+    UTF16Offset := 0;
+    IsTrailing := False;
+    IsInside := True;
+    Exit(True);
+  end;
+  for CharIdx := 0 to High(FFallbackCharRects) do
+  begin
+    if PtInRect(FFallbackCharRects[CharIdx], ClientPoint) then
+    begin
+      UTF16Offset := CharIdx;
+      IsInside := True;
+      IsTrailing := ClientPoint.X >=
+        ((FFallbackCharRects[CharIdx].Left +
+          FFallbackCharRects[CharIdx].Right) div 2);
+      if IsTrailing then
+        Inc(UTF16Offset);
+      Exit(True);
+    end;
+  end;
+  // Find the nearest line vertically, then the nearest character horizontally on that line
+  if Length(FFallbackLines) > 0 then
+  begin
+    BestLine := 0;
+    BestDist := MaxInt;
+    for LineIdx := 0 to High(FFallbackLines) do
+    begin
+      if (ClientPoint.Y >= FFallbackLines[LineIdx].Top) and
+         (ClientPoint.Y < FFallbackLines[LineIdx].Top + FFallbackLines[LineIdx].Height) then
+      begin
+        BestLine := LineIdx;
+        Break;
+      end;
+      if ClientPoint.Y < FFallbackLines[LineIdx].Top then
+        CurDist := FFallbackLines[LineIdx].Top - ClientPoint.Y
+      else
+        CurDist := ClientPoint.Y - (FFallbackLines[LineIdx].Top + FFallbackLines[LineIdx].Height);
+      if CurDist < BestDist then
+      begin
+        BestDist := CurDist;
+        BestLine := LineIdx;
+      end;
+    end;
+    LineStart := FFallbackLines[BestLine].StartUTF16;
+    LineEnd := Min(High(FFallbackCharRects),
+      LineStart + FFallbackLines[BestLine].LengthUTF16 - 1);
+    if LineEnd >= LineStart then
+    begin
+      BestChar := LineStart;
+      BestDist := MaxInt;
+      for CharIdx := LineStart to LineEnd do
+      begin
+        if (FDocument.Text[CharIdx + 1] = #10) or (FDocument.Text[CharIdx + 1] = #13) then
+          Continue;
+        if ClientPoint.X < FFallbackCharRects[CharIdx].Left then
+          CurDist := FFallbackCharRects[CharIdx].Left - ClientPoint.X
+        else if ClientPoint.X > FFallbackCharRects[CharIdx].Right then
+          CurDist := ClientPoint.X - FFallbackCharRects[CharIdx].Right
+        else
+          CurDist := 0;
+        if CurDist < BestDist then
+        begin
+          BestDist := CurDist;
+          BestChar := CharIdx;
+        end;
+      end;
+      UTF16Offset := BestChar;
+      IsTrailing := (FDocument.Text[BestChar + 1] <> #10) and
+        (FDocument.Text[BestChar + 1] <> #13) and
+        (ClientPoint.X >= ((FFallbackCharRects[BestChar].Left +
+          FFallbackCharRects[BestChar].Right) div 2));
+      if IsTrailing then
+        Inc(UTF16Offset);
+      IsInside := False;
+      Exit(True);
+    end;
+  end;
+  UTF16Offset := Length(FFallbackCharRects);
+  IsTrailing := False;
+  IsInside := False;
+  Result := True;
   {$ENDIF}
 end;
 
@@ -1786,7 +2252,30 @@ begin
     CaretRect.Bottom := CaretRect.Top + 1;
   Result := True;
   {$ELSE}
-  Result := False;
+  if not EnsureFallbackLayout then
+    Exit(False);
+  if Length(FFallbackCharRects) = 0 then
+  begin
+    CaretRect := Rect(FLayoutPadding, FLayoutPadding, FLayoutPadding + 2,
+      FLayoutPadding + 18);
+    Exit(True);
+  end;
+  if UTF16Offset < 0 then
+    UTF16Offset := 0
+  else if UTF16Offset > Length(FFallbackCharRects) then
+    UTF16Offset := Length(FFallbackCharRects);
+  if UTF16Offset < Length(FFallbackCharRects) then
+  begin
+    CaretRect := FFallbackCharRects[UTF16Offset];
+    CaretRect.Right := CaretRect.Left + 2;
+  end
+  else
+  begin
+    CaretRect := FFallbackCharRects[High(FFallbackCharRects)];
+    CaretRect.Left := CaretRect.Right;
+    CaretRect.Right := CaretRect.Left + 2;
+  end;
+  Result := True;
   {$ENDIF}
 end;
 
@@ -1837,19 +2326,36 @@ begin
     Ceil(LineHeight * Dpi / 96));
   Result := True;
   {$ELSE}
-  Result := False;
+  if not EnsureFallbackLayout or (Length(FFallbackLines) = 0) then
+    Exit(False);
+  if (UTF16Offset >= 0) and (UTF16Offset < Length(FFallbackCharLine)) then
+  begin
+    LineRect.Left := FLayoutPadding;
+    LineRect.Top := FFallbackLines[FFallbackCharLine[UTF16Offset]].Top;
+    LineRect.Right := Max(LineRect.Left + 1, ClientWidth - FLayoutPadding);
+    LineRect.Bottom := LineRect.Top +
+      FFallbackLines[FFallbackCharLine[UTF16Offset]].Height;
+    Exit(True);
+  end;
+  LineRect.Left := FLayoutPadding;
+  LineRect.Top := FFallbackLines[High(FFallbackLines)].Top;
+  LineRect.Right := Max(LineRect.Left + 1, ClientWidth - FLayoutPadding);
+  LineRect.Bottom := LineRect.Top + FFallbackLines[High(FFallbackLines)].Height;
+  Result := True;
   {$ENDIF}
 end;
 
 function TDirectWriteSyntagmView.GetTextRangeClientRects(
   StartUTF16, LengthUTF16: Integer; out Rects: TRectArray): Boolean;
-{$IFDEF MSWINDOWS}
 var
+  Index: Integer;
+  TextLength: Integer;
+{$IFDEF MSWINDOWS}
   Dpi: Integer;
   HitMetrics: TDWriteHitTestMetricsArray;
-  Index: Integer;
   Origin: TD2DPoint2F;
-  TextLength: Integer;
+{$ELSE}
+  CurLine, OutCount: Integer;
 {$ENDIF}
 begin
   SetLength(Rects, 0);
@@ -1887,7 +2393,37 @@ begin
   end;
   Result := Length(Rects) > 0;
   {$ELSE}
-  Result := False;
+  if not EnsureFallbackLayout then
+    Exit(False);
+  TextLength := Length(FFallbackCharRects);
+  if StartUTF16 < 0 then
+    StartUTF16 := 0;
+  if StartUTF16 > TextLength then
+    StartUTF16 := TextLength;
+  if LengthUTF16 > TextLength - StartUTF16 then
+    LengthUTF16 := TextLength - StartUTF16;
+  if LengthUTF16 <= 0 then
+    Exit(False);
+  OutCount := 0;
+  CurLine := -1;
+  for Index := StartUTF16 to StartUTF16 + LengthUTF16 - 1 do
+  begin
+    if (OutCount = 0) or (FFallbackCharLine[Index] <> CurLine) then
+    begin
+      CurLine := FFallbackCharLine[Index];
+      SetLength(Rects, OutCount + 1);
+      Rects[OutCount] := FFallbackCharRects[Index];
+      Inc(OutCount);
+    end
+    else
+    begin
+      Rects[OutCount - 1].Right := Max(Rects[OutCount - 1].Right,
+        FFallbackCharRects[Index].Right);
+      Rects[OutCount - 1].Bottom := Max(Rects[OutCount - 1].Bottom,
+        FFallbackCharRects[Index].Bottom);
+    end;
+  end;
+  Result := OutCount > 0;
   {$ENDIF}
 end;
 
@@ -1929,15 +2465,17 @@ function TDirectWriteSyntagmView.GetCaretStops(
 {$IFDEF MSWINDOWS}
 type
   TClusterMetricsArray = array of TDWriteClusterMetrics;
+{$ENDIF}
 var
+  Position: Integer;
+  StopCount: Integer;
+  TextLength: Integer;
+{$IFDEF MSWINDOWS}
   ActualCount: TDWriteUInt32;
   ClusterIndex: Integer;
   FilledCount: TDWriteUInt32;
   HR: HRESULT;
   Metrics: TClusterMetricsArray;
-  Position: Integer;
-  StopCount: Integer;
-  TextLength: Integer;
 {$ENDIF}
 begin
   SetLength(Stops, 0);
@@ -1992,7 +2530,26 @@ begin
   SetLength(Stops, StopCount);
   Result := True;
   {$ELSE}
-  Result := False;
+  TextLength := Length(FDocument.Text);
+  SetLength(Stops, TextLength + 1);
+  StopCount := 0;
+  Position := 0;
+  while Position <= TextLength do
+  begin
+    Stops[StopCount] := Position;
+    Inc(StopCount);
+    if (Position < TextLength) and
+       (FDocument.Text[Position + 1] >= #$D800) and
+       (FDocument.Text[Position + 1] <= #$DBFF) and
+       (Position + 1 < TextLength) and
+       (FDocument.Text[Position + 2] >= #$DC00) and
+       (FDocument.Text[Position + 2] <= #$DFFF) then
+      Inc(Position, 2)
+    else
+      Inc(Position);
+  end;
+  SetLength(Stops, StopCount);
+  Result := StopCount > 0;
   {$ENDIF}
 end;
 

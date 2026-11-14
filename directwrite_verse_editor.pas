@@ -133,6 +133,7 @@ type
       InsertKind: TTheWordBreakKind; StartUTF16, LengthUTF16: Integer;
       const Breaks: TTheWordBreakIdentityArray);
     procedure InsertBreak(ABreakKind: TTheWordBreakKind);
+    procedure InsertEnterBreak;
     procedure SelectWordAt(UTF16Offset: Integer);
     procedure SetCaret(Value: Integer; ExtendSelection: Boolean);
     procedure SetInteractionMode(Value: TVerseInteractionMode);
@@ -188,7 +189,7 @@ type
 implementation
 
 uses
-  Math, theword_verse_visual_adapter_v2, performance_debug;
+  Math, unitskins, ui_style, theword_verse_visual_adapter_v2, performance_debug;
 
 function NormalizeInsertedText(const Value: UnicodeString): UnicodeString;
 var
@@ -821,6 +822,10 @@ begin
     for Index := 0 to High(Breaks) do
       AllParagraphs := AllParagraphs and
         (Breaks[Index].Kind = twbkParagraph);
+    { <CI> needs the break-aware contract; fall back to <CM> for old hosts. }
+    if not AllParagraphs and (InsertKind = twbkTightParagraph) and
+       (Length(Breaks) = 0) then
+      AllParagraphs := True;
     if AllParagraphs then
       FOnParagraphEdit(Self, Kind, StartUTF16, LengthUTF16, Accepted,
         NewCaret);
@@ -845,6 +850,24 @@ begin
       SelectionLength, Breaks);
   RequestBreakEdit(vpekInsert, ABreakKind, SelectionStart,
     SelectionLength, Breaks);
+end;
+
+{ Enter inserts <CI> (new paragraph). Enter again right after a <CI> turns
+  it into <CM> (paragraph with a blank line), so "double Enter" gives <CM>. }
+procedure TDirectWriteVerseEditor.InsertEnterBreak;
+var
+  BreakIdentity: TTheWordBreakIdentity;
+  BreakStart, BreakLength: Integer;
+begin
+  if (SelectionLength = 0) and
+     IsBreakAt(FActiveOffset - 1, BreakIdentity, BreakStart, BreakLength) and
+     (BreakIdentity.Kind = twbkTightParagraph) then
+  begin
+    DeleteBackward;
+    InsertBreak(twbkParagraph);
+  end
+  else
+    InsertBreak(twbkTightParagraph);
 end;
 
 procedure TDirectWriteVerseEditor.ReplaceSelection(
@@ -1311,7 +1334,7 @@ begin
         Exit;
     VK_RETURN:
       if BasicShift = [] then
-        InsertBreak(twbkParagraph)
+        InsertEnterBreak
       else if BasicShift = [ssShift] then
         InsertBreak(twbkSoftLine)
       else
@@ -1517,19 +1540,27 @@ begin
      GetTextRangeClientRects(SelectionStart, SelectionLength, Rects) then
   begin
     Canvas.Brush.Style := bsClear;
-    Canvas.Pen.Color := clHighlight;
-    Canvas.Pen.Style := psDot;
+    if CurrentSkin.Id = skClassic then
+      Canvas.Pen.Color := clHighlight
+    else if CurrentSkin.IsDark then
+      Canvas.Pen.Color := CurrentSkin.SelectedText
+    else
+      Canvas.Pen.Color := CurrentSkin.PointedBg;
+    Canvas.Pen.Style := psSolid;
     for Index := 0 to High(Rects) do
       Canvas.Rectangle(Rects[Index].Left, Rects[Index].Top,
         Rects[Index].Right, Rects[Index].Bottom);
-    Canvas.Pen.Style := psSolid;
     Canvas.Brush.Style := bsSolid;
   end;
 
   if (SelectionLength = 0) and
      GetTextPositionClientRect(FActiveOffset, CaretRect) then
   begin
-    Canvas.Pen.Color := clWindowText;
+    if CurrentSkin.Id = skClassic then
+      Canvas.Pen.Color := clWindowText
+    else
+      Canvas.Pen.Color := CurrentSkin.WindowText;
+    Canvas.Pen.Style := psSolid;
     Canvas.Line(CaretRect.Left, CaretRect.Top,
       CaretRect.Left, CaretRect.Bottom);
   end;

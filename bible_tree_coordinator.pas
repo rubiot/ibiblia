@@ -1,11 +1,15 @@
 unit bible_tree_coordinator;
 
 {$mode objfpc}{$H+}
+{$WARN 4055 OFF}
+{$WARN 4056 OFF}
+{$WARN 4082 OFF}
 
 interface
 
 uses
-  SysUtils, ComCtrls, BibleScope, status_catalog, bible_book_names;
+  SysUtils, ComCtrls, BibleScope, status_catalog, bible_book_names,
+  apocrypha_books;
 
 type
   { IVerseStatusCursor — the coordinator iterates this instead of calling
@@ -211,6 +215,8 @@ var
   ChapterNode: TTreeNode;
   VerseNode: TTreeNode;
   InitialStatus: Integer;
+  ApocIndex: Integer;
+  Apoc: TApocryphaBook;
 begin
   if not Assigned(FTree) then
     Exit;
@@ -243,6 +249,33 @@ begin
         ApplyAggregateStatus(Scope, BookNode, StatusDefinitions,
           AggregateImageResolver);
       end;
+
+      { Apocrypha / deuterocanonical books (67+) come after the canonical
+        books, in the same order as their rows in the project. }
+      if Scope <> etNT then
+        for ApocIndex := 0 to ApocryphaBookCount - 1 do
+        begin
+          Apoc := ApocryphaBookAt(ApocIndex);
+          BookNode := FTree.Items.Add(nil, Apoc.Name);
+          BookNode.Data := Pointer(PtrUInt(Apoc.BookID));
+          SetNodeStatus(BookNode, InitialStatus);
+          for ChapterIndex := 0 to High(Apoc.VerseCounts) do
+          begin
+            ChapterNode := FTree.Items.AddChild(BookNode, IntToStr(ChapterIndex + 1));
+            ChapterNode.Data := Pointer(PtrUInt(ChapterIndex + 1));
+            SetNodeStatus(ChapterNode, InitialStatus);
+            for VerseIndex := 0 to Apoc.VerseCounts[ChapterIndex] - 1 do
+            begin
+              VerseNode := FTree.Items.AddChild(ChapterNode, IntToStr(VerseIndex + 1));
+              VerseNode.Data := Pointer(PtrUInt(VerseIndex + 1));
+              SetNodeStatus(VerseNode, InitialStatus);
+            end;
+            ApplyAggregateStatus(Scope, ChapterNode, StatusDefinitions,
+              AggregateImageResolver);
+          end;
+          ApplyAggregateStatus(Scope, BookNode, StatusDefinitions,
+            AggregateImageResolver);
+        end;
     finally
       FTree.EndUpdate;
     end;
@@ -337,8 +370,15 @@ begin
     Exit;
 
   Result := FTree.Items[0];
-  for Index := BookID - OffsetLivros[Scope] - 1 downto 1 do
-    Result := Result.GetNextSibling;
+  if BookID >= FIRST_APOCRYPHA_BOOK then
+  begin
+    // apocrypha nodes are found by their book number
+    while Assigned(Result) and (PtrUInt(Result.Data) <> PtrUInt(BookID)) do
+      Result := Result.GetNextSibling;
+  end
+  else
+    for Index := BookID - OffsetLivros[Scope] - 1 downto 1 do
+      Result := Result.GetNextSibling;
 
   if not Assigned(Result) then
     Exit;

@@ -7,7 +7,7 @@ interface
 uses
   ui_style, Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ComCtrls, BibleScope, Project, LazLogger, BibleTreeView, PatchFile, LCLIntf,
-  status_catalog;
+  status_catalog, unitskins;
 
 type
 
@@ -125,7 +125,11 @@ end;
 
 procedure TFrmExportPatch.FormDestroy(Sender: TObject);
 begin
-  FBibleTreeView.Free;
+  if Assigned(FBibleTreeView) then
+  begin
+    FBibleTreeView.Parent := nil;
+    FreeAndNil(FBibleTreeView);
+  end;
 end;
 
 procedure TFrmExportPatch.FormShow(Sender: TObject);
@@ -136,6 +140,10 @@ begin
   Height := Trunc(MainForm.Height * 0.9);
   LayoutControls;
   Position := poMainFormCenter;
+  // the dialog is built before the skin can reach it: skin it, and its tree
+  if CurrentSkin.Id <> skClassic then
+    ApplySkinToForm(Self, CurrentSkin);
+  FBibleTreeView.ApplySkinColors;
 end;
 
 procedure TFrmExportPatch.FormResize(Sender: TObject);

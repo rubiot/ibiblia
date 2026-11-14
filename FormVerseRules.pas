@@ -182,12 +182,31 @@ begin
   result := StringGridVerseRules.RowCount > 1;
 end;
 
-procedure TVerseRulesForm.AddVerseRule(SourcePattern: string; ReplacementText: string);
+{ True for verse rules that only add display markup in theWord (word links,
+  NB/ST switchable text, superscripts, font colours). Applying them on import
+  would put that markup into the project text, so they start unchecked. }
+function IsDisplayOnlyVerseRule(const ReplacementText: string): Boolean;
+var
+  Lower: string;
 begin
+  Lower := LowerCase(ReplacementText);
+  Result := (Pos('_origword_', Lower) > 0) or (Pos('_nolink_', Lower) > 0) or
+    (Pos('<nb', Lower) > 0) or (Pos('<st', Lower) > 0) or
+    (Pos('<sup>', Lower) > 0) or (Pos('<font', Lower) > 0);
+end;
+
+procedure TVerseRulesForm.AddVerseRule(SourcePattern: string; ReplacementText: string);
+var
+  CleanReplacement: string;
+begin
+  CleanReplacement := ReplacementText.Replace('""', '"', [rfReplaceAll]);
   StringGridVerseRules.RowCount := StringGridVerseRules.RowCount + 1;
-  StringGridVerseRules.Cells[0, StringGridVerseRules.RowCount-1] := '1';
+  if IsDisplayOnlyVerseRule(CleanReplacement) then
+    StringGridVerseRules.Cells[0, StringGridVerseRules.RowCount-1] := '0'
+  else
+    StringGridVerseRules.Cells[0, StringGridVerseRules.RowCount-1] := '1';
   StringGridVerseRules.Cells[1, StringGridVerseRules.RowCount-1] := SourcePattern.Replace('""', '"', [rfReplaceAll]);
-  StringGridVerseRules.Cells[2, StringGridVerseRules.RowCount-1] := ReplacementText.Replace('""', '"', [rfReplaceAll]);
+  StringGridVerseRules.Cells[2, StringGridVerseRules.RowCount-1] := CleanReplacement;
 end;
 
 procedure TVerseRulesForm.Reset(const ModuleFileName: string);

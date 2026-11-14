@@ -12,8 +12,11 @@ type
   TApplicationPreferences = record
     Language: string;
     PopupTrigger: TPopupTrigger;
+    DockPopupRight: Boolean;
     AutoSave: Boolean;
+    SaveOnLastStatus: Boolean;
     IconFamily: TAppIconFamily;
+    ToolbarIconSize: TToolbarIconSize;
   end;
 
   TApplicationPreferencesChangedEvent = procedure(
@@ -23,11 +26,15 @@ type
 
   TFrmApplicationPreferences = class(TForm)
   private
+    FDockPopupRightCheckBox: TCheckBox;
     FAutoSaveCheckBox: TCheckBox;
+    FSaveOnLastStatusCheckBox: TCheckBox;
     FCloseButton: TButton;
     FIconFamilyComboBox: TComboBox;
     FIconFamilyLabel: TLabel;
     FIconFamilyBrandLabel: TLabel;
+    FToolbarIconSizeComboBox: TComboBox;
+    FToolbarIconSizeLabel: TLabel;
     FIconPreview: array[0..5] of TImage;
     FLanguageComboBox: TComboBox;
     FLanguageLabel: TLabel;
@@ -37,15 +44,19 @@ type
     FPreferences: TApplicationPreferences;
     FScopeLabel: TLabel;
     FUpdatingControls: Boolean;
+    procedure DockPopupRightCheckBoxChange(Sender: TObject);
     procedure AutoSaveCheckBoxChange(Sender: TObject);
+    procedure SaveOnLastStatusCheckBoxChange(Sender: TObject);
     procedure BuildControls;
     procedure CloseButtonClick(Sender: TObject);
     procedure IconFamilyComboBoxChange(Sender: TObject);
+    procedure ToolbarIconSizeComboBoxChange(Sender: TObject);
     procedure LanguageComboBoxChange(Sender: TObject);
     procedure NotifyPreferencesChanged;
     procedure PopupTriggerComboBoxChange(Sender: TObject);
     procedure RefreshCaptions;
     procedure RefreshIconFamilyItems;
+    procedure RefreshToolbarIconSizeItems;
     procedure RefreshIconPreview;
     procedure RefreshLanguageItems;
     procedure RefreshPopupTriggerItems;
@@ -71,6 +82,10 @@ resourcestring
   SInterfaceLanguage = '&Interface language';
   SIconFamily = 'Icon &family';
   SIconFamilyBrand = 'The iBiblia application icon is the same in every icon family.';
+  SToolbarIconSize = '&Toolbar icon size';
+  SToolbarIconSizeSmall = 'Small (16 px)';
+  SToolbarIconSizeMedium = 'Medium (22 px)';
+  SToolbarIconSizeLarge = 'Large (28 px)';
   SLanguageEnglish = 'English';
   SLanguagePortuguese = 'Português';
   SShowWordDefinition = 'Show &word definition';
@@ -78,7 +93,9 @@ resourcestring
   SPopupTriggerMouseHover = 'Mouse hover';
   SPopupTriggerAltMouseHover = 'Alt+Mouse hover';
   SPopupTriggerCtrlMouseHover = 'Ctrl+Mouse hover';
+  SDockPopupRight = '&Dock word definition popup to the right edge of the main window';
   SSaveAutomatically = 'Save &automatically when changing verse';
+  SSaveOnLastStatus = 'Save the project when a verse is set to the &last status';
   SCloseButton = '&Close';
 
 const
@@ -95,9 +112,9 @@ begin
   Position := poMainFormCenter;
   BorderStyle := bsDialog;
   ClientWidth := 600;
-  ClientHeight := 448;
+  ClientHeight := 568;
   Constraints.MinWidth := 600;
-  Constraints.MinHeight := 448;
+  Constraints.MinHeight := 568;
 
   BuildControls;
   RefreshCaptions;
@@ -186,27 +203,56 @@ begin
   FIconFamilyBrandLabel.AutoSize := False;
   FIconFamilyBrandLabel.WordWrap := True;
 
+  FToolbarIconSizeLabel := TLabel.Create(Self);
+  FToolbarIconSizeLabel.Parent := ContentPanel;
+  FToolbarIconSizeLabel.SetBounds(0, 244, 216, 24);
+  FToolbarIconSizeLabel.AutoSize := False;
+  FToolbarIconSizeLabel.Layout := tlCenter;
+
+  FToolbarIconSizeComboBox := TComboBox.Create(Self);
+  FToolbarIconSizeComboBox.Parent := ContentPanel;
+  FToolbarIconSizeComboBox.SetBounds(232, 244, 336, 28);
+  FToolbarIconSizeComboBox.Anchors := [akLeft, akTop, akRight];
+  FToolbarIconSizeComboBox.Style := csDropDownList;
+  FToolbarIconSizeComboBox.TabOrder := 2;
+  FToolbarIconSizeComboBox.OnChange := @ToolbarIconSizeComboBoxChange;
+  FToolbarIconSizeLabel.FocusControl := FToolbarIconSizeComboBox;
+
   FPopupTriggerLabel := TLabel.Create(Self);
   FPopupTriggerLabel.Parent := ContentPanel;
-  FPopupTriggerLabel.SetBounds(0, 248, 216, 24);
+  FPopupTriggerLabel.SetBounds(0, 292, 216, 24);
   FPopupTriggerLabel.AutoSize := False;
   FPopupTriggerLabel.Layout := tlCenter;
 
   FPopupTriggerComboBox := TComboBox.Create(Self);
   FPopupTriggerComboBox.Parent := ContentPanel;
-  FPopupTriggerComboBox.SetBounds(232, 248, 336, 28);
+  FPopupTriggerComboBox.SetBounds(232, 292, 336, 28);
   FPopupTriggerComboBox.Anchors := [akLeft, akTop, akRight];
   FPopupTriggerComboBox.Style := csDropDownList;
-  FPopupTriggerComboBox.TabOrder := 2;
+  FPopupTriggerComboBox.TabOrder := 3;
   FPopupTriggerComboBox.OnChange := @PopupTriggerComboBoxChange;
   FPopupTriggerLabel.FocusControl := FPopupTriggerComboBox;
 
+  FDockPopupRightCheckBox := TCheckBox.Create(Self);
+  FDockPopupRightCheckBox.Parent := ContentPanel;
+  FDockPopupRightCheckBox.SetBounds(0, 336, 568, 32);
+  FDockPopupRightCheckBox.Anchors := [akLeft, akTop, akRight];
+  FDockPopupRightCheckBox.TabOrder := 4;
+  FDockPopupRightCheckBox.OnChange := @DockPopupRightCheckBoxChange;
+
   FAutoSaveCheckBox := TCheckBox.Create(Self);
   FAutoSaveCheckBox.Parent := ContentPanel;
-  FAutoSaveCheckBox.SetBounds(0, 296, 568, 32);
+  FAutoSaveCheckBox.SetBounds(0, 376, 568, 32);
   FAutoSaveCheckBox.Anchors := [akLeft, akTop, akRight];
-  FAutoSaveCheckBox.TabOrder := 3;
+  FAutoSaveCheckBox.TabOrder := 5;
   FAutoSaveCheckBox.OnChange := @AutoSaveCheckBoxChange;
+
+  FSaveOnLastStatusCheckBox := TCheckBox.Create(Self);
+  FSaveOnLastStatusCheckBox.Parent := ContentPanel;
+  FSaveOnLastStatusCheckBox.SetBounds(0, 416, 568, 32);
+  FSaveOnLastStatusCheckBox.Anchors := [akLeft, akTop, akRight];
+  FSaveOnLastStatusCheckBox.TabOrder := 6;
+  FSaveOnLastStatusCheckBox.OnChange := @SaveOnLastStatusCheckBoxChange;
 end;
 
 procedure TFrmApplicationPreferences.CloseButtonClick(Sender: TObject);
@@ -247,6 +293,16 @@ begin
   RefreshIconPreview;
 end;
 
+procedure TFrmApplicationPreferences.ToolbarIconSizeComboBoxChange(Sender: TObject);
+begin
+  if FUpdatingControls or (FToolbarIconSizeComboBox.ItemIndex < 0) then
+    Exit;
+
+  FPreferences.ToolbarIconSize := TToolbarIconSize(PtrInt(
+    FToolbarIconSizeComboBox.Items.Objects[FToolbarIconSizeComboBox.ItemIndex]));
+  NotifyPreferencesChanged;
+end;
+
 procedure TFrmApplicationPreferences.PopupTriggerComboBoxChange(Sender: TObject);
 begin
   if FUpdatingControls or (FPopupTriggerComboBox.ItemIndex < 0) then
@@ -257,12 +313,31 @@ begin
   NotifyPreferencesChanged;
 end;
 
+procedure TFrmApplicationPreferences.DockPopupRightCheckBoxChange(Sender: TObject);
+begin
+  if FUpdatingControls then
+    Exit;
+
+  FPreferences.DockPopupRight := FDockPopupRightCheckBox.Checked;
+  NotifyPreferencesChanged;
+end;
+
 procedure TFrmApplicationPreferences.AutoSaveCheckBoxChange(Sender: TObject);
 begin
   if FUpdatingControls then
     Exit;
 
   FPreferences.AutoSave := FAutoSaveCheckBox.Checked;
+  NotifyPreferencesChanged;
+end;
+
+procedure TFrmApplicationPreferences.SaveOnLastStatusCheckBoxChange(
+  Sender: TObject);
+begin
+  if FUpdatingControls then
+    Exit;
+
+  FPreferences.SaveOnLastStatus := FSaveOnLastStatusCheckBox.Checked;
   NotifyPreferencesChanged;
 end;
 
@@ -341,6 +416,20 @@ begin
   end;
 end;
 
+procedure TFrmApplicationPreferences.RefreshToolbarIconSizeItems;
+begin
+  FToolbarIconSizeComboBox.Items.BeginUpdate;
+  try
+    FToolbarIconSizeComboBox.Items.Clear;
+    FToolbarIconSizeComboBox.Items.AddObject(SToolbarIconSizeSmall, TObject(PtrInt(Ord(tisSmall))));
+    FToolbarIconSizeComboBox.Items.AddObject(SToolbarIconSizeMedium, TObject(PtrInt(Ord(tisMedium))));
+    FToolbarIconSizeComboBox.Items.AddObject(SToolbarIconSizeLarge, TObject(PtrInt(Ord(tisLarge))));
+    FToolbarIconSizeComboBox.ItemIndex := Ord(FPreferences.ToolbarIconSize);
+  finally
+    FToolbarIconSizeComboBox.Items.EndUpdate;
+  end;
+end;
+
 procedure TFrmApplicationPreferences.DoAutoAdjustLayout(
   const AMode: TLayoutAdjustmentPolicy; const AXProportion, AYProportion: Double);
 begin
@@ -380,11 +469,15 @@ begin
     FLanguageLabel.Caption := SInterfaceLanguage;
     FIconFamilyLabel.Caption := SIconFamily;
     FIconFamilyBrandLabel.Caption := SIconFamilyBrand;
+    FToolbarIconSizeLabel.Caption := SToolbarIconSize;
     FPopupTriggerLabel.Caption := SShowWordDefinition;
+    FDockPopupRightCheckBox.Caption := SDockPopupRight;
     FAutoSaveCheckBox.Caption := SSaveAutomatically;
+    FSaveOnLastStatusCheckBox.Caption := SSaveOnLastStatus;
     FCloseButton.Caption := SCloseButton;
     RefreshLanguageItems;
     RefreshIconFamilyItems;
+    RefreshToolbarIconSizeItems;
     RefreshIconPreview;
     RefreshPopupTriggerItems;
   finally
@@ -404,7 +497,10 @@ begin
     PreferencesForm.FOnPreferencesChanged := OnPreferencesChanged;
     PreferencesForm.FUpdatingControls := True;
     try
+      PreferencesForm.FDockPopupRightCheckBox.Checked := Preferences.DockPopupRight;
       PreferencesForm.FAutoSaveCheckBox.Checked := Preferences.AutoSave;
+      PreferencesForm.FSaveOnLastStatusCheckBox.Checked :=
+        Preferences.SaveOnLastStatus;
     finally
       PreferencesForm.FUpdatingControls := False;
     end;

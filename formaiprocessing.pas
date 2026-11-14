@@ -1100,7 +1100,7 @@ begin
   if not Assigned(FPanelCommentsReview) then
     Exit;
 
-  FPanelCommentsReview.Visible := CurrentVerseHasCommentProposal;
+  FPanelCommentsReview.Visible := False;
   if not FPanelCommentsReview.Visible then
   begin
     FCommentsExpanded := False;

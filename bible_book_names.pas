@@ -12,6 +12,9 @@ function LocalizedBookNameByID(BookID: Integer): string;
 
 implementation
 
+uses
+  apocrypha_books;
+
 resourcestring
   SGenesis = 'Genesis';
   SExodus = 'Exodus';
@@ -150,7 +153,10 @@ begin
     65: Result := SJude;
     66: Result := SRevelation;
   else
-    Result := '';
+    if BookID >= FIRST_APOCRYPHA_BOOK then
+      Result := ApocryphaBookName(BookID) // project's apocrypha names
+    else
+      Result := '';
   end;
 end;
 

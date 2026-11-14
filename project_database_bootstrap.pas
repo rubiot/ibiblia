@@ -204,6 +204,12 @@ begin
       end;
     end;
   finally
+    try
+      if Connection.Connected then
+        Connection.Close;
+    except
+    end;
+    Connection.Transaction := nil;
     Transaction.Free;
     Connection.Free;
   end;
@@ -247,6 +253,12 @@ begin
       end;
     end;
   finally
+    try
+      if Connection.Connected then
+        Connection.Close;
+    except
+    end;
+    Connection.Transaction := nil;
     Transaction.Free;
     Connection.Free;
   end;

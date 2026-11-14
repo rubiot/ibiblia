@@ -24,7 +24,7 @@ type
 implementation
 
 uses sqlite_database_copy
-  {$IFDEF WINDOWS}, Windows{$ELSE}, BaseUnix{$ENDIF};
+  {$IFDEF WINDOWS}, Windows{$ELSE}, BaseUnix, Unix{$ENDIF};
 
 resourcestring
   SSaveProjectFileNameRequired = 'A project file name is required';

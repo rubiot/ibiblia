@@ -9,6 +9,11 @@ uses
   Verse, VerseMemo, commentsview, SuggestionManager, syntagm, project_persistence,
   verse_render_buffer, association_memory_service, text_edit_provenance;
 
+const
+  // ids of the default (non-custom) status list
+  DEFAULT_STATUS_NEEDS_REVIEW = 2;
+  DEFAULT_STATUS_ASSOCIATED = 3;
+
 type
   TCurrentVerseLoadResult = record
     Associations: string;
@@ -239,6 +244,7 @@ begin
     raise Exception.CreateFmt('Current verse view index out of bounds [%d]', [VerseIndex]);
 
   VerseViews[VerseIndex] := TVerse.Create(Owner);
+  VerseViews[VerseIndex].IsSourceVerse := VerseIndex = SourceVerseIndex;
   Owner.Tag := PtrInt(VerseViews[VerseIndex]);
   Owner.OnDblClick := OnVerseDoubleClick;
   VerseViews[VerseIndex].OnClick := OnSyntagmClick;
@@ -246,7 +252,8 @@ begin
   VerseViews[VerseIndex].OnExportText := OnExportText;
 
   if (VerseIndex <> SourceVerseIndex) and (VerseIndex <> DestinationVerseIndex) then
-    VerseViews[VerseIndex].UnassociatedColor := clWindowText;
+    VerseViews[VerseIndex].UnassociatedColor :=
+      VerseViews[VerseIndex].AssociatedColor; // reference panel: plain text colour
 
   if (VerseIndex = DestinationVerseIndex) and Assigned(GetVerseView(VerseViews, SourceVerseIndex)) then
     VerseViews[DestinationVerseIndex].PairedVerse := GetVerseView(VerseViews, SourceVerseIndex)
@@ -765,6 +772,7 @@ function TCurrentVerseWorkspace.SetCurrentVerseText(
 var
   CurrentPairs: string;
   UpdatedPairs: string;
+  OldWords: string;
   ParticipatesInPairs: Boolean;
   SourceTextFieldIndex: Integer;
   DestinationTextFieldIndex: Integer;
@@ -790,6 +798,19 @@ begin
       CorruptionDetails) then
       Exit;
     Persistence.SetCurrentFieldAsString('pare_pares', UpdatedPairs);
+
+    { With the default statuses, an "Associated!" verse whose words changed
+      becomes "Needs review". Tag-only changes (Strong's, morphology, notes,
+      formatting) keep the status. }
+    if ResetStatus and
+       (Persistence.CurrentStatus = DEFAULT_STATUS_ASSOCIATED) then
+    begin
+      OldWords := RenderBuffer.VerseWords(
+        Persistence.CurrentText(GetTextFieldIndex(TextFieldIndexes, TextIndex)));
+      if OldWords <> RenderBuffer.VerseWords(VerseText) then
+        Persistence.SetCurrentFieldAsInteger('pare_situacao',
+          DEFAULT_STATUS_NEEDS_REVIEW);
+    end;
   end;
 
   Persistence.SetCurrentText(GetTextFieldIndex(TextFieldIndexes, TextIndex), VerseText);

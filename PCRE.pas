@@ -65,6 +65,9 @@
 unit PCRE;
 
 {$mode delphi}
+{$WARN 4055 OFF}
+{$WARN 4056 OFF}
+{$WARN 4082 OFF}
 
 {$ALIGN ON}
 {$MINENUMSIZE 4}

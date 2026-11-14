@@ -5,10 +5,11 @@ unit FormProjectProperties;
 interface
 
 uses
-  ui_style, ui_icons, Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
+  ui_style, ui_icons, unitskins, Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
+  {$IFDEF WINDOWS}Windows, Messages,{$ENDIF}
   StdCtrls, ExtCtrls, Buttons, ComCtrls, ActnList, BibleScope, Project, LCLTranslator,
   StrUtils, ONTTokenizer, status_catalog, FormStatusCatalog, UnitPleaseWait,
-  dictionary_manager, project_setup_model, project_setup_validation, RichMemo,
+  dictionary_manager, FormDefaultDictionaries, project_setup_model, project_setup_validation, RichMemo,
   RichMemoUtils, LazUTF8;
 
 type
@@ -85,6 +86,13 @@ type
     FWorkflowDefaultVerseModeLabel: TLabel;
     FWorkflowDefaultVerseModeCombo: TComboBox;
     FWorkflowDefaultVerseModeExplanationLabel: TLabel;
+    FDefaultDictionariesGroup: TGroupBox;
+    FUseDefaultDictionariesCheck: TCheckBox;
+    FDefaultDictionaryLabels: array[0..3] of TLabel;
+    FDefaultDictionaryEdits: array[0..3] of TEdit;
+    FDefaultDictionaryBrowseButtons: array[0..3] of TButton;
+    FDefaultDictionaryClearButtons: array[0..3] of TButton;
+    FModuleDictionariesGroup: TGroupBox;
     FDictionaryTextTabs: TTabControl;
     FScenarioLabel: TLabel;
     FStatusDescriptionLabel: TLabel;
@@ -106,10 +114,21 @@ type
     FPendingSuggestionMode: TSuggestionMode;
     FPendingAutomaticSuggestion: Boolean;
     FPendingDefaultVerseMode: TDefaultVerseMode;
+    FPendingDefaultDictionaries: TDefaultDictionarySettings;
+    FInitialDefaultDictionaries: TDefaultDictionarySettings;
+    FPendingDefaultDictionariesChanged: Boolean;
+    FApplyingTheme: Boolean;
     procedure BtnStatusCatalogClick(Sender: TObject);
     procedure BtnConfigureAIClick(Sender: TObject);
     procedure CreateTabbedLayout;
     procedure DictionaryTextTabsChange(Sender: TObject);
+    procedure UseDefaultDictionariesClick(Sender: TObject);
+    procedure DefaultDictionaryEditChange(Sender: TObject);
+    procedure DefaultDictionaryBrowseClick(Sender: TObject);
+    procedure DefaultDictionaryClearClick(Sender: TObject);
+    procedure UpdateDictionaryModeUI;
+    procedure PageControlChange(Sender: TObject);
+    procedure FormShow(Sender: TObject);
     function ConfirmTokenizerVersionChange: TTokenizerVersionChangeAction;
     procedure CreateStatusCatalogButton;
     function CurrentTextType: TTipoTextoBiblico;
@@ -136,7 +155,11 @@ type
     procedure SetProject(Project: TProject);
     procedure ClearProject;
     procedure SelectWorkflowTab;
+    procedure SelectDictionariesTab;
+    { Shows the Texts page on the tab of the given text (call after SetProject). }
+    procedure SelectTextTab(TextType: TTipoTextoBiblico);
     procedure ApplyChanges(AProgressOwner: TCustomForm = nil);
+    procedure ApplyThemeColors;
     procedure Translate;
   public
     procedure AfterConstruction; override;
@@ -151,7 +174,7 @@ resourcestring
   SProjectNameLabel = 'Name';
   SStrongDictionaryLabel = 'Strong''s dictionary';
   SMorphologyDictionaryLabel = 'Morphology dictionary';
-  STextDescriptionLabel = 'Text description';
+  STextDescriptionLabel = 'Short title (short.title)';
   SFontLabel = 'Font';
   SApply = 'Apply';
   SSetDictionary = 'Set';
@@ -266,11 +289,21 @@ resourcestring
   SPendingSuggestionMode = 'Suggestion method: %s -> %s';
   SPendingAutomaticSuggestion = 'Automatic suggestion: %s -> %s';
   SPendingDefaultVerseMode = 'Verse opening: %s -> %s';
+  SDefaultDictionariesGroup = 'Default dictionaries';
+  SUseDefaultDictionariesToggle = 'Use default dictionaries for all four Bible modules (disables per-module selection)';
+  SDefaultGreekStrongLabel = 'Greek Strong''s (G):';
+  SDefaultHebrewStrongLabel = 'Hebrew Strong''s (H):';
+  SDefaultMorphologyLabel = 'Morphology:';
+  SDefaultWordDictionaryLabel = 'Word dictionary:';
+  SModuleDictionariesGroup = 'Per-module dictionaries (when default dictionaries are disabled)';
+  SClearDictionary = 'Clear';
+  SPendingDefaultDictionariesMode = 'Default dictionaries mode: %s -> %s';
+  SPendingDefaultDictionariesUpdated = 'Default dictionary paths updated.';
 
 implementation
 
 uses
-  FormLlmOptions;
+  FormLlmOptions, formPrincipal, module_conversion;
 
 { TFrmProjectProperties }
 
@@ -285,7 +318,9 @@ begin
   for TextType := tbOrigem to tbConsulta2 do
     FPendingFonts[TextType] := TFont.Create;
   OnDestroy := @FormDestroy;
+  OnShow := @FormShow;
   CreateStatusCatalogButton;
+  FApplyingTheme := False;
   CreateTabbedLayout;
   BtnOk.OnClick := @BtnOkClick;
   Translate;
@@ -307,6 +342,7 @@ const
 var
   PageWidth: Integer;
   PageHeight: Integer;
+  Row, RowTop: Integer;
 begin
   if Assigned(FPageControl) then
     Exit;
@@ -315,6 +351,7 @@ begin
   FPageControl.Parent := Self;
   FPageControl.SetBounds(16, 16, ClientWidth - 32, BtnOk.Top - 32);
   FPageControl.Anchors := [akLeft, akTop, akRight, akBottom];
+  FPageControl.OnChange := @PageControlChange;
 
   FTabProject := TTabSheet.Create(FPageControl);
   FTabProject.PageControl := FPageControl;
@@ -470,32 +507,84 @@ begin
   MemoTextPreview.SetBounds(12, 210, PageWidth - 4, PageHeight - 222);
   MemoTextPreview.Anchors := [akLeft, akTop, akRight, akBottom];
 
+  FDefaultDictionariesGroup := TGroupBox.Create(Self);
+  FDefaultDictionariesGroup.Parent := FTabDictionaries;
+  FDefaultDictionariesGroup.SetBounds(10, 8, PageWidth, 236);
+  FDefaultDictionariesGroup.Anchors := [akLeft, akTop, akRight];
+  FDefaultDictionariesGroup.Caption := SDefaultDictionariesGroup;
+
+  FUseDefaultDictionariesCheck := TCheckBox.Create(Self);
+  FUseDefaultDictionariesCheck.Parent := FDefaultDictionariesGroup;
+  FUseDefaultDictionariesCheck.SetBounds(12, 22, PageWidth - 24, 24);
+  FUseDefaultDictionariesCheck.Anchors := [akLeft, akTop, akRight];
+  FUseDefaultDictionariesCheck.Caption := SUseDefaultDictionariesToggle;
+  FUseDefaultDictionariesCheck.OnClick := @UseDefaultDictionariesClick;
+
+  for Row := 0 to 3 do
+  begin
+    RowTop := 54 + Row * 44;
+
+    FDefaultDictionaryLabels[Row] := TLabel.Create(Self);
+    FDefaultDictionaryLabels[Row].Parent := FDefaultDictionariesGroup;
+    FDefaultDictionaryLabels[Row].SetBounds(12, RowTop + 4, 172, 20);
+
+    FDefaultDictionaryEdits[Row] := TEdit.Create(Self);
+    FDefaultDictionaryEdits[Row].Parent := FDefaultDictionariesGroup;
+    FDefaultDictionaryEdits[Row].SetBounds(188, RowTop, PageWidth - 352, 26);
+    FDefaultDictionaryEdits[Row].Anchors := [akLeft, akTop, akRight];
+    FDefaultDictionaryEdits[Row].Tag := Row;
+    FDefaultDictionaryEdits[Row].OnChange := @DefaultDictionaryEditChange;
+    FDefaultDictionaryLabels[Row].FocusControl := FDefaultDictionaryEdits[Row];
+
+    FDefaultDictionaryBrowseButtons[Row] := TButton.Create(Self);
+    FDefaultDictionaryBrowseButtons[Row].Parent := FDefaultDictionariesGroup;
+    FDefaultDictionaryBrowseButtons[Row].SetBounds(PageWidth - 158, RowTop - 2, 82, 28);
+    FDefaultDictionaryBrowseButtons[Row].Anchors := [akTop, akRight];
+    FDefaultDictionaryBrowseButtons[Row].Caption := SChooseDictionary;
+    FDefaultDictionaryBrowseButtons[Row].Tag := Row;
+    FDefaultDictionaryBrowseButtons[Row].OnClick := @DefaultDictionaryBrowseClick;
+
+    FDefaultDictionaryClearButtons[Row] := TButton.Create(Self);
+    FDefaultDictionaryClearButtons[Row].Parent := FDefaultDictionariesGroup;
+    FDefaultDictionaryClearButtons[Row].SetBounds(PageWidth - 70, RowTop - 2, 58, 28);
+    FDefaultDictionaryClearButtons[Row].Anchors := [akTop, akRight];
+    FDefaultDictionaryClearButtons[Row].Caption := SClearDictionary;
+    FDefaultDictionaryClearButtons[Row].Tag := Row;
+    FDefaultDictionaryClearButtons[Row].OnClick := @DefaultDictionaryClearClick;
+  end;
+
+  FModuleDictionariesGroup := TGroupBox.Create(Self);
+  FModuleDictionariesGroup.Parent := FTabDictionaries;
+  FModuleDictionariesGroup.SetBounds(10, 252, PageWidth, 240);
+  FModuleDictionariesGroup.Anchors := [akLeft, akTop, akRight];
+  FModuleDictionariesGroup.Caption := SModuleDictionariesGroup;
+
   FDictionaryTextTabs := TTabControl.Create(Self);
-  FDictionaryTextTabs.Parent := FTabDictionaries;
-  FDictionaryTextTabs.SetBounds(10, 10, PageWidth, 28);
+  FDictionaryTextTabs.Parent := FModuleDictionariesGroup;
+  FDictionaryTextTabs.SetBounds(12, 24, PageWidth - 24, 28);
   FDictionaryTextTabs.Anchors := [akLeft, akTop, akRight];
   FDictionaryTextTabs.OnChange := @DictionaryTextTabsChange;
 
-  EditStrongDictionary.Parent := FTabDictionaries;
-  EditStrongDictionary.SetBounds(12, 66, PageWidth - 116, 24);
+  EditStrongDictionary.Parent := FModuleDictionariesGroup;
+  EditStrongDictionary.SetBounds(12, 78, PageWidth - 120, 24);
   EditStrongDictionary.Anchors := [akLeft, akTop, akRight];
-  BtnSelectStrongDictionary.Parent := FTabDictionaries;
-  BtnSelectStrongDictionary.SetBounds(PageWidth - 102, 64, 98, 28);
+  BtnSelectStrongDictionary.Parent := FModuleDictionariesGroup;
+  BtnSelectStrongDictionary.SetBounds(PageWidth - 102, 76, 90, 28);
   BtnSelectStrongDictionary.Anchors := [akTop, akRight];
   FStrongDictionaryValidationLabel := TLabel.Create(Self);
-  FStrongDictionaryValidationLabel.Parent := FTabDictionaries;
-  FStrongDictionaryValidationLabel.SetBounds(12, 94, PageWidth - 4, 18);
+  FStrongDictionaryValidationLabel.Parent := FModuleDictionariesGroup;
+  FStrongDictionaryValidationLabel.SetBounds(12, 106, PageWidth - 24, 18);
   FStrongDictionaryValidationLabel.Anchors := [akLeft, akTop, akRight];
 
-  EditMorphologyDictionary.Parent := FTabDictionaries;
-  EditMorphologyDictionary.SetBounds(12, 146, PageWidth - 116, 24);
+  EditMorphologyDictionary.Parent := FModuleDictionariesGroup;
+  EditMorphologyDictionary.SetBounds(12, 158, PageWidth - 120, 24);
   EditMorphologyDictionary.Anchors := [akLeft, akTop, akRight];
-  BtnSelectMorphologyDictionary.Parent := FTabDictionaries;
-  BtnSelectMorphologyDictionary.SetBounds(PageWidth - 102, 144, 98, 28);
+  BtnSelectMorphologyDictionary.Parent := FModuleDictionariesGroup;
+  BtnSelectMorphologyDictionary.SetBounds(PageWidth - 102, 156, 90, 28);
   BtnSelectMorphologyDictionary.Anchors := [akTop, akRight];
   FMorphologyDictionaryValidationLabel := TLabel.Create(Self);
-  FMorphologyDictionaryValidationLabel.Parent := FTabDictionaries;
-  FMorphologyDictionaryValidationLabel.SetBounds(12, 174, PageWidth - 4, 18);
+  FMorphologyDictionaryValidationLabel.Parent := FModuleDictionariesGroup;
+  FMorphologyDictionaryValidationLabel.SetBounds(12, 186, PageWidth - 24, 18);
   FMorphologyDictionaryValidationLabel.Anchors := [akLeft, akTop, akRight];
 
   FStatusDescriptionLabel := TLabel.Create(Self);
@@ -638,25 +727,25 @@ begin
     if Assigned(FProject) and FProject.AIConfigurationAvailable then
     begin
       FWorkflowAIStatusLabel.Caption := SWorkflowAIConfigured;
-      FWorkflowAIStatusLabel.Font.Color := UISuccessColor;
+      FWorkflowAIStatusLabel.Font.Color := UISuccessTextColor;
     end
     else
     begin
       FWorkflowAIStatusLabel.Caption := SWorkflowAIConfigurationPending;
-      FWorkflowAIStatusLabel.Font.Color := UIWarningColor;
+      FWorkflowAIStatusLabel.Font.Color := UIWarningTextColor;
     end;
 
     if AutomaticSuggestionAvailable then
     begin
       FWorkflowAutomaticSuggestionExplanationLabel.Caption :=
         SWorkflowAutomaticSuggestionDescription;
-      FWorkflowAutomaticSuggestionExplanationLabel.Font.Color := clWindowText;
+      FWorkflowAutomaticSuggestionExplanationLabel.Font.Color := UITextColor;
     end
     else
     begin
       FWorkflowAutomaticSuggestionExplanationLabel.Caption :=
         SWorkflowAutomaticSuggestionUnavailable;
-      FWorkflowAutomaticSuggestionExplanationLabel.Font.Color := clGrayText;
+      FWorkflowAutomaticSuggestionExplanationLabel.Font.Color := UIMutedTextColor;
     end;
 
     case FPendingDefaultVerseMode of
@@ -748,13 +837,41 @@ begin
   if not WorkflowAutomaticSuggestionAvailable then
     FPendingAutomaticSuggestion := False;
 
+  if Assigned(opts) then
+    FPendingDefaultDictionaries := ReadDefaultDictionarySettings(opts)
+  else
+  begin
+    FPendingDefaultDictionaries.Enabled := GetUseDefaultDictionaries;
+    GetDefaultDictionaryPaths(
+      FPendingDefaultDictionaries.GreekStrong,
+      FPendingDefaultDictionaries.HebrewStrong,
+      FPendingDefaultDictionaries.Morphology,
+      FPendingDefaultDictionaries.Word);
+  end;
+
+  if FProject.GetInfo('dicionarios.use_default') <> '' then
+    FPendingDefaultDictionaries.Enabled := FProject.GetInfo('dicionarios.use_default') <> '0';
+  if FProject.GetInfo('dicionarios.configured') = '1' then
+  begin
+    if FProject.GetInfo('dicionarios.default_strong_greek') <> '' then
+      FPendingDefaultDictionaries.GreekStrong := FProject.GetInfo('dicionarios.default_strong_greek');
+    if FProject.GetInfo('dicionarios.default_strong_hebrew') <> '' then
+      FPendingDefaultDictionaries.HebrewStrong := FProject.GetInfo('dicionarios.default_strong_hebrew');
+    if FProject.GetInfo('dicionarios.default_morphology') <> '' then
+      FPendingDefaultDictionaries.Morphology := FProject.GetInfo('dicionarios.default_morphology');
+    if FProject.GetInfo('dicionarios.default_english_dict') <> '' then
+      FPendingDefaultDictionaries.Word := FProject.GetInfo('dicionarios.default_english_dict');
+  end;
+  FInitialDefaultDictionaries := FPendingDefaultDictionaries;
+  FPendingDefaultDictionariesChanged := False;
+
   for TextType := tbOrigem to tbConsulta2 do
   begin
     FPendingTextActions[TextType] := ptaNone;
     FPendingTextFiles[TextType] := '';
     FPendingTextReplace[TextType] := False;
 
-    FPendingDescriptions[TextType] := FProject.GetTextDescription(TextType);
+    FPendingDescriptions[TextType] := FProject.GetTextShortTitle(TextType);
     FPendingDescriptionChanged[TextType] := False;
 
     FPendingStrongDictionaries[TextType] :=
@@ -807,6 +924,8 @@ begin
       MemoTextPreview.Font := FPendingFonts[TextType]
     else
       MemoTextPreview.Font := FProject.GetTextFont(TextType);
+    MemoTextPreview.Color := UIContentColor;
+    MemoTextPreview.Font.Color := UITextColor;
   finally
     FLoadingControls := False;
   end;
@@ -819,6 +938,16 @@ begin
 
   FLoadingControls := True;
   try
+    if Assigned(FUseDefaultDictionariesCheck) then
+      FUseDefaultDictionariesCheck.Checked := FPendingDefaultDictionaries.Enabled;
+    if Assigned(FDefaultDictionaryEdits[0]) then
+      FDefaultDictionaryEdits[0].Text := FPendingDefaultDictionaries.GreekStrong;
+    if Assigned(FDefaultDictionaryEdits[1]) then
+      FDefaultDictionaryEdits[1].Text := FPendingDefaultDictionaries.HebrewStrong;
+    if Assigned(FDefaultDictionaryEdits[2]) then
+      FDefaultDictionaryEdits[2].Text := FPendingDefaultDictionaries.Morphology;
+    if Assigned(FDefaultDictionaryEdits[3]) then
+      FDefaultDictionaryEdits[3].Text := FPendingDefaultDictionaries.Word;
     EditStrongDictionary.Text := FPendingStrongDictionaries[TextType];
     EditMorphologyDictionary.Text := FPendingMorphologyDictionaries[TextType];
     BtnSelectStrongDictionary.Caption := SChooseDictionary;
@@ -826,7 +955,131 @@ begin
   finally
     FLoadingControls := False;
   end;
+  UpdateDictionaryModeUI;
   UpdateDictionaryValidationLabels;
+end;
+
+procedure TFrmProjectProperties.UpdateDictionaryModeUI;
+var
+  UseDefaults: Boolean;
+  Row: Integer;
+begin
+  UseDefaults := Assigned(FUseDefaultDictionariesCheck) and
+    FUseDefaultDictionariesCheck.Checked;
+  for Row := 0 to 3 do
+  begin
+    if Assigned(FDefaultDictionaryLabels[Row]) then
+      FDefaultDictionaryLabels[Row].Enabled := UseDefaults;
+    if Assigned(FDefaultDictionaryEdits[Row]) then
+      FDefaultDictionaryEdits[Row].Enabled := UseDefaults;
+    if Assigned(FDefaultDictionaryBrowseButtons[Row]) then
+      FDefaultDictionaryBrowseButtons[Row].Enabled := UseDefaults;
+    if Assigned(FDefaultDictionaryClearButtons[Row]) then
+      FDefaultDictionaryClearButtons[Row].Enabled := UseDefaults;
+  end;
+  if Assigned(FDictionaryTextTabs) then
+    FDictionaryTextTabs.Enabled := not UseDefaults;
+  EditStrongDictionary.Enabled := not UseDefaults;
+  EditStrongDictionary.EditLabel.Enabled := not UseDefaults;
+  BtnSelectStrongDictionary.Enabled := not UseDefaults;
+  if Assigned(FStrongDictionaryValidationLabel) then
+    FStrongDictionaryValidationLabel.Enabled := not UseDefaults;
+  EditMorphologyDictionary.Enabled := not UseDefaults;
+  EditMorphologyDictionary.EditLabel.Enabled := not UseDefaults;
+  BtnSelectMorphologyDictionary.Enabled := not UseDefaults;
+  if Assigned(FMorphologyDictionaryValidationLabel) then
+    FMorphologyDictionaryValidationLabel.Enabled := not UseDefaults;
+end;
+
+procedure TFrmProjectProperties.UseDefaultDictionariesClick(Sender: TObject);
+begin
+  if FLoadingControls then
+    Exit;
+  FPendingDefaultDictionaries.Enabled := FUseDefaultDictionariesCheck.Checked;
+  FPendingDefaultDictionariesChanged := True;
+  UpdateDictionaryModeUI;
+  UpdateDictionaryValidationLabels;
+  UpdateReview;
+end;
+
+procedure TFrmProjectProperties.DefaultDictionaryEditChange(Sender: TObject);
+begin
+  if FLoadingControls then
+    Exit;
+  if Assigned(FDefaultDictionaryEdits[0]) then
+    FPendingDefaultDictionaries.GreekStrong := Trim(FDefaultDictionaryEdits[0].Text);
+  if Assigned(FDefaultDictionaryEdits[1]) then
+    FPendingDefaultDictionaries.HebrewStrong := Trim(FDefaultDictionaryEdits[1].Text);
+  if Assigned(FDefaultDictionaryEdits[2]) then
+    FPendingDefaultDictionaries.Morphology := Trim(FDefaultDictionaryEdits[2].Text);
+  if Assigned(FDefaultDictionaryEdits[3]) then
+    FPendingDefaultDictionaries.Word := Trim(FDefaultDictionaryEdits[3].Text);
+  FPendingDefaultDictionariesChanged := True;
+  UpdateReview;
+end;
+
+procedure TFrmProjectProperties.DefaultDictionaryBrowseClick(Sender: TObject);
+var
+  Row: Integer;
+  CurrentDirectory, SelectedPath, MessageText: string;
+  ModType: TDictionaryModuleType;
+begin
+  if not (Sender is TComponent) then
+    Exit;
+  Row := TComponent(Sender).Tag;
+  if (Row < 0) or (Row > 3) or not Assigned(FDefaultDictionaryEdits[Row]) then
+    Exit;
+  OpenDialogSelectFile.Filter := SDictionaryFilter;
+  OpenDialogSelectFile.FileName := FDefaultDictionaryEdits[Row].Text;
+  OpenDialogSelectFile.Title := SOpenDictionary;
+  if OpenDialogSelectFile.Execute then
+  begin
+    CurrentDirectory := '';
+    GetDir(0, CurrentDirectory);
+    if Pos(CurrentDirectory, OpenDialogSelectFile.FileName) = 1 then
+      SelectedPath := Format('.%s', [RightStr(OpenDialogSelectFile.FileName,
+        Length(OpenDialogSelectFile.FileName) - Length(CurrentDirectory))])
+    else
+      SelectedPath := OpenDialogSelectFile.FileName;
+    if Row in [0, 1] then
+      ModType := dmtStrong
+    else
+      ModType := dmtMorphology;
+    if (Row in [0, 1, 2]) and
+       not ProjectSetupValidateDictionary(SelectedPath, ModType, MessageText) then
+    begin
+      MessageDlg(SOpenDictionary, MessageText, mtWarning, [mbOK], 0);
+      Exit;
+    end;
+    FDefaultDictionaryEdits[Row].Text := SelectedPath;
+  end;
+end;
+
+procedure TFrmProjectProperties.DefaultDictionaryClearClick(Sender: TObject);
+var
+  Row: Integer;
+begin
+  if not (Sender is TComponent) then
+    Exit;
+  Row := TComponent(Sender).Tag;
+  if (Row >= 0) and (Row <= 3) and Assigned(FDefaultDictionaryEdits[Row]) then
+    FDefaultDictionaryEdits[Row].Text := '';
+end;
+
+procedure TFrmProjectProperties.PageControlChange(Sender: TObject);
+begin
+  ApplyThemeColors;
+  if Assigned(FPageControl) and (FPageControl.ActivePage = FTabReview) then
+    UpdateReview;
+end;
+
+procedure TFrmProjectProperties.FormShow(Sender: TObject);
+begin
+  ApplyThemeColors;
+  UpdateWorkflowControls;
+  RefreshTextControls(CurrentTextType);
+  RefreshDictionaryControls(CurrentTextType);
+  UpdateReview;
 end;
 
 procedure TFrmProjectProperties.DictionaryTextTabsChange(Sender: TObject);
@@ -855,18 +1108,22 @@ begin
   Valid := ProjectSetupValidateDictionary(FPendingStrongDictionaries[TextType],
     dmtStrong, MessageText);
   FStrongDictionaryValidationLabel.Caption := MessageText;
-  if Valid then
-    FStrongDictionaryValidationLabel.Font.Color := UISuccessColor
+  if not FStrongDictionaryValidationLabel.Enabled then
+    FStrongDictionaryValidationLabel.Font.Color := UIMutedTextColor
+  else if Valid then
+    FStrongDictionaryValidationLabel.Font.Color := UISuccessTextColor
   else
-    FStrongDictionaryValidationLabel.Font.Color := UIErrorColor;
+    FStrongDictionaryValidationLabel.Font.Color := UIErrorTextColor;
 
   Valid := ProjectSetupValidateDictionary(FPendingMorphologyDictionaries[TextType],
     dmtMorphology, MessageText);
   FMorphologyDictionaryValidationLabel.Caption := MessageText;
-  if Valid then
-    FMorphologyDictionaryValidationLabel.Font.Color := UISuccessColor
+  if not FMorphologyDictionaryValidationLabel.Enabled then
+    FMorphologyDictionaryValidationLabel.Font.Color := UIMutedTextColor
+  else if Valid then
+    FMorphologyDictionaryValidationLabel.Font.Color := UISuccessTextColor
   else
-    FMorphologyDictionaryValidationLabel.Font.Color := UIErrorColor;
+    FMorphologyDictionaryValidationLabel.Font.Color := UIErrorTextColor;
 end;
 
 function TFrmProjectProperties.ValidatePendingChanges(out MessageText: string): Boolean;
@@ -901,21 +1158,25 @@ begin
         Exit;
       end;
 
-    if not ProjectSetupValidateDictionary(FPendingStrongDictionaries[TextType],
-      dmtStrong, MessageText) then
-    begin
-      MessageText := Format('%s Strong: %s',
-        [ProjectSetupTextCaption(TextType), MessageText]);
-      Exit;
-    end;
+    if not FPendingDefaultDictionaries.Enabled or
+       FPendingStrongDictionaryChanged[TextType] then
+      if not ProjectSetupValidateDictionary(FPendingStrongDictionaries[TextType],
+        dmtStrong, MessageText) then
+      begin
+        MessageText := Format('%s Strong: %s',
+          [ProjectSetupTextCaption(TextType), MessageText]);
+        Exit;
+      end;
 
-    if not ProjectSetupValidateDictionary(FPendingMorphologyDictionaries[TextType],
-      dmtMorphology, MessageText) then
-    begin
-      MessageText := Format('%s Morphology: %s',
-        [ProjectSetupTextCaption(TextType), MessageText]);
-      Exit;
-    end;
+    if not FPendingDefaultDictionaries.Enabled or
+       FPendingMorphologyDictionaryChanged[TextType] then
+      if not ProjectSetupValidateDictionary(FPendingMorphologyDictionaries[TextType],
+        dmtMorphology, MessageText) then
+      begin
+        MessageText := Format('%s Morphology: %s',
+          [ProjectSetupTextCaption(TextType), MessageText]);
+        Exit;
+      end;
   end;
 
   Result := True;
@@ -951,14 +1212,14 @@ var
 
   procedure AppendBlankLine;
   begin
-    AppendReviewText(LineEnding, [], clWindowText);
+    AppendReviewText(LineEnding, [], UITextColor);
   end;
 
   procedure AppendSection(const Text: string);
   begin
     if FReviewMemo.Text <> '' then
       AppendBlankLine;
-    AppendReviewLine(Text, [fsBold], clNavy);
+    AppendReviewLine(Text, [fsBold], UIAccentTextColor);
   end;
 
   procedure AppendLabelValueLine(const Text: string);
@@ -968,13 +1229,13 @@ var
     SeparatorPos := Pos(':', Text);
     if SeparatorPos > 0 then
     begin
-      AppendReviewText(Copy(Text, 1, SeparatorPos), [fsBold], clWindowText);
+      AppendReviewText(Copy(Text, 1, SeparatorPos), [fsBold], UITextColor);
       AppendReviewText(Copy(Text, SeparatorPos + 1, MaxInt), [],
-        clWindowText);
-      AppendReviewText(LineEnding, [], clWindowText);
+        UITextColor);
+      AppendReviewText(LineEnding, [], UITextColor);
     end
     else
-      AppendReviewLine(Text, [], clWindowText);
+      AppendReviewLine(Text, [], UITextColor);
   end;
 
   procedure AddPending(const Text: string);
@@ -992,14 +1253,21 @@ begin
     Exit;
   end;
 
+  FReviewMemo.Color := UIContentColor;
+  FReviewMemo.Font.Color := UITextColor;
+  {$IFDEF WINDOWS}
+  if FReviewMemo.HandleAllocated then
+    SendMessage(FReviewMemo.Handle, $0443 {EM_SETBKGNDCOLOR}, 0,
+      ColorToRGB(UIContentColor));
+  {$ENDIF}
   FReviewMemo.Clear;
   FReviewMemo.Lines.BeginUpdate;
   try
     if ValidatePendingChanges(MessageText) then
-      AppendReviewLine(SPendingReady, [fsBold], clGreen)
+      AppendReviewLine(SPendingReady, [fsBold], UISuccessTextColor)
     else
       AppendReviewLine(Format(SPendingBlocked, [MessageText]), [fsBold],
-        clRed);
+        UIErrorTextColor);
 
     AppendSection(SReviewSectionProject);
     HasPending := False;
@@ -1073,8 +1341,19 @@ begin
            FPendingMorphologyDictionaries[TextType]]));
     end;
 
+    if FPendingDefaultDictionaries.Enabled <> FInitialDefaultDictionaries.Enabled then
+      AddPending(Format(SPendingDefaultDictionariesMode, [
+        EnabledStateCaption(FInitialDefaultDictionaries.Enabled),
+        EnabledStateCaption(FPendingDefaultDictionaries.Enabled)]));
+
+    if (FPendingDefaultDictionaries.GreekStrong <> FInitialDefaultDictionaries.GreekStrong) or
+       (FPendingDefaultDictionaries.HebrewStrong <> FInitialDefaultDictionaries.HebrewStrong) or
+       (FPendingDefaultDictionaries.Morphology <> FInitialDefaultDictionaries.Morphology) or
+       (FPendingDefaultDictionaries.Word <> FInitialDefaultDictionaries.Word) then
+      AddPending(SPendingDefaultDictionariesUpdated);
+
     if not HasPending then
-      AppendReviewLine(SNoPendingChanges, [fsItalic], clGrayText);
+      AppendReviewLine(SNoPendingChanges, [fsItalic], UIMutedTextColor);
 
     FReviewMemo.SelStart := 0;
   finally
@@ -1153,6 +1432,20 @@ begin
   if Assigned(FTabDictionaries) then FTabDictionaries.Caption := SDictionariesTab;
   if Assigned(FTabStatus) then FTabStatus.Caption := SStatusTab;
   if Assigned(FTabReview) then FTabReview.Caption := SReviewTab;
+  if Assigned(FDefaultDictionariesGroup) then
+    FDefaultDictionariesGroup.Caption := SDefaultDictionariesGroup;
+  if Assigned(FUseDefaultDictionariesCheck) then
+    FUseDefaultDictionariesCheck.Caption := SUseDefaultDictionariesToggle;
+  if Assigned(FDefaultDictionaryLabels[0]) then
+    FDefaultDictionaryLabels[0].Caption := SDefaultGreekStrongLabel;
+  if Assigned(FDefaultDictionaryLabels[1]) then
+    FDefaultDictionaryLabels[1].Caption := SDefaultHebrewStrongLabel;
+  if Assigned(FDefaultDictionaryLabels[2]) then
+    FDefaultDictionaryLabels[2].Caption := SDefaultMorphologyLabel;
+  if Assigned(FDefaultDictionaryLabels[3]) then
+    FDefaultDictionaryLabels[3].Caption := SDefaultWordDictionaryLabel;
+  if Assigned(FModuleDictionariesGroup) then
+    FModuleDictionariesGroup.Caption := SModuleDictionariesGroup;
   LabelTokenizerVersion.Caption := STokenizerVersion;
   if Assigned(BtnStatusCatalog) then
     BtnStatusCatalog.Caption := SEditStatusCatalog;
@@ -1214,6 +1507,7 @@ var
   TextScopeName: string;
   TextType: TTipoTextoBiblico;
   Validation: TProjectSetupValidationResult;
+  ModuleFileName, ConversionError: string;
 begin
   TextScopeName := SelectedTextScopeName;
   TextType := CurrentTextType;
@@ -1235,14 +1529,22 @@ begin
   end;
 
   case FProject.Escopo of
-    etOT: OpenDialogSelectFile.Filter := SOldTestamentFilter;
-    etNT: OpenDialogSelectFile.Filter := SNewTestamentFilter;
-    etONT: OpenDialogSelectFile.Filter := SWholeBibleFilter;
+    etOT: OpenDialogSelectFile.Filter := SOldTestamentFilter + SBibleModuleFilterSuffix;
+    etNT: OpenDialogSelectFile.Filter := SNewTestamentFilter + SBibleModuleFilterSuffix;
+    etONT: OpenDialogSelectFile.Filter := SWholeBibleFilter + SBibleModuleFilterSuffix;
   end;
 
   OpenDialogSelectFile.Title := SChooseABibleModule;
   if OpenDialogSelectFile.Execute then
   begin
+    // e-Sword / USFM / USFX: convert to a theWord module first
+    if not PrepareBibleModuleFile(OpenDialogSelectFile.FileName, ModuleFileName,
+       ConversionError) then
+    begin
+      MessageDlg(SChooseABibleModule, ConversionError, mtError, [mbOK], 0);
+      Exit;
+    end;
+    OpenDialogSelectFile.FileName := ModuleFileName;
     if not ProjectSetupValidateModule(OpenDialogSelectFile.FileName,
       FProject.Escopo, GetSelectedTokenizerVersion, True, Validation) then
     begin
@@ -1380,6 +1682,8 @@ procedure TFrmProjectProperties.BtnApplyTextDescriptionClick(Sender: TObject);
 begin
   FPendingDescriptions[CurrentTextType] := EditTextDescription.Text;
   FPendingDescriptionChanged[CurrentTextType] := True;
+  if Assigned(FProject) then
+    FProject.SetTextShortTitle(CurrentTextType, EditTextDescription.Text);
   BtnApplyTextDescription.Hide;
   UpdateReview;
 end;
@@ -1492,6 +1796,16 @@ begin
   UpdateReview;
 end;
 
+procedure TFrmProjectProperties.SelectTextTab(TextType: TTipoTextoBiblico);
+begin
+  if Assigned(FPageControl) and Assigned(FTabTexts) then
+    FPageControl.ActivePage := FTabTexts;
+  TabControlTextType.TabIndex := Ord(TextType);
+  if Assigned(FDictionaryTextTabs) then
+    FDictionaryTextTabs.TabIndex := Ord(TextType);
+  ActionChangeTab.Execute;
+end;
+
 procedure TFrmProjectProperties.ClearProject;
 begin
   FProject := nil;
@@ -1509,6 +1823,12 @@ procedure TFrmProjectProperties.SelectWorkflowTab;
 begin
   if Assigned(FPageControl) and Assigned(FTabWorkflow) then
     FPageControl.ActivePage := FTabWorkflow;
+end;
+
+procedure TFrmProjectProperties.SelectDictionariesTab;
+begin
+  if Assigned(FPageControl) and Assigned(FTabDictionaries) then
+    FPageControl.ActivePage := FTabDictionaries;
 end;
 
 procedure TFrmProjectProperties.ApplyChanges(
@@ -1687,34 +2007,96 @@ begin
       end;
 
       if FPendingDescriptionChanged[TextType] then
-        FProject.SetTextDescription(TextType, FPendingDescriptions[TextType]);
+        FProject.SetTextShortTitle(TextType, FPendingDescriptions[TextType]);
 
       if FPendingFontChanged[TextType] then
         FProject.AssignTextFont(FPendingFonts[TextType], [TextType]);
 
       if FPendingStrongDictionaryChanged[TextType] then
-      begin
-        if FPendingStrongDictionaries[TextType] = '' then
-          FProject.SetInfo(Format('dicstrong%d', [Ord(TextType)]), '')
-        else
-          FProject.AssignStrongDictionary(FPendingStrongDictionaries[TextType],
-            [TextType]);
-      end;
+        FProject.AssignStrongDictionary(FPendingStrongDictionaries[TextType],
+          [TextType]);
 
       if FPendingMorphologyDictionaryChanged[TextType] then
-      begin
-        if FPendingMorphologyDictionaries[TextType] = '' then
-          FProject.SetInfo(Format('dicmorfo%d', [Ord(TextType)]), '')
-        else
-          FProject.AssignMorphologyDictionary(
-            FPendingMorphologyDictionaries[TextType], [TextType]);
-      end;
+        FProject.AssignMorphologyDictionary(
+          FPendingMorphologyDictionaries[TextType], [TextType]);
     end;
+
+    if Assigned(opts) then
+      WriteDefaultDictionarySettings(opts, FPendingDefaultDictionaries);
+    ApplyDefaultDictionarySettings(FPendingDefaultDictionaries);
+    FProject.SetInfo('dicionarios.configured', '1');
+    FProject.SetInfo('dicionarios.use_default',
+      IfThen(FPendingDefaultDictionaries.Enabled, '1', '0'));
+    FProject.SetInfo('dicionarios.default_strong_greek',
+      FPendingDefaultDictionaries.GreekStrong);
+    FProject.SetInfo('dicionarios.default_strong_hebrew',
+      FPendingDefaultDictionaries.HebrewStrong);
+    FProject.SetInfo('dicionarios.default_morphology',
+      FPendingDefaultDictionaries.Morphology);
+    FProject.SetInfo('dicionarios.default_english_dict',
+      FPendingDefaultDictionaries.Word);
 
     FProject.RefreshUI;
     InitializePendingState;
     ActionChangeTabExecute(nil);
     UpdateReview;
+  end;
+end;
+
+procedure TFrmProjectProperties.ApplyThemeColors;
+var
+  ActiveSheet: TTabSheet;
+
+  procedure EnsureChildHandles(AParent: TWinControl);
+  var
+    Idx: Integer;
+    C: TControl;
+  begin
+    if not Assigned(AParent) then Exit;
+    AParent.HandleNeeded;
+    for Idx := 0 to AParent.ControlCount - 1 do
+    begin
+      C := AParent.Controls[Idx];
+      if C is TWinControl then
+        EnsureChildHandles(TWinControl(C));
+    end;
+  end;
+
+begin
+  if FApplyingTheme or (csDestroying in ComponentState) then
+    Exit;
+  FApplyingTheme := True;
+  try
+    ApplyFormStyle(Self);
+    StyleControl(FWorkflowIntroLabel, uirHint);
+    StyleControl(FStatusDescriptionLabel, uirHint);
+    if Assigned(MemoTextPreview) then
+    begin
+      MemoTextPreview.Color := UIContentColor;
+      MemoTextPreview.Font.Color := UITextColor;
+    end;
+    if Assigned(FReviewMemo) then
+    begin
+      FReviewMemo.Color := UIContentColor;
+      FReviewMemo.Font.Color := UITextColor;
+    end;
+    if HandleAllocated and (Visible or Showing) then
+    begin
+      if Assigned(FPageControl) and Assigned(FPageControl.ActivePage) then
+      begin
+        ActiveSheet := FPageControl.ActivePage;
+        EnsureChildHandles(ActiveSheet);
+      end;
+      ApplyDarkModeToWindow(Self, CurrentSkin.IsDark);
+      ApplySkinToForm(Self, CurrentSkin);
+      {$IFDEF WINDOWS}
+      if Assigned(FReviewMemo) and FReviewMemo.HandleAllocated then
+        SendMessage(FReviewMemo.Handle, $0443 {EM_SETBKGNDCOLOR}, 0,
+          ColorToRGB(UIContentColor));
+      {$ENDIF}
+    end;
+  finally
+    FApplyingTheme := False;
   end;
 end;
 

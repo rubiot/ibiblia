@@ -62,7 +62,7 @@ type
 implementation
 
 uses
-  SysUtils;
+  SysUtils, unitskins;
 
 constructor TTranslationMemoryFocusController.Create;
 begin
@@ -151,10 +151,15 @@ end;
 
 function TTranslationMemoryFocusController.NormalBorderColor: TColor;
 begin
-  Result := clWindow;
+  if CurrentSkin.Id = skClassic then
+    Result := clWindow
+  else
+    Result := CurrentSkin.WindowBg;
   if not Assigned(FMemo) then
     Exit;
-  if FMemo.Background.Color <> clNone then
+  if FMemo.Colors.BkGnd <> clNone then
+    Result := FMemo.Colors.BkGnd
+  else if FMemo.Background.Color <> clNone then
     Result := FMemo.Background.Color
   else if (FMemo.Color <> clNone) and (FMemo.Color <> clDefault) then
     Result := FMemo.Color;
@@ -187,8 +192,16 @@ begin
 
   if AFocused then
   begin
-    Paragraph.ParaStyle.BorderColor := clHighlight;
-    Paragraph.ParaStyle.Brush.Color := clInfoBk;
+    if CurrentSkin.Id = skClassic then
+    begin
+      Paragraph.ParaStyle.BorderColor := clHighlight;
+      Paragraph.ParaStyle.Brush.Color := clInfoBk;
+    end
+    else
+    begin
+      Paragraph.ParaStyle.BorderColor := CurrentSkin.PointedBg;
+      Paragraph.ParaStyle.Brush.Color := CurrentSkin.VerseHighlightBg;
+    end;
     Paragraph.ParaStyle.Brush.Style := bsSolid;
   end
   else

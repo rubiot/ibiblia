@@ -53,6 +53,9 @@ type
 
 implementation
 
+uses
+  unitskins;
+
 { THTMLRenderer }
 
 constructor THTMLRenderer.Create(AOwner: TComponent);
@@ -182,7 +185,14 @@ begin
     ABlock.TextStyle.Font.Size := ABaseStyle.Font.Size +
       AEffective.FontSizeDeltaPoints;
   if AEffective.HasExplicitColor then
-    ABlock.TextStyle.Font.Color := AEffective.ExplicitColor;
+  begin
+    if (AEffective.ExplicitColor = $00000000) and (CurrentSkin.Id <> skClassic) then
+      ABlock.TextStyle.Font.Color := ABaseStyle.Font.Color
+    else if (AEffective.ExplicitColor = $000000FF) and CurrentSkin.IsDark then
+      ABlock.TextStyle.Font.Color := MakeRGB(244, 92, 92)
+    else
+      ABlock.TextStyle.Font.Color := AEffective.ExplicitColor;
+  end;
   if tweifv2Superscript in AEffective.Flags then
     ABlock.TextStyle.ScriptPosition := tpoSuperscript
   else if tweifv2Subscript in AEffective.Flags then

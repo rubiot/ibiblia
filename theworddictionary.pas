@@ -270,15 +270,44 @@ begin
 end;
 
 destructor TTheWordDictionary.Destroy;
+  procedure SafeFreeQry(var Q: TSQLQuery);
+  begin
+    if not Assigned(Q) then Exit;
+    try
+      if Q.Active then Q.Close;
+      if Q.Prepared then Q.UnPrepare;
+    except
+    end;
+    Q.Transaction := nil;
+    Q.DataBase := nil;
+    FreeAndNil(Q);
+  end;
+var
+  trans: TSQLTransaction;
 begin
+  SafeFreeQry(FInsertConfig);
+  SafeFreeQry(FInsertContent);
+  SafeFreeQry(FInsertTopic);
+  if Assigned(FConnection) then
+  begin
+    try
+      if Assigned(FConnection.Transaction) and FConnection.Transaction.Active then
+        FConnection.Transaction.Rollback;
+    except
+    end;
+    try
+      if FConnection.Connected then FConnection.Close;
+    except
+    end;
+    if Assigned(FConnection.Transaction) then
+    begin
+      trans := TSQLTransaction(FConnection.Transaction);
+      FConnection.Transaction := nil;
+      trans.Free;
+    end;
+    FreeAndNil(FConnection);
+  end;
   inherited Destroy;
-
-  FInsertConfig.Free;
-  FInsertContent.Free;
-  FInsertTopic.Free;
-  FConnection.Transaction.Free;
-  FConnection.Close;
-  FConnection.Free;
 end;
 
 procedure TTheWordDictionary.AddEntry(topic: string; lemma: string;

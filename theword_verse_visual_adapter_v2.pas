@@ -99,7 +99,31 @@ function TryGetTheWordBreakIdentityAtLayoutOffset(
 implementation
 
 uses
-  SysUtils, rf_note_scanner, theword_translator_note_style;
+  SysUtils, unitskins, rf_note_scanner, theword_translator_note_style;
+
+function ResolvedTheWordTitleLevel1Color: LongInt;
+begin
+  if CurrentSkin.Id = skClassic then
+    Result := THEWORD_TITLE_LEVEL1_COLOR
+  else
+    Result := LongInt(CurrentSkin.HeaderColor);
+end;
+
+function ResolvedTheWordWordsOfJesusColor: LongInt;
+begin
+  if CurrentSkin.IsDark then
+    Result := LongInt(MakeRGB(244, 92, 92))
+  else
+    Result := LongInt(clRed);
+end;
+
+function ResolvedTheWordOldTestamentQuoteColor: LongInt;
+begin
+  if CurrentSkin.Id = skClassic then
+    Result := LongInt(clBlack)
+  else
+    Result := LongInt(CurrentSkin.WindowText);
+end;
 
 type
   TIntArray = array of Integer;
@@ -469,7 +493,7 @@ begin
   if not Result then
     Exit;
   for Index := 0 to High(Breaks) do
-    if Breaks[Index].Kind = twbkParagraph then
+    if IsTheWordParagraphBreak(Breaks[Index].Kind) then
     begin
       SetLength(ADocumentOffsets, Length(ADocumentOffsets) + 1);
       ADocumentOffsets[High(ADocumentOffsets)] :=
@@ -717,7 +741,10 @@ begin
   MarkerText := TheWordBreakVisualText(ABreak.Identity.Kind);
   Style := DefaultVisualTextStyle;
   Style.HasForegroundColor := True;
-  Style.ForegroundColor := LongInt($808080);
+  if CurrentSkin.Id = skClassic then
+    Style.ForegroundColor := LongInt($808080)
+  else
+    Style.ForegroundColor := LongInt(CurrentSkin.WindowTextDim);
   if ABreak.Identity.Kind = twbkSoftLine then
   begin
     Role := vsrSoftLineBreak;
@@ -963,7 +990,7 @@ begin
         if not AStyle.HasForegroundColor then
         begin
           AStyle.HasForegroundColor := True;
-          AStyle.ForegroundColor := THEWORD_TITLE_LEVEL1_COLOR;
+          AStyle.ForegroundColor := ResolvedTheWordTitleLevel1Color;
         end;
       end;
     2:
@@ -1097,12 +1124,12 @@ begin
   if HasWordsOfJesus then
   begin
     AStyle.HasForegroundColor := True;
-    AStyle.ForegroundColor := LongInt(clRed);
+    AStyle.ForegroundColor := ResolvedTheWordWordsOfJesusColor;
   end
   else if HasOldTestamentQuote then
   begin
     AStyle.HasForegroundColor := True;
-    AStyle.ForegroundColor := LongInt(clBlack);
+    AStyle.ForegroundColor := ResolvedTheWordOldTestamentQuoteColor;
   end;
 end;
 
@@ -1203,12 +1230,12 @@ begin
         if HasWordsOfJesus then
         begin
           Style.HasForegroundColor := True;
-          Style.ForegroundColor := LongInt(clRed);
+          Style.ForegroundColor := ResolvedTheWordWordsOfJesusColor;
         end
         else if HasOldTestamentQuote then
         begin
           Style.HasForegroundColor := True;
-          Style.ForegroundColor := LongInt(clBlack);
+          Style.ForegroundColor := ResolvedTheWordOldTestamentQuoteColor;
         end;
         SegmentText := Copy(ADocument.VisibleText, SegmentStart + 1,
           SegmentFinish - SegmentStart);

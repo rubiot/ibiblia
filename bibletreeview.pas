@@ -1,12 +1,15 @@
 unit BibleTreeView;
 
 {$mode objfpc}{$H+}
+{$WARN 4055 OFF}
+{$WARN 4056 OFF}
+{$WARN 4082 OFF}
 
 interface
 
 uses
   Classes, SysUtils, Controls, ComCtrls, Graphics, fgl, BibleScope,
-  bible_book_names;
+  bible_book_names, unitskins;
 
 const
   ImgIndexUnchecked = 0;
@@ -40,7 +43,11 @@ type
     procedure TreeViewClick(Sender: TObject);
     procedure CreateImageList;
     procedure UpdateParentState(node: TTreeNode);
+    procedure SkinCustomDrawItem(Sender: TCustomTreeView; Node: TTreeNode;
+      State: TCustomDrawState; var DefaultDraw: Boolean);
   public
+    { Takes the colours of the current skin (call again when it changes). }
+    procedure ApplySkinColors;
     constructor Create(AnOwner: TComponent); override;
     destructor Destroy; override;
     procedure SelectAll;
@@ -318,6 +325,54 @@ begin
   FOnVerseChange := nil;
   FOnSelectionChanged := nil;
   FAIStatesEnabled := False;
+  OnCustomDrawItem := @SkinCustomDrawItem;
+end;
+
+procedure TBibleTreeView.SkinCustomDrawItem(Sender: TCustomTreeView;
+  Node: TTreeNode; State: TCustomDrawState; var DefaultDraw: Boolean);
+begin
+  DefaultDraw := True;
+  if CurrentSkin.Id = skClassic then
+    Exit;
+  if cdsSelected in State then
+  begin
+    Sender.Canvas.Brush.Color := CurrentSkin.HighlightBg;
+    Sender.Canvas.Font.Color := CurrentSkin.HighlightText;
+  end
+  else
+  begin
+    Sender.Canvas.Brush.Color := CurrentSkin.TreeBg;
+    Sender.Canvas.Font.Color := CurrentSkin.TreeText;
+  end;
+end;
+
+procedure TBibleTreeView.ApplySkinColors;
+begin
+  // without this LCL draws the names in the Windows theme's dark text colour
+  if CurrentSkin.Id = skClassic then
+  begin
+    Options := Options + [tvoThemedDraw];
+    Color := clWindow;
+    Font.Color := clWindowText;
+    ExpandSignColor := clWindowText;
+  end
+  else
+  begin
+    Options := Options - [tvoThemedDraw];
+    ParentColor := False;
+    ParentFont := False;
+    SelectionColor := CurrentSkin.HighlightBg;
+    ExpandSignType := tvestArrowFill;
+    Color := CurrentSkin.TreeBg;
+    Font.Color := CurrentSkin.TreeText;
+    ExpandSignColor := CurrentSkin.TreeText;
+    TreeLineColor := CurrentSkin.PanelBorder;
+  end;
+  {$IFDEF WINDOWS}
+  if HandleAllocated then
+    HookTreeViewControl(Self);
+  {$ENDIF}
+  Invalidate;
 end;
 
 destructor TBibleTreeView.Destroy;

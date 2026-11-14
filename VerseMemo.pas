@@ -127,6 +127,7 @@ type
     function IsTransitioning: Boolean;
     function TryDeactivate: Boolean;
     procedure DiscardEdit;
+    procedure ApplySkinColors;
     property Text: TCaption read GetText;
     property Verse: TVerse read FVerse;
     property OnVerseTextModified: TVerseTextModifiedEvent
@@ -198,7 +199,7 @@ resourcestring
 implementation
 
 uses
-  performance_debug;
+  unitskins, ui_style, performance_debug;
 
 function TVerseMemo.GetText: TCaption;
 begin
@@ -730,21 +731,29 @@ begin
   if not Assigned(FStatusLabel) then
     Exit;
   if FSaveErrorActive then
-    FStatusLabel.Font.Color := clRed
+  begin
+    if CurrentSkin.IsDark then
+      FStatusLabel.Font.Color := MakeRGB(244, 92, 92)
+    else
+      FStatusLabel.Font.Color := clRed;
+  end
   else if FModified then
   begin
     FStatusLabel.Caption := SEditModeModified;
-    FStatusLabel.Font.Color := clRed;
+    if CurrentSkin.IsDark then
+      FStatusLabel.Font.Color := MakeRGB(244, 92, 92)
+    else
+      FStatusLabel.Font.Color := clRed;
   end
   else if FEditor.Capability = twlcProtectedRegions then
   begin
     FStatusLabel.Caption := SProtectedRegions;
-    FStatusLabel.Font.Color := clGrayText;
+    FStatusLabel.Font.Color := UITextMutedColor;
   end
   else
   begin
     FStatusLabel.Caption := SEditModeSaved;
-    FStatusLabel.Font.Color := clGrayText;
+    FStatusLabel.Font.Color := UITextMutedColor;
   end;
   FEditorPanel.Hint := FStatusLabel.Caption;
 end;
@@ -856,7 +865,7 @@ begin
   FEditorPanel.Align := alNone;
   FEditorPanel.BevelOuter := bvLowered;
   FEditorPanel.ParentColor := False;
-  FEditorPanel.Color := clWindow;
+  FEditorPanel.Color := UIContentColor;
   { The toolbar already displays the editor status.  Do not repeat it as a
     tooltip over the WYSIWYG surface, especially over translator-note
     previews.  Button hints remain enabled individually below. }
@@ -868,7 +877,7 @@ begin
   FToolbarPanel.Height := 38;
   FToolbarPanel.BevelOuter := bvNone;
   FToolbarPanel.ParentColor := False;
-  FToolbarPanel.Color := clInfoBk;
+  FToolbarPanel.Color := UISurfaceColor;
   FToolbarPanel.OnResize := @ToolbarResize;
 
   FModeLabel := TLabel.Create(FEditorPanel);
@@ -961,7 +970,106 @@ begin
   FOnVerseTextModified := nil;
   FOnPendingChange := nil;
   RefreshLocalizedCaptions;
+  ApplySkinColors;
   UpdateEditorState;
+end;
+
+procedure TVerseMemo.ApplySkinColors;
+var
+  BtnIndex: Integer;
+  Ctrl: TControl;
+  CanHookHandles: Boolean;
+begin
+  CanHookHandles := Assigned(FEditorPanel) and Assigned(FEditorPanel.Parent) and
+    FEditorPanel.HandleAllocated;
+  if Assigned(FEditorPanel) then
+  begin
+    FEditorPanel.Color := UIContentColor;
+    FEditorPanel.Font.Color := UITextColor;
+    if CanHookHandles then
+      ApplyDarkModeToControl(FEditorPanel, CurrentSkin.IsDark);
+  end;
+  if Assigned(FToolbarPanel) then
+  begin
+    FToolbarPanel.Color := UISurfaceColor;
+    FToolbarPanel.Font.Color := UITextColor;
+    if CanHookHandles and FToolbarPanel.HandleAllocated then
+      ApplyDarkModeToControl(FToolbarPanel, CurrentSkin.IsDark);
+    for BtnIndex := 0 to FToolbarPanel.ControlCount - 1 do
+    begin
+      Ctrl := FToolbarPanel.Controls[BtnIndex];
+      if Ctrl is TSpeedButton then
+      begin
+        if Ctrl = FJesusWordsButton then
+        begin
+          if CurrentSkin.IsDark then
+            TSpeedButton(Ctrl).Font.Color := MakeRGB(244, 92, 92)
+          else
+            TSpeedButton(Ctrl).Font.Color := clRed;
+        end
+        else if Ctrl = FTranslatorNoteButton then
+        begin
+          if CurrentSkin.IsDark then
+            TSpeedButton(Ctrl).Font.Color := MakeRGB(110, 185, 255)
+          else
+            TSpeedButton(Ctrl).Font.Color := clBlue;
+        end
+        else
+          TSpeedButton(Ctrl).Font.Color := UITextColor;
+        Ctrl.Invalidate;
+      end;
+    end;
+  end;
+  if Assigned(FModeLabel) then
+    FModeLabel.Font.Color := UITextColor;
+  if Assigned(FFontColorBox) then
+  begin
+    FFontColorBox.Color := UIContentColor;
+    FFontColorBox.Font.Color := UITextColor;
+    if CanHookHandles and FFontColorBox.HandleAllocated then
+    begin
+      ApplyDarkModeToControl(FFontColorBox, CurrentSkin.IsDark);
+      {$IFDEF WINDOWS}
+      HookComboBoxControl(FFontColorBox);
+      {$ENDIF}
+    end;
+  end;
+  if Assigned(FSaveButton) then
+  begin
+    FSaveButton.Font.Color := UITextColor;
+    if CanHookHandles and FSaveButton.HandleAllocated then
+    begin
+      ApplyDarkModeToControl(FSaveButton, CurrentSkin.IsDark);
+      {$IFDEF WINDOWS}
+      HookButtonControl(FSaveButton);
+      {$ENDIF}
+    end;
+  end;
+  if Assigned(FCancelButton) then
+  begin
+    FCancelButton.Font.Color := UITextColor;
+    if CanHookHandles and FCancelButton.HandleAllocated then
+    begin
+      ApplyDarkModeToControl(FCancelButton, CurrentSkin.IsDark);
+      {$IFDEF WINDOWS}
+      HookButtonControl(FCancelButton);
+      {$ENDIF}
+    end;
+  end;
+  if Assigned(FRawModeButton) then
+  begin
+    FRawModeButton.Font.Color := UITextColor;
+    if CanHookHandles and FRawModeButton.HandleAllocated then
+    begin
+      ApplyDarkModeToControl(FRawModeButton, CurrentSkin.IsDark);
+      {$IFDEF WINDOWS}
+      HookButtonControl(FRawModeButton);
+      {$ENDIF}
+    end;
+  end;
+  if Assigned(FEditor) then
+    FEditor.ApplySkinColors;
+  UpdateEditorStatus;
 end;
 
 destructor TVerseMemo.Destroy;
@@ -1049,9 +1157,11 @@ begin
     FBoundsContainer := Container;
     FBoundsContainer.AddHandlerOnChangeBounds(@ContainerBoundsChanged);
 
+    ApplySkinColors;
     FEditor.Editable := not Verse.ReadOnly;
     FEditor.LoadVerseContext(Verse.XML, Verse.BaseDirection, Verse.Font,
       Verse.TokenizerVersion, AAutomaticNoteStart);
+    ApplySkinColors;
     if FEditor.Capability = twlcRawOnly then
       FEditor.RawMode := True;
 
@@ -1256,9 +1366,11 @@ begin
 
       FTransitionTargetEditable := not Verse.ReadOnly;
       FVerse := Verse;
+      ApplySkinColors;
       FTransitionTargetReferenceID := Verse.ReferenceID;
       FEditor.LoadVerseContext(Verse.XML, Verse.BaseDirection, Verse.Font,
         Verse.TokenizerVersion, AAutomaticNoteStart);
+      ApplySkinColors;
       FTransitionTargetRawMode := FEditor.Capability = twlcRawOnly;
 
       FEditor.Visible := True;

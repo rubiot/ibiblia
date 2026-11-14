@@ -63,7 +63,35 @@ procedure ApplyTranslatorNoteParagraphDirections(AMemo: TKMemo);
 implementation
 
 uses
-  Math;
+  Math, unitskins, ui_style;
+
+function AdaptFootnoteColorForSkin(AColor: TColor): TColor;
+var
+  rgbVal: LongInt;
+  r, g, b: Byte;
+begin
+  Result := AColor;
+  if CurrentSkin.Id = skClassic then
+    Exit;
+  rgbVal := ColorToRGB(AColor);
+  r := rgbVal and $FF;
+  g := (rgbVal shr 8) and $FF;
+  b := (rgbVal shr 16) and $FF;
+  if (r = 0) and (g = 0) and (b = 0) then
+    Exit(CurrentSkin.NoteText);
+  if CurrentSkin.IsDark then
+  begin
+    // Adapt dark red/maroon/navy/gray on dark backgrounds
+    if (r >= 96) and (g <= 40) and (b <= 40) then
+      Result := MakeRGB(244, 110, 110)
+    else if (b >= 96) and (r <= 40) and (g <= 60) then
+      Result := MakeRGB(125, 185, 255)
+    else if (g >= 80) and (r <= 40) and (b <= 40) then
+      Result := MakeRGB(130, 225, 150)
+    else if (r + g + b) < 120 then
+      Result := CurrentSkin.NoteText;
+  end;
+end;
 
 type
   TNoteStyleState = record
@@ -218,6 +246,14 @@ begin
     ARun.TextStyle.Brush.Color := AState.BackgroundColor;
   end;
   ARun.Href := AState.Href;
+  if (AState.Href <> '') and (CurrentSkin.Id <> skClassic) and
+     (ColorToRGB(ARun.TextStyle.Font.Color) = ColorToRGB(CurrentSkin.NoteText)) then
+  begin
+    if CurrentSkin.IsDark then
+      ARun.TextStyle.Font.Color := MakeRGB(115, 175, 255)
+    else
+      ARun.TextStyle.Font.Color := CurrentSkin.VerseNumColor;
+  end;
   ARun.InlineDirection := AState.InlineDirection;
   ARun.ParagraphDirection := AState.ParagraphDirection;
 end;
@@ -245,11 +281,18 @@ begin
   Body := TTheWordTranslatorNoteBodyCodec.Decode(ABodyRaw);
   try
     ACapability := Body.Capability;
+    if CurrentSkin.Id <> skClassic then
+    begin
+      if (AMemo.TextStyle.Font.Color = clWindowText) or
+         (AMemo.TextStyle.Font.Color = clDefault) or
+         (AMemo.TextStyle.Font.Color = clBlack) then
+        AMemo.TextStyle.Font.Color := CurrentSkin.NoteText;
+    end;
     Current.FontName := UTF8Decode(AMemo.TextStyle.Font.Name);
     Current.FontSize := AMemo.TextStyle.Font.Size;
     Current.HasRelativeFontSize := False;
     Current.RelativeFontSize := 0;
-    Current.ForegroundColor := AMemo.TextStyle.Font.Color;
+    Current.ForegroundColor := AdaptFootnoteColorForSkin(AMemo.TextStyle.Font.Color);
     Current.BackgroundColor := clNone;
     Current.HasBackground := False;
     Current.FontStyle := [];
@@ -279,8 +322,11 @@ begin
             Run := TTranslatorNoteRun.Create;
             Run.Text := UTF8Encode(Token.RawLexeme);
             Saved := Current;
-            Saved.FontName := 'Consolas';
-            Saved.ForegroundColor := clGrayText;
+            Saved.FontName := UIMonoFontName;
+            if CurrentSkin.Id = skClassic then
+              Saved.ForegroundColor := clGrayText
+            else
+              Saved.ForegroundColor := CurrentSkin.WindowTextDim;
             ApplyStateToRun(Run, Saved);
             AMemo.Blocks.AddAt(Run);
           end;
@@ -320,7 +366,7 @@ begin
                     end;
                   end;
                   if TryHtmlColor(Token.ForegroundColor, ParsedColor) then
-                    Current.ForegroundColor := ParsedColor;
+                    Current.ForegroundColor := AdaptFootnoteColorForSkin(ParsedColor);
                 end;
               twnbSpanBackground:
                 if TryHtmlColor(Token.BackgroundColor, ParsedColor) then
@@ -364,17 +410,56 @@ begin
   inherited Create(AOwner);
   ReadOnly := True;
   ScrollBars := ssAutoVertical;
+  if CurrentSkin.Id = skClassic then
+  begin
+    Background.Color := clWindow;
+    Colors.BkGnd := clWindow;
+    TextStyle.Font.Color := clWindowText;
+  end
+  else
+  begin
+    Background.Color := CurrentSkin.NoteBg;
+    Colors.BkGnd := CurrentSkin.NoteBg;
+    Colors.SelBkGnd := CurrentSkin.SelectedBg;
+    Colors.SelText := CurrentSkin.SelectedText;
+    Colors.SelBkGndFocused := CurrentSkin.SelectedBg;
+    Colors.SelTextFocused := CurrentSkin.SelectedText;
+    TextStyle.Font.Color := CurrentSkin.NoteText;
+  end;
 end;
 
 procedure TTranslatorNoteBodyView.SetNoteBody(
   const ABodyRaw: UnicodeString);
 begin
   FBodyRaw := ABodyRaw;
+  if CurrentSkin.Id = skClassic then
+  begin
+    Background.Color := clWindow;
+    Colors.BkGnd := clWindow;
+    TextStyle.Font.Color := clWindowText;
+  end
+  else
+  begin
+    Background.Color := CurrentSkin.NoteBg;
+    Colors.BkGnd := CurrentSkin.NoteBg;
+    Colors.SelBkGnd := CurrentSkin.SelectedBg;
+    Colors.SelText := CurrentSkin.SelectedText;
+    Colors.SelBkGndFocused := CurrentSkin.SelectedBg;
+    Colors.SelTextFocused := CurrentSkin.SelectedText;
+    TextStyle.Font.Color := CurrentSkin.NoteText;
+  end;
   Blocks.LockUpdate;
   try
     LoadTranslatorNoteBodyIntoMemo(Self, ABodyRaw, FCapability);
   finally
     Blocks.UnlockUpdate;
+  end;
+  if HandleAllocated then
+  begin
+    ApplyDarkModeToControl(Self, CurrentSkin.IsDark);
+    {$IFDEF WINDOWS}
+    HookNCScrollBarControl(Self);
+    {$ENDIF}
   end;
 end;
 

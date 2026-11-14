@@ -30,6 +30,23 @@ uses
   theword_module_import_layout, ai_credential_store, ai_effective_settings,
   ai_settings_types;
 type
+  TSearchScope = (ssDestination, ssSource, ssReference1, ssReference2, ssStrongs, ssComments, ssAll);
+
+  TVerseSearchResult = record
+    ReferenceID: string;
+    FormattedRef: string;
+    PreviewText: string;
+    Status: Integer;
+  end;
+
+  TVerseSearchResults = array of TVerseSearchResult;
+
+const
+  ssRef1 = ssReference1;
+  ssRef2 = ssReference2;
+
+type
+
   TProject = class;
 
   TReference = record
@@ -124,6 +141,7 @@ type
   TOnNovoVersiculoEvents = specialize TFPGList<TOnNovoVersiculoEvent>;
   TOnSintagmaClickEvent = procedure (Sender: TSyntagm) of object;
   TOnProjectVerseChangedEvent = procedure () of object;
+  TOnProjectNavigateVerseEvent = procedure (Delta: Integer) of object;
   AVersiculo = array[tbOrigem..tbConsulta2] of TVerse;
   ACamposTexto = array[tbOrigem..tbConsulta2] of integer;
   STextosBiblicos = set of TTipoTextoBiblico;
@@ -140,6 +158,9 @@ type
     FScrollEventsEnabled: boolean;
     FExportando: boolean;
     FOnAlterarVersiculo: TOnProjectVerseChangedEvent;
+    FOnNavigateVerse: TOnProjectNavigateVerseEvent;
+    FOnTextPropertiesChanged: TNotifyEvent;
+    FPendingAutoSelectNext: Boolean;
     FDisplayTags: boolean;
     FSugerirAssociacaoAuto: boolean;
     FPalavrasComStrongEmNegrito: boolean;
@@ -521,8 +542,23 @@ type
     function GetPairs(ref: string): string;
     function GetComments(ref: string): string;
     function GetStatus(ref: string): Integer;
+    procedure SetOnNavigateVerse(AValue: TOnProjectNavigateVerseEvent);
+    procedure DoVerseNavigate(Sender: TVerse; Delta: Integer);
     procedure SetTextDescription(text: TTipoTextoBiblico; description: string);
     function GetTextDescription(text: TTipoTextoBiblico): string;
+    procedure SetTextShortTitle(text: TTipoTextoBiblico; const shortTitle: string);
+    function GetTextShortTitle(text: TTipoTextoBiblico): string;
+    function GetTextPropertiesText(text: TTipoTextoBiblico): string;
+    procedure SetTextPropertiesText(text: TTipoTextoBiblico; const propsText: string);
+    function IsVerseEditorActive(text: TTipoTextoBiblico): Boolean;
+    procedure EditVerse(text: TTipoTextoBiblico);
+    procedure StopEditVerse(text: TTipoTextoBiblico);
+    procedure ApplySkinColors;
+    function HasPendingAutoSelectNext: Boolean;
+    procedure CompletePendingAutoSelectNext;
+    function SearchVerses(const Term: string; SearchScope: TSearchScope = ssDestination): TVerseSearchResults;
+    function Search(const Term: string; SearchScope: TSearchScope = ssDestination): TVerseSearchResults;
+    function Pesquisar(const Termo: string; EscopoBusca: TSearchScope = ssDestination): TVerseSearchResults;
     procedure SetTextDirection(text: TTipoTextoBiblico; direction: TTextDirection);
     function GetTextDirection(text: TTipoTextoBiblico): TTextDirection;
     function HasStoredAssociations: Boolean;
@@ -550,6 +586,8 @@ type
     property Modificado: boolean read GetModificado;
     property Arvore: TTreeView read FArvore write FArvore;
     property OnAlterarVersiculo: TOnProjectVerseChangedEvent read FOnAlterarVersiculo write SetOnAlterarVersiculo;
+    property OnNavigateVerse: TOnProjectNavigateVerseEvent read FOnNavigateVerse write SetOnNavigateVerse;
+    property OnTextPropertiesChanged: TNotifyEvent read FOnTextPropertiesChanged write FOnTextPropertiesChanged;
     property OnSintagmaClick: TOnSintagmaClickEvent read FOnSintagmaClick write SetOnSintagmaClick;
     property AtrasoExibicaoDefinicao: Cardinal read FAtrasoExibicao write SetAtrasoExibicao;
     property Ativo: boolean read FAtivo;
@@ -2816,6 +2854,417 @@ begin
   Result := FConfig.ReadTextDescription(Integer(text));
 end;
 
+function PropInfoKeyForText(text: TTipoTextoBiblico): string;
+begin
+  case text of
+    tbOrigem: Result := 'propriedades.origem';
+    tbDestino: Result := 'propriedades.destino';
+    tbConsulta1: Result := 'propriedades.referencia1';
+    tbConsulta2: Result := 'propriedades.referencia2';
+  else
+    Result := '';
+  end;
+end;
+
+function LegacyPropInfoKeyForText(text: TTipoTextoBiblico): string;
+begin
+  case text of
+    tbOrigem: Result := 'Propriedades.TextoOrigem';
+    tbDestino: Result := 'Propriedades.TextoDestino';
+    tbConsulta1: Result := 'Propriedades.TextoConsulta1';
+    tbConsulta2: Result := 'Propriedades.TextoConsulta2';
+  else
+    Result := '';
+  end;
+end;
+
+function ShortTitleInfoKeyForText(text: TTipoTextoBiblico): string;
+begin
+  case text of
+    tbOrigem: Result := 'short.title.origem';
+    tbDestino: Result := 'short.title.destino';
+    tbConsulta1: Result := 'short.title.referencia1';
+    tbConsulta2: Result := 'short.title.referencia2';
+  else
+    Result := '';
+  end;
+end;
+
+function ExtractHeaderKeyValue(const PropsText, TargetKey: string): string;
+var
+  Lines: TStringList;
+  i, EqPos: Integer;
+  Line, k, v: string;
+begin
+  Result := '';
+  if Trim(PropsText) = '' then Exit;
+  Lines := TStringList.Create;
+  try
+    Lines.Text := PropsText;
+    for i := 0 to Lines.Count - 1 do
+    begin
+      Line := Trim(Lines[i]);
+      EqPos := Pos('=', Line);
+      if EqPos <= 1 then Continue;
+      k := LowerCase(Trim(Copy(Line, 1, EqPos - 1)));
+      v := Trim(Copy(Line, EqPos + 1, MaxInt));
+      if (k = LowerCase(TargetKey)) and (v <> '') then
+      begin
+        Result := v;
+        Exit;
+      end;
+    end;
+  finally
+    Lines.Free;
+  end;
+end;
+
+function UpsertHeaderKeyValue(const PropsText, TargetKey, NewValue: string): string;
+var
+  Lines: TStringList;
+  i, EqPos: Integer;
+  Line, k: string;
+  Found: Boolean;
+begin
+  Lines := TStringList.Create;
+  try
+    Lines.Text := PropsText;
+    Found := False;
+    for i := 0 to Lines.Count - 1 do
+    begin
+      Line := Trim(Lines[i]);
+      EqPos := Pos('=', Line);
+      if EqPos <= 1 then Continue;
+      k := LowerCase(Trim(Copy(Line, 1, EqPos - 1)));
+      if k = LowerCase(TargetKey) then
+      begin
+        Lines[i] := TargetKey + '=' + NewValue;
+        Found := True;
+        Break;
+      end;
+    end;
+    if not Found and (Trim(NewValue) <> '') then
+      Lines.Insert(0, TargetKey + '=' + NewValue);
+    Result := Lines.Text;
+  finally
+    Lines.Free;
+  end;
+end;
+
+function TProject.GetTextPropertiesText(text: TTipoTextoBiblico): string;
+var
+  Key, LegacyKey, Descr: string;
+begin
+  Result := '';
+  Key := PropInfoKeyForText(text);
+  if Key <> '' then
+    Result := GetInfo(Key);
+  if Trim(Result) = '' then
+  begin
+    LegacyKey := LegacyPropInfoKeyForText(text);
+    if LegacyKey <> '' then
+      Result := GetInfo(LegacyKey);
+  end;
+  if Trim(Result) = '' then
+  begin
+    Descr := Trim(GetTextDescription(text));
+    if Descr <> '' then
+      Result := 'description=' + Descr;
+  end;
+end;
+
+procedure TProject.SetTextPropertiesText(text: TTipoTextoBiblico; const propsText: string);
+var
+  Key, Descr, ShortT: string;
+begin
+  Key := PropInfoKeyForText(text);
+  if Key <> '' then
+    SetInfo(Key, propsText);
+  Descr := ExtractHeaderKeyValue(propsText, 'description');
+  if Descr = '' then
+    Descr := ExtractHeaderKeyValue(propsText, 'title');
+  if Descr <> '' then
+    SetTextDescription(text, Descr);
+  ShortT := ExtractHeaderKeyValue(propsText, 'short.title');
+  if ShortT <> '' then
+  begin
+    Key := ShortTitleInfoKeyForText(text);
+    if Key <> '' then
+      SetInfo(Key, ShortT);
+  end;
+  if Assigned(FOnTextPropertiesChanged) then
+    FOnTextPropertiesChanged(Self);
+end;
+
+function TProject.GetTextShortTitle(text: TTipoTextoBiblico): string;
+var
+  Key, Props: string;
+begin
+  Result := '';
+  Key := ShortTitleInfoKeyForText(text);
+  if Key <> '' then
+    Result := Trim(GetInfo(Key));
+  if Result <> '' then
+    Exit;
+  Props := GetTextPropertiesText(text);
+  Result := ExtractHeaderKeyValue(Props, 'short.title');
+  if Result = '' then
+    Result := ExtractHeaderKeyValue(Props, 'title');
+  if Result = '' then
+    Result := ExtractHeaderKeyValue(Props, 'description');
+  if Result = '' then
+    Result := Trim(GetTextDescription(text));
+end;
+
+procedure TProject.SetTextShortTitle(text: TTipoTextoBiblico; const shortTitle: string);
+var
+  Key, PropsKey, Props: string;
+begin
+  Key := ShortTitleInfoKeyForText(text);
+  if Key <> '' then
+    SetInfo(Key, Trim(shortTitle));
+  PropsKey := PropInfoKeyForText(text);
+  if PropsKey <> '' then
+  begin
+    Props := GetInfo(PropsKey);
+    if Trim(Props) <> '' then
+      SetInfo(PropsKey, UpsertHeaderKeyValue(Props, 'short.title', Trim(shortTitle)));
+  end;
+  if Assigned(FOnTextPropertiesChanged) then
+    FOnTextPropertiesChanged(Self);
+end;
+
+function TProject.IsVerseEditorActive(text: TTipoTextoBiblico): Boolean;
+begin
+  if Assigned(FAVersiculo[text]) then
+  begin
+    FAVersiculo[text].OnMouseEnter := @SintagmaOnMouseEnter;
+    FAVersiculo[text].OnMouseLeave := @SintagmaOnMouseLeave;
+    FAVersiculo[text].OnNavigateVerse := @DoVerseNavigate;
+  end;
+  Result := Assigned(FVerseMemo) and Assigned(FAVersiculo[text]) and
+            FVerseMemo.IsActiveFor(FAVersiculo[text]);
+end;
+
+procedure TProject.EditVerse(text: TTipoTextoBiblico);
+begin
+  if not FAtivo or not Assigned(FAVersiculo[text]) then Exit;
+  CancelDefaultVerseModeRequest;
+  if text = tbDestino then
+    ActivateDestinationVerseEditor
+  else if Assigned(FVerseMemo) and Assigned(FAVersiculo[text].Panel) then
+    FVerseMemo.Activate(FAVersiculo[text].Panel, FAVersiculo[text], FAVersiculo[text].AutomaticNoteStart);
+end;
+
+procedure TProject.StopEditVerse(text: TTipoTextoBiblico);
+begin
+  if IsVerseEditorActive(text) then
+    FVerseMemo.TryDeactivate;
+end;
+
+procedure TProject.ApplySkinColors;
+var
+  t: TTipoTextoBiblico;
+begin
+  for t := Low(FAVersiculo) to High(FAVersiculo) do
+    if Assigned(FAVersiculo[t]) then
+    begin
+      if FAtivo then
+        FAVersiculo[t].RefreshAfterEditorClose;
+      if Assigned(FAVersiculo[t].Panel) then
+        FAVersiculo[t].Panel.Invalidate;
+    end;
+  RefreshStatusImages;
+end;
+
+function TProject.HasPendingAutoSelectNext: Boolean;
+begin
+  Result := (FPendingAutoSelectNext and FAtivo and
+             Assigned(FAVersiculo[tbOrigem]) and Assigned(FAVersiculo[tbDestino]) and
+             ((FAVersiculo[tbOrigem].Selection.Count > 0) or (FAVersiculo[tbDestino].Selection.Count > 0))) or (Assigned(FAVersiculo[tbOrigem]) and FAVersiculo[tbOrigem].PendingAutoSelectNext) or (Assigned(FAVersiculo[tbDestino]) and FAVersiculo[tbDestino].PendingAutoSelectNext);
+end;
+
+procedure TProject.CompletePendingAutoSelectNext;
+var
+  LastSelected, NextUnassociated, s: TSyntagm;
+begin
+  FPendingAutoSelectNext := False;
+  if not FAtivo or not Assigned(FAVersiculo[tbOrigem]) or not Assigned(FAVersiculo[tbDestino]) then
+    Exit;
+  if Assigned(FAVersiculo[tbDestino]) and FAVersiculo[tbDestino].PendingAutoSelectNext then
+  begin
+    FAVersiculo[tbDestino].CompletePendingAutoSelectNext;
+    Exit;
+  end;
+  if Assigned(FAVersiculo[tbOrigem]) and FAVersiculo[tbOrigem].PendingAutoSelectNext then
+  begin
+    FAVersiculo[tbOrigem].CompletePendingAutoSelectNext;
+    Exit;
+  end;
+  LastSelected := nil;
+  if FAVersiculo[tbOrigem].Selection.Count > 0 then
+    LastSelected := FAVersiculo[tbOrigem].Selection[FAVersiculo[tbOrigem].Selection.Count - 1]
+  else if FAVersiculo[tbDestino].Selection.Count > 0 then
+  begin
+    s := FAVersiculo[tbDestino].Selection[FAVersiculo[tbDestino].Selection.Count - 1];
+    if Assigned(s) and Assigned(s.Pairs) and (s.Pairs.Count > 0) then
+      LastSelected := TSyntagm(s.Pairs[s.Pairs.Count - 1]);
+  end;
+
+  FAVersiculo[tbDestino].ClearSelection;
+  FAVersiculo[tbOrigem].ClearSelection;
+
+  if Assigned(LastSelected) then
+  begin
+    NextUnassociated := LastSelected.GetNextUnassociated;
+    if Assigned(NextUnassociated) then
+    begin
+      NextUnassociated.AddToSelection;
+      if Assigned(FAVersiculo[tbOrigem].OnClick) then
+        FAVersiculo[tbOrigem].OnClick(NextUnassociated);
+    end;
+  end;
+
+  FAVersiculo[tbDestino].Render;
+  FAVersiculo[tbOrigem].Render;
+end;
+
+procedure TProject.SetOnNavigateVerse(AValue: TOnProjectNavigateVerseEvent);
+var
+  t: TTipoTextoBiblico;
+begin
+  FOnNavigateVerse := AValue;
+  for t := Low(FAVersiculo) to High(FAVersiculo) do
+    if Assigned(FAVersiculo[t]) then
+    begin
+      FAVersiculo[t].OnMouseEnter := @SintagmaOnMouseEnter;
+      FAVersiculo[t].OnMouseLeave := @SintagmaOnMouseLeave;
+      FAVersiculo[t].OnNavigateVerse := @DoVerseNavigate;
+    end;
+end;
+
+procedure TProject.DoVerseNavigate(Sender: TVerse; Delta: Integer);
+begin
+  if Assigned(FOnNavigateVerse) then
+    FOnNavigateVerse(Delta)
+  else if Delta < 0 then
+    PreviousVerse
+  else if Delta > 0 then
+    NextVerse;
+end;
+
+function TProject.SearchVerses(const Term: string; SearchScope: TSearchScope = ssDestination): TVerseSearchResults;
+var
+  qry: TSQLQuery;
+  sqlWhere, termPattern, preview, bName: string;
+  count, b, c, v: Integer;
+begin
+  SetLength(Result, 0);
+  if (Trim(Term) = '') or (FFileName = '') or not FileExists(FFileName) then
+    Exit;
+
+  if Assigned(FTblPares) and (FTblPares.State in [dsEdit, dsInsert]) then
+    FTblPares.Post;
+
+  qry := CreateQueryObject(FFileName);
+  try
+    termPattern := '%' + Trim(Term) + '%';
+
+    case SearchScope of
+      ssDestination:
+        sqlWhere := 'pare_texto_destino LIKE :term';
+      ssSource:
+        sqlWhere := 'pare_texto_origem LIKE :term';
+      ssRef1:
+        sqlWhere := 'pare_texto_consulta1 LIKE :term';
+      ssRef2:
+        sqlWhere := 'pare_texto_consulta2 LIKE :term';
+      ssStrongs:
+        sqlWhere := '(pare_pares LIKE :term) OR (pare_texto_origem LIKE :term)';
+      ssComments:
+        sqlWhere := 'pare_comentarios LIKE :term';
+    else
+      sqlWhere := '(pare_texto_destino LIKE :term) OR (pare_texto_origem LIKE :term) OR ' +
+                  '(pare_texto_consulta1 LIKE :term) OR (pare_texto_consulta2 LIKE :term) OR ' +
+                  '(pare_pares LIKE :term) OR (pare_comentarios LIKE :term)';
+    end;
+
+    qry.SQL.Text := 'SELECT pare_id, pare_situacao, pare_texto_destino, pare_texto_origem, ' +
+                    'pare_texto_consulta1, pare_texto_consulta2, pare_pares, pare_comentarios ' +
+                    'FROM pares WHERE ' + sqlWhere + ' ORDER BY rowid';
+
+    qry.Params.ParamByName('term').AsString := termPattern;
+    try
+      qry.Open;
+    except
+      on E: Exception do
+      begin
+        ShowMessage('Search error: ' + E.Message);
+        Exit;
+      end;
+    end;
+
+    count := 0;
+    while not qry.EOF do
+    begin
+      b := 0; c := 0; v := 0;
+      SScanf(qry.FieldByName('pare_id').AsString, '%d,%d,%d', [@b, @c, @v]);
+
+      bName := '';
+      if (b > 0) and (b <= 66) then
+      begin
+        if (FEscopo <> etNone) and (b - OffsetLivros[FEscopo] - 1 >= 0) and (b - OffsetLivros[FEscopo] - 1 < QLivros[FEscopo]) then
+          bName := NLivros[FEscopo][b - OffsetLivros[FEscopo] - 1]
+        else
+          bName := NLivros[etONT][b - 1];
+      end;
+
+      if bName = '' then
+        bName := 'Book ' + IntToStr(b);
+
+      case SearchScope of
+        ssSource:   preview := qry.FieldByName('pare_texto_origem').AsString;
+        ssRef1:     preview := qry.FieldByName('pare_texto_consulta1').AsString;
+        ssRef2:     preview := qry.FieldByName('pare_texto_consulta2').AsString;
+        ssComments: preview := qry.FieldByName('pare_comentarios').AsString;
+        ssStrongs:  preview := qry.FieldByName('pare_pares').AsString;
+      else
+        preview := qry.FieldByName('pare_texto_destino').AsString;
+      end;
+
+      if Trim(preview) = '' then
+        preview := qry.FieldByName('pare_texto_origem').AsString;
+
+      Inc(count);
+      SetLength(Result, count);
+      Result[count - 1].ReferenceID := qry.FieldByName('pare_id').AsString;
+      Result[count - 1].FormattedRef := Format('%s %d:%d', [bName, c, v]);
+      Result[count - 1].PreviewText := Trim(preview);
+      Result[count - 1].Status := qry.FieldByName('pare_situacao').AsInteger;
+
+      qry.Next;
+    end;
+
+    qry.Close;
+  finally
+    if Assigned(qry.Transaction) then
+      qry.Transaction.Free;
+    if Assigned(qry.DataBase) then
+      qry.DataBase.Free;
+    qry.Free;
+  end;
+end;
+
+function TProject.Search(const Term: string; SearchScope: TSearchScope = ssDestination): TVerseSearchResults;
+begin
+  Result := SearchVerses(Term, SearchScope);
+end;
+
+function TProject.Pesquisar(const Termo: string; EscopoBusca: TSearchScope = ssDestination): TVerseSearchResults;
+begin
+  Result := SearchVerses(Termo, EscopoBusca);
+end;
+
 procedure TProject.SetTextDirection(text: TTipoTextoBiblico;
   direction: TTextDirection);
 begin
@@ -3362,8 +3811,36 @@ end;
 procedure TProject.SintagmaOnMouseEnter(Sender: TSyntagm);
 var
   show: boolean;
+  CandSrc, IterSrc: TSyntagm;
 begin
-  show := False;
+  if (Sender = nil) and Assigned(FAVersiculo[tbOrigem]) and
+     Assigned(FAVersiculo[tbOrigem].Selection) and (FAVersiculo[tbOrigem].Selection.Count > 0) then
+    Sender := FAVersiculo[tbOrigem].Selection[FAVersiculo[tbOrigem].Selection.Count - 1];
+  if Sender = nil then
+    Exit;
+  if Assigned(FrmDictionaryPopup) then
+    FrmDictionaryPopup.NotifySyntagmHoverEnter;
+  CandSrc := Sender;
+  if Assigned(Sender) and Assigned(FAVersiculo[tbOrigem]) and
+     Assigned(FAVersiculo[tbDestino]) and (Sender.VerseRef = FAVersiculo[tbDestino]) then
+  begin
+    CandSrc := nil;
+    if Assigned(Sender.Pairs) and (Sender.Pairs.Count > 0) then
+      CandSrc := TSyntagm(Sender.Pairs[0])
+    else if Assigned(FAVersiculo[tbOrigem].Syntagms) then
+    begin
+      for IterSrc in FAVersiculo[tbOrigem].Syntagms do
+        if Assigned(IterSrc.Pairs) and (IterSrc.Pairs.IndexOf(Sender) >= 0) then
+        begin
+          CandSrc := IterSrc;
+          Break;
+        end;
+    end;
+    if (CandSrc = nil) and Assigned(FAVersiculo[tbOrigem].Selection) and (FAVersiculo[tbOrigem].Selection.Count > 0) then
+      CandSrc := FAVersiculo[tbOrigem].Selection[FAVersiculo[tbOrigem].Selection.Count - 1];
+    if CandSrc = nil then
+      CandSrc := Sender;
+  end;
   case FPopupTrigger of
     ptMouseHover:     show := (GetKeyState(VK_CONTROL) and $8000 = 0) and
                               (GetKeyState(VK_SHIFT  ) and $8000 = 0);
@@ -3377,9 +3854,12 @@ begin
 
   if show then
   begin
-    FTemporizador.Enabled := false;
-    FTemporizador.Tag := PtrInt(Sender);
-    FTemporizador.Enabled := true;
+    FTemporizador.Enabled := False;
+    FTemporizador.Tag := PtrInt(CandSrc);
+    if ((Assigned(FrmDictionaryPopup) and FrmDictionaryPopup.Visible) or (Assigned(CandSrc) and CandSrc.IsSelected and ((GetKeyState(VK_LBUTTON) and $8000) = 0) and ((GetKeyState(VK_RBUTTON) and $8000) = 0))) and Assigned(FTemporizador.OnTimer) then
+      FTemporizador.OnTimer(FTemporizador)
+    else
+      FTemporizador.Enabled := True;
   end;
 
   HighlightStrongs(Sender);
@@ -3403,7 +3883,7 @@ begin
   end;
 
   if hide then
-    FrmDictionaryPopup.HidePopup;
+    FrmDictionaryPopup.RequestDeferredHide;
 
   { hide strong hightlights }
   for v:=low(FAVersiculo) to high(FAVersiculo) do
@@ -3413,6 +3893,21 @@ end;
 
 procedure TProject.SintagmaOnClick(Sender: TSyntagm);
 begin
+  if Assigned(Sender) and Assigned(FAVersiculo[tbOrigem]) and Assigned(FAVersiculo[tbDestino]) and
+     ((Sender.VerseRef = FAVersiculo[tbOrigem]) or (Sender.VerseRef = FAVersiculo[tbDestino])) then
+  begin
+    if Sender.IsAssociated and
+       (FAVersiculo[tbOrigem].Selection.Count > 0) and
+       (FAVersiculo[tbDestino].Selection.Count > 0) and
+       (((GetKeyState(VK_SHIFT) and $8000) <> 0) or ((GetKeyState(VK_CONTROL) and $8000) <> 0)) then
+      FPendingAutoSelectNext := True
+    else if ((GetKeyState(VK_SHIFT) and $8000) = 0) and ((GetKeyState(VK_CONTROL) and $8000) = 0) then
+      FPendingAutoSelectNext := False;
+    if (Sender.VerseRef = FAVersiculo[tbOrigem]) and Sender.IsSelected and
+       ((GetKeyState(VK_LBUTTON) and $8000) = 0) and
+       ((GetKeyState(VK_RBUTTON) and $8000) = 0) then
+      SintagmaOnMouseEnter(Sender);
+  end;
   if not FVerseMemo.TryDeactivate then
     Exit;
 
@@ -3754,8 +4249,15 @@ begin
 
   if (FPopupTrigger = ptDisabled) or not Assigned(Candidate) then
     Exit;
-  if frmDictionaryPopup.Visible then
-    exit;
+  if Sender is TTimer then
+    TTimer(Sender).Enabled := False;
+  if FrmDictionaryPopup.Visible then
+  begin
+    FrmDictionaryPopup.Strongs.Clear;
+    FrmDictionaryPopup.Morphologies.Clear;
+    FrmDictionaryPopup.TabControlStrongs.Tabs.Clear;
+    FrmDictionaryPopup.TabControlMorphologies.Tabs.Clear;
+  end;
 
   for v:=low(FAVersiculo) to high(FAVersiculo) do
   begin
@@ -3773,6 +4275,21 @@ begin
         FrmDictionaryPopup.AddStrong(StrongEntries[EntryIndex].Key,
           StrongEntries[EntryIndex].Definition);
 
+      if (v = tbDestino) and Assigned(s.Pairs) and (s.Pairs.Count > 0) then
+      begin
+        FDictionaryManager.CollectPopupEntries(TSyntagm(s.Pairs[0]), Ord(tbOrigem), StrongEntries, MorphologyEntries);
+
+        for EntryIndex := Low(MorphologyEntries) to High(MorphologyEntries) do
+          if FrmDictionaryPopup.TabControlMorphologies.Tabs.IndexOf(MorphologyEntries[EntryIndex].Key) < 0 then
+            FrmDictionaryPopup.AddMorphology(MorphologyEntries[EntryIndex].Key,
+              MorphologyEntries[EntryIndex].Definition);
+
+        for EntryIndex := Low(StrongEntries) to High(StrongEntries) do
+          if FrmDictionaryPopup.TabControlStrongs.Tabs.IndexOf(StrongEntries[EntryIndex].Key) < 0 then
+            FrmDictionaryPopup.AddStrong(StrongEntries[EntryIndex].Key,
+              StrongEntries[EntryIndex].Definition);
+      end;
+
       if v = tbOrigem then
       begin
         if EnsureAssociationMemoryFresh then
@@ -3780,8 +4297,15 @@ begin
         rtf := TDictionaryManager.FormatRTF(FSuggestionManager.GetTranslationAlternatives(s));
         if not rtf.IsEmpty then
           FrmDictionaryPopup.AddStrong(STranslationMemory, rtf);
+      end
+      else if (v = tbDestino) and Assigned(s.Pairs) and (s.Pairs.Count > 0) then
+      begin
+        if EnsureAssociationMemoryFresh then
+          Exit;
+        rtf := TDictionaryManager.FormatRTF(FSuggestionManager.GetTranslationAlternatives(TSyntagm(s.Pairs[0])));
+        if (not rtf.IsEmpty) and (FrmDictionaryPopup.TabControlStrongs.Tabs.IndexOf(STranslationMemory) < 0) then
+          FrmDictionaryPopup.AddStrong(STranslationMemory, rtf);
       end;
-
       if (FrmDictionaryPopup.Strongs.Count > 0) or (FrmDictionaryPopup.Morphologies.Count > 0) then
       begin
         if FAVersiculo[v].TryGetSyntagmScreenAnchor(s, point) then
@@ -4202,11 +4726,6 @@ begin
         MessageDlg(SEncryptedDictionary, format(SInvalidEncryptedDictionary, [FExpand(dic)]), mtError, [mbOK], 0);
         Exit;
       end;
-    dvrCompressed:
-      begin
-        MessageDlg(SCompressedDictionary, format(SInvalidCompressedDictionary, [FExpand(dic)]), mtError, [mbOK], 0);
-        Exit;
-      end;
     dvrNonRTF:
       begin
         MessageDlg(SNonRTFDictionary, format(SInvalidNonRTFDictionary, [FExpand(dic)]), mtError, [mbOK], 0);
@@ -4245,11 +4764,6 @@ begin
     dvrEncrypted:
       begin
         MessageDlg(SEncryptedDictionary, format(SInvalidEncryptedDictionary, [FExpand(dic)]), mtError, [mbOK], 0);
-        Exit;
-      end;
-    dvrCompressed:
-      begin
-        MessageDlg(SCompressedDictionary, format(SInvalidCompressedDictionary, [FExpand(dic)]), mtError, [mbOK], 0);
         Exit;
       end;
     dvrNonRTF:

@@ -1,6 +1,9 @@
 unit Verse;
 
 {$mode objfpc}{$H+}
+{$WARN 4055 OFF}
+{$WARN 4056 OFF}
+{$WARN 4082 OFF}
 
 {TODO -cObrigatório: Rever algoritmo de associação/desassociação }
 
@@ -14,7 +17,7 @@ uses
   ONTParser, dbugintf, Menus, Clipbrd, PCRE, ai_debug, text_direction,
   verse_view_intf, text_edit_provenance, verse_visual_adapter,
   translator_note_hover_controller, SyntagmSelection,
-  theword_effective_inline_style_v2;
+  theword_effective_inline_style_v2, verse_panel_strip;
 
 type
 
@@ -25,6 +28,7 @@ type
   TOnTextDirectionChangeEvent = procedure(Sender: TVerse;
     Direction: TTextDirection) of object;
   TOnExportTextEvent = procedure (Sender: TVerse) of object;
+  TOnNavigateVerseEvent = procedure (Sender: TVerse; Delta: Integer) of object;
   TOnTranslatorNoteClickEvent = procedure(Sender: TVerse; ANoteId,
     ARevision: QWord) of object;
 
@@ -121,6 +125,7 @@ type
     FOnSyntagmMouseEnter: TOnSyntagmEvent;
     FOnSyntagmMouseLeave: TOnSyntagmEvent;
     FOnExportText: TOnExportTextEvent;
+    FOnExportBibleModule: TOnExportTextEvent;
     FOnTranslatorNoteClick: TOnTranslatorNoteClickEvent;
     FXML: string;
     FONTParser: TONTParser;
@@ -130,6 +135,12 @@ type
     FRTLMenuItem: TMenuItem;
     FFixWrongFiTag: IRegex;
     FReadOnly: Boolean;
+    FIsSourceVerse: Boolean;
+    FBottomInset: Integer;
+    FUpdatingVerseViewHeight: Boolean;
+    FChevrons: TVerseChevrons;
+    FOnNavigateVerse: TOnNavigateVerseEvent;
+    FPendingAutoSelectNext: Boolean;
     { determines the auto select behaviour on right-click association }
     FNextAutoSelectWordMustHaveStrongMorpho: Boolean;
     // function CompareSyntagmsInFSyntagms(Item1, Item2: Pointer): Integer; // Removed
@@ -147,6 +158,10 @@ type
     procedure SetModified(const AValue: boolean);
     procedure NotifyVerseChanged;
     procedure SetRightToLeft(AValue: Boolean);
+    procedure SetBottomInset(AValue: Integer);
+    procedure ChevronsNavigate(Sender: TObject; Delta: Integer);
+    procedure ComputeChevronsLayout(out AX, AY, ARequiredHeight: Integer);
+    procedure UpdateVerseViewHeight;
     procedure SetBaseDirection(AValue: TTextDirection);
     procedure RefreshVisualDocument(ContentChanged: Boolean = False);
     procedure FlushVisualRefresh(Data: PtrInt);
@@ -179,6 +194,7 @@ type
     procedure OnCopySyntagmTags(Sender: TObject);
     procedure OnPasteSyntagmTags(Sender: TObject);
     procedure OnSaveTextToFile(Sender: TObject);
+    procedure OnExportBibleModuleClick(Sender: TObject);
     procedure OnCopyTokensToClipboard(Sender: TObject);
     procedure OnCopyInterlinearVerseToClipboard(Sender: TObject);
     procedure OnCopyXMLToClipboard(Sender: TObject);
@@ -219,6 +235,14 @@ type
     procedure RenderStrongCount;
     procedure OrganizeSyntagms;
     procedure SelectSyntagms(list: TSyntagmList);
+    { Mouse wheel word selection: moves the source selection one word left
+      (Step < 0) or right (Step > 0) and shows its linked words. }
+    function SelectSourceWordByDelta(Step: Integer): Boolean;
+    { Background and text colours from the current skin (View > Skins). }
+    procedure ApplySkinColors;
+    { After a Shift+click association, once Ctrl/Shift are released: select
+      the next unlinked source word. }
+    procedure CompletePendingAutoSelectNext;
     procedure ChangeText(_XML: string);
     function GetPairsList(ListType: TPairsListType): TStringList;
     function GetAssociationPairData(
@@ -276,6 +300,12 @@ type
     property OnMouseLeave: TOnSyntagmEvent read FOnSyntagmMouseLeave write FOnSyntagmMouseLeave;
     property OnVerseChanged: TOnVerseChangedEvent read FOnVerseChanged write FOnVerseChanged;
     property OnExportText: TOnExportTextEvent read FOnExportText write FOnExportText;
+    property OnExportBibleModule: TOnExportTextEvent read FOnExportBibleModule write FOnExportBibleModule;
+    { Blank space kept above the verse text for the panel's control strip. }
+    property BottomInset: Integer read FBottomInset write SetBottomInset;
+    property OnNavigateVerse: TOnNavigateVerseEvent read FOnNavigateVerse write FOnNavigateVerse;
+    { Shows or hides the "<" ">" pair right after the end of the verse text. }
+    procedure ShowChevrons(AShow: Boolean);
     property OnTranslatorNoteClick: TOnTranslatorNoteClickEvent
       read FOnTranslatorNoteClick write FOnTranslatorNoteClick;
     property ShowHints: boolean read FShowHints write FShowHints;
@@ -291,6 +321,9 @@ type
     property StrongsCountMode: TStrongsCountMode read FStrongsCountMode write SetStrongsCountMode;
     property DebugTokens: string read GetTokens;
     property ReadOnly: Boolean read FReadOnly write FReadOnly default False;
+    property IsSourceVerse: Boolean read FIsSourceVerse write FIsSourceVerse;
+    property PendingAutoSelectNext: Boolean read FPendingAutoSelectNext
+      write FPendingAutoSelectNext;
     property BaseDirection: TTextDirection read FBaseDirection write SetBaseDirection;
     property RightToLeft: Boolean read GetRightToLeft write SetRightToLeft default False;
     property NextAutoSelectWordMustHaveStrongMorpho: boolean read FNextAutoSelectWordMustHaveStrongMorpho write FNextAutoSelectWordMustHaveStrongMorpho;
@@ -310,6 +343,7 @@ resourcestring
   SPasteStrongTags = '&Paste &Strong''s tags';
   SPasteMorphoTags = 'Paste &morphology tags';
   SSaveToFile = '&Save text to file...';
+  SExportAsBibleModule = '&Export as Bible module...';
   SRightToLeft = 'Right to left text';
   SCopyTokensToClipboard = 'Copy &tokens to clipboard';
   SCopySyntagmsJSONToClipboard = 'Copy syntagms as &JSON to clipboard';
@@ -320,8 +354,8 @@ resourcestring
 implementation
 
 uses
-  TypInfo, LazLoggerBase, verse_visual_document,
-  directwrite_syntagm_view, theword_ont_codec_v2, performance_debug;
+  FormDictionaryPopup, TypInfo, LazLoggerBase, verse_visual_document,
+  directwrite_syntagm_view, theword_ont_codec_v2, performance_debug, unitskins;
 
 const
   MarginWidth = 10; // text's distance from the margin
@@ -457,6 +491,7 @@ begin
   FTokenizerVersion := TTokenizerFactory.PreferredVersion;
   FONTParser := TONTParser.Create(FTokenizerVersion);
   FSyntagms := TSyntagmList.Create;
+  ApplySkinColors;
 
   { regex to fix cases in which a <Fi> tag ends up misplaced }
   FFixWrongFiTag := RegexCreate('((?:<W[THG][^>]+>)+)(<Fi>)', [rcoUTF8]);
@@ -471,21 +506,40 @@ begin
      IntToHex(PtrUInt(Pointer(FPanel)), SizeOf(Pointer)*2),
      FReference]);
   FDestroying := true;
-  DismissTranslatorNotePreview;
-  FreeAndNil(FInlineProjection);
-  ClearSyntagms;
-  FSyntagms.Free;
-  FSelection.Destroy;
+  FActive := false;
   if assigned(FPanel) then
   begin
-    FEdit.Free;
-    FSyntagmPopupMenu.Free;
-    FVerseView := nil;
-    FreeAndNil(FVerseViewControl);
-    FVersePopupMenu.Free;
     FPanel.OnMouseDown  := nil;
     FPanel.OnResize     := nil;
     FPanel.OnMouseWheel := nil;
+  end;
+  DismissTranslatorNotePreview;
+  FreeAndNil(FInlineProjection);
+  ClearSyntagms;
+  FreeAndNil(FSyntagms);
+  FreeAndNil(FSelection);
+  if assigned(FPanel) then
+  begin
+    if Assigned(FEdit) then
+    begin
+      FEdit.OnKeyDown := nil;
+      FEdit.OnExit := nil;
+      FEdit.Parent := nil;
+      FreeAndNil(FEdit);
+    end;
+    FreeAndNil(FSyntagmPopupMenu);
+    FVerseView := nil;
+    if Assigned(FChevrons) then
+    begin
+      FChevrons.Parent := nil;
+      FreeAndNil(FChevrons);
+    end;
+    if Assigned(FVerseViewControl) then
+    begin
+      FVerseViewControl.Parent := nil;
+      FreeAndNil(FVerseViewControl);
+    end;
+    FreeAndNil(FVersePopupMenu);
   end;
   FONTParser.Destroy;
   FreeAndNil(FNoteHover);
@@ -815,15 +869,11 @@ begin
 end;
 
 procedure TVerse.OnVisualContentHeightChanged(Sender: TObject);
-var
-  NewHeight: Integer;
 begin
-  if FDestroying or not Assigned(FVerseViewControl) or
-     not (Sender is TDirectWriteSyntagmView) then
+  if FDestroying or (FVisualUpdatesSuspended > 0) or FUpdatingVerseViewHeight or
+     not Assigned(FVerseViewControl) or not (Sender is TDirectWriteSyntagmView) then
     Exit;
-  NewHeight := Max(1, TDirectWriteSyntagmView(Sender).ContentHeight);
-  if FVerseViewControl.Height <> NewHeight then
-    FVerseViewControl.Height := NewHeight;
+  UpdateVerseViewHeight;
 end;
 
 function TVerse.TryGetSyntagmScreenAnchor(Syntagm: TSyntagm;
@@ -2369,6 +2419,194 @@ begin
   Render;
 end;
 
+procedure TVerse.SetBottomInset(AValue: Integer);
+begin
+  if FBottomInset = AValue then
+    Exit;
+  FBottomInset := AValue;
+  if Assigned(FVerseViewControl) then
+  begin
+    FVerseViewControl.BorderSpacing.Bottom := 0;
+    UpdateVerseViewHeight;
+  end;
+end;
+
+procedure TVerse.ChevronsNavigate(Sender: TObject; Delta: Integer);
+begin
+  if Assigned(FOnNavigateVerse) then
+    FOnNavigateVerse(Self, Delta);
+end;
+
+procedure TVerse.ComputeChevronsLayout(out AX, AY, ARequiredHeight: Integer);
+const
+  DefaultChevW = 38;
+  DefaultChevH = 22;
+var
+  View: TDirectWriteSyntagmView;
+  DocText: UnicodeString;
+  EndOffset: Integer;
+  Stops: TVerseTextOffsetArray;
+  EndRect: TRect;
+  ChevW, ChevH, LineHeight, ContentH, AvailW: Integer;
+  Located: Boolean;
+begin
+  AX := MarginWidth;
+  AY := 0;
+  ARequiredHeight := 1;
+  if FDestroying or not Assigned(FVerseViewControl) then
+    Exit;
+
+  if Assigned(FChevrons) then
+  begin
+    ChevW := FChevrons.Width;
+    ChevH := FChevrons.Height;
+  end
+  else
+  begin
+    ChevW := DefaultChevW;
+    ChevH := DefaultChevH;
+  end;
+
+  Located := False;
+  LineHeight := ChevH;
+  FillChar(EndRect, SizeOf(EndRect), 0);
+  SetLength(Stops, 0);
+
+  if FVerseViewControl is TDirectWriteSyntagmView then
+  begin
+    View := TDirectWriteSyntagmView(FVerseViewControl);
+    if not Assigned(View.Document) then
+    begin
+      ARequiredHeight := EnsureRange(FVerseViewControl.Height, 1, 16384);
+      Exit;
+    end;
+    ContentH := EnsureRange(View.ContentHeight, 1, 16384);
+    DocText := View.Document.Text;
+    EndOffset := Length(DocText);
+    while (EndOffset > 0) and (DocText[EndOffset] <= ' ') do
+      Dec(EndOffset);
+    if View.GetTextPositionClientRect(EndOffset, EndRect) then
+      Located := True;
+    if (not Located) and View.GetCaretStops(Stops) and (Length(Stops) > 0) and
+       View.GetTextPositionClientRect(Stops[High(Stops)], EndRect) then
+      Located := True;
+    if Located then
+    begin
+      AX := EndRect.Right + 8;
+      AY := EndRect.Top + ((EndRect.Bottom - EndRect.Top) - ChevH) div 2;
+      LineHeight := Max(ChevH, EndRect.Bottom - EndRect.Top);
+    end;
+  end
+  else
+    ContentH := EnsureRange(FVerseViewControl.Height, 1, 16384);
+
+  if not Located then
+  begin
+    AX := MarginWidth;
+    AY := Max(0, ContentH - ChevH);
+    ARequiredHeight := EnsureRange(ContentH + Max(0, FBottomInset), 1, 16384);
+    Exit;
+  end;
+
+  AvailW := FVerseViewControl.ClientWidth;
+  if (AvailW <= 0) and Assigned(FPanel) then
+    AvailW := FPanel.ClientWidth;
+  if (AvailW > 0) and (AX + ChevW > AvailW - 6) then
+  begin
+    AX := MarginWidth;
+    AY := AY + LineHeight;
+  end;
+  if AY < 0 then
+    AY := 0;
+
+  ARequiredHeight := EnsureRange(Max(ContentH, AY + ChevH + 4) + Max(0, FBottomInset), 1, 16384);
+end;
+
+procedure TVerse.UpdateVerseViewHeight;
+var
+  X, Y, ReqH: Integer;
+begin
+  if FDestroying or (FVisualUpdatesSuspended > 0) or FUpdatingVerseViewHeight or
+     not Assigned(FVerseViewControl) then
+    Exit;
+  if (FVerseViewControl is TDirectWriteSyntagmView) and
+     not Assigned(TDirectWriteSyntagmView(FVerseViewControl).Document) then
+    Exit;
+  FUpdatingVerseViewHeight := True;
+  try
+    ComputeChevronsLayout(X, Y, ReqH);
+    if FVerseViewControl.Height <> ReqH then
+      FVerseViewControl.Height := ReqH;
+    if Assigned(FChevrons) and FChevrons.Visible then
+    begin
+      ComputeChevronsLayout(X, Y, ReqH);
+      if (FChevrons.Left <> X) or (FChevrons.Top <> Y) then
+        FChevrons.SetBounds(X, Y, FChevrons.Width, FChevrons.Height);
+    end;
+  finally
+    FUpdatingVerseViewHeight := False;
+  end;
+end;
+
+procedure TVerse.ShowChevrons(AShow: Boolean);
+var
+  X, Y, ReqH: Integer;
+begin
+  if FDestroying or (FVisualUpdatesSuspended > 0) or
+     not Assigned(FPanel) or not Assigned(FVerseViewControl) then
+    Exit;
+  if not AShow then
+  begin
+    if Assigned(FChevrons) and FChevrons.Visible then
+      FChevrons.Visible := False;
+    Exit;
+  end;
+  if (FVerseViewControl is TDirectWriteSyntagmView) and
+     not Assigned(TDirectWriteSyntagmView(FVerseViewControl).Document) then
+    Exit;
+
+  if FChevrons = nil then
+  begin
+    FChevrons := TVerseChevrons.Create(FPanel);
+    FChevrons.Parent := FVerseViewControl;
+    FChevrons.OnNavigate := @ChevronsNavigate;
+    FChevrons.Visible := False;
+  end
+  else if FChevrons.Parent <> FVerseViewControl then
+    FChevrons.Parent := FVerseViewControl;
+
+  FChevrons.Color := FVerseViewControl.Color;
+
+  if not FUpdatingVerseViewHeight then
+  begin
+    FUpdatingVerseViewHeight := True;
+    try
+      ComputeChevronsLayout(X, Y, ReqH);
+      if FVerseViewControl.Height <> ReqH then
+      begin
+        FVerseViewControl.Height := ReqH;
+        ComputeChevronsLayout(X, Y, ReqH);
+      end;
+      if (FChevrons.Left <> X) or (FChevrons.Top <> Y) then
+        FChevrons.SetBounds(X, Y, FChevrons.Width, FChevrons.Height);
+    finally
+      FUpdatingVerseViewHeight := False;
+    end;
+  end;
+
+  if not FChevrons.Visible then
+  begin
+    FChevrons.Visible := True;
+    FChevrons.BringToFront;
+  end;
+end;
+
+procedure TVerse.OnExportBibleModuleClick(Sender: TObject);
+begin
+  if assigned(FOnExportBibleModule) then
+     FOnExportBibleModule(Self);
+end;
+
 procedure TVerse.OnSaveTextToFile(Sender: TObject);
 begin
   if assigned(FOnExportText) then
@@ -2419,6 +2657,14 @@ end;
 procedure TVerse.OnMouseWheel(Sender: TObject; Shift: TShiftState;
   WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
 begin
+  // [patch12o-wheel-start]
+  if Assigned(FrmDictionaryPopup) and FrmDictionaryPopup.Visible and
+     FrmDictionaryPopup.RouteMouseWheelAtCursor(Shift, WheelDelta) then
+  begin
+    Handled := True;
+    Exit;
+  end;
+  // [patch12o-wheel-end]
   if ssCtrl in Shift then
   begin
     FPanel.Font.Size := FPanel.Font.Size + Sign(WheelDelta) * 1;
@@ -2426,7 +2672,174 @@ begin
       FVerseViewControl.Font.Assign(FPanel.Font);
     Render;
     Handled := True;
+    Exit;
   end;
+
+  { Wheel with no modifier over the source or destination panel selects
+    source words one by one (up = left, down = right). Shift+wheel scrolls. }
+  if (Shift * [ssShift, ssAlt] = []) and (WheelDelta <> 0) and
+     (FIsSourceVerse or (Assigned(FPairedVerse) and FPairedVerse.IsSourceVerse)) then
+  begin
+    if WheelDelta > 0 then
+      Handled := SelectSourceWordByDelta(-1)
+    else
+      Handled := SelectSourceWordByDelta(1);
+  end;
+
+  // [patch12o-scroll-popup-start]
+  if (Shift * [ssCtrl, ssShift, ssAlt] = []) and Assigned(OnMouseEnter) then
+  begin
+    if (Selection.Count > 0) then
+      OnMouseEnter(Selection[Selection.Count - 1])
+    else
+      OnMouseEnter(nil);
+  end;
+  // [patch12o-scroll-popup-end]
+end;
+
+procedure TVerse.ApplySkinColors;
+var
+  Bg, Txt: TColor;
+  IsReferencePanel: Boolean;
+begin
+  if CurrentSkin.Id = skClassic then
+  begin
+    Bg := clWindow;
+    Txt := clWindowText;
+  end
+  else
+  begin
+    Bg := CurrentSkin.WindowBg;
+    Txt := CurrentSkin.WindowText;
+  end;
+  // reference panels show every word in the text colour
+  IsReferencePanel := FUnassociatedColor = FAssociatedColor;
+  FAssociatedColor := Txt;
+  if IsReferencePanel then
+    FUnassociatedColor := Txt;
+  if Assigned(FPanel) then
+  begin
+    FPanel.Color := Bg;
+    FPanel.Font.Color := Txt;
+  end;
+  if Assigned(FVerseViewControl) then
+  begin
+    FVerseViewControl.Color := Bg;
+    FVerseViewControl.Font.Color := Txt;
+  end;
+end;
+
+function TVerse.SelectSourceWordByDelta(Step: Integer): Boolean;
+var
+  SrcVerse, DstVerse: TVerse;
+  Current, Target: TSyntagm;
+  Index, StartIndex: Integer;
+
+  function Selectable(S: TSyntagm): Boolean;
+  begin
+    Result := Assigned(S) and (S.Kind = skSyntagm) and (Trim(S.Text) <> '');
+  end;
+
+begin
+  Result := False;
+  if Step = 0 then
+    Exit;
+  if FIsSourceVerse then
+    SrcVerse := Self
+  else if Assigned(FPairedVerse) and FPairedVerse.IsSourceVerse then
+    SrcVerse := FPairedVerse
+  else
+    Exit;
+  DstVerse := SrcVerse.PairedVerse;
+  if SrcVerse.Destroying or not SrcVerse.Active or
+     not Assigned(SrcVerse.Syntagms) or (SrcVerse.Syntagms.Count = 0) then
+    Exit;
+
+  Current := nil;
+  if SrcVerse.Selection.Count > 0 then
+  begin
+    if Step > 0 then
+      Current := SrcVerse.Selection[SrcVerse.Selection.Count - 1]
+    else
+      Current := SrcVerse.Selection[0];
+  end;
+
+  Target := nil;
+  if Assigned(Current) then
+    StartIndex := SrcVerse.Syntagms.IndexOf(Current)
+  else if Step > 0 then
+    StartIndex := -1
+  else
+    StartIndex := SrcVerse.Syntagms.Count;
+  Index := StartIndex + Step;
+  while (Index >= 0) and (Index < SrcVerse.Syntagms.Count) do
+  begin
+    if Selectable(SrcVerse.Syntagms[Index]) then
+    begin
+      Target := SrcVerse.Syntagms[Index];
+      Break;
+    end;
+    Inc(Index, Step);
+  end;
+  if not Assigned(Target) then
+    Target := Current; // stay on the first/last word
+  if not Assigned(Target) then
+    Exit;
+
+  SrcVerse.PendingAutoSelectNext := False;
+  SrcVerse.ClearSelection;
+  if Assigned(DstVerse) then
+  begin
+    DstVerse.PendingAutoSelectNext := False;
+    DstVerse.ClearSelection;
+  end;
+  Target.AddToSelection;
+  if Assigned(DstVerse) and (Target.Pairs.Count > 0) then
+    DstVerse.SelectSyntagms(Target.Pairs); // show the linked words
+
+  SrcVerse.Render;
+  if Assigned(DstVerse) then
+    DstVerse.Render;
+  if Assigned(SrcVerse.OnClick) then
+    SrcVerse.OnClick(Target);
+  Result := True;
+end;
+
+procedure TVerse.CompletePendingAutoSelectNext;
+var
+  SrcVerse, DstVerse: TVerse;
+  LastSelected, NextUnassociated: TSyntagm;
+begin
+  if FIsSourceVerse then
+    SrcVerse := Self
+  else if Assigned(FPairedVerse) and FPairedVerse.IsSourceVerse then
+    SrcVerse := FPairedVerse
+  else
+    Exit;
+  DstVerse := SrcVerse.PairedVerse;
+  if not (SrcVerse.PendingAutoSelectNext or
+     (Assigned(DstVerse) and DstVerse.PendingAutoSelectNext)) then
+    Exit;
+  SrcVerse.PendingAutoSelectNext := False;
+  if Assigned(DstVerse) then
+    DstVerse.PendingAutoSelectNext := False;
+  if SrcVerse.Destroying or (SrcVerse.Selection.Count = 0) or
+     not SrcVerse.Selection[0].IsAssociated then
+    Exit;
+
+  LastSelected := SrcVerse.Selection[SrcVerse.Selection.Count - 1];
+  SrcVerse.ClearSelection;
+  if Assigned(DstVerse) then
+    DstVerse.ClearSelection;
+  NextUnassociated := LastSelected.GetNextUnassociated;
+  if Assigned(NextUnassociated) then
+    NextUnassociated.AddToSelection;
+
+  SrcVerse.Render;
+  if Assigned(DstVerse) then
+    DstVerse.Render;
+  if Assigned(NextUnassociated) and Assigned(SrcVerse.OnClick) then
+    SrcVerse.OnClick(NextUnassociated);
 end;
 
 procedure TVerse.InitSyntagmPopupMenu;
@@ -2469,6 +2882,11 @@ begin
   FRTLMenuItem.Caption := SRightToLeft;
   FRTLMenuItem.OnClick := @OnRightToLeft;
   FVersePopupMenu.Items.Add(FRTLMenuItem);
+
+  Item := TMenuItem.Create(FVersePopupMenu);
+  Item.Caption := SExportAsBibleModule;
+  Item.OnClick := @OnExportBibleModuleClick;
+  FVersePopupMenu.Items.Add(Item);
 
   Item := TMenuItem.Create(FVersePopupMenu);
   Item.Caption := SSaveToFile;

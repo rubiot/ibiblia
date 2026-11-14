@@ -82,6 +82,7 @@ type
     FLastBody: string;
     FLastFontName: string;
     FLastFontSize: Integer;
+    FLastSkinId: Integer;
     FNoteView: TTranslatorNoteBodyView;
     function GetScrollBarsVisible: boolean;
     procedure InitNoteView;
@@ -195,7 +196,6 @@ type
     procedure RenderChapterFooter;
     procedure RenderVerse(txt: string);
     procedure RenderVerseNumber(number: integer);
-    procedure RenderSpan(cont: TKMemoBlocks; txt: string); override;
     procedure RenderNote(const OpeningTag, Note: string);
     procedure RenderNotes;
     procedure ClearTranslatorNotes;
@@ -291,12 +291,15 @@ type
       out ErrorMessage: string): Boolean; virtual;
   public
     constructor Create(AOwner: TComponent); override;
+    procedure RenderSpan(cont: TKMemoBlocks; txt: string); override;
     destructor Destroy; override;
     procedure Translate;
     procedure LoadChapter;
     procedure RefreshTranslationMemory;
     procedure FocusTranslationMemoryForSyntagm(ASyntagm: TSyntagm);
     property Project: TProject read FProject write SetProject;
+    { Background from the current skin; reload the chapter afterwards. }
+    procedure ApplySkinColors;
     property TextType: TTipoTextoBiblico read GetTextType write SetTextType;
     property ViewMode: TChapterViewMode read FViewMode write SetViewMode;
     property TranslationMemoryOrder: TTranslationMemoryOrder
@@ -401,7 +404,7 @@ resourcestring
 implementation
 
 uses
-  performance_debug;
+  performance_debug, unitskins, apocrypha_books;
 
 var
   TranslatorNoteInfoLiveCount: Integer = 0;
@@ -556,7 +559,8 @@ procedure TNoteWindow.SetNoteText(const AText: string;
 begin
   if FHasRenderedBody and (FLastBody = AText) and
      (FLastFontName = AStyle.Font.Name) and
-     (FLastFontSize = AStyle.Font.Size) then
+     (FLastFontSize = AStyle.Font.Size) and
+     (FLastSkinId = Ord(CurrentSkin.Id)) then
     Exit;
   FNoteView.Blocks.LockUpdate;
   try
@@ -564,11 +568,39 @@ begin
     Width := 500;
     FNoteView.TextStyle.Font.Name := AStyle.Font.Name;
     FNoteView.TextStyle.Font.Size := AStyle.Font.Size - 1;
+    if CurrentSkin.Id = skClassic then
+    begin
+      Color := $00CCFBFB;
+      FNoteView.Background.Color := $00CCFBFB;
+      FNoteView.Colors.BkGnd := $00CCFBFB;
+      FNoteView.TextStyle.Font.Color := clWindowText;
+    end
+    else
+    begin
+      Color := CurrentSkin.NoteBg;
+      FNoteView.Background.Color := CurrentSkin.NoteBg;
+      FNoteView.Colors.BkGnd := CurrentSkin.NoteBg;
+      FNoteView.Colors.SelBkGnd := CurrentSkin.SelectedBg;
+      FNoteView.Colors.SelText := CurrentSkin.SelectedText;
+      FNoteView.Colors.SelBkGndFocused := CurrentSkin.SelectedBg;
+      FNoteView.Colors.SelTextFocused := CurrentSkin.SelectedText;
+      FNoteView.TextStyle.Font.Color := CurrentSkin.NoteText;
+    end;
     FNoteView.SetNoteBody(UTF8Decode(AText));
-    FNoteView.Background.Color := $00CCFBFB;
+    if CurrentSkin.Id = skClassic then
+    begin
+      FNoteView.Background.Color := $00CCFBFB;
+      FNoteView.Colors.BkGnd := $00CCFBFB;
+    end
+    else
+    begin
+      FNoteView.Background.Color := CurrentSkin.NoteBg;
+      FNoteView.Colors.BkGnd := CurrentSkin.NoteBg;
+    end;
     FLastBody := AText;
     FLastFontName := AStyle.Font.Name;
     FLastFontSize := AStyle.Font.Size;
+    FLastSkinId := Ord(CurrentSkin.Id);
     FHasRenderedBody := True;
   finally
     FNoteView.Blocks.UnLockUpdate;
@@ -579,7 +611,11 @@ constructor TNoteWindow.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
 
-  Color := clWindow;
+  if CurrentSkin.Id = skClassic then
+    Color := clWindow
+  else
+    Color := CurrentSkin.NoteBg;
+  FLastSkinId := -1;
   FNoteView:= nil;
 end;
 
@@ -1244,7 +1280,12 @@ begin
   inherited ApplyProjectedInlineStyle(ABlock, ABaseStyle, AEffective);
   if (tweifv2AddedWords in AEffective.Flags) and
     (not AEffective.HasExplicitColor) then
-    ABlock.TextStyle.Font.Color := clGray;
+  begin
+    if CurrentSkin.Id = skClassic then
+      ABlock.TextStyle.Font.Color := clGray
+    else
+      ABlock.TextStyle.Font.Color := CurrentSkin.WindowTextDim;
+  end;
 end;
 
 procedure TChapterView.RenderSpan(cont: TKMemoBlocks; txt: string);
@@ -1305,7 +1346,10 @@ begin
                 begin
                   Font.Size := Font.Size + 2;
                   Font.Style := [fsBold];
-                  Font.Color := $424242;
+                  if CurrentSkin.Id = skClassic then
+                    Font.Color := $424242
+                  else
+                    Font.Color := CurrentSkin.HeaderColor;
                 end;
                 '2':
                 begin
@@ -1377,7 +1421,7 @@ begin
             AdvanceProjectionForConsumedRaw(UTF8Decode(OpeningTag +
               ConsumedBody + '<g>'), Projection, VisibleOffsetUTF16, RunIndex);
           end
-          else if OpeningTag = '<CM>' then
+          else if (OpeningTag = '<CM>') or (OpeningTag = '<CI>') then
           begin
             if GetParagraphMode = pmParagraph then
               cont.AddParagraph().ParaStyle.FirstIndent := DefaultFirstIndent;
@@ -1452,6 +1496,10 @@ begin
 
   ResetStyleStack;
   CurrentStyle.Font.Size := max(FFontSize-2, 2); // using smaller font
+  if CurrentSkin.Id = skClassic then
+    CurrentStyle.Font.Color := clWindowText
+  else
+    CurrentStyle.Font.Color := CurrentSkin.WindowText;
 
   Blocks.AddParagraph();
   Blocks.AddParagraph();
@@ -1517,8 +1565,11 @@ begin
     Exit;
   note := FNotes[noteIndex];
 
-  HighlightRange(note.Range, clDefault); // un-highlight current note text
-  HighlightRange(FVerseRanges[note.Verse], clSilver); // un-highlight current note text
+  HighlightRange(note.Range, clDefault);
+  if CurrentSkin.Id = skClassic then
+    HighlightRange(FVerseRanges[note.Verse], clSilver)
+  else
+    HighlightRange(FVerseRanges[note.Verse], CurrentSkin.VerseHighlightBg);
 end;
 
 procedure TChapterView.HandleTranslationMemoryEntryClick(Sender: TObject);
@@ -2131,27 +2182,126 @@ begin
     FOnTranslationMemoryPreviewFontSizeChanged(Self);
 end;
 
+{ Chapters in a book: 1.1.0's table for books 1-66, the project's own count
+  for apocrypha books (67+). }
+function ChapterCountOf(BookID: Integer): Integer;
+begin
+  if BookID >= FIRST_APOCRYPHA_BOOK then
+    Result := ApocryphaChapterCount(BookID)
+  else if (BookID >= 1) and (BookID <= 66) then
+    Result := QCapitulosONT[BookID]
+  else
+    Result := 0;
+end;
+
+procedure TChapterView.ApplySkinColors;
+begin
+  if CurrentSkin.Id = skClassic then
+  begin
+    Color := clWindow;
+    Background.Color := clWindow;
+    Colors.BkGnd := clWindow;
+    Colors.SelBkGnd := clHighlight;
+    Colors.SelText := clHighlightText;
+    Colors.SelBkGndFocused := clHighlight;
+    Colors.SelTextFocused := clHighlightText;
+  end
+  else
+  begin
+    Color := CurrentSkin.WindowBg;
+    Background.Color := CurrentSkin.WindowBg;
+    Colors.BkGnd := CurrentSkin.WindowBg;
+    Colors.SelBkGnd := CurrentSkin.SelectedBg;
+    Colors.SelText := CurrentSkin.SelectedText;
+    Colors.SelBkGndFocused := CurrentSkin.SelectedBg;
+    Colors.SelTextFocused := CurrentSkin.SelectedText;
+  end;
+  if HandleAllocated then
+  begin
+    ApplyDarkModeToControl(Self, CurrentSkin.IsDark);
+    {$IFDEF WINDOWS}
+    HookNCScrollBarControl(Self);
+    {$ENDIF}
+  end;
+  if Assigned(FRawMemo) then
+  begin
+    FRawMemo.Color := Colors.BkGnd;
+    if CurrentSkin.Id = skClassic then
+      FRawMemo.Font.Color := clWindowText
+    else
+      FRawMemo.Font.Color := CurrentSkin.WindowText;
+    ApplyDarkModeToControl(FRawMemo, CurrentSkin.IsDark);
+    {$IFDEF WINDOWS}
+    HookEditControl(FRawMemo);
+    {$ENDIF}
+  end;
+  InvalidateChapterRenderCache;
+  FTranslationMemoryRefreshPending := True;
+end;
+
 procedure TChapterView.SetupDefaultStyle;
 begin
   inherited SetupDefaultStyle;
   TextStyle.Font.Size := FFontSize;
   TextStyle.Font.Name := FFontName;
+  if CurrentSkin.Id = skClassic then
+    TextStyle.Font.Color := clWindowText
+  else
+    TextStyle.Font.Color := CurrentSkin.WindowText;
   TextStyle.ScriptPosition := tpoNormal;
   ParaStyle.FirstIndent := 0;
   ParaStyle.LineSpacingFactor := 1.15;
 end;
 
 procedure TChapterView.HighlightRange(range: TBlockRange; bgcolor: TColor);
+
+  procedure ApplyBlockHighlight(ABlock: TKMemoBlock);
+  var
+    ChildIdx: Integer;
+    Cont: TKMemoContainer;
+    TB: TKMemoTextBlock;
+  begin
+    if not Assigned(ABlock) then
+      Exit;
+    if ABlock is TKMemoTextBlock then
+    begin
+      TB := TKMemoTextBlock(ABlock);
+      if bgcolor = clDefault then
+      begin
+        TB.TextStyle.Brush.Style := bsClear;
+        TB.TextStyle.Brush.Color := Colors.BkGnd;
+      end
+      else
+      begin
+        TB.TextStyle.Brush.Style := bsSolid;
+        TB.TextStyle.Brush.Color := bgcolor;
+      end;
+    end
+    else if ABlock is TKMemoContainer then
+    begin
+      Cont := TKMemoContainer(ABlock);
+      if bgcolor = clDefault then
+      begin
+        Cont.BlockStyle.Brush.Style := bsClear;
+        Cont.BlockStyle.Brush.Color := Colors.BkGnd;
+      end
+      else
+      begin
+        Cont.BlockStyle.Brush.Style := bsSolid;
+        Cont.BlockStyle.Brush.Color := bgcolor;
+      end;
+      for ChildIdx := 0 to Cont.Blocks.Count - 1 do
+        ApplyBlockHighlight(Cont.Blocks[ChildIdx]);
+    end;
+  end;
+
 var
   i: integer;
 begin
-  for i:=range.first to range.last do
-  begin
-    if Blocks[i].ClassName = 'TKMemoTextBlock' then
-      TKMemoTextBlock(Blocks[i]).TextStyle.Brush.Color := bgcolor
-    else if Blocks[i].ClassName = 'TKMemoContainer' then
-      TKMemoContainer(Blocks[i]).BlockStyle.Brush.Color:= bgcolor;;
-  end;
+  if (range.first < 0) or (range.last < range.first) then
+    Exit;
+  for i := Max(0, range.first) to Min(Blocks.Count - 1, range.last) do
+    ApplyBlockHighlight(Blocks[i]);
 end;
 
 function TChapterView.GetPreviousParagraphBlock: TKMemoParagraph;
@@ -2205,7 +2355,7 @@ begin
     Blocks.AddParagraph(); //.ParaStyle.HAlign := halLeft;
 
     { chapter list }
-    for c:=1 to QCapitulosONT[FProject.BookID] do
+    for c:=1 to ChapterCountOf(FProject.BookID) do
     begin
       if c > 1 then
         Blocks.AddTextBlock(' ');
@@ -2250,11 +2400,14 @@ procedure TChapterView.RenderChapterFooter;
   begin
     if (FProject.BookID = GetFirstBook) and (FProject.Chapter = 1) then
        exit;
+    // apocrypha books: move only within the book
+    if (FProject.BookID >= FIRST_APOCRYPHA_BOOK) and (FProject.Chapter = 1) then
+       exit;
 
     if FProject.Chapter = 1 then
     begin
       book := FProject.BookID - 1;
-      chapter := QCapitulosONT[book];
+      chapter := ChapterCountOf(book);
     end else
     begin
       book := FProject.BookID;
@@ -2272,10 +2425,13 @@ procedure TChapterView.RenderChapterFooter;
 
   procedure GetNextChapter(var book: integer; var chapter: integer);
   begin
-    if (FProject.BookID = GetLastBook) and (FProject.Chapter = QCapitulosONT[FProject.BookID]) then
+    if (FProject.BookID >= FIRST_APOCRYPHA_BOOK) and
+       (FProject.Chapter >= ChapterCountOf(FProject.BookID)) then
+       exit;
+    if (FProject.BookID = GetLastBook) and (FProject.Chapter = ChapterCountOf(FProject.BookID)) then
        exit;
 
-    if FProject.Chapter = QCapitulosONT[FProject.BookID] then
+    if FProject.Chapter = ChapterCountOf(FProject.BookID) then
     begin
       book := FProject.BookID + 1;
       chapter := 1;
@@ -2452,14 +2608,25 @@ begin
   if Assigned(FTranslationMemoryFocus) then
     FTranslationMemoryFocus.Unbind;
   FreeAndNil(FTranslationMemoryFocus);
-  FRawMemo.Free;
-  FRenderedChapterVerses.Free;
-  FNoteNumberer.Free;
-  FNotesByLink.Free;
-  FNotesById.Free;
-  FNotes.Free;
-  if assigned(FProject) then
-    FProject.OnNewVerseUnsubscribe(@HandleVerseChange);
+  if Assigned(FProject) then
+  begin
+    try
+      FProject.OnNewVerseUnsubscribe(@HandleVerseChange);
+    except
+    end;
+    FProject := nil;
+  end;
+  if Assigned(FRawMemo) then
+  begin
+    FRawMemo.Visible := False;
+    FRawMemo.Parent := nil;
+    FreeAndNil(FRawMemo);
+  end;
+  FreeAndNil(FRenderedChapterVerses);
+  FreeAndNil(FNoteNumberer);
+  FreeAndNil(FNotesByLink);
+  FreeAndNil(FNotesById);
+  FreeAndNil(FNotes);
 
   inherited Destroy;
 end;
@@ -3002,6 +3169,13 @@ begin
     Blocks.UnLockUpdate;
   end;
   FTranslationMemoryFocus.Bind(Self, FTranslationMemoryFocusEntries);
+  if HandleAllocated then
+  begin
+    ApplyDarkModeToControl(Self, CurrentSkin.IsDark);
+    {$IFDEF WINDOWS}
+    HookNCScrollBarControl(Self);
+    {$ENDIF}
+  end;
 end;
 
 procedure TChapterView.InvalidateChapterRenderCache;
@@ -3091,7 +3265,10 @@ begin
     if (FRenderedChapterCurrentVerse > 0) and
        (FRenderedChapterCurrentVerse < Length(FVerseRanges)) then
       HighlightRange(FVerseRanges[FRenderedChapterCurrentVerse], clDefault);
-    HighlightRange(FVerseRanges[ACurrentVerse], clSilver);
+    if CurrentSkin.Id = skClassic then
+      HighlightRange(FVerseRanges[ACurrentVerse], clSilver)
+    else
+      HighlightRange(FVerseRanges[ACurrentVerse], CurrentSkin.VerseHighlightBg);
     FRenderedChapterCurrentVerse := ACurrentVerse;
   finally
     Blocks.UnLockUpdate;
@@ -3155,6 +3332,13 @@ begin
 
   CaptureChapterRenderIdentity(verses);
   FocusRenderedChapterVerse(current);
+  if HandleAllocated then
+  begin
+    ApplyDarkModeToControl(Self, CurrentSkin.IsDark);
+    {$IFDEF WINDOWS}
+    HookNCScrollBarControl(Self);
+    {$ENDIF}
+  end;
 
   //DebugLn('  TChapterView.RenderChapter: %d milliseconds', [getTickCount-starttime]);
 end;
