@@ -1,0 +1,1169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <ProjectOptions>
+    <Version Value="12"/>
+    <PathDelim Value="\"/>
+    <General>
+      <Flags>
+        <CompatibilityMode Value="True"/>
+      </Flags>
+      <Title Value="iBiblia"/>
+      <UseXPManifest Value="True"/>
+      <XPManifest>
+        <DpiAware Value="True"/>
+      </XPManifest>
+      <Icon Value="0"/>
+    </General>
+    <i18n>
+      <EnableI18N Value="True"/>
+      <OutDir Value="languages"/>
+    </i18n>
+    <VersionInfo>
+      <UseVersionInfo Value="True"/>
+      <MajorVersionNr Value="1"/>
+      <MinorVersionNr Value="1"/>
+      <BuildNr Value="21"/>
+      <StringTable CompanyName="Rúbio R. C. Terra (rubio.terra@gmail.com)" FileDescription="Ferramenta para associação de textos bíblicos" ProductName="iBiblia" ProductVersion="1.1.0.021"/>
+    </VersionInfo>
+    <BuildModes Count="6" Active="Debug">
+      <Item1 Name="Debug" Default="True"/>
+      <Item2 Name="Release">
+        <CompilerOptions>
+          <Version Value="11"/>
+          <PathDelim Value="\"/>
+          <Target>
+            <Filename Value="iBiblia"/>
+          </Target>
+          <SearchPaths>
+            <IncludeFiles Value="$(ProjOutDir)"/>
+            <OtherUnitFiles Value="vendor\fpc-openssl;$(LazarusDir)\components\custom"/>
+            <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
+          </SearchPaths>
+          <CodeGeneration>
+            <TargetCPU Value="x86_64"/>
+            <TargetOS Value="win64"/>
+            <Optimizations>
+              <OptimizationLevel Value="3"/>
+            </Optimizations>
+          </CodeGeneration>
+          <Linking>
+            <Debugging>
+              <GenerateDebugInfo Value="False"/>
+              <UseLineInfoUnit Value="False"/>
+            </Debugging>
+            <Options>
+              <Win32>
+                <GraphicApplication Value="True"/>
+              </Win32>
+            </Options>
+          </Linking>
+        </CompilerOptions>
+      </Item2>
+      <Item3 Name="Debug32">
+        <CompilerOptions>
+          <Version Value="11"/>
+          <PathDelim Value="\"/>
+          <Target>
+            <Filename Value="iBiblia"/>
+          </Target>
+          <SearchPaths>
+            <IncludeFiles Value="$(ProjOutDir)"/>
+            <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
+          </SearchPaths>
+          <CodeGeneration>
+            <TargetProcessor Value="80386"/>
+            <TargetCPU Value="i386"/>
+            <TargetOS Value="win32"/>
+          </CodeGeneration>
+          <Linking>
+            <Debugging>
+              <DebugInfoType Value="dsDwarf2Set"/>
+            </Debugging>
+            <Options>
+              <Win32>
+                <GraphicApplication Value="True"/>
+              </Win32>
+            </Options>
+          </Linking>
+        </CompilerOptions>
+      </Item3>
+      <Item4 Name="Release32">
+        <CompilerOptions>
+          <Version Value="11"/>
+          <PathDelim Value="\"/>
+          <Target>
+            <Filename Value="iBiblia"/>
+          </Target>
+          <SearchPaths>
+            <IncludeFiles Value="$(ProjOutDir)"/>
+            <Libraries Value="\usr\lib64"/>
+            <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
+          </SearchPaths>
+          <CodeGeneration>
+            <TargetCPU Value="i386"/>
+            <Optimizations>
+              <OptimizationLevel Value="4"/>
+            </Optimizations>
+          </CodeGeneration>
+          <Linking>
+            <Debugging>
+              <GenerateDebugInfo Value="False"/>
+              <DebugInfoType Value="dsDwarf2Set"/>
+            </Debugging>
+            <Options>
+              <Win32>
+                <GraphicApplication Value="True"/>
+              </Win32>
+            </Options>
+          </Linking>
+        </CompilerOptions>
+      </Item4>
+      <Item5 Name="Debug Linux">
+        <CompilerOptions>
+          <Version Value="11"/>
+          <PathDelim Value="\"/>
+          <Target>
+            <Filename Value="iBiblia"/>
+          </Target>
+          <SearchPaths>
+            <IncludeFiles Value="$(ProjOutDir)"/>
+            <OtherUnitFiles Value="vendor\fpc-openssl;$(LazarusDir)\components\custom"/>
+            <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
+          </SearchPaths>
+          <CodeGeneration>
+            <TargetCPU Value="x86_64"/>
+            <TargetOS Value="linux"/>
+          </CodeGeneration>
+          <Linking>
+            <Debugging>
+              <DebugInfoType Value="dsDwarf2Set"/>
+            </Debugging>
+            <Options>
+              <Win32>
+                <GraphicApplication Value="True"/>
+              </Win32>
+            </Options>
+          </Linking>
+        </CompilerOptions>
+      </Item5>
+      <Item6 Name="Release Linux">
+        <CompilerOptions>
+          <Version Value="11"/>
+          <PathDelim Value="\"/>
+          <Target>
+            <Filename Value="iBiblia"/>
+          </Target>
+          <SearchPaths>
+            <IncludeFiles Value="$(ProjOutDir)"/>
+            <OtherUnitFiles Value="vendor\fpc-openssl;$(LazarusDir)\components\custom"/>
+            <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
+          </SearchPaths>
+          <CodeGeneration>
+            <TargetCPU Value="x86_64"/>
+            <TargetOS Value="linux"/>
+            <Optimizations>
+              <OptimizationLevel Value="3"/>
+            </Optimizations>
+          </CodeGeneration>
+          <Linking>
+            <Debugging>
+              <GenerateDebugInfo Value="False"/>
+              <UseLineInfoUnit Value="False"/>
+            </Debugging>
+            <Options>
+              <Win32>
+                <GraphicApplication Value="True"/>
+              </Win32>
+            </Options>
+          </Linking>
+        </CompilerOptions>
+      </Item6>
+    </BuildModes>
+    <PublishOptions>
+      <Version Value="2"/>
+    </PublishOptions>
+    <RunParams>
+      <local>
+        <CommandLineParams Value="--debug-log=log.txt"/>
+        <LaunchingApplication PathPlusParams="\usr\X11R6\bin\xterm -T &apos;Lazarus Run Output&apos; -e $(LazarusDir)\tools\runwait.sh $(TargetCmdLine)"/>
+        <WorkingDirectory Value="$(ProjPath)"/>
+      </local>
+      <FormatVersion Value="2"/>
+      <Modes Count="1">
+        <Mode0 Name="default">
+          <local>
+            <CommandLineParams Value="--debug-log=log.txt"/>
+            <LaunchingApplication PathPlusParams="\usr\X11R6\bin\xterm -T &apos;Lazarus Run Output&apos; -e $(LazarusDir)\tools\runwait.sh $(TargetCmdLine)"/>
+            <WorkingDirectory Value="$(ProjPath)"/>
+          </local>
+          <environment>
+            <UserOverrides Count="1">
+              <Variable0 Name="IBIBLIA_AI_DEBUG" Value="1"/>
+            </UserOverrides>
+          </environment>
+        </Mode0>
+      </Modes>
+    </RunParams>
+    <RequiredPackages Count="5">
+      <Item1>
+        <PackageName Value="KControlsLaz"/>
+      </Item1>
+      <Item2>
+        <PackageName Value="richmemopackage"/>
+      </Item2>
+      <Item3>
+        <PackageName Value="LCLBase"/>
+        <MinVersion Major="1" Release="1" Valid="True"/>
+      </Item3>
+      <Item4>
+        <PackageName Value="LCL"/>
+      </Item4>
+      <Item5>
+        <PackageName Value="SynEdit"/>
+      </Item5>
+    </RequiredPackages>
+    <Units Count="88">
+      <Unit0>
+        <Filename Value="iBiblia.lpr"/>
+        <IsPartOfProject Value="True"/>
+        <TopLine Value="95"/>
+        <CursorPos Y="110"/>
+        <UsageCount Value="207"/>
+        <Loaded Value="True"/>
+      </Unit0>
+      <Unit1>
+        <Filename Value="formprincipal.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="MainForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="formPrincipal"/>
+        <EditorIndex Value="1"/>
+        <TopLine Value="528"/>
+        <CursorPos X="11" Y="552"/>
+        <UsageCount Value="207"/>
+        <Loaded Value="True"/>
+        <LoadedDesigner Value="True"/>
+      </Unit1>
+      <Unit2>
+        <Filename Value="Verse.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="13"/>
+        <TopLine Value="2688"/>
+        <CursorPos X="22" Y="2694"/>
+        <ExtraEditorCount Value="1"/>
+        <ExtraEditor1>
+          <EditorIndex Value="-1"/>
+          <WindowIndex Value="1"/>
+          <TopLine Value="1021"/>
+          <CursorPos X="3" Y="1027"/>
+        </ExtraEditor1>
+        <UsageCount Value="207"/>
+        <Loaded Value="True"/>
+      </Unit2>
+      <Unit3>
+        <Filename Value="Project.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="4"/>
+        <TopLine Value="3814"/>
+        <CursorPos X="10" Y="3818"/>
+        <ExtraEditorCount Value="1"/>
+        <ExtraEditor1>
+          <EditorIndex Value="-1"/>
+          <WindowIndex Value="-1"/>
+          <TopLine Value="1864"/>
+          <CursorPos Y="1889"/>
+        </ExtraEditor1>
+        <UsageCount Value="207"/>
+        <Loaded Value="True"/>
+      </Unit3>
+      <Unit4>
+        <Filename Value="SuggestionManager.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="33"/>
+        <TopLine Value="524"/>
+        <CursorPos Y="533"/>
+        <UsageCount Value="207"/>
+        <Loaded Value="True"/>
+      </Unit4>
+      <Unit5>
+        <Filename Value="FormNewProject.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="FrmNewProject"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <EditorIndex Value="30"/>
+        <TopLine Value="104"/>
+        <CursorPos Y="58"/>
+        <UsageCount Value="205"/>
+        <Loaded Value="True"/>
+        <LoadedDesigner Value="True"/>
+      </Unit5>
+      <Unit6>
+        <Filename Value="FormDictionaryPopup.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="FrmDictionaryPopup"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <EditorIndex Value="31"/>
+        <TopLine Value="6"/>
+        <CursorPos Y="17"/>
+        <UsageCount Value="201"/>
+        <Loaded Value="True"/>
+        <LoadedDesigner Value="True"/>
+      </Unit6>
+      <Unit7>
+        <Filename Value="rtfedit.pas"/>
+        <UnitName Value="RTFEdit"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="85"/>
+        <CursorPos Y="94"/>
+        <UsageCount Value="8"/>
+      </Unit7>
+      <Unit8>
+        <Filename Value="FormProjectProperties.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="FrmProjectProperties"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <EditorIndex Value="34"/>
+        <TopLine Value="865"/>
+        <CursorPos X="48" Y="874"/>
+        <UsageCount Value="204"/>
+        <Loaded Value="True"/>
+        <LoadedDesigner Value="True"/>
+      </Unit8>
+      <Unit9>
+        <Filename Value="VerseMemo.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="15"/>
+        <TopLine Value="93"/>
+        <CursorPos X="22" Y="118"/>
+        <UsageCount Value="224"/>
+        <Loaded Value="True"/>
+      </Unit9>
+      <Unit10>
+        <Filename Value="PCRE.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="1430"/>
+        <CursorPos X="56" Y="1456"/>
+        <UsageCount Value="208"/>
+      </Unit10>
+      <Unit11>
+        <Filename Value="FormProjectExport.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="ProjectExportForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <EditorIndex Value="23"/>
+        <CursorPos X="74" Y="9"/>
+        <UsageCount Value="203"/>
+        <Loaded Value="True"/>
+        <LoadedDesigner Value="True"/>
+      </Unit11>
+      <Unit12>
+        <Filename Value="ConcordanceExport.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="22"/>
+        <TopLine Value="427"/>
+        <CursorPos X="20" Y="440"/>
+        <UsageCount Value="203"/>
+        <Loaded Value="True"/>
+      </Unit12>
+      <Unit13>
+        <Filename Value="FormMergeProjects.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="FrmMergeProjects"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="17"/>
+        <CursorPos X="3" Y="30"/>
+        <UsageCount Value="213"/>
+      </Unit13>
+      <Unit14>
+        <Filename Value="FormVerseRules.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="VerseRulesForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="38"/>
+        <CursorPos X="40" Y="55"/>
+        <UsageCount Value="228"/>
+      </Unit14>
+      <Unit15>
+        <Filename Value="twAutomate.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="39"/>
+        <TopLine Value="156"/>
+        <CursorPos Y="201"/>
+        <UsageCount Value="232"/>
+        <Loaded Value="True"/>
+      </Unit15>
+      <Unit16>
+        <Filename Value="twsyncthread.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="twSyncThread"/>
+        <EditorIndex Value="38"/>
+        <CursorPos Y="45"/>
+        <UsageCount Value="212"/>
+        <Loaded Value="True"/>
+      </Unit16>
+      <Unit17>
+        <Filename Value="onttokenizer.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="ONTTokenizer"/>
+        <EditorIndex Value="37"/>
+        <TopLine Value="262"/>
+        <CursorPos Y="279"/>
+        <UsageCount Value="202"/>
+        <Loaded Value="True"/>
+      </Unit17>
+      <Unit18>
+        <Filename Value="ontparser.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="ONTParser"/>
+        <EditorIndex Value="35"/>
+        <TopLine Value="41"/>
+        <CursorPos Y="104"/>
+        <UsageCount Value="202"/>
+        <Loaded Value="True"/>
+      </Unit18>
+      <Unit19>
+        <Filename Value="sintagma.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="Syntagm"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="768"/>
+        <CursorPos X="14" Y="794"/>
+        <UsageCount Value="202"/>
+      </Unit19>
+      <Unit20>
+        <Filename Value="unitabout.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="FormAbout"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos Y="12"/>
+        <UsageCount Value="241"/>
+      </Unit20>
+      <Unit21>
+        <Filename Value="myswordmodule.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="MySwordModule"/>
+        <EditorIndex Value="29"/>
+        <TopLine Value="15"/>
+        <CursorPos X="61" Y="33"/>
+        <UsageCount Value="213"/>
+        <Loaded Value="True"/>
+      </Unit21>
+      <Unit22>
+        <Filename Value="versetestcase1.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="VerseTestCase1"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="3"/>
+        <CursorPos Y="13"/>
+        <UsageCount Value="200"/>
+      </Unit22>
+      <Unit23>
+        <Filename Value="chapterview.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="ChapterView"/>
+        <EditorIndex Value="14"/>
+        <TopLine Value="645"/>
+        <CursorPos X="3" Y="668"/>
+        <UsageCount Value="200"/>
+        <Loaded Value="True"/>
+      </Unit23>
+      <Unit24>
+        <Filename Value="..\..\..\..\..\..\rubio\AppData\Local\lazarus\onlinepackagemanager\packages\kcontrols\source\kmemo.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="1280"/>
+        <CursorPos X="14" Y="1297"/>
+        <UsageCount Value="49"/>
+      </Unit24>
+      <Unit25>
+        <Filename Value="htmlcolors.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="HTMLColors"/>
+        <EditorIndex Value="36"/>
+        <TopLine Value="71"/>
+        <CursorPos X="50" Y="91"/>
+        <UsageCount Value="232"/>
+        <Loaded Value="True"/>
+      </Unit25>
+      <Unit26>
+        <Filename Value="theworddictionary.pas"/>
+        <UnitName Value="TheWordDictionary"/>
+        <EditorIndex Value="21"/>
+        <TopLine Value="213"/>
+        <CursorPos Y="14"/>
+        <UsageCount Value="256"/>
+        <Loaded Value="True"/>
+      </Unit26>
+      <Unit27>
+        <Filename Value="include\bookdefs.inc"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="20"/>
+        <TopLine Value="103"/>
+        <CursorPos X="13" Y="84"/>
+        <UsageCount Value="249"/>
+        <Loaded Value="True"/>
+      </Unit27>
+      <Unit28>
+        <Filename Value="FormExportPatch.pas"/>
+        <ComponentName Value="FrmExportPatch"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <EditorIndex Value="18"/>
+        <TopLine Value="77"/>
+        <CursorPos X="5" Y="115"/>
+        <UsageCount Value="123"/>
+        <Loaded Value="True"/>
+        <LoadedDesigner Value="True"/>
+      </Unit28>
+      <Unit29>
+        <Filename Value="bibletreeview.pas"/>
+        <UnitName Value="BibleTreeView"/>
+        <EditorIndex Value="27"/>
+        <TopLine Value="98"/>
+        <CursorPos Y="151"/>
+        <UsageCount Value="120"/>
+        <Loaded Value="True"/>
+      </Unit29>
+      <Unit30>
+        <Filename Value="FormApplyPatch.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="FrmApplyPatch"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <EditorIndex Value="16"/>
+        <TopLine Value="135"/>
+        <CursorPos X="5" Y="201"/>
+        <UsageCount Value="241"/>
+        <Loaded Value="True"/>
+        <LoadedDesigner Value="True"/>
+      </Unit30>
+      <Unit31>
+        <Filename Value="patchfile.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="PatchFile"/>
+        <EditorIndex Value="19"/>
+        <TopLine Value="48"/>
+        <CursorPos Y="85"/>
+        <UsageCount Value="241"/>
+        <Loaded Value="True"/>
+      </Unit31>
+      <Unit32>
+        <Filename Value="projectfile.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="ProjectFile"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="20"/>
+        <CursorPos X="32" Y="40"/>
+        <UsageCount Value="238"/>
+      </Unit32>
+      <Unit33>
+        <Filename Value="pcre_dll.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="628"/>
+        <CursorPos X="90" Y="667"/>
+        <UsageCount Value="52"/>
+      </Unit33>
+      <Unit34>
+        <Filename Value="logosbiblemodule.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="LogosBibleModule"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="193"/>
+        <CursorPos Y="213"/>
+        <UsageCount Value="212"/>
+      </Unit34>
+      <Unit35>
+        <Filename Value="FormInterlinearVerseRules.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="InterlinearVerseRulesForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <EditorIndex Value="24"/>
+        <CursorPos X="56" Y="9"/>
+        <UsageCount Value="200"/>
+        <Loaded Value="True"/>
+        <LoadedDesigner Value="True"/>
+      </Unit35>
+      <Unit36>
+        <Filename Value="syntagm.pas"/>
+        <UnitName Value="Syntagm"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="26"/>
+        <TopLine Value="202"/>
+        <CursorPos Y="215"/>
+        <UsageCount Value="118"/>
+        <Loaded Value="True"/>
+      </Unit36>
+      <Unit37>
+        <Filename Value="C:\tools\lazarus\lcl\dialogs.pp"/>
+        <UnitName Value="Dialogs"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="683"/>
+        <CursorPos X="72" Y="700"/>
+        <UsageCount Value="9"/>
+      </Unit37>
+      <Unit38>
+        <Filename Value="C:\tools\lazarus\components\lazutils\uitypes.pas"/>
+        <UnitName Value="UITypes"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="3" Y="18"/>
+        <UsageCount Value="9"/>
+      </Unit38>
+      <Unit39>
+        <Filename Value="unitpleasewait.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="FormPleaseWait"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="UnitPleaseWait"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="21" Y="30"/>
+        <UsageCount Value="224"/>
+      </Unit39>
+      <Unit40>
+        <Filename Value="..\..\..\..\..\..\rubio\AppData\Local\lazarus\onlinepackagemanager\packages\kcontrols\source\kmemortf.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="3991"/>
+        <CursorPos X="56" Y="4066"/>
+        <UsageCount Value="34"/>
+      </Unit40>
+      <Unit41>
+        <Filename Value="llmclient.pas"/>
+        <EditorIndex Value="25"/>
+        <TopLine Value="537"/>
+        <CursorPos Y="588"/>
+        <UsageCount Value="139"/>
+        <Loaded Value="True"/>
+      </Unit41>
+      <Unit42>
+        <Filename Value="C:\Apps\lazarus\fpc\3.2.2\source\packages\fcl-web\src\base\fphttpclient.pp"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="161"/>
+        <CursorPos Y="208"/>
+        <UsageCount Value="59"/>
+      </Unit42>
+      <Unit43>
+        <Filename Value="C:\Apps\lazarus4\lcl\include\control.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="4606"/>
+        <CursorPos Y="4651"/>
+        <UsageCount Value="57"/>
+      </Unit43>
+      <Unit44>
+        <Filename Value="aiassociator.pas"/>
+        <UnitName Value="AIAssociator"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="282"/>
+        <CursorPos X="25" Y="312"/>
+        <UsageCount Value="99"/>
+      </Unit44>
+      <Unit45>
+        <Filename Value="C:\Apps\lazarus4\fpc\3.2.2\source\packages\fcl-json\src\fpjson.pp"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="600"/>
+        <CursorPos X="3" Y="604"/>
+        <UsageCount Value="61"/>
+      </Unit45>
+      <Unit46>
+        <Filename Value="htmlrenderer.pas"/>
+        <UnitName Value="HTMLRenderer"/>
+        <EditorIndex Value="17"/>
+        <TopLine Value="109"/>
+        <CursorPos Y="184"/>
+        <UsageCount Value="100"/>
+        <Loaded Value="True"/>
+      </Unit46>
+      <Unit47>
+        <Filename Value="commentsview.pas"/>
+        <UnitName Value="CommentsView"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="166"/>
+        <CursorPos Y="226"/>
+        <UsageCount Value="49"/>
+      </Unit47>
+      <Unit48>
+        <Filename Value="C:\Apps\lazarus4\lcl\include\customform.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="3183"/>
+        <CursorPos Y="3223"/>
+        <UsageCount Value="103"/>
+      </Unit48>
+      <Unit49>
+        <Filename Value="C:\Apps\lazarus4\lcl\include\menuitem.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="592"/>
+        <CursorPos Y="626"/>
+        <UsageCount Value="63"/>
+      </Unit49>
+      <Unit50>
+        <Filename Value="C:\Apps\lazarus4\lcl\include\application.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="1391"/>
+        <CursorPos Y="1438"/>
+        <UsageCount Value="102"/>
+      </Unit50>
+      <Unit51>
+        <Filename Value="C:\Apps\lazarus4\lcl\stdctrls.pp"/>
+        <UnitName Value="StdCtrls"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="1019"/>
+        <CursorPos X="3" Y="1020"/>
+        <UsageCount Value="55"/>
+      </Unit51>
+      <Unit52>
+        <Filename Value="formllmoptions.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="FrmLLMOptions"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="FormLlmOptions"/>
+        <EditorIndex Value="11"/>
+        <TopLine Value="86"/>
+        <CursorPos Y="100"/>
+        <UsageCount Value="212"/>
+        <Loaded Value="True"/>
+        <LoadedDesigner Value="True"/>
+      </Unit52>
+      <Unit53>
+        <Filename Value="C:\Apps\lazarus4\onlinepackagemanager\packages\kcontrols\source\kmemo.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="2322"/>
+        <CursorPos X="3" Y="2348"/>
+        <UsageCount Value="54"/>
+      </Unit53>
+      <Unit54>
+        <Filename Value="ai_flows.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="2"/>
+        <UsageCount Value="258"/>
+        <Loaded Value="True"/>
+      </Unit54>
+      <Unit55>
+        <Filename Value="ai_translation_flow.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="3"/>
+        <CursorPos X="29" Y="8"/>
+        <UsageCount Value="254"/>
+        <Loaded Value="True"/>
+      </Unit55>
+      <Unit56>
+        <Filename Value="ai_processing_manager.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="9"/>
+        <TopLine Value="249"/>
+        <CursorPos Y="327"/>
+        <UsageCount Value="254"/>
+        <Loaded Value="True"/>
+      </Unit56>
+      <Unit57>
+        <Filename Value="ai_association_flow.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="7"/>
+        <TopLine Value="85"/>
+        <CursorPos Y="110"/>
+        <UsageCount Value="253"/>
+        <Loaded Value="True"/>
+      </Unit57>
+      <Unit58>
+        <Filename Value="C:\Apps\lazarus4\lcl\include\treeview.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="837"/>
+        <CursorPos Y="866"/>
+        <UsageCount Value="49"/>
+      </Unit58>
+      <Unit59>
+        <Filename Value="C:\Apps\lazarus4\fpc\3.2.2\source\rtl\objpas\sysutils\sysutilh.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="207"/>
+        <CursorPos X="14" Y="241"/>
+        <UsageCount Value="109"/>
+      </Unit59>
+      <Unit60>
+        <Filename Value="ai_debug.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="8"/>
+        <CursorPos X="15" Y="20"/>
+        <UsageCount Value="253"/>
+        <Loaded Value="True"/>
+      </Unit60>
+      <Unit61>
+        <Filename Value="formaiprocessing.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="FrmAIProcessing"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <EditorIndex Value="10"/>
+        <UsageCount Value="262"/>
+        <Loaded Value="True"/>
+        <LoadedDesigner Value="True"/>
+      </Unit61>
+      <Unit62>
+        <Filename Value="C:\Apps\lazarus4\fpc\3.2.2\source\packages\fcl-db\src\base\db.pas"/>
+        <UnitName Value="DB"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="1711"/>
+        <CursorPos X="14" Y="1739"/>
+        <UsageCount Value="5"/>
+      </Unit62>
+      <Unit63>
+        <Filename Value="formaiprocessing.lrs"/>
+        <EditorIndex Value="28"/>
+        <CursorPos Y="57"/>
+        <UsageCount Value="101"/>
+        <Loaded Value="True"/>
+      </Unit63>
+      <Unit64>
+        <Filename Value="C:\Apps\lazarus4\lcl\customtimer.pas"/>
+        <UnitName Value="CustomTimer"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="151"/>
+        <CursorPos Y="181"/>
+        <UsageCount Value="164"/>
+      </Unit64>
+      <Unit65>
+        <Filename Value="C:\Apps\lazarus4\lcl\comctrls.pp"/>
+        <UnitName Value="ComCtrls"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="3142"/>
+        <CursorPos X="14" Y="3170"/>
+        <UsageCount Value="156"/>
+      </Unit65>
+      <Unit66>
+        <Filename Value="ai_flow_config.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="12"/>
+        <CursorPos X="43" Y="38"/>
+        <UsageCount Value="214"/>
+        <Loaded Value="True"/>
+      </Unit66>
+      <Unit67>
+        <Filename Value="C:\Apps\lazarus4\fpc\3.2.2\source\rtl\objpas\sysutils\sysstrh.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="45"/>
+        <CursorPos X="17" Y="94"/>
+        <UsageCount Value="111"/>
+      </Unit67>
+      <Unit68>
+        <Filename Value="C:\Apps\lazarus4\fpc\3.2.2\source\rtl\objpas\sysutils\sysstr.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="524"/>
+        <CursorPos X="2" Y="527"/>
+        <UsageCount Value="111"/>
+      </Unit68>
+      <Unit69>
+        <Filename Value="C:\Apps\lazarus4\lcl\include\interfacebase.inc"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos Y="54"/>
+        <UsageCount Value="99"/>
+      </Unit69>
+      <Unit70>
+        <Filename Value="project_config.pas"/>
+        <EditorIndex Value="6"/>
+        <TopLine Value="2"/>
+        <CursorPos Y="75"/>
+        <UsageCount Value="101"/>
+        <Loaded Value="True"/>
+      </Unit70>
+      <Unit71>
+        <Filename Value="project_database_bootstrap.pas"/>
+        <EditorIndex Value="5"/>
+        <TopLine Value="111"/>
+        <CursorPos Y="190"/>
+        <UsageCount Value="79"/>
+        <Loaded Value="True"/>
+      </Unit71>
+      <Unit72>
+        <Filename Value="theword_syntax_highlighter.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="49"/>
+      </Unit72>
+      <Unit73>
+        <Filename Value="formthewordhighlightercolors.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="FormTheWordHighlighterColors"/>
+        <UsageCount Value="49"/>
+      </Unit73>
+      <Unit74>
+        <Filename Value="FormApplicationPreferences.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="48"/>
+      </Unit74>
+      <Unit75>
+        <Filename Value="theword_sync_state.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="48"/>
+      </Unit75>
+      <Unit76>
+        <Filename Value="FormFindInProject.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="32"/>
+        <TopLine Value="257"/>
+        <CursorPos X="31" Y="267"/>
+        <UsageCount Value="48"/>
+        <Loaded Value="True"/>
+      </Unit76>
+      <Unit77>
+        <Filename Value="FormDefaultDictionaries.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="48"/>
+      </Unit77>
+      <Unit78>
+        <Filename Value="tanglaw_sync.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="48"/>
+      </Unit78>
+      <Unit79>
+        <Filename Value="unittexttospeech.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="48"/>
+      </Unit79>
+      <Unit80>
+        <Filename Value="formvoicesettings.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="48"/>
+      </Unit80>
+      <Unit81>
+        <Filename Value="unitskins.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="48"/>
+      </Unit81>
+      <Unit82>
+        <Filename Value="menubar_skin.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="48"/>
+      </Unit82>
+      <Unit83>
+        <Filename Value="esword_usfm.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="48"/>
+      </Unit83>
+      <Unit84>
+        <Filename Value="module_conversion.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="48"/>
+      </Unit84>
+      <Unit85>
+        <Filename Value="apocrypha_books.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="48"/>
+      </Unit85>
+      <Unit86>
+        <Filename Value="verse_panel_strip.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="48"/>
+      </Unit86>
+      <Unit87>
+        <Filename Value="FormNewFeaturesGuide.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="48"/>
+      </Unit87>
+    </Units>
+    <JumpHistory Count="30" HistoryIndex="29">
+      <Position1>
+        <Filename Value="syntagm.pas"/>
+        <Caret Line="797" TopLine="753"/>
+      </Position1>
+      <Position2>
+        <Filename Value="syntagm.pas"/>
+        <Caret Line="798" TopLine="753"/>
+      </Position2>
+      <Position3>
+        <Filename Value="syntagm.pas"/>
+        <Caret Line="799" TopLine="753"/>
+      </Position3>
+      <Position4>
+        <Filename Value="syntagm.pas"/>
+        <Caret Line="800" TopLine="753"/>
+      </Position4>
+      <Position5>
+        <Filename Value="syntagm.pas"/>
+        <Caret Line="801" TopLine="753"/>
+      </Position5>
+      <Position6>
+        <Filename Value="syntagm.pas"/>
+        <Caret Line="802" TopLine="753"/>
+      </Position6>
+      <Position7>
+        <Filename Value="syntagm.pas"/>
+        <Caret Line="795" TopLine="753"/>
+      </Position7>
+      <Position8>
+        <Filename Value="syntagm.pas"/>
+        <Caret Line="806" TopLine="753"/>
+      </Position8>
+      <Position9>
+        <Filename Value="syntagm.pas"/>
+        <Caret Line="826" TopLine="753"/>
+      </Position9>
+      <Position10>
+        <Filename Value="syntagm.pas"/>
+        <Caret Line="892" TopLine="852"/>
+      </Position10>
+      <Position11>
+        <Filename Value="syntagm.pas"/>
+        <Caret Line="893" TopLine="852"/>
+      </Position11>
+      <Position12>
+        <Filename Value="syntagm.pas"/>
+        <Caret Line="896" TopLine="852"/>
+      </Position12>
+      <Position13>
+        <Filename Value="syntagm.pas"/>
+        <Caret Line="898" TopLine="852"/>
+      </Position13>
+      <Position14>
+        <Filename Value="syntagm.pas"/>
+        <Caret Line="900" TopLine="852"/>
+      </Position14>
+      <Position15>
+        <Filename Value="syntagm.pas"/>
+        <Caret Line="911" TopLine="852"/>
+      </Position15>
+      <Position16>
+        <Filename Value="syntagm.pas"/>
+        <Caret Line="913" TopLine="852"/>
+      </Position16>
+      <Position17>
+        <Filename Value="syntagm.pas"/>
+        <Caret Line="922" TopLine="852"/>
+      </Position17>
+      <Position18>
+        <Filename Value="syntagm.pas"/>
+        <Caret Line="215" TopLine="175"/>
+      </Position18>
+      <Position19>
+        <Filename Value="Project.pas"/>
+        <Caret Line="1672" TopLine="1631"/>
+      </Position19>
+      <Position20>
+        <Filename Value="project_database_bootstrap.pas"/>
+        <Caret Line="190" TopLine="111"/>
+      </Position20>
+      <Position21>
+        <Filename Value="ai_association_flow.pas"/>
+        <Caret Line="110" TopLine="85"/>
+      </Position21>
+      <Position22>
+        <Filename Value="formaiprocessing.pas"/>
+      </Position22>
+      <Position23>
+        <Filename Value="syntagm.pas"/>
+        <Caret Line="215" TopLine="175"/>
+      </Position23>
+      <Position24>
+        <Filename Value="formprincipal.pas"/>
+        <Caret Line="552" Column="11" TopLine="528"/>
+      </Position24>
+      <Position25>
+        <Filename Value="FormProjectProperties.pas"/>
+        <Caret Line="88" Column="3" TopLine="48"/>
+      </Position25>
+      <Position26>
+        <Filename Value="FormDictionaryPopup.pas"/>
+        <Caret Line="56" Column="29" TopLine="4"/>
+      </Position26>
+      <Position27>
+        <Filename Value="FormDictionaryPopup.pas"/>
+        <Caret Line="57" Column="45" TopLine="46"/>
+      </Position27>
+      <Position28>
+        <Filename Value="FormDictionaryPopup.pas"/>
+        <Caret Line="771" Column="17" TopLine="745"/>
+      </Position28>
+      <Position29>
+        <Filename Value="FormDictionaryPopup.pas"/>
+        <Caret Line="17" TopLine="6"/>
+      </Position29>
+      <Position30>
+        <Filename Value="syntagm.pas"/>
+        <Caret Line="215" TopLine="202"/>
+      </Position30>
+    </JumpHistory>
+  </ProjectOptions>
+  <CompilerOptions>
+    <Version Value="11"/>
+    <Target>
+      <Filename Value="iBiblia"/>
+    </Target>
+    <SearchPaths>
+      <IncludeFiles Value="$(ProjOutDir)"/>
+      <OtherUnitFiles Value="vendor/fpc-openssl"/>
+      <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
+    </SearchPaths>
+    <Linking>
+      <Debugging>
+        <DebugInfoType Value="dsDwarf2Set"/>
+      </Debugging>
+      <Options>
+        <Win32>
+          <GraphicApplication Value="True"/>
+        </Win32>
+      </Options>
+    </Linking>
+  </CompilerOptions>
+  <Debugging>
+    <BreakPoints Count="4">
+      <Item1>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="PCRE.pas"/>
+        <Line Value="1731"/>
+      </Item1>
+      <Item2>
+        <Kind Value="bpkData"/>
+        <WatchData Value="marcador"/>
+        <WatchScope Value="wpsGlobal"/>
+        <WatchKind Value="wpkWrite"/>
+        <InitialEnabled Value="False"/>
+      </Item2>
+      <Item3>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="aiassociator.pas"/>
+        <Line Value="142"/>
+      </Item3>
+      <Item4>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="aiassociator.pas"/>
+        <Line Value="47"/>
+      </Item4>
+    </BreakPoints>
+    <Watches Count="1">
+      <Item1>
+        <Expression Value="stg.FText"/>
+      </Item1>
+    </Watches>
+    <Exceptions Count="5">
+      <Item1>
+        <Name Value="EAbort"/>
+      </Item1>
+      <Item2>
+        <Name Value="ECodetoolError"/>
+      </Item2>
+      <Item3>
+        <Name Value="EFOpenError"/>
+      </Item3>
+      <Item4>
+        <Name Value="EConvertError"/>
+      </Item4>
+      <Item5>
+        <Name Value="ERegexException"/>
+      </Item5>
+    </Exceptions>
+  </Debugging>
+</CONFIG>

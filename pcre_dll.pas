@@ -763,25 +763,25 @@ begin
   if PcreLib = NilHandle then
     raise Exception.Create('Could not load libpcre (install libpcre3 or keep libpcre.so next to iBiblia).');
 
-  PPointer(@fn_pcre_compile)^ := GetProcedureAddress(PcreLib, 'pcre_compile');
-  PPointer(@fn_pcre_compile2)^ := GetProcedureAddress(PcreLib, 'pcre_compile2');
-  PPointer(@fn_pcre_exec)^ := GetProcedureAddress(PcreLib, 'pcre_exec');
-  PPointer(@fn_pcre_dfa_exec)^ := GetProcedureAddress(PcreLib, 'pcre_dfa_exec');
-  PPointer(@fn_pcre_study)^ := GetProcedureAddress(PcreLib, 'pcre_study');
-  PPointer(@fn_pcre_info)^ := GetProcedureAddress(PcreLib, 'pcre_info');
-  PPointer(@fn_pcre_fullinfo)^ := GetProcedureAddress(PcreLib, 'pcre_fullinfo');
-  PPointer(@fn_pcre_maketables)^ := GetProcedureAddress(PcreLib, 'pcre_maketables');
-  PPointer(@fn_pcre_version)^ := GetProcedureAddress(PcreLib, 'pcre_version');
-  PPointer(@fn_pcre_get_substring)^ := GetProcedureAddress(PcreLib, 'pcre_get_substring');
-  PPointer(@fn_pcre_get_substring_list)^ := GetProcedureAddress(PcreLib, 'pcre_get_substring_list');
-  PPointer(@fn_pcre_copy_substring)^ := GetProcedureAddress(PcreLib, 'pcre_copy_substring');
-  PPointer(@fn_pcre_free_substring)^ := GetProcedureAddress(PcreLib, 'pcre_free_substring');
-  PPointer(@fn_pcre_free_substring_list)^ := GetProcedureAddress(PcreLib, 'pcre_free_substring_list');
-  PPointer(@fn_pcre_config)^ := GetProcedureAddress(PcreLib, 'pcre_config');
-  PPointer(@fn_pcre_copy_named_substring)^ := GetProcedureAddress(PcreLib, 'pcre_copy_named_substring');
-  PPointer(@fn_pcre_get_named_substring)^ := GetProcedureAddress(PcreLib, 'pcre_get_named_substring');
-  PPointer(@fn_pcre_get_stringnumber)^ := GetProcedureAddress(PcreLib, 'pcre_get_stringnumber');
-  PPointer(@fn_pcre_get_stringtable_entries)^ := GetProcedureAddress(PcreLib, 'pcre_get_stringtable_entries');
+  @fn_pcre_compile := GetProcedureAddress(PcreLib, 'pcre_compile');
+  @fn_pcre_compile2 := GetProcedureAddress(PcreLib, 'pcre_compile2');
+  @fn_pcre_exec := GetProcedureAddress(PcreLib, 'pcre_exec');
+  @fn_pcre_dfa_exec := GetProcedureAddress(PcreLib, 'pcre_dfa_exec');
+  @fn_pcre_study := GetProcedureAddress(PcreLib, 'pcre_study');
+  @fn_pcre_info := GetProcedureAddress(PcreLib, 'pcre_info');
+  @fn_pcre_fullinfo := GetProcedureAddress(PcreLib, 'pcre_fullinfo');
+  @fn_pcre_maketables := GetProcedureAddress(PcreLib, 'pcre_maketables');
+  @fn_pcre_version := GetProcedureAddress(PcreLib, 'pcre_version');
+  @fn_pcre_get_substring := GetProcedureAddress(PcreLib, 'pcre_get_substring');
+  @fn_pcre_get_substring_list := GetProcedureAddress(PcreLib, 'pcre_get_substring_list');
+  @fn_pcre_copy_substring := GetProcedureAddress(PcreLib, 'pcre_copy_substring');
+  @fn_pcre_free_substring := GetProcedureAddress(PcreLib, 'pcre_free_substring');
+  @fn_pcre_free_substring_list := GetProcedureAddress(PcreLib, 'pcre_free_substring_list');
+  @fn_pcre_config := GetProcedureAddress(PcreLib, 'pcre_config');
+  @fn_pcre_copy_named_substring := GetProcedureAddress(PcreLib, 'pcre_copy_named_substring');
+  @fn_pcre_get_named_substring := GetProcedureAddress(PcreLib, 'pcre_get_named_substring');
+  @fn_pcre_get_stringnumber := GetProcedureAddress(PcreLib, 'pcre_get_stringnumber');
+  @fn_pcre_get_stringtable_entries := GetProcedureAddress(PcreLib, 'pcre_get_stringtable_entries');
   ptr_pcre_malloc := GetProcedureAddress(PcreLib, 'pcre_malloc');
   ptr_pcre_free := GetProcedureAddress(PcreLib, 'pcre_free');
   ptr_pcre_stack_malloc := GetProcedureAddress(PcreLib, 'pcre_stack_malloc');
@@ -807,7 +807,7 @@ end;
 function pcre_version: PChar; cdecl;
 begin
   EnsurePcreLoaded;
-  if PPointer(@fn_pcre_version)^ <> nil then
+  if Assigned(fn_pcre_version) then
     Result := fn_pcre_version()
   else
     Result := '8.45';
@@ -976,14 +976,14 @@ end;
 procedure pcre_free_substring(stringptr: PChar); cdecl;
 begin
   EnsurePcreLoaded;
-  if PPointer(@fn_pcre_free_substring)^ <> nil then
+  if Assigned(fn_pcre_free_substring) then
     fn_pcre_free_substring(stringptr);
 end;
 
 procedure pcre_free_substring_list(stringptr: PPChar); cdecl;
 begin
   EnsurePcreLoaded;
-  if PPointer(@fn_pcre_free_substring_list)^ <> nil then
+  if Assigned(fn_pcre_free_substring_list) then
     fn_pcre_free_substring_list(stringptr);
 end;
 
