@@ -2727,6 +2727,10 @@ begin
     FVerseViewControl.Color := Bg;
     FVerseViewControl.Font.Color := Txt;
   end;
+  // the words carry their colours in the visual document; rebuild it so a
+  // skin change recolours the text as well as the background
+  if not FDestroying then
+    RefreshVisualDocument(False);
 end;
 
 function TVerse.SelectSourceWordByDelta(Step: Integer): Boolean;

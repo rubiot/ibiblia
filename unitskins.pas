@@ -4228,8 +4228,15 @@ begin
     end
     else if ctrl is TCustomComboBox then
     begin
+      {$IFDEF WINDOWS}
       TCustomComboBox(ctrl).Color := ASkin.WindowBg;
       TCustomComboBox(ctrl).Font.Color := ASkin.WindowText;
+      {$ELSE}
+      // GTK draws combo boxes with the desktop theme and ignores the
+      // background colour, so a skin text colour would be unreadable.
+      TCustomComboBox(ctrl).Color := clDefault;
+      TCustomComboBox(ctrl).Font.Color := clDefault;
+      {$ENDIF}
       if ctrl is TWinControl then
       begin
         ApplyDarkModeToControl(TWinControl(ctrl), ASkin.IsDark);
@@ -4345,7 +4352,13 @@ begin
     end
     else if (ctrl is TCustomButton) or (ctrl is TBitBtn) or (ctrl is TSpeedButton) then
     begin
+      {$IFDEF WINDOWS}
       ctrl.Font.Color := ASkin.PanelText;
+      {$ELSE}
+      // GTK draws buttons with the desktop theme (light), so keep its text
+      // colour; light skin text on a light button cannot be read.
+      ctrl.Font.Color := clDefault;
+      {$ENDIF}
       if ctrl is TWinControl then
       begin
         ApplyDarkModeToControl(TWinControl(ctrl), ASkin.IsDark);
@@ -4439,7 +4452,11 @@ begin
       ctrl := TControl(AForm.Components[i]);
       if (ctrl is TCustomButton) or (ctrl is TBitBtn) or (ctrl is TSpeedButton) then
       begin
+        {$IFDEF WINDOWS}
         ctrl.Font.Color := ASkin.PanelText;
+        {$ELSE}
+        ctrl.Font.Color := clDefault; // GTK draws light buttons
+        {$ENDIF}
         if ctrl is TWinControl then
         begin
           ApplyDarkModeToControl(TWinControl(ctrl), ASkin.IsDark);
@@ -4474,8 +4491,13 @@ begin
       end
       else if ctrl is TCustomComboBox then
       begin
+        {$IFDEF WINDOWS}
         TCustomComboBox(ctrl).Color := ASkin.WindowBg;
         TCustomComboBox(ctrl).Font.Color := ASkin.WindowText;
+        {$ELSE}
+        TCustomComboBox(ctrl).Color := clDefault; // GTK draws light combo boxes
+        TCustomComboBox(ctrl).Font.Color := clDefault;
+        {$ENDIF}
         if ctrl is TWinControl then
         begin
           ApplyDarkModeToControl(TWinControl(ctrl), ASkin.IsDark);
@@ -4626,7 +4648,11 @@ begin
         if ctrl is TLabel then
           TLabel(ctrl).Font.Color := CurrentSkin.PanelText
         else if ctrl is TButton then
+          {$IFDEF WINDOWS}
           TButton(ctrl).Font.Color := CurrentSkin.PanelText;
+          {$ELSE}
+          TButton(ctrl).Font.Color := clDefault;
+          {$ENDIF}
       end;
     end;
 

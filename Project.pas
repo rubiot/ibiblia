@@ -3073,6 +3073,9 @@ begin
   for t := Low(FAVersiculo) to High(FAVersiculo) do
     if Assigned(FAVersiculo[t]) then
     begin
+      // recolour the verse panels for the new skin; without this they kept
+      // the colours of the skin active when the project was opened
+      FAVersiculo[t].ApplySkinColors;
       if FAtivo then
         FAVersiculo[t].RefreshAfterEditorClose;
       if Assigned(FAVersiculo[t].Panel) then

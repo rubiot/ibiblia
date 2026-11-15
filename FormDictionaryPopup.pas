@@ -1375,7 +1375,12 @@ begin
   ApplyFormStyle(Self);
   fCompStyle := csHintWindow;
   Canvas.Brush.Style := bsClear;
+  {$IFDEF WINDOWS}
   Caption := '';
+  {$ELSE}
+  // X11 window managers show "Unnamed Window" for a form without a caption
+  Caption := Application.Title;
+  {$ENDIF}
   FStrongs := TStringList.Create;
   FMorphologies := TStringList.Create;
   FInSizeMove := False;
@@ -1444,6 +1449,10 @@ begin
   SaveLayoutToOpts;
   FStrongs.Free;
   FMorphologies.Free;
+  // the main form saves the popup layout again while it is destroyed, which
+  // can be after this form: never leave it a pointer to a freed form
+  if FrmDictionaryPopup = Self then
+    FrmDictionaryPopup := nil;
 end;
 
 procedure TFrmDictionaryPopup.FormHide(Sender: TObject);
@@ -2295,6 +2304,11 @@ begin
       ApplyMorphologyPaneHeight;
 
     Visible := True;
+    {$IFNDEF WINDOWS}
+    // X11 window managers may place a window that is being shown where they
+    // like; put it back where it was computed once it is mapped
+    SetBounds(BestL, BestT, PopupW, PopupH);
+    {$ENDIF}
     ApplySkin;
 
     if FDockToMainRightEdge then
