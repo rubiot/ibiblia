@@ -6,6 +6,9 @@ uses
   {$IFDEF UNIX}{$IFDEF UseCThreads}
   cthreads,
   {$ENDIF}{$ENDIF}
+  {$IFDEF LINUX}
+  sqlite3dyn,
+  {$ENDIF}
   Interfaces, // this includes the LCL widgetset
   Forms, formPrincipal, Verse, ONTTokenizer, Project, SuggestionManager,
   VerseMemo, PCRE, ConcordanceExport, FormVerseRules, FormMergeProjects,
@@ -89,6 +92,11 @@ begin
   end;
   {$ENDIF}
 
+  {$IFDEF LINUX}
+  { SQLdb looks for "libsqlite3.so", which only the -dev package installs;
+    every Debian/Ubuntu system has the run-time library under this name. }
+  SQLiteDefaultLibrary := 'libsqlite3.so.0';
+  {$ENDIF}
   Application.Initialize;
   {$IFDEF WINDOWS}
   Application.MainFormOnTaskBar := True;
