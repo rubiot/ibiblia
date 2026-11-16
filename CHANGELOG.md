@@ -6,7 +6,12 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.037 (2026-11-16) — Dark Title Bar on Linux (KDE)
+### 0. Version 1.1.0.038 (2026-11-16) — Paste Without Line-Break Error
+
+* Pasting text from another program into the verse editor no longer causes the 'line break' error. Line breaks in the pasted text (from documents, web pages or other Bible programs) become single spaces, as Rubio planned for issue #122. Text copied inside iBiblia is pasted unchanged. (The fix for the lost first verse, 'Prevent saving unloaded verse views', was already included.)
+* Files: `theword_wysiwyg_editor_control.pas`.
+
+### 0q. Version 1.1.0.037 (2026-11-16) — Dark Title Bar on Linux (KDE)
 
 * Linux (KDE): the window title bar now takes the dark skin colours. KDE draws title bars itself; iBiblia now tells it which colours to use for each window (through the _KDE_NET_WM_COLOR_SCHEME hint). With a light skin the desktop's own colours are used again. Message boxes drawn by GTK itself may still use your KDE title colours.
 * Files: `unitskins.pas`.

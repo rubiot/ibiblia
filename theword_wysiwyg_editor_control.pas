@@ -1490,6 +1490,29 @@ begin
   end;
 end;
 
+{ Text copied from another program (a document, a web page, another Bible
+  program) usually carries line breaks. A verse cannot hold physical line
+  breaks, so each run of them becomes one space and the ends are trimmed. }
+function FlattenPastedLineBreaks(const AText: UnicodeString): UnicodeString;
+var
+  I: Integer;
+  InBreak: Boolean;
+begin
+  Result := '';
+  InBreak := False;
+  for I := 1 to Length(AText) do
+    if (AText[I] = #13) or (AText[I] = #10) or (AText[I] = #$2028) or
+       (AText[I] = #$2029) then
+      InBreak := True
+    else
+    begin
+      if InBreak and (Result <> '') then
+        Result := Result + ' ';
+      InBreak := False;
+      Result := Result + AText[I];
+    end;
+end;
+
 procedure TTheWordWysiwygEditorControl.DirectClipboardPaste(Sender: TObject;
   StartUTF16, LengthUTF16: Integer; var Handled: Boolean);
 var
@@ -1522,6 +1545,8 @@ begin
     begin
       DocumentStart := Title.StartOffset + RelativeStart;
       Payload := ReadTheWordClipboardV2;
+      if Payload = '' then
+        PlainText := FlattenPastedLineBreaks(PlainText);
       Succeeded := FSession.PasteTitle(Integer(TitleId), RelativeStart,
         DocumentLength, Payload, PlainText, InsertedLength, UsedPrivate);
     end
@@ -1542,6 +1567,8 @@ begin
         BreakLayoutStart, BreakLayoutLength) and
         (BreakLayoutStart = StartUTF16 + LengthUTF16);
       Payload := ReadTheWordClipboardV2;
+      if Payload = '' then
+        PlainText := FlattenPastedLineBreaks(PlainText);
       Succeeded := FSession.Paste(DocumentStart, DocumentLength, Breaks,
         Affinity = twoaAfter, HasInsertBefore, InsertBefore, Payload,
         PlainText, InsertedLength, UsedPrivate);
