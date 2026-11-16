@@ -13,7 +13,7 @@ uses
   , Windows
   {$ENDIF}
   {$IFDEF LCLGTK2}
-  , gtk2, glib2
+  , gtk2, glib2, gdk2, gdk2x, xlib
   {$ENDIF}
   ;
 
@@ -659,6 +659,69 @@ begin
     // cosmetic only
   end;
 end;
+
+{ The window title bar is drawn by KDE (KWin). KDE reads a colour scheme file
+  named in the window property _KDE_NET_WM_COLOR_SCHEME and uses its [WM]
+  colours for that window's title bar. Dark skins get a matching file; a
+  light skin removes the property so the desktop theme applies again. }
+procedure ApplyKdeTitleBar(AForm: TCustomForm; const ASkin: TSkinColors);
+var
+  Path, Dir: string;
+  SL: TStringList;
+  Wnd: PGtkWidget;
+  Dpy: PDisplay;
+  Atom: QWord;
+  function RGBS(C: TColor): string;
+  var
+    V: LongInt;
+  begin
+    V := ColorToRGB(C);
+    Result := IntToStr(V and $FF) + ',' + IntToStr((V shr 8) and $FF) + ',' +
+      IntToStr((V shr 16) and $FF);
+  end;
+begin
+  try
+    if (AForm = nil) or (not AForm.HandleAllocated) then Exit;
+    Wnd := PGtkWidget(AForm.Handle);
+    if (Wnd = nil) or (Wnd^.window = nil) then Exit;
+    Dpy := gdk_x11_drawable_get_xdisplay(Wnd^.window);
+    if Dpy = nil then Exit;
+    Atom := gdk_x11_get_xatom_by_name('_KDE_NET_WM_COLOR_SCHEME');
+    if not ASkin.IsDark then
+    begin
+      XDeleteProperty(Dpy, gdk_x11_drawable_get_xid(Wnd^.window), Atom);
+      Exit;
+    end;
+    Dir := GetEnvironmentVariable('XDG_CACHE_HOME');
+    if Dir = '' then Dir := GetEnvironmentVariable('HOME') + '/.cache';
+    Dir := Dir + '/ibiblia';
+    ForceDirectories(Dir);
+    Path := Dir + '/skin-' + ASkin.Name + '.colors';
+    SL := TStringList.Create;
+    try
+      SL.Add('[General]');
+      SL.Add('Name=iBiblia ' + ASkin.Name);
+      SL.Add('[WM]');
+      SL.Add('activeBackground=' + RGBS(ASkin.PanelBg));
+      SL.Add('activeForeground=' + RGBS(ASkin.PanelText));
+      SL.Add('inactiveBackground=' + RGBS(ASkin.PanelBg));
+      SL.Add('inactiveForeground=' + RGBS(ASkin.WindowTextDim));
+      SL.Add('activeBlend=' + RGBS(ASkin.PanelText));
+      SL.Add('inactiveBlend=' + RGBS(ASkin.WindowTextDim));
+      SL.Add('[Colors:Window]');
+      SL.Add('BackgroundNormal=' + RGBS(ASkin.PanelBg));
+      SL.Add('ForegroundNormal=' + RGBS(ASkin.PanelText));
+      SL.SaveToFile(Path);
+    finally
+      SL.Free;
+    end;
+    XChangeProperty(Dpy, gdk_x11_drawable_get_xid(Wnd^.window), Atom, 31 {XA_STRING}, 8,
+      0 {PropModeReplace}, PByte(PChar(Path)), Length(Path));
+    XFlush(Dpy);
+  except
+    // cosmetic only
+  end;
+end;
 {$ENDIF}
 
 procedure ApplyDarkModeToWindow(AForm: TCustomForm; AIsDark: Boolean);
@@ -678,6 +741,7 @@ begin
 
   {$IFDEF LCLGTK2}
   ApplyGtkSkinTheme(CurrentSkin);
+  ApplyKdeTitleBar(AForm, CurrentSkin);
   {$ENDIF}
   {$IFDEF WINDOWS}
   InitUxTheme;

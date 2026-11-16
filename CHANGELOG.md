@@ -6,7 +6,12 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.036 (2026-11-16) — Dark Message Boxes on Linux
+### 0. Version 1.1.0.037 (2026-11-16) — Dark Title Bar on Linux (KDE)
+
+* Linux (KDE): the window title bar now takes the dark skin colours. KDE draws title bars itself; iBiblia now tells it which colours to use for each window (through the _KDE_NET_WM_COLOR_SCHEME hint). With a light skin the desktop's own colours are used again. Message boxes drawn by GTK itself may still use your KDE title colours.
+* Files: `unitskins.pas`.
+
+### 0p. Version 1.1.0.036 (2026-11-16) — Dark Message Boxes on Linux
 
 * Linux: message boxes (such as 'Close project' and 'Clear associations') are dark in a dark skin. They are drawn by GTK and kept the system's light colours; their window, buttons and text now follow the skin.
 * Files: `unitskins.pas`.

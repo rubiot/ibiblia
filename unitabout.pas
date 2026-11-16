@@ -114,6 +114,9 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.037 (64-bit Edition) - 2026-11-16' + LineEnding +
+  '- Linux (KDE): the window title bar now takes the dark skin colours. KDE draws title bars itself; iBiblia now tells it which colours to use for each window (through the _KDE_NET_WM_COLOR_SCHEME hint). With a light skin the desktop''s own colours are used again. Message boxes drawn by GTK itself may still use your KDE title colours.' + LineEnding +
+  LineEnding +
   'Version 1.1.0.036 (64-bit Edition) - 2026-11-16' + LineEnding +
   '- Linux: message boxes (such as ''Close project'' and ''Clear associations'') are dark in a dark skin. They are drawn by GTK and kept the system''s light colours; their window, buttons and text now follow the skin.' + LineEnding +
   LineEnding +
