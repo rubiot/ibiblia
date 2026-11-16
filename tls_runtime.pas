@@ -8,8 +8,14 @@ uses
   Classes, SysUtils, fphttpclient, ssockets;
 
 const
+  {$IFDEF WINDOWS}
   TLS_SSL_FILE_NAME = 'libssl-3-x64.dll';
   TLS_CRYPTO_FILE_NAME = 'libcrypto-3-x64.dll';
+  {$ELSE}
+  // Linux uses the system OpenSSL (libssl3 is installed on every current distribution).
+  TLS_SSL_FILE_NAME = 'libssl.so.3';
+  TLS_CRYPTO_FILE_NAME = 'libcrypto.so.3';
+  {$ENDIF}
   TLS_CA_FILE_NAME = 'cacert.pem';
 
 type
@@ -51,6 +57,30 @@ var
   InitializationLock: TCriticalSection;
   LoadedRuntimeDirectory: string;
 
+function FindCABundle(const DirectoryName: string): string;
+{$IFNDEF WINDOWS}
+const
+  SystemBundles: array[0..4] of string = (
+    '/etc/ssl/certs/ca-certificates.crt',
+    '/etc/pki/tls/certs/ca-bundle.crt',
+    '/etc/ssl/ca-bundle.pem',
+    '/etc/ssl/cert.pem',
+    '/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem');
+var
+  Candidate: string;
+{$ENDIF}
+begin
+  Result := DirectoryName + TLS_CA_FILE_NAME;
+  if FileExists(Result) then
+    Exit;
+  {$IFNDEF WINDOWS}
+  for Candidate in SystemBundles do
+    if FileExists(Candidate) then
+      Exit(Candidate);
+  {$ENDIF}
+  Result := '';
+end;
+
 function NormalizeRuntimeDirectory(const Value: string): string;
 begin
   if Value = '' then
@@ -83,6 +113,7 @@ begin
           'TLS is already initialized from another runtime directory.');
       Exit;
     end;
+    {$IFDEF WINDOWS}
     SSLFileName := DirectoryName + TLS_SSL_FILE_NAME;
     CryptoFileName := DirectoryName + TLS_CRYPTO_FILE_NAME;
     for RequiredFile in [SSLFileName, CryptoFileName,
@@ -91,19 +122,36 @@ begin
         raise ETLSRuntimeError.CreateFmt(
           'The HTTPS runtime file %s is missing. Extract the complete iBiblia package.',
           [ExtractFileName(RequiredFile)]);
+    {$ELSE}
+    SSLFileName := TLS_SSL_FILE_NAME;
+    CryptoFileName := TLS_CRYPTO_FILE_NAME;
+    if FindCABundle(DirectoryName) = '' then
+      raise ETLSRuntimeError.Create(
+        'No CA certificate bundle was found. Install the ca-certificates package.');
+    {$ENDIF}
 
     if IsSSLLoaded then
       raise ETLSRuntimeError.Create(
         'TLS was initialized outside the bundled iBiblia runtime.');
     if not InitSSLInterface(SSLFileName, CryptoFileName) then
       raise ETLSRuntimeError.Create(
-        'The bundled HTTPS libraries could not be loaded. Extract the complete Windows x64 package.');
-    if (Pos('OpenSSL 3.5.', OpenSSLGetVersion(0)) <> 1) or
+        {$IFDEF WINDOWS}
+        'The bundled HTTPS libraries could not be loaded. Extract the complete Windows x64 package.'
+        {$ELSE}
+        'OpenSSL 3 (libssl.so.3) could not be loaded. Install the libssl3 package.'
+        {$ENDIF}
+        );
+    if {$IFDEF WINDOWS}(Pos('OpenSSL 3.5.', OpenSSLGetVersion(0)) <> 1){$ELSE}(Pos('OpenSSL 3.', OpenSSLGetVersion(0)) <> 1){$ENDIF} or
        (SslLibraryInit <> 1) then
     begin
       DestroySSLInterface;
       raise ETLSRuntimeError.Create(
-        'The bundled OpenSSL 3.5 runtime could not be initialized.');
+        {$IFDEF WINDOWS}
+        'The bundled OpenSSL 3.5 runtime could not be initialized.'
+        {$ELSE}
+        'The system OpenSSL 3 runtime could not be initialized.'
+        {$ENDIF}
+        );
     end;
     LoadedRuntimeDirectory := DirectoryName;
   finally
@@ -162,7 +210,7 @@ begin
     Handler.VerifyPeerCert := True;
     Handler.SendHostAsSNI := True;
     Handler.CertificateData.CertCA.FileName :=
-      FRuntimeDirectory + TLS_CA_FILE_NAME;
+      FindCABundle(FRuntimeDirectory);
     Result := Handler;
   except
     Handler.Free;

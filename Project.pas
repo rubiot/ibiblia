@@ -370,6 +370,7 @@ type
     procedure SaveText;
     procedure SaveAssociations;
     procedure RemoveAssociations;
+    procedure SpeakHoveredSyntagm(ASyntagm: TSyntagm);
     procedure SintagmaOnMouseEnter(Sender: TSyntagm);
     procedure SintagmaOnMouseLeave(Sender: TSyntagm);
     procedure SintagmaOnClick(Sender: TSyntagm);
@@ -806,7 +807,8 @@ implementation
 
 uses FormDictionaryPopup, FormVerseRules, formaiprocessing,
   theword_module_encoding, performance_debug, status_visuals, ui_style,
-  project_save_staging, project_save_snapshot, sqlite_database_copy;
+  project_save_staging, project_save_snapshot, sqlite_database_copy,
+  unittexttospeech;
 
 type
   { Executes only the blocking network request outside the LCL thread. Verse
@@ -3866,6 +3868,28 @@ begin
   end;
 end;
 
+procedure TProject.SpeakHoveredSyntagm(ASyntagm: TSyntagm);
+var
+  Speak: Boolean;
+  IsSource: Boolean;
+begin
+  if (ASyntagm = nil) or (TTSManager = nil) or not TTSManager.Enabled then
+    Exit;
+  if not Assigned(FAVersiculo[tbOrigem]) or not Assigned(FAVersiculo[tbDestino]) then
+    Exit;
+  IsSource := ASyntagm.VerseRef = FAVersiculo[tbOrigem];
+  if not IsSource and (ASyntagm.VerseRef <> FAVersiculo[tbDestino]) then
+    Exit;
+  case TTSManager.TriggerMode of
+    ttsmCtrlHover: Speak := (GetKeyState(VK_CONTROL) and $8000) <> 0;
+    ttsmAltHover:  Speak := (GetKeyState(VK_MENU) and $8000) <> 0;
+  else
+    Speak := True;
+  end;
+  if Speak then
+    TTSManager.SpeakSyntagm(ASyntagm.Text, IsSource);
+end;
+
 procedure TProject.SintagmaOnMouseEnter(Sender: TSyntagm);
 var
   show: boolean;
@@ -3878,6 +3902,7 @@ begin
     Exit;
   if Assigned(FrmDictionaryPopup) then
     FrmDictionaryPopup.NotifySyntagmHoverEnter;
+  SpeakHoveredSyntagm(Sender);
   CandSrc := Sender;
   if Assigned(Sender) and Assigned(FAVersiculo[tbOrigem]) and
      Assigned(FAVersiculo[tbDestino]) and (Sender.VerseRef = FAVersiculo[tbDestino]) then
@@ -3929,6 +3954,8 @@ var
   hide: boolean;
   v: TTipoTextoBiblico;
 begin
+  if Assigned(TTSManager) then
+    TTSManager.ForgetLastWord;
   FTemporizador.Enabled := false;
   FTemporizador.Tag := 0;
   hide := true;

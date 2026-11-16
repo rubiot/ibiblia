@@ -1286,6 +1286,12 @@ begin
   end;
   FTheWordToolButton.ShowCaption := False;
   FTheWordToolButton.AutoSize := False;
+  {$IFNDEF WINDOWS}
+  // theWord and Timotheos synchronization use Windows messages; they cannot
+  // work on Linux, so the toolbar button is not offered there.
+  FTheWordToolButton.Visible := False;
+  ToolButtonSyncSeparator.Visible := False;
+  {$ENDIF}
 end;
 
 procedure TMainForm.DoAutoAdjustLayout(const AMode: TLayoutAdjustmentPolicy;
@@ -1510,6 +1516,10 @@ begin
   FIBibliaFollowsTanglawItem.OnClick := @IBibliaFollowsTanglawClick;
   FTanglawSyncMenu.Add(FIBibliaFollowsTanglawItem);
   FToolsMenu.Add(FTanglawSyncMenu);
+  {$IFNDEF WINDOWS}
+  FTheWordSyncMenu.Visible := False;
+  FTanglawSyncMenu.Visible := False;
+  {$ENDIF}
 
   FActionPreferences := TAction.Create(ActionList1);
   FActionPreferences.OnExecute := @ActionPreferencesExecute;
@@ -3515,7 +3525,13 @@ begin
   try
     FStatusReviewList.Items.Clear;
     FStatusReviewChecked := nil;
+    {$IFDEF WINDOWS}
     FStatusReviewList.Enabled := Assigned(CurrentProject);
+    {$ELSE}
+    // GTK paints a disabled list box with the light theme colour, which clashes
+    // with the dark skins; the list is empty without a project anyway.
+    FStatusReviewList.Enabled := True;
+    {$ENDIF}
     if Assigned(FStatusReviewResetButton) then
     begin
       FStatusReviewResetButton.Caption := SStatusReviewShowAll;

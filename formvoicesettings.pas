@@ -77,6 +77,8 @@ resourcestring
   SVoiceTriggerCtrl = 'Hover while holding Ctrl key';
   SVoiceTriggerAlt = 'Hover while holding Alt key';
   SVoiceDefaultVoice = 'Default Windows Voice';
+  SVoiceGroupVoicesGeneric = 'Voice Selection (Installed voices)';
+  SVoiceNoEngine = 'No speech engine found. Install espeak-ng (sudo apt install espeak-ng).';
   SVoiceSpeedFastFmt = '+%d Fast';
   SVoiceSpeedSlowFmt = '%d Slow';
 
@@ -145,7 +147,11 @@ begin
   GroupVoices.Top := 70;
   GroupVoices.Width := 488;
   GroupVoices.Height := 160;
+  {$IFDEF WINDOWS}
   GroupVoices.Caption := SVoiceGroupVoices;
+  {$ELSE}
+  GroupVoices.Caption := SVoiceGroupVoicesGeneric;
+  {$ENDIF}
 
   // Source text voice (Greek / Hebrew)
   LabelSource := TLabel.Create(GroupVoices);
@@ -205,8 +211,13 @@ begin
 
   if ComboSourceVoice.Items.Count = 0 then
   begin
+    {$IFDEF WINDOWS}
     ComboSourceVoice.Items.Add(SVoiceDefaultVoice);
     ComboDestVoice.Items.Add(SVoiceDefaultVoice);
+    {$ELSE}
+    ComboSourceVoice.Items.Add(SVoiceNoEngine);
+    ComboDestVoice.Items.Add(SVoiceNoEngine);
+    {$ENDIF}
   end;
 
   // 3. GroupBox: Audio Tuning
@@ -368,13 +379,16 @@ begin
   TTSManager.Enabled := CheckEnable.Checked;
   TTSManager.TriggerMode := TTTSTriggerMode(ComboTrigger.ItemIndex);
 
-  TTSManager.SourceVoiceIndex := ComboSourceVoice.ItemIndex;
-  if ComboSourceVoice.ItemIndex >= 0 then
-    TTSManager.SourceVoiceName := ComboSourceVoice.Text;
+  if TTSManager.EngineAvailable then
+  begin
+    TTSManager.SourceVoiceIndex := ComboSourceVoice.ItemIndex;
+    if ComboSourceVoice.ItemIndex >= 0 then
+      TTSManager.SourceVoiceName := ComboSourceVoice.Text;
 
-  TTSManager.DestVoiceIndex := ComboDestVoice.ItemIndex;
-  if ComboDestVoice.ItemIndex >= 0 then
-    TTSManager.DestVoiceName := ComboDestVoice.Text;
+    TTSManager.DestVoiceIndex := ComboDestVoice.ItemIndex;
+    if ComboDestVoice.ItemIndex >= 0 then
+      TTSManager.DestVoiceName := ComboDestVoice.Text;
+  end;
 
   TTSManager.Rate := TrackSpeed.Position;
   TTSManager.Volume := TrackVolume.Position;

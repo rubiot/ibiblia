@@ -9,6 +9,8 @@ uses
   IniFiles,
   {$IFDEF WINDOWS}
   comobj, Variants,
+  {$ELSE}
+  Process,
   {$ENDIF}
   LCLType;
 
@@ -35,6 +37,12 @@ type
     FVoiceTokens: array of OleVariant;
     FCurrentVoiceIndex: Integer;
     FInitialized: Boolean;
+    {$ELSE}
+    // Linux: speech is produced by an external espeak-ng (or espeak) process.
+    FEngine: string;
+    FVoiceIds: TStringList;
+    FProc: TProcess;
+    FLinuxInitDone: Boolean;
     {$ENDIF}
     procedure SetEnabled(AValue: Boolean);
     procedure SetSourceVoiceIndex(AValue: Integer);
@@ -45,6 +53,10 @@ type
     procedure InitSAPI;
     procedure PopulateVoiceList;
     procedure SetVoiceByIndex(AIndex: Integer);
+    {$ELSE}
+    procedure InitLinuxTTS;
+    procedure StopLinux;
+    procedure SpeakLinux(const AText: string; AVoiceIdx, ARate, AVolume: Integer);
     {$ENDIF}
   public
     constructor Create;
@@ -52,6 +64,8 @@ type
     procedure Speak(const AText: string; AIsSource: Boolean = False);
     procedure SpeakSyntagm(const AText: string; AIsSource: Boolean = False);
     procedure Stop;
+    // Allows the same word to be read again after the pointer left it.
+    procedure ForgetLastWord;
     procedure TestVoice(AIsSource: Boolean);
     procedure SpeakTest(AVoiceIndex: Integer; const AText: string; ARate, AVolume: Integer);
     function CleanWord(const AText: string): string;
@@ -67,6 +81,8 @@ type
     property Volume: Integer read FVolume write FVolume;
     property TriggerMode: TTTSTriggerMode read FTriggerMode write FTriggerMode;
     property VoiceList: TStringList read GetVoiceList;
+    // True when a speech engine is available on this computer.
+    function EngineAvailable: Boolean;
   end;
 
 var
@@ -100,6 +116,9 @@ begin
   {$IFDEF WINDOWS}
   if FEnabled and (not FInitialized) then
     InitSAPI;
+  {$ELSE}
+  if FEnabled then
+    InitLinuxTTS;
   {$ENDIF}
 end;
 
@@ -108,8 +127,22 @@ begin
   {$IFDEF WINDOWS}
   if not FInitialized then
     InitSAPI;
+  {$ELSE}
+  InitLinuxTTS;
   {$ENDIF}
   Result := FVoiceList;
+end;
+
+function TTTSManager.EngineAvailable: Boolean;
+begin
+  {$IFDEF WINDOWS}
+  if not FInitialized then
+    InitSAPI;
+  Result := FInitialized;
+  {$ELSE}
+  InitLinuxTTS;
+  Result := FEngine <> '';
+  {$ENDIF}
 end;
 
 procedure TTTSManager.ReconcileVoiceNames;
@@ -168,6 +201,9 @@ begin
   {$IFDEF WINDOWS}
   FInitialized := False;
   // Lazy SAPI initialization: InitSAPI is called only when TTS is enabled or VoiceList is requested
+  {$ELSE}
+  FVoiceIds := TStringList.Create;
+  FLinuxInitDone := False;
   {$ENDIF}
 end;
 
@@ -175,6 +211,9 @@ destructor TTTSManager.Destroy;
 begin
   Stop;
   FVoiceList.Free;
+  {$IFNDEF WINDOWS}
+  FVoiceIds.Free;
+  {$ENDIF}
   {$IFDEF WINDOWS}
   SetLength(FVoiceTokens, 0);
   if FInitialized then
@@ -322,6 +361,162 @@ begin
 end;
 {$ENDIF}
 
+{$IFNDEF WINDOWS}
+procedure TTTSManager.InitLinuxTTS;
+var
+  Output, Name, Id: string;
+  Lines, Tokens: TStringList;
+  i, j, k: Integer;
+  Token: string;
+  LowerId: string;
+begin
+  if FLinuxInitDone then
+    Exit;
+  FLinuxInitDone := True;
+  FVoiceList.Clear;
+  FVoiceIds.Clear;
+  FEngine := ExeSearch('espeak-ng', GetEnvironmentVariable('PATH'));
+  if FEngine = '' then
+    FEngine := ExeSearch('espeak', GetEnvironmentVariable('PATH'));
+  if FEngine = '' then
+    Exit;
+
+  Output := '';
+  Lines := TStringList.Create;
+  Tokens := TStringList.Create;
+  try
+    try
+      RunCommand(FEngine, ['--voices'], Output);
+    except
+      Output := '';
+    end;
+    Lines.Text := Output;
+    // Header: Pty Language Age/Gender VoiceName File Other-Languages
+    for i := 1 to Lines.Count - 1 do
+    begin
+      Tokens.Clear;
+      Token := '';
+      for j := 1 to Length(Lines[i]) + 1 do
+      begin
+        if (j > Length(Lines[i])) or (Lines[i][j] in [' ', #9]) then
+        begin
+          if Token <> '' then
+            Tokens.Add(Token);
+          Token := '';
+        end
+        else
+          Token := Token + Lines[i][j];
+      end;
+      if Tokens.Count < 4 then
+        Continue;
+      Id := Tokens[1];
+      Name := StringReplace(Tokens[3], '_', ' ', [rfReplaceAll]);
+      if FVoiceIds.IndexOf(Id) >= 0 then
+        Continue;
+      FVoiceIds.Add(Id);
+      FVoiceList.Add(Format('%s (%s)', [Name, Id]));
+    end;
+  finally
+    Tokens.Free;
+    Lines.Free;
+  end;
+
+  if FVoiceList.Count = 0 then
+  begin
+    FVoiceIds.Add('en');
+    FVoiceList.Add('English (en)');
+  end;
+
+  // Default voices: Greek (or Hebrew) for the source, English for the translation.
+  if FSourceVoiceName = '' then
+    for k := 0 to FVoiceIds.Count - 1 do
+    begin
+      LowerId := LowerCase(FVoiceIds[k]);
+      if (LowerId = 'el') or (LowerId = 'grc') or (LowerId = 'he') then
+      begin
+        FSourceVoiceIndex := k;
+        FSourceVoiceName := FVoiceList[k];
+        Break;
+      end;
+    end;
+  if FDestVoiceName = '' then
+    for j := 1 to 3 do
+    begin
+      case j of
+        1: LowerId := 'en-us';
+        2: LowerId := 'en';
+      else
+        LowerId := 'en-gb';
+      end;
+      k := FVoiceIds.IndexOf(LowerId);
+      if k >= 0 then
+      begin
+        FDestVoiceIndex := k;
+        FDestVoiceName := FVoiceList[k];
+        Break;
+      end;
+    end;
+  ReconcileVoiceNames;
+end;
+
+procedure TTTSManager.StopLinux;
+begin
+  if FProc = nil then
+    Exit;
+  try
+    if FProc.Running then
+    begin
+      FProc.Terminate(0);
+      FProc.WaitOnExit;
+    end;
+  except
+    // ignore
+  end;
+  FreeAndNil(FProc);
+end;
+
+procedure TTTSManager.SpeakLinux(const AText: string; AVoiceIdx, ARate,
+  AVolume: Integer);
+var
+  Idx, Wpm, Amp: Integer;
+  Voice: string;
+begin
+  InitLinuxTTS;
+  if (FEngine = '') or (AText = '') then
+    Exit;
+  StopLinux;
+  Idx := AVoiceIdx;
+  if (Idx < 0) or (Idx >= FVoiceIds.Count) then
+    Idx := 0;
+  if FVoiceIds.Count > 0 then
+    Voice := FVoiceIds[Idx]
+  else
+    Voice := 'en';
+  // Windows rate is -10..10; espeak speed is words per minute (default 175).
+  Wpm := 175 + ARate * 15;
+  if Wpm < 80 then Wpm := 80;
+  if Wpm > 450 then Wpm := 450;
+  Amp := AVolume;
+  if Amp < 0 then Amp := 0;
+  if Amp > 200 then Amp := 200;
+  try
+    FProc := TProcess.Create(nil);
+    FProc.Executable := FEngine;
+    FProc.Parameters.Add('-v');
+    FProc.Parameters.Add(Voice);
+    FProc.Parameters.Add('-s');
+    FProc.Parameters.Add(IntToStr(Wpm));
+    FProc.Parameters.Add('-a');
+    FProc.Parameters.Add(IntToStr(Amp));
+    FProc.Parameters.Add('--');
+    FProc.Parameters.Add(AText);
+    FProc.Execute;
+  except
+    FreeAndNil(FProc);
+  end;
+end;
+{$ENDIF}
+
 function TTTSManager.CleanWord(const AText: string): string;
 var
   i: Integer;
@@ -371,6 +566,8 @@ begin
   except
     // ignore
   end;
+  {$ELSE}
+  SpeakLinux(AText, AVoiceIndex, ARate, AVolume);
   {$ENDIF}
 end;
 
@@ -429,6 +626,11 @@ begin
   except
     // Non-fatal
   end;
+  {$ELSE}
+  if AIsSource then
+    SpeakLinux(AText, FSourceVoiceIndex, FRate, FVolume)
+  else
+    SpeakLinux(AText, FDestVoiceIndex, FRate, FVolume);
   {$ENDIF}
 end;
 
@@ -456,7 +658,14 @@ begin
       // ignore
     end;
   end;
+  {$ELSE}
+  StopLinux;
   {$ENDIF}
+  FLastSpokenWord := '';
+end;
+
+procedure TTTSManager.ForgetLastWord;
+begin
   FLastSpokenWord := '';
 end;
 
@@ -486,7 +695,10 @@ begin
   else if FInitialized then
     ReconcileVoiceNames;
   {$ELSE}
-  ReconcileVoiceNames;
+  if FEnabled then
+    InitLinuxTTS
+  else
+    ReconcileVoiceNames;
   {$ENDIF}
 end;
 
