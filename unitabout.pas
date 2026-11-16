@@ -114,6 +114,14 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.026 (64-bit Edition) - 2026-11-16' + LineEnding +
+  '- Linux: the mouse wheel over the Source or Destination panel selects source words again (and Ctrl+wheel zooms); GTK sent the wheel to the text view, not to the panel.' + LineEnding +
+  '- F8 / Shift+F8 now step from the verse on screen when the status filter hides it, and a tree click navigates again after filtering (the tree could move its selection silently). Both commands are also in the Navigation menu.' + LineEnding +
+  '- Word definition popup: on a tie it now opens south-east of the pointer, as described in the guide.' + LineEnding +
+  '- Linux: the Raw/Visual, Save and Cancel buttons of the verse editor, and the OK button of the About-unit dialogs, were unreadable in dark skins (light text on light GTK buttons).' + LineEnding +
+  '- Linux: the Properties editor of a Bible panel uses the skin colours the first time it opens.' + LineEnding +
+  '- Find in project: result previews show the verse without theWord markup (except when searching Strong''s tags).' + LineEnding +
+  LineEnding +
   'Version 1.1.0.025 (64-bit Edition) - 2026-11-16' + LineEnding +
   '- Windows: the Source, Destination, Reference 1 and Reference 2 panels now draw the <PI> and <PF> indents and the <CM> gap. A verse with paragraph formatting is laid out one DirectWrite paragraph at a time, so every line of a <PI> paragraph is indented and <PF> indents its first line. Verses without these tags use the same single layout as before.' + LineEnding +
   LineEnding +
@@ -902,7 +910,7 @@ begin
   btnOK.Default := True;
   btnOK.OnClick := @BtnOKClick;
   if IsThemedSkin then
-    btnOK.Font.Color := CurrentSkin.PanelText
+    btnOK.Font.Color := {$IFDEF WINDOWS}CurrentSkin.PanelText{$ELSE}clDefault{$ENDIF}
   else
     btnOK.Font.Color := clWindowText;
 
@@ -968,7 +976,7 @@ begin
     if Assigned(lblTitle) then
       lblTitle.Font.Color := CurrentSkin.HeaderColor;
     if Assigned(btnOK) then
-      btnOK.Font.Color := CurrentSkin.PanelText;
+      btnOK.Font.Color := {$IFDEF WINDOWS}CurrentSkin.PanelText{$ELSE}clDefault{$ENDIF};
   end;
   if Assigned(btnOK) then btnOK.Invalidate;
 end;

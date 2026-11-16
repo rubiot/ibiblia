@@ -6,7 +6,20 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.025 (2026-11-16) — Paragraph Indents in the Windows Verse Panels
+### 0. Version 1.1.0.026 (2026-11-16) — Linux Audit of the New Features Guide
+
+An audit of the 12 topics of Help > New Features User Guide on the Linux build found and fixed:
+
+* **Mouse-wheel word selection on Linux (`Verse.pas`, `directwrite_syntagm_view.pas`)**: GTK delivers the wheel to the text view under the pointer and does not pass it on to the panel, so wheel selection of source words and Ctrl+wheel zoom did nothing. The view now has the wheel handler too (non-Windows only).
+* **F8 / Shift+F8 with a status filter (`formprincipal.pas`)**: stepping now starts from the verse on screen, not from the tree selection, which the tree may move silently when the filter hides the current verse; when the target is already selected it navigates directly. After filtering, a selection moved that way is cleared so a click on the node navigates. The two commands are now also in the Navigation menu.
+* **Word definition popup position (`FormDictionaryPopup.pas`)**: candidate positions are tried from south-east to north-west, so equal fits now favour south-east of the pointer (before: south-west).
+* **Unreadable push buttons in dark skins on Linux (`VerseMemo.pas`, `unitabout.pas`)**: Raw/Visual, Save, Cancel and the About-unit OK buttons keep the theme text colour on GTK, where buttons are drawn light.
+* **Properties editor colours on Linux (`formprincipal.pas`)**: the colours are set again after the memo is shown, so it is dark in dark skins the first time too.
+* **Find in project previews (`FormFindInProject.pas`)**: markup is removed from the result previews, except for the Strong's tags scope.
+
+Checked and working on Linux: wheel/click/right-click association, paired-word highlight and dictionary popup, hover chevrons, status circles and keys 1–4 with tree roll-up, Properties and Edit modes, Enter/Shift+Enter paragraph keys, Raw view, Cancel, skin toggle (Ctrl+Shift+D), Find in project (Ctrl+F) and double-click navigation, status filter and F8, USFM export (headings, footnotes, words of Jesus, added words), AI options dialog, toolbar icon sizes, right-to-left panel toggle, Translation memory tab and translator-note hover preview.
+
+### 0e. Version 1.1.0.025 (2026-11-16) — Paragraph Indents in the Windows Verse Panels
 
 * **`<PI>`/`<PF>` Indents and the `<CM>` Gap on Windows (`directwrite_paragraph_layout.pas`, `directwrite_syntagm_view.pas`)**: DirectWrite has no paragraph indent, so a verse that carries theWord paragraph formatting is now laid out with one DirectWrite layout per paragraph:
   * each paragraph is narrowed by its `<PI>` indent and drawn shifted by it, so wrapped lines stay indented;

@@ -1543,6 +1543,13 @@ begin
   FActionPreviousFilteredVerse := TAction.Create(ActionList1);
   FActionPreviousFilteredVerse.ShortCut := ShortCut(VK_F8, [ssShift]);
   FActionPreviousFilteredVerse.OnExecute := @ActionPreviousFilteredVerseExecute;
+  { Navigation menu items for F8 / Shift+F8 }
+  MenuItem5.Add(TMenuItem.Create(MainMenu1));
+  MenuItem5.Items[MenuItem5.Count - 1].Caption := '-';
+  MenuItem5.Add(TMenuItem.Create(MainMenu1));
+  MenuItem5.Items[MenuItem5.Count - 1].Action := FActionNextFilteredVerse;
+  MenuItem5.Add(TMenuItem.Create(MainMenu1));
+  MenuItem5.Items[MenuItem5.Count - 1].Action := FActionPreviousFilteredVerse;
   FActionReadOnHover := TAction.Create(ActionList1);
   FActionReadOnHover.ShortCut := ShortCut(VK_T, [ssCtrl]);
   FActionReadOnHover.OnExecute := @ActionReadOnHoverExecute;
@@ -2313,6 +2320,14 @@ begin
     FPropsLoadedFor[TextType] := CurrentProject;
     FPropsModified[TextType] := False;
     Memo.Visible := True;
+    {$IFNDEF WINDOWS}
+    { GTK: colours given before the widget existed are not shown the first
+      time; set them again now that it is visible }
+    Memo.Color := clDefault;
+    Memo.Font.Color := clDefault;
+    Memo.Color := UIContentColor;
+    Memo.Font.Color := UITextColor;
+    {$ENDIF}
     Memo.BringToFront;
     RaiseStripControls(TextType);
     if Memo.CanFocus then
@@ -3623,6 +3638,7 @@ procedure TMainForm.ApplyStatusReviewFilter;
 var
   SavedOnChange: TTVChangedEvent;
   Node: TTreeNode;
+  SelectedBefore: TTreeNode;
   FilterActive: Boolean;
 
   function StatusIsChecked(StatusId: Integer): Boolean;
@@ -3694,6 +3710,7 @@ begin
 
   FilterActive := HasActiveFilter;
   SavedOnChange := TreeView1.OnChange;
+  SelectedBefore := TreeView1.Selected;
   TreeView1.OnChange := nil;
   TreeView1.BeginUpdate;
   try
@@ -3706,6 +3723,13 @@ begin
         Node := Node.GetNextSibling;
       end;
     end;
+    { Hiding the selected verse lets the tree widget (GTK) move the selection
+      silently to another node; a click on that node would then not navigate.
+      Clear such a selection instead. }
+    if Assigned(TreeView1.Selected) and
+       ((TreeView1.Selected <> SelectedBefore) or
+        not TreeView1.Selected.Visible) then
+      TreeView1.Selected := nil;
   finally
     TreeView1.EndUpdate;
     TreeView1.OnChange := SavedOnChange;
@@ -5488,7 +5512,12 @@ begin
   else
     LastStatusId := -1;
 
-  Node := TreeView1.Selected;
+  { Step from the verse on screen. When the filter hides that verse the tree
+    widget may have moved its selection to another (shown) node, so the
+    selection is only a fallback. }
+  Node := FindCurrentVerseTreeNode;
+  if not Assigned(Node) then
+    Node := TreeView1.Selected;
   if not Assigned(Node) then
     Node := TreeView1.Items[0]
   else if Forward then
@@ -5504,7 +5533,15 @@ begin
   if Assigned(Node) then
   begin
     Node.MakeVisible;
-    TreeView1.Selected := Node; // OnChange navigates to the verse
+    if TreeView1.Selected = Node then
+    begin
+      { already selected (moved there by the tree when the filter hid the
+        verse on screen): OnChange will not fire, so navigate here }
+      if Assigned(TreeView1.OnChange) then
+        TreeView1.OnChange(TreeView1, Node);
+    end
+    else
+      TreeView1.Selected := Node; // OnChange navigates to the verse
   end
   else
     SysUtils.Beep;

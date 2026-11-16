@@ -184,6 +184,7 @@ type
   published
     property Align;
     property Anchors;
+    property OnMouseWheel;
     property Color default clWindow;
     property Font;
     property ParentColor;

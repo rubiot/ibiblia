@@ -1036,7 +1036,9 @@ begin
   end;
   if Assigned(FSaveButton) then
   begin
-    FSaveButton.Font.Color := UITextColor;
+    { GTK draws push buttons with the light system theme, so a skin's
+      light text would be invisible there }
+    FSaveButton.Font.Color := {$IFDEF WINDOWS}UITextColor{$ELSE}clDefault{$ENDIF};
     if CanHookHandles and FSaveButton.HandleAllocated then
     begin
       ApplyDarkModeToControl(FSaveButton, CurrentSkin.IsDark);
@@ -1047,7 +1049,9 @@ begin
   end;
   if Assigned(FCancelButton) then
   begin
-    FCancelButton.Font.Color := UITextColor;
+    { GTK draws push buttons with the light system theme, so a skin's
+      light text would be invisible there }
+    FCancelButton.Font.Color := {$IFDEF WINDOWS}UITextColor{$ELSE}clDefault{$ENDIF};
     if CanHookHandles and FCancelButton.HandleAllocated then
     begin
       ApplyDarkModeToControl(FCancelButton, CurrentSkin.IsDark);
@@ -1058,7 +1062,9 @@ begin
   end;
   if Assigned(FRawModeButton) then
   begin
-    FRawModeButton.Font.Color := UITextColor;
+    { GTK draws push buttons with the light system theme, so a skin's
+      light text would be invisible there }
+    FRawModeButton.Font.Color := {$IFDEF WINDOWS}UITextColor{$ELSE}clDefault{$ENDIF};
     if CanHookHandles and FRawModeButton.HandleAllocated then
     begin
       ApplyDarkModeToControl(FRawModeButton, CurrentSkin.IsDark);

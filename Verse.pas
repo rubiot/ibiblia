@@ -453,6 +453,12 @@ begin
       DirectWriteView.OnVerseHover := @OnVisualHover;
       DirectWriteView.OnContentHeightChanged :=
         @OnVisualContentHeightChanged;
+      {$IFNDEF WINDOWS}
+      { GTK delivers the wheel to the view under the pointer and does not pass
+        it on to the panel (Windows does), so wheel word selection and
+        Ctrl+wheel zoom need the handler on the view itself }
+      DirectWriteView.OnMouseWheel := @OnMouseWheel;
+      {$ENDIF}
       FVerseViewControl := DirectWriteView;
       FVerseView := DirectWriteView;
     end
@@ -512,6 +518,9 @@ begin
     FPanel.OnMouseDown  := nil;
     FPanel.OnResize     := nil;
     FPanel.OnMouseWheel := nil;
+    if Assigned(FVerseViewControl) and
+       (FVerseViewControl is TDirectWriteSyntagmView) then
+      TDirectWriteSyntagmView(FVerseViewControl).OnMouseWheel := nil;
   end;
   DismissTranslatorNotePreview;
   FreeAndNil(FInlineProjection);

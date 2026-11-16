@@ -2217,8 +2217,10 @@ begin
     BestL := WorkRect.Left;
     BestT := WorkRect.Top;
 
-    for di := -1 to 1 do
-      for dj := -1 to 1 do
+    { candidates from south-east to north-west, so that on a tie the popup
+      goes south-east of the pointer }
+    for di := 1 downto -1 do
+      for dj := 1 downto -1 do
       begin
         if (di = 0) and (dj = 0) then Continue;
 

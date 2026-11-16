@@ -81,6 +81,37 @@ resourcestring
 var
   FindInstance: TFrmFindInProject = nil;
 
+
+{ Removes <...> markup (theWord tags, HTML) from a result preview. A line or
+  paragraph tag becomes a space so that words stay apart. }
+function StripPreviewMarkup(const S: string): string;
+var
+  Index: Integer;
+  InTag: Boolean;
+begin
+  Result := '';
+  InTag := False;
+  for Index := 1 to Length(S) do
+  begin
+    if InTag then
+    begin
+      if S[Index] = '>' then
+      begin
+        InTag := False;
+        if (Result <> '') and (Result[Length(Result)] <> ' ') then
+          Result := Result + ' ';
+      end;
+    end
+    else if S[Index] = '<' then
+      InTag := True
+    else
+      Result := Result + S[Index];
+  end;
+  while Pos('  ', Result) > 0 do
+    Result := StringReplace(Result, '  ', ' ', [rfReplaceAll]);
+  Result := Trim(Result);
+end;
+
 procedure ShowFindInProject(AOwner: TComponent; AProject: TProject;
   ANavigate: TFindNavigateEvent);
 begin
@@ -283,6 +314,10 @@ begin
     begin
       Preview := StringReplace(FResults[Index].PreviewText, #13, ' ', [rfReplaceAll]);
       Preview := StringReplace(Preview, #10, ' ', [rfReplaceAll]);
+      { show the verse as read, without theWord markup, except when searching
+        the Strong's/morphology tags themselves }
+      if FScopeCombo.ItemIndex <> 4 then
+        Preview := StripPreviewMarkup(Preview);
       FResultsList.Items.Add(FResults[Index].FormattedRef + '  |  ' + Preview);
     end;
   finally
