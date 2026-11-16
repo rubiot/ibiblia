@@ -769,7 +769,20 @@ begin
   try
     P := TProcess.Create(nil);
     try
+      {$IFDEF UNIX}
+      { Wait (up to 20 s) until this process has really exited before the new
+        copy starts: while the old one is still running it holds iBiblia.ini
+        and the new one fails with "Unable to open file ... Try again". }
+      P.Executable := '/bin/sh';
+      P.Parameters.Add('-c');
+      P.Parameters.Add('p=$1; shift; n=0; while kill -0 "$p" 2>/dev/null && ' +
+        '[ "$n" -lt 100 ]; do sleep 0.2; n=$((n+1)); done; exec "$@"');
+      P.Parameters.Add('ibiblia-restart');
+      P.Parameters.Add(IntToStr(fpGetPid));
+      P.Parameters.Add(ExpandFileName(ParamStr(0)));
+      {$ELSE}
       P.Executable := ExpandFileName(ParamStr(0));
+      {$ENDIF}
       for i := 1 to ParamCount do
         P.Parameters.Add(ParamStr(i));
       P.CurrentDirectory := InstallDir;

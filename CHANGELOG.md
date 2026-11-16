@@ -6,7 +6,12 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.030 (2026-11-16) — Applications Menu Entry on Linux
+### 0. Version 1.1.0.031 (2026-11-16) — Restart After Update on Linux
+
+* Linux: after an automatic update the new iBiblia now starts by itself. It used to start while the old one was still closing, and failed with 'Unable to open file ... iBiblia.ini: Try again'. The restart now waits (up to 20 seconds) until the old copy has exited.
+* Files: `app_updater.pas`.
+
+### 0j. Version 1.1.0.030 (2026-11-16) — Applications Menu Entry on Linux
 
 * Linux: iBiblia now adds itself to the applications menu the first time it runs from a folder (a menu entry for your user only, with the iBiblia icon), and updates the entry if you move the folder. Set IBIBLIA_NO_MENU=1 to turn this off. The install-menu-entry.sh script is still included.
 * Files: `app_updater.pas`, `unitupdate.pas`.
