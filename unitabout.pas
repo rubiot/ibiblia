@@ -114,6 +114,9 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.035 (64-bit Edition) - 2026-11-16' + LineEnding +
+  '- Linux: the Saved / Unsaved changes indicator at the bottom left of the window is back (green ''Saved'', red ''Unsaved changes''). GTK draws the status bar itself and hid the indicator; it now sits over the left end of the status bar, and other status messages (such as ''Analyzing verse...'') appear next to it.' + LineEnding +
+  LineEnding +
   'Version 1.1.0.034 (64-bit Edition) - 2026-11-16' + LineEnding +
   '- Linux: consistent dark theme in all windows. The scrollbars, buttons, tab strips, drop-down lists and window backgrounds that GTK draws itself stayed light inside a dark skin (most visible in the word popup, the verse tree and the status list); they now follow the skin colours, and go back to the system theme with a light skin. The window title bars are drawn by your desktop and follow its theme.' + LineEnding +
   LineEnding +

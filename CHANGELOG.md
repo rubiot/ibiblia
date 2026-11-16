@@ -6,7 +6,12 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.034 (2026-11-16) — Dark Theme in All Linux Windows
+### 0. Version 1.1.0.035 (2026-11-16) — Saved Indicator on Linux
+
+* Linux: the Saved / Unsaved changes indicator at the bottom left of the window is back (green 'Saved', red 'Unsaved changes'). GTK draws the status bar itself and hid the indicator; it now sits over the left end of the status bar, and other status messages (such as 'Analyzing verse...') appear next to it.
+* Files: `formprincipal.pas`.
+
+### 0n. Version 1.1.0.034 (2026-11-16) — Dark Theme in All Linux Windows
 
 * Linux: consistent dark theme in all windows. The scrollbars, buttons, tab strips, drop-down lists and window backgrounds that GTK draws itself stayed light inside a dark skin (most visible in the word popup, the verse tree and the status list); they now follow the skin colours, and go back to the system theme with a light skin. The window title bars are drawn by your desktop and follow its theme.
 * Files: `unitskins.pas`, `FormDictionaryPopup.pas`.

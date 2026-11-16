@@ -462,6 +462,9 @@ type
     procedure GuidePanelResize(Sender: TObject);
     procedure LayoutGuidePanel;
     procedure LayoutStateHeader;
+    procedure SetStatusMessage(const AText: string);
+    procedure PlaceSaveStatusPanel;
+    procedure StatusBarBoundsChanged(Sender: TObject);
     procedure LayoutVersePanelLabels;
     procedure ResetMainLayout;
     procedure SetGuideModeEnabled(AEnabled: Boolean);
@@ -2051,13 +2054,31 @@ begin
   FSaveStatusPanel := TPanel.Create(Self);
   with FSaveStatusPanel do
   begin
+    {$IFDEF WINDOWS}
     Parent := StatusBar1;
+    {$ELSE}
+    { GTK draws the status bar itself and hides controls placed inside it:
+      the indicator sits on the form, over the left end of the status bar,
+      and the status bar keeps an empty first panel for it }
+    Parent := Self;
+    {$ENDIF}
     BevelOuter := bvNone;
     BorderStyle := bsNone;
     ParentColor := False;
     Color := UISurfaceColor;
+    {$IFDEF WINDOWS}
     SetBounds(2, 2, UIScale(Self, 130), Max(16, StatusBar1.Height - 3));
+    {$ELSE}
+    SetBounds(2, StatusBar1.Top + 2, UIScale(Self, 130), Max(16, StatusBar1.Height - 3));
+    {$ENDIF}
   end;
+  {$IFNDEF WINDOWS}
+  StatusBar1.SimplePanel := False;
+  StatusBar1.Panels.Clear;
+  StatusBar1.Panels.Add.Width := UIScale(Self, 130);
+  StatusBar1.Panels.Add.Width := 4000;
+  StatusBar1.AddHandlerOnChangeBounds(@StatusBarBoundsChanged);
+  {$ENDIF}
   FHeaderModifiedLabel := CreateStateHeaderLabel(FSaveStatusPanel, True);
   FHeaderModifiedLabel.Align := alClient;
   FHeaderModifiedLabel.BorderSpacing.Left := UIScale(Self, 6);
@@ -3191,10 +3212,14 @@ begin
       FSaveStatusPanel.Color := UISurfaceColor;
       FHeaderModifiedLabel.Visible := FHeaderModifiedLabel.Caption <> '';
       FSaveStatusPanel.Canvas.Font.Assign(FHeaderModifiedLabel.Font);
+      {$IFDEF WINDOWS}
       FSaveStatusPanel.SetBounds(2, 2,
         Max(UIScale(Self, 110),
           FSaveStatusPanel.Canvas.TextWidth(FHeaderModifiedLabel.Caption) + UIScale(Self, 16)),
         Max(16, StatusBar1.ClientHeight - 3));
+      {$ELSE}
+      PlaceSaveStatusPanel;
+      {$ENDIF}
       FSaveStatusPanel.Invalidate;
       FHeaderModifiedLabel.Invalidate;
       StatusBar1.Invalidate;
@@ -3206,6 +3231,43 @@ begin
     FLayoutStateHeaderBusy := False;
   end;
 end;
+
+procedure TMainForm.SetStatusMessage(const AText: string);
+begin
+  {$IFDEF WINDOWS}
+  StatusBar1.SimpleText := AText;
+  {$ELSE}
+  if StatusBar1.Panels.Count > 1 then
+    StatusBar1.Panels[1].Text := AText
+  else
+    StatusBar1.SimpleText := AText;
+  {$ENDIF}
+end;
+
+procedure TMainForm.StatusBarBoundsChanged(Sender: TObject);
+begin
+  PlaceSaveStatusPanel;
+end;
+
+{ Linux: puts the Saved / Unsaved indicator over the left end of the status bar. }
+procedure TMainForm.PlaceSaveStatusPanel;
+{$IFNDEF WINDOWS}
+var
+  W: Integer;
+begin
+  if not Assigned(FSaveStatusPanel) or not Assigned(StatusBar1) then Exit;
+  FSaveStatusPanel.Canvas.Font.Assign(FHeaderModifiedLabel.Font);
+  W := Max(UIScale(Self, 110),
+    FSaveStatusPanel.Canvas.TextWidth(FHeaderModifiedLabel.Caption) + UIScale(Self, 16));
+  FSaveStatusPanel.SetBounds(2, StatusBar1.Top + 2, W, Max(16, StatusBar1.ClientHeight - 3));
+  FSaveStatusPanel.BringToFront;
+  if StatusBar1.Panels.Count > 1 then
+    StatusBar1.Panels[0].Width := W + UIScale(Self, 6);
+end;
+{$ELSE}
+begin
+end;
+{$ENDIF}
 
 procedure TMainForm.ToolBarResize(Sender: TObject);
 var
@@ -4158,7 +4220,7 @@ begin
   FChapterView.Clear;
   //ActionExportDestinationWithStrongs.Enabled := false;
   //ActionExportInterlinearText.Enabled := false;
-  StatusBar1.SimpleText := '';
+  SetStatusMessage('');
   UpdateStateHeader;
   UpdateStatusReviewPanel;
   LayoutVersePanelLabels;
@@ -4577,7 +4639,7 @@ begin
   begin
     if CurrentProject.SaveProject then
     begin
-      StatusBar1.SimpleText := '';
+      SetStatusMessage('');
       UpdateStateHeader;
     end;
   end;
@@ -4598,14 +4660,14 @@ begin
           ActionLlmOptionsExecute(Self);
         Exit;
       end;
-      StatusBar1.SimpleText := SAnalyzingVerse;
+      SetStatusMessage(SAnalyzingVerse);
       try
         CurrentProject.SuggestAssociation;
       finally
         if CurrentProject.LastLLMCallCompleted then
-          StatusBar1.SimpleText := FormatLLMUsageStatus(CurrentProject.LastLLMUsage)
+          SetStatusMessage(FormatLLMUsageStatus(CurrentProject.LastLLMUsage))
         else
-          StatusBar1.SimpleText := '';
+          SetStatusMessage('');
       end;
     end
     else
@@ -5804,7 +5866,7 @@ end;
 
 procedure TMainForm.VerseChanged;
 begin
-  StatusBar1.SimpleText := '';
+  SetStatusMessage('');
   UpdateStateHeader;
 end;
 
@@ -6562,7 +6624,7 @@ begin
   if Assigned(ActionLlmOptions) then ActionLlmOptions.Enabled := true;
   //ActionExportDestinationWithStrongs.Enabled := true;
   //ActionExportInterlinearText.Enabled := true;
-  StatusBar1.SimpleText := '';
+  SetStatusMessage('');
   UpdateNavigationHistoryActions;
   UpdateCommandUI;
   UpdateStateHeader;
