@@ -6,7 +6,12 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.033 (2026-11-16) — Timotheos Synchronization on Linux
+### 0. Version 1.1.0.034 (2026-11-16) — Dark Theme in All Linux Windows
+
+* Linux: consistent dark theme in all windows. The scrollbars, buttons, tab strips, drop-down lists and window backgrounds that GTK draws itself stayed light inside a dark skin (most visible in the word popup, the verse tree and the status list); they now follow the skin colours, and go back to the system theme with a light skin. The window title bars are drawn by your desktop and follow its theme.
+* Files: `unitskins.pas`, `FormDictionaryPopup.pas`.
+
+### 0m. Version 1.1.0.033 (2026-11-16) — Timotheos Synchronization on Linux
 
 * Linux: synchronization with Timotheos works again. iBiblia → Timotheos and Timotheos → iBiblia follow each other's verse through the same two small files Timotheos uses on Windows (ibiblia-sync-in.json / ibiblia-sync-out.json in its user-data folder, e.g. ~/.local/share/org.timotheos.bible or ~/.config/Timotheos), and a running Timotheos is detected through /proc. The sync button on the toolbar and Tools > Synchronization with Timotheos are back on Linux (theWord sync stays Windows-only).
 * Files: `tanglaw_sync.pas`, `formprincipal.pas`.

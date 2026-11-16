@@ -12,6 +12,9 @@ uses
   {$IFDEF WINDOWS}
   , Windows
   {$ENDIF}
+  {$IFDEF LCLGTK2}
+  , gtk2, glib2
+  {$ENDIF}
   ;
 
 type
@@ -553,6 +556,102 @@ begin
   {$ENDIF}
 end;
 
+{$IFDEF LCLGTK2}
+var
+  GtkSkinApplied: Integer = -1;
+
+function GtkHex(AColor: TColor): string;
+var
+  C: LongInt;
+begin
+  C := ColorToRGB(AColor);
+  Result := '#' + IntToHex(C and $FF, 2) + IntToHex((C shr 8) and $FF, 2) +
+    IntToHex((C shr 16) and $FF, 2);
+end;
+
+function GtkBlend(AColor, AWith: TColor; APercent: Integer): TColor;
+var
+  A, B: LongInt;
+  function Mix(X, Y: Integer): Integer;
+  begin
+    Result := X + (Y - X) * APercent div 100;
+  end;
+begin
+  A := ColorToRGB(AColor);
+  B := ColorToRGB(AWith);
+  Result := RGBToColor(Mix(A and $FF, B and $FF), Mix((A shr 8) and $FF, (B shr 8) and $FF),
+    Mix((A shr 16) and $FF, (B shr 16) and $FF));
+end;
+
+{ GTK2 draws scrollbars, buttons, tabs and check boxes itself, so they stayed
+  light inside a dark skin. A GTK resource string recolours them with the skin
+  (every window of the program). A light skin goes back to the system theme. }
+procedure ApplyGtkSkinTheme(const ASkin: TSkinColors);
+var
+  Rc: string;
+  Settings: PGtkSettings;
+  Key: Integer;
+begin
+  Key := Ord(ASkin.Id) + 1;
+  if GtkSkinApplied = Key then Exit;
+  GtkSkinApplied := Key;
+  try
+    Settings := gtk_settings_get_default;
+    if Settings = nil then Exit;
+    { forget everything parsed earlier, back to the system theme }
+    gtk_rc_reparse_all_for_settings(Settings, True);
+    if ASkin.IsDark then
+    begin
+      Rc :=
+        'style "ibiblia-skin" {'#10 +
+        '  bg[NORMAL] = "' + GtkHex(ASkin.PanelBg) + '"'#10 +
+        '  bg[PRELIGHT] = "' + GtkHex(GtkBlend(ASkin.PanelBg, clWhite, 14)) + '"'#10 +
+        '  bg[ACTIVE] = "' + GtkHex(GtkBlend(ASkin.PanelBg, clBlack, 30)) + '"'#10 +
+        '  bg[INSENSITIVE] = "' + GtkHex(ASkin.PanelBg) + '"'#10 +
+        '  bg[SELECTED] = "' + GtkHex(ASkin.SelectedBg) + '"'#10 +
+        '  fg[NORMAL] = "' + GtkHex(ASkin.PanelText) + '"'#10 +
+        '  fg[PRELIGHT] = "' + GtkHex(ASkin.PanelText) + '"'#10 +
+        '  fg[ACTIVE] = "' + GtkHex(ASkin.PanelText) + '"'#10 +
+        '  fg[SELECTED] = "' + GtkHex(ASkin.SelectedText) + '"'#10 +
+        '  fg[INSENSITIVE] = "' + GtkHex(ASkin.WindowTextDim) + '"'#10 +
+        '}'#10 +
+        'style "ibiblia-slider" = "ibiblia-skin" {'#10 +
+        '  bg[NORMAL] = "' + GtkHex(GtkBlend(ASkin.PanelBg, clWhite, 26)) + '"'#10 +
+        '  bg[PRELIGHT] = "' + GtkHex(GtkBlend(ASkin.PanelBg, clWhite, 38)) + '"'#10 +
+        '  bg[ACTIVE] = "' + GtkHex(GtkBlend(ASkin.PanelBg, clBlack, 30)) + '"'#10 +
+        '}'#10 +
+        'style "ibiblia-input" = "ibiblia-skin" {'#10 +
+        '  base[NORMAL] = "' + GtkHex(ASkin.WindowBg) + '"'#10 +
+        '  base[PRELIGHT] = "' + GtkHex(ASkin.WindowBg) + '"'#10 +
+        '  base[ACTIVE] = "' + GtkHex(ASkin.WindowBg) + '"'#10 +
+        '  base[INSENSITIVE] = "' + GtkHex(ASkin.PanelBg) + '"'#10 +
+        '  text[NORMAL] = "' + GtkHex(ASkin.WindowText) + '"'#10 +
+        '  text[PRELIGHT] = "' + GtkHex(ASkin.WindowText) + '"'#10 +
+        '  text[ACTIVE] = "' + GtkHex(ASkin.WindowText) + '"'#10 +
+        '}'#10 +
+        'widget_class "*GtkComboBox*" style "ibiblia-input"'#10 +
+        'widget_class "*GtkButton*" style "ibiblia-skin"'#10 +
+        'widget_class "*GtkNotebook*" style "ibiblia-skin"'#10 +
+        'widget_class "*GtkFixed*" style "ibiblia-skin"'#10 +
+        'widget_class "*GtkEventBox*" style "ibiblia-skin"'#10 +
+        'widget_class "*GtkFrame*" style "ibiblia-skin"'#10 +
+        'widget_class "*GtkAlignment*" style "ibiblia-skin"'#10 +
+        'widget_class "*GtkWindow*" style "ibiblia-skin"'#10 +
+        'widget_class "*GtkScale*" style "ibiblia-skin"'#10 +
+        'widget_class "*GtkProgressBar*" style "ibiblia-skin"'#10 +
+        'widget_class "*GtkStatusbar*" style "ibiblia-skin"'#10 +
+        'widget_class "*GtkScrollbar*" style "ibiblia-slider"'#10 +
+        'widget_class "*GtkHScrollbar*" style "ibiblia-slider"'#10 +
+        'widget_class "*GtkVScrollbar*" style "ibiblia-slider"'#10;
+      gtk_rc_parse_string(PChar(Rc));
+    end;
+    gtk_rc_reset_styles(Settings);
+  except
+    // cosmetic only
+  end;
+end;
+{$ENDIF}
+
 procedure ApplyDarkModeToWindow(AForm: TCustomForm; AIsDark: Boolean);
 {$IFDEF WINDOWS}
 const
@@ -568,6 +667,9 @@ var
 begin
   if not assigned(AForm) then exit;
 
+  {$IFDEF LCLGTK2}
+  ApplyGtkSkinTheme(CurrentSkin);
+  {$ENDIF}
   {$IFDEF WINDOWS}
   InitUxTheme;
   if AIsDark then

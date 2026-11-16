@@ -1371,6 +1371,16 @@ begin
     RichMemoMorphology.Color := CurrentSkin.NoteBg;
     RichMemoMorphology.Font.Color := CurrentSkin.NoteText;
   end;
+  {$IFNDEF WINDOWS}
+  { the tab strips are drawn by GTK: give them the skin colours }
+  if CurrentSkin.Id <> skClassic then
+  begin
+    TabControlStrongs.Color := CurrentSkin.PanelBg;
+    TabControlStrongs.Font.Color := CurrentSkin.PanelText;
+    TabControlMorphologies.Color := CurrentSkin.PanelBg;
+    TabControlMorphologies.Font.Color := CurrentSkin.PanelText;
+  end;
+  {$ENDIF}
   Splitter1.Invalidate;
 {$IFDEF WINDOWS}
   if RichMemoStrong.HandleAllocated then
