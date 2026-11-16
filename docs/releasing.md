@@ -99,7 +99,7 @@ iBiblia checks `https://api.github.com/repos/SalitaNgDiyos/ibiblia/releases/late
 To publish a version:
 
 1. Set the same version in `iBiblia.lpi` and `iBiblia-linux.lpi` (VersionInfo, `BuildNr`), and add a `### 0. Version x.y.z.nnn (date) — title` section at the top of the version list in `CHANGELOG.md`; it becomes the release text.
-2. Commit, then tag and push: `git tag v1.1.0.028 && git push origin <branch> v1.1.0.028`.
-3. `.github/workflows/release.yml` builds Windows (x64) and Linux (x86_64) with Lazarus, checks that the tag matches both project files, packages with `scripts/ci_package.py` and creates the release with the two ZIPs and `SHA256SUMS.txt`. A failed run can be repeated from the Actions tab (Release > Run workflow, with the tag name).
+2. Commit and push the branch (`linux-port` or `master`). No tag is needed.
+3. `.github/workflows/release.yml` reads the version from the project files; if there is no release `v<version>` yet it builds Windows (x64) and Linux (x86_64) with Lazarus, packages them with `scripts/ci_package.py` and creates the release (and its tag) with the two ZIPs and `SHA256SUMS.txt`. A push that does not change the version builds nothing. A failed run can be repeated from the Actions tab (Release > Run workflow).
 
 The updater only sees releases that are not drafts or pre-releases, newest first. For testing, `IBIBLIA_UPDATE_FEED` can point at a local copy of the release JSON (HTTPS only) and `IBIBLIA_NO_UPDATE=1` turns updating off.

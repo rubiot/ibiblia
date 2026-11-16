@@ -1,35 +1,52 @@
 name: Release
 
-# Pushing a tag such as v1.1.0.027 builds iBiblia for Windows (x64) and Linux
-# (x86_64) with Lazarus and publishes a GitHub release. The programs check this
-# release feed at start-up and update themselves (see app_updater.pas).
+# Every push to linux-port or master whose project files carry a version that has
+# no GitHub release yet builds iBiblia for Windows (x64) and Linux (x86_64) with
+# Lazarus and publishes release v<version>. The programs check this release feed
+# at start-up and update themselves (see app_updater.pas).
 
 on:
   push:
-    tags: ['v*']
+    branches: [linux-port, master]
   workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Existing tag to (re)build and publish, e.g. v1.1.0.027'
-        required: true
 
 permissions:
   contents: write
 
-env:
-  TAG: ${{ github.event.inputs.tag || github.ref_name }}
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
+  plan:
+    runs-on: ubuntu-22.04
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+      needed: ${{ steps.ver.outputs.needed }}
+      linux: ${{ steps.ver.outputs.linux }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Decide whether this version needs a release
+        id: ver
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(python3 scripts/ci_check_version.py)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if gh release view "v$VERSION" >/dev/null 2>&1; then
+            echo "Release v$VERSION already exists - nothing to do."
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+          fi
+          if [ -f iBiblia-linux.lpi ]; then echo "linux=true" >> "$GITHUB_OUTPUT"; else echo "linux=false" >> "$GITHUB_OUTPUT"; fi
+
   windows:
+    needs: plan
+    if: needs.plan.outputs.needed == 'true'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.tag || github.ref }}
-      - name: Check version
-        id: ver
-        shell: bash
-        run: echo "version=$(python scripts/ci_check_version.py "$TAG")" >> "$GITHUB_OUTPUT"
       - uses: gcarreno/setup-lazarus@v3
         with:
           lazarus-version: stable
@@ -50,21 +67,18 @@ jobs:
           ls -la iBiblia.exe
       - name: Package
         shell: bash
-        run: python scripts/ci_package.py windows "${{ steps.ver.outputs.version }}" . dist
+        run: python scripts/ci_package.py windows "${{ needs.plan.outputs.version }}" . dist
       - uses: actions/upload-artifact@v4
         with:
           name: windows
           path: dist/*.zip
 
   linux:
+    needs: plan
+    if: needs.plan.outputs.needed == 'true' && needs.plan.outputs.linux == 'true'
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.tag || github.ref }}
-      - name: Check version
-        id: ver
-        run: echo "version=$(python3 scripts/ci_check_version.py "$TAG")" >> "$GITHUB_OUTPUT"
       - name: System libraries
         run: |
           sudo apt-get update
@@ -86,7 +100,7 @@ jobs:
           ls -la iBiblia
       - name: Package
         run: |
-          python3 scripts/ci_package.py linux "${{ steps.ver.outputs.version }}" . dist \
+          python3 scripts/ci_package.py linux "${{ needs.plan.outputs.version }}" . dist \
             --libpcre /lib/x86_64-linux-gnu/libpcre.so.3
       - uses: actions/upload-artifact@v4
         with:
@@ -94,12 +108,11 @@ jobs:
           path: dist/*.zip
 
   publish:
-    needs: [windows, linux]
+    needs: [plan, windows, linux]
+    if: ${{ !cancelled() && needs.plan.outputs.needed == 'true' && needs.windows.result == 'success' && (needs.linux.result == 'success' || needs.plan.outputs.linux == 'false') }}
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.tag || github.ref }}
       - uses: actions/download-artifact@v4
         with:
           path: dist
@@ -107,15 +120,12 @@ jobs:
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.plan.outputs.version }}
         run: |
-          VERSION=$(python3 scripts/ci_check_version.py "$TAG")
+          TAG="v$VERSION"
           cd dist && sha256sum iBiblia-*.zip > SHA256SUMS.txt && cat SHA256SUMS.txt && cd ..
           python3 scripts/ci_release_notes.py "$VERSION" > notes.md
           TITLE="iBiblia — 64-Bit Edition (v$VERSION)"
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release edit "$TAG" --title "$TITLE" --notes-file notes.md
-            gh release upload "$TAG" dist/iBiblia-*.zip dist/SHA256SUMS.txt --clobber
-          else
-            gh release create "$TAG" dist/iBiblia-*.zip dist/SHA256SUMS.txt \
-              --title "$TITLE" --notes-file notes.md --verify-tag
-          fi
+          # creates the tag on the built commit
+          gh release create "$TAG" dist/iBiblia-*.zip dist/SHA256SUMS.txt \
+            --title "$TITLE" --notes-file notes.md --target "$GITHUB_SHA"
