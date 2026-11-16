@@ -6,12 +6,21 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.024 (2026-11-16) — Paragraph Tags in the Verse Panels
+### 0. Version 1.1.0.025 (2026-11-16) — Paragraph Indents in the Windows Verse Panels
+
+* **`<PI>`/`<PF>` Indents and the `<CM>` Gap on Windows (`directwrite_paragraph_layout.pas`, `directwrite_syntagm_view.pas`)**: DirectWrite has no paragraph indent, so a verse that carries theWord paragraph formatting is now laid out with one DirectWrite layout per paragraph:
+  * each paragraph is narrowed by its `<PI>` indent and drawn shifted by it, so wrapped lines stay indented;
+  * the `<PF>` first-line indent is an invisible spacer in front of the paragraph's first line;
+  * a paragraph after `<CM>` gets the gap above it.
+  * The combined layout answers the same calls as a single DirectWrite layout (drawing, hit testing, caret and selection rectangles, line and cluster metrics), translating text positions between the verse and its paragraphs. Verses without `<PI>`, `<PF>` or `<CM>` keep the single native layout.
+* Checked with a Windows (win64) cross build run under Wine: the Destination panel draws `<CM><PI2>` and `<PF>` paragraphs indented, wrapped lines included. Wine does not implement DirectWrite hit testing, so word clicks were not testable there.
+
+### 0d. Version 1.1.0.024 (2026-11-16) — Paragraph Tags in the Verse Panels
 
 * **Paragraph Tags in the Source, Destination, Reference 1 and Reference 2 Panels (`verse_visual_adapter.pas`, `verse_visual_document.pas`, `directwrite_syntagm_view.pas`)**:
   * `<CM>` and `<CI>` now break the line; `<CM>` also leaves a gap above the next paragraph. Both show a dim marker like `<CL>` does (pilcrow for `<CM>`, reversed pilcrow for `<CI>`).
   * `<PI>` / `<PI1>`..`<PI7>` indent the whole paragraph and `<PF>` / `<PF1>`..`<PF7>` its first line (`<PI0>`, `<Pi>` and `<PF0>` reset); level 1 is 40 px, +20 px per level. Indents end at the next line break.
-  * The indents are drawn by the text layout used on Linux. The Windows DirectWrite view receives the same line breaks, but its indents are not drawn yet (not testable from the Linux build environment).
+  * The indents are drawn by the text layout used on Linux. The Windows DirectWrite view receives the same line breaks, but its indents are not drawn yet (drawn from 1.1.0.025).
 
 ### 0c. Version 1.1.0.023 (2026-11-16) — theWord Paragraph Tags in the Chapter Panel & Folder Info in About
 

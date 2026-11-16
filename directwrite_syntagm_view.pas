@@ -10,7 +10,7 @@ uses
   Classes, SysUtils, Types, Controls, Graphics, LCLType,
   verse_visual_document, verse_view_intf
   {$IFDEF MSWINDOWS}
-  , Windows, win_directwrite_d2d
+  , Windows, win_directwrite_d2d, directwrite_paragraph_layout
   {$ENDIF};
 
 type
@@ -84,6 +84,8 @@ type
     FTextLayout: IWinDWriteTextLayout;
     FTextMetrics: TDWriteTextMetrics;
     function ApplyDrawingEffects: Boolean;
+    function BuildParagraphSpecs(const ADocumentText: UnicodeString;
+      ABaseFontSizeDIP: Single; out ASpecs: TDWriteParagraphSpecArray): Boolean;
     function BuildLayout(ADpi: Integer): Boolean;
     procedure DiscardRenderTarget;
     function EnsureFactories: Boolean;
@@ -1437,6 +1439,99 @@ begin
   Result.Y := FLayoutPadding * 96 / ADpi;
 end;
 
+{ Splits the document into paragraphs at its line feeds when it carries theWord
+  paragraph formatting (a <PI>/<PF> indent or a <CM> mark), with the indents
+  and the <CM> gap of each paragraph. Returns False for plain text, which keeps
+  the single native layout. }
+function TDirectWriteSyntagmView.BuildParagraphSpecs(
+  const ADocumentText: UnicodeString; ABaseFontSizeDIP: Single;
+  out ASpecs: TDWriteParagraphSpecArray): Boolean;
+var
+  Index, SpanIndex, Count, Start, TextLen: Integer;
+  Span: TVisualSpan;
+  NeedSpecs, NextGap: Boolean;
+
+  procedure AddParagraph(AStart, AEnd: Integer; AGap: Boolean);
+  begin
+    SetLength(ASpecs, Count + 1);
+    ASpecs[Count].StartUTF16 := AStart;
+    ASpecs[Count].LengthUTF16 := AEnd - AStart;
+    ASpecs[Count].LeftDIP := 0;
+    ASpecs[Count].FirstLineDIP := 0;
+    if AGap then
+      ASpecs[Count].GapAboveDIP := ABaseFontSizeDIP * 0.6
+    else
+      ASpecs[Count].GapAboveDIP := 0;
+    Inc(Count);
+  end;
+
+begin
+  SetLength(ASpecs, 0);
+  Result := False;
+  TextLen := Length(ADocumentText);
+  if (TextLen = 0) or not Assigned(FDocument) then
+    Exit;
+  NeedSpecs := False;
+  for SpanIndex := 0 to FDocument.SpanCount - 1 do
+  begin
+    Span := FDocument.Spans[SpanIndex];
+    if (Span.Role = vsrParagraphIndent) or
+       ((Span.Role = vsrParagraphMark) and (Span.ObjectId = 1)) then
+    begin
+      NeedSpecs := True;
+      Break;
+    end;
+  end;
+  if not NeedSpecs then
+    Exit;
+
+  { paragraphs end after each line feed }
+  Count := 0;
+  Start := 0;
+  NextGap := False;
+  for Index := 0 to TextLen - 1 do
+    if ADocumentText[Index + 1] = #10 then
+    begin
+      AddParagraph(Start, Index + 1, NextGap);
+      NextGap := False;
+      { a <CM> mark ends with this line feed: gap above the next paragraph }
+      for SpanIndex := 0 to FDocument.SpanCount - 1 do
+      begin
+        Span := FDocument.Spans[SpanIndex];
+        if (Span.Role = vsrParagraphMark) and (Span.ObjectId = 1) and
+           (Span.LengthUTF16 > 0) and
+           (Span.StartUTF16 + Span.LengthUTF16 - 1 = Index) then
+        begin
+          NextGap := True;
+          Break;
+        end;
+      end;
+      Start := Index + 1;
+    end;
+  if Start < TextLen then
+    AddParagraph(Start, TextLen, NextGap)
+  else if Count = 0 then
+    AddParagraph(0, TextLen, False);
+
+  { indents: a <PI>/<PF> marker sets the indent of the paragraph it opens }
+  for SpanIndex := 0 to FDocument.SpanCount - 1 do
+  begin
+    Span := FDocument.Spans[SpanIndex];
+    if Span.Role <> vsrParagraphIndent then
+      Continue;
+    for Index := Count - 1 downto 0 do
+      if Span.StartUTF16 >= ASpecs[Index].StartUTF16 then
+      begin
+        if Span.IndentKind = vikLeft then
+          ASpecs[Index].LeftDIP := Span.IndentPx
+        else if Span.IndentKind = vikFirstLine then
+          ASpecs[Index].FirstLineDIP := Span.IndentPx;
+        Break;
+      end;
+  end;
+  Result := Count > 0;
+end;
+
 function TDirectWriteSyntagmView.BuildLayout(ADpi: Integer): Boolean;
 const
   MIN_FONT_SIZE_DIP = 1.0;
@@ -1483,6 +1578,7 @@ var
   Span: TVisualSpan;
   SpanFontSize: Single;
   DocumentText: UnicodeString;
+  ParagraphSpecs: TDWriteParagraphSpecArray;
 begin
   Result := False;
   if not Assigned(FDocument) or not EnsureFactories then
@@ -1528,8 +1624,19 @@ begin
   LayoutWidth := Max(1, ClientWidth - 2 * FLayoutPadding) * 96 / ADpi;
   LayoutHeight := 1048576;
   DocumentText := FDocument.Text;
-  HR := FDWriteFactory.CreateTextLayout(PWideChar(DocumentText), Length(DocumentText),
-    FTextFormat, LayoutWidth, LayoutHeight, FTextLayout);
+  if BuildParagraphSpecs(DocumentText, BaseFontSize, ParagraphSpecs) then
+  begin
+    { theWord <PI>/<PF>/<CM>: one DirectWrite layout per paragraph }
+    FTextLayout := TDWriteParagraphLayout.Create(FDWriteFactory, FTextFormat,
+      DocumentText, ParagraphSpecs, LayoutWidth, LayoutHeight,
+      FDocument.BaseDirection = text_direction.tdRightToLeft, HR);
+    if not Succeeded(HR) then
+      FTextLayout := nil;
+  end
+  else
+    HR := FDWriteFactory.CreateTextLayout(PWideChar(DocumentText),
+      Length(DocumentText), FTextFormat, LayoutWidth, LayoutHeight,
+      FTextLayout);
   if not Succeeded(HR) then
   begin
     FBackendError := 'CreateTextLayout failed: ' + HResultText(HR);

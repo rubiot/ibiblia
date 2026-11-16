@@ -1,6 +1,9 @@
-﻿Version 1.1.0.024 (64-bit Edition) - 2026-11-16
+﻿Version 1.1.0.025 (64-bit Edition) - 2026-11-16
+- Windows: the Source, Destination, Reference 1 and Reference 2 panels now draw the <PI> and <PF> indents and the <CM> gap. A verse with paragraph formatting is laid out one DirectWrite paragraph at a time, so every line of a <PI> paragraph is indented and <PF> indents its first line. Verses without these tags use the same single layout as before.
+
+Version 1.1.0.024 (64-bit Edition) - 2026-11-16
 - Source, Destination, Reference 1 and Reference 2 verse panels: paragraph tags now show. <CM> and <CI> break the line (CM leaves a gap above the next paragraph) and are marked with a dim pilcrow like <CL>; <PI>/<PI0..7> indent the whole paragraph and <PF>/<PF0..7> its first line (40 px for level 1, +20 px per level).
-- Windows note: the DirectWrite verse view shows the paragraph breaks; the indents are drawn by the Linux text layout and are not yet drawn on Windows.
+- Windows note: the DirectWrite verse view shows the paragraph breaks; the indents are drawn by the Linux text layout and are not yet drawn on Windows (drawn from 1.1.0.025).
 
 Version 1.1.0.023 (64-bit Edition) - 2026-11-16
 - Chapter panel: paragraph formatting tags now follow the theWord guidelines. <CM> starts a spaced paragraph, <CI> a tight paragraph, <CL> a new line inside the same paragraph, <PI>/<PI1>..<PI7> set the left indent (40 px, then +20 px per level; <PI0> and <Pi> reset it) and <PF>/<PF1>..<PF7> the first-line indent (<PF0> none).
