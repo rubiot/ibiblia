@@ -6,7 +6,12 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.035 (2026-11-16) — Saved Indicator on Linux
+### 0. Version 1.1.0.036 (2026-11-16) — Dark Message Boxes on Linux
+
+* Linux: message boxes (such as 'Close project' and 'Clear associations') are dark in a dark skin. They are drawn by GTK and kept the system's light colours; their window, buttons and text now follow the skin.
+* Files: `unitskins.pas`.
+
+### 0o. Version 1.1.0.035 (2026-11-16) — Saved Indicator on Linux
 
 * Linux: the Saved / Unsaved changes indicator at the bottom left of the window is back (green 'Saved', red 'Unsaved changes'). GTK draws the status bar itself and hid the indicator; it now sits over the left end of the status bar, and other status messages (such as 'Analyzing verse...') appear next to it.
 * Files: `formprincipal.pas`.

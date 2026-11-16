@@ -637,6 +637,15 @@ begin
         'widget_class "*GtkFrame*" style "ibiblia-skin"'#10 +
         'widget_class "*GtkAlignment*" style "ibiblia-skin"'#10 +
         'widget_class "*GtkWindow*" style "ibiblia-skin"'#10 +
+        'widget_class "*GtkDialog*" style "ibiblia-skin"'#10 +
+        'widget_class "*GtkMessageDialog*" style "ibiblia-skin"'#10 +
+        'widget_class "*GtkBox*" style "ibiblia-skin"'#10 +
+        'widget_class "*GtkVBox*" style "ibiblia-skin"'#10 +
+        'widget_class "*GtkHBox*" style "ibiblia-skin"'#10 +
+        'widget_class "*GtkButtonBox*" style "ibiblia-skin"'#10 +
+        'widget_class "*GtkHButtonBox*" style "ibiblia-skin"'#10 +
+        'widget_class "*GtkTable*" style "ibiblia-skin"'#10 +
+        'widget_class "*GtkLabel*" style "ibiblia-skin"'#10 +
         'widget_class "*GtkScale*" style "ibiblia-skin"'#10 +
         'widget_class "*GtkProgressBar*" style "ibiblia-skin"'#10 +
         'widget_class "*GtkStatusbar*" style "ibiblia-skin"'#10 +
