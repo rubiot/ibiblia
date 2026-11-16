@@ -13,7 +13,7 @@ uses
   twAutomate, twSyncThread, tanglaw_sync,
   Classes, SysUtils, FileUtil, LazFileUtils, Forms, Controls, Graphics, Dialogs, Menus, LCLIntf,
   ActnList, ComCtrls, ExtCtrls, StdCtrls, BibleScope, Project, IniFiles, Math,
-  Syntagm, LCLTranslator, unitabout, PCRE, Verse, LCLProc, LazLogger,
+  Syntagm, LCLTranslator, unitabout, unitupdate, PCRE, Verse, LCLProc, LazLogger,
   LCLType, LazUTF8, ChapterView, UnitPleaseWait, CommentsView, ONTTokenizer,
   status_catalog, SynEdit, project_setup_model, translation_memory_model,
   project_creation_staging, FormApplicationPreferences, theword_sync_state,
@@ -207,6 +207,8 @@ type
     procedure MenuItem22Click(Sender: TObject);
     procedure RecentProjectClick(Sender: TObject);
     procedure MenuItemAboutClick(Sender: TObject);
+    procedure UpdateCheckItemClick(Sender: TObject);
+    procedure UpdateStartupItemClick(Sender: TObject);
     procedure MenuItemAISuggestionClick(Sender: TObject);
     procedure MenuItemAlwaysOnTopClick(Sender: TObject);
     procedure MenuItemAutoSaveClick(Sender: TObject);
@@ -246,6 +248,7 @@ type
     FDockPopupRightMenuItem: TMenuItem;
     FDockPopupLeftEnabled: Boolean;
     FDockPopupLeftMenuItem: TMenuItem;
+    FUpdateCheckItem, FUpdateStartupItem: TMenuItem;
     FLegacyAutomaticSuggestion: Boolean;
     FCurrentRef: string;
     FChapterView: TChapterView;
@@ -1574,6 +1577,19 @@ begin
   FHelpMenuSeparator := TMenuItem.Create(MainMenu1);
   FHelpMenuSeparator.Caption := '-';
   MenuItem17.Add(FHelpMenuSeparator);
+  if FUpdateCheckItem = nil then
+  begin
+    FUpdateCheckItem := TMenuItem.Create(MainMenu1);
+    FUpdateCheckItem.Caption := 'Check for &updates...';
+    FUpdateCheckItem.OnClick := @UpdateCheckItemClick;
+    FUpdateStartupItem := TMenuItem.Create(MainMenu1);
+    FUpdateStartupItem.Caption := 'Check for updates when iBiblia starts';
+    FUpdateStartupItem.AutoCheck := True;
+    FUpdateStartupItem.Checked := Assigned(UpdateCoordinator) and UpdateCoordinator.CheckAtStartup;
+    FUpdateStartupItem.OnClick := @UpdateStartupItemClick;
+  end;
+  MenuItem17.Add(FUpdateCheckItem);
+  MenuItem17.Add(FUpdateStartupItem);
   MenuItem17.Add(MenuItemAbout);
 
   BuildSuggestionToolbarMenu;
@@ -4664,6 +4680,8 @@ begin
     if Assigned(FStripTimer) then
       FStripTimer.Enabled := False;
     StopTheWordSyncThread;
+    if Assigned(UpdateCoordinator) then
+      UpdateCoordinator.MainFormClosing;
   end;
 end;
 
@@ -4704,6 +4722,7 @@ begin
   {$ENDIF}
   opts := TIniFile.Create(ConfigFilePath);
   AboutConfigFilePath := ConfigFilePath;
+  UpdateCoordinator := TUpdateCoordinator.Create(opts);
   SetCurrentSkinByName(opts.ReadString('UI', 'Theme', 'Default'));
   FSkinnedForms := TList.Create;
   Screen.AddHandlerActiveFormChanged(@ScreenActiveFormChanged);
@@ -4925,6 +4944,7 @@ begin
   Application.RemoveAsyncCalls(Self);
   FreeAndNil(FSkinnedForms);
   Application.RemoveOnIdleHandler(@AppIdleAutoSelect);
+  FreeAndNil(UpdateCoordinator);
   if Assigned(TTSManager) then
     TTSManager.SaveToIni(opts);
   FreeTTS;
@@ -5061,6 +5081,8 @@ begin
   end;
   if CurrentSkin.Id <> skClassic then
     ApplyActiveSkin;
+  if Assigned(UpdateCoordinator) then
+    UpdateCoordinator.ScheduleStartupCheck;
 end;
 
 procedure TMainForm.MenuItem22Click(Sender: TObject);
@@ -5083,6 +5105,19 @@ end;
 procedure TMainForm.MenuItemAboutClick(Sender: TObject);
 begin
   FormAbout.ShowModal;
+end;
+
+procedure TMainForm.UpdateCheckItemClick(Sender: TObject);
+begin
+  if Assigned(UpdateCoordinator) then
+    UpdateCoordinator.CheckNow;
+end;
+
+procedure TMainForm.UpdateStartupItemClick(Sender: TObject);
+begin
+  // AutoCheck has already flipped Checked
+  if Assigned(UpdateCoordinator) then
+    UpdateCoordinator.CheckAtStartup := FUpdateStartupItem.Checked;
 end;
 
 procedure TMainForm.MenuItemAISuggestionClick(Sender: TObject);

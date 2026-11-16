@@ -6,7 +6,17 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.026 (2026-11-16) — Linux Audit of the New Features Guide
+### 0. Version 1.1.0.027 (2026-11-16) — Automatic Updates
+
+* Automatic updates: iBiblia checks the SalitaNgDiyos/ibiblia GitHub releases a few seconds after it starts. When a newer version exists, a window shows the release notes and offers Update and restart, Skip this version or Later. The download is verified with SHA-256 before anything is installed, and your projects and iBiblia.ini are never touched.
+* Tick 'Install future updates automatically' in that window to download new versions in the background and install them when you close iBiblia; the next start is already the new version.
+* Help > Check for updates... checks on demand; Help > Check for updates when iBiblia starts switches the start-up check off or on. Set IBIBLIA_NO_UPDATE=1 to disable updating completely.
+* Every new version is built by GitHub with Lazarus for Windows (x64) and Linux (x86_64) and published as a release, so the updater always has a matching package.
+
+* **How it works (`app_updater.pas`, `unitupdate.pas`)**: the program asks the GitHub API for the latest release, picks `iBiblia-<version>-windows-x64.zip` or `iBiblia-<version>-linux-x86_64.zip`, checks it against `SHA256SUMS.txt`, unpacks it and swaps the files in. Each replaced file is first renamed to `<name>.old-update` (allowed while the program runs, on Windows and Linux) and deleted at the next start; if any step fails the old files are put back. It does nothing when the program folder is not writable.
+* **Releases (`.github/workflows/release.yml`)**: pushing a tag such as `v1.1.0.027` builds both packages with Lazarus on GitHub Actions and publishes the release with the checksums and these notes. The tag must match the version in `iBiblia.lpi` and `iBiblia-linux.lpi`.
+
+### 0f. Version 1.1.0.026 (2026-11-16) — Linux Audit of the New Features Guide
 
 An audit of the 12 topics of Help > New Features User Guide on the Linux build found and fixed:
 

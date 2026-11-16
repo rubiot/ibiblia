@@ -3,9 +3,9 @@ program iBiblia;
 {$mode objfpc}{$H+}
 
 uses
-  {$IFDEF UNIX}{$IFDEF UseCThreads}
-  cthreads,
-  {$ENDIF}{$ENDIF}
+  {$IFDEF UNIX}
+  cthreads, // thread driver: the update check, AI batches and TTS all use TThread
+  {$ENDIF}
   {$IFDEF LINUX}
   sqlite3dyn,
   {$ENDIF}

@@ -1,0 +1,121 @@
+name: Release
+
+# Pushing a tag such as v1.1.0.027 builds iBiblia for Windows (x64) and Linux
+# (x86_64) with Lazarus and publishes a GitHub release. The programs check this
+# release feed at start-up and update themselves (see app_updater.pas).
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to (re)build and publish, e.g. v1.1.0.027'
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  TAG: ${{ github.event.inputs.tag || github.ref_name }}
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+      - name: Check version
+        id: ver
+        shell: bash
+        run: echo "version=$(python scripts/ci_check_version.py "$TAG")" >> "$GITHUB_OUTPUT"
+      - uses: gcarreno/setup-lazarus@v3
+        with:
+          lazarus-version: stable
+          with-cache: true
+      - name: Lazarus packages
+        shell: bash
+        run: |
+          git clone --depth 1 https://github.com/kryslt/KControls.git "$RUNNER_TEMP/KControls"
+          git clone --depth 1 https://github.com/skalogryz/richmemo.git "$RUNNER_TEMP/richmemo"
+          lazbuild --add-package-link "$RUNNER_TEMP/KControls/packages/lazarus/kcontrolsbase.lpk"
+          lazbuild --add-package-link "$RUNNER_TEMP/KControls/packages/lazarus/kcontrolslaz.lpk"
+          lazbuild --add-package-link "$RUNNER_TEMP/richmemo/richmemopackage.lpk"
+      - name: Build
+        shell: bash
+        run: |
+          python scripts/ci_make_lpi.py iBiblia.lpi iBiblia-ci.lpi lazrichview
+          lazbuild --os=win64 --cpu=x86_64 --ws=win32 --build-mode=Release iBiblia-ci.lpi
+          ls -la iBiblia.exe
+      - name: Package
+        shell: bash
+        run: python scripts/ci_package.py windows "${{ steps.ver.outputs.version }}" . dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: dist/*.zip
+
+  linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+      - name: Check version
+        id: ver
+        run: echo "version=$(python3 scripts/ci_check_version.py "$TAG")" >> "$GITHUB_OUTPUT"
+      - name: System libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk2.0-dev libpcre3 libsqlite3-dev
+      - uses: gcarreno/setup-lazarus@v3
+        with:
+          lazarus-version: stable
+          with-cache: true
+      - name: Lazarus packages
+        run: |
+          git clone --depth 1 https://github.com/kryslt/KControls.git "$RUNNER_TEMP/KControls"
+          git clone --depth 1 https://github.com/skalogryz/richmemo.git "$RUNNER_TEMP/richmemo"
+          lazbuild --add-package-link "$RUNNER_TEMP/KControls/packages/lazarus/kcontrolsbase.lpk"
+          lazbuild --add-package-link "$RUNNER_TEMP/KControls/packages/lazarus/kcontrolslaz.lpk"
+          lazbuild --add-package-link "$RUNNER_TEMP/richmemo/richmemopackage.lpk"
+      - name: Build
+        run: |
+          lazbuild --ws=gtk2 --build-mode="Release Linux" iBiblia-linux.lpi
+          ls -la iBiblia
+      - name: Package
+        run: |
+          python3 scripts/ci_package.py linux "${{ steps.ver.outputs.version }}" . dist \
+            --libpcre /lib/x86_64-linux-gnu/libpcre.so.3
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: dist/*.zip
+
+  publish:
+    needs: [windows, linux]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(python3 scripts/ci_check_version.py "$TAG")
+          cd dist && sha256sum iBiblia-*.zip > SHA256SUMS.txt && cat SHA256SUMS.txt && cd ..
+          python3 scripts/ci_release_notes.py "$VERSION" > notes.md
+          TITLE="iBiblia — 64-Bit Edition (v$VERSION)"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --title "$TITLE" --notes-file notes.md
+            gh release upload "$TAG" dist/iBiblia-*.zip dist/SHA256SUMS.txt --clobber
+          else
+            gh release create "$TAG" dist/iBiblia-*.zip dist/SHA256SUMS.txt \
+              --title "$TITLE" --notes-file notes.md --verify-tag
+          fi

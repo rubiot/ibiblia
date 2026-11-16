@@ -1,3 +1,9 @@
+Version 1.1.0.027 (64-bit Edition) - 2026-11-16
+- Automatic updates: iBiblia checks the SalitaNgDiyos/ibiblia GitHub releases a few seconds after it starts. When a newer version exists, a window shows the release notes and offers Update and restart, Skip this version or Later. The download is verified with SHA-256 before anything is installed, and your projects and iBiblia.ini are never touched.
+- Tick 'Install future updates automatically' in that window to download new versions in the background and install them when you close iBiblia; the next start is already the new version.
+- Help > Check for updates... checks on demand; Help > Check for updates when iBiblia starts switches the start-up check off or on. Set IBIBLIA_NO_UPDATE=1 to disable updating completely.
+- Every new version is built by GitHub with Lazarus for Windows (x64) and Linux (x86_64) and published as a release, so the updater always has a matching package.
+
 Version 1.1.0.026 (64-bit Edition) - 2026-11-16
 - Linux: the mouse wheel over the Source or Destination panel selects source words again (and Ctrl+wheel zooms); GTK sent the wheel to the text view, not to the panel.
 - F8 / Shift+F8 now step from the verse on screen when the status filter hides it, and a tree click navigates again after filtering (the tree could move its selection silently). Both commands are also in the Navigation menu.

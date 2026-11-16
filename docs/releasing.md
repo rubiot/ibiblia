@@ -91,3 +91,15 @@ Only perform remote writes within the user's explicit authorization. Publishing 
 4. Recheck the draft body/images, attached filenames/hashes and tag/source identity. Keep it a draft until final publication is explicitly authorized.
 
 If source changes after packaging, rebuild and revalidate the affected checks, replace all three assets together and update the evidence. Never attach an old ZIP to a newer source tag.
+
+## Automatic updates and GitHub releases (1.1.0.027 and later)
+
+iBiblia checks `https://api.github.com/repos/SalitaNgDiyos/ibiblia/releases/latest` a few seconds after it starts (Help > Check for updates... does it on demand). It downloads `iBiblia-<version>-windows-x64.zip` or `iBiblia-<version>-linux-x86_64.zip`, verifies it against `SHA256SUMS.txt` from the same release, and swaps the files into the program folder (see `app_updater.pas`). Projects and `iBiblia.ini` are never touched.
+
+To publish a version:
+
+1. Set the same version in `iBiblia.lpi` and `iBiblia-linux.lpi` (VersionInfo, `BuildNr`), and add a `### 0. Version x.y.z.nnn (date) — title` section at the top of the version list in `CHANGELOG.md`; it becomes the release text.
+2. Commit, then tag and push: `git tag v1.1.0.028 && git push origin <branch> v1.1.0.028`.
+3. `.github/workflows/release.yml` builds Windows (x64) and Linux (x86_64) with Lazarus, checks that the tag matches both project files, packages with `scripts/ci_package.py` and creates the release with the two ZIPs and `SHA256SUMS.txt`. A failed run can be repeated from the Actions tab (Release > Run workflow, with the tag name).
+
+The updater only sees releases that are not drafts or pre-releases, newest first. For testing, `IBIBLIA_UPDATE_FEED` can point at a local copy of the release JSON (HTTPS only) and `IBIBLIA_NO_UPDATE=1` turns updating off.
