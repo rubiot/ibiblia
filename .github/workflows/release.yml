@@ -50,20 +50,23 @@ jobs:
       - uses: gcarreno/setup-lazarus@v3
         with:
           lazarus-version: stable
-          with-cache: true
+          with-cache: false
       - name: Lazarus packages
         shell: bash
         run: |
           git clone --depth 1 https://github.com/kryslt/KControls.git "$RUNNER_TEMP/KControls"
           git clone --depth 1 https://github.com/skalogryz/richmemo.git "$RUNNER_TEMP/richmemo"
+          git clone --depth 1 https://github.com/serbod/lazrichview.git "$RUNNER_TEMP/lazrichview"
           lazbuild --add-package-link "$RUNNER_TEMP/KControls/packages/lazarus/kcontrolsbase.lpk"
           lazbuild --add-package-link "$RUNNER_TEMP/KControls/packages/lazarus/kcontrolslaz.lpk"
           lazbuild --add-package-link "$RUNNER_TEMP/richmemo/richmemopackage.lpk"
+          RV=$(find "$RUNNER_TEMP/lazrichview" -iname 'lazrichview.lpk' | head -1)
+          echo "lazrichview package: $RV"
+          lazbuild --add-package-link "$RV"
       - name: Build
         shell: bash
         run: |
-          python scripts/ci_make_lpi.py iBiblia.lpi iBiblia-ci.lpi lazrichview
-          lazbuild --os=win64 --cpu=x86_64 --ws=win32 --build-mode=Release iBiblia-ci.lpi
+          lazbuild --os=win64 --cpu=x86_64 --ws=win32 --build-mode=Release iBiblia.lpi
           ls -la iBiblia.exe
       - name: Package
         shell: bash
@@ -86,7 +89,7 @@ jobs:
       - uses: gcarreno/setup-lazarus@v3
         with:
           lazarus-version: stable
-          with-cache: true
+          with-cache: false
       - name: Lazarus packages
         run: |
           git clone --depth 1 https://github.com/kryslt/KControls.git "$RUNNER_TEMP/KControls"
