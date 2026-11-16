@@ -2750,7 +2750,11 @@ var
 
   function Selectable(S: TSyntagm): Boolean;
   begin
-    Result := Assigned(S) and (S.Kind = skSyntagm) and (Trim(S.Text) <> '');
+    // real source words only: skip interlinear glosses (<sup> text) and, when the
+    // project asks for it, words without Strong's/morphology, as auto-advance does
+    Result := Assigned(S) and (S.Kind = skSyntagm) and (Trim(S.Text) <> '') and
+      not S.IsSuperscript and
+      (not SrcVerse.NextAutoSelectWordMustHaveStrongMorpho or S.HasStrongs or S.HasMorph);
   end;
 
 begin

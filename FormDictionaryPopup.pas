@@ -104,6 +104,7 @@ function AdaptRtfForSkin(const ARtf: string; const ASkin: TSkinColors): string;
 implementation
 
 uses
+  {$IFDEF LCLGTK2}gtk2, glib2, gdk2, pango,{$ENDIF}
   formprincipal;
 
 {$IFNDEF FPCUNIT}
@@ -473,6 +474,77 @@ begin
 end;
 
 {$IFNDEF WINDOWS}
+{ Styles a range of the popup text. On GTK2, RichMemo's SetTextAttributes
+  creates a new anonymous GtkTextTag on every call and never frees it, so each
+  popup refresh added hundreds of tags to the buffer's tag table and the popup
+  (and with it the whole program) became slower and slower. Here one named tag
+  per distinct style is created once and reused. }
+procedure StyleTextRange(Memo: TRichMemo; AStart, ALen: Integer; const P: TFontParams;
+  ABase: Boolean);
+{$IFDEF LCLGTK2}
+const
+  pu: array[Boolean] of gint = (PANGO_UNDERLINE_NONE, PANGO_UNDERLINE_SINGLE);
+  pb: array[Boolean] of gint = (PANGO_WEIGHT_NORMAL, PANGO_WEIGHT_BOLD);
+  pi: array[Boolean] of gint = (PANGO_STYLE_NORMAL, PANGO_STYLE_ITALIC);
+var
+  List: PGList;
+  TextWidget: PGtkWidget;
+  Buffer: PGtkTextBuffer;
+  Table: PGtkTextTagTable;
+  Tag: PGtkTextTag;
+  Key, Family: string;
+  C: TColor;
+  GColor: TGdkColor;
+  IStart, IEnd: TGtkTextIter;
+begin
+  if (ALen <= 0) or not Memo.HandleAllocated then
+    Exit;
+  List := gtk_container_get_children(PGtkContainer(PtrUInt(Memo.Handle)));
+  if List = nil then
+    Exit;
+  TextWidget := PGtkWidget(List^.data);
+  g_list_free(List);
+  if TextWidget = nil then
+    Exit;
+  Buffer := gtk_text_view_get_buffer(PGtkTextView(TextWidget));
+  if Buffer = nil then
+    Exit;
+  C := ColorToRGB(P.Color);
+  Family := P.Name;
+  if Family = '' then
+    Family := 'Sans';
+  Key := Format('ibpop:%s:%d:%.6x:%d%d%d', [Family, P.Size, C,
+    Ord(fsBold in P.Style), Ord(fsItalic in P.Style), Ord(fsUnderline in P.Style)]);
+  Table := gtk_text_buffer_get_tag_table(Buffer);
+  Tag := gtk_text_tag_table_lookup(Table, PChar(Key));
+  if Tag = nil then
+  begin
+    GColor.pixel := 0;
+    GColor.red := Red(C) * 257;
+    GColor.green := Green(C) * 257;
+    GColor.blue := Blue(C) * 257;
+    Tag := gtk_text_buffer_create_tag(Buffer, PChar(Key),
+      'family', [PChar(Family),
+      'foreground-gdk', @GColor,
+      'size-points', gdouble(P.Size),
+      'underline', pu[fsUnderline in P.Style],
+      'weight', pb[fsBold in P.Style],
+      'style', pi[fsItalic in P.Style],
+      nil]);
+  end;
+  // the whole-text base style must lose against the span styles
+  if ABase then
+    gtk_text_tag_set_priority(Tag, 0);
+  gtk_text_buffer_get_iter_at_offset(Buffer, @IStart, AStart);
+  gtk_text_buffer_get_iter_at_offset(Buffer, @IEnd, AStart + ALen);
+  gtk_text_buffer_apply_tag(Buffer, Tag, @IStart, @IEnd);
+end;
+{$ELSE}
+begin
+  Memo.SetTextAttributes(AStart, ALen, P);
+end;
+{$ENDIF}
+
 type
   TRtfStyleState = record
     Bold: Boolean;
@@ -711,7 +783,7 @@ begin
       BaseParams.Size := 11;
       BaseParams.Color := DefaultTextColor;
       BaseParams.Style := [];
-      Memo.SetTextAttributes(0, CurCodePointPos, BaseParams);
+      StyleTextRange(Memo, 0, CurCodePointPos, BaseParams, True);
     end;
     Memo.SelStart := 0;
     Memo.SelLength := 0;
@@ -1128,7 +1200,7 @@ begin
     BaseParams.Size := 11;
     BaseParams.Color := DefaultTextColor;
     BaseParams.Style := [];
-    Memo.SetTextAttributes(0, CurCodePointPos, BaseParams);
+    StyleTextRange(Memo, 0, CurCodePointPos, BaseParams, True);
 
     InitFontParams(Params);
     for SpanIdx := 0 to SpanCount - 1 do
@@ -1141,7 +1213,7 @@ begin
       if Spans[SpanIdx].Bold then Include(Params.Style, fsBold);
       if Spans[SpanIdx].Italic then Include(Params.Style, fsItalic);
       if Spans[SpanIdx].Underline then Include(Params.Style, fsUnderline);
-      Memo.SetTextAttributes(Spans[SpanIdx].CharStart, Spans[SpanIdx].CharLen, Params);
+      StyleTextRange(Memo, Spans[SpanIdx].CharStart, Spans[SpanIdx].CharLen, Params, False);
     end;
   end;
 

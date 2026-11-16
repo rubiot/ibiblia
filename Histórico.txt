@@ -1,3 +1,7 @@
+Version 1.1.0.028 (64-bit Edition) - 2026-11-16
+- Linux: the word definition popup no longer slows down and freezes iBiblia. Each time it showed a definition, the GTK text box kept every colour/bold/italic style it had ever used, so after a few dozen words the program spent all its time on the popup. Each style is now created once and reused (hovering 12 words: about 1 second of work instead of 10).
+- Mouse-wheel word selection steps through the real source words only: it skipped onto the interlinear glosses (the small 'Shall Be', 'Great,' words) in a source text such as TRi. When the project's auto-advance only stops on words with Strong's or morphology, the wheel follows the same rule.
+
 Version 1.1.0.027 (64-bit Edition) - 2026-11-16
 - Automatic updates: iBiblia checks the SalitaNgDiyos/ibiblia GitHub releases a few seconds after it starts. When a newer version exists, a window shows the release notes and offers Update and restart, Skip this version or Later. The download is verified with SHA-256 before anything is installed, and your projects and iBiblia.ini are never touched.
 - Tick 'Install future updates automatically' in that window to download new versions in the background and install them when you close iBiblia; the next start is already the new version.
