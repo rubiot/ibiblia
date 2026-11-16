@@ -1,4 +1,7 @@
-﻿Version 1.1.0.029 (64-bit Edition) - 2026-11-16
+﻿Version 1.1.0.030 (64-bit Edition) - 2026-11-16
+- Linux: iBiblia now adds itself to the applications menu the first time it runs from a folder (a menu entry for your user only, with the iBiblia icon), and updates the entry if you move the folder. Set IBIBLIA_NO_MENU=1 to turn this off. The install-menu-entry.sh script is still included.
+
+Version 1.1.0.029 (64-bit Edition) - 2026-11-16
 - Per-module dictionaries: when the default dictionaries are enabled in Project > Properties, iBiblia no longer looks for (or complains about) the dictionary selected for each text. Dictionary paths saved on Windows (such as C:/Users/.../x.dct.twm) are no longer treated as folders inside the program folder on Linux: they are looked for next to the project or the program by file name, and any message shows the real saved path.
 - Linux: dictionary entries in the word popup now keep their paragraph formatting: indented and hanging-indent lines (1), 1a), A., II.) and the space between paragraphs, as on Windows.
 

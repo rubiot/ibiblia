@@ -416,6 +416,7 @@ var
   Why: string;
 begin
   CleanupOldUpdateFiles;
+  EnsureLinuxMenuEntry;
   if not CheckAtStartup then
     Exit;
   if not UpdatesSupported(Why) then

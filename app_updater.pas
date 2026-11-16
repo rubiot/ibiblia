@@ -75,6 +75,12 @@ function LaunchNewInstance: Boolean;
 { Delete "*.old-update" files left behind by a previous update. }
 procedure CleanupOldUpdateFiles;
 
+{ Linux: make sure iBiblia is listed in the applications menu (writes
+  ~/.local/share/applications/ibiblia.desktop when it is missing or points to
+  another folder). Does nothing on Windows, in a system install under /usr, or
+  when IBIBLIA_NO_MENU is set. }
+procedure EnsureLinuxMenuEntry;
+
 { Remove a staging folder and the downloaded archive next to it. }
 procedure DiscardStagedUpdate(const StageDir: string);
 
@@ -701,6 +707,58 @@ begin
     // best effort only
   end;
 end;
+
+procedure EnsureLinuxMenuEntry;
+{$IFDEF UNIX}
+var
+  Exe, Icon, Dir, FileName, Wanted, Current: string;
+  L: TStringList;
+begin
+  try
+    if GetEnvironmentVariable('IBIBLIA_NO_MENU') <> '' then Exit;
+    Exe := ExpandFileName(ParamStr(0));
+    if (Copy(Exe, 1, 5) = '/usr/') or (Copy(Exe, 1, 5) = '/opt/') then Exit;
+    if GetEnvironmentVariable('HOME') = '' then Exit;
+    Dir := IncludeTrailingPathDelimiter(GetEnvironmentVariable('HOME')) +
+      '.local/share/applications';
+    FileName := Dir + '/ibiblia.desktop';
+    Icon := ExtractFilePath(Exe) + 'iBiblia.png';
+    Wanted := 'Exec="' + Exe + '" %f';
+    if FileExists(FileName) then
+    begin
+      L := TStringList.Create;
+      try
+        L.LoadFromFile(FileName);
+        Current := L.Values['Exec'];
+        if ('Exec=' + Current = Wanted) or (Pos(Exe, L.Text) > 0) then Exit;
+      finally
+        L.Free;
+      end;
+    end;
+    if not ForceDirectories(Dir) then Exit;
+    L := TStringList.Create;
+    try
+      L.Add('[Desktop Entry]');
+      L.Add('Type=Application');
+      L.Add('Name=iBiblia');
+      L.Add('Comment=Associate Strong''s numbers and morphology between Bible texts');
+      L.Add(Wanted);
+      if FileExists(Icon) then L.Add('Icon=' + Icon);
+      L.Add('Terminal=false');
+      L.Add('Categories=Education;Office;');
+      L.Add('MimeType=application/x-ibiblia-project;');
+      L.SaveToFile(FileName);
+    finally
+      L.Free;
+    end;
+  except
+    // best effort only
+  end;
+end;
+{$ELSE}
+begin
+end;
+{$ENDIF}
 
 function LaunchNewInstance: Boolean;
 var
