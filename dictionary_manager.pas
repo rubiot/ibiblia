@@ -109,12 +109,85 @@ begin
 end;
 
 var
+  { Word dictionary (e.g. Webster 1828): the SQL search by name (nocase) cannot
+    use an index, so every hover on a word that is not in it (all Tagalog words)
+    scanned the whole dictionary several times. The list of entry names is read
+    once into memory instead and words are found by a hash look-up. }
+  GWordIndex: specialize TDictionary<string, Int64> = nil;
+  GWordIndexReady: Boolean = False;
+  GWordByIdQuery: TSQLQuery = nil;
+
+var
   GUseDefaultDictionaries: Boolean = True;
   GDefaultStrongGreek: TSQLQuery = nil;
   GDefaultStrongHebrew: TSQLQuery = nil;
   GDefaultMorphology: TSQLQuery = nil;
   GDefaultWord: TSQLQuery = nil;
   GDefaultPaths: array[0..3] of string;
+
+procedure ResetWordIndex;
+begin
+  GWordIndexReady := False;
+  if GWordIndex <> nil then
+    GWordIndex.Clear;
+  if GWordByIdQuery <> nil then
+  begin
+    try
+      GWordByIdQuery.Close;
+    except
+    end;
+    FreeAndNil(GWordByIdQuery);
+  end;
+end;
+
+{ Reads all entry names of the default word dictionary once. }
+function EnsureWordIndex: Boolean;
+var
+  Q: TSQLQuery;
+  Key: string;
+begin
+  if GWordIndexReady then
+    Exit(True);
+  Result := False;
+  if (GDefaultWord = nil) or (GDefaultWord.DataBase = nil) then
+    Exit;
+  if GWordIndex = nil then
+    GWordIndex := specialize TDictionary<string, Int64>.Create
+  else
+    GWordIndex.Clear;
+  Q := TSQLQuery.Create(nil);
+  try
+    try
+      Q.DataBase := GDefaultWord.DataBase;
+      Q.Transaction := GDefaultWord.Transaction;
+      Q.SQL.Text := 'select id, subject from topics order by id';
+      Q.Open;
+      while not Q.EOF do
+      begin
+        Key := LowerCase(Q.Fields[1].AsString);
+        if (Key <> '') and (not GWordIndex.ContainsKey(Key)) then
+          GWordIndex.Add(Key, Q.Fields[0].AsLargeInt);
+        Q.Next;
+      end;
+      Q.Close;
+      GWordByIdQuery := TSQLQuery.Create(nil);
+      GWordByIdQuery.DataBase := GDefaultWord.DataBase;
+      GWordByIdQuery.Transaction := GDefaultWord.Transaction;
+      GWordByIdQuery.SQL.Text :=
+        'select subject, data, data2 from topics, content ' +
+        'where id = :id and id = topic_id';
+      GWordByIdQuery.Prepare;
+      GWordIndexReady := True;
+      Result := True;
+    except
+      GWordIndex.Clear;
+      FreeAndNil(GWordByIdQuery);
+      GWordIndexReady := False;
+    end;
+  finally
+    Q.Free;
+  end;
+end;
 
 function ResolveDictionaryFilePath(const APath: string): string;
 var
@@ -227,6 +300,8 @@ procedure SetDefaultDictionaries(const GreekStrongPath, HebrewStrongPath,
       Exit;
     TDictionaryManager.ReleaseQuery(Query);
     ClearLookupCache;
+    if Slot = 3 then
+      ResetWordIndex;
     GDefaultPaths[Slot] := FullPath;
     GDefaultStamps[Slot] := 0;
     if FullPath <> '' then
@@ -1670,6 +1745,7 @@ var
   Clean, Lower, Candidate, Data, CacheKey, Cached: string;
   Candidates: array of string;
   CachePos: Integer;
+  WordId: Int64;
 
   procedure Add(const Value: string);
   begin
@@ -1723,6 +1799,36 @@ begin
   begin
     Add(Copy(Clean, 1, Length(Clean) - 3));
     Add(Copy(Clean, 1, Length(Clean) - 3) + 'e');
+  end;
+
+  if EnsureWordIndex then
+  begin
+    for Candidate in Candidates do
+      if GWordIndex.TryGetValue(LowerCase(Candidate), WordId) then
+      begin
+        GWordByIdQuery.Close;
+        GWordByIdQuery.Params.ParamByName('id').AsLargeInt := WordId;
+        GWordByIdQuery.Open;
+        try
+          if not GWordByIdQuery.EOF then
+          begin
+            Data := GWordByIdQuery.FieldByName('data').AsString;
+            if Data <> '' then
+            begin
+              MatchedKey := GWordByIdQuery.FieldByName('subject').AsString;
+              Result := FormatRTF(DecodeContentData(Data));
+            end;
+          end;
+        finally
+          GWordByIdQuery.Close;
+        end;
+        if Result <> '' then
+          Break;
+      end;
+    LookupCachePut(CacheKey, MatchedKey + #1 + Result);
+    if Result = '' then
+      LookupCachePut(CacheKey, '');
+    Exit;
   end;
 
   for Candidate in Candidates do
@@ -1784,5 +1890,8 @@ finalization
   TDictionaryManager.ReleaseQuery(GDefaultStrongHebrew);
   TDictionaryManager.ReleaseQuery(GDefaultMorphology);
   TDictionaryManager.ReleaseQuery(GDefaultWord);
+  ResetWordIndex;
+  FreeAndNil(GWordIndex);
+  FreeAndNil(GLookupCache);
 
 end.
