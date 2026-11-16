@@ -2,7 +2,7 @@
 - Chapter panel: paragraph formatting tags now follow the theWord guidelines. <CM> starts a spaced paragraph, <CI> a tight paragraph, <CL> a new line inside the same paragraph, <PI>/<PI1>..<PI7> set the left indent (40 px, then +20 px per level; <PI0> and <Pi> reset it) and <PF>/<PF1>..<PF7> the first-line indent (<PF0> none).
 - A paragraph tag at the start of a verse (<CM>, <CI>, <CL>, <PI..>, <PF..>) now takes effect before the verse number, so the number sits at the start of the new paragraph.
 - Indent and spacing apply when Paragraph mode is on (right-click the chapter panel); with Paragraph mode off the tags are ignored as before.
-- About: shows the program folder and the working (settings) folder, where iBiblia.ini is kept. Click either line to open the folder.
+- About: shows the program folder and the working (settings) folder, where iBiblia.ini is kept. Click a line to open the folder. When the settings are kept beside the program, a single "Program and working folder" line is shown.
 
 Version 1.1.0.021 (64-bit Edition) - 2026-11-15
 - Fixed dialogs such as Export project keeping light tab pages, check boxes and buttons the first time they open: the skin was applied before the dialog's controls existed, so only the dialog background turned dark. The skin is now applied again once the dialog is on screen, including tab pages not yet shown.

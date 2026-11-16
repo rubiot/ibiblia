@@ -15,7 +15,7 @@
   * `<PI>`/`<PF>` apply to the paragraph being built and reset at the next paragraph boundary, as the theWord rules say; the order boundary, `<PI>`, `<PF>`, text is honoured.
   * Tags at the very start of a verse are applied before the verse number, so the number starts the new paragraph.
   * Out-of-contract spellings (`<PI8>`, `<Pf>`) are ignored. With Paragraph mode off the tags are ignored, as before.
-* **Program and Working Folder in About (`unitabout.pas`, `formprincipal.pas`)**: The About box lists the program folder and the working (settings) folder, the place `iBiblia.ini` is kept (the program folder, or `$XDG_CONFIG_HOME/iBiblia` / `~/.config/iBiblia` on Linux when the program folder is read-only). Long paths are shortened in the middle, the hint shows the full path, and a click opens the folder.
+* **Program and Working Folder in About (`unitabout.pas`, `formprincipal.pas`)**: The About box lists the program folder and the working (settings) folder, the place `iBiblia.ini` is kept (the program folder, or `$XDG_CONFIG_HOME/iBiblia` / `~/.config/iBiblia` on Linux when the program folder is read-only). Long paths are shortened in the middle, the hint shows the full path, and a click opens the folder. When the settings are kept beside the program, a single "Program and working folder" line is shown instead of two.
 
 ### 0b. Version 1.1.0.021 (2026-11-15) — Dialog Skin Completed on First Open
 

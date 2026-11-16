@@ -118,7 +118,7 @@ const
   '- Chapter panel: paragraph formatting tags now follow the theWord guidelines. <CM> starts a spaced paragraph, <CI> a tight paragraph, <CL> a new line inside the same paragraph, <PI>/<PI1>..<PI7> set the left indent (40 px, then +20 px per level; <PI0> and <Pi> reset it) and <PF>/<PF1>..<PF7> the first-line indent (<PF0> none).' + LineEnding +
   '- A paragraph tag at the start of a verse (<CM>, <CI>, <CL>, <PI..>, <PF..>) now takes effect before the verse number, so the number sits at the start of the new paragraph.' + LineEnding +
   '- Indent and spacing apply when Paragraph mode is on (right-click the chapter panel); with Paragraph mode off the tags are ignored as before.' + LineEnding +
-  '- About: shows the program folder and the working (settings) folder, where iBiblia.ini is kept. Click either line to open the folder.' + LineEnding +
+  '- About: shows the program folder and the working (settings) folder, where iBiblia.ini is kept. Click a line to open the folder. When the settings are kept beside the program, a single "Program and working folder" line is shown.' + LineEnding +
   LineEnding +
   'Version 1.1.0.021 (64-bit Edition) - 2026-11-15' + LineEnding +
   '- Fixed dialogs such as Export project keeping light tab pages, check boxes and buttons on first open.' + LineEnding +
@@ -629,6 +629,18 @@ begin
   LabelConfigDir.Font.Height := -12;
   LabelConfigDir.OnClick := @LabelFolderClick;
 
+  { When the settings live beside the program there is only one folder to show. }
+  if (AboutConfigFilePath = '') or
+     SameText(ExcludeTrailingPathDelimiter(ExtractFilePath(AboutConfigFilePath)),
+       ExcludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))) then
+  begin
+    LabelConfigDir.Visible := False;
+    LabelProgramDir.Caption := FitFolderCaption(LabelProgramDir,
+      'Program and working folder: ',
+      ExcludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))));
+    ClientHeight := ClientHeight - 24;
+  end;
+
   // Buttons
   ButtonUserGuide := TButton.Create(Self);
   ButtonUserGuide.Parent := Self;
@@ -659,6 +671,13 @@ begin
   ButtonClose.Default := True;
   ButtonClose.ModalResult := mrOk;
   ButtonClose.OnClick := @ButtonCloseClick;
+
+  if not LabelConfigDir.Visible then
+  begin
+    ButtonUserGuide.Top := ButtonUserGuide.Top - 24;
+    ButtonChangelog.Top := ButtonChangelog.Top - 24;
+    ButtonClose.Top := ButtonClose.Top - 24;
+  end;
 
   ApplySkin(CurrentSkin);
 end;
