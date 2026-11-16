@@ -553,6 +553,17 @@ type
     ColorIdx: Integer;
     FontSizePt: Integer;
     UcSkip: Integer;
+    ParaLI: Integer;   { twips }
+    ParaFI: Integer;   { twips }
+    ParaRI: Integer;   { twips }
+    ParaSB: Integer;   { twips, space before }
+    ParaSA: Integer;   { twips, space after }
+  end;
+
+  TRtfParaSpan = record
+    CharStart: Integer;
+    CharLen: Integer;
+    LI, FI, RI, SB, SA: Integer;
   end;
 
   TRtfTextSpan = record
@@ -671,7 +682,29 @@ var
   CurCodePointPos: Integer;
   Spans: array of TRtfTextSpan;
   SpanCount: Integer;
+  Paras: array of TRtfParaSpan;
+  ParaCount: Integer;
+  ParaStartPos: Integer;
   i, Len: Integer;
+
+  procedure ClosePara;
+  begin
+    if (CurCodePointPos > ParaStartPos) and
+       ((CurState.ParaLI <> 0) or (CurState.ParaFI <> 0) or (CurState.ParaRI <> 0) or
+        (CurState.ParaSB <> 0) or (CurState.ParaSA <> 0)) then
+    begin
+      if ParaCount >= Length(Paras) then
+        SetLength(Paras, Max(16, Length(Paras) * 2));
+      Paras[ParaCount].CharStart := ParaStartPos;
+      Paras[ParaCount].CharLen := CurCodePointPos - ParaStartPos;
+      Paras[ParaCount].LI := CurState.ParaLI;
+      Paras[ParaCount].FI := CurState.ParaFI;
+      Paras[ParaCount].RI := CurState.ParaRI;
+      Paras[ParaCount].SB := CurState.ParaSB;
+      Paras[ParaCount].SA := CurState.ParaSA;
+      Inc(ParaCount);
+    end;
+  end;
 
   function ResolveColor(AIdx: Integer): TColor;
   begin
@@ -752,6 +785,7 @@ var
   SeqLen: Integer;
   SpanIdx: Integer;
   BaseParams, Params: TFontParams;
+  PM: TParaMetric;
 begin
   if Memo = nil then Exit;
 
@@ -815,6 +849,14 @@ begin
   CurState.ColorIdx := 0;
   CurState.FontSizePt := 11;
   CurState.UcSkip := 1;
+  CurState.ParaLI := 0;
+  CurState.ParaFI := 0;
+  CurState.ParaSB := 0;
+  CurState.ParaSA := 0;
+  CurState.ParaRI := 0;
+  SetLength(Paras, 16);
+  ParaCount := 0;
+  ParaStartPos := 0;
 
   SetLength(StateStack, 32);
   StackTop := 0;
@@ -1053,10 +1095,27 @@ begin
         Continue;
       end;
 
-      if (Cmd = 'par') or (Cmd = 'line') or (Cmd = 'row') or (Cmd = 'nestrow') then
+      if (Cmd = 'par') or (Cmd = 'row') or (Cmd = 'nestrow') then
+      begin
+        RunBuffer := RunBuffer + #10;
+        FlushRun;
+        ClosePara;
+        ParaStartPos := CurCodePointPos;
+      end
+      else if Cmd = 'line' then
       begin
         RunBuffer := RunBuffer + #10;
       end
+      else if Cmd = 'li' then
+        CurState.ParaLI := StrToIntDef(ParamStr, 0)
+      else if Cmd = 'fi' then
+        CurState.ParaFI := StrToIntDef(ParamStr, 0)
+      else if Cmd = 'ri' then
+        CurState.ParaRI := StrToIntDef(ParamStr, 0)
+      else if Cmd = 'sb' then
+        CurState.ParaSB := StrToIntDef(ParamStr, 0)
+      else if Cmd = 'sa' then
+        CurState.ParaSA := StrToIntDef(ParamStr, 0)
       else if (Cmd = 'tab') or (Cmd = 'cell') or (Cmd = 'nestcell') then
       begin
         RunBuffer := RunBuffer + '  ';
@@ -1100,6 +1159,11 @@ begin
       end
       else if Cmd = 'pard' then
       begin
+        CurState.ParaLI := 0;
+        CurState.ParaFI := 0;
+        CurState.ParaRI := 0;
+        CurState.ParaSB := 0;
+        CurState.ParaSA := 0;
       end
       else if Cmd = 'b' then
       begin
@@ -1188,6 +1252,7 @@ begin
   end;
 
   FlushRun;
+  ClosePara;
 
   Memo.Lines.Text := FullText;
   if (Memo.Lines.Text = '') and (FullText <> '') then
@@ -1215,6 +1280,18 @@ begin
       if Spans[SpanIdx].Underline then Include(Params.Style, fsUnderline);
       StyleTextRange(Memo, Spans[SpanIdx].CharStart, Spans[SpanIdx].CharLen, Params, False);
     end;
+  end;
+
+  { paragraph indents (RTF \li \fi \ri, twips -> points) }
+  for SpanIdx := 0 to ParaCount - 1 do
+  begin
+    InitParaMetric(PM);
+    PM.HeadIndent := Max(0, Paras[SpanIdx].LI) / 20.0;
+    PM.FirstLine := Max(0, Paras[SpanIdx].LI + Paras[SpanIdx].FI) / 20.0;
+    PM.TailIndent := Max(0, Paras[SpanIdx].RI) / 20.0;
+    PM.SpaceBefore := Max(0, Paras[SpanIdx].SB) / 20.0;
+    PM.SpaceAfter := Max(0, Paras[SpanIdx].SA) / 20.0;
+    Memo.SetParaMetric(Paras[SpanIdx].CharStart, Max(1, Paras[SpanIdx].CharLen), PM);
   end;
 
   Memo.SelStart := 0;

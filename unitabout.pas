@@ -114,6 +114,10 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.029 (64-bit Edition) - 2026-11-16' + LineEnding +
+  '- Per-module dictionaries: when the default dictionaries are enabled in Project > Properties, iBiblia no longer looks for (or complains about) the dictionary selected for each text. Dictionary paths saved on Windows (such as C:/Users/.../x.dct.twm) are no longer treated as folders inside the program folder on Linux: they are looked for next to the project or the program by file name, and any message shows the real saved path.' + LineEnding +
+  '- Linux: dictionary entries in the word popup now keep their paragraph formatting: indented and hanging-indent lines (1), 1a), A., II.) and the space between paragraphs, as on Windows.' + LineEnding +
+  LineEnding +
   'Version 1.1.0.028 (64-bit Edition) - 2026-11-16' + LineEnding +
   '- Linux: the word definition popup no longer slows down and freezes iBiblia. Each time it showed a definition, the GTK text box kept every colour/bold/italic style it had ever used, so after a few dozen words the program spent all its time on the popup. Each style is now created once and reused (hovering 12 words: about 1 second of work instead of 10).' + LineEnding +
   '- Mouse-wheel word selection steps through the real source words only: it skipped onto the interlinear glosses (the small ''Shall Be'', ''Great,'' words) in a source text such as TRi. When the project''s auto-advance only stops on words with Strong''s or morphology, the wheel follows the same rule.' + LineEnding +

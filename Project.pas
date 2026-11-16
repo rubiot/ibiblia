@@ -4781,6 +4781,46 @@ begin
   end;
 end;
 
+function IsForeignAbsolutePath(const APath: string): Boolean;
+begin
+  { Windows drive path (C:\x or C:/x) stored by a project made on Windows }
+  Result := (Length(APath) >= 3) and (APath[2] = ':') and
+    (UpCase(APath[1]) in ['A'..'Z']) and (APath[3] in ['\', '/']);
+end;
+
+{ Resolves a dictionary path stored in a project. On non-Windows systems a
+  Windows drive path is never relative to the program folder: backslashes are
+  converted and, when the file is not there, the same file name is looked for
+  next to the project. Returns the path to use (may not exist). }
+function ResolveStoredDictionaryPath(const APath: string): string;
+{$IFNDEF WINDOWS}
+var
+  Name, Dir: string;
+{$ENDIF}
+begin
+  Result := APath;
+  {$IFNDEF WINDOWS}
+  if IsForeignAbsolutePath(APath) then
+  begin
+    Name := StringReplace(APath, '\', '/', [rfReplaceAll]);
+    if FileExists(Name) then
+      exit(Name);
+    Name := ExtractFileName(Name);
+    for Dir in [GetCurrentDir, ExtractFilePath(ParamStr(0))] do
+      if FileExists(IncludeTrailingPathDelimiter(Dir) + Name) then
+        exit(IncludeTrailingPathDelimiter(Dir) + Name);
+  end;
+  {$ENDIF}
+end;
+
+function DictionaryDisplayPath(const APath: string): string;
+begin
+  if IsForeignAbsolutePath(APath) then
+    Result := APath
+  else
+    Result := FExpand(APath);
+end;
+
 function TProject.AssignStrongDictionary(dic: string; t: TTipoTextoBiblico): boolean;
 var
   ValidationResult: TDictionaryValidationResult;
@@ -4793,9 +4833,17 @@ begin
   if dic = '' then
     exit;
 
+  { default dictionaries enabled: the per-module selection is not used }
+  if GetUseDefaultDictionaries then
+  begin
+    result := true;
+    exit;
+  end;
+
+  dic := ResolveStoredDictionaryPath(dic);
   if not FileExists(dic) then
   begin
-    MessageDlg(SStrongDictionary, format(SDictionaryDoesntExist, [FExpand(dic)]), mtError, [mbOK], 0);
+    MessageDlg(SStrongDictionary, format(SDictionaryDoesntExist, [DictionaryDisplayPath(dic)]), mtError, [mbOK], 0);
     exit;
   end;
 
@@ -4833,9 +4881,19 @@ begin
   if dic = '' then
     exit;
 
+  { default dictionaries enabled: the per-module selection is not used }
+  if GetUseDefaultDictionaries then
+  begin
+    FAVersiculo[t].OnMouseEnter := @SintagmaOnMouseEnter;
+    FAVersiculo[t].OnMouseLeave := @SintagmaOnMouseLeave;
+    result := true;
+    exit;
+  end;
+
+  dic := ResolveStoredDictionaryPath(dic);
   if not FileExists(dic) then
   begin
-    MessageDlg(SMorphologyDictionary, format(SDictionaryDoesntExist, [FExpand(dic)]), mtError, [mbOK], 0);
+    MessageDlg(SMorphologyDictionary, format(SDictionaryDoesntExist, [DictionaryDisplayPath(dic)]), mtError, [mbOK], 0);
     exit;
   end;
 
