@@ -6,7 +6,14 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.023 (2026-11-16) — theWord Paragraph Tags in the Chapter Panel & Folder Info in About
+### 0. Version 1.1.0.024 (2026-11-16) — Paragraph Tags in the Verse Panels
+
+* **Paragraph Tags in the Source, Destination, Reference 1 and Reference 2 Panels (`verse_visual_adapter.pas`, `verse_visual_document.pas`, `directwrite_syntagm_view.pas`)**:
+  * `<CM>` and `<CI>` now break the line; `<CM>` also leaves a gap above the next paragraph. Both show a dim marker like `<CL>` does (pilcrow for `<CM>`, reversed pilcrow for `<CI>`).
+  * `<PI>` / `<PI1>`..`<PI7>` indent the whole paragraph and `<PF>` / `<PF1>`..`<PF7>` its first line (`<PI0>`, `<Pi>` and `<PF0>` reset); level 1 is 40 px, +20 px per level. Indents end at the next line break.
+  * The indents are drawn by the text layout used on Linux. The Windows DirectWrite view receives the same line breaks, but its indents are not drawn yet (not testable from the Linux build environment).
+
+### 0c. Version 1.1.0.023 (2026-11-16) — theWord Paragraph Tags in the Chapter Panel & Folder Info in About
 
 * **theWord Paragraph Tags in the Chapter Panel (`chapterview.pas`)**: The chapter panel now renders the theWord paragraph formatting tags, in Paragraph mode:
   * `<CM>` starts a spaced paragraph, `<CI>` a tight paragraph and `<CL>` a new line inside the same paragraph.

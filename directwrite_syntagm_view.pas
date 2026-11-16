@@ -770,6 +770,9 @@ var
   BaseOff, LineIdx, StepLen: Integer;
   Ch: WideChar;
   SubStr: string;
+  { theWord <PI>/<PF>: indents (px) of the paragraph being laid out, and the
+    next zero-length indent span still to apply. }
+  ParaLeft, ParaFirst, NextIndentSpan: Integer;
 
   procedure StartNewLine(AStartUTF16: Integer);
   begin
@@ -780,7 +783,36 @@ var
     FFallbackLines[LineIdx].Top := CurY;
     FFallbackLines[LineIdx].Height := LineH;
     FFallbackLines[LineIdx].Baseline := Round(LineH * 0.8);
-    CurX := FLayoutPadding;
+    CurX := FLayoutPadding + ParaLeft;
+  end;
+
+  { Applies the <PI>/<PF> spans located at or before AOffset. When the line is
+    still empty, the paragraph's first line is positioned again. }
+  procedure ApplyIndentSpans(AOffset: Integer);
+  var
+    Changed: Boolean;
+    IndentSpan: TVisualSpan;
+  begin
+    Changed := False;
+    while NextIndentSpan < FDocument.SpanCount do
+    begin
+      IndentSpan := FDocument.Spans[NextIndentSpan];
+      if IndentSpan.Role <> vsrParagraphIndent then
+      begin
+        Inc(NextIndentSpan);
+        Continue;
+      end;
+      if IndentSpan.StartUTF16 > AOffset then
+        Break;
+      if IndentSpan.IndentKind = vikLeft then
+        ParaLeft := IndentSpan.IndentPx
+      else if IndentSpan.IndentKind = vikFirstLine then
+        ParaFirst := IndentSpan.IndentPx;
+      Changed := True;
+      Inc(NextIndentSpan);
+    end;
+    if Changed and (FFallbackLines[LineIdx].LengthUTF16 = 0) then
+      CurX := FLayoutPadding + ParaLeft + ParaFirst;
   end;
 
 begin
@@ -822,11 +854,15 @@ begin
     MaxW := Max(32, ClientWidth - 2 * FLayoutPadding);
     CurY := FLayoutPadding;
     LineIdx := -1;
+    ParaLeft := 0;
+    ParaFirst := 0;
+    NextIndentSpan := 0;
     StartNewLine(0);
 
     TokenStart := 0;
     while TokenStart < TextLen do
     begin
+      ApplyIndentSpans(TokenStart);
       Ch := DocText[TokenStart + 1];
       if Ch = #13 then
       begin
@@ -843,6 +879,15 @@ begin
         Inc(FFallbackLines[LineIdx].LengthUTF16);
         Inc(TokenStart);
         Inc(CurY, LineH);
+        { A paragraph mark of <CM> leaves a gap, and every line break starts
+          a new paragraph, so the previous indents end here. }
+        SpanIdx := FFallbackSpanIndexForChar[TokenStart - 1];
+        if (SpanIdx >= 0) and
+           (FDocument.Spans[SpanIdx].Role = vsrParagraphMark) and
+           (FDocument.Spans[SpanIdx].ObjectId = 1) then
+          Inc(CurY, LineH div 2);
+        ParaLeft := 0;
+        ParaFirst := 0;
         StartNewLine(TokenStart);
         Continue;
       end;
@@ -888,7 +933,7 @@ begin
         Inc(CharIdx, StepLen);
       end;
 
-      if (Ch <> ' ') and (CurX > FLayoutPadding) and
+      if (Ch <> ' ') and (FFallbackLines[LineIdx].LengthUTF16 > 0) and
          (CurX + TokenW > FLayoutPadding + MaxW) then
       begin
         Inc(CurY, LineH);
@@ -911,7 +956,8 @@ begin
         ApplySpanFontToCanvas(MCanvas, Style, BaseOff);
         SubStr := UTF8Encode(Copy(DocText, CharIdx + 1, StepLen));
         CharW := Max(1, MCanvas.TextWidth(SubStr));
-        if (CurX > FLayoutPadding) and (CurX + CharW > FLayoutPadding + MaxW) then
+        if (FFallbackLines[LineIdx].LengthUTF16 > 0) and
+           (CurX + CharW > FLayoutPadding + MaxW) then
         begin
           Inc(CurY, LineH);
           StartNewLine(CharIdx);

@@ -322,6 +322,45 @@ begin
   Result.ForegroundColor := LongInt(clGrayText);
 end;
 
+{ theWord <PI>/<PI0..7>/<Pi> (left indent) and <PF>/<PF0..7> (first-line
+  indent). Level 1 is 40 px and every further level adds 20 px. }
+function TryParseParagraphIndentTag(const ATag: UnicodeString;
+  out AKind: TVisualIndentKind; out APx: Integer): Boolean;
+var
+  Level: Integer;
+begin
+  AKind := vikNone;
+  APx := 0;
+  Result := False;
+  if (Length(ATag) < 4) or (ATag[1] <> '<') or (ATag[Length(ATag)] <> '>') then
+    Exit;
+  if ATag = '<Pi>' then
+  begin
+    AKind := vikLeft;
+    Exit(True);
+  end;
+  if ATag[2] <> 'P' then
+    Exit;
+  if ATag[3] = 'I' then
+    AKind := vikLeft
+  else if ATag[3] = 'F' then
+    AKind := vikFirstLine
+  else
+    Exit;
+  if Length(ATag) = 4 then
+    Level := 1
+  else if (Length(ATag) = 5) and (ATag[4] >= '0') and (ATag[4] <= '7') then
+    Level := Ord(ATag[4]) - Ord('0')
+  else
+  begin
+    AKind := vikNone;
+    Exit;
+  end;
+  if Level > 0 then
+    APx := 40 + (Level - 1) * 20;
+  Result := True;
+end;
+
 procedure AddRenderedTranslatorNote(var RenderedNotes:
   TVerseRenderedTranslatorNoteArray; LogicalIndex: Integer;
   const Note: TTheWordProjectedTranslatorNoteV2;
@@ -360,10 +399,40 @@ var
   HasProjectedStyle: Boolean;
   NoteIndex: Integer;
   ProjectedNote: TTheWordProjectedTranslatorNoteV2;
+  RawLexeme: UnicodeString;
+  IndentKind: TVisualIndentKind;
+  IndentPx: Integer;
 begin
   if not Assigned(Syntagm) then
   begin
     Builder.AddHidden(LogicalIndex);
+    Exit;
+  end;
+
+  { <CM> and <CI> start a paragraph (CM with a gap above it), shown like <CL>
+    as a dim marker plus a real line break. <PI>/<PF> are zero-length markers
+    that the view uses to indent the paragraph that follows. None of them
+    consumes a visible ONT offset. }
+  RawLexeme := UTF8Decode(Syntagm.RawText);
+  if RawLexeme = '' then
+    RawLexeme := UTF8Decode(Syntagm.Text);
+  if RawLexeme = UnicodeString('<CM>') then
+  begin
+    Builder.AddRoleText(LogicalIndex,
+      UnicodeString(WideChar($00B6)) + #10, SoftLineBreakStyle, False,
+      vsrParagraphMark, 1, 'paragraph-mark');
+    Exit;
+  end;
+  if RawLexeme = UnicodeString('<CI>') then
+  begin
+    Builder.AddRoleText(LogicalIndex,
+      UnicodeString(WideChar($204B)) + #10, SoftLineBreakStyle, False,
+      vsrParagraphMark, 0, 'paragraph-mark');
+    Exit;
+  end;
+  if TryParseParagraphIndentTag(RawLexeme, IndentKind, IndentPx) then
+  begin
+    Builder.AddParagraphIndent(LogicalIndex, IndentKind, IndentPx);
     Exit;
   end;
 

@@ -58,8 +58,13 @@ type
     vsrTranslatorNote,
     { A rendered <CL> marker followed by a real line feed. It is a visual
       object, never editable or associable verse text. }
-    vsrSoftLineBreak
+    vsrSoftLineBreak,
+    { Zero-length marker for a theWord <PIn>/<PFn> tag. The indent belongs to
+      the paragraph that starts at the span's offset. }
+    vsrParagraphIndent
   );
+
+  TVisualIndentKind = (vikNone, vikLeft, vikFirstLine);
 
   TVisualSpan = record
     LogicalIndex: Integer;
@@ -72,6 +77,10 @@ type
     Annotation: UnicodeString;
     Role: TVisualSpanRole;
     ObjectId: QWord;
+    { Only for vsrParagraphIndent: which indent the tag sets and its size in
+      device-independent pixels. }
+    IndentKind: TVisualIndentKind;
+    IndentPx: Integer;
   end;
 
   IVerseVisualDocument = interface
@@ -134,6 +143,8 @@ type
       Role: TVisualSpanRole; ObjectId: QWord;
       const Annotation: UnicodeString = '');
     procedure AddMarkup(LogicalIndex: Integer; const Markup: UnicodeString);
+    procedure AddParagraphIndent(LogicalIndex: Integer;
+      Kind: TVisualIndentKind; IndentPx: Integer);
     procedure AddHidden(LogicalIndex: Integer);
     function Build(Revision: QWord): IVerseVisualDocument;
     property BaseDirection: TTextDirection read FBaseDirection;
@@ -360,6 +371,8 @@ begin
   FSpans[SpanIndex].Annotation := Annotation;
   FSpans[SpanIndex].Role := vsrContent;
   FSpans[SpanIndex].ObjectId := 0;
+  FSpans[SpanIndex].IndentKind := vikNone;
+  FSpans[SpanIndex].IndentPx := 0;
   FText := FText + Text;
 end;
 
@@ -470,6 +483,19 @@ begin
     CloseDirection(LogicalIndex, tdLeftToRight)
   else
     AddHidden(LogicalIndex);
+end;
+
+procedure TVerseVisualDocumentBuilder.AddParagraphIndent(
+  LogicalIndex: Integer; Kind: TVisualIndentKind; IndentPx: Integer);
+var
+  SpanIndex: Integer;
+begin
+  AppendSpan(LogicalIndex, '', vskHidden, CurrentDirection,
+    DefaultVisualTextStyle, False, '');
+  SpanIndex := High(FSpans);
+  FSpans[SpanIndex].Role := vsrParagraphIndent;
+  FSpans[SpanIndex].IndentKind := Kind;
+  FSpans[SpanIndex].IndentPx := IndentPx;
 end;
 
 procedure TVerseVisualDocumentBuilder.AddHidden(LogicalIndex: Integer);

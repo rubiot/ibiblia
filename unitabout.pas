@@ -114,6 +114,10 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.024 (64-bit Edition) - 2026-11-16' + LineEnding +
+  '- Source, Destination, Reference 1 and Reference 2 verse panels: paragraph tags now show. <CM> and <CI> break the line (CM leaves a gap above the next paragraph) and are marked with a dim pilcrow like <CL>; <PI>/<PI0..7> indent the whole paragraph and <PF>/<PF0..7> its first line (40 px for level 1, +20 px per level).' + LineEnding +
+  '- Windows note: the DirectWrite verse view shows the paragraph breaks; the indents are drawn by the Linux text layout and are not yet drawn on Windows.' + LineEnding +
+  LineEnding +
   'Version 1.1.0.023 (64-bit Edition) - 2026-11-16' + LineEnding +
   '- Chapter panel: paragraph formatting tags now follow the theWord guidelines. <CM> starts a spaced paragraph, <CI> a tight paragraph, <CL> a new line inside the same paragraph, <PI>/<PI1>..<PI7> set the left indent (40 px, then +20 px per level; <PI0> and <Pi> reset it) and <PF>/<PF1>..<PF7> the first-line indent (<PF0> none).' + LineEnding +
   '- A paragraph tag at the start of a verse (<CM>, <CI>, <CL>, <PI..>, <PF..>) now takes effect before the verse number, so the number sits at the start of the new paragraph.' + LineEnding +
