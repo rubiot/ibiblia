@@ -124,6 +124,11 @@ type
     FProject: TProject;
     FRxVerseHeading: IRegex;
     FNoteID: integer;
+    FParaLeft: integer;     { pending <PIn> left indent (px) of the paragraph being built }
+    FParaFirst: integer;    { pending <PFn> first-line indent (px); -1 = not set }
+    FParaGap: integer;      { space above the paragraph being built (<CM>) }
+    FParaIsLine: boolean;   { paragraph being built was opened by <CL> }
+    FLeadingParaTagsToSkip: integer; { leading paragraph tags already applied before the verse number }
     FNoteNumberer: TRFNoteNumberer;
     FTranslatorNoteHoverController: TChapterTranslatorNoteHoverController;
     FTranslatorNoteRevision: QWord;
@@ -195,6 +200,10 @@ type
     procedure RenderChapterHeader;
     procedure RenderChapterFooter;
     procedure RenderVerse(txt: string);
+    procedure AddParagraphBreak(cont: TKMemoBlocks; ASpaced, ALine: boolean);
+    function ApplyParagraphIndentTag(const ATag: string): boolean;
+    procedure ResetParagraphState;
+    function ApplyLeadingParagraphTags(const ATxt: string): integer;
     procedure RenderVerseNumber(number: integer);
     procedure RenderNote(const OpeningTag, Note: string);
     procedure RenderNotes;
@@ -361,6 +370,10 @@ const
   ChapterNumberColor = $2cba7d;
   TranslationMemoryCurrentColor = clBlue;
   DefaultFirstIndent = 20;
+  { theWord <PIn>/<PFn> levels: level 1 = 40 px, +20 px per level up to 7 }
+  ParagraphIndentBase = 40;
+  ParagraphIndentStep = 20;
+  SpacedParagraphGap = 8;
 
 resourcestring
   SSetFont = 'Choose &font...';
@@ -691,6 +704,157 @@ end;
 
 { TChapterView }
 
+{ True for the theWord indent tags <PI>, <PI0>..<PI7>, <Pi>, <PF>, <PF0>..<PF7>. }
+function IsParagraphIndentTag(const ATag: string): boolean;
+begin
+  Result := False;
+  if (Length(ATag) < 4) or (ATag[1] <> '<') or (ATag[Length(ATag)] <> '>') then
+    Exit;
+  if ATag = '<Pi>' then
+    Exit(True);
+  if (ATag[2] = 'P') and (ATag[3] in ['I', 'F']) then
+    Result := (Length(ATag) = 4) or
+      ((Length(ATag) = 5) and (ATag[4] in ['0'..'7']));
+end;
+
+procedure TChapterView.ResetParagraphState;
+begin
+  FParaLeft := 0;
+  FParaFirst := -1;
+  FParaGap := 0;
+  FParaIsLine := False;
+end;
+
+{ Closes the paragraph being built. In KMemo the paragraph style lives on the
+  terminating paragraph block, so the pending <PI>/<PF>/<CM> state is written
+  to the new block and then cleared for the paragraph that starts after it.
+  ASpaced: the next paragraph is a spaced one (<CM>); ALine: the next "paragraph"
+  is only a new line of the same paragraph (<CL>). }
+procedure TChapterView.AddParagraphBreak(cont: TKMemoBlocks; ASpaced, ALine: boolean);
+var
+  First: integer;
+begin
+  if GetParagraphMode <> pmParagraph then
+  begin
+    cont.AddParagraph().ParaStyle.FirstIndent := 0;
+    ResetParagraphState;
+    Exit;
+  end;
+
+  if FParaFirst >= 0 then
+    First := FParaFirst
+  else if (FParaLeft = 0) and not FParaIsLine then
+    First := DefaultFirstIndent
+  else
+    First := 0;
+
+  with cont.AddParagraph().ParaStyle do
+  begin
+    LeftPadding := FParaLeft;
+    FirstIndent := First;
+    TopPadding := FParaGap;
+  end;
+
+  ResetParagraphState;
+  FParaIsLine := ALine;
+  if ASpaced then
+    FParaGap := SpacedParagraphGap;
+end;
+
+{ theWord <PI>/<PI0..7>/<Pi> and <PF>/<PF0..7>. Returns True when ATag is one
+  of them. Out-of-contract spellings (<Pf>, <PI8>, ...) are not consumed. }
+function TChapterView.ApplyParagraphIndentTag(const ATag: string): boolean;
+var
+  Level: integer;
+
+  function ReadLevel(const Digits: string; out ALevel: integer): boolean;
+  begin
+    if Digits = '' then
+    begin
+      ALevel := 1;
+      Exit(True);
+    end;
+    Result := (Length(Digits) = 1) and (Digits[1] in ['0'..'7']);
+    if Result then
+      ALevel := Ord(Digits[1]) - Ord('0');
+  end;
+
+  function PixelsFor(ALevel: integer): integer;
+  begin
+    if ALevel <= 0 then
+      Result := 0
+    else
+      Result := ParagraphIndentBase + (ALevel - 1) * ParagraphIndentStep;
+  end;
+
+begin
+  Result := False;
+  if (Length(ATag) < 4) or (ATag[1] <> '<') or (ATag[Length(ATag)] <> '>') then
+    Exit;
+  if ATag = '<Pi>' then
+  begin
+    FParaLeft := 0;
+    Exit(True);
+  end;
+  if Copy(ATag, 1, 3) = '<PI' then
+  begin
+    if ReadLevel(Copy(ATag, 4, Length(ATag) - 4), Level) then
+    begin
+      FParaLeft := PixelsFor(Level);
+      Result := True;
+    end;
+  end
+  else if Copy(ATag, 1, 3) = '<PF' then
+  begin
+    if ReadLevel(Copy(ATag, 4, Length(ATag) - 4), Level) then
+    begin
+      FParaFirst := PixelsFor(Level);
+      Result := True;
+    end;
+  end;
+end;
+
+{ theWord puts the verse number after a paragraph boundary that opens the verse
+  text (<CM>Text, <CM><PI1><PF>Text). The leading paragraph tags are applied here,
+  before the verse number is rendered, and RenderSpan skips them afterwards.
+  Returns how many tags were applied. }
+function TChapterView.ApplyLeadingParagraphTags(const ATxt: string): integer;
+var
+  Pos, EndPos: integer;
+  LeadTag: string;
+begin
+  Result := 0;
+  Pos := 1;
+  while (Pos <= Length(ATxt)) and (ATxt[Pos] = '<') do
+  begin
+    EndPos := Pos;
+    while (EndPos <= Length(ATxt)) and (ATxt[EndPos] <> '>') do
+      Inc(EndPos);
+    if EndPos > Length(ATxt) then
+      Break;
+    LeadTag := Copy(ATxt, Pos, EndPos - Pos + 1);
+    if LeadTag = '<CM>' then
+    begin
+      if GetParagraphMode = pmParagraph then
+        AddParagraphBreak(Blocks, True, False);
+    end
+    else if LeadTag = '<CI>' then
+    begin
+      if GetParagraphMode = pmParagraph then
+        AddParagraphBreak(Blocks, False, False);
+    end
+    else if LeadTag = '<CL>' then
+    begin
+      if GetParagraphMode = pmParagraph then
+        AddParagraphBreak(Blocks, False, True);
+    end
+    else if not ApplyParagraphIndentTag(LeadTag) then
+      Break;
+    Inc(Result);
+    Pos := EndPos + 1;
+  end;
+end;
+
 procedure TChapterView.RenderVerse(txt: string);
 var
   mtHeading: IMatch;
@@ -708,6 +872,8 @@ begin
   if not heading.IsEmpty then
     RenderSpan(Blocks, heading);
 
+  FLeadingParaTagsToSkip := ApplyLeadingParagraphTags(txt);
+
   if Blocks.LastBlock.ClassName <> 'TKMemoParagraph' then
     Blocks.AddTextBlock(' '); // space between verses
 
@@ -718,6 +884,8 @@ begin
   FVerseRanges[FCurrentVerse].first := Blocks.Count;
   RenderSpan(Blocks, txt);
   FVerseRanges[FCurrentVerse].last := Blocks.Count-1;
+
+  FLeadingParaTagsToSkip := 0;
 
   if FProject.ParagraphMode = pmNoParagraphs then
     Blocks.AddParagraph().ParaStyle.FirstIndent := 0;
@@ -1325,6 +1493,11 @@ begin
         skPunctuation, skSyntagm:
           chunk := chunk + token.Value;
         skTag:
+        if (FLeadingParaTagsToSkip > 0) and (chunk = '') and
+           ((token.Value = '<CM>') or (token.Value = '<CI>') or
+            (token.Value = '<CL>') or IsParagraphIndentTag(token.Value)) then
+          Dec(FLeadingParaTagsToSkip) { already applied before the verse number }
+        else
         begin
           if chunk.Length > 0 then
           begin
@@ -1338,8 +1511,7 @@ begin
           begin
             if assigned(cont.LastBlock) and
               (cont.LastBlock.ClassName <> 'TKMemoParagraph') then
-              cont.AddParagraph().ParaStyle.FirstIndent :=
-                IfThen(GetParagraphMode = pmParagraph, DefaultFirstIndent);
+              AddParagraphBreak(cont, False, False);
             with PushNewStyle do
               case OpeningTag[4] of
                 '>','0','1':
@@ -1421,16 +1593,23 @@ begin
             AdvanceProjectionForConsumedRaw(UTF8Decode(OpeningTag +
               ConsumedBody + '<g>'), Projection, VisibleOffsetUTF16, RunIndex);
           end
-          else if (OpeningTag = '<CM>') or (OpeningTag = '<CI>') then
+          else if OpeningTag = '<CM>' then
           begin
             if GetParagraphMode = pmParagraph then
-              cont.AddParagraph().ParaStyle.FirstIndent := DefaultFirstIndent;
+              AddParagraphBreak(cont, True, False);
+          end
+          else if OpeningTag = '<CI>' then
+          begin
+            if GetParagraphMode = pmParagraph then
+              AddParagraphBreak(cont, False, False);
           end
           else if OpeningTag = '<CL>' then
           begin
             if GetParagraphMode = pmParagraph then
-              cont.AddParagraph().ParaStyle.FirstIndent := 0;
+              AddParagraphBreak(cont, False, True);
           end
+          else if ApplyParagraphIndentTag(OpeningTag) then
+            { <PIn>/<PFn>: stored for the paragraph being built }
           else if LowerCase(OpeningTag) = '<br/>' then
             cont.AddParagraph().ParaStyle.FirstIndent := 0
           else
@@ -1441,9 +1620,6 @@ begin
 
     if chunk.Length > 0 then
     begin
-      if assigned(cont.LastBlock) and
-        (cont.LastBlock.ClassName = 'TKMemoParagraph') then
-        cont.LastBlock.ParaStyle.FirstIndent := DefaultFirstIndent;
       RenderProjectedChunk(cont, chunk, Projection,
         VisibleOffsetUTF16, RunIndex);
     end;
@@ -3308,6 +3484,7 @@ begin
   try
     Blocks.Clear;
     ResetStyleStack;
+    ResetParagraphState;
 
     FNoteID := 1;
     FNoteNumberer.Reset;
@@ -3322,7 +3499,7 @@ begin
     end;
 
     if Blocks.LastBlock.ClassName <> 'TKMemoParagraph' then
-      Blocks.AddParagraph().ParaStyle.FirstIndent := IfThen(GetParagraphMode = pmParagraph, DefaultFirstIndent);
+      AddParagraphBreak(Blocks, False, False);
 
     RenderChapterFooter;
     //RenderNotes;

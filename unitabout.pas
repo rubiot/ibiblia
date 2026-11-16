@@ -22,6 +22,9 @@ type
     ButtonUserGuide: TButton;
     ButtonChangelog: TButton;
     ButtonClose: TButton;
+    LabelProgramDir: TLabel;
+    LabelConfigDir: TLabel;
+    procedure LabelFolderClick(Sender: TObject);
     procedure ButtonUserGuideClick(Sender: TObject);
     procedure ButtonChangelogClick(Sender: TObject);
     procedure ButtonCloseClick(Sender: TObject);
@@ -97,6 +100,8 @@ procedure ShowChangelog(AOwner: TComponent);
 procedure ShowUserGuide(AOwner: TComponent);
 
 var
+  { Full path of the settings file (iBiblia.ini) in use; set by the main form. }
+  AboutConfigFilePath: string;
   FormAbout: TFormAbout;
   FormUserGuide: TFormUserGuide;
 
@@ -109,6 +114,12 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.023 (64-bit Edition) - 2026-11-16' + LineEnding +
+  '- Chapter panel: paragraph formatting tags now follow the theWord guidelines. <CM> starts a spaced paragraph, <CI> a tight paragraph, <CL> a new line inside the same paragraph, <PI>/<PI1>..<PI7> set the left indent (40 px, then +20 px per level; <PI0> and <Pi> reset it) and <PF>/<PF1>..<PF7> the first-line indent (<PF0> none).' + LineEnding +
+  '- A paragraph tag at the start of a verse (<CM>, <CI>, <CL>, <PI..>, <PF..>) now takes effect before the verse number, so the number sits at the start of the new paragraph.' + LineEnding +
+  '- Indent and spacing apply when Paragraph mode is on (right-click the chapter panel); with Paragraph mode off the tags are ignored as before.' + LineEnding +
+  '- About: shows the program folder and the working (settings) folder, where iBiblia.ini is kept. Click either line to open the folder.' + LineEnding +
+  LineEnding +
   'Version 1.1.0.021 (64-bit Edition) - 2026-11-15' + LineEnding +
   '- Fixed dialogs such as Export project keeping light tab pages, check boxes and buttons on first open.' + LineEnding +
   LineEnding +
@@ -424,6 +435,37 @@ const
 
 { TFormAbout }
 
+{ Caption "<APrefix><APath>" that fits ALabel's width; a path that is too long
+  loses characters from its middle ("/home/user/.../iBiblia"). The full path is
+  always available in the label's hint. }
+function FitFolderCaption(ALabel: TLabel; const APrefix, APath: string): string;
+var
+  Bmp: TBitmap;
+  Keep, MaxW: integer;
+  Head, Tail: string;
+begin
+  Result := APrefix + APath;
+  Bmp := TBitmap.Create;
+  try
+    Bmp.Canvas.Font.Assign(ALabel.Font);
+    MaxW := ALabel.Width - 8;
+    if Bmp.Canvas.TextWidth(Result) <= MaxW then
+      Exit;
+    Keep := Length(APath);
+    while Keep > 8 do
+    begin
+      Dec(Keep, 2);
+      Head := Copy(APath, 1, Keep div 2);
+      Tail := Copy(APath, Length(APath) - (Keep div 2) + 1, Keep div 2);
+      Result := APrefix + Head + '...' + Tail;
+      if Bmp.Canvas.TextWidth(Result) <= MaxW then
+        Exit;
+    end;
+  finally
+    Bmp.Free;
+  end;
+end;
+
 constructor TFormAbout.Create(AOwner: TComponent);
 var
   FileVerInfo: TFileVersionInfo;
@@ -436,7 +478,7 @@ begin
   BorderIcons := [biSystemMenu];
   Position := poMainFormCenter;
   ClientWidth := 480;
-  ClientHeight := 240;
+  ClientHeight := 270;
   OnShow := @FormShow;
 
   // Title: iBiblia
@@ -537,29 +579,79 @@ begin
   Label3.Font.Style := [];
   Label3.OnClick := @Label3Click;
 
+  // Program and settings (working) folders
+  LabelProgramDir := TLabel.Create(Self);
+  LabelProgramDir.Parent := Self;
+  LabelProgramDir.Left := 12;
+  LabelProgramDir.Top := 160;
+  LabelProgramDir.Width := 456;
+  LabelProgramDir.Height := 18;
+  LabelProgramDir.Alignment := taCenter;
+  LabelProgramDir.AutoSize := False;
+  LabelProgramDir.WordWrap := False;
+  LabelProgramDir.Font.Height := -12;
+  LabelProgramDir.Caption := FitFolderCaption(LabelProgramDir, 'Program folder: ',
+    ExcludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))));
+  LabelProgramDir.Hint := ExcludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) +
+    LineEnding + '(click to open)';
+  LabelProgramDir.ShowHint := True;
+  LabelProgramDir.Cursor := crHandPoint;
+  LabelProgramDir.Font.Height := -12;
+  LabelProgramDir.OnClick := @LabelFolderClick;
+
+  LabelConfigDir := TLabel.Create(Self);
+  LabelConfigDir.Parent := Self;
+  LabelConfigDir.Left := 12;
+  LabelConfigDir.Top := 184;
+  LabelConfigDir.Width := 456;
+  LabelConfigDir.Height := 18;
+  LabelConfigDir.Alignment := taCenter;
+  LabelConfigDir.AutoSize := False;
+  LabelConfigDir.WordWrap := False;
+  if AboutConfigFilePath <> '' then
+  begin
+    LabelConfigDir.Font.Height := -12;
+    LabelConfigDir.Caption := FitFolderCaption(LabelConfigDir,
+      'Working (settings) folder: ',
+      ExcludeTrailingPathDelimiter(ExtractFilePath(AboutConfigFilePath)));
+    LabelConfigDir.Hint := AboutConfigFilePath + LineEnding + '(click to open)';
+  end
+  else
+  begin
+    LabelConfigDir.Font.Height := -12;
+    LabelConfigDir.Caption := FitFolderCaption(LabelConfigDir,
+      'Working (settings) folder: ',
+      ExcludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))));
+    LabelConfigDir.Hint := LabelProgramDir.Hint;
+  end;
+  LabelConfigDir.ShowHint := True;
+  LabelConfigDir.Cursor := crHandPoint;
+  LabelConfigDir.Font.Height := -12;
+  LabelConfigDir.OnClick := @LabelFolderClick;
+
   // Buttons
   ButtonUserGuide := TButton.Create(Self);
   ButtonUserGuide.Parent := Self;
-  ButtonUserGuide.Left := 44;
-  ButtonUserGuide.Top := 180;
-  ButtonUserGuide.Width := 130;
+  ButtonUserGuide.Left := 20;
+  ButtonUserGuide.Top := 222;
+  ButtonUserGuide.Width := 156;
   ButtonUserGuide.Height := 32;
   ButtonUserGuide.Caption := 'User Guide (Shift+F1)';
   ButtonUserGuide.OnClick := @ButtonUserGuideClick;
 
   ButtonChangelog := TButton.Create(Self);
   ButtonChangelog.Parent := Self;
-  ButtonChangelog.Left := 184;
-  ButtonChangelog.Top := 180;
-  ButtonChangelog.Width := 140;
+  ButtonChangelog.Left := 186;
+  ButtonChangelog.Top := 222;
+  ButtonChangelog.Width := 136;
   ButtonChangelog.Height := 32;
   ButtonChangelog.Caption := 'View Changelog';
   ButtonChangelog.OnClick := @ButtonChangelogClick;
 
   ButtonClose := TButton.Create(Self);
   ButtonClose.Parent := Self;
-  ButtonClose.Left := 334;
-  ButtonClose.Top := 180;
+  ButtonClose.Left := 332;
+  ButtonClose.Top := 222;
   ButtonClose.Width := 100;
   ButtonClose.Height := 32;
   ButtonClose.Caption := 'Close';
@@ -600,6 +692,10 @@ begin
       LabelContributor.Font.Color := ASkin.PanelText;
     if Assigned(Label3) then
       Label3.Font.Color := ASkin.HeaderColor;
+    if Assigned(LabelProgramDir) then
+      LabelProgramDir.Font.Color := ASkin.PanelText;
+    if Assigned(LabelConfigDir) then
+      LabelConfigDir.Font.Color := ASkin.PanelText;
     if Assigned(ButtonUserGuide) then
       ButtonUserGuide.Font.Color := ASkin.PanelText;
     if Assigned(ButtonChangelog) then
@@ -622,6 +718,10 @@ begin
       LabelContributor.Font.Color := clWindowText;
     if Assigned(Label3) then
       Label3.Font.Color := clBlue;
+    if Assigned(LabelProgramDir) then
+      LabelProgramDir.Font.Color := clWindowText;
+    if Assigned(LabelConfigDir) then
+      LabelConfigDir.Font.Color := clWindowText;
     if Assigned(ButtonUserGuide) then
       ButtonUserGuide.Font.Color := clWindowText;
     if Assigned(ButtonChangelog) then
@@ -672,6 +772,23 @@ procedure TFormAbout.LabelContributorClick(Sender: TObject);
 begin
   if Sender = nil then ;
   OpenURL('mailto:malayangbiblia@gmail.com');
+end;
+
+procedure TFormAbout.LabelFolderClick(Sender: TObject);
+var
+  Dir: string;
+begin
+  if Sender = LabelConfigDir then
+  begin
+    if AboutConfigFilePath <> '' then
+      Dir := ExtractFilePath(AboutConfigFilePath)
+    else
+      Dir := ExtractFilePath(ParamStr(0));
+  end
+  else
+    Dir := ExtractFilePath(ParamStr(0));
+  if DirectoryExists(Dir) then
+    OpenDocument(Dir);
 end;
 
 procedure TFormAbout.Label3Click(Sender: TObject);

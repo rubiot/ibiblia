@@ -4679,6 +4679,7 @@ begin
   end;
   {$ENDIF}
   opts := TIniFile.Create(ConfigFilePath);
+  AboutConfigFilePath := ConfigFilePath;
   SetCurrentSkinByName(opts.ReadString('UI', 'Theme', 'Default'));
   FSkinnedForms := TList.Create;
   Screen.AddHandlerActiveFormChanged(@ScreenActiveFormChanged);

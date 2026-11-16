@@ -1,3 +1,9 @@
+Version 1.1.0.023 (64-bit Edition) - 2026-11-16
+- Chapter panel: paragraph formatting tags now follow the theWord guidelines. <CM> starts a spaced paragraph, <CI> a tight paragraph, <CL> a new line inside the same paragraph, <PI>/<PI1>..<PI7> set the left indent (40 px, then +20 px per level; <PI0> and <Pi> reset it) and <PF>/<PF1>..<PF7> the first-line indent (<PF0> none).
+- A paragraph tag at the start of a verse (<CM>, <CI>, <CL>, <PI..>, <PF..>) now takes effect before the verse number, so the number sits at the start of the new paragraph.
+- Indent and spacing apply when Paragraph mode is on (right-click the chapter panel); with Paragraph mode off the tags are ignored as before.
+- About: shows the program folder and the working (settings) folder, where iBiblia.ini is kept. Click either line to open the folder.
+
 1.1.0.006 (2026-11-05)
 ----------------------
 - Fixed recursive height overflow ("Size range overflow in .SendMoveSizeMessages: Height=99995") when clicking verse navigation chevrons or exiting iBiblia by preventing TDirectWriteSyntagmView.GetContentHeight from returning the outer control Height when FDocument is nil and guarding TVerse.UpdateVerseViewHeight against re-entrancy and null documents.

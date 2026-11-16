@@ -6,7 +6,18 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.021 (2026-11-15) — Dialog Skin Completed on First Open
+### 0. Version 1.1.0.023 (2026-11-16) — theWord Paragraph Tags in the Chapter Panel & Folder Info in About
+
+* **theWord Paragraph Tags in the Chapter Panel (`chapterview.pas`)**: The chapter panel now renders the theWord paragraph formatting tags, in Paragraph mode:
+  * `<CM>` starts a spaced paragraph, `<CI>` a tight paragraph and `<CL>` a new line inside the same paragraph.
+  * `<PI>` / `<PI1>`..`<PI7>` set the left indent (level 1 = 40 px, +20 px per level); `<PI0>` and `<Pi>` reset it.
+  * `<PF>` / `<PF1>`..`<PF7>` set the first-line indent (`<PF0>` = none). With no `<PF>` a paragraph keeps the usual first-line indent, unless it is indented with `<PI>` or follows `<CL>`.
+  * `<PI>`/`<PF>` apply to the paragraph being built and reset at the next paragraph boundary, as the theWord rules say; the order boundary, `<PI>`, `<PF>`, text is honoured.
+  * Tags at the very start of a verse are applied before the verse number, so the number starts the new paragraph.
+  * Out-of-contract spellings (`<PI8>`, `<Pf>`) are ignored. With Paragraph mode off the tags are ignored, as before.
+* **Program and Working Folder in About (`unitabout.pas`, `formprincipal.pas`)**: The About box lists the program folder and the working (settings) folder, the place `iBiblia.ini` is kept (the program folder, or `$XDG_CONFIG_HOME/iBiblia` / `~/.config/iBiblia` on Linux when the program folder is read-only). Long paths are shortened in the middle, the hint shows the full path, and a click opens the folder.
+
+### 0b. Version 1.1.0.021 (2026-11-15) — Dialog Skin Completed on First Open
 
 * **Dialog Controls Skinned on First Open (`formprincipal.pas`)**: In 1.1.0.020 a dialog such as **Export project** got its dark background on first open, but its tab pages, check boxes and buttons stayed light. The dialog becomes the active form before its window handles exist, and the dark-mode subclass hooks (`HookButtonControl`, `HookCheckBoxControl`, `HookTabControl`, `HookFormControl`) need those handles. `SkinFormOnce` now sets the colours at once, queues `DeferredSkinForm` (`Application.QueueAsyncCall`) to apply the full skin once the dialog is visible, creates the handles of controls on tab pages not yet shown (`EnsureChildHandles`), and only then records the form as skinned.
 
