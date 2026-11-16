@@ -165,6 +165,7 @@ type
     FViewMode: TChapterViewMode;
     FTranslationMemoryOrder: TTranslationMemoryOrder;
     FTranslationMemoryEntries: TTranslationMemoryEntryArray;
+    FTranslationMemoryExpanded: TStringList; // source words whose full list is shown
     FTranslationMemoryFocusEntries: TTranslationMemoryFocusEntryArray;
     FTranslationMemoryFocus: TTranslationMemoryFocusController;
     FTranslationMemoryInputSnapshot: TTranslationMemoryInputSnapshot;
@@ -218,6 +219,7 @@ type
     procedure HandleNoteClick(sender: TObject);
     procedure HandleTranslationMemoryEntryClick(Sender: TObject);
     procedure HandleTranslationMemoryAlternativeClick(Sender: TObject);
+    procedure HandleTranslationMemoryMoreClick(Sender: TObject);
     procedure HandleTranslationMemoryBackClick(Sender: TObject);
     procedure HandleTranslationMemoryOccurrenceClick(Sender: TObject);
     procedure HandleTranslationMemoryShowMoreClick(Sender: TObject);
@@ -375,6 +377,12 @@ const
   ParagraphIndentStep = 20;
   SpacedParagraphGap = 8;
 
+const
+  { A word can have hundreds of recorded translations. Drawing all of them for
+    every word of every verse made the panel slower and slower as a project
+    grew, so only the most used ones are drawn until "more" is clicked. }
+  TM_ALTERNATIVES_SHOWN = 12;
+
 resourcestring
   SSetFont = 'Choose &font...';
   SParagraphMode = '&Paragraph mode';
@@ -392,6 +400,8 @@ resourcestring
   STranslationMemoryCurrentLegend =
     'Blue translations are used in the current verse.';
   STranslationMemoryNoTranslations = 'No translation recorded';
+  STranslationMemoryMoreFmt = ' … +%d more';
+  STranslationMemoryFewer = '  (show fewer)';
   STranslationMemoryNoSourceWords =
     'No source words are available for this verse.';
   STranslationMemoryErrorFmt = 'Translation memory is unavailable: %s';
@@ -1748,6 +1758,28 @@ begin
     HighlightRange(FVerseRanges[note.Verse], CurrentSkin.VerseHighlightBg);
 end;
 
+procedure TChapterView.HandleTranslationMemoryMoreClick(Sender: TObject);
+var
+  EntryIndex, Idx, SavedTop: Integer;
+  Term: string;
+begin
+  DismissTranslationMemoryPreview;
+  if not (Sender is TKMemoHyperlink) then
+    Exit;
+  EntryIndex := StrToIntDef(TKMemoHyperlink(Sender).URL, -1);
+  if (EntryIndex < 0) or (EntryIndex >= Length(FTranslationMemoryEntries)) or
+     not Assigned(FTranslationMemoryExpanded) then
+    Exit;
+  Term := FTranslationMemoryEntries[EntryIndex].DisplayTerm;
+  if FTranslationMemoryExpanded.Find(Term, Idx) then
+    FTranslationMemoryExpanded.Delete(Idx)
+  else
+    FTranslationMemoryExpanded.Add(Term);
+  SavedTop := TopPos;
+  RenderTranslationMemory;
+  TopPos := SavedTop;
+end;
+
 procedure TChapterView.HandleTranslationMemoryEntryClick(Sender: TObject);
 var
   EntryIndex: Integer;
@@ -2752,6 +2784,9 @@ begin
   SetLength(FTranslationMemoryEntries, 0);
   SetLength(FTranslationMemoryFocusEntries, 0);
   FTranslationMemoryFocus := TTranslationMemoryFocusController.Create;
+  FTranslationMemoryExpanded := TStringList.Create;
+  FTranslationMemoryExpanded.Sorted := True;
+  FTranslationMemoryExpanded.Duplicates := dupIgnore;
   FTranslationMemoryInputSnapshot :=
     Default(TTranslationMemoryInputSnapshot);
   FTranslationMemoryShowingOccurrences := False;
@@ -2784,6 +2819,7 @@ begin
   if Assigned(FTranslationMemoryFocus) then
     FTranslationMemoryFocus.Unbind;
   FreeAndNil(FTranslationMemoryFocus);
+  FreeAndNil(FTranslationMemoryExpanded);
   if Assigned(FProject) then
   begin
     try
@@ -3156,6 +3192,8 @@ var
   LinkBlock: TKMemoHyperlink;
   HasCurrentAlternative: Boolean;
   SyntagmIndex: Integer;
+  ShownAlternatives, HiddenAlternatives, ExpandedIdx: Integer;
+  ShowAll: Boolean;
 begin
   if not IsTranslationMemoryVisible then
   begin
@@ -3289,11 +3327,23 @@ begin
       end
       else
       begin
+        ShownAlternatives := 0;
+        HiddenAlternatives := 0;
+        ShowAll := FTranslationMemoryExpanded.Find(
+          FTranslationMemoryEntries[EntryIndex].DisplayTerm, ExpandedIdx);
         for AlternativeIndex := 0 to
           Length(FTranslationMemoryEntries[EntryIndex].Alternatives) - 1 do
         begin
-          if AlternativeIndex > 0 then
+          if (not ShowAll) and (AlternativeIndex >= TM_ALTERNATIVES_SHOWN) and
+             (not FTranslationMemoryEntries[EntryIndex].Alternatives[
+               AlternativeIndex].IsCurrent) then
+          begin
+            Inc(HiddenAlternatives);
+            Continue;
+          end;
+          if ShownAlternatives > 0 then
             Blocks.AddTextBlock(', ');
+          Inc(ShownAlternatives);
           with FTranslationMemoryEntries[EntryIndex].Alternatives[
             AlternativeIndex] do
           begin
@@ -3321,6 +3371,25 @@ begin
               Blocks.AddTextBlock(IntToStr(Occurrences));
             Blocks.AddTextBlock(')');
           end;
+        end;
+        if HiddenAlternatives > 0 then
+        begin
+          LinkBlock := Blocks.AddHyperlink(
+            Format(STranslationMemoryMoreFmt, [HiddenAlternatives]),
+            IntToStr(EntryIndex));
+          LinkBlock.OnClick := @HandleTranslationMemoryMoreClick;
+          LinkBlock.TextStyle.Font.Color := NoteLinkColor;
+          LinkBlock.TextStyle.Font.Style := [fsUnderline];
+        end
+        else if ShowAll and
+          (Length(FTranslationMemoryEntries[EntryIndex].Alternatives) >
+           TM_ALTERNATIVES_SHOWN) then
+        begin
+          LinkBlock := Blocks.AddHyperlink(STranslationMemoryFewer,
+            IntToStr(EntryIndex));
+          LinkBlock.OnClick := @HandleTranslationMemoryMoreClick;
+          LinkBlock.TextStyle.Font.Color := NoteLinkColor;
+          LinkBlock.TextStyle.Font.Style := [fsUnderline];
         end;
         Blocks.AddParagraph().ParaStyle.FirstIndent := 8;
       end;

@@ -18,6 +18,8 @@ type
     FIni: TIniFile;
     FStartTimer: TTimer;
     FBusy: Boolean;
+    FNoticeShown: Boolean;
+    FPendingVersion: string;
     FStageDir: string;       // verified, unpacked update waiting for the next exit (auto mode)
     FRestartAfterClose: Boolean;
     function GetCheckAtStartup: Boolean;
@@ -25,6 +27,7 @@ type
     function GetAutoInstall: Boolean;
     procedure SetAutoInstall(AValue: Boolean);
     procedure StartTimerFired(Sender: TObject);
+    procedure ShowRestartNotice;
     procedure RunCheck(AManual: Boolean);
   public
     constructor Create(AIni: TIniFile);
@@ -38,6 +41,8 @@ type
     procedure HandleResult(AManual: Boolean; const AInfo: TUpdateInfo;
       AOk: Boolean; const AErr: string);
     procedure BackgroundStageDone(AOk: Boolean; const AStageDir, AErr: string);
+    { Installs the downloaded update and restarts iBiblia (asks to save first). }
+    procedure RestartNow;
     property CheckAtStartup: Boolean read GetCheckAtStartup write SetCheckAtStartup;
     property AutoInstall: Boolean read GetAutoInstall write SetAutoInstall;
   end;
@@ -85,6 +90,17 @@ type
     property Ok: Boolean read FOk;
     property StageDir: string read FStageDir;
     property Err: string read FErr;
+  end;
+
+  { Small non-modal box that offers to restart once an update has been
+    downloaded in the background. It never takes over the keyboard. }
+  TRestartNotice = class(TForm)
+  private
+    procedure RestartClick(Sender: TObject);
+    procedure LaterClick(Sender: TObject);
+    procedure NoticeClose(Sender: TObject; var CloseAction: TCloseAction);
+  public
+    constructor CreateNotice(AOwner: TComponent; const AVersion: string);
   end;
 
   { ---------------------------------------------------------- dialog -- }
@@ -188,6 +204,58 @@ begin
   Free;
   if Assigned(UpdateCoordinator) then
     UpdateCoordinator.BackgroundStageDone(GotOk, GotDir, GotErr);
+end;
+
+{ --------------------------------------------------------- TRestartNotice -- }
+
+constructor TRestartNotice.CreateNotice(AOwner: TComponent; const AVersion: string);
+var
+  L: TLabel;
+  B1, B2: TButton;
+begin
+  inherited CreateNew(AOwner);
+  BorderStyle := bsDialog;
+  FormStyle := fsStayOnTop;
+  Caption := 'iBiblia update';
+  ClientWidth := 400;
+  ClientHeight := 110;
+  Position := poDefault;
+  OnClose := @NoticeClose;
+  L := TLabel.Create(Self);
+  L.Parent := Self;
+  L.SetBounds(16, 14, 368, 50);
+  L.AutoSize := False;
+  L.WordWrap := True;
+  L.Caption := 'Version ' + AVersion + ' has been downloaded. Restart iBiblia now ' +
+    'to use it? (It will ask to save any unsaved changes first.)';
+  B1 := TButton.Create(Self);
+  B1.Parent := Self;
+  B1.SetBounds(160, 72, 110, 28);
+  B1.Caption := 'Restart now';
+  B1.Default := False;
+  B1.OnClick := @RestartClick;
+  B2 := TButton.Create(Self);
+  B2.Parent := Self;
+  B2.SetBounds(280, 72, 104, 28);
+  B2.Caption := 'Later';
+  B2.OnClick := @LaterClick;
+end;
+
+procedure TRestartNotice.RestartClick(Sender: TObject);
+begin
+  Close;
+  if Assigned(UpdateCoordinator) then
+    UpdateCoordinator.RestartNow;
+end;
+
+procedure TRestartNotice.LaterClick(Sender: TObject);
+begin
+  Close;
+end;
+
+procedure TRestartNotice.NoticeClose(Sender: TObject; var CloseAction: TCloseAction);
+begin
+  CloseAction := caFree;
 end;
 
 { ------------------------------------------------------------ TUpdateForm -- }
@@ -402,7 +470,10 @@ end;
 
 function TUpdateCoordinator.GetAutoInstall: Boolean;
 begin
-  Result := FIni.ReadBool(IniSection, 'update.auto', False);
+  { Linux: download new versions in the background by default and offer to
+    restart; there is no installer step, so this is what makes updating
+    seamless. Windows keeps the explicit prompt. }
+  Result := FIni.ReadBool(IniSection, 'update.auto', {$IFDEF WINDOWS}False{$ELSE}True{$ENDIF});
 end;
 
 procedure TUpdateCoordinator.SetAutoInstall(AValue: Boolean);
@@ -489,6 +560,7 @@ begin
   if (not AManual) and AutoInstall then
   begin
     FBusy := True;
+    FPendingVersion := NormalizeVersion(AInfo.Version);
     TStageThread.Create(AInfo, True);
     Exit;
   end;
@@ -520,7 +592,33 @@ procedure TUpdateCoordinator.BackgroundStageDone(AOk: Boolean; const AStageDir, 
 begin
   FBusy := False;
   if AOk then
+  begin
     FStageDir := AStageDir; // installed silently when iBiblia is closed
+    ShowRestartNotice;
+  end;
+end;
+
+procedure TUpdateCoordinator.ShowRestartNotice;
+var
+  N: TRestartNotice;
+begin
+  if FNoticeShown or (not Assigned(Application.MainForm)) then
+    Exit;
+  FNoticeShown := True;
+  N := TRestartNotice.CreateNotice(Application, FPendingVersion);
+  N.Left := Application.MainForm.Left + Application.MainForm.Width - N.Width - 24;
+  N.Top := Application.MainForm.Top + 60;
+  N.ShowOnTop;
+end;
+
+procedure TUpdateCoordinator.RestartNow;
+begin
+  if (FStageDir = '') or (not Assigned(Application.MainForm)) then
+    Exit;
+  FRestartAfterClose := True;
+  Application.MainForm.Close;
+  // if closing was cancelled (unsaved project), do not restart on a later exit
+  FRestartAfterClose := False;
 end;
 
 procedure TUpdateCoordinator.MainFormClosing;

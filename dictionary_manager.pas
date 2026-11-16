@@ -75,7 +75,38 @@ procedure GetDefaultDictionaryPaths(out GreekStrongPath, HebrewStrongPath,
 implementation
 
 uses
-  Forms, LazUTF8, ui_style;
+  Forms, LazUTF8, Generics.Collections, ui_style;
+
+var
+  { Definitions already looked up in this session. Hovering the same words
+    again (popups, auto-advance) then needs no trip into the dictionary file,
+    which matters for large dictionaries and for files on slow drives. The
+    memory is emptied whenever any dictionary is (re)assigned or replaced. }
+  GLookupCache: specialize TDictionary<string, string> = nil;
+  GLookupCacheChars: Int64 = 0;
+  GDefaultStamps: array[0..3] of LongInt;
+
+procedure ClearLookupCache;
+begin
+  if GLookupCache <> nil then
+    GLookupCache.Clear;
+  GLookupCacheChars := 0;
+end;
+
+function LookupCacheGet(const Key: string; out Value: string): Boolean;
+begin
+  Result := (GLookupCache <> nil) and GLookupCache.TryGetValue(Key, Value);
+end;
+
+procedure LookupCachePut(const Key, Value: string);
+begin
+  if GLookupCache = nil then
+    GLookupCache := specialize TDictionary<string, string>.Create;
+  if (GLookupCache.Count >= 4000) or (GLookupCacheChars > 24000000) then
+    ClearLookupCache;
+  GLookupCache.AddOrSetValue(Key, Value);
+  Inc(GLookupCacheChars, Length(Key) + Length(Value));
+end;
 
 var
   GUseDefaultDictionaries: Boolean = True;
@@ -189,10 +220,17 @@ procedure SetDefaultDictionaries(const GreekStrongPath, HebrewStrongPath,
     FullPath: string;
   begin
     FullPath := ResolveDictionaryFilePath(Path);
-    if (FullPath = GDefaultPaths[Slot]) and (Assigned(Query) or (FullPath = '')) then
+    { same file and not replaced since it was opened: nothing to do; a file
+      that was updated in place (new copy of the dictionary) is reopened }
+    if (FullPath = GDefaultPaths[Slot]) and (Assigned(Query) or (FullPath = '')) and
+       ((FullPath = '') or (FileAge(FullPath) = GDefaultStamps[Slot])) then
       Exit;
     TDictionaryManager.ReleaseQuery(Query);
+    ClearLookupCache;
     GDefaultPaths[Slot] := FullPath;
+    GDefaultStamps[Slot] := 0;
+    if FullPath <> '' then
+      GDefaultStamps[Slot] := FileAge(FullPath);
     if not IsNonEmptySQLiteFile(FullPath) then
       Exit;
     try
@@ -219,6 +257,8 @@ end;
 
 procedure SetUseDefaultDictionaries(AEnabled: Boolean);
 begin
+  if GUseDefaultDictionaries <> AEnabled then
+    ClearLookupCache;
   GUseDefaultDictionaries := AEnabled;
 end;
 
@@ -1455,6 +1495,7 @@ procedure TDictionaryManager.Clear;
 var
   Index: Integer;
 begin
+  ClearLookupCache;
   for Index := Low(FStrongDictionaries) to High(FStrongDictionaries) do
     ReleaseQuery(FStrongDictionaries[Index]);
 
@@ -1486,6 +1527,7 @@ begin
   if (TextIndex < Low(FStrongDictionaries)) or (TextIndex > High(FStrongDictionaries)) then
     Exit;
 
+  ClearLookupCache;
   ReleaseQuery(FStrongDictionaries[TextIndex]);
   if DictionaryPath = '' then
     Exit(True);
@@ -1517,6 +1559,7 @@ begin
   if (TextIndex < Low(FMorphologyDictionaries)) or (TextIndex > High(FMorphologyDictionaries)) then
     Exit;
 
+  ClearLookupCache;
   ReleaseQuery(FMorphologyDictionaries[TextIndex]);
   if DictionaryPath = '' then
     Exit(True);
@@ -1544,7 +1587,7 @@ end;
 function TDictionaryManager.LookupStrong(const Strong: string; TextIndex: Integer): string;
 var
   Keys: TStringArray;
-  CleanPart, DigitsOnly, Suffix, Data: string;
+  CleanPart, DigitsOnly, Suffix, Data, CacheKey: string;
   IsHebrew: Boolean;
   NumVal: Integer;
 begin
@@ -1553,6 +1596,10 @@ begin
     Exit;
   CleanPart := NormalizeStrongToken(Strong, IsHebrew, NumVal, DigitsOnly, Suffix);
   if CleanPart = '' then
+    Exit;
+  CacheKey := 'S|' + IntToStr(Ord(GUseDefaultDictionaries)) + '|' +
+    IntToStr(TextIndex) + '|' + Strong;
+  if LookupCacheGet(CacheKey, Result) then
     Exit;
   Keys := StrongKeyCandidates(Strong);
   Data := '';
@@ -1583,15 +1630,20 @@ begin
   end;
   if Data <> '' then
     Result := FormatRTF(DecodeContentData(Data));
+  LookupCachePut(CacheKey, Result);
 end;
 
 function TDictionaryManager.LookupMorphology(const Morphology: string;
   TextIndex: Integer): string;
 var
-  MorphologyKey, Data: string;
+  MorphologyKey, Data, CacheKey: string;
 begin
   Result := '';
   if Morphology = '' then
+    Exit;
+  CacheKey := 'M|' + IntToStr(Ord(GUseDefaultDictionaries)) + '|' +
+    IntToStr(TextIndex) + '|' + Morphology;
+  if LookupCacheGet(CacheKey, Result) then
     Exit;
 
   MorphologyKey := Morphology;
@@ -1609,13 +1661,15 @@ begin
     Data := QueryDefinition(GetMorphologyDictionary(TextIndex), 'morf', [MorphologyKey]);
   if Data <> '' then
     Result := FormatRTF(DecodeContentData(Data));
+  LookupCachePut(CacheKey, Result);
 end;
 
 function TDictionaryManager.LookupWord(const Word: string;
   out MatchedKey: string): string;
 var
-  Clean, Lower, Candidate, Data: string;
+  Clean, Lower, Candidate, Data, CacheKey, Cached: string;
   Candidates: array of string;
+  CachePos: Integer;
 
   procedure Add(const Value: string);
   begin
@@ -1631,6 +1685,17 @@ begin
   MatchedKey := '';
   if not Assigned(GDefaultWord) then
     Exit;
+  CacheKey := 'W|' + Word;
+  if LookupCacheGet(CacheKey, Cached) then
+  begin
+    CachePos := Pos(#1, Cached);
+    if CachePos > 0 then
+    begin
+      MatchedKey := Copy(Cached, 1, CachePos - 1);
+      Result := Copy(Cached, CachePos + 1, MaxInt);
+    end;
+    Exit;
+  end;
   Clean := Trim(Word);
   while (Clean <> '') and not (Clean[1] in ['A'..'Z', 'a'..'z', #128..#255]) do
     Delete(Clean, 1, 1);
@@ -1672,10 +1737,14 @@ begin
       begin
         MatchedKey := GDefaultWord.FieldByName('subject').AsString;
         Result := FormatRTF(DecodeContentData(Data));
+        GDefaultWord.Close;
+        LookupCachePut(CacheKey, MatchedKey + #1 + Result);
         Exit;
       end;
     end;
   end;
+  GDefaultWord.Close;
+  LookupCachePut(CacheKey, '');
 end;
 
 procedure TDictionaryManager.CollectPopupEntries(Syntagm: TSyntagm;

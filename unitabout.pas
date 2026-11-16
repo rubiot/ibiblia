@@ -114,6 +114,10 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.039 (64-bit Edition) - 2026-11-17' + LineEnding +
+  '- Linux updates are now seamless: new versions download in the background by default (no installer step), then a small ''Restart now / Later'' box appears. ''Restart now'' installs the update, asks to save any unsaved changes, and reopens iBiblia by itself. ''Later'' installs it when you next close iBiblia.' + LineEnding +
+  '- Much less slowing down with use (Linux): the Translation memory panel rebuilt long lists with repeated text processing that grew with the project; it is now several times faster, shows the 12 most used translations per word with a ''+N more'' link to see all, and gives the same order as before. Dictionary look-ups are remembered for the session (and cleared when a dictionary is changed), and a dictionary file that was replaced with a newer copy is reopened when you press OK in the dictionary settings.' + LineEnding +
+  LineEnding +
   'Version 1.1.0.038 (64-bit Edition) - 2026-11-16' + LineEnding +
   '- Pasting text from another program into the verse editor no longer causes the ''line break'' error. Line breaks in the pasted text (from documents, web pages or other Bible programs) become single spaces, as Rubio planned for issue #122. Text copied inside iBiblia is pasted unchanged. (The fix for the lost first verse, ''Prevent saving unloaded verse views'', was already included.)' + LineEnding +
   LineEnding +

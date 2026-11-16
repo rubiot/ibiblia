@@ -6,7 +6,13 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.038 (2026-11-16) — Paste Without Line-Break Error
+### 0. Version 1.1.0.039 (2026-11-17) — Seamless Linux Updates, Faster Translation Memory
+
+* Linux updates are now seamless: new versions download in the background by default (no installer step), then a small 'Restart now / Later' box appears. 'Restart now' installs the update, asks to save any unsaved changes, and reopens iBiblia by itself. 'Later' installs it when you next close iBiblia.
+* Much less slowing down with use (Linux): the Translation memory panel rebuilt long lists with repeated text processing that grew with the project; it is now several times faster, shows the 12 most used translations per word with a '+N more' link to see all, and gives the same order as before. Dictionary look-ups are remembered for the session (and cleared when a dictionary is changed), and a dictionary file that was replaced with a newer copy is reopened when you press OK in the dictionary settings.
+* Files: `unitupdate.pas`, `chapterview.pas`, `translation_memory_model.pas`, `dictionary_manager.pas`.
+
+### 0r. Version 1.1.0.038 (2026-11-16) — Paste Without Line-Break Error
 
 * Pasting text from another program into the verse editor no longer causes the 'line break' error. Line breaks in the pasted text (from documents, web pages or other Bible programs) become single spaces, as Rubio planned for issue #122. Text copied inside iBiblia is pasted unchanged. (The fix for the lost first verse, 'Prevent saving unloaded verse views', was already included.)
 * Files: `theword_wysiwyg_editor_control.pas`.

@@ -21,6 +21,7 @@ type
     Occurrences: Integer;
     IsCurrent: Boolean;
     Matches: TTranslationPairMatchArray;
+    NormKey: string; // cached NormalizedTranslationKey(Translation)
   end;
 
   TTranslationMemoryAlternativeArray = array of TTranslationMemoryAlternative;
@@ -51,7 +52,7 @@ function TranslationMemoryOrderFromInteger(
 implementation
 
 uses
-  LazUTF8, ONTTokenizer, Syntagm;
+  LazUTF8, Generics.Collections, ONTTokenizer, Syntagm;
 
 type
   TTranslationAlternativeCacheItem = class
@@ -68,9 +69,23 @@ begin
   Result := TTranslationMemoryOrder(Value);
 end;
 
+var
+  { Lower-casing the same few thousand strings over and over while adding and
+    sorting alternatives was what made this panel slow down as a project grew,
+    so results are remembered (and the memory is dropped when it gets big). }
+  KeyMemo: specialize TDictionary<string, string> = nil;
+  TranslationKeyMemo: specialize TDictionary<string, string> = nil;
+
 function NormalizedKey(const Value: string): string;
 begin
+  if KeyMemo = nil then
+    KeyMemo := specialize TDictionary<string, string>.Create;
+  if KeyMemo.TryGetValue(Value, Result) then
+    Exit;
   Result := UTF8LowerCase(Trim(Value));
+  if KeyMemo.Count > 60000 then
+    KeyMemo.Clear;
+  KeyMemo.AddOrSetValue(Value, Result);
 end;
 
 function NormalizeTranslationDisplay(const Value: string): string;
@@ -80,7 +95,7 @@ begin
     Result := StringReplace(Result, '  ', ' ', [rfReplaceAll]);
 end;
 
-function NormalizedTranslationKey(const Value: string): string;
+function NormalizedTranslationKeyRaw(const Value: string): string;
 begin
   Result := NormalizedKey(NormalizeTranslationDisplay(Value));
 
@@ -92,6 +107,18 @@ begin
   if Result.EndsWith('-') then
     Delete(Result, Length(Result), 1);
   Result := Trim(Result);
+end;
+
+function NormalizedTranslationKey(const Value: string): string;
+begin
+  if TranslationKeyMemo = nil then
+    TranslationKeyMemo := specialize TDictionary<string, string>.Create;
+  if TranslationKeyMemo.TryGetValue(Value, Result) then
+    Exit;
+  Result := NormalizedTranslationKeyRaw(Value);
+  if TranslationKeyMemo.Count > 60000 then
+    TranslationKeyMemo.Clear;
+  TranslationKeyMemo.AddOrSetValue(Value, Result);
 end;
 
 function JoinValues(const Values: TStrings; const Separator: string): string;
@@ -216,6 +243,7 @@ var
   AlternativeIndex: Integer;
   DisplayTranslation: string;
   ExistingMatchIndex: Integer;
+  NewKey: string;
   Match: TTranslationPairMatch;
   MatchIndex: Integer;
 begin
@@ -223,20 +251,25 @@ begin
   if (DisplayTranslation = '') or (Alternative.Occurrences <= 0) then
     Exit;
   AlternativeIndex := -1;
+  NewKey := NormalizedTranslationKey(DisplayTranslation);
   for MatchIndex := 0 to Length(Entry.Alternatives) - 1 do
-    if NormalizedTranslationKey(
-         Entry.Alternatives[MatchIndex].Translation) =
-       NormalizedTranslationKey(DisplayTranslation) then
+  begin
+    if Entry.Alternatives[MatchIndex].NormKey = '' then
+      Entry.Alternatives[MatchIndex].NormKey :=
+        NormalizedTranslationKey(Entry.Alternatives[MatchIndex].Translation);
+    if Entry.Alternatives[MatchIndex].NormKey = NewKey then
     begin
       AlternativeIndex := MatchIndex;
       Break;
     end;
+  end;
 
   if AlternativeIndex < 0 then
   begin
     AlternativeIndex := Length(Entry.Alternatives);
     SetLength(Entry.Alternatives, AlternativeIndex + 1);
     Entry.Alternatives[AlternativeIndex].Translation := DisplayTranslation;
+    Entry.Alternatives[AlternativeIndex].NormKey := NewKey;
     Entry.Alternatives[AlternativeIndex].Occurrences := 0;
     Entry.Alternatives[AlternativeIndex].IsCurrent := False;
   end;
@@ -321,19 +354,70 @@ end;
 
 procedure SortAlternatives(var Alternatives: TTranslationMemoryAlternativeArray);
 var
-  LeftIndex: Integer;
-  RightIndex: Integer;
-  Temporary: TTranslationMemoryAlternative;
+  Order, Work: array of Integer;
+  Sorted: TTranslationMemoryAlternativeArray;
+  Keys: TTranslationMemoryStringArray;
+  Count, I, Width, Lo, Mid, Hi, L, R, K: Integer;
+
+  function Before(A, B: Integer): Boolean;
+  begin
+    if Alternatives[A].Occurrences <> Alternatives[B].Occurrences then
+      Exit(Alternatives[A].Occurrences > Alternatives[B].Occurrences);
+    Result := CompareStr(Keys[A], Keys[B]) < 0;
+  end;
+
 begin
-  for LeftIndex := 0 to Length(Alternatives) - 2 do
-    for RightIndex := LeftIndex + 1 to Length(Alternatives) - 1 do
-      if AlternativeComesBefore(Alternatives[RightIndex],
-        Alternatives[LeftIndex]) then
+  Count := Length(Alternatives);
+  if Count < 2 then
+    Exit;
+  { merge sort on indexes with the lower-cased names worked out once; the
+    old double loop re-normalised both names on every comparison }
+  SetLength(Keys, Count);
+  SetLength(Order, Count);
+  SetLength(Work, Count);
+  for I := 0 to Count - 1 do
+  begin
+    Keys[I] := NormalizedKey(Alternatives[I].Translation);
+    Order[I] := I;
+  end;
+  Width := 1;
+  while Width < Count do
+  begin
+    Lo := 0;
+    while Lo < Count do
+    begin
+      Mid := Lo + Width;
+      if Mid > Count then Mid := Count;
+      Hi := Lo + 2 * Width;
+      if Hi > Count then Hi := Count;
+      L := Lo; R := Mid; K := Lo;
+      while (L < Mid) and (R < Hi) do
+        if Before(Order[R], Order[L]) then
+        begin
+          Work[K] := Order[R]; Inc(R); Inc(K);
+        end
+        else
+        begin
+          Work[K] := Order[L]; Inc(L); Inc(K);
+        end;
+      while L < Mid do
       begin
-        Temporary := Alternatives[LeftIndex];
-        Alternatives[LeftIndex] := Alternatives[RightIndex];
-        Alternatives[RightIndex] := Temporary;
+        Work[K] := Order[L]; Inc(L); Inc(K);
       end;
+      while R < Hi do
+      begin
+        Work[K] := Order[R]; Inc(R); Inc(K);
+      end;
+      Lo := Hi;
+    end;
+    for I := 0 to Count - 1 do
+      Order[I] := Work[I];
+    Width := Width * 2;
+  end;
+  SetLength(Sorted, Count);
+  for I := 0 to Count - 1 do
+    Sorted[I] := Alternatives[Order[I]];
+  Alternatives := Sorted;
 end;
 
 function FirstSyntagmIndex(const Entry: TTranslationMemoryEntry): Integer;
@@ -510,5 +594,9 @@ begin
     FreeCache(AlternativeCache);
   end;
 end;
+
+finalization
+  FreeAndNil(KeyMemo);
+  FreeAndNil(TranslationKeyMemo);
 
 end.
