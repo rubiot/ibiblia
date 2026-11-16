@@ -6,7 +6,12 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.032 (2026-11-16) — Broken Menu Entries on Linux
+### 0. Version 1.1.0.033 (2026-11-16) — Timotheos Synchronization on Linux
+
+* Linux: synchronization with Timotheos works again. iBiblia → Timotheos and Timotheos → iBiblia follow each other's verse through the same two small files Timotheos uses on Windows (ibiblia-sync-in.json / ibiblia-sync-out.json in its user-data folder, e.g. ~/.local/share/org.timotheos.bible or ~/.config/Timotheos), and a running Timotheos is detected through /proc. The sync button on the toolbar and Tools > Synchronization with Timotheos are back on Linux (theWord sync stays Windows-only).
+* Files: `tanglaw_sync.pas`, `formprincipal.pas`.
+
+### 0l. Version 1.1.0.032 (2026-11-16) — Broken Menu Entries on Linux
 
 * Linux: iBiblia now removes broken applications-menu entries for itself (for example one left by an older copy of iBiblia that was moved or deleted, which showed 'Could not find the program ...' when clicked), and keeps one working entry for the copy you run.
 * Files: `app_updater.pas`.

@@ -1290,10 +1290,11 @@ begin
   FTheWordToolButton.ShowCaption := False;
   FTheWordToolButton.AutoSize := False;
   {$IFNDEF WINDOWS}
-  // theWord and Timotheos synchronization use Windows messages; they cannot
-  // work on Linux, so the toolbar button is not offered there.
-  FTheWordToolButton.Visible := False;
-  ToolButtonSyncSeparator.Visible := False;
+  // theWord only exists for Windows: on Linux the button offers only the
+  // Timotheos synchronization (file based, works on every system).
+  FTheWordPopupMenu.Items[0].Visible := False;
+  FTheWordPopupMenu.Items[1].Visible := False;
+  FTheWordPopupMenu.Items[2].Visible := False;
   {$ENDIF}
 end;
 
@@ -1521,7 +1522,6 @@ begin
   FToolsMenu.Add(FTanglawSyncMenu);
   {$IFNDEF WINDOWS}
   FTheWordSyncMenu.Visible := False;
-  FTanglawSyncMenu.Visible := False;
   {$ENDIF}
 
   FActionPreferences := TAction.Create(ActionList1);

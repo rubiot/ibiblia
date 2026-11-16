@@ -1,13 +1,16 @@
 unit tanglaw_sync;
 
 { Verse synchronization with Timotheos (both Tauri 0.6.5+ and Electron builds,
-  formerly Tanglaw Bible; Windows). Both names and both windowing frameworks
+  formerly Tanglaw Bible; Windows and Linux). Both names and both windowing frameworks
   (Tauri/WebView2 TaoWindowClass and Electron Chrome_WidgetWin) are recognised.
   The app exchanges the current verse through two small JSON files in its
   user-data folder (%APPDATA%\org.timotheos.bible for Tauri 2, or
   %APPDATA%\Timotheos / %APPDATA%\Tanglaw Bible / portable Timotheos Data):
     ibiblia-sync-in.json   written here, read by Timotheos ("go to verse")
     ibiblia-sync-out.json  written by Timotheos, read here (its current verse)
+  On Linux the folders are ~/.local/share/org.timotheos.bible (Tauri 2),
+  ~/.config/Timotheos and the portable "Timotheos Data" folder, and the running
+  program is found through /proc.
   When that file is missing, the window title
   ("<Book> <c>:<v> - Timotheos" / "... - Tanglaw Bible") and settings.json
   are used. }
@@ -32,13 +35,15 @@ function GetTanglawCurrentRef: string;
 
 implementation
 
-{$IFDEF WINDOWS}
 uses
-  Windows, PCRE, twAutomate, bible_book_names, apocrypha_books;
+  {$IFDEF WINDOWS}Windows,{$ELSE}BaseUnix, Unix, DateUtils,{$ENDIF}
+  PCRE, twAutomate, bible_book_names, apocrypha_books;
 
+{$IFDEF WINDOWS}
 const
   MOVEFILE_REPLACE_EXISTING = $00000001;
   MOVEFILE_WRITE_THROUGH    = $00000008;
+{$ENDIF}
 
 var
   OutSeq: Integer = 0;
@@ -47,6 +52,7 @@ var
   LastWriteTick: QWord = 0;
   LastWriteUnixMs: Int64 = 0;
 
+{$IFDEF WINDOWS}
 function QueryFullProcessImageNameA(hProcess: HANDLE; dwFlags: DWORD;
   lpExeName: LPSTR; var lpdwSize: DWORD): BOOL; stdcall;
   external 'KERNEL32' name 'QueryFullProcessImageNameA';
@@ -68,6 +74,12 @@ begin
   else
     Result := Int64(GetTickCount64);
 end;
+{$ELSE}
+function CurrentUnixMs: Int64;
+begin
+  Result := DateTimeToUnix(Now, False) * 1000 + MilliSecondOf(Now);
+end;
+{$ENDIF}
 
 function EscapeJsonString(const S: string): string;
 var
@@ -93,6 +105,7 @@ begin
   end;
 end;
 
+{$IFDEF WINDOWS}
 function ProcessExeName(Pid: DWORD): string;
 var
   Proc: THandle;
@@ -227,10 +240,72 @@ begin
   else
     Result := 0;
 end;
+{$ELSE}
+var
+  CachedPid: PtrUInt = 0;
+  CachedTick: QWord = 0;
+
+function ReadSmallFile(const FileName: string): string;
+var
+  F: TFileStream;
+  N: Integer;
+begin
+  Result := '';
+  try
+    F := TFileStream.Create(FileName, fmOpenRead or fmShareDenyNone);
+    try
+      SetLength(Result, 4096);
+      N := F.Read(Result[1], 4096);
+      SetLength(Result, N);
+    finally
+      F.Free;
+    end;
+  except
+    Result := '';
+  end;
+end;
+
+{ Process id of a running Timotheos (or Tanglaw Bible), found through /proc. }
+function IsTanglawRunning: PtrUInt;
+var
+  SR: TSearchRec;
+  Pid: Integer;
+  Comm, Cmd, Exe: string;
+begin
+  if (GetTickCount64 < CachedTick + 1000) then
+    Exit(CachedPid);
+  Result := 0;
+  if FindFirst('/proc/*', faDirectory, SR) = 0 then
+  try
+    repeat
+      Pid := StrToIntDef(SR.Name, 0);
+      if (Pid <= 0) or (Pid = Integer(fpGetPid)) then
+        Continue;
+      Comm := LowerCase(Trim(ReadSmallFile('/proc/' + SR.Name + '/comm')));
+      if (Pos('timotheos', Comm) = 0) and (Pos('tanglaw', Comm) = 0) then
+      begin
+        Cmd := ReadSmallFile('/proc/' + SR.Name + '/cmdline');
+        Exe := LowerCase(ExtractFileName(Copy(Cmd, 1, Pos(#0, Cmd + #0) - 1)));
+        if (Pos('timotheos', Exe) = 0) and (Pos('tanglaw', Exe) = 0) then
+          Continue;
+      end;
+      if Pos('ibiblia', Comm) > 0 then
+        Continue;
+      Result := PtrUInt(Pid);
+      Break;
+    until FindNext(SR) <> 0;
+  finally
+    FindClose(SR);
+  end;
+  CachedPid := Result;
+  CachedTick := GetTickCount64;
+end;
+{$ENDIF}
 
 { Timotheos/Tanglaw user-data folders: portable folder first, then Tauri 2
   (%APPDATA%\org.timotheos.bible) and Electron (%APPDATA%\Timotheos,
   %APPDATA%\Tanglaw Bible). }
+{$IFDEF WINDOWS}
 procedure GetTanglawUserDataDirs(Dirs: TStrings);
 
   procedure Add(const Dir: string);
@@ -295,6 +370,70 @@ begin
       Add(IncludeTrailingPathDelimiter(AppData) + 'tanglaw-bible');
   end;
 end;
+{$ELSE}
+procedure GetTanglawUserDataDirs(Dirs: TStrings);
+var
+  Home, DataHome, ConfigHome, Base, Exe, ExeDir, Name: string;
+  Pid: PtrUInt;
+  Names: array[0..4] of string;
+  Bases: array[0..3] of string;
+  i, j: Integer;
+
+  procedure AddIfExists(const Dir: string);
+  var
+    Clean: string;
+  begin
+    Clean := ExcludeTrailingPathDelimiter(Trim(Dir));
+    if (Clean <> '') and DirectoryExists(Clean) and (Dirs.IndexOf(Clean) < 0) then
+      Dirs.Add(Clean);
+  end;
+
+begin
+  Dirs.Clear;
+  Name := SysUtils.GetEnvironmentVariable('TIMOTHEOS_PORTABLE_DIR');
+  AddIfExists(Name);
+  Name := SysUtils.GetEnvironmentVariable('TANGLAW_PORTABLE_DIR');
+  AddIfExists(Name);
+
+  Pid := IsTanglawRunning;
+  if Pid <> 0 then
+  begin
+    Exe := fpReadLink('/proc/' + IntToStr(Pid) + '/exe');
+    ExeDir := ExtractFilePath(Exe);
+    if ExeDir <> '' then
+    begin
+      AddIfExists(ExeDir + 'Timotheos Data');
+      AddIfExists(ExeDir + 'Tanglaw Data');
+    end;
+  end;
+
+  Home := SysUtils.GetEnvironmentVariable('HOME');
+  if Home = '' then
+    Exit;
+  Home := IncludeTrailingPathDelimiter(Home);
+  DataHome := SysUtils.GetEnvironmentVariable('XDG_DATA_HOME');
+  if DataHome = '' then
+    DataHome := Home + '.local/share';
+  ConfigHome := SysUtils.GetEnvironmentVariable('XDG_CONFIG_HOME');
+  if ConfigHome = '' then
+    ConfigHome := Home + '.config';
+  Names[0] := 'org.timotheos.bible';
+  Names[1] := 'Timotheos';
+  Names[2] := 'timotheos';
+  Names[3] := 'Tanglaw Bible';
+  Names[4] := 'tanglaw-bible';
+  Bases[0] := DataHome;
+  Bases[1] := ConfigHome;
+  Bases[2] := Home + '.var/app/org.timotheos.bible/data';
+  Bases[3] := Home + '.var/app/org.timotheos.bible/config';
+  for i := 0 to High(Bases) do
+  begin
+    Base := IncludeTrailingPathDelimiter(Bases[i]);
+    for j := 0 to High(Names) do
+      AddIfExists(Base + Names[j]);
+  end;
+end;
+{$ENDIF}
 
 { Writes through a temporary file with atomic replacement so Timotheos never
   reads half a file or sees the file disappear between delete and rename. }
@@ -313,8 +452,12 @@ begin
     finally
       Stream.Free;
     end;
+    {$IFDEF WINDOWS}
     if not MoveFileExA(PChar(TmpFile), PChar(FileName),
        MOVEFILE_REPLACE_EXISTING or MOVEFILE_WRITE_THROUGH) then
+    {$ELSE}
+    if not RenameFile(TmpFile, FileName) then
+    {$ENDIF}
     begin
       if FileExists(FileName) then
         SysUtils.DeleteFile(FileName);
@@ -637,8 +780,8 @@ end;
 
 function GetTanglawCurrentRef: string;
 var
-  Wnd: THandle;
-  TitleBuf: array[0..255] of Char;
+  Wnd: PtrUInt;
+  {$IFDEF WINDOWS}TitleBuf: array[0..255] of Char;{$ENDIF}
   Dirs: TStringList;
   Index, b, c, v, BestB, BestC, BestV, MappedB, MappedC: Integer;
   BestScore, Score: Int64;
@@ -718,6 +861,7 @@ begin
         Exit(Format('%d,%d,%d', [MappedB, MappedC, BestV]));
     end;
 
+    {$IFDEF WINDOWS}
     // 2. Window title: "<Book> <c>:<v> - Timotheos" (or "- Tanglaw Bible")
     FillChar(TitleBuf, SizeOf(TitleBuf), 0);
     GetWindowText(Wnd, TitleBuf, Length(TitleBuf));
@@ -741,6 +885,7 @@ begin
         end;
       end;
     end;
+    {$ENDIF}
 
     // 3. settings.json fallback, unless it still holds the verse we just sent
     BestB := 0;
@@ -786,23 +931,5 @@ begin
     Dirs.Free;
   end;
 end;
-
-{$ELSE}
-
-function IsTanglawRunning: PtrUInt;
-begin
-  Result := 0;
-end;
-
-procedure SyncTanglawVerse(BookID, Chapter, Verse: Integer);
-begin
-end;
-
-function GetTanglawCurrentRef: string;
-begin
-  Result := '';
-end;
-
-{$ENDIF}
 
 end.
