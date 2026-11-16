@@ -708,6 +708,61 @@ begin
   end;
 end;
 
+{$IFDEF UNIX}
+{ Delete per-user menu entries named iBiblia whose program no longer exists
+  (for example one left by an older copy that was moved or deleted), so that
+  clicking them does not fail with "Could not find the program". }
+procedure RemoveBrokenMenuEntries(const Dir, KeepFile: string);
+var
+  SR: TSearchRec;
+  L: TStringList;
+  F, Line, Target: string;
+  k: Integer;
+  IsIBiblia: Boolean;
+begin
+  if FindFirst(Dir + '/*.desktop', faAnyFile, SR) <> 0 then Exit;
+  try
+    repeat
+      F := Dir + '/' + SR.Name;
+      if F = KeepFile then Continue;
+      L := TStringList.Create;
+      try
+        try
+          L.LoadFromFile(F);
+        except
+          Continue;
+        end;
+        IsIBiblia := False;
+        Target := '';
+        for k := 0 to L.Count - 1 do
+        begin
+          Line := Trim(L[k]);
+          if Line = 'Name=iBiblia' then IsIBiblia := True
+          else if (Copy(Line, 1, 5) = 'Exec=') and (Target = '') then
+          begin
+            Line := Trim(Copy(Line, 6, MaxInt));
+            if (Line <> '') and (Line[1] = '"') then
+            begin
+              Delete(Line, 1, 1);
+              Target := Copy(Line, 1, Pos('"', Line + '"') - 1);
+            end
+            else
+              Target := Copy(Line, 1, Pos(' ', Line + ' ') - 1);
+          end;
+        end;
+        if IsIBiblia and (Target <> '') and (Target[1] = '/') and
+           not FileExists(Target) then
+          DeleteFile(F);
+      finally
+        L.Free;
+      end;
+    until FindNext(SR) <> 0;
+  finally
+    FindClose(SR);
+  end;
+end;
+{$ENDIF}
+
 procedure EnsureLinuxMenuEntry;
 {$IFDEF UNIX}
 var
@@ -730,12 +785,17 @@ begin
       try
         L.LoadFromFile(FileName);
         Current := L.Values['Exec'];
-        if ('Exec=' + Current = Wanted) or (Pos(Exe, L.Text) > 0) then Exit;
+        if ('Exec=' + Current = Wanted) or (Pos(Exe, L.Text) > 0) then
+        begin
+          RemoveBrokenMenuEntries(Dir, FileName);
+          Exit;
+        end;
       finally
         L.Free;
       end;
     end;
     if not ForceDirectories(Dir) then Exit;
+    RemoveBrokenMenuEntries(Dir, FileName);
     L := TStringList.Create;
     try
       L.Add('[Desktop Entry]');

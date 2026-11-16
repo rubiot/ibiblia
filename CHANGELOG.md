@@ -6,7 +6,12 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.031 (2026-11-16) — Restart After Update on Linux
+### 0. Version 1.1.0.032 (2026-11-16) — Broken Menu Entries on Linux
+
+* Linux: iBiblia now removes broken applications-menu entries for itself (for example one left by an older copy of iBiblia that was moved or deleted, which showed 'Could not find the program ...' when clicked), and keeps one working entry for the copy you run.
+* Files: `app_updater.pas`.
+
+### 0k. Version 1.1.0.031 (2026-11-16) — Restart After Update on Linux
 
 * Linux: after an automatic update the new iBiblia now starts by itself. It used to start while the old one was still closing, and failed with 'Unable to open file ... iBiblia.ini: Try again'. The restart now waits (up to 20 seconds) until the old copy has exited.
 * Files: `app_updater.pas`.
