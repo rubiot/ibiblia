@@ -545,6 +545,77 @@ begin
 end;
 {$ENDIF}
 
+{$IFDEF LCLGTK2}
+{ Paragraph indents for the popup. RichMemo's SetParaMetric also creates a new
+  anonymous GtkTextTag on every call and never frees it, so the tag table kept
+  growing and every popup got slower than the one before (until restart).
+  As for the text styles, one named tag per distinct indent is reused. }
+procedure ParaRange(Memo: TRichMemo; AStart, ALen: Integer;
+  LI, FI, RI, SB, SA: Integer);
+const
+  DPIFactor = 96 / 72;
+var
+  List: PGList;
+  TextWidget: PGtkWidget;
+  Buffer: PGtkTextBuffer;
+  Table: PGtkTextTagTable;
+  Tag: PGtkTextTag;
+  Key: string;
+  H, FL, T: Double;
+  PxH, PxFL, PxR, PxSB, PxSA: gint;
+  IStart, IEnd: TGtkTextIter;
+begin
+  if (ALen <= 0) or not Memo.HandleAllocated then
+    Exit;
+  List := gtk_container_get_children(PGtkContainer(PtrUInt(Memo.Handle)));
+  if List = nil then
+    Exit;
+  TextWidget := PGtkWidget(List^.data);
+  g_list_free(List);
+  if TextWidget = nil then
+    Exit;
+  Buffer := gtk_text_view_get_buffer(PGtkTextView(TextWidget));
+  if Buffer = nil then
+    Exit;
+  { twips -> points, as the RichMemo call did }
+  H := Max(0, LI) / 20.0;
+  FL := Max(0, LI + FI) / 20.0;
+  if FL < H then
+  begin
+    T := H;
+    H := FL;
+    FL := FL - T;
+  end
+  else
+    FL := FL - H;
+  PxH := Round(H * DPIFactor);
+  PxFL := Round(FL * DPIFactor);
+  PxR := Round(Max(0, RI) / 20.0 * DPIFactor);
+  PxSB := Round(Max(0, SB) / 20.0 * DPIFactor);
+  PxSA := Round(Max(0, SA) / 20.0 * DPIFactor);
+  Key := Format('ibpara:%d:%d:%d:%d:%d', [PxH, PxFL, PxR, PxSB, PxSA]);
+  Table := gtk_text_buffer_get_tag_table(Buffer);
+  Tag := gtk_text_tag_table_lookup(Table, PChar(Key));
+  if Tag = nil then
+    Tag := gtk_text_buffer_create_tag(Buffer, PChar(Key),
+      'pixels-above-lines', [PxSB,
+      'pixels-below-lines', PxSA,
+      'left-margin', PxH,
+      'right-margin', PxR,
+      'indent', PxFL,
+      nil]);
+  gtk_text_buffer_get_iter_at_offset(Buffer, @IStart, AStart);
+  gtk_text_buffer_get_iter_at_offset(Buffer, @IEnd, AStart + ALen);
+  { a paragraph style covers whole lines }
+  gtk_text_iter_set_line_offset(@IStart, 0);
+  { (an end that is already at the start of the next line stays there) }
+  if (not gtk_text_iter_ends_line(@IEnd)) and
+     not (gtk_text_iter_starts_line(@IEnd) and (ALen > 0)) then
+    gtk_text_iter_forward_to_line_end(@IEnd);
+  gtk_text_buffer_apply_tag(Buffer, Tag, @IStart, @IEnd);
+end;
+{$ENDIF}
+
 type
   TRtfStyleState = record
     Bold: Boolean;
@@ -1285,6 +1356,12 @@ begin
   { paragraph indents (RTF \li \fi \ri, twips -> points) }
   for SpanIdx := 0 to ParaCount - 1 do
   begin
+    {$IFDEF LCLGTK2}
+    ParaRange(Memo, Paras[SpanIdx].CharStart, Max(1, Paras[SpanIdx].CharLen),
+      Paras[SpanIdx].LI, Paras[SpanIdx].FI, Paras[SpanIdx].RI,
+      Paras[SpanIdx].SB, Paras[SpanIdx].SA);
+    Continue;
+    {$ENDIF}
     InitParaMetric(PM);
     PM.HeadIndent := Max(0, Paras[SpanIdx].LI) / 20.0;
     PM.FirstLine := Max(0, Paras[SpanIdx].LI + Paras[SpanIdx].FI) / 20.0;

@@ -6,7 +6,12 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.045 (2026-11-17) — See-Through Panel Bar (Linux)
+### 0. Version 1.1.0.046 (2026-11-17) — Popup No Longer Slows Down Over Time (Linux)
+
+* Linux: the dictionary popup no longer gets slower and slower the longer iBiblia runs. Each popup with indented definitions (e.g. Thayer 1a, 1b) left new hidden formatting entries behind that were never removed, so every later popup took longer. Indents now reuse the same entries. In a test of 300 popups the time per popup stayed the same instead of growing about six times.
+* Files: `FormDictionaryPopup.pas`.
+
+### 0y. Version 1.1.0.045 (2026-11-17) — See-Through Panel Bar (Linux)
 
 * Linux: the bar at the bottom of each Bible panel is now really see-through. The bar's window is cut to the shape of its text, status circles and Edit/Properties boxes, so the verse text behind it shows everywhere else (earlier versions still drew a solid bar).
 * Files: `verse_panel_strip.pas`, `formprincipal.pas`.
