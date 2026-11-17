@@ -6,7 +6,12 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.041 (2026-11-17) — Classic Skin Always Light (Linux)
+### 0. Version 1.1.0.042 (2026-11-17) — Transparent Panel Bottom Bar
+
+* The bar at the bottom of each Bible panel (Source, Destination, Reference 1, Reference 2) no longer has its own background colour or top line: it takes the panel's colour, so only the panel name, status circles, Edit and Properties show.
+* Files: `verse_panel_strip.pas`.
+
+### 0u. Version 1.1.0.041 (2026-11-17) — Classic Skin Always Light (Linux)
 
 * Linux: the Classic skin is now always light, even when the desktop (KDE) theme is dark. Controls, menus, message boxes and the window title bar use light colours with Classic; other skins use their own colours as before.
 * Files: `unitskins.pas`.

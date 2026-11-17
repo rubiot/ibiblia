@@ -114,6 +114,9 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.042 (64-bit Edition) - 2026-11-17' + LineEnding +
+  '- The bar at the bottom of each Bible panel (Source, Destination, Reference 1, Reference 2) no longer has its own background colour or top line: it takes the panel's colour, so only the panel name, status circles, Edit and Properties show.' + LineEnding +
+  LineEnding +
   'Version 1.1.0.041 (64-bit Edition) - 2026-11-17' + LineEnding +
   '- Linux: the Classic skin is now always light, even when the desktop (KDE) theme is dark. Controls, menus, message boxes and the window title bar use light colours with Classic; other skins use their own colours as before.' + LineEnding +
   LineEnding +

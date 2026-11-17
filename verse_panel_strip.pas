@@ -54,6 +54,7 @@ type
     function PropertiesRect: TRect;
     function EditRect: TRect;
     function BoxSize: Integer;
+    function BackColor: TColor;
     procedure DrawBox(const R: TRect; const ALabel: string; Checked, Hot: Boolean);
   protected
     procedure Paint; override;
@@ -222,6 +223,22 @@ begin
   Invalidate;
 end;
 
+type
+  TControlColorAccess = class(TControl);
+
+{ The bar has no background of its own: it shows what is behind it, which is
+  the verse panel it sits on (the verse keeps a blank inset for the bar). }
+function TVersePanelStrip.BackColor: TColor;
+begin
+  Result := UIContentColor;
+  if Assigned(FTarget) then
+  begin
+    Result := TControlColorAccess(FTarget).Color;
+    if (Result = clDefault) or (Result = clNone) then
+      Result := UIContentColor;
+  end;
+end;
+
 function TVersePanelStrip.BoxSize: Integer;
 begin
   Result := Max(11, Height - 12);
@@ -343,7 +360,7 @@ begin
   H := R.Bottom - R.Top;
   if (W < 4) or (H < 4) then
     Exit;
-  BgCol := UISurfaceColor;
+  BgCol := BackColor;
   FillCol := UIContentColor;
   DotCol := FStatusColors[Index];
   if DotCol = clNone then
@@ -394,11 +411,8 @@ var
   StatusText, DrawTitle: string;
 begin
   Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := UISurfaceColor;
+  Canvas.Brush.Color := BackColor;
   Canvas.FillRect(ClientRect);
-  Canvas.Pen.Color := UIBorderColor;
-  Canvas.MoveTo(0, 0);
-  Canvas.LineTo(Width, 0);
   Canvas.Font.Assign(Font);
 
   if FTitleCaption <> '' then
