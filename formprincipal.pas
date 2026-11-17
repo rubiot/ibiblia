@@ -4769,7 +4769,9 @@ begin
 
   ConfigFilePath := ExtractFilePath(ParamStr(0)) + 'iBiblia.ini';
   {$IFNDEF WINDOWS}
-  if not DirectoryIsWritable(ExtractFileDir(ParamStr(0))) then
+  { Linux: the settings live in the user's config folder, so they survive
+    when a new version is unpacked into another folder. The ini next to the
+    program (older versions) is copied there the first time. }
   begin
     ConfigFilePath := SysUtils.GetEnvironmentVariable('XDG_CONFIG_HOME');
     if ConfigFilePath = '' then

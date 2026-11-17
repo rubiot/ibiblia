@@ -18,7 +18,8 @@ unit verse_panel_strip;
 interface
 
 uses
-  Classes, SysUtils, Controls, Graphics, ExtCtrls, Types, Math, Forms;
+  Classes, SysUtils, Controls, Graphics, ExtCtrls, Types, Math, Forms
+  {$IFDEF LCLGTK2}, gtk2, gdk2{$ENDIF};
 
 type
   TStripNavigateEvent = procedure(Sender: TObject; Delta: Integer) of object;
@@ -43,6 +44,10 @@ type
     FOnStatusPick: TStripStatusEvent;
     FOnEdit: TNotifyEvent;
     FOnProperties: TNotifyEvent;
+    FPaintCanvas: TCanvas;
+    FPaintBack: TColor;
+    procedure PaintContent(ACanvas: TCanvas; ABack: TColor);
+    procedure ApplyTransparency;
     procedure SetTitleCaption(const AValue: string);
     procedure SetShowControls(AValue: Boolean);
     procedure SetShowStatus(AValue: Boolean);
@@ -55,6 +60,7 @@ type
     function EditRect: TRect;
     function BoxSize: Integer;
     function BackColor: TColor;
+    function PC: TCanvas;
     procedure DrawBox(const R: TRect; const ALabel: string; Checked, Hot: Boolean);
   protected
     procedure Paint; override;
@@ -230,6 +236,8 @@ type
   the verse panel it sits on (the verse keeps a blank inset for the bar). }
 function TVersePanelStrip.BackColor: TColor;
 begin
+  if Assigned(FPaintCanvas) then
+    Exit(FPaintBack);
   Result := UIContentColor;
   if Assigned(FTarget) then
   begin
@@ -302,6 +310,14 @@ begin
     Exit(shEdit);
 end;
 
+function TVersePanelStrip.PC: TCanvas;
+begin
+  if Assigned(FPaintCanvas) then
+    Result := FPaintCanvas
+  else
+    Result := Canvas;
+end;
+
 procedure TVersePanelStrip.DrawBox(const R: TRect; const ALabel: string;
   Checked, Hot: Boolean);
 var
@@ -311,26 +327,26 @@ begin
   Size := BoxSize;
   Y := (Height - Size) div 2;
   Box := Rect(R.Left + 2, Y, R.Left + 2 + Size, Y + Size);
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := UIContentColor;
+  PC.Brush.Style := bsSolid;
+  PC.Brush.Color := UIContentColor;
   if Hot then
-    Canvas.Pen.Color := clHighlight
+    PC.Pen.Color := clHighlight
   else
-    Canvas.Pen.Color := UIMutedTextColor;
-  Canvas.Pen.Width := 1;
-  Canvas.Rectangle(Box);
+    PC.Pen.Color := UIMutedTextColor;
+  PC.Pen.Width := 1;
+  PC.Rectangle(Box);
   if Checked then
   begin
-    Canvas.Pen.Color := UITextColor;
-    Canvas.Pen.Width := 2;
-    Canvas.MoveTo(Box.Left + 3, Box.Top + Size div 2);
-    Canvas.LineTo(Box.Left + Size div 2 - 1, Box.Bottom - 4);
-    Canvas.LineTo(Box.Right - 3, Box.Top + 3);
-    Canvas.Pen.Width := 1;
+    PC.Pen.Color := UITextColor;
+    PC.Pen.Width := 2;
+    PC.MoveTo(Box.Left + 3, Box.Top + Size div 2);
+    PC.LineTo(Box.Left + Size div 2 - 1, Box.Bottom - 4);
+    PC.LineTo(Box.Right - 3, Box.Top + 3);
+    PC.Pen.Width := 1;
   end;
-  Canvas.Brush.Style := bsClear;
-  Canvas.Font.Color := UITextColor;
-  Canvas.TextOut(Box.Right + 6, (Height - Canvas.TextHeight(ALabel)) div 2,
+  PC.Brush.Style := bsClear;
+  PC.Font.Color := UITextColor;
+  PC.TextOut(Box.Right + 6, (Height - PC.TextHeight(ALabel)) div 2,
     ALabel);
 end;
 
@@ -399,21 +415,24 @@ begin
         end;
         Bmp.Canvas.Pixels[PX, PY] := PixCol;
       end;
-    Canvas.Draw(R.Left, R.Top, Bmp);
+    PC.Draw(R.Left, R.Top, Bmp);
   finally
     Bmp.Free;
   end;
 end;
 
-procedure TVersePanelStrip.Paint;
+procedure TVersePanelStrip.PaintContent(ACanvas: TCanvas; ABack: TColor);
 var
   Index, CaptionIndex, CaptionLeft, MaxTitleRight, MaxTitleWidth, TitleX, TitleY: Integer;
   StatusText, DrawTitle: string;
 begin
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := BackColor;
-  Canvas.FillRect(ClientRect);
-  Canvas.Font.Assign(Font);
+  FPaintCanvas := ACanvas;
+  FPaintBack := ABack;
+  try
+  PC.Brush.Style := bsSolid;
+  PC.Brush.Color := BackColor;
+  PC.FillRect(ClientRect);
+  PC.Font.Assign(Font);
 
   if FTitleCaption <> '' then
   begin
@@ -427,20 +446,20 @@ begin
     MaxTitleWidth := Max(0, MaxTitleRight - TitleX);
     if MaxTitleWidth > 8 then
     begin
-      Canvas.Font.Style := Font.Style + [fsBold];
-      Canvas.Font.Color := UITextColor;
-      Canvas.Brush.Style := bsClear;
+      PC.Font.Style := Font.Style + [fsBold];
+      PC.Font.Color := UITextColor;
+      PC.Brush.Style := bsClear;
       DrawTitle := FTitleCaption;
-      if (Canvas.TextWidth(DrawTitle) > MaxTitleWidth) and (Length(DrawTitle) > 1) then
+      if (PC.TextWidth(DrawTitle) > MaxTitleWidth) and (Length(DrawTitle) > 1) then
       begin
         while (Length(DrawTitle) > 1) and
-              (Canvas.TextWidth(DrawTitle + '...') > MaxTitleWidth) do
+              (PC.TextWidth(DrawTitle + '...') > MaxTitleWidth) do
           Delete(DrawTitle, Length(DrawTitle), 1);
         DrawTitle := DrawTitle + '...';
       end;
-      TitleY := (Height - Canvas.TextHeight(DrawTitle)) div 2;
-      Canvas.TextOut(TitleX, TitleY, DrawTitle);
-      Canvas.Font.Style := Font.Style;
+      TitleY := (Height - PC.TextHeight(DrawTitle)) div 2;
+      PC.TextOut(TitleX, TitleY, DrawTitle);
+      PC.Font.Style := Font.Style;
     end;
   end;
 
@@ -461,11 +480,11 @@ begin
     begin
       StatusText := FStatusCaptions[CaptionIndex];
       CaptionLeft := StatusCircleRect(High(FStatusColors)).Right + 8;
-      if CaptionLeft + Canvas.TextWidth(StatusText) < EditRect.Left - 4 then
+      if CaptionLeft + PC.TextWidth(StatusText) < EditRect.Left - 4 then
       begin
-        Canvas.Brush.Style := bsClear;
-        Canvas.Font.Color := UIMutedTextColor;
-        Canvas.TextOut(CaptionLeft, (Height - Canvas.TextHeight(StatusText)) div 2,
+        PC.Brush.Style := bsClear;
+        PC.Font.Color := UIMutedTextColor;
+        PC.TextOut(CaptionLeft, (Height - PC.TextHeight(StatusText)) div 2,
           StatusText);
       end;
     end;
@@ -473,6 +492,98 @@ begin
 
   DrawBox(EditRect, SStripEdit, FEditActive, FHot = shEdit);
   DrawBox(PropertiesRect, SStripProperties, FPropertiesActive, FHot = shProperties);
+  finally
+    FPaintCanvas := nil;
+  end;
+end;
+
+const
+  StripKeyColor = TColor($00FF00FF);
+
+{$IFDEF LCLGTK2}
+procedure gdk_window_input_shape_combine_region(window: PGdkWindow;
+  shape_region: PGdkRegion; offset_x, offset_y: LongInt); cdecl; external gdklib;
+{$ENDIF}
+
+{ The bar has no background at all. Everything it draws is drawn once on a key
+  colour to learn which pixels are text or icon; the bar's window is then cut
+  down to exactly those pixels (plus its click targets), so the verse text
+  running behind it shows through everywhere else. }
+procedure TVersePanelStrip.ApplyTransparency;
+{$IFDEF LCLGTK2}
+var
+  Bmp: TBitmap;
+  Wnd: PGtkWidget;
+  Shape, Input: PGdkRegion;
+  GR: TGdkRectangle;
+  X, Y, RunStart, Key: Integer;
+  Row: Boolean;
+  procedure AddRect(Reg: PGdkRegion; const R: TRect);
+  begin
+    if (R.Right <= R.Left) or (R.Bottom <= R.Top) then Exit;
+    GR.x := R.Left; GR.y := R.Top;
+    GR.width := R.Right - R.Left; GR.height := R.Bottom - R.Top;
+    gdk_region_union_with_rect(Reg, @GR);
+  end;
+{$ENDIF}
+begin
+{$IFDEF LCLGTK2}
+  try
+    if (not HandleAllocated) or (Width < 2) or (Height < 2) then Exit;
+    Wnd := PGtkWidget(Handle);
+    if (Wnd = nil) or (Wnd^.window = nil) then Exit;
+    if (Wnd^.parent <> nil) and (Wnd^.window = Wnd^.parent^.window) then Exit;
+    Bmp := TBitmap.Create;
+    try
+      Bmp.PixelFormat := pf24bit;
+      Bmp.SetSize(Width, Height);
+      Bmp.Canvas.Font.Assign(Font);
+      PaintContent(Bmp.Canvas, StripKeyColor);
+      Shape := gdk_region_new;
+      Input := gdk_region_new;
+      Key := ColorToRGB(StripKeyColor);
+      for Y := 0 to Height - 1 do
+      begin
+        RunStart := -1;
+        for X := 0 to Width do
+        begin
+          Row := (X < Width) and (ColorToRGB(Bmp.Canvas.Pixels[X, Y]) <> Key);
+          if Row and (RunStart < 0) then
+            RunStart := X
+          else if (not Row) and (RunStart >= 0) then
+          begin
+            AddRect(Shape, Rect(RunStart, Y, X, Y + 1));
+            RunStart := -1;
+          end;
+        end;
+      end;
+      // click targets stay clickable even where nothing is drawn
+      gdk_region_union(Input, Shape);
+      if FShowControls then
+      begin
+        AddRect(Input, EditRect);
+        AddRect(Input, PropertiesRect);
+        if FShowStatus then
+          for X := 0 to High(FStatusColors) do
+            AddRect(Input, StatusCircleRect(X));
+      end;
+      gdk_window_shape_combine_region(Wnd^.window, Shape, 0, 0);
+      gdk_window_input_shape_combine_region(Wnd^.window, Input, 0, 0);
+      gdk_region_destroy(Shape);
+      gdk_region_destroy(Input);
+    finally
+      Bmp.Free;
+    end;
+  except
+    // cosmetic only
+  end;
+{$ENDIF}
+end;
+
+procedure TVersePanelStrip.Paint;
+begin
+  PaintContent(Canvas, BackColor);
+  ApplyTransparency;
 end;
 
 procedure TVersePanelStrip.MouseMove(Shift: TShiftState; X, Y: Integer);
