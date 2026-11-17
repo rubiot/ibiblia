@@ -6,7 +6,12 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.044 (2026-11-17) — Panel Bar Really Transparent (Linux)
+### 0. Version 1.1.0.045 (2026-11-17) — See-Through Panel Bar (Linux)
+
+* Linux: the bar at the bottom of each Bible panel is now really see-through. The bar's window is cut to the shape of its text, status circles and Edit/Properties boxes, so the verse text behind it shows everywhere else (earlier versions still drew a solid bar).
+* Files: `verse_panel_strip.pas`, `formprincipal.pas`.
+
+### 0x. Version 1.1.0.044 (2026-11-17) — Panel Bar Really Transparent (Linux)
 
 * The bar at the bottom of each Bible panel is now truly transparent: it draws no background at all, only its text, status circles and Edit/Properties boxes, so verse text running behind it stays visible (Linux).
 * Files: `verse_panel_strip.pas`, `formprincipal.pas`.

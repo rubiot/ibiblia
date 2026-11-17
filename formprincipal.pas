@@ -2287,9 +2287,11 @@ begin
     if Strip.Visible <> ShowStrip then
     begin
       Strip.Visible := ShowStrip;
-      Box.Invalidate; // the bar draws no background: redraw the verse under it
       if ShowStrip then
-        Strip.BringToFront
+      begin
+        Strip.Invalidate;
+        Strip.BringToFront;
+      end
       else if ProjectActive and Assigned(CurrentProject.VerseObjects[TextType]) then
         CurrentProject.VerseObjects[TextType].RefreshAfterEditorClose;
     end

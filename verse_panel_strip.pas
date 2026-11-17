@@ -18,7 +18,9 @@ unit verse_panel_strip;
 interface
 
 uses
-  Classes, SysUtils, Controls, Graphics, ExtCtrls, Types, Math, Forms;
+  Classes, SysUtils, Controls, Graphics, ExtCtrls, Types, Math, Forms,
+  IntfGraphics, FPImage
+  {$IFDEF LCLGTK2}, gtk2, gdk2, Gtk2Proc{$ENDIF};
 
 type
   TStripNavigateEvent = procedure(Sender: TObject; Delta: Integer) of object;
@@ -43,10 +45,14 @@ type
     FOnStatusPick: TStripStatusEvent;
     FOnEdit: TNotifyEvent;
     FOnProperties: TNotifyEvent;
-    FLastSignature: string;
+    FShapeSignature: string;
+    FFace: TBitmap;
+    FShaped: Boolean;
     FPaintCanvas: TCanvas;
     FPaintBack: TColor;
     procedure PaintContent(ACanvas: TCanvas; ABack: TColor);
+    function ShapeSignature: string;
+    procedure ApplyTransparency;
     procedure SetTitleCaption(const AValue: string);
     procedure SetShowControls(AValue: Boolean);
     procedure SetShowStatus(AValue: Boolean);
@@ -63,6 +69,7 @@ type
     procedure DrawBox(const R: TRect; const ALabel: string; Checked, Hot: Boolean);
   protected
     procedure Paint; override;
+    procedure Resize; override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState;
       X, Y: Integer); override;
@@ -70,6 +77,9 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     procedure Invalidate; override;
+    destructor Destroy; override;
+    { draws the bar's picture again (Linux: called regularly while shown) }
+    procedure Blit;
     function PreferredHeight: Integer;
     { Puts the bar along the bottom edge of ATarget. }
     procedure PlaceOver(ATarget: TControl);
@@ -120,34 +130,13 @@ uses
 constructor TVersePanelStrip.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  ControlStyle := ControlStyle - [csOpaque];
-  DoubleBuffered := False;
+  ControlStyle := ControlStyle + [csOpaque];
+  DoubleBuffered := True;
   FStatusIndex := -1;
   FHotStatus := -1;
   FHot := shNone;
   ShowHint := True;
   Height := 24;
-end;
-
-{ Nothing is painted behind the text and icons, so when what the bar shows
-  changes the panel under it is redrawn first (it wipes the old picture). }
-procedure TVersePanelStrip.Invalidate;
-var
-  Sig: string;
-  Index: Integer;
-begin
-  Sig := FTitleCaption + '|' + IntToStr(Width) + 'x' + IntToStr(Height) + '|' +
-    IntToStr(Ord(FShowControls)) + IntToStr(Ord(FShowStatus)) +
-    IntToStr(Ord(FEditActive)) + IntToStr(Ord(FPropertiesActive)) + '|' +
-    IntToStr(FStatusIndex) + '|' + IntToStr(Ord(FHot)) + IntToStr(FHotStatus);
-  for Index := 0 to High(FStatusColors) do
-    Sig := Sig + ',' + IntToStr(FStatusColors[Index]);
-  if (Sig <> FLastSignature) and Assigned(FTarget) and Visible then
-  begin
-    FLastSignature := Sig;
-    FTarget.Invalidate;
-  end;
-  inherited Invalidate;
 end;
 
 function TVersePanelStrip.PreferredHeight: Integer;
@@ -372,14 +361,33 @@ begin
 end;
 
 procedure TVersePanelStrip.DrawStatusCircle(const R: TRect; Index: Integer);
-{ a ring; the current status also gets a dot in its colour. Only the circle
-  itself is drawn, nothing around it. }
+{ as in the mod: a fine anti-aliased ring; the current status also gets a dot
+  in its colour }
+  function Blend(C1, C2: TColor; T: Double): TColor;
+  var
+    A, B: LongInt;
+  begin
+    if T <= 0 then Exit(C1);
+    if T >= 1 then Exit(C2);
+    A := ColorToRGB(C1);
+    B := ColorToRGB(C2);
+    Result := RGBToColor(
+      EnsureRange(Round((A and 255) + ((B and 255) - (A and 255)) * T), 0, 255),
+      EnsureRange(Round(((A shr 8) and 255) + (((B shr 8) and 255) - ((A shr 8) and 255)) * T), 0, 255),
+      EnsureRange(Round(((A shr 16) and 255) + (((B shr 16) and 255) - ((A shr 16) and 255)) * T), 0, 255));
+  end;
 var
-  DotCol, RingCol: TColor;
-  Inset, Cx, Cy, Rad: Integer;
+  Bmp: TBitmap;
+  W, H, PX, PY: Integer;
+  Cx, Cy, D, ROuter, RMid, HRing, RDot, TFill, TRing, TDot: Double;
+  BgCol, FillCol, DotCol, RingCol, PixCol: TColor;
 begin
-  if (R.Right - R.Left < 4) or (R.Bottom - R.Top < 4) then
+  W := R.Right - R.Left;
+  H := R.Bottom - R.Top;
+  if (W < 4) or (H < 4) then
     Exit;
+  BgCol := BackColor;
+  FillCol := UIContentColor;
   DotCol := FStatusColors[Index];
   if DotCol = clNone then
     DotCol := UIMutedTextColor;
@@ -389,23 +397,38 @@ begin
     RingCol := UITextColor
   else
     RingCol := UIMutedTextColor;
-  PC.Brush.Style := bsSolid;
-  PC.Brush.Color := UIContentColor;
-  PC.Pen.Style := psSolid;
-  PC.Pen.Width := 1;
-  PC.Pen.Color := RingCol;
-  PC.Ellipse(R.Left, R.Top, R.Right, R.Bottom);
-  if Index = FStatusIndex then
-  begin
-    Cx := (R.Left + R.Right) div 2;
-    Cy := (R.Top + R.Bottom) div 2;
-    Rad := Max(2, (R.Right - R.Left) div 4);
-    Inset := 0;
-    PC.Brush.Color := DotCol;
-    PC.Pen.Color := DotCol;
-    PC.Ellipse(Cx - Rad - Inset, Cy - Rad - Inset, Cx + Rad + 1, Cy + Rad + 1);
+  ROuter := W / 2 - 0.8;
+  RMid := ROuter - 0.75;
+  HRing := 0.75;
+  RDot := ROuter * 0.52;
+  Bmp := TBitmap.Create;
+  try
+    Bmp.SetSize(W, H);
+    Cx := (W - 1) / 2;
+    Cy := (H - 1) / 2;
+    for PY := 0 to H - 1 do
+      for PX := 0 to W - 1 do
+      begin
+        D := Sqrt(Sqr(PX - Cx) + Sqr(PY - Cy));
+        PixCol := BgCol;
+        TFill := EnsureRange((ROuter + 0.5) - D, 0.0, 1.0);
+        if TFill > 0 then
+          PixCol := Blend(PixCol, FillCol, TFill);
+        TRing := EnsureRange((HRing + 0.55) - Abs(D - RMid), 0.0, 1.0);
+        if TRing > 0 then
+          PixCol := Blend(PixCol, RingCol, TRing);
+        if Index = FStatusIndex then
+        begin
+          TDot := EnsureRange((RDot + 0.55) - D, 0.0, 1.0);
+          if TDot > 0 then
+            PixCol := Blend(PixCol, DotCol, TDot);
+        end;
+        Bmp.Canvas.Pixels[PX, PY] := PixCol;
+      end;
+    PC.Draw(R.Left, R.Top, Bmp);
+  finally
+    Bmp.Free;
   end;
-  PC.Brush.Style := bsClear;
 end;
 
 procedure TVersePanelStrip.PaintContent(ACanvas: TCanvas; ABack: TColor);
@@ -416,7 +439,9 @@ begin
   FPaintCanvas := ACanvas;
   FPaintBack := ABack;
   try
-  { no background is painted: the verse panel behind shows through }
+  PC.Brush.Style := bsSolid;
+  PC.Brush.Color := BackColor;
+  PC.FillRect(ClientRect);
   PC.Font.Assign(Font);
 
   if FTitleCaption <> '' then
@@ -482,9 +507,183 @@ begin
   end;
 end;
 
+const
+  StripKeyColor = TColor($00FF00FF);
+
+{$IFDEF LCLGTK2}
+procedure gdk_window_input_shape_combine_region(window: PGdkWindow;
+  shape_region: PGdkRegion; offset_x, offset_y: LongInt); cdecl; external gdklib;
+{$ENDIF}
+
+{ The bar has no background at all. Everything it draws is drawn once on a key
+  colour to learn which pixels are text or icon; the bar's window is then cut
+  down to exactly those pixels (plus its click targets), so the verse text
+  running behind it shows through everywhere else. }
+procedure TVersePanelStrip.ApplyTransparency;
+{$IFDEF LCLGTK2}
+var
+  Bmp: TBitmap;
+  Wnd: PGtkWidget;
+  Shape, Input: PGdkRegion;
+  GR: TGdkRectangle;
+  X, Y, RunStart, Key: Integer;
+  Row: Boolean;
+  Img: TLazIntfImage;
+  Px, KeyFP: TFPColor;
+  Sig: string;
+  procedure AddRect(Reg: PGdkRegion; const R: TRect);
+  begin
+    if (R.Right <= R.Left) or (R.Bottom <= R.Top) then Exit;
+    GR.x := R.Left; GR.y := R.Top;
+    GR.width := R.Right - R.Left; GR.height := R.Bottom - R.Top;
+    gdk2.gdk_region_union_with_rect(Reg, @GR);
+  end;
+{$ENDIF}
+begin
+{$IFDEF LCLGTK2}
+  try
+    if (not HandleAllocated) or (Width < 2) or (Height < 2) then Exit;
+    { the control's outer widget has no window of its own; its client area
+      (where it paints) does }
+    Wnd := PGtkWidget(GetFixedWidget(Pointer(Handle)));
+    if Wnd = nil then
+      Wnd := PGtkWidget(Handle);
+    if (Wnd = nil) or (Wnd^.window = nil) then Exit;
+    if (PGtkWidget(Handle)^.parent <> nil) and
+       (Wnd^.window = PGtkWidget(Handle)^.parent^.window) then Exit;
+    Sig := ShapeSignature;
+    if Sig = FShapeSignature then Exit;
+    FShapeSignature := Sig;
+    Bmp := TBitmap.Create;
+    try
+      Bmp.PixelFormat := pf24bit;
+      Bmp.SetSize(Width, Height);
+      Bmp.Canvas.Font.Assign(Font);
+      PaintContent(Bmp.Canvas, StripKeyColor);
+      Shape := gdk_region_new;
+      Input := gdk_region_new;
+      Img := Bmp.CreateIntfImage;
+      try
+      KeyFP := TColorToFPColor(StripKeyColor);
+      for Y := 0 to Height - 1 do
+      begin
+        RunStart := -1;
+        for X := 0 to Width do
+        begin
+          if X < Width then
+          begin
+            Px := Img.Colors[X, Y];
+            Row := (Abs(Px.Red - KeyFP.Red) > 1024) or (Abs(Px.Green - KeyFP.Green) > 1024) or
+              (Abs(Px.Blue - KeyFP.Blue) > 1024);
+          end
+          else
+            Row := False;
+          if Row and (RunStart < 0) then
+            RunStart := X
+          else if (not Row) and (RunStart >= 0) then
+          begin
+            AddRect(Shape, Rect(RunStart, Y, X, Y + 1));
+            RunStart := -1;
+          end;
+        end;
+      end;
+      finally
+        Img.Free;
+      end;
+      // click targets stay clickable even where nothing is drawn
+      gdk2.gdk_region_union(Input, Shape);
+      if FShowControls then
+      begin
+        AddRect(Input, EditRect);
+        AddRect(Input, PropertiesRect);
+        if FShowStatus then
+          for X := 0 to High(FStatusColors) do
+            AddRect(Input, StatusCircleRect(X));
+      end;
+      gdk_window_shape_combine_region(Wnd^.window, Shape, 0, 0);
+      gdk_window_input_shape_combine_region(Wnd^.window, Input, 0, 0);
+      gdk_region_destroy(Shape);
+      gdk_region_destroy(Input);
+      { the real picture, drawn straight onto the cut window (a cut window
+        does not get reliable redraw requests) }
+      if FFace = nil then
+        FFace := TBitmap.Create;
+      FFace.SetSize(Width, Height);
+      FFace.Canvas.Font.Assign(Font);
+      PaintContent(FFace.Canvas, BackColor);
+      FShaped := True;
+      Blit;
+    finally
+      Bmp.Free;
+    end;
+  except
+    // cosmetic only
+  end;
+{$ENDIF}
+end;
+
+destructor TVersePanelStrip.Destroy;
+begin
+  FreeAndNil(FFace);
+  inherited Destroy;
+end;
+
+procedure TVersePanelStrip.Blit;
+var
+  C: TControlCanvas;
+begin
+  if (not FShaped) or (FFace = nil) or (not HandleAllocated) or (not IsVisible) then
+    Exit;
+  if (FFace.Width <> Width) or (FFace.Height <> Height) then
+    Exit;
+  C := TControlCanvas.Create;
+  try
+    C.Control := Self;
+    C.Draw(0, 0, FFace);
+  finally
+    C.Free;
+  end;
+end;
+
+{ everything that changes what the bar draws }
+function TVersePanelStrip.ShapeSignature: string;
+var
+  Index: Integer;
+begin
+  Result := FTitleCaption + '|' + IntToStr(Width) + 'x' + IntToStr(Height) + '|' +
+    IntToStr(Ord(FShowControls)) + IntToStr(Ord(FShowStatus)) +
+    IntToStr(Ord(FEditActive)) + IntToStr(Ord(FPropertiesActive)) + '|' +
+    IntToStr(FStatusIndex) + '|' + IntToStr(Ord(FHot)) + IntToStr(FHotStatus) + '|' +
+    Font.Name + IntToStr(Font.Size) + IntToStr(Font.Color) + IntToStr(UITextColor);
+  for Index := 0 to High(FStatusColors) do
+    Result := Result + ',' + IntToStr(FStatusColors[Index]);
+  for Index := 0 to High(FStatusCaptions) do
+    Result := Result + ',' + FStatusCaptions[Index];
+end;
+
+{ The window is cut to the new picture BEFORE it is redrawn: a cut window only
+  gets redraw requests inside its current shape. }
+procedure TVersePanelStrip.Invalidate;
+begin
+  ApplyTransparency;
+  inherited Invalidate;
+end;
+
+procedure TVersePanelStrip.Resize;
+begin
+  inherited Resize;
+  ApplyTransparency;
+end;
+
 procedure TVersePanelStrip.Paint;
 begin
+  if FShaped and Assigned(FFace) and (FFace.Width = Width) and (FFace.Height = Height) then
+  begin
+    Canvas.Draw(0, 0, FFace);
+    Exit;
+  end;
   PaintContent(Canvas, BackColor);
+  ApplyTransparency;
 end;
 
 procedure TVersePanelStrip.MouseMove(Shift: TShiftState; X, Y: Integer);

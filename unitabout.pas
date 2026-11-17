@@ -114,6 +114,9 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.045 (64-bit Edition) - 2026-11-17' + LineEnding +
+  '- Linux: the bar at the bottom of each Bible panel is now really see-through. The bar''s window is cut to the shape of its text, status circles and Edit/Properties boxes, so the verse text behind it shows everywhere else (earlier versions still drew a solid bar).' + LineEnding +
+  LineEnding +
   'Version 1.1.0.044 (64-bit Edition) - 2026-11-17' + LineEnding +
   '- The bar at the bottom of each Bible panel is now truly transparent: it draws no background at all, only its text, status circles and Edit/Properties boxes, so verse text running behind it stays visible (Linux).' + LineEnding +
   LineEnding +
