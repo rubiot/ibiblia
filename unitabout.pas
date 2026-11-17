@@ -114,6 +114,9 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.041 (64-bit Edition) - 2026-11-17' + LineEnding +
+  '- Linux: the Classic skin is now always light, even when the desktop (KDE) theme is dark. Controls, menus, message boxes and the window title bar use light colours with Classic; other skins use their own colours as before.' + LineEnding +
+  LineEnding +
   'Version 1.1.0.040 (64-bit Edition) - 2026-11-17' + LineEnding +
   '- Faster word association with large dictionaries: the English word dictionary (e.g. Webster 1828) is searched through an in-memory name list instead of scanning the whole file for every word you point at, which made association feel slower and slower after updating to big dictionaries.' + LineEnding +
   LineEnding +

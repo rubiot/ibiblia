@@ -6,7 +6,12 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.040 (2026-11-17) — Faster Word Association (Dictionaries)
+### 0. Version 1.1.0.041 (2026-11-17) — Classic Skin Always Light (Linux)
+
+* Linux: the Classic skin is now always light, even when the desktop (KDE) theme is dark. Controls, menus, message boxes and the window title bar use light colours with Classic; other skins use their own colours as before.
+* Files: `unitskins.pas`.
+
+### 0t. Version 1.1.0.040 (2026-11-17) — Faster Word Association (Dictionaries)
 
 * Faster word association with large dictionaries: the English word dictionary (e.g. Webster 1828) is searched through an in-memory name list instead of scanning the whole file for every word you point at, which made association feel slower and slower after updating to big dictionaries.
 * Files: `dictionary_manager.pas`.

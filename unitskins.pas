@@ -246,6 +246,18 @@ begin
       Result.HeaderColor := MakeRGB(190, 124, 65);
       Result.VerseNumColor := MakeRGB(44, 186, 125);
       Result.VerseHighlightBg := clSilver;
+      {$IFNDEF WINDOWS}
+      { A dark desktop theme (e.g. KDE Breeze Dark) would make the system
+        colours dark; Classic must always be light. }
+      Result.WindowBg := clWhite;
+      Result.WindowText := clBlack;
+      Result.PanelBg := MakeRGB($EF, $EF, $EF);
+      Result.PanelText := clBlack;
+      Result.TreeBg := clWhite;
+      Result.TreeText := clBlack;
+      Result.PointedBg := MakeRGB($30, $8C, $C6);
+      Result.PointedText := clWhite;
+      {$ENDIF}
     end;
 
     skTheWordDark:
@@ -591,6 +603,7 @@ var
   Rc: string;
   Settings: PGtkSettings;
   Key: Integer;
+  Hi: TColor;
 begin
   Key := Ord(ASkin.Id) + 1;
   if GtkSkinApplied = Key then Exit;
@@ -600,13 +613,16 @@ begin
     if Settings = nil then Exit;
     { forget everything parsed earlier, back to the system theme }
     gtk_rc_reparse_all_for_settings(Settings, True);
-    if ASkin.IsDark then
     begin
+      if ASkin.IsDark then
+        Hi := clWhite
+      else
+        Hi := clBlack;
       Rc :=
         'style "ibiblia-skin" {'#10 +
         '  bg[NORMAL] = "' + GtkHex(ASkin.PanelBg) + '"'#10 +
-        '  bg[PRELIGHT] = "' + GtkHex(GtkBlend(ASkin.PanelBg, clWhite, 14)) + '"'#10 +
-        '  bg[ACTIVE] = "' + GtkHex(GtkBlend(ASkin.PanelBg, clBlack, 30)) + '"'#10 +
+        '  bg[PRELIGHT] = "' + GtkHex(GtkBlend(ASkin.PanelBg, clWhite, 14 + 24 * Ord(not ASkin.IsDark))) + '"'#10 +
+        '  bg[ACTIVE] = "' + GtkHex(GtkBlend(ASkin.PanelBg, clBlack, 30 - 16 * Ord(not ASkin.IsDark))) + '"'#10 +
         '  bg[INSENSITIVE] = "' + GtkHex(ASkin.PanelBg) + '"'#10 +
         '  bg[SELECTED] = "' + GtkHex(ASkin.SelectedBg) + '"'#10 +
         '  fg[NORMAL] = "' + GtkHex(ASkin.PanelText) + '"'#10 +
@@ -616,9 +632,9 @@ begin
         '  fg[INSENSITIVE] = "' + GtkHex(ASkin.WindowTextDim) + '"'#10 +
         '}'#10 +
         'style "ibiblia-slider" = "ibiblia-skin" {'#10 +
-        '  bg[NORMAL] = "' + GtkHex(GtkBlend(ASkin.PanelBg, clWhite, 26)) + '"'#10 +
-        '  bg[PRELIGHT] = "' + GtkHex(GtkBlend(ASkin.PanelBg, clWhite, 38)) + '"'#10 +
-        '  bg[ACTIVE] = "' + GtkHex(GtkBlend(ASkin.PanelBg, clBlack, 30)) + '"'#10 +
+        '  bg[NORMAL] = "' + GtkHex(GtkBlend(ASkin.PanelBg, Hi, 26 - 14 * Ord(not ASkin.IsDark))) + '"'#10 +
+        '  bg[PRELIGHT] = "' + GtkHex(GtkBlend(ASkin.PanelBg, Hi, 38 - 22 * Ord(not ASkin.IsDark))) + '"'#10 +
+        '  bg[ACTIVE] = "' + GtkHex(GtkBlend(ASkin.PanelBg, clBlack, 30 - 16 * Ord(not ASkin.IsDark))) + '"'#10 +
         '}'#10 +
         'style "ibiblia-input" = "ibiblia-skin" {'#10 +
         '  base[NORMAL] = "' + GtkHex(ASkin.WindowBg) + '"'#10 +
@@ -646,6 +662,15 @@ begin
         'widget_class "*GtkHButtonBox*" style "ibiblia-skin"'#10 +
         'widget_class "*GtkTable*" style "ibiblia-skin"'#10 +
         'widget_class "*GtkLabel*" style "ibiblia-skin"'#10 +
+        'style "ibiblia-menu" = "ibiblia-skin" {'#10 +
+        '  bg[PRELIGHT] = "' + GtkHex(ASkin.PointedBg) + '"'#10 +
+        '  bg[SELECTED] = "' + GtkHex(ASkin.PointedBg) + '"'#10 +
+        '  fg[PRELIGHT] = "' + GtkHex(ASkin.PointedText) + '"'#10 +
+        '  fg[SELECTED] = "' + GtkHex(ASkin.PointedText) + '"'#10 +
+        '}'#10 +
+        'widget_class "*GtkMenu*" style "ibiblia-menu"'#10 +
+        'widget_class "*GtkMenuBar*" style "ibiblia-menu"'#10 +
+        'widget_class "*GtkMenuItem*" style "ibiblia-menu"'#10 +
         'widget_class "*GtkScale*" style "ibiblia-skin"'#10 +
         'widget_class "*GtkProgressBar*" style "ibiblia-skin"'#10 +
         'widget_class "*GtkStatusbar*" style "ibiblia-skin"'#10 +
@@ -662,8 +687,8 @@ end;
 
 { The window title bar is drawn by KDE (KWin). KDE reads a colour scheme file
   named in the window property _KDE_NET_WM_COLOR_SCHEME and uses its [WM]
-  colours for that window's title bar. Dark skins get a matching file; a
-  light skin removes the property so the desktop theme applies again. }
+  colours for that window's title bar. Every skin gets a matching file, so the
+  light Classic skin keeps a light title bar under a dark KDE theme. }
 procedure ApplyKdeTitleBar(AForm: TCustomForm; const ASkin: TSkinColors);
 var
   Path, Dir: string;
@@ -687,11 +712,6 @@ begin
     Dpy := gdk_x11_drawable_get_xdisplay(Wnd^.window);
     if Dpy = nil then Exit;
     Atom := gdk_x11_get_xatom_by_name('_KDE_NET_WM_COLOR_SCHEME');
-    if not ASkin.IsDark then
-    begin
-      XDeleteProperty(Dpy, gdk_x11_drawable_get_xid(Wnd^.window), Atom);
-      Exit;
-    end;
     Dir := GetEnvironmentVariable('XDG_CACHE_HOME');
     if Dir = '' then Dir := GetEnvironmentVariable('HOME') + '/.cache';
     Dir := Dir + '/ibiblia';
