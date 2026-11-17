@@ -6,7 +6,12 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.043 (2026-11-17) — Truly Transparent Panel Bar, Settings Kept Across Updates (Linux)
+### 0. Version 1.1.0.044 (2026-11-17) — Panel Bar Really Transparent (Linux)
+
+* The bar at the bottom of each Bible panel is now truly transparent: it draws no background at all, only its text, status circles and Edit/Properties boxes, so verse text running behind it stays visible (Linux).
+* Files: `verse_panel_strip.pas`, `formprincipal.pas`.
+
+### 0w. Version 1.1.0.043 (2026-11-17) — Truly Transparent Panel Bar, Settings Kept Across Updates (Linux)
 
 * The bar at the bottom of each Bible panel is now really see-through: only its text, status circles and Edit/Properties boxes are drawn, so verse text behind it can be seen (Linux).
 * Linux: settings (default dictionaries, skin, etc.) are now kept in the .config/iBiblia folder of your user account instead of next to the program, so unpacking a new version in another folder no longer loses them. An existing iBiblia.ini next to the program is copied there the first time.

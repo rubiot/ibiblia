@@ -114,6 +114,9 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.044 (64-bit Edition) - 2026-11-17' + LineEnding +
+  '- The bar at the bottom of each Bible panel is now truly transparent: it draws no background at all, only its text, status circles and Edit/Properties boxes, so verse text running behind it stays visible (Linux).' + LineEnding +
+  LineEnding +
   'Version 1.1.0.043 (64-bit Edition) - 2026-11-17' + LineEnding +
   '- The bar at the bottom of each Bible panel is now really see-through: only its text, status circles and Edit/Properties boxes are drawn, so verse text behind it can be seen (Linux).' + LineEnding +
   '- Linux: settings (default dictionaries, skin, etc.) are now kept in the .config/iBiblia folder of your user account instead of next to the program, so unpacking a new version in another folder no longer loses them. An existing iBiblia.ini next to the program is copied there the first time.' + LineEnding +
