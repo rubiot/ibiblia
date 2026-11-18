@@ -22,7 +22,7 @@
       <UseVersionInfo Value="True"/>
       <MajorVersionNr Value="1"/>
       <MinorVersionNr Value="1"/>
-      <BuildNr Value="51"/>
+      <BuildNr Value="52"/>
       <StringTable CompanyName="Rúbio R. C. Terra (rubio.terra@gmail.com)" FileDescription="Ferramenta para associação de textos bíblicos" ProductName="iBiblia" ProductVersion="1.1.0.021"/>
     </VersionInfo>
     <BuildModes Count="6" Active="Debug">
@@ -222,7 +222,7 @@
         <PackageName Value="SynEdit"/>
       </Item5>
     </RequiredPackages>
-    <Units Count="95">
+    <Units Count="97">
       <Unit0>
         <Filename Value="iBiblia.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -1003,6 +1003,16 @@
         <IsPartOfProject Value="True"/>
         <UsageCount Value="20"/>
       </Unit94>
+      <Unit95>
+        <Filename Value="sword_module.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="20"/>
+      </Unit95>
+      <Unit96>
+        <Filename Value="sword_canons.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="20"/>
+      </Unit96>
     </Units>
     <JumpHistory Count="30" HistoryIndex="29">
       <Position1>

@@ -69,7 +69,7 @@ resourcestring
 implementation
 
 uses
-  Process, Zipper, zstream, FileUtil, LazFileUtils;
+  Process, Zipper, zstream, FileUtil, LazFileUtils, sword_module;
 
 const
   ARCHIVE_SUFFIXES: array[0..13] of string = (
@@ -479,8 +479,9 @@ end;
 
 function DictionaryDialogFilter: string;
 begin
-  Result := 'theWord dictionaries and compressed files|*.dct.twm;*.twm;' +
+  Result := 'theWord and SWORD dictionaries and compressed files|*.dct.twm;*.twm;*.conf;' +
     ArchiveFilterMask + '|theWord dictionaries (*.dct.twm;*.twm)|*.dct.twm;*.twm|' +
+    'SWORD dictionaries (*.conf)|*.conf|' +
     'Compressed files|' + ArchiveFilterMask + '|All files (*.*)|*.*';
 end;
 
@@ -497,10 +498,22 @@ end;
 function ResolvePickedDictionary(const Picked: string; out DictionaryFile,
   ErrorMessage: string): Boolean;
 var
-  Folder: string;
+  Folder, Temp, Target, Err: string;
+  Found: TStringList;
 begin
   ErrorMessage := '';
   DictionaryFile := Picked;
+  if SameText(ExtractFileExt(Picked), '.conf') then
+  begin
+    // a SWORD dictionary: converted to a theWord dictionary once
+    Target := SwordDictionaryTarget(Picked);
+    Result := ConvertSwordDictionary(Picked, Target, ErrorMessage);
+    if Result then
+      DictionaryFile := Target
+    else
+      DictionaryFile := '';
+    Exit;
+  end;
   if not IsArchiveFile(Picked) then
     Exit(True);
   Folder := IncludeTrailingPathDelimiter(GetAppConfigDir(False)) + 'dictionaries';
@@ -509,6 +522,36 @@ begin
   if not Result then
     Result := ExtractOneFileTo(Picked, Folder, @AcceptAnyTwm,
       DictionaryFile, ErrorMessage);
+  if not Result then
+  begin
+    // no theWord dictionary inside: a SWORD dictionary module, if there is one
+    Temp := NewArchiveTempFolder('ibiblia_sworddict_');
+    if Temp <> '' then
+    begin
+      Found := TStringList.Create;
+      try
+        if ExtractArchive(Picked, Temp, Err) then
+        begin
+          FindArchiveFiles(Temp, @IsSwordDictionaryConf, Found);
+          if Found.Count > 0 then
+          begin
+            Target := SwordDictionaryTarget(Found[0]);
+            if ConvertSwordDictionary(Found[0], Target, Err) then
+            begin
+              DictionaryFile := Target;
+              ErrorMessage := '';
+              Result := True;
+            end
+            else
+              ErrorMessage := Err;
+          end;
+        end;
+      finally
+        Found.Free;
+        RemoveArchiveFolder(Temp);
+      end;
+    end;
+  end;
   if not Result then
     DictionaryFile := '';
 end;

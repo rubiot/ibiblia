@@ -12,7 +12,7 @@ unit module_conversion;
 interface
 
 uses
-  Classes, SysUtils, esword_usfm;
+  Classes, SysUtils, esword_usfm, sword_module, bible_archive;
 
 type
   TApocryphaPayload = record
@@ -36,7 +36,8 @@ function TryGetConversionSource(const ModuleFileName: string;
 
 resourcestring
   SBibleModuleFilterSuffix = '|e-Sword Bibles (*.bblx, *.bbli, *.bbl)|*.bblx;*.bbli;*.bbl' +
-    '|USFM / USFX Bibles (*.usfm, *.sfm, *.usfx, *.xml)|*.usfm;*.sfm;*.usfx;*.xml';
+    '|USFM / USFX Bibles (*.usfm, *.sfm, *.usfx, *.xml)|*.usfm;*.sfm;*.usfx;*.xml' +
+    '|SWORD Bibles (*.conf, *.zip)|*.conf;*.zip';
   SConversionFailed = 'Could not read this Bible file: %s';
   SNoBibleBooksFound = 'No Old or New Testament books were found in this file.';
 
@@ -55,7 +56,7 @@ var
 function IsConvertibleBibleFile(const FileName: string): Boolean;
 begin
   Result := TESwordModule.IsESwordFileName(FileName) or
-    TESwordModule.IsUSFMOrUSFXFileName(FileName);
+    TESwordModule.IsUSFMOrUSFXFileName(FileName) or IsSwordBibleConf(FileName);
 end;
 
 function ConversionFolder: string;
@@ -121,6 +122,35 @@ begin
     end;
 end;
 
+function PrepareSwordArchive(const FileName: string; out ModuleFileName,
+  ErrorMessage: string): Boolean;
+var
+  Temp: string;
+  Found: TStringList;
+begin
+  ModuleFileName := FileName;
+  ErrorMessage := '';
+  Result := True;
+  Temp := NewArchiveTempFolder('ibiblia_sword_');
+  if Temp = '' then
+    Exit;
+  Found := TStringList.Create;
+  try
+    if not ExtractArchive(FileName, Temp, ErrorMessage) then
+    begin
+      ErrorMessage := '';
+      Exit;
+    end;
+    FindArchiveFiles(Temp, @IsSwordBibleConf, Found);
+    if Found.Count = 0 then
+      Exit;
+    Result := PrepareBibleModuleFile(Found[0], ModuleFileName, ErrorMessage);
+  finally
+    Found.Free;
+    RemoveArchiveFolder(Temp);
+  end;
+end;
+
 function PrepareBibleModuleFile(const FileName: string; out ModuleFileName,
   ErrorMessage: string): Boolean;
 var
@@ -136,6 +166,8 @@ begin
   ModuleFileName := FileName;
   ErrorMessage := '';
   Result := True;
+  if IsArchiveFile(FileName) and not IsConvertibleBibleFile(FileName) then
+    Exit(PrepareSwordArchive(FileName, ModuleFileName, ErrorMessage));
   if not IsConvertibleBibleFile(FileName) then
     Exit;
 
@@ -145,7 +177,10 @@ begin
     Payload.Verses := nil;
     Payload.BooksInfo := '';
     try
-      if TESwordModule.IsESwordFileName(FileName) then
+      if IsSwordBibleConf(FileName) then
+        Loaded := LoadSwordBible(FileName, Lines, Payload.Verses,
+          Payload.BooksInfo, HasOT, HasNT, ErrorMessage)
+      else if TESwordModule.IsESwordFileName(FileName) then
         Loaded := TESwordModule.LoadESwordBibleWithApocrypha(FileName, Lines,
           Payload.Verses, Payload.BooksInfo, HasOT, HasNT, ErrorMessage)
       else if TESwordModule.IsUSFXFileName(FileName) then

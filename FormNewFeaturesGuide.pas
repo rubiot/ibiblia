@@ -107,6 +107,12 @@ const
     'New project and Project settings read theWord modules (.ont, .ot, .nt) and also ' +
     'e-Sword (.bblx, .bbli, .bbl), USFM (.usfm, .sfm) and USFX (.usfx, .xml) Bibles. ' +
     'For USFM, choose one book and the other books in the same folder are read too.' + LineEnding + LineEnding +
+    'SWORD (CrossWire) Bibles are read too, as the Source, the Destination, a reference text, or in ' +
+    'Add Bible Books / Replace: choose the module''s .conf file (in its mods.d folder) or the downloaded ' +
+    '.zip. Strong''s numbers and morphology, notes, words of Jesus and the apocrypha books are kept. ' +
+    'SWORD dictionaries (such as StrongsGreek and StrongsHebrew) are chosen in the popup dictionary lists ' +
+    'the same way, from the .conf or the .zip. Locked modules are not opened, and bzip2 / xz compressed ' +
+    'modules need the bzip2 / xz program installed.' + LineEnding + LineEnding +
     'APOCRYPHA' + LineEnding +
     'Deuterocanonical books found in the file are added after the canonical books ' +
     '(book numbers 67 and up). They appear in the Bible tree, the context panel, Find ' +

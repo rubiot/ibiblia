@@ -114,6 +114,9 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.052 (64-bit Edition) - 2026-11-18' + LineEnding +
+  '- SWORD (CrossWire) modules can now be used: Bible texts as the Source, Destination or reference text (New project and Project settings), in Add Bible Books and in Replace, and dictionaries (StrongsGreek, StrongsHebrew and others) in the popup dictionary lists. Choose the module''s .conf file or its downloaded .zip. Strong''s numbers, morphology, footnotes, words of Jesus and the apocrypha books are kept; a SWORD dictionary is converted once to a theWord dictionary. Locked modules are not opened; bzip2 / xz compressed modules need that program installed.' + LineEnding +
+  LineEnding +
   'Version 1.1.0.051 (64-bit Edition) - 2026-11-18' + LineEnding +
   '- Right-click a Bible panel > Export as Bible module... now works: it opens the Export project window on the matching tab (Destination panel: Tagged Destination; Source panel: Interlinear Source). On a reference text it explains that reference texts cannot be exported as a module.' + LineEnding +
   LineEnding +

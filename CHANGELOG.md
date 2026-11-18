@@ -6,12 +6,17 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.051 (2026-11-18) — Export as Bible Module from the Panel Menu
+### 0. Version 1.1.0.052 (2026-11-18) — SWORD Modules
+
+* SWORD (CrossWire) modules can now be used: Bible texts as the Source, Destination or reference text (New project and Project settings), in Add Bible Books and in Replace, and dictionaries (StrongsGreek, StrongsHebrew and others) in the popup dictionary lists. Choose the module's .conf file or its downloaded .zip. Strong's numbers, morphology, footnotes, words of Jesus and the apocrypha books are kept; a SWORD dictionary is converted once to a theWord dictionary. Locked modules are not opened; bzip2 / xz compressed modules need that program installed.
+* Files: `sword_module.pas`, `sword_canons.pas` (new), `module_conversion.pas`, `bible_archive.pas`, `FormBookImport.pas`, `FormNewFeaturesGuide.pas`.
+
+### 0a. Version 1.1.0.051 (2026-11-18) — Export as Bible Module from the Panel Menu
 
 * Right-click a Bible panel > Export as Bible module... now works: it opens the Export project window on the matching tab (Destination panel: Tagged Destination; Source panel: Interlinear Source). On a reference text it explains that reference texts cannot be exported as a module.
 * Files: `Project.pas`, `formprincipal.pas`, `FormProjectExport.pas`.
 
-### 0a. Version 1.1.0.050 (2026-11-18) — Compressed Files for Bible Books and Dictionaries
+### 0b. Version 1.1.0.050 (2026-11-18) — Compressed Files for Bible Books and Dictionaries
 
 * Add Bible Books and Replace now accept compressed files: a zip, tar, tar.gz / tgz, tar.bz2, tar.xz, single .gz, and 7z or rar when 7-Zip / unrar is installed. A compressed file can hold one book or a whole Bible, as theWord, e-Sword, MySword, USFM / USFX modules or text documents (.txt, .rtf, .odt, .docx), also inside folders of the archive.
 * All the files found are combined into one book tree. Plain documents ask for the book matching as before. When the same book is in more than one file, iBiblia asks, book by book, which file to take it from. The order of the apocrypha books follows the files.
@@ -19,7 +24,7 @@
 * Popup dictionaries (Strong's, morphology, word dictionaries in Project settings, New project and Default dictionaries) can also be chosen from a compressed file; the .dct.twm inside is unpacked into the iBiblia dictionaries folder of the user and used from there.
 * Files: `bible_archive.pas` (new), `bible_import_source.pas`, `FormBookImport.pas`, `FormDefaultDictionaries.pas`, `FormNewProject.pas`, `FormProjectProperties.pas`.
 
-### 0b. Version 1.1.0.049 (2026-11-18) — Apocrypha Books Between Malachi and Matthew
+### 0c. Version 1.1.0.049 (2026-11-18) — Apocrypha Books Between Malachi and Matthew
 
 * The apocrypha / deuterocanonical books (Tobit, Judith, Sirach, Maccabees, etc.) now sit between Malachi and Matthew in the Bible tree and in the project's verse order, so Next / Previous verse goes from Malachi to the first apocrypha book and from the last one to Matthew.
 * The order of these books follows the imported source text (the order of the books in the file you add them from), not iBiblia's own book numbers. When you add books from a second file, the new books come after the ones already there.

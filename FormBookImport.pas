@@ -852,7 +852,7 @@ begin
   OpenDlg := TOpenDialog.Create(nil);
   try
     OpenDlg.Title := SBookImportChooseFile;
-    OpenDlg.Filter := SBookImportChooseArchiveFile + '|*.ont;*.ot;*.nt;*.bblx;*.bbli;*.bbl;*.mybible;*.usfm;*.sfm;*.usfx;*.xml;*.txt;*.rtf;*.odt;*.docx;' +
+    OpenDlg.Filter := SBookImportChooseArchiveFile + '|*.ont;*.ot;*.nt;*.bblx;*.bbli;*.bbl;*.mybible;*.usfm;*.sfm;*.usfx;*.xml;*.conf;*.txt;*.rtf;*.odt;*.docx;' +
       ArchiveFilterMask + '|' + SBookImportAllFiles;
     OpenDlg.Options := OpenDlg.Options + [ofFileMustExist];
     if not OpenDlg.Execute then
