@@ -185,6 +185,7 @@ type
     { Adds / replaces the books chosen in the project settings ("Add Bible
       Books" and the partial "Replace text"). Frees Requests. }
     procedure ApplyBookImportRequests(Requests: TList);
+    procedure ArrangeApocryphaRows(const ProjectFile: string);
     { After Project settings closes: restores the chosen backup, if any. }
     procedure HandleProjectRestoreRequest;
     procedure RestoreProjectFromBackup(const ZipFile: string);
@@ -527,6 +528,8 @@ resourcestring
   SAddBooksTitle = 'Add / replace Bible books';
   SProjectOpenFilter = 'iBiblia projects (*.bib, *.bib.zip)|*.bib;*.zip|Association project (*.bib)|*.bib|Zipped project / backup (*.bib.zip)|*.bib.zip;*.zip';
   SProjectSaveFilter = 'Association project (*.bib)|*.bib';
+  SArrangeTitle = 'Open project';
+  SArrangeFailed = 'The order of the apocrypha books in the project could not be arranged:'#13#10'%s'#13#10#13#10'The project is opened as it was.';
   SPatchBackupReason = 'Before applying the patch';
   SRestoreTitle = 'Restore project';
   SRestoreSafetyNote = 'Before restoring the %s';
@@ -6873,6 +6876,30 @@ begin
   UpdateCommandUI;
 end;
 
+{ Projects made before the apocrypha books had a fixed place keep their
+  rows after Revelation. Moves the rows to Bible order (apocrypha between
+  Malachi and Matthew, in the order of the imported text) before the project
+  opens, so that Next / Previous verse follows the Bible tree. The change is
+  made in one database transaction, so a failure leaves the file as it was. }
+procedure TMainForm.ArrangeApocryphaRows(const ProjectFile: string);
+var
+  ErrorMessage: string;
+  Moved: Boolean;
+begin
+  if not FileExists(ProjectFile) then
+    Exit;
+  Moved := False;
+  try
+    Moved := ArrangeProjectRows(ProjectFile, ErrorMessage);
+  except
+    on E: Exception do
+      ErrorMessage := E.Message;
+  end;
+  if ErrorMessage <> '' then
+    MessageDlg(SArrangeTitle, Format(SArrangeFailed, [ErrorMessage]), mtWarning,
+      [mbOK], 0);
+end;
+
 procedure TMainForm.DoOpenProject(filename: string);
 var
   DictSettings: TDefaultDictionarySettings;
@@ -6887,6 +6914,7 @@ begin
   CurrentProject.MostrarQtdStrongs := FStrongsCountMode;
   CurrentProject.AutoSave := FAutoSaveEnabled;
 
+  ArrangeApocryphaRows(filename);
   CurrentProject.OpenProject(filename);
   begin
     DictSettings := ReadDefaultDictionarySettings(opts);

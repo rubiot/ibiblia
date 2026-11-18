@@ -24,6 +24,16 @@ type
   end;
 
 procedure ClearApocryphaBooks;
+{ The order of the books follows the imported source text, not the book
+  numbers: 'apocrypha.order' is a list of book numbers ("69,67,70"). Books
+  not in it come after, by number. }
+procedure SetApocryphaOrder(const Order: string);
+{ Merges two order lists: Existing first, then the books of Incoming that are
+  not in it yet (in Incoming's order). }
+function MergeApocryphaOrder(const Existing, Incoming: string): string;
+{ The position of a book in the order (smaller = earlier; same rule as the
+  tree and the project rows). }
+function ApocryphaRank(BookID: Integer): Integer;
 { Registers verse b,c,v (b >= 67) of the open project. }
 procedure AddApocryphaVerse(BookID, Chapter, Verse: Integer);
 { Sets names from an 'apocrypha.books' value. }
@@ -41,6 +51,89 @@ implementation
 
 var
   Books: array of TApocryphaBook;
+  OrderList: array of Integer;
+
+function ApocryphaRank(BookID: Integer): Integer;
+var
+  Index: Integer;
+begin
+  for Index := 0 to High(OrderList) do
+    if OrderList[Index] = BookID then
+      Exit(Index);
+  Result := 1000 + BookID;
+end;
+
+procedure SortBooks;
+var
+  Index, J: Integer;
+  Swap: TApocryphaBook;
+begin
+  for Index := 1 to High(Books) do
+  begin
+    Swap := Books[Index];
+    J := Index - 1;
+    while (J >= 0) and (ApocryphaRank(Books[J].BookID) > ApocryphaRank(Swap.BookID)) do
+    begin
+      Books[J + 1] := Books[J];
+      Dec(J);
+    end;
+    Books[J + 1] := Swap;
+  end;
+end;
+
+procedure SetApocryphaOrder(const Order: string);
+var
+  Items: TStringList;
+  Index, BookID: Integer;
+begin
+  OrderList := nil;
+  Items := TStringList.Create;
+  try
+    Items.Delimiter := ',';
+    Items.StrictDelimiter := True;
+    Items.DelimitedText := Order;
+    for Index := 0 to Items.Count - 1 do
+    begin
+      BookID := StrToIntDef(Trim(Items[Index]), 0);
+      if (BookID >= FIRST_APOCRYPHA_BOOK) and (ApocryphaRank(BookID) >= 1000) then
+      begin
+        SetLength(OrderList, Length(OrderList) + 1);
+        OrderList[High(OrderList)] := BookID;
+      end;
+    end;
+  finally
+    Items.Free;
+  end;
+  SortBooks;
+end;
+
+function MergeApocryphaOrder(const Existing, Incoming: string): string;
+var
+  Items, Merged: TStringList;
+  Index: Integer;
+begin
+  Merged := TStringList.Create;
+  Items := TStringList.Create;
+  try
+    Merged.Delimiter := ',';
+    Merged.StrictDelimiter := True;
+    Merged.DelimitedText := Existing;
+    Items.Delimiter := ',';
+    Items.StrictDelimiter := True;
+    Items.DelimitedText := Incoming;
+    for Index := Merged.Count - 1 downto 0 do
+      if StrToIntDef(Trim(Merged[Index]), 0) < FIRST_APOCRYPHA_BOOK then
+        Merged.Delete(Index);
+    for Index := 0 to Items.Count - 1 do
+      if (StrToIntDef(Trim(Items[Index]), 0) >= FIRST_APOCRYPHA_BOOK) and
+         (Merged.IndexOf(Trim(Items[Index])) < 0) then
+        Merged.Add(Trim(Items[Index]));
+    Result := Merged.DelimitedText;
+  finally
+    Items.Free;
+    Merged.Free;
+  end;
+end;
 
 function DefaultName(BookID: Integer): string;
 begin
@@ -84,6 +177,7 @@ end;
 procedure ClearApocryphaBooks;
 begin
   Books := nil;
+  OrderList := nil;
 end;
 
 procedure AddApocryphaVerse(BookID, Chapter, Verse: Integer);
@@ -95,9 +189,9 @@ begin
   Index := IndexOfBook(BookID);
   if Index < 0 then
   begin
-    // keep the list sorted by book number
+    // keep the list in the order of the imported source (else by number)
     Insert := Length(Books);
-    while (Insert > 0) and (Books[Insert - 1].BookID > BookID) do
+    while (Insert > 0) and (ApocryphaRank(Books[Insert - 1].BookID) > ApocryphaRank(BookID)) do
       Dec(Insert);
     SetLength(Books, Length(Books) + 1);
     for Index := High(Books) downto Insert + 1 do

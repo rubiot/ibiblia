@@ -5284,7 +5284,10 @@ procedure TProject.OpenProject(Nome: string);
       Qry.Free;
     end;
     if ApocryphaBookCount > 0 then
+    begin
       SetApocryphaBookNames(GetInfo('apocrypha.books'));
+      SetApocryphaOrder(GetInfo('apocrypha.order'));
+    end;
   end;
 var
   t: TTipoTextoBiblico;

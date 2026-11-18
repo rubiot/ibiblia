@@ -6,7 +6,14 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.048 (2026-11-18) — Project Backup and Restore
+### 0. Version 1.1.0.049 (2026-11-18) — Apocrypha Books Between Malachi and Matthew
+
+* The apocrypha / deuterocanonical books (Tobit, Judith, Sirach, Maccabees, etc.) now sit between Malachi and Matthew in the Bible tree and in the project's verse order, so Next / Previous verse goes from Malachi to the first apocrypha book and from the last one to Matthew.
+* The order of these books follows the imported source text (the order of the books in the file you add them from), not iBiblia's own book numbers. When you add books from a second file, the new books come after the ones already there.
+* Projects that kept their apocrypha books after Revelation are arranged this way automatically when opened (one safe database change; nothing else is touched).
+* Files: `apocrypha_books.pas`, `project_book_import.pas`, `bible_import_source.pas`, `FormBookImport.pas`, `bible_tree_coordinator.pas`, `Project.pas`, `formprincipal.pas`.
+
+### 0zb. Version 1.1.0.048 (2026-11-18) — Project Backup and Restore
 
 * Project settings, Project tab: new Backup section with "Back up this project" and "Restore project..." buttons and the backup folder (chosen once with "Change...", or asked on the first backup). A backup is a zipped copy of the project (.bib.zip, named with the project name, date and time), made with SQLite's own copy and checked before it is zipped; you can add a note to it.
 * Before replacing, adding or clearing a Bible text, applying a patch or applying AI results, iBiblia asks: "Back up and continue", "Continue without backup" or Cancel. Of these automatic backups only the newest 2 of each project are kept; backups you make yourself are never deleted.

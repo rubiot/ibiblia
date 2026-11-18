@@ -35,6 +35,7 @@ type
     KeepAssociations: Boolean;
     NewScope: TEscopoTexto;      // etNone = unchanged
     ApocryphaInfo: string;       // "67=Tobit;68=Judith" for new books
+    ApocryphaOrder: string;      // "69,67": the order in the imported file
     Summary: string;             // books, for the review page
     constructor Create;
     destructor Destroy; override;
@@ -42,6 +43,18 @@ type
     function NeedsNewRows(const ExistingRefs: TStrings;
       CurrentScope: TEscopoTexto): Boolean;
   end;
+
+{ Where the apocrypha / deuterocanonical books go among the rows of a project
+  (and in the Bible tree): after Malachi (book 39) and before Matthew. }
+const
+  LAST_OT_BOOK = 39;
+
+{ Puts the rows of a closed project file in Bible order: Genesis-Malachi, the
+  apocrypha books in the order of 'apocrypha.order' (the imported source
+  text; books not listed by number), then Matthew-Revelation. Does nothing
+  when the rows are already in that order. Returns True if rows were moved. }
+function ArrangeProjectRows(const ProjectFile: string;
+  out ErrorMessage: string): Boolean;
 
 { Adds the rows the requests need (and the other Testament's rows when
   NewScope is etONT) to a closed project file and stores the names of new
@@ -85,6 +98,181 @@ begin
   Result := False;
 end;
 
+function SplitRef(const Ref: string; out B, C, V: Integer): Boolean;
+var
+  P1, P2: Integer;
+begin
+  P1 := Pos(',', Ref);
+  Result := P1 > 1;
+  if not Result then
+    Exit;
+  P2 := Pos(',', Copy(Ref, P1 + 1, MaxInt));
+  Result := P2 > 0;
+  if not Result then
+    Exit;
+  B := StrToIntDef(Copy(Ref, 1, P1 - 1), 0);
+  C := StrToIntDef(Copy(Ref, P1 + 1, P2 - 1), 0);
+  V := StrToIntDef(Copy(Ref, P1 + P2 + 1, MaxInt), 0);
+  Result := B > 0;
+end;
+
+{ sort key of a row: Genesis-Malachi, apocrypha (source order), Matthew-Revelation }
+function RowKey(const Ref: string; const OrderList: string): string;
+var
+  B, C, V, Group, Rank: Integer;
+begin
+  if not SplitRef(Ref, B, C, V) then
+    Exit('9|000000|0000|0000|' + Ref);
+  Rank := B;
+  if B >= FIRST_APOCRYPHA_BOOK then
+  begin
+    Group := 1;
+    Rank := ApocryphaRank(B);
+  end
+  else if B <= LAST_OT_BOOK then
+    Group := 0
+  else
+    Group := 2;
+  Result := Format('%d|%.6d|%.4d|%.4d|', [Group, Rank, C, V]) + Ref;
+end;
+
+function KeyRef(const Key: string): string;
+var
+  Index, Bars: Integer;
+begin
+  Bars := 0;
+  for Index := 1 to Length(Key) do
+    if Key[Index] = '|' then
+    begin
+      Inc(Bars);
+      if Bars = 4 then
+        Exit(Copy(Key, Index + 1, MaxInt));
+    end;
+  Result := Key;
+end;
+
+{ Rebuilds pares in Bible order (see ArrangeProjectRows). Returns True if the
+  rows were moved. }
+function ReorderRows(Connection: TSQLite3Connection; Qry: TSQLQuery): Boolean;
+var
+  Current, Sorted: TStringList;
+  Index: Integer;
+  CreateSql, Info: string;
+  Same: Boolean;
+begin
+  Result := False;
+  Current := TStringList.Create;
+  Sorted := TStringList.Create;
+  try
+    Qry.SQL.Text := 'SELECT valor FROM info WHERE id = ''apocrypha.order''';
+    Qry.Open;
+    if Qry.EOF then
+      Info := ''
+    else
+      Info := Qry.Fields[0].AsString;
+    Qry.Close;
+    SetApocryphaOrder(Info);
+    Qry.SQL.Text := 'SELECT pare_id FROM pares ORDER BY rowid';
+    Qry.Open;
+    while not Qry.EOF do
+    begin
+      Current.Add(RowKey(Qry.Fields[0].AsString, Info));
+      Qry.Next;
+    end;
+    Qry.Close;
+    Sorted.CaseSensitive := True;
+    Sorted.Duplicates := dupAccept;
+    Sorted.Sorted := True;
+    Sorted.AddStrings(Current);
+    Same := Sorted.Count = Current.Count;
+    for Index := 0 to Current.Count - 1 do
+      if (Index >= Sorted.Count) or (Current[Index] <> Sorted[Index]) then
+      begin
+        Same := False;
+        Break;
+      end;
+    if Same then
+      Exit;
+
+    Connection.ExecuteDirect('CREATE TEMP TABLE row_order (pare_id TEXT PRIMARY KEY, seq INTEGER)');
+    Qry.SQL.Text := 'INSERT INTO row_order (pare_id, seq) VALUES (:id, :seq)';
+    Qry.Prepare;
+    for Index := 0 to Sorted.Count - 1 do
+    begin
+      Qry.Params.ParamByName('id').AsString := KeyRef(Sorted[Index]);
+      Qry.Params.ParamByName('seq').AsInteger := Index;
+      Qry.ExecSQL;
+    end;
+    Qry.UnPrepare;
+
+    Qry.SQL.Text := 'SELECT sql FROM sqlite_master WHERE type = ''table'' ' +
+      'AND name = ''pares''';
+    Qry.Open;
+    CreateSql := Qry.Fields[0].AsString;
+    Qry.Close;
+    CreateSql := StringReplace(CreateSql, 'pares', 'pares_ordered', [rfIgnoreCase]);
+    Connection.ExecuteDirect(CreateSql);
+    Connection.ExecuteDirect('INSERT INTO pares_ordered SELECT p.* FROM pares p ' +
+      'JOIN row_order o ON o.pare_id = p.pare_id ORDER BY o.seq');
+    Connection.ExecuteDirect('DROP TABLE pares');
+    Connection.ExecuteDirect('ALTER TABLE pares_ordered RENAME TO pares');
+    Connection.ExecuteDirect('DROP TABLE row_order');
+    Result := True;
+  finally
+    Current.Free;
+    Sorted.Free;
+  end;
+end;
+
+function ArrangeProjectRows(const ProjectFile: string;
+  out ErrorMessage: string): Boolean;
+var
+  Connection: TSQLite3Connection;
+  Transaction: TSQLTransaction;
+  Qry: TSQLQuery;
+begin
+  Result := False;
+  ErrorMessage := '';
+  Connection := TSQLite3Connection.Create(nil);
+  Transaction := TSQLTransaction.Create(nil);
+  Qry := TSQLQuery.Create(nil);
+  try
+    try
+      Connection.DatabaseName := ProjectFile;
+      Connection.Transaction := Transaction;
+      Connection.Open;
+      Qry.DataBase := Connection;
+      Qry.Transaction := Transaction;
+      Transaction.StartTransaction;
+      { only projects with apocrypha rows need it }
+      Qry.SQL.Text := 'SELECT 1 FROM pares WHERE CAST(pare_id AS INTEGER) >= ' +
+        IntToStr(FIRST_APOCRYPHA_BOOK) + ' LIMIT 1';
+      Qry.Open;
+      if Qry.EOF then
+      begin
+        Qry.Close;
+        Transaction.Rollback;
+        Exit;
+      end;
+      Qry.Close;
+      Result := ReorderRows(Connection, Qry);
+      Transaction.Commit;
+    except
+      on E: Exception do
+      begin
+        ErrorMessage := E.Message;
+        if Transaction.Active then
+          Transaction.Rollback;
+        Result := False;
+      end;
+    end;
+  finally
+    Qry.Free;
+    Transaction.Free;
+    Connection.Free;
+  end;
+end;
+
 function PrepareProjectRows(const ProjectFile: string; Requests: TList;
   CurrentScope: TEscopoTexto; out ErrorMessage: string): Boolean;
 var
@@ -96,7 +284,7 @@ var
   Enumerator: TBibleReferenceEnumerator;
   Index, RequestIndex, Added: Integer;
   Request: TBookImportRequest;
-  CreateSql, Info, MergedInfo: string;
+  CreateSql, Info, MergedInfo, MergedOrder: string;
 
   procedure AddRow(const Ref: string);
   begin
@@ -146,6 +334,7 @@ begin
       Added := 0;
       TargetScope := CurrentScope;
       MergedInfo := '';
+      MergedOrder := '';
       for RequestIndex := 0 to Requests.Count - 1 do
       begin
         Request := TBookImportRequest(Requests[RequestIndex]);
@@ -155,6 +344,8 @@ begin
           TargetScope := etONT;
         if Request.ApocryphaInfo <> '' then
           MergedInfo := MergeApocryphaInfo(MergedInfo, Request.ApocryphaInfo);
+        if Request.ApocryphaOrder <> '' then
+          MergedOrder := MergeApocryphaOrder(MergedOrder, Request.ApocryphaOrder);
       end;
 
       { the other Testament }
@@ -179,27 +370,24 @@ begin
           AddRow(Request.Refs[Index]);
       end;
 
-      if Added > 0 then
+      if MergedOrder <> '' then
       begin
-        { keep the rows in Bible order: canonical books, then 67+ }
-        Qry.SQL.Text := 'SELECT sql FROM sqlite_master WHERE type = ''table'' ' +
-          'AND name = ''pares''';
+        Qry.SQL.Text := 'SELECT valor FROM info WHERE id = ''apocrypha.order''';
         Qry.Open;
-        CreateSql := Qry.Fields[0].AsString;
+        if Qry.EOF then
+          Info := ''
+        else
+          Info := Qry.Fields[0].AsString;
         Qry.Close;
-        CreateSql := StringReplace(CreateSql, 'pares', 'pares_ordered',
-          [rfIgnoreCase]);
-        Connection.ExecuteDirect(CreateSql);
-        Connection.ExecuteDirect(
-          'INSERT INTO pares_ordered SELECT * FROM pares ORDER BY ' +
-          'CASE WHEN CAST(pare_id AS INTEGER) >= 67 THEN 1 ELSE 0 END, ' +
-          'CAST(pare_id AS INTEGER), ' +
-          'CAST(substr(pare_id, instr(pare_id, '','') + 1) AS INTEGER), ' +
-          'CAST(substr(substr(pare_id, instr(pare_id, '','') + 1), ' +
-          'instr(substr(pare_id, instr(pare_id, '','') + 1), '','') + 1) AS INTEGER)');
-        Connection.ExecuteDirect('DROP TABLE pares');
-        Connection.ExecuteDirect('ALTER TABLE pares_ordered RENAME TO pares');
+        MergedOrder := MergeApocryphaOrder(Info, MergedOrder);
+        Connection.ExecuteDirect('DELETE FROM info WHERE id = ''apocrypha.order''');
+        Qry.SQL.Text := 'INSERT INTO info (id, valor) VALUES (''apocrypha.order'', :v)';
+        Qry.Params.ParamByName('v').AsString := MergedOrder;
+        Qry.ExecSQL;
       end;
+
+      if (Added > 0) or (MergedOrder <> '') then
+        ReorderRows(Connection, Qry);
 
       if MergedInfo <> '' then
       begin

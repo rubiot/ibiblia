@@ -571,6 +571,7 @@ var
   Indexes: TIntegerList;
   OldCursor: TCursor;
   Mapped: Boolean;
+  OrderItems: TStringList;
 begin
   Result := False;
   Request := nil;
@@ -800,6 +801,29 @@ begin
             [rfReplaceAll]);
         end;
       end;
+    if Kind = bikAdd then
+    begin
+      { only the books ticked, in the order of the imported file }
+      OrderItems := TStringList.Create;
+      try
+        OrderItems.Delimiter := ',';
+        OrderItems.StrictDelimiter := True;
+        OrderItems.DelimitedText := Source.ApocryphaOrder;
+        for I := 0 to OrderItems.Count - 1 do
+        begin
+          B := StrToIntDef(OrderItems[I], 0);
+          if (B >= FIRST_APOCRYPHA_BOOK) and (B <= LAST_IMPORT_BOOK) and
+             (BookSelected[B] > 0) then
+          begin
+            if Request.ApocryphaOrder <> '' then
+              Request.ApocryphaOrder := Request.ApocryphaOrder + ',';
+            Request.ApocryphaOrder := Request.ApocryphaOrder + IntToStr(B);
+          end;
+        end;
+      finally
+        OrderItems.Free;
+      end;
+    end;
     Request.Summary := BookList;
     Result := Request.Refs.Count > 0;
     if not Result then

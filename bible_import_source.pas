@@ -74,6 +74,8 @@ type
     procedure ApplyBookMapping;
     { Book numbers present, in Bible order (canonical, then 67+). }
     function BookIDs: TStringList;
+    { Apocrypha book numbers in the order they appear in the file ("69,67"). }
+    function ApocryphaOrder: string;
     function BookName(BookID: Integer): string;
     function TryGetText(const ReferenceID: string; out Text: string): Boolean;
     function ReferenceID(Index: Integer): string;
@@ -1334,6 +1336,24 @@ begin
   for I := 1 to LAST_IMPORT_BOOK do
     if Present[I] then
       Result.Add(IntToStr(I));
+end;
+
+function TBibleImportSource.ApocryphaOrder: string;
+var
+  I: Integer;
+  Seen: array[1..LAST_IMPORT_BOOK] of Boolean;
+begin
+  Result := '';
+  FillChar(Seen, SizeOf(Seen), 0);
+  for I := 0 to FVerseCount - 1 do
+    if (FVerses[I].Book >= FIRST_APOCRYPHA_BOOK) and
+       (FVerses[I].Book <= LAST_IMPORT_BOOK) and not Seen[FVerses[I].Book] then
+    begin
+      Seen[FVerses[I].Book] := True;
+      if Result <> '' then
+        Result := Result + ',';
+      Result := Result + IntToStr(FVerses[I].Book);
+    end;
 end;
 
 function TBibleImportSource.BookName(BookID: Integer): string;
