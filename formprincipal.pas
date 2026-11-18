@@ -167,6 +167,7 @@ type
     TreeView1: TTreeView;
     procedure ActionApplyPatchExecute(Sender: TObject);
     procedure ActionExportProjectExecute(Sender: TObject);
+    procedure ProjectExportBibleModule(Sender: TObject; ATextKind: TTipoTextoBiblico);
     procedure ActionOpenProjectExecute(Sender: TObject);
     procedure ActionExportDestinationWithStrongsExecute(Sender: TObject);
     procedure ActionExportInterlinearTextExecute(Sender: TObject);
@@ -676,6 +677,7 @@ resourcestring
   SCloseProjectMenu = '&Close';
   SProjectSettingsMenu = 'Project &settings...';
   SExportProjectMenu = '&Export project...';
+  SExportReferenceNotSupported = 'Reference texts cannot be exported as a Bible module. Right-click the Source or Destination panel instead.';
   SCreatePatchMenu = 'Create &patch...';
   SApplyPatchMenu = '&Apply patch...';
   SMaintenanceMenu = '&Maintenance';
@@ -2236,6 +2238,7 @@ begin
   begin
     CurrentProject.OnNavigateVerse := @ProjectNavigate;
     CurrentProject.OnTextPropertiesChanged := @ProjectTextPropertiesChanged;
+    CurrentProject.OnExportBibleModule := @ProjectExportBibleModule;
   end;
   for TextType := tbOrigem to tbConsulta2 do
   begin
@@ -4273,6 +4276,28 @@ begin
   DoOpenProject(ProjectFile);
   MessageDlg(SRestoreTitle, Format(SRestoreDone, [Description, SafetyBackup]),
     mtInformation, [mbOK], 0);
+end;
+
+procedure TMainForm.ProjectExportBibleModule(Sender: TObject; ATextKind: TTipoTextoBiblico);
+begin
+  if not assigned(CurrentProject) then
+    exit;
+  case ATextKind of
+    tbDestino:
+      begin
+        ProjectExportForm.SetProject(CurrentProject);
+        ProjectExportForm.SelectExportTab(0);
+        ProjectExportForm.ShowModal;
+      end;
+    tbOrigem, tbInterlinear:
+      begin
+        ProjectExportForm.SetProject(CurrentProject);
+        ProjectExportForm.SelectExportTab(1);
+        ProjectExportForm.ShowModal;
+      end;
+  else
+    MessageDlg(SExportProjectMenu, SExportReferenceNotSupported, mtInformation, [mbOK], 0);
+  end;
 end;
 
 procedure TMainForm.ActionExportProjectExecute(Sender: TObject);
@@ -6907,6 +6932,7 @@ begin
   CurrentProject := TProject.Create([ScrollBoxSrcVerse, ScrollBoxDstVerse, ScrollBoxRef1Verse, ScrollBoxRef2Verse], TreeView1, RadioGroupStatus, FActualCommentsMemo);
   CurrentProject.OnNavigateVerse := @ProjectNavigate;
   CurrentProject.OnTextPropertiesChanged := @ProjectTextPropertiesChanged;
+  CurrentProject.OnExportBibleModule := @ProjectExportBibleModule;
   CurrentProject.OnNewVerseSubscribe(@ProjectNewVerse);
   CurrentProject.OnAlterarVersiculo := @VerseChanged;
   CurrentProject.OnSintagmaClick := @SyntagmClick;

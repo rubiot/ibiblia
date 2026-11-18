@@ -142,6 +142,7 @@ type
   TOnSintagmaClickEvent = procedure (Sender: TSyntagm) of object;
   TOnProjectVerseChangedEvent = procedure () of object;
   TOnProjectNavigateVerseEvent = procedure (Delta: Integer) of object;
+  TOnProjectExportModuleEvent = procedure (Sender: TObject; ATextKind: TTipoTextoBiblico) of object;
   AVersiculo = array[tbOrigem..tbConsulta2] of TVerse;
   ACamposTexto = array[tbOrigem..tbConsulta2] of integer;
   STextosBiblicos = set of TTipoTextoBiblico;
@@ -160,6 +161,7 @@ type
     FOnAlterarVersiculo: TOnProjectVerseChangedEvent;
     FOnNavigateVerse: TOnProjectNavigateVerseEvent;
     FOnTextPropertiesChanged: TNotifyEvent;
+    FOnExportBibleModule: TOnProjectExportModuleEvent;
     FPendingAutoSelectNext: Boolean;
     FDisplayTags: boolean;
     FSugerirAssociacaoAuto: boolean;
@@ -375,6 +377,7 @@ type
     procedure SintagmaOnMouseLeave(Sender: TSyntagm);
     procedure SintagmaOnClick(Sender: TSyntagm);
     procedure OnExportText(Sender: TVerse);
+    procedure HandleExportBibleModule(Sender: TVerse);
     procedure OnVersePopup(Sender: TObject);
     procedure OnUseAssociationAsExample(Sender: TObject);
     procedure OnUseTranslationAsExample(Sender: TObject);
@@ -601,6 +604,7 @@ type
     property OnAlterarVersiculo: TOnProjectVerseChangedEvent read FOnAlterarVersiculo write SetOnAlterarVersiculo;
     property OnNavigateVerse: TOnProjectNavigateVerseEvent read FOnNavigateVerse write SetOnNavigateVerse;
     property OnTextPropertiesChanged: TNotifyEvent read FOnTextPropertiesChanged write FOnTextPropertiesChanged;
+    property OnExportBibleModule: TOnProjectExportModuleEvent read FOnExportBibleModule write FOnExportBibleModule;
     property OnSintagmaClick: TOnSintagmaClickEvent read FOnSintagmaClick write SetOnSintagmaClick;
     property AtrasoExibicaoDefinicao: Cardinal read FAtrasoExibicao write SetAtrasoExibicao;
     property Ativo: boolean read FAtivo;
@@ -4137,6 +4141,19 @@ begin
   end;
 end;
 
+procedure TProject.HandleExportBibleModule(Sender: TVerse);
+var
+  v: TTipoTextoBiblico;
+begin
+  for v := low(FAVersiculo) to high(FAVersiculo) do
+    if Sender = FAVersiculo[v] then
+    begin
+      if Assigned(FOnExportBibleModule) then
+        FOnExportBibleModule(Self, v);
+      Exit;
+    end;
+end;
+
 procedure TProject.OnExportText(Sender: TVerse);
 var
   lines: TStringList;
@@ -7445,6 +7462,7 @@ begin
     FAVersiculo[texto].TokenizerVersion := TokenizerVersion;
     FAVersiculo[texto].BaseDirection := GetTextDirection(texto);
     FAVersiculo[texto].OnTextDirectionChange := @OnTextDirectionChange;
+    FAVersiculo[texto].OnExportBibleModule := @HandleExportBibleModule;
     FAVersiculo[texto].OnVerseChanged := @HandleVerseChanged;
     AttachProjectVersePopupMenu(texto);
   end;

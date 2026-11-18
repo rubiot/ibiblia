@@ -84,6 +84,7 @@ type
       out DialogType: TMsgDlgType): string;
   public
     procedure SetProject(Project: TProject);
+    procedure SelectExportTab(PageIndex: Integer);
     procedure ShowExportResult(const ExportResult: TExportResult;
       const PreferenceWarning: string = ''); virtual;
   public
@@ -640,6 +641,13 @@ begin
   {$ELSE}
   OpenDocument(ExtractFilePath(ExportResult.OutputFileName));
   {$ENDIF}
+end;
+
+procedure TProjectExportForm.SelectExportTab(PageIndex: Integer);
+begin
+  if Assigned(ExportPageControl) and (PageIndex >= 0) and
+     (PageIndex < ExportPageControl.PageCount) then
+    ExportPageControl.PageIndex := PageIndex;
 end;
 
 procedure TProjectExportForm.SetProject(Project: TProject);
