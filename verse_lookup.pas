@@ -44,6 +44,10 @@ function ParseVerseLookup(const Input: string; Scope: TEscopoTexto;
 { Display name of a book for the preview line. }
 function VerseLookupBookName(BookID: Integer): string;
 
+{ Absolute book number (1..66) for a book name or abbreviation in English,
+  the interface language or Tagalog; 0 when nothing fits. }
+function FindBookIDByName(const Name: string): Integer;
+
 implementation
 
 uses
@@ -328,6 +332,18 @@ begin
     Result := FindBookByKey('2' + Copy(Key, 3, MaxInt), Scope);
   if (Result = 0) and (Length(Key) > 1) and (Key[1] = 'i') then
     Result := FindBookByKey('1' + Copy(Key, 2, MaxInt), Scope);
+end;
+
+function FindBookIDByName(const Name: string): Integer;
+var
+  Key: string;
+begin
+  Key := NormalizeBookKey(Name);
+  if Key = '' then
+    Exit(0);
+  Result := FindBook(Key, etONT);
+  if Result > 66 then
+    Result := 0;
 end;
 
 function VerseLookupBookName(BookID: Integer): string;

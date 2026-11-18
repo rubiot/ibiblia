@@ -182,6 +182,9 @@ type
   procedure ActionLlmOptionsExecute(Sender: TObject);
     procedure ActionTheWordHighlighterColorsExecute(Sender: TObject);
     procedure ActionProjectPropertiesExecute(Sender: TObject);
+    { Adds / replaces the books chosen in the project settings ("Add Bible
+      Books" and the partial "Replace text"). Frees Requests. }
+    procedure ApplyBookImportRequests(Requests: TList);
     procedure ActionNewVerseExecute(Sender: TObject);
     procedure ActionRebuildSuggestionDatabaseExecute(Sender: TObject);
     procedure ActionResetLayoutExecute(Sender: TObject);
@@ -516,6 +519,13 @@ const
   CHAPTER_VIEW_MEMORY_TAB_INDEX = 5;
 
 resourcestring
+  SAddBooksTitle = 'Add / replace Bible books';
+  SAddBooksProgress = 'Setting the verse texts...';
+  SAddBooksRowsFailed = 'The new books could not be added to the project file: %s';
+  SAddBooksDone = '%d verses were set.';
+  SAddBooksDoneWithErrors = '%d verses were set. Some verses could not be set:%s';
+
+resourcestring
   SMainCaption = 'iBiblia';
   SMainCaptionProjectFmt = 'iBiblia | %s | %s (%s)';
   SProjectFileTypeName = 'iBiblia Project File';
@@ -724,7 +734,7 @@ uses FormNewProject, FormProjectProperties, FormProjectExport, FormMergeProjects
   FormExportPatch, FormApplyPatch, FormLlmOptions, FormTheWordHighlighterColors,
   llmclient, theword_syntax_highlighter, translation_memory_preview,
   FormFindInProject, FormGoToVerse, FormDefaultDictionaries, unittexttospeech, formvoicesettings,
-  FormNewFeaturesGuide, FormDictionaryPopup;
+  FormNewFeaturesGuide, FormDictionaryPopup, project_book_import;
 
 {$R *.lfm}
 
@@ -1191,6 +1201,7 @@ begin
   if FrmProjectProperties.ShowModal = mrOK then
   begin
     FrmProjectProperties.ApplyChanges(Self);
+    ApplyBookImportRequests(FrmProjectProperties.TakeBookRequestsToApply);
     ActionNewVerse.Execute;
     UpdateStatusReviewPanel;
     LayoutVersePanelLabels;
@@ -4506,12 +4517,108 @@ begin
   end;
 end;
 
+procedure TMainForm.ApplyBookImportRequests(Requests: TList);
+var
+  Index, Applied, Total: Integer;
+  Request: TBookImportRequest;
+  ExistingRefs, ExistingTexts: TStringList;
+  NeedRows: Boolean;
+  ProjectFile, ErrorMessage, Errors: string;
+  OldScope: TEscopoTexto;
+begin
+  if not Assigned(Requests) then
+    Exit;
+  try
+    if (Requests.Count = 0) or not Assigned(CurrentProject) then
+      Exit;
+    if CurrentProject.Modificado then
+      CurrentProject.SaveProject;
+
+    ExistingRefs := TStringList.Create;
+    ExistingTexts := TStringList.Create;
+    try
+      CurrentProject.ReadTextColumn(tbOrigem, ExistingRefs, ExistingTexts);
+      ExistingRefs.Sorted := True;
+      NeedRows := False;
+      for Index := 0 to Requests.Count - 1 do
+      begin
+        Request := TBookImportRequest(Requests[Index]);
+        if (Request.Kind = bikAdd) and
+          Request.NeedsNewRows(ExistingRefs, CurrentProject.Escopo) then
+          NeedRows := True;
+      end;
+    finally
+      ExistingRefs.Free;
+      ExistingTexts.Free;
+    end;
+
+    if NeedRows then
+    begin
+      { new rows (books 67+ or the other Testament): change the closed
+        project file, then open it again }
+      ProjectFile := CurrentProject.FileName;
+      OldScope := CurrentProject.Escopo;
+      ActionCloseProjectExecute(nil);
+      if Assigned(CurrentProject) then
+        Exit;
+      Screen.Cursor := crHourGlass;
+      try
+        if not PrepareProjectRows(ProjectFile, Requests, OldScope,
+          ErrorMessage) then
+        begin
+          Screen.Cursor := crDefault;
+          MessageDlg(SAddBooksTitle, Format(SAddBooksRowsFailed, [ErrorMessage]),
+            mtError, [mbOK], 0);
+        end;
+      finally
+        Screen.Cursor := crDefault;
+      end;
+      DoOpenProject(ProjectFile);
+      if not Assigned(CurrentProject) then
+        Exit;
+    end;
+
+    Total := 0;
+    Errors := '';
+    FormPleaseWait.BeginOperation(Self, SAddBooksTitle, SAddBooksProgress, 1, '');
+    try
+      for Index := 0 to Requests.Count - 1 do
+      begin
+        Request := TBookImportRequest(Requests[Index]);
+        FormPleaseWait.SetDetail(Request.Summary);
+        Applied := CurrentProject.ApplyVerseTexts(Request.Refs, Request.Texts,
+          TTipoTextoBiblico(Request.TextIndex), Request.KeepAssociations,
+          FormPleaseWait.ProgressBar1, ErrorMessage);
+        Inc(Total, Applied);
+        if ErrorMessage <> '' then
+          Errors := Errors + LineEnding + ErrorMessage;
+      end;
+    finally
+      FormPleaseWait.FinishOperation;
+    end;
+    CurrentProject.SaveProject;
+    CurrentProject.RefreshUI;
+    UpdateCommandUI;
+    if Errors <> '' then
+      MessageDlg(SAddBooksTitle, Format(SAddBooksDoneWithErrors, [Total, Errors]),
+        mtWarning, [mbOK], 0)
+    else
+      MessageDlg(SAddBooksTitle, Format(SAddBooksDone, [Total]),
+        mtInformation, [mbOK], 0);
+  finally
+    for Index := 0 to Requests.Count - 1 do
+      TObject(Requests[Index]).Free;
+    Requests.Free;
+  end;
+end;
+
 procedure TMainForm.ActionProjectPropertiesExecute(Sender: TObject);
 begin
   FrmProjectProperties.SetProject(CurrentProject);
   if FrmProjectProperties.ShowModal = mrOK then
   begin
     FrmProjectProperties.ApplyChanges(Self);
+    ApplyBookImportRequests(FrmProjectProperties.TakeBookRequestsToApply);
     ActionNewVerse.Execute;
     UpdateStatusReviewPanel;
     LayoutVersePanelLabels;
@@ -5659,7 +5766,10 @@ begin
     FrmProjectProperties.SetProject(CurrentProject);
     FrmProjectProperties.SelectDictionariesTab;
     if FrmProjectProperties.ShowModal = mrOk then
+    begin
       FrmProjectProperties.ApplyChanges(Self);
+      ApplyBookImportRequests(FrmProjectProperties.TakeBookRequestsToApply);
+    end;
     Exit;
   end;
   Settings := ReadDefaultDictionarySettings(opts);

@@ -118,6 +118,14 @@ type
     FInitialDefaultDictionaries: TDefaultDictionarySettings;
     FPendingDefaultDictionariesChanged: Boolean;
     FApplyingTheme: Boolean;
+    FBtnAddBooks: TBitBtn;
+    FPendingBookRequests: TList;    // TBookImportRequest, not applied yet
+    FBookRequestsToApply: TList;    // handed to the main form by ApplyChanges
+    procedure BtnAddBooksClick(Sender: TObject);
+    procedure ClearPendingBookRequests(TextType: TTipoTextoBiblico;
+      AllTexts: Boolean);
+    function ChooseReplaceScope: Integer;
+    function AddBookRequest(Kind: Integer): Boolean;
     procedure BtnStatusCatalogClick(Sender: TObject);
     procedure BtnConfigureAIClick(Sender: TObject);
     procedure CreateTabbedLayout;
@@ -159,6 +167,9 @@ type
     { Shows the Texts page on the tab of the given text (call after SetProject). }
     procedure SelectTextTab(TextType: TTipoTextoBiblico);
     procedure ApplyChanges(AProgressOwner: TCustomForm = nil);
+    { "Add Bible Books" / partial replace requests applied by the last
+      ApplyChanges (TBookImportRequest); the caller owns the list. }
+    function TakeBookRequestsToApply: TList;
     procedure ApplyThemeColors;
     procedure Translate;
   public
@@ -254,6 +265,15 @@ resourcestring
   SPendingStatusCatalog = 'Status catalog changed.';
   SPendingLoadText = 'Load %s text: %s';
   SPendingClearText = 'Clear %s text.';
+  SPendingAddBooks = 'Add books to the %s text: %s (from %s)';
+  SPendingReplaceVerses = 'Replace %d verses of the %s text: %s (from %s)';
+  SPendingBooksHeader = 'Waiting to be applied (OK):';
+  SPendingBooksApplyHint = 'Click OK to add / replace them; the Bible tree then shows the new books.';
+  SAddBibleBooks = 'Add Bible Books...';
+  SReplaceScopeQuestion = 'Replace the whole %s text, or choose the books, chapters or verses to replace?';
+  SReplaceWholeText = 'Whole text';
+  SReplaceChooseBooks = 'Choose books, chapters or verses...';
+  SBookRequestConflict = 'A change of the whole %s text is already waiting. Apply or cancel it first.';
   SPendingDescription = 'Update %s description.';
   SPendingFont = 'Update %s font.';
   SPendingDictionary = 'Set %s %s dictionary: %s';
@@ -303,7 +323,8 @@ resourcestring
 implementation
 
 uses
-  FormLlmOptions, formPrincipal, module_conversion;
+  FormLlmOptions, formPrincipal, module_conversion, project_book_import,
+  FormBookImport;
 
 { TFrmProjectProperties }
 
@@ -332,6 +353,86 @@ var
 begin
   for TextType := tbOrigem to tbConsulta2 do
     FreeAndNil(FPendingFonts[TextType]);
+  if Assigned(FPendingBookRequests) then
+  begin
+    ClearPendingBookRequests(tbOrigem, True);
+    FreeAndNil(FPendingBookRequests);
+  end;
+  if Assigned(FBookRequestsToApply) then
+  begin
+    while FBookRequestsToApply.Count > 0 do
+    begin
+      TObject(FBookRequestsToApply[0]).Free;
+      FBookRequestsToApply.Delete(0);
+    end;
+    FreeAndNil(FBookRequestsToApply);
+  end;
+end;
+
+procedure TFrmProjectProperties.ClearPendingBookRequests(
+  TextType: TTipoTextoBiblico; AllTexts: Boolean);
+var
+  Index: Integer;
+begin
+  if not Assigned(FPendingBookRequests) then
+    Exit;
+  for Index := FPendingBookRequests.Count - 1 downto 0 do
+    if AllTexts or (TBookImportRequest(FPendingBookRequests[Index]).TextIndex =
+      Ord(TextType)) then
+    begin
+      TObject(FPendingBookRequests[Index]).Free;
+      FPendingBookRequests.Delete(Index);
+    end;
+end;
+
+function TFrmProjectProperties.TakeBookRequestsToApply: TList;
+begin
+  Result := FBookRequestsToApply;
+  FBookRequestsToApply := nil;
+end;
+
+function TFrmProjectProperties.AddBookRequest(Kind: Integer): Boolean;
+var
+  TextType: TTipoTextoBiblico;
+  Request: TBookImportRequest;
+begin
+  Result := False;
+  if not Assigned(FProject) then
+    Exit;
+  TextType := CurrentTextType;
+  if FPendingTextActions[TextType] <> ptaNone then
+  begin
+    MessageDlg(Caption, Format(SBookRequestConflict, [SelectedTextScopeName]),
+      mtInformation, [mbOK], 0);
+    Exit;
+  end;
+  if not RunBookImportDialog(Self, FProject, TextType, SelectedTextScopeName,
+    TBookImportKind(Kind), Request) then
+    Exit;
+  if not Assigned(FPendingBookRequests) then
+    FPendingBookRequests := TList.Create;
+  FPendingBookRequests.Add(Request);
+  RefreshTextControls(TextType);
+  UpdateReview;
+  Result := True;
+end;
+
+procedure TFrmProjectProperties.BtnAddBooksClick(Sender: TObject);
+begin
+  AddBookRequest(Ord(bikAdd));
+end;
+
+{ 0 = cancel, 1 = whole text, 2 = choose books / chapters / verses }
+function TFrmProjectProperties.ChooseReplaceScope: Integer;
+begin
+  case QuestionDlg(Format(SReplaceTextInProjectAction, [SelectedTextScopeName]),
+    Format(SReplaceScopeQuestion, [SelectedTextScopeName]), mtConfirmation,
+    [mrYes, SReplaceWholeText, mrNo, SReplaceChooseBooks, mrCancel, SUICancel], 0) of
+    mrYes: Result := 1;
+    mrNo: Result := 2;
+  else
+    Result := 0;
+  end;
 end;
 
 procedure TFrmProjectProperties.CreateTabbedLayout;
@@ -487,8 +588,16 @@ begin
   TabControlTextType.Anchors := [akLeft, akTop, akRight];
 
   BtnLoadText.Parent := FTabTexts;
-  BtnLoadText.SetBounds(PageMargin, 46, PageWidth - (PageMargin * 2), 28);
+  BtnLoadText.SetBounds(PageMargin, 46,
+    (PageWidth - (PageMargin * 2) - ControlGap) div 2, 28);
   BtnLoadText.Anchors := [akLeft, akTop, akRight];
+  FBtnAddBooks := TBitBtn.Create(Self);
+  FBtnAddBooks.Parent := FTabTexts;
+  FBtnAddBooks.SetBounds(PageMargin + BtnLoadText.Width + ControlGap, 46,
+    BtnLoadText.Width, 28);
+  FBtnAddBooks.Anchors := [akTop, akRight];
+  FBtnAddBooks.Caption := SAddBibleBooks;
+  FBtnAddBooks.OnClick := @BtnAddBooksClick;
   BtnClearText.Parent := FTabTexts;
   BtnClearText.SetBounds(PageMargin, 46 + 28 + ControlGap,
     PageWidth - (PageMargin * 2), 28);
@@ -865,6 +974,7 @@ begin
   FInitialDefaultDictionaries := FPendingDefaultDictionaries;
   FPendingDefaultDictionariesChanged := False;
 
+  ClearPendingBookRequests(tbOrigem, True);
   for TextType := tbOrigem to tbConsulta2 do
   begin
     FPendingTextActions[TextType] := ptaNone;
@@ -891,7 +1001,28 @@ end;
 function TFrmProjectProperties.PendingPreviewText(TextType: TTipoTextoBiblico): string;
 var
   Validation: TProjectSetupValidationResult;
+  RequestIndex: Integer;
+  Pending: string;
 begin
+  Pending := '';
+  if Assigned(FPendingBookRequests) then
+    for RequestIndex := 0 to FPendingBookRequests.Count - 1 do
+      with TBookImportRequest(FPendingBookRequests[RequestIndex]) do
+        if TextIndex = Ord(TextType) then
+        begin
+          if Kind = bikAdd then
+            Pending := Pending + Format(SPendingAddBooks,
+              [ProjectSetupTextCaption(TextType), Summary,
+               ExtractFileName(FileName)]) + LineEnding
+          else
+            Pending := Pending + Format(SPendingReplaceVerses,
+              [Refs.Count, ProjectSetupTextCaption(TextType), Summary,
+               ExtractFileName(FileName)]) + LineEnding;
+        end;
+  if Pending <> '' then
+    Exit(SPendingBooksHeader + LineEnding + Pending + LineEnding +
+      SPendingBooksApplyHint);
+
   case FPendingTextActions[TextType] of
     ptaLoad:
       begin
@@ -1184,6 +1315,7 @@ end;
 
 procedure TFrmProjectProperties.UpdateReview;
 var
+  RequestIndex: Integer;
   MessageText: string;
   TextType: TTipoTextoBiblico;
   HasPending: Boolean;
@@ -1341,6 +1473,18 @@ begin
            FPendingMorphologyDictionaries[TextType]]));
     end;
 
+    if Assigned(FPendingBookRequests) then
+      for RequestIndex := 0 to FPendingBookRequests.Count - 1 do
+        with TBookImportRequest(FPendingBookRequests[RequestIndex]) do
+          if Kind = bikAdd then
+            AddPending(Format(SPendingAddBooks,
+              [ProjectSetupTextCaption(TTipoTextoBiblico(TextIndex)), Summary,
+               ExtractFileName(FileName)]))
+          else
+            AddPending(Format(SPendingReplaceVerses,
+              [Refs.Count, ProjectSetupTextCaption(TTipoTextoBiblico(TextIndex)),
+               Summary, ExtractFileName(FileName)]));
+
     if FPendingDefaultDictionaries.Enabled <> FInitialDefaultDictionaries.Enabled then
       AddPending(Format(SPendingDefaultDictionariesMode, [
         EnabledStateCaption(FInitialDefaultDictionaries.Enabled),
@@ -1403,6 +1547,8 @@ var
 begin
   SelectedVersion := GetSelectedTokenizerVersion;
   Caption := SProjectPropertiesTitle;
+  if Assigned(FBtnAddBooks) then
+    FBtnAddBooks.Caption := SAddBibleBooks;
   if Assigned(BtnCancel) then
     BtnCancel.Caption := SUICancel;
   GroupBoxProperties.Caption := SPropertiesGroup;
@@ -1512,6 +1658,14 @@ begin
   TextScopeName := SelectedTextScopeName;
   TextType := CurrentTextType;
   ReplaceExistingText := False;
+  case ChooseReplaceScope of
+    0: Exit;
+    2:
+      begin
+        AddBookRequest(Ord(bikReplace));
+        Exit;
+      end;
+  end;
   if TextTypeParticipatesInAssociations(TextType) then
   begin
     case MessageDlg(SChooseAnotherText, Format(SChangeTextConfirmationAssociation,
@@ -1552,6 +1706,7 @@ begin
       Exit;
     end;
 
+    ClearPendingBookRequests(TextType, False);
     FPendingTextActions[TextType] := ptaLoad;
     FPendingTextFiles[TextType] := OpenDialogSelectFile.FileName;
     FPendingTextReplace[TextType] := ReplaceExistingText;
@@ -1573,6 +1728,7 @@ begin
                 Format(SClearTextConfirmation, [TextScopeName]));
   if MessageDlg(SClearText, Msg, mtConfirmation, [mbYes, mbCancel], 0) = mrYes then
   begin
+    ClearPendingBookRequests(TextType, False);
     FPendingTextActions[TextType] := ptaClear;
     FPendingTextFiles[TextType] := '';
     MemoTextPreview.Clear;
@@ -1886,6 +2042,21 @@ begin
         end;
     end;
 
+    if Assigned(FPendingBookRequests) and (FPendingBookRequests.Count > 0) then
+    begin
+      if Assigned(FBookRequestsToApply) then
+      begin
+        while FBookRequestsToApply.Count > 0 do
+        begin
+          TObject(FBookRequestsToApply[0]).Free;
+          FBookRequestsToApply.Delete(0);
+        end;
+        FreeAndNil(FBookRequestsToApply);
+      end;
+      FBookRequestsToApply := FPendingBookRequests;
+      FPendingBookRequests := nil;
+    end;
+
     FProject.SetInfo('descricao', EditProjectName.Text);
 
     CurrentVersion := FProject.TokenizerVersion;
@@ -2107,6 +2278,8 @@ begin
   StyleControl(FWorkflowIntroLabel, uirHint);
   StyleControl(FStatusDescriptionLabel, uirHint);
   SetButtonIcon(BtnLoadText, aiTextLoad);
+  if Assigned(FBtnAddBooks) then
+    SetButtonIcon(FBtnAddBooks, aiTextLoad);
   SetButtonIcon(BtnClearText, aiTextClear);
   SetButtonIcon(BtnSelectFont, aiFontSelect);
   SetButtonIcon(BtnSelectStrongDictionary, aiDictionaryStrongSelect);

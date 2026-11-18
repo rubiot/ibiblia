@@ -453,6 +453,14 @@ type
       OverwriteExisting: Boolean): Boolean;
     procedure SaveVersePairs(Verse: TVerse); // Save pairs from any verse object (public for AI flows)
     procedure ApplyVerseText(const newText: string; texto: TTipoTextoBiblico; replace: Boolean);
+    { Saved text of every verse row (Refs[i] "b,c,v", Texts[i]), in row
+      order. Used by "Add Bible Books" and the partial "Replace text". }
+    procedure ReadTextColumn(texto: TTipoTextoBiblico; Refs, Texts: TStrings);
+    { Sets the text of the listed verses (one pass over the project rows).
+      replace = True keeps the associations of changed verses where it can,
+      as the whole-text import does. Returns the number of verses set. }
+    function ApplyVerseTexts(Refs, Texts: TStrings; texto: TTipoTextoBiblico;
+      replace: Boolean; pb: TProgressBar; out ErrorMessage: string): Integer;
     procedure SuggestAssociationStatistical;
     procedure SuggestAssociation;
     procedure SuggestAssociationAI;
@@ -806,7 +814,7 @@ function TextTypeParticipatesInAssociations(
 implementation
 
 uses FormDictionaryPopup, FormVerseRules, formaiprocessing,
-  theword_module_encoding, performance_debug, status_visuals, ui_style,
+  apocrypha_books, theword_module_encoding, performance_debug, status_visuals, ui_style,
   project_save_staging, project_save_snapshot, sqlite_database_copy,
   unittexttospeech;
 
@@ -3458,6 +3466,121 @@ begin
   SetVerseText(newText, texto, replace);
 end;
 
+function TextColumnName(texto: TTipoTextoBiblico): string;
+begin
+  case texto of
+    tbDestino: Result := 'pare_texto_destino';
+    tbConsulta1: Result := 'pare_texto_consulta1';
+    tbConsulta2: Result := 'pare_texto_consulta2';
+  else
+    Result := 'pare_texto_origem';
+  end;
+end;
+
+procedure TProject.ReadTextColumn(texto: TTipoTextoBiblico; Refs,
+  Texts: TStrings);
+var
+  Qry: TSQLQuery;
+begin
+  Refs.Clear;
+  Texts.Clear;
+  if (FFileName = '') or not FileExists(FFileName) then
+    Exit;
+  Qry := CreateQueryObject(FFileName);
+  try
+    Qry.SQL.Text := 'SELECT pare_id, ' + TextColumnName(texto) +
+      ' FROM pares ORDER BY rowid';
+    Qry.Open;
+    while not Qry.EOF do
+    begin
+      Refs.Add(Qry.Fields[0].AsString);
+      Texts.Add(Qry.Fields[1].AsString);
+      Qry.Next;
+    end;
+    Qry.Close;
+  finally
+    if Assigned(Qry.Transaction) then
+      Qry.Transaction.Free;
+    if Assigned(Qry.DataBase) then
+      Qry.DataBase.Free;
+    Qry.Free;
+  end;
+end;
+
+function TProject.ApplyVerseTexts(Refs, Texts: TStrings;
+  texto: TTipoTextoBiblico; replace: Boolean; pb: TProgressBar;
+  out ErrorMessage: string): Integer;
+var
+  Wanted: TStringList;
+  Index, Done: Integer;
+  RowReference, VerseError: string;
+  OriginalScrollEventsEnabled, OriginalExporting: Boolean;
+  LastPulse: QWord;
+begin
+  Result := 0;
+  ErrorMessage := '';
+  if (Refs = nil) or (Texts = nil) or (Refs.Count = 0) then
+    Exit;
+  CancelDefaultVerseModeRequest;
+  Wanted := TStringList.Create;
+  try
+    for Index := 0 to Refs.Count - 1 do
+      Wanted.AddObject(Refs[Index], TObject(PtrInt(Index)));
+    Wanted.Sorted := True;
+
+    OriginalScrollEventsEnabled := FScrollEventsEnabled;
+    OriginalExporting := FExportando;
+    StartScrollingSession;
+    try
+      if Assigned(pb) then
+      begin
+        pb.Style := pbstNormal;
+        pb.Min := 0;
+        pb.Max := Refs.Count;
+        pb.Position := 0;
+        pb.Visible := True;
+      end;
+      LastPulse := 0;
+      Done := 0;
+      FPersistence.First;
+      while not FPersistence.EOF and (Done < Refs.Count) do
+      begin
+        RowReference := FPersistence.CurrentPairId;
+        Index := Wanted.IndexOf(RowReference);
+        if Index >= 0 then
+        begin
+          Inc(Done);
+          if not TrySetVerseText(Texts[PtrInt(Wanted.Objects[Index])], texto,
+            replace, VerseError) then
+          begin
+            if VerseError = '' then
+              VerseError := SCorruptedData;
+            ErrorMessage := RowReference + ': ' + VerseError;
+            Break;
+          end;
+          Inc(Result);
+          if Assigned(pb) and (GetTickCount64 - LastPulse > 150) then
+          begin
+            pb.Position := Done;
+            TFormPleaseWait.PumpProgressPaintMessages(pb);
+            LastPulse := GetTickCount64;
+          end;
+        end;
+        FPersistence.Next;
+      end;
+      if (Result > 0) and TextTypeParticipatesInAssociations(texto) then
+        RebuildAssociationMemory(pb);
+    finally
+      GoToReference(FMarker);
+      FScrollEventsEnabled := OriginalScrollEventsEnabled;
+      FExportando := OriginalExporting;
+    end;
+    UpdateTree;
+  finally
+    Wanted.Free;
+  end;
+end;
+
 function TProject.CurrentViewsMatchPersistence: Boolean;
 var
   TextType: TTipoTextoBiblico;
@@ -5123,12 +5246,45 @@ procedure TProject.OpenProject(Nome: string);
       result := etNT;
       exit;
     end;
-    FTblPares.Last;
-    if FTblPares.FieldByName('pare_id').AsString = '66,22,21' then
+    { Apocrypha rows (67+) may follow Revelation, so look the last
+      canonical verse up instead of reading the last row. }
+    if FTblPares.Locate('pare_id', '66,22,21', []) then
       result := etONT
     else
       result := etOT;
     FTblPares.First;
+  end;
+
+  { Registers the project's apocrypha / deuterocanonical rows (67+) so the
+    Bible tree, verse lookup and chapter view know them. }
+  procedure RegisterApocryphaRows;
+  var
+    Qry: TSQLQuery;
+    B, C, V: Integer;
+  begin
+    ClearApocryphaBooks;
+    Qry := CreateQueryObject(Nome);
+    try
+      Qry.SQL.Text := 'SELECT pare_id FROM pares WHERE ' +
+        'CAST(pare_id AS INTEGER) >= 67 ORDER BY rowid';
+      Qry.Open;
+      while not Qry.EOF do
+      begin
+        B := 0; C := 0; V := 0;
+        SScanf(Qry.Fields[0].AsString, '%d,%d,%d', [@B, @C, @V]);
+        AddApocryphaVerse(B, C, V);
+        Qry.Next;
+      end;
+      Qry.Close;
+    finally
+      if Assigned(Qry.Transaction) then
+        Qry.Transaction.Free;
+      if Assigned(Qry.DataBase) then
+        Qry.DataBase.Free;
+      Qry.Free;
+    end;
+    if ApocryphaBookCount > 0 then
+      SetApocryphaBookNames(GetInfo('apocrypha.books'));
   end;
 var
   t: TTipoTextoBiblico;
@@ -5241,6 +5397,7 @@ begin
 
   if FEscopo = etNone then
     FEscopo := IdentificarEscopo;
+  RegisterApocryphaRows;
 
   if Assigned(FProjectExporter) then
     FProjectExporter.Attach(FEscopo, FVerseRepository, FVerseRenderBuffer);

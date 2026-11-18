@@ -22,7 +22,7 @@
       <UseVersionInfo Value="True"/>
       <MajorVersionNr Value="1"/>
       <MinorVersionNr Value="1"/>
-      <BuildNr Value="46"/>
+      <BuildNr Value="47"/>
       <StringTable CompanyName="Rúbio R. C. Terra (rubio.terra@gmail.com)" FileDescription="Ferramenta para associação de textos bíblicos" ProductName="iBiblia" ProductVersion="1.1.0.021"/>
     </VersionInfo>
     <BuildModes Count="6" Active="Debug">
@@ -225,7 +225,7 @@
         <PackageName Value="SynEdit"/>
       </Item6>
     </RequiredPackages>
-    <Units Count="88">
+    <Units Count="92">
       <Unit0>
         <Filename Value="iBiblia.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -971,6 +971,26 @@
         <IsPartOfProject Value="True"/>
         <UsageCount Value="48"/>
       </Unit87>
+          <Unit88>
+        <Filename Value="bible_document_reader.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="20"/>
+      </Unit88>
+      <Unit89>
+        <Filename Value="bible_import_source.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="20"/>
+      </Unit89>
+      <Unit90>
+        <Filename Value="project_book_import.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="20"/>
+      </Unit90>
+      <Unit91>
+        <Filename Value="FormBookImport.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="20"/>
+      </Unit91>
     </Units>
     <JumpHistory Count="30" HistoryIndex="29">
       <Position1>

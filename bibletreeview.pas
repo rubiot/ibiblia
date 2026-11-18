@@ -35,6 +35,8 @@ type
     FOnVerseChange: TOnVerseChangeEvent;
     FOnSelectionChanged: TNotifyEvent;
     FAIStatesEnabled: Boolean; // Enable/disable AI state icons
+    FDisabledBooks: TIntegerList; // book numbers that cannot be ticked
+    function IsNodeDisabled(node: TTreeNode): Boolean;
     function GetVerseList: TStringList;
     function GetVerseIndexes: TIntegerList;
     procedure SetNodeStateIndex(node: TTreeNode; index: integer);
@@ -57,6 +59,9 @@ type
     procedure ClearAllAIStates; // Reset all verses to checked/unchecked state
     procedure SetVerseChecked(index: integer; checked: Boolean);
     function IsVerseChecked(index: integer): Boolean;
+    { Book node with this book number (Data) cannot be ticked and is drawn
+      greyed, with Suffix added to its caption. }
+    procedure DisableBook(BookID: Integer; const Suffix: string);
 
 
     property Scope: TEscopoTexto read FScope write SetScope;
@@ -207,6 +212,7 @@ var
 begin
   BeginUpdate;
   Items.Clear;
+  FDisabledBooks.Clear;
   nb := nil;
   nc := nil;
   i := 0;
@@ -243,6 +249,7 @@ var
   nparent: TTreeNode;
 begin
   if not assigned(node) then exit;
+  if IsNodeDisabled(node) then exit;
 
   if node.StateIndex = ImgIndexUnchecked then
   begin
@@ -325,13 +332,57 @@ begin
   FOnVerseChange := nil;
   FOnSelectionChanged := nil;
   FAIStatesEnabled := False;
+  FDisabledBooks := TIntegerList.Create;
   OnCustomDrawItem := @SkinCustomDrawItem;
+end;
+
+function TBibleTreeView.IsNodeDisabled(node: TTreeNode): Boolean;
+begin
+  Result := False;
+  if not Assigned(node) or (FDisabledBooks.Count = 0) then
+    Exit;
+  while Assigned(node.Parent) do
+    node := node.Parent;
+  Result := FDisabledBooks.IndexOf(Integer(PtrInt(node.Data))) >= 0;
+end;
+
+procedure TBibleTreeView.DisableBook(BookID: Integer; const Suffix: string);
+var
+  node: TTreeNode;
+begin
+  if FDisabledBooks.IndexOf(BookID) < 0 then
+    FDisabledBooks.Add(BookID);
+  if Items.Count = 0 then
+    Exit;
+  node := Items[0];
+  while Assigned(node) do
+  begin
+    if Integer(PtrInt(node.Data)) = BookID then
+    begin
+      SetNodeStateIndex(node, ImgIndexUnchecked);
+      if Suffix <> '' then
+        node.Text := node.Text + Suffix;
+      Break;
+    end;
+    node := node.GetNextSibling;
+  end;
 end;
 
 procedure TBibleTreeView.SkinCustomDrawItem(Sender: TCustomTreeView;
   Node: TTreeNode; State: TCustomDrawState; var DefaultDraw: Boolean);
 begin
   DefaultDraw := True;
+  if IsNodeDisabled(Node) then
+  begin
+    Sender.Canvas.Font.Color := clGrayText;
+    if CurrentSkin.Id = skClassic then
+      Exit;
+    if cdsSelected in State then
+      Sender.Canvas.Brush.Color := CurrentSkin.HighlightBg
+    else
+      Sender.Canvas.Brush.Color := CurrentSkin.TreeBg;
+    Exit;
+  end;
   if CurrentSkin.Id = skClassic then
     Exit;
   if cdsSelected in State then
@@ -379,6 +430,7 @@ destructor TBibleTreeView.Destroy;
 begin
   StateImages := nil;
   FImages.Free;
+  FDisabledBooks.Free;
   inherited Destroy;
 end;
 
@@ -386,10 +438,13 @@ procedure TBibleTreeView.SelectAll;
 var
   node: TTreeNode;
 begin
+  if Items.Count = 0 then
+    Exit;
   node := Items[0];
   while assigned(node) do
   begin
-    SetNodeStateIndex(node, ImgIndexChecked);
+    if not IsNodeDisabled(node) then
+      SetNodeStateIndex(node, ImgIndexChecked);
     node := node.GetNextSibling;
   end;
 end;
@@ -398,6 +453,8 @@ procedure TBibleTreeView.SelectNone;
 var
   node: TTreeNode;
 begin
+  if Items.Count = 0 then
+    Exit;
   node := Items[0];
   while assigned(node) do
   begin
