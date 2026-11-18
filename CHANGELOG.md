@@ -6,7 +6,15 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.047 (2026-11-18) — Add Bible Books, Replace Chosen Books or Verses
+### 0. Version 1.1.0.048 (2026-11-18) — Project Backup and Restore
+
+* Project settings, Project tab: new Backup section with "Back up this project" and "Restore project..." buttons and the backup folder (chosen once with "Change...", or asked on the first backup). A backup is a zipped copy of the project (.bib.zip, named with the project name, date and time), made with SQLite's own copy and checked before it is zipped; you can add a note to it.
+* Before replacing, adding or clearing a Bible text, applying a patch or applying AI results, iBiblia asks: "Back up and continue", "Continue without backup" or Cancel. Of these automatic backups only the newest 2 of each project are kept; backups you make yourself are never deleted.
+* Restore project lists the backups of the project (date, type, note, associated verses, size), or lets you choose another backup file. The current project is backed up first, so a restore can be undone.
+* File > Open now also opens zipped projects (.bib.zip): iBiblia unpacks the project to a .bib file where you choose and opens it.
+* Files: `project_backup.pas` (new), `project_backup_ui.pas` (new), `FormProjectProperties.pas`, `formprincipal.pas`, `formaiprocessing.pas`.
+
+### 0za. Version 1.1.0.047 (2026-11-18) — Add Bible Books, Replace Chosen Books or Verses
 
 * Project settings, Texts tab: new "Add Bible Books..." button beside "Replace ... text in whole project" for the Source, Destination, Reference 1 and Reference 2 texts. Choose a Bible file (theWord, e-Sword, USFM, USFX, MySword) or a text document (.txt, .rtf, .odt, .docx); iBiblia finds its books and shows them in a Bible tree with the project text and the file text side by side. Only books missing from the project can be ticked (books it already has are greyed out). Apocrypha / deuterocanonical books (Tobit, Judith, Sirach, 1-4 Maccabees, etc.) are added after Revelation and appear in the Bible tree. If the file has books of the other Testament (e.g. Old Testament books in a New Testament project), iBiblia asks first and then makes the project a whole-Bible project.
 * "Replace ... text in whole project" now asks first: replace the whole text, or choose books, chapters or verses to replace. Choosing opens the same Bible tree (like Create/Apply patch), listing only the verses whose text differs, with "Try to keep the current associations".

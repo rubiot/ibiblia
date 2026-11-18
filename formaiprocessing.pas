@@ -172,6 +172,7 @@ resourcestring
   SAIReviewSelectAll = 'Accept all';
   SAIReviewDeselectAll = 'Reject all';
   SAIReviewApplyAccepted = 'Apply accepted';
+  SAIReviewBackupReason = 'Before applying the AI results';
   SAIReviewDiscard = 'Discard';
   SAIReviewCancel = 'Cancel';
   SAIReviewErrorPrefix = 'Error: %s';
@@ -220,7 +221,7 @@ implementation
 
 {$R *.lfm}
 
-uses ai_debug;
+uses ai_debug, formPrincipal, project_backup_ui;
 
 { TFrmAIProcessing }
 
@@ -561,6 +562,12 @@ begin
   msg := msg + LineEnding + LineEnding + SAIReviewApplyQuestion;
 
   if MessageDlg(SConfirmation, msg, mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
+  begin
+    ModalResult := mrNone;
+    Exit;
+  end;
+
+  if not OfferProjectBackup(CurrentProject, SAIReviewBackupReason) then
   begin
     ModalResult := mrNone;
     Exit;

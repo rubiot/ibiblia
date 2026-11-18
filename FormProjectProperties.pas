@@ -119,8 +119,20 @@ type
     FPendingDefaultDictionariesChanged: Boolean;
     FApplyingTheme: Boolean;
     FBtnAddBooks: TBitBtn;
+    FBackupGroup: TGroupBox;
+    FBackupFolderLabel: TLabel;
+    FBackupFolderEdit: TEdit;
+    FBackupFolderButton: TButton;
+    FBackupButton: TButton;
+    FRestoreButton: TButton;
+    FBackupInfoLabel: TLabel;
+    FRestoreRequest: string;
     FPendingBookRequests: TList;    // TBookImportRequest, not applied yet
     FBookRequestsToApply: TList;    // handed to the main form by ApplyChanges
+    procedure BackupFolderClick(Sender: TObject);
+    procedure BackupClick(Sender: TObject);
+    procedure RestoreClick(Sender: TObject);
+    procedure RefreshBackupFolder;
     procedure BtnAddBooksClick(Sender: TObject);
     procedure ClearPendingBookRequests(TextType: TTipoTextoBiblico;
       AllTexts: Boolean);
@@ -170,6 +182,9 @@ type
     { "Add Bible Books" / partial replace requests applied by the last
       ApplyChanges (TBookImportRequest); the caller owns the list. }
     function TakeBookRequestsToApply: TList;
+    { The backup chosen with "Restore project" ('' if none); the dialog was
+      closed for it and the main form restores it. }
+    function TakeRestoreRequest: string;
     procedure ApplyThemeColors;
     procedure Translate;
   public
@@ -310,6 +325,19 @@ resourcestring
   SPendingAutomaticSuggestion = 'Automatic suggestion: %s -> %s';
   SPendingDefaultVerseMode = 'Verse opening: %s -> %s';
   SDefaultDictionariesGroup = 'Default dictionaries';
+  SBackupReasonReplace = 'Before replacing the %s text';
+  SBackupReasonAddBooks = 'Before adding Bible books to the %s text';
+  SBackupReasonClear = 'Before clearing the %s text';
+  SBackupGroup = 'Backup';
+  SBackupFolderLabel = 'Backup folder:';
+  SBackupFolderNotSet = '(not set - you will be asked on the first backup)';
+  SBackupChangeFolder = 'Change...';
+  SBackupThisProject = 'Back up this project';
+  SRestoreProject = 'Restore project...';
+  SBackupKeepInfo = 'Backups are zipped (.bib.zip) and can also be opened with File > Open. Backups you make are kept; of the automatic ones (made before replacing, adding or clearing text, applying a patch or applying AI results) only the newest %d of each project are kept.';
+  SRestoreConfirm = 'Restore the project from the %s?'#13#10#13#10 +
+    'The current project file will be replaced by the backup. A backup of the current project is made first, so you can undo this.'#13#10#13#10 +
+    'Changes not yet applied in Project settings will be discarded.';
   SUseDefaultDictionariesToggle = 'Use default dictionaries for all four Bible modules (disables per-module selection)';
   SDefaultGreekStrongLabel = 'Greek Strong''s (G):';
   SDefaultHebrewStrongLabel = 'Hebrew Strong''s (H):';
@@ -324,7 +352,7 @@ implementation
 
 uses
   FormLlmOptions, formPrincipal, module_conversion, project_book_import,
-  FormBookImport;
+  FormBookImport, project_backup, project_backup_ui;
 
 { TFrmProjectProperties }
 
@@ -385,6 +413,64 @@ begin
     end;
 end;
 
+function TFrmProjectProperties.TakeRestoreRequest: string;
+begin
+  Result := FRestoreRequest;
+  FRestoreRequest := '';
+end;
+
+procedure TFrmProjectProperties.RefreshBackupFolder;
+begin
+  if not Assigned(FBackupFolderEdit) then
+    Exit;
+  if GetBackupFolder <> '' then
+    FBackupFolderEdit.Text := GetBackupFolder
+  else
+    FBackupFolderEdit.Text := SBackupFolderNotSet;
+end;
+
+procedure TFrmProjectProperties.BackupFolderClick(Sender: TObject);
+var
+  Dialog: TSelectDirectoryDialog;
+begin
+  Dialog := TSelectDirectoryDialog.Create(Self);
+  try
+    Dialog.Title := SBackupChooseFolder;
+    if GetBackupFolder <> '' then
+      Dialog.InitialDir := GetBackupFolder
+    else if Assigned(FProject) then
+      Dialog.InitialDir := ExtractFileDir(FProject.FileName);
+    if Dialog.Execute then
+      SetBackupFolder(Dialog.FileName);
+  finally
+    Dialog.Free;
+  end;
+  RefreshBackupFolder;
+end;
+
+procedure TFrmProjectProperties.BackupClick(Sender: TObject);
+begin
+  BackUpProjectWithNote(FProject);
+  RefreshBackupFolder;
+end;
+
+procedure TFrmProjectProperties.RestoreClick(Sender: TObject);
+var
+  ZipFile: string;
+begin
+  if not Assigned(FProject) then
+    Exit;
+  ZipFile := ChooseBackupToRestore(Self, FProject);
+  RefreshBackupFolder;
+  if ZipFile = '' then
+    Exit;
+  if MessageDlg(SBackupRestoreTitle, Format(SRestoreConfirm, [DescribeBackup(ZipFile)]),
+    mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
+    Exit;
+  FRestoreRequest := ZipFile;
+  ModalResult := mrCancel;
+end;
+
 function TFrmProjectProperties.TakeBookRequestsToApply: TList;
 begin
   Result := FBookRequestsToApply;
@@ -419,6 +505,9 @@ end;
 
 procedure TFrmProjectProperties.BtnAddBooksClick(Sender: TObject);
 begin
+  if not OfferProjectBackup(FProject, Format(SBackupReasonAddBooks,
+    [SelectedTextScopeName])) then
+    Exit;
   AddBookRequest(Ord(bikAdd));
 end;
 
@@ -495,6 +584,52 @@ begin
   FScenarioLabel.Parent := GroupBoxProperties;
   FScenarioLabel.SetBounds(16, 120, PageWidth - 32, 22);
   FScenarioLabel.Anchors := [akLeft, akTop, akRight];
+
+  FBackupGroup := TGroupBox.Create(Self);
+  FBackupGroup.Parent := FTabProject;
+  FBackupGroup.SetBounds(16, 16 + ProjectGroupHeight + 16, PageWidth - 12, 200);
+  FBackupGroup.Anchors := [akLeft, akTop, akRight];
+  FBackupGroup.Caption := SBackupGroup;
+
+  FBackupFolderLabel := TLabel.Create(Self);
+  FBackupFolderLabel.Parent := FBackupGroup;
+  FBackupFolderLabel.SetBounds(16, 12, PageWidth - 32, 18);
+  FBackupFolderLabel.Caption := SBackupFolderLabel;
+
+  FBackupFolderEdit := TEdit.Create(Self);
+  FBackupFolderEdit.Parent := FBackupGroup;
+  FBackupFolderEdit.SetBounds(16, 32, PageWidth - 32 - 120 - ControlGap, 26);
+  FBackupFolderEdit.Anchors := [akLeft, akTop, akRight];
+  FBackupFolderEdit.ReadOnly := True;
+
+  FBackupFolderButton := TButton.Create(Self);
+  FBackupFolderButton.Parent := FBackupGroup;
+  FBackupFolderButton.SetBounds(PageWidth - 32 - 120 + 16, 30, 120, 30);
+  FBackupFolderButton.Anchors := [akTop, akRight];
+  FBackupFolderButton.Caption := SBackupChangeFolder;
+  FBackupFolderButton.OnClick := @BackupFolderClick;
+
+  FBackupButton := TButton.Create(Self);
+  FBackupButton.Parent := FBackupGroup;
+  FBackupButton.SetBounds(16, 70, (PageWidth - 32 - ControlGap) div 2, 32);
+  FBackupButton.Caption := SBackupThisProject;
+  FBackupButton.OnClick := @BackupClick;
+
+  FRestoreButton := TButton.Create(Self);
+  FRestoreButton.Parent := FBackupGroup;
+  FRestoreButton.SetBounds(16 + FBackupButton.Width + ControlGap, 70,
+    FBackupButton.Width, 32);
+  FRestoreButton.Anchors := [akTop, akRight];
+  FRestoreButton.Caption := SRestoreProject;
+  FRestoreButton.OnClick := @RestoreClick;
+
+  FBackupInfoLabel := TLabel.Create(Self);
+  FBackupInfoLabel.Parent := FBackupGroup;
+  FBackupInfoLabel.AutoSize := False;
+  FBackupInfoLabel.WordWrap := True;
+  FBackupInfoLabel.SetBounds(16, 110, PageWidth - 32, 66);
+  FBackupInfoLabel.Anchors := [akLeft, akTop, akRight];
+  FBackupInfoLabel.Caption := Format(SBackupKeepInfo, [AUTO_BACKUPS_KEPT]);
 
   FWorkflowIntroLabel := TLabel.Create(Self);
   FWorkflowIntroLabel.Parent := FTabWorkflow;
@@ -1549,6 +1684,16 @@ begin
   Caption := SProjectPropertiesTitle;
   if Assigned(FBtnAddBooks) then
     FBtnAddBooks.Caption := SAddBibleBooks;
+  if Assigned(FBackupGroup) then
+  begin
+    FBackupGroup.Caption := SBackupGroup;
+    FBackupFolderLabel.Caption := SBackupFolderLabel;
+    FBackupFolderButton.Caption := SBackupChangeFolder;
+    FBackupButton.Caption := SBackupThisProject;
+    FRestoreButton.Caption := SRestoreProject;
+    FBackupInfoLabel.Caption := Format(SBackupKeepInfo, [AUTO_BACKUPS_KEPT]);
+    RefreshBackupFolder;
+  end;
   if Assigned(BtnCancel) then
     BtnCancel.Caption := SUICancel;
   GroupBoxProperties.Caption := SPropertiesGroup;
@@ -1658,6 +1803,8 @@ begin
   TextScopeName := SelectedTextScopeName;
   TextType := CurrentTextType;
   ReplaceExistingText := False;
+  if not OfferProjectBackup(FProject, Format(SBackupReasonReplace, [TextScopeName])) then
+    Exit;
   case ChooseReplaceScope of
     0: Exit;
     2:
@@ -1726,7 +1873,8 @@ begin
   Msg := IfThen(TextTypeParticipatesInAssociations(TextType),
                 Format(SClearTextConfirmationAssociation, [TextScopeName]),
                 Format(SClearTextConfirmation, [TextScopeName]));
-  if MessageDlg(SClearText, Msg, mtConfirmation, [mbYes, mbCancel], 0) = mrYes then
+  if (MessageDlg(SClearText, Msg, mtConfirmation, [mbYes, mbCancel], 0) = mrYes) and
+     OfferProjectBackup(FProject, Format(SBackupReasonClear, [TextScopeName])) then
   begin
     ClearPendingBookRequests(TextType, False);
     FPendingTextActions[TextType] := ptaClear;
@@ -1932,6 +2080,8 @@ var
   Scenario: TProjectScenario;
 begin
   FProject := Project;
+  FRestoreRequest := '';
+  RefreshBackupFolder;
   FStatusDefinitions := Project.GetStatusDefinitions;
   FStatusRemaps := nil;
   FStatusCatalogChanged := False;

@@ -185,6 +185,11 @@ type
     { Adds / replaces the books chosen in the project settings ("Add Bible
       Books" and the partial "Replace text"). Frees Requests. }
     procedure ApplyBookImportRequests(Requests: TList);
+    { After Project settings closes: restores the chosen backup, if any. }
+    procedure HandleProjectRestoreRequest;
+    procedure RestoreProjectFromBackup(const ZipFile: string);
+    { Unpacks a zipped project (backup) to a .bib file the user chooses. }
+    function UnpackZippedProject(const ZipFile: string; out ProjectFile: string): Boolean;
     procedure ActionNewVerseExecute(Sender: TObject);
     procedure ActionRebuildSuggestionDatabaseExecute(Sender: TObject);
     procedure ActionResetLayoutExecute(Sender: TObject);
@@ -520,6 +525,18 @@ const
 
 resourcestring
   SAddBooksTitle = 'Add / replace Bible books';
+  SProjectOpenFilter = 'iBiblia projects (*.bib, *.bib.zip)|*.bib;*.zip|Association project (*.bib)|*.bib|Zipped project / backup (*.bib.zip)|*.bib.zip;*.zip';
+  SProjectSaveFilter = 'Association project (*.bib)|*.bib';
+  SPatchBackupReason = 'Before applying the patch';
+  SRestoreTitle = 'Restore project';
+  SRestoreSafetyNote = 'Before restoring the %s';
+  SRestoreSafetyFailed = 'The current project could not be backed up, so it was not replaced:'#13#10'%s';
+  SRestoreFailed = 'The project could not be restored:'#13#10'%s'#13#10#13#10'The current project was kept.';
+  SRestoreDone = 'The project was restored from the %s.'#13#10#13#10'The project as it was before is in the backup:'#13#10'%s';
+  SUnzipTitle = 'Open zipped project';
+  SUnzipIntro = 'This is a zipped iBiblia project (backup). iBiblia will unpack it to a project file (.bib) and open it.'#13#10#13#10'Choose where to save the unpacked project.';
+  SUnzipNotAProject = 'This zip file does not contain an iBiblia project:'#13#10'%s';
+  SUnzipFailed = 'The project could not be unpacked:'#13#10'%s';
   SAddBooksProgress = 'Setting the verse texts...';
   SAddBooksRowsFailed = 'The new books could not be added to the project file: %s';
   SAddBooksDone = '%d verses were set.';
@@ -734,7 +751,8 @@ uses FormNewProject, FormProjectProperties, FormProjectExport, FormMergeProjects
   FormExportPatch, FormApplyPatch, FormLlmOptions, FormTheWordHighlighterColors,
   llmclient, theword_syntax_highlighter, translation_memory_preview,
   FormFindInProject, FormGoToVerse, FormDefaultDictionaries, unittexttospeech, formvoicesettings,
-  FormNewFeaturesGuide, FormDictionaryPopup, project_book_import;
+  FormNewFeaturesGuide, FormDictionaryPopup, project_book_import,
+  project_backup, project_backup_ui, sqlite_database_copy;
 
 {$R *.lfm}
 
@@ -1206,6 +1224,7 @@ begin
     UpdateStatusReviewPanel;
     LayoutVersePanelLabels;
   end;
+  HandleProjectRestoreRequest;
   UpdateCommandUI;
   UpdateStateHeader;
 end;
@@ -4062,7 +4081,10 @@ begin
 end;
 
 procedure TMainForm.ActionOpenProjectExecute(Sender: TObject);
+var
+  UnpackedFile: string;
 begin
+  OpenDialog1.Filter := SProjectOpenFilter;
   if Sender is TMenuItem then
      OpenDialog1.FileName := TMenuItem(Sender).Caption
   else if not OpenDialog1.Execute then
@@ -4080,7 +4102,174 @@ begin
     exit;
   end;
 
+  if SameText(ExtractFileExt(OpenDialog1.FileName), '.zip') then
+  begin
+    if UnpackZippedProject(OpenDialog1.FileName, UnpackedFile) then
+      DoOpenProject(UnpackedFile);
+    exit;
+  end;
+
   DoOpenProject(OpenDialog1.FileName);
+end;
+
+function TMainForm.UnpackZippedProject(const ZipFile: string;
+  out ProjectFile: string): Boolean;
+var
+  Dialog: TSaveDialog;
+  EntryName, Folder, Candidate: string;
+  Index: Integer;
+begin
+  Result := False;
+  ProjectFile := '';
+  EntryName := ZippedProjectName(ZipFile);
+  if EntryName = '' then
+  begin
+    MessageDlg(SUnzipTitle, Format(SUnzipNotAProject, [ZipFile]), mtError, [mbOK], 0);
+    Exit;
+  end;
+  if MessageDlg(SUnzipTitle, SUnzipIntro, mtInformation, [mbOK, mbCancel], 0) <> mrOK then
+    Exit;
+  Folder := ExtractFileDir(ExpandFileName(ZipFile));
+  EntryName := ExtractFileName(StringReplace(EntryName, '/', PathDelim, [rfReplaceAll]));
+  Candidate := IncludeTrailingPathDelimiter(Folder) + EntryName;
+  Index := 2;
+  while FileExists(Candidate) do
+  begin
+    Candidate := IncludeTrailingPathDelimiter(Folder) +
+      ChangeFileExt(EntryName, '') + '_restored_' +
+      FormatDateTime('yyyy-mm-dd_hhnn', Now);
+    if Index > 2 then
+      Candidate := Candidate + '_' + IntToStr(Index);
+    Candidate := Candidate + '.bib';
+    Inc(Index);
+  end;
+  Dialog := TSaveDialog.Create(nil);
+  try
+    Dialog.Title := SUnzipTitle;
+    Dialog.Filter := SProjectSaveFilter;
+    Dialog.DefaultExt := '.bib';
+    Dialog.InitialDir := Folder;
+    Dialog.FileName := ExtractFileName(Candidate);
+    Dialog.Options := Dialog.Options + [ofOverwritePrompt, ofPathMustExist, ofNoChangeDir];
+    if not Dialog.Execute then
+      Exit;
+    Candidate := Dialog.FileName;
+  finally
+    Dialog.Free;
+  end;
+  if FileExists(Candidate) then
+  begin
+    { the dialog asked whether to replace it }
+    if not SysUtils.DeleteFile(Candidate) then
+    begin
+      MessageDlg(SUnzipTitle, Format(SUnzipFailed, [Candidate]), mtError, [mbOK], 0);
+      Exit;
+    end;
+    DeleteSQLiteFiles(Candidate);
+  end;
+  try
+    Screen.Cursor := crHourGlass;
+    try
+      ExtractZippedProject(ZipFile, Candidate);
+    finally
+      Screen.Cursor := crDefault;
+    end;
+  except
+    on E: Exception do
+    begin
+      MessageDlg(SUnzipTitle, Format(SUnzipFailed, [E.Message]), mtError, [mbOK], 0);
+      Exit;
+    end;
+  end;
+  ProjectFile := Candidate;
+  Result := True;
+end;
+
+procedure TMainForm.HandleProjectRestoreRequest;
+var
+  ZipFile: string;
+begin
+  if not Assigned(FrmProjectProperties) then
+    Exit;
+  ZipFile := FrmProjectProperties.TakeRestoreRequest;
+  if ZipFile <> '' then
+    RestoreProjectFromBackup(ZipFile);
+end;
+
+procedure TMainForm.RestoreProjectFromBackup(const ZipFile: string);
+var
+  ProjectFile, Description, SafetyBackup, Incoming, OldProjectFile: string;
+begin
+  if not Assigned(CurrentProject) then
+    Exit;
+  CommitAllProps;
+  ProjectFile := ExpandFileName(CurrentProject.FileName);
+  Description := DescribeBackup(ZipFile);
+
+  { 1. back up the project as it is now, so the restore can be undone }
+  if not BackUpProject(CurrentProject, Format(SRestoreSafetyNote, [Description]),
+    True, True, SafetyBackup) then
+  begin
+    if SafetyBackup <> '' then
+      MessageDlg(SRestoreTitle, Format(SRestoreSafetyFailed, [SafetyBackup]),
+        mtError, [mbOK], 0);
+    Exit;
+  end;
+
+  { 2. unpack the backup next to the project and check it }
+  Incoming := ProjectFile + '.restoring';
+  DeleteSQLiteFiles(Incoming);
+  try
+    Screen.Cursor := crHourGlass;
+    try
+      ExtractZippedProject(ZipFile, Incoming);
+    finally
+      Screen.Cursor := crDefault;
+    end;
+  except
+    on E: Exception do
+    begin
+      DeleteSQLiteFiles(Incoming);
+      MessageDlg(SRestoreTitle, Format(SRestoreFailed, [E.Message]), mtError,
+        [mbOK], 0);
+      Exit;
+    end;
+  end;
+
+  { 3. close the project and swap the files }
+  ActionCloseProjectExecute(nil);
+  if CurrentProject <> nil then
+  begin
+    DeleteSQLiteFiles(Incoming);
+    Exit;
+  end;
+  OldProjectFile := ProjectFile + '.before-restore';
+  DeleteSQLiteFiles(OldProjectFile);
+  if not RenameFile(ProjectFile, OldProjectFile) then
+  begin
+    DeleteSQLiteFiles(Incoming);
+    MessageDlg(SRestoreTitle, Format(SRestoreFailed, [ProjectFile]), mtError,
+      [mbOK], 0);
+    DoOpenProject(ProjectFile);
+    Exit;
+  end;
+  { journal files left by the old database must not be applied to the new one }
+  SysUtils.DeleteFile(ProjectFile + '-journal');
+  SysUtils.DeleteFile(ProjectFile + '-wal');
+  SysUtils.DeleteFile(ProjectFile + '-shm');
+  if not RenameFile(Incoming, ProjectFile) then
+  begin
+    RenameFile(OldProjectFile, ProjectFile);
+    DeleteSQLiteFiles(Incoming);
+    MessageDlg(SRestoreTitle, Format(SRestoreFailed, [ProjectFile]), mtError,
+      [mbOK], 0);
+    DoOpenProject(ProjectFile);
+    Exit;
+  end;
+  DeleteSQLiteFiles(OldProjectFile);
+  DoOpenProject(ProjectFile);
+  MessageDlg(SRestoreTitle, Format(SRestoreDone, [Description, SafetyBackup]),
+    mtInformation, [mbOK], 0);
 end;
 
 procedure TMainForm.ActionExportProjectExecute(Sender: TObject);
@@ -4117,6 +4306,9 @@ begin
 
   if FrmApplyPatch.LoadPatch(patch) and (FrmApplyPatch.ShowModal = mrOK) then
   begin
+    CommitAllProps;
+    if not OfferProjectBackup(CurrentProject, SPatchBackupReason) then
+      Exit;
     Screen.Cursor := crHourGlass;
     FrmApplyPatch.Apply;
     Screen.Cursor := crDefault;
@@ -4623,6 +4815,7 @@ begin
     UpdateStatusReviewPanel;
     LayoutVersePanelLabels;
   end;
+  HandleProjectRestoreRequest;
   UpdateCommandUI;
   UpdateStateHeader;
 end;
@@ -4710,7 +4903,7 @@ begin
     SaveDialog1.InitialDir := ExtractFileDir(PreviousFileName);
     SaveDialog1.FileName := ExtractFileName(PreviousFileName);
     SaveDialog1.DefaultExt := '.bib';
-    SaveDialog1.Filter := OpenDialog1.Filter;
+    SaveDialog1.Filter := SProjectSaveFilter;
     SaveDialog1.FilterIndex := 1;
     SaveDialog1.Options := SaveDialog1.Options +
       [ofOverwritePrompt, ofPathMustExist, ofNoChangeDir];
@@ -5218,6 +5411,7 @@ end;
 procedure TMainForm.FormShow(Sender: TObject);
 var
   x, y: Integer;
+  ZipStartupProject: string;
 begin
   x := opts.ReadInteger('leiaute', 'principal.esquerda', Left);
   y := opts.ReadInteger('leiaute', 'principal.topo', Top);
@@ -5245,6 +5439,9 @@ begin
 
   if (ParamCount > 0) and SameText(ExtractFileExt(ParamStr(1)), '.bib') and FileExists(ParamStr(1)) then
     DoOpenProject(ParamStr(1))
+  else if (ParamCount > 0) and SameText(ExtractFileExt(ParamStr(1)), '.zip') and
+    FileExists(ParamStr(1)) and UnpackZippedProject(ParamStr(1), ZipStartupProject) then
+    DoOpenProject(ZipStartupProject)
   else if (MenuItemRecent.Count > 0) and FileExists(MenuItemRecent.Items[0].Caption) then
     DoOpenProject(MenuItemRecent.Items[0].Caption);
   if Assigned(FrmDictionaryPopup) then
@@ -5770,6 +5967,7 @@ begin
       FrmProjectProperties.ApplyChanges(Self);
       ApplyBookImportRequests(FrmProjectProperties.TakeBookRequestsToApply);
     end;
+    HandleProjectRestoreRequest;
     Exit;
   end;
   Settings := ReadDefaultDictionarySettings(opts);
