@@ -1,4 +1,7 @@
-﻿Version 1.1.0.050 (64-bit Edition) - 2026-11-18
+﻿Version 1.1.0.051 (64-bit Edition) - 2026-11-18
+- Right-click a Bible panel > Export as Bible module... now works: it opens the Export project window on the matching tab (Destination panel: Tagged Destination; Source panel: Interlinear Source). On a reference text it explains that reference texts cannot be exported as a module.
+
+Version 1.1.0.050 (64-bit Edition) - 2026-11-18
 - Add Bible Books and Replace now accept compressed files: a zip, tar, tar.gz / tgz, tar.bz2, tar.xz, single .gz, and 7z or rar when 7-Zip / unrar is installed. A compressed file can hold one book or a whole Bible, as theWord, e-Sword, MySword, USFM / USFX modules or text documents (.txt, .rtf, .odt, .docx), also inside folders of the archive.
 - All the files found are combined into one book tree. Plain documents ask for the book matching as before. When the same book is in more than one file, iBiblia asks, book by book, which file to take it from. The order of the apocrypha books follows the files.
 - Unpacking is safe: names that leave the temporary folder are skipped, links are removed, a size limit stops zip bombs, and the temporary files are deleted afterwards.
