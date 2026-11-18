@@ -351,6 +351,7 @@ resourcestring
 implementation
 
 uses
+  bible_archive,
   FormLlmOptions, formPrincipal, module_conversion, project_book_import,
   FormBookImport, project_backup, project_backup_ui;
 
@@ -1287,7 +1288,7 @@ end;
 procedure TFrmProjectProperties.DefaultDictionaryBrowseClick(Sender: TObject);
 var
   Row: Integer;
-  CurrentDirectory, SelectedPath, MessageText: string;
+  CurrentDirectory, SelectedPath, MessageText, PickedFile, ArchiveError: string;
   ModType: TDictionaryModuleType;
 begin
   if not (Sender is TComponent) then
@@ -1295,18 +1296,23 @@ begin
   Row := TComponent(Sender).Tag;
   if (Row < 0) or (Row > 3) or not Assigned(FDefaultDictionaryEdits[Row]) then
     Exit;
-  OpenDialogSelectFile.Filter := SDictionaryFilter;
+  OpenDialogSelectFile.Filter := DictionaryDialogFilter;
   OpenDialogSelectFile.FileName := FDefaultDictionaryEdits[Row].Text;
   OpenDialogSelectFile.Title := SOpenDictionary;
   if OpenDialogSelectFile.Execute then
   begin
+    if not ResolvePickedDictionary(OpenDialogSelectFile.FileName, PickedFile, ArchiveError) then
+    begin
+      MessageDlg(SOpenDictionary, ArchiveError, mtWarning, [mbOK], 0);
+      Exit;
+    end;
     CurrentDirectory := '';
     GetDir(0, CurrentDirectory);
-    if Pos(CurrentDirectory, OpenDialogSelectFile.FileName) = 1 then
-      SelectedPath := Format('.%s', [RightStr(OpenDialogSelectFile.FileName,
-        Length(OpenDialogSelectFile.FileName) - Length(CurrentDirectory))])
+    if Pos(CurrentDirectory, PickedFile) = 1 then
+      SelectedPath := Format('.%s', [RightStr(PickedFile,
+        Length(PickedFile) - Length(CurrentDirectory))])
     else
-      SelectedPath := OpenDialogSelectFile.FileName;
+      SelectedPath := PickedFile;
     if Row in [0, 1] then
       ModType := dmtStrong
     else
@@ -1917,22 +1923,28 @@ var
   CurrentDirectory: string;
   SelectedPath: string;
   MessageText: string;
+  PickedFile, ArchiveError: string;
   TextType: TTipoTextoBiblico;
 begin
   CurrentDirectory := '';
   TextType := CurrentTextType;
-  OpenDialogSelectFile.Filter := SDictionaryFilter;
+  OpenDialogSelectFile.Filter := DictionaryDialogFilter;
   OpenDialogSelectFile.FileName := EditMorphologyDictionary.Text;
   OpenDialogSelectFile.Title := SOpenDictionary;
   if (BtnSelectMorphologyDictionary.Caption = SSetDictionary) or OpenDialogSelectFile.Execute then
   begin
+    if not ResolvePickedDictionary(OpenDialogSelectFile.FileName, PickedFile, ArchiveError) then
+    begin
+      MessageDlg(SOpenDictionary, ArchiveError, mtWarning, [mbOK], 0);
+      Exit;
+    end;
     { use a relative path whenever possible }
     GetDir(0, CurrentDirectory);
-    if Pos(CurrentDirectory, OpenDialogSelectFile.FileName) = 1 then
-      SelectedPath := Format('.%s', [RightStr(OpenDialogSelectFile.FileName,
-        Length(OpenDialogSelectFile.FileName) - Length(CurrentDirectory))])
+    if Pos(CurrentDirectory, PickedFile) = 1 then
+      SelectedPath := Format('.%s', [RightStr(PickedFile,
+        Length(PickedFile) - Length(CurrentDirectory))])
     else
-      SelectedPath := OpenDialogSelectFile.FileName;
+      SelectedPath := PickedFile;
     if not ProjectSetupValidateDictionary(SelectedPath, dmtMorphology, MessageText) then
     begin
       MessageDlg(SOpenDictionary, MessageText, mtWarning, [mbOK], 0);
@@ -1952,22 +1964,28 @@ var
   CurrentDirectory: string;
   SelectedPath: string;
   MessageText: string;
+  PickedFile, ArchiveError: string;
   TextType: TTipoTextoBiblico;
 begin
   CurrentDirectory := '';
   TextType := CurrentTextType;
-  OpenDialogSelectFile.Filter := SDictionaryFilter;
+  OpenDialogSelectFile.Filter := DictionaryDialogFilter;
   OpenDialogSelectFile.FileName := EditStrongDictionary.Text;
   OpenDialogSelectFile.Title := SOpenDictionary;
   if (BtnSelectStrongDictionary.Caption = SSetDictionary) or OpenDialogSelectFile.Execute then
   begin
+    if not ResolvePickedDictionary(OpenDialogSelectFile.FileName, PickedFile, ArchiveError) then
+    begin
+      MessageDlg(SOpenDictionary, ArchiveError, mtWarning, [mbOK], 0);
+      Exit;
+    end;
     { use a relative path whenever possible }
     GetDir(0, CurrentDirectory);
-    if Pos(CurrentDirectory, OpenDialogSelectFile.FileName) = 1 then
-      SelectedPath := Format('.%s', [RightStr(OpenDialogSelectFile.FileName,
-        Length(OpenDialogSelectFile.FileName) - Length(CurrentDirectory))])
+    if Pos(CurrentDirectory, PickedFile) = 1 then
+      SelectedPath := Format('.%s', [RightStr(PickedFile,
+        Length(PickedFile) - Length(CurrentDirectory))])
     else
-      SelectedPath := OpenDialogSelectFile.FileName;
+      SelectedPath := PickedFile;
     if not ProjectSetupValidateDictionary(SelectedPath, dmtStrong, MessageText) then
     begin
       MessageDlg(SOpenDictionary, MessageText, mtWarning, [mbOK], 0);

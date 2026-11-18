@@ -34,6 +34,7 @@ function EditDefaultDictionaries(AOwner: TComponent;
 implementation
 
 uses
+  bible_archive,
   dictionary_manager;
 
 resourcestring
@@ -196,11 +197,12 @@ procedure TFrmDefaultDictionaries.BrowseClick(Sender: TObject);
 var
   Dialog: TOpenDialog;
   Row: Integer;
+  Picked, ArchiveError: string;
 begin
   Row := TComponent(Sender).Tag;
   Dialog := TOpenDialog.Create(Self);
   try
-    Dialog.Filter := SDictionaryFilter;
+    Dialog.Filter := DictionaryDialogFilter;
     Dialog.Options := Dialog.Options + [ofFileMustExist];
     if FEdits[Row].Text <> '' then
     begin
@@ -208,7 +210,14 @@ begin
       Dialog.FileName := ExtractFileName(FEdits[Row].Text);
     end;
     if Dialog.Execute then
-      FEdits[Row].Text := Dialog.FileName;
+    begin
+      if not ResolvePickedDictionary(Dialog.FileName, Picked, ArchiveError) then
+      begin
+        MessageDlg(SDictionaryFilter, ArchiveError, mtWarning, [mbOK], 0);
+        Exit;
+      end;
+      FEdits[Row].Text := Picked;
+    end;
   finally
     Dialog.Free;
   end;

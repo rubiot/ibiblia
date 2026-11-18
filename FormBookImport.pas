@@ -39,6 +39,14 @@ resourcestring
     '|USFM / USFX Bibles (*.usfm, *.sfm, *.usfx, *.xml)|*.usfm;*.sfm;*.usfx;*.xml' +
     '|Text documents (*.txt, *.rtf, *.odt, *.docx)|*.txt;*.rtf;*.odt;*.docx' +
     '|All files|*';
+  SBookImportChooseArchiveFile = 'Bible files and compressed files';
+  SBookImportArchiveTitle = 'Compressed file';
+  SBookImportArchiveFiles = 'Files in the compressed file: %d (%d with Bible text).';
+  SBookImportArchiveSkipped = 'These files could not be read and were left out:';
+  SBookImportArchiveNothing = 'The compressed file has no Bible book that can be imported.';
+  SBookImportDuplicateTitle = 'Book found in more than one file';
+  SBookImportDuplicateHint = '%s is in several files. Which file should it be taken from?';
+  SBookImportDuplicateVerses = '%s  (%d verses)';
   SBookImportReading = 'Reading the file...';
   SBookImportMappingTitle = 'Match the books of the document';
   SBookImportMappingHint = 'These books were found in the document. Check the Bible book of each one; choose "(do not import)" to leave a book out.';
@@ -78,7 +86,8 @@ resourcestring
 implementation
 
 uses
-  LazUTF8, ui_style, bible_versification, apocrypha_books;
+  LazUTF8, ui_style, bible_versification, apocrypha_books, bible_archive,
+  bible_document_reader, module_conversion;
 
 type
   TRefEntry = record
@@ -551,6 +560,264 @@ begin
     QuickSort(0, High(Entries));
 end;
 
+{ ---------- compressed files ---------- }
+
+type
+  TArchiveBible = record
+    Source: TBibleImportSource;
+    DisplayName: string;
+  end;
+
+function AcceptBibleFile(const FileName: string): Boolean;
+var
+  Ext: string;
+begin
+  Ext := LowerCase(ExtractFileExt(FileName));
+  Result := (Ext = '.ont') or (Ext = '.ot') or (Ext = '.nt') or
+    IsPlainBibleDocument(FileName) or IsConvertibleBibleFile(FileName);
+end;
+
+{ Asks which candidate to use for one book; -1 = cancelled. }
+function ChooseBookSource(AOwner: TComponent; const BookTitle: string;
+  Labels: TStrings): Integer;
+var
+  Form: TForm;
+  Hint: TLabel;
+  Group: TRadioGroup;
+  Panel: TPanel;
+  Btn: TButton;
+begin
+  Form := TForm.CreateNew(AOwner);
+  try
+    Form.Caption := SBookImportDuplicateTitle;
+    Form.Width := 640;
+    Form.ClientHeight := 130 + 34 * Labels.Count;
+    Form.Position := poMainFormCenter;
+    Form.BorderIcons := [biSystemMenu];
+    Hint := TLabel.Create(Form);
+    Hint.Parent := Form;
+    Hint.Align := alTop;
+    Hint.BorderSpacing.Around := 10;
+    Hint.WordWrap := True;
+    Hint.AutoSize := True;
+    Hint.Caption := Format(SBookImportDuplicateHint, [BookTitle]);
+    Panel := TPanel.Create(Form);
+    Panel.Parent := Form;
+    Panel.Align := alBottom;
+    Panel.Height := 48;
+    Panel.BevelOuter := bvNone;
+    Btn := TButton.Create(Form);
+    Btn.Parent := Panel;
+    Btn.Caption := SBookImportCancel;
+    Btn.ModalResult := mrCancel;
+    Btn.Cancel := True;
+    Btn.Align := alRight;
+    Btn.Width := 110;
+    Btn.BorderSpacing.Around := 8;
+    Btn := TButton.Create(Form);
+    Btn.Parent := Panel;
+    Btn.Caption := SBookImportOK;
+    Btn.Default := True;
+    Btn.ModalResult := mrOK;
+    Btn.Align := alRight;
+    Btn.Width := 110;
+    Btn.BorderSpacing.Around := 8;
+    Group := TRadioGroup.Create(Form);
+    Group.Parent := Form;
+    Group.Align := alClient;
+    Group.BorderSpacing.Around := 10;
+    Group.Items.Assign(Labels);
+    Group.ItemIndex := 0;
+    ApplyDialogStyle(Form);
+    if Form.ShowModal = mrOK then
+      Result := Group.ItemIndex
+    else
+      Result := -1;
+  finally
+    Form.Free;
+  end;
+end;
+
+{ Unpacks a compressed file, reads every Bible file in it (folders too) and
+  returns one combined source. Plain documents ask for the book matching;
+  a book found in several files asks which file to use. }
+function LoadArchiveSource(AOwner: TComponent; const ArchiveFile: string;
+  out Combined: TBibleImportSource): Boolean;
+var
+  Temp, ErrorMessage, Skipped, Title: string;
+  Files, Labels, Seen: TStringList;
+  Loaded: array of TArchiveBible;
+  Src: TBibleImportSource;
+  Mapping: TFrmBookMapping;
+  I, J, B, Choice, Mapped: Integer;
+  Candidates: array[1..LAST_IMPORT_BOOK] of TList;
+  Chosen: array[1..LAST_IMPORT_BOOK] of Integer;
+  Appended: array[1..LAST_IMPORT_BOOK] of Boolean;
+  OldCursor: TCursor;
+  Books: TStringList;
+  Used: Boolean;
+begin
+  Result := False;
+  Combined := nil;
+  Skipped := '';
+  Loaded := nil;
+  for B := 1 to LAST_IMPORT_BOOK do
+    Candidates[B] := nil;
+  Temp := NewArchiveTempFolder('ibiblia_bible_');
+  if Temp = '' then
+  begin
+    MessageDlg(SBookImportArchiveTitle, SArchiveFailed, mtError, [mbOK], 0);
+    Exit;
+  end;
+  Files := TStringList.Create;
+  Labels := TStringList.Create;
+  OldCursor := Screen.Cursor;
+  try
+    Screen.Cursor := crHourGlass;
+    try
+      if not ExtractArchive(ArchiveFile, Temp, ErrorMessage) then
+      begin
+        Screen.Cursor := OldCursor;
+        MessageDlg(SBookImportArchiveTitle, ErrorMessage, mtError, [mbOK], 0);
+        Exit;
+      end;
+      FindArchiveFiles(Temp, @AcceptBibleFile, Files);
+      for I := 0 to Files.Count - 1 do
+      begin
+        Src := TBibleImportSource.Create;
+        Title := Copy(Files[I], Length(Temp) + 2, MaxInt);
+        if not Src.LoadFromFile(Files[I], ErrorMessage) then
+        begin
+          Skipped := Skipped + LineEnding + '  ' + Title;
+          Src.Free;
+          Continue;
+        end;
+        if Src.IsPlainDocument then
+        begin
+          Screen.Cursor := OldCursor;
+          Mapping := TFrmBookMapping.CreateFor(AOwner, Src);
+          try
+            Mapping.Caption := Mapping.Caption + ' - ' + Title;
+            if Mapping.ShowModal <> mrOK then
+            begin
+              Src.Free;
+              Exit;
+            end;
+            Mapping.StoreMapping;
+          finally
+            Mapping.Free;
+          end;
+          Screen.Cursor := crHourGlass;
+          Mapped := 0;
+          for J := 0 to Src.DetectedCount - 1 do
+            if Src.Detected[J].BookID > 0 then
+              Inc(Mapped);
+          if Mapped = 0 then
+          begin
+            Src.Free;
+            Continue;
+          end;
+          Src.ApplyBookMapping;
+        end;
+        if Src.VerseCount = 0 then
+        begin
+          Skipped := Skipped + LineEnding + '  ' + Title;
+          Src.Free;
+          Continue;
+        end;
+        SetLength(Loaded, Length(Loaded) + 1);
+        Loaded[High(Loaded)].Source := Src;
+        Loaded[High(Loaded)].DisplayName := Title;
+      end;
+    finally
+      Screen.Cursor := OldCursor;
+    end;
+
+    if Length(Loaded) = 0 then
+    begin
+      MessageDlg(SBookImportArchiveTitle, SBookImportArchiveNothing +
+        Skipped, mtInformation, [mbOK], 0);
+      Exit;
+    end;
+
+    { which files hold which book }
+    for I := 0 to High(Loaded) do
+    begin
+      Books := Loaded[I].Source.BookIDs;
+      try
+        for J := 0 to Books.Count - 1 do
+        begin
+          B := StrToIntDef(Books[J], 0);
+          if (B < 1) or (B > LAST_IMPORT_BOOK) then
+            Continue;
+          if Candidates[B] = nil then
+            Candidates[B] := TList.Create;
+          Candidates[B].Add(Pointer(PtrInt(I)));
+        end;
+      finally
+        Books.Free;
+      end;
+    end;
+    for B := 1 to LAST_IMPORT_BOOK do
+    begin
+      Chosen[B] := -1;
+      if (Candidates[B] <> nil) and (Candidates[B].Count > 0) then
+      begin
+        Chosen[B] := PtrInt(Candidates[B][0]);
+        if Candidates[B].Count > 1 then
+        begin
+          Labels.Clear;
+          for J := 0 to Candidates[B].Count - 1 do
+            Labels.Add(Format(SBookImportDuplicateVerses,
+              [Loaded[PtrInt(Candidates[B][J])].DisplayName,
+               Loaded[PtrInt(Candidates[B][J])].Source.BookVerseCount(B)]));
+          Choice := ChooseBookSource(AOwner, Loaded[Chosen[B]].Source.BookName(B), Labels);
+          if Choice < 0 then
+            Exit;
+          Chosen[B] := PtrInt(Candidates[B][Choice]);
+        end;
+      end;
+    end;
+
+    { combine; the order of the files and of their books is kept }
+    Combined := TBibleImportSource.Create;
+    Combined.BeginCombined(ArchiveFile);
+    FillChar(Appended, SizeOf(Appended), 0);
+    for I := 0 to High(Loaded) do
+    begin
+      Books := Loaded[I].Source.BookIDs;
+      try
+        { books in the order they appear in this file }
+        for J := 0 to Loaded[I].Source.VerseCount - 1 do
+        begin
+          B := Loaded[I].Source.Verses[J].Book;
+          if (B < 1) or (B > LAST_IMPORT_BOOK) or Appended[B] or (Chosen[B] <> I) then
+            Continue;
+          Appended[B] := True;
+          Combined.AppendBook(Loaded[I].Source, B);
+        end;
+      finally
+        Books.Free;
+      end;
+    end;
+    Combined.FinishCombined;
+    Result := Combined.VerseCount > 0;
+    if not Result then
+      FreeAndNil(Combined);
+    if Skipped <> '' then
+      MessageDlg(SBookImportArchiveTitle, SBookImportArchiveSkipped + Skipped,
+        mtInformation, [mbOK], 0);
+  finally
+    for B := 1 to LAST_IMPORT_BOOK do
+      Candidates[B].Free;
+    for I := 0 to High(Loaded) do
+      Loaded[I].Source.Free;
+    Files.Free;
+    Labels.Free;
+    RemoveArchiveFolder(Temp);
+  end;
+end;
+
 function RunBookImportDialog(AOwner: TComponent; AProject: TProject;
   TextType: TTipoTextoBiblico; const TextName: string; Kind: TBookImportKind;
   out Request: TBookImportRequest): Boolean;
@@ -585,10 +852,18 @@ begin
   OpenDlg := TOpenDialog.Create(nil);
   try
     OpenDlg.Title := SBookImportChooseFile;
-    OpenDlg.Filter := SBookImportAllFiles;
+    OpenDlg.Filter := SBookImportChooseArchiveFile + '|*.ont;*.ot;*.nt;*.bblx;*.bbli;*.bbl;*.mybible;*.usfm;*.sfm;*.usfx;*.xml;*.txt;*.rtf;*.odt;*.docx;' +
+      ArchiveFilterMask + '|' + SBookImportAllFiles;
     OpenDlg.Options := OpenDlg.Options + [ofFileMustExist];
     if not OpenDlg.Execute then
       Exit;
+    if IsArchiveFile(OpenDlg.FileName) then
+    begin
+      if not LoadArchiveSource(AOwner, OpenDlg.FileName, Source) then
+        Exit;
+    end
+    else
+    begin
     Source := TBibleImportSource.Create;
     OldCursor := Screen.Cursor;
     Screen.Cursor := crHourGlass;
@@ -602,6 +877,7 @@ begin
       end;
     finally
       Screen.Cursor := OldCursor;
+    end;
     end;
   finally
     OpenDlg.Free;

@@ -114,6 +114,12 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.050 (64-bit Edition) - 2026-11-18' + LineEnding +
+  '- Add Bible Books and Replace now accept compressed files: a zip, tar, tar.gz / tgz, tar.bz2, tar.xz, single .gz, and 7z or rar when 7-Zip / unrar is installed. A compressed file can hold one book or a whole Bible, as theWord, e-Sword, MySword, USFM / USFX modules or text documents (.txt, .rtf, .odt, .docx), also inside folders of the archive.' + LineEnding +
+  '- All the files found are combined into one book tree. Plain documents ask for the book matching as before. When the same book is in more than one file, iBiblia asks, book by book, which file to take it from. The order of the apocrypha books follows the files.' + LineEnding +
+  '- Unpacking is safe: names that leave the temporary folder are skipped, links are removed, a size limit stops zip bombs, and the temporary files are deleted afterwards.' + LineEnding +
+  '- Popup dictionaries (Strong''s, morphology, word dictionaries in Project settings, New project and Default dictionaries) can also be chosen from a compressed file; the .dct.twm inside is unpacked into the iBiblia dictionaries folder of the user and used from there.' + LineEnding +
+  LineEnding +
   'Version 1.1.0.049 (64-bit Edition) - 2026-11-18' + LineEnding +
   '- The apocrypha / deuterocanonical books (Tobit, Judith, Sirach, Maccabees, etc.) now sit between Malachi and Matthew in the Bible tree and in the project''s verse order, so Next / Previous verse goes from Malachi to the first apocrypha book and from the last one to Matthew.' + LineEnding +
   '- The order of these books follows the imported source text (the order of the books in the file you add them from), not iBiblia''s own book numbers. When you add books from a second file, the new books come after the ones already there.' + LineEnding +

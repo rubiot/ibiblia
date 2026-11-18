@@ -210,6 +210,7 @@ resourcestring
 implementation
 
 uses
+  bible_archive,
   module_conversion;
 
 { TFrmNewProject }
@@ -585,16 +586,22 @@ var
   TextType: TTipoTextoBiblico;
   StrongDictionary: Boolean;
   TargetEdit: TLabeledEdit;
+  Picked, ArchiveError: string;
 begin
   TextType := TTipoTextoBiblico(TButton(Sender).Tag div 2);
   StrongDictionary := (TButton(Sender).Tag mod 2) = 0;
   TargetEdit := DictionaryEdit(TextType, StrongDictionary);
 
   OpenDialogSelectText.Title := SChooseDictionaryModuleTitle;
-  OpenDialogSelectText.Filter := SDictionaryFilter;
+  OpenDialogSelectText.Filter := DictionaryDialogFilter;
   OpenDialogSelectText.FileName := TargetEdit.Text;
   if OpenDialogSelectText.Execute then
-    TargetEdit.Text := OpenDialogSelectText.FileName;
+  begin
+    if ResolvePickedDictionary(OpenDialogSelectText.FileName, Picked, ArchiveError) then
+      TargetEdit.Text := Picked
+    else
+      MessageDlg(SChooseDictionaryModuleTitle, ArchiveError, mtWarning, [mbOK], 0);
+  end;
 
   UpdateDictionaryValidation(TextType, StrongDictionary);
   UpdateReview;

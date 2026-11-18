@@ -77,6 +77,13 @@ type
     { Apocrypha book numbers in the order they appear in the file ("69,67"). }
     function ApocryphaOrder: string;
     function BookName(BookID: Integer): string;
+    { Combining several files (a compressed file with many books): start an
+      empty source, append the verses of chosen books of other sources in the
+      order wanted, then call FinishCombined. }
+    procedure BeginCombined(const AName: string);
+    procedure AppendBook(Other: TBibleImportSource; BookID: Integer);
+    procedure FinishCombined;
+    function BookVerseCount(BookID: Integer): Integer;
     function TryGetText(const ReferenceID: string; out Text: string): Boolean;
     function ReferenceID(Index: Integer): string;
     property FileName: string read FFileName;
@@ -1354,6 +1361,51 @@ begin
         Result := Result + ',';
       Result := Result + IntToStr(FVerses[I].Book);
     end;
+end;
+
+procedure TBibleImportSource.BeginCombined(const AName: string);
+begin
+  FFileName := AName;
+  FVerses := nil;
+  FVerseCount := 0;
+  FDetected := nil;
+  FDetectedVerses := nil;
+  FDetectedCount := 0;
+  FIsPlainDocument := False;
+  FUnplacedVerses := 0;
+  FDuplicateVerses := 0;
+  FApocryphaNames.Clear;
+  FIndex.Clear;
+end;
+
+procedure TBibleImportSource.AppendBook(Other: TBibleImportSource;
+  BookID: Integer);
+var
+  I: Integer;
+  Name: string;
+begin
+  for I := 0 to Other.VerseCount - 1 do
+    if Other.Verses[I].Book = BookID then
+      AddVerse(BookID, Other.Verses[I].Chapter, Other.Verses[I].Verse,
+        Other.Verses[I].Text);
+  Name := Trim(Other.ApocryphaNames.Values[IntToStr(BookID)]);
+  if (Name <> '') and (FApocryphaNames.Values[IntToStr(BookID)] = '') then
+    FApocryphaNames.Values[IntToStr(BookID)] := Name;
+end;
+
+procedure TBibleImportSource.FinishCombined;
+begin
+  BuildIndex;
+end;
+
+function TBibleImportSource.BookVerseCount(BookID: Integer): Integer;
+var
+  I: Integer;
+begin
+  Result := 0;
+  for I := 0 to FVerseCount - 1 do
+    if FVerses[I].Book = BookID then
+      Inc(Result);
 end;
 
 function TBibleImportSource.BookName(BookID: Integer): string;
