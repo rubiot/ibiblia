@@ -5,10 +5,10 @@ unit FormProjectExport;
 interface
 
 uses
-  ui_style, Classes, SysUtils, Math, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
+  ui_style, Classes, SysUtils, StrUtils, Math, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
   ComCtrls, StdCtrls, ExtCtrls, Spin, BibleScope, Project, LCLTranslator,
   LCLIntf, LazUTF8, UnitPleaseWait, project_exporter, ConcordanceExport,
-  export_destination_history;
+  export_destination_history, FormExportSelection;
 
 type
 
@@ -26,6 +26,8 @@ type
     lblConcordanceMaxCharacters: TLabel;
     lblConcordanceOutput: TLabel;
     EditAbbreviation: TLabeledEdit;
+    BtnChooseBooks: TButton;
+    LblBooksSummary: TLabel;
     MemoSourceFooter: TMemo;
     MemoDestinationFooter: TMemo;
     ExportPageControl: TPageControl;
@@ -38,6 +40,8 @@ type
     InterlinearSourceTab: TTabSheet;
     ConcordanceTab: TTabSheet;
     procedure ExportButtonClick(Sender: TObject);
+    procedure ChooseBooksClick(Sender: TObject);
+    procedure ExportPageChange(Sender: TObject);
     procedure ConcordanceContextClick(Sender: TObject);
     procedure ConcordanceTypeClick(Sender: TObject);
   private
@@ -45,6 +49,9 @@ type
     FAnalyticalAbbreviation: string;
     FSyntheticAbbreviation: string;
     FLastConcordanceType: Integer;
+    FSelected: TStringList;     // verses chosen for the Bible module exports; empty = all
+    FSelectedTotal: Integer;
+    procedure UpdateBooksSummary;
     function BuildTaggedDestinationOptions: TOpcoesExportacao;
     function BuildConcordanceOptions: TOpcoesExportacao;
     function DefaultConcordanceAbbreviation: string;
@@ -89,6 +96,7 @@ type
       const PreferenceWarning: string = ''); virtual;
   public
     procedure AfterConstruction; override;
+    destructor Destroy; override;
   end;
 
 var
@@ -105,6 +113,9 @@ resourcestring
   SExportMarkReusedStrongs = 'Mark reused Strong''s numbers';
   SExportMarkUntranslatedStrongs = 'Mark untranslated Strong''s numbers';
   SExportButtonCaption = 'Export';
+  SExportChooseBooks = 'Choose books...';
+  SExportAllBooks = 'All books, chapters and verses';
+  SExportSomeBooks = '%d of %d verses chosen';
   SConcordanceAbbreviationCaption = 'Abbreviation';
   STheWordOTModule = 'theWord Bible module (*.ot)';
   STheWordNTModule = 'theWord Bible module (*.nt)';
@@ -170,6 +181,56 @@ begin
     Result := '1'
   else
     Result := '0';
+end;
+
+procedure TProjectExportForm.UpdateBooksSummary;
+var
+  OnBibleTab: Boolean;
+begin
+  OnBibleTab := ExportPageControl.PageIndex in [0, 1];
+  BtnChooseBooks.Visible := OnBibleTab;
+  LblBooksSummary.Visible := OnBibleTab;
+  BtnChooseBooks.Caption := SExportChooseBooks;
+  if (FSelected = nil) or (FSelected.Count = 0) then
+    LblBooksSummary.Caption := SExportAllBooks
+  else
+    LblBooksSummary.Caption := Format(SExportSomeBooks,
+      [FSelected.Count, FSelectedTotal]);
+end;
+
+procedure TProjectExportForm.ExportPageChange(Sender: TObject);
+begin
+  UpdateBooksSummary;
+end;
+
+procedure TProjectExportForm.ChooseBooksClick(Sender: TObject);
+var
+  Work: TStringList;
+  Total: Integer;
+begin
+  Work := TStringList.Create;
+  try
+    Work.Sorted := True;
+    Work.Duplicates := dupIgnore;
+    Work.AddStrings(FSelected);
+    if ChooseExportVerses(FProject, Work, Total) then
+    begin
+      FSelectedTotal := Total;
+      FSelected.Clear;
+      { everything ticked is the same as no choice }
+      if Work.Count < Total then
+        FSelected.AddStrings(Work);
+      UpdateBooksSummary;
+    end;
+  finally
+    Work.Free;
+  end;
+end;
+
+destructor TProjectExportForm.Destroy;
+begin
+  FreeAndNil(FSelected);
+  inherited Destroy;
 end;
 
 procedure TProjectExportForm.ExportButtonClick(Sender: TObject);
@@ -321,6 +382,64 @@ begin
     Result := Result + '-' + Suffix;
 end;
 
+{ The extensions the Filter offers ('*.nt' gives '.nt'), in order. }
+function FilterExtensions(const Filter: string): TStringList;
+var
+  Parts: TStringList;
+  I: Integer;
+  Pattern: string;
+begin
+  Result := TStringList.Create;
+  Parts := TStringList.Create;
+  try
+    Parts.Delimiter := '|';
+    Parts.StrictDelimiter := True;
+    Parts.DelimitedText := Filter;
+    I := 1;
+    while I < Parts.Count do
+    begin
+      Pattern := Trim(Parts[I]);
+      if Copy(Pattern, 1, 1) = '*' then
+        Delete(Pattern, 1, 1);
+      Result.Add(Pattern);
+      Inc(I, 2);
+    end;
+  finally
+    Parts.Free;
+  end;
+end;
+
+{ The file name without its extension, for the Name box. }
+function NameWithoutExtension(const FileName: string; Extensions: TStringList): string;
+var
+  I: Integer;
+begin
+  Result := FileName;
+  for I := 0 to Extensions.Count - 1 do
+    if (Extensions[I] <> '') and AnsiEndsText(Extensions[I], FileName) then
+      Exit(Copy(FileName, 1, Length(FileName) - Length(Extensions[I])));
+  Result := ChangeFileExt(FileName, '');
+end;
+
+{ The Name box has no extension: the one of the chosen file type is added when
+  the user did not type one of the offered extensions. }
+procedure AddChosenExtension(Dialog: TSaveDialog);
+var
+  Extensions: TStringList;
+  I: Integer;
+begin
+  Extensions := FilterExtensions(Dialog.Filter);
+  try
+    for I := 0 to Extensions.Count - 1 do
+      if (Extensions[I] <> '') and AnsiEndsText(Extensions[I], Dialog.FileName) then
+        Exit;
+    if (Dialog.FilterIndex >= 1) and (Dialog.FilterIndex <= Extensions.Count) then
+      Dialog.FileName := Dialog.FileName + Extensions[Dialog.FilterIndex - 1];
+  finally
+    Extensions.Free;
+  end;
+end;
+
 function TProjectExportForm.ConfirmExportDestination(Dialog: TSaveDialog;
   Kind: TExportDestinationKind; out PreferenceWarning: string): Boolean;
 var
@@ -329,6 +448,7 @@ begin
   PreferenceWarning := '';
   Result := Dialog.Execute;
   if not Result then Exit;
+  AddChosenExtension(Dialog);
   Dialog.FileName := ExpandFileName(Dialog.FileName);
   if not TryRememberExportDestination(opts, FProject.FileName, Kind,
     Dialog.FileName, ErrorMessage) then
@@ -339,6 +459,8 @@ procedure TProjectExportForm.ConfigureBibleSaveDialog(const Suffix: string;
   Kind: TExportDestinationKind);
 var
   SuggestedFileName: string;
+  Extensions: TStringList;
+  I: Integer;
 begin
   case FProject.Escopo of
     etOT:
@@ -360,11 +482,25 @@ begin
   SaveBibleModuleDialog.Title := SSaveModuleAs;
   SaveBibleModuleDialog.FilterIndex := 1;
   SuggestedFileName := SuggestedBaseFileName(Suffix) + SaveBibleModuleDialog.DefaultExt;
-  // the folder goes in "Save in folder", the Name box holds only the file name
+  // the folder goes in "Save in folder", the Name box holds only the file
+  // name, without an extension (the file type adds it)
   SuggestedFileName := ReadExportDestination(opts, FProject.FileName, Kind,
     SuggestedFileName);
-  SaveBibleModuleDialog.InitialDir := ExtractFilePath(SuggestedFileName);
-  SaveBibleModuleDialog.FileName := ExtractFileName(SuggestedFileName);
+  Extensions := FilterExtensions(SaveBibleModuleDialog.Filter);
+  try
+    for I := 0 to Extensions.Count - 1 do
+      if (Extensions[I] <> '') and AnsiEndsText(Extensions[I], SuggestedFileName) then
+      begin
+        SaveBibleModuleDialog.FilterIndex := I + 1;
+        Break;
+      end;
+    SaveBibleModuleDialog.InitialDir := ExtractFilePath(SuggestedFileName);
+    SaveBibleModuleDialog.FileName :=
+      NameWithoutExtension(ExtractFileName(SuggestedFileName), Extensions);
+  finally
+    Extensions.Free;
+  end;
+  SaveBibleModuleDialog.DefaultExt := '';
   SaveBibleModuleDialog.Options := SaveBibleModuleDialog.Options + [ofOverwritePrompt, ofPathMustExist];
 end;
 
@@ -381,6 +517,10 @@ begin
     ConcordanceDestinationKind, SuggestedFileName);
   SaveConcordanceDialog.InitialDir := ExtractFilePath(SuggestedFileName);
   SaveConcordanceDialog.FileName := ExtractFileName(SuggestedFileName);
+  if AnsiEndsText('.dct.twm', SaveConcordanceDialog.FileName) then
+    SaveConcordanceDialog.FileName := Copy(SaveConcordanceDialog.FileName, 1,
+      Length(SaveConcordanceDialog.FileName) - Length('.dct.twm'));
+  SaveConcordanceDialog.DefaultExt := '';
   SaveConcordanceDialog.Options := SaveConcordanceDialog.Options + [ofOverwritePrompt, ofPathMustExist];
 end;
 
@@ -529,8 +669,14 @@ begin
   FormPleaseWait.BeginOperation(Self, SExportTaggedDestinationTitle,
     SExportTaggedDestinationProgress, 1, FileName);
   try
-    Result := FProject.ExportDestinationTextWithStrongs(FileName,
-      FormPleaseWait.ProgressBar1, Options);
+    if FSelected.Count > 0 then
+      FProject.ExportSelection := FSelected;
+    try
+      Result := FProject.ExportDestinationTextWithStrongs(FileName,
+        FormPleaseWait.ProgressBar1, Options);
+    finally
+      FProject.ExportSelection := nil;
+    end;
   finally
     FormPleaseWait.FinishOperation;
   end;
@@ -542,8 +688,14 @@ begin
   FormPleaseWait.BeginOperation(Self, SExportInterlinearTitle,
     SExportInterlinearProgress, 1, FileName);
   try
-    Result := FProject.ExportInterlinearText(FileName,
-      FormPleaseWait.ProgressBar1, Options);
+    if FSelected.Count > 0 then
+      FProject.ExportSelection := FSelected;
+    try
+      Result := FProject.ExportInterlinearText(FileName,
+        FormPleaseWait.ProgressBar1, Options);
+    finally
+      FProject.ExportSelection := nil;
+    end;
   finally
     FormPleaseWait.FinishOperation;
   end;
@@ -765,11 +917,16 @@ begin
   CbExportUnassociatedAsItalics.Checked := FProject.GetInfo('opcoes.exportar.na.como.italicos') = '1';
   CbMarkReusedStrongs.Checked := FProject.GetInfo('opcoes.exportar.strongs.reutilizados') = '1';
   CbMarkUntranslatedStrongs.Checked := FProject.GetInfo('opcoes.exportar.strongs.nao.traduzidos') = '1';
+  FSelected.Clear;
+  UpdateBooksSummary;
 end;
 
 procedure TProjectExportForm.AfterConstruction;
 begin
   inherited AfterConstruction;
+  FSelected := TStringList.Create;
+  FSelected.Sorted := True;
+  FSelected.Duplicates := dupIgnore;
   ApplyDialogStyle(Self);
 end;
 

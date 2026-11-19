@@ -114,6 +114,13 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.066 (64-bit Edition) - 2026-11-19' + LineEnding +
+  '- Export project now has a Choose books... button (Tagged destination text and Interlinear source text) that opens the same check tree as Create patch: tick the books, chapters or verses to export, with Select all and Deselect all. Everything is ticked at first. The tree lists what the main Bible tree lists, apocrypha books included.' + LineEnding +
+  '- In a theWord module the verses you did not choose are written as empty lines (the verse positions stay right); e-Sword, MySword, USFM and USFX files simply leave them out, and a USFM book with no chosen verse gets no file.' + LineEnding +
+  '- The button shows how many verses are chosen; choosing everything is the same as not choosing.' + LineEnding +
+  '- Shift+F1 guide updated.' + LineEnding +
+  '- The Name box of the Save module as... and Save concordance as... dialogs no longer has the file extension filled in; the extension of the chosen file type is added when you save (and the type that matches the remembered file is pre-selected).' + LineEnding +
+  '' + LineEnding +
   'Version 1.1.0.065 (64-bit Edition) - 2026-11-19' + LineEnding +
   '- The Create patch dialog now lists exactly what the main Bible tree lists: books you added (including the apocrypha books, which sit after Malachi) appear, and books, chapters and verses you removed are gone. The order you arranged in the tree is kept.' + LineEnding +
   '- The "Add Bible" link now has its own row above the bottom bar of a blank Bible panel, so it no longer overlaps the status circles.' + LineEnding +

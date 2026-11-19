@@ -163,6 +163,7 @@ type
     FMarker: string;
     FScrollEventsEnabled: boolean;
     FExportando: boolean;
+    FExportSelection: TStringList;
     FOnAlterarVersiculo: TOnProjectVerseChangedEvent;
     FOnNavigateVerse: TOnProjectNavigateVerseEvent;
     FOnTextPropertiesChanged: TNotifyEvent;
@@ -424,6 +425,9 @@ type
       apocrypha books and any arrangement the user made. }
     procedure GetTreeReferences(Refs: TStrings);
     function TreeBookName(BookID: Integer): string;
+    { The verses to write in the next Bible module export ("book,chapter,
+      verse", Sorted, not owned); nil exports everything. }
+    property ExportSelection: TStringList read FExportSelection write FExportSelection;
     procedure OnAIBatchClick(Sender: TObject);
     procedure OnAICancelClick(Sender: TObject);
     procedure OnResetTreeOrderClick(Sender: TObject);
@@ -7669,8 +7673,13 @@ begin
     Options.ErrorReportFileName := ChangeFileExt(arquivo, '.errors.txt');
     Options.ErrorReportCreatedMessage := SExportErrorReportCreated;
 
-    Result := FProjectExporter.ExportDestinationTextWithStrongs(arquivo, pb, Options,
-      @StartScrollingSession, @FinishScrollingSession, @GetID);
+    FProjectExporter.Selection := FExportSelection;
+    try
+      Result := FProjectExporter.ExportDestinationTextWithStrongs(arquivo, pb, Options,
+        @StartScrollingSession, @FinishScrollingSession, @GetID);
+    finally
+      FProjectExporter.Selection := nil;
+    end;
     if Result.Status <> esFailed then
     begin
       if Result.OutputFileName <> '' then
@@ -7735,8 +7744,13 @@ begin
     Options.ErrorReportFileName := ChangeFileExt(arquivo, '.errors.txt');
     Options.ErrorReportCreatedMessage := SExportErrorReportCreated;
 
-    Result := FProjectExporter.ExportInterlinearText(arquivo, pb, rulesRx, replaceTo,
-      Options, @StartScrollingSession, @FinishScrollingSession, @GetID);
+    FProjectExporter.Selection := FExportSelection;
+    try
+      Result := FProjectExporter.ExportInterlinearText(arquivo, pb, rulesRx, replaceTo,
+        Options, @StartScrollingSession, @FinishScrollingSession, @GetID);
+    finally
+      FProjectExporter.Selection := nil;
+    end;
     if Result.Status <> esFailed then
     begin
       if Result.OutputFileName <> '' then

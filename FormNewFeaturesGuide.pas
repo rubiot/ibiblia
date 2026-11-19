@@ -124,7 +124,10 @@ const
     'The Destination panel is written with its links as tagged text.' + LineEnding +
     '  - Right-click > Save text to file...: plain text, one verse per line.' + LineEnding +
     '  - Project > Export: theWord, MySword, e-Sword, USFM and USFX, for the tagged ' +
-    'Destination and for the interlinear.' + LineEnding +
+    'Destination and for the interlinear. Choose books... (bottom left) opens the ' +
+    'same check tree as Create patch, to export only some books, chapters or verses ' +
+    '(Select all / Deselect all); the verses you leave out are written empty in theWord ' +
+    'modules and left out of the other formats.' + LineEnding +
     'Apocrypha books go to e-Sword, USFM and USFX files only: theWord and MySword ' +
     'Bible modules cannot hold them.',
     // 8

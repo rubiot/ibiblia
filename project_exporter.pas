@@ -92,6 +92,9 @@ type
     FIndexedProgressEvent: TConcordanceExportProgressEvent;
     FLastIndexedReference: string;
     FLastIndexedContext: string;
+    FSelection: TStringList;
+    function IsSelected(const ReferenceID: string): Boolean;
+    function FirstFilledLine(Lines: TStringList): Integer;
     procedure RequireDependencies;
     class procedure ConfigureProgressBar(ProgressBar: TProgressBar;
       MaxValue: Integer); static;
@@ -126,6 +129,10 @@ type
       AVerseRenderBuffer: TVerseRenderBuffer);
     procedure Attach(AScope: TEscopoTexto; AVerseRepository: TProjectVerseRepository;
       AVerseRenderBuffer: TVerseRenderBuffer);
+    { Partial export: only these verses ("book,chapter,verse", the list must be
+      Sorted) are written; the others are left blank (theWord keeps its
+      line positions) or left out (e-Sword, MySword, USFM, USFX). nil: all. }
+    property Selection: TStringList read FSelection write FSelection;
     function ExportDestinationTextWithStrongs(const FileName: string;
       ProgressBar: TProgressBar; const Options: TDestinationTextExportOptions;
       StartSession, FinishSession: TExportSessionProc;
@@ -166,6 +173,21 @@ begin
   FScope := AScope;
   FVerseRepository := AVerseRepository;
   FVerseRenderBuffer := AVerseRenderBuffer;
+end;
+
+function TProjectExporter.IsSelected(const ReferenceID: string): Boolean;
+var
+  Index: Integer;
+begin
+  Result := (FSelection = nil) or FSelection.Find(ReferenceID, Index);
+end;
+
+function TProjectExporter.FirstFilledLine(Lines: TStringList): Integer;
+begin
+  for Result := 0 to Lines.Count - 1 do
+    if Trim(Lines[Result]) <> '' then
+      Exit;
+  Result := 0;
 end;
 
 procedure TProjectExporter.RequireDependencies;
@@ -395,6 +417,8 @@ begin
       try
         for Line := 0 to Min(AllVerses.Count, RefIDs.Count) - 1 do
         begin
+          if Assigned(FSelection) and (Trim(AllVerses[Line]) = '') then
+            Continue;
           SScanf(RefIDs[Line], '%d,%d,%d', [@BookIndex, @ChapterIndex, @VerseIndex]);
           Module.AddVerse(AllVerses[Line], BookIndex, ChapterIndex, VerseIndex);
         end;
@@ -465,6 +489,8 @@ begin
     try
       for Line := 0 to AllVerses.Count - 1 do
       begin
+        if Assigned(FSelection) and (Trim(AllVerses[Line]) = '') then
+          Continue;
         SScanf(RefIDs[Line], '%d,%d,%d', [@BookIndex, @ChapterIndex, @VerseIndex]);
         Module.AddVerse(AllVerses[Line], BookIndex, ChapterIndex, VerseIndex);
       end;
@@ -491,6 +517,7 @@ var
   CorruptionDetails: string;
   ProjectionBaseMessage: string;
   Reference: string;
+  FirstLine: Integer;
   Staging: TExportFileStaging;
 begin
   Result := Default(TExportResult);
@@ -515,6 +542,14 @@ begin
       while not FVerseRepository.EOF do
       begin
         VerseData := FVerseRepository.ReadCurrentVerseData;
+        if not IsSelected(FVerseRepository.CurrentReferenceID) then
+        begin
+          { a verse that was not chosen is exported empty }
+          VerseData.OriginalText := '';
+          VerseData.TranslatedText := '';
+          VerseData.Associations := '';
+          VerseData.Comments := '';
+        end;
         RenderedLine := VerseData.TranslatedText;
         if (VerseData.Associations <> '') and
           (not FVerseRenderBuffer.TryBuildDestinationLineONT(
@@ -555,8 +590,11 @@ begin
 
         if IsApocryphaReference(FVerseRepository.CurrentReferenceID) then
         begin
-          ApocLines.Add(RenderedLine);
-          ApocRefs.Add(FVerseRepository.CurrentReferenceID);
+          if Trim(RenderedLine) <> '' then
+          begin
+            ApocLines.Add(RenderedLine);
+            ApocRefs.Add(FVerseRepository.CurrentReferenceID);
+          end;
         end
         else
           Lines.Add(RenderedLine);
@@ -579,10 +617,12 @@ begin
           ApocLines, ApocRefs)
       else
       begin
+        { the marker goes on the first verse that has text }
+        FirstLine := FirstFilledLine(Lines);
         HasTags := (Lines.Count > 0) and
-          ((Pos('<WG', Lines[0]) > 0) or (Pos('<WH', Lines[0]) > 0));
+          ((Pos('<WG', Lines[FirstLine]) > 0) or (Pos('<WH', Lines[FirstLine]) > 0));
         if (Lines.Count > 0) and not HasTags then
-          Lines[0] := Lines[0] + '<_MORPH_>';
+          Lines[FirstLine] := Lines[FirstLine] + '<_MORPH_>';
 
         WriteTheWordBible(Lines, Staging.StagingFileName, Options.Properties,
           Options.Direction);
@@ -624,6 +664,7 @@ var
   RenderedLine: string;
   CorruptionDetails: string;
   RenderMode: TRenderInterlinearMode;
+  Selected: Boolean;
   Staging: TExportFileStaging;
 begin
   Result := Default(TExportResult);
@@ -652,6 +693,13 @@ begin
       while not FVerseRepository.EOF do
       begin
         VerseData := FVerseRepository.ReadCurrentVerseData;
+        Selected := IsSelected(FVerseRepository.CurrentReferenceID);
+        if not Selected then
+        begin
+          VerseData.OriginalText := '';
+          VerseData.TranslatedText := '';
+          VerseData.Associations := '';
+        end;
         RenderedLine := VerseData.OriginalText;
         if (VerseData.Associations <> '') and
           (not FVerseRenderBuffer.TryBuildInterlinearLine(
@@ -667,7 +715,7 @@ begin
           RenderedLine := VerseData.OriginalText;
         end;
 
-        if Assigned(RulesRx) then
+        if Assigned(RulesRx) and Selected then
           for RuleIndex := 0 to RulesRx.Count - 1 do
           begin
             try
@@ -682,8 +730,11 @@ begin
 
         if IsApocryphaReference(FVerseRepository.CurrentReferenceID) then
         begin
-          ApocLines.Add(RenderedLine);
-          ApocRefs.Add(FVerseRepository.CurrentReferenceID);
+          if Trim(RenderedLine) <> '' then
+          begin
+            ApocLines.Add(RenderedLine);
+            ApocRefs.Add(FVerseRepository.CurrentReferenceID);
+          end;
         end
         else
           Lines.Add(RenderedLine);

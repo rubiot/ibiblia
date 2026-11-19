@@ -23,6 +23,7 @@ object ProjectExportForm: TProjectExportForm
     Anchors = [akTop, akLeft, akRight, akBottom]
     TabIndex = 0
     TabOrder = 0
+    OnChange = ExportPageChange
     object TaggedDestinationTab: TTabSheet
       Caption = 'Tagged destination text'
       ClientHeight = 464
@@ -224,6 +225,26 @@ object ProjectExportForm: TProjectExportForm
         Value = 120
       end
     end
+  end
+  object BtnChooseBooks: TButton
+    Left = 16
+    Height = 32
+    Top = 528
+    Width = 220
+    Anchors = [akLeft, akBottom]
+    Caption = 'Choose books...'
+    TabOrder = 3
+    OnClick = ChooseBooksClick
+  end
+  object LblBooksSummary: TLabel
+    Left = 248
+    Height = 20
+    Top = 534
+    Width = 420
+    Anchors = [akLeft, akBottom]
+    AutoSize = False
+    Caption = 'All books, chapters and verses'
+    ParentColor = False
   end
   object BtnExport: TButton
     Left = 800

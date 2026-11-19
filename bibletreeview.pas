@@ -66,6 +66,9 @@ type
       the main Bible tree lists them) instead of from the standard scope:
       Clear, then AddBookNode / AddChapterNode / AddVerseNode in order. }
     procedure ClearStructure;
+    { Ticks exactly the verses in Refs ("book,chapter,verse", Sorted) of a
+      tree made with AddBookNode / AddChapterNode / AddVerseNode. }
+    procedure CheckReferences(Refs: TStringList);
     function AddBookNode(const ACaption: string; BookID: Integer): TTreeNode;
     function AddChapterNode(BookNode: TTreeNode; Chapter: Integer): TTreeNode;
     procedure AddVerseNode(ChapterNode: TTreeNode; Verse: Integer);
@@ -209,6 +212,40 @@ begin
     end;
   end;
   EndUpdate;
+end;
+
+procedure TBibleTreeView.CheckReferences(Refs: TStringList);
+var
+  nb, nc, nv: TTreeNode;
+  Index: Integer;
+begin
+  BeginUpdate;
+  try
+    nb := Items.GetFirstNode;
+    while Assigned(nb) do
+    begin
+      nc := nb.GetFirstChild;
+      while Assigned(nc) do
+      begin
+        nv := nc.GetFirstChild;
+        while Assigned(nv) do
+        begin
+          if Refs.Find(Format('%d,%d,%d', [PtrInt(nb.Data), PtrInt(nc.Data),
+              PtrInt(nv.Data)]), Index) then
+            nv.StateIndex := ImgIndexChecked
+          else
+            nv.StateIndex := ImgIndexUnchecked;
+          nv := nv.GetNextSibling;
+        end;
+        UpdateParentState(nc);
+        nc := nc.GetNextSibling;
+      end;
+      UpdateParentState(nb);
+      nb := nb.GetNextSibling;
+    end;
+  finally
+    EndUpdate;
+  end;
 end;
 
 procedure TBibleTreeView.ClearStructure;
