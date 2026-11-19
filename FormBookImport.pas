@@ -656,6 +656,7 @@ var
   OldCursor: TCursor;
   Books: TStringList;
   Used: Boolean;
+  UsedNames: string;
 begin
   Result := False;
   Combined := nil;
@@ -796,7 +797,25 @@ begin
 
     { combine; the order of the files and of their books is kept }
     Combined := TBibleImportSource.Create;
-    Combined.BeginCombined(ArchiveFile);
+    { several chosen files: name them all (not only the first one) }
+    UsedNames := '';
+    if Assigned(PickedFiles) then
+      for I := 0 to High(Loaded) do
+      begin
+        Used := False;
+        for B := 1 to LAST_IMPORT_BOOK do
+          if Chosen[B] = I then
+            Used := True;
+        if Used then
+        begin
+          if UsedNames <> '' then
+            UsedNames := UsedNames + ', ';
+          UsedNames := UsedNames + Loaded[I].DisplayName;
+        end;
+      end;
+    if UsedNames = '' then
+      UsedNames := ArchiveFile;
+    Combined.BeginCombined(UsedNames);
     FillChar(Appended, SizeOf(Appended), 0);
     for I := 0 to High(Loaded) do
     begin

@@ -1,3 +1,6 @@
+Version 1.1.0.061 (64-bit Edition) - 2026-11-19
+- Add / replace Bible books with several files chosen together: the note "Waiting to be applied (OK)" and the book dialog now name every file the chosen books come from (for example Tobit and Judith from their two USFM files), not only the first file.
+
 Version 1.1.0.060 (64-bit Edition) - 2026-11-19
 - Help > New features guide (Shift+F1): new topic 12, "Tree: Arrange, Delete, Add", with its own illustration, explaining dragging rows by the grip and the Tools switch, the .order file for Timotheos, deleting a book, chapter or verse, adding books from one or several files, and the MySword export. The Import/Export topic now says that Add Bible Books reads only the files you choose. The old summary is now topic 13.
 
