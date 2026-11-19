@@ -42,6 +42,8 @@ type
     FKeyMap: specialize TFPGMap<PtrUInt, TTreeNode>;
     FCanon: array of PtrUInt;      // every verse key in the standard order
     FCanonText: string;            // the standard order as order text
+    FExisting: TStringList;        // "b,c,v" of the rows; nil = show every verse
+    function HasRow(Book, Chapter, Verse: Integer): Boolean;
     function BaseNodeText(const Scope: TEscopoTexto; Node: TTreeNode): string;
     procedure CountVerseStatuses(Node: TTreeNode;
       const StatusDefinitions: TStatusDefinitions; out Counts: TStatusCounts;
@@ -65,6 +67,9 @@ type
   public
     destructor Destroy; override;
     constructor Create(ATree: TTreeView = nil);
+    { After books, chapters or verses were deleted the tree lists only what
+      is still in the project. Nil: every verse of the Bible is listed. }
+    procedure SetExistingReferences(Refs: TStrings);
     procedure Attach(ATree: TTreeView);
     procedure Populate(const Scope: TEscopoTexto; OnChange: TTVChangedEvent;
       const StatusDefinitions: TStatusDefinitions;
@@ -149,6 +154,7 @@ type
 
 destructor TBibleTreeCoordinator.Destroy;
 begin
+  FExisting.Free;
   FKeyMap.Free;
   inherited Destroy;
 end;
@@ -162,6 +168,23 @@ end;
 procedure TBibleTreeCoordinator.Attach(ATree: TTreeView);
 begin
   FTree := ATree;
+end;
+
+procedure TBibleTreeCoordinator.SetExistingReferences(Refs: TStrings);
+begin
+  FreeAndNil(FExisting);
+  if Refs = nil then
+    Exit;
+  FExisting := TStringList.Create;
+  FExisting.Sorted := True;
+  FExisting.Duplicates := dupIgnore;
+  FExisting.AddStrings(Refs);
+end;
+
+function TBibleTreeCoordinator.HasRow(Book, Chapter, Verse: Integer): Boolean;
+begin
+  Result := (FExisting = nil) or
+    (FExisting.IndexOf(Format('%d,%d,%d', [Book, Chapter, Verse])) >= 0);
 end;
 
 function TBibleTreeCoordinator.BaseNodeText(const Scope: TEscopoTexto;
@@ -337,13 +360,25 @@ var
         SetNodeStatus(ChapterNode, InitialStatus);
         for VerseIndex := 0 to Apoc.VerseCounts[ChapterIndex] - 1 do
         begin
+          if not HasRow(Apoc.BookID, ChapterIndex + 1, VerseIndex + 1) then
+            Continue;
           VerseNode := FTree.Items.AddChild(ChapterNode, IntToStr(VerseIndex + 1));
           VerseNode.Data := Pointer(TreeVerseKey(Apoc.BookID, ChapterIndex + 1,
             VerseIndex + 1));
           SetNodeStatus(VerseNode, InitialStatus);
         end;
+        if ChapterNode.Count = 0 then
+        begin
+          ChapterNode.Delete;
+          Continue;
+        end;
         ApplyAggregateStatus(Scope, ChapterNode, StatusDefinitions,
           AggregateImageResolver);
+      end;
+      if BookNode.Count = 0 then
+      begin
+        BookNode.Delete;
+        Continue;
       end;
       ApplyAggregateStatus(Scope, BookNode, StatusDefinitions,
         AggregateImageResolver);
@@ -381,13 +416,26 @@ begin
           SetNodeStatus(ChapterNode, InitialStatus);
           for VerseIndex := 0 to QVersiculos[Scope][QCapLivros[Scope][BookIndex] + ChapterIndex - 1] - 1 do
           begin
+            if not HasRow(BookIndex + OffsetLivros[Scope] + 1, ChapterIndex + 1,
+              VerseIndex + 1) then
+              Continue;
             VerseNode := FTree.Items.AddChild(ChapterNode, IntToStr(VerseIndex + 1));
             VerseNode.Data := Pointer(TreeVerseKey(
               BookIndex + OffsetLivros[Scope] + 1, ChapterIndex + 1, VerseIndex + 1));
             SetNodeStatus(VerseNode, InitialStatus);
           end;
+          if ChapterNode.Count = 0 then
+          begin
+            ChapterNode.Delete;
+            Continue;
+          end;
           ApplyAggregateStatus(Scope, ChapterNode, StatusDefinitions,
             AggregateImageResolver);
+        end;
+        if BookNode.Count = 0 then
+        begin
+          BookNode.Delete;
+          Continue;
         end;
         ApplyAggregateStatus(Scope, BookNode, StatusDefinitions,
           AggregateImageResolver);

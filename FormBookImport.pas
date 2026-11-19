@@ -87,7 +87,7 @@ implementation
 
 uses
   LazUTF8, ui_style, bible_versification, apocrypha_books, bible_archive,
-  bible_document_reader, module_conversion;
+  bible_document_reader, module_conversion, esword_usfm;
 
 type
   TRefEntry = record
@@ -857,6 +857,8 @@ begin
     OpenDlg.Options := OpenDlg.Options + [ofFileMustExist];
     if not OpenDlg.Execute then
       Exit;
+    USFMSingleFileOnly := True;
+    try
     if IsArchiveFile(OpenDlg.FileName) then
     begin
       if not LoadArchiveSource(AOwner, OpenDlg.FileName, Source) then
@@ -878,6 +880,9 @@ begin
     finally
       Screen.Cursor := OldCursor;
     end;
+    end;
+    finally
+      USFMSingleFileOnly := False;
     end;
   finally
     OpenDlg.Free;

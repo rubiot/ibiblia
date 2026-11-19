@@ -62,6 +62,14 @@ function ArrangeProjectRows(const ProjectFile: string;
 function PrepareProjectRows(const ProjectFile: string; Requests: TList;
   CurrentScope: TEscopoTexto; out ErrorMessage: string): Boolean;
 
+{ Deletes a book (Chapter = 0), a chapter (Verse = 0) or a verse from a
+  closed project file: the rows leave 'pares'. When a whole apocrypha book
+  (67+) goes, its name and place are dropped from the project too. Removed
+  is the number of rows deleted. False + ErrorMessage on failure (the file
+  is unchanged). }
+function DeleteProjectRows(const ProjectFile: string; Book, Chapter,
+  Verse: Integer; out Removed: Integer; out ErrorMessage: string): Boolean;
+
 implementation
 
 uses
@@ -114,6 +122,16 @@ begin
   C := StrToIntDef(Copy(Ref, P1 + 1, P2 - 1), 0);
   V := StrToIntDef(Copy(Ref, P1 + P2 + 1, MaxInt), 0);
   Result := B > 0;
+end;
+
+function ScopeName(Scope: TEscopoTexto): string;
+begin
+  case Scope of
+    etNT: Result := 'NT';
+    etONT: Result := 'ONT';
+  else
+    Result := 'OT';
+  end;
 end;
 
 { sort key of a row: Genesis-Malachi, apocrypha (source order), Matthew-Revelation }
@@ -389,6 +407,24 @@ begin
       if (Added > 0) or (MergedOrder <> '') then
         ReorderRows(Connection, Qry);
 
+      { a project that remembers its scope (after a deletion) gets the new one }
+      if TargetScope <> CurrentScope then
+      begin
+        Qry.SQL.Text := 'SELECT 1 FROM info WHERE id = ''project.scope''';
+        Qry.Open;
+        Info := '';
+        if not Qry.EOF then
+          Info := 'x';
+        Qry.Close;
+        if Info <> '' then
+        begin
+          Connection.ExecuteDirect('DELETE FROM info WHERE id = ''project.scope''');
+          Qry.SQL.Text := 'INSERT INTO info (id, valor) VALUES (''project.scope'', :v)';
+          Qry.Params.ParamByName('v').AsString := ScopeName(TargetScope);
+          Qry.ExecSQL;
+        end;
+      end;
+
       if MergedInfo <> '' then
       begin
         Qry.SQL.Text := 'SELECT valor FROM info WHERE id = ''apocrypha.books''';
@@ -419,6 +455,179 @@ begin
   finally
     Existing.Free;
     Insert.Free;
+    Qry.Free;
+    Transaction.Free;
+    Connection.Free;
+  end;
+end;
+
+{ drops book BookID from "67=Tobit;68=Judith" }
+function RemoveBookFromInfo(const Info: string; BookID: Integer): string;
+var
+  Items: TStringList;
+  Index: Integer;
+begin
+  Items := TStringList.Create;
+  try
+    Items.Delimiter := ';';
+    Items.StrictDelimiter := True;
+    Items.DelimitedText := Info;
+    for Index := Items.Count - 1 downto 0 do
+      if StrToIntDef(Trim(Items.Names[Index]), 0) = BookID then
+        Items.Delete(Index);
+    Result := Items.DelimitedText;
+  finally
+    Items.Free;
+  end;
+end;
+
+{ drops book BookID from "69,67,70" }
+function RemoveBookFromOrder(const Order: string; BookID: Integer): string;
+var
+  Items: TStringList;
+  Index: Integer;
+begin
+  Items := TStringList.Create;
+  try
+    Items.Delimiter := ',';
+    Items.StrictDelimiter := True;
+    Items.DelimitedText := Order;
+    for Index := Items.Count - 1 downto 0 do
+      if StrToIntDef(Trim(Items[Index]), 0) = BookID then
+        Items.Delete(Index);
+    Result := Items.DelimitedText;
+  finally
+    Items.Free;
+  end;
+end;
+
+function DeleteProjectRows(const ProjectFile: string; Book, Chapter,
+  Verse: Integer; out Removed: Integer; out ErrorMessage: string): Boolean;
+var
+  Connection: TSQLite3Connection;
+  Transaction: TSQLTransaction;
+  Qry: TSQLQuery;
+  Info: string;
+
+  procedure RewriteInfo(const Key, Value: string);
+  begin
+    Connection.ExecuteDirect('DELETE FROM info WHERE id = ''' + Key + '''');
+    if Value <> '' then
+    begin
+      Qry.SQL.Text := 'INSERT INTO info (id, valor) VALUES (' + QuotedStr(Key) + ', :v)';
+      Qry.Params.ParamByName('v').AsString := Value;
+      Qry.ExecSQL;
+    end;
+  end;
+
+  function DetectScope: TEscopoTexto;
+  var
+    First: string;
+  begin
+    Qry.SQL.Text := 'SELECT pare_id FROM pares ORDER BY rowid LIMIT 1';
+    Qry.Open;
+    if Qry.EOF then
+      First := ''
+    else
+      First := Qry.Fields[0].AsString;
+    Qry.Close;
+    if First = '40,1,1' then
+      Exit(etNT);
+    Qry.SQL.Text := 'SELECT 1 FROM pares WHERE pare_id = ''66,22,21''';
+    Qry.Open;
+    if Qry.EOF then
+      Result := etOT
+    else
+      Result := etONT;
+    Qry.Close;
+  end;
+
+  function ReadInfoValue(const Key: string): string;
+  begin
+    Qry.SQL.Text := 'SELECT valor FROM info WHERE id = ' + QuotedStr(Key);
+    Qry.Open;
+    if Qry.EOF then
+      Result := ''
+    else
+      Result := Qry.Fields[0].AsString;
+    Qry.Close;
+  end;
+
+begin
+  Result := False;
+  Removed := 0;
+  ErrorMessage := '';
+  if Book < 1 then
+  begin
+    ErrorMessage := 'No book chosen';
+    Exit;
+  end;
+  Connection := TSQLite3Connection.Create(nil);
+  Transaction := TSQLTransaction.Create(nil);
+  Qry := TSQLQuery.Create(nil);
+  try
+    try
+      Connection.DatabaseName := ProjectFile;
+      Connection.Transaction := Transaction;
+      Connection.Open;
+      Qry.DataBase := Connection;
+      Qry.Transaction := Transaction;
+      Transaction.StartTransaction;
+
+      { the scope (Old Testament, New Testament or both) was found from the
+        first and last verse; remember it before those may be deleted }
+      if ReadInfoValue('project.scope') = '' then
+        RewriteInfo('project.scope', ScopeName(DetectScope));
+
+      if Chapter < 1 then
+        Qry.SQL.Text := 'SELECT COUNT(*) FROM pares WHERE pare_id LIKE ''' +
+          IntToStr(Book) + ',%'''
+      else if Verse < 1 then
+        Qry.SQL.Text := 'SELECT COUNT(*) FROM pares WHERE pare_id LIKE ''' +
+          IntToStr(Book) + ',' + IntToStr(Chapter) + ',%'''
+      else
+        Qry.SQL.Text := 'SELECT COUNT(*) FROM pares WHERE pare_id = ''' +
+          IntToStr(Book) + ',' + IntToStr(Chapter) + ',' + IntToStr(Verse) + '''';
+      Qry.Open;
+      Removed := Qry.Fields[0].AsInteger;
+      Qry.Close;
+
+      if Removed > 0 then
+      begin
+        if Chapter < 1 then
+          Connection.ExecuteDirect('DELETE FROM pares WHERE pare_id LIKE ''' +
+            IntToStr(Book) + ',%''')
+        else if Verse < 1 then
+          Connection.ExecuteDirect('DELETE FROM pares WHERE pare_id LIKE ''' +
+            IntToStr(Book) + ',' + IntToStr(Chapter) + ',%''')
+        else
+          Connection.ExecuteDirect('DELETE FROM pares WHERE pare_id = ''' +
+            IntToStr(Book) + ',' + IntToStr(Chapter) + ',' + IntToStr(Verse) + '''');
+
+        if (Chapter < 1) and (Book >= FIRST_APOCRYPHA_BOOK) then
+        begin
+          Info := ReadInfoValue('apocrypha.books');
+          if Info <> '' then
+            RewriteInfo('apocrypha.books', RemoveBookFromInfo(Info, Book));
+          Info := ReadInfoValue('apocrypha.order');
+          if Info <> '' then
+            RewriteInfo('apocrypha.order', RemoveBookFromOrder(Info, Book));
+        end;
+      end;
+
+      Transaction.Commit;
+      Result := True;
+    except
+      on E: Exception do
+      begin
+        ErrorMessage := E.Message;
+        Removed := 0;
+        if Transaction.Active then
+          Transaction.Rollback;
+        Result := False;
+      end;
+    end;
+  finally
     Qry.Free;
     Transaction.Free;
     Connection.Free;

@@ -6,17 +6,24 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.056 (2026-11-19) — Blank Panels No Longer Erase a Verse
+### 0. Version 1.1.0.057 (2026-11-19) — Delete Books, Chapters, Verses; USFM Book Selection
+
+* Right-click a book, chapter or verse in the Bible tree and choose Delete this book / chapter / verse. iBiblia asks "Are you sure you want to delete this Book (Chapter, Verse)?" with Yes and No. On Yes the rows leave the project (texts, associations, comments, status), the tree is rebuilt without them, and a copy of the project made just before is kept next to it (name ending _before-delete_date_time).
+* A project remembers whether it is Old Testament, New Testament or both after a deletion, so deleting the first or last verse does not change the project's scope. Deleting a whole apocrypha book also removes its name and place.
+* Add / replace Bible books: choosing one USFM file now imports only that file. Before, when the file held one book, every .usfm/.sfm file in the same folder was read and imported (choosing Sirach brought in the whole folder). New projects and the project properties still read a whole folder of USFM books.
+* Files: `project_book_import.pas`, `Project.pas`, `bible_tree_coordinator.pas`, `formprincipal.pas`, `esword_usfm.pas`, `FormBookImport.pas`.
+
+### 0a. Version 1.1.0.056 (2026-11-19) — Blank Panels No Longer Erase a Verse
 
 * Safeguard against a verse losing its texts: when a verse panel is blank and untouched while the project still holds text for that verse (the panel did not load), leaving the verse no longer writes the blank panel over the saved text or clears the verse's associations. This guards the Destination, Reference 1 and Reference 2 texts of Genesis 1:1 / Matthew 1:1 that went blank after reopening a project.
 * Files: `current_verse_workspace.pas`.
 
-### 0a. Version 1.1.0.055 (2026-11-19) — Switch for Rearranging
+### 0b. Version 1.1.0.055 (2026-11-19) — Switch for Rearranging
 
 * New Tools > Rearrange books, chapters and verses switch. When it is checked, the grip icons show in the Bible tree and you can drag rows; when it is unchecked, the grips disappear and dragging is off. The choice is remembered. (It is checked by default.)
 * Files: `formprincipal.pas`.
 
-### 0b. Version 1.1.0.054 (2026-11-19) — MySword Export Fixed
+### 0c. Version 1.1.0.054 (2026-11-19) — MySword Export Fixed
 
 * Exporting a Bible as MySword (.bbl.mybible) now really writes a MySword module. Before, the file carried the MySword name but was an e-Sword RTF module inside, so MySword could not read the text correctly. The module now has MySword's own Details and Bible tables, with the verse text in MySword's tag style (Strong's numbers, morphology, headings, footnotes, paragraphs, words of Jesus).
 * Apocrypha / deuterocanonical books (67 and up) are no longer left out of a MySword export.
@@ -221,11 +228,11 @@ Checked and working on Linux: wheel/click/right-click association, paired-word h
   * Out-of-contract spellings (`<PI8>`, `<Pf>`) are ignored. With Paragraph mode off the tags are ignored, as before.
 * **Program and Working Folder in About (`unitabout.pas`, `formprincipal.pas`)**: The About box lists the program folder and the working (settings) folder, the place `iBiblia.ini` is kept (the program folder, or `$XDG_CONFIG_HOME/iBiblia` / `~/.config/iBiblia` on Linux when the program folder is read-only). Long paths are shortened in the middle, the hint shows the full path, and a click opens the folder. When the settings are kept beside the program, a single "Program and working folder" line is shown instead of two.
 
-### 0b. Version 1.1.0.021 (2026-11-15) — Dialog Skin Completed on First Open
+### 0c. Version 1.1.0.021 (2026-11-15) — Dialog Skin Completed on First Open
 
 * **Dialog Controls Skinned on First Open (`formprincipal.pas`)**: In 1.1.0.020 a dialog such as **Export project** got its dark background on first open, but its tab pages, check boxes and buttons stayed light. The dialog becomes the active form before its window handles exist, and the dark-mode subclass hooks (`HookButtonControl`, `HookCheckBoxControl`, `HookTabControl`, `HookFormControl`) need those handles. `SkinFormOnce` now sets the colours at once, queues `DeferredSkinForm` (`Application.QueueAsyncCall`) to apply the full skin once the dialog is visible, creates the handles of controls on tab pages not yet shown (`EnsureChildHandles`), and only then records the form as skinned.
 
-### 0a. Version 1.1.0.020 (2026-11-15) — Go to Verse Lookup & Skin Fixes
+### 0b. Version 1.1.0.020 (2026-11-15) — Go to Verse Lookup & Skin Fixes
 
 * **Go to Verse Lookup Box (`FormGoToVerse.pas`, `verse_lookup.pas`, `bible_versification.pas`, `formprincipal.pas`)**: Added **Tools > Go to verse...** (`Ctrl+G`), a theWord-style lookup box. Type `jn 3 16`, `jn 3.16`, `1co 13:4` or `ps 23` and press `Enter`.
   * A space, period, colon or comma separates chapter and verse.

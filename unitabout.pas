@@ -114,6 +114,11 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.057 (64-bit Edition) - 2026-11-19' + LineEnding +
+  '- Right-click a book, chapter or verse in the Bible tree and choose Delete this book / chapter / verse. iBiblia asks "Are you sure you want to delete this Book (Chapter, Verse)?" with Yes and No. On Yes the rows leave the project (texts, associations, comments, status), the tree is rebuilt without them, and a copy of the project made just before is kept next to it (name ending _before-delete_date_time).' + LineEnding +
+  '- A project remembers whether it is Old Testament, New Testament or both after a deletion, so deleting the first or last verse does not change the project''s scope. Deleting a whole apocrypha book also removes its name and place.' + LineEnding +
+  '- Add / replace Bible books: choosing one USFM file now imports only that file. Before, when the file held one book, every .usfm/.sfm file in the same folder was read and imported (choosing Sirach brought in the whole folder). New projects and the project properties still read a whole folder of USFM books.' + LineEnding +
+  '' + LineEnding +
   'Version 1.1.0.056 (64-bit Edition) - 2026-11-19' + LineEnding +
   '- Safeguard against a verse losing its texts: when a verse panel is blank and untouched while the project still holds text for that verse (the panel did not load), leaving the verse no longer writes the blank panel over the saved text or clears the verse''s associations. This guards the Destination, Reference 1 and Reference 2 texts of Genesis 1:1 / Matthew 1:1 that went blank after reopening a project.' + LineEnding +
   '' + LineEnding +

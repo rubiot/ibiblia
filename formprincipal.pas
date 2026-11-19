@@ -186,6 +186,8 @@ type
     { Adds / replaces the books chosen in the project settings ("Add Bible
       Books" and the partial "Replace text"). Frees Requests. }
     procedure ApplyBookImportRequests(Requests: TList);
+    procedure ProjectDeleteTreeItem(Sender: TObject; Book, Chapter, Verse: Integer);
+    procedure RunDeleteTreeItem(Data: PtrInt);
     procedure ArrangeApocryphaRows(const ProjectFile: string);
     { After Project settings closes: restores the chosen backup, if any. }
     procedure HandleProjectRestoreRequest;
@@ -552,6 +554,10 @@ const
 
 resourcestring
   SAddBooksTitle = 'Add / replace Bible books';
+  SDeleteItemTitle = 'Delete';
+  SDeleteItemFailed = 'Nothing was deleted: %s';
+  SDeleteItemNothing = 'Nothing was found to delete.';
+  SDeleteItemDone = '%d verse(s) deleted. A copy of the project before the deletion was kept as:' + LineEnding + '%s';
   SProjectOpenFilter = 'iBiblia projects (*.bib, *.bib.zip)|*.bib;*.zip|Association project (*.bib)|*.bib|Zipped project / backup (*.bib.zip)|*.bib.zip;*.zip';
   SProjectSaveFilter = 'Association project (*.bib)|*.bib';
   SArrangeTitle = 'Open project';
@@ -2271,6 +2277,7 @@ begin
     CurrentProject.OnNavigateVerse := @ProjectNavigate;
     CurrentProject.OnTextPropertiesChanged := @ProjectTextPropertiesChanged;
     CurrentProject.OnExportBibleModule := @ProjectExportBibleModule;
+    CurrentProject.OnDeleteTreeItem := @ProjectDeleteTreeItem;
   end;
   for TextType := tbOrigem to tbConsulta2 do
   begin
@@ -4731,6 +4738,72 @@ begin
   finally
     Staging.Free;
   end;
+end;
+
+type
+  PDeleteTreeItem = ^TDeleteTreeItem;
+  TDeleteTreeItem = record
+    Book, Chapter, Verse: Integer;
+  end;
+
+{ The tree menu asks for a deletion; it is carried out after the menu has
+  finished, because the project is closed, changed on disk and opened again. }
+procedure TMainForm.ProjectDeleteTreeItem(Sender: TObject; Book, Chapter,
+  Verse: Integer);
+var
+  Item: PDeleteTreeItem;
+begin
+  New(Item);
+  Item^.Book := Book;
+  Item^.Chapter := Chapter;
+  Item^.Verse := Verse;
+  Application.QueueAsyncCall(@RunDeleteTreeItem, PtrInt(Item));
+end;
+
+procedure TMainForm.RunDeleteTreeItem(Data: PtrInt);
+var
+  Item: TDeleteTreeItem;
+  ProjectFile, BackupFile, ErrorMessage: string;
+  Removed: Integer;
+  Done: Boolean;
+begin
+  Item := PDeleteTreeItem(Data)^;
+  Dispose(PDeleteTreeItem(Data));
+  if not Assigned(CurrentProject) then
+    Exit;
+  if CurrentProject.Modificado then
+    CurrentProject.SaveProject;
+  ProjectFile := CurrentProject.FileName;
+  ActionCloseProjectExecute(nil);
+  if Assigned(CurrentProject) then
+    Exit;
+  BackupFile := ChangeFileExt(ProjectFile, '') + '_before-delete_' +
+    FormatDateTime('yyyy-mm-dd_hhnnss', Now) + ExtractFileExt(ProjectFile);
+  Removed := 0;
+  ErrorMessage := '';
+  Screen.Cursor := crHourGlass;
+  try
+    Done := CopyFile(ProjectFile, BackupFile);
+    if not Done then
+      ErrorMessage := 'could not make a copy of the project first'
+    else
+      Done := DeleteProjectRows(ProjectFile, Item.Book, Item.Chapter,
+        Item.Verse, Removed, ErrorMessage);
+  finally
+    Screen.Cursor := crDefault;
+  end;
+  DoOpenProject(ProjectFile);
+  if not Done then
+    MessageDlg(SDeleteItemTitle, Format(SDeleteItemFailed, [ErrorMessage]),
+      mtError, [mbOK], 0)
+  else if Removed = 0 then
+  begin
+    DeleteFile(BackupFile);
+    MessageDlg(SDeleteItemTitle, SDeleteItemNothing, mtInformation, [mbOK], 0);
+  end
+  else
+    MessageDlg(SDeleteItemTitle, Format(SDeleteItemDone, [Removed, BackupFile]),
+      mtInformation, [mbOK], 0);
 end;
 
 procedure TMainForm.ApplyBookImportRequests(Requests: TList);
@@ -7216,6 +7289,7 @@ begin
   CurrentProject.OnNavigateVerse := @ProjectNavigate;
   CurrentProject.OnTextPropertiesChanged := @ProjectTextPropertiesChanged;
   CurrentProject.OnExportBibleModule := @ProjectExportBibleModule;
+  CurrentProject.OnDeleteTreeItem := @ProjectDeleteTreeItem;
   CurrentProject.OnNewVerseSubscribe(@ProjectNewVerse);
   CurrentProject.OnAlterarVersiculo := @VerseChanged;
   CurrentProject.OnSintagmaClick := @SyntagmClick;

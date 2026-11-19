@@ -143,6 +143,8 @@ type
   TOnProjectVerseChangedEvent = procedure () of object;
   TOnProjectNavigateVerseEvent = procedure (Delta: Integer) of object;
   TOnProjectExportModuleEvent = procedure (Sender: TObject; ATextKind: TTipoTextoBiblico) of object;
+  { Chapter = 0: the whole book; Verse = 0: the whole chapter }
+  TOnProjectDeleteTreeItemEvent = procedure (Sender: TObject; Book, Chapter, Verse: Integer) of object;
   AVersiculo = array[tbOrigem..tbConsulta2] of TVerse;
   ACamposTexto = array[tbOrigem..tbConsulta2] of integer;
   STextosBiblicos = set of TTipoTextoBiblico;
@@ -162,6 +164,7 @@ type
     FOnNavigateVerse: TOnProjectNavigateVerseEvent;
     FOnTextPropertiesChanged: TNotifyEvent;
     FOnExportBibleModule: TOnProjectExportModuleEvent;
+    FOnDeleteTreeItem: TOnProjectDeleteTreeItemEvent;
     FPendingAutoSelectNext: Boolean;
     FDisplayTags: boolean;
     FSugerirAssociacaoAuto: boolean;
@@ -416,6 +419,7 @@ type
     procedure OnAIBatchClick(Sender: TObject);
     procedure OnAICancelClick(Sender: TObject);
     procedure OnResetTreeOrderClick(Sender: TObject);
+    procedure OnDeleteTreeItemClick(Sender: TObject);
     constructor Create; overload;
     constructor Create(paineis: array of TScrollbox; navegador: TTreeView; rsituacao: TComboBox; rcomentarios: TControl); overload;
     destructor Destroy; override;
@@ -616,6 +620,7 @@ type
     property OnNavigateVerse: TOnProjectNavigateVerseEvent read FOnNavigateVerse write SetOnNavigateVerse;
     property OnTextPropertiesChanged: TNotifyEvent read FOnTextPropertiesChanged write FOnTextPropertiesChanged;
     property OnExportBibleModule: TOnProjectExportModuleEvent read FOnExportBibleModule write FOnExportBibleModule;
+    property OnDeleteTreeItem: TOnProjectDeleteTreeItemEvent read FOnDeleteTreeItem write FOnDeleteTreeItem;
     property OnSintagmaClick: TOnSintagmaClickEvent read FOnSintagmaClick write SetOnSintagmaClick;
     property AtrasoExibicaoDefinicao: Cardinal read FAtrasoExibicao write SetAtrasoExibicao;
     property Ativo: boolean read FAtivo;
@@ -717,6 +722,17 @@ resourcestring
   SResetTreeOrder = 'Reset the order of books, chapters and verses';
   SResetTreeOrderPrompt = 'Put all books, chapters and verses back in their ' +
     'standard order? The arrangement you made by dragging will be lost.';
+  SDeleteBookMenu = 'Delete this book...';
+  SDeleteChapterMenu = 'Delete this chapter...';
+  SDeleteVerseMenu = 'Delete this verse...';
+  SDeleteBookWord = 'Book';
+  SDeleteChapterWord = 'Chapter';
+  SDeleteVerseWord = 'Verse';
+  SDeleteTreeItemTitle = 'Delete';
+  SDeleteTreeItemPrompt = 'Are you sure you want to delete this %s?' + LineEnding +
+    LineEnding + '%s' + LineEnding + LineEnding +
+    'Its texts, associations, comments and status are removed from the ' +
+    'project. A copy of the project is kept first.';
   SConfirmApplyAIToBook = 'Are you sure you want to apply the AI flow to the entire book %s?';
   SConfirmApplyAIToChapter = 'Are you sure you want to apply the AI flow to chapter %s?';
   SButtonYes = 'Yes';
@@ -1386,7 +1402,36 @@ begin
 end;
 
 procedure TProject.PreencherArvore;
+var
+  Refs: TStringList;
+  Qry: TSQLQuery;
 begin
+  { after a deletion the tree lists only the rows that are left }
+  if Trim(GetInfo('project.scope')) <> '' then
+  begin
+    Refs := TStringList.Create;
+    Qry := CreateQueryObject(FPersistence.FileName);
+    try
+      Qry.SQL.Text := 'SELECT pare_id FROM pares';
+      Qry.Open;
+      while not Qry.EOF do
+      begin
+        Refs.Add(Qry.Fields[0].AsString);
+        Qry.Next;
+      end;
+      Qry.Close;
+      FBibleTreeCoordinator.SetExistingReferences(Refs);
+    finally
+      if Assigned(Qry.Transaction) then
+        Qry.Transaction.Free;
+      if Assigned(Qry.DataBase) then
+        Qry.DataBase.Free;
+      Qry.Free;
+      Refs.Free;
+    end;
+  end
+  else
+    FBibleTreeCoordinator.SetExistingReferences(nil);
   FBibleTreeCoordinator.Populate(FEscopo, @OnMudancaVersiculo,
     GetStatusDefinitions, @GetAggregateStatusImageIndex);
 end;
@@ -2279,6 +2324,51 @@ begin
   item.OnClick := @Self.OnResetTreeOrderClick;
   item.Enabled := TreeOrderIsCustom;
   result.Items.Add(item);
+
+  // delete the book, chapter or verse that was right-clicked
+  item := TMenuItem.Create(result);
+  item.Caption := SDeleteBookMenu;
+  item.Tag := 9102;
+  item.OnClick := @Self.OnDeleteTreeItemClick;
+  result.Items.Add(item);
+end;
+
+procedure TProject.OnDeleteTreeItemClick(Sender: TObject);
+var
+  Node: TTreeNode;
+  Key: PtrUInt;
+  DelBook, DelChapter, DelVerse: Integer;
+  Kind: string;
+begin
+  Node := FBibleTreePointedNode;
+  if (Node = nil) or not Assigned(FOnDeleteTreeItem) then
+    Exit;
+  Key := PtrUInt(Node.Data);
+  DelBook := TreeKeyBook(Key);
+  DelChapter := 0;
+  DelVerse := 0;
+  case Node.Level of
+    0:
+      begin
+        DelBook := Integer(Key);
+        Kind := SDeleteBookWord;
+      end;
+    1:
+      begin
+        DelChapter := TreeKeyChapter(Key);
+        Kind := SDeleteChapterWord;
+      end;
+  else
+    begin
+      DelChapter := TreeKeyChapter(Key);
+      DelVerse := TreeKeyVerse(Key);
+      Kind := SDeleteVerseWord;
+    end;
+  end;
+  if MessageDlg(SDeleteTreeItemTitle, Format(SDeleteTreeItemPrompt,
+    [Kind, Node.Text]), mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
+    Exit;
+  FOnDeleteTreeItem(Self, DelBook, DelChapter, DelVerse);
 end;
 
 procedure TProject.OnResetTreeOrderClick(Sender: TObject);
@@ -4861,8 +4951,21 @@ begin
   FBibleTreePointedNode := (Sender as TTreeView).GetNodeAt(MousePos.X, MousePos.Y);
   if Assigned(FArvore) and Assigned(FArvore.PopupMenu) then
     for i := 0 to FArvore.PopupMenu.Items.Count - 1 do
-      if FArvore.PopupMenu.Items[i].Tag = 9101 then
-        FArvore.PopupMenu.Items[i].Enabled := TreeOrderIsCustom;
+      begin
+        if FArvore.PopupMenu.Items[i].Tag = 9101 then
+          FArvore.PopupMenu.Items[i].Enabled := TreeOrderIsCustom;
+        if FArvore.PopupMenu.Items[i].Tag = 9102 then
+        begin
+          if FBibleTreePointedNode = nil then
+            FArvore.PopupMenu.Items[i].Caption := SDeleteBookMenu
+          else case FBibleTreePointedNode.Level of
+            0: FArvore.PopupMenu.Items[i].Caption := SDeleteBookMenu;
+            1: FArvore.PopupMenu.Items[i].Caption := SDeleteChapterMenu;
+          else FArvore.PopupMenu.Items[i].Caption := SDeleteVerseMenu;
+          end;
+          FArvore.PopupMenu.Items[i].Enabled := Assigned(FOnDeleteTreeItem);
+        end;
+      end;
   // Allow context menu on leaf (verse) nodes as well — only block when project not active or no node
   if (not Ativo) or (FBibleTreePointedNode = nil) then
     Handled := True;
@@ -5262,7 +5365,17 @@ end;
 
 procedure TProject.OpenProject(Nome: string);
   function IdentificarEscopo: TEscopoTexto;
+  var
+    Stored: string;
   begin
+    { a project with deleted books or verses remembers its scope }
+    Stored := UpperCase(Trim(GetInfo('project.scope')));
+    if Stored = 'NT' then
+      Exit(etNT);
+    if Stored = 'OT' then
+      Exit(etOT);
+    if Stored = 'ONT' then
+      Exit(etONT);
     FTblPares.First;
     if FTblPares.FieldByName('pare_id').AsString = '40,1,1' then
     begin

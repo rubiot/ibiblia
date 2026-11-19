@@ -12,6 +12,11 @@ interface
 uses
   Classes, SysUtils, StrUtils, sqlite3conn, sqldb, db, LazUTF8, PCRE;
 
+var
+  { When True, a USFM file with a single book is read alone; the default (False)
+    also gathers the other .usfm/.sfm files of its folder (new projects). }
+  USFMSingleFileOnly: Boolean;
+
 type
   TESwordExtraVerse = record
     Book: integer;
@@ -3351,7 +3356,7 @@ begin
         Inc(idBookCount);
     end;
 
-    if idBookCount <= 1 then
+    if (idBookCount <= 1) and not USFMSingleFileOnly then
     begin
       dirPath := ExtractFilePath(ExpandFileName(filename));
       if FindFirst(dirPath + '*', faAnyFile, sr) = 0 then
