@@ -157,6 +157,9 @@ type
     FFileName: string;
     FVerseMemo: TVerseMemo;
     FAtivo: boolean;
+    FBlankKnown: array[tbOrigem..tbConsulta2] of Boolean;
+    FBlankStamp: array[tbOrigem..tbConsulta2] of QWord;
+    FBlankValue: array[tbOrigem..tbConsulta2] of Boolean;
     FMarker: string;
     FScrollEventsEnabled: boolean;
     FExportando: boolean;
@@ -593,6 +596,10 @@ type
     procedure SetTextDirection(text: TTipoTextoBiblico; direction: TTextDirection);
     function GetTextDirection(text: TTipoTextoBiblico): TTextDirection;
     function HasStoredAssociations: Boolean;
+    { True when the text has no verse at all (a blank Bible panel). The answer
+      is remembered until InvalidateBlankTextCache. }
+    function IsTextBlank(text: TTipoTextoBiblico): Boolean;
+    procedure InvalidateBlankTextCache;
     procedure ClearStoredAssociations(ProgressBar: TProgressBar = nil);
     procedure Vacuum;
     function GetStatusDescription(index: Integer): string;
@@ -8484,6 +8491,44 @@ begin
       ErrorMessage := E.Message;
     end;
   end;
+end;
+
+procedure TProject.InvalidateBlankTextCache;
+var
+  t: TTipoTextoBiblico;
+begin
+  for t := tbOrigem to tbConsulta2 do
+    FBlankKnown[t] := False;
+end;
+
+function TProject.IsTextBlank(text: TTipoTextoBiblico): Boolean;
+var
+  qry: TSQLQuery;
+  Col: string;
+begin
+  Result := False;
+  if (not FAtivo) or (FFileName = '') or not FileExists(FFileName) then
+    Exit;
+  { remembered for 2 seconds, so a text loaded or cleared elsewhere shows soon }
+  if FBlankKnown[text] and (GetTickCount64 - FBlankStamp[text] < 2000) then
+    Exit(FBlankValue[text]);
+  Col := TextColumnName(text);
+  qry := CreateQueryObject(FFileName);
+  try
+    qry.SQL.Text := 'SELECT 1 FROM pares WHERE ' + Col + ' IS NOT NULL AND ' +
+      Col + ' <> '''' LIMIT 1';
+    try
+      qry.Open;
+      Result := qry.EOF;
+    except
+      Exit(False);
+    end;
+  finally
+    qry.Free;
+  end;
+  FBlankKnown[text] := True;
+  FBlankStamp[text] := GetTickCount64;
+  FBlankValue[text] := Result;
 end;
 
 function TProject.HasStoredAssociations: Boolean;

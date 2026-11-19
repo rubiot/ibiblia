@@ -49,6 +49,7 @@ type
     procedure ActionChangeTabExecute(Sender: TObject);
     procedure ActionClearTextExecute(Sender: TObject);
     procedure ActionLoadTextExecute(Sender: TObject);
+    procedure RunAutoLoad(Data: PtrInt);
     procedure ActionSelectFontExecute(Sender: TObject);
     procedure ActionSelectMorphologyDictionaryExecute(Sender: TObject);
     procedure ActionSelectStrongDictionaryExecute(Sender: TObject);
@@ -127,6 +128,7 @@ type
     FRestoreButton: TButton;
     FBackupInfoLabel: TLabel;
     FRestoreRequest: string;
+    FAutoLoadPending: Boolean;
     FPendingBookRequests: TList;    // TBookImportRequest, not applied yet
     FBookRequestsToApply: TList;    // handed to the main form by ApplyChanges
     procedure BackupFolderClick(Sender: TObject);
@@ -178,6 +180,9 @@ type
     procedure SelectDictionariesTab;
     { Shows the Texts page on the tab of the given text (call after SetProject). }
     procedure SelectTextTab(TextType: TTipoTextoBiblico);
+    { For a blank Bible panel: after the dialog shows, open "Add Bible Books" for
+      the selected text straight away. Call after SelectTextTab. }
+    procedure RequestAddBible;
     procedure ApplyChanges(AProgressOwner: TCustomForm = nil);
     { "Add Bible Books" / partial replace requests applied by the last
       ApplyChanges (TBookImportRequest); the caller owns the list. }
@@ -1352,6 +1357,24 @@ begin
   RefreshTextControls(CurrentTextType);
   RefreshDictionaryControls(CurrentTextType);
   UpdateReview;
+  if FAutoLoadPending then
+  begin
+    FAutoLoadPending := False;
+    Application.QueueAsyncCall(@RunAutoLoad, 0);
+  end;
+end;
+
+procedure TFrmProjectProperties.RunAutoLoad(Data: PtrInt);
+begin
+  if not Visible then
+    Exit;
+  { nothing to back up or replace in a blank panel: straight to the dialog }
+  AddBookRequest(Ord(bikAdd));
+end;
+
+procedure TFrmProjectProperties.RequestAddBible;
+begin
+  FAutoLoadPending := True;
 end;
 
 procedure TFrmProjectProperties.DictionaryTextTabsChange(Sender: TObject);

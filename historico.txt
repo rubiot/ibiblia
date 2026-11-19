@@ -1,4 +1,8 @@
-﻿Version 1.1.0.061 (64-bit Edition) - 2026-11-19
+﻿Version 1.1.0.062 (64-bit Edition) - 2026-11-19
+- A Bible panel that has no text now shows a blue "Add Bible" link on its bottom bar while the pointer is over it. Click it to open Project settings on that panel's text with the Add Bible Books file dialog already open (several files can be chosen, for example one USFM file per book). Panels that already have text do not show the link.
+- Help > New features guide (Shift+F1), topic 12: describes the Add Bible link.
+
+Version 1.1.0.061 (64-bit Edition) - 2026-11-19
 - Add / replace Bible books with several files chosen together: the note "Waiting to be applied (OK)" and the book dialog now name every file the chosen books come from (for example Tobit and Judith from their two USFM files), not only the first file.
 
 Version 1.1.0.060 (64-bit Edition) - 2026-11-19

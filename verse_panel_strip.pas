@@ -26,7 +26,7 @@ type
   TStripNavigateEvent = procedure(Sender: TObject; Delta: Integer) of object;
   TStripStatusEvent = procedure(Sender: TObject; DisplayIndex: Integer) of object;
 
-  TStripHit = (shNone, shEdit, shProperties, shStatus);
+  TStripHit = (shNone, shEdit, shProperties, shStatus, shAddBible);
 
   TVersePanelStrip = class(TCustomControl)
   private
@@ -45,6 +45,8 @@ type
     FOnStatusPick: TStripStatusEvent;
     FOnEdit: TNotifyEvent;
     FOnProperties: TNotifyEvent;
+    FShowAddBible: Boolean;
+    FOnAddBible: TNotifyEvent;
     FShapeSignature: string;
     FFace: TBitmap;
     FShaped: Boolean;
@@ -58,6 +60,8 @@ type
     procedure SetShowStatus(AValue: Boolean);
     procedure SetEditActive(AValue: Boolean);
     procedure SetPropertiesActive(AValue: Boolean);
+    procedure SetShowAddBible(AValue: Boolean);
+    function AddBibleRect: TRect;
     function HitTestAt(X, Y: Integer; out StatusIndex: Integer): TStripHit;
     function StatusCircleRect(Index: Integer): TRect;
     procedure DrawStatusCircle(const R: TRect; Index: Integer);
@@ -95,6 +99,9 @@ type
     property OnStatusPick: TStripStatusEvent read FOnStatusPick write FOnStatusPick;
     property OnEdit: TNotifyEvent read FOnEdit write FOnEdit;
     property OnProperties: TNotifyEvent read FOnProperties write FOnProperties;
+    { "Add Bible" link shown while the panel has no text (blank Bible panel) }
+    property ShowAddBible: Boolean read FShowAddBible write SetShowAddBible;
+    property OnAddBible: TNotifyEvent read FOnAddBible write FOnAddBible;
   end;
 
   TVerseChevrons = class(TCustomControl)
@@ -121,6 +128,8 @@ resourcestring
   SStripNextVerse = 'Next verse';
   SStripEditHint = 'Edit this verse (same as double-clicking it)';
   SStripPropertiesHint = 'Show the properties of this text in place of the verse';
+  SStripAddBible = 'Add Bible';
+  SStripAddBibleHint = 'Choose a Bible for this empty panel';
 
 implementation
 
@@ -231,6 +240,31 @@ begin
   Invalidate;
 end;
 
+procedure TVersePanelStrip.SetShowAddBible(AValue: Boolean);
+begin
+  if FShowAddBible = AValue then
+    Exit;
+  FShowAddBible := AValue;
+  if not FShowAddBible and (FHot = shAddBible) then
+  begin
+    FHot := shNone;
+    Cursor := crDefault;
+  end;
+  Invalidate;
+end;
+
+{ the link sits in the middle of the bar, where a normal panel has the status
+  circles }
+function TVersePanelStrip.AddBibleRect: TRect;
+var
+  W: Integer;
+begin
+  Canvas.Font.Assign(Font);
+  W := Canvas.TextWidth(SStripAddBible) + 12;
+  Result := Rect(Max(4, ClientWidth div 2 - W div 2), 0,
+    Max(4, ClientWidth div 2 - W div 2) + W, Height);
+end;
+
 procedure TVersePanelStrip.SetPropertiesActive(AValue: Boolean);
 begin
   if FPropertiesActive = AValue then
@@ -307,6 +341,8 @@ begin
   if not FShowControls then
     Exit;
   P := Point(X, Y);
+  if FShowAddBible and PtInRect(AddBibleRect, P) then
+    Exit(shAddBible);
   if FShowStatus then
     for Index := 0 to High(FStatusColors) do
       if PtInRect(StatusCircleRect(Index), P) then
@@ -435,6 +471,8 @@ procedure TVersePanelStrip.PaintContent(ACanvas: TCanvas; ABack: TColor);
 var
   Index, CaptionIndex, CaptionLeft, MaxTitleRight, MaxTitleWidth, TitleX, TitleY: Integer;
   StatusText, DrawTitle: string;
+  BackRGB: LongInt;
+  Dark: Boolean;
 begin
   FPaintCanvas := ACanvas;
   FPaintBack := ABack;
@@ -498,6 +536,28 @@ begin
           StatusText);
       end;
     end;
+  end;
+
+  if FShowAddBible then
+  begin
+    PC.Brush.Style := bsClear;
+    { a link blue that reads on light and dark panels; darker while hovered }
+    BackRGB := ColorToRGB(BackColor);
+    Dark := ((BackRGB and 255) + ((BackRGB shr 8) and 255) + ((BackRGB shr 16) and 255)) < 3 * 110;
+    if Dark then
+    begin
+      if FHot = shAddBible then PC.Font.Color := RGBToColor(150, 200, 255)
+      else PC.Font.Color := RGBToColor(100, 170, 255);
+    end
+    else
+    begin
+      if FHot = shAddBible then PC.Font.Color := RGBToColor(0, 60, 160)
+      else PC.Font.Color := RGBToColor(0, 102, 204);
+    end;
+    PC.Font.Style := Font.Style + [fsUnderline];
+    PC.TextOut(AddBibleRect.Left + 6, (Height - PC.TextHeight(SStripAddBible)) div 2,
+      SStripAddBible);
+    PC.Font.Style := Font.Style;
   end;
 
   DrawBox(EditRect, SStripEdit, FEditActive, FHot = shEdit);
@@ -596,6 +656,8 @@ begin
       begin
         AddRect(Input, EditRect);
         AddRect(Input, PropertiesRect);
+        if FShowAddBible then
+          AddRect(Input, AddBibleRect);
         if FShowStatus then
           for X := 0 to High(FStatusColors) do
             AddRect(Input, StatusCircleRect(X));
@@ -651,7 +713,7 @@ var
   Index: Integer;
 begin
   Result := FTitleCaption + '|' + IntToStr(Width) + 'x' + IntToStr(Height) + '|' +
-    IntToStr(Ord(FShowControls)) + IntToStr(Ord(FShowStatus)) +
+    IntToStr(Ord(FShowControls)) + IntToStr(Ord(FShowStatus)) + IntToStr(Ord(FShowAddBible)) +
     IntToStr(Ord(FEditActive)) + IntToStr(Ord(FPropertiesActive)) + '|' +
     IntToStr(FStatusIndex) + '|' + IntToStr(Ord(FHot)) + IntToStr(FHotStatus) + '|' +
     Font.Name + IntToStr(Font.Size) + IntToStr(Font.Color) + IntToStr(UITextColor);
@@ -707,6 +769,7 @@ begin
   case FHot of
     shEdit: NewHint := SStripEditHint;
     shProperties: NewHint := SStripPropertiesHint;
+    shAddBible: NewHint := SStripAddBibleHint;
     shStatus:
       if (FHotStatus >= 0) and (FHotStatus <= High(FStatusCaptions)) then
         NewHint := FStatusCaptions[FHotStatus]
@@ -750,6 +813,9 @@ begin
     shProperties:
       if Assigned(FOnProperties) then
         FOnProperties(Self);
+    shAddBible:
+      if Assigned(FOnAddBible) then
+        FOnAddBible(Self);
     shStatus:
       if Assigned(FOnStatusPick) and (StatusIndex >= 0) then
         FOnStatusPick(Self, StatusIndex);

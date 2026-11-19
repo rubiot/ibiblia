@@ -484,6 +484,8 @@ type
     procedure RaiseStripControls(TextType: TTipoTextoBiblico);
     procedure StripEditClick(Sender: TObject);
     procedure StripPropertiesClick(Sender: TObject);
+    procedure StripAddBibleClick(Sender: TObject);
+    procedure RunProjectProperties(AddBibleFor: Integer);
     procedure ActionNewFeaturesGuideExecute(Sender: TObject);
     procedure CountCurrentAssociations(out Associated, Total: Integer);
     procedure CountVerseAssociations(TextType: TTipoTextoBiblico; out Associated, Total: Integer);
@@ -1264,6 +1266,8 @@ begin
     UpdateStatusReviewPanel;
     LayoutVersePanelLabels;
   end;
+  if Assigned(CurrentProject) then
+    CurrentProject.InvalidateBlankTextCache;
   HandleProjectRestoreRequest;
   UpdateCommandUI;
   UpdateStateHeader;
@@ -2227,6 +2231,7 @@ begin
       Strip.OnStatusPick := @StripStatusPick;
       Strip.OnEdit := @StripEditClick;
       Strip.OnProperties := @StripPropertiesClick;
+      Strip.OnAddBible := @StripAddBibleClick;
       FVersePanelStrips[TextType] := Strip;
 
       // the module properties, shown in place of the verse (Properties ticked)
@@ -2267,7 +2272,7 @@ var
   Box: TScrollBox;
   Verse: TVerse;
   Memo: TMemo;
-  ProjectActive, ShowStrip, PropsOpen, Editing, PointerInside: Boolean;
+  ProjectActive, ShowStrip, PropsOpen, Editing, PointerInside, ShowAddBible: Boolean;
   Definitions: TStatusDefinitions;
   Colors: array of TColor;
   Captions: array of string;
@@ -2338,6 +2343,17 @@ begin
     Strip.ShowControls := ProjectActive;
     Strip.EditActive := Editing;
     Strip.PropertiesActive := PropsOpen;
+
+    // a blank Bible panel offers "Add Bible" while the pointer is over it
+    ShowAddBible := False;
+    if ProjectActive and PointerInside and (not PropsOpen) and (not Editing) then
+    begin
+      if CurrentProject.GetPlainVerseText(TextType) <> '' then
+        CurrentProject.InvalidateBlankTextCache
+      else
+        ShowAddBible := CurrentProject.IsTextBlank(TextType);
+    end;
+    Strip.ShowAddBible := ShowAddBible;
 
     if ProjectActive and (TextType = tbDestino) then
     begin
@@ -4906,7 +4922,26 @@ end;
 
 procedure TMainForm.ActionProjectPropertiesExecute(Sender: TObject);
 begin
+  RunProjectProperties(-1);
+end;
+
+{ "Add Bible" on a blank panel: Project settings on that panel's text, going
+  straight to the Bible chooser. }
+procedure TMainForm.StripAddBibleClick(Sender: TObject);
+begin
+  if (CurrentProject = nil) or not (Sender is TComponent) then
+    Exit;
+  RunProjectProperties(TComponent(Sender).Tag);
+end;
+
+procedure TMainForm.RunProjectProperties(AddBibleFor: Integer);
+begin
   FrmProjectProperties.SetProject(CurrentProject);
+  if AddBibleFor >= 0 then
+  begin
+    FrmProjectProperties.SelectTextTab(TTipoTextoBiblico(AddBibleFor));
+    FrmProjectProperties.RequestAddBible;
+  end;
   if FrmProjectProperties.ShowModal = mrOK then
   begin
     FrmProjectProperties.ApplyChanges(Self);

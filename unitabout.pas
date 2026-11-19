@@ -114,6 +114,10 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.062 (64-bit Edition) - 2026-11-19' + LineEnding +
+  '- A Bible panel that has no text now shows a blue "Add Bible" link on its bottom bar while the pointer is over it. Click it to open Project settings on that panel''s text with the Add Bible Books file dialog already open (several files can be chosen, for example one USFM file per book). Panels that already have text do not show the link.' + LineEnding +
+  '- Help > New features guide (Shift+F1), topic 12: describes the Add Bible link.' + LineEnding +
+  '' + LineEnding +
   'Version 1.1.0.061 (64-bit Edition) - 2026-11-19' + LineEnding +
   '- Add / replace Bible books with several files chosen together: the note "Waiting to be applied (OK)" and the book dialog now name every file the chosen books come from (for example Tobit and Judith from their two USFM files), not only the first file.' + LineEnding +
   '' + LineEnding +
@@ -1594,6 +1598,7 @@ begin
         '     • Use it to remove a book that was imported twice, such as a duplicate Apocrypha book. Deleting a verse leaves a gap in the verse numbers; nothing is renumbered.' + sLineBreak + sLineBreak +
         '  3. Adding Books from One or Several Files (Project > Settings > Texts > Add Bible Books...):' + sLineBreak +
         '     • In the file dialog choose one file, or several at once with Ctrl- or Shift-click (for example one USFM file per book), then tick the books you want. Only the files you choose are read, not the whole folder.' + sLineBreak +
+        '     • A Bible panel with no text (for example Reference 2 before you add one) shows a blue "Add Bible" link on its bottom bar while the pointer is over it. Click it to open Project settings on that panel''s text with this same file dialog already open.' + sLineBreak +
         '     • A book found in more than one chosen file asks which file to use. Books the project already has are greyed out.' + sLineBreak + sLineBreak +
         '  4. MySword Export:' + sLineBreak +
         '     • Exporting a Bible as MySword (.bbl.mybible) now writes a real MySword module with Strong''s numbers, morphology, notes and the Apocrypha books.';

@@ -6,39 +6,45 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.061 (2026-11-19) — Add Books Names All Chosen Files
+### 0. Version 1.1.0.062 (2026-11-19) — Add Bible Link on Blank Panels
+
+* A Bible panel that has no text now shows a blue "Add Bible" link on its bottom bar while the pointer is over it. Click it to open Project settings on that panel's text with the Add Bible Books file dialog already open (several files can be chosen, for example one USFM file per book). Panels that already have text do not show the link.
+* Help > New features guide (Shift+F1), topic 12: describes the Add Bible link.
+* Files: `verse_panel_strip.pas`, `Project.pas`, `FormProjectProperties.pas`, `formprincipal.pas`, `unitabout.pas`.
+
+### 0a. Version 1.1.0.061 (2026-11-19) — Add Books Names All Chosen Files
 
 * Add / replace Bible books with several files chosen together: the note "Waiting to be applied (OK)" and the book dialog now name every file the chosen books come from (for example Tobit and Judith from their two USFM files), not only the first file.
 * Files: `FormBookImport.pas`.
 
-### 0a. Version 1.1.0.060 (2026-11-19) — New Features Guide Updated
+### 0b. Version 1.1.0.060 (2026-11-19) — New Features Guide Updated
 
 * Help > New features guide (Shift+F1): new topic 12, "Tree: Arrange, Delete, Add", with its own illustration, explaining dragging rows by the grip and the Tools switch, the .order file for Timotheos, deleting a book, chapter or verse, adding books from one or several files, and the MySword export. The Import/Export topic now says that Add Bible Books reads only the files you choose. The old summary is now topic 13.
 * Files: `unitabout.pas`.
 
-### 0b. Version 1.1.0.059 (2026-11-19) — Several Files in Add Books
+### 0c. Version 1.1.0.059 (2026-11-19) — Several Files in Add Books
 
 * Add / replace Bible books: you can now select several files at once in the file dialog (for example one USFM file per book, Ctrl- or Shift-click) and tick the books you want from all of them. The files are read together like the files of a compressed archive; a book found in more than one file asks which file to use.
 * Files: `FormBookImport.pas`.
 
-### 0c. Version 1.1.0.058 (2026-11-19) — Tree Grips and Scrolling Fixed
+### 0d. Version 1.1.0.058 (2026-11-19) — Tree Grips and Scrolling Fixed
 
 * Bible tree: the extra drag grips (several columns of dots, left behind when the tree scrolled sideways) and the garbled rows after scrolling are fixed. While the grips show, the tree no longer scrolls sideways, and any scrolling repaints the whole tree. Turn the Tools > Rearrange switch off to get the sideways scrollbar back.
 * Files: `formprincipal.pas`.
 
-### 0d. Version 1.1.0.057 (2026-11-19) — Delete Books, Chapters, Verses; USFM Book Selection
+### 0e. Version 1.1.0.057 (2026-11-19) — Delete Books, Chapters, Verses; USFM Book Selection
 
 * Right-click a book, chapter or verse in the Bible tree and choose Delete this book / chapter / verse. iBiblia asks "Are you sure you want to delete this Book (Chapter, Verse)?" with Yes and No. On Yes the rows leave the project (texts, associations, comments, status), the tree is rebuilt without them, and a copy of the project made just before is kept next to it (name ending _before-delete_date_time).
 * A project remembers whether it is Old Testament, New Testament or both after a deletion, so deleting the first or last verse does not change the project's scope. Deleting a whole apocrypha book also removes its name and place.
 * Add / replace Bible books: choosing one USFM file now imports only that file. Before, when the file held one book, every .usfm/.sfm file in the same folder was read and imported (choosing Sirach brought in the whole folder). New projects and the project properties still read a whole folder of USFM books.
 * Files: `project_book_import.pas`, `Project.pas`, `bible_tree_coordinator.pas`, `formprincipal.pas`, `esword_usfm.pas`, `FormBookImport.pas`.
 
-### 0e. Version 1.1.0.056 (2026-11-19) — Blank Panels No Longer Erase a Verse
+### 0f. Version 1.1.0.056 (2026-11-19) — Blank Panels No Longer Erase a Verse
 
 * Safeguard against a verse losing its texts: when a verse panel is blank and untouched while the project still holds text for that verse (the panel did not load), leaving the verse no longer writes the blank panel over the saved text or clears the verse's associations. This guards the Destination, Reference 1 and Reference 2 texts of Genesis 1:1 / Matthew 1:1 that went blank after reopening a project.
 * Files: `current_verse_workspace.pas`.
 
-### 0f. Version 1.1.0.055 (2026-11-19) — Switch for Rearranging
+### 0g. Version 1.1.0.055 (2026-11-19) — Switch for Rearranging
 
 * New Tools > Rearrange books, chapters and verses switch. When it is checked, the grip icons show in the Bible tree and you can drag rows; when it is unchecked, the grips disappear and dragging is off. The choice is remembered. (It is checked by default.)
 * Files: `formprincipal.pas`.
