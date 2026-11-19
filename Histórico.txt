@@ -1,3 +1,6 @@
+Version 1.1.0.060 (64-bit Edition) - 2026-11-19
+- Help > New features guide (Shift+F1): new topic 12, "Tree: Arrange, Delete, Add", with its own illustration, explaining dragging rows by the grip and the Tools switch, the .order file for Timotheos, deleting a book, chapter or verse, adding books from one or several files, and the MySword export. The Import/Export topic now says that Add Bible Books reads only the files you choose. The old summary is now topic 13.
+
 Version 1.1.0.059 (64-bit Edition) - 2026-11-19
 - Add / replace Bible books: you can now select several files at once in the file dialog (for example one USFM file per book, Ctrl- or Shift-click) and tick the books you want from all of them. The files are read together like the files of a compressed archive; a book found in more than one file asks which file to use.
 

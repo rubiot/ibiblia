@@ -110,10 +110,13 @@ implementation
 {$R *.lfm}
 
 const
-  GUIDE_TOPIC_COUNT = 12;
+  GUIDE_TOPIC_COUNT = 13;
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.060 (64-bit Edition) - 2026-11-19' + LineEnding +
+  '- Help > New features guide (Shift+F1): new topic 12, "Tree: Arrange, Delete, Add", with its own illustration, explaining dragging rows by the grip and the Tools switch, the .order file for Timotheos, deleting a book, chapter or verse, adding books from one or several files, and the MySword export. The Import/Export topic now says that Add Bible Books reads only the files you choose. The old summary is now topic 13.' + LineEnding +
+  '' + LineEnding +
   'Version 1.1.0.059 (64-bit Edition) - 2026-11-19' + LineEnding +
   '- Add / replace Bible books: you can now select several files at once in the file dialog (for example one USFM file per book, Ctrl- or Shift-click) and tick the books you want from all of them. The files are read together like the files of a compressed archive; a book found in more than one file asks which file to use.' + LineEnding +
   '' + LineEnding +
@@ -1156,7 +1159,7 @@ begin
   lblHeaderTitle.Font.Name := 'Segoe UI';
   lblHeaderTitle.Font.Height := -17;
   lblHeaderTitle.Font.Style := [fsBold];
-  lblHeaderTitle.Caption := 'iBiblia New Features User Guide (v1.0.0.71 – v1.1.0.019)';
+  lblHeaderTitle.Caption := 'iBiblia New Features User Guide (v1.0.0.71 – v1.1.0.059)';
 
   lblHeaderSub := TLabel.Create(pnlHeader);
   lblHeaderSub.Parent := pnlHeader;
@@ -1320,7 +1323,8 @@ begin
     8: Result := '9. 1.1.0 Visual Editor & Notes';
     9: Result := '10. 1.1.0 BiDi & Trans. Memory';
     10: Result := '11. 1.1.0 Wizard, AI & Icons';
-    11: Result := '12. Full Feature Summary';
+    11: Result := '12. Tree: Arrange, Delete, Add';
+    12: Result := '13. Full Feature Summary';
   else
     Result := '';
   end;
@@ -1340,7 +1344,8 @@ begin
     8: Result := 'v1.1.0.0 WYSIWYG & Notes';
     9: Result := 'v1.1.0.0 BiDi & Memory';
     10: Result := 'v1.1.0.0 – v1.1.0.019 AI & UI';
-    11: Result := 'All Features (v1.0.0.70–v1.1.0.019)';
+    11: Result := 'v1.1.0.053 – v1.1.0.059 Tree & Books';
+    12: Result := 'All Features (v1.0.0.70–v1.1.0.059)';
   else
     Result := '';
   end;
@@ -1360,7 +1365,8 @@ begin
     8: Result := '9. iBiblia 1.1.0: Visual WYSIWYG & Raw ONT Editor, Semantic Markup & Translator Notes';
     9: Result := '10. iBiblia 1.1.0: Bidirectional DirectWrite Rendering, Edit Safety & Translation Memory';
     10: Result := '11. iBiblia 1.1.0: Guided Project Wizard, Custom Statuses, AI Workflows & Toolbar Sizes';
-    11: Result := '12. Complete Quick-Reference Summary of All New Features (v1.0.0.70 – v1.1.0.019)';
+    11: Result := '12. iBiblia 1.1.0: Arrange, Delete and Add Books in the Tree';
+    12: Result := '13. Complete Quick-Reference Summary of All New Features (v1.0.0.70 – v1.1.0.059)';
   else
     Result := '';
   end;
@@ -1489,7 +1495,7 @@ begin
         'Also includes safe Project Save As (Ctrl+Shift+S), exporting modules even while open in theWord, per-project remembered export destinations, smart word-diff detection on text reload, and bidirectional 64-bit theWord 7 synchronization.' + sLineBreak + sLineBreak +
         'HOW TO USE:' + sLineBreak +
         '  1. Multi-Format Bible Import & Export (.ont/.ot/.nt, e-Sword, USFM, USFX, MySword):' + sLineBreak +
-        '     • Import any supported format in File > New Project or Project > Settings across Source, Destination, Reference 1, or Reference 2 (selecting a single .usfm/.sfm book file automatically loads all sibling book files in that folder).' + sLineBreak +
+        '     • Import any supported format in File > New Project or Project > Settings across Source, Destination, Reference 1, or Reference 2 (in New Project and Project > Settings, selecting a single .usfm/.sfm book file automatically loads all sibling book files in that folder; in Add Bible Books only the files you choose are read).' + sLineBreak +
         '     • Export Tagged Destination or Interlinear Bibles via File > Export... or right-click any of the 4 Bible panels and select "Export as Bible module..." to export directly to .ont/.ot/.nt, e-Sword (.bblx/.bbli), USFM (.usfm/.sfm), USFX (.usfx/.xml), or MySword (.bbl.mybible).' + sLineBreak + sLineBreak +
         '  2. Apocrypha / Deuterocanonical OT Books in the Bible Books Tree (v1.0.1.045–047):' + sLineBreak +
         '     • Standalone Apocrypha OT books (Book >= 67: 1–2 Esdras, Tobit, Judith, 1–4 Maccabees, Prayer of Manasseh, Wisdom, Sirach, Baruch, Letter of Jeremiah, Prayer of Azariah, Susanna, Bel and the Dragon, Psalm 151, Psalms of Solomon, Odes, Laodiceans) appear right after Malachi at the end of the Old Testament, and extra chapters (Daniel 13–14, Psalms 151, Esther 11–16) appear under their canonical books.' + sLineBreak + sLineBreak +
@@ -1569,9 +1575,30 @@ begin
         '     • Choose English or Portuguese UI, 4 icon families (Connected, Clareza, Mosaico, Folio), and 3 top-bar icon sizes: Small (16 px), Medium (22 px), or Large (28 px).';
 
     11:
+      Result :=
+        'FEATURE OVERVIEW (iBiblia 1.1.0.053 – 1.1.0.059)' + sLineBreak +
+        'Arrange the books, chapters and verses of the Bible tree by dragging, delete a book, chapter or verse you do not want, and add books from one or several files. The arrangement also shows in Timotheos.' + sLineBreak + sLineBreak +
+        'HOW TO USE:' + sLineBreak +
+        '  1. Rearranging the Bible Tree (Drag the Grip):' + sLineBreak +
+        '     • Every row of the Bible tree has a grip (two columns of dots) at its right edge. Press and hold the grip, then drag the book, chapter or verse up or down; a line shows where it will land.' + sLineBreak +
+        '     • Only the order changes. Chapter and verse numbers stay as they are, and the arrangement is saved in the project.' + sLineBreak +
+        '     • Tools > Rearrange books, chapters and verses switches the grips on or off (remembered). While the grips show, the tree does not scroll sideways.' + sLineBreak +
+        '     • Right-click > "Reset the order of books, chapters and verses" puts everything back in the standard order.' + sLineBreak +
+        '     • When you export a module, a file with the same name plus .order is written beside it. Timotheos reads it and shows the same order; theWord ignores it.' + sLineBreak + sLineBreak +
+        '  2. Deleting a Book, Chapter or Verse:' + sLineBreak +
+        '     • Right-click the book, chapter or verse in the Bible tree and choose "Delete this book..." / "Delete this chapter..." / "Delete this verse...". iBiblia asks "Are you sure you want to delete this Book (Chapter, Verse)?" with Yes and No.' + sLineBreak +
+        '     • On Yes, the texts, associations, comments and status of what you deleted leave the project and the tree is rebuilt without them. A copy of the project made just before is kept beside it (name ending _before-delete_date_time).' + sLineBreak +
+        '     • Use it to remove a book that was imported twice, such as a duplicate Apocrypha book. Deleting a verse leaves a gap in the verse numbers; nothing is renumbered.' + sLineBreak + sLineBreak +
+        '  3. Adding Books from One or Several Files (Project > Settings > Texts > Add Bible Books...):' + sLineBreak +
+        '     • In the file dialog choose one file, or several at once with Ctrl- or Shift-click (for example one USFM file per book), then tick the books you want. Only the files you choose are read, not the whole folder.' + sLineBreak +
+        '     • A book found in more than one chosen file asks which file to use. Books the project already has are greyed out.' + sLineBreak + sLineBreak +
+        '  4. MySword Export:' + sLineBreak +
+        '     • Exporting a Bible as MySword (.bbl.mybible) now writes a real MySword module with Strong''s numbers, morphology, notes and the Apocrypha books.';
+
+    12:
       begin
         Result := '';
-        for i := 0 to 10 do
+        for i := 0 to 11 do
         begin
           if Result <> '' then
             Result := Result + sLineBreak + sLineBreak +
@@ -2277,6 +2304,57 @@ var
     C.TextOut(W div 2 + 16, 158, 'Configure in View > Toolbar icon size or Tools > Preferences.');
   end;
 
+  procedure DrawTopicTree(C: TCanvas);
+  var
+    GX: Integer;
+    procedure GripDots(X, Y: Integer);
+    var
+      Col, Row: Integer;
+    begin
+      C.Brush.Style := bsSolid;
+      C.Brush.Color := dimCol;
+      for Col := 0 to 1 do
+        for Row := 0 to 2 do
+          C.FillRect(Rect(X + Col * 4, Y + Row * 4, X + Col * 4 + 2, Y + Row * 4 + 2));
+    end;
+    procedure TreeRow(Y: Integer; const Txt: string; Indent: Integer; Hi: Boolean);
+    begin
+      if Hi then
+        DrawBox(C, 30, Y - 2, GX + 20, Y + 16, hiBg, hdrCol, 3);
+      C.Brush.Style := bsClear;
+      C.Font.Size := 8;
+      C.Font.Style := [];
+      if Hi then C.Font.Color := hiTxt else C.Font.Color := txtCol;
+      C.TextOut(36 + Indent, Y, Txt);
+      GripDots(GX, Y + 2);
+    end;
+  begin
+    GX := 150;
+    DrawBox(C, 16, 36, 188, 198, pnlBg, borderCol, 6);
+    C.Brush.Style := bsClear;
+    C.Font.Size := 8;
+    C.Font.Style := [fsBold];
+    C.Font.Color := hdrCol;
+    C.TextOut(26, 42, 'BIBLE TREE');
+    TreeRow(62, 'Genesis', 0, False);
+    TreeRow(84, '1', 14, False);
+    TreeRow(106, 'Tobit', 0, True);
+    TreeRow(128, 'Judith', 0, False);
+    TreeRow(150, 'Matthew', 0, False);
+    DrawArrow(C, GX + 8, 112, GX + 8, 138, hdrCol);
+
+    DrawBox(C, 200, 36, W - 16, 198, pnlBg, borderCol, 6);
+    C.Brush.Style := bsClear;
+    C.Font.Size := 8;
+    C.Font.Style := [fsBold];
+    C.Font.Color := hdrCol;
+    C.TextOut(210, 42, 'REARRANGE, DELETE, ADD BOOKS');
+    DrawBadge(C, 210, 64, 'Hold the grip (dots) and drag a row up or down', hiBg, hiTxt, hdrCol, True);
+    DrawBadge(C, 210, 94, 'Right-click > Delete this book / chapter / verse...', ptBg, ptTxt, borderCol, True);
+    DrawBadge(C, 210, 124, '"Are you sure you want to delete this Book?"   [Yes]  [No]', winBg, txtCol, hdrCol, True);
+    DrawBadge(C, 210, 154, 'Add Bible Books: Ctrl/Shift-click several files at once', winBg, txtCol, borderCol, False);
+  end;
+
   procedure DrawTopic11(C: TCanvas);
   begin
     DrawBox(C, 16, 36, W - 16, 198, pnlBg, borderCol, 6);
@@ -2284,7 +2362,7 @@ var
     C.Font.Size := 8;
     C.Font.Style := [fsBold];
     C.Font.Color := hdrCol;
-    C.TextOut(26, 42, 'COMPLETE NEW FEATURES MAP (v1.0.0.70 – v1.1.0.019) — QUICK SHORTCUT REFERENCE');
+    C.TextOut(26, 42, 'COMPLETE NEW FEATURES MAP (v1.0.0.70 – v1.1.0.059) — QUICK SHORTCUT REFERENCE');
 
     DrawBadge(C, 26,  64, 'Mouse Wheel Up / Down : Select Source Word Left / Right', hiBg, hiTxt, hdrCol, True);
     DrawBadge(C, 26,  94, 'Hold Ctrl+Shift + Click : Associate Multiple Words Together', ptBg, ptTxt, borderCol, True);
@@ -2342,6 +2420,7 @@ begin
       8: DrawTopic8(bmp.Canvas);
       9: DrawTopic9(bmp.Canvas);
       10: DrawTopic10(bmp.Canvas);
+      11: DrawTopicTree(bmp.Canvas);
     else
       DrawTopic11(bmp.Canvas);
     end;
@@ -2388,7 +2467,7 @@ begin
   begin
     Caption := 'iBiblia — Guia de Novos Recursos (Desde v1.0.0.71)';
     if Assigned(lblHeaderTitle) then
-      lblHeaderTitle.Caption := 'Guia de Novos Recursos do iBiblia (v1.0.0.71 – v1.1.0.019)';
+      lblHeaderTitle.Caption := 'Guia de Novos Recursos do iBiblia (v1.0.0.71 – v1.1.0.059)';
     if Assigned(lblHeaderSub) then
       lblHeaderSub.Caption := 'Janela Flutuante Interativa — Mantenha aberta enquanto pratica os recursos no iBiblia.';
     if Assigned(btnPrev) then btnPrev.Caption := '< Anterior';
@@ -2400,7 +2479,7 @@ begin
   begin
     Caption := 'iBiblia — New Features User Guide (Since v1.0.0.71)';
     if Assigned(lblHeaderTitle) then
-      lblHeaderTitle.Caption := 'iBiblia New Features User Guide (v1.0.0.71 – v1.1.0.019)';
+      lblHeaderTitle.Caption := 'iBiblia New Features User Guide (v1.0.0.71 – v1.1.0.059)';
     if Assigned(lblHeaderSub) then
       lblHeaderSub.Caption := 'Floating Interactive Guide — Keep this window open while practicing features directly in iBiblia.';
     if Assigned(btnPrev) then btnPrev.Caption := '< Previous Topic';
