@@ -33,6 +33,14 @@ type
     function ReadCommentsText(CommentsControl: TControl): string;
     function AssociationsChanged(SourceVerse: TVerse;
       const CurrentAssociations: string): Boolean;
+    { A view that is blank and untouched while the project still holds text
+      for that verse means the view did not load; saving it would erase the
+      verse. Such a view is never written back. }
+    function ViewWouldBlankStoredText(Persistence: TProjectPersistence;
+      VerseView: TVerse; FieldIndex: Integer): Boolean;
+    function AnyViewWouldBlankStoredText(Persistence: TProjectPersistence;
+      const VerseViews: array of TVerse;
+      const TextFieldIndexes: array of Integer): Boolean;
     function SavePairsValue(Persistence: TProjectPersistence;
       const CurrentAssociations: string): Boolean;
     function SaveAssociationsValue(Suggester: TSuggestionManager;
@@ -384,6 +392,29 @@ begin
   Result := SavePairsValue(Persistence, CurrentAssociations);
 end;
 
+function TCurrentVerseWorkspace.ViewWouldBlankStoredText(
+  Persistence: TProjectPersistence; VerseView: TVerse;
+  FieldIndex: Integer): Boolean;
+begin
+  Result := Assigned(Persistence) and Assigned(VerseView) and
+    (VerseView.XML = '') and
+    not VerseView.Modified and not VerseView.XMLModified and
+    (Persistence.CurrentText(FieldIndex) <> '');
+end;
+
+function TCurrentVerseWorkspace.AnyViewWouldBlankStoredText(
+  Persistence: TProjectPersistence; const VerseViews: array of TVerse;
+  const TextFieldIndexes: array of Integer): Boolean;
+var
+  Index: Integer;
+begin
+  Result := False;
+  for Index := Low(VerseViews) to High(VerseViews) do
+    if ViewWouldBlankStoredText(Persistence, VerseViews[Index],
+      GetTextFieldIndex(TextFieldIndexes, Index)) then
+      Exit(True);
+end;
+
 function TCurrentVerseWorkspace.SavePairsValue(
   Persistence: TProjectPersistence;
   const CurrentAssociations: string): Boolean;
@@ -415,6 +446,8 @@ begin
     if Assigned(VerseView) then
     begin
       FieldIndex := GetTextFieldIndex(TextFieldIndexes, Index);
+      if ViewWouldBlankStoredText(Persistence, VerseView, FieldIndex) then
+        Continue;
       if Persistence.CurrentText(FieldIndex) <> VerseView.XML then
       begin
         Persistence.SetCurrentText(FieldIndex, VerseView.XML);
@@ -694,11 +727,16 @@ begin
   ReferenceID := '';
   if Assigned(Persistence) then
     ReferenceID := Persistence.CurrentPairId;
-  if AssociationWasChanged or SourceTextChanged or DestinationTextChanged then
+  if (AssociationWasChanged or SourceTextChanged or DestinationTextChanged) and
+     not AnyViewWouldBlankStoredText(Persistence, VerseViews, TextFieldIndexes) then
     SaveAssociationsValue(Suggester, SourceVerse, DestinationVerse,
       MemoryService, ReferenceID, CurrentAssociations);
-  AssociationPersistenceChanged := SavePairsValue(Persistence,
-    CurrentAssociations);
+  // never let a view that did not load blank the verse's associations either
+  if AnyViewWouldBlankStoredText(Persistence, VerseViews, TextFieldIndexes) then
+    AssociationPersistenceChanged := False
+  else
+    AssociationPersistenceChanged := SavePairsValue(Persistence,
+      CurrentAssociations);
   Result := AssociationWasChanged or AssociationPersistenceChanged or
     SourceTextChanged or DestinationTextChanged;
 

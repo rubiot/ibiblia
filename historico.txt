@@ -1,4 +1,7 @@
-﻿Version 1.1.0.055 (64-bit Edition) - 2026-11-19
+﻿Version 1.1.0.056 (64-bit Edition) - 2026-11-19
+- Safeguard against a verse losing its texts: when a verse panel is blank and untouched while the project still holds text for that verse (the panel did not load), leaving the verse no longer writes the blank panel over the saved text or clears the verse's associations. This guards the Destination, Reference 1 and Reference 2 texts of Genesis 1:1 / Matthew 1:1 that went blank after reopening a project.
+
+Version 1.1.0.055 (64-bit Edition) - 2026-11-19
 - New Tools > Rearrange books, chapters and verses switch. When it is checked, the grip icons show in the Bible tree and you can drag rows; when it is unchecked, the grips disappear and dragging is off. The choice is remembered. (It is checked by default.)
 
 Version 1.1.0.054 (64-bit Edition) - 2026-11-19
