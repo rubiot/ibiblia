@@ -1,3 +1,6 @@
+Version 1.1.0.055 (64-bit Edition) - 2026-11-19
+- New Tools > Rearrange books, chapters and verses switch. When it is checked, the grip icons show in the Bible tree and you can drag rows; when it is unchecked, the grips disappear and dragging is off. The choice is remembered. (It is checked by default.)
+
 Version 1.1.0.054 (64-bit Edition) - 2026-11-19
 - Exporting a Bible as MySword (.bbl.mybible) now really writes a MySword module. Before, the file carried the MySword name but was an e-Sword RTF module inside, so MySword could not read the text correctly. The module now has MySword's own Details and Bible tables, with the verse text in MySword's tag style (Strong's numbers, morphology, headings, footnotes, paragraphs, words of Jesus).
 - Apocrypha / deuterocanonical books (67 and up) are no longer left out of a MySword export.

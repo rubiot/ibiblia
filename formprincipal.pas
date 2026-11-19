@@ -253,6 +253,8 @@ type
     FAutoSaveEnabled: Boolean;
     FSaveOnLastStatus: Boolean;
     FBoldStrongsEnabled: Boolean;
+    FTreeRearrangeEnabled: Boolean;
+    FTreeRearrangeItem: TMenuItem;
     FAlwaysOnTopEnabled: Boolean;
     FDockPopupRightEnabled: Boolean;
     FDockPopupRightMenuItem: TMenuItem;
@@ -414,6 +416,7 @@ type
     procedure TreeViewDragDrop(Sender, Source: TObject; X, Y: Integer);
     procedure TreeViewEndDrag(Sender, Target: TObject; X, Y: Integer);
     function TreeGripWidth: Integer;
+    procedure TreeRearrangeClick(Sender: TObject);
     procedure TreeDragScrollTick(Sender: TObject);
     function TreeDropTargetAt(X, Y: Integer; out Target: TTreeNode;
       out Mode: TNodeAttachMode): Boolean;
@@ -722,6 +725,7 @@ resourcestring
   SDockPopupRightMenu = '&Dock Word Definition Popup to Right Edge';
   SDockPopupLeftMenu = '&Dock Word Definition Popup to Left Edge';
   SToolsMenu = '&Tools';
+  STreeRearrangeMenu = 'Rearrange books, chapters and verses (drag grips in the Bible tree)';
   STheWordSynchronizationMenu = '&Synchronization with theWord';
   SSyncIBibliaToTheWord = 'iBiblia → theWord';
   SSyncTheWordToIBiblia = 'theWord → iBiblia';
@@ -1600,6 +1604,12 @@ begin
   FGoToVerseMenuItem := TMenuItem.Create(MainMenu1);
   FGoToVerseMenuItem.Action := FActionGoToVerse;
   FToolsMenu.Insert(1, FGoToVerseMenuItem);
+  FTreeRearrangeItem := TMenuItem.Create(MainMenu1);
+  FTreeRearrangeItem.Caption := STreeRearrangeMenu;
+  FTreeRearrangeItem.AutoCheck := True;
+  FTreeRearrangeItem.Checked := True;
+  FTreeRearrangeItem.OnClick := @TreeRearrangeClick;
+  FToolsMenu.Insert(2, FTreeRearrangeItem);
   FActionNextFilteredVerse := TAction.Create(ActionList1);
   FActionNextFilteredVerse.ShortCut := ShortCut(VK_F8, []);
   FActionNextFilteredVerse.OnExecute := @ActionNextFilteredVerseExecute;
@@ -5138,6 +5148,9 @@ begin
   FSyncTanglawToIBiblia := opts.ReadBool('opcoes', 'synctanglaw', false);
   FSyncIBibliaToTanglaw := opts.ReadBool('opcoes', 'syncibibliatanglaw', false);
   FBoldStrongsEnabled := opts.ReadBool('opcoes', 'boldstrongs', false);
+  FTreeRearrangeEnabled := opts.ReadBool('opcoes', 'tree.rearrange', true);
+  if Assigned(FTreeRearrangeItem) then
+    FTreeRearrangeItem.Checked := FTreeRearrangeEnabled;
   FAutoSaveEnabled := opts.ReadBool('opcoes', 'auto.save', false);
   FSaveOnLastStatus := opts.ReadBool('opcoes', 'auto.save.last.status', false);
   FGuideModeEnabled := opts.ReadBool('opcoes', 'guide.mode', true);
@@ -5771,6 +5784,20 @@ begin
   Result := UIScale(Self, 26);
 end;
 
+procedure TMainForm.TreeRearrangeClick(Sender: TObject);
+begin
+  FTreeRearrangeEnabled := FTreeRearrangeItem.Checked;
+  PersistGlobalPreference('tree.rearrange', FTreeRearrangeEnabled);
+  if not FTreeRearrangeEnabled then
+  begin
+    if TreeView1.Dragging then
+      TreeView1.EndDrag(False);
+    ClearTreeDropMark;
+    TreeView1.Cursor := crDefault;
+  end;
+  TreeView1.Invalidate;
+end;
+
 procedure TMainForm.ClearTreeDropMark;
 begin
   if FTreeDropValid or Assigned(FTreeDropNode) then
@@ -5794,7 +5821,7 @@ begin
   DefaultDraw := True;
   if Stage <> cdPostPaint then
     Exit;
-  if (CurrentProject = nil) or (not CurrentProject.Ativo) then
+  if (not FTreeRearrangeEnabled) or (CurrentProject = nil) or (not CurrentProject.Ativo) then
     Exit;
 
   C := Sender.Canvas;
@@ -5849,7 +5876,7 @@ end;
 procedure TMainForm.TreeViewMouseMove(Sender: TObject; Shift: TShiftState;
   X, Y: Integer);
 begin
-  if (CurrentProject <> nil) and CurrentProject.Ativo and
+  if FTreeRearrangeEnabled and (CurrentProject <> nil) and CurrentProject.Ativo and
      (X >= TreeView1.ClientWidth - TreeGripWidth) and
      (TTreeViewRows(TreeView1).GetNodeAtY(Y) <> nil) then
     TreeView1.Cursor := crSizeNS
@@ -5862,7 +5889,7 @@ procedure TMainForm.TreeViewMouseDown(Sender: TObject; Button: TMouseButton;
 var
   Node: TTreeNode;
 begin
-  if (Button <> mbLeft) or (CurrentProject = nil) or (not CurrentProject.Ativo) then
+  if (not FTreeRearrangeEnabled) or (Button <> mbLeft) or (CurrentProject = nil) or (not CurrentProject.Ativo) then
     Exit;
   if X < TreeView1.ClientWidth - TreeGripWidth then
     Exit;
