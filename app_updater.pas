@@ -30,12 +30,16 @@ const
   UpdateAssetSuffix = '-linux-x86_64.zip';
   {$ENDIF}
   UpdateSumsAsset = 'SHA256SUMS.txt';
+  UpdateChannelStable = 'stable';
+  UpdateChannelNeon = 'neon';
+  UpdateNeonTag = 'neon';
 
 type
   TUpdateInfo = record
     Available: Boolean;
     Version: string;      // e.g. 1.1.0.027
     Tag: string;
+    Channel: string;      // 'stable' or 'neon'
     Notes: string;        // release body (markdown/plain)
     PageUrl: string;
     AssetName: string;
@@ -58,9 +62,16 @@ function NormalizeVersion(const S: string): string;
 { True when this build may update itself; Reason says why not otherwise. }
 function UpdatesSupported(out Reason: string): Boolean;
 
+{ Normalize channel name to UpdateChannelStable or UpdateChannelNeon. }
+function NormalizeUpdateChannel(const AChannel: string): string;
+
+{ Human-readable label for an update channel. }
+function UpdateChannelDisplayName(const AChannel: string): string;
+
 { Contact GitHub. Returns False (with Err) if the check itself failed; when it
   succeeds Info.Available tells whether a newer release exists. }
-function CheckForUpdate(out Info: TUpdateInfo; out Err: string): Boolean;
+function CheckForUpdate(out Info: TUpdateInfo; out Err: string;
+  const AChannel: string = UpdateChannelStable): Boolean;
 
 { Download + verify + unpack. StageDir receives the folder holding the new files. }
 function DownloadAndStage(const Info: TUpdateInfo; AProgress: TUpdateProgressEvent;
@@ -390,33 +401,57 @@ begin
     OnProgress(CurrentPos, ContentLength);
 end;
 
+function NormalizeUpdateChannel(const AChannel: string): string;
+begin
+  if SameText(Trim(AChannel), UpdateChannelNeon) then
+    Result := UpdateChannelNeon
+  else
+    Result := UpdateChannelStable;
+end;
+
+function UpdateChannelDisplayName(const AChannel: string): string;
+begin
+  if NormalizeUpdateChannel(AChannel) = UpdateChannelNeon then
+    Result := 'Neon'
+  else
+    Result := 'Stable (linux-port)';
+end;
+
 { IBIBLIA_UPDATE_FEED lets a test point the updater at a local copy of the
   GitHub "latest release" JSON; normally it is the real releases feed. }
-function FeedUrl: string;
+function FeedUrl(const AChannel: string): string;
 begin
   Result := GetEnvironmentVariable('IBIBLIA_UPDATE_FEED');
   if Result = '' then
-    Result := 'https://api.github.com/repos/' + UpdateRepoOwner + '/' +
-      UpdateRepoName + '/releases/latest';
+  begin
+    if NormalizeUpdateChannel(AChannel) = UpdateChannelNeon then
+      Result := 'https://api.github.com/repos/' + UpdateRepoOwner + '/' +
+        UpdateRepoName + '/releases/tags/' + UpdateNeonTag
+    else
+      Result := 'https://api.github.com/repos/' + UpdateRepoOwner + '/' +
+        UpdateRepoName + '/releases/latest';
+  end;
 end;
 
-function CheckForUpdate(out Info: TUpdateInfo; out Err: string): Boolean;
+function CheckForUpdate(out Info: TUpdateInfo; out Err: string;
+  const AChannel: string = UpdateChannelStable): Boolean;
 var
   Client: TIBibliaHTTPSClient;
   Body: string;
   Root, A: TJSONData;
   Assets: TJSONArray;
   i: Integer;
-  Name: string;
+  Name, RelTitle: string;
 begin
   Result := False;
   Err := '';
   Initialize(Info);
   Info.Available := False;
+  Info.Channel := NormalizeUpdateChannel(AChannel);
   try
     Client := NewClient;
     try
-      Body := Client.Get(FeedUrl);
+      Body := Client.Get(FeedUrl(Info.Channel));
     finally
       Client.Free;
     end;
@@ -425,6 +460,7 @@ begin
       if Root.JSONType <> jtObject then
         raise Exception.Create('Unexpected reply from GitHub.');
       Info.Tag := TJSONObject(Root).Get('tag_name', '');
+      RelTitle := TJSONObject(Root).Get('name', '');
       Info.Version := NormalizeVersion(Info.Tag);
       Info.Notes := TJSONObject(Root).Get('body', '');
       Info.PageUrl := TJSONObject(Root).Get('html_url', UpdateReleasesPage);
@@ -449,6 +485,10 @@ begin
     finally
       Root.Free;
     end;
+    if (CompareVersions(Info.Version, '0.0.0.0') <= 0) and (Info.AssetName <> '') then
+      Info.Version := NormalizeVersion(Info.AssetName);
+    if (CompareVersions(Info.Version, '0.0.0.0') <= 0) and (RelTitle <> '') then
+      Info.Version := NormalizeVersion(RelTitle);
     Info.Available := (Info.Tag <> '') and (Info.AssetUrl <> '') and
       (CompareVersions(Info.Version, CurrentAppVersion) > 0);
     Result := True;

@@ -26,6 +26,8 @@ type
     procedure SetCheckAtStartup(AValue: Boolean);
     function GetAutoInstall: Boolean;
     procedure SetAutoInstall(AValue: Boolean);
+    function GetUpdateChannel: string;
+    procedure SetUpdateChannel(const AValue: string);
     procedure StartTimerFired(Sender: TObject);
     procedure ShowRestartNotice;
     procedure RunCheck(AManual: Boolean);
@@ -45,6 +47,7 @@ type
     procedure RestartNow;
     property CheckAtStartup: Boolean read GetCheckAtStartup write SetCheckAtStartup;
     property AutoInstall: Boolean read GetAutoInstall write SetAutoInstall;
+    property UpdateChannel: string read GetUpdateChannel write SetUpdateChannel;
   end;
 
 var
@@ -60,6 +63,7 @@ type
   TCheckThread = class(TThread)
   private
     FManual: Boolean;
+    FChannel: string;
     FInfo: TUpdateInfo;
     FOk: Boolean;
     FErr: string;
@@ -67,7 +71,7 @@ type
   protected
     procedure Execute; override;
   public
-    constructor Create(AManual: Boolean);
+    constructor Create(AManual: Boolean; const AChannel: string);
   end;
 
   TStageThread = class(TThread)
@@ -137,17 +141,18 @@ end;
 
 { ------------------------------------------------------------ TCheckThread -- }
 
-constructor TCheckThread.Create(AManual: Boolean);
+constructor TCheckThread.Create(AManual: Boolean; const AChannel: string);
 begin
+  FManual := AManual;
+  FChannel := NormalizeUpdateChannel(AChannel);
   inherited Create(False);
   // not FreeOnTerminate: a thread that frees itself also discards its queued callback
   FreeOnTerminate := False;
-  FManual := AManual;
 end;
 
 procedure TCheckThread.Execute;
 begin
-  FOk := CheckForUpdate(FInfo, FErr);
+  FOk := CheckForUpdate(FInfo, FErr, FChannel);
   Queue(@Deliver);
 end;
 
@@ -279,8 +284,12 @@ begin
   FHead.AutoSize := False;
   FHead.WordWrap := True;
   FHead.Font.Style := [fsBold];
-  FHead.Caption := Format('iBiblia %s is available (you have %s).',
-    [AInfo.Version, NormalizeVersion(CurrentAppVersion)]);
+  if NormalizeUpdateChannel(AInfo.Channel) = UpdateChannelNeon then
+    FHead.Caption := Format('iBiblia %s (Neon) is available (you have %s).',
+      [AInfo.Version, NormalizeVersion(CurrentAppVersion)])
+  else
+    FHead.Caption := Format('iBiblia %s is available (you have %s).',
+      [AInfo.Version, NormalizeVersion(CurrentAppVersion)]);
 
   FNotes := TMemo.Create(Self);
   FNotes.Parent := Self;
@@ -482,6 +491,30 @@ begin
   FIni.UpdateFile;
 end;
 
+function TUpdateCoordinator.GetUpdateChannel: string;
+begin
+  Result := NormalizeUpdateChannel(FIni.ReadString(IniSection, 'update.channel', UpdateChannelStable));
+end;
+
+procedure TUpdateCoordinator.SetUpdateChannel(const AValue: string);
+var
+  Norm: string;
+begin
+  Norm := NormalizeUpdateChannel(AValue);
+  if SameText(Norm, GetUpdateChannel) then
+    Exit;
+  FIni.WriteString(IniSection, 'update.channel', Norm);
+  FIni.DeleteKey(IniSection, 'update.skip');
+  FIni.UpdateFile;
+  if FStageDir <> '' then
+  begin
+    DiscardStagedUpdate(FStageDir);
+    FStageDir := '';
+    FPendingVersion := '';
+    FNoticeShown := False;
+  end;
+end;
+
 procedure TUpdateCoordinator.ScheduleStartupCheck;
 var
   Why: string;
@@ -529,7 +562,7 @@ begin
     Exit;
   end;
   FBusy := True;
-  TCheckThread.Create(AManual);
+  TCheckThread.Create(AManual, UpdateChannel);
 end;
 
 procedure TUpdateCoordinator.HandleResult(AManual: Boolean; const AInfo: TUpdateInfo;
@@ -548,7 +581,8 @@ begin
   if not AInfo.Available then
   begin
     if AManual then
-      MessageDlg('iBiblia update', 'You have the latest version (' + NormalizeVersion(CurrentAppVersion) + ').',
+      MessageDlg('iBiblia update', 'You have the latest version on ' +
+        UpdateChannelDisplayName(AInfo.Channel) + ' (' + NormalizeVersion(CurrentAppVersion) + ').',
         mtInformation, [mbOK], 0);
     Exit;
   end;

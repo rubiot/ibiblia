@@ -114,6 +114,9 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.068 (64-bit Edition) - 2026-11-19' + LineEnding +
+  '- Added Help > Update branch submenu to choose between Stable (linux-port) and Neon (Neon branch) releases, saved in iBiblia.ini (update.channel), with Neon CI builds published as a rolling pre-release under tag "neon".' + LineEnding +
+  '' + LineEnding +
   'Version 1.1.0.067 (64-bit Edition) - 2026-11-19' + LineEnding +
   '- Each book file of the USFM 3.0 export now carries a \rem line saying that the Strong''s numbers are written exactly as tagged. Timotheos reads a 5-digit number ending in 0 (such as G13970) as an unfoldingWord number with a 0 added and showed G1397; with this line it keeps the real number. Timotheos 0.6.73 also checks the numbers in the file itself.' + LineEnding +
   '' + LineEnding +

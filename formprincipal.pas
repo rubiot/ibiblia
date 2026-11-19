@@ -13,7 +13,7 @@ uses
   twAutomate, twSyncThread, tanglaw_sync,
   Classes, SysUtils, FileUtil, LazFileUtils, Forms, Controls, Graphics, Dialogs, Menus, LCLIntf,
   ActnList, ComCtrls, ExtCtrls, StdCtrls, BibleScope, Project, IniFiles, Math,
-  Syntagm, LCLTranslator, unitabout, unitupdate, PCRE, Verse, LCLProc, LazLogger,
+  Syntagm, LCLTranslator, unitabout, unitupdate, app_updater, PCRE, Verse, LCLProc, LazLogger,
   LCLType, LMessages, LazUTF8, ChapterView, UnitPleaseWait, CommentsView, ONTTokenizer,
   status_catalog, SynEdit, project_setup_model, translation_memory_model,
   project_creation_staging, FormApplicationPreferences, theword_sync_state,
@@ -221,6 +221,8 @@ type
     procedure MenuItemAboutClick(Sender: TObject);
     procedure UpdateCheckItemClick(Sender: TObject);
     procedure UpdateStartupItemClick(Sender: TObject);
+    procedure UpdateBranchItemClick(Sender: TObject);
+    procedure SyncUpdateBranchMenu;
     procedure MenuItemAISuggestionClick(Sender: TObject);
     procedure MenuItemAlwaysOnTopClick(Sender: TObject);
     procedure MenuItemAutoSaveClick(Sender: TObject);
@@ -264,6 +266,7 @@ type
     FDockPopupLeftEnabled: Boolean;
     FDockPopupLeftMenuItem: TMenuItem;
     FUpdateCheckItem, FUpdateStartupItem: TMenuItem;
+    FUpdateBranchMenu, FUpdateBranchStableItem, FUpdateBranchNeonItem: TMenuItem;
     FLegacyAutomaticSuggestion: Boolean;
     FCurrentRef: string;
     FChapterView: TChapterView;
@@ -1670,9 +1673,31 @@ begin
     FUpdateStartupItem.AutoCheck := True;
     FUpdateStartupItem.Checked := Assigned(UpdateCoordinator) and UpdateCoordinator.CheckAtStartup;
     FUpdateStartupItem.OnClick := @UpdateStartupItemClick;
+
+    FUpdateBranchMenu := TMenuItem.Create(MainMenu1);
+    FUpdateBranchMenu.Caption := 'Update &branch';
+
+    FUpdateBranchStableItem := TMenuItem.Create(MainMenu1);
+    FUpdateBranchStableItem.Caption := 'Stable (linux-port)';
+    FUpdateBranchStableItem.RadioItem := True;
+    FUpdateBranchStableItem.GroupIndex := 1;
+    FUpdateBranchStableItem.Tag := 0;
+    FUpdateBranchStableItem.OnClick := @UpdateBranchItemClick;
+
+    FUpdateBranchNeonItem := TMenuItem.Create(MainMenu1);
+    FUpdateBranchNeonItem.Caption := 'Neon (Neon branch)';
+    FUpdateBranchNeonItem.RadioItem := True;
+    FUpdateBranchNeonItem.GroupIndex := 1;
+    FUpdateBranchNeonItem.Tag := 1;
+    FUpdateBranchNeonItem.OnClick := @UpdateBranchItemClick;
+
+    FUpdateBranchMenu.Add(FUpdateBranchStableItem);
+    FUpdateBranchMenu.Add(FUpdateBranchNeonItem);
   end;
+  SyncUpdateBranchMenu;
   MenuItem17.Add(FUpdateCheckItem);
   MenuItem17.Add(FUpdateStartupItem);
+  MenuItem17.Add(FUpdateBranchMenu);
   MenuItem17.Add(MenuItemAbout);
 
   BuildSuggestionToolbarMenu;
@@ -5632,6 +5657,30 @@ begin
   // AutoCheck has already flipped Checked
   if Assigned(UpdateCoordinator) then
     UpdateCoordinator.CheckAtStartup := FUpdateStartupItem.Checked;
+end;
+
+procedure TMainForm.SyncUpdateBranchMenu;
+var
+  IsNeon: Boolean;
+begin
+  if (FUpdateBranchStableItem = nil) or (FUpdateBranchNeonItem = nil) then
+    Exit;
+  IsNeon := Assigned(UpdateCoordinator) and
+    SameText(UpdateCoordinator.UpdateChannel, UpdateChannelNeon);
+  FUpdateBranchStableItem.Checked := not IsNeon;
+  FUpdateBranchNeonItem.Checked := IsNeon;
+end;
+
+procedure TMainForm.UpdateBranchItemClick(Sender: TObject);
+begin
+  if Assigned(UpdateCoordinator) and (Sender is TMenuItem) then
+  begin
+    if TMenuItem(Sender).Tag = 1 then
+      UpdateCoordinator.UpdateChannel := UpdateChannelNeon
+    else
+      UpdateCoordinator.UpdateChannel := UpdateChannelStable;
+  end;
+  SyncUpdateBranchMenu;
 end;
 
 procedure TMainForm.MenuItemAISuggestionClick(Sender: TObject);
