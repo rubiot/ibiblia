@@ -654,22 +654,57 @@ var
   FileName: string;
   ExportResult: TExportResult;
   InterlinearOptions: TInterlinearTextExportOptions;
+  Connection: TSQLite3Connection;
+  Query: TSQLQuery;
+
+  function ReadScalar(const ASql: string): string;
+  begin
+    Query.Close;
+    Query.SQL.Text := ASql;
+    Query.Open;
+    Result := Query.Fields[0].AsString;
+    Query.Close;
+  end;
+
+  procedure OpenExport;
+  begin
+    Connection := TSQLite3Connection.Create(nil);
+    Connection.Transaction := TSQLTransaction.Create(Connection);
+    Connection.DatabaseName := FileName;
+    Query := TSQLQuery.Create(Connection);
+    Query.Database := Connection;
+    Connection.Open;
+  end;
+
 begin
-  FileName := FExportWithoutCommentsFileName + '.mybible';
+  FileName := FExportWithoutCommentsFileName + '.bbl.mybible';
+  Connection := nil;
   try
-    // The one-verse fixture fails after the SQLite module has been created.
+    // A .mybible export must be a MySword module (Details + Bible tables with
+    // theWord-style tags), never an e-Sword RTF module under a MySword name.
     WriteBinaryFile(FileName, 'previous export');
     ExportResult := FExporter.ExportDestinationTextWithStrongs(
       FileName, nil, NewOptions(False), nil, nil, nil);
-    AssertEquals(Ord(esFailed), Ord(ExportResult.Status));
-    AssertEquals('previous export', string(ReadBinaryFile(FileName)));
+    AssertEquals(ExportResult.ErrorMessage, Ord(esSuccess), Ord(ExportResult.Status));
+    OpenExport;
+    AssertEquals('1', ReadScalar('select count(*) from Bible'));
+    AssertEquals('MySword Details has a Comments column', '1',
+      ReadScalar('select count(*) from pragma_table_info(''Details'') where name = ''Comments'''));
+    AssertEquals('No e-Sword Information column', '0',
+      ReadScalar('select count(*) from pragma_table_info(''Details'') where name = ''Information'''));
+    AssertTrue('Scripture must not be RTF',
+      Pos('\rtf', ReadScalar('select Scripture from Bible')) = 0);
+    FreeAndNil(Connection);
     DeleteFile(FileName);
+
     InterlinearOptions := Default(TInterlinearTextExportOptions);
     ExportResult := FExporter.ExportInterlinearText(
       FileName, nil, nil, nil, InterlinearOptions, nil, nil, nil);
-    AssertEquals(Ord(esFailed), Ord(ExportResult.Status));
-    AssertFalse(FileExists(FileName));
+    AssertEquals(ExportResult.ErrorMessage, Ord(esSuccess), Ord(ExportResult.Status));
+    OpenExport;
+    AssertEquals('1', ReadScalar('select count(*) from Bible'));
   finally
+    Connection.Free;
     DeleteFile(FileName);
   end;
 end;

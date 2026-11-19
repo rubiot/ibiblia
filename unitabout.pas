@@ -114,6 +114,11 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.054 (64-bit Edition) - 2026-11-19' + LineEnding +
+  '- Exporting a Bible as MySword (.bbl.mybible) now really writes a MySword module. Before, the file carried the MySword name but was an e-Sword RTF module inside, so MySword could not read the text correctly. The module now has MySword''s own Details and Bible tables, with the verse text in MySword''s tag style (Strong''s numbers, morphology, headings, footnotes, paragraphs, words of Jesus).' + LineEnding +
+  '- Apocrypha / deuterocanonical books (67 and up) are no longer left out of a MySword export.' + LineEnding +
+  '- The module''s right-to-left setting, its About text (shown in MySword as Comments), the description and the short name are now written; the Strong''s flag is set only when the text really has Strong''s numbers. Cross-reference marks are written the MySword way (<RX1.2.3>).' + LineEnding +
+  '' + LineEnding +
   'Version 1.1.0.053 (64-bit Edition) - 2026-11-19' + LineEnding +
   '- Arrange the Bible tree your own way: every book, chapter and verse row now has a grip (six small dots) at its right end. Click it, hold, and drag the row up or down; a line shows where it will land, and the list scrolls when you hold the mouse near its top or bottom edge. A verse can be dropped into another chapter, a chapter into another book, and books can change places. Only the position changes: chapter and verse numbers stay as they are, so references keep their meaning. A chapter keeps at least one verse and a book at least one chapter.' + LineEnding +
   '- The arrangement is saved in the project and comes back when you open it again. Right-click the tree > Reset the order of books, chapters and verses puts everything back in the standard order.' + LineEnding +

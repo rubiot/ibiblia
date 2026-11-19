@@ -119,7 +119,8 @@ type
       Properties: string; ExtraVerses: TStringList = nil;
       ExtraRefIDs: TStringList = nil);
     procedure WriteMySwordBible(Verses: TStringList; const FileName,
-      Properties: string);
+      Properties: string;
+      ExtraVerses: TStringList = nil; ExtraRefIDs: TStringList = nil);
     constructor Create(AScope: TEscopoTexto; AVerseRepository: TProjectVerseRepository;
       AVerseRenderBuffer: TVerseRenderBuffer);
     procedure Attach(AScope: TEscopoTexto; AVerseRepository: TProjectVerseRepository;
@@ -324,8 +325,10 @@ end;
 
 function IsESwordOrUSFMExport(const FileName: string): Boolean;
 begin
-  Result := TESwordModule.IsESwordFileName(FileName) or
-    TESwordModule.IsUSFMOrUSFXFileName(FileName);
+  // .mybible is a MySword module, written by TMySwordModule, not by the e-Sword writer
+  Result := (not SameText(ExtractFileExt(FileName), '.mybible')) and
+    (TESwordModule.IsESwordFileName(FileName) or
+     TESwordModule.IsUSFMOrUSFXFileName(FileName));
 end;
 
 class function TProjectExporter.IsApocryphaReference(const ReferenceID: string): Boolean;
@@ -401,29 +404,71 @@ begin
 end;
 
 procedure TProjectExporter.WriteMySwordBible(Verses: TStringList;
-  const FileName, Properties: string);
+  const FileName, Properties: string; ExtraVerses: TStringList;
+  ExtraRefIDs: TStringList);
 var
   Module: TMySwordModule;
-  BookIndex: SmallInt;
-  ChapterIndex: SmallInt;
-  VerseIndex: SmallInt;
-  VerseLineIndex: SmallInt;
+  RefIDs, AllVerses: TStringList;
+  BookIndex, ChapterIndex, VerseIndex, Line, ExtraIndex: Integer;
+  HasOT, HasNT, HasApocrypha, HasStrongs: Boolean;
+  Text: string;
 begin
-  Module := TMySwordModule.Create(FileName, FScope in [etOT, etONT],
-    FScope in [etNT, etONT], True, Properties);
+  HasOT := FScope in [etOT, etONT];
+  HasNT := FScope in [etNT, etONT];
+  HasApocrypha := False;
+  HasStrongs := False;
+  RefIDs := TStringList.Create;
+  AllVerses := TStringList.Create;
   try
-    VerseLineIndex := 0;
     for BookIndex := 0 to QLivros[FScope] - 1 do
       for ChapterIndex := 0 to QCapitulos[FScope][BookIndex] - 1 do
         for VerseIndex := 0 to QVersiculos[FScope][QCapLivros[FScope][BookIndex] + ChapterIndex - 1] - 1 do
+          RefIDs.Add(Format('%d,%d,%d', [BookIndex + OffsetLivros[FScope] + 1,
+            ChapterIndex + 1, VerseIndex + 1]));
+
+    // canonical lines, in scope order (never more lines than verses)
+    for Line := 0 to Min(Verses.Count, RefIDs.Count) - 1 do
+      AllVerses.Add(Verses[Line]);
+    while RefIDs.Count > AllVerses.Count do
+      RefIDs.Delete(RefIDs.Count - 1);
+
+    // apocrypha lines (book 67+) follow the canonical books
+    if Assigned(ExtraVerses) and Assigned(ExtraRefIDs) then
+      for ExtraIndex := 0 to Min(ExtraVerses.Count, ExtraRefIDs.Count) - 1 do
+        if Trim(ExtraVerses[ExtraIndex]) <> '' then
         begin
-          Module.AddVerse(Verses[VerseLineIndex], BookIndex + OffsetLivros[FScope] + 1,
-            ChapterIndex + 1, VerseIndex + 1);
-          Inc(VerseLineIndex);
+          AllVerses.Add(ExtraVerses[ExtraIndex]);
+          RefIDs.Add(ExtraRefIDs[ExtraIndex]);
+          HasApocrypha := True;
         end;
-    Module.Commit;
+    if HasApocrypha then
+      HasOT := True;
+
+    // empty formatting pairs are dropped; MySword wants <RX1.2.3>, not the
+    // theWord spelling <RX 1.2.3>
+    for Line := 0 to AllVerses.Count - 1 do
+    begin
+      Text := PruneEmptyFormattingTags(AllVerses[Line]);
+      Text := StringReplace(Text, '<RX ', '<RX', [rfReplaceAll]);
+      AllVerses[Line] := Text;
+      if (Pos('<WG', Text) > 0) or (Pos('<WH', Text) > 0) then
+        HasStrongs := True;
+    end;
+
+    Module := TMySwordModule.Create(FileName, HasOT, HasNT, HasStrongs, Properties);
+    try
+      for Line := 0 to AllVerses.Count - 1 do
+      begin
+        SScanf(RefIDs[Line], '%d,%d,%d', [@BookIndex, @ChapterIndex, @VerseIndex]);
+        Module.AddVerse(AllVerses[Line], BookIndex, ChapterIndex, VerseIndex);
+      end;
+      Module.Commit;
+    finally
+      Module.Free;
+    end;
   finally
-    Module.Free;
+    AllVerses.Free;
+    RefIDs.Free;
   end;
 end;
 
@@ -524,7 +569,8 @@ begin
         WriteESwordOrUSFMBible(Lines, Staging.StagingFileName, Options.Properties,
           ApocLines, ApocRefs)
       else if SameText(ExtractFileExt(FileName), '.mybible') then
-        WriteMySwordBible(Lines, Staging.StagingFileName, Options.Properties)
+        WriteMySwordBible(Lines, Staging.StagingFileName, Options.Properties,
+          ApocLines, ApocRefs)
       else
       begin
         HasTags := (Lines.Count > 0) and
@@ -650,7 +696,8 @@ begin
         WriteESwordOrUSFMBible(Lines, Staging.StagingFileName, Options.Properties,
           ApocLines, ApocRefs)
       else if SameText(ExtractFileExt(FileName), '.mybible') then
-        WriteMySwordBible(Lines, Staging.StagingFileName, Options.Properties)
+        WriteMySwordBible(Lines, Staging.StagingFileName, Options.Properties,
+          ApocLines, ApocRefs)
       else
         WriteTheWordBible(Lines, Staging.StagingFileName, Options.Properties,
           Options.Direction);

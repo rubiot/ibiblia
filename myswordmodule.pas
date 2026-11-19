@@ -46,9 +46,24 @@ var
   mtKV: IMatch;
   propMap: TPropsMap;
   FInsert: TSQLQuery;
+  i: integer;
 begin
   strings := TStringList.Create;
   strings.Text := props;
+  // a value ending in a backslash continues on the next line (theWord about=)
+  kv := '';
+  i := 0;
+  while i < strings.Count do
+  begin
+    kv := strings[i];
+    while (kv <> '') and (kv[Length(kv)] = '\') and (i + 1 < strings.Count) do
+    begin
+      kv := Copy(kv, 1, Length(kv) - 1) + #13#10 + strings[i + 1];
+      strings.Delete(i + 1);
+    end;
+    strings[i] := kv;
+    Inc(i);
+  end;
   reKV := RegexCreate('^(.*?)\s*=\s*(.*)\s*$', [rcoUTF8]);
   propMap := TPropsMap.Create;
 
@@ -56,6 +71,7 @@ begin
   propMap['title'        ] := '';
   propMap['description'  ] := '';
   propMap['short.title'  ] := '';
+  propMap['id'           ] := '';
   propMap['version.major'] := '0';
   propMap['version.minor'] := '0';
   propMap['version.date' ] := '';
@@ -65,19 +81,26 @@ begin
   propMap['creator'      ] := 'iBiblia';
   propMap['source'       ] := 'iBiblia';
   propMap['lang'         ] := '';
-  propMap['rtl'          ] := '0';
+  propMap['r2l'          ] := '0';
+  propMap['about'        ] := '';
 
   // TODO: handle multiline properties and comments
   for kv in strings do
   begin
-    mtKV := reKV.Match(kv);
-    if mtKV.Success then
+    mtKV := reKV.Match(StringReplace(kv, #13#10, #1, [rfReplaceAll]));
+    if mtKV.Success and (Pos(#1, mtKV.Groups[1].Value) = 0) then
     begin
       key   := mtKV.Groups[1].Value;
-      value := mtKV.Groups[2].Value;
+      value := StringReplace(mtKV.Groups[2].Value, #1, #13#10, [rfReplaceAll]);
       propMap[key] := value;
     end;
   end;
+
+  // MySword lists a module by Description and Abbreviation: never leave them empty
+  if Trim(propMap['description']) = '' then
+    propMap['description'] := propMap['title'];
+  if Trim(propMap['short.title']) = '' then
+    propMap['short.title'] := StringReplace(Trim(propMap['id']), ' ', '_', [rfReplaceAll]);
 
   FInsert := TSQLQuery.Create(nil);
   FInsert.DataBase := FConnection;
@@ -105,11 +128,11 @@ begin
 
   FInsert.SQL.Text :=
     'INSERT INTO Details (' +
-    '   title,   description, abbreviation,  ot,  nt,  strong,  version,' +
+    '   title,   description, abbreviation,  comments,  ot,  nt,  strong,  version,' +
     '   versiondate,  publishdate,  publisher,  author,  creator,  source,' +
     '   language,  righttoleft' +
     ') VALUES (' +
-    '  :title, :description, :abbreviation, :ot, :nt, :strong, :version,' +
+    '  :title, :description, :abbreviation, :comments, :ot, :nt, :strong, :version,' +
     '  :versiondate, :publishdate, :publisher, :author, :creator, :source,' +
     '  :language, :righttoleft' +
     ')';
@@ -118,6 +141,7 @@ begin
   FInsert.Params.ParamByName('title'       ).AsString  := propMap['title'];
   FInsert.Params.ParamByName('description' ).AsString  := propMap['description'];
   FInsert.Params.ParamByName('abbreviation').AsString  := propMap['short.title'];
+  FInsert.Params.ParamByName('comments'    ).AsString  := propMap['about'];
   FInsert.Params.ParamByName('ot'          ).AsBoolean := FOT;
   FInsert.Params.ParamByName('nt'          ).AsBoolean := FNT;
   FInsert.Params.ParamByName('strong'      ).AsBoolean := FStrongs;
@@ -129,7 +153,7 @@ begin
   FInsert.Params.ParamByName('creator'     ).AsString  := propMap['creator'];
   FInsert.Params.ParamByName('source'      ).AsString  := propMap['source'];
   FInsert.Params.ParamByName('language'    ).AsString  := propMap['lang'];
-  FInsert.Params.ParamByName('righttoleft' ).AsString  := propMap['rtl'];
+  FInsert.Params.ParamByName('righttoleft' ).AsBoolean := (propMap['r2l'] = '1') or SameText(propMap['r2l'], 'true');
 
   FInsert.ExecSQL;
   FInsert.Free;

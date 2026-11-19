@@ -6,7 +6,14 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.053 (2026-11-19) — Arrange Books, Chapters and Verses in the Tree
+### 0. Version 1.1.0.054 (2026-11-19) — MySword Export Fixed
+
+* Exporting a Bible as MySword (.bbl.mybible) now really writes a MySword module. Before, the file carried the MySword name but was an e-Sword RTF module inside, so MySword could not read the text correctly. The module now has MySword's own Details and Bible tables, with the verse text in MySword's tag style (Strong's numbers, morphology, headings, footnotes, paragraphs, words of Jesus).
+* Apocrypha / deuterocanonical books (67 and up) are no longer left out of a MySword export.
+* The module's right-to-left setting, its About text (shown in MySword as Comments), the description and the short name are now written; the Strong's flag is set only when the text really has Strong's numbers. Cross-reference marks are written the MySword way (<RX1.2.3>).
+* Files: `project_exporter.pas`, `myswordmodule.pas`, `tests/project_exporter_integration_test.pas`.
+
+### 0a. Version 1.1.0.053 (2026-11-19) — Arrange Books, Chapters and Verses in the Tree
 
 * Arrange the Bible tree your own way: every book, chapter and verse row now has a grip (six small dots) at its right end. Click it, hold, and drag the row up or down; a line shows where it will land, and the list scrolls when you hold the mouse near its top or bottom edge. A verse can be dropped into another chapter, a chapter into another book, and books can change places. Only the position changes: chapter and verse numbers stay as they are, so references keep their meaning. A chapter keeps at least one verse and a book at least one chapter.
 * The arrangement is saved in the project and comes back when you open it again. Right-click the tree > Reset the order of books, chapters and verses puts everything back in the standard order.
@@ -14,17 +21,17 @@
 * Fixed garbled rows in the left Bible tree while scrolling with the dark and Sepia skins (the tree background was being painted over rows that had just been scrolled into place).
 * Files: `bible_tree_coordinator.pas`, `Project.pas`, `formprincipal.pas`, `unitskins.pas`.
 
-### 0a. Version 1.1.0.052 (2026-11-18) — SWORD Modules
+### 0b. Version 1.1.0.052 (2026-11-18) — SWORD Modules
 
 * SWORD (CrossWire) modules can now be used: Bible texts as the Source, Destination or reference text (New project and Project settings), in Add Bible Books and in Replace, and dictionaries (StrongsGreek, StrongsHebrew and others) in the popup dictionary lists. Choose the module's .conf file or its downloaded .zip. Strong's numbers, morphology, footnotes, words of Jesus and the apocrypha books are kept; a SWORD dictionary is converted once to a theWord dictionary. Locked modules are not opened; bzip2 / xz compressed modules need that program installed.
 * Files: `sword_module.pas`, `sword_canons.pas` (new), `module_conversion.pas`, `bible_archive.pas`, `FormBookImport.pas`, `FormNewFeaturesGuide.pas`.
 
-### 0b. Version 1.1.0.051 (2026-11-18) — Export as Bible Module from the Panel Menu
+### 0c. Version 1.1.0.051 (2026-11-18) — Export as Bible Module from the Panel Menu
 
 * Right-click a Bible panel > Export as Bible module... now works: it opens the Export project window on the matching tab (Destination panel: Tagged Destination; Source panel: Interlinear Source). On a reference text it explains that reference texts cannot be exported as a module.
 * Files: `Project.pas`, `formprincipal.pas`, `FormProjectExport.pas`.
 
-### 0c. Version 1.1.0.050 (2026-11-18) — Compressed Files for Bible Books and Dictionaries
+### 0d. Version 1.1.0.050 (2026-11-18) — Compressed Files for Bible Books and Dictionaries
 
 * Add Bible Books and Replace now accept compressed files: a zip, tar, tar.gz / tgz, tar.bz2, tar.xz, single .gz, and 7z or rar when 7-Zip / unrar is installed. A compressed file can hold one book or a whole Bible, as theWord, e-Sword, MySword, USFM / USFX modules or text documents (.txt, .rtf, .odt, .docx), also inside folders of the archive.
 * All the files found are combined into one book tree. Plain documents ask for the book matching as before. When the same book is in more than one file, iBiblia asks, book by book, which file to take it from. The order of the apocrypha books follows the files.
@@ -32,7 +39,7 @@
 * Popup dictionaries (Strong's, morphology, word dictionaries in Project settings, New project and Default dictionaries) can also be chosen from a compressed file; the .dct.twm inside is unpacked into the iBiblia dictionaries folder of the user and used from there.
 * Files: `bible_archive.pas` (new), `bible_import_source.pas`, `FormBookImport.pas`, `FormDefaultDictionaries.pas`, `FormNewProject.pas`, `FormProjectProperties.pas`.
 
-### 0d. Version 1.1.0.049 (2026-11-18) — Apocrypha Books Between Malachi and Matthew
+### 0zc. Version 1.1.0.049 (2026-11-18) — Apocrypha Books Between Malachi and Matthew
 
 * The apocrypha / deuterocanonical books (Tobit, Judith, Sirach, Maccabees, etc.) now sit between Malachi and Matthew in the Bible tree and in the project's verse order, so Next / Previous verse goes from Malachi to the first apocrypha book and from the last one to Matthew.
 * The order of these books follows the imported source text (the order of the books in the file you add them from), not iBiblia's own book numbers. When you add books from a second file, the new books come after the ones already there.
