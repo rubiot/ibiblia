@@ -6,31 +6,36 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.057 (2026-11-19) — Delete Books, Chapters, Verses; USFM Book Selection
+### 0. Version 1.1.0.058 (2026-11-19) — Tree Grips and Scrolling Fixed
+
+* Bible tree: the extra drag grips (several columns of dots, left behind when the tree scrolled sideways) and the garbled rows after scrolling are fixed. While the grips show, the tree no longer scrolls sideways, and any scrolling repaints the whole tree. Turn the Tools > Rearrange switch off to get the sideways scrollbar back.
+* Files: `formprincipal.pas`.
+
+### 0a. Version 1.1.0.057 (2026-11-19) — Delete Books, Chapters, Verses; USFM Book Selection
 
 * Right-click a book, chapter or verse in the Bible tree and choose Delete this book / chapter / verse. iBiblia asks "Are you sure you want to delete this Book (Chapter, Verse)?" with Yes and No. On Yes the rows leave the project (texts, associations, comments, status), the tree is rebuilt without them, and a copy of the project made just before is kept next to it (name ending _before-delete_date_time).
 * A project remembers whether it is Old Testament, New Testament or both after a deletion, so deleting the first or last verse does not change the project's scope. Deleting a whole apocrypha book also removes its name and place.
 * Add / replace Bible books: choosing one USFM file now imports only that file. Before, when the file held one book, every .usfm/.sfm file in the same folder was read and imported (choosing Sirach brought in the whole folder). New projects and the project properties still read a whole folder of USFM books.
 * Files: `project_book_import.pas`, `Project.pas`, `bible_tree_coordinator.pas`, `formprincipal.pas`, `esword_usfm.pas`, `FormBookImport.pas`.
 
-### 0a. Version 1.1.0.056 (2026-11-19) — Blank Panels No Longer Erase a Verse
+### 0b. Version 1.1.0.056 (2026-11-19) — Blank Panels No Longer Erase a Verse
 
 * Safeguard against a verse losing its texts: when a verse panel is blank and untouched while the project still holds text for that verse (the panel did not load), leaving the verse no longer writes the blank panel over the saved text or clears the verse's associations. This guards the Destination, Reference 1 and Reference 2 texts of Genesis 1:1 / Matthew 1:1 that went blank after reopening a project.
 * Files: `current_verse_workspace.pas`.
 
-### 0b. Version 1.1.0.055 (2026-11-19) — Switch for Rearranging
+### 0c. Version 1.1.0.055 (2026-11-19) — Switch for Rearranging
 
 * New Tools > Rearrange books, chapters and verses switch. When it is checked, the grip icons show in the Bible tree and you can drag rows; when it is unchecked, the grips disappear and dragging is off. The choice is remembered. (It is checked by default.)
 * Files: `formprincipal.pas`.
 
-### 0c. Version 1.1.0.054 (2026-11-19) — MySword Export Fixed
+### 0d. Version 1.1.0.054 (2026-11-19) — MySword Export Fixed
 
 * Exporting a Bible as MySword (.bbl.mybible) now really writes a MySword module. Before, the file carried the MySword name but was an e-Sword RTF module inside, so MySword could not read the text correctly. The module now has MySword's own Details and Bible tables, with the verse text in MySword's tag style (Strong's numbers, morphology, headings, footnotes, paragraphs, words of Jesus).
 * Apocrypha / deuterocanonical books (67 and up) are no longer left out of a MySword export.
 * The module's right-to-left setting, its About text (shown in MySword as Comments), the description and the short name are now written; the Strong's flag is set only when the text really has Strong's numbers. Cross-reference marks are written the MySword way (<RX1.2.3>).
 * Files: `project_exporter.pas`, `myswordmodule.pas`, `tests/project_exporter_integration_test.pas`.
 
-### 0c. Version 1.1.0.053 (2026-11-19) — Arrange Books, Chapters and Verses in the Tree
+### 0d. Version 1.1.0.053 (2026-11-19) — Arrange Books, Chapters and Verses in the Tree
 
 * Arrange the Bible tree your own way: every book, chapter and verse row now has a grip (six small dots) at its right end. Click it, hold, and drag the row up or down; a line shows where it will land, and the list scrolls when you hold the mouse near its top or bottom edge. A verse can be dropped into another chapter, a chapter into another book, and books can change places. Only the position changes: chapter and verse numbers stay as they are, so references keep their meaning. A chapter keeps at least one verse and a book at least one chapter.
 * The arrangement is saved in the project and comes back when you open it again. Right-click the tree > Reset the order of books, chapters and verses puts everything back in the standard order.
@@ -38,7 +43,7 @@
 * Fixed garbled rows in the left Bible tree while scrolling with the dark and Sepia skins (the tree background was being painted over rows that had just been scrolled into place).
 * Files: `bible_tree_coordinator.pas`, `Project.pas`, `formprincipal.pas`, `unitskins.pas`.
 
-### 0d. Version 1.1.0.052 (2026-11-18) — SWORD Modules
+### 0e. Version 1.1.0.052 (2026-11-18) — SWORD Modules
 
 * SWORD (CrossWire) modules can now be used: Bible texts as the Source, Destination or reference text (New project and Project settings), in Add Bible Books and in Replace, and dictionaries (StrongsGreek, StrongsHebrew and others) in the popup dictionary lists. Choose the module's .conf file or its downloaded .zip. Strong's numbers, morphology, footnotes, words of Jesus and the apocrypha books are kept; a SWORD dictionary is converted once to a theWord dictionary. Locked modules are not opened; bzip2 / xz compressed modules need that program installed.
 * Files: `sword_module.pas`, `sword_canons.pas` (new), `module_conversion.pas`, `bible_archive.pas`, `FormBookImport.pas`, `FormNewFeaturesGuide.pas`.
@@ -79,106 +84,106 @@
 * The chosen books are listed on the Texts tab and are added or replaced when you click OK.
 * Files: `FormProjectProperties.pas`, `FormBookImport.pas` (new), `bible_import_source.pas` (new), `bible_document_reader.pas` (new), `project_book_import.pas` (new), `Project.pas`, `bibletreeview.pas`, `verse_lookup.pas`, `formprincipal.pas`.
 
-### 0z. Version 1.1.0.046 (2026-11-17) — Popup No Longer Slows Down Over Time (Linux)
+### 0{. Version 1.1.0.046 (2026-11-17) — Popup No Longer Slows Down Over Time (Linux)
 
 * Linux: the dictionary popup no longer gets slower and slower the longer iBiblia runs. Each popup with indented definitions (e.g. Thayer 1a, 1b) left new hidden formatting entries behind that were never removed, so every later popup took longer. Indents now reuse the same entries. In a test of 300 popups the time per popup stayed the same instead of growing about six times.
 * Files: `FormDictionaryPopup.pas`.
 
-### 0y. Version 1.1.0.045 (2026-11-17) — See-Through Panel Bar (Linux)
+### 0z. Version 1.1.0.045 (2026-11-17) — See-Through Panel Bar (Linux)
 
 * Linux: the bar at the bottom of each Bible panel is now really see-through. The bar's window is cut to the shape of its text, status circles and Edit/Properties boxes, so the verse text behind it shows everywhere else (earlier versions still drew a solid bar).
 * Files: `verse_panel_strip.pas`, `formprincipal.pas`.
 
-### 0x. Version 1.1.0.044 (2026-11-17) — Panel Bar Really Transparent (Linux)
+### 0y. Version 1.1.0.044 (2026-11-17) — Panel Bar Really Transparent (Linux)
 
 * The bar at the bottom of each Bible panel is now truly transparent: it draws no background at all, only its text, status circles and Edit/Properties boxes, so verse text running behind it stays visible (Linux).
 * Files: `verse_panel_strip.pas`, `formprincipal.pas`.
 
-### 0w. Version 1.1.0.043 (2026-11-17) — Truly Transparent Panel Bar, Settings Kept Across Updates (Linux)
+### 0x. Version 1.1.0.043 (2026-11-17) — Truly Transparent Panel Bar, Settings Kept Across Updates (Linux)
 
 * The bar at the bottom of each Bible panel is now really see-through: only its text, status circles and Edit/Properties boxes are drawn, so verse text behind it can be seen (Linux).
 * Linux: settings (default dictionaries, skin, etc.) are now kept in the .config/iBiblia folder of your user account instead of next to the program, so unpacking a new version in another folder no longer loses them. An existing iBiblia.ini next to the program is copied there the first time.
 * Files: `verse_panel_strip.pas`, `formprincipal.pas`.
 
-### 0v. Version 1.1.0.042 (2026-11-17) — Transparent Panel Bottom Bar
+### 0w. Version 1.1.0.042 (2026-11-17) — Transparent Panel Bottom Bar
 
 * The bar at the bottom of each Bible panel (Source, Destination, Reference 1, Reference 2) no longer has its own background colour or top line: it takes the panel's colour, so only the panel name, status circles, Edit and Properties show.
 * Files: `verse_panel_strip.pas`.
 
-### 0u. Version 1.1.0.041 (2026-11-17) — Classic Skin Always Light (Linux)
+### 0v. Version 1.1.0.041 (2026-11-17) — Classic Skin Always Light (Linux)
 
 * Linux: the Classic skin is now always light, even when the desktop (KDE) theme is dark. Controls, menus, message boxes and the window title bar use light colours with Classic; other skins use their own colours as before.
 * Files: `unitskins.pas`.
 
-### 0t. Version 1.1.0.040 (2026-11-17) — Faster Word Association (Dictionaries)
+### 0u. Version 1.1.0.040 (2026-11-17) — Faster Word Association (Dictionaries)
 
 * Faster word association with large dictionaries: the English word dictionary (e.g. Webster 1828) is searched through an in-memory name list instead of scanning the whole file for every word you point at, which made association feel slower and slower after updating to big dictionaries.
 * Files: `dictionary_manager.pas`.
 
-### 0s. Version 1.1.0.039 (2026-11-17) — Seamless Linux Updates, Faster Translation Memory
+### 0t. Version 1.1.0.039 (2026-11-17) — Seamless Linux Updates, Faster Translation Memory
 
 * Linux updates are now seamless: new versions download in the background by default (no installer step), then a small 'Restart now / Later' box appears. 'Restart now' installs the update, asks to save any unsaved changes, and reopens iBiblia by itself. 'Later' installs it when you next close iBiblia.
 * Much less slowing down with use (Linux): the Translation memory panel rebuilt long lists with repeated text processing that grew with the project; it is now several times faster, shows the 12 most used translations per word with a '+N more' link to see all, and gives the same order as before. Dictionary look-ups are remembered for the session (and cleared when a dictionary is changed), and a dictionary file that was replaced with a newer copy is reopened when you press OK in the dictionary settings.
 * Files: `unitupdate.pas`, `chapterview.pas`, `translation_memory_model.pas`, `dictionary_manager.pas`.
 
-### 0r. Version 1.1.0.038 (2026-11-16) — Paste Without Line-Break Error
+### 0s. Version 1.1.0.038 (2026-11-16) — Paste Without Line-Break Error
 
 * Pasting text from another program into the verse editor no longer causes the 'line break' error. Line breaks in the pasted text (from documents, web pages or other Bible programs) become single spaces, as Rubio planned for issue #122. Text copied inside iBiblia is pasted unchanged. (The fix for the lost first verse, 'Prevent saving unloaded verse views', was already included.)
 * Files: `theword_wysiwyg_editor_control.pas`.
 
-### 0q. Version 1.1.0.037 (2026-11-16) — Dark Title Bar on Linux (KDE)
+### 0r. Version 1.1.0.037 (2026-11-16) — Dark Title Bar on Linux (KDE)
 
 * Linux (KDE): the window title bar now takes the dark skin colours. KDE draws title bars itself; iBiblia now tells it which colours to use for each window (through the _KDE_NET_WM_COLOR_SCHEME hint). With a light skin the desktop's own colours are used again. Message boxes drawn by GTK itself may still use your KDE title colours.
 * Files: `unitskins.pas`.
 
-### 0p. Version 1.1.0.036 (2026-11-16) — Dark Message Boxes on Linux
+### 0q. Version 1.1.0.036 (2026-11-16) — Dark Message Boxes on Linux
 
 * Linux: message boxes (such as 'Close project' and 'Clear associations') are dark in a dark skin. They are drawn by GTK and kept the system's light colours; their window, buttons and text now follow the skin.
 * Files: `unitskins.pas`.
 
-### 0o. Version 1.1.0.035 (2026-11-16) — Saved Indicator on Linux
+### 0p. Version 1.1.0.035 (2026-11-16) — Saved Indicator on Linux
 
 * Linux: the Saved / Unsaved changes indicator at the bottom left of the window is back (green 'Saved', red 'Unsaved changes'). GTK draws the status bar itself and hid the indicator; it now sits over the left end of the status bar, and other status messages (such as 'Analyzing verse...') appear next to it.
 * Files: `formprincipal.pas`.
 
-### 0n. Version 1.1.0.034 (2026-11-16) — Dark Theme in All Linux Windows
+### 0o. Version 1.1.0.034 (2026-11-16) — Dark Theme in All Linux Windows
 
 * Linux: consistent dark theme in all windows. The scrollbars, buttons, tab strips, drop-down lists and window backgrounds that GTK draws itself stayed light inside a dark skin (most visible in the word popup, the verse tree and the status list); they now follow the skin colours, and go back to the system theme with a light skin. The window title bars are drawn by your desktop and follow its theme.
 * Files: `unitskins.pas`, `FormDictionaryPopup.pas`.
 
-### 0m. Version 1.1.0.033 (2026-11-16) — Timotheos Synchronization on Linux
+### 0n. Version 1.1.0.033 (2026-11-16) — Timotheos Synchronization on Linux
 
 * Linux: synchronization with Timotheos works again. iBiblia → Timotheos and Timotheos → iBiblia follow each other's verse through the same two small files Timotheos uses on Windows (ibiblia-sync-in.json / ibiblia-sync-out.json in its user-data folder, e.g. ~/.local/share/org.timotheos.bible or ~/.config/Timotheos), and a running Timotheos is detected through /proc. The sync button on the toolbar and Tools > Synchronization with Timotheos are back on Linux (theWord sync stays Windows-only).
 * Files: `tanglaw_sync.pas`, `formprincipal.pas`.
 
-### 0l. Version 1.1.0.032 (2026-11-16) — Broken Menu Entries on Linux
+### 0m. Version 1.1.0.032 (2026-11-16) — Broken Menu Entries on Linux
 
 * Linux: iBiblia now removes broken applications-menu entries for itself (for example one left by an older copy of iBiblia that was moved or deleted, which showed 'Could not find the program ...' when clicked), and keeps one working entry for the copy you run.
 * Files: `app_updater.pas`.
 
-### 0k. Version 1.1.0.031 (2026-11-16) — Restart After Update on Linux
+### 0l. Version 1.1.0.031 (2026-11-16) — Restart After Update on Linux
 
 * Linux: after an automatic update the new iBiblia now starts by itself. It used to start while the old one was still closing, and failed with 'Unable to open file ... iBiblia.ini: Try again'. The restart now waits (up to 20 seconds) until the old copy has exited.
 * Files: `app_updater.pas`.
 
-### 0j. Version 1.1.0.030 (2026-11-16) — Applications Menu Entry on Linux
+### 0k. Version 1.1.0.030 (2026-11-16) — Applications Menu Entry on Linux
 
 * Linux: iBiblia now adds itself to the applications menu the first time it runs from a folder (a menu entry for your user only, with the iBiblia icon), and updates the entry if you move the folder. Set IBIBLIA_NO_MENU=1 to turn this off. The install-menu-entry.sh script is still included.
 * Files: `app_updater.pas`, `unitupdate.pas`.
 
-### 0i. Version 1.1.0.029 (2026-11-16) — Dictionary Settings and Popup Paragraphs
+### 0j. Version 1.1.0.029 (2026-11-16) — Dictionary Settings and Popup Paragraphs
 
 * Per-module dictionaries: when the default dictionaries are enabled in Project > Properties, iBiblia no longer looks for (or complains about) the dictionary selected for each text. Dictionary paths saved on Windows (such as C:/Users/.../x.dct.twm) are no longer treated as folders inside the program folder on Linux: they are looked for next to the project or the program by file name, and any message shows the real saved path.
 * Linux: dictionary entries in the word popup now keep their paragraph formatting: indented and hanging-indent lines (1), 1a), A., II.) and the space between paragraphs, as on Windows.
 * Files: `Project.pas`, `FormDictionaryPopup.pas`.
 
-### 0h. Version 1.1.0.028 (2026-11-16) — Linux Popup Speed and Wheel Selection
+### 0i. Version 1.1.0.028 (2026-11-16) — Linux Popup Speed and Wheel Selection
 
 * Linux: the word definition popup no longer slows down and freezes iBiblia. Each time it showed a definition, the GTK text box kept every colour/bold/italic style it had ever used, so after a few dozen words the program spent all its time on the popup. Each style is now created once and reused (hovering 12 words: about 1 second of work instead of 10).
 * Mouse-wheel word selection steps through the real source words only: it skipped onto the interlinear glosses (the small 'Shall Be', 'Great,' words) in a source text such as TRi. When the project's auto-advance only stops on words with Strong's or morphology, the wheel follows the same rule.
 * Files: `FormDictionaryPopup.pas` (cached GTK text tags instead of RichMemo's per-call tags), `Verse.pas` (wheel word filter).
 
-### 0g. Version 1.1.0.027 (2026-11-16) — Automatic Updates
+### 0h. Version 1.1.0.027 (2026-11-16) — Automatic Updates
 
 * Automatic updates: iBiblia checks the SalitaNgDiyos/ibiblia GitHub releases a few seconds after it starts. When a newer version exists, a window shows the release notes and offers Update and restart, Skip this version or Later. The download is verified with SHA-256 before anything is installed, and your projects and iBiblia.ini are never touched.
 * Tick 'Install future updates automatically' in that window to download new versions in the background and install them when you close iBiblia; the next start is already the new version.
@@ -188,7 +193,7 @@
 * **How it works (`app_updater.pas`, `unitupdate.pas`)**: the program asks the GitHub API for the latest release, picks `iBiblia-<version>-windows-x64.zip` or `iBiblia-<version>-linux-x86_64.zip`, checks it against `SHA256SUMS.txt`, unpacks it and swaps the files in. Each replaced file is first renamed to `<name>.old-update` (allowed while the program runs, on Windows and Linux) and deleted at the next start; if any step fails the old files are put back. It does nothing when the program folder is not writable.
 * **Releases (`.github/workflows/release.yml`)**: pushing a tag such as `v1.1.0.027` builds both packages with Lazarus on GitHub Actions and publishes the release with the checksums and these notes. The tag must match the version in `iBiblia.lpi` and `iBiblia-linux.lpi`.
 
-### 0f. Version 1.1.0.026 (2026-11-16) — Linux Audit of the New Features Guide
+### 0g. Version 1.1.0.026 (2026-11-16) — Linux Audit of the New Features Guide
 
 An audit of the 12 topics of Help > New Features User Guide on the Linux build found and fixed:
 
@@ -201,7 +206,7 @@ An audit of the 12 topics of Help > New Features User Guide on the Linux build f
 
 Checked and working on Linux: wheel/click/right-click association, paired-word highlight and dictionary popup, hover chevrons, status circles and keys 1–4 with tree roll-up, Properties and Edit modes, Enter/Shift+Enter paragraph keys, Raw view, Cancel, skin toggle (Ctrl+Shift+D), Find in project (Ctrl+F) and double-click navigation, status filter and F8, USFM export (headings, footnotes, words of Jesus, added words), AI options dialog, toolbar icon sizes, right-to-left panel toggle, Translation memory tab and translator-note hover preview.
 
-### 0e. Version 1.1.0.025 (2026-11-16) — Paragraph Indents in the Windows Verse Panels
+### 0f. Version 1.1.0.025 (2026-11-16) — Paragraph Indents in the Windows Verse Panels
 
 * **`<PI>`/`<PF>` Indents and the `<CM>` Gap on Windows (`directwrite_paragraph_layout.pas`, `directwrite_syntagm_view.pas`)**: DirectWrite has no paragraph indent, so a verse that carries theWord paragraph formatting is now laid out with one DirectWrite layout per paragraph:
   * each paragraph is narrowed by its `<PI>` indent and drawn shifted by it, so wrapped lines stay indented;
@@ -210,14 +215,14 @@ Checked and working on Linux: wheel/click/right-click association, paired-word h
   * The combined layout answers the same calls as a single DirectWrite layout (drawing, hit testing, caret and selection rectangles, line and cluster metrics), translating text positions between the verse and its paragraphs. Verses without `<PI>`, `<PF>` or `<CM>` keep the single native layout.
 * Checked with a Windows (win64) cross build run under Wine: the Destination panel draws `<CM><PI2>` and `<PF>` paragraphs indented, wrapped lines included. Wine does not implement DirectWrite hit testing, so word clicks were not testable there.
 
-### 0d. Version 1.1.0.024 (2026-11-16) — Paragraph Tags in the Verse Panels
+### 0e. Version 1.1.0.024 (2026-11-16) — Paragraph Tags in the Verse Panels
 
 * **Paragraph Tags in the Source, Destination, Reference 1 and Reference 2 Panels (`verse_visual_adapter.pas`, `verse_visual_document.pas`, `directwrite_syntagm_view.pas`)**:
   * `<CM>` and `<CI>` now break the line; `<CM>` also leaves a gap above the next paragraph. Both show a dim marker like `<CL>` does (pilcrow for `<CM>`, reversed pilcrow for `<CI>`).
   * `<PI>` / `<PI1>`..`<PI7>` indent the whole paragraph and `<PF>` / `<PF1>`..`<PF7>` its first line (`<PI0>`, `<Pi>` and `<PF0>` reset); level 1 is 40 px, +20 px per level. Indents end at the next line break.
   * The indents are drawn by the text layout used on Linux. The Windows DirectWrite view receives the same line breaks, but its indents are not drawn yet (drawn from 1.1.0.025).
 
-### 0c. Version 1.1.0.023 (2026-11-16) — theWord Paragraph Tags in the Chapter Panel & Folder Info in About
+### 0d. Version 1.1.0.023 (2026-11-16) — theWord Paragraph Tags in the Chapter Panel & Folder Info in About
 
 * **theWord Paragraph Tags in the Chapter Panel (`chapterview.pas`)**: The chapter panel now renders the theWord paragraph formatting tags, in Paragraph mode:
   * `<CM>` starts a spaced paragraph, `<CI>` a tight paragraph and `<CL>` a new line inside the same paragraph.
@@ -228,11 +233,11 @@ Checked and working on Linux: wheel/click/right-click association, paired-word h
   * Out-of-contract spellings (`<PI8>`, `<Pf>`) are ignored. With Paragraph mode off the tags are ignored, as before.
 * **Program and Working Folder in About (`unitabout.pas`, `formprincipal.pas`)**: The About box lists the program folder and the working (settings) folder, the place `iBiblia.ini` is kept (the program folder, or `$XDG_CONFIG_HOME/iBiblia` / `~/.config/iBiblia` on Linux when the program folder is read-only). Long paths are shortened in the middle, the hint shows the full path, and a click opens the folder. When the settings are kept beside the program, a single "Program and working folder" line is shown instead of two.
 
-### 0c. Version 1.1.0.021 (2026-11-15) — Dialog Skin Completed on First Open
+### 0d. Version 1.1.0.021 (2026-11-15) — Dialog Skin Completed on First Open
 
 * **Dialog Controls Skinned on First Open (`formprincipal.pas`)**: In 1.1.0.020 a dialog such as **Export project** got its dark background on first open, but its tab pages, check boxes and buttons stayed light. The dialog becomes the active form before its window handles exist, and the dark-mode subclass hooks (`HookButtonControl`, `HookCheckBoxControl`, `HookTabControl`, `HookFormControl`) need those handles. `SkinFormOnce` now sets the colours at once, queues `DeferredSkinForm` (`Application.QueueAsyncCall`) to apply the full skin once the dialog is visible, creates the handles of controls on tab pages not yet shown (`EnsureChildHandles`), and only then records the form as skinned.
 
-### 0b. Version 1.1.0.020 (2026-11-15) — Go to Verse Lookup & Skin Fixes
+### 0c. Version 1.1.0.020 (2026-11-15) — Go to Verse Lookup & Skin Fixes
 
 * **Go to Verse Lookup Box (`FormGoToVerse.pas`, `verse_lookup.pas`, `bible_versification.pas`, `formprincipal.pas`)**: Added **Tools > Go to verse...** (`Ctrl+G`), a theWord-style lookup box. Type `jn 3 16`, `jn 3.16`, `1co 13:4` or `ps 23` and press `Enter`.
   * A space, period, colon or comma separates chapter and verse.

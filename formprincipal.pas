@@ -14,7 +14,7 @@ uses
   Classes, SysUtils, FileUtil, LazFileUtils, Forms, Controls, Graphics, Dialogs, Menus, LCLIntf,
   ActnList, ComCtrls, ExtCtrls, StdCtrls, BibleScope, Project, IniFiles, Math,
   Syntagm, LCLTranslator, unitabout, unitupdate, PCRE, Verse, LCLProc, LazLogger,
-  LCLType, LazUTF8, ChapterView, UnitPleaseWait, CommentsView, ONTTokenizer,
+  LCLType, LMessages, LazUTF8, ChapterView, UnitPleaseWait, CommentsView, ONTTokenizer,
   status_catalog, SynEdit, project_setup_model, translation_memory_model,
   project_creation_staging, FormApplicationPreferences, theword_sync_state,
   ui_icons, ui_style, unitskins, menubar_skin, verse_panel_strip;
@@ -257,6 +257,7 @@ type
     FBoldStrongsEnabled: Boolean;
     FTreeRearrangeEnabled: Boolean;
     FTreeRearrangeItem: TMenuItem;
+    FTreeOldWindowProc: TWndMethod;
     FAlwaysOnTopEnabled: Boolean;
     FDockPopupRightEnabled: Boolean;
     FDockPopupRightMenuItem: TMenuItem;
@@ -419,6 +420,8 @@ type
     procedure TreeViewEndDrag(Sender, Target: TObject; X, Y: Integer);
     function TreeGripWidth: Integer;
     procedure TreeRearrangeClick(Sender: TObject);
+    procedure TreeViewWindowProc(var Message: TLMessage);
+    procedure ApplyTreeScrollMode;
     procedure TreeDragScrollTick(Sender: TObject);
     function TreeDropTargetAt(X, Y: Integer; out Target: TTreeNode;
       out Mode: TNodeAttachMode): Boolean;
@@ -5224,6 +5227,7 @@ begin
   FTreeRearrangeEnabled := opts.ReadBool('opcoes', 'tree.rearrange', true);
   if Assigned(FTreeRearrangeItem) then
     FTreeRearrangeItem.Checked := FTreeRearrangeEnabled;
+  ApplyTreeScrollMode;
   FAutoSaveEnabled := opts.ReadBool('opcoes', 'auto.save', false);
   FSaveOnLastStatus := opts.ReadBool('opcoes', 'auto.save.last.status', false);
   FGuideModeEnabled := opts.ReadBool('opcoes', 'guide.mode', true);
@@ -5301,6 +5305,8 @@ begin
   CreateCommentsGroupBox;
   TreeView1.Hint := ' ';
   TreeView1.ShowHint := True;
+  FTreeOldWindowProc := TreeView1.WindowProc;
+  TreeView1.WindowProc := @TreeViewWindowProc;
   TreeView1.OnKeyDown := @TreeViewKeyDown;
   TreeView1.OnCustomDrawItem := @TreeViewCustomDrawItem;
   TreeView1.OnAdvancedCustomDrawItem := @TreeViewAdvancedCustomDrawItem;
@@ -5857,9 +5863,34 @@ begin
   Result := UIScale(Self, 26);
 end;
 
+{ The grips are painted at the right edge of the visible tree. When the tree
+  scrolled sideways, the old grips slid along with the rows and piled up, so
+  there is no sideways scrolling while the grips show. Any other scrolling
+  repaints the whole tree. }
+procedure TMainForm.ApplyTreeScrollMode;
+begin
+  if not Assigned(TreeView1) then
+    Exit;
+  if FTreeRearrangeEnabled then
+    TreeView1.ScrollBars := ssAutoVertical
+  else
+    TreeView1.ScrollBars := ssAutoBoth;
+end;
+
+procedure TMainForm.TreeViewWindowProc(var Message: TLMessage);
+begin
+  FTreeOldWindowProc(Message);
+  if FTreeRearrangeEnabled then
+    case Message.Msg of
+      LM_VSCROLL, LM_HSCROLL, LM_MOUSEWHEEL, LM_SIZE, LM_KEYDOWN:
+        TreeView1.Invalidate;
+    end;
+end;
+
 procedure TMainForm.TreeRearrangeClick(Sender: TObject);
 begin
   FTreeRearrangeEnabled := FTreeRearrangeItem.Checked;
+  ApplyTreeScrollMode;
   PersistGlobalPreference('tree.rearrange', FTreeRearrangeEnabled);
   if not FTreeRearrangeEnabled then
   begin

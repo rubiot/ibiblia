@@ -1,3 +1,6 @@
+Version 1.1.0.058 (64-bit Edition) - 2026-11-19
+- Bible tree: the extra drag grips (several columns of dots, left behind when the tree scrolled sideways) and the garbled rows after scrolling are fixed. While the grips show, the tree no longer scrolls sideways, and any scrolling repaints the whole tree. Turn the Tools > Rearrange switch off to get the sideways scrollbar back.
+
 Version 1.1.0.057 (64-bit Edition) - 2026-11-19
 - Right-click a book, chapter or verse in the Bible tree and choose Delete this book / chapter / verse. iBiblia asks "Are you sure you want to delete this Book (Chapter, Verse)?" with Yes and No. On Yes the rows leave the project (texts, associations, comments, status), the tree is rebuilt without them, and a copy of the project made just before is kept next to it (name ending _before-delete_date_time).
 - A project remembers whether it is Old Testament, New Testament or both after a deletion, so deleting the first or last verse does not change the project's scope. Deleting a whole apocrypha book also removes its name and place.
