@@ -5856,6 +5856,9 @@ begin
         bookLines.Add('\id ' + code + ' ' + titleStr);
         bookLines.Add('\usfm 3.0');
         bookLines.Add('\ide UTF-8');
+        { tells the readers (Timotheos) that 5-digit numbers such as G13970 are
+          the real Strong's number, not an unfoldingWord number with a 0 added }
+        bookLines.Add('\rem iBiblia: Strong''s numbers are written exactly as tagged');
         bookLines.Add('\h ' + nameStr);
         bookLines.Add('\toc1 ' + nameStr);
         bookLines.Add('\toc2 ' + nameStr);

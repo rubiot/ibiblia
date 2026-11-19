@@ -114,6 +114,9 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.067 (64-bit Edition) - 2026-11-19' + LineEnding +
+  '- Each book file of the USFM 3.0 export now carries a \rem line saying that the Strong''s numbers are written exactly as tagged. Timotheos reads a 5-digit number ending in 0 (such as G13970) as an unfoldingWord number with a 0 added and showed G1397; with this line it keeps the real number. Timotheos 0.6.73 also checks the numbers in the file itself.' + LineEnding +
+  '' + LineEnding +
   'Version 1.1.0.066 (64-bit Edition) - 2026-11-19' + LineEnding +
   '- Export project now has a Choose books... button (Tagged destination text and Interlinear source text) that opens the same check tree as Create patch: tick the books, chapters or verses to export, with Select all and Deselect all. Everything is ticked at first. The tree lists what the main Bible tree lists, apocrypha books included.' + LineEnding +
   '- In a theWord module the verses you did not choose are written as empty lines (the verse positions stay right); e-Sword, MySword, USFM and USFX files simply leave them out, and a USFM book with no chosen verse gets no file.' + LineEnding +
