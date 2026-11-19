@@ -345,6 +345,11 @@ type
     FStripTimer: TTimer;
     FActionNewFeaturesGuide: TAction;
     FNewFeaturesGuideMenuItem: TMenuItem;
+    FTreeDragNode: TTreeNode;
+    FTreeDropNode: TTreeNode;
+    FTreeDropMode: TNodeAttachMode;
+    FTreeDropValid: Boolean;
+    FTreeDragScrollTimer: TTimer;
     FRxMorpho: IRegex;
     FSyncTheWordToIBiblia: boolean;
     FSyncIBibliaToTheWord: boolean;
@@ -396,6 +401,23 @@ type
     procedure ApplyToolbarIconSize;
     procedure TreeViewCustomDrawItem(Sender: TCustomTreeView; Node: TTreeNode;
       State: TCustomDrawState; var DefaultDraw: Boolean);
+    { Arranging books, chapters and verses: every row has a grip at its right
+      end; click it, hold and drag the row up or down. }
+    procedure TreeViewAdvancedCustomDrawItem(Sender: TCustomTreeView;
+      Node: TTreeNode; State: TCustomDrawState; Stage: TCustomDrawStage;
+      var PaintImages, DefaultDraw: Boolean);
+    procedure TreeViewMouseDown(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
+    procedure TreeViewMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
+    procedure TreeViewDragOver(Sender, Source: TObject; X, Y: Integer;
+      State: TDragState; var Accept: Boolean);
+    procedure TreeViewDragDrop(Sender, Source: TObject; X, Y: Integer);
+    procedure TreeViewEndDrag(Sender, Target: TObject; X, Y: Integer);
+    function TreeGripWidth: Integer;
+    procedure TreeDragScrollTick(Sender: TObject);
+    function TreeDropTargetAt(X, Y: Integer; out Target: TTreeNode;
+      out Mode: TNodeAttachMode): Boolean;
+    procedure ClearTreeDropMark;
     procedure ScreenActiveFormChanged(Sender: TObject; Form: TCustomForm);
     procedure ScreenRemoveForm(Sender: TObject; Form: TCustomForm);
     procedure SkinFormOnce(AForm: TCustomForm);
@@ -2572,8 +2594,7 @@ end;
 
 function TMainForm.FindCurrentVerseTreeNode: TTreeNode;
 var
-  b, c, v, BookIdx, i: Integer;
-  BookNode, ChapterNode, VerseNode: TTreeNode;
+  b, c, v: Integer;
 begin
   Result := nil;
   if (CurrentProject = nil) or (not CurrentProject.Ativo) or
@@ -2589,43 +2610,8 @@ begin
     Exit;
   end;
 
-  if Assigned(TreeView1.Selected) and (not TreeView1.Selected.HasChildren) and
-     Assigned(TreeView1.Selected.Parent) and
-     (TreeView1.Selected.Text = IntToStr(v)) and
-     (TreeView1.Selected.Parent.Text = IntToStr(c)) then
-  begin
-    Result := TreeView1.Selected;
-    Exit;
-  end;
-
-  if (b >= 40) and (TreeView1.Items.Count <= 27) then
-    BookIdx := b - 40
-  else
-    BookIdx := b - 1;
-
-  BookNode := TreeView1.Items[0];
-  for i := 1 to BookIdx do
-  begin
-    if not Assigned(BookNode) then Exit;
-    BookNode := BookNode.GetNextSibling;
-  end;
-  if not Assigned(BookNode) then Exit;
-
-  ChapterNode := BookNode.GetFirstChild;
-  for i := 1 to c - 1 do
-  begin
-    if not Assigned(ChapterNode) then Exit;
-    ChapterNode := ChapterNode.GetNextSibling;
-  end;
-  if not Assigned(ChapterNode) then Exit;
-
-  VerseNode := ChapterNode.GetFirstChild;
-  for i := 1 to v - 1 do
-  begin
-    if not Assigned(VerseNode) then Exit;
-    VerseNode := VerseNode.GetNextSibling;
-  end;
-  Result := VerseNode;
+  // a verse is found by who it is: the user may have arranged the tree
+  Result := CurrentProject.FindTreeNode(CurrentProject.ID);
 end;
 
 function TMainForm.RecalculateTreeParentStatuses: Boolean;
@@ -5231,6 +5217,13 @@ begin
   TreeView1.ShowHint := True;
   TreeView1.OnKeyDown := @TreeViewKeyDown;
   TreeView1.OnCustomDrawItem := @TreeViewCustomDrawItem;
+  TreeView1.OnAdvancedCustomDrawItem := @TreeViewAdvancedCustomDrawItem;
+  TreeView1.OnMouseDown := @TreeViewMouseDown;
+  TreeView1.OnMouseMove := @TreeViewMouseMove;
+  TreeView1.OnDragOver := @TreeViewDragOver;
+  TreeView1.OnDragDrop := @TreeViewDragDrop;
+  TreeView1.OnEndDrag := @TreeViewEndDrag;
+  TreeView1.DragMode := dmManual;
   TreeView1.OnShowHint := @TreeViewShowHint;
   TreeView1.Options := TreeView1.Options - [tvoToolTips];
 
@@ -5765,6 +5758,269 @@ begin
     Sender.Canvas.Brush.Color := CurrentSkin.TreeBg;
     Sender.Canvas.Font.Color := CurrentSkin.TreeText;
   end;
+end;
+
+{ ---------------- arranging the books, chapters and verses ---------------- }
+
+type
+  { gives this unit the protected GetNodeAtY of the tree }
+  TTreeViewRows = class(TTreeView);
+
+function TMainForm.TreeGripWidth: Integer;
+begin
+  Result := UIScale(Self, 26);
+end;
+
+procedure TMainForm.ClearTreeDropMark;
+begin
+  if FTreeDropValid or Assigned(FTreeDropNode) then
+  begin
+    FTreeDropValid := False;
+    FTreeDropNode := nil;
+    TreeView1.Invalidate;
+  end;
+end;
+
+{ The grip: two columns of three dots at the right end of every row, and the
+  mark that shows where a dragged row would land. }
+procedure TMainForm.TreeViewAdvancedCustomDrawItem(Sender: TCustomTreeView;
+  Node: TTreeNode; State: TCustomDrawState; Stage: TCustomDrawStage;
+  var PaintImages, DefaultDraw: Boolean);
+var
+  R: TRect;
+  CX, CY, Dot, Gap, Col, Row, LineY: Integer;
+  C: TCanvas;
+begin
+  DefaultDraw := True;
+  if Stage <> cdPostPaint then
+    Exit;
+  if (CurrentProject = nil) or (not CurrentProject.Ativo) then
+    Exit;
+
+  C := Sender.Canvas;
+  R := Node.DisplayRect(False);
+  R.Left := 0;
+  R.Right := Sender.ClientWidth;
+
+  { the grip }
+  Dot := UIScale(Self, 2);
+  Gap := UIScale(Self, 2);
+  CX := R.Right - UIScale(Self, 16);
+  CY := (R.Top + R.Bottom) div 2 - (3 * Dot + 2 * Gap) div 2;
+  if cdsSelected in State then
+    C.Brush.Color := CurrentSkin.HighlightText
+  else if CurrentSkin.Id = skClassic then
+    C.Brush.Color := clGrayText
+  else
+    C.Brush.Color := CurrentSkin.TreeText;
+  C.Brush.Style := bsSolid;
+  for Col := 0 to 1 do
+    for Row := 0 to 2 do
+      C.FillRect(Rect(CX + Col * (Dot + Gap), CY + Row * (Dot + Gap),
+        CX + Col * (Dot + Gap) + Dot, CY + Row * (Dot + Gap) + Dot));
+
+  { where the dragged row would land }
+  if FTreeDropValid and (Node = FTreeDropNode) then
+  begin
+    C.Pen.Style := psSolid;
+    C.Pen.Width := UIScale(Self, 2);
+    C.Pen.Color := clHighlight;
+    case FTreeDropMode of
+      naInsert, naAddFirst:
+        begin
+          LineY := R.Top + 1;
+          C.Line(R.Left, LineY, R.Right, LineY);
+        end;
+      naInsertBehind, naAdd:
+        begin
+          LineY := R.Bottom - 1;
+          C.Line(R.Left, LineY, R.Right, LineY);
+        end;
+    else
+      begin
+        C.Brush.Style := bsClear;
+        C.Rectangle(R.Left + 1, R.Top + 1, R.Right - 1, R.Bottom - 1);
+      end;
+    end;
+    C.Pen.Width := 1;
+  end;
+end;
+
+procedure TMainForm.TreeViewMouseMove(Sender: TObject; Shift: TShiftState;
+  X, Y: Integer);
+begin
+  if (CurrentProject <> nil) and CurrentProject.Ativo and
+     (X >= TreeView1.ClientWidth - TreeGripWidth) and
+     (TTreeViewRows(TreeView1).GetNodeAtY(Y) <> nil) then
+    TreeView1.Cursor := crSizeNS
+  else
+    TreeView1.Cursor := crDefault;
+end;
+
+procedure TMainForm.TreeViewMouseDown(Sender: TObject; Button: TMouseButton;
+  Shift: TShiftState; X, Y: Integer);
+var
+  Node: TTreeNode;
+begin
+  if (Button <> mbLeft) or (CurrentProject = nil) or (not CurrentProject.Ativo) then
+    Exit;
+  if X < TreeView1.ClientWidth - TreeGripWidth then
+    Exit;
+  Node := TTreeViewRows(TreeView1).GetNodeAtY(Y);
+  if Node = nil then
+    Exit;
+  FTreeDragNode := Node;
+  if not Assigned(FTreeDragScrollTimer) then
+  begin
+    FTreeDragScrollTimer := TTimer.Create(Self);
+    FTreeDragScrollTimer.Interval := 90;
+    FTreeDragScrollTimer.OnTimer := @TreeDragScrollTick;
+  end;
+  FTreeDragScrollTimer.Enabled := True;
+  TreeView1.BeginDrag(False, UIScale(Self, 4));
+end;
+
+{ While a row is dragged near the top or bottom edge, the list scrolls. }
+procedure TMainForm.TreeDragScrollTick(Sender: TObject);
+var
+  P: TPoint;
+  Edge: Integer;
+  N: TTreeNode;
+begin
+  if (GetKeyState(VK_LBUTTON) and $8000) = 0 then
+  begin
+    FTreeDragScrollTimer.Enabled := False;
+    Exit;
+  end;
+  if not TreeView1.Dragging then
+    Exit;
+  P := TreeView1.ScreenToClient(Mouse.CursorPos);
+  Edge := UIScale(Self, 28);
+  N := TreeView1.TopItem;
+  if N = nil then
+    Exit;
+  if P.Y < Edge then
+  begin
+    N := N.GetPrevVisible;
+    if Assigned(N) then
+      TreeView1.TopItem := N;
+  end
+  else if P.Y > TreeView1.ClientHeight - Edge then
+  begin
+    N := N.GetNextVisible;
+    if Assigned(N) and (N <> TreeView1.BottomItem) then
+      TreeView1.TopItem := N;
+  end;
+end;
+
+{ Where would the dragged row land with the mouse at (X, Y)?  Over a row of
+  the same kind it goes before or after that row; over the book (or chapter)
+  it belongs to, it goes inside as the first or last chapter (or verse). }
+function TMainForm.TreeDropTargetAt(X, Y: Integer; out Target: TTreeNode;
+  out Mode: TNodeAttachMode): Boolean;
+var
+  H, A: TTreeNode;
+  R: TRect;
+  Upper: Boolean;
+  L: Integer;
+begin
+  Result := False;
+  Target := nil;
+  Mode := naInsert;
+  if (not Assigned(FTreeDragNode)) or (CurrentProject = nil) then
+    Exit;
+
+  H := TTreeViewRows(TreeView1).GetNodeAtY(Y);
+  if H = nil then
+  begin
+    { below the last row: after the last row }
+    H := TreeView1.Items.GetFirstNode;
+    if H = nil then
+      Exit;
+    while Assigned(H.GetNextVisible) do
+      H := H.GetNextVisible;
+    Y := MaxInt;
+  end;
+
+  L := FTreeDragNode.Level;
+  R := H.DisplayRect(False);
+  Upper := Y < (R.Top + R.Bottom) div 2;
+
+  if H.Level = L - 1 then
+  begin
+    Target := H;
+    if Upper then
+      Mode := naAddChildFirst
+    else
+      Mode := naAddChild;
+  end
+  else if H.Level >= L then
+  begin
+    A := H;
+    while A.Level > L do
+      A := A.Parent;
+    Target := A;
+    if (H = A) and Upper then
+      Mode := naInsert
+    else
+      Mode := naInsertBehind;
+  end
+  else
+    Exit;
+
+  Result := CurrentProject.CanMoveTreeNode(FTreeDragNode, Target, Mode);
+end;
+
+procedure TMainForm.TreeViewDragOver(Sender, Source: TObject; X, Y: Integer;
+  State: TDragState; var Accept: Boolean);
+var
+  Target: TTreeNode;
+  Mode: TNodeAttachMode;
+begin
+  Accept := (Source = TreeView1) and
+    TreeDropTargetAt(X, Y, Target, Mode);
+  if Accept then
+  begin
+    if (not FTreeDropValid) or (FTreeDropNode <> Target) or
+       (FTreeDropMode <> Mode) then
+    begin
+      FTreeDropValid := True;
+      FTreeDropNode := Target;
+      FTreeDropMode := Mode;
+      TreeView1.Invalidate;
+    end;
+  end
+  else
+    ClearTreeDropMark;
+end;
+
+procedure TMainForm.TreeViewDragDrop(Sender, Source: TObject; X, Y: Integer);
+var
+  Target, Moved: TTreeNode;
+  Mode: TNodeAttachMode;
+begin
+  Moved := FTreeDragNode;
+  if (Source <> TreeView1) or (Moved = nil) or
+     (not TreeDropTargetAt(X, Y, Target, Mode)) then
+  begin
+    ClearTreeDropMark;
+    Exit;
+  end;
+  ClearTreeDropMark;
+  if CurrentProject.MoveTreeNode(Moved, Target, Mode) then
+  begin
+    RecalculateTreeParentStatuses;
+    Moved.MakeVisible;
+    TreeView1.Invalidate;
+  end;
+end;
+
+procedure TMainForm.TreeViewEndDrag(Sender, Target: TObject; X, Y: Integer);
+begin
+  ClearTreeDropMark;
+  FTreeDragNode := nil;
+  if Assigned(FTreeDragScrollTimer) then
+    FTreeDragScrollTimer.Enabled := False;
 end;
 
 { Creates the window handles of every control on a form, including those on

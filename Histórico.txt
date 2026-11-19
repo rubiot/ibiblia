@@ -1,3 +1,9 @@
+Version 1.1.0.053 (64-bit Edition) - 2026-11-19
+- Arrange the Bible tree your own way: every book, chapter and verse row now has a grip (six small dots) at its right end. Click it, hold, and drag the row up or down; a line shows where it will land, and the list scrolls when you hold the mouse near its top or bottom edge. A verse can be dropped into another chapter, a chapter into another book, and books can change places. Only the position changes: chapter and verse numbers stay as they are, so references keep their meaning. A chapter keeps at least one verse and a book at least one chapter.
+- The arrangement is saved in the project and comes back when you open it again. Right-click the tree > Reset the order of books, chapters and verses puts everything back in the standard order.
+- Exporting a module (theWord, e-Sword, USFM, MySword and the interlinear) now also writes a small .order file next to it (for example amb.nt.order) with your arrangement, so Timotheos shows the books, chapters and verses in the same order. theWord ignores the file. The module itself stays in the standard order.
+- Fixed garbled rows in the left Bible tree while scrolling with the dark and Sepia skins (the tree background was being painted over rows that had just been scrolled into place).
+
 Version 1.1.0.052 (64-bit Edition) - 2026-11-18
 - SWORD (CrossWire) modules can now be used: Bible texts as the Source, Destination or reference text (New project and Project settings), in Add Bible Books and in Replace, and dictionaries (StrongsGreek, StrongsHebrew and others) in the popup dictionary lists. Choose the module's .conf file or its downloaded .zip. Strong's numbers, morphology, footnotes, words of Jesus and the apocrypha books are kept; a SWORD dictionary is converted once to a theWord dictionary. Locked modules are not opened; bzip2 / xz compressed modules need that program installed.
 

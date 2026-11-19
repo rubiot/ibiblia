@@ -415,6 +415,7 @@ type
   public
     procedure OnAIBatchClick(Sender: TObject);
     procedure OnAICancelClick(Sender: TObject);
+    procedure OnResetTreeOrderClick(Sender: TObject);
     constructor Create; overload;
     constructor Create(paineis: array of TScrollbox; navegador: TTreeView; rsituacao: TComboBox; rcomentarios: TControl); overload;
     destructor Destroy; override;
@@ -507,6 +508,16 @@ type
     function AssignMorphologyDictionary(dic: string; textos: STextosBiblicos): boolean;
     procedure SetInfo(info, valor: string);
     function GetInfo(info: string): string;
+    { The user's own arrangement of the books, chapters and verses in the tree
+      (order only; the numbers do not change). It is kept in the project and
+      goes with an exported module as a small ".order" file. }
+    function FindTreeNode(const ref: string): TTreeNode;
+    function TreeOrderIsCustom: Boolean;
+    function CanMoveTreeNode(Node, Target: TTreeNode; Mode: TNodeAttachMode): Boolean;
+    function MoveTreeNode(Node, Target: TTreeNode; Mode: TNodeAttachMode): Boolean;
+    procedure ResetTreeOrder;
+    procedure ApplyStoredTreeOrder;
+    procedure WriteTreeOrderFile(const ModuleFileName: string);
     function GetAIKey(Scope: TAICredentialScope): string;
     function HasAIKey(Scope: TAICredentialScope): Boolean;
     function TryGetAIKey(Scope: TAICredentialScope; out Secret,
@@ -703,6 +714,9 @@ resourcestring
   STranslationExampleRequiresPair = 'Translation examples require an active source verse paired with a destination verse.';
   STranslationExampleRequiresText = 'Translation examples require translated text in the destination verse.';
   SCancelAIProcessing = 'Cancel AI processing';
+  SResetTreeOrder = 'Reset the order of books, chapters and verses';
+  SResetTreeOrderPrompt = 'Put all books, chapters and verses back in their ' +
+    'standard order? The arrangement you made by dragging will be lost.';
   SConfirmApplyAIToBook = 'Are you sure you want to apply the AI flow to the entire book %s?';
   SConfirmApplyAIToChapter = 'Are you sure you want to apply the AI flow to chapter %s?';
   SButtonYes = 'Yes';
@@ -2162,50 +2176,12 @@ begin
 end;
 
 function TProject.FindTreeNodeByReference(const ref: string): TTreeNode;
-var
-  refBookId, refChapter, refVerse: Integer;
-  nb, nc, nv: TTreeNode;
 begin
   Result := nil;
   if not Assigned(FArvore) then Exit;
-
-  // Parse reference
-  if Sscanf(ref, '%d,%d,%d', [@refBookId, @refChapter, @refVerse]) <> 3 then
-    Exit;
-
-  // Find book node
-  nb := FArvore.Items.GetFirstNode;
-  while Assigned(nb) do
-  begin
-    if PtrInt(nb.Data) = refBookId then
-      Break;
-    nb := nb.GetNextSibling;
-  end;
-
-  if not Assigned(nb) then Exit;
-
-  // Find chapter node
-  nc := nb.GetFirstChild;
-  while Assigned(nc) do
-  begin
-    if PtrInt(nc.Data) = refChapter then
-      Break;
-    nc := nc.GetNextSibling;
-  end;
-
-  if not Assigned(nc) then Exit;
-
-  // Find verse node
-  nv := nc.GetFirstChild;
-  while Assigned(nv) do
-  begin
-    if PtrInt(nv.Data) = refVerse then
-    begin
-      Result := nv;
-      Exit;
-    end;
-    nv := nv.GetNextSibling;
-  end;
+  // a verse is found by who it is, not by where it sits: the user may have
+  // arranged the tree differently
+  Result := FBibleTreeCoordinator.FindNodeByReference(ref);
 end;
 
 function TProject.CreateBibleTreeContextMenu: TPopupMenu;
@@ -2239,7 +2215,7 @@ var
   var child: TTreeNode;
   begin
     if node = nil then Exit;
-    if not node.HasChildren then
+    if node.Level >= 2 then
     begin
       GoToReference(FBibleTreeCoordinator.NodeToReferenceID(FEscopo, node));
       dest.Add(FAVersiculo[tbOrigem]);
@@ -2292,6 +2268,32 @@ begin
   else
     aiCancelItem.Enabled := False;
   aiMenu.Add(aiCancelItem);
+
+  // back to the standard order of books, chapters and verses
+  item := TMenuItem.Create(result);
+  item.Caption := '-';
+  result.Items.Add(item);
+  item := TMenuItem.Create(result);
+  item.Caption := SResetTreeOrder;
+  item.Tag := 9101;
+  item.OnClick := @Self.OnResetTreeOrderClick;
+  item.Enabled := TreeOrderIsCustom;
+  result.Items.Add(item);
+end;
+
+procedure TProject.OnResetTreeOrderClick(Sender: TObject);
+var
+  Node: TTreeNode;
+begin
+  if not TreeOrderIsCustom then
+    Exit;
+  if MessageDlg(SResetTreeOrder, SResetTreeOrderPrompt, mtConfirmation,
+    [mbYes, mbNo], 0) <> mrYes then
+    Exit;
+  ResetTreeOrder;
+  Node := FindTreeNodeByReference(ID);
+  if Assigned(Node) then
+    Node.MakeVisible;
 end;
 
 
@@ -4857,6 +4859,10 @@ var
   baseCaption: string;
 begin
   FBibleTreePointedNode := (Sender as TTreeView).GetNodeAt(MousePos.X, MousePos.Y);
+  if Assigned(FArvore) and Assigned(FArvore.PopupMenu) then
+    for i := 0 to FArvore.PopupMenu.Items.Count - 1 do
+      if FArvore.PopupMenu.Items[i].Tag = 9101 then
+        FArvore.PopupMenu.Items[i].Enabled := TreeOrderIsCustom;
   // Allow context menu on leaf (verse) nodes as well — only block when project not active or no node
   if (not Ativo) or (FBibleTreePointedNode = nil) then
     Handled := True;
@@ -5427,6 +5433,7 @@ begin
     RefreshStatusImages;
     PreencherArvore;
     UpdateTree;
+    ApplyStoredTreeOrder;
     //FArvore.FullCollapse;
     FArvore.Enabled := true;
   end;
@@ -7504,6 +7511,13 @@ begin
 
     Result := FProjectExporter.ExportDestinationTextWithStrongs(arquivo, pb, Options,
       @StartScrollingSession, @FinishScrollingSession, @GetID);
+    if Result.Status <> esFailed then
+    begin
+      if Result.OutputFileName <> '' then
+        WriteTreeOrderFile(Result.OutputFileName)
+      else
+        WriteTreeOrderFile(arquivo);
+    end;
   finally
     FExportando := false;
     AfterVerseScroll(nil);
@@ -7563,6 +7577,13 @@ begin
 
     Result := FProjectExporter.ExportInterlinearText(arquivo, pb, rulesRx, replaceTo,
       Options, @StartScrollingSession, @FinishScrollingSession, @GetID);
+    if Result.Status <> esFailed then
+    begin
+      if Result.OutputFileName <> '' then
+        WriteTreeOrderFile(Result.OutputFileName)
+      else
+        WriteTreeOrderFile(arquivo);
+    end;
   finally
     rulesRx.Free;
     replaceTo.Free;
@@ -7765,6 +7786,110 @@ end;
 function TProject.GetInfo(info: string): string;
 begin
   Result := FConfig.ReadString(info);
+end;
+
+const
+  TREE_ORDER_INFO_KEY = 'tree.order';
+
+{ the order is kept on one line in the project: lines joined with ';' }
+function PackTreeOrder(const OrderText: string): string;
+begin
+  Result := Trim(StringReplace(StringReplace(OrderText, #13, '', [rfReplaceAll]),
+    #10, ';', [rfReplaceAll]));
+  while (Result <> '') and (Result[Length(Result)] = ';') do
+    SetLength(Result, Length(Result) - 1);
+end;
+
+function UnpackTreeOrder(const PackedText: string): string;
+begin
+  Result := StringReplace(PackedText, ';', #10, [rfReplaceAll]);
+end;
+
+function TProject.FindTreeNode(const ref: string): TTreeNode;
+begin
+  Result := FindTreeNodeByReference(ref);
+end;
+
+function TProject.TreeOrderIsCustom: Boolean;
+begin
+  Result := Assigned(FArvore) and
+    (FBibleTreeCoordinator.CurrentOrderText <> '');
+end;
+
+function TProject.CanMoveTreeNode(Node, Target: TTreeNode;
+  Mode: TNodeAttachMode): Boolean;
+begin
+  Result := Assigned(FArvore) and FAtivo and
+    FBibleTreeCoordinator.CanMoveNode(Node, Target, Mode);
+end;
+
+function TProject.MoveTreeNode(Node, Target: TTreeNode;
+  Mode: TNodeAttachMode): Boolean;
+begin
+  Result := False;
+  if not CanMoveTreeNode(Node, Target, Mode) then
+    Exit;
+  Result := FBibleTreeCoordinator.MoveNode(Node, Target, Mode, FEscopo,
+    GetStatusDefinitions, @GetAggregateStatusImageIndex);
+  if Result then
+    SetInfo(TREE_ORDER_INFO_KEY, PackTreeOrder(FBibleTreeCoordinator.CurrentOrderText));
+end;
+
+procedure TProject.ResetTreeOrder;
+begin
+  if not Assigned(FArvore) then
+    Exit;
+  FBibleTreeCoordinator.ResetOrder(FEscopo, GetStatusDefinitions,
+    @GetAggregateStatusImageIndex);
+  SetInfo(TREE_ORDER_INFO_KEY, '');
+end;
+
+procedure TProject.ApplyStoredTreeOrder;
+var
+  OrderText: string;
+begin
+  if not Assigned(FArvore) then
+    Exit;
+  OrderText := UnpackTreeOrder(GetInfo(TREE_ORDER_INFO_KEY));
+  if Trim(OrderText) = '' then
+    Exit;
+  FBibleTreeCoordinator.ApplyOrderText(OrderText, FEscopo,
+    GetStatusDefinitions, @GetAggregateStatusImageIndex);
+end;
+
+{ Writes "<module>.order" next to an exported module (and removes an old one
+  when the tree is back in the standard order), so that Timotheos shows the
+  books, chapters and verses in the same order. theWord ignores the file. }
+procedure TProject.WriteTreeOrderFile(const ModuleFileName: string);
+var
+  OrderFile, OrderText: string;
+  Lines: TStringList;
+begin
+  if (ModuleFileName = '') or not Assigned(FArvore) then
+    Exit;
+  OrderFile := ModuleFileName + '.order';
+  OrderText := FBibleTreeCoordinator.CurrentOrderText;
+  try
+    if OrderText = '' then
+    begin
+      if FileExists(OrderFile) then
+        DeleteFile(OrderFile);
+      Exit;
+    end;
+    Lines := TStringList.Create;
+    try
+      Lines.Add('ibiblia-order 1');
+      Lines.Add('# Arrangement of books, chapters and verses made in iBiblia.');
+      Lines.Add('# Order only: chapter and verse numbers are unchanged.');
+      Lines.Text := Lines.Text + OrderText;
+      Lines.WriteBOM := False;
+      Lines.SaveToFile(OrderFile, TEncoding.UTF8);
+    finally
+      Lines.Free;
+    end;
+  except
+    // the module itself was exported; a missing order file is not an error
+  end;
 end;
 
 function TProject.GetAIKey(Scope: TAICredentialScope): string;

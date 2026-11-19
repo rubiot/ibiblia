@@ -3762,7 +3762,7 @@ end;
 function TreeViewSubclassProc(hWnd: HWND; uMsg: UINT; wParam: WPARAM; lParam: LPARAM;
   uIdSubclass: PtrUInt; dwRefData: PtrUInt): LRESULT; stdcall;
 var
-  rc: RECT;
+  rc, rcUpd: RECT;
   hbr: THandle;
   wTheme: WideString;
 begin
@@ -3783,11 +3783,23 @@ begin
 
   if (uMsg = WM_ERASEBKGND) and IsThemedSkin then
   begin
+    { Only the part that is being repainted may be erased. When the tree
+      scrolls (ScrollWindowEx with SW_ERASE) this message arrives with a DC
+      that covers the whole window; filling all of it wiped the rows that had
+      just been scrolled into place and left garbled rows on screen. }
     FillChar(rc, SizeOf(rc), 0);
     GetClientRect(hWnd, @rc);
-    hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.TreeBg));
-    FillRect(THandle(wParam), rc, hbr);
-    DeleteObject(hbr);
+    FillChar(rcUpd, SizeOf(rcUpd), 0);
+    if GetUpdateRect(hWnd, @rcUpd, False) then
+      IntersectRect(rc, rc, rcUpd)
+    else
+      FillChar(rc, SizeOf(rc), 0);
+    if (rc.Right > rc.Left) and (rc.Bottom > rc.Top) then
+    begin
+      hbr := CreateSolidBrush(ColorToRGB(CurrentSkin.TreeBg));
+      FillRect(THandle(wParam), rc, hbr);
+      DeleteObject(hbr);
+    end;
     PaintControlNCBorder(hWnd, CurrentSkin.TreeBg);
     Result := 1;
     Exit;
