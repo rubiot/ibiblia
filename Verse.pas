@@ -1146,6 +1146,8 @@ procedure TVerse.EnableStrongHighlight(strong: string);
 var
   s: TSyntagm;
 begin
+  if not Assigned(FSyntagms) then
+    Exit;
   for s in FSyntagms do
     s.HighlightStrong(strong);
 end;
@@ -1154,6 +1156,8 @@ procedure TVerse.DisableStrongHighlight;
 var
   s: TSyntagm;
 begin
+  if not Assigned(FSyntagms) then
+    Exit;
   for s in FSyntagms do
     s.ToggleStrongHighlight(false);
 end;

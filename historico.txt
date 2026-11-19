@@ -1,4 +1,7 @@
-﻿Version 1.1.0.070 (64-bit Edition) - 2026-11-20
+﻿Version 1.1.0.071 (64-bit Edition) - 2026-11-20
+- Restored hover-underlining for identical Strong's tags in both Source and Destination panels: hovering a tagged word underlines and highlights the hovered word while underlining (only, without background highlight) all other words in the verse carrying the identical Strong's tag (directly or via paired Source tags), and clears the underlines immediately when the pointer moves away.
+
+Version 1.1.0.070 (64-bit Edition) - 2026-11-20
 - Strong's concordance export now adheres to the exact books, order, and Choose books... selection of the main Bible tree instead of being fixed to 66 theWord books: includes Greek OT (LXX) and extended Strong's beyond G5624 with lemma/surface fallback, sets config strong.g/strong.h accurately, and renders Apocrypha verse links (books 67+) with readable book names instead of [vref].
 
 Version 1.1.0.069 (64-bit Edition) - 2026-11-19

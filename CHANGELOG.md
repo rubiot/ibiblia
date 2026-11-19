@@ -6,7 +6,13 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.070 (2026-11-20) — Strong's Concordance Follows the Main Bible Tree
+### 0. Version 1.1.0.071 (2026-11-20) — Restore Hover-Underline for Identical Strong's Tags
+
+* **Source & Destination Hover-Underline Restored (`syntagm.pas`, `Verse.pas`, `Project.pas`):** Hovering a tagged word in either the Source panel or the Destination panel now underlines not only the hovered word (which keeps both underline and hover highlight), but also every other word in the verse sharing the identical Strong's tag (including associated Destination words via their paired Source tags), and clears all underlines cleanly as soon as the pointer moves away.
+* **Underline-Only Styling (`verse_visual_adapter.pas`):** Restored underline-only rendering (`vtsfUnderline`) for identical-tag occurrences without adding a background fill or overriding text color, and guarded programmatic click/auto-select paths so hover underlines never get stuck.
+* Files: syntagm.pas, verse_visual_adapter.pas, Verse.pas, Project.pas, unitabout.pas.
+
+### 0a. Version 1.1.0.070 (2026-11-20) — Strong's Concordance Follows the Main Bible Tree
 
 * **Main Bible Tree Alignment (`project_exporter.pas`, `Project.pas`):** Strong's concordance export (`Export project → Strong's concordance`) now adheres to the exact books, order, and selection in the main Bible tree instead of assuming a fixed 66-book theWord layout (`QLinhas`).
 * **All Tree Strong's Included (`ConcordanceExport.pas`, `project_exporter.pas`, `theworddictionary.pas`):** Removed the `etOT` Hebrew-only filter and `lemmas.dat`-only ceiling so Greek OT (LXX) Strong's and extended Strong's numbers beyond `G5624` (sorted naturally and using `<WT l="...">` lemma or surface word fallback) are exported accurately, with `config` `strong.g` / `strong.h` flags set to match the exported entries.

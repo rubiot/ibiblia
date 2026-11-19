@@ -206,19 +206,12 @@ begin
   begin
     Include(Result.Flags, vtsfStrongHighlight);
     Include(Result.Flags, vtsfUnderline);
-    if (not Syntagm.IsSelected) and (not Syntagm.IsPointed) then
-    begin
-      Result.HasBackgroundColor := True;
-      Result.BackgroundColor := LongInt(CurrentSkin.HighlightBg);
-    end;
   end;
 
   if Syntagm.IsSelected then
     Foreground := CurrentSkin.SelectedText
   else if Syntagm.IsPointed then
     Foreground := CurrentSkin.PointedText
-  else if Syntagm.IsStrongHighlighted then
-    Foreground := CurrentSkin.HighlightText
   else if HasProjectedStyle and EffectiveStyle.HasExplicitColor then
   begin
     if (EffectiveStyle.ExplicitColor = $00000000) and (CurrentSkin.Id <> skClassic) then

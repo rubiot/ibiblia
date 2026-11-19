@@ -2179,22 +2179,51 @@ var
   v: TTipoTextoBiblico;
   strongs: TStringList;
   strong: string;
+  p: TSyntagm;
+  tag: string;
 begin
-  strongs := nil;
-  if syntagm.HasStrongs then
-    strongs := syntagm.Strong
-  else if syntagm.PairsHaveStrongs then
-    strongs := syntagm.Pairs[0].Strong;
+  for v := low(FAVersiculo) to high(FAVersiculo) do
+    if assigned(FAVersiculo[v]) then
+      FAVersiculo[v].DisableStrongHighlight;
 
-  if not assigned(strongs) then
+  if not assigned(syntagm) then
     exit;
 
-  for v:=low(FAVersiculo) to high(FAVersiculo) do
-  begin
-    if not assigned(FAVersiculo[v]) then
-      continue;
-    for strong in strongs do
-      FAVersiculo[v].EnableStrongHighlight(strong);
+  strongs := TStringList.Create;
+  try
+    strongs.CaseSensitive := False;
+    strongs.Sorted := True;
+    strongs.Duplicates := dupIgnore;
+
+    if syntagm.HasStrongs then
+    begin
+      for tag in syntagm.Strong do
+        if Trim(tag) <> '' then
+          strongs.Add(Trim(tag));
+    end
+    else if syntagm.PairsHaveStrongs and assigned(syntagm.Pairs) then
+    begin
+      for p in syntagm.Pairs do
+      begin
+        if assigned(p) and p.HasStrongs then
+          for tag in p.Strong do
+            if Trim(tag) <> '' then
+              strongs.Add(Trim(tag));
+      end;
+    end;
+
+    if strongs.Count = 0 then
+      exit;
+
+    for v := low(FAVersiculo) to high(FAVersiculo) do
+    begin
+      if not assigned(FAVersiculo[v]) then
+        continue;
+      for strong in strongs do
+        FAVersiculo[v].EnableStrongHighlight(strong);
+    end;
+  finally
+    strongs.Free;
   end;
 end;
 
@@ -4215,7 +4244,8 @@ begin
       FTemporizador.Enabled := True;
   end;
 
-  HighlightStrongs(Sender);
+  if Sender.IsPointed then
+    HighlightStrongs(Sender);
   SetDisplayTags(false);
 end;
 

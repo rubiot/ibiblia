@@ -541,6 +541,7 @@ function TSyntagm.GetPairsHaveStrongs: boolean;
 var
   p: TSyntagm;
 begin
+  result := false;
   if not assigned(Pairs) then
     exit;
 
@@ -550,7 +551,6 @@ begin
       result := true;
       exit;
     end;
-  result := false;
 end;
 
 function TSyntagm.GetStrongsCount: integer;
@@ -627,7 +627,7 @@ begin
   end
   else if assigned(FLabel) then
   begin // não IsPointed
-    FLabel.Font.Underline := false;
+    FLabel.Font.Underline := FStrongHighlighted;
     if IsSelected then
     begin
       FLabel.Color := CurrentSkin.SelectedBg;
@@ -701,11 +701,15 @@ end;
 
 procedure TSyntagm.ToggleStrongHighlight(enable: boolean);
 begin
-  if not assigned(FLabel) then
-    exit;
-
-  FLabel.Font.Underline := enable;
-  FLabel.Repaint;
+  if FStrongHighlighted = enable then
+    Exit;
+  FStrongHighlighted := enable;
+  if assigned(FLabel) then
+  begin
+    FLabel.Font.Underline := FStrongHighlighted or FPointed;
+    FLabel.Repaint;
+  end;
+  NotifyVisualChange;
 end;
 
 function TSyntagm.GetNext: TSyntagm;
@@ -1026,14 +1030,38 @@ end;
 
 procedure TSyntagm.HighlightStrong(strong: string);
 var
+  TargetStrong: string;
   s: string;
+  p: TSyntagm;
 begin
-  if not assigned(FStrong) then
+  TargetStrong := Trim(strong);
+  if TargetStrong = '' then
     exit;
 
-  for s in FStrong do
-    if s = strong then
-      ToggleStrongHighlight(true);
+  if HasStrongs then
+  begin
+    for s in FStrong do
+      if SameText(Trim(s), TargetStrong) then
+      begin
+        ToggleStrongHighlight(true);
+        exit;
+      end;
+  end
+  else if Assigned(FPairs) then
+  begin
+    for p in FPairs do
+    begin
+      if Assigned(p) and p.HasStrongs then
+      begin
+        for s in p.Strong do
+          if SameText(Trim(s), TargetStrong) then
+          begin
+            ToggleStrongHighlight(true);
+            exit;
+          end;
+      end;
+    end;
+  end;
 end;
 
 function TSyntagm.GetNextUnassociated: TSyntagm;
