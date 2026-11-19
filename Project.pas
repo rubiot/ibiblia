@@ -7806,12 +7806,14 @@ function TProject.ExportConcordance(arquivo: string;
   ProgressEvent: TConcordanceExportProgressEvent): TExportResult;
 var
   Options: TConcordanceExportOptions;
+  TreeRefs: TStringList;
 begin
   Result := Default(TExportResult);
   Result.ErrorMessage := 'The project verse views are not available for export';
   if (FAVersiculo[tbOrigem] = nil) or (FAVersiculo[tbDestino] = nil) then
     exit;
 
+  TreeRefs := nil;
   Result.ErrorMessage := '';
   try
   CancelDefaultVerseModeRequest;
@@ -7835,10 +7837,24 @@ begin
     Options.ErrorReportFileName := ChangeFileExt(arquivo, '.errors.txt');
     Options.ErrorReportCreatedMessage := SExportErrorReportCreated;
 
-    Result := FProjectExporter.ExportConcordance(arquivo, pb, Options,
-      @StartScrollingSession, @FinishScrollingSession, @GetID,
-      FSuggestionManager, ProgressEvent);
+    TreeRefs := TStringList.Create;
+    GetTreeReferences(TreeRefs);
+    FProjectExporter.Selection := FExportSelection;
+    if TreeRefs.Count > 0 then
+      FProjectExporter.TreeReferences := TreeRefs
+    else
+      FProjectExporter.TreeReferences := nil;
+    try
+      Result := FProjectExporter.ExportConcordance(arquivo, pb, Options,
+        @StartScrollingSession, @FinishScrollingSession, @GetID,
+        FSuggestionManager, ProgressEvent);
+    finally
+      FProjectExporter.Selection := nil;
+      FProjectExporter.TreeReferences := nil;
+      FreeAndNil(TreeRefs);
+    end;
   finally
+    FreeAndNil(TreeRefs);
     FExportando := false;
     AfterVerseScroll(nil);
   end;

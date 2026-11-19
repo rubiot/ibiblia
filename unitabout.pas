@@ -114,6 +114,10 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.070 (64-bit Edition) - 2026-11-20' + LineEnding +
+  '- Strong''s concordance export (Project > Export > Strong''s concordance) now adheres to the exact books, order, and Choose books... selection of the main Bible tree instead of assuming a fixed 66-book theWord layout.' + LineEnding +
+  '- Exported concordances now include all Strong''s numbers actually present in the tree (including Greek OT / Septuagint tags and extended Strong''s numbers beyond G5624 using lemma or surface fallback), set config strong.g / strong.h accurately, and render Apocrypha verse links (books 67+) with readable book names instead of [vref].' + LineEnding +
+  '' + LineEnding +
   'Version 1.1.0.069 (64-bit Edition) - 2026-11-19' + LineEnding +
   '- Updated the Shift+F1 New Features User Guide (TFormUserGuide in unitabout.pas and FormNewFeaturesGuide.pas) through v1.1.0.068: expanded Import/Export with SWORD (CrossWire) modules, compressed archives, USFM 3.0 \rem exact Strong''s marker, Choose books partial export, and Apocrypha placement; updated the Bible Tree topic with Add Bible row and Create patch parity; added Topic 13 ("Updates, Branch & Backups") with a new custom illustration covering automatic updates, Help > Update branch (Stable / Neon), Project Backup & Restore (.bib.zip), and the Native Linux edition; and bumped the Full Feature Summary to Topic 14.' + LineEnding +
   '' + LineEnding +
@@ -1195,7 +1199,7 @@ begin
   lblHeaderTitle.Font.Name := 'Segoe UI';
   lblHeaderTitle.Font.Height := -17;
   lblHeaderTitle.Font.Style := [fsBold];
-  lblHeaderTitle.Caption := 'iBiblia New Features User Guide (v1.0.0.71 – v1.1.0.068)';
+  lblHeaderTitle.Caption := 'iBiblia New Features User Guide (v1.0.0.71 – v1.1.0.070)';
 
   lblHeaderSub := TLabel.Create(pnlHeader);
   lblHeaderSub.Parent := pnlHeader;
@@ -1376,14 +1380,14 @@ begin
     3: Result := 'v1.0.1.002 – v1.1.0.0';
     4: Result := 'v1.0.0.73 – v1.0.0.74';
     5: Result := 'v1.0.0.80 – v1.0.1.023';
-    6: Result := 'v1.0.0.71 – v1.1.0.067';
+    6: Result := 'v1.0.0.71 – v1.1.0.070';
     7: Result := 'v1.0.0.70 – v1.1.0.0';
     8: Result := 'v1.1.0.0 WYSIWYG & Notes';
     9: Result := 'v1.1.0.0 BiDi & Memory';
     10: Result := 'v1.1.0.0 – v1.1.0.019 AI & UI';
     11: Result := 'v1.1.0.053 – v1.1.0.065 Tree & Books';
     12: Result := 'v1.1.0.048 – v1.1.0.068 Updates';
-    13: Result := 'All Features (v1.0.0.70–v1.1.0.068)';
+    13: Result := 'All Features (v1.0.0.70–v1.1.0.070)';
   else
     Result := '';
   end;
@@ -1405,7 +1409,7 @@ begin
     10: Result := '11. iBiblia 1.1.0: Guided Project Wizard, Custom Statuses, AI Workflows & Toolbar Sizes';
     11: Result := '12. iBiblia 1.1.0: Arrange, Delete and Add Books in the Tree';
     12: Result := '13. iBiblia 1.1.0: Automatic Updates, Update Branch (Stable / Neon), Backups & Linux';
-    13: Result := '14. Complete Quick-Reference Summary of All New Features (v1.0.0.70 – v1.1.0.068)';
+    13: Result := '14. Complete Quick-Reference Summary of All New Features (v1.0.0.70 – v1.1.0.070)';
   else
     Result := '';
   end;
@@ -1529,7 +1533,7 @@ begin
 
     6:
       Result :=
-        'FEATURE OVERVIEW (v1.0.0.71 – v1.1.0.067)' + sLineBreak +
+        'FEATURE OVERVIEW (v1.0.0.71 – v1.1.0.070)' + sLineBreak +
         'Import and export Bibles across theWord (.ont, .ot, .nt), MySword (.bbl.mybible), non-encrypted e-Sword (.bblx RTF, .bbli HTML, .bbl SQLite), USFM 2.x/3.0 (.usfm, .sfm), USFX XML (.usfx, .xml from eBible.org / Simple Bible Reader), SWORD (CrossWire) modules, and compressed archives (.zip, .tar*, .gz, .7z, .rar), with full Apocrypha / Deuterocanonical OT book & chapter support in the Bible Books Tree.' + sLineBreak +
         'Also includes Choose books partial export, safe Project Save As (Ctrl+Shift+S), exporting modules even while open in theWord, per-project remembered export destinations, smart word-diff detection on text reload, and bidirectional 64-bit theWord 7 + Timotheos synchronization.' + sLineBreak + sLineBreak +
         'HOW TO USE:' + sLineBreak +
@@ -1538,7 +1542,8 @@ begin
         '     • Compressed archives (.zip, .tar, .tar.gz/.tgz, .tar.bz2, .tar.xz, .gz, and .7z/.rar when 7-Zip/unrar is installed) work in Add Bible Books, Replace, and popup dictionary pickers (.dct.twm is unpacked to your iBiblia dictionaries folder).' + sLineBreak +
         '     • SWORD (CrossWire) modules (v1.1.0.052): import Bibles (Source, Destination, Reference 1/2, Add Bible Books, Replace) and dictionaries (StrongsGreek, StrongsHebrew, etc.) via the module''s .conf file (in mods.d) or downloaded .zip. Strong''s numbers, morphology, notes, Words of Jesus, and Apocrypha are kept; locked modules are skipped, and bzip2/xz modules need bzip2/xz installed.' + sLineBreak +
         '     • Export Tagged Destination or Interlinear Bibles via File > Export... or right-click any of the 4 Bible panels and select "Export as Bible module..." to export directly to .ont/.ot/.nt, e-Sword (.bblx/.bbli), USFM (.usfm/.sfm), USFX (.usfx/.xml), or MySword (.bbl.mybible).' + sLineBreak +
-        '     • Export Part of a Project (Choose books..., v1.1.0.066): in Project > Export (Tagged Destination and Interlinear), click Choose books... to tick specific books, chapters, or verses (with Select all / Deselect all, Apocrypha included). Left-out verses are written empty in theWord modules (keeping line positions) and omitted from e-Sword, MySword, USFM, and USFX.' + sLineBreak +
+        '     • Export Part of a Project (Choose books..., v1.1.0.066–070): in Project > Export (Tagged Destination, Interlinear, and Strong''s concordance), click Choose books... to tick specific books, chapters, or verses (with Select all / Deselect all, Apocrypha included). Left-out verses are written empty in theWord Bible modules (keeping line positions) and omitted from e-Sword, MySword, USFM, USFX, and Strong''s concordance.' + sLineBreak +
+        '     • Strong''s Concordance Follows the Main Bible Tree (v1.1.0.070): Project > Export > Strong''s concordance uses the exact books, order, and Choose books... selection of your Bible tree—including Apocrypha books (67+) with readable book names, Greek OT (LXX) Strong''s, and extended Strong''s numbers beyond G5624.' + sLineBreak +
         '     • USFM 3.0 import (.usfm, .sfm, also inside a zip, tar or 7z): the book id, headings (\s, \ms, \mr), paragraph, poetry, list and table markers, character styles (\wj, \add, \nd, \qt, \bd, \it, \sup), \w words with lemma, strong and x-morph, footnotes (\f), cross-references (\x), unfoldingWord alignment (\zaln) and speaker milestones are all read and become theWord tags, so the text works with associations and with every export. Sidebars and peripherals are skipped.' + sLineBreak +
         '     • USFM 3.0 export: choose "USFM 3.0 Bible (*.usfm, with per-book folder)" to get one file holding all the books and, beside it, a folder named like the file plus _usfm with one USFM 3.0 file per book (01-GEN.usfm, 41-MAT.usfm, ...). Choose "USFM 3.0 Bible, per-book files (*.zip)" to get only the per-book files in a zip. Paragraphs, poetry indents, headings, red letters, added words, footnotes, cross-references and Strong''s, lemma and morphology on each word are written, plus a \rem line marking exact Strong''s numbers for Timotheos (preserving 5-digit numbers ending in 0 such as G13970).' + sLineBreak + sLineBreak +
         '  2. Apocrypha / Deuterocanonical OT Books in the Bible Books Tree (v1.0.1.045–v1.1.0.049):' + sLineBreak +
@@ -2459,7 +2464,7 @@ var
     C.Font.Size := 8;
     C.Font.Style := [fsBold];
     C.Font.Color := hdrCol;
-    C.TextOut(26, 42, 'COMPLETE NEW FEATURES MAP (v1.0.0.70 – v1.1.0.068) — QUICK SHORTCUT REFERENCE');
+    C.TextOut(26, 42, 'COMPLETE NEW FEATURES MAP (v1.0.0.70 – v1.1.0.070) — QUICK SHORTCUT REFERENCE');
 
     DrawBadge(C, 26,  64, 'Mouse Wheel Up / Down : Select Source Word Left / Right', hiBg, hiTxt, hdrCol, True);
     DrawBadge(C, 26,  94, 'Hold Ctrl+Shift + Click : Associate Multiple Words Together', ptBg, ptTxt, borderCol, True);
@@ -2565,7 +2570,7 @@ begin
   begin
     Caption := 'iBiblia — Guia de Novos Recursos (Desde v1.0.0.71)';
     if Assigned(lblHeaderTitle) then
-      lblHeaderTitle.Caption := 'Guia de Novos Recursos do iBiblia (v1.0.0.71 – v1.1.0.068)';
+      lblHeaderTitle.Caption := 'Guia de Novos Recursos do iBiblia (v1.0.0.71 – v1.1.0.070)';
     if Assigned(lblHeaderSub) then
       lblHeaderSub.Caption := 'Janela Flutuante Interativa — Mantenha aberta enquanto pratica os recursos no iBiblia.';
     if Assigned(btnPrev) then btnPrev.Caption := '< Anterior';
@@ -2577,7 +2582,7 @@ begin
   begin
     Caption := 'iBiblia — New Features User Guide (Since v1.0.0.71)';
     if Assigned(lblHeaderTitle) then
-      lblHeaderTitle.Caption := 'iBiblia New Features User Guide (v1.0.0.71 – v1.1.0.068)';
+      lblHeaderTitle.Caption := 'iBiblia New Features User Guide (v1.0.0.71 – v1.1.0.070)';
     if Assigned(lblHeaderSub) then
       lblHeaderSub.Caption := 'Floating Interactive Guide — Keep this window open while practicing features directly in iBiblia.';
     if Assigned(btnPrev) then btnPrev.Caption := '< Previous Topic';

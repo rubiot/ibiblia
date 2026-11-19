@@ -129,10 +129,13 @@ const
     '  - Right-click > Save text to file...: plain text, one verse per line.' + LineEnding +
     '  - Project > Export: theWord, MySword, e-Sword, USFM 3.0 (single file + per-book folder ' +
     'or per-book .zip, with a \rem line marking exact Strong''s numbers for Timotheos) and USFX, ' +
-    'for the tagged Destination and for the interlinear. Choose books... (bottom left) opens the ' +
+    'for the tagged Destination and for the interlinear. Strong''s concordance also follows ' +
+    'the exact books, order and Choose books... selection of the main Bible tree—including ' +
+    'Apocrypha books (67+) with readable book names, Greek OT (LXX) Strong''s, and extended ' +
+    'Strong''s numbers beyond G5624. Choose books... (bottom left) opens the ' +
     'same check tree as Create patch, to export only some books, chapters or verses ' +
     '(Select all / Deselect all); the verses you leave out are written empty in theWord ' +
-    'modules and left out of the other formats.' + LineEnding +
+    'Bible modules and left out of the other formats and the concordance.' + LineEnding +
     'Apocrypha books go to e-Sword, USFM and USFX files only: theWord and MySword ' +
     'Bible modules cannot hold them.',
     // 8

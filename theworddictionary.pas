@@ -57,6 +57,7 @@ TTheWordDictionary = class
     constructor Create(filename: string; strongs: boolean);
     destructor Destroy; override;
     procedure AddEntry(topic: string; lemma: string; content: string);
+    procedure SetStrongLanguages(HasGreek, HasHebrew: Boolean);
     procedure Commit;
 
     property Abbrev: string read FAbbrev write SetAbbrev;
@@ -317,6 +318,12 @@ begin
     exit;
 
   CreateContent(CreateTopic(topic, lemma), content);
+end;
+
+procedure TTheWordDictionary.SetStrongLanguages(HasGreek, HasHebrew: Boolean);
+begin
+  SetProperty('strong.g', IfThen(HasGreek, '1', '0'));
+  SetProperty('strong.h', IfThen(HasHebrew, '1', '0'));
 end;
 
 procedure TTheWordDictionary.Commit;

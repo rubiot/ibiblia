@@ -184,18 +184,21 @@ begin
 end;
 
 procedure TProjectExportForm.UpdateBooksSummary;
-var
-  OnBibleTab: Boolean;
 begin
-  OnBibleTab := ExportPageControl.PageIndex in [0, 1];
-  BtnChooseBooks.Visible := OnBibleTab;
-  LblBooksSummary.Visible := OnBibleTab;
-  BtnChooseBooks.Caption := SExportChooseBooks;
-  if (FSelected = nil) or (FSelected.Count = 0) then
-    LblBooksSummary.Caption := SExportAllBooks
-  else
-    LblBooksSummary.Caption := Format(SExportSomeBooks,
-      [FSelected.Count, FSelectedTotal]);
+  if Assigned(BtnChooseBooks) then
+  begin
+    BtnChooseBooks.Visible := True;
+    BtnChooseBooks.Caption := SExportChooseBooks;
+  end;
+  if Assigned(LblBooksSummary) then
+  begin
+    LblBooksSummary.Visible := True;
+    if (FSelected = nil) or (FSelected.Count = 0) then
+      LblBooksSummary.Caption := SExportAllBooks
+    else
+      LblBooksSummary.Caption := Format(SExportSomeBooks,
+        [FSelected.Count, FSelectedTotal]);
+  end;
 end;
 
 procedure TProjectExportForm.ExportPageChange(Sender: TObject);
@@ -715,10 +718,16 @@ begin
   FormPleaseWait.BeginOperation(Self, SExportConcordanceTitle,
     SExportConcordanceProgress, 1, FileName);
   try
-    Result := FProject.ExportConcordance(FileName,
-      FormPleaseWait.ProgressBar1, Options, Abbreviation,
-      ContextMode, ContextMaxCharacters, UseIndexedOccurrences,
-      @ConcordanceExportProgress);
+    if (FSelected <> nil) and (FSelected.Count > 0) then
+      FProject.ExportSelection := FSelected;
+    try
+      Result := FProject.ExportConcordance(FileName,
+        FormPleaseWait.ProgressBar1, Options, Abbreviation,
+        ContextMode, ContextMaxCharacters, UseIndexedOccurrences,
+        @ConcordanceExportProgress);
+    finally
+      FProject.ExportSelection := nil;
+    end;
   finally
     FormPleaseWait.FinishOperation;
   end;

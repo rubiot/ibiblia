@@ -5,7 +5,7 @@ unit project_exporter;
 interface
 
 uses
-  Classes, SysUtils, StrUtils, Math, Forms, ComCtrls, LCLIntf, fgl, PCRE,
+  Classes, SysUtils, StrUtils, Math, Forms, ComCtrls, LCLIntf, fgl, Contnrs, PCRE,
   BibleScope, MySwordModule, esword_usfm, TheWordDictionary, ConcordanceExport,
   ai_batch_work_item, syntagm, Verse, project_verse_repository, verse_render_buffer,
   SuggestionManager, ONTTokenizer, text_direction, rf_note_scanner,
@@ -93,6 +93,8 @@ type
     FLastIndexedReference: string;
     FLastIndexedContext: string;
     FSelection: TStringList;
+    FTreeReferences: TStringList;
+    FReferenceOrderMap: TFPHashList;
     function IsSelected(const ReferenceID: string): Boolean;
     function FirstFilledLine(Lines: TStringList): Integer;
     procedure RequireDependencies;
@@ -133,6 +135,10 @@ type
       Sorted) are written; the others are left blank (theWord keeps its
       line positions) or left out (e-Sword, MySword, USFM, USFX). nil: all. }
     property Selection: TStringList read FSelection write FSelection;
+    { Verses in the main Bible tree ("book,chapter,verse") in tree order; when
+      non-nil and non-empty, concordance export limits to and orders by these
+      verses instead of assuming a fixed 66-book theWord layout. }
+    property TreeReferences: TStringList read FTreeReferences write FTreeReferences;
     function ExportDestinationTextWithStrongs(const FileName: string;
       ProgressBar: TProgressBar; const Options: TDestinationTextExportOptions;
       StartSession, FinishSession: TExportSessionProc;
@@ -818,13 +824,77 @@ begin
   Result := Trim(Result);
 end;
 
+function CompareStrongCodes(List: TStringList; Index1, Index2: Integer): Integer;
+var
+  A, B, RestA, RestB: string;
+  PrefixA, PrefixB: Char;
+  NumA, NumB: Int64;
+  LenA, LenB, PosA, PosB: Integer;
+begin
+  A := UpperCase(Trim(List[Index1]));
+  B := UpperCase(Trim(List[Index2]));
+  if (A = '') or (B = '') then
+    Exit(CompareStr(A, B));
+  PrefixA := A[1];
+  PrefixB := B[1];
+  if PrefixA <> PrefixB then
+  begin
+    if PrefixA = 'H' then Exit(-1);
+    if PrefixB = 'H' then Exit(1);
+    Exit(Ord(PrefixA) - Ord(PrefixB));
+  end;
+  LenA := Length(A);
+  PosA := 2;
+  NumA := 0;
+  while (PosA <= LenA) and (A[PosA] in ['0'..'9']) do
+  begin
+    if NumA < 1000000000 then
+      NumA := NumA * 10 + (Ord(A[PosA]) - Ord('0'));
+    Inc(PosA);
+  end;
+  LenB := Length(B);
+  PosB := 2;
+  NumB := 0;
+  while (PosB <= LenB) and (B[PosB] in ['0'..'9']) do
+  begin
+    if NumB < 1000000000 then
+      NumB := NumB * 10 + (Ord(B[PosB]) - Ord('0'));
+    Inc(PosB);
+  end;
+  if (PosA > 2) and (PosB > 2) and (NumA <> NumB) then
+  begin
+    if NumA < NumB then Exit(-1) else Exit(1);
+  end;
+  RestA := Copy(A, PosA, MaxInt);
+  RestB := Copy(B, PosB, MaxInt);
+  Result := CompareStr(RestA, RestB);
+  if Result = 0 then
+    Result := CompareStr(A, B);
+end;
+
 procedure TProjectExporter.AddIndexedConcordanceOccurrence(
   const Data: TConcordanceOccurrenceData);
 var
   Context: string;
+  OrderPtr: PtrUInt;
+  EffectiveOrder: Integer;
 begin
   if not Assigned(FActiveConcordance) then
     Exit;
+
+  if Assigned(FReferenceOrderMap) then
+  begin
+    OrderPtr := PtrUInt(FReferenceOrderMap.Find(Data.ReferenceID));
+    if OrderPtr = 0 then
+      Exit;
+    EffectiveOrder := Integer(OrderPtr - 1);
+  end
+  else
+  begin
+    if not IsSelected(Data.ReferenceID) then
+      Exit;
+    EffectiveOrder := Data.ReferenceOrder;
+  end;
 
   Context := '';
   if Data.ReferenceID <> FLastIndexedReference then
@@ -838,7 +908,7 @@ begin
     Context := FLastIndexedContext;
 
   FActiveConcordance.AddOccurrence(Data.SourcePhrase, Data.TargetPhrase,
-    Data.ReferenceID, Context, Data.Occurrences, Data.ReferenceOrder);
+    Data.ReferenceID, Context, Data.Occurrences, EffectiveOrder);
   Inc(FIndexedProcessed);
   if Assigned(FIndexedProgressEvent) and
     ((FIndexedProcessed mod 100) = 0) then
@@ -875,6 +945,11 @@ var
   UseIndexedOccurrences: Boolean;
   UnindexedReferences: TStringList;
   Staging: TExportFileStaging;
+  ExportedStrongs: TFPHashList;
+  ExtraStrongs: TStringList;
+  LemmasPath, NormStrong: string;
+  HasGreek, HasHebrew: Boolean;
+  TotalStrongs, SelectedTreeCount, TreeIdx: Integer;
 
   procedure ReportProgress(Phase: TConcordanceExportPhase;
     Current, Total: Integer; ForceMessages: Boolean = False);
@@ -903,15 +978,42 @@ var
     AssociationIndex: Integer;
     HighlightRanges: TConcordanceHighlightRangeArray;
     SyntagmRanges: TConcordanceHighlightRangeArray;
+    CurrentRefID: string;
+    OrderPtr: PtrUInt;
+    EffectiveOrder: Integer;
   begin
     HighlightRanges := nil;
     SyntagmRanges := nil;
-    ReadingTotal := QLinhas[FScope];
+    if Assigned(FReferenceOrderMap) then
+      ReadingTotal := SelectedTreeCount
+    else
+      ReadingTotal := QLinhas[FScope];
     ReportProgress(cepReadingAssociations, 0, ReadingTotal, True);
     ReferenceOrder := 0;
     FVerseRepository.First;
     while not FVerseRepository.EOF do
     begin
+      CurrentRefID := FVerseRepository.CurrentReferenceID;
+      if Assigned(FReferenceOrderMap) then
+      begin
+        OrderPtr := PtrUInt(FReferenceOrderMap.Find(CurrentRefID));
+        if OrderPtr = 0 then
+        begin
+          FVerseRepository.Next;
+          Continue;
+        end;
+        EffectiveOrder := Integer(OrderPtr - 1);
+      end
+      else
+      begin
+        if not IsSelected(CurrentRefID) then
+        begin
+          FVerseRepository.Next;
+          Continue;
+        end;
+        EffectiveOrder := ReferenceOrder;
+      end;
+
       VerseData := FVerseRepository.ReadCurrentVerseData;
       if VerseData.Associations <> '' then
       begin
@@ -938,8 +1040,8 @@ var
             Concordance.AddOccurrence(
               AssociationData[AssociationIndex].SourcePhrase,
               AssociationData[AssociationIndex].TargetPhrase,
-              FVerseRepository.CurrentReferenceID, Context, 1,
-              ReferenceOrder, HighlightRanges);
+              CurrentRefID, Context, 1,
+              EffectiveOrder, HighlightRanges);
           end;
         end
         else
@@ -981,6 +1083,21 @@ var
       FLastIndexedReference := '';
       FLastIndexedContext := '';
     end;
+  end;
+
+  procedure EmitStrongEntry(const ANormStrong, ALemma: string);
+  begin
+    Dictionary.AddEntry(ANormStrong, ALemma,
+      Concordance.GetStrongRtf(ALemma, ANormStrong));
+    ExportedStrongs.Add(ANormStrong, Pointer(1));
+    if ANormStrong.StartsWith('G') then
+      HasGreek := True
+    else if ANormStrong.StartsWith('H') then
+      HasHebrew := True;
+    Inc(FormattedEntries);
+    if (FormattedEntries mod 20) = 0 then
+      ReportProgress(cepFormattingEntries, FormattedEntries,
+        TotalStrongs, True);
   end;
 
   function IndexedOccurrencesCoverCanonicalData(
@@ -1031,6 +1148,9 @@ begin
   Errors := nil;
   Dictionary := nil;
   Staging := nil;
+  ExportedStrongs := nil;
+  ExtraStrongs := nil;
+  FReferenceOrderMap := nil;
   try
     try
     RequireDependencies;
@@ -1039,6 +1159,19 @@ begin
     Concordance.ContextMode := Options.ContextMode;
     Concordance.ContextMaxCharacters := Options.ContextMaxCharacters;
     Errors := TStringList.Create;
+
+    SelectedTreeCount := 0;
+    if Assigned(FTreeReferences) and (FTreeReferences.Count > 0) then
+    begin
+      FReferenceOrderMap := TFPHashList.Create;
+      for TreeIdx := 0 to FTreeReferences.Count - 1 do
+        if IsSelected(FTreeReferences[TreeIdx]) then
+        begin
+          FReferenceOrderMap.Add(FTreeReferences[TreeIdx],
+            Pointer(PtrUInt(TreeIdx + 1)));
+          Inc(SelectedTreeCount);
+        end;
+    end;
 
     if Options.Mode = cemAnalytical then
       TitleText := Format('%s %s', [Options.Abbreviation, Options.AnalyticalCaption])
@@ -1091,31 +1224,47 @@ begin
       end;
 
       Entries := TStringList.Create;
-      Entries.LoadFromFile(IncludeTrailingPathDelimiter(
-        ExtractFilePath(ParamStr(0))) + 'lemmas.dat');
+      LemmasPath := IncludeTrailingPathDelimiter(
+        ExtractFilePath(ParamStr(0))) + 'lemmas.dat';
+      if FileExists(LemmasPath) then
+        Entries.LoadFromFile(LemmasPath);
       LemmaRegex := RegexCreate('^(.*?),(.*?)$', [rcoUTF8]);
+      ExportedStrongs := TFPHashList.Create;
+      ExtraStrongs := TStringList.Create;
+      HasGreek := False;
+      HasHebrew := False;
       FormattedEntries := 0;
-      ReportProgress(cepFormattingEntries, 0, QStrongs[FScope], True);
+      TotalStrongs := Concordance.StrongCount;
+      ReportProgress(cepFormattingEntries, 0, TotalStrongs, True);
+
+      // 1. Export canonical Strong's entries present in the tree using lemmas.dat
       for Entry in Entries do
       begin
         Match := LemmaRegex.Match(Entry);
         if Match.Success then
         begin
-          Strong := Match.Groups[1].Value;
-          if StrongBelongsToScope(Strong, FScope) then
-          begin
-            Lemma := Match.Groups[2].Value;
-            Dictionary.AddEntry(Strong, Lemma, Concordance.GetStrongRtf(Lemma, Strong));
-            Inc(FormattedEntries);
-            if (FormattedEntries mod 20) = 0 then
-              ReportProgress(cepFormattingEntries, FormattedEntries,
-                QStrongs[FScope], True);
-          end;
+          NormStrong := UpperCase(Trim(Match.Groups[1].Value));
+          if Concordance.HasStrong(NormStrong) and
+             (ExportedStrongs.Find(NormStrong) = nil) then
+            EmitStrongEntry(NormStrong, Match.Groups[2].Value);
         end;
       end;
 
-      ReportProgress(cepFormattingEntries, QStrongs[FScope],
-        QStrongs[FScope], True);
+      // 2. Export any remaining Strong's numbers from the tree (e.g. LXX/Apocrypha)
+      Concordance.CollectStrongs(ExtraStrongs);
+      ExtraStrongs.CustomSort(@CompareStrongCodes);
+      for Strong in ExtraStrongs do
+      begin
+        NormStrong := UpperCase(Trim(Strong));
+        if ExportedStrongs.Find(NormStrong) <> nil then
+          Continue;
+        EmitStrongEntry(NormStrong,
+          Concordance.FallbackLemmaForStrong(NormStrong));
+      end;
+
+      Dictionary.SetStrongLanguages(HasGreek, HasHebrew);
+      ReportProgress(cepFormattingEntries, TotalStrongs,
+        TotalStrongs, True);
       ReportProgress(cepWritingModule, 0, 0, True);
       Dictionary.Commit;
       ReportProgress(cepFinalizing, 1, 1, True);
@@ -1137,6 +1286,9 @@ begin
     end;
   finally
     Application.ProcessMessages;
+    FreeAndNil(ExtraStrongs);
+    FreeAndNil(ExportedStrongs);
+    FreeAndNil(FReferenceOrderMap);
     FreeAndNil(Entries);
     FreeAndNil(Errors);
     FreeAndNil(Concordance);

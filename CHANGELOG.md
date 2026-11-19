@@ -6,7 +6,16 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.069 (2026-11-19) — Updated Shift+F1 User Guide (Through v1.1.0.068)
+### 0. Version 1.1.0.070 (2026-11-20) — Strong's Concordance Follows the Main Bible Tree
+
+* **Main Bible Tree Alignment (`project_exporter.pas`, `Project.pas`):** Strong's concordance export (`Export project → Strong's concordance`) now adheres to the exact books, order, and selection in the main Bible tree instead of assuming a fixed 66-book theWord layout (`QLinhas`).
+* **All Tree Strong's Included (`ConcordanceExport.pas`, `project_exporter.pas`, `theworddictionary.pas`):** Removed the `etOT` Hebrew-only filter and `lemmas.dat`-only ceiling so Greek OT (LXX) Strong's and extended Strong's numbers beyond `G5624` (sorted naturally and using `<WT l="...">` lemma or surface word fallback) are exported accurately, with `config` `strong.g` / `strong.h` flags set to match the exported entries.
+* **Apocrypha Verse Links (`ConcordanceExport.pas`):** Apocrypha references (`Book >= 67`) now display readable book names (`Tobit 1:1`, `Sirach 1:1`, etc.) while keeping `tw://bible.*?id=b.c.v` links, since `[vref]` only resolves books `1..66`.
+* **Choose Books on Concordance Tab (`FormProjectExport.pas`):** Enabled the `Choose books...` check tree and verse summary on the **Strong's concordance** tab alongside Tagged destination text and Interlinear source text.
+* **User Guide Updated (`unitabout.pas`, `FormNewFeaturesGuide.pas`):** Updated Shift+F1 Topic 7 and version badges through `v1.1.0.070`.
+* Files: ConcordanceExport.pas, theworddictionary.pas, project_exporter.pas, Project.pas, FormProjectExport.pas, unitabout.pas, FormNewFeaturesGuide.pas.
+
+### 0a. Version 1.1.0.069 (2026-11-19) — Updated Shift+F1 User Guide (Through v1.1.0.068)
 
 * Updated the **Help → New features guide (`Shift+F1`)** (`unitabout.pas` `TFormUserGuide` and `FormNewFeaturesGuide.pas`) to cover all features through `v1.1.0.068`:
   * **Topic 7 (Import/Export & Sync):** added SWORD (CrossWire) modules, compressed archives (`.zip`, `.tar*`, `.gz`, `.7z`, `.rar`), `Choose books...` partial export, USFM 3.0 `\rem` exact Strong's marker for Timotheos, and Apocrypha order between Malachi and Matthew.

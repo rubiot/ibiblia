@@ -161,6 +161,10 @@ type
       ReferenceOrder: Integer;
       const HighlightRanges: TConcordanceHighlightRangeArray); overload;
     procedure AddPhrase(Pairs: TStringList; const Ref: string);
+    function HasStrong(const Strong: string): Boolean;
+    function StrongCount: Integer;
+    procedure CollectStrongs(Dest: TStrings);
+    function FallbackLemmaForStrong(const Strong: string): string;
     function GetStrongRtf(const Lemma, Strong: string): string;
     property ContextMaxCharacters: Integer read FContextMaxCharacters
       write SetContextMaxCharacters;
@@ -173,6 +177,9 @@ type
   end;
 
 implementation
+
+uses
+  apocrypha_books;
 
 resourcestring
   SConcordanceOneOccurrence = '1 occurrence';
@@ -276,7 +283,23 @@ begin
 end;
 
 function MakeReferenceLink(const ReferenceID: string): string;
+var
+  Parts: TStringArray;
+  BookID, Chapter, Verse: Integer;
 begin
+  Parts := ReferenceID.Split(',');
+  if (Length(Parts) = 3) and TryStrToInt(Parts[0], BookID) and
+     TryStrToInt(Parts[1], Chapter) and TryStrToInt(Parts[2], Verse) and
+     IsApocryphaBook(BookID) then
+  begin
+    Result := Format(
+      '{\field{\*\fldinst HYPERLINK "tw://bible.*?id=%d.%d.%d"}' +
+      '{\fldrslt\cf2 %s}}',
+      [BookID, Chapter, Verse,
+       UnicodeToRtf(Format('%s %d:%d',
+         [ApocryphaBookName(BookID), Chapter, Verse]))]);
+    Exit;
+  end;
   Result := Format(
     '{\field{\*\fldinst HYPERLINK "tw://bible.*?id=%s"}' +
     '{\fldrslt\cf2 [vref]}}',
@@ -1274,6 +1297,94 @@ begin
     References.Free;
     Builder.Free;
   end;
+end;
+
+function TConcordance.HasStrong(const Strong: string): Boolean;
+var
+  StrongEntry: TConcordanceStrong;
+begin
+  StrongEntry := TConcordanceStrong(FStrongs.Find(UpperCase(Strong)));
+  Result := Assigned(StrongEntry) and (StrongEntry.TotalOccurrences > 0);
+end;
+
+function TConcordance.StrongCount: Integer;
+begin
+  Result := FStrongs.Count;
+end;
+
+procedure TConcordance.CollectStrongs(Dest: TStrings);
+var
+  Index: Integer;
+  StrongEntry: TConcordanceStrong;
+begin
+  if not Assigned(Dest) then
+    Exit;
+  Dest.Clear;
+  for Index := 0 to FStrongs.Count - 1 do
+  begin
+    StrongEntry := TConcordanceStrong(FStrongs[Index]);
+    if Assigned(StrongEntry) and (StrongEntry.TotalOccurrences > 0) then
+      Dest.Add(StrongEntry.Strong);
+  end;
+end;
+
+function TConcordance.FallbackLemmaForStrong(const Strong: string): string;
+var
+  StrongEntry: TConcordanceStrong;
+  PhraseIndex, MatchIndex: Integer;
+  Phrase: TConcordancePhrase;
+  Words: TStringArray;
+  WordText, DisplayText, TagText, SurfaceFallback, CandidateLemma: string;
+  Matches, TagMatches: IMatchCollection;
+  HasTargetStrong: Boolean;
+begin
+  Result := UpperCase(Strong);
+  StrongEntry := TConcordanceStrong(FStrongs.Find(Result));
+  if not Assigned(StrongEntry) then
+    Exit;
+  SurfaceFallback := '';
+  for PhraseIndex := 0 to StrongEntry.PhraseCount - 1 do
+  begin
+    Phrase := StrongEntry.Phrases[PhraseIndex];
+    if not Assigned(Phrase) then
+      Continue;
+    Words := Phrase.Phrase.Split(';');
+    for WordText in Words do
+    begin
+      Matches := FSyntagmRegex.Matches(Trim(WordText));
+      if Matches.Count > 0 then
+      begin
+        DisplayText := Trim(RemoveMarkupTags(Matches[0].Groups[1].Value));
+        TagText := Matches[0].Groups[2].Value;
+      end
+      else
+      begin
+        DisplayText := Trim(RemoveMarkupTags(WordText));
+        TagText := WordText;
+      end;
+      TagMatches := FTagRegex.Matches(TagText);
+      HasTargetStrong := False;
+      CandidateLemma := '';
+      for MatchIndex := 0 to TagMatches.Count - 1 do
+      begin
+        if TagMatches[MatchIndex].Groups[1].GetMatched and
+           SameText(TagMatches[MatchIndex].Groups[1].Value, StrongEntry.Strong) then
+          HasTargetStrong := True
+        else if TagMatches[MatchIndex].Groups[3].GetMatched and
+                (CandidateLemma = '') then
+          CandidateLemma := Trim(TagMatches[MatchIndex].Groups[3].Value);
+      end;
+      if HasTargetStrong then
+      begin
+        if CandidateLemma <> '' then
+          Exit(CandidateLemma);
+        if (SurfaceFallback = '') and (DisplayText <> '') then
+          SurfaceFallback := DisplayText;
+      end;
+    end;
+  end;
+  if SurfaceFallback <> '' then
+    Result := SurfaceFallback;
 end;
 
 function TConcordance.GetStrongRtf(const Lemma, Strong: string): string;

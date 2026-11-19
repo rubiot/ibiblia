@@ -1,3 +1,6 @@
+Version 1.1.0.070 (64-bit Edition) - 2026-11-20
+- Strong's concordance export now adheres to the exact books, order, and Choose books... selection of the main Bible tree instead of being fixed to 66 theWord books: includes Greek OT (LXX) and extended Strong's beyond G5624 with lemma/surface fallback, sets config strong.g/strong.h accurately, and renders Apocrypha verse links (books 67+) with readable book names instead of [vref].
+
 Version 1.1.0.069 (64-bit Edition) - 2026-11-19
 - Updated the Shift+F1 New Features User Guide (TFormUserGuide in unitabout.pas and FormNewFeaturesGuide.pas) through v1.1.0.068: expanded Import/Export (SWORD, compressed archives, Choose books partial export, USFM 3.0 \rem exact Strong's marker, Apocrypha placement) and Bible Tree (Add Bible row, Create patch parity), added Topic 13 ("Updates, Branch & Backups") with a custom illustration covering automatic updates, Help > Update branch (Stable / Neon), Project Backup & Restore (.bib.zip), and the Native Linux edition, and shifted Full Feature Summary to Topic 14.
 
