@@ -1,4 +1,7 @@
-﻿Version 1.1.0.058 (64-bit Edition) - 2026-11-19
+﻿Version 1.1.0.059 (64-bit Edition) - 2026-11-19
+- Add / replace Bible books: you can now select several files at once in the file dialog (for example one USFM file per book, Ctrl- or Shift-click) and tick the books you want from all of them. The files are read together like the files of a compressed archive; a book found in more than one file asks which file to use.
+
+Version 1.1.0.058 (64-bit Edition) - 2026-11-19
 - Bible tree: the extra drag grips (several columns of dots, left behind when the tree scrolled sideways) and the garbled rows after scrolling are fixed. While the grips show, the tree no longer scrolls sideways, and any scrolling repaints the whole tree. Turn the Tools > Rearrange switch off to get the sideways scrollbar back.
 
 Version 1.1.0.057 (64-bit Edition) - 2026-11-19

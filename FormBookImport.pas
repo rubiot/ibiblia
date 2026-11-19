@@ -642,7 +642,7 @@ end;
   returns one combined source. Plain documents ask for the book matching;
   a book found in several files asks which file to use. }
 function LoadArchiveSource(AOwner: TComponent; const ArchiveFile: string;
-  out Combined: TBibleImportSource): Boolean;
+  out Combined: TBibleImportSource; PickedFiles: TStrings = nil): Boolean;
 var
   Temp, ErrorMessage, Skipped, Title: string;
   Files, Labels, Seen: TStringList;
@@ -663,8 +663,12 @@ begin
   Loaded := nil;
   for B := 1 to LAST_IMPORT_BOOK do
     Candidates[B] := nil;
-  Temp := NewArchiveTempFolder('ibiblia_bible_');
-  if Temp = '' then
+  { PickedFiles: several Bible files chosen together (no archive to unpack) }
+  if Assigned(PickedFiles) then
+    Temp := ''
+  else
+    Temp := NewArchiveTempFolder('ibiblia_bible_');
+  if (Temp = '') and not Assigned(PickedFiles) then
   begin
     MessageDlg(SBookImportArchiveTitle, SArchiveFailed, mtError, [mbOK], 0);
     Exit;
@@ -675,17 +679,28 @@ begin
   try
     Screen.Cursor := crHourGlass;
     try
-      if not ExtractArchive(ArchiveFile, Temp, ErrorMessage) then
+      if Assigned(PickedFiles) then
       begin
-        Screen.Cursor := OldCursor;
-        MessageDlg(SBookImportArchiveTitle, ErrorMessage, mtError, [mbOK], 0);
-        Exit;
+        Files.AddStrings(PickedFiles);
+        Files.Sort;
+      end
+      else
+      begin
+        if not ExtractArchive(ArchiveFile, Temp, ErrorMessage) then
+        begin
+          Screen.Cursor := OldCursor;
+          MessageDlg(SBookImportArchiveTitle, ErrorMessage, mtError, [mbOK], 0);
+          Exit;
+        end;
+        FindArchiveFiles(Temp, @AcceptBibleFile, Files);
       end;
-      FindArchiveFiles(Temp, @AcceptBibleFile, Files);
       for I := 0 to Files.Count - 1 do
       begin
         Src := TBibleImportSource.Create;
-        Title := Copy(Files[I], Length(Temp) + 2, MaxInt);
+        if Assigned(PickedFiles) then
+          Title := ExtractFileName(Files[I])
+        else
+          Title := Copy(Files[I], Length(Temp) + 2, MaxInt);
         if not Src.LoadFromFile(Files[I], ErrorMessage) then
         begin
           Skipped := Skipped + LineEnding + '  ' + Title;
@@ -814,7 +829,8 @@ begin
       Loaded[I].Source.Free;
     Files.Free;
     Labels.Free;
-    RemoveArchiveFolder(Temp);
+    if Temp <> '' then
+      RemoveArchiveFolder(Temp);
   end;
 end;
 
@@ -854,12 +870,18 @@ begin
     OpenDlg.Title := SBookImportChooseFile;
     OpenDlg.Filter := SBookImportChooseArchiveFile + '|*.ont;*.ot;*.nt;*.bblx;*.bbli;*.bbl;*.mybible;*.usfm;*.sfm;*.usfx;*.xml;*.conf;*.txt;*.rtf;*.odt;*.docx;' +
       ArchiveFilterMask + '|' + SBookImportAllFiles;
-    OpenDlg.Options := OpenDlg.Options + [ofFileMustExist];
+    OpenDlg.Options := OpenDlg.Options + [ofFileMustExist, ofAllowMultiSelect];
     if not OpenDlg.Execute then
       Exit;
     USFMSingleFileOnly := True;
     try
-    if IsArchiveFile(OpenDlg.FileName) then
+    if (OpenDlg.Files.Count > 1) and not IsArchiveFile(OpenDlg.Files[0]) then
+    begin
+      { several files chosen together (for example one USFM file per book) }
+      if not LoadArchiveSource(AOwner, OpenDlg.Files[0], Source, OpenDlg.Files) then
+        Exit;
+    end
+    else if IsArchiveFile(OpenDlg.FileName) then
     begin
       if not LoadArchiveSource(AOwner, OpenDlg.FileName, Source) then
         Exit;
