@@ -6,7 +6,14 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.064 (2026-11-19) — USFM 3.0 import and export
+### 0. Version 1.1.0.065 (2026-11-19) — Patch Dialog Follows the Bible Tree
+
+* The Create patch dialog now lists exactly what the main Bible tree lists: books you added (including the apocrypha books, which sit after Malachi) appear, and books, chapters and verses you removed are gone. The order you arranged in the tree is kept.
+* The "Add Bible" link now has its own row above the bottom bar of a blank Bible panel, so it no longer overlaps the status circles.
+* Save module as... and Save concordance as... show only the file name in the Name box, not the whole folder path (the folder is the dialog's starting folder).
+* Files: unitabout.pas, Project.pas, FormExportPatch.pas, bibletreeview.pas, FormProjectExport.pas, verse_panel_strip.pas.
+
+### 0a. Version 1.1.0.064 (2026-11-19) — USFM 3.0 import and export
 
 * Full USFM 3.0 import: headings, paragraph, poetry (\q1-\q4), list and table markers, \m, \b, character styles (\wj, \add, \nd, \qt, \bd, \it, \sup, nested ones with +), \w words with lemma, strong and x-morph, footnotes (\f, \fe), cross-references (\x), unfoldingWord alignment (\zaln-s/-e) and speaker milestones (\qt-s who="Jesus" becomes red letters); sidebars (\esb) and peripherals are skipped. Everything is turned into theWord tags with the paragraph rule (boundary at the end of the verse before, indent at the start of the next).
 * Full USFM 3.0 export: one file with all the books and, beside it, a folder named <file>_usfm with one USFM 3.0 file per book (01-GEN.usfm ... 41-MAT.usfm ...). Each book has \id, \usfm 3.0, \ide, \h, \toc1-3 and \mt1; paragraphs, poetry indents, headings, red letters, added words, footnotes, cross-references and Strong's, lemma and morphology on each word (\w word|lemma strong x-morph\w*) are written, with nested styles using the + prefix.
@@ -16,33 +23,33 @@
 * Shift+F1 guide updated for USFM 3.0 import and export.
 * Files: esword_usfm.pas, project_exporter.pas, FormProjectExport.pas, unitabout.pas.
 
-### 0a. Version 1.1.0.062 (2026-11-19) — Add Bible Link on Blank Panels
+### 0b. Version 1.1.0.062 (2026-11-19) — Add Bible Link on Blank Panels
 
 * A Bible panel that has no text now shows a blue "Add Bible" link on its bottom bar while the pointer is over it. Click it to open Project settings on that panel's text with the Add Bible Books file dialog already open (several files can be chosen, for example one USFM file per book). Panels that already have text do not show the link.
 * Help > New features guide (Shift+F1), topic 12: describes the Add Bible link.
 * Files: `verse_panel_strip.pas`, `Project.pas`, `FormProjectProperties.pas`, `formprincipal.pas`, `unitabout.pas`.
 
-### 0b. Version 1.1.0.061 (2026-11-19) — Add Books Names All Chosen Files
+### 0c. Version 1.1.0.061 (2026-11-19) — Add Books Names All Chosen Files
 
 * Add / replace Bible books with several files chosen together: the note "Waiting to be applied (OK)" and the book dialog now name every file the chosen books come from (for example Tobit and Judith from their two USFM files), not only the first file.
 * Files: `FormBookImport.pas`.
 
-### 0c. Version 1.1.0.060 (2026-11-19) — New Features Guide Updated
+### 0d. Version 1.1.0.060 (2026-11-19) — New Features Guide Updated
 
 * Help > New features guide (Shift+F1): new topic 12, "Tree: Arrange, Delete, Add", with its own illustration, explaining dragging rows by the grip and the Tools switch, the .order file for Timotheos, deleting a book, chapter or verse, adding books from one or several files, and the MySword export. The Import/Export topic now says that Add Bible Books reads only the files you choose. The old summary is now topic 13.
 * Files: `unitabout.pas`.
 
-### 0d. Version 1.1.0.059 (2026-11-19) — Several Files in Add Books
+### 0e. Version 1.1.0.059 (2026-11-19) — Several Files in Add Books
 
 * Add / replace Bible books: you can now select several files at once in the file dialog (for example one USFM file per book, Ctrl- or Shift-click) and tick the books you want from all of them. The files are read together like the files of a compressed archive; a book found in more than one file asks which file to use.
 * Files: `FormBookImport.pas`.
 
-### 0e. Version 1.1.0.058 (2026-11-19) — Tree Grips and Scrolling Fixed
+### 0f. Version 1.1.0.058 (2026-11-19) — Tree Grips and Scrolling Fixed
 
 * Bible tree: the extra drag grips (several columns of dots, left behind when the tree scrolled sideways) and the garbled rows after scrolling are fixed. While the grips show, the tree no longer scrolls sideways, and any scrolling repaints the whole tree. Turn the Tools > Rearrange switch off to get the sideways scrollbar back.
 * Files: `formprincipal.pas`.
 
-### 0f. Version 1.1.0.057 (2026-11-19) — Delete Books, Chapters, Verses; USFM Book Selection
+### 0g. Version 1.1.0.057 (2026-11-19) — Delete Books, Chapters, Verses; USFM Book Selection
 
 * Right-click a book, chapter or verse in the Bible tree and choose Delete this book / chapter / verse. iBiblia asks "Are you sure you want to delete this Book (Chapter, Verse)?" with Yes and No. On Yes the rows leave the project (texts, associations, comments, status), the tree is rebuilt without them, and a copy of the project made just before is kept next to it (name ending _before-delete_date_time).
 * A project remembers whether it is Old Testament, New Testament or both after a deletion, so deleting the first or last verse does not change the project's scope. Deleting a whole apocrypha book also removes its name and place.

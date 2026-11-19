@@ -60,8 +60,54 @@ resourcestring
 { TFrmExportPatch }
 
 procedure TFrmExportPatch.SetScope(AValue: TEscopoTexto);
+var
+  Refs: TStringList;
+  Parts: TStringList;
+  I, Book, Chapter, Verse, LastBook, LastChapter: Integer;
+  BookNode, ChapterNode: TTreeNode;
 begin
-  FBibleTreeView.Scope := AValue;
+  { the same books, chapters and verses as the main Bible tree (apocrypha
+    included, deleted ones left out, in the order the user arranged) }
+  Refs := TStringList.Create;
+  Parts := TStringList.Create;
+  Parts.Delimiter := ',';
+  Parts.StrictDelimiter := True;
+  FBibleTreeView.BeginUpdate;
+  try
+    CurrentProject.GetTreeReferences(Refs);
+    FBibleTreeView.ClearStructure;
+    LastBook := -1;
+    LastChapter := -1;
+    BookNode := nil;
+    ChapterNode := nil;
+    for I := 0 to Refs.Count - 1 do
+    begin
+      Parts.DelimitedText := Refs[I];
+      if Parts.Count < 3 then
+        Continue;
+      Book := StrToIntDef(Parts[0], 0);
+      Chapter := StrToIntDef(Parts[1], 0);
+      Verse := StrToIntDef(Parts[2], 0);
+      if (Book <= 0) or (Chapter <= 0) or (Verse <= 0) then
+        Continue;
+      if (Book <> LastBook) or (BookNode = nil) then
+      begin
+        BookNode := FBibleTreeView.AddBookNode(CurrentProject.TreeBookName(Book), Book);
+        LastBook := Book;
+        LastChapter := -1;
+      end;
+      if (Chapter <> LastChapter) or (ChapterNode = nil) then
+      begin
+        ChapterNode := FBibleTreeView.AddChapterNode(BookNode, Chapter);
+        LastChapter := Chapter;
+      end;
+      FBibleTreeView.AddVerseNode(ChapterNode, Verse);
+    end;
+  finally
+    FBibleTreeView.EndUpdate;
+    Parts.Free;
+    Refs.Free;
+  end;
 end;
 
 procedure TFrmExportPatch.SavePatch(filename: string);

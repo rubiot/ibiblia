@@ -360,9 +360,11 @@ begin
   SaveBibleModuleDialog.Title := SSaveModuleAs;
   SaveBibleModuleDialog.FilterIndex := 1;
   SuggestedFileName := SuggestedBaseFileName(Suffix) + SaveBibleModuleDialog.DefaultExt;
-  SaveBibleModuleDialog.FileName := ReadExportDestination(opts,
-    FProject.FileName, Kind, SuggestedFileName);
-  SaveBibleModuleDialog.InitialDir := ExtractFilePath(SaveBibleModuleDialog.FileName);
+  // the folder goes in "Save in folder", the Name box holds only the file name
+  SuggestedFileName := ReadExportDestination(opts, FProject.FileName, Kind,
+    SuggestedFileName);
+  SaveBibleModuleDialog.InitialDir := ExtractFilePath(SuggestedFileName);
+  SaveBibleModuleDialog.FileName := ExtractFileName(SuggestedFileName);
   SaveBibleModuleDialog.Options := SaveBibleModuleDialog.Options + [ofOverwritePrompt, ofPathMustExist];
 end;
 
@@ -375,9 +377,10 @@ begin
   SaveConcordanceDialog.Filter := STheWordDictionaryModule + '|*.dct.twm';
   SaveConcordanceDialog.FilterIndex := 1;
   SuggestedFileName := SuggestedBaseFileName(ConcordanceFileSuffix) + '.dct.twm';
-  SaveConcordanceDialog.FileName := ReadExportDestination(opts,
-    FProject.FileName, ConcordanceDestinationKind, SuggestedFileName);
-  SaveConcordanceDialog.InitialDir := ExtractFilePath(SaveConcordanceDialog.FileName);
+  SuggestedFileName := ReadExportDestination(opts, FProject.FileName,
+    ConcordanceDestinationKind, SuggestedFileName);
+  SaveConcordanceDialog.InitialDir := ExtractFilePath(SuggestedFileName);
+  SaveConcordanceDialog.FileName := ExtractFileName(SuggestedFileName);
   SaveConcordanceDialog.Options := SaveConcordanceDialog.Options + [ofOverwritePrompt, ofPathMustExist];
 end;
 

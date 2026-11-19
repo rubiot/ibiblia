@@ -419,6 +419,11 @@ type
     procedure UpdateTree;
     procedure UpdateTree(id: string);
   public
+    { Every verse the main Bible tree lists, in the order of the tree
+      ("book,chapter,verse"): what is still in the project, with the
+      apocrypha books and any arrangement the user made. }
+    procedure GetTreeReferences(Refs: TStrings);
+    function TreeBookName(BookID: Integer): string;
     procedure OnAIBatchClick(Sender: TObject);
     procedure OnAICancelClick(Sender: TObject);
     procedure OnResetTreeOrderClick(Sender: TObject);
@@ -2234,6 +2239,41 @@ begin
   // a verse is found by who it is, not by where it sits: the user may have
   // arranged the tree differently
   Result := FBibleTreeCoordinator.FindNodeByReference(ref);
+end;
+
+procedure TProject.GetTreeReferences(Refs: TStrings);
+var
+  BookNode, ChapterNode, VerseNode: TTreeNode;
+  Key: PtrUInt;
+begin
+  Refs.Clear;
+  if not Assigned(FArvore) then Exit;
+  BookNode := FArvore.Items.GetFirstNode;
+  while Assigned(BookNode) do
+  begin
+    ChapterNode := BookNode.GetFirstChild;
+    while Assigned(ChapterNode) do
+    begin
+      VerseNode := ChapterNode.GetFirstChild;
+      while Assigned(VerseNode) do
+      begin
+        Key := PtrUInt(VerseNode.Data);
+        Refs.Add(Format('%d,%d,%d', [TreeKeyBook(Key), TreeKeyChapter(Key),
+          TreeKeyVerse(Key)]));
+        VerseNode := VerseNode.GetNextSibling;
+      end;
+      ChapterNode := ChapterNode.GetNextSibling;
+    end;
+    BookNode := BookNode.GetNextSibling;
+  end;
+end;
+
+function TProject.TreeBookName(BookID: Integer): string;
+begin
+  if IsApocryphaBook(BookID) then
+    Result := ApocryphaBookName(BookID)
+  else
+    Result := LocalizedBookName(FEscopo, BookID - OffsetLivros[FEscopo] - 1);
 end;
 
 function TProject.CreateBibleTreeContextMenu: TPopupMenu;

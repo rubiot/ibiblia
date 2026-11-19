@@ -62,6 +62,13 @@ type
     { Book node with this book number (Data) cannot be ticked and is drawn
       greyed, with Suffix added to its caption. }
     procedure DisableBook(BookID: Integer; const Suffix: string);
+    { Builds the tree from the books, chapters and verses of the project (as
+      the main Bible tree lists them) instead of from the standard scope:
+      Clear, then AddBookNode / AddChapterNode / AddVerseNode in order. }
+    procedure ClearStructure;
+    function AddBookNode(const ACaption: string; BookID: Integer): TTreeNode;
+    function AddChapterNode(BookNode: TTreeNode; Chapter: Integer): TTreeNode;
+    procedure AddVerseNode(ChapterNode: TTreeNode; Verse: Integer);
 
 
     property Scope: TEscopoTexto read FScope write SetScope;
@@ -202,6 +209,34 @@ begin
     end;
   end;
   EndUpdate;
+end;
+
+procedure TBibleTreeView.ClearStructure;
+begin
+  Items.Clear;
+end;
+
+function TBibleTreeView.AddBookNode(const ACaption: string; BookID: Integer): TTreeNode;
+begin
+  Result := Items.Add(nil, ACaption);
+  Result.StateIndex := 0;
+  Result.Data := Pointer(PtrInt(BookID));
+end;
+
+function TBibleTreeView.AddChapterNode(BookNode: TTreeNode; Chapter: Integer): TTreeNode;
+begin
+  Result := Items.AddChild(BookNode, Format(SChapterFmt, [Chapter]));
+  Result.StateIndex := 0;
+  Result.Data := Pointer(PtrInt(Chapter));
+end;
+
+procedure TBibleTreeView.AddVerseNode(ChapterNode: TTreeNode; Verse: Integer);
+var
+  nv: TTreeNode;
+begin
+  nv := Items.AddChild(ChapterNode, IntToStr(Verse));
+  nv.StateIndex := 0;
+  nv.Data := Pointer(PtrInt(Verse));
 end;
 
 procedure TBibleTreeView.SetVerseList(refs: TStringList);

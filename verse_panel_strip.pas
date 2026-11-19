@@ -62,6 +62,10 @@ type
     procedure SetPropertiesActive(AValue: Boolean);
     procedure SetShowAddBible(AValue: Boolean);
     function AddBibleRect: TRect;
+    { height of the row above the bar that holds the "Add Bible" link (0 when it is not shown) }
+    function TopRow: Integer;
+    { height of the bar itself }
+    function BarH: Integer;
     function HitTestAt(X, Y: Integer; out StatusIndex: Integer): TStripHit;
     function StatusCircleRect(Index: Integer): TRect;
     procedure DrawStatusCircle(const R: TRect; Index: Integer);
@@ -161,7 +165,7 @@ begin
   FTarget := ATarget;
   if not Assigned(ATarget) then
     Exit;
-  H := PreferredHeight;
+  H := PreferredHeight + TopRow;
   NewL := ATarget.Left;
   NewT := ATarget.Top + ATarget.Height - H;
   NewW := ATarget.ClientWidth;
@@ -250,11 +254,28 @@ begin
     FHot := shNone;
     Cursor := crDefault;
   end;
+  if Assigned(FTarget) then
+    PlaceOver(FTarget); // the strip grows / shrinks by the link's row
   Invalidate;
 end;
 
 { the link sits in the middle of the bar, where a normal panel has the status
   circles }
+function TVersePanelStrip.TopRow: Integer;
+begin
+  if FShowAddBible then
+    Result := PreferredHeight
+  else
+    Result := 0;
+end;
+
+function TVersePanelStrip.BarH: Integer;
+begin
+  Result := Max(1, Height - TopRow);
+end;
+
+{ The link has a row of its own above the bar, so it never lands on the title,
+  the status circles or the Edit / Properties boxes. }
 function TVersePanelStrip.AddBibleRect: TRect;
 var
   W: Integer;
@@ -262,7 +283,7 @@ begin
   Canvas.Font.Assign(Font);
   W := Canvas.TextWidth(SStripAddBible) + 12;
   Result := Rect(Max(4, ClientWidth div 2 - W div 2), 0,
-    Max(4, ClientWidth div 2 - W div 2) + W, Height);
+    Max(4, ClientWidth div 2 - W div 2) + W, TopRow);
 end;
 
 procedure TVersePanelStrip.SetPropertiesActive(AValue: Boolean);
@@ -293,7 +314,7 @@ end;
 
 function TVersePanelStrip.BoxSize: Integer;
 begin
-  Result := Max(11, Height - 12);
+  Result := Max(11, BarH - 12);
 end;
 
 { The circles sit in the middle of the panel, as in the mod. }
@@ -301,13 +322,13 @@ function TVersePanelStrip.StatusCircleRect(Index: Integer): TRect;
 var
   Size, Gap, GroupWidth, Left0: Integer;
 begin
-  Size := Max(10, Min(16, Height - 6));
+  Size := Max(10, Min(16, BarH - 6));
   Gap := Max(3, Min(20, ((ClientWidth div 2 - Length(FStatusColors) * Size) div
     Max(1, Length(FStatusColors) * 3)) div 2));
   GroupWidth := Length(FStatusColors) * Size + Max(0, Length(FStatusColors) - 1) * Gap;
   Left0 := Max(4, ClientWidth div 2 - GroupWidth div 2);
-  Result := Rect(Left0 + Index * (Size + Gap), (Height - Size) div 2,
-    Left0 + Index * (Size + Gap) + Size, (Height - Size) div 2 + Size);
+  Result := Rect(Left0 + Index * (Size + Gap), TopRow + (BarH - Size) div 2,
+    Left0 + Index * (Size + Gap) + Size, TopRow + (BarH - Size) div 2 + Size);
 end;
 
 function TVersePanelStrip.PropertiesRect: TRect;
@@ -316,7 +337,7 @@ var
 begin
   Canvas.Font.Assign(Font);
   W := BoxSize + 6 + Canvas.TextWidth(SStripProperties) + 6;
-  Result := Rect(ClientWidth - 4 - W, 0, ClientWidth - 4, Height);
+  Result := Rect(ClientWidth - 4 - W, TopRow, ClientWidth - 4, Height);
 end;
 
 function TVersePanelStrip.EditRect: TRect;
@@ -327,7 +348,7 @@ begin
   Props := PropertiesRect;
   Canvas.Font.Assign(Font);
   W := BoxSize + 6 + Canvas.TextWidth(SStripEdit) + 6;
-  Result := Rect(Props.Left - 2 - W, 0, Props.Left - 2, Height);
+  Result := Rect(Props.Left - 2 - W, TopRow, Props.Left - 2, Height);
 end;
 
 function TVersePanelStrip.HitTestAt(X, Y: Integer;
@@ -371,7 +392,7 @@ var
   Box: TRect;
 begin
   Size := BoxSize;
-  Y := (Height - Size) div 2;
+  Y := TopRow + (BarH - Size) div 2;
   Box := Rect(R.Left + 2, Y, R.Left + 2 + Size, Y + Size);
   PC.Brush.Style := bsSolid;
   PC.Brush.Color := UIContentColor;
@@ -392,7 +413,7 @@ begin
   end;
   PC.Brush.Style := bsClear;
   PC.Font.Color := UITextColor;
-  PC.TextOut(Box.Right + 6, (Height - PC.TextHeight(ALabel)) div 2,
+  PC.TextOut(Box.Right + 6, TopRow + (BarH - PC.TextHeight(ALabel)) div 2,
     ALabel);
 end;
 
@@ -505,7 +526,7 @@ begin
           Delete(DrawTitle, Length(DrawTitle), 1);
         DrawTitle := DrawTitle + '...';
       end;
-      TitleY := (Height - PC.TextHeight(DrawTitle)) div 2;
+      TitleY := TopRow + (BarH - PC.TextHeight(DrawTitle)) div 2;
       PC.TextOut(TitleX, TitleY, DrawTitle);
       PC.Font.Style := Font.Style;
     end;
@@ -532,7 +553,7 @@ begin
       begin
         PC.Brush.Style := bsClear;
         PC.Font.Color := UIMutedTextColor;
-        PC.TextOut(CaptionLeft, (Height - PC.TextHeight(StatusText)) div 2,
+        PC.TextOut(CaptionLeft, TopRow + (BarH - PC.TextHeight(StatusText)) div 2,
           StatusText);
       end;
     end;
@@ -555,7 +576,7 @@ begin
       else PC.Font.Color := RGBToColor(0, 102, 204);
     end;
     PC.Font.Style := Font.Style + [fsUnderline];
-    PC.TextOut(AddBibleRect.Left + 6, (Height - PC.TextHeight(SStripAddBible)) div 2,
+    PC.TextOut(AddBibleRect.Left + 6, (TopRow - PC.TextHeight(SStripAddBible)) div 2,
       SStripAddBible);
     PC.Font.Style := Font.Style;
   end;
