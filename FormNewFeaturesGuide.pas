@@ -26,7 +26,7 @@ uses
   ui_style;
 
 const
-  TOPIC_COUNT = 12;
+  TOPIC_COUNT = 14;
 
   TOPIC_TITLES: array[0..TOPIC_COUNT - 1] of string = (
     '1. Choosing words with the mouse wheel',
@@ -40,7 +40,9 @@ const
     '9. Synchronization with theWord and Timotheos',
     '10. 1.1.0 Visual WYSIWYG Editor & Translator Notes',
     '11. 1.1.0 BiDi Rendering & Translation Memory',
-    '12. 1.1.0 Guided Wizard, Custom Statuses & AI Flows');
+    '12. 1.1.0 Guided Wizard, Custom Statuses & AI Flows',
+    '13. Tree: Arrange, Delete and Add Books',
+    '14. Updates, Update Branch & Project Backups');
 
   TOPIC_TEXTS: array[0..TOPIC_COUNT - 1] of string = (
     // 1
@@ -105,8 +107,10 @@ const
     // 7
     'IMPORT' + LineEnding + LineEnding +
     'New project and Project settings read theWord modules (.ont, .ot, .nt) and also ' +
-    'e-Sword (.bblx, .bbli, .bbl), USFM (.usfm, .sfm) and USFX (.usfx, .xml) Bibles. ' +
-    'For USFM, choose one book and the other books in the same folder are read too.' + LineEnding + LineEnding +
+    'e-Sword (.bblx, .bbli, .bbl), USFM 2.x/3.0 (.usfm, .sfm) and USFX (.usfx, .xml) Bibles, ' +
+    'including inside compressed archives (.zip, .tar*, .gz, .7z, .rar). For USFM in New ' +
+    'project / Project settings, choose one book and sibling books in the same folder are read too; ' +
+    'in Add Bible Books only the chosen files are read.' + LineEnding + LineEnding +
     'SWORD (CrossWire) Bibles are read too, as the Source, the Destination, a reference text, or in ' +
     'Add Bible Books / Replace: choose the module''s .conf file (in its mods.d folder) or the downloaded ' +
     '.zip. Strong''s numbers and morphology, notes, words of Jesus and the apocrypha books are kept. ' +
@@ -114,7 +118,7 @@ const
     'the same way, from the .conf or the .zip. Locked modules are not opened, and bzip2 / xz compressed ' +
     'modules need the bzip2 / xz program installed.' + LineEnding + LineEnding +
     'APOCRYPHA' + LineEnding +
-    'Deuterocanonical books found in the file are added after the canonical books ' +
+    'Deuterocanonical books found in the file sit between Malachi and Matthew in imported file order ' +
     '(book numbers 67 and up). They appear in the Bible tree, the context panel, Find ' +
     'in project, F8 stepping and the Timotheos sync. Projects made earlier from an ' +
     'e-Sword, USFM or USFX file get their Apocrypha the first time they are opened.' + LineEnding + LineEnding +
@@ -123,8 +127,9 @@ const
     'of that panel in the format it was imported from (the list starts with that format). ' +
     'The Destination panel is written with its links as tagged text.' + LineEnding +
     '  - Right-click > Save text to file...: plain text, one verse per line.' + LineEnding +
-    '  - Project > Export: theWord, MySword, e-Sword, USFM and USFX, for the tagged ' +
-    'Destination and for the interlinear. Choose books... (bottom left) opens the ' +
+    '  - Project > Export: theWord, MySword, e-Sword, USFM 3.0 (single file + per-book folder ' +
+    'or per-book .zip, with a \rem line marking exact Strong''s numbers for Timotheos) and USFX, ' +
+    'for the tagged Destination and for the interlinear. Choose books... (bottom left) opens the ' +
     'same check tree as Create patch, to export only some books, chapters or verses ' +
     '(Select all / Deselect all); the verses you leave out are written empty in theWord ' +
     'modules and left out of the other formats.' + LineEnding +
@@ -177,7 +182,33 @@ const
     'EXPERIMENTAL AI TRANSLATION & ASSOCIATION' + LineEnding +
     'Configure machine-default or per-project AI settings, flow-specific prompts, and ' +
     'reusable verse examples, with batch review before accepted results are applied and ' +
-    'Windows local secure storage for API credentials.');
+    'Windows local secure storage for API credentials.',
+    // 13
+    'REARRANGING THE BIBLE TREE' + LineEnding + LineEnding +
+    'Every row in the Bible tree has a grip (two columns of dots) at its right edge. ' +
+    'Hold the grip and drag any book, chapter, or verse up or down; chapter and verse ' +
+    'numbers keep their meaning. Tools > Rearrange books, chapters and verses toggles the ' +
+    'grips, and right-click > "Reset the order of books, chapters and verses" restores ' +
+    'standard order. Create patch matches the arranged tree, and exports write a .order ' +
+    'file alongside the module for Timotheos.' + LineEnding + LineEnding +
+    'DELETING & ADDING BOOKS' + LineEnding +
+    '  - Right-click any book, chapter, or verse > "Delete this book/chapter/verse..." ' +
+    '(saves a _before-delete backup beside the project first).' + LineEnding +
+    '  - Project > Settings > Texts > Add Bible Books... lets you multi-select several ' +
+    'files (such as one USFM file per book); blank panels also show a blue "Add Bible" ' +
+    'link above the hover bar.',
+    // 14
+    'AUTOMATIC UPDATES & UPDATE BRANCH' + LineEnding + LineEnding +
+    '  - Help > Check for updates... checks GitHub Releases, verifies SHA256SUMS.txt, ' +
+    'swaps files in-place with rollback, and restarts iBiblia.' + LineEnding +
+    '  - Help > Check for updates when iBiblia starts toggles automatic startup checks.' + LineEnding +
+    '  - Help > Update branch switches between Stable (linux-port) and Neon (Neon branch), ' +
+    'persisted in iBiblia.ini (update.channel).' + LineEnding + LineEnding +
+    'PROJECT BACKUP & RESTORE' + LineEnding +
+    'In Project > Settings > Project, use "Back up this project" (.bib.zip with optional ' +
+    'note) and "Restore project..." (automatically backs up the current project first). ' +
+    'iBiblia also offers a backup prompt before Replace, Add Books, Clear Text, Apply Patch, ' +
+    'or Apply AI. File > Open accepts .bib.zip archives directly.');
 
 var
   GuideForm: TForm = nil;

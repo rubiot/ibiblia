@@ -6,7 +6,16 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.068 (2026-11-19) — Update Branch Selection (Stable / Neon)
+### 0. Version 1.1.0.069 (2026-11-19) — Updated Shift+F1 User Guide (Through v1.1.0.068)
+
+* Updated the **Help → New features guide (`Shift+F1`)** (`unitabout.pas` `TFormUserGuide` and `FormNewFeaturesGuide.pas`) to cover all features through `v1.1.0.068`:
+  * **Topic 7 (Import/Export & Sync):** added SWORD (CrossWire) modules, compressed archives (`.zip`, `.tar*`, `.gz`, `.7z`, `.rar`), `Choose books...` partial export, USFM 3.0 `\rem` exact Strong's marker for Timotheos, and Apocrypha order between Malachi and Matthew.
+  * **Topic 12 (Bible Tree: Arrange, Delete, Add):** updated with the dedicated `Add Bible` row above the bottom bar on blank panels and exact `Create patch` tree parity.
+  * **New Topic 13 ("Updates, Branch & Backups") + custom illustration:** covers automatic SHA-256 verified updates, **Help → Update branch** (`Stable (linux-port)` vs `Neon (Neon branch)`), **Project Backup & Restore** (`.bib.zip`), and the native 64-bit Linux edition.
+  * **Topic 14:** shifted Full Feature Summary from 13 to 14 and adjusted sidebar height/row spacing so all 14 topics fit without clipping.
+* Files: unitabout.pas, FormNewFeaturesGuide.pas.
+
+### 0a. Version 1.1.0.068 (2026-11-19) — Update Branch Selection (Stable / Neon)
 
 * Added **Help → Update branch** submenu to choose between **Stable (linux-port)** (`/releases/latest`) and **Neon (Neon branch)** (`/releases/tags/neon`), persisted in `iBiblia.ini` (`update.channel`).
 * Switching update branches clears any skipped version and discards staged updates from the previous branch, and the updater shows the active branch name in update prompts.

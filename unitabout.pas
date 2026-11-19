@@ -110,10 +110,13 @@ implementation
 {$R *.lfm}
 
 const
-  GUIDE_TOPIC_COUNT = 13;
+  GUIDE_TOPIC_COUNT = 14;
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.069 (64-bit Edition) - 2026-11-19' + LineEnding +
+  '- Updated the Shift+F1 New Features User Guide (TFormUserGuide in unitabout.pas and FormNewFeaturesGuide.pas) through v1.1.0.068: expanded Import/Export with SWORD (CrossWire) modules, compressed archives, USFM 3.0 \rem exact Strong''s marker, Choose books partial export, and Apocrypha placement; updated the Bible Tree topic with Add Bible row and Create patch parity; added Topic 13 ("Updates, Branch & Backups") with a new custom illustration covering automatic updates, Help > Update branch (Stable / Neon), Project Backup & Restore (.bib.zip), and the Native Linux edition; and bumped the Full Feature Summary to Topic 14.' + LineEnding +
+  '' + LineEnding +
   'Version 1.1.0.068 (64-bit Edition) - 2026-11-19' + LineEnding +
   '- Added Help > Update branch submenu to choose between Stable (linux-port) and Neon (Neon branch) releases, saved in iBiblia.ini (update.channel), with Neon CI builds published as a rolling pre-release under tag "neon".' + LineEnding +
   '' + LineEnding +
@@ -1165,9 +1168,9 @@ begin
   FormStyle := fsStayOnTop;
   Position := poMainFormCenter;
   ClientWidth := 860;
-  ClientHeight := 590;
+  ClientHeight := 630;
   Constraints.MinWidth := 720;
-  Constraints.MinHeight := 480;
+  Constraints.MinHeight := 560;
   KeyPreview := True;
   OnShow := @FormShow;
   OnResize := @FormResize;
@@ -1192,7 +1195,7 @@ begin
   lblHeaderTitle.Font.Name := 'Segoe UI';
   lblHeaderTitle.Font.Height := -17;
   lblHeaderTitle.Font.Style := [fsBold];
-  lblHeaderTitle.Caption := 'iBiblia New Features User Guide (v1.0.0.71 – v1.1.0.059)';
+  lblHeaderTitle.Caption := 'iBiblia New Features User Guide (v1.0.0.71 – v1.1.0.068)';
 
   lblHeaderSub := TLabel.Create(pnlHeader);
   lblHeaderSub.Parent := pnlHeader;
@@ -1357,7 +1360,8 @@ begin
     9: Result := '10. 1.1.0 BiDi & Trans. Memory';
     10: Result := '11. 1.1.0 Wizard, AI & Icons';
     11: Result := '12. Tree: Arrange, Delete, Add';
-    12: Result := '13. Full Feature Summary';
+    12: Result := '13. Updates, Branch & Backups';
+    13: Result := '14. Full Feature Summary';
   else
     Result := '';
   end;
@@ -1372,13 +1376,14 @@ begin
     3: Result := 'v1.0.1.002 – v1.1.0.0';
     4: Result := 'v1.0.0.73 – v1.0.0.74';
     5: Result := 'v1.0.0.80 – v1.0.1.023';
-    6: Result := 'v1.0.0.71 – v1.1.0.0';
+    6: Result := 'v1.0.0.71 – v1.1.0.067';
     7: Result := 'v1.0.0.70 – v1.1.0.0';
     8: Result := 'v1.1.0.0 WYSIWYG & Notes';
     9: Result := 'v1.1.0.0 BiDi & Memory';
     10: Result := 'v1.1.0.0 – v1.1.0.019 AI & UI';
-    11: Result := 'v1.1.0.053 – v1.1.0.059 Tree & Books';
-    12: Result := 'All Features (v1.0.0.70–v1.1.0.059)';
+    11: Result := 'v1.1.0.053 – v1.1.0.065 Tree & Books';
+    12: Result := 'v1.1.0.048 – v1.1.0.068 Updates';
+    13: Result := 'All Features (v1.0.0.70–v1.1.0.068)';
   else
     Result := '';
   end;
@@ -1393,13 +1398,14 @@ begin
     3: Result := '4. Visual Editor: Paragraph Keys, Italics on Save & Live Preview';
     4: Result := '5. Real-Time Text-to-Speech (TTS) Hover Reader (Greek, Hebrew & English)';
     5: Result := '6. Dark Mode UI & 7 theWord Color Themes (Classic, Dark, Night, Sepia, Slate...)';
-    6: Result := '7. Multi-Format Import/Export (.ont, e-Sword, USFM, USFX), Apocrypha & Sync';
+    6: Result := '7. Multi-Format Import/Export (.ont, e-Sword, USFM 3.0, USFX, SWORD), Apocrypha & Sync';
     7: Result := '8. Verse Status Filtering (F8 / Shift+F8) & Find in Project (Ctrl+F)';
     8: Result := '9. iBiblia 1.1.0: Visual WYSIWYG & Raw ONT Editor, Semantic Markup & Translator Notes';
     9: Result := '10. iBiblia 1.1.0: Bidirectional DirectWrite Rendering, Edit Safety & Translation Memory';
     10: Result := '11. iBiblia 1.1.0: Guided Project Wizard, Custom Statuses, AI Workflows & Toolbar Sizes';
     11: Result := '12. iBiblia 1.1.0: Arrange, Delete and Add Books in the Tree';
-    12: Result := '13. Complete Quick-Reference Summary of All New Features (v1.0.0.70 – v1.1.0.059)';
+    12: Result := '13. iBiblia 1.1.0: Automatic Updates, Update Branch (Stable / Neon), Backups & Linux';
+    13: Result := '14. Complete Quick-Reference Summary of All New Features (v1.0.0.70 – v1.1.0.068)';
   else
     Result := '';
   end;
@@ -1523,17 +1529,20 @@ begin
 
     6:
       Result :=
-        'FEATURE OVERVIEW (v1.0.0.71 – v1.0.1.051)' + sLineBreak +
-        'Import and export Bibles across theWord (.ont, .ot, .nt), MySword (.bbl.mybible), non-encrypted e-Sword (.bblx RTF, .bbli HTML, .bbl SQLite), USFM 2.x/3.0 (.usfm, .sfm), and USFX XML (.usfx, .xml from eBible.org / Simple Bible Reader) with full Apocrypha / Deuterocanonical OT book & chapter support in the Bible Books Tree.' + sLineBreak +
-        'Also includes safe Project Save As (Ctrl+Shift+S), exporting modules even while open in theWord, per-project remembered export destinations, smart word-diff detection on text reload, and bidirectional 64-bit theWord 7 synchronization.' + sLineBreak + sLineBreak +
+        'FEATURE OVERVIEW (v1.0.0.71 – v1.1.0.067)' + sLineBreak +
+        'Import and export Bibles across theWord (.ont, .ot, .nt), MySword (.bbl.mybible), non-encrypted e-Sword (.bblx RTF, .bbli HTML, .bbl SQLite), USFM 2.x/3.0 (.usfm, .sfm), USFX XML (.usfx, .xml from eBible.org / Simple Bible Reader), SWORD (CrossWire) modules, and compressed archives (.zip, .tar*, .gz, .7z, .rar), with full Apocrypha / Deuterocanonical OT book & chapter support in the Bible Books Tree.' + sLineBreak +
+        'Also includes Choose books partial export, safe Project Save As (Ctrl+Shift+S), exporting modules even while open in theWord, per-project remembered export destinations, smart word-diff detection on text reload, and bidirectional 64-bit theWord 7 + Timotheos synchronization.' + sLineBreak + sLineBreak +
         'HOW TO USE:' + sLineBreak +
-        '  1. Multi-Format Bible Import & Export (.ont/.ot/.nt, e-Sword, USFM, USFX, MySword):' + sLineBreak +
+        '  1. Multi-Format Bible Import & Export (.ont/.ot/.nt, e-Sword, USFM 3.0, USFX, MySword, SWORD):' + sLineBreak +
         '     • Import any supported format in File > New Project or Project > Settings across Source, Destination, Reference 1, or Reference 2 (in New Project and Project > Settings, selecting a single .usfm/.sfm book file automatically loads all sibling book files in that folder; in Add Bible Books only the files you choose are read).' + sLineBreak +
+        '     • Compressed archives (.zip, .tar, .tar.gz/.tgz, .tar.bz2, .tar.xz, .gz, and .7z/.rar when 7-Zip/unrar is installed) work in Add Bible Books, Replace, and popup dictionary pickers (.dct.twm is unpacked to your iBiblia dictionaries folder).' + sLineBreak +
+        '     • SWORD (CrossWire) modules (v1.1.0.052): import Bibles (Source, Destination, Reference 1/2, Add Bible Books, Replace) and dictionaries (StrongsGreek, StrongsHebrew, etc.) via the module''s .conf file (in mods.d) or downloaded .zip. Strong''s numbers, morphology, notes, Words of Jesus, and Apocrypha are kept; locked modules are skipped, and bzip2/xz modules need bzip2/xz installed.' + sLineBreak +
         '     • Export Tagged Destination or Interlinear Bibles via File > Export... or right-click any of the 4 Bible panels and select "Export as Bible module..." to export directly to .ont/.ot/.nt, e-Sword (.bblx/.bbli), USFM (.usfm/.sfm), USFX (.usfx/.xml), or MySword (.bbl.mybible).' + sLineBreak +
+        '     • Export Part of a Project (Choose books..., v1.1.0.066): in Project > Export (Tagged Destination and Interlinear), click Choose books... to tick specific books, chapters, or verses (with Select all / Deselect all, Apocrypha included). Left-out verses are written empty in theWord modules (keeping line positions) and omitted from e-Sword, MySword, USFM, and USFX.' + sLineBreak +
         '     • USFM 3.0 import (.usfm, .sfm, also inside a zip, tar or 7z): the book id, headings (\s, \ms, \mr), paragraph, poetry, list and table markers, character styles (\wj, \add, \nd, \qt, \bd, \it, \sup), \w words with lemma, strong and x-morph, footnotes (\f), cross-references (\x), unfoldingWord alignment (\zaln) and speaker milestones are all read and become theWord tags, so the text works with associations and with every export. Sidebars and peripherals are skipped.' + sLineBreak +
-        '     • USFM 3.0 export: choose "USFM 3.0 Bible (*.usfm, with per-book folder)" to get one file holding all the books and, beside it, a folder named like the file plus _usfm with one USFM 3.0 file per book (01-GEN.usfm, 41-MAT.usfm, ...). Choose "USFM 3.0 Bible, per-book files (*.zip)" to get only the per-book files in a zip. Paragraphs, poetry indents, headings, red letters, added words, footnotes, cross-references and Strong''s, lemma and morphology on each word are written.' + sLineBreak + sLineBreak +
-        '  2. Apocrypha / Deuterocanonical OT Books in the Bible Books Tree (v1.0.1.045–047):' + sLineBreak +
-        '     • Standalone Apocrypha OT books (Book >= 67: 1–2 Esdras, Tobit, Judith, 1–4 Maccabees, Prayer of Manasseh, Wisdom, Sirach, Baruch, Letter of Jeremiah, Prayer of Azariah, Susanna, Bel and the Dragon, Psalm 151, Psalms of Solomon, Odes, Laodiceans) appear right after Malachi at the end of the Old Testament, and extra chapters (Daniel 13–14, Psalms 151, Esther 11–16) appear under their canonical books.' + sLineBreak + sLineBreak +
+        '     • USFM 3.0 export: choose "USFM 3.0 Bible (*.usfm, with per-book folder)" to get one file holding all the books and, beside it, a folder named like the file plus _usfm with one USFM 3.0 file per book (01-GEN.usfm, 41-MAT.usfm, ...). Choose "USFM 3.0 Bible, per-book files (*.zip)" to get only the per-book files in a zip. Paragraphs, poetry indents, headings, red letters, added words, footnotes, cross-references and Strong''s, lemma and morphology on each word are written, plus a \rem line marking exact Strong''s numbers for Timotheos (preserving 5-digit numbers ending in 0 such as G13970).' + sLineBreak + sLineBreak +
+        '  2. Apocrypha / Deuterocanonical OT Books in the Bible Books Tree (v1.0.1.045–v1.1.0.049):' + sLineBreak +
+        '     • Standalone Apocrypha OT books (Book >= 67: 1–2 Esdras, Tobit, Judith, 1–4 Maccabees, Prayer of Manasseh, Wisdom, Sirach, Baruch, Letter of Jeremiah, Prayer of Azariah, Susanna, Bel and the Dragon, Psalm 151, Psalms of Solomon, Odes, Laodiceans) sit between Malachi and Matthew in imported file order, and extra chapters (Daniel 13–14, Psalms 151, Esther 11–16) appear under their canonical books.' + sLineBreak + sLineBreak +
         '  3. Smart "Needs Review" Status on Text Reload & Concurrent theWord 7 + Tanglaw Bible Sync:' + sLineBreak +
         '     • Reloading a Bible text in Project > Settings compares actual words: tag-only updates stay Green ("Associated!"), while word edits become Red ("Needs review").' + sLineBreak +
         '     • Enable the theWord and Timotheos (Tanglaw) synchronization items in the Tools menu simultaneously for bidirectional verse synchronization.';
@@ -1611,14 +1620,15 @@ begin
 
     11:
       Result :=
-        'FEATURE OVERVIEW (iBiblia 1.1.0.053 – 1.1.0.059)' + sLineBreak +
-        'Arrange the books, chapters and verses of the Bible tree by dragging, delete a book, chapter or verse you do not want, and add books from one or several files. The arrangement also shows in Timotheos.' + sLineBreak + sLineBreak +
+        'FEATURE OVERVIEW (iBiblia 1.1.0.053 – v1.1.0.065)' + sLineBreak +
+        'Arrange the books, chapters and verses of the Bible tree by dragging, delete a book, chapter or verse you do not want, and add books from one or several files. The arrangement also shows in Timotheos and in Create patch.' + sLineBreak + sLineBreak +
         'HOW TO USE:' + sLineBreak +
         '  1. Rearranging the Bible Tree (Drag the Grip):' + sLineBreak +
         '     • Every row of the Bible tree has a grip (two columns of dots) at its right edge. Press and hold the grip, then drag the book, chapter or verse up or down; a line shows where it will land.' + sLineBreak +
         '     • Only the order changes. Chapter and verse numbers stay as they are, and the arrangement is saved in the project.' + sLineBreak +
         '     • Tools > Rearrange books, chapters and verses switches the grips on or off (remembered). While the grips show, the tree does not scroll sideways.' + sLineBreak +
         '     • Right-click > "Reset the order of books, chapters and verses" puts everything back in the standard order.' + sLineBreak +
+        '     • Create patch lists the exact same Bible tree as the main tree (including added Apocrypha books, excluding deleted rows, and keeping your custom order).' + sLineBreak +
         '     • When you export a module, a file with the same name plus .order is written beside it. Timotheos reads it and shows the same order; theWord ignores it.' + sLineBreak + sLineBreak +
         '  2. Deleting a Book, Chapter or Verse:' + sLineBreak +
         '     • Right-click the book, chapter or verse in the Bible tree and choose "Delete this book..." / "Delete this chapter..." / "Delete this verse...". iBiblia asks "Are you sure you want to delete this Book (Chapter, Verse)?" with Yes and No.' + sLineBreak +
@@ -1626,15 +1636,31 @@ begin
         '     • Use it to remove a book that was imported twice, such as a duplicate Apocrypha book. Deleting a verse leaves a gap in the verse numbers; nothing is renumbered.' + sLineBreak + sLineBreak +
         '  3. Adding Books from One or Several Files (Project > Settings > Texts > Add Bible Books...):' + sLineBreak +
         '     • In the file dialog choose one file, or several at once with Ctrl- or Shift-click (for example one USFM file per book), then tick the books you want. Only the files you choose are read, not the whole folder.' + sLineBreak +
-        '     • A Bible panel with no text for the verse you are on (for example Reference 2 before you add one, or a module that lacks that book) shows a blue "Add Bible" link on its bottom bar while the pointer is over it. Click it to open Project settings on that panel''s text with this same file dialog already open.' + sLineBreak +
+        '     • A Bible panel with no text for the verse you are on (for example Reference 2 before you add one, or a module that lacks that book) shows a blue "Add Bible" link on its own row above the bottom bar while the pointer is over it (never overlapping status circles). Click it to open Project settings on that panel''s text with this same file dialog already open.' + sLineBreak +
         '     • A book found in more than one chosen file asks which file to use. Books the project already has are greyed out.' + sLineBreak + sLineBreak +
         '  4. MySword Export:' + sLineBreak +
         '     • Exporting a Bible as MySword (.bbl.mybible) now writes a real MySword module with Strong''s numbers, morphology, notes and the Apocrypha books.';
 
     12:
+      Result :=
+        'FEATURE OVERVIEW (iBiblia 1.1.0.048 – v1.1.0.068)' + sLineBreak +
+        'Keep iBiblia up to date automatically on both Windows and Linux with selectable Stable / Neon update channels, protect your work with verified .bib.zip backups before major edits, and run the native 64-bit Linux edition with full feature parity.' + sLineBreak + sLineBreak +
+        'HOW TO USE:' + sLineBreak +
+        '  1. Automatic Self-Updates & Update Branch (Help > Check for updates... / Help > Update branch):' + sLineBreak +
+        '     • Help > Check for updates... fetches GitHub Releases, verifies downloads against SHA256SUMS.txt, swaps files in-place with automatic rollback on error, and restarts iBiblia cleanly (your projects and settings are untouched).' + sLineBreak +
+        '     • Help > Check for updates when iBiblia starts toggles automatic startup checks (on Linux, updates download quietly in the background by default and offer a restart prompt).' + sLineBreak +
+        '     • Help > Update branch lets you switch between "Stable (linux-port)" (/releases/latest) and "Neon (Neon branch)" (rolling neon pre-release tag), saved in iBiblia.ini (update.channel). Switching branches clears any skipped version and discards pending downloads from the previous branch.' + sLineBreak + sLineBreak +
+        '  2. Project Backup & Restore (Project > Settings > Project tab):' + sLineBreak +
+        '     • Click "Back up this project" to create a verified .bib.zip backup (with an optional note) in your chosen backup folder.' + sLineBreak +
+        '     • Before Replace, Add Books, Clear Text, Apply Patch, or Apply AI, iBiblia offers "Back up and continue" (keeping the newest 2 automatic backups; manual backups you create are never deleted).' + sLineBreak +
+        '     • "Restore project..." lists backups by date, type, note, associated verse count, and size, and automatically backs up the current project first so any restore can be undone. File > Open also opens .bib.zip files directly.' + sLineBreak + sLineBreak +
+        '  3. Native 64-Bit Linux Edition:' + sLineBreak +
+        '     • Runs natively on Linux x86_64 with transparent hover bottom bars, Linux RTF dictionary popups, TTS (espeak-ng/espeak/spd-say), Timotheos sync, automatic desktop menu registration (~/.local/share/applications/ibiblia.desktop), and cloud-built GitHub Releases.';
+
+    13:
       begin
         Result := '';
-        for i := 0 to 11 do
+        for i := 0 to 12 do
         begin
           if Result <> '' then
             Result := Result + sLineBreak + sLineBreak +
@@ -1680,7 +1706,7 @@ begin
   if Sender = nil then ;
   if Shift = [] then ;
   if X = 0 then ;
-  itemH := Max(36, (pbSidebar.Height - 12) div GUIDE_TOPIC_COUNT);
+  itemH := Max(32, (pbSidebar.Height - 12) div GUIDE_TOPIC_COUNT);
   idx := (Y - 6) div itemH;
   if (Y < 6) or (idx < 0) or (idx >= GUIDE_TOPIC_COUNT) then
     idx := -1;
@@ -1709,7 +1735,7 @@ begin
   if Shift = [] then ;
   if X = 0 then ;
   if Button <> mbLeft then Exit;
-  itemH := Max(36, (pbSidebar.Height - 12) div GUIDE_TOPIC_COUNT);
+  itemH := Max(32, (pbSidebar.Height - 12) div GUIDE_TOPIC_COUNT);
   idx := (Y - 6) div itemH;
   if (Y >= 6) and (idx >= 0) and (idx < GUIDE_TOPIC_COUNT) then
     SelectTopic(idx);
@@ -1718,7 +1744,7 @@ end;
 procedure TFormUserGuide.PbSidebarPaint(Sender: TObject);
 var
   bmp: TBitmap;
-  i, itemH, yTop, yBot: Integer;
+  i, itemH, yTop, yBot, titleOff, subOff: Integer;
   rcItem, rcAccent: TRect;
   bgCol, itemBg, titleCol, subCol, borderCol: TColor;
 begin
@@ -1739,7 +1765,17 @@ begin
     bmp.Canvas.Pen.Color := borderCol;
     bmp.Canvas.Line(bmp.Width - 1, 0, bmp.Width - 1, bmp.Height);
 
-    itemH := Max(36, (bmp.Height - 12) div GUIDE_TOPIC_COUNT);
+    itemH := Max(32, (bmp.Height - 12) div GUIDE_TOPIC_COUNT);
+    if itemH < 36 then
+    begin
+      titleOff := 3;
+      subOff := 18;
+    end
+    else
+    begin
+      titleOff := 6;
+      subOff := 23;
+    end;
     bmp.Canvas.Font.Name := 'Segoe UI';
 
     for i := 0 to GUIDE_TOPIC_COUNT - 1 do
@@ -1798,12 +1834,12 @@ begin
       bmp.Canvas.Font.Size := 9;
       bmp.Canvas.Font.Style := [fsBold];
       bmp.Canvas.Font.Color := titleCol;
-      bmp.Canvas.TextOut(rcItem.Left + 10, rcItem.Top + 6, GetTopicNavTitle(i));
+      bmp.Canvas.TextOut(rcItem.Left + 10, rcItem.Top + titleOff, GetTopicNavTitle(i));
 
       bmp.Canvas.Font.Size := 8;
       bmp.Canvas.Font.Style := [];
       bmp.Canvas.Font.Color := subCol;
-      bmp.Canvas.TextOut(rcItem.Left + 10, rcItem.Top + 23, GetTopicVersionBadge(i));
+      bmp.Canvas.TextOut(rcItem.Left + 10, rcItem.Top + subOff, GetTopicVersionBadge(i));
     end;
 
     pbSidebar.Canvas.Draw(0, 0, bmp);
@@ -2391,6 +2427,31 @@ var
     DrawBadge(C, 210, 154, 'Add Bible Books: Ctrl/Shift-click several files at once', winBg, txtCol, borderCol, False);
   end;
 
+  procedure DrawTopicUpdates(C: TCanvas);
+  begin
+    DrawBox(C, 16, 36, W div 2 - 6, 198, pnlBg, borderCol, 6);
+    C.Brush.Style := bsClear;
+    C.Font.Size := 8;
+    C.Font.Style := [fsBold];
+    C.Font.Color := hdrCol;
+    C.TextOut(26, 42, 'HELP MENU & UPDATE BRANCH');
+    DrawBadge(C, 26, 64, 'Help > Check for updates... | At startup', winBg, txtCol, borderCol, False);
+    DrawBadge(C, 26, 94, 'Update branch > (*) Stable | ( ) Neon', hiBg, hiTxt, hdrCol, True);
+    DrawBadge(C, 26, 124, 'Verified against SHA256SUMS.txt', ptBg, ptTxt, borderCol, True);
+    DrawBadge(C, 26, 154, 'In-place swap + rollback & restart', winBg, txtCol, borderCol, False);
+
+    DrawBox(C, W div 2 + 6, 36, W - 16, 198, pnlBg, borderCol, 6);
+    C.Brush.Style := bsClear;
+    C.Font.Size := 8;
+    C.Font.Style := [fsBold];
+    C.Font.Color := hdrCol;
+    C.TextOut(W div 2 + 16, 42, 'PROJECT BACKUP & RESTORE (.bib.zip)');
+    DrawBadge(C, W div 2 + 16, 64, 'Project > Settings > Project > Back up', winBg, txtCol, borderCol, False);
+    DrawBadge(C, W div 2 + 16, 94, 'Auto-backup prompt: Replace / Patch / AI', ptBg, ptTxt, hdrCol, True);
+    DrawBadge(C, W div 2 + 16, 124, 'Restore project... (safety backup first)', hiBg, hiTxt, borderCol, True);
+    DrawBadge(C, W div 2 + 16, 154, 'File > Open accepts .bib & .bib.zip', winBg, txtCol, borderCol, False);
+  end;
+
   procedure DrawTopic11(C: TCanvas);
   begin
     DrawBox(C, 16, 36, W - 16, 198, pnlBg, borderCol, 6);
@@ -2398,7 +2459,7 @@ var
     C.Font.Size := 8;
     C.Font.Style := [fsBold];
     C.Font.Color := hdrCol;
-    C.TextOut(26, 42, 'COMPLETE NEW FEATURES MAP (v1.0.0.70 – v1.1.0.059) — QUICK SHORTCUT REFERENCE');
+    C.TextOut(26, 42, 'COMPLETE NEW FEATURES MAP (v1.0.0.70 – v1.1.0.068) — QUICK SHORTCUT REFERENCE');
 
     DrawBadge(C, 26,  64, 'Mouse Wheel Up / Down : Select Source Word Left / Right', hiBg, hiTxt, hdrCol, True);
     DrawBadge(C, 26,  94, 'Hold Ctrl+Shift + Click : Associate Multiple Words Together', ptBg, ptTxt, borderCol, True);
@@ -2457,6 +2518,7 @@ begin
       9: DrawTopic9(bmp.Canvas);
       10: DrawTopic10(bmp.Canvas);
       11: DrawTopicTree(bmp.Canvas);
+      12: DrawTopicUpdates(bmp.Canvas);
     else
       DrawTopic11(bmp.Canvas);
     end;
@@ -2503,7 +2565,7 @@ begin
   begin
     Caption := 'iBiblia — Guia de Novos Recursos (Desde v1.0.0.71)';
     if Assigned(lblHeaderTitle) then
-      lblHeaderTitle.Caption := 'Guia de Novos Recursos do iBiblia (v1.0.0.71 – v1.1.0.059)';
+      lblHeaderTitle.Caption := 'Guia de Novos Recursos do iBiblia (v1.0.0.71 – v1.1.0.068)';
     if Assigned(lblHeaderSub) then
       lblHeaderSub.Caption := 'Janela Flutuante Interativa — Mantenha aberta enquanto pratica os recursos no iBiblia.';
     if Assigned(btnPrev) then btnPrev.Caption := '< Anterior';
@@ -2515,7 +2577,7 @@ begin
   begin
     Caption := 'iBiblia — New Features User Guide (Since v1.0.0.71)';
     if Assigned(lblHeaderTitle) then
-      lblHeaderTitle.Caption := 'iBiblia New Features User Guide (v1.0.0.71 – v1.1.0.059)';
+      lblHeaderTitle.Caption := 'iBiblia New Features User Guide (v1.0.0.71 – v1.1.0.068)';
     if Assigned(lblHeaderSub) then
       lblHeaderSub.Caption := 'Floating Interactive Guide — Keep this window open while practicing features directly in iBiblia.';
     if Assigned(btnPrev) then btnPrev.Caption := '< Previous Topic';
