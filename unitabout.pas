@@ -114,6 +114,14 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.063 (64-bit Edition) - 2026-11-19' + LineEnding +
+  '- Full USFM 3.0 import: headings, paragraph, poetry (\q1-\q4), list and table markers, \m, \b, character styles (\wj, \add, \nd, \qt, \bd, \it, \sup, nested ones with +), \w words with lemma, strong and x-morph, footnotes (\f, \fe), cross-references (\x), unfoldingWord alignment (\zaln-s/-e) and speaker milestones (\qt-s who="Jesus" becomes red letters); sidebars (\esb) and peripherals are skipped. Everything is turned into theWord tags with the paragraph rule (boundary at the end of the verse before, indent at the start of the next).' + LineEnding +
+  '- Full USFM 3.0 export: one file with all the books and, beside it, a folder named <file>_usfm with one USFM 3.0 file per book (01-GEN.usfm ... 41-MAT.usfm ...). Each book has \id, \usfm 3.0, \ide, \h, \toc1-3 and \mt1; paragraphs, poetry indents, headings, red letters, added words, footnotes, cross-references and Strong''s, lemma and morphology on each word (\w word|lemma strong x-morph\w*) are written, with nested styles using the + prefix.' + LineEnding +
+  '- New save-as type "USFM 3.0 Bible, per-book files (*.zip)" in Export project: a zip holding only the per-book USFM 3.0 files.' + LineEnding +
+  '- Importing two verses that share one line no longer puts a blank beside a paragraph tag (it broke theWord''s no space beside CM/CL/CI rule).' + LineEnding +
+  '- The "Add Bible" link now also shows on a Bible panel that has no text for the verse you are on (for example a module that lacks that book), not only on a panel with no text at all.' + LineEnding +
+  '- Shift+F1 guide updated for USFM 3.0 import and export.' + LineEnding +
+  '' + LineEnding +
   'Version 1.1.0.062 (64-bit Edition) - 2026-11-19' + LineEnding +
   '- A Bible panel that has no text now shows a blue "Add Bible" link on its bottom bar while the pointer is over it. Click it to open Project settings on that panel''s text with the Add Bible Books file dialog already open (several files can be chosen, for example one USFM file per book). Panels that already have text do not show the link.' + LineEnding +
   '- Help > New features guide (Shift+F1), topic 12: describes the Add Bible link.' + LineEnding +
@@ -1503,7 +1511,9 @@ begin
         'HOW TO USE:' + sLineBreak +
         '  1. Multi-Format Bible Import & Export (.ont/.ot/.nt, e-Sword, USFM, USFX, MySword):' + sLineBreak +
         '     • Import any supported format in File > New Project or Project > Settings across Source, Destination, Reference 1, or Reference 2 (in New Project and Project > Settings, selecting a single .usfm/.sfm book file automatically loads all sibling book files in that folder; in Add Bible Books only the files you choose are read).' + sLineBreak +
-        '     • Export Tagged Destination or Interlinear Bibles via File > Export... or right-click any of the 4 Bible panels and select "Export as Bible module..." to export directly to .ont/.ot/.nt, e-Sword (.bblx/.bbli), USFM (.usfm/.sfm), USFX (.usfx/.xml), or MySword (.bbl.mybible).' + sLineBreak + sLineBreak +
+        '     • Export Tagged Destination or Interlinear Bibles via File > Export... or right-click any of the 4 Bible panels and select "Export as Bible module..." to export directly to .ont/.ot/.nt, e-Sword (.bblx/.bbli), USFM (.usfm/.sfm), USFX (.usfx/.xml), or MySword (.bbl.mybible).' + sLineBreak +
+        '     • USFM 3.0 import (.usfm, .sfm, also inside a zip, tar or 7z): the book id, headings (\s, \ms, \mr), paragraph, poetry, list and table markers, character styles (\wj, \add, \nd, \qt, \bd, \it, \sup), \w words with lemma, strong and x-morph, footnotes (\f), cross-references (\x), unfoldingWord alignment (\zaln) and speaker milestones are all read and become theWord tags, so the text works with associations and with every export. Sidebars and peripherals are skipped.' + sLineBreak +
+        '     • USFM 3.0 export: choose "USFM 3.0 Bible (*.usfm, with per-book folder)" to get one file holding all the books and, beside it, a folder named like the file plus _usfm with one USFM 3.0 file per book (01-GEN.usfm, 41-MAT.usfm, ...). Choose "USFM 3.0 Bible, per-book files (*.zip)" to get only the per-book files in a zip. Paragraphs, poetry indents, headings, red letters, added words, footnotes, cross-references and Strong''s, lemma and morphology on each word are written.' + sLineBreak + sLineBreak +
         '  2. Apocrypha / Deuterocanonical OT Books in the Bible Books Tree (v1.0.1.045–047):' + sLineBreak +
         '     • Standalone Apocrypha OT books (Book >= 67: 1–2 Esdras, Tobit, Judith, 1–4 Maccabees, Prayer of Manasseh, Wisdom, Sirach, Baruch, Letter of Jeremiah, Prayer of Azariah, Susanna, Bel and the Dragon, Psalm 151, Psalms of Solomon, Odes, Laodiceans) appear right after Malachi at the end of the Old Testament, and extra chapters (Daniel 13–14, Psalms 151, Esther 11–16) appear under their canonical books.' + sLineBreak + sLineBreak +
         '  3. Smart "Needs Review" Status on Text Reload & Concurrent theWord 7 + Tanglaw Bible Sync:' + sLineBreak +
@@ -1598,7 +1608,7 @@ begin
         '     • Use it to remove a book that was imported twice, such as a duplicate Apocrypha book. Deleting a verse leaves a gap in the verse numbers; nothing is renumbered.' + sLineBreak + sLineBreak +
         '  3. Adding Books from One or Several Files (Project > Settings > Texts > Add Bible Books...):' + sLineBreak +
         '     • In the file dialog choose one file, or several at once with Ctrl- or Shift-click (for example one USFM file per book), then tick the books you want. Only the files you choose are read, not the whole folder.' + sLineBreak +
-        '     • A Bible panel with no text (for example Reference 2 before you add one) shows a blue "Add Bible" link on its bottom bar while the pointer is over it. Click it to open Project settings on that panel''s text with this same file dialog already open.' + sLineBreak +
+        '     • A Bible panel with no text for the verse you are on (for example Reference 2 before you add one, or a module that lacks that book) shows a blue "Add Bible" link on its bottom bar while the pointer is over it. Click it to open Project settings on that panel''s text with this same file dialog already open.' + sLineBreak +
         '     • A book found in more than one chosen file asks which file to use. Books the project already has are greyed out.' + sLineBreak + sLineBreak +
         '  4. MySword Export:' + sLineBreak +
         '     • Exporting a Bible as MySword (.bbl.mybible) now writes a real MySword module with Strong''s numbers, morphology, notes and the Apocrypha books.';

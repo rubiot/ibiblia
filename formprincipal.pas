@@ -2344,15 +2344,10 @@ begin
     Strip.EditActive := Editing;
     Strip.PropertiesActive := PropsOpen;
 
-    // a blank Bible panel offers "Add Bible" while the pointer is over it
-    ShowAddBible := False;
-    if ProjectActive and PointerInside and (not PropsOpen) and (not Editing) then
-    begin
-      if CurrentProject.GetPlainVerseText(TextType) <> '' then
-        CurrentProject.InvalidateBlankTextCache
-      else
-        ShowAddBible := CurrentProject.IsTextBlank(TextType);
-    end;
+    // a Bible panel with nothing in it for this verse offers "Add Bible"
+    // while the pointer is over it
+    ShowAddBible := ProjectActive and PointerInside and (not PropsOpen) and
+      (not Editing) and (Trim(CurrentProject.GetPlainVerseText(TextType)) = '');
     Strip.ShowAddBible := ShowAddBible;
 
     if ProjectActive and (TextType = tbDestino) then

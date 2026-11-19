@@ -112,11 +112,12 @@ type
   public
     class procedure WriteTheWordBible(Verses: TStringList; const FileName,
       Properties: string; Direction: TTextDirection); static;
-    { e-Sword (.bblx/.bbli), USFM (.usfm/.sfm) or USFX (.usfx) by extension }
+    { e-Sword (.bblx/.bbli), USFM 3.0 (.usfm/.sfm, with a per-book folder, or a
+      .zip of per-book files) or USFX (.usfx) by extension }
     { ExtraVerses / ExtraRefIDs: apocrypha lines ("b,c,v", book 67+), written
       after the canonical books. }
     procedure WriteESwordOrUSFMBible(Verses: TStringList; const FileName,
-      Properties: string; ExtraVerses: TStringList = nil;
+      FinalFileName, Properties: string; ExtraVerses: TStringList = nil;
       ExtraRefIDs: TStringList = nil);
     procedure WriteMySwordBible(Verses: TStringList; const FileName,
       Properties: string;
@@ -328,7 +329,8 @@ begin
   // .mybible is a MySword module, written by TMySwordModule, not by the e-Sword writer
   Result := (not SameText(ExtractFileExt(FileName), '.mybible')) and
     (TESwordModule.IsESwordFileName(FileName) or
-     TESwordModule.IsUSFMOrUSFXFileName(FileName));
+     TESwordModule.IsUSFMOrUSFXFileName(FileName) or
+     TESwordModule.IsUSFMZipFileName(FileName));
 end;
 
 class function TProjectExporter.IsApocryphaReference(const ReferenceID: string): Boolean;
@@ -340,7 +342,7 @@ begin
 end;
 
 procedure TProjectExporter.WriteESwordOrUSFMBible(Verses: TStringList;
-  const FileName, Properties: string; ExtraVerses: TStringList;
+  const FileName, FinalFileName, Properties: string; ExtraVerses: TStringList;
   ExtraRefIDs: TStringList);
 var
   RefIDs, AllVerses: TStringList;
@@ -380,8 +382,12 @@ begin
 
     if TESwordModule.IsUSFXFileName(FileName) then
       TESwordModule.ExportUSFXBible(AllVerses, RefIDs, FileName, Properties, HasOT, HasNT)
+    else if TESwordModule.IsUSFMZipFileName(FileName) then
+      TESwordModule.ExportUSFMBibleEx(AllVerses, RefIDs, FileName, FinalFileName,
+        Properties, HasOT, HasNT, True)
     else if TESwordModule.IsUSFMFileName(FileName) then
-      TESwordModule.ExportUSFMBible(AllVerses, RefIDs, FileName, Properties, HasOT, HasNT)
+      TESwordModule.ExportUSFMBibleEx(AllVerses, RefIDs, FileName, FinalFileName,
+        Properties, HasOT, HasNT, False)
     else
     begin
       Module := TESwordModule.Create(FileName, HasOT, HasNT, True, Properties,
@@ -566,8 +572,8 @@ begin
     Result.ProcessedVerseCount := Lines.Count;
     Staging := TExportFileStaging.Create(FileName);
       if IsESwordOrUSFMExport(FileName) then
-        WriteESwordOrUSFMBible(Lines, Staging.StagingFileName, Options.Properties,
-          ApocLines, ApocRefs)
+        WriteESwordOrUSFMBible(Lines, Staging.StagingFileName, Staging.FinalFileName,
+          Options.Properties, ApocLines, ApocRefs)
       else if SameText(ExtractFileExt(FileName), '.mybible') then
         WriteMySwordBible(Lines, Staging.StagingFileName, Options.Properties,
           ApocLines, ApocRefs)
@@ -693,8 +699,8 @@ begin
     Result.ProcessedVerseCount := Lines.Count;
     Staging := TExportFileStaging.Create(FileName);
       if IsESwordOrUSFMExport(FileName) then
-        WriteESwordOrUSFMBible(Lines, Staging.StagingFileName, Options.Properties,
-          ApocLines, ApocRefs)
+        WriteESwordOrUSFMBible(Lines, Staging.StagingFileName, Staging.FinalFileName,
+          Options.Properties, ApocLines, ApocRefs)
       else if SameText(ExtractFileExt(FileName), '.mybible') then
         WriteMySwordBible(Lines, Staging.StagingFileName, Options.Properties,
           ApocLines, ApocRefs)

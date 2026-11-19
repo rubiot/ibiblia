@@ -10,7 +10,7 @@ unit esword_usfm;
 interface
 
 uses
-  Classes, SysUtils, StrUtils, sqlite3conn, sqldb, db, LazUTF8, PCRE;
+  Classes, SysUtils, StrUtils, sqlite3conn, sqldb, db, LazUTF8, PCRE, Zipper;
 
 var
   { When True, a USFM file with a single book is read alone; the default (False)
@@ -47,6 +47,7 @@ type
 
     class function IsESwordFileName(const filename: string): boolean;
     class function IsUSFMFileName(const filename: string): boolean;
+    class function IsUSFMZipFileName(const filename: string): boolean;
     class function IsUSFXFileName(const filename: string): boolean;
     class function IsUSFMOrUSFXFileName(const filename: string): boolean;
     class function USFMBookCodeToID(const code: string): integer;
@@ -61,9 +62,9 @@ type
     class function ConvertESwordScriptureToONT(const rawScripture: string; preferHTML, isNTBook: boolean): string;
     class function ConvertONTToESwordRTF(const ontText: string): string;
     class function ConvertONTToESwordHTML(const ontText: string): string;
-    class function ConvertONTToUSFM(const ontText: string; out headingBeforeVerse: string): string;
     class function ConvertONTToUSFX(const ontText: string; out headingBeforeVerse: string): string;
     class procedure ExportUSFMBible(verses, refIDs: TStringList; const filename, props: string; hasOT, hasNT: boolean);
+    class procedure ExportUSFMBibleEx(verses, refIDs: TStringList; const filename, finalFileName, props: string; hasOT, hasNT, zipOnly: boolean);
     class procedure ExportUSFXBible(verses, refIDs: TStringList; const filename, props: string; hasOT, hasNT: boolean);
   end;
 
@@ -2906,9 +2907,10 @@ end;
 
 function FormatStrongAndMorphAttrsToONT(const strongVal, morphVal, lemmaVal: string; isNTBook: boolean): string;
 var
-  sTags, mClean, lClean: string;
+  sTags, lClean, mTok, lTok: string;
   dummyHasStrong: boolean;
-  colonPos: integer;
+  colonPos, k: integer;
+  morphs, lemmas: TStringList;
 begin
   Result := '';
   dummyHasStrong := False;
@@ -2917,24 +2919,344 @@ begin
     sTags := ClassifyAndFormatSuperscriptTag(Trim(strongVal), False, isNTBook, dummyHasStrong);
     Result := Result + sTags;
   end;
-  mClean := Trim(morphVal);
-  if mClean <> '' then
-  begin
-    colonPos := Pos(':', mClean);
-    if colonPos > 0 then
-      Delete(mClean, 1, colonPos);
-    mClean := Trim(mClean);
-  end;
   lClean := StringReplace(Trim(lemmaVal), '"', '', [rfReplaceAll]);
-  if mClean <> '' then
-  begin
-    if lClean <> '' then
-      Result := Result + '<WT' + mClean + ' l="' + lClean + '">'
-    else
-      Result := Result + '<WT' + mClean + '>';
+  morphs := TStringList.Create;
+  lemmas := TStringList.Create;
+  try
+    // several morphology codes (and lemmas) are separated by blanks
+    morphs.Delimiter := ' ';
+    morphs.StrictDelimiter := True;
+    morphs.DelimitedText := Trim(morphVal);
+    lemmas.Delimiter := ' ';
+    lemmas.StrictDelimiter := True;
+    lemmas.DelimitedText := lClean;
+    for k := 0 to morphs.Count - 1 do
+    begin
+      mTok := Trim(morphs[k]);
+      if mTok = '' then
+        Continue;
+      colonPos := Pos(':', mTok);
+      if colonPos > 0 then
+        Delete(mTok, 1, colonPos);
+      mTok := Trim(mTok);
+      if mTok = '' then
+        Continue;
+      lTok := '';
+      if (lemmas.Count = morphs.Count) then
+        lTok := lemmas[k]
+      else if lemmas.Count > 0 then
+        lTok := lemmas[0];
+      if lTok <> '' then
+        Result := Result + '<WT' + mTok + ' l="' + lTok + '">'
+      else
+        Result := Result + '<WT' + mTok + '>';
+    end;
+  finally
+    lemmas.Free;
+    morphs.Free;
   end;
 end;
 
+{ two verses on one line: a blank between them, except beside a paragraph boundary }
+function JoinVerseTexts(const A, B: string): string;
+  function IsBoundary(const T: string): Boolean;
+  begin
+    Result := (T = '<CM>') or (T = '<CI>') or (T = '<CL>');
+  end;
+begin
+  if (A = '') or (B = '') then
+    Result := A + B
+  else if IsBoundary(Copy(A, Length(A) - 3, 4)) or IsBoundary(Copy(B, 1, 4)) then
+    Result := A + B
+  else
+    Result := A + ' ' + B;
+end;
+
+{ ======================================================================
+  USFM 3.0 reader
+  The file is cut into logical lines (one block marker each, see
+  SplitUSFMLogicalLines); the inline markers of a line are turned into theWord
+  tags by TUSFMInlineReader; paragraph / poetry markers become <CM>/<CL> plus
+  <PIn> (USFMParagraphTags) and are placed by the loader.
+  ====================================================================== }
+
+const
+  USFMBookNames: array[1..66] of string = (
+    'Genesis', 'Exodus', 'Leviticus', 'Numbers', 'Deuteronomy', 'Joshua', 'Judges', 'Ruth',
+    '1 Samuel', '2 Samuel', '1 Kings', '2 Kings', '1 Chronicles', '2 Chronicles', 'Ezra',
+    'Nehemiah', 'Esther', 'Job', 'Psalms', 'Proverbs', 'Ecclesiastes', 'Song of Solomon',
+    'Isaiah', 'Jeremiah', 'Lamentations', 'Ezekiel', 'Daniel', 'Hosea', 'Joel', 'Amos',
+    'Obadiah', 'Jonah', 'Micah', 'Nahum', 'Habakkuk', 'Zephaniah', 'Haggai', 'Zechariah',
+    'Malachi', 'Matthew', 'Mark', 'Luke', 'John', 'Acts', 'Romans', '1 Corinthians',
+    '2 Corinthians', 'Galatians', 'Ephesians', 'Philippians', 'Colossians', '1 Thessalonians',
+    '2 Thessalonians', '1 Timothy', '2 Timothy', 'Titus', 'Philemon', 'Hebrews', 'James',
+    '1 Peter', '2 Peter', '1 John', '2 John', '3 John', 'Jude', 'Revelation');
+
+type
+  TUSFMAlnEntry = record
+    Strong, Lemma, Morph: string;
+  end;
+
+  { Turns the inline markers of USFM lines into theWord tags. The open
+    character styles and the open alignment milestones are kept between calls. }
+  TUSFMInlineReader = class
+  private
+    FOut: string;
+    FNT: Boolean;
+    FBook: Integer;
+    FStyles: TStringList;
+    FAln: array of TUSFMAlnEntry;      // milestones open now
+    FAlnGroup: array of TUSFMAlnEntry; // every milestone of the open group, in order
+    FAlnStart: Integer;                // where the group's text starts in FOut
+    FJesus: Integer;                   // open \qt-s who="Jesus"
+    procedure OpenStyle(const AName: string);
+    procedure CloseStyle(const AName: string);
+    procedure PushAln(const Attrs: string);
+    procedure PopAln;
+    procedure WordMarker(const Inner: string; Plain: Boolean);
+    procedure Milestone(const AName, Attrs: string);
+    function CrossRefs(const Raw: string): string;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure Reset;
+    { Book is the book being read (for cross-references without a book). }
+    function Convert(const S: string; IsNT: Boolean; Book: Integer): string;
+    function CloseTags: string;   // closers for the open styles (they stay open)
+    function ReopenTags: string;  // openers for the open styles
+    procedure ClearStyles;
+  end;
+
+function USFMStyleOpenTag(const AName: string): string;
+begin
+  case AName of
+    'wj': Result := '<FR>';
+    'add': Result := '<FI>';
+    'qt': Result := '<FO>';
+    'it', 'em', 'tl': Result := '<i>';
+    'bd': Result := '<b>';
+    'bdit': Result := '<b><i>';
+    'sup': Result := '<sup>';
+  else
+    Result := '';
+  end;
+end;
+
+function USFMStyleCloseTag(const AName: string): string;
+begin
+  case AName of
+    'wj': Result := '<Fr>';
+    'add': Result := '<Fi>';
+    'qt': Result := '<Fo>';
+    'it', 'em', 'tl': Result := '</i>';
+    'bd': Result := '</b>';
+    'bdit': Result := '</i></b>';
+    'sup': Result := '</sup>';
+  else
+    Result := '';
+  end;
+end;
+
+function StripTrailingDigits(const AName: string): string;
+var
+  N: Integer;
+begin
+  N := Length(AName);
+  while (N > 1) and (AName[N] in ['0'..'9']) do
+    Dec(N);
+  Result := Copy(AName, 1, N);
+end;
+
+function TrailingNumber(const AName: string; ADefault: Integer): Integer;
+var
+  N: Integer;
+begin
+  N := Length(AName);
+  while (N > 0) and (AName[N] in ['0'..'9']) do
+    Dec(N);
+  Result := StrToIntDef(Copy(AName, N + 1, Length(AName)), ADefault);
+end;
+
+{ the markers that start a line of their own (everything else is inline) }
+function IsUSFMBlockMarker(const AName: string): Boolean;
+begin
+  Result := False;
+  case StripTrailingDigits(AName) of
+    'id', 'usfm', 'ide', 'sts', 'rem', 'h', 'toc', 'mt', 'mte', 'ms', 'mr', 's', 'sr', 'r', 'd',
+    'sp', 'cl', 'cd', 'cp', 'c', 'v', 'p', 'm', 'po', 'pr', 'cls', 'pmo', 'pm', 'pmc', 'pmr', 'pi',
+    'mi', 'nb', 'pc', 'ph', 'b', 'q', 'qr', 'qc', 'qa', 'qm', 'qd', 'lh', 'li', 'lf', 'lim', 'tr',
+    'esb', 'esbe', 'cat', 'periph', 'ie', 'im', 'imi', 'imq', 'ip', 'ipi', 'ipq', 'ipr', 'iq',
+    'is', 'imt', 'imte', 'io', 'iot', 'ili', 'ib', 'iex', 'lit', 'pb', 'sd', 'pro':
+      Result := True;
+  end;
+end;
+
+{ Cuts USFM text into logical lines: a block marker (\p, \v, \c, \q1 ...) always
+  starts a new line, even in the middle of a physical line; physical line
+  breaks inside a paragraph are just spaces. }
+procedure SplitUSFMLogicalLines(const Text: string; Lines: TStrings);
+var
+  I, J, Len, NmStart: Integer;
+  Cur, Name: string;
+  Plus: Boolean;
+begin
+  Lines.Clear;
+  Cur := '';
+  Len := Length(Text);
+  I := 1;
+  if (Len >= 3) and (Text[1] = #239) and (Text[2] = #187) and (Text[3] = #191) then
+    I := 4;
+  while I <= Len do
+  begin
+    if Text[I] = '\' then
+    begin
+      J := I + 1;
+      Plus := (J <= Len) and (Text[J] = '+');
+      if Plus then
+        Inc(J);
+      NmStart := J;
+      while (J <= Len) and (Text[J] in ['a'..'z', 'A'..'Z', '0'..'9', '-']) do
+        Inc(J);
+      Name := LowerCase(Copy(Text, NmStart, J - NmStart));
+      if (not Plus) and (Name <> '') and ((J > Len) or (Text[J] <> '*')) and IsUSFMBlockMarker(Name) then
+      begin
+        if Trim(Cur) <> '' then
+          Lines.Add(Trim(Cur));
+        Cur := '';
+      end;
+      Cur := Cur + Copy(Text, I, J - I);
+      I := J;
+      Continue;
+    end;
+    if Text[I] in [#13, #10] then
+    begin
+      if (Cur <> '') and (Cur[Length(Cur)] <> ' ') then
+        Cur := Cur + ' ';
+    end
+    else
+      Cur := Cur + Text[I];
+    Inc(I);
+  end;
+  if Trim(Cur) <> '' then
+    Lines.Add(Trim(Cur));
+end;
+
+{ Paragraph and poetry markers as theWord paragraph tags: ABound is the
+  boundary (<CM>, <CL> or '') and API the indent (<PIn> or ''). }
+function USFMParagraphTags(const AName: string; out ABound, API: string): Boolean;
+var
+  Base: string;
+  N: Integer;
+
+  function Indent(Level: Integer): string;
+  begin
+    if Level < 1 then
+      Level := 1;
+    if Level > 7 then
+      Level := 7;
+    Result := '<PI' + IntToStr(Level) + '>';
+  end;
+
+begin
+  Result := True;
+  ABound := '';
+  API := '';
+  Base := StripTrailingDigits(AName);
+  N := TrailingNumber(AName, 0);
+  case Base of
+    'p', 'pc', 'po', 'b': ABound := '<CM>';
+    'm', 'pr', 'cls', 'lh', 'lf', 'qd', 'tr': ABound := '<CL>';
+    'pmo', 'pm', 'pmc', 'pmr', 'mi': begin ABound := '<CM>'; API := Indent(1); end;
+    'pi', 'ph': begin ABound := '<CM>'; API := Indent(N); end;
+    'q': begin ABound := '<CL>'; API := Indent(N); end;
+    'qr': begin ABound := '<CL>'; API := Indent(3); end;
+    'qc': begin ABound := '<CL>'; API := Indent(2); end;
+    'qm': begin ABound := '<CL>'; API := Indent(N + 1); end;
+    'li': begin ABound := '<CL>'; API := Indent(N); end;
+    'lim': begin ABound := '<CL>'; API := Indent(N + 1); end;
+    'nb': ; // no break: the paragraph goes on
+  else
+    Result := False;
+  end;
+end;
+
+{ 1..3 for the heading markers (the level of the <TSn> tag), 0 for others }
+function USFMHeadingLevel(const AName: string): Integer;
+var
+  Base: string;
+  N: Integer;
+begin
+  Result := 0;
+  Base := StripTrailingDigits(AName);
+  N := TrailingNumber(AName, 1);
+  if (Base = 's') or (Base = 'ms') then
+  begin
+    if N <= 1 then
+      Result := 1
+    else if N = 2 then
+      Result := 2
+    else
+      Result := 3;
+  end
+  else if Base = 'd' then
+    Result := 2
+  else if Base = 'qa' then
+    Result := 3;
+end;
+
+function LooksLikeStrongNumber(const S: string): Boolean;
+var
+  T: string;
+  I: Integer;
+begin
+  T := Trim(S);
+  Result := False;
+  if T = '' then
+    Exit;
+  if T[1] in ['G', 'g', 'H', 'h'] then
+    Delete(T, 1, 1);
+  if T = '' then
+    Exit;
+  for I := 1 to Length(T) do
+    if not (T[I] in ['0'..'9', ',', ' ', ';']) then
+    begin
+      if (I = Length(T)) and (T[I] in ['a'..'z', 'A'..'Z']) and (I > 1) then
+        Continue;
+      Exit;
+    end;
+  Result := True;
+end;
+
+{ "b:G1722 G3056" and "H1234,H5678" -> "G1722 G3056" / "H1234 H5678" }
+function NormalizeStrongList(const S: string): string;
+var
+  I, P: Integer;
+  Tok: string;
+begin
+  Result := '';
+  I := 1;
+  while I <= Length(S) do
+  begin
+    while (I <= Length(S)) and (S[I] in [' ', ',', ';', #9]) do
+      Inc(I);
+    P := I;
+    while (I <= Length(S)) and not (S[I] in [' ', ',', ';', #9]) do
+      Inc(I);
+    Tok := Copy(S, P, I - P);
+    P := LastDelimiter(':', Tok);
+    if P > 0 then
+      Delete(Tok, 1, P);
+    if Tok <> '' then
+    begin
+      if Result <> '' then
+        Result := Result + ' ';
+      Result := Result + Tok;
+    end;
+  end;
+end;
+
+{ A \w attribute string: key="value" pairs; a lone value is the lemma (USFM 3.0),
+  or a Strong's number (older files). }
 function ParseUSFMAttributeString(const attrStr: string; out strongVal, morphVal, lemmaVal: string): boolean;
 var
   p, len, k, eqPos: integer;
@@ -2951,8 +3273,11 @@ begin
 
   if Pos('=', attrStr) = 0 then
   begin
-    strongVal := Trim(attrStr);
-    Result := strongVal <> '';
+    if LooksLikeStrongNumber(attrStr) then
+      strongVal := Trim(attrStr)
+    else
+      lemmaVal := Trim(attrStr);
+    Result := (strongVal <> '') or (lemmaVal <> '');
     Exit;
   end;
 
@@ -2992,15 +3317,16 @@ begin
     p := k;
 
     if (key = 'strong') or (key = 's') or (key = 'str') or (key = 'x-strong') then
-      strongVal := val
+      strongVal := NormalizeStrongList(val)
     else if (key = 'x-morph') or (key = 'morph') or (key = 'm') or (key = 'oshm') then
       morphVal := val
-    else if (key = 'lemma') or (key = 'l') then
+    else if (key = 'lemma') or (key = 'l') or (key = 'x-lemma') then
       lemmaVal := val;
     Result := True;
   end;
 end;
 
+{ the text of a footnote / endnote without its markers, caller and attributes }
 function CleanUSFMFootnoteToPlain(const rawNote: string): string;
 var
   i, len, mStart: integer;
@@ -3034,11 +3360,18 @@ begin
         Inc(i)
       else if (i <= len) and (rawNote[i] = ' ') then
         Inc(i);
-      if (mName = 'fr') or (mName = 'xo') then
+      if (mName = 'fr') or (mName = 'xo') or (mName = 'fv') then
       begin
         while (i <= len) and (rawNote[i] <> '\') do
           Inc(i);
       end;
+      Continue;
+    end;
+    if rawNote[i] = '|' then
+    begin
+      // attributes of a word or link inside the note
+      while (i <= len) and (rawNote[i] <> '\') do
+        Inc(i);
       Continue;
     end;
     Result := Result + rawNote[i];
@@ -3046,167 +3379,626 @@ begin
   end;
   Result := StringReplace(Result, #13, ' ', [rfReplaceAll]);
   Result := StringReplace(Result, #10, ' ', [rfReplaceAll]);
-  Result := Trim(Result);
-end;
-
-function ConvertUSFMTextToONT(const rawText: string; isNTBook: boolean): string;
-var
-  i, len, mStart, endPos, pipePos: integer;
-  isClosing: boolean;
-  mName, inner, wordPart, attrPart, strongVal, morphVal, lemmaVal, formattedTags, fnText: string;
-
-  procedure EnsureSpaceSeparator;
-  begin
-    if (Length(Result) > 0) and not (Result[Length(Result)] in [' ', #9, '>']) then
-      Result := Result + ' ';
-  end;
-
-  function FindClosingMarker(const baseMarker: string; startAt: integer; out contentEnd, afterMarker: integer): boolean;
-  var
-    p: integer;
-    t1, t2: string;
-  begin
-    Result := False;
-    t1 := '\' + baseMarker + '*';
-    t2 := '\+' + baseMarker + '*';
-    for p := startAt to len - Length(t1) + 1 do
-    begin
-      if CompareText(Copy(rawText, p, Length(t1)), t1) = 0 then
-      begin
-        contentEnd := p - 1;
-        afterMarker := p + Length(t1);
-        Result := True;
-        Exit;
-      end;
-      if (p <= len - Length(t2) + 1) and (CompareText(Copy(rawText, p, Length(t2)), t2) = 0) then
-      begin
-        contentEnd := p - 1;
-        afterMarker := p + Length(t2);
-        Result := True;
-        Exit;
-      end;
-    end;
-  end;
-
-var
-  cEnd, nextIdx: integer;
-begin
-  Result := '';
-  len := Length(rawText);
-  i := 1;
-  while i <= len do
-  begin
-    if rawText[i] = '\' then
-    begin
-      mStart := i + 1;
-      if (mStart <= len) and (rawText[mStart] = '+') then
-        Inc(mStart);
-      i := mStart;
-      while (i <= len) and (rawText[i] in ['a'..'z', 'A'..'Z', '0'..'9', '-']) do
-        Inc(i);
-      mName := LowerCase(Copy(rawText, mStart, i - mStart));
-      isClosing := False;
-      if (i <= len) and (rawText[i] = '*') then
-      begin
-        isClosing := True;
-        Inc(i);
-      end
-      else if (i <= len) and (rawText[i] = ' ') then
-        Inc(i);
-
-      if not isClosing then
-      begin
-        if mName = 'w' then
-        begin
-          if FindClosingMarker('w', i, cEnd, nextIdx) then
-          begin
-            inner := Copy(rawText, i, cEnd - i + 1);
-            pipePos := Pos('|', inner);
-            if pipePos > 0 then
-            begin
-              wordPart := Trim(Copy(inner, 1, pipePos - 1));
-              attrPart := Trim(Copy(inner, pipePos + 1, Length(inner) - pipePos));
-              ParseUSFMAttributeString(attrPart, strongVal, morphVal, lemmaVal);
-              formattedTags := FormatStrongAndMorphAttrsToONT(strongVal, morphVal, lemmaVal, isNTBook);
-              Result := Result + wordPart + formattedTags;
-            end
-            else
-              Result := Result + Trim(inner);
-            i := nextIdx;
-            Continue;
-          end;
-        end
-        else if (mName = 'f') or (mName = 'fe') then
-        begin
-          if FindClosingMarker(mName, i, cEnd, nextIdx) then
-          begin
-            fnText := CleanUSFMFootnoteToPlain(Copy(rawText, i, cEnd - i + 1));
-            if fnText <> '' then
-              Result := Result + '<RF>' + fnText + '<Rf>';
-            i := nextIdx;
-            Continue;
-          end;
-        end
-        else if (mName = 'x') or (mName = 'fig') or (mName = 'vp') or (mName = 'va') or (mName = 'ca') or (mName = 'rq') then
-        begin
-          if FindClosingMarker(mName, i, cEnd, nextIdx) then
-          begin
-            i := nextIdx;
-            Continue;
-          end;
-        end
-        else if mName = 'wj' then
-          Result := Result + '<FR>'
-        else if (mName = 'add') or (mName = 'it') then
-          Result := Result + '<FI>'
-        else if (mName = 'bd') or (mName = 'bdit') then
-          Result := Result + '<FO>'
-        else if (mName = 'p') or (mName = 'm') or (mName = 'q') or (mName = 'q1') or (mName = 'q2') or
-                (mName = 'q3') or (mName = 'q4') or (mName = 'b') or (mName = 'li') or (mName = 'li1') or
-                (mName = 'li2') or (mName = 'nb') or (mName = 'pi') or (mName = 'pc') or (mName = 'mi') then
-          EnsureSpaceSeparator;
-      end
-      else
-      begin
-        if mName = 'wj' then
-          Result := Result + '<Fr>'
-        else if (mName = 'add') or (mName = 'it') then
-          Result := Result + '<Fi>'
-        else if (mName = 'bd') or (mName = 'bdit') then
-          Result := Result + '<Fo>';
-      end;
-      Continue;
-    end;
-
-    if (rawText[i] = '|') then
-    begin
-      endPos := i + 1;
-      while (endPos <= len) and not (rawText[endPos] in [' ', #9, '\']) do
-        Inc(endPos);
-      if Pos('=', Copy(rawText, i + 1, endPos - i - 1)) > 0 then
-      begin
-        while (endPos <= len) and (rawText[endPos] <> '\') do
-          Inc(endPos);
-      end;
-      i := endPos;
-      Continue;
-    end;
-
-    if rawText[i] in [#13, #10] then
-    begin
-      EnsureSpaceSeparator;
-      Inc(i);
-      Continue;
-    end;
-
-    Result := Result + rawText[i];
-    Inc(i);
-  end;
-
+  Result := StringReplace(Result, '~', ' ', [rfReplaceAll]);
   while Pos('  ', Result) > 0 do
     Result := StringReplace(Result, '  ', ' ', [rfReplaceAll]);
   Result := Trim(Result);
 end;
+
+{ the book of a reference such as "Gen", "1 Cor", "Matthew" (0 if unknown) }
+function USFMReferenceBookID(const AName: string): Integer;
+var
+  Norm, Cand: string;
+  I: Integer;
+begin
+  Result := 0;
+  Norm := '';
+  for I := 1 to Length(AName) do
+    if AName[I] in ['0'..'9', 'a'..'z', 'A'..'Z'] then
+      Norm := Norm + LowerCase(AName[I]);
+  if Length(Norm) < 2 then
+    Exit;
+  if Length(Norm) = 3 then
+  begin
+    Result := TESwordModule.USFMBookCodeToID(Norm);
+    if (Result >= 1) and (Result <= 66) then
+      Exit;
+    Result := 0;
+  end;
+  case Norm of
+    'mt': Exit(40);
+    'mk': Exit(41);
+    'lk': Exit(42);
+    'jn': Exit(43);
+    'rm': Exit(45);
+    'ph': Exit(50);
+  end;
+  for I := 1 to 66 do
+  begin
+    Cand := LowerCase(StringReplace(USFMBookNames[I], ' ', '', [rfReplaceAll]));
+    if Copy(Cand, 1, Length(Norm)) = Norm then
+      Exit(I);
+  end;
+end;
+
+{ ---- TUSFMInlineReader ---- }
+
+constructor TUSFMInlineReader.Create;
+begin
+  inherited Create;
+  FStyles := TStringList.Create;
+  Reset;
+end;
+
+destructor TUSFMInlineReader.Destroy;
+begin
+  FStyles.Free;
+  inherited Destroy;
+end;
+
+procedure TUSFMInlineReader.Reset;
+begin
+  FStyles.Clear;
+  SetLength(FAln, 0);
+  SetLength(FAlnGroup, 0);
+  FAlnStart := 0;
+  FJesus := 0;
+end;
+
+procedure TUSFMInlineReader.ClearStyles;
+begin
+  FStyles.Clear;
+  FJesus := 0;
+end;
+
+function TUSFMInlineReader.CloseTags: string;
+var
+  I: Integer;
+begin
+  Result := '';
+  for I := FStyles.Count - 1 downto 0 do
+    Result := Result + USFMStyleCloseTag(FStyles[I]);
+end;
+
+function TUSFMInlineReader.ReopenTags: string;
+var
+  I: Integer;
+begin
+  Result := '';
+  for I := 0 to FStyles.Count - 1 do
+    Result := Result + USFMStyleOpenTag(FStyles[I]);
+end;
+
+procedure TUSFMInlineReader.OpenStyle(const AName: string);
+begin
+  if USFMStyleOpenTag(AName) = '' then
+    Exit;
+  FStyles.Add(AName);
+  FOut := FOut + USFMStyleOpenTag(AName);
+end;
+
+procedure TUSFMInlineReader.CloseStyle(const AName: string);
+var
+  K, J: Integer;
+begin
+  if USFMStyleOpenTag(AName) = '' then
+    Exit;
+  K := -1;
+  for J := FStyles.Count - 1 downto 0 do
+    if FStyles[J] = AName then
+    begin
+      K := J;
+      Break;
+    end;
+  if K < 0 then
+    Exit;
+  for J := FStyles.Count - 1 downto K + 1 do
+    FOut := FOut + USFMStyleCloseTag(FStyles[J]);
+  FOut := FOut + USFMStyleCloseTag(AName);
+  for J := K + 1 to FStyles.Count - 1 do
+    FOut := FOut + USFMStyleOpenTag(FStyles[J]);
+  FStyles.Delete(K);
+end;
+
+procedure TUSFMInlineReader.PushAln(const Attrs: string);
+var
+  E: TUSFMAlnEntry;
+  S, M, L: string;
+begin
+  ParseUSFMAttributeString(Trim(StringReplace(Attrs, '|', ' ', [])), S, M, L);
+  E.Strong := S;
+  E.Lemma := L;
+  if Pos(',', M) > 0 then
+    M := ''; // another morphology system than theWord's
+  E.Morph := M;
+  if Length(FAln) = 0 then
+  begin
+    FAlnStart := Length(FOut) + 1;
+    SetLength(FAlnGroup, 0);
+  end;
+  SetLength(FAln, Length(FAln) + 1);
+  FAln[High(FAln)] := E;
+  SetLength(FAlnGroup, Length(FAlnGroup) + 1);
+  FAlnGroup[High(FAlnGroup)] := E;
+end;
+
+procedure TUSFMInlineReader.PopAln;
+var
+  Phrase, Wg, Wt, Combined, Tag, Trail: string;
+  I, P, Q: Integer;
+  HasSpace: Boolean;
+begin
+  if Length(FAln) = 0 then
+    Exit;
+  SetLength(FAln, Length(FAln) - 1);
+  if Length(FAln) > 0 then
+    Exit;
+  while (FAlnStart <= Length(FOut)) and (FOut[FAlnStart] = ' ') do
+    Inc(FAlnStart);
+  Phrase := Copy(FOut, FAlnStart, MaxInt);
+  Wg := '';
+  Wt := '';
+  for I := 0 to High(FAlnGroup) do
+  begin
+    Combined := FormatStrongAndMorphAttrsToONT(FAlnGroup[I].Strong, FAlnGroup[I].Morph,
+      FAlnGroup[I].Lemma, FNT);
+    P := 1;
+    while P <= Length(Combined) do
+    begin
+      if Combined[P] = '<' then
+      begin
+        Q := PosEx('>', Combined, P);
+        if Q = 0 then
+          Break;
+        Tag := Copy(Combined, P, Q - P + 1);
+        if AnsiStartsText('<WT', Tag) then
+          Wt := Wt + Tag
+        else
+          Wg := Wg + Tag;
+        P := Q + 1;
+      end
+      else
+        Inc(P);
+    end;
+  end;
+  SetLength(FAlnGroup, 0);
+  if (Wg = '') or (Trim(StripAllXMLTags(Phrase)) = '') then
+    Exit;
+  HasSpace := Pos(' ', Trim(StripAllXMLTags(Phrase))) > 0;
+  if HasSpace then
+    Insert('<wt>', FOut, FAlnStart);
+  Trail := '';
+  while (FOut <> '') and (FOut[Length(FOut)] = ' ') do
+  begin
+    Trail := Trail + ' ';
+    SetLength(FOut, Length(FOut) - 1);
+  end;
+  FOut := FOut + Wg + Wt + Trail;
+end;
+
+{ \w word|attributes\w*  (Plain: \wg \wh \wa, text only) }
+procedure TUSFMInlineReader.WordMarker(const Inner: string; Plain: Boolean);
+var
+  PipePos: Integer;
+  WordPart, AttrPart, S, M, L, Tags: string;
+begin
+  PipePos := Pos('|', Inner);
+  if PipePos = 0 then
+  begin
+    FOut := FOut + Trim(Inner);
+    Exit;
+  end;
+  WordPart := Trim(Copy(Inner, 1, PipePos - 1));
+  AttrPart := Trim(Copy(Inner, PipePos + 1, MaxInt));
+  FOut := FOut + WordPart;
+  if Plain or (Length(FAln) > 0) then
+    Exit; // inside an alignment the milestones carry the numbers
+  ParseUSFMAttributeString(AttrPart, S, M, L);
+  if Pos(',', M) > 0 then
+    M := '';
+  Tags := FormatStrongAndMorphAttrsToONT(S, M, L, FNT);
+  if Pos('<W', Tags) > 0 then
+    FOut := FOut + Tags;
+end;
+
+procedure TUSFMInlineReader.Milestone(const AName, Attrs: string);
+var
+  Who: string;
+  P, Q: Integer;
+begin
+  if AName = 'zaln-s' then
+    PushAln(Attrs)
+  else if AName = 'zaln-e' then
+    PopAln
+  else if AName = 'qt-s' then
+  begin
+    P := Pos('who=', LowerCase(Attrs));
+    Who := '';
+    if P > 0 then
+    begin
+      Q := PosEx('"', Attrs, P + 5);
+      if Q = 0 then
+        Q := Length(Attrs) + 1;
+      Who := LowerCase(Copy(Attrs, P + 5, Q - P - 5));
+    end;
+    if Pos('jesus', Who) > 0 then
+    begin
+      Inc(FJesus);
+      OpenStyle('wj');
+    end;
+  end
+  else if AName = 'qt-e' then
+  begin
+    if FJesus > 0 then
+    begin
+      Dec(FJesus);
+      CloseStyle('wj');
+    end;
+  end;
+end;
+
+{ \x - \xo 2:3 \xt Gen 1:1; Exo 3:4-6\x*  ->  <RX 1.1.1><RX 2.3.4-6> }
+function TUSFMInlineReader.CrossRefs(const Raw: string): string;
+var
+  I, Len, P: Integer;
+  Name, Seg: string;
+  Segs: TStringList;
+
+  procedure Refs(const Text: string);
+  var
+    Part, Item, BookTok, Rest: string;
+    Parts, Items: TStringList;
+    B, C, V1, V2, K, Colon, Dash: Integer;
+    N: Integer;
+    HasBook: Boolean;
+  begin
+    Parts := TStringList.Create;
+    Items := TStringList.Create;
+    try
+      Parts.Delimiter := ';';
+      Parts.StrictDelimiter := True;
+      Parts.DelimitedText := Text;
+      B := FBook;
+      C := 0;
+      for K := 0 to Parts.Count - 1 do
+      begin
+        Part := Trim(Parts[K]);
+        if Part = '' then
+          Continue;
+        HasBook := False;
+        N := 1;
+        if Part[1] in ['1'..'3'] then
+        begin
+          N := 2;
+          while (N <= Length(Part)) and (Part[N] in [' ', '.']) do
+            Inc(N);
+          if (N <= Length(Part)) and (Part[N] in ['a'..'z', 'A'..'Z']) then
+            HasBook := True
+          else
+            N := 1;
+        end
+        else if Part[1] in ['a'..'z', 'A'..'Z'] then
+          HasBook := True;
+        if HasBook then
+        begin
+          while (N <= Length(Part)) and (Part[N] in ['a'..'z', 'A'..'Z', '.']) do
+            Inc(N);
+          BookTok := Trim(Copy(Part, 1, N - 1));
+          Rest := Trim(Copy(Part, N, MaxInt));
+          B := USFMReferenceBookID(BookTok);
+          if B = 0 then
+            Continue;
+          C := 0;
+        end
+        else
+          Rest := Part;
+        if B = 0 then
+          Continue;
+        Items.Clear;
+        Items.Delimiter := ',';
+        Items.StrictDelimiter := True;
+        Items.DelimitedText := Rest;
+        for N := 0 to Items.Count - 1 do
+        begin
+          Item := Trim(Items[N]);
+          if Item = '' then
+            Continue;
+          Item := StringReplace(Item, '.', ':', []);
+          Colon := Pos(':', Item);
+          if Colon > 0 then
+          begin
+            C := StrToIntDef(Trim(Copy(Item, 1, Colon - 1)), 0);
+            Item := Copy(Item, Colon + 1, MaxInt);
+          end;
+          if C = 0 then
+            C := 1;
+          Dash := Pos('-', Item);
+          V2 := 0;
+          if Dash > 0 then
+          begin
+            V1 := ExtractLeadingInt(Copy(Item, 1, Dash - 1), 0);
+            Item := Copy(Item, Dash + 1, MaxInt);
+            if Pos(':', Item) = 0 then
+              V2 := ExtractLeadingInt(Item, 0);
+          end
+          else
+            V1 := ExtractLeadingInt(Item, 0);
+          if V1 <= 0 then
+            Continue;
+          if (V2 > V1) then
+            Result := Result + '<RX ' + IntToStr(B) + '.' + IntToStr(C) + '.' + IntToStr(V1) + '-' + IntToStr(V2) + '>'
+          else
+            Result := Result + '<RX ' + IntToStr(B) + '.' + IntToStr(C) + '.' + IntToStr(V1) + '>';
+        end;
+      end;
+    finally
+      Items.Free;
+      Parts.Free;
+    end;
+  end;
+
+begin
+  Result := '';
+  Segs := TStringList.Create;
+  try
+    Len := Length(Raw);
+    I := 1;
+    while I <= Len do
+    begin
+      if Raw[I] = '\' then
+      begin
+        P := I + 1;
+        if (P <= Len) and (Raw[P] = '+') then
+          Inc(P);
+        I := P;
+        while (I <= Len) and (Raw[I] in ['a'..'z', 'A'..'Z', '0'..'9', '-']) do
+          Inc(I);
+        Name := LowerCase(Copy(Raw, P, I - P));
+        if (I <= Len) and (Raw[I] = '*') then
+          Inc(I)
+        else if (I <= Len) and (Raw[I] = ' ') then
+          Inc(I);
+        if Name = 'xt' then
+        begin
+          P := I;
+          while (I <= Len) and (Raw[I] <> '\') do
+            Inc(I);
+          Seg := Trim(Copy(Raw, P, I - P));
+          if (Pos('|', Seg) > 0) then
+            Seg := Trim(Copy(Seg, 1, Pos('|', Seg) - 1));
+          if Seg <> '' then
+            Segs.Add(Seg);
+        end;
+        Continue;
+      end;
+      Inc(I);
+    end;
+    for I := 0 to Segs.Count - 1 do
+      Refs(Segs[I]);
+  finally
+    Segs.Free;
+  end;
+end;
+
+function TUSFMInlineReader.Convert(const S: string; IsNT: Boolean; Book: Integer): string;
+var
+  I, Len, J, NmStart, CEnd, NextIdx, K: Integer;
+  Name, Base: string;
+  Closing, Plus: Boolean;
+
+  procedure EnsureSpace;
+  begin
+    if (FOut <> '') and not (FOut[Length(FOut)] in [' ', #9]) then
+      FOut := FOut + ' ';
+  end;
+
+  { the end of \name ... \name* (or \+name*) }
+  function FindEnd(const AName: string; StartAt: Integer; out ContentEnd, AfterMarker: Integer): Boolean;
+  var
+    P: Integer;
+    T1, T2: string;
+  begin
+    Result := False;
+    T1 := '\' + AName + '*';
+    T2 := '\+' + AName + '*';
+    for P := StartAt to Len do
+      if S[P] = '\' then
+      begin
+        if CompareText(Copy(S, P, Length(T1)), T1) = 0 then
+        begin
+          ContentEnd := P - 1;
+          AfterMarker := P + Length(T1);
+          Exit(True);
+        end;
+        if CompareText(Copy(S, P, Length(T2)), T2) = 0 then
+        begin
+          ContentEnd := P - 1;
+          AfterMarker := P + Length(T2);
+          Exit(True);
+        end;
+      end;
+  end;
+
+begin
+  FOut := '';
+  FNT := IsNT;
+  FBook := Book;
+  if Length(FAln) > 0 then
+    FAlnStart := 1; // a milestone that began on an earlier line
+  Len := Length(S);
+  I := 1;
+  while I <= Len do
+  begin
+    if S[I] = '\' then
+    begin
+      J := I + 1;
+      Plus := (J <= Len) and (S[J] = '+');
+      if Plus then
+        Inc(J);
+      if (J <= Len) and (S[J] = '*') then
+      begin
+        I := J + 1; // a bare \* with no marker before it
+        Continue;
+      end;
+      NmStart := J;
+      while (J <= Len) and (S[J] in ['a'..'z', 'A'..'Z', '0'..'9', '-']) do
+        Inc(J);
+      Name := LowerCase(Copy(S, NmStart, J - NmStart));
+      if Name = '' then
+      begin
+        FOut := FOut + '\';
+        Inc(I);
+        Continue;
+      end;
+      Closing := (J <= Len) and (S[J] = '*');
+      if Closing then
+        Inc(J)
+      else if (J <= Len) and (S[J] = ' ') then
+        Inc(J);
+      I := J;
+
+      if Closing then
+      begin
+        CloseStyle(Name);
+        Continue;
+      end;
+
+      Base := StripTrailingDigits(Name);
+      if (Name = 'w') or (Name = 'wg') or (Name = 'wh') or (Name = 'wa') then
+      begin
+        if FindEnd(Name, I, CEnd, NextIdx) then
+        begin
+          WordMarker(Copy(S, I, CEnd - I + 1), Name <> 'w');
+          I := NextIdx;
+        end;
+        Continue;
+      end;
+      if (Name = 'f') or (Name = 'fe') or (Name = 'ef') then
+      begin
+        if FindEnd(Name, I, CEnd, NextIdx) then
+        begin
+          K := Length(CleanUSFMFootnoteToPlain(Copy(S, I, CEnd - I + 1)));
+          if K > 0 then
+            FOut := FOut + '<RF>' + CleanUSFMFootnoteToPlain(Copy(S, I, CEnd - I + 1)) + '<Rf>';
+          I := NextIdx;
+        end;
+        Continue;
+      end;
+      if (Name = 'x') or (Name = 'ex') then
+      begin
+        if FindEnd(Name, I, CEnd, NextIdx) then
+        begin
+          FOut := FOut + CrossRefs(Copy(S, I, CEnd - I + 1));
+          I := NextIdx;
+        end;
+        Continue;
+      end;
+      if (Name = 'fig') or (Name = 'va') or (Name = 'vp') or (Name = 'ca') or (Name = 'rq') then
+      begin
+        if FindEnd(Name, I, CEnd, NextIdx) then
+          I := NextIdx;
+        Continue;
+      end;
+      if (Length(Name) > 2) and ((Copy(Name, Length(Name) - 1, 2) = '-s') or (Copy(Name, Length(Name) - 1, 2) = '-e')) or
+         (Name = 'ts') then
+      begin
+        // milestone: \name |attributes\*
+        K := PosEx('\*', S, I);
+        if K = 0 then
+        begin
+          Milestone(Name, Copy(S, I, MaxInt));
+          I := Len + 1;
+        end
+        else
+        begin
+          Milestone(Name, Trim(Copy(S, I, K - I)));
+          I := K + 2;
+        end;
+        Continue;
+      end;
+      if (Base = 'th') or (Base = 'tc') or (Base = 'thr') or (Base = 'tcr') then
+      begin
+        EnsureSpace;
+        Continue;
+      end;
+      OpenStyle(Name); // the markers with a theWord tag; any other marker keeps its text
+      Continue;
+    end;
+
+    if S[I] = '|' then
+    begin
+      K := I + 1;
+      while (K <= Len) and not (S[K] in [' ', #9, '\']) do
+        Inc(K);
+      if Pos('=', Copy(S, I + 1, K - I - 1)) > 0 then
+      begin
+        while (K <= Len) and (S[K] <> '\') do
+          Inc(K);
+        I := K;
+        Continue;
+      end;
+    end;
+
+    if S[I] in [#13, #10] then
+    begin
+      EnsureSpace;
+      Inc(I);
+      Continue;
+    end;
+    if S[I] = '~' then
+      FOut := FOut + ' '
+    else
+      FOut := FOut + S[I];
+    Inc(I);
+  end;
+
+  while Pos('  ', FOut) > 0 do
+    FOut := StringReplace(FOut, '  ', ' ', [rfReplaceAll]);
+  Result := Trim(FOut);
+end;
+
+{ no space is wanted between the end of Buf and the start of Text }
+function USFMNeedsSpaceBetween(const Buf, Text: string): Boolean;
+var
+  P: Integer;
+  Tag: string;
+begin
+  Result := False;
+  if (Buf = '') or (Text = '') then
+    Exit;
+  if (Buf[Length(Buf)] in [' ', #9]) or (Text[1] in [' ', #9]) then
+    Exit;
+  if Buf[Length(Buf)] <> '>' then
+    Exit(True);
+  P := Length(Buf);
+  while (P > 0) and (Buf[P] <> '<') do
+    Dec(P);
+  if P = 0 then
+    Exit(True);
+  Tag := Copy(Buf, P, MaxInt);
+  Result := not ((Tag = '<CM>') or (Tag = '<CI>') or (Tag = '<CL>') or (Tag = '<FR>') or
+    (Tag = '<FI>') or (Tag = '<FO>') or (Tag = '<b>') or (Tag = '<i>') or (Tag = '<sup>') or
+    (Tag = '<Ts>') or (Tag = '<wt>') or AnsiStartsStr('<PI', Tag) or AnsiStartsStr('<PF', Tag));
+end;
+
+{ a heading without footnotes or tags }
+function USFMPlainHeading(const T: string): string;
+var
+  P, Q: Integer;
+begin
+  Result := T;
+  repeat
+    P := Pos('<RF>', Result);
+    if P = 0 then
+      Break;
+    Q := PosEx('<Rf>', Result, P);
+    if Q = 0 then
+      Break;
+    Delete(Result, P, Q + 3 - P);
+  until False;
+  Result := Trim(StripAllXMLTags(Result));
+end;
+
 
 class function TESwordModule.LoadUSFMBibleWithApocrypha(
   const filename: string;
@@ -3217,10 +4009,14 @@ class function TESwordModule.LoadUSFMBibleWithApocrypha(
   out errMsg: string
 ): boolean;
 var
-  filesToParse, fileLines, sibFiles: TStringList;
+  filesToParse, fileLines, sibFiles, lines: TStringList;
   sr: TSearchRec;
   dirPath, extLow, rawLine, trimmedLine, marker, rest, idCode, pendingHeading, curVerseBuf, bName: string;
+  pendBound, pendPI, carryPI, paraBound, paraPI: string;
   fIdx, lIdx, spPos, idBookCount, curBook, curChap, curVerse, vNum, extraCount, i, book: integer;
+  headingLevel, lastKind, lastIdx, lastBook, lastChap: integer;
+  curHasText, pendActive, inSidebar, inPeriph: boolean;
+  reader: TUSFMInlineReader;
   allVerses: array of string;
   apocPresent: array[67..150] of boolean;
   apocMaxChap, apocChap1Verses, apocChap2Verses, apocMaxChapVerses: array[67..150] of integer;
@@ -3236,10 +4032,16 @@ var
     if (curBook <= 0) or (curChap <= 0) or (curVerse <= 0) then
     begin
       curVerseBuf := '';
+      curHasText := False;
       Exit;
     end;
+    if curHasText then
+      curVerseBuf := curVerseBuf + reader.CloseTags; // styles left open go on in the next verse
+    if Trim(StripAllXMLTags(curVerseBuf)) = '' then
+      curVerseBuf := '';
     ontLine := Trim(curVerseBuf);
     curVerseBuf := '';
+    curHasText := False;
     if ontLine = '' then
       Exit;
 
@@ -3254,9 +4056,13 @@ var
         else
           hasNT := True;
         if allVerses[lineIdx] <> '' then
-          allVerses[lineIdx] := allVerses[lineIdx] + ' ' + ontLine
+          allVerses[lineIdx] := JoinVerseTexts(allVerses[lineIdx], ontLine)
         else
           allVerses[lineIdx] := ontLine;
+        lastKind := 1;
+        lastIdx := lineIdx;
+        lastBook := curBook;
+        lastChap := curChap;
       end;
     end
     else if ((curBook <= 66) and (curChap > ESwordChaptersPerBook[curBook])) or ((curBook >= 67) and (curBook <= 150)) then
@@ -3268,7 +4074,7 @@ var
 
       curPareID := Format('%d,%d,%d', [curBook, curChap, curVerse]);
       if (extraCount > 0) and (extraVerses[extraCount - 1].PareID = curPareID) then
-        extraVerses[extraCount - 1].ONTText := extraVerses[extraCount - 1].ONTText + ' ' + ontLine
+        extraVerses[extraCount - 1].ONTText := JoinVerseTexts(extraVerses[extraCount - 1].ONTText, ontLine)
       else
       begin
         if extraCount >= Length(extraVerses) then
@@ -3280,6 +4086,10 @@ var
         extraVerses[extraCount].ONTText := ontLine;
         Inc(extraCount);
       end;
+      lastKind := 2;
+      lastIdx := extraCount - 1;
+      lastBook := curBook;
+      lastChap := curChap;
 
       if (curBook >= 67) and (curBook <= 150) then
       begin
@@ -3299,6 +4109,69 @@ var
           apocSample[curBook] := apocSample[curBook] + ' ' + ontLine;
       end;
     end;
+  end;
+
+
+  { a paragraph boundary at the end of the verse stored last (theWord puts the
+    boundary there; the indent goes at the start of the next verse) }
+  procedure AppendBoundaryToLastStored(const tag: string);
+  var
+    t: string;
+  begin
+    if (tag = '') or (lastKind = 0) or (lastBook <> curBook) or (lastChap <> curChap) then
+      Exit;
+    if lastKind = 1 then
+      t := allVerses[lastIdx]
+    else
+      t := extraVerses[lastIdx].ONTText;
+    if t = '' then
+      Exit;
+    if (Copy(t, Length(t) - 3, 4) = '<CM>') or (Copy(t, Length(t) - 3, 4) = '<CI>') then
+      Exit;
+    if Copy(t, Length(t) - 3, 4) = '<CL>' then
+    begin
+      if tag <> '<CM>' then
+        Exit;
+      SetLength(t, Length(t) - 4);
+    end;
+    t := t + tag;
+    if lastKind = 1 then
+      allVerses[lastIdx] := t
+    else
+      extraVerses[lastIdx].ONTText := t;
+  end;
+
+  { a paragraph marker that came after the text of a verse and was followed by
+    the next verse (or a heading) belongs to what follows }
+  procedure ApplyPendingLeading;
+  begin
+    if pendActive then
+    begin
+      AppendBoundaryToLastStored(pendBound);
+      carryPI := pendPI;
+      pendActive := False;
+    end;
+  end;
+
+  procedure AddInlineText(const raw: string);
+  var
+    t: string;
+  begin
+    t := reader.Convert(raw, (curBook >= 40) and (curBook <= 66), curBook);
+    if t = '' then
+      Exit;
+    if pendActive then
+    begin
+      while (curVerseBuf <> '') and (curVerseBuf[Length(curVerseBuf)] = ' ') do
+        SetLength(curVerseBuf, Length(curVerseBuf) - 1);
+      curVerseBuf := curVerseBuf + pendBound + pendPI;
+      pendActive := False;
+    end
+    else if USFMNeedsSpaceBetween(curVerseBuf, t) then
+      curVerseBuf := curVerseBuf + ' ';
+    curVerseBuf := curVerseBuf + t;
+    if Trim(StripAllXMLTags(t)) <> '' then
+      curHasText := True;
   end;
 
 begin
@@ -3337,6 +4210,7 @@ begin
   filesToParse := TStringList.Create;
   fileLines := TStringList.Create;
   sibFiles := TStringList.Create;
+  lines := TStringList.Create;
   try
     fileLines.LoadFromFile(filename);
     if Pos(#13#13, fileLines.Text) > 0 then
@@ -3388,26 +4262,32 @@ begin
     curVerse := 0;
     pendingHeading := '';
     curVerseBuf := '';
+    curHasText := False;
+    pendActive := False;
+    pendBound := '';
+    pendPI := '';
+    carryPI := '';
+    lastKind := 0;
+    lastIdx := 0;
+    lastBook := 0;
+    lastChap := 0;
+    inSidebar := False;
+    inPeriph := False;
 
+    reader := TUSFMInlineReader.Create;
+    try
     for fIdx := 0 to filesToParse.Count - 1 do
     begin
       fileLines.LoadFromFile(filesToParse[fIdx]);
-      if Pos(#13#13, fileLines.Text) > 0 then
+      SplitUSFMLogicalLines(fileLines.Text, lines);
+      for lIdx := 0 to lines.Count - 1 do
       begin
-        rawLine := fileLines.Text;
-        while Pos(#13#13, rawLine) > 0 do
-          rawLine := StringReplace(rawLine, #13#13, #13, [rfReplaceAll]);
-        fileLines.Text := rawLine;
-      end;
-      for lIdx := 0 to fileLines.Count - 1 do
-      begin
-        rawLine := fileLines[lIdx];
-        if (lIdx = 0) and (Pos(#239#187#191, rawLine) = 1) then
-          Delete(rawLine, 1, 3);
-        trimmedLine := Trim(rawLine);
+        trimmedLine := lines[lIdx];
         if trimmedLine = '' then
           Continue;
 
+        marker := '';
+        rest := trimmedLine;
         if trimmedLine[1] = '\' then
         begin
           spPos := 2;
@@ -3415,85 +4295,126 @@ begin
             Inc(spPos);
           marker := LowerCase(Copy(trimmedLine, 2, spPos - 2));
           rest := Trim(Copy(trimmedLine, spPos + 1, Length(trimmedLine) - spPos));
-
-          if marker = 'id' then
-          begin
-            FlushCurrentUSFMVerse;
-            spPos := 1;
-            while (spPos <= Length(rest)) and not (rest[spPos] in [' ', #9]) do
-              Inc(spPos);
-            idCode := Copy(rest, 1, spPos - 1);
-            curBook := USFMBookCodeToID(idCode);
-            curChap := 0;
-            curVerse := 0;
-            pendingHeading := '';
-            curVerseBuf := '';
-          end
-          else if marker = 'c' then
-          begin
-            FlushCurrentUSFMVerse;
-            curChap := ExtractLeadingInt(rest, curChap + 1);
-            curVerse := 0;
-            pendingHeading := '';
-            curVerseBuf := '';
-          end
-          else if (marker = 's') or (marker = 's1') or (marker = 's2') or (marker = 's3') or
-                  (marker = 'ms') or (marker = 'ms1') or (marker = 'd') then
-          begin
-            FlushCurrentUSFMVerse;
-            curVerse := 0;
-            rest := ConvertUSFMTextToONT(rest, (curBook >= 40) and (curBook <= 66));
-            if rest <> '' then
-              pendingHeading := pendingHeading + '<TS1>' + rest + '<Ts>';
-          end
-          else if marker = 'v' then
-          begin
-            FlushCurrentUSFMVerse;
-            if curChap <= 0 then
-              curChap := 1;
-            spPos := 1;
-            while (spPos <= Length(rest)) and not (rest[spPos] in [' ', #9]) do
-              Inc(spPos);
-            vNum := ExtractLeadingInt(Copy(rest, 1, spPos - 1), curVerse + 1);
-            if vNum < 1 then
-              vNum := 1;
-            curVerse := vNum;
-            rest := Trim(Copy(rest, spPos + 1, Length(rest) - spPos));
-            curVerseBuf := pendingHeading + ConvertUSFMTextToONT(rest, (curBook >= 40) and (curBook <= 66));
-            pendingHeading := '';
-          end
-          else if (marker = 'usfm') or (marker = 'ide') or (marker = 'sts') or (marker = 'rem') or
-                  (marker = 'h') or AnsiStartsStr('toc', marker) or AnsiStartsStr('mt', marker) or
-                  AnsiStartsStr('im', marker) or AnsiStartsStr('ip', marker) or AnsiStartsStr('is', marker) or
-                  AnsiStartsStr('io', marker) or (marker = 'ie') or (marker = 'cl') or (marker = 'cp') or
-                  (marker = 'cd') or (marker = 'r') or (marker = 'mr') or (marker = 'sr') or (marker = 'sp') or
-                  (marker = 'qa') then
-          begin
-            // Header/intro/reference lines: ignore for verse body
-          end
-          else if (curBook > 0) and (curChap > 0) and (curVerse > 0) then
-          begin
-            rest := ConvertUSFMTextToONT(trimmedLine, (curBook >= 40) and (curBook <= 66));
-            if rest <> '' then
-            begin
-              if (curVerseBuf <> '') and not (curVerseBuf[Length(curVerseBuf)] in [' ', '>']) then
-                curVerseBuf := curVerseBuf + ' ';
-              curVerseBuf := curVerseBuf + rest;
-            end;
-          end;
-        end
-        else if (curBook > 0) and (curChap > 0) and (curVerse > 0) then
-        begin
-          rest := ConvertUSFMTextToONT(trimmedLine, (curBook >= 40) and (curBook <= 66));
-          if rest <> '' then
-          begin
-            if (curVerseBuf <> '') and not (curVerseBuf[Length(curVerseBuf)] in [' ', '>']) then
-              curVerseBuf := curVerseBuf + ' ';
-            curVerseBuf := curVerseBuf + rest;
-          end;
         end;
+
+        if inSidebar then
+        begin
+          if marker = 'esbe' then
+            inSidebar := False;
+          Continue;
+        end;
+        if inPeriph then
+        begin
+          if marker <> 'id' then
+            Continue;
+          inPeriph := False;
+        end;
+
+        if marker = 'id' then
+        begin
+          FlushCurrentUSFMVerse;
+          spPos := 1;
+          while (spPos <= Length(rest)) and not (rest[spPos] in [' ', #9]) do
+            Inc(spPos);
+          idCode := Copy(rest, 1, spPos - 1);
+          curBook := USFMBookCodeToID(idCode);
+          curChap := 0;
+          curVerse := 0;
+          pendingHeading := '';
+          curVerseBuf := '';
+          curHasText := False;
+          pendActive := False;
+          carryPI := '';
+          lastKind := 0;
+          reader.Reset;
+        end
+        else if marker = 'c' then
+        begin
+          FlushCurrentUSFMVerse;
+          ApplyPendingLeading;
+          reader.ClearStyles;
+          curChap := ExtractLeadingInt(rest, curChap + 1);
+          curVerse := 0;
+          pendingHeading := '';
+          curVerseBuf := '';
+        end
+        else if USFMHeadingLevel(marker) > 0 then
+        begin
+          headingLevel := USFMHeadingLevel(marker);
+          FlushCurrentUSFMVerse;
+          ApplyPendingLeading;
+          reader.ClearStyles;
+          curVerse := 0;
+          rest := USFMPlainHeading(reader.Convert(rest, (curBook >= 40) and (curBook <= 66), curBook));
+          if rest <> '' then
+            pendingHeading := pendingHeading + '<TS' + IntToStr(headingLevel) + '>' + rest + '<Ts>';
+        end
+        else if marker = 'v' then
+        begin
+          FlushCurrentUSFMVerse;
+          ApplyPendingLeading;
+          if curChap <= 0 then
+            curChap := 1;
+          spPos := 1;
+          while (spPos <= Length(rest)) and not (rest[spPos] in [' ', #9]) do
+            Inc(spPos);
+          vNum := ExtractLeadingInt(Copy(rest, 1, spPos - 1), curVerse + 1);
+          if vNum < 1 then
+            vNum := 1;
+          curVerse := vNum;
+          rest := Trim(Copy(rest, spPos + 1, Length(rest) - spPos));
+          curVerseBuf := pendingHeading + carryPI + reader.ReopenTags;
+          curHasText := False;
+          pendingHeading := '';
+          carryPI := '';
+          AddInlineText(rest);
+        end
+        else if marker = 'esb' then
+          inSidebar := True
+        else if marker = 'periph' then
+          inPeriph := True
+        else if USFMParagraphTags(marker, paraBound, paraPI) then
+        begin
+          // paragraph / poetry / list / table row
+          if (curVerse > 0) and curHasText then
+          begin
+            curVerseBuf := curVerseBuf + reader.CloseTags;
+            reader.ClearStyles;
+          end
+          else if curVerse = 0 then
+            reader.ClearStyles;
+          if (curVerse = 0) or not curHasText then
+          begin
+            // before the text of a verse: the boundary ends the verse before
+            AppendBoundaryToLastStored(paraBound);
+            if curVerse = 0 then
+              carryPI := paraPI
+            else
+              curVerseBuf := curVerseBuf + paraPI;
+            pendActive := False;
+          end
+          else if (paraBound <> '') or (paraPI <> '') then
+          begin
+            // after the text: inside the verse, or before the next one
+            if not (pendActive and (pendBound = '<CM>') and (paraBound = '<CL>')) then
+              pendBound := paraBound;
+            pendPI := paraPI;
+            pendActive := True;
+          end;
+          if (curVerse > 0) and (rest <> '') then
+            AddInlineText(rest);
+        end
+        else if (marker <> '') and IsUSFMBlockMarker(marker) then
+        begin
+          // header, title, introduction, reference and label lines: not verse text
+        end
+        else if curVerse > 0 then
+          AddInlineText(trimmedLine);
       end;
       FlushCurrentUSFMVerse;
+    end;
+    finally
+      reader.Free;
     end;
 
     SetLength(extraVerses, extraCount);
@@ -3546,6 +4467,7 @@ begin
 
     Result := True;
   finally
+    lines.Free;
     sibFiles.Free;
     fileLines.Free;
     filesToParse.Free;
@@ -4021,146 +4943,703 @@ begin
   Result := True;
 end;
 
-class function TESwordModule.ConvertONTToUSFM(const ontText: string; out headingBeforeVerse: string): string;
+{ ======================================================================
+  USFM 3.0 writer
+  One theWord verse becomes the lines of a USFM 3.0 verse: headings (\s1..\s3),
+  the paragraph / poetry marker chosen from the <CM>/<CL>/<PIn> tags,
+  \v, character styles (nested ones with the + prefix), \w word|lemma strong
+  x-morph \w*, footnotes (\f) and cross-references (\x).
+  ====================================================================== }
+
+function USFMBookDisplayName(BookID: Integer): string;
+begin
+  if (BookID >= 1) and (BookID <= 66) then
+    Result := USFMBookNames[BookID]
+  else
+    case BookID of
+      67: Result := '1 Esdras';
+      68: Result := '2 Esdras';
+      69: Result := 'Tobit';
+      70: Result := 'Judith';
+      71: Result := '1 Maccabees';
+      72: Result := '2 Maccabees';
+      73: Result := '3 Maccabees';
+      74: Result := '4 Maccabees';
+      75: Result := 'Prayer of Manasseh';
+      76: Result := 'Wisdom of Solomon';
+      77: Result := 'Sirach';
+      78: Result := 'Baruch';
+      79: Result := 'Letter of Jeremiah';
+      80: Result := 'Song of the Three Young Men';
+      81: Result := 'Susanna';
+      82: Result := 'Bel and the Dragon';
+      83: Result := 'Esther (Greek)';
+      84: Result := 'Psalm 151';
+      85: Result := 'Psalms of Solomon';
+      86: Result := 'Odes';
+      87: Result := 'Laodiceans';
+    else
+      Result := TESwordModule.BookIDToUSFMCode(BookID);
+    end;
+end;
+
+function USFMParaMarkerFor(const Bound: string; Indent: Integer): string;
+begin
+  if Bound = '<CL>' then
+  begin
+    if Indent > 4 then
+      Indent := 4;
+    if Indent > 0 then
+      Result := '\q' + IntToStr(Indent)
+    else
+      Result := '\m';
+  end
+  else
+  begin
+    if Indent > 3 then
+      Indent := 3;
+    if Indent > 0 then
+      Result := '\pi' + IntToStr(Indent)
+    else
+      Result := '\p';
+  end;
+end;
+
+function USFMSafeText(const S: string): string;
 var
-  s, rawTag, tagUpper, plainRun, wordToken, prefixPunct, strongList, morphCode, attrStr: string;
-  i, len, tagEnd, k, wordStart: integer;
+  I: Integer;
+begin
+  Result := S;
+  for I := 1 to Length(Result) do
+    if Result[I] in ['\', #9, #10, #13] then
+      if Result[I] = '\' then
+        Result[I] := '/'
+      else
+        Result[I] := ' ';
+  Result := StringReplace(Result, '//', '/ /', [rfReplaceAll]);
+end;
+
+type
+  TUSFMVerseWriter = class
+  private
+    FOut: TStringList;
+    FLine: string;
+    FStack: TStringList;
+    FWtStart: Integer;
+    procedure OpenStyle(const AName: string);
+    procedure CloseStyle(const AName: string);
+    procedure CloseAll;
+    procedure ReopenAll(Saved: TStringList);
+    procedure EndLine;
+    procedure StartLine(const Marker: string);
+    function LineIsBareMarker: Boolean;
+    procedure BreakWith(const Marker: string; Saved: TStringList);
+    procedure WrapWord(const Strongs, Morphs, Lemmas: string);
+    function CrossRef(const Items: string): string;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    { Lines of the verse, joined by LF. PrevBound is the paragraph boundary at
+      the end of the verse before; TrailBound returns this verse's own. }
+    function Convert(const Ont: string; Chap, Verse: Integer; const PrevBound: string;
+      out TrailBound: string): string;
+  end;
+
+constructor TUSFMVerseWriter.Create;
+begin
+  inherited Create;
+  FOut := TStringList.Create;
+  FStack := TStringList.Create;
+end;
+
+destructor TUSFMVerseWriter.Destroy;
+begin
+  FStack.Free;
+  FOut.Free;
+  inherited Destroy;
+end;
+
+procedure TUSFMVerseWriter.OpenStyle(const AName: string);
+begin
+  if FStack.Count = 0 then
+    FLine := FLine + '\' + AName + ' '
+  else
+    FLine := FLine + '\+' + AName + ' ';
+  FStack.Add(AName);
+end;
+
+procedure TUSFMVerseWriter.CloseStyle(const AName: string);
+var
+  Idx, J: Integer;
+  Saved: TStringList;
+  Mk: string;
+begin
+  Idx := -1;
+  for J := FStack.Count - 1 downto 0 do
+    if FStack[J] = AName then
+    begin
+      Idx := J;
+      Break;
+    end;
+  if Idx < 0 then
+    Exit;
+  Saved := TStringList.Create;
+  try
+    for J := Idx + 1 to FStack.Count - 1 do
+      Saved.Add(FStack[J]);
+    for J := FStack.Count - 1 downto Idx do
+    begin
+      if J > 0 then
+        Mk := '\+' + FStack[J]
+      else
+        Mk := '\' + FStack[J];
+      if (Length(FLine) >= Length(Mk) + 1) and
+         (Copy(FLine, Length(FLine) - Length(Mk), Length(Mk) + 1) = Mk + ' ') then
+        SetLength(FLine, Length(FLine) - Length(Mk) - 1) // nothing inside: drop the pair
+      else
+        FLine := FLine + Mk + '*';
+      FStack.Delete(J);
+    end;
+    ReopenAll(Saved);
+  finally
+    Saved.Free;
+  end;
+end;
+
+procedure TUSFMVerseWriter.CloseAll;
+var
+  J: Integer;
+  Mk: string;
+begin
+  for J := FStack.Count - 1 downto 0 do
+  begin
+    if J > 0 then
+      Mk := '\+' + FStack[J]
+    else
+      Mk := '\' + FStack[J];
+    if (Length(FLine) >= Length(Mk) + 1) and
+       (Copy(FLine, Length(FLine) - Length(Mk), Length(Mk) + 1) = Mk + ' ') then
+      SetLength(FLine, Length(FLine) - Length(Mk) - 1)
+    else
+      FLine := FLine + Mk + '*';
+  end;
+  FStack.Clear;
+end;
+
+procedure TUSFMVerseWriter.ReopenAll(Saved: TStringList);
+var
+  J: Integer;
+begin
+  for J := 0 to Saved.Count - 1 do
+    OpenStyle(Saved[J]);
+end;
+
+procedure TUSFMVerseWriter.EndLine;
+begin
+  FLine := TrimRight(FLine);
+  if FLine <> '' then
+    FOut.Add(FLine);
+  FLine := '';
+  FWtStart := 0;
+end;
+
+procedure TUSFMVerseWriter.StartLine(const Marker: string);
+begin
+  FOut.Add(Marker);
+end;
+
+{ a paragraph marker on the line being built, with no text after it yet }
+function TUSFMVerseWriter.LineIsBareMarker: Boolean;
+var
+  T: string;
+  N: Integer;
+begin
+  T := Trim(FLine);
+  Result := False;
+  if (Length(T) < 2) or (T[1] <> '') then
+    Exit;
+  N := 2;
+  while (N <= Length(T)) and (T[N] in ['a'..'z', '0'..'9']) do
+    Inc(N);
+  Result := N > Length(T);
+end;
+
+procedure TUSFMVerseWriter.BreakWith(const Marker: string; Saved: TStringList);
+begin
+  Saved.Clear;
+  Saved.AddStrings(FStack);
+  CloseAll;
+  if not LineIsBareMarker then
+    EndLine;
+  FLine := Marker + ' ';
+  FWtStart := 0;
+  ReopenAll(Saved);
+end;
+
+procedure TUSFMVerseWriter.WrapWord(const Strongs, Morphs, Lemmas: string);
+var
+  StartPos, P: Integer;
+  Phrase, Lead, Attrs, Pre: string;
+begin
+  if Strongs = '' then
+    Exit;
+  if (FWtStart > 0) and (FWtStart <= Length(FLine) + 1) then
+    StartPos := FWtStart
+  else
+  begin
+    P := Length(FLine);
+    while (P >= 1) and (FLine[P] <> ' ') do
+      Dec(P);
+    StartPos := P + 1;
+  end;
+  FWtStart := 0;
+  Phrase := Copy(FLine, StartPos, MaxInt);
+  Lead := '';
+  while (Phrase <> '') and (Phrase[1] in ['(', '[', '"', '''', ' ']) do
+  begin
+    Lead := Lead + Phrase[1];
+    Delete(Phrase, 1, 1);
+  end;
+  if (Phrase = '') or (Pos('\', Phrase) > 0) or (Phrase[Length(Phrase)] = ' ') then
+    Exit;
+  Phrase := StringReplace(Phrase, '|', ' ', [rfReplaceAll]);
+  Attrs := '';
+  if Lemmas <> '' then
+    Attrs := 'lemma="' + StringReplace(Lemmas, '"', '', [rfReplaceAll]) + '" ';
+  Attrs := Attrs + 'strong="' + Strongs + '"';
+  if Morphs <> '' then
+    Attrs := Attrs + ' x-morph="' + StringReplace(Morphs, '"', '', [rfReplaceAll]) + '"';
+  if FStack.Count > 0 then
+    Pre := '\+w '
+  else
+    Pre := '\w ';
+  FLine := Copy(FLine, 1, StartPos - 1) + Lead + Pre + Phrase + '|' + Attrs +
+    Copy(Pre, 1, Length(Pre) - 1) + '*';
+end;
+
+{ <RX 43.5.26;1.1.1-3> items -> "JHN 5:26; GEN 1:1-3" }
+function TUSFMVerseWriter.CrossRef(const Items: string): string;
+var
+  List: TStringList;
+  K, Dot1, Dot2, B, C, V, V2, Sep: Integer;
+  Item, Rest: string;
 begin
   Result := '';
-  headingBeforeVerse := '';
-  s := ontText;
-  if Pos(#239#187#191, s) = 1 then
-    Delete(s, 1, 3);
-  s := Trim(s);
-  if s = '' then
-    Exit;
-
-  plainRun := '';
-  i := 1;
-  len := Length(s);
-  while i <= len do
-  begin
-    if s[i] = '<' then
+  List := TStringList.Create;
+  try
+    List.Delimiter := ';';
+    List.StrictDelimiter := True;
+    List.DelimitedText := Items;
+    for K := 0 to List.Count - 1 do
     begin
-      tagEnd := i + 1;
-      while (tagEnd <= len) and (s[tagEnd] <> '>') do
-        Inc(tagEnd);
-      if tagEnd > len then
+      Item := Trim(List[K]);
+      Dot1 := Pos('.', Item);
+      if Dot1 = 0 then
+        Continue;
+      B := StrToIntDef(Copy(Item, 1, Dot1 - 1), 0);
+      Rest := Copy(Item, Dot1 + 1, MaxInt);
+      Dot2 := Pos('.', Rest);
+      if (B < 1) or (Dot2 = 0) then
+        Continue;
+      C := StrToIntDef(Copy(Rest, 1, Dot2 - 1), 0);
+      Rest := Copy(Rest, Dot2 + 1, MaxInt);
+      V2 := 0;
+      Sep := Pos('-', Rest);
+      if Sep > 0 then
       begin
-        plainRun := plainRun + Copy(s, i, len - i + 1);
-        Break;
-      end;
-
-      rawTag := Copy(s, i + 1, tagEnd - i - 1);
-      tagUpper := UpperCase(Trim(rawTag));
-
-      if (Length(rawTag) >= 3) and (AnsiStartsText('WG', rawTag) or AnsiStartsText('WH', rawTag)) and (rawTag[3] in ['0'..'9']) then
+        V := ExtractLeadingInt(Copy(Rest, 1, Sep - 1), 0);
+        V2 := ExtractLeadingInt(Copy(Rest, Sep + 1, MaxInt), 0);
+      end
+      else
       begin
-        strongList := UpperCase(Copy(rawTag, 2, 1)) + Copy(rawTag, 3, Length(rawTag) - 2);
-        morphCode := '';
-        i := tagEnd + 1;
-        while (i <= len) and (s[i] = '<') do
+        Sep := Pos('+', Rest);
+        if Sep > 0 then
         begin
-          tagEnd := i + 1;
-          while (tagEnd <= len) and (s[tagEnd] <> '>') do
-            Inc(tagEnd);
-          if tagEnd > len then Break;
-          rawTag := Copy(s, i + 1, tagEnd - i - 1);
-          if (Length(rawTag) >= 3) and (AnsiStartsText('WG', rawTag) or AnsiStartsText('WH', rawTag)) and (rawTag[3] in ['0'..'9']) then
-          begin
-            strongList := strongList + ' ' + UpperCase(Copy(rawTag, 2, 1)) + Copy(rawTag, 3, Length(rawTag) - 2);
-            i := tagEnd + 1;
-          end
-          else if (Length(rawTag) > 2) and AnsiStartsText('WT', rawTag) then
-          begin
-            morphCode := CleanMorphTagContent(Copy(rawTag, 3, Length(rawTag) - 2));
-            i := tagEnd + 1;
-          end
-          else if SameText(rawTag, 'wt') then
-            i := tagEnd + 1
+          V := ExtractLeadingInt(Copy(Rest, 1, Sep - 1), 0);
+          V2 := V + ExtractLeadingInt(Copy(Rest, Sep + 1, MaxInt), 0);
+        end
+        else
+          V := ExtractLeadingInt(Rest, 0);
+      end;
+      if (C < 1) or (V < 1) then
+        Continue;
+      if Result <> '' then
+        Result := Result + '; ';
+      Result := Result + TESwordModule.BookIDToUSFMCode(B) + ' ' + IntToStr(C) + ':' + IntToStr(V);
+      if V2 > V then
+        Result := Result + '-' + IntToStr(V2);
+    end;
+  finally
+    List.Free;
+  end;
+end;
+
+function TUSFMVerseWriter.Convert(const Ont: string; Chap, Verse: Integer;
+  const PrevBound: string; out TrailBound: string): string;
+var
+  S, Raw, Up, Bound, Bnd, Note, Refs, Strongs, Morphs, Lemmas, Tmp, Tail: string;
+  I, Len, E, K, J, Indent, PendIndent, Level, Q1, Q2: Integer;
+  Heads: TStringList;
+  Saved: TStringList;
+  AllBlank: Boolean;
+  Ch: Char;
+
+  function TagAt(Pos0: Integer; out EndPos: Integer): string;
+  begin
+    Result := '';
+    EndPos := PosEx('>', S, Pos0);
+    if EndPos > 0 then
+      Result := Copy(S, Pos0 + 1, EndPos - Pos0 - 1);
+  end;
+
+  function IsStrongTag(const R: string): Boolean;
+  begin
+    Result := (Length(R) >= 3) and (R[1] = 'W') and (R[2] in ['G', 'H']) and (R[3] in ['0'..'9']);
+  end;
+
+  function StrongOf(const R: string): string;
+  var
+    N: Integer;
+  begin
+    N := 3;
+    while (N <= Length(R)) and (R[N] in ['0'..'9']) do
+      Inc(N);
+    Result := R[2] + Copy(R, 3, N - 3);
+  end;
+
+  function LemmaOf(const R: string): string;
+  var
+    A, B: Integer;
+  begin
+    Result := '';
+    A := Pos(' l="', R);
+    if A = 0 then
+      Exit;
+    B := PosEx('"', R, A + 4);
+    if B > 0 then
+      Result := Copy(R, A + 4, B - A - 4);
+  end;
+
+  function IsParaTag(const R: string): Boolean;
+  begin
+    Result := (R = 'CM') or (R = 'CI') or (R = 'CL');
+  end;
+
+  function IsIndentTag(const R: string): Boolean;
+  begin
+    Result := (R = 'PI') or (R = 'Pi') or ((Length(R) = 3) and (Copy(R, 1, 2) = 'PI') and (R[3] in ['0'..'9']));
+  end;
+
+  function IsFirstLineTag(const R: string): Boolean;
+  begin
+    Result := (R = 'PF') or ((Length(R) = 3) and (Copy(R, 1, 2) = 'PF') and (R[3] in ['0'..'9']));
+  end;
+
+  function IndentOf(const R: string): Integer;
+  begin
+    if R = 'PI' then
+      Result := 1
+    else if R = 'Pi' then
+      Result := 0
+    else
+      Result := Ord(R[3]) - Ord('0');
+  end;
+
+  function HeadingLevel(const R: string): Integer;
+  begin
+    Result := 0;
+    if R = 'TS' then
+      Result := 1
+    else if (Length(R) = 3) and (Copy(R, 1, 2) = 'TS') and (R[3] in ['1'..'3']) then
+      Result := Ord(R[3]) - Ord('0');
+  end;
+
+begin
+  FOut.Clear;
+  FStack.Clear;
+  FLine := '';
+  FWtStart := 0;
+  TrailBound := '';
+  Result := '';
+  S := Ont;
+  if Pos(#239#187#191, S) = 1 then
+    Delete(S, 1, 3);
+  S := Trim(S);
+  Len := Length(S);
+  I := 1;
+  Heads := TStringList.Create;
+  Saved := TStringList.Create;
+  try
+    // ---- the tags in front of the text: headings, boundary, indent
+    Bound := '';
+    Indent := 0;
+    while I <= Len do
+    begin
+      if S[I] = ' ' then
+      begin
+        Inc(I);
+        Continue;
+      end;
+      if S[I] <> '<' then
+        Break;
+      Raw := TagAt(I, E);
+      if E = 0 then
+        Break;
+      Level := HeadingLevel(Raw);
+      if Level > 0 then
+      begin
+        K := PosEx('<Ts>', S, E + 1);
+        if K = 0 then
+          Break;
+        Tmp := Trim(StripAllXMLTags(Copy(S, E + 1, K - E - 1)));
+        if Tmp <> '' then
+          Heads.Add('\s' + IntToStr(Level) + ' ' + USFMSafeText(Tmp));
+        I := K + 4;
+      end
+      else if IsParaTag(Raw) then
+      begin
+        Bound := '<' + Raw + '>';
+        I := E + 1;
+      end
+      else if IsIndentTag(Raw) then
+      begin
+        Indent := IndentOf(Raw);
+        I := E + 1;
+      end
+      else if IsFirstLineTag(Raw) then
+        I := E + 1
+      else
+        Break;
+    end;
+    if Bound = '' then
+      Bound := PrevBound;
+    for J := 0 to Heads.Count - 1 do
+      FOut.Add(Heads[J]);
+    if (Heads.Count > 0) or (Bound <> '') or (Indent > 0) then
+      StartLine(USFMParaMarkerFor(Bound, Indent));
+    FLine := '\v ' + IntToStr(Verse) + ' ';
+
+    // ---- the verse text
+    while I <= Len do
+    begin
+      Ch := S[I];
+      if Ch <> '<' then
+      begin
+        if Ch in ['\', #9, #10, #13] then
+        begin
+          if Ch = '\' then
+            Ch := '/'
           else
+            Ch := ' ';
+        end;
+        FLine := FLine + Ch;
+        Inc(I);
+        Continue;
+      end;
+      Raw := TagAt(I, E);
+      if E = 0 then
+      begin
+        FLine := FLine + '<';
+        Inc(I);
+        Continue;
+      end;
+      Up := UpperCase(Raw);
+
+      if IsStrongTag(Raw) then
+      begin
+        Strongs := '';
+        Morphs := '';
+        Lemmas := '';
+        while True do
+        begin
+          if IsStrongTag(Raw) then
+          begin
+            if Strongs <> '' then
+              Strongs := Strongs + ',';
+            Strongs := Strongs + StrongOf(Raw);
+          end
+          else if (Length(Raw) > 2) and (Copy(Raw, 1, 2) = 'WT') then
+          begin
+            Tmp := CleanMorphTagContent(Copy(Raw, 3, MaxInt));
+            if Tmp <> '' then
+            begin
+              if Morphs <> '' then
+                Morphs := Morphs + ' ';
+              Morphs := Morphs + Tmp;
+            end;
+            Tmp := LemmaOf(Raw);
+            if Tmp <> '' then
+            begin
+              if Lemmas <> '' then
+                Lemmas := Lemmas + ' ';
+              Lemmas := Lemmas + Tmp;
+            end;
+          end
+          else if Raw <> 'wt' then
+            Break;
+          I := E + 1;
+          if (I > Len) or (S[I] <> '<') then
+            Break;
+          Raw := TagAt(I, E);
+          if E = 0 then
             Break;
         end;
-
-        wordStart := Length(plainRun);
-        while (wordStart >= 1) and not (plainRun[wordStart] in [' ', #9]) do
-          Dec(wordStart);
-        wordToken := Copy(plainRun, wordStart + 1, Length(plainRun) - wordStart);
-        SetLength(plainRun, wordStart);
-        Result := Result + plainRun;
-        plainRun := '';
-
-        prefixPunct := '';
-        k := 1;
-        while (k <= Length(wordToken)) and (wordToken[k] in ['(', '[', '"', '''']) do
-        begin
-          prefixPunct := prefixPunct + wordToken[k];
-          Inc(k);
-        end;
-        Delete(wordToken, 1, k - 1);
-
-        attrStr := 'strong="' + strongList + '"';
-        if morphCode <> '' then
-          attrStr := attrStr + ' x-morph="' + morphCode + '"';
-
-        if wordToken <> '' then
-          Result := Result + prefixPunct + '\w ' + wordToken + '|' + attrStr + '\w*'
-        else
-          Result := Result + prefixPunct + '\w |' + attrStr + '\w*';
+        WrapWord(Strongs, Morphs, Lemmas);
         Continue;
       end;
 
-      if plainRun <> '' then
+      if Raw = 'wt' then
+        FWtStart := Length(FLine) + 1
+      else if HeadingLevel(Raw) > 0 then
       begin
-        Result := Result + plainRun;
-        plainRun := '';
+        K := PosEx('<Ts>', S, E + 1);
+        if K > 0 then
+        begin
+          Tmp := Trim(StripAllXMLTags(Copy(S, E + 1, K - E - 1)));
+          Saved.Clear;
+          Saved.AddStrings(FStack);
+          CloseAll;
+          EndLine;
+          if Tmp <> '' then
+          begin
+            FOut.Add('\s' + IntToStr(HeadingLevel(Raw)) + ' ' + USFMSafeText(Tmp));
+            StartLine('\p');
+            ReopenAll(Saved);
+          end;
+          I := K + 4;
+          Continue;
+        end;
+      end
+      else if IsParaTag(Raw) then
+      begin
+        Bnd := '<' + Raw + '>';
+        PendIndent := 0;
+        J := E + 1;
+        while J <= Len do
+        begin
+          if S[J] = ' ' then
+          begin
+            Inc(J);
+            Continue;
+          end;
+          if S[J] <> '<' then
+            Break;
+          Tmp := TagAt(J, K);
+          if K = 0 then
+            Break;
+          if IsParaTag(Tmp) then
+          begin
+            if (Tmp = 'CM') or (Bnd = '') then
+              Bnd := '<' + Tmp + '>';
+          end
+          else if IsIndentTag(Tmp) then
+            PendIndent := IndentOf(Tmp)
+          else if not IsFirstLineTag(Tmp) then
+            Break;
+          J := K + 1;
+        end;
+        // anything but blanks and closing tags left in the verse?
+        Tail := Copy(S, J, MaxInt);
+        AllBlank := Trim(StripAllXMLTags(Tail)) = '';
+        if AllBlank and (Pos('<WG', Tail) = 0) and (Pos('<WH', Tail) = 0) and
+           (Pos('<RF', Tail) = 0) and (Pos('<RX', Tail) = 0) then
+        begin
+          TrailBound := Bnd;
+          I := Len + 1;
+          Break;
+        end;
+        BreakWith(USFMParaMarkerFor(Bnd, PendIndent), Saved);
+        I := J;
+        Continue;
+      end
+      else if IsIndentTag(Raw) or IsFirstLineTag(Raw) then
+      begin
+        // an indent without a boundary inside a verse: no USFM equivalent
+      end
+      else if Raw = 'FR' then
+        OpenStyle('wj')
+      else if Raw = 'Fr' then
+        CloseStyle('wj')
+      else if Raw = 'FI' then
+        OpenStyle('add')
+      else if Raw = 'Fi' then
+        CloseStyle('add')
+      else if Raw = 'FO' then
+        OpenStyle('qt')
+      else if Raw = 'Fo' then
+        CloseStyle('qt')
+      else if Up = 'B' then
+        OpenStyle('bd')
+      else if Up = '/B' then
+        CloseStyle('bd')
+      else if Up = 'I' then
+        OpenStyle('it')
+      else if Up = '/I' then
+        CloseStyle('it')
+      else if Up = 'SUP' then
+        OpenStyle('sup')
+      else if Up = '/SUP' then
+        CloseStyle('sup')
+      else if (Raw = 'RF') or (Copy(Raw, 1, 3) = 'RF ') then
+      begin
+        K := PosEx('<Rf>', S, E + 1);
+        if K > 0 then
+        begin
+          Note := Trim(USFMSafeText(StripAllXMLTags(Copy(S, E + 1, K - E - 1))));
+          if Note <> '' then
+            FLine := FLine + '\f + \ft ' + Note + '\f*';
+          I := K + 4;
+          Continue;
+        end;
+      end
+      else if (Copy(Raw, 1, 3) = 'RX ') then
+      begin
+        Refs := '';
+        J := I;
+        while (J <= Len) and (S[J] = '<') do
+        begin
+          Tmp := TagAt(J, K);
+          if (K = 0) or (Copy(Tmp, 1, 3) <> 'RX ') then
+            Break;
+          if Refs <> '' then
+            Refs := Refs + ';';
+          Refs := Refs + Trim(Copy(Tmp, 4, MaxInt));
+          J := K + 1;
+          // blanks between two references are dropped; blanks after the last stay
+          Q1 := J;
+          while (Q1 <= Len) and (S[Q1] = ' ') do
+            Inc(Q1);
+          if (Q1 <= Len) and (Copy(S, Q1, 4) = '<RX ') then
+            J := Q1;
+        end;
+        Refs := CrossRef(Refs);
+        if Refs <> '' then
+          FLine := FLine + '\x - \xo ' + IntToStr(Chap) + ':' + IntToStr(Verse) + ' \xt ' + Refs + '\x*';
+        I := J;
+        Continue;
+      end
+      else if (Raw = 'NB') or (Copy(Raw, 1, 3) = 'NB ') then
+      begin
+        K := PosEx('<Nb>', S, E + 1);
+        if K > 0 then
+        begin
+          I := K + 4;
+          Continue;
+        end;
       end;
-
-      if AnsiStartsStr('TS', rawTag) then
-      begin
-        k := PosEx('<Ts>', s, tagEnd + 1);
-        if k > 0 then
-        begin
-          headingBeforeVerse := Trim(headingBeforeVerse + ' ' + StripAllXMLTags(Copy(s, tagEnd + 1, k - tagEnd - 1)));
-          i := k + 4;
-          Continue;
-        end;
-      end
-      else if (rawTag = 'RF') or AnsiStartsStr('RF ', rawTag) then
-      begin
-        k := PosEx('<Rf>', s, tagEnd + 1);
-        if k > 0 then
-        begin
-          Result := Result + '\f + \ft ' + StripAllXMLTags(Copy(s, tagEnd + 1, k - tagEnd - 1)) + '\f*';
-          i := k + 4;
-          Continue;
-        end;
-      end
-      else if rawTag = 'FR' then
-        Result := Result + '\wj '
-      else if rawTag = 'Fr' then
-        Result := Result + '\wj*'
-      else if (rawTag = 'FI') or (tagUpper = 'I') then
-        Result := Result + '\add '
-      else if (rawTag = 'Fi') or (tagUpper = '/I') then
-        Result := Result + '\add*'
-      else if (rawTag = 'FO') or (tagUpper = 'B') then
-        Result := Result + '\bd '
-      else if (rawTag = 'Fo') or (tagUpper = '/B') then
-        Result := Result + '\bd*'
-      else if (tagUpper = 'CM') or (tagUpper = 'CL') or (tagUpper = 'CI') then
-        Result := Result + ' ';
-
-      i := tagEnd + 1;
-      Continue;
+      I := E + 1;
     end;
 
-    plainRun := plainRun + s[i];
-    Inc(i);
+    CloseAll;
+    EndLine;
+    Result := FOut.Text;
+    while (Result <> '') and (Result[Length(Result)] in [#10, #13]) do
+      SetLength(Result, Length(Result) - 1);
+    Result := StringReplace(Result, #13#10, #10, [rfReplaceAll]);
+  finally
+    Saved.Free;
+    Heads.Free;
   end;
-  if plainRun <> '' then
-    Result := Result + plainRun;
-  Result := Trim(Result);
 end;
 
 class function TESwordModule.ConvertONTToUSFX(const ontText: string; out headingBeforeVerse: string): string;
@@ -4305,24 +5784,56 @@ begin
   Result := Trim(Result);
 end;
 
-class procedure TESwordModule.ExportUSFMBible(verses, refIDs: TStringList; const filename, props: string; hasOT, hasNT: boolean);
-var
-  outLines, propList: TStringList;
-  stagedFile, titleStr, line, hdrText, usfmLine, bookCode: string;
-  i, curBook, curChap: integer;
-  b, c, v: smallint;
+class function TESwordModule.IsUSFMZipFileName(const filename: string): boolean;
 begin
-  stagedFile := GetStagingFileName(filename);
-  outLines := TStringList.Create;
+  Result := AnsiEndsStr('.zip', LowerCase(filename));
+end;
+
+{ the USFM 3.0 books of a Bible, one text per book; FileNames gets the name of each
+  book's file (Paratext style: 01-GEN.usfm ... 41-MAT.usfm ...) }
+procedure BuildUSFMBookFiles(verses, refIDs: TStringList; const props, fallbackTitle: string;
+  hasOT, hasNT: Boolean; FileNames, Texts: TStringList);
+var
+  propList, bookLines: TStringList;
+  writer: TUSFMVerseWriter;
+  titleStr, line, code, nameStr, verseText, trail, prevBound, bookText: string;
+  i, curBook, curChap, extraCount, fileNo: Integer;
+  b, c, v: smallint;
+
+  procedure FlushBook;
+  begin
+    if curBook <= 0 then
+      Exit;
+    bookText := StringReplace(bookLines.Text, #13#10, #10, [rfReplaceAll]);
+    bookText := StringReplace(bookText, #10, LineEnding, [rfReplaceAll]);
+    if (curBook >= 1) and (curBook <= 39) then
+      fileNo := curBook
+    else if (curBook >= 40) and (curBook <= 66) then
+      fileNo := curBook + 1
+    else
+      fileNo := 67 + extraCount;
+    FileNames.Add(Format('%.2d-%s.usfm', [fileNo, TESwordModule.BookIDToUSFMCode(curBook)]));
+    Texts.Add(bookText);
+    bookLines.Clear;
+  end;
+
+begin
   propList := TStringList.Create;
+  bookLines := TStringList.Create;
+  writer := TUSFMVerseWriter.Create;
   try
     propList.Text := props;
     titleStr := Trim(propList.Values['description']);
-    if titleStr = '' then titleStr := Trim(propList.Values['title']);
-    if titleStr = '' then titleStr := ChangeFileExt(ExtractFileName(filename), '');
+    if titleStr = '' then
+      titleStr := Trim(propList.Values['title']);
+    if titleStr = '' then
+      titleStr := fallbackTitle;
+    titleStr := Trim(StringReplace(StringReplace(titleStr, #13, ' ', [rfReplaceAll]), #10, ' ', [rfReplaceAll]));
 
     curBook := -1;
     curChap := -1;
+    extraCount := 0;
+    prevBound := '<CM>';
     for i := 0 to verses.Count - 1 do
     begin
       line := Trim(verses[i]);
@@ -4335,36 +5846,130 @@ begin
 
       if b <> curBook then
       begin
+        FlushBook;
+        if b >= 67 then
+          Inc(extraCount);
         curBook := b;
         curChap := -1;
-        bookCode := BookIDToUSFMCode(b);
-        outLines.Add('\id ' + bookCode + ' ' + titleStr);
-        outLines.Add('\ide UTF-8');
-        outLines.Add('\mt1 ' + bookCode);
+        code := TESwordModule.BookIDToUSFMCode(b);
+        nameStr := USFMBookDisplayName(b);
+        bookLines.Add('\id ' + code + ' ' + titleStr);
+        bookLines.Add('\usfm 3.0');
+        bookLines.Add('\ide UTF-8');
+        bookLines.Add('\h ' + nameStr);
+        bookLines.Add('\toc1 ' + nameStr);
+        bookLines.Add('\toc2 ' + nameStr);
+        bookLines.Add('\toc3 ' + code);
+        bookLines.Add('\mt1 ' + nameStr);
       end;
 
       if c <> curChap then
       begin
         curChap := c;
-        outLines.Add('\c ' + IntToStr(c));
-        outLines.Add('\p');
+        prevBound := '<CM>';
+        bookLines.Add('\c ' + IntToStr(c));
       end;
 
-      usfmLine := ConvertONTToUSFM(line, hdrText);
-      if hdrText <> '' then
-      begin
-        outLines.Add('\s1 ' + hdrText);
-        outLines.Add('\p');
+      verseText := writer.Convert(line, c, v, prevBound, trail);
+      prevBound := trail;
+      bookLines.Add(verseText);
+    end;
+    FlushBook;
+  finally
+    writer.Free;
+    bookLines.Free;
+    propList.Free;
+  end;
+end;
+
+procedure WriteUSFMTextFile(const fileName, text: string);
+var
+  fs: TFileStream;
+begin
+  fs := TFileStream.Create(fileName, fmCreate or fmOpenWrite or fmShareDenyWrite);
+  try
+    fs.Size := 0;
+    if text <> '' then
+      fs.WriteBuffer(text[1], Length(text));
+  finally
+    fs.Free;
+  end;
+end;
+
+class procedure TESwordModule.ExportUSFMBible(verses, refIDs: TStringList; const filename, props: string; hasOT, hasNT: boolean);
+begin
+  ExportUSFMBibleEx(verses, refIDs, filename, filename, props, hasOT, hasNT, False);
+end;
+
+{ zipOnly = False: one .usfm file with all the books, and a folder "<name>_usfm"
+  beside it with one USFM 3.0 file per book. zipOnly = True: a .zip of the
+  per-book files. filename is where to write (a staging name when the exporter
+  stages); finalFileName is where it will end up, and names the folder. }
+class procedure TESwordModule.ExportUSFMBibleEx(verses, refIDs: TStringList;
+  const filename, finalFileName, props: string; hasOT, hasNT, zipOnly: boolean);
+var
+  names, texts: TStringList;
+  stagedFile, folder, all: string;
+  i: integer;
+  zipper: TZipper;
+  ms: TMemoryStream;
+  streamList: TList;
+begin
+  names := TStringList.Create;
+  texts := TStringList.Create;
+  try
+    BuildUSFMBookFiles(verses, refIDs, props, ChangeFileExt(ExtractFileName(finalFileName), ''),
+      hasOT, hasNT, names, texts);
+    if names.Count = 0 then
+      raise Exception.Create('There is no Bible text to export as USFM.');
+    stagedFile := GetStagingFileName(filename);
+    if FileExists(stagedFile) then
+      SysUtils.DeleteFile(stagedFile);
+
+    if zipOnly then
+    begin
+      zipper := TZipper.Create;
+      streamList := TList.Create;
+      try
+        zipper.FileName := stagedFile;
+        for i := 0 to names.Count - 1 do
+        begin
+          ms := TMemoryStream.Create;
+          streamList.Add(ms);
+          if texts[i] <> '' then
+            ms.WriteBuffer(texts[i][1], Length(texts[i]));
+          ms.Position := 0;
+          zipper.Entries.AddFileEntry(ms, names[i]);
+        end;
+        zipper.ZipAllFiles;
+      finally
+        zipper.Free;
+        for i := 0 to streamList.Count - 1 do
+          TObject(streamList[i]).Free;
+        streamList.Free;
       end;
-      outLines.Add('\v ' + IntToStr(v) + ' ' + usfmLine);
+      if not PublishStagedFile(stagedFile, filename) then
+        raise Exception.CreateFmt('Unable to publish the exported USFM 3.0 zip to "%s".', [filename]);
+      Exit;
     end;
 
-    outLines.SaveToFile(stagedFile);
+    all := '';
+    for i := 0 to texts.Count - 1 do
+      all := all + texts[i];
+    WriteUSFMTextFile(stagedFile, all);
     if not PublishStagedFile(stagedFile, filename) then
       raise Exception.CreateFmt('Unable to publish exported USFM Bible module to "%s".', [filename]);
+
+    // the same books, one file each, in a folder beside the combined file
+    folder := ExtractFilePath(ExpandFileName(finalFileName)) +
+      ChangeFileExt(ExtractFileName(finalFileName), '') + '_usfm';
+    if not ForceDirectories(folder) then
+      raise Exception.CreateFmt('The USFM file was written, but the folder "%s" for the per-book files could not be created.', [folder]);
+    for i := 0 to names.Count - 1 do
+      WriteUSFMTextFile(IncludeTrailingPathDelimiter(folder) + names[i], texts[i]);
   finally
-    propList.Free;
-    outLines.Free;
+    texts.Free;
+    names.Free;
   end;
 end;
 

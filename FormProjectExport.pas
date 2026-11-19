@@ -111,7 +111,7 @@ resourcestring
   STheWordONTModule = 'theWord Bible module (*.ont)';
   SMySwordModule   = 'MySword Bible module (*.bbl.mybible)';
   SOtherBibleFormats = '|e-Sword Bible, RTF (*.bblx)|*.bblx|e-Sword Bible, HTML (*.bbli)|*.bbli' +
-    '|USFM Bible (*.usfm)|*.usfm|USFX Bible (*.usfx)|*.usfx';
+    '|USFM 3.0 Bible (*.usfm, with per-book folder)|*.usfm|USFM 3.0 Bible, per-book files (*.zip)|*.zip|USFX Bible (*.usfx)|*.usfx';
   STheWordDictionaryModule = 'theWord dictionary module (*.dct.twm)';
   SSaveModuleAs = 'Save module as...';
   SAnalyticalConcordance = 'AnalyticalConcordance';
