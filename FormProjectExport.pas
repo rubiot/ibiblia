@@ -8,7 +8,7 @@ uses
   ui_style, Classes, SysUtils, StrUtils, Math, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
   ComCtrls, StdCtrls, ExtCtrls, Spin, BibleScope, Project, LCLTranslator,
   LCLIntf, LazUTF8, UnitPleaseWait, project_exporter, ConcordanceExport,
-  export_destination_history, FormExportSelection;
+  export_destination_history, FormExportSelection, module_properties_preview;
 
 type
 
@@ -51,6 +51,17 @@ type
     FLastConcordanceType: Integer;
     FSelected: TStringList;     // verses chosen for the Bible module exports; empty = all
     FSelectedTotal: Integer;
+    FPropsPageControls: array[0..1] of TPageControl;
+    FPropsPreviewTabs: array[0..1] of TTabSheet;
+    FPropsRawTabs: array[0..1] of TTabSheet;
+    FPropsPreviews: array[0..1] of TModulePropertiesPreview;
+    FLastAppliedSkinId: Integer;
+    procedure EnsurePropertiesViewers;
+    procedure ApplyPropertiesViewerTheme;
+    procedure RefreshPropertiesPreview(Index: Integer; ForceRender: Boolean = False);
+    procedure PropertiesModeTabChange(Sender: TObject);
+    procedure PropertiesPreviewDblClick(Sender: TObject);
+    procedure FormShow(Sender: TObject);
     procedure UpdateBooksSummary;
     function BuildTaggedDestinationOptions: TOpcoesExportacao;
     function BuildConcordanceOptions: TOpcoesExportacao;
@@ -161,10 +172,13 @@ resourcestring
   SExportReportLocation = 'Warnings report: %s';
   SExportOpenLocation = 'Open the exported file location?';
   SExportDestinationPreferenceWarning = 'Could not remember the export destination locally: %s';
+  SExportPropsPreviewTab = 'Preview';
+  SExportPropsRawTab = 'Raw (Edit)';
+  SExportPropsPreviewHint = 'Actual preview of module properties (double-click to edit raw HTML tags)';
 
 implementation
 
-uses formPrincipal;
+uses formPrincipal, unitskins;
 
 const
   SConcordanceContextModeKey =
@@ -814,12 +828,181 @@ begin
     ExportPageControl.PageIndex := PageIndex;
 end;
 
+procedure TProjectExportForm.EnsurePropertiesViewers;
+var
+  Index, BoxTop, BoxHeight, OldBottom: Integer;
+  Tab: TTabSheet;
+  Lbl: TLabel;
+  Memo: TMemo;
+begin
+  for Index := 0 to 1 do
+  begin
+    if Assigned(FPropsPageControls[Index]) then
+      Continue;
+    if Index = 0 then
+    begin
+      Tab := TaggedDestinationTab;
+      Lbl := LblTaggedDestinationProperties;
+      Memo := MemoDestinationFooter;
+    end
+    else
+    begin
+      Tab := InterlinearSourceTab;
+      Lbl := LblInterlinearSourceProperties;
+      Memo := MemoSourceFooter;
+    end;
+    if not Assigned(Tab) or not Assigned(Memo) or (Memo.Parent <> Tab) then
+      Continue;
+
+    OldBottom := Memo.Top + Memo.Height;
+    if Assigned(Lbl) then
+    begin
+      if (Index = 0) and Assigned(CbExportMorphology) and
+         ((not Assigned(CbExportComments)) or (not CbExportComments.Visible)) then
+        Lbl.Top := CbExportMorphology.Top + CbExportMorphology.Height +
+          UIScale(Self, 14)
+      else if Index = 1 then
+        Lbl.Top := UIScale(Self, 12);
+      BoxTop := Lbl.Top + Max(Lbl.Height, UIScale(Self, 20)) +
+        UIScale(Self, 6);
+    end
+    else
+      BoxTop := Memo.Top;
+    BoxHeight := Max(UIScale(Self, 160), OldBottom - BoxTop);
+
+    FPropsPageControls[Index] := TPageControl.Create(Self);
+    FPropsPageControls[Index].Parent := Tab;
+    FPropsPageControls[Index].SetBounds(Memo.Left, BoxTop,
+      Memo.Width, BoxHeight);
+    FPropsPageControls[Index].Anchors :=
+      [akTop, akLeft, akRight, akBottom];
+    FPropsPageControls[Index].TabOrder := Memo.TabOrder;
+    FPropsPageControls[Index].Tag := Index;
+    FPropsPageControls[Index].OnChange := @PropertiesModeTabChange;
+
+    FPropsPreviewTabs[Index] := TTabSheet.Create(FPropsPageControls[Index]);
+    FPropsPreviewTabs[Index].PageControl := FPropsPageControls[Index];
+    FPropsPreviewTabs[Index].Caption := SExportPropsPreviewTab;
+
+    FPropsRawTabs[Index] := TTabSheet.Create(FPropsPageControls[Index]);
+    FPropsRawTabs[Index].PageControl := FPropsPageControls[Index];
+    FPropsRawTabs[Index].Caption := SExportPropsRawTab;
+
+    FPropsPreviews[Index] := TModulePropertiesPreview.Create(Self);
+    FPropsPreviews[Index].Parent := FPropsPreviewTabs[Index];
+    FPropsPreviews[Index].Align := alClient;
+    FPropsPreviews[Index].Tag := Index;
+    FPropsPreviews[Index].Hint := SExportPropsPreviewHint;
+    FPropsPreviews[Index].ShowHint := True;
+    FPropsPreviews[Index].OnDblClick := @PropertiesPreviewDblClick;
+
+    Memo.Parent := FPropsRawTabs[Index];
+    Memo.Align := alClient;
+    Memo.WordWrap := True;
+    Memo.ScrollBars := ssAutoVertical;
+
+    FPropsPageControls[Index].ActivePageIndex := 0;
+  end;
+end;
+
+procedure TProjectExportForm.ApplyPropertiesViewerTheme;
+var
+  Index: Integer;
+begin
+  for Index := 0 to 1 do
+    if Assigned(FPropsPreviews[Index]) then
+      FPropsPreviews[Index].ApplySkinColors;
+  if Assigned(MemoDestinationFooter) then
+  begin
+    MemoDestinationFooter.Color := UIContentColor;
+    MemoDestinationFooter.Font.Color := UITextColor;
+  end;
+  if Assigned(MemoSourceFooter) then
+  begin
+    MemoSourceFooter.Color := UIContentColor;
+    MemoSourceFooter.Font.Color := UITextColor;
+  end;
+end;
+
+procedure TProjectExportForm.RefreshPropertiesPreview(Index: Integer;
+  ForceRender: Boolean);
+var
+  RawProps: string;
+begin
+  if (Index < 0) or (Index > 1) or not Assigned(FPropsPreviews[Index]) then
+    Exit;
+  if Index = 0 then
+    RawProps := MemoDestinationFooter.Text
+  else
+    RawProps := MemoSourceFooter.Text;
+  FPropsPreviews[Index].SetPropertiesText(RawProps, ForceRender);
+end;
+
+procedure TProjectExportForm.PropertiesModeTabChange(Sender: TObject);
+var
+  Index: Integer;
+  Memo: TMemo;
+begin
+  if not (Sender is TPageControl) then
+    Exit;
+  Index := TPageControl(Sender).Tag;
+  if (Index < 0) or (Index > 1) then
+    Exit;
+  if TPageControl(Sender).ActivePageIndex = 0 then
+    RefreshPropertiesPreview(Index, True)
+  else
+  begin
+    if Index = 0 then
+      Memo := MemoDestinationFooter
+    else
+      Memo := MemoSourceFooter;
+    if Assigned(Memo) then
+    begin
+      {$IFNDEF WINDOWS}
+      Memo.Color := clDefault;
+      Memo.Font.Color := clDefault;
+      {$ENDIF}
+      Memo.Color := UIContentColor;
+      Memo.Font.Color := UITextColor;
+      if Visible and Memo.CanFocus then
+        Memo.SetFocus;
+    end;
+  end;
+end;
+
+procedure TProjectExportForm.PropertiesPreviewDblClick(Sender: TObject);
+var
+  Index: Integer;
+begin
+  if not (Sender is TComponent) then
+    Exit;
+  Index := TComponent(Sender).Tag;
+  if (Index < 0) or (Index > 1) or not Assigned(FPropsPageControls[Index]) then
+    Exit;
+  FPropsPageControls[Index].ActivePageIndex := 1;
+  PropertiesModeTabChange(FPropsPageControls[Index]);
+end;
+
+procedure TProjectExportForm.FormShow(Sender: TObject);
+begin
+  EnsurePropertiesViewers;
+  if FLastAppliedSkinId <> Ord(CurrentSkin.Id) then
+  begin
+    ApplyDialogStyle(Self);
+    FLastAppliedSkinId := Ord(CurrentSkin.Id);
+  end;
+  ApplyPropertiesViewerTheme;
+  RefreshPropertiesPreview(0, True);
+  RefreshPropertiesPreview(1, True);
+end;
+
 procedure TProjectExportForm.SetProject(Project: TProject);
 var
   ContextMaxCharacters: Integer;
   ContextMode: TConcordanceContextMode;
   ContextModeValue: string;
   LegacyAbbreviation: string;
+  Index: Integer;
 begin
   FProject := Project;
   Caption := SExportTaggedDestinationTitle;
@@ -875,8 +1058,23 @@ begin
   lblConcordanceMaxCharacters.Caption :=
     SConcordanceMaxExcerptCharacters;
   lblConcordanceOutput.Caption := SConcordanceOutputDescription;
+  EnsurePropertiesViewers;
   MemoSourceFooter.Text := FProject.GetInfo('propriedades.origem');
   MemoDestinationFooter.Text := FProject.GetInfo('propriedades.destino');
+  for Index := 0 to 1 do
+  begin
+    if Assigned(FPropsPreviewTabs[Index]) then
+      FPropsPreviewTabs[Index].Caption := SExportPropsPreviewTab;
+    if Assigned(FPropsRawTabs[Index]) then
+      FPropsRawTabs[Index].Caption := SExportPropsRawTab;
+    if Assigned(FPropsPreviews[Index]) then
+      FPropsPreviews[Index].Hint := SExportPropsPreviewHint;
+    if Assigned(FPropsPageControls[Index]) then
+      FPropsPageControls[Index].ActivePageIndex := 0;
+  end;
+  ApplyPropertiesViewerTheme;
+  RefreshPropertiesPreview(0, True);
+  RefreshPropertiesPreview(1, True);
   LegacyAbbreviation := FProject.GetInfo('propriedades.abbrev');
   FAnalyticalAbbreviation := FProject.GetInfo(
     'opcoes.exportar.concordancia.analitica.abbrev');
@@ -933,10 +1131,14 @@ end;
 procedure TProjectExportForm.AfterConstruction;
 begin
   inherited AfterConstruction;
+  FLastAppliedSkinId := -1;
   FSelected := TStringList.Create;
   FSelected.Sorted := True;
   FSelected.Duplicates := dupIgnore;
+  OnShow := @FormShow;
+  EnsurePropertiesViewers;
   ApplyDialogStyle(Self);
+  ApplyPropertiesViewerTheme;
 end;
 
 

@@ -114,6 +114,9 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.073 (64-bit Edition) - 2026-11-20' + LineEnding +
+  '- Export project (Tagged destination text and Interlinear source text) now shows Module properties with Preview and Raw (Edit) tabs, just like the Bible panels: Preview opens by default with formatted HTML/RTF rendering, clickable web/email links, Ctrl+wheel zoom, skin-adapted colors, and literal monospace display for verse.rule lines; double-clicking the Preview (or choosing Raw (Edit)) opens the raw markup editor.' + LineEnding +
+  '' + LineEnding +
   'Version 1.1.0.072 (64-bit Edition) - 2026-11-20' + LineEnding +
   '- The verse links of the exported Strong''s concordance now show the real reference (for example Genesis 1:1 or Tobit 1:1) instead of the placeholder [vref], which only theWord expands and other readers (such as Timotheos) displayed literally. Clicking a link still opens the verse.' + LineEnding +
   '' + LineEnding +

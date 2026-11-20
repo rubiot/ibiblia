@@ -6,7 +6,13 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.072 (2026-11-20) — Readable Verse Links in the Concordance Export
+### 0. Version 1.1.0.073 (2026-11-20) — Module Properties Preview & Raw HTML Edit Mode in Export Window
+
+* **Preview & Raw (Edit) Tabs (`FormProjectExport.pas`, `module_properties_preview.pas`):** The **Module properties** area on both the **Tagged destination text** and **Interlinear source text** tabs of `Project > Export` now offers a **Preview** tab (opened by default) and a **Raw (Edit)** tab—matching the Bible panels' visual preview vs. raw edit workflow.
+* **Actual Formatted Module Preview (`module_properties_preview.pas`):** Renders metadata keys, clickable `http://`/`https://`/`mailto:` links, HTML `about=` formatting (`h1`–`h6`, `center`, `p` with `text-indent`, `b`/`strong`, `i`/`em`, `u`, `s`, `sup`/`sub`, `font`, `span` CSS colors/styles, `ol`/`ul`/`li`, `br`, `hr`, `blockquote`, entities) as well as RTF `about=` bodies, while keeping `verse.rule=` regexes and `#` comments in monospace so literal tags are never mangled. Supports `Ctrl`+wheel zoom, double-click on Preview to jump straight into Raw (Edit), and full Classic/Dark/Sepia skin adaptation.
+* Files: module_properties_preview.pas, FormProjectExport.pas, unitabout.pas.
+
+### 0a. Version 1.1.0.072 (2026-11-20) — Readable Verse Links in the Concordance Export
 
 * **Real Verse References (`ConcordanceExport.pas`):** Every verse link in the exported Strong's concordance now shows its reference (`Genesis 1:1`, `John 3:16`, `Tobit 1:1`) instead of the placeholder text `[vref]`, which only theWord itself expands and other readers such as Timotheos showed literally. The `tw://bible.*?id=b.c.v` target of each link is unchanged, so clicking still opens the verse.
 * Files: ConcordanceExport.pas, unitabout.pas.
