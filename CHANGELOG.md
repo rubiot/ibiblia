@@ -6,7 +6,12 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.071 (2026-11-20) — Restore Hover-Underline for Identical Strong's Tags
+### 0. Version 1.1.0.072 (2026-11-20) — Readable Verse Links in the Concordance Export
+
+* **Real Verse References (`ConcordanceExport.pas`):** Every verse link in the exported Strong's concordance now shows its reference (`Genesis 1:1`, `John 3:16`, `Tobit 1:1`) instead of the placeholder text `[vref]`, which only theWord itself expands and other readers such as Timotheos showed literally. The `tw://bible.*?id=b.c.v` target of each link is unchanged, so clicking still opens the verse.
+* Files: ConcordanceExport.pas, unitabout.pas.
+
+### 0a. Version 1.1.0.071 (2026-11-20) — Restore Hover-Underline for Identical Strong's Tags
 
 * **Source & Destination Hover-Underline Restored (`syntagm.pas`, `Verse.pas`, `Project.pas`):** Hovering a tagged word in either the Source panel or the Destination panel now underlines not only the hovered word (which keeps both underline and hover highlight), but also every other word in the verse sharing the identical Strong's tag (including associated Destination words via their paired Source tags), and clears all underlines cleanly as soon as the pointer moves away.
 * **Underline-Only Styling (`verse_visual_adapter.pas`):** Restored underline-only rendering (`vtsfUnderline`) for identical-tag occurrences without adding a background fill or overriding text color, and guarded programmatic click/auto-select paths so hover underlines never get stuck.

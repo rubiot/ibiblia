@@ -114,6 +114,9 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.072 (64-bit Edition) - 2026-11-20' + LineEnding +
+  '- The verse links of the exported Strong''s concordance now show the real reference (for example Genesis 1:1 or Tobit 1:1) instead of the placeholder [vref], which only theWord expands and other readers (such as Timotheos) displayed literally. Clicking a link still opens the verse.' + LineEnding +
+  '' + LineEnding +
   'Version 1.1.0.071 (64-bit Edition) - 2026-11-20' + LineEnding +
   '- Restored hover-underlining for identical Strong''s tags in both Source and Destination panels: hovering a tagged word underlines and highlights the hovered word while underlining (only, without background highlight) all other words in the verse carrying the identical Strong''s tag (directly or via paired Source tags), and clears the underlines immediately when the pointer moves away.' + LineEnding +
   '' + LineEnding +

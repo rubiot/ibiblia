@@ -179,7 +179,7 @@ type
 implementation
 
 uses
-  apocrypha_books;
+  apocrypha_books, bible_book_names;
 
 resourcestring
   SConcordanceOneOccurrence = '1 occurrence';
@@ -282,28 +282,35 @@ begin
     [UpperCase(Morphology), UnicodeToRtf(Anchor)]);
 end;
 
+{ The link text is always a readable reference ("Genesis 1:1", "Tobit 1:1").
+  The old "[vref]" placeholder is only expanded by theWord itself; other
+  readers (Timotheos, e-Sword style viewers) showed it literally. }
 function MakeReferenceLink(const ReferenceID: string): string;
 var
   Parts: TStringArray;
   BookID, Chapter, Verse: Integer;
+  BookName, LinkId, LinkText: string;
 begin
   Parts := ReferenceID.Split(',');
   if (Length(Parts) = 3) and TryStrToInt(Parts[0], BookID) and
-     TryStrToInt(Parts[1], Chapter) and TryStrToInt(Parts[2], Verse) and
-     IsApocryphaBook(BookID) then
+     TryStrToInt(Parts[1], Chapter) and TryStrToInt(Parts[2], Verse) then
   begin
-    Result := Format(
-      '{\field{\*\fldinst HYPERLINK "tw://bible.*?id=%d.%d.%d"}' +
-      '{\fldrslt\cf2 %s}}',
-      [BookID, Chapter, Verse,
-       UnicodeToRtf(Format('%s %d:%d',
-         [ApocryphaBookName(BookID), Chapter, Verse]))]);
-    Exit;
+    BookName := LocalizedBookNameByID(BookID);
+    if BookName = '' then
+      BookName := Format('Book %d', [BookID]);
+    LinkId := Format('%d.%d.%d', [BookID, Chapter, Verse]);
+    LinkText := Format('%s %d:%d', [BookName, Chapter, Verse]);
+  end
+  else
+  begin
+    { Unexpected id shape: keep the id itself visible rather than a placeholder }
+    LinkId := StringReplace(ReferenceID, ',', '.', [rfReplaceAll]);
+    LinkText := StringReplace(ReferenceID, ',', '.', [rfReplaceAll]);
   end;
   Result := Format(
     '{\field{\*\fldinst HYPERLINK "tw://bible.*?id=%s"}' +
-    '{\fldrslt\cf2 [vref]}}',
-    [StringReplace(ReferenceID, ',', '.', [rfReplaceAll])]);
+    '{\fldrslt\cf2 %s}}',
+    [LinkId, UnicodeToRtf(LinkText)]);
 end;
 
 function RemoveMarkupTags(const Value: string): string;
