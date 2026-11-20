@@ -18,9 +18,13 @@ type
     procedure HandleMouseWheel(Sender: TObject; Shift: TShiftState;
       WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
     procedure RenderContent;
+  protected
+    function DoMouseWheel(Shift: TShiftState; WheelDelta: Integer;
+      MousePos: TPoint): Boolean; override;
   public
     constructor Create(AOwner: TComponent); override;
     procedure HandleHyperlinkClick(Sender: TObject);
+    procedure HandleWheelInput(Shift: TShiftState; WheelDelta: Integer);
     procedure ApplySkinColors;
     procedure SetPropertiesText(const ARawText: string;
       ForceRender: Boolean = False);
@@ -1817,6 +1821,7 @@ constructor TModulePropertiesPreview.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   ReadOnly := True;
+  TabStop := True;
   BorderStyle := bsNone;
   ScrollBars := ssAutoVertical;
   ParentFont := False;
@@ -1880,39 +1885,77 @@ begin
     OpenURL(Target);
 end;
 
-procedure TModulePropertiesPreview.HandleMouseWheel(Sender: TObject;
-  Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint;
-  var Handled: Boolean);
-var
-  NewSize: Integer;
+function TModulePropertiesPreview.DoMouseWheel(Shift: TShiftState;
+  WheelDelta: Integer; MousePos: TPoint): Boolean;
 begin
+  Result := inherited DoMouseWheel(Shift, WheelDelta, MousePos);
+  if (not Result) and (WheelDelta <> 0) then
+  begin
+    HandleWheelInput(Shift, WheelDelta);
+    Result := True;
+  end;
+end;
+
+procedure TModulePropertiesPreview.HandleWheelInput(Shift: TShiftState;
+  WheelDelta: Integer);
+var
+  NewSize, SavedTop, Step: Integer;
+begin
+  if WheelDelta = 0 then
+    Exit;
   if ssCtrl in Shift then
   begin
-    Handled := True;
     if WheelDelta > 0 then
       NewSize := Min(24, FBaseFontSize + 1)
-    else if WheelDelta < 0 then
-      NewSize := Max(7, FBaseFontSize - 1)
     else
-      NewSize := FBaseFontSize;
+      NewSize := Max(7, FBaseFontSize - 1);
     if NewSize <> FBaseFontSize then
     begin
+      SavedTop := TopPos;
       FBaseFontSize := NewSize;
       TextStyle.Font.Size := FBaseFontSize;
       RenderContent;
+      TopPos := SavedTop;
     end;
+    Exit;
   end;
+
+  Step := Max(UIScale(Self, 24),
+    (Abs(WheelDelta) * UIScale(Self, 48) + 60) div 120);
+  if WheelDelta > 0 then
+    TopPos := Max(0, TopPos - Step)
+  else
+    TopPos := TopPos + Step;
+  {$IFDEF WINDOWS}
+  if HandleAllocated then
+    PaintThemedNCScrollBars(Handle);
+  {$ENDIF}
+end;
+
+procedure TModulePropertiesPreview.HandleMouseWheel(Sender: TObject;
+  Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint;
+  var Handled: Boolean);
+begin
+  if WheelDelta = 0 then
+    Exit;
+  HandleWheelInput(Shift, WheelDelta);
+  Handled := True;
 end;
 
 procedure TModulePropertiesPreview.SetPropertiesText(const ARawText: string;
   ForceRender: Boolean);
+var
+  TextChanged: Boolean;
 begin
-  if not ForceRender and FHasRendered and (FRawText = ARawText) and
+  TextChanged := FRawText <> ARawText;
+  if not ForceRender and FHasRendered and (not TextChanged) and
      (FLastSkinId = Ord(CurrentSkin.Id)) then
     Exit;
   FRawText := ARawText;
   FLastSkinId := Ord(CurrentSkin.Id);
   RenderContent;
+  if TextChanged then
+    TopPos := 0;
 end;
 
 procedure TModulePropertiesPreview.RenderContent;

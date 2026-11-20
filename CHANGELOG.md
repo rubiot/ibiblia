@@ -6,7 +6,13 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.073 (2026-11-20) — Module Properties Preview & Raw HTML Edit Mode in Export Window
+### 0. Version 1.1.0.074 (2026-11-20) — Mouse Wheel Scrolling & Ctrl+Wheel Zoom in Export Properties Preview
+
+* **Mouse Wheel Scrolling in Preview (`module_properties_preview.pas`, `FormProjectExport.pas`):** Enabled smooth mouse wheel scrolling directly inside the Export window's **Module properties** **Preview** tab (both **Tagged destination text** and **Interlinear source text**), including when hovering over the preview pane without clicking first and after switching tabs, matching the **Raw (Edit)** tab.
+* **Ctrl+Mouse Wheel Zoom (`module_properties_preview.pas`, `FormProjectExport.pas`):** Fixed `Ctrl`+mouse wheel zooming in the **Preview** tab (preserving scroll position while adjusting font size from 7pt to 24pt) and also enabled `Ctrl`+mouse wheel font zooming in the **Raw (Edit)** tab.
+* Files: module_properties_preview.pas, FormProjectExport.pas, unitabout.pas.
+
+### 0a. Version 1.1.0.073 (2026-11-20) — Module Properties Preview & Raw HTML Edit Mode in Export Window
 
 * **Preview & Raw (Edit) Tabs (`FormProjectExport.pas`, `module_properties_preview.pas`):** The **Module properties** area on both the **Tagged destination text** and **Interlinear source text** tabs of `Project > Export` now offers a **Preview** tab (opened by default) and a **Raw (Edit)** tab—matching the Bible panels' visual preview vs. raw edit workflow.
 * **Actual Formatted Module Preview (`module_properties_preview.pas`):** Renders metadata keys, clickable `http://`/`https://`/`mailto:` links, HTML `about=` formatting (`h1`–`h6`, `center`, `p` with `text-indent`, `b`/`strong`, `i`/`em`, `u`, `s`, `sup`/`sub`, `font`, `span` CSS colors/styles, `ol`/`ul`/`li`, `br`, `hr`, `blockquote`, entities) as well as RTF `about=` bodies, while keeping `verse.rule=` regexes and `#` comments in monospace so literal tags are never mangled. Supports `Ctrl`+wheel zoom, double-click on Preview to jump straight into Raw (Edit), and full Classic/Dark/Sepia skin adaptation.

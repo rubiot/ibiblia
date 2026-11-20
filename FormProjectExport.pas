@@ -5,7 +5,7 @@ unit FormProjectExport;
 interface
 
 uses
-  ui_style, Classes, SysUtils, StrUtils, Math, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
+  ui_style, Classes, SysUtils, StrUtils, Math, Types, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
   ComCtrls, StdCtrls, ExtCtrls, Spin, BibleScope, Project, LCLTranslator,
   LCLIntf, LazUTF8, UnitPleaseWait, project_exporter, ConcordanceExport,
   export_destination_history, FormExportSelection, module_properties_preview;
@@ -61,6 +61,10 @@ type
     procedure RefreshPropertiesPreview(Index: Integer; ForceRender: Boolean = False);
     procedure PropertiesModeTabChange(Sender: TObject);
     procedure PropertiesPreviewDblClick(Sender: TObject);
+    procedure PropertiesRawMemoMouseWheel(Sender: TObject; Shift: TShiftState;
+      WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
+    procedure FormMouseWheel(Sender: TObject; Shift: TShiftState;
+      WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
     procedure FormShow(Sender: TObject);
     procedure UpdateBooksSummary;
     function BuildTaggedDestinationOptions: TOpcoesExportacao;
@@ -900,6 +904,7 @@ begin
     Memo.Align := alClient;
     Memo.WordWrap := True;
     Memo.ScrollBars := ssAutoVertical;
+    Memo.OnMouseWheel := @PropertiesRawMemoMouseWheel;
 
     FPropsPageControls[Index].ActivePageIndex := 0;
   end;
@@ -949,7 +954,12 @@ begin
   if (Index < 0) or (Index > 1) then
     Exit;
   if TPageControl(Sender).ActivePageIndex = 0 then
-    RefreshPropertiesPreview(Index, True)
+  begin
+    RefreshPropertiesPreview(Index, True);
+    if Visible and Assigned(FPropsPreviews[Index]) and
+       FPropsPreviews[Index].CanFocus then
+      FPropsPreviews[Index].SetFocus;
+  end
   else
   begin
     if Index = 0 then
@@ -983,7 +993,62 @@ begin
   PropertiesModeTabChange(FPropsPageControls[Index]);
 end;
 
+procedure TProjectExportForm.PropertiesRawMemoMouseWheel(Sender: TObject;
+  Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint;
+  var Handled: Boolean);
+var
+  Memo: TMemo;
+  CurSize, NewSize: Integer;
+begin
+  if not (ssCtrl in Shift) or (WheelDelta = 0) or not (Sender is TMemo) then
+    Exit;
+  Memo := TMemo(Sender);
+  CurSize := Memo.Font.Size;
+  if CurSize <= 0 then
+    CurSize := 10;
+  if WheelDelta > 0 then
+    NewSize := Min(24, CurSize + 1)
+  else
+    NewSize := Max(7, CurSize - 1);
+  if NewSize <> CurSize then
+    Memo.Font.Size := NewSize;
+  Handled := True;
+end;
+
+procedure TProjectExportForm.FormMouseWheel(Sender: TObject;
+  Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint;
+  var Handled: Boolean);
+var
+  Index: Integer;
+  Preview: TModulePropertiesPreview;
+  CurPos, LocalPos: TPoint;
+begin
+  if (WheelDelta = 0) or not Visible or not Assigned(ExportPageControl) then
+    Exit;
+  Index := ExportPageControl.ActivePageIndex;
+  if (Index < 0) or (Index > 1) then
+    Exit;
+  if not Assigned(FPropsPageControls[Index]) or
+     (FPropsPageControls[Index].ActivePageIndex <> 0) then
+    Exit;
+  Preview := FPropsPreviews[Index];
+  if not Assigned(Preview) or not Preview.Visible then
+    Exit;
+  CurPos := Point(0, 0);
+  GetCursorPos(CurPos);
+  LocalPos := Preview.ScreenToClient(CurPos);
+  if (LocalPos.X >= 0) and (LocalPos.Y >= 0) and
+     (LocalPos.X < Preview.ClientWidth) and
+     (LocalPos.Y < Preview.ClientHeight) then
+  begin
+    Preview.HandleWheelInput(Shift, WheelDelta);
+    Handled := True;
+  end;
+end;
+
 procedure TProjectExportForm.FormShow(Sender: TObject);
+var
+  ActiveIdx: Integer;
 begin
   EnsurePropertiesViewers;
   if FLastAppliedSkinId <> Ord(CurrentSkin.Id) then
@@ -994,6 +1059,16 @@ begin
   ApplyPropertiesViewerTheme;
   RefreshPropertiesPreview(0, True);
   RefreshPropertiesPreview(1, True);
+  if Assigned(ExportPageControl) then
+  begin
+    ActiveIdx := ExportPageControl.ActivePageIndex;
+    if (ActiveIdx >= 0) and (ActiveIdx <= 1) and
+       Assigned(FPropsPageControls[ActiveIdx]) and
+       (FPropsPageControls[ActiveIdx].ActivePageIndex = 0) and
+       Assigned(FPropsPreviews[ActiveIdx]) and
+       FPropsPreviews[ActiveIdx].CanFocus then
+      FPropsPreviews[ActiveIdx].SetFocus;
+  end;
 end;
 
 procedure TProjectExportForm.SetProject(Project: TProject);
@@ -1136,6 +1211,7 @@ begin
   FSelected.Sorted := True;
   FSelected.Duplicates := dupIgnore;
   OnShow := @FormShow;
+  OnMouseWheel := @FormMouseWheel;
   EnsurePropertiesViewers;
   ApplyDialogStyle(Self);
   ApplyPropertiesViewerTheme;

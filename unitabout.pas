@@ -114,6 +114,9 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.074 (64-bit Edition) - 2026-11-20' + LineEnding +
+  '- Export project (Tagged destination text and Interlinear source text) Module properties Preview tab now supports smooth mouse wheel scrolling (just like the Raw (Edit) tab, even when hovering without clicking first) and Ctrl+mouse wheel zooming (preserving scroll position); Raw (Edit) also supports Ctrl+mouse wheel font zooming.' + LineEnding +
+  '' + LineEnding +
   'Version 1.1.0.073 (64-bit Edition) - 2026-11-20' + LineEnding +
   '- Export project (Tagged destination text and Interlinear source text) now shows Module properties with Preview and Raw (Edit) tabs, just like the Bible panels: Preview opens by default with formatted HTML/RTF rendering, clickable web/email links, Ctrl+wheel zoom, skin-adapted colors, and literal monospace display for verse.rule lines; double-clicking the Preview (or choosing Raw (Edit)) opens the raw markup editor.' + LineEnding +
   '' + LineEnding +
