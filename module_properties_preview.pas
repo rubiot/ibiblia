@@ -1,12 +1,12 @@
 unit module_properties_preview;
 
 {$mode objfpc}{$H+}
-{$codepage utf8}
 
 interface
 
 uses
-  Classes, SysUtils, Types, Controls, Graphics, StdCtrls, KMemo, KEditCommon;
+  Classes, SysUtils, Types, Controls, Graphics, StdCtrls, KMemo, KEditCommon,
+  KFunctions, KGraphics;
 
 type
   TModulePropertiesPreview = class(TKMemo)
@@ -15,16 +15,18 @@ type
     FBaseFontSize: Integer;
     FLastSkinId: Integer;
     FHasRendered: Boolean;
-    procedure HandleHyperlinkClick(Sender: TObject);
     procedure HandleMouseWheel(Sender: TObject; Shift: TShiftState;
       WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
     procedure RenderContent;
   public
     constructor Create(AOwner: TComponent); override;
+    procedure HandleHyperlinkClick(Sender: TObject);
     procedure ApplySkinColors;
     procedure SetPropertiesText(const ARawText: string;
       ForceRender: Boolean = False);
     property RawText: string read FRawText;
+  published
+    property OnDblClick;
   end;
 
 resourcestring
@@ -243,9 +245,9 @@ begin
     if ColorTable[I].Name = Lower then
     begin
       AColor := MakeRGB(
-        Byte(ColorTable[I].Value shr 16),
-        Byte(ColorTable[I].Value shr 8),
-        Byte(ColorTable[I].Value));
+        Byte((ColorTable[I].Value shr 16) and $FF),
+        Byte((ColorTable[I].Value shr 8) and $FF),
+        Byte(ColorTable[I].Value and $FF));
       Exit(True);
     end;
 end;
@@ -253,35 +255,67 @@ end;
 function TryParseCssPixelLength(const AValue: string; ABaseFontSize: Integer;
   out APixels: Integer): Boolean;
 var
-  S, NumStr: string;
-  FloatVal: Double;
-  I: Integer;
-  FS: TFormatSettings;
+  S, IntStr, FracStr, UnitStr: string;
+  SignVal, I, Len, IntPart, FracPart: Integer;
+  TotalHundredths: Int64;
+  SeenDot: Boolean;
 begin
   Result := False;
   APixels := 0;
   S := LowerCase(Trim(AValue));
   if S = '' then
     Exit;
+  Len := Length(S);
   I := 1;
-  while (I <= Length(S)) and (S[I] in ['0'..'9', '+', '-', '.']) do
+  SignVal := 1;
+  if S[I] = '+' then
+    Inc(I)
+  else if S[I] = '-' then
+  begin
+    SignVal := -1;
     Inc(I);
-  if I = 1 then
+  end;
+  IntStr := '';
+  FracStr := '';
+  SeenDot := False;
+  while (I <= Len) and ((S[I] in ['0'..'9']) or (S[I] = '.')) do
+  begin
+    if S[I] = '.' then
+    begin
+      if SeenDot then
+        Exit;
+      SeenDot := True;
+    end
+    else if SeenDot then
+      FracStr := FracStr + S[I]
+    else
+      IntStr := IntStr + S[I];
+    Inc(I);
+  end;
+  if (IntStr = '') and (FracStr = '') then
     Exit;
-  NumStr := Copy(S, 1, I - 1);
-  FS := DefaultFormatSettings;
-  FS.DecimalSeparator := '.';
-  if not TryStrToFloat(NumStr, FloatVal, FS) then
+  if IntStr = '' then
+    IntPart := 0
+  else if not TryStrToInt(IntStr, IntPart) then
     Exit;
-  S := Trim(Copy(S, I, MaxInt));
-  if (S = '') or (S = 'px') then
-    APixels := Round(FloatVal)
-  else if S = 'pt' then
-    APixels := Round(FloatVal * 96.0 / 72.0)
-  else if (S = 'em') or (S = 'rem') then
-    APixels := Round(FloatVal * Max(10, ABaseFontSize) * 1.33)
+  if (IntPart < 0) or (IntPart > 10000) then
+    Exit;
+  if Length(FracStr) > 2 then
+    FracStr := Copy(FracStr, 1, 2);
+  while Length(FracStr) < 2 do
+    FracStr := FracStr + '0';
+  if not TryStrToInt(FracStr, FracPart) then
+    Exit;
+  TotalHundredths := Int64(IntPart) * 100 + FracPart;
+  UnitStr := Trim(Copy(S, I, MaxInt));
+  if (UnitStr = '') or (UnitStr = 'px') then
+    APixels := SignVal * Integer((TotalHundredths + 50) div 100)
+  else if UnitStr = 'pt' then
+    APixels := SignVal * Integer((TotalHundredths * 96 + 3600) div 7200)
+  else if (UnitStr = 'em') or (UnitStr = 'rem') then
+    APixels := SignVal * Integer((TotalHundredths * Max(10, ABaseFontSize) * 133 + 500000) div 1000000)
   else
-    Exit;
+    Exit(False);
   Result := True;
 end;
 
@@ -835,7 +869,7 @@ begin
       else if PropName = 'font-size' then
       begin
         if TryParseCssPixelLength(PropVal, FBaseFontSize, PxVal) and (PxVal > 0) then
-          AState.FontSize := EnsureRange(Round(PxVal * 72.0 / 96.0), 7, 28);
+          AState.FontSize := EnsureRange((PxVal * 72 + 48) div 96, 7, 28);
       end
       else if PropName = 'font-family' then
       begin
@@ -1107,7 +1141,7 @@ var
       FlushParagraph;
   end;
 
-  procedure CloseBlockIfOpen(ABottomPadding: Integer = -1);
+  procedure CloseBlockIfOpen(ABottomPadding: Integer);
   begin
     if FHasBlocksInPara then
       FlushParagraph(ABottomPadding)
@@ -1206,7 +1240,7 @@ begin
         begin
           if IsClosing then
           begin
-            CloseBlockIfOpen;
+            CloseBlockIfOpen(-1);
             PopStyle;
           end
           else
@@ -1235,7 +1269,7 @@ begin
         begin
           if IsClosing then
           begin
-            CloseBlockIfOpen;
+            CloseBlockIfOpen(-1);
             PopStyle;
             FParaAlign := CurrentStyle.Align;
           end
@@ -1252,7 +1286,7 @@ begin
         begin
           if IsClosing then
           begin
-            CloseBlockIfOpen;
+            CloseBlockIfOpen(-1);
             PopStyle;
           end
           else
@@ -1272,7 +1306,7 @@ begin
         begin
           if IsClosing then
           begin
-            CloseBlockIfOpen;
+            CloseBlockIfOpen(-1);
             PopStyle;
             FParaLeftPadding := CurrentStyle.LeftPadding;
           end
@@ -1290,7 +1324,7 @@ begin
         begin
           if IsClosing then
           begin
-            CloseBlockIfOpen;
+            CloseBlockIfOpen(-1);
             if Length(FListStack) > 0 then
               SetLength(FListStack, Length(FListStack) - 1);
             PopStyle;
@@ -1434,7 +1468,7 @@ begin
           if IsClosing then
           begin
             if TagName = 'pre' then
-              CloseBlockIfOpen;
+              CloseBlockIfOpen(-1);
             PopStyle;
           end
           else
@@ -1512,7 +1546,7 @@ begin
                 (TagName = 'thead') then
         begin
           if IsClosing then
-            CloseBlockIfOpen
+            CloseBlockIfOpen(-1)
           else
             EnsureParagraphFlushBeforeBlock;
         end;
@@ -1542,7 +1576,7 @@ end;
 
 procedure TPropsDocumentBuilder.RenderRtfFragment(const ARtf: string);
 var
-  I, Len, ParamInt, SkipGroupDepth, GroupDepth, HexVal, UcCount,
+  I, Len, StartPos, ParamInt, SkipGroupDepth, GroupDepth, HexVal, UcCount,
     SkipAfterUnicode: Integer;
   Cmd, ParamStr, PlainBuf: string;
   CurState: TPropTextStyleState;
@@ -1677,12 +1711,10 @@ begin
           end
           else if ARtf[I] in ['a'..'z', 'A'..'Z'] then
           begin
-            Cmd := '';
+            StartPos := I;
             while (I <= Len) and (ARtf[I] in ['a'..'z', 'A'..'Z']) do
-            begin
-              Cmd := Cmd + LowerCase(ARtf[I]);
               Inc(I);
-            end;
+            Cmd := LowerCase(Copy(ARtf, StartPos, I - StartPos));
             ParamStr := '';
             if (I <= Len) and (ARtf[I] = '-') then
             begin
@@ -1801,6 +1833,7 @@ procedure TModulePropertiesPreview.ApplySkinColors;
 begin
   if CurrentSkin.Id = skClassic then
   begin
+    Color := clWindow;
     Background.Color := clWindow;
     Colors.BkGnd := clWindow;
     Colors.SelBkGnd := clHighlight;
@@ -1811,6 +1844,7 @@ begin
   end
   else
   begin
+    Color := CurrentSkin.WindowBg;
     Background.Color := CurrentSkin.WindowBg;
     Colors.BkGnd := CurrentSkin.WindowBg;
     Colors.SelBkGnd := CurrentSkin.SelectedBg;
@@ -1855,7 +1889,12 @@ begin
   if ssCtrl in Shift then
   begin
     Handled := True;
-    NewSize := EnsureRange(FBaseFontSize + Sign(WheelDelta), 7, 24);
+    if WheelDelta > 0 then
+      NewSize := Min(24, FBaseFontSize + 1)
+    else if WheelDelta < 0 then
+      NewSize := Max(7, FBaseFontSize - 1)
+    else
+      NewSize := FBaseFontSize;
     if NewSize <> FBaseFontSize then
     begin
       FBaseFontSize := NewSize;
@@ -1878,7 +1917,7 @@ end;
 
 procedure TModulePropertiesPreview.RenderContent;
 var
-  Normalized, Line, Key, Val, AboutText: string;
+  Normalized, Line, Key, PropVal, AboutText: string;
   RawLines, FreeLines, RuleLines, SubLines: TStringList;
   MetaEntries: TPropMetaArray;
   I, EqPos, MetaCount: Integer;
@@ -1953,14 +1992,14 @@ begin
           Key := Trim(Copy(Line, 1, EqPos - 1));
           if IsValidPropertyKey(Key) then
           begin
-            Val := TrimLeft(Copy(Line, EqPos + 1, MaxInt));
+            PropVal := TrimLeft(Copy(Line, EqPos + 1, MaxInt));
             if SameText(Key, 'about') then
             begin
               InAbout := True;
               if AboutText <> '' then
-                AboutText := AboutText + #10 + Val
+                AboutText := AboutText + #10 + PropVal
               else
-                AboutText := Val;
+                AboutText := PropVal;
             end
             else if SameText(Key, 'verse.rule') then
             begin
@@ -1973,7 +2012,7 @@ begin
               MetaCount := Length(MetaEntries);
               SetLength(MetaEntries, MetaCount + 1);
               MetaEntries[MetaCount].Key := Key;
-              MetaEntries[MetaCount].Value := Val;
+              MetaEntries[MetaCount].Value := PropVal;
             end;
             Continue;
           end;

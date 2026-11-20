@@ -945,7 +945,7 @@ var
 begin
   if not (Sender is TPageControl) then
     Exit;
-  Index := TPageControl(Sender).Tag;
+  Index := Integer(TPageControl(Sender).Tag);
   if (Index < 0) or (Index > 1) then
     Exit;
   if TPageControl(Sender).ActivePageIndex = 0 then
@@ -976,7 +976,7 @@ var
 begin
   if not (Sender is TComponent) then
     Exit;
-  Index := TComponent(Sender).Tag;
+  Index := Integer(TComponent(Sender).Tag);
   if (Index < 0) or (Index > 1) or not Assigned(FPropsPageControls[Index]) then
     Exit;
   FPropsPageControls[Index].ActivePageIndex := 1;
