@@ -1823,7 +1823,7 @@ begin
   ReadOnly := True;
   TabStop := True;
   BorderStyle := bsNone;
-  ScrollBars := ssAutoVertical;
+  ScrollBars := ssVertical;
   ParentFont := False;
   FBaseFontSize := 10;
   FLastSkinId := -1;
@@ -1945,16 +1945,16 @@ end;
 procedure TModulePropertiesPreview.SetPropertiesText(const ARawText: string;
   ForceRender: Boolean);
 var
-  TextChanged: Boolean;
+  HasNewRawText: Boolean;
 begin
-  TextChanged := FRawText <> ARawText;
-  if not ForceRender and FHasRendered and (not TextChanged) and
+  HasNewRawText := FRawText <> ARawText;
+  if not ForceRender and FHasRendered and (not HasNewRawText) and
      (FLastSkinId = Ord(CurrentSkin.Id)) then
     Exit;
   FRawText := ARawText;
   FLastSkinId := Ord(CurrentSkin.Id);
   RenderContent;
-  if TextChanged then
+  if HasNewRawText then
     TopPos := 0;
 end;
 
