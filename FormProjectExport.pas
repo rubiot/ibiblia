@@ -61,8 +61,6 @@ type
     procedure RefreshPropertiesPreview(Index: Integer; ForceRender: Boolean = False);
     procedure PropertiesModeTabChange(Sender: TObject);
     procedure PropertiesPreviewDblClick(Sender: TObject);
-    procedure PropertiesRawMemoMouseWheel(Sender: TObject; Shift: TShiftState;
-      WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
     procedure FormMouseWheel(Sender: TObject; Shift: TShiftState;
       WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
     procedure FormShow(Sender: TObject);
@@ -904,7 +902,6 @@ begin
     Memo.Align := alClient;
     Memo.WordWrap := True;
     Memo.ScrollBars := ssAutoVertical;
-    Memo.OnMouseWheel := @PropertiesRawMemoMouseWheel;
 
     FPropsPageControls[Index].ActivePageIndex := 0;
   end;
@@ -993,34 +990,13 @@ begin
   PropertiesModeTabChange(FPropsPageControls[Index]);
 end;
 
-procedure TProjectExportForm.PropertiesRawMemoMouseWheel(Sender: TObject;
-  Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint;
-  var Handled: Boolean);
-var
-  Memo: TMemo;
-  CurSize, NewSize: Integer;
-begin
-  if not (ssCtrl in Shift) or (WheelDelta = 0) or not (Sender is TMemo) then
-    Exit;
-  Memo := TMemo(Sender);
-  CurSize := Memo.Font.Size;
-  if CurSize <= 0 then
-    CurSize := 10;
-  if WheelDelta > 0 then
-    NewSize := Min(24, CurSize + 1)
-  else
-    NewSize := Max(7, CurSize - 1);
-  if NewSize <> CurSize then
-    Memo.Font.Size := NewSize;
-  Handled := True;
-end;
-
 procedure TProjectExportForm.FormMouseWheel(Sender: TObject;
   Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint;
   var Handled: Boolean);
 var
-  Index: Integer;
+  Index, CurSize, NewSize: Integer;
   Preview: TModulePropertiesPreview;
+  Memo: TMemo;
   CurPos, LocalPos: TPoint;
 begin
   if (WheelDelta = 0) or not Visible or not Assigned(ExportPageControl) then
@@ -1028,21 +1004,50 @@ begin
   Index := ExportPageControl.ActivePageIndex;
   if (Index < 0) or (Index > 1) then
     Exit;
-  if not Assigned(FPropsPageControls[Index]) or
-     (FPropsPageControls[Index].ActivePageIndex <> 0) then
+  if not Assigned(FPropsPageControls[Index]) then
     Exit;
-  Preview := FPropsPreviews[Index];
-  if not Assigned(Preview) or not Preview.Visible then
-    Exit;
+
   CurPos := Point(0, 0);
   GetCursorPos(CurPos);
-  LocalPos := Preview.ScreenToClient(CurPos);
-  if (LocalPos.X >= 0) and (LocalPos.Y >= 0) and
-     (LocalPos.X < Preview.ClientWidth) and
-     (LocalPos.Y < Preview.ClientHeight) then
+
+  if FPropsPageControls[Index].ActivePageIndex = 0 then
   begin
-    Preview.HandleWheelInput(Shift, WheelDelta);
-    Handled := True;
+    Preview := FPropsPreviews[Index];
+    if not Assigned(Preview) or not Preview.Visible then
+      Exit;
+    LocalPos := Preview.ScreenToClient(CurPos);
+    if (LocalPos.X >= 0) and (LocalPos.Y >= 0) and
+       (LocalPos.X < Preview.ClientWidth) and
+       (LocalPos.Y < Preview.ClientHeight) then
+    begin
+      Preview.HandleWheelInput(Shift, WheelDelta);
+      Handled := True;
+    end;
+  end
+  else if ssCtrl in Shift then
+  begin
+    if Index = 0 then
+      Memo := MemoDestinationFooter
+    else
+      Memo := MemoSourceFooter;
+    if not Assigned(Memo) or not Memo.Visible then
+      Exit;
+    LocalPos := Memo.ScreenToClient(CurPos);
+    if (LocalPos.X >= 0) and (LocalPos.Y >= 0) and
+       (LocalPos.X < Memo.ClientWidth) and
+       (LocalPos.Y < Memo.ClientHeight) then
+    begin
+      CurSize := Memo.Font.Size;
+      if CurSize <= 0 then
+        CurSize := 10;
+      if WheelDelta > 0 then
+        NewSize := Min(24, CurSize + 1)
+      else
+        NewSize := Max(7, CurSize - 1);
+      if NewSize <> CurSize then
+        Memo.Font.Size := NewSize;
+      Handled := True;
+    end;
   end;
 end;
 
