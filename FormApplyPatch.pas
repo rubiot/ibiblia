@@ -84,10 +84,22 @@ end;
 procedure TFrmApplyPatch.UpdateApplySelection(Sender: TObject);
 var
   Indexes: TIntegerList;
+  NextIdx: Integer;
 begin
   Indexes := FBibleTreeView.IndexesList;
   try
     Button1.Enabled := Indexes.Count > 0;
+    if (Indexes.Count > 0) and Assigned(FPatch) and
+       ((FIndex < 0) or (FIndex >= FPatch.Reference.Count) or
+        (not FBibleTreeView.IsVerseChecked(FIndex))) then
+    begin
+      NextIdx := -1;
+      if Assigned(FBibleTreeView.Selected) then
+        NextIdx := FBibleTreeView.FirstVerseIndexInNode(FBibleTreeView.Selected, True);
+      if NextIdx < 0 then
+        NextIdx := Indexes[0];
+      OnVerseChange(NextIdx);
+    end;
   finally
     Indexes.Free;
   end;
@@ -243,9 +255,13 @@ begin
     MessageDlg(SInfo, Format(SIgnoredVersesOnPatch, [FPatch.IgnoredVerses]), mtInformation, [mbOK], 0);
 
   FBibleTreeView.VerseList := FPatch.Reference;
+  FIndex := -1;
   UpdateApplySelection(nil);
-  FIndex := 0;
-  TabControlPreviewChange(TabControlPreview);
+  if FIndex < 0 then
+  begin
+    FIndex := 0;
+    TabControlPreviewChange(TabControlPreview);
+  end;
   result := true;
 end;
 

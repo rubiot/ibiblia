@@ -36,13 +36,17 @@ type
     FOnSelectionChanged: TNotifyEvent;
     FAIStatesEnabled: Boolean; // Enable/disable AI state icons
     FDisabledBooks: TIntegerList; // book numbers that cannot be ticked
+    FPopulating: Boolean;
     function IsNodeDisabled(node: TTreeNode): Boolean;
+    function IsVerseNodeChecked(node: TTreeNode): Boolean;
     function GetVerseList: TStringList;
     function GetVerseIndexes: TIntegerList;
     procedure SetNodeStateIndex(node: TTreeNode; index: integer);
     procedure SetScope(AValue: TEscopoTexto);
     procedure ToggleTreeViewCheckBoxes(node: TTreeNode);
+    procedure NotifyVerseForNode(node: TTreeNode; PreferChecked: Boolean = True);
     procedure TreeViewClick(Sender: TObject);
+    procedure TreeViewChange(Sender: TObject; Node: TTreeNode);
     procedure CreateImageList;
     procedure UpdateParentState(node: TTreeNode);
     procedure SkinCustomDrawItem(Sender: TCustomTreeView; Node: TTreeNode;
@@ -59,6 +63,8 @@ type
     procedure ClearAllAIStates; // Reset all verses to checked/unchecked state
     procedure SetVerseChecked(index: integer; checked: Boolean);
     function IsVerseChecked(index: integer): Boolean;
+    function FirstVerseIndexInNode(node: TTreeNode; CheckedOnly: Boolean = False): Integer;
+    function FirstCheckedVerseIndex: Integer;
     { Book node with this book number (Data) cannot be ticked and is drawn
       greyed, with Suffix added to its caption. }
     procedure DisableBook(BookID: Integer; const Suffix: string);
@@ -191,27 +197,32 @@ begin
   if FScope = AValue then Exit;
   FScope := AValue;
 
+  FPopulating := True;
   BeginUpdate;
-  Items.Clear;
-  for b:=0 to QLivros[FScope]-1 do
-  begin
-    nb := Items.Add(nil, LocalizedBookName(FScope, b));
-    nb.StateIndex := 0;
-    nb.Data := Pointer(b + OffsetLivros[FScope] + 1);
-    for c:=0 to QCapitulos[FScope][b]-1 do
+  try
+    Items.Clear;
+    for b:=0 to QLivros[FScope]-1 do
     begin
-      nc := Items.AddChild(nb, Format(SChapterFmt, [c+1]));
-      nc.StateIndex := 0;
-      nc.Data := Pointer(c+1);
-      for v:=0 to QVersiculos[FScope][QCapLivros[FScope][b] + c - 1]-1 do
+      nb := Items.Add(nil, LocalizedBookName(FScope, b));
+      nb.StateIndex := 0;
+      nb.Data := Pointer(b + OffsetLivros[FScope] + 1);
+      for c:=0 to QCapitulos[FScope][b]-1 do
       begin
-        nv := Items.AddChild(nc, IntToStr(v+1));
-        nv.StateIndex := 0;
-        nv.Data := Pointer(v+1);
+        nc := Items.AddChild(nb, Format(SChapterFmt, [c+1]));
+        nc.StateIndex := 0;
+        nc.Data := Pointer(c+1);
+        for v:=0 to QVersiculos[FScope][QCapLivros[FScope][b] + c - 1]-1 do
+        begin
+          nv := Items.AddChild(nc, IntToStr(v+1));
+          nv.StateIndex := 0;
+          nv.Data := Pointer(v+1);
+        end;
       end;
     end;
+  finally
+    FPopulating := False;
+    EndUpdate;
   end;
-  EndUpdate;
 end;
 
 procedure TBibleTreeView.CheckReferences(Refs: TStringList);
@@ -219,6 +230,7 @@ var
   nb, nc, nv: TTreeNode;
   Index: Integer;
 begin
+  FPopulating := True;
   BeginUpdate;
   try
     nb := Items.GetFirstNode;
@@ -244,13 +256,19 @@ begin
       nb := nb.GetNextSibling;
     end;
   finally
+    FPopulating := False;
     EndUpdate;
   end;
 end;
 
 procedure TBibleTreeView.ClearStructure;
 begin
-  Items.Clear;
+  FPopulating := True;
+  try
+    Items.Clear;
+  finally
+    FPopulating := False;
+  end;
 end;
 
 function TBibleTreeView.AddBookNode(const ACaption: string; BookID: Integer): TTreeNode;
@@ -282,38 +300,43 @@ var
   b, c, v, i: integer;
   nb, nc, nv: TTreeNode;
 begin
+  FPopulating := True;
   BeginUpdate;
-  Items.Clear;
-  FDisabledBooks.Clear;
-  nb := nil;
-  nc := nil;
-  i := 0;
-  for ref in refs do
-  begin
-    Sscanf(ref, '%d,%d,%d', [@b, @c, @v]);
-
-    if (nb = nil) or (nb.Data <> Pointer(b)) then
+  try
+    Items.Clear;
+    FDisabledBooks.Clear;
+    nb := nil;
+    nc := nil;
+    i := 0;
+    for ref in refs do
     begin
-      nb := Items.Add(nil, LocalizedBookNameByID(b));
-      nb.Data := Pointer(b);
-      nb.StateIndex := ImgIndexUnchecked;  // Initialize book node state
-      nc := nil;
-    end;
+      Sscanf(ref, '%d,%d,%d', [@b, @c, @v]);
 
-    if (nc = nil) or (nc.Data <> Pointer(c)) then
-    begin
-      nc := Items.AddChild(nb, Format(SChapterFmt, [c]));
-      nc.Data := Pointer(c);
-      nc.StateIndex := ImgIndexUnchecked;  // Initialize chapter node state
-    end;
+      if (nb = nil) or (nb.Data <> Pointer(b)) then
+      begin
+        nb := Items.Add(nil, LocalizedBookNameByID(b));
+        nb.Data := Pointer(b);
+        nb.StateIndex := ImgIndexUnchecked;  // Initialize book node state
+        nc := nil;
+      end;
 
-    nv := Items.AddChild(nc, v.ToString);
-    nv.Data := Pointer(i);
-    nv.StateIndex := ImgIndexUnchecked;  // Initialize verse node state
-    Inc(i);
+      if (nc = nil) or (nc.Data <> Pointer(c)) then
+      begin
+        nc := Items.AddChild(nb, Format(SChapterFmt, [c]));
+        nc.Data := Pointer(c);
+        nc.StateIndex := ImgIndexUnchecked;  // Initialize chapter node state
+      end;
+
+      nv := Items.AddChild(nc, v.ToString);
+      nv.Data := Pointer(i);
+      nv.StateIndex := ImgIndexUnchecked;  // Initialize verse node state
+      Inc(i);
+    end;
+    SelectAll;
+  finally
+    FPopulating := False;
+    EndUpdate;
   end;
-  SelectAll;
-  EndUpdate;
 end;
 
 procedure TBibleTreeView.ToggleTreeViewCheckBoxes(node: TTreeNode);
@@ -356,6 +379,123 @@ begin
   end;
 end;
 
+function TBibleTreeView.IsVerseNodeChecked(node: TTreeNode): Boolean;
+begin
+  Result := Assigned(node) and
+    ((node.StateIndex = ImgIndexChecked) or
+     ((node.StateIndex >= 3) and (node.StateIndex <= 6)));
+end;
+
+function TBibleTreeView.FirstVerseIndexInNode(node: TTreeNode;
+  CheckedOnly: Boolean = False): Integer;
+var
+  nb, nc, nv: TTreeNode;
+begin
+  Result := -1;
+  if Items.Count = 0 then
+    Exit;
+
+  if not Assigned(node) then
+  begin
+    nb := Items.GetFirstNode;
+    while Assigned(nb) do
+    begin
+      if (not CheckedOnly) or (nb.StateIndex <> ImgIndexUnchecked) then
+      begin
+        nc := nb.GetFirstChild;
+        while Assigned(nc) do
+        begin
+          if (not CheckedOnly) or (nc.StateIndex <> ImgIndexUnchecked) then
+          begin
+            nv := nc.GetFirstChild;
+            while Assigned(nv) do
+            begin
+              if (not CheckedOnly) or IsVerseNodeChecked(nv) then
+                Exit(Integer(PtrInt(nv.Data)));
+              nv := nv.GetNextSibling;
+            end;
+          end;
+          nc := nc.GetNextSibling;
+        end;
+      end;
+      nb := nb.GetNextSibling;
+    end;
+    Exit;
+  end;
+
+  if Assigned(node.Parent) and Assigned(node.Parent.Parent) then
+  begin
+    if (not CheckedOnly) or IsVerseNodeChecked(node) then
+      Result := Integer(PtrInt(node.Data));
+    Exit;
+  end;
+
+  if Assigned(node.Parent) then
+  begin
+    if CheckedOnly and (node.StateIndex = ImgIndexUnchecked) then
+      Exit;
+    nv := node.GetFirstChild;
+    while Assigned(nv) do
+    begin
+      if (not CheckedOnly) or IsVerseNodeChecked(nv) then
+        Exit(Integer(PtrInt(nv.Data)));
+      nv := nv.GetNextSibling;
+    end;
+    Exit;
+  end;
+
+  if CheckedOnly and (node.StateIndex = ImgIndexUnchecked) then
+    Exit;
+  nc := node.GetFirstChild;
+  while Assigned(nc) do
+  begin
+    if (not CheckedOnly) or (nc.StateIndex <> ImgIndexUnchecked) then
+    begin
+      nv := nc.GetFirstChild;
+      while Assigned(nv) do
+      begin
+        if (not CheckedOnly) or IsVerseNodeChecked(nv) then
+          Exit(Integer(PtrInt(nv.Data)));
+        nv := nv.GetNextSibling;
+      end;
+    end;
+    nc := nc.GetNextSibling;
+  end;
+end;
+
+function TBibleTreeView.FirstCheckedVerseIndex: Integer;
+begin
+  Result := FirstVerseIndexInNode(nil, True);
+end;
+
+procedure TBibleTreeView.NotifyVerseForNode(node: TTreeNode;
+  PreferChecked: Boolean = True);
+var
+  Idx: Integer;
+begin
+  if not Assigned(FOnVerseChange) or not Assigned(node) then
+    Exit;
+  if Assigned(node.Parent) and Assigned(node.Parent.Parent) then
+  begin
+    FOnVerseChange(Integer(PtrInt(node.Data)));
+    Exit;
+  end;
+  Idx := -1;
+  if PreferChecked then
+    Idx := FirstVerseIndexInNode(node, True);
+  if Idx < 0 then
+    Idx := FirstVerseIndexInNode(node, False);
+  if Idx >= 0 then
+    FOnVerseChange(Idx);
+end;
+
+procedure TBibleTreeView.TreeViewChange(Sender: TObject; Node: TTreeNode);
+begin
+  if FPopulating or (csDestroying in ComponentState) or not Assigned(Node) then
+    Exit;
+  NotifyVerseForNode(Node, True);
+end;
+
 procedure TBibleTreeView.TreeViewClick(Sender: TObject);
 var
   P: TPoint;
@@ -365,15 +505,17 @@ begin
   GetCursorPos(P);
   P := ScreenToClient(P);
   ht := GetHitTestInfoAt(P.X, P.Y);
+  node := GetNodeAt(P.X, P.Y);
+  if not Assigned(node) then
+    Exit;
   if (htOnStateIcon in ht) then begin // checkbox
-    node := GetNodeAt(P.X, P.Y);
     ToggleTreeViewCheckBoxes(node);
+    if node.StateIndex <> ImgIndexUnchecked then
+      NotifyVerseForNode(node, True);
     if Assigned(FOnSelectionChanged) then
       FOnSelectionChanged(Self);
-  end else if (htOnLabel in ht) and assigned(FOnVerseChange) then begin // node
-    node := GetNodeAt(P.X, P.Y);
-    if assigned(node.Parent) and assigned(node.Parent.Parent) then
-      FOnVerseChange(Integer(node.Data));
+  end else if Assigned(FOnVerseChange) then begin // book, chapter, or verse row
+    NotifyVerseForNode(node, True);
   end;
 end;
 
@@ -400,7 +542,9 @@ begin
   ReadOnly := true;
   CreateImageList;
   FScope := etNone;
+  FPopulating := False;
   OnClick := @TreeViewClick;
+  OnChange := @TreeViewChange;
   FOnVerseChange := nil;
   FOnSelectionChanged := nil;
   FAIStatesEnabled := False;
@@ -616,7 +760,7 @@ var
   nb, nc, nv: TTreeNode;
 begin
   Result := False;
-  if Items.Count = 0 then
+  if (index < 0) or (Items.Count = 0) then
     Exit;
 
   nb := Items[0];

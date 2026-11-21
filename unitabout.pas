@@ -114,6 +114,9 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.075 (64-bit Edition) - 2026-11-21' + LineEnding +
+  '- Add Bible books / Replace text and Apply patch dialogs now keep the preview verse synchronized with checked and selected nodes in the Bible tree (clicking checkboxes, Book/Chapter nodes, full rows, or using keyboard navigation), show a clear "Preview: <Book Chapter:Verse>" header above the preview panes, and clear/advance preview when verses are unchecked.' + LineEnding +
+  '' + LineEnding +
   'Version 1.1.0.074 (64-bit Edition) - 2026-11-20' + LineEnding +
   '- Export project (Tagged destination text and Interlinear source text) Module properties Preview tab now supports smooth mouse wheel scrolling (just like the Raw (Edit) tab, even when hovering without clicking first) and Ctrl+mouse wheel zooming (preserving scroll position); Raw (Edit) also supports Ctrl+mouse wheel font zooming.' + LineEnding +
   '' + LineEnding +

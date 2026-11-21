@@ -64,6 +64,9 @@ resourcestring
   SBookImportKeepAssociations = 'Try to keep the current associations';
   SBookImportInProject = 'In the project';
   SBookImportInFile = 'In the file';
+  SBookImportPreviewVerse = 'Preview: %s';
+  SBookImportPreviewVerseUnchecked = 'Preview: %s (not checked)';
+  SBookImportPreviewNone = 'Preview: (no verse checked)';
   SBookImportAlreadyInProject = '  (already in the project)';
   SBookImportNotInProject = '(not in the project yet)';
   SBookImportFileInfo = 'File: %s';
@@ -115,15 +118,20 @@ type
   private
     FTree: TBibleTreeView;
     FInfo: TLabel;
+    FVerseLabel: TLabel;
     FCurrentLabel, FNewLabel: TLabel;
     FCurrentMemo, FNewMemo: TMemo;
     FKeep: TCheckBox;
     FOkButton: TButton;
     FEntries: TRefEntryArray;
+    FCurrentIndex: Integer;
     FProjectTexts: TStringList;  // ref -> project text (Objects: index in FProjectValues)
     FProjectValues: TStringList;
     FKind: TBookImportKind;
     FScope: TEscopoTexto;
+    function FormatEntryReference(Index: Integer): string;
+    procedure UpdatePreviewHeader;
+    procedure ClearPreview;
     procedure SelectAllClick(Sender: TObject);
     procedure DeselectAllClick(Sender: TObject);
     procedure SelectionChanged(Sender: TObject);
@@ -134,6 +142,7 @@ type
     NewScope: TEscopoTexto;
     constructor CreateFor(AOwner: TComponent; AKind: TBookImportKind;
       AScope: TEscopoTexto; const ATitle, AInfo: string; AFont: TFont);
+    destructor Destroy; override;
     function ProjectText(const Ref: string): string;
   end;
 
@@ -285,6 +294,7 @@ begin
   inherited CreateNew(AOwner);
   FKind := AKind;
   FScope := AScope;
+  FCurrentIndex := -1;
   NewScope := etNone;
   Caption := ATitle;
   Width := 1000;
@@ -375,6 +385,11 @@ begin
   Panes.BevelOuter := bvNone;
   Panes.OnResize := @LayoutPanes;
 
+  FVerseLabel := TLabel.Create(Self);
+  FVerseLabel.Parent := Panes;
+  FVerseLabel.Caption := SBookImportPreviewNone;
+  FVerseLabel.Font.Style := [fsBold];
+
   FCurrentLabel := TLabel.Create(Self);
   FCurrentLabel.Parent := Panes;
   FCurrentLabel.Caption := SBookImportInProject;
@@ -405,18 +420,31 @@ begin
   ApplyDialogStyle(Self);
 end;
 
+destructor TFrmBookImport.Destroy;
+begin
+  FreeAndNil(FProjectTexts);
+  FreeAndNil(FProjectValues);
+  inherited Destroy;
+end;
+
 procedure TFrmBookImport.LayoutPanes(Sender: TObject);
 var
   P: TPanel;
-  W, H: Integer;
+  W, H, RefH, LblH, TopY: Integer;
 begin
   P := TPanel(Sender);
   W := (P.ClientWidth - 10) div 2;
-  H := P.ClientHeight - 24;
-  FCurrentLabel.SetBounds(0, 2, W, 20);
-  FNewLabel.SetBounds(W + 10, 2, W, 20);
-  FCurrentMemo.SetBounds(0, 24, W, H);
-  FNewMemo.SetBounds(W + 10, 24, W, H);
+  RefH := UIScale(Self, 22);
+  LblH := UIScale(Self, 20);
+  TopY := RefH + LblH + UIScale(Self, 8);
+  H := P.ClientHeight - TopY;
+  if H < 40 then
+    H := 40;
+  FVerseLabel.SetBounds(0, UIScale(Self, 2), P.ClientWidth, RefH);
+  FCurrentLabel.SetBounds(0, RefH + UIScale(Self, 4), W, LblH);
+  FNewLabel.SetBounds(W + 10, RefH + UIScale(Self, 4), W, LblH);
+  FCurrentMemo.SetBounds(0, TopY, W, H);
+  FNewMemo.SetBounds(W + 10, TopY, W, H);
 end;
 
 function TFrmBookImport.ProjectText(const Ref: string): string;
@@ -428,6 +456,43 @@ begin
     Result := SBookImportNotInProject
   else
     Result := FProjectValues[PtrInt(FProjectTexts.Objects[Index])];
+end;
+
+function TFrmBookImport.FormatEntryReference(Index: Integer): string;
+var
+  BName: string;
+begin
+  if (Index < 0) or (Index > High(FEntries)) then
+    Exit('');
+  BName := AnyBibleBookName(FEntries[Index].Book);
+  if BName = '' then
+    BName := '#' + IntToStr(FEntries[Index].Book);
+  Result := Format('%s %d:%d',
+    [BName, FEntries[Index].Chapter, FEntries[Index].Verse]);
+end;
+
+procedure TFrmBookImport.UpdatePreviewHeader;
+var
+  RefStr: string;
+begin
+  if (FCurrentIndex < 0) or (FCurrentIndex > High(FEntries)) then
+  begin
+    FVerseLabel.Caption := SBookImportPreviewNone;
+    Exit;
+  end;
+  RefStr := FormatEntryReference(FCurrentIndex);
+  if FTree.IsVerseChecked(FCurrentIndex) then
+    FVerseLabel.Caption := Format(SBookImportPreviewVerse, [RefStr])
+  else
+    FVerseLabel.Caption := Format(SBookImportPreviewVerseUnchecked, [RefStr]);
+end;
+
+procedure TFrmBookImport.ClearPreview;
+begin
+  FCurrentIndex := -1;
+  FVerseLabel.Caption := SBookImportPreviewNone;
+  FCurrentMemo.Text := '';
+  FNewMemo.Text := '';
 end;
 
 procedure TFrmBookImport.SelectAllClick(Sender: TObject);
@@ -447,15 +512,31 @@ end;
 procedure TFrmBookImport.SelectionChanged(Sender: TObject);
 var
   Indexes: TIntegerList;
+  NextIdx: Integer;
 begin
   if FTree.Items.Count = 0 then
   begin
     FOkButton.Enabled := False;
+    ClearPreview;
     Exit;
   end;
   Indexes := FTree.IndexesList;
   try
     FOkButton.Enabled := Indexes.Count > 0;
+    if Indexes.Count = 0 then
+      ClearPreview
+    else if (FCurrentIndex < 0) or (FCurrentIndex > High(FEntries)) or
+            not FTree.IsVerseChecked(FCurrentIndex) then
+    begin
+      NextIdx := -1;
+      if Assigned(FTree.Selected) then
+        NextIdx := FTree.FirstVerseIndexInNode(FTree.Selected, True);
+      if NextIdx < 0 then
+        NextIdx := Indexes[0];
+      VerseChanged(NextIdx);
+    end
+    else
+      UpdatePreviewHeader;
   finally
     Indexes.Free;
   end;
@@ -465,8 +546,13 @@ procedure TFrmBookImport.VerseChanged(Index: Integer);
 begin
   if (Index < 0) or (Index > High(FEntries)) then
     Exit;
-  FCurrentMemo.Text := ProjectText(FEntries[Index].Ref);
-  FNewMemo.Text := FEntries[Index].Text;
+  if Index <> FCurrentIndex then
+  begin
+    FCurrentIndex := Index;
+    FCurrentMemo.Text := ProjectText(FEntries[Index].Ref);
+    FNewMemo.Text := FEntries[Index].Text;
+  end;
+  UpdatePreviewHeader;
 end;
 
 procedure TFrmBookImport.OkClick(Sender: TObject);
@@ -1082,8 +1168,6 @@ begin
           Dlg.FTree.DisableBook(B, SBookImportAlreadyInProject);
     end;
     Dlg.SelectionChanged(nil);
-    if Length(Entries) > 0 then
-      Dlg.VerseChanged(0);
 
     if Dlg.ShowModal <> mrOK then
       Exit;

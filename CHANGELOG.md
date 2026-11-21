@@ -6,7 +6,13 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.074 (2026-11-20) — Mouse Wheel Scrolling & Ctrl+Wheel Zoom in Export Properties Preview
+### 0. Version 1.1.0.075 (2026-11-21) — Sync Preview Verse with Checked & Selected Bible Tree Nodes
+
+* **Bible Tree Preview Synchronization (`bibletreeview.pas`, `FormBookImport.pas`, `FormApplyPatch.pas`):** Ticking or unticking checkboxes, selecting any Book/Chapter/Verse row, or navigating the tree with keyboard arrow keys now immediately updates the side-by-side preview (`In the project` / `In the file` and Apply Patch preview) to the selected node or first checked verse under it, instead of remaining stuck on the initial Genesis verse or only firing on direct verse-label clicks.
+* **Preview Header & Unchecked State (`FormBookImport.pas`):** Added a bold `Preview: <Book Chapter:Verse>` (or `(not checked)` / `(no verse checked)`) reference header above the preview panes so it is always clear which verse is displayed, automatically moving away from unchecked verses when boxes are cleared and freeing project lookup string lists on dialog close.
+* Files: bibletreeview.pas, FormBookImport.pas, FormApplyPatch.pas, unitabout.pas.
+
+### 0a. Version 1.1.0.074 (2026-11-20) — Mouse Wheel Scrolling & Ctrl+Wheel Zoom in Export Properties Preview
 
 * **Mouse Wheel Scrolling in Preview (`module_properties_preview.pas`, `FormProjectExport.pas`):** Enabled smooth mouse wheel scrolling directly inside the Export window's **Module properties** **Preview** tab (both **Tagged destination text** and **Interlinear source text**), including when hovering over the preview pane without clicking first and after switching tabs, matching the **Raw (Edit)** tab.
 * **Ctrl+Mouse Wheel Zoom (`module_properties_preview.pas`, `FormProjectExport.pas`):** Fixed `Ctrl`+mouse wheel zooming in the **Preview** tab (preserving scroll position while adjusting font size from 7pt to 24pt) and also enabled `Ctrl`+mouse wheel font zooming in the **Raw (Edit)** tab.
