@@ -800,7 +800,7 @@ implementation
 uses FormNewProject, FormProjectProperties, FormProjectExport, FormMergeProjects,
   FormExportPatch, FormApplyPatch, FormLlmOptions, FormTheWordHighlighterColors,
   llmclient, theword_syntax_highlighter, translation_memory_preview,
-  FormFindInProject, FormGoToVerse, FormDefaultDictionaries, unittexttospeech, formvoicesettings,
+  FormFindInProject, FormGoToVerse, dictionary_manager, FormDefaultDictionaries, unittexttospeech, formvoicesettings,
   FormNewFeaturesGuide, FormDictionaryPopup, project_book_import,
   project_backup, project_backup_ui, sqlite_database_copy,
   project_change_log, project_change_log_ui, crash_tracker, crash_tracker_ui,
