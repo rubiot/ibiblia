@@ -1,6 +1,6 @@
 name: Release
 
-# Every push to linux-port or master whose project files carry a version that has
+# Every push to linux-port, master, or Neon whose project files carry a version that has
 # no GitHub release yet builds iBiblia for Windows (x64) and Linux (x86_64) with
 # Lazarus and publishes release v<version>. The programs check this release feed
 # at start-up and update themselves (see app_updater.pas).
@@ -24,7 +24,6 @@ jobs:
       version: ${{ steps.ver.outputs.version }}
       needed: ${{ steps.ver.outputs.needed }}
       linux: ${{ steps.ver.outputs.linux }}
-      channel: ${{ steps.ver.outputs.channel }}
     steps:
       - uses: actions/checkout@v4
       - name: Decide whether this version needs a release
@@ -34,23 +33,11 @@ jobs:
         run: |
           VERSION=$(python3 scripts/ci_check_version.py)
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          if [ "${GITHUB_REF_NAME}" = "Neon" ]; then
-            echo "channel=neon" >> "$GITHUB_OUTPUT"
-            EXISTING_TITLE=$(gh release view "neon" --json name --jq '.name' 2>/dev/null || true)
-            if echo "$EXISTING_TITLE" | grep -q "(v$VERSION)"; then
-              echo "Neon pre-release already carries v$VERSION - nothing to do."
-              echo "needed=false" >> "$GITHUB_OUTPUT"
-            else
-              echo "needed=true" >> "$GITHUB_OUTPUT"
-            fi
+          if gh release view "v$VERSION" >/dev/null 2>&1; then
+            echo "Release v$VERSION already exists - nothing to do."
+            echo "needed=false" >> "$GITHUB_OUTPUT"
           else
-            echo "channel=stable" >> "$GITHUB_OUTPUT"
-            if gh release view "v$VERSION" >/dev/null 2>&1; then
-              echo "Release v$VERSION already exists - nothing to do."
-              echo "needed=false" >> "$GITHUB_OUTPUT"
-            else
-              echo "needed=true" >> "$GITHUB_OUTPUT"
-            fi
+            echo "needed=true" >> "$GITHUB_OUTPUT"
           fi
           if [ -f iBiblia-linux.lpi ]; then echo "linux=true" >> "$GITHUB_OUTPUT"; else echo "linux=false" >> "$GITHUB_OUTPUT"; fi
 
@@ -137,19 +124,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.plan.outputs.version }}
-          CHANNEL: ${{ needs.plan.outputs.channel }}
         run: |
           cd dist && sha256sum iBiblia-*.zip > SHA256SUMS.txt && cat SHA256SUMS.txt && cd ..
           python3 scripts/ci_release_notes.py "$VERSION" > notes.md
-          if [ "$CHANNEL" = "neon" ]; then
-            TITLE="iBiblia — 64-Bit Edition [Neon] (v$VERSION)"
-            gh release delete neon --yes --cleanup-tag 2>/dev/null || true
-            gh release create neon dist/iBiblia-*.zip dist/SHA256SUMS.txt \
-              --title "$TITLE" --notes-file notes.md --prerelease --target "$GITHUB_SHA"
-          else
-            TAG="v$VERSION"
-            TITLE="iBiblia — 64-Bit Edition (v$VERSION)"
-            # creates the tag on the built commit
-            gh release create "$TAG" dist/iBiblia-*.zip dist/SHA256SUMS.txt \
-              --title "$TITLE" --notes-file notes.md --target "$GITHUB_SHA"
-          fi
+          TAG="v$VERSION"
+          TITLE="iBiblia — 64-Bit Edition (v$VERSION)"
+          gh release delete neon --yes --cleanup-tag 2>/dev/null || true
+          gh release create "$TAG" dist/iBiblia-*.zip dist/SHA256SUMS.txt \
+            --title "$TITLE" --notes-file notes.md --latest --target "$GITHUB_SHA"
