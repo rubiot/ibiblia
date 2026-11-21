@@ -312,8 +312,6 @@ type
     FCrashLogsItem: TMenuItem;
     FHardCrashChecked: Boolean;
     FPreferencesMenuItem: TMenuItem;
-    procedure ProjectChangeLogClick(Sender: TObject);
-    procedure CrashLogsClick(Sender: TObject);
     FSuggestionPopupMenu: TPopupMenu;
     FSuggestionStatisticalItem: TMenuItem;
     FSuggestionAIItem: TMenuItem;
@@ -546,6 +544,8 @@ type
     procedure ApplyStatusReviewFilter;
     procedure DoOpenProject(filename: string);
     procedure CheckFileAssociation;
+    procedure ProjectChangeLogClick(Sender: TObject);
+    procedure CrashLogsClick(Sender: TObject);
   protected
     procedure DoAutoAdjustLayout(const AMode: TLayoutAdjustmentPolicy;
       const AXProportion, AYProportion: Double); override;

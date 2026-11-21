@@ -5862,7 +5862,7 @@ begin
 end;
 
 procedure TProject.LogProjectChange(const Category, Summary: string;
-  const Details: string = '');
+  const Details: string);
 begin
   if FFileName <> '' then
     RecordProjectChange(FFileName, Category, Summary, Details);

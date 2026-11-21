@@ -58,6 +58,9 @@ const
   SESSION_MARKER_FILE = '.session_active';
 
 type
+  TCrashExceptProc = procedure(Obj: TObject; Addr: CodePointer;
+    FrameCount: Longint; Frames: PCodePointer);
+
   TCrashTrackerAppHandler = class
   public
     procedure HandleApplicationException(Sender: TObject; E: Exception);
@@ -78,7 +81,7 @@ var
   FBreadcrumbs: array[0..MAX_BREADCRUMBS - 1] of string;
   FBreadcrumbCount: Integer;
   FBreadcrumbHead: Integer;
-  FOldExceptProc: TExceptProc;
+  FOldExceptProc: Pointer;
   GAppHandler: TCrashTrackerAppHandler;
   FCrashDialogCallback: TCrashDialogCallback;
 
@@ -662,8 +665,8 @@ begin
     end;
   end;
 
-  if Assigned(FOldExceptProc) then
-    FOldExceptProc(Obj, Addr, FrameCount, Frames);
+  if FOldExceptProc <> nil then
+    TCrashExceptProc(FOldExceptProc)(Obj, Addr, FrameCount, Frames);
 end;
 
 procedure InstallCrashTracker;
@@ -704,7 +707,7 @@ begin
   MarkCrashSessionCleanShutdown;
   if Assigned(Application) then
     Application.OnException := nil;
-  if Pointer(ExceptProc) = Pointer(@CrashTrackerExceptProc) then
+  if ExceptProc = @CrashTrackerExceptProc then
     ExceptProc := FOldExceptProc;
   GInstalled := False;
 end;
