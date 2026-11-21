@@ -6,7 +6,13 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.076 (2026-11-21) — Unify Apocrypha Book IDs & Fix USFM/USFX Book Naming
+### 0. Version 1.1.0.077 (2026-11-21) — Character Diff Highlighting & Synchronized Scrolling in Replace Books Preview
+
+* **Character-Level Diff Highlighting (`FormBookImport.pas`):** Upgraded the **In the project** and **In the file** preview panes in **Replace books, chapters or verses** (and **Add Bible books**) to rich diff views (`TBookDiffMemo` built on `TKMemo`) using a two-level Unicode LCS diff engine that pinpoints exact differing characters/tags/words (highlighted with skin-adapted red on the existing project side and green on the incoming file side) and displays the difference count (`Preview: Genesis 1:20 - 2 differences`) in the header.
+* **Synchronized Vertical Scrolling & Zoom (`FormBookImport.pas`):** Synchronized vertical scrolling between the two preview panes across scrollbar drags, mouse-wheel scrolling (including hovering without clicking first), keyboard navigation, and `Ctrl`+mouse wheel zooming (matching font size and scroll position across both panes).
+* Files: FormBookImport.pas, unitabout.pas.
+
+### 0a. Version 1.1.0.076 (2026-11-21) — Unify Apocrypha Book IDs & Fix USFM/USFX Book Naming
 
 * **Unified Apocrypha Book Numbering (`apocrypha_books.pas`, `esword_usfm.pas`, `bible_import_source.pas`, `sword_module.pas`):** Aligned Apocrypha/Deuterocanonical Book IDs (`67` 1 Esdras .. `87` Laodiceans) consistently across `apocrypha_books`, plain document importers, USFM/USFX importers/exporters, and SWORD OSIS mappings (also adding `PSS`/`PssSol` for Psalms of Solomon), eliminating the `76` (`Wisdom` vs. `Bel and the Dragon`) collision.
 * **Accurate USFM/USFX Naming & Conflict-Safe Import (`esword_usfm.pas`, `FormBookImport.pas`, `bibletreeview.pas`):** USFM/USFX imports use the canonical book name for IDs `67–87` without English text guessing, `Add Bible books` / `Replace` matches existing project Apocrypha books by name (avoiding collisions with older projects and showing the file's real book name in the tree and preview header), and USFM/USFX export resolves book codes from project book names.

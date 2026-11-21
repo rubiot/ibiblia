@@ -67,6 +67,8 @@ resourcestring
   SBookImportPreviewVerse = 'Preview: %s';
   SBookImportPreviewVerseUnchecked = 'Preview: %s (not checked)';
   SBookImportPreviewNone = 'Preview: (no verse checked)';
+  SBookImportDiffOne = '%s - 1 difference';
+  SBookImportDiffMany = '%s - %d differences';
   SBookImportAlreadyInProject = '  (already in the project)';
   SBookImportNotInProject = '(not in the project yet)';
   SBookImportFileInfo = 'File: %s';
@@ -89,8 +91,10 @@ resourcestring
 implementation
 
 uses
-  LazUTF8, ui_style, bible_versification, apocrypha_books, bible_archive,
-  bible_document_reader, module_conversion, esword_usfm;
+  Math, Types, LazUTF8, LMessages, LCLType, LCLIntf, KMemo, KEditCommon,
+  KFunctions, KGraphics, ui_style, unitskins, bible_versification,
+  apocrypha_books, bible_archive, bible_document_reader, module_conversion,
+  esword_usfm;
 
 type
   TRefEntry = record
@@ -98,6 +102,48 @@ type
     Ref, Text: string;
   end;
   TRefEntryArray = array of TRefEntry;
+
+  TDiffSpan = record
+    Text: UnicodeString;
+    Changed: Boolean;
+  end;
+  TDiffSpanArray = array of TDiffSpan;
+  TDiffTokenArray = array of UnicodeString;
+
+  TBookDiffSide = (bdsProject, bdsFile);
+  TBookDiffZoomEvent = procedure(Sender: TObject; NewSize: Integer) of object;
+
+  { TBookDiffMemo }
+
+  TBookDiffMemo = class(TKMemo)
+  private
+    FSide: TBookDiffSide;
+    FBaseFontName: string;
+    FBaseFontSize: Integer;
+    FLastSpans: TDiffSpanArray;
+    FLastTopPos: Integer;
+    FOnScrollSync: TNotifyEvent;
+    FOnZoomChanged: TBookDiffZoomEvent;
+    procedure NotifyScrollChanged;
+    procedure RenderSpans;
+    procedure HandleMouseWheel(Sender: TObject; Shift: TShiftState;
+      WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
+  protected
+    procedure WndProc(var TheMessage: TLMessage); override;
+    function DoMouseWheel(Shift: TShiftState; WheelDelta: Integer;
+      MousePos: TPoint): Boolean; override;
+  public
+    constructor CreateForSide(AOwner: TComponent; ASide: TBookDiffSide);
+    procedure ApplySkinColors;
+    procedure SetBaseFont(AFont: TFont);
+    procedure SetFontSizeSynced(NewSize: Integer);
+    procedure SetPlainText(const AText: string);
+    procedure SetDiffSpans(const ASpans: TDiffSpanArray);
+    procedure HandleWheelInput(Shift: TShiftState; WheelDelta: Integer);
+    procedure SyncTopPosFromPeer(ATopPos: Integer);
+    property OnScrollSync: TNotifyEvent read FOnScrollSync write FOnScrollSync;
+    property OnZoomChanged: TBookDiffZoomEvent read FOnZoomChanged write FOnZoomChanged;
+  end;
 
   { TFrmBookMapping }
 
@@ -120,19 +166,28 @@ type
     FInfo: TLabel;
     FVerseLabel: TLabel;
     FCurrentLabel, FNewLabel: TLabel;
-    FCurrentMemo, FNewMemo: TMemo;
+    FCurrentFrame, FNewFrame: TPanel;
+    FCurrentMemo, FNewMemo: TBookDiffMemo;
     FKeep: TCheckBox;
     FOkButton: TButton;
     FEntries: TRefEntryArray;
     FCurrentIndex: Integer;
+    FCurrentDiffCount: Integer;
+    FSyncingScroll: Boolean;
     FProjectTexts: TStringList;  // ref -> project text (Objects: index in FProjectValues)
     FProjectValues: TStringList;
     FBookNames: TStringList;     // BookID string -> display name for this dialog
     FKind: TBookImportKind;
     FScope: TEscopoTexto;
     function FormatEntryReference(Index: Integer): string;
+    function HasProjectText(const Ref: string; out AText: string): Boolean;
     procedure UpdatePreviewHeader;
     procedure ClearPreview;
+    procedure SyncPreviewScroll(Sender: TObject);
+    procedure SyncPreviewZoom(Sender: TObject; NewSize: Integer);
+    procedure FormShow(Sender: TObject);
+    procedure FormMouseWheel(Sender: TObject; Shift: TShiftState;
+      WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
     procedure SelectAllClick(Sender: TObject);
     procedure DeselectAllClick(Sender: TObject);
     procedure SelectionChanged(Sender: TObject);
@@ -144,8 +199,636 @@ type
     constructor CreateFor(AOwner: TComponent; AKind: TBookImportKind;
       AScope: TEscopoTexto; const ATitle, AInfo: string; AFont: TFont);
     destructor Destroy; override;
-    function ProjectText(const Ref: string): string;
   end;
+
+{ ---------- character diff helpers ---------- }
+
+procedure AppendDiffSpan(var Spans: TDiffSpanArray; const S: UnicodeString;
+  Changed: Boolean);
+var
+  LastIdx: Integer;
+begin
+  if S = '' then
+    Exit;
+  LastIdx := High(Spans);
+  if (LastIdx >= 0) and (Spans[LastIdx].Changed = Changed) then
+    Spans[LastIdx].Text := Spans[LastIdx].Text + S
+  else
+  begin
+    SetLength(Spans, LastIdx + 2);
+    Spans[LastIdx + 1].Text := S;
+    Spans[LastIdx + 1].Changed := Changed;
+  end;
+end;
+
+function SplitDiffTokens(const S: UnicodeString): TDiffTokenArray;
+var
+  I, Len, StartPos, Count: Integer;
+  Ch: WideChar;
+
+  procedure AddToken(const T: UnicodeString);
+  begin
+    if T = '' then
+      Exit;
+    if Count >= Length(Result) then
+      SetLength(Result, Max(16, Length(Result) * 2));
+    Result[Count] := T;
+    Inc(Count);
+  end;
+
+begin
+  Result := nil;
+  Count := 0;
+  Len := Length(S);
+  I := 1;
+  while I <= Len do
+  begin
+    Ch := S[I];
+    if Ch = #10 then
+    begin
+      AddToken(Ch);
+      Inc(I);
+    end
+    else if (Ch = ' ') or (Ch = #9) then
+    begin
+      StartPos := I;
+      while (I <= Len) and ((S[I] = ' ') or (S[I] = #9)) do
+        Inc(I);
+      AddToken(Copy(S, StartPos, I - StartPos));
+    end
+    else if (Ch = '<') or (Ch = '>') or (Ch = '=') or (Ch = '"') then
+    begin
+      AddToken(Ch);
+      Inc(I);
+    end
+    else
+    begin
+      StartPos := I;
+      while (I <= Len) and (S[I] <> #10) and (S[I] <> ' ') and (S[I] <> #9) and
+            (S[I] <> '<') and (S[I] <> '>') and (S[I] <> '=') and (S[I] <> '"') do
+        Inc(I);
+      AddToken(Copy(S, StartPos, I - StartPos));
+    end;
+  end;
+  SetLength(Result, Count);
+end;
+
+procedure DiffCharRange(const A, B: UnicodeString;
+  var OldSpans, NewSpans: TDiffSpanArray; var DiffCount: Integer);
+var
+  LenA, LenB, PrefixLen, SuffixLen, MaxFix, MM, NN, Stride, I, J: Integer;
+  Prefix, Suffix, AMid, BMid: UnicodeString;
+  DP: array of Integer;
+  InDiff: Boolean;
+begin
+  LenA := Length(A);
+  LenB := Length(B);
+  PrefixLen := 0;
+  MaxFix := Min(LenA, LenB);
+  while (PrefixLen < MaxFix) and (A[PrefixLen + 1] = B[PrefixLen + 1]) do
+    Inc(PrefixLen);
+  if PrefixLen > 0 then
+  begin
+    Prefix := Copy(A, 1, PrefixLen);
+    AppendDiffSpan(OldSpans, Prefix, False);
+    AppendDiffSpan(NewSpans, Prefix, False);
+  end;
+
+  SuffixLen := 0;
+  while (SuffixLen < LenA - PrefixLen) and
+        (SuffixLen < LenB - PrefixLen) and
+        (A[LenA - SuffixLen] = B[LenB - SuffixLen]) do
+    Inc(SuffixLen);
+
+  MM := LenA - PrefixLen - SuffixLen;
+  NN := LenB - PrefixLen - SuffixLen;
+  AMid := Copy(A, PrefixLen + 1, MM);
+  BMid := Copy(B, PrefixLen + 1, NN);
+
+  if (MM = 0) and (NN = 0) then
+  begin
+    { identical after prefix/suffix }
+  end
+  else if (MM = 0) or (NN = 0) then
+  begin
+    AppendDiffSpan(OldSpans, AMid, True);
+    AppendDiffSpan(NewSpans, BMid, True);
+    Inc(DiffCount);
+  end
+  else if Int64(MM) * Int64(NN) <= 100000 then
+  begin
+    DP := nil;
+    Stride := NN + 1;
+    SetLength(DP, (MM + 1) * Stride);
+    FillChar(DP[0], Length(DP) * SizeOf(Integer), 0);
+    for I := MM - 1 downto 0 do
+      for J := NN - 1 downto 0 do
+        if AMid[I + 1] = BMid[J + 1] then
+          DP[I * Stride + J] := DP[(I + 1) * Stride + (J + 1)] + 1
+        else if DP[(I + 1) * Stride + J] >= DP[I * Stride + (J + 1)] then
+          DP[I * Stride + J] := DP[(I + 1) * Stride + J]
+        else
+          DP[I * Stride + J] := DP[I * Stride + (J + 1)];
+
+    I := 0;
+    J := 0;
+    InDiff := False;
+    while (I < MM) and (J < NN) do
+    begin
+      if AMid[I + 1] = BMid[J + 1] then
+      begin
+        AppendDiffSpan(OldSpans, AMid[I + 1], False);
+        AppendDiffSpan(NewSpans, BMid[J + 1], False);
+        InDiff := False;
+        Inc(I);
+        Inc(J);
+      end
+      else if DP[(I + 1) * Stride + J] >= DP[I * Stride + (J + 1)] then
+      begin
+        AppendDiffSpan(OldSpans, AMid[I + 1], True);
+        if not InDiff then
+        begin
+          Inc(DiffCount);
+          InDiff := True;
+        end;
+        Inc(I);
+      end
+      else
+      begin
+        AppendDiffSpan(NewSpans, BMid[J + 1], True);
+        if not InDiff then
+        begin
+          Inc(DiffCount);
+          InDiff := True;
+        end;
+        Inc(J);
+      end;
+    end;
+    if I < MM then
+    begin
+      AppendDiffSpan(OldSpans, Copy(AMid, I + 1, MM - I), True);
+      if not InDiff then
+      begin
+        Inc(DiffCount);
+        InDiff := True;
+      end;
+    end;
+    if J < NN then
+    begin
+      AppendDiffSpan(NewSpans, Copy(BMid, J + 1, NN - J), True);
+      if not InDiff then
+        Inc(DiffCount);
+    end;
+  end
+  else
+  begin
+    AppendDiffSpan(OldSpans, AMid, True);
+    AppendDiffSpan(NewSpans, BMid, True);
+    Inc(DiffCount);
+  end;
+
+  if SuffixLen > 0 then
+  begin
+    Suffix := Copy(A, LenA - SuffixLen + 1, SuffixLen);
+    AppendDiffSpan(OldSpans, Suffix, False);
+    AppendDiffSpan(NewSpans, Suffix, False);
+  end;
+end;
+
+procedure BuildVerseDiffSpans(const OldUtf8, NewUtf8: string;
+  out OldSpans, NewSpans: TDiffSpanArray; out DiffCount: Integer);
+var
+  NormOld, NormNew: string;
+  A, B, Prefix, Suffix, AMid, BMid, HunkA, HunkB: UnicodeString;
+  LenA, LenB, PrefixLen, SuffixLen, MaxFix, MM, NN, TA, TB, Stride, I, J: Integer;
+  TokA, TokB: TDiffTokenArray;
+  DP: array of Integer;
+begin
+  OldSpans := nil;
+  NewSpans := nil;
+  DiffCount := 0;
+
+  NormOld := StringReplace(OldUtf8, #13#10, #10, [rfReplaceAll]);
+  NormOld := StringReplace(NormOld, #13, #10, [rfReplaceAll]);
+  NormNew := StringReplace(NewUtf8, #13#10, #10, [rfReplaceAll]);
+  NormNew := StringReplace(NormNew, #13, #10, [rfReplaceAll]);
+
+  if NormOld <> NormNew then
+  begin
+    A := UTF8Decode(NormOld);
+    B := UTF8Decode(NormNew);
+  end
+  else if OldUtf8 <> NewUtf8 then
+  begin
+    A := UTF8Decode(StringReplace(OldUtf8, #13, '[CR]', [rfReplaceAll]));
+    B := UTF8Decode(StringReplace(NewUtf8, #13, '[CR]', [rfReplaceAll]));
+  end
+  else
+  begin
+    AppendDiffSpan(OldSpans, UTF8Decode(NormOld), False);
+    AppendDiffSpan(NewSpans, UTF8Decode(NormNew), False);
+    Exit;
+  end;
+
+  LenA := Length(A);
+  LenB := Length(B);
+  PrefixLen := 0;
+  MaxFix := Min(LenA, LenB);
+  while (PrefixLen < MaxFix) and (A[PrefixLen + 1] = B[PrefixLen + 1]) do
+    Inc(PrefixLen);
+  if PrefixLen > 0 then
+  begin
+    Prefix := Copy(A, 1, PrefixLen);
+    AppendDiffSpan(OldSpans, Prefix, False);
+    AppendDiffSpan(NewSpans, Prefix, False);
+  end;
+
+  SuffixLen := 0;
+  while (SuffixLen < LenA - PrefixLen) and
+        (SuffixLen < LenB - PrefixLen) and
+        (A[LenA - SuffixLen] = B[LenB - SuffixLen]) do
+    Inc(SuffixLen);
+
+  MM := LenA - PrefixLen - SuffixLen;
+  NN := LenB - PrefixLen - SuffixLen;
+  AMid := Copy(A, PrefixLen + 1, MM);
+  BMid := Copy(B, PrefixLen + 1, NN);
+
+  if (MM > 0) or (NN > 0) then
+  begin
+    TokA := SplitDiffTokens(AMid);
+    TokB := SplitDiffTokens(BMid);
+    TA := Length(TokA);
+    TB := Length(TokB);
+    if (TA > 0) and (TB > 0) and (Int64(TA) * Int64(TB) <= 250000) then
+    begin
+      DP := nil;
+      Stride := TB + 1;
+      SetLength(DP, (TA + 1) * Stride);
+      FillChar(DP[0], Length(DP) * SizeOf(Integer), 0);
+      for I := TA - 1 downto 0 do
+        for J := TB - 1 downto 0 do
+          if TokA[I] = TokB[J] then
+            DP[I * Stride + J] := DP[(I + 1) * Stride + (J + 1)] + 1
+          else if DP[(I + 1) * Stride + J] >= DP[I * Stride + (J + 1)] then
+            DP[I * Stride + J] := DP[(I + 1) * Stride + J]
+          else
+            DP[I * Stride + J] := DP[I * Stride + (J + 1)];
+
+      I := 0;
+      J := 0;
+      HunkA := '';
+      HunkB := '';
+      while (I < TA) and (J < TB) do
+      begin
+        if TokA[I] = TokB[J] then
+        begin
+          if (HunkA <> '') or (HunkB <> '') then
+          begin
+            DiffCharRange(HunkA, HunkB, OldSpans, NewSpans, DiffCount);
+            HunkA := '';
+            HunkB := '';
+          end;
+          AppendDiffSpan(OldSpans, TokA[I], False);
+          AppendDiffSpan(NewSpans, TokB[J], False);
+          Inc(I);
+          Inc(J);
+        end
+        else if DP[(I + 1) * Stride + J] >= DP[I * Stride + (J + 1)] then
+        begin
+          HunkA := HunkA + TokA[I];
+          Inc(I);
+        end
+        else
+        begin
+          HunkB := HunkB + TokB[J];
+          Inc(J);
+        end;
+      end;
+      while I < TA do
+      begin
+        HunkA := HunkA + TokA[I];
+        Inc(I);
+      end;
+      while J < TB do
+      begin
+        HunkB := HunkB + TokB[J];
+        Inc(J);
+      end;
+      if (HunkA <> '') or (HunkB <> '') then
+        DiffCharRange(HunkA, HunkB, OldSpans, NewSpans, DiffCount);
+    end
+    else
+      DiffCharRange(AMid, BMid, OldSpans, NewSpans, DiffCount);
+  end;
+
+  if SuffixLen > 0 then
+  begin
+    Suffix := Copy(A, LenA - SuffixLen + 1, SuffixLen);
+    AppendDiffSpan(OldSpans, Suffix, False);
+    AppendDiffSpan(NewSpans, Suffix, False);
+  end;
+end;
+
+{ ---------- TBookDiffMemo ---------- }
+
+constructor TBookDiffMemo.CreateForSide(AOwner: TComponent; ASide: TBookDiffSide);
+begin
+  inherited Create(AOwner);
+  FSide := ASide;
+  ReadOnly := True;
+  TabStop := True;
+  BorderStyle := bsNone;
+  ScrollBars := ssVertical;
+  ParentFont := False;
+  FBaseFontName := UIDefaultFontName;
+  FBaseFontSize := 10;
+  FLastTopPos := 0;
+  TextStyle.Font.Name := FBaseFontName;
+  TextStyle.Font.Size := FBaseFontSize;
+  OnMouseWheel := @HandleMouseWheel;
+  ApplySkinColors;
+end;
+
+procedure TBookDiffMemo.ApplySkinColors;
+begin
+  if CurrentSkin.Id = skClassic then
+  begin
+    Color := clWindow;
+    Background.Color := clWindow;
+    Colors.BkGnd := clWindow;
+    Colors.SelBkGnd := clHighlight;
+    Colors.SelText := clHighlightText;
+    Colors.SelBkGndFocused := clHighlight;
+    Colors.SelTextFocused := clHighlightText;
+    TextStyle.Font.Color := UITextColor;
+  end
+  else
+  begin
+    Color := CurrentSkin.WindowBg;
+    Background.Color := CurrentSkin.WindowBg;
+    Colors.BkGnd := CurrentSkin.WindowBg;
+    Colors.SelBkGnd := CurrentSkin.SelectedBg;
+    Colors.SelText := CurrentSkin.SelectedText;
+    Colors.SelBkGndFocused := CurrentSkin.SelectedBg;
+    Colors.SelTextFocused := CurrentSkin.SelectedText;
+    TextStyle.Font.Color := CurrentSkin.WindowText;
+  end;
+
+  if HandleAllocated then
+  begin
+    ApplyDarkModeToControl(Self, CurrentSkin.IsDark);
+    {$IFDEF WINDOWS}
+    HookNCScrollBarControl(Self);
+    {$ENDIF}
+  end;
+  if Length(FLastSpans) > 0 then
+    RenderSpans;
+end;
+
+procedure TBookDiffMemo.SetBaseFont(AFont: TFont);
+begin
+  if not Assigned(AFont) then
+    Exit;
+  if (Trim(AFont.Name) <> '') and not SameText(Trim(AFont.Name), 'default') then
+    FBaseFontName := AFont.Name
+  else
+    FBaseFontName := UIDefaultFontName;
+  if AFont.Size > 0 then
+    FBaseFontSize := AFont.Size
+  else
+    FBaseFontSize := 10;
+  TextStyle.Font.Name := FBaseFontName;
+  TextStyle.Font.Size := FBaseFontSize;
+end;
+
+procedure TBookDiffMemo.SetFontSizeSynced(NewSize: Integer);
+var
+  Clamped, SavedTop: Integer;
+begin
+  Clamped := Max(7, Min(28, NewSize));
+  if Clamped = FBaseFontSize then
+    Exit;
+  SavedTop := TopPos;
+  FBaseFontSize := Clamped;
+  TextStyle.Font.Size := FBaseFontSize;
+  RenderSpans;
+  TopPos := SavedTop;
+  FLastTopPos := TopPos;
+end;
+
+procedure TBookDiffMemo.RenderSpans;
+var
+  I, SegStart, PosBreak: Integer;
+  S, Seg: UnicodeString;
+  NormalFg, DiffFg, DiffBg: TColor;
+
+  procedure EmitSegment(const ASeg: UnicodeString; AChanged: Boolean);
+  var
+    TB: TKMemoTextBlock;
+  begin
+    if ASeg = '' then
+      Exit;
+    TB := Blocks.AddTextBlock(UTF8Encode(ASeg));
+    TB.TextStyle.Font.Name := FBaseFontName;
+    TB.TextStyle.Font.Size := FBaseFontSize;
+    if AChanged then
+    begin
+      TB.TextStyle.Font.Style := [fsBold];
+      TB.TextStyle.Font.Color := DiffFg;
+      TB.TextStyle.AllowBrush := True;
+      TB.TextStyle.Brush.Style := bsSolid;
+      TB.TextStyle.Brush.Color := DiffBg;
+    end
+    else
+    begin
+      TB.TextStyle.Font.Style := [];
+      TB.TextStyle.Font.Color := NormalFg;
+      TB.TextStyle.AllowBrush := False;
+      TB.TextStyle.Brush.Style := bsClear;
+    end;
+  end;
+
+begin
+  if CurrentSkin.Id = skClassic then
+    NormalFg := UITextColor
+  else
+    NormalFg := CurrentSkin.WindowText;
+
+  if CurrentSkin.IsDark then
+  begin
+    if FSide = bdsProject then
+    begin
+      DiffBg := MakeRGB(130, 36, 42);
+      DiffFg := MakeRGB(255, 224, 224);
+    end
+    else
+    begin
+      DiffBg := MakeRGB(28, 108, 58);
+      DiffFg := MakeRGB(220, 255, 228);
+    end;
+  end
+  else
+  begin
+    if FSide = bdsProject then
+    begin
+      DiffBg := MakeRGB(255, 205, 210);
+      DiffFg := MakeRGB(150, 16, 24);
+    end
+    else
+    begin
+      DiffBg := MakeRGB(200, 242, 208);
+      DiffFg := MakeRGB(16, 110, 42);
+    end;
+  end;
+
+  Blocks.LockUpdate;
+  try
+    Blocks.Clear;
+    Blocks.DefaultParaStyle.FirstIndent := 0;
+    Blocks.DefaultParaStyle.LeftPadding := 4;
+    Blocks.DefaultParaStyle.TopPadding := 2;
+    Blocks.DefaultParaStyle.BottomPadding := 2;
+    Blocks.DefaultParaStyle.HAlign := halLeft;
+
+    for I := 0 to High(FLastSpans) do
+    begin
+      S := FLastSpans[I].Text;
+      SegStart := 1;
+      while SegStart <= Length(S) do
+      begin
+        PosBreak := SegStart;
+        while (PosBreak <= Length(S)) and (S[PosBreak] <> #10) do
+          Inc(PosBreak);
+        Seg := Copy(S, SegStart, PosBreak - SegStart);
+        if Seg <> '' then
+          EmitSegment(Seg, FLastSpans[I].Changed);
+        if (PosBreak <= Length(S)) and (S[PosBreak] = #10) then
+        begin
+          if FLastSpans[I].Changed and (Seg = '') then
+            EmitSegment(' ', True);
+          Blocks.AddParagraph;
+          SegStart := PosBreak + 1;
+        end
+        else
+          Break;
+      end;
+    end;
+    Modified := False;
+  finally
+    Blocks.UnLockUpdate;
+    Invalidate;
+  end;
+end;
+
+procedure TBookDiffMemo.SetPlainText(const AText: string);
+var
+  Normalized: string;
+begin
+  if AText = '' then
+    FLastSpans := nil
+  else
+  begin
+    Normalized := StringReplace(AText, #13#10, #10, [rfReplaceAll]);
+    Normalized := StringReplace(Normalized, #13, #10, [rfReplaceAll]);
+    SetLength(FLastSpans, 1);
+    FLastSpans[0].Text := UTF8Decode(Normalized);
+    FLastSpans[0].Changed := False;
+  end;
+  RenderSpans;
+  TopPos := 0;
+  FLastTopPos := 0;
+end;
+
+procedure TBookDiffMemo.SetDiffSpans(const ASpans: TDiffSpanArray);
+begin
+  FLastSpans := Copy(ASpans, 0, Length(ASpans));
+  RenderSpans;
+  TopPos := 0;
+  FLastTopPos := 0;
+end;
+
+procedure TBookDiffMemo.NotifyScrollChanged;
+begin
+  if TopPos = FLastTopPos then
+    Exit;
+  FLastTopPos := TopPos;
+  {$IFDEF WINDOWS}
+  if HandleAllocated then
+    PaintThemedNCScrollBars(Handle);
+  {$ENDIF}
+  if Assigned(FOnScrollSync) then
+    FOnScrollSync(Self);
+end;
+
+procedure TBookDiffMemo.WndProc(var TheMessage: TLMessage);
+var
+  OldTop: Integer;
+begin
+  OldTop := TopPos;
+  inherited WndProc(TheMessage);
+  if TopPos <> OldTop then
+    NotifyScrollChanged;
+end;
+
+function TBookDiffMemo.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer;
+  MousePos: TPoint): Boolean;
+begin
+  Result := inherited DoMouseWheel(Shift, WheelDelta, MousePos);
+  if (not Result) and (WheelDelta <> 0) then
+  begin
+    HandleWheelInput(Shift, WheelDelta);
+    Result := True;
+  end;
+end;
+
+procedure TBookDiffMemo.HandleWheelInput(Shift: TShiftState;
+  WheelDelta: Integer);
+var
+  NewSize, Step: Integer;
+begin
+  if WheelDelta = 0 then
+    Exit;
+  if ssCtrl in Shift then
+  begin
+    if WheelDelta > 0 then
+      NewSize := Min(28, FBaseFontSize + 1)
+    else
+      NewSize := Max(7, FBaseFontSize - 1);
+    if Assigned(FOnZoomChanged) then
+      FOnZoomChanged(Self, NewSize)
+    else
+      SetFontSizeSynced(NewSize);
+    Exit;
+  end;
+
+  Step := Max(UIScale(Self, 24),
+    (Abs(WheelDelta) * UIScale(Self, 48) + 60) div 120);
+  if WheelDelta > 0 then
+    TopPos := Max(0, TopPos - Step)
+  else
+    TopPos := TopPos + Step;
+  NotifyScrollChanged;
+end;
+
+procedure TBookDiffMemo.HandleMouseWheel(Sender: TObject; Shift: TShiftState;
+  WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
+begin
+  if WheelDelta = 0 then
+    Exit;
+  HandleWheelInput(Shift, WheelDelta);
+  Handled := True;
+end;
+
+procedure TBookDiffMemo.SyncTopPosFromPeer(ATopPos: Integer);
+begin
+  TopPos := ATopPos;
+  FLastTopPos := TopPos;
+  {$IFDEF WINDOWS}
+  if HandleAllocated then
+    PaintThemedNCScrollBars(Handle);
+  {$ENDIF}
+end;
 
 function ScopeOfBook(BookID: Integer): TEscopoTexto;
 begin
@@ -296,6 +979,8 @@ begin
   FKind := AKind;
   FScope := AScope;
   FCurrentIndex := -1;
+  FCurrentDiffCount := 0;
+  FSyncingScroll := False;
   NewScope := etNone;
   Caption := ATitle;
   Width := 1000;
@@ -400,26 +1085,46 @@ begin
   FNewLabel.Caption := SBookImportInFile;
   FNewLabel.Font.Style := [fsBold];
 
-  FCurrentMemo := TMemo.Create(Self);
-  FCurrentMemo.Parent := Panes;
-  FCurrentMemo.ReadOnly := True;
-  FCurrentMemo.ScrollBars := ssAutoVertical;
-  FCurrentMemo.WordWrap := True;
-  FNewMemo := TMemo.Create(Self);
-  FNewMemo.Parent := Panes;
-  FNewMemo.ReadOnly := True;
-  FNewMemo.ScrollBars := ssAutoVertical;
-  FNewMemo.WordWrap := True;
+  FCurrentFrame := TPanel.Create(Self);
+  FCurrentFrame.Parent := Panes;
+  FCurrentFrame.BevelOuter := bvNone;
+  FCurrentFrame.BorderWidth := 1;
+  FCurrentFrame.ParentColor := False;
+
+  FNewFrame := TPanel.Create(Self);
+  FNewFrame.Parent := Panes;
+  FNewFrame.BevelOuter := bvNone;
+  FNewFrame.BorderWidth := 1;
+  FNewFrame.ParentColor := False;
+
+  FCurrentMemo := TBookDiffMemo.CreateForSide(Self, bdsProject);
+  FCurrentMemo.Parent := FCurrentFrame;
+  FCurrentMemo.Align := alClient;
+  FCurrentMemo.OnScrollSync := @SyncPreviewScroll;
+  FCurrentMemo.OnZoomChanged := @SyncPreviewZoom;
+
+  FNewMemo := TBookDiffMemo.CreateForSide(Self, bdsFile);
+  FNewMemo.Parent := FNewFrame;
+  FNewMemo.Align := alClient;
+  FNewMemo.OnScrollSync := @SyncPreviewScroll;
+  FNewMemo.OnZoomChanged := @SyncPreviewZoom;
+
   if Assigned(AFont) then
   begin
-    FCurrentMemo.Font.Assign(AFont);
-    FNewMemo.Font.Assign(AFont);
+    FCurrentMemo.SetBaseFont(AFont);
+    FNewMemo.SetBaseFont(AFont);
   end;
 
   FProjectTexts := TStringList.Create;
   FProjectValues := TStringList.Create;
   FBookNames := TStringList.Create;
+  OnShow := @FormShow;
+  OnMouseWheel := @FormMouseWheel;
   ApplyDialogStyle(Self);
+  FCurrentFrame.Color := UIBorderColor;
+  FNewFrame.Color := UIBorderColor;
+  FCurrentMemo.ApplySkinColors;
+  FNewMemo.ApplySkinColors;
 end;
 
 destructor TFrmBookImport.Destroy;
@@ -446,19 +1151,120 @@ begin
   FVerseLabel.SetBounds(0, UIScale(Self, 2), P.ClientWidth, RefH);
   FCurrentLabel.SetBounds(0, RefH + UIScale(Self, 4), W, LblH);
   FNewLabel.SetBounds(W + 10, RefH + UIScale(Self, 4), W, LblH);
-  FCurrentMemo.SetBounds(0, TopY, W, H);
-  FNewMemo.SetBounds(W + 10, TopY, W, H);
+  FCurrentFrame.SetBounds(0, TopY, W, H);
+  FNewFrame.SetBounds(W + 10, TopY, W, H);
 end;
 
-function TFrmBookImport.ProjectText(const Ref: string): string;
+procedure TFrmBookImport.FormShow(Sender: TObject);
+begin
+  if Assigned(FCurrentFrame) then
+    FCurrentFrame.Color := UIBorderColor;
+  if Assigned(FNewFrame) then
+    FNewFrame.Color := UIBorderColor;
+  if Assigned(FCurrentMemo) then
+    FCurrentMemo.ApplySkinColors;
+  if Assigned(FNewMemo) then
+    FNewMemo.ApplySkinColors;
+end;
+
+procedure TFrmBookImport.FormMouseWheel(Sender: TObject; Shift: TShiftState;
+  WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
+var
+  CurPos, LocalPos: TPoint;
+begin
+  if (WheelDelta = 0) or not Visible then
+    Exit;
+  CurPos := Point(0, 0);
+  GetCursorPos(CurPos);
+  if Assigned(FCurrentMemo) and FCurrentMemo.Visible then
+  begin
+    LocalPos := FCurrentMemo.ScreenToClient(CurPos);
+    if (LocalPos.X >= 0) and (LocalPos.Y >= 0) and
+       (LocalPos.X < FCurrentMemo.ClientWidth) and
+       (LocalPos.Y < FCurrentMemo.ClientHeight) then
+    begin
+      FCurrentMemo.HandleWheelInput(Shift, WheelDelta);
+      Handled := True;
+      Exit;
+    end;
+  end;
+  if Assigned(FNewMemo) and FNewMemo.Visible then
+  begin
+    LocalPos := FNewMemo.ScreenToClient(CurPos);
+    if (LocalPos.X >= 0) and (LocalPos.Y >= 0) and
+       (LocalPos.X < FNewMemo.ClientWidth) and
+       (LocalPos.Y < FNewMemo.ClientHeight) then
+    begin
+      FNewMemo.HandleWheelInput(Shift, WheelDelta);
+      Handled := True;
+      Exit;
+    end;
+  end;
+end;
+
+procedure TFrmBookImport.SyncPreviewScroll(Sender: TObject);
+var
+  Src, Dst: TBookDiffMemo;
+begin
+  if FSyncingScroll or not Assigned(FCurrentMemo) or not Assigned(FNewMemo) then
+    Exit;
+  if Sender = FCurrentMemo then
+  begin
+    Src := FCurrentMemo;
+    Dst := FNewMemo;
+  end
+  else if Sender = FNewMemo then
+  begin
+    Src := FNewMemo;
+    Dst := FCurrentMemo;
+  end
+  else
+    Exit;
+  FSyncingScroll := True;
+  try
+    Dst.SyncTopPosFromPeer(Src.TopPos);
+  finally
+    FSyncingScroll := False;
+  end;
+end;
+
+procedure TFrmBookImport.SyncPreviewZoom(Sender: TObject; NewSize: Integer);
+var
+  Src, Dst: TBookDiffMemo;
+begin
+  if FSyncingScroll or not Assigned(FCurrentMemo) or not Assigned(FNewMemo) then
+    Exit;
+  if Sender = FCurrentMemo then
+  begin
+    Src := FCurrentMemo;
+    Dst := FNewMemo;
+  end
+  else
+  begin
+    Src := FNewMemo;
+    Dst := FCurrentMemo;
+  end;
+  FSyncingScroll := True;
+  try
+    FCurrentMemo.SetFontSizeSynced(NewSize);
+    FNewMemo.SetFontSizeSynced(NewSize);
+    Dst.SyncTopPosFromPeer(Src.TopPos);
+  finally
+    FSyncingScroll := False;
+  end;
+end;
+
+function TFrmBookImport.HasProjectText(const Ref: string;
+  out AText: string): Boolean;
 var
   Index: Integer;
 begin
   Index := FProjectTexts.IndexOf(Ref);
-  if Index < 0 then
-    Result := SBookImportNotInProject
+  Result := Index >= 0;
+  if Result then
+    AText := FProjectValues[PtrInt(FProjectTexts.Objects[Index])]
   else
-    Result := FProjectValues[PtrInt(FProjectTexts.Objects[Index])];
+    AText := '';
 end;
 
 function TFrmBookImport.FormatEntryReference(Index: Integer): string;
@@ -478,7 +1284,7 @@ end;
 
 procedure TFrmBookImport.UpdatePreviewHeader;
 var
-  RefStr: string;
+  RefStr, HeaderText: string;
 begin
   if (FCurrentIndex < 0) or (FCurrentIndex > High(FEntries)) then
   begin
@@ -487,17 +1293,28 @@ begin
   end;
   RefStr := FormatEntryReference(FCurrentIndex);
   if FTree.IsVerseChecked(FCurrentIndex) then
-    FVerseLabel.Caption := Format(SBookImportPreviewVerse, [RefStr])
+    HeaderText := Format(SBookImportPreviewVerse, [RefStr])
   else
-    FVerseLabel.Caption := Format(SBookImportPreviewVerseUnchecked, [RefStr]);
+    HeaderText := Format(SBookImportPreviewVerseUnchecked, [RefStr]);
+  if FCurrentDiffCount = 1 then
+    HeaderText := Format(SBookImportDiffOne, [HeaderText])
+  else if FCurrentDiffCount > 1 then
+    HeaderText := Format(SBookImportDiffMany, [HeaderText, FCurrentDiffCount]);
+  FVerseLabel.Caption := HeaderText;
 end;
 
 procedure TFrmBookImport.ClearPreview;
 begin
   FCurrentIndex := -1;
+  FCurrentDiffCount := 0;
   FVerseLabel.Caption := SBookImportPreviewNone;
-  FCurrentMemo.Text := '';
-  FNewMemo.Text := '';
+  FSyncingScroll := True;
+  try
+    FCurrentMemo.SetPlainText('');
+    FNewMemo.SetPlainText('');
+  finally
+    FSyncingScroll := False;
+  end;
 end;
 
 procedure TFrmBookImport.SelectAllClick(Sender: TObject);
@@ -548,14 +1365,38 @@ begin
 end;
 
 procedure TFrmBookImport.VerseChanged(Index: Integer);
+var
+  ProjText: string;
+  OldSpans, NewSpans: TDiffSpanArray;
 begin
   if (Index < 0) or (Index > High(FEntries)) then
     Exit;
   if Index <> FCurrentIndex then
   begin
     FCurrentIndex := Index;
-    FCurrentMemo.Text := ProjectText(FEntries[Index].Ref);
-    FNewMemo.Text := FEntries[Index].Text;
+    if HasProjectText(FEntries[Index].Ref, ProjText) then
+    begin
+      BuildVerseDiffSpans(ProjText, FEntries[Index].Text,
+        OldSpans, NewSpans, FCurrentDiffCount);
+      FSyncingScroll := True;
+      try
+        FCurrentMemo.SetDiffSpans(OldSpans);
+        FNewMemo.SetDiffSpans(NewSpans);
+      finally
+        FSyncingScroll := False;
+      end;
+    end
+    else
+    begin
+      FCurrentDiffCount := 0;
+      FSyncingScroll := True;
+      try
+        FCurrentMemo.SetPlainText(SBookImportNotInProject);
+        FNewMemo.SetPlainText(FEntries[Index].Text);
+      finally
+        FSyncingScroll := False;
+      end;
+    end;
   end;
   UpdatePreviewHeader;
 end;
