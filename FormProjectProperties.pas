@@ -358,7 +358,7 @@ implementation
 uses
   bible_archive,
   FormLlmOptions, formPrincipal, module_conversion, project_book_import,
-  FormBookImport, project_backup, project_backup_ui;
+  FormBookImport, project_backup, project_backup_ui, project_change_log;
 
 { TFrmProjectProperties }
 
@@ -2193,6 +2193,43 @@ var
   ImportSucceeded: Boolean;
   HasTextImport: Boolean;
   ReplaceAssociations: Boolean;
+  OldProjectName: string;
+  OldSuggestionMode: TSuggestionMode;
+  OldAutomaticSuggestion: Boolean;
+  OldDefaultVerseMode: TDefaultVerseMode;
+  SettingsChanges: TStringList;
+
+  function TextScopeLabel(ATextType: TTipoTextoBiblico): string;
+  begin
+    case ATextType of
+      tbOrigem: Result := 'Source';
+      tbDestino: Result := 'Destination';
+      tbConsulta1: Result := 'Reference 1';
+      tbConsulta2: Result := 'Reference 2';
+    else
+      Result := 'Text';
+    end;
+  end;
+
+  procedure AddSettingChange(const Item: string);
+  begin
+    if (Item <> '') and (SettingsChanges.IndexOf(Item) < 0) then
+      SettingsChanges.Add(Item);
+  end;
+
+  function JoinSettingChanges: string;
+  var
+    Idx: Integer;
+  begin
+    Result := '';
+    for Idx := 0 to SettingsChanges.Count - 1 do
+    begin
+      if Idx > 0 then
+        Result := Result + ', ';
+      Result := Result + SettingsChanges[Idx];
+    end;
+  end;
+
 begin
   if not Assigned(AProgressOwner) then
     AProgressOwner := Application.MainForm;
@@ -2248,160 +2285,227 @@ begin
       FPendingBookRequests := nil;
     end;
 
-    FProject.SetInfo('descricao', EditProjectName.Text);
+    SettingsChanges := TStringList.Create;
+    try
+      OldProjectName := FProject.GetInfo('descricao');
+      OldSuggestionMode := FProject.SuggestionMode;
+      OldAutomaticSuggestion := FProject.AutomaticAssociationSuggestion;
+      OldDefaultVerseMode := FProject.DefaultVerseMode;
 
-    CurrentVersion := FProject.TokenizerVersion;
-    SelectedVersion := GetSelectedTokenizerVersion;
+      if Trim(OldProjectName) <> Trim(EditProjectName.Text) then
+        AddSettingChange('Project name (' + Trim(EditProjectName.Text) + ')');
+      FProject.SetInfo('descricao', EditProjectName.Text);
 
-    if SelectedVersion <> CurrentVersion then
-    begin
-      HasAssociations := FProject.HasStoredAssociations;
-      TokenizerChangeAction := tvcaChangeAnyway;
-      if HasAssociations then
-        TokenizerChangeAction := ConfirmTokenizerVersionChange;
+      CurrentVersion := FProject.TokenizerVersion;
+      SelectedVersion := GetSelectedTokenizerVersion;
 
-      case TokenizerChangeAction of
-          tvcaKeepCurrentVersion:
-            SelectedVersion := CurrentVersion;
-          tvcaClearAssociations:
-            begin
-              VersionChangeDetail := Format(STokenizerVersionChangeDetail, [
-                TTokenizerFactory.GetVersionCaption(CurrentVersion),
-                TTokenizerFactory.GetVersionCaption(SelectedVersion)
-              ]);
-              FormPleaseWait.BeginOperation(AProgressOwner, STokenizerVersionChangeTitle,
-                SClearingTokenizerAssociationsProgress, 0,
-                VersionChangeDetail);
-              try
-                FProject.ClearStoredAssociations(FormPleaseWait.ProgressBar1);
-                FormPleaseWait.SetMessage(SChangingTokenizerVersionProgress);
-                FProject.ChangeTokenizerVersion(SelectedVersion,
-                  FormPleaseWait.ProgressBar1, False);
-              finally
-                FormPleaseWait.FinishOperation;
-              end;
-            end;
-        end;
-
-      if (SelectedVersion <> CurrentVersion) and
-        (TokenizerChangeAction <> tvcaClearAssociations) then
+      if SelectedVersion <> CurrentVersion then
       begin
-        VersionChangeDetail := Format(STokenizerVersionChangeDetail, [
-          TTokenizerFactory.GetVersionCaption(CurrentVersion),
-          TTokenizerFactory.GetVersionCaption(SelectedVersion)
-        ]);
+        HasAssociations := FProject.HasStoredAssociations;
+        TokenizerChangeAction := tvcaChangeAnyway;
         if HasAssociations then
-          FormPleaseWait.BeginOperation(AProgressOwner, STokenizerVersionChangeTitle,
-            SMigratingTokenizerAssociationsProgress, 0, VersionChangeDetail)
-        else
-          FormPleaseWait.BeginOperation(AProgressOwner, STokenizerVersionChangeTitle,
-            SChangingTokenizerVersionProgress, 0, VersionChangeDetail);
+          TokenizerChangeAction := ConfirmTokenizerVersionChange;
+
+        FProject.BeginChangeLogBatch;
         try
-          FProject.ChangeTokenizerVersion(SelectedVersion,
-            FormPleaseWait.ProgressBar1, HasAssociations);
-        finally
-          FormPleaseWait.FinishOperation;
-        end;
-      end;
-    end;
+          case TokenizerChangeAction of
+              tvcaKeepCurrentVersion:
+                SelectedVersion := CurrentVersion;
+              tvcaClearAssociations:
+                begin
+                  VersionChangeDetail := Format(STokenizerVersionChangeDetail, [
+                    TTokenizerFactory.GetVersionCaption(CurrentVersion),
+                    TTokenizerFactory.GetVersionCaption(SelectedVersion)
+                  ]);
+                  FormPleaseWait.BeginOperation(AProgressOwner, STokenizerVersionChangeTitle,
+                    SClearingTokenizerAssociationsProgress, 0,
+                    VersionChangeDetail);
+                  try
+                    FProject.ClearStoredAssociations(FormPleaseWait.ProgressBar1);
+                    FormPleaseWait.SetMessage(SChangingTokenizerVersionProgress);
+                    FProject.ChangeTokenizerVersion(SelectedVersion,
+                      FormPleaseWait.ProgressBar1, False);
+                    AddSettingChange('Tokenizer version -> ' +
+                      TTokenizerFactory.GetVersionCaption(SelectedVersion) +
+                      ' (cleared associations)');
+                  finally
+                    FormPleaseWait.FinishOperation;
+                  end;
+                end;
+            end;
 
-    if FStatusCatalogChanged then
-    begin
-      for RemapIndex := 0 to High(FStatusRemaps) do
-        FProject.RemapStatus(FStatusRemaps[RemapIndex].OldStatusId,
-          FStatusRemaps[RemapIndex].NewStatusId);
-      FProject.SetStatusDefinitions(FStatusDefinitions);
-    end;
-
-    FProject.SuggestionMode := FPendingSuggestionMode;
-    FProject.AutomaticAssociationSuggestion :=
-      FPendingAutomaticSuggestion;
-    FProject.DefaultVerseMode := FPendingDefaultVerseMode;
-
-    for TextType := tbOrigem to tbConsulta2 do
-    begin
-      case FPendingTextActions[TextType] of
-        ptaLoad:
+          if (SelectedVersion <> CurrentVersion) and
+            (TokenizerChangeAction <> tvcaClearAssociations) then
           begin
-            FormPleaseWait.BeginOperation(AProgressOwner, STextImportTitle,
-              STextImportProgress, 1, FPendingTextFiles[TextType]);
+            VersionChangeDetail := Format(STokenizerVersionChangeDetail, [
+              TTokenizerFactory.GetVersionCaption(CurrentVersion),
+              TTokenizerFactory.GetVersionCaption(SelectedVersion)
+            ]);
+            if HasAssociations then
+              FormPleaseWait.BeginOperation(AProgressOwner, STokenizerVersionChangeTitle,
+                SMigratingTokenizerAssociationsProgress, 0, VersionChangeDetail)
+            else
+              FormPleaseWait.BeginOperation(AProgressOwner, STokenizerVersionChangeTitle,
+                SChangingTokenizerVersionProgress, 0, VersionChangeDetail);
             try
-              ReplaceAssociations := FPendingTextReplace[TextType] and
-                TextTypeParticipatesInAssociations(TextType);
-              ImportSucceeded := FProject.ImportTheWordModule(
-                FPendingTextFiles[TextType], TextType,
-                FormPleaseWait.ProgressBar1,
-                ReplaceAssociations, ImportResult, True);
+              FProject.ChangeTokenizerVersion(SelectedVersion,
+                FormPleaseWait.ProgressBar1, HasAssociations);
+              AddSettingChange('Tokenizer version -> ' +
+                TTokenizerFactory.GetVersionCaption(SelectedVersion));
             finally
               FormPleaseWait.FinishOperation;
             end;
-
-            if not ImportSucceeded then
-            begin
-              MessageText := Trim(ImportResult.ErrorMessage);
-              if MessageText = '' then
-                if ImportResult.Status = twmisCancelled then
-                  MessageText := Format(STextImportCancelledFmt,
-                    [FPendingTextFiles[TextType]])
-                else
-                  MessageText := Format(STextImportFailedFmt,
-                    [FPendingTextFiles[TextType]]);
-              MessageText := MessageText + LineEnding + LineEnding +
-                STextImportPartialChanges;
-
-              { A previous text or another property may already have been
-                committed. Reload the current Verse and reset the pending UI
-                before reporting the partial result. }
-              FProject.RefreshUI;
-              InitializePendingState;
-              ActionChangeTabExecute(nil);
-              UpdateReview;
-              if ImportResult.Status = twmisCancelled then
-                MessageDlg(STextImportTitle, MessageText, mtInformation,
-                  [mbOK], 0)
-              else
-                MessageDlg(STextImportTitle, MessageText, mtError, [mbOK], 0);
-              Exit;
-            end;
           end;
-        ptaClear:
-          FProject.ClearText(TextType);
+        finally
+          FProject.EndChangeLogBatch;
+        end;
       end;
 
-      if FPendingDescriptionChanged[TextType] then
-        FProject.SetTextShortTitle(TextType, FPendingDescriptions[TextType]);
+      if FStatusCatalogChanged then
+      begin
+        AddSettingChange('Status catalog');
+        for RemapIndex := 0 to High(FStatusRemaps) do
+          FProject.RemapStatus(FStatusRemaps[RemapIndex].OldStatusId,
+            FStatusRemaps[RemapIndex].NewStatusId);
+        FProject.SetStatusDefinitions(FStatusDefinitions);
+      end;
 
-      if FPendingFontChanged[TextType] then
-        FProject.AssignTextFont(FPendingFonts[TextType], [TextType]);
+      if OldSuggestionMode <> FPendingSuggestionMode then
+        AddSettingChange('Suggestion mode -> ' +
+          SuggestionModeCaption(FPendingSuggestionMode));
+      if OldAutomaticSuggestion <> FPendingAutomaticSuggestion then
+        AddSettingChange('Automatic suggestions -> ' +
+          EnabledStateCaption(FPendingAutomaticSuggestion));
+      if OldDefaultVerseMode <> FPendingDefaultVerseMode then
+        AddSettingChange('Default verse mode -> ' +
+          DefaultVerseModeCaption(FPendingDefaultVerseMode));
 
-      if FPendingStrongDictionaryChanged[TextType] then
-        FProject.AssignStrongDictionary(FPendingStrongDictionaries[TextType],
-          [TextType]);
+      FProject.SuggestionMode := FPendingSuggestionMode;
+      FProject.AutomaticAssociationSuggestion :=
+        FPendingAutomaticSuggestion;
+      FProject.DefaultVerseMode := FPendingDefaultVerseMode;
 
-      if FPendingMorphologyDictionaryChanged[TextType] then
-        FProject.AssignMorphologyDictionary(
-          FPendingMorphologyDictionaries[TextType], [TextType]);
+      for TextType := tbOrigem to tbConsulta2 do
+      begin
+        case FPendingTextActions[TextType] of
+          ptaLoad:
+            begin
+              FormPleaseWait.BeginOperation(AProgressOwner, STextImportTitle,
+                STextImportProgress, 1, FPendingTextFiles[TextType]);
+              FProject.BeginChangeLogBatch;
+              try
+                ReplaceAssociations := FPendingTextReplace[TextType] and
+                  TextTypeParticipatesInAssociations(TextType);
+                ImportSucceeded := FProject.ImportTheWordModule(
+                  FPendingTextFiles[TextType], TextType,
+                  FormPleaseWait.ProgressBar1,
+                  ReplaceAssociations, ImportResult, True);
+              finally
+                FProject.EndChangeLogBatch;
+                FormPleaseWait.FinishOperation;
+              end;
+
+              if ImportSucceeded then
+                FProject.LogProjectChange(
+                  'Import',
+                  Format('Imported %s text from %s', [
+                    TextScopeLabel(TextType),
+                    ExtractFileName(FPendingTextFiles[TextType])
+                  ]),
+                  Format('Source file: %s' + LineEnding + 'Keep associations: %s', [
+                    FPendingTextFiles[TextType],
+                    BoolToStr(ReplaceAssociations, True)
+                  ]));
+
+              if not ImportSucceeded then
+              begin
+                MessageText := Trim(ImportResult.ErrorMessage);
+                if MessageText = '' then
+                  if ImportResult.Status = twmisCancelled then
+                    MessageText := Format(STextImportCancelledFmt,
+                      [FPendingTextFiles[TextType]])
+                  else
+                    MessageText := Format(STextImportFailedFmt,
+                      [FPendingTextFiles[TextType]]);
+                MessageText := MessageText + LineEnding + LineEnding +
+                  STextImportPartialChanges;
+
+                { A previous text or another property may already have been
+                  committed. Reload the current Verse and reset the pending UI
+                  before reporting the partial result. }
+                FProject.RefreshUI;
+                InitializePendingState;
+                ActionChangeTabExecute(nil);
+                UpdateReview;
+                if ImportResult.Status = twmisCancelled then
+                  MessageDlg(STextImportTitle, MessageText, mtInformation,
+                    [mbOK], 0)
+                else
+                  MessageDlg(STextImportTitle, MessageText, mtError, [mbOK], 0);
+                Exit;
+              end;
+            end;
+          ptaClear:
+            FProject.ClearText(TextType);
+        end;
+
+        if FPendingDescriptionChanged[TextType] then
+        begin
+          AddSettingChange(TextScopeLabel(TextType) + ' short title');
+          FProject.SetTextShortTitle(TextType, FPendingDescriptions[TextType]);
+        end;
+
+        if FPendingFontChanged[TextType] then
+        begin
+          AddSettingChange(TextScopeLabel(TextType) + ' font');
+          FProject.AssignTextFont(FPendingFonts[TextType], [TextType]);
+        end;
+
+        if FPendingStrongDictionaryChanged[TextType] then
+        begin
+          AddSettingChange(TextScopeLabel(TextType) + ' Strong''s dictionary');
+          FProject.AssignStrongDictionary(FPendingStrongDictionaries[TextType],
+            [TextType]);
+        end;
+
+        if FPendingMorphologyDictionaryChanged[TextType] then
+        begin
+          AddSettingChange(TextScopeLabel(TextType) + ' morphology dictionary');
+          FProject.AssignMorphologyDictionary(
+            FPendingMorphologyDictionaries[TextType], [TextType]);
+        end;
+      end;
+
+      if FPendingDefaultDictionariesChanged then
+        AddSettingChange('Default dictionaries');
+
+      if Assigned(opts) then
+        WriteDefaultDictionarySettings(opts, FPendingDefaultDictionaries);
+      ApplyDefaultDictionarySettings(FPendingDefaultDictionaries);
+      FProject.SetInfo('dicionarios.configured', '1');
+      FProject.SetInfo('dicionarios.use_default',
+        IfThen(FPendingDefaultDictionaries.Enabled, '1', '0'));
+      FProject.SetInfo('dicionarios.default_strong_greek',
+        FPendingDefaultDictionaries.GreekStrong);
+      FProject.SetInfo('dicionarios.default_strong_hebrew',
+        FPendingDefaultDictionaries.HebrewStrong);
+      FProject.SetInfo('dicionarios.default_morphology',
+        FPendingDefaultDictionaries.Morphology);
+      FProject.SetInfo('dicionarios.default_english_dict',
+        FPendingDefaultDictionaries.Word);
+
+      FProject.RefreshUI;
+      InitializePendingState;
+      ActionChangeTabExecute(nil);
+      UpdateReview;
+    finally
+      if SettingsChanges.Count > 0 then
+        FProject.LogProjectChange(
+          'Settings',
+          'Updated project settings: ' + JoinSettingChanges,
+          TrimRight(SettingsChanges.Text));
+      SettingsChanges.Free;
     end;
-
-    if Assigned(opts) then
-      WriteDefaultDictionarySettings(opts, FPendingDefaultDictionaries);
-    ApplyDefaultDictionarySettings(FPendingDefaultDictionaries);
-    FProject.SetInfo('dicionarios.configured', '1');
-    FProject.SetInfo('dicionarios.use_default',
-      IfThen(FPendingDefaultDictionaries.Enabled, '1', '0'));
-    FProject.SetInfo('dicionarios.default_strong_greek',
-      FPendingDefaultDictionaries.GreekStrong);
-    FProject.SetInfo('dicionarios.default_strong_hebrew',
-      FPendingDefaultDictionaries.HebrewStrong);
-    FProject.SetInfo('dicionarios.default_morphology',
-      FPendingDefaultDictionaries.Morphology);
-    FProject.SetInfo('dicionarios.default_english_dict',
-      FPendingDefaultDictionaries.Word);
-
-    FProject.RefreshUI;
-    InitializePendingState;
-    ActionChangeTabExecute(nil);
-    UpdateReview;
   end;
 end;
 

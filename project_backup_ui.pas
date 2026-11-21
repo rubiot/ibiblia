@@ -72,7 +72,8 @@ resourcestring
 implementation
 
 uses
-  Graphics, ComCtrls, StdCtrls, ExtCtrls, ui_style, unitskins, formPrincipal, project_backup;
+  Graphics, ComCtrls, StdCtrls, ExtCtrls, ui_style, unitskins, formPrincipal,
+  project_backup, project_change_log;
 
 const
   BACKUP_SECTION = 'backup';
@@ -134,6 +135,7 @@ function BackUpProject(AProject: TProject; const Note: string;
   Automatic, Quiet: Boolean; out BackupFile: string): Boolean;
 var
   Folder: string;
+  LogSummary: string;
 begin
   Result := False;
   BackupFile := '';
@@ -149,6 +151,14 @@ begin
     try
       BackupFile := CreateProjectBackup(AProject.FileName, Folder, Note, Automatic);
       Result := True;
+      if Automatic then
+        LogSummary := 'Created automatic backup'
+      else
+        LogSummary := 'Created manual backup';
+      if Trim(Note) <> '' then
+        LogSummary := LogSummary + ': ' + Trim(Note);
+      RecordProjectChange(AProject.FileName, 'Backup', LogSummary,
+        'Backup file: ' + BackupFile);
     except
       on E: Exception do
       begin

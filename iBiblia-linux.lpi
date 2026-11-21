@@ -22,7 +22,7 @@
       <UseVersionInfo Value="True"/>
       <MajorVersionNr Value="1"/>
       <MinorVersionNr Value="1"/>
-      <BuildNr Value="77"/>
+      <BuildNr Value="78"/>
       <StringTable CompanyName="Rúbio R. C. Terra (rubio.terra@gmail.com)" FileDescription="Ferramenta para associação de textos bíblicos" ProductName="iBiblia" ProductVersion="1.1.0.021"/>
     </VersionInfo>
     <BuildModes Count="6" Active="Debug">
@@ -222,7 +222,7 @@
         <PackageName Value="SynEdit"/>
       </Item5>
     </RequiredPackages>
-    <Units Count="97">
+    <Units Count="101">
       <Unit0>
         <Filename Value="iBiblia.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -1013,6 +1013,26 @@
         <IsPartOfProject Value="True"/>
         <UsageCount Value="20"/>
       </Unit96>
+      <Unit97>
+        <Filename Value="project_change_log.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="20"/>
+      </Unit97>
+      <Unit98>
+        <Filename Value="project_change_log_ui.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="20"/>
+      </Unit98>
+      <Unit99>
+        <Filename Value="crash_tracker.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="20"/>
+      </Unit99>
+      <Unit100>
+        <Filename Value="crash_tracker_ui.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="20"/>
+      </Unit100>
     </Units>
     <JumpHistory Count="30" HistoryIndex="29">
       <Position1>

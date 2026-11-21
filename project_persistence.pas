@@ -89,6 +89,7 @@ type
     procedure FinishCredentialCleanup; virtual;
     procedure Commit;
     procedure Rollback;
+    procedure DescribePendingChanges(out Summary, Details: string);
     property PairsTable: TSqlite3Dataset read FPairsTable;
     property InfoTable: TSqlite3Dataset read FInfoTable;
     property FileName: string read FFileName;
@@ -100,7 +101,8 @@ type
 implementation
 
 uses
-  performance_debug, ai_credential_store, sqlite3dyn, sqlite_database_copy;
+  performance_debug, ai_credential_store, sqlite3dyn, sqlite_database_copy,
+  project_change_log;
 
 procedure RequireNonSecretInfo(const Key: string);
 begin
@@ -1180,6 +1182,136 @@ begin
     FInfoTableNeedsRefresh := False;
   finally
     Connection.Free;
+  end;
+end;
+
+procedure TProjectPersistence.DescribePendingChanges(out Summary, Details: string);
+var
+  VerseIds: TStringList;
+  VerseFields: TStringList;
+  InfoLabels: TStringList;
+  DetailLines: TStringList;
+  I, SepPos, VerseIdx, LimitCount: Integer;
+  Key, PareId, FieldName, FriendlyField, ExistingFields, RefPreview,
+  InfoLabel, VersePart, InfoPart: string;
+begin
+  Summary := '';
+  Details := '';
+  VerseIds := TStringList.Create;
+  VerseFields := TStringList.Create;
+  InfoLabels := TStringList.Create;
+  DetailLines := TStringList.Create;
+  try
+    for I := 0 to FPairOriginalValues.Count - 1 do
+    begin
+      Key := FPairOriginalValues.Names[I];
+      SepPos := Pos(#1, Key);
+      if SepPos <= 0 then
+        Continue;
+      PareId := Copy(Key, 1, SepPos - 1);
+      FieldName := Copy(Key, SepPos + 1, MaxInt);
+      FriendlyField := FriendlyPairFieldName(FieldName);
+
+      VerseIdx := VerseIds.IndexOf(PareId);
+      if VerseIdx < 0 then
+      begin
+        VerseIds.Add(PareId);
+        VerseFields.Add(FriendlyField);
+      end
+      else
+      begin
+        ExistingFields := VerseFields[VerseIdx];
+        if Pos(FriendlyField, ExistingFields) = 0 then
+          VerseFields[VerseIdx] := ExistingFields + ', ' + FriendlyField;
+      end;
+    end;
+
+    for I := 0 to FStagedInfo.Count - 1 do
+    begin
+      InfoLabel := FriendlyProjectInfoName(FStagedInfo.Names[I]);
+      if (InfoLabel <> '') and (InfoLabels.IndexOf(InfoLabel) < 0) then
+        InfoLabels.Add(InfoLabel);
+    end;
+
+    if (VerseIds.Count = 0) and (InfoLabels.Count = 0) then
+      Exit;
+
+    VersePart := '';
+    if VerseIds.Count = 1 then
+      VersePart := Format('Saved %s (%s)', [
+        FormatReadableVerseRef(VerseIds[0]),
+        VerseFields[0]
+      ])
+    else if VerseIds.Count > 1 then
+    begin
+      RefPreview := '';
+      LimitCount := VerseIds.Count;
+      if LimitCount > 3 then
+        LimitCount := 3;
+      for I := 0 to LimitCount - 1 do
+      begin
+        if I > 0 then
+          RefPreview := RefPreview + ', ';
+        RefPreview := RefPreview + FormatReadableVerseRef(VerseIds[I]);
+      end;
+      if VerseIds.Count > 3 then
+        RefPreview := RefPreview + Format(' and %d more', [VerseIds.Count - 3]);
+      VersePart := Format('Saved %d verses (%s)', [VerseIds.Count, RefPreview]);
+    end;
+
+    InfoPart := '';
+    if InfoLabels.Count > 0 then
+    begin
+      RefPreview := '';
+      for I := 0 to InfoLabels.Count - 1 do
+      begin
+        if I > 0 then
+          RefPreview := RefPreview + ', ';
+        RefPreview := RefPreview + InfoLabels[I];
+      end;
+      if VerseIds.Count = 0 then
+        InfoPart := 'Updated ' + RefPreview
+      else
+        InfoPart := 'settings: ' + RefPreview;
+    end;
+
+    if (VersePart <> '') and (InfoPart <> '') then
+      Summary := VersePart + '; ' + InfoPart
+    else if VersePart <> '' then
+      Summary := VersePart
+    else
+      Summary := InfoPart;
+
+    if VerseIds.Count > 0 then
+    begin
+      DetailLines.Add(Format('Verses modified (%d):', [VerseIds.Count]));
+      LimitCount := VerseIds.Count;
+      if LimitCount > 100 then
+        LimitCount := 100;
+      for I := 0 to LimitCount - 1 do
+        DetailLines.Add(Format('  - %s: %s', [
+          FormatReadableVerseRef(VerseIds[I]),
+          VerseFields[I]
+        ]));
+      if VerseIds.Count > 100 then
+        DetailLines.Add(Format('  ... and %d more verse(s)', [VerseIds.Count - 100]));
+    end;
+
+    if InfoLabels.Count > 0 then
+    begin
+      if DetailLines.Count > 0 then
+        DetailLines.Add('');
+      DetailLines.Add('Project settings modified:');
+      for I := 0 to InfoLabels.Count - 1 do
+        DetailLines.Add('  - ' + InfoLabels[I]);
+    end;
+
+    Details := TrimRight(DetailLines.Text);
+  finally
+    DetailLines.Free;
+    InfoLabels.Free;
+    VerseFields.Free;
+    VerseIds.Free;
   end;
 end;
 

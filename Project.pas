@@ -248,6 +248,7 @@ type
     FDefaultVerseModeTransitionSourceReference: string;
     FDefaultVerseModeTransitionTargetReference: string;
     FSaveProjectObserverSuppressionDepth: Integer;
+    FChangeLogSuppressDepth: Integer;
     FLastLoadedReferenceID: string;
     FVerseLoadGeneration: QWord;
     FLastAutomaticSuggestionGeneration: QWord;
@@ -450,6 +451,10 @@ type
     procedure RequestDefaultVerseModeForCurrentVerse;
     procedure Commit;
     procedure Rollback;
+    procedure BeginChangeLogBatch;
+    procedure EndChangeLogBatch;
+    procedure LogProjectChange(const Category, Summary: string;
+      const Details: string = '');
     procedure GoToReference(reference: string);
     procedure GoToReference(reference: TReference);
     procedure NavigateToReference(reference: string);
@@ -866,7 +871,7 @@ implementation
 uses FormDictionaryPopup, FormVerseRules, formaiprocessing,
   apocrypha_books, theword_module_encoding, performance_debug, status_visuals, ui_style,
   project_save_staging, project_save_snapshot, sqlite_database_copy,
-  unittexttospeech;
+  unittexttospeech, project_change_log;
 
 type
   { Executes only the blocking network request outside the LCL thread. Verse
@@ -2006,20 +2011,27 @@ begin
 
   FAssociationMemory.MarkSourceDirty;
   FAssociationMemory.InvalidateReplay;
+  BeginChangeLogBatch;
   try
-    StartScrollingSession;
-    Result := FPatchApplier.ApplyPatch(patch, SelectionMode, selectedIndexes,
-      @ConfirmMissingPatchReference);
+    try
+      StartScrollingSession;
+      Result := FPatchApplier.ApplyPatch(patch, SelectionMode, selectedIndexes,
+        @ConfirmMissingPatchReference);
+    finally
+      FinishScrollingSession;
+    end;
+
+    RebuildAssociationMemory(nil);
+
+    oldAutoSaveValue := FAutoSave;
+    FAutoSave := false;
+    RefreshUI;
+    FAutoSave := oldAutoSaveValue;
   finally
-    FinishScrollingSession;
+    EndChangeLogBatch;
   end;
-
-  RebuildAssociationMemory(nil);
-
-  oldAutoSaveValue := FAutoSave;
-  FAutoSave := false;
-  RefreshUI;
-  FAutoSave := oldAutoSaveValue;
+  if (Result > 0) and (FChangeLogSuppressDepth = 0) then
+    LogProjectChange('Patch', Format('Applied patch (%d verse(s) updated)', [Result]));
 end;
 
 function TProject.ApplyAcceptedBatch(Batch, OriginalData: TAIProcessingBatch;
@@ -2034,12 +2046,16 @@ begin
 
   Patch := Batch.CreatePatch(OriginalData, SelectedIndexes, Result);
   Patch.StatusCatalog := SaveStatusDefinitions(GetStatusDefinitions);
+  BeginChangeLogBatch;
   try
     if Result > 0 then
       Result := ApplyProjectPatch(Patch, nil);
   finally
+    EndChangeLogBatch;
     Patch.Free;
   end;
+  if (Result > 0) and (FChangeLogSuppressDepth = 0) then
+    LogProjectChange('AI', Format('Applied AI batch results (%d verse(s) updated)', [Result]));
 end;
 
 procedure TProject.SetOnSintagmaClick(const AValue: TOnSintagmaClickEvent);
@@ -4472,6 +4488,9 @@ begin
   destinationText := FAVersiculo[tbDestino].XML;
   FAVersiculo[tbDestino].ChangeText(FAVersiculo[tbConsulta1].XML);
   FAVersiculo[tbConsulta1].Text := '(KJF original) ' + destinationText;
+  if FChangeLogSuppressDepth = 0 then
+    LogProjectChange('Replace',
+      Format('Switched Destination and Reference 1 text at %s', [FormattedReference]));
 end;
 
 procedure TProject.AttachProjectVersePopupMenu(texto: TTipoTextoBiblico);
@@ -5352,6 +5371,7 @@ begin
   FDefaultVerseModeTransitionSourceReference := '';
   FDefaultVerseModeTransitionTargetReference := '';
   FSaveProjectObserverSuppressionDepth := 0;
+  FChangeLogSuppressDepth := 0;
   FLastLoadedReferenceID := '';
   FVerseLoadGeneration := 0;
   FLastAutomaticSuggestionGeneration := 0;
@@ -5830,15 +5850,40 @@ begin
   FAssociationMemory.ValidateCurrentCache;
 end;
 
+procedure TProject.BeginChangeLogBatch;
+begin
+  Inc(FChangeLogSuppressDepth);
+end;
+
+procedure TProject.EndChangeLogBatch;
+begin
+  if FChangeLogSuppressDepth > 0 then
+    Dec(FChangeLogSuppressDepth);
+end;
+
+procedure TProject.LogProjectChange(const Category, Summary: string;
+  const Details: string = '');
+begin
+  if FFileName <> '' then
+    RecordProjectChange(FFileName, Category, Summary, Details);
+end;
+
 procedure TProject.Commit;
 var
   BuiltRevisionStaged: Boolean;
   MemoryWasDirty: Boolean;
+  ChangeSummary: string;
+  ChangeDetails: string;
 begin
   if FSaveAsInProgress then Exit;
   if FAssociationMemoryRebuildRunning or
     (Assigned(FAssociationMemory) and FAssociationMemory.RebuildActive) then
     Exit;
+
+  ChangeSummary := '';
+  ChangeDetails := '';
+  if (FChangeLogSuppressDepth = 0) and Assigned(FPersistence) then
+    FPersistence.DescribePendingChanges(ChangeSummary, ChangeDetails);
 
   if Assigned(FAssociationMemory) and
     FAssociationMemoryRebuildFailed and
@@ -5851,6 +5896,8 @@ begin
     FAssociationMemory.CommitSourceOutdated;
     if Assigned(FPersistence) then
       FPersistence.FlushImmediateInfo;
+    if (FChangeLogSuppressDepth = 0) and (ChangeSummary <> '') then
+      RecordProjectChange(FFileName, 'Save', ChangeSummary, ChangeDetails);
     IBibliaPerfIncrement(ipcPersistenceCommits);
     Exit;
   end;
@@ -5931,6 +5978,8 @@ begin
     FPersistence.CommitInfo;
     FPersistence.FlushImmediateInfo;
   end;
+  if (FChangeLogSuppressDepth = 0) and (ChangeSummary <> '') then
+    RecordProjectChange(FFileName, 'Save', ChangeSummary, ChangeDetails);
   IBibliaPerfIncrement(ipcPersistenceCommits);
   FAssociationMemoryLiveEditPending := False;
   FAssociationMemorySpeculativeEditPending := False;
@@ -6426,6 +6475,9 @@ begin
     end;
     PersistAICredentialsAfterSave;
     Result := True;
+    LogProjectChange('Project',
+      Format('Saved project copy as %s', [ExtractFileName(Destination)]),
+      Format('Saved copy path: %s', [Destination]));
   finally
     try
       Staging.Free;
@@ -7916,25 +7968,43 @@ begin
 end;
 
 procedure TProject.ClearText(texto: TTipoTextoBiblico);
+var
+  ScopeLabel: string;
 begin
-  if texto in [tbOrigem, tbDestino] then
-  begin
-    FAssociationMemory.MarkSourceDirty;
-    FAssociationMemory.InvalidateReplay;
+  case texto of
+    tbOrigem: ScopeLabel := 'Source';
+    tbDestino: ScopeLabel := 'Destination';
+    tbConsulta1: ScopeLabel := 'Reference 1';
+    tbConsulta2: ScopeLabel := 'Reference 2';
+  else
+    ScopeLabel := 'Text';
   end;
-  StartScrollingSession;
+
+  BeginChangeLogBatch;
   try
-      //UpdateTree;
-    FPatchApplier.ClearTextFieldForAll(FACamposTexto[texto], FACamposTexto[tbOrigem],
-      FACamposTexto[tbDestino], StatusAutomationEnabled);
+    if texto in [tbOrigem, tbDestino] then
+    begin
+      FAssociationMemory.MarkSourceDirty;
+      FAssociationMemory.InvalidateReplay;
+    end;
+    StartScrollingSession;
+    try
+        //UpdateTree;
+      FPatchApplier.ClearTextFieldForAll(FACamposTexto[texto], FACamposTexto[tbOrigem],
+        FACamposTexto[tbDestino], StatusAutomationEnabled);
+    finally
+      FinishScrollingSession;
+    end;
+    if texto in [tbOrigem, tbDestino] then
+    begin
+      RebuildAssociationMemory(nil);
+    end;
+    FConfig.StageTextDescription(Integer(texto), '');
   finally
-    FinishScrollingSession;
+    EndChangeLogBatch;
   end;
-  if texto in [tbOrigem, tbDestino] then
-  begin
-    RebuildAssociationMemory(nil);
-  end;
-  FConfig.StageTextDescription(Integer(texto), '');
+  if FChangeLogSuppressDepth = 0 then
+    LogProjectChange('Delete', Format('Cleared all %s text', [ScopeLabel]));
 end;
 
 function TProject.GetTextFont(texto: TTipoTextoBiblico): TFont;
@@ -8045,14 +8115,25 @@ end;
 
 function TProject.MoveTreeNode(Node, Target: TTreeNode;
   Mode: TNodeAttachMode): Boolean;
+var
+  MovedCaption: string;
 begin
   Result := False;
   if not CanMoveTreeNode(Node, Target, Mode) then
     Exit;
+  if Assigned(Node) then
+    MovedCaption := Node.Text
+  else
+    MovedCaption := '';
   Result := FBibleTreeCoordinator.MoveNode(Node, Target, Mode, FEscopo,
     GetStatusDefinitions, @GetAggregateStatusImageIndex);
   if Result then
+  begin
     SetInfo(TREE_ORDER_INFO_KEY, PackTreeOrder(FBibleTreeCoordinator.CurrentOrderText));
+    if FChangeLogSuppressDepth = 0 then
+      LogProjectChange('Project', 'Rearranged Bible tree order',
+        'Moved node: ' + MovedCaption);
+  end;
 end;
 
 procedure TProject.ResetTreeOrder;
@@ -8062,6 +8143,8 @@ begin
   FBibleTreeCoordinator.ResetOrder(FEscopo, GetStatusDefinitions,
     @GetAggregateStatusImageIndex);
   SetInfo(TREE_ORDER_INFO_KEY, '');
+  if FChangeLogSuppressDepth = 0 then
+    LogProjectChange('Project', 'Reset Bible tree to standard order');
 end;
 
 procedure TProject.ApplyStoredTreeOrder;

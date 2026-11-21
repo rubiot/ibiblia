@@ -20,7 +20,8 @@ uses
   HTMLColors, FormExportPatch, FormApplyPatch, PatchFile,
   FormInterlinearVerseRules, ChapterView, UnitPleaseWait,
   llmclient, FormLlmOptions, FormAiProcessing, FormTheWordHighlighterColors,
-  FormApplicationPreferences;
+  FormApplicationPreferences, project_change_log, project_change_log_ui,
+  crash_tracker, crash_tracker_ui;
 
 {$R *.res}
 
@@ -98,6 +99,7 @@ begin
   SQLiteDefaultLibrary := 'libsqlite3.so.0';
   {$ENDIF}
   Application.Initialize;
+  InstallCrashTracker;
   {$IFDEF WINDOWS}
   Application.MainFormOnTaskBar := True;
   {$ENDIF}
@@ -115,5 +117,6 @@ begin
   Application.CreateForm(TFrmLLMOptions, FrmLLMOptions);
   Application.CreateForm(TFrmAIProcessing, FrmAIProcessing);
   Application.Run;
+  FinalizeCrashTracker;
 end.
 

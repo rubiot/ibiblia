@@ -308,7 +308,12 @@ type
     FToolsMenuSeparator: TMenuItem;
     FToolsOuterSeparator: TMenuItem;
     FHelpMenuSeparator: TMenuItem;
+    FProjectChangeLogItem: TMenuItem;
+    FCrashLogsItem: TMenuItem;
+    FHardCrashChecked: Boolean;
     FPreferencesMenuItem: TMenuItem;
+    procedure ProjectChangeLogClick(Sender: TObject);
+    procedure CrashLogsClick(Sender: TObject);
     FSuggestionPopupMenu: TPopupMenu;
     FSuggestionStatisticalItem: TMenuItem;
     FSuggestionAIItem: TMenuItem;
@@ -797,7 +802,9 @@ uses FormNewProject, FormProjectProperties, FormProjectExport, FormMergeProjects
   llmclient, theword_syntax_highlighter, translation_memory_preview,
   FormFindInProject, FormGoToVerse, FormDefaultDictionaries, unittexttospeech, formvoicesettings,
   FormNewFeaturesGuide, FormDictionaryPopup, project_book_import,
-  project_backup, project_backup_ui, sqlite_database_copy;
+  project_backup, project_backup_ui, sqlite_database_copy,
+  project_change_log, project_change_log_ui, crash_tracker, crash_tracker_ui,
+  bible_book_names;
 
 {$R *.lfm}
 
@@ -1579,6 +1586,17 @@ begin
     MenuItemLlmOptions.Parent.Remove(MenuItemLlmOptions);
   MenuItem1.Insert(MenuItem19.MenuIndex + 1, MenuItemLlmOptions);
 
+  if FProjectChangeLogItem = nil then
+  begin
+    FProjectChangeLogItem := TMenuItem.Create(MainMenu1);
+    FProjectChangeLogItem.Caption := 'Project &change log...';
+    FProjectChangeLogItem.OnClick := @ProjectChangeLogClick;
+  end
+  else if Assigned(FProjectChangeLogItem.Parent) then
+    FProjectChangeLogItem.Parent.Remove(FProjectChangeLogItem);
+  FProjectChangeLogItem.Enabled := Assigned(CurrentProject);
+  MenuItem1.Insert(MenuItemLlmOptions.MenuIndex + 1, FProjectChangeLogItem);
+
   FToolsMenu := TMenuItem.Create(MainMenu1);
   MainMenu1.Items.Insert(MenuItem17.MenuIndex, FToolsMenu);
   FTheWordSyncMenu := TMenuItem.Create(MainMenu1);
@@ -1693,11 +1711,16 @@ begin
 
     FUpdateBranchMenu.Add(FUpdateBranchStableItem);
     FUpdateBranchMenu.Add(FUpdateBranchNeonItem);
+
+    FCrashLogsItem := TMenuItem.Create(MainMenu1);
+    FCrashLogsItem.Caption := '&Crash && error logs...';
+    FCrashLogsItem.OnClick := @CrashLogsClick;
   end;
   SyncUpdateBranchMenu;
   MenuItem17.Add(FUpdateCheckItem);
   MenuItem17.Add(FUpdateStartupItem);
   MenuItem17.Add(FUpdateBranchMenu);
+  MenuItem17.Add(FCrashLogsItem);
   MenuItem17.Add(MenuItemAbout);
 
   BuildSuggestionToolbarMenu;
@@ -1827,6 +1850,8 @@ begin
     FSuggestionWorkflowItem.Enabled := Assigned(CurrentProject);
     FSuggestionAIConfigItem.Enabled := Assigned(CurrentProject);
   end;
+  if Assigned(FProjectChangeLogItem) then
+    FProjectChangeLogItem.Enabled := Assigned(CurrentProject);
   UpdateTheWordSyncUI;
 end;
 
@@ -4316,6 +4341,11 @@ begin
   end;
   DeleteSQLiteFiles(OldProjectFile);
   DoOpenProject(ProjectFile);
+  RecordProjectChange(ProjectFile, 'Restore',
+    Format('Restored project from %s', [Description]),
+    Format('Backup file: %s' + LineEnding + 'Safety backup before restore: %s',
+      [ZipFile, SafetyBackup]));
+  RecordCrashBreadcrumb('Restored project from backup: ' + ExtractFileName(ZipFile));
   MessageDlg(SRestoreTitle, Format(SRestoreDone, [Description, SafetyBackup]),
     mtInformation, [mbOK], 0);
 end;
@@ -4379,6 +4409,7 @@ begin
     CommitAllProps;
     if not OfferProjectBackup(CurrentProject, SPatchBackupReason) then
       Exit;
+    RecordCrashBreadcrumb('Applying patch: ' + ExtractFileName(patch));
     Screen.Cursor := crHourGlass;
     FrmApplyPatch.Apply;
     Screen.Cursor := crDefault;
@@ -4470,6 +4501,9 @@ begin
   GoToVerseProjectChanged(nil);
   CurrentProject.Destroy;
   CurrentProject := nil;
+  SetCrashContextProject('');
+  SetCrashContextVerse('');
+  RecordCrashBreadcrumb('Closed project');
   UpdateMainCaption;
   UpdateNavigationHistoryActions;
   UpdateCommandUI;
@@ -4649,6 +4683,7 @@ begin
           CurrentProject.InitializeWorkflowSettings(smStatistical, False,
             dvmAssociation);
         CurrentProject.PopupTrigger := FPopupTrigger;
+        CurrentProject.BeginChangeLogBatch;
 
         for v := tbOrigem to tbConsulta2 do
         begin
@@ -4688,6 +4723,7 @@ begin
         end;
 
         CurrentProject.Commit;
+        CurrentProject.EndChangeLogBatch;
         if not CurrentProject.CloseProject(True) then
           raise Exception.Create(SNewProjectCloseFailed);
         FreeAndNil(CurrentProject);
@@ -4745,6 +4781,10 @@ begin
     begin
       try
         DoOpenProject(FinalProjectFileName);
+        RecordProjectChange(FinalProjectFileName, 'Project',
+          Format('Created project "%s"', [Draft.ProjectName]),
+          Format('File: %s', [FinalProjectFileName]));
+        RecordCrashBreadcrumb('Created project: ' + ExtractFileName(FinalProjectFileName));
       except
         on E: Exception do
         begin
@@ -4802,7 +4842,7 @@ end;
 procedure TMainForm.RunDeleteTreeItem(Data: PtrInt);
 var
   Item: TDeleteTreeItem;
-  ProjectFile, BackupFile, ErrorMessage: string;
+  ProjectFile, BackupFile, ErrorMessage, DeleteTargetDesc, BookName: string;
   Removed: Integer;
   Done: Boolean;
 begin
@@ -4812,6 +4852,16 @@ begin
     Exit;
   if CurrentProject.Modificado then
     CurrentProject.SaveProject;
+  BookName := LocalizedBookNameByID(Item.Book);
+  if BookName = '' then
+    BookName := 'Book ' + IntToStr(Item.Book);
+  if Item.Chapter = 0 then
+    DeleteTargetDesc := BookName
+  else if Item.Verse = 0 then
+    DeleteTargetDesc := Format('%s chapter %d', [BookName, Item.Chapter])
+  else
+    DeleteTargetDesc := Format('%s %d:%d', [BookName, Item.Chapter, Item.Verse]);
+
   ProjectFile := CurrentProject.FileName;
   ActionCloseProjectExecute(nil);
   if Assigned(CurrentProject) then
@@ -4832,6 +4882,13 @@ begin
     Screen.Cursor := crDefault;
   end;
   DoOpenProject(ProjectFile);
+  if Done and (Removed > 0) then
+  begin
+    RecordProjectChange(ProjectFile, 'Delete',
+      Format('Deleted %s (%d verse(s))', [DeleteTargetDesc, Removed]),
+      Format('Backup created before deletion: %s', [BackupFile]));
+    RecordCrashBreadcrumb('Deleted ' + DeleteTargetDesc);
+  end;
   if not Done then
     MessageDlg(SDeleteItemTitle, Format(SDeleteItemFailed, [ErrorMessage]),
       mtError, [mbOK], 0)
@@ -4853,12 +4910,15 @@ var
   NeedRows: Boolean;
   ProjectFile, ErrorMessage, Errors: string;
   OldScope: TEscopoTexto;
+  AppliedCounts: array of Integer;
+  BookTextLabel, CategoryName, ReqSummary, ReqDetails: string;
 begin
   if not Assigned(Requests) then
     Exit;
   try
     if (Requests.Count = 0) or not Assigned(CurrentProject) then
       Exit;
+    RecordCrashBreadcrumb('Applying book import/replace requests');
     if CurrentProject.Modificado then
       CurrentProject.SaveProject;
 
@@ -4908,23 +4968,64 @@ begin
 
     Total := 0;
     Errors := '';
-    FormPleaseWait.BeginOperation(Self, SAddBooksTitle, SAddBooksProgress, 1, '');
+    SetLength(AppliedCounts, Requests.Count);
+    CurrentProject.BeginChangeLogBatch;
     try
-      for Index := 0 to Requests.Count - 1 do
-      begin
-        Request := TBookImportRequest(Requests[Index]);
-        FormPleaseWait.SetDetail(Request.Summary);
-        Applied := CurrentProject.ApplyVerseTexts(Request.Refs, Request.Texts,
-          TTipoTextoBiblico(Request.TextIndex), Request.KeepAssociations,
-          FormPleaseWait.ProgressBar1, ErrorMessage);
-        Inc(Total, Applied);
-        if ErrorMessage <> '' then
-          Errors := Errors + LineEnding + ErrorMessage;
+      FormPleaseWait.BeginOperation(Self, SAddBooksTitle, SAddBooksProgress, 1, '');
+      try
+        for Index := 0 to Requests.Count - 1 do
+        begin
+          Request := TBookImportRequest(Requests[Index]);
+          FormPleaseWait.SetDetail(Request.Summary);
+          Applied := CurrentProject.ApplyVerseTexts(Request.Refs, Request.Texts,
+            TTipoTextoBiblico(Request.TextIndex), Request.KeepAssociations,
+            FormPleaseWait.ProgressBar1, ErrorMessage);
+          AppliedCounts[Index] := Applied;
+          Inc(Total, Applied);
+          if ErrorMessage <> '' then
+            Errors := Errors + LineEnding + ErrorMessage;
+        end;
+      finally
+        FormPleaseWait.FinishOperation;
       end;
+      CurrentProject.SaveProject;
     finally
-      FormPleaseWait.FinishOperation;
+      CurrentProject.EndChangeLogBatch;
     end;
-    CurrentProject.SaveProject;
+
+    for Index := 0 to Requests.Count - 1 do
+    begin
+      if AppliedCounts[Index] <= 0 then
+        Continue;
+      Request := TBookImportRequest(Requests[Index]);
+      case TTipoTextoBiblico(Request.TextIndex) of
+        tbOrigem: BookTextLabel := 'Source';
+        tbDestino: BookTextLabel := 'Destination';
+        tbConsulta1: BookTextLabel := 'Reference 1';
+        tbConsulta2: BookTextLabel := 'Reference 2';
+      else
+        BookTextLabel := 'Text';
+      end;
+      if Request.Kind = bikAdd then
+      begin
+        CategoryName := 'Add books';
+        ReqSummary := Format('Added to %s text: %s (%d verse(s))', [
+          BookTextLabel, Request.Summary, AppliedCounts[Index]
+        ]);
+      end
+      else
+      begin
+        CategoryName := 'Replace';
+        ReqSummary := Format('Replaced in %s text: %s (%d verse(s))', [
+          BookTextLabel, Request.Summary, AppliedCounts[Index]
+        ]);
+      end;
+      ReqDetails := Format('Source file: %s' + LineEnding + 'Keep associations: %s', [
+        Request.FileName, BoolToStr(Request.KeepAssociations, True)
+      ]);
+      CurrentProject.LogProjectChange(CategoryName, ReqSummary, ReqDetails);
+    end;
+
     CurrentProject.RefreshUI;
     UpdateCommandUI;
     if Errors <> '' then
@@ -4995,6 +5096,7 @@ begin
   UpdateNavigationHistoryActions;
   if CurrentProject <> nil then
   begin
+    SetCrashContextVerse(CurrentProject.FormattedReference + ' [' + CurrentProject.ID + ']');
     UpdateMainCaption;
     ActionSyncTheWordVerseExecute(Sender);
     UpdateStateHeader;
@@ -5244,6 +5346,8 @@ begin
   {$ENDIF}
   opts := TIniFile.Create(ConfigFilePath);
   AboutConfigFilePath := ConfigFilePath;
+  SetCrashLogBaseDir(ExtractFilePath(ConfigFilePath));
+  RecordCrashBreadcrumb('MainForm created');
   UpdateCoordinator := TUpdateCoordinator.Create(opts);
   SetCurrentSkinByName(opts.ReadString('UI', 'Theme', 'Default'));
   FSkinnedForms := TList.Create;
@@ -5472,6 +5576,8 @@ end;
 procedure TMainForm.FormDestroy(Sender: TObject);
 begin
   ApplicationShuttingDown := True;
+  RecordCrashBreadcrumb('Application shutting down cleanly');
+  MarkCrashSessionCleanShutdown;
   if Assigned(FStripTimer) then
     FStripTimer.Enabled := False;
   Screen.RemoveHandlerActiveFormChanged(@ScreenActiveFormChanged);
@@ -5580,6 +5686,8 @@ procedure TMainForm.FormShow(Sender: TObject);
 var
   x, y: Integer;
   ZipStartupProject: string;
+  RecoveredLogFile, RecoveredLogContent: string;
+  DummyTerminate: Boolean;
 begin
   x := opts.ReadInteger('leiaute', 'principal.esquerda', Left);
   y := opts.ReadInteger('leiaute', 'principal.topo', Top);
@@ -5620,6 +5728,13 @@ begin
   end;
   if CurrentSkin.Id <> skClassic then
     ApplyActiveSkin;
+  if not FHardCrashChecked then
+  begin
+    FHardCrashChecked := True;
+    if TakeRecoveredHardCrashLog(RecoveredLogFile, RecoveredLogContent) then
+      ShowCrashReportDialog(RecoveredLogFile, RecoveredLogContent, True,
+        DummyTerminate);
+  end;
   if Assigned(UpdateCoordinator) then
     UpdateCoordinator.ScheduleStartupCheck;
 end;
@@ -5644,6 +5759,25 @@ end;
 procedure TMainForm.MenuItemAboutClick(Sender: TObject);
 begin
   FormAbout.ShowModal;
+end;
+
+procedure TMainForm.ProjectChangeLogClick(Sender: TObject);
+var
+  ProjectTitle: string;
+begin
+  if not Assigned(CurrentProject) then
+    Exit;
+  ProjectTitle := Trim(CurrentProject.GetInfo('descricao'));
+  if ProjectTitle = '' then
+    ProjectTitle := ChangeFileExt(ExtractFileName(CurrentProject.FileName), '');
+  RecordCrashBreadcrumb('Opened Project change log');
+  ShowProjectChangeLogDialog(Self, CurrentProject.FileName, ProjectTitle);
+end;
+
+procedure TMainForm.CrashLogsClick(Sender: TObject);
+begin
+  RecordCrashBreadcrumb('Opened Crash & error logs');
+  ShowCrashLogsManagerDialog(Self);
 end;
 
 procedure TMainForm.UpdateCheckItemClick(Sender: TObject);
@@ -7409,6 +7543,8 @@ begin
 
   ArrangeApocryphaRows(filename);
   CurrentProject.OpenProject(filename);
+  SetCrashContextProject(filename);
+  RecordCrashBreadcrumb('Opened project: ' + ExtractFileName(filename));
   begin
     DictSettings := ReadDefaultDictionarySettings(opts);
     if CurrentProject.GetInfo('dicionarios.use_default') <> '' then
