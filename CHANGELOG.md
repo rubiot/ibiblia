@@ -6,7 +6,12 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.079 (2026-11-22) — Fix Linux DNS Resolution for Update Checks & HTTPS
+### 0. Version 1.1.0.080 (2026-11-22) — Fix Linux TLS Hostname Verification (Code 64) After System DNS Lookup
+
+* **TLS Certificate Hostname Verification on Linux (`tls_runtime.pas`):** Passed the original resolved domain name (instead of the numeric IPv4 address returned by `getaddrinfo`) to OpenSSL's `SSL_set1_host` as well as SNI in `TVerifiedSocketHandler.Connect`. This fixes `The HTTPS certificate or server name could not be verified (code 64)` (`X509_V_ERR_IP_ADDRESS_MISMATCH`) when checking for updates or calling AI providers on Linux.
+* Files: tls_runtime.pas, unitabout.pas.
+
+### 0a. Version 1.1.0.079 (2026-11-22) — Fix Linux DNS Resolution for Update Checks & HTTPS
 
 * **System Resolver on Linux (`tls_runtime.pas`):** `TIBibliaHTTPSClient` now resolves hostnames through Linux's native glibc `getaddrinfo` (via `cnetdb`) before connecting while preserving the original hostname for TLS SNI (`SSL_CTRL_SET_TLSEXT_HOSTNAME`) and certificate verification. This fixes `Host name resolution for "api.github.com" failed.` errors caused by Free Pascal's built-in `netdb` parser caching `/etc/resolv.conf` once at startup and ignoring IPv6 nameservers, `nsswitch.conf`, and `systemd-resolved` — fixing both built-in update checks (`app_updater.pas`) and AI provider HTTPS requests (`llmclient.pas`) on Linux.
 * Files: tls_runtime.pas, unitabout.pas.

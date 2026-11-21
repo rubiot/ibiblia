@@ -114,6 +114,9 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.080 (64-bit Edition) - 2026-11-22' + LineEnding +
+  '- Fixed Linux HTTPS certificate hostname verification ("code 64" / IP address mismatch) after system DNS resolution by passing the original domain name to OpenSSL''s SSL_set1_host as well as SNI.' + LineEnding +
+  '' + LineEnding +
   'Version 1.1.0.079 (64-bit Edition) - 2026-11-22' + LineEnding +
   '- Fixed Linux DNS lookup failures ("Host name resolution for api.github.com failed.") in the built-in updater and AI HTTPS client by resolving hostnames via the Linux system resolver (glibc getaddrinfo) while preserving TLS SNI and certificate verification.' + LineEnding +
   '' + LineEnding +

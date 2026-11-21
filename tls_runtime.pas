@@ -60,8 +60,6 @@ type
   {$IFDEF LINUX}
   private
     FSNIHostName: string;
-  protected
-    function InitContext(NeedCertificate: Boolean): Boolean; override;
   {$ENDIF}
   public
     function Connect: Boolean; override;
@@ -230,20 +228,37 @@ begin
   end;
 end;
 
-function TVerifiedSocketHandler.InitContext(NeedCertificate: Boolean): Boolean;
-begin
-  Result := inherited InitContext(NeedCertificate);
-  if Result and (FSNIHostName <> '') and Assigned(SSL) then
-    SSL.Ctrl(SSL_CTRL_SET_TLSEXT_HOSTNAME, TLSEXT_NAMETYPE_host_name,
-      PAnsiChar(AnsiString(FSNIHostName)));
-end;
 {$ENDIF}
 
 function TVerifiedSocketHandler.Connect: Boolean;
 var
   Verification: Integer;
 begin
-  Result := inherited Connect;
+  {$IFDEF LINUX}
+  if FSNIHostName <> '' then
+  begin
+    Result := InitContext(False);
+    if Result then
+    begin
+      Result := CheckSSL(SSL.SetFD(Socket.Handle));
+      if Result then
+      begin
+        if SendHostAsSNI then
+          SSL.Ctrl(SSL_CTRL_SET_TLSEXT_HOSTNAME, TLSEXT_NAMETYPE_host_name,
+            PAnsiChar(AnsiString(FSNIHostName)));
+        if VerifyPeerCert then
+          SSL.Set1Host(FSNIHostName);
+        Result := CheckSSL(SSL.Connect);
+        if Result then
+          Result := DoVerifyCert;
+        if Result then
+          SetSSLActive(True);
+      end;
+    end;
+  end
+  else
+  {$ENDIF}
+    Result := inherited Connect;
   if not Result then
   begin
     Verification := 0;
@@ -302,16 +317,9 @@ begin
   Handler := TVerifiedSocketHandler.Create;
   try
     Handler.VerifyPeerCert := True;
-    {$IFDEF LINUX}
-    if FCurrentSNIHost <> '' then
-    begin
-      Handler.SNIHostName := FCurrentSNIHost;
-      Handler.SendHostAsSNI := False;
-    end
-    else
-      Handler.SendHostAsSNI := True;
-    {$ELSE}
     Handler.SendHostAsSNI := True;
+    {$IFDEF LINUX}
+    Handler.SNIHostName := FCurrentSNIHost;
     {$ENDIF}
     Handler.CertificateData.CertCA.FileName :=
       FindCABundle(FRuntimeDirectory);
