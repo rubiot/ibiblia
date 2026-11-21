@@ -6,7 +6,13 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.080 (2026-11-22) — Fix Linux TLS Hostname Verification (Code 64) After System DNS Lookup
+### 0. Version 1.1.0.081 (2026-11-22) — Preserve Absolute Dictionary Paths & Auto-Heal Broken `./.config/...` Paths
+
+* **Absolute Dictionary Paths (`FormProjectProperties.pas`):** Stopped rewriting selected dictionary paths that happen to live under the current working directory into relative `./...` paths (which turned `/home/<user>/.config/iBiblia/dictionaries/...` into `./.config/iBiblia/dictionaries/...` when launched from the home folder and broke dictionary loading whenever opening a new iBiblia build from a different folder).
+* **Auto-Heal Saved Relative Dictionary Paths (`dictionary_manager.pas`, `FormProjectProperties.pas`, `formprincipal.pas`):** Exported `ResolveDictionaryFilePath` and added fallback resolution against the user home directory (`GetUserDir`) and `<ConfigDir>/dictionaries/` so existing projects that already saved `./.config/iBiblia/dictionaries/...` automatically resolve to the full path on open.
+* Files: FormProjectProperties.pas, dictionary_manager.pas, formprincipal.pas, unitabout.pas.
+
+### 0a. Version 1.1.0.080 (2026-11-22) — Fix Linux TLS Hostname Verification (Code 64) After System DNS Lookup
 
 * **TLS Certificate Hostname Verification on Linux (`tls_runtime.pas`):** Passed the original resolved domain name (instead of the numeric IPv4 address returned by `getaddrinfo`) to OpenSSL's `SSL_set1_host` as well as SNI in `TVerifiedSocketHandler.Connect`. This fixes `The HTTPS certificate or server name could not be verified (code 64)` (`X509_V_ERR_IP_ADDRESS_MISMATCH`) when checking for updates or calling AI providers on Linux.
 * Files: tls_runtime.pas, unitabout.pas.

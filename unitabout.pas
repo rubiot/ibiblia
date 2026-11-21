@@ -114,6 +114,9 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.081 (64-bit Edition) - 2026-11-22' + LineEnding +
+  '- Project Settings now always saves full absolute paths for Default and per-module dictionaries instead of rewriting paths under the current working directory to relative "./..." paths (which broke "~/.config/iBiblia/dictionaries/..." when opening a project in a newly unpacked iBiblia folder), and automatically heals previously saved "./.config/..." dictionary paths on open.' + LineEnding +
+  '' + LineEnding +
   'Version 1.1.0.080 (64-bit Edition) - 2026-11-22' + LineEnding +
   '- Fixed Linux HTTPS certificate hostname verification ("code 64" / IP address mismatch) after system DNS resolution by passing the original domain name to OpenSSL''s SSL_set1_host as well as SNI.' + LineEnding +
   '' + LineEnding +

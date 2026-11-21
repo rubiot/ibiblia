@@ -71,6 +71,7 @@ procedure SetUseDefaultDictionaries(AEnabled: Boolean);
 function GetUseDefaultDictionaries: Boolean;
 procedure GetDefaultDictionaryPaths(out GreekStrongPath, HebrewStrongPath,
   MorphologyPath, WordPath: string);
+function ResolveDictionaryFilePath(const APath: string): string;
 
 implementation
 
@@ -191,18 +192,26 @@ end;
 
 function ResolveDictionaryFilePath(const APath: string): string;
 var
-  Clean, Normalized, BaseName, ExeDir: string;
+  Clean, Normalized, BaseName, ExeDir, UserDir, ConfigDictsDir, Candidate: string;
   I: Integer;
 begin
   Clean := Trim(APath);
   if Clean = '' then
     Exit('');
   if FileExists(Clean) then
-    Exit(Clean);
+    Exit(ExpandFileName(Clean));
   Normalized := StringReplace(StringReplace(Clean, '\', PathDelim, [rfReplaceAll]),
     '/', PathDelim, [rfReplaceAll]);
   if FileExists(Normalized) then
-    Exit(Normalized);
+    Exit(ExpandFileName(Normalized));
+  if (Length(Normalized) > 2) and (Normalized[1] = '.') and
+     (Normalized[2] = PathDelim) then
+  begin
+    UserDir := IncludeTrailingPathDelimiter(GetUserDir);
+    Candidate := UserDir + Copy(Normalized, 3, MaxInt);
+    if FileExists(Candidate) then
+      Exit(ExpandFileName(Candidate));
+  end;
   BaseName := Clean;
   for I := Length(Clean) downto 1 do
     if Clean[I] in ['/', '\'] then
@@ -210,9 +219,16 @@ begin
       BaseName := Copy(Clean, I + 1, MaxInt);
       Break;
     end;
+  if BaseName <> '' then
+  begin
+    ConfigDictsDir := IncludeTrailingPathDelimiter(GetAppConfigDir(False)) +
+      'dictionaries' + PathDelim;
+    if FileExists(ConfigDictsDir + BaseName) then
+      Exit(ConfigDictsDir + BaseName);
+  end;
   ExeDir := ExtractFilePath(ParamStr(0));
   if FileExists(ExeDir + Normalized) then
-    Exit(ExeDir + Normalized);
+    Exit(ExpandFileName(ExeDir + Normalized));
   if (BaseName <> '') and FileExists(ExeDir + BaseName) then
     Exit(ExeDir + BaseName);
   if (BaseName <> '') and FileExists(ExeDir + 'dicts' + PathDelim + BaseName) then

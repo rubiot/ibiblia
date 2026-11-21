@@ -1104,13 +1104,17 @@ begin
   if FProject.GetInfo('dicionarios.configured') = '1' then
   begin
     if FProject.GetInfo('dicionarios.default_strong_greek') <> '' then
-      FPendingDefaultDictionaries.GreekStrong := FProject.GetInfo('dicionarios.default_strong_greek');
+      FPendingDefaultDictionaries.GreekStrong :=
+        ResolveDictionaryFilePath(FProject.GetInfo('dicionarios.default_strong_greek'));
     if FProject.GetInfo('dicionarios.default_strong_hebrew') <> '' then
-      FPendingDefaultDictionaries.HebrewStrong := FProject.GetInfo('dicionarios.default_strong_hebrew');
+      FPendingDefaultDictionaries.HebrewStrong :=
+        ResolveDictionaryFilePath(FProject.GetInfo('dicionarios.default_strong_hebrew'));
     if FProject.GetInfo('dicionarios.default_morphology') <> '' then
-      FPendingDefaultDictionaries.Morphology := FProject.GetInfo('dicionarios.default_morphology');
+      FPendingDefaultDictionaries.Morphology :=
+        ResolveDictionaryFilePath(FProject.GetInfo('dicionarios.default_morphology'));
     if FProject.GetInfo('dicionarios.default_english_dict') <> '' then
-      FPendingDefaultDictionaries.Word := FProject.GetInfo('dicionarios.default_english_dict');
+      FPendingDefaultDictionaries.Word :=
+        ResolveDictionaryFilePath(FProject.GetInfo('dicionarios.default_english_dict'));
   end;
   FInitialDefaultDictionaries := FPendingDefaultDictionaries;
   FPendingDefaultDictionariesChanged := False;
@@ -1311,13 +1315,9 @@ begin
       MessageDlg(SOpenDictionary, ArchiveError, mtWarning, [mbOK], 0);
       Exit;
     end;
-    CurrentDirectory := '';
-    GetDir(0, CurrentDirectory);
-    if Pos(CurrentDirectory, PickedFile) = 1 then
-      SelectedPath := Format('.%s', [RightStr(PickedFile,
-        Length(PickedFile) - Length(CurrentDirectory))])
-    else
-      SelectedPath := PickedFile;
+    { Keep an absolute path so moving or launching iBiblia from another folder
+      never breaks references such as ~/.config/iBiblia/dictionaries/... }
+    SelectedPath := ExpandFileName(PickedFile);
     if Row in [0, 1] then
       ModType := dmtStrong
     else
@@ -1961,13 +1961,9 @@ begin
       MessageDlg(SOpenDictionary, ArchiveError, mtWarning, [mbOK], 0);
       Exit;
     end;
-    { use a relative path whenever possible }
-    GetDir(0, CurrentDirectory);
-    if Pos(CurrentDirectory, PickedFile) = 1 then
-      SelectedPath := Format('.%s', [RightStr(PickedFile,
-        Length(PickedFile) - Length(CurrentDirectory))])
-    else
-      SelectedPath := PickedFile;
+    { Keep an absolute path so launching iBiblia from another folder never breaks
+      dictionary paths (e.g. ~/.config/iBiblia/dictionaries/...). }
+    SelectedPath := ExpandFileName(PickedFile);
     if not ProjectSetupValidateDictionary(SelectedPath, dmtMorphology, MessageText) then
     begin
       MessageDlg(SOpenDictionary, MessageText, mtWarning, [mbOK], 0);
@@ -2002,13 +1998,9 @@ begin
       MessageDlg(SOpenDictionary, ArchiveError, mtWarning, [mbOK], 0);
       Exit;
     end;
-    { use a relative path whenever possible }
-    GetDir(0, CurrentDirectory);
-    if Pos(CurrentDirectory, PickedFile) = 1 then
-      SelectedPath := Format('.%s', [RightStr(PickedFile,
-        Length(PickedFile) - Length(CurrentDirectory))])
-    else
-      SelectedPath := PickedFile;
+    { Keep an absolute path so launching iBiblia from another folder never breaks
+      dictionary paths (e.g. ~/.config/iBiblia/dictionaries/...). }
+    SelectedPath := ExpandFileName(PickedFile);
     if not ProjectSetupValidateDictionary(SelectedPath, dmtStrong, MessageText) then
     begin
       MessageDlg(SOpenDictionary, MessageText, mtWarning, [mbOK], 0);

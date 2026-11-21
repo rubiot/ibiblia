@@ -7552,13 +7552,17 @@ begin
     if CurrentProject.GetInfo('dicionarios.configured') = '1' then
     begin
       if CurrentProject.GetInfo('dicionarios.default_strong_greek') <> '' then
-        DictSettings.GreekStrong := CurrentProject.GetInfo('dicionarios.default_strong_greek');
+        DictSettings.GreekStrong :=
+          ResolveDictionaryFilePath(CurrentProject.GetInfo('dicionarios.default_strong_greek'));
       if CurrentProject.GetInfo('dicionarios.default_strong_hebrew') <> '' then
-        DictSettings.HebrewStrong := CurrentProject.GetInfo('dicionarios.default_strong_hebrew');
+        DictSettings.HebrewStrong :=
+          ResolveDictionaryFilePath(CurrentProject.GetInfo('dicionarios.default_strong_hebrew'));
       if CurrentProject.GetInfo('dicionarios.default_morphology') <> '' then
-        DictSettings.Morphology := CurrentProject.GetInfo('dicionarios.default_morphology');
+        DictSettings.Morphology :=
+          ResolveDictionaryFilePath(CurrentProject.GetInfo('dicionarios.default_morphology'));
       if CurrentProject.GetInfo('dicionarios.default_english_dict') <> '' then
-        DictSettings.Word := CurrentProject.GetInfo('dicionarios.default_english_dict');
+        DictSettings.Word :=
+          ResolveDictionaryFilePath(CurrentProject.GetInfo('dicionarios.default_english_dict'));
     end;
     WriteDefaultDictionarySettings(opts, DictSettings);
     ApplyDefaultDictionarySettings(DictSettings);
