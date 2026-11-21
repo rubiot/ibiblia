@@ -6,7 +6,12 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.078 (2026-11-22) — Per-Project Change Log Tracker & Automated Crash / Error Logger
+### 0. Version 1.1.0.079 (2026-11-22) — Fix Linux DNS Resolution for Update Checks & HTTPS
+
+* **System Resolver on Linux (`tls_runtime.pas`):** `TIBibliaHTTPSClient` now resolves hostnames through Linux's native glibc `getaddrinfo` (via `cnetdb`) before connecting while preserving the original hostname for TLS SNI (`SSL_CTRL_SET_TLSEXT_HOSTNAME`) and certificate verification. This fixes `Host name resolution for "api.github.com" failed.` errors caused by Free Pascal's built-in `netdb` parser caching `/etc/resolv.conf` once at startup and ignoring IPv6 nameservers, `nsswitch.conf`, and `systemd-resolved` — fixing both built-in update checks (`app_updater.pas`) and AI provider HTTPS requests (`llmclient.pas`) on Linux.
+* Files: tls_runtime.pas, unitabout.pas.
+
+### 0a. Version 1.1.0.078 (2026-11-22) — Per-Project Change Log Tracker & Automated Crash / Error Logger
 
 * **Per-Project Change Tracker (`project_change_log.pas`, `project_change_log_ui.pas`, `project_persistence.pas`, `Project.pas`, `FormProjectProperties.pas`, `project_backup_ui.pas`, `formprincipal.pas`):** Every `.bib` project now keeps an automatic `change_log` inside the project file itself (so history travels with backups and Save As copies), recording the date/time, category, summary, and details of project creation, verse/association/status/comment saves, settings edits, whole-text imports, **Add Bible books** / **Replace** operations, patches, AI batch applications, deletions, backups, restores, Bible tree reordering, and manual notes. View, search, filter by category, add notes, copy, or export (`.txt` / `.csv`) anytime from **Project → Project change log...**.
 * **Automated Bug & Crash Tracker (`crash_tracker.pas`, `crash_tracker_ui.pas`, `iBiblia.lpr`, `formprincipal.pas`):** Automatically captures unhandled exceptions (with stack trace, active window/control, open project, current verse, and recent activity breadcrumbs) into timestamped `.log` files under `<ConfigDir>/crash_logs/` and maintains a `.session_active` watchdog to recover and log unexpected hard crashes on next launch. Displays a themed **iBiblia Error Report** popup with **Copy report**, **Save log as...**, **Open logs folder**, **Continue**, and **Close iBiblia**, plus **Help → Crash & error logs...** to browse past logs and generate manual diagnostic reports.

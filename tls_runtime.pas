@@ -31,8 +31,15 @@ type
   TIBibliaHTTPSClient = class(TFPHTTPClient)
   private
     FRuntimeDirectory: string;
+    {$IFDEF LINUX}
+    FCurrentSNIHost: string;
+    {$ENDIF}
   protected
     function GetSocketHandler(const UseSSL: Boolean): TSocketHandler; override;
+    {$IFDEF LINUX}
+    procedure ConnectToServer(const AHost: String; APort: Integer;
+      UseSSL: Boolean = False); override;
+    {$ENDIF}
   public
     constructor Create(AOwner: TComponent); override;
     constructor CreateForRuntime(AOwner: TComponent;
@@ -45,12 +52,22 @@ function BundledTLSVersion: string;
 implementation
 
 uses
-  syncobjs, openssl, opensslsockets;
+  syncobjs, openssl, opensslsockets
+  {$IFDEF LINUX}, ctypes, sockets, cnetdb{$ENDIF};
 
 type
   TVerifiedSocketHandler = class(TOpenSSLSocketHandler)
+  {$IFDEF LINUX}
+  private
+    FSNIHostName: string;
+  protected
+    function InitContext(NeedCertificate: Boolean): Boolean; override;
+  {$ENDIF}
   public
     function Connect: Boolean; override;
+    {$IFDEF LINUX}
+    property SNIHostName: string read FSNIHostName write FSNIHostName;
+    {$ENDIF}
   end;
 
 var
@@ -167,6 +184,61 @@ begin
     Result := OpenSSLGetVersion(0);
 end;
 
+{$IFDEF LINUX}
+{ Resolve hostnames through glibc getaddrinfo rather than FPC's built-in netdb
+  parser, which caches /etc/resolv.conf once at startup, ignores IPv6
+  nameservers (such as link-local router addresses), and ignores nsswitch.conf. }
+function ResolveHostIPv4System(const AHost: string; out AResolvedIP: string): Boolean;
+var
+  Hints: TAddrInfo;
+  Res, Cur: PAddrInfo;
+  HostBuf: array[0..NI_MAXHOST - 1] of AnsiChar;
+  rc: cint;
+begin
+  Result := False;
+  AResolvedIP := '';
+  if AHost = '' then
+    Exit;
+  if StrToHostAddr(AHost).s_bytes[1] <> 0 then
+    Exit;
+  FillChar(Hints, SizeOf(Hints), 0);
+  Hints.ai_family := AF_INET;
+  Hints.ai_socktype := SOCK_STREAM;
+  Res := nil;
+  rc := getaddrinfo(PAnsiChar(AnsiString(AHost)), nil, @Hints, @Res);
+  if (rc <> 0) or (Res = nil) then
+    Exit;
+  try
+    Cur := Res;
+    while Cur <> nil do
+    begin
+      if (Cur^.ai_family = AF_INET) and (Cur^.ai_addr <> nil) and
+         (getnameinfo(Cur^.ai_addr, Cur^.ai_addrlen, @HostBuf[0],
+           SizeOf(HostBuf), nil, 0, NI_NUMERICHOST) = 0) then
+      begin
+        AResolvedIP := StrPas(@HostBuf[0]);
+        if AResolvedIP <> '' then
+        begin
+          Result := True;
+          Exit;
+        end;
+      end;
+      Cur := Cur^.ai_next;
+    end;
+  finally
+    freeaddrinfo(Res);
+  end;
+end;
+
+function TVerifiedSocketHandler.InitContext(NeedCertificate: Boolean): Boolean;
+begin
+  Result := inherited InitContext(NeedCertificate);
+  if Result and (FSNIHostName <> '') and Assigned(SSL) then
+    SSL.Ctrl(SSL_CTRL_SET_TLSEXT_HOSTNAME, TLSEXT_NAMETYPE_host_name,
+      PAnsiChar(AnsiString(FSNIHostName)));
+end;
+{$ENDIF}
+
 function TVerifiedSocketHandler.Connect: Boolean;
 var
   Verification: Integer;
@@ -197,6 +269,28 @@ begin
   FRuntimeDirectory := NormalizeRuntimeDirectory(ARuntimeDirectory);
 end;
 
+{$IFDEF LINUX}
+procedure TIBibliaHTTPSClient.ConnectToServer(const AHost: String;
+  APort: Integer; UseSSL: Boolean);
+var
+  ConnectHost, ResolvedIP: string;
+begin
+  ConnectHost := AHost;
+  FCurrentSNIHost := '';
+  if ResolveHostIPv4System(AHost, ResolvedIP) then
+  begin
+    ConnectHost := ResolvedIP;
+    if not SameText(ResolvedIP, AHost) then
+      FCurrentSNIHost := AHost;
+  end;
+  try
+    inherited ConnectToServer(ConnectHost, APort, UseSSL);
+  finally
+    FCurrentSNIHost := '';
+  end;
+end;
+{$ENDIF}
+
 function TIBibliaHTTPSClient.GetSocketHandler(
   const UseSSL: Boolean): TSocketHandler;
 var
@@ -208,7 +302,17 @@ begin
   Handler := TVerifiedSocketHandler.Create;
   try
     Handler.VerifyPeerCert := True;
+    {$IFDEF LINUX}
+    if FCurrentSNIHost <> '' then
+    begin
+      Handler.SNIHostName := FCurrentSNIHost;
+      Handler.SendHostAsSNI := False;
+    end
+    else
+      Handler.SendHostAsSNI := True;
+    {$ELSE}
     Handler.SendHostAsSNI := True;
+    {$ENDIF}
     Handler.CertificateData.CertCA.FileName :=
       FindCABundle(FRuntimeDirectory);
     Result := Handler;

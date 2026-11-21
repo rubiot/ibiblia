@@ -114,6 +114,9 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.079 (64-bit Edition) - 2026-11-22' + LineEnding +
+  '- Fixed Linux DNS lookup failures ("Host name resolution for api.github.com failed.") in the built-in updater and AI HTTPS client by resolving hostnames via the Linux system resolver (glibc getaddrinfo) while preserving TLS SNI and certificate verification.' + LineEnding +
+  '' + LineEnding +
   'Version 1.1.0.078 (64-bit Edition) - 2026-11-22' + LineEnding +
   '- Added a built-in per-project Change Log stored inside each .bib project (accessible from Project -> Project change log...) recording the date, time, category, and description of saves, settings changes, book imports/replacements, patches, AI batches, deletions, backups, restores, and manual notes, with search, category filter, copy, and TXT/CSV export.' + LineEnding +
   '- Added an automated Crash & Error Tracker that saves timestamped error reports with stack traces, project context, and recent activity breadcrumbs to the config crash_logs folder, detects hard crashes on next launch, shows a Save/Copy/Open folder popup, and adds Help -> Crash & error logs... with manual diagnostic report creation.' + LineEnding +
