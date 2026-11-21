@@ -21,6 +21,7 @@ type
   end;
   TProjectChangeLogArray = array of TProjectChangeLogEntry;
 
+function EnsureProjectChangeLogTable(const ProjectFile: string): Boolean;
 function RecordProjectChange(const ProjectFile, Category, Summary: string;
   const Details: string = ''): Boolean; overload;
 function RecordProjectChange(const ProjectFile, Category, Summary, Details: string;
@@ -58,6 +59,51 @@ begin
     Query.Close;
   finally
     Query.Free;
+  end;
+end;
+
+function EnsureProjectChangeLogTable(const ProjectFile: string): Boolean;
+var
+  Connection: TSQLite3Connection;
+  Transaction: TSQLTransaction;
+begin
+  Result := False;
+  if (Trim(ProjectFile) = '') or (not FileExists(ProjectFile)) then
+    Exit;
+
+  Connection := TSQLite3Connection.Create(nil);
+  Transaction := TSQLTransaction.Create(Connection);
+  try
+    try
+      Connection.DatabaseName := ProjectFile;
+      Connection.Transaction := Transaction;
+      Connection.Open;
+      Connection.ExecuteDirect('pragma busy_timeout = 2000');
+      if not Transaction.Active then
+        Transaction.StartTransaction;
+
+      if not ChangeLogTableExists(Connection, Transaction) then
+        Connection.ExecuteDirect(
+          'CREATE TABLE IF NOT EXISTS change_log (' +
+          '  id INTEGER PRIMARY KEY AUTOINCREMENT,' +
+          '  changed_at TEXT NOT NULL,' +
+          '  category TEXT NOT NULL,' +
+          '  summary TEXT NOT NULL,' +
+          '  details TEXT' +
+          ')');
+
+      Transaction.Commit;
+      Result := True;
+    except
+      if Transaction.Active then
+      try
+        Transaction.Rollback;
+      except
+      end;
+      Result := False;
+    end;
+  finally
+    Connection.Free;
   end;
 end;
 
@@ -105,14 +151,15 @@ begin
       if not Transaction.Active then
         Transaction.StartTransaction;
 
-      Connection.ExecuteDirect(
-        'CREATE TABLE IF NOT EXISTS change_log (' +
-        '  id INTEGER PRIMARY KEY AUTOINCREMENT,' +
-        '  changed_at TEXT NOT NULL,' +
-        '  category TEXT NOT NULL,' +
-        '  summary TEXT NOT NULL,' +
-        '  details TEXT' +
-        ')');
+      if not ChangeLogTableExists(Connection, Transaction) then
+        Connection.ExecuteDirect(
+          'CREATE TABLE IF NOT EXISTS change_log (' +
+          '  id INTEGER PRIMARY KEY AUTOINCREMENT,' +
+          '  changed_at TEXT NOT NULL,' +
+          '  category TEXT NOT NULL,' +
+          '  summary TEXT NOT NULL,' +
+          '  details TEXT' +
+          ')');
 
       Query.SQL.Text :=
         'INSERT INTO change_log (changed_at, category, summary, details) ' +

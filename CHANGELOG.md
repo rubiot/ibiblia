@@ -6,7 +6,12 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.081 (2026-11-22) — Preserve Absolute Dictionary Paths & Auto-Heal Broken `./.config/...` Paths
+### 0. Version 1.1.0.082 (2026-11-22) — Fix SQLite `database schema has changed` Crash on Older Projects
+
+* **Pre-Open Change Log Table Migration (`project_change_log.pas`, `Project.pas`):** Ensured the `change_log` table is created via `EnsureProjectChangeLogTable` at the start of `TProject.OpenProject` **before** `TProject` opens its long-lived SQLite connection and prepares statements, and guarded `RecordProjectChange` with `ChangeLogTableExists` so it never runs `CREATE TABLE` DDL on a second connection while the project is open. This eliminates `ESQLDatabaseError: TSQLite3Connection : database schema has changed` and follow-on `not an error` crashes when first logging changes on pre-`1.1.0.078` `.bib` projects.
+* Files: project_change_log.pas, Project.pas, unitabout.pas.
+
+### 0a. Version 1.1.0.081 (2026-11-22) — Preserve Absolute Dictionary Paths & Auto-Heal Broken `./.config/...` Paths
 
 * **Absolute Dictionary Paths (`FormProjectProperties.pas`):** Stopped rewriting selected dictionary paths that happen to live under the current working directory into relative `./...` paths (which turned `/home/<user>/.config/iBiblia/dictionaries/...` into `./.config/iBiblia/dictionaries/...` when launched from the home folder and broke dictionary loading whenever opening a new iBiblia build from a different folder).
 * **Auto-Heal Saved Relative Dictionary Paths (`dictionary_manager.pas`, `FormProjectProperties.pas`, `formprincipal.pas`):** Exported `ResolveDictionaryFilePath` and added fallback resolution against the user home directory (`GetUserDir`) and `<ConfigDir>/dictionaries/` so existing projects that already saved `./.config/iBiblia/dictionaries/...` automatically resolve to the full path on open.

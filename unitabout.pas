@@ -114,6 +114,9 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.082 (64-bit Edition) - 2026-11-22' + LineEnding +
+  '- Fixed "ESQLDatabaseError: database schema has changed" / "not an error" crash when editing older .bib projects by creating the change_log table before opening the project''s SQLite connection and skipping CREATE TABLE once it exists.' + LineEnding +
+  '' + LineEnding +
   'Version 1.1.0.081 (64-bit Edition) - 2026-11-22' + LineEnding +
   '- Project Settings now always saves full absolute paths for Default and per-module dictionaries instead of rewriting paths under the current working directory to relative "./..." paths (which broke "~/.config/iBiblia/dictionaries/..." when opening a project in a newly unpacked iBiblia folder), and automatically heals previously saved "./.config/..." dictionary paths on open.' + LineEnding +
   '' + LineEnding +

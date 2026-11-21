@@ -5542,6 +5542,11 @@ begin
     exit;
   end;
 
+  { Ensure the change_log table exists before opening TProject's long-lived
+    SQLite connection and prepared queries, so logging changes later never
+    executes DDL on a second connection and triggers SQLITE_SCHEMA. }
+  EnsureProjectChangeLogTable(Nome);
+
   CancelDefaultVerseModeRequest;
   CancelAutomaticSuggestionRequest;
   AbortDefaultVerseModeTransition;
