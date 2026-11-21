@@ -58,9 +58,6 @@ const
   SESSION_MARKER_FILE = '.session_active';
 
 type
-  TCrashExceptProc = procedure(Obj: TObject; Addr: CodePointer;
-    FrameCount: Longint; Frames: PCodePointer);
-
   TCrashTrackerAppHandler = class
   public
     procedure HandleApplicationException(Sender: TObject; E: Exception);
@@ -81,7 +78,7 @@ var
   FBreadcrumbs: array[0..MAX_BREADCRUMBS - 1] of string;
   FBreadcrumbCount: Integer;
   FBreadcrumbHead: Integer;
-  FOldExceptProc: Pointer;
+  FOldExceptProc: TExceptProc;
   GAppHandler: TCrashTrackerAppHandler;
   FCrashDialogCallback: TCrashDialogCallback;
 
@@ -619,54 +616,49 @@ procedure CrashTrackerExceptProc(Obj: TObject; Addr: CodePointer;
   FrameCount: Longint; Frames: PCodePointer);
 var
   ExClass, ExMsg, StackText, LogFile, LogContent: string;
-  ShouldTerminate: Boolean;
 begin
-  if not (Assigned(Obj) and (Obj is EAbort)) then
+  if Assigned(Obj) and (Obj is EAbort) then
   begin
-    if not FHandlingCrash then
-    begin
-      FHandlingCrash := True;
-      try
-        if Assigned(Obj) then
+    if Assigned(FOldExceptProc) then
+      FOldExceptProc(Obj, Addr, FrameCount, Frames);
+    Exit;
+  end;
+
+  if not FHandlingCrash then
+  begin
+    FHandlingCrash := True;
+    try
+      if Assigned(Obj) then
+      begin
+        if Obj is Exception then
         begin
-          if Obj is Exception then
-          begin
-            ExClass := Exception(Obj).ClassName;
-            ExMsg := Exception(Obj).Message;
-          end
-          else
-          begin
-            ExClass := Obj.ClassName;
-            ExMsg := 'Unhandled RTL object exception';
-          end;
+          ExClass := Exception(Obj).ClassName;
+          ExMsg := Exception(Obj).Message;
         end
         else
         begin
-          ExClass := 'RuntimeError';
-          ExMsg := 'Unhandled RTL exception with nil exception object';
+          ExClass := Obj.ClassName;
+          ExMsg := 'Unhandled RTL object exception';
         end;
-
-        RecordCrashBreadcrumb('Fatal exception: ' + ExClass + ' - ' + ExMsg);
-        StackText := BuildStackTraceText(Addr, FrameCount, Frames);
-        CaptureExceptionReport('Crash', ExClass, ExMsg, StackText, LogFile, LogContent);
-
-        if (GetCurrentThreadId = MainThreadID) and
-           Assigned(FCrashDialogCallback) and
-           Assigned(Application) and (not Application.Terminated) then
-        begin
-          try
-            FCrashDialogCallback(LogFile, LogContent, False, ShouldTerminate);
-          except
-          end;
-        end;
-      finally
-        FHandlingCrash := False;
+      end
+      else
+      begin
+        ExClass := 'RuntimeError';
+        ExMsg := 'Unhandled RTL exception with nil exception object';
       end;
-    end;
-  end;
 
-  if FOldExceptProc <> nil then
-    TCrashExceptProc(FOldExceptProc)(Obj, Addr, FrameCount, Frames);
+      RecordCrashBreadcrumb('Fatal exception: ' + ExClass + ' - ' + ExMsg);
+      StackText := BuildStackTraceText(Addr, FrameCount, Frames);
+      CaptureExceptionReport('Crash', ExClass, ExMsg, StackText, LogFile, LogContent);
+
+      if Assigned(FOldExceptProc) then
+        FOldExceptProc(Obj, Addr, FrameCount, Frames);
+    finally
+      FHandlingCrash := False;
+    end;
+  end
+  else if Assigned(FOldExceptProc) then
+    FOldExceptProc(Obj, Addr, FrameCount, Frames);
 end;
 
 procedure InstallCrashTracker;
