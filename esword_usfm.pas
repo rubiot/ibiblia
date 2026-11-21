@@ -1731,8 +1731,7 @@ begin
     'NEH': Result := 16;
     'EST': Result := 17;
     'JOB': Result := 18;
-    'PSA', 'PSM', 'PSS':
-      if u = 'PSS' then Result := 85 else Result := 19;
+    'PSA', 'PSM': Result := 19;
     'PRO', 'PRV': Result := 20;
     'ECC', 'QOH': Result := 21;
     'SNG', 'SOL', 'SOS': Result := 22;
@@ -1792,7 +1791,7 @@ begin
     'WIS': Result := 76;
     'SIR', 'ECN': Result := 77;
     'BAR': Result := 78;
-    'LJE', 'epj': Result := 79;
+    'LJE', 'EPJ': Result := 79;
     'S3Y', 'AZA': Result := 80;
     'SUS': Result := 81;
     'BEL': Result := 82;
