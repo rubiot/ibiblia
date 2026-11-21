@@ -6,7 +6,12 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.083 (2026-11-22) — Before/After Details in Project Change Log for Dictionaries & Raw Edits
+### 0. Version 1.1.0.084 (2026-11-22) — GitHub-Style Diff Highlighting in Project Change Log
+
+* **GitHub-Style Diff View (`project_change_log_ui.pas`):** Upgraded the **Project → Project change log...** details pane to a rich `TKMemo` diff viewer that renders every `Before:` / `After:` change with GitHub-style `- ` red removed lines and `+ ` green added lines, highlighting the exact changed words/characters with deeper inline red/green markers (adapted for both Dark and Light/Sepia skins) plus `Ctrl`+mouse wheel zooming.
+* Files: project_change_log_ui.pas, unitabout.pas.
+
+### 0a. Version 1.1.0.083 (2026-11-22) — Before/After Details in Project Change Log for Dictionaries & Raw Edits
 
 * **Detailed Settings & Dictionary Change Log Entries (`FormProjectProperties.pas`):** Changing default or per-module dictionaries now logs the exact action (`Replaced`, `Set`, or `Cleared`), dictionary filename in the summary, and full **Before** and **After** file paths in the details pane (plus Before/After values for project name, short titles, workflow settings, and fonts).
 * **Before/After Raw Data Diffs (`project_persistence.pas`):** Saving edits to raw verse texts (Source, Destination, Reference 1/2), associations, comments, status, or raw module properties now records both **Before** and **After** values in the Project Change Log details pane so every raw edit is auditable at a glance.

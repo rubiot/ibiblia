@@ -114,6 +114,9 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.084 (64-bit Edition) - 2026-11-22' + LineEnding +
+  '- Project Change Log details pane now renders Before/After text and path changes in a GitHub-style diff view with red "-" and green "+" lines, inline character-level highlights on the exact changed text, skin-adapted dark/light colors, and Ctrl+mouse wheel zooming.' + LineEnding +
+  '' + LineEnding +
   'Version 1.1.0.083 (64-bit Edition) - 2026-11-22' + LineEnding +
   '- Project Change Log now records detailed Before and After values for dictionary changes (showing Replaced/Set/Cleared with the exact file name and full path for Default and per-module dictionaries), project settings, and raw data edits (Source/Destination/Reference verse text, associations, comments, status, and module properties).' + LineEnding +
   '' + LineEnding +

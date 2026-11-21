@@ -17,6 +17,7 @@ implementation
 
 uses
   Forms, StdCtrls, ExtCtrls, ComCtrls, Dialogs, Graphics, Clipbrd, StrUtils,
+  Math, Types, KMemo, KEditCommon, KGraphics,
   ui_style, unitskins, project_change_log;
 
 resourcestring
@@ -46,6 +47,13 @@ resourcestring
   SChangeLogExportFailed = 'Could not export the change log:'#13#10'%s';
 
 type
+  TChangeDiffSpan = record
+    Text: UnicodeString;
+    Changed: Boolean;
+  end;
+  TChangeDiffSpanArray = array of TChangeDiffSpan;
+  TChangeDiffTokenArray = array of UnicodeString;
+
   TProjectChangeLogForm = class(TForm)
   private
     FProjectFile: string;
@@ -65,7 +73,9 @@ type
     FSplitter: TSplitter;
     FDetailsPanel: TPanel;
     FDetailsLabel: TLabel;
-    FDetailsMemo: TMemo;
+    FDetailsFrame: TPanel;
+    FDetailsMemo: TKMemo;
+    FDetailsFontSize: Integer;
     FFooterPanel: TPanel;
     FAddNoteBtn: TButton;
     FCopyBtn: TButton;
@@ -79,6 +89,10 @@ type
     procedure PopulateCategoryFilter;
     procedure ApplyFilter(KeepEntryId: Int64 = -1);
     procedure ShowSelectedDetails;
+    procedure RenderDetailsPlain(const AText: string);
+    procedure RenderDetailsEntry(const Entry: TProjectChangeLogEntry);
+    procedure DetailsMemoMouseWheel(Sender: TObject; Shift: TShiftState;
+      WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
     function GatherVisibleEntries: TProjectChangeLogArray;
     procedure FilterChanged(Sender: TObject);
     procedure ListSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
@@ -90,6 +104,300 @@ type
     constructor CreateDialog(AOwner: TComponent;
       const AProjectFile, AProjectTitle: string);
   end;
+
+{ ---------- Unicode character-level diff helpers ---------- }
+
+procedure AppendChangeDiffSpan(var Spans: TChangeDiffSpanArray;
+  const S: UnicodeString; Changed: Boolean);
+var
+  LastIdx: Integer;
+begin
+  if S = '' then
+    Exit;
+  LastIdx := High(Spans);
+  if (LastIdx >= 0) and (Spans[LastIdx].Changed = Changed) then
+    Spans[LastIdx].Text := Spans[LastIdx].Text + S
+  else
+  begin
+    SetLength(Spans, LastIdx + 2);
+    Spans[LastIdx + 1].Text := S;
+    Spans[LastIdx + 1].Changed := Changed;
+  end;
+end;
+
+function SplitChangeDiffTokens(const S: UnicodeString): TChangeDiffTokenArray;
+var
+  I, Len, StartPos, Count: Integer;
+  Ch: WideChar;
+
+  procedure AddTok(const T: UnicodeString);
+  begin
+    if Count >= Length(Result) then
+      SetLength(Result, Max(16, Length(Result) * 2));
+    Result[Count] := T;
+    Inc(Count);
+  end;
+
+  function IsWordChar(C: WideChar): Boolean;
+  begin
+    Result := (C > ' ') and (C <> '<') and (C <> '>') and (C <> '=') and
+              (C <> '"') and (C <> '''') and (C <> '/') and (C <> '\');
+  end;
+
+begin
+  Result := nil;
+  Count := 0;
+  Len := Length(S);
+  I := 1;
+  while I <= Len do
+  begin
+    Ch := S[I];
+    if Ch = '<' then
+    begin
+      StartPos := I;
+      Inc(I);
+      while (I <= Len) and (S[I] <> '>') and (S[I] <> #10) do
+        Inc(I);
+      if (I <= Len) and (S[I] = '>') then
+        Inc(I);
+      AddTok(Copy(S, StartPos, I - StartPos));
+    end
+    else if (Ch = ' ') or (Ch = #9) then
+    begin
+      StartPos := I;
+      while (I <= Len) and ((S[I] = ' ') or (S[I] = #9)) do
+        Inc(I);
+      AddTok(Copy(S, StartPos, I - StartPos));
+    end
+    else if IsWordChar(Ch) then
+    begin
+      StartPos := I;
+      while (I <= Len) and IsWordChar(S[I]) do
+        Inc(I);
+      AddTok(Copy(S, StartPos, I - StartPos));
+    end
+    else
+    begin
+      AddTok(Ch);
+      Inc(I);
+    end;
+  end;
+  SetLength(Result, Count);
+end;
+
+procedure DiffChangeCharRange(const A, B: UnicodeString;
+  var OldSpans, NewSpans: TChangeDiffSpanArray);
+const
+  MAX_CHAR_CELLS = 200000;
+var
+  LenA, LenB, PrefixLen, SuffixLen, MidA, MidB: Integer;
+  AMid, BMid: UnicodeString;
+  DP: array of Integer;
+  Cols, I, J: Integer;
+begin
+  LenA := Length(A);
+  LenB := Length(B);
+  PrefixLen := 0;
+  while (PrefixLen < LenA) and (PrefixLen < LenB) and
+        (A[PrefixLen + 1] = B[PrefixLen + 1]) do
+    Inc(PrefixLen);
+
+  SuffixLen := 0;
+  while (SuffixLen < LenA - PrefixLen) and (SuffixLen < LenB - PrefixLen) and
+        (A[LenA - SuffixLen] = B[LenB - SuffixLen]) do
+    Inc(SuffixLen);
+
+  if PrefixLen > 0 then
+  begin
+    AppendChangeDiffSpan(OldSpans, Copy(A, 1, PrefixLen), False);
+    AppendChangeDiffSpan(NewSpans, Copy(B, 1, PrefixLen), False);
+  end;
+
+  MidA := LenA - PrefixLen - SuffixLen;
+  MidB := LenB - PrefixLen - SuffixLen;
+  if (MidA > 0) or (MidB > 0) then
+  begin
+    AMid := Copy(A, PrefixLen + 1, MidA);
+    BMid := Copy(B, PrefixLen + 1, MidB);
+    if (MidA = 0) or (MidB = 0) or (Int64(MidA + 1) * Int64(MidB + 1) > MAX_CHAR_CELLS) then
+    begin
+      AppendChangeDiffSpan(OldSpans, AMid, True);
+      AppendChangeDiffSpan(NewSpans, BMid, True);
+    end
+    else
+    begin
+      Cols := MidB + 1;
+      SetLength(DP, (MidA + 1) * Cols);
+      for I := 0 to High(DP) do
+        DP[I] := 0;
+      for I := MidA - 1 downto 0 do
+        for J := MidB - 1 downto 0 do
+          if AMid[I + 1] = BMid[J + 1] then
+            DP[I * Cols + J] := DP[(I + 1) * Cols + (J + 1)] + 1
+          else
+            DP[I * Cols + J] := Max(DP[(I + 1) * Cols + J], DP[I * Cols + (J + 1)]);
+
+      I := 0;
+      J := 0;
+      while (I < MidA) and (J < MidB) do
+      begin
+        if AMid[I + 1] = BMid[J + 1] then
+        begin
+          AppendChangeDiffSpan(OldSpans, AMid[I + 1], False);
+          AppendChangeDiffSpan(NewSpans, BMid[J + 1], False);
+          Inc(I);
+          Inc(J);
+        end
+        else if DP[(I + 1) * Cols + J] >= DP[I * Cols + (J + 1)] then
+        begin
+          AppendChangeDiffSpan(OldSpans, AMid[I + 1], True);
+          Inc(I);
+        end
+        else
+        begin
+          AppendChangeDiffSpan(NewSpans, BMid[J + 1], True);
+          Inc(J);
+        end;
+      end;
+      while I < MidA do
+      begin
+        AppendChangeDiffSpan(OldSpans, AMid[I + 1], True);
+        Inc(I);
+      end;
+      while J < MidB do
+      begin
+        AppendChangeDiffSpan(NewSpans, BMid[J + 1], True);
+        Inc(J);
+      end;
+    end;
+  end;
+
+  if SuffixLen > 0 then
+  begin
+    AppendChangeDiffSpan(OldSpans, Copy(A, LenA - SuffixLen + 1, SuffixLen), False);
+    AppendChangeDiffSpan(NewSpans, Copy(B, LenB - SuffixLen + 1, SuffixLen), False);
+  end;
+end;
+
+procedure ComputeChangeLogDiff(const AText, BText: string;
+  out OldSpans, NewSpans: TChangeDiffSpanArray);
+const
+  MAX_TOK_CELLS = 200000;
+var
+  A, B, AMid, BMid, HunkA, HunkB: UnicodeString;
+  LenA, LenB, PrefixLen, SuffixLen, MidA, MidB: Integer;
+  TokA, TokB: TChangeDiffTokenArray;
+  TA, TB, Cols, I, J: Integer;
+  DP: array of Integer;
+begin
+  OldSpans := nil;
+  NewSpans := nil;
+  A := UTF8Decode(StringReplace(StringReplace(AText, #13#10, #10, [rfReplaceAll]),
+    #13, #10, [rfReplaceAll]));
+  B := UTF8Decode(StringReplace(StringReplace(BText, #13#10, #10, [rfReplaceAll]),
+    #13, #10, [rfReplaceAll]));
+
+  if A = B then
+  begin
+    AppendChangeDiffSpan(OldSpans, A, False);
+    AppendChangeDiffSpan(NewSpans, B, False);
+    Exit;
+  end;
+
+  LenA := Length(A);
+  LenB := Length(B);
+  PrefixLen := 0;
+  while (PrefixLen < LenA) and (PrefixLen < LenB) and
+        (A[PrefixLen + 1] = B[PrefixLen + 1]) do
+    Inc(PrefixLen);
+
+  SuffixLen := 0;
+  while (SuffixLen < LenA - PrefixLen) and (SuffixLen < LenB - PrefixLen) and
+        (A[LenA - SuffixLen] = B[LenB - SuffixLen]) do
+    Inc(SuffixLen);
+
+  if PrefixLen > 0 then
+  begin
+    AppendChangeDiffSpan(OldSpans, Copy(A, 1, PrefixLen), False);
+    AppendChangeDiffSpan(NewSpans, Copy(B, 1, PrefixLen), False);
+  end;
+
+  MidA := LenA - PrefixLen - SuffixLen;
+  MidB := LenB - PrefixLen - SuffixLen;
+  if (MidA > 0) or (MidB > 0) then
+  begin
+    AMid := Copy(A, PrefixLen + 1, MidA);
+    BMid := Copy(B, PrefixLen + 1, MidB);
+    TokA := SplitChangeDiffTokens(AMid);
+    TokB := SplitChangeDiffTokens(BMid);
+    TA := Length(TokA);
+    TB := Length(TokB);
+    if (TA > 0) and (TB > 0) and (Int64(TA + 1) * Int64(TB + 1) <= MAX_TOK_CELLS) then
+    begin
+      Cols := TB + 1;
+      SetLength(DP, (TA + 1) * Cols);
+      for I := 0 to High(DP) do
+        DP[I] := 0;
+      for I := TA - 1 downto 0 do
+        for J := TB - 1 downto 0 do
+          if TokA[I] = TokB[J] then
+            DP[I * Cols + J] := DP[(I + 1) * Cols + (J + 1)] + 1
+          else
+            DP[I * Cols + J] := Max(DP[(I + 1) * Cols + J], DP[I * Cols + (J + 1)]);
+
+      I := 0;
+      J := 0;
+      HunkA := '';
+      HunkB := '';
+      while (I < TA) and (J < TB) do
+      begin
+        if TokA[I] = TokB[J] then
+        begin
+          if (HunkA <> '') or (HunkB <> '') then
+          begin
+            DiffChangeCharRange(HunkA, HunkB, OldSpans, NewSpans);
+            HunkA := '';
+            HunkB := '';
+          end;
+          AppendChangeDiffSpan(OldSpans, TokA[I], False);
+          AppendChangeDiffSpan(NewSpans, TokB[J], False);
+          Inc(I);
+          Inc(J);
+        end
+        else if DP[(I + 1) * Cols + J] >= DP[I * Cols + (J + 1)] then
+        begin
+          HunkA := HunkA + TokA[I];
+          Inc(I);
+        end
+        else
+        begin
+          HunkB := HunkB + TokB[J];
+          Inc(J);
+        end;
+      end;
+      while I < TA do
+      begin
+        HunkA := HunkA + TokA[I];
+        Inc(I);
+      end;
+      while J < TB do
+      begin
+        HunkB := HunkB + TokB[J];
+        Inc(J);
+      end;
+      if (HunkA <> '') or (HunkB <> '') then
+        DiffChangeCharRange(HunkA, HunkB, OldSpans, NewSpans);
+    end
+    else
+      DiffChangeCharRange(AMid, BMid, OldSpans, NewSpans);
+  end;
+
+  if SuffixLen > 0 then
+  begin
+    AppendChangeDiffSpan(OldSpans, Copy(A, LenA - SuffixLen + 1, SuffixLen), False);
+    AppendChangeDiffSpan(NewSpans, Copy(B, LenB - SuffixLen + 1, SuffixLen), False);
+  end;
+end;
 
 procedure WriteUtf8NoBom(const FileName, Content: string);
 var
@@ -117,10 +425,11 @@ begin
   Caption := SChangeLogTitle + ' - ' + FProjectTitle;
   Position := poOwnerFormCenter;
   BorderStyle := bsSizeable;
-  Width := 920;
-  Height := 580;
+  Width := 940;
+  Height := 640;
   Constraints.MinWidth := 680;
-  Constraints.MinHeight := 420;
+  Constraints.MinHeight := 460;
+  FDetailsFontSize := 9;
   OnShow := @FormShowHandler;
 
   BuildUI;
@@ -254,7 +563,7 @@ begin
   FDetailsPanel := TPanel.Create(Self);
   FDetailsPanel.Parent := Self;
   FDetailsPanel.Align := alBottom;
-  FDetailsPanel.Height := 156;
+  FDetailsPanel.Height := 220;
   FDetailsPanel.BevelOuter := bvNone;
   FDetailsPanel.BorderSpacing.Left := 12;
   FDetailsPanel.BorderSpacing.Right := 12;
@@ -266,14 +575,23 @@ begin
   FDetailsLabel.BorderSpacing.Bottom := 4;
   FDetailsLabel.Caption := SChangeLogDetailsLabel;
 
-  FDetailsMemo := TMemo.Create(Self);
-  FDetailsMemo.Parent := FDetailsPanel;
+  FDetailsFrame := TPanel.Create(Self);
+  FDetailsFrame.Parent := FDetailsPanel;
+  FDetailsFrame.Align := alClient;
+  FDetailsFrame.BevelOuter := bvLowered;
+  FDetailsFrame.BorderSpacing.Around := 0;
+
+  FDetailsMemo := TKMemo.Create(Self);
+  FDetailsMemo.Parent := FDetailsFrame;
   FDetailsMemo.Align := alClient;
   FDetailsMemo.ReadOnly := True;
-  FDetailsMemo.ScrollBars := ssAutoBoth;
-  FDetailsMemo.WordWrap := True;
-  FDetailsMemo.Font.Name := UIMonoFontName;
-  FDetailsMemo.Font.Size := 9;
+  FDetailsMemo.TabStop := True;
+  FDetailsMemo.BorderStyle := bsNone;
+  FDetailsMemo.ScrollBars := ssVertical;
+  FDetailsMemo.ParentFont := False;
+  FDetailsMemo.TextStyle.Font.Name := UIMonoFontName;
+  FDetailsMemo.TextStyle.Font.Size := FDetailsFontSize;
+  FDetailsMemo.OnMouseWheel := @DetailsMemoMouseWheel;
 
   FSplitter := TSplitter.Create(Self);
   FSplitter.Parent := Self;
@@ -318,10 +636,39 @@ begin
   else
     FList.Font.Color := UITextColor;
 
-  FDetailsMemo.Color := UIContentColor;
-  FDetailsMemo.Font.Color := UITextColor;
-  FDetailsMemo.Font.Name := UIMonoFontName;
-  FDetailsMemo.Font.Size := 9;
+  if CurrentSkin.Id = skClassic then
+  begin
+    FDetailsFrame.Color := clWindow;
+    FDetailsMemo.Color := clWindow;
+    FDetailsMemo.Background.Color := clWindow;
+    FDetailsMemo.Colors.BkGnd := clWindow;
+    FDetailsMemo.Colors.SelBkGnd := clHighlight;
+    FDetailsMemo.Colors.SelText := clHighlightText;
+    FDetailsMemo.Colors.SelBkGndFocused := clHighlight;
+    FDetailsMemo.Colors.SelTextFocused := clHighlightText;
+    FDetailsMemo.TextStyle.Font.Color := UITextColor;
+  end
+  else
+  begin
+    FDetailsFrame.Color := CurrentSkin.WindowBg;
+    FDetailsMemo.Color := CurrentSkin.WindowBg;
+    FDetailsMemo.Background.Color := CurrentSkin.WindowBg;
+    FDetailsMemo.Colors.BkGnd := CurrentSkin.WindowBg;
+    FDetailsMemo.Colors.SelBkGnd := CurrentSkin.SelectedBg;
+    FDetailsMemo.Colors.SelText := CurrentSkin.SelectedText;
+    FDetailsMemo.Colors.SelBkGndFocused := CurrentSkin.SelectedBg;
+    FDetailsMemo.Colors.SelTextFocused := CurrentSkin.SelectedText;
+    FDetailsMemo.TextStyle.Font.Color := CurrentSkin.WindowText;
+  end;
+  FDetailsMemo.TextStyle.Font.Name := UIMonoFontName;
+  FDetailsMemo.TextStyle.Font.Size := FDetailsFontSize;
+  if FDetailsMemo.HandleAllocated then
+  begin
+    ApplyDarkModeToControl(FDetailsMemo, CurrentSkin.IsDark);
+    {$IFDEF WINDOWS}
+    HookNCScrollBarControl(FDetailsMemo);
+    {$ENDIF}
+  end;
 
   FSearchEdit.Color := UIContentColor;
   FSearchEdit.Font.Color := UITextColor;
@@ -336,6 +683,7 @@ begin
   if CurrentSkin.Id <> skClassic then
     ApplySkinToForm(Self, CurrentSkin);
   ApplyTheme;
+  ShowSelectedDetails;
 end;
 
 procedure TProjectChangeLogForm.ReloadEntries(SelectTop: Boolean);
@@ -456,44 +804,360 @@ begin
   ShowSelectedDetails;
 end;
 
+procedure TProjectChangeLogForm.RenderDetailsPlain(const AText: string);
+var
+  NormalFg: TColor;
+  TB: TKMemoTextBlock;
+begin
+  if CurrentSkin.Id = skClassic then
+    NormalFg := UITextColor
+  else
+    NormalFg := CurrentSkin.WindowText;
+
+  FDetailsMemo.Blocks.LockUpdate;
+  try
+    FDetailsMemo.Blocks.Clear;
+    FDetailsMemo.Blocks.DefaultParaStyle.FirstIndent := 0;
+    FDetailsMemo.Blocks.DefaultParaStyle.LeftPadding := 6;
+    FDetailsMemo.Blocks.DefaultParaStyle.TopPadding := 2;
+    FDetailsMemo.Blocks.DefaultParaStyle.BottomPadding := 2;
+    FDetailsMemo.Blocks.DefaultParaStyle.HAlign := halLeft;
+    if AText <> '' then
+    begin
+      TB := FDetailsMemo.Blocks.AddTextBlock(AText);
+      TB.TextStyle.Font.Name := UIMonoFontName;
+      TB.TextStyle.Font.Size := FDetailsFontSize;
+      TB.TextStyle.Font.Color := NormalFg;
+      TB.TextStyle.Font.Style := [];
+      TB.TextStyle.AllowBrush := False;
+      TB.TextStyle.Brush.Style := bsClear;
+    end;
+    FDetailsMemo.Modified := False;
+    FDetailsMemo.TopPos := 0;
+  finally
+    FDetailsMemo.Blocks.UnLockUpdate;
+    FDetailsMemo.Invalidate;
+  end;
+end;
+
+procedure TProjectChangeLogForm.RenderDetailsEntry(const Entry: TProjectChangeLogEntry);
+var
+  NormalFg, MutedFg: TColor;
+  DelRowBg, DelRowFg, DelHiBg, DelHiFg, DelSignFg: TColor;
+  AddRowBg, AddRowFg, AddHiBg, AddHiFg, AddSignFg: TColor;
+  DetailLines: TStringList;
+  I, J, K, IndentLen, AfterIdx, EndIdx: Integer;
+  Line, TrimmedLeft, IndentStr, BeforeText, AfterText: string;
+  OldSpans, NewSpans: TChangeDiffSpanArray;
+
+  procedure AddStyledRun(const S: string; Fg: TColor; Bold: Boolean;
+    HasBg: Boolean; Bg: TColor);
+  var
+    TB: TKMemoTextBlock;
+  begin
+    if S = '' then
+      Exit;
+    TB := FDetailsMemo.Blocks.AddTextBlock(S);
+    TB.TextStyle.Font.Name := UIMonoFontName;
+    TB.TextStyle.Font.Size := FDetailsFontSize;
+    TB.TextStyle.Font.Color := Fg;
+    if Bold then
+      TB.TextStyle.Font.Style := [fsBold]
+    else
+      TB.TextStyle.Font.Style := [];
+    if HasBg then
+    begin
+      TB.TextStyle.AllowBrush := True;
+      TB.TextStyle.Brush.Style := bsSolid;
+      TB.TextStyle.Brush.Color := Bg;
+    end
+    else
+    begin
+      TB.TextStyle.AllowBrush := False;
+      TB.TextStyle.Brush.Style := bsClear;
+    end;
+  end;
+
+  procedure AddMetaLine(const LabelText, ValueText: string);
+  begin
+    AddStyledRun(LabelText, MutedFg, True, False, clNone);
+    AddStyledRun(ValueText, NormalFg, False, False, clNone);
+    FDetailsMemo.Blocks.AddParagraph;
+  end;
+
+  procedure RenderDiffSide(const Spans: TChangeDiffSpanArray; IsAdded: Boolean);
+  var
+    SIdx, SegStart, PosBreak: Integer;
+    S, Seg: UnicodeString;
+    RowBg, RowFg, HiBg, HiFg, SignFg: TColor;
+    SignStr: string;
+    AtLineStart: Boolean;
+
+    procedure EmitGutter;
+    begin
+      AddStyledRun(SignStr, SignFg, True, True, RowBg);
+    end;
+
+  begin
+    if IsAdded then
+    begin
+      RowBg := AddRowBg;
+      RowFg := AddRowFg;
+      HiBg := AddHiBg;
+      HiFg := AddHiFg;
+      SignFg := AddSignFg;
+      SignStr := '  + ';
+    end
+    else
+    begin
+      RowBg := DelRowBg;
+      RowFg := DelRowFg;
+      HiBg := DelHiBg;
+      HiFg := DelHiFg;
+      SignFg := DelSignFg;
+      SignStr := '  - ';
+    end;
+
+    AtLineStart := True;
+    if Length(Spans) = 0 then
+    begin
+      EmitGutter;
+      AddStyledRun('(empty)', RowFg, False, True, RowBg);
+      FDetailsMemo.Blocks.AddParagraph;
+      Exit;
+    end;
+
+    for SIdx := 0 to High(Spans) do
+    begin
+      S := Spans[SIdx].Text;
+      SegStart := 1;
+      while SegStart <= Length(S) do
+      begin
+        if AtLineStart then
+        begin
+          EmitGutter;
+          AtLineStart := False;
+        end;
+        PosBreak := SegStart;
+        while (PosBreak <= Length(S)) and (S[PosBreak] <> #10) do
+          Inc(PosBreak);
+        Seg := Copy(S, SegStart, PosBreak - SegStart);
+        if Seg <> '' then
+        begin
+          if Spans[SIdx].Changed then
+            AddStyledRun(UTF8Encode(Seg), HiFg, True, True, HiBg)
+          else
+            AddStyledRun(UTF8Encode(Seg), RowFg, False, True, RowBg);
+        end;
+        if (PosBreak <= Length(S)) and (S[PosBreak] = #10) then
+        begin
+          if Spans[SIdx].Changed and (Seg = '') then
+            AddStyledRun(' ', HiFg, True, True, HiBg);
+          FDetailsMemo.Blocks.AddParagraph;
+          AtLineStart := True;
+          SegStart := PosBreak + 1;
+        end
+        else
+          Break;
+      end;
+    end;
+    if not AtLineStart then
+      FDetailsMemo.Blocks.AddParagraph;
+  end;
+
+  function CountLeadingSpaces(const S: string): Integer;
+  begin
+    Result := 0;
+    while (Result < Length(S)) and (S[Result + 1] = ' ') do
+      Inc(Result);
+  end;
+
+  function IsNextEntryBoundary(const S: string; BaseIndent: Integer): Boolean;
+  var
+    TrimL: string;
+    Sp: Integer;
+  begin
+    TrimL := TrimLeft(S);
+    if TrimL = '' then
+      Exit(True);
+    Sp := CountLeadingSpaces(S);
+    if Sp < BaseIndent then
+      Exit(True);
+    if (Sp = BaseIndent) and
+       ((Copy(TrimL, 1, 7) = 'Before:') or (Copy(TrimL, 1, 6) = 'After:')) then
+      Exit(True);
+    Result := False;
+  end;
+
+begin
+  if CurrentSkin.Id = skClassic then
+    NormalFg := UITextColor
+  else
+    NormalFg := CurrentSkin.WindowText;
+  MutedFg := UIMutedTextColor;
+
+  if CurrentSkin.IsDark then
+  begin
+    DelRowBg := MakeRGB(62, 26, 30);
+    DelRowFg := MakeRGB(242, 208, 210);
+    DelHiBg  := MakeRGB(148, 38, 46);
+    DelHiFg  := MakeRGB(255, 232, 232);
+    DelSignFg := MakeRGB(255, 130, 138);
+
+    AddRowBg := MakeRGB(22, 56, 34);
+    AddRowFg := MakeRGB(208, 244, 216);
+    AddHiBg  := MakeRGB(30, 120, 62);
+    AddHiFg  := MakeRGB(226, 255, 232);
+    AddSignFg := MakeRGB(110, 235, 145);
+  end
+  else
+  begin
+    DelRowBg := MakeRGB(255, 235, 233);
+    DelRowFg := MakeRGB(90, 22, 26);
+    DelHiBg  := MakeRGB(255, 190, 196);
+    DelHiFg  := MakeRGB(136, 12, 20);
+    DelSignFg := MakeRGB(190, 30, 38);
+
+    AddRowBg := MakeRGB(230, 255, 236);
+    AddRowFg := MakeRGB(18, 78, 34);
+    AddHiBg  := MakeRGB(172, 242, 189);
+    AddHiFg  := MakeRGB(12, 98, 34);
+    AddSignFg := MakeRGB(26, 127, 55);
+  end;
+
+  FDetailsMemo.Blocks.LockUpdate;
+  try
+    FDetailsMemo.Blocks.Clear;
+    FDetailsMemo.Blocks.DefaultParaStyle.FirstIndent := 0;
+    FDetailsMemo.Blocks.DefaultParaStyle.LeftPadding := 6;
+    FDetailsMemo.Blocks.DefaultParaStyle.TopPadding := 1;
+    FDetailsMemo.Blocks.DefaultParaStyle.BottomPadding := 1;
+    FDetailsMemo.Blocks.DefaultParaStyle.HAlign := halLeft;
+
+    AddMetaLine('Date & Time: ', Entry.ChangedAt);
+    AddMetaLine('Category:    ', Entry.Category);
+    AddMetaLine('Description: ', Entry.Summary);
+
+    if Trim(Entry.Details) <> '' then
+    begin
+      FDetailsMemo.Blocks.AddParagraph;
+      DetailLines := TStringList.Create;
+      try
+        DetailLines.Text := StringReplace(
+          StringReplace(Entry.Details, #13#10, #10, [rfReplaceAll]),
+          #13, #10, [rfReplaceAll]);
+        I := 0;
+        while I < DetailLines.Count do
+        begin
+          Line := DetailLines[I];
+          TrimmedLeft := TrimLeft(Line);
+          if Copy(TrimmedLeft, 1, 7) = 'Before:' then
+          begin
+            IndentLen := CountLeadingSpaces(Line);
+            IndentStr := StringOfChar(' ', IndentLen);
+            BeforeText := TrimLeft(Copy(TrimmedLeft, 8, MaxInt));
+            AfterIdx := -1;
+            for J := I + 1 to DetailLines.Count - 1 do
+            begin
+              if (CountLeadingSpaces(DetailLines[J]) = IndentLen) and
+                 (Copy(TrimLeft(DetailLines[J]), 1, 6) = 'After:') then
+              begin
+                AfterIdx := J;
+                Break;
+              end;
+              if (CountLeadingSpaces(DetailLines[J]) < IndentLen) and
+                 (Trim(DetailLines[J]) <> '') then
+                Break;
+            end;
+
+            if AfterIdx >= 0 then
+            begin
+              for K := I + 1 to AfterIdx - 1 do
+                BeforeText := BeforeText + #10 + DetailLines[K];
+              AfterText := TrimLeft(Copy(TrimLeft(DetailLines[AfterIdx]), 7, MaxInt));
+              EndIdx := AfterIdx;
+              for K := AfterIdx + 1 to DetailLines.Count - 1 do
+              begin
+                if IsNextEntryBoundary(DetailLines[K], IndentLen) then
+                  Break;
+                AfterText := AfterText + #10 + DetailLines[K];
+                EndIdx := K;
+              end;
+
+              ComputeChangeLogDiff(BeforeText, AfterText, OldSpans, NewSpans);
+              RenderDiffSide(OldSpans, False);
+              RenderDiffSide(NewSpans, True);
+              I := EndIdx + 1;
+              Continue;
+            end;
+          end;
+
+          if (Trim(Line) <> '') and (Line[Length(Line)] = ':') then
+            AddStyledRun(Line, NormalFg, True, False, clNone)
+          else
+            AddStyledRun(Line, NormalFg, False, False, clNone);
+          FDetailsMemo.Blocks.AddParagraph;
+          Inc(I);
+        end;
+      finally
+        DetailLines.Free;
+      end;
+    end;
+
+    FDetailsMemo.Modified := False;
+    FDetailsMemo.TopPos := 0;
+  finally
+    FDetailsMemo.Blocks.UnLockUpdate;
+    FDetailsMemo.Invalidate;
+  end;
+end;
+
+procedure TProjectChangeLogForm.DetailsMemoMouseWheel(Sender: TObject;
+  Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint;
+  var Handled: Boolean);
+var
+  NewSize: Integer;
+begin
+  if ssCtrl in Shift then
+  begin
+    if WheelDelta > 0 then
+      NewSize := Min(22, FDetailsFontSize + 1)
+    else
+      NewSize := Max(7, FDetailsFontSize - 1);
+    if NewSize <> FDetailsFontSize then
+    begin
+      FDetailsFontSize := NewSize;
+      FDetailsMemo.TextStyle.Font.Size := FDetailsFontSize;
+      ShowSelectedDetails;
+    end;
+    Handled := True;
+  end;
+end;
+
 procedure TProjectChangeLogForm.ShowSelectedDetails;
 var
   EntryIdx: Integer;
-  Lines: TStringList;
 begin
   if Length(FEntries) = 0 then
   begin
-    FDetailsMemo.Text := SChangeLogEmpty;
+    RenderDetailsPlain(SChangeLogEmpty);
     Exit;
   end;
 
   if not Assigned(FList.Selected) then
   begin
-    FDetailsMemo.Clear;
+    RenderDetailsPlain('');
     Exit;
   end;
 
   EntryIdx := PtrInt(FList.Selected.Data);
   if (EntryIdx < 0) or (EntryIdx > High(FEntries)) then
   begin
-    FDetailsMemo.Clear;
+    RenderDetailsPlain('');
     Exit;
   end;
 
-  Lines := TStringList.Create;
-  try
-    Lines.Add('Date & Time: ' + FEntries[EntryIdx].ChangedAt);
-    Lines.Add('Category:    ' + FEntries[EntryIdx].Category);
-    Lines.Add('Description: ' + FEntries[EntryIdx].Summary);
-    if Trim(FEntries[EntryIdx].Details) <> '' then
-    begin
-      Lines.Add('');
-      Lines.Add(FEntries[EntryIdx].Details);
-    end;
-    FDetailsMemo.Text := Lines.Text;
-  finally
-    Lines.Free;
-  end;
+  RenderDetailsEntry(FEntries[EntryIdx]);
 end;
 
 function TProjectChangeLogForm.GatherVisibleEntries: TProjectChangeLogArray;
