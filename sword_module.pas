@@ -977,6 +977,7 @@ begin
   else if SameText(Osis, '2Esd') then Code := '2ES'
   else if SameText(Osis, 'PrMan') then Code := 'MAN'
   else if SameText(Osis, 'AddPs') then Code := 'PS2'
+  else if SameText(Osis, 'PssSol') then Code := 'PSS'
   else if SameText(Osis, 'Odes') then Code := 'ODA'
   else if SameText(Osis, 'EpLao') then Code := 'LAO';
   if Code = '' then

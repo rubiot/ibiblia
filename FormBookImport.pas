@@ -127,6 +127,7 @@ type
     FCurrentIndex: Integer;
     FProjectTexts: TStringList;  // ref -> project text (Objects: index in FProjectValues)
     FProjectValues: TStringList;
+    FBookNames: TStringList;     // BookID string -> display name for this dialog
     FKind: TBookImportKind;
     FScope: TEscopoTexto;
     function FormatEntryReference(Index: Integer): string;
@@ -185,7 +186,7 @@ begin
   FNames.AddObject(SBookImportSkipBook, TObject(PtrInt(0)));
   for Book := 1 to 66 do
     FNames.AddObject(AnyBibleBookName(Book), TObject(PtrInt(Book)));
-  for Book := FIRST_APOCRYPHA_BOOK to 86 do
+  for Book := FIRST_APOCRYPHA_BOOK to 87 do
     FNames.AddObject(AnyBibleBookName(Book), TObject(PtrInt(Book)));
 
   HintLabel := TLabel.Create(Self);
@@ -417,6 +418,7 @@ begin
 
   FProjectTexts := TStringList.Create;
   FProjectValues := TStringList.Create;
+  FBookNames := TStringList.Create;
   ApplyDialogStyle(Self);
 end;
 
@@ -424,6 +426,7 @@ destructor TFrmBookImport.Destroy;
 begin
   FreeAndNil(FProjectTexts);
   FreeAndNil(FProjectValues);
+  FreeAndNil(FBookNames);
   inherited Destroy;
 end;
 
@@ -464,7 +467,9 @@ var
 begin
   if (Index < 0) or (Index > High(FEntries)) then
     Exit('');
-  BName := AnyBibleBookName(FEntries[Index].Book);
+  BName := Trim(FBookNames.Values[IntToStr(FEntries[Index].Book)]);
+  if BName = '' then
+    BName := AnyBibleBookName(FEntries[Index].Book);
   if BName = '' then
     BName := '#' + IntToStr(FEntries[Index].Book);
   Result := Format('%s %d:%d',
@@ -948,11 +953,16 @@ var
   Mapping: TFrmBookMapping;
   Dlg: TFrmBookImport;
   ErrorMessage, Title, InfoText, ProjectValue, BookList: string;
-  ProjectRefs, ProjectTexts: TStringList;
+  SrcName, MappedRef, UseName: string;
+  ProjectRefs, ProjectTexts, SourceBooks: TStringList;
   BookHasText: array[1..LAST_IMPORT_BOOK] of Boolean;
   BookSelected: array[1..LAST_IMPORT_BOOK] of Integer;
+  BookMap: array[1..LAST_IMPORT_BOOK] of Integer;
+  UsedIDs: array[1..LAST_IMPORT_BOOK] of Boolean;
+  MappedBookName: array[1..LAST_IMPORT_BOOK] of string;
   Entries: TRefEntryArray;
   Count, I, RowIndex, Identical, NoPlace, B, C, V: Integer;
+  TargetB, FreeB, MappedB: Integer;
   Verse: TImportVerse;
   InScope, HasRow: Boolean;
   Refs: TStringList;
@@ -1054,6 +1064,51 @@ begin
     end;
     ProjectRefs.Sorted := True;
 
+    for B := 1 to LAST_IMPORT_BOOK do
+    begin
+      BookMap[B] := B;
+      UsedIDs[B] := (B >= FIRST_APOCRYPHA_BOOK) and (BookHasText[B] or IsApocryphaBook(B));
+      MappedBookName[B] := '';
+    end;
+    SourceBooks := Source.BookIDs;
+    try
+      for I := 0 to SourceBooks.Count - 1 do
+      begin
+        B := StrToIntDef(SourceBooks[I], 0);
+        if (B >= FIRST_APOCRYPHA_BOOK) and (B <= LAST_IMPORT_BOOK) then
+        begin
+          SrcName := Source.BookName(B);
+          TargetB := FindProjectApocryphaBookIDByName(SrcName);
+          if (TargetB >= FIRST_APOCRYPHA_BOOK) and (TargetB <= LAST_IMPORT_BOOK) then
+          begin
+            BookMap[B] := TargetB;
+            UsedIDs[TargetB] := True;
+            MappedBookName[TargetB] := ApocryphaBookName(TargetB);
+          end
+          else
+          begin
+            if UsedIDs[B] then
+            begin
+              TargetB := B;
+              for FreeB := FIRST_APOCRYPHA_BOOK to LAST_IMPORT_BOOK do
+                if not UsedIDs[FreeB] then
+                begin
+                  TargetB := FreeB;
+                  Break;
+                end;
+            end
+            else
+              TargetB := B;
+            BookMap[B] := TargetB;
+            UsedIDs[TargetB] := True;
+            MappedBookName[TargetB] := SrcName;
+          end;
+        end;
+      end;
+    finally
+      SourceBooks.Free;
+    end;
+
     SetLength(Entries, Source.VerseCount);
     Count := 0;
     Identical := 0;
@@ -1063,7 +1118,9 @@ begin
       Verse := Source.Verses[I];
       if (Verse.Book < 1) or (Verse.Book > LAST_IMPORT_BOOK) then
         Continue;
-      RowIndex := ProjectRefs.IndexOf(Source.ReferenceID(I));
+      MappedB := BookMap[Verse.Book];
+      MappedRef := Format('%d,%d,%d', [MappedB, Verse.Chapter, Verse.Verse]);
+      RowIndex := ProjectRefs.IndexOf(MappedRef);
       HasRow := RowIndex >= 0;
       if Kind = bikReplace then
       begin
@@ -1081,23 +1138,23 @@ begin
       end
       else
       begin
-        InScope := BookInProjectScope(AProject.Escopo, Verse.Book);
-        if Verse.Book < FIRST_APOCRYPHA_BOOK then
+        InScope := BookInProjectScope(AProject.Escopo, MappedB);
+        if MappedB < FIRST_APOCRYPHA_BOOK then
         begin
           { canonical verses must exist in the KJV numbering }
           if (InScope and not HasRow) or (not InScope and
-             ((Verse.Chapter > BibleChapterCount(Verse.Book)) or
-              (Verse.Verse > BibleVerseCount(Verse.Book, Verse.Chapter)))) then
+             ((Verse.Chapter > BibleChapterCount(MappedB)) or
+              (Verse.Verse > BibleVerseCount(MappedB, Verse.Chapter)))) then
           begin
             Inc(NoPlace);
             Continue;
           end;
         end;
       end;
-      Entries[Count].Book := Verse.Book;
+      Entries[Count].Book := MappedB;
       Entries[Count].Chapter := Verse.Chapter;
       Entries[Count].Verse := Verse.Verse;
-      Entries[Count].Ref := Source.ReferenceID(I);
+      Entries[Count].Ref := MappedRef;
       Entries[Count].Text := Verse.Text;
       Inc(Count);
     end;
@@ -1160,6 +1217,12 @@ begin
     finally
       Refs.Free;
     end;
+    for B := FIRST_APOCRYPHA_BOOK to LAST_IMPORT_BOOK do
+      if MappedBookName[B] <> '' then
+      begin
+        Dlg.FBookNames.Values[IntToStr(B)] := MappedBookName[B];
+        Dlg.FTree.SetBookCaption(B, MappedBookName[B]);
+      end;
     if Kind = bikAdd then
     begin
       Dlg.FTree.SelectNone;
@@ -1194,16 +1257,19 @@ begin
     for B := 1 to LAST_IMPORT_BOOK do
       if BookSelected[B] > 0 then
       begin
+        UseName := MappedBookName[B];
+        if UseName = '' then
+          UseName := Source.BookName(B);
         if BookList <> '' then
           BookList := BookList + ', ';
         BookList := BookList + Format(SBookImportVerseCountFmt,
-          [Source.BookName(B), BookSelected[B]]);
+          [UseName, BookSelected[B]]);
         if (Kind = bikAdd) and (B >= FIRST_APOCRYPHA_BOOK) then
         begin
           if Request.ApocryphaInfo <> '' then
             Request.ApocryphaInfo := Request.ApocryphaInfo + ';';
           Request.ApocryphaInfo := Request.ApocryphaInfo +
-            IntToStr(B) + '=' + StringReplace(Source.BookName(B), ';', ',',
+            IntToStr(B) + '=' + StringReplace(UseName, ';', ',',
             [rfReplaceAll]);
         end;
       end;
@@ -1218,12 +1284,16 @@ begin
         for I := 0 to OrderItems.Count - 1 do
         begin
           B := StrToIntDef(OrderItems[I], 0);
-          if (B >= FIRST_APOCRYPHA_BOOK) and (B <= LAST_IMPORT_BOOK) and
-             (BookSelected[B] > 0) then
+          if (B >= FIRST_APOCRYPHA_BOOK) and (B <= LAST_IMPORT_BOOK) then
           begin
-            if Request.ApocryphaOrder <> '' then
-              Request.ApocryphaOrder := Request.ApocryphaOrder + ',';
-            Request.ApocryphaOrder := Request.ApocryphaOrder + IntToStr(B);
+            MappedB := BookMap[B];
+            if (MappedB >= FIRST_APOCRYPHA_BOOK) and (MappedB <= LAST_IMPORT_BOOK) and
+               (BookSelected[MappedB] > 0) then
+            begin
+              if Request.ApocryphaOrder <> '' then
+                Request.ApocryphaOrder := Request.ApocryphaOrder + ',';
+              Request.ApocryphaOrder := Request.ApocryphaOrder + IntToStr(MappedB);
+            end;
           end;
         end;
       finally

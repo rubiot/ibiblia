@@ -68,6 +68,7 @@ type
     { Book node with this book number (Data) cannot be ticked and is drawn
       greyed, with Suffix added to its caption. }
     procedure DisableBook(BookID: Integer; const Suffix: string);
+    procedure SetBookCaption(BookID: Integer; const ACaption: string);
     { Builds the tree from the books, chapters and verses of the project (as
       the main Bible tree lists them) instead of from the standard scope:
       Clear, then AddBookNode / AddChapterNode / AddVerseNode in order. }
@@ -578,6 +579,24 @@ begin
       SetNodeStateIndex(node, ImgIndexUnchecked);
       if Suffix <> '' then
         node.Text := node.Text + Suffix;
+      Break;
+    end;
+    node := node.GetNextSibling;
+  end;
+end;
+
+procedure TBibleTreeView.SetBookCaption(BookID: Integer; const ACaption: string);
+var
+  node: TTreeNode;
+begin
+  if (Items.Count = 0) or (Trim(ACaption) = '') then
+    Exit;
+  node := Items.GetFirstNode;
+  while Assigned(node) do
+  begin
+    if Integer(PtrInt(node.Data)) = BookID then
+    begin
+      node.Text := ACaption;
       Break;
     end;
     node := node.GetNextSibling;

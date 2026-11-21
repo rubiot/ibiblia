@@ -76,6 +76,9 @@ resourcestring
 
 implementation
 
+uses
+  apocrypha_books;
+
 const
   ESwordChaptersPerBook: array[1..66] of smallint = (
     50,40,27,36,34,24,21,4,31,24,22,25,29,36,10,13,10,42,150,31,12,8,66,
@@ -1795,6 +1798,7 @@ begin
     'BEL': Result := 82;
     'ESG', 'ADE': Result := 83;
     'PS2': Result := 84;
+    'PSS', 'PS3': Result := 85;
     'ODE', 'ODA': Result := 86;
     'LAO': Result := 87;
   end;
@@ -2086,30 +2090,10 @@ begin
     Exit;
   end;
 
-  case bookID of
-    67: Result := '1 Esdras';
-    68: Result := '2 Esdras';
-    69: Result := 'Tobit';
-    70: Result := 'Judith';
-    71: Result := '1 Maccabees';
-    72: Result := '2 Maccabees';
-    73: Result := '3 Maccabees';
-    74: Result := '4 Maccabees';
-    75: Result := 'Prayer of Manasseh';
-    76: Result := 'Wisdom';
-    77: Result := 'Sirach';
-    78: Result := 'Baruch';
-    79: Result := 'Prayer of Manasseh';
-    80: Result := '1 Maccabees';
-    81: Result := '2 Maccabees';
-    82: Result := '3 Maccabees';
-    83: Result := '4 Maccabees';
-    84: Result := 'Psalm 151';
-    85: Result := 'Psalms of Solomon';
-    86: Result := 'Odes';
+  if (bookID >= 67) and (bookID <= 87) then
+    Result := DefaultApocryphaBookName(bookID)
   else
     Result := 'Apocrypha ' + IntToStr(bookID);
-  end;
 end;
 
 class function TESwordModule.LoadESwordBibleToONT(const filename: string; modulo: TStringList; out hasOT, hasNT: boolean; out errMsg: string): boolean;
@@ -4427,14 +4411,17 @@ begin
     for book := 67 to 150 do
       if apocPresent[book] then
       begin
-        bName := IdentifyApocryphaBookName(
-          book,
-          apocMaxChap[book],
-          apocChap1Verses[book],
-          apocChap2Verses[book],
-          apocMaxChapVerses[book],
-          apocSample[book]
-        );
+        if book <= 87 then
+          bName := DefaultApocryphaBookName(book)
+        else
+          bName := IdentifyApocryphaBookName(
+            book,
+            apocMaxChap[book],
+            apocChap1Verses[book],
+            apocChap2Verses[book],
+            apocMaxChapVerses[book],
+            apocSample[book]
+          );
         if apocryphaBooksInfo <> '' then
           apocryphaBooksInfo := apocryphaBooksInfo + ';';
         apocryphaBooksInfo := apocryphaBooksInfo + IntToStr(book) + '=' + bName;
@@ -4902,14 +4889,17 @@ begin
   for book := 67 to 150 do
     if apocPresent[book] then
     begin
-      bName := IdentifyApocryphaBookName(
-        book,
-        apocMaxChap[book],
-        apocChap1Verses[book],
-        apocChap2Verses[book],
-        apocMaxChapVerses[book],
-        apocSample[book]
-      );
+      if book <= 87 then
+        bName := DefaultApocryphaBookName(book)
+      else
+        bName := IdentifyApocryphaBookName(
+          book,
+          apocMaxChap[book],
+          apocChap1Verses[book],
+          apocChap2Verses[book],
+          apocMaxChapVerses[book],
+          apocSample[book]
+        );
       if apocryphaBooksInfo <> '' then
         apocryphaBooksInfo := apocryphaBooksInfo + ';';
       apocryphaBooksInfo := apocryphaBooksInfo + IntToStr(book) + '=' + bName;
@@ -4955,32 +4945,10 @@ function USFMBookDisplayName(BookID: Integer): string;
 begin
   if (BookID >= 1) and (BookID <= 66) then
     Result := USFMBookNames[BookID]
+  else if (BookID >= 67) and (BookID <= 87) then
+    Result := DefaultApocryphaBookName(BookID)
   else
-    case BookID of
-      67: Result := '1 Esdras';
-      68: Result := '2 Esdras';
-      69: Result := 'Tobit';
-      70: Result := 'Judith';
-      71: Result := '1 Maccabees';
-      72: Result := '2 Maccabees';
-      73: Result := '3 Maccabees';
-      74: Result := '4 Maccabees';
-      75: Result := 'Prayer of Manasseh';
-      76: Result := 'Wisdom of Solomon';
-      77: Result := 'Sirach';
-      78: Result := 'Baruch';
-      79: Result := 'Letter of Jeremiah';
-      80: Result := 'Song of the Three Young Men';
-      81: Result := 'Susanna';
-      82: Result := 'Bel and the Dragon';
-      83: Result := 'Esther (Greek)';
-      84: Result := 'Psalm 151';
-      85: Result := 'Psalms of Solomon';
-      86: Result := 'Odes';
-      87: Result := 'Laodiceans';
-    else
-      Result := TESwordModule.BookIDToUSFMCode(BookID);
-    end;
+    Result := TESwordModule.BookIDToUSFMCode(BookID);
 end;
 
 function USFMParaMarkerFor(const Bound: string; Indent: Integer): string;
@@ -5789,6 +5757,32 @@ begin
   Result := AnsiEndsStr('.zip', LowerCase(filename));
 end;
 
+function ResolveExportUSFMCode(BookID: Integer): string;
+var
+  CanonID: Integer;
+begin
+  if BookID >= FIRST_APOCRYPHA_BOOK then
+  begin
+    CanonID := CanonicalApocryphaIDByName(ApocryphaBookName(BookID));
+    if CanonID > 0 then
+      Exit(TESwordModule.BookIDToUSFMCode(CanonID));
+  end;
+  Result := TESwordModule.BookIDToUSFMCode(BookID);
+end;
+
+function ResolveExportBookDisplayName(BookID: Integer): string;
+var
+  ProjName: string;
+begin
+  if BookID >= FIRST_APOCRYPHA_BOOK then
+  begin
+    ProjName := Trim(ApocryphaBookName(BookID));
+    if ProjName <> '' then
+      Exit(ProjName);
+  end;
+  Result := USFMBookDisplayName(BookID);
+end;
+
 { the USFM 3.0 books of a Bible, one text per book; FileNames gets the name of each
   book's file (Paratext style: 01-GEN.usfm ... 41-MAT.usfm ...) }
 procedure BuildUSFMBookFiles(verses, refIDs: TStringList; const props, fallbackTitle: string;
@@ -5812,7 +5806,7 @@ var
       fileNo := curBook + 1
     else
       fileNo := 67 + extraCount;
-    FileNames.Add(Format('%.2d-%s.usfm', [fileNo, TESwordModule.BookIDToUSFMCode(curBook)]));
+    FileNames.Add(Format('%.2d-%s.usfm', [fileNo, ResolveExportUSFMCode(curBook)]));
     Texts.Add(bookText);
     bookLines.Clear;
   end;
@@ -5851,8 +5845,8 @@ begin
           Inc(extraCount);
         curBook := b;
         curChap := -1;
-        code := TESwordModule.BookIDToUSFMCode(b);
-        nameStr := USFMBookDisplayName(b);
+        code := ResolveExportUSFMCode(b);
+        nameStr := ResolveExportBookDisplayName(b);
         bookLines.Add('\id ' + code + ' ' + titleStr);
         bookLines.Add('\usfm 3.0');
         bookLines.Add('\ide UTF-8');
@@ -6007,7 +6001,7 @@ begin
           outLines.Add('  </book>');
         curBook := b;
         curChap := -1;
-        bookCode := BookIDToUSFMCode(b);
+        bookCode := ResolveExportUSFMCode(b);
         outLines.Add('  <book id="' + bookCode + '">');
       end;
 

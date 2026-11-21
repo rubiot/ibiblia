@@ -6,7 +6,13 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.075 (2026-11-21) — Sync Preview Verse with Checked & Selected Bible Tree Nodes
+### 0. Version 1.1.0.076 (2026-11-21) — Unify Apocrypha Book IDs & Fix USFM/USFX Book Naming
+
+* **Unified Apocrypha Book Numbering (`apocrypha_books.pas`, `esword_usfm.pas`, `bible_import_source.pas`, `sword_module.pas`):** Aligned Apocrypha/Deuterocanonical Book IDs (`67` 1 Esdras .. `87` Laodiceans) consistently across `apocrypha_books`, plain document importers, USFM/USFX importers/exporters, and SWORD OSIS mappings (also adding `PSS`/`PssSol` for Psalms of Solomon), eliminating the `76` (`Wisdom` vs. `Bel and the Dragon`) collision.
+* **Accurate USFM/USFX Naming & Conflict-Safe Import (`esword_usfm.pas`, `FormBookImport.pas`, `bibletreeview.pas`):** USFM/USFX imports use the canonical book name for IDs `67–87` without English text guessing, `Add Bible books` / `Replace` matches existing project Apocrypha books by name (avoiding collisions with older projects and showing the file's real book name in the tree and preview header), and USFM/USFX export resolves book codes from project book names.
+* Files: apocrypha_books.pas, esword_usfm.pas, bible_import_source.pas, sword_module.pas, bibletreeview.pas, FormBookImport.pas, unitabout.pas.
+
+### 0a. Version 1.1.0.075 (2026-11-21) — Sync Preview Verse with Checked & Selected Bible Tree Nodes
 
 * **Bible Tree Preview Synchronization (`bibletreeview.pas`, `FormBookImport.pas`, `FormApplyPatch.pas`):** Ticking or unticking checkboxes, selecting any Book/Chapter/Verse row, or navigating the tree with keyboard arrow keys now immediately updates the side-by-side preview (`In the project` / `In the file` and Apply Patch preview) to the selected node or first checked verse under it, instead of remaining stuck on the initial Genesis verse or only firing on direct verse-label clicks.
 * **Preview Header & Unchecked State (`FormBookImport.pas`):** Added a bold `Preview: <Book Chapter:Verse>` (or `(not checked)` / `(no verse checked)`) reference header above the preview panes so it is always clear which verse is displayed, automatically moving away from unchecked verses when boxes are cleared and freeing project lookup string lists on dialog close.

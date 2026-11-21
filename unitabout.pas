@@ -114,6 +114,9 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.076 (64-bit Edition) - 2026-11-21' + LineEnding +
+  '- Unified Apocrypha/Deuterocanonical book IDs (67–87) across USFM/USFX/SWORD importers, plain-document importers, and project defaults so importing Wisdom (04-WIS.usfm) or any Deuterocanonical book never displays a mismatched name such as Bel and the Dragon; Add Bible books / Replace also matches existing Apocrypha books by name and shows the imported book''s real title in the tree and preview header.' + LineEnding +
+  '' + LineEnding +
   'Version 1.1.0.075 (64-bit Edition) - 2026-11-21' + LineEnding +
   '- Add Bible books / Replace text and Apply patch dialogs now keep the preview verse synchronized with checked and selected nodes in the Bible tree (clicking checkboxes, Book/Chapter nodes, full rows, or using keyboard navigation), show a clear "Preview: <Book Chapter:Verse>" header above the preview panes, and clear/advance preview when verses are unchecked.' + LineEnding +
   '' + LineEnding +
