@@ -6,7 +6,14 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.084 (2026-11-22) — GitHub-Style Diff Highlighting in Project Change Log
+### 0. Version 1.1.0.085 (2026-11-22) — Refine Project Change Log Diff View (Text Edits Only & Cleaner Red/Green Highlights)
+
+* **Text-Edit-Only Diff Highlighting (`project_change_log_ui.pas`):** Restricted the red/green diff view in **Project → Project change log...** strictly to actual text edits (`Source text`, `Destination text`, `Reference 1/2 text`, `Comments`, and `module properties`), leaving `Status`, `Associations`, dictionary paths, and other settings as clean plain lines.
+* **Cleaner Inline Red/Green Highlights (`project_change_log_ui.pas`):** Removed the full-line red/green background tint so unchanged context stays clean and **only** the replaced text in `Before` is highlighted in **red** and **only** the newly applied text in `After` is highlighted in **green**, and stopped diffing literal `(empty)` placeholders against real text.
+* **Cleaner Association & Internal Key Logging (`project_persistence.pas`, `project_change_log.pas`):** Logged association changes cleanly as `Associations updated` instead of dumping raw `<par ...>` XML, and suppressed internal `association.memory.*` revision keys from the Change Log summary.
+* Files: project_change_log_ui.pas, project_persistence.pas, project_change_log.pas, unitabout.pas.
+
+### 0a. Version 1.1.0.084 (2026-11-22) — GitHub-Style Diff Highlighting in Project Change Log
 
 * **GitHub-Style Diff View (`project_change_log_ui.pas`):** Upgraded the **Project → Project change log...** details pane to a rich `TKMemo` diff viewer that renders every `Before:` / `After:` change with GitHub-style `- ` red removed lines and `+ ` green added lines, highlighting the exact changed words/characters with deeper inline red/green markers (adapted for both Dark and Light/Sepia skins) plus `Ctrl`+mouse wheel zooming.
 * Files: project_change_log_ui.pas, unitabout.pas.

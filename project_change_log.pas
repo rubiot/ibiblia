@@ -418,7 +418,8 @@ begin
      (InfoKey = 'marcador') or
      (InfoKey = 'dicionarios.configured') or
      (InfoKey = 'apocrypha.order') or
-     (Pos('association_memory.', InfoKey) = 1) then
+     (Pos('association_memory.', InfoKey) = 1) or
+     (Pos('association.memory.', InfoKey) = 1) then
     Exit;
 
   if InfoKey = 'descricao' then

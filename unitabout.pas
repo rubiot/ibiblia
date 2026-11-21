@@ -114,6 +114,9 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.085 (64-bit Edition) - 2026-11-22' + LineEnding +
+  '- Refined Project Change Log diff view so red/green highlighting applies only to actual text edits (Source/Destination/Reference text, Comments, and module properties) rather than Status, Associations, or settings; unchanged text stays clean while only the replaced text (Before) is highlighted in red and the new text (After) is highlighted in green; also hid raw <par> XML dumps and internal association.memory.* keys.' + LineEnding +
+  '' + LineEnding +
   'Version 1.1.0.084 (64-bit Edition) - 2026-11-22' + LineEnding +
   '- Project Change Log details pane now renders Before/After text and path changes in a GitHub-style diff view with red "-" and green "+" lines, inline character-level highlights on the exact changed text, skin-adapted dark/light colors, and Ctrl+mouse wheel zooming.' + LineEnding +
   '' + LineEnding +

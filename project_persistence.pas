@@ -1319,12 +1319,19 @@ begin
 
         if DetailedCount < MAX_DETAILED_FIELD_DIFFS then
         begin
-          DetailLines.Add(Format('  - %s (%s):', [
-            FormatReadableVerseRef(PareId),
-            FriendlyField
-          ]));
-          DetailLines.Add('      Before: ' + FormatLogValue(OldVal));
-          DetailLines.Add('      After:  ' + FormatLogValue(NewVal));
+          if FieldName = 'pare_pares' then
+            DetailLines.Add(Format('  - %s (Associations updated)', [
+              FormatReadableVerseRef(PareId)
+            ]))
+          else
+          begin
+            DetailLines.Add(Format('  - %s (%s):', [
+              FormatReadableVerseRef(PareId),
+              FriendlyField
+            ]));
+            DetailLines.Add('      Before: ' + FormatLogValue(OldVal));
+            DetailLines.Add('      After:  ' + FormatLogValue(NewVal));
+          end;
           Inc(DetailedCount);
         end
         else

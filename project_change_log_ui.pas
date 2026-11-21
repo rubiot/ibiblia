@@ -843,11 +843,11 @@ end;
 procedure TProjectChangeLogForm.RenderDetailsEntry(const Entry: TProjectChangeLogEntry);
 var
   NormalFg, MutedFg: TColor;
-  DelRowBg, DelRowFg, DelHiBg, DelHiFg, DelSignFg: TColor;
-  AddRowBg, AddRowFg, AddHiBg, AddHiFg, AddSignFg: TColor;
+  DelHiBg, DelHiFg, DelSignFg: TColor;
+  AddHiBg, AddHiFg, AddSignFg: TColor;
   DetailLines: TStringList;
   I, J, K, IndentLen, AfterIdx, EndIdx: Integer;
-  Line, TrimmedLeft, IndentStr, BeforeText, AfterText: string;
+  Line, TrimmedLeft, CurrentHeader, BeforeText, AfterText, DiffOld, DiffNew: string;
   OldSpans, NewSpans: TChangeDiffSpanArray;
 
   procedure AddStyledRun(const S: string; Fg: TColor; Bold: Boolean;
@@ -889,20 +889,18 @@ var
   var
     SIdx, SegStart, PosBreak: Integer;
     S, Seg: UnicodeString;
-    RowBg, RowFg, HiBg, HiFg, SignFg: TColor;
+    HiBg, HiFg, SignFg: TColor;
     SignStr: string;
     AtLineStart: Boolean;
 
     procedure EmitGutter;
     begin
-      AddStyledRun(SignStr, SignFg, True, True, RowBg);
+      AddStyledRun(SignStr, SignFg, True, False, clNone);
     end;
 
   begin
     if IsAdded then
     begin
-      RowBg := AddRowBg;
-      RowFg := AddRowFg;
       HiBg := AddHiBg;
       HiFg := AddHiFg;
       SignFg := AddSignFg;
@@ -910,8 +908,6 @@ var
     end
     else
     begin
-      RowBg := DelRowBg;
-      RowFg := DelRowFg;
       HiBg := DelHiBg;
       HiFg := DelHiFg;
       SignFg := DelSignFg;
@@ -922,7 +918,7 @@ var
     if Length(Spans) = 0 then
     begin
       EmitGutter;
-      AddStyledRun('(empty)', RowFg, False, True, RowBg);
+      AddStyledRun('(empty)', MutedFg, False, False, clNone);
       FDetailsMemo.Blocks.AddParagraph;
       Exit;
     end;
@@ -947,7 +943,7 @@ var
           if Spans[SIdx].Changed then
             AddStyledRun(UTF8Encode(Seg), HiFg, True, True, HiBg)
           else
-            AddStyledRun(UTF8Encode(Seg), RowFg, False, True, RowBg);
+            AddStyledRun(UTF8Encode(Seg), NormalFg, False, False, clNone);
         end;
         if (PosBreak <= Length(S)) and (S[PosBreak] = #10) then
         begin
@@ -963,6 +959,20 @@ var
     end;
     if not AtLineStart then
       FDetailsMemo.Blocks.AddParagraph;
+  end;
+
+  function IsTextEditHeader(const HeaderLine: string): Boolean;
+  var
+    L: string;
+  begin
+    L := LowerCase(HeaderLine);
+    Result :=
+      (Pos('(source text)', L) > 0) or
+      (Pos('(destination text)', L) > 0) or
+      (Pos('(reference 1 text)', L) > 0) or
+      (Pos('(reference 2 text)', L) > 0) or
+      (Pos('(comments)', L) > 0) or
+      (Pos('module properties', L) > 0);
   end;
 
   function CountLeadingSpaces(const S: string): Integer;
@@ -998,30 +1008,22 @@ begin
 
   if CurrentSkin.IsDark then
   begin
-    DelRowBg := MakeRGB(62, 26, 30);
-    DelRowFg := MakeRGB(242, 208, 210);
-    DelHiBg  := MakeRGB(148, 38, 46);
-    DelHiFg  := MakeRGB(255, 232, 232);
+    DelHiBg   := MakeRGB(148, 38, 46);
+    DelHiFg   := MakeRGB(255, 232, 232);
     DelSignFg := MakeRGB(255, 130, 138);
 
-    AddRowBg := MakeRGB(22, 56, 34);
-    AddRowFg := MakeRGB(208, 244, 216);
-    AddHiBg  := MakeRGB(30, 120, 62);
-    AddHiFg  := MakeRGB(226, 255, 232);
+    AddHiBg   := MakeRGB(30, 120, 62);
+    AddHiFg   := MakeRGB(226, 255, 232);
     AddSignFg := MakeRGB(110, 235, 145);
   end
   else
   begin
-    DelRowBg := MakeRGB(255, 235, 233);
-    DelRowFg := MakeRGB(90, 22, 26);
-    DelHiBg  := MakeRGB(255, 190, 196);
-    DelHiFg  := MakeRGB(136, 12, 20);
+    DelHiBg   := MakeRGB(255, 190, 196);
+    DelHiFg   := MakeRGB(136, 12, 20);
     DelSignFg := MakeRGB(190, 30, 38);
 
-    AddRowBg := MakeRGB(230, 255, 236);
-    AddRowFg := MakeRGB(18, 78, 34);
-    AddHiBg  := MakeRGB(172, 242, 189);
-    AddHiFg  := MakeRGB(12, 98, 34);
+    AddHiBg   := MakeRGB(172, 242, 189);
+    AddHiFg   := MakeRGB(12, 98, 34);
     AddSignFg := MakeRGB(26, 127, 55);
   end;
 
@@ -1046,15 +1048,16 @@ begin
         DetailLines.Text := StringReplace(
           StringReplace(Entry.Details, #13#10, #10, [rfReplaceAll]),
           #13, #10, [rfReplaceAll]);
+        CurrentHeader := '';
         I := 0;
         while I < DetailLines.Count do
         begin
           Line := DetailLines[I];
           TrimmedLeft := TrimLeft(Line);
-          if Copy(TrimmedLeft, 1, 7) = 'Before:' then
+          if (Copy(TrimmedLeft, 1, 7) = 'Before:') and
+             IsTextEditHeader(CurrentHeader) then
           begin
             IndentLen := CountLeadingSpaces(Line);
-            IndentStr := StringOfChar(' ', IndentLen);
             BeforeText := TrimLeft(Copy(TrimmedLeft, 8, MaxInt));
             AfterIdx := -1;
             for J := I + 1 to DetailLines.Count - 1 do
@@ -1084,7 +1087,16 @@ begin
                 EndIdx := K;
               end;
 
-              ComputeChangeLogDiff(BeforeText, AfterText, OldSpans, NewSpans);
+              if BeforeText = '(empty)' then
+                DiffOld := ''
+              else
+                DiffOld := BeforeText;
+              if AfterText = '(empty)' then
+                DiffNew := ''
+              else
+                DiffNew := AfterText;
+
+              ComputeChangeLogDiff(DiffOld, DiffNew, OldSpans, NewSpans);
               RenderDiffSide(OldSpans, False);
               RenderDiffSide(NewSpans, True);
               I := EndIdx + 1;
@@ -1093,7 +1105,10 @@ begin
           end;
 
           if (Trim(Line) <> '') and (Line[Length(Line)] = ':') then
-            AddStyledRun(Line, NormalFg, True, False, clNone)
+          begin
+            CurrentHeader := Line;
+            AddStyledRun(Line, NormalFg, True, False, clNone);
+          end
           else
             AddStyledRun(Line, NormalFg, False, False, clNone);
           FDetailsMemo.Blocks.AddParagraph;
