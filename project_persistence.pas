@@ -1186,14 +1186,29 @@ begin
 end;
 
 procedure TProjectPersistence.DescribePendingChanges(out Summary, Details: string);
+const
+  MAX_DETAILED_FIELD_DIFFS = 25;
+  MAX_VALUE_PREVIEW_CHARS = 2000;
 var
   VerseIds: TStringList;
   VerseFields: TStringList;
   InfoLabels: TStringList;
   DetailLines: TStringList;
-  I, SepPos, VerseIdx, LimitCount: Integer;
+  I, SepPos, VerseIdx, CurIdx, LimitCount, DetailedCount: Integer;
   Key, PareId, FieldName, FriendlyField, ExistingFields, RefPreview,
-  InfoLabel, VersePart, InfoPart: string;
+  InfoKey, InfoLabel, VersePart, InfoPart, OldVal, NewVal: string;
+
+  function FormatLogValue(const S: string): string;
+  begin
+    if S = '' then
+      Exit('(empty)');
+    if Length(S) > MAX_VALUE_PREVIEW_CHARS then
+      Result := Copy(S, 1, MAX_VALUE_PREVIEW_CHARS) +
+        Format(' ... [truncated, %d chars total]', [Length(S)])
+    else
+      Result := S;
+  end;
+
 begin
   Summary := '';
   Details := '';
@@ -1285,25 +1300,60 @@ begin
     if VerseIds.Count > 0 then
     begin
       DetailLines.Add(Format('Verses modified (%d):', [VerseIds.Count]));
-      LimitCount := VerseIds.Count;
-      if LimitCount > 100 then
-        LimitCount := 100;
-      for I := 0 to LimitCount - 1 do
-        DetailLines.Add(Format('  - %s: %s', [
-          FormatReadableVerseRef(VerseIds[I]),
-          VerseFields[I]
-        ]));
-      if VerseIds.Count > 100 then
-        DetailLines.Add(Format('  ... and %d more verse(s)', [VerseIds.Count - 100]));
+      DetailedCount := 0;
+      for I := 0 to FPairOriginalValues.Count - 1 do
+      begin
+        Key := FPairOriginalValues.Names[I];
+        SepPos := Pos(#1, Key);
+        if SepPos <= 0 then
+          Continue;
+        PareId := Copy(Key, 1, SepPos - 1);
+        FieldName := Copy(Key, SepPos + 1, MaxInt);
+        FriendlyField := FriendlyPairFieldName(FieldName);
+        OldVal := FPairOriginalValues.ValueFromIndex[I];
+        CurIdx := FPairCurrentValues.IndexOfName(Key);
+        if CurIdx >= 0 then
+          NewVal := FPairCurrentValues.ValueFromIndex[CurIdx]
+        else
+          NewVal := '';
+
+        if DetailedCount < MAX_DETAILED_FIELD_DIFFS then
+        begin
+          DetailLines.Add(Format('  - %s (%s):', [
+            FormatReadableVerseRef(PareId),
+            FriendlyField
+          ]));
+          DetailLines.Add('      Before: ' + FormatLogValue(OldVal));
+          DetailLines.Add('      After:  ' + FormatLogValue(NewVal));
+          Inc(DetailedCount);
+        end
+        else
+        begin
+          DetailLines.Add(Format('  ... and %d more field change(s)', [
+            FPairOriginalValues.Count - DetailedCount
+          ]));
+          Break;
+        end;
+      end;
     end;
 
-    if InfoLabels.Count > 0 then
+    if FStagedInfo.Count > 0 then
     begin
       if DetailLines.Count > 0 then
         DetailLines.Add('');
       DetailLines.Add('Project settings modified:');
-      for I := 0 to InfoLabels.Count - 1 do
-        DetailLines.Add('  - ' + InfoLabels[I]);
+      for I := 0 to FStagedInfo.Count - 1 do
+      begin
+        InfoKey := FStagedInfo.Names[I];
+        InfoLabel := FriendlyProjectInfoName(InfoKey);
+        if InfoLabel = '' then
+          Continue;
+        OldVal := ReadCommittedInfo(InfoKey);
+        NewVal := FStagedInfo.ValueFromIndex[I];
+        DetailLines.Add('  - ' + InfoLabel + ':');
+        DetailLines.Add('      Before: ' + FormatLogValue(OldVal));
+        DetailLines.Add('      After:  ' + FormatLogValue(NewVal));
+      end;
     end;
 
     Details := TrimRight(DetailLines.Text);

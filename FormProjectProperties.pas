@@ -2186,10 +2186,12 @@ var
   HasTextImport: Boolean;
   ReplaceAssociations: Boolean;
   OldProjectName: string;
+  OldValueText: string;
   OldSuggestionMode: TSuggestionMode;
   OldAutomaticSuggestion: Boolean;
   OldDefaultVerseMode: TDefaultVerseMode;
   SettingsChanges: TStringList;
+  SettingsDetails: TStringList;
 
   function TextScopeLabel(ATextType: TTipoTextoBiblico): string;
   begin
@@ -2203,10 +2205,52 @@ var
     end;
   end;
 
-  procedure AddSettingChange(const Item: string);
+  procedure AddSettingChange(const Item: string; const DetailLine: string = '');
   begin
     if (Item <> '') and (SettingsChanges.IndexOf(Item) < 0) then
       SettingsChanges.Add(Item);
+    if DetailLine <> '' then
+      SettingsDetails.Add(DetailLine);
+  end;
+
+  procedure AddBeforeAfterSetting(const SummaryItem, LabelText, OldVal, NewVal: string);
+  var
+    OldDisp, NewDisp: string;
+  begin
+    OldDisp := Trim(OldVal);
+    if OldDisp = '' then
+      OldDisp := '(none)';
+    NewDisp := Trim(NewVal);
+    if NewDisp = '' then
+      NewDisp := '(none)';
+    AddSettingChange(SummaryItem);
+    SettingsDetails.Add(LabelText + ':');
+    SettingsDetails.Add('  Before: ' + OldDisp);
+    SettingsDetails.Add('  After:  ' + NewDisp);
+  end;
+
+  procedure AddDictionaryPathChange(const LabelText, OldPath, NewPath: string);
+  var
+    CleanOld, CleanNew, ActionWord, SummaryItem: string;
+  begin
+    CleanOld := Trim(OldPath);
+    CleanNew := Trim(NewPath);
+    if CleanOld = CleanNew then
+      Exit;
+    if (CleanOld <> '') and (CleanNew <> '') then
+      ActionWord := 'Replaced'
+    else if CleanNew <> '' then
+      ActionWord := 'Set'
+    else
+      ActionWord := 'Cleared';
+    if CleanNew <> '' then
+      SummaryItem := Format('%s %s (%s)', [
+        ActionWord, LabelText, ExtractFileName(CleanNew)
+      ])
+    else
+      SummaryItem := Format('%s %s', [ActionWord, LabelText]);
+    AddBeforeAfterSetting(SummaryItem, ActionWord + ' ' + LabelText,
+      CleanOld, CleanNew);
   end;
 
   function JoinSettingChanges: string;
@@ -2278,6 +2322,7 @@ begin
     end;
 
     SettingsChanges := TStringList.Create;
+    SettingsDetails := TStringList.Create;
     try
       OldProjectName := FProject.GetInfo('descricao');
       OldSuggestionMode := FProject.SuggestionMode;
@@ -2285,7 +2330,11 @@ begin
       OldDefaultVerseMode := FProject.DefaultVerseMode;
 
       if Trim(OldProjectName) <> Trim(EditProjectName.Text) then
-        AddSettingChange('Project name (' + Trim(EditProjectName.Text) + ')');
+        AddBeforeAfterSetting(
+          'Project name (' + Trim(EditProjectName.Text) + ')',
+          'Project name',
+          OldProjectName,
+          EditProjectName.Text);
       FProject.SetInfo('descricao', EditProjectName.Text);
 
       CurrentVersion := FProject.TokenizerVersion;
@@ -2363,13 +2412,22 @@ begin
       end;
 
       if OldSuggestionMode <> FPendingSuggestionMode then
-        AddSettingChange('Suggestion mode -> ' +
+        AddBeforeAfterSetting(
+          'Suggestion mode -> ' + SuggestionModeCaption(FPendingSuggestionMode),
+          'Suggestion mode',
+          SuggestionModeCaption(OldSuggestionMode),
           SuggestionModeCaption(FPendingSuggestionMode));
       if OldAutomaticSuggestion <> FPendingAutomaticSuggestion then
-        AddSettingChange('Automatic suggestions -> ' +
+        AddBeforeAfterSetting(
+          'Automatic suggestions -> ' + EnabledStateCaption(FPendingAutomaticSuggestion),
+          'Automatic suggestions',
+          EnabledStateCaption(OldAutomaticSuggestion),
           EnabledStateCaption(FPendingAutomaticSuggestion));
       if OldDefaultVerseMode <> FPendingDefaultVerseMode then
-        AddSettingChange('Default verse mode -> ' +
+        AddBeforeAfterSetting(
+          'Default verse mode -> ' + DefaultVerseModeCaption(FPendingDefaultVerseMode),
+          'Default verse mode',
+          DefaultVerseModeCaption(OldDefaultVerseMode),
           DefaultVerseModeCaption(FPendingDefaultVerseMode));
 
       FProject.SuggestionMode := FPendingSuggestionMode;
@@ -2443,33 +2501,76 @@ begin
 
         if FPendingDescriptionChanged[TextType] then
         begin
-          AddSettingChange(TextScopeLabel(TextType) + ' short title');
+          OldValueText := FProject.GetTextShortTitle(TextType);
+          AddBeforeAfterSetting(
+            TextScopeLabel(TextType) + ' short title',
+            TextScopeLabel(TextType) + ' short title',
+            OldValueText,
+            FPendingDescriptions[TextType]);
           FProject.SetTextShortTitle(TextType, FPendingDescriptions[TextType]);
         end;
 
         if FPendingFontChanged[TextType] then
         begin
-          AddSettingChange(TextScopeLabel(TextType) + ' font');
+          AddSettingChange(
+            TextScopeLabel(TextType) + ' font',
+            Format('%s font -> %s (%d pt)', [
+              TextScopeLabel(TextType),
+              FPendingFonts[TextType].Name,
+              FPendingFonts[TextType].Size
+            ]));
           FProject.AssignTextFont(FPendingFonts[TextType], [TextType]);
         end;
 
         if FPendingStrongDictionaryChanged[TextType] then
         begin
-          AddSettingChange(TextScopeLabel(TextType) + ' Strong''s dictionary');
+          OldValueText := FProject.GetInfo(Format('dicstrong%d', [Ord(TextType)]));
+          AddDictionaryPathChange(
+            TextScopeLabel(TextType) + ' Strong''s dictionary',
+            OldValueText,
+            FPendingStrongDictionaries[TextType]);
           FProject.AssignStrongDictionary(FPendingStrongDictionaries[TextType],
             [TextType]);
         end;
 
         if FPendingMorphologyDictionaryChanged[TextType] then
         begin
-          AddSettingChange(TextScopeLabel(TextType) + ' morphology dictionary');
+          OldValueText := FProject.GetInfo(Format('dicmorfo%d', [Ord(TextType)]));
+          AddDictionaryPathChange(
+            TextScopeLabel(TextType) + ' morphology dictionary',
+            OldValueText,
+            FPendingMorphologyDictionaries[TextType]);
           FProject.AssignMorphologyDictionary(
             FPendingMorphologyDictionaries[TextType], [TextType]);
         end;
       end;
 
       if FPendingDefaultDictionariesChanged then
-        AddSettingChange('Default dictionaries');
+      begin
+        if FInitialDefaultDictionaries.Enabled <> FPendingDefaultDictionaries.Enabled then
+          AddBeforeAfterSetting(
+            'Default dictionaries mode -> ' +
+              EnabledStateCaption(FPendingDefaultDictionaries.Enabled),
+            'Default dictionaries mode',
+            EnabledStateCaption(FInitialDefaultDictionaries.Enabled),
+            EnabledStateCaption(FPendingDefaultDictionaries.Enabled));
+        AddDictionaryPathChange(
+          'default Greek Strong''s dictionary',
+          FInitialDefaultDictionaries.GreekStrong,
+          FPendingDefaultDictionaries.GreekStrong);
+        AddDictionaryPathChange(
+          'default Hebrew Strong''s dictionary',
+          FInitialDefaultDictionaries.HebrewStrong,
+          FPendingDefaultDictionaries.HebrewStrong);
+        AddDictionaryPathChange(
+          'default morphology dictionary',
+          FInitialDefaultDictionaries.Morphology,
+          FPendingDefaultDictionaries.Morphology);
+        AddDictionaryPathChange(
+          'default word dictionary',
+          FInitialDefaultDictionaries.Word,
+          FPendingDefaultDictionaries.Word);
+      end;
 
       if Assigned(opts) then
         WriteDefaultDictionarySettings(opts, FPendingDefaultDictionaries);
@@ -2492,10 +2593,17 @@ begin
       UpdateReview;
     finally
       if SettingsChanges.Count > 0 then
+      begin
+        if SettingsDetails.Count > 0 then
+          OldValueText := TrimRight(SettingsDetails.Text)
+        else
+          OldValueText := TrimRight(SettingsChanges.Text);
         FProject.LogProjectChange(
           'Settings',
           'Updated project settings: ' + JoinSettingChanges,
-          TrimRight(SettingsChanges.Text));
+          OldValueText);
+      end;
+      SettingsDetails.Free;
       SettingsChanges.Free;
     end;
   end;

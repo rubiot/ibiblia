@@ -6,7 +6,13 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.082 (2026-11-22) — Fix SQLite `database schema has changed` Crash on Older Projects
+### 0. Version 1.1.0.083 (2026-11-22) — Before/After Details in Project Change Log for Dictionaries & Raw Edits
+
+* **Detailed Settings & Dictionary Change Log Entries (`FormProjectProperties.pas`):** Changing default or per-module dictionaries now logs the exact action (`Replaced`, `Set`, or `Cleared`), dictionary filename in the summary, and full **Before** and **After** file paths in the details pane (plus Before/After values for project name, short titles, workflow settings, and fonts).
+* **Before/After Raw Data Diffs (`project_persistence.pas`):** Saving edits to raw verse texts (Source, Destination, Reference 1/2), associations, comments, status, or raw module properties now records both **Before** and **After** values in the Project Change Log details pane so every raw edit is auditable at a glance.
+* Files: FormProjectProperties.pas, project_persistence.pas, unitabout.pas.
+
+### 0a. Version 1.1.0.082 (2026-11-22) — Fix SQLite `database schema has changed` Crash on Older Projects
 
 * **Pre-Open Change Log Table Migration (`project_change_log.pas`, `Project.pas`):** Ensured the `change_log` table is created via `EnsureProjectChangeLogTable` at the start of `TProject.OpenProject` **before** `TProject` opens its long-lived SQLite connection and prepares statements, and guarded `RecordProjectChange` with `ChangeLogTableExists` so it never runs `CREATE TABLE` DDL on a second connection while the project is open. This eliminates `ESQLDatabaseError: TSQLite3Connection : database schema has changed` and follow-on `not an error` crashes when first logging changes on pre-`1.1.0.078` `.bib` projects.
 * Files: project_change_log.pas, Project.pas, unitabout.pas.
