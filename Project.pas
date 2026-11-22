@@ -481,6 +481,7 @@ type
     { Saved text of every verse row (Refs[i] "b,c,v", Texts[i]), in row
       order. Used by "Add Bible Books" and the partial "Replace text". }
     procedure ReadTextColumn(texto: TTipoTextoBiblico; Refs, Texts: TStrings);
+    procedure ReadUnassociatedScanColumns(Refs, SourceTexts, DestTexts, PairsTexts: TStrings);
     { Sets the text of the listed verses (one pass over the project rows).
       replace = True keeps the associations of changed verses where it can,
       as the whole-text import does. Returns the number of verses set. }
@@ -3687,6 +3688,40 @@ begin
     begin
       Refs.Add(Qry.Fields[0].AsString);
       Texts.Add(Qry.Fields[1].AsString);
+      Qry.Next;
+    end;
+    Qry.Close;
+  finally
+    if Assigned(Qry.Transaction) then
+      Qry.Transaction.Free;
+    if Assigned(Qry.DataBase) then
+      Qry.DataBase.Free;
+    Qry.Free;
+  end;
+end;
+
+procedure TProject.ReadUnassociatedScanColumns(Refs, SourceTexts, DestTexts,
+  PairsTexts: TStrings);
+var
+  Qry: TSQLQuery;
+begin
+  Refs.Clear;
+  SourceTexts.Clear;
+  DestTexts.Clear;
+  PairsTexts.Clear;
+  if (FFileName = '') or not FileExists(FFileName) then
+    Exit;
+  Qry := CreateQueryObject(FFileName);
+  try
+    Qry.SQL.Text := 'SELECT pare_id, pare_texto_origem, pare_texto_destino, pare_pares ' +
+      'FROM pares ORDER BY rowid';
+    Qry.Open;
+    while not Qry.EOF do
+    begin
+      Refs.Add(Qry.Fields[0].AsString);
+      SourceTexts.Add(Qry.Fields[1].AsString);
+      DestTexts.Add(Qry.Fields[2].AsString);
+      PairsTexts.Add(Qry.Fields[3].AsString);
       Qry.Next;
     end;
     Qry.Close;

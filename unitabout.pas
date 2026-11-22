@@ -114,6 +114,10 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.093 (64-bit Edition) - 2026-11-22' + LineEnding +
+  '- Fixed TVerse.ReplaceTextPreservingAssociations (Verse.pas) using Longest Common Subsequence (LCS) alignment plus in-place 1-to-1 and N-to-M association transfer: bulk Find & Replace now keeps associations intact on replaced words/phrases and no longer shifts or breaks associations on other words in the same verse.' + LineEnding +
+  '- Added ''Unassociated Destination words'' and ''Unassociated Source words'' scopes to Find & Replace in Project (leave Find what blank to list every verse with unassociated words, or type a word/regex to filter specific unassociated words).' + LineEnding +
+  '' + LineEnding +
   'Version 1.1.0.092 (64-bit Edition) - 2026-11-22' + LineEnding +
   '- Added automatic window activation on mouse hover (View -> Activate window on mouse hover, enabled by default): moving the mouse onto any visible part of Dark-Skinned iBiblia brings it into active focus without clicking, while avoiding focus theft during drags, Alt+Tab, or overlapping windows.' + LineEnding +
   '' + LineEnding +
@@ -758,7 +762,7 @@ begin
     ver := '';
   end;
   if (ver = '') or (ver = '1.1.0.0') or (ver = '1.1.0.1') then
-    ver := '1.1.0.092';
+    ver := '1.1.0.093';
 
   LabelVersion := TLabel.Create(Self);
   LabelVersion.Parent := Self;

@@ -1198,25 +1198,52 @@ procedure TVerse.ReplaceTextPreservingAssociations(const _XML: string;
       (ASyntagm.Kind in [skSyntagm, skPunctuation]);
   end;
 
-  procedure DeleteSyntagm(i: integer; newlist: TSyntagmList);
+type
+  TPendingAssocTransfer = record
+    NewWords: array of TSyntagm;
+    SavedPairs: array of TSyntagm;
+    SavedSiblings: array of TSyntagm;
+  end;
+
+  procedure AddUniqueSyntagm(var Arr: array of TSyntagm; var Count: Integer;
+    Item: TSyntagm);
   var
-    s: TSyntagm;
+    K: Integer;
   begin
-    s := FSyntagms[i];
-    s.Disassociate;
-    s.Destroy;
-    FSyntagms.Delete(i);
+    if not Assigned(Item) then
+      Exit;
+    for K := 0 to Count - 1 do
+      if Arr[K] = Item then
+        Exit;
+    if Count <= High(Arr) then
+    begin
+      Arr[Count] := Item;
+      Inc(Count);
+    end;
   end;
 
 var
   new, result: TSyntagmList;
-  s, old: TSyntagm;
-  found, oldActive: boolean;
+  OldUnits, NewUnits: array of TSyntagm;
+  OldNewMap: array of Integer; // for each NewUnit index, matched OldUnit index or -1
+  OldUsed: array of Boolean;
+  NewToResultMap: array of TSyntagm; // for each index in `new`, final TSyntagm to place in `result`
+  NewUnitPosInNew: array of Integer;
+  DP: array of array of Integer;
+  AnchorOld, AnchorNew: array of Integer;
+  OldCount, NewCount, AnchorCount, I, J, K, H, OldStart, OldEnd, NewStart, NewEnd: Integer;
+  OldWords, NewWords: array of TSyntagm;
+  OldWordIdx, NewWordIdx: array of Integer;
+  OldWordCount, NewWordCount, PairCnt, SibCnt, PendingCount: Integer;
+  PendingTransfers: array of TPendingAssocTransfer;
+  PairBuf, SibBuf: array of TSyntagm;
+  S, P, Sib: TSyntagm;
+  OldActive, InDeletedHunk: Boolean;
 begin
   if (not ForceRetokenize) and (FXML = _XML) then
     exit;
 
-  oldActive := FActive;
+  OldActive := FActive;
   Inc(FVisualUpdatesSuspended);
   try
     { End hover and cancel queued paints while the original logical-index map
@@ -1244,63 +1271,248 @@ begin
   end
   else
   begin
-    result := TSyntagmList.Create;
+    { 1. Collect association units (words & punctuation) from old and new }
+    OldCount := 0;
+    SetLength(OldUnits, FSyntagms.Count);
+    for I := 0 to FSyntagms.Count - 1 do
+      if IsAssociationUnit(FSyntagms[I]) then
+      begin
+        OldUnits[OldCount] := FSyntagms[I];
+        Inc(OldCount);
+      end;
+    SetLength(OldUnits, OldCount);
 
-    while not (new.Empty and FSyntagms.Empty) do
+    NewCount := 0;
+    SetLength(NewUnits, new.Count);
+    SetLength(NewUnitPosInNew, new.Count);
+    for I := 0 to new.Count - 1 do
+      if IsAssociationUnit(new[I]) then
+      begin
+        NewUnits[NewCount] := new[I];
+        NewUnitPosInNew[NewCount] := I;
+        Inc(NewCount);
+      end;
+    SetLength(NewUnits, NewCount);
+    SetLength(NewUnitPosInNew, NewCount);
+
+    { 2. Longest Common Subsequence (LCS) alignment so unchanged words are
+         globally aligned and never greedily shifted or broken }
+    SetLength(DP, OldCount + 1, NewCount + 1);
+    for I := OldCount - 1 downto 0 do
+      for J := NewCount - 1 downto 0 do
+      begin
+        if HasSameAssociationIdentity(OldUnits[I], NewUnits[J]) then
+          DP[I, J] := DP[I + 1, J + 1] + 1
+        else if DP[I + 1, J] >= DP[I, J + 1] then
+          DP[I, J] := DP[I + 1, J]
+        else
+          DP[I, J] := DP[I, J + 1];
+      end;
+
+    AnchorCount := 0;
+    SetLength(AnchorOld, OldCount + 1);
+    SetLength(AnchorNew, NewCount + 1);
+    I := 0;
+    J := 0;
+    while (I < OldCount) and (J < NewCount) do
     begin
-      if new.Empty then
-        DeleteSyntagm(0, result)
-      else if FSyntagms.Empty then
+      if HasSameAssociationIdentity(OldUnits[I], NewUnits[J]) and
+         (DP[I, J] = DP[I + 1, J + 1] + 1) then
       begin
-       result.Add(new[0]);
-       new.Delete(0);
+        AnchorOld[AnchorCount] := I;
+        AnchorNew[AnchorCount] := J;
+        Inc(AnchorCount);
+        Inc(I);
+        Inc(J);
       end
-      else if HasSameAssociationIdentity(FSyntagms.First, new.First) then
-      begin
-        FSyntagms.First.AdoptParsedState(new.First);
-        result.Add(FSyntagms.First);
-        FSyntagms.Delete(0);
-        new.First.Destroy;
-        new.Delete(0);
-      end
-      else if not IsAssociationUnit(FSyntagms.First) then
-        DeleteSyntagm(0, result)
-      else if not IsAssociationUnit(new.First) then
-      begin
-        result.Add(new[0]);
-        new.Delete(0);
-      end
+      else if DP[I + 1, J] >= DP[I, J + 1] then
+        Inc(I)
       else
-      begin
-        { checking if the old syntagm will be used in the future }
-        found := false;
-        old := FSyntagms.First;
-        if not old.Pairs.Empty then // does it have associations?
+        Inc(J);
+    end;
+    AnchorOld[AnchorCount] := OldCount;
+    AnchorNew[AnchorCount] := NewCount;
+
+    SetLength(OldNewMap, NewCount);
+    for J := 0 to NewCount - 1 do
+      OldNewMap[J] := -1;
+    SetLength(OldUsed, OldCount);
+    for I := 0 to OldCount - 1 do
+      OldUsed[I] := False;
+
+    { Mark exact LCS anchors }
+    for K := 0 to AnchorCount - 1 do
+    begin
+      OldNewMap[AnchorNew[K]] := AnchorOld[K];
+      OldUsed[AnchorOld[K]] := True;
+    end;
+
+    { 3. Reconcile diff hunks between consecutive LCS anchors:
+         - 1-to-1 (or N-to-N) word replacements adopt parsed state in-place,
+           keeping 100% of existing associations & siblings intact.
+         - N-to-M phrase replacements transfer the union of opposite-verse
+           pairs onto the replacement words in-place. }
+    PendingCount := 0;
+    SetLength(PendingTransfers, 0);
+    OldStart := 0;
+    NewStart := 0;
+    for H := 0 to AnchorCount do
+    begin
+      OldEnd := AnchorOld[H];
+      NewEnd := AnchorNew[H];
+
+      OldWordCount := 0;
+      SetLength(OldWords, OldEnd - OldStart);
+      SetLength(OldWordIdx, OldEnd - OldStart);
+      for I := OldStart to OldEnd - 1 do
+        if OldUnits[I].Kind = skSyntagm then
         begin
-          for s in new do
-            if HasSameAssociationIdentity(old, s) then
-            begin
-              result.Add(new[0]);
-              new.Delete(0);
-              found := true;
-              break;
-            end;
+          OldWords[OldWordCount] := OldUnits[I];
+          OldWordIdx[OldWordCount] := I;
+          Inc(OldWordCount);
         end;
-        if not found then { nope, wasting it }
-          DeleteSyntagm(0, result);
+
+      NewWordCount := 0;
+      SetLength(NewWords, NewEnd - NewStart);
+      SetLength(NewWordIdx, NewEnd - NewStart);
+      for J := NewStart to NewEnd - 1 do
+        if NewUnits[J].Kind = skSyntagm then
+        begin
+          NewWords[NewWordCount] := NewUnits[J];
+          NewWordIdx[NewWordCount] := J;
+          Inc(NewWordCount);
+        end;
+
+      if (OldWordCount > 0) and (NewWordCount > 0) then
+      begin
+        if OldWordCount = NewWordCount then
+        begin
+          { In-place 1-to-1 / N-to-N adoption: keeps exact TSyntagm + Pairs }
+          for K := 0 to OldWordCount - 1 do
+          begin
+            OldNewMap[NewWordIdx[K]] := OldWordIdx[K];
+            OldUsed[OldWordIdx[K]] := True;
+          end;
+        end
+        else if Assigned(PairedVerse) then
+        begin
+          { N-to-M phrase replacement: collect union of opposite pairs & external siblings }
+          PairCnt := 0;
+          SibCnt := 0;
+          SetLength(PairBuf, 64);
+          SetLength(SibBuf, 64);
+          for K := 0 to OldWordCount - 1 do
+          begin
+            S := OldWords[K];
+            for P in S.Pairs do
+            begin
+              if PairCnt > High(PairBuf) then
+                SetLength(PairBuf, Length(PairBuf) * 2);
+              AddUniqueSyntagm(PairBuf, PairCnt, P);
+            end;
+            for Sib in S.Siblings do
+            begin
+              InDeletedHunk := False;
+              for I := OldStart to OldEnd - 1 do
+                if OldUnits[I] = Sib then
+                begin
+                  InDeletedHunk := True;
+                  Break;
+                end;
+              if not InDeletedHunk then
+              begin
+                if SibCnt > High(SibBuf) then
+                  SetLength(SibBuf, Length(SibBuf) * 2);
+                AddUniqueSyntagm(SibBuf, SibCnt, Sib);
+              end;
+            end;
+          end;
+          if PairCnt > 0 then
+          begin
+            SetLength(PendingTransfers, PendingCount + 1);
+            SetLength(PendingTransfers[PendingCount].NewWords, NewWordCount);
+            for K := 0 to NewWordCount - 1 do
+              PendingTransfers[PendingCount].NewWords[K] := NewWords[K];
+            SetLength(PendingTransfers[PendingCount].SavedPairs, PairCnt);
+            for K := 0 to PairCnt - 1 do
+              PendingTransfers[PendingCount].SavedPairs[K] := PairBuf[K];
+            SetLength(PendingTransfers[PendingCount].SavedSiblings, SibCnt);
+            for K := 0 to SibCnt - 1 do
+              PendingTransfers[PendingCount].SavedSiblings[K] := SibBuf[K];
+            Inc(PendingCount);
+          end;
+        end;
+      end;
+
+      OldStart := OldEnd + 1;
+      NewStart := NewEnd + 1;
+    end;
+
+    { 4. Build final `result` in exact `new` order; adopt preserved old syntagms }
+    SetLength(NewToResultMap, new.Count);
+    for I := 0 to new.Count - 1 do
+      NewToResultMap[I] := new[I];
+
+    for J := 0 to NewCount - 1 do
+    begin
+      if OldNewMap[J] >= 0 then
+      begin
+        S := OldUnits[OldNewMap[J]];
+        S.AdoptParsedState(NewUnits[J]);
+        NewToResultMap[NewUnitPosInNew[J]] := S;
+        NewUnits[J].Destroy;
       end;
     end;
 
-    if not new.Empty then
-      raise Exception.Create('Ainda há sintagmas novos que não foram liberados!');
+    result := TSyntagmList.Create;
+    for I := 0 to new.Count - 1 do
+      result.Add(NewToResultMap[I]);
 
-    if not FSyntagms.Empty then
-      raise Exception.Create('Ainda há sintagmas antigos que não foram liberados!');
+    { Disassociate and destroy all unused old syntagms (metadata + deleted words) }
+    for I := 0 to FSyntagms.Count - 1 do
+    begin
+      S := FSyntagms[I];
+      InDeletedHunk := False;
+      for K := 0 to OldCount - 1 do
+        if (OldUnits[K] = S) and OldUsed[K] then
+        begin
+          InDeletedHunk := True; // reused!
+          Break;
+        end;
+      if not InDeletedHunk then
+      begin
+        S.Disassociate;
+        S.Destroy;
+      end;
+    end;
 
+    new.Clear;
     FreeAndNil(new);
-    ClearSyntagms;
+    FSyntagms.Clear;
     FreeAndNil(FSyntagms);
     FSyntagms := result;
+
+    { 5. Apply any N-to-M phrase association transfers now that FSyntagms is committed }
+    if (PendingCount > 0) and Assigned(PairedVerse) then
+    begin
+      for K := 0 to PendingCount - 1 do
+      begin
+        ClearSelection;
+        PairedVerse.ClearSelection;
+        for I := 0 to High(PendingTransfers[K].NewWords) do
+          PendingTransfers[K].NewWords[I].AddToSelection;
+        for I := 0 to High(PendingTransfers[K].SavedSiblings) do
+          if FSyntagms.IndexOf(PendingTransfers[K].SavedSiblings[I]) >= 0 then
+            PendingTransfers[K].SavedSiblings[I].AddToSelection;
+        for I := 0 to High(PendingTransfers[K].SavedPairs) do
+          if PairedVerse.Syntagms.IndexOf(PendingTransfers[K].SavedPairs[I]) >= 0 then
+            PendingTransfers[K].SavedPairs[I].AddToSelection;
+        if (not Selection.Empty) and (not PairedVerse.Selection.Empty) then
+          AssociateSyntagms;
+        ClearSelection;
+        PairedVerse.ClearSelection;
+      end;
+    end;
   end;
 
   if FXML <> _XML then

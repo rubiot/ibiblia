@@ -1,3 +1,7 @@
+Version 1.1.0.093 (64-bit Edition) - 2026-11-22
+- Fixed TVerse.ReplaceTextPreservingAssociations with LCS alignment and in-place 1-to-1 / N-to-M association transfer so replaced words/phrases keep their associations and surrounding words in the same verse are never broken.
+- Added Unassociated Destination words and Unassociated Source words scopes to Find & Replace in Project.
+
 Version 1.1.0.092 (64-bit Edition) - 2026-11-22
 - Added automatic window activation on mouse hover (View -> Activate window on mouse hover, enabled by default): moving the mouse onto any visible part of Dark-Skinned iBiblia brings it into active focus without clicking, with guards for dragging, Alt+Tab, and overlapping windows.
 

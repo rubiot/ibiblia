@@ -27,7 +27,7 @@ interface
 uses
   Classes, SysUtils, StrUtils, Math, Forms, Controls, Graphics, StdCtrls,
   ExtCtrls, ComCtrls, Dialogs, LCLType, LazUTF8, PCRE,
-  ui_style, Project, unitpleasewait;
+  ui_style, Project, unitpleasewait, Syntagm, ONTParser, ONTTokenizer;
 
 const
   MAX_FIND_REPLACE_HISTORY = 7;
@@ -125,6 +125,7 @@ type
     procedure AddToHistory(Combo: TComboBox; const Value: string);
     function GetSearchMode: TFindSearchMode;
     function GetSelectedTextType(out TextType: TTipoTextoBiblico): Boolean;
+    function IsUnassociatedScope: Boolean;
     function GetScopeDisplayName: string;
     function GetRangeDisplayName: string;
     function MatchesSelectedRange(const RefID: string): Boolean;
@@ -251,6 +252,8 @@ resourcestring
   SFindScopeStrongs = 'Strong''s / morphology tags';
   SFindScopeComments = 'Comments';
   SFindScopeAll = 'All fields';
+  SFindScopeUnassocDest = 'Unassociated Destination words';
+  SFindScopeUnassocSource = 'Unassociated Source words';
   SRangeWholeProject = 'Whole project';
   SRangeCurrentBook = 'Current book';
   SRangeCurrentChapter = 'Current chapter';
@@ -1036,6 +1039,8 @@ begin
   FScopeCombo.Items.Add(SFindScopeStrongs);
   FScopeCombo.Items.Add(SFindScopeComments);
   FScopeCombo.Items.Add(SFindScopeAll);
+  FScopeCombo.Items.Add(SFindScopeUnassocDest);
+  FScopeCombo.Items.Add(SFindScopeUnassocSource);
   if (Scope < 0) or (Scope >= FScopeCombo.Items.Count) then
     Scope := 0;
   FScopeCombo.ItemIndex := Scope;
@@ -1208,6 +1213,11 @@ begin
     Result := fsmNormal;
 end;
 
+function TFrmFindInProject.IsUnassociatedScope: Boolean;
+begin
+  Result := (FScopeCombo.ItemIndex = 7) or (FScopeCombo.ItemIndex = 8);
+end;
+
 function TFrmFindInProject.GetSelectedTextType(out TextType: TTipoTextoBiblico): Boolean;
 begin
   Result := True;
@@ -1371,12 +1381,51 @@ begin
   end;
 end;
 
+{ Parses <par a="..." b="..."/> XML and marks associated 0-based indices for the requested side ('a'=Source, 'b'=Destination). }
+procedure CollectAssociatedIndices(const PairsXML: string; SideAttr: Char;
+  var LinkedFlags: array of Boolean);
+var
+  Tok: TONTTokenizer;
+  Token: TSyntagmToken;
+  PropVal: string;
+  Parts: TStringList;
+  I, Idx: Integer;
+begin
+  if (PairsXML = '') or (Length(LinkedFlags) = 0) then
+    Exit;
+  Tok := TONTTokenizer.Create(PairsXML);
+  Parts := TStringList.Create;
+  try
+    while Tok.ReadSyntagm(Token) <> skNull do
+    begin
+      if not AnsiStartsStr('<par ', Token.Value) then
+        Continue;
+      PropVal := Tok.ReadTagProperty(SideAttr, Token);
+      if PropVal = '' then
+        Continue;
+      Parts.DelimitedText := PropVal;
+      for I := 0 to Parts.Count - 1 do
+        if TryStrToInt(Parts[I], Idx) and (Idx >= 0) and (Idx < Length(LinkedFlags)) then
+          LinkedFlags[Idx] := True;
+    end;
+  finally
+    Parts.Free;
+    Tok.Free;
+  end;
+end;
+
 function TFrmFindInProject.ScanProject(ComputeReplacement: Boolean;
   out TotalOccurrences: Integer; out ErrorMsg: string): Boolean;
 var
   Rx: IRegex;
   TextType: TTipoTextoBiblico;
-  Refs, Texts: TStringList;
+  Refs, Texts, SrcTexts, DstTexts, PairTexts: TStringList;
+  Parser: TONTParser;
+  Syns: TSyntagmList;
+  LinkedFlags: array of Boolean;
+  J, K: Integer;
+  VerseStr, UnassocList: string;
+  SideAttr: Char;
   FallbackResults: TVerseSearchResults;
   I, HitCount, MatchIdx: Integer;
   OutText, RawRepl: string;
@@ -1387,11 +1436,20 @@ begin
   ErrorMsg := '';
   SetLength(FMatches, 0);
 
-  if (FProject = nil) or (FFindCombo.Text = '') then
+  if (FProject = nil) or ((FFindCombo.Text = '') and not IsUnassociatedScope) then
     Exit;
 
-  Rx := BuildSearchRegex(FFindCombo.Text, ErrorMsg);
-  if Rx = nil then
+  Rx := nil;
+  if FFindCombo.Text <> '' then
+  begin
+    Rx := BuildSearchRegex(FFindCombo.Text, ErrorMsg);
+    if Rx = nil then
+    begin
+      MessageDlg(Format(SRegexErrorFmt, [ErrorMsg]), mtError, [mbOK], 0);
+      Exit;
+    end;
+  end;
+  if False then
   begin
     MessageDlg(Format(SRegexErrorFmt, [ErrorMsg]), mtError, [mbOK], 0);
     Exit;
@@ -1429,6 +1487,78 @@ begin
       end;
     finally
       Texts.Free;
+      Refs.Free;
+    end;
+    Result := True;
+  end
+  else if IsUnassociatedScope then
+  begin
+    Refs := TStringList.Create;
+    SrcTexts := TStringList.Create;
+    DstTexts := TStringList.Create;
+    PairTexts := TStringList.Create;
+    Parser := TONTParser.Create(FProject.TokenizerVersion);
+    try
+      FProject.ReadUnassociatedScanColumns(Refs, SrcTexts, DstTexts, PairTexts);
+      if FScopeCombo.ItemIndex = 7 then
+        SideAttr := 'b'  // Destination
+      else
+        SideAttr := 'a'; // Source
+      for I := 0 to Refs.Count - 1 do
+      begin
+        if not MatchesSelectedRange(Refs[I]) then
+          Continue;
+        if SideAttr = 'b' then
+          VerseStr := DstTexts[I]
+        else
+          VerseStr := SrcTexts[I];
+        if Trim(VerseStr) = '' then
+          Continue;
+        Syns := Parser.ParseLine(VerseStr, nil);
+        try
+          SetLength(LinkedFlags, Syns.Count);
+          for J := 0 to Syns.Count - 1 do
+            LinkedFlags[J] := False;
+          CollectAssociatedIndices(PairTexts[I], SideAttr, LinkedFlags);
+
+          HitCount := 0;
+          UnassocList := '';
+          for J := 0 to Syns.Count - 1 do
+          begin
+            if (Syns[J].Kind = skSyntagm) and (not LinkedFlags[J]) and (Trim(Syns[J].Text) <> '') then
+            begin
+              if (Rx = nil) or (MatchAndReplaceText(Syns[J].Text, '', Rx, False, OutText) > 0) then
+              begin
+                Inc(HitCount);
+                if UnassocList <> '' then
+                  UnassocList := UnassocList + ', ';
+                UnassocList := UnassocList + Syns[J].Text;
+              end;
+            end;
+          end;
+
+          if HitCount > 0 then
+          begin
+            Inc(TotalOccurrences, HitCount);
+            SetLength(FMatches, MatchIdx + 1);
+            FMatches[MatchIdx].ReferenceID := Refs[I];
+            FMatches[MatchIdx].FormattedRef := FormatRefID(Refs[I]);
+            FMatches[MatchIdx].OriginalText := '[' + UnassocList + ']  —  ' + VerseStr;
+            FMatches[MatchIdx].ReplacedText := FMatches[MatchIdx].OriginalText;
+            FMatches[MatchIdx].MatchCount := HitCount;
+            Inc(MatchIdx);
+          end;
+        finally
+          for K := 0 to Syns.Count - 1 do
+            Syns[K].Destroy;
+          Syns.Free;
+        end;
+      end;
+    finally
+      Parser.Free;
+      PairTexts.Free;
+      DstTexts.Free;
+      SrcTexts.Free;
       Refs.Free;
     end;
     Result := True;
@@ -1531,7 +1661,7 @@ var
   ErrMsg: string;
   ShowRepl: Boolean;
 begin
-  if (FProject = nil) or (FFindCombo.Text = '') then
+  if (FProject = nil) or ((FFindCombo.Text = '') and not IsUnassociatedScope) then
     Exit;
 
   AddToHistory(FFindCombo, FFindCombo.Text);
