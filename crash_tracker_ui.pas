@@ -113,6 +113,7 @@ type
     FFolderLabel: TLabel;
     FStatusLabel: TLabel;
     FList: TListView;
+    FBodyPanel: TPanel;
     FSplitter: TSplitter;
     FPreviewPanel: TPanel;
     FMemo: TMemo;
@@ -171,6 +172,7 @@ begin
   FTopPanel := TPanel.Create(Self);
   FTopPanel.Parent := Self;
   FTopPanel.Align := alTop;
+  FTopPanel.Top := 0;
   FTopPanel.Width := ClientWidth - 24;
   FTopPanel.Height := 84;
   FTopPanel.BevelOuter := bvNone;
@@ -206,13 +208,13 @@ begin
 
   FFooterPanel := TPanel.Create(Self);
   FFooterPanel.Parent := Self;
-  FFooterPanel.Align := alBottom;
   FFooterPanel.Width := ClientWidth - 24;
   FFooterPanel.Height := 54;
   FFooterPanel.BevelOuter := bvNone;
   FFooterPanel.BorderSpacing.Left := 12;
   FFooterPanel.BorderSpacing.Right := 12;
   FFooterPanel.BorderSpacing.Bottom := 8;
+  FFooterPanel.Align := alBottom;
 
   FCopyBtn := TButton.Create(Self);
   FCopyBtn.Parent := FFooterPanel;
@@ -259,12 +261,13 @@ begin
 
   FStatusLabel := TLabel.Create(Self);
   FStatusLabel.Parent := Self;
-  FStatusLabel.Align := alBottom;
+  FStatusLabel.Top := 0;
   FStatusLabel.BorderSpacing.Left := 12;
   FStatusLabel.BorderSpacing.Right := 12;
   FStatusLabel.BorderSpacing.Top := 4;
   FStatusLabel.Height := 18;
   FStatusLabel.Caption := '';
+  FStatusLabel.Align := alBottom;
 
   FMemo := TMemo.Create(Self);
   FMemo.Parent := Self;
@@ -379,6 +382,7 @@ begin
   FTopPanel := TPanel.Create(Self);
   FTopPanel.Parent := Self;
   FTopPanel.Align := alTop;
+  FTopPanel.Top := 0;
   FTopPanel.Width := ClientWidth - 24;
   FTopPanel.Height := 34;
   FTopPanel.BevelOuter := bvNone;
@@ -398,13 +402,13 @@ begin
 
   FFooterPanel := TPanel.Create(Self);
   FFooterPanel.Parent := Self;
-  FFooterPanel.Align := alBottom;
   FFooterPanel.Width := ClientWidth - 24;
   FFooterPanel.Height := 52;
   FFooterPanel.BevelOuter := bvNone;
   FFooterPanel.BorderSpacing.Left := 12;
   FFooterPanel.BorderSpacing.Right := 12;
   FFooterPanel.BorderSpacing.Bottom := 8;
+  FFooterPanel.Align := alBottom;
 
   FCopyBtn := TButton.Create(Self);
   FCopyBtn.Parent := FFooterPanel;
@@ -447,20 +451,26 @@ begin
 
   FStatusLabel := TLabel.Create(Self);
   FStatusLabel.Parent := Self;
-  FStatusLabel.Align := alBottom;
+  FStatusLabel.Top := 0;
   FStatusLabel.BorderSpacing.Left := 12;
   FStatusLabel.BorderSpacing.Right := 12;
   FStatusLabel.BorderSpacing.Top := 4;
   FStatusLabel.Height := 18;
   FStatusLabel.Caption := '';
+  FStatusLabel.Align := alBottom;
+
+  FBodyPanel := TPanel.Create(Self);
+  FBodyPanel.Parent := Self;
+  FBodyPanel.Align := alClient;
+  FBodyPanel.BevelOuter := bvNone;
 
   FPreviewPanel := TPanel.Create(Self);
-  FPreviewPanel.Parent := Self;
-  FPreviewPanel.Align := alBottom;
+  FPreviewPanel.Parent := FBodyPanel;
   FPreviewPanel.Height := 250;
   FPreviewPanel.BevelOuter := bvNone;
   FPreviewPanel.BorderSpacing.Left := 12;
   FPreviewPanel.BorderSpacing.Right := 12;
+  FPreviewPanel.Align := alBottom;
 
   FMemo := TMemo.Create(Self);
   FMemo.Parent := FPreviewPanel;
@@ -472,12 +482,17 @@ begin
   FMemo.Font.Size := 9;
 
   FSplitter := TSplitter.Create(Self);
-  FSplitter.Parent := Self;
-  FSplitter.Align := alBottom;
+  FSplitter.Parent := FBodyPanel;
+  FSplitter.Top := 0;
   FSplitter.Height := 6;
+  FSplitter.ResizeAnchor := akBottom;
+  FSplitter.MinSize := 90;
+  FSplitter.BorderSpacing.Left := 12;
+  FSplitter.BorderSpacing.Right := 12;
+  FSplitter.Align := alBottom;
 
   FList := TListView.Create(Self);
-  FList.Parent := Self;
+  FList.Parent := FBodyPanel;
   FList.Align := alClient;
   FList.BorderSpacing.Left := 12;
   FList.BorderSpacing.Right := 12;
@@ -505,6 +520,7 @@ procedure TCrashLogsManagerForm.ApplyTheme;
 begin
   ApplyDialogStyle(Self);
   StyleControl(FTopPanel, uirSurface);
+  StyleControl(FBodyPanel, uirSurface);
   StyleControl(FPreviewPanel, uirSurface);
   StyleControl(FFooterPanel, uirFooter);
   StyleControl(FFolderLabel, uirHint);

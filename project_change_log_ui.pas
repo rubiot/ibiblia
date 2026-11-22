@@ -70,6 +70,7 @@ type
     FCategoryLabel: TLabel;
     FCategoryCombo: TComboBox;
     FList: TListView;
+    FBodyPanel: TPanel;
     FSplitter: TSplitter;
     FDetailsPanel: TPanel;
     FDetailsLabel: TLabel;
@@ -444,6 +445,7 @@ begin
   FHeaderPanel := TPanel.Create(Self);
   FHeaderPanel.Parent := Self;
   FHeaderPanel.Align := alTop;
+  FHeaderPanel.Top := 0;
   FHeaderPanel.Width := ClientWidth - 24;
   FHeaderPanel.Height := 64;
   FHeaderPanel.BevelOuter := bvNone;
@@ -480,6 +482,7 @@ begin
   FFilterPanel := TPanel.Create(Self);
   FFilterPanel.Parent := Self;
   FFilterPanel.Align := alTop;
+  FFilterPanel.Top := 100;
   FFilterPanel.Width := ClientWidth - 24;
   FFilterPanel.Height := 38;
   FFilterPanel.BevelOuter := bvNone;
@@ -519,13 +522,13 @@ begin
 
   FFooterPanel := TPanel.Create(Self);
   FFooterPanel.Parent := Self;
-  FFooterPanel.Align := alBottom;
   FFooterPanel.Width := ClientWidth - 24;
   FFooterPanel.Height := 50;
   FFooterPanel.BevelOuter := bvNone;
   FFooterPanel.BorderSpacing.Left := 12;
   FFooterPanel.BorderSpacing.Right := 12;
   FFooterPanel.BorderSpacing.Bottom := 6;
+  FFooterPanel.Align := alBottom;
 
   FAddNoteBtn := TButton.Create(Self);
   FAddNoteBtn.Parent := FFooterPanel;
@@ -560,14 +563,19 @@ begin
   FCloseBtn.Cancel := True;
   FCloseBtn.Default := True;
 
+  FBodyPanel := TPanel.Create(Self);
+  FBodyPanel.Parent := Self;
+  FBodyPanel.Align := alClient;
+  FBodyPanel.BevelOuter := bvNone;
+
   FDetailsPanel := TPanel.Create(Self);
-  FDetailsPanel.Parent := Self;
-  FDetailsPanel.Align := alBottom;
+  FDetailsPanel.Parent := FBodyPanel;
   FDetailsPanel.Height := 220;
   FDetailsPanel.BevelOuter := bvNone;
   FDetailsPanel.BorderSpacing.Left := 12;
   FDetailsPanel.BorderSpacing.Right := 12;
   FDetailsPanel.BorderSpacing.Bottom := 4;
+  FDetailsPanel.Align := alBottom;
 
   FDetailsLabel := TLabel.Create(Self);
   FDetailsLabel.Parent := FDetailsPanel;
@@ -594,12 +602,17 @@ begin
   FDetailsMemo.OnMouseWheel := @DetailsMemoMouseWheel;
 
   FSplitter := TSplitter.Create(Self);
-  FSplitter.Parent := Self;
-  FSplitter.Align := alBottom;
+  FSplitter.Parent := FBodyPanel;
+  FSplitter.Top := 0;
   FSplitter.Height := 6;
+  FSplitter.ResizeAnchor := akBottom;
+  FSplitter.MinSize := 90;
+  FSplitter.BorderSpacing.Left := 12;
+  FSplitter.BorderSpacing.Right := 12;
+  FSplitter.Align := alBottom;
 
   FList := TListView.Create(Self);
-  FList.Parent := Self;
+  FList.Parent := FBodyPanel;
   FList.Align := alClient;
   FList.BorderSpacing.Left := 12;
   FList.BorderSpacing.Right := 12;
@@ -625,6 +638,7 @@ begin
   ApplyDialogStyle(Self);
   StyleControl(FHeaderPanel, uirSurface);
   StyleControl(FFilterPanel, uirSurface);
+  StyleControl(FBodyPanel, uirSurface);
   StyleControl(FDetailsPanel, uirSurface);
   StyleControl(FFooterPanel, uirFooter);
   StyleControl(FFileLabel, uirHint);

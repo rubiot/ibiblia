@@ -1,3 +1,6 @@
+Version 1.1.0.086 (64-bit Edition) - 2026-11-22
+- Fixed the horizontal splitter and footer button-bar stacking in Project -> Project change log... and Help -> Crash & error logs... so dragging the splitter up properly expands the Details / Preview pane and shrinks the list above it, keeping the footer buttons pinned at the bottom.
+
 Version 1.1.0.085 (64-bit Edition) - 2026-11-22
 - Refined Project Change Log diff view so red/green highlighting applies only to actual text edits (Source/Destination/Reference text, Comments, and module properties) rather than Status, Associations, or settings; unchanged text stays clean while only the replaced text (Before) is highlighted in red and the new text (After) is highlighted in green; also hid raw <par> XML dumps and internal association.memory.* keys.
 

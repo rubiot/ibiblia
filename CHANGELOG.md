@@ -6,7 +6,12 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.085 (2026-11-22) — Refine Project Change Log Diff View (Text Edits Only & Cleaner Red/Green Highlights)
+### 0. Version 1.1.0.086 (2026-11-22) — Fix Splitter & Footer Layout in Project Change Log and Crash Logs Dialogs
+
+* **Correct Splitter & Footer Stacking (`project_change_log_ui.pas`, `crash_tracker_ui.pas`):** Moved the list, horizontal splitter, and Details/Preview pane inside a dedicated `alClient` body panel (`FBodyPanel`) while pinning the bottom action bar (`FFooterPanel`) cleanly at the bottom of the dialog, and set panel heights and `Top` order before `Align := alBottom` with `ResizeAnchor := akBottom`. Dragging the splitter up/down in **Project → Project change log...** and **Help → Crash & error logs...** now properly expands the **Details** window while shrinking the log list above it instead of stretching the button bar's empty background strip.
+* Files: project_change_log_ui.pas, crash_tracker_ui.pas, unitabout.pas.
+
+### 0a. Version 1.1.0.085 (2026-11-22) — Refine Project Change Log Diff View (Text Edits Only & Cleaner Red/Green Highlights)
 
 * **Text-Edit-Only Diff Highlighting (`project_change_log_ui.pas`):** Restricted the red/green diff view in **Project → Project change log...** strictly to actual text edits (`Source text`, `Destination text`, `Reference 1/2 text`, `Comments`, and `module properties`), leaving `Status`, `Associations`, dictionary paths, and other settings as clean plain lines.
 * **Cleaner Inline Red/Green Highlights (`project_change_log_ui.pas`):** Removed the full-line red/green background tint so unchanged context stays clean and **only** the replaced text in `Before` is highlighted in **red** and **only** the newly applied text in `After` is highlighted in **green**, and stopped diffing literal `(empty)` placeholders against real text.
