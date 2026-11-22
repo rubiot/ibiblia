@@ -1,3 +1,7 @@
+Version 1.1.0.090 (64-bit Edition) - 2026-11-22
+- Rebuilt the Find & Replace in Project (Ctrl+F / Ctrl+H) layout so the Find/Replace tabs stay at the top, all action buttons (Find Next, Find Prev, Count, Find All, Preview Replace, Replace, Replace All, Close) stay visible on the right, and Find/Replace input boxes and group boxes never clip on Windows or Linux GTK2.
+- Added Swap (<->) button, Range filter (Whole project / Current book / Current chapter), Dry-run Preview Replace button, and Window Transparency (On losing focus / Always + opacity slider).
+
 Version 1.1.0.089 (64-bit Edition) - 2026-11-22
 - Upgraded Ctrl+F (and added Ctrl+H) to a full Notepad++-style Find & Replace tool inside the project (Normal, Extended, and PCRE Regular Expression modes with capture groups, case transforms, Match whole word, Match case, Wrap around, Count, Find All, Replace, and Replace All).
 - Mass replacements in Source, Destination, Reference 1, or Reference 2 text apply directly in-project while preserving existing word associations, logging to the Project Change Log, and saving automatically.

@@ -114,6 +114,10 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.090 (64-bit Edition) - 2026-11-22' + LineEnding +
+  '- Rebuilt the Find & Replace in Project (Ctrl+F / Ctrl+H) layout with an AlRight button column and responsive AlClient inputs so all buttons (Find Next, Find Prev, Count, Find All, Preview Replace, Replace, Replace All, Close), Find/Replace combo boxes, top Find/Replace tabs, and group boxes fit cleanly without right-edge or GTK2 clipping.' + LineEnding +
+  '- Added Swap (<->) button, Range filter (Whole project / Current book / Current chapter), Dry-run Preview Replace button, and Window Transparency (On losing focus / Always + opacity slider).' + LineEnding +
+  '' + LineEnding +
   'Version 1.1.0.089 (64-bit Edition) - 2026-11-22' + LineEnding +
   '- Upgraded Ctrl+F (and added Ctrl+H) to a full Notepad++-style Find & Replace tool inside the project (Normal, Extended \n/\r/\t/\x, and PCRE Regular Expression modes with . matches newline, capture groups $1/\1/${name}, and \u/\l/\U/\L/\E case transforms; Match whole word, Match case, Wrap around, Count, Find All, Replace, and Replace All).' + LineEnding +
   '- Mass replacements in Destination, Source, Reference 1, or Reference 2 text apply directly in-project, preserve existing word associations via TVerse.ReplaceTextPreservingAssociations, log to the Project Change Log, and auto-save.' + LineEnding +
@@ -747,7 +751,7 @@ begin
     ver := '';
   end;
   if (ver = '') or (ver = '1.1.0.0') or (ver = '1.1.0.1') then
-    ver := '1.1.0.089';
+    ver := '1.1.0.090';
 
   LabelVersion := TLabel.Create(Self);
   LabelVersion.Parent := Self;

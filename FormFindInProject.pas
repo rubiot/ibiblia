@@ -1,11 +1,21 @@
 unit FormFindInProject;
 
 (* Find & Replace in Project: a modeless Notepad++-style search and bulk-replace
-  window for Dark-Skinned iBiblia. Supports Normal, Extended (\n, \r, \t, \x..),
-  and PCRE Regular Expression modes (with . matches newline, capture groups
-  $1/\1/${name}, and \u/\l/\U/\L/\E case transforms), Match whole word,
-  Match case, Wrap around, Count, Find All, Replace, and Replace All while
-  preserving existing word associations via TProject.ApplyVerseTexts. *)
+  window for Dark-Skinned iBiblia (v1.1.0.090).
+  Features:
+  - Top Find / Replace tabs (Ctrl+F / Ctrl+H)
+  - Find what & Replace with history dropdowns + Swap button
+  - Dedicated action buttons: Find Next, Find Prev, Count, Find All,
+    Preview Replace (dry-run), Replace, Replace All, Close
+  - Look in scope (Destination, Source, Ref 1, Ref 2, Strong's/Morph, Comments, All)
+  - Range filter (Whole project, Current book, Current chapter)
+  - Options: Match case, Wrap around, Keep word associations intact, Show raw tags
+  - Search Mode: Normal, Extended (\n, \r, \t, \0, \x.., \u....),
+    Regular expression (PCRE) + . matches newline, capture groups $1/\1/${name},
+    and \u/\l/\U/\L/\E case transforms
+  - Transparency (On losing focus / Always + opacity slider)
+  - Before ==> After live diff preview in results list
+  - Responsive AlRight / AlClient layout (zero clipping on Windows & Linux GTK2) *)
 
 {$mode objfpc}{$H+}
 
@@ -39,16 +49,21 @@ type
     FOnNavigate: TFindNavigateEvent;
 
     FTabControl: TTabControl;
-    FControlsPanel: TPanel;
+    FTopContainer: TPanel;
+    FLeftPanel: TPanel;
+    FButtonsPanel: TPanel;
+
     FFindLabel: TLabel;
     FFindCombo: TComboBox;
+    FSwapButton: TButton;
     FReplaceLabel: TLabel;
     FReplaceCombo: TComboBox;
     FScopeLabel: TLabel;
     FScopeCombo: TComboBox;
+    FRangeLabel: TLabel;
+    FRangeCombo: TComboBox;
 
     FOptionsGroup: TGroupBox;
-    FWholeWordCheck: TCheckBox;
     FMatchCaseCheck: TCheckBox;
     FWrapAroundCheck: TCheckBox;
     FKeepAssocCheck: TCheckBox;
@@ -60,10 +75,17 @@ type
     FModeRegexRadio: TRadioButton;
     FDotMatchesNewlineCheck: TCheckBox;
 
+    FTransGroup: TGroupBox;
+    FTransEnableCheck: TCheckBox;
+    FTransOnBlurRadio: TRadioButton;
+    FTransAlwaysRadio: TRadioButton;
+    FTransTrackBar: TTrackBar;
+
     FFindNextButton: TButton;
     FFindPrevButton: TButton;
     FCountButton: TButton;
     FFindAllButton: TButton;
+    FPreviewReplaceButton: TButton;
     FReplaceButton: TButton;
     FReplaceAllButton: TButton;
     FCloseButton: TButton;
@@ -73,13 +95,17 @@ type
     FResultsList: TListBox;
 
     procedure BuildControls;
+    procedure LayoutLeftPanel;
     procedure RefreshCaptions;
     procedure UpdateModeUI;
     procedure UpdateTabUI;
+    procedure UpdateTransparency(IsActive: Boolean);
     procedure AddToHistory(Combo: TComboBox; const Value: string);
     function GetSearchMode: TFindSearchMode;
     function GetSelectedTextType(out TextType: TTipoTextoBiblico): Boolean;
     function GetScopeDisplayName: string;
+    function GetRangeDisplayName: string;
+    function MatchesSelectedRange(const RefID: string): Boolean;
     function FormatRefID(const RefID: string): string;
     function BuildSearchRegex(const Pattern: string; out ErrorMsg: string): IRegex;
     function MatchAndReplaceText(const Input, RawReplacement: string;
@@ -89,20 +115,27 @@ type
     procedure PopulateResultsList(ShowReplacePreview: Boolean);
     procedure ClearResults;
     procedure GoToResult(Index: Integer);
-    procedure DoFindAll(NavigateFirst: Boolean);
+    procedure DoFindAll(NavigateFirst: Boolean; ForceReplacePreview: Boolean = False);
     procedure DoCount;
     procedure DoFindStep(ForwardDir: Boolean);
     procedure DoReplaceCurrent;
     procedure DoReplaceAll;
 
+    procedure FormShowHandler(Sender: TObject);
+    procedure FormActivateHandler(Sender: TObject);
+    procedure FormDeactivateHandler(Sender: TObject);
+    procedure LeftPanelResize(Sender: TObject);
     procedure TabControlChange(Sender: TObject);
     procedure ModeRadioClick(Sender: TObject);
     procedure ScopeComboChange(Sender: TObject);
     procedure RawTagsCheckClick(Sender: TObject);
+    procedure SwapButtonClick(Sender: TObject);
+    procedure TransControlChanged(Sender: TObject);
     procedure FindNextButtonClick(Sender: TObject);
     procedure FindPrevButtonClick(Sender: TObject);
     procedure CountButtonClick(Sender: TObject);
     procedure FindAllButtonClick(Sender: TObject);
+    procedure PreviewReplaceButtonClick(Sender: TObject);
     procedure ReplaceButtonClick(Sender: TObject);
     procedure ReplaceAllButtonClick(Sender: TObject);
     procedure CloseButtonClick(Sender: TObject);
@@ -131,32 +164,39 @@ resourcestring
   SFindWhat = 'Find &what:';
   SReplaceWith = 'Re&place with:';
   SFindLookIn = '&Look in:';
+  SFindRange = 'Ran&ge:';
+  SSwapHint = 'Swap Find what and Replace with';
   SOptionsTitle = 'Options';
-  SMatchWholeWord = 'Match &whole word only';
   SMatchCase = 'Match &case';
   SWrapAround = 'Wrap aro&und';
-  SKeepAssociations = '&Keep word associations intact';
+  SKeepAssociations = '&Keep word associations';
   SShowRawTags = 'Show raw &tags in preview';
   SSearchModeTitle = 'Search Mode';
   SModeNormal = '&Normal';
   SModeExtended = 'E&xtended (\n, \r, \t, \0, \x...)';
   SModeRegex = 'Regular &expression';
   SDotMatchesNewline = '. matches new&line';
+  STransTitle = 'Transparency';
+  STransEnable = 'Enab&le';
+  STransOnBlur = 'On losing focus';
+  STransAlways = 'Always';
   SBtnFindNext = '&Find Next';
   SBtnFindPrev = 'Find &Prev';
   SBtnCount = 'Coun&t';
   SBtnFindAll = 'Find &All';
+  SBtnPreviewReplace = 'Pre&view Replace';
   SBtnReplace = '&Replace';
   SBtnReplaceAll = 'Replace A&ll';
   SBtnClose = '&Close';
-  SFindPrompt = 'Enter text, tags, or regex and press Enter (Ctrl+F = Find, Ctrl+H = Replace).';
+  SFindPrompt = 'Enter text, tags, or regex and click Find All / Find Next (Ctrl+F = Find, Ctrl+H = Replace).';
   SFindSearching = 'Searching project...';
-  SFindCountFmt = '%d occurrence(s) in %d verse(s)';
+  SFindCountFmt = '%d occurrence(s) in %d verse(s) [%s]';
+  SPreviewCountFmt = 'Preview: %d occurrence(s) in %d verse(s) [%s] (no changes saved yet)';
   SFindNoMatches = '0 occurrences found.';
   SReplaceNotEditable = 'Replace works on Destination text, Source text, Reference text 1, or Reference text 2. Please select one of those fields in "Look in".';
-  SReplaceAllConfirmFmt = 'Replace %d occurrence(s) across %d verse(s) in %s?' + LineEnding + LineEnding + '%s';
+  SReplaceAllConfirmFmt = 'Replace %d occurrence(s) across %d verse(s) in %s (%s)?' + LineEnding + LineEnding + '%s';
   SReplaceAllAssocKeep = 'Existing word associations will be preserved wherever words remain intact, and changes will be saved to the project.';
-  SReplaceAllAssocClear = 'Warning: "Keep word associations intact" is unchecked. Associations in modified verses may be cleared.';
+  SReplaceAllAssocClear = 'Warning: "Keep word associations" is unchecked. Associations in modified verses may be cleared.';
   SReplaceAllTitle = 'Confirm Replace All';
   SReplaceProgressTitle = 'Find & Replace';
   SReplaceProgressMsg = 'Applying replacements and preserving associations...';
@@ -170,6 +210,9 @@ resourcestring
   SFindScopeStrongs = 'Strong''s / morphology tags';
   SFindScopeComments = 'Comments';
   SFindScopeAll = 'All fields';
+  SRangeWholeProject = 'Whole project';
+  SRangeCurrentBook = 'Current book';
+  SRangeCurrentChapter = 'Current chapter';
 
 var
   FindInstance: TFrmFindInProject = nil;
@@ -282,34 +325,6 @@ begin
   end;
 end;
 
-function IsWordByteAt(const S: string; ByteIndex1Based: Integer): Boolean;
-var
-  C: Byte;
-begin
-  if (ByteIndex1Based < 1) or (ByteIndex1Based > Length(S)) then
-    Exit(False);
-  C := Ord(S[ByteIndex1Based]);
-  if C >= $80 then
-    Exit(True); { UTF-8 non-ASCII letter/diacritic }
-  Result := (Chr(C) in ['A'..'Z', 'a'..'z', '0'..'9', '_']);
-end;
-
-function PassesWholeWordCheck(const Input: string; MatchStart0Based, MatchByteLen: Integer): Boolean;
-var
-  Start1, End1: Integer;
-begin
-  if MatchByteLen <= 0 then
-    Exit(True);
-  Start1 := MatchStart0Based + 1;
-  End1 := MatchStart0Based + MatchByteLen;
-  if IsWordByteAt(Input, Start1) and IsWordByteAt(Input, Start1 - 1) then
-    Exit(False);
-  if IsWordByteAt(Input, End1) and IsWordByteAt(Input, End1 + 1) then
-    Exit(False);
-  Result := True;
-end;
-
-{ Applies Notepad++ case modifiers (\u, \l, \U, \L, \E) to an expanded replacement. }
 function UTF8CharByteLen(B: Byte): Integer;
 begin
   if (B and $80) = 0 then Result := 1
@@ -319,6 +334,7 @@ begin
   else Result := 1;
 end;
 
+{ Applies Notepad++ case modifiers (\u, \l, \U, \L, \E) to an expanded replacement. }
 function ApplyCaseTransforms(const Tokens: string): string;
 type
   TCaseMode = (cmNone, cmUpperAll, cmLowerAll);
@@ -584,6 +600,7 @@ begin
   FindInstance.SelectModeTab(AStartOnReplace);
   FindInstance.Show;
   FindInstance.BringToFront;
+  FindInstance.LayoutLeftPanel;
   if FindInstance.FFindCombo.CanFocus then
     FindInstance.FFindCombo.SetFocus;
   FindInstance.FFindCombo.SelectAll;
@@ -608,14 +625,18 @@ begin
   Position := poMainFormCenter;
   BorderStyle := bsSizeToolWin;
   FormStyle := fsStayOnTop;
-  ClientWidth := 760;
-  ClientHeight := 540;
-  Constraints.MinWidth := 620;
-  Constraints.MinHeight := 420;
+  ClientWidth := 860;
+  ClientHeight := 600;
+  Constraints.MinWidth := 720;
+  Constraints.MinHeight := 480;
+  OnShow := @FormShowHandler;
+  OnActivate := @FormActivateHandler;
+  OnDeactivate := @FormDeactivateHandler;
   BuildControls;
   RefreshCaptions;
   UpdateModeUI;
   UpdateTabUI;
+  LayoutLeftPanel;
 end;
 
 destructor TFrmFindInProject.Destroy;
@@ -627,171 +648,216 @@ end;
 
 procedure TFrmFindInProject.BuildControls;
 begin
+  { 1. Top Find | Replace tab bar — pinned at Top = 0 }
   FTabControl := TTabControl.Create(Self);
   FTabControl.Parent := Self;
+  FTabControl.Top := 0;
   FTabControl.Align := alTop;
-  FTabControl.Height := 30;
+  FTabControl.Height := 32;
   FTabControl.OnChange := @TabControlChange;
 
-  FControlsPanel := TPanel.Create(Self);
-  FControlsPanel.Parent := Self;
-  FControlsPanel.Align := alTop;
-  FControlsPanel.Height := 248;
-  FControlsPanel.BevelOuter := bvNone;
+  { 2. Main controls container directly below tab bar }
+  FTopContainer := TPanel.Create(Self);
+  FTopContainer.Parent := Self;
+  FTopContainer.Top := 32;
+  FTopContainer.Align := alTop;
+  FTopContainer.Height := 288;
+  FTopContainer.BevelOuter := bvNone;
 
-  { Left column: Find what, Replace with, Look in }
+  { 2a. Right-hand action button column (AlRight = never clips!) }
+  FButtonsPanel := TPanel.Create(Self);
+  FButtonsPanel.Parent := FTopContainer;
+  FButtonsPanel.Align := alRight;
+  FButtonsPanel.Width := 156;
+  FButtonsPanel.BevelOuter := bvNone;
+
+  FFindNextButton := TButton.Create(Self);
+  FFindNextButton.Parent := FButtonsPanel;
+  FFindNextButton.SetBounds(6, 8, 140, 28);
+  FFindNextButton.OnClick := @FindNextButtonClick;
+
+  FFindPrevButton := TButton.Create(Self);
+  FFindPrevButton.Parent := FButtonsPanel;
+  FFindPrevButton.SetBounds(6, 40, 140, 28);
+  FFindPrevButton.OnClick := @FindPrevButtonClick;
+
+  FCountButton := TButton.Create(Self);
+  FCountButton.Parent := FButtonsPanel;
+  FCountButton.SetBounds(6, 72, 140, 28);
+  FCountButton.OnClick := @CountButtonClick;
+
+  FFindAllButton := TButton.Create(Self);
+  FFindAllButton.Parent := FButtonsPanel;
+  FFindAllButton.SetBounds(6, 104, 140, 28);
+  FFindAllButton.OnClick := @FindAllButtonClick;
+
+  FPreviewReplaceButton := TButton.Create(Self);
+  FPreviewReplaceButton.Parent := FButtonsPanel;
+  FPreviewReplaceButton.SetBounds(6, 140, 140, 28);
+  FPreviewReplaceButton.OnClick := @PreviewReplaceButtonClick;
+
+  FReplaceButton := TButton.Create(Self);
+  FReplaceButton.Parent := FButtonsPanel;
+  FReplaceButton.SetBounds(6, 172, 140, 28);
+  FReplaceButton.OnClick := @ReplaceButtonClick;
+
+  FReplaceAllButton := TButton.Create(Self);
+  FReplaceAllButton.Parent := FButtonsPanel;
+  FReplaceAllButton.SetBounds(6, 204, 140, 28);
+  FReplaceAllButton.OnClick := @ReplaceAllButtonClick;
+
+  FCloseButton := TButton.Create(Self);
+  FCloseButton.Parent := FButtonsPanel;
+  FCloseButton.SetBounds(6, 248, 140, 28);
+  FCloseButton.Cancel := True;
+  FCloseButton.OnClick := @CloseButtonClick;
+
+  { 2b. Left panel (AlClient = takes all remaining width, dynamically laid out) }
+  FLeftPanel := TPanel.Create(Self);
+  FLeftPanel.Parent := FTopContainer;
+  FLeftPanel.Align := alClient;
+  FLeftPanel.BevelOuter := bvNone;
+  FLeftPanel.OnResize := @LeftPanelResize;
+
   FFindLabel := TLabel.Create(Self);
-  FFindLabel.Parent := FControlsPanel;
-  FFindLabel.SetBounds(12, 12, 92, 22);
+  FFindLabel.Parent := FLeftPanel;
   FFindLabel.Layout := tlCenter;
 
   FFindCombo := TComboBox.Create(Self);
-  FFindCombo.Parent := FControlsPanel;
-  FFindCombo.SetBounds(108, 10, 488, 26);
-  FFindCombo.Anchors := [akLeft, akTop, akRight];
+  FFindCombo.Parent := FLeftPanel;
   FFindCombo.Style := csDropDown;
   FFindCombo.OnKeyDown := @EditKeyDown;
   FFindLabel.FocusControl := FFindCombo;
 
+  FSwapButton := TButton.Create(Self);
+  FSwapButton.Parent := FLeftPanel;
+  FSwapButton.Caption := '<->';
+  FSwapButton.ShowHint := True;
+  FSwapButton.OnClick := @SwapButtonClick;
+
   FReplaceLabel := TLabel.Create(Self);
-  FReplaceLabel.Parent := FControlsPanel;
-  FReplaceLabel.SetBounds(12, 44, 92, 22);
+  FReplaceLabel.Parent := FLeftPanel;
   FReplaceLabel.Layout := tlCenter;
 
   FReplaceCombo := TComboBox.Create(Self);
-  FReplaceCombo.Parent := FControlsPanel;
-  FReplaceCombo.SetBounds(108, 42, 488, 26);
-  FReplaceCombo.Anchors := [akLeft, akTop, akRight];
+  FReplaceCombo.Parent := FLeftPanel;
   FReplaceCombo.Style := csDropDown;
   FReplaceCombo.OnKeyDown := @EditKeyDown;
   FReplaceLabel.FocusControl := FReplaceCombo;
 
   FScopeLabel := TLabel.Create(Self);
-  FScopeLabel.Parent := FControlsPanel;
-  FScopeLabel.SetBounds(12, 76, 92, 22);
+  FScopeLabel.Parent := FLeftPanel;
   FScopeLabel.Layout := tlCenter;
 
   FScopeCombo := TComboBox.Create(Self);
-  FScopeCombo.Parent := FControlsPanel;
-  FScopeCombo.SetBounds(108, 74, 270, 26);
+  FScopeCombo.Parent := FLeftPanel;
   FScopeCombo.Style := csDropDownList;
   FScopeCombo.OnChange := @ScopeComboChange;
   FScopeLabel.FocusControl := FScopeCombo;
 
+  FRangeLabel := TLabel.Create(Self);
+  FRangeLabel.Parent := FLeftPanel;
+  FRangeLabel.Layout := tlCenter;
+
+  FRangeCombo := TComboBox.Create(Self);
+  FRangeCombo.Parent := FLeftPanel;
+  FRangeCombo.Style := csDropDownList;
+  FRangeLabel.FocusControl := FRangeCombo;
+
   { Options GroupBox }
   FOptionsGroup := TGroupBox.Create(Self);
-  FOptionsGroup.Parent := FControlsPanel;
-  FOptionsGroup.SetBounds(12, 108, 286, 132);
-
-  FWholeWordCheck := TCheckBox.Create(Self);
-  FWholeWordCheck.Parent := FOptionsGroup;
-  FWholeWordCheck.SetBounds(10, 6, 264, 21);
+  FOptionsGroup.Parent := FLeftPanel;
 
   FMatchCaseCheck := TCheckBox.Create(Self);
   FMatchCaseCheck.Parent := FOptionsGroup;
-  FMatchCaseCheck.SetBounds(10, 29, 264, 21);
+  FMatchCaseCheck.SetBounds(10, 8, 200, 24);
 
   FWrapAroundCheck := TCheckBox.Create(Self);
   FWrapAroundCheck.Parent := FOptionsGroup;
-  FWrapAroundCheck.SetBounds(10, 52, 264, 21);
+  FWrapAroundCheck.SetBounds(10, 36, 200, 24);
   FWrapAroundCheck.Checked := True;
 
   FKeepAssocCheck := TCheckBox.Create(Self);
   FKeepAssocCheck.Parent := FOptionsGroup;
-  FKeepAssocCheck.SetBounds(10, 75, 264, 21);
+  FKeepAssocCheck.SetBounds(10, 64, 200, 24);
   FKeepAssocCheck.Checked := True;
 
   FRawTagsCheck := TCheckBox.Create(Self);
   FRawTagsCheck.Parent := FOptionsGroup;
-  FRawTagsCheck.SetBounds(10, 98, 264, 21);
+  FRawTagsCheck.SetBounds(10, 92, 200, 24);
   FRawTagsCheck.OnClick := @RawTagsCheckClick;
 
   { Search Mode GroupBox }
   FModeGroup := TGroupBox.Create(Self);
-  FModeGroup.Parent := FControlsPanel;
-  FModeGroup.SetBounds(308, 108, 288, 132);
-  FModeGroup.Anchors := [akLeft, akTop, akRight];
+  FModeGroup.Parent := FLeftPanel;
 
   FModeNormalRadio := TRadioButton.Create(Self);
   FModeNormalRadio.Parent := FModeGroup;
-  FModeNormalRadio.SetBounds(10, 8, 266, 22);
+  FModeNormalRadio.SetBounds(10, 8, 220, 24);
   FModeNormalRadio.Checked := True;
   FModeNormalRadio.OnClick := @ModeRadioClick;
 
   FModeExtendedRadio := TRadioButton.Create(Self);
   FModeExtendedRadio.Parent := FModeGroup;
-  FModeExtendedRadio.SetBounds(10, 34, 266, 22);
+  FModeExtendedRadio.SetBounds(10, 36, 220, 24);
   FModeExtendedRadio.OnClick := @ModeRadioClick;
 
   FModeRegexRadio := TRadioButton.Create(Self);
   FModeRegexRadio.Parent := FModeGroup;
-  FModeRegexRadio.SetBounds(10, 60, 266, 22);
+  FModeRegexRadio.SetBounds(10, 64, 220, 24);
   FModeRegexRadio.OnClick := @ModeRadioClick;
 
   FDotMatchesNewlineCheck := TCheckBox.Create(Self);
   FDotMatchesNewlineCheck.Parent := FModeGroup;
-  FDotMatchesNewlineCheck.SetBounds(28, 86, 248, 22);
+  FDotMatchesNewlineCheck.SetBounds(26, 92, 204, 24);
 
-  { Right column: Notepad++-style action buttons }
-  FFindNextButton := TButton.Create(Self);
-  FFindNextButton.Parent := FControlsPanel;
-  FFindNextButton.SetBounds(610, 9, 138, 28);
-  FFindNextButton.Anchors := [akTop, akRight];
-  FFindNextButton.OnClick := @FindNextButtonClick;
+  { Transparency GroupBox }
+  FTransGroup := TGroupBox.Create(Self);
+  FTransGroup.Parent := FLeftPanel;
 
-  FFindPrevButton := TButton.Create(Self);
-  FFindPrevButton.Parent := FControlsPanel;
-  FFindPrevButton.SetBounds(610, 41, 138, 28);
-  FFindPrevButton.Anchors := [akTop, akRight];
-  FFindPrevButton.OnClick := @FindPrevButtonClick;
+  FTransEnableCheck := TCheckBox.Create(Self);
+  FTransEnableCheck.Parent := FTransGroup;
+  FTransEnableCheck.SetBounds(10, 8, 160, 24);
+  FTransEnableCheck.OnClick := @TransControlChanged;
 
-  FCountButton := TButton.Create(Self);
-  FCountButton.Parent := FControlsPanel;
-  FCountButton.SetBounds(610, 73, 138, 28);
-  FCountButton.Anchors := [akTop, akRight];
-  FCountButton.OnClick := @CountButtonClick;
+  FTransOnBlurRadio := TRadioButton.Create(Self);
+  FTransOnBlurRadio.Parent := FTransGroup;
+  FTransOnBlurRadio.SetBounds(10, 36, 160, 24);
+  FTransOnBlurRadio.Checked := True;
+  FTransOnBlurRadio.OnClick := @TransControlChanged;
 
-  FFindAllButton := TButton.Create(Self);
-  FFindAllButton.Parent := FControlsPanel;
-  FFindAllButton.SetBounds(610, 105, 138, 28);
-  FFindAllButton.Anchors := [akTop, akRight];
-  FFindAllButton.OnClick := @FindAllButtonClick;
+  FTransAlwaysRadio := TRadioButton.Create(Self);
+  FTransAlwaysRadio.Parent := FTransGroup;
+  FTransAlwaysRadio.SetBounds(10, 62, 160, 24);
+  FTransAlwaysRadio.OnClick := @TransControlChanged;
 
-  FReplaceButton := TButton.Create(Self);
-  FReplaceButton.Parent := FControlsPanel;
-  FReplaceButton.SetBounds(610, 141, 138, 28);
-  FReplaceButton.Anchors := [akTop, akRight];
-  FReplaceButton.OnClick := @ReplaceButtonClick;
+  FTransTrackBar := TTrackBar.Create(Self);
+  FTransTrackBar.Parent := FTransGroup;
+  FTransTrackBar.SetBounds(8, 90, 160, 30);
+  FTransTrackBar.Min := 90;
+  FTransTrackBar.Max := 255;
+  FTransTrackBar.Position := 190;
+  FTransTrackBar.Frequency := 15;
+  FTransTrackBar.TickStyle := tsNone;
+  FTransTrackBar.OnChange := @TransControlChanged;
 
-  FReplaceAllButton := TButton.Create(Self);
-  FReplaceAllButton.Parent := FControlsPanel;
-  FReplaceAllButton.SetBounds(610, 173, 138, 28);
-  FReplaceAllButton.Anchors := [akTop, akRight];
-  FReplaceAllButton.OnClick := @ReplaceAllButtonClick;
-
-  FCloseButton := TButton.Create(Self);
-  FCloseButton.Parent := FControlsPanel;
-  FCloseButton.SetBounds(610, 211, 138, 28);
-  FCloseButton.Anchors := [akTop, akRight];
-  FCloseButton.Cancel := True;
-  FCloseButton.OnClick := @CloseButtonClick;
-
-  { Status bar above results list }
+  { 3. Status bar above results list }
   FStatusPanel := TPanel.Create(Self);
   FStatusPanel.Parent := Self;
+  FStatusPanel.Top := 320;
   FStatusPanel.Align := alTop;
-  FStatusPanel.Top := FTabControl.Height + FControlsPanel.Height;
   FStatusPanel.Height := 26;
   FStatusPanel.BevelOuter := bvNone;
 
   FCountLabel := TLabel.Create(Self);
   FCountLabel.Parent := FStatusPanel;
-  FCountLabel.SetBounds(12, 2, 736, 22);
-  FCountLabel.Anchors := [akLeft, akTop, akRight];
+  FCountLabel.Align := alClient;
+  FCountLabel.BorderSpacing.Left := 12;
+  FCountLabel.BorderSpacing.Right := 12;
   FCountLabel.Layout := tlCenter;
   FCountLabel.Font.Style := [fsBold];
 
-  { Interactive results list }
+  { 4. Interactive results list }
   FResultsList := TListBox.Create(Self);
   FResultsList.Parent := Self;
   FResultsList.Align := alClient;
@@ -803,9 +869,76 @@ begin
   ClearResults;
 end;
 
+procedure TFrmFindInProject.LayoutLeftPanel;
+var
+  W, Pad, LabelW, InputLeft, RightEdge, SwapW, ComboW: Integer;
+  HalfArea, ScopeW, RangeLabelW, RangeComboW: Integer;
+  BoxTop, BoxH, TotalBoxW, Gap, W1, W2, W3: Integer;
+begin
+  if not Assigned(FLeftPanel) then
+    Exit;
+  W := FLeftPanel.ClientWidth;
+  if W < 360 then
+    W := 520;
+
+  Pad := 12;
+  LabelW := 88;
+  InputLeft := Pad + LabelW + 4;
+  RightEdge := W - 8;
+  SwapW := 38;
+
+  { Row 1: Find what + Swap button }
+  ComboW := Max(120, RightEdge - InputLeft - SwapW - 6);
+  FFindLabel.SetBounds(Pad, 10, LabelW, 24);
+  FFindCombo.SetBounds(InputLeft, 9, ComboW, 28);
+  FSwapButton.SetBounds(InputLeft + ComboW + 6, 9, SwapW, 28);
+
+  { Row 2: Replace with }
+  FReplaceLabel.SetBounds(Pad, 44, LabelW, 24);
+  FReplaceCombo.SetBounds(InputLeft, 43, ComboW, 28);
+
+  { Row 3: Look in + Range }
+  RangeLabelW := 48;
+  HalfArea := RightEdge - InputLeft - RangeLabelW - 14;
+  ScopeW := Max(140, (HalfArea * 56) div 100);
+  RangeComboW := Max(110, RightEdge - (InputLeft + ScopeW + 10 + RangeLabelW + 4));
+  FScopeLabel.SetBounds(Pad, 78, LabelW, 24);
+  FScopeCombo.SetBounds(InputLeft, 77, ScopeW, 28);
+  FRangeLabel.SetBounds(InputLeft + ScopeW + 10, 78, RangeLabelW, 24);
+  FRangeCombo.SetBounds(InputLeft + ScopeW + 10 + RangeLabelW + 4, 77, RangeComboW, 28);
+
+  { Row 4: Options, Search Mode, Transparency GroupBoxes (GTK2-safe 160 px height) }
+  BoxTop := 114;
+  BoxH := 162;
+  Gap := 8;
+  TotalBoxW := Max(340, RightEdge - Pad - (Gap * 2));
+  W1 := (TotalBoxW * 34) div 100;
+  W2 := (TotalBoxW * 38) div 100;
+  W3 := TotalBoxW - W1 - W2;
+
+  FOptionsGroup.SetBounds(Pad, BoxTop, W1, BoxH);
+  FModeGroup.SetBounds(Pad + W1 + Gap, BoxTop, W2, BoxH);
+  FTransGroup.SetBounds(Pad + W1 + Gap + W2 + Gap, BoxTop, W3, BoxH);
+
+  FMatchCaseCheck.Width := Max(80, FOptionsGroup.ClientWidth - 18);
+  FWrapAroundCheck.Width := Max(80, FOptionsGroup.ClientWidth - 18);
+  FKeepAssocCheck.Width := Max(80, FOptionsGroup.ClientWidth - 18);
+  FRawTagsCheck.Width := Max(80, FOptionsGroup.ClientWidth - 18);
+
+  FModeNormalRadio.Width := Max(80, FModeGroup.ClientWidth - 18);
+  FModeExtendedRadio.Width := Max(80, FModeGroup.ClientWidth - 18);
+  FModeRegexRadio.Width := Max(80, FModeGroup.ClientWidth - 18);
+  FDotMatchesNewlineCheck.Width := Max(80, FModeGroup.ClientWidth - 34);
+
+  FTransEnableCheck.Width := Max(70, FTransGroup.ClientWidth - 18);
+  FTransOnBlurRadio.Width := Max(70, FTransGroup.ClientWidth - 18);
+  FTransAlwaysRadio.Width := Max(70, FTransGroup.ClientWidth - 18);
+  FTransTrackBar.Width := Max(70, FTransGroup.ClientWidth - 16);
+end;
+
 procedure TFrmFindInProject.RefreshCaptions;
 var
-  Scope, ActiveTab: Integer;
+  Scope, RangeIdx, ActiveTab: Integer;
 begin
   Caption := SFindTitle;
   ActiveTab := FTabControl.TabIndex;
@@ -824,9 +957,10 @@ begin
   FFindLabel.Caption := SFindWhat;
   FReplaceLabel.Caption := SReplaceWith;
   FScopeLabel.Caption := SFindLookIn;
+  FRangeLabel.Caption := SFindRange;
+  FSwapButton.Hint := SSwapHint;
 
   FOptionsGroup.Caption := SOptionsTitle;
-  FWholeWordCheck.Caption := SMatchWholeWord;
   FMatchCaseCheck.Caption := SMatchCase;
   FWrapAroundCheck.Caption := SWrapAround;
   FKeepAssocCheck.Caption := SKeepAssociations;
@@ -838,26 +972,41 @@ begin
   FModeRegexRadio.Caption := SModeRegex;
   FDotMatchesNewlineCheck.Caption := SDotMatchesNewline;
 
+  FTransGroup.Caption := STransTitle;
+  FTransEnableCheck.Caption := STransEnable;
+  FTransOnBlurRadio.Caption := STransOnBlur;
+  FTransAlwaysRadio.Caption := STransAlways;
+
   FFindNextButton.Caption := SBtnFindNext;
   FFindPrevButton.Caption := SBtnFindPrev;
   FCountButton.Caption := SBtnCount;
   FFindAllButton.Caption := SBtnFindAll;
+  FPreviewReplaceButton.Caption := SBtnPreviewReplace;
   FReplaceButton.Caption := SBtnReplace;
   FReplaceAllButton.Caption := SBtnReplaceAll;
   FCloseButton.Caption := SBtnClose;
 
   Scope := FScopeCombo.ItemIndex;
   FScopeCombo.Items.Clear;
-  FScopeCombo.Items.Add(SFindScopeDestination);  // 0: tbDestino
-  FScopeCombo.Items.Add(SFindScopeSource);       // 1: tbOrigem
-  FScopeCombo.Items.Add(SFindScopeReference1);   // 2: tbConsulta1
-  FScopeCombo.Items.Add(SFindScopeReference2);   // 3: tbConsulta2
-  FScopeCombo.Items.Add(SFindScopeStrongs);      // 4: ssStrongs (Find only)
-  FScopeCombo.Items.Add(SFindScopeComments);     // 5: ssComments (Find only)
-  FScopeCombo.Items.Add(SFindScopeAll);          // 6: ssAll (Find only)
+  FScopeCombo.Items.Add(SFindScopeDestination);
+  FScopeCombo.Items.Add(SFindScopeSource);
+  FScopeCombo.Items.Add(SFindScopeReference1);
+  FScopeCombo.Items.Add(SFindScopeReference2);
+  FScopeCombo.Items.Add(SFindScopeStrongs);
+  FScopeCombo.Items.Add(SFindScopeComments);
+  FScopeCombo.Items.Add(SFindScopeAll);
   if (Scope < 0) or (Scope >= FScopeCombo.Items.Count) then
     Scope := 0;
   FScopeCombo.ItemIndex := Scope;
+
+  RangeIdx := FRangeCombo.ItemIndex;
+  FRangeCombo.Items.Clear;
+  FRangeCombo.Items.Add(SRangeWholeProject);
+  FRangeCombo.Items.Add(SRangeCurrentBook);
+  FRangeCombo.Items.Add(SRangeCurrentChapter);
+  if (RangeIdx < 0) or (RangeIdx >= FRangeCombo.Items.Count) then
+    RangeIdx := 0;
+  FRangeCombo.ItemIndex := RangeIdx;
 end;
 
 procedure TFrmFindInProject.SelectModeTab(ReplaceTab: Boolean);
@@ -872,7 +1021,6 @@ end;
 procedure TFrmFindInProject.UpdateModeUI;
 begin
   FDotMatchesNewlineCheck.Enabled := FModeRegexRadio.Checked;
-  FWholeWordCheck.Enabled := not FModeRegexRadio.Checked;
 end;
 
 procedure TFrmFindInProject.UpdateTabUI;
@@ -884,12 +1032,43 @@ begin
   IsReplace := (FTabControl.TabIndex = 1);
   FReplaceLabel.Visible := IsReplace;
   FReplaceCombo.Visible := IsReplace;
+  FSwapButton.Visible := IsReplace;
+  FPreviewReplaceButton.Visible := IsReplace;
   FReplaceButton.Visible := IsReplace;
   FReplaceAllButton.Visible := IsReplace;
   FKeepAssocCheck.Visible := IsReplace;
+
   CanReplaceScope := GetSelectedTextType(DummyType);
+  FPreviewReplaceButton.Enabled := IsReplace and CanReplaceScope;
   FReplaceButton.Enabled := IsReplace and CanReplaceScope and (Length(FMatches) > 0);
   FReplaceAllButton.Enabled := IsReplace and CanReplaceScope;
+
+  FTransOnBlurRadio.Enabled := FTransEnableCheck.Checked;
+  FTransAlwaysRadio.Enabled := FTransEnableCheck.Checked;
+  FTransTrackBar.Enabled := FTransEnableCheck.Checked;
+end;
+
+procedure TFrmFindInProject.UpdateTransparency(IsActive: Boolean);
+begin
+  FTransOnBlurRadio.Enabled := FTransEnableCheck.Checked;
+  FTransAlwaysRadio.Enabled := FTransEnableCheck.Checked;
+  FTransTrackBar.Enabled := FTransEnableCheck.Checked;
+
+  if not FTransEnableCheck.Checked then
+  begin
+    AlphaBlend := False;
+    AlphaBlendValue := 255;
+  end
+  else if FTransAlwaysRadio.Checked or (not IsActive) then
+  begin
+    AlphaBlendValue := Byte(EnsureRange(FTransTrackBar.Position, 90, 255));
+    AlphaBlend := True;
+  end
+  else
+  begin
+    AlphaBlend := False;
+    AlphaBlendValue := 255;
+  end;
 end;
 
 procedure TFrmFindInProject.AddToHistory(Combo: TComboBox; const Value: string);
@@ -937,6 +1116,31 @@ begin
     Result := FScopeCombo.Items[FScopeCombo.ItemIndex]
   else
     Result := SFindScopeDestination;
+end;
+
+function TFrmFindInProject.GetRangeDisplayName: string;
+begin
+  if (FRangeCombo.ItemIndex >= 0) and (FRangeCombo.ItemIndex < FRangeCombo.Items.Count) then
+    Result := FRangeCombo.Items[FRangeCombo.ItemIndex]
+  else
+    Result := SRangeWholeProject;
+end;
+
+function TFrmFindInProject.MatchesSelectedRange(const RefID: string): Boolean;
+var
+  CurParts: TStringArray;
+  Prefix: string;
+begin
+  if (FRangeCombo.ItemIndex <= 0) or (FProject = nil) or (FProject.ID = '') then
+    Exit(True);
+  CurParts := FProject.ID.Split([',']);
+  if Length(CurParts) < 2 then
+    Exit(True);
+  if FRangeCombo.ItemIndex = 1 then
+    Prefix := CurParts[0] + ','
+  else
+    Prefix := CurParts[0] + ',' + CurParts[1] + ',';
+  Result := (Pos(Prefix, RefID) = 1);
 end;
 
 function TFrmFindInProject.FormatRefID(const RefID: string): string;
@@ -1007,7 +1211,6 @@ var
   Offset, FirstPos: Integer;
   M: IMatch;
   Mode: TFindSearchMode;
-  WholeWord: Boolean;
   LiteralRepl, SubVal: string;
 begin
   Result := 0;
@@ -1016,7 +1219,6 @@ begin
     Exit;
 
   Mode := GetSearchMode;
-  WholeWord := (Mode <> fsmRegex) and FWholeWordCheck.Checked;
 
   if DoReplace then
   begin
@@ -1032,20 +1234,17 @@ begin
   M := Rx.Match(Input, Offset, []);
   while M.Matched do
   begin
-    if (not WholeWord) or PassesWholeWordCheck(Input, M.Index, M.Length) then
+    Inc(Result);
+    if DoReplace then
     begin
-      Inc(Result);
-      if DoReplace then
-      begin
-        if M.Index > FirstPos then
-          OutputText := OutputText + Copy(Input, FirstPos + 1, M.Index - FirstPos);
-        if Mode = fsmRegex then
-          SubVal := ExpandNppRegexReplacement(RawReplacement, M)
-        else
-          SubVal := LiteralRepl;
-        OutputText := OutputText + SubVal;
-        FirstPos := M.Index + M.Length;
-      end;
+      if M.Index > FirstPos then
+        OutputText := OutputText + Copy(Input, FirstPos + 1, M.Index - FirstPos);
+      if Mode = fsmRegex then
+        SubVal := ExpandNppRegexReplacement(RawReplacement, M)
+      else
+        SubVal := LiteralRepl;
+      OutputText := OutputText + SubVal;
+      FirstPos := M.Index + M.Length;
     end;
     Offset := Max(M.Index + M.Length, M.Index + 1);
     if Offset > Length(Input) then
@@ -1097,6 +1296,8 @@ begin
       FProject.ReadTextColumn(TextType, Refs, Texts);
       for I := 0 to Refs.Count - 1 do
       begin
+        if not MatchesSelectedRange(Refs[I]) then
+          Continue;
         HitCount := MatchAndReplaceText(Texts[I], RawRepl, Rx,
           ComputeReplacement, OutText);
         if HitCount > 0 then
@@ -1122,8 +1323,6 @@ begin
   end
   else
   begin
-    { Non-editable search-only scopes (Strong's, Comments, All fields):
-      use TProject.SearchVerses for Normal mode or scan SQLite columns. }
     case FScopeCombo.ItemIndex of
       4: ScopeEnum := ssStrongs;
       5: ScopeEnum := ssComments;
@@ -1133,6 +1332,8 @@ begin
     FallbackResults := FProject.SearchVerses(Trim(FFindCombo.Text), ScopeEnum);
     for I := 0 to High(FallbackResults) do
     begin
+      if not MatchesSelectedRange(FallbackResults[I].ReferenceID) then
+        Continue;
       HitCount := MatchAndReplaceText(FallbackResults[I].PreviewText, '', Rx, False, OutText);
       if HitCount = 0 then
         HitCount := 1;
@@ -1209,7 +1410,7 @@ begin
     FOnNavigate(FMatches[Index].ReferenceID);
 end;
 
-procedure TFrmFindInProject.DoFindAll(NavigateFirst: Boolean);
+procedure TFrmFindInProject.DoFindAll(NavigateFirst: Boolean; ForceReplacePreview: Boolean);
 var
   TotalOcc: Integer;
   ErrMsg: string;
@@ -1219,10 +1420,10 @@ begin
     Exit;
 
   AddToHistory(FFindCombo, FFindCombo.Text);
-  if FTabControl.TabIndex = 1 then
+  if (FTabControl.TabIndex = 1) or ForceReplacePreview then
     AddToHistory(FReplaceCombo, FReplaceCombo.Text);
 
-  ShowRepl := (FTabControl.TabIndex = 1);
+  ShowRepl := ForceReplacePreview or (FTabControl.TabIndex = 1);
   FCountLabel.Caption := SFindSearching;
   Application.ProcessMessages;
   Screen.BeginWaitCursor;
@@ -1236,8 +1437,10 @@ begin
   PopulateResultsList(ShowRepl);
   if Length(FMatches) = 0 then
     FCountLabel.Caption := SFindNoMatches
+  else if ForceReplacePreview then
+    FCountLabel.Caption := Format(SPreviewCountFmt, [TotalOcc, Length(FMatches), GetRangeDisplayName])
   else
-    FCountLabel.Caption := Format(SFindCountFmt, [TotalOcc, Length(FMatches)]);
+    FCountLabel.Caption := Format(SFindCountFmt, [TotalOcc, Length(FMatches), GetRangeDisplayName]);
 
   FCurrentIndex := -1;
   UpdateTabUI;
@@ -1265,7 +1468,7 @@ begin
   if Length(FMatches) = 0 then
     FCountLabel.Caption := SFindNoMatches
   else
-    FCountLabel.Caption := Format(SFindCountFmt, [TotalOcc, Length(FMatches)]);
+    FCountLabel.Caption := Format(SFindCountFmt, [TotalOcc, Length(FMatches), GetRangeDisplayName]);
   PopulateResultsList(False);
   UpdateTabUI;
 end;
@@ -1326,7 +1529,6 @@ begin
   AddToHistory(FFindCombo, FFindCombo.Text);
   AddToHistory(FReplaceCombo, FReplaceCombo.Text);
 
-  { Ensure we have up-to-date replacement text for the selected verse }
   if not ScanProject(True, TotalOcc, ErrMsg) then
     Exit;
   if Length(FMatches) = 0 then
@@ -1374,7 +1576,6 @@ begin
     Refs.Free;
   end;
 
-  { Re-scan and advance to next remaining match }
   if ScanProject(True, TotalOcc, ErrMsg) then
   begin
     PopulateResultsList(True);
@@ -1385,7 +1586,7 @@ begin
     end
     else
     begin
-      FCountLabel.Caption := Format(SFindCountFmt, [TotalOcc, Length(FMatches)]);
+      FCountLabel.Caption := Format(SFindCountFmt, [TotalOcc, Length(FMatches), GetRangeDisplayName]);
       if TargetIdx <= High(FMatches) then
       begin
         if (FMatches[TargetIdx].ReferenceID = SavedRef) and (TargetIdx < High(FMatches)) then
@@ -1418,7 +1619,6 @@ begin
   AddToHistory(FFindCombo, FFindCombo.Text);
   AddToHistory(FReplaceCombo, FReplaceCombo.Text);
 
-  { Flush current verse before scanning SQLite so no live edit is lost }
   FProject.SaveProject;
 
   FCountLabel.Caption := SFindSearching;
@@ -1465,7 +1665,7 @@ begin
       AssocNotice := SReplaceAllAssocClear;
 
     PromptMsg := Format(SReplaceAllConfirmFmt, [
-      TotalOcc, ChangedCount, GetScopeDisplayName, AssocNotice
+      TotalOcc, ChangedCount, GetScopeDisplayName, GetRangeDisplayName, AssocNotice
     ]);
     if MessageDlg(SReplaceAllTitle, PromptMsg, mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
       Exit;
@@ -1482,8 +1682,8 @@ begin
       if Applied > 0 then
       begin
         FProject.LogProjectChange('Find & Replace',
-          Format('Replaced %d occurrence(s) across %d verse(s) in %s', [
-            TotalOcc, Applied, GetScopeDisplayName
+          Format('Replaced %d occurrence(s) across %d verse(s) in %s (%s)', [
+            TotalOcc, Applied, GetScopeDisplayName, GetRangeDisplayName
           ]),
           Format('Find: %s | Replace: %s | Keep associations: %s', [
             FFindCombo.Text, FReplaceCombo.Text, BoolToStr(FKeepAssocCheck.Checked, True)
@@ -1508,6 +1708,31 @@ begin
     Texts.Free;
     Refs.Free;
   end;
+end;
+
+procedure TFrmFindInProject.FormShowHandler(Sender: TObject);
+begin
+  { Ensure top-to-bottom stacking order on Win32 and GTK2 }
+  FTabControl.Top := 0;
+  FTopContainer.Top := FTabControl.Height;
+  FStatusPanel.Top := FTabControl.Height + FTopContainer.Height;
+  LayoutLeftPanel;
+  UpdateTransparency(True);
+end;
+
+procedure TFrmFindInProject.FormActivateHandler(Sender: TObject);
+begin
+  UpdateTransparency(True);
+end;
+
+procedure TFrmFindInProject.FormDeactivateHandler(Sender: TObject);
+begin
+  UpdateTransparency(False);
+end;
+
+procedure TFrmFindInProject.LeftPanelResize(Sender: TObject);
+begin
+  LayoutLeftPanel;
 end;
 
 procedure TFrmFindInProject.TabControlChange(Sender: TObject);
@@ -1535,6 +1760,20 @@ begin
     PopulateResultsList(FTabControl.TabIndex = 1);
 end;
 
+procedure TFrmFindInProject.SwapButtonClick(Sender: TObject);
+var
+  Tmp: string;
+begin
+  Tmp := FFindCombo.Text;
+  FFindCombo.Text := FReplaceCombo.Text;
+  FReplaceCombo.Text := Tmp;
+end;
+
+procedure TFrmFindInProject.TransControlChanged(Sender: TObject);
+begin
+  UpdateTransparency(Active);
+end;
+
 procedure TFrmFindInProject.FindNextButtonClick(Sender: TObject);
 begin
   DoFindStep(True);
@@ -1552,7 +1791,12 @@ end;
 
 procedure TFrmFindInProject.FindAllButtonClick(Sender: TObject);
 begin
-  DoFindAll(True);
+  DoFindAll(True, False);
+end;
+
+procedure TFrmFindInProject.PreviewReplaceButtonClick(Sender: TObject);
+begin
+  DoFindAll(False, True);
 end;
 
 procedure TFrmFindInProject.ReplaceButtonClick(Sender: TObject);
@@ -1583,7 +1827,7 @@ begin
   if Key = VK_RETURN then
   begin
     Key := 0;
-    DoFindAll(True);
+    DoFindAll(True, False);
   end
   else if Key = VK_F3 then
   begin

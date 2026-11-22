@@ -6,7 +6,13 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.089 (2026-11-22) — Full Notepad++-Style Find & Replace in Project (Ctrl+F / Ctrl+H)
+### 0. Version 1.1.0.090 (2026-11-22) — Fix Find & Replace Layout Clipping + Add Swap, Range Filter, Preview Replace & Transparency
+
+* **Responsive Layout Fix (`FormFindInProject.pas`):** Pinned the **Find / Replace** tab bar at the top, moved all action buttons (**Find Next**, **Find Prev**, **Count**, **Find All**, **Preview Replace**, **Replace**, **Replace All**, **Close**) into an `alRight` panel, and dynamically sized **Find what**, **Replace with**, **Look in**, **Range**, and the 3 option group boxes inside `alClient` so nothing clips off the right edge or bottom on Windows or Linux GTK2.
+* **New Notepad++ Features (`FormFindInProject.pas`):** Added **Swap (`<->`)**, **Range** scope (**Whole project**, **Current book**, **Current chapter**), **Preview Replace** dry-run button (live `Before ==> After` diff preview without modifying verses), and **Transparency** (*On losing focus* / *Always* + opacity slider).
+* Files: FormFindInProject.pas, iBiblia.lpi, iBiblia-linux.lpi, unitabout.pas, CHANGELOG.md, historico.txt, Histórico.txt.
+
+### 0a. Version 1.1.0.089 (2026-11-22) — Full Notepad++-Style Find & Replace in Project (Ctrl+F / Ctrl+H)
 
 * **Notepad++-Style Find & Replace (`FormFindInProject.pas`, `formprincipal.pas`):** Upgraded `Ctrl+F` (and added `Ctrl+H` / **Tools → Replace in project...**) to a tabbed **Find & Replace in Project** dialog supporting **Normal**, **Extended** (`\n`, `\r`, `\t`, `\0`, `\xHH`, `\uHHHH`), and **PCRE Regular Expression** modes (with `. matches newline`, capture groups `$1`/`\1`/`${name}`, and `\u`/`\l`/`\U`/`\L`/`\E` case transforms), **Match whole word only**, **Match case**, **Wrap around**, **Show raw tags in preview**, **Count**, **Find All**, **Replace**, and **Replace All**.
 * **Association-Preserving In-Project Bulk Edits:** Replacements in Source, Destination, Reference 1, or Reference 2 text run directly through `TProject.ApplyVerseTexts(..., KeepAssociations)` so existing word associations stay intact wherever words remain unchanged, record a summary in **Project → Project change log...**, and save automatically.
