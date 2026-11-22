@@ -5,7 +5,7 @@ object FormAbout: TFormAbout
   Width = 480
   BorderIcons = [biSystemMenu]
   BorderStyle = bsToolWindow
-  Caption = 'About iBiblia'
+  Caption = 'About Dark-Skinned iBiblia'
   ClientHeight = 240
   ClientWidth = 480
   OnShow = FormShow
@@ -19,7 +19,7 @@ object FormAbout: TFormAbout
     Align = alTop
     Alignment = taCenter
     AutoSize = False
-    Caption = 'iBiblia'
+    Caption = 'Dark-Skinned iBiblia'
     Font.Height = -21
     ParentColor = False
     ParentFont = False
@@ -83,7 +83,7 @@ object FormAbout: TFormAbout
     Width = 480
     Alignment = taCenter
     AutoSize = False
-    Caption = 'https://github.com/SalitaNgDiyos'
+    Caption = 'https://github.com/SalitaNgDiyos/Dark-Skinned-iBiblia'
     Cursor = crHandPoint
     Font.Height = -13
     OnClick = Label3Click

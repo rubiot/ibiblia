@@ -1,4 +1,7 @@
-﻿Version 1.1.0.087 (64-bit Edition) - 2026-11-22
+﻿Version 1.1.0.088 (64-bit Edition) - 2026-11-22
+- Updated the Help -> About dialog title, header, changelog title, and GitHub link to Dark-Skinned iBiblia (https://github.com/SalitaNgDiyos/Dark-Skinned-iBiblia).
+
+Version 1.1.0.087 (64-bit Edition) - 2026-11-22
 - Made "Night (Pitch Black)" the default skin on startup (while keeping explicit "Classic" or other saved theme selections in iBiblia.ini) and updated Ctrl+Shift+D to toggle between Night and Classic (Light).
 - Updated the built-in updater repository and release links to SalitaNgDiyos/Dark-Skinned-iBiblia.
 

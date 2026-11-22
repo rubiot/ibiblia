@@ -114,6 +114,9 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.088 (64-bit Edition) - 2026-11-22' + LineEnding +
+  '- Updated the Help -> About dialog title, header, changelog title, and GitHub link to Dark-Skinned iBiblia (https://github.com/SalitaNgDiyos/Dark-Skinned-iBiblia).' + LineEnding +
+  '' + LineEnding +
   'Version 1.1.0.087 (64-bit Edition) - 2026-11-22' + LineEnding +
   '- Made "Night (Pitch Black)" the default skin on startup (while keeping explicit "Classic" or other saved theme selections in iBiblia.ini) and updated Ctrl+Shift+D to toggle between Night and Classic (Light).' + LineEnding +
   '- Updated the built-in updater repository and release links to SalitaNgDiyos/Dark-Skinned-iBiblia.' + LineEnding +
@@ -708,7 +711,7 @@ var
 begin
   inherited CreateNew(AOwner);
 
-  Caption := 'About iBiblia';
+  Caption := 'About Dark-Skinned iBiblia';
   BorderStyle := bsToolWindow;
   BorderIcons := [biSystemMenu];
   Position := poMainFormCenter;
@@ -716,7 +719,7 @@ begin
   ClientHeight := 270;
   OnShow := @FormShow;
 
-  // Title: iBiblia
+  // Title: Dark-Skinned iBiblia
   Label1 := TLabel.Create(Self);
   Label1.Parent := Self;
   Label1.Left := 0;
@@ -725,7 +728,7 @@ begin
   Label1.Height := 28;
   Label1.Alignment := taCenter;
   Label1.AutoSize := False;
-  Label1.Caption := 'iBiblia';
+  Label1.Caption := 'Dark-Skinned iBiblia';
   Label1.Font.Height := -21;
   Label1.Font.Style := [fsBold];
 
@@ -740,7 +743,7 @@ begin
     ver := '';
   end;
   if (ver = '') or (ver = '1.1.0.0') or (ver = '1.1.0.1') then
-    ver := '1.1.0.019';
+    ver := '1.1.0.088';
 
   LabelVersion := TLabel.Create(Self);
   LabelVersion.Parent := Self;
@@ -808,7 +811,7 @@ begin
   Label3.Height := 18;
   Label3.Alignment := taCenter;
   Label3.AutoSize := False;
-  Label3.Caption := 'https://github.com/SalitaNgDiyos';
+  Label3.Caption := 'https://github.com/SalitaNgDiyos/Dark-Skinned-iBiblia';
   Label3.Cursor := crHandPoint;
   Label3.Font.Height := -13;
   Label3.Font.Style := [];
@@ -1047,7 +1050,7 @@ end;
 
 procedure TFormAbout.Label3Click(Sender: TObject);
 begin
-  OpenURL('https://github.com/SalitaNgDiyos');
+  OpenURL('https://github.com/SalitaNgDiyos/Dark-Skinned-iBiblia');
 end;
 
 procedure TFormAbout.LabelRubioURLClick(Sender: TObject);
@@ -1063,7 +1066,7 @@ var
 begin
   inherited CreateNew(AOwner);
 
-  Caption := 'What''s New in iBiblia';
+  Caption := 'What''s New in Dark-Skinned iBiblia';
   BorderStyle := bsDialog;
   Position := poScreenCenter;
   ClientWidth := 560;
@@ -1077,7 +1080,7 @@ begin
   lblTitle.Top := 12;
   lblTitle.Font.Height := -16;
   lblTitle.Font.Style := [fsBold];
-  lblTitle.Caption := 'iBiblia v1.1.0.019 - Changelog';
+  lblTitle.Caption := 'Dark-Skinned iBiblia - Changelog';
   if IsThemedSkin then
     lblTitle.Font.Color := CurrentSkin.HeaderColor
   else

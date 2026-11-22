@@ -1,4 +1,4 @@
-# Dark-Skinned iBiblia (v1.1.0.087)
+# Dark-Skinned iBiblia (v1.1.0.088)
 
 **Dark-Skinned iBiblia** (SalitaNgDiyos Fork) is a native **64-bit Windows (`x64`) and Linux (`x86_64`)** multi-format Bible alignment, translation, and interlinear tagging workstation built on [iBiblia 1.1.0](https://github.com/rubiot/ibiblia). It includes built-in import and export support for **theWord** (`.ont`, `.ot`, `.nt`, and `.dct.twm` concordances), **Timotheos** (compatible module/concordance exports with `.order` tree companions and USFM 3.0 exact Strong's metadata), **MySword** (`.bbl.mybible`), **non-encrypted e-Sword** (`.bblx` RTF, `.bbli` HTML, `.bbl` SQLite), **USFM 2.x/3.0** (`.usfm`, `.sfm`), and **USFX XML** (`.usfx`, `.xml` from [eBible.org](https://ebible.org/) and Simple Bible Reader), along with direct import from **SWORD / CrossWire** (`.conf` / `.zip` Bibles and dictionaries), compressed archives (`.zip`, `.tar*`, `.gz`, `.7z`, `.rar`), and text documents (`.txt`, `.rtf`, `.odt`, `.docx`) for adding or replacing Bible books.
 

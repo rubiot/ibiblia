@@ -6,7 +6,12 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.087 (2026-11-22) — Night (Pitch Black) as Default Skin & Dark-Skinned-iBiblia Feed
+### 0. Version 1.1.0.088 (2026-11-22) — Update Help → About Dialog Name & GitHub URL to Dark-Skinned iBiblia
+
+* **Updated Help → About Dialog (`unitabout.pas`, `unitabout.lfm`):** Updated the **Help → About** window title (`About Dark-Skinned iBiblia`), main heading (`Dark-Skinned iBiblia`), **View Changelog** window title (`What's New in Dark-Skinned iBiblia` / `Dark-Skinned iBiblia - Changelog`), and clickable GitHub repository link (`https://github.com/SalitaNgDiyos/Dark-Skinned-iBiblia`).
+* Files: unitabout.pas, unitabout.lfm, README.md.
+
+### 0a. Version 1.1.0.087 (2026-11-22) — Night (Pitch Black) as Default Skin & Dark-Skinned-iBiblia Feed
 
 * **Night (Pitch Black) Default Skin (`unitskins.pas`, `formprincipal.pas`, `FormNewFeaturesGuide.pas`, `unitabout.pas`):** Made **Night (Pitch Black)** (`skNight`) the default skin on fresh installs and whenever `Theme` is unset or `Default` in `iBiblia.ini` (while preserving an explicit `Classic` choice when saved in `iBiblia.ini`), and updated `Ctrl+Shift+D` to toggle between **Night** and **Classic (Light)**.
 * **Updated Repository Feed (`app_updater.pas`, `README.md`, `docs/releasing.md`):** Updated the built-in updater repository constant and release links to `SalitaNgDiyos/Dark-Skinned-iBiblia`.
