@@ -98,8 +98,8 @@ const
     'settings... chooses the voice, speed and volume for each language.',
     // 6
     'SKINS' + LineEnding + LineEnding +
-    'View > Skins offers seven looks: Classic, theWord Dark, Night, Sepia, Slate, ' +
-    'Solarized Dark and High Contrast Dark. Ctrl+Shift+D switches between theWord Dark ' +
+    'View > Skins offers seven looks: Classic, theWord Dark, Night (default), Sepia, Slate, ' +
+    'Solarized Dark and High Contrast Dark. Ctrl+Shift+D switches between Night ' +
     'and Classic.' + LineEnding + LineEnding +
     'A skin covers the main window, the menu bar, the verse panels, the context panel ' +
     'and every other window, which is skinned the first time it opens. Classic keeps ' +

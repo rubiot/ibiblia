@@ -114,6 +114,10 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.087 (64-bit Edition) - 2026-11-22' + LineEnding +
+  '- Made "Night (Pitch Black)" the default skin on startup (while keeping explicit "Classic" or other saved theme selections in iBiblia.ini) and updated Ctrl+Shift+D to toggle between Night and Classic (Light).' + LineEnding +
+  '- Updated the built-in updater repository and release links to SalitaNgDiyos/Dark-Skinned-iBiblia.' + LineEnding +
+  '' + LineEnding +
   'Version 1.1.0.086 (64-bit Edition) - 2026-11-22' + LineEnding +
   '- Fixed the horizontal splitter and footer button-bar stacking in Project -> Project change log... and Help -> Crash & error logs... so dragging the splitter up properly expands the Details / Preview pane and shrinks the list above it, keeping the footer buttons pinned at the bottom.' + LineEnding +
   '' + LineEnding +
@@ -1571,13 +1575,13 @@ begin
         '  1. Choose a Theme (View > Skins (theWord Themes)):' + sLineBreak +
         '     • Classic (Light):        Standard bright light workspace.' + sLineBreak +
         '     • theWord Dark (Charcoal): Signature #1E1E1E charcoal reading panes with #252526 shell.' + sLineBreak +
-        '     • Night (Pitch Black):    Deep #121212 OLED pitch-black background with golden highlights.' + sLineBreak +
+        '     • Night (Pitch Black):    Deep #121212 OLED pitch-black background with golden highlights (default).' + sLineBreak +
         '     • Sepia (Parchment):      Eye-strain relief warm #F4EEDB parchment with #2D241E ink.' + sLineBreak +
         '     • Slate (Steel Blue):     Cool #1C232B navy-slate background with ice-blue text.' + sLineBreak +
         '     • Solarized Dark:         Precision cyan-dark #002B36 palette.' + sLineBreak +
         '     • High Contrast Dark:     Pure black & stark white with vivid cyan/yellow accents.' + sLineBreak + sLineBreak +
         '  2. Instant Keyboard Toggle (Ctrl + Shift + D):' + sLineBreak +
-        '     • Press CTRL + SHIFT + D at any time to toggle between Dark Mode (theWord Dark) and Classic (Light).' + sLineBreak +
+        '     • Press CTRL + SHIFT + D at any time to toggle between Dark Mode (Night) and Classic (Light).' + sLineBreak +
         '     • Your active theme is automatically saved in iBiblia.ini and restored on startup.';
 
     6:

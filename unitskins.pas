@@ -19,9 +19,9 @@ uses
 
 type
   TSkinId = (
-    skClassic,          // Classic (Default light)
+    skClassic,          // Classic (Light)
     skTheWordDark,      // theWord 7 Dark (Charcoal)
-    skNight,            // OLED / Pitch Black
+    skNight,            // OLED / Pitch Black (Default)
     skSepia,            // theWord Parchment / Sepia (Eye-strain relief)
     skSlate,            // theWord Steel Blue / Cool Slate
     skSolarizedDark,    // Solarized Dark
@@ -422,7 +422,7 @@ begin
       Result.VerseHighlightBg := MakeRGB(64, 64, 64);
     end;
     else
-      Result := GetSkin(skClassic);
+      Result := GetSkin(skNight);
   end;
 end;
 
@@ -431,9 +431,11 @@ var
   lower: string;
 begin
   lower := LowerCase(Trim(AName));
-  if (lower = 'theworddark') or (lower = 'dark') or (lower = 'darkmode') or (lower = 'charcoal') then
+  if (lower = 'classic') or (lower = 'light') then
+    Result := skClassic
+  else if (lower = 'theworddark') or (lower = 'dark') or (lower = 'darkmode') or (lower = 'charcoal') then
     Result := skTheWordDark
-  else if (lower = 'night') or (lower = 'black') or (lower = 'oled') then
+  else if (lower = 'night') or (lower = 'black') or (lower = 'oled') or (lower = 'default') or (lower = '') then
     Result := skNight
   else if (lower = 'sepia') or (lower = 'parchment') or (lower = 'warm') then
     Result := skSepia
@@ -444,7 +446,7 @@ begin
   else if (lower = 'highcontrastdark') or (lower = 'highcontrast') then
     Result := skHighContrastDark
   else
-    Result := skClassic;
+    Result := skNight;
 end;
 
 procedure SetCurrentSkin(AId: TSkinId);
@@ -4927,7 +4929,7 @@ begin
 end;
 
 initialization
-  SetCurrentSkin(skClassic);
+  SetCurrentSkin(skNight);
   {$IFDEF WINDOWS}
   InitUxTheme;
   if Assigned(fnSetPreferredAppMode) then

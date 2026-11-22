@@ -5349,7 +5349,8 @@ begin
   SetCrashLogBaseDir(ExtractFilePath(ConfigFilePath));
   RecordCrashBreadcrumb('MainForm created');
   UpdateCoordinator := TUpdateCoordinator.Create(opts);
-  SetCurrentSkinByName(opts.ReadString('UI', 'Theme', 'Default'));
+  SetCurrentSkinByName(opts.ReadString('UI', 'Theme', 'Night'));
+  ApplyFormStyle(Self);
   FSkinnedForms := TList.Create;
   Screen.AddHandlerActiveFormChanged(@ScreenActiveFormChanged);
   Screen.AddHandlerRemoveForm(@ScreenRemoveForm);
@@ -5925,13 +5926,13 @@ begin
   SelectSkin(TSkinId(TMenuItem(Sender).Tag));
 end;
 
-{ Ctrl+Shift+D: theWord Dark <-> Classic }
+{ Ctrl+Shift+D: Night <-> Classic }
 procedure TMainForm.ActionToggleDarkSkinExecute(Sender: TObject);
 begin
   if CurrentSkin.IsDark then
     SelectSkin(skClassic)
   else
-    SelectSkin(skTheWordDark);
+    SelectSkin(skNight);
 end;
 
 procedure TMainForm.SelectSkin(AId: TSkinId);

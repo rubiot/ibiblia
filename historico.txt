@@ -1,4 +1,8 @@
-﻿Version 1.1.0.086 (64-bit Edition) - 2026-11-22
+﻿Version 1.1.0.087 (64-bit Edition) - 2026-11-22
+- Made "Night (Pitch Black)" the default skin on startup (while keeping explicit "Classic" or other saved theme selections in iBiblia.ini) and updated Ctrl+Shift+D to toggle between Night and Classic (Light).
+- Updated the built-in updater repository and release links to SalitaNgDiyos/Dark-Skinned-iBiblia.
+
+Version 1.1.0.086 (64-bit Edition) - 2026-11-22
 - Fixed the horizontal splitter and footer button-bar stacking in Project -> Project change log... and Help -> Crash & error logs... so dragging the splitter up properly expands the Details / Preview pane and shrinks the list above it, keeping the footer buttons pinned at the bottom.
 
 Version 1.1.0.085 (64-bit Edition) - 2026-11-22

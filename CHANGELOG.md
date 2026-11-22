@@ -6,7 +6,13 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.086 (2026-11-22) — Fix Splitter & Footer Layout in Project Change Log and Crash Logs Dialogs
+### 0. Version 1.1.0.087 (2026-11-22) — Night (Pitch Black) as Default Skin & Dark-Skinned-iBiblia Feed
+
+* **Night (Pitch Black) Default Skin (`unitskins.pas`, `formprincipal.pas`, `FormNewFeaturesGuide.pas`, `unitabout.pas`):** Made **Night (Pitch Black)** (`skNight`) the default skin on fresh installs and whenever `Theme` is unset or `Default` in `iBiblia.ini` (while preserving an explicit `Classic` choice when saved in `iBiblia.ini`), and updated `Ctrl+Shift+D` to toggle between **Night** and **Classic (Light)**.
+* **Updated Repository Feed (`app_updater.pas`, `README.md`, `docs/releasing.md`):** Updated the built-in updater repository constant and release links to `SalitaNgDiyos/Dark-Skinned-iBiblia`.
+* Files: unitskins.pas, formprincipal.pas, app_updater.pas, FormNewFeaturesGuide.pas, unitabout.pas, README.md, docs/releasing.md.
+
+### 0a. Version 1.1.0.086 (2026-11-22) — Fix Splitter & Footer Layout in Project Change Log and Crash Logs Dialogs
 
 * **Correct Splitter & Footer Stacking (`project_change_log_ui.pas`, `crash_tracker_ui.pas`):** Moved the list, horizontal splitter, and Details/Preview pane inside a dedicated `alClient` body panel (`FBodyPanel`) while pinning the bottom action bar (`FFooterPanel`) cleanly at the bottom of the dialog, and set panel heights and `Top` order before `Align := alBottom` with `ResizeAnchor := akBottom`. Dragging the splitter up/down in **Project → Project change log...** and **Help → Crash & error logs...** now properly expands the **Details** window while shrinking the log list above it instead of stretching the button bar's empty background strip.
 * Files: project_change_log_ui.pas, crash_tracker_ui.pas, unitabout.pas.

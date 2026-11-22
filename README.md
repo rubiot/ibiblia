@@ -1,4 +1,4 @@
-# Dark-Skinned iBiblia (v1.1.0.086)
+# Dark-Skinned iBiblia (v1.1.0.087)
 
 **Dark-Skinned iBiblia** (SalitaNgDiyos Fork) is a native **64-bit Windows (`x64`) and Linux (`x86_64`)** multi-format Bible alignment, translation, and interlinear tagging workstation built on [iBiblia 1.1.0](https://github.com/rubiot/ibiblia). It includes built-in import and export support for **theWord** (`.ont`, `.ot`, `.nt`, and `.dct.twm` concordances), **Timotheos** (compatible module/concordance exports with `.order` tree companions and USFM 3.0 exact Strong's metadata), **MySword** (`.bbl.mybible`), **non-encrypted e-Sword** (`.bblx` RTF, `.bbli` HTML, `.bbl` SQLite), **USFM 2.x/3.0** (`.usfm`, `.sfm`), and **USFX XML** (`.usfx`, `.xml` from [eBible.org](https://ebible.org/) and Simple Bible Reader), along with direct import from **SWORD / CrossWire** (`.conf` / `.zip` Bibles and dictionaries), compressed archives (`.zip`, `.tar*`, `.gz`, `.7z`, `.rar`), and text documents (`.txt`, `.rtf`, `.odt`, `.docx`) for adding or replacing Bible books.
 
@@ -82,7 +82,7 @@ For downloads, manuals, and detailed history, see:
 
 * **Experimental AI Translation & Association (`Project → AI Options`)**: Configure OpenAI, DeepSeek, or Google Gemini models (`iBiblia.models.json`), machine-default or per-project settings, flow-specific system prompts, and reusable verse examples. Run single-verse AI suggestions or right-click a book/chapter in the Bible tree for batch processing with side-by-side review before applying, backed by Windows DPAPI local secure storage for API keys.
 
-* **Languages, Skins, Icons & 14-Topic Interactive Guide (`Shift+F1`)**: Choose **English** or **Português** interface language, 7 built-in color skins (`Ctrl+Shift+D`), 4 icon families (**Connected texts**, **Clareza**, **Mosaico**, **Fólio**), 3 toolbar icon sizes (**Small 16 px**, **Medium 22 px**, **Large 28 px** in **View → Toolbar icon size** or **Preferences**), and explore the 14-topic illustrated **New Features User Guide** (`Shift+F1`).
+* **Languages, Skins, Icons & 14-Topic Interactive Guide (`Shift+F1`)**: Choose **English** or **Português** interface language, 7 built-in color skins (**Night (Pitch Black)** as the default, with `Ctrl+Shift+D` toggle), 4 icon families (**Connected texts**, **Clareza**, **Mosaico**, **Fólio**), 3 toolbar icon sizes (**Small 16 px**, **Medium 22 px**, **Large 28 px** in **View → Toolbar icon size** or **Preferences**), and explore the 14-topic illustrated **New Features User Guide** (`Shift+F1`).
 
 ### 8. Cross-Platform (Windows x64 & Linux x86_64), External Bible Sync & Automatic Updates
 
@@ -112,7 +112,7 @@ For downloads, manuals, and detailed history, see:
 | **`Hold Ctrl`** *(while Dictionary Popup is open)* | Keep Dictionary Popup open while moving the mouse pointer inside it to scroll or zoom |
 | **`Enter` / `Double Enter` / `Shift+Enter`** *(in Editor)* | Insert `<CI>` tight paragraph / `<CM>` spaced paragraph / `<CL>` line break |
 | **`Ctrl + T`** | Toggle real-time Text-to-Speech (TTS) word reading on hover |
-| **`Ctrl + Shift + D`** | Toggle between Dark Mode (*theWord Dark*) and *Classic (Light)* |
+| **`Ctrl + Shift + D`** | Toggle between Dark Mode (*Night*) and *Classic (Light)* |
 | **`F1` / `Shift + F1`** | Show **Keyboard Shortcuts** reference / Open the interactive **New Features User Guide** |
 
 ## Built-In Color Themes (Skins)
@@ -121,7 +121,7 @@ For downloads, manuals, and detailed history, see:
 | ----- | ----- | ----- | ----- |
 | **Classic (Light)** | `#FFFFFF` | `#000000` | Daylight reading and traditional desktop appearance |
 | **theWord Dark (Charcoal)** | `#1E1E1E` | `#D8D8D8` | Matching theWord 7 dark workspace for low-glare sessions |
-| **Night (Pitch Black)** | `#121212` | `#E8E6E3` | OLED displays and late-night translation work |
+| **Night (Pitch Black)** *(Default)* | `#121212` | `#E8E6E3` | Default dark theme — OLED displays and late-night translation work |
 | **Sepia (Parchment)** | `#F4EEDB` | `#2D241E` | Warm paper-like contrast for extended reading comfort |
 | **Slate (Steel Blue)** | `#1C232B` | `#DCE4EC` | Cool navy-slate contrast with crisp cyan highlights |
 | **Solarized Dark** | `#002B36` | `#93A1A1` | Precision low-contrast cyan/teal environment |
