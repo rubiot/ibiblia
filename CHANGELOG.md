@@ -6,7 +6,12 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.093 (2026-11-22) — Preserve Associations on Replaced Words/Phrases (LCS Fix) & Find Unassociated Words
+### 0. Version 1.1.0.094 (2026-11-22) — Fix EAbstractError Crash in Unassociated Word Search
+
+* **Concrete Tokenizer Instantiation (`FormFindInProject.pas`):** Fixed `EAbstractError: Abstract method called` when running **Unassociated Destination words** or **Unassociated Source words** in Find & Replace by instantiating the concrete tokenizer via `TTokenizerFactory.CreatePreferredTokenizer(PairsXML)` instead of abstract `TONTTokenizer.Create(PairsXML)`.
+* Files: FormFindInProject.pas, iBiblia.lpi, iBiblia-linux.lpi, unitabout.pas, CHANGELOG.md, historico.txt, Histórico.txt.
+
+### 0a. Version 1.1.0.093 (2026-11-22) — Preserve Associations on Replaced Words/Phrases (LCS Fix) & Find Unassociated Words
 
 * **Association-Preserving Bulk Replace Fix (`Verse.pas`):** Replaced the greedy forward-scan in `TVerse.ReplaceTextPreservingAssociations` with global **Longest Common Subsequence (LCS)** alignment plus **in-place 1-to-1 and N-to-M association transfer**. Replaced words and phrases (both Source and Destination) now keep their exact word associations intact, and surrounding unchanged words in the same verse are never misaligned or disassociated.
 * **Find Unassociated Destination / Source Words (`FormFindInProject.pas`, `Project.pas`):** Added **Unassociated Destination words** and **Unassociated Source words** to **Look in** in Find & Replace. Leave **Find what** blank to list every verse containing unassociated words (with the exact unassociated words shown in brackets), or enter a word/regex to filter specific unassociated words across the Whole project, Current book, or Current chapter.

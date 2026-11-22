@@ -1393,7 +1393,7 @@ var
 begin
   if (PairsXML = '') or (Length(LinkedFlags) = 0) then
     Exit;
-  Tok := TONTTokenizer.Create(PairsXML);
+  Tok := TTokenizerFactory.CreatePreferredTokenizer(PairsXML);
   Parts := TStringList.Create;
   try
     while Tok.ReadSyntagm(Token) <> skNull do
