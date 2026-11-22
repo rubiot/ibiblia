@@ -6,7 +6,13 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.090 (2026-11-22) — Fix Find & Replace Layout Clipping + Add Swap, Range Filter, Preview Replace & Transparency
+### 0. Version 1.1.0.091 (2026-11-22) — Find & Replace 7-Step Undo (Ctrl+Z) / Redo (Ctrl+Y) & Streamlined Buttons
+
+* **7-Step Session Undo / Redo (`FormFindInProject.pas`):** Added **Undo (`Ctrl+Z`)** and **Redo (`Ctrl+Y`)** buttons with live history counters (`Undo (N)` / `Redo (N)`) tracking up to 7 back/forward Find & Replace operations per session. Undo and Redo prompt for confirmation, restore exact pre/post-replacement verse texts even after the project has been saved, preserve word associations, log to **Project → Project change log...**, and save automatically.
+* **Streamlined Button Column (`FormFindInProject.pas`):** Removed the **Preview Replace** and **Count** buttons so the right-hand column cleanly holds **Find Next**, **Find Prev**, **Find All**, **Replace**, **Replace All**, **Undo**, **Redo**, and **Close**.
+* Files: FormFindInProject.pas, iBiblia.lpi, iBiblia-linux.lpi, unitabout.pas, CHANGELOG.md, historico.txt, Histórico.txt.
+
+### 0a. Version 1.1.0.090 (2026-11-22) — Fix Find & Replace Layout Clipping + Add Swap, Range Filter, Preview Replace & Transparency
 
 * **Responsive Layout Fix (`FormFindInProject.pas`):** Pinned the **Find / Replace** tab bar at the top, moved all action buttons (**Find Next**, **Find Prev**, **Count**, **Find All**, **Preview Replace**, **Replace**, **Replace All**, **Close**) into an `alRight` panel, and dynamically sized **Find what**, **Replace with**, **Look in**, **Range**, and the 3 option group boxes inside `alClient` so nothing clips off the right edge or bottom on Windows or Linux GTK2.
 * **New Notepad++ Features (`FormFindInProject.pas`):** Added **Swap (`<->`)**, **Range** scope (**Whole project**, **Current book**, **Current chapter**), **Preview Replace** dry-run button (live `Before ==> After` diff preview without modifying verses), and **Transparency** (*On losing focus* / *Always* + opacity slider).

@@ -114,6 +114,10 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.091 (64-bit Edition) - 2026-11-22' + LineEnding +
+  '- Added 7-step session Undo (Ctrl+Z) and Redo (Ctrl+Y) buttons and shortcuts to Find & Replace in Project, restoring modified verses (even after the project has been saved) with confirmation prompts, association preservation, Project Change Log entries, and auto-save.' + LineEnding +
+  '- Removed the redundant Preview Replace and Count buttons to keep the Find & Replace button column streamlined.' + LineEnding +
+  '' + LineEnding +
   'Version 1.1.0.090 (64-bit Edition) - 2026-11-22' + LineEnding +
   '- Rebuilt the Find & Replace in Project (Ctrl+F / Ctrl+H) layout with an AlRight button column and responsive AlClient inputs so all buttons (Find Next, Find Prev, Count, Find All, Preview Replace, Replace, Replace All, Close), Find/Replace combo boxes, top Find/Replace tabs, and group boxes fit cleanly without right-edge or GTK2 clipping.' + LineEnding +
   '- Added Swap (<->) button, Range filter (Whole project / Current book / Current chapter), Dry-run Preview Replace button, and Window Transparency (On losing focus / Always + opacity slider).' + LineEnding +
@@ -751,7 +755,7 @@ begin
     ver := '';
   end;
   if (ver = '') or (ver = '1.1.0.0') or (ver = '1.1.0.1') then
-    ver := '1.1.0.090';
+    ver := '1.1.0.091';
 
   LabelVersion := TLabel.Create(Self);
   LabelVersion.Parent := Self;

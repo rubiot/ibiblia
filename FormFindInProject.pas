@@ -1,15 +1,18 @@
 unit FormFindInProject;
 
 (* Find & Replace in Project: a modeless Notepad++-style search and bulk-replace
-  window for Dark-Skinned iBiblia (v1.1.0.090).
+  window for Dark-Skinned iBiblia (v1.1.0.091).
   Features:
   - Top Find / Replace tabs (Ctrl+F / Ctrl+H)
   - Find what & Replace with history dropdowns + Swap button
-  - Dedicated action buttons: Find Next, Find Prev, Count, Find All,
-    Preview Replace (dry-run), Replace, Replace All, Close
+  - Action buttons: Find Next, Find Prev, Find All, Replace, Replace All,
+    Undo (Ctrl+Z), Redo (Ctrl+Y), Close
+  - 7-step session Undo/Redo history that restores all modified verses even
+    after the project has been saved, with confirmation prompts and
+    association preservation
   - Look in scope (Destination, Source, Ref 1, Ref 2, Strong's/Morph, Comments, All)
   - Range filter (Whole project, Current book, Current chapter)
-  - Options: Match case, Wrap around, Keep word associations intact, Show raw tags
+  - Options: Match case, Wrap around, Keep word associations, Show raw tags
   - Search Mode: Normal, Extended (\n, \r, \t, \0, \x.., \u....),
     Regular expression (PCRE) + . matches newline, capture groups $1/\1/${name},
     and \u/\l/\U/\L/\E case transforms
@@ -26,6 +29,9 @@ uses
   ExtCtrls, ComCtrls, Dialogs, LCLType, LazUTF8, PCRE,
   ui_style, Project, unitpleasewait;
 
+const
+  MAX_FIND_REPLACE_HISTORY = 7;
+
 type
   TFindNavigateEvent = procedure(const ReferenceID: string) of object;
 
@@ -39,6 +45,16 @@ type
     MatchCount: Integer;
   end;
 
+  TFindReplaceSnapshot = record
+    Description: string;
+    ScopeName: string;
+    TextType: TTipoTextoBiblico;
+    KeepAssociations: Boolean;
+    Refs: array of string;
+    BeforeTexts: array of string;
+    AfterTexts: array of string;
+  end;
+
   { TFrmFindInProject }
 
   TFrmFindInProject = class(TForm)
@@ -46,6 +62,8 @@ type
     FProject: TProject;
     FMatches: array of TFindMatchEntry;
     FCurrentIndex: Integer;
+    FUndoStack: array of TFindReplaceSnapshot;
+    FRedoStack: array of TFindReplaceSnapshot;
     FOnNavigate: TFindNavigateEvent;
 
     FTabControl: TTabControl;
@@ -83,11 +101,11 @@ type
 
     FFindNextButton: TButton;
     FFindPrevButton: TButton;
-    FCountButton: TButton;
     FFindAllButton: TButton;
-    FPreviewReplaceButton: TButton;
     FReplaceButton: TButton;
     FReplaceAllButton: TButton;
+    FUndoButton: TButton;
+    FRedoButton: TButton;
     FCloseButton: TButton;
 
     FStatusPanel: TPanel;
@@ -99,6 +117,10 @@ type
     procedure RefreshCaptions;
     procedure UpdateModeUI;
     procedure UpdateTabUI;
+    procedure UpdateUndoRedoButtons;
+    procedure ClearUndoRedoHistory;
+    procedure PushUndoSnapshot(const Snap: TFindReplaceSnapshot);
+    procedure PushRedoSnapshot(const Snap: TFindReplaceSnapshot);
     procedure UpdateTransparency(IsActive: Boolean);
     procedure AddToHistory(Combo: TComboBox; const Value: string);
     function GetSearchMode: TFindSearchMode;
@@ -115,15 +137,17 @@ type
     procedure PopulateResultsList(ShowReplacePreview: Boolean);
     procedure ClearResults;
     procedure GoToResult(Index: Integer);
-    procedure DoFindAll(NavigateFirst: Boolean; ForceReplacePreview: Boolean = False);
-    procedure DoCount;
+    procedure DoFindAll(NavigateFirst: Boolean);
     procedure DoFindStep(ForwardDir: Boolean);
     procedure DoReplaceCurrent;
     procedure DoReplaceAll;
+    procedure DoUndo;
+    procedure DoRedo;
 
     procedure FormShowHandler(Sender: TObject);
     procedure FormActivateHandler(Sender: TObject);
     procedure FormDeactivateHandler(Sender: TObject);
+    procedure FormKeyDownHandler(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure LeftPanelResize(Sender: TObject);
     procedure TabControlChange(Sender: TObject);
     procedure ModeRadioClick(Sender: TObject);
@@ -133,11 +157,11 @@ type
     procedure TransControlChanged(Sender: TObject);
     procedure FindNextButtonClick(Sender: TObject);
     procedure FindPrevButtonClick(Sender: TObject);
-    procedure CountButtonClick(Sender: TObject);
     procedure FindAllButtonClick(Sender: TObject);
-    procedure PreviewReplaceButtonClick(Sender: TObject);
     procedure ReplaceButtonClick(Sender: TObject);
     procedure ReplaceAllButtonClick(Sender: TObject);
+    procedure UndoButtonClick(Sender: TObject);
+    procedure RedoButtonClick(Sender: TObject);
     procedure CloseButtonClick(Sender: TObject);
     procedure ResultsListSelectionChange(Sender: TObject; User: Boolean);
     procedure EditKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
@@ -182,16 +206,17 @@ resourcestring
   STransAlways = 'Always';
   SBtnFindNext = '&Find Next';
   SBtnFindPrev = 'Find &Prev';
-  SBtnCount = 'Coun&t';
   SBtnFindAll = 'Find &All';
-  SBtnPreviewReplace = 'Pre&view Replace';
   SBtnReplace = '&Replace';
   SBtnReplaceAll = 'Replace A&ll';
+  SBtnUndo = '&Undo';
+  SBtnUndoCountFmt = '&Undo (%d)';
+  SBtnRedo = 'Re&do';
+  SBtnRedoCountFmt = 'Re&do (%d)';
   SBtnClose = '&Close';
-  SFindPrompt = 'Enter text, tags, or regex and click Find All / Find Next (Ctrl+F = Find, Ctrl+H = Replace).';
+  SFindPrompt = 'Enter text, tags, or regex and click Find All / Find Next (Ctrl+F = Find, Ctrl+H = Replace, Ctrl+Z/Y = Undo/Redo).';
   SFindSearching = 'Searching project...';
   SFindCountFmt = '%d occurrence(s) in %d verse(s) [%s]';
-  SPreviewCountFmt = 'Preview: %d occurrence(s) in %d verse(s) [%s] (no changes saved yet)';
   SFindNoMatches = '0 occurrences found.';
   SReplaceNotEditable = 'Replace works on Destination text, Source text, Reference text 1, or Reference text 2. Please select one of those fields in "Look in".';
   SReplaceAllConfirmFmt = 'Replace %d occurrence(s) across %d verse(s) in %s (%s)?' + LineEnding + LineEnding + '%s';
@@ -202,6 +227,22 @@ resourcestring
   SReplaceProgressMsg = 'Applying replacements and preserving associations...';
   SReplaceDoneFmt = 'Replaced %d occurrence(s) across %d verse(s) and saved the project.';
   SReplaceErrorFmt = 'Replace completed with error: %s';
+  SUndoNothing = 'Nothing to undo in this Find & Replace session.';
+  SRedoNothing = 'Nothing to redo in this Find & Replace session.';
+  SUndoConfirmTitle = 'Confirm Undo Find & Replace';
+  SUndoConfirmFmt = 'Undo the following Find & Replace operation?' + LineEnding + LineEnding +
+    '%s' + LineEnding + LineEnding +
+    'This will restore %d verse(s) in %s to their text before the replacement (even if the project was already saved) and save the project.';
+  SRedoConfirmTitle = 'Confirm Redo Find & Replace';
+  SRedoConfirmFmt = 'Redo the following Find & Replace operation?' + LineEnding + LineEnding +
+    '%s' + LineEnding + LineEnding +
+    'This will re-apply the replacement to %d verse(s) in %s and save the project.';
+  SUndoProgressMsg = 'Undoing Find & Replace changes and preserving associations...';
+  SRedoProgressMsg = 'Redoing Find & Replace changes and preserving associations...';
+  SUndoDoneFmt = 'Undid "%s" (%d verse(s) restored and saved).';
+  SRedoDoneFmt = 'Redid "%s" (%d verse(s) updated and saved).';
+  SUndoErrorFmt = 'Undo completed with error: %s';
+  SRedoErrorFmt = 'Redo completed with error: %s';
   SRegexErrorFmt = 'Invalid regular expression: %s';
   SFindScopeDestination = 'Destination text';
   SFindScopeSource = 'Source text';
@@ -622,6 +663,7 @@ begin
   inherited CreateNew(AOwner);
   ApplyFormStyle(Self);
   FCurrentIndex := -1;
+  KeyPreview := True;
   Position := poMainFormCenter;
   BorderStyle := bsSizeToolWin;
   FormStyle := fsStayOnTop;
@@ -632,6 +674,7 @@ begin
   OnShow := @FormShowHandler;
   OnActivate := @FormActivateHandler;
   OnDeactivate := @FormDeactivateHandler;
+  OnKeyDown := @FormKeyDownHandler;
   BuildControls;
   RefreshCaptions;
   UpdateModeUI;
@@ -681,30 +724,30 @@ begin
   FFindPrevButton.SetBounds(6, 40, 140, 28);
   FFindPrevButton.OnClick := @FindPrevButtonClick;
 
-  FCountButton := TButton.Create(Self);
-  FCountButton.Parent := FButtonsPanel;
-  FCountButton.SetBounds(6, 72, 140, 28);
-  FCountButton.OnClick := @CountButtonClick;
-
   FFindAllButton := TButton.Create(Self);
   FFindAllButton.Parent := FButtonsPanel;
-  FFindAllButton.SetBounds(6, 104, 140, 28);
+  FFindAllButton.SetBounds(6, 72, 140, 28);
   FFindAllButton.OnClick := @FindAllButtonClick;
-
-  FPreviewReplaceButton := TButton.Create(Self);
-  FPreviewReplaceButton.Parent := FButtonsPanel;
-  FPreviewReplaceButton.SetBounds(6, 140, 140, 28);
-  FPreviewReplaceButton.OnClick := @PreviewReplaceButtonClick;
 
   FReplaceButton := TButton.Create(Self);
   FReplaceButton.Parent := FButtonsPanel;
-  FReplaceButton.SetBounds(6, 172, 140, 28);
+  FReplaceButton.SetBounds(6, 108, 140, 28);
   FReplaceButton.OnClick := @ReplaceButtonClick;
 
   FReplaceAllButton := TButton.Create(Self);
   FReplaceAllButton.Parent := FButtonsPanel;
-  FReplaceAllButton.SetBounds(6, 204, 140, 28);
+  FReplaceAllButton.SetBounds(6, 140, 140, 28);
   FReplaceAllButton.OnClick := @ReplaceAllButtonClick;
+
+  FUndoButton := TButton.Create(Self);
+  FUndoButton.Parent := FButtonsPanel;
+  FUndoButton.SetBounds(6, 176, 140, 28);
+  FUndoButton.OnClick := @UndoButtonClick;
+
+  FRedoButton := TButton.Create(Self);
+  FRedoButton.Parent := FButtonsPanel;
+  FRedoButton.SetBounds(6, 208, 140, 28);
+  FRedoButton.OnClick := @RedoButtonClick;
 
   FCloseButton := TButton.Create(Self);
   FCloseButton.Parent := FButtonsPanel;
@@ -907,7 +950,7 @@ begin
   FRangeLabel.SetBounds(InputLeft + ScopeW + 10, 78, RangeLabelW, 24);
   FRangeCombo.SetBounds(InputLeft + ScopeW + 10 + RangeLabelW + 4, 77, RangeComboW, 28);
 
-  { Row 4: Options, Search Mode, Transparency GroupBoxes (GTK2-safe 160 px height) }
+  { Row 4: Options, Search Mode, Transparency GroupBoxes }
   BoxTop := 114;
   BoxH := 162;
   Gap := 8;
@@ -979,9 +1022,7 @@ begin
 
   FFindNextButton.Caption := SBtnFindNext;
   FFindPrevButton.Caption := SBtnFindPrev;
-  FCountButton.Caption := SBtnCount;
   FFindAllButton.Caption := SBtnFindAll;
-  FPreviewReplaceButton.Caption := SBtnPreviewReplace;
   FReplaceButton.Caption := SBtnReplace;
   FReplaceAllButton.Caption := SBtnReplaceAll;
   FCloseButton.Caption := SBtnClose;
@@ -1007,6 +1048,8 @@ begin
   if (RangeIdx < 0) or (RangeIdx >= FRangeCombo.Items.Count) then
     RangeIdx := 0;
   FRangeCombo.ItemIndex := RangeIdx;
+
+  UpdateUndoRedoButtons;
 end;
 
 procedure TFrmFindInProject.SelectModeTab(ReplaceTab: Boolean);
@@ -1033,19 +1076,88 @@ begin
   FReplaceLabel.Visible := IsReplace;
   FReplaceCombo.Visible := IsReplace;
   FSwapButton.Visible := IsReplace;
-  FPreviewReplaceButton.Visible := IsReplace;
   FReplaceButton.Visible := IsReplace;
   FReplaceAllButton.Visible := IsReplace;
   FKeepAssocCheck.Visible := IsReplace;
 
   CanReplaceScope := GetSelectedTextType(DummyType);
-  FPreviewReplaceButton.Enabled := IsReplace and CanReplaceScope;
   FReplaceButton.Enabled := IsReplace and CanReplaceScope and (Length(FMatches) > 0);
   FReplaceAllButton.Enabled := IsReplace and CanReplaceScope;
 
   FTransOnBlurRadio.Enabled := FTransEnableCheck.Checked;
   FTransAlwaysRadio.Enabled := FTransEnableCheck.Checked;
   FTransTrackBar.Enabled := FTransEnableCheck.Checked;
+  UpdateUndoRedoButtons;
+end;
+
+procedure TFrmFindInProject.UpdateUndoRedoButtons;
+begin
+  if Length(FUndoStack) > 0 then
+  begin
+    FUndoButton.Caption := Format(SBtnUndoCountFmt, [Length(FUndoStack)]);
+    FUndoButton.Enabled := (FProject <> nil);
+  end
+  else
+  begin
+    FUndoButton.Caption := SBtnUndo;
+    FUndoButton.Enabled := False;
+  end;
+
+  if Length(FRedoStack) > 0 then
+  begin
+    FRedoButton.Caption := Format(SBtnRedoCountFmt, [Length(FRedoStack)]);
+    FRedoButton.Enabled := (FProject <> nil);
+  end
+  else
+  begin
+    FRedoButton.Caption := SBtnRedo;
+    FRedoButton.Enabled := False;
+  end;
+end;
+
+procedure TFrmFindInProject.ClearUndoRedoHistory;
+begin
+  SetLength(FUndoStack, 0);
+  SetLength(FRedoStack, 0);
+  UpdateUndoRedoButtons;
+end;
+
+procedure TFrmFindInProject.PushUndoSnapshot(const Snap: TFindReplaceSnapshot);
+var
+  I, N: Integer;
+begin
+  N := Length(FUndoStack);
+  if N >= MAX_FIND_REPLACE_HISTORY then
+  begin
+    for I := 0 to N - 2 do
+      FUndoStack[I] := FUndoStack[I + 1];
+    FUndoStack[N - 1] := Snap;
+  end
+  else
+  begin
+    SetLength(FUndoStack, N + 1);
+    FUndoStack[N] := Snap;
+  end;
+  UpdateUndoRedoButtons;
+end;
+
+procedure TFrmFindInProject.PushRedoSnapshot(const Snap: TFindReplaceSnapshot);
+var
+  I, N: Integer;
+begin
+  N := Length(FRedoStack);
+  if N >= MAX_FIND_REPLACE_HISTORY then
+  begin
+    for I := 0 to N - 2 do
+      FRedoStack[I] := FRedoStack[I + 1];
+    FRedoStack[N - 1] := Snap;
+  end
+  else
+  begin
+    SetLength(FRedoStack, N + 1);
+    FRedoStack[N] := Snap;
+  end;
+  UpdateUndoRedoButtons;
 end;
 
 procedure TFrmFindInProject.UpdateTransparency(IsActive: Boolean);
@@ -1384,7 +1496,10 @@ end;
 procedure TFrmFindInProject.SetProject(AProject: TProject);
 begin
   if FProject <> AProject then
+  begin
     ClearResults;
+    ClearUndoRedoHistory;
+  end;
   FProject := AProject;
   RefreshCaptions;
   UpdateTabUI;
@@ -1410,7 +1525,7 @@ begin
     FOnNavigate(FMatches[Index].ReferenceID);
 end;
 
-procedure TFrmFindInProject.DoFindAll(NavigateFirst: Boolean; ForceReplacePreview: Boolean);
+procedure TFrmFindInProject.DoFindAll(NavigateFirst: Boolean);
 var
   TotalOcc: Integer;
   ErrMsg: string;
@@ -1420,10 +1535,10 @@ begin
     Exit;
 
   AddToHistory(FFindCombo, FFindCombo.Text);
-  if (FTabControl.TabIndex = 1) or ForceReplacePreview then
+  if FTabControl.TabIndex = 1 then
     AddToHistory(FReplaceCombo, FReplaceCombo.Text);
 
-  ShowRepl := ForceReplacePreview or (FTabControl.TabIndex = 1);
+  ShowRepl := (FTabControl.TabIndex = 1);
   FCountLabel.Caption := SFindSearching;
   Application.ProcessMessages;
   Screen.BeginWaitCursor;
@@ -1437,8 +1552,6 @@ begin
   PopulateResultsList(ShowRepl);
   if Length(FMatches) = 0 then
     FCountLabel.Caption := SFindNoMatches
-  else if ForceReplacePreview then
-    FCountLabel.Caption := Format(SPreviewCountFmt, [TotalOcc, Length(FMatches), GetRangeDisplayName])
   else
     FCountLabel.Caption := Format(SFindCountFmt, [TotalOcc, Length(FMatches), GetRangeDisplayName]);
 
@@ -1446,31 +1559,6 @@ begin
   UpdateTabUI;
   if NavigateFirst and (Length(FMatches) > 0) then
     GoToResult(0);
-end;
-
-procedure TFrmFindInProject.DoCount;
-var
-  TotalOcc: Integer;
-  ErrMsg: string;
-begin
-  if (FProject = nil) or (FFindCombo.Text = '') then
-    Exit;
-  AddToHistory(FFindCombo, FFindCombo.Text);
-  FCountLabel.Caption := SFindSearching;
-  Application.ProcessMessages;
-  Screen.BeginWaitCursor;
-  try
-    if not ScanProject(False, TotalOcc, ErrMsg) then
-      Exit;
-  finally
-    Screen.EndWaitCursor;
-  end;
-  if Length(FMatches) = 0 then
-    FCountLabel.Caption := SFindNoMatches
-  else
-    FCountLabel.Caption := Format(SFindCountFmt, [TotalOcc, Length(FMatches), GetRangeDisplayName]);
-  PopulateResultsList(False);
-  UpdateTabUI;
 end;
 
 procedure TFrmFindInProject.DoFindStep(ForwardDir: Boolean);
@@ -1510,6 +1598,7 @@ var
   Refs, Texts: TStringList;
   Applied, TargetIdx, TotalOcc: Integer;
   ErrMsg, SavedRef: string;
+  Snap: TFindReplaceSnapshot;
 begin
   if FProject = nil then
     Exit;
@@ -1543,11 +1632,27 @@ begin
   TargetIdx := FCurrentIndex;
   SavedRef := FMatches[TargetIdx].ReferenceID;
 
+  if FMatches[TargetIdx].ReplacedText = FMatches[TargetIdx].OriginalText then
+    Exit;
+
   Refs := TStringList.Create;
   Texts := TStringList.Create;
   try
     Refs.Add(FMatches[TargetIdx].ReferenceID);
     Texts.Add(FMatches[TargetIdx].ReplacedText);
+
+    Snap.Description := Format('Replace in %s ("%s" -> "%s")', [
+      FMatches[TargetIdx].FormattedRef, FFindCombo.Text, FReplaceCombo.Text
+    ]);
+    Snap.ScopeName := GetScopeDisplayName;
+    Snap.TextType := TextType;
+    Snap.KeepAssociations := FKeepAssocCheck.Checked;
+    SetLength(Snap.Refs, 1);
+    SetLength(Snap.BeforeTexts, 1);
+    SetLength(Snap.AfterTexts, 1);
+    Snap.Refs[0] := FMatches[TargetIdx].ReferenceID;
+    Snap.BeforeTexts[0] := FMatches[TargetIdx].OriginalText;
+    Snap.AfterTexts[0] := FMatches[TargetIdx].ReplacedText;
 
     FProject.BeginChangeLogBatch;
     try
@@ -1564,6 +1669,8 @@ begin
           ]),
           Format('Find: %s | Replace: %s', [FFindCombo.Text, FReplaceCombo.Text]));
         FProject.SaveProject;
+        SetLength(FRedoStack, 0);
+        PushUndoSnapshot(Snap);
       end;
     finally
       FProject.EndChangeLogBatch;
@@ -1607,6 +1714,7 @@ var
   TotalOcc, Applied, I, ChangedCount: Integer;
   ErrMsg, AssocNotice, PromptMsg: string;
   Refs, Texts: TStringList;
+  Snap: TFindReplaceSnapshot;
 begin
   if (FProject = nil) or (FFindCombo.Text = '') then
     Exit;
@@ -1670,6 +1778,27 @@ begin
     if MessageDlg(SReplaceAllTitle, PromptMsg, mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
       Exit;
 
+    Snap.Description := Format('Replace All (%d verse(s) in %s: "%s" -> "%s")', [
+      ChangedCount, GetScopeDisplayName, FFindCombo.Text, FReplaceCombo.Text
+    ]);
+    Snap.ScopeName := GetScopeDisplayName;
+    Snap.TextType := TextType;
+    Snap.KeepAssociations := FKeepAssocCheck.Checked;
+    SetLength(Snap.Refs, ChangedCount);
+    SetLength(Snap.BeforeTexts, ChangedCount);
+    SetLength(Snap.AfterTexts, ChangedCount);
+    Applied := 0;
+    for I := 0 to High(FMatches) do
+    begin
+      if FMatches[I].ReplacedText <> FMatches[I].OriginalText then
+      begin
+        Snap.Refs[Applied] := FMatches[I].ReferenceID;
+        Snap.BeforeTexts[Applied] := FMatches[I].OriginalText;
+        Snap.AfterTexts[Applied] := FMatches[I].ReplacedText;
+        Inc(Applied);
+      end;
+    end;
+
     FProject.BeginChangeLogBatch;
     try
       FormPleaseWait.BeginOperation(Self, SReplaceProgressTitle, SReplaceProgressMsg, 1, '');
@@ -1689,6 +1818,8 @@ begin
             FFindCombo.Text, FReplaceCombo.Text, BoolToStr(FKeepAssocCheck.Checked, True)
           ]));
         FProject.SaveProject;
+        SetLength(FRedoStack, 0);
+        PushUndoSnapshot(Snap);
       end;
     finally
       FProject.EndChangeLogBatch;
@@ -1699,6 +1830,144 @@ begin
     else
     begin
       FCountLabel.Caption := Format(SReplaceDoneFmt, [TotalOcc, Applied]);
+      SetLength(FMatches, 0);
+      FCurrentIndex := -1;
+      FResultsList.Items.Clear;
+      UpdateTabUI;
+    end;
+  finally
+    Texts.Free;
+    Refs.Free;
+  end;
+end;
+
+procedure TFrmFindInProject.DoUndo;
+var
+  Snap: TFindReplaceSnapshot;
+  Refs, Texts: TStringList;
+  I, Applied: Integer;
+  ErrMsg, PromptMsg: string;
+begin
+  if FProject = nil then
+    Exit;
+  if Length(FUndoStack) = 0 then
+  begin
+    MessageDlg(SUndoNothing, mtInformation, [mbOK], 0);
+    Exit;
+  end;
+
+  Snap := FUndoStack[High(FUndoStack)];
+  PromptMsg := Format(SUndoConfirmFmt, [
+    Snap.Description, Length(Snap.Refs), Snap.ScopeName
+  ]);
+  if MessageDlg(SUndoConfirmTitle, PromptMsg, mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
+    Exit;
+
+  Refs := TStringList.Create;
+  Texts := TStringList.Create;
+  try
+    for I := 0 to High(Snap.Refs) do
+    begin
+      Refs.Add(Snap.Refs[I]);
+      Texts.Add(Snap.BeforeTexts[I]);
+    end;
+
+    FProject.BeginChangeLogBatch;
+    try
+      FormPleaseWait.BeginOperation(Self, SReplaceProgressTitle, SUndoProgressMsg, 1, '');
+      try
+        Applied := FProject.ApplyVerseTexts(Refs, Texts, Snap.TextType,
+          Snap.KeepAssociations, FormPleaseWait.ProgressBar1, ErrMsg);
+      finally
+        FormPleaseWait.FinishOperation;
+      end;
+      if Applied > 0 then
+      begin
+        FProject.LogProjectChange('Find & Replace Undo',
+          Format('Undid %s (%d verse(s) restored)', [Snap.Description, Applied]),
+          'Restored pre-replacement verse texts from Find & Replace Undo history.');
+        FProject.SaveProject;
+      end;
+    finally
+      FProject.EndChangeLogBatch;
+    end;
+
+    if ErrMsg <> '' then
+      MessageDlg(Format(SUndoErrorFmt, [ErrMsg]), mtError, [mbOK], 0)
+    else
+    begin
+      SetLength(FUndoStack, Length(FUndoStack) - 1);
+      PushRedoSnapshot(Snap);
+      FCountLabel.Caption := Format(SUndoDoneFmt, [Snap.Description, Applied]);
+      SetLength(FMatches, 0);
+      FCurrentIndex := -1;
+      FResultsList.Items.Clear;
+      UpdateTabUI;
+    end;
+  finally
+    Texts.Free;
+    Refs.Free;
+  end;
+end;
+
+procedure TFrmFindInProject.DoRedo;
+var
+  Snap: TFindReplaceSnapshot;
+  Refs, Texts: TStringList;
+  I, Applied: Integer;
+  ErrMsg, PromptMsg: string;
+begin
+  if FProject = nil then
+    Exit;
+  if Length(FRedoStack) = 0 then
+  begin
+    MessageDlg(SRedoNothing, mtInformation, [mbOK], 0);
+    Exit;
+  end;
+
+  Snap := FRedoStack[High(FRedoStack)];
+  PromptMsg := Format(SRedoConfirmFmt, [
+    Snap.Description, Length(Snap.Refs), Snap.ScopeName
+  ]);
+  if MessageDlg(SRedoConfirmTitle, PromptMsg, mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
+    Exit;
+
+  Refs := TStringList.Create;
+  Texts := TStringList.Create;
+  try
+    for I := 0 to High(Snap.Refs) do
+    begin
+      Refs.Add(Snap.Refs[I]);
+      Texts.Add(Snap.AfterTexts[I]);
+    end;
+
+    FProject.BeginChangeLogBatch;
+    try
+      FormPleaseWait.BeginOperation(Self, SReplaceProgressTitle, SRedoProgressMsg, 1, '');
+      try
+        Applied := FProject.ApplyVerseTexts(Refs, Texts, Snap.TextType,
+          Snap.KeepAssociations, FormPleaseWait.ProgressBar1, ErrMsg);
+      finally
+        FormPleaseWait.FinishOperation;
+      end;
+      if Applied > 0 then
+      begin
+        FProject.LogProjectChange('Find & Replace Redo',
+          Format('Redid %s (%d verse(s) updated)', [Snap.Description, Applied]),
+          'Re-applied replacement from Find & Replace Redo history.');
+        FProject.SaveProject;
+      end;
+    finally
+      FProject.EndChangeLogBatch;
+    end;
+
+    if ErrMsg <> '' then
+      MessageDlg(Format(SRedoErrorFmt, [ErrMsg]), mtError, [mbOK], 0)
+    else
+    begin
+      SetLength(FRedoStack, Length(FRedoStack) - 1);
+      PushUndoSnapshot(Snap);
+      FCountLabel.Caption := Format(SRedoDoneFmt, [Snap.Description, Applied]);
       SetLength(FMatches, 0);
       FCurrentIndex := -1;
       FResultsList.Items.Clear;
@@ -1728,6 +1997,24 @@ end;
 procedure TFrmFindInProject.FormDeactivateHandler(Sender: TObject);
 begin
   UpdateTransparency(False);
+end;
+
+procedure TFrmFindInProject.FormKeyDownHandler(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+begin
+  if (ssCtrl in Shift) and not (ssAlt in Shift) then
+  begin
+    if (Key = VK_Z) and (Length(FUndoStack) > 0) then
+    begin
+      Key := 0;
+      DoUndo;
+    end
+    else if (Key = VK_Y) and (Length(FRedoStack) > 0) then
+    begin
+      Key := 0;
+      DoRedo;
+    end;
+  end;
 end;
 
 procedure TFrmFindInProject.LeftPanelResize(Sender: TObject);
@@ -1784,19 +2071,9 @@ begin
   DoFindStep(False);
 end;
 
-procedure TFrmFindInProject.CountButtonClick(Sender: TObject);
-begin
-  DoCount;
-end;
-
 procedure TFrmFindInProject.FindAllButtonClick(Sender: TObject);
 begin
-  DoFindAll(True, False);
-end;
-
-procedure TFrmFindInProject.PreviewReplaceButtonClick(Sender: TObject);
-begin
-  DoFindAll(False, True);
+  DoFindAll(True);
 end;
 
 procedure TFrmFindInProject.ReplaceButtonClick(Sender: TObject);
@@ -1807,6 +2084,16 @@ end;
 procedure TFrmFindInProject.ReplaceAllButtonClick(Sender: TObject);
 begin
   DoReplaceAll;
+end;
+
+procedure TFrmFindInProject.UndoButtonClick(Sender: TObject);
+begin
+  DoUndo;
+end;
+
+procedure TFrmFindInProject.RedoButtonClick(Sender: TObject);
+begin
+  DoRedo;
 end;
 
 procedure TFrmFindInProject.CloseButtonClick(Sender: TObject);
@@ -1827,7 +2114,7 @@ begin
   if Key = VK_RETURN then
   begin
     Key := 0;
-    DoFindAll(True, False);
+    DoFindAll(True);
   end
   else if Key = VK_F3 then
   begin
