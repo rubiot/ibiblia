@@ -114,6 +114,10 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.099 (64-bit Edition) - 2026-11-22' + LineEnding +
+  '- Fixed native GTK2 file chooser and system dialogs (GtkFileChooserDialog, GtkPaned, GtkPathBar, GtkScrolledWindow) in Classic (Light) and all skins by adding class "GtkWidget" style : highest "ibiblia-skin" and explicit file-chooser widget rules in unitskins.pas.' + LineEnding +
+  '- Added SyncGtkTopLevelTitleBars (via gtk_window_list_toplevels + lightweight GLib timer) so native GTK2 dialogs like Open/Save File Chooser also receive the matching KDE title bar colour scheme.' + LineEnding +
+  '' + LineEnding +
   'Version 1.1.0.098 (64-bit Edition) - 2026-11-22' + LineEnding +
   '- Fixed remaining Classic (Light) skin remnants on Linux dark desktop themes: replaced clWindow backgrounds in Project Change Log Details (project_change_log_ui.pas) and Export Module Properties Preview (module_properties_preview.pas) with CurrentSkin.WindowBg, fixed Project Backups / Crash Logs / Export dialog skinning, and enabled Linux KDE title bar syncing (ApplyDarkModeToWindow) on About, Changelog, User Guide, and MessageBox dialogs.' + LineEnding +
   '' + LineEnding +

@@ -1,4 +1,8 @@
-﻿Version 1.1.0.098 (64-bit Edition) - 2026-11-22
+﻿Version 1.1.0.099 (64-bit Edition) - 2026-11-22
+- Fixed native GTK2 file chooser and system dialogs (GtkFileChooserDialog, GtkPaned, GtkPathBar, GtkScrolledWindow) in Classic (Light) and all skins via class "GtkWidget" style : highest "ibiblia-skin" in unitskins.pas.
+- Added SyncGtkTopLevelTitleBars so native GTK2 Open/Save dialogs also receive the matching KDE title bar colour scheme.
+
+Version 1.1.0.098 (64-bit Edition) - 2026-11-22
 - Fixed remaining Classic (Light) skin remnants on Linux dark desktop themes: replaced clWindow backgrounds in Project Change Log Details (project_change_log_ui.pas) and Export Module Properties Preview (module_properties_preview.pas) with CurrentSkin.WindowBg, fixed Project Backups / Crash Logs / Export dialog skinning, and enabled Linux KDE title bar syncing on About, Changelog, User Guide, and MessageBox dialogs.
 
 Version 1.1.0.097 (64-bit Edition) - 2026-11-22

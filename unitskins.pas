@@ -574,6 +574,23 @@ end;
 {$IFDEF LCLGTK2}
 var
   GtkSkinApplied: Integer = -1;
+  GtkKdeColorsSkinId: Integer = -1;
+  GtkKdeColorsPath: string = '';
+  GtkTitleBarTimerStarted: Boolean = False;
+
+procedure SyncGtkTopLevelTitleBars; forward;
+
+function GtkSyncTitleBarsCallback(Data: gpointer): gboolean; cdecl;
+begin
+  if Data = nil then ;
+  if ApplicationShuttingDown then
+  begin
+    Result := False;
+    Exit;
+  end;
+  SyncGtkTopLevelTitleBars;
+  Result := True;
+end;
 
 function GtkHex(AColor: TColor): string;
 var
@@ -672,6 +689,15 @@ begin
         '  fg[PRELIGHT] = "' + GtkHex(ASkin.PointedText) + '"'#10 +
         '  fg[SELECTED] = "' + GtkHex(ASkin.PointedText) + '"'#10 +
         '}'#10 +
+        'class "GtkWidget" style : highest "ibiblia-skin"'#10 +
+        'widget_class "*GtkFileChooser*" style : highest "ibiblia-skin"'#10 +
+        'widget_class "*GtkPaned*" style : highest "ibiblia-skin"'#10 +
+        'widget_class "*GtkHPaned*" style : highest "ibiblia-skin"'#10 +
+        'widget_class "*GtkVPaned*" style : highest "ibiblia-skin"'#10 +
+        'widget_class "*GtkScrolledWindow*" style : highest "ibiblia-skin"'#10 +
+        'widget_class "*GtkViewport*" style : highest "ibiblia-skin"'#10 +
+        'widget_class "*GtkPathBar*" style : highest "ibiblia-skin"'#10 +
+        'widget_class "*GtkToolbar*" style : highest "ibiblia-skin"'#10 +
         'widget_class "*GtkComboBox*" style : highest "ibiblia-input"'#10 +
         'widget_class "*GtkEntry*" style : highest "ibiblia-input"'#10 +
         'widget_class "*GtkTextView*" style : highest "ibiblia-input"'#10 +
@@ -706,6 +732,108 @@ begin
       gtk_rc_parse_string(PChar(Rc));
     end;
     gtk_rc_reset_styles(Settings);
+    if not GtkTitleBarTimerStarted then
+    begin
+      GtkTitleBarTimerStarted := True;
+      g_timeout_add(150, @GtkSyncTitleBarsCallback, nil);
+    end;
+    SyncGtkTopLevelTitleBars;
+  except
+    // cosmetic only
+  end;
+end;
+
+function EnsureKdeColorsFile(const ASkin: TSkinColors): string;
+var
+  Dir: string;
+  SL: TStringList;
+  Key: Integer;
+  function RGBS(C: TColor): string;
+  var
+    V: LongInt;
+  begin
+    V := ColorToRGB(C);
+    Result := IntToStr(V and $FF) + ',' + IntToStr((V shr 8) and $FF) + ',' +
+      IntToStr((V shr 16) and $FF);
+  end;
+begin
+  Key := Ord(ASkin.Id) + 1;
+  if (GtkKdeColorsSkinId = Key) and (GtkKdeColorsPath <> '') then
+    Exit(GtkKdeColorsPath);
+  Dir := GetEnvironmentVariable('XDG_CACHE_HOME');
+  if Dir = '' then Dir := GetEnvironmentVariable('HOME') + '/.cache';
+  Dir := Dir + '/ibiblia';
+  ForceDirectories(Dir);
+  Result := Dir + '/skin-' + ASkin.Name + '.colors';
+  SL := TStringList.Create;
+  try
+    SL.Add('[General]');
+    SL.Add('Name=iBiblia ' + ASkin.Name);
+    SL.Add('[WM]');
+    SL.Add('activeBackground=' + RGBS(ASkin.PanelBg));
+    SL.Add('activeForeground=' + RGBS(ASkin.PanelText));
+    SL.Add('inactiveBackground=' + RGBS(ASkin.PanelBg));
+    SL.Add('inactiveForeground=' + RGBS(ASkin.WindowTextDim));
+    SL.Add('activeBlend=' + RGBS(ASkin.PanelText));
+    SL.Add('inactiveBlend=' + RGBS(ASkin.WindowTextDim));
+    SL.Add('[Colors:Window]');
+    SL.Add('BackgroundNormal=' + RGBS(ASkin.PanelBg));
+    SL.Add('ForegroundNormal=' + RGBS(ASkin.PanelText));
+    SL.SaveToFile(Result);
+  finally
+    SL.Free;
+  end;
+  GtkKdeColorsSkinId := Key;
+  GtkKdeColorsPath := Result;
+end;
+
+procedure ApplyKdeTitleBarToWidget(Wnd: PGtkWidget; const ASkin: TSkinColors);
+var
+  Path: string;
+  Dpy: PDisplay;
+  Atom: QWord;
+  Key: PtrUInt;
+begin
+  try
+    if (Wnd = nil) or (Wnd^.window = nil) then Exit;
+    Key := PtrUInt(Ord(ASkin.Id) + 1);
+    if PtrUInt(g_object_get_data(PGObject(Wnd), 'ibiblia-kde-skin')) = Key then
+      Exit;
+    Dpy := gdk_x11_drawable_get_xdisplay(Wnd^.window);
+    if Dpy = nil then Exit;
+    Atom := gdk_x11_get_xatom_by_name('_KDE_NET_WM_COLOR_SCHEME');
+    Path := EnsureKdeColorsFile(ASkin);
+    XChangeProperty(Dpy, gdk_x11_drawable_get_xid(Wnd^.window), Atom, 31 {XA_STRING}, 8,
+      0 {PropModeReplace}, PByte(PChar(Path)), Length(Path));
+    XFlush(Dpy);
+    g_object_set_data(PGObject(Wnd), 'ibiblia-kde-skin', Pointer(Key));
+  except
+    // cosmetic only
+  end;
+end;
+
+{ Keeps KDE title bars in sync for every GTK2 top-level window in the process,
+  including native GtkFileChooserDialog / GtkFontSelectionDialog / GtkMessageDialog. }
+procedure SyncGtkTopLevelTitleBars;
+var
+  Tops, Cur: PGList;
+  Wnd: PGtkWidget;
+begin
+  try
+    Tops := gtk_window_list_toplevels;
+    if Tops = nil then Exit;
+    try
+      Cur := Tops;
+      while Cur <> nil do
+      begin
+        Wnd := PGtkWidget(Cur^.data);
+        if (Wnd <> nil) and (Wnd^.window <> nil) then
+          ApplyKdeTitleBarToWidget(Wnd, CurrentSkin);
+        Cur := Cur^.next;
+      end;
+    finally
+      g_list_free(Tops);
+    end;
   except
     // cosmetic only
   end;
@@ -716,57 +844,9 @@ end;
   colours for that window's title bar. Every skin gets a matching file, so the
   light Classic skin keeps a light title bar under a dark KDE theme. }
 procedure ApplyKdeTitleBar(AForm: TCustomForm; const ASkin: TSkinColors);
-var
-  Path, Dir: string;
-  SL: TStringList;
-  Wnd: PGtkWidget;
-  Dpy: PDisplay;
-  Atom: QWord;
-  function RGBS(C: TColor): string;
-  var
-    V: LongInt;
-  begin
-    V := ColorToRGB(C);
-    Result := IntToStr(V and $FF) + ',' + IntToStr((V shr 8) and $FF) + ',' +
-      IntToStr((V shr 16) and $FF);
-  end;
 begin
-  try
-    if (AForm = nil) or (not AForm.HandleAllocated) then Exit;
-    Wnd := PGtkWidget(AForm.Handle);
-    if (Wnd = nil) or (Wnd^.window = nil) then Exit;
-    Dpy := gdk_x11_drawable_get_xdisplay(Wnd^.window);
-    if Dpy = nil then Exit;
-    Atom := gdk_x11_get_xatom_by_name('_KDE_NET_WM_COLOR_SCHEME');
-    Dir := GetEnvironmentVariable('XDG_CACHE_HOME');
-    if Dir = '' then Dir := GetEnvironmentVariable('HOME') + '/.cache';
-    Dir := Dir + '/ibiblia';
-    ForceDirectories(Dir);
-    Path := Dir + '/skin-' + ASkin.Name + '.colors';
-    SL := TStringList.Create;
-    try
-      SL.Add('[General]');
-      SL.Add('Name=iBiblia ' + ASkin.Name);
-      SL.Add('[WM]');
-      SL.Add('activeBackground=' + RGBS(ASkin.PanelBg));
-      SL.Add('activeForeground=' + RGBS(ASkin.PanelText));
-      SL.Add('inactiveBackground=' + RGBS(ASkin.PanelBg));
-      SL.Add('inactiveForeground=' + RGBS(ASkin.WindowTextDim));
-      SL.Add('activeBlend=' + RGBS(ASkin.PanelText));
-      SL.Add('inactiveBlend=' + RGBS(ASkin.WindowTextDim));
-      SL.Add('[Colors:Window]');
-      SL.Add('BackgroundNormal=' + RGBS(ASkin.PanelBg));
-      SL.Add('ForegroundNormal=' + RGBS(ASkin.PanelText));
-      SL.SaveToFile(Path);
-    finally
-      SL.Free;
-    end;
-    XChangeProperty(Dpy, gdk_x11_drawable_get_xid(Wnd^.window), Atom, 31 {XA_STRING}, 8,
-      0 {PropModeReplace}, PByte(PChar(Path)), Length(Path));
-    XFlush(Dpy);
-  except
-    // cosmetic only
-  end;
+  if (AForm = nil) or (not AForm.HandleAllocated) then Exit;
+  ApplyKdeTitleBarToWidget(PGtkWidget(AForm.Handle), ASkin);
 end;
 {$ENDIF}
 

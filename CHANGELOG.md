@@ -6,6 +6,10 @@
 
 ## What's New & Fixed in v1.1.0
 
+### v1.1.0.099 (2026-11-22)
+- Fixed native GTK2 file chooser and system dialogs (`GtkFileChooserDialog`, `GtkPaned`, `GtkPathBar`, `GtkScrolledWindow`) on Linux dark desktop themes by adding `class "GtkWidget" style : highest "ibiblia-skin"` and explicit file-chooser rules in `unitskins.pas`.
+- Added `SyncGtkTopLevelTitleBars` (`gtk_window_list_toplevels`) so native GTK2 dialogs (such as Open/Save File Chooser) also receive the matching KDE title bar color scheme.
+
 ### v1.1.0.098 (2026-11-22)
 - Fixed remaining Classic (Light) skin remnants on Linux dark desktop themes: replaced `clWindow` backgrounds in Project Change Log Details (`project_change_log_ui.pas`) and Export Module Properties Preview (`module_properties_preview.pas`) with `CurrentSkin.WindowBg`, fixed Project Backups / Crash Logs / Export dialog skinning, and enabled Linux KDE title bar syncing (`ApplyDarkModeToWindow`) on About, Changelog, User Guide, and MessageBox dialogs.
 
