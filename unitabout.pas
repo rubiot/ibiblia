@@ -114,6 +114,10 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.089 (64-bit Edition) - 2026-11-22' + LineEnding +
+  '- Upgraded Ctrl+F (and added Ctrl+H) to a full Notepad++-style Find & Replace tool inside the project (Normal, Extended \n/\r/\t/\x, and PCRE Regular Expression modes with . matches newline, capture groups $1/\1/${name}, and \u/\l/\U/\L/\E case transforms; Match whole word, Match case, Wrap around, Count, Find All, Replace, and Replace All).' + LineEnding +
+  '- Mass replacements in Destination, Source, Reference 1, or Reference 2 text apply directly in-project, preserve existing word associations via TVerse.ReplaceTextPreservingAssociations, log to the Project Change Log, and auto-save.' + LineEnding +
+  '' + LineEnding +
   'Version 1.1.0.088 (64-bit Edition) - 2026-11-22' + LineEnding +
   '- Updated the Help -> About dialog title, header, changelog title, and GitHub link to Dark-Skinned iBiblia (https://github.com/SalitaNgDiyos/Dark-Skinned-iBiblia).' + LineEnding +
   '' + LineEnding +
@@ -743,7 +747,7 @@ begin
     ver := '';
   end;
   if (ver = '') or (ver = '1.1.0.0') or (ver = '1.1.0.1') then
-    ver := '1.1.0.088';
+    ver := '1.1.0.089';
 
   LabelVersion := TLabel.Create(Self);
   LabelVersion.Parent := Self;

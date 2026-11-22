@@ -284,6 +284,7 @@ type
     FDefaultVerseModeEditingItem: TMenuItem;
     FActionPreferences: TAction;
     FActionFindInProject: TAction;
+    FActionReplaceInProject: TAction;
     FActionGoToVerse: TAction;
     FSkinMenu: TMenuItem;
     FSkinItems: array[TSkinId] of TMenuItem;
@@ -299,6 +300,7 @@ type
     FActionPreviousFilteredVerse: TAction;
     FDefaultDictionariesMenuItem: TMenuItem;
     FFindInProjectMenuItem: TMenuItem;
+    FReplaceInProjectMenuItem: TMenuItem;
     FGoToVerseMenuItem: TMenuItem;
     FToolsMenu: TMenuItem;
     FVerseInformationMenu: TMenuItem;
@@ -402,6 +404,7 @@ type
     procedure SetAlwaysOnTopEnabled(AEnabled: Boolean);
     procedure SetAutoSaveEnabled(AEnabled: Boolean);
     procedure ActionFindInProjectExecute(Sender: TObject);
+    procedure ActionReplaceInProjectExecute(Sender: TObject);
     procedure ActionGoToVerseExecute(Sender: TObject);
     procedure SkinItemClick(Sender: TObject);
     procedure ActionToggleDarkSkinExecute(Sender: TObject);
@@ -752,6 +755,7 @@ resourcestring
   STheWordEditorAppearance = 'theWord editor appearance...';
   SPreferencesMenu = 'iBiblia &preferences...';
   SFindInProjectMenu = '&Find in project...';
+  SReplaceInProjectMenu = '&Replace in project...';
   SGoToVerseMenu = '&Go to verse...';
   SDefaultDictionariesMenu = '&Default dictionaries...';
   SSkinsMenu = '&Skins';
@@ -768,6 +772,7 @@ resourcestring
   SShortcutNextFilteredVerse = 'Next verse with a shown status (or not finished)';
   SShortcutPreviousFilteredVerse = 'Previous verse with a shown status (or not finished)';
   SShortcutFindInProject = 'Find in project';
+  SShortcutReplaceInProject = 'Replace in project';
   SShortcutGoToVerse = 'Go to verse: type a reference such as jn 3 16 (or just start typing a book name while the Bible tree has the focus)';
   SGoToVerseNotFoundFmt = 'That verse was not found in this project (%s).';
   STheWordStateOff = 'theWord synchronization: off';
@@ -1632,6 +1637,12 @@ begin
   FFindInProjectMenuItem := TMenuItem.Create(MainMenu1);
   FFindInProjectMenuItem.Action := FActionFindInProject;
   FToolsMenu.Insert(0, FFindInProjectMenuItem);
+  FActionReplaceInProject := TAction.Create(ActionList1);
+  FActionReplaceInProject.ShortCut := ShortCut(VK_H, [ssCtrl]);
+  FActionReplaceInProject.OnExecute := @ActionReplaceInProjectExecute;
+  FReplaceInProjectMenuItem := TMenuItem.Create(MainMenu1);
+  FReplaceInProjectMenuItem.Action := FActionReplaceInProject;
+  FToolsMenu.Insert(1, FReplaceInProjectMenuItem);
   FActionGoToVerse := TAction.Create(ActionList1);
   FActionGoToVerse.ShortCut := ShortCut(VK_G, [ssCtrl]);
   FActionGoToVerse.OnExecute := @ActionGoToVerseExecute;
@@ -1922,6 +1933,7 @@ begin
     AddActionShortcut(ActionPreviousVerse, SShortcutPreviousVerse);
     AddActionShortcut(ActionNextVerse, SShortcutNextVerse);
     AddActionShortcut(FActionFindInProject, SShortcutFindInProject);
+    AddActionShortcut(FActionReplaceInProject, SShortcutReplaceInProject);
     AddActionShortcut(FActionGoToVerse, SShortcutGoToVerse);
     AddActionShortcut(FActionToggleDarkSkin, SToggleDarkSkinMenu);
     AddActionShortcut(FActionReadOnHover, SReadOnHoverMenu);
@@ -6466,7 +6478,13 @@ end;
 procedure TMainForm.ActionFindInProjectExecute(Sender: TObject);
 begin
   if CurrentProject <> nil then
-    ShowFindInProject(Self, CurrentProject, @FindInProjectNavigate);
+    ShowFindInProject(Self, CurrentProject, @FindInProjectNavigate, False);
+end;
+
+procedure TMainForm.ActionReplaceInProjectExecute(Sender: TObject);
+begin
+  if CurrentProject <> nil then
+    ShowFindInProject(Self, CurrentProject, @FindInProjectNavigate, True);
 end;
 
 procedure TMainForm.ActionGoToVerseExecute(Sender: TObject);
@@ -7370,6 +7388,11 @@ begin
   begin
     FActionFindInProject.Caption := SFindInProjectMenu;
     FActionFindInProject.Hint := SShortcutFindInProject;
+  end;
+  if Assigned(FActionReplaceInProject) then
+  begin
+    FActionReplaceInProject.Caption := SReplaceInProjectMenu;
+    FActionReplaceInProject.Hint := SShortcutReplaceInProject;
   end;
   if Assigned(FActionGoToVerse) then
   begin

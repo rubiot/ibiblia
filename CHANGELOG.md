@@ -6,7 +6,13 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.088 (2026-11-22) — Update Help → About Dialog Name & GitHub URL to Dark-Skinned iBiblia
+### 0. Version 1.1.0.089 (2026-11-22) — Full Notepad++-Style Find & Replace in Project (Ctrl+F / Ctrl+H)
+
+* **Notepad++-Style Find & Replace (`FormFindInProject.pas`, `formprincipal.pas`):** Upgraded `Ctrl+F` (and added `Ctrl+H` / **Tools → Replace in project...**) to a tabbed **Find & Replace in Project** dialog supporting **Normal**, **Extended** (`\n`, `\r`, `\t`, `\0`, `\xHH`, `\uHHHH`), and **PCRE Regular Expression** modes (with `. matches newline`, capture groups `$1`/`\1`/`${name}`, and `\u`/`\l`/`\U`/`\L`/`\E` case transforms), **Match whole word only**, **Match case**, **Wrap around**, **Show raw tags in preview**, **Count**, **Find All**, **Replace**, and **Replace All**.
+* **Association-Preserving In-Project Bulk Edits:** Replacements in Source, Destination, Reference 1, or Reference 2 text run directly through `TProject.ApplyVerseTexts(..., KeepAssociations)` so existing word associations stay intact wherever words remain unchanged, record a summary in **Project → Project change log...**, and save automatically.
+* Files: FormFindInProject.pas, formprincipal.pas, iBiblia.lpi, iBiblia-linux.lpi, unitabout.pas, CHANGELOG.md, historico.txt, Histórico.txt.
+
+### 0a. Version 1.1.0.088 (2026-11-22) — Update Help → About Dialog Name & GitHub URL to Dark-Skinned iBiblia
 
 * **Updated Help → About Dialog (`unitabout.pas`, `unitabout.lfm`):** Updated the **Help → About** window title (`About Dark-Skinned iBiblia`), main heading (`Dark-Skinned iBiblia`), **View Changelog** window title (`What's New in Dark-Skinned iBiblia` / `Dark-Skinned iBiblia - Changelog`), and clickable GitHub repository link (`https://github.com/SalitaNgDiyos/Dark-Skinned-iBiblia`).
 * Files: unitabout.pas, unitabout.lfm, README.md.

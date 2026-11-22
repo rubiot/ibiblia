@@ -1,4 +1,8 @@
-﻿Version 1.1.0.088 (64-bit Edition) - 2026-11-22
+﻿Version 1.1.0.089 (64-bit Edition) - 2026-11-22
+- Upgraded Ctrl+F (and added Ctrl+H) to a full Notepad++-style Find & Replace tool inside the project (Normal, Extended, and PCRE Regular Expression modes with capture groups, case transforms, Match whole word, Match case, Wrap around, Count, Find All, Replace, and Replace All).
+- Mass replacements in Source, Destination, Reference 1, or Reference 2 text apply directly in-project while preserving existing word associations, logging to the Project Change Log, and saving automatically.
+
+Version 1.1.0.088 (64-bit Edition) - 2026-11-22
 - Updated the Help -> About dialog title, header, changelog title, and GitHub link to Dark-Skinned iBiblia (https://github.com/SalitaNgDiyos/Dark-Skinned-iBiblia).
 
 Version 1.1.0.087 (64-bit Edition) - 2026-11-22
